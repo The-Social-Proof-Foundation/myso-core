@@ -1,0 +1,9 @@
+[package]
+name = "legacy_coin"
+edition = "2024.beta"
+
+[dependencies]
+MySo = { local = "../../../../../myso-framework/packages/myso-framework" }
+
+[addresses]
+legacy_coin = "0x0"

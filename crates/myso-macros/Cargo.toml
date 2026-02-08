@@ -1,0 +1,16 @@
+[package]
+name = "myso-macros"
+version = "0.7.0"
+authors = ["Mysten Labs <build@mystenlabs.com>"]
+license = "Apache-2.0"
+publish = false
+edition = "2024"
+
+[lints]
+workspace = true
+
+[dependencies]
+myso-proc-macros.workspace = true
+once_cell.workspace = true
+futures.workspace = true
+tracing.workspace = true

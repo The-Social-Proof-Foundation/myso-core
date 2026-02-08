@@ -1,0 +1,1 @@
+The runbook is now located at myso/docs/content/guides/operator/bridge-node-configuration.mdx. You can view it online at https://docs.myso.io/guides/operator/bridge-node-configuration

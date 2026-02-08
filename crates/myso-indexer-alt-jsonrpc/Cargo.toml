@@ -1,0 +1,74 @@
+[package]
+name = "myso-indexer-alt-jsonrpc"
+version.workspace = true
+authors = ["Mysten Labs <build@mystenlabs.com>"]
+license = "Apache-2.0"
+publish = false
+edition = "2024"
+
+[[bin]]
+name = "myso-indexer-alt-jsonrpc"
+path = "src/main.rs"
+
+[lints]
+workspace = true
+
+[dependencies]
+anyhow.workspace = true
+async-graphql = { workspace = true, features = ["dataloader"] }
+async-trait.workspace = true
+axum.workspace = true
+bcs.workspace = true
+bin-version.workspace = true
+clap.workspace = true
+const-str.workspace = true
+diesel = { workspace = true, features = ["chrono"] }
+diesel-async = { workspace = true, features = ["bb8", "postgres", "async-connection-wrapper"] }
+fastcrypto.workspace = true
+futures.workspace = true
+http.workspace = true
+jsonrpsee = { workspace = true, features = ["macros", "server"] }
+pin-project-lite.workspace = true
+pin-project.workspace = true
+prometheus.workspace = true
+rustls.workspace = true
+schemars.workspace = true
+serde.workspace = true
+serde_json.workspace = true
+serde_with.workspace = true
+telemetry-subscribers.workspace = true
+thiserror.workspace = true
+tokio.workspace = true
+toml.workspace = true
+tower-layer.workspace = true
+# tower.workspace = true
+tower = { version = "0.4", features = ["util"] }
+tower-http.workspace = true
+tracing.workspace = true
+url.workspace = true
+
+move-binary-format.workspace = true
+move-core-types.workspace = true
+
+myso-default-config.workspace = true
+myso-display.workspace = true
+myso-futures.workspace = true
+myso-indexer-alt-metrics.workspace = true
+myso-indexer-alt-reader.workspace = true
+myso-indexer-alt-schema.workspace = true
+myso-json.workspace = true
+myso-json-rpc-api.workspace = true
+myso-json-rpc-types.workspace = true
+myso-name-service.workspace = true
+myso-open-rpc.workspace = true
+myso-open-rpc-macros.workspace = true
+myso-package-resolver.workspace = true
+myso-protocol-config.workspace = true
+myso-sql-macro.workspace = true
+myso-types.workspace = true
+
+[dev-dependencies]
+reqwest.workspace = true
+serde_json.workspace = true
+
+myso-pg-db.workspace = true

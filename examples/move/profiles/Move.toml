@@ -1,0 +1,9 @@
+[package]
+name = "profiles"
+edition = "2024.beta"
+
+[dependencies]
+MySo = { local = "../../../crates/myso-framework/packages/myso-framework" }
+
+[addresses]
+profiles = "0x0"

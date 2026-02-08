@@ -1,0 +1,17 @@
+module a::m {
+    use myso::object;
+
+    struct Obj has key {
+        id: object::UID,
+    }
+
+    public entry fun foo<T>(_: Obj, _: u64, _: T) {
+        abort 0
+    }
+}
+
+module myso::object {
+    struct UID has store {
+        id: address,
+    }
+}

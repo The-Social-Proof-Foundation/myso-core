@@ -1,0 +1,50 @@
+[package]
+name = "test-cluster"
+authors = ["Mysten Labs <build@mystenlabs.com>"]
+version = "0.1.0"
+license = "Apache-2.0"
+publish = false
+edition = "2024"
+
+[lints]
+workspace = true
+
+[dependencies]
+anyhow.workspace = true
+bcs.workspace = true
+fastcrypto.workspace = true
+futures.workspace = true
+tracing.workspace = true
+jsonrpsee.workspace = true
+tokio = { workspace = true, features = ["full", "tracing", "test-util"] }
+tokio-util.workspace = true
+tonic.workspace = true
+rand.workspace = true
+tempfile.workspace = true
+myso-config.workspace = true
+myso-core.workspace = true
+mysten-common.workspace = true
+myso-framework.workspace = true
+myso-swarm-config.workspace = true
+myso-json-rpc.workspace = true
+myso-json-rpc-types.workspace = true
+myso-json-rpc-api.workspace = true
+myso-node.workspace = true
+myso-protocol-config.workspace = true
+myso-swarm.workspace = true
+myso-types.workspace = true
+prometheus.workspace = true
+myso-keys.workspace = true
+myso-sdk.workspace = true
+myso-test-transaction-builder.workspace = true
+myso-rpc-api.workspace = true
+
+move-binary-format.workspace = true
+
+[target.'cfg(msim)'.dependencies]
+myso-simulator.workspace = true
+fastcrypto-zkp.workspace = true
+
+[dev-dependencies]
+myso-json-rpc-api.workspace = true
+myso-macros.workspace = true

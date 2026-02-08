@@ -1,0 +1,12 @@
+[package]
+name = "MySoSystem"
+version = "0.0.1"
+published-at = "0x3"
+edition = "2024.beta"
+
+[dependencies]
+MoveStdlib = { local = "../move-stdlib" }
+MySo = { local = "../myso-framework" }
+
+[addresses]
+myso_system = "0x3"

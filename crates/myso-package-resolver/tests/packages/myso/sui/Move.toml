@@ -1,0 +1,9 @@
+[package]
+name = "MySo"
+version = "0.0.1"
+published-at = "0x2"
+edition = "2024"
+implicit-dependencies = false
+
+[addresses]
+myso = "0x2"

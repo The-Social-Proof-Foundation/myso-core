@@ -1,0 +1,11 @@
+[package]
+name = "Locked Stake"
+version = "0.0.1"
+edition = "2024.beta"
+
+[dependencies]
+MySo = { local = "../../../crates/myso-framework/packages/myso-framework" }
+MySoSystem = { local = "../../../crates/myso-framework/packages/myso-system" }
+
+[addresses]
+locked_stake = "0x0"

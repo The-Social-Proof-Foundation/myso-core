@@ -1,0 +1,8 @@
+[package]
+name = "examples"
+version = "0.0.1"
+implicit-dependencies = false
+
+[dependencies]
+myso = { local = "../myso-framework" }
+non_zero = { local = "../b" }

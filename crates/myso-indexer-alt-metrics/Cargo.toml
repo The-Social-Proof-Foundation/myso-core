@@ -1,0 +1,19 @@
+[package]
+name = "myso-indexer-alt-metrics"
+version.workspace = true
+authors = ["Mysten Labs <build@mystenlabs.com>"]
+license = "Apache-2.0"
+publish = false
+edition = "2024"
+
+[dependencies]
+anyhow.workspace = true
+axum.workspace = true
+clap.workspace = true
+prometheus.workspace = true
+prometheus-closure-metric.workspace = true
+tokio.workspace = true
+tracing.workspace = true
+
+myso-futures.workspace = true
+myso-pg-db.workspace = true

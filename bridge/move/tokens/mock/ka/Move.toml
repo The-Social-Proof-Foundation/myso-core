@@ -1,0 +1,11 @@
+[package]
+name = "BridgedKa"
+version = "0.0.1"
+edition = "legacy"
+
+[dependencies]
+MoveStdlib = { local = "../../../../../crates/myso-framework/packages/move-stdlib" }
+MySo = { local = "../../../../../crates/myso-framework/packages/myso-framework" }
+
+[addresses]
+bridged_ka = "0x0"

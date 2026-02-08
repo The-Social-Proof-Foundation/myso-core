@@ -1,0 +1,8 @@
+[package]
+name = "c"
+edition = "2024"
+implicit-dependencies = false
+
+[dependencies]
+myso = { local = "../../system-packages/myso-framework" }
+b = { local = "../B_A1"}

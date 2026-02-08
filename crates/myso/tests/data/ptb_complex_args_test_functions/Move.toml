@@ -1,0 +1,9 @@
+[package]
+name = "test_functions"
+edition = "2024.beta"
+# turn off system deps
+implicit-dependencies = false
+
+[dependencies]
+myso = { local = "../system-packages/myso-framework" }
+std = { local = "../system-packages/move-stdlib" }

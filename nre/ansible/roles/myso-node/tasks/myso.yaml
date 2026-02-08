@@ -1,0 +1,99 @@
+---
+- name: Add a myso user
+  ansible.builtin.user:
+    name: myso
+    shell: /bin/bash
+
+- name: Create myso directories
+  file:
+    path: "{{ item }}"
+    state: directory
+    owner: "myso"
+    group: "myso"
+    mode: 0755
+  loop:
+    - /opt/myso/bin
+    - /opt/myso/config
+    - /opt/myso/db
+    - /opt/myso/key-pairs
+
+- name: Copy validator configuration file
+  copy:
+    src: "{{ node_config }}"
+    dest: /opt/myso/config/validator.yaml
+    owner: "myso"
+    group: "myso"
+    mode: 0644
+
+- name: Copy genesis.blob
+  copy:
+    src: "{{ genesis_blob }}"
+    dest: /opt/myso/config/genesis.blob
+    owner: "myso"
+    group: "myso"
+    mode: 0644
+
+- name: Copy protocol.key
+  copy:
+    src: "{{ keypair_path }}protocol.key"
+    dest: /opt/myso/key-pairs/protocol.key
+    owner: "myso"
+    group: "myso"
+    mode: 0600
+
+- name: Copy network.key
+  copy:
+    src: "{{ keypair_path }}network.key"
+    dest: /opt/myso/key-pairs/network.key
+    owner: "myso"
+    group: "myso"
+    mode: 0600
+
+- name: Copy worker.key
+  copy:
+    src: "{{ keypair_path }}worker.key"
+    dest: /opt/myso/key-pairs/worker.key
+    owner: "myso"
+    group: "myso"
+    mode: 0600
+
+- name: Stop myso-node
+  systemd:
+    name: myso-node
+    state: stopped
+  ignore_errors: yes
+
+- name: Remove authorities directory
+  file:
+    state: absent
+    path: "/opt/myso/db/authorities_db"
+  when: reset_db == true
+
+- name: Remove consensus directory
+  file:
+    state: absent
+    path: "/opt/myso/db/consensus_db"
+  when: reset_db == true
+
+- name: Place binary
+  ansible.builtin.get_url:
+    url: "https://releases.myso.io/{{ myso_release }}/myso-node"
+    dest: /opt/myso/bin/myso-node
+    force: true
+    mode: "0755"
+
+- name: Copy myso-node systemd service file
+  copy:
+    src: "../files/myso-node.service"
+    dest: /etc/systemd/system/myso-node.service
+
+- name: Reload myso-node systemd service file
+  ansible.builtin.systemd:
+    name: myso-node
+    state: reloaded
+
+- name: Start myso-node service
+  systemd:
+    name: myso-node
+    state: started
+  when: start_myso == true

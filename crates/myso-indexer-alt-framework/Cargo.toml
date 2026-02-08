@@ -1,0 +1,64 @@
+[package]
+name = "myso-indexer-alt-framework"
+version.workspace = true
+authors = ["Mysten Labs <build@mystenlabs.com>"]
+license = "Apache-2.0"
+publish = false
+edition = "2024"
+
+[dependencies]
+anyhow.workspace = true
+async-trait.workspace = true
+axum.workspace = true
+backoff.workspace = true
+bb8 = "0.8.5"
+bytes.workspace = true
+chrono.workspace = true
+clap = { workspace = true, features = ["env"] }
+diesel = { workspace = true, features = ["chrono"] }
+diesel-async = { workspace = true, features = ["bb8", "postgres", "async-connection-wrapper"] }
+diesel_migrations.workspace = true
+futures.workspace = true
+pin-project-lite.workspace = true
+prometheus.workspace = true
+object_store.workspace = true
+serde_json.workspace = true
+rand.workspace = true
+scoped-futures.workspace = true
+serde.workspace = true
+tempfile.workspace = true
+thiserror.workspace = true
+tokio.workspace = true
+tokio-stream.workspace = true
+tonic.workspace = true
+tracing.workspace = true
+tracing-subscriber = { workspace = true, optional = true }
+url.workspace = true
+
+myso-field-count.workspace = true
+myso-futures.workspace = true
+myso-indexer-alt-framework-store-traits.workspace = true
+myso-indexer-alt-metrics.workspace = true
+myso-rpc.workspace = true
+myso-sdk-types.workspace = true
+myso-rpc-api.workspace = true
+myso-storage.workspace = true
+myso-types.workspace = true
+prost.workspace = true
+prost-types.workspace = true
+zstd.workspace = true
+
+myso-pg-db = { workspace = true, optional = true }
+
+[dev-dependencies]
+telemetry-subscribers.workspace = true
+wiremock.workspace = true
+myso-pg-db.workspace = true
+dashmap.workspace = true
+
+myso-synthetic-ingestion.workspace = true
+
+[features]
+default = ["cluster"]
+cluster = ["dep:tracing-subscriber", "postgres"]
+postgres = ["dep:myso-pg-db"]

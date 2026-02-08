@@ -1,0 +1,10 @@
+[package]
+name = "dynamic_fields"
+version = "0.0.1"
+edition = "2024.beta"
+
+[dependencies]
+MySo = { local = "../../../crates/myso-framework/packages/myso-framework" }
+
+[addresses]
+dynamic_fields = "0x0"

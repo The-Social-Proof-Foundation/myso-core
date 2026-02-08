@@ -1,0 +1,56 @@
+[package]
+name = "myso-replay-2"
+version = "0.1.0"
+authors = ["Mysten Labs <build@mystenlabs.com>"]
+license = "Apache-2.0"
+publish = false
+edition = "2024"
+
+[dependencies]
+anyhow.workspace = true
+async-trait.workspace = true
+bcs.workspace = true
+bin-version.workspace = true
+clap.workspace = true
+chrono.workspace = true
+csv.workspace = true
+fastcrypto.workspace = true
+futures.workspace = true
+move-binary-format.workspace = true
+move-bytecode-source-map.workspace = true
+move-cli.workspace = true
+move-command-line-common.workspace = true
+move-core-types.workspace = true
+move-disassembler.workspace = true
+move-ir-types.workspace = true
+move-package-alt.workspace = true
+move-package-alt-compilation.workspace = true
+move-trace-format.workspace = true
+prometheus.workspace = true
+serde.workspace = true
+similar.workspace = true
+myso-config.workspace = true
+myso-data-store.workspace = true
+myso-execution.workspace = true
+myso-framework.workspace = true
+myso-json-rpc-types.workspace = true
+myso-move.workspace = true
+myso-move-build.workspace = true
+myso-package-management.workspace = true
+myso-types.workspace = true
+serde_json.workspace = true
+tabled.workspace = true
+myso-package-alt.workspace = true
+telemetry-subscribers.workspace = true
+thiserror.workspace = true
+tokio = { workspace = true, features = ["full"] }
+toml.workspace = true
+tracing.workspace = true
+zstd.workspace = true
+indicatif.workspace = true
+
+[features]
+tracing = [
+    "myso-types/tracing",
+    "myso-execution/tracing",
+]

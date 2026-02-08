@@ -1,0 +1,17 @@
+[package]
+name = "myso-transaction-checks"
+version = "0.1.0"
+authors = ["Mysten Labs <build@mystenlabs.com>"]
+license = "Apache-2.0"
+publish = false
+edition = "2024"
+
+[dependencies]
+once_cell.workspace = true
+myso-macros.workspace = true
+myso-config.workspace = true
+myso-protocol-config.workspace = true
+myso-types.workspace = true
+tracing.workspace = true
+myso-execution.workspace = true
+fastcrypto-zkp.workspace = true

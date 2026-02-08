@@ -1,0 +1,10 @@
+[package]
+name = "global_write_ref"
+edition = "2024.beta"
+
+[dependencies]
+MySo = { git = "https://github.com/MystenLabs/myso.git", subdir = "crates/myso-framework/packages/myso-framework", rev = "framework/mainnet" }
+
+[addresses]
+global_write_ref = "0x0"
+MySo = "0x2"

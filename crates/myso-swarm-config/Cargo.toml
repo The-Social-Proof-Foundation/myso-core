@@ -1,0 +1,41 @@
+[package]
+name = "myso-swarm-config"
+version = "0.0.0"
+authors = ["Mysten Labs <build@mystenlabs.com>"]
+license = "Apache-2.0"
+publish = false
+edition = "2024"
+
+[lints]
+workspace = true
+
+[dependencies]
+anemo.workspace = true
+anyhow.workspace = true
+bcs.workspace = true
+fastcrypto.workspace = true
+rand.workspace = true
+serde.workspace = true
+serde_with.workspace = true
+serde_yaml.workspace = true
+tracing.workspace = true
+prometheus.workspace = true
+
+move-bytecode-utils.workspace = true
+mysten-common.workspace = true
+shared-crypto.workspace = true
+myso-config.workspace = true
+myso-macros.workspace = true
+myso-protocol-config.workspace = true
+myso-types.workspace = true
+myso-genesis-builder.workspace = true
+myso-rpc-api.workspace = true
+
+[target.'cfg(msim)'.dependencies]
+myso-simulator.workspace = true
+
+[dev-dependencies]
+insta.workspace = true
+tempfile.workspace = true
+
+myso-execution.workspace = true

@@ -1,0 +1,9 @@
+[package]
+name = "vesting"
+edition = "2024.beta"
+
+[dependencies]
+MySo = { local = "../../crates/myso-framework/packages/myso-framework"  }
+
+[addresses]
+vesting = "0x0"

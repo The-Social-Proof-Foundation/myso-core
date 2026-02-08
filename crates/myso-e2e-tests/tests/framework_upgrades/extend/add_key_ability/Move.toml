@@ -1,0 +1,10 @@
+[package]
+name = "MySoExtraAddKeyAbility"
+edition = "2024.beta"
+
+[dependencies]
+MySo = { local = "../system-packages/myso-framework" }
+MoveStdlib = { local = "../system-packages/move-stdlib" }
+
+[addresses]
+myso_system = "0x3"

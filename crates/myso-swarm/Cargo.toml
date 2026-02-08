@@ -1,0 +1,35 @@
+[package]
+name = "myso-swarm"
+version = "0.0.0"
+authors = ["Mysten Labs <build@mystenlabs.com>"]
+license = "Apache-2.0"
+publish = false
+edition = "2024"
+
+[lints]
+workspace = true
+
+[dependencies]
+anyhow.workspace = true
+rand.workspace = true
+tracing.workspace = true
+tokio = { workspace = true, features = ["full"] }
+futures.workspace = true
+tempfile.workspace = true
+tonic-health.workspace = true
+tap.workspace = true
+prometheus.workspace = true
+
+myso-config.workspace = true
+myso-swarm-config.workspace = true
+myso-macros.workspace = true
+myso-node.workspace = true
+myso-protocol-config.workspace = true
+myso-tls.workspace = true
+myso-types.workspace = true
+mysten-metrics.workspace = true
+mysten-network.workspace = true
+telemetry-subscribers.workspace = true
+
+[target.'cfg(msim)'.dependencies]
+myso-simulator.workspace = true

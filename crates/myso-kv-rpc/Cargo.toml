@@ -1,0 +1,29 @@
+[package]
+name = "myso-kv-rpc"
+authors = ["Mysten Labs <build@mystenlabs.com>"]
+license = "Apache-2.0"
+publish = false
+edition = "2024"
+version.workspace = true
+
+[dependencies]
+anyhow.workspace = true
+axum.workspace = true
+bin-version.workspace = true
+clap.workspace = true
+prometheus.workspace = true
+rustls.workspace = true
+mysten-metrics.workspace = true
+mysten-network.workspace = true
+myso-data-ingestion-core.workspace = true
+myso-kvstore.workspace = true
+myso-rpc-api.workspace = true
+myso-rpc.workspace = true
+myso-types.workspace = true
+myso-sdk-types.workspace = true
+telemetry-subscribers.workspace = true
+tokio.workspace = true
+tonic.workspace = true
+tonic-reflection.workspace = true
+tracing.workspace = true
+myso-protocol-config.workspace = true

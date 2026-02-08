@@ -1,0 +1,10 @@
+[package]
+name = "tto"
+version = "0.0.1"
+edition = "2024.beta"
+
+[dependencies]
+MySo = { local = "../../../../myso-framework/packages/myso-framework" }
+
+[addresses]
+tto =  "0x0"

@@ -1,0 +1,18 @@
+---
+version: "3.9"
+services:
+  fullnode:
+    # Note: Update the tag to the latest version of mysten/myso-node for mainnet or testnet.
+    image: mysten/myso-node:mainnet-v1.19.1
+    ports:
+    - "8080:8080"
+    - "8084:8084/udp"
+    - "9000:9000"
+    - "9184:9184"
+    volumes:
+    - ./fullnode-template.yaml:/opt/myso/config/fullnode.yaml:ro
+    - ./genesis.blob:/opt/myso/config/genesis.blob:ro
+    - ./mysodb:/opt/myso/db:rw
+    command: ["/opt/myso/bin/myso-node", "--config-path", "/opt/myso/config/fullnode.yaml"]
+volumes:
+  mysodb:

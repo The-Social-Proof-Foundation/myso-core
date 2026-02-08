@@ -1,0 +1,43 @@
+[package]
+name = "myso-indexer-alt-reader"
+version.workspace = true
+authors = ["Mysten Labs <build@mystenlabs.com>"]
+license = "Apache-2.0"
+publish = false
+edition = "2024"
+
+[lints]
+workspace = true
+
+[dependencies]
+anyhow.workspace = true
+async-graphql = { workspace = true, features = ["dataloader"] }
+async-trait.workspace = true
+bcs.workspace = true
+clap.workspace = true
+diesel.workspace = true
+diesel-async = { workspace = true, features = ["bb8", "postgres", "async-connection-wrapper"] }
+futures.workspace = true
+prost-types.workspace = true
+prometheus.workspace = true
+serde_json.workspace = true
+thiserror.workspace = true
+tokio.workspace = true
+tonic = { workspace = true, features = ["tls-native-roots"] }
+tracing.workspace = true
+url.workspace = true
+
+move-core-types.workspace = true
+
+myso-futures.workspace = true
+myso-indexer-alt-consistent-api.workspace = true
+myso-indexer-alt-metrics.workspace = true
+myso-indexer-alt-schema.workspace = true
+myso-kvstore.workspace = true
+myso-package-resolver.workspace = true
+myso-pg-db.workspace = true
+myso-rpc.workspace = true
+myso-rpc-api.workspace = true
+myso-sdk-types.workspace = true
+myso-sql-macro.workspace = true
+myso-types.workspace = true

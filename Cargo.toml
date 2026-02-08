@@ -1,0 +1,804 @@
+[workspace]
+resolver = "2"
+
+exclude = [
+  "examples/tic-tac-toe/cli",
+  "examples/regulated-coin/rust-client",
+  "examples/custom-indexer/rust",
+  "examples/rust/basic-myso-indexer",
+  "examples/rust/clickhouse-myso-indexer",
+  "examples/rust/walrus-attributes-indexer",
+  "external-crates/move/crates/jsonrpc",
+  "external-crates/move/crates/bytecode-interpreter-crypto",
+  "external-crates/move/crates/bytecode-verifier-libfuzzer",
+  "external-crates/move/crates/bytecode-verifier-tests",
+  "external-crates/move/crates/bytecode-verifier-prop-tests",
+  "external-crates/move/crates/bytecode-verifier-transactional-tests",
+  "external-crates/move/crates/enum-compat-util",
+  "external-crates/move/crates/invalid-mutations",
+  "external-crates/move/crates/language-benchmarks",
+  "external-crates/move/crates/module-generation",
+  "external-crates/move/crates/move-abstract-interpreter",
+  "external-crates/move/crates/move-abstract-stack",
+  "external-crates/move/crates/move-analyzer",
+  "external-crates/move/crates/move-binary-format",
+  "external-crates/move/crates/move-borrow-graph",
+  "external-crates/move/crates/move-bytecode-source-map",
+  "external-crates/move/crates/move-bytecode-utils",
+  "external-crates/move/crates/move-bytecode-verifier",
+  "external-crates/move/crates/move-bytecode-verifier-meter",
+  "external-crates/move/crates/move-bytecode-viewer",
+  "external-crates/move/crates/move-cli",
+  "external-crates/move/crates/move-command-line-common",
+  "external-crates/move/crates/move-compiler",
+  "external-crates/move/crates/move-compiler-transactional-tests",
+  "external-crates/move/crates/move-core-types",
+  "external-crates/move/crates/move-coverage",
+  "external-crates/move/crates/move-disassembler",
+  "external-crates/move/crates/move-docgen",
+  "external-crates/move/crates/move-ir-compiler",
+  "external-crates/move/crates/move-ir-compiler-transactional-tests",
+  "external-crates/move/crates/move-ir-to-bytecode",
+  "external-crates/move/crates/move-ir-to-bytecode-syntax",
+  "external-crates/move/crates/move-ir-types",
+  "external-crates/move/crates/move-model",
+  "external-crates/move/crates/move-model-2",
+  "external-crates/move/crates/move-package",
+  "external-crates/move/crates/move-package-alt",
+  "external-crates/move/crates/move-package-alt-compilation",
+  "external-crates/move/crates/move-proc-macros",
+  "external-crates/move/crates/move-regex-borrow-graph",
+  "external-crates/move/crates/move-stackless-bytecode",
+  "external-crates/move/crates/move-stackless-bytecode-2",
+  "external-crates/move/crates/move-stdlib",
+  "external-crates/move/crates/move-stdlib-natives",
+  "external-crates/move/crates/move-symbol-pool",
+  "external-crates/move/crates/move-transactional-test-runner",
+  "external-crates/move/crates/move-trace-format",
+  "external-crates/move/crates/move-unit-test",
+  "external-crates/move/crates/move-vm-config",
+  "external-crates/move/crates/move-vm-integration-tests",
+  "external-crates/move/crates/move-vm-profiler",
+  "external-crates/move/crates/move-vm-runtime",
+  "external-crates/move/crates/move-vm-test-utils",
+  "external-crates/move/crates/move-vm-transactional-tests",
+  "external-crates/move/crates/move-vm-types",
+  "external-crates/move/crates/serializer-tests",
+  "external-crates/move/crates/test-generation",
+  "external-crates/move/move-execution/v0/crates/move-bytecode-verifier",
+  "external-crates/move/move-execution/v0/crates/move-stdlib-natives",
+  "external-crates/move/move-execution/v0/crates/move-vm-runtime",
+  "external-crates/move/move-execution/v0/crates/move-vm-types",
+  "external-crates/move/move-execution/v1/crates/move-bytecode-verifier",
+  "external-crates/move/move-execution/v1/crates/move-stdlib-natives",
+  "external-crates/move/move-execution/v1/crates/move-vm-runtime",
+  "external-crates/move/move-execution/v1/crates/move-vm-types",
+  "external-crates/move/move-execution/v2/crates/move-abstract-interpreter",
+  "external-crates/move/move-execution/v2/crates/move-bytecode-verifier",
+  "external-crates/move/move-execution/v2/crates/move-stdlib-natives",
+  "external-crates/move/move-execution/v2/crates/move-vm-runtime",
+  "external-crates/move/move-execution/v2/crates/move-vm-types",
+]
+
+members = [
+  "consensus/config",
+  "consensus/core",
+  "consensus/simtests",
+  "consensus/types",
+  "crates/anemo-benchmark",
+  "crates/bin-version",
+  "crates/mysten-common",
+  "crates/mysten-metrics",
+  "crates/mysten-network",
+  "crates/mysten-service",
+  "crates/prometheus-closure-metric",
+  "crates/shared-crypto",
+  "crates/simulacrum",
+  "crates/myso",
+  "crates/myso-adapter-transactional-tests",
+  "crates/myso-analytics-indexer",
+  "crates/myso-analytics-indexer-derive",
+  "crates/myso-authority-aggregation",
+  "crates/myso-aws-orchestrator",
+  "crates/myso-benchmark",
+  "crates/myso-bridge",
+  "crates/myso-bridge-cli",
+  "crates/myso-bridge-indexer",
+  "crates/myso-bridge-indexer-alt",
+  "crates/myso-bridge-schema",
+  "crates/myso-checkpoint-blob-indexer",
+  "crates/myso-cluster-test",
+  "crates/myso-config",
+  "crates/myso-core",
+  "crates/myso-cost",
+  "crates/myso-data-ingestion-core",
+  "crates/myso-data-store",
+  "crates/myso-default-config",
+  "crates/myso-display",
+  "crates/myso-e2e-tests",
+  "crates/myso-enum-compat-util",
+  "crates/myso-faucet",
+  "crates/myso-field-count",
+  "crates/myso-field-count-derive",
+  "crates/myso-framework",
+  "crates/myso-framework-snapshot",
+  "crates/myso-framework-tests",
+  "crates/myso-futures",
+  "crates/myso-genesis-builder",
+  "crates/myso-http",
+  "crates/myso-indexer-alt",
+  "crates/myso-indexer-alt-consistent-api",
+  "crates/myso-indexer-alt-consistent-store",
+  "crates/myso-indexer-alt-e2e-tests",
+  "crates/myso-indexer-alt-framework",
+  "crates/myso-indexer-alt-framework-store-traits",
+  "crates/myso-indexer-alt-graphql",
+  "crates/myso-indexer-alt-jsonrpc",
+  "crates/myso-indexer-alt-metrics",
+  "crates/myso-indexer-alt-object-store",
+  "crates/myso-indexer-alt-reader",
+  "crates/myso-indexer-alt-restorer",
+  "crates/myso-indexer-alt-schema",
+  "crates/myso-json",
+  "crates/myso-json-rpc",
+  "crates/myso-json-rpc-api",
+  "crates/myso-json-rpc-tests",
+  "crates/myso-json-rpc-types",
+  "crates/myso-keys",
+  "crates/myso-kv-rpc",
+  "crates/myso-kvstore",
+  "crates/myso-light-client",
+  "crates/myso-macros",
+  "crates/myso-metric-checker",
+  "crates/myso-metrics-push-client",
+  "crates/myso-move",
+  "crates/myso-move-build",
+  "crates/myso-move-lsp",
+  "crates/myso-name-service",
+  "crates/myso-network",
+  "crates/myso-node",
+  "crates/myso-open-rpc",
+  "crates/myso-open-rpc-macros",
+  "crates/myso-oracle",
+  "crates/myso-package-alt",
+  "crates/myso-package-dump",
+  "crates/myso-package-management",
+  "crates/myso-package-resolver",
+  "crates/myso-pg-db",
+  "crates/myso-proc-macros",
+  "crates/myso-protocol-config",
+  "crates/myso-protocol-config-macros",
+  "crates/myso-proxy",
+  "crates/myso-replay",
+  "crates/myso-replay-2",
+  "crates/myso-rosetta",
+  "crates/myso-rpc-api",
+  "crates/myso-rpc-benchmark",
+  "crates/myso-rpc-loadgen",
+  "crates/myso-rpc-resolver",
+  "crates/myso-sdk",
+  "crates/myso-security-watchdog",
+  "crates/myso-simulator",
+  "crates/myso-single-node-benchmark",
+  "crates/myso-snapshot",
+  "crates/myso-source-validation",
+  "crates/myso-sql-macro",
+  "crates/myso-storage",
+  "crates/myso-surfer",
+  "crates/myso-swarm",
+  "crates/myso-swarm-config",
+  "crates/myso-synthetic-ingestion",
+  "crates/myso-telemetry",
+  "crates/myso-test-transaction-builder",
+  "crates/myso-test-validator",
+  "crates/myso-tls",
+  "crates/myso-tool",
+  "crates/myso-transaction-builder",
+  "crates/myso-transaction-checks",
+  "crates/myso-transactional-test-runner",
+  "crates/myso-types",
+  "crates/myso-upgrade-compatibility-transactional-tests",
+  "crates/myso-verifier-transactional-tests",
+  "crates/telemetry-subscribers",
+  "crates/test-cluster",
+  "crates/transaction-fuzzer",
+  "crates/typed-store",
+  "crates/typed-store-derive",
+  "crates/typed-store-error",
+  "crates/typed-store-workspace-hack",
+  "crates/x",
+  "myso-execution",
+  "myso-execution/cut",
+  "myso-execution/latest/myso-adapter",
+  "myso-execution/latest/myso-move-natives",
+  "myso-execution/latest/myso-verifier",
+  "myso-execution/v0/myso-adapter",
+  "myso-execution/v0/myso-move-natives",
+  "myso-execution/v0/myso-verifier",
+  "myso-execution/v1/myso-adapter",
+  "myso-execution/v1/myso-move-natives",
+  "myso-execution/v1/myso-verifier",
+  "myso-execution/v2/myso-adapter",
+  "myso-execution/v2/myso-move-natives",
+  "myso-execution/v2/myso-verifier",
+]
+
+[workspace.package]
+# This version string will be inherited by myso-core, myso-faucet, myso-node, myso-tools, myso-sdk, myso-move-build, and myso crates.
+version = "1.66.0"
+
+[profile.release]
+# debug = 1 means line charts only, which is minimum needed for good stack traces
+debug = 1
+# Write debug info into a separate file.
+split-debuginfo = 'packed'
+# Without stripping, myso binary size would be > 1GB.
+strip = 'debuginfo'
+# Exit process with SIGABRT when any thread panics
+panic = 'abort'
+
+# Same as release, but unwind on panic.
+[profile.release-unwind]
+inherits = "release"
+panic = 'unwind'
+
+# Same as release, but build with lto (~50min build time).
+[profile.release-lto]
+inherits = "release"
+# Enable Link Time Optimization for better runtime performance
+lto = true
+# Use single codegen unit to enable better optimizations
+codegen-units = 1
+
+# Same as release, but build binary with debug symbols (binary size will be ~ 1GB).
+[profile.release-dbgsym]
+inherits = "release"
+split-debuginfo = 'off'
+strip = 'none'
+
+# Inherits from the release profile above.
+[profile.bench]
+# For convenience.
+strip = 'none'
+
+[profile.test.package.move-compiler]
+# opt-level 2 for move-compiler reduces the size of some of its
+# (recursive) stack frames by up to 10x, avoiding stack overflows.
+opt-level = 2
+
+[profile.simulator]
+inherits = "test"
+debug = true
+debug-assertions = true
+overflow-checks = true
+# opt-level 1 gives >5x speedup for simulator tests without slowing down build times very much.
+opt-level = 1
+
+[workspace.lints.rust]
+unexpected_cfgs = { level = "warn", check-cfg = [
+  'cfg(msim)',
+  'cfg(fail_points)',
+] }
+
+# Dependencies that should be kept in sync through the whole workspace
+[workspace.dependencies]
+antithesis_sdk = "0.2.5"
+anyhow = "1.0.71"
+arrow = "54"
+arrow-array = "54"
+arc-swap = { version = "1.5.1", features = ["serde"] }
+assert_cmd = "2.0.6"
+async-graphql = "=7.0.1"
+async-graphql-axum = "=7.0.1"
+async-graphql-value = "=7.0.1"
+async-recursion = "1.0.4"
+async-stream = "0.3.6"
+async-trait = "0.1.61"
+atomic_float = "0.1"
+aws-config = { version = "1.8", features = ["behavior-version-latest"] }
+aws-runtime = "1.5"
+aws-sdk-dynamodb = "1.101"
+aws-sdk-ec2 = "1.199"
+aws-sdk-kms = "1.97"
+aws-smithy-http = "0.62"
+aws-smithy-runtime-api = "1.9"
+axum = { version = "0.8", default-features = false, features = [
+  "macros",
+  "tokio",
+  "http1",
+  "http2",
+  "json",
+  "matched-path",
+  "original-uri",
+  "form",
+  "query",
+  "ws",
+] }
+axum-extra = { version = "0.10", features = ["typed-header"] }
+axum-server = { version = "0.8", default-features = false, features = [
+  "tls-rustls-no-provider",
+] }
+backoff = { version = "0.4.0", features = [
+  "futures",
+  "futures-core",
+  "pin-project-lite",
+  "tokio",
+  "tokio_1",
+] }
+backon = "1.4.0"
+base64 = "0.21.2"
+base64-url = "2"
+bcs = "0.1.4"
+better_any = "0.1.1"
+bimap = "0.6.2"
+bincode = "1.3.3"
+bip32 = "0.4.0"
+byteorder = "1.4.3"
+bytes = { version = "1.11.1", features = ["serde"] }
+cached = "0.43.0"
+camino = "1.1.1"
+cfg-if = "1.0.0"
+chrono = { version = "0.4.39", features = ["clock", "serde"] }
+clap = { version = "4.4", features = ["derive", "wrap_help"] }
+clap_complete = "4.4"
+codespan-reporting = "0.11.1"
+collectable = "0.0.2"
+colored = "2.0.0"
+color-eyre = "0.6.2"
+comfy-table = "6.1.3"
+console-subscriber = "0.4.1"
+const-str = "0.5.3"
+count-min-sketch = "0.1.7"
+criterion = { version = "0.5.0", features = [
+  "async",
+  "async_tokio",
+  "html_reports",
+] }
+crossterm = "0.25.0"
+csv = "1.2.1"
+cynic = { version = "3.10.0", features = ["http-reqwest"] }
+cynic-codegen = "= 3.10.0"
+dashmap = "5.5.3"
+# datatest-stable = "0.1.2"
+datatest-stable = { git = "https://github.com/nextest-rs/datatest-stable.git", rev = "72db7f6d1bbe36a5407e96b9488a581f763e106f" }
+derive-syn-parse = "0.1.5"
+derive_builder = "0.12.0"
+derive_more = "1.0.0"
+diesel = "2.2"
+diesel_migrations = "2.2"
+diesel-async = "0.5"
+dirs = "4.0.0"
+duration-str = "0.5.0"
+ed25519 = { version = "2", features = ["pkcs8", "alloc", "zeroize"] }
+ed25519-consensus = { version = "2.0.1", features = ["serde"] }
+either = "1.8.0"
+petgraph = "0.5.1"
+enum_dispatch = "^0.3"
+expect-test = "1.4.0"
+eyre = "0.6.8"
+fdlimit = "0.2.1"
+flate2 = "1.0.28"
+fs_extra = "1.3.0"
+futures = "0.3.28"
+futures-core = "0.3.21"
+git-version = "0.3.5"
+glob = "0.3.1"
+governor = "0.6.0"
+gcp_auth = "0.12.6"
+hashbrown = "0.12"
+hdrhistogram = "7.5.1"
+headers = "0.4.0"
+hex = "0.4.3"
+hex-literal = "0.3.4"
+http = "1"
+http-body = "1"
+humantime = "2.1.0"
+hyper = "1"
+hyper-util = "0.1.6"
+hyper-rustls = { version = "0.27", default-features = false, features = [
+  "webpki-roots",
+  "http1",
+  "http2",
+  "ring",
+  "tls12",
+] }
+im = "15"
+impl-trait-for-tuples = "0.2.0"
+indexmap = { version = "2.8.0", features = ["serde"] }
+indoc = "2.0.6"
+indicatif = "0.18.3"
+inquire = "0.6.0"
+insta = { version = "1.46.2", features = ["redactions", "yaml", "json"] }
+insta-cmd = "0.6.0"
+integer-encoding = "3.0.1"
+ipnetwork = "0.20.0"
+iso8601 = "0.6.3"
+itertools = "0.13.0"
+tikv-jemalloc-ctl = "^0.5"
+tikv-jemallocator = { version = "^0.5", features = [
+  "profiling",
+  "disable_initial_exec_tls",
+] }
+jsonrpsee = { version = "0.24.9", features = [
+  "server",
+  "macros",
+  "ws-client",
+  "http-client",
+  "jsonrpsee-core",
+] }
+json_to_table = { git = "https://github.com/zhiburt/tabled/", rev = "e449317a1c02eb6b29e409ad6617e5d9eb7b3bd4" }
+leb128 = "0.2.5"
+lru = "0.10"
+match_opt = "0.1.2"
+miette = { version = "7", features = ["fancy"] }
+mime = "0.3"
+mockall = "0.11.4"
+moka = { version = "0.12", default-features = false, features = [
+  "sync",
+  "atomic64",
+] }
+more-asserts = "0.3.1"
+msim = { git = "https://github.com/MystenLabs/mysten-sim.git", rev = "213e543d83b91c4aa904166bef255a6c0054c8a7", package = "msim" }
+msim-macros = { git = "https://github.com/MystenLabs/mysten-sim.git", rev = "213e543d83b91c4aa904166bef255a6c0054c8a7", package = "msim-macros" }
+multiaddr = "0.17.0"
+nexlint = { git = "https://github.com/nextest-rs/nexlint.git", rev = "7ce56bd591242a57660ed05f14ca2483c37d895b" }
+nexlint-lints = { git = "https://github.com/nextest-rs/nexlint.git", rev = "7ce56bd591242a57660ed05f14ca2483c37d895b" }
+nonempty = { version = "0.9.0", features = ["serialize"] }
+nonzero_ext = "0.3.0"
+notify = "6.1.1"
+ntest = "0.9.0"
+num-bigint = "0.4.4"
+num_cpus = "1.15.0"
+num_enum = "0.6.1"
+object_store = { version = "0.13.0", features = [
+  "aws",
+  "gcp",
+  "azure",
+  "http",
+] }
+once_cell = "1.18.0"
+ouroboros = "0.17"
+parking_lot = { version = "0.12.3", features = ["arc_lock"] }
+parquet = "54"
+pin-project = "1"
+pin-project-lite = "0.2.13"
+pkcs8 = { version = "0.10.0", features = ["std"] }
+pprof = { version = "0.14.0", features = ["cpp", "frame-pointer"] }
+pretty_assertions = "1.3.0"
+prettytable-rs = "0.10.0"
+proc-macro2 = "1.0.47"
+prometheus = "0.13.3"
+prometheus-http-query = { version = "0.8", default-features = false, features = [
+  "rustls-tls",
+] }
+prometheus-parse = { git = "https://github.com/asonnino/prometheus-parser.git", rev = "75334db" }
+proptest = "1.6.0"
+proptest-derive = "0.5"
+prost = "0.14.1"
+prost-build = "0.14.1"
+prost-types = "0.14.1"
+protox = "0.9"
+protobuf = { version = "2.28", features = ["with-bytes"] }
+quinn-proto = "0.11.7"
+quote = "1.0.23"
+rand = "0.8.5"
+rayon = "1.5.3"
+rcgen = "0.13"
+regex = "1.7.1"
+reqwest = { version = "0.12", default-features = false, features = [
+  "http2",
+  "json",
+  "rustls-tls",
+] }
+roaring = "0.10.6"
+ron = "0.8.0"
+rstest = "0.16.0"
+russh = "0.38.0"
+russh-keys = "0.38.0"
+rust-version = "1.56.1"
+rustls = { version = "0.23", default-features = false, features = [
+  "std",
+  "tls12",
+  "ring",
+] }
+rustls-pki-types = "1.11"
+rustversion = "1.0.9"
+rustyline = "9.1.2"
+rustyline-derive = "0.7.0"
+schemars = { version = "0.8.21", features = ["either"] }
+scoped-futures = "0.1.3"
+scopeguard = "1.1"
+serde = { version = "1.0.144", features = ["derive", "rc"] }
+serde-env = "0.2.0"
+serde-name = "0.2.1"
+serde-reflection = "0.5"
+serde_json = { version = "1.0.95", features = ["preserve_order"] }
+serde_repr = "0.1"
+serde_spanned = "0.6.8"
+serde_test = "1.0.147"
+serde_with = "3.8"
+# serde_yaml = "0.9.21"
+serde_yaml = "0.8.26"
+shell-words = "1.1.0"
+shellexpand = "3.1.0"
+signature = "1.6.0"
+similar = "2.4.0"
+simple_moving_average = "1.0.2"
+simple-server-timing-header = "0.1.1"
+slip10_ed25519 = "0.1.3"
+smallvec = "1.10.0"
+snap = "1.1.0"
+snowflake-api = "0.11.0"
+static_assertions = "1.1.0"
+strum = { version = "0.27.1", features = ["derive"] }
+strum_macros = "0.27.1"
+syn = { version = "1.0.104", features = ["full", "derive", "extra-traits"] }
+# syn = { version = "2", features = ["full", "fold", "extra-traits"] }
+synstructure = "0.12"
+sysinfo = "0.35.2"
+tabled = { version = "0.12" }
+tap = "1.0.1"
+tar = "0.4.40"
+tempfile = "3.20.0"
+test-fuzz = "3.0.4"
+thiserror = "1.0.40"
+tiny-bip39 = "1.0.0"
+tokio = "=1.49.0"
+tokio-retry = "0.3"
+tokio-rustls = { version = "0.26", default-features = false, features = [
+  "tls12",
+  "ring",
+] }
+tokio-stream = { version = "0.1.14", features = ["sync", "net"] }
+tokio-util = "0.7.18"
+toml = { version = "0.7.4", features = ["preserve_order"] }
+toml_edit = { version = "0.19.10" }
+tonic = { version = "0.14.3", features = [
+  "zstd",
+  "transport",
+  "tls-webpki-roots",
+] }
+tonic-build = "0.14.2"
+tonic-prost = "0.14.2"
+tonic-prost-build = "0.14.2"
+tonic-health = "0.14.2"
+tonic-reflection = "0.14.2"
+tonic-web = "0.14.2"
+tonic-rustls = "0.3.0"
+tower = { version = "0.5", features = [
+  "full",
+  "util",
+  "timeout",
+  "load-shed",
+  "limit",
+] }
+tower-http = { version = "0.5", features = [
+  "cors",
+  "full",
+  "trace",
+  "set-header",
+  "propagate-header",
+] }
+tower-layer = "0.3.2"
+twox-hash = "1.6.3"
+tracing = "0.1.37"
+tracing-appender = "0.2.2"
+tracing-subscriber = { version = "0.3.15", default-features = false, features = [
+  "std",
+  "smallvec",
+  "fmt",
+  "ansi",
+  "time",
+  "json",
+  "registry",
+  "env-filter",
+] }
+ttl_cache = "0.5.1"
+uint = "0.10.0"
+unescape = "0.1.0"
+ureq = "2.9.1"
+url = "2.3.1"
+uuid = { version = "1.1.2", features = ["v4", "fast-rng"] }
+walkdir = "2.5.0"
+webpki = { version = "0.103", package = "rustls-webpki", features = [
+  "alloc",
+  "std",
+  "ring",
+] }
+winnow = "0.7"
+wiremock = "0.5"
+x509-parser = { version = "0.17.0", features = ["verify"] }
+zstd = "0.12.3"
+zeroize = "1.6.0"
+versions = "4.1.0"
+linked-hash-map = "0.5.6"
+shlex = "1.3.0"
+starlark = "0.13.0"
+
+# Move dependencies
+jsonrpc = { path = "external-crates/move/crates/jsonrpc" }
+move-binary-format = { path = "external-crates/move/crates/move-binary-format" }
+move-bytecode-utils = { path = "external-crates/move/crates/move-bytecode-utils" }
+move-bytecode-source-map = { path = "external-crates/move/crates/move-bytecode-source-map" }
+move-bytecode-verifier-meter = { path = "external-crates/move/crates/move-bytecode-verifier-meter" }
+move-cli = { path = "external-crates/move/crates/move-cli" }
+move-compiler = { path = "external-crates/move/crates/move-compiler" }
+move-core-types = { path = "external-crates/move/crates/move-core-types" }
+move-disassembler = { path = "external-crates/move/crates/move-disassembler" }
+move-package = { path = "external-crates/move/crates/move-package" }
+move-package-alt = { path = "external-crates/move/crates/move-package-alt" }
+move-package-alt-compilation = { path = "external-crates/move/crates/move-package-alt-compilation" }
+move-unit-test = { path = "external-crates/move/crates/move-unit-test" }
+move-vm-config = { path = "external-crates/move/crates/move-vm-config" }
+move-vm-test-utils = { path = "external-crates/move/crates/move-vm-test-utils/", features = [
+  "tiered-gas",
+] }
+move-vm-profiler = { path = "external-crates/move/crates/move-vm-profiler" }
+move-command-line-common = { path = "external-crates/move/crates/move-command-line-common" }
+move-transactional-test-runner = { path = "external-crates/move/crates/move-transactional-test-runner" }
+move-ir-types = { path = "external-crates/move/crates/move-ir-types" }
+move-stackless-bytecode = { path = "external-crates/move/crates/move-stackless-bytecode" }
+move-stackless-bytecode-2 = { path = "external-crates/move/crates/move-stackless-bytecode-2" }
+move-symbol-pool = { path = "external-crates/move/crates/move-symbol-pool" }
+move-abstract-interpreter = { path = "external-crates/move/crates/move-abstract-interpreter" }
+move-abstract-stack = { path = "external-crates/move/crates/move-abstract-stack" }
+move-analyzer = { path = "external-crates/move/crates/move-analyzer" }
+move-trace-format = { path = "external-crates/move/crates/move-trace-format" }
+
+fastcrypto = { git = "https://github.com/MystenLabs/fastcrypto", rev = "d2e2d13be3e550745739144e2a090b9675e4ffcb" }
+fastcrypto-tbls = { git = "https://github.com/MystenLabs/fastcrypto", rev = "d2e2d13be3e550745739144e2a090b9675e4ffcb" }
+fastcrypto-zkp = { git = "https://github.com/MystenLabs/fastcrypto", rev = "d2e2d13be3e550745739144e2a090b9675e4ffcb", package = "fastcrypto-zkp" }
+fastcrypto-vdf = { git = "https://github.com/MystenLabs/fastcrypto", rev = "d2e2d13be3e550745739144e2a090b9675e4ffcb", features = [
+  "experimental",
+] }
+passkey-types = { version = "0.4.0" }
+passkey-client = { version = "0.4.0" }
+passkey-authenticator = { version = "0.4.0" }
+coset = "0.3"
+p256 = { version = "0.13.2", features = ["ecdsa"] }
+
+p384 = { version = "0.13.0", default-features = false, features = [
+  "ecdsa",
+  "sha384",
+] }
+ciborium = "0.2"
+
+# anemo dependencies
+anemo = { git = "https://github.com/mystenlabs/anemo.git", rev = "4b5f0f1d06a31c8ef78ec2e5b446bc633e4e2f77" }
+anemo-build = { git = "https://github.com/mystenlabs/anemo.git", rev = "4b5f0f1d06a31c8ef78ec2e5b446bc633e4e2f77" }
+anemo-cli = { git = "https://github.com/mystenlabs/anemo.git", rev = "4b5f0f1d06a31c8ef78ec2e5b446bc633e4e2f77" }
+anemo-tower = { git = "https://github.com/mystenlabs/anemo.git", rev = "4b5f0f1d06a31c8ef78ec2e5b446bc633e4e2f77" }
+
+# core-types from the new sdk for use in gRPC
+myso-sdk-types = { path = "../../mys-rust-sdk/crates/mys-sdk-types", package = "mys-sdk-types", features = [ "hash", "serde" ] }
+myso-crypto = { path = "../../mys-rust-sdk/crates/mys-crypto", package = "mys-crypto", features = [ "ed25519", "secp256r1", "secp256k1", "passkey", "zklogin" ] }
+myso-rpc = { path = "../../mys-rust-sdk/crates/mys-rpc", package = "mys-rpc" }
+
+### Workspace Members ###
+anemo-benchmark = { path = "crates/anemo-benchmark" }
+bin-version = { path = "crates/bin-version" }
+mysten-common = { path = "crates/mysten-common" }
+mysten-metrics = { path = "crates/mysten-metrics" }
+mysten-network = { path = "crates/mysten-network" }
+mysten-service = { path = "crates/mysten-service" }
+prometheus-closure-metric = { path = "crates/prometheus-closure-metric" }
+shared-crypto = { path = "crates/shared-crypto" }
+simulacrum = { path = "crates/simulacrum" }
+myso = { path = "crates/myso" }
+myso-adapter-transactional-tests = { path = "crates/myso-adapter-transactional-tests" }
+myso-analytics-indexer = { path = "crates/myso-analytics-indexer" }
+myso-analytics-indexer-derive = { path = "crates/myso-analytics-indexer-derive" }
+myso-authority-aggregation = { path = "crates/myso-authority-aggregation" }
+myso-benchmark = { path = "crates/myso-benchmark" }
+myso-bridge = { path = "crates/myso-bridge" }
+myso-bridge-schema = { path = "crates/myso-bridge-schema" }
+myso-cluster-test = { path = "crates/myso-cluster-test" }
+myso-config = { path = "crates/myso-config" }
+myso-core = { path = "crates/myso-core" }
+myso-cost = { path = "crates/myso-cost" }
+myso-data-ingestion-core = { path = "crates/myso-data-ingestion-core" }
+myso-data-store = { path = "crates/myso-data-store" }
+myso-default-config = { path = "crates/myso-default-config" }
+myso-display = { path = "crates/myso-display" }
+myso-e2e-tests = { path = "crates/myso-e2e-tests" }
+myso-enum-compat-util = { path = "crates/myso-enum-compat-util" }
+myso-faucet = { path = "crates/myso-faucet" }
+myso-field-count = { path = "crates/myso-field-count" }
+myso-field-count-derive = { path = "crates/myso-field-count-derive" }
+myso-futures = { path = "crates/myso-futures" }
+myso-framework = { path = "crates/myso-framework" }
+myso-framework-snapshot = { path = "crates/myso-framework-snapshot" }
+myso-framework-tests = { path = "crates/myso-framework-tests" }
+myso-genesis-builder = { path = "crates/myso-genesis-builder" }
+myso-http = { path = "crates/myso-http" }
+myso-indexer-alt = { path = "crates/myso-indexer-alt" }
+myso-indexer-alt-consistent-api = { path = "crates/myso-indexer-alt-consistent-api" }
+myso-indexer-alt-consistent-store = { path = "crates/myso-indexer-alt-consistent-store" }
+myso-indexer-alt-framework = { path = "crates/myso-indexer-alt-framework", default-features = false }
+myso-indexer-alt-framework-store-traits = { path = "crates/myso-indexer-alt-framework-store-traits" }
+myso-indexer-alt-graphql = { path = "crates/myso-indexer-alt-graphql" }
+myso-indexer-alt-jsonrpc = { path = "crates/myso-indexer-alt-jsonrpc" }
+myso-indexer-alt-metrics = { path = "crates/myso-indexer-alt-metrics" }
+myso-indexer-alt-reader = { path = "crates/myso-indexer-alt-reader" }
+myso-indexer-alt-restorer = { path = "crates/myso-indexer-alt-restorer" }
+myso-indexer-alt-schema = { path = "crates/myso-indexer-alt-schema" }
+myso-indexer-alt-object-store = { path = "crates/myso-indexer-alt-object-store" }
+myso-json = { path = "crates/myso-json" }
+myso-json-rpc = { path = "crates/myso-json-rpc" }
+myso-json-rpc-api = { path = "crates/myso-json-rpc-api" }
+myso-json-rpc-types = { path = "crates/myso-json-rpc-types" }
+myso-keys = { path = "crates/myso-keys" }
+myso-kvstore = { path = "crates/myso-kvstore" }
+myso-kv-rpc = { path = "crates/myso-kv-rpc" }
+myso-light-client = { path = "crates/myso-light-client" }
+myso-macros = { path = "crates/myso-macros" }
+myso-metric-checker = { path = "crates/myso-metric-checker" }
+myso-metrics-push-client = { path = "crates/myso-metrics-push-client" }
+myso-move = { path = "crates/myso-move" }
+myso-move-build = { path = "crates/myso-move-build" }
+myso-move-lsp = { path = "crates/myso-move-lsp" }
+myso-name-service = { path = "crates/myso-name-service" }
+myso-network = { path = "crates/myso-network" }
+myso-node = { path = "crates/myso-node" }
+myso-open-rpc = { path = "crates/myso-open-rpc" }
+myso-open-rpc-macros = { path = "crates/myso-open-rpc-macros" }
+myso-package-dump = { path = "crates/myso-package-dump" }
+myso-package-alt = { path = "crates/myso-package-alt" }
+myso-package-management = { path = "crates/myso-package-management" }
+myso-package-resolver = { path = "crates/myso-package-resolver" }
+myso-pg-db = { path = "crates/myso-pg-db" }
+myso-proc-macros = { path = "crates/myso-proc-macros" }
+myso-protocol-config = { path = "crates/myso-protocol-config" }
+myso-protocol-config-macros = { path = "crates/myso-protocol-config-macros" }
+myso-proxy = { path = "crates/myso-proxy" }
+myso-replay = { path = "crates/myso-replay" }
+myso-replay-2 = { path = "crates/myso-replay-2" }
+myso-rosetta = { path = "crates/myso-rosetta" }
+myso-rpc-loadgen = { path = "crates/myso-rpc-loadgen" }
+myso-sdk = { path = "crates/myso-sdk" }
+myso-simulator = { path = "crates/myso-simulator" }
+myso-snapshot = { path = "crates/myso-snapshot" }
+myso-source-validation = { path = "crates/myso-source-validation" }
+myso-sql-macro = { path = "crates/myso-sql-macro" }
+myso-storage = { path = "crates/myso-storage" }
+myso-surfer = { path = "crates/myso-surfer" }
+myso-swarm = { path = "crates/myso-swarm" }
+myso-swarm-config = { path = "crates/myso-swarm-config" }
+myso-synthetic-ingestion = { path = "crates/myso-synthetic-ingestion" }
+myso-telemetry = { path = "crates/myso-telemetry" }
+myso-test-transaction-builder = { path = "crates/myso-test-transaction-builder" }
+myso-test-validator = { path = "crates/myso-test-validator" }
+myso-tls = { path = "crates/myso-tls" }
+myso-rpc-api = { path = "crates/myso-rpc-api" }
+myso-rpc-resolver = { path = "crates/myso-rpc-resolver" }
+myso-tool = { path = "crates/myso-tool" }
+myso-transaction-builder = { path = "crates/myso-transaction-builder" }
+myso-transaction-checks = { path = "crates/myso-transaction-checks" }
+myso-transactional-test-runner = { path = "crates/myso-transactional-test-runner" }
+myso-types = { path = "crates/myso-types" }
+myso-upgrade-compatibility-transactional-tests = { path = "crates/myso-upgrade-compatibility-transactional-tests" }
+myso-verifier-transactional-tests = { path = "crates/myso-verifier-transactional-tests" }
+telemetry-subscribers = { path = "crates/telemetry-subscribers" }
+test-cluster = { path = "crates/test-cluster" }
+transaction-fuzzer = { path = "crates/transaction-fuzzer" }
+typed-store = { path = "crates/typed-store" }
+typed-store-error = { path = "crates/typed-store-error" }
+x = { path = "crates/x" }
+
+consensus-config = { path = "consensus/config" }
+consensus-core = { path = "consensus/core" }
+consensus-types = { path = "consensus/types" }
+consensus-simtests = { path = "consensus/simtests" }
+
+myso-execution = { path = "myso-execution" }
+# myso-move-natives = { path = "myso-execution/latest/myso-move-natives", package = "myso-move-natives-latest" }
+# myso-adapter = { path = "myso-execution/latest/myso-adapter", package = "myso-adapter-latest" }
+# myso-verifier = { path = "myso-execution/latest/myso-verifier", package = "myso-verifier-latest" }
+# move-stdlib = { path = "external-crates/move/move-stdlib" }
+# move-vm-runtime = { path = "external-crates/move/move-vm/runtime" }
+# move-bytecode-verifier = { path = "external-crates/move/move-bytecode-verifier" }
+
+[patch.crates-io]
+async-graphql = { git = "https://github.com/amnn/async-graphql", branch = "v7.0.1-react-18-graphiql-4" }
+async-graphql-axum = { git = "https://github.com/amnn/async-graphql", branch = "v7.0.1-react-18-graphiql-4" }
+async-graphql-value = { git = "https://github.com/amnn/async-graphql", branch = "v7.0.1-react-18-graphiql-4" }

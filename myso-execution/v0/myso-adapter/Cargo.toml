@@ -1,0 +1,45 @@
+[package]
+name = "myso-adapter-v0"
+version = "0.1.0"
+authors = ["Mysten Labs <eng@mystenlabs.com>"]
+description = "Adapter and accompanying CLI for local myso development"
+license = "Apache-2.0"
+publish = false
+edition = "2021"
+
+[lints]
+workspace = true
+
+[dependencies]
+anyhow = { workspace = true, features = ["backtrace"] }
+bcs.workspace = true
+leb128.workspace = true
+once_cell.workspace = true
+tracing.workspace = true
+serde.workspace = true
+
+move-binary-format.workspace = true
+move-bytecode-utils.workspace = true
+move-bytecode-verifier-meter.workspace = true
+move-core-types.workspace = true
+move-vm-config.workspace = true
+move-vm-profiler.workspace = true
+
+move-bytecode-verifier = { path = "../../../external-crates/move/move-execution/v0/crates/move-bytecode-verifier", package = "move-bytecode-verifier-v0" }
+move-vm-runtime = { path = "../../../external-crates/move/move-execution/v0/crates/move-vm-runtime", package = "move-vm-runtime-v0" }
+myso-move-natives = { path = "../myso-move-natives", package = "myso-move-natives-v0" }
+myso-verifier = { path = "../myso-verifier", package = "myso-verifier-v0" }
+move-vm-types = { path = "../../../external-crates/move/move-execution/v0/crates/move-vm-types", package = "move-vm-types-v0" }
+
+myso-macros.workspace = true
+myso-protocol-config.workspace = true
+myso-types.workspace = true
+parking_lot.workspace = true
+
+[features]
+tracing = [
+    "myso-types/tracing",
+    "move-vm-runtime/tracing",
+    "move-vm-profiler/tracing",
+    "move-vm-config/tracing",
+]

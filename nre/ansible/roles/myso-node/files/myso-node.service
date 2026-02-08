@@ -1,0 +1,13 @@
+[Unit]
+Description=Sui Node
+
+[Service]
+User=myso  
+WorkingDirectory=/opt/myso/
+Environment=RUST_BACKTRACE=1
+Environment=RUST_LOG=info,myso_core=debug,narwhal=debug,consensus=debug,jsonrpsee=error
+ExecStart=/opt/sui/bin/sui-node --config-path /opt/sui/config/validator.yaml
+Restart=always
+
+[Install]
+WantedBy=multi-user.target

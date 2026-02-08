@@ -1,0 +1,11 @@
+[package]
+name = "usdc_usage"
+edition = "2024.beta"
+
+[dependencies]
+MySo = { override = true, local = "../../../crates/myso-framework/packages/myso-framework" }
+usdc = { git = "https://github.com/circlefin/stablecoin-myso.git", subdir = "packages/usdc", rev = "master" }
+
+
+[addresses]
+usdc_usage = "0x0"

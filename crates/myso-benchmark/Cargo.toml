@@ -1,0 +1,66 @@
+[package]
+name = "myso-benchmark"
+version = "0.0.0"
+authors = ["Mysten Labs <build@mystenlabs.com>"]
+license = "Apache-2.0"
+publish = false
+edition = "2024"
+
+[lints]
+workspace = true
+
+[dependencies]
+async-trait.workspace = true
+anyhow = { workspace = true, features = ["backtrace"] }
+futures.workspace = true
+serde.workspace = true
+serde_json.workspace = true
+itertools.workspace = true
+tokio = { workspace = true, features = ["full"] }
+strum.workspace = true
+strum_macros.workspace = true
+tracing.workspace = true
+clap.workspace = true
+prometheus.workspace = true
+rand.workspace = true
+indicatif.workspace = true
+duration-str.workspace = true
+hdrhistogram.workspace = true
+comfy-table.workspace = true
+bcs.workspace = true
+tokio-util.workspace = true
+myso-core.workspace = true
+myso-config.workspace = true
+myso-network.workspace = true
+myso-storage.workspace = true
+myso-types.workspace = true
+myso-keys.workspace = true
+myso-protocol-config.workspace = true
+myso-test-transaction-builder.workspace = true
+myso-swarm-config.workspace = true
+myso-surfer.workspace = true
+telemetry-subscribers.workspace = true
+roaring.workspace = true
+regex.workspace = true
+fastcrypto-zkp.workspace = true
+derive_more.workspace = true
+myso-rpc.workspace = true
+myso-rpc-api.workspace = true
+
+move-core-types.workspace = true
+mysten-metrics.workspace = true
+test-cluster.workspace = true
+sysinfo.workspace = true
+mysten-common.workspace = true
+
+myso-move-build.workspace = true
+
+[target.'cfg(msim)'.dependencies]
+prost.workspace = true
+myso-framework.workspace = true
+myso-framework-snapshot.workspace = true
+myso-macros.workspace = true
+myso-rpc.workspace = true
+myso-simulator.workspace = true
+typed-store.workspace = true
+zstd.workspace = true

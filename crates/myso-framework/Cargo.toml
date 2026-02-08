@@ -1,0 +1,37 @@
+[package]
+name = "myso-framework"
+version = "0.1.0"
+edition = "2024"
+authors = ["Mysten Labs <eng@mystenlabs.com>"]
+description = "Move framework for myso platform"
+license = "Apache-2.0"
+publish = false
+
+[dependencies]
+bcs.workspace = true
+serde.workspace = true
+once_cell.workspace = true
+tracing.workspace = true
+
+myso-types.workspace = true
+
+move-binary-format.workspace = true
+move-core-types.workspace = true
+
+[build-dependencies]
+bcs.workspace = true
+
+[dev-dependencies]
+anyhow.workspace = true
+bcs.workspace = true
+regex.workspace = true
+fs_extra.workspace = true
+tempfile.workspace = true
+
+move-binary-format.workspace = true
+move-compiler.workspace = true
+move-package-alt-compilation.workspace = true
+myso-move-build.workspace = true
+myso-package-alt.workspace = true
+myso-config.workspace = true
+tokio.workspace = true

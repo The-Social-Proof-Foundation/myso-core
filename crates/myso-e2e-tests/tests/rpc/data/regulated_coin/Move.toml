@@ -1,0 +1,9 @@
+[package]
+name = "regulated_coin"
+edition = "2024.beta"
+
+[dependencies]
+MySo = { local = "../../../../../myso-framework/packages/myso-framework" }
+
+[addresses]
+regulated_coin = "0x0"

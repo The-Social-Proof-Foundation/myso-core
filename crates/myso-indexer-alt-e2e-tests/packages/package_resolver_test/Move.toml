@@ -1,0 +1,9 @@
+[package]
+name = "package_resolver_test"
+edition = "2024.beta"
+
+[dependencies]
+MySo = { local = "../../../myso-framework/packages/myso-framework" }
+
+[addresses]
+package_resolver_test = "0x0"

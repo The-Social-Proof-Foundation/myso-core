@@ -1,0 +1,11 @@
+[package]
+name = "MySoExtra"
+edition = "2024.beta"
+
+[dependencies]
+MySoSystem = { local = "../system-packages/myso-system" }
+MySo = { local = "../system-packages/myso-framework" }
+MoveStdlib = { local = "../system-packages/move-stdlib" }
+
+[addresses]
+myso_extra = "0x42"

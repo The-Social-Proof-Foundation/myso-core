@@ -1,0 +1,19 @@
+{
+    "release_binaries": [
+        "myso",
+        "myso-node",
+        "myso-tool",
+        "myso-faucet",
+        "myso-bridge",
+        "myso-bridge-cli",
+        "myso-test-validator",
+        "move-analyzer"
+    ],
+    "internal_binaries": [
+        "stress",
+        "myso-proxy",
+        "myso-metric-checker",
+        "myso-analytics-indexer",
+        "myso-security-watchdog"
+	]
+}
