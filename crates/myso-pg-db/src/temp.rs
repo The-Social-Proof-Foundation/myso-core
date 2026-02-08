@@ -140,9 +140,10 @@ impl LocalDatabase {
             self.process = Some(PostgresProcess::start(self.dir.clone(), self.port)?);
             self.wait_till_ready().with_context(|| {
                 format!(
-                    // may need to add breakpoint/sleep to prevent temp dir from being deleted
-                    "Unable to start postgres, check dir {} for logs",
-                    self.dir.display(),
+                    "Unable to start postgres on port {}. Logs are available at:\n  stdout: {}\n  stderr: {}\n\nMake sure PostgreSQL is installed and 'postgres', 'initdb', and 'pg_isready' commands are available in your PATH.",
+                    self.port,
+                    self.dir.join("stdout").display(),
+                    self.dir.join("stderr").display(),
                 )
             })?;
         }
@@ -173,10 +174,32 @@ impl LocalDatabase {
         while start.elapsed() < Duration::from_secs(10) {
             match self.health_check() {
                 Err(HealthCheckError::NotReady) => {}
+                Err(HealthCheckError::NotRunning(status)) => {
+                    // If PostgreSQL crashed, include logs in error message
+                    if let Some(p) = &self.process {
+                        if let Ok((stdout, stderr)) = p.dump_stdout_stderr() {
+                            return Err(HealthCheckError::Unknown(format!(
+                                "PostgreSQL process crashed. Exit status: {:?}\nstdout: {}\nstderr: {}",
+                                status, stdout, stderr
+                            )));
+                        }
+                    }
+                    return Err(HealthCheckError::NotRunning(status));
+                }
                 result => return result,
             }
 
             std::thread::sleep(Duration::from_millis(50));
+        }
+
+        // On timeout, include logs in error message
+        if let Some(p) = &self.process {
+            if let Ok((stdout, stderr)) = p.dump_stdout_stderr() {
+                return Err(HealthCheckError::Unknown(format!(
+                    "Timeout waiting for PostgreSQL to be ready (10s). Check logs:\nstdout: {}\nstderr: {}",
+                    stdout, stderr
+                )));
+            }
         }
 
         Err(HealthCheckError::Unknown(

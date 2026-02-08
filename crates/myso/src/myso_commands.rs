@@ -1029,6 +1029,23 @@ async fn start(
 
             info!("Starting local PostgreSQL database at {pg_dir:?} on port {port}");
 
+            // Check if PostgreSQL tools are available before attempting to start
+            for cmd in ["postgres", "initdb", "pg_isready"] {
+                if std::process::Command::new(cmd)
+                    .arg("--version")
+                    .output()
+                    .is_err()
+                {
+                    bail!(
+                        "PostgreSQL command '{}' not found. Please install PostgreSQL.\n\
+                        On macOS: brew install postgresql@16\n\
+                        On Ubuntu/Debian: sudo apt-get install postgresql-16\n\
+                        On Fedora: sudo dnf install postgresql-server",
+                        cmd
+                    );
+                }
+            }
+
             let db = if pg_dir.exists() {
                 LocalDatabase::new(pg_dir, port)
                     .context("Failed to start local PostgreSQL database")?
