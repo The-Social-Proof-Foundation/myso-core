@@ -1,6 +1,6 @@
-<p align="center">
-<img src="https://pub-1f3749a8084a44c3abbd97a4875268a1.r2.dev/mysocial-banner.png" alt="Cover" style="width: 100%; height: auto;">
-</p>
+<div align="center">
+  <img src="https://pub-1f3749a8084a44c3abbd97a4875268a1.r2.dev/mysocial-banner.png" alt="Cover" style="max-width: 100%; height: auto;">
+</div>
 
 # Welcome to MySocial
 
