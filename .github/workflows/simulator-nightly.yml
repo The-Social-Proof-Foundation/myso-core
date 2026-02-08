@@ -47,7 +47,7 @@ jobs:
           version: 18.2.0
       - name: Authorize against Teleport
         id: auth
-        uses: teleport-actions/auth@d48447391aa28b202c98ae3f3358097025c32511 # pin@v2.0.4
+        uses: teleport-actions/auth@6fe5bb9951b2677f8a66b912fa5a6285df190bcc # pin@v2.1.1
         with:
           # Specify the publically accessible address of your Teleport proxy.
           proxy: mysten.teleport.sh:443
