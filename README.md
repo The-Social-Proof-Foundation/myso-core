@@ -1,5 +1,5 @@
 <p align="center">
-<img src="https://pub-1f3749a8084a44c3abbd97a4875268a1.r2.dev/mysocial-banner.png" alt="Logo" width="100" height="100">
+<img src="https://pub-1f3749a8084a44c3abbd97a4875268a1.r2.dev/mysocial-banner.png" alt="Cover" style="width: 100%; height: auto;">
 </p>
 
 # Welcome to MySocial
@@ -53,7 +53,7 @@ Use the following links to learn more about MySocial and the MySo ecosystem:
 
  * Learn more about working with MySocial in the [MySocial Documentation](https://docs.myso.io/).
  * Join the MySocial community on [MySocial Telegram](https://t.me/mysocial_chain).
- * Review information about the MySocial [governance](https://docs.mysocial.network/mysocial/blockchain/social/governance), [decentralization](https://docs.mysocial.network/mysocial/getting-started/decentralization), and [The Social Proof Foundation](https://socialproof.foundation) site.
+ * Review information about the MySocial [governance](https://docs.mysocial.network/mysocial/blockchain/social/governance), [decentralization](https://docs.mysocial.network/mysocial/getting-started/decentralization), and the [Social Proof Foundation](https://socialproof.foundation) site.
 
 
  ## How to Contribute
