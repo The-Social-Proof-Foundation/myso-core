@@ -242,7 +242,7 @@ dependencies = [
  "secp256k1 0.30.0",
  "serde",
  "serde_json",
- "serde_with",
+ "serde_with 3.16.1",
  "thiserror 2.0.18",
 ]
 
@@ -381,7 +381,7 @@ dependencies = [
  "derive_more 2.1.1",
  "either",
  "serde",
- "serde_with",
+ "serde_with 3.16.1",
  "sha2 0.10.9",
  "thiserror 2.0.18",
 ]
@@ -398,7 +398,7 @@ dependencies = [
  "alloy-trie",
  "borsh",
  "serde",
- "serde_with",
+ "serde_with 3.16.1",
 ]
 
 [[package]]
@@ -669,7 +669,7 @@ dependencies = [
  "itertools 0.14.0",
  "serde",
  "serde_json",
- "serde_with",
+ "serde_with 3.16.1",
  "thiserror 2.0.18",
 ]
 
@@ -1906,6 +1906,19 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "2ce4f10ea3abcd6617873bae9f91d1c5332b4a778bd9ce34d0cd517474c1de82"
 
 [[package]]
+name = "asynchronous-codec"
+version = "0.6.2"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "4057f2c32adbb2fc158e22fb38433c8e9bbf76b75a4732c7c0cbaf695fb65568"
+dependencies = [
+ "bytes",
+ "futures-sink",
+ "futures-util",
+ "memchr",
+ "pin-project-lite",
+]
+
+[[package]]
 name = "atoi"
 version = "2.0.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -2267,7 +2280,7 @@ dependencies = [
  "pin-project-lite",
  "rustls 0.21.12",
  "rustls 0.23.36",
- "rustls-native-certs",
+ "rustls-native-certs 0.8.3",
  "rustls-pki-types",
  "tokio",
  "tokio-rustls 0.26.4",
@@ -4085,6 +4098,30 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "3d52eff69cd5e647efe296129160853a42795992097e8af39800e1060caeea9b"
 
 [[package]]
+name = "containers-api"
+version = "0.9.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "74a6c297451ce82117ff9090e5174bf18f86e6bcbfbfc3820246abbc4f44fa16"
+dependencies = [
+ "chrono",
+ "flate2",
+ "futures-util",
+ "http 0.2.12",
+ "hyper 0.14.32",
+ "hyperlocal",
+ "log",
+ "mime",
+ "paste",
+ "pin-project",
+ "serde",
+ "serde_json",
+ "tar",
+ "thiserror 1.0.69",
+ "tokio",
+ "url",
+]
+
+[[package]]
 name = "convert_case"
 version = "0.4.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -4115,6 +4152,16 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "543d1dd138ef086e2ff05e3a48cf9da045da2033d16f8538fd76b86cd49b2ca3"
 dependencies = [
  "walkdir",
+]
+
+[[package]]
+name = "core-foundation"
+version = "0.9.4"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "91e195e091a93c46f7102ec7818a2aa394e1e1771c3ab4825963fa03e45afb8f"
+dependencies = [
+ "core-foundation-sys",
+ "libc",
 ]
 
 [[package]]
@@ -4317,6 +4364,7 @@ checksum = "e64e6c0fbe2c17357405f7c758c1ef960fce08bdfb2c03d88d2a18d7e09c4b67"
 dependencies = [
  "bitflags 1.3.2",
  "crossterm_winapi",
+ "futures-core",
  "libc",
  "mio 0.8.11",
  "parking_lot 0.12.5",
@@ -4547,6 +4595,16 @@ dependencies = [
 
 [[package]]
 name = "darling"
+version = "0.13.4"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "a01d95850c592940db9b8194bc39f4bc0e89dee5c4265e4b1807c34a9aba453c"
+dependencies = [
+ "darling_core 0.13.4",
+ "darling_macro 0.13.4",
+]
+
+[[package]]
+name = "darling"
 version = "0.14.4"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "7b750cb3417fd1b327431a470f388520309479ab0bf5e323505daf0290cd3850"
@@ -4583,6 +4641,20 @@ checksum = "25ae13da2f202d56bd7f91c25fba009e7717a1e4a1cc98a76d844b65ae912e9d"
 dependencies = [
  "darling_core 0.23.0",
  "darling_macro 0.23.0",
+]
+
+[[package]]
+name = "darling_core"
+version = "0.13.4"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "859d65a907b6852c9361e3185c862aae7fafd2887876799fa55f5f99dc40d610"
+dependencies = [
+ "fnv",
+ "ident_case",
+ "proc-macro2",
+ "quote",
+ "strsim 0.10.0",
+ "syn 1.0.109",
 ]
 
 [[package]]
@@ -4639,6 +4711,17 @@ dependencies = [
  "quote",
  "strsim 0.11.1",
  "syn 2.0.114",
+]
+
+[[package]]
+name = "darling_macro"
+version = "0.13.4"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "9c972679f83bdf9c42bd905396b6c3588a843a17f0f16dfcfa3e2c5d57441835"
+dependencies = [
+ "darling_core 0.13.4",
+ "quote",
+ "syn 1.0.109",
 ]
 
 [[package]]
@@ -5203,6 +5286,43 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "8975ffdaa0ef3661bfe02dbdcc06c9f829dfafe6a3c474de366a8d5e44276921"
 
 [[package]]
+name = "docker-api"
+version = "0.14.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "4576e993f4ef4805931a835b7afe71dec6cbd096e9b08bbd8e8f03e1940b2745"
+dependencies = [
+ "asynchronous-codec",
+ "base64 0.13.1",
+ "byteorder",
+ "bytes",
+ "chrono",
+ "containers-api",
+ "docker-api-stubs",
+ "futures-util",
+ "http 0.2.12",
+ "hyper 0.14.32",
+ "log",
+ "paste",
+ "serde",
+ "serde_json",
+ "tar",
+ "thiserror 1.0.69",
+ "url",
+]
+
+[[package]]
+name = "docker-api-stubs"
+version = "0.5.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "6198e6d77eb486d04c9b3997aec536428a7cbba833e84cdfda49e144c8df1734"
+dependencies = [
+ "chrono",
+ "serde",
+ "serde_json",
+ "serde_with 2.3.3",
+]
+
+[[package]]
 name = "downcast"
 version = "0.11.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -5707,7 +5827,7 @@ dependencies = [
  "secp256k1 0.27.0",
  "serde",
  "serde_json",
- "serde_with",
+ "serde_with 3.16.1",
  "sha2 0.10.9",
  "sha3 0.10.8",
  "signature 2.2.0",
@@ -5906,6 +6026,18 @@ name = "fiat-crypto"
 version = "0.2.9"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "28dea519a9695b9977216879a3ebfddf92f1c08c05d984f8996aecd6ecdc811d"
+
+[[package]]
+name = "field_names"
+version = "0.2.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "cca4fdab1b9b7e274e7de51202e37f9cfa542b28c77f8d09b817d77a726b4807"
+dependencies = [
+ "darling 0.13.4",
+ "proc-macro2",
+ "quote",
+ "syn 1.0.109",
+]
 
 [[package]]
 name = "filetime"
@@ -6892,6 +7024,26 @@ dependencies = [
 ]
 
 [[package]]
+name = "hyper-http-proxy"
+version = "1.1.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "7ad4b0a1e37510028bc4ba81d0e38d239c39671b0f0ce9e02dfa93a8133f7c08"
+dependencies = [
+ "bytes",
+ "futures-util",
+ "headers",
+ "http 1.4.0",
+ "hyper 1.8.1",
+ "hyper-rustls 0.27.7",
+ "hyper-util",
+ "pin-project-lite",
+ "rustls-native-certs 0.7.3",
+ "tokio",
+ "tokio-rustls 0.26.4",
+ "tower-service",
+]
+
+[[package]]
 name = "hyper-rustls"
 version = "0.24.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -6917,7 +7069,7 @@ dependencies = [
  "hyper-util",
  "log",
  "rustls 0.23.36",
- "rustls-native-certs",
+ "rustls-native-certs 0.8.3",
  "rustls-pki-types",
  "tokio",
  "tokio-rustls 0.26.4",
@@ -6959,6 +7111,19 @@ dependencies = [
  "tokio",
  "tower-service",
  "tracing",
+]
+
+[[package]]
+name = "hyperlocal"
+version = "0.8.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "0fafdf7b2b2de7c9784f76e02c0935e65a8117ec3b768644379983ab333ac98c"
+dependencies = [
+ "futures-util",
+ "hex",
+ "hyper 0.14.32",
+ "pin-project",
+ "tokio",
 ]
 
 [[package]]
@@ -7376,6 +7541,15 @@ dependencies = [
 ]
 
 [[package]]
+name = "is-docker"
+version = "0.2.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "928bae27f42bc99b60d9ac7334e3a21d10ad8f1835a4e12ec3ec0464765ed1b3"
+dependencies = [
+ "once_cell",
+]
+
+[[package]]
 name = "is-terminal"
 version = "0.4.17"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -7384,6 +7558,16 @@ dependencies = [
  "hermit-abi",
  "libc",
  "windows-sys 0.61.2",
+]
+
+[[package]]
+name = "is-wsl"
+version = "0.4.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "173609498df190136aa7dea1a91db051746d339e18476eed5ca40521f02d7aa5"
+dependencies = [
+ "is-docker",
+ "once_cell",
 ]
 
 [[package]]
@@ -7528,6 +7712,19 @@ source = "git+https://github.com/zhiburt/tabled/?rev=e449317a1c02eb6b29e409ad661
 dependencies = [
  "serde_json",
  "tabled",
+]
+
+[[package]]
+name = "jsonpath-rust"
+version = "0.7.5"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "0c00ae348f9f8fd2d09f82a98ca381c60df9e0820d8d79fce43e649b4dc3128b"
+dependencies = [
+ "pest",
+ "pest_derive",
+ "regex",
+ "serde_json",
+ "thiserror 2.0.18",
 ]
 
 [[package]]
@@ -7750,6 +7947,19 @@ dependencies = [
 ]
 
 [[package]]
+name = "k8s-openapi"
+version = "0.23.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "9c8847402328d8301354c94d605481f25a6bdc1ed65471fd96af8eca71141b13"
+dependencies = [
+ "base64 0.22.1",
+ "chrono",
+ "serde",
+ "serde-value",
+ "serde_json",
+]
+
+[[package]]
 name = "keccak"
 version = "0.1.5"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -7786,6 +7996,71 @@ checksum = "ed9625ffda8729b85e45cf04090035ac368927b8cebc34898e7c120f52e4838b"
 dependencies = [
  "bitflags 1.3.2",
  "libc",
+]
+
+[[package]]
+name = "kube"
+version = "0.97.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "e5fd2596428f922f784ca43907c449f104d69055c811135684474143736c67ae"
+dependencies = [
+ "k8s-openapi",
+ "kube-client",
+ "kube-core",
+]
+
+[[package]]
+name = "kube-client"
+version = "0.97.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "d539b6493d162ae5ab691762be972b6a1c20f6d8ddafaae305c0e2111b589d99"
+dependencies = [
+ "base64 0.22.1",
+ "bytes",
+ "chrono",
+ "either",
+ "futures",
+ "home",
+ "http 1.4.0",
+ "http-body 1.0.1",
+ "http-body-util",
+ "hyper 1.8.1",
+ "hyper-http-proxy",
+ "hyper-rustls 0.27.7",
+ "hyper-timeout",
+ "hyper-util",
+ "jsonpath-rust",
+ "k8s-openapi",
+ "kube-core",
+ "pem",
+ "rustls 0.23.36",
+ "rustls-pemfile",
+ "secrecy",
+ "serde",
+ "serde_json",
+ "serde_yaml 0.9.34+deprecated",
+ "thiserror 2.0.18",
+ "tokio",
+ "tokio-util 0.7.18",
+ "tower 0.5.3",
+ "tower-http 0.6.8",
+ "tracing",
+]
+
+[[package]]
+name = "kube-core"
+version = "0.97.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "98a87cc0046cf6b62cbb63ae1fbc366ee8ba29269f575289679473754ff5d7a7"
+dependencies = [
+ "chrono",
+ "form_urlencoded",
+ "http 1.4.0",
+ "k8s-openapi",
+ "serde",
+ "serde-value",
+ "serde_json",
+ "thiserror 2.0.18",
 ]
 
 [[package]]
@@ -8574,7 +8849,7 @@ dependencies = [
  "sha2 0.9.9",
  "strum 0.27.2",
  "strum_macros 0.27.2",
- "sysinfo",
+ "sysinfo 0.35.2",
  "tempfile",
  "tokio",
  "url",
@@ -8833,7 +9108,7 @@ dependencies = [
  "ref-cast",
  "serde",
  "serde_bytes",
- "serde_with",
+ "serde_with 3.16.1",
  "thiserror 1.0.69",
  "uint 0.9.5",
 ]
@@ -9649,7 +9924,7 @@ dependencies = [
  "serde",
  "serde_derive",
  "serde_json",
- "serde_with",
+ "serde_with 3.16.1",
  "winnow 0.7.14",
 ]
 
@@ -10046,7 +10321,7 @@ dependencies = [
  "serde_json",
  "strum 0.27.2",
  "strum_macros 0.27.2",
- "sysinfo",
+ "sysinfo 0.35.2",
  "telemetry-subscribers",
  "test-cluster",
  "tokio",
@@ -10099,7 +10374,7 @@ dependencies = [
  "reqwest",
  "serde",
  "serde_json",
- "serde_with",
+ "serde_with 3.16.1",
  "shared-crypto",
  "strum_macros 0.27.2",
  "tap",
@@ -10136,7 +10411,7 @@ dependencies = [
  "reqwest",
  "serde",
  "serde_json",
- "serde_with",
+ "serde_with 3.16.1",
  "shared-crypto",
  "telemetry-subscribers",
  "tokio",
@@ -10310,7 +10585,7 @@ dependencies = [
  "reqwest",
  "serde",
  "serde_json",
- "serde_with",
+ "serde_with 3.16.1",
  "serde_yaml 0.8.26",
  "starlark",
  "tempfile",
@@ -10403,14 +10678,14 @@ dependencies = [
  "scopeguard",
  "serde",
  "serde_json",
- "serde_with",
+ "serde_with 3.16.1",
  "serde_yaml 0.8.26",
  "shared-crypto",
  "simple_moving_average",
  "static_assertions",
  "strum 0.27.2",
  "strum_macros 0.27.2",
- "sysinfo",
+ "sysinfo 0.35.2",
  "tap",
  "telemetry-subscribers",
  "tempfile",
@@ -10798,7 +11073,7 @@ dependencies = [
  "prometheus",
  "rand 0.8.5",
  "serde",
- "serde_with",
+ "serde_with 3.16.1",
  "serde_yaml 0.8.26",
  "shared-crypto",
  "tempfile",
@@ -11151,7 +11426,7 @@ dependencies = [
  "schemars 0.8.22",
  "serde",
  "serde_json",
- "serde_with",
+ "serde_with 3.16.1",
  "telemetry-subscribers",
  "thiserror 1.0.69",
  "tokio",
@@ -11438,7 +11713,7 @@ dependencies = [
  "schemars 0.8.22",
  "serde",
  "serde_json",
- "serde_with",
+ "serde_with 3.16.1",
  "tabled",
  "tracing",
 ]
@@ -12113,7 +12388,7 @@ dependencies = [
  "schemars 0.8.22",
  "serde",
  "serde-env",
- "serde_with",
+ "serde_with 3.16.1",
  "tracing",
 ]
 
@@ -12158,7 +12433,7 @@ dependencies = [
  "rustls 0.23.36",
  "serde",
  "serde_json",
- "serde_with",
+ "serde_with 3.16.1",
  "serde_yaml 0.8.26",
  "snap",
  "telemetry-subscribers",
@@ -12203,7 +12478,7 @@ dependencies = [
  "regex",
  "serde",
  "serde_json",
- "serde_with",
+ "serde_with 3.16.1",
  "serde_yaml 0.8.26",
  "shared-crypto",
  "shellexpand",
@@ -12349,7 +12624,7 @@ dependencies = [
  "roaring 0.10.12",
  "serde",
  "serde_json",
- "serde_with",
+ "serde_with 3.16.1",
  "tap",
  "thiserror 1.0.69",
  "tokio",
@@ -12474,7 +12749,7 @@ dependencies = [
  "reqwest",
  "serde",
  "serde_json",
- "serde_with",
+ "serde_with 3.16.1",
  "shared-crypto",
  "tempfile",
  "test-cluster",
@@ -12775,7 +13050,7 @@ dependencies = [
  "prometheus",
  "rand 0.8.5",
  "serde",
- "serde_with",
+ "serde_with 3.16.1",
  "serde_yaml 0.8.26",
  "shared-crypto",
  "tempfile",
@@ -13051,7 +13326,7 @@ dependencies = [
  "serde-name",
  "serde-reflection",
  "serde_json",
- "serde_with",
+ "serde_with 3.16.1",
  "serde_yaml 0.8.26",
  "shared-crypto",
  "signature 1.6.4",
@@ -13148,6 +13423,52 @@ dependencies = [
  "move-vm-config",
  "myso-protocol-config",
  "myso-types",
+]
+
+[[package]]
+name = "mysop-cli"
+version = "1.66.0"
+dependencies = [
+ "anyhow",
+ "axum 0.8.8",
+ "base64 0.21.7",
+ "chrono",
+ "clap",
+ "colored",
+ "crossterm 0.25.0",
+ "dirs 4.0.0",
+ "docker-api",
+ "field_names",
+ "futures",
+ "futures-timer",
+ "home",
+ "include_dir",
+ "inquire",
+ "itertools 0.13.0",
+ "k8s-openapi",
+ "kube",
+ "once_cell",
+ "open",
+ "prettytable-rs",
+ "query-shell",
+ "rand 0.8.5",
+ "regex",
+ "reqwest",
+ "semver 1.0.27",
+ "serde",
+ "serde_json",
+ "serde_yaml 0.8.26",
+ "sha2 0.10.9",
+ "spinners",
+ "strsim 0.11.1",
+ "strum 0.27.2",
+ "tabled",
+ "tempfile",
+ "thiserror 1.0.69",
+ "tokio",
+ "toml_edit 0.19.15",
+ "tracing",
+ "tracing-subscriber",
 ]
 
 [[package]]
@@ -13828,6 +14149,23 @@ name = "opaque-debug"
 version = "0.3.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "c08d65885ee38876c4f86fa503fb49d7b507c2b62552df7c70b2fce627e06381"
+
+[[package]]
+name = "open"
+version = "5.3.3"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "43bb73a7fa3799b198970490a51174027ba0d4ec504b03cd08caf513d40024bc"
+dependencies = [
+ "is-wsl",
+ "libc",
+ "pathdiff",
+]
+
+[[package]]
+name = "openssl-probe"
+version = "0.1.6"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "d05e27ee213611ffe7d6348b942e8f942b37114c00cc03cec254295a4a17852e"
 
 [[package]]
 name = "openssl-probe"
@@ -15196,6 +15534,16 @@ dependencies = [
 ]
 
 [[package]]
+name = "query-shell"
+version = "0.3.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "300d1c86e9638eceb24568649d5ad0f31b949ff11ff1ffbacbe3e382a4dfee25"
+dependencies = [
+ "sysinfo 0.27.8",
+ "thiserror 1.0.69",
+]
+
+[[package]]
 name = "quick-error"
 version = "1.2.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -15695,7 +16043,7 @@ dependencies = [
  "pin-project-lite",
  "quinn",
  "rustls 0.23.36",
- "rustls-native-certs",
+ "rustls-native-certs 0.8.3",
  "rustls-pki-types",
  "serde",
  "serde_json",
@@ -16181,14 +16529,36 @@ dependencies = [
 
 [[package]]
 name = "rustls-native-certs"
+version = "0.7.3"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "e5bfb394eeed242e909609f56089eecfe5fda225042e8b171791b9c95f5931e5"
+dependencies = [
+ "openssl-probe 0.1.6",
+ "rustls-pemfile",
+ "rustls-pki-types",
+ "schannel",
+ "security-framework 2.11.1",
+]
+
+[[package]]
+name = "rustls-native-certs"
 version = "0.8.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "612460d5f7bea540c490b2b6395d8e34a953e52b491accd6c86c8164c5932a63"
 dependencies = [
- "openssl-probe",
+ "openssl-probe 0.2.1",
  "rustls-pki-types",
  "schannel",
- "security-framework",
+ "security-framework 3.5.1",
+]
+
+[[package]]
+name = "rustls-pemfile"
+version = "2.2.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "dce314e5fee3f39953d46bb63bb8a46d40c2f8fb7cc5a3b6cab2bde9721d6e50"
+dependencies = [
+ "rustls-pki-types",
 ]
 
 [[package]]
@@ -16207,16 +16577,16 @@ version = "0.5.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "19787cda76408ec5404443dc8b31795c87cd8fec49762dc75fa727740d34acc1"
 dependencies = [
- "core-foundation",
+ "core-foundation 0.10.1",
  "core-foundation-sys",
  "jni",
  "log",
  "once_cell",
  "rustls 0.23.36",
- "rustls-native-certs",
+ "rustls-native-certs 0.8.3",
  "rustls-platform-verifier-android",
  "rustls-webpki 0.103.9",
- "security-framework",
+ "security-framework 3.5.1",
  "security-framework-sys",
  "webpki-root-certs 0.26.11",
  "windows-sys 0.59.0",
@@ -16541,13 +16911,35 @@ dependencies = [
 ]
 
 [[package]]
+name = "secrecy"
+version = "0.10.3"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "e891af845473308773346dc847b2c23ee78fe442e0472ac50e22a18a93d3ae5a"
+dependencies = [
+ "zeroize",
+]
+
+[[package]]
+name = "security-framework"
+version = "2.11.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "897b2245f0b511c87893af39b033e5ca9cce68824c4d7e7630b5a1d339658d02"
+dependencies = [
+ "bitflags 2.10.0",
+ "core-foundation 0.9.4",
+ "core-foundation-sys",
+ "libc",
+ "security-framework-sys",
+]
+
+[[package]]
 name = "security-framework"
 version = "3.5.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "b3297343eaf830f66ede390ea39da1d462b6b0c1b000f420d0a83f898bbbe6ef"
 dependencies = [
  "bitflags 2.10.0",
- "core-foundation",
+ "core-foundation 0.10.1",
  "core-foundation-sys",
  "libc",
  "security-framework-sys",
@@ -16654,6 +17046,16 @@ dependencies = [
  "serde_json",
  "thiserror 1.0.69",
  "typeid",
+]
+
+[[package]]
+name = "serde-value"
+version = "0.7.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "f3a1a3341211875ef120e117ea7fd5228530ae7e7036a779fdc9117be6b3282c"
+dependencies = [
+ "ordered-float",
+ "serde",
 ]
 
 [[package]]
@@ -16776,6 +17178,22 @@ dependencies = [
 
 [[package]]
 name = "serde_with"
+version = "2.3.3"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "07ff71d2c147a7b57362cead5e22f772cd52f6ab31cfcd9edcd7f6aeb2a0afbe"
+dependencies = [
+ "base64 0.13.1",
+ "chrono",
+ "hex",
+ "indexmap 1.9.3",
+ "serde",
+ "serde_json",
+ "serde_with_macros 2.3.3",
+ "time",
+]
+
+[[package]]
+name = "serde_with"
 version = "3.16.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "4fa237f2807440d238e0364a218270b98f767a00d3dada77b1c53ae88940e2e7"
@@ -16789,8 +17207,20 @@ dependencies = [
  "schemars 1.2.1",
  "serde_core",
  "serde_json",
- "serde_with_macros",
+ "serde_with_macros 3.16.1",
  "time",
+]
+
+[[package]]
+name = "serde_with_macros"
+version = "2.3.3"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "881b6f881b17d13214e5d494c939ebab463d01264ce1811e9d4ac3a882e7695f"
+dependencies = [
+ "darling 0.20.11",
+ "proc-macro2",
+ "quote",
+ "syn 2.0.114",
 ]
 
 [[package]]
@@ -17262,6 +17692,17 @@ dependencies = [
 ]
 
 [[package]]
+name = "spinners"
+version = "4.1.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "a0ef947f358b9c238923f764c72a4a9d42f2d637c46e059dbd319d6e7cfb4f82"
+dependencies = [
+ "lazy_static",
+ "maplit",
+ "strum 0.24.1",
+]
+
+[[package]]
 name = "spinning_top"
 version = "0.3.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -17466,6 +17907,9 @@ name = "strum"
 version = "0.24.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "063e6045c0e62079840579a7e47a355ae92f60eb74daaf156fb1e84ba164e63f"
+dependencies = [
+ "strum_macros 0.24.3",
+]
 
 [[package]]
 name = "strum"
@@ -17675,6 +18119,20 @@ dependencies = [
  "proc-macro2",
  "quote",
  "syn 2.0.114",
+]
+
+[[package]]
+name = "sysinfo"
+version = "0.27.8"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "a902e9050fca0a5d6877550b769abd2bd1ce8c04634b941dbe2809735e1a1e33"
+dependencies = [
+ "cfg-if",
+ "core-foundation-sys",
+ "libc",
+ "ntapi",
+ "once_cell",
+ "winapi",
 ]
 
 [[package]]
@@ -18541,7 +18999,7 @@ dependencies = [
  "hyper-util",
  "percent-encoding",
  "pin-project",
- "rustls-native-certs",
+ "rustls-native-certs 0.8.3",
  "socket2 0.6.2",
  "sync_wrapper",
  "tokio",
@@ -18758,6 +19216,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "d4e6559d53cc268e5031cd8429d05415bc4cb4aefc4aa5d6cc35fbf5b924a1f8"
 dependencies = [
  "async-compression",
+ "base64 0.22.1",
  "bitflags 2.10.0",
  "bytes",
  "futures-core",
@@ -18766,12 +19225,14 @@ dependencies = [
  "http-body 1.0.1",
  "http-body-util",
  "iri-string",
+ "mime",
  "pin-project-lite",
  "tokio",
  "tokio-util 0.7.18",
  "tower 0.5.3",
  "tower-layer",
  "tower-service",
+ "tracing",
 ]
 
 [[package]]
