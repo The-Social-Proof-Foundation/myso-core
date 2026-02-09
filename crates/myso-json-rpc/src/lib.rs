@@ -61,11 +61,11 @@ pub fn myso_rpc_doc(version: &str) -> Project {
         version,
         "MySo JSON-RPC",
         "MySo JSON-RPC API for interaction with MySo Full node. Make RPC calls using https://fullnode.NETWORK.myso.io:443, where NETWORK is the network you want to use (testnet, devnet, mainnet). By default, local networks use port 9000.",
-        "Mysten Labs",
-        "https://mystenlabs.com",
-        "build@mystenlabs.com",
+        "The Social Proof Foundation",
+        "https://socialproof.foundation",
+        "brandon@socialproof.foundation",
         "Apache-2.0",
-        "https://raw.githubusercontent.com/MystenLabs/myso/main/LICENSE",
+        "https://raw.githubusercontent.comthe-social-proof-foundation/myso-core/main/LICENSE",
     )
 }
 

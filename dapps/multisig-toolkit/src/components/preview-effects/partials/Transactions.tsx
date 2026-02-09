@@ -1,7 +1,7 @@
 // Copyright (c) Mysten Labs, Inc.
 // SPDX-License-Identifier: Apache-2.0
 
-import { SuiArgument, SuiCallArg, SuiTransaction, TransactionBlockData } from '@mysten/sui/client';
+import { SuiArgument, SuiCallArg, SuiTransaction, TransactionBlockData } from '@socialproof/myso/client';
 import { ReactNode } from 'react';
 
 import { ObjectLink } from '../ObjectLink';

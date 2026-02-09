@@ -86,8 +86,8 @@ The following example demonstrates flash loan usage in `DeepBookMarketMaker` cla
 ```tsx
 // Example of a flash loan transaction
 // Borrow 1 DEEP from DEEP_SUI pool
-// Swap 0.5 DBUSDC for SUI in SUI_DBUSDC pool, pay with deep borrowed
-// Swap SUI back to DEEP
+// Swap 0.5 DBUSDC for MYSO in SUI_DBUSDC pool, pay with deep borrowed
+// Swap MYSO back to DEEP
 // Return 1 DEEP to DEEP_SUI pool
 flashLoanExample = async (tx: Transaction) => {
   const borrowAmount = 1;

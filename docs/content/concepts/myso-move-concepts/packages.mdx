@@ -1,9 +1,9 @@
 ---
 title: Packages
-description: A Move package on Sui includes one or more modules that define that package's interaction with on-chain objects. Upgrading packages lets you improve code or add features without breaking packages that depend on them.
+description: A Move package on MySo includes one or more modules that define that package's interaction with on-chain objects. Upgrading packages lets you improve code or add features without breaking packages that depend on them.
 ---
 
-A Move package on Sui includes one or more modules that define the package's interaction with on-chain objects. You develop the logic for those modules in Move, compile them into an object, and publish that package object to a Sui network. On-chain, anyone can view a package's contents and see how its logic manipulates objects using a Sui Explorer.
+A Move package on MySo includes one or more modules that define the package's interaction with on-chain objects. You develop the logic for those modules in Move, compile them into an object, and publish that package object to a MySo network. On-chain, anyone can view a package's contents and see how its logic manipulates objects using a MySo Explorer.
 
 ## Packages are immutable
 
@@ -17,9 +17,9 @@ Although you cannot edit a published package directly, you can **upgrade** it. U
 
 See [Upgrading packages](/guides/developer/packages/upgrade.mdx) for details on the process.
 
-## Using the Sui Client CLI
+## Using the MySo Client CLI
 
-The [Sui Client CLI](/references/cli/client.mdx) provides an approachable way
+The [MySo Client CLI](/references/cli/client.mdx) provides an approachable way
 to publish and upgrade packages. See [the package management
 guide](/guides/developer/packages/move-package-management.mdx) for information
 on creating and working with Move packages.
@@ -30,6 +30,6 @@ If the CLI's active address owns the `UpgradeCap` for a package, you can use the
 
 ### Making packages immutable
 
-You can call the Move function `sui::package::make_immutable` to destroy a package's `UpgradeCap` and make the package permanently immutable. This eliminates single-key risk but also prevents all future bug fixes and feature additions.
+You can call the Move function `myso::package::make_immutable` to destroy a package's `UpgradeCap` and make the package permanently immutable. This eliminates single-key risk but also prevents all future bug fixes and feature additions.
 
 For a more flexible approach, use [custom upgrade policies](/guides/developer/packages/custom-policies.mdx) to protect `UpgradeCap` access without giving up the ability to upgrade.

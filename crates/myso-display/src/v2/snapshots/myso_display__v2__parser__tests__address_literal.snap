@@ -1,5 +1,5 @@
 ---
-source: crates/sui-display/src/v2/parser.rs
+source: crates/myso-display/src/v2/parser.rs
 expression: "strands(r#\"{@0x1 | @ 0x2 | @42 | @0x12_34_56}\"#)"
 ---
 { @0x0000000000000000000000000000000000000000000000000000000000000001

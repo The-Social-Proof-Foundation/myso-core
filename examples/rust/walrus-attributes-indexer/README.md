@@ -52,7 +52,7 @@ For the purpose of this guide, the StructTag of the `Metadata` dynamic field is 
 
 ## Defaults
 
-As of writing, the SequentialConfig is defined [here](https://github.com/MystenLabs/myso/blob/main/crates/myso-indexer-alt-framework/src/pipeline/sequential/mod.rs#L68) consisting of a committer config and a checkpoint lag. The default values set `checkpoint_lag` to 0, and the committer config as follows:
+As of writing, the SequentialConfig is defined [here](https://github.com/the-social-proof-foundation/myso-core/blob/main/crates/myso-indexer-alt-framework/src/pipeline/sequential/mod.rs#L68) consisting of a committer config and a checkpoint lag. The default values set `checkpoint_lag` to 0, and the committer config as follows:
 ```
 /// Configuration for a sequential pipeline
 #[derive(Serialize, Deserialize, Clone, Default)]
@@ -76,7 +76,7 @@ impl Default for CommitterConfig {
 }
 ```
 
-The ingestion config is defined [here](https://github.com/MystenLabs/myso/blob/main/crates/myso-indexer-alt-framework/src/ingestion/mod.rs#L59) with defaults configured to:
+The ingestion config is defined [here](https://github.com/the-social-proof-foundation/myso-core/blob/main/crates/myso-indexer-alt-framework/src/ingestion/mod.rs#L59) with defaults configured to:
 ```
 impl Default for IngestionConfig {
     fn default() -> Self {

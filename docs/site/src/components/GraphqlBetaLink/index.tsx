@@ -56,7 +56,7 @@ export default function GraphqlBetaLink({ title }) {
           <>
             ⚠️ This is the <strong className="mx-2">alpha</strong> version. The
             operation or type does not exist in the{" "}
-            <a href="/references/sui-api/sui-graphql/beta/reference">
+            <a href="/references/myso-api/myso-graphql/beta/reference">
               beta version
             </a>
             .

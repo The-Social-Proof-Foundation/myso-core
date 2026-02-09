@@ -1,13 +1,13 @@
 ---
-title: GraphQL for Sui RPC (Beta)
+title: GraphQL for MySo RPC (Beta)
 beta: devnet, testnet, mainnet
-description: Use GraphQL to make Sui RPC calls. This feature is currently in Beta.
-keywords: [ graphql, graphql headers, x-sui-rpc-version, x-sui-rpc-show-usage, variables, fragments, pagination, graphql limits, make rpc call, sui rpc calls ]
+description: Use GraphQL to make MySo RPC calls. This feature is currently in Beta.
+keywords: [ graphql, graphql headers, x-myso-rpc-version, x-myso-rpc-show-usage, variables, fragments, pagination, graphql limits, make rpc call, myso rpc calls ]
 ---
 
-GraphQL provides a flexible and powerful way to query the Sui network. This page covers the core concepts you need to understand when working with GraphQL for Sui RPC, including request headers, query composition with variables and fragments, pagination strategies, query scope, and service limits.
+GraphQL provides a flexible and powerful way to query the MySo network. This page covers the core concepts you need to understand when working with GraphQL for MySo RPC, including request headers, query composition with variables and fragments, pagination strategies, query scope, and service limits.
 
-For practical examples and a quick start guide, see [Querying Sui RPC with GraphQL](/guides/developer/accessing-data/query-with-graphql.mdx).
+For practical examples and a quick start guide, see [Querying MySo RPC with GraphQL](/guides/developer/accessing-data/query-with-graphql.mdx).
 
 For comprehensive GraphQL fundamentals, consult the introductory documentation from [GraphQL](https://graphql.org/learn/) and [GitHub](https://docs.github.com/en/graphql/guides/introduction-to-graphql).
 
@@ -19,11 +19,11 @@ For comprehensive GraphQL fundamentals, consult the introductory documentation f
 
 :::caution
 
-Switch any apps that still use the GraphQL Alpha endpoints (`https://graphql.mainnet.sui.io/graphql`, `https://sui-testnet.mystenlabs.com/graphql`, and `https://sui-devnet.mystenlabs.com/graphql`) to the GraphQL Beta endpoints as soon as possible to avoid disruption of service.
+Switch any apps that still use the GraphQL Alpha endpoints (`https://graphql.mainnet.mysocial.network/graphql`, `https://myso-testnet.mystenlabs.com/graphql`, and `https://myso-devnet.mystenlabs.com/graphql`) to the GraphQL Beta endpoints as soon as possible to avoid disruption of service.
 
-- GraphQL Beta Mainnet: `https://graphql.mainnet.sui.io/graphql`
-- GraphQL Beta Testnet: `https://graphql.testnet.sui.io/graphql`
-- GraphQL Beta Devnet: `https://graphql.devnet.sui.io/graphql`
+- GraphQL Beta Mainnet: `https://graphql.mainnet.mysocial.network/graphql`
+- GraphQL Beta Testnet: `https://graphql.testnet.mysocial.network/graphql`
+- GraphQL Beta Devnet: `https://graphql.devnet.mysocial.network/graphql`
 
 :::
 
@@ -31,17 +31,17 @@ Switch any apps that still use the GraphQL Alpha endpoints (`https://graphql.mai
 
 The service accepts the following optional HTTP request headers:
 
-- `x-sui-rpc-version`: Specifies which RPC version to use. Currently only one version is supported.
-- `x-sui-rpc-show-usage`: Returns the response with extra query complexity information.
+- `x-myso-rpc-version`: Specifies which RPC version to use. Currently only one version is supported.
+- `x-myso-rpc-show-usage`: Returns the response with extra query complexity information.
 
 By default, each response contains the following HTTP response headers:
 
-- `x-sui-rpc-request-id`: A unique identifier for the request. This appears in application logs for debugging.
-- `x-sui-rpc-version`: The version of the service that handled the request.
+- `x-myso-rpc-request-id`: A unique identifier for the request. This appears in application logs for debugging.
+- `x-myso-rpc-version`: The version of the service that handled the request.
 
 ```sh
-$ curl -i -X POST https://graphql.testnet.sui.io/graphql\
-     --header 'x-sui-rpc-show-usage: true'                 \
+$ curl -i -X POST https://graphql.testnet.mysocial.network/graphql\
+     --header 'x-myso-rpc-show-usage: true'                 \
      --header 'Content-Type: application/json'             \
      --data '{
           "query": "query { epoch { referenceGasPrice } }"
@@ -55,8 +55,8 @@ $ curl -i -X POST https://graphql.testnet.sui.io/graphql\
 HTTP/2 200
 content-type: application/json
 content-length: 179
-x-sui-rpc-request-id: f5442058-47ab-4360-8295-61c009f38516
-x-sui-rpc-version: 1.56.1-
+x-myso-rpc-request-id: f5442058-47ab-4360-8295-61c009f38516
+x-myso-rpc-version: 1.56.1-
 vary: origin, access-control-request-method, access-control-request-headers
 access-control-allow-origin: *
 date: Tue, 09 Sep 2025 23:34:04 GMT
@@ -114,14 +114,14 @@ query ($epochID: Int) {
 
 ### Within the GraphQL IDE
 
-When using the [GraphQL online integrated development environment (IDE)](https://graphql.mainnet.sui.io/graphql), supply variables as a JSON object to the query in the **Variables** pane at the bottom of the main editing window. You receive a warning if you supply a variable but don't declare it.
+When using the [GraphQL online integrated development environment (IDE)](https://graphql.mainnet.mysocial.network/graphql), supply variables as a JSON object to the query in the **Variables** pane at the bottom of the main editing window. You receive a warning if you supply a variable but don't declare it.
 
 ### Within requests
 
 When making a request to the GraphQL service using a tool such as `curl`, pass the query and variables as two fields of a single JSON object:
 
 ```sh
-$ curl -X POST https://sui-testnet.mystenlabs.com/graphql \
+$ curl -X POST https://myso-testnet.mystenlabs.com/graphql \
     --header 'Content-Type: application/json' \
     --data '{
       "query": "query ($epochID: Int) { epoch(id: $epochID) { referenceGasPrice } }",
@@ -227,7 +227,7 @@ Fields that return a paginated response accept the following optional parameters
 
 They also return a type that conforms to the [GraphQL Cursor Connections Specification](https://relay.dev/graphql/connections.htm), meaning its name ends in `Connection`, and it contains at minimum the following fields:
 
-- `pageInfo` of type <UnsafeLink href="/references/sui-api/sui-graphql/beta/reference/types/objects/page-info">PageInfo</UnsafeLink>, which indicates whether there are more pages before or after the page returned.
+- `pageInfo` of type <UnsafeLink href="/references/myso-api/myso-graphql/beta/reference/types/objects/page-info">PageInfo</UnsafeLink>, which indicates whether there are more pages before or after the page returned.
 - `nodes`: The content of the paginated response as a list of the type being paginated (`TransactionBlock` in the previous example).
 - `edges`: Similar to `nodes` but associating each node with its [cursor](#cursors).
 
@@ -294,7 +294,7 @@ query AtCheckpoint($cp: UInt53!) {
   }
 }
 
-query NextBalancesPage($address: SuiAddress!, $after: String!) {
+query NextBalancesPage($address: MySoAddress!, $after: String!) {
   address(address: $address) {
     balances(after: $after, first: 10) {
       pageInfo {
@@ -313,7 +313,7 @@ query NextBalancesPage($address: SuiAddress!, $after: String!) {
 `AtCheckpoint` returns the last 5 transactions to execute as of the end of the checkpoint with sequence number `$cp`, while `NextBalancesPage` fetches the next 10 balances for `$address` after the page that ended at cursor `$after`. You can also combine both approaches, to ensure that the first page of a live object query is fetched from a specific checkpoint:
 
 ```graphql
-query FirstBalancesPageAtCheckpoint($address: SuiAddress!, $cp: UInt53) {
+query FirstBalancesPageAtCheckpoint($address: MySoAddress!, $cp: UInt53) {
   checkpoint(sequenceNumber: $cp) {
     query {
       address(address: $address) {
@@ -340,7 +340,7 @@ Responses to these queries are subject to [retention](#retention). If `$cp` is o
 Queries nested under the fetch of an object at a specific version are scoped by a root object bound at its version. For example, in the following query, the dynamic field with name `42u64` is fetched as it existed when its owning object was at version `$v`:
 
 ```graphql
-query ObjectsDynamicFields($id: SuiAddress!, $v: UInt53!) {
+query ObjectsDynamicFields($id: MySoAddress!, $v: UInt53!) {
   object(address: $id, version: $v) {
     dynamicField(name: { literal: "42u64" }) {
       value {
@@ -360,7 +360,7 @@ The `rootVersion` parameter overrides this implicit bound. It fetches the object
 In the following query, `$id` is the address of a dynamic field fetched as it existed when its root object was at version `$r`. The nested query fetches a nested dynamic field with name `42u64` owned by a wrapped object stored in field `foo` of the dynamic field. The nested fetch is subject to the same root object version bound, `$r`.
 
 ```graphql
-query NestedDynamicFields($id: SuiAddress!, $r: UInt53!) {
+query NestedDynamicFields($id: MySoAddress!, $r: UInt53!) {
   object(address: $id, rootVersion: $v) {
     asMoveObject {
       asDynamicField {
@@ -380,7 +380,7 @@ query NestedDynamicFields($id: SuiAddress!, $r: UInt53!) {
 Queries that return an `Address` can be used to make nested dynamic field queries on wrapped objects. An `Address` does not have an associated version, but `Query.address` can accept `rootVersion` or `atCheckpoint` parameters to set root object bounds for nested dynamic field queries. The following query fetches a dynamic field with name `42u64` owned by an object with address `$id` (which can belong to a wrapped object) as it existed when its root object was at version `$r`:
 
 ```graphql
-query WrappedDynamicField($id: SuiAddress!, $r: UInt53!) {
+query WrappedDynamicField($id: MySoAddress!, $r: UInt53!) {
   address(address: $id, rootVersion: $r) {
     dynamicField(name: { literal: "42u64" }) {
       value {
@@ -396,7 +396,7 @@ query WrappedDynamicField($id: SuiAddress!, $r: UInt53!) {
 While nested within a scope that has a root object bound, you can reset or override the bound using the `objectAt` or `addressAt` queries. These fields query the same entity but at a different position in its history. If these fields are not provided any parameters, they fetch the state of the object at the latest known checkpoint to the GraphQL service. The following query fetches the latest version of an object that was previously fetched at version `$v`:
 
 ```graphql
-query LatestDynamicField($id: SuiAddress!, $v: UInt53!) {
+query LatestDynamicField($id: MySoAddress!, $v: UInt53!) {
   object(address: $id, version: $v) {
     objectAt {
       version
@@ -407,7 +407,7 @@ query LatestDynamicField($id: SuiAddress!, $v: UInt53!) {
 
 ## Limits
 
-The GraphQL service for Sui RPC is rate-limited on all available instances to keep network throughput optimized and to protect against excessive or abusive calls to the service.
+The GraphQL service for MySo RPC is rate-limited on all available instances to keep network throughput optimized and to protect against excessive or abusive calls to the service.
 
 ### Rate limits
 
@@ -619,12 +619,12 @@ As there is no longer a dedicated API for fetching the coins owned by an address
 
 ### Dry-run, gas estimation, and coin selection
 
-Dry-run now supports the same input schema as `gRPC`'s [`SimulateTransaction`](/references/fullnode-protocol#sui-rpc-v2-Transaction) in JSON form. This means that it can also accept transactions where the inputs have not been fully resolved or serialized, perform gas estimation, and coin selection. The feature is now called `simulateTransaction`.
+Dry-run now supports the same input schema as `gRPC`'s [`SimulateTransaction`](/references/fullnode-protocol#myso-rpc-v2-Transaction) in JSON form. This means that it can also accept transactions where the inputs have not been fully resolved or serialized, perform gas estimation, and coin selection. The feature is now called `simulateTransaction`.
 
 ## Related links
 
 <RelatedLink to="/guides/developer/accessing-data/query-with-graphql.mdx" />
-<RelatedLink to="/references/sui-graphql.mdx" />
+<RelatedLink to="/references/myso-graphql.mdx" />
 <RelatedLink to="/concepts/data-access/graphql-indexer" />
-<RelatedLink href="https://graphql.testnet.sui.io/graphql" label="Sui Testnet GraphiQL" desc="Sui GraphiQL IDE for Testnet." />
-<RelatedLink href="https://graphql.mainnet.sui.io/graphql" label="Sui Mainnet GraphiQL" desc="Sui GraphiQL IDE for Mainnet." />
+<RelatedLink href="https://graphql.testnet.mysocial.network/graphql" label="MySo Testnet GraphiQL" desc="MySo GraphiQL IDE for Testnet." />
+<RelatedLink href="https://graphql.mainnet.mysocial.network/graphql" label="MySo Mainnet GraphiQL" desc="MySo GraphiQL IDE for Mainnet." />

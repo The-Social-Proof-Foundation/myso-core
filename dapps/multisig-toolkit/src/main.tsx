@@ -7,7 +7,7 @@ import '@fontsource-variable/inter';
 import '@fontsource-variable/red-hat-mono';
 
 import { SuiClientProvider, WalletProvider } from '@mysten/dapp-kit';
-import { getFullnodeUrl } from '@mysten/sui/client';
+import { getFullnodeUrl } from '@socialproof/myso/client';
 import { QueryClientProvider } from '@tanstack/react-query';
 import React from 'react';
 import ReactDOM from 'react-dom/client';
@@ -20,11 +20,11 @@ ReactDOM.createRoot(document.getElementById('root') as HTMLElement).render(
 	<React.StrictMode>
 		<QueryClientProvider client={queryClient}>
 			<SuiClientProvider
-				defaultNetwork="sui:mainnet"
+				defaultNetwork="myso:mainnet"
 				networks={{
-					'sui:testnet': { url: getFullnodeUrl('testnet') },
-					'sui:mainnet': { url: getFullnodeUrl('mainnet') },
-					'sui:devnet': { url: getFullnodeUrl('devnet') },
+					'myso:testnet': { url: getFullnodeUrl('testnet') },
+					'myso:mainnet': { url: getFullnodeUrl('mainnet') },
+					'myso:devnet': { url: getFullnodeUrl('devnet') },
 				}}
 			>
 				<WalletProvider>

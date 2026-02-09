@@ -44,14 +44,14 @@ https://github.com/MystenLabs/ts-sdks/blob/main/packages/deepbook-v3/src/utils/c
 
 ## DeepBookClient
 
-To work with DeepBook Margin, use the client extension to add DeepBook functionality to a Sui client. The [Sui TypeScript SDK](https://sdk.mystenlabs.com/typescript) provides the `SuiGrpcClient` and key functionality necessary to process transactions. The following example imports those libraries, as well.
+To work with DeepBook Margin, use the client extension to add DeepBook functionality to a MySo client. The [MySo TypeScript SDK](https://sdk.mystenlabs.com/typescript) provides the `SuiGrpcClient` and key functionality necessary to process transactions. The following example imports those libraries, as well.
 
 ```tsx
 import { deepbook, type DeepBookClient } from '@mysten/deepbook-v3';
-import type { ClientWithExtensions } from '@mysten/sui/client';
-import { decodeSuiPrivateKey } from '@mysten/sui/cryptography';
-import { SuiGrpcClient } from '@mysten/sui/grpc';
-import { Ed25519Keypair } from '@mysten/sui/keypairs/ed25519';
+import type { ClientWithExtensions } from '@socialproof/myso/client';
+import { decodeSuiPrivateKey } from '@socialproof/myso/cryptography';
+import { SuiGrpcClient } from '@socialproof/myso/grpc';
+import { Ed25519Keypair } from '@socialproof/myso/keypairs/ed25519';
 
 class DeepBookMarginTrader {
 	client: ClientWithExtensions<{ deepbook: DeepBookClient }>;
@@ -63,8 +63,8 @@ class DeepBookMarginTrader {
 			network: env,
 			baseUrl:
 				env === 'mainnet'
-					? 'https://fullnode.mainnet.sui.io:443'
-					: 'https://fullnode.testnet.sui.io:443',
+					? 'https://fullnode.mainnet.mysocial.network:443'
+					: 'https://fullnode.testnet.mysocial.network:443',
 		}).$extend(
 			deepbook({
 				address: this.getActiveAddress(),
@@ -80,7 +80,7 @@ class DeepBookMarginTrader {
 	};
 
 	getActiveAddress() {
-		return this.keypair.toSuiAddress();
+		return this.keypair.toMySoAddress();
 	}
 }
 ```
@@ -98,10 +98,10 @@ Example using an existing margin manager:
 ```tsx
 import { deepbook, type DeepBookClient } from '@mysten/deepbook-v3';
 import type { MarginManager } from '@mysten/deepbook-v3';
-import type { ClientWithExtensions } from '@mysten/sui/client';
-import { decodeSuiPrivateKey } from '@mysten/sui/cryptography';
-import { SuiGrpcClient } from '@mysten/sui/grpc';
-import { Ed25519Keypair } from '@mysten/sui/keypairs/ed25519';
+import type { ClientWithExtensions } from '@socialproof/myso/client';
+import { decodeSuiPrivateKey } from '@socialproof/myso/cryptography';
+import { SuiGrpcClient } from '@socialproof/myso/grpc';
+import { Ed25519Keypair } from '@socialproof/myso/keypairs/ed25519';
 import { config } from 'dotenv';
 
 config();
@@ -118,8 +118,8 @@ class DeepBookMarginTrader {
 			network: env,
 			baseUrl:
 				env === 'mainnet'
-					? 'https://fullnode.mainnet.sui.io:443'
-					: 'https://fullnode.testnet.sui.io:443',
+					? 'https://fullnode.mainnet.mysocial.network:443'
+					: 'https://fullnode.testnet.mysocial.network:443',
 		}).$extend(
 			deepbook({
 				address: this.getActiveAddress(),
@@ -136,7 +136,7 @@ class DeepBookMarginTrader {
 	};
 
 	getActiveAddress() {
-		return this.keypair.toSuiAddress();
+		return this.keypair.toMySoAddress();
 	}
 
 	getMarginManagers(): { [key: string]: MarginManager } {
@@ -160,11 +160,11 @@ Example creating a margin manager:
 ```tsx
 import { deepbook, type DeepBookClient } from '@mysten/deepbook-v3';
 import type { MarginManager } from '@mysten/deepbook-v3';
-import type { ClientWithExtensions } from '@mysten/sui/client';
-import { decodeSuiPrivateKey } from '@mysten/sui/cryptography';
-import { SuiGrpcClient } from '@mysten/sui/grpc';
-import { Ed25519Keypair } from '@mysten/sui/keypairs/ed25519';
-import { Transaction } from '@mysten/sui/transactions';
+import type { ClientWithExtensions } from '@socialproof/myso/client';
+import { decodeSuiPrivateKey } from '@socialproof/myso/cryptography';
+import { SuiGrpcClient } from '@socialproof/myso/grpc';
+import { Ed25519Keypair } from '@socialproof/myso/keypairs/ed25519';
+import { Transaction } from '@socialproof/myso/transactions';
 
 const MARGIN_MANAGER_KEY = 'MARGIN_MANAGER_1';
 
@@ -184,8 +184,8 @@ class DeepBookMarginTrader {
 			network: env,
 			baseUrl:
 				env === 'mainnet'
-					? 'https://fullnode.mainnet.sui.io:443'
-					: 'https://fullnode.testnet.sui.io:443',
+					? 'https://fullnode.mainnet.mysocial.network:443'
+					: 'https://fullnode.testnet.mysocial.network:443',
 		}).$extend(
 			deepbook({
 				address: this.getActiveAddress(),
@@ -202,7 +202,7 @@ class DeepBookMarginTrader {
 	};
 
 	getActiveAddress() {
-		return this.keypair.toSuiAddress();
+		return this.keypair.toMySoAddress();
 	}
 
 	async createMarginManagerAndReinitialize() {
@@ -249,14 +249,14 @@ The SDK comes with four default coins on Testnet and five default coins on Mainn
 **Default Testnet coins**
 
 - DEEP
-- SUI
+- MYSO
 - DBUSDC
 - DBUSDT
 
 **Default Mainnet coins**
 
 - DEEP
-- SUI
+- MYSO
 - USDC
 - USDT
 - WETH
@@ -270,12 +270,12 @@ Similar to coins, the SDK comes with default pools. You can provide a `PoolMap` 
 ```tsx
 import { deepbook, type DeepBookClient } from '@mysten/deepbook-v3';
 import type { MarginManager } from '@mysten/deepbook-v3';
-import type { ClientWithExtensions } from '@mysten/sui/client';
-import { decodeSuiPrivateKey } from '@mysten/sui/cryptography';
-import type { Keypair } from '@mysten/sui/cryptography';
-import { SuiGrpcClient } from '@mysten/sui/grpc';
-import { Ed25519Keypair } from '@mysten/sui/keypairs/ed25519';
-import type { Transaction } from '@mysten/sui/transactions';
+import type { ClientWithExtensions } from '@socialproof/myso/client';
+import { decodeSuiPrivateKey } from '@socialproof/myso/cryptography';
+import type { Keypair } from '@socialproof/myso/cryptography';
+import { SuiGrpcClient } from '@socialproof/myso/grpc';
+import { Ed25519Keypair } from '@socialproof/myso/keypairs/ed25519';
+import type { Transaction } from '@socialproof/myso/transactions';
 
 export class DeepBookMarginTrader {
 	keypair: Keypair;
@@ -297,8 +297,8 @@ export class DeepBookMarginTrader {
 			network: env,
 			baseUrl:
 				env === 'mainnet'
-					? 'https://fullnode.mainnet.sui.io:443'
-					: 'https://fullnode.testnet.sui.io:443',
+					? 'https://fullnode.mainnet.mysocial.network:443'
+					: 'https://fullnode.testnet.mysocial.network:443',
 		}).$extend(
 			deepbook({
 				address: this.getActiveAddress(),
@@ -328,7 +328,7 @@ export class DeepBookMarginTrader {
 	};
 
 	getActiveAddress() {
-		return this.keypair.getPublicKey().toSuiAddress();
+		return this.keypair.getPublicKey().toMySoAddress();
 	}
 }
 ```
@@ -338,7 +338,7 @@ export class DeepBookMarginTrader {
 The following example uses the default pools and coins provided, and demonstrates margin trading operations.
 
 ```tsx
-import { Transaction } from '@mysten/sui/transactions';
+import { Transaction } from '@socialproof/myso/transactions';
 
 import { DeepBookMarginTrader } from './deepbookMarginTrader.js';
 

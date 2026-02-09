@@ -1,12 +1,12 @@
 ---
 source: crates/move-compiler/tests/move_check_testsuite.rs
 info:
-  flavor: sui
+  flavor: myso
   edition: legacy
   lint: false
 ---
-error[Sui E02003]: invalid 'init' function
-  ┌─ tests/sui_mode/one_time_witness/no_init_arg.move:8:20
+error[MySo E02003]: invalid 'init' function
+  ┌─ tests/myso_mode/one_time_witness/no_init_arg.move:8:20
   │
 6 │     struct M has drop { dummy: bool }
   │            - One-time witness declared here

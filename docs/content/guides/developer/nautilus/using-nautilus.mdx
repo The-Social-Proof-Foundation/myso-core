@@ -4,7 +4,7 @@ description: Details on how to use Nautilus with the reproducible build template
 keywords: [ nautilus, using nautilus, deploy aws nitro enclave, aws nitro, enclaves, tee, ec2 ]
 ---
 
-[Nautilus](/guides/developer/nautilus/index.mdx) is a verifiable off-chain compute layer on Sui. It enables builders to delegate sensitive or resource-intensive tasks to a self-managed [trusted execution environment (TEE)](https://en.wikipedia.org/wiki/Trusted_execution_environment) while preserving trust on-chain through smart contract-based verification.
+[Nautilus](/guides/developer/nautilus/index.mdx) is a verifiable off-chain compute layer on MySo. It enables builders to delegate sensitive or resource-intensive tasks to a self-managed [trusted execution environment (TEE)](https://en.wikipedia.org/wiki/Trusted_execution_environment) while preserving trust on-chain through smart contract-based verification.
 
 The [Nautilus repo](https://github.com/MystenLabs/nautilus) provides scaffolding such as reproducible builds, signature formatting, and HTTPS traffic forwarding. This allows you to focus on implementing the off-chain computation logic inside the enclave.
 
@@ -50,7 +50,7 @@ Frontend code is not included in this guide.
 
 - [x] Install [Make](https://www.gnu.org/software/make/).
 
-- [x] [Install the Sui CLI](/guides/developer/getting-started/sui-install.mdx).
+- [x] [Install the MySo CLI](/guides/developer/getting-started/myso-install.mdx).
 
 - [x] Download or git clone the [Nautilus repo](https://github.com/MystenLabs/nautilus).
 
@@ -349,21 +349,21 @@ After finalizing the Rust code, the app administrator can register the enclave w
 
 ```sh
 # Optionally
-$ sui client switch --env testnet # or appropriate network
-$ sui client faucet
-$ sui client gas
+$ myso client switch --env testnet # or appropriate network
+$ myso client faucet
+$ myso client gas
 # deploy the enclave package
 $ cd move/enclave
-$ sui move build
-$ sui client publish
+$ myso move build
+$ myso client publish
 
 # Record ENCLAVE_PACKAGE_ID as env var from publish output
 $ ENCLAVE_PACKAGE_ID=0x3b009f952e11f0fa0612d0a8e07461fb69edc355d732e5d6e39267b1b4fd7138
 
 # Deploy your app logic
 $ cd ../<APP>
-$ sui move build
-$ sui client publish
+$ myso move build
+$ myso client publish
 
 # Record CAP_OBJECT_ID (owned object of type Cap), ENCLAVE_CONFIG_OBJECT_ID (shared object), APP_PACKAGE_ID (package containing weather module) as env var from publish output
 
@@ -395,10 +395,10 @@ $ echo $ENCLAVE_URL
 # =======
 
 # This calls the update_pcrs on-chain with the enclave cap and built PCRs, this can be reused to update PCRs if Rust server code is updated
-$ sui client call --function update_pcrs --module enclave --package $ENCLAVE_PACKAGE_ID --type-args "$APP_PACKAGE_ID::$MODULE_NAME::$OTW_NAME" --args $ENCLAVE_CONFIG_OBJECT_ID $CAP_OBJECT_ID 0x$PCR0 0x$PCR1 0x$PCR2
+$ myso client call --function update_pcrs --module enclave --package $ENCLAVE_PACKAGE_ID --type-args "$APP_PACKAGE_ID::$MODULE_NAME::$OTW_NAME" --args $ENCLAVE_CONFIG_OBJECT_ID $CAP_OBJECT_ID 0x$PCR0 0x$PCR1 0x$PCR2
 
 # Optional, give it a name you like
-$ sui client call --function update_name --module enclave --package $ENCLAVE_PACKAGE_ID --type-args "$APP_PACKAGE_ID::$MODULE_NAME::$OTW_NAME" --args $ENCLAVE_CONFIG_OBJECT_ID $CAP_OBJECT_ID "weather enclave, updated 2025-05-13"
+$ myso client call --function update_name --module enclave --package $ENCLAVE_PACKAGE_ID --type-args "$APP_PACKAGE_ID::$MODULE_NAME::$OTW_NAME" --args $ENCLAVE_CONFIG_OBJECT_ID $CAP_OBJECT_ID "weather enclave, updated 2025-05-13"
 
 # This script calls the get_attestation endpoint from your enclave url and uses it to call register_enclave on-chain to register the public key, resulting in the created enclave object
 $ sh ../../register_enclave.sh $ENCLAVE_PACKAGE_ID $APP_PACKAGE_ID $ENCLAVE_CONFIG_OBJECT_ID $ENCLAVE_URL $MODULE_NAME $OTW_NAME

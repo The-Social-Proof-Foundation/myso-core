@@ -91,7 +91,7 @@ export default function CopyButton({ className }: Props): ReactNode {
             <i class="fa-regular fa-copy leading-[0] pr-1"></i>Copy
           </span>
           <span
-            className={`${isCopied ? "block text-sui-success p-1" : "hidden"}`}
+            className={`${isCopied ? "block text-myso-success p-1" : "hidden"}`}
           >
             <i class="fa-regular fa-thumbs-up leading-[0]"></i> Copied
           </span>

@@ -68,7 +68,7 @@ Following are the decimal places (scalars) used to determine the base unit for e
 | Native USDC | 6 |
 | NS | 6 |
 | SEND | 6 |
-| SUI | 9 |
+| MYSO | 9 |
 | TYPUS | 9 |
 | WAL | 9 |
 | Wormhole USDC (WUSDC) | 6 |
@@ -77,7 +77,7 @@ Following are the decimal places (scalars) used to determine the base unit for e
 
 To convert the returned volume to the standard asset unit, divide the value by 10^SCALAR. For example:
 
-If the volume returned in the base asset for the SUI/USDC pool is 1,000,000,000 SUI UNIT, the correct volume in SUI is 1,000,000,000 / 10^(SUI_SCALAR) = 1 SUI. Similarly, if the volume returned in the quote asset for the SUI/USDC pool is 1,000,000,000 USDC UNIT, the correct volume is  1,000,000,000 / 10^(USDC_SCALAR) = 1,000 USDC.
+If the volume returned in the base asset for the MYSO/USDC pool is 1,000,000,000 MYSO UNIT, the correct volume in MYSO is 1,000,000,000 / 10^(SUI_SCALAR) = 1 MYSO. Similarly, if the volume returned in the quote asset for the MYSO/USDC pool is 1,000,000,000 USDC UNIT, the correct volume is  1,000,000,000 / 10^(USDC_SCALAR) = 1,000 USDC.
 
 Use these conversions to interpret the volumes correctly across all pools and assets.
 
@@ -152,10 +152,10 @@ produces a response similar to
 		"base_asset_decimals": 6,
 		"base_asset_symbol": "DEEP",
 		"base_asset_name": "DeepBook Token",
-		"quote_asset_id": "0x0000000000000000000000000000000000000000000000000000000000000002::sui::SUI",
+		"quote_asset_id": "0x0000000000000000000000000000000000000000000000000000000000000002::myso::MYSO",
 		"quote_asset_decimals": 9,
-		"quote_asset_symbol": "SUI",
-		"quote_asset_name": "Sui",
+		"quote_asset_symbol": "MYSO",
+		"quote_asset_name": "MySo",
 		"min_size": 100000000,
 		"lot_size": 10000000,
 		"tick_size": 10000000
@@ -756,7 +756,7 @@ produces a response similar to
 {
   "NS": {
     "unified_cryptoasset_id": "32942",
-    "name": "Sui Name Service",
+    "name": "MySo Name Service",
     "contractAddress": "0x5145494a5f5100e645e4b0aa950fa6b68f614e8c59e17bc5ded3495123a79178",
     "contractAddressUrl": "https://suiscan.xyz/mainnet/object/0x5145494a5f5100e645e4b0aa950fa6b68f614e8c59e17bc5ded3495123a79178",
     "can_deposit": "true",

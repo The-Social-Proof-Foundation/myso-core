@@ -15,7 +15,7 @@ gas summary: computation_cost: 1000000, storage_cost: 8063600,  storage_rebate: 
 task 2, lines 55-57:
 //# programmable --sender A --inputs @A
 //> test::m::a();
-//> sui::transfer::public_transfer<test::m::A>(Result(0), Input(0));
+//> myso::transfer::public_transfer<test::m::A>(Result(0), Input(0));
 created: object(2,0)
 mutated: object(0,0)
 gas summary: computation_cost: 1000000, storage_cost: 2196400,  storage_rebate: 0, non_refundable_storage_fee: 0
@@ -23,7 +23,7 @@ gas summary: computation_cost: 1000000, storage_cost: 2196400,  storage_rebate: 
 task 4, lines 61-63:
 //# programmable --sender A --inputs @a
 //> test::m::a();
-//> sui::transfer::public_transfer<test::m::A>(Result(0), Input(0));
+//> myso::transfer::public_transfer<test::m::A>(Result(0), Input(0));
 created: object(4,0)
 mutated: object(0,0)
 gas summary: computation_cost: 1000000, storage_cost: 2196400,  storage_rebate: 978120, non_refundable_storage_fee: 9880
@@ -54,7 +54,7 @@ Debug of error: CommandArgumentError { arg_idx: 0, kind: InvalidArgumentToPrivat
 task 8, lines 78-81:
 //# programmable --sender A --inputs object(5,0)
 // gas coin by-ref
-//> test::m::heat_imm<sui::coin::Coin<sui::sui::SUI>>(Gas, Input(0));
+//> test::m::heat_imm<myso::coin::Coin<myso::myso::MYSO>>(Gas, Input(0));
 //> test::m::play_coin(Gas);
 Error: Transaction Effects Status: Invalid command argument at 0. Invalid argument to private entry function. These functions cannot take arguments from other Move functions
 Debug of error: CommandArgumentError { arg_idx: 0, kind: InvalidArgumentToPrivateEntryFunction } at command Some(1)
@@ -62,7 +62,7 @@ Debug of error: CommandArgumentError { arg_idx: 0, kind: InvalidArgumentToPrivat
 task 9, lines 83-86:
 //# programmable --sender A --inputs object(5,0)
 // gas coin by-mut
-//> test::m::heat_mut<sui::coin::Coin<sui::sui::SUI>>(Gas, Input(0));
+//> test::m::heat_mut<myso::coin::Coin<myso::myso::MYSO>>(Gas, Input(0));
 //> test::m::play_coin(Gas);
 Error: Transaction Effects Status: Invalid command argument at 0. Invalid argument to private entry function. These functions cannot take arguments from other Move functions
 Debug of error: CommandArgumentError { arg_idx: 0, kind: InvalidArgumentToPrivateEntryFunction } at command Some(1)
@@ -145,7 +145,7 @@ Debug of error: CommandArgumentError { arg_idx: 0, kind: InvalidArgumentToPrivat
 task 18, lines 139-142:
 //# programmable --sender A --inputs receiving(4,0) object(5,0)
 // receiving input by-ref
-//> 0: test::m::heat_imm<sui::transfer::Receiving<test::m::A>>(Input(0), Input(1));
+//> 0: test::m::heat_imm<myso::transfer::Receiving<test::m::A>>(Input(0), Input(1));
 //> test::m::play_receiving(Input(0));
 Error: Transaction Effects Status: Invalid command argument at 0. Invalid argument to private entry function. These functions cannot take arguments from other Move functions
 Debug of error: CommandArgumentError { arg_idx: 0, kind: InvalidArgumentToPrivateEntryFunction } at command Some(1)
@@ -153,7 +153,7 @@ Debug of error: CommandArgumentError { arg_idx: 0, kind: InvalidArgumentToPrivat
 task 19, lines 144-147:
 //# programmable --sender A --inputs receiving(4,0) object(5,0)
 // receiving input by-mut
-//> 0: test::m::heat_mut<sui::transfer::Receiving<test::m::A>>(Input(0), Input(1));
+//> 0: test::m::heat_mut<myso::transfer::Receiving<test::m::A>>(Input(0), Input(1));
 //> test::m::play_receiving(Input(0));
 Error: Transaction Effects Status: Invalid command argument at 0. Invalid argument to private entry function. These functions cannot take arguments from other Move functions
 Debug of error: CommandArgumentError { arg_idx: 0, kind: InvalidArgumentToPrivateEntryFunction } at command Some(1)
@@ -161,7 +161,7 @@ Debug of error: CommandArgumentError { arg_idx: 0, kind: InvalidArgumentToPrivat
 task 20, lines 149-152:
 //# programmable --sender A --inputs receiving(4,0) object(5,0)
 // receiving input by-val
-//> 0: test::m::heat_val<sui::transfer::Receiving<test::m::A>>(Input(0), Input(1));
+//> 0: test::m::heat_val<myso::transfer::Receiving<test::m::A>>(Input(0), Input(1));
 //> test::m::play_receiving(NestedResult(0,0));
 Error: Transaction Effects Status: Invalid command argument at 0. Invalid argument to private entry function. These functions cannot take arguments from other Move functions
 Debug of error: CommandArgumentError { arg_idx: 0, kind: InvalidArgumentToPrivateEntryFunction } at command Some(1)

@@ -1,6 +1,6 @@
 [package]
 name = "mysten-service"
-authors = ["Mysten Labs <build@mystenlabs.com>"]
+authors = ["Brandon Shaw <brandon@mysocial.network>"]
 license = "Apache-2.0"
 version = "0.0.1"
 edition = "2024"

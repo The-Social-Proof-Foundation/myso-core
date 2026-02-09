@@ -15,7 +15,7 @@ read and write transactions to the MySo network.
 
 ### Build from source
 #### 0. Checkout and build MySo
-Checkout the [MySo source code](https://github.com/MystenLabs/myso) and compile using `cargo build --release`, the binaries will be located in `target/release` directory.
+Checkout the [MySo source code](https://github.com/the-social-proof-foundation/myso-core) and compile using `cargo build --release`, the binaries will be located in `target/release` directory.
 
 #### 1. Genesis
 

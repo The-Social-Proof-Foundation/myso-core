@@ -34,14 +34,14 @@ https://github.com/MystenLabs/ts-sdks/blob/main/packages/deepbook-v3/src/utils/c
 
 ## DeepBookClient
 
-To work with DeepBookV3, use the client extension to add DeepBook functionality to a Sui client. The [Sui TypeScript SDK](https://sdk.mystenlabs.com/typescript) provides the `SuiGrpcClient` and key functionality necessary to process transactions. The following example imports those libraries, as well.
+To work with DeepBookV3, use the client extension to add DeepBook functionality to a MySo client. The [MySo TypeScript SDK](https://sdk.mystenlabs.com/typescript) provides the `SuiGrpcClient` and key functionality necessary to process transactions. The following example imports those libraries, as well.
 
 ```tsx
 import { deepbook, type DeepBookClient } from '@mysten/deepbook-v3';
-import type { ClientWithExtensions } from '@mysten/sui/client';
-import { SuiGrpcClient } from '@mysten/sui/grpc';
-import { decodeSuiPrivateKey } from '@mysten/sui/cryptography';
-import { Ed25519Keypair } from '@mysten/sui/keypairs/ed25519';
+import type { ClientWithExtensions } from '@socialproof/myso/client';
+import { SuiGrpcClient } from '@socialproof/myso/grpc';
+import { decodeSuiPrivateKey } from '@socialproof/myso/cryptography';
+import { Ed25519Keypair } from '@socialproof/myso/keypairs/ed25519';
 
 class DeepBookMarketMaker {
 	client: ClientWithExtensions<{ deepbook: DeepBookClient }>;
@@ -53,8 +53,8 @@ class DeepBookMarketMaker {
 			network: env,
 			baseUrl:
 				env === 'mainnet'
-					? 'https://fullnode.mainnet.sui.io:443'
-					: 'https://fullnode.testnet.sui.io:443',
+					? 'https://fullnode.mainnet.mysocial.network:443'
+					: 'https://fullnode.testnet.mysocial.network:443',
 		}).$extend(
 			deepbook({
 				address: this.getActiveAddress(),
@@ -70,7 +70,7 @@ class DeepBookMarketMaker {
 	};
 
 	getActiveAddress() {
-		return this.keypair.toSuiAddress();
+		return this.keypair.toMySoAddress();
 	}
 }
 ```
@@ -87,11 +87,11 @@ Example using an existing balance manager:
 
 ```tsx
 import { deepbook, type DeepBookClient } from '@mysten/deepbook-v3';
-import type { ClientWithExtensions } from '@mysten/sui/client';
+import type { ClientWithExtensions } from '@socialproof/myso/client';
 import type { BalanceManager } from '@mysten/deepbook-v3';
-import { SuiGrpcClient } from '@mysten/sui/grpc';
-import { decodeSuiPrivateKey } from '@mysten/sui/cryptography';
-import { Ed25519Keypair } from '@mysten/sui/keypairs/ed25519';
+import { SuiGrpcClient } from '@socialproof/myso/grpc';
+import { decodeSuiPrivateKey } from '@socialproof/myso/cryptography';
+import { Ed25519Keypair } from '@socialproof/myso/keypairs/ed25519';
 import { config } from 'dotenv';
 
 config();
@@ -108,8 +108,8 @@ class DeepBookMarketMaker {
 			network: env,
 			baseUrl:
 				env === 'mainnet'
-					? 'https://fullnode.mainnet.sui.io:443'
-					: 'https://fullnode.testnet.sui.io:443',
+					? 'https://fullnode.mainnet.mysocial.network:443'
+					: 'https://fullnode.testnet.mysocial.network:443',
 		}).$extend(
 			deepbook({
 				address: this.getActiveAddress(),
@@ -126,7 +126,7 @@ class DeepBookMarketMaker {
 	};
 
 	getActiveAddress() {
-		return this.keypair.toSuiAddress();
+		return this.keypair.toMySoAddress();
 	}
 
 	getBalanceManagers(): { [key: string]: BalanceManager } {
@@ -149,12 +149,12 @@ Example creating a balance manager:
 
 ```tsx
 import { deepbook, type DeepBookClient } from '@mysten/deepbook-v3';
-import type { ClientWithExtensions } from '@mysten/sui/client';
+import type { ClientWithExtensions } from '@socialproof/myso/client';
 import type { BalanceManager } from '@mysten/deepbook-v3';
-import { SuiGrpcClient } from '@mysten/sui/grpc';
-import { decodeSuiPrivateKey } from '@mysten/sui/cryptography';
-import { Ed25519Keypair } from '@mysten/sui/keypairs/ed25519';
-import { Transaction } from '@mysten/sui/transactions';
+import { SuiGrpcClient } from '@socialproof/myso/grpc';
+import { decodeSuiPrivateKey } from '@socialproof/myso/cryptography';
+import { Ed25519Keypair } from '@socialproof/myso/keypairs/ed25519';
+import { Transaction } from '@socialproof/myso/transactions';
 
 const BALANCE_MANAGER_KEY = 'MANAGER_1';
 
@@ -174,8 +174,8 @@ class DeepBookMarketMaker {
 			network: env,
 			baseUrl:
 				env === 'mainnet'
-					? 'https://fullnode.mainnet.sui.io:443'
-					: 'https://fullnode.testnet.sui.io:443',
+					? 'https://fullnode.mainnet.mysocial.network:443'
+					: 'https://fullnode.testnet.mysocial.network:443',
 		}).$extend(
 			deepbook({
 				address: this.getActiveAddress(),
@@ -192,7 +192,7 @@ class DeepBookMarketMaker {
 	};
 
 	getActiveAddress() {
-		return this.keypair.toSuiAddress();
+		return this.keypair.toMySoAddress();
 	}
 
 	async createBalanceManagerAndReinitialize() {
@@ -237,14 +237,14 @@ The SDK comes with four default coins on Testnet and five default coins on Mainn
 **Default Testnet coins**
 
 - DEEP
-- SUI
+- MYSO
 - DBUSDC
 - DBUSDT
 
 **Default Mainnet coins**
 
 - DEEP
-- SUI
+- MYSO
 - USDC
 - USDT
 - WETH
@@ -257,13 +257,13 @@ Similar to coins, the SDK comes with default pools. You can provide a `PoolMap` 
 
 ```tsx
 import { deepbook, type DeepBookClient } from '@mysten/deepbook-v3';
-import type { ClientWithExtensions } from '@mysten/sui/client';
+import type { ClientWithExtensions } from '@socialproof/myso/client';
 import type { BalanceManager } from '@mysten/deepbook-v3';
-import { SuiGrpcClient } from '@mysten/sui/grpc';
-import { decodeSuiPrivateKey } from '@mysten/sui/cryptography';
-import type { Keypair } from '@mysten/sui/cryptography';
-import { Ed25519Keypair } from '@mysten/sui/keypairs/ed25519';
-import type { Transaction } from '@mysten/sui/transactions';
+import { SuiGrpcClient } from '@socialproof/myso/grpc';
+import { decodeSuiPrivateKey } from '@socialproof/myso/cryptography';
+import type { Keypair } from '@socialproof/myso/cryptography';
+import { Ed25519Keypair } from '@socialproof/myso/keypairs/ed25519';
+import type { Transaction } from '@socialproof/myso/transactions';
 
 export class DeepBookMarketMaker {
 	keypair: Keypair;
@@ -285,8 +285,8 @@ export class DeepBookMarketMaker {
 			network: env,
 			baseUrl:
 				env === 'mainnet'
-					? 'https://fullnode.mainnet.sui.io:443'
-					: 'https://fullnode.testnet.sui.io:443',
+					? 'https://fullnode.mainnet.mysocial.network:443'
+					: 'https://fullnode.testnet.mysocial.network:443',
 		}).$extend(
 			deepbook({
 				address: this.getActiveAddress(),
@@ -316,7 +316,7 @@ export class DeepBookMarketMaker {
 	};
 
 	getActiveAddress() {
-		return this.keypair.getPublicKey().toSuiAddress();
+		return this.keypair.getPublicKey().toMySoAddress();
 	}
 }
 ```
@@ -326,7 +326,7 @@ export class DeepBookMarketMaker {
 The following example uses the default pools and coins provided.
 
 ```tsx
-import { Transaction } from '@mysten/sui/transactions';
+import { Transaction } from '@socialproof/myso/transactions';
 
 import { DeepBookMarketMaker } from './deepbookMarketMaker.js';
 
@@ -345,7 +345,7 @@ import { DeepBookMarketMaker } from './deepbookMarketMaker.js';
 	const tx = new Transaction();
 
 	// Read only call
-	console.log(await mmClient.client.deepbook.checkManagerBalance('MANAGER_1', 'SUI'));
+	console.log(await mmClient.client.deepbook.checkManagerBalance('MANAGER_1', 'MYSO'));
 	console.log(await mmClient.client.deepbook.getLevel2Range('SUI_DBUSDC', 0.1, 100, true));
 
 	// Balance manager contract call

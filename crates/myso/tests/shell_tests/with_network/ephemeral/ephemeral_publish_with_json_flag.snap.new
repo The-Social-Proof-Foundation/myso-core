@@ -1,0 +1,32 @@
+---
+source: crates/myso/tests/shell_tests.rs
+assertion_line: 113
+---
+----- script -----
+#!/usr/bin/env bash
+# Copyright (c) Mysten Labs, Inc.
+# SPDX-License-Identifier: Apache-2.0
+
+# Test that --json flag outputs a proper json (without emitting any logs in stdout) 
+
+myso client --client.config $CONFIG \
+  test-publish --build-env testnet --pubfile-path Pub.local.toml a --json \
+  > output.json
+
+# Make sure the output is a valid json
+jq -e . output.json >/dev/null || cat output.json;
+
+----- results -----
+success: true
+exit_code: 0
+----- stdout -----
+Error while loading dependency /Users/brandonshaw/.move/git/https___github_com_MystenLabs_myso_git_0676e11409f87c38733863475d0819407b568a9d/crates/myso-framework/packages/myso-framework: Error while fetching `{ git = "https://...abs/myso.git", path = "crates/myso-framework/packages/myso-framework", rev = "0676e1...9d" }`: error while executing git command `Command { std: GIT_CONFIG_GLOBAL="" "git" "-c" "advice.detachedHead=false" "clone" "--quiet" "--sparse" "--filter=blob:none" "--no-checkout" "--depth" "1" "https://github.comthe-social-proof-foundation/myso-core.git" "/Users/brandonshaw/.move/git/https___github_com_MystenLabs_myso_git_0676e11409f87c38733863475d0819407b568a9d", kill_on_drop: false }`:
+ErrorCode(ExitStatus(unix_wait_status(32768)))
+
+----- stderr -----
+[NOTE] Updating dependencies for `testnet` environment because "a/Move.toml" has been changed since the last update.
+Downloading from https://github.comthe-social-proof-foundation/myso-core.git
+output from `git -c advice.detachedHead=false clone --quiet --sparse --filter=blob:none --no-checkout --depth 1 https://github.comthe-social-proof-foundation/myso-core.git /Users/brandonshaw/.move/git/https___github_com_MystenLabs_myso_git_0676e11409f87c38733863475d0819407b568a9d`
+  │ remote: Repository not found.
+  │ fatal: repository 'https://github.comthe-social-proof-foundation/myso-core.git/' not found
+jq: parse error: Invalid numeric literal at line 1, column 6

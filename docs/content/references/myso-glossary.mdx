@@ -1,12 +1,12 @@
 ---
 title: Glossary
-slug: /sui-glossary
-description: Learn about terminology specific to Sui.
-keywords: [ casual history, casual order, certificate, epoch, equivocation, eventual consistency, finality, gas, genesis, multi-writer objects, objects, proof-of-stake, proof of stake, single-writer objects, sui, SUI token, total order, transaction, transfer, validator ]
+slug: /myso-glossary
+description: Learn about terminology specific to MySo.
+keywords: [ casual history, casual order, certificate, epoch, equivocation, eventual consistency, finality, gas, genesis, multi-writer objects, objects, proof-of-stake, proof of stake, single-writer objects, myso, MYSO token, total order, transaction, transfer, validator ]
 pagination_prev: null
 ---
 
-Find terms used in Sui defined below.
+Find terms used in MySo defined below.
 
 ### Archival Service {#archival-service}
 
@@ -14,20 +14,20 @@ A gRPC API layer that exposes access to this store, enabling point lookups of hi
 
 ### Archival Store {#archival-store}
 
-A long-term storage system that holds checkpoint-indexed Sui data, i.e., Bigtable.
+A long-term storage system that holds checkpoint-indexed MySo data, i.e., Bigtable.
 
 ### Causal history {#causal-history}
 
-Causal history is the relationship between an object in Sui and its direct predecessors and successors. This history is essential to the causal order Sui uses to process transactions. In contrast, other blockchains read the entire state of their world for each transaction,
+Causal history is the relationship between an object in MySo and its direct predecessors and successors. This history is essential to the causal order MySo uses to process transactions. In contrast, other blockchains read the entire state of their world for each transaction,
 introducing latency.
 
 ### Causal order {#causal-order}
 
-[Causal order](https://www.scattered-thoughts.net/writing/causal-ordering/) is a representation of the relationship between transactions and the objects they produce, laid out as dependencies. Validators cannot execute a transaction dependent on objects created by a prior transaction that has not finished. Rather than total order, Sui uses causal order (a partial order).
+[Causal order](https://www.scattered-thoughts.net/writing/causal-ordering/) is a representation of the relationship between transactions and the objects they produce, laid out as dependencies. Validators cannot execute a transaction dependent on objects created by a prior transaction that has not finished. Rather than total order, MySo uses causal order (a partial order).
 
 ### Certificate {#certificate}
 
-A certificate is the mechanism proving a transaction was approved or certified. Validators vote on transactions, and aggregators collect a Byzantine-resistant majority of these votes into a certificate and broadcast it to all Sui validators, thereby ensuring finality.
+A certificate is the mechanism proving a transaction was approved or certified. Validators vote on transactions, and aggregators collect a Byzantine-resistant majority of these votes into a certificate and broadcast it to all MySo validators, thereby ensuring finality.
 
 ### Closed-Loop Token {#closed-loop-token}
 
@@ -35,7 +35,7 @@ A token that can be used only for a specific service, by an authorized account, 
 
 #### DeepBook {#deepbook}
 
-A decentralized central limit order book (CLOB) built on Sui. The Sui documentation refers to the DeepBook standard as "DeepBookV3" to avoid confusion with the recently deprecated version of DeepBook (DeepBookV2).
+A decentralized central limit order book (CLOB) built on MySo. The MySo documentation refers to the DeepBook standard as "DeepBookV3" to avoid confusion with the recently deprecated version of DeepBook (DeepBookV2).
 
 #### Devnet {#devnet}
 
@@ -43,7 +43,7 @@ A development network where data is wiped regularly as part of scheduled softwar
  
 ### Epoch {#epoch}
 
-Operation of the Sui network is temporally partitioned into non-overlapping, fixed-duration epochs. During a particular epoch, the set of validators participating in the network is fixed.
+Operation of the MySo network is temporally partitioned into non-overlapping, fixed-duration epochs. During a particular epoch, the set of validators participating in the network is fixed.
 
 ### Equivocation {#equivocation}
 
@@ -51,7 +51,7 @@ Equivocation in blockchains is the malicious action of dishonest actors giving c
 
 ### Eventual consistency {#eventual-consistency}
 
-[Eventual consistency](https://en.wikipedia.org/wiki/Eventual_consistency) is the consensus model employed by Sui; if one honest validator
+[Eventual consistency](https://en.wikipedia.org/wiki/Eventual_consistency) is the consensus model employed byMySo; if one honest validator
 certifies the transaction, all of the other honest validators will too eventually.
 
 ### Finality {#finality}
@@ -60,11 +60,11 @@ certifies the transaction, all of the other honest validators will too eventuall
 
 ### Gas {#gas}
 
-[Gas](https://ethereum.org/en/developers/docs/gas/) refers to the computational effort required for executing operations on the Sui network. In Sui, gas is paid with the network's native currency SUI. The cost of executing a transaction in SUI units is referred to as the transaction fee.
+[Gas](https://ethereum.org/en/developers/docs/gas/) refers to the computational effort required for executing operations on the MySo network. InMySo, gas is paid with the network's native currency MYSO. The cost of executing a transaction in MYSO units is referred to as the transaction fee.
 
 ### Genesis {#genesis}
 
-Genesis is the initial act of creating accounts and gas objects for a Sui network. Sui provides a `genesis` command that allows users to create and inspect the genesis object setting up the network for operation.
+Genesis is the initial act of creating accounts and gas objects for a MySo network. MySo provides a `genesis` command that allows users to create and inspect the genesis object setting up the network for operation.
 
 ### Localnet {#localnet}
 
@@ -72,23 +72,23 @@ A locally created development network running on your local machine.
 
 ### Kiosk {#kiosk}
 
-A decentralized system for commerce applications on Sui. The Sui Kiosk standard consists of Kiosk objects: shared objects owned by individual parties that store assets that can be sold or traded.
+A decentralized system for commerce applications on MySo. The MySo Kiosk standard consists of Kiosk objects: shared objects owned by individual parties that store assets that can be sold or traded.
 
 ### Mainnet {#mainnet}
 
-The Sui production network. 
+The MySo production network. 
 
 ### Multi-writer objects {#multi-writer-objects}
 
-Multi-writer objects are objects that are owned by more than one address. Transactions affecting multi-writer objects require consensus in Sui. This contrasts with transactions affecting only single-writer objects, which require only a confirmation of the owner's address contents.
+Multi-writer objects are objects that are owned by more than one address. Transactions affecting multi-writer objects require consensus in MySo. This contrasts with transactions affecting only single-writer objects, which require only a confirmation of the owner's address contents.
 
 ### Mysticeti {#mysticeti}
 
-The consensus protocol used on Sui. Mysticeti is a high-throughput, Directed Acyclic Graph (DAG)-based Byzantine consensus protocol. 
+The consensus protocol used on MySo. Mysticeti is a high-throughput, Directed Acyclic Graph (DAG)-based Byzantine consensus protocol. 
 
 ### Object {#object}
 
-The basic unit of storage in Sui is an object. In contrast to many other blockchains, where storage is centered around an address and each address contains a key-value store, Sui's storage is centered around objects. Sui objects have one of the following primary states:
+The basic unit of storage in MySo is an object. In contrast to many other blockchains, where storage is centered around an address and each address contains a key-value store,MySo's storage is centered around objects. MySo objects have one of the following primary states:
 
 - **Immutable:** The object cannot be modified.
 - **Mutable:** The object can be modified.
@@ -110,25 +110,25 @@ Allows a validator to authorize another account to perform certain actions on it
 
 ### Single-writer objects {#single-writer-objects}
 
-Single-writer objects are owned by one address. In Sui, transactions affecting only single-writer objects owned by the same address may proceed with only a verification of the sender's address, greatly speeding transaction times. These are _simple transactions_. See Single-Writer Apps for example applications of this simple transaction model.
+Single-writer objects are owned by one address. InMySo, transactions affecting only single-writer objects owned by the same address may proceed with only a verification of the sender's address, greatly speeding transaction times. These are _simple transactions_. See Single-Writer Apps for example applications of this simple transaction model.
 
 ### Smart contract {#smart-contract}
 
-A [smart contract](https://en.wikipedia.org/wiki/Smart_contract) is an agreement based upon the protocol for conducting transactions in a blockchain. In Sui, smart contracts are written in the [Move](https://github.com/MystenLabs/awesome-move) programming language.
+A [smart contract](https://en.wikipedia.org/wiki/Smart_contract) is an agreement based upon the protocol for conducting transactions in a blockchain. InMySo, smart contracts are written in the [Move](https://github.com/MystenLabs/awesome-move) programming language.
 
-### Sui {#sui}
+### MySo {#myso}
 
-Sui refers to the Sui blockchain, and the [Sui open source project](https://github.com/MystenLabs/sui/) as a whole.
+MySo refers to the MySo blockchain, and the [MySo open source project](https://github.com/the-social-proof-foundation/myso-core/) as a whole.
 
-### SUI {#sui-1}
+### MYSO {#myso-1}
 
-SUI is the native token to the Sui network.
+MYSO is the native token to the MySo network.
 
-#### Sui Keystore {#sui-keystore}
+#### MySo Keystore {#myso-keystore}
 
-A secure storage system for managing your Sui cryptographic key pairs.
+A secure storage system for managing your MySo cryptographic key pairs.
 
-#### Sui Keytool {#sui-keytool}
+#### MySo Keytool {#myso-keytool}
 
 A CLI tool that provides commands for managing and generating addresses, and interacting with private keys, signatures, or zkLogin.
 
@@ -136,7 +136,7 @@ A CLI tool that provides commands for managing and generating addresses, and int
 
 A Mysten Labs product that connects wallets across chains to support use cases such as cross chain wallet verification, asset ownership verification, and asset distributions across chains.
 
-#### Sui Object Display {#sui-object-display}
+#### MySo Object Display {#myso-object-display}
 
 A template engine that enables on-chain management of off-chain representation (display) for a type. 
 
@@ -150,21 +150,21 @@ A development network. Data deployed to Testnet persists through the regular upd
 
 ### Total order {#total-order}
 
-[Total order](https://en.wikipedia.org/wiki/Total_order) refers to the ordered presentation of the history of all transactions processed by a traditional blockchain up to a given time. This is maintained by many blockchain systems, as the only way to process transactions. In contrast, Sui uses a causal (partial) order wherever possible and safe.
+[Total order](https://en.wikipedia.org/wiki/Total_order) refers to the ordered presentation of the history of all transactions processed by a traditional blockchain up to a given time. This is maintained by many blockchain systems, as the only way to process transactions. In contrast, MySo uses a causal (partial) order wherever possible and safe.
 
 ### Transaction {#transaction}
 
-A transaction in Sui is a change to the blockchain. This may be a simple transaction affecting only single-writer, single-address objects, such as minting an NFT or transferring an NFT or another token. These transactions may bypass the consensus protocol in Sui.
+A transaction in MySo is a change to the blockchain. This may be a simple transaction affecting only single-writer, single-address objects, such as minting an NFT or transferring an NFT or another token. These transactions may bypass the consensus protocol in MySo.
 
 More complex transactions affecting objects that are shared or owned by multiple addresses, such as asset management and other DeFi use cases, do go through consensus.
 
 ### Transfer {#transfer}
 
-A transfer is switching the owner address of a token to a new one via command in Sui. This is accomplished via the Sui CLI client command line interface. It is one of the more common of many commands available in the CLI client.
+A transfer is switching the owner address of a token to a new one via command in MySo. This is accomplished via the MySo CLI client command line interface. It is one of the more common of many commands available in the CLI client.
 
 ### Validator {#validator}
 
-A validator in Sui plays a passive role analogous to the more active role of validators and miners in other blockchains. In Sui, validators do not continuously participate in the consensus protocol but are called into action only when receiving a transaction or certificate.
+A validator in MySo plays a passive role analogous to the more active role of validators and miners in other blockchains. InMySo, validators do not continuously participate in the consensus protocol but are called into action only when receiving a transaction or certificate.
 
 #### Wallet Standard {#wallet-standard}
 

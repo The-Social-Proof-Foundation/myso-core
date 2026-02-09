@@ -130,11 +130,11 @@ impl RpcService {
             env!("CARGO_PKG_VERSION"),
             "MySo JSON-RPC",
             "A JSON-RPC API for interacting with the MySo blockchain.",
-            "Mysten Labs",
-            "https://mystenlabs.com",
-            "build@mystenlabs.com",
+            "The Social Proof Foundation",
+            "https://socialproof.foundation",
+            "branding@socialproof.foundation",
             "Apache-2.0",
-            "https://raw.githubusercontent.com/MystenLabs/myso/main/LICENSE",
+            "https://raw.githubusercontent.comthe-social-proof-foundation/myso-core/main/LICENSE",
         );
 
         Ok(Self {

@@ -10,22 +10,22 @@ Follow the steps in this Readme to install and configure a MySo Full node for te
 
  * [Install Docker](https://docs.docker.com/get-docker/) 
  * [Install Docker Compose](https://docs.docker.com/compose/install/)
- * Download the Full node [docker-compose.yaml](https://github.com/MystenLabs/myso/blob/main/docker/fullnode/docker-compose.yaml) file.
+ * Download the Full node [docker-compose.yaml](https://github.com/the-social-proof-foundation/myso-core/blob/main/docker/fullnode/docker-compose.yaml) file.
 
 
 ## Configure MySo Full node
 
-Download the latest version of the MySo Full node configuration file [fullnode-template.yaml](https://github.com/MystenLabs/myso/raw/main/crates/myso-config/data/fullnode-template.yaml). Use the following command to download the file:
+Download the latest version of the MySo Full node configuration file [fullnode-template.yaml](https://github.com/the-social-proof-foundation/myso-core/raw/main/crates/myso-config/data/fullnode-template.yaml). Use the following command to download the file:
 
 ```shell
-wget https://github.com/MystenLabs/myso/raw/main/crates/myso-config/data/fullnode-template.yaml
+wget https://github.com/the-social-proof-foundation/myso-core/raw/main/crates/myso-config/data/fullnode-template.yaml
 ```
 
 ### Download the MySo genesis blob
 
-The genesis blob contains the information that defined the MySo network configuration. Before you can start the Full node, you need to download the most recent file to ensure compatibility with the version of MySo you use. Use the following command to download the [genesis.blob](https://github.com/MystenLabs/myso-genesis/raw/main/devnet/genesis.blob) from the `devnet` branch of the MySo repository:
+The genesis blob contains the information that defined the MySo network configuration. Before you can start the Full node, you need to download the most recent file to ensure compatibility with the version of MySo you use. Use the following command to download the [genesis.blob](https://github.com/the-social-proof-foundation/myso-core-genesis/raw/main/devnet/genesis.blob) from the `devnet` branch of the MySo repository:
 
-```wget https://github.com/MystenLabs/myso-genesis/raw/main/devnet/genesis.blob```
+```wget https://github.com/the-social-proof-foundation/myso-core-genesis/raw/main/devnet/genesis.blob```
 
 ## Start your MySo Full node
 

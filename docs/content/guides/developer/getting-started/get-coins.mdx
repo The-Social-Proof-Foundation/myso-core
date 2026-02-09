@@ -1,50 +1,50 @@
 ---
-title: Get SUI from Faucet
-description: Use the Sui faucet to obtain free SUI tokens for use on the Sui Devnet and Testnet networks. 
-keywords: [ sui faucet, faucet, token faucet, sui devnet, sui testnet, devnet, testnet, get free tokens, free tokens ]
+title: Get MYSO from Faucet
+description: Use the MySo faucet to obtain free MYSO tokens for use on the MySo Devnet and Testnet networks. 
+keywords: [ myso faucet, faucet, token faucet, myso devnet, myso testnet, devnet, testnet, get free tokens, free tokens ]
 pagination_prev: null
 pagination_next: null
 ---
 
-To perform transactions on a Sui network, you need SUI tokens to pay for gas and storage. 
+To perform transactions on a MySo network, you need MYSO tokens to pay for gas and storage. 
 
-For applications on Mainnet, you must buy real SUI on exchanges like Coinbase, OKX, or Robinhood. Its value is determined by market factors such as supply and demand, network utility, and perceived value.
+For applications on Mainnet, you must buy real MYSO on exchanges like Coinbase, OKX, or Robinhood. Its value is determined by market factors such as supply and demand, network utility, and perceived value.
 
-Because Mainnet tokens cost real money, development can be expensive. That's why Sui provides Devnet and Testnet networks, which mirror Mainnet features and enable you to build and test safely for an affordable cost.
+Because Mainnet tokens cost real money, development can be expensive. That's why MySo provides Devnet and Testnet networks, which mirror Mainnet features and enable you to build and test safely for an affordable cost.
 
 :::important
 
-SUI tokens on Devnet and Testnet are free and hold no monetary value.
+MYSO tokens on Devnet and Testnet are free and hold no monetary value.
 
 :::
 
-You can get free SUI tokens from the Sui faucet, which lets you deploy and interact with smart contracts and objects on Devnet, Testnet, or a local network. There is no faucet for Mainnet.
+You can get free MYSO tokens from the MySo faucet, which lets you deploy and interact with smart contracts and objects on Devnet, Testnet, or a local network. There is no faucet for Mainnet.
 
 <Tabs className="tabsHeadingCentered--small">
 <TabItem value="prereq" label="Prerequisites">
 
-- [x] [Install the latest version of Sui](/guides/developer/getting-started/sui-install).
+- [x] [Install the latest version ofMySo](/guides/developer/getting-started/myso-install).
 
-- [x] Set up your Sui account and CLI environment. 
+- [x] Set up your MySo account and CLI environment. 
 
 <details className="nudge-details">
 
 <summary>
 
-Create Sui account and setup CLI environment.
+Create MySo account and setup CLI environment.
 
 </summary>
 
 ```sh
-$ sui client
+$ myso client
 ```
 
-If this is the first time running the `sui client` CLI tool, it asks you to provide a Sui full node server URL (or press enter for the default Testnet), select an encryption scheme to generate an address, and stores the configuration in a `client.yaml` file. For more information, refer to the [Sui client CLI tutorial](/references/cli/client.mdx).
+If this is the first time running the `myso client` CLI tool, it asks you to provide a MySo full node server URL (or press enter for the default Testnet), select an encryption scheme to generate an address, and stores the configuration in a `client.yaml` file. For more information, refer to the [MySo client CLI tutorial](/references/cli/client.mdx).
 
-If this is not your first time running `sui client`, then you already have a `client.yaml` file in your local environment. If you'd like to create a new address for this tutorial, use the command:
+If this is not your first time running `myso client`, then you already have a `client.yaml` file in your local environment. If you'd like to create a new address for this tutorial, use the command:
 
 ```sh 
-$ sui client new-address ed25519
+$ myso client new-address ed25519
 ```
 
 </details>
@@ -52,21 +52,21 @@ $ sui client new-address ed25519
 </TabItem>
 </Tabs>
 
-## Request SUI tokens from faucet {#online-faucet}
+## Request MYSO tokens from faucet {#online-faucet}
 
-Visit the online faucet to request SUI tokens: https://faucet.sui.io/
+Visit the online faucet to request MYSO tokens: https://faucet.mysocial.network/
 
 Then, follow these steps: 
 
-1. Connect your wallet or paste your wallet address in the address field. Get your wallet address in the CLI with the command `sui client active-address`. 
-1. Use the network dropdown to select the correct network: Testnet, Devnet, or Localnet. It is recommended to use the Testnet for most use cases before deploying to Mainnet for production. [Learn more](/guides/developer/getting-started/configure-sui-client.mdx) about the available networks and their differences. 
-1. Click the **Request SUI** button. 
+1. Connect your wallet or paste your wallet address in the address field. Get your wallet address in the CLI with the command `myso client active-address`. 
+1. Use the network dropdown to select the correct network: Testnet, Devnet, or Localnet. It is recommended to use the Testnet for most use cases before deploying to Mainnet for production. [Learn more](/guides/developer/getting-started/configure-myso-client.mdx) about the available networks and their differences. 
+1. Click the **Request MYSO** button. 
 
-To request more SUI, refresh your browser and click the **Request SUI** button again. The requests are rate limited, however, so too many requests results in a waiting period before you are able to request more tokens.
+To request more MYSO, refresh your browser and click the **Request MYSO** button again. The requests are rate limited, however, so too many requests results in a waiting period before you are able to request more tokens.
 
 ### Community faucets 
 
-You can also use the following community-provided faucets to obtain SUI tokens:
+You can also use the following community-provided faucets to obtain MYSO tokens:
 
 - http://faucet.n1stake.com/
 
@@ -76,15 +76,15 @@ These faucets have their own separate limits, such as one request per day or one
 
 ### Verify token balance 
 
-To check your balance of SUI tokens and confirm you received some from the faucet, use the command:
+To check your balance of MYSO tokens and confirm you received some from the faucet, use the command:
 
 ```
-$ sui client balance 
+$ myso client balance 
 ```
 
-Alternatively, use a Sui Explorer such as [SuiVision](https://suivision.xyz/) or [SuiScan](https://suiscan.xyz/mainnet/accounts) to check the SUI token balance of an address.
+Alternatively, use a MySo Explorer such as [SuiVision](https://suivision.xyz/) or [SuiScan](https://suiscan.xyz/mainnet/accounts) to check the MYSO token balance of an address.
 
-You should have a balance of SUI tokens:
+You should have a balance of MYSO tokens:
 
 ```
 ╭────────────────────────────────────────────╮
@@ -93,30 +93,30 @@ You should have a balance of SUI tokens:
 │ ╭────────────────────────────────────────╮ │
 │ │ coin       balance (raw)  balance      │ │
 │ ├────────────────────────────────────────┤ │
-│ │ Sui        56804696124     0.50 SUI    │ │
+│ │ MySo        56804696124     0.50 MYSO    │ │
 │ ╰────────────────────────────────────────╯ │
 ╰────────────────────────────────────────────╯
 ```
 
-If you do not have a balance, repeat the [request SUI tokens from faucet](#online-faucet) steps, or use an [alternative faucet method](#alternative-faucets).
+If you do not have a balance, repeat the [request MYSO tokens from faucet](#online-faucet) steps, or use an [alternative faucet method](#alternative-faucets).
 
-### Return unused Testnet SUI
+### Return unused Testnet MYSO
 
-The faucet drains from a finite pool of SUI. If the pool empties, it disrupts faucet service for the rest of the community. To help ensure this doesn't happen, you can use the online faucet to return your unused SUI to the Testnet pool. You cannot return SUI to the Devnet or Localnet pools.
+The faucet drains from a finite pool of MYSO. If the pool empties, it disrupts faucet service for the rest of the community. To help ensure this doesn't happen, you can use the online faucet to return your unused MYSO to the Testnet pool. You cannot return MYSO to the Devnet or Localnet pools.
 
-There are two ways to return unused Testnet SUI tokens:
+There are two ways to return unused Testnet MYSO tokens:
 
-- Connect your wallet to the online faucet, and click the **Return tokens to faucet** button. Approve the transaction using your wallet and your SUI tokens are returned to the pool.
+- Connect your wallet to the online faucet, and click the **Return tokens to faucet** button. Approve the transaction using your wallet and your MYSO tokens are returned to the pool.
 
 - If you prefer not to connect your wallet, send the tokens to the address `0x7a9d19d4c210663926eb549da59a54e25777fef63161bfccda08277b58b4212e` via a [separate transaction](/guides/developer/transactions/sign-and-send-txn.mdx).
 
-## Alternative methods for getting SUI tokens {#alternative-faucets}
+## Alternative methods for getting MYSO tokens {#alternative-faucets}
 
-If you need an alternative method to get SUI tokens for deployment on Testnet or Devnet, you have several options.
+If you need an alternative method to get MYSO tokens for deployment on Testnet or Devnet, you have several options.
 
 :::tip
 
-Every method to obtain SUI tokens for Testnet and Devnet is rate limited. If you need a large amount of SUI tokens, use a local network.
+Every method to obtain MYSO tokens for Testnet and Devnet is rate limited. If you need a large amount of MYSO tokens, use a local network.
 
 :::
 
@@ -124,12 +124,12 @@ Every method to obtain SUI tokens for Testnet and Devnet is rate limited. If you
 
 <TabItem value="discord" label="Discord">
 
-1. Join [Discord](https://discord.gg/sui).
+1. Join [Discord](https://discord.gg/myso).
    
-   If you try to join the Sui Discord channel using a newly created Discord account, you might need to wait a few days for validation.
-1. Request SUI tokens in the Sui [#devnet-faucet](https://discord.com/channels/916379725201563759/971488439931392130) or [#testnet-faucet](https://discord.com/channels/916379725201563759/1037811694564560966) Discord channels. Send the following message to the channel, replacing `<YOUR SUI ADDRESS>` with your client address:
+   If you try to join the MySo Discord channel using a newly created Discord account, you might need to wait a few days for validation.
+1. Request MYSO tokens in the MySo [#devnet-faucet](https://discord.com/channels/916379725201563759/971488439931392130) or [#testnet-faucet](https://discord.com/channels/916379725201563759/1037811694564560966) Discord channels. Send the following message to the channel, replacing `<YOUR MYSO ADDRESS>` with your client address:
    ```sh
-   !faucet <YOUR SUI ADDRESS>
+   !faucet <YOUR MYSO ADDRESS>
    ```
 
 </TabItem>
@@ -138,9 +138,9 @@ Every method to obtain SUI tokens for Testnet and Devnet is rate limited. If you
 Use the following cURL commands to set console variables and request tokens directly from the faucet server. Set `NETWORK` to either `testnet` or `devnet`.
 
 ```sh
-$ ADDRESS=$(sui client active-address)
+$ ADDRESS=$(myso client active-address)
 $ NETWORK=testnet
-$ curl --location --request POST "https://faucet.${NETWORK}.sui.io/v2/gas" \
+$ curl --location --request POST "https://faucet.${NETWORK}.mysocial.network/v2/gas" \
 --header "Content-Type: application/json" \
 --data-raw "{
     \"FixedAmountRequest\": {
@@ -149,32 +149,32 @@ $ curl --location --request POST "https://faucet.${NETWORK}.sui.io/v2/gas" \
 }"
 ```
 
-If you're working with a local network, replace `"https://faucet.${NETWORK}.sui.io/v2/gas"` with the appropriate value based on which package runs your network:
+If you're working with a local network, replace `"https://faucet.${NETWORK}.mysocial.network/v2/gas"` with the appropriate value based on which package runs your network:
 
-- `sui-faucet`: `http://127.0.0.1:5003/gas`
-- `sui`: `http://127.0.0.1:9123/gas`
+- `myso-faucet`: `http://127.0.0.1:5003/gas`
+- `myso`: `http://127.0.0.1:9123/gas`
 
 </TabItem>
 <TabItem value="typescript" label="TypeScript SDK">
 
-You can access the faucet using the [Sui TypeScript SDK](https://sdk.mystenlabs.com/typescript).
+You can access the faucet using the [MySo TypeScript SDK](https://sdk.mystenlabs.com/typescript).
 
 ```typescript
-import { getFaucetHost, requestSuiFromFaucetV2 } from '@mysten/sui/faucet';
+import { getFaucetHost, requestSuiFromFaucetV2 } from '@socialproof/myso/faucet';
 
 // get tokens from the Devnet faucet server
 await requestSuiFromFaucetV2({
 	// connect to Devnet
 	host: getFaucetHost('devnet'),
-	recipient: '<YOUR SUI ADDRESS>',
+	recipient: '<YOUR MYSO ADDRESS>',
 });
 ```
 </TabItem>
 </Tabs>
 
-## SUI tokens on a local network
+## MYSO tokens on a local network
 
-If you are running a local Sui network, you can get SUI tokens from your local faucet. See the [Connect to a Local Network](/guides/developer/getting-started/local-network.mdx#use-the-local-faucet) topic for details.
+If you are running a local MySo network, you can get MYSO tokens from your local faucet. See the [Connect to a Local Network](/guides/developer/getting-started/local-network.mdx#use-the-local-faucet) topic for details.
 
 <div className="next-steps-module">
   <div className="next-steps-header">

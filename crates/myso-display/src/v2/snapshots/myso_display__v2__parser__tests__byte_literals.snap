@@ -1,5 +1,5 @@
 ---
-source: crates/sui-display/src/v2/parser.rs
+source: crates/myso-display/src/v2/parser.rs
 expression: "strands(\"{b'foo' | b'bar\\nbaz' | b'qux\\\\'quux' | b'quy\\\\\\\\quz' | b'xyz\\\\zy' }\")"
 ---
 { x'666f6f'

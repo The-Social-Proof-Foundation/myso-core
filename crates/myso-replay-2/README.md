@@ -30,7 +30,7 @@ the default in time but it's off for convenience.<br>
 
 You can install the replay tool by executing the following command which will result in depositing the tool's binary into the `~/.cargo/bin` directory:
 ```bash
-cargo install --git https://github.com/MystenLabs/myso myso-replay-2
+cargo install --git https://github.com/the-social-proof-foundation/myso-core myso-replay-2
 ```
 
 If you want to enable the ability to trace transaction execution during replay, build the tool with this additional flag: `--features tracing`
@@ -43,7 +43,7 @@ The actual trace debugging of a given transaction is supported by the Move Trace
 
 
 ### Code Organization
-A replay tool is an invocation to [`execute_transaction_to_effects`](http://github.com/MystenLabs/myso/blob/main/myso-execution/src/executor.rs#L26-L53) which contains info related to the transaction and info a node obtained while being live (running). For instance, a validator does not have a store for epochs, it lives/operates in an epoch. <br>
+A replay tool is an invocation to [`execute_transaction_to_effects`](http://github.comthe-social-proof-foundation/myso-core/blob/main/myso-execution/src/executor.rs#L26-L53) which contains info related to the transaction and info a node obtained while being live (running). For instance, a validator does not have a store for epochs, it lives/operates in an epoch. <br>
 When replaying, however, we run into a past epoch and we need information about that epoch as in rpg, start timestamp and more.<br><p>
 `replay_interface.rs` defines the traits the replay tool uses. Those are the functions needed
 by a replay tool in order to run a transaction.

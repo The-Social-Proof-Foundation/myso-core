@@ -307,7 +307,7 @@ export default function ImportContent({
       "",
     )
     .replace(
-      /\[dependencies\]\nsui\s?=\s?{\s?local\s?=.*sui-framework.*\n/i,
+      /\[dependencies\]\nsui\s?=\s?{\s?local\s?=.*myso-framework.*\n/i,
       "[dependencies]",
     );
 

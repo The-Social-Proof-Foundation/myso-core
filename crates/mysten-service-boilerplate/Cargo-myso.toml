@@ -1,6 +1,6 @@
 [package]
 name = "service-boilerplate"
-authors = ["Mysten Labs <build@mystenlabs.com>"]
+authors = ["Brandon Shaw <brandon@mysocial.network>"]
 version = "0.0.1"
 edition = "2021"
 publish = false

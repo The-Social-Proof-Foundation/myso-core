@@ -1,5 +1,5 @@
 ---
-source: crates/sui-display/src/v2/parser.rs
+source: crates/myso-display/src/v2/parser.rs
 expression: "strands(r#\"{___u64}\"#)"
 ---
 { ___u64

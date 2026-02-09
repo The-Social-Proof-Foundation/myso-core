@@ -66,7 +66,7 @@ of the type at once.
 <b>use</b> <a href="../myso/funds_accumulator.md#myso_funds_accumulator">myso::funds_accumulator</a>;
 <b>use</b> <a href="../myso/hash.md#myso_hash">myso::hash</a>;
 <b>use</b> <a href="../myso/hex.md#myso_hex">myso::hex</a>;
-<b>use</b> <a href="../myso/sui.md#myso_myso">myso::myso</a>;
+<b>use</b> <a href="../myso/myso.md#myso_myso">myso::myso</a>;
 <b>use</b> <a href="../myso/object.md#myso_object">myso::object</a>;
 <b>use</b> <a href="../myso/package.md#myso_package">myso::package</a>;
 <b>use</b> <a href="../myso/party.md#myso_party">myso::party</a>;
@@ -170,7 +170,7 @@ policies can be used to confirm the <code><a href="../myso/transfer_policy.md#my
 <dd>
 </dd>
 <dt>
-<code><a href="../myso/balance.md#myso_balance">balance</a>: <a href="../myso/balance.md#myso_balance_Balance">myso::balance::Balance</a>&lt;<a href="../myso/sui.md#myso_myso_MYSO">myso::myso::MYSO</a>&gt;</code>
+<code><a href="../myso/balance.md#myso_balance">balance</a>: <a href="../myso/balance.md#myso_balance_Balance">myso::balance::Balance</a>&lt;<a href="../myso/myso.md#myso_myso_MYSO">myso::myso::MYSO</a>&gt;</code>
 </dt>
 <dd>
  The Balance of the <code><a href="../myso/transfer_policy.md#myso_transfer_policy_TransferPolicy">TransferPolicy</a></code> which collects <code>MYSO</code>.
@@ -467,7 +467,7 @@ Withdraw some amount of profits from the <code><a href="../myso/transfer_policy.
 is not specified, all profits are withdrawn.
 
 
-<pre><code><b>public</b> <b>fun</b> <a href="../myso/transfer_policy.md#myso_transfer_policy_withdraw">withdraw</a>&lt;T&gt;(self: &<b>mut</b> <a href="../myso/transfer_policy.md#myso_transfer_policy_TransferPolicy">myso::transfer_policy::TransferPolicy</a>&lt;T&gt;, cap: &<a href="../myso/transfer_policy.md#myso_transfer_policy_TransferPolicyCap">myso::transfer_policy::TransferPolicyCap</a>&lt;T&gt;, amount: <a href="../std/option.md#std_option_Option">std::option::Option</a>&lt;u64&gt;, ctx: &<b>mut</b> <a href="../myso/tx_context.md#myso_tx_context_TxContext">myso::tx_context::TxContext</a>): <a href="../myso/coin.md#myso_coin_Coin">myso::coin::Coin</a>&lt;<a href="../myso/sui.md#myso_myso_MYSO">myso::myso::MYSO</a>&gt;
+<pre><code><b>public</b> <b>fun</b> <a href="../myso/transfer_policy.md#myso_transfer_policy_withdraw">withdraw</a>&lt;T&gt;(self: &<b>mut</b> <a href="../myso/transfer_policy.md#myso_transfer_policy_TransferPolicy">myso::transfer_policy::TransferPolicy</a>&lt;T&gt;, cap: &<a href="../myso/transfer_policy.md#myso_transfer_policy_TransferPolicyCap">myso::transfer_policy::TransferPolicyCap</a>&lt;T&gt;, amount: <a href="../std/option.md#std_option_Option">std::option::Option</a>&lt;u64&gt;, ctx: &<b>mut</b> <a href="../myso/tx_context.md#myso_tx_context_TxContext">myso::tx_context::TxContext</a>): <a href="../myso/coin.md#myso_coin_Coin">myso::coin::Coin</a>&lt;<a href="../myso/myso.md#myso_myso_MYSO">myso::myso::MYSO</a>&gt;
 </code></pre>
 
 
@@ -506,7 +506,7 @@ Destroy a TransferPolicyCap.
 Can be performed by any party as long as they own it.
 
 
-<pre><code><b>public</b> <b>fun</b> <a href="../myso/transfer_policy.md#myso_transfer_policy_destroy_and_withdraw">destroy_and_withdraw</a>&lt;T&gt;(self: <a href="../myso/transfer_policy.md#myso_transfer_policy_TransferPolicy">myso::transfer_policy::TransferPolicy</a>&lt;T&gt;, cap: <a href="../myso/transfer_policy.md#myso_transfer_policy_TransferPolicyCap">myso::transfer_policy::TransferPolicyCap</a>&lt;T&gt;, ctx: &<b>mut</b> <a href="../myso/tx_context.md#myso_tx_context_TxContext">myso::tx_context::TxContext</a>): <a href="../myso/coin.md#myso_coin_Coin">myso::coin::Coin</a>&lt;<a href="../myso/sui.md#myso_myso_MYSO">myso::myso::MYSO</a>&gt;
+<pre><code><b>public</b> <b>fun</b> <a href="../myso/transfer_policy.md#myso_transfer_policy_destroy_and_withdraw">destroy_and_withdraw</a>&lt;T&gt;(self: <a href="../myso/transfer_policy.md#myso_transfer_policy_TransferPolicy">myso::transfer_policy::TransferPolicy</a>&lt;T&gt;, cap: <a href="../myso/transfer_policy.md#myso_transfer_policy_TransferPolicyCap">myso::transfer_policy::TransferPolicyCap</a>&lt;T&gt;, ctx: &<b>mut</b> <a href="../myso/tx_context.md#myso_tx_context_TxContext">myso::tx_context::TxContext</a>): <a href="../myso/coin.md#myso_coin_Coin">myso::coin::Coin</a>&lt;<a href="../myso/myso.md#myso_myso_MYSO">myso::myso::MYSO</a>&gt;
 </code></pre>
 
 
@@ -652,7 +652,7 @@ Get the custom Config for the Rule (can be only one per "Rule" type).
 Add some <code>MYSO</code> to the balance of a <code><a href="../myso/transfer_policy.md#myso_transfer_policy_TransferPolicy">TransferPolicy</a></code>.
 
 
-<pre><code><b>public</b> <b>fun</b> <a href="../myso/transfer_policy.md#myso_transfer_policy_add_to_balance">add_to_balance</a>&lt;T, Rule: drop&gt;(_: Rule, policy: &<b>mut</b> <a href="../myso/transfer_policy.md#myso_transfer_policy_TransferPolicy">myso::transfer_policy::TransferPolicy</a>&lt;T&gt;, <a href="../myso/coin.md#myso_coin">coin</a>: <a href="../myso/coin.md#myso_coin_Coin">myso::coin::Coin</a>&lt;<a href="../myso/sui.md#myso_myso_MYSO">myso::myso::MYSO</a>&gt;)
+<pre><code><b>public</b> <b>fun</b> <a href="../myso/transfer_policy.md#myso_transfer_policy_add_to_balance">add_to_balance</a>&lt;T, Rule: drop&gt;(_: Rule, policy: &<b>mut</b> <a href="../myso/transfer_policy.md#myso_transfer_policy_TransferPolicy">myso::transfer_policy::TransferPolicy</a>&lt;T&gt;, <a href="../myso/coin.md#myso_coin">coin</a>: <a href="../myso/coin.md#myso_coin_Coin">myso::coin::Coin</a>&lt;<a href="../myso/myso.md#myso_myso_MYSO">myso::myso::MYSO</a>&gt;)
 </code></pre>
 
 

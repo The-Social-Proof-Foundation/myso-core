@@ -9,7 +9,7 @@ keywords: [ self-custodial wallets, zkLogin wallets, Playtron wallets, custodial
 You have several options for what wallet you develop for on the SuiPlay0X1. There are some concepts to keep in mind when deciding which wallets to target.
 
 - [Self-custodial wallets](#self-custodial-wallets): Users control their private keys and own their assets directly.
-- [zkLogin wallets](#zkLogin-wallets): Traditional zkLogin wallets (or [Enoki](https://enoki.mystenlabs.com/) wallets) are a unique wallet type to Sui. zkLogin wallets are tied to a Web2 auth provider (such as Google OAuth). The user authenticates with their traditional auth provider, which associates a wallet to their social account by utilizing zero knowledge proofs. This grants them access to their zkLogin wallet through an ephemeral key pair that does not correlate auth provider user metadata with their on-chain attributed address. If the ephemeral key pair resides on the client side, the zkLogin wallet is self-custodial.
+- [zkLogin wallets](#zkLogin-wallets): Traditional zkLogin wallets (or [Enoki](https://enoki.mystenlabs.com/) wallets) are a unique wallet type to MySo. zkLogin wallets are tied to a Web2 auth provider (such as Google OAuth). The user authenticates with their traditional auth provider, which associates a wallet to their social account by utilizing zero knowledge proofs. This grants them access to their zkLogin wallet through an ephemeral key pair that does not correlate auth provider user metadata with their on-chain attributed address. If the ephemeral key pair resides on the client side, the zkLogin wallet is self-custodial.
 - [Playtron zkLogin wallet](#playtron-zkLogin-wallet): The Playtron zkLogin wallet is a special zkLogin wallet tied to the user's Playtron credentials. Every user who has a SuiPlay0X1 device has a Playtron login, and therefore possess an associated Playtron zkLogin wallet.
 - [Custodial wallets](#custodial-wallets): Developers manage wallets on behalf of users (similar to traditional gaming databases) except on chain. Users don't need to create or bring a wallet, or to even understand what a wallet is. This smooths out the initial experience, but you still need to confront this issue downstream for users to actually benefit from the Web3 aspects of your game.
 
@@ -17,13 +17,13 @@ You have several options for what wallet you develop for on the SuiPlay0X1. Ther
 
 With self-custodial wallets, users control their private keys and own their assets directly. Users that already own a wallet are typically familiar with wallet functionality and seed phrase security and storage. For users new to Web3, you must guide them through the process of obtaining a wallet and educating them on proper seed phrase management.
 
-With self-custodial wallets, the usual payment flow has users pay their own gas fees, which reduces your costs but requires users to fund their wallets to pay for transactions. You can change this flow through the use of [sponsored transactions](https://docs.sui.io/guides/developer/transactions/sponsor-txn) where you pay gas fees on behalf of your users. This can reduce friction for users (especially new-to-Web3 users) because you can make the wallet onboarding experience considerably less involved for users. You must consider the long-term financial impact for your project, however, and make sure the sponsored transactions you offer are sustainable for your goals. 
+With self-custodial wallets, the usual payment flow has users pay their own gas fees, which reduces your costs but requires users to fund their wallets to pay for transactions. You can change this flow through the use of [sponsored transactions](https://docs.mysocial.network/guides/developer/transactions/sponsor-txn) where you pay gas fees on behalf of your users. This can reduce friction for users (especially new-to-Web3 users) because you can make the wallet onboarding experience considerably less involved for users. You must consider the long-term financial impact for your project, however, and make sure the sponsored transactions you offer are sustainable for your goals. 
  
 Self-custodial wallets have the most portability in terms of being able to interact with other applications on chain.
 
 ### zkLogin wallets {#zkLogin-wallets}
 
-zkLogin wallets are a unique wallet type to Sui. These wallets provide familiar login methods from Web2 authorization providers (such as Google, Facebook, or Twitch OAuth). The user authenticates with their chosen provider, then zkLogin attaches on-chain wallet credentials to that account.
+zkLogin wallets are a unique wallet type to MySo. These wallets provide familiar login methods from Web2 authorization providers (such as Google, Facebook, or Twitch OAuth). The user authenticates with their chosen provider, then zkLogin attaches on-chain wallet credentials to that account.
 
 The zkLogin wallet uses an ephemeral key pair that does not correlate user metadata from authorization providers to on-chain wallets. Ephemeral key pairs are kept on the client side, making zkLogin wallets self-custodial. This eliminates the need for your users to write down seed phrases or otherwise securely store private keys.
 
@@ -47,7 +47,7 @@ Custodial wallets can either be aggregated or individual. In the aggregated case
 
 :::info
 
-Aggregated custodial wallets can obfuscate some on-chain metrics, which can be an issue if you want external verification of your game's on-chain activity through third parties or Sui network explorers. For example, if you launch a token for your game, potential investors can't assess how many active players your app has if your game uses an aggregated wallet.
+Aggregated custodial wallets can obfuscate some on-chain metrics, which can be an issue if you want external verification of your game's on-chain activity through third parties or MySo network explorers. For example, if you launch a token for your game, potential investors can't assess how many active players your app has if your game uses an aggregated wallet.
 
 :::
 
@@ -79,7 +79,7 @@ There is no guarantee that players have access to their other self-custody walle
 
 ### Off-device 
 
-Off-device games that run on different platforms (like Windows PC) must use the Sui [dApp Kit](https://sdk.mystenlabs.com/dapp-kit) to enable cross-platform play with the same wallet.
+Off-device games that run on different platforms (like Windows PC) must use the MySo [dApp Kit](https://sdk.mystenlabs.com/dapp-kit) to enable cross-platform play with the same wallet.
 
 ## Wallet strategies
 
@@ -129,7 +129,7 @@ This option is effectively a special case of the recommended approach. If your g
 **Tradeoffs**
 
 - Provides on-chain wallet activity per user, while still maintaining simple UX and obfuscating wallet mechanics from the user.
-- Unlike custodial wallets, users still need to pay for gas. You can always [sponsor transactions](https://docs.sui.io/guides/developer/transactions/sponsor-txn) instead to assume this responsibility.
+- Unlike custodial wallets, users still need to pay for gas. You can always [sponsor transactions](https://docs.mysocial.network/guides/developer/transactions/sponsor-txn) instead to assume this responsibility.
 - In essence, the wallet is self-custodied by users in this scenario as you do not have access to the private keys. Users do not need to record or protect seed phrases, however. 
 - Ultimately, you can’t avoid users having a wallet if you want them to experience Web3 benefits. The Playtron ecosystem provides this as the game OS shows user assets and the companion app always serves game-centric wallet needs. If you use a custodial wallet, you must consider how to show users their assets, teach them how to transfer assets, and other needs that Playtron provides out of the box.
 
@@ -137,7 +137,7 @@ This option is effectively a special case of the recommended approach. If your g
 
 As a reminder, standard game-specific zkLogin and Enoki wallets are app-specific and non-portable. Users must transfer assets to third-party wallets to use external apps. This provides a simpler implementation, but isolated user experience.
 
-With Enoki Connect, you can upgrade your game-specific zkLogin wallet to make it portable across the Sui ecosystem.
+With Enoki Connect, you can upgrade your game-specific zkLogin wallet to make it portable across the MySo ecosystem.
 
 - Users can connect their game wallet directly to marketplaces and other apps. 
 - External apps must manually add your game's wallet to their supported wallet list, which requires you to reach out or develop a business relationship. apps must individually enable your game-specific wallet to have it appear in the list of connectable wallets on their sites.
@@ -157,7 +157,7 @@ Enoki Connect is not required for SuiPlay integration. In other words, your game
 
 [SuiLink](https://www.suilink.io/) is a Mysten Labs product that connects wallets across chains to support use cases such as cross chain wallet verification, asset ownership verification, and asset distributions across chains. 
 
-The [Playtron companion wallet app](https://wallet.playtron.one/) utilizes this technology to enable linking wallets that could contain soulbound assets in their other Sui mnemonic or zkLogin wallets, or their Solana or Ethereum wallets. This offers an improved user experience as users won’t need to transfer over all of their assets to their Playtron wallet to get the benefits these assets attribute to them.
+The [Playtron companion wallet app](https://wallet.playtron.one/) utilizes this technology to enable linking wallets that could contain soulbound assets in their other MySo mnemonic or zkLogin wallets, or their Solana or Ethereum wallets. This offers an improved user experience as users won’t need to transfer over all of their assets to their Playtron wallet to get the benefits these assets attribute to them.
 
 :::info 
 
@@ -170,7 +170,7 @@ A SuiLink connection is automatically established for SuiPlay0X1 users onboarded
 ## Related links
 
 <RelatedLink href="https://github.com/playtron-os/playtron-sdk" label="Playtron GameOS SDK" desc="The official Playtron OS SDK repository on GitHub." />
-<RelatedLink href="https://sdk.mystenlabs.com/dapp-kit" label="Sui dApp Kit documentation" desc="The Sui dApp Kit is a set of React components, hooks, and utilities to help you build an app for the Sui ecosystem." />
+<RelatedLink href="https://sdk.mystenlabs.com/dapp-kit" label="MySo dApp Kit documentation" desc="The MySo dApp Kit is a set of React components, hooks, and utilities to help you build an app for the MySo ecosystem." />
 <RelatedLink href="https://discord.gg/suiplay" label="SuiPlay0X1 Discord" desc="Follow announcements and connect with the community on the Discord channel for SuiPlay0X1." />
 <RelatedLink href="https://wallet.playtron.one" label="Companion web application" desc="Support linking the Playtron wallet to other self-custody wallets using SuiLink, enabling read-access of associated wallets while on the device." />
 <RelatedLink href="https://docs.enoki.mystenlabs.com/enoki-connect" label="Enoki Connect" desc="With Enoki Connect, users can use their app-specific accounts across different apps, enabling a more unified and consistent experience." />

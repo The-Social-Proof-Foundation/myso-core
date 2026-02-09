@@ -1,0 +1,56 @@
+---
+source: crates/myso/tests/ptb_files_tests.rs
+assertion_line: 104
+expression: "&String::from_iter(normalized(results.join(\"\\n\").chars()))"
+---
+ === PREVIEW === 
+╭───────────────────────────────────────────────────────────────╮
+│ PTB Preview                                                   │
+├─────────────┬─────────────────────────────────────────────────┤
+│ command     │ values                                          │
+├─────────────┼─────────────────────────────────────────────────┤
+│ split-coins │ gas [0, 1, 2, 3]                                │
+│ assign      │ coins                                           │
+│ move-call   │ myso::coin::destroy_zero<myso::myso::MYSO> coins.0  │
+│ split-coins │ coins.1 [0, 0]                                  │
+│ assign      │ zcoins                                          │
+│ move-call   │ myso::coin::destroy_zero<myso::myso::MYSO> zcoins.0 │
+│ move-call   │ myso::coin::destroy_zero<myso::myso::MYSO> zcoins.1 │
+│ merge-coins │ gas [coins.1, coins.2, coins.3]                 │
+╰─────────────┴─────────────────────────────────────────────────╯
+ === BUILDING PTB ERRORS === 
+  × Error when processing PTB
+   ╭─[3:13]
+ 2 │ --assign coins
+ 3 │ --move-call myso::coin::destroy_zero<myso::myso::MYSO> coins.0
+   ·             ─┬─
+   ·              ╰── Unbound named address: 'myso'
+ 4 │ --split-coins coins.1 [0,0]
+   ╰────
+  help: This is most likely because the named address 'myso' is not in scope.
+        You can either bind a variable to the address that you want to use or
+        use the address in the command.
+
+  × Error when processing PTB
+   ╭─[6:13]
+ 5 │ --assign zcoins
+ 6 │ --move-call myso::coin::destroy_zero<myso::myso::MYSO> zcoins.0
+   ·             ─┬─
+   ·              ╰── Unbound named address: 'myso'
+ 7 │ --move-call myso::coin::destroy_zero<myso::myso::MYSO> zcoins.1
+   ╰────
+  help: This is most likely because the named address 'myso' is not in scope.
+        You can either bind a variable to the address that you want to use or
+        use the address in the command.
+
+  × Error when processing PTB
+   ╭─[7:13]
+ 6 │ --move-call myso::coin::destroy_zero<myso::myso::MYSO> zcoins.0
+ 7 │ --move-call myso::coin::destroy_zero<myso::myso::MYSO> zcoins.1
+   ·             ─┬─
+   ·              ╰── Unbound named address: 'myso'
+ 8 │ --merge-coins gas [coins.1, coins.2, coins.3] 
+   ╰────
+  help: This is most likely because the named address 'myso' is not in scope.
+        You can either bind a variable to the address that you want to use or
+        use the address in the command.

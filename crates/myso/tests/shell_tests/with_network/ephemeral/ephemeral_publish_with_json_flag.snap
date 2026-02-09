@@ -1,5 +1,5 @@
 ---
-source: crates/sui/tests/shell_tests.rs
+source: crates/myso/tests/shell_tests.rs
 ---
 ----- script -----
 #!/usr/bin/env bash
@@ -8,7 +8,7 @@ source: crates/sui/tests/shell_tests.rs
 
 # Test that --json flag outputs a proper json (without emitting any logs in stdout) 
 
-sui client --client.config $CONFIG \
+myso client --client.config $CONFIG \
   test-publish --build-env testnet --pubfile-path Pub.local.toml a --json \
   > output.json
 
@@ -22,5 +22,5 @@ exit_code: 0
 
 ----- stderr -----
 INCLUDING DEPENDENCY MoveStdlib
-INCLUDING DEPENDENCY Sui
+INCLUDING DEPENDENCYMySo
 BUILDING a

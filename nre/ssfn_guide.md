@@ -56,6 +56,6 @@ metrics:
 This coupled with starting your node from a formal snapshot should mean a very small database footprint for ssfns
 
 
-![ssfn diagram](https://github.com/MystenLabs/myso/blob/main/nre/ssfn-diagram.png)
+![ssfn diagram](https://github.com/the-social-proof-foundation/myso-core/blob/main/nre/ssfn-diagram.png)
 
 

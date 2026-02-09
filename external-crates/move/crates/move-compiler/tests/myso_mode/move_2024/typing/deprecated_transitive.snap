@@ -1,7 +1,7 @@
 ---
 source: crates/move-compiler/tests/move_check_testsuite.rs
 info:
-  flavor: sui
+  flavor: myso
   edition: 2024.alpha
   lint: false
 ---

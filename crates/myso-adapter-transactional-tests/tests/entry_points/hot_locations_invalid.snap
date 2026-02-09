@@ -15,7 +15,7 @@ gas summary: computation_cost: 1000000, storage_cost: 7774800,  storage_rebate: 
 task 2, lines 54-56:
 //# programmable --sender A --inputs @A
 //> test::m::a();
-//> sui::transfer::public_transfer<test::m::A>(Result(0), Input(0));
+//> myso::transfer::public_transfer<test::m::A>(Result(0), Input(0));
 created: object(2,0)
 mutated: object(0,0)
 gas summary: computation_cost: 1000000, storage_cost: 2196400,  storage_rebate: 0, non_refundable_storage_fee: 0
@@ -23,7 +23,7 @@ gas summary: computation_cost: 1000000, storage_cost: 2196400,  storage_rebate: 
 task 4, lines 60-62:
 //# programmable --sender A --inputs @a
 //> test::m::a();
-//> sui::transfer::public_transfer<test::m::A>(Result(0), Input(0));
+//> myso::transfer::public_transfer<test::m::A>(Result(0), Input(0));
 created: object(4,0)
 mutated: object(0,0)
 gas summary: computation_cost: 1000000, storage_cost: 2196400,  storage_rebate: 978120, non_refundable_storage_fee: 9880
@@ -49,7 +49,7 @@ Execution Error: ExecutionError: ExecutionError { inner: ExecutionErrorInner { k
 task 7, lines 76-80:
 //# programmable --sender A
 // gas coin by-ref
-//> test::m::heat_imm<sui::coin::Coin<sui::sui::SUI>>(Gas);
+//> test::m::heat_imm<myso::coin::Coin<myso::myso::MYSO>>(Gas);
 //> test::m::play_coin(Gas);
 //> test::m::cool(Result(0));
 Error: Transaction Effects Status: Invalid command argument at 0. Invalid argument to private entry function. These functions cannot take arguments from other Move functions
@@ -58,7 +58,7 @@ Execution Error: ExecutionError: ExecutionError { inner: ExecutionErrorInner { k
 task 8, lines 82-86:
 //# programmable --sender A
 // gas coin by-mut
-//> test::m::heat_mut<sui::coin::Coin<sui::sui::SUI>>(Gas);
+//> test::m::heat_mut<myso::coin::Coin<myso::myso::MYSO>>(Gas);
 //> test::m::play_coin(Gas);
 //> test::m::cool(Result(0));
 Error: Transaction Effects Status: Invalid command argument at 0. Invalid argument to private entry function. These functions cannot take arguments from other Move functions
@@ -150,7 +150,7 @@ Execution Error: ExecutionError: ExecutionError { inner: ExecutionErrorInner { k
 task 17, lines 147-151:
 //# programmable --sender A --inputs receiving(4,0)
 // receiving input by-ref
-//> 0: test::m::heat_imm<sui::transfer::Receiving<test::m::A>>(Input(0));
+//> 0: test::m::heat_imm<myso::transfer::Receiving<test::m::A>>(Input(0));
 //> test::m::play_receiving(Input(0));
 //> test::m::cool(Result(0));
 Error: Transaction Effects Status: Invalid command argument at 0. Invalid argument to private entry function. These functions cannot take arguments from other Move functions
@@ -159,7 +159,7 @@ Execution Error: ExecutionError: ExecutionError { inner: ExecutionErrorInner { k
 task 18, lines 153-157:
 //# programmable --sender A --inputs receiving(4,0)
 // receiving input by-mut
-//> 0: test::m::heat_mut<sui::transfer::Receiving<test::m::A>>(Input(0));
+//> 0: test::m::heat_mut<myso::transfer::Receiving<test::m::A>>(Input(0));
 //> test::m::play_receiving(Input(0));
 //> test::m::cool(Result(0));
 Error: Transaction Effects Status: Invalid command argument at 0. Invalid argument to private entry function. These functions cannot take arguments from other Move functions
@@ -168,7 +168,7 @@ Execution Error: ExecutionError: ExecutionError { inner: ExecutionErrorInner { k
 task 19, lines 159-163:
 //# programmable --sender A --inputs receiving(4,0)
 // receiving input by-val
-//> 0: test::m::heat_val<sui::transfer::Receiving<test::m::A>>(Input(0));
+//> 0: test::m::heat_val<myso::transfer::Receiving<test::m::A>>(Input(0));
 //> test::m::play_receiving(NestedResult(0,0));
 //> test::m::cool(NestedResult(0,1));
 Error: Transaction Effects Status: Invalid command argument at 0. Invalid argument to private entry function. These functions cannot take arguments from other Move functions

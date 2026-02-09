@@ -1,0 +1,7 @@
+---
+source: crates/myso-display/src/v2/parser.rs
+assertion_line: 2039
+expression: "strands(r#\"{0x1 :: coin :: Coin<0x2::myso::MYSO>()}\"#)"
+---
+{ 0x0000000000000000000000000000000000000000000000000000000000000001::coin::Coin<0x0000000000000000000000000000000000000000000000000000000000000002::myso::MYSO>
+}@0

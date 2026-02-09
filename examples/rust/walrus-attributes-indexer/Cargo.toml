@@ -17,5 +17,5 @@ bcs = "0.1.4"
 tracing = "0.1.37"
 serde = { version = "1.0.144", features = ["derive", "rc"] }
 
-myso-indexer-alt-framework = { git = "https://github.com/MystenLabs/myso.git", branch = "testnet" }
-move-core-types = { git = "https://github.com/MystenLabs/myso", branch="testnet" }
+myso-indexer-alt-framework = { git = "https://github.com/the-social-proof-foundation/myso-core.git", branch = "testnet" }
+move-core-types = { git = "https://github.com/the-social-proof-foundation/myso-core", branch="testnet" }

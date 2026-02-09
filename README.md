@@ -45,7 +45,7 @@ MySocial is written in [Rust](https://www.rust-lang.org) and supports smart cont
 
 MySocial has a native token called MySo, that holds a fixed supply with deflationary mechanisms. The MySo token is used to pay for gas, and is also used as [delegated stake on authorities](https://learn.bybit.com/blockchain/delegated-proof-of-stake-dpos/) within an epoch. The voting power of authorities within this epoch is a function of this delegated stake. Authorities are periodically reconfigured according to the stake delegated to them. In any epoch, the set of authorities is [Byzantine fault tolerant](https://pmg.csail.mit.edu/papers/osdi99.pdf). At the end of the epoch, fees collected through all transactions processed are distributed to authorities according to their contribution to the operation of the system. Authorities can in turn share some of the fees as rewards to users that delegated stakes to them.
 
-MySocial is supported by several cutting-edge [peer-reviewed studies](https://github.com/MystenLabs/myso/blob/main/docs/content/concepts/research-papers.mdx) and extensive years of open-source development.
+MySocial is supported by several cutting-edge [peer-reviewed studies](https://github.com/the-social-proof-foundation/myso-core/blob/main/docs/content/concepts/research-papers.mdx) and extensive years of open-source development.
 
 ## More About MySocial
 

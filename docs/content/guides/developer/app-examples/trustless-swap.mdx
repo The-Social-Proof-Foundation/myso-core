@@ -1,6 +1,6 @@
 ---
 title: Trustless Swap
-description: An app that performs atomic swaps on Sui. Atomic swaps are similar to escrows but without requiring a trusted third party.
+description: An app that performs atomic swaps on MySo. Atomic swaps are similar to escrows but without requiring a trusted third party.
 effort: large
 keywords:
   [
@@ -17,7 +17,7 @@ keywords:
   ]
 ---
 
-This guide demonstrates how to make an app that performs atomic swaps on Sui. Atomic swaps are similar to escrows but without requiring a trusted third party.
+This guide demonstrates how to make an app that performs atomic swaps on MySo. Atomic swaps are similar to escrows but without requiring a trusted third party.
 
 There are three main sections to this guide:
 
@@ -31,7 +31,7 @@ There are three main sections to this guide:
 
 ## What the guide teaches
 
-- **Shared objects:** The guide teaches you how to use [shared objects](/guides/developer/objects/object-ownership/shared.mdx), in this case to act as the escrow between two Sui users wanting to trade. Shared objects are a unique concept to Sui. Any transaction and any signer can modify it, given the changes meet the requirements set forth by the package that defined the type.
+- **Shared objects:** The guide teaches you how to use [shared objects](/guides/developer/objects/object-ownership/shared.mdx), in this case to act as the escrow between two MySo users wanting to trade. Shared objects are a unique concept to MySo. Any transaction and any signer can modify it, given the changes meet the requirements set forth by the package that defined the type.
 - **Composability:** The guide teaches you how to design your Move code in a way that enables full composability. In this app, the Move code that handles trading is completely unaware of the code that defines the objects it is trading and vice versa.
 
 The guide also shows how to build an app that:
@@ -46,16 +46,16 @@ To begin, create a new folder on your system titled `trading` that holds all you
 
 :::checkpoint
 
-- You have the latest version of Sui installed. If you run `sui --version` in your terminal or console, it responds with the currently installed version.
-- Your active environment is pointing to the expected network. Run `sui client active-env` to make sure. If you receive a warning about a client and server API version mismatch, update Sui using the version in the relevant branch (`mainnet`, `testnet`, `devent`) of the Sui repo.
-- Your active address has SUI. Run `sui client balance` in your terminal or console. If there is no balance, [acquire SUI](/guides/developer/getting-started/get-coins.mdx) from the faucet (not available in Mainnet).
+- You have the latest version of MySo installed. If you run `myso --version` in your terminal or console, it responds with the currently installed version.
+- Your active environment is pointing to the expected network. Run `myso client active-env` to make sure. If you receive a warning about a client and server API version mismatch, update MySo using the version in the relevant branch (`mainnet`, `testnet`, `devent`) of the MySo repo.
+- Your active address has MYSO. Run `myso client balance` in your terminal or console. If there is no balance, [acquire MYSO](/guides/developer/getting-started/get-coins.mdx) from the faucet (not available in Mainnet).
 - You have a directory to place the files you create in. The suggested names of the directories are important if you use the available helper functions later in the guide.
 
 :::
 
 ## Smart contracts {#smart-contracts}
 
-In this part of the guide, you write the Move contracts that perform the trustless swaps. The guide describes how to create the package from scratch, but you can use a fork or copy of the example code in the Sui repo to follow along instead. See [Hello, World!](/guides/developer/getting-started/hello-world.mdx) to learn more about package structure and how to use the Sui CLI to scaffold a new project.
+In this part of the guide, you write the Move contracts that perform the trustless swaps. The guide describes how to create the package from scratch, but you can use a fork or copy of the example code in the MySo repo to follow along instead. See [Hello, World!](/guides/developer/getting-started/hello-world.mdx) to learn more about package structure and how to use the MySo CLI to scaffold a new project.
 
 ### `Move.toml`
 
@@ -63,7 +63,7 @@ To begin writing your smart contracts, create an `escrow` folder in your `contra
 
 :::info
 
-If you are targeting a network other than Testnet, be sure to update the `rev` value for the Sui dependency.
+If you are targeting a network other than Testnet, be sure to update the `rev` value for the MySo dependency.
 
 :::
 
@@ -173,7 +173,7 @@ Move's type system guarantees that a given `Key` cannot be re-used (because `unl
 - A locked object can be unlocked with its key.
 - Trying to unlock an object with the wrong key fails.
 
-The test starts with a helper function for creating an object. The object type does not matter, as long as it has the `store` ability. The test uses `Coin<SUI>`, because it comes with a `#[test_only]` function for minting:
+The test starts with a helper function for creating an object. The object type does not matter, as long as it has the `store` ability. The test uses `Coin<MYSO>`, because it comes with a `#[test_only]` function for minting:
 
 <ImportContent
 	source="examples/trading/contracts/escrow/sources/lock.move"
@@ -183,7 +183,7 @@ The test starts with a helper function for creating an object. The object type d
 />
 
 - All test-related functions and imports are annotated with `#[test_only]` to make sure they do not show up in the published package. You can also do this by separating tests into their own module (for example, `lock_tests.move`) and marking that module as `#[test_only]`.
-- The `test_scenario` module is used to provide access to a `&mut TxContext` in the test (necessary for creating new objects). Tests that do not need to simulate multiple transactions but still need access to a `TxContext` can use `sui::tx_context::dummy` to create a test context instead.
+- The `test_scenario` module is used to provide access to a `&mut TxContext` in the test (necessary for creating new objects). Tests that do not need to simulate multiple transactions but still need access to a `TxContext` can use `myso::tx_context::dummy` to create a test context instead.
 
 The first test works by creating an object to test, locking it and unlocking it – this should finish executing without aborting.
 The last two lines exist to keep the Move compiler happy by cleaning up the test coin and test scenario objects, because values in Move are not implicitly cleaned up unless they have the `drop` ability.
@@ -221,10 +221,10 @@ At this point, you have
 - A Move package consisting of a manifest file (`Move.toml`)
 - A `lock.move` file in your `sources` folder.
 
-From your `escrow` folder, run `sui move test` in your terminal or console. If successful, you get a response similar to the following that confirms the package builds and your tests pass:
+From your `escrow` folder, run `myso move test` in your terminal or console. If successful, you get a response similar to the following that confirms the package builds and your tests pass:
 
 ```
-INCLUDING DEPENDENCY Sui
+INCLUDING DEPENDENCYMySo
 INCLUDING DEPENDENCY MoveStdlib
 BUILDING escrow
 Running Move unit tests
@@ -349,9 +349,9 @@ Finally, you need to add a function to allow the first party to complete the tra
 
 :::tip Additional resources
 
-- [Full source code](https://github.com/MystenLabs/sui/blob/705ee1ed3ce8cfadc4597c6facb6769d7dfb5896/examples/trading/contracts/escrow/sources/shared.move)
+- [Full source code](https://github.com/the-social-proof-foundation/myso-core/blob/705ee1ed3ce8cfadc4597c6facb6769d7dfb5896/examples/trading/contracts/escrow/sources/shared.move)
 - Concepts: [Shared Objects](/guides/developer/objects/object-ownership/shared)
-- Concepts: [Shared Object Deletion](https://blog.sui.io/ephemeral-shared-objects/)
+- Concepts: [Shared Object Deletion](https://blog.mysocial.network/ephemeral-shared-objects/)
 - Concepts: [PTBs](/guides/developer/transactions/prog-txn-blocks)
 
 :::
@@ -427,7 +427,7 @@ The rest of the test is designed to check that `ALICE` has `BOB`'s coin and vice
 
 The `escrow` Move package is now functional. You could publish it on chain and perform trustless swaps by creating transactions. Creating those transactions requires knowing the IDs of `Locked`, `Key`, and `Escrow` objects.
 
-`Locked` and `Key` objects are typically owned by the transaction sender, and so can be queried through the Sui RPC, but `Escrow` objects are shared, and it is useful to be able to query them by their sender and recipient (so that users can see the trades they have offered and received).
+`Locked` and `Key` objects are typically owned by the transaction sender, and so can be queried through the MySo RPC, but `Escrow` objects are shared, and it is useful to be able to query them by their sender and recipient (so that users can see the trades they have offered and received).
 
 Querying `Escrow` objects by their sender or recipient requires custom indexing, and to make it easy for the indexer to spot relevant transactions, add the following **events** to `escrow.move`:
 
@@ -451,7 +451,7 @@ Functions responsible for various aspects of the escrow's lifecycle emit these e
 <ImportContent
 	source="examples/trading/contracts/escrow/sources/shared.move"
 	mode="code"
-	dep="sui::event"
+	dep="myso::event"
 />
 
 <ImportContent
@@ -473,10 +473,10 @@ Functions responsible for various aspects of the escrow's lifecycle emit these e
 
 :::checkpoint
 
-You now have `shared.move` and `locked.move` files in your `sources` folder. From the parent `escrow` folder, run `sui move test` in your terminal or console. If successful, you get a response similar to the following that confirms the package builds and your tests pass:
+You now have `shared.move` and `locked.move` files in your `sources` folder. From the parent `escrow` folder, run `myso move test` in your terminal or console. If successful, you get a response similar to the following that confirms the package builds and your tests pass:
 
 ```
-INCLUDING DEPENDENCY Sui
+INCLUDING DEPENDENCYMySo
 INCLUDING DEPENDENCY MoveStdlib
 BUILDING escrow
 Running Move unit tests
@@ -555,8 +555,8 @@ The callback is responsible for reading the event and updating the database acco
 
 :::tip Additional resources
 
-- [Full source code](https://github.com/MystenLabs/sui/tree/705ee1ed3ce8cfadc4597c6facb6769d7dfb5896/examples/trading/api)
-- Reference: [JSON-RPC](https://docs.sui.io/sui-api-ref)
+- [Full source code](https://github.com/the-social-proof-foundation/myso-core/tree/705ee1ed3ce8cfadc4597c6facb6769d7dfb5896/examples/trading/api)
+- Reference: [JSON-RPC](https://docs.mysocial.network/myso-api-ref)
 
 :::
 
@@ -659,7 +659,7 @@ Now that you have an indexer and an API service, you can deploy your move packag
 
 2. Setup the database by running `pnpm db:setup:dev` or `yarn db:setup:dev`.
 
-3. Deploy the Sui package
+3. Deploy the MySo package
 
 <details>
 
@@ -669,39 +669,39 @@ Deployment instructions
 
 </summary>
 
-<ImportContent source="initialize-sui-client-cli.mdx" mode="snippet" />
+<ImportContent source="initialize-myso-client-cli.mdx" mode="snippet" />
 
-Next, configure the Sui CLI to use `testnet` as the active environment.
+Next, configure the MySo CLI to use `testnet` as the active environment.
 
 Use the following command to list your available environments:
 
 ```sh
-$ sui client envs
+$ myso client envs
 ```
 
 If you have not already set up a `testnet` environment, do so by running the following command in a terminal or console:
 
 ```sh
-$ sui client new-env --alias testnet --rpc https://fullnode.testnet.sui.io:443
+$ myso client new-env --alias testnet --rpc https://fullnode.testnet.mysocial.network:443
 ```
 
 Run the following command to activate the `testnet` environment:
 
 ```sh
-$ sui client switch --env testnet
+$ myso client switch --env testnet
 ```
 
-Before being able to publish your package to Testnet, you need Testnet SUI tokens. To get some, run the following command:
+Before being able to publish your package to Testnet, you need Testnet MYSO tokens. To get some, run the following command:
 
 ```sh
-$ sui client faucet
+$ myso client faucet
 ```
 
-For other ways to get SUI in your Testnet account, see [Get SUI Tokens](/guides/developer/getting-started/get-coins).
+For other ways to get MYSO in your Testnet account, see [Get MYSO Tokens](/guides/developer/getting-started/get-coins).
 
-Now that you have an account with some Testnet SUI, you can deploy your contracts.
+Now that you have an account with some Testnet MYSO, you can deploy your contracts.
 
-There are some helper functions to publish the smart contracts so you can create some demo data (for Testnet). The helper function to publish the smart contracts expects built smart contracts in both the `escrow` and `demo` directories. Run `sui move build` in both directories, if necessary. Be sure to update the Sui dependency in the manifest to point to the correct source based on your environment.
+There are some helper functions to publish the smart contracts so you can create some demo data (for Testnet). The helper function to publish the smart contracts expects built smart contracts in both the `escrow` and `demo` directories. Run `myso move build` in both directories, if necessary. Be sure to update the MySo dependency in the manifest to point to the correct source based on your environment.
 
 To publish the smart contracts and produce demo data:
 
@@ -753,7 +753,7 @@ In this final part of the app example, you build a frontend (UI) that allows end
 <Tabs className="tabsHeadingCentered--small">
 <TabItem value="prereq" label="Prerequisites">
 
-- [x] [Install the latest version of Sui](/guides/developer/getting-started/sui-install).
+- [x] [Install the latest version ofMySo](/guides/developer/getting-started/myso-install).
 
 - [x] [Complete the smart contracts](#smart-contracts) and understand their design.
 
@@ -770,9 +770,9 @@ In this final part of the app example, you build a frontend (UI) that allows end
 
 :::tip Additional resources
 
-- [Sui TypeScript SDK](https://sdk.mystenlabs.com/typescript). For basic usage on how to interact with Sui with TypeScript.
-- [Sui dApp Kit](https://sdk.mystenlabs.com/dapp-kit). To learn basic building blocks for developing an app in the Sui ecosystem with React.js.
-- [`@mysten/dapp`](https://sdk.mystenlabs.com/dapp-kit/create-dapp). This is used within this project to quickly scaffold a React-based Sui app.
+- [MySo TypeScript SDK](https://sdk.mystenlabs.com/typescript). For basic usage on how to interact with MySo with TypeScript.
+- [MySo dApp Kit](https://sdk.mystenlabs.com/dapp-kit). To learn basic building blocks for developing an app in the MySo ecosystem with React.js.
+- [`@mysten/dapp`](https://sdk.mystenlabs.com/dapp-kit/create-dapp). This is used within this project to quickly scaffold a React-based MySo app.
 
 :::
 
@@ -1102,7 +1102,7 @@ Update `src/main.tsx` by replacing the `App` component with the `RouterProvider`
 
 </details>
 
-The dApp Kit provides a set of hooks for making query and mutation calls to the Sui blockchain. These hooks are thin wrappers around query and mutation hooks from `@tanstack/react-query`.
+The dApp Kit provides a set of hooks for making query and mutation calls to the MySo blockchain. These hooks are thin wrappers around query and mutation hooks from `@tanstack/react-query`.
 
 :::tip Additional resources
 
@@ -1265,7 +1265,7 @@ export function LockOwnedObjects() {
 
 </details>
 
-Fetch the owned objects directly from the Sui blockchain using `useInfiniteQuery` from TanStack Query with the `useCurrentClient()` hook from dApp Kit. The `useCurrentClient()` hook returns the configured Sui client, and you use its `core.listOwnedObjects()` method to fetch paginated owned objects. Supply the connected wallet account as the `owner`. The returned data is stored inside the cache at query key `getOwnedObjects`. In a future step you invalidate this cache after a mutation succeeds, so the data is re-fetched automatically.
+Fetch the owned objects directly from the MySo blockchain using `useInfiniteQuery` from TanStack Query with the `useCurrentClient()` hook from dApp Kit. The `useCurrentClient()` hook returns the configured MySo client, and you use its `core.listOwnedObjects()` method to fetch paginated owned objects. Supply the connected wallet account as the `owner`. The returned data is stored inside the cache at query key `getOwnedObjects`. In a future step you invalidate this cache after a mutation succeeds, so the data is re-fetched automatically.
 
 <details>
 
@@ -1349,13 +1349,13 @@ Create `src/hooks/useTransactionExecution.ts`:
 
 A `Transaction` is the input. Sign it with the current connected wallet account, execute the transaction, return the execution result, and finally display a basic toast message to indicate whether the transaction is successful or not.
 
-Use the `useCurrentClient()` hook from dApp Kit to retrieve the Sui client instance configured in `src/main.tsx`. The `useSignTransaction()` function is another hook from dApp kit that helps to sign the transaction using the currently connected wallet. It displays the UI for users to review and sign their transactions with their selected wallet. To execute a transaction, use the `executeTransaction()` on the client instance of the Sui TypeScript SDK.
+Use the `useCurrentClient()` hook from dApp Kit to retrieve the MySo client instance configured in `src/main.tsx`. The `useSignTransaction()` function is another hook from dApp kit that helps to sign the transaction using the currently connected wallet. It displays the UI for users to review and sign their transactions with their selected wallet. To execute a transaction, use the `executeTransaction()` on the client instance of the MySo TypeScript SDK.
 
 ### Generate demo data
 
 :::info
 
-The full source code of the demo bear smart contract is available at [Trading Contracts Demo directory](https://github.com/MystenLabs/sui/tree/main/examples/trading/contracts/demo)
+The full source code of the demo bear smart contract is available at [Trading Contracts Demo directory](https://github.com/the-social-proof-foundation/myso-core/tree/main/examples/trading/contracts/demo)
 
 :::
 
@@ -1373,9 +1373,9 @@ Create `src/mutations/demo.ts`:
 
 </details>
 
-As previously mentioned, this example uses `@tanstack/react-query` to query, cache, and mutate server state. Server state is data only available on remote servers, and the only way to retrieve or update this data is by interacting with these remote servers. In this case, it could be from an API or directly from Sui blockchain RPC.
+As previously mentioned, this example uses `@tanstack/react-query` to query, cache, and mutate server state. Server state is data only available on remote servers, and the only way to retrieve or update this data is by interacting with these remote servers. In this case, it could be from an API or directly from MySo blockchain RPC.
 
-When you execute a transaction call to mutate data on the Sui blockchain, use the `useMutation()` hook. The `useMutation()` hook accepts several inputs. However, you only need 2 of them for this example. The first parameter, `mutationFn`, accepts the function to execute the main mutating logic, while the second parameter, `onSuccess`, is a callback that runs when the mutating logic succeeds.
+When you execute a transaction call to mutate data on the MySo blockchain, use the `useMutation()` hook. The `useMutation()` hook accepts several inputs. However, you only need 2 of them for this example. The first parameter, `mutationFn`, accepts the function to execute the main mutating logic, while the second parameter, `onSuccess`, is a callback that runs when the mutating logic succeeds.
 
 The main mutating logic includes executing a Move call of a package named `demo_bear::new` to create a dummy bear object and transferring it to the connected wallet account, all within the same `Transaction`. This example reuses the `executeTransaction()` hook from the [Execute Transaction Hook](#execute-transaction-hook) step to execute the transaction.
 
@@ -1421,8 +1421,8 @@ Create `src/mutations/locked.ts`:
 
 ```tsx
 import { useCurrentAccount } from '@mysten/dapp-kit-react';
-import { SuiObjectData } from '@mysten/sui/jsonRpc';
-import { Transaction } from '@mysten/sui/transactions';
+import { SuiObjectData } from '@socialproof/myso/jsonRpc';
+import { Transaction } from '@socialproof/myso/transactions';
 import { useMutation } from '@tanstack/react-query';
 
 import { CONSTANTS } from '@/constants';
@@ -1884,8 +1884,8 @@ To create escrows, include a mutating function through the `useCreateEscrowMutat
 
 ```tsx
 import { useCurrentAccount } from '@mysten/dapp-kit-react';
-import { SuiObjectData } from '@mysten/sui/jsonRpc';
-import { Transaction } from '@mysten/sui/transactions';
+import { SuiObjectData } from '@socialproof/myso/jsonRpc';
+import { Transaction } from '@socialproof/myso/transactions';
 import { useMutation } from '@tanstack/react-query';
 
 import { CONSTANTS } from '@/constants';
@@ -1978,8 +1978,8 @@ To cancel the escrow, create a mutation through the `useCancelEscrowMutation` ho
 
 ```tsx
 import { useCurrentAccount } from '@mysten/dapp-kit-react';
-import { SuiObjectData } from '@mysten/sui/jsonRpc';
-import { Transaction } from '@mysten/sui/transactions';
+import { SuiObjectData } from '@socialproof/myso/jsonRpc';
+import { Transaction } from '@socialproof/myso/transactions';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 
 import { CONSTANTS, QueryKey } from '@/constants';
@@ -2305,7 +2305,7 @@ Run your app and ensure you can:
 
 ### Accept escrows
 
-To accept the escrow, create a mutation through the `useAcceptEscrowMutation` hook in `src/mutations/escrow.ts`. The implementation should be fairly familiar to you now. The accept function accepts the escrow `ApiEscrowObject` and the locked object `ApiLockedObject`. The `{PACKAGE_ID}::shared::swap` Move call is generic, thus it requires the type parameters of the escrowed and locked objects. Query the objects details by using `multiGetObjects` on Sui client instance. Lastly, execute the `{PACKAGE_ID}::shared::swap` Move call and transfer the returned escrowed item to the connected wallet account. When the mutation succeeds, invalidate the cache to allow automatic re-fetch of the data.
+To accept the escrow, create a mutation through the `useAcceptEscrowMutation` hook in `src/mutations/escrow.ts`. The implementation should be fairly familiar to you now. The accept function accepts the escrow `ApiEscrowObject` and the locked object `ApiLockedObject`. The `{PACKAGE_ID}::shared::swap` Move call is generic, thus it requires the type parameters of the escrowed and locked objects. Query the objects details by using `multiGetObjects` on MySo client instance. Lastly, execute the `{PACKAGE_ID}::shared::swap` Move call and transfer the returned escrowed item to the connected wallet account. When the mutation succeeds, invalidate the cache to allow automatic re-fetch of the data.
 
 <details>
 
@@ -2317,8 +2317,8 @@ To accept the escrow, create a mutation through the `useAcceptEscrowMutation` ho
 
 ```tsx
 import { useCurrentAccount, useCurrentClient } from '@mysten/dapp-kit-react';
-import { SuiObjectData } from '@mysten/sui/jsonRpc';
-import { Transaction } from '@mysten/sui/transactions';
+import { SuiObjectData } from '@socialproof/myso/jsonRpc';
+import { Transaction } from '@socialproof/myso/transactions';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 
 import { CONSTANTS, QueryKey } from '@/constants';

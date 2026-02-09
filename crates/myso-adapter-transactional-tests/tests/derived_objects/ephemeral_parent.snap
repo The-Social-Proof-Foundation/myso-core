@@ -23,8 +23,8 @@ task 3, line 46:
 Owner: Account Address ( A )
 Version: 2
 Contents: a::m::Derived {
-    id: sui::object::UID {
-        id: sui::object::ID {
+    id: myso::object::UID {
+        id: myso::object::ID {
             bytes: fake(2,0),
         },
     },
@@ -34,18 +34,18 @@ task 4, line 48:
 //# view-object 2,1
 Owner: Object ID: ( _ )
 Version: 2
-Contents: sui::dynamic_field::Field<sui::derived_object::Claimed, sui::derived_object::ClaimedStatus> {
-    id: sui::object::UID {
-        id: sui::object::ID {
+Contents: myso::dynamic_field::Field<myso::derived_object::Claimed, myso::derived_object::ClaimedStatus> {
+    id: myso::object::UID {
+        id: myso::object::ID {
             bytes: fake(2,1),
         },
     },
-    name: sui::derived_object::Claimed {
-        pos0: sui::object::ID {
+    name: myso::derived_object::Claimed {
+        pos0: myso::object::ID {
             bytes: fake(2,0),
         },
     },
-    value: sui::derived_object::ClaimedStatus::Reserved{},
+    value: myso::derived_object::ClaimedStatus::Reserved{},
 }
 
 task 5, line 50:
@@ -58,18 +58,18 @@ task 6, line 52:
 //# view-object 5,0
 Owner: Object ID: ( _ )
 Version: 3
-Contents: sui::dynamic_field::Field<sui::derived_object::Claimed, sui::derived_object::ClaimedStatus> {
-    id: sui::object::UID {
-        id: sui::object::ID {
+Contents: myso::dynamic_field::Field<myso::derived_object::Claimed, myso::derived_object::ClaimedStatus> {
+    id: myso::object::UID {
+        id: myso::object::ID {
             bytes: fake(5,0),
         },
     },
-    name: sui::derived_object::Claimed {
-        pos0: sui::object::ID {
+    name: myso::derived_object::Claimed {
+        pos0: myso::object::ID {
             bytes: _,
         },
     },
-    value: sui::derived_object::ClaimedStatus::Reserved{},
+    value: myso::derived_object::ClaimedStatus::Reserved{},
 }
 
 task 7, line 54:
@@ -83,8 +83,8 @@ task 8, line 56:
 Owner: Account Address ( A )
 Version: 4
 Contents: a::m::Derived {
-    id: sui::object::UID {
-        id: sui::object::ID {
+    id: myso::object::UID {
+        id: myso::object::ID {
             bytes: fake(7,0),
         },
     },
@@ -94,34 +94,34 @@ task 9, line 58:
 //# view-object 7,1
 Owner: Object ID: ( _ )
 Version: 4
-Contents: sui::dynamic_field::Field<sui::derived_object::Claimed, sui::derived_object::ClaimedStatus> {
-    id: sui::object::UID {
-        id: sui::object::ID {
+Contents: myso::dynamic_field::Field<myso::derived_object::Claimed, myso::derived_object::ClaimedStatus> {
+    id: myso::object::UID {
+        id: myso::object::ID {
             bytes: fake(7,1),
         },
     },
-    name: sui::derived_object::Claimed {
-        pos0: sui::object::ID {
+    name: myso::derived_object::Claimed {
+        pos0: myso::object::ID {
             bytes: _,
         },
     },
-    value: sui::derived_object::ClaimedStatus::Reserved{},
+    value: myso::derived_object::ClaimedStatus::Reserved{},
 }
 
 task 10, line 60:
 //# view-object 7,2
 Owner: Object ID: ( _ )
 Version: 4
-Contents: sui::dynamic_field::Field<sui::derived_object::Claimed, sui::derived_object::ClaimedStatus> {
-    id: sui::object::UID {
-        id: sui::object::ID {
+Contents: myso::dynamic_field::Field<myso::derived_object::Claimed, myso::derived_object::ClaimedStatus> {
+    id: myso::object::UID {
+        id: myso::object::ID {
             bytes: fake(7,2),
         },
     },
-    name: sui::derived_object::Claimed {
-        pos0: sui::object::ID {
+    name: myso::derived_object::Claimed {
+        pos0: myso::object::ID {
             bytes: fake(7,0),
         },
     },
-    value: sui::derived_object::ClaimedStatus::Reserved{},
+    value: myso::derived_object::ClaimedStatus::Reserved{},
 }

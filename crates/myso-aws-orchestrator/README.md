@@ -52,7 +52,7 @@ Create a file called `settings.json` that contains all the configuration paramet
 	],
 	"specs": "m5d.8xlarge",
 	"repository": {
-		"url": "https://github.com/MystenLabs/myso.git",
+		"url": "https://github.com/the-social-proof-foundation/myso-core.git",
 		"commit": "main"
 	},
 	"results_directory": "./results",
@@ -92,7 +92,7 @@ needing more instances down the line.
 
 ## Step 4. Choose protocol
 
-There is support to benchmark either MySo or Narwhal only. To choose which protocol to benchmark, you can set the `Protocol` & `BenchmarkType` field [here](https://github.com/MystenLabs/myso/blob/main/crates/myso-aws-orchestrator/src/main.rs#L33-L34)
+There is support to benchmark either MySo or Narwhal only. To choose which protocol to benchmark, you can set the `Protocol` & `BenchmarkType` field [here](https://github.com/the-social-proof-foundation/myso-core/blob/main/crates/myso-aws-orchestrator/src/main.rs#L33-L34)
 
 ```
 // MySo

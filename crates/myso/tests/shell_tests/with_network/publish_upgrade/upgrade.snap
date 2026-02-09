@@ -1,5 +1,5 @@
 ---
-source: crates/sui/tests/shell_tests.rs
+source: crates/myso/tests/shell_tests.rs
 ---
 ----- script -----
 #!/usr/bin/env bash
@@ -9,7 +9,7 @@ source: crates/sui/tests/shell_tests.rs
 # Test an ephemeral upgrade workflow. We have
 # B --> A
 
-chain_id=$(sui client --client.config $CONFIG chain-identifier)
+chain_id=$(myso client --client.config $CONFIG chain-identifier)
 
 extract_published() {
   awk '
@@ -36,24 +36,24 @@ add_env_to_toml b
 
 echo "=== test-publish a, then test-publish b, then add a module to b & upgrade b ==="
 
-sui client --client.config $CONFIG publish a > output.log 2>&1 || cat output.log
+myso client --client.config $CONFIG publish a > output.log 2>&1 || cat output.log
 
 echo "=== published a ==="
 extract_published a/Published.toml
 
-sui client --client.config $CONFIG publish b > output.log 2>&1 || cat output.log
+myso client --client.config $CONFIG publish b > output.log 2>&1 || cat output.log
 
 echo "=== published b ==="
 extract_published b/Published.toml
 
 echo "module b::new_module; public fun b() { a::a::a() }" >> b/sources/new_module.move
 
-sui client --client.config $CONFIG upgrade b > output.log 2>&1 || cat output.log
+myso client --client.config $CONFIG upgrade b > output.log 2>&1 || cat output.log
 
 echo "=== upgraded b ==="
 extract_published b/Published.toml
 
-sui client --client.config $CONFIG upgrade a > output.log 2>&1 || cat output.log
+myso client --client.config $CONFIG upgrade a > output.log 2>&1 || cat output.log
 
 echo "=== upgraded a ==="
 extract_published a/Published.toml
@@ -64,7 +64,7 @@ echo "=== expect to fail when upgrading a because it is not compatible with b ==
 # Does an incompatilbe update (changes public function's return type)
 echo "module b::new_module; public fun b(): bool { true }" > b/sources/new_module.move
 
-sui client --client.config $CONFIG upgrade b
+myso client --client.config $CONFIG upgrade b
 
 ----- results -----
 success: false
@@ -103,6 +103,6 @@ Upgrade failed, this package requires changes to be compatible with the existing
 ----- stderr -----
 [Note]: Dependency sources are no longer verified automatically during publication and upgrade. You can pass the `--verify-deps` option if you would like to verify them as part of publication or upgrade.
 INCLUDING DEPENDENCY MoveStdlib
-INCLUDING DEPENDENCY Sui
+INCLUDING DEPENDENCYMySo
 INCLUDING DEPENDENCY a
 BUILDING b

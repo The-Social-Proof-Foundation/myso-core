@@ -120,9 +120,9 @@ digest.
     _epoch: u64,
     _checkpoint_height: u64,
     _idx: u64,
-    // Total input <a href="../myso/sui.md#myso_myso">myso</a> received from user transactions
+    // Total input <a href="../myso/myso.md#myso_myso">myso</a> received from user transactions
     input_myso: u64,
-    // Total output <a href="../myso/sui.md#myso_myso">myso</a> withdrawn by user transactions
+    // Total output <a href="../myso/myso.md#myso_myso">myso</a> withdrawn by user transactions
     output_myso: u64,
     ctx: &TxContext,
 ) {

@@ -5,7 +5,7 @@ keywords: [ mysten/wallet-standard, wallet standards, Wallet Standard, browser e
 pagination_prev: null
 ---
 
-Browser extension wallets built for Sui use the [Wallet Standard](https://github.com/wallet-standard/wallet-standard/). This is a cross-chain standard that defines how apps can automatically discover and interact with wallets.
+Browser extension wallets built for MySo use the [Wallet Standard](https://github.com/wallet-standard/wallet-standard/). This is a cross-chain standard that defines how apps can automatically discover and interact with wallets.
 
 If you are building a wallet, the helper library `@mysten/wallet-standard` provides types and utilities to help get started.
 
@@ -35,7 +35,7 @@ class YourWallet implements Wallet {
 		return 'some-icon-data-url';
 	}
 
-	// Return the Sui chains that your wallet supports.
+	// Return the MySo chains that your wallet supports.
 	get chains() {
 		return [SUI_DEVNET_CHAIN];
 	}
@@ -56,18 +56,18 @@ Features are standard methods consumers can use to interact with a wallet. Walle
 Libraries built on top of the Wallet Standard (like dApp Kit) require transaction signing capabilities. Implement both current and legacy methods for maximum compatibility:
 
 Current methods:
-- `sui:signTransaction` - Use to prompt the user to sign a transaction and return the serialized
+- `myso:signTransaction` - Use to prompt the user to sign a transaction and return the serialized
   transaction and signature back to the app. This method does not submit the transaction for
   execution.
-- `sui:signAndExecuteTransaction` - Use to prompt the user to sign a transaction, then submit it
+- `myso:signAndExecuteTransaction` - Use to prompt the user to sign a transaction, then submit it
   for execution to the blockchain.
 
 Legacy methods:
-- `sui:signTransactionBlock` - The legacy version of `sui:signTransaction`. Many existing apps still rely on this method.
-- `sui:signAndExecuteTransactionBlock` - The legacy version of `sui:signAndExecuteTransaction`. Many existing apps still rely on this method.
+- `myso:signTransactionBlock` - The legacy version of `myso:signTransaction`. Many existing apps still rely on this method.
+- `myso:signAndExecuteTransactionBlock` - The legacy version of `myso:signAndExecuteTransaction`. Many existing apps still rely on this method.
 
 **Personal message signing**
-- `sui:signPersonalMessage` - Use to prompt the user to sign a personal message and return the
+- `myso:signPersonalMessage` - Use to prompt the user to sign a personal message and return the
   message signature back to the app. This is essential for user verification flows used by many apps.
 
 Implement these features in your wallet class under the `features` property:
@@ -158,9 +158,9 @@ class YourWallet implements Wallet {
 		return someWalletAccounts.map(
 			(walletAccount) =>
 				new ReadonlyWalletAccount({
-					address: walletAccount.suiAddress,
+					address: walletAccount.mysoAddress,
 					publicKey: walletAccount.pubkey,
-					// The Sui chains that this account supports. This can be a subset of the wallet's supported chains.
+					// The MySo chains that this account supports. This can be a subset of the wallet's supported chains.
           // These chains must exist on the wallet as well.
 					chains: [SUI_DEVNET_CHAIN],
 					// The features that this account supports. This can be a subset of the wallet's supported features.
@@ -250,10 +250,10 @@ wallet.features['standard:disconnect'].disconnect();
 
 Once the user has authorized accounts from a wallet, your app has the necessary information to execute transactions, such as address and method.
 
-Construct the transaction separately with the `@mysten/sui` library and then sign it with the private key of the user. Use the `sui:signTransaction` feature to achieve this:
+Construct the transaction separately with the `@mysten/myso` library and then sign it with the private key of the user. Use the `myso:signTransaction` feature to achieve this:
 
 ```tsx
-wallet.features['sui:signTransaction'].signTransaction({
+wallet.features['myso:signTransaction'].signTransaction({
   transaction: <Transaction>,
   account: <WalletAccount>
 })
@@ -261,15 +261,15 @@ wallet.features['sui:signTransaction'].signTransaction({
 
 Similar to account authorization, this process opens a pop-up dialog for the user to either accept or decline the transaction. Upon accepting, the function returns an object in the form `{bytes: String, signature: Uint8Array}`. The `bytes` value is the `b64` encoding of the transaction and the `signature` value is the transaction signature.
 
-To execute the transaction, use a Sui client such as `SuiGrpcClient` from `@mysten/sui/grpc`:
+To execute the transaction, use a MySo client such as `SuiGrpcClient` from `@socialproof/myso/grpc`:
 
 ```tsx
-import { fromBase64 } from '@mysten/sui/utils';
-import { SuiGrpcClient } from '@mysten/sui/grpc';
+import { fromBase64 } from '@socialproof/myso/utils';
+import { SuiGrpcClient } from '@socialproof/myso/grpc';
 
 const client = new SuiGrpcClient({
   network: 'mainnet',
-  baseUrl: 'https://fullnode.mainnet.sui.io:443',
+  baseUrl: 'https://fullnode.mainnet.mysocial.network:443',
 });
 client.core.executeTransaction({
   transaction: fromBase64(bytes),
@@ -279,7 +279,7 @@ client.core.executeTransaction({
 
 ### Transactions - abbreviated approach
 
-Many wallets abstract the above flow into one feature: `sui:signAndExecuteTransaction`. The required arguments for this feature are the raw transaction and the options with the desired information to be included in the response:
+Many wallets abstract the above flow into one feature: `myso:signAndExecuteTransaction`. The required arguments for this feature are the raw transaction and the options with the desired information to be included in the response:
 
 - `showEffects`: Include the transaction effects.
 - `showEvents`: Include the transaction events.

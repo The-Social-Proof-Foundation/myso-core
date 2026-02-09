@@ -4,8 +4,8 @@ description: This example app creates a food rating service that stores all revi
 keywords: [ execute transaction hook, rating app, review app, ConnectButton, custom hooks for state management, transaction hooks ]
 ---
 
-The following documentation goes through an example implementation of a review rating platform for the food service industry on Sui.
-Unlike traditional review rating platforms that often do not disclose the algorithm used to rate reviews, this example uses an algorithm that is published on-chain for everyone to see and verify. The low gas cost of computation on Sui make it financially feasible to submit, score, and order all reviews on-chain.
+The following documentation goes through an example implementation of a review rating platform for the food service industry on MySo.
+Unlike traditional review rating platforms that often do not disclose the algorithm used to rate reviews, this example uses an algorithm that is published on-chain for everyone to see and verify. The low gas cost of computation on MySo make it financially feasible to submit, score, and order all reviews on-chain.
 
 <ImportContent source="prerequisites.mdx" mode="snippet" />
 
@@ -32,7 +32,7 @@ sequenceDiagram
 
 Service owners are entities like restaurants that list their services on the platform. They want to attract more customers by receiving high-rated reviews for their services.
 
-Service owners allocate a specific amount of SUI as a reward pool. Assets from the pool are used to provide rewards for high-rated reviews. A proof of experience (PoE) NFT confirms a reviewer used the service, which the reviewer can burn later to provide a verified review. Service owners provide their customers with unique identifiers (perhaps using QR codes) to identify individual reviewers.
+Service owners allocate a specific amount of MYSO as a reward pool. Assets from the pool are used to provide rewards for high-rated reviews. A proof of experience (PoE) NFT confirms a reviewer used the service, which the reviewer can burn later to provide a verified review. Service owners provide their customers with unique identifiers (perhaps using QR codes) to identify individual reviewers.
 
 ### Reviewers
 
@@ -161,7 +161,7 @@ const MAX_REVIEWERS_TO_REWARD: u64 = 10;
 /// Represents a service
 public struct Service has key, store {
     id: UID,
-    reward_pool: Balance<SUI>,
+    reward_pool: Balance<MYSO>,
     reward: u64,
     top_reviews: vector<ID>,
     reviews: ObjectTable<ID, Review>,
@@ -173,7 +173,7 @@ public struct Service has key, store {
 #### Reward distribution
 
 The same amount is rewarded to top reviewers, and the reward is distributed to 10 participants at most.
-The pool of `SUI` tokens to be distributed to reviewers is stored in the `reward_pool` field, and the amount of `SUI` tokens awarded to each participant is configured in `reward` field.
+The pool of `MYSO` tokens to be distributed to reviewers is stored in the `reward_pool` field, and the amount of `MYSO` tokens awarded to each participant is configured in `reward` field.
 
 #### Storage for reviews
 
@@ -389,7 +389,7 @@ export interface Service {
 In the frontend, you might need to execute a transaction in multiple places, hence it's better to extract the transaction execution logic and reuse it everywhere. Let's examine the execute transaction hook.
 
 ```ts title='src/app/hooks/useSignAndExecuteTransaction.ts'
-import { Transaction } from '@mysten/sui/transactions';
+import { Transaction } from '@socialproof/myso/transactions';
 import { useDAppKit } from '@mysten/dapp-kit-react';
 import { toast } from 'react-hot-toast';
 
@@ -429,7 +429,7 @@ export const useSignAndExecuteTransaction = () => {
 
 A `Transaction` is the input, sign it with the current connected wallet account, execute the transaction, return the execution result, and finally display a basic toast message to indicate whether the transaction is successful or not.
 
-Use the `useDAppKit()` hook from the dApp Kit to access the Sui client and wallet functionality configured in `DAppKitProvider`. The `signAndExecuteTransaction()` function signs the transaction using the currently connected wallet and executes it in a single call. It displays the UI for users to review and sign their transactions with their selected wallet. Use `react-hot-toast` as another dependency to toast transaction status to users.
+Use the `useDAppKit()` hook from the dApp Kit to access the MySo client and wallet functionality configured in `DAppKitProvider`. The `signAndExecuteTransaction()` function signs the transaction using the currently connected wallet and executes it in a single call. It displays the UI for users to review and sign their transactions with their selected wallet. Use `react-hot-toast` as another dependency to toast transaction status to users.
 
 ### Components and custom hooks for state management
 
@@ -445,4 +445,4 @@ Use the `useDAppKit()` hook from the dApp Kit to access the Sui client and walle
 
 ## Related links
 
-<RelatedLink href="https://github.com/MystenLabs/sui/tree/main/examples/move/reviews_rating" label="Reviews Rating repository" desc="Repo with the Revies Rating codebase." />
+<RelatedLink href="https://github.com/the-social-proof-foundation/myso-core/tree/main/examples/move/reviews_rating" label="Reviews Rating repository" desc="Repo with the Revies Rating codebase." />

@@ -2,7 +2,7 @@
 name = "myso-move-natives-v0"
 version = "0.1.0"
 edition = "2021"
-authors = ["Mysten Labs <eng@mystenlabs.com>"]
+authors = ["Brandon Shaw <brandon@mysocial.network>"]
 description = "Move framework for myso platform"
 license = "Apache-2.0"
 publish = false

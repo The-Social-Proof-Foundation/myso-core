@@ -4,7 +4,7 @@
 import "./App.css";
 
 import { ConnectButton, useCurrentAccount, useSuiClientContext } from "@mysten/dapp-kit";
-import { isValidSuiObjectId, normalizeSuiObjectId } from "@mysten/sui/utils";
+import { isValidSuiObjectId, normalizeSuiObjectId } from "@socialproof/myso/utils";
 import { FrameIcon } from "@radix-ui/react-icons";
 import { Box, Container, Flex, Heading, Link } from "@radix-ui/themes";
 import { Error } from "components/Error";
@@ -17,7 +17,7 @@ function App() {
     const account = useCurrentAccount();
     const ctx = useSuiClientContext();
 
-    const chain = account?.chains?.find((c) => c.startsWith("sui:"))?.replace(/^sui:/, "");
+    const chain = account?.chains?.find((c) => c.startsWith("myso:"))?.replace(/^myso:/, "");
     if (chain) {
         console.debug("Configuring app for", chain);
         ctx.selectNetwork(chain);
@@ -70,7 +70,7 @@ function Content() {
     } else {
         return (
             <Error title="Invalid Game ID">
-                <code>"{path}"</code> is not a valid SUI object ID.
+                <code>"{path}"</code> is not a valid MYSO object ID.
             </Error>
         );
     }

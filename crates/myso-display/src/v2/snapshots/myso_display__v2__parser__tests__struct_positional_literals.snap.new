@@ -1,0 +1,19 @@
+---
+source: crates/myso-display/src/v2/parser.rs
+assertion_line: 2005
+expression: "strands(\"{ 0x1::string::String(42u64, 'foo', vector[1u256, 2u256, 3u256]) \\\n             | 0x2::coin::Coin<0x2::myso::MYSO> (true, 100u32,) }\")"
+---
+{ 0x0000000000000000000000000000000000000000000000000000000000000001::string::String(
+      42u64,
+      "foo",
+      vector@36[
+          1u256,
+          2u256,
+          3u256,
+      ],
+  )
+| 0x0000000000000000000000000000000000000000000000000000000000000002::coin::Coin<0x0000000000000000000000000000000000000000000000000000000000000002::myso::MYSO>(
+      true,
+      100u32,
+  )
+}@0

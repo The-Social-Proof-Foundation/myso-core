@@ -10,13 +10,13 @@ export default function ProtocolConfig(props) {
   const data = {
     jsonrpc: "2.0",
     id: 1,
-    method: "sui_getProtocolConfig",
+    method: "myso_getProtocolConfig",
     params: [],
   };
   const urls = [
-    "https://fullnode.mainnet.sui.io:443",
-    "https://fullnode.testnet.sui.io:443",
-    "https://fullnode.devnet.sui.io:443",
+    "https://fullnode.mainnet.mysocial.network:443",
+    "https://fullnode.testnet.mysocial.network:443",
+    "https://fullnode.devnet.mysocial.network:443",
   ];
   const [results, setResults] = useState({
     mainnet: null,
@@ -107,7 +107,7 @@ export default function ProtocolConfig(props) {
   }
 
   return (
-    <Tabs groupId="sui-network">
+    <Tabs groupId="myso-network">
       <TabItem value="mainnet" label="Mainnet">
         <DisplayResults results={results.mainnet} />
       </TabItem>

@@ -1,7 +1,7 @@
 // Copyright (c) Mysten Labs, Inc.
 // SPDX-License-Identifier: Apache-2.0
 
-import { getFullnodeUrl, SuiClient } from '@mysten/sui/client';
+import { getFullnodeUrl, SuiClient } from '@socialproof/myso/client';
 import { createContext, ReactNode, useContext } from 'react';
 
 export type Network = 'mainnet' | 'testnet' | 'devnet' | 'localnet';

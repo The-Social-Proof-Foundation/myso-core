@@ -30,7 +30,7 @@ sudo mv myso-node /opt/myso/bin
 - Build from source:
 
 ```shell
-git clone https://github.com/MystenLabs/myso.git && cd myso
+git clone https://github.com/the-social-proof-foundation/myso-core.git && cd myso
 git checkout $MYSO_SHA
 cargo build --release --bin myso-node
 mv ./target/release/myso-node /opt/myso/bin/myso-node

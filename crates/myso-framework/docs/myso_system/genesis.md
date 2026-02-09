@@ -28,7 +28,7 @@ title: Module `myso_system::genesis`
 <b>use</b> <a href="../myso/funds_accumulator.md#myso_funds_accumulator">myso::funds_accumulator</a>;
 <b>use</b> <a href="../myso/hash.md#myso_hash">myso::hash</a>;
 <b>use</b> <a href="../myso/hex.md#myso_hex">myso::hex</a>;
-<b>use</b> <a href="../myso/sui.md#myso_myso">myso::myso</a>;
+<b>use</b> <a href="../myso/myso.md#myso_myso">myso::myso</a>;
 <b>use</b> <a href="../myso/object.md#myso_object">myso::object</a>;
 <b>use</b> <a href="../myso/party.md#myso_party">myso::party</a>;
 <b>use</b> <a href="../myso/priority_queue.md#myso_priority_queue">myso::priority_queue</a>;
@@ -42,8 +42,8 @@ title: Module `myso_system::genesis`
 <b>use</b> <a href="../myso/vec_map.md#myso_vec_map">myso::vec_map</a>;
 <b>use</b> <a href="../myso/vec_set.md#myso_vec_set">myso::vec_set</a>;
 <b>use</b> <a href="../myso/versioned.md#myso_versioned">myso::versioned</a>;
-<b>use</b> <a href="../myso_system/sui_system.md#myso_system_myso_system">myso_system::myso_system</a>;
-<b>use</b> <a href="../myso_system/sui_system_state_inner.md#myso_system_myso_system_state_inner">myso_system::myso_system_state_inner</a>;
+<b>use</b> <a href="../myso_system/myso_system.md#myso_system_myso_system">myso_system::myso_system</a>;
+<b>use</b> <a href="../myso_system/myso_system_state_inner.md#myso_system_myso_system_state_inner">myso_system::myso_system_state_inner</a>;
 <b>use</b> <a href="../myso_system/stake_subsidy.md#myso_system_stake_subsidy">myso_system::stake_subsidy</a>;
 <b>use</b> <a href="../myso_system/staking_pool.md#myso_system_staking_pool">myso_system::staking_pool</a>;
 <b>use</b> <a href="../myso_system/storage_fund.md#myso_system_storage_fund">myso_system::storage_fund</a>;
@@ -347,7 +347,7 @@ It will create a singleton MySoSystemState object, which contains
 all the information we need in the system.
 
 
-<pre><code><b>fun</b> <a href="../myso_system/genesis.md#myso_system_genesis_create">create</a>(myso_system_state_id: <a href="../myso/object.md#myso_object_UID">myso::object::UID</a>, myso_supply: <a href="../myso/balance.md#myso_balance_Balance">myso::balance::Balance</a>&lt;<a href="../myso/sui.md#myso_myso_MYSO">myso::myso::MYSO</a>&gt;, genesis_chain_parameters: <a href="../myso_system/genesis.md#myso_system_genesis_GenesisChainParameters">myso_system::genesis::GenesisChainParameters</a>, genesis_validators: vector&lt;<a href="../myso_system/genesis.md#myso_system_genesis_GenesisValidatorMetadata">myso_system::genesis::GenesisValidatorMetadata</a>&gt;, token_distribution_schedule: <a href="../myso_system/genesis.md#myso_system_genesis_TokenDistributionSchedule">myso_system::genesis::TokenDistributionSchedule</a>, ctx: &<b>mut</b> <a href="../myso/tx_context.md#myso_tx_context_TxContext">myso::tx_context::TxContext</a>)
+<pre><code><b>fun</b> <a href="../myso_system/genesis.md#myso_system_genesis_create">create</a>(myso_system_state_id: <a href="../myso/object.md#myso_object_UID">myso::object::UID</a>, myso_supply: <a href="../myso/balance.md#myso_balance_Balance">myso::balance::Balance</a>&lt;<a href="../myso/myso.md#myso_myso_MYSO">myso::myso::MYSO</a>&gt;, genesis_chain_parameters: <a href="../myso_system/genesis.md#myso_system_genesis_GenesisChainParameters">myso_system::genesis::GenesisChainParameters</a>, genesis_validators: vector&lt;<a href="../myso_system/genesis.md#myso_system_genesis_GenesisValidatorMetadata">myso_system::genesis::GenesisValidatorMetadata</a>&gt;, token_distribution_schedule: <a href="../myso_system/genesis.md#myso_system_genesis_TokenDistributionSchedule">myso_system::genesis::TokenDistributionSchedule</a>, ctx: &<b>mut</b> <a href="../myso/tx_context.md#myso_tx_context_TxContext">myso::tx_context::TxContext</a>)
 </code></pre>
 
 
@@ -421,7 +421,7 @@ all the information we need in the system.
     <a href="../myso_system/genesis.md#myso_system_genesis_allocate_tokens">allocate_tokens</a>(myso_supply, allocations, &<b>mut</b> validators, ctx);
     // Activate all validators
     validators.do_mut!(|<a href="../myso_system/validator.md#myso_system_validator">validator</a>| <a href="../myso_system/validator.md#myso_system_validator">validator</a>.activate(0));
-    <b>let</b> system_parameters = <a href="../myso_system/sui_system_state_inner.md#myso_system_myso_system_state_inner_create_system_parameters">myso_system_state_inner::create_system_parameters</a>(
+    <b>let</b> system_parameters = <a href="../myso_system/myso_system_state_inner.md#myso_system_myso_system_state_inner_create_system_parameters">myso_system_state_inner::create_system_parameters</a>(
         genesis_chain_parameters.epoch_duration_ms,
         genesis_chain_parameters.stake_subsidy_start_epoch,
         // Validator committee parameters
@@ -462,7 +462,7 @@ all the information we need in the system.
 
 
 
-<pre><code><b>fun</b> <a href="../myso_system/genesis.md#myso_system_genesis_allocate_tokens">allocate_tokens</a>(myso_supply: <a href="../myso/balance.md#myso_balance_Balance">myso::balance::Balance</a>&lt;<a href="../myso/sui.md#myso_myso_MYSO">myso::myso::MYSO</a>&gt;, allocations: vector&lt;<a href="../myso_system/genesis.md#myso_system_genesis_TokenAllocation">myso_system::genesis::TokenAllocation</a>&gt;, validators: &<b>mut</b> vector&lt;<a href="../myso_system/validator.md#myso_system_validator_Validator">myso_system::validator::Validator</a>&gt;, ctx: &<b>mut</b> <a href="../myso/tx_context.md#myso_tx_context_TxContext">myso::tx_context::TxContext</a>)
+<pre><code><b>fun</b> <a href="../myso_system/genesis.md#myso_system_genesis_allocate_tokens">allocate_tokens</a>(myso_supply: <a href="../myso/balance.md#myso_balance_Balance">myso::balance::Balance</a>&lt;<a href="../myso/myso.md#myso_myso_MYSO">myso::myso::MYSO</a>&gt;, allocations: vector&lt;<a href="../myso_system/genesis.md#myso_system_genesis_TokenAllocation">myso_system::genesis::TokenAllocation</a>&gt;, validators: &<b>mut</b> vector&lt;<a href="../myso_system/validator.md#myso_system_validator_Validator">myso_system::validator::Validator</a>&gt;, ctx: &<b>mut</b> <a href="../myso/tx_context.md#myso_tx_context_TxContext">myso::tx_context::TxContext</a>)
 </code></pre>
 
 

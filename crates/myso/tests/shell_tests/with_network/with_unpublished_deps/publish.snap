@@ -1,5 +1,5 @@
 ---
-source: crates/sui/tests/shell_tests.rs
+source: crates/myso/tests/shell_tests.rs
 ---
 ----- script -----
 #!/usr/bin/env bash
@@ -12,7 +12,7 @@ source: crates/sui/tests/shell_tests.rs
 #
 # This should fail, because we try to get the linkage table for `b` because `b` is not on-chain
 
-chain_id=$(sui client --client.config $CONFIG chain-identifier)
+chain_id=$(myso client --client.config $CONFIG chain-identifier)
 
 add_env_to_toml() {
   echo "[environments]" >> $1/Move.toml
@@ -24,7 +24,7 @@ add_env_to_toml b
 
 echo "=== publish a ==="
 
-sui client --client.config $CONFIG publish a
+myso client --client.config $CONFIG publish a
 
 ----- results -----
 success: false
@@ -38,6 +38,6 @@ Caused by:
 
 ----- stderr -----
 INCLUDING DEPENDENCY MoveStdlib
-INCLUDING DEPENDENCY Sui
+INCLUDING DEPENDENCYMySo
 INCLUDING DEPENDENCY UnpublishedNonZeroAddress
 BUILDING examples

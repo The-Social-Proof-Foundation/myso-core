@@ -1,6 +1,6 @@
 ---
 title: Building PTBs
-description: Using the Sui TypeScript SDK, you can create programmable transaction blocks to perform multiple commands in a single transaction.
+description: Using the MySo TypeScript SDK, you can create programmable transaction blocks to perform multiple commands in a single transaction.
 keywords:
   [
     ptbs,
@@ -14,12 +14,12 @@ keywords:
   ]
 ---
 
-This guide explores creating a [programmable transaction block (PTB)](/guides/developer/transactions/prog-txn-blocks.mdx) on Sui using the [TypeScript SDK](https://sdk.mystenlabs.com/typescript/install).
+This guide explores creating a [programmable transaction block (PTB)](/guides/developer/transactions/prog-txn-blocks.mdx) on MySo using the [TypeScript SDK](https://sdk.mystenlabs.com/typescript/install).
 
-This example constructs a PTB to send SUI tokens. First, import the `Transaction` class, and construct it:
+This example constructs a PTB to send MYSO tokens. First, import the `Transaction` class, and construct it:
 
 ```ts
-import { Transaction } from '@mysten/sui/transactions';
+import { Transaction } from '@socialproof/myso/transactions';
 
 const tx = new Transaction();
 ```
@@ -32,7 +32,7 @@ Using this, you can then add transactions to the PTB:
 const [coin] = tx.splitCoins(tx.gas, [tx.pure('u64', 100)]);
 
 // Transfer the split coin to a specific address.
-tx.transferObjects([coin], tx.pure('address', '0xSomeSuiAddress'));
+tx.transferObjects([coin], tx.pure('address', '0xSomeMySoAddress'));
 ```
 
 You can attach multiple transaction commands of the same type to a PTB. For example, to get a list of transfers,and iterate over them to transfer coins to each:
@@ -43,7 +43,7 @@ interface Transfer {
 	amount: number;
 }
 
-// Procure a list of some Sui transfers to make:
+// Procure a list of some MySo transfers to make:
 const transfers: Transfer[] = getTransfers();
 
 const tx = new Transaction();
@@ -60,7 +60,7 @@ transfers.forEach((transfer, index) => {
 });
 ```
 
-After you have the transaction defined, you can directly execute it with a Sui client and `KeyPair` using `client.signAndExecuteTransaction`.
+After you have the transaction defined, you can directly execute it with a MySo client and `KeyPair` using `client.signAndExecuteTransaction`.
 
 ```ts
 client.signAndExecuteTransaction({ signer: keypair, transaction: tx });
@@ -68,7 +68,7 @@ client.signAndExecuteTransaction({ signer: keypair, transaction: tx });
 
 ## Constructing inputs
 
-Inputs are how you provide external values to PTBs, for example, an amount of SUI to transfer, an object to pass into a Move call, or a shared object.
+Inputs are how you provide external values to PTBs, for example, an amount of MYSO to transfer, an object to pass into a Move call, or a shared object.
 
 There are 2 ways to define inputs:
 
@@ -79,7 +79,7 @@ There are 2 ways to define inputs:
 
   - Otherwise, it's used to generate the BCS serialization layout for the value.
 
-  - In the new version, a more intuitive way of writing is provided, for example: `tx.pure.u64(100)`, `tx.pure.string('SomeString')`, `tx.pure.address('0xSomeSuiAddress')`, `tx.pure.vector('bool', [true, false])`...
+  - In the new version, a more intuitive way of writing is provided, for example: `tx.pure.u64(100)`, `tx.pure.string('SomeString')`, `tx.pure.address('0xSomeMySoAddress')`, `tx.pure.vector('bool', [true, false])`...
 
 Learn more about [inputs](/concepts/transactions/inputs-and-results.mdx).
 
@@ -108,7 +108,7 @@ tx.transferObjects([mintMany[0], mintMany[1]], tx.pure.address(address));
 
 ## Use the gas coin
 
-With PTBs, you can use the gas payment coin to construct coins with a set balance using `splitCoin`. This is useful for SUI payments and avoids the need for up-front coin selection. You can use `tx.gas` to access the gas coin in a PTB and it is valid as input for any arguments. With the exception of `transferObjects`, `tx.gas` must be used by reference. This means you can also add to the gas coin with `mergeCoins` or borrow it for Move functions with `moveCall`.
+With PTBs, you can use the gas payment coin to construct coins with a set balance using `splitCoin`. This is useful for MYSO payments and avoids the need for up-front coin selection. You can use `tx.gas` to access the gas coin in a PTB and it is valid as input for any arguments. With the exception of `transferObjects`, `tx.gas` must be used by reference. This means you can also add to the gas coin with `mergeCoins` or borrow it for Move functions with `moveCall`.
 
 You can transfer the gas coin using `transferObjects` in the event that you want to transfer all of your coin balance to another address. You can also transfer other coins in your wallet using their `Object ID`. For example,
 
@@ -148,7 +148,7 @@ const tx = Transaction.from(bytes);
 If you want to build a PTB offline, such that no `provider` is required, you need to fully define all of your input values and gas configuration. For pure values, you can provide a `Uint8Array` which is used directly in the transaction. For objects, you can use the `Inputs` helper to construct an object reference.
 
 ```ts
-import { Inputs } from '@mysten/sui/transactions';
+import { Inputs } from '@socialproof/myso/transactions';
 
 // For pure values:
 tx.pure(pureValueAsBytes);
@@ -180,7 +180,7 @@ By default, the SDK automatically derives the gas budget by executing a dry-run 
 
 :::info
 
-Sui represents the gas budget in SUI and you should take the gas price of the PTB into account.
+MySo represents the gas budget in MYSO and you should take the gas price of the PTB into account.
 
 :::
 
@@ -206,7 +206,7 @@ Gas coins should be objects containing the coin's `{ objectId: string, version: 
 
 The Wallet Standard interface now supports the `Transaction` kind directly. All `signTransaction` and `signAndExecuteTransaction` calls from apps into wallets must provide a `Transaction` class. You can then serialize this PTB class and send it to your wallet for execution.
 
-To serialize a PTB for sending to a wallet, Sui recommends using the `tx.serialize()` function, which returns an opaque string representation of the PTB that can be passed from the Wallet Standard app context to your wallet. You can then convert this back into a `Transaction` using `Transaction.from()`.
+To serialize a PTB for sending to a wallet, MySo recommends using the `tx.serialize()` function, which returns an opaque string representation of the PTB that can be passed from the Wallet Standard app context to your wallet. You can then convert this back into a `Transaction` using `Transaction.from()`.
 
 :::tip
 

@@ -1,5 +1,5 @@
 ---
-source: crates/sui-json-rpc-types/src/unit_tests/rpc_types_tests.rs
+source: crates/myso-json-rpc-types/src/unit_tests/rpc_types_tests.rs
 expression: "acc.join(\"\\n\")"
 ---
 "Bool"

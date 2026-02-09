@@ -1,5 +1,5 @@
 ---
-source: crates/sui-indexer-alt-e2e-tests/tests/graphql_simulate_transaction_tests.rs
+source: crates/myso-indexer-alt-e2e-tests/tests/graphql_simulate_transaction_tests.rs
 expression: "result.pointer(\"/data/simulateTransaction\")"
 ---
 {

@@ -27,7 +27,7 @@ title: Module `myso_system::stake_subsidy`
 <b>use</b> <a href="../myso/funds_accumulator.md#myso_funds_accumulator">myso::funds_accumulator</a>;
 <b>use</b> <a href="../myso/hash.md#myso_hash">myso::hash</a>;
 <b>use</b> <a href="../myso/hex.md#myso_hex">myso::hex</a>;
-<b>use</b> <a href="../myso/sui.md#myso_myso">myso::myso</a>;
+<b>use</b> <a href="../myso/myso.md#myso_myso">myso::myso</a>;
 <b>use</b> <a href="../myso/object.md#myso_object">myso::object</a>;
 <b>use</b> <a href="../myso/party.md#myso_party">myso::party</a>;
 <b>use</b> <a href="../myso/protocol_config.md#myso_protocol_config">myso::protocol_config</a>;
@@ -69,7 +69,7 @@ title: Module `myso_system::stake_subsidy`
 
 <dl>
 <dt>
-<code>balance: <a href="../myso/balance.md#myso_balance_Balance">myso::balance::Balance</a>&lt;<a href="../myso/sui.md#myso_myso_MYSO">myso::myso::MYSO</a>&gt;</code>
+<code>balance: <a href="../myso/balance.md#myso_balance_Balance">myso::balance::Balance</a>&lt;<a href="../myso/myso.md#myso_myso_MYSO">myso::myso::MYSO</a>&gt;</code>
 </dt>
 <dd>
  Balance of MYSO set aside for stake subsidies that will be drawn down over time.
@@ -140,7 +140,7 @@ title: Module `myso_system::stake_subsidy`
 
 
 
-<pre><code><b>public</b>(package) <b>fun</b> <a href="../myso_system/stake_subsidy.md#myso_system_stake_subsidy_create">create</a>(balance: <a href="../myso/balance.md#myso_balance_Balance">myso::balance::Balance</a>&lt;<a href="../myso/sui.md#myso_myso_MYSO">myso::myso::MYSO</a>&gt;, initial_distribution_amount: u64, stake_subsidy_period_length: u64, stake_subsidy_decrease_rate: u16, ctx: &<b>mut</b> <a href="../myso/tx_context.md#myso_tx_context_TxContext">myso::tx_context::TxContext</a>): <a href="../myso_system/stake_subsidy.md#myso_system_stake_subsidy_StakeSubsidy">myso_system::stake_subsidy::StakeSubsidy</a>
+<pre><code><b>public</b>(package) <b>fun</b> <a href="../myso_system/stake_subsidy.md#myso_system_stake_subsidy_create">create</a>(balance: <a href="../myso/balance.md#myso_balance_Balance">myso::balance::Balance</a>&lt;<a href="../myso/myso.md#myso_myso_MYSO">myso::myso::MYSO</a>&gt;, initial_distribution_amount: u64, stake_subsidy_period_length: u64, stake_subsidy_decrease_rate: u16, ctx: &<b>mut</b> <a href="../myso/tx_context.md#myso_tx_context_TxContext">myso::tx_context::TxContext</a>): <a href="../myso_system/stake_subsidy.md#myso_system_stake_subsidy_StakeSubsidy">myso_system::stake_subsidy::StakeSubsidy</a>
 </code></pre>
 
 
@@ -183,7 +183,7 @@ title: Module `myso_system::stake_subsidy`
 Advance the epoch counter and draw down the subsidy for the epoch.
 
 
-<pre><code><b>public</b>(package) <b>fun</b> <a href="../myso_system/stake_subsidy.md#myso_system_stake_subsidy_advance_epoch">advance_epoch</a>(self: &<b>mut</b> <a href="../myso_system/stake_subsidy.md#myso_system_stake_subsidy_StakeSubsidy">myso_system::stake_subsidy::StakeSubsidy</a>): <a href="../myso/balance.md#myso_balance_Balance">myso::balance::Balance</a>&lt;<a href="../myso/sui.md#myso_myso_MYSO">myso::myso::MYSO</a>&gt;
+<pre><code><b>public</b>(package) <b>fun</b> <a href="../myso_system/stake_subsidy.md#myso_system_stake_subsidy_advance_epoch">advance_epoch</a>(self: &<b>mut</b> <a href="../myso_system/stake_subsidy.md#myso_system_stake_subsidy_StakeSubsidy">myso_system::stake_subsidy::StakeSubsidy</a>): <a href="../myso/balance.md#myso_balance_Balance">myso::balance::Balance</a>&lt;<a href="../myso/myso.md#myso_myso_MYSO">myso::myso::MYSO</a>&gt;
 </code></pre>
 
 

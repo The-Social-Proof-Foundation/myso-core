@@ -7,8 +7,8 @@ import {
 	useSignTransaction,
 	useSuiClient,
 } from '@mysten/dapp-kit';
-import { SuiTransactionBlockResponse } from '@mysten/sui/client';
-import { Transaction } from '@mysten/sui/transactions';
+import { SuiTransactionBlockResponse } from '@socialproof/myso/client';
+import { Transaction } from '@socialproof/myso/transactions';
 import { ComponentProps, ReactNode, useMemo, useState } from 'react';
 
 import { sponsorTransaction } from './utils/sponsorTransaction';

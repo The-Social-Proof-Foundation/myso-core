@@ -2,7 +2,7 @@
 name = "myso-framework-tests"
 version = "0.1.0"
 edition = "2024"
-authors = ["Mysten Labs <eng@mystenlabs.com>"]
+authors = ["Brandon Shaw <brandon@mysocial.network>"]
 description = "Runs Move tests for myso-framework"
 license = "Apache-2.0"
 publish = false

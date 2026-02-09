@@ -13,7 +13,7 @@ We appreciate contributions, but **simple typo fixes (e.g., minor spelling error
 
 Found a small error or typo in the main documentation? Each page on the [docs.myso.io](https://docs.myso.io/) site includes an **Edit this page** link at the bottom that you can use to edit the page in GitHub. The content is located in the docs/content directory of the MySo repo, so you can make a PR if you prefer. 
 
-For larger documentation issues, you can [create an issue](https://github.com/MystenLabs/myso/issues/new/choose) in GitHub. To fix the problem yourself, follow the [documentation contribution](./docs/content/references/contribute/contribution-process.mdx) guidelines.
+For larger documentation issues, you can [create an issue](https://github.com/the-social-proof-foundation/myso-core/issues/new/choose) in GitHub. To fix the problem yourself, follow the [documentation contribution](./docs/content/references/contribute/contribution-process.mdx) guidelines.
 
 If you change functionality, update the relevant documentation.
 
@@ -31,7 +31,7 @@ If you want to contribute code that creates a feature on MySo, start with a [MyS
 
 ## New MySo Framework Contributions
 
-Want to contribute to the MySo framework? See [CONTRIBUTING.md](https://github.com/MystenLabs/myso/blob/main/crates/myso-framework/CONTRIBUTING.md) for information related to `myso-framework` crate contributions.
+Want to contribute to the MySo framework? See [CONTRIBUTING.md](https://github.com/the-social-proof-foundation/myso-core/blob/main/crates/myso-framework/CONTRIBUTING.md) for information related to `myso-framework` crate contributions.
 
 ## Proposing Code Changes
 

@@ -172,7 +172,7 @@ See <code><a href="../myso/transfer_policy.md#myso_transfer_policy">transfer_pol
 <b>use</b> <a href="../myso/funds_accumulator.md#myso_funds_accumulator">myso::funds_accumulator</a>;
 <b>use</b> <a href="../myso/hash.md#myso_hash">myso::hash</a>;
 <b>use</b> <a href="../myso/hex.md#myso_hex">myso::hex</a>;
-<b>use</b> <a href="../myso/sui.md#myso_myso">myso::myso</a>;
+<b>use</b> <a href="../myso/myso.md#myso_myso">myso::myso</a>;
 <b>use</b> <a href="../myso/object.md#myso_object">myso::object</a>;
 <b>use</b> <a href="../myso/package.md#myso_package">myso::package</a>;
 <b>use</b> <a href="../myso/party.md#myso_party">myso::party</a>;
@@ -224,7 +224,7 @@ needs to be approved via the <code>TransferPolicy</code>.
 <dd>
 </dd>
 <dt>
-<code>profits: <a href="../myso/balance.md#myso_balance_Balance">myso::balance::Balance</a>&lt;<a href="../myso/sui.md#myso_myso_MYSO">myso::myso::MYSO</a>&gt;</code>
+<code>profits: <a href="../myso/balance.md#myso_balance_Balance">myso::balance::Balance</a>&lt;<a href="../myso/myso.md#myso_myso_MYSO">myso::myso::MYSO</a>&gt;</code>
 </dt>
 <dd>
  Balance of the Kiosk - all profits from sales go here.
@@ -790,7 +790,7 @@ Can only be performed by the bearer of the <code><a href="../myso/kiosk.md#myso_
 case where there's no items inside and a <code><a href="../myso/kiosk.md#myso_kiosk_Kiosk">Kiosk</a></code> is not shared.
 
 
-<pre><code><b>public</b> <b>fun</b> <a href="../myso/kiosk.md#myso_kiosk_close_and_withdraw">close_and_withdraw</a>(self: <a href="../myso/kiosk.md#myso_kiosk_Kiosk">myso::kiosk::Kiosk</a>, cap: <a href="../myso/kiosk.md#myso_kiosk_KioskOwnerCap">myso::kiosk::KioskOwnerCap</a>, ctx: &<b>mut</b> <a href="../myso/tx_context.md#myso_tx_context_TxContext">myso::tx_context::TxContext</a>): <a href="../myso/coin.md#myso_coin_Coin">myso::coin::Coin</a>&lt;<a href="../myso/sui.md#myso_myso_MYSO">myso::myso::MYSO</a>&gt;
+<pre><code><b>public</b> <b>fun</b> <a href="../myso/kiosk.md#myso_kiosk_close_and_withdraw">close_and_withdraw</a>(self: <a href="../myso/kiosk.md#myso_kiosk_Kiosk">myso::kiosk::Kiosk</a>, cap: <a href="../myso/kiosk.md#myso_kiosk_KioskOwnerCap">myso::kiosk::KioskOwnerCap</a>, ctx: &<b>mut</b> <a href="../myso/tx_context.md#myso_tx_context_TxContext">myso::tx_context::TxContext</a>): <a href="../myso/coin.md#myso_coin_Coin">myso::coin::Coin</a>&lt;<a href="../myso/myso.md#myso_myso_MYSO">myso::myso::MYSO</a>&gt;
 </code></pre>
 
 
@@ -1071,7 +1071,7 @@ request their approval (by calling some function) so that the trade can be
 finalized.
 
 
-<pre><code><b>public</b> <b>fun</b> <a href="../myso/kiosk.md#myso_kiosk_purchase">purchase</a>&lt;T: key, store&gt;(self: &<b>mut</b> <a href="../myso/kiosk.md#myso_kiosk_Kiosk">myso::kiosk::Kiosk</a>, id: <a href="../myso/object.md#myso_object_ID">myso::object::ID</a>, payment: <a href="../myso/coin.md#myso_coin_Coin">myso::coin::Coin</a>&lt;<a href="../myso/sui.md#myso_myso_MYSO">myso::myso::MYSO</a>&gt;): (T, <a href="../myso/transfer_policy.md#myso_transfer_policy_TransferRequest">myso::transfer_policy::TransferRequest</a>&lt;T&gt;)
+<pre><code><b>public</b> <b>fun</b> <a href="../myso/kiosk.md#myso_kiosk_purchase">purchase</a>&lt;T: key, store&gt;(self: &<b>mut</b> <a href="../myso/kiosk.md#myso_kiosk_Kiosk">myso::kiosk::Kiosk</a>, id: <a href="../myso/object.md#myso_object_ID">myso::object::ID</a>, payment: <a href="../myso/coin.md#myso_coin_Coin">myso::coin::Coin</a>&lt;<a href="../myso/myso.md#myso_myso_MYSO">myso::myso::MYSO</a>&gt;): (T, <a href="../myso/transfer_policy.md#myso_transfer_policy_TransferRequest">myso::transfer_policy::TransferRequest</a>&lt;T&gt;)
 </code></pre>
 
 
@@ -1149,7 +1149,7 @@ Unpack the <code><a href="../myso/kiosk.md#myso_kiosk_PurchaseCap">PurchaseCap</
 as the price for the listing making sure it's no less than <code>min_amount</code>.
 
 
-<pre><code><b>public</b> <b>fun</b> <a href="../myso/kiosk.md#myso_kiosk_purchase_with_cap">purchase_with_cap</a>&lt;T: key, store&gt;(self: &<b>mut</b> <a href="../myso/kiosk.md#myso_kiosk_Kiosk">myso::kiosk::Kiosk</a>, purchase_cap: <a href="../myso/kiosk.md#myso_kiosk_PurchaseCap">myso::kiosk::PurchaseCap</a>&lt;T&gt;, payment: <a href="../myso/coin.md#myso_coin_Coin">myso::coin::Coin</a>&lt;<a href="../myso/sui.md#myso_myso_MYSO">myso::myso::MYSO</a>&gt;): (T, <a href="../myso/transfer_policy.md#myso_transfer_policy_TransferRequest">myso::transfer_policy::TransferRequest</a>&lt;T&gt;)
+<pre><code><b>public</b> <b>fun</b> <a href="../myso/kiosk.md#myso_kiosk_purchase_with_cap">purchase_with_cap</a>&lt;T: key, store&gt;(self: &<b>mut</b> <a href="../myso/kiosk.md#myso_kiosk_Kiosk">myso::kiosk::Kiosk</a>, purchase_cap: <a href="../myso/kiosk.md#myso_kiosk_PurchaseCap">myso::kiosk::PurchaseCap</a>&lt;T&gt;, payment: <a href="../myso/coin.md#myso_coin_Coin">myso::coin::Coin</a>&lt;<a href="../myso/myso.md#myso_myso_MYSO">myso::myso::MYSO</a>&gt;): (T, <a href="../myso/transfer_policy.md#myso_transfer_policy_TransferRequest">myso::transfer_policy::TransferRequest</a>&lt;T&gt;)
 </code></pre>
 
 
@@ -1218,7 +1218,7 @@ allow the item for taking. Can only be returned to its <code><a href="../myso/ki
 Withdraw profits from the Kiosk.
 
 
-<pre><code><b>public</b> <b>fun</b> <a href="../myso/kiosk.md#myso_kiosk_withdraw">withdraw</a>(self: &<b>mut</b> <a href="../myso/kiosk.md#myso_kiosk_Kiosk">myso::kiosk::Kiosk</a>, cap: &<a href="../myso/kiosk.md#myso_kiosk_KioskOwnerCap">myso::kiosk::KioskOwnerCap</a>, amount: <a href="../std/option.md#std_option_Option">std::option::Option</a>&lt;u64&gt;, ctx: &<b>mut</b> <a href="../myso/tx_context.md#myso_tx_context_TxContext">myso::tx_context::TxContext</a>): <a href="../myso/coin.md#myso_coin_Coin">myso::coin::Coin</a>&lt;<a href="../myso/sui.md#myso_myso_MYSO">myso::myso::MYSO</a>&gt;
+<pre><code><b>public</b> <b>fun</b> <a href="../myso/kiosk.md#myso_kiosk_withdraw">withdraw</a>(self: &<b>mut</b> <a href="../myso/kiosk.md#myso_kiosk_Kiosk">myso::kiosk::Kiosk</a>, cap: &<a href="../myso/kiosk.md#myso_kiosk_KioskOwnerCap">myso::kiosk::KioskOwnerCap</a>, amount: <a href="../std/option.md#std_option_Option">std::option::Option</a>&lt;u64&gt;, ctx: &<b>mut</b> <a href="../myso/tx_context.md#myso_tx_context_TxContext">myso::tx_context::TxContext</a>): <a href="../myso/coin.md#myso_coin_Coin">myso::coin::Coin</a>&lt;<a href="../myso/myso.md#myso_myso_MYSO">myso::myso::MYSO</a>&gt;
 </code></pre>
 
 
@@ -1671,7 +1671,7 @@ Get the amount of profits collected by selling items.
 Get mutable access to <code>profits</code> - owner only action.
 
 
-<pre><code><b>public</b> <b>fun</b> <a href="../myso/kiosk.md#myso_kiosk_profits_mut">profits_mut</a>(self: &<b>mut</b> <a href="../myso/kiosk.md#myso_kiosk_Kiosk">myso::kiosk::Kiosk</a>, cap: &<a href="../myso/kiosk.md#myso_kiosk_KioskOwnerCap">myso::kiosk::KioskOwnerCap</a>): &<b>mut</b> <a href="../myso/balance.md#myso_balance_Balance">myso::balance::Balance</a>&lt;<a href="../myso/sui.md#myso_myso_MYSO">myso::myso::MYSO</a>&gt;
+<pre><code><b>public</b> <b>fun</b> <a href="../myso/kiosk.md#myso_kiosk_profits_mut">profits_mut</a>(self: &<b>mut</b> <a href="../myso/kiosk.md#myso_kiosk_Kiosk">myso::kiosk::Kiosk</a>, cap: &<a href="../myso/kiosk.md#myso_kiosk_KioskOwnerCap">myso::kiosk::KioskOwnerCap</a>): &<b>mut</b> <a href="../myso/balance.md#myso_balance_Balance">myso::balance::Balance</a>&lt;<a href="../myso/myso.md#myso_myso_MYSO">myso::myso::MYSO</a>&gt;
 </code></pre>
 
 

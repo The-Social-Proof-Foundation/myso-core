@@ -402,11 +402,11 @@ depositFunds = (tx: Transaction) => {
 	tx.add(this.balanceManager.depositIntoManager(managerKey, coinKey, amount));
 };
 
-// Example: Withdraw SUI from a balance manager
+// Example: Withdraw MYSO from a balance manager
 withdrawFunds = (tx: Transaction) => {
 	const managerKey = 'MANAGER_1';
-	const coinKey = 'SUI';
-	const amount = 100; // 100 SUI
+	const coinKey = 'MYSO';
+	const amount = 100; // 100 MYSO
 	const recipient = '0x456...';
 
 	tx.add(this.balanceManager.withdrawFromManager(managerKey, coinKey, amount, recipient));
@@ -449,8 +449,8 @@ depositWithCapability = (tx: Transaction) => {
 // Example: Use WithdrawCap to withdraw funds
 withdrawWithCapability = (tx: Transaction) => {
 	const managerKey = 'MANAGER_1';
-	const coinKey = 'SUI';
-	const amount = 50; // 50 SUI
+	const coinKey = 'MYSO';
+	const amount = 50; // 50 MYSO
 
 	const withdrawnCoin = tx.add(this.balanceManager.withdrawWithCap(managerKey, coinKey, amount));
 

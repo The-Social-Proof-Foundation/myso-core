@@ -28,7 +28,7 @@ Response: {
                           },
                           "value": {
                             "json": {
-                              "sui_amount": "0",
+                              "myso_amount": "0",
                               "pool_token_amount": "0"
                             }
                           }
@@ -77,7 +77,7 @@ Response: {
                           },
                           "value": {
                             "json": {
-                              "sui_amount": "0",
+                              "myso_amount": "0",
                               "pool_token_amount": "0"
                             }
                           }
@@ -110,7 +110,7 @@ Response: {
                           },
                           "value": {
                             "json": {
-                              "sui_amount": "20000000000000000",
+                              "myso_amount": "20000000000000000",
                               "pool_token_amount": "20000000000000000"
                             }
                           }
@@ -121,7 +121,7 @@ Response: {
                           },
                           "value": {
                             "json": {
-                              "sui_amount": "0",
+                              "myso_amount": "0",
                               "pool_token_amount": "0"
                             }
                           }

@@ -1,16 +1,16 @@
 ---
-source: crates/sui/tests/shell_tests.rs
+source: crates/myso/tests/shell_tests.rs
 ---
 ----- script -----
 # Copyright (c) Mysten Labs, Inc.
 # SPDX-License-Identifier: Apache-2.0
 
-chain_id=$(sui client --client.config $CONFIG chain-identifier)
+chain_id=$(myso client --client.config $CONFIG chain-identifier)
 echo "[environments]" >> test_pkg/Move.toml
 echo "localnet = \"$chain_id\"" >> test_pkg/Move.toml
 
-sui client --client.config $CONFIG ptb \
- --move-call sui::tx_context::sender \
+myso client --client.config $CONFIG ptb \
+ --move-call myso::tx_context::sender \
  --assign sender \
  --publish "test_pkg" \
  --assign upgrade_cap \

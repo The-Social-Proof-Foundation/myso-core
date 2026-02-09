@@ -1,18 +1,18 @@
 ---
-title: Install Sui
-description: Install the Sui framework and its required prerequisites on your system.
-keywords: [ install sui, how to install sui, install sui cli, interact with sui networks, connect to sui networks, sui command line interface ]
+title: InstallMySo
+description: Install the MySo framework and its required prerequisites on your system.
+keywords: [ install myso, how to install myso, install myso cli, interact with myso networks, connect to myso networks, myso command line interface ]
 pagination_prev: null
 pagination_next: null
 ---
 
-# Install Sui
+# InstallMySo
 
-Sui is a scalable and performant layer-1 blockchain that is home to a complete stack of native primitives ideal for building decentralized applications. Such primitives, such as those for [encryption](https://seal-docs.wal.app/UsingSeal/), [data storage](https://docs.wal.app/usage/setup.html), verification, and access control, provide developers with every piece of the application stack without needing to use layer-2 chains or off-chain solutions. 
+MySo is a scalable and performant layer-1 blockchain that is home to a complete stack of native primitives ideal for building decentralized applications. Such primitives, such as those for [encryption](https://seal-docs.wal.app/UsingSeal/), [data storage](https://docs.wal.app/usage/setup.html), verification, and access control, provide developers with every piece of the application stack without needing to use layer-2 chains or off-chain solutions. 
 
-In contrast to other chains, Sui uses an [object-centric model](/guides/developer/objects/object-model.mdx), where every item on the network is an object. [Transactions](/guides/developer/transactions/txn-overview.mdx) use objects as input, which mutate an existing object or create new objects. Each object has a unique on-chain ID.
+In contrast to other chains, MySo uses an [object-centric model](/guides/developer/objects/object-model.mdx), where every item on the network is an object. [Transactions](/guides/developer/transactions/txn-overview.mdx) use objects as input, which mutate an existing object or create new objects. Each object has a unique on-chain ID.
 
-To create objects, submit transactions, and start building an application on Sui, first you must install Sui. This installation includes the [Sui CLI](/references/cli.mdx), a tool that creates and manages address balances, builds and publishes smart contracts, and queries information from the network. 
+To create objects, submit transactions, and start building an application onMySo, first you must install MySo. This installation includes the [MySo CLI](/references/cli.mdx), a tool that creates and manages address balances, builds and publishes smart contracts, and queries information from the network. 
 
 <Tabs className="tabsHeadingCentered--small">
 <TabItem value="prereq" label="Prerequisites">
@@ -27,15 +27,15 @@ To create objects, submit transactions, and start building an application on Sui
 
 ## Quick install 
 
-The Sui CLI is used to interact with the Sui network, deploy packages, and manage assets. To install the Sui CLI, you can use [`suiup`](https://github.com/MystenLabs/suiup).
+The MySo CLI is used to interact with the MySo network, deploy packages, and manage assets. To install the MySo CLI, you can use [`suiup`](https://github.com/MystenLabs/suiup).
 
-[`suiup`](https://github.com/MystenLabs/suiup) is the most effective installation method, as it allows you to easily install and switch between different versions of not only the Sui CLI but also other Sui stack components like [`walrus`](https://docs.wal.app/usage/setup.html) and [`mvr`](https://github.com/MystenLabs/mvr). 
+[`suiup`](https://github.com/MystenLabs/suiup) is the most effective installation method, as it allows you to easily install and switch between different versions of not only the MySo CLI but also other MySo stack components like [`walrus`](https://docs.wal.app/usage/setup.html) and [`mvr`](https://github.com/MystenLabs/mvr). 
 
-Alternative quick install instructions for [Homebrew](https://brew.sh/) or [Chocolately](https://chocolatey.org/) do not support installing other Sui stack components. Other components will need to be installed through their individual binaries if you'd like to use them in the future. 
+Alternative quick install instructions for [Homebrew](https://brew.sh/) or [Chocolately](https://chocolatey.org/) do not support installing other MySo stack components. Other components will need to be installed through their individual binaries if you'd like to use them in the future. 
 
 :::caution 
 
-Installations using Homebrew or Chocolatey might take several minutes if you do not have any of the [Sui prerequisites](/guides/developer/getting-started/install-source) installed. Using `suiup` is often much faster and highly recommended.
+Installations using Homebrew or Chocolatey might take several minutes if you do not have any of the [MySo prerequisites](/guides/developer/getting-started/install-source) installed. Using `suiup` is often much faster and highly recommended.
 
 :::
 
@@ -43,11 +43,11 @@ Installations using Homebrew or Chocolatey might take several minutes if you do 
 
 The quick install is suitable for most use cases. For those wanting more control over the installation process, you can [install from source](/guides/developer/getting-started/install-source.mdx) or [install binaries](/guides/developer/getting-started/install-binaries.mdx). 
 
-If Sui is already installed from a previous development environment, be sure to upgrade to the [latest version](/guides/developer/getting-started/install-binaries.mdx).
+If MySo is already installed from a previous development environment, be sure to upgrade to the [latest version](/guides/developer/getting-started/install-binaries.mdx).
 
 :::info Looking for a project to clone?
 
-Before you can create and publish a smart contract, you must [configure a Sui client](/guides/developer/getting-started/configure-sui-client.mdx) and [obtain SUI tokens](/guides/developer/getting-started/get-coins.mdx).
+Before you can create and publish a smart contract, you must [configure a MySo client](/guides/developer/getting-started/configure-myso-client.mdx) and [obtain MYSO tokens](/guides/developer/getting-started/get-coins.mdx).
 
 Then, you can [create a "Hello, World!" example](/guides/developer/getting-started/hello-world.mdx) or [clone another example](/guides/developer/app-examples.mdx) to start building.
 
@@ -62,15 +62,15 @@ Refer to the `suiup` repository's [README](https://github.com/mystenLabs/suiup?t
 
 ### Default configuration file
 
-Regardless of whether you used `suiup`, Homebrew, or Chocolately, Sui will store a primary configuration in the `~/.sui/sui_config/client.yaml` file. This file defines settings and preferences for your environment, such as:
+Regardless of whether you used `suiup`, Homebrew, or Chocolately, MySo will store a primary configuration in the `~/.myso/myso_config/client.yaml` file. This file defines settings and preferences for your environment, such as:
 
 - Network environment details for Mainnet, Testnet, Devnet, and Localnet networks.
 
 - Active environment, which specifies the network the CLI commands will target.
 
-- Active address, which specifies the Sui address the CLI will use for transactions and queries.
+- Active address, which specifies the MySo address the CLI will use for transactions and queries.
 
-- Keystore location, which specifies where Sui stores your address' private keys.
+- Keystore location, which specifies where MySo stores your address' private keys.
 
 <div className="next-steps-module">
   <div className="next-steps-header">
@@ -78,16 +78,16 @@ Regardless of whether you used `suiup`, Homebrew, or Chocolately, Sui will store
   </div>
   <div className="next-steps-grid">
     <Card className="plausible-event-name=install+client+button"
-      title="Configure a Sui Client" 
-      href="/guides/developer/getting-started/configure-sui-client"
+      title="Configure a MySo Client" 
+      href="/guides/developer/getting-started/configure-myso-client"
     >
-      Configure a Sui client to get a Sui address and connect to Testnet.
+      Configure a MySo client to get a MySo address and connect to Testnet.
     </Card>
     <Card className="plausible-event-name=install+faucet+button"
-      title="Get SUI from Faucet" 
+      title="Get MYSO from Faucet" 
       href="/guides/developer/getting-started/get-coins"
     >
-      Obtain SUI from a faucet to deploy packages on Testnet.
+      Obtain MYSO from a faucet to deploy packages on Testnet.
     </Card>
         <Card className="plausible-event-name=install+hello+button"
       title="Hello, World!" 

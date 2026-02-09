@@ -1,10 +1,10 @@
 ---
 title: Intent Signing
-description: Intent signing provides a compact domain separator to data signed by both user and authority signatures. Data that each signature commits to is called an intent message, which all signatures on Sui must include. 
+description: Intent signing provides a compact domain separator to data signed by both user and authority signatures. Data that each signature commits to is called an intent message, which all signatures on MySo must include. 
 keywords: [ intent, signing, intent signatures, intent message, domain separators, compact structs, signing standard, compact domain separator, user signatures, authority signatures, proof of possession, generate proof of possession ]
 ---
 
-An intent is a compact struct that serves as the domain separator for a message that a signature commits to. The data that the signature commits to is an intent message. All signatures in Sui must commit to an intent message rather than the message itself.
+An intent is a compact struct that serves as the domain separator for a message that a signature commits to. The data that the signature commits to is an intent message. All signatures in MySo must commit to an intent message rather than the message itself.
 
 The intent signing standard provides a compact domain separator to the data being signed for both user signatures and authority signatures. It has several benefits:
 
@@ -79,11 +79,11 @@ Under the hood, the `new_secure` method in Rust and the `signData` method in Typ
 
 1.  Apply Blake2b hash to get the 32-byte digest.
 
-1.  Pass the digest to the signing API for each corresponding scheme of the signer. The supported signature schemes are pure Ed25519, ECDSA Secp256k1, and ECDSA Secp256r1. See [Sui Signatures](/concepts/transactions/transaction-auth.mdx#signature-requirements) for requirements of each scheme.
+1.  Pass the digest to the signing API for each corresponding scheme of the signer. The supported signature schemes are pure Ed25519, ECDSA Secp256k1, and ECDSA Secp256r1. See [MySo Signatures](/concepts/transactions/transaction-auth.mdx#signature-requirements) for requirements of each scheme.
 
 ## Authority signature
 
-The authority signature is created using the protocol key. The data that it commits to is also an intent message `intent || message`. See all available intent scopes [in the source code](https://github.com/MystenLabs/sui/blob/0dc1a38f800fc2d8fabe11477fdef702058cf00d/crates/sui-types/src/intent.rs#L66).
+The authority signature is created using the protocol key. The data that it commits to is also an intent message `intent || message`. See all available intent scopes [in the source code](https://github.com/the-social-proof-foundation/myso-core/blob/0dc1a38f800fc2d8fabe11477fdef702058cf00d/crates/myso-types/src/intent.rs#L66).
 
 ### Generating proof of possession for an authority
 
@@ -91,7 +91,7 @@ When an authority requests to join the network, the protocol public key and its 
 
 The proof of possession is a BLS signature created using the authority protocol private key, committed over the following message: `intent || pubkey || address || epoch`. The values are as follows:
 
-- `intent`: Serialized to `[5, 0, 0]` representing an intent with scope as `Proof of Possession`, `version` as `V0`, and `app_id` as `Sui`.
+- `intent`: Serialized to `[5, 0, 0]` representing an intent with scope as `Proof of Possession`, `version` as `V0`, and `app_id` as `MySo`.
 
 - `pubkey`: The serialized public key bytes of the authority BLS protocol key.
 

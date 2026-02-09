@@ -105,7 +105,7 @@ jobs:
         GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       run: |
         # Fetch PR info (author and title) in one API call
-        pr_info=$(gh api -H "Accept: application/vnd.github+json" -H "X-GitHub-Api-Version: 2022-11-28" /repos/MystenLabs/myso/pulls/${{ matrix.pr }})
+        pr_info=$(gh api -H "Accept: application/vnd.github+json" -H "X-GitHub-Api-Version: 2022-11-28" /reposthe-social-proof-foundation/myso-core/pulls/${{ matrix.pr }})
         author=$(echo "$pr_info" | jq -r ".user.login")
         pr_title=$(echo "$pr_info" | jq -r ".title")
 

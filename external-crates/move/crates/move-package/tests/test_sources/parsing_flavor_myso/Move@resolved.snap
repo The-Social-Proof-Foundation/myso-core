@@ -58,7 +58,7 @@ ResolvedGraph {
                     ),
                     edition: None,
                     flavor: Some(
-                        Sui,
+                       MySo,
                     ),
                     custom_properties: {},
                 },

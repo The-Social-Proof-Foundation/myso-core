@@ -1,5 +1,5 @@
 ---
-source: crates/sui/src/client_ptb/parser.rs
+source: crates/myso/src/client_ptb/parser.rs
 expression: parsed
 ---
 [
@@ -18,7 +18,7 @@ expression: parsed
             end: 3,
         },
         value: Named(
-            "1.sui/foo",
+            "1.myso/foo",
         ),
     },
     Spanned {
@@ -27,7 +27,7 @@ expression: parsed
             end: 3,
         },
         value: Named(
-            "1.sui/foo/1",
+            "1.myso/foo/1",
         ),
     },
     Spanned {
@@ -36,7 +36,7 @@ expression: parsed
             end: 3,
         },
         value: Named(
-            "1.sui/3/1",
+            "1.myso/3/1",
         ),
     },
     Spanned {
@@ -45,7 +45,7 @@ expression: parsed
             end: 1,
         },
         value: Named(
-            "1.sui/3/1",
+            "1.myso/3/1",
         ),
     },
     Spanned {
@@ -72,7 +72,7 @@ expression: parsed
             end: 3,
         },
         value: Named(
-            "foo.sui/bar",
+            "foo.myso/bar",
         ),
     },
     Spanned {
@@ -81,7 +81,7 @@ expression: parsed
             end: 3,
         },
         value: Named(
-            "foo.sui/bar/1",
+            "foo.myso/bar/1",
         ),
     },
 ]

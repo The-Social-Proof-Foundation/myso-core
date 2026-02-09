@@ -3,7 +3,7 @@
 #[non_exhaustive]
 #[derive(Clone, PartialEq, Eq, Hash, ::prost::Message)]
 pub struct ListAuthenticatedEventsRequest {
-    /// Required. Stream identifier (Sui address) of the event stream.
+    /// Required. Stream identifier (MySo address) of the event stream.
     #[prost(string, optional, tag = "1")]
     pub stream_id: ::core::option::Option<::prost::alloc::string::String>,
     /// Inclusive start checkpoint. Must not yet be pruned. (default: 0)

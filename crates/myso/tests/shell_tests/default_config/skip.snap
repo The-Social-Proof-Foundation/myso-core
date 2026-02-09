@@ -1,5 +1,5 @@
 ---
-source: crates/sui/tests/shell_tests.rs
+source: crates/myso/tests/shell_tests.rs
 ---
 ----- script -----
 # Copyright (c) Mysten Labs, Inc.
@@ -7,7 +7,7 @@ source: crates/sui/tests/shell_tests.rs
 
 # If `-y` is passed and the config file doesn't exist, it is created
 # This is the same as prompt.sh except we pass -y instead of writing <enter> on stdin
-sui move --client.config ./client.yaml -y new example \
+myso move --client.config ./client.yaml -y new example \
   | sed 's/Generated new keypair.*$/Generated new keypair <REDACTED>/g' \
   | sed 's/recovery phrase : \[.*\]/recovery phrase : <REDACTED>/g'
 
@@ -15,7 +15,7 @@ sed 's/active_address:.*$/active_address: <REDACTED>/g' client.yaml
 
 echo ""
 echo "check for keystore:"
-ls sui.keystore
+ls myso.keystore
 
 ----- results -----
 success: true
@@ -27,21 +27,21 @@ Created "./client.yaml"
 Set active environment to testnet
 ---
 keystore:
-  File: "./sui.keystore"
+  File: "./myso.keystore"
 external_keys: ~
 envs:
   - alias: testnet
-    rpc: "https://fullnode.testnet.sui.io:443"
+    rpc: "https://fullnode.testnet.mysocial.network:443"
     ws: ~
     basic_auth: ~
     chain_id: 4c78adac
   - alias: mainnet
-    rpc: "https://fullnode.mainnet.sui.io:443"
+    rpc: "https://fullnode.mainnet.mysocial.network:443"
     ws: ~
     basic_auth: ~
     chain_id: 35834a8a
   - alias: devnet
-    rpc: "https://fullnode.devnet.sui.io:443"
+    rpc: "https://fullnode.devnet.mysocial.network:443"
     ws: ~
     basic_auth: ~
   - alias: local
@@ -52,6 +52,6 @@ active_env: testnet
 active_address: <REDACTED>
 
 check for keystore:
-sui.keystore
+myso.keystore
 
 ----- stderr -----

@@ -21,13 +21,13 @@ task 3, line 43:
 //# view-object 1,1
 Owner: Account Address ( A )
 Version: 2
-Contents: sui::coin::Coin<Test::fake::FAKE> {
-    id: sui::object::UID {
-        id: sui::object::ID {
+Contents: myso::coin::Coin<Test::fake::FAKE> {
+    id: myso::object::UID {
+        id: myso::object::ID {
             bytes: fake(1,1),
         },
     },
-    balance: sui::balance::Balance<Test::fake::FAKE> {
+    balance: myso::balance::Balance<Test::fake::FAKE> {
         value: 100u64,
     },
 }
@@ -36,13 +36,13 @@ task 4, line 45:
 //# view-object 1,2
 Owner: Account Address ( A )
 Version: 2
-Contents: sui::coin::Coin<Test::fake::FAKE> {
-    id: sui::object::UID {
-        id: sui::object::ID {
+Contents: myso::coin::Coin<Test::fake::FAKE> {
+    id: myso::object::UID {
+        id: myso::object::ID {
             bytes: fake(1,2),
         },
     },
-    balance: sui::balance::Balance<Test::fake::FAKE> {
+    balance: myso::balance::Balance<Test::fake::FAKE> {
         value: 300u64,
     },
 }
@@ -51,13 +51,13 @@ task 5, line 47:
 //# view-object 1,3
 Owner: Account Address ( A )
 Version: 2
-Contents: sui::coin::Coin<Test::fake::FAKE> {
-    id: sui::object::UID {
-        id: sui::object::ID {
+Contents: myso::coin::Coin<Test::fake::FAKE> {
+    id: myso::object::UID {
+        id: myso::object::ID {
             bytes: fake(1,3),
         },
     },
-    balance: sui::balance::Balance<Test::fake::FAKE> {
+    balance: myso::balance::Balance<Test::fake::FAKE> {
         value: 200u64,
     },
 }

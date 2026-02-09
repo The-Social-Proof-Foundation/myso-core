@@ -26,13 +26,13 @@ Sends one or more objects to a specified address.
 
 Splits off one or more coins from a single coin.
 
-- `CoinArg: Argument`: Coin of type `sui::coin::Coin<T>` (any coin type). Taken by mutable reference.
+- `CoinArg: Argument`: Coin of type `myso::coin::Coin<T>` (any coin type). Taken by mutable reference.
 
 - `AmountArgs: [Argument]`: `u64` values for split amounts. Taken by value (copied).
 
-**Returns:** Vector of coins `sui::coin::Coin<T>` matching the number of amounts.
+**Returns:** Vector of coins `myso::coin::Coin<T>` matching the number of amounts.
 
-**Signature:** `<T: key + store>(coin: &mut sui::coin::Coin<T>, amounts: vector<u64>): vector<sui::coin::Coin<T>>`
+**Signature:** `<T: key + store>(coin: &mut myso::coin::Coin<T>, amounts: vector<u64>): vector<myso::coin::Coin<T>>`
 
 #### `MergeCoins`
 
@@ -40,13 +40,13 @@ Splits off one or more coins from a single coin.
 
 Merges multiple coins into a single coin.
 
-- `CoinArg: Argument`: Target coin of type `sui::coin::Coin<T>` (any coin type). Taken by mutable reference.
+- `CoinArg: Argument`: Target coin of type `myso::coin::Coin<T>` (any coin type). Taken by mutable reference.
 
-- `ToMergeArgs: [Argument]`: Coins of type `sui::coin::Coin<T>` to merge. Taken by value (moved).
+- `ToMergeArgs: [Argument]`: Coins of type `myso::coin::Coin<T>` to merge. Taken by value (moved).
 
 **Returns:** Empty result vector.
 
-**Signature:** `<T: key + store>(coin: &mut sui::coin::Coin<T>, to_merge: vector<sui::coin::Coin<T>>): ()`
+**Signature:** `<T: key + store>(coin: &mut myso::coin::Coin<T>, to_merge: vector<myso::coin::Coin<T>>): ()`
 
 #### `MakeMoveVec`
 
@@ -92,7 +92,7 @@ Creates a new package and calls the `init` function of each module.
 
 - `TransitiveDependencies: [ObjectID]`: Object IDs of package dependencies for version selection.
 
-**Returns:** Single result of type `sui::package::UpgradeCap` for the newly published package.
+**Returns:** Single result of type `myso::package::UpgradeCap` for the newly published package.
 
 After verification, the `init` function of each module is called in the same order as the module byte vector.
 
@@ -108,9 +108,9 @@ Upgrades an existing package. No `init` functions are called for upgraded module
 
 - `Package: ObjectID`: Object ID of the package being upgraded (must exist and be latest version).
 
-- `UpgradeTicket: sui::package::UpgradeTicket`: Upgrade ticket generated from `sui::package::UpgradeCap`. Taken by value (moved).
+- `UpgradeTicket: myso::package::UpgradeTicket`: Upgrade ticket generated from `myso::package::UpgradeCap`. Taken by value (moved).
 
-**Returns:** Single result of type `sui::package::UpgradeReceipt` providing proof of upgrade.
+**Returns:** Single result of type `myso::package::UpgradeReceipt` providing proof of upgrade.
 
 For more details on upgrades, see [Upgrading Packages](/guides/developer/packages/upgrade.mdx).
 

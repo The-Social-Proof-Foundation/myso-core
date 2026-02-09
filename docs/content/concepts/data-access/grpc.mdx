@@ -1,10 +1,10 @@
 ---
 title: gRPC
-description: Learn about gRPC and how it provides fast, type-safe access to Sui network data.
-keywords: [ grpc, g rpc, RPC, sui full node grpc, full node rpc, what is grpc, grpc on sui ]
+description: Learn about gRPC and how it provides fast, type-safe access to MySo network data.
+keywords: [ grpc, g rpc, RPC, myso full node grpc, full node rpc, what is grpc, grpc on myso ]
 ---
 
-The [Sui Full Node gRPC API](/references/fullnode-protocol.mdx) provides a fast, type-safe, and efficient interface for interacting with the Sui blockchain. Designed for power users, indexers, explorers, and decentralized apps, this API enables access to Sui data with high performance and low latency.
+The [MySo Full Node gRPC API](/references/fullnode-protocol.mdx) provides a fast, type-safe, and efficient interface for interacting with the MySo blockchain. Designed for power users, indexers, explorers, and decentralized apps, this API enables access to MySo data with high performance and low latency.
 
 :::info
 
@@ -20,19 +20,19 @@ gRPC offers a high-performance, efficient communication protocol that uses [Prot
 
 In addition to request-response calls, gRPC supports server-side streaming, enabling real-time data delivery without constant polling. This is especially useful in environments where you need to track events and transactions live. gRPC's binary format is significantly faster and lighter than JSON, saving bandwidth and improving latency.
 
-## gRPC services on Sui
+## gRPC services onMySo
 
-Protocol buffers define the gRPC interface. You can find the relevant `.proto` files at [`sui-apis` on Github](https://github.com/MystenLabs/sui-apis/tree/main/proto), which apart from the gRPC messages (request and response payloads), include the following services:
+Protocol buffers define the gRPC interface. You can find the relevant `.proto` files at [`myso-apis` on Github](https://github.com/the-social-proof-foundation/myso-core-apis/tree/main/proto), which apart from the gRPC messages (request and response payloads), include the following services:
 
 | Service | `.proto` file | Purpose |
 | --- | --- | --- |
-| `TransactionExecutionService` | `sui/rpc/v2/transaction_execution_service.proto` | Submit and execute signed transactions on the Sui network. Wallets and apps use this service to send user actions to the network. |
-| `LedgerService` | `sui/rpc/v2/ledger_service.proto` | Lookup specific checkpoints, transactions, objects, and more from the current state and recent history of the Sui network. History refers to the recent past, limited to what a full node retains. |
-| `StateService` | `sui/rpc/v2/state_service.proto` | Query up-to-date on-chain data like balances, coin metadata, dynamic fields, or owned objects. It also supports dry-run simulations for transactions. |
-| `SubscriptionService` | `sui/rpc/v2/subscription_service.proto` | Stream live updates for checkpoints. Ideal for building reactive systems such as indexers, bots, and dashboards. Refer to [Subscriptions for streaming data](#subscriptions-for-streaming-data). |
-| `MovePackageService` | `sui/rpc/v2/move_package_service.proto` | Access metadata and the content of Move packages deployed on the Sui network. Useful for tooling, analysis, and smart contract introspection. |
-| `SignatureVerificationService` | `sui/rpc/v2/signature_verification_service.proto` | Validate signatures outside transaction execution. Helps pre-verify payloads that might include [zklogin](/concepts/cryptography/zklogin.mdx) or other signatures, simulate authentication, or build custom signing workflows. |
-| `NameService` | `sui/rpc/v2/name_service.proto` | Resolve human-readable SuiNS names to their underlying name records, and perform reverse lookups from Sui addresses back to linked names. |
+| `TransactionExecutionService` | `myso/rpc/v2/transaction_execution_service.proto` | Submit and execute signed transactions on the MySo network. Wallets and apps use this service to send user actions to the network. |
+| `LedgerService` | `myso/rpc/v2/ledger_service.proto` | Lookup specific checkpoints, transactions, objects, and more from the current state and recent history of the MySo network. History refers to the recent past, limited to what a full node retains. |
+| `StateService` | `myso/rpc/v2/state_service.proto` | Query up-to-date on-chain data like balances, coin metadata, dynamic fields, or owned objects. It also supports dry-run simulations for transactions. |
+| `SubscriptionService` | `myso/rpc/v2/subscription_service.proto` | Stream live updates for checkpoints. Ideal for building reactive systems such as indexers, bots, and dashboards. Refer to [Subscriptions for streaming data](#subscriptions-for-streaming-data). |
+| `MovePackageService` | `myso/rpc/v2/move_package_service.proto` | Access metadata and the content of Move packages deployed on the MySo network. Useful for tooling, analysis, and smart contract introspection. |
+| `SignatureVerificationService` | `myso/rpc/v2/signature_verification_service.proto` | Validate signatures outside transaction execution. Helps pre-verify payloads that might include [zklogin](/concepts/cryptography/zklogin.mdx) or other signatures, simulate authentication, or build custom signing workflows. |
+| `NameService` | `myso/rpc/v2/name_service.proto` | Resolve human-readable SuiNS names to their underlying name records, and perform reverse lookups from MySo addresses back to linked names. |
 
 Use these definitions to generate client libraries in various programming languages.
 
@@ -46,7 +46,7 @@ If you were using the `v2beta2` `.proto` files previously, the latest definition
 
 A [`FieldMask` in protocol buffers](https://protobuf.dev/reference/protobuf/google.protobuf/#field-mask) is a mechanism used to specify a subset of fields within a message that should be read, updated, or returned. Instead of retrieving the entire object, a client can request only the specific fields they need by providing a list of field paths. This improves performance and reduces unnecessary data transfer.
 
-In the Sui gRPC API, `FieldMask`s are used in requests like `GetTransaction`, `GetObject`, and so on to control which parts are included in the response (like the `effects` and `events` of a transaction).
+In the MySo gRPC API, `FieldMask`s are used in requests like `GetTransaction`, `GetObject`, and so on to control which parts are included in the response (like the `effects` and `events` of a transaction).
 
 Field masks are defined using `google.protobuf.FieldMask` and typically appear in the request message as `read_mask`. You can pass an explicit value of `*` to request all fields.
 
@@ -60,7 +60,7 @@ If you omit `read_mask`, it defaults to `*` (all fields), unless documented othe
 
 ### Field presence
 
-When using gRPC with Sui, it's important to understand how [field presence](https://github.com/protocolbuffers/protobuf/blob/main/docs/field_presence.md) works, especially when dealing with `proto3` syntax. In `proto3`, primitive fields like numbers, booleans, and strings are always initialized to a default value if not present in the message. This means you can't tell whether a value is explicitly set or just left out. To give you that distinction, Sui marks all fields as `optional`, even if they're required by the API.
+When using gRPC withMySo, it's important to understand how [field presence](https://github.com/protocolbuffers/protobuf/blob/main/docs/field_presence.md) works, especially when dealing with `proto3` syntax. In `proto3`, primitive fields like numbers, booleans, and strings are always initialized to a default value if not present in the message. This means you can't tell whether a value is explicitly set or just left out. To give you that distinction, MySo marks all fields as `optional`, even if they're required by the API.
 
 As a user of the API, this lets you detect whether a field value is actually provided or just defaulted and write clients that can perform partial updates or simulate intent like distinguishing between an explicitly empty input versus a missing one.
 
@@ -72,13 +72,13 @@ If a field is marked `optional` in the proto, it might still be **required** for
 
 ### Encoding
 
-In the Sui gRPC API, identifiers with standard human-readable formats are represented as `string`s in the proto schema:
+In the MySo gRPC API, identifiers with standard human-readable formats are represented as `string`s in the proto schema:
 
 - `Address` and `ObjectId`: Represented as 64 hexadecimal characters with a leading `0x`.
 
 - `Digest`s: Represented as [Base58](https://learnmeabitcoin.com/technical/keys/base58/).
 
-- `TypeTag` and `StructTag`: Represented in their canonical string format (such as  `0x0000000000000000000000000000000000000000000000000000000000000002::coin::Coin<0x0000000000000000000000000000000000000000000000000000000000000002::sui::SUI>`)
+- `TypeTag` and `StructTag`: Represented in their canonical string format (such as  `0x0000000000000000000000000000000000000000000000000000000000000002::coin::Coin<0x0000000000000000000000000000000000000000000000000000000000000002::myso::MYSO>`)
 
 ### Pagination
 
@@ -92,31 +92,31 @@ Make sure to keep all other parameters in your request the same between paginate
 
 ### Errors
 
-The Sui gRPC services follow the [richer error model](https://grpc.io/docs/guides/error/#richer-error-model) defined in [AIP-193](https://google.aip.dev/193). When an RPC returns a non-OK status code, detailed error information is typically included in the `grpc-status-details-bin` header. This header contains a `google.rpc.Status` message encoded in Base64.
+The MySo gRPC services follow the [richer error model](https://grpc.io/docs/guides/error/#richer-error-model) defined in [AIP-193](https://google.aip.dev/193). When an RPC returns a non-OK status code, detailed error information is typically included in the `grpc-status-details-bin` header. This header contains a `google.rpc.Status` message encoded in Base64.
 
 You can decode this message to access structured error details, which might include specific causes, context, or metadata. This makes it easier to understand and handle errors programmatically in your client applications.
 
 ### HTTP headers
 
-In many gRPC responses, the Sui API includes additional metadata in the form of HTTP headers. These headers provide contextual information about the current network state and might be useful for debugging, telemetry, or understanding the data's freshness.
+In many gRPC responses, the MySo API includes additional metadata in the form of HTTP headers. These headers provide contextual information about the current network state and might be useful for debugging, telemetry, or understanding the data's freshness.
 
 Here are the headers you might encounter:
 
-- `x-sui-chain-id`: The chain ID of the current network.
+- `x-myso-chain-id`: The chain ID of the current network.
 
-- `x-sui-chain`: A human-readable name for the current network (`mainnet`, `testnet`, or `devnet`).
+- `x-myso-chain`: A human-readable name for the current network (`mainnet`, `testnet`, or `devnet`).
 
-- `x-sui-checkpoint-height`: The height of the latest checkpoint at the time of the response.
+- `x-myso-checkpoint-height`: The height of the latest checkpoint at the time of the response.
 
-- `x-sui-lowest-available-checkpoint`: The earliest checkpoint for which transaction and checkpoint data can still be queried.
+- `x-myso-lowest-available-checkpoint`: The earliest checkpoint for which transaction and checkpoint data can still be queried.
 
-- `x-sui-lowest-available-checkpoint-objects`: The earliest checkpoint from which object data (input and output) is available.
+- `x-myso-lowest-available-checkpoint-objects`: The earliest checkpoint from which object data (input and output) is available.
 
-- `x-sui-epoch`: The current epoch of the network.
+- `x-myso-epoch`: The current epoch of the network.
 
-- `x-sui-timestamp-ms`: The network timestamp in milliseconds since the Unix epoch.
+- `x-myso-timestamp-ms`: The network timestamp in milliseconds since the Unix epoch.
 
-- `x-sui-timestamp`: The network timestamp in milliseconds since the Unix epoch in human-readable [RFC 3339](https://datatracker.ietf.org/doc/html/rfc3339) format.
+- `x-myso-timestamp`: The network timestamp in milliseconds since the Unix epoch in human-readable [RFC 3339](https://datatracker.ietf.org/doc/html/rfc3339) format.
 
 Not all headers are guaranteed to be present in every API response. They are only included when applicable to the given RPC.
 
@@ -126,7 +126,7 @@ The `SubscriptionService` provides real-time streaming updates for on-chain acti
 
 If the stream is interrupted due to client disconnect or network error, you can resume from the last known checkpoint using other APIs to backfill any missed data before resubscribing.
 
-Streaming APIs are useful for building indexers, dashboards, or bots that need to react to real-time Sui activity with minimal latency.
+Streaming APIs are useful for building indexers, dashboards, or bots that need to react to real-time MySo activity with minimal latency.
 
 ## Handling pruned data
 
@@ -142,7 +142,7 @@ You can reuse the same gRPC `LedgerService` methods for this lookup. Simply chan
 
 1. Use [streaming subscriptions](#subscriptions-for-streaming-data) for real-time use cases instead of polling repeatedly.
 
-1. Generate client code from the official `.proto` definitions in [`sui-apis`](https://github.com/MystenLabs/sui-apis/tree/main/proto) to ensure compatibility and type safety.
+1. Generate client code from the official `.proto` definitions in [`myso-apis`](https://github.com/the-social-proof-foundation/myso-core-apis/tree/main/proto) to ensure compatibility and type safety.
 
 1. [Paginate](#pagination) carefully. Always check `next_page_token` and do not assume all data is returned at once.
 
@@ -172,4 +172,4 @@ Full nodes might vary in which services and retention they support. Some service
 
 - [Using gRPC](/guides/developer/accessing-data/grpc-overview.mdx): Instructions for using and building gRPC clients in TypeScript, Go, and Python.
 
-- [Full Node Operator Configuration](/guides/operator/sui-full-node.mdx#considerations-to-enable-grpc): Configuration options for enabling gRPC on your full node.
+- [Full Node Operator Configuration](/guides/operator/myso-full-node.mdx#considerations-to-enable-grpc): Configuration options for enabling gRPC on your full node.

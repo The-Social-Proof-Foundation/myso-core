@@ -28,7 +28,7 @@ export default function EffortBox(props) {
     <Admonition
       title="Expected effort"
       icon="🧠"
-      className="!my-12 bg-sui-ghost-white border-sui-ghost-dark dark:bg-sui-ghost-dark dark:border-sui-ghost-white"
+      className="!my-12 bg-myso-ghost-white border-myso-ghost-dark dark:bg-myso-ghost-dark dark:border-myso-ghost-white"
       type="info"
     >
       <p className="pt-2">

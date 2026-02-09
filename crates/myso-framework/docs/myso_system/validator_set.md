@@ -96,7 +96,7 @@ title: Module `myso_system::validator_set`
 <b>use</b> <a href="../myso/funds_accumulator.md#myso_funds_accumulator">myso::funds_accumulator</a>;
 <b>use</b> <a href="../myso/hash.md#myso_hash">myso::hash</a>;
 <b>use</b> <a href="../myso/hex.md#myso_hex">myso::hex</a>;
-<b>use</b> <a href="../myso/sui.md#myso_myso">myso::myso</a>;
+<b>use</b> <a href="../myso/myso.md#myso_myso">myso::myso</a>;
 <b>use</b> <a href="../myso/object.md#myso_object">myso::object</a>;
 <b>use</b> <a href="../myso/party.md#myso_party">myso::party</a>;
 <b>use</b> <a href="../myso/priority_queue.md#myso_priority_queue">myso::priority_queue</a>;
@@ -709,7 +709,7 @@ of new validators based on a minimum voting power rather than a minimum stake.
 
 ## Function `request_add_validator_candidate`
 
-Called by <code><a href="../myso_system/sui_system.md#myso_system_myso_system">myso_system</a></code> to add a new validator candidate.
+Called by <code><a href="../myso_system/myso_system.md#myso_system_myso_system">myso_system</a></code> to add a new validator candidate.
 
 
 <pre><code><b>public</b>(package) <b>fun</b> <a href="../myso_system/validator_set.md#myso_system_validator_set_request_add_validator_candidate">request_add_validator_candidate</a>(self: &<b>mut</b> <a href="../myso_system/validator_set.md#myso_system_validator_set_ValidatorSet">myso_system::validator_set::ValidatorSet</a>, <a href="../myso_system/validator.md#myso_system_validator">validator</a>: <a href="../myso_system/validator.md#myso_system_validator_Validator">myso_system::validator::Validator</a>, ctx: &<b>mut</b> <a href="../myso/tx_context.md#myso_tx_context_TxContext">myso::tx_context::TxContext</a>)
@@ -750,7 +750,7 @@ Called by <code><a href="../myso_system/sui_system.md#myso_system_myso_system">m
 
 ## Function `request_remove_validator_candidate`
 
-Called by <code><a href="../myso_system/sui_system.md#myso_system_myso_system">myso_system</a></code> to remove a validator candidate, and move them to <code>inactive_validators</code>.
+Called by <code><a href="../myso_system/myso_system.md#myso_system_myso_system">myso_system</a></code> to remove a validator candidate, and move them to <code>inactive_validators</code>.
 
 
 <pre><code><b>public</b>(package) <b>fun</b> <a href="../myso_system/validator_set.md#myso_system_validator_set_request_remove_validator_candidate">request_remove_validator_candidate</a>(self: &<b>mut</b> <a href="../myso_system/validator_set.md#myso_system_validator_set_ValidatorSet">myso_system::validator_set::ValidatorSet</a>, ctx: &<b>mut</b> <a href="../myso/tx_context.md#myso_tx_context_TxContext">myso::tx_context::TxContext</a>)
@@ -788,7 +788,7 @@ Called by <code><a href="../myso_system/sui_system.md#myso_system_myso_system">m
 
 ## Function `request_add_validator`
 
-Called by <code><a href="../myso_system/sui_system.md#myso_system_myso_system">myso_system</a></code> to add a new validator to <code>pending_active_validators</code>, which will be
+Called by <code><a href="../myso_system/myso_system.md#myso_system_myso_system">myso_system</a></code> to add a new validator to <code>pending_active_validators</code>, which will be
 processed at the end of epoch.
 
 
@@ -923,7 +923,7 @@ return (min, low, very low voting power) thresholds
 
 ## Function `request_remove_validator`
 
-Called by <code><a href="../myso_system/sui_system.md#myso_system_myso_system">myso_system</a></code>, to remove a validator.
+Called by <code><a href="../myso_system/myso_system.md#myso_system_myso_system">myso_system</a></code>, to remove a validator.
 The index of the validator is added to <code>pending_removals</code> and
 will be processed at the end of epoch.
 Only an active validator can request to be removed.
@@ -957,13 +957,13 @@ Only an active validator can request to be removed.
 
 ## Function `request_add_stake`
 
-Called by <code><a href="../myso_system/sui_system.md#myso_system_myso_system">myso_system</a></code>, to add a new stake to the validator.
+Called by <code><a href="../myso_system/myso_system.md#myso_system_myso_system">myso_system</a></code>, to add a new stake to the validator.
 This request is added to the validator's staking pool's pending stake entries, processed at the end
 of the epoch.
 Aborts in case the staking amount is smaller than MIN_STAKING_THRESHOLD
 
 
-<pre><code><b>public</b>(package) <b>fun</b> <a href="../myso_system/validator_set.md#myso_system_validator_set_request_add_stake">request_add_stake</a>(self: &<b>mut</b> <a href="../myso_system/validator_set.md#myso_system_validator_set_ValidatorSet">myso_system::validator_set::ValidatorSet</a>, validator_address: <b>address</b>, stake: <a href="../myso/balance.md#myso_balance_Balance">myso::balance::Balance</a>&lt;<a href="../myso/sui.md#myso_myso_MYSO">myso::myso::MYSO</a>&gt;, ctx: &<b>mut</b> <a href="../myso/tx_context.md#myso_tx_context_TxContext">myso::tx_context::TxContext</a>): <a href="../myso_system/staking_pool.md#myso_system_staking_pool_StakedMySo">myso_system::staking_pool::StakedMySo</a>
+<pre><code><b>public</b>(package) <b>fun</b> <a href="../myso_system/validator_set.md#myso_system_validator_set_request_add_stake">request_add_stake</a>(self: &<b>mut</b> <a href="../myso_system/validator_set.md#myso_system_validator_set_ValidatorSet">myso_system::validator_set::ValidatorSet</a>, validator_address: <b>address</b>, stake: <a href="../myso/balance.md#myso_balance_Balance">myso::balance::Balance</a>&lt;<a href="../myso/myso.md#myso_myso_MYSO">myso::myso::MYSO</a>&gt;, ctx: &<b>mut</b> <a href="../myso/tx_context.md#myso_tx_context_TxContext">myso::tx_context::TxContext</a>): <a href="../myso_system/staking_pool.md#myso_system_staking_pool_StakedMySo">myso_system::staking_pool::StakedMySo</a>
 </code></pre>
 
 
@@ -994,7 +994,7 @@ Aborts in case the staking amount is smaller than MIN_STAKING_THRESHOLD
 
 ## Function `request_withdraw_stake`
 
-Called by <code><a href="../myso_system/sui_system.md#myso_system_myso_system">myso_system</a></code>, to withdraw some share of a stake from the validator. The share to withdraw
+Called by <code><a href="../myso_system/myso_system.md#myso_system_myso_system">myso_system</a></code>, to withdraw some share of a stake from the validator. The share to withdraw
 is denoted by <code>principal_withdraw_amount</code>. One of two things occurs in this function:
 1. If the <code>staked_myso</code> is staked with an active validator, the request is added to the validator's
 staking pool's pending stake withdraw entries, processed at the end of the epoch.
@@ -1002,7 +1002,7 @@ staking pool's pending stake withdraw entries, processed at the end of the epoch
 the stake and any rewards corresponding to it will be immediately processed.
 
 
-<pre><code><b>public</b>(package) <b>fun</b> <a href="../myso_system/validator_set.md#myso_system_validator_set_request_withdraw_stake">request_withdraw_stake</a>(self: &<b>mut</b> <a href="../myso_system/validator_set.md#myso_system_validator_set_ValidatorSet">myso_system::validator_set::ValidatorSet</a>, staked_myso: <a href="../myso_system/staking_pool.md#myso_system_staking_pool_StakedMySo">myso_system::staking_pool::StakedMySo</a>, ctx: &<a href="../myso/tx_context.md#myso_tx_context_TxContext">myso::tx_context::TxContext</a>): <a href="../myso/balance.md#myso_balance_Balance">myso::balance::Balance</a>&lt;<a href="../myso/sui.md#myso_myso_MYSO">myso::myso::MYSO</a>&gt;
+<pre><code><b>public</b>(package) <b>fun</b> <a href="../myso_system/validator_set.md#myso_system_validator_set_request_withdraw_stake">request_withdraw_stake</a>(self: &<b>mut</b> <a href="../myso_system/validator_set.md#myso_system_validator_set_ValidatorSet">myso_system::validator_set::ValidatorSet</a>, staked_myso: <a href="../myso_system/staking_pool.md#myso_system_staking_pool_StakedMySo">myso_system::staking_pool::StakedMySo</a>, ctx: &<a href="../myso/tx_context.md#myso_tx_context_TxContext">myso::tx_context::TxContext</a>): <a href="../myso/balance.md#myso_balance_Balance">myso::balance::Balance</a>&lt;<a href="../myso/myso.md#myso_myso_MYSO">myso::myso::MYSO</a>&gt;
 </code></pre>
 
 
@@ -1078,7 +1078,7 @@ the stake and any rewards corresponding to it will be immediately processed.
 
 
 
-<pre><code><b>public</b>(package) <b>fun</b> <a href="../myso_system/validator_set.md#myso_system_validator_set_redeem_fungible_staked_myso">redeem_fungible_staked_myso</a>(self: &<b>mut</b> <a href="../myso_system/validator_set.md#myso_system_validator_set_ValidatorSet">myso_system::validator_set::ValidatorSet</a>, fungible_staked_myso: <a href="../myso_system/staking_pool.md#myso_system_staking_pool_FungibleStakedMySo">myso_system::staking_pool::FungibleStakedMySo</a>, ctx: &<a href="../myso/tx_context.md#myso_tx_context_TxContext">myso::tx_context::TxContext</a>): <a href="../myso/balance.md#myso_balance_Balance">myso::balance::Balance</a>&lt;<a href="../myso/sui.md#myso_myso_MYSO">myso::myso::MYSO</a>&gt;
+<pre><code><b>public</b>(package) <b>fun</b> <a href="../myso_system/validator_set.md#myso_system_validator_set_redeem_fungible_staked_myso">redeem_fungible_staked_myso</a>(self: &<b>mut</b> <a href="../myso_system/validator_set.md#myso_system_validator_set_ValidatorSet">myso_system::validator_set::ValidatorSet</a>, fungible_staked_myso: <a href="../myso_system/staking_pool.md#myso_system_staking_pool_FungibleStakedMySo">myso_system::staking_pool::FungibleStakedMySo</a>, ctx: &<a href="../myso/tx_context.md#myso_tx_context_TxContext">myso::tx_context::TxContext</a>): <a href="../myso/balance.md#myso_balance_Balance">myso::balance::Balance</a>&lt;<a href="../myso/myso.md#myso_myso_MYSO">myso::myso::MYSO</a>&gt;
 </code></pre>
 
 
@@ -1153,7 +1153,7 @@ It does the following things:
 5. At the end, we calculate the total stake for the new epoch.
 
 
-<pre><code><b>public</b>(package) <b>fun</b> <a href="../myso_system/validator_set.md#myso_system_validator_set_advance_epoch">advance_epoch</a>(self: &<b>mut</b> <a href="../myso_system/validator_set.md#myso_system_validator_set_ValidatorSet">myso_system::validator_set::ValidatorSet</a>, computation_reward: &<b>mut</b> <a href="../myso/balance.md#myso_balance_Balance">myso::balance::Balance</a>&lt;<a href="../myso/sui.md#myso_myso_MYSO">myso::myso::MYSO</a>&gt;, storage_fund_reward: &<b>mut</b> <a href="../myso/balance.md#myso_balance_Balance">myso::balance::Balance</a>&lt;<a href="../myso/sui.md#myso_myso_MYSO">myso::myso::MYSO</a>&gt;, validator_report_records: &<b>mut</b> <a href="../myso/vec_map.md#myso_vec_map_VecMap">myso::vec_map::VecMap</a>&lt;<b>address</b>, <a href="../myso/vec_set.md#myso_vec_set_VecSet">myso::vec_set::VecSet</a>&lt;<b>address</b>&gt;&gt;, reward_slashing_rate: u64, low_stake_grace_period: u64, ctx: &<b>mut</b> <a href="../myso/tx_context.md#myso_tx_context_TxContext">myso::tx_context::TxContext</a>)
+<pre><code><b>public</b>(package) <b>fun</b> <a href="../myso_system/validator_set.md#myso_system_validator_set_advance_epoch">advance_epoch</a>(self: &<b>mut</b> <a href="../myso_system/validator_set.md#myso_system_validator_set_ValidatorSet">myso_system::validator_set::ValidatorSet</a>, computation_reward: &<b>mut</b> <a href="../myso/balance.md#myso_balance_Balance">myso::balance::Balance</a>&lt;<a href="../myso/myso.md#myso_myso_MYSO">myso::myso::MYSO</a>&gt;, storage_fund_reward: &<b>mut</b> <a href="../myso/balance.md#myso_balance_Balance">myso::balance::Balance</a>&lt;<a href="../myso/myso.md#myso_myso_MYSO">myso::myso::MYSO</a>&gt;, validator_report_records: &<b>mut</b> <a href="../myso/vec_map.md#myso_vec_map_VecMap">myso::vec_map::VecMap</a>&lt;<b>address</b>, <a href="../myso/vec_set.md#myso_vec_set_VecSet">myso::vec_set::VecSet</a>&lt;<b>address</b>&gt;&gt;, reward_slashing_rate: u64, low_stake_grace_period: u64, ctx: &<b>mut</b> <a href="../myso/tx_context.md#myso_tx_context_TxContext">myso::tx_context::TxContext</a>)
 </code></pre>
 
 
@@ -1431,7 +1431,7 @@ Effectuate pending next epoch metadata if they are staged.
 
 ## Function `derive_reference_gas_price`
 
-Called by <code><a href="../myso_system/sui_system.md#myso_system_myso_system">myso_system</a></code> to derive reference gas price for the new epoch.
+Called by <code><a href="../myso_system/myso_system.md#myso_system_myso_system">myso_system</a></code> to derive reference gas price for the new epoch.
 Derive the reference gas price based on the gas price quote submitted by each validator.
 The returned gas price should be greater than or equal to 2/3 of the validators submitted
 gas price, weighted by stake.
@@ -2860,7 +2860,7 @@ The staking rewards are shared with the stakers while the storage fund ones are 
 
 
 
-<pre><code><b>fun</b> <a href="../myso_system/validator_set.md#myso_system_validator_set_distribute_reward">distribute_reward</a>(validators: &<b>mut</b> vector&lt;<a href="../myso_system/validator.md#myso_system_validator_Validator">myso_system::validator::Validator</a>&gt;, adjusted_staking_reward_amounts: &vector&lt;u64&gt;, adjusted_storage_fund_reward_amounts: &vector&lt;u64&gt;, staking_rewards: &<b>mut</b> <a href="../myso/balance.md#myso_balance_Balance">myso::balance::Balance</a>&lt;<a href="../myso/sui.md#myso_myso_MYSO">myso::myso::MYSO</a>&gt;, storage_fund_reward: &<b>mut</b> <a href="../myso/balance.md#myso_balance_Balance">myso::balance::Balance</a>&lt;<a href="../myso/sui.md#myso_myso_MYSO">myso::myso::MYSO</a>&gt;, ctx: &<b>mut</b> <a href="../myso/tx_context.md#myso_tx_context_TxContext">myso::tx_context::TxContext</a>)
+<pre><code><b>fun</b> <a href="../myso_system/validator_set.md#myso_system_validator_set_distribute_reward">distribute_reward</a>(validators: &<b>mut</b> vector&lt;<a href="../myso_system/validator.md#myso_system_validator_Validator">myso_system::validator::Validator</a>&gt;, adjusted_staking_reward_amounts: &vector&lt;u64&gt;, adjusted_storage_fund_reward_amounts: &vector&lt;u64&gt;, staking_rewards: &<b>mut</b> <a href="../myso/balance.md#myso_balance_Balance">myso::balance::Balance</a>&lt;<a href="../myso/myso.md#myso_myso_MYSO">myso::myso::MYSO</a>&gt;, storage_fund_reward: &<b>mut</b> <a href="../myso/balance.md#myso_balance_Balance">myso::balance::Balance</a>&lt;<a href="../myso/myso.md#myso_myso_MYSO">myso::myso::MYSO</a>&gt;, ctx: &<b>mut</b> <a href="../myso/tx_context.md#myso_tx_context_TxContext">myso::tx_context::TxContext</a>)
 </code></pre>
 
 

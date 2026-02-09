@@ -1,7 +1,7 @@
 [package]
 name = "myso-execution"
 version = "0.1.0"
-authors = ["Mysten Labs <eng@mystenlabs.com>"]
+authors = ["Brandon Shaw <brandon@mysocial.network>"]
 description = "Multiplexer to choose between multiple versions of myso and move execution crates."
 license = "Apache-2.0"
 publish = false

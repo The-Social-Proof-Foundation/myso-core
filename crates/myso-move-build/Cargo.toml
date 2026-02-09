@@ -2,7 +2,7 @@
 name = "myso-move-build"
 version.workspace = true
 edition = "2024"
-authors = ["Mysten Labs <eng@mystenlabs.com>"]
+authors = ["Brandon Shaw <brandon@mysocial.network>"]
 description = "Logic for building MySo Move Packages"
 license = "Apache-2.0"
 publish = false

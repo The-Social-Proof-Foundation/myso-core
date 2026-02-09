@@ -1,9 +1,9 @@
 ---
-title: Sui Validator Alert Reference
+title: MySo Validator Alert Reference
 description: A collection of the Prometheus Alertmanager rules that trigger alerts and warnings on Validator and Full nodes.
 ---
 
-When running a Sui Validator node or Full node, you may want to configure alerting based off some or all of the following metrics.
+When running a MySo Validator node or Full node, you may want to configure alerting based off some or all of the following metrics.
 
 ## Alert reference 
 
@@ -100,8 +100,8 @@ epoch_random_beacon_dkg_failed{network="$network"} > 0 or absent(is_safe_mode{ne
 | **Duration** | `1h`                                      |
 
 ```sh
-min(sui_configured_max_protocol_version{network="$network", host=~"Mysten-.*"})
-  < quantile(0.34, sui_configured_max_protocol_version{network="$network"})
+min(myso_configured_max_protocol_version{network="$network", host=~"Mysten-.*"})
+  < quantile(0.34, myso_configured_max_protocol_version{network="$network"})
 ```
 
 ## ⚠️ Non-urgent and warning alerts

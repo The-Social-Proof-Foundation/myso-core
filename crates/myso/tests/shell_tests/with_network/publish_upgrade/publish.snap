@@ -1,5 +1,5 @@
 ---
-source: crates/sui/tests/shell_tests.rs
+source: crates/myso/tests/shell_tests.rs
 ---
 ----- script -----
 #!/usr/bin/env bash
@@ -26,18 +26,18 @@ add_env_to_toml() {
   echo "localnet = \"$chain_id\"" >> $1/Move.toml
 }
 
-sui_version=$(sui --version | sed 's/sui \([^-]*\)-.*$/\1/g')
+myso_version=$(myso --version | sed 's/myso \([^-]*\)-.*$/\1/g')
 extract_published() {
   echo "=== $@ ==="
   cat "$@" \
     | grep -v 0x \
     | grep -v "^#" \
     | sed "s/$chain_id/CHAIN_ID/g" \
-    | sed "s/$sui_version/SUI_VERSION/g"
+    | sed "s/$myso_version/SUI_VERSION/g"
   echo "=== End Published.toml ==="
 }
 
-chain_id=$(sui client --client.config $CONFIG chain-identifier)
+chain_id=$(myso client --client.config $CONFIG chain-identifier)
 
 for i in a b c d e
 do
@@ -45,7 +45,7 @@ do
   echo "=== publishing $i ==="
   add_env_to_toml $i
 
-  sui client --client.config $CONFIG publish $i > output.log 2>&1 || cat output.log
+  myso client --client.config $CONFIG publish $i > output.log 2>&1 || cat output.log
   extract_published $i/Published.toml
 done
 
@@ -61,7 +61,7 @@ exit_code: 0
 chain-id = "CHAIN_ID"
 version = 1
 toolchain-version = "SUI_VERSION"
-build-config = { flavor = "sui", edition = "2024" }
+build-config = { flavor = "myso", edition = "2024" }
 === End Published.toml ===
 
 === publishing b ===
@@ -71,7 +71,7 @@ build-config = { flavor = "sui", edition = "2024" }
 chain-id = "CHAIN_ID"
 version = 1
 toolchain-version = "SUI_VERSION"
-build-config = { flavor = "sui", edition = "2024" }
+build-config = { flavor = "myso", edition = "2024" }
 === End Published.toml ===
 
 === publishing c ===
@@ -81,7 +81,7 @@ build-config = { flavor = "sui", edition = "2024" }
 chain-id = "CHAIN_ID"
 version = 1
 toolchain-version = "SUI_VERSION"
-build-config = { flavor = "sui", edition = "2024" }
+build-config = { flavor = "myso", edition = "2024" }
 === End Published.toml ===
 
 === publishing d ===
@@ -91,7 +91,7 @@ build-config = { flavor = "sui", edition = "2024" }
 chain-id = "CHAIN_ID"
 version = 1
 toolchain-version = "SUI_VERSION"
-build-config = { flavor = "sui", edition = "2024" }
+build-config = { flavor = "myso", edition = "2024" }
 === End Published.toml ===
 
 === publishing e ===
@@ -101,7 +101,7 @@ build-config = { flavor = "sui", edition = "2024" }
 chain-id = "CHAIN_ID"
 version = 1
 toolchain-version = "SUI_VERSION"
-build-config = { flavor = "sui", edition = "2024" }
+build-config = { flavor = "myso", edition = "2024" }
 === End Published.toml ===
 
 ----- stderr -----

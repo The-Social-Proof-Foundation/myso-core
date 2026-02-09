@@ -176,7 +176,7 @@ createUsdcMarginPool = (tx: Transaction) => {
 ### Enable a DeepBook pool for borrowing
 
 ```tsx
-// Example: Allow SUI/USDC pool to borrow from USDC margin pool
+// Example: Allow MYSO/USDC pool to borrow from USDC margin pool
 enablePoolForBorrowing = (tx: Transaction) => {
 	const deepbookPoolKey = 'SUI_DBUSDC';
 	const coinKey = 'USDC';
@@ -231,14 +231,14 @@ updatePoolConfig = (tx: Transaction) => {
 ```tsx
 // Example: Complete workflow for setting up a new margin pool
 setupNewMarginPool = (tx: Transaction) => {
-	const coinKey = 'SUI';
+	const coinKey = 'MYSO';
 
 	// Step 1: Create protocol config
 	const poolConfig = tx.add(
 		this.maintainerContract.newProtocolConfig(
 			coinKey,
 			{
-				supplyCap: 1_000_000, // 1M SUI
+				supplyCap: 1_000_000, // 1M MYSO
 				maxUtilizationRate: 0.75,
 				referralSpread: 0.1,
 				minBorrow: 10,

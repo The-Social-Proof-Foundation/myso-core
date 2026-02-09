@@ -5,7 +5,7 @@ effort: small
 keywords: [ distributed counter, example app, example app, react app, react app, increment counter, shared objects, programmable transaction blocks ptbs ]
 ---
 
-This example walks you through building a basic distributed counter app, covering the full end-to-end flow of building your Sui Move module and connecting it to your React Sui app. The app allows users to create counters that anyone can increment, but only the owner can reset. 
+This example walks you through building a basic distributed counter app, covering the full end-to-end flow of building your MySo Move module and connecting it to your React MySo app. The app allows users to create counters that anyone can increment, but only the owner can reset. 
 
 The guide is split into two parts:
 
@@ -16,7 +16,7 @@ The guide is split into two parts:
 
 :::tip Additional resources
 
-[Example source code](https://github.com/MystenLabs/sui/blob/60bb8bdc274b9e5706fd916cd84c13f81e832529/sdk/create-dapp/templates/react-e2e-counter)
+[Example source code](https://github.com/the-social-proof-foundation/myso-core/blob/60bb8bdc274b9e5706fd916cd84c13f81e832529/sdk/create-dapp/templates/react-e2e-counter)
 
 :::
 
@@ -27,13 +27,13 @@ The guide is split into two parts:
 
 ## Directory structure
 
-To begin, create a new folder on your system titled `react-e2e-counter` to hold all your project files. You can name this directory differently, but the rest of the guide references this file structure. Inside that folder, create two more folders: `move` and `src`. Inside the `move` folder, create a `counter` directory. Finally, create a `sources` folder inside `counter`. Different projects have their own directory structure, but it's common to split code into functional groups to help with maintenance. See ["Hello, World!"](/guides/developer/getting-started/hello-world.mdx) to learn more about package structure and how to use the Sui CLI to scaffold a new project.
+To begin, create a new folder on your system titled `react-e2e-counter` to hold all your project files. You can name this directory differently, but the rest of the guide references this file structure. Inside that folder, create two more folders: `move` and `src`. Inside the `move` folder, create a `counter` directory. Finally, create a `sources` folder inside `counter`. Different projects have their own directory structure, but it's common to split code into functional groups to help with maintenance. See ["Hello, World!"](/guides/developer/getting-started/hello-world.mdx) to learn more about package structure and how to use the MySo CLI to scaffold a new project.
 
 :::checkpoint
 
-- You have the latest version of Sui installed. If you run `sui --version` in your terminal or console, it responds with the currently installed version.
-- Your active environment is pointing to the expected network. Run `sui client active-env` to make sure. If you receive a warning about a client and server API version mismatch, update Sui using the version in the relevant branch (`mainnet`, `testnet`, `devent`) of the Sui repo.
-- Your active address has SUI. Run `sui client balance` in your terminal or console. If there is no balance, [acquire SUI](../getting-started/get-coins.mdx) from the faucet (not available in Mainnet).
+- You have the latest version of MySo installed. If you run `myso --version` in your terminal or console, it responds with the currently installed version.
+- Your active environment is pointing to the expected network. Run `myso client active-env` to make sure. If you receive a warning about a client and server API version mismatch, update MySo using the version in the relevant branch (`mainnet`, `testnet`, `devent`) of the MySo repo.
+- Your active address has MYSO. Run `myso client balance` in your terminal or console. If there is no balance, [acquire MYSO](../getting-started/get-coins.mdx) from the faucet (not available in Mainnet).
 - You have a directory to place the files you create in. The top-level directory is named `react-e2e-counter` if you want to match the directory structure in this guide. 
 
 :::
@@ -54,7 +54,7 @@ To begin writing your smart contracts, create a file inside `react-e2e-counter/m
 
 :::info
 
-If you are targeting a network other than Testnet, be sure to update the `rev` value for the Sui dependency.
+If you are targeting a network other than Testnet, be sure to update the `rev` value for the MySo dependency.
 
 :::
 
@@ -106,31 +106,31 @@ The final module should look like this
 
 :::checkpoint
 
-Your smart contract is complete. You should be able to run the `sui move build` command from `react-e2e-counter/move/counter` and receive a response similar to the following:
+Your smart contract is complete. You should be able to run the `myso move build` command from `react-e2e-counter/move/counter` and receive a response similar to the following:
 ```sh
-UPDATING GIT DEPENDENCY https://github.com/MystenLabs/sui.git
-INCLUDING DEPENDENCY Sui
+UPDATING GIT DEPENDENCY https://github.com/the-social-proof-foundation/myso-core.git
+INCLUDING DEPENDENCYMySo
 INCLUDING DEPENDENCY MoveStdlib
 BUILDING counter
 ```
-You always run `sui move build` at the same level as your `Move.toml` file. After a successful build, you now have a `build` folder inside `react-e2e-counter/move/counter`.
+You always run `myso move build` at the same level as your `Move.toml` file. After a successful build, you now have a `build` folder inside `react-e2e-counter/move/counter`.
 
 :::
 
 ### Deployment {#deployment}
 
-<ImportContent source="initialize-sui-client-cli.mdx" mode="snippet" />
+<ImportContent source="initialize-myso-client-cli.mdx" mode="snippet" />
 
-Next, configure the Sui CLI to use `testnet` as the active environment, as well. If you haven't already set up a `testnet` environment, do so by running the following command in a terminal or console:
+Next, configure the MySo CLI to use `testnet` as the active environment, as well. If you haven't already set up a `testnet` environment, do so by running the following command in a terminal or console:
 
 ```sh
-$ sui client new-env --alias testnet --rpc https://fullnode.testnet.sui.io:443
+$ myso client new-env --alias testnet --rpc https://fullnode.testnet.mysocial.network:443
 ```
 
 Run the following command to activate the `testnet` environment:
 
 ```sh
-$ sui client switch --env testnet
+$ myso client switch --env testnet
 ```
 
 <ImportContent source="publish-to-devnet-with-coins.mdx" mode="snippet" />
@@ -157,7 +157,7 @@ Partial snippet of CLI deployment output.
 │  │ ObjectID: 0x0fcc6d770d80aa409a9645e78ac4810be6400919ac7f507bddd2f9d279da509f                  │
 │  │ Sender: 0x8e8cae7791a93778800b88b6a274de5c32a86484593568d38619c7ea71999654                    │
 │  │ Owner: Account Address ( 0x8e8cae7791a93778800b88b6a274de5c32a86484593568d38619c7ea71999654 ) │
-│  │ ObjectType: 0x2::coin::Coin<0x2::sui::SUI>                                                    │
+│  │ ObjectType: 0x2::coin::Coin<0x2::myso::MYSO>                                                    │
 │  │ Version: 47482286                                                                             │
 │  │ Digest: A6TH6ja5TM4S6nZBwB14AB17ZgixCijYX1aNMGHF3syv                                          │
 │  └──                                                                                             │
@@ -212,7 +212,7 @@ $ yarn create @mysten/dapp --template react-e2e-counter
 <Tabs className="tabsHeadingCentered--small">
 <TabItem value="prereq" label="Prerequisites">
 
-- [x] [Install the latest version of Sui](/guides/developer/getting-started/sui-install).
+- [x] [Install the latest version ofMySo](/guides/developer/getting-started/myso-install).
 
 - [x] [Deploy the complete `counter` Move module](#smart-contracts) and understand its design.
 
@@ -223,9 +223,9 @@ $ yarn create @mysten/dapp --template react-e2e-counter
 
 :::tip Additional resources
 
-- [Sui TypeScript SDK](https://sdk.mystenlabs.com/typescript) for basic usage on how to interact with Sui using TypeScript.
-- [Sui dApp Kit](https://sdk.mystenlabs.com/dapp-kit) to learn basic building blocks for developing an app in the Sui ecosystem with React.js.
-- [`@mysten/dapp`](https://sdk.mystenlabs.com/dapp-kit/create-dapp), used within this project to quickly scaffold a React-based Sui app.
+- [MySo TypeScript SDK](https://sdk.mystenlabs.com/typescript) for basic usage on how to interact with MySo using TypeScript.
+- [MySo dApp Kit](https://sdk.mystenlabs.com/dapp-kit) to learn basic building blocks for developing an app in the MySo ecosystem with React.js.
+- [`@mysten/dapp`](https://sdk.mystenlabs.com/dapp-kit/create-dapp), used within this project to quickly scaffold a React-based MySo app.
 
 :::
 
@@ -365,7 +365,7 @@ Update the `create` function in the `src/CreateCounter.tsx` file:
 
 </details>
 
-The `create` function now creates a new Sui `Transaction` and calls the `create` function from your Move module. The PTB is then signed and executed via the `useSignAndExecuteTransaction` hook. The `onCreated` callback is called with the new counter's ID when the transaction is successful.
+The `create` function now creates a new MySo `Transaction` and calls the `create` function from your Move module. The PTB is then signed and executed via the `useSignAndExecuteTransaction` hook. The `onCreated` callback is called with the new counter's ID when the transaction is successful.
 
 ### Set up routing
 
@@ -380,7 +380,7 @@ Set up your `src/App.tsx` file so that you render the `CreateCounter` component 
 
 ```tsx
   import { ConnectButton, useCurrentAccount } from "@mysten/dapp-kit-react";
-  import { isValidSuiObjectId } from "@mysten/sui/utils";
+  import { isValidSuiObjectId } from "@socialproof/myso/utils";
   import { Box, Container, Flex, Heading } from "@radix-ui/themes";
   import { useState } from "react";
   import { CreateCounter } from "./CreateCounter";
@@ -478,9 +478,9 @@ Add the following code to your `src/Counter.tsx` file:
 </summary>
 
   ```tsx title='src/Counter.tsx'
-  import { bcs } from '@mysten/sui/bcs';
+  import { bcs } from '@socialproof/myso/bcs';
   import { useCurrentAccount, useCurrentClient, useDAppKit } from '@mysten/dapp-kit-react';
-  import { Transaction } from '@mysten/sui/transactions';
+  import { Transaction } from '@socialproof/myso/transactions';
   import { useMutation, useQuery } from '@tanstack/react-query';
 
   const CounterStruct = bcs.struct('Counter', {
@@ -565,7 +565,7 @@ Add the following code to your `src/Counter.tsx` file:
 
 </details>
 
-This snippet shows the key concepts. It uses the `useCurrentClient` hook to get the Sui client, combined with TanStack Query's `useQuery` hook to fetch the object. The `useDAppKit` hook provides access to transaction signing.
+This snippet shows the key concepts. It uses the `useCurrentClient` hook to get the MySo client, combined with TanStack Query's `useQuery` hook to fetch the object. The `useDAppKit` hook provides access to transaction signing.
 
 Note that the gRPC API returns object content as BCS-encoded bytes. The snippet above includes inline BCS type definitions to parse the counter data. For production use, the [codegen package](https://sdk.mystenlabs.com/typescript/bcs#codegen) can generate these types automatically from your Move modules. The full template (shown below) uses the codegen package for BCS parsing.
 

@@ -1,0 +1,26 @@
+---
+source: crates/myso/tests/shell_tests.rs
+assertion_line: 113
+---
+----- script -----
+# Copyright (c) Mysten Labs, Inc.
+# SPDX-License-Identifier: Apache-2.0
+
+# check that myso move new correctly updates existing .gitignore
+mkdir example
+echo "existing_ignore" > example/.gitignore
+myso move --client.config $CONFIG new example
+cat example/.gitignore
+
+----- results -----
+success: true
+exit_code: 0
+----- stdout -----
+existing_ignore
+build/*
+traces/*
+.trace
+.coverage*
+Pub.*.toml
+
+----- stderr -----

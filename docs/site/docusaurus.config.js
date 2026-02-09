@@ -142,7 +142,7 @@ const config = {
           routeBasePath: "/",
           sidebarPath: SIDEBARS_PATH,
           // the double docs below is a fix for having the path set to ../content
-          editUrl: "https://github.com/MystenLabs/myso/tree/main/docs/docs",
+          editUrl: "https://github.com/the-social-proof-foundation/myso-core/tree/main/docs/docs",
           exclude: [
             "**/snippets/**",
             "**/standards/deepbook-ref/**",
@@ -257,7 +257,7 @@ const config = {
           href: "https://myso.io",
         },
         style: "dark",
-        copyright: `© ${new Date().getFullYear()} MySo Foundation | Documentation distributed under <a href="https://github.com/MystenLabs/myso/blob/main/docs/site/LICENSE">CC BY 4.0</a>`,
+        copyright: `© ${new Date().getFullYear()} MySo Foundation | Documentation distributed under <a href="https://github.com/the-social-proof-foundation/myso-core/blob/main/docs/site/LICENSE">CC BY 4.0</a>`,
       },
       codeblock: {
         showGithubLink: true,

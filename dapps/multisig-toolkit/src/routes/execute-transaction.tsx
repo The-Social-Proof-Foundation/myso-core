@@ -1,8 +1,8 @@
 // Copyright (c) Mysten Labs, Inc.
 // SPDX-License-Identifier: Apache-2.0
 
-import { getFullnodeUrl, SuiClient } from '@mysten/sui/client';
-import { parseSerializedSignature } from '@mysten/sui/cryptography';
+import { getFullnodeUrl, SuiClient } from '@socialproof/myso/client';
+import { parseSerializedSignature } from '@socialproof/myso/cryptography';
 import { useMutation } from '@tanstack/react-query';
 import { AlertCircle } from 'lucide-react';
 import { useState } from 'react';
@@ -118,11 +118,11 @@ export default function ExecuteTransaction() {
 				<TabsContent value="digest">
 					<Card key={digest}>
 						<CardHeader>
-							<CardTitle>Sui Transaction Digest</CardTitle>
+							<CardTitle>MySo Transaction Digest</CardTitle>
 							<CardDescription>
 								View TX Digest on{' '}
 								<a className="text-blue-500" href={`https://suiexplorer.com/txblock/${digest}`}>
-									Sui Explorer
+									MySo Explorer
 								</a>
 							</CardDescription>
 						</CardHeader>

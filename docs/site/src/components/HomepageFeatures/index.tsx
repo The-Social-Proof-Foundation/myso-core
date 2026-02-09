@@ -23,7 +23,7 @@ const FeatureList: FeatureItem[] = [
     description: <></>,
   },
   {
-    title: "Built on Sui Move",
+    title: "Built on MySo Move",
     Svg: require("@site/static/img/undraw_docusaurus_react.svg").default,
     description: <></>,
   },

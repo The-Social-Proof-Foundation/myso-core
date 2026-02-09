@@ -1,6 +1,6 @@
 ---
-title: Client App with Sui TypeScript SDK
-description: Build a client-side application using the Sui TypeScript SDK.
+title: Client App with MySo TypeScript SDK
+description: Build a client-side application using the MySo TypeScript SDK.
 keywords:
   [
     typescript,
@@ -17,7 +17,7 @@ keywords:
   ]
 ---
 
-This exercise diverges from the example built in the previous topics in this section. Rather than adding a frontend to the running example, this guide walks you through setting up dApp Kit in a React App. You can connect to wallets and query data from Sui RPC nodes to display in your app. You can use this to create your own frontend for the example used previously, but if you want to get a fully functional app up and running quickly, run the following command in a terminal or console to scaffold a new app with all steps in this exercise already implemented:
+This exercise diverges from the example built in the previous topics in this section. Rather than adding a frontend to the running example, this guide walks you through setting up dApp Kit in a React App. You can connect to wallets and query data from MySo RPC nodes to display in your app. You can use this to create your own frontend for the example used previously, but if you want to get a fully functional app up and running quickly, run the following command in a terminal or console to scaffold a new app with all steps in this exercise already implemented:
 
 <ImportContent source="info-pnpm-required.mdx" mode="snippet" />
 
@@ -31,15 +31,15 @@ or
 $ yarn create @mysten/dapp --template react-client-dapp
 ```
 
-## What is the Sui TypeScript SDK?
+## What is the MySo TypeScript SDK?
 
-The Sui TypeScript SDK (@mysten/sui) provides all the low-level functionality needed to interact with the Sui ecosystem from TypeScript. You can use it in any TypeScript or JavaScript project, including web apps, Node.js apps, or mobile apps written with tools like React Native that support TypeScript.
+The MySo TypeScript SDK (@mysten/myso) provides all the low-level functionality needed to interact with the MySo ecosystem from TypeScript. You can use it in any TypeScript or JavaScript project, including web apps, Node.js apps, or mobile apps written with tools like React Native that support TypeScript.
 
-For more information on the Sui TypeScript SDK, see the [Sui TypeScript SDK documentation](https://sdk.mystenlabs.com/typescript).
+For more information on the MySo TypeScript SDK, see the [MySo TypeScript SDK documentation](https://sdk.mystenlabs.com/typescript).
 
 ## What is dApp Kit?
 
-dApp Kit (@mysten/dapp-kit-react) is a collection of React hooks, components, and utilities that make building apps on Sui straightforward. For more information on dApp Kit, see the [dApp Kit documentation](https://sdk.mystenlabs.com/dapp-kit).
+dApp Kit (@mysten/dapp-kit-react) is a collection of React hooks, components, and utilities that make building apps on MySo straightforward. For more information on dApp Kit, see the [dApp Kit documentation](https://sdk.mystenlabs.com/dapp-kit).
 
 ## Installing dependencies
 
@@ -54,7 +54,7 @@ $ npm init vite
 Now that you have a React app, you can install the necessary dependencies to use dApp Kit:
 
 ```sh npm2yarn
-$ npm install @mysten/sui @mysten/dapp-kit-react @tanstack/react-query
+$ npm install @mysten/myso @mysten/dapp-kit-react @tanstack/react-query
 ```
 
 ## Setting up Provider components
@@ -67,7 +67,7 @@ First, create a dApp Kit instance using `createDAppKit`. This configures which n
 
 ```ts
 import { createDAppKit, DAppKitProvider } from '@mysten/dapp-kit-react';
-import { SuiGrpcClient } from '@mysten/sui/grpc';
+import { SuiGrpcClient } from '@socialproof/myso/grpc';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 
 const queryClient = new QueryClient();
@@ -80,8 +80,8 @@ const dAppKit = createDAppKit({
 			network,
 			baseUrl:
 				network === 'mainnet'
-					? 'https://fullnode.mainnet.sui.io:443'
-					: 'https://fullnode.devnet.sui.io:443',
+					? 'https://fullnode.mainnet.mysocial.network:443'
+					: 'https://fullnode.devnet.mysocial.network:443',
 		});
 	},
 });
@@ -154,9 +154,9 @@ function ConnectedAccount() {
 }
 ```
 
-## Querying data from Sui RPC nodes
+## Querying data from MySo RPC nodes
 
-Now that you have the account to connect to, you can query for objects the connected account owns. Use the `useCurrentClient` hook to get the Sui client, and combine it with TanStack Query's `useQuery` hook for data fetching:
+Now that you have the account to connect to, you can query for objects the connected account owns. Use the `useCurrentClient` hook to get the MySo client, and combine it with TanStack Query's `useQuery` hook for data fetching:
 
 ```ts
 import { useCurrentAccount, useCurrentClient } from '@mysten/dapp-kit-react';

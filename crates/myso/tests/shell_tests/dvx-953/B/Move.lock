@@ -9,17 +9,17 @@ dependencies = [
   { id = "C", name = "C" },
   { id = "D", name = "D" },
   { id = "MoveStdlib", name = "MoveStdlib" },
-  { id = "Sui", name = "Sui" },
+  { id = "MySo", name = "MySo" },
   { id = "SuiSystem", name = "SuiSystem" },
 ]
 
 [[move.package]]
 id = "Bridge"
-source = { git = "https://github.com/MystenLabs/sui.git", rev = "04f11afaf5e0", subdir = "crates/sui-framework/packages/bridge" }
+source = { git = "https://github.com/the-social-proof-foundation/myso-core.git", rev = "04f11afaf5e0", subdir = "crates/myso-framework/packages/bridge" }
 
 dependencies = [
   { id = "MoveStdlib", name = "MoveStdlib" },
-  { id = "Sui", name = "Sui" },
+  { id = "MySo", name = "MySo" },
   { id = "SuiSystem", name = "SuiSystem" },
 ]
 
@@ -31,7 +31,7 @@ dependencies = [
   { id = "Bridge", name = "Bridge" },
   { id = "D", name = "D" },
   { id = "MoveStdlib", name = "MoveStdlib" },
-  { id = "Sui", name = "Sui" },
+  { id = "MySo", name = "MySo" },
   { id = "SuiSystem", name = "SuiSystem" },
 ]
 
@@ -42,17 +42,17 @@ source = { local = "../D" }
 dependencies = [
   { id = "Bridge", name = "Bridge" },
   { id = "MoveStdlib", name = "MoveStdlib" },
-  { id = "Sui", name = "Sui" },
+  { id = "MySo", name = "MySo" },
   { id = "SuiSystem", name = "SuiSystem" },
 ]
 
 [[move.package]]
 id = "MoveStdlib"
-source = { git = "https://github.com/MystenLabs/sui.git", rev = "04f11afaf5e0", subdir = "crates/sui-framework/packages/move-stdlib" }
+source = { git = "https://github.com/the-social-proof-foundation/myso-core.git", rev = "04f11afaf5e0", subdir = "crates/myso-framework/packages/move-stdlib" }
 
 [[move.package]]
-id = "Sui"
-source = { git = "https://github.com/MystenLabs/sui.git", rev = "04f11afaf5e0", subdir = "crates/sui-framework/packages/sui-framework" }
+id = "MySo"
+source = { git = "https://github.com/the-social-proof-foundation/myso-core.git", rev = "04f11afaf5e0", subdir = "crates/myso-framework/packages/myso-framework" }
 
 dependencies = [
   { id = "MoveStdlib", name = "MoveStdlib" },
@@ -60,14 +60,14 @@ dependencies = [
 
 [[move.package]]
 id = "SuiSystem"
-source = { git = "https://github.com/MystenLabs/sui.git", rev = "04f11afaf5e0", subdir = "crates/sui-framework/packages/sui-system" }
+source = { git = "https://github.com/the-social-proof-foundation/myso-core.git", rev = "04f11afaf5e0", subdir = "crates/myso-framework/packages/myso-system" }
 
 dependencies = [
   { id = "MoveStdlib", name = "MoveStdlib" },
-  { id = "Sui", name = "Sui" },
+  { id = "MySo", name = "MySo" },
 ]
 
 [move.toolchain-version]
 compiler-version = "1.46.1"
 edition = "2024.beta"
-flavor = "sui"
+flavor = "myso"

@@ -3,7 +3,7 @@ name = "abort_native"
 edition = "2024.beta"
 
 [dependencies]
-MySo = { git = "https://github.com/MystenLabs/myso.git", subdir = "crates/myso-framework/packages/myso-framework", rev = "framework/mainnet" }
+MySo = { git = "https://github.com/the-social-proof-foundation/myso-core.git", subdir = "crates/myso-framework/packages/myso-framework", rev = "framework/mainnet" }
 
 [addresses]
 abort_native = "0x0"

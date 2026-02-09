@@ -1,5 +1,5 @@
 ---
-source: crates/sui/tests/shell_tests.rs
+source: crates/myso/tests/shell_tests.rs
 ---
 ----- script -----
 #!/usr/bin/env bash
@@ -8,17 +8,17 @@ source: crates/sui/tests/shell_tests.rs
 
 # Publishing a package and then doing a test-publish succeed
 
-chain_id=$(sui client --client.config $CONFIG chain-identifier)
+chain_id=$(myso client --client.config $CONFIG chain-identifier)
 
 echo "[environments]" >> a/Move.toml
 echo "localnet = \"$chain_id\"" >> a/Move.toml
 
 echo "=== real publish ==="
-sui client --client.config $CONFIG publish a \
+myso client --client.config $CONFIG publish a \
   > out.log 2>&1 || cat out.log
 
 echo "=== ephemeral publish ==="
-sui client --client.config $CONFIG \
+myso client --client.config $CONFIG \
   test-publish --build-env localnet --pubfile-path Pub.local.toml a \
   > out.log 2>&1 || cat out.log
 

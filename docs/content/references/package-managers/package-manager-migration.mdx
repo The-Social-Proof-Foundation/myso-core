@@ -6,7 +6,7 @@ keywords: [ move, move reference, package management, package manager, migrate, 
 pagination_prev: null
 ---
 
-Version 1.63 of the Sui CLI introduced a major overhaul of the package management system. This document describes the changes between the old and new systems and gives guidance on migrating your packages. See [the package management user guide](/guides/developer/packages/move-package-management.mdx) for full details on the new system.
+Version 1.63 of the MySo CLI introduced a major overhaul of the package management system. This document describes the changes between the old and new systems and gives guidance on migrating your packages. See [the package management user guide](/guides/developer/packages/move-package-management.mdx) for full details on the new system.
 
 The new system provides several benefits:
 
@@ -15,7 +15,7 @@ The new system provides several benefits:
  - **Flexible and local naming**: You can depend on multiple packages with the same name.
  - **Other conveniences**: Faster git downloads, stored upgrade capabilities, and tooling for local publications.
 
-With any change of this magnitude there are bound to be some issues that crop up. Report any issues you encounter while using the new package system [here](https://github.com/MystenLabs/sui/issues/24540).
+With any change of this magnitude there are bound to be some issues that crop up. Report any issues you encounter while using the new package system [here](https://github.com/the-social-proof-foundation/myso-core/issues/24540).
 
 ## Migrating `Move.toml`
 
@@ -51,7 +51,7 @@ dep = { ... }
 
 ## Publishing on Devnet and Localnet
 
-Publication workflows on Mainnet and Testnet should not change with the new package system. However, publishing on ephemeral networks like `localnet` or `devnet` should use the `sui client test-publish` command to avoid polluting the `Published.toml` file with local addresses.
+Publication workflows on Mainnet and Testnet should not change with the new package system. However, publishing on ephemeral networks like `localnet` or `devnet` should use the `myso client test-publish` command to avoid polluting the `Published.toml` file with local addresses.
 
 Instead of writing to `Published.toml`, the `test-publish` command writes the addresses to an ephemeral publication file (e.g. `Pub.localnet.toml`). You can select the file to use with the `--pubfile-path` option. If you want to publish multiple packages, you should use the same ephemeral publication file for all of the packages, so that the dependency addresses will be set correctly. You can also automate this with the `--publish-unpublished-deps` [flag](/guides/developer/packages/move-package-management.mdx#ephemerally-publishing-dependencies).
 
@@ -113,7 +113,7 @@ There are 2 changes to the `[package]` section of the manifest:
 
 2. A new `implicit-dependencies = false` field. In the old package management system, adding an explicit system dependency disabled implicit dependencies. In the new system, if you want to turn off implicit dependencies you must explicitly include `implicit-dependencies = false` in the `[package]` section.
 
-Sui advises against disabling implicit dependencies.
+MySo advises against disabling implicit dependencies.
 
 ### `dependencies` section
 
@@ -130,7 +130,7 @@ As in the previous system you can have `git`, `local`, or `r.<resolver>` depende
 
 In addition to the type-specific fields like `rev` for `git` dependencies, all dependencies allow an `override = true`. This works exactly the same way that it did in the old system.
 
-Sui encourages consistency by requiring that the name that you give a dependency must match the name that the dependency gives itself (the `name` field in `../example/Move.toml`). However, if you want to override the name, you can add a `rename-from` field to the dependency. For example, if `../example/Move.toml` had `name = "example"`, you could write:
+MySo encourages consistency by requiring that the name that you give a dependency must match the name that the dependency gives itself (the `name` field in `../example/Move.toml`). However, if you want to override the name, you can add a `rename-from` field to the dependency. For example, if `../example/Move.toml` had `name = "example"`, you could write:
 
 ```toml
 [dependencies]

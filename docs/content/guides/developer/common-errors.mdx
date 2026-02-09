@@ -8,7 +8,7 @@ This page provides troubleshooting solutions to common errors.
 
 ## Address errors 
 
-Errors in this section relate to Sui addresses.
+Errors in this section relate to MySo addresses.
 
 #### `Failed to build Move modules: Unresolved addresses found.`
 
@@ -29,9 +29,9 @@ std = "0x1"
 
 ---
 
-#### `Invalid Sui Address`
+#### `Invalid MySo Address`
 
-Indicates that the address you provided does not conform to a valid Sui address format. Sui addresses must:
+Indicates that the address you provided does not conform to a valid MySo address format. MySo addresses must:
 
 - Be a 32-byte hex-encoded string.
 
@@ -43,7 +43,7 @@ Verify the address you provide starts with `0x`, is 64 hex digits long, and does
 
 **Resources**
 
-- [Create a Sui Address](/guides/developer/getting-started/get-address.mdx)
+- [Create a MySo Address](/guides/developer/getting-started/get-address.mdx)
 
 ---
 
@@ -53,7 +53,7 @@ Errors in this section relate to Move packages.
 
 #### `Invalid URL: Invalid URL: relative URL without a base`
 
-This error occurs when the system interprets a URL string as a relative URL (`/path/to/file`), but your code expects an absolute URL (`https://example.com/path/to/file`). This error originates from the `sui::url` module that provides a `Url` struct and functions to interact with URLs. Move does not validate the format of a URL itself.
+This error occurs when the system interprets a URL string as a relative URL (`/path/to/file`), but your code expects an absolute URL (`https://example.com/path/to/file`). This error originates from the `myso::url` module that provides a `Url` struct and functions to interact with URLs. Move does not validate the format of a URL itself.
 
 ##### Solution 
 
@@ -61,9 +61,9 @@ Specify the full URL path, including `http://` or `https://`.
 
 **Resources**
 
-- [`sui::url`](/references/framework/sui_sui/url.md)
+- [`myso::url`](/references/framework/myso_sui/url.md)
 
-- [`sui::url` source code](https://github.com/MystenLabs/sui/blob/c5f8b33b8090d75b1922f1497916b4010d9140d7/crates/sui-framework/sources/url.move).
+- [`myso::url` source code](https://github.com/the-social-proof-foundation/myso-core/blob/c5f8b33b8090d75b1922f1497916b4010d9140d7/crates/myso-framework/sources/url.move).
 
 ---
 
@@ -135,7 +135,7 @@ Some common reasons for this error include:
 
 **Resources**
 
-- [Move Concepts](/concepts/sui-move-concepts.mdx)
+- [Move Concepts](/concepts/myso-move-concepts.mdx)
 
 - [The Move Book](https://move-book.com/)
 
@@ -143,7 +143,7 @@ Some common reasons for this error include:
 
 #### `Failed to publish the Move module(s), reason: Modules must all have 0x0 as their addresses.`
 
-Indicates that a module in your package does not have the address `0x0`. In Move, you must set all modules to have their self-address as `0x0` in the source code. When you publish the package, Sui automatically assigns it the correct address. 
+Indicates that a module in your package does not have the address `0x0`. In Move, you must set all modules to have their self-address as `0x0` in the source code. When you publish the package, MySo automatically assigns it the correct address. 
 
 
 ##### Solution 
@@ -152,13 +152,13 @@ Remove any explicit address blocks from your Move source files. Do not wrap your
 
 **Resources**
 
-- [Error definition](https://github.com/MystenLabs/sui/blob/63cbf0dc26d0f2329d3e0a03639e31ded9f93561/crates/sui-adapter-transactional-tests/tests/sui/publish_module_non_zero_address.snap)
+- [Error definition](https://github.com/the-social-proof-foundation/myso-core/blob/63cbf0dc26d0f2329d3e0a03639e31ded9f93561/crates/myso-adapter-transactional-tests/tests/myso/publish_module_non_zero_address.snap)
 
 ---
 
 #### `The signer only expects one signature, not two`
 
-Indicates that a function you are calling in your Move module expects 1 signer argument, yet you provided 2. On Sui, the number of signer arguments in your function's signature must match the number of signers you provide. 
+Indicates that a function you are calling in your Move module expects 1 signer argument, yet you provided 2. OnMySo, the number of signer arguments in your function's signature must match the number of signers you provide. 
 
 ##### Solution 
 
@@ -168,7 +168,7 @@ If you want to use 2 signers, define your function as `fun main(s1: signer, s2: 
 
 **Resources**
 
-- [Error definition](https://github.com/MystenLabs/sui/blob/63cbf0dc26d0f2329d3e0a03639e31ded9f93561/external-crates/move/crates/bytecode-verifier-transactional-tests/tests/script_signature/signer_double_signer.snap)
+- [Error definition](https://github.com/the-social-proof-foundation/myso-core/blob/63cbf0dc26d0f2329d3e0a03639e31ded9f93561/external-crates/move/crates/bytecode-verifier-transactional-tests/tests/script_signature/signer_double_signer.snap)
 
 ---
 
@@ -201,14 +201,14 @@ Indicates a low-level memory crash. This is not a Move error, but rather an erro
 In some situations, old or corrupted build files can cause this crash. Clean your build:
 
 ```
-$ sui move clean 
+$ myso move clean 
 ```
 
 In other scenarios, outdated or mismatched tooling versions might cause this error. Upgrade your tooling and verify that versions match. 
 
 **Resources**
 
-- [Install Sui](/guides/developer/getting-started/sui-install.mdx)
+- [InstallMySo](/guides/developer/getting-started/myso-install.mdx)
 
 ---
 
@@ -233,7 +233,7 @@ This gives you read and write permissions to all files and subdirectories at the
 
 ---
 
-#### `sui move build` command hangs 
+#### `myso move build` command hangs 
 
 This behavior often occurs when you run commands on Windows 11 machines. 
 
@@ -243,7 +243,7 @@ Try using [Windows Subsystem for Linux](https://learn.microsoft.com/en-us/window
 
 **Resources**
 
-- [Install Sui](/guides/developer/getting-started/sui-install.mdx)
+- [InstallMySo](/guides/developer/getting-started/myso-install.mdx)
 
 - [Install Linux on Windows](https://learn.microsoft.com/en-us/windows/wsl/install)
 
@@ -252,7 +252,7 @@ Try using [Windows Subsystem for Linux](https://learn.microsoft.com/en-us/window
 
 #### `Fetch failed error (cause: Header Timeout)`
 
-Indicates the network does not receive a response within a certain time period. This error is not specific to Sui.
+Indicates the network does not receive a response within a certain time period. This error is not specific to MySo.
 
 ##### Solution 
 
@@ -266,45 +266,45 @@ Errors in this section relate to transactions.
 
 #### `Requires a connection to the network. Current active network is [testnet/mainnet/devnet] but failed to connect to it.`
 
-This error occurs when the network is down, unreachable due to an unstable internet connection, or there is a misconfiguration in your Sui client configuration.
+This error occurs when the network is down, unreachable due to an unstable internet connection, or there is a misconfiguration in your MySo client configuration.
 
 ##### Solution
 
 First determine your client's configured environments:
 
 ```
-$ sui client envs
+$ myso client envs
 ```
 
 You see something similar to:
 
 ```
 localnet => http://0.0.0.0:9000
-testnet => https://fullnode.testnet.sui.io:443 
-devnet => https://fullnode.devnet.sui.io:443 (active)
+testnet => https://fullnode.testnet.mysocial.network:443 
+devnet => https://fullnode.devnet.mysocial.network:443 (active)
 ```
 
 Then, try switching to another network:
 
 ```
-$ sui client switch --env testnet
+$ myso client switch --env testnet
 ```
 
 If this does not resolve the error, check your internet connection or restart your CLI client. 
 
 **Resources**
 
-- [Configure a Sui Client](/guides/developer/getting-started/configure-sui-client.mdx)
+- [Configure a MySo Client](/guides/developer/getting-started/configure-myso-client.mdx)
 
 ---
 
 #### `Unable to process transaction. Dry run failed, could not automatically determine a budget: UnusedValueWithoutDrop { result_idx: 0, secondary_idx: 0 }`
 
-This error occurs when a Move transaction does not have a `drop` ability, or you do not explicitly drop it. The Sui runtime system enforces resource safety that throws this error when you leave values unused at the end of a transaction. 
+This error occurs when a Move transaction does not have a `drop` ability, or you do not explicitly drop it. The MySo runtime system enforces resource safety that throws this error when you leave values unused at the end of a transaction. 
 
 ##### Solution 
 
-In Sui Move packages, you must either transfer every value that does not have the `drop` ability to another address, explicitly destroy it, or use it as input for another function to consume. 
+In MySo Move packages, you must either transfer every value that does not have the `drop` ability to another address, explicitly destroy it, or use it as input for another function to consume. 
 
 **Resources**
 
@@ -324,7 +324,7 @@ Some common reasons for this error include:
 
 - `FIELD_MISSING_TYPE_ABILITY`: Your struct is missing a required ability such as `key` or `store`. Ensure all fields have the necessary abilities. 
 
-- `UNKNOWN_VERSION`: Your module or enum uses a version or feature the system does not recognize. Ensure you are using supported features and the correct Sui toolchain version. 
+- `UNKNOWN_VERSION`: Your module or enum uses a version or feature the system does not recognize. Ensure you are using supported features and the correct MySo toolchain version. 
 
 - `CONSTRAINT_NOT_SATISFIED`: Your struct or type parameter does not satisfy the required abilities. Add the required abilities to the struct or type.
 
@@ -332,17 +332,17 @@ Some common reasons for this error include:
 
 **Resources**
 
-- [Error: `ZERO_SIZED_STRUCT`](https://github.com/MystenLabs/sui/blob/63cbf0dc26d0f2329d3e0a03639e31ded9f93561/crates/sui-verifier-transactional-tests/tests/one_time_witness/no_field.snap)
+- [Error: `ZERO_SIZED_STRUCT`](https://github.com/the-social-proof-foundation/myso-core/blob/63cbf0dc26d0f2329d3e0a03639e31ded9f93561/crates/myso-verifier-transactional-tests/tests/one_time_witness/no_field.snap)
 
-- [Error: `FIELD_MISSING_TYPE_ABILITY`](https://github.com/MystenLabs/sui/blob/63cbf0dc26d0f2329d3e0a03639e31ded9f93561/crates/sui-verifier-transactional-tests/tests/struct_with_key/key_struct_with_drop.snap)
+- [Error: `FIELD_MISSING_TYPE_ABILITY`](https://github.com/the-social-proof-foundation/myso-core/blob/63cbf0dc26d0f2329d3e0a03639e31ded9f93561/crates/myso-verifier-transactional-tests/tests/struct_with_key/key_struct_with_drop.snap)
 
-- [Error: `CONSTRAINT_NOT_SATISFIED`](https://github.com/MystenLabs/sui/blob/63cbf0dc26d0f2329d3e0a03639e31ded9f93561/crates/sui-verifier-transactional-tests/tests/private_generics/receive_without_key.snap)
+- [Error: `CONSTRAINT_NOT_SATISFIED`](https://github.com/the-social-proof-foundation/myso-core/blob/63cbf0dc26d0f2329d3e0a03639e31ded9f93561/crates/myso-verifier-transactional-tests/tests/private_generics/receive_without_key.snap)
 
 ---
 
 #### `Failed to sign transaction by a quorum of validators because one or more of its objects is reserved for another transaction. Other transactions locking these objects`
 
-Indicates that your transaction is trying to use one or more Sui objects that another transaction already uses. When you use an object in a transaction, the system locks that object to prevent multiple, possibly conflicting modifications to an object. For DeFi objects, this prevents double-spending.
+Indicates that your transaction is trying to use one or more MySo objects that another transaction already uses. When you use an object in a transaction, the system locks that object to prevent multiple, possibly conflicting modifications to an object. For DeFi objects, this prevents double-spending.
 
 ##### Solution 
 
@@ -366,13 +366,13 @@ Wait for the next epoch.
 
 **Resources**
 
-- [Avoiding Equivocation](/concepts/sui-architecture/epochs.mdx)
+- [Avoiding Equivocation](/concepts/myso-architecture/epochs.mdx)
 
 ---
 
 #### `Unable to process transaction. Unexpected status code: 403`
 
-Indicates the Sui network responds to an RPC or API request with `HTTP 403: Forbidden` status. This might happen if an RPC provider:
+Indicates the MySo network responds to an RPC or API request with `HTTP 403: Forbidden` status. This might happen if an RPC provider:
 
 - Requires authentication and you do not provide any.
 
@@ -391,7 +391,7 @@ Check for rate limiting and try sending requests over a long period of time.
 
 #### `Failed to submit transaction: ErrorObject { code: ServerError(-32002), message: "Transaction validator signing failed due to issues with transaction inputs, please review the errors and try again`
 
-Indicates the Sui network rejects a transaction due to invalid transaction inputs. 
+Indicates the MySo network rejects a transaction due to invalid transaction inputs. 
 
 ##### Solution 
 
@@ -419,4 +419,4 @@ Obtain tokens.
 
 **Resources**
 
-- [Get SUI from Faucet](/guides/developer/getting-started/get-coins.mdx)
+- [Get MYSO from Faucet](/guides/developer/getting-started/get-coins.mdx)

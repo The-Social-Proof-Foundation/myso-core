@@ -1,5 +1,5 @@
 ---
-source: crates/sui/tests/shell_tests.rs
+source: crates/myso/tests/shell_tests.rs
 ---
 ----- script -----
 #!/usr/bin/env bash
@@ -11,7 +11,7 @@ source: crates/sui/tests/shell_tests.rs
 # C --> B
 # C --> A
 
-chain_id=$(sui client --client.config $CONFIG chain-identifier)
+chain_id=$(myso client --client.config $CONFIG chain-identifier)
 
 add_env_to_toml() {
   echo "[environments]" >> $1/Move.toml
@@ -21,10 +21,10 @@ add_env_to_toml() {
 add_env_to_toml a
 
 echo "=== expect to fail when upgrading a because it is not even published yet ==="
-sui client --client.config $CONFIG upgrade a
+myso client --client.config $CONFIG upgrade a
 
 echo "=== expect to fail because we should never upgrade with --test flag ==="
-sui client --client.config $CONFIG upgrade a --test
+myso client --client.config $CONFIG upgrade a --test
 
 ----- results -----
 success: false
@@ -37,7 +37,7 @@ Failed to publish the Move module(s), reason: The `publish` or `upgrade` subcomm
 
 Code in published packages must not depend on test code.
 In order to fix this and publish or upgrade the package without `--test`, remove any non-test dependencies on test-only code.
-You can ensure all test-only dependencies have been removed by compiling the package normally with `sui move build`.
+You can ensure all test-only dependencies have been removed by compiling the package normally with `myso move build`.
 
 ----- stderr -----
 [Note]: Dependency sources are no longer verified automatically during publication and upgrade. You can pass the `--verify-deps` option if you would like to verify them as part of publication or upgrade.

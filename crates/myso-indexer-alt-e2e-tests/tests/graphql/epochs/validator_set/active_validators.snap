@@ -25,7 +25,7 @@ Response: {
               "contents": {
                 "json": {
                   "metadata": {
-                    "sui_address": "0xda83166d01afd7ddcf8af5f844f45aaa53f48548e5117c23f5a2978cfd422244",
+                    "myso_address": "0xda83166d01afd7ddcf8af5f844f45aaa53f48548e5117c23f5a2978cfd422244",
                     "protocol_pubkey_bytes": "qqgbtEP57SCwGrO7tmcKwy/daeoOFwANmrMTm1Qu4jUJRhi2VePz/brF9YAcjmJ7BLOpN8c5Ia7zYzTNmGtGoaUnjoYrbvDG9E05s9antwSmkHAIGsM8mkmeBkSjSBrt",
                     "network_pubkey_bytes": "ZeETulurG5EpRBoewpF26pyLQtpUqwH1T6LqgugHBIU=",
                     "worker_pubkey_bytes": "3sE4/d+MbOSh9pesKr7b89TSO5gFBuyGUjVa4GldmFU=",
@@ -58,7 +58,7 @@ Response: {
                     "id": "0xacda9295fa6077073b2adb7470ba058ffa7ce4487be411e2610d2c87f9ce3e96",
                     "activation_epoch": "0",
                     "deactivation_epoch": null,
-                    "sui_balance": "20000000000000000",
+                    "myso_balance": "20000000000000000",
                     "rewards_pool": "0",
                     "pool_token_balance": "20000000000000000",
                     "exchange_rates": {
@@ -66,7 +66,7 @@ Response: {
                       "size": "1"
                     },
                     "pending_stake": "0",
-                    "pending_total_sui_withdraw": "0",
+                    "pending_total_myso_withdraw": "0",
                     "pending_pool_token_withdraw": "0",
                     "extra_fields": {
                       "id": "0x86888d657f144258d2f9f0256243d5abced0607a66e851c2cbb7a34b8c40fec4",
@@ -88,7 +88,7 @@ Response: {
                       "nodes": [
                         {
                           "coinType": {
-                            "repr": "0x0000000000000000000000000000000000000000000000000000000000000002::sui::SUI"
+                            "repr": "0x0000000000000000000000000000000000000000000000000000000000000002::myso::MYSO"
                           },
                           "totalBalance": "30000000000000000"
                         }
@@ -99,7 +99,7 @@ Response: {
                         {
                           "contents": {
                             "type": {
-                              "repr": "0x0000000000000000000000000000000000000000000000000000000000000002::coin::Coin<0x0000000000000000000000000000000000000000000000000000000000000002::sui::SUI>"
+                              "repr": "0x0000000000000000000000000000000000000000000000000000000000000002::coin::Coin<0x0000000000000000000000000000000000000000000000000000000000000002::myso::MYSO>"
                             },
                             "json": {
                               "id": "0x5900ab3d6e625f06712a79084ea59b12841bf10987ba3bd74a3fb8b8d2de8c87",

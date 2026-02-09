@@ -1,6 +1,6 @@
 ---
 title: Consensus
-description: Overview of the Sui consensus mechanism.
+description: Overview of the MySo consensus mechanism.
 keywords: [ consensus, mysticeti, delegated proof of stake, proof of stake, dpos ]
 ---
 
@@ -8,17 +8,17 @@ _Consensus_ is the process by which the majority of nodes on a blockchain networ
 
 ## Validator nodes
 
-To participate in consensus, validators must [stake SUI tokens](/guides/operator/validator/validator-rewards.mdx) on the network. Sui uses delegated proof-of-stake (DPoS) to determine which validators operate the network and their voting power. Validators are incentivized to participate in good faith through a share of transaction fees, [staking rewards](/guides/operator/validator/validator-rewards.mdx), and slashing of stake and staking rewards in case of misbehavior.
+To participate in consensus, validators must [stake MYSO tokens](/guides/operator/validator/validator-rewards.mdx) on the network. MySo uses delegated proof-of-stake (DPoS) to determine which validators operate the network and their voting power. Validators are incentivized to participate in good faith through a share of transaction fees, [staking rewards](/guides/operator/validator/validator-rewards.mdx), and slashing of stake and staking rewards in case of misbehavior.
 
 ### Epochs
 
-An [epoch](/concepts/sui-architecture/epochs.mdx) is a duration of time where the Sui validators and their stakes do not change. An epoch is about 24 hours on both [Mainnet](/concepts/sui-architecture/networks.mdx) and [Testnet](/concepts/sui-architecture/networks.mdx). At an epoch boundary, [reconfiguration](/concepts/sui-architecture/epochs.mdx) might occur and can change the set of validators participating in the network and their voting power. Conceptually, reconfiguration starts a new instance of the Sui protocol with the previous epoch's final state as genesis and the new set of validators as the operators. Besides validator set changes, [tokenomics](/concepts/tokenomics.mdx) operations such as staking and un-staking, and distribution of staking rewards are also processed at epoch boundaries.
+An [epoch](/concepts/myso-architecture/epochs.mdx) is a duration of time where the MySo validators and their stakes do not change. An epoch is about 24 hours on both [Mainnet](/concepts/myso-architecture/networks.mdx) and [Testnet](/concepts/myso-architecture/networks.mdx). At an epoch boundary, [reconfiguration](/concepts/myso-architecture/epochs.mdx) might occur and can change the set of validators participating in the network and their voting power. Conceptually, reconfiguration starts a new instance of the MySo protocol with the previous epoch's final state as genesis and the new set of validators as the operators. Besides validator set changes, [tokenomics](/concepts/tokenomics.mdx) operations such as staking and un-staking, and distribution of staking rewards are also processed at epoch boundaries.
 
 ### Quorums
 
-A quorum is a set of [validators](/guides/operator/validator/validator-config.mdx) whose combined voting power is greater than two-thirds (>2/3) of the total during a particular epoch. For example, in a Sui instance operated by 4 validators that all have the same voting power, any group containing 3 validators is a quorum.
+A quorum is a set of [validators](/guides/operator/validator/validator-config.mdx) whose combined voting power is greater than two-thirds (>2/3) of the total during a particular epoch. For example, in a MySo instance operated by 4 validators that all have the same voting power, any group containing 3 validators is a quorum.
 
-The quorum size of >2/3 ensures Byzantine fault tolerance (BFT). A validator commits a transaction only if the transaction is accompanied by cryptographic signatures from a quorum. Sui calls the combination of the transaction and the quorum signatures on its bytes a certificate. The policy of committing only certificates ensures Byzantine fault tolerance: if >2/3 of the validators faithfully follow the protocol, they are guaranteed to eventually agree on both the set of committed certificates and their effects.
+The quorum size of >2/3 ensures Byzantine fault tolerance (BFT). A validator commits a transaction only if the transaction is accompanied by cryptographic signatures from a quorum. MySo calls the combination of the transaction and the quorum signatures on its bytes a certificate. The policy of committing only certificates ensures Byzantine fault tolerance: if >2/3 of the validators faithfully follow the protocol, they are guaranteed to eventually agree on both the set of committed certificates and their effects.
 
 ## Write requests
 
@@ -42,7 +42,7 @@ If a client collects a quorum of signatures on the effects of the transaction, t
 
 ## Mysticeti
 
-Sui uses a [directed acyclic graph](https://en.wikipedia.org/wiki/Directed_acyclic_graph)-based consensus protocol called _Mysticeti_ that optimizes for both low latency and high throughput. Mysticeti supports multiple validators proposing blocks in parallel, which uses the full bandwidth of the network and provides censorship resistance. Mysticeti only requires 3 rounds of messages to commit blocks from the DAGs. This is the same as practical BFT and matches the theoretical minimum.
+MySo uses a [directed acyclic graph](https://en.wikipedia.org/wiki/Directed_acyclic_graph)-based consensus protocol called _Mysticeti_ that optimizes for both low latency and high throughput. Mysticeti supports multiple validators proposing blocks in parallel, which uses the full bandwidth of the network and provides censorship resistance. Mysticeti only requires 3 rounds of messages to commit blocks from the DAGs. This is the same as practical BFT and matches the theoretical minimum.
 
 Mysticeti also allows voting and certifying leaders on blocks in parallel, which reduces median and tail latencies, and tolerates unavailable leaders without significantly increasing commit latencies.
 
@@ -74,6 +74,6 @@ For more details, including correctness proofs, see the [MYSTICETI: Reaching the
 
 <RelatedLink to="/concepts/transactions/transaction-lifecycle.mdx" />
 
-<RelatedLink to="/concepts/sui-architecture/sui-security.mdx" />
+<RelatedLink to="/concepts/myso-architecture/myso-security.mdx" />
 
-<RelatedLink href="https://docs.sui.io/paper/mysticeti.pdf" label="MYSTICETI: Reaching the Latency Limits with Uncertified DAGs" desc="Whitepaper that documents the Mysticeti protocol." />
+<RelatedLink href="https://docs.mysocial.network/paper/mysticeti.pdf" label="MYSTICETI: Reaching the Latency Limits with Uncertified DAGs" desc="Whitepaper that documents the Mysticeti protocol." />

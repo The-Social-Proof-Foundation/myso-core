@@ -8,9 +8,9 @@ FROM rust:1.92-bullseye AS builder
 ARG PROFILE
 ARG GIT_REVISION
 ENV GIT_REVISION=$GIT_REVISION
-WORKDIR "$WORKDIR/sui"
+WORKDIR "$WORKDIR/myso"
 
-# sui-indexer need ca-certificates
+# myso-indexer need ca-certificates
 RUN apt update && apt install -y ca-certificates postgresql
 
 RUN apt-get update && apt-get install -y cmake clang
@@ -18,10 +18,10 @@ RUN apt-get update && apt-get install -y cmake clang
 COPY Cargo.toml Cargo.lock ./
 COPY consensus consensus
 COPY crates crates
-COPY sui-execution sui-execution
+COPY myso-execution myso-execution
 COPY external-crates external-crates
 
-RUN cargo build --profile ${PROFILE} --bin sui-indexer-alt-graphql
+RUN cargo build --profile ${PROFILE} --bin myso-indexer-alt-graphql
 
 # Production Image
 # debian:bullseye-slim
@@ -30,8 +30,8 @@ ARG PROFILE
 # Use jemalloc as memory allocator
 RUN apt-get update && apt-get install -y libjemalloc-dev ca-certificates curl
 ENV LD_PRELOAD /usr/lib/x86_64-linux-gnu/libjemalloc.so
-WORKDIR "$WORKDIR/sui"
-COPY --from=builder /sui/target/${PROFILE}/sui-indexer-alt-graphql /usr/local/bin
+WORKDIR "$WORKDIR/myso"
+COPY --from=builder /myso/target/${PROFILE}/myso-indexer-alt-graphql /usr/local/bin
 RUN apt update && apt install -y ca-certificates postgresql
 
 ARG BUILD_DATE

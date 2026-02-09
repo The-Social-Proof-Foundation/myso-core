@@ -6,7 +6,7 @@ import "@mysten/dapp-kit/dist/index.css";
 import "@radix-ui/themes/styles.css";
 import "./styles/base.css";
 
-import { getFullnodeUrl } from "@mysten/sui/client";
+import { getFullnodeUrl } from "@socialproof/myso/client";
 import {
   SuiClientProvider,
   WalletProvider,

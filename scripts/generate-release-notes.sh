@@ -16,7 +16,7 @@ fi
 echo -e "MySo Protocol Version in this release: XX\n"
 for pr_number in $(git log --grep "\[x\]" --pretty=oneline --abbrev-commit origin/"${new_branch}"...origin/"${prev_branch}" -- crates dashboards doc docker external-crates kiosk nre myso-execution | grep -o '#[0-9]\+' | grep -o '[0-9]\+')
 do
-    pr_body=$(gh api -H "Accept: application/vnd.github+json" -H "X-GitHub-Api-Version: 2022-11-28" /repos/MystenLabs/myso/pulls/"${pr_number}" --jq ".body")
+    pr_body=$(gh api -H "Accept: application/vnd.github+json" -H "X-GitHub-Api-Version: 2022-11-28" /reposthe-social-proof-foundation/myso-core/pulls/"${pr_number}" --jq ".body")
     release_notes="${pr_body#*### Release notes}"
-    echo -e "\nhttps://github.com/MystenLabs/myso/pull/${pr_number}: ${release_notes}"
+    echo -e "\nhttps://github.comthe-social-proof-foundation/myso-core/pull/${pr_number}: ${release_notes}"
 done

@@ -5,5 +5,5 @@ processed 2 tasks
 
 task 1, lines 8-17:
 //# publish
-Error: Transaction Effects Status: Sui Move Bytecode Verification Error. Please run the Sui Move Verifier for more information.
+Error: Transaction Effects Status: MySo Move Bytecode Verification Error. Please run the MySo Move Verifier for more information.
 Execution Error: ExecutionError: ExecutionError { inner: ExecutionErrorInner { kind: SuiMoveVerificationError, source: Some("Invalid entry point parameter type. Expected primitive or object type. Got: &vector<T0>"), command: Some(0) } }

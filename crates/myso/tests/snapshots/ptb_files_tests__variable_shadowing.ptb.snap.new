@@ -1,0 +1,28 @@
+---
+source: crates/myso/tests/ptb_files_tests.rs
+assertion_line: 104
+expression: "&String::from_iter(normalized(results.join(\"\\n\").chars()))"
+---
+ === PREVIEW === 
+╭──────────────────────────────────────────────────────────╮
+│ PTB Preview                                              │
+├───────────────┬──────────────────────────────────────────┤
+│ command       │ values                                   │
+├───────────────┼──────────────────────────────────────────┤
+│ assign        │ s @0x1                                   │
+│ move-call     │ myso::coin::destroy_zero<myso::myso::MYSO> s │
+│ assign        │ s @0x2                                   │
+│ make-move-vec │ <address> [s]                            │
+╰───────────────┴──────────────────────────────────────────╯
+ === BUILDING PTB ERRORS === 
+  × Error when processing PTB
+   ╭─[2:13]
+ 1 │ --assign s @0x1
+ 2 │ --move-call myso::coin::destroy_zero<myso::myso::MYSO> s
+   ·             ─┬─
+   ·              ╰── Unbound named address: 'myso'
+ 3 │ --assign s @0x2
+   ╰────
+  help: This is most likely because the named address 'myso' is not in scope.
+        You can either bind a variable to the address that you want to use or
+        use the address in the command.

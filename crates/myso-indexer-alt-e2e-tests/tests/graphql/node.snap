@@ -16,7 +16,7 @@ gas summary: computation_cost: 1000000, storage_cost: 1976000,  storage_rebate: 
 
 task 2, lines 10-12:
 //# programmable --sender A --inputs @A
-//> sui::bag::new();
+//> myso::bag::new();
 //> TransferObjects([Result(0)], Input(0))
 created: object(2,0)
 mutated: object(0,0)
@@ -24,7 +24,7 @@ gas summary: computation_cost: 1000000, storage_cost: 2287600,  storage_rebate: 
 
 task 3, lines 14-15:
 //# programmable --sender A --inputs object(2,0) 42
-//> sui::bag::add<u64, u64>(Input(0), Input(1), Input(1));
+//> myso::bag::add<u64, u64>(Input(0), Input(1), Input(1));
 created: object(3,0)
 mutated: object(0,0), object(2,0)
 gas summary: computation_cost: 1000000, storage_cost: 3754400,  storage_rebate: 2264724, non_refundable_storage_fee: 22876
@@ -56,7 +56,7 @@ Response: {
           {
             "contents": {
               "type": {
-                "repr": "0x0000000000000000000000000000000000000000000000000000000000000002::coin::Coin<0x0000000000000000000000000000000000000000000000000000000000000002::sui::SUI>"
+                "repr": "0x0000000000000000000000000000000000000000000000000000000000000002::coin::Coin<0x0000000000000000000000000000000000000000000000000000000000000002::myso::MYSO>"
               },
               "json": {
                 "id": "0xb0d826786ad374b9e6e79da4a2d6c8d5f23c413aeb76fa0b07e5636d173a4a8f",
@@ -67,7 +67,7 @@ Response: {
           {
             "contents": {
               "type": {
-                "repr": "0x0000000000000000000000000000000000000000000000000000000000000002::coin::Coin<0x0000000000000000000000000000000000000000000000000000000000000002::sui::SUI>"
+                "repr": "0x0000000000000000000000000000000000000000000000000000000000000002::coin::Coin<0x0000000000000000000000000000000000000000000000000000000000000002::myso::MYSO>"
               },
               "json": {
                 "id": "0xf616814098fb7a3be3ad67179e37e6b071cfe72ad70dcd44ae79456daddb9833",
@@ -135,7 +135,7 @@ Response: {
       "id": "BbDYJnhq03S55uedpKLWyNXyPEE663b6CwflY20XOkqP",
       "contents": {
         "type": {
-          "repr": "0x0000000000000000000000000000000000000000000000000000000000000002::coin::Coin<0x0000000000000000000000000000000000000000000000000000000000000002::sui::SUI>"
+          "repr": "0x0000000000000000000000000000000000000000000000000000000000000002::coin::Coin<0x0000000000000000000000000000000000000000000000000000000000000002::myso::MYSO>"
         },
         "json": {
           "id": "0xb0d826786ad374b9e6e79da4a2d6c8d5f23c413aeb76fa0b07e5636d173a4a8f",
@@ -196,7 +196,7 @@ Response: {
       "asMoveObject": {
         "contents": {
           "type": {
-            "repr": "0x0000000000000000000000000000000000000000000000000000000000000002::coin::Coin<0x0000000000000000000000000000000000000000000000000000000000000002::sui::SUI>"
+            "repr": "0x0000000000000000000000000000000000000000000000000000000000000002::coin::Coin<0x0000000000000000000000000000000000000000000000000000000000000002::myso::MYSO>"
           },
           "json": {
             "id": "0xb0d826786ad374b9e6e79da4a2d6c8d5f23c413aeb76fa0b07e5636d173a4a8f",

@@ -106,8 +106,8 @@ jobs:
         myso_sha=$(git rev-parse HEAD)
         echo "myso_sha=${myso_sha}" >> $GITHUB_ENV
 
-        myso_branch_name=$(gh api -H 'Accept: application/vnd.github+json' /repos/MystenLabs/myso/commits/${myso_sha}/branches-where-head --jq '.[].name' | head -n 1)
-        [[ -z $myso_branch_name ]] && myso_branch_name=$(gh api -H 'Accept: application/vnd.github+json' /repos/MystenLabs/myso/commits/${myso_sha}/pulls --jq '.[].base.ref' | head -n 1)
+        myso_branch_name=$(gh api -H 'Accept: application/vnd.github+json' /reposthe-social-proof-foundation/myso-core/commits/${myso_sha}/branches-where-head --jq '.[].name' | head -n 1)
+        [[ -z $myso_branch_name ]] && myso_branch_name=$(gh api -H 'Accept: application/vnd.github+json' /reposthe-social-proof-foundation/myso-core/commits/${myso_sha}/pulls --jq '.[].base.ref' | head -n 1)
         echo "myso_branch_name=${myso_branch_name}" >> $GITHUB_ENV
 
     - name: Dispatch to myso-operations for notification

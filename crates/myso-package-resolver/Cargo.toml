@@ -2,7 +2,7 @@
 name = "myso-package-resolver"
 version = "0.1.0"
 edition = "2024"
-authors = ["Mysten Labs <build@mystenlabs.com>"]
+authors = ["Brandon Shaw <brandon@mysocial.network>"]
 license = "Apache-2.0"
 publish = false
 

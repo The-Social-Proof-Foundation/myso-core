@@ -48,7 +48,7 @@ MySo is the first blockchain built for internet scale, enabling fast, scalable, 
 ### Desktop IDEs
 
 - VSCode Move by Mysten Labs - VSCode Extension supports Move on MySo development with LSP features through Move Analyzer developed by Mysten Labs.
-  - [GitHub](https://github.com/MystenLabs/myso/tree/main/external-crates/move/crates/move-analyzer) - [Documentation & Tutorial](https://marketplace.visualstudio.com/items?itemName=mysten.move) - [Further Information](details/ide_vscode_mysten_move_analyzer.md)
+  - [GitHub](https://github.com/the-social-proof-foundation/myso-core/tree/main/external-crates/move/crates/move-analyzer) - [Documentation & Tutorial](https://marketplace.visualstudio.com/items?itemName=mysten.move) - [Further Information](details/ide_vscode_mysten_move_analyzer.md)
 - VSCode MySo Move Analyzer by MoveBit - Alternative VSCode extension developed by MoveBit.
   - [Homepage](https://movebit.xyz/analyzer) - [GitHub](https://github.com/movebit/myso-move-analyzer) - [Documentation & Tutorial](https://marketplace.visualstudio.com/items?itemName=MoveBit.myso-move-analyzer) - [Further Information](details/ide_vscode_movebit_myso_move_analyzer.md)
 - IntelliJ MySo Move Language Plugin - IntelliJ-based plugin for Move on MySo development.
@@ -58,7 +58,7 @@ MySo is the first blockchain built for internet scale, enabling fast, scalable, 
 
 ### IDE Utilities
 
-- [Prettier Move Plugin](https://github.com/MystenLabs/myso/tree/main/external-crates/move/crates/move-analyzer/prettier-plugin) - A Move language plugin for the Prettier code formatter.
+- [Prettier Move Plugin](https://github.com/the-social-proof-foundation/myso-core/tree/main/external-crates/move/crates/move-analyzer/prettier-plugin) - A Move language plugin for the Prettier code formatter.
 - [MySo Extension](https://github.com/zktx-io/myso-extension) - The MySo extension provides seamless support for compiling, deploying, and testing MySo smart contracts directly within VS Code.
   - [Homepage](https://marketplace.visualstudio.com/items?itemName=zktxio.myso-extension) - [Documentation](https://docs.zktx.io/vsce/myso/)
 - ⚠️ MySo Simulator - VSCode Extension to streamline MySo development workflow with intuitive UI.
@@ -70,11 +70,11 @@ MySo is the first blockchain built for internet scale, enabling fast, scalable, 
 ### Client SDKs
 
 - MySo TypeScript SDK (Mysten Labs) - TypeScript modular library of tools for interacting with the MySo blockchain.
-  - [GitHub](https://github.com/MystenLabs/myso/tree/main/sdk/typescript) - [Documentation](https://sdk.mystenlabs.com/typescript) - [Further Information](details/sdk_myso_typescript.md)
+  - [GitHub](https://github.com/the-social-proof-foundation/myso-core/tree/main/sdk/typescript) - [Documentation](https://sdk.mystenlabs.com/typescript) - [Further Information](details/sdk_myso_typescript.md)
 - MySo Kit(Scallop) - Toolkit for interacting with the MySo network in TypeScript.
   - [GitHub](https://github.com/scallop-io/myso-kit) - [Further Information](details/sdk_myso_kit_scallop.md)
 - MySo Rust SDK (Mysten Labs) - Rust SDK to interact with MySo blockchain.
-  - [GitHub](https://github.com/MystenLabs/myso/tree/main/crates/myso-sdk) - [Documentation](https://mystenlabs.github.io/myso/myso_sdk/index.html) - [Further Information](details/sdk_myso_rust.md)
+  - [GitHub](https://github.com/the-social-proof-foundation/myso-core/tree/main/crates/myso-sdk) - [Documentation](https://mystenlabs.github.io/myso/myso_sdk/index.html) - [Further Information](details/sdk_myso_rust.md)
 - Pymyso - Python SDK to interact with MySo blockchain.
   - [GitHub](https://github.com/FrankC01/pymyso?tab=readme-ov-file) - [Documentation](https://pymyso.readthedocs.io/en/latest/index.html) - [Pypi](https://pypi.org/project/pymyso/) - [Discord](https://discord.gg/uCGYfY4Ph4) - [Further Information](details/sdk_pymyso.md)
 - MySo Go SDK (MySoVision) - Golang SDK to interact with MySo blockchain.
@@ -115,7 +115,7 @@ MySo is the first blockchain built for internet scale, enabling fast, scalable, 
 - [MySo Client Gen (Kuna Labs)](https://github.com/kunalabs-io/myso-client-gen/tree/master) - A tool for generating TS SDKs for MySo Move smart contracts. Supports code generation both for source code and on-chain packages with no IDLs or ABIs required.
 - [TypeMove (Sentio)](https://github.com/sentioxyz/typemove/blob/main/packages/myso/Readme.md) - Generate TypeScript bindings for MySo contracts.
 - MySo Wallet Standard (Mysten Labs) - A mysote of standard utilities for implementing wallets and libraries based on the [Wallet Standard](https://github.com/wallet-standard/wallet-standard/).
-  - [GitHub](https://github.com/MystenLabs/myso/tree/main/sdk/wallet-standard) - [Documentation](https://docs.myso.io/standards/wallet-standard)
+  - [GitHub](https://github.com/the-social-proof-foundation/myso-core/tree/main/sdk/wallet-standard) - [Documentation](https://docs.myso.io/standards/wallet-standard)
 - [CoinMeta (Polymedia)](https://github.com/juzybits/polymedia-coinmeta) - Library for fetching coin metadata for MySo coins.
 - [Dubhe Client BCS Decoding (Dubhe Engine)](https://github.com/0xobelisk/dubhe-docs/blob/main/pages/dubhe/myso/client.mdx#bcs-data-decoding) - Library for supports automatic parsing of BCS types based on contract metadata information and automatic conversion formatting.
 
@@ -125,7 +125,7 @@ MySo is the first blockchain built for internet scale, enabling fast, scalable, 
 
 - [@mysten/create-dapp](https://sdk.mystenlabs.com/dapp-kit/create-dapp) - CLI tool that helps you create MySo dApp projects.
 - MySo dApp Kit (Mysten Labs) - Set of React components, hooks, and utilities to help you build a dApp for the MySo ecosystem.
-  - [GitHub](https://github.com/MystenLabs/myso/tree/main/sdk/dapp-kit) - [Documentation](https://sdk.mystenlabs.com/dapp-kit)
+  - [GitHub](https://github.com/the-social-proof-foundation/myso-core/tree/main/sdk/dapp-kit) - [Documentation](https://sdk.mystenlabs.com/dapp-kit)
 - MySo dApp Starter - Full-stack boilerplate which lets you scaffold a solid foundation for your MySo project and focus on the business logic of your dapp from day one.
   - [GitHub](https://github.com/mysoware/myso-dapp-starter?tab=readme-ov-file) - [Documentation](https://myso-dapp-starter.dev/docs/) - [Demo app](https://demo.myso-dapp-starter.dev/)
 - MySoet Wallet Kit - React toolkit for aApps to interact with all wallet types in MySo easily.
@@ -142,7 +142,7 @@ MySo is the first blockchain built for internet scale, enabling fast, scalable, 
   - [Documentation](https://dubhe.obelisk.build/dubhe/myso/quick-start)
 - [MySo Tools](https://myso-tools.vercel.app/ptb-generator) - Scaffolding TypeScript PTBs for any on-chain function you might want to invoke.
 - [Enoki (Mysten Labs)](https://docs.enoki.mystenlabs.com/) - Make zkLogin and Sponsored Transactions more accessible.
-- [MySo Gas Pool (Mysten Labs)](https://github.com/MystenLabs/myso-gas-pool) - Service that powers sponsored transactions on MySo at scale.
+- [MySo Gas Pool (Mysten Labs)](https://github.com/the-social-proof-foundation/myso-core-gas-pool) - Service that powers sponsored transactions on MySo at scale.
 - [useMySoZkLogin](https://github.com/pixelbrawlgames/use-myso-zklogin) - React hook and functions for seamless zkLogin integration on MySo.
 - @mysoware/kit - Opinionated React components and hooks for MySo dApps.
   - [Homepage](https://kit.mysoware.io/) - [Documentation](https://github.com/mysoware/kit/tree/main/packages/kit#readme) - [GitHub](https://github.com/mysoware/kit)
@@ -183,7 +183,7 @@ MySo is the first blockchain built for internet scale, enabling fast, scalable, 
 - [IntegerMate (Cetus)](https://github.com/CetusProtocol/integer-mate) - A Library of move module provides signed integer and some integer math functions.
 - [Cetus CLMM](https://github.com/CetusProtocol/cetus-contracts/tree/main/packages/cetus_clmm) - The Cetus CLMM DEX open-source code. 
 - [MySoDouble Metadata](https://github.com/mysodouble/mysodouble_metadata) - A MySo Move library and a set of tools to store, retrieve, and manage any type of primitive data as chunks in a `vector<u8>`. Store any data in the `vector<u8>` without dependencies and without any `Struct` defined.
-- [Move on MySo examples (Mysten Labs)](https://github.com/MystenLabs/myso/tree/main/examples/move) - Examples of Move on MySo applications.
+- [Move on MySo examples (Mysten Labs)](https://github.com/the-social-proof-foundation/myso-core/tree/main/examples/move) - Examples of Move on MySo applications.
 - [MySoGPT Decompiler](https://mysogpt.tools/decompile) - Uses generative AI to convert Move bytecode back to source code.
 - [Revela](https://revela.verichains.io/) - Decompile MySo smart contracts to recover Move source code.
 - Package Source Code Verification - Verify your package source code on MySoscan, powered by WELLDONE Studio and Blockberry.

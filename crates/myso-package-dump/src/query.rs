@@ -6,12 +6,10 @@ use cynic::QueryBuilder;
 
 #[cynic::schema("myso")]
 mod schema {
-    // Type alias for MySoAddress -> SuiAddress compatibility
-    pub type MySoAddress = SuiAddress;
 }
 
 #[derive(cynic::Scalar, Debug)]
-#[cynic(graphql_type = "SuiAddress")]
+#[cynic(graphql_type = "MySoAddress")]
 pub(crate) struct MySoAddress(pub String);
 
 #[derive(cynic::Scalar, Debug)]

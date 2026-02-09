@@ -62,7 +62,7 @@ Execution Error: ExecutionError: ExecutionError { inner: ExecutionErrorInner { k
 task 7, lines 54-61:
 //# programmable --sender A --inputs 10 @A
 // Cannot write to borrowed fresh coin via split coins
-//> 0: sui::coin::zero<sui::sui::SUI>();
+//> 0: myso::coin::zero<myso::myso::MYSO>();
 //> 1: test::m::borrow_mut(Result(0));
 //> 2: SplitCoins(Result(0), [Input(0)]);
 //> 3: TransferObjects([Result(2)], Input(1));
@@ -74,7 +74,7 @@ Execution Error: ExecutionError: ExecutionError { inner: ExecutionErrorInner { k
 task 8, lines 63-69:
 //# programmable --sender A --inputs 10 @A object(2,0)
 // Cannot write to borrowed fresh coin via Merge coins
-//> 0: sui::coin::zero<sui::sui::SUI>();
+//> 0: myso::coin::zero<myso::myso::MYSO>();
 //> 1: test::m::borrow_mut(Result(0));
 //> 2: MergeCoins(Result(0), [Input(2)]);
 //> 3: test::m::borrow_mut(Result(1));

@@ -2,9 +2,9 @@
 // SPDX-License-Identifier: Apache-2.0
 
 import { useCurrentAccount } from "@mysten/dapp-kit";
-import { PublicKey } from "@mysten/sui/cryptography";
-import { fromBase64, toBase64 } from "@mysten/sui/utils";
-import { publicKeyFromRawBytes } from "@mysten/sui/verify";
+import { PublicKey } from "@socialproof/myso/cryptography";
+import { fromBase64, toBase64 } from "@socialproof/myso/utils";
+import { publicKeyFromRawBytes } from "@socialproof/myso/verify";
 import { ExclamationTriangleIcon } from "@radix-ui/react-icons";
 import { Box, Button, Em, Flex, Separator, Spinner, Text, TextField } from "@radix-ui/themes";
 import { ComputedField } from "components/ComputedField";
@@ -65,7 +65,7 @@ export function NewMultiSigGame(): ReactElement {
                 onChange={(e) => setOpponent(parsePublicKey(e.target.value))}
             />
             <ComputedField
-                value={opponent ? opponent.toSuiAddress() : undefined}
+                value={opponent ? opponent.toMySoAddress() : undefined}
                 label="Opponent address"
             />
             <Flex justify="between" mt="4">
@@ -88,7 +88,7 @@ export function NewMultiSigGame(): ReactElement {
                 </Text>
                 <Text as="div">
                     In order to construct the multi-sig, we need to know the public keys of the two
-                    players. Although addresses on Sui are derived from public keys, the derivation
+                    players. Although addresses on MySo are derived from public keys, the derivation
                     cannot be reversed, so to start a multi-sig game, we ask for the public keys
                     directly.
                 </Text>
@@ -126,7 +126,7 @@ function Validation({
 }
 
 /**
- * If `key` is a valid base64 encoded Sui public key, return it as a
+ * If `key` is a valid base64 encoded MySo public key, return it as a
  * `PublicKey`, otherwise return null.
  */
 function parsePublicKey(key?: string): PublicKey | null {

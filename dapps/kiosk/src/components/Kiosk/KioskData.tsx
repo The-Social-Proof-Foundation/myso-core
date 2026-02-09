@@ -3,7 +3,7 @@
 
 import { Tab } from '@headlessui/react';
 import { useCurrentAccount } from '@mysten/dapp-kit';
-import { formatAddress } from '@mysten/sui/utils';
+import { formatAddress } from '@socialproof/myso/utils';
 import { useQueryClient } from '@tanstack/react-query';
 import { toast } from 'react-hot-toast';
 
@@ -49,7 +49,7 @@ export function KioskData({ kioskId }: { kioskId: string }) {
 						</div>
 						<div className="mt-2">Items Count: {kiosk.itemCount}</div>
 						<div className="mt-2">
-							Profits: {profits} SUI
+							Profits: {profits} MYSO
 							{Number(kiosk.profits) > 0 && (
 								<Button
 									loading={withdrawMutation.isPending}

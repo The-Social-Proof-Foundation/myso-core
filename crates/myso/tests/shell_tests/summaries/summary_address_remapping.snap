@@ -1,12 +1,12 @@
 ---
-source: crates/sui/tests/shell_tests.rs
+source: crates/myso/tests/shell_tests.rs
 ---
 ----- script -----
 # Copyright (c) Mysten Labs, Inc.
 # SPDX-License-Identifier: Apache-2.0
 
 # Test to make sure we properly randomize addresses across packages.
-sui move --client.config $CONFIG summary --path data/overlapping_summaries
+myso move --client.config $CONFIG summary --path data/overlapping_summaries
 ls -1 data/overlapping_summaries/package_summaries/
 cat data/overlapping_summaries/package_summaries/child_pkg/a.json
 cat data/overlapping_summaries/package_summaries/other_child/a.json
@@ -18,7 +18,7 @@ success: true
 exit_code: 0
 ----- stdout -----
 INCLUDING DEPENDENCY MoveStdlib
-INCLUDING DEPENDENCY Sui
+INCLUDING DEPENDENCYMySo
 INCLUDING DEPENDENCY child_pkg
 INCLUDING DEPENDENCY other_child
 BUILDING overlapping_summaries
@@ -30,7 +30,7 @@ other_child
 overlapping_summaries
 root_package_metadata.json
 std
-sui
+myso
 {
   "id": {
     "address": "child_pkg",
@@ -204,7 +204,7 @@ sui
   "other_child": "0x000000000000000000000000000000000000000000000000000000000000000c",
   "overlapping_summaries": "0x0000000000000000000000000000000000000000000000000000000000000000",
   "std": "0x0000000000000000000000000000000000000000000000000000000000000001",
-  "sui": "0x0000000000000000000000000000000000000000000000000000000000000002"
+  "myso": "0x0000000000000000000000000000000000000000000000000000000000000002"
 }
 ----- stderr -----
-[NOTE] Dependencies on Sui, MoveStdlib, Bridge, DeepBook, and SuiSystem are automatically added, but this feature is disabled for your package because you have explicitly included dependencies on Sui. Consider removing these dependencies from `Move.toml`.
+[NOTE] Dependencies onMySo, MoveStdlib, Bridge, DeepBook, and SuiSystem are automatically added, but this feature is disabled for your package because you have explicitly included dependencies on MySo. Consider removing these dependencies from `Move.toml`.

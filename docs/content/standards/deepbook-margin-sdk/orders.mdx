@@ -164,7 +164,7 @@ interface PlaceMarginLimitOrderParams {
 	payWithDeep?: boolean;
 }
 
-// Example: Place a buy limit order for 10 SUI at $2.50
+// Example: Place a buy limit order for 10 MYSO at $2.50
 placeLimitOrder = (tx: Transaction) => {
 	const poolKey = 'SUI_DBUSDC';
 	const managerKey = 'MARGIN_MANAGER_1';
@@ -185,7 +185,7 @@ placeLimitOrder = (tx: Transaction) => {
 ### Place a market order
 
 ```tsx
-// Example: Place a market sell order for 5 SUI
+// Example: Place a market sell order for 5 MYSO
 placeMarketOrder = (tx: Transaction) => {
 	const poolKey = 'SUI_DBUSDC';
 	const managerKey = 'MARGIN_MANAGER_1';

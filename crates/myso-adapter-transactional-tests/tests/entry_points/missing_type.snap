@@ -18,7 +18,7 @@ Error: Transaction Effects Status: Error for type argument at index 0: A type wa
 Execution Error: ExecutionError: ExecutionError { inner: ExecutionErrorInner { kind: TypeArgumentError { argument_idx: 0, kind: TypeNotFound }, source: None, command: Some(0) } }
 
 task 3, line 19:
-//# run test::m::foo --type-args test::m::SUI
+//# run test::m::foo --type-args test::m::MYSO
 Error: Transaction Effects Status: Error for type argument at index 0: A type was not found in the module specified.
 Execution Error: ExecutionError: ExecutionError { inner: ExecutionErrorInner { kind: TypeArgumentError { argument_idx: 0, kind: TypeNotFound }, source: None, command: Some(0) } }
 

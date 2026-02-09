@@ -8,11 +8,11 @@ Protecting the ability to upgrade a package on-chain using a single key can pose
 
 <ImportContent source="upgrade-single-key-risk.mdx" mode="snippet" />
 
-To address these risks while still providing the opportunity to [upgrade live packages](/guides/developer/packages/upgrade.mdx), Sui offers custom upgrade policies. These policies protect `UpgradeCap` access and issue `UpgradeTicket` objects that authorize upgrades on a case-by-case basis.
+To address these risks while still providing the opportunity to [upgrade live packages](/guides/developer/packages/upgrade.mdx), MySo offers custom upgrade policies. These policies protect `UpgradeCap` access and issue `UpgradeTicket` objects that authorize upgrades on a case-by-case basis.
 
 ## Compatibility {#compatibility}
 
-Sui comes with a set of built-in package compatibility policies, listed here from most to least strict:
+MySo comes with a set of built-in package compatibility policies, listed here from most to least strict:
 
 | Policy          | Description                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                     |
 | --------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
@@ -25,7 +25,7 @@ Each of these policies, in the order listed, is a superset of the previous one i
 
 When you publish a package, by default it adopts the most relaxed, compatible policy. You can publish a package as part of a transaction that can change the policy before the transaction successfully completes, making the package available on-chain for the first time at the desired policy level, rather than at the default one.
 
-You can change the current policy by calling one of the functions in `sui::package` (`only_additive_upgrades`, `only_dep_upgrades`, `make_immutable`) on the package's `UpgradeCap` and a policy can only become more restrictive. For example, after you call `sui::package::only_dep_upgrades` to restrict the policy to become dependency-only, calling `sui::package::only_additive_upgrades` on the `UpgradeCap` of the same package results in an error.
+You can change the current policy by calling one of the functions in `myso::package` (`only_additive_upgrades`, `only_dep_upgrades`, `make_immutable`) on the package's `UpgradeCap` and a policy can only become more restrictive. For example, after you call `myso::package::only_dep_upgrades` to restrict the policy to become dependency-only, calling `myso::package::only_additive_upgrades` on the `UpgradeCap` of the same package results in an error.
 
 ## Upgrade overview {#upgrade-overview}
 
@@ -35,11 +35,11 @@ Package upgrades must occur end-to-end in a single transaction and are composed 
 1. **Execution:** Consume the `UpgradeTicket` and verify the package bytecode and compatibility against the previous version, then create the on-chain object representing the upgraded package. Return an `UpgradeReceipt` as a result on success.
 1. **Commit:** Update the `UpgradeCap` with information about the newly created package.
 
-While step 2 is a built-in command, steps 1 and 3 are implemented as Move functions. The Sui framework provides their most basic implementation:
+While step 2 is a built-in command, steps 1 and 3 are implemented as Move functions. The MySo framework provides their most basic implementation:
 
-<ImportContent source="crates/sui-framework/packages/sui-framework/sources/package.move" mode="" fun="authorize_upgrade,commit_upgrade" noComments />
+<ImportContent source="crates/myso-framework/packages/myso-framework/sources/package.move" mode="" fun="authorize_upgrade,commit_upgrade" noComments />
 
-These are the functions that `sui client upgrade` calls for authorization and commit. Custom upgrade policies work by guarding access to a package `UpgradeCap` (and therefore to calls of these functions) behind extra conditions that are specific to that policy (such as voting, governance, permission lists, timelocks, and so on).
+These are the functions that `myso client upgrade` calls for authorization and commit. Custom upgrade policies work by guarding access to a package `UpgradeCap` (and therefore to calls of these functions) behind extra conditions that are specific to that policy (such as voting, governance, permission lists, timelocks, and so on).
 
 Any pair of functions that produces an `UpgradeTicket` from an `UpgradeCap` and consumes an `UpgradeReceipt`. To update an `UpgradeCap` constitutes a custom upgrade policy.
 
@@ -47,7 +47,7 @@ Any pair of functions that produces an `UpgradeTicket` from an `UpgradeCap` and 
 
 The `UpgradeCap` is the central type responsible for coordinating package upgrades.
 
-<ImportContent source="crates/sui-framework/packages/sui-framework/sources/package.move" mode="code" struct="UpgradeCap" noComments />
+<ImportContent source="crates/myso-framework/packages/myso-framework/sources/package.move" mode="code" struct="UpgradeCap" noComments />
 
 Publishing a package creates the `UpgradeCap` object and upgrading the package updates that object. The owner of this object has permission to:
 
@@ -69,7 +69,7 @@ Its API guarantees the following properties:
 
 ## `UpgradeTicket` {#upgradeticket}
 
-<ImportContent source="crates/sui-framework/packages/sui-framework/sources/package.move" mode="code" struct="UpgradeTicket" noComments />
+<ImportContent source="crates/myso-framework/packages/myso-framework/sources/package.move" mode="code" struct="UpgradeTicket" noComments />
 
 An `UpgradeTicket` is proof that an upgrade has been authorized. This authorization is specific to:
 
@@ -85,7 +85,7 @@ After creating an `UpgradeTicket`, you must use it within that transaction or th
 
 ### Package digest {#package-digest}
 
-The `UpgradeTicket` `digest` field comes from the `digest` parameter to `authorize_upgrade`, which the caller must supply. While `authorize_upgrade` does not process the `digest`, custom policies can use it to authorize only upgrades that it has seen the bytecode or source code for ahead of time. Sui calculates the digest as follows:
+The `UpgradeTicket` `digest` field comes from the `digest` parameter to `authorize_upgrade`, which the caller must supply. While `authorize_upgrade` does not process the `digest`, custom policies can use it to authorize only upgrades that it has seen the bytecode or source code for ahead of time. MySo calculates the digest as follows:
 
 - Take the bytecode for each module, represented as an array of bytes.
 
@@ -97,15 +97,15 @@ The `UpgradeTicket` `digest` field comes from the `digest` parameter to `authori
 
 - Compute the digest from this hash state.
 
-Refer to the [implementation for digest calculation](https://github.com/MystenLabs/sui/blob/d8cb153d886d54752763fbdab631b062da7d894b/crates/sui-types/src/move_package.rs#L232-L251) for more information, but in most cases, you can rely on the Move toolchain to output the digest as part of the build when passing the `--dump-bytecode-as-base64` flag:
+Refer to the [implementation for digest calculation](https://github.com/the-social-proof-foundation/myso-core/blob/d8cb153d886d54752763fbdab631b062da7d894b/crates/myso-types/src/move_package.rs#L232-L251) for more information, but in most cases, you can rely on the Move toolchain to output the digest as part of the build when passing the `--dump-bytecode-as-base64` flag:
 
 ```sh
-$ sui move build --dump-bytecode-as-base64
+$ myso move build --dump-bytecode-as-base64
 ```
 
 ```sh
-FETCHING GIT DEPENDENCY https://github.com/MystenLabs/sui.git
-INCLUDING DEPENDENCY Sui
+FETCHING GIT DEPENDENCY https://github.com/the-social-proof-foundation/myso-core.git
+INCLUDING DEPENDENCYMySo
 INCLUDING DEPENDENCY MoveStdlib
 BUILDING test
 {"modules":[<MODULE-BYTES-BASE64>],"dependencies":[<DEPENDENCY-IDS>],"digest":[59,43,173,195,216,88,176,182,18,8,24,200,200,192,196,197,248,35,118,184,207,205,33,59,228,109,184,230,50,31,235,201]}
@@ -113,11 +113,11 @@ BUILDING test
 
 ## `UpgradeReceipt` {#upgradereceipt}
 
-<ImportContent source="crates/sui-framework/packages/sui-framework/sources/package.move" mode="code" struct="UpgradeReceipt" noComments />
+<ImportContent source="crates/myso-framework/packages/myso-framework/sources/package.move" mode="code" struct="UpgradeReceipt" noComments />
 
-The `UpgradeReceipt` is proof that the `Upgrade` command ran successfully, and Sui added the new package to the set of created objects for the transaction. It is used to update its `UpgradeCap` (identified by `cap: ID`) with the ID of the latest package in its family (`package: ID`).
+The `UpgradeReceipt` is proof that the `Upgrade` command ran successfully, and MySo added the new package to the set of created objects for the transaction. It is used to update its `UpgradeCap` (identified by `cap: ID`) with the ID of the latest package in its family (`package: ID`).
 
-After Sui creates an `UpgradeReceipt`, you must use it to update its `UpgradeCap` within the same transaction or the transaction fails. You cannot store it for later, drop it, or burn it. 
+After MySo creates an `UpgradeReceipt`, you must use it to update its `UpgradeCap` within the same transaction or the transaction fails. You cannot store it for later, drop it, or burn it. 
 
 ## Isolating policies {#isolating-policies}
 
@@ -136,7 +136,7 @@ These best practices help uphold informed user consent and bounded risk by makin
 Start by creating a new Move package for the upgrade policy:
 
 ```sh
-$ sui move new policy
+$ myso move new policy
 ```
 
 The command creates a `policy` directory with a `sources` folder and `Move.toml` manifest.
@@ -146,7 +146,7 @@ In the `sources` folder, create a source file named `day_of_week.move` that cont
 ```move
 module policy::day_of_week;
 
-use sui::package;
+use myso::package;
 
 /// Day is not a week day (number in range 0 <= day < 7).
 const ENotWeekDay: u64 = 1;
@@ -206,9 +206,9 @@ public fun authorize_upgrade(
 }
 ```
 
-The signature of a custom `authorize_upgrade` can be different from the signature of `sui::package::authorize_upgrade` as long as it returns an `UpgradeTicket`.
+The signature of a custom `authorize_upgrade` can be different from the signature of `myso::package::authorize_upgrade` as long as it returns an `UpgradeTicket`.
 
-Finally, provide implementations of `commit_upgrade` and `make_immutable` that delegate to their respective functions in `sui::package`:
+Finally, provide implementations of `commit_upgrade` and `make_immutable` that delegate to their respective functions in `myso::package`:
 
 ```move
 public fun commit_upgrade(
@@ -230,7 +230,7 @@ The final code in your `day_of_week.move` file should resemble the following:
 ```move
 module policy::day_of_week;
 
-use sui::package;
+use myso::package;
 
 // Day is not a week day (number in range 0 <= day < 7).
 const ENotWeekDay: u64 = 1;
@@ -285,12 +285,12 @@ public fun make_immutable(cap: UpgradeCap) {
 
 ### Publishing an upgrade policy {#publishing-an-upgrade-policy}
 
-Use the `sui client publish` command to publish the policy.
+Use the `myso client publish` command to publish the policy.
 
 <ImportContent source="info-gas-budget.mdx" mode="snippet" />
 
 ```sh
-$ sui client publish
+$ myso client publish
 ```
 
 <details>
@@ -299,8 +299,8 @@ Console output
 </summary>
 
 ```sh
-UPDATING GIT DEPENDENCY https://github.com/MystenLabs/sui.git
-INCLUDING DEPENDENCY Sui
+UPDATING GIT DEPENDENCY https://github.com/the-social-proof-foundation/myso-core.git
+INCLUDING DEPENDENCYMySo
 INCLUDING DEPENDENCY MoveStdlib
 BUILDING policy
 Successfully verified dependencies on-chain against source.
@@ -412,7 +412,7 @@ Transaction Digest: 5BzYX5iV6GP2RaSkZ7JPBRmListD5cEVC7REoKsNoCYc
 │  │ ObjectID: 0x057d71e1f7e8341c5f2b203ae5fcb33c024afcc7f1c8c264fe0fe74dddcd828c                  │
 │  │ Sender: 0x65437300e280695a40df8cf524c7bca6ad62574cac3a52d3b085ad628c797241                    │
 │  │ Owner: Account Address ( 0x65437300e280695a40df8cf524c7bca6ad62574cac3a52d3b085ad628c797241 ) │
-│  │ ObjectType: 0x2::coin::Coin<0x2::sui::SUI>                                                    │
+│  │ ObjectType: 0x2::coin::Coin<0x2::myso::MYSO>                                                    │
 │  │ Version: 149516399                                                                            │
 │  │ Digest: F4zEiy3eS1h9V2EfrV3WXWe8bktA28sbKxzNCqtTRK2T                                          │
 │  └──                                                                                             │
@@ -429,7 +429,7 @@ Transaction Digest: 5BzYX5iV6GP2RaSkZ7JPBRmListD5cEVC7REoKsNoCYc
 ├───────────────────────────────────────────────────────────────────────────────────────────────────┤
 │  ┌──                                                                                              │
 │  │ Owner: Account Address ( 0x65437300e280695a40df8cf524c7bca6ad62574cac3a52d3b085ad628c797241 )  │
-│  │ CoinType: 0x2::sui::SUI                                                                        │
+│  │ CoinType: 0x2::myso::MYSO                                                                        │
 │  │ Amount: -9795480                                                                               │
 │  └──                                                                                              │
 ╰───────────────────────────────────────────────────────────────────────────────────────────────────╯
@@ -437,12 +437,12 @@ Transaction Digest: 5BzYX5iV6GP2RaSkZ7JPBRmListD5cEVC7REoKsNoCYc
 
 </details>
 
-Following best practices, use the Sui client CLI to call `sui::package::make_immutable` on the `UpgradeCap` to make the policy immutable. In your command line, create the variable `upgradecap` and set its value to the `UpgradeCap` object ID listed in the **Object Changes** section of `sui client publish` output. The object ID for your upgrade capability is different than the following example.
+Following best practices, use the MySo client CLI to call `myso::package::make_immutable` on the `UpgradeCap` to make the policy immutable. In your command line, create the variable `upgradecap` and set its value to the `UpgradeCap` object ID listed in the **Object Changes** section of `myso client publish` output. The object ID for your upgrade capability is different than the following example.
 
 ```sh
 $ upgradecap=0x4de927a10f97520311239cadb7159d4b893275bc74ab4e0af1b16c41ba8275a0
 
-$ sui client call \
+$ myso client call \
     --package 0x2 \
     --module 'package' \
     --function 'make_immutable' \
@@ -541,7 +541,7 @@ Transaction Digest: EuQYMunxnMUFedvXXPck9HrehQnNY4GJ27eFBD7ptk2H
 │  │ ObjectID: 0x057d71e1f7e8341c5f2b203ae5fcb33c024afcc7f1c8c264fe0fe74dddcd828c                  │
 │  │ Sender: 0x65437300e280695a40df8cf524c7bca6ad62574cac3a52d3b085ad628c797241                    │
 │  │ Owner: Account Address ( 0x65437300e280695a40df8cf524c7bca6ad62574cac3a52d3b085ad628c797241 ) │
-│  │ ObjectType: 0x2::coin::Coin<0x2::sui::SUI>                                                    │
+│  │ ObjectType: 0x2::coin::Coin<0x2::myso::MYSO>                                                    │
 │  │ Version: 149516400                                                                            │
 │  │ Digest: GVZLEsYEDuaZoFoTnvzoHsjGLuVYfZrZEomLRnSCFkzR                                          │
 │  └──                                                                                             │
@@ -551,7 +551,7 @@ Transaction Digest: EuQYMunxnMUFedvXXPck9HrehQnNY4GJ27eFBD7ptk2H
 ├───────────────────────────────────────────────────────────────────────────────────────────────────┤
 │  ┌──                                                                                              │
 │  │ Owner: Account Address ( 0x65437300e280695a40df8cf524c7bca6ad62574cac3a52d3b085ad628c797241 )  │
-│  │ CoinType: 0x2::sui::SUI                                                                        │
+│  │ CoinType: 0x2::myso::MYSO                                                                        │
 │  │ Amount: 607780                                                                                 │
 │  └──                                                                                              │
 ╰───────────────────────────────────────────────────────────────────────────────────────────────────╯
@@ -561,10 +561,10 @@ Transaction Digest: EuQYMunxnMUFedvXXPck9HrehQnNY4GJ27eFBD7ptk2H
 
 ### Creating a package for testing {#creating-testing-package}
 
-With a policy now available on-chain, you need a package to upgrade. If you don't have a package available, use the `sui move new` command to create the template for a new package called `example`.
+With a policy now available on-chain, you need a package to upgrade. If you don't have a package available, use the `myso move new` command to create the template for a new package called `example`.
 
 ```sh
-$ sui move new example
+$ myso move new example
 ```
 
 In the `example/sources` directory, create an `example.move` file with the following code:
@@ -573,7 +573,7 @@ In the `example/sources` directory, create an `example.move` file with the follo
 module example::example {
     struct Event has copy, drop { x: u64 }
     entry fun nudge() {
-        sui::event::emit(Event { x: 41 })
+        myso::event::emit(Event { x: 41 })
     }
 }
 ```
@@ -588,39 +588,39 @@ Create a new directory to store a Node.js project. You can use the `npm init` fu
 { "type": "module" }
 ```
 
-Open a terminal or console to the root of your Node.js project. Run the following command to add the Sui TypeScript SDK as a dependency:
+Open a terminal or console to the root of your Node.js project. Run the following command to add the MySo TypeScript SDK as a dependency:
 
 ```sh
-$ npm install @mysten/sui
+$ npm install @mysten/myso
 ```
 
 ### Publishing a package with custom policy {#publishing-custom-policy}
 
 In the root of your Node.js project, create a script file named `publish.js`. Open the file define some constants:
 
-- `SUI`: the location of the `sui` CLI binary.
+- `MYSO`: the location of the `myso` CLI binary.
 
 - `POLICY_PACKAGE_ID`: the ID of our published `day_of_week` package.
 
 ```js
-const SUI = 'sui';
+const MYSO = 'myso';
 const POLICY_PACKAGE_ID = '<POLICY-PACKAGE>';
 ```
 
-Next, add boilerplate code to get the signer key pair for the currently active address of the Sui client CLI:
+Next, add boilerplate code to get the signer key pair for the currently active address of the MySo client CLI:
 
 ```js
 import { execSync } from 'child_process';
 import { readFileSync } from 'fs';
 import { homedir } from 'os';
 import path from 'path';
-import { Ed25519Keypair } from '@mysten/sui/keypairs/ed25519';
-import { fromBase64 } from '@mysten/sui/utils';
+import { Ed25519Keypair } from '@socialproof/myso/keypairs/ed25519';
+import { fromBase64 } from '@socialproof/myso/utils';
 
-const sender = execSync(`${SUI} client active-address`, { encoding: 'utf8' }).trim();
+const sender = execSync(`${MYSO} client active-address`, { encoding: 'utf8' }).trim();
 const signer = (() => {
 	const keystore = JSON.parse(
-		readFileSync(path.join(homedir(), '.sui', 'sui_config', 'sui.keystore'), 'utf8'),
+		readFileSync(path.join(homedir(), '.myso', 'myso_config', 'myso.keystore'), 'utf8'),
 	);
 
 	for (const priv of keystore) {
@@ -630,7 +630,7 @@ const signer = (() => {
 		}
 
 		const pair = Ed25519Keypair.fromSecretKey(raw.slice(1));
-		if (pair.getPublicKey().toSuiAddress() === sender) {
+		if (pair.getPublicKey().toMySoAddress() === sender) {
 			return pair;
 		}
 	}
@@ -653,7 +653,7 @@ Next, build the package:
 
 ```js
 const { modules, dependencies } = JSON.parse(
-	execSync(`${SUI} move build --dump-bytecode-as-base64 --path ${packagePath}`, {
+	execSync(`${MYSO} move build --dump-bytecode-as-base64 --path ${packagePath}`, {
 		encoding: 'utf-8',
 	}),
 );
@@ -662,7 +662,7 @@ const { modules, dependencies } = JSON.parse(
 Next, construct the transaction to publish the package. Wrap its `UpgradeCap` in a "day of the week" policy, which permits upgrades on Tuesdays, and send the new policy back:
 
 ```js
-import { Transaction } from '@mysten/sui/transactions';
+import { Transaction } from '@socialproof/myso/transactions';
 
 const tx = new Transaction();
 const packageUpgradeCap = tx.publish({ modules, dependencies });
@@ -680,7 +680,7 @@ tx.transferObjects([tuesdayUpgradeCap], tx.pure.address(sender));
 Finally, execute that transaction and display its effects to the console. The following snippet assumes that you're running your examples against a local network. Change the `baseUrl` and `network` parameters to run on Devnet, Testnet, or Mainnet:
 
 ```js
-import { SuiGrpcClient } from '@mysten/sui/grpc';
+import { SuiGrpcClient } from '@socialproof/myso/grpc';
 
 const client = new SuiGrpcClient({ baseUrl: 'http://localhost:9000', network: 'localnet' });
 const result = await client.signAndExecuteTransaction({
@@ -705,17 +705,17 @@ import { readFileSync } from 'fs';
 import { homedir } from 'os';
 import path from 'path';
 import { fileURLToPath } from 'url';
-import { SuiGrpcClient } from '@mysten/sui/grpc';
-import { Ed25519Keypair } from '@mysten/sui/keypairs/ed25519';
-import { Transaction } from '@mysten/sui/transactions';
-import { fromBase64 } from '@mysten/sui/utils';
+import { SuiGrpcClient } from '@socialproof/myso/grpc';
+import { Ed25519Keypair } from '@socialproof/myso/keypairs/ed25519';
+import { Transaction } from '@socialproof/myso/transactions';
+import { fromBase64 } from '@socialproof/myso/utils';
 
-const SUI = 'sui';
+const MYSO = 'myso';
 const POLICY_PACKAGE_ID = '<POLICY-PACKAGE>';
-const sender = execSync(`${SUI} client active-address`, { encoding: 'utf8' }).trim();
+const sender = execSync(`${MYSO} client active-address`, { encoding: 'utf8' }).trim();
 const signer = (() => {
 	const keystore = JSON.parse(
-		readFileSync(path.join(homedir(), '.sui', 'sui_config', 'sui.keystore'), 'utf8'),
+		readFileSync(path.join(homedir(), '.myso', 'myso_config', 'myso.keystore'), 'utf8'),
 	);
 
 	for (const priv of keystore) {
@@ -725,7 +725,7 @@ const signer = (() => {
 		}
 
 		const pair = Ed25519Keypair.fromSecretKey(raw.slice(1));
-		if (pair.getPublicKey().toSuiAddress() === sender) {
+		if (pair.getPublicKey().toMySoAddress() === sender) {
 			return pair;
 		}
 	}
@@ -737,7 +737,7 @@ const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const packagePath = path.join(__dirname, 'example');
 
 const { modules, dependencies } = JSON.parse(
-	execSync(`${SUI} move build --dump-bytecode-as-base64 --path ${packagePath}`, {
+	execSync(`${MYSO} move build --dump-bytecode-as-base64 --path ${packagePath}`, {
 		encoding: 'utf-8',
 	}),
 );
@@ -777,7 +777,7 @@ Console output
 </summary>
 
 ```sh
-INCLUDING DEPENDENCY Sui
+INCLUDING DEPENDENCYMySo
 INCLUDING DEPENDENCY MoveStdlib
 BUILDING example
 {
@@ -808,7 +808,7 @@ BUILDING example
       type: 'mutated',
       sender: '<SENDER>',
       owner: [Object],
-      objectType: '0x2::coin::Coin<0x2::sui::SUI>',
+      objectType: '0x2::coin::Coin<0x2::myso::MYSO>',
       objectId: '<GAS>',
       version: '10',
       previousVersion: '9',
@@ -846,7 +846,7 @@ If you receive a `ReferenceError: fetch is not defined` error, use Node.js versi
 Use the CLI to test that your newly published package works:
 
 ```sh
-$ sui client call --gas-budget 10000000 \
+$ myso client call --gas-budget 10000000 \
     --package '<EXAMPLE-PACKAGE-ID>' \
     --module 'example' \
     --function 'nudge' \
@@ -904,7 +904,7 @@ Array [
         "owner": Object {
             "AddressOwner": String("<SENDER>"),
         },
-        "objectType": String("0x2::coin::Coin<0x2::sui::SUI>"),
+        "objectType": String("0x2::coin::Coin<0x2::myso::MYSO>"),
         "objectId": String("<GAS>"),
         "version": String("12"),
         "previousVersion": String("11"),
@@ -917,7 +917,7 @@ Array [
         "owner": Object {
             "AddressOwner": String("<SENDER>"),
         },
-        "coinType": String("0x2::sui::SUI"),
+        "coinType": String("0x2::myso::MYSO"),
         "amount": String("-1009880"),
     },
 ]
@@ -937,19 +937,19 @@ import { readFileSync } from 'fs';
 import { homedir } from 'os';
 import path from 'path';
 import { fileURLToPath } from 'url';
-import { SuiGrpcClient } from '@mysten/sui/grpc';
-import { Ed25519Keypair } from '@mysten/sui/keypairs/ed25519';
-import { Transaction, UpgradePolicy } from '@mysten/sui/transactions';
-import { fromBase64 } from '@mysten/sui/utils';
+import { SuiGrpcClient } from '@socialproof/myso/grpc';
+import { Ed25519Keypair } from '@socialproof/myso/keypairs/ed25519';
+import { Transaction, UpgradePolicy } from '@socialproof/myso/transactions';
+import { fromBase64 } from '@socialproof/myso/utils';
 
-const SUI = 'sui';
+const MYSO = 'myso';
 const POLICY_PACKAGE_ID = '<POLICY-PACKAGE>';
 const EXAMPLE_PACKAGE_ID = '<EXAMPLE-PACKAGE>';
 const CAP_ID = '<EXAMPLE-UPGRADE-CAP>';
-const sender = execSync(`${SUI} client active-address`, { encoding: 'utf8' }).trim();
+const sender = execSync(`${MYSO} client active-address`, { encoding: 'utf8' }).trim();
 const signer = (() => {
 	const keystore = JSON.parse(
-		readFileSync(path.join(homedir(), '.sui', 'sui_config', 'sui.keystore'), 'utf8'),
+		readFileSync(path.join(homedir(), '.myso', 'myso_config', 'myso.keystore'), 'utf8'),
 	);
 
 	for (const priv of keystore) {
@@ -959,7 +959,7 @@ const signer = (() => {
 		}
 
 		const pair = Ed25519Keypair.fromSecretKey(raw.slice(1));
-		if (pair.getPublicKey().toSuiAddress() === sender) {
+		if (pair.getPublicKey().toMySoAddress() === sender) {
 			return pair;
 		}
 	}
@@ -971,7 +971,7 @@ const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const packagePath = path.join(__dirname, 'example');
 
 const { modules, dependencies, digest } = JSON.parse(
-	execSync(`${SUI} move build --dump-bytecode-as-base64 --path ${packagePath}`, {
+	execSync(`${MYSO} move build --dump-bytecode-as-base64 --path ${packagePath}`, {
 		encoding: 'utf-8',
 	}),
 );
@@ -1018,7 +1018,7 @@ $ node upgrade.js
 If the script is successful, your console displays the following response:
 
 ```sh
-INCLUDING DEPENDENCY Sui
+INCLUDING DEPENDENCYMySo
 INCLUDING DEPENDENCY MoveStdlib
 BUILDING example
 {
@@ -1050,7 +1050,7 @@ BUILDING example
       type: 'mutated',
       sender: '<SENDER>',
       owner: [Object],
-      objectType: '0x2::coin::Coin<0x2::sui::SUI>',
+      objectType: '0x2::coin::Coin<0x2::myso::MYSO>',
       objectId: '<GAS>',
       version: '13',
       previousVersion: '12',
@@ -1080,10 +1080,10 @@ BUILDING example
 
 </details>
 
-Use the Sui client CLI to test the upgraded package. The package ID is **different** from the original version of your example package:
+Use the MySo client CLI to test the upgraded package. The package ID is **different** from the original version of your example package:
 
 ```sh
-$ sui client call --gas-budget 10000000 \
+$ myso client call --gas-budget 10000000 \
     --package '<UPGRADED-EXAMPLE-PACKAGE>' \
     --module 'example' \
     --function 'nudge'
@@ -1142,7 +1142,7 @@ Array [
         "owner": Object {
             "AddressOwner": String("<SENDER>"),
         },
-        "objectType": String("0x2::coin::Coin<0x2::sui::SUI>"),
+        "objectType": String("0x2::coin::Coin<0x2::myso::MYSO>"),
         "objectId": String("<GAS>"),
         "version": String("14"),
         "previousVersion": String("13"),
@@ -1155,7 +1155,7 @@ Array [
         "owner": Object {
             "AddressOwner": String("<SENDER>"),
         },
-        "coinType": String("0x2::sui::SUI"),
+        "coinType": String("0x2::myso::MYSO"),
         "amount": String("-1009880"),
     },
 ]

@@ -912,7 +912,7 @@ impl ObjectInner {
     }
 
     // TODO: use `MoveObj::get_balance_unsafe` instead.
-    // context: https://github.com/MystenLabs/myso/pull/10679#discussion_r1165877816
+    // context: https://github.com/the-social-proof-foundation/myso-core/pull/10679#discussion_r1165877816
     pub fn as_coin_maybe(&self) -> Option<Coin> {
         if let Some(move_object) = self.data.try_as_move() {
             if move_object.type_().is_coin() {

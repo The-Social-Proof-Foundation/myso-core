@@ -42,7 +42,7 @@ export function DisplayObject({ item, listing = null, children }: DisplayObject)
 
 				{listing && listing.price && (
 					<div className="absolute left-2 top-2 bg-primary text-white px-2 py-1 rounded-lg">
-						{price} SUI
+						{price} MYSO
 					</div>
 				)}
 

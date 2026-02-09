@@ -16,15 +16,15 @@ For object inputs, the metadata needed differs depending on the type of [ownersh
 
 - If an object is shared, then use `ObjectArg::SharedObject { id: ObjectID, initial_shared_version: SequenceNumber, mutable: bool }`. Unlike `ImmOrOwnedObject`, a shared object's version and digest are determined by the network's consensus protocol. The `initial_shared_version` is the version of the object when it was first shared, which is used by consensus when it has not yet seen a transaction with that object. While all shared objects can be mutated, the `mutable` flag indicates whether the object is to be used mutably in this transaction. In the case where the `mutable` flag is set to `false`, the object is read-only and the system can schedule other read-only transactions in parallel.
 
-- If the object is owned by another object, as in it was sent to an object's ID through the `TransferObjects` command or the `sui::transfer::transfer` function, then use `ObjectArg::Receiving(ObjectID, SequenceNumber, ObjectDigest)`. The object data is the same as for the `ImmOrOwnedObject` case.
+- If the object is owned by another object, as in it was sent to an object's ID through the `TransferObjects` command or the `myso::transfer::transfer` function, then use `ObjectArg::Receiving(ObjectID, SequenceNumber, ObjectDigest)`. The object data is the same as for the `ImmOrOwnedObject` case.
 
-For pure inputs, the only data provided is the [BCS](https://github.com/MystenLabs/sui/blob/main/crates/sui-framework/docs/std/bcs.md) bytes, which are deserialized to construct Move values. Not all Move values can be constructed from BCS bytes. The following types are allowed to be used with pure values:
+For pure inputs, the only data provided is the [BCS](https://github.com/the-social-proof-foundation/myso-core/blob/main/crates/myso-framework/docs/std/bcs.md) bytes, which are deserialized to construct Move values. Not all Move values can be constructed from BCS bytes. The following types are allowed to be used with pure values:
 
 - All primitive types: `u8`, `u16`, `u32`, `u64`, `u128`, `u256`, `bool`, `address`.
 
 - A string, either an ASCII string `std::ascii::String` or UTF8 string `std::string::String`. In either case, the bytes are verified to be a valid string with the respective encoding.
 
-- An object ID `sui::object::ID`.
+- An object ID `myso::object::ID`.
 
 - A vector, `vector<T>`.
 
@@ -40,11 +40,11 @@ Each transaction command produces an array of values. The array can be empty. Th
 
 - `MoveCall`: The number of results and their types are determined by the Move function being called. Move functions that return references are not supported at this time.
 
-- `SplitCoins`: Produces one or more coins from a single coin. The type of each coin is `sui::coin::Coin<T>` where the specific coin type `T` matches the coin being split.
+- `SplitCoins`: Produces one or more coins from a single coin. The type of each coin is `myso::coin::Coin<T>` where the specific coin type `T` matches the coin being split.
 
-- `Publish`: Returns the upgrade capability `sui::package::UpgradeCap` for the newly published package.
+- `Publish`: Returns the upgrade capability `myso::package::UpgradeCap` for the newly published package.
 
-- `Upgrade`: Returns the upgrade receipt `sui::package::UpgradeReceipt` for the upgraded package.
+- `Upgrade`: Returns the upgrade receipt `myso::package::UpgradeReceipt` for the upgraded package.
 
 - `TransferObjects` and `MergeCoins` produce an empty result vector.
 

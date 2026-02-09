@@ -31,7 +31,7 @@ abstract contract CommitteeUpgradeable is
     //
     // This file currently has __gap INCLUDED to support MAINNET upgrades.
     //
-    // See bridge/SUI_NATIVE_BRIDGE_PRIMER.md for full documentation.
+    // See bridge/MYSO_NATIVE_BRIDGE_PRIMER.md for full documentation.
     // For TESTNET upgrades, you must remove __gap.
 
     // upgradeable storage gap

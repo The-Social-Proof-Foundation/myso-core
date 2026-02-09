@@ -12,7 +12,7 @@ Currently we support inspection of native PTB commands and trace-debugging of Mo
 - line breakpoints
 - disassembly view (disassembled bytecode view) with support for stepping and setting breakpoints in disassembled bytecode files
 
-Note that support for trace-debugging macros and enums is limited at this point - stepping through macros or code related to enums may result in somewhat unexpected results due to how these constructs are handled internally by the Move execution framework. In particular, variable value tracking may be affected when trace-debugging these constructs. Work is ongoing to improve state-of-the-art - improvement suggestions and bug reports files as issues against MySo's GitHub [repository](https://github.com/MystenLabs/myso) are greatly appreciated.
+Note that support for trace-debugging macros and enums is limited at this point - stepping through macros or code related to enums may result in somewhat unexpected results due to how these constructs are handled internally by the Move execution framework. In particular, variable value tracking may be affected when trace-debugging these constructs. Work is ongoing to improve state-of-the-art - improvement suggestions and bug reports files as issues against MySo's GitHub [repository](https://github.com/the-social-proof-foundation/myso-core) are greatly appreciated.
 
 # How to Install
 

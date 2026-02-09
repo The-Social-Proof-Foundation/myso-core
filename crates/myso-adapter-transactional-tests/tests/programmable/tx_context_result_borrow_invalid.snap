@@ -45,7 +45,7 @@ task 6, lines 60-63:
 //# programmable
 // cannot manually supply the TxContext, even when generic
 //> 0: test::m::mut_id();
-//> test::m::gen_mut<sui::tx_context::TxContext>(Result(0));
+//> test::m::gen_mut<myso::tx_context::TxContext>(Result(0));
 Error: Transaction Effects Status: Arity mismatch for Move function. The number of arguments does not match the number of parameters
 Execution Error: ExecutionError: ExecutionError { inner: ExecutionErrorInner { kind: ArityMismatch, source: Some("Expected 1 argument calling function 'test::m::gen_mut', but found 2"), command: Some(1) } }
 
@@ -53,7 +53,7 @@ task 7, lines 65-68:
 //# programmable
 // cannot manually supply the TxContext, even when generic
 //> 0: test::m::mut_id();
-//> test::m::gen_imm<sui::tx_context::TxContext>(Result(0));
+//> test::m::gen_imm<myso::tx_context::TxContext>(Result(0));
 Error: Transaction Effects Status: Arity mismatch for Move function. The number of arguments does not match the number of parameters
 Execution Error: ExecutionError: ExecutionError { inner: ExecutionErrorInner { kind: ArityMismatch, source: Some("Expected 1 argument calling function 'test::m::gen_imm', but found 2"), command: Some(1) } }
 
@@ -61,7 +61,7 @@ task 8, lines 70-73:
 //# programmable
 // cannot manually supply the TxContext, even when generic
 //> 0: test::m::imm_id();
-//> test::m::gen_imm<sui::tx_context::TxContext>(Result(0));
+//> test::m::gen_imm<myso::tx_context::TxContext>(Result(0));
 Error: Transaction Effects Status: Arity mismatch for Move function. The number of arguments does not match the number of parameters
 Execution Error: ExecutionError: ExecutionError { inner: ExecutionErrorInner { kind: ArityMismatch, source: Some("Expected 1 argument calling function 'test::m::gen_imm', but found 2"), command: Some(1) } }
 
@@ -69,7 +69,7 @@ task 9, lines 75-78:
 //# programmable
 // cannot manually supply the TxContext, even when multiple supplied
 //> 0: test::m::mut_id();
-//> test::m::gen_mut_tx<sui::tx_context::TxContext>(Result(0),Result(0));
+//> test::m::gen_mut_tx<myso::tx_context::TxContext>(Result(0),Result(0));
 Error: Transaction Effects Status: Arity mismatch for Move function. The number of arguments does not match the number of parameters
 Execution Error: ExecutionError: ExecutionError { inner: ExecutionErrorInner { kind: ArityMismatch, source: Some("Expected 2 arguments calling function 'test::m::gen_mut_tx', but found 4"), command: Some(1) } }
 
@@ -77,7 +77,7 @@ task 10, lines 80-83:
 //# programmable
 // cannot manually supply the TxContext, even when multiple supplied
 //> 0: test::m::mut_id();
-//> test::m::gen_imm_tx<sui::tx_context::TxContext>(Result(0),Result(0));
+//> test::m::gen_imm_tx<myso::tx_context::TxContext>(Result(0),Result(0));
 Error: Transaction Effects Status: Arity mismatch for Move function. The number of arguments does not match the number of parameters
 Execution Error: ExecutionError: ExecutionError { inner: ExecutionErrorInner { kind: ArityMismatch, source: Some("Expected 2 arguments calling function 'test::m::gen_imm_tx', but found 4"), command: Some(1) } }
 
@@ -85,7 +85,7 @@ task 11, lines 85-88:
 //# programmable
 // cannot manually supply the TxContext, even when multiple supplied
 //> 0: test::m::imm_id();
-//> test::m::gen_imm_tx<sui::tx_context::TxContext>(Result(0),Result(0));
+//> test::m::gen_imm_tx<myso::tx_context::TxContext>(Result(0),Result(0));
 Error: Transaction Effects Status: Arity mismatch for Move function. The number of arguments does not match the number of parameters
 Execution Error: ExecutionError: ExecutionError { inner: ExecutionErrorInner { kind: ArityMismatch, source: Some("Expected 2 arguments calling function 'test::m::gen_imm_tx', but found 4"), command: Some(1) } }
 
@@ -93,7 +93,7 @@ task 12, lines 90-93:
 //# programmable
 // cannot manually supply the TxContext, even when generic and inferred
 //> 0: test::m::mut_id();
-//> test::m::gen_mut_tx<sui::tx_context::TxContext>(Result(0));
+//> test::m::gen_mut_tx<myso::tx_context::TxContext>(Result(0));
 Error: Transaction Effects Status: Arity mismatch for Move function. The number of arguments does not match the number of parameters
 Execution Error: ExecutionError: ExecutionError { inner: ExecutionErrorInner { kind: ArityMismatch, source: Some("Expected 2 arguments calling function 'test::m::gen_mut_tx', but found 3"), command: Some(1) } }
 
@@ -101,7 +101,7 @@ task 13, lines 95-98:
 //# programmable
 // cannot manually supply the TxContext,  even when generic and inferred
 //> 0: test::m::mut_id();
-//> test::m::gen_imm_tx<sui::tx_context::TxContext>(Result(0));
+//> test::m::gen_imm_tx<myso::tx_context::TxContext>(Result(0));
 Error: Transaction Effects Status: Arity mismatch for Move function. The number of arguments does not match the number of parameters
 Execution Error: ExecutionError: ExecutionError { inner: ExecutionErrorInner { kind: ArityMismatch, source: Some("Expected 2 arguments calling function 'test::m::gen_imm_tx', but found 3"), command: Some(1) } }
 
@@ -109,6 +109,6 @@ task 14, lines 100-103:
 //# programmable
 // cannot manually supply the TxContext,  even when generic and inferred
 //> 0: test::m::imm_id();
-//> test::m::gen_imm_tx<sui::tx_context::TxContext>(Result(0));
+//> test::m::gen_imm_tx<myso::tx_context::TxContext>(Result(0));
 Error: Transaction Effects Status: Arity mismatch for Move function. The number of arguments does not match the number of parameters
 Execution Error: ExecutionError: ExecutionError { inner: ExecutionErrorInner { kind: ArityMismatch, source: Some("Expected 2 arguments calling function 'test::m::gen_imm_tx', but found 3"), command: Some(1) } }

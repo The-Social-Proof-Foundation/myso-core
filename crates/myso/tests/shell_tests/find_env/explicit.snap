@@ -1,5 +1,5 @@
 ---
-source: crates/sui/tests/shell_tests.rs
+source: crates/myso/tests/shell_tests.rs
 ---
 ----- script -----
 # Copyright (c) Mysten Labs, Inc.
@@ -7,7 +7,7 @@ source: crates/sui/tests/shell_tests.rs
 
 # explicitly passed environment should be used, irrespective of the active env
 echo 'duplicate_env = "1234"' >> Move.toml
-sui move --client.config configs/name_match_id_mismatch.yaml build -e manifest_env
+myso move --client.config configs/name_match_id_mismatch.yaml build -e manifest_env
 
 ----- results -----
 success: true

@@ -276,7 +276,7 @@ fn verify_bytecode(package: &MoveCompiledPackage, fn_info: &FnInfoMap) -> MySoRe
         })?;
         myso_bytecode_verifier::myso_verify_module_unmetered(m, fn_info, &verifier_config)?;
     }
-    // TODO(https://github.com/MystenLabs/myso/issues/69): Run Move linker
+    // TODO(https://github.com/the-social-proof-foundation/myso-core/issues/69): Run Move linker
 
     Ok(())
 }

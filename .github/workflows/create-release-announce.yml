@@ -72,7 +72,7 @@ jobs:
           echo "myso_release_version=${myso_release_version}" >> $GITHUB_ENV
 
           echo "${{ secrets.MYSO_CREATE_RELEASE }}" | gh auth login --with-token
-          echo "{\"sha\": \"${{ inputs.myso_commit }}\", \"force\": true}" | gh api -X PATCH /repos/MystenLabs/myso/git/refs/heads/${{ inputs.network }} \
+          echo "{\"sha\": \"${{ inputs.myso_commit }}\", \"force\": true}" | gh api -X PATCH /reposthe-social-proof-foundation/myso-core/git/refs/heads/${{ inputs.network }} \
             --header "Accept: application/vnd.github+json" --input -
 
       - name: Update framework/${{ inputs.network }} branch
@@ -80,7 +80,7 @@ jobs:
         shell: bash
         run: |
           echo "${{ secrets.MYSO_CREATE_RELEASE }}" | gh auth login --with-token
-          echo "{\"sha\": \"${{ inputs.myso_commit }}\", \"force\": true}" | gh api -X PATCH /repos/MystenLabs/myso/git/refs/heads/framework/${{ inputs.network }} \
+          echo "{\"sha\": \"${{ inputs.myso_commit }}\", \"force\": true}" | gh api -X PATCH /reposthe-social-proof-foundation/myso-core/git/refs/heads/framework/${{ inputs.network }} \
             --header "Accept: application/vnd.github+json" --input -
 
       - name: Create ${{ inputs.network }}-v${{ env.myso_release_version }} release tag
@@ -94,7 +94,7 @@ jobs:
           echo "new_tag=${release_tag}" >> "$GITHUB_OUTPUT"
 
           echo "{\"ref\": \"refs/tags/${release_tag}\", \"sha\": \"${{ inputs.myso_commit }}\"}" | \
-            gh api -X POST /repos/MystenLabs/myso/git/refs \
+            gh api -X POST /reposthe-social-proof-foundation/myso-core/git/refs \
               --header "Accept: application/vnd.github+json" --input -
 
       - name: Get commits for branches
@@ -106,10 +106,10 @@ jobs:
         run: |
           echo "previous_commit=$(curl -s \
             -H "Authorization: token ${{ secrets.GITHUB_TOKEN }}" \
-            https://api.github.com/repos/MystenLabs/myso/commits/${{ env.PREVIOUS_BRANCH }}| jq .sha | tr -d '"')" >> $GITHUB_ENV
+            https://api.github.com/reposthe-social-proof-foundation/myso-core/commits/${{ env.PREVIOUS_BRANCH }}| jq .sha | tr -d '"')" >> $GITHUB_ENV
           echo "current_commit=$(curl -s \
             -H "Authorization: token ${{ secrets.GITHUB_TOKEN }}" \
-            https://api.github.com/repos/MystenLabs/myso/commits/${{ env.CURRENT_BRANCH }} | jq .sha | tr -d '"')" >> $GITHUB_ENV
+            https://api.github.com/reposthe-social-proof-foundation/myso-core/commits/${{ env.CURRENT_BRANCH }} | jq .sha | tr -d '"')" >> $GITHUB_ENV
 
       - name: Checkout main
         uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # pin@v6.0.2
@@ -133,7 +133,7 @@ jobs:
           GH_TOKEN=${{ secrets.GITHUB_TOKEN }} \
           python ./scripts/release_notes.py generate ${{ env.PREVIOUS_COMMIT }} ${{ env.CURRENT_COMMIT }} | tee -a ${{ env.RELEASE_NOTES_FILE }}
           echo "---" >> ${{ env.RELEASE_NOTES_FILE }}
-          echo "#### Full Log: https://github.com/MystenLabs/myso/commits/${{ env.RELEASE_TAG }}" >> ${{ env.RELEASE_NOTES_FILE }}
+          echo "#### Full Log: https://github.com/the-social-proof-foundation/myso-core/commits/${{ env.RELEASE_TAG }}" >> ${{ env.RELEASE_NOTES_FILE }}
 
           if [[ ${{ env.RELEASE_TAG }} == devnet* ]]; then
             echo "pre_release=true" >> $GITHUB_ENV

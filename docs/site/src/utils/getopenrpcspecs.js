@@ -20,7 +20,7 @@ const downloadFile = (branch) => {
     }
     axios({
         method: "get",
-        url: `https://raw.githubusercontent.com/MystenLabs/myso/${branch}/crates/myso-open-rpc/spec/openrpc.json`,
+        url: `https://raw.githubusercontent.comthe-social-proof-foundation/myso-core/${branch}/crates/myso-open-rpc/spec/openrpc.json`,
         responseType: "blob"
     }).then((res) => {
         if (fs.existsSync(path.join(__dirname, `../open-spec/${branch}/openrpc_backup.json`))){

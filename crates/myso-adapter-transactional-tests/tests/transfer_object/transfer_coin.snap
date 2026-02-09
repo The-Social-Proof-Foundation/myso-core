@@ -16,13 +16,13 @@ task 2, line 11:
 //# view-object 0,2
 Owner: Account Address ( A )
 Version: 2
-Contents: sui::coin::Coin<sui::sui::SUI> {
-    id: sui::object::UID {
-        id: sui::object::ID {
+Contents: myso::coin::Coin<myso::myso::MYSO> {
+    id: myso::object::UID {
+        id: myso::object::ID {
             bytes: fake(0,2),
         },
     },
-    balance: sui::balance::Balance<sui::sui::SUI> {
+    balance: myso::balance::Balance<myso::myso::MYSO> {
         value: 299999998012000u64,
     },
 }
@@ -36,13 +36,13 @@ task 4, line 15:
 //# view-object 0,2
 Owner: Account Address ( B )
 Version: 3
-Contents: sui::coin::Coin<sui::sui::SUI> {
-    id: sui::object::UID {
-        id: sui::object::ID {
+Contents: myso::coin::Coin<myso::myso::MYSO> {
+    id: myso::object::UID {
+        id: myso::object::ID {
             bytes: fake(0,2),
         },
     },
-    balance: sui::balance::Balance<sui::sui::SUI> {
+    balance: myso::balance::Balance<myso::myso::MYSO> {
         value: 299999998012000u64,
     },
 }

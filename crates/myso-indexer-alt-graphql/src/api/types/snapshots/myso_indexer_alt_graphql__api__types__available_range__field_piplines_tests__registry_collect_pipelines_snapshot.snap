@@ -1,5 +1,5 @@
 ---
-source: crates/sui-indexer-alt-graphql/src/api/types/available_range.rs
+source: crates/myso-indexer-alt-graphql/src/api/types/available_range.rs
 expression: output
 ---
 AccumulatorRootCreateTransaction._

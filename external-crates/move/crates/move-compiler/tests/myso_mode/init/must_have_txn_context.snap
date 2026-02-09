@@ -1,24 +1,24 @@
 ---
 source: crates/move-compiler/tests/move_check_testsuite.rs
 info:
-  flavor: sui
+  flavor: myso
   edition: legacy
   lint: false
 ---
-error[Sui E02003]: invalid 'init' function
-  ┌─ tests/sui_mode/init/must_have_txn_context.move:3:9
+error[MySo E02003]: invalid 'init' function
+  ┌─ tests/myso_mode/init/must_have_txn_context.move:3:9
   │
 3 │     fun init() {
   │         ^^^^
   │         │
   │         Invalid 'init' function declaration
-  │         'init' functions must have their last parameter as '&sui::tx_context::TxContext' or '&mut sui::tx_context::TxContext'
+  │         'init' functions must have their last parameter as '&myso::tx_context::TxContext' or '&mut myso::tx_context::TxContext'
 
-error[Sui E02003]: invalid 'init' function
-   ┌─ tests/sui_mode/init/must_have_txn_context.move:12:9
+error[MySo E02003]: invalid 'init' function
+   ┌─ tests/myso_mode/init/must_have_txn_context.move:12:9
    │
 12 │     fun init(_ctx: &mut tx_context::TxContext, _ctx2: &mut tx_context::TxContext) {
-   │         ^^^^       -------------------------- Invalid parameter '_ctx' of type '&mut sui::tx_context::TxContext'. Expected a one-time witness type, 'a::n::N
+   │         ^^^^       -------------------------- Invalid parameter '_ctx' of type '&mut myso::tx_context::TxContext'. Expected a one-time witness type, 'a::n::N
    │         │           
    │         Invalid 'init' function declaration
    │

@@ -1,5 +1,5 @@
 ---
-source: crates/sui/tests/shell_tests.rs
+source: crates/myso/tests/shell_tests.rs
 ---
 ----- script -----
 # Copyright (c) Mysten Labs, Inc.
@@ -8,7 +8,7 @@ source: crates/sui/tests/shell_tests.rs
 # This should fail - the manifest has a broken dep, and although the lockfile
 # has it pinned to the correct location, we've edited the manifest so it should cause repinning
 echo 'another_dep = { local = "another_dep" }' >> Move.toml
-sui move --client.config $CONFIG build
+myso move --client.config $CONFIG build
 
 ----- results -----
 success: false

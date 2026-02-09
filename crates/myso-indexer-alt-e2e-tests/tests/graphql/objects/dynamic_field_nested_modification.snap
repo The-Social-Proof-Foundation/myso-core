@@ -14,7 +14,7 @@ gas summary: computation_cost: 1000000, storage_cost: 6292800,  storage_rebate: 
 
 task 2, lines 36-38:
 //# programmable --sender A --inputs @A
-//> 0: sui::object_bag::new();
+//> 0: myso::object_bag::new();
 //> 1: TransferObjects([Result(0)], Input(0))
 created: object(2,0)
 mutated: object(0,0)
@@ -22,7 +22,7 @@ gas summary: computation_cost: 1000000, storage_cost: 2386400,  storage_rebate: 
 
 task 3, lines 40-42:
 //# programmable --sender A --inputs @A
-//> 0: sui::object_bag::new();
+//> 0: myso::object_bag::new();
 //> 1: TransferObjects([Result(0)], Input(0))
 created: object(3,0)
 mutated: object(0,0)

@@ -342,7 +342,7 @@ fn download_and_compile(
         // Check the platform and proceed if we can download a binary. If not, the user should follow error instructions to sideload the binary.
         // Download if binary does not exist.
         let mainnet_url = format!(
-            "https://github.com/MystenLabs/myso/releases/download/mainnet-v{compiler_version}/myso-mainnet-v{compiler_version}-{platform}.tgz",
+            "https://github.com/the-social-proof-foundation/myso-core/releases/download/mainnet-v{compiler_version}/myso-mainnet-v{compiler_version}-{platform}.tgz",
         );
 
         println!(
@@ -364,7 +364,7 @@ fn download_and_compile(
                     "DOWNLOADING".bold().green(),
                     compiler_version.yellow()
                 );
-                let testnet_url = format!("https://github.com/MystenLabs/myso/releases/download/testnet-v{compiler_version}/myso-testnet-v{compiler_version}-{platform}.tgz");
+                let testnet_url = format!("https://github.com/the-social-proof-foundation/myso-core/releases/download/testnet-v{compiler_version}/myso-testnet-v{compiler_version}-{platform}.tgz");
                 ureq::get(&testnet_url).call()?
             }
             Err(e) => return Err(e.into()),

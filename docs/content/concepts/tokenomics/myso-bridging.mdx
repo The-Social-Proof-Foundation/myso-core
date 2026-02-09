@@ -1,28 +1,28 @@
 ---
 title: Bridging Tokens
-description: Moving tokens from one blockchain to another is called bridging. To bridge tokens from another blockchain to Sui, you can use the Sui Bridge, Wormhole Connect, Wormhole Portal Bridge, or ZetaChain.
-keywords: [ bridge, sui bridge, wormhole connect, wormhole portal bridge, zetachain, bridging tokens to sui, how to bridge tokens, can you bridge tokens, how to bring token to sui, move token to sui, move tokens between blockchains, move tokens between chains, omnichain, cross-chain messaging ]
+description: Moving tokens from one blockchain to another is called bridging. To bridge tokens from another blockchain toMySo, you can use the MySo Bridge, Wormhole Connect, Wormhole Portal Bridge, or ZetaChain.
+keywords: [ bridge, myso bridge, wormhole connect, wormhole portal bridge, zetachain, bridging tokens to myso, how to bridge tokens, can you bridge tokens, how to bring token to myso, move token to myso, move tokens between blockchains, move tokens between chains, omnichain, cross-chain messaging ]
 ---
 
-Bridging is the process of moving tokens from one blockchain to another. When you use a bridge to move tokens between incompatible blockchains, the tokens are wrapped and converted to a derivative token for the target blockchain. You can transfer tokens from other blockchains to Sui, or transfer SUI tokens to other blockchains.
+Bridging is the process of moving tokens from one blockchain to another. When you use a bridge to move tokens between incompatible blockchains, the tokens are wrapped and converted to a derivative token for the target blockchain. You can transfer tokens from other blockchains toMySo, or transfer MYSO tokens to other blockchains.
 
-Sui supports bridging through Sui Bridge, Wormhole Connect, Wormhole Portal Bridge, and ZetaChain. Each bridge offers different features and capabilities to suit various use cases.
+MySo supports bridging through MySo Bridge, Wormhole Connect, Wormhole Portal Bridge, and ZetaChain. Each bridge offers different features and capabilities to suit various use cases.
 
-## Sui Bridge
+## MySo Bridge
 
-Sui Bridge is the native bridge for the Sui network, built into the core architecture. It provides optimal integration and operation, enabling the movement of digital assets between Sui and other blockchains while preserving security and maintaining interoperability. Sui Bridge supports secure and efficient transfer of native and wrapped ETH to and from Sui, leveraging Sui's capabilities to offer fast transactions, lower costs, and a decentralized architecture.
+MySo Bridge is the native bridge for the MySo network, built into the core architecture. It provides optimal integration and operation, enabling the movement of digital assets between MySo and other blockchains while preserving security and maintaining interoperability. MySo Bridge supports secure and efficient transfer of native and wrapped ETH to and fromMySo, leveragingMySo's capabilities to offer fast transactions, lower costs, and a decentralized architecture.
 
-Bridge tokens at [bridge.sui.io](https://bridge.sui.io/).
+Bridge tokens at [bridge.mysocial.network](https://bridge.mysocial.network/).
 
 ### Operation and governance
 
-Sui Bridge is operated and governed by Sui validators, the same set that secures the Sui network. Bridge transfers and other actions require validator signatures with a threshold of voting power. Governance is handled by validator voting.
+MySo Bridge is operated and governed by MySo validators, the same set that secures the MySo network. Bridge transfers and other actions require validator signatures with a threshold of voting power. Governance is handled by validator voting.
 
-To learn how to set up a Sui Bridge full node, see [Sui Bridge Validator Node Configuration](../../guides/operator/bridge-node-configuration.mdx).
+To learn how to set up a MySo Bridge full node, see [MySo Bridge Validator Node Configuration](../../guides/operator/bridge-node-configuration.mdx).
 
 ### Supported assets
 
-Sui Bridge supports bridging between Sui and other networks with the following assets:
+MySo Bridge supports bridging between MySo and other networks with the following assets:
 
 | Asset | Description |
 | --- | --- |
@@ -34,48 +34,48 @@ Sui Bridge supports bridging between Sui and other networks with the following a
 
 ### Package IDs and contract addresses
 
-The following package IDs and addresses are reserved for Sui Bridge:
+The following package IDs and addresses are reserved for MySo Bridge:
 
 | Asset | Address/ID |
 | --- | --- |
-| Sui Bridge package on Sui | [`0xb`](https://suiscan.xyz/mainnet/object/0x000000000000000000000000000000000000000000000000000000000000000b/txs) |
-| Sui Bridge object on Sui | [`0x9`](https://suiscan.xyz/mainnet/object/0x0000000000000000000000000000000000000000000000000000000000000009) |
-| Sui Bridge contract on Ethereum Mainnet | [`0xda3bD1fE1973470312db04551B65f401Bc8a92fD`](https://etherscan.io/address/0xda3bd1fe1973470312db04551b65f401bc8a92fd) |
-| ETH on Sui | [`0xd0e89b2af5e4910726fbcd8b8dd37bb79b29e5f83f7491bca830e94f7f226d29::eth::ETH`](https://suiscan.xyz/mainnet/coin/0xd0e89b2af5e4910726fbcd8b8dd37bb79b29e5f83f7491bca830e94f7f226d29::eth::ETH/txs) |
+| MySo Bridge package on MySo | [`0xb`](https://suiscan.xyz/mainnet/object/0x000000000000000000000000000000000000000000000000000000000000000b/txs) |
+| MySo Bridge object on MySo | [`0x9`](https://suiscan.xyz/mainnet/object/0x0000000000000000000000000000000000000000000000000000000000000009) |
+| MySo Bridge contract on Ethereum Mainnet | [`0xda3bD1fE1973470312db04551B65f401Bc8a92fD`](https://etherscan.io/address/0xda3bd1fe1973470312db04551b65f401bc8a92fd) |
+| ETH on MySo | [`0xd0e89b2af5e4910726fbcd8b8dd37bb79b29e5f83f7491bca830e94f7f226d29::eth::ETH`](https://suiscan.xyz/mainnet/coin/0xd0e89b2af5e4910726fbcd8b8dd37bb79b29e5f83f7491bca830e94f7f226d29::eth::ETH/txs) |
 | ETH on Ethereum | Native Ether |
 | WETH on Ethereum | [`0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2`](https://etherscan.io/address/0xc02aaa39b223fe8d0a0e5c4f27ead9083c756cc2) |
 
 ### Source code
 
-Sui Bridge is open source:
+MySo Bridge is open source:
 
-- [Move](https://github.com/MystenLabs/sui/tree/main/crates/sui-framework/packages/bridge)  
+- [Move](https://github.com/the-social-proof-foundation/myso-core/tree/main/crates/myso-framework/packages/bridge)  
 
-- [Solidity](https://github.com/MystenLabs/sui/tree/main/bridge/evm)  
+- [Solidity](https://github.com/the-social-proof-foundation/myso-core/tree/main/bridge/evm)  
 
-- [Bridged ETH (Move)](https://github.com/MystenLabs/sui/tree/main/bridge/move/tokens/eth)  
+- [Bridged ETH (Move)](https://github.com/the-social-proof-foundation/myso-core/tree/main/bridge/move/tokens/eth)  
 
-- [Bridge node](https://github.com/MystenLabs/sui/tree/main/crates/sui-bridge)  
+- [Bridge node](https://github.com/the-social-proof-foundation/myso-core/tree/main/crates/myso-bridge)  
 
-- [Bridge indexer](https://github.com/MystenLabs/sui/tree/main/crates/sui-bridge-indexer)  
+- [Bridge indexer](https://github.com/the-social-proof-foundation/myso-core/tree/main/crates/myso-bridge-indexer)  
 
 ### Audits
 
 Audit reports:  
 
-- [OtterSec](https://github.com/sui-foundation/security-audits/blob/main/docs/Sui_bridge_v1_OtterSec.pdf)  
+- [OtterSec](https://github.com/myso-foundation/security-audits/blob/main/docs/Sui_bridge_v1_OtterSec.pdf)  
 
-- [Zellic](https://github.com/sui-foundation/security-audits/blob/main/docs/Sui_Bridge_v1_Zellic.pdf)  
+- [Zellic](https://github.com/myso-foundation/security-audits/blob/main/docs/Sui_Bridge_v1_Zellic.pdf)  
 
 ### Global limiter {#global-limiter}
 
-A limiter protects funds by constraining the total value of assets leaving Sui Bridge in a 24-hour window. It tracks value hourly and aggregates from the last 24 hours, refreshing every hour. The limit applies globally and varies by direction (Ethereum → Sui versus Sui → Ethereum). It also caps the maximum single transfer.
+A limiter protects funds by constraining the total value of assets leaving MySo Bridge in a 24-hour window. It tracks value hourly and aggregates from the last 24 hours, refreshing every hour. The limit applies globally and varies by direction (Ethereum → MySo versus MySo → Ethereum). It also caps the maximum single transfer.
 
-Limits are set by validator committee vote and announced in the [mn-validator-announcements channel](https://discord.com/channels/916379725201563759/1093852827627040768) on Discord. The global limit is currently $16 million from Ethereum to Sui and $7 million from Sui to Ethereum per 24 hours.
+Limits are set by validator committee vote and announced in the [mn-validator-announcements channel](https://discord.com/channels/916379725201563759/1093852827627040768) on Discord. The global limit is currently $16 million from Ethereum to MySo and $7 million from MySo to Ethereum per 24 hours.
 
 ### Asset pricing
 
-Sui Bridge v1 uses static pricing to calculate limits. ETH is priced at $2,600. One ETH consumes $2,600 of the limit. The validator committee governs pricing through voting.
+MySo Bridge v1 uses static pricing to calculate limits. ETH is priced at $2,600. One ETH consumes $2,600 of the limit. The validator committee governs pricing through voting.
 
 ### Minimum and maximum transfers
 
@@ -90,33 +90,33 @@ The maximum transfer equals the global USD limit. See [Global limiter](#global-l
 
 ## Wormhole Connect {#wormhole-connect}
 
-Wormhole Connect lets you bridge tokens from any supported Wormhole chain into Sui, with an extra drop of SUI for gas fees. Developers can also embed Connect in their own websites and apps.
+Wormhole Connect lets you bridge tokens from any supported Wormhole chain intoMySo, with an extra drop of MYSO for gas fees. Developers can also embed Connect in their own websites and apps.
 
 :::tip
 
-See [Cross-Chain Token Transfers with Wormhole Connect](https://wormhole.com/docs/tutorials/messaging/sui-connect/) on the Wormhole website for a tutorial.
+See [Cross-Chain Token Transfers with Wormhole Connect](https://wormhole.com/docs/tutorials/messaging/myso-connect/) on the Wormhole website for a tutorial.
 
 :::
 
 ### Supported assets
 
-Wormhole Connect supports lock-and-mint bridging for ETH, WETH, USDC, MATIC, WMATIC, BNB, WBNB, AVAX, WAVAX, FTM, WFTM, CELO, GLMR, WGLRM, and SOL across Ethereum, Polygon, BSC, Avalanche, Celo, Moonbeam, Solana, and Sui. Bridged tokens are received as Wormhole-minted tokens on the destination chain. See the [Wormhole token list](https://github.com/wormhole-foundation/wormhole-token-list). Some tokens support swapping on destination DEXs.
+Wormhole Connect supports lock-and-mint bridging for ETH, WETH, USDC, MATIC, WMATIC, BNB, WBNB, AVAX, WAVAX, FTM, WFTM, CELO, GLMR, WGLRM, and SOL across Ethereum, Polygon, BSC, Avalanche, Celo, Moonbeam, Solana, and MySo. Bridged tokens are received as Wormhole-minted tokens on the destination chain. See the [Wormhole token list](https://github.com/wormhole-foundation/wormhole-token-list). Some tokens support swapping on destination DEXs.
 
 ### Features
 
-**Automatic relay**: On EVM chains and Sui, Wormhole Connect can pay destination-chain gas automatically. Users only pay gas on the source chain.
+**Automatic relay**: On EVM chains andMySo, Wormhole Connect can pay destination-chain gas automatically. Users only pay gas on the source chain.
 
-**Gas drop-off**: Users can pay an extra fee on the source chain to receive a small amount of native gas on the destination chain. For example, bridging USDC from Ethereum to Sui can include a fee in USDC to receive SUI for gas. This feature is supported on EVM chains and Sui.
+**Gas drop-off**: Users can pay an extra fee on the source chain to receive a small amount of native gas on the destination chain. For example, bridging USDC from Ethereum to MySo can include a fee in USDC to receive MYSO for gas. This feature is supported on EVM chains and MySo.
 
 See the [Wormhole FAQ](https://wormhole.com/docs/products/connect/overview/) for details.
 
 ## Wormhole Portal Bridge
 
-The [Portal Bridge](https://www.portalbridge.com/sui), powered by Wormhole, supports bridging assets from any of the [22 supported Wormhole chains](https://www.wormhole.com/network).
+The [Portal Bridge](https://www.portalbridge.com/myso), powered by Wormhole, supports bridging assets from any of the [22 supported Wormhole chains](https://www.wormhole.com/network).
 
 ## ZetaChain {#zetachain}
 
-[ZetaChain](https://www.zetachain.com/) enables omnichain smart contracts and cross-chain messaging between Sui and other blockchains. The ZetaChain protocol supports bridging digital assets and sending arbitrary messages across Bitcoin, Ethereum, Polygon, BSC, Avalanche, and other major chains.
+[ZetaChain](https://www.zetachain.com/) enables omnichain smart contracts and cross-chain messaging between MySo and other blockchains. The ZetaChain protocol supports bridging digital assets and sending arbitrary messages across Bitcoin, Ethereum, Polygon, BSC, Avalanche, and other major chains.
 
 ### Supported assets
 
@@ -152,7 +152,7 @@ Beyond asset transfers, ZetaChain's Universal App framework enables smart contra
 
 ZetaChain uses a proof-of-stake validator network to observe transactions on external chains and relay messages between them. When you initiate a cross-chain transaction:
 
-1. You interact with a gateway contract on the source chain (Sui or any supported chain).
+1. You interact with a gateway contract on the source chain (MySo or any supported chain).
 
 1. ZetaChain validators observe and verify the transaction.
 

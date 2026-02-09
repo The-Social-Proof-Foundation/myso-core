@@ -1,0 +1,26 @@
+---
+source: crates/myso/tests/shell_tests.rs
+assertion_line: 113
+---
+----- script -----
+# Copyright (c) Mysten Labs, Inc.
+# SPDX-License-Identifier: Apache-2.0
+
+chain_id=$(myso client --client.config $CONFIG chain-identifier)
+echo "[environments]" >> test_pkg/Move.toml
+echo "localnet = \"$chain_id\"" >> test_pkg/Move.toml
+
+myso client --client.config $CONFIG ptb \
+ --move-call myso::tx_context::sender \
+ --assign sender \
+ --publish "test_pkg" \
+ --assign upgrade_cap \
+ --transfer-objects "[upgrade_cap]" sender \
+ > output.log 2>&1 || cat output.log
+
+----- results -----
+success: true
+exit_code: 0
+----- stdout -----
+
+----- stderr -----

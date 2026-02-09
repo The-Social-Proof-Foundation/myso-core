@@ -33,7 +33,7 @@ use myso_types::{
 };
 
 /// This example walks through the Rust SDK use case described in
-/// https://github.com/MystenLabs/myso/blob/main/docs/content/guides/developer/myso-101/sign-and-send-txn.mdx
+/// https://github.com/the-social-proof-foundation/myso-core/blob/main/docs/content/guides/developer/myso-101/sign-and-send-txn.mdx
 #[tokio::main]
 async fn main() -> Result<(), anyhow::Error> {
     // set up myso client for the desired network.

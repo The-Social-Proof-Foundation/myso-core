@@ -185,7 +185,7 @@ createMarginManager = (tx: Transaction) => {
 ### Deposit collateral
 
 ```tsx
-// Example: Deposit 100 SUI as collateral
+// Example: Deposit 100 MYSO as collateral
 depositCollateral = (tx: Transaction) => {
 	const managerKey = 'MARGIN_MANAGER_1';
 	tx.add(this.marginContract.depositBase(managerKey, 100));

@@ -151,7 +151,7 @@ specified_address = "0xB0B"
 # Local dependency
 LocalDep = { local = "projects/move-awesomeness", addr_subst = { "std" = "0x1" } }
 # Git dependency
-MoveStdlib = { git = "https://github.com/MystenLabs/myso.git", subdir = "crates/myso-framework/packages/move-stdlib", rev = "framework/mainnet" }
+MoveStdlib = { git = "https://github.com/the-social-proof-foundation/myso-core.git", subdir = "crates/myso-framework/packages/move-stdlib", rev = "framework/mainnet" }
 
 [dev-addresses] # For use when developing this module
 address_to_be_filled_in = "0x101010101"

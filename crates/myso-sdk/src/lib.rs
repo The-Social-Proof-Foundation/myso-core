@@ -4,7 +4,7 @@
 //! The MySo Rust SDK
 //!
 //! It aims at providing a similar SDK functionality like the one existing for
-//! [TypeScript](https://github.com/MystenLabs/myso/tree/main/sdk/typescript/).
+//! [TypeScript](https://github.com/the-social-proof-foundation/myso-core/tree/main/sdk/typescript/).
 //! MySo Rust SDK builds on top of the [JSON RPC API](https://docs.myso.io/myso-jsonrpc)
 //! and therefore many of the return types are the ones specified in [myso_types].
 //!
@@ -68,7 +68,7 @@
 //! ## Examples
 //!
 //! For detailed examples, please check the APIs docs and the examples folder
-//! in the [main repository](https://github.com/MystenLabs/myso/tree/main/crates/myso-sdk/examples).
+//! in the [main repository](https://github.com/the-social-proof-foundation/myso-core/tree/main/crates/myso-sdk/examples).
 
 use std::collections::HashMap;
 use std::fmt::Debug;

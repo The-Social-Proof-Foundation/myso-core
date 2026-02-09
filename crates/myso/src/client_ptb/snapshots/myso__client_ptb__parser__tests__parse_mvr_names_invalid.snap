@@ -1,5 +1,5 @@
 ---
-source: crates/sui/src/client_ptb/parser.rs
+source: crates/myso/src/client_ptb/parser.rs
 expression: parsed
 ---
 [
@@ -10,7 +10,7 @@ expression: parsed
             end: 6,
         },
         help: Some(
-            "MVR packages must contain a slash and be in the format '(@<domain>|<domain>.sui)/<package>[/<version>]'",
+            "MVR packages must contain a slash and be in the format '(@<domain>|<domain>.myso)/<package>[/<version>]'",
         ),
         severity: Error,
     },
@@ -21,7 +21,7 @@ expression: parsed
             end: 4,
         },
         help: Some(
-            "MVR packages must contain a slash and be in the format '(@<domain>|<domain>.sui)/<package>[/<version>]'",
+            "MVR packages must contain a slash and be in the format '(@<domain>|<domain>.myso)/<package>[/<version>]'",
         ),
         severity: Error,
     },
@@ -32,7 +32,7 @@ expression: parsed
             end: 5,
         },
         help: Some(
-            "MVR packages must contain a slash and be in the format '(@<domain>|<domain>.sui)/<package>[/<version>]'",
+            "MVR packages must contain a slash and be in the format '(@<domain>|<domain>.myso)/<package>[/<version>]'",
         ),
         severity: Error,
     },
@@ -43,7 +43,7 @@ expression: parsed
             end: 7,
         },
         help: Some(
-            "MVR packages must contain a slash and be in the format '(@<domain>|<domain>.sui)/<package>[/<version>]'",
+            "MVR packages must contain a slash and be in the format '(@<domain>|<domain>.myso)/<package>[/<version>]'",
         ),
         severity: Error,
     },
@@ -54,7 +54,7 @@ expression: parsed
             end: 5,
         },
         help: Some(
-            "MVR packages must contain a slash and be in the format '(@<domain>|<domain>.sui)/<package>[/<version>]'",
+            "MVR packages must contain a slash and be in the format '(@<domain>|<domain>.myso)/<package>[/<version>]'",
         ),
         severity: Error,
     },

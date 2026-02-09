@@ -62,7 +62,7 @@ fi
 
 if [[ ! -f "${MYSO_RUN_PATH}/genesis.blob" ]]; then
     echo "Copying genesis.blob for ${NETWORK}"
-    curl -fLJO https://github.com/MystenLabs/myso-genesis/raw/main/${NETWORK}/genesis.blob
+    curl -fLJO https://github.com/the-social-proof-foundation/myso-core-genesis/raw/main/${NETWORK}/genesis.blob
     mv ./genesis.blob ${MYSO_RUN_PATH}/genesis.blob
     echo "Done"
 fi

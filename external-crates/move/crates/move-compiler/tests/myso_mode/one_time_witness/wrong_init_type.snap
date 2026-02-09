@@ -1,12 +1,12 @@
 ---
 source: crates/move-compiler/tests/move_check_testsuite.rs
 info:
-  flavor: sui
+  flavor: myso
   edition: legacy
   lint: false
 ---
-error[Sui E02003]: invalid 'init' function
-  ┌─ tests/sui_mode/one_time_witness/wrong_init_type.move:9:9
+error[MySo E02003]: invalid 'init' function
+  ┌─ tests/myso_mode/one_time_witness/wrong_init_type.move:9:9
   │
 9 │     fun init(_otw: N, _ctx: &mut tx_context::TxContext) {}
   │         ^^^^       - Invalid parameter '_otw' of type 'a::m::N'. Expected a one-time witness type, 'a::m::M

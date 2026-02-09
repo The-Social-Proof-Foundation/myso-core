@@ -66,7 +66,7 @@ title: Module `bridge::bridge`
 <b>use</b> <a href="../myso/hash.md#myso_hash">myso::hash</a>;
 <b>use</b> <a href="../myso/hex.md#myso_hex">myso::hex</a>;
 <b>use</b> <a href="../myso/linked_table.md#myso_linked_table">myso::linked_table</a>;
-<b>use</b> <a href="../myso/sui.md#myso_myso">myso::myso</a>;
+<b>use</b> <a href="../myso/myso.md#myso_myso">myso::myso</a>;
 <b>use</b> <a href="../myso/object.md#myso_object">myso::object</a>;
 <b>use</b> <a href="../myso/object_bag.md#myso_object_bag">myso::object_bag</a>;
 <b>use</b> <a href="../myso/package.md#myso_package">myso::package</a>;
@@ -82,8 +82,8 @@ title: Module `bridge::bridge`
 <b>use</b> <a href="../myso/vec_map.md#myso_vec_map">myso::vec_map</a>;
 <b>use</b> <a href="../myso/vec_set.md#myso_vec_set">myso::vec_set</a>;
 <b>use</b> <a href="../myso/versioned.md#myso_versioned">myso::versioned</a>;
-<b>use</b> <a href="../myso_system/sui_system.md#myso_system_myso_system">myso_system::myso_system</a>;
-<b>use</b> <a href="../myso_system/sui_system_state_inner.md#myso_system_myso_system_state_inner">myso_system::myso_system_state_inner</a>;
+<b>use</b> <a href="../myso_system/myso_system.md#myso_system_myso_system">myso_system::myso_system</a>;
+<b>use</b> <a href="../myso_system/myso_system_state_inner.md#myso_system_myso_system_state_inner">myso_system::myso_system_state_inner</a>;
 <b>use</b> <a href="../myso_system/stake_subsidy.md#myso_system_stake_subsidy">myso_system::stake_subsidy</a>;
 <b>use</b> <a href="../myso_system/staking_pool.md#myso_system_staking_pool">myso_system::staking_pool</a>;
 <b>use</b> <a href="../myso_system/storage_fund.md#myso_system_storage_fund">myso_system::storage_fund</a>;
@@ -845,7 +845,7 @@ title: Module `bridge::bridge`
 
 
 
-<pre><code><b>public</b> <b>fun</b> <a href="../bridge/bridge.md#bridge_bridge_committee_registration">committee_registration</a>(<a href="../bridge/bridge.md#bridge_bridge">bridge</a>: &<b>mut</b> <a href="../bridge/bridge.md#bridge_bridge_Bridge">bridge::bridge::Bridge</a>, system_state: &<b>mut</b> <a href="../myso_system/sui_system.md#myso_system_myso_system_MySoSystemState">myso_system::myso_system::MySoSystemState</a>, bridge_pubkey_bytes: vector&lt;u8&gt;, http_rest_url: vector&lt;u8&gt;, ctx: &<a href="../myso/tx_context.md#myso_tx_context_TxContext">myso::tx_context::TxContext</a>)
+<pre><code><b>public</b> <b>fun</b> <a href="../bridge/bridge.md#bridge_bridge_committee_registration">committee_registration</a>(<a href="../bridge/bridge.md#bridge_bridge">bridge</a>: &<b>mut</b> <a href="../bridge/bridge.md#bridge_bridge_Bridge">bridge::bridge::Bridge</a>, system_state: &<b>mut</b> <a href="../myso_system/myso_system.md#myso_system_myso_system_MySoSystemState">myso_system::myso_system::MySoSystemState</a>, bridge_pubkey_bytes: vector&lt;u8&gt;, http_rest_url: vector&lt;u8&gt;, ctx: &<a href="../myso/tx_context.md#myso_tx_context_TxContext">myso::tx_context::TxContext</a>)
 </code></pre>
 
 

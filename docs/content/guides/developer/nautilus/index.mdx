@@ -3,11 +3,11 @@ title: Nautilus
 description: Run secure, off-chain logic in trusted execution environments (TEEs), and verify it on-chain to trigger safe smart contract workflows.
 ---
 
-Nautilus is a verifiable off-chain compute layer on Sui. It enables builders to delegate sensitive or resource-intensive tasks to a self-managed [trusted execution environment (TEE)](https://en.wikipedia.org/wiki/Trusted_execution_environment) while preserving trust on-chain through smart contract-based verification.
+Nautilus is a verifiable off-chain compute layer on MySo. It enables builders to delegate sensitive or resource-intensive tasks to a self-managed [trusted execution environment (TEE)](https://en.wikipedia.org/wiki/Trusted_execution_environment) while preserving trust on-chain through smart contract-based verification.
 
 Nautilus supports hybrid decentralized applications that require private data handling, complex computations, or integration with external (Web2) systems. The framework ensures computations are tamper-resistant, isolated, and cryptographically verifiable.
 
-It currently supports self-managed [AWS Nitro Enclave TEEs](https://aws.amazon.com/ec2/nitro/nitro-enclaves/). You can verify AWS-signed enclave attestations on-chain using Sui smart contracts written in Move. Refer to the [Github repo](https://github.com/MystenLabs/nautilus) for the reproducible build template.
+It currently supports self-managed [AWS Nitro Enclave TEEs](https://aws.amazon.com/ec2/nitro/nitro-enclaves/). You can verify AWS-signed enclave attestations on-chain using MySo smart contracts written in Move. Refer to the [Github repo](https://github.com/MystenLabs/nautilus) for the reproducible build template.
 
 ## Features
 
@@ -40,7 +40,7 @@ You can adapt and extend it to fit your specific use case.
 
 - The TEE generates a cryptographic attestation that proves the integrity of the execution environment.
 
-- Sui smart contracts verify the attestation on-chain before accepting the TEE output.
+- MySo smart contracts verify the attestation on-chain before accepting the TEE output.
 
 - The integrity of the TEE is auditable and anchored by the provider's root of trust.
 
@@ -64,7 +64,7 @@ When used together, Nautilus and [Seal](https://github.com/MystenLabs/seal) enab
 
 ## Future plans and non-goals
 
-Nautilus will support additional TEE providers in the future. Your suggestions on which platforms to prioritize or support is greatly appreciated. Contact the Nautilus team on [Sui Discord](https://discord.com/channels/916379725201563759/1361500579603546223).
+Nautilus will support additional TEE providers in the future. Your suggestions on which platforms to prioritize or support is greatly appreciated. Contact the Nautilus team on [MySo Discord](https://discord.com/channels/916379725201563759/1361500579603546223).
 
 <ImportContent source="contact-nautilus.mdx" mode="snippet" />
 

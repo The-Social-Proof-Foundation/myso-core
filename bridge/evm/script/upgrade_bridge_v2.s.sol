@@ -5,16 +5,16 @@ import "forge-std/Script.sol";
 import {Upgrades} from "openzeppelin-foundry-upgrades/Upgrades.sol";
 import "openzeppelin-foundry-upgrades/Options.sol";
 import "@openzeppelin/contracts/utils/Strings.sol";
-import "../contracts/SuiBridge.sol";
-import "../contracts/SuiBridgeV2.sol";
+import "../contracts/MySoBridge.sol";
+import "../contracts/MySoBridgeV2.sol";
 import "../contracts/BridgeCommittee.sol";
 import "../contracts/utils/BridgeUtils.sol";
 
 /// @title UpgradeBridgeV2
-/// @notice Script to validate and deploy SuiBridgeV2 implementation for upgrade
+/// @notice Script to validate and deploy MySoBridgeV2 implementation for upgrade
 /// @dev This script:
-///      1. Validates that SuiBridgeV2 is upgrade-safe from SuiBridge
-///      2. Deploys the SuiBridgeV2 implementation contract
+///      1. Validates that MySoBridgeV2 is upgrade-safe from MySoBridge
+///      2. Deploys the MySoBridgeV2 implementation contract
 ///      3. Outputs the information needed to create the governance upgrade action
 ///
 /// After running this script, you need to:
@@ -25,40 +25,40 @@ contract UpgradeBridgeV2 is Script {
     function run() external {
         uint256 deployerPrivateKey = vm.envUint("PRIVATE_KEY");
 
-        // Get the existing SuiBridge proxy address
-        address suiBridgeProxy = vm.envAddress("SUI_BRIDGE_PROXY");
+        // Get the existing MySoBridge proxy address
+        address mysoBridgeProxy = vm.envAddress("MYSO_BRIDGE_PROXY");
 
         string memory chainID = Strings.toString(block.chainid);
         console.log("Chain ID:", chainID);
-        console.log("SuiBridge proxy address:", suiBridgeProxy);
+        console.log("MySoBridge proxy address:", mysoBridgeProxy);
 
         // Step 1: Validate the upgrade
-        console.log("\n=== Validating upgrade from SuiBridge to SuiBridgeV2 ===");
+        console.log("\n=== Validating upgrade from MySoBridge to MySoBridgeV2 ===");
 
         Options memory opts;
 
-        opts.referenceContract = "SuiBridge.sol";
+        opts.referenceContract = "MySoBridge.sol";
 
-        Upgrades.validateUpgrade("SuiBridgeV2.sol", opts);
+        Upgrades.validateUpgrade("MySoBridgeV2.sol", opts);
         console.log("[OK] Upgrade validation passed");
 
         // Step 2: Deploy the new implementation
         vm.startBroadcast(deployerPrivateKey);
 
-        SuiBridgeV2 bridgeV2Implementation = new SuiBridgeV2();
-        console.log("\n[Deployed] SuiBridgeV2 implementation:", address(bridgeV2Implementation));
+        MySoBridgeV2 bridgeV2Implementation = new MySoBridgeV2();
+        console.log("\n[Deployed] MySoBridgeV2 implementation:", address(bridgeV2Implementation));
 
         vm.stopBroadcast();
 
         // Step 3: Output the upgrade governance action details
         console.log("\n=== Upgrade Governance Action Details ===");
         console.log("To complete the upgrade, create a governance action with:");
-        console.log("  - Proxy address:", suiBridgeProxy);
+        console.log("  - Proxy address:", mysoBridgeProxy);
         console.log("  - New implementation:", address(bridgeV2Implementation));
         console.log("  - Initializer data: (empty - no initializer needed)");
 
         // Get current nonce info if proxy is accessible
-        try SuiBridge(suiBridgeProxy).committee() returns (IBridgeCommittee committeeContract) {
+        try MySoBridge(mysoBridgeProxy).committee() returns (IBridgeCommittee committeeContract) {
             try BridgeCommittee(address(committeeContract)).nonces(BridgeUtils.UPGRADE) returns (
                 uint64 upgradeNonce
             ) {

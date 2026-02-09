@@ -185,7 +185,7 @@ function fetchGitHubReleases() {
   return new Promise((resolve, reject) => {
     const options = {
       hostname: 'api.github.com',
-      path: '/repos/MystenLabs/myso/releases?per_page=100',
+      path: '/reposthe-social-proof-foundation/myso-core/releases?per_page=100',
       method: 'GET',
       headers: {
         'User-Agent': 'Node.js Script',
@@ -396,7 +396,7 @@ title: 'Release Notes'
 
       // Add network badge
       const networkBadge = note.network === 'testnet' ? '🔶 Testnet' : '✅ Mainnet';
-      consolidatedContent += `**${networkBadge}** | *Source: [GitHub Release](https://github.com/MystenLabs/myso/releases/tag/${note.tag})*\n\n`;
+      consolidatedContent += `**${networkBadge}** | *Source: [GitHub Release](https://github.com/the-social-proof-foundation/myso-core/releases/tag/${note.tag})*\n\n`;
 
       // Add local content in collapsible details if it exists
       if (note.localNotes.length > 0) {

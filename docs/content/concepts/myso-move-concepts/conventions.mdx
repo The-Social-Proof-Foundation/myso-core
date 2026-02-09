@@ -1,20 +1,20 @@
 ---
 title: Move Conventions
-description: Recommended Move 2024 best practices for Sui development.
+description: Recommended Move 2024 best practices for MySo development.
 ---
 
-This guide outlines recommended conventions and best practices for writing Move smart contracts on Sui. Following these guidelines helps create more maintainable, secure, and composable code that aligns with ecosystem standards.
+This guide outlines recommended conventions and best practices for writing Move smart contracts on MySo. Following these guidelines helps create more maintainable, secure, and composable code that aligns with ecosystem standards.
 
-While these conventions are recommendations rather than strict rules, they represent patterns that have proven effective across many Sui projects. They help create consistency across the ecosystem and make code easier to understand and maintain.
+While these conventions are recommendations rather than strict rules, they represent patterns that have proven effective across many MySo projects. They help create consistency across the ecosystem and make code easier to understand and maintain.
 
 ## Organization principles
 
 ### Package
 
-A Sui package consists of:
+A MySo package consists of:
 - `sources` directory containing the Move code to be uploaded to the blockchain.
 - `Move.toml` manifest file that declares dependencies and other information about the package.
-- `Move.lock` file that the Sui Move toolchain automatically generates to lock the versions of the dependencies and track the different published and upgraded versions of the package that exist on the different networks.
+- `Move.lock` file that the MySo Move toolchain automatically generates to lock the versions of the dependencies and track the different published and upgraded versions of the package that exist on the different networks.
 
 For this reason, the `Move.lock` file should always be part of the package (don't add it to the `.gitignore` file). Use the [automated address management](/guides/developer/packages/automated-address-management.mdx) instead of the old `published-at` field in the manifest file.
 
@@ -93,7 +93,7 @@ Group imports by dependency, for example:
 
 ```move
 use std::string::String;
-use sui::{
+use myso::{
     coin::Coin,
     balance,
     table::Table
@@ -188,7 +188,7 @@ public struct Receipt<Data> has store { ... }
 
 ## Code Structure
 
-The following section covers common patterns and best practices specific to Move development on Sui, including object ownership models and function design principles.
+The following section covers common patterns and best practices specific to Move development onMySo, including object ownership models and function design principles.
 
 ### Shared objects
 
@@ -219,7 +219,7 @@ Keep your functions pure to maintain composability. Do not use `transfer::transf
 ```move
 module conventions::amm;
 
-use sui::coin::Coin;
+use myso::coin::Coin;
 
 public struct Pool has key {
     id: UID
@@ -256,7 +256,7 @@ Pass the `Coin` object by value with the exact right amount directly to improve 
 ```move
 module conventions::amm;
 
-use sui::coin::Coin;
+use myso::coin::Coin;
 
 public struct Pool has key {
     id: UID
@@ -282,10 +282,10 @@ To maintain composability, use capability objects instead of arrays of addresses
 ```move
 module conventions::access_control;
 
-use sui::sui::SUI;
-use sui::balance::Balance;
-use sui::coin::{Self, Coin};
-use sui::table::{Self, Table};
+use myso::myso::MYSO;
+use myso::balance::Balance;
+use myso::coin::{Self, Coin};
+use myso::table::{Self, Table};
 
 public struct Account has key, store {
     id: UID,
@@ -296,11 +296,11 @@ public struct State has key {
     id: UID,
     // field not necessary as the state lives in the Account objects
     accounts: Table<address, u64>,
-    balance: Balance<SUI>
+    balance: Balance<MYSO>
 }
 
 // right -> with this function, another protocol can hold the `Account` on behalf of a user.
-public fun withdraw(state: &mut State, account: &mut Account, ctx: &mut TxContext): Coin<SUI> {
+public fun withdraw(state: &mut State, account: &mut Account, ctx: &mut TxContext): Coin<MYSO> {
     let authorized_balance = account.balance;
 
     account.balance = 0;
@@ -309,7 +309,7 @@ public fun withdraw(state: &mut State, account: &mut Account, ctx: &mut TxContex
 }
 
 // wrong -> this is less composable.
-public fun wrong_withdraw(state: &mut State, ctx: &mut TxContext): Coin<SUI> {
+public fun wrong_withdraw(state: &mut State, ctx: &mut TxContext): Coin<MYSO> {
     let sender = tx_context::sender(ctx);
 
     let authorized_balance = table::borrow_mut(&mut state.accounts, sender);
@@ -326,33 +326,33 @@ If your app data has a 1 to 1 relationship, it's best to use owned objects.
 ```move
 module conventions::vesting_wallet;
 
-use sui::sui::SUI;
-use sui::coin::Coin;
-use sui::table::Table;
-use sui::balance::Balance;
+use myso::myso::MYSO;
+use myso::coin::Coin;
+use myso::table::Table;
+use myso::balance::Balance;
 
 public struct OwnedWallet has key {
     id: UID,
-    balance: Balance<SUI>
+    balance: Balance<MYSO>
 }
 
 public struct SharedWallet has key {
     id: UID,
-    balance: Balance<SUI>,
+    balance: Balance<MYSO>,
     accounts: Table<address, u64>
 }
 
 
 // A vesting wallet releases a certain amount of coin over a period of time.
 // If the entire balance belongs to one user and the wallet has no additional functionalities, it is best to store it in an owned object.
-public fun new(deposit: Coin<SUI>, ctx: &mut TxContext): OwnedWallet {
+public fun new(deposit: Coin<MYSO>, ctx: &mut TxContext): OwnedWallet {
     // Implementation omitted.
     abort(0)
 }
 
 // If you wish to add extra functionality to a vesting wallet, it is best to share the object.
 // For example, if you wish the issuer of the wallet to be able to cancel the contract in the future.
-public fun new_shared(deposit: Coin<SUI>, ctx: &mut TxContext) {
+public fun new_shared(deposit: Coin<MYSO>, ctx: &mut TxContext) {
     // Implementation omitted.
     // shares the `SharedWallet`.
     abort(0)
@@ -404,7 +404,7 @@ Use field comments to describe the properties of your structs. In complex functi
 module conventions::hero;
 
 use std::string::String;
-use sui::kiosk::{Kiosk, KioskOwnerCap};
+use myso::kiosk::{Kiosk, KioskOwnerCap};
 
 public struct Hero has key, store {
     id: UID,

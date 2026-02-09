@@ -669,6 +669,7 @@ anemo-build = { git = "https://github.com/mystenlabs/anemo.git", rev = "4b5f0f1d
 anemo-cli = { git = "https://github.com/mystenlabs/anemo.git", rev = "4b5f0f1d06a31c8ef78ec2e5b446bc633e4e2f77" }
 anemo-tower = { git = "https://github.com/mystenlabs/anemo.git", rev = "4b5f0f1d06a31c8ef78ec2e5b446bc633e4e2f77" }
 
+# TODO: Update this to the new myso-rust-sdk when published
 # core-types from the new sdk for use in gRPC
 myso-sdk-types = { path = "../../mys-rust-sdk/crates/mys-sdk-types", package = "mys-sdk-types", features = [ "hash", "serde" ] }
 myso-crypto = { path = "../../mys-rust-sdk/crates/mys-crypto", package = "mys-crypto", features = [ "ed25519", "secp256r1", "secp256k1", "passkey", "zklogin" ] }

@@ -1,12 +1,12 @@
 ---
 source: crates/move-compiler/tests/move_check_testsuite.rs
 info:
-  flavor: sui
+  flavor: myso
   edition: legacy
   lint: true
 ---
 warning[Lint W99010]: unnecessary `entry` on a `public` function
-  ┌─ tests/sui_mode/linter/true_unnecessary_public_entry.move:2:12
+  ┌─ tests/myso_mode/linter/true_unnecessary_public_entry.move:2:12
   │
 2 │     public entry fun true_unnecessary_public_entry() {}
   │            ^^^^^ `entry` on `public` functions limits composability as it adds restrictions, e.g. the type of each return value must have `drop`. `entry` on `public` is only meaningful in niche scenarios.
@@ -15,7 +15,7 @@ warning[Lint W99010]: unnecessary `entry` on a `public` function
   = This warning can be suppressed with '#[allow(lint(public_entry))]' applied to the 'module' or module member ('const', 'fun', or 'struct')
 
 warning[Lint W99010]: unnecessary `entry` on a `public` function
-  ┌─ tests/sui_mode/linter/true_unnecessary_public_entry.move:4:12
+  ┌─ tests/myso_mode/linter/true_unnecessary_public_entry.move:4:12
   │
 4 │     public entry fun true_unnecessary_public_entry_2() {}
   │            ^^^^^ `entry` on `public` functions limits composability as it adds restrictions, e.g. the type of each return value must have `drop`. `entry` on `public` is only meaningful in niche scenarios.

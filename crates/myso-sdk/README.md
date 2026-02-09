@@ -52,7 +52,7 @@ You can also build the documentation locally. To do so,
 
 ## Rust SDK examples
 
-The [examples](https://github.com/MystenLabs/myso/tree/main/crates/myso-sdk/examples) folder provides both basic and advanced examples.
+The [examples](https://github.com/the-social-proof-foundation/myso-core/tree/main/crates/myso-sdk/examples) folder provides both basic and advanced examples.
 
 There are serveral files ending in `_api.rs` which provide code examples of the corresponding APIs and their methods. These showcase how to use the MySo Rust SDK, and can be run against the MySo testnet. Below are instructions on the prerequisites and how to run these examples.
 
@@ -137,26 +137,26 @@ async fn main() -> Result<(), anyhow::Error> {
 
 ## Advanced examples
 
-See the programmable transactions [example](https://github.com/MystenLabs/myso/blob/main/crates/myso-sdk/examples/programmable_transactions_api.rs).
+See the programmable transactions [example](https://github.com/the-social-proof-foundation/myso-core/blob/main/crates/myso-sdk/examples/programmable_transactions_api.rs).
 
 ## Games examples
 
 ### Tic Tac Toe quick start
 
 1. Prepare the environment
-   1. Install `myso` binary following the [MySo installation](https://github.com/MystenLabs/myso/blob/main/docs/content/guides/developer/getting-started/myso-install.mdx) docs.
-   1. [Connect to MySo Devnet](https://github.com/MystenLabs/myso/blob/main/docs/content/guides/developer/getting-started/connect.mdx).
-   1. [Make sure you have two addresses with gas](https://github.com/MystenLabs/myso/blob/main/docs/content/guides/developer/getting-started/get-address.mdx) by using the `new-address` command to create new addresses:
+   1. Install `myso` binary following the [MySo installation](https://github.com/the-social-proof-foundation/myso-core/blob/main/docs/content/guides/developer/getting-started/myso-install.mdx) docs.
+   1. [Connect to MySo Devnet](https://github.com/the-social-proof-foundation/myso-core/blob/main/docs/content/guides/developer/getting-started/connect.mdx).
+   1. [Make sure you have two addresses with gas](https://github.com/the-social-proof-foundation/myso-core/blob/main/docs/content/guides/developer/getting-started/get-address.mdx) by using the `new-address` command to create new addresses:
       ```shell
       myso client new-address ed25519
       ```
       You must specify the key scheme, one of `ed25519` or `secp256k1` or `secp256r1`.
       You can skip this step if you are going to play with a friend. :)
-   1. [Request MySo tokens](https://github.com/MystenLabs/myso/blob/main/docs/content/guides/developer/getting-started/get-coins.mdx) for all addresses that will be used to join the game.
+   1. [Request MySo tokens](https://github.com/the-social-proof-foundation/myso-core/blob/main/docs/content/guides/developer/getting-started/get-coins.mdx) for all addresses that will be used to join the game.
 
 2. Publish the move contract
-   1. [Download the MySo source code](https://github.com/MystenLabs/myso/blob/main/docs/content/guides/developer/getting-started/myso-install.mdx).
-   1. Publish the [`tic-tac-toe` package](https://github.com/MystenLabs/myso/tree/main/examples/tic-tac-toe/move)
+   1. [Download the MySo source code](https://github.com/the-social-proof-foundation/myso-core/blob/main/docs/content/guides/developer/getting-started/myso-install.mdx).
+   1. Publish the [`tic-tac-toe` package](https://github.com/the-social-proof-foundation/myso-core/tree/main/examples/tic-tac-toe/move)
       using the MySo client:
       ```shell
       myso client publish --path /path-to-myso-source-code/examples/tic-tac-toe/move
@@ -164,7 +164,7 @@ See the programmable transactions [example](https://github.com/MystenLabs/myso/b
    1. Record the package object ID.
 
 3. Create a new tic-tac-toe game
-   1. Run the following command in the [`tic-tac-toe/cli` directory](https://github.com/MystenLabs/myso/tree/main/examples/tic-tac-toe/cli) to start a new game, replacing the game package objects ID with the one you recorded:
+   1. Run the following command in the [`tic-tac-toe/cli` directory](https://github.com/the-social-proof-foundation/myso-core/tree/main/examples/tic-tac-toe/cli) to start a new game, replacing the game package objects ID with the one you recorded:
       ```shell
       cargo run -- new --package-id <<tic-tac-toe package object ID>> <<player O address>>
       ```
@@ -173,11 +173,11 @@ See the programmable transactions [example](https://github.com/MystenLabs/myso/b
 
 4. Making a move
 
-   Run the following command in the [`tic-tac-toe/cli` directory](https://github.com/MystenLabs/myso/tree/main/examples/tic-tac-toe/cli) to make a move in an existing game, as the active address in the CLI, replacing the game ID and address accordingly:
+   Run the following command in the [`tic-tac-toe/cli` directory](https://github.com/the-social-proof-foundation/myso-core/tree/main/examples/tic-tac-toe/cli) to make a move in an existing game, as the active address in the CLI, replacing the game ID and address accordingly:
    ```shell
    cargo run -- move --package-id <<tic-tac-toe package object ID>> --row $R --col $C <<game ID>>
    ```
 
 ## License
 
-[SPDX-License-Identifier: Apache-2.0](https://github.com/MystenLabs/myso/blob/main/LICENSE)
+[SPDX-License-Identifier: Apache-2.0](https://github.com/the-social-proof-foundation/myso-core/blob/main/LICENSE)

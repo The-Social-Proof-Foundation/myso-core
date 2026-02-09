@@ -3,7 +3,7 @@ name = "test_coin"
 edition = "2024.beta" # edition = "legacy" to use legacy (pre-2024) Move
 
 [dependencies]
-MySo = { git = "https://github.com/MystenLabs/myso.git", subdir = "crates/myso-framework/packages/myso-framework", rev = "framework/testnet" }
+MySo = { git = "https://github.com/the-social-proof-foundation/myso-core.git", subdir = "crates/myso-framework/packages/myso-framework", rev = "framework/testnet" }
 
 [addresses]
 test_coin = "0x0"

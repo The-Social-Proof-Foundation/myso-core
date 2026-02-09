@@ -1,12 +1,12 @@
 ---
 source: crates/move-compiler/tests/move_check_testsuite.rs
 info:
-  flavor: sui
+  flavor: myso
   edition: legacy
   lint: false
 ---
-error[Sui E02006]: invalid 'init' call
-   ┌─ tests/sui_mode/init/cannot_call_init.move:10:9
+error[MySo E02006]: invalid 'init' call
+   ┌─ tests/myso_mode/init/cannot_call_init.move:10:9
    │
 10 │         init(ctx)
    │         ^^^^^^^^^ Invalid call to 'a::m::init'. Module initializers cannot be called directly

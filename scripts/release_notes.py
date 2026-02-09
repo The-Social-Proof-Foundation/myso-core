@@ -377,7 +377,7 @@ def extract_protocol_version(commit):
 
 def print_changelog(pr, log):
     if pr:
-        print(f"https://github.com/MystenLabs/myso/pull/{pr}: {log}")
+        print(f"https://github.com/the-social-proof-foundation/myso-core/pull/{pr}: {log}")
     else:
         print(log)
 

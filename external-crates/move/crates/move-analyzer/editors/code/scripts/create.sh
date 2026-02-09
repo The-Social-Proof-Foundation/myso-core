@@ -67,7 +67,7 @@ for DIST_OS VSCODE_OS in "${(@kv)SUPPORTED_OS}"; do
     MYSO_ARCHIVE_PATH=$TMP_DIR"/"$MYSO_ARCHIVE
 
     # download MySo archive file to a given location and uncompress it
-    curl https://github.com/MystenLabs/myso/releases/download/"$MYSO_DISTRO"/"$MYSO_ARCHIVE" -L -o $MYSO_ARCHIVE_PATH
+    curl https://github.com/the-social-proof-foundation/myso-core/releases/download/"$MYSO_DISTRO"/"$MYSO_ARCHIVE" -L -o $MYSO_ARCHIVE_PATH
     tar -xf $MYSO_ARCHIVE_PATH --directory $TMP_DIR
 
     # names of the move-analyzer binary, both the one becoming part of the extension ($SERVER_BIN)

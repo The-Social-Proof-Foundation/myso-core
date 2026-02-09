@@ -1,5 +1,5 @@
 ---
-source: crates/sui-display/src/v2/parser.rs
+source: crates/myso-display/src/v2/parser.rs
 expression: "strands(\"{x'1234' | x'0d0e0f'}\")"
 ---
 { x'1234'

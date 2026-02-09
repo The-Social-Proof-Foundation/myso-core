@@ -9,11 +9,11 @@ COPY .git/ .git/
 COPY Cargo.toml Cargo.lock ./
 COPY consensus consensus
 COPY crates crates
-COPY sui-execution sui-execution
+COPY myso-execution myso-execution
 COPY external-crates external-crates
 
-RUN cargo build --profile ${PROFILE} --bin sui-proxy
+RUN cargo build --profile ${PROFILE} --bin myso-proxy
 
 FROM gcr.io/distroless/cc-debian12 as deploy
 
-COPY --from=build --chmod=755 /work/target/release/sui-proxy /opt/sui/bin/sui-proxy
+COPY --from=build --chmod=755 /work/target/release/myso-proxy /opt/myso/bin/myso-proxy

@@ -9,8 +9,8 @@ A: object(0,0), B: object(0,1), C: object(0,2)
 task 1, lines 7-12:
 //# programmable --sender A --inputs 1000 @B
 //> 0: SplitCoins(Gas, [Input(0)]);
-//> 1: sui::party::single_owner(Input(1));
-//> 2: sui::transfer::public_party_transfer<sui::coin::Coin<sui::sui::SUI>>(Result(0), Result(1));
+//> 1: myso::party::single_owner(Input(1));
+//> 2: myso::transfer::public_party_transfer<myso::coin::Coin<myso::myso::MYSO>>(Result(0), Result(1));
 // Create a regular address-owned object sent to C by A
 created: object(1,0)
 mutated: object(0,0)

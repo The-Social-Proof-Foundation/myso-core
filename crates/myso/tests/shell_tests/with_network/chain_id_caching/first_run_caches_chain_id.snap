@@ -1,5 +1,5 @@
 ---
-source: crates/sui/tests/shell_tests.rs
+source: crates/myso/tests/shell_tests.rs
 ---
 ----- script -----
 #!/usr/bin/env bash
@@ -17,7 +17,7 @@ fi
 
 echo ""
 echo "=== Running balance command ==="
-sui client --client.config $CONFIG balance > output.txt 2>&1
+myso client --client.config $CONFIG balance > output.txt 2>&1
 echo "Command executed"
 rm -f output.txt
 

@@ -116,13 +116,13 @@ export default function Home() {
               </Link>
               <Link
                 className={styles.cardLink}
-                to="https://github.com/MystenLabs/myso/tree/main/crates/myso-framework/docs"
+                to="https://github.com/the-social-proof-foundation/myso-core/tree/main/crates/myso-framework/docs"
               >
                 MySo Framework
               </Link>
               <Link
                 className={styles.cardLink}
-                to="https://github.com/MystenLabs/myso/tree/main/crates/myso-sdk"
+                to="https://github.com/the-social-proof-foundation/myso-core/tree/main/crates/myso-sdk"
               >
                 Rust SDK
               </Link>

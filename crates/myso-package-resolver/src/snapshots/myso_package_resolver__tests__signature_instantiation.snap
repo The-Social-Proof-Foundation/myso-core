@@ -1,5 +1,5 @@
 ---
-source: crates/sui-package-resolver/src/lib.rs
+source: crates/myso-package-resolver/src/lib.rs
 expression: "sig.instantiate(&[T::U64, T::Bool]).unwrap()"
 ---
 Struct(

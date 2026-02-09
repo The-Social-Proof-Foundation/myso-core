@@ -26,7 +26,7 @@ title: Module `myso_system::storage_fund`
 <b>use</b> <a href="../myso/funds_accumulator.md#myso_funds_accumulator">myso::funds_accumulator</a>;
 <b>use</b> <a href="../myso/hash.md#myso_hash">myso::hash</a>;
 <b>use</b> <a href="../myso/hex.md#myso_hex">myso::hex</a>;
-<b>use</b> <a href="../myso/sui.md#myso_myso">myso::myso</a>;
+<b>use</b> <a href="../myso/myso.md#myso_myso">myso::myso</a>;
 <b>use</b> <a href="../myso/object.md#myso_object">myso::object</a>;
 <b>use</b> <a href="../myso/party.md#myso_party">myso::party</a>;
 <b>use</b> <a href="../myso/protocol_config.md#myso_protocol_config">myso::protocol_config</a>;
@@ -75,12 +75,12 @@ be taken out of the fund.
 
 <dl>
 <dt>
-<code><a href="../myso_system/storage_fund.md#myso_system_storage_fund_total_object_storage_rebates">total_object_storage_rebates</a>: <a href="../myso/balance.md#myso_balance_Balance">myso::balance::Balance</a>&lt;<a href="../myso/sui.md#myso_myso_MYSO">myso::myso::MYSO</a>&gt;</code>
+<code><a href="../myso_system/storage_fund.md#myso_system_storage_fund_total_object_storage_rebates">total_object_storage_rebates</a>: <a href="../myso/balance.md#myso_balance_Balance">myso::balance::Balance</a>&lt;<a href="../myso/myso.md#myso_myso_MYSO">myso::myso::MYSO</a>&gt;</code>
 </dt>
 <dd>
 </dd>
 <dt>
-<code>non_refundable_balance: <a href="../myso/balance.md#myso_balance_Balance">myso::balance::Balance</a>&lt;<a href="../myso/sui.md#myso_myso_MYSO">myso::myso::MYSO</a>&gt;</code>
+<code>non_refundable_balance: <a href="../myso/balance.md#myso_balance_Balance">myso::balance::Balance</a>&lt;<a href="../myso/myso.md#myso_myso_MYSO">myso::myso::MYSO</a>&gt;</code>
 </dt>
 <dd>
 </dd>
@@ -93,10 +93,10 @@ be taken out of the fund.
 
 ## Function `new`
 
-Called by <code><a href="../myso_system/sui_system.md#myso_system_myso_system">myso_system</a></code> at genesis time.
+Called by <code><a href="../myso_system/myso_system.md#myso_system_myso_system">myso_system</a></code> at genesis time.
 
 
-<pre><code><b>public</b>(package) <b>fun</b> <a href="../myso_system/storage_fund.md#myso_system_storage_fund_new">new</a>(initial_fund: <a href="../myso/balance.md#myso_balance_Balance">myso::balance::Balance</a>&lt;<a href="../myso/sui.md#myso_myso_MYSO">myso::myso::MYSO</a>&gt;): <a href="../myso_system/storage_fund.md#myso_system_storage_fund_StorageFund">myso_system::storage_fund::StorageFund</a>
+<pre><code><b>public</b>(package) <b>fun</b> <a href="../myso_system/storage_fund.md#myso_system_storage_fund_new">new</a>(initial_fund: <a href="../myso/balance.md#myso_balance_Balance">myso::balance::Balance</a>&lt;<a href="../myso/myso.md#myso_myso_MYSO">myso::myso::MYSO</a>&gt;): <a href="../myso_system/storage_fund.md#myso_system_storage_fund_StorageFund">myso_system::storage_fund::StorageFund</a>
 </code></pre>
 
 
@@ -122,10 +122,10 @@ Called by <code><a href="../myso_system/sui_system.md#myso_system_myso_system">m
 
 ## Function `advance_epoch`
 
-Called by <code><a href="../myso_system/sui_system.md#myso_system_myso_system">myso_system</a></code> at epoch change times to process the inflows and outflows of storage fund.
+Called by <code><a href="../myso_system/myso_system.md#myso_system_myso_system">myso_system</a></code> at epoch change times to process the inflows and outflows of storage fund.
 
 
-<pre><code><b>public</b>(package) <b>fun</b> <a href="../myso_system/storage_fund.md#myso_system_storage_fund_advance_epoch">advance_epoch</a>(self: &<b>mut</b> <a href="../myso_system/storage_fund.md#myso_system_storage_fund_StorageFund">myso_system::storage_fund::StorageFund</a>, storage_charges: <a href="../myso/balance.md#myso_balance_Balance">myso::balance::Balance</a>&lt;<a href="../myso/sui.md#myso_myso_MYSO">myso::myso::MYSO</a>&gt;, storage_fund_reinvestment: <a href="../myso/balance.md#myso_balance_Balance">myso::balance::Balance</a>&lt;<a href="../myso/sui.md#myso_myso_MYSO">myso::myso::MYSO</a>&gt;, leftover_staking_rewards: <a href="../myso/balance.md#myso_balance_Balance">myso::balance::Balance</a>&lt;<a href="../myso/sui.md#myso_myso_MYSO">myso::myso::MYSO</a>&gt;, storage_rebate_amount: u64, non_refundable_storage_fee_amount: u64): <a href="../myso/balance.md#myso_balance_Balance">myso::balance::Balance</a>&lt;<a href="../myso/sui.md#myso_myso_MYSO">myso::myso::MYSO</a>&gt;
+<pre><code><b>public</b>(package) <b>fun</b> <a href="../myso_system/storage_fund.md#myso_system_storage_fund_advance_epoch">advance_epoch</a>(self: &<b>mut</b> <a href="../myso_system/storage_fund.md#myso_system_storage_fund_StorageFund">myso_system::storage_fund::StorageFund</a>, storage_charges: <a href="../myso/balance.md#myso_balance_Balance">myso::balance::Balance</a>&lt;<a href="../myso/myso.md#myso_myso_MYSO">myso::myso::MYSO</a>&gt;, storage_fund_reinvestment: <a href="../myso/balance.md#myso_balance_Balance">myso::balance::Balance</a>&lt;<a href="../myso/myso.md#myso_myso_MYSO">myso::myso::MYSO</a>&gt;, leftover_staking_rewards: <a href="../myso/balance.md#myso_balance_Balance">myso::balance::Balance</a>&lt;<a href="../myso/myso.md#myso_myso_MYSO">myso::myso::MYSO</a>&gt;, storage_rebate_amount: u64, non_refundable_storage_fee_amount: u64): <a href="../myso/balance.md#myso_balance_Balance">myso::balance::Balance</a>&lt;<a href="../myso/myso.md#myso_myso_MYSO">myso::myso::MYSO</a>&gt;
 </code></pre>
 
 

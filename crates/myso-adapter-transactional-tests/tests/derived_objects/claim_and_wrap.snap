@@ -29,15 +29,15 @@ task 4, line 60:
 Owner: Account Address ( A )
 Version: 3
 Contents: a::m::Parent {
-    id: sui::object::UID {
-        id: sui::object::ID {
+    id: myso::object::UID {
+        id: myso::object::ID {
             bytes: fake(2,0),
         },
     },
-    wrapped: std::option::Option<sui::object::UID> {
+    wrapped: std::option::Option<myso::object::UID> {
         vec: vector[
-            sui::object::UID {
-                id: sui::object::ID {
+            myso::object::UID {
+                id: myso::object::ID {
                     bytes: _,
                 },
             },
@@ -49,18 +49,18 @@ task 5, line 62:
 //# view-object 3,0
 Owner: Object ID: ( fake(2,0) )
 Version: 3
-Contents: sui::dynamic_field::Field<sui::derived_object::Claimed, sui::derived_object::ClaimedStatus> {
-    id: sui::object::UID {
-        id: sui::object::ID {
+Contents: myso::dynamic_field::Field<myso::derived_object::Claimed, myso::derived_object::ClaimedStatus> {
+    id: myso::object::UID {
+        id: myso::object::ID {
             bytes: fake(3,0),
         },
     },
-    name: sui::derived_object::Claimed {
-        pos0: sui::object::ID {
+    name: myso::derived_object::Claimed {
+        pos0: myso::object::ID {
             bytes: _,
         },
     },
-    value: sui::derived_object::ClaimedStatus::Reserved{},
+    value: myso::derived_object::ClaimedStatus::Reserved{},
 }
 
 task 6, line 64:

@@ -1,5 +1,5 @@
 ---
-source: crates/sui/tests/shell_tests.rs
+source: crates/myso/tests/shell_tests.rs
 ---
 ----- script -----
 # Copyright (c) Mysten Labs, Inc.
@@ -7,7 +7,7 @@ source: crates/sui/tests/shell_tests.rs
 
 # Active environment chain ID matches multiple envs in the manifest
 echo 'duplicate_env = "1234"' >> Move.toml
-sui move --client.config configs/name_mismatch_id_match.yaml build
+myso move --client.config configs/name_mismatch_id_match.yaml build
 
 ----- results -----
 success: false

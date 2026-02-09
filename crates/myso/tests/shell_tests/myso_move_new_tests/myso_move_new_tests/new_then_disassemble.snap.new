@@ -1,0 +1,45 @@
+---
+source: crates/myso/tests/shell_tests.rs
+assertion_line: 113
+---
+----- script -----
+# Copyright (c) Mysten Labs, Inc.
+# SPDX-License-Identifier: Apache-2.0
+
+# tests that myso move new followed by myso move disassemble succeeds
+
+
+myso move --client.config $CONFIG new example
+cat > example/sources/example.move <<EOF
+module example::example;
+
+public fun foo(_ctx: &mut TxContext) {}
+EOF
+cd example
+
+echo "=== Build ===" >&2
+myso move --client.config $CONFIG build
+
+echo "=== Disassemble ===" >&2
+myso move --client.config $CONFIG disassemble build/example/bytecode_modules/example.mv
+
+----- results -----
+success: false
+exit_code: 101
+----- stdout -----
+Error while loading dependency /Users/brandonshaw/.move/git/https___github_com_MystenLabs_myso_git_0676e11409f87c38733863475d0819407b568a9d/crates/myso-framework/packages/myso-framework: Error while fetching `{ git = "https://...abs/myso.git", path = "crates/myso-framework/packages/myso-framework", rev = "0676e1...9d" }`: error while executing git command `Command { std: GIT_CONFIG_GLOBAL="" "git" "-c" "advice.detachedHead=false" "clone" "--quiet" "--sparse" "--filter=blob:none" "--no-checkout" "--depth" "1" "https://github.comthe-social-proof-foundation/myso-core.git" "/Users/brandonshaw/.move/git/https___github_com_MystenLabs_myso_git_0676e11409f87c38733863475d0819407b568a9d", kill_on_drop: false }`:
+ErrorCode(ExitStatus(unix_wait_status(32768)))
+
+----- stderr -----
+=== Build ===
+Downloading from https://github.comthe-social-proof-foundation/myso-core.git
+output from `git -c advice.detachedHead=false clone --quiet --sparse --filter=blob:none --no-checkout --depth 1 https://github.comthe-social-proof-foundation/myso-core.git /Users/brandonshaw/.move/git/https___github_com_MystenLabs_myso_git_0676e11409f87c38733863475d0819407b568a9d`
+  │ remote: Repository not found.
+  │ fatal: repository 'https://github.comthe-social-proof-foundation/myso-core.git/' not found
+=== Disassemble ===
+
+thread 'main' (650111) panicked at crates/myso-move/src/disassemble.rs:64:9:
+Bad path to .mv file
+note: run with `RUST_BACKTRACE=1` environment variable to display a backtrace
+2026-02-09T07:16:26.058458Z ERROR telemetry_subscribers: panicked at crates/myso-move/src/disassemble.rs:64:9:
+Bad path to .mv file panic.file="crates/myso-move/src/disassemble.rs" panic.line=64 panic.column=9

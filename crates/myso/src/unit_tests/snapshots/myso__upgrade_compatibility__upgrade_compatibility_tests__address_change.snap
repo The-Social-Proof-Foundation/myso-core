@@ -1,5 +1,5 @@
 ---
-source: crates/sui/src/upgrade_compatibility/../unit_tests/upgrade_compatibility_tests.rs
+source: crates/myso/src/upgrade_compatibility/../unit_tests/upgrade_compatibility_tests.rs
 expression: normalize_path(err.to_string())
 ---
 error[Compatibility E01002]: type mismatch

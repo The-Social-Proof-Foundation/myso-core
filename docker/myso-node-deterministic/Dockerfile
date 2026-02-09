@@ -32,9 +32,9 @@ ENV RUSTFLAGS="${RUSTFLAGS} -C link-arg=-Wl,-z,nostart-stop-gc"
 
 COPY . .
 RUN cargo fetch
-RUN --network=none cargo build --frozen --profile $PROFILE --bin sui-node
+RUN --network=none cargo build --frozen --profile $PROFILE --bin myso-node
 
 FROM scratch AS package
 ARG PROFILE
 ARG CARGO_BUILD_TARGET
-COPY --from=build /target/${CARGO_BUILD_TARGET}/${PROFILE}/sui-node /opt/sui/bin/
+COPY --from=build /target/${CARGO_BUILD_TARGET}/${PROFILE}/myso-node /opt/myso/bin/

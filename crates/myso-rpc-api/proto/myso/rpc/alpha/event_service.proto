@@ -15,7 +15,7 @@ service EventService {
 
 // Request authenticated events for a stream starting from a checkpoint.
 message ListAuthenticatedEventsRequest {
-  // Required. Stream identifier (Sui address) of the event stream.
+  // Required. Stream identifier (MySo address) of the event stream.
   optional string stream_id = 1;
 
   // Inclusive start checkpoint. Must not yet be pruned. (default: 0)

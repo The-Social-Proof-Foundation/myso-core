@@ -26,13 +26,13 @@ task 3, line 19:
 //# view-object 1,0
 Owner: Account Address ( A )
 Version: 2
-Contents: sui::coin::Coin<sui::sui::SUI> {
-    id: sui::object::UID {
-        id: sui::object::ID {
+Contents: myso::coin::Coin<myso::myso::MYSO> {
+    id: myso::object::UID {
+        id: myso::object::ID {
             bytes: fake(1,0),
         },
     },
-    balance: sui::balance::Balance<sui::sui::SUI> {
+    balance: myso::balance::Balance<myso::myso::MYSO> {
         value: 12u64,
     },
 }
@@ -41,13 +41,13 @@ task 4, line 21:
 //# view-object 2,0
 Owner: Account Address ( A )
 Version: 3
-Contents: sui::coin::Coin<sui::sui::SUI> {
-    id: sui::object::UID {
-        id: sui::object::ID {
+Contents: myso::coin::Coin<myso::myso::MYSO> {
+    id: myso::object::UID {
+        id: myso::object::ID {
             bytes: fake(2,0),
         },
     },
-    balance: sui::balance::Balance<sui::sui::SUI> {
+    balance: myso::balance::Balance<myso::myso::MYSO> {
         value: 34u64,
     },
 }
@@ -64,7 +64,7 @@ Response: {
   "result": {
     "data": [
       {
-        "coinType": "0x0000000000000000000000000000000000000000000000000000000000000002::sui::SUI",
+        "coinType": "0x0000000000000000000000000000000000000000000000000000000000000002::myso::MYSO",
         "coinObjectId": "0xe115ae7ff9b56944fafef6fd015d510a2fd963b6d42ec8a6266409c0ea40fb36",
         "version": "3",
         "digest": "DEkzeRHxap1vPXhy491fTrsmd3NzchCbecWPMhQHdB2C",
@@ -72,7 +72,7 @@ Response: {
         "previousTransaction": "6cdapUQu7iktu3TnFtoPaRup6FNPZaWxJJnk7p2DsvzD"
       },
       {
-        "coinType": "0x0000000000000000000000000000000000000000000000000000000000000002::sui::SUI",
+        "coinType": "0x0000000000000000000000000000000000000000000000000000000000000002::myso::MYSO",
         "coinObjectId": "0x0740f69b3ea45f374e2c7141b4fd40b96896f72350567c11184825708ce95685",
         "version": "3",
         "digest": "9oBbFcexAHkbrNf29FpSx5bCyV4aaU9mGzWNqMjYkZqT",
@@ -80,7 +80,7 @@ Response: {
         "previousTransaction": "6cdapUQu7iktu3TnFtoPaRup6FNPZaWxJJnk7p2DsvzD"
       },
       {
-        "coinType": "0x0000000000000000000000000000000000000000000000000000000000000002::sui::SUI",
+        "coinType": "0x0000000000000000000000000000000000000000000000000000000000000002::myso::MYSO",
         "coinObjectId": "0x191744e2ac6eccc92a8847c7edea6e1502cf836bf85abd1145659e09ede9a62a",
         "version": "2",
         "digest": "HGmo3Nuhj6tkSDmhRzVajUL8sjs1qLorQjWKaRTWKyUP",
@@ -112,7 +112,7 @@ Response: {
   "result": {
     "data": [
       {
-        "coinType": "0x0000000000000000000000000000000000000000000000000000000000000002::sui::SUI",
+        "coinType": "0x0000000000000000000000000000000000000000000000000000000000000002::myso::MYSO",
         "coinObjectId": "0xe115ae7ff9b56944fafef6fd015d510a2fd963b6d42ec8a6266409c0ea40fb36",
         "version": "4",
         "digest": "12qvUnkUyd4hsyUH4udxY31jviDwCu6SAu3T1m69rvPz",
@@ -120,7 +120,7 @@ Response: {
         "previousTransaction": "CA11tFtEZ4RDEJuXjxpQbQsycDq8RSF4uAQDN6qeq5tn"
       },
       {
-        "coinType": "0x0000000000000000000000000000000000000000000000000000000000000002::sui::SUI",
+        "coinType": "0x0000000000000000000000000000000000000000000000000000000000000002::myso::MYSO",
         "coinObjectId": "0x191744e2ac6eccc92a8847c7edea6e1502cf836bf85abd1145659e09ede9a62a",
         "version": "4",
         "digest": "FKYxvSTZJNv9cisBwCk8yPxmj1QEbSE3EsfUruoqDe8J",

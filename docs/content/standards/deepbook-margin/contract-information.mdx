@@ -1,7 +1,7 @@
 ---
 title: Contract Information
 sidebar_position: 2
-description: DeepBook Margin contract addresses, supported coins, margin pools, and risk parameters on Sui Mainnet.
+description: DeepBook Margin contract addresses, supported coins, margin pools, and risk parameters on MySo Mainnet.
 keywords:
   [
     deepbook margin,
@@ -17,7 +17,7 @@ keywords:
   ]
 ---
 
-This page contains the contract addresses, supported coins, margin pools, and risk parameters for DeepBook Margin on Sui Mainnet.
+This page contains the contract addresses, supported coins, margin pools, and risk parameters for DeepBook Margin on MySo Mainnet.
 
 ## Contract versions
 
@@ -40,11 +40,11 @@ DeepBook Margin uses upgradeable contracts. When a contract is upgraded, only `M
 ## Supported coins
 
 <details>
-<summary>SUI Token</summary>
+<summary>MYSO Token</summary>
 
 | Parameter | Value |
 |-----------|-------|
-| Type | `0x0000000000000000000000000000000000000000000000000000000000000002::sui::SUI` |
+| Type | `0x0000000000000000000000000000000000000000000000000000000000000002::myso::MYSO` |
 | Decimals | 9 |
 
 </details>
@@ -84,15 +84,15 @@ DeepBook Margin uses upgradeable contracts. When a contract is upgraded, only `M
 Margin pools provide the liquidity for margin traders to borrow. Suppliers can deposit assets to earn interest from borrowers.
 
 <details>
-<summary>SUI Margin Pool</summary>
+<summary>MYSO Margin Pool</summary>
 
 | Parameter | Value |
 |-----------|-------|
 | Pool ID | `0x53041c6f86c4782aabbfc1d4fe234a6d37160310c7ee740c915f0a01b7127344` |
-| Supply Cap | 500,000 SUI |
+| Supply Cap | 500,000 MYSO |
 | Max Utilization Rate | 80% |
 | Referral Spread | 20% |
-| Min Borrow | 0.1 SUI |
+| Min Borrow | 0.1 MYSO |
 
 </details>
 
@@ -139,7 +139,7 @@ Margin pools provide the liquidity for margin traders to borrow. Suppliers can d
 
 Risk parameters determine the leverage limits and liquidation thresholds for each trading pair. See [Risk Ratio](./contract-information/risk-ratio.mdx) for a detailed explanation of how these parameters work.
 
-### SUI/USDC (5x leverage)
+### MYSO/USDC (5x leverage)
 
 | Parameter | Value | Description |
 |-----------|-------|-------------|

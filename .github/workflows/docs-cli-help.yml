@@ -25,7 +25,7 @@ jobs:
       - name: Determine latest MySo release tag
         id: release
         run: |
-          TAG=$(curl -s https://api.github.com/repos/MystenLabs/myso/releases \
+          TAG=$(curl -s https://api.github.com/reposthe-social-proof-foundation/myso-core/releases \
             | jq -r 'map(select(.tag_name | startswith("testnet-")))[0].tag_name')
           echo "tag=$TAG" >> "$GITHUB_OUTPUT"
 
@@ -53,7 +53,7 @@ jobs:
           
           DOWNLOADED=false
           for ASSET in "${ASSETS[@]}"; do
-            URL="https://github.com/MystenLabs/myso/releases/download/${TAG}/${ASSET}"
+            URL="https://github.com/the-social-proof-foundation/myso-core/releases/download/${TAG}/${ASSET}"
             echo "Trying: $URL"
             
             if curl -fsSL -o "/tmp/myso-download" "$URL" 2>/dev/null; then
@@ -77,7 +77,7 @@ jobs:
           if [ "$DOWNLOADED" = false ]; then
             echo "Failed to download myso binary from any known location"
             echo "Available assets for ${TAG}:"
-            curl -s "https://api.github.com/repos/MystenLabs/myso/releases/tags/${TAG}" | jq -r '.assets[].name'
+            curl -s "https://api.github.com/reposthe-social-proof-foundation/myso-core/releases/tags/${TAG}" | jq -r '.assets[].name'
             exit 1
           fi
           

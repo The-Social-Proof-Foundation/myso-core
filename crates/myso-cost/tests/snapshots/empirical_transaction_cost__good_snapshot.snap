@@ -1,5 +1,5 @@
 ---
-source: crates/sui-cost/tests/empirical_transaction_cost.rs
+source: crates/myso-cost/tests/empirical_transaction_cost.rs
 expression: common_costs_actual
 ---
 {

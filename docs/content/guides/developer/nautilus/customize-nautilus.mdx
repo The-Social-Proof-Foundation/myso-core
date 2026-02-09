@@ -145,7 +145,7 @@ Write unit tests in both Move and Rust to ensure consistency. See `test_serde()`
 
 Some questions the community often asks about are answered in the following sections.
 
-#### Why did Sui choose AWS Nitro Enclaves initially?
+#### Why did MySo choose AWS Nitro Enclaves initially?
 
 - There are many TEE providers available, but initial support for AWS Nitro Enclaves is due to their maturity and support for reproducible builds. Support for additional TEE providers might be considered in the future.
 
@@ -153,10 +153,10 @@ Some questions the community often asks about are answered in the following sect
 
 #### Where is the root of trust of AWS?
 
-- It is stored as part of the Sui framework and used to verify AWS attestation documents. You can verify its hash by following the steps outlined on [AWS](https://docs.aws.amazon.com/enclaves/latest/user/verify-root.html#validation-process).
+- It is stored as part of the MySo framework and used to verify AWS attestation documents. You can verify its hash by following the steps outlined on [AWS](https://docs.aws.amazon.com/enclaves/latest/user/verify-root.html#validation-process).
 
 ```sh
-$ curl https://raw.githubusercontent.com/MystenLabs/sui/refs/heads/main/crates/sui-types/src/nitro_root_certificate.pem -o cert_sui.pem
+$ curl https://raw.githubusercontent.com/the-social-proof-foundation/myso-core/refs/heads/main/crates/myso-types/src/nitro_root_certificate.pem -o cert_sui.pem
 $ sha256sum cert_sui.pem
 
 6eb9688305e4bbca67f44b59c29a0661ae930f09b5945b5d1d9ae01125c8d6c0
@@ -165,5 +165,5 @@ $ curl https://aws-nitro-enclaves.amazonaws.com/AWS_NitroEnclaves_Root-G1.zip -o
 $ unzip cert_aws.zip
 $ sha256sum root.pem
 
-6eb9688305e4bbca67f44b59c29a0661ae930f09b5945b5d1d9ae01125c8d6c0 # check it matches from the one downloaded from the Sui repo
+6eb9688305e4bbca67f44b59c29a0661ae930f09b5945b5d1d9ae01125c8d6c0 # check it matches from the one downloaded from the MySo repo
 ```

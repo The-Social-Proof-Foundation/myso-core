@@ -1,5 +1,5 @@
 ---
-source: crates/sui/tests/shell_tests.rs
+source: crates/myso/tests/shell_tests.rs
 ---
 ----- script -----
 # Copyright (c) Mysten Labs, Inc.
@@ -7,7 +7,7 @@ source: crates/sui/tests/shell_tests.rs
 
 # If the config file is a directory, we fail nicely
 mkdir client.yaml
-sui move --client.config ./client.yaml new example \
+myso move --client.config ./client.yaml new example \
   | sed 's/Err:.*$/Err: <REDACTED>/'
 
 ----- results -----

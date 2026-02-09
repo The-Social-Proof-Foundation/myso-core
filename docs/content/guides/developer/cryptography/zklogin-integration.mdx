@@ -1,7 +1,7 @@
 ---
 title: zkLogin Integration Guide
-description: zkLogin can be integrated into applications deployed on Sui.
-keywords: [ zklogin, how to use zklogin, generate ephemeral key pair, fetch JWT, decode JWT, generate salt, generate user Sui address, fetch ZK proof, assemble zkLogin signature, oauth, openid ]
+description: zkLogin can be integrated into applications deployed on MySo.
+keywords: [ zklogin, how to use zklogin, generate ephemeral key pair, fetch JWT, decode JWT, generate salt, generate user MySo address, fetch ZK proof, assemble zkLogin signature, oauth, openid ]
 ---
 
 Here is the high-level flow the wallet or frontend application must implement to support zkLogin-enabled transactions:
@@ -9,7 +9,7 @@ Here is the high-level flow the wallet or frontend application must implement to
 1. The wallet creates an ephemeral key pair.
 1. The wallet prompts the user to complete an OAuth login flow with the nonce corresponding to the ephemeral public key.
 1. After receiving the JSON Web Token (JWT), the wallet obtains a zero-knowledge proof.
-1. The wallet obtains a unique user salt based on a JWT. Use the OAuth subject identifier and salt to compute the zkLogin Sui address.
+1. The wallet obtains a unique user salt based on a JWT. Use the OAuth subject identifier and salt to compute the zkLogin MySo address.
 1. The wallet signs transactions with the ephemeral private key.
 1. The wallet submits the transaction with the ephemeral signature and the zero-knowledge proof.
 
@@ -20,28 +20,28 @@ Let's dive into the specific implementation details.
 To use the zkLogin TypeScript SDK in your project, run the following command in your project root:
 
 ```sh npm2yarn
-$ npm install @mysten/sui
+$ npm install @mysten/myso
 ```
 
 If you want to use the latest experimental version:
 
 ```sh npm2yarn
-$ npm install @mysten/sui@experimental
+$ npm install @mysten/myso@experimental
 ```
 
 ## Get JWT
 
-1. Generate an ephemeral key pair. Follow the same process as you would generating a key pair in a traditional wallet. See [Sui SDK](https://sdk.mystenlabs.com/typescript/cryptography/keypairs) for details.
+1. Generate an ephemeral key pair. Follow the same process as you would generating a key pair in a traditional wallet. See [MySo SDK](https://sdk.mystenlabs.com/typescript/cryptography/keypairs) for details.
 
 1. Set the expiration time for the ephemeral key pair. The wallet decides whether the maximum epoch is the current epoch or later. The wallet also determines whether this is adjustable by the user.
 
 1. Assemble the OAuth URL with configured client ID, redirect URL, ephemeral public key and nonce: This is what the application sends the user to complete the login flow with a computed nonce.
 
 ```typescript
-import { generateNonce, generateRandomness } from '@mysten/sui/zklogin';
-import { SuiGrpcClient } from '@mysten/sui/grpc';
+import { generateNonce, generateRandomness } from '@socialproof/myso/zklogin';
+import { SuiGrpcClient } from '@socialproof/myso/grpc';
 
-const FULLNODE_URL = 'https://fullnode.devnet.sui.io:443'; // replace with the RPC URL you want to use
+const FULLNODE_URL = 'https://fullnode.devnet.mysocial.network:443'; // replace with the RPC URL you want to use
 const suiClient = new SuiGrpcClient({ baseUrl: FULLNODE_URL, network: 'devnet' });
 const { epoch, epochDurationMs, epochStartTimestampMs } = await suiClient.core.getLatestSuiSystemState();
 
@@ -95,7 +95,7 @@ export interface JwtPayload {
 
 ## User salt management
 
-zkLogin uses the user salt to compute the zkLogin Sui address (see [definition](../../../concepts/cryptography/zklogin.mdx#address-definition)). The salt must be a 16-byte value or a integer smaller than `2n**128n`. There are several options for the application to maintain the user salt:
+zkLogin uses the user salt to compute the zkLogin MySo address (see [definition](../../../concepts/cryptography/zklogin.mdx#address-definition)). The salt must be a 16-byte value or a integer smaller than `2n**128n`. There are several options for the application to maintain the user salt:
 
 1. Client side:
    - Option 1: Request user input for the salt during wallet access, transferring the responsibility to the user, who must then remember it.
@@ -114,14 +114,14 @@ $ curl -X POST https://salt.api.mystenlabs.com/get_salt -H 'Content-Type: applic
 Response: {"salt":"129390038577185583942388216820280642146"}
 ```
 
-User salt is used to disconnect the OAuth identifier (sub) from the on-chain Sui address to avoid linking Web2 credentials with Web3 credentials. While losing or misusing the salt could enable this link, it wouldn't compromise fund control or zkLogin asset authority. 
+User salt is used to disconnect the OAuth identifier (sub) from the on-chain MySo address to avoid linking Web2 credentials with Web3 credentials. While losing or misusing the salt could enable this link, it wouldn't compromise fund control or zkLogin asset authority. 
 
-## Get the user's Sui address
+## Get the user's MySo address
 
 Once the OAuth flow completes, the JWT can be found in the redirect URL. Along with the user salt, the zkLogin address can be derived as follows:
 
 ```typescript
-import { jwtToAddress } from '@mysten/sui/zklogin';
+import { jwtToAddress } from '@socialproof/myso/zklogin';
 
 const zkLoginUserAddress = jwtToAddress(jwt, userSalt, false);
 ```
@@ -133,7 +133,7 @@ The next step is to fetch the ZK proof. This is an attestation (proof) over the 
 First, generate the extended ephemeral public key to use as an input to the ZKP.
 
 ```typescript
-import { getExtendedEphemeralPublicKey } from '@mysten/sui/zklogin';
+import { getExtendedEphemeralPublicKey } from '@socialproof/myso/zklogin';
 
 const extendedEphemeralPublicKey = getExtendedEphemeralPublicKey(ephemeralKeyPair.getPublicKey());
 ```
@@ -232,16 +232,16 @@ const partialZkLoginSignature = proofResponse as PartialZkLoginSignature;
 
 1. Install [Git Large File Storage](https://git-lfs.com/) (an open source Git extension for large file versioning) before downloading the zkey.
 
-1. Download the [Groth16 proving key zkey file](https://docs.circom.io/getting-started/proving-circuits/). There are zkeys available for all Sui networks.
+1. Download the [Groth16 proving key zkey file](https://docs.circom.io/getting-started/proving-circuits/). There are zkeys available for all MySo networks.
 
    - Main zkey (for Mainnet and Testnet)
      ```sh
-     $ wget -O - https://raw.githubusercontent.com/sui-foundation/zklogin-ceremony-contributions/main/download-main-zkey.sh | bash
+     $ wget -O - https://raw.githubusercontent.com/myso-foundation/zklogin-ceremony-contributions/main/download-main-zkey.sh | bash
      ```
    - Test zkey (for Devnet)
 
      ```sh
-     $ wget -O - https://raw.githubusercontent.com/sui-foundation/zklogin-ceremony-contributions/main/download-test-zkey.sh | bash
+     $ wget -O - https://raw.githubusercontent.com/myso-foundation/zklogin-ceremony-contributions/main/download-test-zkey.sh | bash
      ```
 
    - To verify the download contains the correct zkey file, you can run the following command to check the Blake2b hash: `b2sum ${file_name}.zkey`.
@@ -299,7 +299,7 @@ A few important things to note:
 First, sign the transaction bytes with the ephemeral private key using the key pair generated previously. This is the same as [traditional key pair signing](https://sdk.mystenlabs.com/typescript/cryptography/keypairs). Make sure that the transaction `sender` is also defined.
 
 ```typescript
-import { SuiGrpcClient } from '@mysten/sui/grpc';
+import { SuiGrpcClient } from '@socialproof/myso/grpc';
 
 const ephemeralKeyPair = new Ed25519Keypair();
 
@@ -323,7 +323,7 @@ You can now serialize the zkLogin signature by combining the ZK proof (`inputs`)
 the `maxEpoch`, and the ephemeral signature (`userSignature`).
 
 ```typescript
-import { genAddressSeed, getZkLoginSignature } from '@mysten/sui/zklogin';
+import { genAddressSeed, getZkLoginSignature } from '@socialproof/myso/zklogin';
 
 const addressSeed = genAddressSeed(
 	BigInt(userSalt!),
@@ -367,7 +367,7 @@ Compared to traditional signatures, zkLogin signatures take a longer time to gen
 
 Carefully consider how many requests your application needs to make to the prover. Broadly speaking, the right metric to consider is the number of active user sessions and not the number of signatures. This is because you can cache the same ZK proof and reuse it across the session, as previously explained. For example, if you expect a million active user sessions per day, then you need a prover that can handle one or two requests per second (RPS), assuming evenly distributed traffic.
 
-The prover that Mysten Labs maintains is set to auto-scale to handle traffic surges. If you are not sure whether Mysten Labs can handle a specific number of requests or expect a sudden spike in the number of prover requests your application needs to make, please reach out to us on [Discord](https://discord.gg/sui). Our plan is to horizontally scale the prover to handle any RPS you require.
+The prover that Mysten Labs maintains is set to auto-scale to handle traffic surges. If you are not sure whether Mysten Labs can handle a specific number of requests or expect a sudden spike in the number of prover requests your application needs to make, please reach out to us on [Discord](https://discord.gg/myso). Our plan is to horizontally scale the prover to handle any RPS you require.
 
 ## Related links
 

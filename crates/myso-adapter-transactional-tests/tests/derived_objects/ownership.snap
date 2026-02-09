@@ -35,8 +35,8 @@ task 5, lines 47-49:
 Owner: ConsensusAddressOwner( 4, A )
 Version: 4
 Contents: a::m::Derived {
-    id: sui::object::UID {
-        id: sui::object::ID {
+    id: myso::object::UID {
+        id: myso::object::ID {
             bytes: fake(4,0),
         },
     },
@@ -52,8 +52,8 @@ task 7, line 52:
 Owner: Account Address ( A )
 Version: 5
 Contents: a::m::Derived {
-    id: sui::object::UID {
-        id: sui::object::ID {
+    id: myso::object::UID {
+        id: myso::object::ID {
             bytes: fake(4,0),
         },
     },
@@ -70,8 +70,8 @@ task 9, line 56:
 Owner: Immutable
 Version: 6
 Contents: a::m::Derived {
-    id: sui::object::UID {
-        id: sui::object::ID {
+    id: myso::object::UID {
+        id: myso::object::ID {
             bytes: fake(8,0),
         },
     },

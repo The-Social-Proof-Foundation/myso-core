@@ -1,5 +1,5 @@
 ---
-source: crates/sui-types/tests/format.rs
+source: crates/myso-types/tests/format.rs
 expression: registry
 ---
 AccountAddress:
@@ -10,7 +10,7 @@ AccountAddress:
 AccumulatorAddress:
   STRUCT:
     - address:
-        TYPENAME: SuiAddress
+        TYPENAME: MySoAddress
     - ty:
         TYPENAME: TypeTag
 AccumulatorOperation:
@@ -171,7 +171,7 @@ CheckpointContentsV2:
 CheckpointData:
   STRUCT:
     - checkpoint_summary:
-        TYPENAME: "sui_types::message_envelope::Envelope<sui_types::messages_checkpoint::CheckpointSummary, sui_types::crypto::AuthorityQuorumSignInfo<true>>"
+        TYPENAME: "myso_types::message_envelope::Envelope<myso_types::messages_checkpoint::CheckpointSummary, myso_types::crypto::AuthorityQuorumSignInfo<true>>"
     - checkpoint_contents:
         TYPENAME: CheckpointContents
     - transactions:
@@ -204,7 +204,7 @@ CheckpointSummary:
 CheckpointTransaction:
   STRUCT:
     - transaction:
-        TYPENAME: "sui_types::message_envelope::Envelope<sui_types::transaction::SenderSignedData, sui_types::crypto::EmptySignInfo>"
+        TYPENAME: "myso_types::message_envelope::Envelope<myso_types::transaction::SenderSignedData, myso_types::crypto::EmptySignInfo>"
     - effects:
         TYPENAME: TransactionEffects
     - events:
@@ -510,14 +510,14 @@ Event:
         TYPENAME: ObjectID
     - transaction_module: STR
     - sender:
-        TYPENAME: SuiAddress
+        TYPENAME: MySoAddress
     - type_:
         TYPENAME: StructTag
     - contents: BYTES
 ExecutionData:
   STRUCT:
     - transaction:
-        TYPENAME: "sui_types::message_envelope::Envelope<sui_types::transaction::SenderSignedData, sui_types::crypto::EmptySignInfo>"
+        TYPENAME: "myso_types::message_envelope::Envelope<myso_types::transaction::SenderSignedData, myso_types::crypto::EmptySignInfo>"
     - effects:
         TYPENAME: TransactionEffects
 ExecutionDigests:
@@ -558,7 +558,7 @@ ExecutionFailureStatus:
     9:
       PublishErrorNonZeroAddress: UNIT
     10:
-      SuiMoveVerificationError: UNIT
+      MySoMoveVerificationError: UNIT
     11:
       MovePrimitiveRuntimeError:
         NEWTYPE:
@@ -625,7 +625,7 @@ ExecutionFailureStatus:
     29:
       CertificateDenied: UNIT
     30:
-      SuiMoveVerificationTimedout: UNIT
+      MySoMoveVerificationTimedout: UNIT
     31:
       SharedObjectOperationNotAllowed: UNIT
     32:
@@ -639,7 +639,7 @@ ExecutionFailureStatus:
       AddressDeniedForCoin:
         STRUCT:
           - address:
-              TYPENAME: SuiAddress
+              TYPENAME: MySoAddress
           - coin_type: STR
     35:
       CoinTypeGlobalPause:
@@ -733,7 +733,7 @@ GasData:
             - TYPENAME: SequenceNumber
             - TYPENAME: ObjectDigest
     - owner:
-        TYPENAME: SuiAddress
+        TYPENAME: MySoAddress
     - price: U64
     - budget: U64
 GenericSignature:
@@ -819,13 +819,13 @@ MoveObjectType_:
     1:
       GasCoin: UNIT
     2:
-      StakedSui: UNIT
+      StakedMySo: UNIT
     3:
       Coin:
         NEWTYPE:
           TYPENAME: TypeTag
     4:
-      SuiBalanceAccumulatorField: UNIT
+      MySoBalanceAccumulatorField: UNIT
     5:
       BalanceAccumulatorField:
         NEWTYPE:
@@ -865,6 +865,11 @@ MultiSigPublicKey:
             - TYPENAME: PublicKey
             - U8
     - threshold: U16
+MySoAddress:
+  NEWTYPESTRUCT:
+    TUPLEARRAY:
+      CONTENT: U8
+      SIZE: 32
 Object:
   STRUCT:
     - data:
@@ -950,11 +955,11 @@ Owner:
     0:
       AddressOwner:
         NEWTYPE:
-          TYPENAME: SuiAddress
+          TYPENAME: MySoAddress
     1:
       ObjectOwner:
         NEWTYPE:
-          TYPENAME: SuiAddress
+          TYPENAME: MySoAddress
     2:
       Shared:
         STRUCT:
@@ -968,7 +973,7 @@ Owner:
           - start_version:
               TYPENAME: SequenceNumber
           - owner:
-              TYPENAME: SuiAddress
+              TYPENAME: MySoAddress
 PackageUpgradeError:
   ENUM:
     0:
@@ -1112,11 +1117,6 @@ StructTag:
     - type_args:
         SEQ:
           TYPENAME: TypeTag
-SuiAddress:
-  NEWTYPESTRUCT:
-    TUPLEARRAY:
-      CONTENT: U8
-      SIZE: 32
 TransactionData:
   ENUM:
     0:
@@ -1128,7 +1128,7 @@ TransactionDataV1:
     - kind:
         TYPENAME: TransactionKind
     - sender:
-        TYPENAME: SuiAddress
+        TYPENAME: MySoAddress
     - gas_data:
         TYPENAME: GasData
     - expiration:
@@ -1449,13 +1449,13 @@ ZkLoginAuthenticatorAsBytes:
 ZkLoginPublicIdentifier:
   NEWTYPESTRUCT:
     SEQ: U8
-"sui_types::message_envelope::Envelope<sui_types::messages_checkpoint::CheckpointSummary, sui_types::crypto::AuthorityQuorumSignInfo<true>>":
+"myso_types::message_envelope::Envelope<myso_types::messages_checkpoint::CheckpointSummary, myso_types::crypto::AuthorityQuorumSignInfo<true>>":
   STRUCT:
     - data:
         TYPENAME: CheckpointSummary
     - auth_signature:
         TYPENAME: AuthorityQuorumSignInfo
-"sui_types::message_envelope::Envelope<sui_types::transaction::SenderSignedData, sui_types::crypto::EmptySignInfo>":
+"myso_types::message_envelope::Envelope<myso_types::transaction::SenderSignedData, myso_types::crypto::EmptySignInfo>":
   STRUCT:
     - data:
         TYPENAME: SenderSignedData

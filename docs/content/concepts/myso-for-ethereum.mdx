@@ -1,15 +1,15 @@
 ---
-title: Ethereum -> Sui
-description: Build your first app on Sui if you have EVM experience
+title: Ethereum ->MySo
+description: Build your first app on MySo if you have EVM experience
 keywords: [ ethereum, solidity, EVM,  ]
 pagination_prev: null
 ---
 
-If you have worked with Ethereum Virtual Machine (EVM) before, the biggest difference when developing on Sui is the programming language. Sui uses **Move** and EVM uses **Solidity**.
+If you have worked with Ethereum Virtual Machine (EVM) before, the biggest difference when developing on MySo is the programming language. MySo uses **Move** and EVM uses **Solidity**.
 
 | Topic | Solidity | Move |
 |------|------|---------|
-| Account vs object-centric models | Custom ownership logic written within contracts typically using _mappings_. Only Ethereum coins are first class citizens with global APIs. All ownership APIs are contract specific. | Object ownership inherent to Sui, objects are first class citizens and encompass everything _owned_ on Sui. |
+| Account vs object-centric models | Custom ownership logic written within contracts typically using _mappings_. Only Ethereum coins are first class citizens with global APIs. All ownership APIs are contract specific. | Object ownership inherent toMySo, objects are first class citizens and encompass everything _owned_ on MySo. |
 | Data storage | Data is stored in the smart contract. | Data is stored in Move objects. |
 | Inheritance | Supports multiple inheritance, including polymorphism. | No interfaces, no polymorphism. However, Move has generics, like `Type<T>`. |
 | Dynamic dispatch | Allowed | Not allowed |
@@ -32,13 +32,13 @@ There are some nuances to object ownership, but key types include:
 - **Address-owned objects:** These objects are owned by a single address. You can transfer or receive these objects without interacting with a smart contract. For example, currency, NFTs, or tokens gating access to certain functions.
 - **Shared objects:** Publicly accessible objects that anyone can use. Mutating the data stored in these objects typically involves defining rules in the smart contract.
 
-For all types of ownership on Sui, see [Object Ownership](/guides/developer/objects/object-ownership.mdx).
+For all types of ownership onMySo, see [Object Ownership](/guides/developer/objects/object-ownership.mdx).
 
 ## Access control
 
 Identity or role-based access control is widely used through OpenZeppelin's `Ownable` and `AccessControl` contracts in Solidity.
 
-Because object ownership is inherent in Sui, access to contract functions are typically gated through [capability object](https://move-book.com/programmability/capability/).
+Because object ownership is inherent inMySo, access to contract functions are typically gated through [capability object](https://move-book.com/programmability/capability/).
 
 These objects are issued to users and thus grant them the rights to call certain functions. Function calls fail if a user does not own the object a function expects.
 
@@ -71,23 +71,23 @@ To mutate the data, the owner of the objects needs to call the contract function
 
 In Solidity, if you want to do something that chains together the results of multiple contract calls or across different contracts, you need to have a function in the smart contract that composes other function calls. Chaining function calls with atomicity guarantees is not available on the client side.
 
-In Move, PTBs solve this problem. PTBs give builders the ability to chain contract calls together with atomicity guarantees during runtime. A Sui PTB can have up to 1,024 different contract calls in it, or other actions. PTBs effectively provide a limited scripting language that is straightforward yet expressive, powerful, and secure.
+In Move, PTBs solve this problem. PTBs give builders the ability to chain contract calls together with atomicity guarantees during runtime. A MySo PTB can have up to 1,024 different contract calls in it, or other actions. PTBs effectively provide a limited scripting language that is straightforward yet expressive, powerful, and secure.
 
-Builders on Sui leverage PTBs to provide experiences that would otherwise be intractable. A good example is a DeFi aggregator that routes token swaps across multiple DeFi protocols with the best price. On Sui, the aggregator would use a single PTB with the guarantee that the transaction would execute at the displayed price or it would revert completely. The PTB is one of the most powerful Sui features. Experience shows builders who are most successful on Sui are the ones who learn to leverage this feature early and often, leaning into it rather than treating it just as a way to batch transactions.
+Builders on MySo leverage PTBs to provide experiences that would otherwise be intractable. A good example is a DeFi aggregator that routes token swaps across multiple DeFi protocols with the best price. OnMySo, the aggregator would use a single PTB with the guarantee that the transaction would execute at the displayed price or it would revert completely. The PTB is one of the most powerful MySo features. Experience shows builders who are most successful on MySo are the ones who learn to leverage this feature early and often, leaning into it rather than treating it just as a way to batch transactions.
 
 See [Programmable Transaction Blocks](/guides/developer/transactions/prog-txn-blocks.mdx) for details on PTBs.
 
 ## More comparison
 
-| Topic | Sui | Ethereum |
+| Topic | MySo | Ethereum |
 |-------|-----|----------|
 | Digital signature algorithm | `Ed25519`, `secp256k1`, `secp256r1` | `secp256k1` |
 | Consensus mechanism | DPoS | PoS |
 | VM and its languages | MoveVM, Move Lang | EVM, Solidity, Vyper |
 | Chain data structure | DAG | Blocks |
 | Common standards (coin, token, NFT, and so on) | Currency Standard, Closed-Loop Token | ERC-20, ERC-721, ERC-1155 |
-| Coin names, name of the smallest unit | SUI, MIST | ETH, Wei |
-| Available frameworks for development | Sui CLI | Foundry, Hardhat |
+| Coin names, name of the smallest unit | MYSO, MIST | ETH, Wei |
+| Available frameworks for development | MySo CLI | Foundry, Hardhat |
 | L1/L2 | No L2, relies on fast L1 | Many L2s |
 | Governance | On-chain governance | EIP + Node Operator consensus |
 | Bridges | Supported | Supported |
@@ -111,7 +111,7 @@ See [Programmable Transaction Blocks](/guides/developer/transactions/prog-txn-bl
 
 ## Related links
 
-<RelatedLink to="/concepts/sui-move-concepts" />
+<RelatedLink to="/concepts/myso-move-concepts" />
 <RelatedLink to="/guides/developer/objects/object-ownership" />
 <RelatedLink to="/guides/developer/transactions/prog-txn-blocks" />
 <RelatedLink href="https://move-book.com/programmability/dynamic-object-fields.html)" label="Dynamic Object Fields" desc="Learn more about Dynamic Object Fields in The Move Book." />

@@ -1,1 +1,1 @@
-DROP TABLE IF EXISTS sui_error_transactions;
+DROP TABLE IF EXISTS myso_error_transactions;

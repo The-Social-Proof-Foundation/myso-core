@@ -62,7 +62,7 @@ export default function Protocol(props) {
 
   return (
     <div
-      className={`max-xl:hidden sticky top-16 py-4 -mx-4 z-10 backdrop-blur-sm border-sui-ghost-white dark:border-sui-ghost-dark ${belowFold ? "border-solid border-x-0 border-t-0 border-b" : ""}`}
+      className={`max-xl:hidden sticky top-16 py-4 -mx-4 z-10 backdrop-blur-sm border-myso-ghost-white dark:border-myso-ghost-dark ${belowFold ? "border-solid border-x-0 border-t-0 border-b" : ""}`}
     >
       <style>
         {`
@@ -72,7 +72,7 @@ export default function Protocol(props) {
         `}
       </style>
       <label
-        className="m-2 text-xs bg-sui-white rounded-lg backdrop-blur-none"
+        className="m-2 text-xs bg-myso-white rounded-lg backdrop-blur-none"
         htmlFor="proto"
       >
         Proto files

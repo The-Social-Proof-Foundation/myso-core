@@ -49,7 +49,7 @@ This can be done in two steps:
 as prerequisites for MySo installation - for Linux, macOS and Windows these prerequisites and
 their installation instructions can be found
 [here](https://docs.myso.io/guides/developer/getting-started/myso-install#additional-prerequisites-by-operating-system)
-2. Invoke `cargo install --git https://github.com/MystenLabs/myso myso-move-lsp` to install the
+2. Invoke `cargo install --git https://github.com/the-social-proof-foundation/myso-core myso-move-lsp` to install the
 `move-analyzer` language server in your Cargo binary directory, which is typically located
 in the `~/.cargo/bin` (macOS/Linux) or `C:\Users\USER\.cargo\bin` (Windows) directory.
 3. Copy the move-analyzer binary to `~/.myso/bin` (macOS/Linux) or `C:\Users\USER\.myso\bin`

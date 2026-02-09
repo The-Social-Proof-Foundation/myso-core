@@ -1,15 +1,15 @@
 ---
 source: crates/move-compiler/tests/move_check_testsuite.rs
 info:
-  flavor: sui
+  flavor: myso
   edition: legacy
   lint: false
 ---
 error[E05001]: ability constraint not satisfied
-   ┌─ tests/sui_mode/id_leak/through_reference.move:11:10
+   ┌─ tests/myso_mode/id_leak/through_reference.move:11:10
    │
  9 │     public fun foo(f: Foo, ref: &mut UID) {
-   │                                      --- The type 'sui::object::UID' does not have the ability 'drop'
+   │                                      --- The type 'myso::object::UID' does not have the ability 'drop'
 10 │         let Foo { id } = f;
 11 │         *ref = id;
    │          ^^^ Invalid mutation. Mutation requires the 'drop' ability as the old value is destroyed

@@ -192,11 +192,11 @@ jobs:
 
           cat <<EOF >>VERIFICATION.txt
           MySo Binary verification steps
-          1. Download https://github.com/MystenLabs/myso/releases/download/${{ env.myso_tag }}/myso-${{ env.myso_tag }}-windows-x86_64.tgz
+          1. Download https://github.com/the-social-proof-foundation/myso-core/releases/download/${{ env.myso_tag }}/myso-${{ env.myso_tag }}-windows-x86_64.tgz
           2. Extract myso.exe
           3. Verify binary: checksum.exe -t sha256 myso.exe: ${myso_sha}
 
-          File 'LICENSE.txt' is obtained from: https://github.com/MystenLabs/myso/blob/main/LICENSE
+          File 'LICENSE.txt' is obtained from: https://github.com/the-social-proof-foundation/myso-core/blob/main/LICENSE
           EOF
 
           choco pack --version ${{ env.myso_version }} configuration=release

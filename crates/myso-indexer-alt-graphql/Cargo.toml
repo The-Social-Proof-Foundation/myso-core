@@ -1,7 +1,7 @@
 [package]
 name = "myso-indexer-alt-graphql"
 version.workspace = true
-authors = ["Mysten Labs <build@mystenlabs.com>"]
+authors = ["Brandon Shaw <brandon@mysocial.network>"]
 license = "Apache-2.0"
 publish = false
 edition = "2024"

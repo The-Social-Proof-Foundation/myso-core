@@ -171,7 +171,7 @@ async fn test_myso_operations_config() {
     let temp_dir = TempDir::new().unwrap();
     let path = temp_dir.path().join("myso.keystore");
     let path1 = path.clone();
-    // This is the hardcoded keystore in myso-operation: https://github.com/MystenLabs/myso-operations/blob/af04c9d3b61610dbb36401aff6bef29d06ef89f8/docker/config/generate/static/myso.keystore
+    // This is the hardcoded keystore in myso-operation: https://github.com/the-social-proof-foundation/myso-core-operations/blob/af04c9d3b61610dbb36401aff6bef29d06ef89f8/docker/config/generate/static/myso.keystore
     // If this test fails, address hardcoded in myso-operations is likely needed be updated.
     let kp = MySoKeyPair::decode_base64("ANRj4Rx5FZRehqwrctiLgZDPrY/3tI5+uJLCdaXPCj6C").unwrap();
     let contents = vec![kp.encode_base64()];
@@ -185,7 +185,7 @@ async fn test_myso_operations_config() {
         read.unwrap().addresses()[0]
     );
 
-    // This is the hardcoded keystore in myso-operation: https://github.com/MystenLabs/myso-operations/blob/af04c9d3b61610dbb36401aff6bef29d06ef89f8/docker/config/generate/static/myso-benchmark.keystore
+    // This is the hardcoded keystore in myso-operation: https://github.com/the-social-proof-foundation/myso-core-operations/blob/af04c9d3b61610dbb36401aff6bef29d06ef89f8/docker/config/generate/static/myso-benchmark.keystore
     // If this test fails, address hardcoded in myso-operations is likely needed be updated.
     let path2 = temp_dir.path().join("myso-benchmark.keystore");
     let path3 = path2.clone();

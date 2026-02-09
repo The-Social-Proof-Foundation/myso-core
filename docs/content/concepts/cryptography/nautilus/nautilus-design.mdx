@@ -23,7 +23,7 @@ Three SHA-384 hashes that describe the enclave's code and configuration.
 
 - **PCR2:** Runtime configuration (`run.sh`, traffic rules)
 
-If a single byte changes, then the PCR changes. This is how Sui confirms that the enclave is running the expected code.
+If a single byte changes, then the PCR changes. This is how MySo confirms that the enclave is running the expected code.
 
 ## What happens inside the enclave 
 
@@ -61,11 +61,11 @@ As an app developer, follow these steps to deploy an instance of Nautilus:
 
 1. Publish the server code to a public repository like GitHub to ensure transparency and verifiability.
 
-1. Register the platform configuration registers (PCRs) of the instance. PCRs are measurements of the trusted computing base. Use a Sui smart contract to register them.
+1. Register the platform configuration registers (PCRs) of the instance. PCRs are measurements of the trusted computing base. Use a MySo smart contract to register them.
 
 1. Deploy the server to an AWS Nitro Enclave.
 
-1. Register the deployed enclave using a Sui smart contract and attestation document. Include the ephemeral public key of the enclave for signing responses.
+1. Register the deployed enclave using a MySo smart contract and attestation document. Include the ephemeral public key of the enclave for signing responses.
 
 :::info
 

@@ -48,22 +48,22 @@ async fn build_system_packages() {
     let packages_path = indir.path();
 
     // Fix Move.toml dependency paths for nested package structure
-    // myso-framework/sui-framework/Move.toml references ../move-stdlib, but needs ../../move-stdlib
-    let framework_move_toml = packages_path.join("myso-framework").join("sui-framework").join("Move.toml");
+    // myso-framework/myso-framework/Move.toml references ../move-stdlib, but needs ../../move-stdlib
+    let framework_move_toml = packages_path.join("myso-framework").join("myso-framework").join("Move.toml");
     if framework_move_toml.exists() {
         let content = fs::read_to_string(&framework_move_toml).unwrap();
         let fixed = content.replace("../move-stdlib", "../../move-stdlib");
         fs::write(&framework_move_toml, fixed).unwrap();
     }
     
-    // myso-system/sui-system/Move.toml references ../move-stdlib and ../myso-framework
-    // From myso-system/sui-system, need ../../move-stdlib and ../../myso-framework/sui-framework
-    let system_move_toml = packages_path.join("myso-system").join("sui-system").join("Move.toml");
+    // myso-system/myso-system/Move.toml references ../move-stdlib and ../myso-framework
+    // From myso-system/myso-system, need ../../move-stdlib and ../../myso-framework/myso-framework
+    let system_move_toml = packages_path.join("myso-system").join("myso-system").join("Move.toml");
     if system_move_toml.exists() {
         let content = fs::read_to_string(&system_move_toml).unwrap();
         let fixed = content
             .replace("../move-stdlib", "../../move-stdlib")
-            .replace("../myso-framework", "../../myso-framework/sui-framework");
+            .replace("../myso-framework", "../../myso-framework/myso-framework");
         fs::write(&system_move_toml, fixed).unwrap();
     }
     
@@ -74,8 +74,8 @@ async fn build_system_packages() {
         if move_toml.exists() {
             let content = fs::read_to_string(&move_toml).unwrap();
             let fixed = content
-                .replace("../myso-framework", "../myso-framework/sui-framework")
-                .replace("../myso-system", "../myso-system/sui-system");
+                .replace("../myso-framework", "../myso-framework/myso-framework")
+                .replace("../myso-system", "../myso-system/myso-system");
             if fixed != content {
                 fs::write(&move_toml, fixed).unwrap();
             }
@@ -84,8 +84,8 @@ async fn build_system_packages() {
 
     let bridge_path = packages_path.join("bridge");
     let deepbook_path = packages_path.join("deepbook");
-    let myso_system_path = packages_path.join("myso-system").join("sui-system");
-    let myso_framework_path = packages_path.join("myso-framework").join("sui-framework");
+    let myso_system_path = packages_path.join("myso-system").join("myso-system");
+    let myso_framework_path = packages_path.join("myso-framework").join("myso-framework");
     let move_stdlib_path = packages_path.join("move-stdlib");
 
     build_packages(

@@ -10,7 +10,7 @@ import "../contracts/BridgeCommittee.sol";
 import "../contracts/BridgeVault.sol";
 import "../contracts/BridgeConfig.sol";
 import "../contracts/BridgeLimiter.sol";
-import "../contracts/SuiBridge.sol";
+import "../contracts/MySoBridge.sol";
 import "../test/mocks/MockTokens.sol";
 
 contract DeployBridge is Script {
@@ -30,7 +30,7 @@ contract DeployBridge is Script {
         config.tokenPrices = abi.decode(vm.parseJson(json, ".tokenPrices"), (uint256[]));
         config.supportedTokens = abi.decode(vm.parseJson(json, ".supportedTokens"), (address[]));
         config.tokenIds = abi.decode(vm.parseJson(json, ".tokenIds"), (uint256[]));
-        config.suiDecimals = abi.decode(vm.parseJson(json, ".suiDecimals"), (uint256[]));
+        config.mysoDecimals = abi.decode(vm.parseJson(json, ".mysoDecimals"), (uint256[]));
         config.weth = abi.decode(vm.parseJson(json, ".weth"), (address));
 
         return config;
@@ -82,12 +82,12 @@ contract DeployBridge is Script {
             deployConfig.tokenIds[3] = 3;
             deployConfig.tokenIds[4] = 4;
 
-            deployConfig.suiDecimals = new uint256[](5);
-            deployConfig.suiDecimals[0] = 9;
-            deployConfig.suiDecimals[1] = 8;
-            deployConfig.suiDecimals[2] = 8;
-            deployConfig.suiDecimals[3] = 6;
-            deployConfig.suiDecimals[4] = 6;
+            deployConfig.mysoDecimals = new uint256[](5);
+            deployConfig.mysoDecimals[0] = 9;
+            deployConfig.mysoDecimals[1] = 8;
+            deployConfig.mysoDecimals[2] = 8;
+            deployConfig.mysoDecimals[3] = 6;
+            deployConfig.mysoDecimals[4] = 6;
         }
 
         // convert supported chains from uint256 to uint8
@@ -105,8 +105,8 @@ contract DeployBridge is Script {
             "supportedTokens.length != tokenIds.length"
         );
         require(
-            deployConfig.supportedTokens.length == deployConfig.suiDecimals.length,
-            "supportedTokens.length != suiDecimals.length"
+            deployConfig.supportedTokens.length == deployConfig.mysoDecimals.length,
+            "supportedTokens.length != mysoDecimals.length"
         );
 
         // deploy Bridge Committee ===================================================================
@@ -142,10 +142,10 @@ contract DeployBridge is Script {
             tokenPrices[i] = uint64(deployConfig.tokenPrices[i]);
         }
 
-        // convert Sui Decimals from uint256 to uint8
-        uint8[] memory suiDecimals = new uint8[](deployConfig.suiDecimals.length);
-        for (uint256 i; i < deployConfig.suiDecimals.length; i++) {
-            suiDecimals[i] = uint8(deployConfig.suiDecimals[i]);
+        // convert MySo Decimals from uint256 to uint8
+        uint8[] memory mysoDecimals = new uint8[](deployConfig.mysoDecimals.length);
+        for (uint256 i; i < deployConfig.mysoDecimals.length; i++) {
+            mysoDecimals[i] = uint8(deployConfig.mysoDecimals[i]);
         }
 
         // convert Token Id from uint256 to uint8
@@ -164,7 +164,7 @@ contract DeployBridge is Script {
                     deployConfig.supportedTokens,
                     tokenPrices,
                     tokenIds,
-                    suiDecimals,
+                    mysoDecimals,
                     supportedChainIds
                 )
             ),
@@ -201,23 +201,23 @@ contract DeployBridge is Script {
         uint8[] memory _destinationChains = new uint8[](1);
         _destinationChains[0] = 1;
 
-        // deploy Sui Bridge ========================================================================
+        // deploy MySo Bridge ========================================================================
 
-        address suiBridge = Upgrades.deployUUPSProxy(
-            "SuiBridge.sol",
-            abi.encodeCall(SuiBridge.initialize, (bridgeCommittee, address(vault), limiter)),
+        address mysoBridge = Upgrades.deployUUPSProxy(
+            "MySoBridge.sol",
+            abi.encodeCall(MySoBridge.initialize, (bridgeCommittee, address(vault), limiter)),
             opts
         );
 
         // transfer vault ownership to bridge
-        vault.transferOwnership(suiBridge);
+        vault.transferOwnership(mysoBridge);
         // transfer limiter ownership to bridge
         BridgeLimiter instance = BridgeLimiter(limiter);
-        instance.transferOwnership(suiBridge);
+        instance.transferOwnership(mysoBridge);
 
         // print deployed addresses for post deployment setup
         console.log("[Deployed] BridgeConfig:", bridgeConfig);
-        console.log("[Deployed] SuiBridge:", suiBridge);
+        console.log("[Deployed] MySoBridge:", mysoBridge);
         console.log("[Deployed] BridgeLimiter:", limiter);
         console.log("[Deployed] BridgeCommittee:", bridgeCommittee);
         console.log("[Deployed] BridgeVault:", address(vault));
@@ -245,6 +245,6 @@ struct DeployConfig {
     address[] supportedTokens;
     uint256[] tokenPrices;
     uint256[] tokenIds;
-    uint256[] suiDecimals;
+    uint256[] mysoDecimals;
     address weth;
 }

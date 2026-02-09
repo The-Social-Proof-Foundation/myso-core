@@ -1,10 +1,10 @@
 ---
 title: Programmable Transaction Blocks (PTBs)
-description: Programmable transaction blocks are a group of commands that complete a transaction on Sui.
+description: Programmable transaction blocks are a group of commands that complete a transaction on MySo.
 keywords: [ programmable transaction blocks, transaction blocks, program transaction blocks, PTB, PTBs, what are PTBs, what is PTB, transaction group, programmable group of transactions, program transaction block, block of transactions, group of transactions ]
 ---
 
-Transactions on Sui are composed of groups of commands that execute on inputs to define the result of the transaction. Referred to as **programmable transaction blocks (PTBs)**, these groups of commands define all user transactions on Sui. PTBs allow a user to call multiple Move functions, manage their objects, and manage their coins in a single transaction without publishing a new Move package. Designed with automation and transaction builders in mind, PTBs are a lightweight and flexible way of generating transactions. 
+Transactions on MySo are composed of groups of commands that execute on inputs to define the result of the transaction. Referred to as **programmable transaction blocks (PTBs)**, these groups of commands define all user transactions on MySo. PTBs allow a user to call multiple Move functions, manage their objects, and manage their coins in a single transaction without publishing a new Move package. Designed with automation and transaction builders in mind, PTBs are a lightweight and flexible way of generating transactions. 
 
 However, more intricate programming patterns, such as loops, are not supported. In such cases, you must publish a new Move package.
 
@@ -41,7 +41,7 @@ Looking closer at the two main components:
 
   - Example: `tx.transferObjects([tx.object(thing1), tx.object(thing2)], tx.pure.address(myAddress))`
 
-- `tx.moveCall({ target, arguments, typeArguments })`: Executes a Move call. Returns whatever the Sui Move call returns.
+- `tx.moveCall({ target, arguments, typeArguments })`: Executes a Move call. Returns whatever the MySo Move call returns.
 
   - Example: `tx.moveCall({ target: '0x2::devnet_nft::mint', arguments: [tx.pure.string(name), tx.pure.string(description), tx.pure.string(image)] })`
 - `tx.makeMoveVec({ type, elements })`: Constructs a vector of objects that can be passed into a moveCall. This is required as there's no other way to define a vector as an input.
@@ -70,7 +70,7 @@ The `Argument` enum has 4 variants:
 
 - **`Input(u16)`:** References an input by its index. For example, with inputs `[Object1, Object2, Pure1, Object3]`, use `Input(0)` for `Object1` and `Input(2)` for `Pure1`.
 
-- **`GasCoin`:** References the SUI coin used to pay for gas. This is separate from other inputs because it has special restrictions. It can only be taken by value through the `TransferObjects` command. To use a portion of the gas coin elsewhere, first split off a coin with [`SplitCoins`](/references/ptb-commands.mdx).
+- **`GasCoin`:** References the MYSO coin used to pay for gas. This is separate from other inputs because it has special restrictions. It can only be taken by value through the `TransferObjects` command. To use a portion of the gas coin elsewhere, first split off a coin with [`SplitCoins`](/references/ptb-commands.mdx).
 
 - **`NestedResult(u16, u16)`:** References a result from a previous command. The first index specifies the command, the second specifies which result from that command. For example, if command 1 returns `[Value1, Value2]`, use `NestedResult(1, 0)` for `Value1` and `NestedResult(1, 1)` for `Value2`.
 
@@ -84,7 +84,7 @@ For the execution of PTBs, the input vector is populated by the input objects or
 
 At the beginning of execution, the PTB runtime takes the input objects and loads them into the input array. The objects are already verified by the network, checking rules like existence and valid ownership. The pure value bytes are also loaded into the array but not validated until usage.
 
-The most important thing to note at this stage is the effects on the gas coin. At the beginning of execution, the maximum gas budget (in terms of SUI) is withdrawn from the gas coin. Any unused gas is returned to the gas coin at the end of execution, even if the coin has changed owners.
+The most important thing to note at this stage is the effects on the gas coin. At the beginning of execution, the maximum gas budget (in terms of MYSO) is withdrawn from the gas coin. Any unused gas is returned to the gas coin at the end of execution, even if the coin has changed owners.
 
 ### Object consumption 
 
@@ -110,7 +110,7 @@ Each argument can be used by reference or by value. The usage is based on the ty
 
 - If the signature expects an `&T`, the runtime checks the argument has type `T` and it is then immutably borrowed.
 
-- If the signature expects a `T`, the runtime verifies the argument has type `T`, then copies the value if `T: copy` or moves it otherwise. Objects are always moved because `sui::object::UID` does not have the `copy` ability.
+- If the signature expects a `T`, the runtime verifies the argument has type `T`, then copies the value if `T: copy` or moves it otherwise. Objects are always moved because `myso::object::UID` does not have the `copy` ability.
 
 The transaction fails if an argument is used in any form after being moved. There is no way to restore an argument to its position (its input or result index) after it is moved.
 
@@ -130,7 +130,7 @@ Borrowing follows additional rules to ensure safe reference usage:
 
 #### Special object handling
 
-Object inputs have the type `T` of the underlying object. The exception is `ObjectArg::Receiving` inputs, which have type `sui::transfer::Receiving<T>`. This wrapper indicates the object is owned by another object, not the sender. Call `sui::transfer::receive` with the parent object to unwrap it and prove ownership.
+Object inputs have the type `T` of the underlying object. The exception is `ObjectArg::Receiving` inputs, which have type `myso::transfer::Receiving<T>`. This wrapper indicates the object is owned by another object, not the sender. Call `myso::transfer::receive` with the parent object to unwrap it and prove ownership.
 
 Shared objects have restrictions on by value usage to ensure they remain shared or are deleted by the end of the transaction:
 
@@ -168,9 +168,9 @@ At the end of execution, the remaining values are checked and effects for the tr
 
 **For gas:**
 
-Any remaining SUI deducted from the gas coin at the beginning of execution is returned to the coin, even if the owner has changed. The maximum possible gas is deducted at the beginning of execution, and unused gas is returned at the end (all in SUI). Because the gas coin can only be taken by value with `TransferObjects`, it has not been wrapped or deleted.
+Any remaining MYSO deducted from the gas coin at the beginning of execution is returned to the coin, even if the owner has changed. The maximum possible gas is deducted at the beginning of execution, and unused gas is returned at the end (all in MYSO). Because the gas coin can only be taken by value with `TransferObjects`, it has not been wrapped or deleted.
 
-The total effects (created, mutated, and deleted objects) are then passed out of the execution layer and applied by the Sui network.
+The total effects (created, mutated, and deleted objects) are then passed out of the execution layer and applied by the MySo network.
 
 ## Execution example 
 
@@ -189,13 +189,13 @@ Suppose you want to buy 2 items from a marketplace costing `100 MIST`. You keep 
     SplitCoins(GasCoin, [Input(2)]),
     MoveCall("some_package", "some_marketplace", "buy_two", [], [Input(1), NestedResult(0, 0)]),
     TransferObjects([GasCoin, NestedResult(1, 0)], Input(0)),
-    MoveCall("sui", "tx_context", "sender", [], []),
+    MoveCall("myso", "tx_context", "sender", [], []),
     TransferObjects([NestedResult(1, 1)], NestedResult(3, 0)),
   ]
 }
 ```
 
-The inputs include the friend's address, the marketplace object, and the coin split value. The commands split off the coin, call the marketplace function, send the gas coin and one object, grab your address (through `sui::tx_context::sender`), and send the remaining object to yourself.
+The inputs include the friend's address, the marketplace object, and the coin split value. The commands split off the coin, call the marketplace function, send the gas coin and one object, grab your address (through `myso::tx_context::sender`), and send the remaining object to yourself.
 
 **Command 0: `SplitCoins(GasCoin, [Input(2)])`**
 
@@ -204,11 +204,11 @@ Accesses the gas coin by mutable reference and loads `Input(2)` as `100u64` (cop
 | State | Value |
 | :---- | :---- |
 | Gas coin balance | `499,900 MIST` |
-| Result | `[Coin<SUI> { id: new_coin, value: 100 }]` |
+| Result | `[Coin<MYSO> { id: new_coin, value: 100 }]` |
 
 **Command 1: `MoveCall("some_package", "some_marketplace", "buy_two", ...)`**
 
-Calls `buy_two(marketplace: &mut Marketplace, coin: Coin<SUI>, ctx: &mut TxContext): (Item, Item)`. Uses `Input(1)` by mutable reference (marketplace) and `NestedResult(0, 0)` by value (coin is moved and consumed).
+Calls `buy_two(marketplace: &mut Marketplace, coin: Coin<MYSO>, ctx: &mut TxContext): (Item, Item)`. Uses `Input(1)` by mutable reference (marketplace) and `NestedResult(0, 0)` by value (coin is moved and consumed).
 
 | State | Value |
 | :---- | :---- |
@@ -225,7 +225,7 @@ Transfers the gas coin and first item to `0x808`. Both objects are taken by valu
 | `Results[1][0]` | moved |
 | Result | `[]` |
 
-**Command 3: `MoveCall("sui", "tx_context", "sender", [], [])`**
+**Command 3: `MoveCall("myso", "tx_context", "sender", [], [])`**
 
 Calls `sender(ctx: &TxContext): address`. Returns the sender's address.
 
@@ -245,7 +245,7 @@ Transfers the second item to the sender. The item is moved by value; the address
 #### Initial state
 
 ```rust
-Gas Coin: Coin<SUI> { id: gas_coin, balance: 1_000_000u64 }
+Gas Coin: Coin<MYSO> { id: gas_coin, balance: 1_000_000u64 }
 Inputs: [Pure(@0x808), Marketplace { id: market_id }, Pure(100u64)]
 Results: []
 ```
@@ -253,7 +253,7 @@ Results: []
 After maximum gas budget of `500_000` is deducted:
 
 ```rust
-Gas Coin: Coin<SUI> { id: gas_coin, balance: 500_000u64 }
+Gas Coin: Coin<MYSO> { id: gas_coin, balance: 500_000u64 }
 ```
 
 #### Final state

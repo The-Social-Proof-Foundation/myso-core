@@ -1,5 +1,5 @@
 ---
-source: crates/sui/src/client_ptb/parser.rs
+source: crates/myso/src/client_ptb/parser.rs
 expression: parsed
 ---
 [
@@ -802,7 +802,7 @@ expression: parsed
                                         end: 27,
                                     },
                                     value: Identifier(
-                                        "sui_system",
+                                        "myso_system",
                                     ),
                                 },
                                 function_name: Spanned {

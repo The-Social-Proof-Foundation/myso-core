@@ -107,7 +107,7 @@ title: Module `myso_system::validator`
 <b>use</b> <a href="../myso/funds_accumulator.md#myso_funds_accumulator">myso::funds_accumulator</a>;
 <b>use</b> <a href="../myso/hash.md#myso_hash">myso::hash</a>;
 <b>use</b> <a href="../myso/hex.md#myso_hex">myso::hex</a>;
-<b>use</b> <a href="../myso/sui.md#myso_myso">myso::myso</a>;
+<b>use</b> <a href="../myso/myso.md#myso_myso">myso::myso</a>;
 <b>use</b> <a href="../myso/object.md#myso_object">myso::object</a>;
 <b>use</b> <a href="../myso/party.md#myso_party">myso::party</a>;
 <b>use</b> <a href="../myso/protocol_config.md#myso_protocol_config">myso::protocol_config</a>;
@@ -956,7 +956,7 @@ Process pending stake and pending withdraws, and update the gas price.
 Request to add stake to the validator's staking pool, processed at the end of the epoch.
 
 
-<pre><code><b>public</b>(package) <b>fun</b> <a href="../myso_system/validator.md#myso_system_validator_request_add_stake">request_add_stake</a>(self: &<b>mut</b> <a href="../myso_system/validator.md#myso_system_validator_Validator">myso_system::validator::Validator</a>, stake: <a href="../myso/balance.md#myso_balance_Balance">myso::balance::Balance</a>&lt;<a href="../myso/sui.md#myso_myso_MYSO">myso::myso::MYSO</a>&gt;, staker_address: <b>address</b>, ctx: &<b>mut</b> <a href="../myso/tx_context.md#myso_tx_context_TxContext">myso::tx_context::TxContext</a>): <a href="../myso_system/staking_pool.md#myso_system_staking_pool_StakedMySo">myso_system::staking_pool::StakedMySo</a>
+<pre><code><b>public</b>(package) <b>fun</b> <a href="../myso_system/validator.md#myso_system_validator_request_add_stake">request_add_stake</a>(self: &<b>mut</b> <a href="../myso_system/validator.md#myso_system_validator_Validator">myso_system::validator::Validator</a>, stake: <a href="../myso/balance.md#myso_balance_Balance">myso::balance::Balance</a>&lt;<a href="../myso/myso.md#myso_myso_MYSO">myso::myso::MYSO</a>&gt;, staker_address: <b>address</b>, ctx: &<b>mut</b> <a href="../myso/tx_context.md#myso_tx_context_TxContext">myso::tx_context::TxContext</a>): <a href="../myso_system/staking_pool.md#myso_system_staking_pool_StakedMySo">myso_system::staking_pool::StakedMySo</a>
 </code></pre>
 
 
@@ -1038,7 +1038,7 @@ Request to add stake to the validator's staking pool, processed at the end of th
 
 
 
-<pre><code><b>public</b>(package) <b>fun</b> <a href="../myso_system/validator.md#myso_system_validator_redeem_fungible_staked_myso">redeem_fungible_staked_myso</a>(self: &<b>mut</b> <a href="../myso_system/validator.md#myso_system_validator_Validator">myso_system::validator::Validator</a>, fungible_staked_myso: <a href="../myso_system/staking_pool.md#myso_system_staking_pool_FungibleStakedMySo">myso_system::staking_pool::FungibleStakedMySo</a>, ctx: &<a href="../myso/tx_context.md#myso_tx_context_TxContext">myso::tx_context::TxContext</a>): <a href="../myso/balance.md#myso_balance_Balance">myso::balance::Balance</a>&lt;<a href="../myso/sui.md#myso_myso_MYSO">myso::myso::MYSO</a>&gt;
+<pre><code><b>public</b>(package) <b>fun</b> <a href="../myso_system/validator.md#myso_system_validator_redeem_fungible_staked_myso">redeem_fungible_staked_myso</a>(self: &<b>mut</b> <a href="../myso_system/validator.md#myso_system_validator_Validator">myso_system::validator::Validator</a>, fungible_staked_myso: <a href="../myso_system/staking_pool.md#myso_system_staking_pool_FungibleStakedMySo">myso_system::staking_pool::FungibleStakedMySo</a>, ctx: &<a href="../myso/tx_context.md#myso_tx_context_TxContext">myso::tx_context::TxContext</a>): <a href="../myso/balance.md#myso_balance_Balance">myso::balance::Balance</a>&lt;<a href="../myso/myso.md#myso_myso_MYSO">myso::myso::MYSO</a>&gt;
 </code></pre>
 
 
@@ -1075,7 +1075,7 @@ Request to add stake to the validator's staking pool, processed at the end of th
 Request to add stake to the validator's staking pool at genesis
 
 
-<pre><code><b>public</b>(package) <b>fun</b> <a href="../myso_system/validator.md#myso_system_validator_request_add_stake_at_genesis">request_add_stake_at_genesis</a>(self: &<b>mut</b> <a href="../myso_system/validator.md#myso_system_validator_Validator">myso_system::validator::Validator</a>, stake: <a href="../myso/balance.md#myso_balance_Balance">myso::balance::Balance</a>&lt;<a href="../myso/sui.md#myso_myso_MYSO">myso::myso::MYSO</a>&gt;, staker_address: <b>address</b>, ctx: &<b>mut</b> <a href="../myso/tx_context.md#myso_tx_context_TxContext">myso::tx_context::TxContext</a>)
+<pre><code><b>public</b>(package) <b>fun</b> <a href="../myso_system/validator.md#myso_system_validator_request_add_stake_at_genesis">request_add_stake_at_genesis</a>(self: &<b>mut</b> <a href="../myso_system/validator.md#myso_system_validator_Validator">myso_system::validator::Validator</a>, stake: <a href="../myso/balance.md#myso_balance_Balance">myso::balance::Balance</a>&lt;<a href="../myso/myso.md#myso_myso_MYSO">myso::myso::MYSO</a>&gt;, staker_address: <b>address</b>, ctx: &<b>mut</b> <a href="../myso/tx_context.md#myso_tx_context_TxContext">myso::tx_context::TxContext</a>)
 </code></pre>
 
 
@@ -1113,7 +1113,7 @@ Request to add stake to the validator's staking pool at genesis
 Request to withdraw stake from the validator's staking pool, processed at the end of the epoch.
 
 
-<pre><code><b>public</b>(package) <b>fun</b> <a href="../myso_system/validator.md#myso_system_validator_request_withdraw_stake">request_withdraw_stake</a>(self: &<b>mut</b> <a href="../myso_system/validator.md#myso_system_validator_Validator">myso_system::validator::Validator</a>, staked_myso: <a href="../myso_system/staking_pool.md#myso_system_staking_pool_StakedMySo">myso_system::staking_pool::StakedMySo</a>, ctx: &<a href="../myso/tx_context.md#myso_tx_context_TxContext">myso::tx_context::TxContext</a>): <a href="../myso/balance.md#myso_balance_Balance">myso::balance::Balance</a>&lt;<a href="../myso/sui.md#myso_myso_MYSO">myso::myso::MYSO</a>&gt;
+<pre><code><b>public</b>(package) <b>fun</b> <a href="../myso_system/validator.md#myso_system_validator_request_withdraw_stake">request_withdraw_stake</a>(self: &<b>mut</b> <a href="../myso_system/validator.md#myso_system_validator_Validator">myso_system::validator::Validator</a>, staked_myso: <a href="../myso_system/staking_pool.md#myso_system_staking_pool_StakedMySo">myso_system::staking_pool::StakedMySo</a>, ctx: &<a href="../myso/tx_context.md#myso_tx_context_TxContext">myso::tx_context::TxContext</a>): <a href="../myso/balance.md#myso_balance_Balance">myso::balance::Balance</a>&lt;<a href="../myso/myso.md#myso_myso_MYSO">myso::myso::MYSO</a>&gt;
 </code></pre>
 
 
@@ -1277,7 +1277,7 @@ Set new commission rate for the candidate validator.
 Deposit stakes rewards into the validator's staking pool, called at the end of the epoch.
 
 
-<pre><code><b>public</b>(package) <b>fun</b> <a href="../myso_system/validator.md#myso_system_validator_deposit_stake_rewards">deposit_stake_rewards</a>(self: &<b>mut</b> <a href="../myso_system/validator.md#myso_system_validator_Validator">myso_system::validator::Validator</a>, reward: <a href="../myso/balance.md#myso_balance_Balance">myso::balance::Balance</a>&lt;<a href="../myso/sui.md#myso_myso_MYSO">myso::myso::MYSO</a>&gt;)
+<pre><code><b>public</b>(package) <b>fun</b> <a href="../myso_system/validator.md#myso_system_validator_deposit_stake_rewards">deposit_stake_rewards</a>(self: &<b>mut</b> <a href="../myso_system/validator.md#myso_system_validator_Validator">myso_system::validator::Validator</a>, reward: <a href="../myso/balance.md#myso_balance_Balance">myso::balance::Balance</a>&lt;<a href="../myso/myso.md#myso_myso_MYSO">myso::myso::MYSO</a>&gt;)
 </code></pre>
 
 

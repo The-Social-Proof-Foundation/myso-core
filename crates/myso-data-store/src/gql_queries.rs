@@ -20,8 +20,6 @@ mod schema {
     use chrono::{DateTime as ChronoDateTime, Utc};
     cynic::impl_scalar!(u64, UInt53);
     cynic::impl_scalar!(ChronoDateTime<Utc>, DateTime);
-    // Type alias for MySoAddress -> SuiAddress compatibility
-    pub type MySoAddress = SuiAddress;
 }
 
 pub(crate) mod epoch_query {
@@ -209,7 +207,7 @@ pub(crate) mod object_query {
     use crate::{ObjectKey as GqlObjectKey, VersionQuery};
 
     #[derive(cynic::Scalar, Debug, Clone)]
-    #[cynic(graphql_type = "SuiAddress")]
+    #[cynic(graphql_type = "MySoAddress")]
     pub(crate) struct MySoAddress(pub String);
 
     #[derive(cynic::Scalar, Debug, Clone)]

@@ -1,10 +1,10 @@
 ---
 title: Using Events
 description: Use events to notify on-chain assets of activity your smart contracts initiate and query events from other packages to trigger logic based on emitted events.
-keywords: [ using events, notify events, notify assets, notify on-chain assets, activity events, events for activities, move events, events in move, query events, sui RPC, graphql, move, filter events, rust, typescript ]
+keywords: [ using events, notify events, notify assets, notify on-chain assets, activity events, events for activities, move events, events in move, query events, myso RPC, graphql, move, filter events, rust, typescript ]
 ---
 
-Move code can interact with objects stored on Sui. Some applications might want to track an object's activity and trigger certain workflows within the application based on that activity, such as application updates based on how many times an NFT is minted or the amount of SUI a smart contract generates. 
+Move code can interact with objects stored on MySo. Some applications might want to track an object's activity and trigger certain workflows within the application based on that activity, such as application updates based on how many times an NFT is minted or the amount of MYSO a smart contract generates. 
 
 Move supports activity monitoring through emitting events. Emitting events consists of 3 steps:
 
@@ -18,13 +18,13 @@ Move supports activity monitoring through emitting events. Emitting events consi
 
 Event structs have the `copy` and `drop` abilities. In the event, define the fields you need to capture relevant data about the action.
 
-<ImportContent source="crates/sui-indexer-alt-e2e-tests/packages/emit_event/sources/emit_event.move" mode="code" struct="TestEvent" noComments />
+<ImportContent source="crates/myso-indexer-alt-e2e-tests/packages/emit_event/sources/emit_event.move" mode="code" struct="TestEvent" noComments />
 
 ## Using the `emit` function
 
-Use the `sui::event::emit` function to emit an event when the action you want to monitor occurs:
+Use the `myso::event::emit` function to emit an event when the action you want to monitor occurs:
 
-<ImportContent source="crates/sui-indexer-alt-e2e-tests/packages/emit_event/sources/emit_event.move" mode="code" struct="TestEvent" noComments />
+<ImportContent source="crates/myso-indexer-alt-e2e-tests/packages/emit_event/sources/emit_event.move" mode="code" struct="TestEvent" noComments />
 
 ## Processing events
 
@@ -32,7 +32,7 @@ After your Move code emits events, you need to process them. There are 2 approac
 
 - **Custom indexer**: Stream checkpoints and filter events continuously for real-time processing. 
 
-- **Polling**: Query the Sui network periodically for emitted events. This approach requires a database to store retrieved data.
+- **Polling**: Query the MySo network periodically for emitted events. This approach requires a database to store retrieved data.
 
 ### Event object structure
 
@@ -44,7 +44,7 @@ When you process events, each event object contains the following attributes:
 
 - `transactionModule`: The module that performs the transaction.
 
-- `sender`: The Sui network address that triggered the event.
+- `sender`: The MySo network address that triggered the event.
 
 - `type`: The type of event being emitted.
 
@@ -62,10 +62,10 @@ When you process events, each event object contains the following attributes:
 
 ### Querying events with RPC
 
-The Sui RPC provides a [`queryEvents`](/sui-api-ref#suix_queryEvents) method to query on-chain packages and return available events. As an example, the following `curl` command queries the DeepBookV3 package on Mainnet for a specific type of event:
+The MySo RPC provides a [`queryEvents`](/myso-api-ref#suix_queryEvents) method to query on-chain packages and return available events. As an example, the following `curl` command queries the DeepBookV3 package on Mainnet for a specific type of event:
 
 ```sh
-$ curl -X POST https://fullnode.mainnet.sui.io:443 \
+$ curl -X POST https://fullnode.mainnet.mysocial.network:443 \
 -H "Content-Type: application/json" \
 -d '{
   "jsonrpc": "2.0",
@@ -123,7 +123,7 @@ Successful response
 				"packageId": "0x158f2027f60c89bb91526d9bf08831d27f5a0fcb0f74e6698b9f0e1fb2be5d05",
 				"transactionModule": "deepbook_utils",
 				"sender": "0x8b35e67a519fffa11a9c74f169228ff1aa085f3a3d57710af08baab8c02211b9",
-				"type": "0xdee9::clob_v2::OrderFilled<0x2::sui::SUI, 0x5d4b302506645c37ff133b98c4b50a5ae14841659738d6d733d59d0d217a93bf::coin::COIN>",
+				"type": "0xdee9::clob_v2::OrderFilled<0x2::myso::MYSO, 0x5d4b302506645c37ff133b98c4b50a5ae14841659738d6d733d59d0d217a93bf::coin::COIN>",
 				"parsedJson": {
 					"base_asset_quantity_filled": "0",
 					"base_asset_quantity_remaining": "1532800000000",
@@ -150,7 +150,7 @@ Successful response
 				"packageId": "0x158f2027f60c89bb91526d9bf08831d27f5a0fcb0f74e6698b9f0e1fb2be5d05",
 				"transactionModule": "deepbook_utils",
 				"sender": "0x8b35e67a519fffa11a9c74f169228ff1aa085f3a3d57710af08baab8c02211b9",
-				"type": "0xdee9::clob_v2::OrderFilled<0x2::sui::SUI, 0x5d4b302506645c37ff133b98c4b50a5ae14841659738d6d733d59d0d217a93bf::coin::COIN>",
+				"type": "0xdee9::clob_v2::OrderFilled<0x2::myso::MYSO, 0x5d4b302506645c37ff133b98c4b50a5ae14841659738d6d733d59d0d217a93bf::coin::COIN>",
 				"parsedJson": {
 					"base_asset_quantity_filled": "700000000",
 					"base_asset_quantity_remaining": "0",
@@ -185,10 +185,10 @@ Successful response
 You can use the `getTransaction` method with `include: { events: true }` to retrieve events for a specific transaction:
 
 ```ts
-import { SuiGrpcClient } from '@mysten/sui/grpc';
+import { SuiGrpcClient } from '@socialproof/myso/grpc';
 
 const client = new SuiGrpcClient({
-  baseUrl: 'https://fullnode.mainnet.sui.io:443',
+  baseUrl: 'https://fullnode.mainnet.mysocial.network:443',
   network: 'mainnet',
 });
 
@@ -222,7 +222,7 @@ Event connection
 ```graphql
 {
   events(
-    filter: {type: "0x3164fcf73eb6b41ff3d2129346141bd68469964c2d95a5b1533e8d16e6ea6e13::Market::ChangePriceEvent<0x2::sui::SUI>"}
+    filter: {type: "0x3164fcf73eb6b41ff3d2129346141bd68469964c2d95a5b1533e8d16e6ea6e13::Market::ChangePriceEvent<0x2::myso::MYSO>"}
   ) {
     nodes {
       transactionModule {
@@ -251,20 +251,20 @@ Event connection
 
 ### Querying events in Rust
 
-The [Sui by Example](https://github.com/gdanezis/sui-by-example/blob/main/src/05_reading_events/bin/main.rs) repo on GitHub contains a code sample that demonstrates how to query events using the `query_events` function. The package that `PACKAGE_ID_CONST` points to exists on Mainnet, so you can test this code using Cargo. To do so, clone the `sui-by-example` repo locally and follow the [Example 05 directions](https://github.com/gdanezis/sui-by-example/tree/main/src/05_reading_events).
+The [MySo by Example](https://github.com/gdanezis/myso-by-example/blob/main/src/05_reading_events/bin/main.rs) repo on GitHub contains a code sample that demonstrates how to query events using the `query_events` function. The package that `PACKAGE_ID_CONST` points to exists on Mainnet, so you can test this code using Cargo. To do so, clone the `myso-by-example` repo locally and follow the [Example 05 directions](https://github.com/gdanezis/myso-by-example/tree/main/src/05_reading_events).
 
 ```rust
-use sui_sdk::{rpc_types::EventFilter, types::Identifier, SuiClientBuilder};
+use myso_sdk::{rpc_types::EventFilter, types::Identifier, SuiClientBuilder};
 
 const PACKAGE_ID_CONST: &str = "0x279525274aa623ef31a25ad90e3b99f27c8dbbad636a6454918855c81d625abc";
 
 #[tokio::main]
 async fn main() -> Result<(), anyhow::Error> {
-    let sui_mainnet = SuiClientBuilder::default()
-        .build("https://fullnode.mainnet.sui.io:443")
+    let myso_mainnet = SuiClientBuilder::default()
+        .build("https://fullnode.mainnet.mysocial.network:443")
         .await?;
 
-    let events = sui_mainnet
+    let events = myso_mainnet
         .event_api()
         .query_events(
             EventFilter::MoveModule {
@@ -347,7 +347,7 @@ query ByTxSender {
 
 </details>
 
-The [TypeScript SDK](https://sdk.mystenlabs.com/typedoc/modules/_mysten_sui.graphql.html) also can be used to interact with the Sui GraphQL service and filter events.
+The [TypeScript SDK](https://sdk.mystenlabs.com/typedoc/modules/_mysten_sui.graphql.html) also can be used to interact with the MySo GraphQL service and filter events.
 
 <details>
 <summary>
@@ -357,11 +357,11 @@ Filter events using the TypeScript SDK
 </summary>
 
 ```ts
-import { SuiGraphQLClient } from '@mysten/sui/graphql';
-import { graphql } from '@mysten/sui/graphql/schema';
+import { SuiGraphQLClient } from '@socialproof/myso/graphql';
+import { graphql } from '@socialproof/myso/graphql/schema';
 
 const gqlClient = new SuiGraphQLClient({
-  url: 'https://graphql.mainnet.sui.io/graphql',
+  url: 'https://graphql.mainnet.mysocial.network/graphql',
   network: 'mainnet',
 });
 

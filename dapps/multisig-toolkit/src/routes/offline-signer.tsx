@@ -2,10 +2,10 @@
 // SPDX-License-Identifier: Apache-2.0
 
 import { useCurrentAccount, useSignTransaction, useSuiClientContext } from '@mysten/dapp-kit';
-import { getFullnodeUrl, SuiClient } from '@mysten/sui/client';
-import { messageWithIntent } from '@mysten/sui/cryptography';
-import { Transaction } from '@mysten/sui/transactions';
-import { fromBase64, toHex } from '@mysten/sui/utils';
+import { getFullnodeUrl, SuiClient } from '@socialproof/myso/client';
+import { messageWithIntent } from '@socialproof/myso/cryptography';
+import { Transaction } from '@socialproof/myso/transactions';
+import { fromBase64, toHex } from '@socialproof/myso/utils';
 import { blake2b } from '@noble/hashes/blake2b';
 import { useMutation } from '@tanstack/react-query';
 import { AlertCircle, Terminal } from 'lucide-react';

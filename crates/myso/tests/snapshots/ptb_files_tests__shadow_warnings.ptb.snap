@@ -1,5 +1,5 @@
 ---
-source: crates/sui/tests/ptb_files_tests.rs
+source: crates/myso/tests/ptb_files_tests.rs
 expression: "&String::from_iter(normalized(results.join(\"\\n\").chars()))"
 ---
  === PREVIEW === 

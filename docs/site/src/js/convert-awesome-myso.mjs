@@ -12,23 +12,23 @@ const __dirname = path.dirname(__filename);
 // Paths (adjusted for new location)
 const readmePath = path.join(
   __dirname,
-  "../../../subtree/awesome-sui/README.md",
+  "../../../subtree/awesome-myso/README.md",
 );
 const detailsSourceDir = path.join(
   __dirname,
-  "../../../subtree/awesome-sui/details",
+  "../../../subtree/awesome-myso/details",
 );
 const mediaSourceDir = path.join(
   __dirname,
-  "../../../subtree/awesome-sui/media",
+  "../../../subtree/awesome-myso/media",
 );
 const readmeTargetPath = path.join(
   __dirname,
-  "../../../content/references/awesome-sui.mdx",
+  "../../../content/references/awesome-myso.mdx",
 );
 const mediaTargetDir = path.join(
   __dirname,
-  "../../static/awesome-sui/media",
+  "../../static/awesome-myso/media",
 );
 
 // Process the content to remove the Contents section and transform list items
@@ -45,19 +45,19 @@ function processContent(content) {
   // Fix CONTRIBUTING.md link
   processedContent = processedContent.replace(
     /\[([^\]]*)\]\(CONTRIBUTING\.md\)/g,
-    "[$1](https://github.com/sui-foundation/awesome-sui/blob/main/CONTRIBUTING.md)",
+    "[$1](https://github.com/myso-foundation/awesome-myso/blob/main/CONTRIBUTING.md)",
   );
 
-  // Change details/*.md links to awesome-sui/*.mdx and replace dashes with underscores as a temporary fix for a broken link in readme
+  // Change details/*.md links to awesome-myso/*.mdx and replace dashes with underscores as a temporary fix for a broken link in readme
   processedContent = processedContent.replace(
     /\[([^\]]*)\]\(details\/([^)]+)\.md\)/g,
-    (match, linkText, filename) => `[${linkText}](./awesome-sui/${filename.replace(/-/g, '_')}.mdx)`,
+    (match, linkText, filename) => `[${linkText}](./awesome-myso/${filename.replace(/-/g, '_')}.mdx)`,
   );
 
-  // Change media/* links to /awesome-sui/media/* (served from static folder)
+  // Change media/* links to /awesome-myso/media/* (served from static folder)
   processedContent = processedContent.replace(
     /media\/([^")\s]+)/g,
-    "/awesome-sui/media/$1",
+    "/awesome-myso/media/$1",
   );
 
   // Convert #### headings to ### headings
@@ -68,10 +68,10 @@ function processContent(content) {
     /^- (.+?)( - .+)?$/gm,
     (match, mainText, dashSeparatedItems) => {
       // Start outer wrapper div
-      let result = `<div className="border border-solid border-sui-gray-50 dark:border-sui-gray-90 rounded-lg my-4">\n\n`;
+      let result = `<div className="border border-solid border-myso-gray-50 dark:border-myso-gray-90 rounded-lg my-4">\n\n`;
       
       // Add heading div with p-4, and h4 with mb-0
-      result += `<div className="bg-sui-gray-50 dark:bg-sui-gray-90 p-4 rounded-t">\n\n<h4 className="mb-0">${mainText.trim()}</h4>\n\n</div>`;
+      result += `<div className="bg-myso-gray-50 dark:bg-myso-gray-90 p-4 rounded-t">\n\n<h4 className="mb-0">${mainText.trim()}</h4>\n\n</div>`;
 
       if (dashSeparatedItems) {
         // Content after " - " becomes a paragraph in content div
@@ -104,7 +104,7 @@ function processContent(content) {
   processedContent = processedContent.replace(
     /^- \[Further (Information|Documentation)\]\([^)]+\)$/gm,
     (match, type) => {
-      const linkMatch = match.match(/\[Further (?:Information|Documentation)\]\(\.\/awesome-sui\/([^)]+)\.mdx\)/);
+      const linkMatch = match.match(/\[Further (?:Information|Documentation)\]\(\.\/awesome-myso\/([^)]+)\.mdx\)/);
       if (linkMatch) {
         const filename = linkMatch[1].replace(/-/g, '_');
         const placeholder = `##### Further ${type} <!-- PLACEHOLDER_${linkCounter} -->`;
@@ -128,7 +128,7 @@ function processContent(content) {
     // Check if this line starts a new div section
     if (
       line.startsWith(
-        '<div className="border border-solid border-sui-gray-50 dark:border-sui-gray-90 rounded-lg my-4">',
+        '<div className="border border-solid border-myso-gray-50 dark:border-myso-gray-90 rounded-lg my-4">',
       )
     ) {
       if (insideDiv) {
@@ -234,13 +234,13 @@ const readmeContent = fs.readFileSync(readmePath, "utf8");
 const processedReadmeContent = processContent(readmeContent);
 
 const readmeMdxContent = `---
-title: Awesome Sui
-description: A curated list of awesome developer tools and infrastructure projects within the Sui ecosystem.
+title: AwesomeMySo
+description: A curated list of awesome developer tools and infrastructure projects within the MySo ecosystem.
 ---
 
 :::info
 
-Visit the [Awesome Sui repo](https://github.com/sui-foundation/awesome-sui/tree/main) on GitHub for the source content of these pages.
+Visit the [Awesome MySo repo](https://github.com/myso-foundation/awesome-myso/tree/main) on GitHub for the source content of these pages.
 
 :::
 

@@ -1,12 +1,12 @@
 ---
 source: crates/move-compiler/tests/move_check_testsuite.rs
 info:
-  flavor: sui
+  flavor: myso
   edition: legacy
   lint: false
 ---
 warning[W09004]: unnecessary trailing semicolon
-  ┌─ tests/sui_mode/one_time_witness/bool_field.move:9:15
+  ┌─ tests/myso_mode/one_time_witness/bool_field.move:9:15
   │
 9 │         return;
   │         ------^

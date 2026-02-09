@@ -15,7 +15,7 @@ gas summary: computation_cost: 1000000, storage_cost: 7493600,  storage_rebate: 
 task 2, lines 50-52:
 //# programmable --sender A --inputs @A
 //> test::m::a();
-//> sui::transfer::public_transfer<test::m::A>(Result(0), Input(0));
+//> myso::transfer::public_transfer<test::m::A>(Result(0), Input(0));
 created: object(2,0)
 mutated: object(0,0)
 gas summary: computation_cost: 1000000, storage_cost: 2196400,  storage_rebate: 0, non_refundable_storage_fee: 0
@@ -23,7 +23,7 @@ gas summary: computation_cost: 1000000, storage_cost: 2196400,  storage_rebate: 
 task 4, lines 56-58:
 //# programmable --sender A --inputs @a
 //> test::m::a();
-//> sui::transfer::public_transfer<test::m::A>(Result(0), Input(0));
+//> myso::transfer::public_transfer<test::m::A>(Result(0), Input(0));
 created: object(4,0)
 mutated: object(0,0)
 gas summary: computation_cost: 1000000, storage_cost: 2196400,  storage_rebate: 978120, non_refundable_storage_fee: 9880
@@ -44,7 +44,7 @@ gas summary: computation_cost: 1000000, storage_cost: 988000,  storage_rebate: 9
 task 6, lines 70-74:
 //# programmable --sender A --inputs receiving(4,0)
 // valid since receiving args are distinct per type usage
-//> 0: test::m::heat_imm<sui::transfer::Receiving<test::m::B>>(Input(0));
+//> 0: test::m::heat_imm<myso::transfer::Receiving<test::m::B>>(Input(0));
 //> test::m::play_receiving(Input(0));
 //> test::m::cool(Result(0));
 mutated: object(0,0)

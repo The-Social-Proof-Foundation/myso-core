@@ -1,21 +1,21 @@
 ---
 title: Custom Indexing Framework
-description: The `sui-indexer-alt-framework` is a powerful Rust framework for building high-performance, custom blockchain indexers on Sui. It provides customizable, production-ready components for data ingestion, processing, and storage.
+description: The `myso-indexer-alt-framework` is a powerful Rust framework for building high-performance, custom blockchain indexers on MySo. It provides customizable, production-ready components for data ingestion, processing, and storage.
 keywords: [ indexer, framework, indexer framework, dex, events, framework architecture ]
 pagination_prev: null
 ---
 
-Sui generates rich, complex data, such as transactions, events, object changes, and more. While Sui provides standard APIs to access this data, many applications need customized data processing for workflows like tracking specific events, aggregating analytics, building dashboards, or creating specialized databases. Instead of querying Sui APIs repeatedly or building complex filtering logic, you process the raw blockchain data once and store it in your preferred format.
+MySo generates rich, complex data, such as transactions, events, object changes, and more. While MySo provides standard APIs to access this data, many applications need customized data processing for workflows like tracking specific events, aggregating analytics, building dashboards, or creating specialized databases. Instead of querying MySo APIs repeatedly or building complex filtering logic, you process the raw blockchain data once and store it in your preferred format.
 
 You can use custom indexers to extract, transform, and store the specific blockchain data you need, enabling use cases such as tracking DEX trading volumes, monitoring NFT collection activity, building analytics dashboards, or aggregating cross-chain data. 
 
 ## Framework architecture
 
-To create a custom indexer, use the `sui-indexer-alt-framework` Rust framework. It provides production-ready components for data ingestion, processing, and storage while giving you full control over your indexing logic.
+To create a custom indexer, use the `myso-indexer-alt-framework` Rust framework. It provides production-ready components for data ingestion, processing, and storage while giving you full control over your indexing logic.
 
 At a high level, the indexing framework is a streaming pipeline that continuously polls for the latest available checkpoints from a pre-defined data source and streams that checkpoint data to your pipeline's processing logic.
 
-Checkpoints on Sui are batches of transactions that represent consistent blockchain state snapshots. Each checkpoint contains complete transaction details, events, object changes, and execution results with guaranteed ordering. See [Life of a Transaction](/concepts/transactions/transaction-lifecycle.mdx) for more information on checkpoints.
+Checkpoints on MySo are batches of transactions that represent consistent blockchain state snapshots. Each checkpoint contains complete transaction details, events, object changes, and execution results with guaranteed ordering. See [Life of a Transaction](/concepts/transactions/transaction-lifecycle.mdx) for more information on checkpoints.
 
 ![Overview](./images/overview.png)
 
@@ -31,11 +31,11 @@ The indexing framework supports multiple data sources to give developers flexibi
 
 **Polling-based sources** that periodically check for new checkpoints:
 
-- **Remote stores** connect to public checkpoint repositories such as [`https://checkpoints.mainnet.sui.io`](https://checkpoints.mainnet.sui.io/). This option offers the simplest setup and does not require you to operate any infrastructure.
+- **Remote stores** connect to public checkpoint repositories such as [`https://checkpoints.mainnet.mysocial.network`](https://checkpoints.mainnet.mysocial.network/). This option offers the simplest setup and does not require you to operate any infrastructure.
 
-- **Local files** process checkpoint files produced by a local Sui full node. This method offers the lowest latency but is recommended only for testing because the node does not automatically clean up these files.
+- **Local files** process checkpoint files produced by a local MySo full node. This method offers the lowest latency but is recommended only for testing because the node does not automatically clean up these files.
 
-- **RPC endpoints** connect directly to a Sui full node RPC endpoint. This approach lets you pull checkpoints from a trusted source you operate or access networks (like Devnet) that lack a remote store.
+- **RPC endpoints** connect directly to a MySo full node RPC endpoint. This approach lets you pull checkpoints from a trusted source you operate or access networks (like Devnet) that lack a remote store.
 
 **Push-based sources** provide real-time checkpoint data as it becomes available:
 
@@ -75,7 +75,7 @@ Sequential and concurrent pipeline types and their trade-offs are detailed in [P
 
 </summary>
 
-<ImportContent source="crates/sui-types/src/full_checkpoint_content.rs" mode="code" struct="CheckpointData" />
+<ImportContent source="crates/myso-types/src/full_checkpoint_content.rs" mode="code" struct="CheckpointData" />
 
 </details>
 

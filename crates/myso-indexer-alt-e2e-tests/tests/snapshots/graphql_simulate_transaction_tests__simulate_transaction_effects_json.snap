@@ -1,5 +1,5 @@
 ---
-source: crates/sui-indexer-alt-e2e-tests/tests/graphql_simulate_transaction_tests.rs
+source: crates/myso-indexer-alt-e2e-tests/tests/graphql_simulate_transaction_tests.rs
 expression: "result.pointer(\"/data/simulateTransaction\")"
 ---
 {
@@ -53,7 +53,7 @@ expression: "result.pointer(\"/data/simulateTransaction\")"
             "address": "[address]"
           },
           "idOperation": "CREATED",
-          "objectType": "0x0000000000000000000000000000000000000000000000000000000000000002::coin::Coin<0x0000000000000000000000000000000000000000000000000000000000000002::sui::SUI>"
+          "objectType": "0x0000000000000000000000000000000000000000000000000000000000000002::coin::Coin<0x0000000000000000000000000000000000000000000000000000000000000002::myso::MYSO>"
         },
         {
           "objectId": "[object_id]",
@@ -72,19 +72,19 @@ expression: "result.pointer(\"/data/simulateTransaction\")"
             "address": "[address]"
           },
           "idOperation": "NONE",
-          "objectType": "0x0000000000000000000000000000000000000000000000000000000000000002::coin::Coin<0x0000000000000000000000000000000000000000000000000000000000000002::sui::SUI>"
+          "objectType": "0x0000000000000000000000000000000000000000000000000000000000000002::coin::Coin<0x0000000000000000000000000000000000000000000000000000000000000002::myso::MYSO>"
         }
       ]
     },
     "balanceChangesJson": [
       {
         "address": "[address]",
-        "coinType": "0x0000000000000000000000000000000000000000000000000000000000000002::sui::SUI",
+        "coinType": "0x0000000000000000000000000000000000000000000000000000000000000002::myso::MYSO",
         "amount": "-3976000"
       },
       {
         "address": "[address]",
-        "coinType": "0x0000000000000000000000000000000000000000000000000000000000000002::sui::SUI",
+        "coinType": "0x0000000000000000000000000000000000000000000000000000000000000002::myso::MYSO",
         "amount": "1000000"
       }
     ]

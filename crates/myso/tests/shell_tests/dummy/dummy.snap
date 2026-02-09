@@ -1,5 +1,5 @@
 ---
-source: crates/sui/tests/shell_tests.rs
+source: crates/myso/tests/shell_tests.rs
 ---
 ----- script -----
 # Copyright (c) Mysten Labs, Inc.
@@ -8,7 +8,7 @@ source: crates/sui/tests/shell_tests.rs
 # simple test just to make sure the test runner works
 echo "dummy test"
 cat data/data.txt
-sui move --client.config $CONFIG new dummy
+myso move --client.config $CONFIG new dummy
 
 ----- results -----
 success: true

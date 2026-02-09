@@ -853,7 +853,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "7d809780667f4410e7c41b07f52439b94d2bdf8528eeedc287fa38d3b7f95d82"
 
 [[package]]
-name = "basic-sui-indexer"
+name = "basic-myso-indexer"
 version = "0.1.0"
 dependencies = [
  "anyhow",
@@ -863,7 +863,7 @@ dependencies = [
  "diesel-async",
  "diesel_migrations",
  "dotenvy",
- "sui-indexer-alt-framework",
+ "myso-indexer-alt-framework",
  "tokio",
  "url",
 ]
@@ -1541,7 +1541,7 @@ checksum = "75984efb6ed102a0d42db99afb6c1948f0380d1d91808d5529916e6c08b49d8d"
 [[package]]
 name = "consensus-config"
 version = "0.1.0"
-source = "git+https://github.com/MystenLabs/sui.git?branch=testnet#a14d9e8ddadfcea837de46b43d0b72a289320afb"
+source = "git+https://github.com/the-social-proof-foundation/myso-core.git?branch=testnet#a14d9e8ddadfcea837de46b43d0b72a289320afb"
 dependencies = [
  "fastcrypto",
  "mysten-network",
@@ -1553,7 +1553,7 @@ dependencies = [
 [[package]]
 name = "consensus-types"
 version = "0.1.0"
-source = "git+https://github.com/MystenLabs/sui.git?branch=testnet#a14d9e8ddadfcea837de46b43d0b72a289320afb"
+source = "git+https://github.com/the-social-proof-foundation/myso-core.git?branch=testnet#a14d9e8ddadfcea837de46b43d0b72a289320afb"
 dependencies = [
  "base64 0.21.7",
  "consensus-config",
@@ -2495,7 +2495,7 @@ checksum = "c34f04666d835ff5d62e058c3995147c06f42fe86ff053337632bca83e42702d"
 [[package]]
 name = "enum-compat-util"
 version = "0.1.0"
-source = "git+https://github.com/MystenLabs/sui.git?branch=testnet#a14d9e8ddadfcea837de46b43d0b72a289320afb"
+source = "git+https://github.com/the-social-proof-foundation/myso-core.git?branch=testnet#a14d9e8ddadfcea837de46b43d0b72a289320afb"
 dependencies = [
  "serde_yaml",
 ]
@@ -3753,7 +3753,7 @@ dependencies = [
 [[package]]
 name = "jsonrpc"
 version = "0.1.0"
-source = "git+https://github.com/MystenLabs/sui.git?branch=testnet#a14d9e8ddadfcea837de46b43d0b72a289320afb"
+source = "git+https://github.com/the-social-proof-foundation/myso-core.git?branch=testnet#a14d9e8ddadfcea837de46b43d0b72a289320afb"
 dependencies = [
  "serde",
  "serde_json",
@@ -4296,17 +4296,17 @@ dependencies = [
 [[package]]
 name = "move-abstract-interpreter"
 version = "0.1.0"
-source = "git+https://github.com/MystenLabs/sui.git?branch=testnet#a14d9e8ddadfcea837de46b43d0b72a289320afb"
+source = "git+https://github.com/the-social-proof-foundation/myso-core.git?branch=testnet#a14d9e8ddadfcea837de46b43d0b72a289320afb"
 
 [[package]]
 name = "move-abstract-stack"
 version = "0.0.1"
-source = "git+https://github.com/MystenLabs/sui.git?branch=testnet#a14d9e8ddadfcea837de46b43d0b72a289320afb"
+source = "git+https://github.com/the-social-proof-foundation/myso-core.git?branch=testnet#a14d9e8ddadfcea837de46b43d0b72a289320afb"
 
 [[package]]
 name = "move-binary-format"
 version = "0.0.3"
-source = "git+https://github.com/MystenLabs/sui.git?branch=testnet#a14d9e8ddadfcea837de46b43d0b72a289320afb"
+source = "git+https://github.com/the-social-proof-foundation/myso-core.git?branch=testnet#a14d9e8ddadfcea837de46b43d0b72a289320afb"
 dependencies = [
  "anyhow",
  "enum-compat-util",
@@ -4322,12 +4322,12 @@ dependencies = [
 [[package]]
 name = "move-borrow-graph"
 version = "0.0.1"
-source = "git+https://github.com/MystenLabs/sui.git?branch=testnet#a14d9e8ddadfcea837de46b43d0b72a289320afb"
+source = "git+https://github.com/the-social-proof-foundation/myso-core.git?branch=testnet#a14d9e8ddadfcea837de46b43d0b72a289320afb"
 
 [[package]]
 name = "move-bytecode-source-map"
 version = "0.1.0"
-source = "git+https://github.com/MystenLabs/sui.git?branch=testnet#a14d9e8ddadfcea837de46b43d0b72a289320afb"
+source = "git+https://github.com/the-social-proof-foundation/myso-core.git?branch=testnet#a14d9e8ddadfcea837de46b43d0b72a289320afb"
 dependencies = [
  "anyhow",
  "bcs",
@@ -4343,7 +4343,7 @@ dependencies = [
 [[package]]
 name = "move-bytecode-utils"
 version = "0.1.0"
-source = "git+https://github.com/MystenLabs/sui.git?branch=testnet#a14d9e8ddadfcea837de46b43d0b72a289320afb"
+source = "git+https://github.com/the-social-proof-foundation/myso-core.git?branch=testnet#a14d9e8ddadfcea837de46b43d0b72a289320afb"
 dependencies = [
  "anyhow",
  "indexmap 2.12.1",
@@ -4356,7 +4356,7 @@ dependencies = [
 [[package]]
 name = "move-bytecode-verifier"
 version = "0.1.0"
-source = "git+https://github.com/MystenLabs/sui.git?branch=testnet#a14d9e8ddadfcea837de46b43d0b72a289320afb"
+source = "git+https://github.com/the-social-proof-foundation/myso-core.git?branch=testnet#a14d9e8ddadfcea837de46b43d0b72a289320afb"
 dependencies = [
  "move-abstract-interpreter",
  "move-abstract-stack",
@@ -4372,7 +4372,7 @@ dependencies = [
 [[package]]
 name = "move-bytecode-verifier-meter"
 version = "0.1.0"
-source = "git+https://github.com/MystenLabs/sui.git?branch=testnet#a14d9e8ddadfcea837de46b43d0b72a289320afb"
+source = "git+https://github.com/the-social-proof-foundation/myso-core.git?branch=testnet#a14d9e8ddadfcea837de46b43d0b72a289320afb"
 dependencies = [
  "move-binary-format",
  "move-core-types",
@@ -4382,7 +4382,7 @@ dependencies = [
 [[package]]
 name = "move-command-line-common"
 version = "0.1.0"
-source = "git+https://github.com/MystenLabs/sui.git?branch=testnet#a14d9e8ddadfcea837de46b43d0b72a289320afb"
+source = "git+https://github.com/the-social-proof-foundation/myso-core.git?branch=testnet#a14d9e8ddadfcea837de46b43d0b72a289320afb"
 dependencies = [
  "anyhow",
  "bcs",
@@ -4403,7 +4403,7 @@ dependencies = [
 [[package]]
 name = "move-compiler"
 version = "0.0.1"
-source = "git+https://github.com/MystenLabs/sui.git?branch=testnet#a14d9e8ddadfcea837de46b43d0b72a289320afb"
+source = "git+https://github.com/the-social-proof-foundation/myso-core.git?branch=testnet#a14d9e8ddadfcea837de46b43d0b72a289320afb"
 dependencies = [
  "anyhow",
  "bcs",
@@ -4439,7 +4439,7 @@ dependencies = [
 [[package]]
 name = "move-core-types"
 version = "0.0.4"
-source = "git+https://github.com/MystenLabs/sui.git?branch=testnet#a14d9e8ddadfcea837de46b43d0b72a289320afb"
+source = "git+https://github.com/the-social-proof-foundation/myso-core.git?branch=testnet#a14d9e8ddadfcea837de46b43d0b72a289320afb"
 dependencies = [
  "anyhow",
  "bcs",
@@ -4464,7 +4464,7 @@ dependencies = [
 [[package]]
 name = "move-coverage"
 version = "0.1.0"
-source = "git+https://github.com/MystenLabs/sui.git?branch=testnet#a14d9e8ddadfcea837de46b43d0b72a289320afb"
+source = "git+https://github.com/the-social-proof-foundation/myso-core.git?branch=testnet#a14d9e8ddadfcea837de46b43d0b72a289320afb"
 dependencies = [
  "anyhow",
  "bcs",
@@ -4489,7 +4489,7 @@ dependencies = [
 [[package]]
 name = "move-disassembler"
 version = "0.1.0"
-source = "git+https://github.com/MystenLabs/sui.git?branch=testnet#a14d9e8ddadfcea837de46b43d0b72a289320afb"
+source = "git+https://github.com/the-social-proof-foundation/myso-core.git?branch=testnet#a14d9e8ddadfcea837de46b43d0b72a289320afb"
 dependencies = [
  "anyhow",
  "bcs",
@@ -4510,7 +4510,7 @@ dependencies = [
 [[package]]
 name = "move-ir-to-bytecode"
 version = "0.1.0"
-source = "git+https://github.com/MystenLabs/sui.git?branch=testnet#a14d9e8ddadfcea837de46b43d0b72a289320afb"
+source = "git+https://github.com/the-social-proof-foundation/myso-core.git?branch=testnet#a14d9e8ddadfcea837de46b43d0b72a289320afb"
 dependencies = [
  "anyhow",
  "codespan-reporting",
@@ -4528,7 +4528,7 @@ dependencies = [
 [[package]]
 name = "move-ir-to-bytecode-syntax"
 version = "0.1.0"
-source = "git+https://github.com/MystenLabs/sui.git?branch=testnet#a14d9e8ddadfcea837de46b43d0b72a289320afb"
+source = "git+https://github.com/the-social-proof-foundation/myso-core.git?branch=testnet#a14d9e8ddadfcea837de46b43d0b72a289320afb"
 dependencies = [
  "anyhow",
  "hex",
@@ -4541,7 +4541,7 @@ dependencies = [
 [[package]]
 name = "move-ir-types"
 version = "0.1.0"
-source = "git+https://github.com/MystenLabs/sui.git?branch=testnet#a14d9e8ddadfcea837de46b43d0b72a289320afb"
+source = "git+https://github.com/the-social-proof-foundation/myso-core.git?branch=testnet#a14d9e8ddadfcea837de46b43d0b72a289320afb"
 dependencies = [
  "hex",
  "move-command-line-common",
@@ -4554,7 +4554,7 @@ dependencies = [
 [[package]]
 name = "move-proc-macros"
 version = "0.1.0"
-source = "git+https://github.com/MystenLabs/sui.git?branch=testnet#a14d9e8ddadfcea837de46b43d0b72a289320afb"
+source = "git+https://github.com/the-social-proof-foundation/myso-core.git?branch=testnet#a14d9e8ddadfcea837de46b43d0b72a289320afb"
 dependencies = [
  "enum-compat-util",
  "quote",
@@ -4564,7 +4564,7 @@ dependencies = [
 [[package]]
 name = "move-regex-borrow-graph"
 version = "0.0.1"
-source = "git+https://github.com/MystenLabs/sui.git?branch=testnet#a14d9e8ddadfcea837de46b43d0b72a289320afb"
+source = "git+https://github.com/the-social-proof-foundation/myso-core.git?branch=testnet#a14d9e8ddadfcea837de46b43d0b72a289320afb"
 dependencies = [
  "insta",
  "itertools 0.10.5",
@@ -4578,7 +4578,7 @@ dependencies = [
 [[package]]
 name = "move-symbol-pool"
 version = "0.1.0"
-source = "git+https://github.com/MystenLabs/sui.git?branch=testnet#a14d9e8ddadfcea837de46b43d0b72a289320afb"
+source = "git+https://github.com/the-social-proof-foundation/myso-core.git?branch=testnet#a14d9e8ddadfcea837de46b43d0b72a289320afb"
 dependencies = [
  "once_cell",
  "phf 0.11.3",
@@ -4588,7 +4588,7 @@ dependencies = [
 [[package]]
 name = "move-trace-format"
 version = "0.0.1"
-source = "git+https://github.com/MystenLabs/sui.git?branch=testnet#a14d9e8ddadfcea837de46b43d0b72a289320afb"
+source = "git+https://github.com/the-social-proof-foundation/myso-core.git?branch=testnet#a14d9e8ddadfcea837de46b43d0b72a289320afb"
 dependencies = [
  "move-binary-format",
  "move-core-types",
@@ -4600,7 +4600,7 @@ dependencies = [
 [[package]]
 name = "move-vm-config"
 version = "0.1.0"
-source = "git+https://github.com/MystenLabs/sui.git?branch=testnet#a14d9e8ddadfcea837de46b43d0b72a289320afb"
+source = "git+https://github.com/the-social-proof-foundation/myso-core.git?branch=testnet#a14d9e8ddadfcea837de46b43d0b72a289320afb"
 dependencies = [
  "move-binary-format",
  "once_cell",
@@ -4609,7 +4609,7 @@ dependencies = [
 [[package]]
 name = "move-vm-profiler"
 version = "0.1.0"
-source = "git+https://github.com/MystenLabs/sui.git?branch=testnet#a14d9e8ddadfcea837de46b43d0b72a289320afb"
+source = "git+https://github.com/the-social-proof-foundation/myso-core.git?branch=testnet#a14d9e8ddadfcea837de46b43d0b72a289320afb"
 dependencies = [
  "move-trace-format",
  "move-vm-config",
@@ -4622,7 +4622,7 @@ dependencies = [
 [[package]]
 name = "move-vm-test-utils"
 version = "0.1.0"
-source = "git+https://github.com/MystenLabs/sui.git?branch=testnet#a14d9e8ddadfcea837de46b43d0b72a289320afb"
+source = "git+https://github.com/the-social-proof-foundation/myso-core.git?branch=testnet#a14d9e8ddadfcea837de46b43d0b72a289320afb"
 dependencies = [
  "anyhow",
  "move-binary-format",
@@ -4636,7 +4636,7 @@ dependencies = [
 [[package]]
 name = "move-vm-types"
 version = "0.1.0"
-source = "git+https://github.com/MystenLabs/sui.git?branch=testnet#a14d9e8ddadfcea837de46b43d0b72a289320afb"
+source = "git+https://github.com/the-social-proof-foundation/myso-core.git?branch=testnet#a14d9e8ddadfcea837de46b43d0b72a289320afb"
 dependencies = [
  "bcs",
  "move-binary-format",
@@ -4751,7 +4751,7 @@ checksum = "1d87ecb2933e8aeadb3e3a02b828fed80a7528047e68b4f424523a0981a3a084"
 [[package]]
 name = "mysten-common"
 version = "0.1.0"
-source = "git+https://github.com/MystenLabs/sui.git?branch=testnet#a14d9e8ddadfcea837de46b43d0b72a289320afb"
+source = "git+https://github.com/the-social-proof-foundation/myso-core.git?branch=testnet#a14d9e8ddadfcea837de46b43d0b72a289320afb"
 dependencies = [
  "antithesis_sdk",
  "anyhow",
@@ -4765,7 +4765,7 @@ dependencies = [
  "reqwest",
  "serde_json",
  "snap",
- "sui-macros",
+ "myso-macros",
  "tempfile",
  "tokio",
  "tracing",
@@ -4774,7 +4774,7 @@ dependencies = [
 [[package]]
 name = "mysten-metrics"
 version = "0.7.0"
-source = "git+https://github.com/MystenLabs/sui.git?branch=testnet#a14d9e8ddadfcea837de46b43d0b72a289320afb"
+source = "git+https://github.com/the-social-proof-foundation/myso-core.git?branch=testnet#a14d9e8ddadfcea837de46b43d0b72a289320afb"
 dependencies = [
  "async-trait",
  "axum 0.8.8",
@@ -4795,7 +4795,7 @@ dependencies = [
 [[package]]
 name = "mysten-network"
 version = "0.2.0"
-source = "git+https://github.com/MystenLabs/sui.git?branch=testnet#a14d9e8ddadfcea837de46b43d0b72a289320afb"
+source = "git+https://github.com/the-social-proof-foundation/myso-core.git?branch=testnet#a14d9e8ddadfcea837de46b43d0b72a289320afb"
 dependencies = [
  "anemo",
  "anemo-tower",
@@ -4821,7 +4821,7 @@ dependencies = [
  "rustls",
  "serde",
  "snap",
- "sui-http",
+ "myso-http",
  "tokio",
  "tokio-rustls",
  "tokio-stream",
@@ -5820,7 +5820,7 @@ dependencies = [
 [[package]]
 name = "prometheus-closure-metric"
 version = "0.1.0"
-source = "git+https://github.com/MystenLabs/sui.git?branch=testnet#a14d9e8ddadfcea837de46b43d0b72a289320afb"
+source = "git+https://github.com/the-social-proof-foundation/myso-core.git?branch=testnet#a14d9e8ddadfcea837de46b43d0b72a289320afb"
 dependencies = [
  "anyhow",
  "prometheus",
@@ -7172,7 +7172,7 @@ dependencies = [
 [[package]]
 name = "shared-crypto"
 version = "0.0.0"
-source = "git+https://github.com/MystenLabs/sui.git?branch=testnet#a14d9e8ddadfcea837de46b43d0b72a289320afb"
+source = "git+https://github.com/the-social-proof-foundation/myso-core.git?branch=testnet#a14d9e8ddadfcea837de46b43d0b72a289320afb"
 dependencies = [
  "bcs",
  "eyre",
@@ -7591,9 +7591,9 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "734676eb262c623cec13c3155096e08d1f8f29adce39ba17948b18dad1e54142"
 
 [[package]]
-name = "sui-config"
+name = "myso-config"
 version = "0.0.0"
-source = "git+https://github.com/MystenLabs/sui.git?branch=testnet#a14d9e8ddadfcea837de46b43d0b72a289320afb"
+source = "git+https://github.com/the-social-proof-foundation/myso-core.git?branch=testnet#a14d9e8ddadfcea837de46b43d0b72a289320afb"
 dependencies = [
  "anemo",
  "anyhow",
@@ -7616,17 +7616,17 @@ dependencies = [
  "serde_with",
  "serde_yaml",
  "starlark",
- "sui-keys",
- "sui-protocol-config",
- "sui-types",
+ "myso-keys",
+ "myso-protocol-config",
+ "myso-types",
  "thiserror 1.0.69",
  "tracing",
 ]
 
 [[package]]
-name = "sui-crypto"
+name = "myso-crypto"
 version = "0.1.0"
-source = "git+https://github.com/MystenLabs/sui-rust-sdk.git?rev=339c2272fd5b8fb4e1fa6662cfa9acdbb0d05704#339c2272fd5b8fb4e1fa6662cfa9acdbb0d05704"
+source = "git+https://github.com/the-social-proof-foundation/myso-core-rust-sdk.git?rev=339c2272fd5b8fb4e1fa6662cfa9acdbb0d05704#339c2272fd5b8fb4e1fa6662cfa9acdbb0d05704"
 dependencies = [
  "ark-bn254",
  "ark-ff",
@@ -7645,38 +7645,38 @@ dependencies = [
  "serde_json",
  "sha2 0.10.9",
  "signature 2.2.0",
- "sui-sdk-types",
+ "myso-sdk-types",
 ]
 
 [[package]]
-name = "sui-enum-compat-util"
+name = "myso-enum-compat-util"
 version = "0.1.0"
-source = "git+https://github.com/MystenLabs/sui.git?branch=testnet#a14d9e8ddadfcea837de46b43d0b72a289320afb"
+source = "git+https://github.com/the-social-proof-foundation/myso-core.git?branch=testnet#a14d9e8ddadfcea837de46b43d0b72a289320afb"
 dependencies = [
  "serde_yaml",
 ]
 
 [[package]]
-name = "sui-field-count"
+name = "myso-field-count"
 version = "1.63.1"
-source = "git+https://github.com/MystenLabs/sui.git?branch=testnet#a14d9e8ddadfcea837de46b43d0b72a289320afb"
+source = "git+https://github.com/the-social-proof-foundation/myso-core.git?branch=testnet#a14d9e8ddadfcea837de46b43d0b72a289320afb"
 dependencies = [
- "sui-field-count-derive",
+ "myso-field-count-derive",
 ]
 
 [[package]]
-name = "sui-field-count-derive"
+name = "myso-field-count-derive"
 version = "1.63.1"
-source = "git+https://github.com/MystenLabs/sui.git?branch=testnet#a14d9e8ddadfcea837de46b43d0b72a289320afb"
+source = "git+https://github.com/the-social-proof-foundation/myso-core.git?branch=testnet#a14d9e8ddadfcea837de46b43d0b72a289320afb"
 dependencies = [
  "quote",
  "syn 1.0.109",
 ]
 
 [[package]]
-name = "sui-futures"
+name = "myso-futures"
 version = "1.63.1"
-source = "git+https://github.com/MystenLabs/sui.git?branch=testnet#a14d9e8ddadfcea837de46b43d0b72a289320afb"
+source = "git+https://github.com/the-social-proof-foundation/myso-core.git?branch=testnet#a14d9e8ddadfcea837de46b43d0b72a289320afb"
 dependencies = [
  "anyhow",
  "futures",
@@ -7687,9 +7687,9 @@ dependencies = [
 ]
 
 [[package]]
-name = "sui-http"
+name = "myso-http"
 version = "0.0.0"
-source = "git+https://github.com/MystenLabs/sui.git?branch=testnet#a14d9e8ddadfcea837de46b43d0b72a289320afb"
+source = "git+https://github.com/the-social-proof-foundation/myso-core.git?branch=testnet#a14d9e8ddadfcea837de46b43d0b72a289320afb"
 dependencies = [
  "bytes",
  "http",
@@ -7707,9 +7707,9 @@ dependencies = [
 ]
 
 [[package]]
-name = "sui-indexer-alt-framework"
+name = "myso-indexer-alt-framework"
 version = "1.63.1"
-source = "git+https://github.com/MystenLabs/sui.git?branch=testnet#a14d9e8ddadfcea837de46b43d0b72a289320afb"
+source = "git+https://github.com/the-social-proof-foundation/myso-core.git?branch=testnet#a14d9e8ddadfcea837de46b43d0b72a289320afb"
 dependencies = [
  "anyhow",
  "async-trait",
@@ -7729,16 +7729,16 @@ dependencies = [
  "reqwest",
  "scoped-futures",
  "serde",
- "sui-field-count",
- "sui-futures",
- "sui-indexer-alt-framework-store-traits",
- "sui-indexer-alt-metrics",
- "sui-pg-db",
- "sui-rpc",
- "sui-rpc-api",
- "sui-sdk-types",
- "sui-storage",
- "sui-types",
+ "myso-field-count",
+ "myso-futures",
+ "myso-indexer-alt-framework-store-traits",
+ "myso-indexer-alt-metrics",
+ "myso-pg-db",
+ "myso-rpc",
+ "myso-rpc-api",
+ "myso-sdk-types",
+ "myso-storage",
+ "myso-types",
  "tempfile",
  "thiserror 1.0.69",
  "tokio",
@@ -7750,9 +7750,9 @@ dependencies = [
 ]
 
 [[package]]
-name = "sui-indexer-alt-framework-store-traits"
+name = "myso-indexer-alt-framework-store-traits"
 version = "1.63.1"
-source = "git+https://github.com/MystenLabs/sui.git?branch=testnet#a14d9e8ddadfcea837de46b43d0b72a289320afb"
+source = "git+https://github.com/the-social-proof-foundation/myso-core.git?branch=testnet#a14d9e8ddadfcea837de46b43d0b72a289320afb"
 dependencies = [
  "anyhow",
  "async-trait",
@@ -7761,25 +7761,25 @@ dependencies = [
 ]
 
 [[package]]
-name = "sui-indexer-alt-metrics"
+name = "myso-indexer-alt-metrics"
 version = "1.63.1"
-source = "git+https://github.com/MystenLabs/sui.git?branch=testnet#a14d9e8ddadfcea837de46b43d0b72a289320afb"
+source = "git+https://github.com/the-social-proof-foundation/myso-core.git?branch=testnet#a14d9e8ddadfcea837de46b43d0b72a289320afb"
 dependencies = [
  "anyhow",
  "axum 0.8.8",
  "clap",
  "prometheus",
  "prometheus-closure-metric",
- "sui-futures",
- "sui-pg-db",
+ "myso-futures",
+ "myso-pg-db",
  "tokio",
  "tracing",
 ]
 
 [[package]]
-name = "sui-json"
+name = "myso-json"
 version = "0.0.0"
-source = "git+https://github.com/MystenLabs/sui.git?branch=testnet#a14d9e8ddadfcea837de46b43d0b72a289320afb"
+source = "git+https://github.com/the-social-proof-foundation/myso-core.git?branch=testnet#a14d9e8ddadfcea837de46b43d0b72a289320afb"
 dependencies = [
  "anyhow",
  "bcs",
@@ -7790,13 +7790,13 @@ dependencies = [
  "schemars 0.8.22",
  "serde",
  "serde_json",
- "sui-types",
+ "myso-types",
 ]
 
 [[package]]
-name = "sui-json-rpc-types"
+name = "myso-json-rpc-types"
 version = "0.0.0"
-source = "git+https://github.com/MystenLabs/sui.git?branch=testnet#a14d9e8ddadfcea837de46b43d0b72a289320afb"
+source = "git+https://github.com/the-social-proof-foundation/myso-core.git?branch=testnet#a14d9e8ddadfcea837de46b43d0b72a289320afb"
 dependencies = [
  "anyhow",
  "bcs",
@@ -7817,20 +7817,20 @@ dependencies = [
  "serde",
  "serde_json",
  "serde_with",
- "sui-enum-compat-util",
- "sui-json",
- "sui-macros",
- "sui-package-resolver",
- "sui-protocol-config",
- "sui-types",
+ "myso-enum-compat-util",
+ "myso-json",
+ "myso-macros",
+ "myso-package-resolver",
+ "myso-protocol-config",
+ "myso-types",
  "tabled",
  "tracing",
 ]
 
 [[package]]
-name = "sui-keys"
+name = "myso-keys"
 version = "0.0.0"
-source = "git+https://github.com/MystenLabs/sui.git?branch=testnet#a14d9e8ddadfcea837de46b43d0b72a289320afb"
+source = "git+https://github.com/the-social-proof-foundation/myso-core.git?branch=testnet#a14d9e8ddadfcea837de46b43d0b72a289320afb"
 dependencies = [
  "anyhow",
  "async-trait",
@@ -7848,38 +7848,38 @@ dependencies = [
  "shared-crypto",
  "signature 1.6.4",
  "slip10_ed25519",
- "sui-types",
+ "myso-types",
  "tiny-bip39",
  "tokio",
 ]
 
 [[package]]
-name = "sui-macros"
+name = "myso-macros"
 version = "0.7.0"
-source = "git+https://github.com/MystenLabs/sui.git?branch=testnet#a14d9e8ddadfcea837de46b43d0b72a289320afb"
+source = "git+https://github.com/the-social-proof-foundation/myso-core.git?branch=testnet#a14d9e8ddadfcea837de46b43d0b72a289320afb"
 dependencies = [
  "futures",
  "once_cell",
- "sui-proc-macros",
+ "myso-proc-macros",
  "tracing",
 ]
 
 [[package]]
-name = "sui-name-service"
+name = "myso-name-service"
 version = "1.63.1"
-source = "git+https://github.com/MystenLabs/sui.git?branch=testnet#a14d9e8ddadfcea837de46b43d0b72a289320afb"
+source = "git+https://github.com/the-social-proof-foundation/myso-core.git?branch=testnet#a14d9e8ddadfcea837de46b43d0b72a289320afb"
 dependencies = [
  "bcs",
  "move-core-types",
  "serde",
- "sui-types",
+ "myso-types",
  "thiserror 1.0.69",
 ]
 
 [[package]]
-name = "sui-package-resolver"
+name = "myso-package-resolver"
 version = "0.1.0"
-source = "git+https://github.com/MystenLabs/sui.git?branch=testnet#a14d9e8ddadfcea837de46b43d0b72a289320afb"
+source = "git+https://github.com/the-social-proof-foundation/myso-core.git?branch=testnet#a14d9e8ddadfcea837de46b43d0b72a289320afb"
 dependencies = [
  "async-trait",
  "bcs",
@@ -7889,15 +7889,15 @@ dependencies = [
  "move-command-line-common",
  "move-core-types",
  "serde",
- "sui-types",
+ "myso-types",
  "thiserror 1.0.69",
  "tokio",
 ]
 
 [[package]]
-name = "sui-pg-db"
+name = "myso-pg-db"
 version = "1.63.1"
-source = "git+https://github.com/MystenLabs/sui.git?branch=testnet#a14d9e8ddadfcea837de46b43d0b72a289320afb"
+source = "git+https://github.com/the-social-proof-foundation/myso-core.git?branch=testnet#a14d9e8ddadfcea837de46b43d0b72a289320afb"
 dependencies = [
  "anyhow",
  "async-trait",
@@ -7911,9 +7911,9 @@ dependencies = [
  "rustls",
  "rustls-pemfile",
  "scoped-futures",
- "sui-field-count",
- "sui-indexer-alt-framework-store-traits",
- "sui-sql-macro",
+ "myso-field-count",
+ "myso-indexer-alt-framework-store-traits",
+ "myso-sql-macro",
  "tempfile",
  "tokio",
  "tokio-postgres",
@@ -7924,21 +7924,21 @@ dependencies = [
 ]
 
 [[package]]
-name = "sui-proc-macros"
+name = "myso-proc-macros"
 version = "0.7.0"
-source = "git+https://github.com/MystenLabs/sui.git?branch=testnet#a14d9e8ddadfcea837de46b43d0b72a289320afb"
+source = "git+https://github.com/the-social-proof-foundation/myso-core.git?branch=testnet#a14d9e8ddadfcea837de46b43d0b72a289320afb"
 dependencies = [
  "msim-macros",
  "proc-macro2",
  "quote",
- "sui-enum-compat-util",
+ "myso-enum-compat-util",
  "syn 2.0.113",
 ]
 
 [[package]]
-name = "sui-protocol-config"
+name = "myso-protocol-config"
 version = "0.1.0"
-source = "git+https://github.com/MystenLabs/sui.git?branch=testnet#a14d9e8ddadfcea837de46b43d0b72a289320afb"
+source = "git+https://github.com/the-social-proof-foundation/myso-core.git?branch=testnet#a14d9e8ddadfcea837de46b43d0b72a289320afb"
 dependencies = [
  "clap",
  "fastcrypto",
@@ -7949,14 +7949,14 @@ dependencies = [
  "serde",
  "serde-env",
  "serde_with",
- "sui-protocol-config-macros",
+ "myso-protocol-config-macros",
  "tracing",
 ]
 
 [[package]]
-name = "sui-protocol-config-macros"
+name = "myso-protocol-config-macros"
 version = "0.1.0"
-source = "git+https://github.com/MystenLabs/sui.git?branch=testnet#a14d9e8ddadfcea837de46b43d0b72a289320afb"
+source = "git+https://github.com/the-social-proof-foundation/myso-core.git?branch=testnet#a14d9e8ddadfcea837de46b43d0b72a289320afb"
 dependencies = [
  "proc-macro2",
  "quote",
@@ -7964,9 +7964,9 @@ dependencies = [
 ]
 
 [[package]]
-name = "sui-rpc"
+name = "myso-rpc"
 version = "0.1.1"
-source = "git+https://github.com/MystenLabs/sui-rust-sdk.git?rev=339c2272fd5b8fb4e1fa6662cfa9acdbb0d05704#339c2272fd5b8fb4e1fa6662cfa9acdbb0d05704"
+source = "git+https://github.com/the-social-proof-foundation/myso-core-rust-sdk.git?rev=339c2272fd5b8fb4e1fa6662cfa9acdbb0d05704#339c2272fd5b8fb4e1fa6662cfa9acdbb0d05704"
 dependencies = [
  "base64 0.22.1",
  "bcs",
@@ -7977,7 +7977,7 @@ dependencies = [
  "prost-types 0.14.1",
  "serde",
  "serde_json",
- "sui-sdk-types",
+ "myso-sdk-types",
  "tap",
  "tokio",
  "tonic 0.14.2",
@@ -7985,9 +7985,9 @@ dependencies = [
 ]
 
 [[package]]
-name = "sui-rpc-api"
+name = "myso-rpc-api"
 version = "0.1.0"
-source = "git+https://github.com/MystenLabs/sui.git?branch=testnet#a14d9e8ddadfcea837de46b43d0b72a289320afb"
+source = "git+https://github.com/the-social-proof-foundation/myso-core.git?branch=testnet#a14d9e8ddadfcea837de46b43d0b72a289320afb"
 dependencies = [
  "anyhow",
  "async-stream",
@@ -8012,14 +8012,14 @@ dependencies = [
  "serde",
  "serde_json",
  "serde_with",
- "sui-config",
- "sui-crypto",
- "sui-name-service",
- "sui-package-resolver",
- "sui-protocol-config",
- "sui-rpc",
- "sui-sdk-types",
- "sui-types",
+ "myso-config",
+ "myso-crypto",
+ "myso-name-service",
+ "myso-package-resolver",
+ "myso-protocol-config",
+ "myso-rpc",
+ "myso-sdk-types",
+ "myso-types",
  "tap",
  "thiserror 1.0.69",
  "tokio",
@@ -8037,9 +8037,9 @@ dependencies = [
 ]
 
 [[package]]
-name = "sui-sdk-types"
+name = "myso-sdk-types"
 version = "0.1.1"
-source = "git+https://github.com/MystenLabs/sui-rust-sdk.git?rev=339c2272fd5b8fb4e1fa6662cfa9acdbb0d05704#339c2272fd5b8fb4e1fa6662cfa9acdbb0d05704"
+source = "git+https://github.com/the-social-proof-foundation/myso-core-rust-sdk.git?rev=339c2272fd5b8fb4e1fa6662cfa9acdbb0d05704#339c2272fd5b8fb4e1fa6662cfa9acdbb0d05704"
 dependencies = [
  "base64ct",
  "bcs",
@@ -8058,9 +8058,9 @@ dependencies = [
 ]
 
 [[package]]
-name = "sui-sql-macro"
+name = "myso-sql-macro"
 version = "1.63.1"
-source = "git+https://github.com/MystenLabs/sui.git?branch=testnet#a14d9e8ddadfcea837de46b43d0b72a289320afb"
+source = "git+https://github.com/the-social-proof-foundation/myso-core.git?branch=testnet#a14d9e8ddadfcea837de46b43d0b72a289320afb"
 dependencies = [
  "quote",
  "syn 1.0.109",
@@ -8068,9 +8068,9 @@ dependencies = [
 ]
 
 [[package]]
-name = "sui-storage"
+name = "myso-storage"
 version = "0.1.0"
-source = "git+https://github.com/MystenLabs/sui.git?branch=testnet#a14d9e8ddadfcea837de46b43d0b72a289320afb"
+source = "git+https://github.com/the-social-proof-foundation/myso-core.git?branch=testnet#a14d9e8ddadfcea837de46b43d0b72a289320afb"
 dependencies = [
  "anyhow",
  "async-trait",
@@ -8103,10 +8103,10 @@ dependencies = [
  "reqwest",
  "serde",
  "serde_json",
- "sui-config",
- "sui-json-rpc-types",
- "sui-protocol-config",
- "sui-types",
+ "myso-config",
+ "myso-json-rpc-types",
+ "myso-protocol-config",
+ "myso-types",
  "tap",
  "telemetry-subscribers",
  "tempfile",
@@ -8118,9 +8118,9 @@ dependencies = [
 ]
 
 [[package]]
-name = "sui-types"
+name = "myso-types"
 version = "0.1.0"
-source = "git+https://github.com/MystenLabs/sui.git?branch=testnet#a14d9e8ddadfcea837de46b43d0b72a289320afb"
+source = "git+https://github.com/the-social-proof-foundation/myso-core.git?branch=testnet#a14d9e8ddadfcea837de46b43d0b72a289320afb"
 dependencies = [
  "anemo",
  "anyhow",
@@ -8180,11 +8180,11 @@ dependencies = [
  "static_assertions",
  "strum 0.27.2",
  "strum_macros 0.27.2",
- "sui-enum-compat-util",
- "sui-macros",
- "sui-protocol-config",
- "sui-rpc",
- "sui-sdk-types",
+ "myso-enum-compat-util",
+ "myso-macros",
+ "myso-protocol-config",
+ "myso-rpc",
+ "myso-sdk-types",
  "tap",
  "thiserror 1.0.69",
  "tonic 0.14.2",
@@ -8286,7 +8286,7 @@ checksum = "55937e1799185b12863d447f42597ed69d9928686b8d88a1df17376a097d8369"
 [[package]]
 name = "telemetry-subscribers"
 version = "0.2.0"
-source = "git+https://github.com/MystenLabs/sui.git?branch=testnet#a14d9e8ddadfcea837de46b43d0b72a289320afb"
+source = "git+https://github.com/the-social-proof-foundation/myso-core.git?branch=testnet#a14d9e8ddadfcea837de46b43d0b72a289320afb"
 dependencies = [
  "atomic_float",
  "bytes",
@@ -9104,7 +9104,7 @@ dependencies = [
 [[package]]
 name = "typed-store"
 version = "0.4.0"
-source = "git+https://github.com/MystenLabs/sui.git?branch=testnet#a14d9e8ddadfcea837de46b43d0b72a289320afb"
+source = "git+https://github.com/the-social-proof-foundation/myso-core.git?branch=testnet#a14d9e8ddadfcea837de46b43d0b72a289320afb"
 dependencies = [
  "anyhow",
  "async-trait",
@@ -9125,7 +9125,7 @@ dependencies = [
  "rand 0.8.5",
  "rocksdb",
  "serde",
- "sui-macros",
+ "myso-macros",
  "tap",
  "thiserror 1.0.69",
  "tokio",
@@ -9138,7 +9138,7 @@ dependencies = [
 [[package]]
 name = "typed-store-derive"
 version = "0.3.0"
-source = "git+https://github.com/MystenLabs/sui.git?branch=testnet#a14d9e8ddadfcea837de46b43d0b72a289320afb"
+source = "git+https://github.com/the-social-proof-foundation/myso-core.git?branch=testnet#a14d9e8ddadfcea837de46b43d0b72a289320afb"
 dependencies = [
  "itertools 0.13.0",
  "proc-macro2",
@@ -9149,7 +9149,7 @@ dependencies = [
 [[package]]
 name = "typed-store-error"
 version = "0.4.0"
-source = "git+https://github.com/MystenLabs/sui.git?branch=testnet#a14d9e8ddadfcea837de46b43d0b72a289320afb"
+source = "git+https://github.com/the-social-proof-foundation/myso-core.git?branch=testnet#a14d9e8ddadfcea837de46b43d0b72a289320afb"
 dependencies = [
  "serde",
  "thiserror 1.0.69",
@@ -9158,7 +9158,7 @@ dependencies = [
 [[package]]
 name = "typed-store-workspace-hack"
 version = "0.0.0"
-source = "git+https://github.com/MystenLabs/sui.git?branch=testnet#a14d9e8ddadfcea837de46b43d0b72a289320afb"
+source = "git+https://github.com/the-social-proof-foundation/myso-core.git?branch=testnet#a14d9e8ddadfcea837de46b43d0b72a289320afb"
 dependencies = [
  "cc",
  "lazy_static",

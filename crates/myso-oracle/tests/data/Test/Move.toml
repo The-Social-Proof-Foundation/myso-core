@@ -4,7 +4,7 @@ version = "0.0.1"
 edition = "2024.beta"
 
 [dependencies]
-MySo = { git = "https://github.com/MystenLabs/myso.git", subdir = "crates/myso-framework/packages/myso-framework", rev = "9d0fba4a490e1cf80101bbd4019c7bb1ccfce99b" }
+MySo = { git = "https://github.com/the-social-proof-foundation/myso-core.git", subdir = "crates/myso-framework/packages/myso-framework", rev = "9d0fba4a490e1cf80101bbd4019c7bb1ccfce99b" }
 myso-oracle = { local = "../../../move/oracle" }
 
 [addresses]

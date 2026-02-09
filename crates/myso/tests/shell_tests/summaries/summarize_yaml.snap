@@ -1,14 +1,14 @@
 ---
-source: crates/sui/tests/shell_tests.rs
+source: crates/myso/tests/shell_tests.rs
 ---
 ----- script -----
 # Copyright (c) Mysten Labs, Inc.
 # SPDX-License-Identifier: Apache-2.0
 
-sui move --client.config $CONFIG summary --path data/move_package -o yaml
+myso move --client.config $CONFIG summary --path data/move_package -o yaml
 ls -1 data/move_package/package_summaries | LC_ALL=C sort -f
 ls -1 data/move_package/package_summaries/move_package | LC_ALL=C sort -f
-ls -1 data/move_package/package_summaries/sui | LC_ALL=C sort -f
+ls -1 data/move_package/package_summaries/myso | LC_ALL=C sort -f
 ls -1 data/move_package/package_summaries/std | LC_ALL=C sort -d
 # NB: No root_package_metadata for source packages as these are not generated w.r.t. a specific network.
 cat data/move_package/package_summaries/root_package_metadata.yaml
@@ -22,7 +22,7 @@ success: true
 exit_code: 0
 ----- stdout -----
 INCLUDING DEPENDENCY MoveStdlib
-INCLUDING DEPENDENCY Sui
+INCLUDING DEPENDENCYMySo
 BUILDING move_package
 
 Summary generation successful. Summaries stored in 'package_summaries'
@@ -30,7 +30,7 @@ address_mapping.yaml
 move_package
 root_package_metadata.yaml
 std
-sui
+myso
 move_package.yaml
 accumulator.yaml
 accumulator_metadata.yaml
@@ -79,7 +79,7 @@ priority_queue.yaml
 protocol_config.yaml
 prover.yaml
 random.yaml
-sui.yaml
+myso.yaml
 table.yaml
 table_vec.yaml
 token.yaml
@@ -121,7 +121,7 @@ vector.yaml
 ---
 move_package: "0x0000000000000000000000000000000000000000000000000000000000000000"
 std: "0x0000000000000000000000000000000000000000000000000000000000000001"
-sui: "0x0000000000000000000000000000000000000000000000000000000000000002"
+myso: "0x0000000000000000000000000000000000000000000000000000000000000002"
 
 ----- stderr -----
-[NOTE] Dependencies on Sui, MoveStdlib, Bridge, DeepBook, and SuiSystem are automatically added, but this feature is disabled for your package because you have explicitly included dependencies on Sui. Consider removing these dependencies from `Move.toml`.
+[NOTE] Dependencies onMySo, MoveStdlib, Bridge, DeepBook, and SuiSystem are automatically added, but this feature is disabled for your package because you have explicitly included dependencies on MySo. Consider removing these dependencies from `Move.toml`.

@@ -14,15 +14,15 @@ DVX-953 meant that in this case, we would get the following errors:
 ```
 Failed to build Move modules: When resolving dependencies for package A, conflicting dependencies found:
 At C
-        Bridge = { git = "https://github.com/MystenLabs/myso.git", rev = "04f11afaf5e0", subdir = "crates/myso-framework/packages/bridge" }
+        Bridge = { git = "https://github.com/the-social-proof-foundation/myso-core.git", rev = "04f11afaf5e0", subdir = "crates/myso-framework/packages/bridge" }
         D = { local = "../D" }
-        MoveStdlib = { git = "https://github.com/MystenLabs/myso.git", rev = "04f11afaf5e0", subdir = "crates/myso-framework/packages/move-stdlib" }
-        MySo = { git = "https://github.com/MystenLabs/myso.git", rev = "04f11afaf5e0", subdir = "crates/myso-framework/packages/myso-framework" }
-        MySoSystem = { git = "https://github.com/MystenLabs/myso.git", rev = "04f11afaf5e0", subdir = "crates/myso-framework/packages/myso-system" }
+        MoveStdlib = { git = "https://github.com/the-social-proof-foundation/myso-core.git", rev = "04f11afaf5e0", subdir = "crates/myso-framework/packages/move-stdlib" }
+        MySo = { git = "https://github.com/the-social-proof-foundation/myso-core.git", rev = "04f11afaf5e0", subdir = "crates/myso-framework/packages/myso-framework" }
+        MySoSystem = { git = "https://github.com/the-social-proof-foundation/myso-core.git", rev = "04f11afaf5e0", subdir = "crates/myso-framework/packages/myso-system" }
 At B -> C
-        Bridge = { git = "https://github.com/MystenLabs/myso.git", rev = "04f11afaf5e0", subdir = "crates/myso-framework/packages/bridge" }
+        Bridge = { git = "https://github.com/the-social-proof-foundation/myso-core.git", rev = "04f11afaf5e0", subdir = "crates/myso-framework/packages/bridge" }
         D = { local = "../D" }
-        MoveStdlib = { git = "https://github.com/MystenLabs/myso.git", rev = "04f11afaf5e0", subdir = "crates/myso-framework/packages/move-stdlib" }
-        MySo = { git = "https://github.com/MystenLabs/myso.git", rev = "04f11afaf5e0", subdir = "crates/myso-framework/packages/myso-framework" }
-        MySoSystem = { git = "https://github.com/MystenLabs/myso.git", rev = "04f11afaf5e0", subdir = "crates/myso-framework/packages/myso-system" }.
+        MoveStdlib = { git = "https://github.com/the-social-proof-foundation/myso-core.git", rev = "04f11afaf5e0", subdir = "crates/myso-framework/packages/move-stdlib" }
+        MySo = { git = "https://github.com/the-social-proof-foundation/myso-core.git", rev = "04f11afaf5e0", subdir = "crates/myso-framework/packages/myso-framework" }
+        MySoSystem = { git = "https://github.com/the-social-proof-foundation/myso-core.git", rev = "04f11afaf5e0", subdir = "crates/myso-framework/packages/myso-system" }.
 ```

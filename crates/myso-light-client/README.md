@@ -37,7 +37,7 @@ archive_store_config:
   object-store-connection-limit: 20
 ```
 
-The genesis blob for the MySo mainnet can be found here: https://github.com/MystenLabs/myso-genesis/blob/main/mainnet/genesis.blob. Download and place it inside the checkpoint summary directory. 
+The genesis blob for the MySo mainnet can be found here: https://github.com/the-social-proof-foundation/myso-core-genesis/blob/main/mainnet/genesis.blob. Download and place it inside the checkpoint summary directory. 
 
 We provide `mainnet.yaml` and `testnet.yaml` for your convenience.
 

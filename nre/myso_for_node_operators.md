@@ -49,7 +49,7 @@ curl https://releases.myso.io/$MYSO_SHA/myso-node -o myso-node
 To build directly from source:
 
 ```shell
-git clone https://github.com/MystenLabs/myso.git && cd myso
+git clone https://github.com/the-social-proof-foundation/myso-core.git && cd myso
 git checkout [SHA|BRANCH|TAG]
 cargo build --release --bin myso-node
 ```
@@ -288,7 +288,7 @@ myso client call --package 0x3 --module myso_system --function update_validator_
 myso client call --package 0x3 --module myso_system --function update_validator_next_epoch_p2p_address --args 0x5 "[4, 192, 168, 1, 1]" --gas-budget 10000
 ```
 
-See the [full list of metadata update functions here](https://github.com/MystenLabs/myso/blob/main/crates/myso-framework/packages/myso-system/sources/myso_system.move#L267-L444).
+See the [full list of metadata update functions here](https://github.com/the-social-proof-foundation/myso-core/blob/main/crates/myso-framework/packages/myso-system/sources/myso_system.move#L267-L444).
 
 ### Operation Cap
 
@@ -370,12 +370,12 @@ There may be instances where urgent security fixes need to be rolled out before 
 This release process will be different and we expect us to announce the directory for such binaries out of band.
 Our public key to verify these binaries would be stored [here](https://myso-private.s3.us-west-2.amazonaws.com/myso_security_release.pem)
 
-You can download all the necessary signed binaries and docker artifacts incorporating the security fixes by using the [download_private.sh](https://github.com/MystenLabs/myso/blob/main/nre/download_private.sh)
+You can download all the necessary signed binaries and docker artifacts incorporating the security fixes by using the [download_private.sh](https://github.com/the-social-proof-foundation/myso-core/blob/main/nre/download_private.sh)
 
 Usage
 `./download_private.sh <directory-name>`
 
-You can also download and verify specific binaries that may not be included by the above script using the [download_and_verify_private_binary.sh](https://github.com/MystenLabs/myso/blob/main/nre/download_and_verify_private_binary.sh) script.
+You can also download and verify specific binaries that may not be included by the above script using the [download_and_verify_private_binary.sh](https://github.com/the-social-proof-foundation/myso-core/blob/main/nre/download_and_verify_private_binary.sh) script.
 
 Usage:
 `./download_and_verify_private_binary.sh <directory-name> <binary-name>`

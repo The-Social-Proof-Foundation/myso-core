@@ -7,7 +7,7 @@ import "openzeppelin-foundry-upgrades/Options.sol";
 import "../contracts/BridgeCommittee.sol";
 import "../contracts/BridgeVault.sol";
 import "../contracts/BridgeLimiter.sol";
-import "../contracts/SuiBridge.sol";
+import "../contracts/MySoBridge.sol";
 import "../contracts/BridgeConfig.sol";
 
 contract BridgeBaseTest is Test {
@@ -41,12 +41,12 @@ contract BridgeBaseTest is Test {
 
     uint64 USD_VALUE_MULTIPLIER = 100000000; // 8 DP accuracy
 
-    uint64 SUI_PRICE = 1_28000000;
+    uint64 MYSO_PRICE = 1_28000000;
     uint64 BTC_PRICE = 43251_89000000;
     uint64 ETH_PRICE = 2596_96000000;
     uint64 USDC_PRICE = 1_00000000;
     uint64[] tokenPrices;
-    uint8[] suiDecimals;
+    uint8[] mysoDecimals;
     uint8[] tokenIds;
     address[] supportedTokens;
     uint8[] supportedChains;
@@ -56,7 +56,7 @@ contract BridgeBaseTest is Test {
     uint16 minStakeRequired = 10000;
 
     BridgeCommittee public committee;
-    SuiBridge public bridge;
+    MySoBridge public bridge;
     BridgeVault public vault;
     BridgeLimiter public limiter;
     BridgeConfig public config;
@@ -119,14 +119,14 @@ contract BridgeBaseTest is Test {
         supportedChains = new uint8[](1);
         supportedChains[0] = 0;
         tokenPrices = new uint64[](5);
-        suiDecimals = new uint8[](5);
+        mysoDecimals = new uint8[](5);
         tokenIds = new uint8[](5);
-        suiDecimals[0] = 9;
-        suiDecimals[1] = 8;
-        suiDecimals[2] = 8;
-        suiDecimals[3] = 6;
-        suiDecimals[4] = 6;
-        tokenPrices[0] = SUI_PRICE;
+        mysoDecimals[0] = 9;
+        mysoDecimals[1] = 8;
+        mysoDecimals[2] = 8;
+        mysoDecimals[3] = 6;
+        mysoDecimals[4] = 6;
+        tokenPrices[0] = MYSO_PRICE;
         tokenPrices[1] = BTC_PRICE;
         tokenPrices[2] = ETH_PRICE;
         tokenPrices[3] = USDC_PRICE;
@@ -147,7 +147,7 @@ contract BridgeBaseTest is Test {
                     supportedTokens,
                     tokenPrices,
                     tokenIds,
-                    suiDecimals,
+                    mysoDecimals,
                     supportedChains
                 )
             ),
@@ -180,15 +180,15 @@ contract BridgeBaseTest is Test {
 
         // deploy bridge =====================================================================
 
-        address _suiBridge = Upgrades.deployUUPSProxy(
-            "SuiBridge.sol",
+        address _mysoBridge = Upgrades.deployUUPSProxy(
+            "MySoBridge.sol",
             abi.encodeCall(
-                SuiBridge.initialize, (address(committee), address(vault), address(limiter))
+                MySoBridge.initialize, (address(committee), address(vault), address(limiter))
             ),
             opts
         );
 
-        bridge = SuiBridge(_suiBridge);
+        bridge = MySoBridge(_mysoBridge);
 
         vault.transferOwnership(address(bridge));
         limiter.transferOwnership(address(bridge));

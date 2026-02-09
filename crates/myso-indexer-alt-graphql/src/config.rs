@@ -517,7 +517,7 @@ impl Default for Limits {
             // This default was picked as the sum of pre- and post- quorum timeouts from
             // [myso_core::authority_aggregator::TimeoutConfig], with a 10% buffer.
             //
-            // <https://github.com/MystenLabs/myso/blob/eaf05fe5d293c06e3a2dfc22c87ba2aef419d8ea/crates/myso-core/src/authority_aggregator.rs#L84-L85>
+            // <https://github.com/the-social-proof-foundation/myso-core/blob/eaf05fe5d293c06e3a2dfc22c87ba2aef419d8ea/crates/myso-core/src/authority_aggregator.rs#L84-L85>
             mutation_timeout_ms: 74_000,
             query_timeout_ms: 40_000,
             max_query_depth: 20,
