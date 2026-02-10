@@ -72,7 +72,7 @@ pub(crate) struct NativeField {
     /// The BCS-encoded bytes of the dynamic field's name.
     pub(crate) name_bytes: Vec<u8>,
 
-    /// The type of the dynamic field's name, like 'u64' or '0x2::kiosk::Listing'. For dynamic
+    /// The type of the dynamic field's name, like 'u64'. For dynamic
     /// object fields, this type is wrapped with `0x2::dynamic_object_field::Wrapper`.
     pub(crate) name_type: TypeTag,
 
@@ -80,7 +80,7 @@ pub(crate) struct NativeField {
     /// object's ID.
     pub(crate) value_bytes: Vec<u8>,
 
-    /// The type of the dynamic field's value, like 'u64' or '0x2::kiosk::Listing'. For dynamic
+    /// The type of the dynamic field's value, like 'u64'. For dynamic
     /// object fields, this type is `ID` (and not relevant).
     pub(crate) value_type: TypeTag,
 
@@ -93,7 +93,7 @@ pub(crate) struct NativeField {
 /// Names can either be given as serialized `bcs` accompanied by its `type`, or as a Display v2 `literal` expression. Other combinations of inputs are not supported.
 #[derive(InputObject)]
 pub(crate) struct DynamicFieldName {
-    /// The type of the dynamic field's name, like 'u64' or '0x2::kiosk::Listing'.
+    /// The type of the dynamic field's name, like 'u64'.
     pub(crate) type_: Option<TypeInput>,
 
     /// The Base64-encoded BCS serialization of the dynamic field's 'name'.

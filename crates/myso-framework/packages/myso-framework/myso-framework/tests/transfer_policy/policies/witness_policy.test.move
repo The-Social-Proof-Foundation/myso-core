@@ -5,11 +5,6 @@
 /// Requires a Witness on every transfer. Witness needs to be generated
 /// in some way and presented to the `prove` method for the TransferRequest
 /// to receive a matching receipt.
-///
-/// One important use case for this policy is the ability to lock something
-/// in the `Kiosk`. When an item is placed into the Kiosk, a `PlacedWitness`
-/// struct is created which can be used to prove that the `T` was placed
-/// to the `Kiosk`.
 module myso::witness_policy {
     use myso::transfer_policy::{Self as policy, TransferPolicy, TransferPolicyCap, TransferRequest};
 

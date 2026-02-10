@@ -3088,8 +3088,142 @@ paid
 from
 	public fun
 	0x2::transfer_policy
-LinkedTable
+Kiosk
 	public struct
+	0x2::kiosk
+KioskOwnerCap
+	0x2::kiosk
+PurchaseCap
+	0x2::kiosk
+Borrow
+	0x2::kiosk
+Item
+	0x2::kiosk
+Listing
+	0x2::kiosk
+Lock
+	0x2::kiosk
+ItemListed
+	0x2::kiosk
+ItemPurchased
+	0x2::kiosk
+ItemDelisted
+	0x2::kiosk
+default
+	0x2::kiosk
+new
+	0x2::kiosk
+close_and_withdraw
+	0x2::kiosk
+set_owner
+	0x2::kiosk
+set_owner_custom
+	0x2::kiosk
+place
+	0x2::kiosk
+lock
+	0x2::kiosk
+take
+	0x2::kiosk
+list
+	0x2::kiosk
+place_and_list
+	0x2::kiosk
+delist
+	0x2::kiosk
+purchase
+	0x2::kiosk
+list_with_purchase_cap
+	0x2::kiosk
+purchase_with_cap
+	0x2::kiosk
+return_purchase_cap
+	0x2::kiosk
+withdraw
+	0x2::kiosk
+lock_internal
+	0x2::kiosk
+place_internal
+	0x2::kiosk
+uid_mut_internal
+	0x2::kiosk
+has_item
+	0x2::kiosk
+has_item_with_type
+	0x2::kiosk
+is_locked
+	0x2::kiosk
+is_listed
+	0x2::kiosk
+is_listed_exclusively
+	0x2::kiosk
+has_access
+	0x2::kiosk
+uid_mut_as_owner
+	0x2::kiosk
+set_allow_extensions
+	0x2::kiosk
+uid
+	0x2::kiosk
+uid_mut
+	0x2::kiosk
+owner
+	0x2::kiosk
+item_count
+	0x2::kiosk
+profits_amount
+	0x2::kiosk
+profits_mut
+	0x2::kiosk
+borrow
+	0x2::kiosk
+borrow_mut
+	0x2::kiosk
+borrow_val
+	0x2::kiosk
+return_val
+	0x2::kiosk
+kiosk_owner_cap_for
+	0x2::kiosk
+purchase_cap_kiosk
+	0x2::kiosk
+purchase_cap_item
+	0x2::kiosk
+purchase_cap_min_price
+	0x2::kiosk
+Extension
+	0x2::kiosk_extension
+ExtensionKey
+	0x2::kiosk_extension
+add
+	0x2::kiosk_extension
+disable
+	0x2::kiosk_extension
+enable
+	0x2::kiosk_extension
+remove
+	0x2::kiosk_extension
+storage
+	0x2::kiosk_extension
+storage_mut
+	0x2::kiosk_extension
+place
+	0x2::kiosk_extension
+lock
+	0x2::kiosk_extension
+is_installed
+	0x2::kiosk_extension
+is_enabled
+	0x2::kiosk_extension
+can_place
+	0x2::kiosk_extension
+can_lock
+	0x2::kiosk_extension
+extension
+	0x2::kiosk_extension
+extension_mut
+	0x2::kiosk_extension
+LinkedTable
 	0x2::linked_table
 Node
 	public struct
@@ -7970,5 +8104,7 @@ to_pcrs
 	fun
 	0x50c1::enclave
 create_intent_message
+	fun
+	0x50c1::enclave
 	fun
 	0x50c1::enclave

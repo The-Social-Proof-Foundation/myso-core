@@ -107,7 +107,7 @@ See [Programmable Transaction Blocks](/guides/developer/transactions/prog-txn-bl
 | Contract immutability | Programs can be marked upgradeable or immutable at deployment time. | Native mutable and immutable support using upgrade capabilities as objects. |
 | Contract upgrading | Native, programs marked as upgradeable can be upgraded by the upgrade authority. | Native, upgrade capability mediated. |
 | Composability | Cross-Program Invocations (CPIs) allow programs to call other programs within a transaction. Limited to 4 levels deep. Atomic within transaction boundaries. | Call any number of functions within a single transaction using PTBs. Compose by taking output of one call and passing into another. Ensures atomic execution with up to 1,024 commands per PTB. |
-| Token royalties | Not directly. Enforced through protocols like MPL Core, or extensions like Token22. | Enforced by the chain through Kiosk and transfer policies. |
+| Token royalties | Not directly. Enforced through protocols like MPL Core, or extensions like Token22. | Enforced by the chain through transfer policies. |
 | Block time and finality | ~400ms block time, ~12-13 seconds for economic finality (before Alpenglow upgrade). | Sub-second finality for independent transactions, ~390ms with Mysticeti for shared objects. |
 
 ## Related links

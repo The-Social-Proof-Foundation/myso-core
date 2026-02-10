@@ -5,12 +5,12 @@
 ///
 /// - TransferPolicy - is a highly customizable primitive, which provides an
 /// interface for the type owner to set custom transfer rules for every
-/// deal performed in the `Kiosk` or a similar system that integrates with TP.
+/// deal performed in a marketplace or similar system that integrates with TP.
 ///
 /// - Once a `TransferPolicy<T>` is created for and shared (or frozen), the
-/// type `T` becomes tradable in `Kiosk`s. On every purchase operation, a
-/// `TransferRequest` is created and needs to be confirmed by the `TransferPolicy`
-/// hot potato or transaction will fail.
+/// type `T` becomes tradable in systems that use TransferPolicy. On every
+/// purchase operation, a `TransferRequest` is created and needs to be
+/// confirmed by the `TransferPolicy` hot potato or transaction will fail.
 ///
 /// - Type owner (creator) can set any Rules as long as the ecosystem supports
 /// them. All of the Rules need to be resolved within a single transaction (eg
@@ -55,7 +55,7 @@ public struct TransferRequest<phantom T> {
     /// Amount of MYSO paid for the item. Can be used to
     /// calculate the fee / transfer policy enforcement.
     paid: u64,
-    /// The ID of the Kiosk / Safe the object is being sold from.
+    /// The ID of the marketplace or safe the object is being sold from.
     /// Can be used by the TransferPolicy implementors.
     from: ID,
     /// Collected Receipts. Used to verify that all of the rules
@@ -108,10 +108,10 @@ public fun new_request<T>(item: ID, paid: u64, from: ID): TransferRequest<T> {
     TransferRequest { item, paid, from, receipts: vec_set::empty() }
 }
 
-/// Register a type in the Kiosk system and receive a `TransferPolicy` and
+/// Register a type and receive a `TransferPolicy` and
 /// a `TransferPolicyCap` for the type. The `TransferPolicy` is required to
-/// confirm kiosk deals for the `T`. If there's no `TransferPolicy`
-/// available for use, the type can not be traded in kiosks.
+/// confirm transfer deals for the `T`. If there's no `TransferPolicy`
+/// available for use, the type can not be traded in systems that use TP.
 public fun new<T>(pub: &Publisher, ctx: &mut TxContext): (TransferPolicy<T>, TransferPolicyCap<T>) {
     assert!(package::from_package<T>(pub), 0);
     let id = object::new(ctx);
@@ -179,7 +179,7 @@ public fun destroy_and_withdraw<T>(
 /// `TransferPolicy<T>`.
 ///
 /// Note: unless there's a policy for `T` to allow transfers,
-/// Kiosk trades will not be possible.
+/// marketplace trades will not be possible.
 public fun confirm_request<T>(
     self: &TransferPolicy<T>,
     request: TransferRequest<T>,

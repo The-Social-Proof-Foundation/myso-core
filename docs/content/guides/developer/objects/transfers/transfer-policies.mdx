@@ -4,9 +4,7 @@ description: Learn about transfer policies on MySo.
 keywords: [ transfer, policy, transferpolicy, transfer receipt, transfer request, transferrequest ]
 ---
 
-A [`TransferPolicy`](https://docs.mysocial.network/references/framework/myso_sui/transfer_policy) on MySo is a customizable primitive that enables the owner of a type to create custom rules that define how the type can be transferred. You can set any number of rules, such as paying a royalty or commission, and all must be satisfied in a single transaction for the transfer to succeed. A `TransferPolicy` can be used within a MySo Kiosk marketplace or any other system that integrates the `TransferPolicy` primitive. 
-
-In a kiosk, creating and sharing a `TransferPolicy<T>` makes the type `T` tradable in that kiosk. On every kiosk purchase, the `TransferPolicy` must confirm the `TransferRequest`, or the transaction fails.
+A [`TransferPolicy`](https://docs.mysocial.network/references/framework/myso_sui/transfer_policy) on MySo is a customizable primitive that enables the owner of a type to create custom rules that define how the type can be transferred. You can set any number of rules, such as paying a royalty or commission, and all must be satisfied in a single transaction for the transfer to succeed. A `TransferPolicy` can be used within a marketplace or any other system that integrates the `TransferPolicy` primitive. Creating and sharing a `TransferPolicy<T>` makes the type `T` tradable in that system. On every purchase, the `TransferPolicy` must confirm the `TransferRequest`, or the transaction fails.
 
 ## `TransferPolicy` rules 
 
@@ -94,7 +92,7 @@ To implement a percentage-based fee, such as royalties, a rule module must know 
 
 - Amount paid in MYSO
 
-- The object ID that was used for selling, such as a kiosk
+- The object ID that was used for selling, such as a marketplace
 
 The `myso::transfer_policy` module provides public functions to access the fields `paid()`, `item()`, and `from()`.
 
@@ -278,10 +276,10 @@ module examples::capability_rule {
 }
 ```
 
-## Policies for kiosks 
+## Policies for marketplaces
 
-When a kiosk purchase occurs, the system creates a `TransferRequest` hot potato, and only the matching `TransferPolicy` can confirm it to unblock the transaction.
+When a purchase occurs in a system that uses TransferPolicy, the system creates a `TransferRequest` hot potato, and only the matching `TransferPolicy` can confirm it to unblock the transaction.
 
-A kiosk can trade an item of type `T` only if the `TransferPolicy` for `T` exists and the buyer can access it. A purchase issues a `TransferRequest` that must be resolved in a matching `TransferPolicy`. If no policy exists or the buyer can't access it, the transaction fails.
+A marketplace can trade an item of type `T` only if the `TransferPolicy` for `T` exists and the buyer can access it. A purchase issues a `TransferRequest` that must be resolved in a matching `TransferPolicy`. If no policy exists or the buyer can't access it, the transaction fails.
 
 This system gives you maximum freedom and flexibility. By removing transfer policy logic from the trading primitive, only you can set policies, and you control all enforcement as long as the primitive is used.

@@ -6,10 +6,10 @@ Defines the <code><a href="../myso/transfer_policy.md#myso_transfer_policy_Trans
 
 - TransferPolicy - is a highly customizable primitive, which provides an
 interface for the type owner to set custom transfer rules for every
-deal performed in the <code>Kiosk</code> or a similar system that integrates with TP.
+deal performed in a marketplace or similar system that integrates with TP.
 
 - Once a <code><a href="../myso/transfer_policy.md#myso_transfer_policy_TransferPolicy">TransferPolicy</a>&lt;T&gt;</code> is created for and shared (or frozen), the
-type <code>T</code> becomes tradable in <code>Kiosk</code>s. On every purchase operation, a
+type <code>T</code> becomes tradable in systems that use TransferPolicy. On every purchase operation, a
 <code><a href="../myso/transfer_policy.md#myso_transfer_policy_TransferRequest">TransferRequest</a></code> is created and needs to be confirmed by the <code><a href="../myso/transfer_policy.md#myso_transfer_policy_TransferPolicy">TransferPolicy</a></code>
 hot potato or transaction will fail.
 
@@ -129,7 +129,7 @@ from the item type (<code>T</code>) owner on purchase attempt.
 <code><a href="../myso/transfer_policy.md#myso_transfer_policy_from">from</a>: <a href="../myso/object.md#myso_object_ID">myso::object::ID</a></code>
 </dt>
 <dd>
- The ID of the Kiosk / Safe the object is being sold from.
+ The ID of the marketplace or safe the object is being sold from.
  Can be used by the TransferPolicy implementors.
 </dd>
 <dt>
@@ -400,10 +400,10 @@ the transaction will fail.
 
 ## Function `new`
 
-Register a type in the Kiosk system and receive a <code><a href="../myso/transfer_policy.md#myso_transfer_policy_TransferPolicy">TransferPolicy</a></code> and
+Register a type and receive a <code><a href="../myso/transfer_policy.md#myso_transfer_policy_TransferPolicy">TransferPolicy</a></code> and
 a <code><a href="../myso/transfer_policy.md#myso_transfer_policy_TransferPolicyCap">TransferPolicyCap</a></code> for the type. The <code><a href="../myso/transfer_policy.md#myso_transfer_policy_TransferPolicy">TransferPolicy</a></code> is required to
-confirm kiosk deals for the <code>T</code>. If there's no <code><a href="../myso/transfer_policy.md#myso_transfer_policy_TransferPolicy">TransferPolicy</a></code>
-available for use, the type can not be traded in kiosks.
+confirm transfer deals for the <code>T</code>. If there's no <code><a href="../myso/transfer_policy.md#myso_transfer_policy_TransferPolicy">TransferPolicy</a></code>
+available for use, the type can not be traded in systems that use TP.
 
 
 <pre><code><b>public</b> <b>fun</b> <a href="../myso/transfer_policy.md#myso_transfer_policy_new">new</a>&lt;T&gt;(pub: &<a href="../myso/package.md#myso_package_Publisher">myso::package::Publisher</a>, ctx: &<b>mut</b> <a href="../myso/tx_context.md#myso_tx_context_TxContext">myso::tx_context::TxContext</a>): (<a href="../myso/transfer_policy.md#myso_transfer_policy_TransferPolicy">myso::transfer_policy::TransferPolicy</a>&lt;T&gt;, <a href="../myso/transfer_policy.md#myso_transfer_policy_TransferPolicyCap">myso::transfer_policy::TransferPolicyCap</a>&lt;T&gt;)
@@ -544,7 +544,7 @@ by the type constraint, as only the publisher of the <code>T</code> can get
 <code><a href="../myso/transfer_policy.md#myso_transfer_policy_TransferPolicy">TransferPolicy</a>&lt;T&gt;</code>.
 
 Note: unless there's a policy for <code>T</code> to allow transfers,
-Kiosk trades will not be possible.
+Marketplace trades will not be possible.
 
 
 <pre><code><b>public</b> <b>fun</b> <a href="../myso/transfer_policy.md#myso_transfer_policy_confirm_request">confirm_request</a>&lt;T&gt;(self: &<a href="../myso/transfer_policy.md#myso_transfer_policy_TransferPolicy">myso::transfer_policy::TransferPolicy</a>&lt;T&gt;, request: <a href="../myso/transfer_policy.md#myso_transfer_policy_TransferRequest">myso::transfer_policy::TransferRequest</a>&lt;T&gt;): (<a href="../myso/object.md#myso_object_ID">myso::object::ID</a>, u64, <a href="../myso/object.md#myso_object_ID">myso::object::ID</a>)
