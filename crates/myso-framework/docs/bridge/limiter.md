@@ -25,6 +25,7 @@ title: Module `bridge::limiter`
 <b>use</b> <a href="../myso/bag.md#myso_bag">myso::bag</a>;
 <b>use</b> <a href="../myso/balance.md#myso_balance">myso::balance</a>;
 <b>use</b> <a href="../myso/bcs.md#myso_bcs">myso::bcs</a>;
+<b>use</b> <a href="../myso/bootstrap_key.md#myso_bootstrap_key">myso::bootstrap_key</a>;
 <b>use</b> <a href="../myso/clock.md#myso_clock">myso::clock</a>;
 <b>use</b> <a href="../myso/coin.md#myso_coin">myso::coin</a>;
 <b>use</b> <a href="../myso/config.md#myso_config">myso::config</a>;

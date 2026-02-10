@@ -8,8 +8,8 @@ use myso_framework::{SystemPackage, SystemPackageMetadata};
 use myso_protocol_config::ProtocolVersion;
 use myso_types::base_types::ObjectID;
 use myso_types::{
-    BRIDGE_PACKAGE_ID, DEEPBOOK_PACKAGE_ID, MOVE_STDLIB_PACKAGE_ID, MYSO_FRAMEWORK_PACKAGE_ID,
-    MYSO_SYSTEM_PACKAGE_ID,
+    BRIDGE_PACKAGE_ID, DEEPBOOK_PACKAGE_ID, MOVE_STDLIB_PACKAGE_ID, MYDATA_PACKAGE_ID,
+    MYSO_FRAMEWORK_PACKAGE_ID, MYSO_SOCIAL_PACKAGE_ID, MYSO_SYSTEM_PACKAGE_ID,
 };
 
 pub type SnapshotManifest = BTreeMap<u64, Snapshot>;
@@ -70,6 +70,8 @@ const SYSTEM_PACKAGE_PUBLISH_ORDER: &[ObjectID] = &[
     MYSO_SYSTEM_PACKAGE_ID,
     DEEPBOOK_PACKAGE_ID,
     BRIDGE_PACKAGE_ID,
+    MYDATA_PACKAGE_ID,
+    MYSO_SOCIAL_PACKAGE_ID,
 ];
 
 pub fn load_bytecode_snapshot_manifest() -> SnapshotManifest {

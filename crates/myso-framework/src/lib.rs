@@ -13,8 +13,8 @@ use myso_types::base_types::ObjectRef;
 use myso_types::storage::ObjectStore;
 use myso_types::{BRIDGE_PACKAGE_ID, DEEPBOOK_PACKAGE_ID};
 use myso_types::{
-    MOVE_STDLIB_PACKAGE_ID, MYSO_FRAMEWORK_PACKAGE_ID, MYSO_SYSTEM_PACKAGE_ID,
-    base_types::ObjectID,
+    MOVE_STDLIB_PACKAGE_ID, MYDATA_PACKAGE_ID, MYSO_FRAMEWORK_PACKAGE_ID, MYSO_SOCIAL_PACKAGE_ID,
+    MYSO_SYSTEM_PACKAGE_ID, base_types::ObjectID,
     digests::TransactionDigest,
     move_package::MovePackage,
     object::{OBJECT_START_VERSION, Object},
@@ -151,6 +151,22 @@ impl BuiltInFramework {
                     MOVE_STDLIB_PACKAGE_ID,
                     MYSO_FRAMEWORK_PACKAGE_ID,
                     MYSO_SYSTEM_PACKAGE_ID
+                ]
+            ),
+            (
+                MYDATA_PACKAGE_ID,
+                "MyData",
+                "mydata",
+                [MOVE_STDLIB_PACKAGE_ID, MYSO_FRAMEWORK_PACKAGE_ID]
+            ),
+            (
+                MYSO_SOCIAL_PACKAGE_ID,
+                "MySoSocial",
+                "myso-social",
+                [
+                    MOVE_STDLIB_PACKAGE_ID,
+                    MYSO_FRAMEWORK_PACKAGE_ID,
+                    MYDATA_PACKAGE_ID
                 ]
             )
         ])

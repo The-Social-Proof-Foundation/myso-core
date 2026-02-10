@@ -2400,7 +2400,7 @@
     ]
   },
   "110": {
-    "git_revision": "4a2c3f253049cc57000ac7cb909133e234d60d50-dirty",
+    "git_revision": "0dea4212863814f81738894d22897156c215624e-dirty",
     "packages": [
       {
         "name": "MoveStdlib",
@@ -2426,6 +2426,16 @@
         "name": "Bridge",
         "path": "crates/myso-framework/packages/bridge",
         "id": "0x000000000000000000000000000000000000000000000000000000000000000b"
+      },
+      {
+        "name": "MyData",
+        "path": "crates/myso-framework/packages/mydata",
+        "id": "0x000000000000000000000000000000000000000000000000000000000000da7a"
+      },
+      {
+        "name": "MySoSocial",
+        "path": "crates/myso-framework/packages/myso-social",
+        "id": "0x00000000000000000000000000000000000000000000000000000000000050c1"
       }
     ]
   }

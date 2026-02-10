@@ -1,51 +1,120 @@
-# Description
+# MySocial Faucet
 
-A basic faucet that is intended to be run locally. It does not support heavy loads as it's designed to work locally in a simple and basic way: request a coin, get a coin.
+A token faucet service for the MySocial blockchain, allowing developers to request test (tMySo) tokens for development and testing purposes.
 
-# Quick start
+## Overview
 
-**Prerequisites**
+The MySocial faucet is a web service that dispenses test tokens to requested addresses. It includes rate limiting, metrics, and configurable token distribution settings.
 
-You need to have a key with sufficient MYSO.
+## Features
 
-**Starting the faucet as a standalone service**
+- REST API for token requests
+- Rate limiting to prevent abuse
+- Prometheus metrics for monitoring
+- Batch request support
+- Support for Discord bot integration
+- Cloudflare Turnstile support for web requests
+- Write-ahead logging for reliability
 
-When starting the faucet as a standalone service, you will need to ensure that the active key in `~/.myso/myso_config/myso.keystore` has enough MYSO.
+## API Endpoints
 
-**Starting as part of a local network**
+- `POST /gas` - Basic request for gas tokens
+- `POST /v1/gas` - Batch request for gas tokens
+- `POST /v1/faucet_web_gas` - Web interface request for gas tokens (with Turnstile verification)
+- `POST /v1/faucet_discord` - Discord bot request for gas tokens
+- `GET /v1/status/:task_id` - Check status of a batch request
+- `GET /health` - Health check endpoint
 
-If you're starting this as part of a local network by using `myso start`, then it should automatically find the coins in the configured wallet. If `--force-regenesis` is passed, the wallet
-will be funded when the network starts and should have plenty of MYSO to get you started.
+## Usage
 
+### Request Tokens
 
-# Response
-The faucet will respond with a JSON object containing the following fields:
-```json
-{
- "status":"Success",
- "coins_sent": {
-   "amount":5500000000,
-   "id":"0xac8b8afbc9074465bf799d0f590e17176b7a05514b9434b338e38f49be14d574",
-   "transferTxDigest":"DSHGocWx57BtYDE5Xv4AefeRBBMizPb3LTqRMegx14Ym"
-  }
-}
+To request tokens, send a POST request to the faucet endpoint:
+
+```bash
+# Example using curl
+curl -X POST http://localhost:5003/gas \
+  -H "Content-Type: application/json" \
+  -d '{"FixedAmountRequest":{"recipient":"0x123..."}}'
 ```
 
-In case of error, the response will contain the following fields:
-```json
-{
- "status":{
-   "Failure": {
-     "ErrorType": "message"
-	 }
- },
- "coins_sent": null
-}
+### Batch Request
+
+```bash
+# Example batch request
+curl -X POST http://localhost:5003/v1/gas \
+  -H "Content-Type: application/json" \
+  -d '{"FixedAmountRequest":{"recipient":"0x123..."}}'
 ```
 
-where `ErrorType` is `Internal`.
+### Check Request Status
 
+```bash
+# Check status of a batch request
+curl http://localhost:5003/v1/status/00000000-0000-0000-0000-000000000000
+```
 
-The response status codes are:
-`Success` --> `200 OK`
-`Internal` --> `500` error code
+## Configuration
+
+```bash
+# Basic configuration
+cargo run --bin myso-faucet -- \
+  --port 5003 \
+  --host-ip 127.0.0.1 \
+  --amount 1000000000 \
+  --num-coins 1 \
+  --write-ahead-log /path/to/wal
+
+# Advanced rate limiting
+cargo run --bin myso-faucet -- \
+  --max-request-per-second 10 \
+  --request-buffer-size 10 \
+  --max-request-queue-length 10000
+
+# Enable batch mode
+cargo run --bin myso-faucet -- \
+  --batch-enabled \
+  --batch-request-size 500
+
+# Enable authenticated mode (for testnet)
+cargo run --bin myso-faucet -- \
+  --authenticated \
+  --max-requests-per-ip 3
+```
+
+### Environment Variables
+
+- `FAUCET_WEB_APP_URL` - URL for the faucet web interface (default: https://faucet.mysocial.network)
+- `CLOUDFLARE_TURNSTILE_URL` - URL for Cloudflare Turnstile verification
+- `TURNSTILE_SECRET_KEY` - Secret key for Cloudflare Turnstile
+- `DISCORD_BOT_PWD` - Password for Discord bot authentication
+- `MAX_CONCURRENCY` - Maximum concurrent requests (default: 30)
+- `WALLET_ADDRESS`
+- `WALLET_MNEMONIC`
+- `WALLET_PRIVATE_KEY`
+
+## Metrics
+
+Prometheus metrics are exposed on port 9184 by default.
+
+## Building
+
+Build the faucet with Cargo:
+
+```bash
+cargo build --bin myso-faucet
+```
+
+## Running
+
+Run the faucet service:
+
+```bash
+cargo run --bin myso-faucet -- [OPTIONS]
+```
+
+Use `--help` to see all available configuration options.
+
+## License
+
+Apache-2.0

@@ -22,7 +22,7 @@ type ActiveJwk {
 	"""
 	epoch: Epoch
 	"""
-	The string (Issuing Authority) that identifies the OIDC provider.
+	The string (Ismysong Authority) that identifies the OIDC provider.
 	"""
 	iss: String
 	"""
@@ -178,7 +178,7 @@ input AddressKey {
 	"""
 	atCheckpoint: UInt53
 	"""
-	A SuiNS name to resolve to an address.
+	A MySoNS name to resolve to an address.
 	"""
 	name: String
 	"""
@@ -2753,6 +2753,11 @@ type Mutation {
 }
 
 """
+String containing 32 byte hex-encoded address, with a leading '0x'. Leading zeroes can be omitted on input but will always appear in outputs (MySoAddress in output is guaranteed to be 66 characters long).
+"""
+scalar MySoAddress
+
+"""
 A Name Service NameRecord representing a domain name registration.
 """
 type NameRecord {
@@ -3491,7 +3496,7 @@ type Query {
 	"""
 	Simulate a transaction to preview its effects without executing it on chain.
 	
-	Accepts a JSON transaction matching the [MySo gRPC API schema](https://docs.mysocial.network/references/fullnode-protocol#myso-rpc-v2-Transaction).
+	Accepts a JSON transaction matching the [MySo gRPC API schema](https://docs.myso.io/references/fullnode-protocol#myso-rpc-v2-Transaction).
 	The JSON format allows for partial transaction specification where certain fields can be automatically resolved by the server.
 	
 	Alternatively, for already serialized transactions, you can pass BCS-encoded data:
@@ -3731,7 +3736,7 @@ type ServiceConfig {
 	"""
 	maxTypeNodes: Int
 	"""
-	Maximum time in milliseconds spent waiting for a response from fullnode after issuing a transaction to execute. Note that the transaction may still succeed even in the case of a timeout. Transactions are idempotent, so a transaction that times out should be re-submitted until the network returns a definite response (success or failure, not timeout).
+	Maximum time in milliseconds spent waiting for a response from fullnode after ismysong a transaction to execute. Note that the transaction may still succeed even in the case of a timeout. Transactions are idempotent, so a transaction that times out should be re-submitted until the network returns a definite response (success or failure, not timeout).
 	"""
 	mutationTimeoutMs: Int
 	"""
@@ -3816,11 +3821,6 @@ type StoreExecutionTimeObservationsTransaction {
 	_: Boolean
 }
 
-
-"""
-String containing 32 byte hex-encoded address, with a leading '0x'. Leading zeroes can be omitted on input but will always appear in outputs (MySoAddress in output is guaranteed to be 66 characters long).
-"""
-scalar MySoAddress
 
 """
 Future behavior of a currency's supply.

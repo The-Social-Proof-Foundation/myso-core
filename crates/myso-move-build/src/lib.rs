@@ -35,8 +35,8 @@ use move_symbol_pool::Symbol;
 use myso_package_alt::{MySoFlavor, testnet_environment};
 use myso_protocol_config::{Chain, ProtocolConfig, ProtocolVersion};
 use myso_types::{
-    BRIDGE_ADDRESS, DEEPBOOK_ADDRESS, MOVE_STDLIB_ADDRESS, MYSO_FRAMEWORK_ADDRESS,
-    MYSO_SYSTEM_ADDRESS, TypeTag,
+    BRIDGE_ADDRESS, DEEPBOOK_ADDRESS, MOVE_STDLIB_ADDRESS, MYDATA_ADDRESS, MYSO_FRAMEWORK_ADDRESS,
+    MYSO_SOCIAL_ADDRESS, MYSO_SYSTEM_ADDRESS, TypeTag,
     base_types::ObjectID,
     error::{MySoError, MySoErrorKind, MySoResult},
     is_system_package,
@@ -421,6 +421,18 @@ impl CompiledPackage {
     pub fn get_stdlib_modules(&self) -> impl Iterator<Item = &CompiledModule> {
         self.get_modules_and_deps()
             .filter(|m| *m.self_id().address() == MOVE_STDLIB_ADDRESS)
+    }
+
+    /// Get bytecode modules from MyData that are used by this package
+    pub fn get_mydata_modules(&self) -> impl Iterator<Item = &CompiledModule> {
+        self.get_modules_and_deps()
+            .filter(|m| *m.self_id().address() == MYDATA_ADDRESS)
+    }
+
+    /// Get bytecode modules from MySo Social that are used by this package
+    pub fn get_myso_social_modules(&self) -> impl Iterator<Item = &CompiledModule> {
+        self.get_modules_and_deps()
+            .filter(|m| *m.self_id().address() == MYSO_SOCIAL_ADDRESS)
     }
 
     /// Generate layout schemas for all types declared by this package, as well as

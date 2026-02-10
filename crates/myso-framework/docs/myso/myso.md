@@ -18,6 +18,7 @@ It has 9 decimals, and the smallest unit (10^-9) is called "mist".
 <b>use</b> <a href="../myso/bag.md#myso_bag">myso::bag</a>;
 <b>use</b> <a href="../myso/balance.md#myso_balance">myso::balance</a>;
 <b>use</b> <a href="../myso/bcs.md#myso_bcs">myso::bcs</a>;
+<b>use</b> <a href="../myso/bootstrap_key.md#myso_bootstrap_key">myso::bootstrap_key</a>;
 <b>use</b> <a href="../myso/coin.md#myso_coin">myso::coin</a>;
 <b>use</b> <a href="../myso/config.md#myso_config">myso::config</a>;
 <b>use</b> <a href="../myso/deny_list.md#myso_deny_list">myso::deny_list</a>;
@@ -150,10 +151,9 @@ This should be called only once during genesis creation.
     <b>let</b> (treasury, metadata) = <a href="../myso/coin.md#myso_coin_create_currency">coin::create_currency</a>(
         <a href="../myso/myso.md#myso_myso_MYSO">MYSO</a> {},
         9,
-        b"<a href="../myso/myso.md#myso_myso_MYSO">MySo</a>",
+        b"MySo",
         b"MySocial",
-        // TODO: add appropriate description and logo <a href="../myso/url.md#myso_url">url</a>
-        b"",
+        b"The official <b>native</b> <a href="../myso/token.md#myso_token">token</a> of MySocial blockchain.",
         option::none(),
         ctx,
     );

@@ -7,6 +7,7 @@ tokens and coins. <code><a href="../myso/coin.md#myso_coin_Coin">Coin</a></code>
 <code>Balance</code> type.
 
 
+-  [Struct `CoinCreationAdminCap`](#myso_coin_CoinCreationAdminCap)
 -  [Struct `Coin`](#myso_coin_Coin)
 -  [Struct `CoinMetadata`](#myso_coin_CoinMetadata)
 -  [Struct `RegulatedCoinMetadata`](#myso_coin_RegulatedCoinMetadata)
@@ -15,6 +16,7 @@ tokens and coins. <code><a href="../myso/coin.md#myso_coin_Coin">Coin</a></code>
 -  [Struct `CurrencyCreated`](#myso_coin_CurrencyCreated)
 -  [Struct `DenyCap`](#myso_coin_DenyCap)
 -  [Constants](#@Constants_0)
+-  [Function `create_coin_creation_admin_cap_for_bootstrap`](#myso_coin_create_coin_creation_admin_cap_for_bootstrap)
 -  [Function `total_supply`](#myso_coin_total_supply)
 -  [Function `treasury_into_supply`](#myso_coin_treasury_into_supply)
 -  [Function `supply_immut`](#myso_coin_supply_immut)
@@ -77,6 +79,7 @@ tokens and coins. <code><a href="../myso/coin.md#myso_coin_Coin">Coin</a></code>
 <b>use</b> <a href="../myso/bag.md#myso_bag">myso::bag</a>;
 <b>use</b> <a href="../myso/balance.md#myso_balance">myso::balance</a>;
 <b>use</b> <a href="../myso/bcs.md#myso_bcs">myso::bcs</a>;
+<b>use</b> <a href="../myso/bootstrap_key.md#myso_bootstrap_key">myso::bootstrap_key</a>;
 <b>use</b> <a href="../myso/config.md#myso_config">myso::config</a>;
 <b>use</b> <a href="../myso/deny_list.md#myso_deny_list">myso::deny_list</a>;
 <b>use</b> <a href="../myso/dynamic_field.md#myso_dynamic_field">myso::dynamic_field</a>;
@@ -107,6 +110,33 @@ tokens and coins. <code><a href="../myso/coin.md#myso_coin_Coin">Coin</a></code>
 </code></pre>
 
 
+
+<a name="myso_coin_CoinCreationAdminCap"></a>
+
+## Struct `CoinCreationAdminCap`
+
+Admin capability for creating new coin types
+
+
+<pre><code><b>public</b> <b>struct</b> <a href="../myso/coin.md#myso_coin_CoinCreationAdminCap">CoinCreationAdminCap</a> <b>has</b> key, store
+</code></pre>
+
+
+
+<details>
+<summary>Fields</summary>
+
+
+<dl>
+<dt>
+<code>id: <a href="../myso/object.md#myso_object_UID">myso::object::UID</a></code>
+</dt>
+<dd>
+</dd>
+</dl>
+
+
+</details>
 
 <a name="myso_coin_Coin"></a>
 
@@ -408,6 +438,16 @@ Trying to split a coin more times than its balance allows.
 
 
 
+<a name="myso_coin_ENotAuthorized"></a>
+
+Caller is not authorized to create coins
+
+
+<pre><code><b>const</b> <a href="../myso/coin.md#myso_coin_ENotAuthorized">ENotAuthorized</a>: u64 = 4;
+</code></pre>
+
+
+
 <a name="myso_coin_DENY_LIST_COIN_INDEX"></a>
 
 The index into the deny list vector for the <code><a href="../myso/coin.md#myso_coin_Coin">myso::coin::Coin</a></code> type.
@@ -417,6 +457,38 @@ The index into the deny list vector for the <code><a href="../myso/coin.md#myso_
 </code></pre>
 
 
+
+<a name="myso_coin_create_coin_creation_admin_cap_for_bootstrap"></a>
+
+## Function `create_coin_creation_admin_cap_for_bootstrap`
+
+Create CoinCreationAdminCap for bootstrap (called by bootstrap module)
+Requires BootstrapKey parameter for security - ensures only authorized callers can invoke
+Bootstrap module handles BootstrapKey check before calling this
+
+
+<pre><code><b>public</b> <b>fun</b> <a href="../myso/coin.md#myso_coin_create_coin_creation_admin_cap_for_bootstrap">create_coin_creation_admin_cap_for_bootstrap</a>(_bootstrap_key: &<a href="../myso/bootstrap_key.md#myso_bootstrap_key_BootstrapKey">myso::bootstrap_key::BootstrapKey</a>, ctx: &<b>mut</b> <a href="../myso/tx_context.md#myso_tx_context_TxContext">myso::tx_context::TxContext</a>): <a href="../myso/coin.md#myso_coin_CoinCreationAdminCap">myso::coin::CoinCreationAdminCap</a>
+</code></pre>
+
+
+
+<details>
+<summary>Implementation</summary>
+
+
+<pre><code><b>public</b> <b>fun</b> <a href="../myso/coin.md#myso_coin_create_coin_creation_admin_cap_for_bootstrap">create_coin_creation_admin_cap_for_bootstrap</a>(
+    _bootstrap_key: &BootstrapKey,
+    ctx: &<b>mut</b> TxContext
+): <a href="../myso/coin.md#myso_coin_CoinCreationAdminCap">CoinCreationAdminCap</a> {
+    <a href="../myso/coin.md#myso_coin_CoinCreationAdminCap">CoinCreationAdminCap</a> {
+        id: <a href="../myso/object.md#myso_object_new">object::new</a>(ctx)
+    }
+}
+</code></pre>
+
+
+
+</details>
 
 <a name="myso_coin_total_supply"></a>
 

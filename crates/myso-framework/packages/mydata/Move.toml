@@ -1,0 +1,13 @@
+[package]
+name = "mydata"
+version = "0.0.1"
+published-at = "0xda7a"
+edition = "2024"
+
+[dependencies]
+MoveStdlib = { local = "../move-stdlib" }
+myso = { local = "../myso-framework" }
+
+[addresses]
+mydata = "0xda7a"
+

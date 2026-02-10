@@ -126,16 +126,28 @@ pub fn to_sender_signed_transaction_with_multi_signers(
 }
 
 mod zk_login {
+    use fastcrypto::encoding::Bech32;
     use fastcrypto_zkp::bn254::zk_login::ZkLoginInputs;
     use shared_crypto::intent::PersonalMessage;
 
-    use crate::{crypto::PublicKey, zk_login_util::get_zklogin_inputs};
+    use crate::crypto::{MySoKeyPair, PublicKey};
+    use crate::zk_login_util::get_zklogin_inputs;
 
     use super::*;
     pub static DEFAULT_ADDRESS_SEED: &str =
         "20794788559620669596206457022966176986688727876128223628113916380927502737911";
     pub static SHORT_ADDRESS_SEED: &str =
         "380704556853533152350240698167704405529973457670972223618755249929828551006";
+
+    const MYSO_PRIV_KEY_PREFIX: &str = "suiprivkey";
+
+    fn decode_zklogin_test_key(kp_str: &str) -> MySoKeyPair {
+        MySoKeyPair::decode(kp_str).unwrap_or_else(|_| {
+            let bytes = Bech32::decode(kp_str, MYSO_PRIV_KEY_PREFIX)
+                .unwrap_or_else(|e| panic!("Failed to decode zkLogin test key: {e}"));
+            MySoKeyPair::from_bytes(&bytes).unwrap_or_else(|e| panic!("Invalid key bytes: {e}"))
+        })
+    }
 
     pub fn load_test_vectors(path: &str) -> Vec<(MySoKeyPair, PublicKey, ZkLoginInputs)> {
         // read in test files that has a list of matching zklogin_inputs and its ephemeral private keys.
@@ -144,7 +156,7 @@ mod zk_login {
         let test_datum: Vec<TestData> = serde_json::from_reader(file).unwrap();
         let mut res = vec![];
         for test in test_datum {
-            let kp = MySoKeyPair::decode(&test.kp).unwrap();
+            let kp = decode_zklogin_test_key(&test.kp);
             let inputs =
                 ZkLoginInputs::from_json(&test.zklogin_inputs, &test.address_seed).unwrap();
             let pk_zklogin = PublicKey::from_zklogin_inputs(&inputs).unwrap();

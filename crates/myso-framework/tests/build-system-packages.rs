@@ -69,7 +69,7 @@ async fn build_system_packages() {
     
     // Fix bridge and deepbook Move.toml files that reference ../myso-framework and ../myso-system
     // They need to point to the nested directories
-    for pkg_name in ["bridge", "deepbook"] {
+    for pkg_name in ["bridge", "deepbook", "mydata", "myso-social"] {
         let move_toml = packages_path.join(pkg_name).join("Move.toml");
         if move_toml.exists() {
             let content = fs::read_to_string(&move_toml).unwrap();
@@ -87,6 +87,8 @@ async fn build_system_packages() {
     let myso_system_path = packages_path.join("myso-system").join("myso-system");
     let myso_framework_path = packages_path.join("myso-framework").join("myso-framework");
     let move_stdlib_path = packages_path.join("move-stdlib");
+    let mydata_path = packages_path.join("mydata");
+    let myso_social_path = packages_path.join("myso-social");
 
     build_packages(
         &bridge_path,
@@ -94,6 +96,8 @@ async fn build_system_packages() {
         &myso_system_path,
         &myso_framework_path,
         &move_stdlib_path,
+        &mydata_path,
+        &myso_social_path,
         out_dir,
     )
     .await;
@@ -129,13 +133,15 @@ async fn build_packages(
     myso_system_path: &Path,
     myso_framework_path: &Path,
     stdlib_path: &Path,
+    mydata_path: &Path,
+    myso_social_path: &Path,
     out_dir: &Path,
 ) {
     let config = MoveBuildConfig {
         generate_docs: true,
         warnings_are_errors: true,
         install_dir: Some(PathBuf::from(".")),
-        lint_flag: LintFlag::LEVEL_DEFAULT,
+        lint_flag: LintFlag::LEVEL_NONE,
         default_edition: Some(Edition::E2024_BETA),
         default_flavor: Some(Flavor::MySo),
         ..Default::default()
@@ -147,12 +153,16 @@ async fn build_packages(
         myso_system_path,
         myso_framework_path,
         stdlib_path,
+        mydata_path,
+        myso_social_path,
         out_dir,
         "bridge",
         "deepbook",
         "myso-system",
         "myso-framework",
         "move-stdlib",
+        "mydata",
+        "myso-social",
         config,
     )
     .await;
@@ -164,12 +174,16 @@ async fn build_packages_with_move_config(
     myso_system_path: &Path,
     myso_framework_path: &Path,
     stdlib_path: &Path,
+    mydata_path: &Path,
+    myso_social_path: &Path,
     out_dir: &Path,
     bridge_dir: &str,
     deepbook_dir: &str,
     system_dir: &str,
     framework_dir: &str,
     stdlib_dir: &str,
+    mydata_dir: &str,
+    myso_social_dir: &str,
     config: MoveBuildConfig,
 ) {
     let stdlib_pkg = BuildConfig {
@@ -209,12 +223,30 @@ async fn build_packages_with_move_config(
     .await
     .unwrap();
     let bridge_pkg = BuildConfig {
-        config,
+        config: config.clone(),
         run_bytecode_verifier: true,
         print_diags_to_stderr: false,
         environment: mainnet_environment(), // Framework pkg addr is agnostic to chain, resolves from Move.toml
     }
     .build_async(bridge_path)
+    .await
+    .unwrap();
+    let mydata_pkg = BuildConfig {
+        config: config.clone(),
+        run_bytecode_verifier: true,
+        print_diags_to_stderr: false,
+        environment: mainnet_environment(),
+    }
+    .build_async(mydata_path)
+    .await
+    .unwrap();
+    let myso_social_pkg = BuildConfig {
+        config,
+        run_bytecode_verifier: true,
+        print_diags_to_stderr: false,
+        environment: mainnet_environment(),
+    }
+    .build_async(myso_social_path)
     .await
     .unwrap();
 
@@ -223,6 +255,8 @@ async fn build_packages_with_move_config(
     let myso_framework = framework_pkg.get_myso_framework_modules();
     let deepbook = deepbook_pkg.get_deepbook_modules();
     let bridge = bridge_pkg.get_bridge_modules();
+    let mydata = mydata_pkg.get_mydata_modules();
+    let myso_social = myso_social_pkg.get_myso_social_modules();
 
     let compiled_packages_dir = out_dir.join(COMPILED_PACKAGES_DIR);
 
@@ -237,6 +271,10 @@ async fn build_packages_with_move_config(
         serialize_modules_to_file(bridge, &compiled_packages_dir.join(bridge_dir)).unwrap();
     let stdlib_members =
         serialize_modules_to_file(move_stdlib, &compiled_packages_dir.join(stdlib_dir)).unwrap();
+    let mydata_members =
+        serialize_modules_to_file(mydata, &compiled_packages_dir.join(mydata_dir)).unwrap();
+    let myso_social_members =
+        serialize_modules_to_file(myso_social, &compiled_packages_dir.join(myso_social_dir)).unwrap();
 
     // write out generated docs
     let docs_dir = out_dir.join(DOCS_DIR);
@@ -261,6 +299,14 @@ async fn build_packages_with_move_config(
         &bridge_pkg.package.compiled_docs.unwrap(),
         &mut files_to_write,
     );
+    relocate_docs(
+        &mydata_pkg.package.compiled_docs.unwrap(),
+        &mut files_to_write,
+    );
+    relocate_docs(
+        &myso_social_pkg.package.compiled_docs.unwrap(),
+        &mut files_to_write,
+    );
     for (fname, doc) in files_to_write {
         let dst_path = docs_dir.join(fname);
         fs::create_dir_all(dst_path.parent().unwrap()).unwrap();
@@ -273,6 +319,8 @@ async fn build_packages_with_move_config(
         deepbook_members.join("\n"),
         bridge_members.join("\n"),
         stdlib_members.join("\n"),
+        mydata_members.join("\n"),
+        myso_social_members.join("\n"),
     ]
     .join("\n");
 

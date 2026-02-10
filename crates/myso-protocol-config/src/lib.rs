@@ -4527,6 +4527,7 @@ impl ProtocolConfig {
                     if chain != Chain::Mainnet {
                         cfg.feature_flags.enable_object_funds_withdraw = true;
                     }
+                    cfg.max_move_package_size = Some(200 * 1024);
                 }
                 // Use this template when making changes:
                 //

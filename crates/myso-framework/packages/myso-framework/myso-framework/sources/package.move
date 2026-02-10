@@ -8,6 +8,7 @@ module myso::package;
 
 use std::ascii::String;
 use std::type_name;
+use myso::bootstrap_key::BootstrapKey;
 use myso::types;
 
 /// Allows calling `.burn` to destroy a `Publisher`.
@@ -128,6 +129,24 @@ public struct UpgradeReceipt {
     cap: ID,
     /// (Immutable) ID of the package after it was upgraded.
     package: ID,
+}
+
+/// Admin capability for publishing new packages
+/// Allows bypassing package publish restrictions when package publishing is disabled
+public struct PackagePublishingAdminCap has key, store {
+    id: UID,
+}
+
+/// Create PackagePublishingAdminCap for bootstrap (called by bootstrap module)
+/// Requires BootstrapKey parameter for security - ensures only authorized callers can invoke
+/// Bootstrap module handles BootstrapKey check before calling this
+public fun create_package_publishing_admin_cap_for_bootstrap(
+    _bootstrap_key: &BootstrapKey,
+    ctx: &mut TxContext
+): PackagePublishingAdminCap {
+    PackagePublishingAdminCap {
+        id: object::new(ctx)
+    }
 }
 
 /// Claim a Publisher object.

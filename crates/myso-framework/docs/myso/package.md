@@ -11,7 +11,9 @@ Functions for operating on Move packages from within Move:
 -  [Struct `UpgradeCap`](#myso_package_UpgradeCap)
 -  [Struct `UpgradeTicket`](#myso_package_UpgradeTicket)
 -  [Struct `UpgradeReceipt`](#myso_package_UpgradeReceipt)
+-  [Struct `PackagePublishingAdminCap`](#myso_package_PackagePublishingAdminCap)
 -  [Constants](#@Constants_0)
+-  [Function `create_package_publishing_admin_cap_for_bootstrap`](#myso_package_create_package_publishing_admin_cap_for_bootstrap)
 -  [Function `claim`](#myso_package_claim)
 -  [Function `claim_and_keep`](#myso_package_claim_and_keep)
 -  [Function `burn_publisher`](#myso_package_burn_publisher)
@@ -39,6 +41,7 @@ Functions for operating on Move packages from within Move:
 
 
 <pre><code><b>use</b> <a href="../myso/address.md#myso_address">myso::address</a>;
+<b>use</b> <a href="../myso/bootstrap_key.md#myso_bootstrap_key">myso::bootstrap_key</a>;
 <b>use</b> <a href="../myso/hex.md#myso_hex">myso::hex</a>;
 <b>use</b> <a href="../myso/object.md#myso_object">myso::object</a>;
 <b>use</b> <a href="../myso/party.md#myso_party">myso::party</a>;
@@ -235,6 +238,34 @@ the end of the transaction that performed the upgrade.
 
 </details>
 
+<a name="myso_package_PackagePublishingAdminCap"></a>
+
+## Struct `PackagePublishingAdminCap`
+
+Admin capability for publishing new packages
+Allows bypassing package publish restrictions when package publishing is disabled
+
+
+<pre><code><b>public</b> <b>struct</b> <a href="../myso/package.md#myso_package_PackagePublishingAdminCap">PackagePublishingAdminCap</a> <b>has</b> key, store
+</code></pre>
+
+
+
+<details>
+<summary>Fields</summary>
+
+
+<dl>
+<dt>
+<code>id: <a href="../myso/object.md#myso_object_UID">myso::object::UID</a></code>
+</dt>
+<dd>
+</dd>
+</dl>
+
+
+</details>
+
 <a name="@Constants_0"></a>
 
 ## Constants
@@ -322,6 +353,38 @@ Only be able to change dependencies.
 </code></pre>
 
 
+
+<a name="myso_package_create_package_publishing_admin_cap_for_bootstrap"></a>
+
+## Function `create_package_publishing_admin_cap_for_bootstrap`
+
+Create PackagePublishingAdminCap for bootstrap (called by bootstrap module)
+Requires BootstrapKey parameter for security - ensures only authorized callers can invoke
+Bootstrap module handles BootstrapKey check before calling this
+
+
+<pre><code><b>public</b> <b>fun</b> <a href="../myso/package.md#myso_package_create_package_publishing_admin_cap_for_bootstrap">create_package_publishing_admin_cap_for_bootstrap</a>(_bootstrap_key: &<a href="../myso/bootstrap_key.md#myso_bootstrap_key_BootstrapKey">myso::bootstrap_key::BootstrapKey</a>, ctx: &<b>mut</b> <a href="../myso/tx_context.md#myso_tx_context_TxContext">myso::tx_context::TxContext</a>): <a href="../myso/package.md#myso_package_PackagePublishingAdminCap">myso::package::PackagePublishingAdminCap</a>
+</code></pre>
+
+
+
+<details>
+<summary>Implementation</summary>
+
+
+<pre><code><b>public</b> <b>fun</b> <a href="../myso/package.md#myso_package_create_package_publishing_admin_cap_for_bootstrap">create_package_publishing_admin_cap_for_bootstrap</a>(
+    _bootstrap_key: &BootstrapKey,
+    ctx: &<b>mut</b> TxContext
+): <a href="../myso/package.md#myso_package_PackagePublishingAdminCap">PackagePublishingAdminCap</a> {
+    <a href="../myso/package.md#myso_package_PackagePublishingAdminCap">PackagePublishingAdminCap</a> {
+        id: <a href="../myso/object.md#myso_object_new">object::new</a>(ctx)
+    }
+}
+</code></pre>
+
+
+
+</details>
 
 <a name="myso_package_claim"></a>
 

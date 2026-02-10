@@ -10,6 +10,7 @@ use std::ascii;
 use std::string;
 use std::type_name;
 use myso::balance::{Self, Balance, Supply};
+use myso::bootstrap_key::BootstrapKey;
 use myso::deny_list::DenyList;
 use myso::url::{Self, Url};
 
@@ -39,6 +40,26 @@ const ENotEnough: u64 = 2;
 // const EGlobalPauseNotAllowed: vector<u8> =
 //    b"Kill switch was not allowed at the creation of the DenyCapV2";
 const EGlobalPauseNotAllowed: u64 = 3;
+/// Caller is not authorized to create coins
+#[allow(unused_const)]
+const ENotAuthorized: u64 = 4;
+
+/// Admin capability for creating new coin types
+public struct CoinCreationAdminCap has key, store {
+    id: UID,
+}
+
+/// Create CoinCreationAdminCap for bootstrap (called by bootstrap module)
+/// Requires BootstrapKey parameter for security - ensures only authorized callers can invoke
+/// Bootstrap module handles BootstrapKey check before calling this
+public fun create_coin_creation_admin_cap_for_bootstrap(
+    _bootstrap_key: &BootstrapKey,
+    ctx: &mut TxContext
+): CoinCreationAdminCap {
+    CoinCreationAdminCap {
+        id: object::new(ctx)
+    }
+}
 
 /// A coin of type `T` worth `value`. Transferable and storable
 public struct Coin<phantom T> has key, store {

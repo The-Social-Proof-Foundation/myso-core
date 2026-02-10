@@ -13,7 +13,15 @@ fn main() {
     
     // Create placeholder files if they don't exist
     // These will be overwritten by the test when UPDATE=1 is set
-    let required_files = ["move-stdlib", "myso-framework", "myso-system", "deepbook", "bridge"];
+    let required_files = [
+        "move-stdlib",
+        "myso-framework",
+        "myso-system",
+        "deepbook",
+        "bridge",
+        "mydata",
+        "myso-social",
+    ];
     
     for file_name in &required_files {
         let file_path = packages_compiled_dir.join(file_name);
