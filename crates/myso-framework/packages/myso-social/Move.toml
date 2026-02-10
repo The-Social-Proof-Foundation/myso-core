@@ -1,0 +1,15 @@
+[package]
+name = "MySocialContracts"
+version = "0.1.0"
+published-at = "0x50c1"
+edition = "2024"
+
+[dependencies]
+MoveStdlib = { local = "../move-stdlib" }
+myso = { local = "../myso-framework" }
+mydata = { local = "../mydata" }
+
+[addresses]
+myso = "0x2"
+mydata = "0xda7a"
+social_contracts = "0x50c1"
