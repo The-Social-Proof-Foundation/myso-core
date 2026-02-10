@@ -47,7 +47,7 @@ pub struct AuthenticatedEvent {
     pub event_idx: ::core::option::Option<u32>,
     /// The event payload.
     #[prost(message, optional, tag = "5")]
-    pub event: ::core::option::Option<::myso_rpc::proto::mys::rpc::v2::Event>,
+    pub event: ::core::option::Option<::myso_rpc::proto::myso::rpc::v2::Event>,
     /// The stream identifier (owner address) for which this event is authenticated.
     #[prost(string, optional, tag = "6")]
     pub stream_id: ::core::option::Option<::prost::alloc::string::String>,
@@ -398,7 +398,7 @@ pub struct GetObjectInclusionProofResponse {
     /// Object reference being proven (object_id, version, digest).
     #[prost(message, optional, tag = "1")]
     pub object_ref: ::core::option::Option<
-        ::myso_rpc::proto::mys::rpc::v2::ObjectReference,
+        ::myso_rpc::proto::myso::rpc::v2::ObjectReference,
     >,
     /// Object inclusion proof.
     #[prost(message, optional, tag = "2")]

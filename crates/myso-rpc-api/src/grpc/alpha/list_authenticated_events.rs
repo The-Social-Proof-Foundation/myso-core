@@ -12,7 +12,7 @@ use bytes::Bytes;
 use prost::Message;
 use std::str::FromStr;
 use myso_macros::fail_point_if;
-use myso_rpc::proto::mys::rpc::v2::{Bcs, Event};
+use myso_rpc::proto::myso::rpc::v2::{Bcs, Event};
 use myso_types::base_types::MySoAddress;
 
 const MAX_PAGE_SIZE: u32 = 1000;

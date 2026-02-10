@@ -332,7 +332,7 @@ impl Checkpoint {
     // Returns the required FieldMask to fetch all necessary fields for populating `Checkpoint`
     pub fn proto_field_mask() -> myso_rpc::field::FieldMask {
         use myso_rpc::field::FieldMaskUtil;
-        use myso_rpc::proto::mys::rpc::v2::Checkpoint;
+        use myso_rpc::proto::myso::rpc::v2::Checkpoint;
 
         myso_rpc::field::FieldMask::from_paths([
             Checkpoint::path_builder().sequence_number(),

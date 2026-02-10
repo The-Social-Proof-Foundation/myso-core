@@ -5,7 +5,7 @@ use super::load_package;
 use crate::{ErrorReason, Result, RpcError, RpcService};
 use bytes::Bytes;
 use myso_rpc::proto::google::rpc::bad_request::FieldViolation;
-use myso_rpc::proto::mys::rpc::v2::{
+use myso_rpc::proto::myso::rpc::v2::{
     ListPackageVersionsRequest, ListPackageVersionsResponse, PackageVersion,
 };
 use myso_types::base_types::ObjectID;

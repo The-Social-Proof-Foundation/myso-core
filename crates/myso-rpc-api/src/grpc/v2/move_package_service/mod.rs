@@ -3,8 +3,8 @@
 
 use crate::{ErrorReason, Result, RpcError, RpcService};
 use myso_rpc::proto::google::rpc::bad_request::FieldViolation;
-use myso_rpc::proto::mys::rpc::v2::move_package_service_server::MovePackageService;
-use myso_rpc::proto::mys::rpc::v2::{
+use myso_rpc::proto::myso::rpc::v2::move_package_service_server::MovePackageService;
+use myso_rpc::proto::myso::rpc::v2::{
     GetDatatypeRequest, GetDatatypeResponse, GetFunctionRequest, GetFunctionResponse,
     GetPackageRequest, GetPackageResponse, ListPackageVersionsRequest, ListPackageVersionsResponse,
 };

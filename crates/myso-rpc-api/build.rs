@@ -38,7 +38,7 @@ fn main() {
     let myso_proto_dir = crate_dir.join("proto");
     let out_dir = crate_dir.join("src/proto/generated");
 
-    let myso_rpc_proto_dir = find_dependency_proto_dir("mys-rpc", "vendored/proto");
+    let myso_rpc_proto_dir = find_dependency_proto_dir("myso-rpc", "vendored/proto");
 
     println!("cargo:rerun-if-changed={}", myso_proto_dir.display());
     println!("cargo:rerun-if-changed={}", myso_rpc_proto_dir.display());
@@ -69,7 +69,7 @@ fn main() {
         .build_client(true)
         .build_server(true)
         .type_attribute(".", "#[non_exhaustive]")
-        .extern_path(".mys.rpc.v2", "::myso_rpc::proto::mys::rpc::v2")
+        .extern_path(".myso.rpc.v2", "::myso_rpc::proto::myso::rpc::v2")
         .out_dir(&out_dir)
         .compile_fds(file_descriptors)
         .expect("compile event_service.proto");

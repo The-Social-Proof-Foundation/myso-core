@@ -10,14 +10,14 @@ use myso_rpc::field::FieldMaskTree;
 use myso_rpc::field::FieldMaskUtil;
 use myso_rpc::merge::Merge;
 use myso_rpc::proto::google::rpc::bad_request::FieldViolation;
-use myso_rpc::proto::mys::rpc::v2::Checkpoint;
-use myso_rpc::proto::mys::rpc::v2::Event;
-use myso_rpc::proto::mys::rpc::v2::ExecutedTransaction;
-use myso_rpc::proto::mys::rpc::v2::GetCheckpointRequest;
-use myso_rpc::proto::mys::rpc::v2::GetCheckpointResponse;
-use myso_rpc::proto::mys::rpc::v2::ObjectSet;
-use myso_rpc::proto::mys::rpc::v2::TransactionEvents;
-use myso_rpc::proto::mys::rpc::v2::get_checkpoint_request::CheckpointId;
+use myso_rpc::proto::myso::rpc::v2::Checkpoint;
+use myso_rpc::proto::myso::rpc::v2::Event;
+use myso_rpc::proto::myso::rpc::v2::ExecutedTransaction;
+use myso_rpc::proto::myso::rpc::v2::GetCheckpointRequest;
+use myso_rpc::proto::myso::rpc::v2::GetCheckpointResponse;
+use myso_rpc::proto::myso::rpc::v2::ObjectSet;
+use myso_rpc::proto::myso::rpc::v2::TransactionEvents;
+use myso_rpc::proto::myso::rpc::v2::get_checkpoint_request::CheckpointId;
 use myso_sdk_types::Digest;
 
 pub const READ_MASK_DEFAULT: &str = "sequence_number,digest";
@@ -111,7 +111,7 @@ pub fn get_checkpoint(
                 let set = checkpoint_data
                     .object_set
                     .iter()
-                    .map(|o| myso_rpc::proto::mys::rpc::v2::Object::merge_from(o, &submask))
+                    .map(|o| myso_rpc::proto::myso::rpc::v2::Object::merge_from(o, &submask))
                     .collect();
                 checkpoint.objects = Some(ObjectSet::default().with_objects(set));
             }
@@ -130,7 +130,7 @@ pub fn get_checkpoint(
                                     .map(|info| {
                                         info.balance_changes
                                             .into_iter()
-                                            .map(myso_rpc::proto::mys::rpc::v2::BalanceChange::from)
+                                            .map(myso_rpc::proto::myso::rpc::v2::BalanceChange::from)
                                             .collect::<Vec<_>>()
                                     })
                             })

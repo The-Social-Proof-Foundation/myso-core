@@ -5,7 +5,7 @@ syntax = "proto3";
 package myso.rpc.alpha;
 
 import "google/protobuf/empty.proto";
-import "mys/rpc/v2/event.proto";
+import "myso/rpc/v2/event.proto";
 
 // EventService provides paginated access to authenticated events per stream.
 service EventService {
@@ -52,7 +52,7 @@ message AuthenticatedEvent {
   optional uint32 event_idx = 4;
 
   // The event payload.
-  optional mys.rpc.v2.Event event = 5;
+  optional myso.rpc.v2.Event event = 5;
 
   // The stream identifier (owner address) for which this event is authenticated.
   optional string stream_id = 6;

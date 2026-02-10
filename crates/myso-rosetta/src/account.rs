@@ -126,7 +126,7 @@ async fn get_sub_account_balances(
             .into_iter()
             .filter(|stake| current_epoch >= stake.activation_epoch)
             .map(|stake| SubBalance {
-                stake_id: stake.staked_mys_id,
+                stake_id: stake.staked_myso_id,
                 validator: stake.validator_address,
                 value: stake.principal as i128,
             })
@@ -135,7 +135,7 @@ async fn get_sub_account_balances(
             .into_iter()
             .filter(|stake| current_epoch < stake.activation_epoch)
             .map(|stake| SubBalance {
-                stake_id: stake.staked_mys_id,
+                stake_id: stake.staked_myso_id,
                 validator: stake.validator_address,
                 value: stake.principal as i128,
             })
@@ -145,7 +145,7 @@ async fn get_sub_account_balances(
             .into_iter()
             .filter(|stake| current_epoch >= stake.activation_epoch)
             .map(|stake| SubBalance {
-                stake_id: stake.staked_mys_id,
+                stake_id: stake.staked_myso_id,
                 validator: stake.validator_address,
                 value: stake.rewards as i128,
             })

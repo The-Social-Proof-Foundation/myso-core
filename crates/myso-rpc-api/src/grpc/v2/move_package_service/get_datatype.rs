@@ -3,7 +3,7 @@
 
 use crate::{ErrorReason, Result, RpcService};
 use myso_rpc::proto::google::rpc::bad_request::FieldViolation;
-use myso_rpc::proto::mys::rpc::v2::{GetDatatypeRequest, GetDatatypeResponse};
+use myso_rpc::proto::myso::rpc::v2::{GetDatatypeRequest, GetDatatypeResponse};
 
 use super::{
     conversions::{convert_datatype, convert_error},

@@ -16,7 +16,7 @@ use fastcrypto::traits::ToFromBytes;
 use myso_rpc::field::FieldMaskTree;
 use myso_rpc::merge::Merge;
 use myso_rpc::proto::TryFromProtoError;
-use myso_rpc::proto::mys::rpc::v2::*;
+use myso_rpc::proto::myso::rpc::v2::*;
 
 //
 // CheckpointSummary
@@ -44,7 +44,7 @@ impl Merge<&crate::full_checkpoint_content::Checkpoint> for Checkpoint {
             let set = source
                 .object_set
                 .iter()
-                .map(|o| myso_rpc::proto::mys::rpc::v2::Object::merge_from(o, &submask))
+                .map(|o| myso_rpc::proto::myso::rpc::v2::Object::merge_from(o, &submask))
                 .collect();
             self.objects = Some(ObjectSet::default().with_objects(set));
         }
@@ -874,12 +874,12 @@ impl From<crate::myso_system_state::myso_system_state_inner_v1::StakingPoolV1> f
         message.id = Some(id.to_canonical_string(true));
         message.activation_epoch = activation_epoch;
         message.deactivation_epoch = deactivation_epoch;
-        message.mys_balance = Some(myso_balance);
+        message.myso_balance = Some(myso_balance);
         message.rewards_pool = Some(rewards_pool.value());
         message.pool_token_balance = Some(pool_token_balance);
         message.exchange_rates = Some(exchange_rates.into());
         message.pending_stake = Some(pending_stake);
-        message.pending_total_mys_withdraw = Some(pending_total_myso_withdraw);
+        message.pending_total_myso_withdraw = Some(pending_total_myso_withdraw);
         message.pending_pool_token_withdraw = Some(pending_pool_token_withdraw);
         message.extra_fields = Some(extra_fields.into());
         message
@@ -1114,11 +1114,11 @@ impl TryFrom<&Validator>
                 .map_err(|e| TryFromProtoError::invalid("staking_pool_id", e))?,
             staking_pool_activation_epoch: v.staking_pool().activation_epoch_opt(),
             staking_pool_deactivation_epoch: v.staking_pool().deactivation_epoch_opt(),
-            staking_pool_myso_balance: v.staking_pool().mys_balance(),
+            staking_pool_myso_balance: v.staking_pool().myso_balance(),
             rewards_pool: v.staking_pool().rewards_pool(),
             pool_token_balance: v.staking_pool().pool_token_balance(),
             pending_stake: v.staking_pool().pending_stake(),
-            pending_total_myso_withdraw: v.staking_pool().pending_total_mys_withdraw(),
+            pending_total_myso_withdraw: v.staking_pool().pending_total_myso_withdraw(),
             pending_pool_token_withdraw: v.staking_pool().pending_pool_token_withdraw(),
             exchange_rates_id: v
                 .staking_pool()

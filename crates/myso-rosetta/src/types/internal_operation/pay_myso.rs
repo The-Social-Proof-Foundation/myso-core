@@ -56,7 +56,7 @@ impl TryConstructTransaction for PayMySo {
         let all_coins = client
             .select_up_to_n_largest_coins(
                 &Address::from(sender),
-                &StructTag::mys().into(),
+                &StructTag::myso().into(),
                 1500,
                 &[],
             )

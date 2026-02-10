@@ -12,7 +12,7 @@ use move_binary_format::file_format::{
     Visibility as MoveVisibility,
 };
 use myso_package_resolver::{DataDef, FunctionDef, MoveData, VariantDef};
-use myso_rpc::proto::mys::rpc::v2::{
+use myso_rpc::proto::myso::rpc::v2::{
     Ability, DatatypeDescriptor, FieldDescriptor, FunctionDescriptor, Module, OpenSignature,
     OpenSignatureBody, TypeParameter, VariantDescriptor, datatype_descriptor::DatatypeKind,
     function_descriptor::Visibility, open_signature::Reference,

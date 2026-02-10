@@ -4,7 +4,7 @@
 use myso_rpc::{
     field::FieldMaskTree,
     merge::Merge,
-    proto::mys::rpc::v2::{Bcs, Event, Object, TransactionEffects, TransactionEvents},
+    proto::myso::rpc::v2::{Bcs, Event, Object, TransactionEffects, TransactionEvents},
 };
 
 use crate::RpcService;
@@ -120,10 +120,10 @@ impl RpcService {
 
     // Renders clever error information in-place
     pub fn render_clever_error(&self, effects: &mut TransactionEffects) {
-        use myso_rpc::proto::mys::rpc::v2::CleverError;
-        use myso_rpc::proto::mys::rpc::v2::MoveAbort;
-        use myso_rpc::proto::mys::rpc::v2::clever_error;
-        use myso_rpc::proto::mys::rpc::v2::execution_error::ErrorDetails;
+        use myso_rpc::proto::myso::rpc::v2::CleverError;
+        use myso_rpc::proto::myso::rpc::v2::MoveAbort;
+        use myso_rpc::proto::myso::rpc::v2::clever_error;
+        use myso_rpc::proto::myso::rpc::v2::execution_error::ErrorDetails;
 
         let Some(move_abort) = effects
             .status

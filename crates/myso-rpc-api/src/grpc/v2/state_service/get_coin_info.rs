@@ -4,10 +4,10 @@
 use crate::Result;
 use crate::RpcError;
 use crate::RpcService;
-use myso_rpc::proto::mys::rpc::v2::CoinTreasury;
-use myso_rpc::proto::mys::rpc::v2::GetCoinInfoRequest;
-use myso_rpc::proto::mys::rpc::v2::GetCoinInfoResponse;
-use myso_rpc::proto::mys::rpc::v2::coin_treasury::SupplyState as RpcSupplyState;
+use myso_rpc::proto::myso::rpc::v2::CoinTreasury;
+use myso_rpc::proto::myso::rpc::v2::GetCoinInfoRequest;
+use myso_rpc::proto::myso::rpc::v2::GetCoinInfoResponse;
+use myso_rpc::proto::myso::rpc::v2::coin_treasury::SupplyState as RpcSupplyState;
 use myso_sdk_types::{Address, StructTag};
 use myso_types::base_types::{ObjectID as MySoObjectID, MySoAddress};
 use myso_types::coin::RegulatedCoinMetadata;

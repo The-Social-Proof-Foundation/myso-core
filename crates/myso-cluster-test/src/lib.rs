@@ -9,7 +9,7 @@ use helper::ObjectChecker;
 use jsonrpsee::core::params::ArrayParams;
 use jsonrpsee::{core::client::ClientT, http_client::HttpClientBuilder};
 use std::sync::Arc;
-use myso_faucet::{CoinInfo, RequestStatus};
+use myso_faucet::CoinInfo;
 use myso_json_rpc_types::{
     MySoExecutionStatus, MySoTransactionBlockEffectsAPI, MySoTransactionBlockResponse,
     MySoTransactionBlockResponseOptions, TransactionBlockBytes,
@@ -60,11 +60,11 @@ impl TestContext {
         let addr = self.get_wallet_address();
 
         let faucet_response = self.faucet.request_myso_coins(addr).await;
-        if let RequestStatus::Failure(e) = faucet_response.status {
+        if let Some(ref e) = faucet_response.error {
             panic!("Failed to get coins from faucet: {e}");
         }
 
-        let coin_info = faucet_response.coins_sent.unwrap_or_default();
+        let coin_info = faucet_response.transferred_gas_objects;
 
         let digests = coin_info
             .iter()

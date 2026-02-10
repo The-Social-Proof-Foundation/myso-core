@@ -5,7 +5,7 @@ use myso_types::error::ErrorCategory;
 use tonic::Code;
 
 use crate::proto::google::rpc::{BadRequest, ErrorInfo, RetryInfo};
-pub use myso_rpc::proto::mys::rpc::v2::ErrorReason;
+pub use myso_rpc::proto::myso::rpc::v2::ErrorReason;
 
 pub type Result<T, E = RpcError> = std::result::Result<T, E>;
 

@@ -3,7 +3,7 @@
 
 use crate::RpcError;
 use crate::RpcService;
-use myso_rpc::proto::mys::rpc::v2::GetServiceInfoResponse;
+use myso_rpc::proto::myso::rpc::v2::GetServiceInfoResponse;
 use myso_rpc::proto::timestamp_ms_to_proto;
 use myso_sdk_types::Digest;
 use tap::Pipe;

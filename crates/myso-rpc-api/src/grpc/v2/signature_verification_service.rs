@@ -12,9 +12,9 @@ use crate::Result;
 use crate::RpcError;
 use crate::RpcService;
 use myso_rpc::proto::google::rpc::bad_request::FieldViolation;
-use myso_rpc::proto::mys::rpc::v2::VerifySignatureRequest;
-use myso_rpc::proto::mys::rpc::v2::VerifySignatureResponse;
-use myso_rpc::proto::mys::rpc::v2::signature_verification_service_server::SignatureVerificationService;
+use myso_rpc::proto::myso::rpc::v2::VerifySignatureRequest;
+use myso_rpc::proto::myso::rpc::v2::VerifySignatureResponse;
+use myso_rpc::proto::myso::rpc::v2::signature_verification_service_server::SignatureVerificationService;
 
 #[tonic::async_trait]
 impl SignatureVerificationService for RpcService {

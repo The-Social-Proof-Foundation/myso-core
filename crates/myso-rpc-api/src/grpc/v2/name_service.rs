@@ -12,11 +12,11 @@ use crate::Result;
 use crate::RpcError;
 use crate::RpcService;
 use myso_rpc::proto::google::rpc::bad_request::FieldViolation;
-use myso_rpc::proto::mys::rpc::v2::LookupNameRequest;
-use myso_rpc::proto::mys::rpc::v2::LookupNameResponse;
-use myso_rpc::proto::mys::rpc::v2::ReverseLookupNameRequest;
-use myso_rpc::proto::mys::rpc::v2::ReverseLookupNameResponse;
-use myso_rpc::proto::mys::rpc::v2::name_service_server::NameService;
+use myso_rpc::proto::myso::rpc::v2::LookupNameRequest;
+use myso_rpc::proto::myso::rpc::v2::LookupNameResponse;
+use myso_rpc::proto::myso::rpc::v2::ReverseLookupNameRequest;
+use myso_rpc::proto::myso::rpc::v2::ReverseLookupNameResponse;
+use myso_rpc::proto::myso::rpc::v2::name_service_server::NameService;
 
 #[tonic::async_trait]
 impl NameService for RpcService {
@@ -103,7 +103,7 @@ fn lookup_name(service: &RpcService, request: LookupNameRequest) -> Result<Looku
     };
 
     if is_valid {
-        let mut record = myso_rpc::proto::mys::rpc::v2::NameRecord::default();
+        let mut record = myso_rpc::proto::myso::rpc::v2::NameRecord::default();
         record.id = Some(record_id.to_canonical_string(true));
         record.name = Some(domain.to_string());
         record.registration_nft_id = Some(name_record.nft_id.bytes.to_canonical_string(true));

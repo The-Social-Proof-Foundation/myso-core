@@ -9,7 +9,7 @@ use crate::{
     },
 };
 use myso_rpc::proto::google::rpc::bad_request::FieldViolation;
-use myso_rpc::proto::mys::rpc::v2::{GetFunctionRequest, GetFunctionResponse};
+use myso_rpc::proto::myso::rpc::v2::{GetFunctionRequest, GetFunctionResponse};
 
 #[tracing::instrument(skip(service))]
 pub fn get_function(

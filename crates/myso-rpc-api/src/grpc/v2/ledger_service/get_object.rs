@@ -9,12 +9,12 @@ use prost_types::FieldMask;
 use myso_rpc::field::FieldMaskTree;
 use myso_rpc::field::FieldMaskUtil;
 use myso_rpc::proto::google::rpc::bad_request::FieldViolation;
-use myso_rpc::proto::mys::rpc::v2::BatchGetObjectsRequest;
-use myso_rpc::proto::mys::rpc::v2::BatchGetObjectsResponse;
-use myso_rpc::proto::mys::rpc::v2::GetObjectRequest;
-use myso_rpc::proto::mys::rpc::v2::GetObjectResponse;
-use myso_rpc::proto::mys::rpc::v2::GetObjectResult;
-use myso_rpc::proto::mys::rpc::v2::Object;
+use myso_rpc::proto::myso::rpc::v2::BatchGetObjectsRequest;
+use myso_rpc::proto::myso::rpc::v2::BatchGetObjectsResponse;
+use myso_rpc::proto::myso::rpc::v2::GetObjectRequest;
+use myso_rpc::proto::myso::rpc::v2::GetObjectResponse;
+use myso_rpc::proto::myso::rpc::v2::GetObjectResult;
+use myso_rpc::proto::myso::rpc::v2::Object;
 use myso_sdk_types::Address;
 
 pub const MAX_BATCH_REQUESTS: usize = 1000;

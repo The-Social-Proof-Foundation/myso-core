@@ -10,12 +10,12 @@ use prost_types::FieldMask;
 use myso_rpc::field::FieldMaskTree;
 use myso_rpc::field::FieldMaskUtil;
 use myso_rpc::proto::google::rpc::bad_request::FieldViolation;
-use myso_rpc::proto::mys::rpc::v2::Bcs;
-use myso_rpc::proto::mys::rpc::v2::DynamicField;
-use myso_rpc::proto::mys::rpc::v2::ErrorReason;
-use myso_rpc::proto::mys::rpc::v2::ListDynamicFieldsRequest;
-use myso_rpc::proto::mys::rpc::v2::ListDynamicFieldsResponse;
-use myso_rpc::proto::mys::rpc::v2::dynamic_field::DynamicFieldKind;
+use myso_rpc::proto::myso::rpc::v2::Bcs;
+use myso_rpc::proto::myso::rpc::v2::DynamicField;
+use myso_rpc::proto::myso::rpc::v2::ErrorReason;
+use myso_rpc::proto::myso::rpc::v2::ListDynamicFieldsRequest;
+use myso_rpc::proto::myso::rpc::v2::ListDynamicFieldsResponse;
+use myso_rpc::proto::myso::rpc::v2::dynamic_field::DynamicFieldKind;
 use myso_sdk_types::Address;
 use myso_types::base_types::ObjectID;
 

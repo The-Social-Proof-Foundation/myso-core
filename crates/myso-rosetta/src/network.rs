@@ -65,7 +65,7 @@ pub async fn status(
                 .parse::<MySoAddress>()
                 .map_err(|e| Error::DataError(format!("Invalid validator address: {}", e)))?;
             let public_key = validator.protocol_public_key();
-            let stake_amount = validator.staking_pool().mys_balance();
+            let stake_amount = validator.staking_pool().myso_balance();
             Ok(Peer {
                 peer_id: ObjectID::from(address).into(),
                 metadata: Some(json!({

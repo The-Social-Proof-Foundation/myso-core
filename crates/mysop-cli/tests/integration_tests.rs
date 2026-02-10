@@ -37,11 +37,11 @@ fn test_initialize_service_ext() -> Result<()> {
 fn test_initialize_service_mys() -> Result<()> {
     // create a temp dir to work in
     let temp_dir = tempfile::tempdir().expect("creating temp dir");
-    let svc_dir = temp_dir.path().join("mys/crates/svc/");
+    let svc_dir = temp_dir.path().join("myso/crates/svc/");
     std::fs::create_dir_all(&svc_dir).context("creating nested dir")?;
     debug!("svc_dir: {:?}", svc_dir);
-    // Create a dummy Cargo.toml file at the tempdir/mys level
-    let workspace_toml_path = temp_dir.path().join("mys/Cargo.toml");
+    // Create a dummy Cargo.toml file at the tempdir/myso level
+    let workspace_toml_path = temp_dir.path().join("myso/Cargo.toml");
     std::fs::write(
         workspace_toml_path,
         r#"
@@ -49,11 +49,11 @@ fn test_initialize_service_mys() -> Result<()> {
 members = []
   "#,
     )?;
-    // Create a dummy Dockerfile at the tempdir/mys/docker/mys-services level
-    let mys_services_dockerfile_path = temp_dir.path().join("mys/docker/mys-services/Dockerfile");
-    std::fs::create_dir_all(mys_services_dockerfile_path.parent().unwrap())?;
+    // Create a dummy Dockerfile at the tempdir/myso/docker/myso-services level
+    let myso_services_dockerfile_path = temp_dir.path().join("myso/docker/myso-services/Dockerfile");
+    std::fs::create_dir_all(myso_services_dockerfile_path.parent().unwrap())?;
     std::fs::write(
-        &mys_services_dockerfile_path,
+        &myso_services_dockerfile_path,
         r#"RUN cargo build --release \"#,
     )?;
 
@@ -67,14 +67,14 @@ members = []
     // Output Cargo.toml contents
     let toml_content = std::fs::read_to_string(svc_dir.join("Cargo.toml"))?;
     // Boilerplate Cargo.toml contents
-    let cargo_mys_toml_content =
-        std::fs::read_to_string("../mysten-service-boilerplate/Cargo-mys.toml")
+    let cargo_myso_toml_content =
+        std::fs::read_to_string("../mysten-service-boilerplate/Cargo-myso.toml")
             .context("reading cargo toml from boilerplate")?;
 
     assert_eq!(
         toml_content,
         // replace the service name, everything else should be the same
-        cargo_mys_toml_content.replace("service-boilerplate", "svc")
+        cargo_myso_toml_content.replace("service-boilerplate", "svc")
     );
     Ok(())
 }

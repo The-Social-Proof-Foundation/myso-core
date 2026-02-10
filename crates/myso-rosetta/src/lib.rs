@@ -39,7 +39,7 @@ pub static MYSO: Lazy<Currency> = Lazy::new(|| Currency {
     symbol: "MYSO".to_string(),
     decimals: 9,
     metadata: CurrencyMetadata {
-        coin_type: SDKTypeTag::from(StructTag::mys()).to_string(),
+        coin_type: SDKTypeTag::from(StructTag::myso()).to_string(),
     },
 });
 

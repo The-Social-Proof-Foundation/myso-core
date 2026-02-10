@@ -3,7 +3,7 @@
 
 use crate::{ErrorReason, Result, RpcError, RpcService};
 use myso_rpc::proto::google::rpc::bad_request::FieldViolation;
-use myso_rpc::proto::mys::rpc::v2::{Balance, GetBalanceRequest, GetBalanceResponse};
+use myso_rpc::proto::myso::rpc::v2::{Balance, GetBalanceRequest, GetBalanceResponse};
 use myso_sdk_types::Address;
 use myso_sdk_types::StructTag;
 use myso_types::base_types::MySoAddress;

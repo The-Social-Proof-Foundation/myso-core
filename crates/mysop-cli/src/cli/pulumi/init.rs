@@ -124,13 +124,13 @@ fn ensure_in_mysops_repo() -> Result<String> {
         vec!["git", "config", "--get", "remote.origin.url"],
         Some(CommandOptions::new(false, false)),
     )
-    .context("run this command within the mys-operations repository")?
+    .context("run this command within the myso-operations repository")?
     .stdout;
     let raw_path = String::from_utf8_lossy(&remote_stdout);
-    let in_mysops = raw_path.trim().contains("mys-operations");
+    let in_mysops = raw_path.trim().contains("myso-operations");
     if !in_mysops {
         Err(anyhow!(
-            "please run this command from within the mys-operations repository"
+            "please run this command from within the myso-operations repository"
         ))
     } else {
         info!("raw path: {}", raw_path.trim());
@@ -145,7 +145,7 @@ fn get_pulumi_dir() -> Result<PathBuf> {
         vec!["git", "rev-parse", "--show-toplevel"],
         Some(CommandOptions::new(false, false)),
     )
-    .context("run this command from within the mys-operations repository")?
+    .context("run this command from within the myso-operations repository")?
     .stdout;
     let mysops_dir = PathBuf::from(String::from_utf8_lossy(&mysops_dir_stdout).trim());
     Ok(mysops_dir.join("pulumi"))

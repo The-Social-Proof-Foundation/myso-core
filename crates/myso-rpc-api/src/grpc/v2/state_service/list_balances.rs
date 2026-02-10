@@ -7,8 +7,8 @@ use crate::RpcError;
 use crate::RpcService;
 use bytes::Bytes;
 use myso_rpc::proto::google::rpc::bad_request::FieldViolation;
-use myso_rpc::proto::mys::rpc::v2::ListBalancesRequest;
-use myso_rpc::proto::mys::rpc::v2::ListBalancesResponse;
+use myso_rpc::proto::myso::rpc::v2::ListBalancesRequest;
+use myso_rpc::proto::myso::rpc::v2::ListBalancesResponse;
 use myso_sdk_types::Address;
 use tap::Pipe;
 

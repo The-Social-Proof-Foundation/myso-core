@@ -228,7 +228,7 @@ fn get_object_inclusion_proof_impl(
     let checkpoint_summary_bytes = bcs::to_bytes(&checkpoint_data.summary)
         .map_err(|e| RpcError::new(tonic::Code::Internal, e.to_string()))?;
 
-    let mut obj_ref = myso_rpc::proto::mys::rpc::v2::ObjectReference::default();
+    let mut obj_ref = myso_rpc::proto::myso::rpc::v2::ObjectReference::default();
     obj_ref.object_id = Some(object_ref.0.to_string());
     obj_ref.version = Some(object_ref.1.value());
     obj_ref.digest = Some(object_ref.2.to_string());

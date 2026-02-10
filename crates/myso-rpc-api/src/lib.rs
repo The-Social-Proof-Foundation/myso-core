@@ -110,23 +110,23 @@ impl RpcService {
 
         let router = {
             let ledger_service =
-                myso_rpc::proto::mys::rpc::v2::ledger_service_server::LedgerServiceServer::new(
+                myso_rpc::proto::myso::rpc::v2::ledger_service_server::LedgerServiceServer::new(
                     self.clone(),
                 )
                 .send_compressed(tonic::codec::CompressionEncoding::Zstd);
-            let transaction_execution_service = myso_rpc::proto::mys::rpc::v2::transaction_execution_service_server::TransactionExecutionServiceServer::new(self.clone())
+            let transaction_execution_service = myso_rpc::proto::myso::rpc::v2::transaction_execution_service_server::TransactionExecutionServiceServer::new(self.clone())
                 .send_compressed(tonic::codec::CompressionEncoding::Zstd);
             let state_service =
-                myso_rpc::proto::mys::rpc::v2::state_service_server::StateServiceServer::new(
+                myso_rpc::proto::myso::rpc::v2::state_service_server::StateServiceServer::new(
                     self.clone(),
                 )
                 .send_compressed(tonic::codec::CompressionEncoding::Zstd);
-            let signature_verification_service = myso_rpc::proto::mys::rpc::v2::signature_verification_service_server::SignatureVerificationServiceServer::new(self.clone())
+            let signature_verification_service = myso_rpc::proto::myso::rpc::v2::signature_verification_service_server::SignatureVerificationServiceServer::new(self.clone())
                 .send_compressed(tonic::codec::CompressionEncoding::Zstd);
-            let move_package_service = myso_rpc::proto::mys::rpc::v2::move_package_service_server::MovePackageServiceServer::new(self.clone())
+            let move_package_service = myso_rpc::proto::myso::rpc::v2::move_package_service_server::MovePackageServiceServer::new(self.clone())
                 .send_compressed(tonic::codec::CompressionEncoding::Zstd);
             let name_service =
-                myso_rpc::proto::mys::rpc::v2::name_service_server::NameServiceServer::new(
+                myso_rpc::proto::myso::rpc::v2::name_service_server::NameServiceServer::new(
                     self.clone(),
                 )
                 .send_compressed(tonic::codec::CompressionEncoding::Zstd);
@@ -150,7 +150,7 @@ impl RpcService {
                     crate::proto::google::rpc::FILE_DESCRIPTOR_SET,
                 )
                 .register_encoded_file_descriptor_set(
-                    myso_rpc::proto::mys::rpc::v2::FILE_DESCRIPTOR_SET,
+                    myso_rpc::proto::myso::rpc::v2::FILE_DESCRIPTOR_SET,
                 )
                 .register_encoded_file_descriptor_set(tonic_health::pb::FILE_DESCRIPTOR_SET)
                 .build_v1()
@@ -164,7 +164,7 @@ impl RpcService {
                     crate::proto::google::rpc::FILE_DESCRIPTOR_SET,
                 )
                 .register_encoded_file_descriptor_set(
-                    myso_rpc::proto::mys::rpc::v2::FILE_DESCRIPTOR_SET,
+                    myso_rpc::proto::myso::rpc::v2::FILE_DESCRIPTOR_SET,
                 )
                 .register_encoded_file_descriptor_set(tonic_health::pb::FILE_DESCRIPTOR_SET)
                 .build_v1alpha()
@@ -208,7 +208,7 @@ impl RpcService {
 
             if self.subscription_service_handle.is_some() {
                 let subscription_service =
-myso_rpc::proto::mys::rpc::v2::subscription_service_server::SubscriptionServiceServer::new(self.clone());
+myso_rpc::proto::myso::rpc::v2::subscription_service_server::SubscriptionServiceServer::new(self.clone());
                 health_reporter
                     .set_service_status(
                         service_name(&subscription_service),

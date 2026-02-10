@@ -4,10 +4,11 @@
 use super::cluster::{Cluster, new_wallet_context_from_cluster};
 use async_trait::async_trait;
 use fastcrypto::encoding::{Encoding, Hex};
+use prometheus::Registry;
 use std::collections::HashMap;
 use std::env;
 use std::sync::Arc;
-use myso_faucet::{FaucetConfig, FaucetResponse, LocalFaucet, RequestStatus};
+use myso_faucet::{FaucetConfig, FaucetResponse, SimpleFaucet};
 use myso_types::base_types::MySoAddress;
 use myso_types::crypto::KeypairTraits;
 use tracing::{Instrument, debug, info, info_span};
@@ -30,12 +31,20 @@ impl FaucetClientFactory {
                     .await
                     .instrument(info_span!("init_wallet_context_for_faucet"));
 
+                let tmp = tempfile::tempdir().unwrap();
+                let wal_path = tmp.path().join("faucet.wal");
                 let config = FaucetConfig::default();
-                let simple_faucet = LocalFaucet::new(wallet_context.into_inner(), config)
-                    .await
-                    .unwrap();
+                let prom_registry = Registry::new();
+                let simple_faucet = SimpleFaucet::new(
+                    wallet_context.into_inner(),
+                    &prom_registry,
+                    &wal_path,
+                    config,
+                )
+                .await
+                .unwrap();
 
-                Arc::new(LocalFaucetClient::new(simple_faucet))
+                Arc::new(LocalFaucetClient::new(simple_faucet, tmp))
             }
         }
     }
@@ -86,7 +95,7 @@ impl FaucetClient for RemoteFaucetClient {
             .map_err(|e| anyhow::anyhow!("json deser failed with bytes {:?}: {e}", full_bytes))
             .unwrap();
 
-        if let RequestStatus::Failure(error) = &faucet_response.status {
+        if let Some(ref error) = faucet_response.error {
             panic!("Failed to get gas tokens with error: {}", error)
         };
 
@@ -96,27 +105,40 @@ impl FaucetClient for RemoteFaucetClient {
 
 /// A local faucet that holds some coins since genesis
 pub struct LocalFaucetClient {
-    simple_faucet: Arc<LocalFaucet>,
+    simple_faucet: Arc<SimpleFaucet>,
+    _tempdir: tempfile::TempDir,
 }
 
 impl LocalFaucetClient {
-    fn new(simple_faucet: Arc<LocalFaucet>) -> Self {
+    fn new(simple_faucet: Arc<SimpleFaucet>, tempdir: tempfile::TempDir) -> Self {
         info!("Use local faucet");
-        Self { simple_faucet }
+        Self {
+            simple_faucet,
+            _tempdir: tempdir,
+        }
     }
 }
 #[async_trait]
 impl FaucetClient for LocalFaucetClient {
     async fn request_myso_coins(&self, request_address: MySoAddress) -> FaucetResponse {
-        let coins = self
-            .simple_faucet
-            .local_request_execute_tx(request_address)
-            .await
-            .unwrap_or_else(|err| panic!("Failed to get gas tokens with error: {}", err));
+        use myso_faucet::{Faucet, FaucetConfig};
+        use uuid::Uuid;
 
-        FaucetResponse {
-            status: RequestStatus::Success,
-            coins_sent: Some(coins),
+        let config = FaucetConfig::default();
+        let amounts = vec![config.amount; config.num_coins];
+        match self
+            .simple_faucet
+            .send(Uuid::new_v4(), request_address, &amounts)
+            .await
+        {
+            Ok(receipt) => FaucetResponse {
+                transferred_gas_objects: receipt.sent,
+                error: None,
+            },
+            Err(e) => FaucetResponse {
+                transferred_gas_objects: vec![],
+                error: Some(e.to_string()),
+            },
         }
     }
 }

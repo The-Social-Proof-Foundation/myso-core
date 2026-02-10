@@ -676,11 +676,10 @@ anemo-build = { git = "https://github.com/mystenlabs/anemo.git", rev = "4b5f0f1d
 anemo-cli = { git = "https://github.com/mystenlabs/anemo.git", rev = "4b5f0f1d06a31c8ef78ec2e5b446bc633e4e2f77" }
 anemo-tower = { git = "https://github.com/mystenlabs/anemo.git", rev = "4b5f0f1d06a31c8ef78ec2e5b446bc633e4e2f77" }
 
-# TODO: Update this to the new myso-rust-sdk when published
 # core-types from the new sdk for use in gRPC
-myso-sdk-types = { path = "../../mys-rust-sdk/crates/mys-sdk-types", package = "mys-sdk-types", features = [ "hash", "serde" ] }
-myso-crypto = { path = "../../mys-rust-sdk/crates/mys-crypto", package = "mys-crypto", features = [ "ed25519", "secp256r1", "secp256k1", "passkey", "zklogin" ] }
-myso-rpc = { path = "../../mys-rust-sdk/crates/mys-rpc", package = "mys-rpc" }
+myso-sdk-types = { git = "https://github.com/the-social-proof-foundation/myso-rust-sdk.git", package = "myso-sdk-types", features = [ "hash", "serde" ] }
+myso-crypto = { git = "https://github.com/the-social-proof-foundation/myso-rust-sdk.git", package = "myso-crypto", features = [ "ed25519", "secp256r1", "secp256k1", "passkey", "zklogin" ] }
+myso-rpc = { git = "https://github.com/the-social-proof-foundation/myso-rust-sdk.git", package = "myso-rpc" }
 
 ### Workspace Members ###
 anemo-benchmark = { path = "crates/anemo-benchmark" }

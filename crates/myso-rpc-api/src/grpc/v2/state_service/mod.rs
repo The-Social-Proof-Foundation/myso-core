@@ -2,17 +2,17 @@
 // SPDX-License-Identifier: Apache-2.0
 
 use crate::RpcService;
-use myso_rpc::proto::mys::rpc::v2::GetBalanceRequest;
-use myso_rpc::proto::mys::rpc::v2::GetBalanceResponse;
-use myso_rpc::proto::mys::rpc::v2::GetCoinInfoRequest;
-use myso_rpc::proto::mys::rpc::v2::GetCoinInfoResponse;
-use myso_rpc::proto::mys::rpc::v2::ListBalancesRequest;
-use myso_rpc::proto::mys::rpc::v2::ListBalancesResponse;
-use myso_rpc::proto::mys::rpc::v2::ListDynamicFieldsRequest;
-use myso_rpc::proto::mys::rpc::v2::ListDynamicFieldsResponse;
-use myso_rpc::proto::mys::rpc::v2::ListOwnedObjectsRequest;
-use myso_rpc::proto::mys::rpc::v2::ListOwnedObjectsResponse;
-use myso_rpc::proto::mys::rpc::v2::state_service_server::StateService;
+use myso_rpc::proto::myso::rpc::v2::GetBalanceRequest;
+use myso_rpc::proto::myso::rpc::v2::GetBalanceResponse;
+use myso_rpc::proto::myso::rpc::v2::GetCoinInfoRequest;
+use myso_rpc::proto::myso::rpc::v2::GetCoinInfoResponse;
+use myso_rpc::proto::myso::rpc::v2::ListBalancesRequest;
+use myso_rpc::proto::myso::rpc::v2::ListBalancesResponse;
+use myso_rpc::proto::myso::rpc::v2::ListDynamicFieldsRequest;
+use myso_rpc::proto::myso::rpc::v2::ListDynamicFieldsResponse;
+use myso_rpc::proto::myso::rpc::v2::ListOwnedObjectsRequest;
+use myso_rpc::proto::myso::rpc::v2::ListOwnedObjectsResponse;
+use myso_rpc::proto::myso::rpc::v2::state_service_server::StateService;
 
 mod get_balance;
 mod get_coin_info;

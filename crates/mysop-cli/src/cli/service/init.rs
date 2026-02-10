@@ -31,24 +31,24 @@ pub fn bootstrap_service(lang: &ServiceLanguage, path: &Path) -> Result<()> {
     }
 }
 
-/// Add the new service to the mys-services dockerfile in the mys repository
-fn add_to_mys_dockerfile(path: &Path) -> Result<()> {
+/// Add the new service to the myso-services dockerfile in the myso repository
+fn add_to_myso_dockerfile(path: &Path) -> Result<()> {
     let path = path.canonicalize().context("canonicalizing service path")?;
     let crates_dir = path.parent().unwrap();
-    if !crates_dir.ends_with("mys/crates") {
-        panic!("directory wasn't in the mys repo");
+    if !crates_dir.ends_with("myso/crates") {
+        panic!("directory wasn't in the myso repo");
     }
-    let mys_services_dockerfile_path = &crates_dir.join("../docker/mys-services/Dockerfile");
+    let myso_services_dockerfile_path = &crates_dir.join("../docker/myso-services/Dockerfile");
     // read the dockerfile
-    let dockerfile = fs::read_to_string(mys_services_dockerfile_path)
-        .context("reading mys-services dockerfile")?;
+    let dockerfile = fs::read_to_string(myso_services_dockerfile_path)
+        .context("reading myso-services dockerfile")?;
 
     // find the line with the build cmd
     let build_line = dockerfile
         .lines()
         .enumerate()
         .find(|(_, line)| line.contains("RUN cargo build --release \\"))
-        .expect("couldn't find build line in mys-services dockerfile")
+        .expect("couldn't find build line in myso-services dockerfile")
         .0;
     // update with the new service
     let mut final_dockerfile = dockerfile.lines().collect::<Vec<_>>();
@@ -61,8 +61,8 @@ fn add_to_mys_dockerfile(path: &Path) -> Result<()> {
     );
     final_dockerfile.insert(build_line + 1, &bin_str);
     // write the file back
-    fs::write(mys_services_dockerfile_path, final_dockerfile.join("\n"))
-        .context("writing mys-services dockerfile after modifying it")?;
+    fs::write(myso_services_dockerfile_path, final_dockerfile.join("\n"))
+        .context("writing myso-services dockerfile after modifying it")?;
 
     Ok(())
 }
@@ -71,8 +71,8 @@ fn add_member_to_workspace(path: &Path) -> Result<()> {
     // test
     let path = path.canonicalize().context("canonicalizing service path")?;
     let crates_dir = path.parent().context("getting path parent").unwrap();
-    if !crates_dir.ends_with("mys/crates") {
-        panic!("directory wasn't in the mys repo");
+    if !crates_dir.ends_with("myso/crates") {
+        panic!("directory wasn't in the myso repo");
     }
     let workspace_toml_path = &crates_dir.join("../Cargo.toml");
     // read the workspace toml
@@ -103,15 +103,15 @@ fn create_rust_service(path: &Path) -> Result<()> {
     info!("creating rust service in {}", path.to_string_lossy());
     // create the dir to ensure we can canonicalize any relative paths
     create_dir_all(path).context("creating rust service dirs")?;
-    let is_mys_service = path
+    let is_myso_service = path
         // expand relative paths and symlinks
         .canonicalize()
         .context("canonicalizing service path")?
         .to_string_lossy()
-        .contains("mys/crates");
-    debug!("mys service: {:?}", is_mys_service);
-    let cargo_toml_path = if is_mys_service {
-        "Cargo-mys.toml"
+        .contains("myso/crates");
+    debug!("myso service: {:?}", is_myso_service);
+    let cargo_toml_path = if is_myso_service {
+        "Cargo-myso.toml"
     } else {
         "Cargo-ext.toml"
     };
@@ -149,13 +149,13 @@ fn create_rust_service(path: &Path) -> Result<()> {
         .context("writing cargo toml file")?;
 
     // add the project as a member of the cargo workspace
-    if is_mys_service {
-        add_member_to_workspace(path).context("adding crate to mys workspace")?;
+    if is_myso_service {
+        add_member_to_workspace(path).context("adding crate to myso workspace")?;
     }
     // now that the source directory works, let's update/add a dockerfile
-    if is_mys_service {
-        // update mys-services dockerfile
-        add_to_mys_dockerfile(path).context("adding crate to mys services dockerfile")?;
+    if is_myso_service {
+        // update myso-services dockerfile
+        add_to_myso_dockerfile(path).context("adding crate to myso services dockerfile")?;
     } else {
         // TODO: create a new dockerfile where the user designates
     }

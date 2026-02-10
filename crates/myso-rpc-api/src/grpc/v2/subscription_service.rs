@@ -6,10 +6,10 @@ use std::pin::Pin;
 use crate::RpcService;
 use myso_rpc::field::FieldMaskTree;
 use myso_rpc::merge::Merge;
-use myso_rpc::proto::mys::rpc::v2::Checkpoint;
-use myso_rpc::proto::mys::rpc::v2::SubscribeCheckpointsRequest;
-use myso_rpc::proto::mys::rpc::v2::SubscribeCheckpointsResponse;
-use myso_rpc::proto::mys::rpc::v2::subscription_service_server::SubscriptionService;
+use myso_rpc::proto::myso::rpc::v2::Checkpoint;
+use myso_rpc::proto::myso::rpc::v2::SubscribeCheckpointsRequest;
+use myso_rpc::proto::myso::rpc::v2::SubscribeCheckpointsResponse;
+use myso_rpc::proto::myso::rpc::v2::subscription_service_server::SubscriptionService;
 
 #[tonic::async_trait]
 impl SubscriptionService for RpcService {
@@ -59,7 +59,7 @@ impl SubscriptionService for RpcService {
                         {
                             *txn.balance_changes_mut() = info.balance_changes
                                 .into_iter()
-                                .map(myso_rpc::proto::mys::rpc::v2::BalanceChange::from)
+                                .map(myso_rpc::proto::myso::rpc::v2::BalanceChange::from)
                                 .collect::<Vec<_>>();
                         }
                     }

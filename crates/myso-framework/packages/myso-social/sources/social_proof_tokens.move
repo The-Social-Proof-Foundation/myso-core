@@ -227,7 +227,7 @@ module social_contracts::social_proof_tokens {
         /// The token's info
         info: TokenInfo,
         /// MYSO balance in the pool
-        mys_balance: Balance<MYSO>,
+        myso_balance: Balance<MYSO>,
         /// Mapping of holders' addresses to their token balances
         holders: Table<address, u64>,
         /// PoC revenue redirection address (for post tokens only)
@@ -255,7 +255,7 @@ module social_contracts::social_proof_tokens {
         /// Reservation pool info (without reservers - kept separately below)
         info: ReservationPool,
         /// MYSO balance reserved in this pool
-        mys_balance: Balance<MYSO>,
+        myso_balance: Balance<MYSO>,
         /// Mapping of reservers' addresses to their reservation amounts
         reservations: Table<address, u64>,
         /// List of all reservers (for efficient iteration) - only in object, not in registry
@@ -286,7 +286,7 @@ module social_contracts::social_proof_tokens {
         id: address,
         buyer: address,
         amount: u64,
-        mys_amount: u64,
+        myso_amount: u64,
         fee_amount: u64,
         creator_fee: u64,
         platform_fee: u64,
@@ -299,7 +299,7 @@ module social_contracts::social_proof_tokens {
         id: address,
         seller: address,
         amount: u64,
-        mys_amount: u64,
+        myso_amount: u64,
         fee_amount: u64,
         creator_fee: u64,
         platform_fee: u64,
@@ -810,7 +810,7 @@ module social_contracts::social_proof_tokens {
         
         // Extract net reservation payment
         let reservation_payment = coin::split(&mut remaining_payment, net_amount, ctx);
-        balance::join(&mut reservation_pool_object.mys_balance, coin::into_balance(reservation_payment));
+        balance::join(&mut reservation_pool_object.myso_balance, coin::into_balance(reservation_payment));
         
         // Update reserver's balance in the pool (store net amount)
         if (table::contains(&reservation_pool_object.reservations, reserver)) {
@@ -974,7 +974,7 @@ module social_contracts::social_proof_tokens {
         
         // Extract net reservation payment
         let reservation_payment = coin::split(&mut remaining_payment, net_amount, ctx);
-        balance::join(&mut reservation_pool_object.mys_balance, coin::into_balance(reservation_payment));
+        balance::join(&mut reservation_pool_object.myso_balance, coin::into_balance(reservation_payment));
         
         // Update reserver's balance in the pool (store net amount)
         if (table::contains(&reservation_pool_object.reservations, reserver)) {
@@ -1123,7 +1123,7 @@ module social_contracts::social_proof_tokens {
         
         // Extract net reservation payment
         let reservation_payment = coin::split(&mut remaining_payment, net_amount, ctx);
-        balance::join(&mut reservation_pool_object.mys_balance, coin::into_balance(reservation_payment));
+        balance::join(&mut reservation_pool_object.myso_balance, coin::into_balance(reservation_payment));
 
         // Update reserver's balance in the pool (store net amount)
         if (table::contains(&reservation_pool_object.reservations, reserver)) {
@@ -1283,7 +1283,7 @@ module social_contracts::social_proof_tokens {
         
         // Extract net reservation payment
         let reservation_payment = coin::split(&mut remaining_payment, net_amount, ctx);
-        balance::join(&mut reservation_pool_object.mys_balance, coin::into_balance(reservation_payment));
+        balance::join(&mut reservation_pool_object.myso_balance, coin::into_balance(reservation_payment));
 
         // Update reserver's balance in the pool (store net amount)
         if (table::contains(&reservation_pool_object.reservations, reserver)) {
@@ -1392,7 +1392,7 @@ module social_contracts::social_proof_tokens {
         assert!(current_reservation >= amount, EInsufficientLiquidity);
         
         // Ensure pool has enough liquidity for net refund (pool contains net deposits)
-        assert!(balance::value(&reservation_pool_object.mys_balance) >= amount, EInsufficientLiquidity);
+        assert!(balance::value(&reservation_pool_object.myso_balance) >= amount, EInsufficientLiquidity);
         
         // Update reserver's balance (subtract net amount, since reservations store net)
         if (current_reservation == amount) {
@@ -1425,7 +1425,7 @@ module social_contracts::social_proof_tokens {
         };
         
         // Transfer net amount to reserver (no fees on withdrawal in Model A)
-        let refund_balance = balance::split(&mut reservation_pool_object.mys_balance, amount);
+        let refund_balance = balance::split(&mut reservation_pool_object.myso_balance, amount);
         let refund_coin = coin::from_balance(refund_balance, ctx);
         transfer::public_transfer(refund_coin, reserver);
         
@@ -1496,7 +1496,7 @@ module social_contracts::social_proof_tokens {
         assert!(current_reservation >= net_amount, EInsufficientLiquidity);
         
         // Ensure pool has enough liquidity for gross refund + all fees
-        assert!(balance::value(&reservation_pool_object.mys_balance) >= amount, EInsufficientLiquidity);
+        assert!(balance::value(&reservation_pool_object.myso_balance) >= amount, EInsufficientLiquidity);
         
         // Update reserver's balance (subtract net amount, since reservations store net)
         if (current_reservation == net_amount) {
@@ -1532,26 +1532,26 @@ module social_contracts::social_proof_tokens {
         if (fee_amount > 0) {
             // Send creator fee directly to owner (no PoC redirection on withdrawals)
             if (creator_fee > 0) {
-                let creator_fee_coin = coin::from_balance(balance::split(&mut reservation_pool_object.mys_balance, creator_fee), ctx);
+                let creator_fee_coin = coin::from_balance(balance::split(&mut reservation_pool_object.myso_balance, creator_fee), ctx);
                 transfer::public_transfer(creator_fee_coin, reservation_pool_object.info.owner);
             };
             
             // Send platform fee to platform treasury
             if (platform_fee > 0) {
-                let mut platform_fee_coin = coin::from_balance(balance::split(&mut reservation_pool_object.mys_balance, platform_fee), ctx);
+                let mut platform_fee_coin = coin::from_balance(balance::split(&mut reservation_pool_object.myso_balance, platform_fee), ctx);
                 social_contracts::platform::add_to_treasury(platform, &mut platform_fee_coin, platform_fee, ctx);
                 coin::destroy_zero(platform_fee_coin);
             };
             
             // Send treasury fee
             if (treasury_fee > 0) {
-                let treasury_fee_coin = coin::from_balance(balance::split(&mut reservation_pool_object.mys_balance, treasury_fee), ctx);
+                let treasury_fee_coin = coin::from_balance(balance::split(&mut reservation_pool_object.myso_balance, treasury_fee), ctx);
                 transfer::public_transfer(treasury_fee_coin, profile::get_treasury_address(treasury));
             };
         };
         
         // Transfer net refund to reserver
-        let refund_balance = balance::split(&mut reservation_pool_object.mys_balance, net_amount);
+        let refund_balance = balance::split(&mut reservation_pool_object.myso_balance, net_amount);
         let refund_coin = coin::from_balance(refund_balance, ctx);
         transfer::public_transfer(refund_coin, reserver);
         
@@ -1610,7 +1610,7 @@ module social_contracts::social_proof_tokens {
         let reservation_pool_object = ReservationPoolObject {
             id: object::new(ctx),
             info: reservation_pool,
-            mys_balance: balance::zero(),
+            myso_balance: balance::zero(),
             reservations: table::new(ctx),
             reservers: vector::empty(),
             converted: false,
@@ -1683,7 +1683,7 @@ module social_contracts::social_proof_tokens {
         let reservation_pool_object = ReservationPoolObject {
             id: object::new(ctx),
             info: reservation_pool,
-            mys_balance: balance::zero(),
+            myso_balance: balance::zero(),
             reservations: table::new(ctx),
             reservers: vector::empty(),
             converted: false,
@@ -1825,7 +1825,7 @@ module social_contracts::social_proof_tokens {
         let mut token_pool = TokenPool {
             id: pool_id,
             info: pool_token_info,
-            mys_balance: balance::zero(),
+            myso_balance: balance::zero(),
             holders: table::new(ctx),
             poc_redirect_to: option::none(),
             poc_redirect_percentage: option::none(),
@@ -1898,7 +1898,7 @@ module social_contracts::social_proof_tokens {
         updated_token_info.circulating_supply = distributed_total;
         
         // Transfer all reserved MYSO to the token pool as initial liquidity
-        balance::join(&mut token_pool.mys_balance, balance::withdraw_all(&mut reservation_pool_object.mys_balance));
+        balance::join(&mut token_pool.myso_balance, balance::withdraw_all(&mut reservation_pool_object.myso_balance));
         
         // Mark reservation pool as converted and clear total reserved
         reservation_pool_object.converted = true;
@@ -2049,7 +2049,7 @@ module social_contracts::social_proof_tokens {
         };
 
         let (redirected_amount, _remaining_amount) = apply_token_poc_redirection(pool, creator_fee, ctx);
-        let mut fee_coin = coin::from_balance(balance::split(&mut pool.mys_balance, creator_fee), ctx);
+        let mut fee_coin = coin::from_balance(balance::split(&mut pool.myso_balance, creator_fee), ctx);
         
         if (redirected_amount > 0) {
             // Split the fee: redirected portion goes to original creator, remainder to post owner
@@ -2388,7 +2388,7 @@ module social_contracts::social_proof_tokens {
         
         // Add remaining payment to pool
         let pool_payment = coin::split(&mut payment, net_amount, ctx);
-        balance::join(&mut pool.mys_balance, coin::into_balance(pool_payment));
+        balance::join(&mut pool.myso_balance, coin::into_balance(pool_payment));
         
         // Refund any excess payment
         if (coin::value(&payment) > 0) {
@@ -2447,7 +2447,7 @@ module social_contracts::social_proof_tokens {
             id: object::uid_to_address(&pool.id),
             buyer,
             amount,
-            mys_amount: price,
+            myso_amount: price,
             fee_amount,
             creator_fee,
             platform_fee,
@@ -2542,7 +2542,7 @@ module social_contracts::social_proof_tokens {
         
         // Add remaining payment to pool
         let pool_payment = coin::split(&mut payment, net_amount, ctx);
-        balance::join(&mut pool.mys_balance, coin::into_balance(pool_payment));
+        balance::join(&mut pool.myso_balance, coin::into_balance(pool_payment));
         
         // Refund any excess payment
         if (coin::value(&payment) > 0) {
@@ -2600,7 +2600,7 @@ module social_contracts::social_proof_tokens {
             id: object::uid_to_address(&pool.id),
             buyer,
             amount,
-            mys_amount: price,
+            myso_amount: price,
             fee_amount,
             creator_fee,
             platform_fee,
@@ -2690,7 +2690,7 @@ module social_contracts::social_proof_tokens {
         
         // Add remaining payment to pool
         let pool_payment = coin::split(&mut payment, net_amount, ctx);
-        balance::join(&mut pool.mys_balance, coin::into_balance(pool_payment));
+        balance::join(&mut pool.myso_balance, coin::into_balance(pool_payment));
         
         // Refund any excess payment
         if (coin::value(&payment) > 0) {
@@ -2747,7 +2747,7 @@ module social_contracts::social_proof_tokens {
             id: object::uid_to_address(&pool.id),
             buyer,
             amount,
-            mys_amount: price,
+            myso_amount: price,
             fee_amount,
             creator_fee,
             platform_fee,
@@ -2846,7 +2846,7 @@ module social_contracts::social_proof_tokens {
         
         // Add remaining payment to pool
         let pool_payment = coin::split(&mut payment, net_amount, ctx);
-        balance::join(&mut pool.mys_balance, coin::into_balance(pool_payment));
+        balance::join(&mut pool.myso_balance, coin::into_balance(pool_payment));
         
         // Refund any excess payment
         if (coin::value(&payment) > 0) {
@@ -2902,7 +2902,7 @@ module social_contracts::social_proof_tokens {
             id: object::uid_to_address(&pool.id),
             buyer,
             amount,
-            mys_amount: price,
+            myso_amount: price,
             fee_amount,
             creator_fee,
             platform_fee,
@@ -2962,7 +2962,7 @@ module social_contracts::social_proof_tokens {
         let net_refund = refund_amount - fee_amount;
         
         // Ensure pool has enough liquidity for refund + all fees
-        assert!(balance::value(&pool.mys_balance) >= refund_amount, EInsufficientLiquidity);
+        assert!(balance::value(&pool.myso_balance) >= refund_amount, EInsufficientLiquidity);
         
         // Verify seller has tokens in the pool
         assert!(table::contains(&pool.holders, seller), ENoTokensOwned);
@@ -2984,7 +2984,7 @@ module social_contracts::social_proof_tokens {
         pool.info.circulating_supply = pool.info.circulating_supply - amount;
         
         // Extract net refund from pool
-        let refund_balance = balance::split(&mut pool.mys_balance, net_refund);
+        let refund_balance = balance::split(&mut pool.myso_balance, net_refund);
         
         // Process and distribute fees with PoC redirection support
         if (fee_amount > 0) {
@@ -2995,13 +2995,13 @@ module social_contracts::social_proof_tokens {
             
             // Send platform fee to ecosystem treasury (no platform involved)
             if (platform_fee > 0) {
-                let platform_fee_coin = coin::from_balance(balance::split(&mut pool.mys_balance, platform_fee), ctx);
+                let platform_fee_coin = coin::from_balance(balance::split(&mut pool.myso_balance, platform_fee), ctx);
                 transfer::public_transfer(platform_fee_coin, profile::get_treasury_address(treasury));
             };
             
             // Send fee to treasury
             if (treasury_fee > 0) {
-                let treasury_fee_coin = coin::from_balance(balance::split(&mut pool.mys_balance, treasury_fee), ctx);
+                let treasury_fee_coin = coin::from_balance(balance::split(&mut pool.myso_balance, treasury_fee), ctx);
                 transfer::public_transfer(treasury_fee_coin, profile::get_treasury_address(treasury));
             };
         };
@@ -3022,7 +3022,7 @@ module social_contracts::social_proof_tokens {
             id: pool_id,
             seller,
             amount,
-            mys_amount: refund_amount,
+            myso_amount: refund_amount,
             fee_amount,
             creator_fee,
             platform_fee,
@@ -3090,7 +3090,7 @@ module social_contracts::social_proof_tokens {
         let net_refund = refund_amount - fee_amount;
         
         // Ensure pool has enough liquidity for refund + all fees
-        assert!(balance::value(&pool.mys_balance) >= refund_amount, EInsufficientLiquidity);
+        assert!(balance::value(&pool.myso_balance) >= refund_amount, EInsufficientLiquidity);
         
         // Verify seller has tokens in the pool
         assert!(table::contains(&pool.holders, seller), ENoTokensOwned);
@@ -3112,7 +3112,7 @@ module social_contracts::social_proof_tokens {
         pool.info.circulating_supply = pool.info.circulating_supply - amount;
         
         // Extract net refund from pool
-        let refund_balance = balance::split(&mut pool.mys_balance, net_refund);
+        let refund_balance = balance::split(&mut pool.myso_balance, net_refund);
         
         // Process and distribute fees with PoC redirection support
         if (fee_amount > 0) {
@@ -3123,14 +3123,14 @@ module social_contracts::social_proof_tokens {
             
             // Send platform fee to platform treasury
             if (platform_fee > 0) {
-                let mut platform_fee_coin = coin::from_balance(balance::split(&mut pool.mys_balance, platform_fee), ctx);
+                let mut platform_fee_coin = coin::from_balance(balance::split(&mut pool.myso_balance, platform_fee), ctx);
                 social_contracts::platform::add_to_treasury(platform, &mut platform_fee_coin, platform_fee, ctx);
                 coin::destroy_zero(platform_fee_coin);
             };
             
             // Send fee to treasury
             if (treasury_fee > 0) {
-                let treasury_fee_coin = coin::from_balance(balance::split(&mut pool.mys_balance, treasury_fee), ctx);
+                let treasury_fee_coin = coin::from_balance(balance::split(&mut pool.myso_balance, treasury_fee), ctx);
                 transfer::public_transfer(treasury_fee_coin, profile::get_treasury_address(treasury));
             };
         };
@@ -3151,7 +3151,7 @@ module social_contracts::social_proof_tokens {
             id: pool_id,
             seller,
             amount,
-            mys_amount: refund_amount,
+            myso_amount: refund_amount,
             fee_amount,
             creator_fee,
             platform_fee,
@@ -3493,7 +3493,7 @@ module social_contracts::social_proof_tokens {
         TokenPool {
             id: object::new(ctx),
             info: token_info,
-            mys_balance: balance::zero(),
+            myso_balance: balance::zero(),
             holders: table::new(ctx),
             poc_redirect_to: option::none(),
             poc_redirect_percentage: option::none(),

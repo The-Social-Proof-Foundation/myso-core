@@ -38,7 +38,7 @@ use myso_config::{
 use myso_config::{
     MYSO_BENCHMARK_GENESIS_GAS_KEYSTORE_FILENAME, MYSO_GENESIS_FILENAME, MYSO_KEYSTORE_FILENAME,
 };
-use myso_faucet::{AppState, FaucetConfig, LocalFaucet, create_wallet_context, start_faucet};
+use myso_faucet::{AppState, FaucetConfig, SimpleFaucet, create_wallet_context, start_faucet};
 use myso_futures::service::Service;
 use myso_indexer_alt::{config::IndexerConfig, setup_indexer};
 use myso_indexer_alt_consistent_store::{
@@ -1200,12 +1200,13 @@ async fn start(
             _ => bail!("Faucet configuration requires an IPv4 address"),
         };
 
-        let config = FaucetConfig {
+        let mut config = FaucetConfig {
             host_ip,
             port: faucet_address.port(),
             amount: DEFAULT_FAUCET_MIST_AMOUNT,
             ..Default::default()
         };
+        config.write_ahead_log = config_dir.join("faucet.wal");
 
         if force_regenesis {
             let kp = swarm.config_mut().account_keys.swap_remove(0);
@@ -1236,8 +1237,12 @@ async fn start(
             .unwrap();
         }
 
-        let local_faucet = LocalFaucet::new(
+        const FAUCET_CONCURRENCY_LIMIT: usize = 30;
+
+        let local_faucet = SimpleFaucet::new(
             create_wallet_context(config.wallet_client_timeout_secs, config_dir.clone())?,
+            &prometheus_registry,
+            &config.write_ahead_log,
             config.clone(),
         )
         .await?;
@@ -1247,7 +1252,7 @@ async fn start(
             config,
         });
 
-        start_faucet(app_state).await?;
+        start_faucet(app_state, FAUCET_CONCURRENCY_LIMIT, &prometheus_registry).await?;
     }
 
     // Run health check loop until Ctrl+C or failure

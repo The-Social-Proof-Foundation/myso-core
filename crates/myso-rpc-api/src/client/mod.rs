@@ -8,7 +8,7 @@ use prost_types::FieldMask;
 use std::time::Duration;
 use myso_rpc::field::FieldMaskUtil;
 use myso_rpc::proto::TryFromProtoError;
-use myso_rpc::proto::mys::rpc::v2::{self as proto, GetServiceInfoRequest};
+use myso_rpc::proto::myso::rpc::v2::{self as proto, GetServiceInfoRequest};
 use myso_types::base_types::{ObjectID, SequenceNumber, MySoAddress};
 use myso_types::digests::ChainIdentifier;
 use myso_types::digests::TransactionDigest;
@@ -656,7 +656,7 @@ impl ExecutedTransaction {
     }
 
     pub fn get_new_package_obj(&self) -> Option<myso_types::base_types::ObjectRef> {
-        use myso_rpc::proto::mys::rpc::v2::changed_object::OutputObjectState;
+        use myso_rpc::proto::myso::rpc::v2::changed_object::OutputObjectState;
 
         self.changed_objects
             .iter()
@@ -670,8 +670,8 @@ impl ExecutedTransaction {
     }
 
     pub fn get_new_package_upgrade_cap(&self) -> Option<myso_types::base_types::ObjectRef> {
-        use myso_rpc::proto::mys::rpc::v2::changed_object::OutputObjectState;
-        use myso_rpc::proto::mys::rpc::v2::owner::OwnerKind;
+        use myso_rpc::proto::myso::rpc::v2::changed_object::OutputObjectState;
+        use myso_rpc::proto::myso::rpc::v2::owner::OwnerKind;
 
         const UPGRADE_CAP: &str = "0x0000000000000000000000000000000000000000000000000000000000000002::package::UpgradeCap";
 

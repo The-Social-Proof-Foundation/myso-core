@@ -33,8 +33,8 @@ module social_contracts::token_exchange_tests {
     const ECOSYSTEM_TREASURY: address = @0xFEE2;
     
     // Test constants
-    const MYS_DECIMALS: u64 = 9;
-    const MYS_SCALING: u64 = 1000000000; // 10^9
+    const myso_DECIMALS: u64 = 9;
+    const myso_SCALING: u64 = 1000000000; // 10^9
     
     // Token types from social_proof_tokens module
     const TOKEN_TYPE_PROFILE: u8 = 1;
@@ -178,19 +178,19 @@ module social_contracts::token_exchange_tests {
         // Mint coins for testing users
         test_scenario::next_tx(&mut scenario, ADMIN);
         {
-            let admin_coins = coin::mint_for_testing<MYSO>(1000 * MYS_SCALING, test_scenario::ctx(&mut scenario));
+            let admin_coins = coin::mint_for_testing<MYSO>(1000 * myso_SCALING, test_scenario::ctx(&mut scenario));
             transfer::public_transfer(admin_coins, ADMIN);
             
-            let creator_coins = coin::mint_for_testing<MYSO>(1000 * MYS_SCALING, test_scenario::ctx(&mut scenario));
+            let creator_coins = coin::mint_for_testing<MYSO>(1000 * myso_SCALING, test_scenario::ctx(&mut scenario));
             transfer::public_transfer(creator_coins, CREATOR);
             
-            let user1_coins = coin::mint_for_testing<MYSO>(1000 * MYS_SCALING, test_scenario::ctx(&mut scenario));
+            let user1_coins = coin::mint_for_testing<MYSO>(1000 * myso_SCALING, test_scenario::ctx(&mut scenario));
             transfer::public_transfer(user1_coins, USER1);
             
-            let user2_coins = coin::mint_for_testing<MYSO>(1000 * MYS_SCALING, test_scenario::ctx(&mut scenario));
+            let user2_coins = coin::mint_for_testing<MYSO>(1000 * myso_SCALING, test_scenario::ctx(&mut scenario));
             transfer::public_transfer(user2_coins, USER2);
             
-            let user3_coins = coin::mint_for_testing<MYSO>(1000 * MYS_SCALING, test_scenario::ctx(&mut scenario));
+            let user3_coins = coin::mint_for_testing<MYSO>(1000 * myso_SCALING, test_scenario::ctx(&mut scenario));
             transfer::public_transfer(user3_coins, USER3);
         };
         
@@ -409,7 +409,7 @@ module social_contracts::token_exchange_tests {
             // since we're just testing the flow and not actual functionality
             
             // Price estimate for our test
-            let price_estimate = 10 * MYS_SCALING / 100; // Mock price
+            let price_estimate = 10 * myso_SCALING / 100; // Mock price
             let payment = coin::split(&mut coin, price_estimate, test_scenario::ctx(&mut scenario));
             
             // Transfer to the creator to simulate payment (since we can't actually call buy_tokens in tests)
@@ -451,7 +451,7 @@ module social_contracts::token_exchange_tests {
             let mut coin = test_scenario::take_from_sender<Coin<MYSO>>(&scenario);
             
             // Create payment
-            let price_per_token = 1 * MYS_SCALING / 100; // 0.01 MYSO per token
+            let price_per_token = 1 * myso_SCALING / 100; // 0.01 MYSO per token
             let payment_amount = additional_amount * price_per_token;
             let payment = coin::split(&mut coin, payment_amount, test_scenario::ctx(&mut scenario));
             
@@ -495,7 +495,7 @@ module social_contracts::token_exchange_tests {
         {
             // Mint some MYSO to simulate previous payment
             let creator_coins = coin::mint_for_testing<MYSO>(
-                initial_balance * MYS_SCALING / 100,
+                initial_balance * myso_SCALING / 100,
                 test_scenario::ctx(&mut scenario)
             );
             transfer::public_transfer(creator_coins, CREATOR);
@@ -506,7 +506,7 @@ module social_contracts::token_exchange_tests {
         test_scenario::next_tx(&mut scenario, ADMIN);
         {
             let refund = coin::mint_for_testing<MYSO>(
-                amount_to_sell * MYS_SCALING / 100, 
+                amount_to_sell * myso_SCALING / 100, 
                 test_scenario::ctx(&mut scenario)
             );
             transfer::public_transfer(refund, USER1);
@@ -620,13 +620,13 @@ module social_contracts::token_exchange_tests {
             );
             
             // Simulate a trading fee of 100 MYSO going to creator
-            let total_fee = 100 * MYS_SCALING;
+            let total_fee = 100 * myso_SCALING;
             let redirected_amount = (total_fee * 60) / 100; // 60 MYSO to USER3
             let remaining_amount = total_fee - redirected_amount; // 40 MYSO to CREATOR
             
             // Verify calculations
-            assert!(redirected_amount == 60 * MYS_SCALING, 0);
-            assert!(remaining_amount == 40 * MYS_SCALING, 1);
+            assert!(redirected_amount == 60 * myso_SCALING, 0);
+            assert!(remaining_amount == 40 * myso_SCALING, 1);
             
             // Create coins to simulate the fee distribution
             let redirected_coin = coin::mint_for_testing<MYSO>(redirected_amount, test_scenario::ctx(&mut scenario));
@@ -644,7 +644,7 @@ module social_contracts::token_exchange_tests {
         test_scenario::next_tx(&mut scenario, USER3);
         {
             let coins = test_scenario::take_from_sender<Coin<MYSO>>(&scenario);
-            assert!(coin::value(&coins) == 60 * MYS_SCALING, 0);
+            assert!(coin::value(&coins) == 60 * myso_SCALING, 0);
             test_scenario::return_to_sender(&scenario, coins);
         };
         
@@ -652,7 +652,7 @@ module social_contracts::token_exchange_tests {
         test_scenario::next_tx(&mut scenario, CREATOR);
         {
             let coins = test_scenario::take_from_sender<Coin<MYSO>>(&scenario);
-            assert!(coin::value(&coins) >= 40 * MYS_SCALING, 0); // >= because creator has initial coins too
+            assert!(coin::value(&coins) >= 40 * myso_SCALING, 0); // >= because creator has initial coins too
             test_scenario::return_to_sender(&scenario, coins);
         };
         

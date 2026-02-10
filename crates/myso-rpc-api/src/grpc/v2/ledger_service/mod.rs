@@ -2,21 +2,21 @@
 // SPDX-License-Identifier: Apache-2.0
 
 use crate::RpcService;
-use myso_rpc::proto::mys::rpc::v2::BatchGetObjectsRequest;
-use myso_rpc::proto::mys::rpc::v2::BatchGetObjectsResponse;
-use myso_rpc::proto::mys::rpc::v2::BatchGetTransactionsRequest;
-use myso_rpc::proto::mys::rpc::v2::BatchGetTransactionsResponse;
-use myso_rpc::proto::mys::rpc::v2::GetCheckpointRequest;
-use myso_rpc::proto::mys::rpc::v2::GetCheckpointResponse;
-use myso_rpc::proto::mys::rpc::v2::GetEpochRequest;
-use myso_rpc::proto::mys::rpc::v2::GetEpochResponse;
-use myso_rpc::proto::mys::rpc::v2::GetObjectRequest;
-use myso_rpc::proto::mys::rpc::v2::GetObjectResponse;
-use myso_rpc::proto::mys::rpc::v2::GetServiceInfoRequest;
-use myso_rpc::proto::mys::rpc::v2::GetServiceInfoResponse;
-use myso_rpc::proto::mys::rpc::v2::GetTransactionRequest;
-use myso_rpc::proto::mys::rpc::v2::GetTransactionResponse;
-use myso_rpc::proto::mys::rpc::v2::ledger_service_server::LedgerService;
+use myso_rpc::proto::myso::rpc::v2::BatchGetObjectsRequest;
+use myso_rpc::proto::myso::rpc::v2::BatchGetObjectsResponse;
+use myso_rpc::proto::myso::rpc::v2::BatchGetTransactionsRequest;
+use myso_rpc::proto::myso::rpc::v2::BatchGetTransactionsResponse;
+use myso_rpc::proto::myso::rpc::v2::GetCheckpointRequest;
+use myso_rpc::proto::myso::rpc::v2::GetCheckpointResponse;
+use myso_rpc::proto::myso::rpc::v2::GetEpochRequest;
+use myso_rpc::proto::myso::rpc::v2::GetEpochResponse;
+use myso_rpc::proto::myso::rpc::v2::GetObjectRequest;
+use myso_rpc::proto::myso::rpc::v2::GetObjectResponse;
+use myso_rpc::proto::myso::rpc::v2::GetServiceInfoRequest;
+use myso_rpc::proto::myso::rpc::v2::GetServiceInfoResponse;
+use myso_rpc::proto::myso::rpc::v2::GetTransactionRequest;
+use myso_rpc::proto::myso::rpc::v2::GetTransactionResponse;
+use myso_rpc::proto::myso::rpc::v2::ledger_service_server::LedgerService;
 
 pub(crate) mod get_checkpoint;
 mod get_epoch;

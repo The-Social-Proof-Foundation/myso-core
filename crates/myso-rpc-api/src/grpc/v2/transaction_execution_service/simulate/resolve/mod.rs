@@ -15,7 +15,7 @@ use bytes::Bytes;
 use move_binary_format::normalized;
 use myso_protocol_config::ProtocolConfig;
 use myso_rpc::proto::google::rpc::bad_request::FieldViolation;
-use myso_rpc::proto::mys::rpc::v2::Transaction;
+use myso_rpc::proto::myso::rpc::v2::Transaction;
 use myso_sdk_types::Address;
 use myso_sdk_types::Argument;
 use myso_sdk_types::Command;
@@ -151,10 +151,10 @@ fn resolve_unresolved_transaction(
     reference_gas_price: u64,
     max_gas_budget: u64,
     sender: myso_sdk_types::Address,
-    unresolved_inputs: &[myso_rpc::proto::mys::rpc::v2::Input],
+    unresolved_inputs: &[myso_rpc::proto::myso::rpc::v2::Input],
     commands: Vec<Command>,
-    gas_payment: Option<&myso_rpc::proto::mys::rpc::v2::GasPayment>,
-    expiration: Option<&myso_rpc::proto::mys::rpc::v2::TransactionExpiration>,
+    gas_payment: Option<&myso_rpc::proto::myso::rpc::v2::GasPayment>,
+    expiration: Option<&myso_rpc::proto::myso::rpc::v2::TransactionExpiration>,
 ) -> Result<TransactionData> {
     let gas_data = if let Some(unresolved_gas_payment) = gas_payment {
         let gas_coins = unresolved_gas_payment
@@ -298,7 +298,7 @@ fn resolve_object_reference_with_object(
 pub(super) fn resolve_ptb(
     reader: &StateReader,
     called_packages: &mut NormalizedPackages,
-    unresolved_inputs: &[myso_rpc::proto::mys::rpc::v2::Input],
+    unresolved_inputs: &[myso_rpc::proto::myso::rpc::v2::Input],
     commands: Vec<Command>,
 ) -> Result<ProgrammableTransaction> {
     let inputs = unresolved_inputs
@@ -318,10 +318,10 @@ fn resolve_arg(
     reader: &StateReader,
     called_packages: &mut NormalizedPackages,
     commands: &[Command],
-    arg: &myso_rpc::proto::mys::rpc::v2::Input,
+    arg: &myso_rpc::proto::myso::rpc::v2::Input,
     arg_idx: usize,
 ) -> Result<CallArg> {
-    use myso_rpc::proto::mys::rpc::v2::input::InputKind;
+    use myso_rpc::proto::myso::rpc::v2::input::InputKind;
 
     match UnresolvedInput::from_proto(arg)? {
         // Pure, already prepared BCS input
@@ -744,11 +744,11 @@ struct UnresolvedObjectReference {
     digest: Option<myso_sdk_types::Digest>,
 }
 
-impl TryFrom<&myso_rpc::proto::mys::rpc::v2::ObjectReference> for UnresolvedObjectReference {
+impl TryFrom<&myso_rpc::proto::myso::rpc::v2::ObjectReference> for UnresolvedObjectReference {
     type Error = FieldViolation;
 
     fn try_from(
-        value: &myso_rpc::proto::mys::rpc::v2::ObjectReference,
+        value: &myso_rpc::proto::myso::rpc::v2::ObjectReference,
     ) -> Result<Self, Self::Error> {
         let object_id = value.object_id().parse().map_err(|e| {
             FieldViolation::new("object_id")
@@ -776,7 +776,7 @@ impl TryFrom<&myso_rpc::proto::mys::rpc::v2::ObjectReference> for UnresolvedObje
 }
 
 struct UnresolvedInput<'a> {
-    pub kind: Option<myso_rpc::proto::mys::rpc::v2::input::InputKind>,
+    pub kind: Option<myso_rpc::proto::myso::rpc::v2::input::InputKind>,
     pub pure: Option<&'a Bytes>,
     pub object_id: Option<myso_sdk_types::Address>,
     pub version: Option<myso_sdk_types::Version>,
@@ -787,7 +787,7 @@ struct UnresolvedInput<'a> {
 }
 
 impl<'a> UnresolvedInput<'a> {
-    fn from_proto(input: &'a myso_rpc::proto::mys::rpc::v2::Input) -> Result<Self, FieldViolation> {
+    fn from_proto(input: &'a myso_rpc::proto::myso::rpc::v2::Input) -> Result<Self, FieldViolation> {
         Ok(Self {
             kind: input.kind.map(|_| input.kind()),
             literal: input.literal.as_deref(),
@@ -831,10 +831,10 @@ impl<'a> UnresolvedInput<'a> {
                             })?,
                         ),
                         withdraw_from: match w.source() {
-                            myso_rpc::proto::mys::rpc::v2::funds_withdrawal::Source::Sender => {
+                            myso_rpc::proto::myso::rpc::v2::funds_withdrawal::Source::Sender => {
                                 WithdrawFrom::Sender
                             }
-                            myso_rpc::proto::mys::rpc::v2::funds_withdrawal::Source::Sponsor => {
+                            myso_rpc::proto::myso::rpc::v2::funds_withdrawal::Source::Sponsor => {
                                 WithdrawFrom::Sponsor
                             }
                             _ => WithdrawFrom::Sender,
