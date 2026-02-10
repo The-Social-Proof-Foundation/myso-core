@@ -166,6 +166,7 @@ members = [
   "crates/myso-package-resolver",
   "crates/mysop-cli",
   "crates/myso-pg-db",
+  "crates/myso-price-oracle",
   "crates/myso-proc-macros",
   "crates/myso-protocol-config",
   "crates/myso-protocol-config-macros",
