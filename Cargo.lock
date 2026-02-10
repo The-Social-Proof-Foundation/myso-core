@@ -918,7 +918,7 @@ dependencies = [
 
 [[package]]
 name = "anemo-benchmark"
-version = "0.0.0"
+version = "0.0.1"
 dependencies = [
  "anemo",
  "anemo-build",
@@ -2841,7 +2841,7 @@ checksum = "230c5f1ca6a325a32553f8640d31ac9b49f2411e901e427570154868b46da4f7"
 
 [[package]]
 name = "bin-version"
-version = "1.66.0"
+version = "0.0.1"
 dependencies = [
  "const-str 0.5.7",
  "git-version",
@@ -3855,7 +3855,7 @@ dependencies = [
 
 [[package]]
 name = "consensus-config"
-version = "0.1.0"
+version = "0.0.1"
 dependencies = [
  "fastcrypto",
  "insta",
@@ -3867,7 +3867,7 @@ dependencies = [
 
 [[package]]
 name = "consensus-core"
-version = "0.1.0"
+version = "0.0.1"
 dependencies = [
  "anyhow",
  "arc-swap",
@@ -3924,7 +3924,7 @@ dependencies = [
 
 [[package]]
 name = "consensus-simtests"
-version = "0.1.0"
+version = "0.0.1"
 dependencies = [
  "anyhow",
  "arc-swap",
@@ -3949,7 +3949,7 @@ dependencies = [
 
 [[package]]
 name = "consensus-types"
-version = "0.1.0"
+version = "0.0.1"
 dependencies = [
  "base64 0.21.7",
  "consensus-config",
@@ -5569,7 +5569,7 @@ dependencies = [
 
 [[package]]
 name = "enum-compat-util"
-version = "0.1.0"
+version = "0.0.1"
 dependencies = [
  "serde_yaml 0.8.26",
 ]
@@ -7740,7 +7740,7 @@ dependencies = [
 
 [[package]]
 name = "jsonrpc"
-version = "0.1.0"
+version = "0.0.1"
 dependencies = [
  "serde",
  "serde_json",
@@ -8809,11 +8809,11 @@ checksum = "1fafa6961cabd9c63bcd77a45d7e3b7f3b552b70417831fb0f56db717e72407e"
 
 [[package]]
 name = "move-abstract-interpreter"
-version = "0.1.0"
+version = "0.0.1"
 
 [[package]]
 name = "move-abstract-interpreter-v2"
-version = "0.1.0"
+version = "0.0.1"
 dependencies = [
  "move-binary-format",
 ]
@@ -8824,7 +8824,7 @@ version = "0.0.1"
 
 [[package]]
 name = "move-analyzer"
-version = "1.0.0"
+version = "0.0.1"
 dependencies = [
  "anyhow",
  "clap",
@@ -8858,7 +8858,7 @@ dependencies = [
 
 [[package]]
 name = "move-binary-format"
-version = "0.0.3"
+version = "0.0.1"
 dependencies = [
  "anyhow",
  "enum-compat-util",
@@ -8877,7 +8877,7 @@ version = "0.0.1"
 
 [[package]]
 name = "move-bytecode-source-map"
-version = "0.1.0"
+version = "0.0.1"
 dependencies = [
  "anyhow",
  "bcs",
@@ -8892,7 +8892,7 @@ dependencies = [
 
 [[package]]
 name = "move-bytecode-utils"
-version = "0.1.0"
+version = "0.0.1"
 dependencies = [
  "anyhow",
  "indexmap 2.13.0",
@@ -8904,7 +8904,7 @@ dependencies = [
 
 [[package]]
 name = "move-bytecode-verifier"
-version = "0.1.0"
+version = "0.0.1"
 dependencies = [
  "move-abstract-interpreter",
  "move-abstract-stack",
@@ -8920,7 +8920,7 @@ dependencies = [
 
 [[package]]
 name = "move-bytecode-verifier-meter"
-version = "0.1.0"
+version = "0.0.1"
 dependencies = [
  "move-binary-format",
  "move-core-types",
@@ -8929,7 +8929,7 @@ dependencies = [
 
 [[package]]
 name = "move-bytecode-verifier-v0"
-version = "0.1.0"
+version = "0.0.1"
 dependencies = [
  "move-abstract-interpreter-v2",
  "move-abstract-stack",
@@ -8943,7 +8943,7 @@ dependencies = [
 
 [[package]]
 name = "move-bytecode-verifier-v1"
-version = "0.1.0"
+version = "0.0.1"
 dependencies = [
  "move-abstract-interpreter-v2",
  "move-abstract-stack",
@@ -8957,7 +8957,7 @@ dependencies = [
 
 [[package]]
 name = "move-bytecode-verifier-v2"
-version = "0.1.0"
+version = "0.0.1"
 dependencies = [
  "move-abstract-interpreter-v2",
  "move-abstract-stack",
@@ -8971,7 +8971,7 @@ dependencies = [
 
 [[package]]
 name = "move-bytecode-viewer"
-version = "0.1.0"
+version = "0.0.1"
 dependencies = [
  "anyhow",
  "clap",
@@ -8985,7 +8985,7 @@ dependencies = [
 
 [[package]]
 name = "move-cli"
-version = "0.1.0"
+version = "0.0.1"
 dependencies = [
  "anyhow",
  "bcs",
@@ -9035,7 +9035,7 @@ dependencies = [
 
 [[package]]
 name = "move-command-line-common"
-version = "0.1.0"
+version = "0.0.1"
 dependencies = [
  "anyhow",
  "bcs",
@@ -9089,7 +9089,7 @@ dependencies = [
 
 [[package]]
 name = "move-core-types"
-version = "0.0.4"
+version = "0.0.1"
 dependencies = [
  "anyhow",
  "arbitrary",
@@ -9115,7 +9115,7 @@ dependencies = [
 
 [[package]]
 name = "move-coverage"
-version = "0.1.0"
+version = "0.0.1"
 dependencies = [
  "anyhow",
  "bcs",
@@ -9139,7 +9139,7 @@ dependencies = [
 
 [[package]]
 name = "move-decompiler"
-version = "0.1.0"
+version = "0.0.1"
 dependencies = [
  "anyhow",
  "bcs",
@@ -9166,7 +9166,7 @@ dependencies = [
 
 [[package]]
 name = "move-disassembler"
-version = "0.1.0"
+version = "0.0.1"
 dependencies = [
  "anyhow",
  "bcs",
@@ -9186,7 +9186,7 @@ dependencies = [
 
 [[package]]
 name = "move-docgen"
-version = "0.1.0"
+version = "0.0.1"
 dependencies = [
  "anyhow",
  "clap",
@@ -9207,7 +9207,7 @@ dependencies = [
 
 [[package]]
 name = "move-ir-compiler"
-version = "0.1.0"
+version = "0.0.1"
 dependencies = [
  "anyhow",
  "bcs",
@@ -9224,7 +9224,7 @@ dependencies = [
 
 [[package]]
 name = "move-ir-to-bytecode"
-version = "0.1.0"
+version = "0.0.1"
 dependencies = [
  "anyhow",
  "codespan-reporting",
@@ -9241,7 +9241,7 @@ dependencies = [
 
 [[package]]
 name = "move-ir-to-bytecode-syntax"
-version = "0.1.0"
+version = "0.0.1"
 dependencies = [
  "anyhow",
  "hex",
@@ -9253,7 +9253,7 @@ dependencies = [
 
 [[package]]
 name = "move-ir-types"
-version = "0.1.0"
+version = "0.0.1"
 dependencies = [
  "hex",
  "move-command-line-common",
@@ -9264,7 +9264,7 @@ dependencies = [
 
 [[package]]
 name = "move-model"
-version = "0.1.0"
+version = "0.0.1"
 dependencies = [
  "anyhow",
  "codespan",
@@ -9286,7 +9286,7 @@ dependencies = [
 
 [[package]]
 name = "move-model-2"
-version = "0.1.0"
+version = "0.0.1"
 dependencies = [
  "anyhow",
  "bcs",
@@ -9309,7 +9309,7 @@ dependencies = [
 
 [[package]]
 name = "move-package-alt"
-version = "0.1.0"
+version = "0.0.1"
 dependencies = [
  "anyhow",
  "append-only-vec",
@@ -9351,7 +9351,7 @@ dependencies = [
 
 [[package]]
 name = "move-package-alt-compilation"
-version = "0.1.0"
+version = "0.0.1"
 dependencies = [
  "anyhow",
  "clap",
@@ -9378,7 +9378,7 @@ dependencies = [
 
 [[package]]
 name = "move-proc-macros"
-version = "0.1.0"
+version = "0.0.1"
 dependencies = [
  "enum-compat-util",
  "quote",
@@ -9400,7 +9400,7 @@ dependencies = [
 
 [[package]]
 name = "move-stackless-bytecode"
-version = "0.1.0"
+version = "0.0.1"
 dependencies = [
  "codespan",
  "codespan-reporting",
@@ -9420,7 +9420,7 @@ dependencies = [
 
 [[package]]
 name = "move-stackless-bytecode-2"
-version = "0.1.0"
+version = "0.0.1"
 dependencies = [
  "anyhow",
  "bcs",
@@ -9444,7 +9444,7 @@ dependencies = [
 
 [[package]]
 name = "move-stdlib"
-version = "0.1.1"
+version = "0.0.1"
 dependencies = [
  "anyhow",
  "hex",
@@ -9464,7 +9464,7 @@ dependencies = [
 
 [[package]]
 name = "move-stdlib-natives"
-version = "0.1.1"
+version = "0.0.1"
 dependencies = [
  "hex",
  "move-binary-format",
@@ -9478,7 +9478,7 @@ dependencies = [
 
 [[package]]
 name = "move-stdlib-natives-v0"
-version = "0.1.1"
+version = "0.0.1"
 dependencies = [
  "hex",
  "move-binary-format",
@@ -9492,7 +9492,7 @@ dependencies = [
 
 [[package]]
 name = "move-stdlib-natives-v1"
-version = "0.1.1"
+version = "0.0.1"
 dependencies = [
  "hex",
  "move-binary-format",
@@ -9506,7 +9506,7 @@ dependencies = [
 
 [[package]]
 name = "move-stdlib-natives-v2"
-version = "0.1.1"
+version = "0.0.1"
 dependencies = [
  "hex",
  "move-binary-format",
@@ -9520,7 +9520,7 @@ dependencies = [
 
 [[package]]
 name = "move-symbol-pool"
-version = "0.1.0"
+version = "0.0.1"
 dependencies = [
  "phf 0.11.3",
  "serde",
@@ -9539,7 +9539,7 @@ dependencies = [
 
 [[package]]
 name = "move-transactional-test-runner"
-version = "0.1.0"
+version = "0.0.1"
 dependencies = [
  "anyhow",
  "async-trait",
@@ -9572,7 +9572,7 @@ dependencies = [
 
 [[package]]
 name = "move-unit-test"
-version = "0.1.0"
+version = "0.0.1"
 dependencies = [
  "anyhow",
  "bcs",
@@ -9604,14 +9604,14 @@ dependencies = [
 
 [[package]]
 name = "move-vm-config"
-version = "0.1.0"
+version = "0.0.1"
 dependencies = [
  "move-binary-format",
 ]
 
 [[package]]
 name = "move-vm-profiler"
-version = "0.1.0"
+version = "0.0.1"
 dependencies = [
  "move-trace-format",
  "move-vm-config",
@@ -9622,7 +9622,7 @@ dependencies = [
 
 [[package]]
 name = "move-vm-runtime"
-version = "0.1.0"
+version = "0.0.1"
 dependencies = [
  "better_any",
  "fail",
@@ -9639,7 +9639,7 @@ dependencies = [
 
 [[package]]
 name = "move-vm-runtime-v0"
-version = "0.1.0"
+version = "0.0.1"
 dependencies = [
  "better_any",
  "fail",
@@ -9656,7 +9656,7 @@ dependencies = [
 
 [[package]]
 name = "move-vm-runtime-v1"
-version = "0.1.0"
+version = "0.0.1"
 dependencies = [
  "better_any",
  "fail",
@@ -9673,7 +9673,7 @@ dependencies = [
 
 [[package]]
 name = "move-vm-runtime-v2"
-version = "0.1.0"
+version = "0.0.1"
 dependencies = [
  "better_any",
  "fail",
@@ -9690,7 +9690,7 @@ dependencies = [
 
 [[package]]
 name = "move-vm-test-utils"
-version = "0.1.0"
+version = "0.0.1"
 dependencies = [
  "anyhow",
  "move-binary-format",
@@ -9702,7 +9702,7 @@ dependencies = [
 
 [[package]]
 name = "move-vm-types"
-version = "0.1.0"
+version = "0.0.1"
 dependencies = [
  "bcs",
  "move-binary-format",
@@ -9714,7 +9714,7 @@ dependencies = [
 
 [[package]]
 name = "move-vm-types-v0"
-version = "0.1.0"
+version = "0.0.1"
 dependencies = [
  "bcs",
  "move-binary-format",
@@ -9725,7 +9725,7 @@ dependencies = [
 
 [[package]]
 name = "move-vm-types-v1"
-version = "0.1.0"
+version = "0.0.1"
 dependencies = [
  "bcs",
  "move-binary-format",
@@ -9736,7 +9736,7 @@ dependencies = [
 
 [[package]]
 name = "move-vm-types-v2"
-version = "0.1.0"
+version = "0.0.1"
 dependencies = [
  "bcs",
  "move-binary-format",
@@ -9930,7 +9930,7 @@ dependencies = [
 
 [[package]]
 name = "myso"
-version = "1.66.0"
+version = "0.0.1"
 dependencies = [
  "anemo",
  "anyhow",
@@ -10047,7 +10047,7 @@ dependencies = [
 
 [[package]]
 name = "myso-adapter-latest"
-version = "0.1.0"
+version = "0.0.1"
 dependencies = [
  "anyhow",
  "bcs",
@@ -10081,7 +10081,7 @@ dependencies = [
 
 [[package]]
 name = "myso-adapter-transactional-tests"
-version = "0.1.0"
+version = "0.0.1"
 dependencies = [
  "datatest-stable",
  "myso-transactional-test-runner",
@@ -10089,7 +10089,7 @@ dependencies = [
 
 [[package]]
 name = "myso-adapter-v0"
-version = "0.1.0"
+version = "0.0.1"
 dependencies = [
  "anyhow",
  "bcs",
@@ -10116,7 +10116,7 @@ dependencies = [
 
 [[package]]
 name = "myso-adapter-v1"
-version = "0.1.0"
+version = "0.0.1"
 dependencies = [
  "anyhow",
  "bcs",
@@ -10142,7 +10142,7 @@ dependencies = [
 
 [[package]]
 name = "myso-adapter-v2"
-version = "0.1.0"
+version = "0.0.1"
 dependencies = [
  "anyhow",
  "bcs",
@@ -10168,7 +10168,7 @@ dependencies = [
 
 [[package]]
 name = "myso-analytics-indexer"
-version = "1.66.0"
+version = "0.0.1"
 dependencies = [
  "anyhow",
  "arrow",
@@ -10227,7 +10227,7 @@ dependencies = [
 
 [[package]]
 name = "myso-analytics-indexer-derive"
-version = "1.66.0"
+version = "0.0.1"
 dependencies = [
  "proc-macro2",
  "quote",
@@ -10236,7 +10236,7 @@ dependencies = [
 
 [[package]]
 name = "myso-authority-aggregation"
-version = "0.1.0"
+version = "0.0.1"
 dependencies = [
  "futures",
  "myso-types",
@@ -10278,7 +10278,7 @@ dependencies = [
 
 [[package]]
 name = "myso-benchmark"
-version = "0.0.0"
+version = "0.0.1"
 dependencies = [
  "anyhow",
  "async-trait",
@@ -10333,7 +10333,7 @@ dependencies = [
 
 [[package]]
 name = "myso-bridge"
-version = "1.66.0"
+version = "0.0.1"
 dependencies = [
  "alloy",
  "alloy-multiprovider-strategy",
@@ -10392,7 +10392,7 @@ dependencies = [
 
 [[package]]
 name = "myso-bridge-cli"
-version = "1.66.0"
+version = "0.0.1"
 dependencies = [
  "alloy",
  "anyhow",
@@ -10420,7 +10420,7 @@ dependencies = [
 
 [[package]]
 name = "myso-bridge-indexer"
-version = "0.1.0"
+version = "0.0.1"
 dependencies = [
  "alloy",
  "anyhow",
@@ -10458,7 +10458,7 @@ dependencies = [
 
 [[package]]
 name = "myso-bridge-indexer-alt"
-version = "0.1.0"
+version = "0.0.1"
 dependencies = [
  "anyhow",
  "async-trait",
@@ -10482,7 +10482,7 @@ dependencies = [
 
 [[package]]
 name = "myso-bridge-schema"
-version = "0.1.0"
+version = "0.0.1"
 dependencies = [
  "diesel",
  "diesel_migrations",
@@ -10495,7 +10495,7 @@ dependencies = [
 
 [[package]]
 name = "myso-checkpoint-blob-indexer"
-version = "1.66.0"
+version = "0.0.1"
 dependencies = [
  "anyhow",
  "async-trait",
@@ -10524,7 +10524,7 @@ dependencies = [
 
 [[package]]
 name = "myso-cluster-test"
-version = "1.66.0"
+version = "0.0.1"
 dependencies = [
  "anyhow",
  "async-trait",
@@ -10562,7 +10562,7 @@ dependencies = [
 
 [[package]]
 name = "myso-config"
-version = "0.0.0"
+version = "0.0.1"
 dependencies = [
  "anemo",
  "anyhow",
@@ -10595,7 +10595,7 @@ dependencies = [
 
 [[package]]
 name = "myso-core"
-version = "0.1.0"
+version = "0.0.1"
 dependencies = [
  "anemo",
  "antithesis_sdk",
@@ -10702,7 +10702,7 @@ dependencies = [
 
 [[package]]
 name = "myso-cost"
-version = "0.1.0"
+version = "0.0.1"
 dependencies = [
  "anyhow",
  "bcs",
@@ -10723,7 +10723,7 @@ dependencies = [
 
 [[package]]
 name = "myso-data-ingestion-core"
-version = "0.1.0"
+version = "0.0.1"
 dependencies = [
  "anyhow",
  "async-trait",
@@ -10755,7 +10755,7 @@ dependencies = [
 
 [[package]]
 name = "myso-data-store"
-version = "0.1.0"
+version = "0.0.1"
 dependencies = [
  "anyhow",
  "bcs",
@@ -10775,7 +10775,7 @@ dependencies = [
 
 [[package]]
 name = "myso-default-config"
-version = "1.66.0"
+version = "0.0.1"
 dependencies = [
  "quote",
  "syn 1.0.109",
@@ -10783,7 +10783,7 @@ dependencies = [
 
 [[package]]
 name = "myso-display"
-version = "1.66.0"
+version = "0.0.1"
 dependencies = [
  "anyhow",
  "async-trait",
@@ -10805,7 +10805,7 @@ dependencies = [
 
 [[package]]
 name = "myso-e2e-tests"
-version = "1.66.0"
+version = "0.0.1"
 dependencies = [
  "anyhow",
  "async-trait",
@@ -10872,14 +10872,14 @@ dependencies = [
 
 [[package]]
 name = "myso-enum-compat-util"
-version = "0.1.0"
+version = "0.0.1"
 dependencies = [
  "serde_yaml 0.8.26",
 ]
 
 [[package]]
 name = "myso-execution"
-version = "0.1.0"
+version = "0.0.1"
 dependencies = [
  "cargo_metadata 0.15.4",
  "move-abstract-interpreter",
@@ -10919,7 +10919,7 @@ dependencies = [
 
 [[package]]
 name = "myso-execution-cut"
-version = "0.1.0"
+version = "0.0.1"
 dependencies = [
  "anyhow",
  "clap",
@@ -10932,7 +10932,7 @@ dependencies = [
 
 [[package]]
 name = "myso-faucet"
-version = "1.66.0"
+version = "0.0.1"
 dependencies = [
  "anyhow",
  "async-trait",
@@ -10962,14 +10962,14 @@ dependencies = [
 
 [[package]]
 name = "myso-field-count"
-version = "1.66.0"
+version = "0.0.1"
 dependencies = [
  "myso-field-count-derive",
 ]
 
 [[package]]
 name = "myso-field-count-derive"
-version = "1.66.0"
+version = "0.0.1"
 dependencies = [
  "quote",
  "syn 1.0.109",
@@ -10977,7 +10977,7 @@ dependencies = [
 
 [[package]]
 name = "myso-framework"
-version = "0.1.0"
+version = "0.0.1"
 dependencies = [
  "anyhow",
  "bcs",
@@ -11000,7 +11000,7 @@ dependencies = [
 
 [[package]]
 name = "myso-framework-snapshot"
-version = "1.66.0"
+version = "0.0.1"
 dependencies = [
  "anyhow",
  "bcs",
@@ -11017,7 +11017,7 @@ dependencies = [
 
 [[package]]
 name = "myso-framework-tests"
-version = "0.1.0"
+version = "0.0.1"
 dependencies = [
  "anyhow",
  "datatest-stable",
@@ -11043,7 +11043,7 @@ dependencies = [
 
 [[package]]
 name = "myso-futures"
-version = "1.66.0"
+version = "0.0.1"
 dependencies = [
  "anyhow",
  "futures",
@@ -11055,7 +11055,7 @@ dependencies = [
 
 [[package]]
 name = "myso-genesis-builder"
-version = "0.0.0"
+version = "0.0.1"
 dependencies = [
  "anyhow",
  "bcs",
@@ -11082,7 +11082,7 @@ dependencies = [
 
 [[package]]
 name = "myso-http"
-version = "0.0.0"
+version = "0.0.1"
 dependencies = [
  "axum 0.8.8",
  "bytes",
@@ -11103,7 +11103,7 @@ dependencies = [
 
 [[package]]
 name = "myso-indexer-alt"
-version = "1.66.0"
+version = "0.0.1"
 dependencies = [
  "anyhow",
  "async-trait",
@@ -11139,7 +11139,7 @@ dependencies = [
 
 [[package]]
 name = "myso-indexer-alt-consistent-api"
-version = "1.66.0"
+version = "0.0.1"
 dependencies = [
  "prost 0.14.3",
  "prost-types 0.14.3",
@@ -11152,7 +11152,7 @@ dependencies = [
 
 [[package]]
 name = "myso-indexer-alt-consistent-store"
-version = "1.66.0"
+version = "0.0.1"
 dependencies = [
  "anyhow",
  "async-trait",
@@ -11203,7 +11203,7 @@ dependencies = [
 
 [[package]]
 name = "myso-indexer-alt-e2e-tests"
-version = "0.1.0"
+version = "0.0.1"
 dependencies = [
  "anyhow",
  "async-trait",
@@ -11260,7 +11260,7 @@ dependencies = [
 
 [[package]]
 name = "myso-indexer-alt-framework"
-version = "1.66.0"
+version = "0.0.1"
 dependencies = [
  "anyhow",
  "async-trait",
@@ -11310,7 +11310,7 @@ dependencies = [
 
 [[package]]
 name = "myso-indexer-alt-framework-store-traits"
-version = "1.66.0"
+version = "0.0.1"
 dependencies = [
  "anyhow",
  "async-trait",
@@ -11320,7 +11320,7 @@ dependencies = [
 
 [[package]]
 name = "myso-indexer-alt-graphql"
-version = "1.66.0"
+version = "0.0.1"
 dependencies = [
  "anyhow",
  "async-graphql",
@@ -11383,7 +11383,7 @@ dependencies = [
 
 [[package]]
 name = "myso-indexer-alt-jsonrpc"
-version = "1.66.0"
+version = "0.0.1"
 dependencies = [
  "anyhow",
  "async-graphql",
@@ -11440,7 +11440,7 @@ dependencies = [
 
 [[package]]
 name = "myso-indexer-alt-metrics"
-version = "1.66.0"
+version = "0.0.1"
 dependencies = [
  "anyhow",
  "axum 0.8.8",
@@ -11455,7 +11455,7 @@ dependencies = [
 
 [[package]]
 name = "myso-indexer-alt-object-store"
-version = "1.66.0"
+version = "0.0.1"
 dependencies = [
  "anyhow",
  "async-trait",
@@ -11470,7 +11470,7 @@ dependencies = [
 
 [[package]]
 name = "myso-indexer-alt-reader"
-version = "1.66.0"
+version = "0.0.1"
 dependencies = [
  "anyhow",
  "async-graphql",
@@ -11505,7 +11505,7 @@ dependencies = [
 
 [[package]]
 name = "myso-indexer-alt-restorer"
-version = "0.1.0"
+version = "0.0.1"
 dependencies = [
  "anyhow",
  "async-trait",
@@ -11534,7 +11534,7 @@ dependencies = [
 
 [[package]]
 name = "myso-indexer-alt-schema"
-version = "1.66.0"
+version = "0.0.1"
 dependencies = [
  "anyhow",
  "bcs",
@@ -11550,7 +11550,7 @@ dependencies = [
 
 [[package]]
 name = "myso-json"
-version = "0.0.0"
+version = "0.0.1"
 dependencies = [
  "anyhow",
  "bcs",
@@ -11570,7 +11570,7 @@ dependencies = [
 
 [[package]]
 name = "myso-json-rpc"
-version = "0.0.0"
+version = "0.0.1"
 dependencies = [
  "anyhow",
  "arc-swap",
@@ -11630,7 +11630,7 @@ dependencies = [
 
 [[package]]
 name = "myso-json-rpc-api"
-version = "0.0.0"
+version = "0.0.1"
 dependencies = [
  "anyhow",
  "fastcrypto",
@@ -11649,7 +11649,7 @@ dependencies = [
 
 [[package]]
 name = "myso-json-rpc-tests"
-version = "0.0.0"
+version = "0.0.1"
 dependencies = [
  "anyhow",
  "async-trait",
@@ -11686,7 +11686,7 @@ dependencies = [
 
 [[package]]
 name = "myso-json-rpc-types"
-version = "0.0.0"
+version = "0.0.1"
 dependencies = [
  "anyhow",
  "bcs",
@@ -11720,7 +11720,7 @@ dependencies = [
 
 [[package]]
 name = "myso-keys"
-version = "0.0.0"
+version = "0.0.1"
 dependencies = [
  "anyhow",
  "async-trait",
@@ -11746,7 +11746,7 @@ dependencies = [
 
 [[package]]
 name = "myso-kv-rpc"
-version = "1.66.0"
+version = "0.0.1"
 dependencies = [
  "anyhow",
  "axum 0.8.8",
@@ -11772,7 +11772,7 @@ dependencies = [
 
 [[package]]
 name = "myso-kvstore"
-version = "1.66.0"
+version = "0.0.1"
 dependencies = [
  "anyhow",
  "async-trait",
@@ -11807,7 +11807,7 @@ dependencies = [
 
 [[package]]
 name = "myso-light-client"
-version = "1.66.0"
+version = "0.0.1"
 dependencies = [
  "anyhow",
  "async-trait",
@@ -11848,7 +11848,7 @@ dependencies = [
 
 [[package]]
 name = "myso-macros"
-version = "0.7.0"
+version = "0.0.1"
 dependencies = [
  "futures",
  "myso-proc-macros",
@@ -11858,7 +11858,7 @@ dependencies = [
 
 [[package]]
 name = "myso-metric-checker"
-version = "1.66.0"
+version = "0.0.1"
 dependencies = [
  "anyhow",
  "backoff",
@@ -11879,7 +11879,7 @@ dependencies = [
 
 [[package]]
 name = "myso-metrics-push-client"
-version = "0.1.0"
+version = "0.0.1"
 dependencies = [
  "anyhow",
  "fastcrypto",
@@ -11896,7 +11896,7 @@ dependencies = [
 
 [[package]]
 name = "myso-move"
-version = "1.66.0"
+version = "0.0.1"
 dependencies = [
  "anyhow",
  "better_any",
@@ -11947,7 +11947,7 @@ dependencies = [
 
 [[package]]
 name = "myso-move-build"
-version = "1.66.0"
+version = "0.0.1"
 dependencies = [
  "anyhow",
  "fastcrypto",
@@ -11976,7 +11976,7 @@ dependencies = [
 
 [[package]]
 name = "myso-move-lsp"
-version = "1.66.0"
+version = "0.0.1"
 dependencies = [
  "bin-version",
  "clap",
@@ -11991,7 +11991,7 @@ dependencies = [
 
 [[package]]
 name = "myso-move-natives-latest"
-version = "0.1.0"
+version = "0.0.1"
 dependencies = [
  "bcs",
  "better_any",
@@ -12013,7 +12013,7 @@ dependencies = [
 
 [[package]]
 name = "myso-move-natives-v0"
-version = "0.1.0"
+version = "0.0.1"
 dependencies = [
  "bcs",
  "better_any",
@@ -12033,7 +12033,7 @@ dependencies = [
 
 [[package]]
 name = "myso-move-natives-v1"
-version = "0.1.0"
+version = "0.0.1"
 dependencies = [
  "bcs",
  "better_any",
@@ -12053,7 +12053,7 @@ dependencies = [
 
 [[package]]
 name = "myso-move-natives-v2"
-version = "0.1.0"
+version = "0.0.1"
 dependencies = [
  "bcs",
  "better_any",
@@ -12073,7 +12073,7 @@ dependencies = [
 
 [[package]]
 name = "myso-name-service"
-version = "1.66.0"
+version = "0.0.1"
 dependencies = [
  "bcs",
  "move-core-types",
@@ -12084,7 +12084,7 @@ dependencies = [
 
 [[package]]
 name = "myso-network"
-version = "0.0.0"
+version = "0.0.1"
 dependencies = [
  "anemo",
  "anemo-build",
@@ -12134,7 +12134,7 @@ dependencies = [
 
 [[package]]
 name = "myso-node"
-version = "1.66.0"
+version = "0.0.1"
 dependencies = [
  "anemo",
  "anemo-tower",
@@ -12191,7 +12191,7 @@ dependencies = [
 
 [[package]]
 name = "myso-open-rpc"
-version = "1.66.0"
+version = "0.0.1"
 dependencies = [
  "anyhow",
  "bcs",
@@ -12213,7 +12213,7 @@ dependencies = [
 
 [[package]]
 name = "myso-open-rpc-macros"
-version = "0.1.0"
+version = "0.0.1"
 dependencies = [
  "derive-syn-parse",
  "itertools 0.13.0",
@@ -12225,7 +12225,7 @@ dependencies = [
 
 [[package]]
 name = "myso-oracle"
-version = "1.66.0"
+version = "0.0.1"
 dependencies = [
  "anyhow",
  "bcs",
@@ -12255,7 +12255,7 @@ dependencies = [
 
 [[package]]
 name = "myso-package-alt"
-version = "1.66.0"
+version = "0.0.1"
 dependencies = [
  "anyhow",
  "bin-version",
@@ -12280,7 +12280,7 @@ dependencies = [
 
 [[package]]
 name = "myso-package-dump"
-version = "1.66.0"
+version = "0.0.1"
 dependencies = [
  "anyhow",
  "bcs",
@@ -12297,7 +12297,7 @@ dependencies = [
 
 [[package]]
 name = "myso-package-management"
-version = "1.66.0"
+version = "0.0.1"
 dependencies = [
  "anyhow",
  "move-core-types",
@@ -12313,7 +12313,7 @@ dependencies = [
 
 [[package]]
 name = "myso-package-resolver"
-version = "0.1.0"
+version = "0.0.1"
 dependencies = [
  "async-trait",
  "bcs",
@@ -12336,7 +12336,7 @@ dependencies = [
 
 [[package]]
 name = "myso-pg-db"
-version = "1.66.0"
+version = "0.0.1"
 dependencies = [
  "anyhow",
  "async-trait",
@@ -12364,7 +12364,7 @@ dependencies = [
 
 [[package]]
 name = "myso-proc-macros"
-version = "0.7.0"
+version = "0.0.1"
 dependencies = [
  "msim-macros",
  "myso-enum-compat-util",
@@ -12375,7 +12375,7 @@ dependencies = [
 
 [[package]]
 name = "myso-protocol-config"
-version = "0.1.0"
+version = "0.0.1"
 dependencies = [
  "clap",
  "fastcrypto",
@@ -12394,7 +12394,7 @@ dependencies = [
 
 [[package]]
 name = "myso-protocol-config-macros"
-version = "0.1.0"
+version = "0.0.1"
 dependencies = [
  "proc-macro2",
  "quote",
@@ -12403,7 +12403,7 @@ dependencies = [
 
 [[package]]
 name = "myso-proxy"
-version = "0.0.2"
+version = "0.0.1"
 dependencies = [
  "anyhow",
  "axum 0.8.8",
@@ -12446,7 +12446,7 @@ dependencies = [
 
 [[package]]
 name = "myso-replay"
-version = "0.1.0"
+version = "0.0.1"
 dependencies = [
  "anyhow",
  "async-recursion",
@@ -12493,7 +12493,7 @@ dependencies = [
 
 [[package]]
 name = "myso-replay-2"
-version = "0.1.0"
+version = "0.0.1"
 dependencies = [
  "anyhow",
  "async-trait",
@@ -12540,7 +12540,7 @@ dependencies = [
 
 [[package]]
 name = "myso-rosetta"
-version = "1.66.0"
+version = "0.0.1"
 dependencies = [
  "anyhow",
  "async-trait",
@@ -12589,7 +12589,7 @@ dependencies = [
 
 [[package]]
 name = "myso-rpc-api"
-version = "0.1.0"
+version = "0.0.1"
 dependencies = [
  "anyhow",
  "async-stream",
@@ -12643,7 +12643,7 @@ dependencies = [
 
 [[package]]
 name = "myso-rpc-benchmark"
-version = "1.66.0"
+version = "0.0.1"
 dependencies = [
  "anyhow",
  "bb8",
@@ -12668,7 +12668,7 @@ dependencies = [
 
 [[package]]
 name = "myso-rpc-loadgen"
-version = "1.66.0"
+version = "0.0.1"
 dependencies = [
  "anyhow",
  "async-trait",
@@ -12695,7 +12695,7 @@ dependencies = [
 
 [[package]]
 name = "myso-rpc-resolver"
-version = "1.66.0"
+version = "0.0.1"
 dependencies = [
  "anyhow",
  "async-trait",
@@ -12715,7 +12715,7 @@ dependencies = [
 
 [[package]]
 name = "myso-sdk"
-version = "1.66.0"
+version = "0.0.1"
 dependencies = [
  "anyhow",
  "async-trait",
@@ -12760,7 +12760,7 @@ dependencies = [
 
 [[package]]
 name = "myso-security-watchdog"
-version = "1.66.0"
+version = "0.0.1"
 dependencies = [
  "anyhow",
  "arrow-array",
@@ -12784,7 +12784,7 @@ dependencies = [
 
 [[package]]
 name = "myso-simulator"
-version = "0.7.0"
+version = "0.0.1"
 dependencies = [
  "anemo",
  "anemo-tower",
@@ -12808,7 +12808,7 @@ dependencies = [
 
 [[package]]
 name = "myso-single-node-benchmark"
-version = "1.66.0"
+version = "0.0.1"
 dependencies = [
  "async-trait",
  "bcs",
@@ -12841,7 +12841,7 @@ dependencies = [
 
 [[package]]
 name = "myso-snapshot"
-version = "0.1.0"
+version = "0.0.1"
 dependencies = [
  "anyhow",
  "bcs",
@@ -12870,7 +12870,7 @@ dependencies = [
 
 [[package]]
 name = "myso-source-validation"
-version = "1.66.0"
+version = "0.0.1"
 dependencies = [
  "anyhow",
  "colored",
@@ -12913,7 +12913,7 @@ dependencies = [
 
 [[package]]
 name = "myso-sql-macro"
-version = "1.66.0"
+version = "0.0.1"
 dependencies = [
  "quote",
  "syn 1.0.109",
@@ -12922,7 +12922,7 @@ dependencies = [
 
 [[package]]
 name = "myso-storage"
-version = "0.1.0"
+version = "0.0.1"
 dependencies = [
  "anyhow",
  "async-trait",
@@ -12976,7 +12976,7 @@ dependencies = [
 
 [[package]]
 name = "myso-surfer"
-version = "1.66.0"
+version = "0.0.1"
 dependencies = [
  "async-trait",
  "bcs",
@@ -13004,7 +13004,7 @@ dependencies = [
 
 [[package]]
 name = "myso-swarm"
-version = "0.0.0"
+version = "0.0.1"
 dependencies = [
  "anyhow",
  "futures",
@@ -13030,7 +13030,7 @@ dependencies = [
 
 [[package]]
 name = "myso-swarm-config"
-version = "0.0.0"
+version = "0.0.1"
 dependencies = [
  "anemo",
  "anyhow",
@@ -13059,7 +13059,7 @@ dependencies = [
 
 [[package]]
 name = "myso-synthetic-ingestion"
-version = "0.0.0"
+version = "0.0.1"
 dependencies = [
  "anyhow",
  "async-trait",
@@ -13078,7 +13078,7 @@ dependencies = [
 
 [[package]]
 name = "myso-telemetry"
-version = "0.1.0"
+version = "0.0.1"
 dependencies = [
  "myso-core",
  "reqwest",
@@ -13088,7 +13088,7 @@ dependencies = [
 
 [[package]]
 name = "myso-test-transaction-builder"
-version = "0.1.0"
+version = "0.0.1"
 dependencies = [
  "bcs",
  "move-core-types",
@@ -13102,11 +13102,11 @@ dependencies = [
 
 [[package]]
 name = "myso-test-validator"
-version = "1.66.0"
+version = "0.0.1"
 
 [[package]]
 name = "myso-tls"
-version = "0.0.0"
+version = "0.0.1"
 dependencies = [
  "anyhow",
  "arc-swap",
@@ -13128,7 +13128,7 @@ dependencies = [
 
 [[package]]
 name = "myso-tool"
-version = "1.66.0"
+version = "0.0.1"
 dependencies = [
  "anemo",
  "anemo-cli",
@@ -13176,7 +13176,7 @@ dependencies = [
 
 [[package]]
 name = "myso-transaction-builder"
-version = "0.0.0"
+version = "0.0.1"
 dependencies = [
  "anyhow",
  "async-trait",
@@ -13192,7 +13192,7 @@ dependencies = [
 
 [[package]]
 name = "myso-transaction-checks"
-version = "0.1.0"
+version = "0.0.1"
 dependencies = [
  "fastcrypto-zkp",
  "myso-config",
@@ -13206,7 +13206,7 @@ dependencies = [
 
 [[package]]
 name = "myso-transactional-test-runner"
-version = "0.1.0"
+version = "0.0.1"
 dependencies = [
  "anyhow",
  "async-trait",
@@ -13259,7 +13259,7 @@ dependencies = [
 
 [[package]]
 name = "myso-types"
-version = "0.1.0"
+version = "0.0.1"
 dependencies = [
  "anemo",
  "anyhow",
@@ -13345,7 +13345,7 @@ dependencies = [
 
 [[package]]
 name = "myso-upgrade-compatibility-transactional-tests"
-version = "0.1.0"
+version = "0.0.1"
 dependencies = [
  "anyhow",
  "datatest-stable",
@@ -13360,7 +13360,7 @@ dependencies = [
 
 [[package]]
 name = "myso-verifier-latest"
-version = "0.1.0"
+version = "0.0.1"
 dependencies = [
  "move-abstract-stack",
  "move-binary-format",
@@ -13375,7 +13375,7 @@ dependencies = [
 
 [[package]]
 name = "myso-verifier-transactional-tests"
-version = "0.1.0"
+version = "0.0.1"
 dependencies = [
  "datatest-stable",
  "myso-transactional-test-runner",
@@ -13383,7 +13383,7 @@ dependencies = [
 
 [[package]]
 name = "myso-verifier-v0"
-version = "0.1.0"
+version = "0.0.1"
 dependencies = [
  "move-abstract-stack",
  "move-binary-format",
@@ -13398,7 +13398,7 @@ dependencies = [
 
 [[package]]
 name = "myso-verifier-v1"
-version = "0.1.0"
+version = "0.0.1"
 dependencies = [
  "move-abstract-stack",
  "move-binary-format",
@@ -13412,7 +13412,7 @@ dependencies = [
 
 [[package]]
 name = "myso-verifier-v2"
-version = "0.1.0"
+version = "0.0.1"
 dependencies = [
  "move-abstract-stack",
  "move-binary-format",
@@ -13427,7 +13427,7 @@ dependencies = [
 
 [[package]]
 name = "mysop-cli"
-version = "1.66.0"
+version = "0.0.1"
 dependencies = [
  "anyhow",
  "axum 0.8.8",
@@ -13473,7 +13473,7 @@ dependencies = [
 
 [[package]]
 name = "mysten-common"
-version = "0.1.0"
+version = "0.0.1"
 dependencies = [
  "antithesis_sdk",
  "anyhow",
@@ -13495,7 +13495,7 @@ dependencies = [
 
 [[package]]
 name = "mysten-metrics"
-version = "0.7.0"
+version = "0.0.1"
 dependencies = [
  "async-trait",
  "axum 0.8.8",
@@ -13515,7 +13515,7 @@ dependencies = [
 
 [[package]]
 name = "mysten-network"
-version = "0.2.0"
+version = "0.0.1"
 dependencies = [
  "anemo",
  "anemo-tower",
@@ -15287,7 +15287,7 @@ dependencies = [
 
 [[package]]
 name = "prometheus-closure-metric"
-version = "0.1.0"
+version = "0.0.1"
 dependencies = [
  "anyhow",
  "prometheus",
@@ -17359,7 +17359,7 @@ dependencies = [
 
 [[package]]
 name = "shared-crypto"
-version = "0.0.0"
+version = "0.0.1"
 dependencies = [
  "bcs",
  "eyre",
@@ -17488,7 +17488,7 @@ dependencies = [
 
 [[package]]
 name = "simulacrum"
-version = "0.1.0"
+version = "0.0.1"
 dependencies = [
  "anyhow",
  "async-trait",
@@ -18226,7 +18226,7 @@ dependencies = [
 
 [[package]]
 name = "telemetry-subscribers"
-version = "0.2.0"
+version = "0.0.1"
 dependencies = [
  "atomic_float",
  "bytes",
@@ -18302,7 +18302,7 @@ checksum = "8f50febec83f5ee1df3015341d8bd429f2d1cc62bcba7ea2076759d315084683"
 
 [[package]]
 name = "test-cluster"
-version = "0.1.0"
+version = "0.0.1"
 dependencies = [
  "anyhow",
  "bcs",
@@ -19386,7 +19386,7 @@ dependencies = [
 
 [[package]]
 name = "transaction-fuzzer"
-version = "0.1.0"
+version = "0.0.1"
 dependencies = [
  "move-core-types",
  "myso-core",
@@ -19486,7 +19486,7 @@ checksum = "9ea3136b675547379c4bd395ca6b938e5ad3c3d20fad76e7fe85f9e0d011419c"
 
 [[package]]
 name = "typed-store"
-version = "0.4.0"
+version = "0.0.1"
 dependencies = [
  "anyhow",
  "async-trait",
@@ -19523,7 +19523,7 @@ dependencies = [
 
 [[package]]
 name = "typed-store-derive"
-version = "0.3.0"
+version = "0.0.1"
 dependencies = [
  "itertools 0.13.0",
  "proc-macro2",
@@ -19533,7 +19533,7 @@ dependencies = [
 
 [[package]]
 name = "typed-store-error"
-version = "0.4.0"
+version = "0.0.1"
 dependencies = [
  "serde",
  "thiserror 1.0.69",
@@ -19541,7 +19541,7 @@ dependencies = [
 
 [[package]]
 name = "typed-store-workspace-hack"
-version = "0.0.0"
+version = "0.0.1"
 dependencies = [
  "cc",
  "lazy_static",
@@ -20717,7 +20717,7 @@ dependencies = [
 
 [[package]]
 name = "x"
-version = "1.66.0"
+version = "0.0.1"
 dependencies = [
  "anyhow",
  "camino",

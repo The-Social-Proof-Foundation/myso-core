@@ -1,6 +1,6 @@
 [package]
 name = "myso-http"
-version = "0.0.0"
+version = "0.0.1"
 authors = ["Brandon Williams <brandon@mystenlabs.com>"]
 license = "Apache-2.0"
 edition = "2024"

@@ -1,6 +1,6 @@
 [package]
 name = "myso-adapter-latest"
-version = "0.1.0"
+version = "0.0.1"
 authors = ["Brandon Shaw <brandon@mysocial.network>"]
 description = "Adapter and accompanying CLI for local myso development"
 license = "Apache-2.0"

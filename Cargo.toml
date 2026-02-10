@@ -226,7 +226,7 @@ members = [
 
 [workspace.package]
 # This version string will be inherited by myso-core, myso-faucet, myso-node, myso-tools, myso-sdk, myso-move-build, and myso crates.
-version = "1.66.0"
+version = "0.0.1"
 
 [profile.release]
 # debug = 1 means line charts only, which is minimum needed for good stack traces

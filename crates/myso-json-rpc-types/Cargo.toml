@@ -1,6 +1,6 @@
 [package]
 name = "myso-json-rpc-types"
-version = "0.0.0"
+version = "0.0.1"
 authors = ["Brandon Shaw <brandon@mysocial.network>"]
 license = "Apache-2.0"
 publish = false
