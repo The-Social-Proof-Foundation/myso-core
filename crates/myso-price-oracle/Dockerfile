@@ -1,12 +1,15 @@
 # Build stage
 FROM rust:1.75-slim as builder
 
-# Install required system dependencies
+# Install required system dependencies (clang/libclang needed for zstd-sys bindgen)
 RUN apt-get update && apt-get install -y \
     pkg-config \
     libssl-dev \
     libsqlite3-dev \
     ca-certificates \
+    cmake \
+    clang \
+    libclang-dev \
     && rm -rf /var/lib/apt/lists/*
 
 # Set working directory
@@ -24,6 +27,7 @@ FROM debian:bookworm-slim
 # Install runtime dependencies
 RUN apt-get update && apt-get install -y \
     ca-certificates \
+    curl \
     libssl3 \
     libsqlite3-0 \
     && rm -rf /var/lib/apt/lists/*
