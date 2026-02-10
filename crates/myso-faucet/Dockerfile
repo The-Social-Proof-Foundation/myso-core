@@ -14,6 +14,10 @@ RUN apt-get update && apt-get install -y \
 # Copy entire workspace (Railway uses repository root as build context)
 COPY . .
 
+# GIT_REVISION enables version embedding when git is unavailable (e.g. CI/Railway)
+ARG GIT_REVISION=unknown
+ENV GIT_REVISION=$GIT_REVISION
+
 # Build the faucet binaries
 RUN cargo build --release --bin myso-faucet --bin merge_coins
 
