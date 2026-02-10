@@ -35,10 +35,10 @@ struct FaucetResponse {
     error: Option<String>,
 }
 
-// const MYSO_FAUCET: &str = "https://faucet.devnet.myso.io/v2/gas"; // devnet faucet
+// const MYSO_FAUCET: &str = "https://faucet.devnet.mysocial.network/v2/gas"; // devnet faucet
 
 // Testnet faucet is under heavy rate limit, we recommend using devnet for these examples
-pub const MYSO_FAUCET: &str = "https://faucet.testnet.myso.io/v2/gas"; // testnet faucet
+pub const MYSO_FAUCET: &str = "https://faucet.testnet.mysocial.network/v2/gas"; // testnet faucet
 
 // const MYSO_FAUCET: &str = "http://127.0.0.1:9123/v2/gas";
 
@@ -132,7 +132,7 @@ pub async fn request_tokens_from_faucet(
     // wait for the faucet to finish the batch of token requests
     loop {
         let resp = client
-            .get("https://faucet.testnet.myso.io/v1/status")
+            .get("https://faucet.testnet.mysocial.network/v1/status")
             .header("Content-Type", "application/json")
             .json(&json_body)
             .send()

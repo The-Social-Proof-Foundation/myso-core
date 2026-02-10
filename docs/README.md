@@ -1,6 +1,6 @@
 ## Overview
 
-This directory contains the assets required to build and update the [MySo documentation](https://docs.myso.io). The directory is split between `content` and `site`. To run the docs.myso.io site locally, open the `site` directory in a terminal or console. Use a package manager to install the required modules:
+This directory contains the assets required to build and update the [MySo documentation](https://docs.mysocial.network). The directory is split between `content` and `site`. To run the docs.mysocial.network site locally, open the `site` directory in a terminal or console. Use a package manager to install the required modules:
 
 ```shell
 pnpm install
@@ -40,11 +40,11 @@ If you'd like to view the Vercel preview before your changes are ready for revie
 
 MySo is for the community. Contribute for the benefit of all.
 
-- [Docs contributing guidelines](https://docs.myso.io/references/contribute/contribution-process)
-- [Repo contributing guidelines](https://docs.myso.io/contribute-to-myso-repos)
-- [Style guide](https://docs.myso.io/style-guide)
-- [Localization](https://docs.myso.io/localize-myso-docs)
-- [Code of conduct](https://docs.myso.io/code-of-conduct)
+- [Docs contributing guidelines](https://docs.mysocial.network/references/contribute/contribution-process)
+- [Repo contributing guidelines](https://docs.mysocial.network/contribute-to-myso-repos)
+- [Style guide](https://docs.mysocial.network/style-guide)
+- [Localization](https://docs.mysocial.network/localize-myso-docs)
+- [Code of conduct](https://docs.mysocial.network/code-of-conduct)
 
 ## License
 

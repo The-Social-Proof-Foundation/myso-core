@@ -130,7 +130,7 @@ module a::n {
 `entry` functions may have restrictions on their parameters and return types. Although, these
 restrictions are specific to each individual deployment of Move.
 
-[The documentation for `entry` functions on MySo can be found here.](https://docs.myso.io/concepts/myso-move-concepts/entry-functions).
+[The documentation for `entry` functions on MySo can be found here.](https://docs.mysocial.network/concepts/myso-move-concepts/entry-functions).
 
 ### Name
 

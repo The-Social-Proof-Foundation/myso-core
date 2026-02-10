@@ -11,13 +11,13 @@ use std::str::FromStr;
 use myso_types::supported_protocol_versions::Chain;
 
 /// GraphQL endpoint for MySo mainnet.
-pub const MAINNET_GQL_URL: &str = "https://graphql.mainnet.myso.io/graphql";
+pub const MAINNET_GQL_URL: &str = "https://graphql.mainnet.mysocial.network/graphql";
 /// GraphQL endpoint for MySo testnet.
-pub const TESTNET_GQL_URL: &str = "https://graphql.testnet.myso.io/graphql";
+pub const TESTNET_GQL_URL: &str = "https://graphql.testnet.mysocial.network/graphql";
 /// JSON-RPC endpoint for MySo mainnet.
-pub const MAINNET_RPC_URL: &str = "https://fullnode.mainnet.myso.io:443";
+pub const MAINNET_RPC_URL: &str = "https://fullnode.mainnet.mysocial.network:443";
 /// JSON-RPC endpoint for MySo testnet.
-pub const TESTNET_RPC_URL: &str = "https://fullnode.testnet.myso.io:443";
+pub const TESTNET_RPC_URL: &str = "https://fullnode.testnet.mysocial.network:443";
 
 /// Represents a MySo network node configuration.
 ///

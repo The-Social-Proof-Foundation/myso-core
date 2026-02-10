@@ -19,15 +19,15 @@ use myso_sdk::MySoClientBuilder;
 
 #[tokio::main]
 async fn main() -> Result<(), anyhow::Error> {
-    // MySo testnet -- https://fullnode.testnet.myso.io:443
+    // MySo testnet -- https://fullnode.testnet.mysocial.network:443
     let myso_testnet = MySoClientBuilder::default().build_testnet().await?;
     println!("MySo testnet version: {}", myso_testnet.api_version());
 
-     // MySo devnet -- https://fullnode.devnet.myso.io:443
+     // MySo devnet -- https://fullnode.devnet.mysocial.network:443
     let myso_devnet = MySoClientBuilder::default().build_devnet().await?;
     println!("MySo devnet version: {}", myso_devnet.api_version());
 
-    // MySo mainnet -- https://fullnode.mainnet.myso.io:443
+    // MySo mainnet -- https://fullnode.mainnet.mysocial.network:443
     let myso_mainnet = MySoClientBuilder::default().build_mainnet().await?;
     println!("MySo mainnet version: {}", myso_mainnet.api_version());
 
@@ -58,7 +58,7 @@ There are serveral files ending in `_api.rs` which provide code examples of the 
 
 ### Prerequisites
 
-Unless otherwise specified, most of these examples assume `Rust` and `cargo` are installed, and that there is an available internet connection. The examples connect to the MySo testnet (`https://fullnode.testnet.myso.io:443`) and execute different APIs using the active address from the local wallet. If there is no local wallet, it will create one, generate two addresses, set one of them to be active, and it will request 1 MYSO from the testnet faucet for the active address.
+Unless otherwise specified, most of these examples assume `Rust` and `cargo` are installed, and that there is an available internet connection. The examples connect to the MySo testnet (`https://fullnode.testnet.mysocial.network:443`) and execute different APIs using the active address from the local wallet. If there is no local wallet, it will create one, generate two addresses, set one of them to be active, and it will request 1 MYSO from the testnet faucet for the active address.
 
 ### Running the existing examples
 
@@ -78,13 +78,13 @@ In the root folder of the `myso` repository (or in the `myso-sdk` crate folder),
 The `MySoClientBuilder` struct provides a connection to the JSON-RPC server that you use for all read-only operations. The default URLs to connect to the MySo network are:
 
 - Local: http://127.0.0.1:9000
-- Devnet: https://fullnode.devnet.myso.io:443
-- Testnet: https://fullnode.testnet.myso.io:443
-- Mainnet: https://fullnode.mainnet.myso.io:443
+- Devnet: https://fullnode.devnet.mysocial.network:443
+- Testnet: https://fullnode.testnet.mysocial.network:443
+- Mainnet: https://fullnode.mainnet.mysocial.network:443
 
-For all available servers, see [here](https://myso.io/networkinfo).
+For all available servers, see [here](https://mysocial.network/networkinfo).
 
-For running a local MySo network, please follow [this guide](https://docs.myso.io/build/myso-local-network) for installing MySo and [this guide](https://docs.myso.io/build/myso-local-network#start-the-local-network) for starting the local MySo network.
+For running a local MySo network, please follow [this guide](https://docs.mysocial.network/build/myso-local-network) for installing MySo and [this guide](https://docs.mysocial.network/build/myso-local-network#start-the-local-network) for starting the local MySo network.
 
 
 ```rust
@@ -101,11 +101,11 @@ async fn main() -> Result<(), anyhow::Error> {
     let myso_local = MySoClientBuilder::default().build_localnet().await?;
     println!("MySo local network version: {}", myso_local.api_version());
 
-    // MySo devnet -- https://fullnode.devnet.myso.io:443
+    // MySo devnet -- https://fullnode.devnet.mysocial.network:443
     let myso_devnet = MySoClientBuilder::default().build_devnet().await?;
     println!("MySo devnet version: {}", myso_devnet.api_version());
 
-    // MySo testnet -- https://fullnode.testnet.myso.io:443
+    // MySo testnet -- https://fullnode.testnet.mysocial.network:443
     let myso_testnet = MySoClientBuilder::default().build_testnet().await?;
     println!("MySo testnet version: {}", myso_testnet.api_version());
 

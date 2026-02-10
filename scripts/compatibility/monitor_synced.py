@@ -26,7 +26,7 @@ class Metric(Enum):
 
 def get_current_network_epoch(env='testnet'):
     for i in range(NUM_RETRIES):
-        cmd = ['curl', '--location', '--request', 'POST', f'https://explorer-rpc.{env}.myso.io/',
+        cmd = ['curl', '--location', '--request', 'POST', f'https://explorer-rpc.{env}.mysocial.network/',
                '--header', 'Content-Type: application/json', '--data-raw',
                '{"jsonrpc":"2.0", "method":"mysox_getCurrentEpoch", "params":[], "id":1}']
         try:

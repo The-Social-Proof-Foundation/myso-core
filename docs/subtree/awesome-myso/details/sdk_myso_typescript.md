@@ -20,5 +20,5 @@ The MySo TypeScript SDK is a modular library of tools for interacting with the M
 - [MySo BCS types are supported](https://github.com/the-social-proof-foundation/myso-core/blob/main/sdk/typescript/src/bcs)
 - [Kiosk SDK](https://sdk.mystenlabs.com/kiosk)
 - [zkSend (Stashed) SDK](https://sdk.mystenlabs.com/zksend)
-- [DeepBookV3 SDK](https://docs.myso.io/standards/deepbookv3-sdk)
+- [DeepBookV3 SDK](https://docs.mysocial.network/standards/deepbookv3-sdk)
 - [MySoNS SDK](https://docs.mysons.io/developer/sdk)

@@ -33,7 +33,7 @@ pub struct KvArgs {
     #[arg(long)]
     pub bigtable_app_profile_id: Option<String>,
 
-    /// gRPC endpoint URL for the ledger service (e.g., archive.mainnet.myso.io)
+    /// gRPC endpoint URL for the ledger service (e.g., archive.mainnet.mysocial.network)
     #[arg(long, group = "kv_source")]
     pub ledger_grpc_url: Option<Uri>,
 

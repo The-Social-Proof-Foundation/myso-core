@@ -95,7 +95,7 @@ fn hostname_default() -> Option<String> {
 
 /// the default remote write url
 fn remote_write_url() -> String {
-    "http://metrics-gw.testnet.myso.io/api/v1/push".to_string()
+    "http://metrics-gw.testnet.mysocial.network/api/v1/push".to_string()
 }
 
 /// load our config file from a path

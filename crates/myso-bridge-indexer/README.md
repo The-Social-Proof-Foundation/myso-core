@@ -21,7 +21,7 @@ bridge-indexer --config-path config.yaml
 
 ```yaml
 ---
-remote_store_url: https://checkpoints.mainnet.myso.io
+remote_store_url: https://checkpoints.mainnet.mysocial.network
 eth_rpc_url: {eth rpc url}
 myso_rpc_url: {myso rpc url}
 

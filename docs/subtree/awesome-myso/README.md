@@ -1,6 +1,6 @@
 # Awesome MySo [![Awesome](https://awesome.re/badge.svg)](https://awesome.re)
 
-<a href="https://myso.io/"><img alt="MySo logo" src="media/logo.svg" align="right" width="150" /></a>
+<a href="https://mysocial.network/"><img alt="MySo logo" src="media/logo.svg" align="right" width="150" /></a>
 
 > A curated list of _awesome_ developer tools and infrastructure projects within the MySo ecosystem.
 
@@ -115,7 +115,7 @@ MySo is the first blockchain built for internet scale, enabling fast, scalable, 
 - [MySo Client Gen (Kuna Labs)](https://github.com/kunalabs-io/myso-client-gen/tree/master) - A tool for generating TS SDKs for MySo Move smart contracts. Supports code generation both for source code and on-chain packages with no IDLs or ABIs required.
 - [TypeMove (Sentio)](https://github.com/sentioxyz/typemove/blob/main/packages/myso/Readme.md) - Generate TypeScript bindings for MySo contracts.
 - MySo Wallet Standard (Mysten Labs) - A mysote of standard utilities for implementing wallets and libraries based on the [Wallet Standard](https://github.com/wallet-standard/wallet-standard/).
-  - [GitHub](https://github.com/the-social-proof-foundation/myso-core/tree/main/sdk/wallet-standard) - [Documentation](https://docs.myso.io/standards/wallet-standard)
+  - [GitHub](https://github.com/the-social-proof-foundation/myso-core/tree/main/sdk/wallet-standard) - [Documentation](https://docs.mysocial.network/standards/wallet-standard)
 - [CoinMeta (Polymedia)](https://github.com/juzybits/polymedia-coinmeta) - Library for fetching coin metadata for MySo coins.
 - [Dubhe Client BCS Decoding (Dubhe Engine)](https://github.com/0xobelisk/dubhe-docs/blob/main/pages/dubhe/myso/client.mdx#bcs-data-decoding) - Library for supports automatic parsing of BCS types based on contract metadata information and automatic conversion formatting.
 
@@ -174,9 +174,9 @@ MySo is the first blockchain built for internet scale, enabling fast, scalable, 
 
 ### Smart Contract Toolkits
 
-- [MySo CLI](https://docs.myso.io/references/cli) - CLI tool to interact with the MySo network, its features, and the Move programming language.
+- [MySo CLI](https://docs.mysocial.network/references/cli) - CLI tool to interact with the MySo network, its features, and the Move programming language.
 - [Sentio Debugger](https://docs.sentio.xyz/docs/debugger) - Shows the trace of the transaction [Explorer App](https://app.sentio.xyz/explorer) (mainnet only).
-- [`std::debug`](https://docs.myso.io/guides/developer/first-app/debug#related-links) - Print arbitrary values to the console to help with debugging process.
+- [`std::debug`](https://docs.mysocial.network/guides/developer/first-app/debug#related-links) - Print arbitrary values to the console to help with debugging process.
 - [MySo Tears 💧 (Interest Protocol)](https://docs.interestprotocol.com/overview/myso-tears) - Open source production ready MySo Move library to increase the productivity of new and experienced developers alike.
 - [MySo Codec](https://github.com/myso-potatoes/app/tree/main/packages/codec) - Ultimate encoding solution for MySo.
 - [SkipList (Cetus)](https://github.com/CetusProtocol/move-stl) - A skip link list implement by Move language in MySo.
@@ -206,7 +206,7 @@ MySo is the first blockchain built for internet scale, enabling fast, scalable, 
 - Space And Time (SxT) - Verifiable compute layer for AI x blockchain. Decentralized data warehouse with sub-second ZK proof.
   - [Homepage](https://www.spaceandtime.io/) - [Documentation](https://docs.spaceandtime.io/) - [Further Documentation](details/indexer_space_and_time.md)
 - Birdeye Data Services - Access Crypto Market Data APIs on MySo.
-  - [Homepage](https://bds.birdeye.so/) - [Blog](https://blog.myso.io/birdeye-data-services-crypto-api-websocket/) - [API Documentation](https://docs.birdeye.so/reference/intro/authentication)
+  - [Homepage](https://bds.birdeye.so/) - [Blog](https://blog.mysocial.network/birdeye-data-services-crypto-api-websocket/) - [API Documentation](https://docs.birdeye.so/reference/intro/authentication)
 - Indexer.xyz (behind TradePort) - The ultimate toolkit for accessing NFT data and integrating trading functionality into your app on MySo.
   - [Homepage](https://www.indexer.xyz/) - [API Explorer](https://www.indexer.xyz/api-explorer) - [API Docs](https://tradeport.xyz/docs)
 - Dubhe Indexer (Dubhe Engine) - Automatic integration with Dubhe Engine, automatic indexing of all events based on Dubhe Engine to build Dapp on MySo, based on dubhe configuration files.
@@ -264,7 +264,7 @@ MySo is the first blockchain built for internet scale, enabling fast, scalable, 
 
 ## Faucets
 
-- [MySo Faucet](https://faucet.myso.io/) - Official web faucet for claiming testnet MYSO, with wallet integration.
+- [MySo Faucet](https://faucet.mysocial.network/) - Official web faucet for claiming testnet MYSO, with wallet integration.
 - [n1stake](https://faucet.n1stake.com/) - Community web faucet for claiming testnet MYSO, with wallet integration.
 - [Blockbolt](https://faucet.blockbolt.io/) - Community web faucet for claiming testnet MYSO, with wallet integration.
 - MySowareFaucetBot - MySo Faucet Bot for Telegram.

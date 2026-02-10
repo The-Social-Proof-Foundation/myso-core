@@ -5,7 +5,7 @@
 //!
 //! It aims at providing a similar SDK functionality like the one existing for
 //! [TypeScript](https://github.com/the-social-proof-foundation/myso-core/tree/main/sdk/typescript/).
-//! MySo Rust SDK builds on top of the [JSON RPC API](https://docs.myso.io/myso-jsonrpc)
+//! MySo Rust SDK builds on top of the [JSON RPC API](https://docs.mysocial.network/myso-jsonrpc)
 //! and therefore many of the return types are the ones specified in [myso_types].
 //!
 //! The API is split in several parts corresponding to different functionalities
@@ -118,9 +118,9 @@ pub const MYSO_COIN_TYPE: &str = "0x2::myso::MYSO";
 pub const MYSO_LOCAL_NETWORK_URL: &str = "http://127.0.0.1:9000";
 pub const MYSO_LOCAL_NETWORK_URL_0: &str = "http://0.0.0.0:9000";
 pub const MYSO_LOCAL_NETWORK_GAS_URL: &str = "http://127.0.0.1:5003/v2/gas";
-pub const MYSO_DEVNET_URL: &str = "https://fullnode.devnet.myso.io:443";
-pub const MYSO_TESTNET_URL: &str = "https://fullnode.testnet.myso.io:443";
-pub const MYSO_MAINNET_URL: &str = "https://fullnode.mainnet.myso.io:443";
+pub const MYSO_DEVNET_URL: &str = "https://fullnode.devnet.mysocial.network:443";
+pub const MYSO_TESTNET_URL: &str = "https://fullnode.testnet.mysocial.network:443";
+pub const MYSO_MAINNET_URL: &str = "https://fullnode.mainnet.mysocial.network:443";
 
 /// A MySo client builder for connecting to the MySo network
 ///

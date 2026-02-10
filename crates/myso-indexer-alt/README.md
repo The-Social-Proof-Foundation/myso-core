@@ -101,7 +101,7 @@ file).
 ```sh
 cargo run --bin myso-indexer-alt -- indexer               \
   --database-url {url}                                   \
-  --remote-store-url https://checkpoints.mainnet.myso.io  \
+  --remote-store-url https://checkpoints.mainnet.mysocial.network  \
   --config indexer_alt_config.toml
 ```
 

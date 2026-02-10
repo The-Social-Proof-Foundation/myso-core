@@ -55,7 +55,7 @@ pub trait IndexerApi {
     #[method(name = "queryEvents")]
     async fn query_events(
         &self,
-        /// The event query criteria. See [Event filter](https://docs.myso.io/build/event_api#event-filters) documentation for examples.
+        /// The event query criteria. See [Event filter](https://docs.mysocial.network/build/event_api#event-filters) documentation for examples.
         query: EventFilter,
         /// optional paging cursor
         cursor: Option<EventID>,
@@ -69,7 +69,7 @@ pub trait IndexerApi {
     #[subscription(name = "subscribeEvent", item = MySoEvent)]
     fn subscribe_event(
         &self,
-        /// The filter criteria of the event stream. See [Event filter](https://docs.myso.io/build/event_api#event-filters) documentation for examples.
+        /// The filter criteria of the event stream. See [Event filter](https://docs.mysocial.network/build/event_api#event-filters) documentation for examples.
         filter: EventFilter,
     ) -> SubscriptionResult;
 

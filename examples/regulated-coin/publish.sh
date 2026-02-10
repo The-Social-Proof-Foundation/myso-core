@@ -16,8 +16,8 @@ MOVE_PACKAGE_PATH=./move
 
 myso client switch --env testnet
 
-NETWORK="https://rpc.testnet.myso.io:443"
-FAUCET="https://faucet.testnet.myso.io/gas"
+NETWORK="https://rpc.testnet.mysocial.network:443"
+FAUCET="https://faucet.testnet.mysocial.network/gas"
     
 myso client switch --env testnet
 

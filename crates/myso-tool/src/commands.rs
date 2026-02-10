@@ -685,9 +685,9 @@ impl ToolCommand {
                 let aws_endpoint = env::var("AWS_SNAPSHOT_ENDPOINT").ok().or_else(|| {
                     if no_sign_request {
                         if network == Chain::Mainnet {
-                            Some("https://formal-snapshot.mainnet.myso.io".to_string())
+                            Some("https://formal-snapshot.mainnet.mysocial.network".to_string())
                         } else if network == Chain::Testnet {
-                            Some("https://formal-snapshot.testnet.myso.io".to_string())
+                            Some("https://formal-snapshot.testnet.mysocial.network".to_string())
                         } else {
                             None
                         }
@@ -755,8 +755,8 @@ impl ToolCommand {
                 };
 
                 let ingestion_url = match network {
-                    Chain::Mainnet => "https://checkpoints.mainnet.myso.io",
-                    Chain::Testnet => "https://checkpoints.testnet.myso.io",
+                    Chain::Mainnet => "https://checkpoints.mainnet.mysocial.network",
+                    Chain::Testnet => "https://checkpoints.testnet.mysocial.network",
                     _ => panic!("Cannot generate default ingestion url for unknown network"),
                 };
 
@@ -807,7 +807,7 @@ impl ToolCommand {
                     anyhow::bail!(
                         "The --no-sign-request flag is no longer supported. \
                         Please use S3 or GCS buckets with --snapshot-bucket-type and --snapshot-bucket instead. \
-                        For more information, see: https://docs.myso.io/guides/operator/snapshots#mysten-labs-managed-snapshots"
+                        For more information, see: https://docs.mysocial.network/guides/operator/snapshots#mysten-labs-managed-snapshots"
                     );
                 }
                 if !verbose {
@@ -843,9 +843,9 @@ impl ToolCommand {
                 let snapshot_store_config = if no_sign_request {
                     let aws_endpoint = env::var("AWS_SNAPSHOT_ENDPOINT").ok().or_else(|| {
                         if network == Chain::Mainnet {
-                            Some("https://db-snapshot.mainnet.myso.io".to_string())
+                            Some("https://db-snapshot.mainnet.mysocial.network".to_string())
                         } else if network == Chain::Testnet {
-                            Some("https://db-snapshot.testnet.myso.io".to_string())
+                            Some("https://db-snapshot.testnet.mysocial.network".to_string())
                         } else {
                             None
                         }

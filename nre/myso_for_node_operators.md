@@ -39,11 +39,11 @@ There are pre-built container images available in [Docker Hub](https://hub.docke
 And pre built `linux/amd64` binaries available in S3 that can be fetched using one of the following methods:
 
 ```shell
-wget https://releases.myso.io/$MYSO_SHA/myso-node
+wget https://releases.mysocial.network/$MYSO_SHA/myso-node
 ```
 
 ```shell
-curl https://releases.myso.io/$MYSO_SHA/myso-node -o myso-node
+curl https://releases.mysocial.network/$MYSO_SHA/myso-node -o myso-node
 ```
 
 To build directly from source:
@@ -126,7 +126,7 @@ The following keys are used by MySo Node:
 
 These are configured in the [MySo Node configuration file](#configuration).
 
-You can generate each of these via the [myso cli](https://docs.myso.io/guides/developer/getting-started/myso-install).
+You can generate each of these via the [myso cli](https://docs.mysocial.network/guides/developer/getting-started/myso-install).
 
 ```
 $ myso keytool generate bls12381
@@ -202,7 +202,7 @@ curl localhost:1337/logging -d "info"
 
 Public dashboard for network wide visibility:
 
-- [MySo Testnet Validators](https://metrics.myso.io/public-dashboards/9b841d63c9bf43fe8acec4f0fa991f5e)
+- [MySo Testnet Validators](https://metrics.mysocial.network/public-dashboards/9b841d63c9bf43fe8acec4f0fa991f5e)
 
 For viewing total stake of validators, current active set and candidates:
 
@@ -242,12 +242,12 @@ p2p-config:
 The following chain operations are executed using the `myso` CLI. This binary is built and provided as a release similar to `myso-node`, examples:
 
 ```shell
-wget https://releases.myso.io/$MYSO_SHA/myso
+wget https://releases.mysocial.network/$MYSO_SHA/myso
 chmod +x myso
 ```
 
 ```shell
-curl https://releases.myso.io/$MYSO_SHA/myso -o myso
+curl https://releases.mysocial.network/$MYSO_SHA/myso -o myso
 chmod +x myso
 ```
 
@@ -304,7 +304,7 @@ myso client call --package 0x3 --module myso_system --function rotate_operation_
 
 By default the new `Cap` object is transferred to the validator address, which then could be transferred to the new delegatee address. At this point, the old `Cap` becomes invalidated and no longer represents eligibility.
 
-To get the current valid `Cap` object's ID of a validator, use the MySo Client CLI `myso client objects` command after setting the holder as the active address. Or go to the [explorer](https://explorer.myso.io/object/0x0000000000000000000000000000000000000005) and look for `operation_cap_id` of that validator in the `validators` module.
+To get the current valid `Cap` object's ID of a validator, use the MySo Client CLI `myso client objects` command after setting the holder as the active address. Or go to the [explorer](https://explorer.mysocial.network/object/0x0000000000000000000000000000000000000005) and look for `operation_cap_id` of that validator in the `validators` module.
 
 ### Updating the Gas Price Survey Quote
 

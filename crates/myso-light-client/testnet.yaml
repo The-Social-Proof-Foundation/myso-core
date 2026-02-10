@@ -1,8 +1,8 @@
-full_node_url: "https://fullnode.testnet.myso.io:443"
+full_node_url: "https://fullnode.testnet.mysocial.network:443"
 # make sure this directory is created and has genesis.blob 
 checkpoint_summary_dir: "testnet_checkpoints_dir"
 genesis_filename: "genesis.blob"
-object_store_url: "https://checkpoints.testnet.myso.io"
+object_store_url: "https://checkpoints.testnet.mysocial.network"
 graphql_url: "https://myso-testnet.mystenlabs.com/graphql"
 archive_store_config:
   object-store: "S3"

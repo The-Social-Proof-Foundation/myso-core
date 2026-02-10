@@ -704,7 +704,7 @@ impl Default for TransactionKeyValueStoreReadConfig {
 }
 
 fn default_base_url() -> String {
-    "https://transactions.myso.io/".to_string()
+    "https://transactions.mysocial.network/".to_string()
 }
 
 fn default_cache_size() -> u64 {

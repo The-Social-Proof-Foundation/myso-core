@@ -37,7 +37,7 @@ pub const MYSO_KEYSTORE_FILENAME: &str = "myso.keystore";
 pub const MYSO_KEYSTORE_ALIASES_FILENAME: &str = "myso.aliases";
 pub const MYSO_BENCHMARK_GENESIS_GAS_KEYSTORE_FILENAME: &str = "benchmark.keystore";
 pub const MYSO_GENESIS_FILENAME: &str = "genesis.blob";
-pub const MYSO_DEV_NET_URL: &str = "https://fullnode.devnet.myso.io:443";
+pub const MYSO_DEV_NET_URL: &str = "https://fullnode.devnet.mysocial.network:443";
 
 pub const AUTHORITIES_DB_NAME: &str = "authorities_db";
 pub const CONSENSUS_DB_NAME: &str = "consensus_db";

@@ -38,7 +38,7 @@ const config = {
     },
   ],
   // Set the production url of your site here
-  url: "https://docs.myso.io",
+  url: "https://docs.mysocial.network",
   // Set the /<baseUrl>/ pathname under which your site is served
   // For GitHub pages deployment, it is often '/<projectName>/'
   baseUrl: "/",
@@ -57,7 +57,7 @@ const config = {
     [
       require.resolve("./src/shared/plugins/plausible"),
       {
-        domain: "docs.myso.io",
+        domain: "docs.mysocial.network",
         enableInDev: false,
         trackOutboundLinks: true,
         hashMode: false,
@@ -254,7 +254,7 @@ const config = {
         logo: {
           alt: "MySo Logo",
           src: "img/myso-logo-footer.svg",
-          href: "https://myso.io",
+          href: "https://mysocial.network",
         },
         style: "dark",
         copyright: `© ${new Date().getFullYear()} MySo Foundation | Documentation distributed under <a href="https://github.com/the-social-proof-foundation/myso-core/blob/main/docs/site/LICENSE">CC BY 4.0</a>`,

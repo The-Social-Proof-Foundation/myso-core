@@ -77,7 +77,7 @@
 
 - name: Place binary
   ansible.builtin.get_url:
-    url: "https://releases.myso.io/{{ myso_release }}/myso-node"
+    url: "https://releases.mysocial.network/{{ myso_release }}/myso-node"
     dest: /opt/myso/bin/myso-node
     force: true
     mode: "0755"

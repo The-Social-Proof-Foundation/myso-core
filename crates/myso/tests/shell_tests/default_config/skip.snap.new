@@ -32,17 +32,17 @@ keystore:
 external_keys: ~
 envs:
   - alias: testnet
-    rpc: "https://fullnode.testnet.myso.io:443"
+    rpc: "https://fullnode.testnet.mysocial.network:443"
     ws: ~
     basic_auth: ~
     chain_id: 4c78adac
   - alias: mainnet
-    rpc: "https://fullnode.mainnet.myso.io:443"
+    rpc: "https://fullnode.mainnet.mysocial.network:443"
     ws: ~
     basic_auth: ~
     chain_id: 35834a8a
   - alias: devnet
-    rpc: "https://fullnode.devnet.myso.io:443"
+    rpc: "https://fullnode.devnet.mysocial.network:443"
     ws: ~
     basic_auth: ~
   - alias: local

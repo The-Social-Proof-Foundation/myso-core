@@ -20,7 +20,7 @@ docker exec clickhouse-dev clickhouse-client --query "GRANT CREATE, INSERT, SELE
 ### 3. Run the indexer
 
 ```bash
-cargo run -- --remote-store-url https://checkpoints.testnet.myso.io --last-checkpoint=10
+cargo run -- --remote-store-url https://checkpoints.testnet.mysocial.network --last-checkpoint=10
 ```
 
 That's it! The indexer will:

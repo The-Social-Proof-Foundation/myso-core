@@ -1,7 +1,7 @@
-# MySo Custom Indexer Example
+# MySocial Custom Indexer Example
 This is a complementary example to the MySo Custom Indexer documentation.
-It demonstrates how to create a custom indexer for the MySo search engine.
-See the [MySo Custom Indexer documentation](https://docs.myso.io/guides/developer/advanced/custom-indexer) for more information.
+It demonstrates how to create a custom indexer for the MySocial search engine.
+See the [MySocial Custom Indexer documentation](https://docs.mysocial.network/guides/developer/advanced/custom-indexer) for more information.
 
 ## Prerequisites
 - Rust

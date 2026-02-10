@@ -2,7 +2,7 @@
   "openrpc": "1.2.6",
   "info": {
     "title": "MySo JSON-RPC",
-    "description": "MySo JSON-RPC API for interaction with MySo Full node. Make RPC calls using https://fullnode.NETWORK.myso.io:443, where NETWORK is the network you want to use (testnet, devnet, mainnet). By default, local networks use port 9000.",
+    "description": "MySo JSON-RPC API for interaction with MySo Full node. Make RPC calls using https://fullnode.NETWORK.mysocial.network:443, where NETWORK is the network you want to use (testnet, devnet, mainnet). By default, local networks use port 9000.",
     "contact": {
       "name": "The Social Proof Foundation",
       "url": "https://socialproof.foundation",
@@ -4195,7 +4195,7 @@
       "params": [
         {
           "name": "query",
-          "description": "The event query criteria. See [Event filter](https://docs.myso.io/build/event_api#event-filters) documentation for examples.",
+          "description": "The event query criteria. See [Event filter](https://docs.mysocial.network/build/event_api#event-filters) documentation for examples.",
           "required": true,
           "schema": {
             "$ref": "#/components/schemas/EventFilter"
@@ -4552,7 +4552,7 @@
       "params": [
         {
           "name": "filter",
-          "description": "The filter criteria of the event stream. See [Event filter](https://docs.myso.io/build/event_api#event-filters) documentation for examples.",
+          "description": "The filter criteria of the event stream. See [Event filter](https://docs.mysocial.network/build/event_api#event-filters) documentation for examples.",
           "required": true,
           "schema": {
             "$ref": "#/components/schemas/EventFilter"
@@ -4768,7 +4768,7 @@
         },
         {
           "name": "arguments",
-          "description": "the arguments to be passed into the Move function, in [MySoJson](https://docs.myso.io/build/myso-json) format",
+          "description": "the arguments to be passed into the Move function, in [MySoJson](https://docs.mysocial.network/build/myso-json) format",
           "required": true,
           "schema": {
             "type": "array",
@@ -9479,7 +9479,7 @@
             ]
           },
           "display": {
-            "description": "The Display metadata for frontend UI rendering, default to be None unless MySoObjectDataOptions.showContent is set to true This can also be None if the struct type does not have Display defined See more details in <https://forums.myso.io/t/nft-object-display-proposal/4872>",
+            "description": "The Display metadata for frontend UI rendering, default to be None unless MySoObjectDataOptions.showContent is set to true This can also be None if the struct type does not have Display defined See more details in <https://forums.mysocial.network/t/nft-object-display-proposal/4872>",
             "anyOf": [
               {
                 "$ref": "#/components/schemas/DisplayFieldsResponse"

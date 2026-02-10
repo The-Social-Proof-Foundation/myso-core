@@ -31,7 +31,7 @@ impl New {
                 */
 
                 // For Move coding conventions, see
-                // https://docs.myso.io/concepts/myso-move-concepts/conventions
+                // https://docs.mysocial.network/concepts/myso-move-concepts/conventions
 
                 "#,
             ),

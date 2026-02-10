@@ -107,7 +107,7 @@ export default function Home() {
             <HomeCard title="References" aux>
               <Link
                 className={styles.cardLink}
-                to="https://sdk.mystenlabs.com/dapp-kit?ref=blog.myso.io"
+                to="https://sdk.mystenlabs.com/dapp-kit?ref=blog.mysocial.network"
               >
                 MySo dApp Kit
               </Link>
@@ -137,7 +137,7 @@ export default function Home() {
               <Link className={styles.cardLink} to="/references/awesome-myso">
                 Awesome MySo
               </Link>
-              <Link className={styles.cardLink} to="https://blog.myso.io/">
+              <Link className={styles.cardLink} to="https://blog.mysocial.network/">
                 MySo blog
               </Link>
               <Link

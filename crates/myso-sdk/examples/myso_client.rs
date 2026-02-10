@@ -24,15 +24,15 @@ async fn main() -> Result<(), anyhow::Error> {
     let myso_local = MySoClientBuilder::default().build_localnet().await?;
     println!("MySo local network version: {}", myso_local.api_version());
 
-    // MySo devnet -- https://fullnode.devnet.myso.io:443
+    // MySo devnet -- https://fullnode.devnet.mysocial.network:443
     let myso_devnet = MySoClientBuilder::default().build_devnet().await?;
     println!("MySo devnet version: {}", myso_devnet.api_version());
 
-    // MySo testnet -- https://fullnode.testnet.myso.io:443
+    // MySo testnet -- https://fullnode.testnet.mysocial.network:443
     let myso_testnet = MySoClientBuilder::default().build_testnet().await?;
     println!("MySo testnet version: {}", myso_testnet.api_version());
 
-    // MySo mainnet -- https://fullnode.mainnet.myso.io:443
+    // MySo mainnet -- https://fullnode.mainnet.mysocial.network:443
     let myso_mainnet = MySoClientBuilder::default().build_mainnet().await?;
     println!("MySo mainnet version: {}", myso_mainnet.api_version());
 

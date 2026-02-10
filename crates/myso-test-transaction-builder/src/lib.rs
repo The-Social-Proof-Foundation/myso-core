@@ -263,7 +263,7 @@ impl TestTransactionBuilder {
                 CallArg::Pure(bcs::to_bytes("example_nft_name").unwrap()),
                 CallArg::Pure(bcs::to_bytes("example_nft_description").unwrap()),
                 CallArg::Pure(
-                    bcs::to_bytes("https://myso.io/_nuxt/img/myso-logo.8d3c44e.svg").unwrap(),
+                    bcs::to_bytes("https://mysocial.network/_nuxt/img/myso-logo.8d3c44e.svg").unwrap(),
                 ),
             ],
         )

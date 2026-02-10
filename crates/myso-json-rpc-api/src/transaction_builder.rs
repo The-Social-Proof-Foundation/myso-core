@@ -128,7 +128,7 @@ pub trait TransactionBuilder {
         function: String,
         /// the type arguments of the Move function
         type_arguments: Vec<MySoTypeTag>,
-        /// the arguments to be passed into the Move function, in [MySoJson](https://docs.myso.io/build/myso-json) format
+        /// the arguments to be passed into the Move function, in [MySoJson](https://docs.mysocial.network/build/myso-json) format
         arguments: Vec<MySoJsonValue>,
         /// gas object to be used in this transaction, node will pick one from the signer's possession if not provided
         gas: Option<ObjectID>,

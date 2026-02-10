@@ -181,7 +181,7 @@ const references = [
 			{
 				type: 'link',
 				label: 'Submit a SIP',
-				href: 'https://sips.myso.io',
+				href: 'https://sips.mysocial.network',
 			},
 			'references/contribute/localize-myso-docs',
 			'references/contribute/code-of-conduct',

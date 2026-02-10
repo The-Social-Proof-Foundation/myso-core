@@ -95,7 +95,7 @@ impl New {
             [dependencies]
 
             # Read more about the package management system options:
-            # https://docs.myso.io/guides/developer/myso-101/move-package-management
+            # https://docs.mysocial.network/guides/developer/myso-101/move-package-management
             "#
             ),
         )?;

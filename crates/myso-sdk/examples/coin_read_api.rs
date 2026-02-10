@@ -11,7 +11,7 @@ use utils::setup_for_read;
 // check if it has coins and request coins from the faucet if there aren't any.
 // If there is no wallet, it will create a wallet and two addresses, set one address as active,
 // and add 1 MYSO to the active address.
-// By default, the example will use the MySo testnet network (fullnode.testnet.myso.io:443).
+// By default, the example will use the MySo testnet network (fullnode.testnet.mysocial.network:443).
 
 #[tokio::main]
 async fn main() -> Result<(), anyhow::Error> {

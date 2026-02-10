@@ -60,7 +60,7 @@ pub fn myso_rpc_doc(version: &str) -> Project {
     Project::new(
         version,
         "MySo JSON-RPC",
-        "MySo JSON-RPC API for interaction with MySo Full node. Make RPC calls using https://fullnode.NETWORK.myso.io:443, where NETWORK is the network you want to use (testnet, devnet, mainnet). By default, local networks use port 9000.",
+        "MySo JSON-RPC API for interaction with MySo Full node. Make RPC calls using https://fullnode.NETWORK.mysocial.network:443, where NETWORK is the network you want to use (testnet, devnet, mainnet). By default, local networks use port 9000.",
         "The Social Proof Foundation",
         "https://socialproof.foundation",
         "brandon@socialproof.foundation",

@@ -11,18 +11,18 @@ The MySo documentation now supports viewing raw markdown versions of any documen
 Simply add `.md` to any documentation URL:
 
 ```
-HTML version: https://docs.myso.io/guides/developer/getting-started
-Markdown version: https://docs.myso.io/guides/developer/getting-started.md
+HTML version: https://docs.mysocial.network/guides/developer/getting-started
+Markdown version: https://docs.mysocial.network/guides/developer/getting-started.md
 ```
 
 ### Examples
 
 | Page Type | HTML URL | Markdown URL |
 |-----------|----------|--------------|
-| Guide | `https://docs.myso.io/guides/developer/myso-101` | `https://docs.myso.io/guides/developer/myso-101.md` |
-| Concept | `https://docs.myso.io/concepts/architecture` | `https://docs.myso.io/concepts/architecture.md` |
-| Reference | `https://docs.myso.io/references/cli` | `https://docs.myso.io/references/cli.md` |
-| Standard | `https://docs.myso.io/standards/kiosk` | `https://docs.myso.io/standards/kiosk.md` |
+| Guide | `https://docs.mysocial.network/guides/developer/myso-101` | `https://docs.mysocial.network/guides/developer/myso-101.md` |
+| Concept | `https://docs.mysocial.network/concepts/architecture` | `https://docs.mysocial.network/concepts/architecture.md` |
+| Reference | `https://docs.mysocial.network/references/cli` | `https://docs.mysocial.network/references/cli.md` |
+| Standard | `https://docs.mysocial.network/standards/kiosk` | `https://docs.mysocial.network/standards/kiosk.md` |
 
 ## Implementation Details
 

@@ -1046,8 +1046,8 @@ impl EventApi {
     /// #[tokio::main]
     /// async fn main() -> Result<(), anyhow::Error> {
     ///     let myso = MySoClientBuilder::default()
-    ///         .ws_url("wss://rpc.mainnet.myso.io:443")
-    ///         .build("https://fullnode.mainnet.myso.io:443")
+    ///         .ws_url("wss://rpc.mainnet.mysocial.network:443")
+    ///         .build("https://fullnode.mainnet.mysocial.network:443")
     ///         .await?;
     ///     let mut subscribe_all = myso
     ///         .event_api()

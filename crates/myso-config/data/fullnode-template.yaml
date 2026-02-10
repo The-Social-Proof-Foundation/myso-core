@@ -26,7 +26,7 @@ authority-store-pruning-config:
   pruning-run-delay-seconds: 60
 
 state-archive-read-config:
-    # Use https://checkpoints.mainnet.myso.io for mainnet
-    # Use https://checkpoints.testnet.myso.io for testnet
-    - ingestion-url: "https://checkpoints.<mainnet|testnet>.myso.io"
+    # Use https://checkpoints.mainnet.mysocial.network for mainnet
+    # Use https://checkpoints.testnet.mysocial.network for testnet
+    - ingestion-url: "https://checkpoints.<mainnet|testnet>.mysocial.network"
       concurrency: 5

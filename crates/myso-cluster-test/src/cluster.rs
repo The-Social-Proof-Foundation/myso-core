@@ -20,16 +20,16 @@ use tempfile::tempdir;
 use test_cluster::{TestCluster, TestClusterBuilder};
 use tracing::info;
 
-const DEVNET_FAUCET_ADDR: &str = "https://faucet.devnet.myso.io:443";
-const STAGING_FAUCET_ADDR: &str = "https://faucet.staging.myso.io:443";
-const CONTINUOUS_FAUCET_ADDR: &str = "https://faucet.ci.myso.io:443";
-const CONTINUOUS_NOMAD_FAUCET_ADDR: &str = "https://faucet.nomad.ci.myso.io:443";
-const TESTNET_FAUCET_ADDR: &str = "https://faucet.testnet.myso.io:443";
-const DEVNET_FULLNODE_ADDR: &str = "https://rpc.devnet.myso.io:443";
-const STAGING_FULLNODE_ADDR: &str = "https://fullnode.staging.myso.io:443";
-const CONTINUOUS_FULLNODE_ADDR: &str = "https://fullnode.ci.myso.io:443";
-const CONTINUOUS_NOMAD_FULLNODE_ADDR: &str = "https://fullnode.nomad.ci.myso.io:443";
-const TESTNET_FULLNODE_ADDR: &str = "https://fullnode.testnet.myso.io:443";
+const DEVNET_FAUCET_ADDR: &str = "https://faucet.devnet.mysocial.network:443";
+const STAGING_FAUCET_ADDR: &str = "https://faucet.staging.mysocial.network:443";
+const CONTINUOUS_FAUCET_ADDR: &str = "https://faucet.ci.mysocial.network:443";
+const CONTINUOUS_NOMAD_FAUCET_ADDR: &str = "https://faucet.nomad.ci.mysocial.network:443";
+const TESTNET_FAUCET_ADDR: &str = "https://faucet.testnet.mysocial.network:443";
+const DEVNET_FULLNODE_ADDR: &str = "https://rpc.devnet.mysocial.network:443";
+const STAGING_FULLNODE_ADDR: &str = "https://fullnode.staging.mysocial.network:443";
+const CONTINUOUS_FULLNODE_ADDR: &str = "https://fullnode.ci.mysocial.network:443";
+const CONTINUOUS_NOMAD_FULLNODE_ADDR: &str = "https://fullnode.nomad.ci.mysocial.network:443";
+const TESTNET_FULLNODE_ADDR: &str = "https://fullnode.testnet.mysocial.network:443";
 
 pub struct ClusterFactory;
 

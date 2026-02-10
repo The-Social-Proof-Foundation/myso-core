@@ -407,7 +407,7 @@ pub enum MySoClientCommands {
         name = "test-publish",
         after_long_help = "The `test-publish` command is used to publish packages ephemerally, i.e. without recording the published addresses in the main `Published.toml` file. Running `myso client test-publish --pubfile-path <pubfile> --build-env <env>` will build the package for environment <env>, but will publish it on the current network, taking the dependency addresses from <pubfile>. It will also record the publication information for the package in <pubfile>. \n\
                 \n\
-                See https://docs.myso.io/guides/developer/myso-101/move-package-management for more information."
+                See https://docs.mysocial.network/guides/developer/myso-101/move-package-management for more information."
     )]
     TestPublish(TestPublishArgs),
 
@@ -419,7 +419,7 @@ pub enum MySoClientCommands {
         name = "test-upgrade",
         after_long_help = "The `test-upgrade` command is used to upgrade ephemeral packages, for packages published using `test-publish` command. This does not write publication info to `Published.toml` file. Running `myso client test-upgrade --pubfile-path <pubfile> --build-env <env>` will build the package for environment <env>, but will publish it on the current network, taking the dependency addresses from <pubfile>. It will also record the publication information for the package in <pubfile>. \n\
             \n\
-            See https://docs.myso.io/guides/developer/myso-101/move-package-management for more information."
+            See https://docs.mysocial.network/guides/developer/myso-101/move-package-management for more information."
     )]
     TestUpgrade(TestUpgradeArgs),
 
@@ -1398,8 +1398,8 @@ impl MySoClientCommands {
                 let address = context.get_identity_address(address)?;
                 let url = if let Some(url) = url {
                     ensure!(
-                        !url.starts_with("https://faucet.testnet.myso.io"),
-                        "For testnet tokens, please use the Web UI: https://faucet.myso.io/?address={address}"
+                        !url.starts_with("https://faucet.testnet.mysocial.network"),
+                        "For testnet tokens, please use the Web UI: https://faucet.mysocial.network/?address={address}"
                     );
                     url
                 } else {
@@ -3081,7 +3081,7 @@ async fn check_protocol_version_and_warn(client: &Client) -> Result<(), anyhow::
                 "[warning] CLI's protocol version is {cli_protocol_version}, but the active \
                 network's protocol version is {on_chain_protocol_version}. \
                 \n Consider installing the latest version of the CLI - \
-                https://docs.myso.io/guides/developer/getting-started/myso-install \n\n \
+                https://docs.mysocial.network/guides/developer/getting-started/myso-install \n\n \
                 If publishing/upgrading returns a dependency verification error, then install the \
                 latest CLI version."
             )
@@ -3687,12 +3687,12 @@ fn find_faucet_url(address: MySoAddress, rpc: &str) -> anyhow::Result<String> {
     let localhost_0 = url_to_host(MYSO_LOCAL_NETWORK_URL_0)?;
 
     if host == devnet_host {
-        return Ok("https://faucet.devnet.myso.io/v2/gas".to_string());
+        return Ok("https://faucet.devnet.mysocial.network/v2/gas".to_string());
     }
 
     if host == testnet_host {
         bail!(
-            "For testnet tokens, please use the Web UI: https://faucet.myso.io/?address={address}"
+            "For testnet tokens, please use the Web UI: https://faucet.mysocial.network/?address={address}"
         );
     }
 

@@ -5,7 +5,7 @@ The `myso-metric-checker` crate is used for querying prometheus metrics and vali
 ### Example Usage
 
 ```
-RUST_LOG=debug cargo run --package myso-metric-checker --bin myso-metric-checker  -- --api-key xxxxxxxx --api-user xxxx_metrics --config checks.yaml --url https://xxxx.myso.io/prometheus
+RUST_LOG=debug cargo run --package myso-metric-checker --bin myso-metric-checker  -- --api-key xxxxxxxx --api-user xxxx_metrics --config checks.yaml --url https://xxxx.mysocial.network/prometheus
 ```
 
 ### Example Config

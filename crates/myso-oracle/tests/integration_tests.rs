@@ -409,7 +409,7 @@ async fn get_gas(client: &Client, sender: MySoAddress) -> (ObjectRef, u64) {
 }
 
 async fn init_test_client() -> (Client, Keystore, MySoAddress) {
-    let client = Client::new("https://rpc.devnet.myso.io:443").unwrap();
+    let client = Client::new("https://rpc.devnet.mysocial.network:443").unwrap();
 
     let keystore = Keystore::File(
         FileBasedKeystore::load_or_create(

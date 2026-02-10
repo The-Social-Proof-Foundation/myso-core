@@ -26,7 +26,7 @@ impl Worker for CustomWorker {
 async fn main() -> Result<()> {
     let (executor, term_sender) = setup_single_workflow(
         CustomWorker,
-        "https://checkpoints.testnet.myso.io".to_string(),
+        "https://checkpoints.testnet.mysocial.network".to_string(),
         0,    /* initial checkpoint number */
         5,    /* concurrency */
         None, /* extra reader options */

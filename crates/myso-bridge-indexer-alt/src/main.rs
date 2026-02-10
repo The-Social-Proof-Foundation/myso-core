@@ -32,7 +32,7 @@ struct Args {
         default_value = "postgres://postgres:postgrespw@localhost:5432/bridge"
     )]
     database_url: Url,
-    #[clap(env, long, default_value = "https://checkpoints.mainnet.myso.io")]
+    #[clap(env, long, default_value = "https://checkpoints.mainnet.mysocial.network")]
     remote_store_url: Url,
 }
 #[tokio::main]

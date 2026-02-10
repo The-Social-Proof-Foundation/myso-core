@@ -43,7 +43,7 @@ After the Full node starts you can test the JSON-RPC interfaces.
 
 ## View activity on your local Full node with MySo Explorer
 
-MySo Explorer supports connecting to a local network. To view activity on your local Full node, open the URL: [https://explorer.myso.io/?network=local](https://explorer.myso.io/?network=local).
+MySo Explorer supports connecting to a local network. To view activity on your local Full node, open the URL: [https://explorer.mysocial.network/?network=local](https://explorer.mysocial.network/?network=local).
 
 You can also change the network that MySo Explorer connects to by selecting it in the MySo Explorer interface. 
 
@@ -126,10 +126,10 @@ Download each package. For example, on macOS use [homebrew](https://brew.sh/):
 ```brew install wget curl```
 
 ### Learn more about MySo
- * https://docs.myso.io/learn
+ * https://docs.mysocial.network/learn
 
 ### Learn more about building and running a Full node from source code
- * https://docs.myso.io/build/fullnode
+ * https://docs.mysocial.network/build/fullnode
 
 ### Learn more about Docker Compose
  * https://docs.docker.com/compose/gettingstarted/

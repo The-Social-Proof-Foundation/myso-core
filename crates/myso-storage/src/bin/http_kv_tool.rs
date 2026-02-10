@@ -15,8 +15,8 @@ use myso_types::messages_checkpoint::CheckpointSequenceNumber;
 #[command(rename_all = "kebab-case")]
 enum Command {
     Fetch {
-        // default value of 'https://transactions.myso.io/'
-        #[arg(short, long, default_value = "https://transactions.myso.io/mainnet")]
+        // default value of 'https://transactions.mysocial.network/'
+        #[arg(short, long, default_value = "https://transactions.mysocial.network/mainnet")]
         base_url: String,
 
         #[arg(short, long)]
@@ -140,7 +140,7 @@ impl Command {
             }
             Command::DecodeKey { url } => {
                 // url may look like
-                // https://transactions.myso.io/mainnet/jlkqmZbVuunngIyy2vjBOJSETrM56EH_kIc5wuLvDydN_x0GAAAAAA/ob
+                // https://transactions.mysocial.network/mainnet/jlkqmZbVuunngIyy2vjBOJSETrM56EH_kIc5wuLvDydN_x0GAAAAAA/ob
                 // extract the digest and type
                 let parts: Vec<_> = url.split('/').collect();
 

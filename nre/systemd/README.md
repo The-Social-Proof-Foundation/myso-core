@@ -22,7 +22,7 @@ sudo chown -R myso:myso /opt/myso
 - Pre-built binary stored in Amazon S3:
         
 ```shell
-wget https://releases.myso.io/$MYSO_SHA/myso-node
+wget https://releases.mysocial.network/$MYSO_SHA/myso-node
 chmod +x myso-node
 sudo mv myso-node /opt/myso/bin
 ```
@@ -116,7 +116,7 @@ sudo systemctl stop myso-node
 2. Fetch the new myso-node binary
 
 ```shell
-wget https://releases.myso.io/${MYSO_SHA}/myso-node
+wget https://releases.mysocial.network/${MYSO_SHA}/myso-node
 ```
 
 3. Update and move the new binary:

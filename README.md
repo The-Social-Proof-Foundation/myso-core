@@ -51,7 +51,7 @@ MySocial is supported by several cutting-edge [peer-reviewed studies](https://gi
 
 Use the following links to learn more about MySocial and the MySo ecosystem:
 
- * Learn more about working with MySocial in the [MySocial Documentation](https://docs.myso.io/).
+ * Learn more about working with MySocial in the [MySocial Documentation](https://docs.mysocial.network/).
  * Join the MySocial community on [MySocial Telegram](https://t.me/mysocial_chain).
  * Review information about the MySocial [governance](https://docs.mysocial.network/mysocial/blockchain/social/governance), [decentralization](https://docs.mysocial.network/mysocial/getting-started/decentralization), and the [Social Proof Foundation](https://socialproof.foundation) site.
 

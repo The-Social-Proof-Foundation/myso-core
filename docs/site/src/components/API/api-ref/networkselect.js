@@ -37,12 +37,12 @@ const NetworkSelect = () => {
           <InputLabel
             id="network"
             className="dark:text-white"
-          >{`RPC: https://fullnode.${selection.toLowerCase()}.myso.io:443`}</InputLabel>
+          >{`RPC: https://fullnode.${selection.toLowerCase()}.mysocial.network:443`}</InputLabel>
           <Select
             label-id="network"
             id="network-select"
             value={selection}
-            label={`RPC: https://fullnode.${selection.toLowerCase()}.myso.io:443`}
+            label={`RPC: https://fullnode.${selection.toLowerCase()}.mysocial.network:443`}
             onChange={handleChange}
             className="dark:text-white dark:bg-myso-ghost-dark"
           >

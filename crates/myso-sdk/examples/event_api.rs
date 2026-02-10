@@ -34,8 +34,8 @@ async fn main() -> Result<(), anyhow::Error> {
     println!(" *** Query events ***\n ");
 
     let ws = MySoClientBuilder::default()
-        .ws_url("wss://rpc.testnet.myso.io:443")
-        .build("https://fullnode.testnet.myso.io:443")
+        .ws_url("wss://rpc.testnet.mysocial.network:443")
+        .build("https://fullnode.testnet.mysocial.network:443")
         .await?;
     println!("WS version {:?}", ws.api_version());
 

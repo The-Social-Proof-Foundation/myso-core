@@ -8,4 +8,4 @@ It is a thin wrapper around the `move-package-alt` crate to fill in the myso-spe
 See also the [user guide][guide] ([generated][generated]).
 
 [guide]: /docs/content/guides/developer/myso-101/move-package-management.mdx
-[generated]: https://docs.myso.io/guides/developer/myso-101/move-package-management
+[generated]: https://docs.mysocial.network/guides/developer/myso-101/move-package-management
