@@ -1,10 +1,10 @@
 [build]
 builder = "dockerfile"
-dockerfilePath = "crates/myso-graphql-rpc/Dockerfile"
-buildCommand = "cargo build --release --bin myso-graphql-rpc"
+dockerfilePath = "crates/myso-indexer-alt-graphql/Dockerfile"
+buildCommand = "cargo build --release --bin myso-indexer-alt-graphql"
 
 [deploy]
-startCommand = "myso-graphql-rpc start-server --host 0.0.0.0 --port 8080 --db-url $DATABASE_URL --node-rpc-url $RPC_URL"
+startCommand = "myso-indexer-alt-graphql start-server --host 0.0.0.0 --port 8080 --db-url $DATABASE_URL --node-rpc-url $RPC_URL"
 healthcheckPath = "/health"
 healthcheckTimeout = 300
 restartPolicyType = "on_failure"
@@ -17,9 +17,9 @@ RPC_URL = { sync = false }
 # Explicitly tell Railway this is a Rust project
 [build.env]
 NIXPACKS_LANGUAGE = "rust"
-NIXPACKS_BUILD_CMD = "cargo build --release --bin myso-graphql-rpc"
+NIXPACKS_BUILD_CMD = "cargo build --release --bin myso-indexer-alt-graphql"
 
 [variables]
 # Logging configuration  
-RUST_LOG = "info,mys_graphql_rpc=debug"
+RUST_LOG = "info,myso_graphql_rpc=debug"
 RUST_BACKTRACE = "1" 
