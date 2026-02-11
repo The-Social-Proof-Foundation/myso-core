@@ -27,6 +27,14 @@ type CAddr = JsonCursor<usize>;
 
 #[Object]
 impl Validator {
+    /// The APY of this validator in basis points (network-wide stake subsidy APY). Divide by 100 for percentage.
+    async fn apy(&self) -> Option<UInt53> {
+        self.contents
+            .stake_subsidy
+            .as_ref()
+            .map(|s| UInt53::from(s.current_apy_bps))
+    }
+
     /// The number of epochs for which this validator has been below the low stake threshold.
     async fn at_risk(&self) -> Option<UInt53> {
         let validator = self.validator()?;

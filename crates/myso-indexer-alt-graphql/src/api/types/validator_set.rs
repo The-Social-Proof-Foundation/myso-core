@@ -19,6 +19,7 @@ use move_core_types::visitor_default;
 use myso_types::MYSO_SYSTEM_ADDRESS;
 use myso_types::TypeTag;
 use myso_types::base_types::MySoAddress as NativeMySoAddress;
+use myso_types::myso_system_state::myso_system_state_inner_v1::StakeSubsidyV1;
 use myso_types::myso_system_state::VALIDATOR_MODULE_NAME;
 use myso_types::myso_system_state::VALIDATOR_STRUCT_NAME;
 
@@ -42,6 +43,8 @@ pub(crate) struct ValidatorSet {
 pub(crate) struct ValidatorSetContents {
     pub(crate) value: MoveValue,
     pub(crate) active_validators: Vec<ValidatorContents>,
+    /// Stake subsidy at epoch start (for Validator.apy). None if extraction failed or not present.
+    pub(crate) stake_subsidy: Option<StakeSubsidyV1>,
 }
 
 pub(crate) struct ValidatorContents {
@@ -119,6 +122,7 @@ impl ValidatorSetContents {
             active_validators: Vec<(NativeMySoAddress, &'b [u8])>,
             report_records: Option<ReportRecords>,
             at_risk_validators: Option<AtRiskValidators>,
+            stake_subsidy_bytes: Option<Vec<u8>>,
         }
 
         // Visitor to traverse a system state inner value looking for information related to the
@@ -202,6 +206,13 @@ impl ValidatorSetContents {
                             c.report_records = Some(records);
                         }
 
+                        Traversal::SystemState(c) if name == "stake_subsidy" => {
+                            let lo = driver.position();
+                            driver.skip_field()?;
+                            let hi = driver.position();
+                            c.stake_subsidy_bytes = Some(driver.bytes()[lo..hi].to_vec());
+                        }
+
                         Traversal::ValidatorSet(c) if name == "active_validators" => {
                             let _ = driver.next_field(&mut Traversal::ActiveValidators(c))?;
                         }
@@ -252,10 +263,16 @@ impl ValidatorSetContents {
             active_validators,
             report_records: Some(mut reports),
             at_risk_validators: Some(mut at_risk),
+            stake_subsidy_bytes,
+            ..
         } = contents
         else {
             return Err(anyhow!("ValidatorSet deserialization incomplete").into());
         };
+
+        let stake_subsidy = stake_subsidy_bytes
+            .as_ref()
+            .and_then(|b| bcs::from_bytes::<StakeSubsidyV1>(b).ok());
 
         let address_to_index: BTreeMap<_, _> = active_validators
             .iter()
@@ -286,8 +303,8 @@ impl ValidatorSetContents {
                 type_: MoveType::from_layout(layout.clone(), scope),
                 native: bytes.to_owned(),
             },
-
             active_validators,
+            stake_subsidy,
         })
     }
 

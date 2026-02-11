@@ -730,16 +730,20 @@ impl From<crate::myso_system_state::myso_system_state_inner_v1::StakeSubsidyV1> 
         crate::myso_system_state::myso_system_state_inner_v1::StakeSubsidyV1 {
             balance,
             distribution_counter,
-            current_distribution_amount,
+            current_apy_bps,
             stake_subsidy_period_length,
             stake_subsidy_decrease_rate,
+            max_apy_bps: _,
+            min_apy_bps: _,
+            intended_duration_years: _,
             extra_fields,
         }: crate::myso_system_state::myso_system_state_inner_v1::StakeSubsidyV1,
     ) -> Self {
         let mut message = Self::default();
         message.balance = Some(balance.value());
         message.distribution_counter = Some(distribution_counter);
-        message.current_distribution_amount = Some(current_distribution_amount);
+        // Proto still has current_distribution_amount; repurpose to carry APY for backward compat
+        message.current_distribution_amount = Some(current_apy_bps);
         message.stake_subsidy_period_length = Some(stake_subsidy_period_length);
         message.stake_subsidy_decrease_rate = Some(stake_subsidy_decrease_rate.into());
         message.extra_fields = Some(extra_fields.into());
@@ -992,9 +996,11 @@ impl TryFrom<&SystemState>
             validator_low_stake_grace_period: s.parameters().validator_low_stake_grace_period(),
             stake_subsidy_balance: s.stake_subsidy().balance(),
             stake_subsidy_distribution_counter: s.stake_subsidy().distribution_counter(),
-            stake_subsidy_current_distribution_amount: s
-                .stake_subsidy()
-                .current_distribution_amount(),
+            // Proto has current_distribution_amount; treat as current_apy_bps when sender uses APY model
+            stake_subsidy_current_apy_bps: s.stake_subsidy().current_distribution_amount(),
+            stake_subsidy_max_apy_bps: 10000,  // default; proto has no max_apy_bps
+            stake_subsidy_min_apy_bps: 0,      // default; proto has no min_apy_bps
+            stake_subsidy_intended_duration_years: 10,  // default; proto has no intended_duration_years
             stake_subsidy_period_length: s.stake_subsidy().stake_subsidy_period_length(),
             stake_subsidy_decrease_rate: s.stake_subsidy().stake_subsidy_decrease_rate() as u16,
             total_stake: s.validators().total_stake(),

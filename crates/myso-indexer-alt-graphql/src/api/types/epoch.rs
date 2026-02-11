@@ -45,6 +45,7 @@ use crate::api::types::move_type::MoveType;
 use crate::api::types::move_value::MoveValue;
 use crate::api::types::object::Object;
 use crate::api::types::protocol_configs::ProtocolConfigs;
+use crate::api::types::stake_subsidy::{self, StakeSubsidy};
 use crate::api::types::transaction::CTransaction;
 use crate::api::types::transaction::Transaction;
 use crate::api::types::transaction::filter::TransactionFilter;
@@ -306,6 +307,22 @@ impl Epoch {
     /// The contents of the system state inner object at the start of this epoch.
     async fn system_state(&self, ctx: &Context<'_>) -> Option<Result<MoveValue, RpcError>> {
         self.system_state_impl(ctx).await.transpose()
+    }
+
+    /// Stake subsidy parameters at the start of this epoch (balance, APY, period, etc.).
+    async fn system_stake_subsidy(&self, ctx: &Context<'_>) -> Option<Result<Option<StakeSubsidy>, RpcError>> {
+        async {
+            let Some(system_state) = self.system_state_impl(ctx).await? else {
+                return Ok(None);
+            };
+            let Some(layout) = system_state.type_.layout_impl().await? else {
+                return Ok(None);
+            };
+            let stake_subsidy_v1 = stake_subsidy::extract_from_system_state(&system_state.native, &layout)?;
+            Ok(Some(stake_subsidy_v1.map(|v| StakeSubsidy::from_v1(&v))))
+        }
+        .await
+        .transpose()
     }
 
     /// The total number of checkpoints in this epoch.

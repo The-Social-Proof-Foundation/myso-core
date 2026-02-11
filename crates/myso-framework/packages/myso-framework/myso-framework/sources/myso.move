@@ -18,11 +18,11 @@ const ENotSystemAddress: u64 = 1;
 const MIST_PER_MYSO: u64 = 1_000_000_000;
 
 #[allow(unused_const)]
-/// The total supply of MySo denominated in whole MySo tokens (10 Billion)
-const TOTAL_SUPPLY_MYSO: u64 = 10_000_000_000;
+/// The total supply of MySo denominated in whole MySo tokens (1 Billion)
+const TOTAL_SUPPLY_MYSO: u64 = 1_000_000_000;
 
-/// The total supply of MySo denominated in Mist (10 Billion * 10^9)
-const TOTAL_SUPPLY_MIST: u64 = 10_000_000_000_000_000_000;
+/// The total supply of MySo denominated in Mist (1 Billion * 10^9)
+const TOTAL_SUPPLY_MIST: u64 = 1_000_000_000_000_000_000;
 
 /// Name of the coin
 public struct MYSO has drop {}

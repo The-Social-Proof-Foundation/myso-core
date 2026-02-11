@@ -24,7 +24,7 @@ use crate::{
 pub const MIST_PER_MYSO: u64 = 1_000_000_000;
 
 /// Total supply denominated in MySo
-pub const TOTAL_SUPPLY_MYSO: u64 = 10_000_000_000;
+pub const TOTAL_SUPPLY_MYSO: u64 = 1_000_000_000;
 
 // Note: cannot use checked arithmetic here since `const unwrap` is still unstable.
 /// Total supply denominated in Mist

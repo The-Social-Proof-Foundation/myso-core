@@ -55,9 +55,12 @@ pub fn stake_subsidy_v1() -> StakeSubsidyV1 {
     StakeSubsidyV1 {
         balance: Balance::new(0),
         distribution_counter: 0,
-        current_distribution_amount: 0,
+        current_apy_bps: 0,
         stake_subsidy_period_length: 0,
         stake_subsidy_decrease_rate: 0,
+        max_apy_bps: 10000,
+        min_apy_bps: 0,
+        intended_duration_years: 10,
         extra_fields: Default::default(),
     }
 }

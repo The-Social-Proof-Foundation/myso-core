@@ -481,16 +481,25 @@ pub struct StakeSubsidyV1 {
     /// Count of the number of times stake subsidies have been distributed.
     pub distribution_counter: u64,
 
-    /// The amount of stake subsidy to be drawn down per distribution.
+    /// The current APY (in basis points) used to compute stake subsidies.
     /// This amount decays and decreases over time.
-    pub current_distribution_amount: u64,
+    pub current_apy_bps: u64,
 
-    /// Number of distributions to occur before the distribution amount decays.
+    /// Number of distributions to occur before the APY decays.
     pub stake_subsidy_period_length: u64,
 
-    /// The rate at which the distribution amount decays at the end of each
+    /// The rate at which the APY decays at the end of each
     /// period. Expressed in basis points.
     pub stake_subsidy_decrease_rate: u16,
+
+    /// Maximum APY cap (in basis points).
+    pub max_apy_bps: u64,
+
+    /// Minimum APY floor (in basis points).
+    pub min_apy_bps: u64,
+
+    /// Target duration for subsidy pool in years (e.g., 10).
+    pub intended_duration_years: u64,
 
     pub extra_fields: Bag,
 }
@@ -681,9 +690,12 @@ impl MySoSystemStateTrait for MySoSystemStateInnerV1 {
                 StakeSubsidyV1 {
                     balance: stake_subsidy_balance,
                     distribution_counter: stake_subsidy_distribution_counter,
-                    current_distribution_amount: stake_subsidy_current_distribution_amount,
+                    current_apy_bps: stake_subsidy_current_apy_bps,
                     stake_subsidy_period_length,
                     stake_subsidy_decrease_rate,
+                    max_apy_bps: stake_subsidy_max_apy_bps,
+                    min_apy_bps: stake_subsidy_min_apy_bps,
+                    intended_duration_years: stake_subsidy_intended_duration_years,
                     extra_fields: _,
                 },
             safe_mode,
@@ -713,7 +725,10 @@ impl MySoSystemStateTrait for MySoSystemStateInnerV1 {
             epoch_duration_ms,
             stake_subsidy_distribution_counter,
             stake_subsidy_balance: stake_subsidy_balance.value(),
-            stake_subsidy_current_distribution_amount,
+            stake_subsidy_current_apy_bps,
+            stake_subsidy_max_apy_bps,
+            stake_subsidy_min_apy_bps,
+            stake_subsidy_intended_duration_years,
             total_stake,
             active_validators: active_validators
                 .into_iter()

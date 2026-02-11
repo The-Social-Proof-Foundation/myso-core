@@ -293,9 +293,12 @@ impl Builder {
             chain_start_timestamp_ms,
             epoch_duration_ms,
             stake_subsidy_start_epoch,
-            stake_subsidy_initial_distribution_amount,
+            stake_subsidy_initial_apy_bps,
             stake_subsidy_period_length,
             stake_subsidy_decrease_rate,
+            stake_subsidy_max_apy_bps,
+            stake_subsidy_min_apy_bps,
+            stake_subsidy_intended_duration_years,
             max_validator_count,
             min_validator_joining_stake,
             validator_low_stake_threshold,
@@ -424,8 +427,8 @@ impl Builder {
 
         assert_eq!(system_state.stake_subsidy.distribution_counter, 0);
         assert_eq!(
-            system_state.stake_subsidy.current_distribution_amount,
-            stake_subsidy_initial_distribution_amount,
+            system_state.stake_subsidy.current_apy_bps,
+            stake_subsidy_initial_apy_bps,
         );
         assert_eq!(
             system_state.stake_subsidy.stake_subsidy_period_length,
@@ -434,6 +437,18 @@ impl Builder {
         assert_eq!(
             system_state.stake_subsidy.stake_subsidy_decrease_rate,
             stake_subsidy_decrease_rate,
+        );
+        assert_eq!(
+            system_state.stake_subsidy.max_apy_bps,
+            stake_subsidy_max_apy_bps,
+        );
+        assert_eq!(
+            system_state.stake_subsidy.min_apy_bps,
+            stake_subsidy_min_apy_bps,
+        );
+        assert_eq!(
+            system_state.stake_subsidy.intended_duration_years,
+            stake_subsidy_intended_duration_years,
         );
 
         assert!(!system_state.safe_mode);

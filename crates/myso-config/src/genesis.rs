@@ -348,9 +348,12 @@ pub struct GenesisChainParameters {
 
     // Stake Subsidy parameters
     pub stake_subsidy_start_epoch: u64,
-    pub stake_subsidy_initial_distribution_amount: u64,
+    pub stake_subsidy_initial_apy_bps: u64,
     pub stake_subsidy_period_length: u64,
     pub stake_subsidy_decrease_rate: u16,
+    pub stake_subsidy_max_apy_bps: u64,
+    pub stake_subsidy_min_apy_bps: u64,
+    pub stake_subsidy_intended_duration_years: u64,
 
     // Validator committee parameters
     pub max_validator_count: u64,
@@ -381,14 +384,11 @@ pub struct GenesisCeremonyParameters {
     #[serde(default)]
     pub stake_subsidy_start_epoch: u64,
 
-    /// The amount of stake subsidy to be drawn down per distribution.
-    /// This amount decays and decreases over time.
-    #[serde(
-        default = "GenesisCeremonyParameters::default_initial_stake_subsidy_distribution_amount"
-    )]
-    pub stake_subsidy_initial_distribution_amount: u64,
+    /// The initial stake subsidy APY in basis points. This decays over time.
+    #[serde(default = "GenesisCeremonyParameters::default_stake_subsidy_initial_apy_bps")]
+    pub stake_subsidy_initial_apy_bps: u64,
 
-    /// Number of distributions to occur before the distribution amount decays.
+    /// Number of distributions to occur before the APY decays.
     #[serde(default = "GenesisCeremonyParameters::default_stake_subsidy_period_length")]
     pub stake_subsidy_period_length: u64,
 
@@ -396,6 +396,18 @@ pub struct GenesisCeremonyParameters {
     /// period. Expressed in basis points.
     #[serde(default = "GenesisCeremonyParameters::default_stake_subsidy_decrease_rate")]
     pub stake_subsidy_decrease_rate: u16,
+
+    /// Maximum APY cap in basis points.
+    #[serde(default = "GenesisCeremonyParameters::default_stake_subsidy_max_apy_bps")]
+    pub stake_subsidy_max_apy_bps: u64,
+
+    /// Minimum APY floor in basis points.
+    #[serde(default = "GenesisCeremonyParameters::default_stake_subsidy_min_apy_bps")]
+    pub stake_subsidy_min_apy_bps: u64,
+
+    /// Target duration for subsidy pool in years (e.g., 10).
+    #[serde(default = "GenesisCeremonyParameters::default_stake_subsidy_intended_duration_years")]
+    pub stake_subsidy_intended_duration_years: u64,
     // Most other parameters (e.g. initial gas schedule) should be derived from protocol_version.
 }
 
@@ -407,10 +419,12 @@ impl GenesisCeremonyParameters {
             allow_insertion_of_extra_objects: true,
             stake_subsidy_start_epoch: 0,
             epoch_duration_ms: Self::default_epoch_duration_ms(),
-            stake_subsidy_initial_distribution_amount:
-                Self::default_initial_stake_subsidy_distribution_amount(),
+            stake_subsidy_initial_apy_bps: Self::default_stake_subsidy_initial_apy_bps(),
             stake_subsidy_period_length: Self::default_stake_subsidy_period_length(),
             stake_subsidy_decrease_rate: Self::default_stake_subsidy_decrease_rate(),
+            stake_subsidy_max_apy_bps: Self::default_stake_subsidy_max_apy_bps(),
+            stake_subsidy_min_apy_bps: Self::default_stake_subsidy_min_apy_bps(),
+            stake_subsidy_intended_duration_years: Self::default_stake_subsidy_intended_duration_years(),
         }
     }
 
@@ -430,9 +444,22 @@ impl GenesisCeremonyParameters {
         24 * 60 * 60 * 1000
     }
 
-    fn default_initial_stake_subsidy_distribution_amount() -> u64 {
-        // 1M MySo
-        1_000_000 * myso_types::gas_coin::MIST_PER_MYSO
+    fn default_stake_subsidy_initial_apy_bps() -> u64 {
+        // 4% APY in basis points
+        400
+    }
+
+    fn default_stake_subsidy_max_apy_bps() -> u64 {
+        // 100% cap in basis points
+        10000
+    }
+
+    fn default_stake_subsidy_min_apy_bps() -> u64 {
+        0
+    }
+
+    fn default_stake_subsidy_intended_duration_years() -> u64 {
+        10
     }
 
     fn default_stake_subsidy_period_length() -> u64 {
@@ -453,10 +480,12 @@ impl GenesisCeremonyParameters {
             stake_subsidy_start_epoch: self.stake_subsidy_start_epoch,
             chain_start_timestamp_ms: self.chain_start_timestamp_ms,
             epoch_duration_ms: self.epoch_duration_ms,
-            stake_subsidy_initial_distribution_amount: self
-                .stake_subsidy_initial_distribution_amount,
+            stake_subsidy_initial_apy_bps: self.stake_subsidy_initial_apy_bps,
             stake_subsidy_period_length: self.stake_subsidy_period_length,
             stake_subsidy_decrease_rate: self.stake_subsidy_decrease_rate,
+            stake_subsidy_max_apy_bps: self.stake_subsidy_max_apy_bps,
+            stake_subsidy_min_apy_bps: self.stake_subsidy_min_apy_bps,
+            stake_subsidy_intended_duration_years: self.stake_subsidy_intended_duration_years,
             max_validator_count: myso_types::governance::MAX_VALIDATOR_COUNT,
             min_validator_joining_stake: myso_types::governance::MIN_VALIDATOR_JOINING_STAKE_MIST,
             validator_low_stake_threshold:

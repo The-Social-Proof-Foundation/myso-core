@@ -1259,6 +1259,10 @@ type Epoch implements Node {
 	"""
 	systemState: MoveValue
 	"""
+	Stake subsidy parameters at the start of this epoch (balance, APY, period, etc.).
+	"""
+	systemStakeSubsidy: StakeSubsidy
+	"""
 	The total number of checkpoints in this epoch.
 	
 	Returns `None` when no checkpoint is set in scope (e.g. execution scope).
@@ -4208,6 +4212,10 @@ type UserSignature {
 
 type Validator {
 	"""
+	The APY of this validator in basis points (network-wide stake subsidy APY). Divide by 100 for percentage.
+	"""
+	apy: UInt53
+	"""
 	The number of epochs for which this validator has been below the low stake threshold.
 	"""
 	atRisk: UInt53
@@ -4263,6 +4271,48 @@ type ValidatorEdge {
 	The item at the end of the edge
 	"""
 	node: Validator!
+}
+
+"""
+Parameters that control the distribution of the stake subsidy.
+"""
+type StakeSubsidy {
+	"""
+	The annual percentage yield from the stake subsidy in basis points. Divide by 100 for percentage.
+	"""
+	apy: UInt53
+	"""
+	MYSO set aside for stake subsidies — reduces over time as stake subsidies are paid out.
+	"""
+	balance: BigInt
+	"""
+	Current stake subsidy APY in basis points — decays over time.
+	"""
+	currentApyBps: BigInt
+	"""
+	Percentage of the current APY to deduct at the end of the current subsidy period, in basis points.
+	"""
+	decreaseRate: UInt53
+	"""
+	Number of times stake subsidies have been distributed (with other staking rewards at end of epoch).
+	"""
+	distributionCounter: UInt53
+	"""
+	Target duration for subsidy pool in years (e.g., 10). Used for stake-aware APY reduction.
+	"""
+	intendedDurationYears: BigInt
+	"""
+	Minimum APY floor (in basis points). Effective APY will never go below this.
+	"""
+	minApyBps: BigInt
+	"""
+	Maximum APY cap (in basis points). Effective APY will never exceed this.
+	"""
+	maxApyBps: BigInt
+	"""
+	Maximum number of stake subsidy distributions that occur with the same APY (before the APY is reduced).
+	"""
+	periodLength: UInt53
 }
 
 """
