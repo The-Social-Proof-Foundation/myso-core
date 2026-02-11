@@ -6,7 +6,7 @@ const axios = require("axios");
 const path = require("path");
 
 const repo = {
-  owner: "MystenLabs",
+  owner: "the-social-proof-foundation",
   name: "myso-apis",
   branch: "gen-docs",
   filePath: "documentation.json",
