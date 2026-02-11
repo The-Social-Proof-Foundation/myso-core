@@ -17,11 +17,17 @@ RUN apt-get update && apt-get install -y \
     libpq-dev \
     postgresql
 
-# Copy source code
-COPY . .
+# Copy workspace files (build context must be repo root)
+COPY Cargo.toml Cargo.lock ./
+COPY rust-toolchain.toml ./
+COPY .cargo .cargo
+COPY consensus consensus
+COPY crates crates
+COPY myso-execution myso-execution
+COPY external-crates external-crates
 
 # Build
-RUN cargo build --release --bin myso-graphql-rpc
+RUN cargo build --release --bin myso-indexer-alt-graphql
 
 # Production Image
 FROM debian:bullseye-slim AS runtime
@@ -40,14 +46,13 @@ RUN apt-get update && apt-get install -y \
 ENV LD_PRELOAD=/usr/lib/x86_64-linux-gnu/libjemalloc.so
 
 WORKDIR /app
-COPY --from=builder /app/target/release/myso-graphql-rpc /usr/local/bin
+COPY --from=builder /app/target/release/myso-indexer-alt-graphql /usr/local/bin
 
 # Create entrypoint script
 RUN echo '#!/bin/sh\n\
 echo "=== ENTRYPOINT DEBUG ==="\n\
 echo "Checking environment variables..."\n\
 \n\
-# Validate required environment variables\n\
 if [ -z "$DATABASE_URL" ]; then\n\
   echo "ERROR: DATABASE_URL is not set"\n\
   exit 1\n\
@@ -58,7 +63,6 @@ if [ -z "$RPC_URL" ]; then\n\
   exit 1\n\
 fi\n\
 \n\
-# Mask sensitive values for logging\n\
 if [ -n "$DATABASE_URL" ]; then\n\
   MASKED_DB_URL=$(echo "$DATABASE_URL" | sed '\''s/:[^@]*@/:****@/'\'')\n\
   echo "DATABASE_URL: ${MASKED_DB_URL:-NOT_SET}"\n\
@@ -69,14 +73,13 @@ if [ -n "$RPC_URL" ]; then\n\
 fi\n\
 \n\
 echo "PORT: ${PORT:-8080}"\n\
-echo "Starting myso-graphql-rpc..."\n\
+echo "Starting myso-indexer-alt-graphql..."\n\
 echo ""\n\
 \n\
-exec myso-graphql-rpc start-server \\\n\
-    --host 0.0.0.0 \\\n\
-    --port "${PORT:-8080}" \\\n\
-    --db-url "$DATABASE_URL" \\\n\
-    --node-rpc-url "$RPC_URL"' > /usr/local/bin/entrypoint.sh && \
+exec myso-indexer-alt-graphql rpc \\\n\
+    --database-url "$DATABASE_URL" \\\n\
+    --fullnode-rpc-url "$RPC_URL" \\\n\
+    --rpc-listen-address "0.0.0.0:${PORT:-8080}"' > /usr/local/bin/entrypoint.sh && \
     chmod +x /usr/local/bin/entrypoint.sh
 
 ARG BUILD_DATE
