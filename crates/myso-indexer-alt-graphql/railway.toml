@@ -4,7 +4,7 @@ dockerfilePath = "crates/myso-indexer-alt-graphql/Dockerfile"
 buildCommand = "cargo build --release --bin myso-indexer-alt-graphql"
 
 [deploy]
-startCommand = "myso-indexer-alt-graphql rpc --database-url $DATABASE_URL --fullnode-rpc-url $RPC_URL --rpc-listen-address 0.0.0.0:$PORT"
+startCommand = "myso-indexer-alt-graphql rpc --database-url ${{ DATABASE_URL }} --fullnode-rpc-url ${{ RPC_URL }} --rpc-listen-address 0.0.0.0:${{ PORT }}"
 healthcheckPath = "/health"
 healthcheckTimeout = 300
 restartPolicyType = "on_failure"
