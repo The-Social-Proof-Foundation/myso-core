@@ -17,7 +17,7 @@ use axum::Json;
 use axum::Router;
 use axum::extract::{Path, State};
 use axum::http::StatusCode;
-use axum::routing::get;
+use axum::routing::{get, post};
 use fastcrypto::ed25519::Ed25519PublicKey;
 use fastcrypto::encoding::{Encoding, Hex};
 use fastcrypto::traits::ToFromBytes;
@@ -28,6 +28,7 @@ use myso_types::TypeTag;
 use myso_types::bridge::BridgeChainId;
 use tracing::{info, instrument};
 
+pub mod deposit_api;
 pub mod governance_verifier;
 pub mod handler;
 
@@ -91,13 +92,14 @@ pub fn run_server(
     handler: impl BridgeRequestHandlerTrait + Sync + Send + 'static,
     metrics: Arc<BridgeMetrics>,
     metadata: Arc<BridgeNodePublicMetadata>,
+    deposit_state: Option<Arc<deposit_api::DepositApiState>>,
 ) -> tokio::task::JoinHandle<()> {
     let socket_address = *socket_address;
     tokio::spawn(async move {
         let listener = tokio::net::TcpListener::bind(socket_address).await.unwrap();
         axum::serve(
             listener,
-            make_router(Arc::new(handler), metrics, metadata).into_make_service(),
+            make_router(Arc::new(handler), metrics, metadata, deposit_state).into_make_service(),
         )
         .await
         .unwrap();
@@ -108,8 +110,9 @@ pub(crate) fn make_router(
     handler: Arc<impl BridgeRequestHandlerTrait + Sync + Send + 'static>,
     metrics: Arc<BridgeMetrics>,
     metadata: Arc<BridgeNodePublicMetadata>,
+    deposit_state: Option<Arc<deposit_api::DepositApiState>>,
 ) -> Router {
-    Router::new()
+    let main_router = Router::new()
         .route("/", get(health_check))
         .route(PING_PATH, get(ping))
         .route(METRICS_KEY_PATH, get(metrics_key_fetch))
@@ -133,7 +136,21 @@ pub(crate) fn make_router(
         )
         .route(ADD_TOKENS_ON_MYSO_PATH, get(handle_add_tokens_on_myso))
         .route(ADD_TOKENS_ON_EVM_PATH, get(handle_add_tokens_on_evm))
-        .with_state((handler, metrics, metadata))
+        .with_state((handler, metrics, metadata));
+
+    if let Some(deposit_state) = deposit_state {
+        let deposit_router = Router::new()
+            .route("/deposit/generate", post(deposit_api::generate_deposit_address))
+            .route("/deposit/link", post(deposit_api::link_addresses))
+            .route(
+                "/deposit/addresses/{address}",
+                get(deposit_api::query_deposit_addresses),
+            )
+            .with_state(deposit_state);
+        main_router.merge(deposit_router)
+    } else {
+        main_router
+    }
 }
 
 impl axum::response::IntoResponse for BridgeError {

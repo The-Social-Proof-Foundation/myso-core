@@ -5,11 +5,17 @@ use crate::action_executor::BridgeActionExecutor;
 use crate::client::bridge_authority_aggregator::BridgeAuthorityAggregator;
 use crate::config::{BridgeClientConfig, BridgeNodeConfig, WatchdogConfig};
 use crate::crypto::BridgeAuthorityPublicKeyBytes;
+use crate::deposit_addresses::DepositAddressManager;
+use crate::deposit_bridge::DepositBridgeHandler;
+use crate::deposit_gas_manager::DepositGasManager;
+use crate::deposit_handler::{run_evm_deposit_processor, run_myso_deposit_processor};
+use crate::deposit_monitor::{EvmDepositMonitor, MySoDepositMonitor};
 use crate::eth_syncer::EthSyncer;
 use crate::events::init_all_struct_tags;
 use crate::metrics::BridgeMetrics;
 use crate::monitor::{self, BridgeMonitor};
 use crate::orchestrator::BridgeOrchestrator;
+use crate::server::deposit_api::DepositApiState;
 use crate::server::handler::BridgeRequestHandler;
 use crate::server::{BridgeNodePublicMetadata, run_server};
 use crate::storage::BridgeOrchestratorTables;
@@ -28,6 +34,7 @@ use crate::utils::{
 };
 use alloy::primitives::Address as EthAddress;
 use arc_swap::ArcSwap;
+use fastcrypto::traits::KeyPair;
 use mysten_metrics::spawn_logged_monitored_task;
 use std::collections::{BTreeMap, HashMap};
 use std::net::{IpAddr, Ipv4Addr, SocketAddr};
@@ -38,6 +45,7 @@ use myso_types::bridge::{
     BRIDGE_COMMITTEE_MODULE_NAME, BRIDGE_LIMITER_MODULE_NAME, BRIDGE_MODULE_NAME,
     BRIDGE_TREASURY_MODULE_NAME,
 };
+use myso_types::crypto::MySoKeyPair;
 use myso_types::event::EventID;
 use tokio::task::JoinHandle;
 use tracing::info;
@@ -101,17 +109,19 @@ pub async fn run_bridge_node(
         .await?;
 
     // Start Client
+    let mut deposit_state = None;
     if let Some(client_config) = client_config {
         let committee_keys_to_names =
             Arc::new(get_validator_names_by_pub_keys(&committee, &myso_system).await);
-        let client_components = start_client_components(
+        let (client_handles, deposit_state_opt) = start_client_components(
             client_config,
             committee.clone(),
             committee_keys_to_names,
             metrics.clone(),
         )
         .await?;
-        handles.extend(client_components);
+        handles.extend(client_handles);
+        deposit_state = deposit_state_opt;
     }
 
     let committee_name_mapping = get_committee_voting_power_by_name(&committee, &myso_system).await;
@@ -137,6 +147,7 @@ pub async fn run_bridge_node(
         ),
         metrics,
         Arc::new(metadata),
+        deposit_state,
     ))
 }
 
@@ -255,9 +266,11 @@ async fn start_client_components(
     committee: Arc<BridgeCommittee>,
     committee_keys_to_names: Arc<BTreeMap<BridgeAuthorityPublicKeyBytes, String>>,
     metrics: Arc<BridgeMetrics>,
-) -> anyhow::Result<Vec<JoinHandle<()>>> {
+) -> anyhow::Result<(Vec<JoinHandle<()>>, Option<Arc<DepositApiState>>)> {
     let store: std::sync::Arc<BridgeOrchestratorTables> =
         BridgeOrchestratorTables::new(&client_config.db_path.join("client"));
+    let bridge_client_key = client_config.key.copy();
+
     let myso_modules_to_watch = get_myso_modules_to_watch(
         &store,
         client_config.myso_bridge_module_last_processed_event_id_override,
@@ -331,7 +344,7 @@ async fn start_client_components(
         myso_client.clone(),
         bridge_auth_agg.clone(),
         store.clone(),
-        client_config.key,
+        bridge_client_key,
         client_config.myso_address,
         client_config.gas_object_ref.0,
         myso_token_type_tags.clone(),
@@ -363,7 +376,7 @@ async fn start_client_components(
     all_handles.push(spawn_logged_monitored_task!(monitor.run()));
 
     let orchestrator = BridgeOrchestrator::new(
-        myso_client,
+        myso_client.clone(),
         myso_grpc_events_rx,
         eth_events_rx,
         store.clone(),
@@ -372,7 +385,98 @@ async fn start_client_components(
     );
 
     all_handles.extend(orchestrator.run_with_grpc(bridge_action_executor).await);
-    Ok(all_handles)
+
+    let deposit_state = if let Some(deposit_config) = &client_config.deposit_config
+        && deposit_config.enabled
+    {
+        let deposit_key = client_config.key.copy();
+        let secp_key = match &deposit_key {
+            MySoKeyPair::Secp256k1(kp) => kp.copy(),
+            _ => {
+                anyhow::bail!(
+                    "Deposits require Secp256k1 bridge client key; current key is not Secp256k1"
+                );
+            }
+        };
+
+        let address_manager = Arc::new(DepositAddressManager::new(secp_key, store.clone()));
+
+        let eth_chain_id = client_config
+            .eth_client
+            .get_chain_id()
+            .await
+            .map_err(|e| anyhow::anyhow!("Failed to get ETH chain ID: {:?}", e))?;
+
+        let eth_contracts = &client_config.eth_contracts;
+        anyhow::ensure!(
+            eth_contracts.len() >= 3,
+            "Expected at least 3 eth contracts (bridge, committee, config)"
+        );
+        let eth_bridge_address = eth_contracts[0];
+        let eth_config_address = eth_contracts[2];
+
+        let gas_manager = Arc::new(DepositGasManager::new(
+            deposit_key,
+            myso_client.clone(),
+            None,
+            Some(client_config.eth_client.provider()),
+            Some(eth_chain_id),
+        ));
+
+        let bridge_handler = Arc::new(DepositBridgeHandler::new(
+            store.clone(),
+            address_manager.clone(),
+            gas_manager,
+            client_config.eth_client.provider(),
+            eth_bridge_address,
+            eth_config_address,
+            eth_chain_id,
+            client_config.eth_bridge_chain_id,
+            myso_client.clone(),
+            client_config.myso_bridge_chain_id,
+        ));
+
+        let (evm_deposit_tx, evm_deposit_rx) = tokio::sync::mpsc::unbounded_channel();
+        let (myso_deposit_tx, myso_deposit_rx) = tokio::sync::mpsc::unbounded_channel();
+
+        let evm_monitor = EvmDepositMonitor::new(
+            client_config.eth_client.provider(),
+            store.clone(),
+            eth_chain_id,
+            deposit_config.supported_tokens.clone(),
+            deposit_config.poll_interval_secs,
+            deposit_config.evm_confirmation_blocks,
+            evm_deposit_tx,
+        );
+        all_handles.push(spawn_logged_monitored_task!(async move {
+            let _ = evm_monitor.run().await;
+        }));
+
+        let myso_monitor = MySoDepositMonitor::new(
+            myso_client.grpc_client().clone().into_inner(),
+            store.clone(),
+            client_config.myso_bridge_chain_id,
+            myso_deposit_tx,
+        );
+        all_handles.push(spawn_logged_monitored_task!(async move {
+            let _ = myso_monitor.run().await;
+        }));
+
+        tokio::spawn(run_evm_deposit_processor(evm_deposit_rx, bridge_handler.clone()));
+        tokio::spawn(run_myso_deposit_processor(myso_deposit_rx, bridge_handler.clone()));
+
+        let deposit_state = Arc::new(DepositApiState {
+            address_manager,
+            storage: store,
+            myso_chain_id: client_config.myso_bridge_chain_id,
+            eth_chain_id: client_config.eth_bridge_chain_id,
+        });
+        Some(deposit_state)
+    } else {
+        None
+    };
+
+    Ok((all_handles, deposit_state))
 }
 
 async fn get_next_sequence_number<C: crate::myso_client::MySoClientInner>(

@@ -10405,6 +10405,7 @@ version = "0.0.1"
 dependencies = [
  "alloy",
  "alloy-multiprovider-strategy",
+ "alloy-signer",
  "anyhow",
  "arc-swap",
  "async-trait",
