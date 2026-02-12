@@ -10965,6 +10965,31 @@ dependencies = [
 ]
 
 [[package]]
+name = "myso-edge-proxy"
+version = "0.1.0"
+dependencies = [
+ "anyhow",
+ "axum 0.8.8",
+ "axum-extra 0.10.3",
+ "bin-version",
+ "bytes",
+ "clap",
+ "futures",
+ "mysten-metrics",
+ "prometheus",
+ "rand 0.8.5",
+ "reqwest",
+ "serde",
+ "serde_json",
+ "serde_with 3.16.1",
+ "serde_yaml 0.8.26",
+ "telemetry-subscribers",
+ "tokio",
+ "tracing",
+ "url",
+]
+
+[[package]]
 name = "myso-enum-compat-util"
 version = "0.0.1"
 dependencies = [

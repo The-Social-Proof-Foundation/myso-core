@@ -115,6 +115,7 @@ members = [
   "crates/myso-data-store",
   "crates/myso-default-config",
   "crates/myso-display",
+  "crates/myso-edge-proxy",
   "crates/myso-e2e-tests",
   "crates/myso-enum-compat-util",
   "crates/myso-faucet",

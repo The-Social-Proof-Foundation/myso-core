@@ -1,0 +1,73 @@
+// Copyright (c) Mysten Labs, Inc.
+// Copyright (c) The Social Proof Foundation, LLC.
+// SPDX-License-Identifier: Apache-2.0
+
+use axum::{routing::any, Router};
+use clap::Parser;
+use myso_edge_proxy::config::{load, ProxyConfig};
+use myso_edge_proxy::handlers::{proxy_handler, AppState};
+use myso_edge_proxy::metrics::AppMetrics;
+use mysten_metrics::start_prometheus_server;
+use reqwest::Client;
+use std::net::SocketAddr;
+use tokio::net::TcpListener;
+use tracing::info;
+
+#[derive(Parser, Debug)]
+#[clap(rename_all = "kebab-case")]
+struct Args {
+    #[clap(
+        long,
+        short,
+        default_value = "./myso-edge-proxy.yaml",
+        help = "Specify the config file path to use"
+    )]
+    config: String,
+}
+
+#[tokio::main]
+async fn main() {
+    let args = Args::parse();
+
+    let (config, client): (ProxyConfig, Client) =
+        load(&args.config).await.expect("Failed to load config");
+
+    let registry_service = start_prometheus_server(config.metrics_address);
+    let prometheus_registry = registry_service.default_registry();
+    mysten_metrics::init_metrics(&prometheus_registry);
+
+    let (_guard, _filter_handle) = telemetry_subscribers::TelemetryConfig::new()
+        .with_env()
+        .with_prom_registry(&prometheus_registry)
+        .init();
+
+    info!("Metrics server started at {}", config.metrics_address);
+
+    let app_metrics = AppMetrics::new(&prometheus_registry);
+
+    let app_state = AppState::new(
+        client,
+        config.read_peer.clone(),
+        config.execution_peer.clone(),
+        app_metrics,
+        config.logging,
+    );
+
+    let app = Router::new()
+        .fallback(any(proxy_handler))
+        .with_state(app_state);
+
+    info!("Starting server on {}", config.listen_address);
+    let listener = TcpListener::bind(config.listen_address)
+        .await
+        .expect("Failed to bind to address");
+    let addr = listener.local_addr().expect("Failed to get local address");
+    info!("Server listening on {}", addr);
+    
+    axum::serve(
+        listener,
+        app.into_make_service_with_connect_info::<SocketAddr>(),
+    )
+    .await
+    .unwrap();
+}
