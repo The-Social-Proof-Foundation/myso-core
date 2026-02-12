@@ -423,7 +423,7 @@ pub async fn link_addresses(
     verify_myso_signature(&myso_message, &req.myso_signature, &myso_address)
         .map_err(to_status_error_json)?;
 
-    let eth_message = format!("Link to MYS {} at {}", req.myso_address, req.timestamp);
+    let eth_message = format!("Link to MYSO {} at {}", req.myso_address, req.timestamp);
     verify_eth_signature(&eth_message, &req.eth_signature, &eth_address)
         .map_err(to_status_error_json)?;
 
@@ -452,7 +452,7 @@ pub async fn link_addresses(
         .unwrap()
         .as_millis() as u64;
 
-    let mys_registration = DepositRegistration {
+    let myso_registration = DepositRegistration {
         deposit_chain: state.myso_chain_id,
         deposit_address: deposit_myso_address.to_vec(),
         destination_chain: state.eth_chain_id,
@@ -465,7 +465,7 @@ pub async fn link_addresses(
 
     state
         .storage
-        .store_deposit_registration(DepositAddressKey::from_myso(myso_address), mys_registration)
+        .store_deposit_registration(DepositAddressKey::from_myso(myso_address), myso_registration)
         .map_err(to_status_error_json)?;
 
     let evm_registration = DepositRegistration {
@@ -586,7 +586,7 @@ fn parse_chain_id(
     myso_chain_id: u8,
 ) -> Result<u8, (StatusCode, Json<ErrorResponse>)> {
     match chain_name.to_lowercase().as_str() {
-        "mysocial" | "mys" | "myso" => Ok(myso_chain_id),
+        "mysocial" | "myso" | "myso" => Ok(myso_chain_id),
         "base" | "base-sepolia" | "ethereum" | "eth" => Ok(eth_chain_id),
         _ => Err((
             StatusCode::BAD_REQUEST,

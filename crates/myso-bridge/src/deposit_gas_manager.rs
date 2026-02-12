@@ -23,9 +23,9 @@ use tracing::{error, info, warn};
 // Gas thresholds for MySocial (in MIST)
 // Will be used when MySocial gas funding is fully implemented
 #[allow(dead_code)]
-const MIN_MYS_GAS_BALANCE: u64 = 10_000_000; // 0.01 MYS
+const MIN_MYS_GAS_BALANCE: u64 = 10_000_000; // 0.01 MYSO
 #[allow(dead_code)]
-const MYS_GAS_FUND_AMOUNT: u64 = 20_000_000; // 0.02 MYS
+const MYS_GAS_FUND_AMOUNT: u64 = 20_000_000; // 0.02 MYSO
 
 /// Manages gas funding for deposit addresses
 pub struct DepositGasManager {
@@ -34,7 +34,7 @@ pub struct DepositGasManager {
     /// Relayer's main MySocial keypair (for funding deposit addresses)
     /// Will be used when MySocial gas funding is implemented
     #[allow(dead_code)]
-    relayer_mys_keypair: MySoKeyPair,
+    relayer_myso_keypair: MySoKeyPair,
     /// MySocial client (for querying balances and funding)
     /// Will be used when MySocial gas funding is implemented
     #[allow(dead_code)]
@@ -47,7 +47,7 @@ pub struct DepositGasManager {
 
 impl DepositGasManager {
     pub fn new(
-        relayer_mys_keypair: MySoKeyPair,
+        relayer_myso_keypair: MySoKeyPair,
         myso_client: Arc<MySoBridgeClient>,
         relayer_eth_signer: Option<PrivateKeySigner>,
         eth_provider: Option<EthProvider>,
@@ -55,7 +55,7 @@ impl DepositGasManager {
     ) -> Self {
         Self {
             relayer_eth_signer,
-            relayer_mys_keypair,
+            relayer_myso_keypair,
             myso_client,
             eth_provider,
             eth_chain_id,
