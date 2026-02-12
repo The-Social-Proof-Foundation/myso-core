@@ -1,4 +1,5 @@
 // Copyright (c) Mysten Labs, Inc.
+// Copyright (c) The Social Proof Foundation, LLC.
 // SPDX-License-Identifier: Apache-2.0
 
 // docs::#processordeps (see myso/docs/content/guides/developer/advanced/custom-indexer.mdx)

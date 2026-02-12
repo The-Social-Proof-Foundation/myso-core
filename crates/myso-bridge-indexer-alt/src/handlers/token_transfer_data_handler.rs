@@ -1,4 +1,5 @@
 // Copyright (c) Mysten Labs, Inc.
+// Copyright (c) The Social Proof Foundation, LLC.
 // SPDX-License-Identifier: Apache-2.0
 use crate::handlers::{BRIDGE, TOKEN_DEPOSITED_EVENT, is_bridge_txn};
 use crate::struct_tag;

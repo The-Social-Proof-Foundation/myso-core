@@ -1,4 +1,5 @@
 // Copyright (c) Mysten Labs, Inc.
+// Copyright (c) The Social Proof Foundation, LLC.
 // SPDX-License-Identifier: Apache-2.0
 use crate::{NativesCostTable, get_extension, object_runtime::ObjectRuntime};
 use move_binary_format::errors::PartialVMResult;
