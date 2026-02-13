@@ -36,8 +36,8 @@ use move_symbol_pool::Symbol;
 use myso_package_alt::{MySoFlavor, testnet_environment};
 use myso_protocol_config::{Chain, ProtocolConfig, ProtocolVersion};
 use myso_types::{
-    BRIDGE_ADDRESS, ORDERBOOK_ADDRESS, MOVE_STDLIB_ADDRESS, MYDATA_ADDRESS, MYSO_FRAMEWORK_ADDRESS,
-    MYSO_SOCIAL_ADDRESS, MYSO_SYSTEM_ADDRESS, TypeTag,
+    BRIDGE_ADDRESS, MOVE_STDLIB_ADDRESS, MYDATA_ADDRESS, MYSO_FRAMEWORK_ADDRESS,
+    MYSO_SOCIAL_ADDRESS, MYSO_SYSTEM_ADDRESS, ORDERBOOK_ADDRESS, TypeTag,
     base_types::ObjectID,
     error::{MySoError, MySoErrorKind, MySoResult},
     is_system_package,
@@ -254,7 +254,9 @@ pub fn decorate_warnings(warning_diags: Diagnostics, files: Option<&MappedFiles>
         report_warnings(f, warning_diags);
     }
     if any_linter_warnings {
-        eprintln!("Please report feedback on the linter warnings at https://forums.mysocial.network\n");
+        eprintln!(
+            "Please report feedback on the linter warnings at https://forums.mysocial.network\n"
+        );
     }
     if filtered_diags_num > 0 {
         eprintln!(

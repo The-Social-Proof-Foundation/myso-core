@@ -9,8 +9,8 @@ use std::{collections::BTreeMap, fmt};
 
 use move_core_types::account_address::AccountAddress;
 use myso_types::{
-    BRIDGE_ADDRESS, ORDERBOOK_ADDRESS, MOVE_STDLIB_ADDRESS, MYSO_FRAMEWORK_ADDRESS,
-    MYSO_SYSTEM_ADDRESS,
+    BRIDGE_ADDRESS, MOVE_STDLIB_ADDRESS, MYSO_FRAMEWORK_ADDRESS, MYSO_SYSTEM_ADDRESS,
+    ORDERBOOK_ADDRESS,
     transaction::{Argument, Command, ProgrammableMoveCall},
     type_input::{StructInput, TypeInput},
 };

@@ -5,11 +5,11 @@
 use fs_extra::dir::CopyOptions;
 use insta_cmd::get_cargo_bin;
 use move_command_line_common::insta_assert;
-use std::path::{Path, PathBuf};
-use std::process::Command;
 use myso_config::{Config, MYSO_CLIENT_CONFIG, MYSO_KEYSTORE_FILENAME};
 use myso_keys::keystore::{FileBasedKeystore, Keystore};
 use myso_sdk::myso_client_config::{MySoClientConfig, MySoEnv};
+use std::path::{Path, PathBuf};
+use std::process::Command;
 use tempfile::TempDir;
 use test_cluster::TestClusterBuilder;
 

@@ -10,10 +10,10 @@
 use std::sync::Arc;
 use std::time::Duration;
 
+use myso_futures::service::Service;
 use prometheus::Registry;
 use serde::Deserialize;
 use serde::Serialize;
-use myso_futures::service::Service;
 use tokio::sync::mpsc;
 
 use crate::ingestion::broadcaster::broadcaster;

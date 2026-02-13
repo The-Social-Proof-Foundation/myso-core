@@ -21,8 +21,8 @@ use myso_rosetta::types::{
     AccountBalanceRequest, AccountBalanceResponse, AccountIdentifier, ConstructionCombineRequest,
     ConstructionCombineResponse, ConstructionMetadataRequest, ConstructionMetadataResponse,
     ConstructionPayloadsRequest, ConstructionPayloadsResponse, ConstructionPreprocessRequest,
-    ConstructionPreprocessResponse, ConstructionSubmitRequest, Currencies, NetworkIdentifier,
-    PreprocessMetadata, Signature, SignatureType, SubAccount, SubAccountType, MySoEnv,
+    ConstructionPreprocessResponse, ConstructionSubmitRequest, Currencies, MySoEnv,
+    NetworkIdentifier, PreprocessMetadata, Signature, SignatureType, SubAccount, SubAccountType,
     TransactionIdentifierResponse,
 };
 use myso_rosetta::{RosettaOfflineServer, RosettaOnlineServer};

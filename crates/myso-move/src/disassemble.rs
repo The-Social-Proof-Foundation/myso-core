@@ -9,11 +9,11 @@ use move_cli::base;
 use move_disassembler::disassembler::Disassembler;
 use move_ir_types::location::Spanned;
 use move_package_alt_compilation::build_config::BuildConfig;
+use myso_package_alt::MySoFlavor;
 use std::fs::File;
 use std::io::{BufReader, Read};
 use std::path::Path;
 use std::path::PathBuf;
-use myso_package_alt::MySoFlavor;
 
 #[derive(Parser)]
 #[group(id = "myso-move-disassemmble")]

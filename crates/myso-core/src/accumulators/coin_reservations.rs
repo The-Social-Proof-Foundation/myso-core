@@ -8,7 +8,7 @@ use moka::sync::Cache as MokaCache;
 use myso_types::{
     TypeTag,
     accumulator_root::{AccumulatorKey, AccumulatorValue},
-    base_types::{ObjectID, MySoAddress},
+    base_types::{MySoAddress, ObjectID},
     coin_reservation::{CoinReservationResolverTrait, ParsedObjectRefWithdrawal},
     error::{UserInputError, UserInputResult},
     storage::ChildObjectResolver,

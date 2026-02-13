@@ -5,13 +5,12 @@
 use std::path::Path;
 use std::str::FromStr;
 
-use shared_crypto::intent::Intent;
 use myso_keys::keystore::{AccountKeystore, FileBasedKeystore, Keystore};
 use myso_move_build::BuildConfig;
 use myso_rpc_api::Client;
 use myso_sdk::myso_sdk_types::StructTag;
 use myso_sdk::types::Identifier;
-use myso_sdk::types::base_types::{ObjectID, MySoAddress};
+use myso_sdk::types::base_types::{MySoAddress, ObjectID};
 use myso_sdk::types::programmable_transaction_builder::ProgrammableTransactionBuilder;
 use myso_sdk::types::transaction::{
     CallArg, ObjectArg, SharedObjectMutability, Transaction, TransactionData,
@@ -20,6 +19,7 @@ use myso_types::base_types::{ObjectRef, SequenceNumber};
 use myso_types::effects::TransactionEffectsAPI;
 use myso_types::gas_coin::GasCoin;
 use myso_types::{TypeTag, parse_myso_type_tag};
+use shared_crypto::intent::Intent;
 
 // Integration tests for MYSO Oracle, these test can be run manually on local or remote testnet.
 #[ignore]

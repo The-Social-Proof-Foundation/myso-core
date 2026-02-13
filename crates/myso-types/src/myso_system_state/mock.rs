@@ -7,15 +7,15 @@ use crate::base_types::{MoveObjectType, TransactionDigest};
 use crate::collection_types::VecMap;
 use crate::dynamic_field::{derive_dynamic_field_id, serialize_dynamic_field};
 use crate::id::UID;
-use crate::object::{MoveObject, Object, Owner};
 use crate::myso_system_state::myso_system_state_inner_v1::{
-    StakeSubsidyV1, StorageFundV1, MySoSystemStateInnerV1, SystemParametersV1, ValidatorSetV1,
+    MySoSystemStateInnerV1, StakeSubsidyV1, StorageFundV1, SystemParametersV1, ValidatorSetV1,
 };
 use crate::myso_system_state::myso_system_state_inner_v2::{
     MySoSystemStateInnerV2, SystemParametersV2,
 };
 use crate::myso_system_state::{MySoSystemState, MySoSystemStateWrapper};
-use crate::{MoveTypeTagTrait, MYSO_SYSTEM_STATE_OBJECT_ID};
+use crate::object::{MoveObject, Object, Owner};
+use crate::{MYSO_SYSTEM_STATE_OBJECT_ID, MoveTypeTagTrait};
 use myso_protocol_config::ProtocolConfig;
 
 pub fn validator_set_v1() -> ValidatorSetV1 {

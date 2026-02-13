@@ -5,8 +5,6 @@
 use std::sync::Arc;
 
 use bytes::Bytes;
-use object_store::ObjectStoreExt;
-use object_store::path::Path as ObjectPath;
 use myso_indexer_alt_framework::pipeline::Processor;
 use myso_indexer_alt_framework::pipeline::concurrent::BatchStatus;
 use myso_indexer_alt_framework::pipeline::concurrent::Handler;
@@ -16,6 +14,8 @@ use myso_storage::blob::Blob;
 use myso_storage::blob::BlobEncoding;
 use myso_types::full_checkpoint_content::Checkpoint;
 use myso_types::full_checkpoint_content::CheckpointData;
+use object_store::ObjectStoreExt;
+use object_store::path::Path as ObjectPath;
 
 pub struct BcsCheckpoint {
     pub sequence_number: u64,

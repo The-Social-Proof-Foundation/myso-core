@@ -12,6 +12,7 @@ use consensus_config::AuthorityIndex;
 use consensus_types::block::{BlockRef, Round};
 use futures::{StreamExt as _, stream::FuturesUnordered};
 use itertools::Itertools as _;
+use myso_macros::fail_point_async;
 use mysten_common::debug_fatal;
 use mysten_metrics::{
     monitored_future,
@@ -20,7 +21,6 @@ use mysten_metrics::{
 };
 use parking_lot::{Mutex, RwLock};
 use rand::{prelude::SliceRandom as _, rngs::ThreadRng};
-use myso_macros::fail_point_async;
 use tap::TapFallible;
 use tokio::{
     runtime::Handle,

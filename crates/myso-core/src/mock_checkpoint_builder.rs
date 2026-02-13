@@ -3,7 +3,6 @@
 // SPDX-License-Identifier: Apache-2.0
 
 use fastcrypto::traits::Signer;
-use std::mem;
 use myso_protocol_config::ProtocolConfig;
 use myso_types::base_types::{AuthorityName, VerifiedExecutionData};
 use myso_types::committee::Committee;
@@ -17,6 +16,7 @@ use myso_types::messages_checkpoint::{
 };
 use myso_types::object::OBJECT_START_VERSION;
 use myso_types::transaction::{Transaction, VerifiedTransaction};
+use std::mem;
 
 use crate::accumulators::{self, AccumulatorSettlementTxBuilder};
 use crate::checkpoints::CheckpointHeight;

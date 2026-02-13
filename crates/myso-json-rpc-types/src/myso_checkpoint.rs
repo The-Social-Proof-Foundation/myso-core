@@ -4,9 +4,6 @@
 
 use crate::Page;
 use fastcrypto::encoding::Base64;
-use schemars::JsonSchema;
-use serde::{Deserialize, Serialize};
-use serde_with::serde_as;
 use myso_types::base_types::TransactionDigest;
 use myso_types::committee::EpochId;
 use myso_types::crypto::AggregateAuthoritySignature;
@@ -18,6 +15,9 @@ use myso_types::messages_checkpoint::{
     CheckpointTimestamp, EndOfEpochData,
 };
 use myso_types::myso_serde::BigInt;
+use schemars::JsonSchema;
+use serde::{Deserialize, Serialize};
+use serde_with::serde_as;
 pub type CheckpointPage = Page<Checkpoint, BigInt<u64>>;
 
 #[serde_as]

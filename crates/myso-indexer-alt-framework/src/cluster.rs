@@ -8,10 +8,10 @@ use std::sync::Arc;
 
 use anyhow::Context;
 use diesel_migrations::EmbeddedMigrations;
-use prometheus::Registry;
 use myso_futures::service::Service;
 use myso_indexer_alt_metrics::MetricsArgs;
 use myso_indexer_alt_metrics::MetricsService;
+use prometheus::Registry;
 use url::Url;
 
 use crate::Indexer;

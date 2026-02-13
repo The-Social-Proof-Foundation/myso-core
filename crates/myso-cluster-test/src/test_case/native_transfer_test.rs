@@ -8,7 +8,7 @@ use tracing::info;
 
 use myso_json_rpc_types::MySoTransactionBlockResponse;
 use myso_types::{
-    base_types::{ObjectID, MySoAddress},
+    base_types::{MySoAddress, ObjectID},
     crypto::{AccountKeyPair, get_key_pair},
     object::Owner,
 };

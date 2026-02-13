@@ -18,7 +18,7 @@ use myso_types::base_types::ObjectID;
 use myso_types::digests::TransactionDigest;
 use myso_types::execution_params::FundsWithdrawStatus;
 use myso_types::{
-    base_types::{SequenceNumber, MySoAddress},
+    base_types::{MySoAddress, SequenceNumber},
     crypto::{AccountKeyPair, get_account_key_pair},
     executable_transaction::VerifiedExecutableTransaction,
     gas_coin::GAS,

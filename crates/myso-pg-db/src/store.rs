@@ -13,9 +13,9 @@ use diesel::prelude::*;
 use diesel::sql_types::BigInt;
 use diesel_async::AsyncConnection;
 use diesel_async::RunQueryDsl;
-use scoped_futures::ScopedBoxFuture;
 use myso_indexer_alt_framework_store_traits as store;
 use myso_sql_macro::sql;
+use scoped_futures::ScopedBoxFuture;
 
 use crate::Connection;
 use crate::Db;

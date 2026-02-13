@@ -9,10 +9,6 @@
 use std::str::FromStr;
 use std::time::Duration;
 
-use reqwest::Client;
-use serde_json::Value;
-use serde_json::json;
-use simulacrum::Simulacrum;
 use myso_indexer_alt::config::ConcurrentLayer;
 use myso_indexer_alt::config::IndexerConfig;
 use myso_indexer_alt::config::PipelineLayer;
@@ -26,6 +22,10 @@ use myso_types::effects::TransactionEffectsAPI;
 use myso_types::programmable_transaction_builder::ProgrammableTransactionBuilder;
 use myso_types::transaction::Transaction;
 use myso_types::transaction::TransactionData;
+use reqwest::Client;
+use serde_json::Value;
+use serde_json::json;
+use simulacrum::Simulacrum;
 
 use myso_indexer_alt_e2e_tests::FullCluster;
 use myso_indexer_alt_e2e_tests::OffchainClusterConfig;

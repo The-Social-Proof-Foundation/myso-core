@@ -8,9 +8,9 @@ use std::{
     str::FromStr,
 };
 
-use serde::{Deserialize, Serialize};
 use myso_swarm_config::genesis_config::GenesisConfig;
 use myso_types::{base_types::MySoAddress, multiaddr::Multiaddr};
+use serde::{Deserialize, Serialize};
 
 use crate::{
     benchmark::{BenchmarkParameters, BenchmarkType},
@@ -159,9 +159,12 @@ impl ProtocolCommands<MySoBenchmarkType> for MySoProtocol {
     where
         I: IntoIterator<Item = Instance>,
     {
-        let genesis_path: PathBuf = [&self.working_dir, &myso_config::MYSO_GENESIS_FILENAME.into()]
-            .iter()
-            .collect();
+        let genesis_path: PathBuf = [
+            &self.working_dir,
+            &myso_config::MYSO_GENESIS_FILENAME.into(),
+        ]
+        .iter()
+        .collect();
         let keystore_path: PathBuf = [
             &self.working_dir,
             &myso_config::MYSO_BENCHMARK_GENESIS_GAS_KEYSTORE_FILENAME.into(),

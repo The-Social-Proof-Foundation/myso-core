@@ -15,7 +15,7 @@ use crate::id::UID;
 use crate::storage::{DenyListResult, ObjectStore};
 use crate::transaction::{CheckedInputObjects, ReceivingObjects};
 use crate::{
-    MoveTypeTagTrait, MYSO_DENY_LIST_OBJECT_ID, MYSO_FRAMEWORK_ADDRESS, MYSO_FRAMEWORK_PACKAGE_ID,
+    MYSO_DENY_LIST_OBJECT_ID, MYSO_FRAMEWORK_ADDRESS, MYSO_FRAMEWORK_PACKAGE_ID, MoveTypeTagTrait,
 };
 use move_core_types::ident_str;
 use move_core_types::identifier::IdentStr;

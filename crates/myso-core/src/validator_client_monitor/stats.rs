@@ -3,13 +3,13 @@
 // SPDX-License-Identifier: Apache-2.0
 
 use crate::validator_client_monitor::{OperationFeedback, OperationType};
+use myso_config::validator_client_monitor_config::ValidatorClientMonitorConfig;
+use myso_types::base_types::AuthorityName;
+use myso_types::committee::Committee;
 use mysten_common::moving_window::MovingWindow;
 use std::collections::btree_map::Entry;
 use std::collections::{BTreeMap, HashMap, HashSet};
 use std::time::Duration;
-use myso_config::validator_client_monitor_config::ValidatorClientMonitorConfig;
-use myso_types::base_types::AuthorityName;
-use myso_types::committee::Committee;
 use tracing::debug;
 
 // TODO: A few optimization to consider:

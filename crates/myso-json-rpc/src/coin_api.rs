@@ -22,7 +22,7 @@ use myso_json_rpc_types::{CoinPage, MySoCoinMetadata};
 use myso_open_rpc::Module;
 use myso_storage::key_value_store::TransactionKeyValueStore;
 use myso_types::balance::Supply;
-use myso_types::base_types::{ObjectID, MySoAddress};
+use myso_types::base_types::{MySoAddress, ObjectID};
 use myso_types::coin::{CoinMetadata, TreasuryCap};
 use myso_types::coin_registry::{Currency, SupplyState};
 use myso_types::effects::TransactionEffectsAPI;
@@ -35,7 +35,7 @@ use myso_types::storage::ObjectStore;
 use mockall::automock;
 
 use crate::authority_state::StateRead;
-use crate::error::{Error, RpcInterimResult, MySoRpcInputError};
+use crate::error::{Error, MySoRpcInputError, RpcInterimResult};
 use crate::{MySoRpcModule, with_tracing};
 
 pub fn parse_to_struct_tag(coin_type: &str) -> Result<StructTag, MySoRpcInputError> {
@@ -136,9 +136,10 @@ impl CoinReadApiServer for CoinReadApi {
                     })?;
 
                     if coin_type_tag.to_string() != decoded.coin_type {
-                        return Err(
-                            MySoRpcInputError::GenericInvalid("invalid cursor".to_string()).into(),
-                        );
+                        return Err(MySoRpcInputError::GenericInvalid(
+                            "invalid cursor".to_string(),
+                        )
+                        .into());
                     }
                     (
                         decoded.coin_type,
@@ -534,7 +535,7 @@ mod tests {
     };
     use myso_storage::key_value_store_metrics::KeyValueStoreMetrics;
     use myso_types::balance::Supply;
-    use myso_types::base_types::{ObjectID, SequenceNumber, MySoAddress};
+    use myso_types::base_types::{MySoAddress, ObjectID, SequenceNumber};
     use myso_types::coin::TreasuryCap;
     use myso_types::digests::{ObjectDigest, TransactionDigest};
     use myso_types::effects::{TransactionEffects, TransactionEvents};
@@ -908,8 +909,9 @@ mod tests {
             .encode();
             let limit = 2;
 
-            let coin_type_tag =
-                TypeTag::Struct(Box::new(parse_myso_struct_tag(&coins[0].coin_type).unwrap()));
+            let coin_type_tag = TypeTag::Struct(Box::new(
+                parse_myso_struct_tag(&coins[0].coin_type).unwrap(),
+            ));
             let mut mock_state = MockStateRead::new();
             mock_state
                 .expect_get_owned_coins()

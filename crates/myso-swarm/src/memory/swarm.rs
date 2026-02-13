@@ -5,6 +5,7 @@
 use super::Node;
 use anyhow::Result;
 use futures::future::try_join_all;
+use myso_types::traffic_control::{PolicyConfig, RemoteFirewallConfig};
 use rand::rngs::OsRng;
 use std::collections::HashMap;
 use std::net::SocketAddr;
@@ -14,7 +15,6 @@ use std::{
     ops,
     path::{Path, PathBuf},
 };
-use myso_types::traffic_control::{PolicyConfig, RemoteFirewallConfig};
 
 #[cfg(msim)]
 use myso_config::node::ExecutionTimeObserverConfig;

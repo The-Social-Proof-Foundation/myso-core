@@ -5,8 +5,8 @@
 use clap::Parser;
 use move_cli::base::coverage;
 use move_package_alt_compilation::build_config::BuildConfig;
-use std::path::Path;
 use myso_package_alt::MySoFlavor;
+use std::path::Path;
 
 #[derive(Parser)]
 #[group(id = "myso-move-coverage")]

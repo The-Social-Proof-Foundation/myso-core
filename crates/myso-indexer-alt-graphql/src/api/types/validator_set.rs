@@ -20,9 +20,9 @@ use move_core_types::visitor_default;
 use myso_types::MYSO_SYSTEM_ADDRESS;
 use myso_types::TypeTag;
 use myso_types::base_types::MySoAddress as NativeMySoAddress;
-use myso_types::myso_system_state::myso_system_state_inner_v1::StakeSubsidyV1;
 use myso_types::myso_system_state::VALIDATOR_MODULE_NAME;
 use myso_types::myso_system_state::VALIDATOR_STRUCT_NAME;
+use myso_types::myso_system_state::myso_system_state_inner_v1::StakeSubsidyV1;
 
 use crate::api::scalars::cursor::JsonCursor;
 use crate::api::types::move_type::MoveType;

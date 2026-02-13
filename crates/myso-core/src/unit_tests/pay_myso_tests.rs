@@ -6,9 +6,7 @@ use crate::authority::AuthorityState;
 use crate::authority::authority_tests::{init_state_with_committee, submit_and_execute};
 use crate::authority::test_authority_builder::TestAuthorityBuilder;
 use futures::future::join_all;
-use std::collections::HashMap;
-use std::sync::Arc;
-use myso_types::base_types::{ObjectID, ObjectRef, MySoAddress};
+use myso_types::base_types::{MySoAddress, ObjectID, ObjectRef};
 use myso_types::crypto::AccountKeyPair;
 use myso_types::effects::{SignedTransactionEffects, TransactionEffectsAPI};
 use myso_types::error::{MySoErrorKind, UserInputError};
@@ -19,6 +17,8 @@ use myso_types::programmable_transaction_builder::ProgrammableTransactionBuilder
 use myso_types::transaction::TransactionData;
 use myso_types::utils::to_sender_signed_transaction;
 use myso_types::{base_types::dbg_addr, crypto::get_key_pair, error::MySoError};
+use std::collections::HashMap;
+use std::sync::Arc;
 
 #[tokio::test]
 async fn test_pay_myso_failure_empty_recipients() {

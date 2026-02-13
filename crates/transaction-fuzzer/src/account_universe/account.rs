@@ -7,12 +7,12 @@
 
 use std::sync::Arc;
 
-use proptest::prelude::*;
 use myso_types::{
-    base_types::{ObjectID, MySoAddress},
+    base_types::{MySoAddress, ObjectID},
     crypto::{AccountKeyPair, get_key_pair},
     object::Object,
 };
+use proptest::prelude::*;
 
 use crate::executor::Executor;
 

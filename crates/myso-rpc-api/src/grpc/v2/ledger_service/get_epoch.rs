@@ -5,7 +5,6 @@
 use crate::ErrorReason;
 use crate::Result;
 use crate::RpcService;
-use prost_types::FieldMask;
 use myso_protocol_config::ProtocolConfigValue;
 use myso_rpc::field::FieldMaskTree;
 use myso_rpc::field::FieldMaskUtil;
@@ -18,6 +17,7 @@ use myso_rpc::proto::myso::rpc::v2::ProtocolConfig;
 use myso_rpc::proto::timestamp_ms_to_proto;
 use myso_sdk_types::EpochId;
 use myso_types::myso_system_state::MySoSystemStateTrait;
+use prost_types::FieldMask;
 
 pub const READ_MASK_DEFAULT: &str = "epoch,first_checkpoint,last_checkpoint,start,end,reference_gas_price,protocol_config.protocol_version";
 

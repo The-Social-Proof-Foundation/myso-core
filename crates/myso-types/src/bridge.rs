@@ -8,10 +8,10 @@ use crate::base_types::SequenceNumber;
 use crate::collection_types::LinkedTableNode;
 use crate::dynamic_field::{Field, get_dynamic_field_from_store};
 use crate::error::{MySoError, MySoErrorKind, MySoResult};
-use crate::object::Owner;
-use crate::storage::ObjectStore;
 use crate::myso_serde::BigInt;
 use crate::myso_serde::Readable;
+use crate::object::Owner;
+use crate::storage::ObjectStore;
 use crate::versioned::Versioned;
 use crate::{
     base_types::MySoAddress,

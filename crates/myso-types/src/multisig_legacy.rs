@@ -7,9 +7,9 @@ use crate::{
     digests::ZKLoginInputsDigest,
     error::MySoErrorKind,
     multisig::{MultiSig, MultiSigPublicKey},
+    myso_serde::MySoBitmap,
     signature::{AuthenticatorTrait, GenericSignature, VerifyParams},
     signature_verification::VerifiedDigestCache,
-    myso_serde::MySoBitmap,
 };
 pub use enum_dispatch::enum_dispatch;
 use fastcrypto::{

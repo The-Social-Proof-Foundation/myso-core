@@ -15,7 +15,6 @@ use expect_test::expect;
 use fastcrypto::encoding::{Base64, Encoding};
 use futures::TryStreamExt;
 use move_package_alt_compilation::build_config::BuildConfig as MoveBuildConfig;
-use serde_json::json;
 use myso::client_commands::{
     EphemeralArgs, GasDataArgs, PaymentArgs, PublishArgs, TestPublishArgs, TxProcessingArgs,
     UpgradeArgs,
@@ -34,14 +33,10 @@ use myso_types::transaction::{
     TEST_ONLY_GAS_UNIT_FOR_PUBLISH, TEST_ONLY_GAS_UNIT_FOR_SPLIT_COIN,
     TEST_ONLY_GAS_UNIT_FOR_TRANSFER, TransactionData, TransactionDataAPI, TransactionKind,
 };
+use serde_json::json;
 use tokio::time::sleep;
 
 use move_package_alt::schema::{Environment, ParsedPublishedFile};
-use mysten_common::random_util::TempDir;
-use mysten_common::tempdir;
-use std::fs::OpenOptions;
-use std::path::Path;
-use std::{fs, io};
 use myso::{
     client_commands::{
         MySoClientCommandResult, MySoClientCommands, SwitchResponse, estimate_gas_budget,
@@ -49,8 +44,8 @@ use myso::{
     myso_commands::{MySoCommand, parse_host_port},
 };
 use myso_config::{
-    PersistedConfig, MYSO_CLIENT_CONFIG, MYSO_FULLNODE_CONFIG, MYSO_GENESIS_FILENAME,
-    MYSO_KEYSTORE_ALIASES_FILENAME, MYSO_KEYSTORE_FILENAME, MYSO_NETWORK_CONFIG,
+    MYSO_CLIENT_CONFIG, MYSO_FULLNODE_CONFIG, MYSO_GENESIS_FILENAME,
+    MYSO_KEYSTORE_ALIASES_FILENAME, MYSO_KEYSTORE_FILENAME, MYSO_NETWORK_CONFIG, PersistedConfig,
 };
 use myso_json::MySoJsonValue;
 use myso_keys::keystore::AccountKeystore;
@@ -63,10 +58,15 @@ use myso_swarm_config::genesis_config::{AccountConfig, GenesisConfig};
 use myso_swarm_config::network_config::NetworkConfig;
 use myso_types::base_types::MySoAddress;
 use myso_types::crypto::{
-    Ed25519MySoSignature, Secp256k1MySoSignature, SignatureScheme, MySoKeyPair, MySoSignatureInner,
+    Ed25519MySoSignature, MySoKeyPair, MySoSignatureInner, Secp256k1MySoSignature, SignatureScheme,
 };
 use myso_types::move_package::{MovePackage, UpgradeInfo};
 use myso_types::{base_types::ObjectID, crypto::get_key_pair, gas_coin::GasCoin};
+use mysten_common::random_util::TempDir;
+use mysten_common::tempdir;
+use std::fs::OpenOptions;
+use std::path::Path;
+use std::{fs, io};
 use test_cluster::{TestCluster, TestClusterBuilder};
 
 const TEST_DATA_DIR: &str = "tests/data/";
@@ -2513,7 +2513,9 @@ async fn test_active_address_command() -> Result<(), anyhow::Error> {
     let addr1 = context.active_address()?;
 
     // Run a command with address omitted
-    let os = MySoClientCommands::ActiveAddress {}.execute(context).await?;
+    let os = MySoClientCommands::ActiveAddress {}
+        .execute(context)
+        .await?;
 
     let a = if let MySoClientCommandResult::ActiveAddress(Some(v)) = os {
         v

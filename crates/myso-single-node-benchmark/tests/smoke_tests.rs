@@ -2,12 +2,12 @@
 // Copyright (c) The Social Proof Foundation, LLC.
 // SPDX-License-Identifier: Apache-2.0
 
-use std::path::PathBuf;
-use strum::IntoEnumIterator;
 use myso_macros::sim_test;
 use myso_single_node_benchmark::command::{Component, WorkloadKind};
 use myso_single_node_benchmark::run_benchmark;
 use myso_single_node_benchmark::workload::Workload;
+use std::path::PathBuf;
+use strum::IntoEnumIterator;
 
 #[sim_test]
 async fn benchmark_non_move_transactions_smoke_test() {

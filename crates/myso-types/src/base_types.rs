@@ -4,11 +4,11 @@
 // SPDX-License-Identifier: Apache-2.0
 
 use crate::MOVE_STDLIB_ADDRESS;
-use crate::MoveTypeTagTrait;
-use crate::MoveTypeTagTraitGeneric;
 use crate::MYSO_CLOCK_OBJECT_ID;
 use crate::MYSO_FRAMEWORK_ADDRESS;
 use crate::MYSO_SYSTEM_ADDRESS;
+use crate::MoveTypeTagTrait;
+use crate::MoveTypeTagTraitGeneric;
 use crate::accumulator_root::accumulator_value_balance_type_maybe;
 use crate::balance::Balance;
 use crate::coin::COIN_MODULE_NAME;
@@ -19,7 +19,7 @@ use crate::coin::TreasuryCap;
 use crate::coin_registry::Currency;
 pub use crate::committee::EpochId;
 use crate::crypto::{
-    AuthorityPublicKeyBytes, DefaultHash, PublicKey, SignatureScheme, MySoPublicKey, MySoSignature,
+    AuthorityPublicKeyBytes, DefaultHash, MySoPublicKey, MySoSignature, PublicKey, SignatureScheme,
 };
 pub use crate::digests::{ObjectDigest, TransactionDigest, TransactionEffectsDigest};
 use crate::dynamic_field::DynamicFieldInfo;
@@ -40,12 +40,12 @@ use crate::governance::StakedMySo;
 use crate::id::RESOLVED_MYSO_ID;
 use crate::messages_checkpoint::CheckpointTimestamp;
 use crate::multisig::MultiSigPublicKey;
-use crate::object::{Object, Owner};
-use crate::parse_myso_struct_tag;
-use crate::signature::GenericSignature;
 use crate::myso_serde::Readable;
 use crate::myso_serde::to_custom_deser_error;
 use crate::myso_serde::to_myso_struct_tag_string;
+use crate::object::{Object, Owner};
+use crate::parse_myso_struct_tag;
+use crate::signature::GenericSignature;
 use crate::transaction::Transaction;
 use crate::transaction::VerifiedTransaction;
 use crate::zk_login_authenticator::ZkLoginAuthenticator;
@@ -65,6 +65,7 @@ use move_core_types::identifier::IdentStr;
 use move_core_types::language_storage::ModuleId;
 use move_core_types::language_storage::StructTag;
 use move_core_types::language_storage::TypeTag;
+use myso_protocol_config::ProtocolConfig;
 use rand::Rng;
 use schemars::JsonSchema;
 use serde::Deserializer;
@@ -81,7 +82,6 @@ use std::cmp::max;
 use std::convert::{TryFrom, TryInto};
 use std::fmt;
 use std::str::FromStr;
-use myso_protocol_config::ProtocolConfig;
 
 #[cfg(test)]
 #[path = "unit_tests/base_types_tests.rs"]

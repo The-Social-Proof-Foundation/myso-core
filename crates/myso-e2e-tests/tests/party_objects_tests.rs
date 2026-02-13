@@ -2,9 +2,6 @@
 // Copyright (c) The Social Proof Foundation, LLC.
 // SPDX-License-Identifier: Apache-2.0
 
-use rand::distributions::Distribution;
-use std::net::SocketAddr;
-use std::time::Duration;
 use myso_macros::sim_test;
 use myso_swarm_config::genesis_config::{AccountConfig, DEFAULT_GAS_AMOUNT};
 use myso_test_transaction_builder::publish_basics_package_and_make_party_object;
@@ -12,6 +9,9 @@ use myso_types::base_types::{FullObjectRef, MySoAddress};
 use myso_types::effects::TransactionEffectsAPI;
 use myso_types::object::Owner;
 use myso_types::transaction::{CallArg, ObjectArg, SharedObjectMutability};
+use rand::distributions::Distribution;
+use std::net::SocketAddr;
+use std::time::Duration;
 use test_cluster::TestClusterBuilder;
 use tracing::info;
 

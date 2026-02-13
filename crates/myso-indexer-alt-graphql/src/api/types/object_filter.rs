@@ -7,8 +7,8 @@ use async_graphql::CustomValidator;
 use async_graphql::InputObject;
 use async_graphql::InputValueError;
 
-use crate::api::scalars::owner_kind::OwnerKind;
 use crate::api::scalars::myso_address::MySoAddress;
+use crate::api::scalars::owner_kind::OwnerKind;
 use crate::api::scalars::type_filter::TypeFilter;
 use crate::intersect;
 

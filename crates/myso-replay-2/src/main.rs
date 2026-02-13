@@ -5,13 +5,13 @@
 use anyhow::{Result, anyhow};
 use clap::*;
 use core::panic;
-use std::str::FromStr;
 use myso_replay_2::{
     Command, Config, handle_replay_config, load_config_file, merge_configs,
     package_tools::{extract_package, overwrite_package, rebuild_package},
     print_effects_or_fork,
 };
 use myso_types::base_types::ObjectID;
+use std::str::FromStr;
 
 // Define the `GIT_REVISION` and `VERSION` consts
 bin_version::bin_version!();

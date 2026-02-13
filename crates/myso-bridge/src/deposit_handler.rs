@@ -25,7 +25,10 @@ pub async fn run_evm_deposit_processor(
             "Processing EVM deposit"
         );
 
-        match bridge_handler.handle_evm_deposit(deposit_event.clone()).await {
+        match bridge_handler
+            .handle_evm_deposit(deposit_event.clone())
+            .await
+        {
             Ok(bridge_tx_hash) => {
                 if bridge_tx_hash == alloy::primitives::TxHash::ZERO {
                     // Already processed, skipped
@@ -67,7 +70,10 @@ pub async fn run_myso_deposit_processor(
             "Processing MySocial deposit"
         );
 
-        match bridge_handler.handle_myso_deposit(deposit_event.clone()).await {
+        match bridge_handler
+            .handle_myso_deposit(deposit_event.clone())
+            .await
+        {
             Ok(bridge_tx_digest) => {
                 if bridge_tx_digest == myso_types::digests::TransactionDigest::ZERO {
                     continue;

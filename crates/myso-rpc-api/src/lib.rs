@@ -2,12 +2,12 @@
 // Copyright (c) The Social Proof Foundation, LLC.
 // SPDX-License-Identifier: Apache-2.0
 
+use myso_types::storage::RpcStateReader;
+use myso_types::transaction_executor::TransactionExecutor;
 use mysten_network::callback::CallbackLayer;
 use reader::StateReader;
 use std::sync::Arc;
 use subscription::SubscriptionServiceHandle;
-use myso_types::storage::RpcStateReader;
-use myso_types::transaction_executor::TransactionExecutor;
 use tap::Pipe;
 
 pub mod client;
@@ -26,8 +26,8 @@ pub use error::{
     CheckpointNotFoundError, ErrorDetails, ErrorReason, ObjectNotFoundError, Result, RpcError,
 };
 pub use metrics::{RpcMetrics, RpcMetricsMakeCallbackHandler};
-pub use reader::TransactionNotFoundError;
 pub use myso_rpc::proto;
+pub use reader::TransactionNotFoundError;
 
 #[derive(Clone)]
 pub struct ServerVersion {

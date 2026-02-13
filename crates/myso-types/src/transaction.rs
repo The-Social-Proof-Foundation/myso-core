@@ -13,8 +13,8 @@ use crate::coin_reservation::{
 use crate::committee::{Committee, EpochId, ProtocolVersion};
 use crate::crypto::{
     AuthoritySignInfo, AuthoritySignInfoTrait, AuthoritySignature, AuthorityStrongQuorumSignInfo,
-    DefaultHash, Ed25519MySoSignature, EmptySignInfo, RandomnessRound, Signature, Signer,
-    MySoSignatureInner, ToFromBytes, default_hash,
+    DefaultHash, Ed25519MySoSignature, EmptySignInfo, MySoSignatureInner, RandomnessRound,
+    Signature, Signer, ToFromBytes, default_hash,
 };
 use crate::digests::{AdditionalConsensusStateDigest, CertificateDigest, SenderSignedDataDigest};
 use crate::digests::{ChainIdentifier, ConsensusCommitDigest, ZKLoginInputsDigest};
@@ -45,6 +45,7 @@ use fastcrypto::{encoding::Base64, hash::HashFunction};
 use itertools::{Either, Itertools};
 use move_core_types::{ident_str, identifier};
 use move_core_types::{identifier::Identifier, language_storage::TypeTag};
+use myso_protocol_config::{PerObjectCongestionControlMode, ProtocolConfig};
 use nonempty::{NonEmpty, nonempty};
 use serde::{Deserialize, Serialize};
 use shared_crypto::intent::{Intent, IntentMessage, IntentScope};
@@ -59,7 +60,6 @@ use std::{
     iter,
 };
 use strum::IntoStaticStr;
-use myso_protocol_config::{PerObjectCongestionControlMode, ProtocolConfig};
 use tap::Pipe;
 use tracing::trace;
 
@@ -2071,7 +2071,11 @@ impl TransactionData {
         })
     }
 
-    pub fn new_with_gas_data(kind: TransactionKind, sender: MySoAddress, gas_data: GasData) -> Self {
+    pub fn new_with_gas_data(
+        kind: TransactionKind,
+        sender: MySoAddress,
+        gas_data: GasData,
+    ) -> Self {
         TransactionData::V1(TransactionDataV1 {
             kind,
             sender,

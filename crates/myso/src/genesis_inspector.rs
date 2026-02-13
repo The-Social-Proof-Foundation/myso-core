@@ -3,7 +3,6 @@
 // SPDX-License-Identifier: Apache-2.0
 
 use inquire::Select;
-use std::collections::BTreeMap;
 use myso_config::genesis::UnsignedGenesis;
 use myso_types::myso_system_state::MySoValidatorGenesis;
 use myso_types::{
@@ -14,6 +13,7 @@ use myso_types::{
     move_package::MovePackage,
     object::{MoveObject, Owner},
 };
+use std::collections::BTreeMap;
 
 const STR_ALL: &str = "All";
 const STR_EXIT: &str = "Exit";
@@ -116,7 +116,8 @@ pub(crate) fn examine_genesis_checkpoint(genesis: UnsignedGenesis) {
     examine_total_supply(&myso_distribution, false);
 
     // Main loop for inspection
-    let main_options: Vec<&str> = vec![STR_MYSO_DISTRIBUTION, STR_VALIDATORS, STR_OBJECTS, STR_EXIT];
+    let main_options: Vec<&str> =
+        vec![STR_MYSO_DISTRIBUTION, STR_VALIDATORS, STR_OBJECTS, STR_EXIT];
     loop {
         let ans = Select::new(
             "Select one main category to examine ('Exit' to exit the program):",

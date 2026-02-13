@@ -50,7 +50,8 @@ members = []
   "#,
     )?;
     // Create a dummy Dockerfile at the tempdir/myso/docker/myso-services level
-    let myso_services_dockerfile_path = temp_dir.path().join("myso/docker/myso-services/Dockerfile");
+    let myso_services_dockerfile_path =
+        temp_dir.path().join("myso/docker/myso-services/Dockerfile");
     std::fs::create_dir_all(myso_services_dockerfile_path.parent().unwrap())?;
     std::fs::write(
         &myso_services_dockerfile_path,

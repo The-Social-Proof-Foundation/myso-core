@@ -4,12 +4,12 @@
 
 use std::{collections::HashMap, sync::Arc};
 
-use rand::{Rng, SeedableRng, rngs::StdRng};
 use myso_core::authority::authority_store_tables::LiveObject;
 use myso_types::{
-    base_types::{ObjectRef, MySoAddress},
+    base_types::{MySoAddress, ObjectRef},
     object::Owner,
 };
+use rand::{Rng, SeedableRng, rngs::StdRng};
 use test_cluster::TestCluster;
 use tokio::sync::{RwLock, watch};
 

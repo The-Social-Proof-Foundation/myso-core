@@ -9,9 +9,9 @@ use std::sync::atomic::AtomicU64;
 use std::{cmp::Ordering, hash::DefaultHasher};
 
 use moka::sync::SegmentedCache as MokaCache;
+use myso_types::base_types::SequenceNumber;
 use mysten_common::{debug_fatal, fatal};
 use parking_lot::Mutex;
-use myso_types::base_types::SequenceNumber;
 
 pub enum CacheResult<T> {
     /// Entry is in the cache

@@ -7,7 +7,7 @@ use jsonrpsee::proc_macros::rpc;
 
 use myso_json_rpc_types::{DelegatedStake, MySoCommittee, ValidatorApys};
 use myso_open_rpc_macros::open_rpc;
-use myso_types::base_types::{ObjectID, MySoAddress};
+use myso_types::base_types::{MySoAddress, ObjectID};
 use myso_types::myso_serde::BigInt;
 use myso_types::myso_system_state::myso_system_state_summary::MySoSystemStateSummary;
 

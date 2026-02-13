@@ -4,7 +4,6 @@
 
 use itertools::Itertools;
 use move_core_types::language_storage::StructTag;
-use std::str::FromStr;
 use myso_keys::keystore::AccountKeystore;
 use myso_light_client::authenticated_events::mmr::apply_stream_updates;
 use myso_light_client::proof::base::{Proof, ProofContents, ProofTarget, ProofVerifier};
@@ -25,14 +24,17 @@ use myso_rpc_api::grpc::alpha::proof_service_proto::proof_service_client::ProofS
 use myso_sdk_types::ValidatorCommittee;
 use myso_types::accumulator_root as ar;
 use myso_types::accumulator_root::EventCommitment;
-use myso_types::base_types::{ObjectID, SequenceNumber, MySoAddress};
+use myso_types::base_types::{MySoAddress, ObjectID, SequenceNumber};
 use myso_types::committee::Committee;
 use myso_types::digests::{Digest, ObjectDigest};
 use myso_types::dynamic_field::{DynamicFieldKey, Field};
 use myso_types::object::Object;
 use myso_types::programmable_transaction_builder::ProgrammableTransactionBuilder;
 use myso_types::transaction::TransactionData;
-use myso_types::{MoveTypeTagTraitGeneric, MYSO_ACCUMULATOR_ROOT_OBJECT_ID, MYSO_FRAMEWORK_ADDRESS};
+use myso_types::{
+    MYSO_ACCUMULATOR_ROOT_OBJECT_ID, MYSO_FRAMEWORK_ADDRESS, MoveTypeTagTraitGeneric,
+};
+use std::str::FromStr;
 use test_cluster::{TestCluster, TestClusterBuilder};
 
 fn create_rpc_config_with_authenticated_events() -> myso_config::RpcConfig {
@@ -1239,26 +1241,28 @@ async fn authenticated_events_multiple_commits_per_checkpoint() {
                 vec![val],
             );
 
-            myso_types::transaction::TransactionData::V1(myso_types::transaction::TransactionDataV1 {
-                kind: myso_types::transaction::TransactionKind::ProgrammableTransaction(
-                    ptb.finish(),
-                ),
-                sender,
-                gas_data: myso_types::transaction::GasData {
-                    payment: vec![],
-                    owner: sender,
-                    price: rgp,
-                    budget: 50_000_000_000,
+            myso_types::transaction::TransactionData::V1(
+                myso_types::transaction::TransactionDataV1 {
+                    kind: myso_types::transaction::TransactionKind::ProgrammableTransaction(
+                        ptb.finish(),
+                    ),
+                    sender,
+                    gas_data: myso_types::transaction::GasData {
+                        payment: vec![],
+                        owner: sender,
+                        price: rgp,
+                        budget: 50_000_000_000,
+                    },
+                    expiration: myso_types::transaction::TransactionExpiration::ValidDuring {
+                        min_epoch: Some(0),
+                        max_epoch: Some(0),
+                        min_timestamp: None,
+                        max_timestamp: None,
+                        chain: chain_id,
+                        nonce: i,
+                    },
                 },
-                expiration: myso_types::transaction::TransactionExpiration::ValidDuring {
-                    min_epoch: Some(0),
-                    max_epoch: Some(0),
-                    min_timestamp: None,
-                    max_timestamp: None,
-                    chain: chain_id,
-                    nonce: i,
-                },
-            })
+            )
         })
         .collect();
 

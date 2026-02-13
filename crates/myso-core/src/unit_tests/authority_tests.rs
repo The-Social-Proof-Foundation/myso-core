@@ -15,6 +15,7 @@ use move_core_types::language_storage::StructTag;
 use move_core_types::{
     account_address::AccountAddress, ident_str, identifier::Identifier, language_storage::TypeTag,
 };
+use myso_test_transaction_builder::TestTransactionBuilder;
 use rand::seq::SliceRandom;
 use rand::{SeedableRng, prelude::StdRng};
 use serde_json::json;
@@ -22,7 +23,6 @@ use std::collections::HashSet;
 use std::fs;
 use std::str::FromStr;
 use std::{convert::TryInto, env};
-use myso_test_transaction_builder::TestTransactionBuilder;
 
 use myso_json_rpc_types::{
     MySoArgument, MySoExecutionResult, MySoExecutionStatus, MySoTransactionBlockEffectsAPI,
@@ -43,10 +43,10 @@ use myso_types::gas_coin::GasCoin;
 use myso_types::messages_consensus::{
     AuthorityCapabilitiesV2, ConsensusDeterminedVersionAssignments,
 };
+use myso_types::myso_system_state::MySoSystemStateWrapper;
 use myso_types::object::Data;
 use myso_types::programmable_transaction_builder::ProgrammableTransactionBuilder;
 use myso_types::randomness_state::get_randomness_state_obj_initial_shared_version;
-use myso_types::myso_system_state::MySoSystemStateWrapper;
 use myso_types::supported_protocol_versions::SupportedProtocolVersions;
 use myso_types::utils::{
     to_sender_signed_transaction, to_sender_signed_transaction_with_multi_signers,
@@ -3047,9 +3047,10 @@ async fn test_transfer_myso_no_amount() {
     assert!(effects.mutated_excluding_gas().is_empty());
     assert!(gas_ref.1 < effects.gas_object().0.1);
     assert_eq!(effects.gas_object().1, Owner::AddressOwner(recipient));
-    let new_balance =
-        myso_types::gas::get_gas_balance(&authority_state.get_object(&gas_object_id).await.unwrap())
-            .unwrap();
+    let new_balance = myso_types::gas::get_gas_balance(
+        &authority_state.get_object(&gas_object_id).await.unwrap(),
+    )
+    .unwrap();
     assert_eq!(
         new_balance as i64 + effects.gas_cost_summary().net_gas_usage(),
         init_balance as i64
@@ -3093,9 +3094,10 @@ async fn test_transfer_myso_with_amount() {
     assert_eq!(myso_types::gas::get_gas_balance(&new_gas).unwrap(), 500);
     assert!(gas_ref.1 < effects.gas_object().0.1);
     assert_eq!(effects.gas_object().1, Owner::AddressOwner(sender));
-    let new_balance =
-        myso_types::gas::get_gas_balance(&authority_state.get_object(&gas_object_id).await.unwrap())
-            .unwrap();
+    let new_balance = myso_types::gas::get_gas_balance(
+        &authority_state.get_object(&gas_object_id).await.unwrap(),
+    )
+    .unwrap();
     assert_eq!(
         new_balance as i64 + effects.gas_cost_summary().net_gas_usage() + 500,
         init_balance as i64

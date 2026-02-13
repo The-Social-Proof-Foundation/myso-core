@@ -4,8 +4,8 @@
 
 use std::{fmt::Display, str::FromStr};
 
-use serde::Serialize;
 use myso_types::base_types::MySoAddress;
+use serde::Serialize;
 
 /// An address or an alias associated with a key in the wallet
 /// This is used to distinguish between an address or an alias,

@@ -10,16 +10,14 @@
 use core::panic;
 use fastcrypto::encoding::Base64;
 use jsonrpsee::{core::client::ClientT, rpc_params};
-use std::fs::File;
-use std::num::NonZeroUsize;
-use std::time::Duration;
 use myso_core::authority_client::AuthorityAPI;
 use myso_core::authority_client::make_network_authority_clients_with_network_config;
 use myso_core::traffic_controller::{
     TrafficController, TrafficSim, nodefw_test_server::NodeFwTestServer,
 };
 use myso_json_rpc_types::{
-    MySoTransactionBlockEffectsAPI, MySoTransactionBlockResponse, MySoTransactionBlockResponseOptions,
+    MySoTransactionBlockEffectsAPI, MySoTransactionBlockResponse,
+    MySoTransactionBlockResponseOptions,
 };
 use myso_macros::sim_test;
 use myso_network::default_mysten_network_config;
@@ -35,6 +33,9 @@ use myso_types::{
     },
     transaction_driver_types::ExecuteTransactionRequestType,
 };
+use std::fs::File;
+use std::num::NonZeroUsize;
+use std::time::Duration;
 use test_cluster::{TestCluster, TestClusterBuilder};
 
 #[tokio::test]

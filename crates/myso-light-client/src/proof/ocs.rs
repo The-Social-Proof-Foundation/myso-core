@@ -3,8 +3,6 @@
 // SPDX-License-Identifier: Apache-2.0
 
 use fastcrypto::hash::Blake2b256;
-use serde::{Deserialize, Serialize};
-use std::collections::HashMap;
 use myso_types::base_types::{ObjectRef, SequenceNumber};
 use myso_types::digests::{CheckpointArtifactsDigest, Digest, ObjectDigest};
 use myso_types::messages_checkpoint::CheckpointArtifacts;
@@ -12,6 +10,8 @@ use myso_types::{
     base_types::ObjectID, full_checkpoint_content::CheckpointData,
     messages_checkpoint::VerifiedCheckpoint,
 };
+use serde::{Deserialize, Serialize};
+use std::collections::HashMap;
 
 use crate::proof::{
     base::{Proof, ProofBuilder, ProofContents, ProofContentsVerifier, ProofTarget},

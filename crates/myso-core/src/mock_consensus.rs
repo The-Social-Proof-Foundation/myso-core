@@ -7,8 +7,6 @@ use crate::authority::{AuthorityState, ExecutionEnv};
 use crate::consensus_adapter::{BlockStatusReceiver, ConsensusClient, SubmitToConsensus};
 
 use consensus_types::block::BlockRef;
-use std::sync::{Arc, Weak};
-use std::time::Duration;
 use myso_types::committee::EpochId;
 use myso_types::error::{MySoError, MySoResult};
 use myso_types::executable_transaction::VerifiedExecutableTransaction;
@@ -16,6 +14,8 @@ use myso_types::messages_consensus::{
     ConsensusPosition, ConsensusTransaction, ConsensusTransactionKind,
 };
 use myso_types::transaction::VerifiedTransaction;
+use std::sync::{Arc, Weak};
+use std::time::Duration;
 use tokio::sync::{mpsc, oneshot};
 use tokio::task::JoinHandle;
 use tracing::debug;

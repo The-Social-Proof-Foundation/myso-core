@@ -34,7 +34,7 @@ use itertools::Itertools;
 use move_core_types::{account_address::AccountAddress, ident_str};
 use myso_config::node::AuthorityOverloadConfig;
 use myso_test_transaction_builder::TestTransactionBuilder;
-use myso_types::base_types::{ObjectID, ObjectRef, MySoAddress};
+use myso_types::base_types::{MySoAddress, ObjectID, ObjectRef};
 use myso_types::crypto::{AccountKeyPair, Signature, Signer, get_key_pair};
 use myso_types::effects::{TransactionEffects, TransactionEffectsAPI};
 use myso_types::messages_grpc::{LayoutGenerationOption, ObjectInfoRequest};

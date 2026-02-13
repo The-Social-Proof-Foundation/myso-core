@@ -5,13 +5,13 @@
 use std::{cmp, str::FromStr};
 
 use move_core_types::identifier::Identifier;
+use myso_protocol_config::ProtocolConfig;
+use myso_types::base_types::{MySoAddress, ObjectID, ObjectRef};
+use myso_types::programmable_transaction_builder::ProgrammableTransactionBuilder;
+use myso_types::transaction::{Argument, CallArg, Command, ProgrammableTransaction};
 use once_cell::sync::Lazy;
 use proptest::collection::vec;
 use proptest::prelude::*;
-use myso_protocol_config::ProtocolConfig;
-use myso_types::base_types::{ObjectID, ObjectRef, MySoAddress};
-use myso_types::programmable_transaction_builder::ProgrammableTransactionBuilder;
-use myso_types::transaction::{Argument, CallArg, Command, ProgrammableTransaction};
 
 static PROTOCOL_CONFIG: Lazy<ProtocolConfig> =
     Lazy::new(ProtocolConfig::get_for_max_version_UNSAFE);

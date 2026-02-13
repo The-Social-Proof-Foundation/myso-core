@@ -5,9 +5,9 @@
 use axum::extract::State;
 use axum::{Extension, Json};
 use axum_extra::extract::WithRejection;
-use prost_types::FieldMask;
 use myso_rpc::field::FieldMaskUtil;
 use myso_rpc::proto::myso::rpc::v2::GetTransactionRequest;
+use prost_types::FieldMask;
 use tracing::debug;
 
 use crate::operations::Operations;
@@ -15,7 +15,7 @@ use crate::types::{
     BlockRequest, BlockResponse, BlockTransactionRequest, BlockTransactionResponse, Transaction,
     TransactionIdentifier,
 };
-use crate::{Error, OnlineServerContext, MySoEnv};
+use crate::{Error, MySoEnv, OnlineServerContext};
 
 // This module implements the [Mesh Block API](https://docs.cdp.coinbase.com/mesh/mesh-api-spec/api-reference#block)
 

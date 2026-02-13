@@ -7,7 +7,7 @@ use std::path::PathBuf;
 use anyhow::anyhow;
 use fastcrypto::encoding::{Encoding, Hex};
 use fastcrypto::{secp256k1::Secp256k1KeyPair, traits::EncodeDecodeBase64};
-use myso_types::crypto::{AuthorityKeyPair, NetworkKeyPair, MySoKeyPair, ToFromBytes};
+use myso_types::crypto::{AuthorityKeyPair, MySoKeyPair, NetworkKeyPair, ToFromBytes};
 
 /// Write Base64 encoded `flag || privkey` to file.
 pub fn write_keypair_to_file<P: AsRef<std::path::Path>>(

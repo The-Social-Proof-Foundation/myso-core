@@ -11,13 +11,13 @@ use move_core_types::identifier::Identifier;
 use move_core_types::language_storage::{StructTag, TypeTag};
 use serde_json::json;
 
+use myso_types::base_types::{MySoAddress, ObjectID};
 use myso_types::base_types::{ObjectDigest, SequenceNumber};
-use myso_types::base_types::{ObjectID, MySoAddress};
 use myso_types::gas_coin::GasCoin;
 use myso_types::object::{MoveObject, Owner};
 use myso_types::{MOVE_STDLIB_ADDRESS, MYSO_FRAMEWORK_ADDRESS, parse_myso_struct_tag};
 
-use crate::{ObjectChange, MySoMoveStruct, MySoMoveValue};
+use crate::{MySoMoveStruct, MySoMoveValue, ObjectChange};
 
 #[test]
 fn test_move_value_to_myso_coin() {

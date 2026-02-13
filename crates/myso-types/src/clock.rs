@@ -13,8 +13,11 @@ use crate::{MYSO_FRAMEWORK_ADDRESS, id::UID};
 
 pub const CLOCK_MODULE_NAME: &IdentStr = ident_str!("clock");
 pub const CLOCK_STRUCT_NAME: &IdentStr = ident_str!("Clock");
-pub const RESOLVED_MYSO_CLOCK: (&AccountAddress, &IdentStr, &IdentStr) =
-    (&MYSO_FRAMEWORK_ADDRESS, CLOCK_MODULE_NAME, CLOCK_STRUCT_NAME);
+pub const RESOLVED_MYSO_CLOCK: (&AccountAddress, &IdentStr, &IdentStr) = (
+    &MYSO_FRAMEWORK_ADDRESS,
+    CLOCK_MODULE_NAME,
+    CLOCK_STRUCT_NAME,
+);
 pub const CONSENSUS_COMMIT_PROLOGUE_FUNCTION_NAME: &IdentStr =
     ident_str!("consensus_commit_prologue");
 

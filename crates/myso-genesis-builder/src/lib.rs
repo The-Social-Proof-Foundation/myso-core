@@ -8,11 +8,6 @@ use fastcrypto::hash::HashFunction;
 use fastcrypto::traits::KeyPair;
 use move_binary_format::CompiledModule;
 use move_core_types::ident_str;
-use shared_crypto::intent::{Intent, IntentMessage, IntentScope};
-use std::collections::BTreeMap;
-use std::fs;
-use std::path::Path;
-use std::sync::Arc;
 use myso_config::genesis::{
     Genesis, GenesisCeremonyParameters, GenesisChainParameters, TokenDistributionSchedule,
     UnsignedGenesis,
@@ -45,13 +40,20 @@ use myso_types::messages_checkpoint::{
     CheckpointVersionSpecificData, CheckpointVersionSpecificDataV1,
 };
 use myso_types::metrics::LimitsMetrics;
+use myso_types::myso_system_state::{MySoSystemState, MySoSystemStateTrait, get_myso_system_state};
 use myso_types::object::{Object, Owner};
 use myso_types::programmable_transaction_builder::ProgrammableTransactionBuilder;
-use myso_types::myso_system_state::{MySoSystemState, MySoSystemStateTrait, get_myso_system_state};
 use myso_types::transaction::{
     CallArg, CheckedInputObjects, Command, InputObjectKind, ObjectReadResult, Transaction,
 };
-use myso_types::{BRIDGE_ADDRESS, MYSO_BRIDGE_OBJECT_ID, MYSO_FRAMEWORK_ADDRESS, MYSO_SYSTEM_ADDRESS};
+use myso_types::{
+    BRIDGE_ADDRESS, MYSO_BRIDGE_OBJECT_ID, MYSO_FRAMEWORK_ADDRESS, MYSO_SYSTEM_ADDRESS,
+};
+use shared_crypto::intent::{Intent, IntentMessage, IntentScope};
+use std::collections::BTreeMap;
+use std::fs;
+use std::path::Path;
+use std::sync::Arc;
 use tracing::trace;
 use validator_info::{GenesisValidatorInfo, GenesisValidatorMetadata, ValidatorInfo};
 
@@ -504,7 +506,8 @@ impl Builder {
                     })
                     .map(|(k, _)| *k)
                     .expect("all allocations should be present");
-                let staked_myso_object = staked_myso_objects.remove(&staked_myso_object_id).unwrap();
+                let staked_myso_object =
+                    staked_myso_objects.remove(&staked_myso_object_id).unwrap();
                 assert_eq!(
                     staked_myso_object.0.owner,
                     Owner::AddressOwner(allocation.recipient_address)
@@ -1196,7 +1199,9 @@ pub fn generate_genesis_system_object(
 
         if protocol_config.enable_bridge() {
             let bridge_uid = builder
-                .input(CallArg::Pure(UID::new(MYSO_BRIDGE_OBJECT_ID).to_bcs_bytes()))
+                .input(CallArg::Pure(
+                    UID::new(MYSO_BRIDGE_OBJECT_ID).to_bcs_bytes(),
+                ))
                 .unwrap();
             // TODO(bridge): this needs to be passed in as a parameter for next testnet regenesis
             // Hardcoding chain id to MySoCustom

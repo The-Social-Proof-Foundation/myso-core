@@ -4,7 +4,6 @@
 
 mod utils;
 use anyhow::anyhow;
-use shared_crypto::intent::Intent;
 use myso_config::{MYSO_KEYSTORE_FILENAME, myso_config_dir};
 use myso_keys::keystore::{AccountKeystore, FileBasedKeystore};
 use myso_sdk::{
@@ -17,6 +16,7 @@ use myso_sdk::{
         transaction_driver_types::ExecuteTransactionRequestType,
     },
 };
+use shared_crypto::intent::Intent;
 use utils::setup_for_write;
 
 // This example shows how to use programmable transactions to chain multiple

@@ -3,14 +3,14 @@
 // SPDX-License-Identifier: Apache-2.0
 
 use crate::data_store::PackageStore;
-use std::{
-    collections::{BTreeMap, btree_map::Entry},
-    rc::Rc,
-};
 use myso_types::{
     base_types::{ObjectID, SequenceNumber},
     error::{ExecutionError, ExecutionErrorKind},
     move_package::MovePackage,
+};
+use std::{
+    collections::{BTreeMap, btree_map::Entry},
+    rc::Rc,
 };
 
 /// Unifiers. These are used to determine how to unify two packages.

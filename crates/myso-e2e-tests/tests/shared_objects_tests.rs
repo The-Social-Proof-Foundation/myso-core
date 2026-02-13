@@ -4,9 +4,6 @@
 
 use futures::future::join_all;
 use futures::join;
-use rand::distributions::Distribution;
-use std::net::SocketAddr;
-use std::time::{Duration, SystemTime};
 use myso_macros::{register_fail_point_async, sim_test};
 use myso_swarm_config::genesis_config::{AccountConfig, DEFAULT_GAS_AMOUNT};
 use myso_test_transaction_builder::{
@@ -19,6 +16,9 @@ use myso_types::event::Event;
 use myso_types::execution_status::{CommandArgumentError, ExecutionFailureStatus, ExecutionStatus};
 use myso_types::messages_grpc::WaitForEffectsResponse;
 use myso_types::transaction::{CallArg, ObjectArg, SharedObjectMutability};
+use rand::distributions::Distribution;
+use std::net::SocketAddr;
+use std::time::{Duration, SystemTime};
 use test_cluster::TestClusterBuilder;
 use tokio::time::sleep;
 use tracing::info;

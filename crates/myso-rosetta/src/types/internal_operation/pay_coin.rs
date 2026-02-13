@@ -10,7 +10,7 @@ use std::str::FromStr;
 use myso_rpc::client::Client;
 use myso_rpc::proto::myso::rpc::v2::{Object, owner::OwnerKind};
 use myso_sdk_types::{Address, TypeTag};
-use myso_types::base_types::{ObjectID, ObjectRef, SequenceNumber, MySoAddress};
+use myso_types::base_types::{MySoAddress, ObjectID, ObjectRef, SequenceNumber};
 use myso_types::programmable_transaction_builder::ProgrammableTransactionBuilder;
 use myso_types::rpc_proto_conversions::ObjectReferenceExt;
 use myso_types::transaction::{Argument, Command, ObjectArg, ProgrammableTransaction};

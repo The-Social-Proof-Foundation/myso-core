@@ -14,8 +14,6 @@ use consensus_core::BlockStatus;
 use consensus_types::block::{BlockRef, PING_TRANSACTION_INDEX};
 use fastcrypto::traits::KeyPair;
 use move_core_types::{account_address::AccountAddress, ident_str};
-use rand::rngs::StdRng;
-use rand::{Rng, SeedableRng, thread_rng};
 use myso_macros::sim_test;
 use myso_types::MYSO_FRAMEWORK_PACKAGE_ID;
 use myso_types::crypto::{AccountKeyPair, deterministic_random_account_key};
@@ -28,10 +26,12 @@ use myso_types::transaction::SharedObjectMutability;
 use myso_types::transaction::VerifiedTransactionWithAliases;
 use myso_types::utils::{make_committee_key_num, to_sender_signed_transaction};
 use myso_types::{
-    base_types::{ExecutionDigests, ObjectID, MySoAddress},
+    base_types::{ExecutionDigests, MySoAddress, ObjectID},
     object::Object,
     transaction::{CallArg, ObjectArg, TEST_ONLY_GAS_UNIT_FOR_OBJECT_BASICS, TransactionData},
 };
+use rand::rngs::StdRng;
+use rand::{Rng, SeedableRng, thread_rng};
 use tokio::time::sleep;
 
 /// Fixture: a few test gas objects.

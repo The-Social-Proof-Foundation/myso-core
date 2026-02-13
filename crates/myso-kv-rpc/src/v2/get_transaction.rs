@@ -2,8 +2,6 @@
 // Copyright (c) The Social Proof Foundation, LLC.
 // SPDX-License-Identifier: Apache-2.0
 
-use std::collections::HashMap;
-use std::str::FromStr;
 use myso_kvstore::{BigTableClient, KeyValueStoreReader, TransactionData};
 use myso_rpc::field::{FieldMask, FieldMaskTree, FieldMaskUtil};
 use myso_rpc::merge::Merge;
@@ -17,6 +15,8 @@ use myso_rpc_api::{
     proto::google::rpc::bad_request::FieldViolation, proto::timestamp_ms_to_proto,
 };
 use myso_types::base_types::TransactionDigest;
+use std::collections::HashMap;
+use std::str::FromStr;
 
 pub const MAX_BATCH_REQUESTS: usize = 200;
 pub const READ_MASK_DEFAULT: &str = "digest";

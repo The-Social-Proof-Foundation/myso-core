@@ -11,18 +11,18 @@ use crate::workloads::workload::{ExpectedFailureType, STORAGE_COST_PER_COIN, Wor
 use crate::workloads::{Gas, GasCoinConfig, WorkloadBuilderInfo, WorkloadParams};
 use crate::{ExecutionEffects, ValidatorProxy};
 use async_trait::async_trait;
-use std::collections::HashMap;
-use std::sync::Arc;
 use myso_core::test_utils::make_pay_myso_transaction;
 use myso_types::base_types::{ObjectID, SequenceNumber};
 use myso_types::digests::ObjectDigest;
 use myso_types::gas_coin::MIST_PER_MYSO;
 use myso_types::object::Owner;
 use myso_types::{
-    base_types::{ObjectRef, MySoAddress},
+    base_types::{MySoAddress, ObjectRef},
     crypto::get_key_pair,
     transaction::Transaction,
 };
+use std::collections::HashMap;
+use std::sync::Arc;
 use tracing::{debug, error};
 
 /// Value of each address's "primary coin" in mist. The first transaction gives
@@ -73,7 +73,11 @@ impl Payload for BatchPaymentTestPayload {
     }
 
     fn make_transaction(&mut self) -> Transaction {
-        let addrs = self.state.addresses().cloned().collect::<Vec<MySoAddress>>();
+        let addrs = self
+            .state
+            .addresses()
+            .cloned()
+            .collect::<Vec<MySoAddress>>();
         let num_recipients = addrs.len();
         let sender = if self.num_payments == 0 {
             // first tx--use the address that has gas

@@ -2,7 +2,6 @@
 // Copyright (c) The Social Proof Foundation, LLC.
 // SPDX-License-Identifier: Apache-2.0
 
-use serde::{Deserialize, Serialize};
 use myso_types::base_types::MoveObjectType;
 use myso_types::base_types::TransactionDigest;
 use myso_types::coin::Coin;
@@ -10,6 +9,7 @@ use myso_types::error::{MySoError, MySoErrorKind};
 use myso_types::move_package::MovePackage;
 use myso_types::object::{Data, MoveObject, Object, ObjectInner, Owner};
 use myso_types::storage::ObjectKey;
+use serde::{Deserialize, Serialize};
 
 // Versioning process:
 //

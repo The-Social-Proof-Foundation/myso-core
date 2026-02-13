@@ -5,10 +5,10 @@
 use clap::Parser;
 use move_cli::base::{self};
 use move_package_alt_compilation::build_config::BuildConfig as MoveBuildConfig;
-use std::{fs, path::Path};
 use myso_move_build::BuildConfig;
 use myso_package_alt::find_environment;
 use myso_sdk::wallet_context::WalletContext;
+use std::{fs, path::Path};
 
 const LAYOUTS_DIR: &str = "layouts";
 const STRUCT_LAYOUTS_FILENAME: &str = "struct_layouts.yaml";

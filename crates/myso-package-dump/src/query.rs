@@ -6,8 +6,7 @@ use cynic::Operation;
 use cynic::QueryBuilder;
 
 #[cynic::schema("myso")]
-mod schema {
-}
+mod schema {}
 
 #[derive(cynic::Scalar, Debug)]
 #[cynic(graphql_type = "MySoAddress")]

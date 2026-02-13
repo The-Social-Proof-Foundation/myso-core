@@ -17,9 +17,9 @@ use move_vm_types::{
     natives::function::NativeResult,
     values::{Value, VectorSpecialization},
 };
+use myso_types::{base_types::ObjectID, error::VMMemoryLimitExceededSubStatusCode};
 use smallvec::smallvec;
 use std::collections::VecDeque;
-use myso_types::{base_types::ObjectID, error::VMMemoryLimitExceededSubStatusCode};
 
 pub const NOT_SUPPORTED: u64 = 0;
 

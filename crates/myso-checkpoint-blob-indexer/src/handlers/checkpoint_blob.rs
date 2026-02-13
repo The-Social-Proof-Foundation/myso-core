@@ -8,9 +8,6 @@ use std::sync::LazyLock;
 use bytes::BufMut;
 use bytes::Bytes;
 use bytes::BytesMut;
-use object_store::ObjectStoreExt as _;
-use object_store::path::Path as ObjectPath;
-use prost::Message;
 use myso_indexer_alt_framework::pipeline::Processor;
 use myso_indexer_alt_framework::pipeline::concurrent::BatchStatus;
 use myso_indexer_alt_framework::pipeline::concurrent::Handler;
@@ -21,6 +18,9 @@ use myso_rpc::field::FieldMaskUtil;
 use myso_rpc::merge::Merge;
 use myso_rpc::proto::myso::rpc;
 use myso_types::full_checkpoint_content::Checkpoint;
+use object_store::ObjectStoreExt as _;
+use object_store::path::Path as ObjectPath;
+use prost::Message;
 
 pub struct CheckpointBlob {
     pub sequence_number: u64,

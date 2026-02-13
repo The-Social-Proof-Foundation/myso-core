@@ -2,8 +2,6 @@
 // Copyright (c) The Social Proof Foundation, LLC.
 // SPDX-License-Identifier: Apache-2.0
 
-use prost_types::FieldMask;
-use shared_crypto::intent::Intent;
 use myso_keys::keystore::AccountKeystore;
 use myso_macros::sim_test;
 use myso_rpc::proto::myso::rpc::v2::Argument;
@@ -28,6 +26,8 @@ use myso_types::effects::TransactionEffectsAPI;
 use myso_types::programmable_transaction_builder::ProgrammableTransactionBuilder;
 use myso_types::transaction::Command as MySoCommand;
 use myso_types::transaction::{ObjectArg, TransactionData, TransactionDataAPI};
+use prost_types::FieldMask;
+use shared_crypto::intent::Intent;
 use test_cluster::TestClusterBuilder;
 
 fn proto_to_response(

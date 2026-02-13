@@ -6,8 +6,6 @@ use crate::Result;
 use crate::RpcError;
 use crate::RpcService;
 use bytes::Bytes;
-use prost::Message;
-use prost_types::FieldMask;
 use myso_rpc::field::FieldMaskTree;
 use myso_rpc::field::FieldMaskUtil;
 use myso_rpc::proto::google::rpc::bad_request::FieldViolation;
@@ -17,6 +15,8 @@ use myso_rpc::proto::myso::rpc::v2::ListOwnedObjectsResponse;
 use myso_rpc::proto::myso::rpc::v2::Object;
 use myso_sdk_types::Address;
 use myso_types::storage::OwnedObjectInfo;
+use prost::Message;
+use prost_types::FieldMask;
 
 const MAX_PAGE_SIZE: usize = 1000;
 const DEFAULT_PAGE_SIZE: usize = 50;

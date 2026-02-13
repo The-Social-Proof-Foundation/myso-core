@@ -32,10 +32,10 @@ use myso_types::{
     executable_transaction::VerifiedExecutableTransaction,
 };
 
-use std::{collections::HashSet, path::PathBuf};
-use std::{env, str::FromStr};
 use myso_types::execution_status::{CommandArgumentError, ExecutionFailureStatus, ExecutionStatus};
 use myso_types::move_package::UpgradeCap;
+use std::{collections::HashSet, path::PathBuf};
+use std::{env, str::FromStr};
 
 #[tokio::test]
 #[cfg_attr(msim, ignore)]

@@ -8,23 +8,6 @@ use async_trait::async_trait;
 use fastcrypto::traits::KeyPair;
 use futures::{TryFutureExt, future};
 use itertools::Itertools as _;
-use mysten_common::{assert_reachable, debug_fatal};
-use mysten_metrics::spawn_monitored_task;
-use prometheus::{
-    Gauge, Histogram, HistogramVec, IntCounter, IntCounterVec, Registry,
-    register_gauge_with_registry, register_histogram_vec_with_registry,
-    register_histogram_with_registry, register_int_counter_vec_with_registry,
-    register_int_counter_with_registry,
-};
-use std::{
-    cmp::Ordering,
-    future::Future,
-    io,
-    net::{IpAddr, SocketAddr},
-    pin::Pin,
-    sync::Arc,
-    time::{Duration, SystemTime},
-};
 use myso_network::{
     api::{Validator, ValidatorServer},
     tonic,
@@ -39,8 +22,8 @@ use myso_types::messages_grpc::{
     TransactionInfoRequest, TransactionInfoResponse,
 };
 use myso_types::multiaddr::Multiaddr;
-use myso_types::object::Object;
 use myso_types::myso_system_state::MySoSystemState;
+use myso_types::object::Object;
 use myso_types::traffic_control::{ClientIdSource, Weight};
 use myso_types::{
     base_types::ObjectID,
@@ -61,6 +44,23 @@ use myso_types::{
     messages_checkpoint::{
         CheckpointRequest, CheckpointRequestV2, CheckpointResponse, CheckpointResponseV2,
     },
+};
+use mysten_common::{assert_reachable, debug_fatal};
+use mysten_metrics::spawn_monitored_task;
+use prometheus::{
+    Gauge, Histogram, HistogramVec, IntCounter, IntCounterVec, Registry,
+    register_gauge_with_registry, register_histogram_vec_with_registry,
+    register_histogram_with_registry, register_int_counter_vec_with_registry,
+    register_int_counter_with_registry,
+};
+use std::{
+    cmp::Ordering,
+    future::Future,
+    io,
+    net::{IpAddr, SocketAddr},
+    pin::Pin,
+    sync::Arc,
+    time::{Duration, SystemTime},
 };
 use tokio::sync::oneshot;
 use tokio::time::timeout;
@@ -1526,11 +1526,12 @@ impl ValidatorService {
             last_committed_leader_round,
         };
 
-        let raw_response = typed_response
-            .try_into()
-            .map_err(|e: myso_types::error::MySoError| {
-                tonic::Status::internal(format!("Failed to serialize health response: {}", e))
-            })?;
+        let raw_response =
+            typed_response
+                .try_into()
+                .map_err(|e: myso_types::error::MySoError| {
+                    tonic::Status::internal(format!("Failed to serialize health response: {}", e))
+                })?;
 
         Ok((tonic::Response::new(raw_response), Weight::one()))
     }

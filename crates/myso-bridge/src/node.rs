@@ -15,11 +15,6 @@ use crate::eth_syncer::EthSyncer;
 use crate::events::init_all_struct_tags;
 use crate::metrics::BridgeMetrics;
 use crate::monitor::{self, BridgeMonitor};
-use crate::orchestrator::BridgeOrchestrator;
-use crate::server::deposit_api::DepositApiState;
-use crate::server::handler::BridgeRequestHandler;
-use crate::server::{BridgeNodePublicMetadata, run_server};
-use crate::storage::BridgeOrchestratorTables;
 use crate::myso_bridge_watchdog::eth_bridge_status::EthBridgeStatus;
 use crate::myso_bridge_watchdog::eth_vault_balance::{EthereumVaultBalance, VaultAsset};
 use crate::myso_bridge_watchdog::metrics::WatchdogMetrics;
@@ -28,6 +23,11 @@ use crate::myso_bridge_watchdog::total_supplies::TotalSupplies;
 use crate::myso_bridge_watchdog::{BridgeWatchDog, Observable};
 use crate::myso_client::MySoBridgeClient;
 use crate::myso_syncer::MySoSyncer;
+use crate::orchestrator::BridgeOrchestrator;
+use crate::server::deposit_api::DepositApiState;
+use crate::server::handler::BridgeRequestHandler;
+use crate::server::{BridgeNodePublicMetadata, run_server};
+use crate::storage::BridgeOrchestratorTables;
 use crate::types::BridgeCommittee;
 use crate::utils::{
     EthProvider, get_committee_voting_power_by_name, get_eth_contract_addresses,
@@ -36,11 +36,6 @@ use crate::utils::{
 use alloy::primitives::Address as EthAddress;
 use arc_swap::ArcSwap;
 use fastcrypto::traits::KeyPair;
-use mysten_metrics::spawn_logged_monitored_task;
-use std::collections::{BTreeMap, HashMap};
-use std::net::{IpAddr, Ipv4Addr, SocketAddr};
-use std::sync::Arc;
-use std::time::Duration;
 use myso_types::Identifier;
 use myso_types::bridge::{
     BRIDGE_COMMITTEE_MODULE_NAME, BRIDGE_LIMITER_MODULE_NAME, BRIDGE_MODULE_NAME,
@@ -48,6 +43,11 @@ use myso_types::bridge::{
 };
 use myso_types::crypto::MySoKeyPair;
 use myso_types::event::EventID;
+use mysten_metrics::spawn_logged_monitored_task;
+use std::collections::{BTreeMap, HashMap};
+use std::net::{IpAddr, Ipv4Addr, SocketAddr};
+use std::sync::Arc;
+use std::time::Duration;
 use tokio::task::JoinHandle;
 use tracing::info;
 
@@ -463,8 +463,14 @@ async fn start_client_components(
             let _ = myso_monitor.run().await;
         }));
 
-        tokio::spawn(run_evm_deposit_processor(evm_deposit_rx, bridge_handler.clone()));
-        tokio::spawn(run_myso_deposit_processor(myso_deposit_rx, bridge_handler.clone()));
+        tokio::spawn(run_evm_deposit_processor(
+            evm_deposit_rx,
+            bridge_handler.clone(),
+        ));
+        tokio::spawn(run_myso_deposit_processor(
+            myso_deposit_rx,
+            bridge_handler.clone(),
+        ));
 
         let deposit_state = Arc::new(DepositApiState {
             address_manager,
@@ -497,7 +503,10 @@ async fn get_next_sequence_number<C: crate::myso_client::MySoClientInner>(
     }
 
     if let Some(event_id) = last_processed_bridge_event_id {
-        match myso_client.get_sequence_number_from_event_id(event_id).await {
+        match myso_client
+            .get_sequence_number_from_event_id(event_id)
+            .await
+        {
             Ok(Some(sequence_number)) => {
                 let next = sequence_number + 1;
                 info!(

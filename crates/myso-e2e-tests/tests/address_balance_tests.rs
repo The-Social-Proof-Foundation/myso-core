@@ -3,15 +3,6 @@
 // SPDX-License-Identifier: Apache-2.0
 
 use move_core_types::{identifier::Identifier, u256::U256};
-use rand::{Rng, seq::SliceRandom};
-use shared_crypto::intent::Intent;
-use std::{
-    path::PathBuf,
-    sync::{
-        Arc,
-        atomic::{AtomicU64, Ordering},
-    },
-};
 use myso_core::accumulators::balances::get_all_balances_for_owner;
 use myso_keys::keystore::AccountKeystore;
 use myso_macros::*;
@@ -23,7 +14,7 @@ use myso_types::{
     MYSO_ACCUMULATOR_ROOT_OBJECT_ID, MYSO_FRAMEWORK_PACKAGE_ID, TypeTag,
     accumulator_root::AccumulatorValue,
     balance::Balance,
-    base_types::{ObjectID, ObjectRef, MySoAddress, dbg_addr},
+    base_types::{MySoAddress, ObjectID, ObjectRef, dbg_addr},
     digests::{ChainIdentifier, CheckpointDigest},
     effects::{InputConsensusObject, TransactionEffectsAPI},
     gas::GasCostSummary,
@@ -34,6 +25,15 @@ use myso_types::{
         Argument, CallArg, Command, FundsWithdrawalArg, GasData, ObjectArg, Transaction,
         TransactionData, TransactionDataAPI, TransactionDataV1, TransactionExpiration,
         TransactionKind, VerifiedTransaction,
+    },
+};
+use rand::{Rng, seq::SliceRandom};
+use shared_crypto::intent::Intent;
+use std::{
+    path::PathBuf,
+    sync::{
+        Arc,
+        atomic::{AtomicU64, Ordering},
     },
 };
 use test_cluster::{
@@ -334,7 +334,8 @@ async fn test_accumulators_disabled() {
 
         let myso_coin_type = Balance::type_tag(GAS::type_tag());
         assert!(
-            !AccumulatorValue::exists(child_object_resolver, None, sender, &myso_coin_type).unwrap(),
+            !AccumulatorValue::exists(child_object_resolver, None, sender, &myso_coin_type)
+                .unwrap(),
             "Accumulator value should have been removed"
         );
     });
@@ -2070,13 +2071,19 @@ async fn test_soft_bundle_different_gas_payers() {
 
     let deposit_tx1 = test_env
         .tx_builder_with_gas(sender1, sender1_gas)
-        .transfer_myso_to_address_balance(FundSource::coin(sender1_gas), vec![(10_000_000, sender1)])
+        .transfer_myso_to_address_balance(
+            FundSource::coin(sender1_gas),
+            vec![(10_000_000, sender1)],
+        )
         .build();
     test_env.exec_tx_directly(deposit_tx1).await.unwrap();
 
     let deposit_tx2 = test_env
         .tx_builder_with_gas(sender2, sender2_gas)
-        .transfer_myso_to_address_balance(FundSource::coin(sender2_gas), vec![(10_000_000, sender2)])
+        .transfer_myso_to_address_balance(
+            FundSource::coin(sender2_gas),
+            vec![(10_000_000, sender2)],
+        )
         .build();
     test_env.exec_tx_directly(deposit_tx2).await.unwrap();
 

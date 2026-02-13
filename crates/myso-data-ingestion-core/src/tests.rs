@@ -7,12 +7,6 @@ use crate::{DataIngestionMetrics, FileProgressStore, IndexerExecutor, WorkerPool
 use crate::{ReaderOptions, Worker};
 use anyhow::Result;
 use async_trait::async_trait;
-use prometheus::Registry;
-use prost::Message;
-use rand::SeedableRng;
-use rand::prelude::StdRng;
-use std::path::PathBuf;
-use std::time::Duration;
 use myso_protocol_config::ProtocolConfig;
 use myso_rpc::field::FieldMask;
 use myso_rpc::field::FieldMaskUtil;
@@ -26,6 +20,12 @@ use myso_types::messages_checkpoint::{
     SignedCheckpointSummary,
 };
 use myso_types::utils::make_committee_key;
+use prometheus::Registry;
+use prost::Message;
+use rand::SeedableRng;
+use rand::prelude::StdRng;
+use std::path::PathBuf;
+use std::time::Duration;
 use tempfile::NamedTempFile;
 use tokio::sync::oneshot;
 

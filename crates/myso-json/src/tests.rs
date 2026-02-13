@@ -17,8 +17,8 @@ use test_fuzz::runtime::num_traits::ToPrimitive;
 use myso_framework::BuiltInFramework;
 use myso_move_build::BuildConfig;
 use myso_types::base_types::{
-    ObjectID, STD_ASCII_MODULE_NAME, STD_ASCII_STRUCT_NAME, STD_OPTION_MODULE_NAME,
-    STD_OPTION_STRUCT_NAME, MySoAddress, TransactionDigest,
+    MySoAddress, ObjectID, STD_ASCII_MODULE_NAME, STD_ASCII_STRUCT_NAME, STD_OPTION_MODULE_NAME,
+    STD_OPTION_STRUCT_NAME, TransactionDigest,
 };
 use myso_types::dynamic_field::derive_dynamic_field_id;
 use myso_types::gas_coin::GasCoin;

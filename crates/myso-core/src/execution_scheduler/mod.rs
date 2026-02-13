@@ -5,8 +5,8 @@
 use crate::authority::ExecutionEnv;
 pub use execution_scheduler_impl::ExecutionScheduler;
 pub use funds_withdraw_scheduler::FundsWithdrawSchedulerType;
-use prometheus::IntGauge;
 use myso_types::executable_transaction::VerifiedExecutableTransaction;
+use prometheus::IntGauge;
 use tokio::time::Instant;
 
 pub(crate) mod execution_scheduler_impl;

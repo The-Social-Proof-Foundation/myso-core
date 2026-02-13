@@ -11,10 +11,10 @@ use crate::e2e_tests::test_utils::{
 use crate::myso_transaction_builder::build_myso_transaction;
 use crate::types::{BridgeAction, BridgeActionStatus, EmergencyAction, EmergencyActionType};
 use alloy::primitives::{Address as EthAddress, U256};
-use std::sync::Arc;
 use myso_types::bridge::{BridgeChainId, TOKEN_ID_ETH};
 use myso_types::coin::Coin;
 use myso_types::effects::TransactionEffectsAPI;
+use std::sync::Arc;
 use tracing::info;
 
 #[tokio::test(flavor = "multi_thread", worker_threads = 16)]
@@ -279,7 +279,8 @@ async fn test_v2_myso_with_v1_evm() {
     );
 
     // Now try to claim on EVM using V2 function - this should fail because EVM is still on V1
-    let message_v2: eth_myso_bridge::BridgeUtils::Message = myso_to_eth_v2_action.try_into().unwrap();
+    let message_v2: eth_myso_bridge::BridgeUtils::Message =
+        myso_to_eth_v2_action.try_into().unwrap();
     let signatures_v2 = get_signatures(bridge_test_cluster.bridge_client(), 1, myso_chain_id).await;
 
     // The V1 EVM contract doesn't have transferBridgedTokensWithSignaturesV2,

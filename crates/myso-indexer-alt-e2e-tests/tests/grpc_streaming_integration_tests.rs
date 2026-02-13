@@ -6,7 +6,6 @@ use std::time::Duration;
 
 use diesel::QueryDsl;
 use diesel_async::RunQueryDsl;
-use prometheus::Registry;
 use myso_field_count::FieldCount;
 use myso_indexer_alt_framework::Indexer;
 use myso_indexer_alt_framework::IndexerArgs;
@@ -23,6 +22,7 @@ use myso_pg_db::DbArgs;
 use myso_test_transaction_builder::TestTransactionBuilder;
 use myso_types::full_checkpoint_content::Checkpoint;
 use myso_types::transaction::TransactionDataAPI;
+use prometheus::Registry;
 use tempfile::tempdir;
 use test_cluster::TestClusterBuilder;
 

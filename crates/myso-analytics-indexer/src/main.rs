@@ -5,8 +5,8 @@
 use std::env;
 
 use anyhow::Result;
-use prometheus::Registry;
 use myso_futures::service::Error;
+use prometheus::Registry;
 use tracing::info;
 
 use myso_analytics_indexer::IndexerConfig;

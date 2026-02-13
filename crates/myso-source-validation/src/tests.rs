@@ -3,9 +3,6 @@
 
 use expect_test::expect;
 use move_core_types::account_address::AccountAddress;
-use std::collections::HashMap;
-use std::{fs, io, path::Path};
-use std::{path::PathBuf, str};
 use myso_move_build::{BuildConfig, CompiledPackage};
 use myso_sdk::wallet_context::WalletContext;
 use myso_test_transaction_builder::{make_publish_transaction, make_publish_transaction_with_deps};
@@ -14,8 +11,11 @@ use myso_types::move_package::UpgradePolicy;
 use myso_types::transaction::TEST_ONLY_GAS_UNIT_FOR_PUBLISH;
 use myso_types::{
     MYSO_SYSTEM_STATE_OBJECT_ID,
-    base_types::{ObjectRef, MySoAddress, TransactionDigest},
+    base_types::{MySoAddress, ObjectRef, TransactionDigest},
 };
+use std::collections::HashMap;
+use std::{fs, io, path::Path};
+use std::{path::PathBuf, str};
 use test_cluster::TestClusterBuilder;
 
 use crate::toolchain::CURRENT_COMPILER_VERSION;
@@ -24,7 +24,7 @@ use move_package_alt::{
     PackageLoader, RootPackage,
     schema::{Environment, OriginalID, PublishAddresses, PublishedID},
 };
-use myso_package_alt::{BuildParams, PublishedMetadata, MySoFlavor};
+use myso_package_alt::{BuildParams, MySoFlavor, PublishedMetadata};
 use myso_types::digests::get_testnet_chain_identifier;
 use myso_types::supported_protocol_versions::Chain;
 

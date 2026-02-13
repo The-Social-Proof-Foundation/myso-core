@@ -6,7 +6,6 @@ use crate::ErrorReason;
 use crate::RpcError;
 use crate::RpcService;
 use crate::error::CheckpointNotFoundError;
-use prost_types::FieldMask;
 use myso_rpc::field::FieldMaskTree;
 use myso_rpc::field::FieldMaskUtil;
 use myso_rpc::merge::Merge;
@@ -20,6 +19,7 @@ use myso_rpc::proto::myso::rpc::v2::ObjectSet;
 use myso_rpc::proto::myso::rpc::v2::TransactionEvents;
 use myso_rpc::proto::myso::rpc::v2::get_checkpoint_request::CheckpointId;
 use myso_sdk_types::Digest;
+use prost_types::FieldMask;
 
 pub const READ_MASK_DEFAULT: &str = "sequence_number,digest";
 
@@ -131,7 +131,9 @@ pub fn get_checkpoint(
                                     .map(|info| {
                                         info.balance_changes
                                             .into_iter()
-                                            .map(myso_rpc::proto::myso::rpc::v2::BalanceChange::from)
+                                            .map(
+                                                myso_rpc::proto::myso::rpc::v2::BalanceChange::from,
+                                            )
                                             .collect::<Vec<_>>()
                                     })
                             })

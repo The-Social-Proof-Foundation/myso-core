@@ -5,9 +5,9 @@
 use crate::benchmark_context::BenchmarkContext;
 use crate::command::WorkloadKind;
 use crate::tx_generator::{MoveTxGenerator, PackagePublishTxGenerator, TxGenerator};
+use myso_test_transaction_builder::PublishData;
 use std::path::PathBuf;
 use std::sync::Arc;
-use myso_test_transaction_builder::PublishData;
 
 #[derive(Clone)]
 pub struct Workload {

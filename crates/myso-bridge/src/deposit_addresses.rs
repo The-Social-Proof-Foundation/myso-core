@@ -93,10 +93,7 @@ impl DepositAddressManager {
             .lock()
             .map_err(|e| BridgeError::Generic(format!("Mutex poisoned: {:?}", e)))?;
 
-        let current_index = self
-            .store
-            .get_hd_wallet_counter(chain_type)?
-            .unwrap_or(0);
+        let current_index = self.store.get_hd_wallet_counter(chain_type)?.unwrap_or(0);
 
         let next_index = current_index + 1;
         self.store.set_hd_wallet_counter(chain_type, next_index)?;
@@ -107,10 +104,7 @@ impl DepositAddressManager {
     }
 
     /// Get EVM signer for a specific index (for signing bridge transactions)
-    pub fn get_evm_signer_for_index(
-        &self,
-        index: u32,
-    ) -> BridgeResult<PrivateKeySigner> {
+    pub fn get_evm_signer_for_index(&self, index: u32) -> BridgeResult<PrivateKeySigner> {
         let (_address, signer) = self.derive_evm_deposit_address(index)?;
         Ok(signer)
     }

@@ -21,11 +21,11 @@ use ttl_cache::TtlCache;
 use typed_store::Map;
 
 use myso_json_rpc_types::OwnedObjectRef;
-use myso_rpc_api::client::ExecutedTransaction;
 use myso_keys::keystore::AccountKeystore;
+use myso_rpc_api::client::ExecutedTransaction;
 use myso_sdk::wallet_context::WalletContext;
-use myso_types::object::Owner;
 use myso_types::effects::TransactionEffectsAPI;
+use myso_types::object::Owner;
 use myso_types::{
     base_types::{MySoAddress, ObjectID, TransactionDigest},
     gas_coin::GasCoin,
@@ -34,10 +34,10 @@ use myso_types::{
     transaction::{Transaction, TransactionData, TransactionDataAPI},
 };
 use tokio::sync::{
-    mpsc::{self, Receiver, Sender},
     Mutex,
+    mpsc::{self, Receiver, Sender},
 };
-use tokio::time::{timeout, Duration};
+use tokio::time::{Duration, timeout};
 use tracing::{error, info, warn};
 use uuid::Uuid;
 
@@ -349,8 +349,9 @@ impl SimpleFaucet {
         let (producer, consumer) = mpsc::channel(channel_buffer);
         let (batch_producer, batch_consumer) = mpsc::channel(channel_buffer);
 
-        let (sender, mut receiver) =
-            mpsc::channel::<(Uuid, MySoAddress, Vec<u64>)>(config.max_request_queue_length as usize);
+        let (sender, mut receiver) = mpsc::channel::<(Uuid, MySoAddress, Vec<u64>)>(
+            config.max_request_queue_length as usize,
+        );
 
         // This is to handle the case where there is only 1 coin, we want it to go to the normal queue
         let split_point = if coins.len() > 10 {
@@ -633,7 +634,9 @@ impl SimpleFaucet {
     ) -> anyhow::Result<Option<(Option<Owner>, GasCoin)>> {
         let mut client = self.wallet.grpc_client()?;
         let gas_obj = client.get_object(coin_id).await?;
-        Ok(GasCoin::try_from(&gas_obj).ok().map(|coin| (Some(gas_obj.owner.clone()), coin)))
+        Ok(GasCoin::try_from(&gas_obj)
+            .ok()
+            .map(|coin| (Some(gas_obj.owner.clone()), coin)))
     }
 
     /// Similar to get_coin but checks that the owner is the active
@@ -765,9 +768,11 @@ impl SimpleFaucet {
                     self.recycle_gas_coin(coin_id, uuid).await;
                 }
 
-                let myso_used = result.balance_changes.iter().find(|bc| {
-                    MySoAddress::from(bc.address) == self.active_address
-                }).map(|b| b.amount)
+                let myso_used = result
+                    .balance_changes
+                    .iter()
+                    .find(|bc| MySoAddress::from(bc.address) == self.active_address)
+                    .map(|b| b.amount)
                     .unwrap_or_else(|| 0);
                 info!("MYSO used in this tx {}: {}", tx_digest, myso_used);
                 self.metrics.balance.add(myso_used as i64);
@@ -874,7 +879,9 @@ impl SimpleFaucet {
         let mut retry_delay = Duration::from_millis(500);
 
         loop {
-            let res = self.execute_pay_myso_txn(tx, coin_id, recipient, uuid).await;
+            let res = self
+                .execute_pay_myso_txn(tx, coin_id, recipient, uuid)
+                .await;
 
             if let Ok(res) = res {
                 return res;
@@ -1709,7 +1716,12 @@ mod tests {
         let gas_budget = 50_000_000;
         let tx_data = client
             .transaction_builder()
-            .pay_all_myso(address, vec![bad_gas.0], MySoAddress::random_for_testing_only(), gas_budget)
+            .pay_all_myso(
+                address,
+                vec![bad_gas.0],
+                MySoAddress::random_for_testing_only(),
+                gas_budget,
+            )
             .await
             .unwrap();
         execute_tx(faucet.wallet_mut(), tx_data).await.unwrap();
@@ -1825,7 +1837,13 @@ mod tests {
         let gas_budget = 50_000_000;
         let tx_data = client
             .transaction_builder()
-            .split_coin(address, gas_coins.first().unwrap().0, vec![tiny_value], None, gas_budget)
+            .split_coin(
+                address,
+                gas_coins.first().unwrap().0,
+                vec![tiny_value],
+                None,
+                gas_budget,
+            )
             .await
             .unwrap();
 
@@ -1924,7 +1942,13 @@ mod tests {
         for gas in gas_coins.iter().take(gas_coins.len() - 1) {
             let tx_data = client
                 .transaction_builder()
-                .transfer_object(address, gas.0, gas_for_transfers, gas_budget, destination_address)
+                .transfer_object(
+                    address,
+                    gas.0,
+                    gas_for_transfers,
+                    gas_budget,
+                    destination_address,
+                )
                 .await
                 .unwrap();
             execute_tx(&context, tx_data).await.unwrap();
@@ -1984,7 +2008,13 @@ mod tests {
         let gas_budget = 50_000_000;
         let tx_data = client
             .transaction_builder()
-            .split_coin(address, gas_coins.first().unwrap().0, vec![tiny_value], None, gas_budget)
+            .split_coin(
+                address,
+                gas_coins.first().unwrap().0,
+                vec![tiny_value],
+                None,
+                gas_budget,
+            )
             .await
             .unwrap();
 
@@ -1997,7 +2027,13 @@ mod tests {
         for gas in to_transfer {
             let tx_data = client
                 .transaction_builder()
-                .transfer_object(address, gas.0, Some(gas_coin.0), gas_budget, destination_address)
+                .transfer_object(
+                    address,
+                    gas.0,
+                    Some(gas_coin.0),
+                    gas_budget,
+                    destination_address,
+                )
                 .await
                 .unwrap();
             execute_tx(&context, tx_data).await.unwrap();

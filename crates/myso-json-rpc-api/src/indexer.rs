@@ -7,12 +7,12 @@ use jsonrpsee::proc_macros::rpc;
 
 use myso_json_rpc_types::MySoTransactionBlockEffects;
 use myso_json_rpc_types::{
-    DynamicFieldPage, EventFilter, EventPage, ObjectsPage, MySoEvent, MySoObjectResponse,
-    MySoObjectResponseQuery, MySoTransactionBlockResponseQuery, TransactionBlocksPage,
+    DynamicFieldPage, EventFilter, EventPage, MySoEvent, MySoObjectResponse,
+    MySoObjectResponseQuery, MySoTransactionBlockResponseQuery, ObjectsPage, TransactionBlocksPage,
     TransactionFilter,
 };
 use myso_open_rpc_macros::open_rpc;
-use myso_types::base_types::{ObjectID, MySoAddress};
+use myso_types::base_types::{MySoAddress, ObjectID};
 use myso_types::digests::TransactionDigest;
 use myso_types::dynamic_field::DynamicFieldName;
 use myso_types::event::EventID;

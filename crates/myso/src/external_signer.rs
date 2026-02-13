@@ -6,10 +6,10 @@ use crate::keytool::Key;
 use anyhow::anyhow;
 use clap::*;
 use json_to_table::{Orientation, json_to_table};
-use serde::Serialize;
-use serde_json::json;
 use myso_keys::external::External;
 use myso_keys::keystore::{AccountKeystore, GenerateOptions, GeneratedKey, Keystore};
+use serde::Serialize;
+use serde_json::json;
 use tracing::info;
 
 #[allow(clippy::large_enum_variant)]

@@ -8,14 +8,6 @@ use fastcrypto::traits::ToFromBytes;
 use futures::future::AbortHandle;
 use futures::future::join_all;
 use itertools::Itertools;
-use std::collections::BTreeMap;
-use std::fmt::Write;
-use std::num::NonZeroUsize;
-use std::path::{Path, PathBuf};
-use std::sync::Arc;
-use std::sync::atomic::{AtomicU64, AtomicUsize, Ordering};
-use std::time::Duration;
-use std::{fs, io};
 use myso_config::{NodeConfig, genesis::Genesis};
 use myso_core::authority_client::{AuthorityAPI, NetworkAuthorityClient};
 use myso_core::execution_cache::build_execution_cache_from_env;
@@ -33,6 +25,14 @@ use myso_types::global_state_hash::GlobalStateHash;
 use myso_types::messages_grpc::LayoutGenerationOption;
 use myso_types::multiaddr::Multiaddr;
 use myso_types::{base_types::*, object::Owner};
+use std::collections::BTreeMap;
+use std::fmt::Write;
+use std::num::NonZeroUsize;
+use std::path::{Path, PathBuf};
+use std::sync::Arc;
+use std::sync::atomic::{AtomicU64, AtomicUsize, Ordering};
+use std::time::Duration;
+use std::{fs, io};
 use tokio::sync::mpsc;
 use tokio::task::JoinHandle;
 use tokio::time::Instant;
@@ -43,8 +43,6 @@ use eyre::ContextCompat;
 use fastcrypto::hash::MultisetHash;
 use futures::{StreamExt, TryStreamExt};
 use indicatif::{MultiProgress, ProgressBar, ProgressStyle};
-use prometheus::Registry;
-use serde::{Deserialize, Serialize};
 use myso_config::object_storage_config::{ObjectStoreConfig, ObjectStoreType};
 use myso_core::authority::AuthorityStore;
 use myso_core::authority::authority_store_tables::AuthorityPerpetualTables;
@@ -61,6 +59,8 @@ use myso_types::messages_grpc::{
     ObjectInfoRequest, ObjectInfoRequestKind, ObjectInfoResponse, TransactionInfoRequest,
     TransactionStatus,
 };
+use prometheus::Registry;
+use serde::{Deserialize, Serialize};
 
 use crate::formal_snapshot_util::read_summaries_for_list_no_verify;
 use myso_core::authority::authority_store_pruner::PrunerWatermarks;

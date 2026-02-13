@@ -3,11 +3,11 @@
 // SPDX-License-Identifier: Apache-2.0
 
 use crate::{
-    MoveTypeTagTrait, MoveTypeTagTraitGeneric, MYSO_ACCUMULATOR_ROOT_ADDRESS,
-    MYSO_ACCUMULATOR_ROOT_OBJECT_ID, MYSO_FRAMEWORK_ADDRESS, MYSO_FRAMEWORK_PACKAGE_ID,
+    MYSO_ACCUMULATOR_ROOT_ADDRESS, MYSO_ACCUMULATOR_ROOT_OBJECT_ID, MYSO_FRAMEWORK_ADDRESS,
+    MYSO_FRAMEWORK_PACKAGE_ID, MoveTypeTagTrait, MoveTypeTagTraitGeneric,
     accumulator_event::AccumulatorEvent,
     balance::Balance,
-    base_types::{ObjectID, SequenceNumber, MySoAddress},
+    base_types::{MySoAddress, ObjectID, SequenceNumber},
     digests::{Digest, TransactionDigest},
     dynamic_field::{
         BoundedDynamicFieldID, DYNAMIC_FIELD_FIELD_STRUCT_NAME, DYNAMIC_FIELD_MODULE_NAME,

@@ -2,7 +2,6 @@
 // Copyright (c) The Social Proof Foundation, LLC.
 // SPDX-License-Identifier: Apache-2.0
 
-use std::collections::BTreeMap;
 use myso_config::genesis;
 use myso_types::base_types::ObjectRef;
 use myso_types::error::UserInputError;
@@ -11,7 +10,7 @@ use myso_types::transaction::ObjectReadResult;
 use myso_types::transaction::ReceivingObjectReadResult;
 use myso_types::transaction::ReceivingObjects;
 use myso_types::{
-    base_types::{ObjectID, SequenceNumber, MySoAddress},
+    base_types::{MySoAddress, ObjectID, SequenceNumber},
     committee::{Committee, EpochId},
     digests::{ObjectDigest, TransactionDigest},
     effects::{TransactionEffects, TransactionEffectsAPI, TransactionEvents},
@@ -24,6 +23,7 @@ use myso_types::{
     storage::{BackingStore, ChildObjectResolver, ParentSync},
     transaction::{InputObjectKind, VerifiedTransaction},
 };
+use std::collections::BTreeMap;
 pub mod in_mem_store;
 
 pub trait SimulatorStore:

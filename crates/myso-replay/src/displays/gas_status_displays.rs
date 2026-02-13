@@ -3,9 +3,9 @@
 // SPDX-License-Identifier: Apache-2.0
 
 use crate::displays::Pretty;
-use std::fmt::{Display, Formatter};
 use myso_types::gas::MySoGasStatus;
 use myso_types::gas_model::gas_v2::MySoGasStatus as GasStatusV2;
+use std::fmt::{Display, Formatter};
 use tabled::{
     builder::Builder as TableBuilder,
     settings::{Style as TableStyle, style::HorizontalLine},

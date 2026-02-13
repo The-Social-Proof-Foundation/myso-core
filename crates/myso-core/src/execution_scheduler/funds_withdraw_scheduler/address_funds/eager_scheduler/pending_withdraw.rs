@@ -4,10 +4,10 @@
 
 use std::{collections::BTreeMap, sync::Arc};
 
-use parking_lot::Mutex;
 use myso_types::{
     accumulator_root::AccumulatorObjId, base_types::SequenceNumber, digests::TransactionDigest,
 };
+use parking_lot::Mutex;
 use tokio::sync::oneshot::Sender;
 use tracing::debug;
 

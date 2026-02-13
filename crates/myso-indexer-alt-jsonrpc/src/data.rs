@@ -6,10 +6,10 @@ use std::time::Duration;
 
 use anyhow::Context as _;
 use anyhow::ensure;
-use serde::de::DeserializeOwned;
 use myso_indexer_alt_reader::object_versions::LatestObjectVersionKey;
 use myso_types::base_types::ObjectID;
 use myso_types::object::Object;
+use serde::de::DeserializeOwned;
 
 use crate::context::Context;
 

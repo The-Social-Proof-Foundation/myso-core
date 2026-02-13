@@ -3,9 +3,9 @@
 // SPDX-License-Identifier: Apache-2.0
 
 use client::MetricsPushClient;
+use myso_types::crypto::NetworkKeyPair;
 use mysten_metrics::RegistryService;
 use std::time::Duration;
-use myso_types::crypto::NetworkKeyPair;
 
 mod client;
 

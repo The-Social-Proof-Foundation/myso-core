@@ -7,11 +7,6 @@ use std::time::Duration;
 use fastcrypto::encoding::Base58;
 use fastcrypto::encoding::Encoding;
 use jsonrpsee::core::Serialize;
-use reqwest::Client;
-use serde::Deserialize;
-use serde::de::DeserializeOwned;
-use serde_json::Value;
-use serde_json::json;
 use myso_framework::BuiltInFramework;
 use myso_indexer_alt::BootstrapGenesis;
 use myso_indexer_alt::config::IndexerConfig;
@@ -28,6 +23,11 @@ use myso_types::myso_system_state::myso_system_state_inner_v1::MySoSystemStateIn
 use myso_types::myso_system_state::myso_system_state_inner_v2::MySoSystemStateInnerV2;
 use myso_types::test_checkpoint_data_builder::AdvanceEpochConfig;
 use myso_types::test_checkpoint_data_builder::TestCheckpointBuilder;
+use reqwest::Client;
+use serde::Deserialize;
+use serde::de::DeserializeOwned;
+use serde_json::Value;
+use serde_json::json;
 
 use myso_indexer_alt_e2e_tests::OffchainCluster;
 use myso_indexer_alt_e2e_tests::OffchainClusterConfig;

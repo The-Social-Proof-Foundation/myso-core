@@ -6,11 +6,11 @@ use std::collections::BTreeMap;
 
 use consensus_config::AuthorityIndex;
 use consensus_types::block::{BlockDigest, BlockRef, TransactionIndex};
-use mysten_metrics::monitored_scope;
-use parking_lot::RwLock;
 use myso_types::committee::EpochId;
 use myso_types::error::MySoError;
 use myso_types::messages_consensus::ConsensusPosition;
+use mysten_metrics::monitored_scope;
+use parking_lot::RwLock;
 use tracing::trace;
 
 use crate::authority::consensus_tx_status_cache::CONSENSUS_STATUS_RETENTION_ROUNDS;

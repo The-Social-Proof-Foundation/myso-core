@@ -3,7 +3,7 @@
 // SPDX-License-Identifier: Apache-2.0
 
 use crate::{
-    MoveTypeTagTrait, MYSO_ACCUMULATOR_ROOT_OBJECT_ID, MYSO_FRAMEWORK_ADDRESS,
+    MYSO_ACCUMULATOR_ROOT_OBJECT_ID, MYSO_FRAMEWORK_ADDRESS, MoveTypeTagTrait,
     dynamic_field::DynamicFieldKey, error::MySoResult, storage::ObjectStore,
 };
 use move_core_types::{

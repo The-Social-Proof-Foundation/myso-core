@@ -7,11 +7,6 @@ use std::net::Ipv4Addr;
 use std::net::SocketAddr;
 
 use anyhow::Context;
-use prometheus::Registry;
-use reqwest::Client;
-use serde::Deserialize;
-use serde_json::Value;
-use serde_json::json;
 use myso_futures::service::Service;
 use myso_indexer_alt_graphql::RpcArgs as GraphQlArgs;
 use myso_indexer_alt_graphql::args::KvArgs as GraphQlKvArgs;
@@ -28,6 +23,11 @@ use myso_types::base_types::MySoAddress;
 use myso_types::gas_coin::GasCoin;
 use myso_types::transaction::ObjectArg;
 use myso_types::transaction::SharedObjectMutability;
+use prometheus::Registry;
+use reqwest::Client;
+use serde::Deserialize;
+use serde_json::Value;
+use serde_json::json;
 use test_cluster::TestCluster;
 use test_cluster::TestClusterBuilder;
 use url::Url;
@@ -365,12 +365,18 @@ async fn test_execute_transaction_grpc_errors() {
     let recipient1 = MySoAddress::random_for_testing_only();
     let recipient2 = MySoAddress::random_for_testing_only();
 
-    let signed_tx1 =
-        make_transfer_myso_transaction(&validator_cluster.wallet, Some(recipient1), Some(1_000_000))
-            .await;
-    let signed_tx2 =
-        make_transfer_myso_transaction(&validator_cluster.wallet, Some(recipient2), Some(2_000_000))
-            .await;
+    let signed_tx1 = make_transfer_myso_transaction(
+        &validator_cluster.wallet,
+        Some(recipient1),
+        Some(1_000_000),
+    )
+    .await;
+    let signed_tx2 = make_transfer_myso_transaction(
+        &validator_cluster.wallet,
+        Some(recipient2),
+        Some(2_000_000),
+    )
+    .await;
 
     let (tx1_bytes, _) = signed_tx1.to_tx_bytes_and_signatures();
     let (_, tx2_signatures) = signed_tx2.to_tx_bytes_and_signatures();

@@ -6,12 +6,12 @@ use std::{sync::Arc, time::Duration};
 
 use fastcrypto::traits::KeyPair;
 use futures::FutureExt;
-use mysten_metrics::RegistryService;
-use prometheus::Registry;
 use myso_swarm_config::network_config_builder::ConfigBuilder;
 use myso_types::messages_checkpoint::{
     CertifiedCheckpointSummary, CheckpointContents, CheckpointSummary,
 };
+use mysten_metrics::RegistryService;
+use prometheus::Registry;
 use tokio::{sync::mpsc, time::sleep};
 
 use crate::{
@@ -22,9 +22,9 @@ use crate::{
     consensus_validator::{MySoTxValidator, MySoTxValidatorMetrics},
     global_state_hasher::GlobalStateHasher,
 };
-use mysten_network::Multiaddr;
 use myso_network::endpoint_manager::{AddressSource, ConsensusAddressUpdater};
 use myso_types::myso_system_state::epoch_start_myso_system_state::EpochStartSystemStateTrait;
+use mysten_network::Multiaddr;
 
 pub fn checkpoint_service_for_testing(state: Arc<AuthorityState>) -> Arc<CheckpointService> {
     let (output, _result) = mpsc::channel::<(CheckpointContents, CheckpointSummary)>(10);

@@ -7,8 +7,6 @@
 
 use crate::key_value_store_metrics::KeyValueStoreMetrics;
 use async_trait::async_trait;
-use std::sync::Arc;
-use std::time::Instant;
 use myso_types::base_types::{ObjectID, SequenceNumber, VersionNumber};
 use myso_types::digests::{CheckpointDigest, TransactionDigest};
 use myso_types::effects::{TransactionEffects, TransactionEvents};
@@ -19,6 +17,8 @@ use myso_types::messages_checkpoint::{
 use myso_types::object::Object;
 use myso_types::storage::ObjectKey;
 use myso_types::transaction::Transaction;
+use std::sync::Arc;
+use std::time::Instant;
 use tracing::instrument;
 
 pub type KVStoreTransactionData = (Vec<Option<Transaction>>, Vec<Option<TransactionEffects>>);
@@ -391,7 +391,8 @@ pub trait TransactionKeyValueStoreTrait {
         version: SequenceNumber,
     ) -> MySoResult<Option<Object>>;
 
-    async fn multi_get_objects(&self, object_keys: &[ObjectKey]) -> MySoResult<Vec<Option<Object>>>;
+    async fn multi_get_objects(&self, object_keys: &[ObjectKey])
+    -> MySoResult<Vec<Option<Object>>>;
 
     async fn multi_get_transaction_checkpoint(
         &self,
@@ -533,7 +534,10 @@ impl TransactionKeyValueStoreTrait for FallbackTransactionKVStore {
     }
 
     #[instrument(level = "trace", skip_all)]
-    async fn multi_get_objects(&self, object_keys: &[ObjectKey]) -> MySoResult<Vec<Option<Object>>> {
+    async fn multi_get_objects(
+        &self,
+        object_keys: &[ObjectKey],
+    ) -> MySoResult<Vec<Option<Object>>> {
         let mut res = self.primary.multi_get_objects(object_keys).await?;
 
         let (fallback, indices) = find_fallback(&res, object_keys);

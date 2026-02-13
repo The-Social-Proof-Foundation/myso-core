@@ -4,6 +4,7 @@
 
 use anyhow::{Result, anyhow, bail};
 use move_core_types::ident_str;
+use myso_genesis_builder::validator_info::GenesisValidatorInfo;
 use std::{
     collections::{BTreeMap, HashSet},
     fmt::{self, Debug, Display, Formatter, Write},
@@ -11,7 +12,6 @@ use std::{
     path::PathBuf,
     sync::Arc,
 };
-use myso_genesis_builder::validator_info::GenesisValidatorInfo;
 use url::{ParseError, Url};
 
 use myso_rpc::proto::myso::rpc::v2 as proto;
@@ -19,12 +19,14 @@ use myso_rpc_api::Client;
 use myso_rpc_api::client::ExecutedTransaction;
 use myso_types::{
     MYSO_SYSTEM_PACKAGE_ID,
-    base_types::{ObjectID, ObjectRef, MySoAddress},
+    base_types::{MySoAddress, ObjectID, ObjectRef},
     crypto::{AuthorityPublicKey, DEFAULT_EPOCH_ID, NetworkPublicKey, Signable},
     effects::TransactionEffectsAPI,
     multiaddr::Multiaddr,
+    myso_system_state::myso_system_state_inner_v1::{
+        UnverifiedValidatorOperationCapV1, ValidatorV1,
+    },
     object::Owner,
-    myso_system_state::myso_system_state_inner_v1::{UnverifiedValidatorOperationCapV1, ValidatorV1},
 };
 use tap::tap::TapOptional;
 
@@ -36,8 +38,6 @@ use fastcrypto::{
     encoding::{Base64, Encoding},
     traits::KeyPair,
 };
-use serde::Serialize;
-use shared_crypto::intent::{Intent, IntentMessage, IntentScope};
 use myso_bridge::metrics::BridgeMetrics;
 use myso_bridge::myso_client::MySoClient as MySoBridgeClient;
 use myso_bridge::myso_transaction_builder::{
@@ -52,11 +52,13 @@ use myso_keys::{
 };
 use myso_keys::{keypair_file::read_key, keystore::AccountKeystore};
 use myso_sdk::wallet_context::WalletContext;
-use myso_types::crypto::{AuthorityKeyPair, NetworkKeyPair, SignatureScheme, MySoKeyPair};
+use myso_types::crypto::{AuthorityKeyPair, MySoKeyPair, NetworkKeyPair, SignatureScheme};
 use myso_types::crypto::{
     AuthorityPublicKeyBytes, generate_proof_of_possession, get_authority_key_pair,
 };
 use myso_types::transaction::{CallArg, ObjectArg, Transaction, TransactionData};
+use serde::Serialize;
+use shared_crypto::intent::{Intent, IntentMessage, IntentScope};
 
 #[path = "unit_tests/validator_tests.rs"]
 #[cfg(test)]

@@ -6,8 +6,6 @@ use std::path::PathBuf;
 use std::time::Duration;
 use std::{num::NonZeroUsize, path::Path, sync::Arc};
 
-use mysten_common::in_test_configuration;
-use rand::rngs::OsRng;
 use myso_config::ExecutionCacheConfig;
 use myso_config::genesis::{TokenAllocation, TokenDistributionScheduleBuilder};
 use myso_config::node::AuthorityOverloadConfig;
@@ -23,6 +21,8 @@ use myso_types::crypto::{
 use myso_types::object::Object;
 use myso_types::supported_protocol_versions::SupportedProtocolVersions;
 use myso_types::traffic_control::{PolicyConfig, RemoteFirewallConfig};
+use mysten_common::in_test_configuration;
+use rand::rngs::OsRng;
 
 use crate::genesis_config::{AccountConfig, DEFAULT_GAS_AMOUNT, ValidatorGenesisConfigBuilder};
 use crate::genesis_config::{GenesisConfig, ValidatorGenesisConfig};
@@ -685,7 +685,6 @@ mod tests {
 
 #[cfg(test)]
 mod test {
-    use std::sync::Arc;
     use myso_config::genesis::Genesis;
     use myso_protocol_config::{Chain, ProtocolConfig, ProtocolVersion};
     use myso_types::epoch_data::EpochData;
@@ -695,6 +694,7 @@ mod test {
     use myso_types::metrics::LimitsMetrics;
     use myso_types::myso_system_state::MySoSystemStateTrait;
     use myso_types::transaction::CheckedInputObjects;
+    use std::sync::Arc;
 
     #[test]
     fn roundtrip() {
@@ -714,7 +714,8 @@ mod test {
         let builder = crate::network_config_builder::ConfigBuilder::new_with_temp_dir();
         let network_config = builder.build();
         let genesis = network_config.genesis;
-        let protocol_version = ProtocolVersion::new(genesis.myso_system_object().protocol_version());
+        let protocol_version =
+            ProtocolVersion::new(genesis.myso_system_object().protocol_version());
         let protocol_config = ProtocolConfig::get_for_version(protocol_version, Chain::Unknown);
 
         let genesis_transaction = genesis.transaction().clone();

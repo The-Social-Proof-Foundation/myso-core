@@ -5,21 +5,21 @@
 use axum::extract::State;
 use axum::{Extension, Json};
 use axum_extra::extract::WithRejection;
+use myso_rpc::field::FieldMaskUtil;
+use myso_rpc::proto::myso::rpc::v2::{GetCheckpointRequest, GetEpochRequest};
 use prost_types::FieldMask;
 use serde_json::json;
 use strum::IntoEnumIterator;
-use myso_rpc::field::FieldMaskUtil;
-use myso_rpc::proto::myso::rpc::v2::{GetCheckpointRequest, GetEpochRequest};
 
 use fastcrypto::encoding::Hex;
-use myso_types::base_types::{ObjectID, MySoAddress};
+use myso_types::base_types::{MySoAddress, ObjectID};
 
 use crate::errors::{Error, ErrorType};
 use crate::types::{
     Allow, Case, NetworkIdentifier, NetworkListResponse, NetworkOptionsResponse, NetworkRequest,
     NetworkStatusResponse, OperationStatus, OperationType, Peer, SyncStatus, Version,
 };
-use crate::{OnlineServerContext, MySoEnv};
+use crate::{MySoEnv, OnlineServerContext};
 
 // This module implements the [Mesh Network API](https://docs.cdp.coinbase.com/mesh/mesh-api-spec/api-reference#network)
 

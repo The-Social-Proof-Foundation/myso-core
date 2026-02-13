@@ -12,7 +12,7 @@ use serde::Serialize;
 
 use crate::{
     MYSO_FRAMEWORK_PACKAGE_ID,
-    base_types::{FullObjectID, FullObjectRef, ObjectID, ObjectRef, MySoAddress},
+    base_types::{FullObjectID, FullObjectRef, MySoAddress, ObjectID, ObjectRef},
     move_package::PACKAGE_MODULE_NAME,
     transaction::{
         Argument, CallArg, Command, FundsWithdrawalArg, ObjectArg, ProgrammableTransaction,

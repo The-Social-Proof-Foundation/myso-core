@@ -5,12 +5,12 @@
 use anyhow::anyhow;
 use async_trait::async_trait;
 use enum_dispatch::enum_dispatch;
-use prost_types::FieldMask;
-use serde::{Deserialize, Serialize};
 use myso_rpc::client::Client;
 use myso_rpc::proto::myso::rpc::v2::{
     BatchGetObjectsRequest, GetObjectRequest, Object, get_object_result,
 };
+use prost_types::FieldMask;
+use serde::{Deserialize, Serialize};
 
 use myso_rpc::field::FieldMaskUtil;
 use myso_rpc::proto::myso::rpc::v2::{
@@ -18,7 +18,7 @@ use myso_rpc::proto::myso::rpc::v2::{
     SimulateTransactionRequest, Transaction, TransactionKind,
     simulate_transaction_request::TransactionChecks, transaction_kind,
 };
-use myso_types::base_types::{ObjectID, ObjectRef, SequenceNumber, MySoAddress};
+use myso_types::base_types::{MySoAddress, ObjectID, ObjectRef, SequenceNumber};
 use myso_types::transaction::{ProgrammableTransaction, TransactionData};
 
 use crate::errors::Error;

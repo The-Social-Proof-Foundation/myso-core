@@ -3,13 +3,12 @@
 // SPDX-License-Identifier: Apache-2.0
 
 use enum_dispatch::enum_dispatch;
-use serde::{Deserialize, Serialize};
 use myso_config::NodeConfig;
 use myso_types::accumulator_root::get_accumulator_root_obj_initial_shared_version;
 use myso_types::address_alias::get_address_alias_state_obj_initial_shared_version;
 use myso_types::display_registry::get_display_registry_obj_initial_shared_version;
+use serde::{Deserialize, Serialize};
 
-use std::fmt;
 use myso_types::authenticator_state::get_authenticator_state_obj_initial_shared_version;
 use myso_types::base_types::SequenceNumber;
 use myso_types::bridge::{get_bridge_obj_initial_shared_version, is_bridge_committee_initiated};
@@ -18,11 +17,12 @@ use myso_types::deny_list_v1::get_deny_list_obj_initial_shared_version;
 use myso_types::epoch_data::EpochData;
 use myso_types::error::MySoResult;
 use myso_types::messages_checkpoint::{CheckpointDigest, CheckpointTimestamp};
-use myso_types::randomness_state::get_randomness_state_obj_initial_shared_version;
-use myso_types::storage::ObjectStore;
 use myso_types::myso_system_state::epoch_start_myso_system_state::{
     EpochStartSystemState, EpochStartSystemStateTrait,
 };
+use myso_types::randomness_state::get_randomness_state_obj_initial_shared_version;
+use myso_types::storage::ObjectStore;
+use std::fmt;
 
 #[enum_dispatch]
 pub trait EpochStartConfigTrait {

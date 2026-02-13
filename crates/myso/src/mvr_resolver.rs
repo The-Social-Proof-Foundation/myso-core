@@ -3,12 +3,12 @@
 // SPDX-License-Identifier: Apache-2.0
 
 use anyhow::Error;
-use serde::{Deserialize, Serialize};
-use serde_json::json;
-use std::collections::{BTreeMap, BTreeSet};
 use myso_protocol_config::Chain;
 use myso_rpc_api::Client;
 use myso_types::base_types::ObjectID;
+use serde::{Deserialize, Serialize};
+use serde_json::json;
+use std::collections::{BTreeMap, BTreeSet};
 
 const MVR_RESOLVER_MAINNET_URL: &str = "https://mainnet.mvr.mystenlabs.com";
 const MVR_RESOLVER_TESTNET_URL: &str = "https://testnet.mvr.mystenlabs.com";

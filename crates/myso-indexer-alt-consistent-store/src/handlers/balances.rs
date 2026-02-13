@@ -6,8 +6,6 @@ use std::collections::BTreeMap;
 use std::sync::Arc;
 
 use async_trait::async_trait;
-use serde::Deserialize;
-use serde::Serialize;
 use myso_indexer_alt_framework::pipeline::Processor;
 use myso_indexer_alt_framework::pipeline::sequential;
 use myso_indexer_alt_framework::types::TypeTag;
@@ -16,6 +14,8 @@ use myso_indexer_alt_framework::types::coin::Coin;
 use myso_indexer_alt_framework::types::full_checkpoint_content::Checkpoint;
 use myso_indexer_alt_framework::types::object::Object;
 use myso_indexer_alt_framework::types::object::Owner;
+use serde::Deserialize;
+use serde::Serialize;
 
 use crate::Schema;
 use crate::handlers::checkpoint_input_objects;

@@ -7,7 +7,6 @@ use std::{
     sync::Arc,
 };
 
-use parking_lot::RwLock;
 use myso_types::{
     MYSO_ACCUMULATOR_ROOT_OBJECT_ID,
     accumulator_root::AccumulatorObjId,
@@ -18,6 +17,7 @@ use myso_types::{
     execution_status::ExecutionStatus,
     transaction::TransactionDataAPI,
 };
+use parking_lot::RwLock;
 use tokio::{
     sync::{oneshot, watch},
     time::Instant,

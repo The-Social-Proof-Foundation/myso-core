@@ -14,7 +14,7 @@ use myso_keys::keystore::{
     ALIASES_FILE_EXTENSION, AccountKeystore, Alias, FileBasedKeystore, GenerateOptions,
     GeneratedKey, InMemKeystore, Keystore,
 };
-use myso_types::crypto::{DefaultHash, SignatureScheme, MySoSignatureInner};
+use myso_types::crypto::{DefaultHash, MySoSignatureInner, SignatureScheme};
 use myso_types::{
     base_types::{MYSO_ADDRESS_LENGTH, MySoAddress},
     crypto::Ed25519MySoSignature,
@@ -252,8 +252,9 @@ async fn mnemonic_test() {
 #[tokio::test]
 async fn myso_wallet_address_mnemonic_test() -> Result<(), anyhow::Error> {
     let phrase = "result crisp session latin must fruit genuine question prevent start coconut brave speak student dismiss";
-    let expected_address =
-        MySoAddress::from_str("0x936accb491f0facaac668baaedcf4d0cfc6da1120b66f77fa6a43af718669973")?;
+    let expected_address = MySoAddress::from_str(
+        "0x936accb491f0facaac668baaedcf4d0cfc6da1120b66f77fa6a43af718669973",
+    )?;
 
     let temp_dir = TempDir::new().unwrap();
     let keystore_path = temp_dir.path().join("myso.keystore");

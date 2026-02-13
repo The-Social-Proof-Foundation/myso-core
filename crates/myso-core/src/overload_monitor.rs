@@ -3,6 +3,11 @@
 // SPDX-License-Identifier: Apache-2.0
 
 use crate::authority::AuthorityState;
+use myso_config::node::AuthorityOverloadConfig;
+use myso_types::digests::TransactionDigest;
+use myso_types::error::MySoErrorKind;
+use myso_types::error::MySoResult;
+use myso_types::fp_bail;
 use mysten_metrics::monitored_scope;
 use std::cmp::{max, min};
 use std::hash::Hasher;
@@ -10,11 +15,6 @@ use std::sync::Weak;
 use std::sync::atomic::{AtomicBool, AtomicU32, Ordering};
 use std::time::Duration;
 use std::time::{SystemTime, UNIX_EPOCH};
-use myso_config::node::AuthorityOverloadConfig;
-use myso_types::digests::TransactionDigest;
-use myso_types::error::MySoErrorKind;
-use myso_types::error::MySoResult;
-use myso_types::fp_bail;
 use tokio::time::sleep;
 use tracing::{debug, info};
 use twox_hash::XxHash64;
@@ -266,12 +266,12 @@ mod tests {
     use super::*;
 
     use crate::authority::test_authority_builder::TestAuthorityBuilder;
+    use myso_macros::sim_test;
     use rand::{
         Rng, SeedableRng,
         rngs::{OsRng, StdRng},
     };
     use std::sync::Arc;
-    use myso_macros::sim_test;
     use tokio::sync::mpsc::UnboundedReceiver;
     use tokio::sync::mpsc::UnboundedSender;
     use tokio::sync::mpsc::unbounded_channel;

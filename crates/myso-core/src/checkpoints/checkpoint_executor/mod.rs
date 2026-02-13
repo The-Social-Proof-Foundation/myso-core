@@ -20,15 +20,15 @@
 //! end of epoch. This allows us to use it as a signal for reconfig.
 
 use futures::StreamExt;
-use mysten_common::{debug_fatal, fatal};
-use parking_lot::Mutex;
-use std::{sync::Arc, time::Instant};
 use myso_types::MYSO_ACCUMULATOR_ROOT_OBJECT_ID;
 use myso_types::base_types::SequenceNumber;
 use myso_types::crypto::RandomnessRound;
 use myso_types::inner_temporary_store::PackageStoreWithFallback;
 use myso_types::messages_checkpoint::{CheckpointContents, CheckpointSequenceNumber};
 use myso_types::transaction::{TransactionDataAPI, TransactionKind};
+use mysten_common::{debug_fatal, fatal};
+use parking_lot::Mutex;
+use std::{sync::Arc, time::Instant};
 
 use myso_config::node::{CheckpointExecutorConfig, RunWithRange};
 use myso_macros::fail_point;

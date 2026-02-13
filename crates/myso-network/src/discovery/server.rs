@@ -4,13 +4,13 @@
 
 use super::{Discovery, MAX_PEERS_TO_SEND, SignedNodeInfo, State};
 use anemo::{PeerId, Request, Response, types::PeerInfo};
+use myso_config::p2p::AccessType;
 use rand::seq::IteratorRandom;
 use serde::{Deserialize, Serialize};
 use std::{
     collections::HashMap,
     sync::{Arc, OnceLock, RwLock},
 };
-use myso_config::p2p::AccessType;
 
 #[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct GetKnownPeersResponseV2 {

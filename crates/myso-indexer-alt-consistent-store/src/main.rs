@@ -7,10 +7,10 @@ use std::path::PathBuf;
 use anyhow::Context;
 use clap::Parser;
 use futures::TryFutureExt as _;
-use prometheus::Registry;
 use myso_indexer_alt_framework::service::Error;
 use myso_indexer_alt_metrics::MetricsService;
 use myso_indexer_alt_metrics::uptime;
+use prometheus::Registry;
 use tokio::fs;
 
 use myso_indexer_alt_consistent_store::args::Args;

@@ -3,8 +3,8 @@
 // SPDX-License-Identifier: Apache-2.0
 
 use anyhow::Context;
-use prometheus::Registry;
 use myso_indexer_alt_framework::Indexer;
+use tracing::info;
 use myso_indexer_alt_framework::IndexerArgs;
 use myso_indexer_alt_framework::ingestion::ClientArgs;
 use myso_indexer_alt_framework::ingestion::IngestionConfig;
@@ -17,6 +17,7 @@ use myso_indexer_alt_framework::postgres::DbArgs;
 use myso_indexer_alt_metrics::db::DbConnectionStatsCollector;
 use myso_indexer_alt_schema::MIGRATIONS;
 use myso_indexer_alt_social_schema::MIGRATIONS as SOCIAL_MIGRATIONS;
+use prometheus::Registry;
 use url::Url;
 
 use crate::bootstrap::bootstrap;
@@ -38,6 +39,7 @@ use crate::handlers::kv_protocol_configs::KvProtocolConfigs;
 use crate::handlers::kv_transactions::KvTransactions;
 use crate::handlers::obj_info::ObjInfo;
 use crate::handlers::obj_versions::ObjVersions;
+use crate::handlers::social_events::SocialEvents;
 use crate::handlers::sum_displays::SumDisplays;
 use crate::handlers::tx_affected_addresses::TxAffectedAddresses;
 use crate::handlers::tx_affected_objects::TxAffectedObjects;
@@ -95,6 +97,7 @@ pub async fn setup_indexer(
         tx_calls,
         tx_digests,
         tx_kinds,
+        social_events,
     } = pipeline;
 
     let ingestion = ingestion.finish(IngestionConfig::default())?;
@@ -209,6 +212,18 @@ pub async fn setup_indexer(
     add_concurrent!(TxCalls, tx_calls);
     add_concurrent!(TxDigests, tx_digests);
     add_concurrent!(TxKinds, tx_kinds);
+    if let Some(layer) = social_events {
+        info!("social_events pipeline enabled");
+        indexer
+            .concurrent_pipeline(
+                SocialEvents,
+                layer.finish(ConcurrentConfig {
+                    committer: committer.clone(),
+                    pruner: Some(pruner.clone()),
+                })?,
+            )
+            .await?
+    }
 
     Ok(indexer)
 }

@@ -72,7 +72,8 @@ impl StateReader {
     #[tracing::instrument(skip(self))]
     pub fn get_system_state_summary(
         &self,
-    ) -> Result<myso_types::myso_system_state::myso_system_state_summary::MySoSystemStateSummary> {
+    ) -> Result<myso_types::myso_system_state::myso_system_state_summary::MySoSystemStateSummary>
+    {
         use myso_types::myso_system_state::MySoSystemStateTrait;
 
         let system_state = self.get_system_state()?;
@@ -209,8 +210,8 @@ impl StateReader {
         owner: myso_types::base_types::MySoAddress,
         coin_type: move_core_types::language_storage::StructTag,
     ) -> Option<u64> {
-        use myso_types::MoveTypeTagTraitGeneric;
         use myso_types::MYSO_ACCUMULATOR_ROOT_OBJECT_ID;
+        use myso_types::MoveTypeTagTraitGeneric;
         use myso_types::accumulator_root::AccumulatorKey;
         use myso_types::dynamic_field::DynamicFieldKey;
 

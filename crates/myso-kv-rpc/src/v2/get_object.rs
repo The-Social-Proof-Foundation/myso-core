@@ -2,7 +2,6 @@
 // Copyright (c) The Social Proof Foundation, LLC.
 // SPDX-License-Identifier: Apache-2.0
 
-use std::collections::HashMap;
 use myso_kvstore::{BigTableClient, KeyValueStoreReader};
 use myso_rpc::merge::Merge;
 use myso_rpc::proto::myso::rpc::v2::BatchGetObjectsRequest;
@@ -15,6 +14,7 @@ use myso_rpc_api::{
     grpc::v2::ledger_service::validate_get_object_requests,
 };
 use myso_types::storage::ObjectKey;
+use std::collections::HashMap;
 
 pub const MAX_BATCH_REQUESTS: usize = 1000;
 

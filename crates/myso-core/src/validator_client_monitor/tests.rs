@@ -4,12 +4,12 @@
 
 use super::*;
 use crate::validator_client_monitor::stats::{ClientObservedStats, ValidatorClientStats};
-use std::sync::Arc;
-use std::time::Duration;
 use myso_config::validator_client_monitor_config::ValidatorClientMonitorConfig;
 use myso_types::base_types::{AuthorityName, ConciseableName};
 use myso_types::committee::Committee;
 use myso_types::crypto::{AuthorityKeyPair, KeypairTraits, get_key_pair};
+use std::sync::Arc;
+use std::time::Duration;
 
 mod client_stats_tests {
 

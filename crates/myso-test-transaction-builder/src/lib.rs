@@ -4,14 +4,12 @@
 
 use move_core_types::ident_str;
 use move_core_types::u256::U256;
-use shared_crypto::intent::{Intent, IntentMessage};
-use std::path::PathBuf;
 use myso_genesis_builder::validator_info::GenesisValidatorMetadata;
 use myso_move_build::{BuildConfig, CompiledPackage};
 use myso_rpc_api::client::ExecutedTransaction;
 use myso_sdk::wallet_context::WalletContext;
 use myso_types::balance::Balance;
-use myso_types::base_types::{FullObjectRef, ObjectID, ObjectRef, SequenceNumber, MySoAddress};
+use myso_types::base_types::{FullObjectRef, MySoAddress, ObjectID, ObjectRef, SequenceNumber};
 use myso_types::committee::EpochId;
 use myso_types::crypto::{AccountKeyPair, Signature, Signer, get_key_pair};
 use myso_types::digests::ChainIdentifier;
@@ -20,10 +18,10 @@ use myso_types::effects::TransactionEffectsAPI;
 use myso_types::gas_coin::GAS;
 use myso_types::multisig::{BitmapUnit, MultiSig, MultiSigPublicKey};
 use myso_types::multisig_legacy::{MultiSigLegacy, MultiSigPublicKeyLegacy};
+use myso_types::myso_system_state::MYSO_SYSTEM_MODULE_NAME;
 use myso_types::object::Owner;
 use myso_types::programmable_transaction_builder::ProgrammableTransactionBuilder;
 use myso_types::signature::GenericSignature;
-use myso_types::myso_system_state::MYSO_SYSTEM_MODULE_NAME;
 use myso_types::transaction::{
     Argument, CallArg, DEFAULT_VALIDATOR_GAS_PRICE, FundsWithdrawalArg, ObjectArg,
     SharedObjectMutability, TEST_ONLY_GAS_UNIT_FOR_HEAVY_COMPUTATION_STORAGE,
@@ -31,6 +29,8 @@ use myso_types::transaction::{
 };
 use myso_types::{Identifier, MYSO_FRAMEWORK_PACKAGE_ID, MYSO_RANDOMNESS_STATE_OBJECT_ID};
 use myso_types::{MYSO_SYSTEM_PACKAGE_ID, TypeTag};
+use shared_crypto::intent::{Intent, IntentMessage};
+use std::path::PathBuf;
 
 #[derive(Clone)]
 pub enum FundSource {
@@ -264,7 +264,8 @@ impl TestTransactionBuilder {
                 CallArg::Pure(bcs::to_bytes("example_nft_name").unwrap()),
                 CallArg::Pure(bcs::to_bytes("example_nft_description").unwrap()),
                 CallArg::Pure(
-                    bcs::to_bytes("https://mysocial.network/_nuxt/img/myso-logo.8d3c44e.svg").unwrap(),
+                    bcs::to_bytes("https://mysocial.network/_nuxt/img/myso-logo.8d3c44e.svg")
+                        .unwrap(),
                 ),
             ],
         )

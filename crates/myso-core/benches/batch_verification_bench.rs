@@ -9,13 +9,13 @@ use rand::prelude::*;
 use rand::seq::SliceRandom;
 
 use futures::future::join_all;
-use prometheus::Registry;
-use std::sync::Arc;
 use myso_core::test_utils::{make_cert_with_large_committee, make_dummy_tx};
 use myso_types::committee::Committee;
 use myso_types::crypto::{AccountKeyPair, AuthorityKeyPair, get_key_pair};
 use myso_types::in_memory_storage::InMemoryStorage;
 use myso_types::transaction::CertifiedTransaction;
+use prometheus::Registry;
+use std::sync::Arc;
 
 use fastcrypto_zkp::bn254::zk_login_api::ZkLoginEnv;
 use myso_core::signature_verifier::*;

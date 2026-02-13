@@ -18,12 +18,6 @@ use crate::consensus_adapter::SubmitToConsensus;
 use governor::{Quota, RateLimiter, clock::MonotonicClock};
 use itertools::Itertools;
 use lru::LruCache;
-#[cfg(not(msim))]
-use mysten_common::in_antithesis;
-use mysten_common::{assert_reachable, debug_fatal, in_test_configuration};
-use mysten_metrics::{monitored_scope, spawn_monitored_task};
-use rand::{Rng, SeedableRng, random, rngs, thread_rng};
-use simple_moving_average::{SMA, SingleSumSMA};
 use myso_config::node::ExecutionTimeObserverConfig;
 use myso_protocol_config::{ExecutionTimeEstimateParams, PerObjectCongestionControlMode};
 use myso_types::{
@@ -37,6 +31,12 @@ use myso_types::{
         TransactionDataAPI, TransactionKind,
     },
 };
+#[cfg(not(msim))]
+use mysten_common::in_antithesis;
+use mysten_common::{assert_reachable, debug_fatal, in_test_configuration};
+use mysten_metrics::{monitored_scope, spawn_monitored_task};
+use rand::{Rng, SeedableRng, random, rngs, thread_rng};
+use simple_moving_average::{SMA, SingleSumSMA};
 use tokio::{sync::mpsc, time::Instant};
 use tracing::{debug, info, trace, warn};
 
@@ -893,14 +893,14 @@ mod tests {
         MockConsensusClient,
     };
     use myso_protocol_config::ProtocolConfig;
-    use myso_types::base_types::{ObjectID, SequenceNumber, MySoAddress};
+    use myso_types::base_types::{MySoAddress, ObjectID, SequenceNumber};
     use myso_types::transaction::{
         Argument, CallArg, ObjectArg, ProgrammableMoveCall, SharedObjectMutability,
     };
     use {
-        rand::{Rng, SeedableRng},
         myso_protocol_config::ProtocolVersion,
         myso_types::supported_protocol_versions::Chain,
+        rand::{Rng, SeedableRng},
     };
 
     #[tokio::test]

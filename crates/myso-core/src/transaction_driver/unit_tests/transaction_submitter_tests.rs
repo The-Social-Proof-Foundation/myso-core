@@ -13,14 +13,6 @@ use crate::{
 };
 use async_trait::async_trait;
 use consensus_types::block::BlockRef;
-use std::{
-    collections::{BTreeMap, HashMap},
-    net::SocketAddr,
-    sync::{
-        Arc, Mutex as StdMutex,
-        atomic::{AtomicUsize, Ordering},
-    },
-};
 use myso_types::{
     base_types::{AuthorityName, random_object_ref},
     committee::Committee,
@@ -38,6 +30,14 @@ use myso_types::{
     },
     myso_system_state::MySoSystemState,
     transaction::Transaction,
+};
+use std::{
+    collections::{BTreeMap, HashMap},
+    net::SocketAddr,
+    sync::{
+        Arc, Mutex as StdMutex,
+        atomic::{AtomicUsize, Ordering},
+    },
 };
 use tokio::time::{Duration, sleep};
 
@@ -98,10 +98,11 @@ impl AuthorityAPI for MockAuthority {
         // Use 1st transaction in batch for response.
         let maybe_response = match raw_request.transactions.first() {
             Some(tx_bytes) => {
-                let tx: Transaction =
-                    bcs::from_bytes(tx_bytes).map_err(|e| MySoErrorKind::GenericAuthorityError {
+                let tx: Transaction = bcs::from_bytes(tx_bytes).map_err(|e| {
+                    MySoErrorKind::GenericAuthorityError {
                         error: format!("Failed to deserialize transaction: {}", e),
-                    })?;
+                    }
+                })?;
                 let tx_digest = tx.digest();
                 let responses = self.submit_responses.lock().unwrap();
                 responses.get(tx_digest).cloned()

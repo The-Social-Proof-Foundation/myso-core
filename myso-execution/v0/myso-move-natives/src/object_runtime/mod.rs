@@ -13,13 +13,9 @@ use move_vm_types::{
     loaded_data::runtime_types::Type,
     values::{GlobalValue, Value},
 };
-use std::{
-    collections::{BTreeMap, BTreeSet},
-    sync::Arc,
-};
 use myso_protocol_config::{check_limit_by_meter, LimitThresholdCrossed, ProtocolConfig};
 use myso_types::{
-    base_types::{MoveObjectType, ObjectID, SequenceNumber, MySoAddress},
+    base_types::{MoveObjectType, MySoAddress, ObjectID, SequenceNumber},
     error::{ExecutionError, ExecutionErrorKind, VMMemoryLimitExceededSubStatusCode},
     execution::DynamicallyLoadedObjectMetadata,
     id::UID,
@@ -27,6 +23,10 @@ use myso_types::{
     object::{MoveObject, Owner},
     storage::{ChildObjectResolver, DeleteKind, WriteKind},
     MYSO_CLOCK_OBJECT_ID, MYSO_SYSTEM_STATE_OBJECT_ID,
+};
+use std::{
+    collections::{BTreeMap, BTreeSet},
+    sync::Arc,
 };
 
 pub(crate) mod object_store;

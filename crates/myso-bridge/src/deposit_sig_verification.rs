@@ -24,13 +24,11 @@ pub fn verify_myso_signature(
     signature_b64: &str,
     expected_address: &MySoAddress,
 ) -> BridgeResult<bool> {
-    let sig_bytes = Base64::decode(signature_b64).map_err(|e| {
-        BridgeError::Generic(format!("Failed to decode MySo signature: {:?}", e))
-    })?;
+    let sig_bytes = Base64::decode(signature_b64)
+        .map_err(|e| BridgeError::Generic(format!("Failed to decode MySo signature: {:?}", e)))?;
 
-    let signature = GenericSignature::from_bytes(&sig_bytes).map_err(|e| {
-        BridgeError::Generic(format!("Failed to parse MySo signature: {:?}", e))
-    })?;
+    let signature = GenericSignature::from_bytes(&sig_bytes)
+        .map_err(|e| BridgeError::Generic(format!("Failed to parse MySo signature: {:?}", e)))?;
 
     let intent_msg = IntentMessage::new(
         Intent::personal_message(),
@@ -47,11 +45,7 @@ pub fn verify_myso_signature(
             Arc::new(VerifiedDigestCache::new_empty()),
         )
         .map_err(|e| {
-            warn!(
-                ?expected_address,
-                ?e,
-                "MySo signature verification failed"
-            );
+            warn!(?expected_address, ?e, "MySo signature verification failed");
             BridgeError::Generic(format!("MySo signature verification failed: {:?}", e))
         })?;
 
@@ -69,9 +63,9 @@ pub fn verify_eth_signature(
         BridgeError::Generic(format!("Failed to parse Ethereum signature: {:?}", e))
     })?;
 
-    let recovered = signature.recover_address_from_msg(message).map_err(|e| {
-        BridgeError::Generic(format!("Failed to recover Ethereum signer: {:?}", e))
-    })?;
+    let recovered = signature
+        .recover_address_from_msg(message)
+        .map_err(|e| BridgeError::Generic(format!("Failed to recover Ethereum signer: {:?}", e)))?;
 
     if &recovered != expected_address {
         warn!(
@@ -84,7 +78,10 @@ pub fn verify_eth_signature(
         ));
     }
 
-    info!(?expected_address, "Ethereum signature verified successfully");
+    info!(
+        ?expected_address,
+        "Ethereum signature verified successfully"
+    );
     Ok(true)
 }
 

@@ -4,11 +4,11 @@
 
 use std::sync::Arc;
 
-use rand::{Rng, seq::SliceRandom};
 use myso_macros::sim_test;
 use myso_protocol_config::ProtocolConfig;
 use myso_test_transaction_builder::FundSource;
 use myso_types::{effects::TransactionEffectsAPI, gas_coin::MIST_PER_MYSO};
+use rand::{Rng, seq::SliceRandom};
 use test_cluster::TestClusterBuilder;
 
 #[sim_test]

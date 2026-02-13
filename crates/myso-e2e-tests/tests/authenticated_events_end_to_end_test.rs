@@ -11,7 +11,7 @@ use myso_rpc_api::client::ExecutedTransaction;
 use myso_types::accumulator_root::EventCommitment;
 use myso_types::{
     accumulator_root::{self as ar, EventStreamHead},
-    base_types::{ObjectID, MySoAddress},
+    base_types::{MySoAddress, ObjectID},
     dynamic_field::Field,
     effects::{AccumulatorValue, TransactionEffectsAPI},
     messages_checkpoint::CheckpointSequenceNumber,

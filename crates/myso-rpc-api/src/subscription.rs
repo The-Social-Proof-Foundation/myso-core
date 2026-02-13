@@ -3,8 +3,8 @@
 // SPDX-License-Identifier: Apache-2.0
 
 use crate::metrics::SubscriptionMetrics;
-use std::sync::Arc;
 use myso_types::full_checkpoint_content::Checkpoint;
+use std::sync::Arc;
 use tokio::sync::mpsc;
 use tokio::sync::oneshot;
 use tracing::info;

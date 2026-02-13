@@ -8,8 +8,8 @@ use myso_rpc::proto::myso::rpc::v2::{Balance, GetBalanceRequest, GetBalanceRespo
 use myso_sdk_types::Address;
 use myso_sdk_types::StructTag;
 use myso_types::base_types::MySoAddress;
-use myso_types::storage::BalanceInfo;
 use myso_types::myso_sdk_types_conversions::struct_tag_sdk_to_core;
+use myso_types::storage::BalanceInfo;
 
 #[tracing::instrument(skip(service))]
 pub fn get_balance(service: &RpcService, request: GetBalanceRequest) -> Result<GetBalanceResponse> {

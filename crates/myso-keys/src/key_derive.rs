@@ -13,12 +13,12 @@ use fastcrypto::{
     secp256k1::{Secp256k1KeyPair, Secp256k1PrivateKey},
     traits::{KeyPair, ToFromBytes},
 };
-use slip10_ed25519::derive_ed25519_private_key;
 use myso_types::{
     base_types::MySoAddress,
-    crypto::{SignatureScheme, MySoKeyPair},
+    crypto::{MySoKeyPair, SignatureScheme},
     error::{MySoError, MySoErrorKind},
 };
+use slip10_ed25519::derive_ed25519_private_key;
 
 pub const DERIVATION_PATH_COIN_TYPE: u32 = 6976;
 pub const DERVIATION_PATH_PURPOSE_ED25519: u32 = 44;

@@ -8,7 +8,7 @@ use myso_types::base_types::MySoAddress;
 use myso_types::{base_types::ObjectID, transaction::TransactionData};
 use serde::{Deserialize, Serialize};
 use typed_store::Map;
-use typed_store::{rocks::DBMap, TypedStoreError};
+use typed_store::{TypedStoreError, rocks::DBMap};
 
 use tracing::info;
 use typed_store::DBMapUtils;
@@ -133,7 +133,7 @@ impl WriteAheadLog {
 #[cfg(test)]
 mod tests {
     use myso_types::{
-        base_types::{random_object_ref, ObjectRef},
+        base_types::{ObjectRef, random_object_ref},
         transaction::TEST_ONLY_GAS_UNIT_FOR_TRANSFER,
     };
 

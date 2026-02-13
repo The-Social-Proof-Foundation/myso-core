@@ -2,10 +2,10 @@
 // Copyright (c) The Social Proof Foundation, LLC.
 // SPDX-License-Identifier: Apache-2.0
 
-use std::path::PathBuf;
 use myso_move_build::BuildConfig;
 use myso_types::programmable_transaction_builder::ProgrammableTransactionBuilder;
 use myso_types::transaction::{TransactionData, TransactionKind};
+use std::path::PathBuf;
 use test_cluster::TestClusterBuilder;
 
 #[tokio::test]

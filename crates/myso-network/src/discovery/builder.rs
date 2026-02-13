@@ -11,12 +11,12 @@ use anemo::types::PeerAffinity;
 use anemo::{PeerId, types::PeerInfo};
 use anemo_tower::rate_limit;
 use fastcrypto::traits::KeyPair;
+use myso_config::p2p::P2pConfig;
+use myso_types::crypto::NetworkKeyPair;
 use std::{
     collections::HashMap,
     sync::{Arc, OnceLock, RwLock},
 };
-use myso_config::p2p::P2pConfig;
-use myso_types::crypto::NetworkKeyPair;
 use tap::{Pipe, TapFallible};
 use tokio::{
     sync::{mpsc, oneshot},

@@ -9,8 +9,8 @@ use prometheus::{
     register_int_gauge_vec_with_registry, register_int_gauge_with_registry,
 };
 
-use std::time::Duration;
 use myso_network::tonic::Code;
+use std::time::Duration;
 
 pub struct MySoNodeMetrics {
     pub jwk_requests: IntCounterVec,

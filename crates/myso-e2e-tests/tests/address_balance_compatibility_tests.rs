@@ -5,7 +5,7 @@
 use myso_macros::*;
 use myso_test_transaction_builder::FundSource;
 use myso_types::{
-    base_types::{FullObjectRef, ObjectID, SequenceNumber, MySoAddress},
+    base_types::{FullObjectRef, MySoAddress, ObjectID, SequenceNumber},
     coin_reservation::ParsedObjectRefWithdrawal,
 };
 

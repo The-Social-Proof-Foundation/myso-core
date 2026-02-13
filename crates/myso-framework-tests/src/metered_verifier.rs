@@ -3,8 +3,6 @@
 // SPDX-License-Identifier: Apache-2.0
 
 use move_bytecode_verifier_meter::Scope;
-use prometheus::Registry;
-use std::{path::Path, sync::Arc, time::Instant};
 use myso_adapter::adapter::run_metered_move_bytecode_verifier;
 use myso_config::verifier_signing_config::VerifierSigningConfig;
 use myso_framework::BuiltInFramework;
@@ -12,6 +10,8 @@ use myso_move_build::CompiledPackage;
 use myso_protocol_config::ProtocolConfig;
 use myso_types::{error::MySoErrorKind, metrics::BytecodeVerifierMetrics};
 use myso_verifier::meter::MySoVerifierMeter;
+use prometheus::Registry;
+use std::{path::Path, sync::Arc, time::Instant};
 
 use crate::setup_examples;
 

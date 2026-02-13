@@ -8,7 +8,9 @@ use myso_rpc::field::FieldMaskUtil;
 use myso_rpc::proto::myso::rpc::v2::GetTransactionRequest;
 use myso_rpc::proto::myso::rpc::v2::get_checkpoint_request::CheckpointId;
 use myso_rpc::proto::myso::rpc::v2::ledger_service_client::LedgerServiceClient;
-use myso_rpc::proto::myso::rpc::v2::{Checkpoint, ExecutedTransaction, GetCheckpointRequest, Object};
+use myso_rpc::proto::myso::rpc::v2::{
+    Checkpoint, ExecutedTransaction, GetCheckpointRequest, Object,
+};
 use test_cluster::TestClusterBuilder;
 
 use crate::{stake_with_validator, transfer_coin};

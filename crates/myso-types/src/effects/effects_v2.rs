@@ -7,7 +7,7 @@ use super::{EffectsObjectChange, IDOperation, ObjectChange};
 use crate::accumulator_event::AccumulatorEvent;
 use crate::accumulator_root::AccumulatorObjId;
 use crate::base_types::{
-    EpochId, ObjectDigest, ObjectID, ObjectRef, SequenceNumber, MySoAddress, TransactionDigest,
+    EpochId, MySoAddress, ObjectDigest, ObjectID, ObjectRef, SequenceNumber, TransactionDigest,
     VersionDigest,
 };
 use crate::digests::{EffectsAuxDataDigest, TransactionEventsDigest};

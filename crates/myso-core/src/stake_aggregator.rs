@@ -2,18 +2,18 @@
 // Copyright (c) The Social Proof Foundation, LLC.
 // SPDX-License-Identifier: Apache-2.0
 
-use serde::Serialize;
-use shared_crypto::intent::Intent;
-use std::collections::hash_map::Entry;
-use std::collections::{BTreeMap, HashMap, HashSet};
-use std::hash::Hash;
-use std::sync::Arc;
 use myso_types::base_types::AuthorityName;
 use myso_types::base_types::ConciseableName;
 use myso_types::committee::{Committee, CommitteeTrait, StakeUnit};
 use myso_types::crypto::{AuthorityQuorumSignInfo, AuthoritySignInfo, AuthoritySignInfoTrait};
 use myso_types::error::{MySoError, MySoErrorKind, MySoResult};
 use myso_types::message_envelope::{Envelope, Message};
+use serde::Serialize;
+use shared_crypto::intent::Intent;
+use std::collections::hash_map::Entry;
+use std::collections::{BTreeMap, HashMap, HashSet};
+use std::hash::Hash;
+use std::sync::Arc;
 use tracing::warn;
 use typed_store::TypedStoreError;
 

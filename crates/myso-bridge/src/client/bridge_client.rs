@@ -260,10 +260,10 @@ mod tests {
     use alloy::sol_types::SolValue;
     use fastcrypto::hash::{HashFunction, Keccak256};
     use fastcrypto::traits::KeyPair;
-    use prometheus::Registry;
     use myso_types::TypeTag;
     use myso_types::bridge::{BridgeChainId, TOKEN_ID_BTC, TOKEN_ID_USDT};
     use myso_types::{base_types::MySoAddress, crypto::get_key_pair, digests::TransactionDigest};
+    use prometheus::Registry;
 
     #[tokio::test]
     async fn test_bridge_client() {

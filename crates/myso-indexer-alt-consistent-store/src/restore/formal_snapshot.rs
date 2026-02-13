@@ -9,15 +9,15 @@ use anyhow::Context as _;
 use anyhow::bail;
 use anyhow::ensure;
 use bytes::Bytes;
+use myso_indexer_alt_framework::ingestion::store_client::StoreIngestionClient;
+use myso_indexer_alt_framework::types::full_checkpoint_content::CheckpointData;
+use myso_storage::blob::Blob;
 use object_store::ClientOptions;
 use object_store::aws::AmazonS3Builder;
 use object_store::azure::MicrosoftAzureBuilder;
 use object_store::gcp::GoogleCloudStorageBuilder;
 use object_store::http::HttpBuilder;
 use object_store::local::LocalFileSystem;
-use myso_indexer_alt_framework::ingestion::store_client::StoreIngestionClient;
-use myso_indexer_alt_framework::types::full_checkpoint_content::CheckpointData;
-use myso_storage::blob::Blob;
 use tracing::info;
 use url::Url;
 

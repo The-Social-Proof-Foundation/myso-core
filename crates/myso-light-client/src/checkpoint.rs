@@ -7,10 +7,6 @@ use crate::config::Config;
 use crate::graphql::query_last_checkpoint_of_epoch;
 use crate::object_store::MySoObjectStore;
 use anyhow::{Result, anyhow};
-use serde::{Deserialize, Serialize};
-use std::collections::HashSet;
-use std::io::Read;
-use std::{fs, io::Write};
 use myso_config::genesis::Genesis;
 use myso_data_ingestion_core::end_of_epoch_data;
 use myso_rpc_api::Client;
@@ -18,6 +14,10 @@ use myso_types::{
     crypto::AuthorityQuorumSignInfo, message_envelope::Envelope,
     messages_checkpoint::CheckpointSummary,
 };
+use serde::{Deserialize, Serialize};
+use std::collections::HashSet;
+use std::io::Read;
+use std::{fs, io::Write};
 use tracing::info;
 
 const CHECKPOINT_BUCKET_TIMEOUT_SECS: u64 = 5;
@@ -279,11 +279,11 @@ pub async fn check_and_sync_checkpoints(config: &Config) -> anyhow::Result<()> {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use roaring::RoaringBitmap;
     use myso_types::{
         gas::GasCostSummary, messages_checkpoint::CheckpointContents,
         supported_protocol_versions::ProtocolConfig,
     };
+    use roaring::RoaringBitmap;
     use tempfile::TempDir;
 
     fn create_test_config() -> (Config, TempDir) {

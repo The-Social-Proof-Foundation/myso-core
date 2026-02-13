@@ -9,7 +9,6 @@ use async_graphql::dataloader::Loader;
 use diesel::BoolExpressionMethods;
 use diesel::ExpressionMethods;
 use diesel::QueryDsl;
-use prost_types::FieldMask;
 use myso_indexer_alt_schema::objects::StoredObject;
 use myso_indexer_alt_schema::schema::kv_objects;
 use myso_rpc::field::FieldMaskUtil;
@@ -17,6 +16,7 @@ use myso_rpc::proto::myso::rpc::v2 as proto;
 use myso_types::base_types::ObjectID;
 use myso_types::object::Object;
 use myso_types::storage::ObjectKey;
+use prost_types::FieldMask;
 
 use crate::bigtable_reader::BigtableReader;
 use crate::error::Error;

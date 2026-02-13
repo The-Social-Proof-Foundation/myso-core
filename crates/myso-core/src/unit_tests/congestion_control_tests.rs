@@ -17,7 +17,6 @@ use crate::{
     move_call,
 };
 use move_core_types::ident_str;
-use std::sync::Arc;
 use myso_macros::{register_fail_point_arg, sim_test};
 use myso_protocol_config::{
     Chain, ExecutionTimeEstimateParams, PerObjectCongestionControlMode, ProtocolConfig,
@@ -31,12 +30,13 @@ use myso_types::transaction::PlainTransactionWithClaims;
 use myso_types::transaction::VerifiedTransaction;
 use myso_types::transaction::{ObjectArg, SharedObjectMutability};
 use myso_types::{
-    base_types::{ObjectID, ObjectRef, SequenceNumber, MySoAddress},
+    base_types::{MySoAddress, ObjectID, ObjectRef, SequenceNumber},
     crypto::{AccountKeyPair, get_key_pair},
     execution_status::{CongestedObjects, ExecutionFailureStatus},
     object::Object,
     programmable_transaction_builder::ProgrammableTransactionBuilder,
 };
+use std::sync::Arc;
 
 pub const TEST_ONLY_GAS_PRICE: u64 = 1000;
 pub const TEST_ONLY_GAS_UNIT: u64 = 10_000;

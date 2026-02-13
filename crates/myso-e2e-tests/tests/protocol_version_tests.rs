@@ -60,13 +60,6 @@ mod sim_only_tests {
     use fastcrypto::encoding::Base64;
     use move_binary_format::CompiledModule;
     use move_core_types::ident_str;
-    use mysten_common::register_debug_fatal_handler;
-    use std::path::PathBuf;
-    use std::sync::{
-        Arc,
-        atomic::{AtomicUsize, Ordering},
-    };
-    use std::{fs, io, path::Path};
     use myso_core::authority::framework_injection;
     use myso_framework::BuiltInFramework;
     use myso_json_rpc_api::WriteApiClient;
@@ -77,12 +70,12 @@ mod sim_only_tests {
     use myso_types::base_types::{FullObjectID, FullObjectRef, ObjectID, ObjectRef};
     use myso_types::effects::{TransactionEffects, TransactionEffectsAPI};
     use myso_types::id::ID;
-    use myso_types::object::Owner;
     use myso_types::myso_system_state::{
         MYSO_SYSTEM_STATE_SIM_TEST_DEEP_V2, MYSO_SYSTEM_STATE_SIM_TEST_SHALLOW_V2,
         MYSO_SYSTEM_STATE_SIM_TEST_V1, MySoSystemState, MySoSystemStateTrait,
         epoch_start_myso_system_state::EpochStartSystemStateTrait, get_validator_from_table,
     };
+    use myso_types::object::Owner;
     use myso_types::supported_protocol_versions::SupportedProtocolVersions;
     use myso_types::transaction::{
         CallArg, Command, ObjectArg, ProgrammableMoveCall, ProgrammableTransaction,
@@ -91,7 +84,7 @@ mod sim_only_tests {
     use myso_types::{
         MOVE_STDLIB_PACKAGE_ID, MYSO_BRIDGE_OBJECT_ID, MYSO_FRAMEWORK_PACKAGE_ID,
         MYSO_SYSTEM_PACKAGE_ID,
-        base_types::{SequenceNumber, MySoAddress},
+        base_types::{MySoAddress, SequenceNumber},
         digests::TransactionDigest,
         object::Object,
         programmable_transaction_builder::ProgrammableTransactionBuilder,
@@ -101,6 +94,13 @@ mod sim_only_tests {
         MYSO_ACCUMULATOR_ROOT_OBJECT_ID, MYSO_AUTHENTICATOR_STATE_OBJECT_ID, MYSO_CLOCK_OBJECT_ID,
         MYSO_RANDOMNESS_STATE_OBJECT_ID, MYSO_SYSTEM_STATE_OBJECT_ID,
     };
+    use mysten_common::register_debug_fatal_handler;
+    use std::path::PathBuf;
+    use std::sync::{
+        Arc,
+        atomic::{AtomicUsize, Ordering},
+    };
+    use std::{fs, io, path::Path};
     use tempfile::TempDir;
     use test_cluster::TestCluster;
     use tokio::time::{Duration, sleep};

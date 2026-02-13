@@ -10,12 +10,12 @@
 use std::collections::HashSet;
 use std::path::PathBuf;
 
-use parking_lot::Mutex;
 use myso_types::base_types::TransactionDigest;
 use myso_types::crypto::EmptySignInfo;
 use myso_types::error::{MySoError, MySoResult};
 use myso_types::message_envelope::TrustedEnvelope;
 use myso_types::transaction::{SenderSignedData, VerifiedTransaction};
+use parking_lot::Mutex;
 use typed_store::DBMapUtils;
 use typed_store::rocks::MetricConf;
 use typed_store::{rocks::DBMap, traits::Map};
@@ -94,8 +94,8 @@ impl WritePathPendingTransactionLog {
 mod tests {
     use super::*;
     use anyhow;
-    use std::collections::HashSet;
     use myso_types::utils::create_fake_transaction;
+    use std::collections::HashSet;
 
     #[tokio::test]
     async fn test_pending_tx_log_basic() -> anyhow::Result<()> {

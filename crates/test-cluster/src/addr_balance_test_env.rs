@@ -13,7 +13,7 @@ use myso_types::{
     accumulator_metadata::get_accumulator_object_count,
     accumulator_root::{AccumulatorValue, U128},
     balance::Balance,
-    base_types::{FullObjectRef, ObjectID, ObjectRef, SequenceNumber, MySoAddress},
+    base_types::{FullObjectRef, MySoAddress, ObjectID, ObjectRef, SequenceNumber},
     coin_reservation::ParsedObjectRefWithdrawal,
     digests::{ChainIdentifier, TransactionDigest},
     effects::{TransactionEffects, TransactionEffectsAPI},
@@ -300,7 +300,10 @@ pub fn get_balance(
     myso_core::accumulators::balances::get_balance(owner, child_object_resolver, coin_type).unwrap()
 }
 
-pub fn get_myso_balance(child_object_resolver: &dyn ChildObjectResolver, owner: MySoAddress) -> u64 {
+pub fn get_myso_balance(
+    child_object_resolver: &dyn ChildObjectResolver,
+    owner: MySoAddress,
+) -> u64 {
     get_balance(child_object_resolver, owner, GAS::type_tag())
 }
 

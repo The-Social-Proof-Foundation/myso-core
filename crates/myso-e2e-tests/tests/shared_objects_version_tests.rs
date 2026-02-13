@@ -2,7 +2,6 @@
 // Copyright (c) The Social Proof Foundation, LLC.
 // SPDX-License-Identifier: Apache-2.0
 
-use std::path::PathBuf;
 use myso_macros::*;
 use myso_test_transaction_builder::publish_package;
 use myso_types::MYSO_FRAMEWORK_ADDRESS;
@@ -12,6 +11,7 @@ use myso_types::effects::{TransactionEffects, TransactionEvents};
 use myso_types::execution_status::{ExecutionFailureStatus, ExecutionStatus};
 use myso_types::object::{OBJECT_START_VERSION, Owner};
 use myso_types::transaction::{CallArg, ObjectArg, SharedObjectMutability};
+use std::path::PathBuf;
 use test_cluster::{TestCluster, TestClusterBuilder};
 
 #[sim_test]

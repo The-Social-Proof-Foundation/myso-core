@@ -2,9 +2,9 @@
 // Copyright (c) The Social Proof Foundation, LLC.
 // SPDX-License-Identifier: Apache-2.0
 
+use myso_macros::nondeterministic;
 use rand::Rng;
 use rand::seq::SliceRandom;
-use myso_macros::nondeterministic;
 
 use crate::in_test_configuration;
 use crate::random::get_rng;

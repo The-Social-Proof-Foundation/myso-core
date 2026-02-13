@@ -4,12 +4,6 @@
 
 #![allow(deprecated)]
 
-use shared_crypto::intent::{Intent, IntentMessage};
-use std::collections::BTreeMap;
-use std::path::{Path, PathBuf};
-#[cfg(not(msim))]
-use std::str::FromStr;
-use std::time::Duration;
 use myso_json::{call_args, type_args};
 use myso_json_rpc_api::{
     CoinReadApiClient, GovernanceReadApiClient, IndexerApiClient, ReadApiClient,
@@ -17,9 +11,10 @@ use myso_json_rpc_api::{
 };
 use myso_json_rpc_types::ObjectsPage;
 use myso_json_rpc_types::{
-    Balance, CoinPage, DelegatedStake, StakeStatus, MySoCoinMetadata, MySoExecutionStatus,
-    MySoObjectDataOptions, MySoObjectResponse, MySoObjectResponseQuery, MySoTransactionBlockEffectsAPI,
-    MySoTransactionBlockResponse, MySoTransactionBlockResponseOptions, TransactionBlockBytes,
+    Balance, CoinPage, DelegatedStake, MySoCoinMetadata, MySoExecutionStatus,
+    MySoObjectDataOptions, MySoObjectResponse, MySoObjectResponseQuery,
+    MySoTransactionBlockEffectsAPI, MySoTransactionBlockResponse,
+    MySoTransactionBlockResponseOptions, StakeStatus, TransactionBlockBytes,
 };
 use myso_json_rpc_types::{ObjectChange, ZkLoginIntentScope};
 use myso_macros::sim_test;
@@ -30,7 +25,7 @@ use myso_test_transaction_builder::TestTransactionBuilder;
 use myso_test_transaction_builder::make_transfer_myso_transaction;
 use myso_types::balance::Supply;
 use myso_types::base_types::SequenceNumber;
-use myso_types::base_types::{ObjectID, MySoAddress};
+use myso_types::base_types::{MySoAddress, ObjectID};
 use myso_types::coin::{COIN_MODULE_NAME, TreasuryCap};
 use myso_types::crypto::Signature;
 use myso_types::digests::ObjectDigest;
@@ -40,6 +35,12 @@ use myso_types::transaction_driver_types::ExecuteTransactionRequestType;
 use myso_types::utils::load_test_vectors;
 use myso_types::zk_login_authenticator::ZkLoginAuthenticator;
 use myso_types::{MYSO_FRAMEWORK_ADDRESS, parse_myso_struct_tag};
+use shared_crypto::intent::{Intent, IntentMessage};
+use std::collections::BTreeMap;
+use std::path::{Path, PathBuf};
+#[cfg(not(msim))]
+use std::str::FromStr;
+use std::time::Duration;
 use test_cluster::TestClusterBuilder;
 use tokio::time::sleep;
 

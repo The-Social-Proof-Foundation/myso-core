@@ -4,9 +4,9 @@
 
 use crate::authenticated_events::ClientError;
 use crate::proof::ocs::OCSInclusionProof;
-use std::str::FromStr;
 use myso_rpc_api::grpc::alpha::proof_service_proto::OcsInclusionProof as ProtoOcsInclusionProof;
 use myso_types::base_types::ObjectID;
+use std::str::FromStr;
 
 pub(super) fn proto_object_ref_to_myso_object_ref(
     proto: &myso_rpc::proto::myso::rpc::v2::ObjectReference,

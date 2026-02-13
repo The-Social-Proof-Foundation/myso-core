@@ -4,8 +4,6 @@
 
 use crate::command::Component;
 use crate::mock_storage::InMemoryObjectStore;
-use std::collections::{BTreeMap, HashMap};
-use std::sync::Arc;
 use myso_core::authority::authority_per_epoch_store::AuthorityPerEpochStore;
 use myso_core::authority::authority_store_tables::LiveObject;
 use myso_core::authority::shared_object_version_manager::{
@@ -23,7 +21,7 @@ use myso_core::global_state_hasher::GlobalStateHasher;
 use myso_core::mock_checkpoint_builder::{MockCheckpointBuilder, ValidatorKeypairProvider};
 use myso_core::mock_consensus::{ConsensusMode, MockConsensusClient};
 use myso_test_transaction_builder::{PublishData, TestTransactionBuilder};
-use myso_types::base_types::{AuthorityName, ObjectRef, MySoAddress, TransactionDigest};
+use myso_types::base_types::{AuthorityName, MySoAddress, ObjectRef, TransactionDigest};
 use myso_types::committee::Committee;
 use myso_types::crypto::{AccountKeyPair, AuthoritySignature, Signer};
 use myso_types::effects::{TransactionEffects, TransactionEffectsAPI};
@@ -34,6 +32,8 @@ use myso_types::object::Object;
 use myso_types::transaction::{
     DEFAULT_VALIDATOR_GAS_PRICE, Transaction, TransactionDataAPI, VerifiedTransaction,
 };
+use std::collections::{BTreeMap, HashMap};
+use std::sync::Arc;
 
 #[derive(Clone)]
 pub struct SingleValidator {

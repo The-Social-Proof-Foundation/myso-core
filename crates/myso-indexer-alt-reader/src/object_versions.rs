@@ -316,13 +316,13 @@ impl Loader<VersionedObjectVersionKey> for PgReader {
 mod tests {
     use async_graphql::dataloader::Loader;
     use diesel_async::RunQueryDsl as _;
-    use prometheus::Registry;
     use myso_indexer_alt_schema::MIGRATIONS;
     use myso_indexer_alt_schema::schema::obj_versions;
     use myso_pg_db::Db;
     use myso_pg_db::DbArgs;
     use myso_pg_db::temp::TempDb;
     use myso_types::digests::ObjectDigest;
+    use prometheus::Registry;
 
     use super::*;
 

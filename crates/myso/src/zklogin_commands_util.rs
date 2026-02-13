@@ -10,6 +10,15 @@ use fastcrypto::traits::{EncodeDecodeBase64, KeyPair};
 use fastcrypto_zkp::bn254::utils::get_proof;
 use fastcrypto_zkp::bn254::utils::{gen_address_seed, get_salt};
 use fastcrypto_zkp::bn254::zk_login::ZkLoginInputs;
+use myso_keys::keystore::{AccountKeystore, Keystore};
+use myso_types::base_types::MySoAddress;
+use myso_types::committee::EpochId;
+use myso_types::crypto::{MySoKeyPair, PublicKey};
+use myso_types::gas_coin::GasCoin;
+use myso_types::multisig::{MultiSig, MultiSigPublicKey};
+use myso_types::signature::GenericSignature;
+use myso_types::transaction::Transaction;
+use myso_types::zk_login_authenticator::ZkLoginAuthenticator;
 use rand::SeedableRng;
 use rand::rngs::StdRng;
 use regex::Regex;
@@ -20,15 +29,6 @@ use std::io;
 use std::io::Write;
 use std::thread::sleep;
 use std::time::Duration;
-use myso_keys::keystore::{AccountKeystore, Keystore};
-use myso_types::base_types::MySoAddress;
-use myso_types::committee::EpochId;
-use myso_types::crypto::{PublicKey, MySoKeyPair};
-use myso_types::gas_coin::GasCoin;
-use myso_types::multisig::{MultiSig, MultiSigPublicKey};
-use myso_types::signature::GenericSignature;
-use myso_types::transaction::Transaction;
-use myso_types::zk_login_authenticator::ZkLoginAuthenticator;
 
 /// Read a line from stdin, parse the id_token field and return.
 pub fn read_cli_line() -> Result<String, anyhow::Error> {
@@ -219,7 +219,7 @@ fn get_config(network: &str) -> (&str, &str) {
             "https://faucet.devnet.mysocial.network/v2/gas",
             "https://rpc.devnet.mysocial.network:443",
         ),
-        "localnet" => ("http://127.0.0.1:9123/v2/gas", "http://127.0.0.1:9000"),
+        "localnet" => ("http://127.0.0.1:9123/gas", "http://127.0.0.1:9000"),
         _ => panic!("Invalid network"),
     }
 }

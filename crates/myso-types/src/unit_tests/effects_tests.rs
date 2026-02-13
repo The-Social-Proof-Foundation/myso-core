@@ -2,7 +2,7 @@
 // Copyright (c) The Social Proof Foundation, LLC.
 // SPDX-License-Identifier: Apache-2.0
 
-use crate::base_types::{ObjectID, SequenceNumber, MySoAddress};
+use crate::base_types::{MySoAddress, ObjectID, SequenceNumber};
 use crate::crypto::{AccountKeyPair, get_key_pair_from_rng};
 use crate::digests::ObjectDigest;
 use crate::effects::{TestEffectsBuilder, TransactionEffectsAPI};

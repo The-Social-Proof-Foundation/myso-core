@@ -13,8 +13,6 @@ use jsonrpsee::{
 };
 use move_bytecode_utils::layout::TypeLayoutBuilder;
 use move_core_types::language_storage::TypeTag;
-use mysten_metrics::spawn_monitored_task;
-use serde::Serialize;
 use myso_core::authority::AuthorityState;
 use myso_json::MySoJsonValue;
 use myso_json_rpc_api::{
@@ -22,19 +20,21 @@ use myso_json_rpc_api::{
     cap_page_limit, validate_limit,
 };
 use myso_json_rpc_types::{
-    DynamicFieldPage, EventFilter, EventPage, ObjectsPage, Page, MySoObjectDataOptions,
-    MySoObjectResponse, MySoObjectResponseQuery, MySoTransactionBlockResponse,
-    MySoTransactionBlockResponseQuery, TransactionBlocksPage, TransactionFilter,
+    DynamicFieldPage, EventFilter, EventPage, MySoObjectDataOptions, MySoObjectResponse,
+    MySoObjectResponseQuery, MySoTransactionBlockResponse, MySoTransactionBlockResponseQuery,
+    ObjectsPage, Page, TransactionBlocksPage, TransactionFilter,
 };
 use myso_open_rpc::Module;
 use myso_storage::key_value_store::TransactionKeyValueStore;
 use myso_types::{
-    base_types::{ObjectID, MySoAddress},
+    base_types::{MySoAddress, ObjectID},
     digests::TransactionDigest,
     dynamic_field::DynamicFieldName,
     error::MySoObjectResponseError,
     event::EventID,
 };
+use mysten_metrics::spawn_monitored_task;
+use serde::Serialize;
 use tokio::sync::{OwnedSemaphorePermit, Semaphore};
 use tracing::{instrument, warn};
 
@@ -385,7 +385,6 @@ impl<R: ReadApiServer> IndexerApiServer for IndexerApi<R> {
             }
         })
     }
-
 }
 
 impl<R: ReadApiServer> MySoRpcModule for IndexerApi<R> {

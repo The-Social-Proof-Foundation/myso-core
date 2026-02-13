@@ -9,17 +9,6 @@ use std::time::Duration;
 
 use futures::FutureExt;
 use futures::stream::{FuturesUnordered, StreamExt};
-use mysten_common::{backoff, in_integration_test};
-use mysten_metrics::{TX_TYPE_SHARED_OBJ_TX, TX_TYPE_SINGLE_WRITER_TX, spawn_monitored_task};
-use mysten_metrics::{add_server_timing, spawn_logged_monitored_task};
-use prometheus::core::{AtomicI64, AtomicU64, GenericCounter, GenericGauge};
-use prometheus::{
-    HistogramVec, IntCounter, IntCounterVec, IntGauge, Registry,
-    register_histogram_vec_with_registry, register_int_counter_vec_with_registry,
-    register_int_counter_with_registry, register_int_gauge_vec_with_registry,
-    register_int_gauge_with_registry,
-};
-use rand::Rng;
 use myso_config::NodeConfig;
 use myso_storage::write_path_pending_tx_log::WritePathPendingTransactionLog;
 use myso_types::base_types::TransactionDigest;
@@ -34,6 +23,17 @@ use myso_types::transaction_driver_types::{
     TransactionSubmissionError,
 };
 use myso_types::transaction_executor::{SimulateTransactionResult, TransactionChecks};
+use mysten_common::{backoff, in_integration_test};
+use mysten_metrics::{TX_TYPE_SHARED_OBJ_TX, TX_TYPE_SINGLE_WRITER_TX, spawn_monitored_task};
+use mysten_metrics::{add_server_timing, spawn_logged_monitored_task};
+use prometheus::core::{AtomicI64, AtomicU64, GenericCounter, GenericGauge};
+use prometheus::{
+    HistogramVec, IntCounter, IntCounterVec, IntGauge, Registry,
+    register_histogram_vec_with_registry, register_int_counter_vec_with_registry,
+    register_int_counter_with_registry, register_int_gauge_vec_with_registry,
+    register_int_gauge_with_registry,
+};
+use rand::Rng;
 use tokio::sync::broadcast::Receiver;
 use tokio::time::{Instant, sleep, timeout};
 use tracing::{Instrument, debug, error_span, info, instrument, warn};

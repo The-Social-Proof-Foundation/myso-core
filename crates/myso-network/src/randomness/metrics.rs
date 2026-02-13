@@ -2,12 +2,12 @@
 // Copyright (c) The Social Proof Foundation, LLC.
 // SPDX-License-Identifier: Apache-2.0
 
+use myso_types::{committee::EpochId, crypto::RandomnessRound};
 use prometheus::{
     Histogram, IntGauge, Registry, register_histogram_with_registry,
     register_int_gauge_with_registry,
 };
 use std::sync::Arc;
-use myso_types::{committee::EpochId, crypto::RandomnessRound};
 use tap::Pipe;
 
 #[derive(Clone)]

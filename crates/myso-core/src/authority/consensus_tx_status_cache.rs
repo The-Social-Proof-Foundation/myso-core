@@ -5,12 +5,12 @@
 use std::collections::{BTreeMap, BTreeSet, btree_map::Entry};
 
 use consensus_types::block::Round;
-use mysten_common::sync::notify_read::NotifyRead;
-use parking_lot::{RwLock, RwLockWriteGuard};
 use myso_types::{
     error::{MySoErrorKind, MySoResult},
     messages_consensus::ConsensusPosition,
 };
+use mysten_common::sync::notify_read::NotifyRead;
+use parking_lot::{RwLock, RwLockWriteGuard};
 use tokio::sync::watch;
 use tracing::debug;
 

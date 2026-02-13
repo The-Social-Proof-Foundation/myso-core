@@ -17,8 +17,6 @@ use std::sync::Arc;
 
 use anyhow::{Context, Result, anyhow, ensure};
 use fastcrypto::traits::Signer;
-use prost::Message;
-use rand::rngs::OsRng;
 use myso_config::verifier_signing_config::VerifierSigningConfig;
 use myso_config::{genesis, transaction_deny_config::TransactionDenyConfig};
 use myso_framework_snapshot::load_bytecode_snapshot;
@@ -34,10 +32,10 @@ use myso_types::crypto::{AccountKeyPair, AuthoritySignature, get_account_key_pai
 use myso_types::digests::{ChainIdentifier, ConsensusCommitDigest};
 use myso_types::effects::TransactionEffectsAPI;
 use myso_types::messages_consensus::ConsensusDeterminedVersionAssignments;
+use myso_types::myso_system_state::epoch_start_myso_system_state::EpochStartSystemState;
 use myso_types::object::{Object, Owner};
 use myso_types::storage::ObjectKey;
 use myso_types::storage::{ObjectStore, ReadStore, RpcStateReader};
-use myso_types::myso_system_state::epoch_start_myso_system_state::EpochStartSystemState;
 use myso_types::transaction::EndOfEpochTransactionKind;
 use myso_types::{
     base_types::{EpochId, MySoAddress},
@@ -50,6 +48,8 @@ use myso_types::{
     signature::VerifyParams,
     transaction::{Transaction, VerifiedTransaction},
 };
+use prost::Message;
+use rand::rngs::OsRng;
 
 use self::epoch_state::EpochState;
 pub use self::store::SimulatorStore;
@@ -837,11 +837,11 @@ impl Simulacrum {
 mod tests {
     use std::time::Duration;
 
-    use rand::{SeedableRng, rngs::StdRng};
     use myso_types::{
         base_types::MySoAddress, effects::TransactionEffectsAPI, gas_coin::GasCoin,
         transaction::TransactionDataAPI,
     };
+    use rand::{SeedableRng, rngs::StdRng};
 
     use super::*;
 

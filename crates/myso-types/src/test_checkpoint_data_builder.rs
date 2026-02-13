@@ -6,15 +6,15 @@ use move_core_types::{
     ident_str,
     language_storage::{StructTag, TypeTag},
 };
-use std::collections::{BTreeMap, BTreeSet, HashMap};
 use myso_protocol_config::{ProtocolConfig, ProtocolVersion};
 use myso_sdk_types::CheckpointTimestamp;
+use std::collections::{BTreeMap, BTreeSet, HashMap};
 
 use crate::messages_checkpoint::CheckpointCommitment;
 use crate::{
     MYSO_SYSTEM_ADDRESS,
     base_types::{
-        ExecutionDigests, ObjectID, ObjectRef, SequenceNumber, MySoAddress, dbg_addr,
+        ExecutionDigests, MySoAddress, ObjectID, ObjectRef, SequenceNumber, dbg_addr,
         random_object_ref,
     },
     committee::Committee,

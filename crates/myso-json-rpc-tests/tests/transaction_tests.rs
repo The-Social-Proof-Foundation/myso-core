@@ -19,8 +19,8 @@ use myso_json_rpc_types::{
 };
 use myso_macros::sim_test;
 use myso_types::MYSO_FRAMEWORK_ADDRESS;
-use myso_types::base_types::ObjectID;
 use myso_types::base_types::MySoAddress;
+use myso_types::base_types::ObjectID;
 use myso_types::gas_coin::GAS;
 use myso_types::programmable_transaction_builder::ProgrammableTransactionBuilder;
 use myso_types::transaction::Command;
@@ -335,7 +335,10 @@ async fn test_get_fullnode_transaction() -> Result<(), anyhow::Error> {
     for tx_resp in tx.data {
         let response: MySoTransactionBlockResponse = client
             .read_api()
-            .get_transaction_with_options(tx_resp.digest, MySoTransactionBlockResponseOptions::new())
+            .get_transaction_with_options(
+                tx_resp.digest,
+                MySoTransactionBlockResponseOptions::new(),
+            )
             .await
             .unwrap();
         assert_eq!(tx_resp.digest, response.digest);

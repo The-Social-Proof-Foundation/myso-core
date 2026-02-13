@@ -11,14 +11,12 @@ use anyhow::bail;
 use move_core_types::ident_str;
 use move_core_types::language_storage::StructTag;
 use move_core_types::u256::U256;
-use serde::Deserialize;
-use serde_json::json;
 use myso_types::MYSO_FRAMEWORK_PACKAGE_ID;
 use myso_types::TypeTag;
+use myso_types::base_types::MySoAddress;
 use myso_types::base_types::ObjectDigest;
 use myso_types::base_types::ObjectID;
 use myso_types::base_types::ObjectRef;
-use myso_types::base_types::MySoAddress;
 use myso_types::crypto::Signature;
 use myso_types::crypto::Signer;
 use myso_types::crypto::get_account_key_pair;
@@ -33,6 +31,8 @@ use myso_types::transaction::ObjectArg;
 use myso_types::transaction::Transaction;
 use myso_types::transaction::TransactionData;
 use myso_types::transaction::TransactionKind;
+use serde::Deserialize;
+use serde_json::json;
 
 use myso_indexer_alt_e2e_tests::FullCluster;
 use myso_indexer_alt_e2e_tests::find;
@@ -1094,7 +1094,12 @@ fn create_bag(cluster: &mut FullCluster, owner: MySoAddress, ty: TypeTag, size: 
 
 /// Run a transaction on `cluster` signed by a fresh funded account that creates a `Table<ty, ty>`
 /// owned by `owner` with `size` many elements.
-fn create_table(cluster: &mut FullCluster, owner: MySoAddress, ty: TypeTag, size: u64) -> ObjectRef {
+fn create_table(
+    cluster: &mut FullCluster,
+    owner: MySoAddress,
+    ty: TypeTag,
+    size: u64,
+) -> ObjectRef {
     let (sender, kp, gas) = cluster
         .funded_account(DEFAULT_GAS_BUDGET)
         .expect("Failed to fund account");

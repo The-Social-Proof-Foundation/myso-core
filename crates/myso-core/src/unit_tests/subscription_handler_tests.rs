@@ -11,10 +11,10 @@ use move_core_types::{
     language_storage::StructTag,
 };
 
+use myso_json_rpc_types::MySoMoveStruct;
 use serde::Deserialize;
 use serde::Serialize;
 use serde_json::json;
-use myso_json_rpc_types::MySoMoveStruct;
 
 use myso_types::base_types::ObjectID;
 use myso_types::gas_coin::GasCoin;

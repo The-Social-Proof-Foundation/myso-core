@@ -15,9 +15,9 @@ use myso_types::base_types::{
 use myso_types::coin::CoinMetadata;
 use myso_types::coin_registry;
 use myso_types::error::MySoError;
-use myso_types::object::Object;
 use myso_types::myso_serde::BigInt;
 use myso_types::myso_serde::SequenceNumber as AsSequenceNumber;
+use myso_types::object::Object;
 
 pub type CoinPage = Page<Coin, String>;
 

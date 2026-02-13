@@ -5,10 +5,6 @@
 
 use anyhow::anyhow;
 use async_trait::async_trait;
-use mysten_network::config::Config;
-use std::collections::BTreeMap;
-use std::net::SocketAddr;
-use std::time::Duration;
 use myso_network::{api::ValidatorClient, tonic};
 use myso_types::base_types::AuthorityName;
 use myso_types::committee::CommitteeWithNetworkMetadata;
@@ -19,6 +15,10 @@ use myso_types::messages_checkpoint::{
 };
 use myso_types::multiaddr::Multiaddr;
 use myso_types::myso_system_state::MySoSystemState;
+use mysten_network::config::Config;
+use std::collections::BTreeMap;
+use std::net::SocketAddr;
+use std::time::Duration;
 use tap::TapFallible;
 
 use crate::authority_client::tonic::IntoRequest;

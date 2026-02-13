@@ -21,13 +21,13 @@ use serde_with::Bytes;
 use serde_with::serde_as;
 
 use crate::MYSO_SYSTEM_ADDRESS;
-use crate::base_types::{ObjectID, MySoAddress, TransactionDigest};
+use crate::base_types::{MySoAddress, ObjectID, TransactionDigest};
 use crate::digests::Digest;
 use crate::error::MySoErrorKind;
 use crate::error::MySoResult;
-use crate::object::bounded_visitor::BoundedVisitor;
 use crate::myso_serde::BigInt;
 use crate::myso_serde::Readable;
+use crate::object::bounded_visitor::BoundedVisitor;
 
 /// A universal MySo event type encapsulating different types of events
 #[derive(Debug, Clone, Serialize, Deserialize)]

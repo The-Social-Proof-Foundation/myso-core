@@ -5,9 +5,9 @@
 use futures::future;
 use jsonrpsee::core::RpcResult;
 use jsonrpsee::proc_macros::rpc;
-use myso_json_rpc_types::Page;
 use myso_json_rpc_types::MySoTransactionBlockResponse;
 use myso_json_rpc_types::MySoTransactionBlockResponseOptions;
+use myso_json_rpc_types::Page;
 use myso_open_rpc::Module;
 use myso_open_rpc_macros::open_rpc;
 use myso_types::digests::TransactionDigest;

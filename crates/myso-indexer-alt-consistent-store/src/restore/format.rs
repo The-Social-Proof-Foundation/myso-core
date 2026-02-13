@@ -13,12 +13,12 @@ use anyhow::ensure;
 use fastcrypto::hash::HashFunction;
 use fastcrypto::hash::Sha3_256;
 use integer_encoding::VarIntReader as _;
-use serde::Deserialize;
 use myso_indexer_alt_framework::types::base_types::ObjectID;
 use myso_indexer_alt_framework::types::base_types::SequenceNumber;
 use myso_indexer_alt_framework::types::object::Object;
 use myso_storage::blob::Blob;
 use myso_storage::blob::BlobEncoding;
+use serde::Deserialize;
 use zstd::stream::read::Decoder;
 
 const EPOCH_MANIFEST_MAGIC: u32 = 0x00C0FFEE;

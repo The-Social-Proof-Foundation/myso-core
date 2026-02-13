@@ -13,6 +13,7 @@ use move_command_line_common::error_bitset::ErrorBitset;
 use move_core_types::annotated_value::{MoveStruct, MoveValue, MoveVariant};
 use move_core_types::identifier::Identifier;
 use move_core_types::language_storage::StructTag;
+use myso_macros::EnumVariantOrder;
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 use serde_json::{Value, json};
@@ -21,10 +22,9 @@ use std::collections::BTreeMap;
 use std::fmt;
 use std::fmt::{Display, Formatter, Write};
 use std::hash::Hash;
-use myso_macros::EnumVariantOrder;
 use tracing::warn;
 
-use myso_types::base_types::{ObjectID, MySoAddress};
+use myso_types::base_types::{MySoAddress, ObjectID};
 use myso_types::execution_status::MoveLocation;
 use myso_types::myso_serde::MySoStructTag;
 
@@ -687,7 +687,10 @@ fn indent<T: Display>(d: &T, indent: usize) -> String {
         .join("\n")
 }
 
-fn try_convert_type(type_: &StructTag, fields: &[(Identifier, MoveValue)]) -> Option<MySoMoveValue> {
+fn try_convert_type(
+    type_: &StructTag,
+    fields: &[(Identifier, MoveValue)],
+) -> Option<MySoMoveValue> {
     let struct_name = format!(
         "0x{}::{}::{}",
         type_.address.short_str_lossless(),

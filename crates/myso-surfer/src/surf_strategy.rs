@@ -6,11 +6,11 @@ use std::time::Duration;
 
 use move_binary_format::normalized;
 use move_core_types::language_storage::StructTag;
-use rand::{Rng, seq::SliceRandom};
 use myso_types::{
     base_types::ObjectRef,
     transaction::{CallArg, ObjectArg, SharedObjectMutability},
 };
+use rand::{Rng, seq::SliceRandom};
 use tokio::time::Instant;
 use tracing::debug;
 

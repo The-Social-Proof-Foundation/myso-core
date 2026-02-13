@@ -11,8 +11,6 @@ use std::{
 use async_trait::async_trait;
 use fullnode_reconfig_observer::FullNodeReconfigObserver;
 use futures::TryStreamExt;
-use mysten_common::{fatal, random::get_rng};
-use rand::{Rng, seq::IteratorRandom};
 use myso_config::genesis::Genesis;
 use myso_core::{
     authority_aggregator::{AuthorityAggregator, AuthorityAggregatorBuilder},
@@ -59,7 +57,11 @@ use myso_types::{
     effects::{TransactionEffectsAPI, TransactionEvents},
     execution_status::ExecutionFailureStatus,
 };
-use myso_types::{gas_coin::GAS, myso_system_state::myso_system_state_summary::MySoSystemStateSummary};
+use myso_types::{
+    gas_coin::GAS, myso_system_state::myso_system_state_summary::MySoSystemStateSummary,
+};
+use mysten_common::{fatal, random::get_rng};
+use rand::{Rng, seq::IteratorRandom};
 use tokio::time::sleep;
 use tracing::{debug, info, instrument, warn};
 
@@ -333,7 +335,8 @@ pub trait ValidatorProxy {
         account_address: MySoAddress,
     ) -> Result<Vec<(u64, Object)>, anyhow::Error>;
 
-    async fn get_latest_system_state_object(&self) -> Result<MySoSystemStateSummary, anyhow::Error>;
+    async fn get_latest_system_state_object(&self)
+    -> Result<MySoSystemStateSummary, anyhow::Error>;
 
     async fn execute_transaction_block(
         &self,
@@ -471,7 +474,9 @@ impl ValidatorProxy for LocalValidatorAggregatorProxy {
         unimplemented!("Not available for local proxy");
     }
 
-    async fn get_latest_system_state_object(&self) -> Result<MySoSystemStateSummary, anyhow::Error> {
+    async fn get_latest_system_state_object(
+        &self,
+    ) -> Result<MySoSystemStateSummary, anyhow::Error> {
         let auth_agg = self.td.authority_aggregator().load();
         Ok(auth_agg
             .get_latest_system_state_object_for_testing()
@@ -859,7 +864,9 @@ impl ValidatorProxy for FullNodeProxy {
         Ok(values_objects)
     }
 
-    async fn get_latest_system_state_object(&self) -> Result<MySoSystemStateSummary, anyhow::Error> {
+    async fn get_latest_system_state_object(
+        &self,
+    ) -> Result<MySoSystemStateSummary, anyhow::Error> {
         Ok(self.myso_client.get_system_state_summary(None).await?)
     }
 

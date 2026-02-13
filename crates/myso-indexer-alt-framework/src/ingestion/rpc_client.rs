@@ -4,11 +4,11 @@
 
 use anyhow::anyhow;
 use async_trait::async_trait;
-use prost_types::FieldMask;
 use myso_rpc::Client as RpcClient;
 use myso_rpc::field::FieldMaskUtil;
 use myso_rpc::proto::myso::rpc::v2::GetCheckpointRequest;
 use myso_types::full_checkpoint_content::Checkpoint;
+use prost_types::FieldMask;
 use tonic::Code;
 
 use crate::ingestion::ingestion_client::FetchData;

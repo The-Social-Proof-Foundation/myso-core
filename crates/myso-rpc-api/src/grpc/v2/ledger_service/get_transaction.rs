@@ -6,7 +6,6 @@ use crate::ErrorReason;
 use crate::RpcError;
 use crate::RpcService;
 use crate::TransactionNotFoundError;
-use prost_types::FieldMask;
 use myso_rpc::field::FieldMaskTree;
 use myso_rpc::field::FieldMaskUtil;
 use myso_rpc::merge::Merge;
@@ -21,6 +20,7 @@ use myso_rpc::proto::myso::rpc::v2::Transaction;
 use myso_rpc::proto::myso::rpc::v2::UserSignature;
 use myso_rpc::proto::timestamp_ms_to_proto;
 use myso_sdk_types::Digest;
+use prost_types::FieldMask;
 
 pub const MAX_BATCH_REQUESTS: usize = 200;
 pub const READ_MASK_DEFAULT: &str = "digest";

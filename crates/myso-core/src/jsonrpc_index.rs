@@ -14,13 +14,13 @@ use std::sync::atomic::{AtomicU64, Ordering};
 use bincode::Options;
 use itertools::Itertools;
 use move_core_types::language_storage::{ModuleId, StructTag, TypeTag};
+use myso_types::accumulator_event::AccumulatorEvent;
 use parking_lot::ArcMutexGuard;
 use prometheus::{
     IntCounter, IntCounterVec, Registry, register_int_counter_vec_with_registry,
     register_int_counter_with_registry,
 };
 use serde::{Deserialize, Serialize, de::DeserializeOwned};
-use myso_types::accumulator_event::AccumulatorEvent;
 use typed_store::TypedStoreError;
 use typed_store::rocksdb::compaction_filter::Decision;
 
@@ -28,7 +28,7 @@ use myso_json_rpc_types::{MySoObjectDataFilter, TransactionFilter};
 use myso_storage::mutex_table::MutexTable;
 use myso_storage::sharded_lru::ShardedLruCache;
 use myso_types::base_types::{
-    ObjectDigest, ObjectID, SequenceNumber, MySoAddress, TransactionDigest, TxSequenceNumber,
+    MySoAddress, ObjectDigest, ObjectID, SequenceNumber, TransactionDigest, TxSequenceNumber,
 };
 use myso_types::base_types::{ObjectInfo, ObjectRef};
 use myso_types::digests::TransactionEventsDigest;
@@ -1770,8 +1770,11 @@ impl IndexStore {
         let coin_index_cloned = self.tables.coin_index_2.clone();
         self.caches.all_balances.get_with(owner, move || {
             Self::get_all_balances_from_db(metrics_cloned, coin_index_cloned, owner).map_err(|e| {
-                MySoErrorKind::ExecutionError(format!("Failed to read all balance from DB: {:?}", e))
-                    .into()
+                MySoErrorKind::ExecutionError(format!(
+                    "Failed to read all balance from DB: {:?}",
+                    e
+                ))
+                .into()
             })
         })
     }
@@ -1820,13 +1823,14 @@ impl IndexStore {
                 total_balance += coin_info.balance as i128;
                 coin_object_count += 1;
             }
-            let coin_type =
-                TypeTag::Struct(Box::new(parse_myso_struct_tag(&coin_type).map_err(|e| {
+            let coin_type = TypeTag::Struct(Box::new(parse_myso_struct_tag(&coin_type).map_err(
+                |e| {
                     MySoErrorKind::ExecutionError(format!(
                         "Failed to parse event sender address: {:?}",
                         e
                     ))
-                })?));
+                },
+            )?));
             balances.insert(
                 coin_type,
                 TotalBalance {
@@ -1932,15 +1936,15 @@ mod tests {
     use super::IndexStore;
     use super::ObjectIndexChanges;
     use move_core_types::account_address::AccountAddress;
-    use prometheus::Registry;
-    use std::collections::BTreeMap;
-    use std::env::temp_dir;
-    use myso_types::base_types::{ObjectInfo, ObjectType, MySoAddress};
+    use myso_types::base_types::{MySoAddress, ObjectInfo, ObjectType};
     use myso_types::digests::TransactionDigest;
     use myso_types::effects::TransactionEvents;
     use myso_types::gas_coin::GAS;
     use myso_types::object;
     use myso_types::object::Owner;
+    use prometheus::Registry;
+    use std::collections::BTreeMap;
+    use std::env::temp_dir;
 
     #[tokio::test]
     async fn test_index_cache() -> anyhow::Result<()> {

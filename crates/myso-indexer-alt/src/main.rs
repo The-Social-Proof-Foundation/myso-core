@@ -8,7 +8,6 @@ use anyhow::Context;
 use anyhow::Result;
 use anyhow::bail;
 use clap::Parser;
-use prometheus::Registry;
 use myso_indexer_alt::args::Args;
 use myso_indexer_alt::args::Command;
 use myso_indexer_alt::config::IndexerConfig;
@@ -20,6 +19,7 @@ use myso_indexer_alt_framework::service::terminate;
 use myso_indexer_alt_metrics::MetricsService;
 use myso_indexer_alt_metrics::uptime;
 use myso_indexer_alt_schema::MIGRATIONS;
+use prometheus::Registry;
 use tokio::fs;
 use tracing::info;
 

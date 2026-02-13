@@ -9,8 +9,6 @@ use crate::{
     execution_cache::ObjectCacheRead,
 };
 use itertools::izip;
-use std::collections::BTreeMap;
-use std::sync::Arc;
 use myso_types::{
     base_types::{EpochId, FullObjectID, ObjectRef, TransactionDigest},
     error::{MySoError, MySoResult, UserInputError},
@@ -20,6 +18,8 @@ use myso_types::{
         ReceivingObjectReadResult, ReceivingObjectReadResultKind, ReceivingObjects, TransactionKey,
     },
 };
+use std::collections::BTreeMap;
+use std::sync::Arc;
 use tracing::instrument;
 
 pub(crate) struct TransactionInputLoader {

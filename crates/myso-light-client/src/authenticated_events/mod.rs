@@ -14,8 +14,6 @@ use crate::proof::ocs::{OCSProof, OCSTarget};
 use epoch_cache::EpochCache;
 use futures::stream::Stream;
 use move_core_types::identifier::Identifier;
-use std::sync::Arc;
-use std::time::Duration;
 use myso_rpc::field::{FieldMask, FieldMaskUtil};
 use myso_rpc_api::grpc::alpha::event_service_proto::event_service_client::EventServiceClient;
 use myso_rpc_api::grpc::alpha::proof_service_proto::proof_service_client::ProofServiceClient;
@@ -25,6 +23,8 @@ use myso_types::accumulator_root::{EventStreamHead, derive_event_stream_head_obj
 use myso_types::base_types::MySoAddress;
 use myso_types::committee::Committee;
 use myso_types::event::Event;
+use std::sync::Arc;
+use std::time::Duration;
 use thiserror::Error;
 use tonic::transport::Channel;
 

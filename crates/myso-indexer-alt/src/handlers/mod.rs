@@ -7,8 +7,8 @@ use std::collections::HashSet;
 use std::collections::btree_map::Entry;
 
 use anyhow::Context;
-use myso_indexer_alt_framework::types::base_types::ObjectID;
 use myso_indexer_alt_framework::types::base_types::MySoAddress;
+use myso_indexer_alt_framework::types::base_types::ObjectID;
 use myso_indexer_alt_framework::types::effects::TransactionEffects;
 use myso_indexer_alt_framework::types::effects::TransactionEffectsAPI;
 use myso_indexer_alt_framework::types::full_checkpoint_content::Checkpoint;
@@ -31,6 +31,7 @@ pub(crate) mod kv_protocol_configs;
 pub(crate) mod kv_transactions;
 pub(crate) mod obj_info;
 pub(crate) mod obj_versions;
+pub(crate) mod social_events;
 pub(crate) mod sum_displays;
 pub(crate) mod tx_affected_addresses;
 pub(crate) mod tx_affected_objects;
@@ -97,7 +98,9 @@ pub(crate) fn checkpoint_input_objects(
 ///
 /// Returns addresses from `AddressOwner` and `ConsensusAddressOwner` owners,
 /// skipping other owner types.
-pub(crate) fn affected_addresses(effects: &TransactionEffects) -> impl Iterator<Item = MySoAddress> {
+pub(crate) fn affected_addresses(
+    effects: &TransactionEffects,
+) -> impl Iterator<Item = MySoAddress> {
     effects
         .all_changed_objects()
         .into_iter()

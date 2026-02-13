@@ -4,15 +4,15 @@
 
 use std::{collections::BTreeMap, sync::Arc, time::Duration};
 
-use mysten_metrics::monitored_mpsc::unbounded_channel;
-use parking_lot::Mutex;
-use rand::{Rng, seq::SliceRandom};
 use myso_macros::sim_test;
 use myso_types::{
     accumulator_root::AccumulatorObjId,
     base_types::{ObjectID, SequenceNumber},
     digests::TransactionDigest,
 };
+use mysten_metrics::monitored_mpsc::unbounded_channel;
+use parking_lot::Mutex;
+use rand::{Rng, seq::SliceRandom};
 use tracing::{debug, info};
 
 use crate::execution_scheduler::funds_withdraw_scheduler::{

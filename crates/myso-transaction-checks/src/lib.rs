@@ -8,8 +8,6 @@ pub use checked::*;
 
 #[myso_macros::with_checked_arithmetic]
 mod checked {
-    use std::collections::{BTreeMap, HashSet};
-    use std::sync::Arc;
     use myso_config::verifier_signing_config::VerifierSigningConfig;
     use myso_protocol_config::ProtocolConfig;
     use myso_types::base_types::{ObjectID, ObjectRef};
@@ -26,12 +24,14 @@ mod checked {
         MYSO_RANDOMNESS_STATE_OBJECT_ID,
     };
     use myso_types::{
-        base_types::{SequenceNumber, MySoAddress},
+        base_types::{MySoAddress, SequenceNumber},
         error::MySoError,
         fp_bail, fp_ensure,
         gas::MySoGasStatus,
         object::{Object, Owner},
     };
+    use std::collections::{BTreeMap, HashSet};
+    use std::sync::Arc;
     use tracing::error;
     use tracing::instrument;
 

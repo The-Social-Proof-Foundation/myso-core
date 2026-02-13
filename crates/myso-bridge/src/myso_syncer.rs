@@ -15,13 +15,13 @@ use crate::{
     error::BridgeResult,
     events::{EmittedMySoToEthTokenBridgeV1, EmittedMySoToEthTokenBridgeV2, MySoBridgeEvent},
     metrics::BridgeMetrics,
-    retry_with_max_elapsed_time,
     myso_client::{MySoClient, MySoClientInner},
+    retry_with_max_elapsed_time,
     types::BridgeAction,
 };
+use myso_types::{Identifier, event::EventID};
 use mysten_metrics::spawn_logged_monitored_task;
 use std::{collections::HashMap, sync::Arc};
-use myso_types::{Identifier, event::EventID};
 use tokio::{
     sync::Notify,
     task::JoinHandle,
@@ -260,8 +260,8 @@ mod tests {
     use super::*;
 
     use crate::{myso_client::MySoClient, myso_mock_client::MySoMockClient};
-    use prometheus::Registry;
     use myso_types::bridge::{BridgeChainId, MoveTypeBridgeMessage, MoveTypeBridgeRecord};
+    use prometheus::Registry;
     use tokio::time::timeout;
 
     async fn assert_no_more_events<T: std::fmt::Debug>(

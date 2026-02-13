@@ -21,15 +21,15 @@ use move_vm_types::{
     pop_arg,
     values::{self, StructRef, Value},
 };
+use myso_types::{
+    base_types::{MySoAddress, ObjectID, SequenceNumber},
+    id::UID,
+    object::Owner,
+};
 use smallvec::smallvec;
 use std::{
     borrow::Borrow,
     collections::{BTreeMap, BTreeSet, VecDeque},
-};
-use myso_types::{
-    base_types::{ObjectID, SequenceNumber, MySoAddress},
-    id::UID,
-    object::Owner,
 };
 
 const E_COULD_NOT_GENERATE_EFFECTS: u64 = 0;

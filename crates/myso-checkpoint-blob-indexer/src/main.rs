@@ -6,6 +6,12 @@ use std::path::PathBuf;
 use std::sync::Arc;
 use std::time::Duration;
 
+use myso_indexer_alt_framework::Indexer;
+use myso_indexer_alt_framework::IndexerArgs;
+use myso_indexer_alt_framework::ingestion::ClientArgs;
+use myso_indexer_alt_framework::service::Error;
+use myso_indexer_alt_metrics::MetricsArgs;
+use myso_indexer_alt_object_store::ObjectStore;
 use object_store::ClientOptions;
 use object_store::RetryConfig;
 use object_store::aws::{AmazonS3Builder, S3ConditionalPut};
@@ -13,12 +19,6 @@ use object_store::azure::MicrosoftAzureBuilder;
 use object_store::gcp::GoogleCloudStorageBuilder;
 use object_store::http::HttpBuilder;
 use object_store::local::LocalFileSystem;
-use myso_indexer_alt_framework::Indexer;
-use myso_indexer_alt_framework::IndexerArgs;
-use myso_indexer_alt_framework::ingestion::ClientArgs;
-use myso_indexer_alt_framework::service::Error;
-use myso_indexer_alt_metrics::MetricsArgs;
-use myso_indexer_alt_object_store::ObjectStore;
 use url::Url;
 
 use myso_checkpoint_blob_indexer::CheckpointBcsPipeline;

@@ -9,8 +9,8 @@ use myso_indexer_alt_consistent_api::proto::rpc::consistent::v1alpha::GetBalance
 use myso_indexer_alt_consistent_api::proto::rpc::consistent::v1alpha::ListBalancesRequest;
 use myso_indexer_alt_consistent_api::proto::rpc::consistent::v1alpha::consistent_service_client::ConsistentServiceClient;
 use myso_test_transaction_builder::TestTransactionBuilder;
-use myso_types::base_types::ObjectRef;
 use myso_types::base_types::MySoAddress;
+use myso_types::base_types::ObjectRef;
 use myso_types::crypto::get_account_key_pair;
 use myso_types::effects::TransactionEffectsAPI;
 use myso_types::gas_coin::GAS;

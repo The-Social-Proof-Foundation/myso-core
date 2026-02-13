@@ -6,9 +6,9 @@ use crate::{TestCaseImpl, TestContext, helper::ObjectChecker};
 use async_trait::async_trait;
 use jsonrpsee::rpc_params;
 use myso_json_rpc_types::{MySoTransactionBlockEffectsAPI, MySoTransactionBlockResponse};
-use myso_types::base_types::{ObjectID, MySoAddress};
-use myso_types::object::Owner;
+use myso_types::base_types::{MySoAddress, ObjectID};
 use myso_types::myso_serde::BigInt;
+use myso_types::object::Owner;
 use tracing::{debug, info};
 
 pub struct CoinMergeSplitTest;

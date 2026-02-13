@@ -3,10 +3,10 @@
 // SPDX-License-Identifier: Apache-2.0
 use crate::authority::authority_per_epoch_store::EPOCH_DB_PREFIX;
 use itertools::Itertools;
+use myso_config::node::AuthorityStorePruningConfig;
 use std::fs;
 use std::path::PathBuf;
 use std::time::Duration;
-use myso_config::node::AuthorityStorePruningConfig;
 use tokio::sync::oneshot;
 use tracing::log::{info, warn};
 use typed_store::rocks::safe_drop_db;

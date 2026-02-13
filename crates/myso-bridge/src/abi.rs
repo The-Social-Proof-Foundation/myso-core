@@ -12,16 +12,16 @@ use crate::error::{BridgeError, BridgeResult};
 use crate::types::{
     AddTokensOnEvmAction, AssetPriceUpdateAction, BlocklistCommitteeAction, BridgeAction,
     BridgeActionType, EmergencyAction, EthLog, EthToMySoBridgeAction, EthToMySoTokenTransferV2,
-    EvmContractUpgradeAction, LimitUpdateAction, ParsedTokenTransferMessage, MySoToEthBridgeAction,
-    MySoToEthTokenTransfer, MySoToEthTokenTransferV2,
+    EvmContractUpgradeAction, LimitUpdateAction, MySoToEthBridgeAction, MySoToEthTokenTransfer,
+    MySoToEthTokenTransferV2, ParsedTokenTransferMessage,
 };
 use alloy::primitives::{Address as EthAddress, TxHash};
 use alloy::rpc::types::eth::Log;
 use alloy::sol;
 use alloy::sol_types::SolEventInterface;
-use serde::{Deserialize, Serialize};
 use myso_types::base_types::MySoAddress;
 use myso_types::bridge::BridgeChainId;
+use serde::{Deserialize, Serialize};
 
 macro_rules! gen_eth_events {
     // Contracts with Events
@@ -450,8 +450,8 @@ mod tests {
     use alloy::primitives::{B256, Bytes, LogData};
     use fastcrypto::encoding::{Encoding, Hex};
     use hex_literal::hex;
-    use std::str::FromStr;
     use myso_types::{bridge::TOKEN_ID_ETH, crypto::ToFromBytes};
+    use std::str::FromStr;
 
     #[test]
     fn test_eth_message_conversion_emergency_action_regression() -> anyhow::Result<()> {

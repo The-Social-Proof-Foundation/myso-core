@@ -5,15 +5,15 @@
 use async_trait::async_trait;
 use chrono::DateTime;
 use futures::stream::{self, StreamExt, TryStreamExt};
-use prost_types::FieldMask;
-use std::str::FromStr;
-use std::sync::Arc;
 use myso_rpc::client::Client as GrpcClient;
 use myso_rpc::field::FieldMaskUtil;
 use myso_rpc::proto::myso::rpc::v2::{Checkpoint, GetCheckpointRequest, get_checkpoint_request};
 use myso_types::base_types::TransactionDigest;
 use myso_types::digests::CheckpointDigest;
 use myso_types::messages_checkpoint::CheckpointSequenceNumber;
+use prost_types::FieldMask;
+use std::str::FromStr;
+use std::sync::Arc;
 
 use crate::operations::Operations;
 use crate::types::{

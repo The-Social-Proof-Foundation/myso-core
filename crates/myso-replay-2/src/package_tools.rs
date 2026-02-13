@@ -16,9 +16,6 @@ use move_package_alt::{
     schema::{Environment, EnvironmentName},
 };
 use move_package_alt_compilation::build_config::BuildConfig as MoveBuildConfig;
-use std::collections::{BTreeMap, BTreeSet};
-use std::fs;
-use std::path::PathBuf;
 use myso_move_build::BuildConfig;
 use myso_package_alt::MySoFlavor;
 use myso_types::{
@@ -28,6 +25,9 @@ use myso_types::{
     object::{Data, Object},
     supported_protocol_versions::ProtocolConfig,
 };
+use std::collections::{BTreeMap, BTreeSet};
+use std::fs;
+use std::path::PathBuf;
 
 /// Information about a package in the cache
 pub struct PackageInfo {

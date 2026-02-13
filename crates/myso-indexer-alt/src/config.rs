@@ -123,6 +123,7 @@ pub struct PipelineLayer {
     pub tx_calls: Option<ConcurrentLayer>,
     pub tx_digests: Option<ConcurrentLayer>,
     pub tx_kinds: Option<ConcurrentLayer>,
+    pub social_events: Option<ConcurrentLayer>,
 }
 
 impl IndexerConfig {
@@ -274,6 +275,7 @@ impl PipelineLayer {
             tx_calls: Some(Default::default()),
             tx_digests: Some(Default::default()),
             tx_kinds: Some(Default::default()),
+            social_events: Some(Default::default()),
         }
     }
 }
@@ -387,6 +389,7 @@ impl Merge for PipelineLayer {
             tx_calls: self.tx_calls.merge(other.tx_calls)?,
             tx_digests: self.tx_digests.merge(other.tx_digests)?,
             tx_kinds: self.tx_kinds.merge(other.tx_kinds)?,
+            social_events: self.social_events.merge(other.social_events)?,
         })
     }
 }

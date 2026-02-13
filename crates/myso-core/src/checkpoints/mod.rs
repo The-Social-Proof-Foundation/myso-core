@@ -26,14 +26,6 @@ use crate::stake_aggregator::{InsertResult, MultiStakeAggregator};
 use consensus_core::CommitRef;
 use diffy::create_patch;
 use itertools::Itertools;
-use mysten_common::random::get_rng;
-use mysten_common::sync::notify_read::{CHECKPOINT_BUILDER_NOTIFY_READ_TASK_NAME, NotifyRead};
-use mysten_common::{assert_reachable, debug_fatal, fatal, in_antithesis};
-use mysten_metrics::{MonitoredFutureExt, monitored_scope, spawn_monitored_task};
-use nonempty::NonEmpty;
-use parking_lot::Mutex;
-use pin_project_lite::pin_project;
-use serde::{Deserialize, Serialize};
 use myso_macros::fail_point_arg;
 use myso_network::default_mysten_network_config;
 use myso_types::MYSO_ACCUMULATOR_ROOT_OBJECT_ID;
@@ -44,23 +36,20 @@ use myso_types::messages_checkpoint::{
     CheckpointArtifacts, CheckpointCommitment, VersionedFullCheckpointContents,
 };
 use myso_types::myso_system_state::epoch_start_myso_system_state::EpochStartSystemStateTrait;
+use mysten_common::random::get_rng;
+use mysten_common::sync::notify_read::{CHECKPOINT_BUILDER_NOTIFY_READ_TASK_NAME, NotifyRead};
+use mysten_common::{assert_reachable, debug_fatal, fatal, in_antithesis};
+use mysten_metrics::{MonitoredFutureExt, monitored_scope, spawn_monitored_task};
+use nonempty::NonEmpty;
+use parking_lot::Mutex;
+use pin_project_lite::pin_project;
+use serde::{Deserialize, Serialize};
 use tokio::sync::{mpsc, watch};
 use typed_store::rocks::{DBOptions, ReadWriteOptions, default_db_options};
 
 use crate::authority::authority_per_epoch_store::AuthorityPerEpochStore;
 use crate::authority::authority_store_pruner::PrunerWatermarks;
 use crate::consensus_handler::SequencedConsensusTransactionKey;
-use rand::seq::SliceRandom;
-use std::collections::{BTreeMap, BTreeSet, HashMap, HashSet};
-use std::fs::File;
-use std::future::Future;
-use std::io::Write;
-use std::path::Path;
-use std::pin::Pin;
-use std::sync::Arc;
-use std::sync::Weak;
-use std::task::{Context, Poll};
-use std::time::{Duration, SystemTime};
 use myso_protocol_config::ProtocolVersion;
 use myso_types::base_types::{AuthorityName, EpochId, TransactionDigest};
 use myso_types::committee::StakeUnit;
@@ -80,11 +69,22 @@ use myso_types::messages_checkpoint::{
 };
 use myso_types::messages_checkpoint::{CheckpointRequestV2, SignedCheckpointSummary};
 use myso_types::messages_consensus::ConsensusTransactionKey;
-use myso_types::signature::GenericSignature;
 use myso_types::myso_system_state::{MySoSystemState, MySoSystemStateTrait};
+use myso_types::signature::GenericSignature;
 use myso_types::transaction::{
     TransactionDataAPI, TransactionKey, TransactionKind, VerifiedTransaction,
 };
+use rand::seq::SliceRandom;
+use std::collections::{BTreeMap, BTreeSet, HashMap, HashSet};
+use std::fs::File;
+use std::future::Future;
+use std::io::Write;
+use std::path::Path;
+use std::pin::Pin;
+use std::sync::Arc;
+use std::sync::Weak;
+use std::task::{Context, Poll};
+use std::time::{Duration, SystemTime};
 use tokio::{sync::Notify, time::timeout};
 use tracing::{debug, error, info, instrument, trace, warn};
 use typed_store::DBMapUtils;
@@ -3753,8 +3753,6 @@ mod tests {
     use fastcrypto_zkp::bn254::zk_login::{JWK, JwkId};
     use futures::FutureExt as _;
     use futures::future::BoxFuture;
-    use std::collections::HashMap;
-    use std::ops::Deref;
     use myso_macros::sim_test;
     use myso_protocol_config::{Chain, ProtocolConfig};
     use myso_types::accumulator_event::AccumulatorEvent;
@@ -3764,6 +3762,8 @@ mod tests {
     use myso_types::effects::{TransactionEffects, TransactionEvents};
     use myso_types::messages_checkpoint::SignedCheckpointSummary;
     use myso_types::transaction::VerifiedTransaction;
+    use std::collections::HashMap;
+    use std::ops::Deref;
     use tokio::sync::mpsc;
 
     #[tokio::test]

@@ -19,7 +19,7 @@ use myso_rpc::proto::myso::rpc::v2::ExecutionStatus;
 use myso_rpc::proto::myso::rpc::v2::TransactionKind;
 use myso_rpc::proto::myso::rpc::v2::transaction_kind::Kind;
 use myso_sdk_types::Address;
-use myso_types::base_types::{ObjectID, ObjectRef, SequenceNumber, MySoAddress, TransactionDigest};
+use myso_types::base_types::{MySoAddress, ObjectID, ObjectRef, SequenceNumber, TransactionDigest};
 use myso_types::crypto::PublicKey as MySoPublicKey;
 use myso_types::crypto::SignatureScheme;
 use myso_types::messages_checkpoint::CheckpointDigest;

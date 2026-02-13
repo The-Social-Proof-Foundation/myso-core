@@ -4,13 +4,13 @@
 
 use anyhow::Result;
 use anyhow::anyhow;
-use std::sync::Mutex;
-use std::sync::MutexGuard;
 use myso_config::NodeConfig;
 use myso_node::MySoNodeHandle;
 use myso_types::base_types::AuthorityName;
 use myso_types::base_types::ConciseableName;
 use myso_types::crypto::KeypairTraits;
+use std::sync::Mutex;
+use std::sync::MutexGuard;
 use tap::TapFallible;
 use tracing::{error, info};
 

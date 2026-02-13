@@ -280,7 +280,6 @@ mod tests {
     use move_core_types::annotated_value::MoveTypeLayout as L;
     use move_core_types::language_storage::TypeTag;
     use move_core_types::u256::U256;
-    use serde::Serialize;
     use myso_types::base_types::move_ascii_str_layout;
     use myso_types::base_types::move_utf8_str_layout;
     use myso_types::base_types::url_layout;
@@ -288,6 +287,7 @@ mod tests {
     use myso_types::dynamic_field::derive_dynamic_field_id;
     use myso_types::id::ID;
     use myso_types::id::UID;
+    use serde::Serialize;
 
     use crate::v2::value::tests::MockStore;
     use crate::v2::value::tests::enum_;

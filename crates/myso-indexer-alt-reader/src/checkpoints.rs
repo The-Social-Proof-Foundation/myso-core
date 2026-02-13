@@ -9,7 +9,6 @@ use anyhow::Context;
 use async_graphql::dataloader::Loader;
 use diesel::ExpressionMethods;
 use diesel::QueryDsl;
-use prost_types::FieldMask;
 use myso_indexer_alt_schema::checkpoints::StoredCheckpoint;
 use myso_indexer_alt_schema::schema::kv_checkpoints;
 use myso_rpc::field::FieldMaskUtil;
@@ -17,6 +16,7 @@ use myso_rpc::proto::myso::rpc::v2 as proto;
 use myso_types::crypto::AuthorityQuorumSignInfo;
 use myso_types::messages_checkpoint::CheckpointContents;
 use myso_types::messages_checkpoint::CheckpointSummary;
+use prost_types::FieldMask;
 
 use crate::bigtable_reader::BigtableReader;
 use crate::error::Error;

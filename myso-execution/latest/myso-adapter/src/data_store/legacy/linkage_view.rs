@@ -9,16 +9,16 @@ use move_core_types::{
     language_storage::ModuleId,
     resolver::{LinkageResolver, ModuleResolver},
 };
+use myso_types::{
+    base_types::ObjectID,
+    error::{ExecutionError, MySoError, MySoResult},
+    move_package::{MovePackage, TypeOrigin, UpgradeInfo},
+};
 use std::{
     cell::RefCell,
     collections::{BTreeMap, HashMap, HashSet, hash_map::Entry},
     rc::Rc,
     str::FromStr,
-};
-use myso_types::{
-    base_types::ObjectID,
-    error::{ExecutionError, MySoError, MySoResult},
-    move_package::{MovePackage, TypeOrigin, UpgradeInfo},
 };
 
 /// Exposes module and linkage resolution to the Move runtime.  The first by delegating to

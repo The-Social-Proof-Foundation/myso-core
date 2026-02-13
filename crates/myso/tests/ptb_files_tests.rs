@@ -3,9 +3,9 @@
 // SPDX-License-Identifier: Apache-2.0
 
 #[cfg(not(msim))]
-use std::path::Path;
-#[cfg(not(msim))]
 use myso_types::transaction::{CallArg, ObjectArg};
+#[cfg(not(msim))]
+use std::path::Path;
 
 #[cfg(not(msim))]
 const TEST_DIR: &str = "tests";
@@ -13,9 +13,9 @@ const TEST_DIR: &str = "tests";
 #[cfg(not(msim))]
 #[tokio::main]
 async fn test_ptb_files(path: &Path) -> datatest_stable::Result<()> {
-    use std::collections::BTreeMap;
     use myso::client_ptb::ptb::{PTB, to_source_string};
     use myso::client_ptb::{error::build_error_reports, ptb::PTBPreview};
+    use std::collections::BTreeMap;
     use test_cluster::TestClusterBuilder;
 
     let _ = miette::set_hook(Box::new(|_| {

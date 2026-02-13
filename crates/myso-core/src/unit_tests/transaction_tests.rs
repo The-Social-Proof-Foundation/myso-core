@@ -7,14 +7,12 @@ use crate::authority::test_authority_builder::TestAuthorityBuilder;
 use fastcrypto::{ed25519::Ed25519KeyPair, traits::KeyPair};
 use fastcrypto_zkp::bn254::zk_login::{OIDCProvider, ZkLoginInputs, parse_jwks};
 use move_core_types::{ident_str, identifier::Identifier};
-use rand::{SeedableRng, rngs::StdRng};
-use shared_crypto::intent::{Intent, IntentMessage};
-use myso_types::crypto::{PublicKey, MySoSignature, ToFromBytes, ZkLoginPublicIdentifier};
+use myso_types::crypto::{MySoSignature, PublicKey, ToFromBytes, ZkLoginPublicIdentifier};
 use myso_types::utils::get_one_zklogin_inputs;
 use myso_types::{
     authenticator_state::ActiveJwk,
     base_types::{FullObjectRef, dbg_addr},
-    crypto::{AccountKeyPair, Signature, MySoKeyPair, get_key_pair},
+    crypto::{AccountKeyPair, MySoKeyPair, Signature, get_key_pair},
     error::{MySoResult, UserInputError},
     messages_consensus::ConsensusDeterminedVersionAssignments,
     multisig::{MultiSig, MultiSigPublicKey},
@@ -28,6 +26,8 @@ use myso_types::{
     zk_login_authenticator::ZkLoginAuthenticator,
     zk_login_util::DEFAULT_JWK_BYTES,
 };
+use rand::{SeedableRng, rngs::StdRng};
+use shared_crypto::intent::{Intent, IntentMessage};
 
 use crate::authority::authority_tests::{call_move_, create_gas_objects, publish_object_basics};
 use myso_protocol_config::{Chain, ProtocolConfig, ProtocolVersion};

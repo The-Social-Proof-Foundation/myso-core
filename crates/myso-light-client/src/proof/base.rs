@@ -2,7 +2,6 @@
 // Copyright (c) The Social Proof Foundation, LLC.
 // SPDX-License-Identifier: Apache-2.0
 
-use serde::{Deserialize, Serialize};
 use myso_types::{
     base_types::{ObjectID, ObjectRef},
     committee::Committee,
@@ -11,6 +10,7 @@ use myso_types::{
     messages_checkpoint::{CertifiedCheckpointSummary, VerifiedCheckpoint},
     object::Object,
 };
+use serde::{Deserialize, Serialize};
 
 use crate::proof::{
     committee::{CommitteeProof, CommitteeTarget},

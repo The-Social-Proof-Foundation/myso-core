@@ -4,9 +4,9 @@
 
 use crate::{ExecutionEffects, workloads::ExpectedFailureType};
 use async_trait::async_trait;
-use std::{fmt::Display, num::NonZeroUsize};
 use myso_types::digests::TransactionDigest;
 use myso_types::transaction::Transaction;
+use std::{fmt::Display, num::NonZeroUsize};
 
 /// Results from executing a batch of transactions.
 pub struct BatchExecutionResults {

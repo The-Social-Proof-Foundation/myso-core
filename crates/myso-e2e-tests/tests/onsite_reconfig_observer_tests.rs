@@ -2,10 +2,10 @@
 // Copyright (c) The Social Proof Foundation, LLC.
 // SPDX-License-Identifier: Apache-2.0
 
-use prometheus::Registry;
 use myso_core::safe_client::SafeClientMetricsBase;
 use myso_core::transaction_driver::reconfig_observer::OnsiteReconfigObserver;
 use myso_core::transaction_driver::reconfig_observer::ReconfigObserver;
+use prometheus::Registry;
 use test_cluster::TestClusterBuilder;
 use tracing::info;
 

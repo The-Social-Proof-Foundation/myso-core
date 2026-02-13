@@ -8,10 +8,6 @@ use move_core_types::{
     annotated_value as A, effects::Op, runtime_value as R, vm_status::StatusCode,
 };
 use move_vm_types::values::{GlobalValue, StructRef, Value};
-use std::{
-    collections::{BTreeMap, btree_map},
-    sync::Arc,
-};
 use myso_protocol_config::{LimitThresholdCrossed, ProtocolConfig, check_limit_by_meter};
 use myso_types::{
     base_types::{MoveObjectType, ObjectID, SequenceNumber},
@@ -21,6 +17,10 @@ use myso_types::{
     metrics::LimitsMetrics,
     object::{Data, MoveObject, Object, Owner},
     storage::ChildObjectResolver,
+};
+use std::{
+    collections::{BTreeMap, btree_map},
+    sync::Arc,
 };
 
 pub(super) struct ChildObject {

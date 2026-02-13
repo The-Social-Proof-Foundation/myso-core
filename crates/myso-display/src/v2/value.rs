@@ -15,13 +15,9 @@ use move_core_types::annotated_value::MoveTypeLayout;
 use move_core_types::language_storage::StructTag;
 use move_core_types::language_storage::TypeTag;
 use move_core_types::u256::U256;
-use serde::Serialize;
-use serde::ser::SerializeSeq as _;
-use serde::ser::SerializeTuple as _;
-use serde::ser::SerializeTupleVariant;
+use myso_types::base_types::MySoAddress;
 use myso_types::base_types::ObjectID;
 use myso_types::base_types::RESOLVED_UTF8_STR;
-use myso_types::base_types::MySoAddress;
 use myso_types::base_types::move_ascii_str_layout;
 use myso_types::base_types::move_utf8_str_layout;
 use myso_types::base_types::url_layout;
@@ -31,6 +27,10 @@ use myso_types::id::ID;
 use myso_types::id::UID;
 use myso_types::object::rpc_visitor as RV;
 use myso_types::object::rpc_visitor::Writer as _;
+use serde::Serialize;
+use serde::ser::SerializeSeq as _;
+use serde::ser::SerializeTuple as _;
+use serde::ser::SerializeTupleVariant;
 
 use crate::v2::error::FormatError;
 use crate::v2::parser::Base64Modifier;
@@ -817,7 +817,6 @@ pub(crate) mod tests {
     use move_core_types::annotated_value::MoveStructLayout;
     use move_core_types::annotated_value::MoveTypeLayout as L;
     use move_core_types::identifier::Identifier;
-    use serde_json::json;
     use myso_types::MOVE_STDLIB_ADDRESS;
     use myso_types::base_types::STD_ASCII_MODULE_NAME;
     use myso_types::base_types::STD_ASCII_STRUCT_NAME;
@@ -826,6 +825,7 @@ pub(crate) mod tests {
     use myso_types::dynamic_field::derive_dynamic_field_id;
     use myso_types::id::ID;
     use myso_types::id::UID;
+    use serde_json::json;
 
     use super::*;
 

@@ -4,17 +4,6 @@
 
 #[cfg(msim)]
 mod test {
-    use mysten_common::register_debug_fatal_handler;
-    use prost::Message;
-    use rand::{Rng, distributions::uniform::SampleRange, thread_rng};
-    use std::collections::BTreeMap;
-    use std::collections::HashSet;
-    use std::num::NonZeroUsize;
-    use std::path::PathBuf;
-    use std::str::FromStr;
-    use std::sync::atomic::{AtomicBool, AtomicU64, Ordering};
-    use std::sync::{Arc, Mutex};
-    use std::time::{Duration, Instant};
     use myso_benchmark::BenchmarkProxyMetrics;
     use myso_benchmark::bank::BenchmarkBank;
     use myso_benchmark::system_state_observer::SystemStateObserver;
@@ -57,6 +46,17 @@ mod test {
     use myso_types::messages_checkpoint::VerifiedCheckpoint;
     use myso_types::supported_protocol_versions::SupportedProtocolVersions;
     use myso_types::traffic_control::{FreqThresholdConfig, PolicyConfig, PolicyType};
+    use mysten_common::register_debug_fatal_handler;
+    use prost::Message;
+    use rand::{Rng, distributions::uniform::SampleRange, thread_rng};
+    use std::collections::BTreeMap;
+    use std::collections::HashSet;
+    use std::num::NonZeroUsize;
+    use std::path::PathBuf;
+    use std::str::FromStr;
+    use std::sync::atomic::{AtomicBool, AtomicU64, Ordering};
+    use std::sync::{Arc, Mutex};
+    use std::time::{Duration, Instant};
     use test_cluster::{TestCluster, TestClusterBuilder};
     use tracing::{error, info, trace};
     use typed_store::traits::Map;

@@ -6,15 +6,15 @@ use crate::authority::authority_store_tables::AuthorityPerpetualTables;
 
 use super::*;
 use futures::FutureExt;
-use std::path::Path;
-use std::time::Duration;
 use myso_framework::BuiltInFramework;
 use myso_move_build::BuildConfig;
 use myso_swarm_config::network_config_builder::ConfigBuilder;
 use myso_types::MYSO_FRAMEWORK_PACKAGE_ID;
-use myso_types::base_types::{ObjectID, SequenceNumber, MySoAddress};
+use myso_types::base_types::{MySoAddress, ObjectID, SequenceNumber};
 use myso_types::object::{Object, Owner};
 use myso_types::storage::InputKey;
+use std::path::Path;
+use std::time::Duration;
 use tempfile::tempdir;
 use tokio::time::timeout;
 

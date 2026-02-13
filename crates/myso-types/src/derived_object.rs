@@ -4,7 +4,7 @@
 
 use crate::{
     MYSO_FRAMEWORK_ADDRESS,
-    base_types::{ObjectID, MySoAddress},
+    base_types::{MySoAddress, ObjectID},
     dynamic_field,
 };
 use move_core_types::{

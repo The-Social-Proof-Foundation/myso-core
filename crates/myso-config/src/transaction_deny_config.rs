@@ -4,9 +4,9 @@
 
 use std::collections::HashSet;
 
+use myso_types::base_types::{MySoAddress, ObjectID};
 use once_cell::sync::OnceCell;
 use serde::{Deserialize, Serialize};
-use myso_types::base_types::{ObjectID, MySoAddress};
 
 use crate::dynamic_transaction_signing_checks::{
     DynamicCheckRunnerContext, DynamicCheckRunnerError,

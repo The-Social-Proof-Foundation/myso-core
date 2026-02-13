@@ -6,7 +6,7 @@ use super::{MultiSigPublicKey, ThresholdUnit, WeightUnit};
 use crate::{
     base_types::MySoAddress,
     crypto::{
-        Ed25519MySoSignature, PublicKey, Signature, MySoKeyPair, MySoSignatureInner,
+        Ed25519MySoSignature, MySoKeyPair, MySoSignatureInner, PublicKey, Signature,
         ZkLoginPublicIdentifier, get_key_pair, get_key_pair_from_rng,
     },
     multisig::{MAX_SIGNER_IN_MULTISIG, MultiSig, as_indices},

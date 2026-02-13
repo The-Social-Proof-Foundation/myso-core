@@ -4,13 +4,13 @@
 
 use crate::accumulator_root::{AccumulatorKey, U128};
 use crate::balance::Balance;
-use crate::base_types::{MoveObjectType, SequenceNumber, MySoAddress};
+use crate::base_types::{MoveObjectType, MySoAddress, SequenceNumber};
 use crate::dynamic_field::{DynamicFieldInfo, DynamicFieldKey};
 use crate::gas_coin::GAS;
 use crate::object::MoveObject;
 use crate::{
-    MoveTypeTagTrait, MoveTypeTagTraitGeneric, MYSO_ACCUMULATOR_ROOT_OBJECT_ID,
-    MYSO_FRAMEWORK_ADDRESS,
+    MYSO_ACCUMULATOR_ROOT_OBJECT_ID, MYSO_FRAMEWORK_ADDRESS, MoveTypeTagTrait,
+    MoveTypeTagTraitGeneric,
 };
 use move_core_types::language_storage::{StructTag, TypeTag};
 

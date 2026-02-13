@@ -6,7 +6,6 @@ use crate::ErrorReason;
 use crate::RpcError;
 use crate::RpcService;
 use crate::error::ObjectNotFoundError;
-use prost_types::FieldMask;
 use myso_rpc::field::FieldMaskTree;
 use myso_rpc::field::FieldMaskUtil;
 use myso_rpc::proto::google::rpc::bad_request::FieldViolation;
@@ -17,6 +16,7 @@ use myso_rpc::proto::myso::rpc::v2::GetObjectResponse;
 use myso_rpc::proto::myso::rpc::v2::GetObjectResult;
 use myso_rpc::proto::myso::rpc::v2::Object;
 use myso_sdk_types::Address;
+use prost_types::FieldMask;
 
 pub const MAX_BATCH_REQUESTS: usize = 1000;
 pub const READ_MASK_DEFAULT: &str = "object_id,version,digest";

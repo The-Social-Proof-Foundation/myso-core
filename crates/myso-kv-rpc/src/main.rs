@@ -6,11 +6,11 @@ use anyhow::Result;
 use axum::Router;
 use axum::routing::get;
 use clap::Parser;
+use myso_kv_rpc::KvRpcServer;
+use myso_rpc_api::{RpcMetrics, RpcMetricsMakeCallbackHandler, ServerVersion};
 use mysten_network::callback::CallbackLayer;
 use prometheus::Registry;
 use std::sync::Arc;
-use myso_kv_rpc::KvRpcServer;
-use myso_rpc_api::{RpcMetrics, RpcMetricsMakeCallbackHandler, ServerVersion};
 use telemetry_subscribers::TelemetryConfig;
 use tonic::transport::{Identity, Server, ServerTlsConfig};
 

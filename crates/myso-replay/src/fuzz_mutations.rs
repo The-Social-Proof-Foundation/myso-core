@@ -2,8 +2,8 @@
 // Copyright (c) The Social Proof Foundation, LLC.
 // SPDX-License-Identifier: Apache-2.0
 
-use rand::{SeedableRng, seq::SliceRandom};
 use myso_types::transaction::TransactionKind;
+use rand::{SeedableRng, seq::SliceRandom};
 
 use crate::fuzz::TransactionKindMutator;
 

@@ -5,17 +5,17 @@
 use std::collections::HashMap;
 
 use super::{MySoSystemState, MySoSystemStateTrait};
-use crate::base_types::{AuthorityName, ObjectID, MySoAddress};
+use crate::base_types::{AuthorityName, MySoAddress, ObjectID};
 use crate::committee::{CommitteeWithNetworkMetadata, NetworkMetadata};
 use crate::crypto::NetworkPublicKey;
 use crate::dynamic_field::get_dynamic_field_from_store;
 use crate::error::{MySoError, MySoErrorKind};
 use crate::id::ID;
 use crate::multiaddr::Multiaddr;
-use crate::storage::ObjectStore;
 use crate::myso_serde::BigInt;
 use crate::myso_serde::Readable;
 use crate::myso_system_state::get_validator_from_table;
+use crate::storage::ObjectStore;
 use fastcrypto::encoding::Base64;
 use fastcrypto::traits::ToFromBytes;
 use schemars::JsonSchema;

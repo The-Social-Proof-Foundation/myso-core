@@ -11,9 +11,9 @@ use crate::types::{BridgeAction, SignedBridgeAction};
 use alloy::primitives::TxHash;
 use async_trait::async_trait;
 use axum::Json;
+use myso_types::digests::TransactionDigest;
 use std::str::FromStr;
 use std::sync::Arc;
-use myso_types::digests::TransactionDigest;
 use tap::TapFallible;
 use tracing::info;
 
@@ -216,7 +216,12 @@ mod tests {
             Arc::new(eth_client),
             approved_actions,
         );
-        (handler, myso_client_mock, eth_mock_service, contract_address)
+        (
+            handler,
+            myso_client_mock,
+            eth_mock_service,
+            contract_address,
+        )
     }
 
     #[tokio::test]

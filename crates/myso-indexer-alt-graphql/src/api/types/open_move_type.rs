@@ -6,11 +6,11 @@ use std::fmt;
 
 use async_graphql::Object;
 use async_graphql::scalar;
-use serde::Deserialize;
-use serde::Serialize;
 use myso_package_resolver::OpenSignature;
 use myso_package_resolver::OpenSignatureBody;
 use myso_package_resolver::Reference;
+use serde::Deserialize;
+use serde::Serialize;
 
 pub(crate) struct OpenMoveType {
     signature: OpenMoveTypeSignature,

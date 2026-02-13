@@ -5,7 +5,6 @@
 use crate::handlers::is_bridge_txn;
 use async_trait::async_trait;
 use diesel_async::RunQueryDsl;
-use std::sync::Arc;
 use myso_bridge_schema::models::MySoErrorTransactions;
 use myso_bridge_schema::schema::myso_error_transactions;
 use myso_indexer_alt_framework::pipeline::Processor;
@@ -15,6 +14,7 @@ use myso_indexer_alt_framework::types::effects::TransactionEffectsAPI;
 use myso_indexer_alt_framework::types::execution_status::ExecutionStatus;
 use myso_indexer_alt_framework::types::full_checkpoint_content::Checkpoint;
 use myso_indexer_alt_framework::types::transaction::TransactionDataAPI;
+use std::sync::Arc;
 
 pub struct ErrorTransactionHandler;
 

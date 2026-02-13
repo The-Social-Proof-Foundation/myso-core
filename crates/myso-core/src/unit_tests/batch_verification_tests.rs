@@ -7,9 +7,6 @@ use crate::test_utils::{make_cert_with_large_committee, make_dummy_tx};
 use fastcrypto::traits::KeyPair;
 use futures::future::join_all;
 use itertools::Itertools as _;
-use prometheus::Registry;
-use rand::{Rng, thread_rng};
-use std::sync::Arc;
 use myso_macros::sim_test;
 use myso_protocol_config::ProtocolConfig;
 use myso_types::committee::Committee;
@@ -21,6 +18,9 @@ use myso_types::messages_checkpoint::{
 };
 use myso_types::signature_verification::VerifiedDigestCache;
 use myso_types::transaction::CertifiedTransaction;
+use prometheus::Registry;
+use rand::{Rng, thread_rng};
+use std::sync::Arc;
 
 // TODO consolidate with `gen_certs` in batch_verification_bench.rs
 fn gen_certs(

@@ -13,15 +13,15 @@ use crate::workloads::workload::{
 };
 use crate::workloads::{Gas, GasCoinConfig, Workload, WorkloadBuilderInfo, WorkloadParams};
 use async_trait::async_trait;
-use rand::seq::IteratorRandom;
-use std::collections::HashMap;
-use std::fmt;
-use std::sync::Arc;
 use myso_core::test_utils::make_transfer_object_transaction;
 use myso_types::base_types::MySoAddress;
 use myso_types::crypto::{AccountKeyPair, Ed25519MySoSignature};
 use myso_types::signature::GenericSignature;
 use myso_types::{base_types::ObjectRef, crypto::get_key_pair, transaction::Transaction};
+use rand::seq::IteratorRandom;
+use std::collections::HashMap;
+use std::fmt;
+use std::sync::Arc;
 use tracing::debug;
 
 #[derive(Debug, Clone)]

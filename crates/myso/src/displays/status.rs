@@ -3,9 +3,9 @@
 // SPDX-License-Identifier: Apache-2.0
 
 use crate::displays::Pretty;
-use std::fmt::{Display, Formatter};
 use myso_json_rpc_types::MySoExecutionStatus::{self, Failure, Success};
 use myso_types::execution_status::ExecutionStatus;
+use std::fmt::{Display, Formatter};
 
 impl Display for Pretty<'_, MySoExecutionStatus> {
     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {

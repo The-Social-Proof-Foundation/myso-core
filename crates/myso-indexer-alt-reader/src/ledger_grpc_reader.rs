@@ -7,7 +7,6 @@ use std::time::Duration;
 
 use anyhow::Context;
 use async_graphql::dataloader::DataLoader;
-use prometheus::Registry;
 use myso_rpc::proto::myso::rpc::v2 as grpc;
 use myso_rpc::proto::myso::rpc::v2::ledger_service_client::LedgerServiceClient;
 use myso_types::effects::TransactionEffects;
@@ -15,6 +14,7 @@ use myso_types::event::Event;
 use myso_types::messages_checkpoint::CheckpointSummary;
 use myso_types::signature::GenericSignature;
 use myso_types::transaction::TransactionData;
+use prometheus::Registry;
 use tonic::transport::Channel;
 use tonic::transport::ClientTlsConfig;
 use tonic::transport::Uri;
@@ -88,8 +88,8 @@ impl LedgerGrpcReader {
 
     pub async fn checkpoint_watermark(&self) -> anyhow::Result<CheckpointSummary> {
         use grpc::GetCheckpointRequest;
-        use prost_types::FieldMask;
         use myso_rpc::field::FieldMaskUtil;
+        use prost_types::FieldMask;
 
         let request =
             GetCheckpointRequest::default().with_read_mask(FieldMask::from_paths(["summary.bcs"]));

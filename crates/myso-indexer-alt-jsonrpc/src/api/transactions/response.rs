@@ -14,7 +14,6 @@ use myso_indexer_alt_reader::tx_balance_changes::TxBalanceChangeKey;
 use myso_indexer_alt_schema::transactions::BalanceChange;
 use myso_indexer_alt_schema::transactions::StoredTxBalanceChange;
 use myso_json_rpc_types::BalanceChange as MySoBalanceChange;
-use myso_json_rpc_types::ObjectChange as MySoObjectChange;
 use myso_json_rpc_types::MySoEvent;
 use myso_json_rpc_types::MySoTransactionBlock;
 use myso_json_rpc_types::MySoTransactionBlockData;
@@ -22,6 +21,7 @@ use myso_json_rpc_types::MySoTransactionBlockEffects;
 use myso_json_rpc_types::MySoTransactionBlockEvents;
 use myso_json_rpc_types::MySoTransactionBlockResponse;
 use myso_json_rpc_types::MySoTransactionBlockResponseOptions;
+use myso_json_rpc_types::ObjectChange as MySoObjectChange;
 use myso_types::TypeTag;
 use myso_types::base_types::ObjectID;
 use myso_types::base_types::SequenceNumber;
@@ -121,9 +121,12 @@ async fn input(
     let tx_signatures: Vec<GenericSignature> = tx.signatures()?;
 
     Ok(MySoTransactionBlock {
-        data: MySoTransactionBlockData::try_from_with_package_resolver(data, ctx.package_resolver())
-            .await
-            .context("Failed to resolve types in transaction data")?,
+        data: MySoTransactionBlockData::try_from_with_package_resolver(
+            data,
+            ctx.package_resolver(),
+        )
+        .await
+        .context("Failed to resolve types in transaction data")?,
         tx_signatures,
     })
 }

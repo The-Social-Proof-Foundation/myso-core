@@ -9,7 +9,6 @@ use std::{
 };
 
 use futures::{StreamExt as _, future::BoxFuture, stream::FuturesUnordered};
-use mysten_common::{backoff::ExponentialBackoff, debug_fatal};
 use myso_types::{
     base_types::{AuthorityName, ConciseableName as _},
     committee::StakeUnit,
@@ -23,6 +22,7 @@ use myso_types::{
     },
     transaction_driver_types::{EffectsFinalityInfo, FinalizedEffects},
 };
+use mysten_common::{backoff::ExponentialBackoff, debug_fatal};
 use tokio::{
     join,
     sync::mpsc::{Receiver, Sender, channel},

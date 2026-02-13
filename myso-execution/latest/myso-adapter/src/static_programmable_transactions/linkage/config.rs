@@ -10,8 +10,8 @@ use crate::{
 };
 use move_binary_format::binary_config::BinaryConfig;
 use myso_types::{
-    MOVE_STDLIB_PACKAGE_ID, MYSO_FRAMEWORK_PACKAGE_ID, MYSO_SYSTEM_PACKAGE_ID, base_types::ObjectID,
-    error::ExecutionError,
+    MOVE_STDLIB_PACKAGE_ID, MYSO_FRAMEWORK_PACKAGE_ID, MYSO_SYSTEM_PACKAGE_ID,
+    base_types::ObjectID, error::ExecutionError,
 };
 
 /// These are the set of native packages in MySo -- importantly they can be used implicitly by

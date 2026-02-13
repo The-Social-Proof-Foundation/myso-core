@@ -16,11 +16,11 @@ use move_core_types::{
     language_storage::{StructTag, TypeTag},
     u256::U256,
 };
+use myso_types::{base_types::ObjectID, digests::Digest};
 use serde::{
     Serialize,
     ser::{SerializeSeq, SerializeTuple},
 };
-use myso_types::{base_types::ObjectID, digests::Digest};
 use winnow::{
     Parser,
     ascii::{hex_digit1, multispace0},
@@ -430,8 +430,9 @@ mod tests {
 
     #[test]
     fn test_struct_tag() {
-        let tag = StructTag::from_str("0x2::table::Table<address, 0x2::coin::Coin<0x2::myso::MYSO>>")
-            .unwrap();
+        let tag =
+            StructTag::from_str("0x2::table::Table<address, 0x2::coin::Coin<0x2::myso::MYSO>>")
+                .unwrap();
         let (bcs, bin) = expect(tag);
 
         assert_eq!(

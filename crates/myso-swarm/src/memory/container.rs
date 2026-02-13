@@ -4,12 +4,12 @@
 
 use super::node::RuntimeType;
 use futures::FutureExt;
-use std::sync::{Arc, Weak};
-use std::thread;
 use myso_config::NodeConfig;
 use myso_node::{MySoNode, MySoNodeHandle};
 use myso_types::base_types::ConciseableName;
 use myso_types::crypto::{AuthorityPublicKeyBytes, KeypairTraits};
+use std::sync::{Arc, Weak};
+use std::thread;
 use telemetry_subscribers::get_global_telemetry_config;
 use tracing::{info, trace};
 

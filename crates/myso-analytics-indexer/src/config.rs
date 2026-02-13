@@ -7,10 +7,10 @@
 use std::collections::HashMap;
 use std::path::PathBuf;
 
-use serde::Deserialize;
-use serde::Serialize;
 use myso_indexer_alt_framework::ingestion::IngestionConfig;
 use myso_indexer_alt_framework::pipeline::sequential::SequentialConfig;
+use serde::Deserialize;
+use serde::Serialize;
 
 use crate::pipeline::Pipeline;
 

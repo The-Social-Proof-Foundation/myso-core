@@ -1,14 +1,14 @@
 // Copyright (c) Mysten Labs, Inc.
 // Copyright (c) The Social Proof Foundation, LLC.
 // SPDX-License-Identifier: Apache-2.0
+use crate::crypto::MySoSignatureInner;
 use crate::crypto::PublicKey;
 use crate::crypto::Secp256r1MySoSignature;
-use crate::crypto::MySoSignatureInner;
 use crate::error::MySoErrorKind;
 use crate::signature_verification::VerifiedDigestCache;
 use crate::{
     base_types::{EpochId, MySoAddress},
-    crypto::{DefaultHash, Signature, SignatureScheme, MySoSignature},
+    crypto::{DefaultHash, MySoSignature, Signature, SignatureScheme},
     digests::ZKLoginInputsDigest,
     error::{MySoError, MySoResult},
     signature::{AuthenticatorTrait, VerifyParams},

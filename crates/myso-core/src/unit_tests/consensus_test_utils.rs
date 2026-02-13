@@ -10,8 +10,6 @@ use std::sync::Arc;
 use arc_swap::ArcSwap;
 use consensus_core::BlockStatus;
 use consensus_types::block::BlockRef;
-use parking_lot::Mutex;
-use prometheus::Registry;
 use myso_types::digests::{Digest, TransactionDigest};
 use myso_types::error::MySoResult;
 use myso_types::executable_transaction::VerifiedExecutableTransaction;
@@ -20,6 +18,8 @@ use myso_types::messages_consensus::{
 };
 use myso_types::myso_system_state::epoch_start_myso_system_state::EpochStartSystemStateTrait;
 use myso_types::transaction::{VerifiedCertificate, VerifiedTransaction};
+use parking_lot::Mutex;
+use prometheus::Registry;
 
 use crate::authority::authority_per_epoch_store::{
     AuthorityPerEpochStore, ExecutionIndicesWithStats,

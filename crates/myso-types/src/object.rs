@@ -33,7 +33,7 @@ use crate::layout_resolver::LayoutResolver;
 use crate::move_package::MovePackage;
 use crate::{
     base_types::{
-        ObjectDigest, ObjectID, ObjectRef, SequenceNumber, MySoAddress, TransactionDigest,
+        MySoAddress, ObjectDigest, ObjectID, ObjectRef, SequenceNumber, TransactionDigest,
     },
     gas_coin::GasCoin,
 };
@@ -384,7 +384,10 @@ impl MoveObject {
     }
 
     /// Get the total amount of MYSO embedded in `self`. Intended for testing purposes
-    pub fn get_total_myso(&self, layout_resolver: &mut dyn LayoutResolver) -> Result<u64, MySoError> {
+    pub fn get_total_myso(
+        &self,
+        layout_resolver: &mut dyn LayoutResolver,
+    ) -> Result<u64, MySoError> {
         if self.type_.is_gas_coin() {
             let balance = self.get_coin_value_unsafe();
             Ok(balance)
@@ -1008,7 +1011,10 @@ impl ObjectInner {
 // Testing-related APIs.
 impl Object {
     /// Get the total amount of MYSO embedded in `self`, including both Move objects and the storage rebate
-    pub fn get_total_myso(&self, layout_resolver: &mut dyn LayoutResolver) -> Result<u64, MySoError> {
+    pub fn get_total_myso(
+        &self,
+        layout_resolver: &mut dyn LayoutResolver,
+    ) -> Result<u64, MySoError> {
         Ok(self.storage_rebate
             + match &self.data {
                 Data::Move(m) => m.get_total_myso(layout_resolver)?,
@@ -1321,7 +1327,7 @@ impl Display for PastObjectRead {
 mod tests {
     use crate::object::{OBJECT_START_VERSION, Object, Owner};
     use crate::{
-        base_types::{ObjectID, MySoAddress, TransactionDigest},
+        base_types::{MySoAddress, ObjectID, TransactionDigest},
         gas_coin::GasCoin,
     };
 

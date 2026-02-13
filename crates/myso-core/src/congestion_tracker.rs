@@ -4,13 +4,13 @@
 
 use moka::ops::compute::Op;
 use moka::sync::Cache;
-use std::collections::HashMap;
-use std::collections::hash_map::Entry;
 use myso_types::base_types::ObjectID;
 use myso_types::effects::{InputConsensusObject, TransactionEffects, TransactionEffectsAPI};
 use myso_types::execution_status::CongestedObjects;
 use myso_types::messages_checkpoint::{CheckpointTimestamp, VerifiedCheckpoint};
 use myso_types::transaction::{TransactionData, TransactionDataAPI};
+use std::collections::HashMap;
+use std::collections::hash_map::Entry;
 
 use crate::execution_cache::TransactionCacheRead;
 

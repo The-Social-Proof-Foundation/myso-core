@@ -4,11 +4,11 @@
 
 use std::sync::{Arc, Weak};
 
+use myso_macros::fail_point_async;
+use myso_types::execution::ExecutionOutput;
 use mysten_common::{fatal, random::get_rng};
 use mysten_metrics::{monitored_scope, spawn_monitored_task};
 use rand::Rng;
-use myso_macros::fail_point_async;
-use myso_types::execution::ExecutionOutput;
 use tokio::sync::{Semaphore, mpsc::UnboundedReceiver, oneshot};
 use tracing::{Instrument, error_span, info, trace, warn};
 

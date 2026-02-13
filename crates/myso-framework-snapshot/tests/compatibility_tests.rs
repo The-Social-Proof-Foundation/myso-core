@@ -4,12 +4,12 @@
 
 mod compatibility_tests {
     use move_package_alt::PackageLoader;
-    use std::collections::BTreeMap;
-    use std::path::Path;
     use myso_framework::{BuiltInFramework, compare_system_package};
     use myso_framework_snapshot::{load_bytecode_snapshot, load_bytecode_snapshot_manifest};
     use myso_package_alt::{MySoFlavor, testnet_environment};
     use myso_protocol_config::{Chain, ProtocolConfig, ProtocolVersion};
+    use std::collections::BTreeMap;
+    use std::path::Path;
 
     /// The number of bytecode snapshots to backtest against the current framework.
     /// This should be set to a reasonable number to ensure that we are testing against any

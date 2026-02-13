@@ -13,6 +13,11 @@ use bip32::DerivationPath;
 use bip39::{Language, Mnemonic, Seed};
 #[cfg(unix)]
 use colored::Colorize as _;
+use myso_types::base_types::MySoAddress;
+use myso_types::crypto::get_key_pair_from_rng;
+use myso_types::crypto::{
+    EncodeDecodeBase64, MySoKeyPair, PublicKey, Signature, SignatureScheme, enum_dispatch,
+};
 use rand::{SeedableRng, rngs::StdRng};
 use regex::Regex;
 use serde::{Deserialize, Deserializer, Serialize, Serializer};
@@ -25,11 +30,6 @@ use std::io::BufReader;
 #[cfg(unix)]
 use std::os::unix::fs::PermissionsExt;
 use std::path::{Path, PathBuf};
-use myso_types::base_types::MySoAddress;
-use myso_types::crypto::get_key_pair_from_rng;
-use myso_types::crypto::{
-    EncodeDecodeBase64, PublicKey, Signature, SignatureScheme, MySoKeyPair, enum_dispatch,
-};
 
 pub const ALIASES_FILE_EXTENSION: &str = "aliases";
 

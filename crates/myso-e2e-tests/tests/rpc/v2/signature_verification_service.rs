@@ -2,7 +2,6 @@
 // Copyright (c) The Social Proof Foundation, LLC.
 // SPDX-License-Identifier: Apache-2.0
 
-use shared_crypto::intent::{Intent, IntentMessage};
 use myso_macros::sim_test;
 use myso_rpc::proto::myso::rpc::v2::Bcs;
 use myso_rpc::proto::myso::rpc::v2::UserSignature;
@@ -13,6 +12,7 @@ use myso_types::base_types::MySoAddress;
 use myso_types::crypto::Signature;
 use myso_types::signature::GenericSignature;
 use myso_types::zk_login_authenticator::ZkLoginAuthenticator;
+use shared_crypto::intent::{Intent, IntentMessage};
 use test_cluster::TestClusterBuilder;
 
 #[sim_test]

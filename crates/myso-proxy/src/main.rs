@@ -3,7 +3,6 @@
 // SPDX-License-Identifier: Apache-2.0
 use anyhow::Result;
 use clap::Parser;
-use std::env;
 use myso_proxy::config::ProxyConfig;
 use myso_proxy::{
     admin::{
@@ -14,6 +13,7 @@ use myso_proxy::{
     histogram_relay, metrics,
 };
 use myso_tls::TlsAcceptor;
+use std::env;
 use telemetry_subscribers::TelemetryConfig;
 use tracing::info;
 

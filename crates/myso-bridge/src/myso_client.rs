@@ -8,16 +8,12 @@ use crate::events::MySoBridgeEvent;
 use crate::metrics::BridgeMetrics;
 use crate::retry_with_max_elapsed_time;
 use crate::types::BridgeActionStatus;
-use crate::types::ParsedTokenTransferMessage;
 use crate::types::MySoEvents;
+use crate::types::ParsedTokenTransferMessage;
 use crate::types::{BridgeAction, BridgeAuthority, BridgeCommittee};
 use async_trait::async_trait;
 use core::panic;
 use fastcrypto::traits::ToFromBytes;
-use std::collections::HashMap;
-use std::str::from_utf8;
-use std::sync::Arc;
-use std::time::Duration;
 use myso_json_rpc_types::BcsEvent;
 use myso_json_rpc_types::MySoEvent;
 use myso_json_rpc_types::MySoExecutionStatus;
@@ -52,6 +48,10 @@ use myso_types::parse_myso_type_tag;
 use myso_types::transaction::ObjectArg;
 use myso_types::transaction::SharedObjectMutability;
 use myso_types::transaction::Transaction;
+use std::collections::HashMap;
+use std::str::from_utf8;
+use std::sync::Arc;
+use std::time::Duration;
 use tokio::sync::OnceCell;
 use tracing::{error, warn};
 
@@ -628,8 +628,10 @@ impl MySoClientInner for myso_rpc_api::Client {
             })
             .await?;
 
-        let bridge_inner_id = bridge_version_id
-            .derive_dynamic_child_id(&myso_sdk_types::TypeTag::U64, &bcs::to_bytes(&1u64).unwrap());
+        let bridge_inner_id = bridge_version_id.derive_dynamic_child_id(
+            &myso_sdk_types::TypeTag::U64,
+            &bcs::to_bytes(&1u64).unwrap(),
+        );
 
         let field_bcs = self
             .clone()
@@ -716,7 +718,9 @@ impl MySoClientInner for myso_rpc_api::Client {
             .execution_client()
             .execute_transaction(request)
             .await
-            .map_err(|e| BridgeError::MySoTxFailureGeneric(format!("gRPC execute failed: {:?}", e)))?
+            .map_err(|e| {
+                BridgeError::MySoTxFailureGeneric(format!("gRPC execute failed: {:?}", e))
+            })?
             .into_inner();
 
         let executed_tx = response.transaction();
@@ -1086,18 +1090,18 @@ mod tests {
         events::{EmittedMySoToEthTokenBridgeV1, MoveTokenDepositedEvent},
         myso_mock_client::MySoMockClient,
         test_utils::{
-            approve_action_with_validator_secrets, bridge_token, get_test_eth_to_myso_bridge_action,
-            get_test_myso_to_eth_bridge_action,
+            approve_action_with_validator_secrets, bridge_token,
+            get_test_eth_to_myso_bridge_action, get_test_myso_to_eth_bridge_action,
         },
     };
     use alloy::primitives::Address as EthAddress;
     use move_core_types::account_address::AccountAddress;
-    use serde::{Deserialize, Serialize};
-    use std::str::FromStr;
     use myso_json_rpc_types::BcsEvent;
     use myso_types::base_types::MySoAddress;
     use myso_types::bridge::{BridgeChainId, TOKEN_ID_MYSO, TOKEN_ID_USDC};
     use myso_types::crypto::get_key_pair;
+    use serde::{Deserialize, Serialize};
+    use std::str::FromStr;
 
     use super::*;
     use crate::events::{MySoToEthTokenBridgeV1, init_all_struct_tags};
@@ -1252,7 +1256,8 @@ mod tests {
         let id_token_map = myso_client.get_token_id_map().await.unwrap();
 
         // 1. Create a Eth -> MySo Transfer (recipient is sender address), approve with validator secrets and assert its status to be Claimed
-        let action = get_test_eth_to_myso_bridge_action(None, Some(usdc_amount), Some(sender), None);
+        let action =
+            get_test_eth_to_myso_bridge_action(None, Some(usdc_amount), Some(sender), None);
         let usdc_object_ref = approve_action_with_validator_secrets(
             context,
             bridge_object_arg,

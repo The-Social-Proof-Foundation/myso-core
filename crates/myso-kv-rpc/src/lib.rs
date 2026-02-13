@@ -2,13 +2,13 @@
 // Copyright (c) The Social Proof Foundation, LLC.
 // SPDX-License-Identifier: Apache-2.0
 
-use prometheus::Registry;
-use std::sync::Arc;
 use myso_kvstore::{BigTableClient, KeyValueStoreReader};
 use myso_rpc::proto::myso::rpc::v2::GetServiceInfoResponse;
 use myso_rpc_api::ServerVersion;
 use myso_types::digests::ChainIdentifier;
 use myso_types::message_envelope::Message;
+use prometheus::Registry;
+use std::sync::Arc;
 use tokio::sync::RwLock;
 use tokio::time::{Duration, sleep};
 use tracing::error;

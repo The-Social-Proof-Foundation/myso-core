@@ -3,13 +3,13 @@
 // SPDX-License-Identifier: Apache-2.0
 
 use move_core_types::language_storage::StructTag;
+use myso_types::base_types::ObjectType;
+use myso_types::myso_serde::MySoStructTag;
+use myso_types::parse_myso_struct_tag;
 use serde::Serialize;
 use serde_json::Value;
 use serde_with::serde_as;
 use std::str::FromStr;
-use myso_types::base_types::ObjectType;
-use myso_types::parse_myso_struct_tag;
-use myso_types::myso_serde::MySoStructTag;
 
 #[test]
 fn test_struct_tag_serde() {

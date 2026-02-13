@@ -5,7 +5,7 @@
 use std::collections::BTreeMap;
 
 use myso_json_rpc_types::ObjectChange;
-use myso_types::base_types::{ObjectID, ObjectRef, SequenceNumber, MySoAddress};
+use myso_types::base_types::{MySoAddress, ObjectID, ObjectRef, SequenceNumber};
 use myso_types::effects::ObjectRemoveKind;
 use myso_types::effects::{TransactionEffects, TransactionEffectsAPI};
 use myso_types::object::Owner;

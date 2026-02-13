@@ -2,7 +2,7 @@
 // Copyright (c) The Social Proof Foundation, LLC.
 // SPDX-License-Identifier: Apache-2.0
 
-use myso_config::{myso_config_dir, MYSO_CLIENT_CONFIG};
+use myso_config::{MYSO_CLIENT_CONFIG, myso_config_dir};
 use myso_faucet::FaucetError;
 use myso_sdk::wallet_context::WalletContext;
 

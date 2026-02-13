@@ -5,6 +5,12 @@
 use alloy::primitives::Address as EthAddress;
 use anyhow::Result;
 use clap::*;
+use myso_bridge::eth_client::EthClient;
+use myso_bridge::metered_eth_provider::new_metered_eth_provider;
+use myso_bridge::myso_bridge_watchdog::Observable;
+use myso_bridge::myso_client::MySoBridgeClient;
+use myso_bridge::utils::get_eth_contract_addresses;
+use myso_config::Config;
 use prometheus::Registry;
 use std::collections::HashSet;
 use std::env;
@@ -13,12 +19,6 @@ use std::net::{Ipv4Addr, SocketAddr};
 use std::path::PathBuf;
 use std::str::FromStr;
 use std::sync::Arc;
-use myso_bridge::eth_client::EthClient;
-use myso_bridge::metered_eth_provider::new_metered_eth_provider;
-use myso_bridge::myso_bridge_watchdog::Observable;
-use myso_bridge::myso_client::MySoBridgeClient;
-use myso_bridge::utils::get_eth_contract_addresses;
-use myso_config::Config;
 use tracing::info;
 
 use mysten_metrics::spawn_logged_monitored_task;

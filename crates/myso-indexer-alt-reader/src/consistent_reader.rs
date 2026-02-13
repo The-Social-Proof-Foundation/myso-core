@@ -8,12 +8,12 @@ use std::time::Duration;
 
 use anyhow::Context;
 use anyhow::anyhow;
-use prometheus::Registry;
 use myso_indexer_alt_consistent_api::proto::rpc::consistent::v1alpha::consistent_service_client::ConsistentServiceClient;
 use myso_types::base_types::ObjectDigest;
 use myso_types::base_types::ObjectID;
 use myso_types::base_types::ObjectRef;
 use myso_types::base_types::SequenceNumber;
+use prometheus::Registry;
 use tonic::transport::Channel;
 use tracing::instrument;
 use url::Url;

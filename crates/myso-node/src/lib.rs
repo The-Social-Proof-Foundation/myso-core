@@ -15,17 +15,6 @@ use arc_swap::ArcSwap;
 use fastcrypto_zkp::bn254::zk_login::JwkId;
 use fastcrypto_zkp::bn254::zk_login::OIDCProvider;
 use futures::future::BoxFuture;
-use mysten_common::in_test_configuration;
-use prometheus::Registry;
-use std::collections::{BTreeSet, HashMap, HashSet};
-use std::fmt;
-use std::future::Future;
-use std::path::PathBuf;
-use std::str::FromStr;
-#[cfg(msim)]
-use std::sync::atomic::Ordering;
-use std::sync::{Arc, Weak};
-use std::time::Duration;
 use myso_core::authority::ExecutionEnv;
 use myso_core::authority::RandomnessRoundReceiver;
 use myso_core::authority::authority_store_tables::AuthorityPerpetualTablesOptions;
@@ -39,6 +28,17 @@ use myso_core::execution_cache::build_execution_cache;
 use myso_network::endpoint_manager::{AddressSource, EndpointId};
 use myso_network::validator::server::MYSO_TLS_SERVER_NAME;
 use myso_types::full_checkpoint_content::Checkpoint;
+use mysten_common::in_test_configuration;
+use prometheus::Registry;
+use std::collections::{BTreeSet, HashMap, HashSet};
+use std::fmt;
+use std::future::Future;
+use std::path::PathBuf;
+use std::str::FromStr;
+#[cfg(msim)]
+use std::sync::atomic::Ordering;
+use std::sync::{Arc, Weak};
+use std::time::Duration;
 
 use myso_core::execution_scheduler::SchedulingSource;
 use myso_core::global_state_hasher::GlobalStateHashMetrics;
@@ -79,8 +79,6 @@ macro_rules! jwk_log {
 
 use fastcrypto_zkp::bn254::zk_login::JWK;
 pub use handle::MySoNodeHandle;
-use mysten_metrics::{RegistryService, spawn_monitored_task};
-use mysten_service::server_timing::server_timing_middleware;
 use myso_config::node::{DBCheckpointConfig, RunWithRange};
 use myso_config::node::{ForkCrashBehavior, ForkRecoveryConfig};
 use myso_config::node_config_metrics::NodeConfigMetrics;
@@ -154,6 +152,8 @@ use myso_types::myso_system_state::MySoSystemStateTrait;
 use myso_types::myso_system_state::epoch_start_myso_system_state::EpochStartSystemState;
 use myso_types::myso_system_state::epoch_start_myso_system_state::EpochStartSystemStateTrait;
 use myso_types::supported_protocol_versions::SupportedProtocolVersions;
+use mysten_metrics::{RegistryService, spawn_monitored_task};
+use mysten_service::server_timing::server_timing_middleware;
 use typed_store::DBMetrics;
 use typed_store::rocks::default_db_options;
 
@@ -182,8 +182,8 @@ pub struct P2pComponents {
 
 #[cfg(msim)]
 mod simulator {
-    use std::sync::atomic::AtomicBool;
     use myso_types::error::MySoErrorKind;
+    use std::sync::atomic::AtomicBool;
 
     use super::*;
     pub(super) struct SimState {
@@ -234,14 +234,14 @@ mod simulator {
     }
 }
 
-#[cfg(msim)]
-pub use simulator::set_jwk_injector;
-#[cfg(msim)]
-use simulator::*;
 use myso_core::authority::authority_store_pruner::PrunerWatermarks;
 use myso_core::{
     consensus_handler::ConsensusHandlerInitializer, safe_client::SafeClientMetricsBase,
 };
+#[cfg(msim)]
+pub use simulator::set_jwk_injector;
+#[cfg(msim)]
+use simulator::*;
 
 const DEFAULT_GRPC_CONNECT_TIMEOUT: Duration = Duration::from_secs(60);
 
@@ -853,7 +853,8 @@ impl MySoNode {
         };
 
         let connection_monitor_status = Arc::new(connection_monitor_status);
-        let myso_node_metrics = Arc::new(MySoNodeMetrics::new(&registry_service.default_registry()));
+        let myso_node_metrics =
+            Arc::new(MySoNodeMetrics::new(&registry_service.default_registry()));
 
         myso_node_metrics
             .binary_max_protocol_version
@@ -1117,8 +1118,11 @@ impl MySoNode {
                 .merge(state_sync_router);
             let routes = routes.merge(randomness_router);
 
-            let inbound_network_metrics =
-                mysten_network::metrics::NetworkMetrics::new("myso", "inbound", prometheus_registry);
+            let inbound_network_metrics = mysten_network::metrics::NetworkMetrics::new(
+                "myso",
+                "inbound",
+                prometheus_registry,
+            );
             let outbound_network_metrics = mysten_network::metrics::NetworkMetrics::new(
                 "myso",
                 "outbound",
@@ -2547,11 +2551,11 @@ struct HttpServers {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use prometheus::Registry;
-    use std::collections::BTreeMap;
     use myso_config::node::{ForkCrashBehavior, ForkRecoveryConfig};
     use myso_core::checkpoints::{CheckpointMetrics, CheckpointStore};
     use myso_types::digests::{CheckpointDigest, TransactionDigest, TransactionEffectsDigest};
+    use prometheus::Registry;
+    use std::collections::BTreeMap;
 
     #[tokio::test]
     async fn test_fork_error_and_recovery_both_paths() {

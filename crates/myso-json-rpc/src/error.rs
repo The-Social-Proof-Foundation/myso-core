@@ -9,13 +9,13 @@ use itertools::Itertools;
 use jsonrpsee::core::ClientError as RpcError;
 use jsonrpsee::types::error::INTERNAL_ERROR_CODE;
 use jsonrpsee::types::{ErrorObject, ErrorObjectOwned};
-use std::collections::BTreeMap;
 use myso_json_rpc_api::{TRANSACTION_EXECUTION_CLIENT_ERROR_CODE, TRANSIENT_ERROR_CODE};
 use myso_types::committee::{QUORUM_THRESHOLD, TOTAL_VOTING_POWER};
 use myso_types::error::{
     ErrorCategory, MySoError, MySoErrorKind, MySoObjectResponseError, UserInputError,
 };
 use myso_types::transaction_driver_types::TransactionSubmissionError;
+use std::collections::BTreeMap;
 use thiserror::Error;
 use tokio::task::JoinError;
 
@@ -73,14 +73,15 @@ pub enum Error {
 
     #[error("Unsupported Feature: {0}")]
     UnsupportedFeature(String),
-
 }
 
 impl From<MySoErrorKind> for Error {
     fn from(e: MySoErrorKind) -> Self {
         match e {
             MySoErrorKind::UserInputError { error } => Self::UserInputError(error),
-            MySoErrorKind::MySoObjectResponseError { error } => Self::MySoObjectResponseError(error),
+            MySoErrorKind::MySoObjectResponseError { error } => {
+                Self::MySoObjectResponseError(error)
+            }
             MySoErrorKind::UnsupportedFeatureError { error } => Self::UnsupportedFeature(error),
             MySoErrorKind::IndexStoreNotAvailable => Self::UnsupportedFeature(
                 "Required indexes are not available on this node".to_string(),

@@ -25,9 +25,6 @@ use crate::module_cache_metrics::ResolverMetrics;
 use crate::rpc_index::RpcIndexStore;
 use crate::signature_verifier::SignatureVerifierMetrics;
 use fastcrypto::traits::KeyPair;
-use prometheus::Registry;
-use std::path::PathBuf;
-use std::sync::Arc;
 use myso_config::ExecutionCacheConfig;
 use myso_config::certificate_deny_config::CertificateDenyConfig;
 use myso_config::genesis::Genesis;
@@ -45,10 +42,13 @@ use myso_types::base_types::{AuthorityName, ObjectID};
 use myso_types::crypto::AuthorityKeyPair;
 use myso_types::digests::ChainIdentifier;
 use myso_types::executable_transaction::VerifiedExecutableTransaction;
-use myso_types::object::Object;
 use myso_types::myso_system_state::MySoSystemStateTrait;
+use myso_types::object::Object;
 use myso_types::supported_protocol_versions::SupportedProtocolVersions;
 use myso_types::transaction::VerifiedTransaction;
+use prometheus::Registry;
+use std::path::PathBuf;
+use std::sync::Arc;
 
 #[derive(Default, Clone)]
 pub struct TestAuthorityBuilder<'a> {

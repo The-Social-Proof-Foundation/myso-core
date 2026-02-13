@@ -5,13 +5,13 @@
 use crate::error::{BridgeError, BridgeResult};
 use crate::types::{BridgeAction, BridgeActionDigest};
 use alloy::primitives::Address as AlloyAddress;
+use myso_types::Identifier;
 use myso_types::base_types::MySoAddress;
+use myso_types::event::EventID;
 use serde::{Deserialize, Deserializer, Serialize, Serializer};
 use std::collections::HashMap;
 use std::path::Path;
 use std::sync::Arc;
-use myso_types::Identifier;
-use myso_types::event::EventID;
 use typed_store::DBMapUtils;
 use typed_store::Map;
 use typed_store::rocks::{DBMap, MetricConf};
@@ -282,9 +282,11 @@ impl BridgeOrchestratorTables {
         &self,
         identifiers: &[Identifier],
     ) -> BridgeResult<Vec<Option<EventID>>> {
-        self.myso_syncer_cursors.multi_get(identifiers).map_err(|e| {
-            BridgeError::StorageError(format!("Couldn't get myso_syncer_cursors: {:?}", e))
-        })
+        self.myso_syncer_cursors
+            .multi_get(identifiers)
+            .map_err(|e| {
+                BridgeError::StorageError(format!("Couldn't get myso_syncer_cursors: {:?}", e))
+            })
     }
 
     pub fn get_myso_sequence_number_cursor(&self) -> BridgeResult<Option<u64>> {
@@ -361,14 +363,9 @@ impl BridgeOrchestratorTables {
 
     #[allow(dead_code)] // Used by relay when wired
     pub(crate) fn get_relay_status(&self, key: &RelayKey) -> BridgeResult<Option<RelayStatus>> {
-        self.relayed_transfers
-            .get(key)
-            .map_err(|e| {
-                BridgeError::StorageError(format!(
-                    "Couldn't get from relayed_transfers: {:?}",
-                    e
-                ))
-            })
+        self.relayed_transfers.get(key).map_err(|e| {
+            BridgeError::StorageError(format!("Couldn't get from relayed_transfers: {:?}", e))
+        })
     }
 
     #[allow(dead_code)] // Used by relay when wired
@@ -376,9 +373,7 @@ impl BridgeOrchestratorTables {
         self.relayed_transfers
             .safe_iter()
             .filter_map(|r| r.ok())
-            .filter(|(_, status)| {
-                status.status == RelayResult::Failed && status.retry_count < 5
-            })
+            .filter(|(_, status)| status.status == RelayResult::Failed && status.retry_count < 5)
             .collect()
     }
 
@@ -393,14 +388,18 @@ impl BridgeOrchestratorTables {
         let mut registrations = self
             .deposit_registrations
             .get(&source_key)
-            .map_err(|e| BridgeError::StorageError(format!("Failed to get registrations: {:?}", e)))?
+            .map_err(|e| {
+                BridgeError::StorageError(format!("Failed to get registrations: {:?}", e))
+            })?
             .unwrap_or_default();
 
         registrations.push(registration.clone());
 
         self.deposit_registrations
             .insert(&source_key, &registrations)
-            .map_err(|e| BridgeError::StorageError(format!("Failed to store registration: {:?}", e)))?;
+            .map_err(|e| {
+                BridgeError::StorageError(format!("Failed to store registration: {:?}", e))
+            })?;
 
         let deposit_key = DepositAddressKey {
             address: registration.deposit_address.clone(),
@@ -443,11 +442,9 @@ impl BridgeOrchestratorTables {
     }
 
     pub(crate) fn is_deposit_processed(&self, key: &DepositTxKey) -> BridgeResult<bool> {
-        self.processed_deposits
-            .contains_key(key)
-            .map_err(|e| {
-                BridgeError::StorageError(format!("Failed to check deposit status: {:?}", e))
-            })
+        self.processed_deposits.contains_key(key).map_err(|e| {
+            BridgeError::StorageError(format!("Failed to check deposit status: {:?}", e))
+        })
     }
 
     pub(crate) fn mark_deposit_processed(
@@ -523,10 +520,7 @@ impl BridgeOrchestratorTables {
         chain_id: u64,
     ) -> BridgeResult<Option<u64>> {
         self.evm_deposit_monitor_cursor.get(&chain_id).map_err(|e| {
-            BridgeError::StorageError(format!(
-                "Failed to get evm_deposit_monitor_cursor: {:?}",
-                e
-            ))
+            BridgeError::StorageError(format!("Failed to get evm_deposit_monitor_cursor: {:?}", e))
         })
     }
 

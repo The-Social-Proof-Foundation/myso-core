@@ -17,13 +17,6 @@ use consensus_core::{
 };
 use core::panic;
 use fastcrypto::traits::KeyPair as _;
-use mysten_metrics::{RegistryID, RegistryService};
-use mysten_network::Multiaddr;
-use prometheus::{IntGauge, Registry, register_int_gauge_with_registry};
-use std::collections::BTreeMap;
-use std::path::PathBuf;
-use std::sync::Arc;
-use std::time::{Duration, Instant};
 use myso_config::{ConsensusConfig, NodeConfig};
 use myso_network::endpoint_manager::ConsensusAddressUpdater;
 use myso_protocol_config::ProtocolVersion;
@@ -31,8 +24,16 @@ use myso_types::crypto::NetworkPublicKey;
 use myso_types::error::{MySoErrorKind, MySoResult};
 use myso_types::messages_consensus::{ConsensusPosition, ConsensusTransaction};
 use myso_types::{
-    committee::EpochId, myso_system_state::epoch_start_myso_system_state::EpochStartSystemStateTrait,
+    committee::EpochId,
+    myso_system_state::epoch_start_myso_system_state::EpochStartSystemStateTrait,
 };
+use mysten_metrics::{RegistryID, RegistryService};
+use mysten_network::Multiaddr;
+use prometheus::{IntGauge, Registry, register_int_gauge_with_registry};
+use std::collections::BTreeMap;
+use std::path::PathBuf;
+use std::sync::Arc;
+use std::time::{Duration, Instant};
 use tokio::sync::{Mutex, broadcast};
 use tokio::time::{sleep, timeout};
 use tracing::{error, info};

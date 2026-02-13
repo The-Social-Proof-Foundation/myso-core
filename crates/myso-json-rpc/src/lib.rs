@@ -11,10 +11,10 @@ use hyper::Request;
 use jsonrpsee::RpcModule;
 use metrics::Metrics;
 use metrics::MetricsLayer;
-use prometheus::Registry;
-use std::time::Duration;
 use myso_core::traffic_controller::TrafficController;
 use myso_types::traffic_control::PolicyConfig;
+use prometheus::Registry;
+use std::time::Duration;
 use tokio::runtime::Handle;
 use tokio_util::sync::CancellationToken;
 use tower::ServiceBuilder;
@@ -22,9 +22,9 @@ use tower_http::trace::TraceLayer;
 use tracing::info;
 
 pub use balance_changes::*;
-pub use object_changes::*;
 pub use myso_config::node::ServerType;
 use myso_open_rpc::{Module, Project};
+pub use object_changes::*;
 use traffic_control::TrafficControllerService;
 
 use crate::error::Error;

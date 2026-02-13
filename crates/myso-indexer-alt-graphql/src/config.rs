@@ -6,12 +6,12 @@ use std::collections::BTreeMap;
 use std::collections::BTreeSet;
 use std::time::Duration;
 
-use serde::Deserialize;
-use serde::Serialize;
 use myso_default_config::DefaultConfig;
 use myso_protocol_config::Chain;
 use myso_protocol_config::ProtocolConfig;
 use myso_protocol_config::ProtocolVersion;
+use serde::Deserialize;
+use serde::Serialize;
 
 use crate::extensions::query_limits::QueryLimitsConfig;
 use crate::extensions::timeout::TimeoutConfig;

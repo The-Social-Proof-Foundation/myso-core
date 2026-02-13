@@ -2,9 +2,6 @@
 // Copyright (c) The Social Proof Foundation, LLC.
 // SPDX-License-Identifier: Apache-2.0
 
-use parking_lot::Mutex;
-use std::collections::{BTreeMap, HashSet};
-use std::sync::Arc;
 use myso_types::accumulator_event::AccumulatorEvent;
 use myso_types::base_types::{FullObjectID, ObjectRef};
 use myso_types::effects::{TransactionEffects, TransactionEffectsAPI, TransactionEvents};
@@ -12,6 +9,9 @@ use myso_types::full_checkpoint_content::ObjectSet;
 use myso_types::inner_temporary_store::{InnerTemporaryStore, WrittenObjects};
 use myso_types::storage::{FullObjectKey, MarkerValue, ObjectKey};
 use myso_types::transaction::{TransactionData, TransactionDataAPI, VerifiedTransaction};
+use parking_lot::Mutex;
+use std::collections::{BTreeMap, HashSet};
+use std::sync::Arc;
 
 /// TransactionOutputs
 #[derive(Debug)]

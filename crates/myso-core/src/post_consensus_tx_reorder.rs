@@ -2,12 +2,12 @@
 // Copyright (c) The Social Proof Foundation, LLC.
 // SPDX-License-Identifier: Apache-2.0
 
-use mysten_metrics::monitored_scope;
 use myso_protocol_config::ConsensusTransactionOrdering;
 use myso_types::{
     executable_transaction::VerifiedExecutableTransactionWithAliases,
     transaction::TransactionDataAPI as _,
 };
+use mysten_metrics::monitored_scope;
 
 pub struct PostConsensusTxReorder {}
 

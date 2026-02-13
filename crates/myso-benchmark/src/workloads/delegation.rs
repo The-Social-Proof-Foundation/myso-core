@@ -12,15 +12,15 @@ use crate::workloads::workload::{ExpectedFailureType, Workload, WorkloadBuilder}
 use crate::workloads::{Gas, GasCoinConfig, WorkloadBuilderInfo, WorkloadParams};
 use crate::{ExecutionEffects, ValidatorProxy};
 use async_trait::async_trait;
-use rand::seq::IteratorRandom;
-use std::sync::Arc;
-use std::time::Duration;
 use myso_core::test_utils::make_transfer_myso_transaction;
 use myso_test_transaction_builder::TestTransactionBuilder;
-use myso_types::base_types::{ObjectRef, MySoAddress};
+use myso_types::base_types::{MySoAddress, ObjectRef};
 use myso_types::crypto::{AccountKeyPair, get_key_pair};
 use myso_types::gas_coin::MIST_PER_MYSO;
 use myso_types::transaction::Transaction;
+use rand::seq::IteratorRandom;
+use std::sync::Arc;
+use std::time::Duration;
 use tracing::{error, warn};
 
 #[derive(Debug)]

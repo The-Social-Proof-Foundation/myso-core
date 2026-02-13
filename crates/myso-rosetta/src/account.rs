@@ -7,7 +7,6 @@ use axum::{Extension, Json};
 use axum_extra::extract::WithRejection;
 use futures::{TryStreamExt, future::join_all};
 
-use prost_types::FieldMask;
 use myso_rpc::client::Client;
 use myso_rpc::field::FieldMaskUtil;
 use myso_rpc::proto::myso::rpc::v2::{
@@ -15,13 +14,14 @@ use myso_rpc::proto::myso::rpc::v2::{
 };
 use myso_sdk_types::{Address, StructTag};
 use myso_types::base_types::MySoAddress;
+use prost_types::FieldMask;
 
 use crate::errors::Error;
 use crate::types::{
     AccountBalanceRequest, AccountBalanceResponse, AccountCoinsRequest, AccountCoinsResponse,
     Amount, Coin, CoinID, CoinIdentifier, Currencies, Currency, SubAccountType, SubBalance,
 };
-use crate::{OnlineServerContext, MySoEnv};
+use crate::{MySoEnv, OnlineServerContext};
 use myso_types::base_types::{ObjectID, SequenceNumber};
 use myso_types::messages_checkpoint::CheckpointSequenceNumber;
 

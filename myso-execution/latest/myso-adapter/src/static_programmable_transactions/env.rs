@@ -36,7 +36,6 @@ use move_core_types::{
 };
 use move_vm_runtime::move_vm::MoveVM;
 use move_vm_types::{data_store::DataStore, loaded_data::runtime_types as vm_runtime_type};
-use std::{cell::OnceCell, rc::Rc, sync::Arc};
 use myso_protocol_config::ProtocolConfig;
 use myso_types::{
     Identifier, MYSO_FRAMEWORK_PACKAGE_ID, TypeTag,
@@ -51,6 +50,7 @@ use myso_types::{
     object::Object,
     type_input::{StructInput, TypeInput},
 };
+use std::{cell::OnceCell, rc::Rc, sync::Arc};
 
 pub struct Env<'pc, 'vm, 'state, 'linkage> {
     pub protocol_config: &'pc ProtocolConfig,

@@ -5,11 +5,11 @@
 use anyhow::Result;
 use anyhow::anyhow;
 use futures::{StreamExt, TryStreamExt};
-use std::sync::Arc;
-use std::sync::atomic::{AtomicU64, Ordering};
 use myso_data_ingestion_core::{CheckpointReader, create_remote_store_client};
 use myso_types::messages_checkpoint::{CheckpointSequenceNumber, VerifiedCheckpoint};
 use myso_types::storage::WriteStore;
+use std::sync::Arc;
+use std::sync::atomic::{AtomicU64, Ordering};
 
 pub(crate) async fn read_summaries_for_list_no_verify<S>(
     ingestion_url: String,

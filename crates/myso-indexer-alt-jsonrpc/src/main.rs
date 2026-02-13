@@ -4,7 +4,6 @@
 
 use anyhow::Context;
 use clap::Parser;
-use prometheus::Registry;
 use myso_futures::service::Error;
 use myso_indexer_alt_jsonrpc::args::Args;
 use myso_indexer_alt_jsonrpc::args::Command;
@@ -12,6 +11,7 @@ use myso_indexer_alt_jsonrpc::config::RpcLayer;
 use myso_indexer_alt_jsonrpc::start_rpc;
 use myso_indexer_alt_metrics::MetricsService;
 use myso_indexer_alt_metrics::uptime;
+use prometheus::Registry;
 use tokio::fs;
 
 // Define the `GIT_REVISION` const

@@ -10,10 +10,6 @@ use fastcrypto::hash::MultisetHash;
 use futures::StreamExt;
 use futures::future::AbortHandle;
 use indicatif::MultiProgress;
-use prometheus::Registry;
-use std::collections::HashSet;
-use std::num::NonZeroUsize;
-use std::sync::Arc;
 use myso_config::object_storage_config::{ObjectStoreConfig, ObjectStoreType};
 use myso_core::authority::authority_store_tables::AuthorityPerpetualTables;
 use myso_core::checkpoints::CheckpointStore;
@@ -24,6 +20,10 @@ use myso_types::base_types::ObjectID;
 use myso_types::global_state_hash::GlobalStateHash;
 use myso_types::messages_checkpoint::ECMHLiveObjectSetDigest;
 use myso_types::object::Object;
+use prometheus::Registry;
+use std::collections::HashSet;
+use std::num::NonZeroUsize;
+use std::sync::Arc;
 use tempfile::tempdir;
 
 fn temp_dir() -> std::path::PathBuf {

@@ -12,18 +12,18 @@ use jsonrpsee::core::RpcResult;
 use mockall::automock;
 use move_binary_format::{binary_config::BinaryConfig, normalized};
 use move_core_types::identifier::Identifier;
-use std::collections::BTreeMap;
-use std::sync::Arc;
 use myso_core::authority::AuthorityState;
 use myso_json_rpc_api::{MoveUtilsOpenRpc, MoveUtilsServer};
 use myso_json_rpc_types::{
-    MoveFunctionArgType, ObjectValueKind, MySoMoveNormalizedFunction, MySoMoveNormalizedModule,
-    MySoMoveNormalizedStruct,
+    MoveFunctionArgType, MySoMoveNormalizedFunction, MySoMoveNormalizedModule,
+    MySoMoveNormalizedStruct, ObjectValueKind,
 };
 use myso_open_rpc::Module;
 use myso_types::base_types::ObjectID;
 use myso_types::move_package::normalize_modules;
 use myso_types::object::{Data, ObjectRead};
+use std::collections::BTreeMap;
+use std::sync::Arc;
 use tap::TapFallible;
 use tracing::{error, instrument, warn};
 

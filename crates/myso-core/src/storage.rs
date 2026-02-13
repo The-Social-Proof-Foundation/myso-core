@@ -11,10 +11,8 @@ use crate::rpc_index::OwnerIndexInfo;
 use crate::rpc_index::OwnerIndexKey;
 use crate::rpc_index::RpcIndexStore;
 use move_core_types::language_storage::StructTag;
-use parking_lot::Mutex;
-use std::sync::Arc;
-use myso_types::base_types::ObjectID;
 use myso_types::base_types::MySoAddress;
+use myso_types::base_types::ObjectID;
 use myso_types::base_types::TransactionDigest;
 use myso_types::committee::Committee;
 use myso_types::committee::EpochId;
@@ -41,6 +39,8 @@ use myso_types::storage::error::Error as StorageError;
 use myso_types::storage::error::Result;
 use myso_types::storage::{ObjectKey, ReadStore};
 use myso_types::transaction::VerifiedTransaction;
+use parking_lot::Mutex;
+use std::sync::Arc;
 use tap::Pipe;
 use tap::TapFallible;
 use tracing::error;
@@ -383,10 +383,9 @@ impl RestReadStore {
     }
 
     fn index(&self) -> myso_types::storage::error::Result<&RpcIndexStore> {
-        self.state
-            .rpc_index
-            .as_deref()
-            .ok_or_else(|| myso_types::storage::error::Error::custom("rest index store is disabled"))
+        self.state.rpc_index.as_deref().ok_or_else(|| {
+            myso_types::storage::error::Error::custom("rest index store is disabled")
+        })
     }
 }
 

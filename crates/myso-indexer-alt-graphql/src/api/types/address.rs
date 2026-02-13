@@ -16,8 +16,8 @@ use myso_types::base_types::MySoAddress as NativeMySoAddress;
 use myso_types::dynamic_field::DynamicFieldType;
 
 use crate::api::scalars::id::Id;
-use crate::api::scalars::owner_kind::OwnerKind;
 use crate::api::scalars::myso_address::MySoAddress;
+use crate::api::scalars::owner_kind::OwnerKind;
 use crate::api::scalars::type_filter::TypeInput;
 use crate::api::scalars::uint53::UInt53;
 use crate::api::types::balance;

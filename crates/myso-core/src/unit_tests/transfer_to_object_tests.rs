@@ -5,7 +5,7 @@
 use std::{collections::HashSet, sync::Arc};
 
 use myso_types::{
-    base_types::{FullObjectRef, ObjectID, ObjectRef, SequenceNumber, MySoAddress},
+    base_types::{FullObjectRef, MySoAddress, ObjectID, ObjectRef, SequenceNumber},
     crypto::{AccountKeyPair, get_key_pair},
     digests::ObjectDigest,
     effects::{TransactionEffects, TransactionEffectsAPI},

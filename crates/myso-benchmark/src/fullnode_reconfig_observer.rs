@@ -3,7 +3,6 @@
 // SPDX-License-Identifier: Apache-2.0
 
 use async_trait::async_trait;
-use std::sync::Arc;
 use myso_core::{
     authority_aggregator::AuthorityAggregator,
     authority_client::NetworkAuthorityClient,
@@ -12,6 +11,7 @@ use myso_core::{
     transaction_driver::{AuthorityAggregatorUpdatable, reconfig_observer::ReconfigObserver},
 };
 use myso_rpc_api::Client;
+use std::sync::Arc;
 use tracing::{debug, error, trace};
 
 /// A ReconfigObserver that polls FullNode periodically
@@ -65,7 +65,9 @@ impl ReconfigObserver<NetworkAuthorityClient> for FullNodeReconfigObserver {
                             .insert_new_committee(new_committee.committee());
                         let auth_agg = AuthorityAggregator::new_from_committee(
                             new_committee,
-                            Arc::new(myso_system_state.get_committee_authority_names_to_hostnames()),
+                            Arc::new(
+                                myso_system_state.get_committee_authority_names_to_hostnames(),
+                            ),
                             myso_system_state.reference_gas_price,
                             &self.committee_store,
                             self.safe_client_metrics_base.clone(),

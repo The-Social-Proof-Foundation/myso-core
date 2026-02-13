@@ -6,7 +6,6 @@ use crate::struct_tag;
 use async_trait::async_trait;
 use diesel_async::RunQueryDsl;
 use move_core_types::language_storage::StructTag;
-use std::sync::Arc;
 use myso_bridge::events::MoveTokenDepositedEvent;
 use myso_bridge_schema::models::TokenTransferData;
 use myso_bridge_schema::schema::token_transfer_data;
@@ -15,6 +14,7 @@ use myso_indexer_alt_framework::postgres::Connection;
 use myso_indexer_alt_framework::postgres::handler::Handler;
 use myso_indexer_alt_framework::types::BRIDGE_ADDRESS;
 use myso_indexer_alt_framework::types::full_checkpoint_content::Checkpoint;
+use std::sync::Arc;
 use tracing::info;
 
 pub struct TokenTransferDataHandler {

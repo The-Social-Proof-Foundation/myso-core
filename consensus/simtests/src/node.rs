@@ -16,11 +16,11 @@ use consensus_core::{
     NetworkType, TransactionClient, TransactionVerifier, to_socket_addr,
 };
 use consensus_types::block::BlockTimestampMs;
+use myso_protocol_config::ProtocolConfig;
 use mysten_metrics::monitored_mpsc::UnboundedReceiver;
 use mysten_metrics::monitored_mpsc::unbounded_channel;
 use parking_lot::Mutex;
 use prometheus::Registry;
-use myso_protocol_config::ProtocolConfig;
 use tempfile::TempDir;
 use tracing::{info, trace};
 

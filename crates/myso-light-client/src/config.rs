@@ -3,10 +3,10 @@
 // SPDX-License-Identifier: Apache-2.0
 
 use anyhow::{Result, anyhow};
+use myso_config::object_storage_config::ObjectStoreConfig;
 use serde::{Deserialize, Serialize};
 use std::fs;
 use std::path::{Path, PathBuf};
-use myso_config::object_storage_config::ObjectStoreConfig;
 use url::Url;
 
 #[derive(Clone, Debug, Default, Deserialize, Serialize)]

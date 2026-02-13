@@ -3,15 +3,14 @@
 // SPDX-License-Identifier: Apache-2.0
 
 use clap::{ArgGroup, Parser};
+use myso_rpc_api::ServerVersion;
 use std::path::PathBuf;
 use std::sync::Arc;
 use std::time::Duration;
-use myso_rpc_api::ServerVersion;
 use tokio::sync::broadcast;
 use tokio::time::sleep;
 use tracing::{error, info};
 
-use mysten_common::sync::async_once_cell::AsyncOnceCell;
 use myso_config::node::RunWithRange;
 use myso_config::{Config, NodeConfig};
 use myso_core::runtime::MySoRuntimes;
@@ -21,6 +20,7 @@ use myso_types::crypto::KeypairTraits;
 use myso_types::messages_checkpoint::CheckpointSequenceNumber;
 use myso_types::multiaddr::Multiaddr;
 use myso_types::supported_protocol_versions::SupportedProtocolVersions;
+use mysten_common::sync::async_once_cell::AsyncOnceCell;
 
 // Define the `GIT_REVISION` and `VERSION` consts
 bin_version::bin_version!();

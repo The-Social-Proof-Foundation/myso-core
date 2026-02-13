@@ -22,11 +22,11 @@ use axum::routing::{get, post};
 use fastcrypto::ed25519::Ed25519PublicKey;
 use fastcrypto::encoding::{Encoding, Hex};
 use fastcrypto::traits::ToFromBytes;
+use myso_types::TypeTag;
+use myso_types::bridge::BridgeChainId;
 use std::net::SocketAddr;
 use std::str::FromStr;
 use std::sync::Arc;
-use myso_types::TypeTag;
-use myso_types::bridge::BridgeChainId;
 use tracing::{info, instrument};
 
 pub mod deposit_api;
@@ -141,7 +141,10 @@ pub(crate) fn make_router(
 
     if let Some(deposit_state) = deposit_state {
         let deposit_router = Router::new()
-            .route("/deposit/generate", post(deposit_api::generate_deposit_address))
+            .route(
+                "/deposit/generate",
+                post(deposit_api::generate_deposit_address),
+            )
             .route("/deposit/link", post(deposit_api::link_addresses))
             .route(
                 "/deposit/addresses/{address}",

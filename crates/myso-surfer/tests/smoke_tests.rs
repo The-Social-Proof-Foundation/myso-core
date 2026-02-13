@@ -2,9 +2,9 @@
 // Copyright (c) The Social Proof Foundation, LLC.
 // SPDX-License-Identifier: Apache-2.0
 
+use myso_macros::sim_test;
 use std::path::PathBuf;
 use std::time::Duration;
-use myso_macros::sim_test;
 
 #[sim_test]
 async fn smoke_test() {

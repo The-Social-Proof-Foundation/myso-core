@@ -224,15 +224,15 @@ pub async fn get_verified_checkpoint(
 // Make a test namespace
 #[cfg(test)]
 mod tests {
+    use myso_types::messages_checkpoint::{CheckpointSummary, FullCheckpointContents};
     use std::fs;
     use std::io::{Read, Write};
-    use myso_types::messages_checkpoint::{CheckpointSummary, FullCheckpointContents};
 
     use super::*;
-    use std::path::{Path, PathBuf};
-    use std::str::FromStr;
     use myso_types::crypto::AuthorityQuorumSignInfo;
     use myso_types::message_envelope::Envelope;
+    use std::path::{Path, PathBuf};
+    use std::str::FromStr;
 
     async fn read_full_checkpoint(checkpoint_path: &PathBuf) -> anyhow::Result<CheckpointData> {
         let mut reader = fs::File::open(checkpoint_path.clone())?;

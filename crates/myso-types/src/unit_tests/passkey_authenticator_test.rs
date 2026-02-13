@@ -9,7 +9,7 @@ use crate::crypto::DefaultHash;
 use crate::error::MySoErrorKind;
 use crate::passkey_authenticator::{PasskeyAuthenticator, RawPasskeyAuthenticator};
 use crate::{
-    base_types::{ObjectID, MySoAddress, dbg_addr},
+    base_types::{MySoAddress, ObjectID, dbg_addr},
     crypto::{PublicKey, Signature, SignatureScheme},
     error::MySoError,
     object::Object,

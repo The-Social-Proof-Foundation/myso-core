@@ -8,19 +8,19 @@
 use crate::retry_with_max_elapsed_time;
 use crate::types::IsBridgePaused;
 use arc_swap::ArcSwap;
-use mysten_metrics::spawn_logged_monitored_task;
-use shared_crypto::intent::{Intent, IntentMessage};
 use myso_json_rpc_types::MySoExecutionStatus;
 use myso_types::TypeTag;
 use myso_types::transaction::ObjectArg;
 use myso_types::{
-    base_types::{ObjectID, ObjectRef, MySoAddress},
-    crypto::{Signature, MySoKeyPair},
+    base_types::{MySoAddress, ObjectID, ObjectRef},
+    crypto::{MySoKeyPair, Signature},
     digests::TransactionDigest,
     gas_coin::GasCoin,
     object::Owner,
     transaction::Transaction,
 };
+use mysten_metrics::spawn_logged_monitored_task;
+use shared_crypto::intent::{Intent, IntentMessage};
 
 use crate::events::{
     TokenTransferAlreadyApproved, TokenTransferAlreadyClaimed, TokenTransferApproved,
@@ -30,9 +30,9 @@ use crate::metrics::BridgeMetrics;
 use crate::{
     client::bridge_authority_aggregator::BridgeAuthorityAggregator,
     error::BridgeError,
-    storage::BridgeOrchestratorTables,
     myso_client::{ExecuteTransactionResult, MySoClient, MySoClientInner},
     myso_transaction_builder::build_myso_transaction,
+    storage::BridgeOrchestratorTables,
     types::{BridgeAction, BridgeActionStatus, VerifiedCertifiedBridgeAction},
 };
 use std::collections::HashMap;
@@ -480,7 +480,10 @@ where
 
         // Check once: if the action is already processed, skip it.
         if Self::handle_already_processed_token_transfer_action_maybe(
-            myso_client, action, store, metrics,
+            myso_client,
+            action,
+            store,
+            metrics,
         )
         .await
         {
@@ -559,7 +562,10 @@ where
 
         // Check twice: If the action is already processed, skip it.
         if Self::handle_already_processed_token_transfer_action_maybe(
-            myso_client, action, store, metrics,
+            myso_client,
+            action,
+            store,
+            metrics,
         )
         .await
         {
@@ -729,22 +735,22 @@ mod tests {
     use crate::test_utils::DUMMY_MUTALBE_BRIDGE_OBJECT_ARG;
     use crate::types::BRIDGE_PAUSED;
     use fastcrypto::traits::KeyPair;
-    use prometheus::Registry;
-    use std::collections::{BTreeMap, HashMap};
-    use std::str::FromStr;
     use myso_json_rpc_types::MySoEvent;
     use myso_types::TypeTag;
     use myso_types::crypto::get_key_pair;
     use myso_types::gas_coin::GasCoin;
     use myso_types::{base_types::random_object_ref, transaction::TransactionData};
+    use prometheus::Registry;
+    use std::collections::{BTreeMap, HashMap};
+    use std::str::FromStr;
 
     use crate::{
         crypto::{
             BridgeAuthorityKeyPair, BridgeAuthorityPublicKeyBytes,
             BridgeAuthorityRecoverableSignature,
         },
-        server::mock_handler::BridgeRequestMockHandler,
         myso_mock_client::MySoMockClient,
+        server::mock_handler::BridgeRequestMockHandler,
         test_utils::{
             get_test_authorities_and_run_mock_bridge_server, get_test_eth_to_myso_bridge_action,
             get_test_myso_to_eth_bridge_action, sign_action_with_key,
@@ -1500,8 +1506,13 @@ mod tests {
             get_test_eth_to_myso_bridge_action(None, None, None, token_id)
         };
 
-        let sigs =
-            mock_bridge_authority_sigs(mocks, &action, secrets, myso_tx_digest, myso_tx_event_index);
+        let sigs = mock_bridge_authority_sigs(
+            mocks,
+            &action,
+            secrets,
+            myso_tx_digest,
+            myso_tx_event_index,
+        );
         let certified_action = CertifiedBridgeAction::new_from_data_and_sig(
             action,
             BridgeCommitteeValiditySignInfo { signatures: sigs },

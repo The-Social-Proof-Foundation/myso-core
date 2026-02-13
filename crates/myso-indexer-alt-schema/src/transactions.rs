@@ -9,10 +9,10 @@ use diesel::expression::AsExpression;
 use diesel::prelude::*;
 use diesel::serialize;
 use diesel::sql_types::SmallInt;
-use serde::Deserialize;
-use serde::Serialize;
 use myso_field_count::FieldCount;
 use myso_types::object::Owner;
+use serde::Deserialize;
+use serde::Serialize;
 
 use crate::schema::kv_transactions;
 use crate::schema::tx_affected_addresses;

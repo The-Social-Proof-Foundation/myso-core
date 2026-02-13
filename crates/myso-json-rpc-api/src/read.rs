@@ -7,12 +7,12 @@ use jsonrpsee::proc_macros::rpc;
 
 use myso_json_rpc_types::{
     Checkpoint, CheckpointId, CheckpointPage, MySoEvent, MySoGetPastObjectRequest,
-    MySoObjectDataOptions, MySoObjectResponse, MySoPastObjectResponse, MySoTransactionBlockResponse,
-    MySoTransactionBlockResponseOptions,
+    MySoObjectDataOptions, MySoObjectResponse, MySoPastObjectResponse,
+    MySoTransactionBlockResponse, MySoTransactionBlockResponseOptions,
 };
 use myso_json_rpc_types::{ProtocolConfigResponse, ZkLoginIntentScope, ZkLoginVerifyResult};
 use myso_open_rpc_macros::open_rpc;
-use myso_types::base_types::{ObjectID, SequenceNumber, MySoAddress, TransactionDigest};
+use myso_types::base_types::{MySoAddress, ObjectID, SequenceNumber, TransactionDigest};
 use myso_types::myso_serde::BigInt;
 
 #[open_rpc(namespace = "myso", tag = "Read API")]

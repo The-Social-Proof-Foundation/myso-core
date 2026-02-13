@@ -2,7 +2,6 @@
 // Copyright (c) The Social Proof Foundation, LLC.
 // SPDX-License-Identifier: Apache-2.0
 
-use prost_types::FieldMask;
 use myso_macros::sim_test;
 use myso_rpc::field::FieldMaskUtil;
 use myso_rpc::proto::myso::rpc::v2::Bcs;
@@ -15,6 +14,7 @@ use myso_sdk_types::BalanceChange;
 use myso_test_transaction_builder::make_transfer_myso_transaction;
 use myso_types::base_types::MySoAddress;
 use myso_types::transaction::TransactionDataAPI;
+use prost_types::FieldMask;
 use test_cluster::TestClusterBuilder;
 
 mod resolve;

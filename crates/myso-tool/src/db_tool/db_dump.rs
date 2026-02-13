@@ -5,12 +5,6 @@
 use anyhow::{Ok, anyhow};
 use clap::{Parser, ValueEnum};
 use comfy_table::{Cell, ContentArrangement, Row, Table};
-use prometheus::Registry;
-use std::collections::{BTreeMap, HashMap};
-use std::path::PathBuf;
-use std::str;
-use std::sync::Arc;
-use strum_macros::EnumString;
 use myso_config::node::AuthorityStorePruningConfig;
 use myso_core::authority::authority_per_epoch_store::AuthorityEpochTables;
 use myso_core::authority::authority_store_pruner::{
@@ -24,6 +18,12 @@ use myso_core::epoch::committee_store::CommitteeStoreTables;
 use myso_core::jsonrpc_index::IndexStoreTables;
 use myso_core::rpc_index::RpcIndexStore;
 use myso_types::base_types::{EpochId, ObjectID};
+use prometheus::Registry;
+use std::collections::{BTreeMap, HashMap};
+use std::path::PathBuf;
+use std::str;
+use std::sync::Arc;
+use strum_macros::EnumString;
 use tracing::info;
 use typed_store::rocks::{MetricConf, default_db_options};
 use typed_store::rocksdb::MultiThreaded;

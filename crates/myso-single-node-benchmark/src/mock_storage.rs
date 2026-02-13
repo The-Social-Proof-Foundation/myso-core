@@ -5,9 +5,6 @@
 use move_binary_format::CompiledModule;
 use move_bytecode_utils::module_cache::GetModule;
 use move_core_types::language_storage::ModuleId;
-use prometheus::core::{Atomic, AtomicU64};
-use std::collections::HashMap;
-use std::sync::{Arc, RwLock};
 use myso_core::authority::shared_object_version_manager::AssignedVersions;
 use myso_storage::package_object_cache::PackageObjectCache;
 use myso_types::base_types::{EpochId, ObjectID, ObjectRef, SequenceNumber, VersionNumber};
@@ -19,6 +16,9 @@ use myso_types::storage::{
     get_module_by_id,
 };
 use myso_types::transaction::{InputObjectKind, InputObjects, ObjectReadResult, TransactionKey};
+use prometheus::core::{Atomic, AtomicU64};
+use std::collections::HashMap;
+use std::sync::{Arc, RwLock};
 
 #[derive(Clone)]
 pub(crate) struct InMemoryObjectStore {

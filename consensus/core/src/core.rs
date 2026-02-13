@@ -15,11 +15,11 @@ use consensus_config::{AuthorityIndex, ProtocolKeyPair};
 use consensus_config::{Stake, local_committee_and_keys};
 use consensus_types::block::{BlockRef, BlockTimestampMs, Round};
 use itertools::Itertools as _;
+use myso_macros::fail_point;
 #[cfg(test)]
 use mysten_metrics::monitored_mpsc::UnboundedReceiver;
 use mysten_metrics::monitored_scope;
 use parking_lot::RwLock;
-use myso_macros::fail_point;
 use tokio::{
     sync::{broadcast, watch},
     time::Instant,
@@ -1489,8 +1489,8 @@ mod test {
     use consensus_config::{AuthorityIndex, Parameters};
     use consensus_types::block::TransactionIndex;
     use futures::{StreamExt, stream::FuturesUnordered};
-    use mysten_metrics::monitored_mpsc;
     use myso_protocol_config::ProtocolConfig;
+    use mysten_metrics::monitored_mpsc;
     use tokio::time::sleep;
 
     use super::*;

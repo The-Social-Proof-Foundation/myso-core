@@ -13,9 +13,6 @@ mod checked {
     use move_binary_format::CompiledModule;
     use move_trace_format::format::MoveTraceBuilder;
     use move_vm_runtime::move_vm::MoveVM;
-    use mysten_common::debug_fatal;
-    use std::collections::BTreeMap;
-    use std::{cell::RefCell, collections::HashSet, rc::Rc, sync::Arc};
     use myso_types::accumulator_root::{ACCUMULATOR_ROOT_CREATE_FUNC, ACCUMULATOR_ROOT_MODULE};
     use myso_types::balance::{
         BALANCE_CREATE_REWARDS_FUNCTION_NAME, BALANCE_DESTROY_REBATES_FUNCTION_NAME,
@@ -32,11 +29,14 @@ mod checked {
         RANDOMNESS_STATE_UPDATE_FUNCTION_NAME,
     };
     use myso_types::{BRIDGE_ADDRESS, MYSO_BRIDGE_OBJECT_ID, MYSO_RANDOMNESS_STATE_OBJECT_ID};
+    use mysten_common::debug_fatal;
+    use std::collections::BTreeMap;
+    use std::{cell::RefCell, collections::HashSet, rc::Rc, sync::Arc};
     use tracing::{info, instrument, trace, warn};
 
     use crate::adapter::new_move_vm;
-    use crate::programmable_transactions;
     use crate::myso_types::gas::MySoGasStatusAPI;
+    use crate::programmable_transactions;
     use crate::type_layout_resolver::TypeLayoutResolver;
     use crate::{gas_charger::GasCharger, temporary_store::TemporaryStore};
     use move_core_types::ident_str;
@@ -68,10 +68,12 @@ mod checked {
     use myso_types::gas::MySoGasStatus;
     use myso_types::id::UID;
     use myso_types::inner_temporary_store::InnerTemporaryStore;
-    use myso_types::storage::BackingStore;
     #[cfg(msim)]
     use myso_types::myso_system_state::advance_epoch_result_injection::maybe_modify_result;
-    use myso_types::myso_system_state::{ADVANCE_EPOCH_SAFE_MODE_FUNCTION_NAME, AdvanceEpochParams};
+    use myso_types::myso_system_state::{
+        ADVANCE_EPOCH_SAFE_MODE_FUNCTION_NAME, AdvanceEpochParams,
+    };
+    use myso_types::storage::BackingStore;
     use myso_types::transaction::{
         Argument, AuthenticatorStateExpire, AuthenticatorStateUpdate, CallArg, ChangeEpoch,
         Command, EndOfEpochTransactionKind, GasData, GenesisTransaction, ObjectArg,
@@ -83,8 +85,8 @@ mod checked {
         MYSO_AUTHENTICATOR_STATE_OBJECT_ID, MYSO_FRAMEWORK_ADDRESS, MYSO_FRAMEWORK_PACKAGE_ID,
         MYSO_SYSTEM_PACKAGE_ID,
         base_types::{MySoAddress, TransactionDigest, TxContext},
-        object::{Object, ObjectInner},
         myso_system_state::{ADVANCE_EPOCH_FUNCTION_NAME, MYSO_SYSTEM_MODULE_NAME},
+        object::{Object, ObjectInner},
     };
 
     #[instrument(name = "tx_execute_to_effects", level = "debug", skip_all)]
@@ -1255,7 +1257,9 @@ mod checked {
         chain_id: ChainIdentifier,
     ) -> ProgrammableTransactionBuilder {
         let bridge_uid = builder
-            .input(CallArg::Pure(UID::new(MYSO_BRIDGE_OBJECT_ID).to_bcs_bytes()))
+            .input(CallArg::Pure(
+                UID::new(MYSO_BRIDGE_OBJECT_ID).to_bcs_bytes(),
+            ))
             .expect("Unable to create Bridge object UID!");
 
         let bridge_chain_id = if chain_id == get_mainnet_chain_identifier() {

@@ -17,15 +17,6 @@ use futures::executor::block_on;
 use move_binary_format::CompiledModule;
 use move_bytecode_utils::module_cache::GetModule;
 use move_core_types::{language_storage::ModuleId, resolver::ModuleResolver};
-use prometheus::Registry;
-use serde::{Deserialize, Serialize};
-use similar::{ChangeTag, TextDiff};
-use std::{
-    collections::{BTreeMap, HashSet},
-    path::PathBuf,
-    sync::Arc,
-    sync::Mutex,
-};
 use myso_config::node::ExpensiveSafetyCheckConfig;
 use myso_core::authority::NodeStateDump;
 use myso_execution::Executor;
@@ -62,6 +53,15 @@ use myso_types::{
         CheckedInputObjects, InputObjectKind, InputObjects, ObjectReadResult, ObjectReadResultKind,
         SenderSignedData, Transaction, TransactionDataAPI, TransactionKind, VerifiedTransaction,
     },
+};
+use prometheus::Registry;
+use serde::{Deserialize, Serialize};
+use similar::{ChangeTag, TextDiff};
+use std::{
+    collections::{BTreeMap, HashSet},
+    path::PathBuf,
+    sync::Arc,
+    sync::Mutex,
 };
 use tracing::{error, info, trace, warn};
 

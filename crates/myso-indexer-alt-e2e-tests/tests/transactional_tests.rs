@@ -10,10 +10,6 @@ use std::sync::atomic::Ordering;
 use std::time::Duration;
 
 use anyhow::Context;
-use reqwest::Client;
-use reqwest::header::HeaderName;
-use serde_json::Value;
-use serde_json::json;
 use myso_indexer_alt::config::ConcurrentLayer;
 use myso_indexer_alt::config::IndexerConfig;
 use myso_indexer_alt::config::Merge;
@@ -25,9 +21,13 @@ use myso_transactional_test_runner::create_adapter;
 use myso_transactional_test_runner::offchain_state::OffchainStateReader;
 use myso_transactional_test_runner::offchain_state::TestResponse;
 use myso_transactional_test_runner::run_tasks_with_adapter;
+use myso_transactional_test_runner::test_adapter::MySoTestAdapter;
 use myso_transactional_test_runner::test_adapter::OffChainConfig;
 use myso_transactional_test_runner::test_adapter::PRE_COMPILED;
-use myso_transactional_test_runner::test_adapter::MySoTestAdapter;
+use reqwest::Client;
+use reqwest::header::HeaderName;
+use serde_json::Value;
+use serde_json::json;
 use tokio::join;
 
 use myso_indexer_alt_e2e_tests::OffchainCluster;

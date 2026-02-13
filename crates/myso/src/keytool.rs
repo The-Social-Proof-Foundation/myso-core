@@ -25,17 +25,6 @@ use fastcrypto_zkp::bn254::zk_login::{OIDCProvider, ZkLoginInputs, fetch_jwks};
 use fastcrypto_zkp::bn254::zk_login_api::ZkLoginEnv;
 use im::hashmap::HashMap as ImHashMap;
 use json_to_table::{Orientation, json_to_table};
-use num_bigint::BigUint;
-use rand::Rng;
-use rand::SeedableRng;
-use rand::rngs::StdRng;
-use serde::Serialize;
-use serde_json::json;
-use shared_crypto::intent::{Intent, IntentMessage, IntentScope, PersonalMessage};
-use std::fmt::{Debug, Display, Formatter};
-use std::fs;
-use std::path::{Path, PathBuf};
-use std::sync::Arc;
 use myso_keys::key_derive::generate_new_key;
 use myso_keys::key_identity::KeyIdentity;
 use myso_keys::keypair_file::{
@@ -48,7 +37,7 @@ use myso_types::base_types::MySoAddress;
 use myso_types::committee::EpochId;
 use myso_types::crypto::{DefaultHash, PublicKey};
 use myso_types::crypto::{
-    EncodeDecodeBase64, Signature, SignatureScheme, MySoKeyPair, ZkLoginPublicIdentifier,
+    EncodeDecodeBase64, MySoKeyPair, Signature, SignatureScheme, ZkLoginPublicIdentifier,
     get_authority_key_pair,
 };
 use myso_types::error::MySoResult;
@@ -58,6 +47,17 @@ use myso_types::signature::{GenericSignature, VerifyParams};
 use myso_types::signature_verification::VerifiedDigestCache;
 use myso_types::transaction::{TransactionData, TransactionDataAPI};
 use myso_types::zk_login_authenticator::ZkLoginAuthenticator;
+use num_bigint::BigUint;
+use rand::Rng;
+use rand::SeedableRng;
+use rand::rngs::StdRng;
+use serde::Serialize;
+use serde_json::json;
+use shared_crypto::intent::{Intent, IntentMessage, IntentScope, PersonalMessage};
+use std::fmt::{Debug, Display, Formatter};
+use std::fs;
+use std::path::{Path, PathBuf};
+use std::sync::Arc;
 use tabled::builder::Builder;
 use tabled::settings::Rotate;
 use tabled::settings::{Modify, Width, object::Rows};
@@ -1310,7 +1310,10 @@ impl KeyToolCommand {
 
                                 let sig = GenericSignature::ZkLoginAuthenticator(zk.clone());
                                 let res = sig.verify_authenticator(
-                                    &IntentMessage::new(Intent::myso_transaction(), tx_data.clone()),
+                                    &IntentMessage::new(
+                                        Intent::myso_transaction(),
+                                        tx_data.clone(),
+                                    ),
                                     tx_data.execution_parts().1,
                                     cur_epoch.unwrap(),
                                     &verify_params,

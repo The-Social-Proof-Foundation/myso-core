@@ -5,19 +5,19 @@
 use anyhow::{Context, Result, anyhow};
 use clap::*;
 
+use myso_protocol_config::Chain;
 use prometheus::Registry;
 use rand::Rng;
 use rand::seq::SliceRandom;
-use myso_protocol_config::Chain;
 use tokio::time::sleep;
 
-use std::sync::Arc;
-use std::time::Duration;
 use myso_benchmark::drivers::BenchmarkCmp;
 use myso_benchmark::drivers::BenchmarkStats;
 use myso_benchmark::drivers::bench_driver::BenchDriver;
 use myso_benchmark::drivers::driver::Driver;
 use myso_protocol_config::{ProtocolConfig, ProtocolVersion};
+use std::sync::Arc;
+use std::time::Duration;
 
 use myso_benchmark::benchmark_setup::BenchmarkSetup;
 use myso_benchmark::options::Opts;

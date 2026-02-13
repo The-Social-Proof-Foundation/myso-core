@@ -26,7 +26,6 @@ use move_bytecode_verifier::absint::{
 };
 use move_bytecode_verifier_meter::{Meter, Scope};
 use move_core_types::{ident_str, vm_status::StatusCode};
-use std::{collections::BTreeMap, error::Error, num::NonZeroU64};
 use myso_types::bridge::BRIDGE_MODULE_NAME;
 use myso_types::deny_list_v1::{DENY_LIST_CREATE_FUNC, DENY_LIST_MODULE};
 use myso_types::{
@@ -36,9 +35,10 @@ use myso_types::{
     clock::CLOCK_MODULE_NAME,
     error::{ExecutionError, VMMVerifierErrorSubStatusCode},
     id::OBJECT_MODULE_NAME,
-    randomness_state::RANDOMNESS_MODULE_NAME,
     myso_system_state::MYSO_SYSTEM_MODULE_NAME,
+    randomness_state::RANDOMNESS_MODULE_NAME,
 };
+use std::{collections::BTreeMap, error::Error, num::NonZeroU64};
 
 use crate::{
     FunctionIdent, TEST_SCENARIO_MODULE_NAME, check_for_verifier_timeout,
@@ -54,7 +54,11 @@ enum AbstractValue {
     Other,
 }
 
-const OBJECT_NEW: FunctionIdent = (MYSO_FRAMEWORK_ADDRESS, OBJECT_MODULE_NAME, ident_str!("new"));
+const OBJECT_NEW: FunctionIdent = (
+    MYSO_FRAMEWORK_ADDRESS,
+    OBJECT_MODULE_NAME,
+    ident_str!("new"),
+);
 const OBJECT_NEW_UID_FROM_HASH: FunctionIdent = (
     MYSO_FRAMEWORK_ADDRESS,
     OBJECT_MODULE_NAME,
@@ -96,7 +100,8 @@ const MYSO_DENY_LIST_CREATE: FunctionIdent = (
     DENY_LIST_CREATE_FUNC,
 );
 
-const MYSO_BRIDGE_CREATE: FunctionIdent = (BRIDGE_ADDRESS, BRIDGE_MODULE_NAME, ident_str!("create"));
+const MYSO_BRIDGE_CREATE: FunctionIdent =
+    (BRIDGE_ADDRESS, BRIDGE_MODULE_NAME, ident_str!("create"));
 const MYSO_ACCUMULATOR_CREATE: FunctionIdent = (
     MYSO_FRAMEWORK_ADDRESS,
     ACCUMULATOR_MODULE_NAME,

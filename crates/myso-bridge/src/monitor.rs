@@ -14,16 +14,16 @@ use crate::crypto::BridgeAuthorityPublicKeyBytes;
 use crate::events::{BlocklistValidatorEvent, CommitteeMemberUrlUpdateEvent};
 use crate::events::{EmergencyOpEvent, MySoBridgeEvent};
 use crate::metrics::BridgeMetrics;
-use crate::retry_with_max_elapsed_time;
 use crate::myso_client::{MySoClient, MySoClientInner};
+use crate::retry_with_max_elapsed_time;
 use crate::types::{BridgeCommittee, IsBridgePaused};
 use arc_swap::ArcSwap;
 use futures::StreamExt;
-use std::collections::HashMap;
-use std::sync::Arc;
 use myso_rpc::field::{FieldMask, FieldMaskUtil};
 use myso_rpc::proto::myso::rpc::v2::{Checkpoint, SubscribeCheckpointsRequest};
 use myso_types::TypeTag;
+use std::collections::HashMap;
+use std::sync::Arc;
 use tokio::time::Duration;
 use tracing::{error, info, warn};
 
@@ -447,9 +447,10 @@ async fn get_latest_bridge_pause_status_with_emergency_event<C: MySoClientInner>
 ) -> IsBridgePaused {
     let mut remaining_retry_times = REFRESH_BRIDGE_RETRY_TIMES;
     loop {
-        let Ok(Ok(summary)) =
-            retry_with_max_elapsed_time!(myso_client.get_bridge_summary(), Duration::from_secs(600))
-        else {
+        let Ok(Ok(summary)) = retry_with_max_elapsed_time!(
+            myso_client.get_bridge_summary(),
+            Duration::from_secs(600)
+        ) else {
             error!("Failed to get bridge summary after retry");
             continue;
         };
@@ -562,11 +563,11 @@ mod tests {
     };
     use crate::types::{BRIDGE_PAUSED, BRIDGE_UNPAUSED, BridgeAuthority};
     use fastcrypto::traits::KeyPair;
-    use prometheus::Registry;
     use myso_types::base_types::MySoAddress;
     use myso_types::bridge::BridgeCommitteeSummary;
     use myso_types::bridge::MoveTypeCommitteeMember;
     use myso_types::crypto::get_key_pair;
+    use prometheus::Registry;
 
     use crate::{myso_mock_client::MySoMockClient, types::BridgeCommittee};
     use myso_types::crypto::ToFromBytes;

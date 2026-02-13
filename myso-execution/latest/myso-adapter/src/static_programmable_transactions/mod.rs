@@ -15,12 +15,12 @@ use crate::{
 };
 use move_trace_format::format::MoveTraceBuilder;
 use move_vm_runtime::move_vm::MoveVM;
-use std::{cell::RefCell, rc::Rc, sync::Arc};
 use myso_protocol_config::ProtocolConfig;
 use myso_types::{
     base_types::TxContext, error::ExecutionError, execution::ResultWithTimings,
     metrics::LimitsMetrics, storage::BackingPackageStore, transaction::ProgrammableTransaction,
 };
+use std::{cell::RefCell, rc::Rc, sync::Arc};
 
 // TODO we might replace this with a new one
 pub use crate::data_store::legacy::linkage_view::LinkageView;

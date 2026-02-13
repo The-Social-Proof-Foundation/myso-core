@@ -8,7 +8,7 @@ use std::time::Duration;
 use consensus_types::block::{BlockRef, PING_TRANSACTION_INDEX, TransactionIndex};
 use fastcrypto::traits::KeyPair;
 use myso_test_transaction_builder::TestTransactionBuilder;
-use myso_types::base_types::{ObjectRef, MySoAddress, TransactionDigest};
+use myso_types::base_types::{MySoAddress, ObjectRef, TransactionDigest};
 use myso_types::committee::EpochId;
 use myso_types::crypto::{AccountKeyPair, get_account_key_pair};
 use myso_types::digests::TransactionEffectsDigest;

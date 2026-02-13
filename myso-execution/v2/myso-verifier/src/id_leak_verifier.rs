@@ -28,7 +28,6 @@ use move_bytecode_verifier_meter::{Meter, Scope};
 use move_core_types::{
     account_address::AccountAddress, ident_str, identifier::IdentStr, vm_status::StatusCode,
 };
-use std::{collections::BTreeMap, error::Error, num::NonZeroU64};
 use myso_types::bridge::BRIDGE_MODULE_NAME;
 use myso_types::deny_list_v1::{DENY_LIST_CREATE_FUNC, DENY_LIST_MODULE};
 use myso_types::{
@@ -36,10 +35,11 @@ use myso_types::{
     clock::CLOCK_MODULE_NAME,
     error::{ExecutionError, VMMVerifierErrorSubStatusCode},
     id::OBJECT_MODULE_NAME,
-    randomness_state::RANDOMNESS_MODULE_NAME,
     myso_system_state::MYSO_SYSTEM_MODULE_NAME,
+    randomness_state::RANDOMNESS_MODULE_NAME,
     BRIDGE_ADDRESS, MYSO_FRAMEWORK_ADDRESS, MYSO_SYSTEM_ADDRESS,
 };
+use std::{collections::BTreeMap, error::Error, num::NonZeroU64};
 
 use crate::{
     check_for_verifier_timeout, to_verification_timeout_error, verification_failure,

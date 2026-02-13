@@ -44,9 +44,9 @@
 //! We can't prevent this completely, but we can at least make the right way the easy way.
 
 use super::MySoNode;
+use myso_core::authority::AuthorityState;
 use std::future::Future;
 use std::sync::Arc;
-use myso_core::authority::AuthorityState;
 
 /// Wrap MySoNode to allow correct access to MySoNode in simulator tests.
 pub struct MySoNodeHandle {

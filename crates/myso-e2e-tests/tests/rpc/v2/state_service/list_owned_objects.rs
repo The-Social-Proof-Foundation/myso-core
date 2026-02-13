@@ -2,8 +2,6 @@
 // Copyright (c) The Social Proof Foundation, LLC.
 // SPDX-License-Identifier: Apache-2.0
 
-use prost_types::FieldMask;
-use std::path::PathBuf;
 use myso_macros::sim_test;
 use myso_move_build::BuildConfig;
 use myso_rpc::Client;
@@ -16,6 +14,8 @@ use myso_sdk_types::TypeTag;
 use myso_types::Identifier;
 use myso_types::programmable_transaction_builder::ProgrammableTransactionBuilder;
 use myso_types::transaction::{CallArg, ObjectArg, TransactionData, TransactionKind};
+use prost_types::FieldMask;
+use std::path::PathBuf;
 use test_cluster::TestClusterBuilder;
 
 #[sim_test]
@@ -525,7 +525,10 @@ async fn test_filter_by_type() {
             .count(),
         1
     );
-    assert_eq!(objects.iter().filter(|o| o.object_type() == myso).count(), 5);
+    assert_eq!(
+        objects.iter().filter(|o| o.object_type() == myso).count(),
+        5
+    );
 }
 
 #[sim_test]

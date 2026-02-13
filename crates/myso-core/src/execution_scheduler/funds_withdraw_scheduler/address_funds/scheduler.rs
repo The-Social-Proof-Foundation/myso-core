@@ -13,8 +13,8 @@ use crate::{
     execution_scheduler::funds_withdraw_scheduler::WithdrawReservations,
 };
 use futures::stream::FuturesUnordered;
-use mysten_metrics::monitored_mpsc::{UnboundedReceiver, UnboundedSender, unbounded_channel};
 use myso_types::{base_types::SequenceNumber, digests::TransactionDigest};
+use mysten_metrics::monitored_mpsc::{UnboundedReceiver, UnboundedSender, unbounded_channel};
 use tokio::sync::oneshot;
 use tracing::debug;
 

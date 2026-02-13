@@ -6,9 +6,9 @@
 
 use crate::myso_bridge_watchdog::Observable;
 use async_trait::async_trait;
+use myso_rpc::proto::myso::rpc::v2::GetCoinInfoRequest;
 use prometheus::IntGaugeVec;
 use std::collections::BTreeMap;
-use myso_rpc::proto::myso::rpc::v2::GetCoinInfoRequest;
 
 use tokio::time::Duration;
 use tracing::{error, info};

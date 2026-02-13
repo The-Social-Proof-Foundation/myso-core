@@ -6,6 +6,12 @@ use anyhow::{Result, anyhow};
 use async_trait::async_trait;
 use dashmap::{DashMap, DashSet};
 use futures::future::join_all;
+use myso_json_rpc_types::{
+    MySoExecutionStatus, MySoObjectDataOptions, MySoTransactionBlockDataAPI,
+    MySoTransactionBlockEffectsAPI, MySoTransactionBlockResponse,
+    MySoTransactionBlockResponseOptions,
+};
+use myso_types::digests::TransactionDigest;
 use serde::Serialize;
 use serde::de::DeserializeOwned;
 use shared_crypto::intent::{Intent, IntentMessage};
@@ -14,19 +20,16 @@ use std::fs::{self, File};
 use std::path::PathBuf;
 use std::sync::Arc;
 use std::time::{Duration, Instant};
-use myso_json_rpc_types::{
-    MySoExecutionStatus, MySoObjectDataOptions, MySoTransactionBlockDataAPI,
-    MySoTransactionBlockEffectsAPI, MySoTransactionBlockResponse, MySoTransactionBlockResponseOptions,
-};
-use myso_types::digests::TransactionDigest;
 use tokio::sync::RwLock;
 use tokio::time::sleep;
 use tracing::{debug, info};
 
 use crate::load_test::LoadTestConfig;
 use myso_sdk::{MySoClient, MySoClientBuilder};
-use myso_types::base_types::{ObjectID, ObjectRef, MySoAddress};
-use myso_types::crypto::{AccountKeyPair, EncodeDecodeBase64, Signature, MySoKeyPair, get_key_pair};
+use myso_types::base_types::{MySoAddress, ObjectID, ObjectRef};
+use myso_types::crypto::{
+    AccountKeyPair, EncodeDecodeBase64, MySoKeyPair, Signature, get_key_pair,
+};
 use myso_types::transaction::{Transaction, TransactionData};
 use myso_types::transaction_driver_types::ExecuteTransactionRequestType;
 

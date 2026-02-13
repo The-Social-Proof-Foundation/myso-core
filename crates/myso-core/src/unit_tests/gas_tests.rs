@@ -10,7 +10,6 @@ use crate::authority::authority_tests::init_state_with_ids_and_object_basics;
 use crate::authority::test_authority_builder::TestAuthorityBuilder;
 use move_core_types::account_address::AccountAddress;
 use move_core_types::ident_str;
-use once_cell::sync::Lazy;
 use myso_protocol_config::ProtocolConfig;
 use myso_types::crypto::AccountKeyPair;
 use myso_types::effects::SignedTransactionEffects;
@@ -23,6 +22,7 @@ use myso_types::{
     base_types::{FullObjectRef, dbg_addr},
     crypto::get_key_pair,
 };
+use once_cell::sync::Lazy;
 
 // The cost table is used only to get the max budget available which is not dependent on
 // the gas price

@@ -23,7 +23,7 @@ use std::sync::Arc;
 
 use crate::drivers::Interval;
 use crate::workloads::payload::Payload;
-use myso_types::base_types::{ObjectRef, MySoAddress};
+use myso_types::base_types::{MySoAddress, ObjectRef};
 use myso_types::crypto::AccountKeyPair;
 use workload::*;
 

@@ -5,7 +5,6 @@
 use move_binary_format::CompiledModule;
 use move_trace_format::format::MoveTraceBuilder;
 use move_vm_config::verifier::{MeterConfig, VerifierConfig};
-use std::{cell::RefCell, rc::Rc, sync::Arc};
 use myso_protocol_config::ProtocolConfig;
 use myso_types::execution::ExecutionTiming;
 use myso_types::execution_params::ExecutionOrEarlyError;
@@ -23,6 +22,7 @@ use myso_types::{
     metrics::{BytecodeVerifierMetrics, LimitsMetrics},
     transaction::{CheckedInputObjects, ProgrammableTransaction, TransactionKind},
 };
+use std::{cell::RefCell, rc::Rc, sync::Arc};
 
 use move_bytecode_verifier_meter::Meter;
 use move_vm_runtime_latest::move_vm::MoveVM;

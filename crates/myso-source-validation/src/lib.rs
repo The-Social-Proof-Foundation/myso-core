@@ -9,11 +9,11 @@ use move_compiler::compiled_unit::NamedCompiledModule;
 use move_core_types::account_address::AccountAddress;
 use move_package_alt::schema::Environment;
 use move_symbol_pool::Symbol;
-use std::collections::{HashMap, HashSet};
 use myso_move_build::CompiledPackage;
 use myso_rpc_api::Client;
 use myso_types::base_types::ObjectID;
 use myso_types::move_package::MovePackage;
+use std::collections::{HashMap, HashSet};
 use toolchain::units_for_toolchain;
 
 pub mod error;

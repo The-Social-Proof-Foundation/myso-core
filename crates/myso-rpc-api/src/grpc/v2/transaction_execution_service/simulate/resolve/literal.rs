@@ -6,8 +6,6 @@ use super::NormalizedPackages;
 use crate::Result;
 use crate::RpcError;
 use move_binary_format::normalized;
-use prost_types::Value;
-use prost_types::value::Kind;
 use myso_sdk_types::Command;
 use myso_types::MOVE_STDLIB_ADDRESS;
 use myso_types::base_types::ObjectID;
@@ -17,6 +15,8 @@ use myso_types::base_types::STD_OPTION_MODULE_NAME;
 use myso_types::base_types::STD_OPTION_STRUCT_NAME;
 use myso_types::base_types::STD_UTF8_MODULE_NAME;
 use myso_types::base_types::STD_UTF8_STRUCT_NAME;
+use prost_types::Value;
+use prost_types::value::Kind;
 
 type Type = normalized::Type<normalized::RcIdentifier>;
 

@@ -5,9 +5,9 @@
 use std::collections::BTreeMap;
 use std::sync::Arc;
 
-use parking_lot::RwLock;
 use myso_types::base_types::ObjectID;
 use myso_types::{accumulator_root::AccumulatorObjId, base_types::SequenceNumber};
+use parking_lot::RwLock;
 
 use crate::accumulators::funds_read::AccountFundsRead;
 

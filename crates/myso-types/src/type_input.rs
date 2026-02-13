@@ -10,8 +10,8 @@ use move_core_types::{
     identifier::Identifier,
     language_storage::{StructTag, TypeTag},
 };
-use serde::{Deserialize, Serialize};
 use myso_macros::EnumVariantOrder;
+use serde::{Deserialize, Serialize};
 
 use crate::base_types::MoveObjectType;
 

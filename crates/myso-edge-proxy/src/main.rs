@@ -63,7 +63,7 @@ async fn main() {
         .expect("Failed to bind to address");
     let addr = listener.local_addr().expect("Failed to get local address");
     info!("Server listening on {}", addr);
-    
+
     axum::serve(
         listener,
         app.into_make_service_with_connect_info::<SocketAddr>(),

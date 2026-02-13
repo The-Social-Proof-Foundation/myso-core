@@ -7,6 +7,10 @@ use fastcrypto::encoding::Base64;
 use fastcrypto::encoding::Encoding;
 use fastcrypto::traits::ToFromBytes;
 use futures::stream::{self, StreamExt};
+use myso_tls::Allower;
+use myso_types::base_types::MySoAddress;
+use myso_types::bridge::BridgeSummary;
+use myso_types::myso_system_state::myso_system_state_summary::MySoSystemStateSummary;
 use once_cell::sync::Lazy;
 use prometheus::{CounterVec, HistogramVec};
 use prometheus::{register_counter_vec, register_histogram_vec};
@@ -17,10 +21,6 @@ use std::{
     sync::{Arc, RwLock},
     time::Duration,
 };
-use myso_tls::Allower;
-use myso_types::base_types::MySoAddress;
-use myso_types::bridge::BridgeSummary;
-use myso_types::myso_system_state::myso_system_state_summary::MySoSystemStateSummary;
 use tracing::{debug, error, info, warn};
 use url::Url;
 
@@ -542,12 +542,12 @@ fn append_path_segment(mut url: Url, segment: &str) -> Option<Url> {
 mod tests {
     use super::*;
     use crate::admin::{CertKeyPair, generate_self_cert};
-    use serde::Serialize;
     use myso_types::base_types::MySoAddress;
     use myso_types::bridge::{BridgeCommitteeSummary, BridgeSummary, MoveTypeCommitteeMember};
     use myso_types::myso_system_state::myso_system_state_summary::{
         MySoSystemStateSummary, MySoValidatorSummary,
     };
+    use serde::Serialize;
 
     /// creates a test that binds our proxy use case to the structure in myso_getLatestMySoSystemState
     /// most of the fields are garbage, but we will send the results of the serde process to a private decode

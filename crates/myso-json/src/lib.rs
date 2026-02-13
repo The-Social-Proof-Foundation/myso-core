@@ -26,9 +26,9 @@ use serde_json::{Number, Value as JsonValue, json};
 
 use myso_types::MOVE_STDLIB_ADDRESS;
 use myso_types::base_types::{
-    ObjectID, RESOLVED_ASCII_STR, RESOLVED_STD_OPTION, RESOLVED_UTF8_STR, STD_ASCII_MODULE_NAME,
-    STD_ASCII_STRUCT_NAME, STD_OPTION_MODULE_NAME, STD_OPTION_STRUCT_NAME, STD_UTF8_MODULE_NAME,
-    STD_UTF8_STRUCT_NAME, MySoAddress, TxContext, TxContextKind, is_primitive_type_tag,
+    MySoAddress, ObjectID, RESOLVED_ASCII_STR, RESOLVED_STD_OPTION, RESOLVED_UTF8_STR,
+    STD_ASCII_MODULE_NAME, STD_ASCII_STRUCT_NAME, STD_OPTION_MODULE_NAME, STD_OPTION_STRUCT_NAME,
+    STD_UTF8_MODULE_NAME, STD_UTF8_STRUCT_NAME, TxContext, TxContextKind, is_primitive_type_tag,
     move_ascii_str_layout, move_utf8_str_layout,
 };
 use myso_types::id::{self, ID, RESOLVED_MYSO_ID};
@@ -512,7 +512,9 @@ pub fn check_valid_homogeneous(val: &JsonValue) -> Result<(), MySoJsonValueError
 
 /// Check via BFS
 /// The invariant is that all types at a given level must be the same or be empty
-fn check_valid_homogeneous_rec(curr_q: &mut VecDeque<&JsonValue>) -> Result<(), MySoJsonValueError> {
+fn check_valid_homogeneous_rec(
+    curr_q: &mut VecDeque<&JsonValue>,
+) -> Result<(), MySoJsonValueError> {
     if curr_q.is_empty() {
         // Nothing to do
         return Ok(());

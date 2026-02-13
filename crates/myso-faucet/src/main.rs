@@ -4,7 +4,7 @@
 
 use clap::Parser;
 use myso_config::myso_config_dir;
-use myso_faucet::{create_wallet_context, start_faucet, AppState};
+use myso_faucet::{AppState, create_wallet_context, start_faucet};
 use myso_faucet::{FaucetConfig, SimpleFaucet};
 use std::env;
 use std::path::Path;
@@ -60,10 +60,7 @@ async fn main() -> Result<(), anyhow::Error> {
     )
     .await?;
 
-    let app_state = Arc::new(AppState {
-        faucet,
-        config,
-    });
+    let app_state = Arc::new(AppState { faucet, config });
 
     start_faucet(app_state, max_concurrency, &prometheus_registry).await
 }
@@ -94,7 +91,8 @@ async fn init_faucet_with_retry(
                         "Faucet init failed (attempt {}/{}): {}. Retrying in {}ms...",
                         attempt, INIT_RETRY_ATTEMPTS, e, INIT_RETRY_DELAY_MS
                     );
-                    tokio::time::sleep(tokio::time::Duration::from_millis(INIT_RETRY_DELAY_MS)).await;
+                    tokio::time::sleep(tokio::time::Duration::from_millis(INIT_RETRY_DELAY_MS))
+                        .await;
                 }
             }
         }

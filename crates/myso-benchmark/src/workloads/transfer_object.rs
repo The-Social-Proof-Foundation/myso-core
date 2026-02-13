@@ -21,7 +21,7 @@ use crate::workloads::{Gas, GasCoinConfig, WorkloadBuilderInfo, WorkloadParams};
 use crate::{ExecutionEffects, ValidatorProxy};
 use myso_core::test_utils::make_transfer_object_transaction;
 use myso_types::{
-    base_types::{ObjectRef, MySoAddress},
+    base_types::{MySoAddress, ObjectRef},
     crypto::{AccountKeyPair, get_key_pair},
     transaction::Transaction,
 };

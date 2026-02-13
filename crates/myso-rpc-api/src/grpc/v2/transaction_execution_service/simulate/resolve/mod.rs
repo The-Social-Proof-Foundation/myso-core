@@ -788,7 +788,9 @@ struct UnresolvedInput<'a> {
 }
 
 impl<'a> UnresolvedInput<'a> {
-    fn from_proto(input: &'a myso_rpc::proto::myso::rpc::v2::Input) -> Result<Self, FieldViolation> {
+    fn from_proto(
+        input: &'a myso_rpc::proto::myso::rpc::v2::Input,
+    ) -> Result<Self, FieldViolation> {
         Ok(Self {
             kind: input.kind.map(|_| input.kind()),
             literal: input.literal.as_deref(),

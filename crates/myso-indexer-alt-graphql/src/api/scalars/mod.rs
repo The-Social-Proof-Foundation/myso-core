@@ -11,8 +11,8 @@ pub(crate) mod fq_name_filter;
 pub(crate) mod id;
 pub(crate) mod json;
 pub(crate) mod module_filter;
-pub(crate) mod owner_kind;
 pub(crate) mod myso_address;
+pub(crate) mod owner_kind;
 pub(crate) mod type_filter;
 pub(crate) mod uint53;
 

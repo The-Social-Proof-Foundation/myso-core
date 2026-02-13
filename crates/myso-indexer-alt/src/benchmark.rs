@@ -5,7 +5,6 @@
 use std::path::PathBuf;
 use std::time::Instant;
 
-use prometheus::Registry;
 use myso_indexer_alt_framework::IndexerArgs;
 use myso_indexer_alt_framework::ingestion::ClientArgs;
 use myso_indexer_alt_framework::ingestion::ingestion_client::IngestionClientArgs;
@@ -16,6 +15,7 @@ use myso_indexer_alt_schema::MIGRATIONS;
 use myso_indexer_alt_schema::checkpoints::StoredGenesis;
 use myso_indexer_alt_schema::epochs::StoredEpochStart;
 use myso_synthetic_ingestion::synthetic_ingestion::read_ingestion_data;
+use prometheus::Registry;
 use tracing::info;
 use url::Url;
 

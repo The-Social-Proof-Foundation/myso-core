@@ -6,13 +6,13 @@ use crate::benchmark_context::BenchmarkContext;
 use crate::mock_account::Account;
 use crate::tx_generator::TxGenerator;
 use move_symbol_pool::Symbol;
+use myso_move_build::{BuildConfig, CompiledPackage};
+use myso_test_transaction_builder::{PublishData, TestTransactionBuilder};
+use myso_types::transaction::{DEFAULT_VALIDATOR_GAS_PRICE, Transaction};
 use serde::{Deserialize, Serialize};
 use std::collections::BTreeMap;
 use std::fs;
 use std::path::PathBuf;
-use myso_move_build::{BuildConfig, CompiledPackage};
-use myso_test_transaction_builder::{PublishData, TestTransactionBuilder};
-use myso_types::transaction::{DEFAULT_VALIDATOR_GAS_PRICE, Transaction};
 use tracing::info;
 
 pub struct PackagePublishTxGenerator {

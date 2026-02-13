@@ -9,11 +9,11 @@ use consensus_config::{
 };
 use consensus_types::block::Round;
 use itertools::Itertools;
+use myso_protocol_config::ProtocolConfig;
 use mysten_metrics::spawn_logged_monitored_task;
 use mysten_network::Multiaddr;
 use parking_lot::RwLock;
 use prometheus::Registry;
-use myso_protocol_config::ProtocolConfig;
 use tokio::task::JoinHandle;
 use tracing::{info, warn};
 
@@ -471,11 +471,11 @@ mod tests {
     };
 
     use consensus_config::{Parameters, local_committee_and_keys};
+    use myso_protocol_config::ProtocolConfig;
     use mysten_metrics::RegistryService;
     use mysten_metrics::monitored_mpsc::UnboundedReceiver;
     use prometheus::Registry;
     use rstest::rstest;
-    use myso_protocol_config::ProtocolConfig;
     use tempfile::TempDir;
     use tokio::time::{sleep, timeout};
     use typed_store::DBMetrics;

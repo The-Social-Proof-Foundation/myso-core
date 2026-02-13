@@ -6,13 +6,15 @@
 //! Provides endpoints for generating custodial deposit addresses
 
 use crate::deposit_addresses::{DepositAddressManager, HD_COUNTER_EVM, HD_COUNTER_MYSO};
-use crate::deposit_sig_verification::{verify_eth_signature, verify_myso_signature, verify_timestamp_recent};
+use crate::deposit_sig_verification::{
+    verify_eth_signature, verify_myso_signature, verify_timestamp_recent,
+};
 use crate::error::BridgeError;
 use crate::storage::{
     BridgeOrchestratorTables, DepositAddressKey, DepositRegistration, RegistrationType,
 };
 use alloy::primitives::Address as EthAddress;
-use axum::{extract::State, http::StatusCode, Json};
+use axum::{Json, extract::State, http::StatusCode};
 use fastcrypto::encoding::Encoding;
 use myso_types::base_types::MySoAddress;
 use serde::{Deserialize, Serialize};
@@ -150,7 +152,8 @@ async fn generate_for_myso_user(
     })?;
 
     if let Some(signature) = &req.signature {
-        verify_myso_signature(&message_str, signature, &myso_address).map_err(to_status_error_json)?;
+        verify_myso_signature(&message_str, signature, &myso_address)
+            .map_err(to_status_error_json)?;
     }
 
     let dest_eth_address = EthAddress::from_str(&req.message.destination_address).map_err(|e| {
@@ -162,7 +165,11 @@ async fn generate_for_myso_user(
         )
     })?;
 
-    let dest_chain_id = parse_chain_id(&req.message.destination_chain, state.eth_chain_id, state.myso_chain_id)?;
+    let dest_chain_id = parse_chain_id(
+        &req.message.destination_chain,
+        state.eth_chain_id,
+        state.myso_chain_id,
+    )?;
 
     let existing_registrations = state
         .storage
@@ -269,20 +276,23 @@ async fn generate_for_eth_user(
     req: GenerateDepositRequest,
     message_str: String,
 ) -> Result<Json<GenerateDepositResponse>, (StatusCode, Json<ErrorResponse>)> {
-    let dest_myso_address = MySoAddress::from_str(&req.message.destination_address).map_err(|e| {
-        (
-            StatusCode::BAD_REQUEST,
-            Json(ErrorResponse {
-                error: format!("Invalid MySocial destination address: {:?}", e),
-            }),
-        )
-    })?;
+    let dest_myso_address =
+        MySoAddress::from_str(&req.message.destination_address).map_err(|e| {
+            (
+                StatusCode::BAD_REQUEST,
+                Json(ErrorResponse {
+                    error: format!("Invalid MySocial destination address: {:?}", e),
+                }),
+            )
+        })?;
 
     if let (Some(source_address), Some(signature)) = (&req.source_address, &req.signature) {
         if let Ok(eth_addr) = EthAddress::from_str(source_address) {
-            verify_eth_signature(&message_str, signature, &eth_addr).map_err(to_status_error_json)?;
+            verify_eth_signature(&message_str, signature, &eth_addr)
+                .map_err(to_status_error_json)?;
         } else if let Ok(myso_addr) = MySoAddress::from_str(source_address) {
-            verify_myso_signature(&message_str, signature, &myso_addr).map_err(to_status_error_json)?;
+            verify_myso_signature(&message_str, signature, &myso_addr)
+                .map_err(to_status_error_json)?;
         } else {
             return Err((
                 StatusCode::BAD_REQUEST,
@@ -293,7 +303,11 @@ async fn generate_for_eth_user(
         }
     }
 
-    let dest_chain_id = parse_chain_id(&req.message.destination_chain, state.eth_chain_id, state.myso_chain_id)?;
+    let dest_chain_id = parse_chain_id(
+        &req.message.destination_chain,
+        state.eth_chain_id,
+        state.myso_chain_id,
+    )?;
     let source_chain_id = state.eth_chain_id;
 
     let existing_registrations = state
@@ -332,7 +346,9 @@ async fn generate_for_eth_user(
                 destination_address: req.message.destination_address.clone(),
                 instructions: format!(
                     "Send tokens to {:?} on {} chain, they will bridge to {} on MySocial",
-                    existing_deposit_addr, chain_id_to_name(state.eth_chain_id), dest_myso_address
+                    existing_deposit_addr,
+                    chain_id_to_name(state.eth_chain_id),
+                    dest_myso_address
                 ),
             }));
         }
@@ -364,7 +380,10 @@ async fn generate_for_eth_user(
 
     state
         .storage
-        .store_deposit_registration(DepositAddressKey::from_myso(dest_myso_address), registration)
+        .store_deposit_registration(
+            DepositAddressKey::from_myso(dest_myso_address),
+            registration,
+        )
         .map_err(to_status_error_json)?;
 
     info!(
@@ -380,7 +399,9 @@ async fn generate_for_eth_user(
         destination_address: req.message.destination_address.clone(),
         instructions: format!(
             "Send tokens to {} on {} chain, they will bridge to {} on MySocial",
-            deposit_evm_address, chain_id_to_name(state.eth_chain_id), dest_myso_address
+            deposit_evm_address,
+            chain_id_to_name(state.eth_chain_id),
+            dest_myso_address
         ),
     }))
 }
@@ -465,7 +486,10 @@ pub async fn link_addresses(
 
     state
         .storage
-        .store_deposit_registration(DepositAddressKey::from_myso(myso_address), myso_registration)
+        .store_deposit_registration(
+            DepositAddressKey::from_myso(myso_address),
+            myso_registration,
+        )
         .map_err(to_status_error_json)?;
 
     let evm_registration = DepositRegistration {
@@ -523,7 +547,10 @@ pub async fn query_deposit_addresses(
                     deposit_chain: chain_id_to_name(r.deposit_chain),
                     deposit_address: format_address(&r.deposit_address, r.deposit_chain),
                     destination_chain: chain_id_to_name(r.destination_chain),
-                    destination_address: format_address(&r.destination_address, r.destination_chain),
+                    destination_address: format_address(
+                        &r.destination_address,
+                        r.destination_chain,
+                    ),
                     registration_type: format!("{:?}", r.registration_type),
                     created_at: r.created_at,
                 })
@@ -546,7 +573,10 @@ pub async fn query_deposit_addresses(
                     deposit_chain: chain_id_to_name(r.deposit_chain),
                     deposit_address: format_address(&r.deposit_address, r.deposit_chain),
                     destination_chain: chain_id_to_name(r.destination_chain),
-                    destination_address: format_address(&r.destination_address, r.destination_chain),
+                    destination_address: format_address(
+                        &r.destination_address,
+                        r.destination_chain,
+                    ),
                     registration_type: format!("{:?}", r.registration_type),
                     created_at: r.created_at,
                 })

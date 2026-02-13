@@ -13,9 +13,9 @@ use crate::action_executor::{
 };
 use crate::events::MySoBridgeEvent;
 use crate::metrics::BridgeMetrics;
-use crate::storage::BridgeOrchestratorTables;
 use crate::myso_client::{MySoClient, MySoClientInner};
 use crate::myso_syncer::GrpcSyncedEvents;
+use crate::storage::BridgeOrchestratorTables;
 use crate::types::EthLog;
 use alloy::primitives::Address as EthAddress;
 use mysten_metrics::spawn_logged_monitored_task;
@@ -257,9 +257,9 @@ mod tests {
         types::BridgeActionDigest,
     };
     use alloy::primitives::TxHash;
+    use myso_types::Identifier;
     use prometheus::Registry;
     use std::str::FromStr;
-    use myso_types::Identifier;
 
     use super::*;
     use crate::events::MySoBridgeEvent;

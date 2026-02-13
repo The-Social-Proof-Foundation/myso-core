@@ -6,7 +6,6 @@ use std::path::Path;
 
 use anyhow::Context as _;
 use anyhow::ensure;
-use prometheus::Registry;
 use myso_indexer_alt_framework::IndexerArgs;
 use myso_indexer_alt_framework::ingestion::ClientArgs;
 use myso_indexer_alt_framework::ingestion::IngestionConfig;
@@ -14,6 +13,7 @@ use myso_indexer_alt_framework::pipeline::sequential::SequentialConfig;
 use myso_indexer_alt_framework::pipeline::sequential::{self};
 use myso_indexer_alt_framework::service::Service;
 use myso_indexer_alt_framework::{self as framework};
+use prometheus::Registry;
 
 use crate::config::ConsistencyConfig;
 use crate::db::config::DbConfig;

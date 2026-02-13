@@ -2,12 +2,6 @@
 // Copyright (c) The Social Proof Foundation, LLC.
 // SPDX-License-Identifier: Apache-2.0
 
-use mysten_common::register_debug_fatal_handler;
-use std::sync::Arc;
-use std::sync::Mutex;
-use std::sync::atomic::AtomicUsize;
-use std::sync::atomic::Ordering;
-use std::time::Duration;
 use myso_macros::register_fail_point_arg;
 use myso_macros::sim_test;
 use myso_protocol_config::ProtocolConfig;
@@ -17,6 +11,12 @@ use myso_types::address_alias::get_address_alias_state_obj_initial_shared_versio
 use myso_types::base_types::AuthorityName;
 use myso_types::transaction::{Argument, CallArg, Command, ObjectArg};
 use myso_types::{MYSO_ADDRESS_ALIAS_STATE_OBJECT_ID, MYSO_FRAMEWORK_PACKAGE_ID};
+use mysten_common::register_debug_fatal_handler;
+use std::sync::Arc;
+use std::sync::Mutex;
+use std::sync::atomic::AtomicUsize;
+use std::sync::atomic::Ordering;
+use std::time::Duration;
 use test_cluster::TestClusterBuilder;
 use tokio::time::sleep;
 use tracing::info;

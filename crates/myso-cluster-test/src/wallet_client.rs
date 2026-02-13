@@ -5,13 +5,13 @@
 use crate::cluster::new_wallet_context_from_cluster;
 
 use super::Cluster;
-use shared_crypto::intent::Intent;
 use myso_keys::keystore::AccountKeystore;
 use myso_sdk::wallet_context::WalletContext;
 use myso_sdk::{MySoClient, MySoClientBuilder};
 use myso_types::base_types::MySoAddress;
 use myso_types::crypto::{KeypairTraits, Signature};
 use myso_types::transaction::TransactionData;
+use shared_crypto::intent::Intent;
 use tracing::{Instrument, info, info_span};
 
 pub struct WalletClient {

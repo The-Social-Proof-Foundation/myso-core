@@ -5,14 +5,6 @@
 
 use crate::authority_client::AuthorityAPI;
 use crate::epoch::committee_store::CommitteeStore;
-use prometheus::core::GenericCounter;
-use prometheus::{
-    Histogram, HistogramVec, IntCounterVec, Registry, register_histogram_vec_with_registry,
-    register_int_counter_vec_with_registry,
-};
-use std::collections::HashMap;
-use std::net::SocketAddr;
-use std::sync::Arc;
 use myso_types::crypto::AuthorityPublicKeyBytes;
 use myso_types::digests::TransactionEventsDigest;
 use myso_types::effects::{SignedTransactionEffects, TransactionEffectsAPI, TransactionEvents};
@@ -26,13 +18,21 @@ use myso_types::messages_grpc::{
     WaitForEffectsResponse,
 };
 use myso_types::messages_safe_client::PlainTransactionInfoResponse;
-use myso_types::object::Object;
 use myso_types::myso_system_state::MySoSystemState;
+use myso_types::object::Object;
 use myso_types::{base_types::*, committee::*, fp_ensure};
 use myso_types::{
     error::{MySoError, MySoErrorKind, MySoResult},
     transaction::*,
 };
+use prometheus::core::GenericCounter;
+use prometheus::{
+    Histogram, HistogramVec, IntCounterVec, Registry, register_histogram_vec_with_registry,
+    register_int_counter_vec_with_registry,
+};
+use std::collections::HashMap;
+use std::net::SocketAddr;
+use std::sync::Arc;
 use tap::TapFallible;
 use tracing::{error, instrument};
 

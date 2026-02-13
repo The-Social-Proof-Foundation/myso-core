@@ -2,10 +2,10 @@
 // Copyright (c) The Social Proof Foundation, LLC.
 // SPDX-License-Identifier: Apache-2.0
 
-use std::collections::HashMap;
 use myso_crypto::Verifier;
 use myso_sdk_types::Jwk;
 use myso_sdk_types::JwkId;
+use std::collections::HashMap;
 use tap::Pipe;
 
 use crate::ErrorReason;
@@ -176,7 +176,9 @@ fn verify_signature(
     };
 
     let mut zklogin_verifier = match service.chain_id().chain() {
-        myso_protocol_config::Chain::Mainnet => myso_crypto::zklogin::ZkloginVerifier::new_mainnet(),
+        myso_protocol_config::Chain::Mainnet => {
+            myso_crypto::zklogin::ZkloginVerifier::new_mainnet()
+        }
         myso_protocol_config::Chain::Testnet | myso_protocol_config::Chain::Unknown => {
             myso_crypto::zklogin::ZkloginVerifier::new_dev()
         }

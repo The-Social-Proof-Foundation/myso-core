@@ -105,8 +105,8 @@ fn normalized_signature(sig: &OpenSignature) -> MySoMoveNormalizedType {
 }
 
 fn normalized_type(sig: &OpenSignatureBody) -> MySoMoveNormalizedType {
-    use OpenSignatureBody as S;
     use MySoMoveNormalizedType as T;
+    use OpenSignatureBody as S;
     match sig {
         S::Address => T::Address,
         S::Bool => T::Bool,

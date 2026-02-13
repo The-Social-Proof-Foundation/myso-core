@@ -5,11 +5,11 @@
 use super::mmr::apply_stream_updates;
 use super::{AuthenticatedEvent, AuthenticatedEventsClient, ClientConfig, ClientError};
 use futures::stream::Stream;
-use mysten_common::debug_fatal;
-use std::sync::Arc;
 use myso_rpc_api::grpc::alpha::event_service_proto::ListAuthenticatedEventsRequest;
 use myso_types::accumulator_root::{EventCommitment, EventStreamHead};
-use myso_types::base_types::{ObjectID, MySoAddress};
+use myso_types::base_types::{MySoAddress, ObjectID};
+use mysten_common::debug_fatal;
+use std::sync::Arc;
 use tokio::sync::mpsc;
 
 struct EventStreamState {

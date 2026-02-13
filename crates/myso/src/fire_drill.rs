@@ -17,12 +17,11 @@ use clap::*;
 use fastcrypto::ed25519::Ed25519KeyPair;
 use fastcrypto::traits::{KeyPair, ToFromBytes};
 use move_core_types::ident_str;
-use std::path::{Path, PathBuf};
 use myso_config::node::{AuthorityKeyPairWithPath, KeyPairWithPath};
 use myso_config::{Config, NodeConfig, PersistedConfig, local_ip_utils};
 use myso_keys::keypair_file::read_keypair_from_file;
 use myso_rpc_api::Client;
-use myso_types::base_types::{ObjectRef, MySoAddress};
+use myso_types::base_types::{MySoAddress, ObjectRef};
 use myso_types::crypto::{MySoKeyPair, generate_proof_of_possession, get_key_pair};
 use myso_types::effects::TransactionEffectsAPI;
 use myso_types::gas_coin::GasCoin;
@@ -31,6 +30,7 @@ use myso_types::transaction::{
     CallArg, TEST_ONLY_GAS_UNIT_FOR_GENERIC, Transaction, TransactionData,
 };
 use myso_types::{MYSO_SYSTEM_PACKAGE_ID, committee::EpochId, crypto::get_authority_key_pair};
+use std::path::{Path, PathBuf};
 use tracing::info;
 
 #[derive(Parser)]

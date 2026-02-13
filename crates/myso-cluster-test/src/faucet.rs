@@ -5,13 +5,13 @@
 use super::cluster::{Cluster, new_wallet_context_from_cluster};
 use async_trait::async_trait;
 use fastcrypto::encoding::{Encoding, Hex};
+use myso_faucet::{FaucetConfig, FaucetResponse, SimpleFaucet};
+use myso_types::base_types::MySoAddress;
+use myso_types::crypto::KeypairTraits;
 use prometheus::Registry;
 use std::collections::HashMap;
 use std::env;
 use std::sync::Arc;
-use myso_faucet::{FaucetConfig, FaucetResponse, SimpleFaucet};
-use myso_types::base_types::MySoAddress;
-use myso_types::crypto::KeypairTraits;
 use tracing::{Instrument, debug, info, info_span};
 
 pub struct FaucetClientFactory;

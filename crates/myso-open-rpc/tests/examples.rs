@@ -24,18 +24,17 @@ use myso_json_rpc_types::DevInspectArgs;
 use myso_json_rpc_types::{
     Balance, Checkpoint, CheckpointId, CheckpointPage, Coin, CoinPage, DelegatedStake,
     DevInspectResults, DynamicFieldPage, EventFilter, EventPage, MoveCallParams,
-    MoveFunctionArgType, ObjectChange, ObjectValueKind::ByImmutableReference,
+    MoveFunctionArgType, MySoCoinMetadata, MySoCommittee, MySoData, MySoEvent, MySoExecutionStatus,
+    MySoGetPastObjectRequest, MySoMoveAbility, MySoMoveAbilitySet, MySoMoveNormalizedFunction,
+    MySoMoveNormalizedModule, MySoMoveNormalizedStruct, MySoMoveNormalizedType, MySoMoveVisibility,
+    MySoObjectData, MySoObjectDataFilter, MySoObjectDataOptions, MySoObjectRef, MySoObjectResponse,
+    MySoObjectResponseQuery, MySoParsedData, MySoPastObjectResponse, MySoTransactionBlock,
+    MySoTransactionBlockData, MySoTransactionBlockEffects, MySoTransactionBlockEffectsV1,
+    MySoTransactionBlockEvents, MySoTransactionBlockResponse, MySoTransactionBlockResponseOptions,
+    MySoTransactionBlockResponseQuery, ObjectChange, ObjectValueKind::ByImmutableReference,
     ObjectValueKind::ByMutableReference, ObjectValueKind::ByValue, ObjectsPage, OwnedObjectRef,
-    Page, ProtocolConfigResponse, RPCTransactionRequestParams, Stake, StakeStatus, MySoCoinMetadata,
-    MySoCommittee, MySoData, MySoEvent, MySoExecutionStatus, MySoGetPastObjectRequest, MySoMoveAbility,
-    MySoMoveAbilitySet, MySoMoveNormalizedFunction, MySoMoveNormalizedModule, MySoMoveNormalizedStruct,
-    MySoMoveNormalizedType, MySoMoveVisibility, MySoObjectData, MySoObjectDataFilter,
-    MySoObjectDataOptions, MySoObjectRef, MySoObjectResponse, MySoObjectResponseQuery, MySoParsedData,
-    MySoPastObjectResponse, MySoTransactionBlock, MySoTransactionBlockData,
-    MySoTransactionBlockEffects, MySoTransactionBlockEffectsV1, MySoTransactionBlockEvents,
-    MySoTransactionBlockResponse, MySoTransactionBlockResponseOptions,
-    MySoTransactionBlockResponseQuery, TransactionBlockBytes, TransactionBlocksPage,
-    TransactionFilter, TransferObjectParams,
+    Page, ProtocolConfigResponse, RPCTransactionRequestParams, Stake, StakeStatus,
+    TransactionBlockBytes, TransactionBlocksPage, TransactionFilter, TransferObjectParams,
 };
 use myso_json_rpc_types::{MySoTypeTag, ValidatorApy, ValidatorApys};
 use myso_open_rpc::ExamplePairing;
@@ -44,7 +43,7 @@ use myso_protocol_config::ProtocolConfig;
 use myso_types::balance::Supply;
 use myso_types::base_types::random_object_ref;
 use myso_types::base_types::{
-    FullObjectRef, MoveObjectType, ObjectDigest, ObjectID, ObjectType, SequenceNumber, MySoAddress,
+    FullObjectRef, MoveObjectType, MySoAddress, ObjectDigest, ObjectID, ObjectType, SequenceNumber,
     TransactionDigest,
 };
 use myso_types::committee::Committee;

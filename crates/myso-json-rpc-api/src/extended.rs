@@ -6,7 +6,7 @@ use jsonrpsee::core::RpcResult;
 use jsonrpsee::proc_macros::rpc;
 
 use myso_json_rpc_types::{
-    CheckpointedObjectID, EpochInfo, EpochPage, QueryObjectsPage, MySoObjectResponseQuery,
+    CheckpointedObjectID, EpochInfo, EpochPage, MySoObjectResponseQuery, QueryObjectsPage,
 };
 use myso_open_rpc_macros::open_rpc;
 use myso_types::myso_serde::BigInt;

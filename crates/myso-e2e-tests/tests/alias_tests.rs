@@ -2,7 +2,6 @@
 // Copyright (c) The Social Proof Foundation, LLC.
 // SPDX-License-Identifier: Apache-2.0
 
-use std::sync::Arc;
 use myso_core::authority_client::NetworkAuthorityClient;
 use myso_core::safe_client::SafeClient;
 use myso_keys::keystore::AccountKeystore;
@@ -18,6 +17,7 @@ use myso_types::messages_grpc::{
 };
 use myso_types::transaction::{CallArg, ObjectArg, Transaction};
 use myso_types::{MYSO_ADDRESS_ALIAS_STATE_OBJECT_ID, MYSO_FRAMEWORK_PACKAGE_ID};
+use std::sync::Arc;
 use test_cluster::TestClusterBuilder;
 
 async fn submit_and_wait_for_effects(

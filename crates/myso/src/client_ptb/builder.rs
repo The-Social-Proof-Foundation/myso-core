@@ -29,7 +29,6 @@ use move_core_types::{
     },
 };
 use move_package_alt_compilation::build_config::BuildConfig as MoveBuildConfig;
-use std::{collections::BTreeMap, path::Path};
 use myso_json::{is_receiving_argument, primitive_type};
 use myso_rpc_api::Client;
 use myso_sdk::wallet_context::WalletContext;
@@ -42,6 +41,7 @@ use myso_types::{
     resolve_address,
     transaction::{self as Tx, ObjectArg},
 };
+use std::{collections::BTreeMap, path::Path};
 
 use super::{
     ast::{ModuleAccess as PTBModuleAccess, ParsedPTBCommand, Program},

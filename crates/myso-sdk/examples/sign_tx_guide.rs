@@ -14,8 +14,6 @@ use fastcrypto::{
     secp256r1::Secp256r1KeyPair,
     traits::{EncodeDecodeBase64, KeyPair},
 };
-use rand::{SeedableRng, rngs::StdRng};
-use shared_crypto::intent::{Intent, IntentMessage};
 use myso_sdk::{
     MySoClientBuilder,
     rpc_types::MySoTransactionBlockResponseOptions,
@@ -24,14 +22,16 @@ use myso_sdk::{
         transaction::TransactionData,
     },
 };
-use myso_types::crypto::Signer;
 use myso_types::crypto::MySoSignature;
+use myso_types::crypto::Signer;
 use myso_types::crypto::ToFromBytes;
 use myso_types::signature::GenericSignature;
 use myso_types::{
     base_types::MySoAddress,
     crypto::{MySoKeyPair, get_key_pair_from_rng},
 };
+use rand::{SeedableRng, rngs::StdRng};
+use shared_crypto::intent::{Intent, IntentMessage};
 
 /// This example walks through the Rust SDK use case described in
 /// https://github.com/the-social-proof-foundation/myso-core/blob/main/docs/content/guides/developer/myso-101/sign-and-send-txn.mdx

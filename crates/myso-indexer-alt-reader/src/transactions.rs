@@ -9,14 +9,14 @@ use anyhow::Context;
 use async_graphql::dataloader::Loader;
 use diesel::ExpressionMethods;
 use diesel::QueryDsl;
-use prost_types::FieldMask;
 use myso_indexer_alt_schema::schema::kv_transactions;
 use myso_indexer_alt_schema::transactions::StoredTransaction;
 use myso_kvstore::TransactionData;
 use myso_rpc::field::FieldMaskUtil;
-use myso_rpc::proto::proto_to_timestamp_ms;
 use myso_rpc::proto::myso::rpc::v2 as proto;
+use myso_rpc::proto::proto_to_timestamp_ms;
 use myso_types::digests::TransactionDigest;
+use prost_types::FieldMask;
 
 use crate::bigtable_reader::BigtableReader;
 use crate::error::Error;

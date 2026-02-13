@@ -10,8 +10,6 @@ use anyhow::Context as _;
 use jsonrpsee::server::BatchRequestConfig;
 use jsonrpsee::server::RpcServiceBuilder;
 use jsonrpsee::server::ServerBuilder;
-use prometheus::Registry;
-use serde_json::json;
 use myso_futures::service::Service;
 use myso_indexer_alt_reader::bigtable_reader::BigtableArgs;
 use myso_indexer_alt_reader::consistent_reader::ConsistentReaderArgs;
@@ -19,6 +17,8 @@ use myso_indexer_alt_reader::pg_reader::db::DbArgs;
 use myso_indexer_alt_reader::system_package_task::SystemPackageTask;
 use myso_indexer_alt_reader::system_package_task::SystemPackageTaskArgs;
 use myso_open_rpc::Project;
+use prometheus::Registry;
+use serde_json::json;
 use tower_http::catch_panic;
 use tower_layer::Identity;
 use tracing::info;
@@ -327,12 +327,12 @@ mod tests {
     use jsonrpsee::proc_macros::rpc;
     use jsonrpsee::types::error::INTERNAL_ERROR_CODE;
     use jsonrpsee::types::error::METHOD_NOT_FOUND_CODE;
-    use reqwest::Client;
-    use serde_json::Value;
-    use serde_json::json;
     use myso_open_rpc::Module;
     use myso_open_rpc_macros::open_rpc;
     use myso_pg_db::temp::get_available_port;
+    use reqwest::Client;
+    use serde_json::Value;
+    use serde_json::json;
 
     use super::*;
 

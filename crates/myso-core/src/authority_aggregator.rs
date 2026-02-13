@@ -19,9 +19,9 @@ use myso_network::{
 use myso_swarm_config::network_config::NetworkConfig;
 use myso_types::crypto::AuthorityPublicKeyBytes;
 use myso_types::error::UserInputError;
-use myso_types::object::Object;
 use myso_types::myso_system_state::epoch_start_myso_system_state::EpochStartSystemStateTrait;
 use myso_types::myso_system_state::{MySoSystemState, MySoSystemStateTrait};
+use myso_types::object::Object;
 use myso_types::{
     base_types::*,
     committee::Committee,
@@ -30,13 +30,13 @@ use myso_types::{
 use tracing::debug;
 
 use crate::epoch::committee_store::CommitteeStore;
+use myso_types::committee::{CommitteeWithNetworkMetadata, StakeUnit};
+use myso_types::messages_grpc::{LayoutGenerationOption, ObjectInfoRequest};
+use myso_types::myso_system_state::epoch_start_myso_system_state::EpochStartSystemState;
 use prometheus::Registry;
 use std::collections::{BTreeMap, HashMap};
 use std::sync::Arc;
 use std::time::Duration;
-use myso_types::committee::{CommitteeWithNetworkMetadata, StakeUnit};
-use myso_types::messages_grpc::{LayoutGenerationOption, ObjectInfoRequest};
-use myso_types::myso_system_state::epoch_start_myso_system_state::EpochStartSystemState;
 
 pub const DEFAULT_RETRIES: usize = 4;
 

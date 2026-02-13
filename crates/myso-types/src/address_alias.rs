@@ -7,7 +7,7 @@ use move_core_types::language_storage::{StructTag, TypeTag};
 use mysten_common::debug_fatal;
 use serde::{Deserialize, Serialize};
 
-use crate::base_types::{SequenceNumber, MySoAddress};
+use crate::base_types::{MySoAddress, SequenceNumber};
 use crate::collection_types::VecSet;
 use crate::error::{MySoErrorKind, MySoResult};
 use crate::object::Owner;

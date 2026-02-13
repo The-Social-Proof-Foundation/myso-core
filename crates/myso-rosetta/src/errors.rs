@@ -18,7 +18,7 @@ use strum_macros::EnumIter;
 use myso_rpc::proto::myso::rpc::v2::ExecutionError;
 use myso_types::error::{MySoError, MySoErrorKind};
 
-use crate::types::{BlockHash, OperationType, PublicKey, MySoEnv};
+use crate::types::{BlockHash, MySoEnv, OperationType, PublicKey};
 use strum::EnumProperty;
 use strum_macros::Display;
 use strum_macros::EnumDiscriminants;

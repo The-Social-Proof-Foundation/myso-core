@@ -4,7 +4,6 @@
 
 use futures::StreamExt;
 use move_core_types::identifier::Identifier;
-use std::sync::Arc;
 use myso_keys::keystore::AccountKeystore;
 use myso_light_client::authenticated_events::AuthenticatedEventsClient;
 use myso_macros::sim_test;
@@ -14,10 +13,11 @@ use myso_rpc::field::FieldMaskUtil;
 use myso_rpc_api::proto::myso::rpc::v2::GetEpochRequest;
 use myso_rpc_api::proto::myso::rpc::v2::ledger_service_client::LedgerServiceClient;
 use myso_sdk_types::ValidatorCommittee;
-use myso_types::base_types::{ObjectID, MySoAddress};
+use myso_types::base_types::{MySoAddress, ObjectID};
 use myso_types::committee::Committee;
 use myso_types::programmable_transaction_builder::ProgrammableTransactionBuilder;
 use myso_types::transaction::TransactionData;
+use std::sync::Arc;
 use test_cluster::{TestCluster, TestClusterBuilder};
 
 fn create_rpc_config_with_authenticated_events() -> myso_config::RpcConfig {

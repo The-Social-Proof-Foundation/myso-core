@@ -13,11 +13,6 @@ use crate::{
 };
 use async_trait::async_trait;
 use consensus_types::block::BlockRef;
-use std::{
-    collections::{BTreeMap, HashMap},
-    net::SocketAddr,
-    sync::{Arc, Mutex as StdMutex},
-};
 use myso_types::{
     base_types::{AuthorityName, random_object_ref},
     committee::Committee,
@@ -36,6 +31,11 @@ use myso_types::{
     },
     myso_system_state::MySoSystemState,
     transaction_driver_types::EffectsFinalityInfo,
+};
+use std::{
+    collections::{BTreeMap, HashMap},
+    net::SocketAddr,
+    sync::{Arc, Mutex as StdMutex},
 };
 use tokio::time::{Duration, sleep};
 

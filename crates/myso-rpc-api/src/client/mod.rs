@@ -5,12 +5,10 @@
 use bytes::Bytes;
 use futures::stream::Stream;
 use futures::stream::TryStreamExt;
-use prost_types::FieldMask;
-use std::time::Duration;
 use myso_rpc::field::FieldMaskUtil;
 use myso_rpc::proto::TryFromProtoError;
 use myso_rpc::proto::myso::rpc::v2::{self as proto, GetServiceInfoRequest};
-use myso_types::base_types::{ObjectID, SequenceNumber, MySoAddress};
+use myso_types::base_types::{MySoAddress, ObjectID, SequenceNumber};
 use myso_types::digests::ChainIdentifier;
 use myso_types::digests::TransactionDigest;
 use myso_types::effects::{TransactionEffects, TransactionEvents};
@@ -19,6 +17,8 @@ use myso_types::messages_checkpoint::{CertifiedCheckpointSummary, CheckpointSequ
 use myso_types::object::Object;
 use myso_types::transaction::Transaction;
 use myso_types::transaction::TransactionData;
+use prost_types::FieldMask;
+use std::time::Duration;
 use tap::Pipe;
 use tonic::Status;
 use tonic::metadata::MetadataMap;
@@ -515,7 +515,8 @@ impl Client {
     pub async fn get_system_state_summary(
         &self,
         epoch: Option<u64>,
-    ) -> Result<myso_types::myso_system_state::myso_system_state_summary::MySoSystemStateSummary> {
+    ) -> Result<myso_types::myso_system_state::myso_system_state_summary::MySoSystemStateSummary>
+    {
         let system_state = self.get_system_state(epoch).await?;
         system_state
             .as_ref()

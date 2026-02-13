@@ -13,13 +13,6 @@ use base64::Engine;
 use fastcrypto::encoding::{Encoding, Hex};
 use fastcrypto::traits::ToFromBytes;
 use humantime::parse_duration;
-use mysten_network::Multiaddr;
-use serde::Deserialize;
-use std::sync::Arc;
-use std::{
-    net::{IpAddr, Ipv4Addr, SocketAddr},
-    str::FromStr,
-};
 use myso_network::endpoint_manager::{AddressSource, EndpointId};
 use myso_types::{
     base_types::AuthorityName,
@@ -27,6 +20,13 @@ use myso_types::{
     digests::TransactionDigest,
     error::MySoErrorKind,
     traffic_control::TrafficControlReconfigParams,
+};
+use mysten_network::Multiaddr;
+use serde::Deserialize;
+use std::sync::Arc;
+use std::{
+    net::{IpAddr, Ipv4Addr, SocketAddr},
+    str::FromStr,
 };
 use telemetry_subscribers::TracingHandle;
 use tokio::sync::oneshot;

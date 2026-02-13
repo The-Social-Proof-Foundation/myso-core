@@ -6,7 +6,8 @@ use crate::abi::{
     EthBridgeCommittee, EthBridgeConfig, EthBridgeLimiter, EthBridgeVault, EthMySoBridge,
 };
 use crate::config::{
-    BridgeNodeConfig, EthConfig, MetricsConfig, MySoConfig, WatchdogConfig, default_ed25519_key_pair,
+    BridgeNodeConfig, EthConfig, MetricsConfig, MySoConfig, WatchdogConfig,
+    default_ed25519_key_pair,
 };
 use crate::crypto::{BridgeAuthorityKeyPair, BridgeAuthorityPublicKeyBytes};
 use crate::server::APPLICATION_JSON;
@@ -22,10 +23,6 @@ use fastcrypto::secp256k1::Secp256k1KeyPair;
 use fastcrypto::traits::{EncodeDecodeBase64, KeyPair};
 use futures::future::join_all;
 use move_core_types::language_storage::StructTag;
-use std::collections::BTreeMap;
-use std::path::PathBuf;
-use std::str::FromStr;
-use std::sync::Arc;
 use myso_config::Config;
 use myso_keys::keypair_file::read_key;
 use myso_sdk::wallet_context::WalletContext;
@@ -38,9 +35,13 @@ use myso_types::bridge::{
 use myso_types::committee::StakeUnit;
 use myso_types::crypto::{MySoKeyPair, ToFromBytes, get_key_pair};
 use myso_types::effects::TransactionEffectsAPI;
-use myso_types::programmable_transaction_builder::ProgrammableTransactionBuilder;
 use myso_types::myso_system_state::myso_system_state_summary::MySoSystemStateSummary;
+use myso_types::programmable_transaction_builder::ProgrammableTransactionBuilder;
 use myso_types::transaction::{ObjectArg, TransactionData};
+use std::collections::BTreeMap;
+use std::path::PathBuf;
+use std::str::FromStr;
+use std::sync::Arc;
 use url::Url;
 
 pub struct EthBridgeContracts {

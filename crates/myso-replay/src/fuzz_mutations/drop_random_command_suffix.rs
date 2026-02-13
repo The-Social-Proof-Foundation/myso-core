@@ -3,8 +3,8 @@
 // SPDX-License-Identifier: Apache-2.0
 
 use crate::fuzz::TransactionKindMutator;
-use rand::Rng;
 use myso_types::transaction::TransactionKind;
+use rand::Rng;
 use tracing::info;
 
 pub struct DropCommandSuffix {

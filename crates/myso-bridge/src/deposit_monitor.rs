@@ -15,8 +15,8 @@ use futures::StreamExt;
 use myso_rpc::field::{FieldMask, FieldMaskUtil};
 use myso_rpc::proto::myso::rpc::v2::Checkpoint;
 use myso_types::base_types::MySoAddress;
-use std::str::FromStr;
 use std::collections::HashSet;
+use std::str::FromStr;
 use std::sync::Arc;
 use std::time::Duration;
 use tracing::{error, info};
@@ -105,11 +105,10 @@ impl EvmDepositMonitor {
     }
 
     async fn check_for_deposits(&self) -> BridgeResult<()> {
-        let current_block = self
-            .provider
-            .get_block_number()
-            .await
-            .map_err(|e| BridgeError::Generic(format!("Failed to get block number: {:?}", e)))?;
+        let current_block =
+            self.provider.get_block_number().await.map_err(|e| {
+                BridgeError::Generic(format!("Failed to get block number: {:?}", e))
+            })?;
 
         // Reorg safety: only process blocks that are confirmation_blocks old
         let safe_block = current_block.saturating_sub(self.confirmation_blocks);
@@ -146,9 +145,11 @@ impl EvmDepositMonitor {
                 .to_block(end_block)
                 .event_signature(transfer_sig);
 
-            let logs = self.provider.get_logs(&filter).await.map_err(|e| {
-                BridgeError::Generic(format!("Failed to get logs: {:?}", e))
-            })?;
+            let logs = self
+                .provider
+                .get_logs(&filter)
+                .await
+                .map_err(|e| BridgeError::Generic(format!("Failed to get logs: {:?}", e)))?;
 
             let relevant_logs: Vec<_> = logs
                 .into_iter()
@@ -186,7 +187,9 @@ impl EvmDepositMonitor {
     async fn process_deposit_log(&self, log: Log) -> BridgeResult<()> {
         let topics = log.topics();
         if topics.len() < 3 {
-            return Err(BridgeError::Generic("Invalid Transfer event format".to_string()));
+            return Err(BridgeError::Generic(
+                "Invalid Transfer event format".to_string(),
+            ));
         }
 
         let from_address = EthAddress::from_slice(&topics[1].as_slice()[12..]);
@@ -223,9 +226,9 @@ impl EvmDepositMonitor {
             "Detected EVM deposit, sending for processing"
         );
 
-        self.deposit_tx.send(event).map_err(|e| {
-            BridgeError::Generic(format!("Failed to send deposit event: {:?}", e))
-        })?;
+        self.deposit_tx
+            .send(event)
+            .map_err(|e| BridgeError::Generic(format!("Failed to send deposit event: {:?}", e)))?;
 
         Ok(())
     }
@@ -269,7 +272,10 @@ impl MySoDepositMonitor {
         let read_mask = FieldMask::from_paths([
             Checkpoint::path_builder().sequence_number(),
             Checkpoint::path_builder().transactions().digest(),
-            Checkpoint::path_builder().transactions().balance_changes().finish(),
+            Checkpoint::path_builder()
+                .transactions()
+                .balance_changes()
+                .finish(),
             "transactions.transaction.sender".to_string(),
             "transactions.timestamp".to_string(),
         ]);
@@ -310,18 +316,14 @@ impl MySoDepositMonitor {
                     continue;
                 }
 
-                let deposit_set: HashSet<MySoAddress> =
-                    deposit_addresses.iter().copied().collect();
+                let deposit_set: HashSet<MySoAddress> = deposit_addresses.iter().copied().collect();
 
                 for txn in checkpoint.transactions() {
                     let tx_digest = txn.digest();
 
                     let balance_changes = txn.balance_changes();
                     for (balance_change_index, change) in balance_changes.iter().enumerate() {
-                        let recipient = match change
-                            .address()
-                            .parse::<MySoAddress>()
-                        {
+                        let recipient = match change.address().parse::<MySoAddress>() {
                             Ok(addr) => addr,
                             Err(_) => continue,
                         };
@@ -329,7 +331,11 @@ impl MySoDepositMonitor {
                             continue;
                         }
 
-                        let amount_str = if change.amount().is_empty() { "0" } else { change.amount() };
+                        let amount_str = if change.amount().is_empty() {
+                            "0"
+                        } else {
+                            change.amount()
+                        };
                         let amount_i128: i128 = match amount_str.parse() {
                             Ok(a) => a,
                             Err(_) => continue,
@@ -353,9 +359,8 @@ impl MySoDepositMonitor {
                             Err(_) => continue,
                         };
 
-                        let balance_change_index_u16 = balance_change_index
-                            .try_into()
-                            .unwrap_or(u16::MAX);
+                        let balance_change_index_u16 =
+                            balance_change_index.try_into().unwrap_or(u16::MAX);
                         let deposit_key = crate::storage::DepositTxKey::from_myso(
                             tx_digest_parsed,
                             myso_chain_id,

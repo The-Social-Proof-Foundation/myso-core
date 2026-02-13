@@ -9,24 +9,24 @@ use diesel::JoinOnDsl;
 use diesel::QueryDsl;
 use diesel::sql_types::Bool;
 use move_core_types::language_storage::StructTag;
-use schemars::JsonSchema;
-use serde::Deserialize;
-use serde::Serialize;
-use serde_with::serde_as;
 use myso_indexer_alt_schema::objects::StoredObjInfo;
 use myso_indexer_alt_schema::objects::StoredOwnerKind;
 use myso_indexer_alt_schema::schema::obj_info;
-use myso_json_rpc_types::Page as PageResponse;
 use myso_json_rpc_types::MySoObjectDataOptions;
+use myso_json_rpc_types::Page as PageResponse;
 use myso_sql_macro::sql;
 use myso_types::Identifier;
 use myso_types::MYSO_FRAMEWORK_ADDRESS;
 use myso_types::TypeTag;
-use myso_types::base_types::ObjectID;
 use myso_types::base_types::MySoAddress;
+use myso_types::base_types::ObjectID;
 use myso_types::dynamic_field::DYNAMIC_FIELD_FIELD_STRUCT_NAME;
 use myso_types::dynamic_field::DYNAMIC_FIELD_MODULE_NAME;
 use myso_types::myso_serde::MySoStructTag;
+use schemars::JsonSchema;
+use serde::Deserialize;
+use serde::Serialize;
+use serde_with::serde_as;
 
 use crate::api::objects::error::Error;
 use crate::context::Context;
@@ -166,8 +166,8 @@ impl MySoObjectDataFilter {
                 }
             }
 
-            use RawFilter as R;
             use MySoObjectDataFilter as F;
+            use RawFilter as R;
             Ok(match filter {
                 F::MatchNone(filters) => R::MatchNone(
                     filters

@@ -10,13 +10,13 @@ use myso_rpc::proto::myso::rpc::v2::GetCoinInfoRequest;
 use myso_rpc::proto::myso::rpc::v2::GetCoinInfoResponse;
 use myso_rpc::proto::myso::rpc::v2::coin_treasury::SupplyState as RpcSupplyState;
 use myso_sdk_types::{Address, StructTag};
-use myso_types::base_types::{ObjectID as MySoObjectID, MySoAddress};
+use myso_types::base_types::{MySoAddress, ObjectID as MySoObjectID};
 use myso_types::coin::RegulatedCoinMetadata;
 use myso_types::coin_registry::{Currency, RegulatedState as CurrencyRegulatedState, SupplyState};
+use myso_types::myso_sdk_types_conversions::struct_tag_sdk_to_core;
 use myso_types::object::Owner::AddressOwner;
 use myso_types::object::Owner::ConsensusAddressOwner;
 use myso_types::object::Owner::Immutable;
-use myso_types::myso_sdk_types_conversions::struct_tag_sdk_to_core;
 
 const MYSO_COIN_TREASURY: CoinTreasury = {
     let mut treasury = CoinTreasury::const_default();

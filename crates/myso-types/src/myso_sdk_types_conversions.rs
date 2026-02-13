@@ -1179,10 +1179,16 @@ impl TryFrom<crate::crypto::Signature> for SimpleSignature {
 
     fn try_from(value: crate::crypto::Signature) -> Result<Self, Self::Error> {
         match value {
-            crate::crypto::Signature::Ed25519MySoSignature(ed25519_myso_signature) => Self::Ed25519 {
-                signature: Ed25519Signature::from_bytes(ed25519_myso_signature.signature_bytes())?,
-                public_key: Ed25519PublicKey::from_bytes(ed25519_myso_signature.public_key_bytes())?,
-            },
+            crate::crypto::Signature::Ed25519MySoSignature(ed25519_myso_signature) => {
+                Self::Ed25519 {
+                    signature: Ed25519Signature::from_bytes(
+                        ed25519_myso_signature.signature_bytes(),
+                    )?,
+                    public_key: Ed25519PublicKey::from_bytes(
+                        ed25519_myso_signature.public_key_bytes(),
+                    )?,
+                }
+            }
             crate::crypto::Signature::Secp256k1MySoSignature(secp256k1_myso_signature) => {
                 Self::Secp256k1 {
                     signature: Secp256k1Signature::from_bytes(
@@ -1264,7 +1270,9 @@ impl From<crate::transaction::CallArg> for Input {
                 let crate::transaction::Reservation::MaxAmountU64(amount) = withdrawal.reservation;
                 let crate::transaction::WithdrawalTypeArg::Balance(coin_type) = withdrawal.type_arg;
                 let source = match withdrawal.withdraw_from {
-                    crate::transaction::WithdrawFrom::Sender => myso_sdk_types::WithdrawFrom::Sender,
+                    crate::transaction::WithdrawFrom::Sender => {
+                        myso_sdk_types::WithdrawFrom::Sender
+                    }
                     crate::transaction::WithdrawFrom::Sponsor => {
                         myso_sdk_types::WithdrawFrom::Sponsor
                     }

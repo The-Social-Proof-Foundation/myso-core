@@ -9,7 +9,6 @@ use crate::struct_tag;
 use async_trait::async_trait;
 use diesel_async::RunQueryDsl;
 use move_core_types::language_storage::StructTag;
-use std::sync::Arc;
 use myso_bridge::events::{
     MoveTokenDepositedEvent, MoveTokenTransferApproved, MoveTokenTransferClaimed,
 };
@@ -22,6 +21,7 @@ use myso_indexer_alt_framework::types::BRIDGE_ADDRESS;
 use myso_indexer_alt_framework::types::effects::TransactionEffectsAPI;
 use myso_indexer_alt_framework::types::full_checkpoint_content::Checkpoint;
 use myso_indexer_alt_framework::types::transaction::TransactionDataAPI;
+use std::sync::Arc;
 use tracing::info;
 
 pub struct TokenTransferHandler {

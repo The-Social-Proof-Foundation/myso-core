@@ -2,7 +2,6 @@
 // Copyright (c) The Social Proof Foundation, LLC.
 // SPDX-License-Identifier: Apache-2.0
 
-use std::path::PathBuf;
 use myso_macros::sim_test;
 use myso_protocol_config::ProtocolConfig;
 use myso_rpc::Client;
@@ -15,6 +14,7 @@ use myso_types::gas_coin::GasCoin;
 use myso_types::programmable_transaction_builder::ProgrammableTransactionBuilder;
 use myso_types::transaction::{Argument, CallArg, Command, ObjectArg, TransactionData};
 use myso_types::{Identifier, base_types::MySoAddress};
+use std::path::PathBuf;
 use test_cluster::TestClusterBuilder;
 
 const MYSO_COIN_TYPE: &str =

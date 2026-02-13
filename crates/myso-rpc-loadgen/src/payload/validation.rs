@@ -4,14 +4,14 @@
 
 use futures::future::join_all;
 use itertools::Itertools;
-use std::collections::HashSet;
-use std::fmt::Debug;
 use myso_json_rpc_types::{
     MySoObjectDataOptions, MySoObjectResponse, MySoTransactionBlockEffectsAPI,
     MySoTransactionBlockResponse, MySoTransactionBlockResponseOptions,
 };
 use myso_sdk::MySoClient;
 use myso_types::base_types::{ObjectID, TransactionDigest};
+use std::collections::HashSet;
+use std::fmt::Debug;
 use tracing::error;
 use tracing::log::warn;
 

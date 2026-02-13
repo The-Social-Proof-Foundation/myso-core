@@ -7,12 +7,15 @@ use crate::{
     FaucetRequest, FaucetResponse, FixedAmountRequest, RequestMetricsLayer,
 };
 use axum::{
+    BoxError, Extension, Json, Router,
     error_handling::HandleErrorLayer,
     extract::{ConnectInfo, Path},
-    http::{header::{HeaderMap, HOST}, StatusCode},
+    http::{
+        StatusCode,
+        header::{HOST, HeaderMap},
+    },
     response::{IntoResponse, Redirect, Response},
     routing::{get, post},
-    BoxError, Extension, Json, Router,
 };
 use http::Method;
 use myso_config::MYSO_CLIENT_CONFIG;
@@ -28,14 +31,14 @@ use std::{
 };
 use tower::ServiceBuilder;
 use tower_governor::{
-    governor::GovernorConfigBuilder, key_extractor::GlobalKeyExtractor, GovernorLayer,
+    GovernorLayer, governor::GovernorConfigBuilder, key_extractor::GlobalKeyExtractor,
 };
 use tower_http::cors::{Any, CorsLayer};
 use tracing::{error, info, warn};
 use uuid::Uuid;
 
 use crate::faucet::Faucet;
-use dashmap::{mapref::entry::Entry, DashMap};
+use dashmap::{DashMap, mapref::entry::Entry};
 use serde::Deserialize;
 
 use anyhow::ensure;
@@ -208,8 +211,10 @@ pub async fn start_faucet(
     prometheus_registry: &Registry,
 ) -> Result<(), anyhow::Error> {
     let (cloudflare_turnstile_url, turnstile_secret_key) = if app_state.config.authenticated {
-        ensure!(TURNSTILE_SECRET_KEY.is_some() && CLOUDFLARE_TURNSTILE_URL.is_some(),
-                "Both CLOUDFLARE_TURNSTILE_URL and TURNSTILE_SECRET_KEY env vars must be set for testnet deployment (--authenticated flag was set)");
+        ensure!(
+            TURNSTILE_SECRET_KEY.is_some() && CLOUDFLARE_TURNSTILE_URL.is_some(),
+            "Both CLOUDFLARE_TURNSTILE_URL and TURNSTILE_SECRET_KEY env vars must be set for testnet deployment (--authenticated flag was set)"
+        );
 
         (
             CLOUDFLARE_TURNSTILE_URL.as_ref().unwrap().to_string(),
@@ -559,7 +564,7 @@ async fn request_gas(
                 Json(FaucetResponse::from(FaucetError::Internal(
                     "Input Error.".to_string(),
                 ))),
-            )
+            );
         }
     };
     match result {

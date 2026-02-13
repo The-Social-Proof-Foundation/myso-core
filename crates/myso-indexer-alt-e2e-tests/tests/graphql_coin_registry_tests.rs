@@ -4,20 +4,20 @@
 
 use insta::assert_debug_snapshot;
 use move_core_types::language_storage::StructTag;
-use serde::Deserialize;
-use serde_json::json;
 use myso_types::Identifier;
 use myso_types::MYSO_COIN_REGISTRY_ADDRESS;
+use myso_types::base_types::MySoAddress;
 use myso_types::base_types::ObjectID;
 use myso_types::base_types::ObjectRef;
 use myso_types::base_types::SequenceNumber;
-use myso_types::base_types::MySoAddress;
 use myso_types::coin::CoinMetadata;
 use myso_types::coin::TreasuryCap;
 use myso_types::deny_list_v2::DenyCapV2;
 use myso_types::digests::ObjectDigest;
 use myso_types::effects::TransactionEffectsAPI;
 use myso_types::object::Owner;
+use serde::Deserialize;
+use serde_json::json;
 
 use myso_indexer_alt_e2e_tests::FullCluster;
 use myso_indexer_alt_e2e_tests::coin_registry::LegacyCoinOutputs;

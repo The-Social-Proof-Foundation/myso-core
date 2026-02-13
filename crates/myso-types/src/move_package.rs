@@ -23,6 +23,7 @@ use move_core_types::{
     identifier::{IdentStr, Identifier},
     language_storage::StructTag,
 };
+use myso_protocol_config::ProtocolConfig;
 use once_cell::sync::Lazy;
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
@@ -30,7 +31,6 @@ use serde_with::Bytes;
 use serde_with::serde_as;
 use std::collections::{BTreeMap, BTreeSet};
 use std::hash::Hash;
-use myso_protocol_config::ProtocolConfig;
 
 // TODO: robust MovePackage tests
 // #[cfg(test)]

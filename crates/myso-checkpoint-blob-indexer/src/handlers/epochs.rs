@@ -6,17 +6,17 @@ use std::sync::Arc;
 
 use anyhow::Context;
 use bytes::Bytes;
-use object_store::Error as ObjectStoreError;
-use object_store::ObjectStoreExt as _;
-use object_store::PutMode;
-use object_store::PutPayload;
-use object_store::path::Path as ObjectPath;
 use myso_indexer_alt_framework::pipeline::Processor;
 use myso_indexer_alt_framework::pipeline::concurrent::BatchStatus;
 use myso_indexer_alt_framework::pipeline::concurrent::Handler;
 use myso_indexer_alt_framework::store::Store;
 use myso_indexer_alt_object_store::ObjectStore;
 use myso_types::full_checkpoint_content::Checkpoint;
+use object_store::Error as ObjectStoreError;
+use object_store::ObjectStoreExt as _;
+use object_store::PutMode;
+use object_store::PutPayload;
+use object_store::path::Path as ObjectPath;
 
 pub struct EpochsPipeline;
 

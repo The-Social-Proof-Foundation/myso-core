@@ -3,8 +3,6 @@
 // SPDX-License-Identifier: Apache-2.0
 use anyhow::Context;
 use clap::Parser;
-use prometheus::Registry;
-use std::net::SocketAddr;
 use myso_bridge_indexer_alt::handlers::error_handler::ErrorTransactionHandler;
 use myso_bridge_indexer_alt::handlers::governance_action_handler::GovernanceActionHandler;
 use myso_bridge_indexer_alt::handlers::token_transfer_data_handler::TokenTransferDataHandler;
@@ -16,6 +14,8 @@ use myso_indexer_alt_framework::postgres::DbArgs;
 use myso_indexer_alt_framework::service::Error;
 use myso_indexer_alt_framework::{Indexer, IndexerArgs};
 use myso_indexer_alt_metrics::{MetricsArgs, MetricsService};
+use prometheus::Registry;
+use std::net::SocketAddr;
 use url::Url;
 
 #[derive(Parser)]
@@ -33,7 +33,11 @@ struct Args {
         default_value = "postgres://postgres:postgrespw@localhost:5432/bridge"
     )]
     database_url: Url,
-    #[clap(env, long, default_value = "https://checkpoints.mainnet.mysocial.network")]
+    #[clap(
+        env,
+        long,
+        default_value = "https://checkpoints.mainnet.mysocial.network"
+    )]
     remote_store_url: Url,
 }
 #[tokio::main]

@@ -21,7 +21,7 @@ use move_core_types::u256::U256;
 use move_symbol_pool::Symbol;
 use move_transactional_test_runner::tasks::{RunCommand, SyntaxChoice};
 use myso_types::balance::Balance;
-use myso_types::base_types::{SequenceNumber, MySoAddress};
+use myso_types::base_types::{MySoAddress, SequenceNumber};
 use myso_types::move_package::UpgradePolicy;
 use myso_types::object::{Object, Owner};
 use myso_types::programmable_transaction_builder::ProgrammableTransactionBuilder;
@@ -321,9 +321,11 @@ impl<ExtraValueArgs: ParsableValue, ExtraRunArgs: Parser> clap::FromArgMatches
             Some(("transfer-object", matches)) => {
                 MySoSubcommand::TransferObject(TransferObjectCommand::from_arg_matches(matches)?)
             }
-            Some(("consensus-commit-prologue", matches)) => MySoSubcommand::ConsensusCommitPrologue(
-                ConsensusCommitPrologueCommand::from_arg_matches(matches)?,
-            ),
+            Some(("consensus-commit-prologue", matches)) => {
+                MySoSubcommand::ConsensusCommitPrologue(
+                    ConsensusCommitPrologueCommand::from_arg_matches(matches)?,
+                )
+            }
             Some(("programmable", matches)) => MySoSubcommand::ProgrammableTransaction(
                 ProgrammableTransactionCommand::from_arg_matches(matches)?,
             ),
@@ -336,9 +338,9 @@ impl<ExtraValueArgs: ParsableValue, ExtraRunArgs: Parser> clap::FromArgMatches
             Some(("set-address", matches)) => {
                 MySoSubcommand::SetAddress(SetAddressCommand::from_arg_matches(matches)?)
             }
-            Some(("create-checkpoint", matches)) => {
-                MySoSubcommand::CreateCheckpoint(CreateCheckpointCommand::from_arg_matches(matches)?)
-            }
+            Some(("create-checkpoint", matches)) => MySoSubcommand::CreateCheckpoint(
+                CreateCheckpointCommand::from_arg_matches(matches)?,
+            ),
             Some(("advance-epoch", matches)) => {
                 MySoSubcommand::AdvanceEpoch(AdvanceEpochCommand::from_arg_matches(matches)?)
             }
@@ -824,7 +826,10 @@ impl ParsableValue for MySoExtraValueArgs {
             ))
         } else {
             Ok(MySoValue::MoveValue(MoveValue::Vector(
-                elems.into_iter().map(MySoValue::assert_move_value).collect(),
+                elems
+                    .into_iter()
+                    .map(MySoValue::assert_move_value)
+                    .collect(),
             )))
         }
     }

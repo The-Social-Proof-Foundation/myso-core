@@ -50,12 +50,6 @@
 
 use anemo::{PeerId, Request, Response, Result, types::PeerEvent};
 use futures::{FutureExt, StreamExt, stream::FuturesOrdered};
-use rand::Rng;
-use std::{
-    collections::{HashMap, VecDeque},
-    sync::{Arc, RwLock},
-    time::{Duration, Instant},
-};
 use myso_config::p2p::StateSyncConfig;
 use myso_types::{
     committee::Committee,
@@ -65,6 +59,12 @@ use myso_types::{
         VerifiedCheckpoint, VerifiedCheckpointContents, VersionedFullCheckpointContents,
     },
     storage::WriteStore,
+};
+use rand::Rng;
+use std::{
+    collections::{HashMap, VecDeque},
+    sync::{Arc, RwLock},
+    time::{Duration, Instant},
 };
 use tap::Pipe;
 use tokio::sync::oneshot;
@@ -91,11 +91,11 @@ pub use generated::{
     state_sync_client::StateSyncClient,
     state_sync_server::{StateSync, StateSyncServer},
 };
-pub use server::GetCheckpointAvailabilityResponse;
-pub use server::GetCheckpointSummaryRequest;
 use myso_config::node::ArchiveReaderConfig;
 use myso_data_ingestion_core::{ReaderOptions, setup_single_workflow_with_options};
 use myso_storage::verify_checkpoint;
+pub use server::GetCheckpointAvailabilityResponse;
+pub use server::GetCheckpointSummaryRequest;
 
 /// A handle to the StateSync subsystem.
 ///

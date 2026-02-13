@@ -10,12 +10,12 @@ mod upgrade_compatibility_tests;
 use formatting::{FormattedField, format_list, format_param, singular_or_plural};
 
 use anyhow::{Context, Error, anyhow};
+use myso_rpc_api::Client;
 use std::collections::{BTreeMap, HashMap, HashSet};
 use std::fs;
 use std::path::PathBuf;
 use std::rc::Rc;
 use std::sync::Arc;
-use myso_rpc_api::Client;
 
 use move_binary_format::file_format::{
     AbilitySet, DatatypeTyParameter, EnumDefinitionIndex, FunctionDefinitionIndex,

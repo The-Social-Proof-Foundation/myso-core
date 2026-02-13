@@ -9,7 +9,7 @@ use consensus_core::BlockStatus;
 use consensus_types::block::{BlockRef, PING_TRANSACTION_INDEX};
 use fastcrypto::traits::KeyPair;
 use myso_test_transaction_builder::TestTransactionBuilder;
-use myso_types::base_types::{ObjectRef, MySoAddress, random_object_ref};
+use myso_types::base_types::{MySoAddress, ObjectRef, random_object_ref};
 use myso_types::crypto::{AccountKeyPair, get_account_key_pair};
 use myso_types::effects::TransactionEffectsAPI as _;
 use myso_types::error::{MySoError, MySoErrorKind, UserInputError};

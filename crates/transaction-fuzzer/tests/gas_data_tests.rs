@@ -2,14 +2,14 @@
 // Copyright (c) The Social Proof Foundation, LLC.
 // SPDX-License-Identifier: Apache-2.0
 
-use proptest::arbitrary::*;
-use proptest::test_runner::TestCaseError;
 use myso_types::base_types::dbg_addr;
 use myso_types::crypto::KeypairTraits;
 use myso_types::programmable_transaction_builder::ProgrammableTransactionBuilder;
 use myso_types::transaction::TransactionData;
 use myso_types::transaction::TransactionKind;
 use myso_types::utils::to_sender_signed_transaction;
+use proptest::arbitrary::*;
+use proptest::test_runner::TestCaseError;
 use tracing::debug;
 use transaction_fuzzer::GasDataGenConfig;
 use transaction_fuzzer::GasDataWithObjects;

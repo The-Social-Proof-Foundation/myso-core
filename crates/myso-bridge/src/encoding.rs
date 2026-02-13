@@ -533,13 +533,13 @@ mod tests {
     use fastcrypto::hash::HashFunction;
     use fastcrypto::hash::Keccak256;
     use fastcrypto::traits::ToFromBytes;
-    use prometheus::Registry;
-    use std::str::FromStr;
     use myso_types::TypeTag;
     use myso_types::base_types::{MySoAddress, TransactionDigest};
     use myso_types::bridge::BridgeChainId;
     use myso_types::bridge::TOKEN_ID_BTC;
     use myso_types::bridge::TOKEN_ID_USDC;
+    use prometheus::Registry;
+    use std::str::FromStr;
 
     use super::*;
 

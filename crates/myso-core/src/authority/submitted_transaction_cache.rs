@@ -3,6 +3,8 @@
 // SPDX-License-Identifier: Apache-2.0
 
 use lru::LruCache;
+use myso_types::digests::TransactionDigest;
+use myso_types::traffic_control::Weight;
 use parking_lot::RwLock;
 use prometheus::{
     Histogram, IntCounter, IntGauge, Registry, register_histogram_with_registry,
@@ -12,8 +14,6 @@ use std::collections::BTreeSet;
 use std::net::IpAddr;
 use std::num::NonZeroUsize;
 use std::sync::Arc;
-use myso_types::digests::TransactionDigest;
-use myso_types::traffic_control::Weight;
 use tracing::debug;
 
 pub(crate) const DEFAULT_CACHE_CAPACITY: usize = 100_000;

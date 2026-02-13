@@ -19,9 +19,6 @@ use alloy::primitives::Address as EthAddress;
 use fastcrypto::encoding::Encoding;
 use fastcrypto::encoding::Hex;
 use move_core_types::language_storage::StructTag;
-use once_cell::sync::OnceCell;
-use serde::{Deserialize, Serialize};
-use std::str::FromStr;
 use myso_json_rpc_types::MySoEvent;
 use myso_types::BRIDGE_PACKAGE_ID;
 use myso_types::TypeTag;
@@ -34,6 +31,9 @@ use myso_types::collection_types::VecMap;
 use myso_types::crypto::ToFromBytes;
 use myso_types::event::Event;
 use myso_types::parse_myso_type_tag;
+use once_cell::sync::OnceCell;
+use serde::{Deserialize, Serialize};
+use std::str::FromStr;
 
 // `TokendDepositedEvent` emitted in bridge.move
 #[derive(Debug, Serialize, Deserialize, PartialEq, Eq, Clone)]
@@ -516,15 +516,17 @@ impl MySoBridgeEvent {
                     amount_myso_adjusted,
                 } = event;
 
-                Some(BridgeAction::MySoToEthTokenTransfer(MySoToEthTokenTransfer {
-                    nonce,
-                    myso_chain_id,
-                    eth_chain_id,
-                    myso_address,
-                    eth_address,
-                    token_id,
-                    amount_adjusted: amount_myso_adjusted,
-                }))
+                Some(BridgeAction::MySoToEthTokenTransfer(
+                    MySoToEthTokenTransfer {
+                        nonce,
+                        myso_chain_id,
+                        eth_chain_id,
+                        myso_address,
+                        eth_address,
+                        token_id,
+                        amount_adjusted: amount_myso_adjusted,
+                    },
+                ))
             }
             MySoBridgeEvent::MySoToEthTokenBridgeV2(event) => Some(
                 BridgeAction::MySoToEthTokenTransferV2(MySoToEthTokenTransferV2 {
@@ -569,8 +571,8 @@ pub mod tests {
     use myso_json_rpc_types::BcsEvent;
     use myso_json_rpc_types::MySoEvent;
     use myso_types::Identifier;
-    use myso_types::base_types::ObjectID;
     use myso_types::base_types::MySoAddress;
+    use myso_types::base_types::ObjectID;
     use myso_types::bridge::BridgeChainId;
     use myso_types::bridge::TOKEN_ID_MYSO;
     use myso_types::crypto::get_key_pair;

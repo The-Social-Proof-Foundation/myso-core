@@ -27,7 +27,7 @@ use myso_rpc::proto::myso::rpc::v2::command::Command;
 use myso_rpc::proto::myso::rpc::v2::input::InputKind;
 use myso_rpc::proto::myso::rpc::v2::transaction_kind::Data as TransactionKindData;
 use myso_rpc::proto::myso::rpc::v2::transaction_kind::Kind::ProgrammableTransaction as ProgrammableTransactionKind;
-use myso_types::base_types::{ObjectID, SequenceNumber, MySoAddress};
+use myso_types::base_types::{MySoAddress, ObjectID, SequenceNumber};
 use myso_types::gas_coin::GasCoin;
 use myso_types::governance::{ADD_STAKE_FUN_NAME, WITHDRAW_STAKE_FUN_NAME};
 use myso_types::myso_system_state::MYSO_SYSTEM_MODULE_NAME;
@@ -879,8 +879,12 @@ impl Operations {
             }
         }
         let staking_balance = if principal_amounts != 0 {
-            *accounted_balances.entry((sender, MYSO.clone())).or_default() -= principal_amounts;
-            *accounted_balances.entry((sender, MYSO.clone())).or_default() -= reward_amounts;
+            *accounted_balances
+                .entry((sender, MYSO.clone()))
+                .or_default() -= principal_amounts;
+            *accounted_balances
+                .entry((sender, MYSO.clone()))
+                .or_default() -= reward_amounts;
             vec![
                 Operation::stake_principle(status, sender, principal_amounts),
                 Operation::stake_reward(status, sender, reward_amounts),
@@ -1137,7 +1141,7 @@ mod tests {
     use crate::MYSO;
     use crate::types::ConstructionMetadata;
     use myso_rpc::proto::myso::rpc::v2::Transaction;
-    use myso_types::base_types::{ObjectDigest, ObjectID, SequenceNumber, MySoAddress};
+    use myso_types::base_types::{MySoAddress, ObjectDigest, ObjectID, SequenceNumber};
     use myso_types::programmable_transaction_builder::ProgrammableTransactionBuilder;
     use myso_types::transaction::{TEST_ONLY_GAS_UNIT_FOR_TRANSFER, TransactionData};
 

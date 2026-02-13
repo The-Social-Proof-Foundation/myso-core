@@ -7,7 +7,6 @@ use std::collections::{BTreeMap, HashMap};
 use itertools::Itertools;
 use move_core_types::ident_str;
 use move_core_types::u256::U256;
-use mysten_common::fatal;
 use myso_protocol_config::ProtocolConfig;
 use myso_types::accumulator_event::AccumulatorEvent;
 use myso_types::accumulator_root::{
@@ -16,6 +15,7 @@ use myso_types::accumulator_root::{
 };
 use myso_types::balance::{BALANCE_MODULE_NAME, BALANCE_STRUCT_NAME};
 use myso_types::base_types::SequenceNumber;
+use mysten_common::fatal;
 
 use myso_types::accumulator_root::ACCUMULATOR_METADATA_MODULE;
 use myso_types::digests::Digest;
@@ -335,7 +335,10 @@ impl AccumulatorSettlementTxBuilder {
                 updates
                     .iter()
                     .fold((0, 0), |(acc_input, acc_output), (_, update)| {
-                        (acc_input + update.input_myso, acc_output + update.output_myso)
+                        (
+                            acc_input + update.input_myso,
+                            acc_output + update.output_myso,
+                        )
                     });
 
             Self::build_one_settlement_txn(

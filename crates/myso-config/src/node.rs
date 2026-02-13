@@ -11,6 +11,16 @@ use crate::validator_client_monitor_config::ValidatorClientMonitorConfig;
 use crate::verifier_signing_config::VerifierSigningConfig;
 use anyhow::Result;
 use consensus_config::Parameters as ConsensusParameters;
+use myso_keys::keypair_file::{read_authority_keypair_from_file, read_keypair_from_file};
+use myso_types::base_types::MySoAddress;
+use myso_types::committee::EpochId;
+use myso_types::crypto::AuthorityPublicKeyBytes;
+use myso_types::crypto::KeypairTraits;
+use myso_types::crypto::MySoKeyPair;
+use myso_types::crypto::NetworkKeyPair;
+use myso_types::messages_checkpoint::CheckpointSequenceNumber;
+use myso_types::supported_protocol_versions::{Chain, SupportedProtocolVersions};
+use myso_types::traffic_control::{PolicyConfig, RemoteFirewallConfig};
 use mysten_common::fatal;
 use nonzero_ext::nonzero;
 use once_cell::sync::OnceCell;
@@ -23,16 +33,6 @@ use std::num::{NonZeroU32, NonZeroUsize};
 use std::path::{Path, PathBuf};
 use std::sync::Arc;
 use std::time::Duration;
-use myso_keys::keypair_file::{read_authority_keypair_from_file, read_keypair_from_file};
-use myso_types::base_types::MySoAddress;
-use myso_types::committee::EpochId;
-use myso_types::crypto::AuthorityPublicKeyBytes;
-use myso_types::crypto::KeypairTraits;
-use myso_types::crypto::NetworkKeyPair;
-use myso_types::crypto::MySoKeyPair;
-use myso_types::messages_checkpoint::CheckpointSequenceNumber;
-use myso_types::supported_protocol_versions::{Chain, SupportedProtocolVersions};
-use myso_types::traffic_control::{PolicyConfig, RemoteFirewallConfig};
 
 use myso_types::crypto::{AccountKeyPair, AuthorityKeyPair, get_key_pair_from_rng};
 use myso_types::multiaddr::Multiaddr;
@@ -1643,9 +1643,11 @@ mod tests {
     use std::path::PathBuf;
 
     use fastcrypto::traits::KeyPair;
-    use rand::{SeedableRng, rngs::StdRng};
     use myso_keys::keypair_file::{write_authority_keypair_to_file, write_keypair_to_file};
-    use myso_types::crypto::{AuthorityKeyPair, NetworkKeyPair, MySoKeyPair, get_key_pair_from_rng};
+    use myso_types::crypto::{
+        AuthorityKeyPair, MySoKeyPair, NetworkKeyPair, get_key_pair_from_rng,
+    };
+    use rand::{SeedableRng, rngs::StdRng};
 
     use super::{Genesis, StateArchiveConfig};
     use crate::NodeConfig;

@@ -20,6 +20,17 @@ use futures::future::{self, Either, select};
 use futures::stream::FuturesUnordered;
 use futures::{StreamExt, pin_mut};
 use itertools::Itertools;
+use myso_protocol_config::ProtocolConfig;
+use myso_simulator::anemo::PeerId;
+use myso_types::base_types::AuthorityName;
+use myso_types::base_types::TransactionDigest;
+use myso_types::committee::Committee;
+use myso_types::error::{MySoErrorKind, MySoResult};
+use myso_types::fp_ensure;
+use myso_types::messages_consensus::ConsensusPosition;
+use myso_types::messages_consensus::ConsensusTransactionKind;
+use myso_types::messages_consensus::{ConsensusTransaction, ConsensusTransactionKey};
+use myso_types::transaction::TransactionDataAPI;
 use mysten_common::debug_fatal;
 use mysten_metrics::{
     GaugeGuard, InflightGuardFutureExt, LATENCY_SEC_BUCKETS, spawn_monitored_task,
@@ -37,17 +48,6 @@ use prometheus::{
     register_int_counter_vec_with_registry, register_int_gauge_vec_with_registry,
     register_int_gauge_with_registry,
 };
-use myso_protocol_config::ProtocolConfig;
-use myso_simulator::anemo::PeerId;
-use myso_types::base_types::AuthorityName;
-use myso_types::base_types::TransactionDigest;
-use myso_types::committee::Committee;
-use myso_types::error::{MySoErrorKind, MySoResult};
-use myso_types::fp_ensure;
-use myso_types::messages_consensus::ConsensusPosition;
-use myso_types::messages_consensus::ConsensusTransactionKind;
-use myso_types::messages_consensus::{ConsensusTransaction, ConsensusTransactionKey};
-use myso_types::transaction::TransactionDataAPI;
 use tokio::sync::{Semaphore, SemaphorePermit, oneshot};
 use tokio::task::JoinHandle;
 use tokio::time::Duration;
@@ -1498,15 +1498,15 @@ mod adapter_tests {
     };
     use crate::mysticeti_adapter::LazyMysticetiClient;
     use fastcrypto::traits::KeyPair;
-    use rand::Rng;
-    use rand::{SeedableRng, rngs::StdRng};
-    use std::sync::Arc;
-    use std::time::Duration;
     use myso_types::{
         base_types::TransactionDigest,
         committee::Committee,
         crypto::{AuthorityKeyPair, AuthorityPublicKeyBytes, get_key_pair_from_rng},
     };
+    use rand::Rng;
+    use rand::{SeedableRng, rngs::StdRng};
+    use std::sync::Arc;
+    use std::time::Duration;
 
     fn test_committee(rng: &mut StdRng, size: usize) -> Committee {
         let authorities = (0..size)

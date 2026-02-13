@@ -5,9 +5,9 @@
 use std::sync::Arc;
 
 use arc_swap::ArcSwapOption;
-use mysten_network::Multiaddr;
 use myso_types::crypto::NetworkPublicKey;
 use myso_types::error::{MySoErrorKind, MySoResult};
+use mysten_network::Multiaddr;
 use tap::TapFallible;
 use tracing::warn;
 
@@ -121,8 +121,8 @@ pub enum AddressSource {
 mod tests {
     use super::*;
     use fastcrypto::traits::KeyPair;
-    use std::sync::{Arc, Mutex};
     use myso_types::crypto::{NetworkKeyPair, get_key_pair};
+    use std::sync::{Arc, Mutex};
 
     type UpdateEntry = (NetworkPublicKey, Vec<Multiaddr>);
     // Mock consensus address updater for testing

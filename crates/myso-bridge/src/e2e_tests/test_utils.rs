@@ -12,12 +12,12 @@ use crate::crypto::{
 };
 use crate::events::*;
 use crate::metrics::BridgeMetrics;
-use crate::node::run_bridge_node;
-use crate::server::BridgeNodePublicMetadata;
 use crate::myso_client::{MySoBridgeClient, MySoClientInner};
 use crate::myso_transaction_builder::{
     build_add_tokens_on_myso_transaction, build_committee_register_transaction,
 };
+use crate::node::run_bridge_node;
+use crate::server::BridgeNodePublicMetadata;
 use crate::types::{
     BridgeAction, BridgeActionStatus, BridgeCommitteeValiditySignInfo, CertifiedBridgeAction,
     MySoToEthTokenTransfer, MySoToEthTokenTransferV2, VerifiedCertifiedBridgeAction,
@@ -33,25 +33,12 @@ use futures::Future;
 use futures::future::join_all;
 use move_core_types::ident_str;
 use move_core_types::language_storage::{StructTag, TypeTag};
-use prometheus::Registry;
-use rand::Rng;
-use rand::SeedableRng;
-use rand::rngs::SmallRng;
-use serde::{Deserialize, Serialize};
-use std::collections::{BTreeMap, HashMap, HashSet};
-use std::fs;
-use std::fs::{DirBuilder, File};
-use std::io::{Read, Write};
-use std::path::{Path, PathBuf};
-use std::process::{Child, Command};
-use std::str::FromStr;
-use std::sync::Arc;
 use myso_config::local_ip_utils::get_available_port;
 use myso_rpc_api::Client;
 use myso_rpc_api::client::ExecutedTransaction;
 use myso_sdk::wallet_context::WalletContext;
 use myso_test_transaction_builder::TestTransactionBuilder;
-use myso_types::base_types::{ObjectID, ObjectRef, MySoAddress};
+use myso_types::base_types::{MySoAddress, ObjectID, ObjectRef};
 use myso_types::bridge::{
     BRIDGE_MODULE_NAME, BridgeChainId, BridgeSummary, BridgeTrait, TOKEN_ID_BTC, TOKEN_ID_ETH,
     TOKEN_ID_USDC, TOKEN_ID_USDT, get_bridge, get_bridge_obj_initial_shared_version,
@@ -67,6 +54,19 @@ use myso_types::transaction::{
     CallArg, ObjectArg, SharedObjectMutability, Transaction, TransactionData,
 };
 use myso_types::{BRIDGE_PACKAGE_ID, MYSO_BRIDGE_OBJECT_ID};
+use prometheus::Registry;
+use rand::Rng;
+use rand::SeedableRng;
+use rand::rngs::SmallRng;
+use serde::{Deserialize, Serialize};
+use std::collections::{BTreeMap, HashMap, HashSet};
+use std::fs;
+use std::fs::{DirBuilder, File};
+use std::io::{Read, Write};
+use std::path::{Path, PathBuf};
+use std::process::{Child, Command};
+use std::str::FromStr;
+use std::sync::Arc;
 use tap::TapFallible;
 use tempfile::tempdir;
 use test_cluster::{TestCluster, TestClusterBuilder};
@@ -600,7 +600,7 @@ pub(crate) async fn deploy_sol_contract(
         ],
         supported_tokens: vec![], // this is set up in the deploy script
         token_ids: vec![],        // this is set up in the deploy script
-        myso_decimals: vec![],     // this is set up in the deploy script
+        myso_decimals: vec![],    // this is set up in the deploy script
         token_prices: vec![12800, 432518900, 25969600, 10000, 10000],
         weth: "".to_string(), // this is set up in the deploy script
     };

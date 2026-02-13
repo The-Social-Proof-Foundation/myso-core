@@ -7,8 +7,8 @@ use proptest::arbitrary::*;
 use proptest::prelude::*;
 
 use crate::type_arg_fuzzer::{gen_type_tag, pt_for_tags};
+use myso_types::base_types::{MySoAddress, ObjectID, ObjectRef, SequenceNumber};
 use proptest::collection::vec;
-use myso_types::base_types::{ObjectID, ObjectRef, SequenceNumber, MySoAddress};
 
 use myso_types::digests::ObjectDigest;
 use myso_types::transaction::{

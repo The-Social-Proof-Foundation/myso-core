@@ -24,9 +24,9 @@ pub mod transaction_deny_config;
 pub mod validator_client_monitor_config;
 pub mod verifier_signing_config;
 
+use myso_types::multiaddr::Multiaddr;
 pub use node::{ConsensusConfig, ExecutionCacheConfig, NodeConfig};
 pub use rpc_config::{RpcConfig, RpcIndexInitConfig, RpcTlsConfig};
-use myso_types::multiaddr::Multiaddr;
 use tracing::debug;
 
 const MYSO_DIR: &str = ".myso";

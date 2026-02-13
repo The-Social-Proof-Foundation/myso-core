@@ -41,7 +41,7 @@ mod checked {
     use myso_types::storage::PackageObject;
     use myso_types::{
         balance::Balance,
-        base_types::{MoveObjectType, ObjectID, SequenceNumber, MySoAddress, TxContext},
+        base_types::{MoveObjectType, MySoAddress, ObjectID, SequenceNumber, TxContext},
         coin::Coin,
         error::{command_argument_error, ExecutionError, ExecutionErrorKind},
         event::Event,

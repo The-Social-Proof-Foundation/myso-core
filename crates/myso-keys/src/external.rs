@@ -16,6 +16,8 @@ use bcs;
 use fastcrypto::traits::{EncodeDecodeBase64, VerifyingKey};
 use jsonrpc::client::Endpoint;
 use mockall::{automock, predicate::*};
+use myso_types::base_types::MySoAddress;
+use myso_types::crypto::{MySoKeyPair, MySoSignature, MySoSignatureInner, PublicKey, Signature};
 use serde::{Deserialize, Deserializer, Serialize, Serializer};
 use serde_json::{Value as JsonValue, json};
 use shared_crypto::intent::{Intent, IntentMessage};
@@ -23,8 +25,6 @@ use std::collections::{BTreeMap, HashSet};
 use std::fmt::Debug;
 use std::path::PathBuf;
 use std::process::Stdio;
-use myso_types::base_types::MySoAddress;
-use myso_types::crypto::{PublicKey, Signature, MySoKeyPair, MySoSignature, MySoSignatureInner};
 use tokio::process::Command;
 
 #[derive(Debug)]
@@ -666,6 +666,9 @@ mod tests {
     use fastcrypto::secp256k1::Secp256k1KeyPair;
     use fastcrypto::traits::{EncodeDecodeBase64, KeyPair, ToFromBytes};
     use mockall::predicate::eq;
+    use myso_types::base_types::MySoAddress;
+    use myso_types::crypto::SignatureScheme::{ED25519, Secp256k1};
+    use myso_types::crypto::{MySoKeyPair, PublicKey, Signature};
     use rand::prelude::StdRng;
     use rand::{SeedableRng, thread_rng};
     use serde_json::Value as JsonValue;
@@ -674,9 +677,6 @@ mod tests {
     use std::collections::BTreeMap;
     use std::path::PathBuf;
     use std::str::FromStr;
-    use myso_types::base_types::MySoAddress;
-    use myso_types::crypto::SignatureScheme::{ED25519, Secp256k1};
-    use myso_types::crypto::{PublicKey, Signature, MySoKeyPair};
     use tempfile::TempDir;
 
     const PUBLIC_KEY: &str = "ALJ0GaLcBTTwTTh5dvyc6xaxwrjkG1spQzlL+W4CGLqG";

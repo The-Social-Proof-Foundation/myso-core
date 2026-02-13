@@ -2,11 +2,11 @@
 // Copyright (c) The Social Proof Foundation, LLC.
 // SPDX-License-Identifier: Apache-2.0
 
+use myso_indexer_alt_e2e_tests::FullCluster;
+use myso_indexer_alt_graphql::extensions::logging::REQUEST_ID_HEADER;
 use reqwest::Client;
 use serde_json::Value;
 use serde_json::json;
-use myso_indexer_alt_e2e_tests::FullCluster;
-use myso_indexer_alt_graphql::extensions::logging::REQUEST_ID_HEADER;
 
 struct TestResult {
     request_id: String,

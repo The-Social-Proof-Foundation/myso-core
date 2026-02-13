@@ -55,9 +55,6 @@ use std::sync::OnceLock;
 
 use anyhow::Result;
 use async_trait::async_trait;
-use prometheus::Registry;
-use serde::Deserialize;
-use serde::Serialize;
 use myso_indexer_alt_framework::Indexer;
 use myso_indexer_alt_framework::IndexerArgs;
 use myso_indexer_alt_framework::ingestion::ClientArgs;
@@ -79,6 +76,9 @@ use myso_types::messages_checkpoint::CheckpointSummary;
 use myso_types::object::Object;
 use myso_types::storage::ObjectKey;
 use myso_types::transaction::Transaction;
+use prometheus::Registry;
+use serde::Deserialize;
+use serde::Serialize;
 
 mod bigtable;
 mod handlers;

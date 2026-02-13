@@ -9,6 +9,9 @@ use crate::validator_client_monitor::{
     OperationFeedback, OperationType, metrics::ValidatorClientMetrics,
 };
 use arc_swap::ArcSwap;
+use myso_config::validator_client_monitor_config::ValidatorClientMonitorConfig;
+use myso_types::committee::Committee;
+use myso_types::{base_types::AuthorityName, messages_grpc::ValidatorHealthRequest};
 use parking_lot::RwLock;
 use rand::seq::SliceRandom;
 use std::collections::HashMap;
@@ -16,9 +19,6 @@ use std::{
     sync::Arc,
     time::{Duration, Instant},
 };
-use myso_config::validator_client_monitor_config::ValidatorClientMonitorConfig;
-use myso_types::committee::Committee;
-use myso_types::{base_types::AuthorityName, messages_grpc::ValidatorHealthRequest};
 use tokio::{
     task::JoinSet,
     time::{interval, timeout},

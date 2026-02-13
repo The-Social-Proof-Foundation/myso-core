@@ -30,18 +30,18 @@ use crate::{
     node::Node,
 };
 use anyhow::{Error, Result};
+use myso_types::{
+    base_types::ObjectID,
+    committee::ProtocolVersion,
+    object::Object,
+    supported_protocol_versions::{Chain, ProtocolConfig},
+};
 use std::{
     collections::BTreeMap,
     sync::{
         RwLock,
         atomic::{AtomicU64, Ordering},
     },
-};
-use myso_types::{
-    base_types::ObjectID,
-    committee::ProtocolVersion,
-    object::Object,
-    supported_protocol_versions::{Chain, ProtocolConfig},
 };
 
 /// In-memory store implementing the data store interfaces.

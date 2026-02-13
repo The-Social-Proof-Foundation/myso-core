@@ -20,7 +20,10 @@ pub struct MySoBridgeStatus {
 
 impl MySoBridgeStatus {
     pub fn new(myso_client: Arc<MySoBridgeClient>, metric: IntGauge) -> Self {
-        Self { myso_client, metric }
+        Self {
+            myso_client,
+            metric,
+        }
     }
 }
 

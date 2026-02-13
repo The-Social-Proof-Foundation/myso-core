@@ -9,11 +9,11 @@ mod test_coin_utils;
 
 use std::num::NonZeroUsize;
 
-use prost_types::FieldMask;
-use serde_json::json;
 use myso_rpc::client::Client as GrpcClient;
 use myso_rpc::field::FieldMaskUtil;
 use myso_rpc::proto::myso::rpc::v2::GetTransactionRequest;
+use prost_types::FieldMask;
+use serde_json::json;
 
 use myso_rosetta::operations::Operations;
 mod test_utils;
@@ -21,7 +21,7 @@ use myso_rosetta::CoinMetadataCache;
 use myso_rosetta::MYSO;
 use myso_rosetta::types::{
     AccountBalanceRequest, AccountBalanceResponse, AccountIdentifier, Amount, Currency,
-    CurrencyMetadata, NetworkIdentifier, MySoEnv,
+    CurrencyMetadata, MySoEnv, NetworkIdentifier,
 };
 use myso_rosetta::types::{Currencies, OperationType};
 use test_cluster::TestClusterBuilder;

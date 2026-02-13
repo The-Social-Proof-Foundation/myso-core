@@ -42,7 +42,7 @@ use crate::accumulators::funds_read::AccountFundsRead;
 use crate::authority::AuthorityStore;
 use crate::authority::authority_per_epoch_store::AuthorityPerEpochStore;
 use crate::authority::authority_store::{
-    ExecutionLockWriteGuard, LockDetailsDeprecated, ObjectLockStatus, MySoLockResult,
+    ExecutionLockWriteGuard, LockDetailsDeprecated, MySoLockResult, ObjectLockStatus,
 };
 use crate::authority::authority_store_tables::LiveObject;
 use crate::authority::backpressure::BackpressureManager;
@@ -55,14 +55,6 @@ use dashmap::DashMap;
 use dashmap::mapref::entry::Entry as DashMapEntry;
 use futures::{FutureExt, future::BoxFuture};
 use moka::sync::SegmentedCache as MokaCache;
-use mysten_common::debug_fatal;
-use mysten_common::random_util::randomize_cache_capacity_in_tests;
-use mysten_common::sync::notify_read::NotifyRead;
-use parking_lot::Mutex;
-use std::collections::{BTreeMap, HashSet};
-use std::hash::Hash;
-use std::sync::Arc;
-use std::sync::atomic::AtomicU64;
 use myso_config::ExecutionCacheConfig;
 use myso_macros::fail_point;
 use myso_protocol_config::ProtocolVersion;
@@ -80,12 +72,20 @@ use myso_types::executable_transaction::VerifiedExecutableTransaction;
 use myso_types::global_state_hash::GlobalStateHash;
 use myso_types::message_envelope::Message;
 use myso_types::messages_checkpoint::CheckpointSequenceNumber;
+use myso_types::myso_system_state::{MySoSystemState, get_myso_system_state};
 use myso_types::object::Object;
 use myso_types::storage::{
     FullObjectKey, InputKey, MarkerValue, ObjectKey, ObjectOrTombstone, ObjectStore, PackageObject,
 };
-use myso_types::myso_system_state::{MySoSystemState, get_myso_system_state};
 use myso_types::transaction::{TransactionDataAPI, VerifiedTransaction};
+use mysten_common::debug_fatal;
+use mysten_common::random_util::randomize_cache_capacity_in_tests;
+use mysten_common::sync::notify_read::NotifyRead;
+use parking_lot::Mutex;
+use std::collections::{BTreeMap, HashSet};
+use std::hash::Hash;
+use std::sync::Arc;
+use std::sync::atomic::AtomicU64;
 use tap::TapOptional;
 use tracing::{debug, info, instrument, trace, warn};
 

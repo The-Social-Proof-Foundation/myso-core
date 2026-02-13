@@ -37,7 +37,6 @@ use extensions::query_limits::show_usage::ShowUsage;
 use extensions::timeout::Timeout;
 use headers::ContentLength;
 use health::DbProbe;
-use prometheus::Registry;
 use myso_futures::service::Service;
 use myso_indexer_alt_reader::bigtable_reader::BigtableReader;
 use myso_indexer_alt_reader::consistent_reader::ConsistentReader;
@@ -52,6 +51,7 @@ use myso_indexer_alt_reader::pg_reader::PgReader;
 use myso_indexer_alt_reader::pg_reader::db::DbArgs;
 use myso_indexer_alt_reader::system_package_task::SystemPackageTask;
 use myso_indexer_alt_reader::system_package_task::SystemPackageTaskArgs;
+use prometheus::Registry;
 use task::chain_identifier;
 use task::watermark::WatermarkTask;
 use task::watermark::WatermarksLock;
@@ -442,10 +442,10 @@ mod tests {
     use async_graphql_axum::GraphQLResponse;
     use axum::routing::post;
     use insta::assert_snapshot;
+    use myso_pg_db::temp::get_available_port;
     use reqwest::Client;
     use serde_json::Value;
     use serde_json::json;
-    use myso_pg_db::temp::get_available_port;
 
     use crate::error::code;
     use crate::extensions::logging::Session;

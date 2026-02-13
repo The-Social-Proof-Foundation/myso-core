@@ -2,6 +2,21 @@
 // Copyright (c) The Social Proof Foundation, LLC.
 // SPDX-License-Identifier: Apache-2.0
 use fastcrypto::traits::ToFromBytes;
+use myso_core::authority_client::AuthorityAPI;
+use myso_macros::sim_test;
+use myso_test_transaction_builder::TestTransactionBuilder;
+use myso_types::crypto::Signature;
+use myso_types::error::UserInputError;
+use myso_types::error::{MySoErrorKind, MySoResult};
+use myso_types::messages_grpc::SubmitTxRequest;
+use myso_types::signature::GenericSignature;
+use myso_types::transaction::Transaction;
+use myso_types::{
+    base_types::MySoAddress,
+    crypto::{PublicKey, SignatureScheme},
+    passkey_authenticator::{PasskeyAuthenticator, to_signing_message},
+    transaction::TransactionData,
+};
 use p256::pkcs8::DecodePublicKey;
 use passkey_authenticator::{Authenticator, UserCheck, UserValidationMethod};
 use passkey_client::Client;
@@ -18,21 +33,6 @@ use passkey_types::{
 };
 use shared_crypto::intent::{Intent, IntentMessage};
 use std::net::SocketAddr;
-use myso_core::authority_client::AuthorityAPI;
-use myso_macros::sim_test;
-use myso_test_transaction_builder::TestTransactionBuilder;
-use myso_types::crypto::Signature;
-use myso_types::error::UserInputError;
-use myso_types::error::{MySoErrorKind, MySoResult};
-use myso_types::messages_grpc::SubmitTxRequest;
-use myso_types::signature::GenericSignature;
-use myso_types::transaction::Transaction;
-use myso_types::{
-    base_types::MySoAddress,
-    crypto::{PublicKey, SignatureScheme},
-    passkey_authenticator::{PasskeyAuthenticator, to_signing_message},
-    transaction::TransactionData,
-};
 use test_cluster::TestCluster;
 use test_cluster::TestClusterBuilder;
 use url::Url;

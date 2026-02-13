@@ -10,6 +10,7 @@ use crate::{
     verifier_meter::{AccumulatingMeter, Accumulator},
 };
 use futures::TryStreamExt;
+use myso_rpc::proto::myso::rpc::v2::{self as proto};
 use std::{
     collections::{BTreeMap, BTreeSet, btree_map::Entry},
     fmt::{Debug, Display, Formatter, Write},
@@ -18,7 +19,6 @@ use std::{
     str::FromStr,
     sync::Arc,
 };
-use myso_rpc::proto::myso::rpc::v2::{self as proto};
 
 use anyhow::{Context, anyhow, bail, ensure};
 use bip32::DerivationPath;
@@ -39,13 +39,12 @@ use move_core_types::{
 };
 use move_package_alt::{PackageLoader, schema::ModeName};
 use move_package_alt_compilation::build_config::BuildConfig as MoveBuildConfig;
+use myso_config::verifier_signing_config::VerifierSigningConfig;
+use myso_protocol_config::{Chain, ProtocolConfig, ProtocolVersion};
 use prometheus::Registry;
 use serde::Serialize;
 use serde_json::{Value, json};
-use myso_config::verifier_signing_config::VerifierSigningConfig;
-use myso_protocol_config::{Chain, ProtocolConfig, ProtocolVersion};
 
-use shared_crypto::intent::Intent;
 use myso_json::MySoJsonValue;
 use myso_json_rpc_types::Coin;
 use myso_keys::key_identity::KeyIdentity;
@@ -57,14 +56,15 @@ use myso_rpc_api::{
     client::{ExecutedTransaction, SimulateTransactionResponse},
 };
 use myso_sdk::{
-    MYSO_COIN_TYPE, MYSO_DEVNET_URL, MYSO_LOCAL_NETWORK_URL, MYSO_LOCAL_NETWORK_URL_0, MYSO_TESTNET_URL,
+    MYSO_COIN_TYPE, MYSO_DEVNET_URL, MYSO_LOCAL_NETWORK_URL, MYSO_LOCAL_NETWORK_URL_0,
+    MYSO_TESTNET_URL,
     myso_client_config::{MySoClientConfig, MySoEnv},
     myso_sdk_types::bcs::ToBcs,
     wallet_context::WalletContext,
 };
 use myso_types::{
     MYSO_FRAMEWORK_ADDRESS, MYSO_FRAMEWORK_PACKAGE_ID,
-    base_types::{FullObjectID, ObjectID, ObjectRef, ObjectType, SequenceNumber, MySoAddress},
+    base_types::{FullObjectID, MySoAddress, ObjectID, ObjectRef, ObjectType, SequenceNumber},
     coin::{COIN_MODULE_NAME, COIN_STRUCT_NAME},
     crypto::{EmptySignInfo, SignatureScheme},
     digests::TransactionDigest,
@@ -85,6 +85,7 @@ use myso_types::{
         TransactionData, TransactionDataAPI, TransactionKind,
     },
 };
+use shared_crypto::intent::Intent;
 
 use json_to_table::json_to_table;
 use tabled::{
@@ -1092,7 +1093,9 @@ impl MySoClientCommands {
                 // without failing MySoJSON's checks.
                 let args = args
                     .into_iter()
-                    .map(|value| MySoJsonValue::new(convert_number_to_string(value.to_json_value())))
+                    .map(|value| {
+                        MySoJsonValue::new(convert_number_to_string(value.to_json_value()))
+                    })
                     .collect::<Result<_, _>>()?;
 
                 let type_args = type_args
@@ -2073,7 +2076,11 @@ impl Display for MySoClientCommandResult {
                 }
 
                 let mut builder = TableBuilder::default();
-                builder.set_header(vec!["gasCoinId", "mistBalance (MIST)", "mysoBalance (MYSO)"]);
+                builder.set_header(vec![
+                    "gasCoinId",
+                    "mistBalance (MIST)",
+                    "mysoBalance (MYSO)",
+                ]);
                 for coin in &gas_coins {
                     builder.push_record(vec![
                         coin.gas_coin_id.to_string(),
@@ -2363,7 +2370,9 @@ impl Debug for MySoClientCommandResult {
                 Ok(serde_json::to_string_pretty(&gas_coins)?)
             }
             MySoClientCommandResult::Object(object) => Ok(serde_json::to_string_pretty(&object)?),
-            MySoClientCommandResult::RawObject(object) => Ok(serde_json::to_string_pretty(&object)?),
+            MySoClientCommandResult::RawObject(object) => {
+                Ok(serde_json::to_string_pretty(&object)?)
+            }
             _ => Ok(serde_json::to_string_pretty(self)?),
         });
         write!(f, "{}", s)
@@ -2619,6 +2628,13 @@ pub async fn request_tokens_from_faucet(
             bail!("Faucet service is currently overloaded or unavailable. Please try again later.");
         }
         status_code => {
+            if status_code == StatusCode::NOT_FOUND {
+                bail!(
+                    "Faucet request was unsuccessful: 404 Not Found (url: {url}). \
+                     For local network, ensure your active env uses http://127.0.0.1:9000 and try: \
+                     myso client faucet --url http://127.0.0.1:9123/gas"
+                );
+            }
             bail!("Faucet request was unsuccessful: {status_code}");
         }
     }
@@ -3697,8 +3713,8 @@ fn find_faucet_url(address: MySoAddress, rpc: &str) -> anyhow::Result<String> {
         );
     }
 
-    if host == localhost || host == localhost_0 {
-        Ok("http://127.0.0.1:9123/v2/gas".to_string())
+    if host == localhost || host == localhost_0 || host == "localhost" {
+        Ok("http://127.0.0.1:9123/gas".to_string())
     } else {
         bail!("Cannot recognize the active network. Please provide the gas faucet full URL.")
     }

@@ -11,8 +11,8 @@ use crate::payload::{
 use async_trait::async_trait;
 use futures::future::join_all;
 use myso_json_rpc_types::{
-    Page, MySoTransactionBlockResponse, MySoTransactionBlockResponseOptions,
-    MySoTransactionBlockResponseQuery, TransactionBlocksPage, TransactionFilter,
+    MySoTransactionBlockResponse, MySoTransactionBlockResponseOptions,
+    MySoTransactionBlockResponseQuery, Page, TransactionBlocksPage, TransactionFilter,
 };
 use myso_sdk::MySoClient;
 use myso_types::base_types::TransactionDigest;

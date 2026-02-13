@@ -9,13 +9,13 @@ use move_compiler::editions::{Edition, Flavor};
 use move_package_alt_compilation::{
     build_config::BuildConfig as MoveBuildConfig, lint_flag::LintFlag,
 };
+use myso_move_build::BuildConfig;
+use myso_package_alt::mainnet_environment;
 use std::{
     collections::BTreeMap,
     env, fs,
     path::{Path, PathBuf},
 };
-use myso_move_build::BuildConfig;
-use myso_package_alt::mainnet_environment;
 
 const CRATE_ROOT: &str = env!("CARGO_MANIFEST_DIR");
 const COMPILED_PACKAGES_DIR: &str = "packages_compiled";
@@ -50,17 +50,26 @@ async fn build_system_packages() {
 
     // Fix Move.toml dependency paths for nested package structure
     // myso-framework/myso-framework/Move.toml references ../move-stdlib, but needs ../../move-stdlib
-    let framework_move_toml = packages_path.join("myso-framework").join("myso-framework").join("Move.toml");
+    let framework_move_toml = packages_path
+        .join("myso-framework")
+        .join("myso-framework")
+        .join("Move.toml");
     if framework_move_toml.exists() {
         let content = fs::read_to_string(&framework_move_toml).unwrap();
         let fixed = content.replace("../move-stdlib", "../../move-stdlib");
         fs::write(&framework_move_toml, fixed).unwrap();
     }
-    
+
     // Fix bridge, orderbook, mydata, myso-social, myso-system Move.toml - point to nested
     // myso-framework at myso-framework/myso-framework. ../move-stdlib is correct for all (same
     // level in temp copy); do not change it.
-    for pkg_name in ["bridge", "orderbook", "mydata", "myso-social", "myso-system"] {
+    for pkg_name in [
+        "bridge",
+        "orderbook",
+        "mydata",
+        "myso-social",
+        "myso-system",
+    ] {
         let move_toml = packages_path.join(pkg_name).join("Move.toml");
         if move_toml.exists() {
             let content = fs::read_to_string(&move_toml).unwrap();
@@ -263,7 +272,8 @@ async fn build_packages_with_move_config(
     let mydata_members =
         serialize_modules_to_file(mydata, &compiled_packages_dir.join(mydata_dir)).unwrap();
     let myso_social_members =
-        serialize_modules_to_file(myso_social, &compiled_packages_dir.join(myso_social_dir)).unwrap();
+        serialize_modules_to_file(myso_social, &compiled_packages_dir.join(myso_social_dir))
+            .unwrap();
 
     // write out generated docs
     let docs_dir = out_dir.join(DOCS_DIR);

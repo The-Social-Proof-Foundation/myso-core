@@ -15,10 +15,6 @@ mod consensus_tests {
     use consensus_core::{BlockAPI, BlockStatus, TransactionVerifier, ValidationError};
     use consensus_simtests::node::{AuthorityNode, Config};
     use consensus_types::block::{BlockRef, TransactionIndex};
-    use mysten_metrics::RegistryService;
-    use mysten_network::Multiaddr;
-    use prometheus::Registry;
-    use rand::{Rng, SeedableRng as _, rngs::StdRng};
     use myso_config::local_ip_utils;
     use myso_macros::sim_test;
     use myso_protocol_config::ProtocolConfig;
@@ -26,6 +22,10 @@ mod consensus_tests {
         SimConfig,
         configs::{bimodal_latency_ms, env_config, uniform_latency_ms},
     };
+    use mysten_metrics::RegistryService;
+    use mysten_network::Multiaddr;
+    use prometheus::Registry;
+    use rand::{Rng, SeedableRng as _, rngs::StdRng};
     use tempfile::TempDir;
     use tokio::task::JoinSet;
     use tokio::time::{sleep, timeout};

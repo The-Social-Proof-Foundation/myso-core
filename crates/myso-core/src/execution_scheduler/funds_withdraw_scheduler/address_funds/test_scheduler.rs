@@ -12,12 +12,12 @@ use crate::execution_scheduler::funds_withdraw_scheduler::{
 };
 
 use super::{FundsSettlement, ScheduleResult, TxFundsWithdraw};
-use std::{collections::BTreeMap, sync::Arc};
 use myso_types::{
     accumulator_root::AccumulatorObjId,
     base_types::{ObjectID, SequenceNumber},
     digests::TransactionDigest,
 };
+use std::{collections::BTreeMap, sync::Arc};
 
 #[derive(Clone)]
 pub struct TestScheduler {

@@ -12,8 +12,8 @@ use move_vm_types::{
     natives::function::NativeResult,
     values::{Struct, Value},
 };
-use smallvec::smallvec;
 use myso_types::base_types::ObjectID;
+use smallvec::smallvec;
 
 use crate::{
     NativesCostTable,

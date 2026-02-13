@@ -6,9 +6,7 @@ use crate::error::{BridgeError, BridgeResult};
 use crate::types::{BridgeAction, VerifiedCertifiedBridgeAction};
 use fastcrypto::traits::ToFromBytes;
 use move_core_types::ident_str;
-use std::collections::HashMap;
-use std::str::FromStr;
-use myso_types::base_types::{ObjectRef, MySoAddress};
+use myso_types::base_types::{MySoAddress, ObjectRef};
 use myso_types::bridge::{
     BRIDGE_CREATE_ADD_TOKEN_ON_MYSO_MESSAGE_FUNCTION_NAME,
     BRIDGE_EXECUTE_SYSTEM_MESSAGE_FUNCTION_NAME, BRIDGE_MESSAGE_MODULE_NAME, BRIDGE_MODULE_NAME,
@@ -17,6 +15,8 @@ use myso_types::programmable_transaction_builder::ProgrammableTransactionBuilder
 use myso_types::transaction::CallArg;
 use myso_types::transaction::{ObjectArg, TransactionData};
 use myso_types::{BRIDGE_PACKAGE_ID, Identifier, TypeTag};
+use std::collections::HashMap;
+use std::str::FromStr;
 
 pub fn build_myso_transaction(
     client_address: MySoAddress,
@@ -703,16 +703,16 @@ mod tests {
     use crate::{
         crypto::BridgeAuthorityPublicKeyBytes,
         test_utils::{
-            approve_action_with_validator_secrets, bridge_token, get_test_eth_to_myso_bridge_action,
-            get_test_myso_to_eth_bridge_action,
+            approve_action_with_validator_secrets, bridge_token,
+            get_test_eth_to_myso_bridge_action, get_test_myso_to_eth_bridge_action,
         },
     };
     use alloy::primitives::Address as EthAddress;
-    use std::collections::HashMap;
-    use std::sync::Arc;
     use myso_types::bridge::{BridgeChainId, TOKEN_ID_BTC, TOKEN_ID_USDC};
     use myso_types::crypto::ToFromBytes;
     use myso_types::crypto::get_key_pair;
+    use std::collections::HashMap;
+    use std::sync::Arc;
 
     #[tokio::test(flavor = "multi_thread", worker_threads = 8)]
     async fn test_build_myso_transaction_for_token_transfer() {
@@ -748,7 +748,8 @@ mod tests {
         let id_token_map = myso_client.get_token_id_map().await.unwrap();
 
         // 1. Test Eth -> MySo Transfer approval
-        let action = get_test_eth_to_myso_bridge_action(None, Some(usdc_amount), Some(sender), None);
+        let action =
+            get_test_eth_to_myso_bridge_action(None, Some(usdc_amount), Some(sender), None);
         // `approve_action_with_validator_secrets` covers transaction building
         let usdc_object_ref = approve_action_with_validator_secrets(
             context,

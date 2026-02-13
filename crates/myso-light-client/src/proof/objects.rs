@@ -2,8 +2,8 @@
 // Copyright (c) The Social Proof Foundation, LLC.
 // SPDX-License-Identifier: Apache-2.0
 
-use serde::{Deserialize, Serialize};
 use myso_types::{base_types::ObjectRef, full_checkpoint_content::CheckpointData, object::Object};
+use serde::{Deserialize, Serialize};
 
 use crate::proof::{
     base::{Proof, ProofBuilder, ProofContents, ProofTarget},

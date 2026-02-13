@@ -9,7 +9,6 @@ use std::time::Duration;
 use anyhow::Context;
 use anyhow::bail;
 use async_graphql::dataloader::DataLoader;
-use prometheus::Registry;
 use myso_kvstore::BigTableClient;
 use myso_kvstore::CheckpointData;
 use myso_kvstore::KeyValueStoreReader;
@@ -20,6 +19,7 @@ use myso_types::digests::TransactionDigest;
 use myso_types::messages_checkpoint::CheckpointSequenceNumber;
 use myso_types::object::Object;
 use myso_types::storage::ObjectKey;
+use prometheus::Registry;
 use tracing::warn;
 
 #[derive(clap::Args, Debug, Clone, Default)]

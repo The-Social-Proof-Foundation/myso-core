@@ -14,11 +14,11 @@ use ingestion::IngestionConfig;
 use ingestion::IngestionService;
 use ingestion::ingestion_client::IngestionClient;
 use metrics::IndexerMetrics;
-use prometheus::Registry;
 use myso_indexer_alt_framework_store_traits::Connection;
 use myso_indexer_alt_framework_store_traits::Store;
 use myso_indexer_alt_framework_store_traits::TransactionalStore;
 use myso_indexer_alt_framework_store_traits::pipeline_task;
+use prometheus::Registry;
 use tracing::info;
 
 use crate::metrics::IngestionMetrics;

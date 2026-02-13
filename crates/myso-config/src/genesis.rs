@@ -5,10 +5,8 @@
 use anyhow::{Context, Result};
 use fastcrypto::encoding::{Base64, Encoding};
 use fastcrypto::hash::HashFunction;
-use serde::{Deserialize, Deserializer, Serialize, Serializer};
-use std::{fs, path::Path};
 use myso_types::authenticator_state::{AuthenticatorStateInner, get_authenticator_state};
-use myso_types::base_types::{ObjectID, MySoAddress};
+use myso_types::base_types::{MySoAddress, ObjectID};
 use myso_types::clock::Clock;
 use myso_types::committee::CommitteeWithNetworkMetadata;
 use myso_types::crypto::DefaultHash;
@@ -18,17 +16,19 @@ use myso_types::gas_coin::TOTAL_SUPPLY_MIST;
 use myso_types::messages_checkpoint::{
     CertifiedCheckpointSummary, CheckpointContents, CheckpointSummary, VerifiedCheckpoint,
 };
-use myso_types::storage::ObjectStore;
 use myso_types::myso_system_state::{
     MySoSystemState, MySoSystemStateTrait, MySoSystemStateWrapper, MySoValidatorGenesis,
     get_myso_system_state, get_myso_system_state_wrapper,
 };
+use myso_types::storage::ObjectStore;
 use myso_types::transaction::Transaction;
 use myso_types::{MYSO_BRIDGE_OBJECT_ID, MYSO_RANDOMNESS_STATE_OBJECT_ID};
 use myso_types::{
     committee::{Committee, EpochId, ProtocolVersion},
     object::Object,
 };
+use serde::{Deserialize, Deserializer, Serialize, Serializer};
+use std::{fs, path::Path};
 use tracing::trace;
 
 #[derive(Clone, Debug)]
@@ -425,7 +425,8 @@ impl GenesisCeremonyParameters {
             stake_subsidy_decrease_rate: Self::default_stake_subsidy_decrease_rate(),
             stake_subsidy_max_apy_bps: Self::default_stake_subsidy_max_apy_bps(),
             stake_subsidy_min_apy_bps: Self::default_stake_subsidy_min_apy_bps(),
-            stake_subsidy_intended_duration_years: Self::default_stake_subsidy_intended_duration_years(),
+            stake_subsidy_intended_duration_years:
+                Self::default_stake_subsidy_intended_duration_years(),
         }
     }
 

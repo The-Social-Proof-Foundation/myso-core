@@ -19,22 +19,22 @@ use myso_json_rpc_api::{GovernanceReadApiOpenRpc, GovernanceReadApiServer, JsonR
 use myso_json_rpc_types::{DelegatedStake, Stake, StakeStatus};
 use myso_json_rpc_types::{MySoCommittee, ValidatorApy, ValidatorApys};
 use myso_open_rpc::Module;
-use myso_types::base_types::{ObjectID, MySoAddress};
+use myso_types::base_types::{MySoAddress, ObjectID};
 use myso_types::committee::EpochId;
 use myso_types::dynamic_field::get_dynamic_field_from_store;
 use myso_types::error::{MySoError, MySoErrorKind, UserInputError};
 use myso_types::governance::StakedMySo;
 use myso_types::id::ID;
-use myso_types::object::ObjectRead;
 use myso_types::myso_serde::BigInt;
-use myso_types::myso_system_state::PoolTokenExchangeRate;
 use myso_types::myso_system_state::MySoSystemStateTrait;
+use myso_types::myso_system_state::PoolTokenExchangeRate;
 use myso_types::myso_system_state::myso_system_state_summary::MySoSystemStateSummary;
 use myso_types::myso_system_state::{MySoSystemState, get_validator_from_table};
+use myso_types::object::ObjectRead;
 
 use crate::authority_state::StateRead;
-use crate::error::{Error, RpcInterimResult, MySoRpcInputError};
-use crate::{ObjectProvider, MySoRpcModule, with_tracing};
+use crate::error::{Error, MySoRpcInputError, RpcInterimResult};
+use crate::{MySoRpcModule, ObjectProvider, with_tracing};
 
 #[derive(Clone)]
 pub struct GovernanceReadApi {
@@ -376,7 +376,8 @@ async fn exchange_rates(
     _current_epoch: EpochId,
 ) -> RpcInterimResult<Vec<ValidatorExchangeRates>> {
     let system_state = state.get_system_state()?;
-    let system_state_summary: MySoSystemStateSummary = system_state.into_myso_system_state_summary();
+    let system_state_summary: MySoSystemStateSummary =
+        system_state.into_myso_system_state_summary();
 
     // Get validator rate tables
     let mut tables = vec![];

@@ -13,11 +13,11 @@ use move_core_types::{
     language_storage::{ModuleId, StructTag},
     u256::U256,
 };
-use std::rc::Rc;
 use myso_types::{
     Identifier, TypeTag,
     base_types::{ObjectID, ObjectRef, RESOLVED_TX_CONTEXT, SequenceNumber, TxContextKind},
 };
+use std::rc::Rc;
 
 //**************************************************************************************************
 // AST Nodes

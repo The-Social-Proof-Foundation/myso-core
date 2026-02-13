@@ -19,7 +19,7 @@ pub mod checked {
     };
     use myso_types::{
         accumulator_event::AccumulatorEvent,
-        base_types::{ObjectID, ObjectRef, MySoAddress},
+        base_types::{MySoAddress, ObjectID, ObjectRef},
         digests::TransactionDigest,
         error::ExecutionError,
         gas_model::tables::GasStatus,

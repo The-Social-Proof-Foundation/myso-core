@@ -3,16 +3,16 @@
 // SPDX-License-Identifier: Apache-2.0
 
 use crate::{
-    MoveTypeTagTrait, MYSO_SYSTEM_ADDRESS,
+    MYSO_SYSTEM_ADDRESS, MoveTypeTagTrait,
     accumulator_event::AccumulatorEvent,
     base_types::{ObjectID, ObjectRef, SequenceNumber},
     digests::{ObjectDigest, TransactionDigest},
     error::MySoError,
     event::Event,
     is_system_package,
+    myso_system_state::MYSO_SYSTEM_STATE_INNER_MODULE_NAME,
     object::{Data, Object, Owner},
     storage::{BackingPackageStore, ObjectChange},
-    myso_system_state::MYSO_SYSTEM_STATE_INNER_MODULE_NAME,
     transaction::{Argument, Command, SharedObjectMutability},
     type_input::TypeInput,
 };

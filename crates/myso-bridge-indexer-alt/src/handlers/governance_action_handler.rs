@@ -9,7 +9,6 @@ use diesel_async::RunQueryDsl;
 use move_core_types::ident_str;
 use move_core_types::identifier::IdentStr;
 use move_core_types::language_storage::StructTag;
-use std::sync::Arc;
 use myso_bridge::events::{
     EmergencyOpEvent, MoveBlocklistValidatorEvent, MoveNewTokenEvent, MoveTokenRegistrationEvent,
     UpdateRouteLimitEvent, UpdateTokenPriceEvent,
@@ -22,6 +21,7 @@ use myso_indexer_alt_framework::postgres::handler::Handler;
 use myso_indexer_alt_framework::types::BRIDGE_ADDRESS;
 use myso_indexer_alt_framework::types::full_checkpoint_content::Checkpoint;
 use myso_indexer_alt_framework::types::transaction::TransactionDataAPI;
+use std::sync::Arc;
 use tracing::info;
 
 const UPDATE_ROUTE_LIMIT_EVENT: &IdentStr = ident_str!("UpdateRouteLimitEvent");

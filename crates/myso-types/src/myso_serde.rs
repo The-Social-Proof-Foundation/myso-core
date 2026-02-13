@@ -24,8 +24,8 @@ use myso_protocol_config::ProtocolVersion;
 
 use crate::governance::MAX_VALIDATOR_COUNT;
 use crate::{
-    ORDERBOOK_ADDRESS, MYSO_CLOCK_ADDRESS, MYSO_FRAMEWORK_ADDRESS, MYSO_SYSTEM_ADDRESS,
-    MYSO_SYSTEM_STATE_ADDRESS, parse_myso_struct_tag, parse_myso_type_tag,
+    MYSO_CLOCK_ADDRESS, MYSO_FRAMEWORK_ADDRESS, MYSO_SYSTEM_ADDRESS, MYSO_SYSTEM_STATE_ADDRESS,
+    ORDERBOOK_ADDRESS, parse_myso_struct_tag, parse_myso_type_tag,
 };
 
 #[inline]

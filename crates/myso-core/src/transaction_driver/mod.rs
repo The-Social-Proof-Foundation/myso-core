@@ -21,15 +21,15 @@ use std::{
 
 use arc_swap::ArcSwap;
 use effects_certifier::*;
-use mysten_metrics::{monitored_future, spawn_logged_monitored_task};
-use parking_lot::Mutex;
-use rand::Rng;
 use myso_types::{
     committee::EpochId,
     error::{ErrorCategory, UserInputError},
     messages_grpc::{PingType, SubmitTxRequest, SubmitTxResult, TxType},
     transaction::TransactionDataAPI as _,
 };
+use mysten_metrics::{monitored_future, spawn_logged_monitored_task};
+use parking_lot::Mutex;
+use rand::Rng;
 use tokio::{
     task::JoinSet,
     time::{interval, sleep},

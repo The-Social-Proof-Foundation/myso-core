@@ -5,11 +5,11 @@
 use crate::artifacts::{MoveCallInfo, ReplayCacheSummary};
 use anyhow::{Result, anyhow, bail};
 use move_trace_format::format::{MoveTrace, MoveTraceReader};
+use myso_types::{effects::TransactionEffects, gas::GasUsageReport};
 use std::{
     io::Write,
     path::{Path, PathBuf},
 };
-use myso_types::{effects::TransactionEffects, gas::GasUsageReport};
 
 pub const ARTIFACTS_ENCODING_EXT: &str = "json";
 pub const ARTIFACTS_ENCODING_COMPRESSION_EXT: &str = "json.zst";

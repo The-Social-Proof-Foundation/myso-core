@@ -9,14 +9,14 @@ use super::{
 };
 use anemo::codegen::InboundRequestLayer;
 use anemo_tower::{inflight_limit, rate_limit};
-use std::{
-    collections::HashMap,
-    sync::{Arc, RwLock},
-};
 use myso_config::node::ArchiveReaderConfig;
 use myso_config::p2p::StateSyncConfig;
 use myso_types::messages_checkpoint::VerifiedCheckpoint;
 use myso_types::storage::WriteStore;
+use std::{
+    collections::HashMap,
+    sync::{Arc, RwLock},
+};
 use tap::Pipe;
 use tokio::{
     sync::{broadcast, mpsc},

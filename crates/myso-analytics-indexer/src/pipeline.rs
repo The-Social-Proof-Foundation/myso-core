@@ -7,14 +7,14 @@
 use std::sync::Arc;
 
 use anyhow::Result;
+use myso_indexer_alt_framework::Indexer;
+use myso_indexer_alt_framework::pipeline::Processor;
+use myso_indexer_alt_framework::pipeline::sequential::SequentialConfig;
 use num_enum::IntoPrimitive;
 use num_enum::TryFromPrimitive;
 use serde::Deserialize;
 use serde::Serialize;
 use strum_macros::EnumIter;
-use myso_indexer_alt_framework::Indexer;
-use myso_indexer_alt_framework::pipeline::Processor;
-use myso_indexer_alt_framework::pipeline::sequential::SequentialConfig;
 
 use crate::config::PipelineConfig;
 use crate::handlers::AnalyticsHandler;

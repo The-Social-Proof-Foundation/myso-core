@@ -8,11 +8,6 @@ use std::sync::RwLock;
 use std::time::Duration;
 
 use mock_store::MockStore;
-use object_store::ObjectStore;
-use object_store::ObjectStoreExt as _;
-use object_store::memory::InMemory;
-use parquet::file::reader::FileReader;
-use prost::Message;
 use myso_indexer_alt_framework::ingestion::IngestionConfig;
 use myso_indexer_alt_framework::pipeline::sequential::SequentialConfig;
 use myso_indexer_alt_framework::store::Store;
@@ -25,6 +20,11 @@ use myso_rpc::proto::myso::rpc;
 use myso_types::full_checkpoint_content::Checkpoint;
 use myso_types::test_checkpoint_data_builder::AdvanceEpochConfig;
 use myso_types::test_checkpoint_data_builder::TestCheckpointBuilder;
+use object_store::ObjectStore;
+use object_store::ObjectStoreExt as _;
+use object_store::memory::InMemory;
+use parquet::file::reader::FileReader;
+use prost::Message;
 use tempfile::TempDir;
 
 use myso_analytics_indexer::RowSchema;

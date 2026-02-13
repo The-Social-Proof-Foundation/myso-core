@@ -3,16 +3,16 @@
 // SPDX-License-Identifier: Apache-2.0
 
 use itertools::Itertools;
-use mysten_common::fatal;
-use mysten_metrics::monitored_scope;
-use prometheus::{IntGauge, Registry, register_int_gauge_with_registry};
-use serde::Serialize;
 use myso_protocol_config::ProtocolConfig;
 use myso_types::base_types::{ObjectID, ObjectRef, SequenceNumber, VersionNumber};
 use myso_types::committee::EpochId;
 use myso_types::digests::{ObjectDigest, TransactionDigest};
 use myso_types::in_memory_storage::InMemoryStorage;
 use myso_types::storage::{ObjectKey, ObjectStore};
+use mysten_common::fatal;
+use mysten_metrics::monitored_scope;
+use prometheus::{IntGauge, Registry, register_int_gauge_with_registry};
+use serde::Serialize;
 use tracing::debug;
 
 use std::collections::{HashMap, HashSet};

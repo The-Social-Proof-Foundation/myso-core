@@ -4,7 +4,6 @@
 
 use anyhow::Context;
 use clap::Parser;
-use prometheus::Registry;
 use myso_futures::service::Error;
 use myso_indexer_alt_graphql::args::Args;
 use myso_indexer_alt_graphql::args::Command;
@@ -13,6 +12,7 @@ use myso_indexer_alt_graphql::config::RpcLayer;
 use myso_indexer_alt_graphql::start_rpc;
 use myso_indexer_alt_metrics::MetricsService;
 use myso_indexer_alt_metrics::uptime;
+use prometheus::Registry;
 use tokio::fs;
 
 // Define the `GIT_REVISION` const

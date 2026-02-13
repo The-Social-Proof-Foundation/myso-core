@@ -999,9 +999,9 @@ impl TryFrom<&SystemState>
             stake_subsidy_distribution_counter: s.stake_subsidy().distribution_counter(),
             // Proto has current_distribution_amount; treat as current_apy_bps when sender uses APY model
             stake_subsidy_current_apy_bps: s.stake_subsidy().current_distribution_amount(),
-            stake_subsidy_max_apy_bps: 10000,  // default; proto has no max_apy_bps
-            stake_subsidy_min_apy_bps: 0,      // default; proto has no min_apy_bps
-            stake_subsidy_intended_duration_years: 10,  // default; proto has no intended_duration_years
+            stake_subsidy_max_apy_bps: 10000, // default; proto has no max_apy_bps
+            stake_subsidy_min_apy_bps: 0,     // default; proto has no min_apy_bps
+            stake_subsidy_intended_duration_years: 10, // default; proto has no intended_duration_years
             stake_subsidy_period_length: s.stake_subsidy().stake_subsidy_period_length(),
             stake_subsidy_decrease_rate: s.stake_subsidy().stake_subsidy_decrease_rate() as u16,
             total_stake: s.validators().total_stake(),
@@ -2409,7 +2409,8 @@ impl From<crate::messages_consensus::ConsensusCommitPrologueV4> for ConsensusCom
         let mut message = Self::default();
         message.epoch = Some(epoch);
         message.round = Some(round);
-        message.commit_timestamp = Some(myso_rpc::proto::timestamp_ms_to_proto(commit_timestamp_ms));
+        message.commit_timestamp =
+            Some(myso_rpc::proto::timestamp_ms_to_proto(commit_timestamp_ms));
         message.consensus_commit_digest = Some(consensus_commit_digest.to_string());
         message.sub_dag_index = sub_dag_index;
         message.consensus_determined_version_assignments =

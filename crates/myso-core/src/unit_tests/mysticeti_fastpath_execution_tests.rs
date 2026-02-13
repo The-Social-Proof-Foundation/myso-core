@@ -2,7 +2,6 @@
 // Copyright (c) The Social Proof Foundation, LLC.
 // SPDX-License-Identifier: Apache-2.0
 
-use std::sync::Arc;
 use myso_test_transaction_builder::TestTransactionBuilder;
 use myso_types::base_types::random_object_ref;
 use myso_types::crypto::get_account_key_pair;
@@ -12,6 +11,7 @@ use myso_types::message_envelope::Message;
 use myso_types::object::Object;
 use myso_types::transaction::VerifiedTransaction;
 use myso_types::utils::to_sender_signed_transaction;
+use std::sync::Arc;
 
 use crate::authority::ExecutionEnv;
 use crate::authority::test_authority_builder::TestAuthorityBuilder;

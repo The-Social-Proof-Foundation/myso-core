@@ -5,9 +5,9 @@
 use anyhow::Result;
 use async_trait::async_trait;
 use move_core_types::account_address::AccountAddress;
+use myso_package_resolver::{Package, PackageStore, error::Error as PackageResolverError};
 use std::collections::HashMap;
 use std::sync::Arc;
-use myso_package_resolver::{Package, PackageStore, error::Error as PackageResolverError};
 use tokio::sync::Mutex;
 use tracing::{error, info};
 

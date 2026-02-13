@@ -6,11 +6,11 @@ use futures::Future;
 use futures::{StreamExt, future::BoxFuture, stream::FuturesUnordered};
 use mysten_metrics::monitored_future;
 
+use myso_types::base_types::ConciseableName;
+use myso_types::committee::{CommitteeTrait, StakeUnit};
 use std::collections::{BTreeMap, BTreeSet};
 use std::sync::Arc;
 use std::time::{Duration, Instant};
-use myso_types::base_types::ConciseableName;
-use myso_types::committee::{CommitteeTrait, StakeUnit};
 
 use tokio::time::timeout;
 

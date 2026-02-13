@@ -5,8 +5,6 @@
 use crate::ValidatorProxy;
 use crate::workloads::Gas;
 use anyhow::Result;
-use std::path::PathBuf;
-use std::sync::Arc;
 use myso_keys::keystore::{AccountKeystore, FileBasedKeystore};
 use myso_test_transaction_builder::TestTransactionBuilder;
 use myso_types::base_types::ObjectRef;
@@ -15,6 +13,8 @@ use myso_types::object::Owner;
 use myso_types::transaction::{TEST_ONLY_GAS_UNIT_FOR_TRANSFER, Transaction, TransactionData};
 use myso_types::utils::to_sender_signed_transaction;
 use myso_types::{base_types::MySoAddress, crypto::MySoKeyPair};
+use std::path::PathBuf;
+use std::sync::Arc;
 
 // This is the maximum gas we will transfer from primary coin into any gas coin
 // for running the benchmark

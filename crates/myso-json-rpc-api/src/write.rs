@@ -7,8 +7,8 @@ use jsonrpsee::core::RpcResult;
 use jsonrpsee::proc_macros::rpc;
 
 use myso_json_rpc_types::{
-    DevInspectArgs, DevInspectResults, DryRunTransactionBlockResponse, MySoTransactionBlockResponse,
-    MySoTransactionBlockResponseOptions,
+    DevInspectArgs, DevInspectResults, DryRunTransactionBlockResponse,
+    MySoTransactionBlockResponse, MySoTransactionBlockResponseOptions,
 };
 use myso_open_rpc_macros::open_rpc;
 use myso_types::base_types::MySoAddress;

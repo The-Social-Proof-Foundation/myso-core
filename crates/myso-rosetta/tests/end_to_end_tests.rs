@@ -3,6 +3,19 @@
 // SPDX-License-Identifier: Apache-2.0
 
 use anyhow::{Result, anyhow};
+use myso_keys::keystore::AccountKeystore;
+use myso_rosetta::CoinMetadataCache;
+use myso_rosetta::operations::Operations;
+use myso_rosetta::types::{
+    AccountBalanceRequest, AccountBalanceResponse, AccountIdentifier, Currency, MySoEnv,
+    NetworkIdentifier, SubAccount, SubAccountType,
+};
+use myso_rosetta::types::{Currencies, OperationType, TransactionIdentifierResponse};
+use myso_rpc::client::Client as GrpcClient;
+use myso_rpc::field::FieldMaskUtil;
+use myso_rpc::proto::myso::rpc::v2::{
+    GetCheckpointRequest, GetEpochRequest, GetTransactionRequest,
+};
 use prost_types::FieldMask;
 use rosetta_client::start_rosetta_test_server;
 use serde_json::json;
@@ -10,25 +23,14 @@ use shared_crypto::intent::Intent;
 use std::collections::HashMap;
 use std::num::NonZeroUsize;
 use std::str::FromStr;
-use myso_keys::keystore::AccountKeystore;
-use myso_rosetta::CoinMetadataCache;
-use myso_rosetta::operations::Operations;
-use myso_rosetta::types::{
-    AccountBalanceRequest, AccountBalanceResponse, AccountIdentifier, Currency, NetworkIdentifier,
-    SubAccount, SubAccountType, MySoEnv,
-};
-use myso_rosetta::types::{Currencies, OperationType, TransactionIdentifierResponse};
-use myso_rpc::client::Client as GrpcClient;
-use myso_rpc::field::FieldMaskUtil;
-use myso_rpc::proto::myso::rpc::v2::{GetCheckpointRequest, GetEpochRequest, GetTransactionRequest};
 
 mod test_utils;
 use myso_swarm_config::genesis_config::{DEFAULT_GAS_AMOUNT, DEFAULT_NUMBER_OF_OBJECT_PER_ACCOUNT};
-use myso_types::base_types::{ObjectID, ObjectRef, MySoAddress};
+use myso_types::base_types::{MySoAddress, ObjectID, ObjectRef};
 use myso_types::governance::ADD_STAKE_MUL_COIN_FUN_NAME;
+use myso_types::myso_system_state::MYSO_SYSTEM_MODULE_NAME;
 use myso_types::programmable_transaction_builder::ProgrammableTransactionBuilder;
 use myso_types::rpc_proto_conversions::ObjectReferenceExt;
-use myso_types::myso_system_state::MYSO_SYSTEM_MODULE_NAME;
 use myso_types::transaction::{
     Argument, CallArg, Command, InputObjectKind, ObjectArg, TEST_ONLY_GAS_UNIT_FOR_TRANSFER,
     Transaction, TransactionData,
@@ -933,7 +935,8 @@ async fn test_balance_from_obj_paid_eq_gas() {
     let mut balance_change = BalanceChange::default();
     balance_change.address = Some(RECIPIENT.to_string());
     balance_change.coin_type = Some(
-        "0x0000000000000000000000000000000000000000000000000000000000000002::myso::MYSO".to_string(),
+        "0x0000000000000000000000000000000000000000000000000000000000000002::myso::MYSO"
+            .to_string(),
     );
     balance_change.amount = Some(AMOUNT.to_string());
     executed_transaction.balance_changes = vec![balance_change];

@@ -14,14 +14,14 @@ use anyhow::Result;
 use axum::{Extension, Router, extract::DefaultBodyLimit, middleware, routing::post};
 use fastcrypto::ed25519::{Ed25519KeyPair, Ed25519PublicKey};
 use fastcrypto::traits::{KeyPair, ToFromBytes};
-use rustls::pki_types::{CertificateDer, PrivateKeyDer, pem::PemObject};
-use std::net::SocketAddr;
-use std::sync::Arc;
-use std::time::Duration;
 use myso_tls::MYSO_VALIDATOR_SERVER_NAME;
 use myso_tls::{
     AllowAll, ClientCertVerifier, SelfSignedCertificate, TlsAcceptor, rustls::ServerConfig,
 };
+use rustls::pki_types::{CertificateDer, PrivateKeyDer, pem::PemObject};
+use std::net::SocketAddr;
+use std::sync::Arc;
+use std::time::Duration;
 use tokio::signal;
 use tower::ServiceBuilder;
 use tower_http::{

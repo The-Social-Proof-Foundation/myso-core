@@ -15,12 +15,12 @@ use move_binary_format::{
     file_format_common::VERSION_1,
 };
 use move_vm_config::verifier::VerifierConfig;
-use mysten_common::in_integration_test;
-use serde::{Deserialize, Serialize};
-use serde_with::skip_serializing_none;
 use myso_protocol_config_macros::{
     ProtocolConfigAccessors, ProtocolConfigFeatureFlagsGetters, ProtocolConfigOverride,
 };
+use mysten_common::in_integration_test;
+use serde::{Deserialize, Serialize};
+use serde_with::skip_serializing_none;
 use tracing::{info, warn};
 
 /// The minimum and maximum protocol versions supported by this build.

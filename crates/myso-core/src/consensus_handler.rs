@@ -16,17 +16,6 @@ use consensus_core::{CommitConsumerMonitor, CommitIndex, CommitRef};
 use consensus_types::block::TransactionIndex;
 use fastcrypto_zkp::bn254::zk_login::{JWK, JwkId};
 use lru::LruCache;
-use mysten_common::{
-    assert_reachable, assert_sometimes, debug_fatal, random_util::randomize_cache_capacity_in_tests,
-};
-use mysten_metrics::{
-    monitored_future,
-    monitored_mpsc::{self, UnboundedReceiver},
-    monitored_scope, spawn_monitored_task,
-};
-use nonempty::NonEmpty;
-use parking_lot::RwLockWriteGuard;
-use serde::{Deserialize, Serialize};
 use myso_macros::{fail_point, fail_point_arg, fail_point_if};
 use myso_protocol_config::{PerObjectCongestionControlMode, ProtocolConfig};
 use myso_types::{
@@ -55,6 +44,17 @@ use myso_types::{
         VerifiedTransaction, WithAliases,
     },
 };
+use mysten_common::{
+    assert_reachable, assert_sometimes, debug_fatal, random_util::randomize_cache_capacity_in_tests,
+};
+use mysten_metrics::{
+    monitored_future,
+    monitored_mpsc::{self, UnboundedReceiver},
+    monitored_scope, spawn_monitored_task,
+};
+use nonempty::NonEmpty;
+use parking_lot::RwLockWriteGuard;
+use serde::{Deserialize, Serialize};
 use tokio::task::JoinSet;
 use tracing::{debug, error, info, instrument, trace, warn};
 
@@ -3474,11 +3474,10 @@ mod tests {
         BlockAPI, CommitDigest, CommitRef, CommittedSubDag, TestBlock, Transaction, VerifiedBlock,
     };
     use futures::pin_mut;
-    use prometheus::Registry;
     use myso_protocol_config::{ConsensusTransactionOrdering, ProtocolConfig};
     use myso_types::{
         base_types::ExecutionDigests,
-        base_types::{AuthorityName, FullObjectRef, ObjectID, MySoAddress, random_object_ref},
+        base_types::{AuthorityName, FullObjectRef, MySoAddress, ObjectID, random_object_ref},
         committee::Committee,
         crypto::deterministic_random_account_key,
         gas::GasCostSummary,
@@ -3493,6 +3492,7 @@ mod tests {
             CertifiedTransaction, TransactionData, TransactionDataAPI, VerifiedCertificate,
         },
     };
+    use prometheus::Registry;
 
     use super::*;
     use crate::{

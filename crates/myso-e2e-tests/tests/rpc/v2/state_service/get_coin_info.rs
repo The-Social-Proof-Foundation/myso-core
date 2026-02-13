@@ -2,9 +2,6 @@
 // Copyright (c) The Social Proof Foundation, LLC.
 // SPDX-License-Identifier: Apache-2.0
 
-use prost_types::FieldMask;
-use std::path::PathBuf;
-use std::str::FromStr;
 use myso_macros::sim_test;
 use myso_rpc::field::FieldMaskUtil;
 use myso_rpc::proto::myso::rpc::v2::GetCoinInfoRequest;
@@ -13,13 +10,16 @@ use myso_rpc::proto::myso::rpc::v2::coin_metadata::MetadataCapState;
 use myso_rpc::proto::myso::rpc::v2::coin_treasury::SupplyState;
 use myso_rpc::proto::myso::rpc::v2::regulated_coin_metadata::CoinRegulatedState;
 use myso_rpc::proto::myso::rpc::v2::state_service_client::StateServiceClient;
-use myso_types::base_types::{ObjectID, MySoAddress};
+use myso_types::base_types::{MySoAddress, ObjectID};
 use myso_types::coin_registry::Currency;
 use myso_types::effects::TransactionEffectsAPI;
 use myso_types::programmable_transaction_builder::ProgrammableTransactionBuilder;
 use myso_types::transaction::SharedObjectMutability;
 use myso_types::transaction::{ObjectArg, TransactionData};
 use myso_types::{MYSO_COIN_REGISTRY_OBJECT_ID, MYSO_FRAMEWORK_PACKAGE_ID, TypeTag};
+use prost_types::FieldMask;
+use std::path::PathBuf;
+use std::str::FromStr;
 use test_cluster::TestClusterBuilder;
 
 // MYSO doesn't use the CoinRegistry - it was created before the CoinRegistry system existed and has

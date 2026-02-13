@@ -6,7 +6,7 @@ use crate::crypto::PublicKey;
 use crate::signature_verification::VerifiedDigestCache;
 use crate::{
     base_types::{EpochId, MySoAddress},
-    crypto::{DefaultHash, Signature, SignatureScheme, MySoSignature},
+    crypto::{DefaultHash, MySoSignature, Signature, SignatureScheme},
     digests::ZKLoginInputsDigest,
     error::{MySoErrorKind, MySoResult},
     signature::{AuthenticatorTrait, VerifyParams},

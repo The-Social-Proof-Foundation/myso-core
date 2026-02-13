@@ -8,8 +8,8 @@
 use crate::error::{BridgeError, BridgeResult};
 use crate::myso_client::MySoBridgeClient;
 use crate::utils::EthProvider;
-use alloy::network::TransactionBuilder;
 use alloy::network::EthereumWallet;
+use alloy::network::TransactionBuilder;
 use alloy::primitives::{Address as EthAddress, TxHash, U256};
 use alloy::providers::{Provider, ProviderBuilder};
 use alloy::rpc::types::TransactionRequest;
@@ -77,19 +77,17 @@ impl DepositGasManager {
             BridgeError::Generic("EVM provider not configured for gas management".to_string())
         })?;
 
-        let _relayer_signer = self.relayer_eth_signer.as_ref().ok_or_else(|| {
-            BridgeError::Generic("Relayer EVM wallet not configured".to_string())
-        })?;
+        let _relayer_signer = self
+            .relayer_eth_signer
+            .as_ref()
+            .ok_or_else(|| BridgeError::Generic("Relayer EVM wallet not configured".to_string()))?;
 
-        let balance = provider
-            .get_balance(deposit_address)
-            .await
-            .map_err(|e| {
-                BridgeError::Generic(format!(
-                    "Failed to check balance for {:?}: {:?}",
-                    deposit_address, e
-                ))
-            })?;
+        let balance = provider.get_balance(deposit_address).await.map_err(|e| {
+            BridgeError::Generic(format!(
+                "Failed to check balance for {:?}: {:?}",
+                deposit_address, e
+            ))
+        })?;
 
         let total_gas_needed = approval_gas_limit + bridge_gas_limit;
         let required_balance = gas_price
@@ -118,7 +116,9 @@ impl DepositGasManager {
             let funding_amount_with_buffer = funding_amount
                 .checked_mul(U256::from(120))
                 .and_then(|v| v.checked_div(U256::from(100)))
-                .ok_or_else(|| BridgeError::Generic("Funding buffer calculation overflow".to_string()))?;
+                .ok_or_else(|| {
+                    BridgeError::Generic("Funding buffer calculation overflow".to_string())
+                })?;
 
             info!(
                 ?deposit_address,
@@ -144,33 +144,26 @@ impl DepositGasManager {
     }
 
     /// Send ETH from relayer's main wallet to a deposit address
-    async fn fund_evm_address(
-        &self,
-        to_address: EthAddress,
-        amount: U256,
-    ) -> BridgeResult<TxHash> {
-        let provider = self.eth_provider.as_ref().ok_or_else(|| {
-            BridgeError::Generic("EVM provider not configured".to_string())
-        })?;
+    async fn fund_evm_address(&self, to_address: EthAddress, amount: U256) -> BridgeResult<TxHash> {
+        let provider = self
+            .eth_provider
+            .as_ref()
+            .ok_or_else(|| BridgeError::Generic("EVM provider not configured".to_string()))?;
 
         let signer = self
             .relayer_eth_signer
             .as_ref()
             .ok_or_else(|| BridgeError::Generic("Relayer wallet not configured".to_string()))?
             .clone()
-            .with_chain_id(Some(
-                self.eth_chain_id
-                    .ok_or_else(|| BridgeError::Generic("Chain ID not configured".to_string()))?,
-            ));
+            .with_chain_id(Some(self.eth_chain_id.ok_or_else(|| {
+                BridgeError::Generic("Chain ID not configured".to_string())
+            })?));
 
         let relayer_address = signer.address();
 
-        let relayer_balance = provider
-            .get_balance(relayer_address)
-            .await
-            .map_err(|e| {
-                BridgeError::Generic(format!("Failed to check relayer balance: {:?}", e))
-            })?;
+        let relayer_balance = provider.get_balance(relayer_address).await.map_err(|e| {
+            BridgeError::Generic(format!("Failed to check relayer balance: {:?}", e))
+        })?;
 
         if relayer_balance < amount {
             return Err(BridgeError::Generic(format!(
@@ -238,13 +231,15 @@ impl DepositGasManager {
 
     /// Check if relayer's main EVM wallet has sufficient balance
     pub async fn check_relayer_evm_balance(&self) -> BridgeResult<U256> {
-        let provider = self.eth_provider.as_ref().ok_or_else(|| {
-            BridgeError::Generic("EVM provider not configured".to_string())
-        })?;
+        let provider = self
+            .eth_provider
+            .as_ref()
+            .ok_or_else(|| BridgeError::Generic("EVM provider not configured".to_string()))?;
 
-        let signer = self.relayer_eth_signer.as_ref().ok_or_else(|| {
-            BridgeError::Generic("Relayer wallet not configured".to_string())
-        })?;
+        let signer = self
+            .relayer_eth_signer
+            .as_ref()
+            .ok_or_else(|| BridgeError::Generic("Relayer wallet not configured".to_string()))?;
 
         let balance = provider
             .get_balance(signer.address())

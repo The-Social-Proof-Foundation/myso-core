@@ -2,13 +2,13 @@
 // Copyright (c) The Social Proof Foundation, LLC.
 // SPDX-License-Identifier: Apache-2.0
 
-use prost::Message;
-use rand::SeedableRng;
-use rand::prelude::StdRng;
 use myso_rpc::field::FieldMask;
 use myso_rpc::field::FieldMaskUtil;
 use myso_rpc::merge::Merge;
 use myso_rpc::proto::myso::rpc;
+use prost::Message;
+use rand::SeedableRng;
+use rand::prelude::StdRng;
 
 use crate::types::crypto::KeypairTraits;
 use crate::types::full_checkpoint_content::CheckpointData;

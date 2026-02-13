@@ -7,8 +7,6 @@ use std::{collections::BTreeMap, path::PathBuf, sync::Arc, time::Duration};
 use move_binary_format::CompiledModule;
 use move_bytecode_utils::module_cache::GetModule;
 use move_core_types::{language_storage::ModuleId, resolver::ModuleResolver};
-use simulacrum::Simulacrum;
-use std::num::NonZeroUsize;
 use myso_config::genesis;
 use myso_protocol_config::ProtocolConfig;
 use myso_swarm_config::genesis_config::AccountConfig;
@@ -16,7 +14,7 @@ use myso_swarm_config::network_config_builder::{ConfigBuilder, KeyPairWrapper};
 use myso_types::error::MySoErrorKind;
 use myso_types::storage::{ReadStore, RpcStateReader};
 use myso_types::{
-    base_types::{ObjectID, SequenceNumber, MySoAddress, VersionNumber},
+    base_types::{MySoAddress, ObjectID, SequenceNumber, VersionNumber},
     committee::{Committee, EpochId},
     digests::{ObjectDigest, TransactionDigest},
     effects::{TransactionEffects, TransactionEffectsAPI, TransactionEvents},
@@ -32,6 +30,8 @@ use myso_types::{
     },
     transaction::VerifiedTransaction,
 };
+use simulacrum::Simulacrum;
+use std::num::NonZeroUsize;
 use tempfile::tempdir;
 use typed_store::DBMapUtils;
 use typed_store::Map;
@@ -55,7 +55,8 @@ pub struct PersistedStoreInnerReadOnlyWrapper {
 #[derive(Debug, DBMapUtils)]
 pub struct PersistedStoreInner {
     // Checkpoint data
-    checkpoints: DBMap<CheckpointSequenceNumber, myso_types::messages_checkpoint::TrustedCheckpoint>,
+    checkpoints:
+        DBMap<CheckpointSequenceNumber, myso_types::messages_checkpoint::TrustedCheckpoint>,
     checkpoint_digest_to_sequence_number: DBMap<CheckpointDigest, CheckpointSequenceNumber>,
     checkpoint_contents: DBMap<CheckpointContentsDigest, CheckpointContents>,
 

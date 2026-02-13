@@ -6,13 +6,13 @@ use futures::{
     StreamExt,
     stream::{FuturesOrdered, FuturesUnordered},
 };
+use myso_test_transaction_builder::make_transfer_myso_transaction;
 use rand::{
     Rng,
     distributions::{Distribution, Uniform},
     rngs::OsRng,
 };
 use std::collections::{HashMap, HashSet};
-use myso_test_transaction_builder::make_transfer_myso_transaction;
 use tokio::time::{Duration, Instant, sleep};
 use tracing::{debug, trace};
 

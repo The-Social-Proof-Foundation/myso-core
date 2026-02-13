@@ -70,7 +70,8 @@ impl SubscriptionMetrics {
 
 pub struct SubscriptionHandler {
     event_streamer: Streamer<MySoEvent, MySoEvent, EventFilter>,
-    transaction_streamer: Streamer<EffectsWithInput, MySoTransactionBlockEffects, TransactionFilter>,
+    transaction_streamer:
+        Streamer<EffectsWithInput, MySoTransactionBlockEffects, TransactionFilter>,
 }
 
 impl SubscriptionHandler {

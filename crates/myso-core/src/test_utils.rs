@@ -4,9 +4,6 @@
 
 use fastcrypto::traits::KeyPair;
 use move_core_types::{account_address::AccountAddress, ident_str};
-use shared_crypto::intent::{Intent, IntentScope};
-use std::sync::Arc;
-use std::time::Duration;
 use myso_config::genesis::Genesis;
 use myso_macros::nondeterministic;
 use myso_types::base_types::{FullObjectRef, ObjectID, random_object_ref};
@@ -21,12 +18,15 @@ use myso_types::transaction::{
 use myso_types::utils::create_fake_transaction;
 use myso_types::utils::to_sender_signed_transaction;
 use myso_types::{
-    base_types::{AuthorityName, ExecutionDigests, ObjectRef, MySoAddress, TransactionDigest},
+    base_types::{AuthorityName, ExecutionDigests, MySoAddress, ObjectRef, TransactionDigest},
     committee::Committee,
     crypto::{AuthoritySignInfo, AuthoritySignature},
     message_envelope::Message,
     transaction::CertifiedTransaction,
 };
+use shared_crypto::intent::{Intent, IntentScope};
+use std::sync::Arc;
+use std::time::Duration;
 use tokio::time::timeout;
 use tracing::{info, warn};
 

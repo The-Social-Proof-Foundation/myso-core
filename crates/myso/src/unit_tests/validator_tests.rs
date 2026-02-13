@@ -7,10 +7,10 @@ use crate::validator_commands::{
 };
 use anyhow::Ok;
 use fastcrypto::encoding::{Base64, Encoding};
-use shared_crypto::intent::{Intent, IntentMessage};
 use myso_types::crypto::MySoKeyPair;
 use myso_types::transaction::TransactionData;
 use myso_types::{base_types::MySoAddress, crypto::Signature, transaction::Transaction};
+use shared_crypto::intent::{Intent, IntentMessage};
 use test_cluster::TestClusterBuilder;
 
 #[tokio::test]

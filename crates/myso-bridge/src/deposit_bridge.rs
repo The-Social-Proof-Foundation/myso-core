@@ -19,6 +19,7 @@ use alloy::network::TransactionBuilder;
 use alloy::primitives::{Address as EthAddress, TxHash, U256};
 use alloy::providers::{Provider, ProviderBuilder};
 use alloy::rpc::types::TransactionRequest;
+use alloy_signer::Signer;
 use futures::StreamExt;
 use move_core_types::ident_str;
 use move_core_types::language_storage::StructTag;
@@ -28,13 +29,12 @@ use myso_types::coin::Coin;
 use myso_types::digests::TransactionDigest;
 use myso_types::programmable_transaction_builder::ProgrammableTransactionBuilder;
 use myso_types::transaction::{ObjectArg, Transaction, TransactionData};
-use myso_types::{parse_myso_type_tag, BRIDGE_PACKAGE_ID, TypeTag};
+use myso_types::{BRIDGE_PACKAGE_ID, TypeTag, parse_myso_type_tag};
 use shared_crypto::intent::Intent;
 use shared_crypto::intent::IntentMessage;
 use std::collections::HashMap;
 use std::sync::Arc;
 use tokio::sync::RwLock;
-use alloy_signer::Signer;
 use tracing::{info, warn};
 
 /// Max token ID to check when looking up token address (plan fix: extend from 20)
@@ -178,12 +178,9 @@ impl DepositBridgeHandler {
 
         let token_contract_read = EthERC20::new(event.token_address, self.eth_provider.clone());
         let approve_call = token_contract_read.approve(self.eth_bridge_address, amount_to_bridge);
-        let approval_gas_estimate = approve_call
-            .estimate_gas()
-            .await
-            .map_err(|e| {
-                BridgeError::Generic(format!("Failed to estimate approval gas: {:?}", e))
-            })?;
+        let approval_gas_estimate = approve_call.estimate_gas().await.map_err(|e| {
+            BridgeError::Generic(format!("Failed to estimate approval gas: {:?}", e))
+        })?;
         let approval_gas_limit = (approval_gas_estimate * 120 / 100).min(u64::MAX.into()) as u64;
 
         const CONSERVATIVE_BRIDGE_GAS_LIMIT: u64 = 250_000;
@@ -213,19 +210,14 @@ impl DepositBridgeHandler {
         let pending_approval = signer_provider
             .send_transaction(approve_req)
             .await
-            .map_err(|e| {
-                BridgeError::Generic(format!("Failed to send approval: {:?}", e))
-            })?;
+            .map_err(|e| BridgeError::Generic(format!("Failed to send approval: {:?}", e)))?;
 
         let approval_tx_hash = *pending_approval.tx_hash();
         info!(?approval_tx_hash, "Approval transaction sent");
 
-        let approval_receipt = pending_approval
-            .get_receipt()
-            .await
-            .map_err(|e| {
-                BridgeError::Generic(format!("Failed to get approval receipt: {:?}", e))
-            })?;
+        let approval_receipt = pending_approval.get_receipt().await.map_err(|e| {
+            BridgeError::Generic(format!("Failed to get approval receipt: {:?}", e))
+        })?;
 
         if !approval_receipt.status() {
             return Err(BridgeError::Generic(
@@ -233,10 +225,7 @@ impl DepositBridgeHandler {
             ));
         }
 
-        let bridge_contract = EthMySoBridge::new(
-            self.eth_bridge_address,
-            signer_provider.clone(),
-        );
+        let bridge_contract = EthMySoBridge::new(self.eth_bridge_address, signer_provider.clone());
 
         let bridge_call = bridge_contract.bridgeERC20(
             token_id,
@@ -248,11 +237,9 @@ impl DepositBridgeHandler {
         let bridge_gas_estimate = bridge_call
             .estimate_gas()
             .await
-            .map_err(|e| {
-                BridgeError::Generic(format!("Failed to estimate bridge gas: {:?}", e))
-            })?;
-        let bridge_gas_limit = ((bridge_gas_estimate * 120 / 100) as u128)
-            .min(u64::MAX as u128) as u64;
+            .map_err(|e| BridgeError::Generic(format!("Failed to estimate bridge gas: {:?}", e)))?;
+        let bridge_gas_limit =
+            ((bridge_gas_estimate * 120 / 100) as u128).min(u64::MAX as u128) as u64;
 
         self.gas_manager
             .ensure_evm_deposit_has_gas_with_estimates(
@@ -282,9 +269,7 @@ impl DepositBridgeHandler {
         let receipt = pending_bridge
             .get_receipt()
             .await
-            .map_err(|e| {
-                BridgeError::Generic(format!("Failed to get bridge receipt: {:?}", e))
-            })?;
+            .map_err(|e| BridgeError::Generic(format!("Failed to get bridge receipt: {:?}", e)))?;
 
         if !receipt.status() {
             return Err(BridgeError::Generic(
@@ -359,18 +344,11 @@ impl DepositBridgeHandler {
                     StructTag::from(s.as_ref().clone()),
                 )
             }
-            _ => (
-                coin_type_tag.clone(),
-                Coin::type_(coin_type_tag.clone()),
-            ),
+            _ => (coin_type_tag.clone(), Coin::type_(coin_type_tag.clone())),
         };
 
         let coin_obj_ref = self
-            .pick_coin_with_balance(
-                event.recipient,
-                coin_object_type,
-                event.amount,
-            )
+            .pick_coin_with_balance(event.recipient, coin_object_type, event.amount)
             .await?;
 
         self.gas_manager
@@ -391,9 +369,7 @@ impl DepositBridgeHandler {
             .await;
 
         const GAS_BUDGET: u64 = 1_000_000_000;
-        let gas_obj_ref = self
-            .pick_gas_coin_for_address(sender, GAS_BUDGET)
-            .await?;
+        let gas_obj_ref = self.pick_gas_coin_for_address(sender, GAS_BUDGET).await?;
 
         let mut builder = ProgrammableTransactionBuilder::new();
         let arg_target_chain = builder.pure(target_chain).map_err(|e| {
@@ -444,12 +420,9 @@ impl DepositBridgeHandler {
                 info!(?tx_digest, "MySo→EVM deposit bridged successfully");
                 Ok(tx_digest)
             }
-            myso_json_rpc_types::MySoExecutionStatus::Failure { error } => {
-                Err(BridgeError::Generic(format!(
-                    "Bridge transaction failed: {}",
-                    error
-                )))
-            }
+            myso_json_rpc_types::MySoExecutionStatus::Failure { error } => Err(
+                BridgeError::Generic(format!("Bridge transaction failed: {}", error)),
+            ),
         }
     }
 
@@ -526,10 +499,8 @@ impl DepositBridgeHandler {
             }
         }
 
-        let config = EthBridgeConfig::new(
-            self.eth_bridge_config_address,
-            self.eth_provider.clone(),
-        );
+        let config =
+            EthBridgeConfig::new(self.eth_bridge_config_address, self.eth_provider.clone());
 
         for token_id in 0u8..=MAX_TOKEN_ID_LOOKUP {
             match config.tokenAddressOf(token_id).call().await {

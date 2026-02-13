@@ -5,9 +5,9 @@
 use crate::config::Config;
 use anyhow::{Result, anyhow};
 use async_trait::async_trait;
-use object_store::{ObjectStore, ObjectStoreExt as _, path::Path};
 use myso_types::full_checkpoint_content::CheckpointData;
 use myso_types::messages_checkpoint::CertifiedCheckpointSummary;
+use object_store::{ObjectStore, ObjectStoreExt as _, path::Path};
 use tracing::info;
 use url::Url;
 

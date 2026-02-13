@@ -2,9 +2,6 @@
 // Copyright (c) The Social Proof Foundation, LLC.
 // SPDX-License-Identifier: Apache-2.0
 
-use rand::rngs::OsRng;
-use std::sync::Arc;
-use std::time::Duration;
 use myso_macros::sim_test;
 use myso_node::MySoNodeHandle;
 use myso_protocol_config::{Chain, ProtocolConfig};
@@ -26,6 +23,9 @@ use myso_types::myso_system_state::{
     myso_system_state_summary::get_validator_by_pool_id,
 };
 use myso_types::transaction::{Command, TransactionDataAPI, TransactionExpiration};
+use rand::rngs::OsRng;
+use std::sync::Arc;
+use std::time::Duration;
 use test_cluster::{TestCluster, TestClusterBuilder};
 use tokio::time::sleep;
 
@@ -149,8 +149,8 @@ async fn do_test_passive_reconfig(chain: Option<Chain>) {
 #[cfg(msim)]
 #[sim_test]
 async fn test_create_advance_epoch_tx_race() {
-    use std::sync::Arc;
     use myso_macros::{register_fail_point, register_fail_point_async};
+    use std::sync::Arc;
     use tokio::sync::broadcast;
     use tracing::info;
 
@@ -774,11 +774,11 @@ async fn do_test_reconfig_with_committee_change_stress() {
 #[cfg(msim)]
 #[sim_test]
 async fn test_epoch_flag_upgrade() {
-    use std::collections::HashSet;
-    use std::sync::Mutex;
     use myso_core::authority::epoch_start_configuration::EpochFlag;
     use myso_core::authority::epoch_start_configuration::EpochStartConfigTrait;
     use myso_macros::register_fail_point_arg;
+    use std::collections::HashSet;
+    use std::sync::Mutex;
 
     let initial_flags_nodes = Arc::new(Mutex::new(HashSet::new()));
     register_fail_point_arg("initial_epoch_flags", move || {

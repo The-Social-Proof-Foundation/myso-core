@@ -5,10 +5,6 @@
 mod test_utils;
 
 use anyhow::anyhow;
-use shared_crypto::intent::Intent;
-use std::num::NonZeroUsize;
-use std::path::PathBuf;
-use std::str::FromStr;
 use myso_keys::keystore::AccountKeystore;
 use myso_move_build::BuildConfig;
 use myso_rosetta::CoinMetadataCache;
@@ -19,6 +15,10 @@ use myso_types::transaction::{
     InputObjectKind, TEST_ONLY_GAS_UNIT_FOR_HEAVY_COMPUTATION_STORAGE, Transaction,
     TransactionData, TransactionDataAPI, TransactionKind,
 };
+use shared_crypto::intent::Intent;
+use std::num::NonZeroUsize;
+use std::path::PathBuf;
+use std::str::FromStr;
 use test_cluster::TestClusterBuilder;
 use test_utils::{execute_transaction, get_random_myso};
 

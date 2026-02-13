@@ -11,11 +11,11 @@ use myso_types::{
 use myso_package_resolver::Resolver;
 
 use clap::{Parser, Subcommand};
-use std::{fs, path::PathBuf, str::FromStr};
 use myso_light_client::checkpoint::check_and_sync_checkpoints;
 use myso_light_client::config::Config;
 use myso_light_client::package_store::RemotePackageStore;
 use myso_light_client::verifier::{get_verified_effects_and_events, get_verified_object};
+use std::{fs, path::PathBuf, str::FromStr};
 
 use tracing::info;
 

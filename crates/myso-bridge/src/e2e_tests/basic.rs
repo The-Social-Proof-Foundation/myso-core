@@ -21,15 +21,15 @@ use crate::types::{AddTokensOnEvmAction, BridgeAction};
 use crate::utils::publish_and_register_coins_return_add_coins_on_myso_action;
 use alloy::primitives::{Address as EthAddress, U256};
 use alloy::providers::Provider;
-use std::collections::HashSet;
-use std::path::Path;
-use std::sync::Arc;
 use myso_types::bridge::{
     BridgeChainId, BridgeTokenMetadata, BridgeTrait, TOKEN_ID_ETH, get_bridge,
 };
 use myso_types::coin::Coin;
 use myso_types::crypto::get_key_pair;
 use myso_types::effects::TransactionEffectsAPI;
+use std::collections::HashSet;
+use std::path::Path;
+use std::sync::Arc;
 use tracing::info;
 
 #[tokio::test(flavor = "multi_thread", worker_threads = 8)]
@@ -141,7 +141,8 @@ async fn test_bridge_from_eth_to_myso_to_eth() {
 
     let message: eth_myso_bridge::BridgeUtils::Message =
         myso_to_eth_bridge_action.try_into().unwrap();
-    let signatures = get_signatures(bridge_test_cluster.bridge_client(), nonce, myso_chain_id).await;
+    let signatures =
+        get_signatures(bridge_test_cluster.bridge_client(), nonce, myso_chain_id).await;
 
     let (eth_signer, _) = bridge_test_cluster.get_eth_signer_and_address().unwrap();
 
@@ -283,7 +284,8 @@ async fn test_bridge_from_eth_to_myso_to_eth_v2() {
 
     let message: eth_myso_bridge::BridgeUtils::Message =
         myso_to_eth_bridge_action.try_into().unwrap();
-    let signatures = get_signatures(bridge_test_cluster.bridge_client(), nonce, myso_chain_id).await;
+    let signatures =
+        get_signatures(bridge_test_cluster.bridge_client(), nonce, myso_chain_id).await;
 
     let eth_myso_bridge = EthMySoBridge::new(
         bridge_test_cluster.contracts().myso_bridge,

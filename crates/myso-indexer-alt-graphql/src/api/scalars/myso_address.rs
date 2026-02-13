@@ -11,10 +11,10 @@ use async_graphql::Scalar;
 use async_graphql::ScalarType;
 use async_graphql::Value;
 use move_core_types::account_address::AccountAddress;
+use myso_types::base_types::MySoAddress as NativeMySoAddress;
+use myso_types::base_types::ObjectID;
 use serde::Deserialize;
 use serde::Serialize;
-use myso_types::base_types::ObjectID;
-use myso_types::base_types::MySoAddress as NativeMySoAddress;
 
 const MYSO_ADDRESS_LENGTH: usize = 32;
 

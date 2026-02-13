@@ -18,13 +18,6 @@ use crate::{BenchMoveCallArg, ExecutionEffects, ValidatorProxy, convert_move_cal
 use anyhow::anyhow;
 use async_trait::async_trait;
 use move_core_types::identifier::Identifier;
-use rand::Rng;
-use rand::distributions::{Distribution, Standard};
-use regex::Regex;
-use std::str::FromStr;
-use std::sync::Arc;
-use strum::{EnumCount, IntoEnumIterator};
-use strum_macros::{EnumCount as EnumCountMacro, EnumIter};
 use myso_move_build::{BuildConfig, CompiledPackage};
 use myso_protocol_config::ProtocolConfig;
 use myso_test_transaction_builder::{PublishData, TestTransactionBuilder};
@@ -32,9 +25,16 @@ use myso_types::base_types::{ObjectRef, random_object_ref};
 use myso_types::effects::TransactionEffectsAPI;
 use myso_types::transaction::Command;
 use myso_types::transaction::{CallArg, ObjectArg, SharedObjectMutability};
-use myso_types::{base_types::ObjectID, object::Owner};
 use myso_types::{base_types::MySoAddress, crypto::get_key_pair, transaction::Transaction};
+use myso_types::{base_types::ObjectID, object::Owner};
 use myso_types::{transaction::TransactionData, utils::to_sender_signed_transaction};
+use rand::Rng;
+use rand::distributions::{Distribution, Standard};
+use regex::Regex;
+use std::str::FromStr;
+use std::sync::Arc;
+use strum::{EnumCount, IntoEnumIterator};
+use strum_macros::{EnumCount as EnumCountMacro, EnumIter};
 use tracing::debug;
 
 /// Number of vectors to create in LargeTransientRuntimeVectors workload

@@ -15,15 +15,15 @@ use crate::workloads::{Gas, GasCoinConfig, workload::ExpectedFailureType};
 use crate::{ExecutionEffects, ValidatorProxy};
 use async_trait::async_trait;
 use move_core_types::identifier::Identifier;
-use std::{sync::Arc, time::Duration};
 use myso_test_transaction_builder::TestTransactionBuilder;
 use myso_types::transaction::{ObjectArg, SharedObjectMutability};
 use myso_types::{
     MYSO_CLOCK_OBJECT_ID, MYSO_CLOCK_OBJECT_SHARED_VERSION,
     base_types::{ObjectRef, random_object_ref},
 };
-use myso_types::{base_types::ObjectID, object::Owner};
 use myso_types::{base_types::MySoAddress, crypto::get_key_pair, transaction::Transaction};
+use myso_types::{base_types::ObjectID, object::Owner};
+use std::{sync::Arc, time::Duration};
 
 #[derive(Debug)]
 pub struct SlowTestPayload {

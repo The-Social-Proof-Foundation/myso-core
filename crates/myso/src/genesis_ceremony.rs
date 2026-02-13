@@ -6,7 +6,6 @@ use anyhow::Result;
 use camino::Utf8PathBuf;
 use clap::Parser;
 use fastcrypto::encoding::{Encoding, Hex};
-use std::path::PathBuf;
 use myso_config::{MYSO_GENESIS_FILENAME, genesis::UnsignedGenesis};
 use myso_genesis_builder::Builder;
 use myso_types::multiaddr::Multiaddr;
@@ -14,10 +13,11 @@ use myso_types::{
     base_types::MySoAddress,
     committee::ProtocolVersion,
     crypto::{
-        AuthorityKeyPair, KeypairTraits, NetworkKeyPair, MySoKeyPair, generate_proof_of_possession,
+        AuthorityKeyPair, KeypairTraits, MySoKeyPair, NetworkKeyPair, generate_proof_of_possession,
     },
     message_envelope::Message,
 };
+use std::path::PathBuf;
 
 use myso_keys::keypair_file::{
     read_authority_keypair_from_file, read_keypair_from_file, read_network_keypair_from_file,
@@ -269,7 +269,9 @@ mod test {
     use myso_genesis_builder::validator_info::ValidatorInfo;
     use myso_keys::keypair_file::{write_authority_keypair_to_file, write_keypair_to_file};
     use myso_macros::nondeterministic;
-    use myso_types::crypto::{AccountKeyPair, AuthorityKeyPair, MySoKeyPair, get_key_pair_from_rng};
+    use myso_types::crypto::{
+        AccountKeyPair, AuthorityKeyPair, MySoKeyPair, get_key_pair_from_rng,
+    };
 
     #[test]
     #[cfg_attr(msim, ignore)]

@@ -7,9 +7,6 @@
 use crate::error::{BridgeError, BridgeResult};
 use crate::test_utils::DUMMY_MUTALBE_BRIDGE_OBJECT_ARG;
 use async_trait::async_trait;
-use std::collections::HashMap;
-use std::sync::atomic::AtomicU64;
-use std::sync::{Arc, Mutex};
 use myso_json_rpc_types::MySoEvent;
 use myso_types::base_types::ObjectID;
 use myso_types::base_types::ObjectRef;
@@ -21,6 +18,9 @@ use myso_types::gas_coin::GasCoin;
 use myso_types::object::Owner;
 use myso_types::transaction::ObjectArg;
 use myso_types::transaction::Transaction;
+use std::collections::HashMap;
+use std::sync::atomic::AtomicU64;
+use std::sync::{Arc, Mutex};
 
 use crate::myso_client::{ExecuteTransactionResult, MySoClientInner};
 use crate::types::{BridgeAction, BridgeActionStatus, IsBridgePaused, MySoEvents};

@@ -5,12 +5,11 @@
 use move_binary_format::CompiledModule;
 use move_bytecode_utils::module_cache::GetModule;
 use move_core_types::{language_storage::ModuleId, resolver::ModuleResolver};
-use std::collections::{BTreeMap, HashMap};
 use myso_config::genesis;
 use myso_types::error::MySoErrorKind;
 use myso_types::storage::{PackageObject, get_module, load_package_object_from_object_store};
 use myso_types::{
-    base_types::{AuthorityName, ObjectID, SequenceNumber, MySoAddress},
+    base_types::{AuthorityName, MySoAddress, ObjectID, SequenceNumber},
     committee::{Committee, EpochId},
     crypto::{AccountKeyPair, AuthorityKeyPair},
     digests::{ObjectDigest, TransactionDigest},
@@ -24,6 +23,7 @@ use myso_types::{
     storage::{BackingPackageStore, ChildObjectResolver, ObjectStore, ParentSync},
     transaction::VerifiedTransaction,
 };
+use std::collections::{BTreeMap, HashMap};
 
 use super::SimulatorStore;
 

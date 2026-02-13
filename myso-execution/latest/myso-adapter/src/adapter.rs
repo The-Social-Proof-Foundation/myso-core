@@ -22,11 +22,11 @@ mod checked {
         move_vm::MoveVM, native_extensions::NativeContextExtensions,
         native_functions::NativeFunctionTable,
     };
-    use mysten_common::debug_fatal;
     use myso_move_natives::{object_runtime, transaction_context::TransactionContext};
     use myso_types::error::MySoErrorKind;
     use myso_types::metrics::BytecodeVerifierMetrics;
     use myso_verifier::check_for_verifier_timeout;
+    use mysten_common::debug_fatal;
     use tracing::instrument;
 
     use myso_move_natives::{NativesCostTable, object_runtime::ObjectRuntime};

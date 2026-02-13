@@ -11,8 +11,8 @@ use std::{
 use anyhow::{Context, Result, bail, ensure};
 use client::Client;
 use fastcrypto::encoding::{Base64, Encoding};
-use query::{MySoAddress, UInt53, limits, packages};
 use myso_types::object::Object;
+use query::{MySoAddress, UInt53, limits, packages};
 use tracing::info;
 
 mod client;

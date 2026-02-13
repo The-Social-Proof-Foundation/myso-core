@@ -8,19 +8,21 @@ use prost_types::FieldMask;
 use crate::test_utils::{
     execute_transaction, extract_object_ref_from_changed_objects, get_all_coins, get_coin_value,
 };
-use shared_crypto::intent::Intent;
 use myso_keys::keystore::{AccountKeystore, Keystore};
 use myso_rpc::client::Client as GrpcClient;
 use myso_rpc::field::FieldMaskUtil;
 use myso_rpc::proto::myso::rpc::v2::changed_object::IdOperation;
 use myso_rpc::proto::myso::rpc::v2::get_object_result;
-use myso_rpc::proto::myso::rpc::v2::{BatchGetObjectsRequest, ExecutedTransaction, GetObjectRequest};
-use myso_types::base_types::{ObjectID, ObjectRef, MySoAddress};
+use myso_rpc::proto::myso::rpc::v2::{
+    BatchGetObjectsRequest, ExecutedTransaction, GetObjectRequest,
+};
+use myso_types::base_types::{MySoAddress, ObjectID, ObjectRef};
 use myso_types::object::Object;
 use myso_types::programmable_transaction_builder::ProgrammableTransactionBuilder;
 use myso_types::transaction::{
     Argument, Command, ObjectArg, Transaction, TransactionData, TransactionDataAPI,
 };
+use shared_crypto::intent::Intent;
 use test_cluster::TestClusterBuilder;
 
 pub const DEFAULT_GAS_BUDGET: u64 = 900_000_000;

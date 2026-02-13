@@ -4,14 +4,14 @@
 
 #[cfg(msim)]
 mod test {
-    use std::sync::Arc;
-    use std::time::Duration;
     use myso_macros::sim_test;
     use myso_simulator::SimConfig;
     use myso_simulator::configs::uniform_latency_ms;
     use myso_simulator::net::NetSim;
     use myso_simulator::net::config::{InterNodeLatencyMap, LatencyDistribution};
     use myso_simulator::plugin::simulator;
+    use std::sync::Arc;
+    use std::time::Duration;
     use test_cluster::TestClusterBuilder;
 
     fn simple_latency_config() -> SimConfig {

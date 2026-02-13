@@ -3,7 +3,6 @@
 // SPDX-License-Identifier: Apache-2.0
 
 use move_trace_format::format::MoveTraceBuilder;
-use std::sync::Arc;
 use myso_protocol_config::ProtocolConfig;
 use myso_types::execution::ExecutionTiming;
 use myso_types::execution_params::ExecutionOrEarlyError;
@@ -22,6 +21,7 @@ use myso_types::{
     metrics::LimitsMetrics,
     transaction::{CheckedInputObjects, ProgrammableTransaction, TransactionKind},
 };
+use std::sync::Arc;
 
 /// Abstracts over access to the VM across versions of the execution layer.
 pub trait Executor {

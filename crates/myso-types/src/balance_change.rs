@@ -44,7 +44,8 @@ fn coins(objects: &[Object]) -> impl Iterator<Item = (&MySoAddress, TypeTag, u64
             Owner::AddressOwner(myso_address)
             | Owner::ObjectOwner(myso_address)
             | Owner::ConsensusAddressOwner {
-                owner: myso_address, ..
+                owner: myso_address,
+                ..
             } => myso_address,
             Owner::Shared { .. } | Owner::Immutable => return None,
         };

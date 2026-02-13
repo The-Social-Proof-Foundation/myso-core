@@ -133,8 +133,8 @@ mod tests {
     use diesel_async::RunQueryDsl;
     use myso_indexer_alt_framework::Indexer;
     use myso_indexer_alt_schema::cp_blooms::CpBloomFilter;
-    use myso_types::base_types::ObjectID;
     use myso_types::base_types::MySoAddress;
+    use myso_types::base_types::ObjectID;
     use myso_types::test_checkpoint_data_builder::TestCheckpointBuilder;
     use myso_types::transaction::TransactionDataAPI;
 

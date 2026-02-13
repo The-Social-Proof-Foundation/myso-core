@@ -13,15 +13,6 @@ use move_unit_test::{
 };
 use move_vm_config::runtime::VMConfig;
 use move_vm_runtime::native_extensions::NativeContextExtensions;
-use once_cell::sync::Lazy;
-use std::{
-    cell::RefCell,
-    collections::BTreeMap,
-    ops::{Deref, DerefMut},
-    path::Path,
-    rc::Rc,
-    sync::{Arc, LazyLock},
-};
 use myso_adapter::gas_meter::MySoGasMeter;
 use myso_move_build::decorate_warnings;
 use myso_move_natives::{
@@ -38,6 +29,15 @@ use myso_types::{
     gas_model::{tables::GasStatus, units_types::Gas},
     in_memory_storage::InMemoryStorage,
     metrics::LimitsMetrics,
+};
+use once_cell::sync::Lazy;
+use std::{
+    cell::RefCell,
+    collections::BTreeMap,
+    ops::{Deref, DerefMut},
+    path::Path,
+    rc::Rc,
+    sync::{Arc, LazyLock},
 };
 
 // Move unit tests will halt after executing this many steps. This is a protection to avoid divergence

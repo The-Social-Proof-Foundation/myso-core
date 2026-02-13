@@ -8,11 +8,6 @@ use async_trait::async_trait;
 use futures::future::join_all;
 use lru::LruCache;
 use move_core_types::language_storage::StructTag;
-use parking_lot::RwLock;
-use rand::Rng;
-use std::collections::BTreeMap;
-use std::num::NonZeroUsize;
-use std::str::FromStr;
 use myso_core::authority::NodeStateDump;
 use myso_json_rpc_api::QUERY_MAX_RESULT_LIMIT;
 use myso_json_rpc_types::EventFilter;
@@ -31,6 +26,11 @@ use myso_types::object::Object;
 use myso_types::transaction::SenderSignedData;
 use myso_types::transaction::TransactionDataAPI;
 use myso_types::transaction::{EndOfEpochTransactionKind, TransactionKind};
+use parking_lot::RwLock;
+use rand::Rng;
+use std::collections::BTreeMap;
+use std::num::NonZeroUsize;
+use std::str::FromStr;
 
 /// This trait defines the interfaces for fetching data from some local or remote store
 #[async_trait]
@@ -618,7 +618,9 @@ fn convert_past_obj_response(resp: MySoPastObjectResponse) -> Result<Object, Rep
             version: r.version,
             digest: r.digest,
         }),
-        MySoPastObjectResponse::ObjectNotExists(id) => Err(ReplayEngineError::ObjectNotExist { id }),
+        MySoPastObjectResponse::ObjectNotExists(id) => {
+            Err(ReplayEngineError::ObjectNotExist { id })
+        }
         MySoPastObjectResponse::VersionNotFound(id, version) => {
             Err(ReplayEngineError::ObjectVersionNotFound { id, version })
         }

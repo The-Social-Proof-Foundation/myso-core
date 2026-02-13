@@ -4,9 +4,6 @@
 
 use crate::checkpoints::checkpoint_executor::{CheckpointExecutionData, CheckpointTransactionData};
 use crate::execution_cache::TransactionCacheRead;
-use prost::Message;
-use std::collections::{BTreeSet, HashMap};
-use std::path::Path;
 use myso_rpc::field::FieldMask;
 use myso_rpc::field::FieldMaskUtil;
 use myso_rpc::merge::Merge;
@@ -17,6 +14,9 @@ use myso_types::full_checkpoint_content::{
     Checkpoint, CheckpointData, ExecutedTransaction, ObjectSet,
 };
 use myso_types::storage::ObjectStore;
+use prost::Message;
+use std::collections::{BTreeSet, HashMap};
+use std::path::Path;
 
 pub(crate) fn store_checkpoint_locally(
     path: impl AsRef<Path>,

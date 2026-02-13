@@ -5,14 +5,6 @@
 use chrono::{DateTime, Utc};
 use config::{DownloadFeedConfigs, UploadFeedConfig, UploadParameters};
 use metrics::OracleMetrics;
-use mysten_metrics::monitored_scope;
-use once_cell::sync::OnceCell;
-use prometheus::Registry;
-use std::ops::Add;
-use std::str::FromStr;
-use std::sync::Arc;
-use std::time::{Duration, SystemTime};
-use std::{collections::HashMap, time::Instant};
 use myso_rpc_api::Client;
 use myso_rpc_api::client::ExecutedTransaction;
 use myso_types::Identifier;
@@ -28,6 +20,14 @@ use myso_types::{
     base_types::MySoAddress,
     transaction::{CallArg, TransactionData},
 };
+use mysten_metrics::monitored_scope;
+use once_cell::sync::OnceCell;
+use prometheus::Registry;
+use std::ops::Add;
+use std::str::FromStr;
+use std::sync::Arc;
+use std::time::{Duration, SystemTime};
+use std::{collections::HashMap, time::Instant};
 use tap::tap::TapFallible;
 
 use myso_sdk::wallet_context::WalletContext;

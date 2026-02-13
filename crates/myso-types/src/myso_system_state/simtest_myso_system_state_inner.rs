@@ -9,7 +9,6 @@ use crate::committee::{CommitteeWithNetworkMetadata, NetworkMetadata};
 use crate::crypto::{AuthorityPublicKey, AuthorityPublicKeyBytes, NetworkPublicKey};
 use crate::error::MySoError;
 use crate::gas::GasCostSummary;
-use crate::storage::ObjectStore;
 use crate::myso_system_state::epoch_start_myso_system_state::{
     EpochStartSystemState, EpochStartValidatorInfoV1,
 };
@@ -17,6 +16,7 @@ use crate::myso_system_state::myso_system_state_summary::{
     MySoSystemStateSummary, MySoValidatorSummary,
 };
 use crate::myso_system_state::{AdvanceEpochParams, MySoSystemStateTrait};
+use crate::storage::ObjectStore;
 use fastcrypto::traits::ToFromBytes;
 use mysten_network::Multiaddr;
 use once_cell::sync::OnceCell;

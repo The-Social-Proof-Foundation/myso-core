@@ -2,15 +2,15 @@
 // Copyright (c) The Social Proof Foundation, LLC.
 // SPDX-License-Identifier: Apache-2.0
 
-use crate::base_types::{MoveObjectType, ObjectDigest, MySoAddress};
+use crate::base_types::{MoveObjectType, MySoAddress, ObjectDigest};
 use crate::crypto::DefaultHash;
 use crate::error::{MySoError, MySoErrorKind, MySoResult};
 use crate::id::UID;
+use crate::myso_serde::MySoTypeTag;
+use crate::myso_serde::Readable;
 use crate::object::{MoveObject, Object};
 use crate::storage::{ChildObjectResolver, ObjectStore};
-use crate::myso_serde::Readable;
-use crate::myso_serde::MySoTypeTag;
-use crate::{MoveTypeTagTrait, ObjectID, MYSO_FRAMEWORK_ADDRESS, SequenceNumber};
+use crate::{MYSO_FRAMEWORK_ADDRESS, MoveTypeTagTrait, ObjectID, SequenceNumber};
 use fastcrypto::encoding::Base64;
 use fastcrypto::hash::HashFunction;
 use move_core_types::annotated_value::{MoveStruct, MoveValue};
@@ -144,7 +144,10 @@ impl DynamicFieldInfo {
         }
     }
 
-    pub fn try_extract_field_name(tag: &StructTag, type_: &DynamicFieldType) -> MySoResult<TypeTag> {
+    pub fn try_extract_field_name(
+        tag: &StructTag,
+        type_: &DynamicFieldType,
+    ) -> MySoResult<TypeTag> {
         match (type_, tag.type_params.first()) {
             (DynamicFieldType::DynamicField, Some(name_type)) => Ok(name_type.clone()),
             (DynamicFieldType::DynamicObject, Some(TypeTag::Struct(s))) => Ok(s
@@ -580,7 +583,10 @@ where
     }
 
     /// Check if the field object exists in the store.
-    pub fn exists(self, child_object_resolver: &dyn ChildObjectResolver) -> Result<bool, MySoError> {
+    pub fn exists(
+        self,
+        child_object_resolver: &dyn ChildObjectResolver,
+    ) -> Result<bool, MySoError> {
         self.load_object(child_object_resolver).map(|r| r.is_some())
     }
 }

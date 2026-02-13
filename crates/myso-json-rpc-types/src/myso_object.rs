@@ -24,7 +24,7 @@ use serde_with::serde_as;
 
 use myso_protocol_config::ProtocolConfig;
 use myso_types::base_types::{
-    ObjectDigest, ObjectID, ObjectInfo, ObjectRef, ObjectType, SequenceNumber, MySoAddress,
+    MySoAddress, ObjectDigest, ObjectID, ObjectInfo, ObjectRef, ObjectType, SequenceNumber,
     TransactionDigest,
 };
 use myso_types::error::{
@@ -34,12 +34,12 @@ use myso_types::error::{
 use myso_types::gas_coin::GasCoin;
 use myso_types::messages_checkpoint::CheckpointSequenceNumber;
 use myso_types::move_package::{MovePackage, TypeOrigin, UpgradeInfo};
-use myso_types::object::{Data, MoveObject, Object, ObjectInner, ObjectRead, Owner};
 use myso_types::myso_serde::BigInt;
-use myso_types::myso_serde::SequenceNumber as AsSequenceNumber;
 use myso_types::myso_serde::MySoStructTag;
+use myso_types::myso_serde::SequenceNumber as AsSequenceNumber;
+use myso_types::object::{Data, MoveObject, Object, ObjectInner, ObjectRead, Owner};
 
-use crate::{Page, MySoMoveStruct, MySoMoveValue};
+use crate::{MySoMoveStruct, MySoMoveValue, Page};
 
 #[derive(Serialize, Deserialize, Debug, JsonSchema, Clone, PartialEq, Eq)]
 pub struct MySoObjectResponse {
@@ -1273,7 +1273,10 @@ pub struct MySoObjectResponseQuery {
 }
 
 impl MySoObjectResponseQuery {
-    pub fn new(filter: Option<MySoObjectDataFilter>, options: Option<MySoObjectDataOptions>) -> Self {
+    pub fn new(
+        filter: Option<MySoObjectDataFilter>,
+        options: Option<MySoObjectDataOptions>,
+    ) -> Self {
         Self { filter, options }
     }
 

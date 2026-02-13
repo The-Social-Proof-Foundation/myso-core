@@ -7,6 +7,18 @@ use crate::checkpoints::{CheckpointStore, CheckpointWatermark};
 use crate::jsonrpc_index::IndexStore;
 use crate::rpc_index::RpcIndexStore;
 use anyhow::anyhow;
+use myso_config::node::AuthorityStorePruningConfig;
+use myso_types::committee::EpochId;
+use myso_types::effects::TransactionEffects;
+use myso_types::effects::TransactionEffectsAPI;
+use myso_types::message_envelope::Message;
+use myso_types::messages_checkpoint::{
+    CheckpointContents, CheckpointDigest, CheckpointSequenceNumber,
+};
+use myso_types::{
+    base_types::{ObjectID, SequenceNumber, TransactionDigest, VersionNumber},
+    storage::ObjectKey,
+};
 use mysten_metrics::{monitored_scope, spawn_monitored_task};
 use once_cell::sync::Lazy;
 use prometheus::{
@@ -21,18 +33,6 @@ use std::sync::Mutex;
 use std::sync::atomic::AtomicU64;
 use std::time::{SystemTime, UNIX_EPOCH};
 use std::{sync::Arc, time::Duration};
-use myso_config::node::AuthorityStorePruningConfig;
-use myso_types::committee::EpochId;
-use myso_types::effects::TransactionEffects;
-use myso_types::effects::TransactionEffectsAPI;
-use myso_types::message_envelope::Message;
-use myso_types::messages_checkpoint::{
-    CheckpointContents, CheckpointDigest, CheckpointSequenceNumber,
-};
-use myso_types::{
-    base_types::{ObjectID, SequenceNumber, TransactionDigest, VersionNumber},
-    storage::ObjectKey,
-};
 use tokio::sync::oneshot::{self, Sender};
 use tokio::time::Instant;
 use tracing::{debug, error, info, warn};
@@ -949,7 +949,6 @@ mod tests {
     use crate::authority::authority_store_types::{
         StoreObject, StoreObjectWrapper, get_store_object,
     };
-    use prometheus::Registry;
     use myso_types::base_types::ObjectDigest;
     use myso_types::effects::TransactionEffects;
     use myso_types::effects::TransactionEffectsAPI;
@@ -958,6 +957,7 @@ mod tests {
         object::Object,
         storage::ObjectKey,
     };
+    use prometheus::Registry;
     use typed_store::Map;
     use typed_store::rocks::{DBMap, MetricConf, ReadWriteOptions, default_db_options};
 

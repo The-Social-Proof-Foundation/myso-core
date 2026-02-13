@@ -3,9 +3,6 @@
 // Copyright (c) The Social Proof Foundation, LLC.
 // SPDX-License-Identifier: Apache-2.0
 
-use shared_crypto::intent::Intent;
-use shared_crypto::intent::IntentMessage;
-use std::net::SocketAddr;
 use myso_core::authority_client::AuthorityAPI;
 use myso_macros::sim_test;
 use myso_protocol_config::ProtocolConfig;
@@ -22,6 +19,9 @@ use myso_types::utils::{
     get_legacy_zklogin_user_address, get_zklogin_user_address, make_zklogin_tx,
 };
 use myso_types::zk_login_authenticator::ZkLoginAuthenticator;
+use shared_crypto::intent::Intent;
+use shared_crypto::intent::IntentMessage;
+use std::net::SocketAddr;
 use test_cluster::TestCluster;
 use test_cluster::TestClusterBuilder;
 
@@ -236,12 +236,12 @@ async fn test_expired_zklogin_sig() {
 #[sim_test]
 async fn test_conflicting_jwks() {
     use futures::StreamExt;
-    use std::collections::HashSet;
-    use std::sync::{Arc, Mutex};
     use myso_json_rpc_types::MySoTransactionBlockEffectsAPI;
     use myso_json_rpc_types::TransactionFilter;
     use myso_types::base_types::ObjectID;
     use myso_types::transaction::{TransactionDataAPI, TransactionKind};
+    use std::collections::HashSet;
+    use std::sync::{Arc, Mutex};
     use tokio::time::Duration;
 
     let test_cluster = TestClusterBuilder::new()

@@ -7,9 +7,8 @@ use std::collections::BTreeSet;
 use move_binary_format::file_format::AbilitySet;
 use move_core_types::u256::U256;
 use move_vm_types::loaded_data::runtime_types::Type;
-use serde::Deserialize;
 use myso_types::{
-    base_types::{ObjectID, SequenceNumber, MySoAddress},
+    base_types::{MySoAddress, ObjectID, SequenceNumber},
     coin::Coin,
     error::{ExecutionError, ExecutionErrorKind},
     execution_status::CommandArgumentError,
@@ -18,6 +17,7 @@ use myso_types::{
     storage::{BackingPackageStore, ChildObjectResolver, StorageView},
     transfer::Receiving,
 };
+use serde::Deserialize;
 
 pub trait MySoResolver: BackingPackageStore {
     fn as_backing_package_store(&self) -> &dyn BackingPackageStore;

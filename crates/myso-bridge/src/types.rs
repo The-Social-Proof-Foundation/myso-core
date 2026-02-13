@@ -15,14 +15,6 @@ use alloy::rpc::types::eth::Log;
 use enum_dispatch::enum_dispatch;
 use fastcrypto::encoding::{Encoding, Hex};
 use fastcrypto::hash::{HashFunction, Keccak256};
-use num_enum::TryFromPrimitive;
-use rand::Rng;
-use rand::seq::SliceRandom;
-use serde::{Deserialize, Serialize};
-use shared_crypto::intent::IntentScope;
-use std::collections::{BTreeMap, BTreeSet};
-use std::fmt::Debug;
-use strum_macros::Display;
 use myso_types::TypeTag;
 use myso_types::base_types::MySoAddress;
 use myso_types::bridge::{
@@ -41,6 +33,14 @@ use myso_types::committee::StakeUnit;
 use myso_types::crypto::ToFromBytes;
 use myso_types::digests::{Digest, TransactionDigest};
 use myso_types::message_envelope::{Envelope, Message, VerifiedEnvelope};
+use num_enum::TryFromPrimitive;
+use rand::Rng;
+use rand::seq::SliceRandom;
+use serde::{Deserialize, Serialize};
+use shared_crypto::intent::IntentScope;
+use std::collections::{BTreeMap, BTreeSet};
+use std::fmt::Debug;
+use strum_macros::Display;
 
 pub const BRIDGE_AUTHORITY_TOTAL_VOTING_POWER: u64 = 10000;
 
@@ -585,15 +585,17 @@ impl BridgeAction {
             crate::encoding::TOKEN_TRANSFER_MESSAGE_VERSION_V1 => {
                 let payload: MySoToEthOnChainBcsPayload = bcs::from_bytes(payload)?;
 
-                Ok(BridgeAction::MySoToEthTokenTransfer(MySoToEthTokenTransfer {
-                    nonce: *seq_num,
-                    myso_chain_id: BridgeChainId::try_from(*source_chain)?,
-                    eth_chain_id: BridgeChainId::try_from(payload.target_chain)?,
-                    myso_address: MySoAddress::from_bytes(payload.myso_address)?,
-                    eth_address: EthAddress::from_str(&Hex::encode(&payload.eth_address))?,
-                    token_id: payload.token_type,
-                    amount_adjusted: u64::from_be_bytes(payload.amount),
-                }))
+                Ok(BridgeAction::MySoToEthTokenTransfer(
+                    MySoToEthTokenTransfer {
+                        nonce: *seq_num,
+                        myso_chain_id: BridgeChainId::try_from(*source_chain)?,
+                        eth_chain_id: BridgeChainId::try_from(payload.target_chain)?,
+                        myso_address: MySoAddress::from_bytes(payload.myso_address)?,
+                        eth_address: EthAddress::from_str(&Hex::encode(&payload.eth_address))?,
+                        token_id: payload.token_type,
+                        amount_adjusted: u64::from_be_bytes(payload.amount),
+                    },
+                ))
             }
             crate::encoding::TOKEN_TRANSFER_MESSAGE_VERSION_V2 => {
                 let payload: MySoToEthOnChainBcsPayloadV2 = bcs::from_bytes(payload)?;
@@ -774,9 +776,9 @@ mod tests {
     use crate::test_utils::get_test_myso_to_eth_bridge_action;
     use alloy::primitives::Address as EthAddress;
     use fastcrypto::traits::KeyPair;
-    use std::collections::HashSet;
     use myso_types::bridge::TOKEN_ID_BTC;
     use myso_types::crypto::get_key_pair;
+    use std::collections::HashSet;
 
     use super::*;
 

@@ -21,20 +21,12 @@ use futures::future::{Either, join_all, select};
 use itertools::{Itertools, izip};
 use moka::sync::SegmentedCache as MokaCache;
 use move_bytecode_utils::module_cache::SyncModuleCache;
-use mysten_common::assert_reachable;
-use mysten_common::random_util::randomize_cache_capacity_in_tests;
-use mysten_common::sync::notify_once::NotifyOnce;
-use mysten_common::sync::notify_read::NotifyRead;
-use mysten_common::{debug_fatal, fatal};
-use mysten_metrics::monitored_scope;
-use nonempty::NonEmpty;
-use parking_lot::RwLock;
-use parking_lot::{Mutex, RwLockReadGuard, RwLockWriteGuard};
-use serde::{Deserialize, Serialize};
 use myso_config::node::ExpensiveSafetyCheckConfig;
 use myso_execution::{self, Executor};
 use myso_macros::fail_point;
-use myso_protocol_config::{Chain, PerObjectCongestionControlMode, ProtocolConfig, ProtocolVersion};
+use myso_protocol_config::{
+    Chain, PerObjectCongestionControlMode, ProtocolConfig, ProtocolVersion,
+};
 use myso_storage::mutex_table::{MutexGuard, MutexTable};
 use myso_types::authenticator_state::{ActiveJwk, get_authenticator_state};
 use myso_types::base_types::{
@@ -64,18 +56,28 @@ use myso_types::messages_consensus::{
     ConsensusTransaction, ConsensusTransactionKey, ConsensusTransactionKind, TimestampMs,
     VersionedDkgConfirmation, check_total_jwk_size,
 };
-use myso_types::signature::GenericSignature;
-use myso_types::storage::{BackingPackageStore, InputKey, ObjectStore};
 use myso_types::myso_system_state::epoch_start_myso_system_state::{
     EpochStartSystemState, EpochStartSystemStateTrait,
 };
 use myso_types::myso_system_state::{self, MySoSystemState};
+use myso_types::signature::GenericSignature;
+use myso_types::storage::{BackingPackageStore, InputKey, ObjectStore};
 use myso_types::transaction::{
     AuthenticatorStateUpdate, CertifiedTransaction, DeprecatedWithAliases, InputObjectKind,
     ProgrammableTransaction, SenderSignedData, StoredExecutionTimeObservations, Transaction,
     TransactionData, TransactionDataAPI, TransactionKey, TransactionKind, TxValidityCheckContext,
     VerifiedSignedTransaction, VerifiedTransaction, VerifiedTransactionWithAliases, WithAliases,
 };
+use mysten_common::assert_reachable;
+use mysten_common::random_util::randomize_cache_capacity_in_tests;
+use mysten_common::sync::notify_once::NotifyOnce;
+use mysten_common::sync::notify_read::NotifyRead;
+use mysten_common::{debug_fatal, fatal};
+use mysten_metrics::monitored_scope;
+use nonempty::NonEmpty;
+use parking_lot::RwLock;
+use parking_lot::{Mutex, RwLockReadGuard, RwLockWriteGuard};
+use serde::{Deserialize, Serialize};
 use tap::TapOptional;
 use tokio::sync::{OnceCell, mpsc, oneshot};
 use tokio::time::Instant;
@@ -1714,8 +1716,8 @@ impl AuthorityPerEpochStore {
         }
 
         // Load stored execution time observations from the MySoSystemState object.
-        let system_state =
-            myso_system_state::get_myso_system_state(object_store).expect("System state must exist");
+        let system_state = myso_system_state::get_myso_system_state(object_store)
+            .expect("System state must exist");
         let system_state = match system_state {
             MySoSystemState::V2(system_state) => system_state,
             MySoSystemState::V1(_) => {
@@ -3879,7 +3881,11 @@ impl AuthorityPerEpochStore {
         }
     }
 
-    pub(crate) fn set_rejection_vote_reason(&self, position: ConsensusPosition, reason: &MySoError) {
+    pub(crate) fn set_rejection_vote_reason(
+        &self,
+        position: ConsensusPosition,
+        reason: &MySoError,
+    ) {
         if let Some(tx_reject_reason_cache) = self.tx_reject_reason_cache.as_ref() {
             tx_reject_reason_cache.set_rejection_vote_reason(position, reason);
         }

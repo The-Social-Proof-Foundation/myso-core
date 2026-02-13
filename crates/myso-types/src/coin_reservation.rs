@@ -38,7 +38,7 @@
 use thiserror::Error;
 
 use crate::{
-    base_types::{ObjectID, ObjectRef, SequenceNumber, MySoAddress},
+    base_types::{MySoAddress, ObjectID, ObjectRef, SequenceNumber},
     committee::EpochId,
     digests::{ChainIdentifier, ObjectDigest},
     error::UserInputResult,

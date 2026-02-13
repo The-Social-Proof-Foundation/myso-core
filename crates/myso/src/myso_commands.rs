@@ -21,11 +21,6 @@ use move_analyzer::analyzer;
 use move_command_line_common::files::MOVE_COMPILED_EXTENSION;
 use move_compiler::editions::Flavor;
 use move_package_alt_compilation::build_config::BuildConfig;
-use mysten_common::tempdir;
-use prometheus::Registry;
-use rand::rngs::OsRng;
-use serde_json::json;
-use std::collections::BTreeMap;
 use myso_bridge::config::BridgeCommitteeConfig;
 use myso_bridge::metrics::BridgeMetrics;
 use myso_bridge::myso_client::MySoBridgeClient;
@@ -33,8 +28,8 @@ use myso_bridge::myso_transaction_builder::build_committee_register_transaction;
 use myso_config::node::Genesis;
 use myso_config::p2p::SeedPeer;
 use myso_config::{
-    Config, FULL_NODE_DB_PATH, PersistedConfig, MYSO_CLIENT_CONFIG, MYSO_FULLNODE_CONFIG,
-    MYSO_NETWORK_CONFIG, genesis_blob_exists, myso_config_dir,
+    Config, FULL_NODE_DB_PATH, MYSO_CLIENT_CONFIG, MYSO_FULLNODE_CONFIG, MYSO_NETWORK_CONFIG,
+    PersistedConfig, genesis_blob_exists, myso_config_dir,
 };
 use myso_config::{
     MYSO_BENCHMARK_GENESIS_GAS_KEYSTORE_FILENAME, MYSO_GENESIS_FILENAME, MYSO_KEYSTORE_FILENAME,
@@ -77,9 +72,14 @@ use myso_swarm_config::genesis_config::GenesisConfig;
 use myso_swarm_config::network_config::NetworkConfig;
 use myso_swarm_config::network_config_builder::ConfigBuilder;
 use myso_swarm_config::node_config_builder::FullnodeConfigBuilder;
-use myso_types::base_types::{ObjectID, MySoAddress};
-use myso_types::crypto::{SignatureScheme, MySoKeyPair, ToFromBytes};
+use myso_types::base_types::{MySoAddress, ObjectID};
+use myso_types::crypto::{MySoKeyPair, SignatureScheme, ToFromBytes};
 use myso_types::move_package::MovePackage;
+use mysten_common::tempdir;
+use prometheus::Registry;
+use rand::rngs::OsRng;
+use serde_json::json;
+use std::collections::BTreeMap;
 use tokio::time::interval;
 use tracing::info;
 use url::Url;
@@ -1344,12 +1344,16 @@ async fn genesis(
                 }
             } else {
                 fs::remove_dir_all(myso_config_dir).map_err(|err| {
-                    anyhow!(err)
-                        .context(format!("Cannot remove MySo config dir {:?}", myso_config_dir))
+                    anyhow!(err).context(format!(
+                        "Cannot remove MySo config dir {:?}",
+                        myso_config_dir
+                    ))
                 })?;
                 fs::create_dir(myso_config_dir).map_err(|err| {
-                    anyhow!(err)
-                        .context(format!("Cannot create MySo config dir {:?}", myso_config_dir))
+                    anyhow!(err).context(format!(
+                        "Cannot create MySo config dir {:?}",
+                        myso_config_dir
+                    ))
                 })?;
             }
         } else if files.len() != 2 || !client_path.exists() || !keystore_path.exists() {

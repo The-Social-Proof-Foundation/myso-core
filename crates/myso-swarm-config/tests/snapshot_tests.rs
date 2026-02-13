@@ -19,9 +19,6 @@
 
 use fastcrypto::traits::KeyPair;
 use insta::assert_yaml_snapshot;
-use rand::SeedableRng;
-use rand::rngs::StdRng;
-use std::num::NonZeroUsize;
 use myso_config::genesis::{GenesisCeremonyParameters, TokenDistributionScheduleBuilder};
 use myso_config::node::{DEFAULT_COMMISSION_RATE, DEFAULT_VALIDATOR_GAS_PRICE};
 use myso_genesis_builder::Builder;
@@ -29,10 +26,13 @@ use myso_genesis_builder::validator_info::ValidatorInfo;
 use myso_swarm_config::genesis_config::GenesisConfig;
 use myso_types::base_types::MySoAddress;
 use myso_types::crypto::{
-    AccountKeyPair, AuthorityKeyPair, NetworkKeyPair, MySoKeyPair, generate_proof_of_possession,
+    AccountKeyPair, AuthorityKeyPair, MySoKeyPair, NetworkKeyPair, generate_proof_of_possession,
     get_key_pair_from_rng,
 };
 use myso_types::multiaddr::Multiaddr;
+use rand::SeedableRng;
+use rand::rngs::StdRng;
+use std::num::NonZeroUsize;
 
 #[test]
 #[cfg_attr(msim, ignore)]
@@ -109,9 +109,9 @@ fn populated_genesis_snapshot_matches() {
 #[test]
 #[cfg_attr(msim, ignore)]
 fn network_config_snapshot_matches() {
+    use myso_swarm_config::network_config_builder::ConfigBuilder;
     use std::net::{IpAddr, Ipv4Addr, SocketAddr};
     use std::path::PathBuf;
-    use myso_swarm_config::network_config_builder::ConfigBuilder;
 
     let temp_dir = tempfile::tempdir().unwrap();
     let committee_size = 7;

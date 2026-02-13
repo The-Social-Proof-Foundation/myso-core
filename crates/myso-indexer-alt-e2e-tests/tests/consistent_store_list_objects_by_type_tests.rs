@@ -12,8 +12,8 @@ use myso_indexer_alt_consistent_api::proto::rpc::consistent::v1alpha::consistent
 use myso_types::MYSO_FRAMEWORK_ADDRESS;
 use myso_types::MYSO_FRAMEWORK_PACKAGE_ID;
 use myso_types::TypeTag;
-use myso_types::base_types::ObjectRef;
 use myso_types::base_types::MySoAddress;
+use myso_types::base_types::ObjectRef;
 use myso_types::crypto::get_account_key_pair;
 use myso_types::effects::TransactionEffectsAPI;
 use myso_types::programmable_transaction_builder::ProgrammableTransactionBuilder;

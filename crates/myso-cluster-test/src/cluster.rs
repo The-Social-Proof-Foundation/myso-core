@@ -4,9 +4,8 @@
 
 use super::config::{ClusterTestOpt, Env};
 use async_trait::async_trait;
-use std::path::Path;
 use myso_config::Config;
-use myso_config::{PersistedConfig, MYSO_KEYSTORE_FILENAME, MYSO_NETWORK_CONFIG};
+use myso_config::{MYSO_KEYSTORE_FILENAME, MYSO_NETWORK_CONFIG, PersistedConfig};
 use myso_keys::keystore::{AccountKeystore, FileBasedKeystore, Keystore};
 use myso_sdk::myso_client_config::{MySoClientConfig, MySoEnv};
 use myso_sdk::wallet_context::WalletContext;
@@ -17,6 +16,7 @@ use myso_types::base_types::MySoAddress;
 use myso_types::crypto::KeypairTraits;
 use myso_types::crypto::MySoKeyPair;
 use myso_types::crypto::{AccountKeyPair, get_key_pair};
+use std::path::Path;
 use tempfile::tempdir;
 use test_cluster::{TestCluster, TestClusterBuilder};
 use tracing::info;

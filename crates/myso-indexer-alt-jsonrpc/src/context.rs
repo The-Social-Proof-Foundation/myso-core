@@ -5,7 +5,6 @@
 use std::sync::Arc;
 
 use async_graphql::dataloader::DataLoader;
-use prometheus::Registry;
 use myso_indexer_alt_reader::bigtable_reader::BigtableArgs;
 use myso_indexer_alt_reader::bigtable_reader::BigtableReader;
 use myso_indexer_alt_reader::consistent_reader::ConsistentReader;
@@ -16,6 +15,7 @@ use myso_indexer_alt_reader::package_resolver::PackageCache;
 use myso_indexer_alt_reader::pg_reader::PgReader;
 use myso_indexer_alt_reader::pg_reader::db::DbArgs;
 use myso_package_resolver::Resolver;
+use prometheus::Registry;
 use url::Url;
 
 use crate::config::RpcConfig;

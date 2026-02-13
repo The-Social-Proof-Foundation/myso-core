@@ -11247,6 +11247,7 @@ dependencies = [
  "async-trait",
  "bcs",
  "bin-version",
+ "chrono",
  "clap",
  "const-str 0.5.7",
  "dashmap 5.5.3",
@@ -11256,6 +11257,7 @@ dependencies = [
  "futures",
  "hex",
  "itertools 0.13.0",
+ "move-core-types",
  "myso-default-config",
  "myso-indexer-alt-framework",
  "myso-indexer-alt-metrics",
@@ -11267,6 +11269,7 @@ dependencies = [
  "prometheus",
  "rand 0.8.5",
  "serde",
+ "serde_json",
  "telemetry-subscribers",
  "tempfile",
  "tokio",
@@ -11689,9 +11692,11 @@ dependencies = [
 name = "myso-indexer-alt-social-schema"
 version = "0.0.1"
 dependencies = [
+ "chrono",
  "diesel",
  "diesel_migrations",
  "serde",
+ "serde_json",
 ]
 
 [[package]]

@@ -13,7 +13,7 @@ use myso_types::{
     MYSO_ACCUMULATOR_ROOT_OBJECT_ID, TypeTag,
     accumulator_root::AccumulatorValue,
     balance::Balance,
-    base_types::{ObjectID, ObjectRef, MySoAddress},
+    base_types::{MySoAddress, ObjectID, ObjectRef},
     crypto::get_account_key_pair,
     effects::TransactionEffectsAPI,
     executable_transaction::VerifiedExecutableTransaction,

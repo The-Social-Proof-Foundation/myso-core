@@ -7,8 +7,8 @@ pub mod legacy;
 pub mod linked_data_store;
 
 use move_core_types::identifier::IdentStr;
-use std::rc::Rc;
 use myso_types::{base_types::ObjectID, error::MySoResult, move_package::MovePackage};
+use std::rc::Rc;
 
 // A unifying trait that allows us to resolve a type to its defining ID as well as load packages.
 // Some move packages that can be "loaded" via this may not be objects just yet (e.g., if

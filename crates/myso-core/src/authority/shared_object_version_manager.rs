@@ -6,9 +6,6 @@ use crate::authority::AuthorityPerEpochStore;
 use crate::authority::authority_per_epoch_store::CancelConsensusCertificateReason;
 use crate::execution_cache::ObjectCacheRead;
 use either::Either;
-use std::collections::BTreeMap;
-use std::collections::HashMap;
-use std::collections::HashSet;
 use myso_types::MYSO_ACCUMULATOR_ROOT_OBJECT_ID;
 use myso_types::MYSO_CLOCK_OBJECT_ID;
 use myso_types::MYSO_CLOCK_OBJECT_SHARED_VERSION;
@@ -25,6 +22,9 @@ use myso_types::storage::{
 use myso_types::transaction::SharedObjectMutability;
 use myso_types::transaction::{SharedInputObject, TransactionDataAPI, TransactionKey};
 use myso_types::{MYSO_RANDOMNESS_STATE_OBJECT_ID, base_types::SequenceNumber, error::MySoResult};
+use std::collections::BTreeMap;
+use std::collections::HashMap;
+use std::collections::HashSet;
 use tracing::trace;
 
 use super::epoch_start_configuration::EpochStartConfigTrait;
@@ -542,17 +542,17 @@ mod tests {
         ConsensusSharedObjVerAssignment, SharedObjVerManager,
     };
     use crate::authority::test_authority_builder::TestAuthorityBuilder;
-    use std::collections::{BTreeMap, HashMap};
-    use std::sync::Arc;
     use myso_protocol_config::ProtocolConfig;
     use myso_test_transaction_builder::TestTransactionBuilder;
-    use myso_types::base_types::{ObjectID, SequenceNumber, MySoAddress};
+    use myso_types::base_types::{MySoAddress, ObjectID, SequenceNumber};
     use myso_types::crypto::{RandomnessRound, get_account_key_pair};
     use myso_types::digests::ObjectDigest;
     use myso_types::effects::TestEffectsBuilder;
     use myso_types::executable_transaction::{
         CertificateProof, ExecutableTransaction, VerifiedExecutableTransaction,
     };
+    use std::collections::{BTreeMap, HashMap};
+    use std::sync::Arc;
 
     use myso_types::object::Object;
     use myso_types::transaction::{ObjectArg, SenderSignedData, VerifiedTransaction};

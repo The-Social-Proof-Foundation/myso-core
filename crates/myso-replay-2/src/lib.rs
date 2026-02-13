@@ -12,6 +12,13 @@ use anyhow::{Result, anyhow, bail};
 use clap::{Parser, ValueEnum};
 use indicatif::{MultiProgress, ProgressBar, ProgressStyle};
 use move_package_alt::schema::EnvironmentName;
+use myso_config::myso_config_dir;
+use myso_data_store::{
+    Node, ReadDataStore, SetupStore, StoreSummary,
+    stores::{DataStore, FileSystemStore, InMemoryStore, ReadThroughStore},
+};
+use myso_json_rpc_types::MySoTransactionBlockEffects;
+use myso_types::effects::TransactionEffects;
 use serde::Deserialize;
 use similar::{ChangeTag, TextDiff};
 use std::{
@@ -20,13 +27,6 @@ use std::{
     path::{Path, PathBuf},
     time::Duration,
 };
-use myso_config::myso_config_dir;
-use myso_data_store::{
-    Node, ReadDataStore, SetupStore, StoreSummary,
-    stores::{DataStore, FileSystemStore, InMemoryStore, ReadThroughStore},
-};
-use myso_json_rpc_types::MySoTransactionBlockEffects;
-use myso_types::effects::TransactionEffects;
 // Disambiguate external tracing crate from local `crate::tracing` module using absolute path.
 use ::tracing::{Instrument, debug, error, info_span, warn};
 

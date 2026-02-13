@@ -21,11 +21,11 @@ pub use executor::{
     setup_single_workflow_with_options,
 };
 pub use metrics::DataIngestionMetrics;
+use myso_types::full_checkpoint_content::CheckpointData;
 pub use progress_store::{
     ExecutorProgress, FileProgressStore, ProgressStore, ShimIndexerProgressStore, ShimProgressStore,
 };
 pub use reader::{CheckpointReader, ReaderOptions};
-use myso_types::full_checkpoint_content::CheckpointData;
 pub use util::{create_remote_store_client, end_of_epoch_data};
 pub use worker_pool::WorkerPool;
 

@@ -6,13 +6,13 @@ use crate::replay::{ExecutionSandboxState, LocalExec};
 use crate::types::ReplayEngineError;
 use futures::FutureExt;
 use futures::future::join_all;
+use myso_config::node::ExpensiveSafetyCheckConfig;
+use myso_types::base_types::TransactionDigest;
 use parking_lot::Mutex;
 use std::collections::VecDeque;
 use std::path::PathBuf;
 use std::sync::Arc;
 use std::sync::atomic::AtomicUsize;
-use myso_config::node::ExpensiveSafetyCheckConfig;
-use myso_types::base_types::TransactionDigest;
 use tokio::time::Instant;
 use tracing::{error, info};
 

@@ -4,18 +4,11 @@
 
 use futures::{StreamExt, future::join_all};
 use jsonrpsee::http_client::{HttpClient, HttpClientBuilder};
-use mysten_common::fatal;
-use rand::{distributions::*, rngs::OsRng, seq::SliceRandom};
-use std::net::SocketAddr;
-use std::num::NonZeroUsize;
-use std::path::PathBuf;
-use std::sync::{Arc, Mutex};
-use std::time::Duration;
 use myso_config::genesis::Genesis;
 use myso_config::node::FundsWithdrawSchedulerType;
 use myso_config::node::{AuthorityOverloadConfig, DBCheckpointConfig, RunWithRange};
 use myso_config::{Config, ExecutionCacheConfig, MYSO_CLIENT_CONFIG, MYSO_NETWORK_CONFIG};
-use myso_config::{NodeConfig, PersistedConfig, MYSO_KEYSTORE_FILENAME};
+use myso_config::{MYSO_KEYSTORE_FILENAME, NodeConfig, PersistedConfig};
 use myso_core::authority_aggregator::AuthorityAggregator;
 use myso_core::authority_client::NetworkAuthorityClient;
 use myso_json_rpc_types::{MySoTransactionBlockEffectsAPI, TransactionFilter};
@@ -39,7 +32,7 @@ use myso_swarm_config::network_config_builder::{
 use myso_swarm_config::node_config_builder::{FullnodeConfigBuilder, ValidatorConfigBuilder};
 use myso_test_transaction_builder::TestTransactionBuilder;
 use myso_types::base_types::ConciseableName;
-use myso_types::base_types::{AuthorityName, ObjectID, ObjectRef, MySoAddress};
+use myso_types::base_types::{AuthorityName, MySoAddress, ObjectID, ObjectRef};
 use myso_types::committee::CommitteeTrait;
 use myso_types::committee::{Committee, EpochId};
 use myso_types::crypto::KeypairTraits;
@@ -52,13 +45,20 @@ use myso_types::messages_grpc::{
     RawSubmitTxRequest, SubmitTxRequest, SubmitTxResult, SubmitTxType, WaitForEffectsRequest,
     WaitForEffectsResponse,
 };
-use myso_types::object::Object;
 use myso_types::myso_system_state::MySoSystemState;
 use myso_types::myso_system_state::MySoSystemStateTrait;
 use myso_types::myso_system_state::epoch_start_myso_system_state::EpochStartSystemStateTrait;
+use myso_types::object::Object;
 use myso_types::supported_protocol_versions::SupportedProtocolVersions;
 use myso_types::traffic_control::{PolicyConfig, RemoteFirewallConfig};
 use myso_types::transaction::{Transaction, TransactionData, TransactionDataAPI, TransactionKind};
+use mysten_common::fatal;
+use rand::{distributions::*, rngs::OsRng, seq::SliceRandom};
+use std::net::SocketAddr;
+use std::num::NonZeroUsize;
+use std::path::PathBuf;
+use std::sync::{Arc, Mutex};
+use std::time::Duration;
 use tokio::sync::broadcast;
 use tokio::time::{Instant, timeout};
 use tokio::{task::JoinHandle, time::sleep};
@@ -533,25 +533,29 @@ impl TestCluster {
     pub async fn wait_for_authenticator_state_update(&self) {
         timeout(
             Duration::from_secs(60),
-            self.fullnode_handle.myso_node.with_async(|node| async move {
-                let mut txns = node.state().subscription_handler.subscribe_transactions(
-                    TransactionFilter::ChangedObject(ObjectID::from_hex_literal("0x7").unwrap()),
-                );
-                let state = node.state();
+            self.fullnode_handle
+                .myso_node
+                .with_async(|node| async move {
+                    let mut txns = node.state().subscription_handler.subscribe_transactions(
+                        TransactionFilter::ChangedObject(
+                            ObjectID::from_hex_literal("0x7").unwrap(),
+                        ),
+                    );
+                    let state = node.state();
 
-                while let Some(tx) = txns.next().await {
-                    let digest = *tx.transaction_digest();
-                    let tx = state
-                        .get_transaction_cache_reader()
-                        .get_transaction_block(&digest)
-                        .unwrap();
-                    match &tx.data().intent_message().value.kind() {
-                        TransactionKind::EndOfEpochTransaction(_) => (),
-                        TransactionKind::AuthenticatorStateUpdate(_) => break,
-                        _ => panic!("{:?}", tx),
+                    while let Some(tx) = txns.next().await {
+                        let digest = *tx.transaction_digest();
+                        let tx = state
+                            .get_transaction_cache_reader()
+                            .get_transaction_block(&digest)
+                            .unwrap();
+                        match &tx.data().intent_message().value.kind() {
+                            TransactionKind::EndOfEpochTransaction(_) => (),
+                            TransactionKind::AuthenticatorStateUpdate(_) => break,
+                            _ => panic!("{:?}", tx),
+                        }
                     }
-                }
-            }),
+                }),
         )
         .await
         .expect("Timed out waiting for authenticator state update");

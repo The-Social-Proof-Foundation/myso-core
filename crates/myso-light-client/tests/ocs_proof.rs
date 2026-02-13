@@ -2,10 +2,10 @@
 // Copyright (c) The Social Proof Foundation, LLC.
 // SPDX-License-Identifier: Apache-2.0
 
+use myso_config::genesis::Genesis;
 use std::fs::File;
 use std::io::Read;
 use std::path::PathBuf;
-use myso_config::genesis::Genesis;
 
 use myso_light_client::{
     base::{Proof, ProofTarget, ProofVerifier},

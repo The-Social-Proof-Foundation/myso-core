@@ -6,10 +6,10 @@
 use super::*;
 use crate::base_types::{FullObjectRef, random_object_ref};
 use crate::committee::Committee;
-use crate::crypto::Secp256k1MySoSignature;
 use crate::crypto::MySoKeyPair;
 use crate::crypto::MySoSignature;
 use crate::crypto::MySoSignatureInner;
+use crate::crypto::Secp256k1MySoSignature;
 use crate::crypto::VerificationObligation;
 use crate::crypto::bcs_signable_test::{Foo, get_obligation_input};
 use crate::crypto::{

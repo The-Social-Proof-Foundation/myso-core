@@ -5,12 +5,12 @@
 use crate::mock_account::Account;
 use crate::tx_generator::TxGenerator;
 use move_core_types::identifier::Identifier;
-use std::collections::HashMap;
 use myso_test_transaction_builder::TestTransactionBuilder;
-use myso_types::base_types::{FullObjectRef, ObjectID, ObjectRef, SequenceNumber, MySoAddress};
+use myso_types::base_types::{FullObjectRef, MySoAddress, ObjectID, ObjectRef, SequenceNumber};
 use myso_types::transaction::{
     CallArg, DEFAULT_VALIDATOR_GAS_PRICE, ObjectArg, SharedObjectMutability, Transaction,
 };
+use std::collections::HashMap;
 
 pub struct MoveTxGenerator {
     move_package: ObjectID,

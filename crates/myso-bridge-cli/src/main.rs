@@ -6,14 +6,6 @@ use alloy::primitives::Address as EthAddress;
 use alloy::providers::Provider;
 use clap::*;
 use fastcrypto::encoding::{Encoding, Hex};
-use shared_crypto::intent::Intent;
-use shared_crypto::intent::IntentMessage;
-use std::collections::BTreeMap;
-use std::collections::HashMap;
-use std::str::FromStr;
-use std::str::from_utf8;
-use std::sync::Arc;
-use std::time::Duration;
 use myso_bridge::client::bridge_authority_aggregator::BridgeAuthorityAggregator;
 use myso_bridge::crypto::{BridgeAuthorityPublicKey, BridgeAuthorityPublicKeyBytes};
 use myso_bridge::eth_transaction_builder::build_eth_transaction;
@@ -41,6 +33,14 @@ use myso_types::crypto::AuthorityPublicKeyBytes;
 use myso_types::crypto::Signature;
 use myso_types::crypto::ToFromBytes;
 use myso_types::transaction::Transaction;
+use shared_crypto::intent::Intent;
+use shared_crypto::intent::IntentMessage;
+use std::collections::BTreeMap;
+use std::collections::HashMap;
+use std::str::FromStr;
+use std::str::from_utf8;
+use std::sync::Arc;
+use std::time::Duration;
 
 #[tokio::main]
 async fn main() -> anyhow::Result<()> {

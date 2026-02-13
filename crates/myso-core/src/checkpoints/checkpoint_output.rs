@@ -7,7 +7,6 @@ use crate::authority::authority_per_epoch_store::AuthorityPerEpochStore;
 use crate::consensus_adapter::SubmitToConsensus;
 use crate::epoch::reconfiguration::ReconfigurationInitiator;
 use async_trait::async_trait;
-use std::sync::Arc;
 use myso_types::base_types::AuthorityName;
 use myso_types::error::MySoResult;
 use myso_types::message_envelope::Message;
@@ -16,6 +15,7 @@ use myso_types::messages_checkpoint::{
     SignedCheckpointSummary, VerifiedCheckpoint,
 };
 use myso_types::messages_consensus::ConsensusTransaction;
+use std::sync::Arc;
 use tracing::{debug, info, instrument, trace};
 
 use super::{CheckpointMetrics, CheckpointStore};
@@ -33,8 +33,10 @@ pub trait CheckpointOutput: Sync + Send + 'static {
 
 #[async_trait]
 pub trait CertifiedCheckpointOutput: Sync + Send + 'static {
-    async fn certified_checkpoint_created(&self, summary: &CertifiedCheckpointSummary)
-    -> MySoResult;
+    async fn certified_checkpoint_created(
+        &self,
+        summary: &CertifiedCheckpointSummary,
+    ) -> MySoResult;
 }
 
 pub struct SubmitCheckpointToConsensus<T> {

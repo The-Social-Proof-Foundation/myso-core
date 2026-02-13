@@ -11,13 +11,13 @@ use async_graphql::connection::Connection;
 use diesel::prelude::QueryableByName;
 use diesel::sql_types::BigInt;
 use itertools::Itertools;
-use serde::Deserialize;
-use serde::Serialize;
 use myso_indexer_alt_reader::pg_reader::PgReader;
 use myso_sql_macro::query;
 use myso_types::base_types::MySoAddress as NativeMySoAddress;
 use myso_types::digests::TransactionDigest;
 use myso_types::event::Event as NativeEvent;
+use serde::Deserialize;
+use serde::Serialize;
 
 use crate::api::scalars::base64::Base64;
 use crate::api::scalars::cursor::JsonCursor;

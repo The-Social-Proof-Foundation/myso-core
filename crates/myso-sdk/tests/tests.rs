@@ -4,7 +4,6 @@
 use tempfile::TempDir;
 
 use fastcrypto::ed25519::Ed25519KeyPair;
-use shared_crypto::intent::{Intent, IntentMessage, PersonalMessage};
 use myso_config::{Config, MYSO_CLIENT_CONFIG};
 use myso_keys::key_derive::generate_new_key;
 use myso_keys::key_identity::KeyIdentity;
@@ -17,7 +16,7 @@ use myso_sdk::{
 };
 use myso_types::base_types::{MySoAddress, random_object_ref};
 use myso_types::crypto::{Ed25519MySoSignature, MySoKeyPair, MySoSignature};
-use myso_types::crypto::{SignatureScheme, MySoSignatureInner};
+use myso_types::crypto::{MySoSignatureInner, SignatureScheme};
 use myso_types::multisig::{MultiSig, MultiSigPublicKey};
 use myso_types::transaction::{ProgrammableTransaction, TransactionData, TransactionKind};
 use myso_types::{
@@ -25,6 +24,7 @@ use myso_types::{
     signature::GenericSignature,
     utils::sign_zklogin_personal_msg,
 };
+use shared_crypto::intent::{Intent, IntentMessage, PersonalMessage};
 use test_cluster::TestClusterBuilder;
 
 #[tokio::test]

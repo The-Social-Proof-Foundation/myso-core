@@ -15,8 +15,6 @@ use consensus_core::storage::{Store, rocksdb_store::RocksDBStore};
 use consensus_core::{BlockAPI, CommitAPI, CommitRange};
 use futures::TryStreamExt;
 use futures::future::join_all;
-use std::path::PathBuf;
-use std::{collections::BTreeMap, env, sync::Arc};
 use myso_config::genesis::Genesis;
 use myso_core::authority_client::AuthorityAPI;
 use myso_protocol_config::Chain;
@@ -25,6 +23,8 @@ use myso_rpc_api::Client;
 use myso_types::gas_coin::GasCoin;
 use myso_types::messages_consensus::ConsensusTransaction;
 use myso_types::transaction::Transaction;
+use std::path::PathBuf;
+use std::{collections::BTreeMap, env, sync::Arc};
 use telemetry_subscribers::TracingHandle;
 
 use myso_types::{

@@ -11,8 +11,8 @@ mod consensus_dag_tests {
         CommitTestFixture, CommittedSubDag, RandomDag, RandomDagConfig, Slot,
         assert_commit_sequences_match,
     };
-    use rand::{SeedableRng as _, rngs::StdRng};
     use myso_macros::sim_test;
+    use rand::{SeedableRng as _, rngs::StdRng};
 
     const MAX_STEP: u32 = 3;
 

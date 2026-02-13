@@ -9,15 +9,8 @@ use fastcrypto_zkp::bn254::zk_login_api::ZkLoginEnv;
 use futures::pin_mut;
 use im::hashmap::HashMap as ImHashMap;
 use itertools::{Itertools as _, izip};
-use mysten_common::debug_fatal;
-use mysten_metrics::monitored_scope;
-use nonempty::NonEmpty;
-use parking_lot::{Mutex, MutexGuard, RwLock};
-use prometheus::{IntCounter, Registry, register_int_counter_with_registry};
-use shared_crypto::intent::Intent;
-use std::sync::Arc;
 use myso_types::address_alias;
-use myso_types::base_types::{SequenceNumber, MySoAddress};
+use myso_types::base_types::{MySoAddress, SequenceNumber};
 use myso_types::digests::SenderSignedDataDigest;
 use myso_types::digests::ZKLoginInputsDigest;
 use myso_types::signature_verification::{
@@ -35,6 +28,13 @@ use myso_types::{
     signature::VerifyParams,
     transaction::{CertifiedTransaction, VerifiedCertificate},
 };
+use mysten_common::debug_fatal;
+use mysten_metrics::monitored_scope;
+use nonempty::NonEmpty;
+use parking_lot::{Mutex, MutexGuard, RwLock};
+use prometheus::{IntCounter, Registry, register_int_counter_with_registry};
+use shared_crypto::intent::Intent;
+use std::sync::Arc;
 use tap::TapFallible;
 use tokio::runtime::Handle;
 use tokio::{

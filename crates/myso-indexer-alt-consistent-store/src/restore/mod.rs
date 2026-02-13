@@ -9,10 +9,10 @@ use std::sync::Arc;
 
 use anyhow::Context as _;
 use anyhow::ensure;
-use prometheus::Registry;
 use myso_indexer_alt_framework::pipeline::Processor;
 use myso_indexer_alt_framework::service::Service;
 use myso_indexer_alt_framework::types::object::Object;
+use prometheus::Registry;
 use tokio::sync::mpsc;
 use tracing::info;
 use tracing::warn;
