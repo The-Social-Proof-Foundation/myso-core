@@ -11260,6 +11260,7 @@ dependencies = [
  "myso-indexer-alt-framework",
  "myso-indexer-alt-metrics",
  "myso-indexer-alt-schema",
+ "myso-indexer-alt-social-schema",
  "myso-protocol-config",
  "myso-synthetic-ingestion",
  "myso-types",
@@ -11682,6 +11683,15 @@ dependencies = [
  "myso-types",
  "serde",
  "siphasher",
+]
+
+[[package]]
+name = "myso-indexer-alt-social-schema"
+version = "0.0.1"
+dependencies = [
+ "diesel",
+ "diesel_migrations",
+ "serde",
 ]
 
 [[package]]

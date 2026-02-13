@@ -12,7 +12,6 @@ use myso_default_config::DefaultConfig;
 use myso_protocol_config::Chain;
 use myso_protocol_config::ProtocolConfig;
 use myso_protocol_config::ProtocolVersion;
-use myso_types::base_types::ObjectID;
 
 use crate::extensions::query_limits::QueryLimitsConfig;
 use crate::extensions::timeout::TimeoutConfig;

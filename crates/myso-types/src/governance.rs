@@ -26,8 +26,8 @@ pub const MAX_VALIDATOR_COUNT: u64 = 150;
 #[deprecated(note = "SIP-39 removes min barreier for joining the validator set")]
 /// Lower-bound on the amount of stake required to become a validator.
 ///
-/// 30 million MYSO
-pub const MIN_VALIDATOR_JOINING_STAKE_MIST: u64 = 30_000_000 * MIST_PER_MYSO;
+/// 3 million MYSO
+pub const MIN_VALIDATOR_JOINING_STAKE_MIST: u64 = 3_000_000 * MIST_PER_MYSO;
 
 #[deprecated(note = "SIP-39 removes low barreier for joining the validator set")]
 /// Deprecated: with SIP-39 there is no longer a minimum stake requirement.
@@ -36,15 +36,15 @@ pub const MIN_VALIDATOR_JOINING_STAKE_MIST: u64 = 30_000_000 * MIST_PER_MYSO;
 /// have low stake and will be escorted out of the validator set after being below this
 /// threshold for more than `validator_low_stake_grace_period` number of epochs.
 ///
-/// 20 million MYSO
-pub const VALIDATOR_LOW_STAKE_THRESHOLD_MIST: u64 = 20_000_000 * MIST_PER_MYSO;
+/// 2 million MYSO
+pub const VALIDATOR_LOW_STAKE_THRESHOLD_MIST: u64 = 2_000_000 * MIST_PER_MYSO;
 
 #[deprecated(note = "SIP-39 removes very low barreier for joining the validator set")]
 /// Validators with stake below `validator_very_low_stake_threshold` will be removed
 /// immediately at epoch change, no grace period.
 ///
-/// 15 million MYSO
-pub const VALIDATOR_VERY_LOW_STAKE_THRESHOLD_MIST: u64 = 15_000_000 * MIST_PER_MYSO;
+/// 1.5 million MYSO (scaled for 1B total supply)
+pub const VALIDATOR_VERY_LOW_STAKE_THRESHOLD_MIST: u64 = 1_500_000 * MIST_PER_MYSO;
 
 /// Number of epochs for a single phase of SIP-39 since the change
 pub const SIP_39_PHASE_LENGTH: u64 = 14;

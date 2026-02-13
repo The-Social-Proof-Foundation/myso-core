@@ -1409,22 +1409,16 @@ mod tests {
         let config = FaucetConfig::default();
 
         let address = test_cluster.get_address_0();
-        let mut context = test_cluster.wallet;
+        let context = test_cluster.wallet;
         let gas_coins = context
             .get_all_gas_objects_owned_by_address(address)
             .await
             .unwrap();
         let client = context.grpc_client().unwrap();
-        let tx_kind = client
-            .transaction_builder()
-            .split_coin_tx_kind(gas_coins.first().unwrap().0, None, Some(10))
-            .await
-            .unwrap();
         let gas_budget = 50_000_000;
-        let rgp = context.get_reference_gas_price().await.unwrap();
         let tx_data = client
             .transaction_builder()
-            .tx_data(address, tx_kind, gas_budget, rgp, vec![], None)
+            .split_coin_equal(address, gas_coins.first().unwrap().0, 10, None, gas_budget)
             .await
             .unwrap();
 
@@ -1547,22 +1541,16 @@ mod tests {
         let prom_registry = Registry::new();
         let tmp = tempfile::tempdir().unwrap();
         let address = test_cluster.get_address_0();
-        let mut context = test_cluster.wallet;
+        let context = test_cluster.wallet;
         let gas_coins = context
             .get_all_gas_objects_owned_by_address(address)
             .await
             .unwrap();
         let client = context.grpc_client().unwrap();
-        let tx_kind = client
-            .transaction_builder()
-            .split_coin_tx_kind(gas_coins.first().unwrap().0, None, Some(10))
-            .await
-            .unwrap();
         let gas_budget = 50_000_000;
-        let rgp = context.get_reference_gas_price().await.unwrap();
         let tx_data = client
             .transaction_builder()
-            .tx_data(address, tx_kind, gas_budget, rgp, vec![], None)
+            .split_coin_equal(address, gas_coins.first().unwrap().0, 10, None, gas_budget)
             .await
             .unwrap();
 
@@ -1823,7 +1811,7 @@ mod tests {
         telemetry_subscribers::init_for_testing();
         let test_cluster = TestClusterBuilder::new().build().await;
         let address = test_cluster.get_address_0();
-        let mut context = test_cluster.wallet;
+        let context = test_cluster.wallet;
         let gas_coins = context
             .get_all_gas_objects_owned_by_address(address)
             .await
@@ -1834,35 +1822,29 @@ mod tests {
         let config = FaucetConfig::default();
         let tiny_value = (config.num_coins as u64 * config.amount) + 1;
         let client = context.grpc_client().unwrap();
-        let tx_kind = client
-            .transaction_builder()
-            .split_coin_tx_kind(gas_coins.first().unwrap().0, Some(vec![tiny_value]), None)
-            .await
-            .unwrap();
         let gas_budget = 50_000_000;
-        let rgp = context.get_reference_gas_price().await.unwrap();
         let tx_data = client
             .transaction_builder()
-            .tx_data(address, tx_kind, gas_budget, rgp, vec![], None)
+            .split_coin(address, gas_coins.first().unwrap().0, vec![tiny_value], None, gas_budget)
             .await
             .unwrap();
 
         let response = execute_tx(&context, tx_data).await.unwrap();
 
-        let tiny_coin_id = response.effects.created()[0].reference.object_id;
+        let tiny_coin_id = (response.effects.created()[0].0).0;
 
         // Get the latest list of gas
         let gas_coins = context.gas_objects(address).await.unwrap();
 
         let tiny_amount = gas_coins
             .iter()
-            .find(|gas| gas.1.object_id == tiny_coin_id)
+            .find(|gas| gas.1.id() == tiny_coin_id)
             .unwrap()
             .0;
         assert_eq!(tiny_amount, tiny_value);
 
         let gas_coins: HashSet<ObjectID> =
-            HashSet::from_iter(gas_coins.into_iter().map(|gas| gas.1.object_id));
+            HashSet::from_iter(gas_coins.into_iter().map(|gas| gas.1.id()));
 
         let tmp = tempfile::tempdir().unwrap();
         let prom_registry = Registry::new();
@@ -1912,7 +1894,7 @@ mod tests {
     async fn test_insufficient_balance_will_retry_success() {
         let test_cluster = TestClusterBuilder::new().build().await;
         let address = test_cluster.get_address_0();
-        let mut context = test_cluster.wallet;
+        let context = test_cluster.wallet;
         let gas_coins = context
             .get_all_gas_objects_owned_by_address(address)
             .await
@@ -1922,20 +1904,16 @@ mod tests {
         // The coin that is split off stays because we don't try to refresh the coin vector
         let reasonable_value = (config.num_coins as u64 * config.amount) * 10;
         let client = context.grpc_client().unwrap();
-        let tx_kind = client
-            .transaction_builder()
-            .split_coin_tx_kind(
-                gas_coins.first().unwrap().0,
-                Some(vec![reasonable_value]),
-                None,
-            )
-            .await
-            .unwrap();
         let gas_budget = 50_000_000;
-        let rgp = context.get_reference_gas_price().await.unwrap();
         let tx_data = client
             .transaction_builder()
-            .tx_data(address, tx_kind, gas_budget, rgp, vec![], None)
+            .split_coin(
+                address,
+                gas_coins.first().unwrap().0,
+                vec![reasonable_value],
+                None,
+                gas_budget,
+            )
             .await
             .unwrap();
         execute_tx(&context, tx_data).await.unwrap();
@@ -1994,7 +1972,7 @@ mod tests {
     async fn test_faucet_no_loop_forever() {
         let test_cluster = TestClusterBuilder::new().build().await;
         let address = test_cluster.get_address_0();
-        let mut context = test_cluster.wallet;
+        let context = test_cluster.wallet;
         let gas_coins = context
             .get_all_gas_objects_owned_by_address(address)
             .await
@@ -2003,18 +1981,10 @@ mod tests {
 
         let tiny_value = (config.num_coins as u64 * config.amount) + 1;
         let client = context.grpc_client().unwrap();
-        let tx_kind = client
-            .transaction_builder()
-            .split_coin_tx_kind(gas_coins.first().unwrap().0, Some(vec![tiny_value]), None)
-            .await
-            .unwrap();
-
         let gas_budget = 50_000_000;
-        let rgp = context.get_reference_gas_price().await.unwrap();
-
         let tx_data = client
             .transaction_builder()
-            .tx_data(address, tx_kind, gas_budget, rgp, vec![], None)
+            .split_coin(address, gas_coins.first().unwrap().0, vec![tiny_value], None, gas_budget)
             .await
             .unwrap();
 
@@ -2023,7 +1993,7 @@ mod tests {
         let destination_address = MySoAddress::random_for_testing_only();
 
         // Transfer all valid gases away - use last as gas for transfers, then transfer last via transfer_myso
-        let (to_transfer, gas_coin) = gas_coins.split_last().unwrap();
+        let (gas_coin, to_transfer) = gas_coins.split_last().unwrap();
         for gas in to_transfer {
             let tx_data = client
                 .transaction_builder()
@@ -2145,22 +2115,16 @@ mod tests {
         let test_cluster = TestClusterBuilder::new().build().await;
         let config: FaucetConfig = Default::default();
         let address = test_cluster.get_address_0();
-        let mut context = test_cluster.wallet;
+        let context = test_cluster.wallet;
         let gas_coins = context
             .get_all_gas_objects_owned_by_address(address)
             .await
             .unwrap();
         let client = context.grpc_client().unwrap();
-        let tx_kind = client
-            .transaction_builder()
-            .split_coin_tx_kind(gas_coins.first().unwrap().0, None, Some(10))
-            .await
-            .unwrap();
         let gas_budget = 50_000_000;
-        let rgp = context.get_reference_gas_price().await.unwrap();
         let tx_data = client
             .transaction_builder()
-            .tx_data(address, tx_kind, gas_budget, rgp, vec![], None)
+            .split_coin_equal(address, gas_coins.first().unwrap().0, 10, None, gas_budget)
             .await
             .unwrap();
         execute_tx(&context, tx_data).await.unwrap();

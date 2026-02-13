@@ -16,6 +16,7 @@ use myso_indexer_alt_framework::postgres::Db;
 use myso_indexer_alt_framework::postgres::DbArgs;
 use myso_indexer_alt_metrics::db::DbConnectionStatsCollector;
 use myso_indexer_alt_schema::MIGRATIONS;
+use myso_indexer_alt_social_schema::MIGRATIONS as SOCIAL_MIGRATIONS;
 use url::Url;
 
 use crate::bootstrap::bootstrap;
@@ -107,11 +108,14 @@ pub async fn setup_indexer(
         .await
         .context("Failed to connect to database")?;
 
-    // we want to merge &MIGRATIONS with the migrations from the store
     store
         .run_migrations(Some(&MIGRATIONS))
         .await
         .context("Failed to run pending migrations")?;
+    store
+        .run_migrations(Some(&SOCIAL_MIGRATIONS))
+        .await
+        .context("Failed to run social schema migrations")?;
 
     registry.register(Box::new(DbConnectionStatsCollector::new(
         Some("indexer_db"),

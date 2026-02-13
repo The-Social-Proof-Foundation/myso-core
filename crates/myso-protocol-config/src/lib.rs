@@ -4529,6 +4529,37 @@ impl ProtocolConfig {
                         cfg.feature_flags.enable_object_funds_withdraw = true;
                     }
                     cfg.max_move_package_size = Some(200 * 1024);
+
+                    // Compute costs - 90% reduction
+                    if let Some(cost) = cfg.base_tx_cost_fixed {
+                        cfg.base_tx_cost_fixed = Some(cost / 10);
+                    }
+                    if let Some(cost) = cfg.package_publish_cost_fixed {
+                        cfg.package_publish_cost_fixed = Some(cost / 10);
+                    }
+                    if let Some(cost) = cfg.obj_access_cost_read_per_byte {
+                        cfg.obj_access_cost_read_per_byte = Some(cost / 10);
+                    }
+                    if let Some(cost) = cfg.obj_access_cost_mutate_per_byte {
+                        cfg.obj_access_cost_mutate_per_byte = Some(cost / 10);
+                    }
+                    if let Some(cost) = cfg.obj_access_cost_delete_per_byte {
+                        cfg.obj_access_cost_delete_per_byte = Some(cost / 10);
+                    }
+                    if let Some(cost) = cfg.obj_access_cost_verify_per_byte {
+                        cfg.obj_access_cost_verify_per_byte = Some(cost / 10);
+                    }
+
+                    // Storage costs - 90% reduction
+                    if let Some(cost) = cfg.obj_data_cost_refundable {
+                        cfg.obj_data_cost_refundable = Some(cost / 10);
+                    }
+                    if let Some(cost) = cfg.obj_metadata_cost_non_refundable {
+                        cfg.obj_metadata_cost_non_refundable = Some(cost / 10);
+                    }
+                    if let Some(price) = cfg.storage_gas_price {
+                        cfg.storage_gas_price = Some(price / 10);
+                    }
                 }
                 // Use this template when making changes:
                 //

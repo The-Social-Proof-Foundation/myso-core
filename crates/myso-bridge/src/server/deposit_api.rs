@@ -586,7 +586,7 @@ fn parse_chain_id(
     myso_chain_id: u8,
 ) -> Result<u8, (StatusCode, Json<ErrorResponse>)> {
     match chain_name.to_lowercase().as_str() {
-        "mysocial" | "myso" | "myso" => Ok(myso_chain_id),
+        "mysocial" | "myso" => Ok(myso_chain_id),
         "base" | "base-sepolia" | "ethereum" | "eth" => Ok(eth_chain_id),
         _ => Err((
             StatusCode::BAD_REQUEST,

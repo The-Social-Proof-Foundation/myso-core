@@ -6,7 +6,7 @@ use std::sync::Arc;
 
 use anyhow::bail;
 use async_trait::async_trait;
-use futures::{Stream, StreamExt, future};
+use futures::{Stream, StreamExt};
 use jsonrpsee::{
     PendingSubscriptionSink, RpcModule,
     core::{RpcResult, SubscriptionResult},
@@ -40,7 +40,7 @@ use tracing::{instrument, warn};
 
 use crate::{
     MySoRpcModule,
-    authority_state::{StateRead, StateReadResult},
+    authority_state::StateRead,
     error::{Error, MySoRpcInputError},
     with_tracing,
 };
@@ -132,16 +132,6 @@ impl<R: ReadApiServer> IndexerApi<R> {
             Ok(p) => Ok(p),
             Err(_) => bail!("Resources exhausted"),
         }
-    }
-
-    fn get_latest_checkpoint_timestamp_ms(&self) -> StateReadResult<u64> {
-        let latest_checkpoint = self.state.get_latest_checkpoint_sequence_number()?;
-
-        let checkpoint = self
-            .state
-            .get_verified_checkpoint_by_sequence_number(latest_checkpoint)?;
-
-        Ok(checkpoint.timestamp_ms)
     }
 }
 

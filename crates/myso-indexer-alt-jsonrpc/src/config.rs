@@ -9,7 +9,6 @@ use jsonrpsee::http_client::HttpClient;
 use jsonrpsee::http_client::HttpClientBuilder;
 use myso_default_config::DefaultConfig;
 use myso_protocol_config::ProtocolConfig;
-use myso_types::base_types::ObjectID;
 
 pub const CLIENT_SDK_TYPE_HEADER: &str = "client-sdk-type";
 

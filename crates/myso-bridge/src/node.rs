@@ -721,6 +721,8 @@ mod tests {
             metrics_key_pair: default_ed25519_key_pair(),
             metrics: None,
             watchdog_config: None,
+            relay: None,
+            deposits: None,
         };
         // Spawn bridge node in memory
         let _handle = run_bridge_node(
@@ -792,6 +794,8 @@ mod tests {
             metrics_key_pair: default_ed25519_key_pair(),
             metrics: None,
             watchdog_config: None,
+            relay: None,
+            deposits: None,
         };
         // Spawn bridge node in memory
         let _handle = run_bridge_node(
@@ -874,6 +878,8 @@ mod tests {
             metrics_key_pair: default_ed25519_key_pair(),
             metrics: None,
             watchdog_config: None,
+            relay: None,
+            deposits: None,
         };
         // Spawn bridge node in memory
         let _handle = run_bridge_node(

@@ -592,7 +592,7 @@ impl TokenDistributionSchedule {
         assert_eq!(
             TOTAL_SUPPLY_MIST,
             allocations.iter().map(|a| a.amount_mist).sum::<u64>(),
-            "Token Distribution Schedule must add up to 10B MySo",
+            "Token Distribution Schedule must add up to total supply",
         );
         let stake_subsidy_fund_allocation = allocations.pop().unwrap();
         assert_eq!(

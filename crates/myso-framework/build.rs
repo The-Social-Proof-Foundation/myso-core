@@ -8,12 +8,7 @@ use std::path::PathBuf;
 fn main() {
     let manifest_dir = env::var("CARGO_MANIFEST_DIR").unwrap();
     let packages_compiled_dir = PathBuf::from(&manifest_dir).join("packages_compiled");
-    
-    // Create the directory if it doesn't exist
-    std::fs::create_dir_all(&packages_compiled_dir).unwrap();
-    
-    // Create placeholder files if they don't exist
-    // These will be overwritten by the test when UPDATE=1 is set
+
     let required_files = [
         "move-stdlib",
         "myso-framework",
@@ -23,17 +18,24 @@ fn main() {
         "mydata",
         "myso-social",
     ];
-    
+
+    let mut missing = Vec::new();
     for file_name in &required_files {
         let file_path = packages_compiled_dir.join(file_name);
         if !file_path.exists() {
-            // Create a minimal valid BCS-encoded empty Vec<Vec<u8>>
-            // This represents an empty vector of compiled modules
-            let empty_modules: Vec<Vec<u8>> = vec![];
-            let bcs_bytes = bcs::to_bytes(&empty_modules).unwrap();
-            std::fs::write(&file_path, bcs_bytes).unwrap();
+            missing.push(file_name.to_string());
+        } else if std::fs::metadata(&file_path).map(|m| m.len()).unwrap_or(0) <= 1 {
+            missing.push(format!("{} (empty or placeholder)", file_name));
         }
     }
-    
+
+    if !missing.is_empty() {
+        panic!(
+            "myso-framework packages_compiled is missing or has empty files: {:?}.\n\n\
+             Generate them by running:\n  UPDATE=1 cargo test -p myso-framework --test build-system-packages",
+            missing
+        );
+    }
+
     println!("cargo:rerun-if-changed=packages_compiled");
 }

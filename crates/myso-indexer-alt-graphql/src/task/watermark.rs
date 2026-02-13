@@ -247,11 +247,6 @@ impl Watermarks {
         DateTime::from_timestamp_millis(self.timestamp_ms_hi_inclusive)
     }
 
-    /// Timestamp corresponding to high watermark, as milliseconds since Unix epoch.
-    pub(crate) fn timestamp_hi_ms(&self) -> u64 {
-        self.timestamp_ms_hi_inclusive as u64
-    }
-
     pub(crate) fn lag_ms(&self, now: DateTime<Utc>) -> u64 {
         now.signed_duration_since(self.timestamp_hi().unwrap_or(now))
             .to_std()

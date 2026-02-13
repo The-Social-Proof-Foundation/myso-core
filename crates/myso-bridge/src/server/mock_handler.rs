@@ -159,6 +159,7 @@ pub fn run_mock_server(
             Arc::new(mock_handler),
             Arc::new(BridgeMetrics::new_for_testing()),
             Arc::new(BridgeNodePublicMetadata::empty_for_testing()),
+            None,
         );
         axum::serve(listener, router).await.unwrap()
     })

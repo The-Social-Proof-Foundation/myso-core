@@ -275,7 +275,7 @@ fn default_multiaddr_address() -> Multiaddr {
 }
 
 fn default_stake() -> u64 {
-    20_000_000_000_000_000
+    2_000_000_000_000_000
 }
 
 fn default_bls12381_key_pair() -> AuthorityKeyPair {
@@ -297,7 +297,7 @@ pub struct AccountConfig {
     pub gas_amounts: Vec<u64>,
 }
 
-pub const DEFAULT_GAS_AMOUNT: u64 = 30_000_000_000_000_000;
+pub const DEFAULT_GAS_AMOUNT: u64 = 3_000_000_000_000_000; // 3M MySo (scaled for 1B total supply)
 pub const DEFAULT_NUMBER_OF_AUTHORITIES: usize = 4;
 const DEFAULT_NUMBER_OF_ACCOUNT: usize = 5;
 pub const DEFAULT_NUMBER_OF_OBJECT_PER_ACCOUNT: usize = 5;
@@ -309,7 +309,7 @@ impl GenesisConfig {
     /// Port offset for benchmarks' genesis configs.
     pub const BENCHMARKS_PORT_OFFSET: u16 = 2000;
     /// The gas amount for each genesis gas object.
-    const BENCHMARK_GAS_AMOUNT: u64 = 50_000_000_000_000_000;
+    const BENCHMARK_GAS_AMOUNT: u64 = 5_000_000_000_000_000; // 5M MySo (scaled for 1B total supply)
     /// Trigger epoch change every hour minutes.
     const BENCHMARK_EPOCH_DURATION_MS: u64 = 60 * 60 * 1000;
 
