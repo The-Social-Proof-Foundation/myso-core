@@ -6,4 +6,4 @@ processed 1 task
 task 0, lines 6-17:
 //# publish
 Error: Transaction Effects Status: MySo Move Bytecode Verification Error. Please run the MySo Move Verifier for more information.
-Execution Error: ExecutionError: ExecutionError { inner: ExecutionErrorInner { kind: SuiMoveVerificationError, source: Some("init function of a module containing one-time witness type candidate must have _::m::M as the first parameter (a struct which has no fields or a single field of type bool)"), command: Some(0) } }
+Execution Error: ExecutionError: ExecutionError { inner: ExecutionErrorInner { kind: MySoMoveVerificationError, source: Some("init function of a module containing one-time witness type candidate must have _::m::M as the first parameter (a struct which has no fields or a single field of type bool)"), command: Some(0) } }

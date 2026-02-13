@@ -6,4 +6,4 @@ processed 1 task
 task 0, lines 4-20:
 //# publish
 Error: Transaction Effects Status: MySo Move Bytecode Verification Error. Please run the MySo Move Verifier for more information.
-Execution Error: ExecutionError: ExecutionError { inner: ExecutionErrorInner { kind: SuiMoveVerificationError, source: Some("PartialVMError with status UNKNOWN_VERIFICATION_ERROR with sub status 1 and message Invalid object creation in _::m::foo. Object created without a newly created UID. The UID must come directly from `myso::object::new`, or `myso::derived_object::claim`. For tests, it can also come from `myso::test_scenario::new_object`"), command: Some(0) } }
+Execution Error: ExecutionError: ExecutionError { inner: ExecutionErrorInner { kind: MySoMoveVerificationError, source: Some("PartialVMError with status UNKNOWN_VERIFICATION_ERROR with sub status 1 and message Invalid object creation in _::m::foo. Object created without a newly created UID. The UID must come directly from `myso::object::new`, or `myso::derived_object::claim`. For tests, it can also come from `myso::test_scenario::new_object`"), command: Some(0) } }

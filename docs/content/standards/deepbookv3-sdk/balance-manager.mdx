@@ -465,7 +465,7 @@ withdrawWithCapability = (tx: Transaction) => {
 // Example: Generate a trade proof and use it to place an order
 placeOrderWithProof = (tx: Transaction) => {
 	const managerKey = 'MANAGER_1';
-	const poolKey = 'SUI_DBUSDC';
+	const poolKey = 'MYSO_DBUSDC';
 
 	// Generate proof automatically (uses owner or tradeCap method)
 	const proof = tx.add(this.balanceManager.generateProof(managerKey));
@@ -502,7 +502,7 @@ setManagerReferral = (tx: Transaction) => {
 // Example: Unset a referral for a specific pool
 unsetManagerReferral = (tx: Transaction) => {
 	const managerKey = 'MANAGER_1';
-	const poolKey = 'SUI_DBUSDC';
+	const poolKey = 'MYSO_DBUSDC';
 	const tradeCap = tx.object('0x...');
 
 	tx.add(this.balanceManager.unsetBalanceManagerReferral(managerKey, poolKey, tradeCap));

@@ -39,7 +39,7 @@ expression: common_costs_actual
     "storageRebate": "0",
     "nonRefundableStorageFee": "0"
   },
-  "TransferPortionSuiCoin": {
+  "TransferPortionMySoCoin": {
     "computationCost": "1000000",
     "storageCost": "1976000",
     "storageRebate": "0",
@@ -51,7 +51,7 @@ expression: common_costs_actual
     "storageRebate": "0",
     "nonRefundableStorageFee": "0"
   },
-  "TransferWholeSuiCoin": {
+  "TransferWholeMySoCoin": {
     "computationCost": "1000000",
     "storageCost": "988000",
     "storageRebate": "978120",

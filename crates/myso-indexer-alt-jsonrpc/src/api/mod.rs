@@ -7,7 +7,6 @@ pub(crate) mod coin;
 pub(crate) mod dynamic_fields;
 pub(crate) mod governance;
 pub(crate) mod move_utils;
-pub(crate) mod name_service;
 pub(crate) mod objects;
 pub(crate) mod rpc_module;
 pub(crate) mod transactions;

@@ -178,7 +178,7 @@ createUsdcMarginPool = (tx: Transaction) => {
 ```tsx
 // Example: Allow MYSO/USDC pool to borrow from USDC margin pool
 enablePoolForBorrowing = (tx: Transaction) => {
-	const deepbookPoolKey = 'SUI_DBUSDC';
+	const deepbookPoolKey = 'MYSO_DBUSDC';
 	const coinKey = 'USDC';
 	const marginPoolCapId = '0x...'; // Margin pool cap ID
 
@@ -257,8 +257,8 @@ setupNewMarginPool = (tx: Transaction) => {
 
 	// Step 3: Enable specific DeepBook pools for borrowing
 	const marginPoolCapId = '0x...'; // Get from pool creation event
-	tx.add(this.maintainerContract.enableDeepbookPoolForLoan('SUI_DBUSDC', coinKey, marginPoolCapId));
-	tx.add(this.maintainerContract.enableDeepbookPoolForLoan('SUI_USDT', coinKey, marginPoolCapId));
+	tx.add(this.maintainerContract.enableDeepbookPoolForLoan('MYSO_DBUSDC', coinKey, marginPoolCapId));
+	tx.add(this.maintainerContract.enableDeepbookPoolForLoan('MYSO_USDT', coinKey, marginPoolCapId));
 };
 ```
 

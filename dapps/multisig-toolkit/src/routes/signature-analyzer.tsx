@@ -68,7 +68,7 @@ AIYbCXAhPmILpWq6xsEY/Nu310Kednlb60Qcd/nD+u2WCXE/FvSXNRUQW9OQKGqt2CeskPyv2SEhaKMZ
 function Signature({ signature, index }: { signature: SignaturePubkeyPair; index: number }) {
 	const mysoAddress = signature.publicKey.toMySoAddress();
 
-	const pubkey_base64_myso_format = signature.publicKey.toSuiPublicKey();
+	const pubkey_base64_myso_format = signature.publicKey.toMySoPublicKey();
 
 	const pubkey = signature.publicKey.toBase64();
 	const scheme = signature.signatureScheme.toString();
@@ -102,7 +102,7 @@ function Signature({ signature, index }: { signature: SignaturePubkeyPair; index
 
 function MultiSigDetails({ multisigInfo }: { multisigInfo: MultiSigInfo }) {
 	const multisigAddress = multisigInfo.publicKey.toMySoAddress();
-	const multisigPubkey = multisigInfo.publicKey.toSuiPublicKey();
+	const multisigPubkey = multisigInfo.publicKey.toMySoPublicKey();
 
 	return (
 		<Card className="border-primary">

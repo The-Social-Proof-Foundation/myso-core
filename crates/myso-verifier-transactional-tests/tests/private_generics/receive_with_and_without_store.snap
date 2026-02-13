@@ -6,12 +6,12 @@ processed 4 tasks
 task 0, lines 1-12:
 //# publish
 Error: Transaction Effects Status: MySo Move Bytecode Verification Error. Please run the MySo Move Verifier for more information.
-Execution Error: ExecutionError: ExecutionError { inner: ExecutionErrorInner { kind: SuiMoveVerificationError, source: Some("_::m::receive_bad. Invalid call to 'myso::transfer::receive'. Type argument #0 must be a type defined in the current module, found 'T0'. If the type has the 'store' ability, use the public variant instead: 'myso::transfer::public_receive'."), command: Some(0) } }
+Execution Error: ExecutionError: ExecutionError { inner: ExecutionErrorInner { kind: MySoMoveVerificationError, source: Some("_::m::receive_bad. Invalid call to 'myso::transfer::receive'. Type argument #0 must be a type defined in the current module, found 'T0'. If the type has the 'store' ability, use the public variant instead: 'myso::transfer::public_receive'."), command: Some(0) } }
 
 task 1, lines 14-25:
 //# publish
 Error: Transaction Effects Status: MySo Move Bytecode Verification Error. Please run the MySo Move Verifier for more information.
-Execution Error: ExecutionError: ExecutionError { inner: ExecutionErrorInner { kind: SuiMoveVerificationError, source: Some("_::m1::receive_bad. Invalid call to 'myso::transfer::receive'. Type argument #0 must be a type defined in the current module, found 'T0'. If the type has the 'store' ability, use the public variant instead: 'myso::transfer::public_receive'."), command: Some(0) } }
+Execution Error: ExecutionError: ExecutionError { inner: ExecutionErrorInner { kind: MySoMoveVerificationError, source: Some("_::m1::receive_bad. Invalid call to 'myso::transfer::receive'. Type argument #0 must be a type defined in the current module, found 'T0'. If the type has the 'store' ability, use the public variant instead: 'myso::transfer::public_receive'."), command: Some(0) } }
 
 task 2, lines 27-41:
 //# publish

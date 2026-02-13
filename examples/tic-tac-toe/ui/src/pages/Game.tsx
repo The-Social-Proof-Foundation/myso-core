@@ -4,7 +4,7 @@
 
 import "./Game.css";
 
-import { useCurrentAccount, useSuiClient } from "@mysten/dapp-kit";
+import { useCurrentAccount, useMySoClient } from "@mysten/dapp-kit";
 import { MultiSigPublicKey } from "@socialproof/myso/multisig";
 import { TrashIcon } from "@radix-ui/react-icons";
 import { AlertDialog, Badge, Button, Flex } from "@radix-ui/themes";
@@ -168,7 +168,7 @@ function OwnedGame({
 }): ReactElement {
     const adminKey = game.admin ? new MultiSigPublicKey(new Uint8Array(game.admin)) : null;
 
-    const client = useSuiClient();
+    const client = useMySoClient();
     const { mutate: signAndExecute } = useExecutor();
     const { mutate: multiSignAndExecute } = useExecutor({
         execute: ({ bytes, signature }) => {

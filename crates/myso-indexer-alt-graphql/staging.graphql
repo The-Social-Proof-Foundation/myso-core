@@ -95,10 +95,6 @@ type Address implements Node & IAddressable {
 	"""
 	balances(first: Int, after: String, last: Int, before: String): BalanceConnection
 	"""
-	The domain explicitly configured as the default Name Service name for this address.
-	"""
-	defaultNameRecord: NameRecord
-	"""
 	Access a dynamic field on an object using its type and BCS-encoded name.
 	
 	Returns `null` if a dynamic field with that name could not be found attached to the object with this address.
@@ -164,7 +160,7 @@ type AddressAliasStateCreateTransaction {
 """
 Identifies a specific version of an address.
 
-Exactly one of `address` or `name` must be specified. Additionally, at most one of `rootVersion` or `atCheckpoint` can be specified. If neither bound is provided, the address is fetched at the checkpoint being viewed.
+The `address` must be specified. Additionally, at most one of `rootVersion` or `atCheckpoint` can be specified. If neither bound is provided, the address is fetched at the checkpoint being viewed.
 
 See `Query.address` for more details.
 """
@@ -177,10 +173,6 @@ input AddressKey {
 	If specified, sets a checkpoint bound for this address.
 	"""
 	atCheckpoint: UInt53
-	"""
-	A MySoNS name to resolve to an address.
-	"""
-	name: String
 	"""
 	If specified, sets a root version bound for this address.
 	"""
@@ -614,10 +606,6 @@ type CoinMetadata implements IAddressable & IMoveObject & IObject {
 	"""
 	decimals: Int
 	"""
-	The domain explicitly configured as the default Name Service name for this address.
-	"""
-	defaultNameRecord: NameRecord
-	"""
 	If the currency is regulated, this object represents the capability to modify the deny list. If a capability is known but wrapped, its address can be fetched but other fields will not be accessible.
 	"""
 	denyCap: MoveObject
@@ -979,10 +967,6 @@ type DynamicField implements Node & IAddressable & IMoveObject & IObject {
 	"""
 	contents: MoveValue
 	"""
-	The domain explicitly configured as the default Name Service name for this address.
-	"""
-	defaultNameRecord: NameRecord
-	"""
 	32-byte hash that identifies the object's contents, encoded in Base58.
 	"""
 	digest: String
@@ -1255,13 +1239,13 @@ type Epoch implements Node {
 	"""
 	systemPackages(first: Int, after: String, last: Int, before: String): MovePackageConnection
 	"""
-	The contents of the system state inner object at the start of this epoch.
-	"""
-	systemState: MoveValue
-	"""
 	Stake subsidy parameters at the start of this epoch (balance, APY, period, etc.).
 	"""
 	systemStakeSubsidy: StakeSubsidy
+	"""
+	The contents of the system state inner object at the start of this epoch.
+	"""
+	systemState: MoveValue
 	"""
 	The total number of checkpoints in this epoch.
 	
@@ -1614,10 +1598,6 @@ interface IAddressable {
 	Total balance across coins owned by this address, grouped by coin type.
 	"""
 	balances(first: Int, after: String, last: Int, before: String): BalanceConnection
-	"""
-	The domain explicitly configured as the default Name Service name for this address.
-	"""
-	defaultNameRecord: NameRecord
 	"""
 	Fetch the total balances keyed by coin types (e.g. `0x2::myso::MYSO`) owned by this address.
 	
@@ -2239,10 +2219,6 @@ type MoveObject implements Node & IAddressable & IMoveObject & IObject {
 	"""
 	contents: MoveValue
 	"""
-	The domain explicitly configured as the default Name Service name for this address.
-	"""
-	defaultNameRecord: NameRecord
-	"""
 	32-byte hash that identifies the object's contents, encoded in Base58.
 	"""
 	digest: String
@@ -2393,10 +2369,6 @@ type MovePackage implements Node & IAddressable & IObject {
 	Total balance across coins owned by this address, grouped by coin type.
 	"""
 	balances(first: Int, after: String, last: Int, before: String): BalanceConnection
-	"""
-	The domain explicitly configured as the default Name Service name for this address.
-	"""
-	defaultNameRecord: NameRecord
 	"""
 	32-byte hash that identifies the package's contents, encoded in Base58.
 	"""
@@ -2762,32 +2734,6 @@ String containing 32 byte hex-encoded address, with a leading '0x'. Leading zero
 scalar MySoAddress
 
 """
-A Name Service NameRecord representing a domain name registration.
-"""
-type NameRecord {
-	"""
-	On-chain representation of the underlying Name Service `NameRecord` Move value.
-	"""
-	contents: MoveValue!
-	"""
-	The domain name this record is for.
-	"""
-	domain: String!
-	"""
-	The Name Service Name Record of the parent domain, if this is a subdomain.
-	
-	Returns `null` if this is not a subdomain.
-	"""
-	parent: NameRecord
-	"""
-	The address this domain points to.
-	
-	`rootVersion` and `atCheckpoint` control how the target `Address` is scoped. If neither is provided, the `Address` is scoped to the latest checkpoint known to the RPC.
-	"""
-	target(rootVersion: UInt53, atCheckpoint: UInt53): Address
-}
-
-"""
 An interface implemented by types that can be uniquely identified by a globally unique `ID`, following the GraphQL Global Object Identification specification.
 """
 interface Node {
@@ -2831,10 +2777,6 @@ type Object implements Node & IAddressable & IObject {
 	Total balance across coins owned by this address, grouped by coin type.
 	"""
 	balances(first: Int, after: String, last: Int, before: String): BalanceConnection
-	"""
-	The domain explicitly configured as the default Name Service name for this address.
-	"""
-	defaultNameRecord: NameRecord
 	"""
 	32-byte hash that identifies the object's contents, encoded in Base58.
 	"""
@@ -3334,9 +3276,9 @@ type Query {
 	
 	If none of the above are specified, the address is fetched at the checkpoint being viewed.
 	
-	If the address is fetched by name and the name does not resolve to an address (e.g. the name does not exist or has expired), `null` is returned.
+	Returns `null` if the address does not exist.
 	"""
-	address(address: MySoAddress, name: String, rootVersion: UInt53, atCheckpoint: UInt53): Address
+	address(address: MySoAddress, rootVersion: UInt53, atCheckpoint: UInt53): Address
 	"""
 	The network's genesis checkpoint digest (uniquely identifies the network), Base58-encoded.
 	"""
@@ -3374,7 +3316,7 @@ type Query {
 	"""
 	Fetch addresses by their keys.
 	
-	Returns a list of addresses that is guaranteed to be the same length as `keys`. If an address in `keys` is fetched by name and the name does not resolve to an address, its corresponding entry in the result will be `null`.
+	Returns a list of addresses that is guaranteed to be the same length as `keys`. If an address in `keys` does not exist, its corresponding entry in the result will be `null`.
 	"""
 	multiGetAddresses(keys: [AddressKey!]!): [Address]!
 	"""
@@ -3421,12 +3363,6 @@ type Query {
 	Returns a list of types that is guaranteed to be the same length as `keys`. If a type in `keys` could not be found, its corresponding entry in the result will be `null`.
 	"""
 	multiGetTypes(keys: [String!]!): [MoveType]!
-	"""
-	Look-up a Name Service NameRecord by its domain name.
-	
-	Returns `null` if the record does not exist or has expired.
-	"""
-	nameRecord(name: String!): NameRecord
 	"""
 	Fetch a `Node` by its globally unique `ID`. Returns `null` if the node cannot be found (e.g., the underlying data was pruned or never existed).
 	"""
@@ -3813,6 +3749,48 @@ type SplitCoinsCommand {
 	The coin to split.
 	"""
 	coin: TransactionArgument
+}
+
+"""
+Parameters that control the distribution of the stake subsidy.
+"""
+type StakeSubsidy {
+	"""
+	The annual percentage yield from the stake subsidy in basis points. Divide by 100 for percentage.
+	"""
+	apy: Int
+	"""
+	MYSO set aside for stake subsidies — reduces over time as stake subsidies are paid out.
+	"""
+	balance: BigInt
+	"""
+	Current stake subsidy APY in basis points — decays over time.
+	"""
+	currentApyBps: BigInt
+	"""
+	Percentage of the current APY to deduct at the end of the current subsidy period, in basis points.
+	"""
+	decreaseRate: Int
+	"""
+	Number of times stake subsidies have been distributed (with other staking rewards at end of epoch).
+	"""
+	distributionCounter: Int
+	"""
+	Target duration for subsidy pool in years (e.g., 10). Used for stake-aware APY reduction.
+	"""
+	intendedDurationYears: BigInt
+	"""
+	Maximum APY cap (in basis points). Effective APY will never exceed this.
+	"""
+	maxApyBps: BigInt
+	"""
+	Minimum APY floor (in basis points). Effective APY will never go below this.
+	"""
+	minApyBps: BigInt
+	"""
+	Maximum number of stake subsidy distributions that occur with the same APY (before the APY is reduced).
+	"""
+	periodLength: Int
 }
 
 """
@@ -4271,48 +4249,6 @@ type ValidatorEdge {
 	The item at the end of the edge
 	"""
 	node: Validator!
-}
-
-"""
-Parameters that control the distribution of the stake subsidy.
-"""
-type StakeSubsidy {
-	"""
-	The annual percentage yield from the stake subsidy in basis points. Divide by 100 for percentage.
-	"""
-	apy: UInt53
-	"""
-	MYSO set aside for stake subsidies — reduces over time as stake subsidies are paid out.
-	"""
-	balance: BigInt
-	"""
-	Current stake subsidy APY in basis points — decays over time.
-	"""
-	currentApyBps: BigInt
-	"""
-	Percentage of the current APY to deduct at the end of the current subsidy period, in basis points.
-	"""
-	decreaseRate: UInt53
-	"""
-	Number of times stake subsidies have been distributed (with other staking rewards at end of epoch).
-	"""
-	distributionCounter: UInt53
-	"""
-	Target duration for subsidy pool in years (e.g., 10). Used for stake-aware APY reduction.
-	"""
-	intendedDurationYears: BigInt
-	"""
-	Minimum APY floor (in basis points). Effective APY will never go below this.
-	"""
-	minApyBps: BigInt
-	"""
-	Maximum APY cap (in basis points). Effective APY will never exceed this.
-	"""
-	maxApyBps: BigInt
-	"""
-	Maximum number of stake subsidy distributions that occur with the same APY (before the APY is reduced).
-	"""
-	periodLength: UInt53
 }
 
 """

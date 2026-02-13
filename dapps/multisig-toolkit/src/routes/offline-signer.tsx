@@ -2,8 +2,8 @@
 // Copyright (c) The Social Proof Foundation, LLC.
 // SPDX-License-Identifier: Apache-2.0
 
-import { useCurrentAccount, useSignTransaction, useSuiClientContext } from '@mysten/dapp-kit';
-import { getFullnodeUrl, SuiClient } from '@socialproof/myso/client';
+import { useCurrentAccount, useSignTransaction, useMySoClientContext } from '@mysten/dapp-kit';
+import { getFullnodeUrl, MySoClient } from '@socialproof/myso/client';
 import { messageWithIntent } from '@socialproof/myso/cryptography';
 import { Transaction } from '@socialproof/myso/transactions';
 import { fromBase64, toHex } from '@socialproof/myso/utils';
@@ -25,7 +25,7 @@ export default function OfflineSigner() {
 
 	const [dryRunNetwork, setDryRunNetwork] = useState<Network>('mainnet');
 
-	const { selectNetwork } = useSuiClientContext();
+	const { selectNetwork } = useMySoClientContext();
 
 	const { mutateAsync: signTransaction } = useSignTransaction();
 	const [tab, setTab] = useState<'transaction' | 'signature'>('transaction');
@@ -62,7 +62,7 @@ export default function OfflineSigner() {
 	} = useMutation({
 		mutationKey: [dryRunNetwork, 'dry-run'],
 		mutationFn: async () => {
-			const dryRunClient = new SuiClient({
+			const dryRunClient = new MySoClient({
 				url: getFullnodeUrl(dryRunNetwork),
 			});
 			const transaction = Transaction.from(bytes);

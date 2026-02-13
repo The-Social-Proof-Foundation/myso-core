@@ -3,9 +3,9 @@
 // SPDX-License-Identifier: Apache-2.0
 
 import { CONSTANTS } from "@/constants";
-import { useSuiClientQuery } from "@mysten/dapp-kit";
+import { useMySoClientQuery } from "@mysten/dapp-kit";
 import { Locked } from "./partials/Locked";
-import { SuiObjectData } from "@socialproof/myso/client";
+import { MySoObjectData } from "@socialproof/myso/client";
 
 /**
  * Acts as a wrapper between the `Locked` object fetched from API
@@ -21,7 +21,7 @@ export function LockedObject({
   itemId,
   hideControls,
 }: {
-  object: SuiObjectData;
+  object: MySoObjectData;
   itemId?: string;
   hideControls?: boolean;
 }) {
@@ -35,7 +35,7 @@ export function LockedObject({
     return object.owner.AddressOwner;
   };
 
-  const getKeyId = (item: SuiObjectData) => {
+  const getKeyId = (item: MySoObjectData) => {
     if (
       !(item.content?.dataType === "moveObject") ||
       !("key" in item.content.fields)
@@ -45,7 +45,7 @@ export function LockedObject({
   };
 
   // Get the itemID for the locked object (We've saved it as a DOF on the SC).
-  const suiObjectId = useSuiClientQuery(
+  const suiObjectId = useMySoClientQuery(
     "getDynamicFieldObject",
     {
       parentId: object.objectId,

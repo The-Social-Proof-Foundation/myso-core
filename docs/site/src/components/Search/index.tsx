@@ -33,7 +33,7 @@ export default function Search() {
 
   const tabs = [
     { label: "MySo", indexName: "myso_docs" },
-    { label: "SuiNS", indexName: "suins_docs" },
+    { label: "MySoNS", indexName: "suins_docs" },
     { label: "The Move Book", indexName: "move_book" },
     { label: "SDKs", indexName: "myso_sdks" },
     { label: "Walrus", indexName: "walrus_docs" },

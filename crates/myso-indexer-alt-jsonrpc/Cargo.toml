@@ -59,7 +59,6 @@ myso-indexer-alt-schema.workspace = true
 myso-json.workspace = true
 myso-json-rpc-api.workspace = true
 myso-json-rpc-types.workspace = true
-myso-name-service.workspace = true
 myso-open-rpc.workspace = true
 myso-open-rpc-macros.workspace = true
 myso-package-resolver.workspace = true

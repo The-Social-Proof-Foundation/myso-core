@@ -136,8 +136,6 @@ impl RpcExampleProvider {
             self.myso_get_chain_identifier(),
             self.mysox_get_stakes(),
             self.mysox_get_stakes_by_ids(),
-            self.mysox_resolve_name_service_address(),
-            self.mysox_resolve_name_service_names(),
             self.myso_try_multi_get_past_objects(),
         ]
         .into_iter()
@@ -1459,40 +1457,6 @@ impl RpcExampleProvider {
             vec![ExamplePairing::new(
                 "Returns the staking information for the address the request provides.",
                 vec![("staked_myso_ids", json!(vec![stake1, stake2]))],
-                json!(result),
-            )],
-        )
-    }
-
-    fn mysox_resolve_name_service_address(&mut self) -> Examples {
-        let result = ObjectID::new(self.rng.r#gen());
-        Examples::new(
-            "mysox_resolveNameServiceAddress",
-            vec![ExamplePairing::new(
-                "Returns the resolved address for the name the request provides.",
-                vec![("name", json!("example.myso".to_string()))],
-                json!(result),
-            )],
-        )
-    }
-
-    fn mysox_resolve_name_service_names(&mut self) -> Examples {
-        let next_cursor = Some(ObjectID::new(self.rng.r#gen()));
-        let object_id = ObjectID::new(self.rng.r#gen());
-        let result = Page {
-            data: vec!["example.myso".to_string()],
-            next_cursor,
-            has_next_page: false,
-        };
-        Examples::new(
-            "mysox_resolveNameServiceNames",
-            vec![ExamplePairing::new(
-                "Returns the MySoNS name for the address the request provides. Currently, the API returns only the first name in cases where there are multiple. Future support will use the cursor ID and limit values in the request to control pagination of the response for addresses with multiple names.",
-                vec![
-                    ("address", json!(object_id)),
-                    ("cursor", json!(next_cursor)),
-                    ("limit", json!(3)),
-                ],
                 json!(result),
             )],
         )

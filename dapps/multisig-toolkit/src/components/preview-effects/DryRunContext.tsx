@@ -2,14 +2,14 @@
 // Copyright (c) The Social Proof Foundation, LLC.
 // SPDX-License-Identifier: Apache-2.0
 
-import { getFullnodeUrl, SuiClient } from '@socialproof/myso/client';
+import { getFullnodeUrl, MySoClient } from '@socialproof/myso/client';
 import { createContext, ReactNode, useContext } from 'react';
 
 export type Network = 'mainnet' | 'testnet' | 'devnet' | 'localnet';
 
 type DryRunContextType = {
 	network: Network;
-	client: SuiClient;
+	client: MySoClient;
 };
 
 const DryRunContext = createContext<DryRunContextType | null>(null);
@@ -23,7 +23,7 @@ export const DryRunProvider = ({
 }) => {
 	return (
 		<DryRunContext.Provider
-			value={{ network, client: new SuiClient({ url: getFullnodeUrl(network) }) }}
+			value={{ network, client: new MySoClient({ url: getFullnodeUrl(network) }) }}
 		>
 			{children}
 		</DryRunContext.Provider>

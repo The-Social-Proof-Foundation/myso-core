@@ -200,7 +200,7 @@ Open `up.sql` and replace its contents with the following code (using the actual
 
 This example uses the `TEXT` data type for `tx_digest`, but best practice for a production indexer is to use the `BYTEA` data type.
 
-The `TEXT` type is used to make the transaction digest easily readable and directly usable with external tools. Digests are `Base58` encoded, and because PostgreSQL cannot natively display `BYTEA` data in this format, storing it as `TEXT` allows you to copy the digest from a query and paste it into an explorer like [SuiScan](https://suiscan.xyz/testnet/home).
+The `TEXT` type is used to make the transaction digest easily readable and directly usable with external tools. Digests are `Base58` encoded, and because PostgreSQL cannot natively display `BYTEA` data in this format, storing it as `TEXT` allows you to copy the digest from a query and paste it into an explorer like [MySoScan](https://suiscan.xyz/testnet/home).
 
 For a production environment, however, `BYTEA` is strongly recommended. It offers superior storage and query efficiency by storing the raw byte representation, which is more compact and significantly faster for comparisons than a string. Refer to [Binary data performance in PostgreSQL](https://www.cybertec-postgresql.com/en/binary-data-performance-in-postgresql/) on the CYBERTEC website for more information.
 
@@ -437,7 +437,7 @@ View sample records:
 $ SELECT * FROM transaction_digests LIMIT 5;
 ```
 
-To confirm your data is accurate, copy any transaction digest from your database and verify it on SuiScan: [https://suiscan.xyz/testnet/home](https://suiscan.xyz/testnet/home)
+To confirm your data is accurate, copy any transaction digest from your database and verify it on MySoScan: [https://suiscan.xyz/testnet/home](https://suiscan.xyz/testnet/home)
 
 You've built a working custom indexer. 🎉 
 

@@ -4,7 +4,7 @@
 
 import { PublicKey } from '@socialproof/myso/cryptography';
 import { MultiSigPublicKey } from '@socialproof/myso/multisig';
-import { publicKeyFromSuiBytes } from '@socialproof/myso/verify';
+import { publicKeyFromMySoBytes } from '@socialproof/myso/verify';
 import { useEffect, useState } from 'react';
 import { FieldValues, useFieldArray, useForm } from 'react-hook-form';
 import toast from 'react-hot-toast';
@@ -82,7 +82,7 @@ export default function MultiSigCombineSignatureGenerator() {
 			let pks: { publicKey: PublicKey; weight: number }[] = [];
 			let sigs: string[] = [];
 			data.pubKeys.forEach((item: any) => {
-				const pk = publicKeyFromSuiBytes(item.pubKey);
+				const pk = publicKeyFromMySoBytes(item.pubKey);
 				pks.push({ publicKey: pk, weight: Number(item.weight) });
 				if (item.signature) {
 					sigs.push(item.signature);

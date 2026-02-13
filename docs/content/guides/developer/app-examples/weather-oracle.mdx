@@ -89,7 +89,7 @@ fun init(otw: WEATHER, ctx: &mut TxContext) {
     transfer::share_object(WeatherOracle {
         id: object::new(ctx),
         address: ctx.sender(),
-        name: b"SuiMeteo".to_string(),
+        name: b"MySoMeteo".to_string(),
         description: b"A weather oracle.".to_string(),
     });
     transfer::public_transfer(cap, ctx.sender()); // Transfer the admin capability to the sender.
@@ -437,7 +437,7 @@ First, initialize your backend project. To do this, you need to follow these ste
 - Create a new file named `init.ts`
 
 ```typescript title='init.ts'
-import { SuiGrpcClient } from '@socialproof/myso/grpc';
+import { MySoGrpcClient } from '@socialproof/myso/grpc';
 import { Ed25519Keypair } from '@socialproof/myso/keypairs/ed25519';
 import { Transaction } from '@socialproof/myso/transactions';
 import * as dotenv from 'dotenv';
@@ -453,7 +453,7 @@ dotenv.config({ path: '../.env' });
 const phrase = process.env.ADMIN_PHRASE;
 const fullnode = process.env.FULLNODE!;
 const keypair = Ed25519Keypair.deriveKeypair(phrase!);
-const client = new SuiGrpcClient({
+const client = new MySoGrpcClient({
 	baseUrl: fullnode,
 	network: 'mainnet',
 });
@@ -524,7 +524,7 @@ addCityWeather();
 
 The code of init.ts does the following:
 
-- Imports the necessary modules and classes from the library, such as `Ed25519Keypair`, `SuiClient`, and `Transaction`.
+- Imports the necessary modules and classes from the library, such as `Ed25519Keypair`, `MySoClient`, and `Transaction`.
 - Imports the `dotenv` module to load environment variables from a .env file.
 - Imports some custom modules and functions from the local files, such as `City`, `get1000Geonameids`, `getCities`, `getWeatherOracleDynamicFields`, and `logger`.
 - Derives a key pair from a phrase stored in the `ADMIN_PHRASE` environment variable.
@@ -544,7 +544,7 @@ The code of init.ts does the following:
 You have now initialized the `WeatherOracle` shared object. The next step is to learn how to update them every 10 minutes with the latest weather data from the OpenWeatherMap API.
 
 ```typescript title='index.ts'
-import { SuiGrpcClient } from '@socialproof/myso/grpc';
+import { MySoGrpcClient } from '@socialproof/myso/grpc';
 import { Ed25519Keypair } from '@socialproof/myso/keypairs/ed25519';
 import { Transaction } from '@socialproof/myso/transactions';
 import * as dotenv from 'dotenv';
@@ -560,7 +560,7 @@ dotenv.config({ path: '../.env' });
 const phrase = process.env.ADMIN_PHRASE;
 const fullnode = process.env.FULLNODE!;
 const keypair = Ed25519Keypair.deriveKeypair(phrase!);
-const client = new SuiGrpcClient({
+const client = new MySoGrpcClient({
 	baseUrl: fullnode,
 	network: 'mainnet',
 });

@@ -31,7 +31,6 @@ use crate::api::dynamic_fields::DynamicFields;
 use crate::api::governance::DelegationGovernance;
 use crate::api::governance::Governance;
 use crate::api::move_utils::MoveUtils;
-use crate::api::name_service::NameService;
 use crate::api::objects::Objects;
 use crate::api::objects::QueryObjects;
 use crate::api::rpc_module::RpcModule;
@@ -295,7 +294,6 @@ pub async fn start_rpc(
     rpc.add_module(DynamicFields(context.clone()))?;
     rpc.add_module(Governance(context.clone()))?;
     rpc.add_module(MoveUtils(context.clone()))?;
-    rpc.add_module(NameService(context.clone()))?;
     rpc.add_module(Objects(context.clone()))?;
     rpc.add_module(QueryObjects(context.clone()))?;
     rpc.add_module(QueryTransactions(context.clone()))?;

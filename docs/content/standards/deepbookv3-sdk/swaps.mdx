@@ -79,7 +79,7 @@ The following examples demonstrate custom swap functions that you can place into
 ```tsx
 swapExactBaseForQuote = (tx: Transaction) => {
   const [baseOut, quoteOut, deepOut] = this.deepBook.swapExactBaseForQuote({
-    poolKey: 'SUI_DBUSDC',
+    poolKey: 'MYSO_DBUSDC',
     amount: 1, // amount of MYSO to swap
     deepAmount: 1, // amount of DEEP to pay as fees, excess is returned
     minOut: 0.1, // minimum amount of DBUSDC to receive or transaction fails
@@ -91,7 +91,7 @@ swapExactBaseForQuote = (tx: Transaction) => {
 
 swapExactQuoteForBase = (tx: Transaction) => {
   const [baseOut, quoteOut, deepOut] = this.deepBook.swapExactQuoteForBase({
-    poolKey: 'SUI_DBUSDC',
+    poolKey: 'MYSO_DBUSDC',
     amount: 1, // amount of DBUSDC to swap
     deepAmount: 1, // amount of DEEP to pay as fees, excess is returned
     minOut: 0.1, // minimum amount of MYSO to receive or transaction fails

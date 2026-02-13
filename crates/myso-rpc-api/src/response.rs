@@ -10,9 +10,9 @@ use axum::{
 
 use crate::RpcService;
 use myso_rpc::headers::{
-    X_SUI_CHAIN, X_SUI_CHAIN_ID, X_SUI_CHECKPOINT_HEIGHT, X_SUI_EPOCH,
-    X_SUI_LOWEST_AVAILABLE_CHECKPOINT, X_SUI_LOWEST_AVAILABLE_CHECKPOINT_OBJECTS, X_SUI_TIMESTAMP,
-    X_SUI_TIMESTAMP_MS,
+    X_MYSO_CHAIN, X_MYSO_CHAIN_ID, X_MYSO_CHECKPOINT_HEIGHT, X_MYSO_EPOCH,
+    X_MYSO_LOWEST_AVAILABLE_CHECKPOINT, X_MYSO_LOWEST_AVAILABLE_CHECKPOINT_OBJECTS, X_MYSO_TIMESTAMP,
+    X_MYSO_TIMESTAMP_MS,
 };
 
 pub async fn append_info_headers(
@@ -22,23 +22,23 @@ pub async fn append_info_headers(
     let mut headers = HeaderMap::new();
 
     if let Ok(chain_id) = state.chain_id().to_string().try_into() {
-        headers.insert(X_SUI_CHAIN_ID, chain_id);
+        headers.insert(X_MYSO_CHAIN_ID, chain_id);
     }
 
     if let Ok(chain) = state.chain_id().chain().as_str().try_into() {
-        headers.insert(X_SUI_CHAIN, chain);
+        headers.insert(X_MYSO_CHAIN, chain);
     }
 
     if let Ok(latest_checkpoint) = state.reader.inner().get_latest_checkpoint() {
-        headers.insert(X_SUI_EPOCH, latest_checkpoint.epoch().into());
+        headers.insert(X_MYSO_EPOCH, latest_checkpoint.epoch().into());
         headers.insert(
-            X_SUI_CHECKPOINT_HEIGHT,
+            X_MYSO_CHECKPOINT_HEIGHT,
             latest_checkpoint.sequence_number.into(),
         );
-        headers.insert(X_SUI_TIMESTAMP_MS, latest_checkpoint.timestamp_ms.into());
+        headers.insert(X_MYSO_TIMESTAMP_MS, latest_checkpoint.timestamp_ms.into());
 
         headers.insert(
-            X_SUI_TIMESTAMP,
+            X_MYSO_TIMESTAMP,
             crate::proto::timestamp_ms_to_proto(latest_checkpoint.timestamp_ms)
                 .to_string()
                 .try_into()
@@ -49,7 +49,7 @@ pub async fn append_info_headers(
     if let Ok(lowest_available_checkpoint) = state.reader.inner().get_lowest_available_checkpoint()
     {
         headers.insert(
-            X_SUI_LOWEST_AVAILABLE_CHECKPOINT,
+            X_MYSO_LOWEST_AVAILABLE_CHECKPOINT,
             lowest_available_checkpoint.into(),
         );
     }
@@ -60,7 +60,7 @@ pub async fn append_info_headers(
         .get_lowest_available_checkpoint_objects()
     {
         headers.insert(
-            X_SUI_LOWEST_AVAILABLE_CHECKPOINT_OBJECTS,
+            X_MYSO_LOWEST_AVAILABLE_CHECKPOINT_OBJECTS,
             lowest_available_checkpoint_objects.into(),
         );
     }

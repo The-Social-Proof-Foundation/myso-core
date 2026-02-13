@@ -7,7 +7,7 @@ import { CONSTANTS, QueryKey } from "@/constants";
 import { InfiniteScrollArea } from "@/components/InfiniteScrollArea";
 import { ApiLockedObject, LockedListingQuery } from "@/types/types";
 import { constructUrlSearchParams, getNextPageParam } from "@/utils/helpers";
-import { useSuiClient } from "@mysten/dapp-kit";
+import { useMySoClient } from "@mysten/dapp-kit";
 import { TextField } from "@radix-ui/themes";
 import { useState } from "react";
 import { LockedObject } from "./LockedObject";
@@ -30,7 +30,7 @@ export function LockedList({
   params: LockedListingQuery;
 }) {
   const [lockedId, setLockedId] = useState("");
-  const suiClient = useSuiClient();
+  const suiClient = useMySoClient();
 
   const { data: searchData } = useGetLockedObject({
     lockedId,

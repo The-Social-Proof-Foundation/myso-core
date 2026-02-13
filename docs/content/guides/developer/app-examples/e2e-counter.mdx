@@ -380,7 +380,7 @@ Set up your `src/App.tsx` file so that you render the `CreateCounter` component 
 
 ```tsx
   import { ConnectButton, useCurrentAccount } from "@mysten/dapp-kit-react";
-  import { isValidSuiObjectId } from "@socialproof/myso/utils";
+  import { isValidMySoObjectId } from "@socialproof/myso/utils";
   import { Box, Container, Flex, Heading } from "@radix-ui/themes";
   import { useState } from "react";
   import { CreateCounter } from "./CreateCounter";
@@ -389,7 +389,7 @@ Set up your `src/App.tsx` file so that you render the `CreateCounter` component 
     const currentAccount = useCurrentAccount();
     const [counterId, setCounter] = useState(() => {
       const hash = window.location.hash.slice(1);
-      return isValidSuiObjectId(hash) ? hash : null;
+      return isValidMySoObjectId(hash) ? hash : null;
     });
 
     return (

@@ -278,8 +278,8 @@ client
      "accept_payment",
      vec!["0x2::myso::MYSO"],
      vec![
-       SuiJsonValue::from_object_id("0xcafe"),
-       SuiJsonValue::from_object_id("0xc0ffee") // 0xcoffee is turned into the `Receiving<...>` argument of `accept_payment` by the SDK
+       MySoJsonValue::from_object_id("0xcafe"),
+       MySoJsonValue::from_object_id("0xc0ffee") // 0xcoffee is turned into the `Receiving<...>` argument of `accept_payment` by the SDK
      ])
   ...
 ```

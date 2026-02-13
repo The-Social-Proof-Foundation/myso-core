@@ -660,7 +660,7 @@ The `.env.template` file denotes variables that the script automatically fills i
 You can see a reference here:
 
 ```
-SUI_NETWORK = rpc endpoint of the network of your choice | auto filled by publish script
+MYSO_NETWORK = rpc endpoint of the network of your choice | auto filled by publish script
 ASSET_TOKENIZATION_PACKAGE_ID = Created by publishing `asset_tokenization` package | auto filled by publish script
 REGISTRY = Created by publishing `asset_tokenization` package | auto filled by publish script
 
@@ -723,7 +723,7 @@ Afterward, it's necessary to modify the `Move.toml` file. Under the `[addresses]
 
 ### Automatically
 
-The fields that are automatically filled are: `SUI_NETWORK`, `ASSET_TOKENIZATION_PACKAGE_ID` and `REGISTRY`.
+The fields that are automatically filled are: `MYSO_NETWORK`, `ASSET_TOKENIZATION_PACKAGE_ID` and `REGISTRY`.
 
 To publish with the bash script run:
 
@@ -910,9 +910,9 @@ const tx = new Transaction();
   const [upgradeCap] = tx.publish({
     modules: [[...fromHex(bytesToPublish)], [...fromHex(genesis_bytecode)]],
     dependencies: [
-      normalizeSuiObjectId("0x1"),
-      normalizeSuiObjectId("0x2"),
-      normalizeSuiObjectId(packageId),
+      normalizeMySoObjectId("0x1"),
+      normalizeMySoObjectId("0x2"),
+      normalizeMySoObjectId(packageId),
     ],
   });
 

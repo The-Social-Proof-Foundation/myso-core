@@ -2,7 +2,7 @@
 // Copyright (c) The Social Proof Foundation, LLC.
 // SPDX-License-Identifier: Apache-2.0
 
-import { useSuiClientContext } from "@mysten/dapp-kit";
+import { useMySoClientContext } from "@mysten/dapp-kit";
 import { formatAddress } from "@socialproof/myso/utils";
 import { CheckIcon, CopyIcon } from "@radix-ui/react-icons";
 import { useState } from "react";
@@ -20,7 +20,7 @@ export function ExplorerLink({
   isAddress?: boolean;
 }) {
   const [copied, setCopied] = useState(false);
-  const { network } = useSuiClientContext();
+  const { network } = useMySoClientContext();
 
   const link = `https://suiexplorer.com/${
     isAddress ? "address" : "object"

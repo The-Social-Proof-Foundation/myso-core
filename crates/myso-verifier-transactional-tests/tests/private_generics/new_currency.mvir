@@ -18,7 +18,7 @@ module 0x0.t {
         let treasury: coin.TreasuryCap<coin.Coin<u64>>;
         
         label l0:
-        // This should fail with SuiMoveVerificationError because coin.Coin<u64> is external
+        // This should fail with MySoMoveVerificationError because coin.Coin<u64> is external
         builder, treasury = coin_registry.new_currency<coin.Coin<u64>>(
             copy(registry),
             9u8,

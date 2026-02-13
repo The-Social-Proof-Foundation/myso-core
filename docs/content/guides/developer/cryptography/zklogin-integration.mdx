@@ -39,11 +39,11 @@ $ npm install @mysten/myso@experimental
 
 ```typescript
 import { generateNonce, generateRandomness } from '@socialproof/myso/zklogin';
-import { SuiGrpcClient } from '@socialproof/myso/grpc';
+import { MySoGrpcClient } from '@socialproof/myso/grpc';
 
 const FULLNODE_URL = 'https://fullnode.devnet.mysocial.network:443'; // replace with the RPC URL you want to use
-const suiClient = new SuiGrpcClient({ baseUrl: FULLNODE_URL, network: 'devnet' });
-const { epoch, epochDurationMs, epochStartTimestampMs } = await suiClient.core.getLatestSuiSystemState();
+const suiClient = new MySoGrpcClient({ baseUrl: FULLNODE_URL, network: 'devnet' });
+const { epoch, epochDurationMs, epochStartTimestampMs } = await suiClient.core.getLatestMySoSystemState();
 
 const maxEpoch = Number(epoch) + 2; // this means the ephemeral key will be active for 2 epochs from now.
 const ephemeralKeyPair = new Ed25519Keypair();
@@ -299,11 +299,11 @@ A few important things to note:
 First, sign the transaction bytes with the ephemeral private key using the key pair generated previously. This is the same as [traditional key pair signing](https://sdk.mystenlabs.com/typescript/cryptography/keypairs). Make sure that the transaction `sender` is also defined.
 
 ```typescript
-import { SuiGrpcClient } from '@socialproof/myso/grpc';
+import { MySoGrpcClient } from '@socialproof/myso/grpc';
 
 const ephemeralKeyPair = new Ed25519Keypair();
 
-const client = new SuiGrpcClient({ baseUrl: '<YOUR_RPC_URL>', network: 'mainnet' });
+const client = new MySoGrpcClient({ baseUrl: '<YOUR_RPC_URL>', network: 'mainnet' });
 
 const txb = new Transaction();
 

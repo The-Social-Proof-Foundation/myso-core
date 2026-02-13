@@ -40,7 +40,7 @@ const searchClient = {
 
 const indices = [
   { label: "MySo", indexName: "myso_docs" },
-  { label: "SuiNS", indexName: "suins_docs" },
+  { label: "MySoNS", indexName: "suins_docs" },
   { label: "The Move Book", indexName: "move_book" },
   { label: "SDKs", indexName: "myso_sdks" },
   { label: "Walrus", indexName: "walrus_docs" },
@@ -174,7 +174,7 @@ export default function MultiIndexSearchModal({
 
   const activeMeta = {
     myso_docs: null,
-    suins_docs: { label: "SuiNS Docs", url: "https://docs.suins.io" },
+    suins_docs: { label: "MySoNS Docs", url: "https://docs.suins.io" },
     move_book: {
       label: "The Move Book",
       url: "https://move-book.com/",

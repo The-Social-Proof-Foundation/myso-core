@@ -18,7 +18,6 @@ use myso_rpc::proto::myso::rpc::v2 as proto;
 use crate::api::mutation::TransactionInputError;
 use crate::api::scalars::base64::Base64;
 use crate::api::scalars::digest::Digest;
-use crate::api::scalars::domain::Domain;
 use crate::api::scalars::id::Id;
 use crate::api::scalars::json::Json;
 use crate::api::scalars::myso_address::MySoAddress;
@@ -44,7 +43,6 @@ use crate::api::types::move_package::PackageCheckpointFilter;
 use crate::api::types::move_package::PackageKey;
 use crate::api::types::move_type;
 use crate::api::types::move_type::MoveType;
-use crate::api::types::name_record::NameRecord;
 use crate::api::types::node::Node;
 use crate::api::types::object;
 use crate::api::types::object::Object;
@@ -160,12 +158,11 @@ impl Query {
     ///
     /// If none of the above are specified, the address is fetched at the checkpoint being viewed.
     ///
-    /// If the address is fetched by name and the name does not resolve to an address (e.g. the name does not exist or has expired), `null` is returned.
+    /// Returns `null` if the address does not exist.
     async fn address(
         &self,
         ctx: &Context<'_>,
         address: Option<MySoAddress>,
-        name: Option<Domain>,
         root_version: Option<UInt53>,
         at_checkpoint: Option<UInt53>,
     ) -> Option<Result<Address, RpcError<address::Error>>> {
@@ -175,7 +172,6 @@ impl Query {
                 self.scope(ctx)?,
                 AddressKey {
                     address,
-                    name,
                     root_version,
                     at_checkpoint,
                 },
@@ -310,7 +306,7 @@ impl Query {
 
     /// Fetch addresses by their keys.
     ///
-    /// Returns a list of addresses that is guaranteed to be the same length as `keys`. If an address in `keys` is fetched by name and the name does not resolve to an address, its corresponding entry in the result will be `null`.
+    /// Returns a list of addresses that is guaranteed to be the same length as `keys`. If an address in `keys` does not exist, its corresponding entry in the result will be `null`.
     async fn multi_get_addresses(
         &self,
         ctx: &Context<'_>,
@@ -434,19 +430,6 @@ impl Query {
             .map(|t| async move { MoveType::canonicalize(t.into(), self.scope(ctx)?).await });
 
         try_join_all(types).await
-    }
-
-    /// Look-up a Name Service NameRecord by its domain name.
-    ///
-    /// Returns `null` if the record does not exist or has expired.
-    async fn name_record(
-        &self,
-        ctx: &Context<'_>,
-        name: Domain,
-    ) -> Option<Result<NameRecord, RpcError<object::Error>>> {
-        async { NameRecord::by_domain(ctx, self.scope(ctx)?, name.into()).await }
-            .await
-            .transpose()
     }
 
     /// Fetch an object by its address.

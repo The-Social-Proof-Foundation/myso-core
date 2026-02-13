@@ -10,9 +10,6 @@ use jsonrpsee::http_client::HttpClientBuilder;
 use myso_default_config::DefaultConfig;
 use myso_protocol_config::ProtocolConfig;
 use myso_types::base_types::ObjectID;
-use myso_types::base_types::MySoAddress;
-
-pub use myso_name_service::NameServiceConfig;
 
 pub const CLIENT_SDK_TYPE_HEADER: &str = "client-sdk-type";
 
@@ -26,9 +23,6 @@ pub struct RpcConfig {
 
     /// Configuration for transaction-related RPC methods.
     pub transactions: TransactionsConfig,
-
-    /// Configuration for MySoNS related RPC methods.
-    pub name_service: NameServiceConfig,
 
     /// Configuration for coin-related RPC methods.
     pub coins: CoinsConfig,
@@ -48,7 +42,6 @@ pub struct RpcLayer {
     pub objects: ObjectsLayer,
     pub dynamic_fields: DynamicFieldsLayer,
     pub transactions: TransactionsLayer,
-    pub name_service: NameServiceLayer,
     pub coins: CoinsLayer,
     pub node: NodeLayer,
     pub package_resolver: PackageResolverLayer,
@@ -151,15 +144,6 @@ pub struct TransactionsLayer {
     pub tx_retry_interval_ms: Option<u64>,
 }
 
-#[DefaultConfig]
-#[derive(Clone, Default, Debug)]
-#[serde(deny_unknown_fields)]
-pub struct NameServiceLayer {
-    pub package_address: Option<MySoAddress>,
-    pub registry_id: Option<ObjectID>,
-    pub reverse_registry_id: Option<ObjectID>,
-}
-
 #[derive(Debug, Clone)]
 pub struct CoinsConfig {
     /// The default page size limit when querying coins, if none is provided.
@@ -212,7 +196,6 @@ impl RpcLayer {
             objects: ObjectsConfig::default().into(),
             dynamic_fields: DynamicFieldsConfig::default().into(),
             transactions: TransactionsConfig::default().into(),
-            name_service: NameServiceConfig::default().into(),
             coins: CoinsConfig::default().into(),
             package_resolver: PackageResolverLayer::default(),
             node: NodeConfig::default().into(),
@@ -224,7 +207,6 @@ impl RpcLayer {
             objects: self.objects.finish(ObjectsConfig::default()),
             dynamic_fields: self.dynamic_fields.finish(DynamicFieldsConfig::default()),
             transactions: self.transactions.finish(TransactionsConfig::default()),
-            name_service: self.name_service.finish(NameServiceConfig::default()),
             coins: self.coins.finish(CoinsConfig::default()),
             node: self.node.finish(NodeConfig::default()),
             package_resolver: self.package_resolver.finish(),
@@ -275,16 +257,6 @@ impl TransactionsLayer {
             tx_retry_interval_ms: self
                 .tx_retry_interval_ms
                 .unwrap_or(base.tx_retry_interval_ms),
-        }
-    }
-}
-
-impl NameServiceLayer {
-    pub fn finish(self, base: NameServiceConfig) -> NameServiceConfig {
-        NameServiceConfig {
-            package_address: self.package_address.unwrap_or(base.package_address),
-            registry_id: self.registry_id.unwrap_or(base.registry_id),
-            reverse_registry_id: self.reverse_registry_id.unwrap_or(base.reverse_registry_id),
         }
     }
 }
@@ -340,7 +312,6 @@ impl Default for RpcConfig {
             objects: ObjectsConfig::default(),
             dynamic_fields: DynamicFieldsConfig::default(),
             transactions: TransactionsConfig::default(),
-            name_service: NameServiceConfig::default(),
             coins: CoinsConfig::default(),
             node: NodeConfig::default(),
             package_resolver: PackageResolverLayer::default().finish(),
@@ -452,16 +423,6 @@ impl From<TransactionsConfig> for TransactionsLayer {
             max_page_size: Some(config.max_page_size),
             tx_retry_count: Some(config.tx_retry_count),
             tx_retry_interval_ms: Some(config.tx_retry_interval_ms),
-        }
-    }
-}
-
-impl From<NameServiceConfig> for NameServiceLayer {
-    fn from(config: NameServiceConfig) -> Self {
-        Self {
-            package_address: Some(config.package_address),
-            registry_id: Some(config.registry_id),
-            reverse_registry_id: Some(config.reverse_registry_id),
         }
     }
 }

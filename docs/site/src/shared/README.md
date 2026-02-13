@@ -1,6 +1,6 @@
 # Mysten Labs Shared Docusaurus Documentation Components
 
-This repo houses the shared custom components, plugins, and scripts used across all MySo Stack documentation sites (MySo, Walrus, Seal, MySoNS, etc).
+This repo houses the shared custom components, plugins, and scripts used across all MySo Stack documentation sites (MySo, Walrus, Seal, etc).
 
 This repo is a work in progress and will continue to be updated, as some sites have not yet adopted the Docusaurus framework.
 

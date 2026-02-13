@@ -7,7 +7,7 @@ import './index.css';
 import '@fontsource-variable/inter';
 import '@fontsource-variable/red-hat-mono';
 
-import { SuiClientProvider, WalletProvider } from '@mysten/dapp-kit';
+import { MySoClientProvider, WalletProvider } from '@mysten/dapp-kit';
 import { getFullnodeUrl } from '@socialproof/myso/client';
 import { QueryClientProvider } from '@tanstack/react-query';
 import React from 'react';
@@ -20,7 +20,7 @@ import { router } from './routes';
 ReactDOM.createRoot(document.getElementById('root') as HTMLElement).render(
 	<React.StrictMode>
 		<QueryClientProvider client={queryClient}>
-			<SuiClientProvider
+			<MySoClientProvider
 				defaultNetwork="myso:mainnet"
 				networks={{
 					'myso:testnet': { url: getFullnodeUrl('testnet') },
@@ -31,7 +31,7 @@ ReactDOM.createRoot(document.getElementById('root') as HTMLElement).render(
 				<WalletProvider>
 					<RouterProvider router={router} />
 				</WalletProvider>
-			</SuiClientProvider>
+			</MySoClientProvider>
 		</QueryClientProvider>
 	</React.StrictMode>,
 );

@@ -126,11 +126,6 @@ impl RpcService {
                 .send_compressed(tonic::codec::CompressionEncoding::Zstd);
             let move_package_service = myso_rpc::proto::myso::rpc::v2::move_package_service_server::MovePackageServiceServer::new(self.clone())
                 .send_compressed(tonic::codec::CompressionEncoding::Zstd);
-            let name_service =
-                myso_rpc::proto::myso::rpc::v2::name_service_server::NameServiceServer::new(
-                    self.clone(),
-                )
-                .send_compressed(tonic::codec::CompressionEncoding::Zstd);
 
             let event_service_alpha =
                 crate::grpc::alpha::event_service_proto::event_service_server::EventServiceServer::new(
@@ -181,7 +176,6 @@ impl RpcService {
                 service_name(&state_service),
                 service_name(&signature_verification_service),
                 service_name(&move_package_service),
-                service_name(&name_service),
                 service_name(&event_service_alpha),
                 service_name(&proof_service_alpha),
                 service_name(&reflection_v1),
@@ -199,7 +193,6 @@ impl RpcService {
                 .add_service(state_service)
                 .add_service(signature_verification_service)
                 .add_service(move_package_service)
-                .add_service(name_service)
                 // alpha
                 .add_service(event_service_alpha)
                 .add_service(proof_service_alpha)

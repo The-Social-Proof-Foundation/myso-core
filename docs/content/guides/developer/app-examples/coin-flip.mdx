@@ -843,7 +843,7 @@ Okay, that's a good start to have an overview of the project. Time to move to in
     // Split gas coin into house stake coin
     // SDK will take care for us abstracting away of up-front coin selections
     const [houseStakeCoin] = txb.splitCoins(txb.gas, [
-      MIST_PER_SUI * BigInt(houseStake),
+      MIST_PER_MYSO * BigInt(houseStake),
     ]);
     // Calling smart contract function
     txb.moveCall({
@@ -872,7 +872,7 @@ Okay, that's a good start to have an overview of the project. Time to move to in
         onError: (err) => {
           toast.error(err.message);
         },
-        onSuccess: (result: SuiTransactionBlockResponse) => {
+        onSuccess: (result: MySoTransactionBlockResponse) => {
           let houseDataObjId;
 
 
@@ -1040,7 +1040,7 @@ const dAppKit = useDAppKit();
 const txb = new Transaction();
 
 // Player stake
-const [stakeCoin] = txb.splitCoins(txb.gas, [MIST_PER_SUI * BigInt(stake)]);
+const [stakeCoin] = txb.splitCoins(txb.gas, [MIST_PER_MYSO * BigInt(stake)]);
 
 // Create the game with CounterNFT
 txb.moveCall({
@@ -1086,7 +1086,7 @@ export function HouseFinishGame() {
   const [houseDataId] = useContext(HouseDataContext);
 
   useEffect(() => {
-    const gqlClient = new SuiGraphQLClient({
+    const gqlClient = new MySoGraphQLClient({
       url: 'https://graphql.mainnet.mysocial.network/graphql',
       network: 'mainnet',
     });
@@ -1202,7 +1202,7 @@ export function HouseFinishGame() {
 }
 ```
 
-The component uses `SuiGraphQLClient` to poll for `NewGame` events every 5 seconds, tracking the cursor to only process new events. When a new game is detected, it signs the VRF input with the BLS private key and calls `single_player_satoshi::finish_game()` to settle the game.
+The component uses `MySoGraphQLClient` to poll for `NewGame` events every 5 seconds, tracking the cursor to only process new events. When a new game is detected, it signs the VRF input with the BLS private key and calls `single_player_satoshi::finish_game()` to settle the game.
 
 The cleanup function sets `cancelled = true` to stop polling when the component unmounts.
 

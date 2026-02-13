@@ -44,13 +44,13 @@ https://github.com/MystenLabs/ts-sdks/blob/main/packages/deepbook-v3/src/utils/c
 
 ## DeepBookClient
 
-To work with DeepBook Margin, use the client extension to add DeepBook functionality to a MySo client. The [MySo TypeScript SDK](https://sdk.mystenlabs.com/typescript) provides the `SuiGrpcClient` and key functionality necessary to process transactions. The following example imports those libraries, as well.
+To work with DeepBook Margin, use the client extension to add DeepBook functionality to a MySo client. The [MySo TypeScript SDK](https://sdk.mystenlabs.com/typescript) provides the `MySoGrpcClient` and key functionality necessary to process transactions. The following example imports those libraries, as well.
 
 ```tsx
 import { deepbook, type DeepBookClient } from '@mysten/deepbook-v3';
 import type { ClientWithExtensions } from '@socialproof/myso/client';
-import { decodeSuiPrivateKey } from '@socialproof/myso/cryptography';
-import { SuiGrpcClient } from '@socialproof/myso/grpc';
+import { decodeMySoPrivateKey } from '@socialproof/myso/cryptography';
+import { MySoGrpcClient } from '@socialproof/myso/grpc';
 import { Ed25519Keypair } from '@socialproof/myso/keypairs/ed25519';
 
 class DeepBookMarginTrader {
@@ -59,7 +59,7 @@ class DeepBookMarginTrader {
 
 	constructor(privateKey: string, env: 'testnet' | 'mainnet') {
 		this.keypair = this.getSignerFromPK(privateKey);
-		this.client = new SuiGrpcClient({
+		this.client = new MySoGrpcClient({
 			network: env,
 			baseUrl:
 				env === 'mainnet'
@@ -73,7 +73,7 @@ class DeepBookMarginTrader {
 	}
 
 	getSignerFromPK = (privateKey: string): Ed25519Keypair => {
-		const { scheme, secretKey } = decodeSuiPrivateKey(privateKey);
+		const { scheme, secretKey } = decodeMySoPrivateKey(privateKey);
 		if (scheme === 'ED25519') return Ed25519Keypair.fromSecretKey(secretKey);
 
 		throw new Error(`Unsupported scheme: ${scheme}`);
@@ -99,8 +99,8 @@ Example using an existing margin manager:
 import { deepbook, type DeepBookClient } from '@mysten/deepbook-v3';
 import type { MarginManager } from '@mysten/deepbook-v3';
 import type { ClientWithExtensions } from '@socialproof/myso/client';
-import { decodeSuiPrivateKey } from '@socialproof/myso/cryptography';
-import { SuiGrpcClient } from '@socialproof/myso/grpc';
+import { decodeMySoPrivateKey } from '@socialproof/myso/cryptography';
+import { MySoGrpcClient } from '@socialproof/myso/grpc';
 import { Ed25519Keypair } from '@socialproof/myso/keypairs/ed25519';
 import { config } from 'dotenv';
 
@@ -114,7 +114,7 @@ class DeepBookMarginTrader {
 
 	constructor(privateKey: string, env: 'testnet' | 'mainnet') {
 		this.keypair = this.getSignerFromPK(privateKey);
-		this.client = new SuiGrpcClient({
+		this.client = new MySoGrpcClient({
 			network: env,
 			baseUrl:
 				env === 'mainnet'
@@ -129,7 +129,7 @@ class DeepBookMarginTrader {
 	}
 
 	getSignerFromPK = (privateKey: string): Ed25519Keypair => {
-		const { scheme, secretKey } = decodeSuiPrivateKey(privateKey);
+		const { scheme, secretKey } = decodeMySoPrivateKey(privateKey);
 		if (scheme === 'ED25519') return Ed25519Keypair.fromSecretKey(secretKey);
 
 		throw new Error(`Unsupported scheme: ${scheme}`);
@@ -141,7 +141,7 @@ class DeepBookMarginTrader {
 
 	getMarginManagers(): { [key: string]: MarginManager } {
 		const marginManagerAddress = process.env.MARGIN_MANAGER_ADDRESS;
-		const poolKey = process.env.POOL_KEY || 'SUI_DBUSDC';
+		const poolKey = process.env.POOL_KEY || 'MYSO_DBUSDC';
 		if (!marginManagerAddress) {
 			throw new Error('No margin manager address found');
 		}
@@ -161,8 +161,8 @@ Example creating a margin manager:
 import { deepbook, type DeepBookClient } from '@mysten/deepbook-v3';
 import type { MarginManager } from '@mysten/deepbook-v3';
 import type { ClientWithExtensions } from '@socialproof/myso/client';
-import { decodeSuiPrivateKey } from '@socialproof/myso/cryptography';
-import { SuiGrpcClient } from '@socialproof/myso/grpc';
+import { decodeMySoPrivateKey } from '@socialproof/myso/cryptography';
+import { MySoGrpcClient } from '@socialproof/myso/grpc';
 import { Ed25519Keypair } from '@socialproof/myso/keypairs/ed25519';
 import { Transaction } from '@socialproof/myso/transactions';
 
@@ -180,7 +180,7 @@ class DeepBookMarginTrader {
 	}
 
 	#createClient(env: 'testnet' | 'mainnet', marginManagers?: { [key: string]: MarginManager }) {
-		return new SuiGrpcClient({
+		return new MySoGrpcClient({
 			network: env,
 			baseUrl:
 				env === 'mainnet'
@@ -195,7 +195,7 @@ class DeepBookMarginTrader {
 	}
 
 	getSignerFromPK = (privateKey: string): Ed25519Keypair => {
-		const { scheme, secretKey } = decodeSuiPrivateKey(privateKey);
+		const { scheme, secretKey } = decodeMySoPrivateKey(privateKey);
 		if (scheme === 'ED25519') return Ed25519Keypair.fromSecretKey(secretKey);
 
 		throw new Error(`Unsupported scheme: ${scheme}`);
@@ -207,7 +207,7 @@ class DeepBookMarginTrader {
 
 	async createMarginManagerAndReinitialize() {
 		let tx = new Transaction();
-		const poolKey = 'SUI_DBUSDC';
+		const poolKey = 'MYSO_DBUSDC';
 		tx.add(this.client.deepbook.marginManager.newMarginManager(poolKey));
 
 		const result = await this.client.core.signAndExecuteTransaction({
@@ -271,9 +271,9 @@ Similar to coins, the SDK comes with default pools. You can provide a `PoolMap` 
 import { deepbook, type DeepBookClient } from '@mysten/deepbook-v3';
 import type { MarginManager } from '@mysten/deepbook-v3';
 import type { ClientWithExtensions } from '@socialproof/myso/client';
-import { decodeSuiPrivateKey } from '@socialproof/myso/cryptography';
+import { decodeMySoPrivateKey } from '@socialproof/myso/cryptography';
 import type { Keypair } from '@socialproof/myso/cryptography';
-import { SuiGrpcClient } from '@socialproof/myso/grpc';
+import { MySoGrpcClient } from '@socialproof/myso/grpc';
 import { Ed25519Keypair } from '@socialproof/myso/keypairs/ed25519';
 import type { Transaction } from '@socialproof/myso/transactions';
 
@@ -293,7 +293,7 @@ export class DeepBookMarginTrader {
 			this.keypair = keypair;
 		}
 
-		this.client = new SuiGrpcClient({
+		this.client = new MySoGrpcClient({
 			network: env,
 			baseUrl:
 				env === 'mainnet'
@@ -309,7 +309,7 @@ export class DeepBookMarginTrader {
 	}
 
 	static #getSignerFromPK = (privateKey: string) => {
-		const { scheme, secretKey } = decodeSuiPrivateKey(privateKey);
+		const { scheme, secretKey } = decodeMySoPrivateKey(privateKey);
 		if (scheme === 'ED25519') return Ed25519Keypair.fromSecretKey(secretKey);
 
 		throw new Error(`Unsupported scheme: ${scheme}`);
@@ -349,7 +349,7 @@ import { DeepBookMarginTrader } from './deepbookMarginTrader.js';
 	const marginManagers = {
 		MARGIN_MANAGER_1: {
 			address: '',
-			poolKey: 'SUI_DBUSDC',
+			poolKey: 'MYSO_DBUSDC',
 		},
 	};
 	const traderClient = new DeepBookMarginTrader(privateKey, 'testnet', marginManagers);
@@ -358,11 +358,11 @@ import { DeepBookMarginTrader } from './deepbookMarginTrader.js';
 
 	// Margin manager contract calls
 	traderClient.client.deepbook.marginManager.deposit('MARGIN_MANAGER_1', 'DBUSDC', 10000)(tx);
-	traderClient.client.deepbook.marginManager.borrowBase('MARGIN_MANAGER_1', 'SUI_DBUSDC', 100)(tx);
+	traderClient.client.deepbook.marginManager.borrowBase('MARGIN_MANAGER_1', 'MYSO_DBUSDC', 100)(tx);
 
 	// Place leveraged orders
 	traderClient.client.deepbook.poolProxy.placeLimitOrder({
-		poolKey: 'SUI_DBUSDC',
+		poolKey: 'MYSO_DBUSDC',
 		marginManagerKey: 'MARGIN_MANAGER_1',
 		clientOrderId: '12345',
 		price: 2.5,
@@ -396,7 +396,7 @@ traderClient.client.deepbook.marginManager.setMarginManagerReferral(
 // Unset the referral for a margin manager for a specific pool
 traderClient.client.deepbook.marginManager.unsetMarginManagerReferral(
 	'MARGIN_MANAGER_1',
-	'SUI_DBUSDC',
+	'MYSO_DBUSDC',
 )(tx);
 ```
 

@@ -7,7 +7,6 @@ pub(crate) mod big_int;
 pub(crate) mod cursor;
 pub(crate) mod date_time;
 pub(crate) mod digest;
-pub(crate) mod domain;
 pub(crate) mod fq_name_filter;
 pub(crate) mod id;
 pub(crate) mod json;

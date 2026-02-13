@@ -1,7 +1,7 @@
 // Copyright (c) Mysten Labs, Inc.
 // Copyright (c) The Social Proof Foundation, LLC.
 // SPDX-License-Identifier: Apache-2.0
-import { SuiObjectData } from "@socialproof/myso/client";
+import { MySoObjectData } from "@socialproof/myso/client";
 import { Avatar, Box, Card, Flex, Inset, Text } from "@radix-ui/themes";
 import { ReactNode } from "react";
 import { ExplorerLink } from "./ExplorerLink";
@@ -14,13 +14,13 @@ import { ExplorerLink } from "./ExplorerLink";
  * below the object's display in a footer-like design.
  *
  */
-export function SuiObjectDisplay({
+export function MySoObjectDisplay({
   object,
   children,
   label,
   labelClasses,
 }: {
-  object?: SuiObjectData;
+  object?: MySoObjectData;
   children?: ReactNode | ReactNode[];
   label?: string;
   labelClasses?: string;

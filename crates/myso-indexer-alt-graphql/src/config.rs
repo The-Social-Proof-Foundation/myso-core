@@ -9,12 +9,10 @@ use std::time::Duration;
 use serde::Deserialize;
 use serde::Serialize;
 use myso_default_config::DefaultConfig;
-use myso_name_service::NameServiceConfig;
 use myso_protocol_config::Chain;
 use myso_protocol_config::ProtocolConfig;
 use myso_protocol_config::ProtocolVersion;
 use myso_types::base_types::ObjectID;
-use myso_types::base_types::MySoAddress;
 
 use crate::extensions::query_limits::QueryLimitsConfig;
 use crate::extensions::timeout::TimeoutConfig;
@@ -31,9 +29,6 @@ pub struct RpcConfig {
     /// Configuration for health checks.
     pub health: HealthConfig,
 
-    /// Configure for MySoNS related RPC methods.
-    pub name_service: NameServiceConfig,
-
     /// Configuration for the watermark task.
     pub watermark: WatermarkConfig,
 
@@ -47,7 +42,6 @@ pub struct RpcConfig {
 pub struct RpcLayer {
     pub limits: LimitsLayer,
     pub health: HealthLayer,
-    pub name_service: NameServiceLayer,
     pub watermark: WatermarkLayer,
     pub zklogin: ZkLoginLayer,
 }
@@ -190,15 +184,6 @@ pub struct LimitsLayer {
     pub max_rich_queries: Option<usize>,
 }
 
-#[DefaultConfig]
-#[derive(Clone, Default, Debug)]
-#[serde(deny_unknown_fields)]
-pub struct NameServiceLayer {
-    pub package_address: Option<MySoAddress>,
-    pub registry_id: Option<ObjectID>,
-    pub reverse_registry_id: Option<ObjectID>,
-}
-
 pub struct WatermarkConfig {
     /// How long to wait between updating the watermark.
     pub watermark_polling_interval: Duration,
@@ -229,7 +214,6 @@ impl RpcLayer {
         Self {
             limits: Limits::default().into(),
             health: HealthConfig::default().into(),
-            name_service: NameServiceConfig::default().into(),
             watermark: WatermarkConfig::default().into(),
             zklogin: ZkLoginConfig::default().into(),
         }
@@ -239,7 +223,6 @@ impl RpcLayer {
         RpcConfig {
             limits: self.limits.finish(Limits::default()),
             health: self.health.finish(HealthConfig::default()),
-            name_service: self.name_service.finish(NameServiceConfig::default()),
             watermark: self.watermark.finish(WatermarkConfig::default()),
             zklogin: self.zklogin.finish(ZkLoginConfig::default()),
         }
@@ -387,16 +370,6 @@ impl LimitsLayer {
     }
 }
 
-impl NameServiceLayer {
-    pub(crate) fn finish(self, base: NameServiceConfig) -> NameServiceConfig {
-        NameServiceConfig {
-            package_address: self.package_address.unwrap_or(base.package_address),
-            registry_id: self.registry_id.unwrap_or(base.registry_id),
-            reverse_registry_id: self.reverse_registry_id.unwrap_or(base.reverse_registry_id),
-        }
-    }
-}
-
 impl WatermarkLayer {
     pub(crate) fn finish(self, base: WatermarkConfig) -> WatermarkConfig {
         WatermarkConfig {
@@ -453,16 +426,6 @@ impl From<Limits> for LimitsLayer {
             max_display_output_size: Some(value.max_display_output_size),
             max_disassembled_module_size: Some(value.max_disassembled_module_size),
             max_rich_queries: Some(value.max_rich_queries),
-        }
-    }
-}
-
-impl From<NameServiceConfig> for NameServiceLayer {
-    fn from(config: NameServiceConfig) -> Self {
-        Self {
-            package_address: Some(config.package_address),
-            registry_id: Some(config.registry_id),
-            reverse_registry_id: Some(config.reverse_registry_id),
         }
     }
 }

@@ -974,11 +974,11 @@ Create a `src/components/` directory and add the following components:
 
 <summary>
 
-`SuiObjectDisplay.tsx`
+`MySoObjectDisplay.tsx`
 
 </summary>
 
-<ImportContent source="examples/trading/frontend/src/components/SuiObjectDisplay.tsx" mode="code" />
+<ImportContent source="examples/trading/frontend/src/components/MySoObjectDisplay.tsx" mode="code" />
 
 </details>
 
@@ -1224,7 +1224,7 @@ import { useCurrentAccount, useCurrentClient } from '@mysten/dapp-kit-react';
 import { useInfiniteQuery } from '@tanstack/react-query';
 
 import { InfiniteScrollArea } from '@/components/InfiniteScrollArea';
-import { SuiObjectDisplay } from '@/components/SuiObjectDisplay';
+import { MySoObjectDisplay } from '@/components/MySoObjectDisplay';
 
 /**
  * A component that fetches all the objects owned by the connected wallet address
@@ -1256,7 +1256,7 @@ export function LockOwnedObjects() {
 			loading={isFetchingNextPage}
 		>
 			{data?.map((obj) => (
-				<SuiObjectDisplay key={obj.objectId} object={obj}></SuiObjectDisplay>
+				<MySoObjectDisplay key={obj.objectId} object={obj}></MySoObjectDisplay>
 			))}
 		</InfiniteScrollArea>
 	);
@@ -1421,7 +1421,7 @@ Create `src/mutations/locked.ts`:
 
 ```tsx
 import { useCurrentAccount } from '@mysten/dapp-kit-react';
-import { SuiObjectData } from '@socialproof/myso/jsonRpc';
+import { MySoObjectData } from '@socialproof/myso/jsonRpc';
 import { Transaction } from '@socialproof/myso/transactions';
 import { useMutation } from '@tanstack/react-query';
 
@@ -1436,7 +1436,7 @@ export function useLockObjectMutation() {
 	const executeTransaction = useTransactionExecution();
 
 	return useMutation({
-		mutationFn: async ({ object }: { object: SuiObjectData }) => {
+		mutationFn: async ({ object }: { object: MySoObjectData }) => {
 			if (!account?.address) throw new Error('You need to connect your wallet!');
 			const txb = new Transaction();
 
@@ -1508,7 +1508,7 @@ This query pattern is similar to the one in the `LockOwnedObjects` component. Th
 
 ##### `LockedObject` and `Locked` component
 
-The `<LockedObject />` (`src/components/locked/LockedObject.tsx`) component is mainly responsible for mapping an on-chain `SuiObjectData` `Locked` object to its corresponding `ApiLockedObject`, which is finally delegated to the `<Locked />` component for rendering. The `<LockedObject />` fetches the locked item object ID if the prop `itemId` is not supplied by using TanStack Query's `useQuery` hook with the `useCurrentClient()` hook to call the `getDynamicFieldObject` RPC endpoint. Recall that in this smart contract, the locked item is put into a [dynamic object field](/guides/developer/objects/dynamic-fields.mdx).
+The `<LockedObject />` (`src/components/locked/LockedObject.tsx`) component is mainly responsible for mapping an on-chain `MySoObjectData` `Locked` object to its corresponding `ApiLockedObject`, which is finally delegated to the `<Locked />` component for rendering. The `<LockedObject />` fetches the locked item object ID if the prop `itemId` is not supplied by using TanStack Query's `useQuery` hook with the `useCurrentClient()` hook to call the `getDynamicFieldObject` RPC endpoint. Recall that in this smart contract, the locked item is put into a [dynamic object field](/guides/developer/objects/dynamic-fields.mdx).
 
 <details>
 
@@ -1539,7 +1539,7 @@ The `<Locked />` (`src/components/locked/partials/Locked.tsx`) component is main
 import { useCurrentAccount, useCurrentClient } from '@mysten/dapp-kit-react';
 import { useQuery } from '@tanstack/react-query';
 
-import { SuiObjectDisplay } from '@/components/SuiObjectDisplay';
+import { MySoObjectDisplay } from '@/components/MySoObjectDisplay';
 import { ApiLockedObject } from '@/types/types';
 
 import { ExplorerLink } from '../../ExplorerLink';
@@ -1591,7 +1591,7 @@ export function Locked({
 	};
 
 	return (
-		<SuiObjectDisplay object={suiObject.data!} label={getLabel()} labelClasses={getLabelClasses()}>
+		<MySoObjectDisplay object={suiObject.data!} label={getLabel()} labelClasses={getLabelClasses()}>
 			<div className="p-4 pt-1 text-right flex flex-wrap items-center justify-between">
 				{
 					<p className="text-sm flex-shrink-0 flex items-center gap-2">
@@ -1599,7 +1599,7 @@ export function Locked({
 					</p>
 				}
 			</div>
-		</SuiObjectDisplay>
+		</MySoObjectDisplay>
 	);
 }
 ```
@@ -1665,7 +1665,7 @@ import { Button } from '@radix-ui/themes';
 import { useQuery } from '@tanstack/react-query';
 import { useState } from 'react';
 
-import { SuiObjectDisplay } from '@/components/SuiObjectDisplay';
+import { MySoObjectDisplay } from '@/components/MySoObjectDisplay';
 import { useUnlockMutation } from '@/mutations/locked';
 import { ApiLockedObject } from '@/types/types';
 
@@ -1724,7 +1724,7 @@ export function Locked({
 	};
 
 	return (
-		<SuiObjectDisplay object={suiObject.data!} label={getLabel()} labelClasses={getLabelClasses()}>
+		<MySoObjectDisplay object={suiObject.data!} label={getLabel()} labelClasses={getLabelClasses()}>
 			<div className="p-4 pt-1 text-right flex flex-wrap items-center justify-between">
 				{
 					<p className="text-sm flex-shrink-0 flex items-center gap-2">
@@ -1747,7 +1747,7 @@ export function Locked({
 					</Button>
 				)}
 			</div>
-		</SuiObjectDisplay>
+		</MySoObjectDisplay>
 	);
 }
 ```
@@ -1884,7 +1884,7 @@ To create escrows, include a mutating function through the `useCreateEscrowMutat
 
 ```tsx
 import { useCurrentAccount } from '@mysten/dapp-kit-react';
-import { SuiObjectData } from '@socialproof/myso/jsonRpc';
+import { MySoObjectData } from '@socialproof/myso/jsonRpc';
 import { Transaction } from '@socialproof/myso/transactions';
 import { useMutation } from '@tanstack/react-query';
 
@@ -1900,7 +1900,7 @@ export function useCreateEscrowMutation() {
 	const executeTransaction = useTransactionExecution();
 
 	return useMutation({
-		mutationFn: async ({ object, locked }: { object: SuiObjectData; locked: ApiLockedObject }) => {
+		mutationFn: async ({ object, locked }: { object: MySoObjectData; locked: ApiLockedObject }) => {
 			if (!currentAccount?.address) throw new Error('You need to connect your wallet!');
 
 			const txb = new Transaction();
@@ -1978,7 +1978,7 @@ To cancel the escrow, create a mutation through the `useCancelEscrowMutation` ho
 
 ```tsx
 import { useCurrentAccount } from '@mysten/dapp-kit-react';
-import { SuiObjectData } from '@socialproof/myso/jsonRpc';
+import { MySoObjectData } from '@socialproof/myso/jsonRpc';
 import { Transaction } from '@socialproof/myso/transactions';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 
@@ -1994,7 +1994,7 @@ export function useCreateEscrowMutation() {
 	const executeTransaction = useTransactionExecution();
 
 	return useMutation({
-		mutationFn: async ({ object, locked }: { object: SuiObjectData; locked: ApiLockedObject }) => {
+		mutationFn: async ({ object, locked }: { object: MySoObjectData; locked: ApiLockedObject }) => {
 			if (!currentAccount?.address) throw new Error('You need to connect your wallet!');
 
 			const txb = new Transaction();
@@ -2027,7 +2027,7 @@ export function useCancelEscrowMutation() {
 			suiObject,
 		}: {
 			escrow: ApiEscrowObject;
-			suiObject: SuiObjectData;
+			suiObject: MySoObjectData;
 		}) => {
 			if (!currentAccount?.address) throw new Error('You need to connect your wallet!');
 			const txb = new Transaction();
@@ -2069,7 +2069,7 @@ import { Button } from '@radix-ui/themes';
 import { useQuery } from '@tanstack/react-query';
 import { useState } from 'react';
 
-import { SuiObjectDisplay } from '@/components/SuiObjectDisplay';
+import { MySoObjectDisplay } from '@/components/MySoObjectDisplay';
 import { CONSTANTS, QueryKey } from '@/constants';
 import { useGetLockedObject } from '@/hooks/useGetLockedObject';
 import { useCancelEscrowMutation } from '@/mutations/escrow';
@@ -2131,7 +2131,7 @@ export function Escrow({ escrow }: { escrow: ApiEscrowObject }) {
 	};
 
 	return (
-		<SuiObjectDisplay object={suiObject.data!} label={getLabel()} labelClasses={getLabelClasses()}>
+		<MySoObjectDisplay object={suiObject.data!} label={getLabel()} labelClasses={getLabelClasses()}>
 			<div className="p-4 flex gap-3 flex-wrap">
 				{
 					<p className="text-sm flex-shrink-0 flex items-center gap-2">
@@ -2192,7 +2192,7 @@ export function Escrow({ escrow }: { escrow: ApiEscrowObject }) {
 					</div>
 				)}
 			</div>
-		</SuiObjectDisplay>
+		</MySoObjectDisplay>
 	);
 }
 ```
@@ -2317,7 +2317,7 @@ To accept the escrow, create a mutation through the `useAcceptEscrowMutation` ho
 
 ```tsx
 import { useCurrentAccount, useCurrentClient } from '@mysten/dapp-kit-react';
-import { SuiObjectData } from '@socialproof/myso/jsonRpc';
+import { MySoObjectData } from '@socialproof/myso/jsonRpc';
 import { Transaction } from '@socialproof/myso/transactions';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 
@@ -2333,7 +2333,7 @@ export function useCreateEscrowMutation() {
 	const executeTransaction = useTransactionExecution();
 
 	return useMutation({
-		mutationFn: async ({ object, locked }: { object: SuiObjectData; locked: ApiLockedObject }) => {
+		mutationFn: async ({ object, locked }: { object: MySoObjectData; locked: ApiLockedObject }) => {
 			if (!currentAccount?.address) throw new Error('You need to connect your wallet!');
 
 			const txb = new Transaction();
@@ -2366,7 +2366,7 @@ export function useCancelEscrowMutation() {
 			suiObject,
 		}: {
 			escrow: ApiEscrowObject;
-			suiObject: SuiObjectData;
+			suiObject: MySoObjectData;
 		}) => {
 			if (!currentAccount?.address) throw new Error('You need to connect your wallet!');
 			const txb = new Transaction();

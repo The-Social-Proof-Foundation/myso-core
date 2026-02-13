@@ -4,7 +4,7 @@
 
 import { PublicKey } from '@socialproof/myso/cryptography';
 import { MultiSigPublicKey } from '@socialproof/myso/multisig';
-import { publicKeyFromSuiBytes } from '@socialproof/myso/verify';
+import { publicKeyFromMySoBytes } from '@socialproof/myso/verify';
 import { useState } from 'react';
 import { FieldValues, useFieldArray, useForm } from 'react-hook-form';
 import { toast } from 'react-hot-toast';
@@ -36,7 +36,7 @@ export default function MultiSigAddressGenerator() {
 		try {
 			const pks: { publicKey: PublicKey; weight: number }[] = [];
 			data.pubKeys.forEach((item: any) => {
-				const pk = publicKeyFromSuiBytes(item.pubKey);
+				const pk = publicKeyFromMySoBytes(item.pubKey);
 				pks.push({ publicKey: pk, weight: item.weight });
 			});
 			const multiSigPublicKey = MultiSigPublicKey.fromPublicKeys({

@@ -43,7 +43,7 @@ View `myso` binary installation details.
 
     4. Remember the path to your binary:
 
-           `$ export SUI_BINARY="$(pwd)/target/debug/myso"`
+           `$ export MYSO_BINARY="$(pwd)/target/debug/myso"`
 
 </details>
 
@@ -120,7 +120,7 @@ Then, you must acquire 30M MYSO and stake it to the validator staking pool. You 
 $ myso client call --package 0x3 --module myso_system --function request_add_stake --args 0x5 {myso_object_id} {validator_address}
 ```
 
-This creates a stake object (of type `0x3::staking_pool::StakedSui`). This object can be withdrawn with the following command:
+This creates a stake object (of type `0x3::staking_pool::StakedMySo`). This object can be withdrawn with the following command:
 
 ```sh
 $ myso client call --package 0x3 --module myso_system --function request_withdraw_stake --args 0x5 {stake_object_id}

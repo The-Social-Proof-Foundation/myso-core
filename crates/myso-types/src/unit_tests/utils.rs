@@ -140,7 +140,7 @@ mod zk_login {
     pub static SHORT_ADDRESS_SEED: &str =
         "380704556853533152350240698167704405529973457670972223618755249929828551006";
 
-    const MYSO_PRIV_KEY_PREFIX: &str = "suiprivkey";
+    const MYSO_PRIV_KEY_PREFIX: &str = "mysoprivkey";
 
     fn decode_zklogin_test_key(kp_str: &str) -> MySoKeyPair {
         MySoKeyPair::decode(kp_str).unwrap_or_else(|_| {

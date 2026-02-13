@@ -6,4 +6,4 @@ processed 2 tasks
 task 1, lines 8-19:
 //# publish
 Error: Transaction Effects Status: MySo Move Bytecode Verification Error. Please run the MySo Move Verifier for more information.
-Execution Error: ExecutionError: ExecutionError { inner: ExecutionErrorInner { kind: SuiMoveVerificationError, source: Some("Invalid entry point parameter type. Expected primitive or object type. Got: vector<_::m::S>"), command: Some(0) } }
+Execution Error: ExecutionError: ExecutionError { inner: ExecutionErrorInner { kind: MySoMoveVerificationError, source: Some("Invalid entry point parameter type. Expected primitive or object type. Got: vector<_::m::S>"), command: Some(0) } }

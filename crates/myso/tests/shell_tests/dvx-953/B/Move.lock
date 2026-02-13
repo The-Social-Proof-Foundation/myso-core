@@ -10,7 +10,7 @@ dependencies = [
   { id = "D", name = "D" },
   { id = "MoveStdlib", name = "MoveStdlib" },
   { id = "MySo", name = "MySo" },
-  { id = "SuiSystem", name = "SuiSystem" },
+  { id = "MySoSystem", name = "MySoSystem" },
 ]
 
 [[move.package]]
@@ -20,7 +20,7 @@ source = { git = "https://github.com/the-social-proof-foundation/myso-core.git",
 dependencies = [
   { id = "MoveStdlib", name = "MoveStdlib" },
   { id = "MySo", name = "MySo" },
-  { id = "SuiSystem", name = "SuiSystem" },
+  { id = "MySoSystem", name = "MySoSystem" },
 ]
 
 [[move.package]]
@@ -32,7 +32,7 @@ dependencies = [
   { id = "D", name = "D" },
   { id = "MoveStdlib", name = "MoveStdlib" },
   { id = "MySo", name = "MySo" },
-  { id = "SuiSystem", name = "SuiSystem" },
+  { id = "MySoSystem", name = "MySoSystem" },
 ]
 
 [[move.package]]
@@ -43,7 +43,7 @@ dependencies = [
   { id = "Bridge", name = "Bridge" },
   { id = "MoveStdlib", name = "MoveStdlib" },
   { id = "MySo", name = "MySo" },
-  { id = "SuiSystem", name = "SuiSystem" },
+  { id = "MySoSystem", name = "MySoSystem" },
 ]
 
 [[move.package]]
@@ -59,7 +59,7 @@ dependencies = [
 ]
 
 [[move.package]]
-id = "SuiSystem"
+id = "MySoSystem"
 source = { git = "https://github.com/the-social-proof-foundation/myso-core.git", rev = "04f11afaf5e0", subdir = "crates/myso-framework/packages/myso-system" }
 
 dependencies = [

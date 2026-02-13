@@ -2,7 +2,7 @@
 // Copyright (c) The Social Proof Foundation, LLC.
 // SPDX-License-Identifier: Apache-2.0
 import { ApiLockedObject } from "@/types/types";
-import { useCurrentAccount, useSuiClientInfiniteQuery } from "@mysten/dapp-kit";
+import { useCurrentAccount, useMySoClientInfiniteQuery } from "@mysten/dapp-kit";
 import { formatAddress } from "@socialproof/myso/utils";
 import { Avatar, Button, Select } from "@radix-ui/themes";
 import { InfiniteScrollArea } from "@/components/InfiniteScrollArea";
@@ -22,7 +22,7 @@ export function CreateEscrow({ locked }: { locked: ApiLockedObject }) {
   const { mutate: createEscrowMutation, isPending } = useCreateEscrowMutation();
 
   const { data, fetchNextPage, isFetchingNextPage, hasNextPage, refetch } =
-    useSuiClientInfiniteQuery(
+    useMySoClientInfiniteQuery(
       "getOwnedObjects",
       {
         owner: account?.address!,

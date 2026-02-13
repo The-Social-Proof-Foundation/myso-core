@@ -77,7 +77,7 @@ Following are the decimal places (scalars) used to determine the base unit for e
 
 To convert the returned volume to the standard asset unit, divide the value by 10^SCALAR. For example:
 
-If the volume returned in the base asset for the MYSO/USDC pool is 1,000,000,000 MYSO UNIT, the correct volume in MYSO is 1,000,000,000 / 10^(SUI_SCALAR) = 1 MYSO. Similarly, if the volume returned in the quote asset for the MYSO/USDC pool is 1,000,000,000 USDC UNIT, the correct volume is  1,000,000,000 / 10^(USDC_SCALAR) = 1,000 USDC.
+If the volume returned in the base asset for the MYSO/USDC pool is 1,000,000,000 MYSO UNIT, the correct volume in MYSO is 1,000,000,000 / 10^(MYSO_SCALAR) = 1 MYSO. Similarly, if the volume returned in the quote asset for the MYSO/USDC pool is 1,000,000,000 USDC UNIT, the correct volume is  1,000,000,000 / 10^(USDC_SCALAR) = 1,000 USDC.
 
 Use these conversions to interpret the volumes correctly across all pools and assets.
 
@@ -147,7 +147,7 @@ produces a response similar to
 [
 	{
 		"pool_id": "0xb663828d6217467c8a1838a03793da896cbe745b150ebd57d82f814ca579fc22",
-		"pool_name": "DEEP_SUI",
+		"pool_name": "DEEP_MYSO",
 		"base_asset_id": "0xdeeb7a4662eec9f2f3def03fb937a663dddaa2e215b8078a284d026b7946c270::deep::DEEP",
 		"base_asset_decimals": 6,
 		"base_asset_symbol": "DEEP",
@@ -208,15 +208,15 @@ Returns the historical volume for each specified pool within the given time rang
 A successful request to the following endpoint
 
 ```http
-/historical_volume/DEEP_SUI,SUI_USDC?start_time=1731260703&end_time=1731692703&volume_in_base=true
+/historical_volume/DEEP_SUI,MYSO_USDC?start_time=1731260703&end_time=1731692703&volume_in_base=true
 ```
 
 produces a response similar to
 
 ```json
 {
-	"DEEP_SUI": 22557460000000,
-	"SUI_USDC": 19430171000000000
+	"DEEP_MYSO": 22557460000000,
+	"MYSO_USDC": 19430171000000000
 }
 ```
 
@@ -256,11 +256,11 @@ produces a response similar to
 
 ```json
 {
-	"DEEP_SUI": 22557460000000,
+	"DEEP_MYSO": 22557460000000,
 	"WUSDT_USDC": 10265000000,
 	"NS_USDC": 4399650900000,
-	"NS_SUI": 6975475200000,
-	"SUI_USDC": 19430171000000000,
+	"NS_MYSO": 6975475200000,
+	"MYSO_USDC": 19430171000000000,
 	"WUSDC_USDC": 23349574900000,
 	"DEEP_USDC": 130000590000000
 }
@@ -293,18 +293,18 @@ By default, this endpoint retrieves the last 24-hour trading volume for the bala
 A successful request to the following endpoint
 
 ```http
-/historical_volume_by_balance_manager_id/SUI_USDC,DEEP_SUI/0x344c2734b1d211bd15212bfb7847c66a3b18803f3f5ab00f5ff6f87b6fe6d27d?start_time=1731260703&end_time=1731692703&volume_in_base=true
+/historical_volume_by_balance_manager_id/MYSO_USDC,DEEP_SUI/0x344c2734b1d211bd15212bfb7847c66a3b18803f3f5ab00f5ff6f87b6fe6d27d?start_time=1731260703&end_time=1731692703&volume_in_base=true
 ```
 
 produces a response similar to
 
 ```json
 {
-	"DEEP_SUI": [
+	"DEEP_MYSO": [
 		14207960000000,
 		3690000000
 	],
-	"SUI_USDC": [
+	"MYSO_USDC": [
 		2089300100000000,
 		17349400000000
 	]
@@ -344,20 +344,20 @@ By default, this endpoint retrieves the last 24-hour trading volume for the bala
 A successful request to the following endpoint with an interval of 24 hours
 
 ```http
-/historical_volume_by_balance_manager_id_with_interval/USDC_DEEP,SUI_USDC/0x344c2734b1d211bd15212bfb7847c66a3b18803f3f5ab00f5ff6f87b6fe6d27d?start_time=1731460703&end_time=1731692703&interval=86400&volume_in_base=true
+/historical_volume_by_balance_manager_id_with_interval/USDC_DEEP,MYSO_USDC/0x344c2734b1d211bd15212bfb7847c66a3b18803f3f5ab00f5ff6f87b6fe6d27d?start_time=1731460703&end_time=1731692703&interval=86400&volume_in_base=true
 ```
 produces a response similar to
 
 ```json
 {
 	"[1731460703, 1731547103]": {
-		"SUI_USDC": [
+		"MYSO_USDC": [
 			505887400000000,
 			2051300000000
 		]
 	},
 	"[1731547103, 1731633503]": {
-		"SUI_USDC": [
+		"MYSO_USDC": [
 			336777500000000,
 			470600000000
 		]
@@ -492,7 +492,7 @@ produces a response similar to
 		"quote_volume": 3096546.9161,
 		"isFrozen": 0
 	},
-	"NS_SUI": {
+	"NS_MYSO": {
 		"last_price": 0.08323,
 		"base_volume": 280820.8,
 		"quote_volume": 23636.83837,
@@ -546,7 +546,7 @@ The `timestamp` value is in Unix milliseconds. The `type` value is either `"buy"
 A successful request to
 
 ```http
-trades/SUI_USDC?limit=2&start_time=1738093405&end_time=1738096485&maker_balance_manager_id=0x344c2734b1d211bd15212bfb7847c66a3b18803f3f5ab00f5ff6f87b6fe6d27d&taker_balance_manager_id=0x47dcbbc8561fe3d52198336855f0983878152a12524749e054357ac2e3573d58
+trades/MYSO_USDC?limit=2&start_time=1738093405&end_time=1738096485&maker_balance_manager_id=0x344c2734b1d211bd15212bfb7847c66a3b18803f3f5ab00f5ff6f87b6fe6d27d&taker_balance_manager_id=0x47dcbbc8561fe3d52198336855f0983878152a12524749e054357ac2e3573d58
 ```
 
 produces a response similar to
@@ -685,7 +685,7 @@ The timestamp returned is a string that represents a Unix timestamp in milliseco
 A successful request to 
 
 ```json
-/orderbook/SUI_USDC?level=2&depth=4
+/orderbook/MYSO_USDC?level=2&depth=4
 ```
 
 produces a response similar to
@@ -848,7 +848,7 @@ Returns OHLCV (Open, High, Low, Close, Volume) candlestick data for a pool. Vali
 A successful request to
 
 ```http
-/ohclv/SUI_USDC?interval=1h&limit=10
+/ohclv/MYSO_USDC?interval=1h&limit=10
 ```
 
 produces a response similar to

@@ -7,7 +7,7 @@ use jsonrpsee::proc_macros::rpc;
 
 use myso_json_rpc_types::MySoTransactionBlockEffects;
 use myso_json_rpc_types::{
-    DynamicFieldPage, EventFilter, EventPage, ObjectsPage, Page, MySoEvent, MySoObjectResponse,
+    DynamicFieldPage, EventFilter, EventPage, ObjectsPage, MySoEvent, MySoObjectResponse,
     MySoObjectResponseQuery, MySoTransactionBlockResponseQuery, TransactionBlocksPage,
     TransactionFilter,
 };
@@ -99,23 +99,4 @@ pub trait IndexerApi {
         /// The Name of the dynamic field
         name: DynamicFieldName,
     ) -> RpcResult<MySoObjectResponse>;
-
-    /// Return the resolved address given resolver and name
-    #[method(name = "resolveNameServiceAddress")]
-    async fn resolve_name_service_address(
-        &self,
-        /// The name to resolve
-        name: String,
-    ) -> RpcResult<Option<MySoAddress>>;
-
-    /// Return the resolved names given address,
-    /// if multiple names are resolved, the first one is the primary name.
-    #[method(name = "resolveNameServiceNames")]
-    async fn resolve_name_service_names(
-        &self,
-        /// The address to resolve
-        address: MySoAddress,
-        cursor: Option<ObjectID>,
-        limit: Option<usize>,
-    ) -> RpcResult<Page<String, ObjectID>>;
 }

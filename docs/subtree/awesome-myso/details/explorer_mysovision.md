@@ -25,7 +25,6 @@ Data analytics covering transactions, wallets, staking, and validators
     - Automatic portfolio tracking
 - Verify and publish contract code
 - Function execution
-- MySoNS is supported
 - Supported networks:
     - Mainnet
     - Testnet

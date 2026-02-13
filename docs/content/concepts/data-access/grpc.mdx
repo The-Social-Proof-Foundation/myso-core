@@ -32,7 +32,6 @@ Protocol buffers define the gRPC interface. You can find the relevant `.proto` f
 | `SubscriptionService` | `myso/rpc/v2/subscription_service.proto` | Stream live updates for checkpoints. Ideal for building reactive systems such as indexers, bots, and dashboards. Refer to [Subscriptions for streaming data](#subscriptions-for-streaming-data). |
 | `MovePackageService` | `myso/rpc/v2/move_package_service.proto` | Access metadata and the content of Move packages deployed on the MySo network. Useful for tooling, analysis, and smart contract introspection. |
 | `SignatureVerificationService` | `myso/rpc/v2/signature_verification_service.proto` | Validate signatures outside transaction execution. Helps pre-verify payloads that might include [zklogin](/concepts/cryptography/zklogin.mdx) or other signatures, simulate authentication, or build custom signing workflows. |
-| `NameService` | `myso/rpc/v2/name_service.proto` | Resolve human-readable SuiNS names to their underlying name records, and perform reverse lookups from MySo addresses back to linked names. |
 
 Use these definitions to generate client libraries in various programming languages.
 

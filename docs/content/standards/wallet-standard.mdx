@@ -19,7 +19,7 @@ Create a class that represents your wallet. Use the `Wallet` interface from
 `@mysten/wallet-standard` to help ensure your class adheres to the standard.
 
 ```tsx
-import { SUI_DEVNET_CHAIN, Wallet } from '@mysten/wallet-standard';
+import { MYSO_DEVNET_CHAIN, Wallet } from '@mysten/wallet-standard';
 
 class YourWallet implements Wallet {
 	get version() {
@@ -37,7 +37,7 @@ class YourWallet implements Wallet {
 
 	// Return the MySo chains that your wallet supports.
 	get chains() {
-		return [SUI_DEVNET_CHAIN];
+		return [MYSO_DEVNET_CHAIN];
 	}
 }
 ```
@@ -79,14 +79,14 @@ import {
   StandardEventsFeature,
   StandardEventsOnMethod,
   SuiFeatures,
-  SuiSignPersonalMessageMethod,
-  SuiSignTransactionMethod,
-  SuiSignAndExecuteTransactionMethod,
+  MySoSignPersonalMessageMethod,
+  MySoSignTransactionMethod,
+  MySoSignAndExecuteTransactionMethod,
   StandardConnect,
   StandardEvents,
-  SuiSignPersonalMessage,
-  SuiSignTransaction,
-  SuiSignAndExecuteTransaction
+  MySoSignPersonalMessage,
+  MySoSignTransaction,
+  MySoSignAndExecuteTransaction
 } from "@mysten/wallet-standard";
 
 class YourWallet implements Wallet {
@@ -102,15 +102,15 @@ class YourWallet implements Wallet {
         version: "1.0.0",
         on: this.#on,
       },
-			[SuiSignPersonalMessage]: {
+			[MySoSignPersonalMessage]: {
         version: "1.1.0",
 				signPersonalMessage: this.#signPersonalMessage,
 			},
-      [SuiSignTransaction]: {
+      [MySoSignTransaction]: {
         version: "2.0.0",
         signTransaction: this.#signTransaction,
       },
-      [SuiSignAndExecuteTransaction]: {
+      [MySoSignAndExecuteTransaction]: {
         version: "2.0.0",
         signAndExecuteTransaction: this.#signAndExecuteTransaction,
       },
@@ -125,15 +125,15 @@ class YourWallet implements Wallet {
     // Your wallet's connect implementation
   };
 
-	#signPersonalMessage: SuiSignPersonalMessageMethod = () => {
+	#signPersonalMessage: MySoSignPersonalMessageMethod = () => {
     // Your wallet's signPersonalMessage implementation
   };
 
-  #signTransaction: SuiSignTransactionMethod = () => {
+  #signTransaction: MySoSignTransactionMethod = () => {
     // Your wallet's signTransaction implementation
   };
 
-  #signAndExecuteTransaction: SuiSignAndExecuteTransactionMethod = () => {
+  #signAndExecuteTransaction: MySoSignAndExecuteTransactionMethod = () => {
     // Your wallet's signAndExecuteTransaction implementation
   };
 }
@@ -162,13 +162,13 @@ class YourWallet implements Wallet {
 					publicKey: walletAccount.pubkey,
 					// The MySo chains that this account supports. This can be a subset of the wallet's supported chains.
           // These chains must exist on the wallet as well.
-					chains: [SUI_DEVNET_CHAIN],
+					chains: [MYSO_DEVNET_CHAIN],
 					// The features that this account supports. This can be a subset of the wallet's supported features.
 					// These features must exist on the wallet as well.
 					features: [
-						SuiSignPersonalMessage,
-            SuiSignTransaction,
-						SuiSignAndExecuteTransaction,
+						MySoSignPersonalMessage,
+            MySoSignTransaction,
+						MySoSignAndExecuteTransaction,
 					],
 				}),
 		);
@@ -261,13 +261,13 @@ wallet.features['myso:signTransaction'].signTransaction({
 
 Similar to account authorization, this process opens a pop-up dialog for the user to either accept or decline the transaction. Upon accepting, the function returns an object in the form `{bytes: String, signature: Uint8Array}`. The `bytes` value is the `b64` encoding of the transaction and the `signature` value is the transaction signature.
 
-To execute the transaction, use a MySo client such as `SuiGrpcClient` from `@socialproof/myso/grpc`:
+To execute the transaction, use a MySo client such as `MySoGrpcClient` from `@socialproof/myso/grpc`:
 
 ```tsx
 import { fromBase64 } from '@socialproof/myso/utils';
-import { SuiGrpcClient } from '@socialproof/myso/grpc';
+import { MySoGrpcClient } from '@socialproof/myso/grpc';
 
-const client = new SuiGrpcClient({
+const client = new MySoGrpcClient({
   network: 'mainnet',
   baseUrl: 'https://fullnode.mainnet.mysocial.network:443',
 });

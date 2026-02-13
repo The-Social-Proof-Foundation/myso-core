@@ -900,7 +900,7 @@ impl From<crate::execution_status::ExecutionFailureStatus> for ExecutionError {
             crate::execution_status::ExecutionFailureStatus::InsufficientCoinBalance => Self::InsufficientCoinBalance,
             crate::execution_status::ExecutionFailureStatus::CoinBalanceOverflow => Self::CoinBalanceOverflow,
             crate::execution_status::ExecutionFailureStatus::PublishErrorNonZeroAddress => Self::PublishErrorNonZeroAddress,
-            crate::execution_status::ExecutionFailureStatus::MySoMoveVerificationError => Self::SuiMoveVerificationError,
+            crate::execution_status::ExecutionFailureStatus::MySoMoveVerificationError => Self::MySoMoveVerificationError,
             crate::execution_status::ExecutionFailureStatus::MovePrimitiveRuntimeError(move_location_opt) => Self::MovePrimitiveRuntimeError { location: move_location_opt.0.map(Into::into) },
             crate::execution_status::ExecutionFailureStatus::MoveAbort(move_location, code) => Self::MoveAbort { location: move_location.into(), code },
             crate::execution_status::ExecutionFailureStatus::VMVerificationOrDeserializationError => Self::VmVerificationOrDeserializationError,
@@ -920,7 +920,7 @@ impl From<crate::execution_status::ExecutionFailureStatus> for ExecutionError {
             crate::execution_status::ExecutionFailureStatus::PackageUpgradeError { upgrade_error } => Self::PackageUpgradeError { kind: upgrade_error.into() },
             crate::execution_status::ExecutionFailureStatus::WrittenObjectsTooLarge { current_size, max_size } => Self::WrittenObjectsTooLarge { object_size: current_size, max_object_size:max_size },
             crate::execution_status::ExecutionFailureStatus::CertificateDenied => Self::CertificateDenied,
-            crate::execution_status::ExecutionFailureStatus::MySoMoveVerificationTimedout => Self::SuiMoveVerificationTimedout,
+            crate::execution_status::ExecutionFailureStatus::MySoMoveVerificationTimedout => Self::MySoMoveVerificationTimedout,
             crate::execution_status::ExecutionFailureStatus::SharedObjectOperationNotAllowed => Self::ConsensusObjectOperationNotAllowed,
             crate::execution_status::ExecutionFailureStatus::InputObjectDeleted => Self::InputObjectDeleted,
             crate::execution_status::ExecutionFailureStatus::ExecutionCancelledDueToSharedObjectCongestion { congested_objects } => Self::ExecutionCanceledDueToConsensusObjectCongestion { congested_objects: congested_objects.0.into_iter().map(Into::into).collect() },
@@ -967,7 +967,7 @@ impl From<ExecutionError> for crate::execution_status::ExecutionFailureStatus {
             ExecutionError::InsufficientCoinBalance => Self::InsufficientCoinBalance,
             ExecutionError::CoinBalanceOverflow => Self::CoinBalanceOverflow,
             ExecutionError::PublishErrorNonZeroAddress => Self::PublishErrorNonZeroAddress,
-            ExecutionError::SuiMoveVerificationError => Self::MySoMoveVerificationError,
+            ExecutionError::MySoMoveVerificationError => Self::MySoMoveVerificationError,
             ExecutionError::MovePrimitiveRuntimeError { location } => {
                 Self::MovePrimitiveRuntimeError(crate::execution_status::MoveLocationOpt(
                     location.map(Into::into),
@@ -1027,7 +1027,7 @@ impl From<ExecutionError> for crate::execution_status::ExecutionFailureStatus {
                 max_size: max_object_size,
             },
             ExecutionError::CertificateDenied => Self::CertificateDenied,
-            ExecutionError::SuiMoveVerificationTimedout => Self::MySoMoveVerificationTimedout,
+            ExecutionError::MySoMoveVerificationTimedout => Self::MySoMoveVerificationTimedout,
             ExecutionError::ConsensusObjectOperationNotAllowed => {
                 Self::SharedObjectOperationNotAllowed
             }

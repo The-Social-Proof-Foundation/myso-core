@@ -1,8 +1,8 @@
 // Copyright (c) Mysten Labs, Inc.
 // Copyright (c) The Social Proof Foundation, LLC.
 // SPDX-License-Identifier: Apache-2.0
-import { useCurrentAccount, useSuiClientQuery } from "@mysten/dapp-kit";
-import { SuiObjectDisplay } from "@/components/SuiObjectDisplay";
+import { useCurrentAccount, useMySoClientQuery } from "@mysten/dapp-kit";
+import { MySoObjectDisplay } from "@/components/MySoObjectDisplay";
 import { Button } from "@radix-ui/themes";
 import {
   ArrowDownIcon,
@@ -33,7 +33,7 @@ export function Escrow({ escrow }: { escrow: ApiEscrowObject }) {
   const { mutate: cancelEscrowMutation, isPending: pendingCancellation } =
     useCancelEscrowMutation();
 
-  const suiObject = useSuiClientQuery("getObject", {
+  const suiObject = useMySoClientQuery("getObject", {
     id: escrow?.itemId,
     options: {
       showDisplay: true,
@@ -75,7 +75,7 @@ export function Escrow({ escrow }: { escrow: ApiEscrowObject }) {
   };
 
   return (
-    <SuiObjectDisplay
+    <MySoObjectDisplay
       object={suiObject.data?.data!}
       label={getLabel()}
       labelClasses={getLabelClasses()}
@@ -157,6 +157,6 @@ export function Escrow({ escrow }: { escrow: ApiEscrowObject }) {
           </div>
         )}
       </div>
-    </SuiObjectDisplay>
+    </MySoObjectDisplay>
   );
 }

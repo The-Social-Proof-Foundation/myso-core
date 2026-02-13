@@ -166,7 +166,7 @@ interface PlaceMarginLimitOrderParams {
 
 // Example: Place a buy limit order for 10 MYSO at $2.50
 placeLimitOrder = (tx: Transaction) => {
-	const poolKey = 'SUI_DBUSDC';
+	const poolKey = 'MYSO_DBUSDC';
 	const managerKey = 'MARGIN_MANAGER_1';
 	tx.add(
 		this.poolProxyContract.placeLimitOrder({
@@ -187,7 +187,7 @@ placeLimitOrder = (tx: Transaction) => {
 ```tsx
 // Example: Place a market sell order for 5 MYSO
 placeMarketOrder = (tx: Transaction) => {
-	const poolKey = 'SUI_DBUSDC';
+	const poolKey = 'MYSO_DBUSDC';
 	const managerKey = 'MARGIN_MANAGER_1';
 	tx.add(
 		this.poolProxyContract.placeMarketOrder({
@@ -207,7 +207,7 @@ placeMarketOrder = (tx: Transaction) => {
 ```tsx
 // Example: Place a reduce-only limit order to close a position
 placeReduceOnly = (tx: Transaction) => {
-	const poolKey = 'SUI_DBUSDC';
+	const poolKey = 'MYSO_DBUSDC';
 	const managerKey = 'MARGIN_MANAGER_1';
 	tx.add(
 		this.poolProxyContract.placeReduceOnlyLimitOrder({

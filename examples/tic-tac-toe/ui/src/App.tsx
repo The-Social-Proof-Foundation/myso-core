@@ -4,8 +4,8 @@
 
 import "./App.css";
 
-import { ConnectButton, useCurrentAccount, useSuiClientContext } from "@mysten/dapp-kit";
-import { isValidSuiObjectId, normalizeSuiObjectId } from "@socialproof/myso/utils";
+import { ConnectButton, useCurrentAccount, useMySoClientContext } from "@mysten/dapp-kit";
+import { isValidMySoObjectId, normalizeMySoObjectId } from "@socialproof/myso/utils";
 import { FrameIcon } from "@radix-ui/react-icons";
 import { Box, Container, Flex, Heading, Link } from "@radix-ui/themes";
 import { Error } from "components/Error";
@@ -16,7 +16,7 @@ import Root from "pages/Root";
 function App() {
     // Ensure the app's network config matches the wallet's available networks, if the wallet is connected.
     const account = useCurrentAccount();
-    const ctx = useSuiClientContext();
+    const ctx = useMySoClientContext();
 
     const chain = account?.chains?.find((c) => c.startsWith("myso:"))?.replace(/^myso:/, "");
     if (chain) {
@@ -51,7 +51,7 @@ function Content() {
     const packageId = useNetworkVariable("packageId");
 
     const path = location.pathname.slice(1);
-    const addr = normalizeSuiObjectId(path);
+    const addr = normalizeMySoObjectId(path);
 
     if (packageId === null) {
         const availableNetworks = Object.keys(networkConfig).filter(
@@ -66,7 +66,7 @@ function Content() {
         );
     } else if (path === "") {
         return <Root />;
-    } else if (isValidSuiObjectId(addr)) {
+    } else if (isValidMySoObjectId(addr)) {
         return <Game id={addr} />;
     } else {
         return (

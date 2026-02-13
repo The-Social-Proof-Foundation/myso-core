@@ -15,7 +15,6 @@ use futures::future::try_join_all;
 use myso_types::base_types::MySoAddress as NativeMySoAddress;
 use myso_types::dynamic_field::DynamicFieldType;
 
-use crate::api::scalars::domain::Domain;
 use crate::api::scalars::id::Id;
 use crate::api::scalars::owner_kind::OwnerKind;
 use crate::api::scalars::myso_address::MySoAddress;
@@ -29,7 +28,6 @@ use crate::api::types::dynamic_field::DynamicField;
 use crate::api::types::dynamic_field::DynamicFieldName;
 use crate::api::types::move_object::MoveObject;
 use crate::api::types::move_package::MovePackage;
-use crate::api::types::name_record::NameRecord;
 use crate::api::types::object;
 use crate::api::types::object::Object;
 use crate::api::types::object::ObjectKey;
@@ -41,7 +39,6 @@ use crate::api::types::transaction::filter::TransactionFilter;
 use crate::api::types::transaction::filter::TransactionFilterValidator as TFValidator;
 use crate::error::RpcError;
 use crate::error::bad_user_input;
-use crate::error::convert;
 use crate::pagination::Page;
 use crate::pagination::PaginationConfig;
 use crate::scope::Scope;
@@ -87,11 +84,6 @@ pub(crate) enum AddressTransactionRelationship {
         desc = "Total balance across coins owned by this address, grouped by coin type.",
     ),
     field(
-        name = "default_name_record",
-        ty = "Option<Result<NameRecord, RpcError<object::Error>>>",
-        desc = "The domain explicitly configured as the default Name Service name for this address."
-    ),
-    field(
         name = "multi_get_balances",
         arg(name = "keys", ty = "Vec<TypeInput>"),
         ty = "Option<Result<Vec<Balance>, RpcError<balance::Error>>>",
@@ -125,16 +117,13 @@ pub(crate) struct Address {
 
 /// Identifies a specific version of an address.
 ///
-/// Exactly one of `address` or `name` must be specified. Additionally, at most one of `rootVersion` or `atCheckpoint` can be specified. If neither bound is provided, the address is fetched at the checkpoint being viewed.
+/// The `address` must be specified. Additionally, at most one of `rootVersion` or `atCheckpoint` can be specified. If neither bound is provided, the address is fetched at the checkpoint being viewed.
 ///
 /// See `Query.address` for more details.
 #[derive(InputObject)]
 pub(crate) struct AddressKey {
     /// The address.
     pub(crate) address: Option<MySoAddress>,
-
-    /// A MySoNS name to resolve to an address.
-    pub(crate) name: Option<Domain>,
 
     /// If specified, sets a root version bound for this address.
     pub(crate) root_version: Option<UInt53>,
@@ -156,7 +145,7 @@ pub(crate) enum Error {
     )]
     OneBound,
 
-    #[error("Exactly one of `address` or `name` must be specified")]
+    #[error("`address` must be specified")]
     OneId,
 }
 
@@ -184,7 +173,6 @@ impl Address {
         async {
             let key = AddressKey {
                 address: Some(self.address.into()),
-                name: None,
                 root_version,
                 at_checkpoint: checkpoint,
             };
@@ -246,16 +234,6 @@ impl Address {
             }
             .await,
         )
-    }
-
-    /// The domain explicitly configured as the default Name Service name for this address.
-    pub(crate) async fn default_name_record(
-        &self,
-        ctx: &Context<'_>,
-    ) -> Option<Result<NameRecord, RpcError<object::Error>>> {
-        NameRecord::by_address(ctx, self.scope.without_root_bound(), self.address)
-            .await
-            .transpose()
     }
 
     /// Access a dynamic field on an object using its type and BCS-encoded name.
@@ -491,25 +469,10 @@ impl Address {
             scope
         };
 
-        // Resolve the address either directly or via name lookup.
-        let address = match (key.address, key.name) {
-            (Some(addr), None) => addr.into(),
-            (None, Some(name)) => {
-                let Some(target) = NameRecord::by_domain(ctx, scope.clone(), name.into())
-                    .await
-                    .map_err(convert)?
-                    .and_then(|r| r.record.target_address)
-                else {
-                    return Ok(None);
-                };
-
-                target
-            }
-
-            (None, None) | (Some(_), Some(_)) => {
-                return Err(bad_user_input(Error::OneId));
-            }
-        };
+        let address = key
+            .address
+            .ok_or_else(|| bad_user_input(Error::OneId))?
+            .into();
 
         Ok(Some(Self::with_address(scope, address)))
     }

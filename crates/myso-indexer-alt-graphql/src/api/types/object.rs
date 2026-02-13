@@ -62,7 +62,6 @@ use crate::api::types::dynamic_field::DynamicField;
 use crate::api::types::dynamic_field::DynamicFieldName;
 use crate::api::types::move_object::MoveObject;
 use crate::api::types::move_package::MovePackage;
-use crate::api::types::name_record::NameRecord;
 use crate::api::types::object_filter::ObjectFilter;
 use crate::api::types::object_filter::ObjectFilterValidator as OFValidator;
 use crate::api::types::owner::Owner;
@@ -335,14 +334,6 @@ impl Object {
             .balances(ctx, first, after, last, before)
             .await
             .ok()?
-    }
-
-    /// The domain explicitly configured as the default Name Service name for this address.
-    pub(crate) async fn default_name_record(
-        &self,
-        ctx: &Context<'_>,
-    ) -> Option<Result<NameRecord, RpcError<Error>>> {
-        self.super_.default_name_record(ctx).await.ok()?
     }
 
     /// Access a dynamic field on an object using its type and BCS-encoded name.

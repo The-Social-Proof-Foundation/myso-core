@@ -667,7 +667,7 @@ export const POST = async (req: NextRequest) => {
   try {
     const { transactionKindBytes, sender } = await req.json();
     const sponsored = await enokiClient.createSponsoredTransaction({
-      network: process.env.NEXT_PUBLIC_SUI_NETWORK_NAME as
+      network: process.env.NEXT_PUBLIC_MYSO_NETWORK_NAME as
         | "mainnet"
         | "testnet"
         | "devnet",

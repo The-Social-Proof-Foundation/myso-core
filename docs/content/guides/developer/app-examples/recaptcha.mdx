@@ -381,7 +381,7 @@ import {
 } from '@mysten/dapp-kit-react';
 import { useMutation } from '@tanstack/react-query';
 import { Transaction } from '@socialproof/myso/transactions';
-import { SUI_CLOCK_OBJECT_ID } from '@socialproof/myso/utils';
+import { MYSO_CLOCK_OBJECT_ID } from '@socialproof/myso/utils';
 import Axios from 'axios';
 import { useEffect, useState } from 'react';
 import ReCAPTCHA from 'react-google-recaptcha';
@@ -464,7 +464,7 @@ function App() {
 
 						transaction.moveCall({
 							target: `${packageId}::${moduleId}::interact`,
-							arguments: [transaction.object(registryId), transaction.object(SUI_CLOCK_OBJECT_ID)],
+							arguments: [transaction.object(registryId), transaction.object(MYSO_CLOCK_OBJECT_ID)],
 						});
 
 						console.log(

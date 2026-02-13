@@ -33,7 +33,6 @@ async-stream.workspace = true
 base64.workspace = true
 futures.workspace = true
 
-myso-name-service.workspace = true
 fastcrypto.workspace = true
 myso-types.workspace = true
 myso-macros.workspace = true

@@ -2,7 +2,7 @@
 // Copyright (c) The Social Proof Foundation, LLC.
 // SPDX-License-Identifier: Apache-2.0
 
-import { getFullnodeUrl, SuiClient } from '@socialproof/myso/client';
+import { getFullnodeUrl, MySoClient } from '@socialproof/myso/client';
 import { parseSerializedSignature } from '@socialproof/myso/cryptography';
 import { useMutation } from '@tanstack/react-query';
 import { AlertCircle } from 'lucide-react';
@@ -24,10 +24,10 @@ export default function ExecuteTransaction() {
 	const [signature, setSignature] = useState('');
 
 	const rpcUrl = getFullnodeUrl(network);
-	const client = new SuiClient({
+	const client = new MySoClient({
 		url: rpcUrl,
 	});
-	//const client = useSuiClient();
+	//const client = useMySoClient();
 
 	const {
 		mutate,

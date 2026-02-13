@@ -11,7 +11,6 @@ use jsonrpsee::types::error::INTERNAL_ERROR_CODE;
 use jsonrpsee::types::{ErrorObject, ErrorObjectOwned};
 use std::collections::BTreeMap;
 use myso_json_rpc_api::{TRANSACTION_EXECUTION_CLIENT_ERROR_CODE, TRANSIENT_ERROR_CODE};
-use myso_name_service::NameServiceError;
 use myso_types::committee::{QUORUM_THRESHOLD, TOTAL_VOTING_POWER};
 use myso_types::error::{
     ErrorCategory, MySoError, MySoErrorKind, MySoObjectResponseError, UserInputError,
@@ -75,8 +74,6 @@ pub enum Error {
     #[error("Unsupported Feature: {0}")]
     UnsupportedFeature(String),
 
-    #[error("transparent")]
-    NameServiceError(#[from] NameServiceError),
 }
 
 impl From<MySoErrorKind> for Error {
@@ -126,15 +123,6 @@ impl From<Error> for ErrorObjectOwned {
                 | MySoObjectResponseError::DynamicFieldNotFound { .. }
                 | MySoObjectResponseError::Deleted { .. }
                 | MySoObjectResponseError::DisplayError { .. } => invalid_params(err),
-                _ => failed(err),
-            },
-            Error::NameServiceError(err) => match err {
-                NameServiceError::ExceedsMaxLength { .. }
-                | NameServiceError::InvalidHyphens
-                | NameServiceError::InvalidLength { .. }
-                | NameServiceError::InvalidUnderscore
-                | NameServiceError::LabelsEmpty
-                | NameServiceError::InvalidSeparator => invalid_params(err),
                 _ => failed(err),
             },
             Error::MySoRpcInputError(err) => invalid_params(err),

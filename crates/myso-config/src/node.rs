@@ -24,7 +24,7 @@ use std::path::{Path, PathBuf};
 use std::sync::Arc;
 use std::time::Duration;
 use myso_keys::keypair_file::{read_authority_keypair_from_file, read_keypair_from_file};
-use myso_types::base_types::{ObjectID, MySoAddress};
+use myso_types::base_types::MySoAddress;
 use myso_types::committee::EpochId;
 use myso_types::crypto::AuthorityPublicKeyBytes;
 use myso_types::crypto::KeypairTraits;
@@ -135,15 +135,6 @@ pub struct NodeConfig {
 
     #[serde(default)]
     pub expensive_safety_check_config: ExpensiveSafetyCheckConfig,
-
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub name_service_package_address: Option<MySoAddress>,
-
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub name_service_registry_id: Option<ObjectID>,
-
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub name_service_reverse_registry_id: Option<ObjectID>,
 
     #[serde(default)]
     pub transaction_deny_config: TransactionDenyConfig,

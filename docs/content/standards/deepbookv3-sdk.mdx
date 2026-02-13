@@ -34,13 +34,13 @@ https://github.com/MystenLabs/ts-sdks/blob/main/packages/deepbook-v3/src/utils/c
 
 ## DeepBookClient
 
-To work with DeepBookV3, use the client extension to add DeepBook functionality to a MySo client. The [MySo TypeScript SDK](https://sdk.mystenlabs.com/typescript) provides the `SuiGrpcClient` and key functionality necessary to process transactions. The following example imports those libraries, as well.
+To work with DeepBookV3, use the client extension to add DeepBook functionality to a MySo client. The [MySo TypeScript SDK](https://sdk.mystenlabs.com/typescript) provides the `MySoGrpcClient` and key functionality necessary to process transactions. The following example imports those libraries, as well.
 
 ```tsx
 import { deepbook, type DeepBookClient } from '@mysten/deepbook-v3';
 import type { ClientWithExtensions } from '@socialproof/myso/client';
-import { SuiGrpcClient } from '@socialproof/myso/grpc';
-import { decodeSuiPrivateKey } from '@socialproof/myso/cryptography';
+import { MySoGrpcClient } from '@socialproof/myso/grpc';
+import { decodeMySoPrivateKey } from '@socialproof/myso/cryptography';
 import { Ed25519Keypair } from '@socialproof/myso/keypairs/ed25519';
 
 class DeepBookMarketMaker {
@@ -49,7 +49,7 @@ class DeepBookMarketMaker {
 
 	constructor(privateKey: string, env: 'testnet' | 'mainnet') {
 		this.keypair = this.getSignerFromPK(privateKey);
-		this.client = new SuiGrpcClient({
+		this.client = new MySoGrpcClient({
 			network: env,
 			baseUrl:
 				env === 'mainnet'
@@ -63,7 +63,7 @@ class DeepBookMarketMaker {
 	}
 
 	getSignerFromPK = (privateKey: string): Ed25519Keypair => {
-		const { scheme, secretKey } = decodeSuiPrivateKey(privateKey);
+		const { scheme, secretKey } = decodeMySoPrivateKey(privateKey);
 		if (scheme === 'ED25519') return Ed25519Keypair.fromSecretKey(secretKey);
 
 		throw new Error(`Unsupported scheme: ${scheme}`);
@@ -89,8 +89,8 @@ Example using an existing balance manager:
 import { deepbook, type DeepBookClient } from '@mysten/deepbook-v3';
 import type { ClientWithExtensions } from '@socialproof/myso/client';
 import type { BalanceManager } from '@mysten/deepbook-v3';
-import { SuiGrpcClient } from '@socialproof/myso/grpc';
-import { decodeSuiPrivateKey } from '@socialproof/myso/cryptography';
+import { MySoGrpcClient } from '@socialproof/myso/grpc';
+import { decodeMySoPrivateKey } from '@socialproof/myso/cryptography';
 import { Ed25519Keypair } from '@socialproof/myso/keypairs/ed25519';
 import { config } from 'dotenv';
 
@@ -104,7 +104,7 @@ class DeepBookMarketMaker {
 
 	constructor(privateKey: string, env: 'testnet' | 'mainnet') {
 		this.keypair = this.getSignerFromPK(privateKey);
-		this.client = new SuiGrpcClient({
+		this.client = new MySoGrpcClient({
 			network: env,
 			baseUrl:
 				env === 'mainnet'
@@ -119,7 +119,7 @@ class DeepBookMarketMaker {
 	}
 
 	getSignerFromPK = (privateKey: string): Ed25519Keypair => {
-		const { scheme, secretKey } = decodeSuiPrivateKey(privateKey);
+		const { scheme, secretKey } = decodeMySoPrivateKey(privateKey);
 		if (scheme === 'ED25519') return Ed25519Keypair.fromSecretKey(secretKey);
 
 		throw new Error(`Unsupported scheme: ${scheme}`);
@@ -151,8 +151,8 @@ Example creating a balance manager:
 import { deepbook, type DeepBookClient } from '@mysten/deepbook-v3';
 import type { ClientWithExtensions } from '@socialproof/myso/client';
 import type { BalanceManager } from '@mysten/deepbook-v3';
-import { SuiGrpcClient } from '@socialproof/myso/grpc';
-import { decodeSuiPrivateKey } from '@socialproof/myso/cryptography';
+import { MySoGrpcClient } from '@socialproof/myso/grpc';
+import { decodeMySoPrivateKey } from '@socialproof/myso/cryptography';
 import { Ed25519Keypair } from '@socialproof/myso/keypairs/ed25519';
 import { Transaction } from '@socialproof/myso/transactions';
 
@@ -170,7 +170,7 @@ class DeepBookMarketMaker {
 	}
 
 	#createClient(env: 'testnet' | 'mainnet', balanceManagers?: { [key: string]: BalanceManager }) {
-		return new SuiGrpcClient({
+		return new MySoGrpcClient({
 			network: env,
 			baseUrl:
 				env === 'mainnet'
@@ -185,7 +185,7 @@ class DeepBookMarketMaker {
 	}
 
 	getSignerFromPK = (privateKey: string): Ed25519Keypair => {
-		const { scheme, secretKey } = decodeSuiPrivateKey(privateKey);
+		const { scheme, secretKey } = decodeMySoPrivateKey(privateKey);
 		if (scheme === 'ED25519') return Ed25519Keypair.fromSecretKey(secretKey);
 
 		throw new Error(`Unsupported scheme: ${scheme}`);
@@ -259,8 +259,8 @@ Similar to coins, the SDK comes with default pools. You can provide a `PoolMap` 
 import { deepbook, type DeepBookClient } from '@mysten/deepbook-v3';
 import type { ClientWithExtensions } from '@socialproof/myso/client';
 import type { BalanceManager } from '@mysten/deepbook-v3';
-import { SuiGrpcClient } from '@socialproof/myso/grpc';
-import { decodeSuiPrivateKey } from '@socialproof/myso/cryptography';
+import { MySoGrpcClient } from '@socialproof/myso/grpc';
+import { decodeMySoPrivateKey } from '@socialproof/myso/cryptography';
 import type { Keypair } from '@socialproof/myso/cryptography';
 import { Ed25519Keypair } from '@socialproof/myso/keypairs/ed25519';
 import type { Transaction } from '@socialproof/myso/transactions';
@@ -281,7 +281,7 @@ export class DeepBookMarketMaker {
 			this.keypair = keypair;
 		}
 
-		this.client = new SuiGrpcClient({
+		this.client = new MySoGrpcClient({
 			network: env,
 			baseUrl:
 				env === 'mainnet'
@@ -297,7 +297,7 @@ export class DeepBookMarketMaker {
 	}
 
 	static #getSignerFromPK = (privateKey: string) => {
-		const { schema, secretKey } = decodeSuiPrivateKey(privateKey);
+		const { schema, secretKey } = decodeMySoPrivateKey(privateKey);
 		if (schema === 'ED25519') return Ed25519Keypair.fromSecretKey(secretKey);
 
 		throw new Error(`Unsupported schema: ${schema}`);
@@ -346,7 +346,7 @@ import { DeepBookMarketMaker } from './deepbookMarketMaker.js';
 
 	// Read only call
 	console.log(await mmClient.client.deepbook.checkManagerBalance('MANAGER_1', 'MYSO'));
-	console.log(await mmClient.client.deepbook.getLevel2Range('SUI_DBUSDC', 0.1, 100, true));
+	console.log(await mmClient.client.deepbook.getLevel2Range('MYSO_DBUSDC', 0.1, 100, true));
 
 	// Balance manager contract call
 	mmClient.client.deepbook.balanceManager.depositIntoManager('MANAGER_1', 'DBUSDT', 10000)(tx);
@@ -380,21 +380,21 @@ The referral multiplier must be a multiple of 0.1 (e.g., 0.1, 0.2, 0.3, ...) and
 // Mint a new referral for a specific pool
 // multiplier determines the portion of fees allocated to the referrer
 // Valid values: 0.1, 0.2, 0.3, ... up to 2.0
-client.deepbook.mintReferral('SUI_DBUSDC', 0.1)(tx);
+client.deepbook.mintReferral('MYSO_DBUSDC', 0.1)(tx);
 
 // Update the multiplier for an existing referral
-client.deepbook.updatePoolReferralMultiplier('SUI_DBUSDC', referralId, 0.2)(tx);
+client.deepbook.updatePoolReferralMultiplier('MYSO_DBUSDC', referralId, 0.2)(tx);
 
 // Claim accumulated referral rewards (returns base, quote, and DEEP coins)
 const { baseRewards, quoteRewards, deepRewards } = tx.add(
-	client.deepbook.claimPoolReferralRewards('SUI_DBUSDC', referralId)
+	client.deepbook.claimPoolReferralRewards('MYSO_DBUSDC', referralId)
 );
 
 // Get the current balances for a referral
-client.deepbook.getPoolReferralBalances('SUI_DBUSDC', referralId)(tx);
+client.deepbook.getPoolReferralBalances('MYSO_DBUSDC', referralId)(tx);
 
 // Get the multiplier for a referral
-client.deepbook.poolReferralMultiplier('SUI_DBUSDC', referralId)(tx);
+client.deepbook.poolReferralMultiplier('MYSO_DBUSDC', referralId)(tx);
 ```
 
 ### Balance manager referral functions
@@ -410,10 +410,10 @@ const tradeCap = tx.add(client.deepbook.balanceManager.mintTradeCap('MANAGER_1')
 client.deepbook.balanceManager.setBalanceManagerReferral('MANAGER_1', referralId, tradeCap)(tx);
 
 // Unset the referral for a specific pool
-client.deepbook.balanceManager.unsetBalanceManagerReferral('MANAGER_1', 'SUI_DBUSDC', tradeCap)(tx);
+client.deepbook.balanceManager.unsetBalanceManagerReferral('MANAGER_1', 'MYSO_DBUSDC', tradeCap)(tx);
 
 // Get the referral ID associated with a balance manager for a specific pool
-client.deepbook.balanceManager.getBalanceManagerReferralId('MANAGER_1', 'SUI_DBUSDC')(tx);
+client.deepbook.balanceManager.getBalanceManagerReferralId('MANAGER_1', 'MYSO_DBUSDC')(tx);
 
 // Get the owner of a referral
 client.deepbook.balanceManager.balanceManagerReferralOwner(referralId)(tx);

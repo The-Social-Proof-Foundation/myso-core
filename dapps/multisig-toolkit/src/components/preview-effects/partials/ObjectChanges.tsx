@@ -2,7 +2,7 @@
 // Copyright (c) The Social Proof Foundation, LLC.
 // SPDX-License-Identifier: Apache-2.0
 
-import { SuiObjectChange } from '@socialproof/myso/client';
+import { MySoObjectChange } from '@socialproof/myso/client';
 
 import { ObjectLink } from '../ObjectLink';
 import { PreviewCard } from '../PreviewCard';
@@ -32,7 +32,7 @@ const objectTypes: Record<string, Record<string, string>> = {
 };
 
 // SPDX-License-Identifier: Apache-2.0
-export function ObjectChanges({ objects }: { objects: SuiObjectChange[] }) {
+export function ObjectChanges({ objects }: { objects: MySoObjectChange[] }) {
 	return (
 		<div className="grid grid-cols-1 gap-5">
 			{objects.map((object, index) => (
@@ -42,7 +42,7 @@ export function ObjectChanges({ objects }: { objects: SuiObjectChange[] }) {
 	);
 }
 
-function ChangedObject({ object }: { object: SuiObjectChange }) {
+function ChangedObject({ object }: { object: MySoObjectChange }) {
 	const objectType = objectTypes[object.type];
 
 	return (

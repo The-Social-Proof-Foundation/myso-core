@@ -6,9 +6,9 @@ import {
 	ConnectButton,
 	useCurrentAccount,
 	useSignTransaction,
-	useSuiClient,
+	useMySoClient,
 } from '@mysten/dapp-kit';
-import { SuiTransactionBlockResponse } from '@socialproof/myso/client';
+import { MySoTransactionBlockResponse } from '@socialproof/myso/client';
 import { Transaction } from '@socialproof/myso/transactions';
 import { ComponentProps, ReactNode, useMemo, useState } from 'react';
 
@@ -40,7 +40,7 @@ const CodePanel = ({
 );
 
 export function App() {
-	const client = useSuiClient();
+	const client = useMySoClient();
 	const currentAccount = useCurrentAccount();
 	const { mutateAsync: signTransaction } = useSignTransaction();
 	const [loading, setLoading] = useState(false);
@@ -50,7 +50,7 @@ export function App() {
 	const [signedTx, setSignedTx] = useState<Awaited<ReturnType<typeof signTransaction>> | null>(
 		null,
 	);
-	const [executedTx, setExecutedTx] = useState<SuiTransactionBlockResponse | null>(null);
+	const [executedTx, setExecutedTx] = useState<MySoTransactionBlockResponse | null>(null);
 
 	const tx = useMemo(() => {
 		if (!currentAccount) return null;

@@ -35,7 +35,7 @@ export default function TabbedResults({
             <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 w-max max-w-xs px-2 py-1 text-sm text-white bg-gray-800 rounded tooltip-delay">
               {label === "MySo"
                 ? suitooltip
-                : label === "SuiNS"
+                : label === "MySoNS"
                   ? suinstooltip
                   : label === "The Move Book"
                     ? movetooltip

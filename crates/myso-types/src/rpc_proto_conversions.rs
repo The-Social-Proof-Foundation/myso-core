@@ -1227,7 +1227,7 @@ impl From<crate::execution_status::ExecutionFailureStatus> for ExecutionError {
             E::InsufficientCoinBalance => ExecutionErrorKind::InsufficientCoinBalance,
             E::CoinBalanceOverflow => ExecutionErrorKind::CoinBalanceOverflow,
             E::PublishErrorNonZeroAddress => ExecutionErrorKind::PublishErrorNonZeroAddress,
-            E::MySoMoveVerificationError => ExecutionErrorKind::SuiMoveVerificationError,
+            E::MySoMoveVerificationError => ExecutionErrorKind::MySoMoveVerificationError,
             E::MovePrimitiveRuntimeError(location) => {
                 message.error_details = location.0.map(|l| {
                     let mut abort = MoveAbort::default();
@@ -1311,7 +1311,7 @@ impl From<crate::execution_status::ExecutionFailureStatus> for ExecutionError {
                 ExecutionErrorKind::WrittenObjectsTooLarge
             }
             E::CertificateDenied => ExecutionErrorKind::CertificateDenied,
-            E::MySoMoveVerificationTimedout => ExecutionErrorKind::SuiMoveVerificationTimedout,
+            E::MySoMoveVerificationTimedout => ExecutionErrorKind::MySoMoveVerificationTimedout,
             E::SharedObjectOperationNotAllowed => {
                 ExecutionErrorKind::ConsensusObjectOperationNotAllowed
             }

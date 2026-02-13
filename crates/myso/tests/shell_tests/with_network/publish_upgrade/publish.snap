@@ -33,7 +33,7 @@ extract_published() {
     | grep -v 0x \
     | grep -v "^#" \
     | sed "s/$chain_id/CHAIN_ID/g" \
-    | sed "s/$myso_version/SUI_VERSION/g"
+    | sed "s/$myso_version/MYSO_VERSION/g"
   echo "=== End Published.toml ==="
 }
 
@@ -60,7 +60,7 @@ exit_code: 0
 [published.localnet]
 chain-id = "CHAIN_ID"
 version = 1
-toolchain-version = "SUI_VERSION"
+toolchain-version = "MYSO_VERSION"
 build-config = { flavor = "myso", edition = "2024" }
 === End Published.toml ===
 
@@ -70,7 +70,7 @@ build-config = { flavor = "myso", edition = "2024" }
 [published.localnet]
 chain-id = "CHAIN_ID"
 version = 1
-toolchain-version = "SUI_VERSION"
+toolchain-version = "MYSO_VERSION"
 build-config = { flavor = "myso", edition = "2024" }
 === End Published.toml ===
 
@@ -80,7 +80,7 @@ build-config = { flavor = "myso", edition = "2024" }
 [published.localnet]
 chain-id = "CHAIN_ID"
 version = 1
-toolchain-version = "SUI_VERSION"
+toolchain-version = "MYSO_VERSION"
 build-config = { flavor = "myso", edition = "2024" }
 === End Published.toml ===
 
@@ -90,7 +90,7 @@ build-config = { flavor = "myso", edition = "2024" }
 [published.localnet]
 chain-id = "CHAIN_ID"
 version = 1
-toolchain-version = "SUI_VERSION"
+toolchain-version = "MYSO_VERSION"
 build-config = { flavor = "myso", edition = "2024" }
 === End Published.toml ===
 
@@ -100,7 +100,7 @@ build-config = { flavor = "myso", edition = "2024" }
 [published.localnet]
 chain-id = "CHAIN_ID"
 version = 1
-toolchain-version = "SUI_VERSION"
+toolchain-version = "MYSO_VERSION"
 build-config = { flavor = "myso", edition = "2024" }
 === End Published.toml ===
 

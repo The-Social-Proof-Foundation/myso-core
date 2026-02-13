@@ -20,4 +20,3 @@ MySoKit is a Swift SDK natively designed to make developing for the MySo Blockch
 - ⚠️ GraphQL is partially supported.
 - [MySo BCS types are supported](https://github.com/OpenDive/MySoKit/tree/main/Sources/MySoKit/Types)
 - ⚠️ [Kiosk is supported](https://github.com/OpenDive/MySoKit/tree/main/Sources/MySoKit/Types/Structs/Kiosk) (might not be actively maintained)
-- ⚠️ [MySoNS is supported](https://github.com/OpenDive/MySoKit/tree/main/Sources/MySoKit/Types/Structs/MySoNS) (might not be actively maintained)

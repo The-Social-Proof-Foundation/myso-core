@@ -147,12 +147,12 @@ The following example demonstrates using suix_getBalance in Rust:
 ```rust
 use std::str::FromStr;
 use myso_sdk::types::base_types::MySoAddress;
-use myso_sdk::{SuiClient, SuiClientBuilder};
+use myso_sdk::{MySoClient, MySoClientBuilder};
 
 
 #[tokio::main]
 async fn main() -> Result<(), anyhow::Error> {
-   let myso = "MySo" SuiClientBuilder::default().build(
+   let myso = "MySo" MySoClientBuilder::default().build(
       "https://fullnode.devnet.mysocial.network:443",
    ).await.unwrap();
    let address = MySoAddress::from_str("0x849d63687330447431a2e76fecca4f3c10f6884ebaa9909674123c6c662612a3")?;
@@ -224,12 +224,12 @@ MySo supports the following API operations related to transferring MYSO between 
 - [myso_transferObject](/myso-api-ref#myso_transferObject)
   Because MYSO tokens are objects, you can transfer MYSO tokens just like any other object. This method requires a gas token, and is useful in niche cases only.
 
-- [myso_payAllSui](/myso-api-ref#myso_payAllSui)
+- [myso_payAllSui](/myso-api-ref#myso_payAllMySo)
   This method accepts an array of MYSO token IDs. It merges all existing tokens into one, deducts the gas fee, then sends the merged token to the recipient address.
 
   The method is especially useful if you want to transfer all MYSO from an address. To merge together all coins for an address, set the recipient as the same address. This is a native MySo method so is not considered a transaction in MySo.
 
-- [myso_paySui](/myso-api-ref#myso_paySui)
+- [myso_paySui](/myso-api-ref#myso_payMySo)
   This operation accepts an array of MYSO token IDs, an array of amounts, and an array of recipient addresses.
 
   The amounts and recipients array map one to one. Even if you use only one recipient address, you must include it for each amount in the amount array.
@@ -239,9 +239,9 @@ MySo supports the following API operations related to transferring MYSO between 
   The benefits of this method include: no gas fees for merging or splitting tokens, and the abstracted token merge and split. The `myso_paySui` operation is a native function, so the merge and split operations are not considered MySo transactions. The gas fees for them match typical transactions on MySo.You can use this operation to split coins in your own address by setting the recipient as your own address. Note that the total value of the input coins must be greater than the total value of the amounts to send.
 
 - [myso_pay](/myso-api-ref#myso_pay)
-  This method is similar to myso_paySui, but it accepts any kind of coin or token instead of only MYSO. You must include a gas token, and all of the coins or tokens must be the same type.
+  This method is similar to myso_payMySo, but it accepts any kind of coin or token instead of only MYSO. You must include a gas token, and all of the coins or tokens must be the same type.
 
-- [myso_transferSui](/myso-api-ref#myso_transferSui)
+- [myso_transferSui](/myso-api-ref#myso_transferMySo)
   This method accepts only one MYSO token object and an amount to send to the recipient. It uses the same token for gas fees, so the amount to transfer must be strictly less than the value of the MYSO token used.
 
 ## Signing Transactions {#signing-transactions}
@@ -265,7 +265,7 @@ MySo supports the following API operations related to staking. You can find the 
 
 ```move
 public fun request_add_stake(
-   self: &mut SuiSystemState,
+   self: &mut MySoSystemState,
    stake: Coin<MYSO>,
    validator_address: address,
    ctx: &mut TxContext,
@@ -285,7 +285,7 @@ public fun request_add_stake(
 
 ```move
 public fun request_add_stake_mul_coin(
-   self: &mut SuiSystemState,
+   self: &mut MySoSystemState,
    delegate_stakes: vector<Coin<MYSO>>,
    stake_amount: option::Option<u64>,
    validator_address: address,
@@ -301,7 +301,7 @@ public fun request_add_stake_mul_coin(
 
 ```move
 public fun request_add_stake_with_locked_coin(
-   self: &mut SuiSystemState,
+   self: &mut MySoSystemState,
    stake: LockedCoin<MYSO>,
    validator_address: address,
    ctx: &mut TxContext,
@@ -316,9 +316,9 @@ public fun request_add_stake_with_locked_coin(
 
 ```move
 public fun request_withdraw_stake(
-   self: &mut SuiSystemState,
+   self: &mut MySoSystemState,
    delegation: &mut Delegation,
-   staked_sui: &mut StakedSui,
+   staked_sui: &mut StakedMySo,
    principal_withdraw_amount: u64,
    ctx: &mut TxContext,
 ) {

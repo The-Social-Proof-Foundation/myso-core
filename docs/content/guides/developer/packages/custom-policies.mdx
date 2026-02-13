@@ -680,9 +680,9 @@ tx.transferObjects([tuesdayUpgradeCap], tx.pure.address(sender));
 Finally, execute that transaction and display its effects to the console. The following snippet assumes that you're running your examples against a local network. Change the `baseUrl` and `network` parameters to run on Devnet, Testnet, or Mainnet:
 
 ```js
-import { SuiGrpcClient } from '@socialproof/myso/grpc';
+import { MySoGrpcClient } from '@socialproof/myso/grpc';
 
-const client = new SuiGrpcClient({ baseUrl: 'http://localhost:9000', network: 'localnet' });
+const client = new MySoGrpcClient({ baseUrl: 'http://localhost:9000', network: 'localnet' });
 const result = await client.signAndExecuteTransaction({
 	signer,
 	transaction: tx,
@@ -705,7 +705,7 @@ import { readFileSync } from 'fs';
 import { homedir } from 'os';
 import path from 'path';
 import { fileURLToPath } from 'url';
-import { SuiGrpcClient } from '@socialproof/myso/grpc';
+import { MySoGrpcClient } from '@socialproof/myso/grpc';
 import { Ed25519Keypair } from '@socialproof/myso/keypairs/ed25519';
 import { Transaction } from '@socialproof/myso/transactions';
 import { fromBase64 } from '@socialproof/myso/utils';
@@ -754,7 +754,7 @@ const tuesdayUpgradeCap = tx.moveCall({
 
 tx.transferObjects([tuesdayUpgradeCap], tx.pure.address(sender));
 
-const client = new SuiGrpcClient({ baseUrl: 'http://localhost:9000', network: 'localnet' });
+const client = new MySoGrpcClient({ baseUrl: 'http://localhost:9000', network: 'localnet' });
 const result = await client.signAndExecuteTransaction({
 	signer,
 	transaction: tx,
@@ -861,7 +861,7 @@ Console output
 ----- Transaction Digest ----
 Bx1GA8EsBjoLKvXV2GG92DC5Jt58dbytf6jFcLg18dDR
 ----- Transaction Data ----
-Transaction Signature: [Signature(Ed25519SuiSignature(Ed25519SuiSignature([0, 92, 22, 253, 150, 35, 134, 140, 185, 239, 72, 194, 25, 250, 153, 98, 134, 26, 219, 232, 199, 122, 56, 189, 186, 56, 126, 184, 147, 148, 184, 4, 17, 177, 156, 231, 198, 74, 118, 28, 187, 132, 94, 141, 44, 55, 70, 207, 157, 143, 182, 83, 59, 156, 116, 226, 22, 65, 211, 179, 187, 18, 76, 245, 4, 92, 225, 85, 204, 230, 61, 45, 147, 106, 193, 13, 195, 116, 230, 99, 61, 161, 251, 251, 68, 154, 46, 172, 143, 122, 101, 212, 120, 80, 164, 214, 54])))]
+Transaction Signature: [Signature(Ed25519MySoSignature(Ed25519MySoSignature([0, 92, 22, 253, 150, 35, 134, 140, 185, 239, 72, 194, 25, 250, 153, 98, 134, 26, 219, 232, 199, 122, 56, 189, 186, 56, 126, 184, 147, 148, 184, 4, 17, 177, 156, 231, 198, 74, 118, 28, 187, 132, 94, 141, 44, 55, 70, 207, 157, 143, 182, 83, 59, 156, 116, 226, 22, 65, 211, 179, 187, 18, 76, 245, 4, 92, 225, 85, 204, 230, 61, 45, 147, 106, 193, 13, 195, 116, 230, 99, 61, 161, 251, 251, 68, 154, 46, 172, 143, 122, 101, 212, 120, 80, 164, 214, 54])))]
 Transaction Kind : Programmable
 Inputs: []
 Commands: [
@@ -937,7 +937,7 @@ import { readFileSync } from 'fs';
 import { homedir } from 'os';
 import path from 'path';
 import { fileURLToPath } from 'url';
-import { SuiGrpcClient } from '@socialproof/myso/grpc';
+import { MySoGrpcClient } from '@socialproof/myso/grpc';
 import { Ed25519Keypair } from '@socialproof/myso/keypairs/ed25519';
 import { Transaction, UpgradePolicy } from '@socialproof/myso/transactions';
 import { fromBase64 } from '@socialproof/myso/utils';
@@ -995,7 +995,7 @@ tx.moveCall({
 	arguments: [cap, receipt],
 });
 
-const client = new SuiGrpcClient({ baseUrl: 'http://localhost:9000', network: 'localnet' });
+const client = new MySoGrpcClient({ baseUrl: 'http://localhost:9000', network: 'localnet' });
 const result = await client.signAndExecuteTransaction({
 	signer,
 	transaction: tx,
@@ -1099,7 +1099,7 @@ Console output
 ----- Transaction Digest ----
 EF2rQzWHmtjPvkqzFGyFvANA8e4ETULSBqDMkzqVoshi
 ----- Transaction Data ----
-Transaction Signature: [Signature(Ed25519SuiSignature(Ed25519SuiSignature([0, 88, 98, 118, 173, 218, 55, 4, 48, 166, 42, 106, 193, 210, 159, 75, 233, 95, 77, 201, 38, 0, 234, 183, 77, 252, 178, 22, 221, 106, 202, 42, 166, 29, 130, 164, 97, 110, 201, 153, 91, 149, 50, 72, 6, 213, 183, 70, 83, 55, 5, 190, 182, 5, 98, 212, 134, 103, 181, 204, 247, 90, 28, 125, 14, 92, 225, 85, 204, 230, 61, 45, 147, 106, 193, 13, 195, 116, 230, 99, 61, 161, 251, 251, 68, 154, 46, 172, 143, 122, 101, 212, 120, 80, 164, 214, 54])))]
+Transaction Signature: [Signature(Ed25519MySoSignature(Ed25519MySoSignature([0, 88, 98, 118, 173, 218, 55, 4, 48, 166, 42, 106, 193, 210, 159, 75, 233, 95, 77, 201, 38, 0, 234, 183, 77, 252, 178, 22, 221, 106, 202, 42, 166, 29, 130, 164, 97, 110, 201, 153, 91, 149, 50, 72, 6, 213, 183, 70, 83, 55, 5, 190, 182, 5, 98, 212, 134, 103, 181, 204, 247, 90, 28, 125, 14, 92, 225, 85, 204, 230, 61, 45, 147, 106, 193, 13, 195, 116, 230, 99, 61, 161, 251, 251, 68, 154, 46, 172, 143, 122, 101, 212, 120, 80, 164, 214, 54])))]
 Transaction Kind : Programmable
 Inputs: []
 Commands: [

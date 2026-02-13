@@ -41,7 +41,6 @@ myso-config.workspace = true
 myso-core.workspace = true
 myso-rpc-api.workspace = true
 myso-storage.workspace = true
-myso-name-service.workspace = true
 myso-network.workspace = true
 myso-json-rpc.workspace = true
 myso-json-rpc-api.workspace = true

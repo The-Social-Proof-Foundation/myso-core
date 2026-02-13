@@ -1,8 +1,8 @@
 // Copyright (c) Mysten Labs, Inc.
 // Copyright (c) The Social Proof Foundation, LLC.
 // SPDX-License-Identifier: Apache-2.0
-import { useCurrentAccount, useSuiClientInfiniteQuery } from "@mysten/dapp-kit";
-import { SuiObjectDisplay } from "@/components/SuiObjectDisplay";
+import { useCurrentAccount, useMySoClientInfiniteQuery } from "@mysten/dapp-kit";
+import { MySoObjectDisplay } from "@/components/MySoObjectDisplay";
 import { Button } from "@radix-ui/themes";
 import { LockClosedIcon } from "@radix-ui/react-icons";
 import { InfiniteScrollArea } from "@/components/InfiniteScrollArea";
@@ -18,7 +18,7 @@ export function LockOwnedObjects() {
   const { mutate: lockObjectMutation, isPending } = useLockObjectMutation();
 
   const { data, fetchNextPage, isFetchingNextPage, hasNextPage, refetch } =
-    useSuiClientInfiniteQuery(
+    useMySoClientInfiniteQuery(
       "getOwnedObjects",
       {
         owner: account?.address!,
@@ -47,7 +47,7 @@ export function LockOwnedObjects() {
       loading={isFetchingNextPage}
     >
       {data?.map((obj) => (
-        <SuiObjectDisplay object={obj.data!}>
+        <MySoObjectDisplay object={obj.data!}>
           <div className="p-4 pt-1 text-right flex items-center justify-between">
             <p className="text-sm">
               Lock the item so it can be used for escrows.
@@ -68,7 +68,7 @@ export function LockOwnedObjects() {
               Lock Item
             </Button>
           </div>
-        </SuiObjectDisplay>
+        </MySoObjectDisplay>
       ))}
     </InfiniteScrollArea>
   );

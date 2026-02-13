@@ -1,16 +1,16 @@
 ---
 title: Wallet Integration Options
-description: SuiPlay0X1 supports integration with several wallet solutions, including self-custodial wallets, zkLogin wallets, Playtron wallets, and custodial wallets.
-keywords: [ self-custodial wallets, zkLogin wallets, Playtron wallets, custodial wallets, wallet integrations, integrate with a wallet, suiplay0x1, integrate wallet with suiplay0x1, integrate with suiplay0x1, SuiLink, SuiLink, enoki, soulbound, nfts  ]
+description: MySoPlay0X1 supports integration with several wallet solutions, including self-custodial wallets, zkLogin wallets, Playtron wallets, and custodial wallets.
+keywords: [ self-custodial wallets, zkLogin wallets, Playtron wallets, custodial wallets, wallet integrations, integrate with a wallet, suiplay0x1, integrate wallet with suiplay0x1, integrate with suiplay0x1, MySoLink, MySoLink, enoki, soulbound, nfts  ]
 ---
 
 <ImportContent source="suiplay.mdx" mode="snippet" />
 
-You have several options for what wallet you develop for on the SuiPlay0X1. There are some concepts to keep in mind when deciding which wallets to target.
+You have several options for what wallet you develop for on the MySoPlay0X1. There are some concepts to keep in mind when deciding which wallets to target.
 
 - [Self-custodial wallets](#self-custodial-wallets): Users control their private keys and own their assets directly.
 - [zkLogin wallets](#zkLogin-wallets): Traditional zkLogin wallets (or [Enoki](https://enoki.mystenlabs.com/) wallets) are a unique wallet type to MySo. zkLogin wallets are tied to a Web2 auth provider (such as Google OAuth). The user authenticates with their traditional auth provider, which associates a wallet to their social account by utilizing zero knowledge proofs. This grants them access to their zkLogin wallet through an ephemeral key pair that does not correlate auth provider user metadata with their on-chain attributed address. If the ephemeral key pair resides on the client side, the zkLogin wallet is self-custodial.
-- [Playtron zkLogin wallet](#playtron-zkLogin-wallet): The Playtron zkLogin wallet is a special zkLogin wallet tied to the user's Playtron credentials. Every user who has a SuiPlay0X1 device has a Playtron login, and therefore possess an associated Playtron zkLogin wallet.
+- [Playtron zkLogin wallet](#playtron-zkLogin-wallet): The Playtron zkLogin wallet is a special zkLogin wallet tied to the user's Playtron credentials. Every user who has a MySoPlay0X1 device has a Playtron login, and therefore possess an associated Playtron zkLogin wallet.
 - [Custodial wallets](#custodial-wallets): Developers manage wallets on behalf of users (similar to traditional gaming databases) except on chain. Users don't need to create or bring a wallet, or to even understand what a wallet is. This smooths out the initial experience, but you still need to confront this issue downstream for users to actually benefit from the Web3 aspects of your game.
 
 ### Self-custodial wallets {#self-custodial-wallets}
@@ -34,10 +34,10 @@ In their simplest form, zkLogin wallets are siloed to the app that creates them.
 ### Playtron zkLogin wallet {#playtron-zkLogin-wallet}
 
 The Playtron wallet is a type of zkLogin wallet that offers a few unique features:
-- Direct integrations with the GameOS running on the SuiPlay0X1, which enables users to sign transactions seamlessly on the device.
+- Direct integrations with the GameOS running on the MySoPlay0X1, which enables users to sign transactions seamlessly on the device.
 - Support for Enoki Connect out of the box, making it portable across apps.
 
-A companion web application is in development to support linking the Playtron wallet to other self-custody wallets using SuiLink, enabling read-access of associated wallets while on the device.
+A companion web application is in development to support linking the Playtron wallet to other self-custody wallets using MySoLink, enabling read-access of associated wallets while on the device.
 
 ### Custodial wallets {#custodial-wallets}
 
@@ -67,13 +67,13 @@ The best wallet to select for your app depends on the goals of your project. The
 
 ## Requirements
 
-While the wallet strategy is left to you as the developer, there are some requirements for working with the SuiPlay0X1:
+While the wallet strategy is left to you as the developer, there are some requirements for working with the MySoPlay0X1:
 
 ### On-device
 
-Games that run on the SuiPlay0X1 device must support the Playtron zkLogin wallet as the default option.  
+Games that run on the MySoPlay0X1 device must support the Playtron zkLogin wallet as the default option.  
 
-You can't require users to sign transactions off-device for gameplay while playing on the SuiPlay0X1.  
+You can't require users to sign transactions off-device for gameplay while playing on the MySoPlay0X1.  
 
 There is no guarantee that players have access to their other self-custody wallets or can access a non-Playtron zkLogin wallet.
 
@@ -101,7 +101,7 @@ The following strategies offer some recommendations on how to best address the r
 - On-device, the wallet experience is seamless and familiar to traditional gamers.
 - Users who have existing wallets can still use them off-device.
 
-On the SuiPlay0X1 device, use the Playtron wallet as default. Off-device, users can continue with their Playtron wallet (assuming you have integrated the dApp Kit SDK).
+On the MySoPlay0X1 device, use the Playtron wallet as default. Off-device, users can continue with their Playtron wallet (assuming you have integrated the dApp Kit SDK).
 
 ### Option 2: Custodial wallets with per-user allocation
 
@@ -149,13 +149,13 @@ Use dApp Kit to support self-custody wallet (either Playtron wallet on-device or
 
 :::tip
 
-Enoki Connect is not required for SuiPlay integration. In other words, your game wallet doesn't need to use Enoki Connect unless you want the additional benefits. The Playtron wallet uses Enoki Connect, which allows it to connect to third-party apps if they enable support for the wallet.
+Enoki Connect is not required for MySoPlay integration. In other words, your game wallet doesn't need to use Enoki Connect unless you want the additional benefits. The Playtron wallet uses Enoki Connect, which allows it to connect to third-party apps if they enable support for the wallet.
 
 :::
 
-## SuiLink {#suilink}
+## MySoLink {#suilink}
 
-[SuiLink](https://www.suilink.io/) is a Mysten Labs product that connects wallets across chains to support use cases such as cross chain wallet verification, asset ownership verification, and asset distributions across chains. 
+[MySoLink](https://www.suilink.io/) is a Mysten Labs product that connects wallets across chains to support use cases such as cross chain wallet verification, asset ownership verification, and asset distributions across chains. 
 
 The [Playtron companion wallet app](https://wallet.playtron.one/) utilizes this technology to enable linking wallets that could contain soulbound assets in their other MySo mnemonic or zkLogin wallets, or their Solana or Ethereum wallets. This offers an improved user experience as users won’t need to transfer over all of their assets to their Playtron wallet to get the benefits these assets attribute to them.
 
@@ -165,12 +165,12 @@ You can prove ownership of another wallet or asset and link it to your Playtron 
 
 :::
 
-A SuiLink connection is automatically established for SuiPlay0X1 users onboarded in the Playtron wallet app. You can query a user's SuiLink objects to validate that they own a specific asset. For more information, refer to our [separate guide on using SuiLink](/guides/developer/wallets/suilink.mdx).
+A MySoLink connection is automatically established for MySoPlay0X1 users onboarded in the Playtron wallet app. You can query a user's MySoLink objects to validate that they own a specific asset. For more information, refer to our [separate guide on using MySoLink](/guides/developer/wallets/suilink.mdx).
 
 ## Related links
 
 <RelatedLink href="https://github.com/playtron-os/playtron-sdk" label="Playtron GameOS SDK" desc="The official Playtron OS SDK repository on GitHub." />
 <RelatedLink href="https://sdk.mystenlabs.com/dapp-kit" label="MySo dApp Kit documentation" desc="The MySo dApp Kit is a set of React components, hooks, and utilities to help you build an app for the MySo ecosystem." />
-<RelatedLink href="https://discord.gg/suiplay" label="SuiPlay0X1 Discord" desc="Follow announcements and connect with the community on the Discord channel for SuiPlay0X1." />
-<RelatedLink href="https://wallet.playtron.one" label="Companion web application" desc="Support linking the Playtron wallet to other self-custody wallets using SuiLink, enabling read-access of associated wallets while on the device." />
+<RelatedLink href="https://discord.gg/suiplay" label="MySoPlay0X1 Discord" desc="Follow announcements and connect with the community on the Discord channel for MySoPlay0X1." />
+<RelatedLink href="https://wallet.playtron.one" label="Companion web application" desc="Support linking the Playtron wallet to other self-custody wallets using MySoLink, enabling read-access of associated wallets while on the device." />
 <RelatedLink href="https://docs.enoki.mystenlabs.com/enoki-connect" label="Enoki Connect" desc="With Enoki Connect, users can use their app-specific accounts across different apps, enabling a more unified and consistent experience." />

@@ -6,24 +6,24 @@ processed 5 tasks
 task 0, lines 8-17:
 //# publish
 Error: Transaction Effects Status: MySo Move Bytecode Verification Error. Please run the MySo Move Verifier for more information.
-Execution Error: ExecutionError: ExecutionError { inner: ExecutionErrorInner { kind: SuiMoveVerificationError, source: Some("_::m::t. Invalid call to 'myso::transfer::transfer'. Type argument #0 must be a type defined in the current module, found 'T0'. If the type has the 'store' ability, use the public variant instead: 'myso::transfer::public_transfer'."), command: Some(0) } }
+Execution Error: ExecutionError: ExecutionError { inner: ExecutionErrorInner { kind: MySoMoveVerificationError, source: Some("_::m::t. Invalid call to 'myso::transfer::transfer'. Type argument #0 must be a type defined in the current module, found 'T0'. If the type has the 'store' ability, use the public variant instead: 'myso::transfer::public_transfer'."), command: Some(0) } }
 
 task 1, lines 19-28:
 //# publish
 Error: Transaction Effects Status: MySo Move Bytecode Verification Error. Please run the MySo Move Verifier for more information.
-Execution Error: ExecutionError: ExecutionError { inner: ExecutionErrorInner { kind: SuiMoveVerificationError, source: Some("_::m::t. Invalid call to 'myso::transfer::freeze_object'. Type argument #0 must be a type defined in the current module, found 'T0'. If the type has the 'store' ability, use the public variant instead: 'myso::transfer::public_freeze_object'."), command: Some(0) } }
+Execution Error: ExecutionError: ExecutionError { inner: ExecutionErrorInner { kind: MySoMoveVerificationError, source: Some("_::m::t. Invalid call to 'myso::transfer::freeze_object'. Type argument #0 must be a type defined in the current module, found 'T0'. If the type has the 'store' ability, use the public variant instead: 'myso::transfer::public_freeze_object'."), command: Some(0) } }
 
 task 2, lines 30-39:
 //# publish
 Error: Transaction Effects Status: MySo Move Bytecode Verification Error. Please run the MySo Move Verifier for more information.
-Execution Error: ExecutionError: ExecutionError { inner: ExecutionErrorInner { kind: SuiMoveVerificationError, source: Some("_::m::t. Invalid call to 'myso::transfer::share_object'. Type argument #0 must be a type defined in the current module, found 'T0'. If the type has the 'store' ability, use the public variant instead: 'myso::transfer::public_share_object'."), command: Some(0) } }
+Execution Error: ExecutionError: ExecutionError { inner: ExecutionErrorInner { kind: MySoMoveVerificationError, source: Some("_::m::t. Invalid call to 'myso::transfer::share_object'. Type argument #0 must be a type defined in the current module, found 'T0'. If the type has the 'store' ability, use the public variant instead: 'myso::transfer::public_share_object'."), command: Some(0) } }
 
 task 3, lines 41-52:
 //# publish
 Error: Transaction Effects Status: MySo Move Bytecode Verification Error. Please run the MySo Move Verifier for more information.
-Execution Error: ExecutionError: ExecutionError { inner: ExecutionErrorInner { kind: SuiMoveVerificationError, source: Some("_::m::t. Invalid call to 'myso::transfer::receive'. Type argument #0 must be a type defined in the current module, found 'T0'. If the type has the 'store' ability, use the public variant instead: 'myso::transfer::public_receive'."), command: Some(0) } }
+Execution Error: ExecutionError: ExecutionError { inner: ExecutionErrorInner { kind: MySoMoveVerificationError, source: Some("_::m::t. Invalid call to 'myso::transfer::receive'. Type argument #0 must be a type defined in the current module, found 'T0'. If the type has the 'store' ability, use the public variant instead: 'myso::transfer::public_receive'."), command: Some(0) } }
 
 task 4, lines 54-64:
 //# publish
 Error: Transaction Effects Status: MySo Move Bytecode Verification Error. Please run the MySo Move Verifier for more information.
-Execution Error: ExecutionError: ExecutionError { inner: ExecutionErrorInner { kind: SuiMoveVerificationError, source: Some("_::m::t. Invalid call to 'myso::transfer::party_transfer'. Type argument #0 must be a type defined in the current module, found 'T0'. If the type has the 'store' ability, use the public variant instead: 'myso::transfer::public_party_transfer'."), command: Some(0) } }
+Execution Error: ExecutionError: ExecutionError { inner: ExecutionErrorInner { kind: MySoMoveVerificationError, source: Some("_::m::t. Invalid call to 'myso::transfer::party_transfer'. Type argument #0 must be a type defined in the current module, found 'T0'. If the type has the 'store' ability, use the public variant instead: 'myso::transfer::public_party_transfer'."), command: Some(0) } }

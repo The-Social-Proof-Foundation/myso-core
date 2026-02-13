@@ -110,7 +110,7 @@ Response: {
                         {
                           "contents": {
                             "type": {
-                              "repr": "0x0000000000000000000000000000000000000000000000000000000000000003::staking_pool::StakedSui"
+                              "repr": "0x0000000000000000000000000000000000000000000000000000000000000003::staking_pool::StakedMySo"
                             },
                             "json": {
                               "id": "0x4f63d8c5aa5317a25ede62436f82a9739358e2ba69bf7eec55d98181f17efad5",

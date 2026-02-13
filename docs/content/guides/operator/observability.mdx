@@ -95,7 +95,7 @@ You can configure `RUST_LOG` for custom logging output, including filtering - se
 
 ### Tracing and span output {#tracing-and-span-output}
 
-To generate detailed span start and end logs, define the `SUI_JSON_SPAN_LOGS` environment variable. This causes all output to be in JSON format, which is not as human-readable, so it is not enabled by default.
+To generate detailed span start and end logs, define the `MYSO_JSON_SPAN_LOGS` environment variable. This causes all output to be in JSON format, which is not as human-readable, so it is not enabled by default.
 
 You can send this output to a tool or service for indexing, alerts, aggregation, and analysis.
 
@@ -123,7 +123,7 @@ $ docker run -d -p6831:6831/udp -p6832:6832/udp -p16686:16686 jaegertracing/all-
 1.  Run MySo like this (trace enables the most detailed spans):
 
 ```sh
-$ SUI_TRACING_ENABLE=1 RUST_LOG="info,myso_core=trace" ./myso start
+$ MYSO_TRACING_ENABLE=1 RUST_LOG="info,myso_core=trace" ./myso start
 ```
 
 1.  Run some transfers with MySo CLI client, or run the benchmarking tool.
@@ -140,7 +140,7 @@ Separate spans (that are not nested) are not connected as a single trace for now
 [Tokio-console](https://github.com/tokio-rs/console) is an awesome CLI tool designed to analyze and help debug Rust apps using Tokio, in real time. 🎉 It relies on a special subscriber.
 
 1.  Build MySo using a special flag: `RUSTFLAGS="--cfg tokio_unstable" cargo build`.
-1.  Start MySo with `SUI_TOKIO_CONSOLE` set to 1.
+1.  Start MySo with `MYSO_TOKIO_CONSOLE` set to 1.
 1.  Clone the console repo and `cargo run` to launch the console.
 
 :::tip
@@ -162,7 +162,7 @@ To view the profile files, one needs to do the following, on the same platform a
 
 1.  Install `libunwind`, the `dot` utility from graphviz, and jeprof. On Debian: `apt-get install libjemalloc-dev libunwind-dev graphviz`.
 1.  Build with debug symbols: `cargo build --profile bench-profiling`
-1.  cd to `$SUI_REPO/target/bench-profiling`
+1.  cd to `$MYSO_REPO/target/bench-profiling`
 1.  Run `jeprof --svg myso-node jeprof.xxyyzz.heap` - select the heap profile based on
     timestamp and memory size in the filename.
 

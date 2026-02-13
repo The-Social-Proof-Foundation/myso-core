@@ -67,7 +67,7 @@ First, create a dApp Kit instance using `createDAppKit`. This configures which n
 
 ```ts
 import { createDAppKit, DAppKitProvider } from '@mysten/dapp-kit-react';
-import { SuiGrpcClient } from '@socialproof/myso/grpc';
+import { MySoGrpcClient } from '@socialproof/myso/grpc';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 
 const queryClient = new QueryClient();
@@ -76,7 +76,7 @@ const dAppKit = createDAppKit({
 	networks: ['devnet', 'mainnet'],
 	defaultNetwork: 'devnet',
 	createClient(network) {
-		return new SuiGrpcClient({
+		return new MySoGrpcClient({
 			network,
 			baseUrl:
 				network === 'mainnet'

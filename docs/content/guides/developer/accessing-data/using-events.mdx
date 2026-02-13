@@ -185,9 +185,9 @@ Successful response
 You can use the `getTransaction` method with `include: { events: true }` to retrieve events for a specific transaction:
 
 ```ts
-import { SuiGrpcClient } from '@socialproof/myso/grpc';
+import { MySoGrpcClient } from '@socialproof/myso/grpc';
 
-const client = new SuiGrpcClient({
+const client = new MySoGrpcClient({
   baseUrl: 'https://fullnode.mainnet.mysocial.network:443',
   network: 'mainnet',
 });
@@ -254,13 +254,13 @@ Event connection
 The [MySo by Example](https://github.com/gdanezis/myso-by-example/blob/main/src/05_reading_events/bin/main.rs) repo on GitHub contains a code sample that demonstrates how to query events using the `query_events` function. The package that `PACKAGE_ID_CONST` points to exists on Mainnet, so you can test this code using Cargo. To do so, clone the `myso-by-example` repo locally and follow the [Example 05 directions](https://github.com/gdanezis/myso-by-example/tree/main/src/05_reading_events).
 
 ```rust
-use myso_sdk::{rpc_types::EventFilter, types::Identifier, SuiClientBuilder};
+use myso_sdk::{rpc_types::EventFilter, types::Identifier, MySoClientBuilder};
 
 const PACKAGE_ID_CONST: &str = "0x279525274aa623ef31a25ad90e3b99f27c8dbbad636a6454918855c81d625abc";
 
 #[tokio::main]
 async fn main() -> Result<(), anyhow::Error> {
-    let myso_mainnet = SuiClientBuilder::default()
+    let myso_mainnet = MySoClientBuilder::default()
         .build("https://fullnode.mainnet.mysocial.network:443")
         .await?;
 
@@ -294,7 +294,7 @@ To filter the events returned from your queries, use the following data structur
 | **Query**         | **Description**                                          | **JSON-RPC parameter example**                                                                        |
 | :---------------- | :------------------------------------------------------- | :---------------------------------------------------------------------------------------------------- |
 | `All`             | All events                                               | `{"All": []}`                                                                                         |
-| `Any`             | Events emitted from any of the given filter              | `{"Any": SuiEventFilter[]}`                                                                           |
+| `Any`             | Events emitted from any of the given filter              | `{"Any": MySoEventFilter[]}`                                                                           |
 | `Transaction`     | Events emitted from the specified transaction            | `{"Transaction":"DGUe2TXiJdN3FI6MH1FwghYbiHw+NKu8Nh579zdFtUk="}`                                      |
 | `MoveModule`      | Events emitted from the specified Move module            | `{"MoveModule":{"package":"<PACKAGE-ID>", "module":"nft"}}`                                           |
 | `MoveEventModule` | Events emitted, defined on the specified Move module     | `{"MoveEventModule": {"package": "<DEFINING-PACKAGE-ID>", "module": "nft"}}`                          |
@@ -357,10 +357,10 @@ Filter events using the TypeScript SDK
 </summary>
 
 ```ts
-import { SuiGraphQLClient } from '@socialproof/myso/graphql';
+import { MySoGraphQLClient } from '@socialproof/myso/graphql';
 import { graphql } from '@socialproof/myso/graphql/schema';
 
-const gqlClient = new SuiGraphQLClient({
+const gqlClient = new MySoGraphQLClient({
   url: 'https://graphql.mainnet.mysocial.network/graphql',
   network: 'mainnet',
 });

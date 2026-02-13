@@ -47,7 +47,6 @@ myso-storage.workspace = true
 myso-types.workspace = true
 myso-json.workspace = true
 myso-json-rpc-api.workspace = true
-myso-name-service.workspace = true
 myso-open-rpc.workspace = true
 myso-open-rpc-macros.workspace = true
 myso-protocol-config.workspace = true

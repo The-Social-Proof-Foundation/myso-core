@@ -15,4 +15,4 @@ gas summary: computation_cost: 1000000, storage_cost: 4810800,  storage_rebate: 
 task 2, lines 13-20:
 //# upgrade --package v0 --upgrade-capability 1,1 --sender A
 Error: Transaction Effects Status: MySo Move Bytecode Verification Error. Please run the MySo Move Verifier for more information.
-Execution Error: ExecutionError: ExecutionError { inner: ExecutionErrorInner { kind: SuiMoveVerificationError, source: Some("init function of a module containing one-time witness type candidate must have fake(1,0)::has_otw::HAS_OTW as the first parameter (a struct which has no fields or a single field of type bool)"), command: Some(1) } }
+Execution Error: ExecutionError: ExecutionError { inner: ExecutionErrorInner { kind: MySoMoveVerificationError, source: Some("init function of a module containing one-time witness type candidate must have fake(1,0)::has_otw::HAS_OTW as the first parameter (a struct which has no fields or a single field of type bool)"), command: Some(1) } }

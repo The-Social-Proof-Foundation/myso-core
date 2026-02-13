@@ -6,4 +6,4 @@ processed 2 tasks
 task 1, lines 6-13:
 //# publish
 Error: Transaction Effects Status: MySo Move Bytecode Verification Error. Please run the MySo Move Verifier for more information.
-Execution Error: ExecutionError: ExecutionError { inner: ExecutionErrorInner { kind: SuiMoveVerificationError, source: Some("Enum X cannot have the 'key' ability. Enums cannot have the 'key' ability."), command: Some(0) } }
+Execution Error: ExecutionError: ExecutionError { inner: ExecutionErrorInner { kind: MySoMoveVerificationError, source: Some("Enum X cannot have the 'key' ability. Enums cannot have the 'key' ability."), command: Some(0) } }

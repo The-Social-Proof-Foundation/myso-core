@@ -1,9 +1,0 @@
-[package]
-name = "mysons"
-edition = "2024.beta"
-
-[dependencies]
-MySo = { local = "../../../myso-framework/packages/myso-framework" }
-
-[addresses]
-mysons = "0x0"

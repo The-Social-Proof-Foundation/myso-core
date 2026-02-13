@@ -44,9 +44,6 @@ Address.balance
 Address.balances
   => {"consistent"}
 
-Address.defaultNameRecord
-  => {"obj_versions"}
-
 Address.dynamicField
   => {"obj_versions"}
 
@@ -251,9 +248,6 @@ CoinMetadata.contents
 CoinMetadata.decimals
   => {}
 
-CoinMetadata.defaultNameRecord
-  => {"obj_versions"}
-
 CoinMetadata.description
   => {}
 
@@ -413,9 +407,6 @@ DynamicField.balances
 DynamicField.contents
   => {}
 
-DynamicField.defaultNameRecord
-  => {"obj_versions"}
-
 DynamicField.dynamicField
   => {"obj_versions"}
 
@@ -519,6 +510,9 @@ Epoch.systemPackages
   => {}
 
 Epoch.systemState
+  => {}
+
+Epoch.systemStakeSubsidy
   => {}
 
 Epoch.totalCheckpoints
@@ -661,9 +655,6 @@ IAddressable.balance
 
 IAddressable.balances
   => {"consistent"}
-
-IAddressable.defaultNameRecord
-  => {"obj_versions"}
 
 IAddressable.multiGetBalances
   => {"consistent"}
@@ -932,9 +923,6 @@ MoveObject.balances
 MoveObject.contents
   => {}
 
-MoveObject.defaultNameRecord
-  => {"obj_versions"}
-
 MoveObject.dynamicField
   => {"obj_versions"}
 
@@ -1006,9 +994,6 @@ MovePackage.balance
 
 MovePackage.balances
   => {"consistent"}
-
-MovePackage.defaultNameRecord
-  => {"obj_versions"}
 
 MovePackage.module
   => {}
@@ -1127,18 +1112,6 @@ MutateConsensusStreamEnded.sequenceNumber
 Mutation.executeTransaction
   => {}
 
-NameRecord.domain
-  => {}
-
-NameRecord.contents
-  => {}
-
-NameRecord.target
-  => {}
-
-NameRecord.parent
-  => {}
-
 Node.id
   => {}
 
@@ -1168,9 +1141,6 @@ Object.balance
 
 Object.balances
   => {"consistent"}
-
-Object.defaultNameRecord
-  => {"obj_versions"}
 
 Object.dynamicField
   => {"obj_versions"}
@@ -1310,9 +1280,6 @@ Query.node
 Query.address
   => {}
 
-Query.address (filter: name)
-  => {"obj_versions"}
-
 Query.chainIdentifier
   => {}
 
@@ -1360,9 +1327,6 @@ Query.multiGetTransactionEffects
 
 Query.multiGetTypes
   => {}
-
-Query.nameRecord
-  => {"obj_versions"}
 
 Query.object
   => {"obj_versions"}
@@ -1547,6 +1511,33 @@ SplitCoinsCommand.coin
 SplitCoinsCommand.amounts
   => {}
 
+StakeSubsidy.balance
+  => {}
+
+StakeSubsidy.distributionCounter
+  => {}
+
+StakeSubsidy.currentApyBps
+  => {}
+
+StakeSubsidy.periodLength
+  => {}
+
+StakeSubsidy.decreaseRate
+  => {}
+
+StakeSubsidy.maxApyBps
+  => {}
+
+StakeSubsidy.minApyBps
+  => {}
+
+StakeSubsidy.intendedDurationYears
+  => {}
+
+StakeSubsidy.apy
+  => {}
+
 StoreExecutionTimeObservationsTransaction._
   => {}
 
@@ -1668,6 +1659,9 @@ UpgradeCommand.upgradeTicket
   => {}
 
 UserSignature.signatureBytes
+  => {}
+
+Validator.apy
   => {}
 
 Validator.atRisk

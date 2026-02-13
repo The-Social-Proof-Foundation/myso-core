@@ -1,14 +1,14 @@
 ---
-title: SuiLink
-description: Use SuiLink to connect wallets across different chains.
+title: MySoLink
+description: Use MySoLink to connect wallets across different chains.
 keywords: [ wallet, wallets, myso, playtron, cross-chain, ethereum, solana, link, connect ]
 ---
 
-[SuiLink](https://www.suilink.io/) enables securely linking wallet addresses from different blockchains to a MySo wallet address. Upon creating a SuiLink, you receive a soulbound NFT that serves as authenticated proof of ownership for your connected wallets.
+[MySoLink](https://www.suilink.io/) enables securely linking wallet addresses from different blockchains to a MySo wallet address. Upon creating a MySoLink, you receive a soulbound NFT that serves as authenticated proof of ownership for your connected wallets.
 
 ## Key features
 
-SuiLink provides the following capabilities:
+MySoLink provides the following capabilities:
 
 - **Cross-chain identity verification**: Link wallets from [Ethereum](/concepts/myso-for-ethereum.mdx), [Solana](/concepts/myso-for-solana.mdx), and other MySo addresses to your primary MySo wallet.
 - **Non-transferable proof of ownership**: Receive a [soulbound NFT](/guides/developer/nft/nft-soulbound.mdx) that cryptographically verifies wallet ownership.
@@ -17,43 +17,43 @@ SuiLink provides the following capabilities:
 
 ### Supported networks
 
-SuiLink currently supports linking wallets cross-chain between MySo and Ethereum (MySo-to-Ethereum), and MySo and Solana (MySo-to-Solana).
+MySoLink currently supports linking wallets cross-chain between MySo and Ethereum (MySo-to-Ethereum), and MySo and Solana (MySo-to-Solana).
 
-MySo-to-MySo linking is currently only supported programmatically with a custom solution for the [Playtron wallet app](https://wallet.playtron.one/). For more information, visit the [SuiPlay0X1 SuiLink integration guide](/guides/suiplay0x1/wallet-integration.mdx#suilink).
+MySo-to-MySo linking is currently only supported programmatically with a custom solution for the [Playtron wallet app](https://wallet.playtron.one/). For more information, visit the [MySoPlay0X1 MySoLink integration guide](/guides/suiplay0x1/wallet-integration.mdx#suilink).
 
-## Creating a SuiLink
+## Creating a MySoLink
 
-Creating a SuiLink incurs a small gas fee on the MySo network to mint the soulbound NFT. Ensure you have some MYSO tokens in your wallet to complete the connection. 
+Creating a MySoLink incurs a small gas fee on the MySo network to mint the soulbound NFT. Ensure you have some MYSO tokens in your wallet to complete the connection. 
 
-To create a SuiLink:
+To create a MySoLink:
 
 1. Visit [https://www.suilink.io/](https://www.suilink.io/)
 2. Click **Connect MySo Wallet**
 3. Select the blockchain network you want to link: Ethereum or Solana
 4. Follow the prompts to authenticate and connect the wallet you want to link
-5. Complete the transaction to mint your SuiLink NFT
+5. Complete the transaction to mint your MySoLink NFT
 
-## Managing SuiLink
+## Managing MySoLink
 
-Each SuiLink connection creates a separate SuiLink NFT in your MySo wallet.
+Each MySoLink connection creates a separate MySoLink NFT in your MySo wallet.
 
 To view your linked addresses:
 
-1. View your SuiLink NFTs in your MySo wallet
+1. View your MySoLink NFTs in your MySo wallet
 2. Check the `network_address` field to see which wallets are linked
 3. Review the timestamp to see when each link was created
 
 You can permanently unlink a wallet by burning the corresponding NFT. To unlink an address:
 
 1. Navigate to the NFTs section of your MySo wallet
-2. For the SuiLink NFT you want to burn, select "Send" or "Transfer"
+2. For the MySoLink NFT you want to burn, select "Send" or "Transfer"
 3. Enter the burn address: `0x0000000000000000000000000000000000000000`
 
 Additionally, there are various third-party tools (such as [MYSO Manager](https://www.suimanager.com/burner)) that can help burn NFTs, and some wallets have a built-in burning feature.
 
-## Integrating SuiLink
+## Integrating MySoLink
 
-When building an application onMySo, you can integrate SuiLink to verify cross-chain ownership.
+When building an application onMySo, you can integrate MySoLink to verify cross-chain ownership.
 
 <Tabs className="tabsHeadingCentered--small">
 <TabItem value="prereq" label="Prerequisites">
@@ -62,7 +62,7 @@ When building an application onMySo, you can integrate SuiLink to verify cross-c
 
 - [x] [Install the MySo gRPC client to your project](https://sdk.mystenlabs.com/myso/clients/grpc).
 
-- [x] Obtain the correct SuiLink package ID for your target network.
+- [x] Obtain the correct MySoLink package ID for your target network.
 
 | **Network** | **ETH and SOL Package ID** | **MySo-to-MySo Package ID** |
 | ------- | ------------------ | --------------------- |
@@ -72,32 +72,32 @@ When building an application onMySo, you can integrate SuiLink to verify cross-c
 </TabItem>
 </Tabs>
 
-### Querying SuiLink objects
+### Querying MySoLink objects
 
-To retrieve a user's SuiLink connections, use the following gRPC query:
+To retrieve a user's MySoLink connections, use the following gRPC query:
 
 ```typescript
 const SUILINK_PACKAGE_ID_ETH_SOL = '0xf857fa9df5811e6df2a0240a1029d365db24b5026896776ddd1c3c70803bccd3';
-const SUILINK_PACKAGE_ID_SUI = '0x73f5ab2461c5993408fff21354fa9831d4f4a66cc81382419ec29e3c80c384b5';
+const SUILINK_PACKAGE_ID_MYSO = '0x73f5ab2461c5993408fff21354fa9831d4f4a66cc81382419ec29e3c80c384b5';
 
-const ethSolSuiLinks = await grpcClient.listOwnedObjects({
+const ethSolMySoLinks = await grpcClient.listOwnedObjects({
   owner: mysoAddress,
-  type: `${SUILINK_PACKAGE_ID_ETH_SOL}::suilink::SuiLink`,
+  type: `${SUILINK_PACKAGE_ID_ETH_SOL}::suilink::MySoLink`,
   include: { json: true },
 });
 
-const suiSuiLinks = await grpcClient.listOwnedObjects({
+const suiMySoLinks = await grpcClient.listOwnedObjects({
   owner: mysoAddress,
-  type: `${SUILINK_PACKAGE_ID_SUI}::suilink::SuiLink`,
+  type: `${SUILINK_PACKAGE_ID_SUI}::suilink::MySoLink`,
   include: { json: true },
 });
 ```
 
-This returns all SuiLink NFTs owned by the specified MySo address.
+This returns all MySoLink NFTs owned by the specified MySo address.
 
-### SuiLink NFT structure
+### MySoLink NFT structure
 
-Each SuiLink NFT contains the following fields:
+Each MySoLink NFT contains the following fields:
 
 ```typescript
 {
@@ -110,36 +110,36 @@ Each SuiLink NFT contains the following fields:
 The NFT type indicates which blockchain network the wallet is linked to:
 
 ```typescript
-for (const link of ethSolSuiLinks.objects) {
+for (const link of ethSolMySoLinks.objects) {
   const id = link.json.id as string;                   // "0xcafe"
   const linkedAddress = link.json.network_address as string; // "0xdecaf"
   const timestamp = link.json.timestamp_ms as string;        // "1751541273947"
   const chainType = link.type; // full type string includes the generic param,
-                               // e.g. "...::SuiLink<...::ethereum::Ethereum>"
+                               // e.g. "...::MySoLink<...::ethereum::Ethereum>"
 }
 
-//MySo-to-MySo SuiLink (Mainnet)
-0xf857fa9df5811e6df2a0240a1029d365db24b5026896776ddd1c3c70803bccd3::suilink::SuiLink<0x73f5ab2461c5993408fff21354fa9831d4f4a66cc81382419ec29e3c80c384b5::myso::MySo>
+//MySo-to-MySo MySoLink (Mainnet)
+0xf857fa9df5811e6df2a0240a1029d365db24b5026896776ddd1c3c70803bccd3::suilink::MySoLink<0x73f5ab2461c5993408fff21354fa9831d4f4a66cc81382419ec29e3c80c384b5::myso::MySo>
 
-//MySo-to-Ethereum SuiLink (Testnet)
-0x0025bafa2e6afa511c19bd4e95626c897e798fde629b4782fe061bdc8bd65c8a::suilink::SuiLink<0x0025bafa2e6afa511c19bd4e95626c897e798fde629b4782fe061bdc8bd65c8a::ethereum::Ethereum>
+//MySo-to-Ethereum MySoLink (Testnet)
+0x0025bafa2e6afa511c19bd4e95626c897e798fde629b4782fe061bdc8bd65c8a::suilink::MySoLink<0x0025bafa2e6afa511c19bd4e95626c897e798fde629b4782fe061bdc8bd65c8a::ethereum::Ethereum>
 
-//MySo-to-Solana SuiLink (Testnet)
-0x0025bafa2e6afa511c19bd4e95626c897e798fde629b4782fe061bdc8bd65c8a::suilink::SuiLink<0x0025bafa2e6afa511c19bd4e95626c897e798fde629b4782fe061bdc8bd65c8a::solana::Solana>
+//MySo-to-Solana MySoLink (Testnet)
+0x0025bafa2e6afa511c19bd4e95626c897e798fde629b4782fe061bdc8bd65c8a::suilink::MySoLink<0x0025bafa2e6afa511c19bd4e95626c897e798fde629b4782fe061bdc8bd65c8a::solana::Solana>
 ```
 
 ### Verifying cross-chain asset ownership
 
-After retrieving a user's SuiLink objects, you can verify their ownership of specific assets on the linked blockchain:
+After retrieving a user's MySoLink objects, you can verify their ownership of specific assets on the linked blockchain:
 
-1. Extract the `network_address` from the SuiLink NFT.
+1. Extract the `network_address` from the MySoLink NFT.
 2. Use the appropriate blockchain APIs to query assets at that address, such as [Alchemy](https://www.alchemy.com/) for Ethereum, and [Metaplex](https://www.metaplex.com/) for Solana.
 3. Verify the presence of the required asset.
 4. Attribute benefits to the user through their MySo wallet.
 
 ## Related links
 
-- [SuiLink](https://www.suilink.io/): SuiLink main product page
+- [MySoLink](https://www.suilink.io/): MySoLink main product page
 - [MySo gRPC Client](https://sdk.mystenlabs.com/myso/clients/grpc): Full Node gRPC API documentation
 - [MySo JSON-RPC Migration](https://sdk.mystenlabs.com/myso/migrations/myso-2.0/json-rpc-migration): Migration guide for deprecated MySo JSON-RPC
-- [Wallet Integration Options](/guides/suiplay0x1/wallet-integration): Comprehensive guide on wallet strategies for SuiPlay0X1
+- [Wallet Integration Options](/guides/suiplay0x1/wallet-integration): Comprehensive guide on wallet strategies for MySoPlay0X1

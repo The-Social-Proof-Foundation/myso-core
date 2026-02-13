@@ -3025,11 +3025,11 @@
               "name": "past_objects",
               "value": [
                 {
-                  "objectId": "0x38b3186a7bb26a1ab2c982a0a9b482aa70f5a010fffc60f20194ef0f597474e8",
+                  "objectId": "0x6710024f81dd33ab6833482ee8034e779a48e6ef635c7f856df4905022458bfb",
                   "version": "4"
                 },
                 {
-                  "objectId": "0xceaf9ee4582d3a233101e322a22cb2a5bea2e681ea5af4e59bd1abb0bb4fcb27",
+                  "objectId": "0xd22bbb46f892c42d9ec0ae4de93e02c75973a51c17180798237326a58694a2cf",
                   "version": "12"
                 }
               ]
@@ -3053,8 +3053,33 @@
               {
                 "status": "VersionFound",
                 "details": {
-                  "objectId": "0x38b3186a7bb26a1ab2c982a0a9b482aa70f5a010fffc60f20194ef0f597474e8",
+                  "objectId": "0x6710024f81dd33ab6833482ee8034e779a48e6ef635c7f856df4905022458bfb",
                   "version": "4",
+                  "digest": "EupJisi3AynCmcFyhkX1azsVtR6vun1Uaf7WSRCE82jx",
+                  "type": "0x2::coin::Coin<0x2::myso::MYSO>",
+                  "owner": {
+                    "AddressOwner": "0x5cd6fa76ed1d18f05f15e35075252ddec4fb83621d55952d9172fcfcb72feae2"
+                  },
+                  "previousTransaction": "4pLDzJph2nepc1dYufuNBej8druEfuYRbPsoWHrRxALX",
+                  "storageRebate": "100",
+                  "content": {
+                    "dataType": "moveObject",
+                    "type": "0x2::coin::Coin<0x2::myso::MYSO>",
+                    "hasPublicTransfer": true,
+                    "fields": {
+                      "balance": "10000",
+                      "id": {
+                        "id": "0x6710024f81dd33ab6833482ee8034e779a48e6ef635c7f856df4905022458bfb"
+                      }
+                    }
+                  }
+                }
+              },
+              {
+                "status": "VersionFound",
+                "details": {
+                  "objectId": "0xd22bbb46f892c42d9ec0ae4de93e02c75973a51c17180798237326a58694a2cf",
+                  "version": "12",
                   "digest": "hvBGBXvKVhC7XYgVPujuiLjxASR6UGAkSFrCRtVxX1F",
                   "type": "0x2::coin::Coin<0x2::myso::MYSO>",
                   "owner": {
@@ -3067,34 +3092,9 @@
                     "type": "0x2::coin::Coin<0x2::myso::MYSO>",
                     "hasPublicTransfer": true,
                     "fields": {
-                      "balance": "10000",
-                      "id": {
-                        "id": "0x38b3186a7bb26a1ab2c982a0a9b482aa70f5a010fffc60f20194ef0f597474e8"
-                      }
-                    }
-                  }
-                }
-              },
-              {
-                "status": "VersionFound",
-                "details": {
-                  "objectId": "0xceaf9ee4582d3a233101e322a22cb2a5bea2e681ea5af4e59bd1abb0bb4fcb27",
-                  "version": "12",
-                  "digest": "B5z4YkAgTi78fdxMbxG3fv2V4YBkhpc8PRCPz8MzLtbf",
-                  "type": "0x2::coin::Coin<0x2::myso::MYSO>",
-                  "owner": {
-                    "AddressOwner": "0xa6ced287081357950315a8842c3870f2d83f980fe0996a92d351d6749a0a0b47"
-                  },
-                  "previousTransaction": "BLN2oUCHmwmaAXXCxbojTcozUqZYfvXx4Bkgi7xcgyVc",
-                  "storageRebate": "100",
-                  "content": {
-                    "dataType": "moveObject",
-                    "type": "0x2::coin::Coin<0x2::myso::MYSO>",
-                    "hasPublicTransfer": true,
-                    "fields": {
                       "balance": "20000",
                       "id": {
-                        "id": "0x38b3186a7bb26a1ab2c982a0a9b482aa70f5a010fffc60f20194ef0f597474e8"
+                        "id": "0x6710024f81dd33ab6833482ee8034e779a48e6ef635c7f856df4905022458bfb"
                       }
                     }
                   }
@@ -4420,115 +4420,6 @@
                 }
               ],
               "nextCursor": "3nek86HEjXZ7K3EtrAcBG4wMrCS21gqr8BqwwC6M6P7F",
-              "hasNextPage": false
-            }
-          }
-        }
-      ]
-    },
-    {
-      "name": "mysox_resolveNameServiceAddress",
-      "tags": [
-        {
-          "name": "Extended API"
-        }
-      ],
-      "description": "Return the resolved address given resolver and name",
-      "params": [
-        {
-          "name": "name",
-          "description": "The name to resolve",
-          "required": true,
-          "schema": {
-            "type": "string"
-          }
-        }
-      ],
-      "result": {
-        "name": "MySoAddress",
-        "schema": {
-          "$ref": "#/components/schemas/MySoAddress"
-        }
-      },
-      "examples": [
-        {
-          "name": "Returns the resolved address for the name the request provides.",
-          "params": [
-            {
-              "name": "name",
-              "value": "example.myso"
-            }
-          ],
-          "result": {
-            "name": "Result",
-            "value": "0x6710024f81dd33ab6833482ee8034e779a48e6ef635c7f856df4905022458bfb"
-          }
-        }
-      ]
-    },
-    {
-      "name": "mysox_resolveNameServiceNames",
-      "tags": [
-        {
-          "name": "Extended API"
-        }
-      ],
-      "description": "Return the resolved names given address, if multiple names are resolved, the first one is the primary name.",
-      "params": [
-        {
-          "name": "address",
-          "description": "The address to resolve",
-          "required": true,
-          "schema": {
-            "$ref": "#/components/schemas/MySoAddress"
-          }
-        },
-        {
-          "name": "cursor",
-          "schema": {
-            "$ref": "#/components/schemas/ObjectID"
-          }
-        },
-        {
-          "name": "limit",
-          "schema": {
-            "type": "integer",
-            "format": "uint",
-            "minimum": 0.0
-          }
-        }
-      ],
-      "result": {
-        "name": "Page<String,ObjectID>",
-        "required": true,
-        "schema": {
-          "$ref": "#/components/schemas/Page_for_String_and_ObjectID"
-        }
-      },
-      "examples": [
-        {
-          "name": "Returns the MySoNS name for the address the request provides. Currently, the API returns only the first name in cases where there are multiple. Future support will use the cursor ID and limit values in the request to control pagination of the response for addresses with multiple names.",
-          "params": [
-            {
-              "name": "address",
-              "value": "0x5cd6fa76ed1d18f05f15e35075252ddec4fb83621d55952d9172fcfcb72feae2"
-            },
-            {
-              "name": "cursor",
-              "value": "0xd22bbb46f892c42d9ec0ae4de93e02c75973a51c17180798237326a58694a2cf"
-            },
-            {
-              "name": "limit",
-              "value": 3
-            }
-          ],
-          "result": {
-            "name": "Result",
-            "value": {
-              "data": [
-                "example.myso"
-              ],
-              "nextCursor": "0xd22bbb46f892c42d9ec0ae4de93e02c75973a51c17180798237326a58694a2cf",
               "hasNextPage": false
             }
           }
@@ -8416,9 +8307,12 @@
           "safeModeStorageRebates",
           "safeModeStorageRewards",
           "stakeSubsidyBalance",
-          "stakeSubsidyCurrentDistributionAmount",
+          "stakeSubsidyCurrentApyBps",
           "stakeSubsidyDecreaseRate",
           "stakeSubsidyDistributionCounter",
+          "stakeSubsidyIntendedDurationYears",
+          "stakeSubsidyMaxApyBps",
+          "stakeSubsidyMinApyBps",
           "stakeSubsidyPeriodLength",
           "stakeSubsidyStartEpoch",
           "stakingPoolMappingsId",
@@ -8598,8 +8492,8 @@
               }
             ]
           },
-          "stakeSubsidyCurrentDistributionAmount": {
-            "description": "The amount of stake subsidy to be drawn down per epoch. This amount decays and decreases over time.",
+          "stakeSubsidyCurrentApyBps": {
+            "description": "The current stake subsidy APY (in basis points). Decays over time.",
             "allOf": [
               {
                 "$ref": "#/components/schemas/BigInt_for_uint64"
@@ -8607,7 +8501,7 @@
             ]
           },
           "stakeSubsidyDecreaseRate": {
-            "description": "The rate at which the distribution amount decays at the end of each period. Expressed in basis points.",
+            "description": "The rate at which the APY decays at the end of each period. Expressed in basis points.",
             "type": "integer",
             "format": "uint16",
             "minimum": 0.0
@@ -8620,8 +8514,32 @@
               }
             ]
           },
+          "stakeSubsidyIntendedDurationYears": {
+            "description": "Target duration for subsidy pool in years (e.g., 10).",
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/BigInt_for_uint64"
+              }
+            ]
+          },
+          "stakeSubsidyMaxApyBps": {
+            "description": "Maximum APY cap (in basis points).",
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/BigInt_for_uint64"
+              }
+            ]
+          },
+          "stakeSubsidyMinApyBps": {
+            "description": "Minimum APY floor (in basis points).",
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/BigInt_for_uint64"
+              }
+            ]
+          },
           "stakeSubsidyPeriodLength": {
-            "description": "Number of distributions to occur before the distribution amount decays.",
+            "description": "Number of distributions to occur before the APY decays.",
             "allOf": [
               {
                 "$ref": "#/components/schemas/BigInt_for_uint64"
@@ -10124,35 +10042,6 @@
             "type": "array",
             "items": {
               "$ref": "#/components/schemas/MySoObjectResponse"
-            }
-          },
-          "hasNextPage": {
-            "type": "boolean"
-          },
-          "nextCursor": {
-            "anyOf": [
-              {
-                "$ref": "#/components/schemas/ObjectID"
-              },
-              {
-                "type": "null"
-              }
-            ]
-          }
-        }
-      },
-      "Page_for_String_and_ObjectID": {
-        "description": "`next_cursor` points to the last item in the page; Reading with `next_cursor` will start from the next item after `next_cursor` if `next_cursor` is `Some`, otherwise it will start from the first item.",
-        "type": "object",
-        "required": [
-          "data",
-          "hasNextPage"
-        ],
-        "properties": {
-          "data": {
-            "type": "array",
-            "items": {
-              "type": "string"
             }
           },
           "hasNextPage": {

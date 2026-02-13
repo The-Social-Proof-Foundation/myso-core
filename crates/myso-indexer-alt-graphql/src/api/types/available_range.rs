@@ -238,14 +238,12 @@ collect_pipelines! {
     Address.[asObject] => IObject.objectAt();
     Address.[transactions] => Query.transactions(.., "affectedAddress");
     Address.[balance, balances, multiGetBalances, objects] => IAddressable.*;
-    Address.[defaultNameRecord] => IAddressable.defaultNameRecord;
     Address.[dynamicField, dynamicFields, dynamicObjectField, multiGetDynamicFields, multiGetDynamicObjectFields] => IMoveObject.*;
 
     Checkpoint.[transactions] => Query.transactions(.., "atCheckpoint");
 
     CoinMetadata.[address, addressAt] => IAddressable.*;
     CoinMetadata.[balance, balances, multiGetBalances, objects] => IAddressable.*;
-    CoinMetadata.[defaultNameRecord] => IAddressable.defaultNameRecord();
     CoinMetadata.[contents, hasPublicTransfer, moveObjectBcs] => IMoveObject.*;
     CoinMetadata.[dynamicField, dynamicObjectField, multiGetDynamicFields, multiGetDynamicObjectFields] => IMoveObject.*;
     CoinMetadata.[dynamicFields] => IMoveObject.dynamicFields();
@@ -258,7 +256,6 @@ collect_pipelines! {
 
     DynamicField.[address, addressAt] => IAddressable.*;
     DynamicField.[balance, balances, multiGetBalances, objects] => IAddressable.*;
-    DynamicField.[defaultNameRecord] => IAddressable.defaultNameRecord();
     DynamicField.[contents, hasPublicTransfer, moveObjectBcs] => IMoveObject.*;
     DynamicField.[dynamicField, dynamicObjectField, multiGetDynamicFields, multiGetDynamicObjectFields] => IMoveObject.*;
     DynamicField.[dynamicFields] => IMoveObject.dynamicFields();
@@ -276,9 +273,6 @@ collect_pipelines! {
 
     IAddressable.[balance, balances, multiGetBalances, objects] |pipelines, _filters| {
         pipelines.insert("consistent".to_string());
-    };
-    IAddressable.[defaultNameRecord] |pipelines, _filters| {
-        pipelines.insert("obj_versions".to_string());
     };
 
     IMoveDatatype.[abilities, typeParameters] |pipelines, _filters| {
@@ -311,7 +305,6 @@ collect_pipelines! {
 
     MoveObject.[address, addressAt] => IAddressable.*;
     MoveObject.[balance, balances, multiGetBalances, objects] => IAddressable.*;
-    MoveObject.[defaultNameRecord] => IAddressable.defaultNameRecord();
     MoveObject.[contents, hasPublicTransfer, moveObjectBcs] => IMoveObject.*;
     MoveObject.[dynamicField, dynamicObjectField, multiGetDynamicFields, multiGetDynamicObjectFields] => IMoveObject.*;
     MoveObject.[dynamicFields] => IMoveObject.dynamicFields();
@@ -321,7 +314,6 @@ collect_pipelines! {
 
     MovePackage.[address, addressAt] => IAddressable.*;
     MovePackage.[balance, balances, multiGetBalances, objects] => IAddressable.*;
-    MovePackage.[defaultNameRecord] => IAddressable.defaultNameRecord();
     MovePackage.[objectAt, objectVersionsAfter, objectVersionsBefore] => IObject.*;
     MovePackage.[digest, objectBcs, owner, previousTransaction, storageRebate, version] => IObject.*;
     MovePackage.[receivedTransactions] => IObject.receivedTransactions();
@@ -334,18 +326,12 @@ collect_pipelines! {
 
     Object.[address, addressAt] => IAddressable.*;
     Object.[balance, balances, multiGetBalances, objects] => IAddressable.*;
-    Object.[defaultNameRecord] => IAddressable.defaultNameRecord();
     Object.[dynamicField, dynamicObjectField, multiGetDynamicFields, multiGetDynamicObjectFields] => IMoveObject.*;
     Object.[dynamicFields] => IMoveObject.dynamicFields();
     Object.[objectAt, objectVersionsAfter, objectVersionsBefore, version] => IObject.*;
     Object.[digest, objectBcs, owner, previousTransaction, storageRebate, version] => IObject.*;
     Object.[receivedTransactions] => IObject.receivedTransactions();
 
-    Query.[address] |pipelines, filters| {
-        if filters.contains("name") {
-            pipelines.insert("obj_versions".to_string());
-        }
-    };
     Query.[checkpoints] |pipelines, _filters| {
         pipelines.insert("cp_sequence_numbers".to_string());
     };
@@ -360,9 +346,6 @@ collect_pipelines! {
         } else {
             pipelines.insert("ev_struct_inst".to_string());
         }
-    };
-    Query.[nameRecord] |pipelines, _filters| {
-        pipelines.insert("obj_versions".to_string());
     };
     Query.[object] |pipelines, filters| {
         if !filters.contains("version") {

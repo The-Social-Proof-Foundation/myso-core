@@ -1,8 +1,8 @@
 // Copyright (c) Mysten Labs, Inc.
 // Copyright (c) The Social Proof Foundation, LLC.
 // SPDX-License-Identifier: Apache-2.0
-import { useSuiClientContext } from '@mysten/dapp-kit';
-import { ObjectOwner, SuiObjectChange } from '@socialproof/myso/client';
+import { useMySoClientContext } from '@mysten/dapp-kit';
+import { ObjectOwner, MySoObjectChange } from '@socialproof/myso/client';
 import { CheckIcon, CopyIcon } from 'lucide-react';
 import { useState } from 'react';
 import toast from 'react-hot-toast';
@@ -28,12 +28,12 @@ export function ObjectLink({
 	inputObject?: string;
 	type?: string;
 	owner?: ObjectOwner;
-	object?: SuiObjectChange;
+	object?: MySoObjectChange;
 } & React.HTMLAttributes<HTMLAnchorElement> &
 	React.ComponentPropsWithoutRef<'a'>) {
 	const [copied, setCopied] = useState(false);
 
-	const { network } = useSuiClientContext();
+	const { network } = useMySoClientContext();
 
 	let objectId: string | undefined;
 	let display: string | undefined;

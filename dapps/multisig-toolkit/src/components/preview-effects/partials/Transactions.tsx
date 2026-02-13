@@ -2,7 +2,7 @@
 // Copyright (c) The Social Proof Foundation, LLC.
 // SPDX-License-Identifier: Apache-2.0
 
-import { SuiArgument, SuiCallArg, SuiTransaction, TransactionBlockData } from '@socialproof/myso/client';
+import { MySoArgument, MySoCallArg, MySoTransaction, TransactionBlockData } from '@socialproof/myso/client';
 import { ReactNode } from 'react';
 
 import { ObjectLink } from '../ObjectLink';
@@ -20,7 +20,7 @@ export function Transactions({ inputs }: { inputs: TransactionBlockData }) {
 	);
 }
 
-const getCallArgDisplay = (argument: SuiCallArg | undefined) => {
+const getCallArgDisplay = (argument: MySoCallArg | undefined) => {
 	if (!argument) return null;
 	if (typeof argument === 'string') return argument;
 
@@ -46,7 +46,7 @@ const getCallArgDisplay = (argument: SuiCallArg | undefined) => {
 	);
 };
 
-const getSuiArgumentDisplay = (argument: SuiArgument, inputs: SuiCallArg[]) => {
+const getMySoArgumentDisplay = (argument: MySoArgument, inputs: MySoCallArg[]) => {
 	if (typeof argument === 'string') return argument;
 
 	if ('Input' in argument) {
@@ -60,12 +60,12 @@ const getSuiArgumentDisplay = (argument: SuiArgument, inputs: SuiCallArg[]) => {
 	);
 };
 
-const renderArguments = (callArgs: SuiArgument[], inputs: SuiCallArg[]) => {
+const renderArguments = (callArgs: MySoArgument[], inputs: MySoCallArg[]) => {
 	return (
 		<div className="flex overflow-x-auto gap-3 my-3">
 			{callArgs.map((arg, index) => (
 				<div key={index} className="flex-shrink-0">
-					{getSuiArgumentDisplay(arg, inputs)}
+					{getMySoArgumentDisplay(arg, inputs)}
 				</div>
 			))}
 		</div>
@@ -97,7 +97,7 @@ function Transaction({
 	inputs,
 	index,
 }: {
-	transaction: SuiTransaction;
+	transaction: MySoTransaction;
 	inputs: TransactionBlockData;
 	index: number;
 }) {

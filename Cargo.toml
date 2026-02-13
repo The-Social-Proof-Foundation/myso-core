@@ -155,7 +155,6 @@ members = [
   "crates/myso-move",
   "crates/myso-move-build",
   "crates/myso-move-lsp",
-  "crates/myso-name-service",
   "crates/myso-network",
   "crates/myso-node",
   "crates/myso-open-rpc",
@@ -748,7 +747,6 @@ myso-metrics-push-client = { path = "crates/myso-metrics-push-client" }
 myso-move = { path = "crates/myso-move" }
 myso-move-build = { path = "crates/myso-move-build" }
 myso-move-lsp = { path = "crates/myso-move-lsp" }
-myso-name-service = { path = "crates/myso-name-service" }
 myso-network = { path = "crates/myso-network" }
 myso-node = { path = "crates/myso-node" }
 myso-open-rpc = { path = "crates/myso-open-rpc" }

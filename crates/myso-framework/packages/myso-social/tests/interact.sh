@@ -62,28 +62,26 @@ show_menu() {
 # Profile Management Menu
 profile_menu() {
     print_header "Profile Management"
-    echo "1. Create Name Registry"
-    echo "2. Create Profile"
-    echo "3. Register Username"
-    echo "4. Update Profile"
-    echo "5. Create Profile Offer"
-    echo "6. Accept Profile Offer"
-    echo "7. Reject/Revoke Profile Offer"
-    echo "8. Transfer Profile"
-    echo "9. Back to Main Menu"
+    echo "1. Create Profile"
+    echo "2. Register Username"
+    echo "3. Update Profile"
+    echo "4. Create Profile Offer"
+    echo "5. Accept Profile Offer"
+    echo "6. Reject/Revoke Profile Offer"
+    echo "7. Transfer Profile"
+    echo "8. Back to Main Menu"
     echo ""
-    read -p "Select an option [1-9]: " choice
+    read -p "Select an option [1-8]: " choice
     
     case $choice in
-        1) create_registry ;;
-        2) create_profile ;;
-        3) register_username ;;
-        4) update_profile ;;
-        5) create_profile_offer ;;
-        6) accept_profile_offer ;;
-        7) reject_profile_offer ;;
-        8) transfer_profile ;;
-        9) show_menu ;;
+        1) create_profile ;;
+        2) register_username ;;
+        3) update_profile ;;
+        4) create_profile_offer ;;
+        5) accept_profile_offer ;;
+        6) reject_profile_offer ;;
+        7) transfer_profile ;;
+        8) show_menu ;;
         *) echo "Invalid option" && profile_menu ;;
     esac
 }
@@ -199,20 +197,6 @@ block_list_menu() {
         4) show_menu ;;
         *) echo "Invalid option" && block_list_menu ;;
     esac
-}
-
-# Create Name Registry
-create_registry() {
-    print_header "Creating Name Registry"
-    
-    print_info "Creating and sharing name registry..."
-    myso client call --package $PACKAGE_ID --module name_service --function create_and_share_registry --gas-budget $GAS_BUDGET
-    
-    print_success "Registry created! Save the registry ID from the transaction output."
-    print_info "Look for an object with the 'NameRegistry' type in the transaction effects."
-    
-    read -p "Press Enter to continue..."
-    profile_menu
 }
 
 # Create Profile
