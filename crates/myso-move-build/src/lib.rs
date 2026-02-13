@@ -36,7 +36,7 @@ use move_symbol_pool::Symbol;
 use myso_package_alt::{MySoFlavor, testnet_environment};
 use myso_protocol_config::{Chain, ProtocolConfig, ProtocolVersion};
 use myso_types::{
-    BRIDGE_ADDRESS, DEEPBOOK_ADDRESS, MOVE_STDLIB_ADDRESS, MYDATA_ADDRESS, MYSO_FRAMEWORK_ADDRESS,
+    BRIDGE_ADDRESS, ORDERBOOK_ADDRESS, MOVE_STDLIB_ADDRESS, MYDATA_ADDRESS, MYSO_FRAMEWORK_ADDRESS,
     MYSO_SOCIAL_ADDRESS, MYSO_SYSTEM_ADDRESS, TypeTag,
     base_types::ObjectID,
     error::{MySoError, MySoErrorKind, MySoResult},
@@ -394,13 +394,13 @@ impl CompiledPackage {
             .collect()
     }
 
-    /// Get bytecode modules from DeepBook that are used by this package
-    pub fn get_deepbook_modules(&self) -> impl Iterator<Item = &CompiledModule> {
+    /// Get bytecode modules from OrderBook that are used by this package
+    pub fn get_orderbook_modules(&self) -> impl Iterator<Item = &CompiledModule> {
         self.get_modules_and_deps()
-            .filter(|m| *m.self_id().address() == DEEPBOOK_ADDRESS)
+            .filter(|m| *m.self_id().address() == ORDERBOOK_ADDRESS)
     }
 
-    /// Get bytecode modules from DeepBook that are used by this package
+    /// Get bytecode modules from Bridge that are used by this package
     pub fn get_bridge_modules(&self) -> impl Iterator<Item = &CompiledModule> {
         self.get_modules_and_deps()
             .filter(|m| *m.self_id().address() == BRIDGE_ADDRESS)

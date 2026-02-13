@@ -9,10 +9,10 @@ bcs = "0.1.6"
 clap = { version = "4.5", features = ["derive", "env", "wrap_help"] }
 dirs = "5.0.1"
 fastcrypto = "0.1.9"
-move-core-types = { path = "../../../external-crates/move/crates/move-core-types" }
+move-core-types = { git = "https://github.com/the-social-proof-foundation/myso-core.git", subdir = "external-crates/move/crates/move-core-types", branch = "main" }
 serde = { version = "1.0.203", features = ["derive"] }
-shared-crypto = { path = "../../../crates/shared-crypto" }
-myso-keys = { path = "../../../crates/myso-keys" }
-myso-sdk = { path = "../../../crates/myso-sdk" }
-myso-types = { path = "../../../crates/myso-types" }
+shared-crypto = { git = "https://github.com/the-social-proof-foundation/myso-core.git", package = "shared-crypto", branch = "main" }
+myso-keys = { git = "https://github.com/the-social-proof-foundation/myso-core.git", package = "myso-keys", branch = "main" }
+myso-sdk = { git = "https://github.com/the-social-proof-foundation/myso-core.git", package = "myso-sdk", branch = "main" }
+myso-types = { git = "https://github.com/the-social-proof-foundation/myso-core.git", package = "myso-types", branch = "main" }
 tokio = { version = "1.38.0", features = ["time"] }

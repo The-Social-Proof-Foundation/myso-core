@@ -18,7 +18,7 @@ fn main() {
         "move-stdlib",
         "myso-framework",
         "myso-system",
-        "deepbook",
+        "orderbook",
         "bridge",
         "mydata",
         "myso-social",

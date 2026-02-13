@@ -2,9 +2,9 @@
 // Copyright (c) The Social Proof Foundation, LLC.
 // SPDX-License-Identifier: Apache-2.0
 
-module deepbook::critbit {
+module orderbook::critbit {
     use myso::table::{Self, Table};
-    use deepbook::math::{count_leading_zeros};
+    use orderbook::math::{count_leading_zeros};
 
     // <<<<<<<<<<<<<<<<<<<<<<<< Error codes <<<<<<<<<<<<<<<<<<<<<<<<
     const EExceedCapacity: u64 = 2;

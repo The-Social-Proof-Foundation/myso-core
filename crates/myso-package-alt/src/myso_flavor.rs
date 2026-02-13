@@ -36,6 +36,7 @@ impl MySoFlavor {
             ("MoveStdlib".into(), "std".into()),
             ("Bridge".into(), "bridge".into()),
             ("DeepBook".into(), "deepbook".into()),
+            ("OrderBook".into(), "orderbook".into()),
             ("MyData".into(), "mydata".into()),
             ("MySoSocial".into(), "myso_social".into()),
             ("mydata".into(), "mydata".into()),

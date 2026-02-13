@@ -14,7 +14,7 @@ pub mod info;
 pub mod linters;
 pub mod typing;
 
-// DEEPBOOK_ADDRESS / DEEPBOOK_PACKAGE_ID = 0xdee9;
+// ORDERBOOK_ADDRESS / ORDERBOOK_PACKAGE_ID = 0xdee9;
 
 pub const STD_ADDR_VALUE: AccountAddress = AccountAddress::from_suffix(0x1);
 pub const MYSO_ADDR_VALUE: AccountAddress = AccountAddress::from_suffix(0x2);

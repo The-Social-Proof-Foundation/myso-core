@@ -9,7 +9,7 @@ use std::{collections::BTreeMap, fmt};
 
 use move_core_types::account_address::AccountAddress;
 use myso_types::{
-    BRIDGE_ADDRESS, DEEPBOOK_ADDRESS, MOVE_STDLIB_ADDRESS, MYSO_FRAMEWORK_ADDRESS,
+    BRIDGE_ADDRESS, ORDERBOOK_ADDRESS, MOVE_STDLIB_ADDRESS, MYSO_FRAMEWORK_ADDRESS,
     MYSO_SYSTEM_ADDRESS,
     transaction::{Argument, Command, ProgrammableMoveCall},
     type_input::{StructInput, TypeInput},
@@ -186,7 +186,7 @@ pub fn address_str(
         MOVE_STDLIB_ADDRESS => "std".to_owned(),
         MYSO_SYSTEM_ADDRESS => "myso_system".to_owned(),
         BRIDGE_ADDRESS => "bridge".to_owned(),
-        DEEPBOOK_ADDRESS => "deepbook".to_owned(),
+        ORDERBOOK_ADDRESS => "orderbook".to_owned(),
         _ => match named_addresses.get(&address) {
             Some(name) => name.clone(),
             _ => panic!("Unknown address: {}", address),

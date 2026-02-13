@@ -9,9 +9,9 @@ interface for the type owner to set custom transfer rules for every
 deal performed in a marketplace or similar system that integrates with TP.
 
 - Once a <code><a href="../myso/transfer_policy.md#myso_transfer_policy_TransferPolicy">TransferPolicy</a>&lt;T&gt;</code> is created for and shared (or frozen), the
-type <code>T</code> becomes tradable in systems that use TransferPolicy. On every purchase operation, a
-<code><a href="../myso/transfer_policy.md#myso_transfer_policy_TransferRequest">TransferRequest</a></code> is created and needs to be confirmed by the <code><a href="../myso/transfer_policy.md#myso_transfer_policy_TransferPolicy">TransferPolicy</a></code>
-hot potato or transaction will fail.
+type <code>T</code> becomes tradable in systems that use TransferPolicy. On every
+purchase operation, a <code><a href="../myso/transfer_policy.md#myso_transfer_policy_TransferRequest">TransferRequest</a></code> is created and needs to be
+confirmed by the <code><a href="../myso/transfer_policy.md#myso_transfer_policy_TransferPolicy">TransferPolicy</a></code> hot potato or transaction will fail.
 
 - Type owner (creator) can set any Rules as long as the ecosystem supports
 them. All of the Rules need to be resolved within a single transaction (eg
@@ -544,7 +544,7 @@ by the type constraint, as only the publisher of the <code>T</code> can get
 <code><a href="../myso/transfer_policy.md#myso_transfer_policy_TransferPolicy">TransferPolicy</a>&lt;T&gt;</code>.
 
 Note: unless there's a policy for <code>T</code> to allow transfers,
-Marketplace trades will not be possible.
+marketplace trades will not be possible.
 
 
 <pre><code><b>public</b> <b>fun</b> <a href="../myso/transfer_policy.md#myso_transfer_policy_confirm_request">confirm_request</a>&lt;T&gt;(self: &<a href="../myso/transfer_policy.md#myso_transfer_policy_TransferPolicy">myso::transfer_policy::TransferPolicy</a>&lt;T&gt;, request: <a href="../myso/transfer_policy.md#myso_transfer_policy_TransferRequest">myso::transfer_policy::TransferRequest</a>&lt;T&gt;): (<a href="../myso/object.md#myso_object_ID">myso::object::ID</a>, u64, <a href="../myso/object.md#myso_object_ID">myso::object::ID</a>)

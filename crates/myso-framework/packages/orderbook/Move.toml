@@ -1,5 +1,5 @@
 [package]
-name = "DeepBook"
+name = "OrderBook"
 version = "0.0.1"
 published-at = "0xdee9"
 edition = "2024.beta"
@@ -9,4 +9,4 @@ MoveStdlib = { local = "../move-stdlib" }
 MySo = { local = "../myso-framework" }
 
 [addresses]
-deepbook = "0xdee9"
+orderbook = "0xdee9"

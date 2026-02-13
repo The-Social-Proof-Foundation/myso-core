@@ -2,7 +2,7 @@
 // Copyright (c) The Social Proof Foundation, LLC.
 // SPDX-License-Identifier: Apache-2.0
 
-module deepbook::custodian {
+module orderbook::custodian {
     use myso::balance::{Self, Balance, split};
     use myso::coin::{Self, Coin};
     use myso::table::{Self, Table};

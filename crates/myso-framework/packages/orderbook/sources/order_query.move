@@ -2,13 +2,13 @@
 // Copyright (c) The Social Proof Foundation, LLC.
 // SPDX-License-Identifier: Apache-2.0
 
-module deepbook::order_query {
+module orderbook::order_query {
     use std::option::{some, none};
-    use deepbook::critbit::CritbitTree;
+    use orderbook::critbit::CritbitTree;
     use myso::linked_table;
-    use deepbook::critbit;
-    use deepbook::clob_v2;
-    use deepbook::clob_v2::{Order, Pool, TickLevel};
+    use orderbook::critbit;
+    use orderbook::clob_v2;
+    use orderbook::clob_v2::{Order, Pool, TickLevel};
 
     const PAGE_LIMIT: u64 = 100;
 

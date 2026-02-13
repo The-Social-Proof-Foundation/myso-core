@@ -110,20 +110,20 @@ The amount of Mist per MySo token based on the fact that mist is
 
 <a name="myso_myso_TOTAL_SUPPLY_MYSO"></a>
 
-The total supply of MySo denominated in whole MySo tokens (10 Billion)
+The total supply of MySo denominated in whole MySo tokens (1 Billion)
 
 
-<pre><code><b>const</b> <a href="../myso/myso.md#myso_myso_TOTAL_SUPPLY_MYSO">TOTAL_SUPPLY_MYSO</a>: u64 = 10000000000;
+<pre><code><b>const</b> <a href="../myso/myso.md#myso_myso_TOTAL_SUPPLY_MYSO">TOTAL_SUPPLY_MYSO</a>: u64 = 1000000000;
 </code></pre>
 
 
 
 <a name="myso_myso_TOTAL_SUPPLY_MIST"></a>
 
-The total supply of MySo denominated in Mist (10 Billion * 10^9)
+The total supply of MySo denominated in Mist (1 Billion * 10^9)
 
 
-<pre><code><b>const</b> <a href="../myso/myso.md#myso_myso_TOTAL_SUPPLY_MIST">TOTAL_SUPPLY_MIST</a>: u64 = 10000000000000000000;
+<pre><code><b>const</b> <a href="../myso/myso.md#myso_myso_TOTAL_SUPPLY_MIST">TOTAL_SUPPLY_MIST</a>: u64 = 1000000000000000000;
 </code></pre>
 
 

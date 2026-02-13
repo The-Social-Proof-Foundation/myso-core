@@ -694,6 +694,12 @@ advance_epoch
 current_epoch_subsidy_amount
 	public fun
 	0x3::stake_subsidy
+calculate_effective_apy
+	fun
+	0x3::stake_subsidy
+calculate_epoch_subsidy_amount
+	fun
+	0x3::stake_subsidy
 get_distribution_counter
 	public(package) fun
 	0x3::stake_subsidy
@@ -3007,87 +3013,6 @@ verify_groth16_proof
 verify_groth16_proof_internal
 	fun
 	0x2::groth16
-MYSO
-	public struct
-	0x2::myso
-new
-	fun
-	0x2::myso
-transfer
-	public entry fun
-	0x2::myso
-TransferRequest
-	public struct
-	0x2::transfer_policy
-TransferPolicy
-	public struct
-	0x2::transfer_policy
-TransferPolicyCap
-	public struct
-	0x2::transfer_policy
-TransferPolicyCreated
-	public struct
-	0x2::transfer_policy
-TransferPolicyDestroyed
-	public struct
-	0x2::transfer_policy
-RuleKey
-	public struct
-	0x2::transfer_policy
-new_request
-	public fun
-	0x2::transfer_policy
-new
-	public fun
-	0x2::transfer_policy
-default
-	entry fun
-	0x2::transfer_policy
-withdraw
-	public fun
-	0x2::transfer_policy
-destroy_and_withdraw
-	public fun
-	0x2::transfer_policy
-confirm_request
-	public fun
-	0x2::transfer_policy
-add_rule
-	public fun
-	0x2::transfer_policy
-get_rule
-	public fun
-	0x2::transfer_policy
-add_to_balance
-	public fun
-	0x2::transfer_policy
-add_receipt
-	public fun
-	0x2::transfer_policy
-has_rule
-	public fun
-	0x2::transfer_policy
-remove_rule
-	public fun
-	0x2::transfer_policy
-uid
-	public fun
-	0x2::transfer_policy
-uid_mut_as_owner
-	public fun
-	0x2::transfer_policy
-rules
-	public fun
-	0x2::transfer_policy
-item
-	public fun
-	0x2::transfer_policy
-paid
-	public fun
-	0x2::transfer_policy
-from
-	public fun
-	0x2::transfer_policy
 LinkedTable
 	public struct
 	0x2::linked_table
@@ -3166,6 +3091,15 @@ sqrt_u128
 divide_and_round_up
 	public fun
 	0x2::math
+MYSO
+	public struct
+	0x2::myso
+new
+	fun
+	0x2::myso
+transfer
+	public entry fun
+	0x2::myso
 PCREntry
 	public struct
 	0x2::nitro_attestation
@@ -3625,6 +3559,78 @@ spent
 key
 	fun
 	0x2::token
+TransferRequest
+	public struct
+	0x2::transfer_policy
+TransferPolicy
+	public struct
+	0x2::transfer_policy
+TransferPolicyCap
+	public struct
+	0x2::transfer_policy
+TransferPolicyCreated
+	public struct
+	0x2::transfer_policy
+TransferPolicyDestroyed
+	public struct
+	0x2::transfer_policy
+RuleKey
+	public struct
+	0x2::transfer_policy
+new_request
+	public fun
+	0x2::transfer_policy
+new
+	public fun
+	0x2::transfer_policy
+default
+	entry fun
+	0x2::transfer_policy
+withdraw
+	public fun
+	0x2::transfer_policy
+destroy_and_withdraw
+	public fun
+	0x2::transfer_policy
+confirm_request
+	public fun
+	0x2::transfer_policy
+add_rule
+	public fun
+	0x2::transfer_policy
+get_rule
+	public fun
+	0x2::transfer_policy
+add_to_balance
+	public fun
+	0x2::transfer_policy
+add_receipt
+	public fun
+	0x2::transfer_policy
+has_rule
+	public fun
+	0x2::transfer_policy
+remove_rule
+	public fun
+	0x2::transfer_policy
+uid
+	public fun
+	0x2::transfer_policy
+uid_mut_as_owner
+	public fun
+	0x2::transfer_policy
+rules
+	public fun
+	0x2::transfer_policy
+item
+	public fun
+	0x2::transfer_policy
+paid
+	public fun
+	0x2::transfer_policy
+from
+	public fun
+	0x2::transfer_policy
 VerifiedID
 	public struct
 	0x2::zklogin_verified_id

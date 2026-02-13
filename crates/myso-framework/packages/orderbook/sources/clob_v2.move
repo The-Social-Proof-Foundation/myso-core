@@ -2,7 +2,7 @@
 // Copyright (c) The Social Proof Foundation, LLC.
 // SPDX-License-Identifier: Apache-2.0
 
-module deepbook::clob_v2 {
+module orderbook::clob_v2 {
     use std::type_name::TypeName;
 
     use myso::balance::{Self, Balance};
@@ -13,9 +13,9 @@ module deepbook::clob_v2 {
     use myso::myso::MYSO;
     use myso::table::{Self, Table, contains, borrow_mut};
 
-    use deepbook::critbit::{Self, CritbitTree, borrow_mut_leaf_by_index, remove_leaf_by_index, borrow_leaf_by_index, borrow_leaf_by_key, find_leaf};
-    use deepbook::custodian_v2::{Self as custodian, Custodian, AccountCap, account_owner};
-    use deepbook::math::Self as clob_math;
+    use orderbook::critbit::{Self, CritbitTree, borrow_mut_leaf_by_index, remove_leaf_by_index, borrow_leaf_by_index, borrow_leaf_by_key, find_leaf};
+    use orderbook::custodian_v2::{Self as custodian, Custodian, AccountCap, account_owner};
+    use orderbook::math::Self as clob_math;
 
     // <<<<<<<<<<<<<<<<<<<<<<<< Error codes <<<<<<<<<<<<<<<<<<<<<<<<
     const EIncorrectPoolOwner: u64 = 1;
@@ -339,7 +339,7 @@ module deepbook::clob_v2 {
     }
 
     #[deprecated(note = b"Creating new pool is deprecated in Deepbook V2. Please use Deepbook V3.")]
-    /// Function for creating an external pool. This API can be used to wrap deepbook pools into other objects.
+    /// Function for creating an external pool. This API can be used to wrap orderbook pools into other objects.
     public fun create_pool_with_return<BaseAsset, QuoteAsset>(
         _tick_size: u64,
         _lot_size: u64,

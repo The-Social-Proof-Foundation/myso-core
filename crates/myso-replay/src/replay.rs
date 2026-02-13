@@ -46,7 +46,7 @@ use myso_types::storage::{PackageObject, get_module};
 use myso_types::transaction::GasData;
 use myso_types::transaction::TransactionKind::ProgrammableTransaction;
 use myso_types::{
-    DEEPBOOK_PACKAGE_ID,
+    ORDERBOOK_PACKAGE_ID,
     base_types::{ObjectID, ObjectRef, SequenceNumber, VersionNumber},
     committee::EpochId,
     digests::{ObjectDigest, TransactionDigest},
@@ -1086,7 +1086,7 @@ impl LocalExec {
         let mut ids = BuiltInFramework::all_package_ids();
 
         if protocol_version < 5 {
-            ids.retain(|id| *id != DEEPBOOK_PACKAGE_ID)
+            ids.retain(|id| *id != ORDERBOOK_PACKAGE_ID)
         }
         ids
     }

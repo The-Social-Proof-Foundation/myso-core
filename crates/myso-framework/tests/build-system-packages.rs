@@ -57,26 +57,14 @@ async fn build_system_packages() {
         fs::write(&framework_move_toml, fixed).unwrap();
     }
     
-    // myso-system/myso-system/Move.toml references ../move-stdlib and ../myso-framework
-    // From myso-system/myso-system, need ../../move-stdlib and ../../myso-framework/myso-framework
-    let system_move_toml = packages_path.join("myso-system").join("myso-system").join("Move.toml");
-    if system_move_toml.exists() {
-        let content = fs::read_to_string(&system_move_toml).unwrap();
-        let fixed = content
-            .replace("../move-stdlib", "../../move-stdlib")
-            .replace("../myso-framework", "../../myso-framework/myso-framework");
-        fs::write(&system_move_toml, fixed).unwrap();
-    }
-    
-    // Fix bridge and deepbook Move.toml files that reference ../myso-framework and ../myso-system
-    // They need to point to the nested directories
-    for pkg_name in ["bridge", "deepbook", "mydata", "myso-social"] {
+    // Fix bridge, orderbook, mydata, myso-social, myso-system Move.toml - point to nested
+    // myso-framework at myso-framework/myso-framework. ../move-stdlib is correct for all (same
+    // level in temp copy); do not change it.
+    for pkg_name in ["bridge", "orderbook", "mydata", "myso-social", "myso-system"] {
         let move_toml = packages_path.join(pkg_name).join("Move.toml");
         if move_toml.exists() {
             let content = fs::read_to_string(&move_toml).unwrap();
-            let fixed = content
-                .replace("../myso-framework", "../myso-framework/myso-framework")
-                .replace("../myso-system", "../myso-system/myso-system");
+            let fixed = content.replace("../myso-framework", "../myso-framework/myso-framework");
             if fixed != content {
                 fs::write(&move_toml, fixed).unwrap();
             }
@@ -84,8 +72,8 @@ async fn build_system_packages() {
     }
 
     let bridge_path = packages_path.join("bridge");
-    let deepbook_path = packages_path.join("deepbook");
-    let myso_system_path = packages_path.join("myso-system").join("myso-system");
+    let orderbook_path = packages_path.join("orderbook");
+    let myso_system_path = packages_path.join("myso-system");
     let myso_framework_path = packages_path.join("myso-framework").join("myso-framework");
     let move_stdlib_path = packages_path.join("move-stdlib");
     let mydata_path = packages_path.join("mydata");
@@ -93,7 +81,7 @@ async fn build_system_packages() {
 
     build_packages(
         &bridge_path,
-        &deepbook_path,
+        &orderbook_path,
         &myso_system_path,
         &myso_framework_path,
         &move_stdlib_path,
@@ -130,7 +118,7 @@ fn check_diff(checked_in: &Path, built: &Path) {
 
 async fn build_packages(
     bridge_path: &Path,
-    deepbook_path: &Path,
+    orderbook_path: &Path,
     myso_system_path: &Path,
     myso_framework_path: &Path,
     stdlib_path: &Path,
@@ -150,7 +138,7 @@ async fn build_packages(
     debug_assert!(!config.test_mode);
     build_packages_with_move_config(
         bridge_path,
-        deepbook_path,
+        orderbook_path,
         myso_system_path,
         myso_framework_path,
         stdlib_path,
@@ -158,7 +146,7 @@ async fn build_packages(
         myso_social_path,
         out_dir,
         "bridge",
-        "deepbook",
+        "orderbook",
         "myso-system",
         "myso-framework",
         "move-stdlib",
@@ -171,7 +159,7 @@ async fn build_packages(
 
 async fn build_packages_with_move_config(
     bridge_path: &Path,
-    deepbook_path: &Path,
+    orderbook_path: &Path,
     myso_system_path: &Path,
     myso_framework_path: &Path,
     stdlib_path: &Path,
@@ -179,7 +167,7 @@ async fn build_packages_with_move_config(
     myso_social_path: &Path,
     out_dir: &Path,
     bridge_dir: &str,
-    deepbook_dir: &str,
+    orderbook_dir: &str,
     system_dir: &str,
     framework_dir: &str,
     stdlib_dir: &str,
@@ -214,13 +202,13 @@ async fn build_packages_with_move_config(
     .build_async(myso_system_path)
     .await
     .unwrap();
-    let deepbook_pkg = BuildConfig {
+    let orderbook_pkg = BuildConfig {
         config: config.clone(),
         run_bytecode_verifier: true,
         print_diags_to_stderr: false,
         environment: mainnet_environment(), // Framework pkg addr is agnostic to chain, resolves from Move.toml
     }
-    .build_async(deepbook_path)
+    .build_async(orderbook_path)
     .await
     .unwrap();
     let bridge_pkg = BuildConfig {
@@ -254,7 +242,7 @@ async fn build_packages_with_move_config(
     let move_stdlib = stdlib_pkg.get_stdlib_modules();
     let myso_system = system_pkg.get_myso_system_modules();
     let myso_framework = framework_pkg.get_myso_framework_modules();
-    let deepbook = deepbook_pkg.get_deepbook_modules();
+    let orderbook = orderbook_pkg.get_orderbook_modules();
     let bridge = bridge_pkg.get_bridge_modules();
     let mydata = mydata_pkg.get_mydata_modules();
     let myso_social = myso_social_pkg.get_myso_social_modules();
@@ -266,8 +254,8 @@ async fn build_packages_with_move_config(
     let myso_framework_members =
         serialize_modules_to_file(myso_framework, &compiled_packages_dir.join(framework_dir))
             .unwrap();
-    let deepbook_members =
-        serialize_modules_to_file(deepbook, &compiled_packages_dir.join(deepbook_dir)).unwrap();
+    let orderbook_members =
+        serialize_modules_to_file(orderbook, &compiled_packages_dir.join(orderbook_dir)).unwrap();
     let bridge_members =
         serialize_modules_to_file(bridge, &compiled_packages_dir.join(bridge_dir)).unwrap();
     let stdlib_members =
@@ -285,7 +273,7 @@ async fn build_packages_with_move_config(
         &mut files_to_write,
     );
     relocate_docs(
-        &deepbook_pkg.package.compiled_docs.unwrap(),
+        &orderbook_pkg.package.compiled_docs.unwrap(),
         &mut files_to_write,
     );
     relocate_docs(
@@ -317,7 +305,7 @@ async fn build_packages_with_move_config(
     let published_api = [
         myso_system_members.join("\n"),
         myso_framework_members.join("\n"),
-        deepbook_members.join("\n"),
+        orderbook_members.join("\n"),
         bridge_members.join("\n"),
         stdlib_members.join("\n"),
         mydata_members.join("\n"),

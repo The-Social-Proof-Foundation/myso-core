@@ -6,8 +6,8 @@ edition = "2024"
 [dependencies]
 async-trait = "0.1.83"
 tokio = { version = "1.38.0", features = ["full"]}
-myso_types = { git = "https://github.com/mystenlabs/myso", package = "myso-types"}
-myso_data_ingestion_core = { git = "https://github.com/mystenlabs/myso", package = "myso-data-ingestion-core"}
+myso_types = { git = "https://github.com/the-social-proof-foundation/myso-core.git", package = "myso-types", branch = "main" }
+myso_data_ingestion_core = { git = "https://github.com/the-social-proof-foundation/myso-core.git", package = "myso-data-ingestion-core", branch = "main" }
 prometheus = "0.13.3"
 anyhow = "1.0.86"
 

@@ -130,7 +130,7 @@ built_in_pkgs! {
     MYSO_FRAMEWORK_ADDRESS / MYSO_FRAMEWORK_PACKAGE_ID = 0x2;
     MYSO_SYSTEM_ADDRESS / MYSO_SYSTEM_PACKAGE_ID = 0x3;
     BRIDGE_ADDRESS / BRIDGE_PACKAGE_ID = 0xb;
-    DEEPBOOK_ADDRESS / DEEPBOOK_PACKAGE_ID = 0xdee9;
+    ORDERBOOK_ADDRESS / ORDERBOOK_PACKAGE_ID = 0xdee9;
     MYDATA_ADDRESS / MYDATA_PACKAGE_ID = 0xda7a;
     MYSO_SOCIAL_ADDRESS / MYSO_SOCIAL_PACKAGE_ID = 0x50c1;
 }
@@ -158,7 +158,7 @@ pub fn myso_framework_address_concat_string(suffix: &str) -> String {
 /// Parses `s` as an address. Valid formats for addresses are:
 ///
 /// - A 256bit number, encoded in decimal, or hexadecimal with a leading "0x" prefix.
-/// - One of a number of pre-defined named addresses: std, myso, myso_system, deepbook.
+/// - One of a number of pre-defined named addresses: std, myso, myso_system, orderbook.
 ///
 /// Parsing succeeds if and only if `s` matches one of these formats exactly, with no remaining
 /// suffix. This function is intended for use within the authority codebases.
@@ -206,7 +206,7 @@ pub fn parse_myso_type_tag(s: &str) -> anyhow::Result<TypeTag> {
 /// Resolve well-known named addresses into numeric addresses.
 pub fn resolve_address(addr: &str) -> Option<AccountAddress> {
     match addr {
-        "deepbook" => Some(DEEPBOOK_ADDRESS),
+        "orderbook" => Some(ORDERBOOK_ADDRESS),
         "std" => Some(MOVE_STDLIB_ADDRESS),
         "myso" => Some(MYSO_FRAMEWORK_ADDRESS),
         "myso_system" => Some(MYSO_SYSTEM_ADDRESS),

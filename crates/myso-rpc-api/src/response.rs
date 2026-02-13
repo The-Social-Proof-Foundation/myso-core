@@ -9,11 +9,15 @@ use axum::{
 };
 
 use crate::RpcService;
-use myso_rpc::headers::{
-    X_MYSO_CHAIN, X_MYSO_CHAIN_ID, X_MYSO_CHECKPOINT_HEIGHT, X_MYSO_EPOCH,
-    X_MYSO_LOWEST_AVAILABLE_CHECKPOINT, X_MYSO_LOWEST_AVAILABLE_CHECKPOINT_OBJECTS, X_MYSO_TIMESTAMP,
-    X_MYSO_TIMESTAMP_MS,
-};
+const X_MYSO_CHAIN_ID: &str = "x-myso-chain-id";
+const X_MYSO_CHAIN: &str = "x-myso-chain";
+const X_MYSO_CHECKPOINT_HEIGHT: &str = "x-myso-checkpoint-height";
+const X_MYSO_EPOCH: &str = "x-myso-epoch";
+const X_MYSO_LOWEST_AVAILABLE_CHECKPOINT: &str = "x-myso-lowest-available-checkpoint";
+const X_MYSO_LOWEST_AVAILABLE_CHECKPOINT_OBJECTS: &str =
+    "x-myso-lowest-available-checkpoint-objects";
+const X_MYSO_TIMESTAMP_MS: &str = "x-myso-timestamp-ms";
+const X_MYSO_TIMESTAMP: &str = "x-myso-timestamp";
 
 pub async fn append_info_headers(
     State(state): State<RpcService>,

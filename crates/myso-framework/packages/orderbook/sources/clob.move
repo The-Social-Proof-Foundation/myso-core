@@ -2,7 +2,7 @@
 // Copyright (c) The Social Proof Foundation, LLC.
 // SPDX-License-Identifier: Apache-2.0
 
-module deepbook::clob {
+module orderbook::clob {
     use std::type_name::TypeName;
 
     use myso::balance::Balance;
@@ -13,9 +13,9 @@ module deepbook::clob {
     use myso::myso::MYSO;
     use myso::table::{Self, Table, contains, borrow_mut};
 
-    use deepbook::critbit::{Self, CritbitTree, borrow_mut_leaf_by_index, remove_leaf_by_index, borrow_leaf_by_index, borrow_leaf_by_key, find_leaf};
-    use deepbook::custodian::{Self, Custodian, AccountCap};
-    use deepbook::math::Self as clob_math;
+    use orderbook::critbit::{Self, CritbitTree, borrow_mut_leaf_by_index, remove_leaf_by_index, borrow_leaf_by_index, borrow_leaf_by_key, find_leaf};
+    use orderbook::custodian::{Self, Custodian, AccountCap};
+    use orderbook::math::Self as clob_math;
 
     // <<<<<<<<<<<<<<<<<<<<<<<< Error codes <<<<<<<<<<<<<<<<<<<<<<<<
     const DEPRECATED: u64 = 0;
