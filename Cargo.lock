@@ -10146,7 +10146,9 @@ dependencies = [
  "myso-indexer-alt-consistent-store",
  "myso-indexer-alt-framework",
  "myso-indexer-alt-graphql",
+ "myso-indexer-alt-metrics",
  "myso-indexer-alt-reader",
+ "myso-indexer-alt-social",
  "myso-json",
  "myso-json-rpc-types",
  "myso-keys",
@@ -10162,6 +10164,7 @@ dependencies = [
  "myso-rpc-api",
  "myso-sdk",
  "myso-simulator",
+ "myso-social-server",
  "myso-source-validation",
  "myso-swarm",
  "myso-swarm-config",
@@ -11351,7 +11354,6 @@ dependencies = [
  "myso-indexer-alt-framework",
  "myso-indexer-alt-metrics",
  "myso-indexer-alt-schema",
- "myso-indexer-alt-social-schema",
  "myso-protocol-config",
  "myso-synthetic-ingestion",
  "myso-types",
@@ -11822,6 +11824,33 @@ dependencies = [
  "myso-types",
  "serde",
  "siphasher",
+]
+
+[[package]]
+name = "myso-indexer-alt-social"
+version = "0.1.0"
+dependencies = [
+ "anyhow",
+ "async-trait",
+ "bcs",
+ "chrono",
+ "clap",
+ "diesel",
+ "diesel-async",
+ "hex",
+ "move-core-types",
+ "myso-indexer-alt-framework",
+ "myso-indexer-alt-metrics",
+ "myso-indexer-alt-social-schema",
+ "myso-pg-db",
+ "myso-types",
+ "prometheus",
+ "serde",
+ "serde_json",
+ "telemetry-subscribers",
+ "tokio",
+ "tracing",
+ "url",
 ]
 
 [[package]]
@@ -13246,6 +13275,32 @@ dependencies = [
  "tokio",
  "tokio-stream",
  "tracing",
+]
+
+[[package]]
+name = "myso-social-server"
+version = "0.1.0"
+dependencies = [
+ "anyhow",
+ "axum 0.7.9",
+ "chrono",
+ "clap",
+ "diesel",
+ "diesel-async",
+ "futures",
+ "myso-futures",
+ "myso-indexer-alt-metrics",
+ "myso-indexer-alt-social-schema",
+ "myso-pg-db",
+ "prometheus",
+ "serde",
+ "serde_json",
+ "telemetry-subscribers",
+ "thiserror 1.0.69",
+ "tokio",
+ "tower-http 0.5.2",
+ "tracing",
+ "url",
 ]
 
 [[package]]

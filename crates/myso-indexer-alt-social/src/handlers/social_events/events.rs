@@ -1,4 +1,3 @@
-// Copyright (c) Mysten Labs, Inc.
 // Copyright (c) The Social Proof Foundation, LLC.
 // SPDX-License-Identifier: Apache-2.0
 
@@ -303,6 +302,230 @@ pub struct BcsBadgeRemovedEvent {
     removed_at: u64,
 }
 
+#[derive(Debug, Deserialize)]
+pub struct BcsPostCreatedEvent {
+    post_id: AccountAddress,
+    owner: AccountAddress,
+    profile_id: AccountAddress,
+    content: String,
+    post_type: String,
+    parent_post_id: Option<AccountAddress>,
+    mentions: Option<Vec<AccountAddress>>,
+    media_urls: Option<Vec<String>>,
+    metadata_json: Option<String>,
+    mydata_id: Option<AccountAddress>,
+    promotion_id: Option<AccountAddress>,
+    revenue_redirect_to: Option<AccountAddress>,
+    revenue_redirect_percentage: Option<u64>,
+    enable_spt: bool,
+    enable_poc: bool,
+    enable_spot: bool,
+    spot_id: Option<AccountAddress>,
+    spt_id: Option<AccountAddress>,
+}
+
+#[derive(Debug, Deserialize)]
+pub struct BcsCommentCreatedEvent {
+    comment_id: AccountAddress,
+    post_id: AccountAddress,
+    parent_comment_id: Option<AccountAddress>,
+    owner: AccountAddress,
+    profile_id: AccountAddress,
+    content: String,
+    mentions: Option<Vec<AccountAddress>>,
+}
+
+#[derive(Debug, Deserialize)]
+pub struct BcsReactionEvent {
+    object_id: AccountAddress,
+    user: AccountAddress,
+    reaction: String,
+    is_post: bool,
+}
+
+#[derive(Debug, Deserialize)]
+pub struct BcsRemoveReactionEvent {
+    object_id: AccountAddress,
+    user: AccountAddress,
+    reaction: String,
+    is_post: bool,
+}
+
+#[derive(Debug, Deserialize)]
+pub struct BcsRepostEvent {
+    repost_id: AccountAddress,
+    original_id: AccountAddress,
+    is_original_post: bool,
+    owner: AccountAddress,
+    profile_id: AccountAddress,
+}
+
+#[derive(Debug, Deserialize)]
+pub struct BcsTipEvent {
+    object_id: AccountAddress,
+    from: AccountAddress,
+    to: AccountAddress,
+    amount: u64,
+    is_post: bool,
+}
+
+#[derive(Debug, Deserialize)]
+pub struct BcsPostModerationEvent {
+    post_id: AccountAddress,
+    platform_id: AccountAddress,
+    removed: bool,
+    moderated_by: AccountAddress,
+}
+
+#[derive(Debug, Deserialize)]
+pub struct BcsPostReportedEvent {
+    post_id: AccountAddress,
+    reporter: AccountAddress,
+    reason_code: u8,
+    description: String,
+    reported_at: u64,
+}
+
+#[derive(Debug, Deserialize)]
+pub struct BcsCommentReportedEvent {
+    comment_id: AccountAddress,
+    reporter: AccountAddress,
+    reason_code: u8,
+    description: String,
+    reported_at: u64,
+}
+
+#[derive(Debug, Deserialize)]
+pub struct BcsPostDeletedEvent {
+    post_id: AccountAddress,
+    owner: AccountAddress,
+    profile_id: AccountAddress,
+    post_type: String,
+    deleted_at: u64,
+}
+
+#[derive(Debug, Deserialize)]
+pub struct BcsCommentDeletedEvent {
+    comment_id: AccountAddress,
+    post_id: AccountAddress,
+    owner: AccountAddress,
+    profile_id: AccountAddress,
+    deleted_at: u64,
+}
+
+#[derive(Debug, Deserialize)]
+pub struct BcsPlatformStatus {
+    status: u8,
+}
+
+#[derive(Debug, Deserialize)]
+pub struct BcsPlatformCreatedEvent {
+    platform_id: AccountAddress,
+    name: String,
+    tagline: String,
+    description: String,
+    developer: AccountAddress,
+    logo: String,
+    terms_of_service: String,
+    privacy_policy: String,
+    platforms: Vec<String>,
+    links: Vec<String>,
+    primary_category: String,
+    secondary_category: Option<String>,
+    status: BcsPlatformStatus,
+    release_date: String,
+    wants_dao_governance: bool,
+    governance_registry_id: Option<AccountAddress>,
+    delegate_count: Option<u64>,
+    delegate_term_epochs: Option<u64>,
+    proposal_submission_cost: Option<u64>,
+    min_on_chain_age_days: Option<u64>,
+    max_votes_per_user: Option<u64>,
+    quadratic_base_cost: Option<u64>,
+    voting_period_epochs: Option<u64>,
+    quorum_votes: Option<u64>,
+}
+
+#[derive(Debug, Deserialize)]
+pub struct BcsPlatformUpdatedEvent {
+    platform_id: AccountAddress,
+    name: String,
+    tagline: String,
+    description: String,
+    terms_of_service: String,
+    privacy_policy: String,
+    platforms: Vec<String>,
+    links: Vec<String>,
+    primary_category: String,
+    secondary_category: Option<String>,
+    status: BcsPlatformStatus,
+    release_date: String,
+    shutdown_date: Option<String>,
+    updated_at: u64,
+}
+
+#[derive(Debug, Deserialize)]
+pub struct BcsPlatformApprovalChangedEvent {
+    platform_id: AccountAddress,
+    approved: bool,
+    changed_by: AccountAddress,
+    reasoning: Option<String>,
+}
+
+#[derive(Debug, Deserialize)]
+pub struct BcsModeratorAddedEvent {
+    platform_id: AccountAddress,
+    moderator_address: AccountAddress,
+    added_by: AccountAddress,
+}
+
+#[derive(Debug, Deserialize)]
+pub struct BcsModeratorRemovedEvent {
+    platform_id: AccountAddress,
+    moderator_address: AccountAddress,
+    removed_by: AccountAddress,
+}
+
+#[derive(Debug, Deserialize)]
+pub struct BcsPlatformDeletedEvent {
+    platform_id: AccountAddress,
+    name: String,
+    developer: AccountAddress,
+    deleted_by: AccountAddress,
+    timestamp: u64,
+    reasoning: Option<String>,
+}
+
+#[derive(Debug, Deserialize)]
+pub struct BcsUserJoinedPlatformEvent {
+    wallet_address: AccountAddress,
+    platform_id: AccountAddress,
+    timestamp: u64,
+}
+
+#[derive(Debug, Deserialize)]
+pub struct BcsUserLeftPlatformEvent {
+    wallet_address: AccountAddress,
+    platform_id: AccountAddress,
+    timestamp: u64,
+}
+
+#[derive(Debug, Deserialize)]
+pub struct BcsTokenAirdropEvent {
+    platform_id: AccountAddress,
+    recipient: AccountAddress,
+    amount: u64,
+    reason_code: u8,
+    executed_by: AccountAddress,
+    timestamp: u64,
+}
+
+fn mentions_to_json(mentions: &Option<Vec<AccountAddress>>) -> Option<serde_json::Value> {
+    mentions
+        .as_ref()
+        .map(|v| serde_json::json!(v.iter().map(addr_to_string).collect::<Vec<_>>()))
+}
+
 pub fn parse_event_contents(contents: &[u8]) -> Option<serde_json::Value> {
     if let Ok(ev) = bcs::from_bytes::<BcsProfileCreatedEvent>(contents) {
         return Some(serde_json::json!({
@@ -586,6 +809,247 @@ pub fn parse_event_contents(contents: &[u8]) -> Option<serde_json::Value> {
         }));
     }
 
+    if let Ok(ev) = bcs::from_bytes::<BcsPostCreatedEvent>(contents) {
+        return Some(serde_json::json!({
+            "post_id": addr_to_string(&ev.post_id),
+            "owner": addr_to_string(&ev.owner),
+            "profile_id": addr_to_string(&ev.profile_id),
+            "content": ev.content,
+            "post_type": ev.post_type,
+            "parent_post_id": ev.parent_post_id.as_ref().map(addr_to_string),
+            "mentions": mentions_to_json(&ev.mentions),
+            "media_urls": ev.media_urls,
+            "metadata_json": ev.metadata_json,
+            "mydata_id": ev.mydata_id.as_ref().map(addr_to_string),
+            "promotion_id": ev.promotion_id.as_ref().map(addr_to_string),
+            "revenue_redirect_to": ev.revenue_redirect_to.as_ref().map(addr_to_string),
+            "revenue_redirect_percentage": ev.revenue_redirect_percentage,
+            "enable_spt": ev.enable_spt,
+            "enable_poc": ev.enable_poc,
+            "enable_spot": ev.enable_spot,
+            "spot_id": ev.spot_id.as_ref().map(addr_to_string),
+            "spt_id": ev.spt_id.as_ref().map(addr_to_string),
+        }));
+    }
+
+    if let Ok(ev) = bcs::from_bytes::<BcsCommentCreatedEvent>(contents) {
+        return Some(serde_json::json!({
+            "comment_id": addr_to_string(&ev.comment_id),
+            "post_id": addr_to_string(&ev.post_id),
+            "parent_comment_id": ev.parent_comment_id.as_ref().map(addr_to_string),
+            "owner": addr_to_string(&ev.owner),
+            "profile_id": addr_to_string(&ev.profile_id),
+            "content": ev.content,
+            "mentions": mentions_to_json(&ev.mentions),
+        }));
+    }
+
+    if let Ok(ev) = bcs::from_bytes::<BcsReactionEvent>(contents) {
+        return Some(serde_json::json!({
+            "object_id": addr_to_string(&ev.object_id),
+            "user_address": addr_to_string(&ev.user),
+            "reaction_text": ev.reaction,
+            "is_post": ev.is_post,
+        }));
+    }
+
+    if let Ok(ev) = bcs::from_bytes::<BcsRemoveReactionEvent>(contents) {
+        return Some(serde_json::json!({
+            "object_id": addr_to_string(&ev.object_id),
+            "user_address": addr_to_string(&ev.user),
+            "reaction_text": ev.reaction,
+            "is_post": ev.is_post,
+        }));
+    }
+
+    if let Ok(ev) = bcs::from_bytes::<BcsRepostEvent>(contents) {
+        return Some(serde_json::json!({
+            "repost_id": addr_to_string(&ev.repost_id),
+            "original_id": addr_to_string(&ev.original_id),
+            "original_post_id": addr_to_string(&ev.original_id),
+            "is_original_post": ev.is_original_post,
+            "owner": addr_to_string(&ev.owner),
+            "profile_id": addr_to_string(&ev.profile_id),
+        }));
+    }
+
+    if let Ok(ev) = bcs::from_bytes::<BcsTipEvent>(contents) {
+        return Some(serde_json::json!({
+            "object_id": addr_to_string(&ev.object_id),
+            "from": addr_to_string(&ev.from),
+            "to": addr_to_string(&ev.to),
+            "amount": ev.amount,
+            "is_post": ev.is_post,
+            "tip_time": 0u64,
+        }));
+    }
+
+    if let Ok(ev) = bcs::from_bytes::<BcsPostModerationEvent>(contents) {
+        return Some(serde_json::json!({
+            "object_id": addr_to_string(&ev.post_id),
+            "platform_id": addr_to_string(&ev.platform_id),
+            "removed": ev.removed,
+            "moderated_by": addr_to_string(&ev.moderated_by),
+        }));
+    }
+
+    if let Ok(ev) = bcs::from_bytes::<BcsPostReportedEvent>(contents) {
+        return Some(serde_json::json!({
+            "object_id": addr_to_string(&ev.post_id),
+            "is_comment": false,
+            "reporter": addr_to_string(&ev.reporter),
+            "reason_code": ev.reason_code,
+            "description": ev.description,
+            "reported_at": ev.reported_at,
+        }));
+    }
+
+    if let Ok(ev) = bcs::from_bytes::<BcsCommentReportedEvent>(contents) {
+        return Some(serde_json::json!({
+            "object_id": addr_to_string(&ev.comment_id),
+            "is_comment": true,
+            "reporter": addr_to_string(&ev.reporter),
+            "reason_code": ev.reason_code,
+            "description": ev.description,
+            "reported_at": ev.reported_at,
+        }));
+    }
+
+    if let Ok(ev) = bcs::from_bytes::<BcsPostDeletedEvent>(contents) {
+        return Some(serde_json::json!({
+            "object_id": addr_to_string(&ev.post_id),
+            "owner": addr_to_string(&ev.owner),
+            "profile_id": addr_to_string(&ev.profile_id),
+            "is_post": true,
+            "post_type": ev.post_type,
+            "post_id": addr_to_string(&ev.post_id),
+            "deleted_at": ev.deleted_at,
+        }));
+    }
+
+    if let Ok(ev) = bcs::from_bytes::<BcsCommentDeletedEvent>(contents) {
+        return Some(serde_json::json!({
+            "object_id": addr_to_string(&ev.comment_id),
+            "owner": addr_to_string(&ev.owner),
+            "profile_id": addr_to_string(&ev.profile_id),
+            "is_post": false,
+            "post_type": serde_json::Value::Null,
+            "post_id": addr_to_string(&ev.post_id),
+            "deleted_at": ev.deleted_at,
+        }));
+    }
+
+    if let Ok(ev) = bcs::from_bytes::<BcsPlatformCreatedEvent>(contents) {
+        return Some(serde_json::json!({
+            "platform_id": addr_to_string(&ev.platform_id),
+            "name": ev.name,
+            "tagline": ev.tagline,
+            "description": ev.description,
+            "developer": addr_to_string(&ev.developer),
+            "logo": ev.logo,
+            "terms_of_service": ev.terms_of_service,
+            "privacy_policy": ev.privacy_policy,
+            "platforms": ev.platforms,
+            "links": ev.links,
+            "primary_category": ev.primary_category,
+            "secondary_category": ev.secondary_category,
+            "status": {"status": ev.status.status},
+            "release_date": ev.release_date,
+            "wants_dao_governance": ev.wants_dao_governance,
+            "governance_registry_id": ev.governance_registry_id.as_ref().map(addr_to_string),
+            "delegate_count": ev.delegate_count,
+            "delegate_term_epochs": ev.delegate_term_epochs,
+            "proposal_submission_cost": ev.proposal_submission_cost,
+            "min_on_chain_age_days": ev.min_on_chain_age_days,
+            "max_votes_per_user": ev.max_votes_per_user,
+            "quadratic_base_cost": ev.quadratic_base_cost,
+            "voting_period_epochs": ev.voting_period_epochs,
+            "quorum_votes": ev.quorum_votes,
+        }));
+    }
+
+    if let Ok(ev) = bcs::from_bytes::<BcsPlatformUpdatedEvent>(contents) {
+        return Some(serde_json::json!({
+            "platform_id": addr_to_string(&ev.platform_id),
+            "name": ev.name,
+            "tagline": ev.tagline,
+            "description": ev.description,
+            "terms_of_service": ev.terms_of_service,
+            "privacy_policy": ev.privacy_policy,
+            "platforms": ev.platforms,
+            "links": ev.links,
+            "primary_category": ev.primary_category,
+            "secondary_category": ev.secondary_category,
+            "status": {"status": ev.status.status},
+            "release_date": ev.release_date,
+            "shutdown_date": ev.shutdown_date,
+            "updated_at": ev.updated_at,
+        }));
+    }
+
+    if let Ok(ev) = bcs::from_bytes::<BcsPlatformApprovalChangedEvent>(contents) {
+        return Some(serde_json::json!({
+            "platform_id": addr_to_string(&ev.platform_id),
+            "approved": ev.approved,
+            "changed_by": addr_to_string(&ev.changed_by),
+            "reasoning": ev.reasoning,
+        }));
+    }
+
+    if let Ok(ev) = bcs::from_bytes::<BcsModeratorAddedEvent>(contents) {
+        return Some(serde_json::json!({
+            "platform_id": addr_to_string(&ev.platform_id),
+            "moderator_address": addr_to_string(&ev.moderator_address),
+            "added_by": addr_to_string(&ev.added_by),
+        }));
+    }
+
+    if let Ok(ev) = bcs::from_bytes::<BcsModeratorRemovedEvent>(contents) {
+        return Some(serde_json::json!({
+            "platform_id": addr_to_string(&ev.platform_id),
+            "moderator_address": addr_to_string(&ev.moderator_address),
+            "removed_by": addr_to_string(&ev.removed_by),
+        }));
+    }
+
+    if let Ok(ev) = bcs::from_bytes::<BcsPlatformDeletedEvent>(contents) {
+        return Some(serde_json::json!({
+            "platform_id": addr_to_string(&ev.platform_id),
+            "name": ev.name,
+            "developer": addr_to_string(&ev.developer),
+            "deleted_by": addr_to_string(&ev.deleted_by),
+            "timestamp": ev.timestamp,
+            "reasoning": ev.reasoning,
+        }));
+    }
+
+    if let Ok(ev) = bcs::from_bytes::<BcsUserJoinedPlatformEvent>(contents) {
+        return Some(serde_json::json!({
+            "wallet_address": addr_to_string(&ev.wallet_address),
+            "platform_id": addr_to_string(&ev.platform_id),
+            "timestamp": ev.timestamp,
+        }));
+    }
+
+    if let Ok(ev) = bcs::from_bytes::<BcsUserLeftPlatformEvent>(contents) {
+        return Some(serde_json::json!({
+            "wallet_address": addr_to_string(&ev.wallet_address),
+            "platform_id": addr_to_string(&ev.platform_id),
+            "timestamp": ev.timestamp,
+        }));
+    }
+
+    if let Ok(ev) = bcs::from_bytes::<BcsTokenAirdropEvent>(contents) {
+        return Some(serde_json::json!({
+            "platform_id": addr_to_string(&ev.platform_id),
+            "recipient": addr_to_string(&ev.recipient),
+            "amount": ev.amount,
+            "reason_code": ev.reason_code,
+            "executed_by": addr_to_string(&ev.executed_by),
+            "timestamp": ev.timestamp,
+        }));
+    }
+
     if let Ok(v) = serde_json::from_slice(contents) {
         return Some(v);
     }
@@ -623,6 +1087,60 @@ mod tests {
         assert_eq!(json["bio"], "Web8 developer and crypto enthusiast");
         assert_eq!(json["created_at"], 5);
         assert!(json["owner_address"].as_str().unwrap().starts_with("0x"));
+    }
+
+    #[test]
+    fn test_parse_profile_created_event_user_bytes() {
+        let contents: Vec<u8> = vec![
+            106, 84, 17, 200, 209, 12, 198, 212, 190, 149, 151, 187, 181, 214, 161, 0, 95, 58, 225,
+            214, 6, 214, 120, 6, 10, 193, 238, 125, 190, 143, 172, 168, 12, 66, 114, 97, 110, 100,
+            111, 110, 32, 83, 104, 97, 119, 7, 98, 114, 97, 110, 100, 111, 110, 36, 87, 101, 98,
+            56, 32, 100, 101, 118, 101, 108, 111, 112, 101, 114, 32, 97, 110, 100, 32, 99, 114,
+            121, 112, 116, 111, 32, 101, 110, 116, 104, 117, 115, 105, 97, 115, 116, 1, 31, 104,
+            116, 116, 112, 115, 58, 47, 47, 101, 120, 97, 109, 112, 108, 101, 46, 99, 111, 109, 47,
+            112, 114, 111, 102, 105, 108, 101, 46, 106, 112, 103, 1, 29, 104, 116, 116, 112, 115,
+            58, 47, 47, 101, 120, 97, 109, 112, 108, 101, 46, 99, 111, 109, 47, 99, 111, 118, 101,
+            114, 46, 112, 110, 103, 156, 200, 104, 135, 157, 106, 255, 74, 171, 250, 160, 27, 141,
+            86, 246, 73, 253, 178, 164, 32, 199, 252, 9, 96, 225, 249, 235, 52, 206, 192, 0, 124,
+            8, 0, 0, 0, 0, 0, 0, 0,
+        ];
+        let result = parse_event_contents(&contents);
+        assert!(
+            result.is_some(),
+            "parse_event_contents should succeed for user's ProfileCreatedEvent bytes"
+        );
+        let json = result.unwrap();
+        assert_eq!(json["display_name"], "Brandon Shaw");
+        assert_eq!(json["username"], "brandon");
+        assert_eq!(json["bio"], "Web8 developer and crypto enthusiast");
+        assert_eq!(json["created_at"], 8);
+        assert!(json["owner_address"].as_str().unwrap().starts_with("0x"));
+    }
+
+    #[test]
+    fn test_parse_post_created_event_json_fallback() {
+        let json = r#"{"post_id":"0x123","owner":"0x456","profile_id":"0x789","content":"hello","post_type":"post","parent_post_id":null,"mentions":null,"media_urls":null,"metadata_json":null,"mydata_id":null,"promotion_id":null,"revenue_redirect_to":null,"revenue_redirect_percentage":null,"enable_spt":false,"enable_poc":false,"enable_spot":false,"spot_id":null,"spt_id":null}"#;
+        let result = parse_event_contents(json.as_bytes());
+        assert!(
+            result.is_some(),
+            "parse_event_contents should succeed for PostCreatedEvent JSON"
+        );
+        let parsed = result.unwrap();
+        assert_eq!(parsed["post_id"], "0x123");
+        assert_eq!(parsed["content"], "hello");
+    }
+
+    #[test]
+    fn test_parse_platform_created_event_json_fallback() {
+        let json = r#"{"platform_id":"0xabc","name":"Test","tagline":"Tag","description":"Desc","developer":"0xdef","logo":"","terms_of_service":"","privacy_policy":"","platforms":[],"links":[],"primary_category":"Social","secondary_category":null,"status":{"status":0},"release_date":"2024-01-01","wants_dao_governance":false,"governance_registry_id":null,"delegate_count":null,"delegate_term_epochs":null,"proposal_submission_cost":null,"min_on_chain_age_days":null,"max_votes_per_user":null,"quadratic_base_cost":null,"voting_period_epochs":null,"quorum_votes":null}"#;
+        let result = parse_event_contents(json.as_bytes());
+        assert!(
+            result.is_some(),
+            "parse_event_contents should succeed for PlatformCreatedEvent JSON"
+        );
+        let parsed = result.unwrap();
+        assert_eq!(parsed["platform_id"], "0xabc");
+        assert_eq!(parsed["name"], "Test");
     }
 
     #[test]

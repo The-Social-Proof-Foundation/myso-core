@@ -142,7 +142,9 @@ members = [
   "crates/myso-indexer-alt-reader",
   "crates/myso-indexer-alt-restorer",
   "crates/myso-indexer-alt-schema",
+  "crates/myso-indexer-alt-social",
   "crates/myso-indexer-alt-social-schema",
+  "crates/myso-social-server",
   "crates/myso-json",
   "crates/myso-json-rpc",
   "crates/myso-json-rpc-api",
@@ -736,6 +738,7 @@ myso-indexer-alt-metrics = { path = "crates/myso-indexer-alt-metrics" }
 myso-indexer-alt-reader = { path = "crates/myso-indexer-alt-reader" }
 myso-indexer-alt-restorer = { path = "crates/myso-indexer-alt-restorer" }
 myso-indexer-alt-schema = { path = "crates/myso-indexer-alt-schema" }
+myso-indexer-alt-social = { path = "crates/myso-indexer-alt-social" }
 myso-indexer-alt-social-schema = { path = "crates/myso-indexer-alt-social-schema" }
 myso-indexer-alt-object-store = { path = "crates/myso-indexer-alt-object-store" }
 myso-json = { path = "crates/myso-json" }
@@ -770,6 +773,7 @@ myso-replay-2 = { path = "crates/myso-replay-2" }
 myso-rosetta = { path = "crates/myso-rosetta" }
 myso-rpc-loadgen = { path = "crates/myso-rpc-loadgen" }
 myso-sdk = { path = "crates/myso-sdk" }
+myso-social-server = { path = "crates/myso-social-server" }
 myso-simulator = { path = "crates/myso-simulator" }
 myso-snapshot = { path = "crates/myso-snapshot" }
 myso-source-validation = { path = "crates/myso-source-validation" }

@@ -1,4 +1,3 @@
-// Copyright (c) Mysten Labs, Inc.
 // Copyright (c) The Social Proof Foundation, LLC.
 // SPDX-License-Identifier: Apache-2.0
 
@@ -19,27 +18,33 @@ use diesel::ExpressionMethods;
 use diesel::QueryDsl;
 use diesel_async::RunQueryDsl;
 use move_core_types::account_address::AccountAddress;
-use myso_indexer_alt_framework::FieldCount;
 use myso_indexer_alt_framework::pipeline::Processor;
-use myso_indexer_alt_framework::postgres::Connection;
 use myso_indexer_alt_framework::postgres::handler::Handler;
+use myso_indexer_alt_framework::postgres::Connection;
 use myso_indexer_alt_framework::types::full_checkpoint_content::Checkpoint;
+use myso_indexer_alt_framework::FieldCount;
 use myso_indexer_alt_social_schema::models::{
-    GovernanceRegistryUpdate, NewAnonymousVote, NewBlockedEvent, NewBlockedProfile,
-    NewCommunityVote, NewDelegate, NewDelegateRating, NewDelegateVote, NewGovernanceEvent,
-    NewGovernanceRegistry, NewNominatedDelegate, NewProfile, NewProfileBadge, NewProfileEvent,
-    NewProposal, NewRewardDistribution, NewSocialGraphEvent, NewSocialGraphRelationship,
+    GovernanceRegistryUpdate, NewAnonymousVote, NewBlockedEvent, NewBlockedProfile, NewComment,
+    NewCommunityVote, NewDelegate, NewDelegateRating, NewDelegateVote, NewDeletionEvent,
+    NewGovernanceEvent, NewGovernanceRegistry, NewModerationEvent, NewNominatedDelegate,
+    NewPlatform, NewPlatformBlockedProfile, NewPlatformEvent, NewPlatformMembership,
+    NewPlatformModerator, NewPlatformTokenAirdrop, NewPost, NewProfile, NewProfileBadge,
+    NewProfileEvent, NewProposal, NewReaction, NewReactionCount, NewReport, NewRepost,
+    NewRewardDistribution, NewSocialGraphEvent, NewSocialGraphRelationship, NewTip,
     NewVoteDecryptionFailure, ProfileUpdateSet, ProposalUpdateSet,
 };
 use myso_indexer_alt_social_schema::schema::{
-    anonymous_votes, blocked_events, blocked_profiles, community_votes, delegate_ratings,
+    anonymous_votes, blocked_events, blocked_profiles, comments, community_votes, delegate_ratings,
     delegate_votes, delegates, governance_events, governance_registries, nominated_delegates,
-    profile_badges, profile_events, profiles, proposals, reward_distributions, social_graph_events,
-    social_graph_relationships, vote_decryption_failures,
+    platform_blocked_profiles, platform_events, platform_memberships, platform_moderators,
+    platform_token_airdrops, platforms, posts, posts_deletion_events, posts_moderation_events,
+    posts_reports, profile_badges, profile_events, profiles, proposals, reaction_counts, reactions,
+    reposts, reward_distributions, social_graph_events, social_graph_relationships, tips,
+    vote_decryption_failures,
 };
-use myso_types::MYSO_SOCIAL_PACKAGE_ID;
 use myso_types::base_types::ObjectID;
-use tracing::{debug, trace};
+use myso_types::MYSO_SOCIAL_PACKAGE_ID;
+use tracing::debug;
 
 use self::events::parse_event_contents;
 
@@ -48,7 +53,7 @@ fn is_social_package_event(package_id: &ObjectID, type_address: &AccountAddress)
     *package_id == MYSO_SOCIAL_PACKAGE_ID || type_address == MYSO_SOCIAL_PACKAGE_ID.deref()
 }
 
-pub(crate) struct SocialEvents;
+pub struct SocialEvents;
 
 #[derive(Debug, Clone)]
 pub enum SocialEventRow {
@@ -98,6 +103,69 @@ pub enum SocialEventRow {
     },
     AnonymousVote(NewAnonymousVote),
     VoteDecryptionFailure(NewVoteDecryptionFailure),
+    Post(NewPost),
+    Comment(NewComment),
+    Reaction(NewReaction),
+    ReactionCount(NewReactionCount),
+    RemoveReaction {
+        object_id: String,
+        user_address: String,
+        reaction_text: String,
+        is_post: bool,
+    },
+    Repost(NewRepost),
+    Tip(NewTip),
+    ModerationEvent(NewModerationEvent),
+    Report(NewReport),
+    DeletionEvent(NewDeletionEvent),
+    PostCommentCountIncrement {
+        post_id: String,
+        delta: i64,
+    },
+    Platform(NewPlatform),
+    PlatformUpdate {
+        platform_id: String,
+        name: String,
+        tagline: String,
+        description: Option<String>,
+        terms_of_service: Option<String>,
+        privacy_policy: Option<String>,
+        platform_names: Option<serde_json::Value>,
+        links: Option<serde_json::Value>,
+        status: i16,
+        release_date: Option<String>,
+        shutdown_date: Option<String>,
+        updated_at: chrono::NaiveDateTime,
+        primary_category: String,
+        secondary_category: Option<String>,
+    },
+    PlatformApprovalChange {
+        platform_id: String,
+        is_approved: bool,
+        approved_by: String,
+        changed_at: chrono::NaiveDateTime,
+    },
+    PlatformModerator(NewPlatformModerator),
+    PlatformModeratorRemove {
+        platform_id: String,
+        moderator_address: String,
+    },
+    PlatformBlockedProfile(NewPlatformBlockedProfile),
+    PlatformBlockedProfileRemove {
+        platform_id: String,
+        wallet_address: String,
+    },
+    PlatformMembership(NewPlatformMembership),
+    PlatformMembershipRemove {
+        platform_id: String,
+        wallet_address: String,
+    },
+    PlatformTokenAirdrop(NewPlatformTokenAirdrop),
+    PlatformEvent(NewPlatformEvent),
+    PlatformDeleted {
+        platform_id: String,
+        deleted_at: chrono::NaiveDateTime,
+    },
 }
 
 #[derive(Debug, Clone)]
@@ -157,11 +225,10 @@ impl Processor for SocialEvents {
             for (event_seq, ev) in events.data.iter().enumerate() {
                 let package_matches = is_social_package_event(&ev.package_id, &ev.type_.address);
                 if !package_matches {
-                    #[cfg(debug_assertions)]
                     if ev.type_.module.as_str() == "profile"
                         || ev.type_.module.as_str() == "governance"
                     {
-                        trace!(
+                        debug!(
                             package_id = %ev.package_id,
                             type_address = %ev.type_.address,
                             module = %ev.type_.module,
@@ -183,7 +250,7 @@ impl Processor for SocialEvents {
                             event_name = %event_name,
                             event_id = %event_id,
                             contents_len = ev.contents.len(),
-                            "failed to parse event contents"
+                            "skipping event: failed to parse BCS contents (layout may have changed)"
                         );
                         continue;
                     }
@@ -198,7 +265,7 @@ impl Processor for SocialEvents {
                         module = %module,
                         event_name = %event_name,
                         event_id = %event_id,
-                        "social event not routed (no handler)"
+                        "skipping event: no handler for this module/event"
                     );
                 }
             }
@@ -534,6 +601,245 @@ impl Handler for SocialEvents {
                 SocialEventRow::VoteDecryptionFailure(f) => {
                     total += diesel::insert_into(vote_decryption_failures::table)
                         .values(f)
+                        .execute(conn)
+                        .await?;
+                }
+                SocialEventRow::Post(p) => {
+                    total += diesel::insert_into(posts::table)
+                        .values(p)
+                        .on_conflict((posts::id, posts::time))
+                        .do_nothing()
+                        .execute(conn)
+                        .await?;
+                }
+                SocialEventRow::Comment(c) => {
+                    total += diesel::insert_into(comments::table)
+                        .values(c)
+                        .on_conflict((comments::id, comments::time))
+                        .do_nothing()
+                        .execute(conn)
+                        .await?;
+                }
+                SocialEventRow::Reaction(r) => {
+                    total += diesel::insert_into(reactions::table)
+                        .values(r)
+                        .on_conflict_do_nothing()
+                        .execute(conn)
+                        .await?;
+                }
+                SocialEventRow::ReactionCount(rc) => {
+                    total += diesel::insert_into(reaction_counts::table)
+                        .values(rc)
+                        .on_conflict((reaction_counts::object_id, reaction_counts::reaction_text))
+                        .do_update()
+                        .set(reaction_counts::count.eq(reaction_counts::count + 1))
+                        .execute(conn)
+                        .await?;
+                }
+                SocialEventRow::RemoveReaction {
+                    object_id,
+                    user_address,
+                    reaction_text,
+                    is_post: _,
+                } => {
+                    let _ = diesel::delete(reactions::table)
+                        .filter(reactions::object_id.eq(object_id))
+                        .filter(reactions::user_address.eq(user_address))
+                        .filter(reactions::reaction_text.eq(reaction_text))
+                        .execute(conn)
+                        .await;
+                    let _ = diesel::update(reaction_counts::table)
+                        .filter(reaction_counts::object_id.eq(object_id))
+                        .filter(reaction_counts::reaction_text.eq(reaction_text))
+                        .set(reaction_counts::count.eq(reaction_counts::count - 1))
+                        .execute(conn)
+                        .await;
+                }
+                SocialEventRow::Repost(r) => {
+                    total += diesel::insert_into(reposts::table)
+                        .values(r)
+                        .on_conflict(reposts::id)
+                        .do_nothing()
+                        .execute(conn)
+                        .await?;
+                }
+                SocialEventRow::Tip(t) => {
+                    total += diesel::insert_into(tips::table)
+                        .values(t)
+                        .execute(conn)
+                        .await?;
+                }
+                SocialEventRow::ModerationEvent(m) => {
+                    total += diesel::insert_into(posts_moderation_events::table)
+                        .values(m)
+                        .execute(conn)
+                        .await?;
+                }
+                SocialEventRow::Report(r) => {
+                    total += diesel::insert_into(posts_reports::table)
+                        .values(r)
+                        .execute(conn)
+                        .await?;
+                }
+                SocialEventRow::DeletionEvent(d) => {
+                    total += diesel::insert_into(posts_deletion_events::table)
+                        .values(d)
+                        .execute(conn)
+                        .await?;
+                }
+                SocialEventRow::PostCommentCountIncrement { post_id, delta } => {
+                    let _ = diesel::update(posts::table)
+                        .filter(posts::post_id.eq(post_id))
+                        .set(posts::comment_count.eq(posts::comment_count + delta))
+                        .execute(conn)
+                        .await;
+                }
+                SocialEventRow::Platform(p) => {
+                    total += diesel::insert_into(platforms::table)
+                        .values(p)
+                        .on_conflict(platforms::platform_id)
+                        .do_nothing()
+                        .execute(conn)
+                        .await?;
+                }
+                SocialEventRow::PlatformUpdate {
+                    platform_id,
+                    name,
+                    tagline,
+                    description,
+                    terms_of_service,
+                    privacy_policy,
+                    platform_names,
+                    links,
+                    status,
+                    release_date,
+                    shutdown_date,
+                    updated_at,
+                    primary_category,
+                    secondary_category,
+                } => {
+                    total += diesel::update(platforms::table)
+                        .filter(platforms::platform_id.eq(platform_id))
+                        .set((
+                            platforms::name.eq(name),
+                            platforms::tagline.eq(tagline),
+                            platforms::description.eq(description),
+                            platforms::terms_of_service.eq(terms_of_service),
+                            platforms::privacy_policy.eq(privacy_policy),
+                            platforms::platform_names.eq(platform_names),
+                            platforms::links.eq(links),
+                            platforms::status.eq(status),
+                            platforms::release_date.eq(release_date),
+                            platforms::shutdown_date.eq(shutdown_date),
+                            platforms::updated_at.eq(updated_at),
+                            platforms::primary_category.eq(primary_category),
+                            platforms::secondary_category.eq(secondary_category),
+                        ))
+                        .execute(conn)
+                        .await?;
+                }
+                SocialEventRow::PlatformApprovalChange {
+                    platform_id,
+                    is_approved,
+                    approved_by,
+                    changed_at,
+                } => {
+                    total += diesel::update(platforms::table)
+                        .filter(platforms::platform_id.eq(platform_id))
+                        .set((
+                            platforms::is_approved.eq(is_approved),
+                            platforms::approval_changed_at.eq(Some(changed_at)),
+                            platforms::approved_by.eq(Some(approved_by)),
+                            platforms::updated_at.eq(changed_at),
+                        ))
+                        .execute(conn)
+                        .await?;
+                }
+                SocialEventRow::PlatformModerator(m) => {
+                    total += diesel::insert_into(platform_moderators::table)
+                        .values(m)
+                        .on_conflict((
+                            platform_moderators::platform_id,
+                            platform_moderators::moderator_address,
+                        ))
+                        .do_nothing()
+                        .execute(conn)
+                        .await?;
+                }
+                SocialEventRow::PlatformModeratorRemove {
+                    platform_id,
+                    moderator_address,
+                } => {
+                    let _ = diesel::delete(platform_moderators::table)
+                        .filter(platform_moderators::platform_id.eq(platform_id))
+                        .filter(platform_moderators::moderator_address.eq(moderator_address))
+                        .execute(conn)
+                        .await;
+                }
+                SocialEventRow::PlatformBlockedProfile(b) => {
+                    total += diesel::insert_into(platform_blocked_profiles::table)
+                        .values(b)
+                        .on_conflict((
+                            platform_blocked_profiles::platform_id,
+                            platform_blocked_profiles::wallet_address,
+                        ))
+                        .do_nothing()
+                        .execute(conn)
+                        .await?;
+                }
+                SocialEventRow::PlatformBlockedProfileRemove {
+                    platform_id,
+                    wallet_address,
+                } => {
+                    let _ = diesel::delete(platform_blocked_profiles::table)
+                        .filter(platform_blocked_profiles::platform_id.eq(platform_id))
+                        .filter(platform_blocked_profiles::wallet_address.eq(wallet_address))
+                        .execute(conn)
+                        .await;
+                }
+                SocialEventRow::PlatformMembership(m) => {
+                    total += diesel::insert_into(platform_memberships::table)
+                        .values(m)
+                        .on_conflict((
+                            platform_memberships::platform_id,
+                            platform_memberships::wallet_address,
+                        ))
+                        .do_nothing()
+                        .execute(conn)
+                        .await?;
+                }
+                SocialEventRow::PlatformMembershipRemove {
+                    platform_id,
+                    wallet_address,
+                } => {
+                    let _ = diesel::delete(platform_memberships::table)
+                        .filter(platform_memberships::platform_id.eq(platform_id))
+                        .filter(platform_memberships::wallet_address.eq(wallet_address))
+                        .execute(conn)
+                        .await;
+                }
+                SocialEventRow::PlatformTokenAirdrop(a) => {
+                    total += diesel::insert_into(platform_token_airdrops::table)
+                        .values(a)
+                        .execute(conn)
+                        .await?;
+                }
+                SocialEventRow::PlatformEvent(e) => {
+                    total += diesel::insert_into(platform_events::table)
+                        .values(e)
+                        .execute(conn)
+                        .await?;
+                }
+                SocialEventRow::PlatformDeleted {
+                    platform_id,
+                    deleted_at,
+                } => {
+                    total += diesel::update(platforms::table)
+                        .filter(platforms::platform_id.eq(platform_id))
+                        .set((
+                            platforms::deleted_at.eq(Some(deleted_at)),
+                            platforms::updated_at.eq(deleted_at),
+                        ))
                         .execute(conn)
                         .await?;
                 }

@@ -3260,7 +3260,7 @@ impl ProtocolConfig {
                     // cfg.feature_flags.pack_digest_hash_modules = true;
                     cfg.feature_flags.txn_base_cost_as_multiplier = true;
                     // this is a multiplier of the gas price
-                    cfg.base_tx_cost_fixed = Some(1_000);
+                    cfg.base_tx_cost_fixed = Some(1);
                 }
                 19 => {
                     cfg.max_num_event_emit = Some(1024);

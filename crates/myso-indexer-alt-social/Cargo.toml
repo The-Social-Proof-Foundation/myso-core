@@ -1,0 +1,40 @@
+[package]
+name = "myso-indexer-alt-social"
+version = "0.1.0"
+authors = ["The Social Proof Foundation, LLC. <brandon@mysocial.network>"]
+license = "Apache-2.0"
+publish = false
+edition = "2021"
+
+[dependencies]
+tokio.workspace = true
+myso-indexer-alt-framework = { workspace = true, features = ["postgres"] }
+clap = { workspace = true, features = ["env"] }
+diesel = { workspace = true, features = ["postgres", "uuid", "chrono", "serde_json", "numeric"] }
+diesel-async = { workspace = true, features = ["bb8", "postgres"] }
+hex = "0.4"
+tracing.workspace = true
+async-trait.workspace = true
+bcs.workspace = true
+serde.workspace = true
+serde_json = { workspace = true }
+anyhow.workspace = true
+url.workspace = true
+chrono.workspace = true
+
+myso-pg-db.workspace = true
+prometheus.workspace = true
+myso-indexer-alt-metrics.workspace = true
+myso-types.workspace = true
+move-core-types.workspace = true
+telemetry-subscribers.workspace = true
+
+myso-indexer-alt-social-schema = { path = "../myso-indexer-alt-social-schema" }
+
+[lib]
+name = "social_indexer"
+path = "src/lib.rs"
+
+[[bin]]
+name = "myso-social-indexer"
+path = "src/main.rs"

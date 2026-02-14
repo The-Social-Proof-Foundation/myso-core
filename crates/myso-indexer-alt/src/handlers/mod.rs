@@ -31,7 +31,6 @@ pub(crate) mod kv_protocol_configs;
 pub(crate) mod kv_transactions;
 pub(crate) mod obj_info;
 pub(crate) mod obj_versions;
-pub(crate) mod social_events;
 pub(crate) mod sum_displays;
 pub(crate) mod tx_affected_addresses;
 pub(crate) mod tx_affected_objects;

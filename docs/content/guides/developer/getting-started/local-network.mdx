@@ -42,7 +42,7 @@ A temporary directory is created in `/tmp`, which might not work if the `/tmp` f
 
 To customize your local MySo network, such as starting other services or changing default ports and hosts, include additional flags or options in the `myso start` command.
 
-Options and flags like `with-indexer` and `with-graphql` require you to have PostgreSQL/libpq installed. Check out the list of possible options below to find which is the default database or how to pass a different database.
+Options and flags like `with-indexer` and `with-graphql` require you to have PostgreSQL/libpq installed. For governance, profiles, platforms, and other social features, you must also pass `--with-social-indexer` (which requires `--with-indexer`). Check out the list of possible options below to find which is the default database or how to pass a different database.
 
 The following is a list of possible options and flags to pass to `myso start`. Use `myso start --help` to see these options in your console.
 
@@ -101,6 +101,22 @@ The following is a list of possible options and flags to pass to `myso start`. U
           
           Note that GraphQL requires a running indexer and consistent store,
           which will be enabled by default even if those flags are not set.
+
+      --with-social-indexer[=<DATABASE_URL>]
+          Start the social indexer and social API server. Requires
+          `--with-indexer`. Required for governance tables, profiles, platforms,
+          posts, and other social features — without it, no social data is indexed.
+          
+          - `--with-social-indexer`: Use a social database derived from the
+          main indexer (same host, database name `social`)
+          - `--with-social-indexer=<URL>`: Use the provided PostgreSQL database
+          URL for social
+          
+          The social API server listens on port 9126 by default.
+
+      --with-social-server[=<SOCIAL_SERVER_HOST_PORT>]
+          Override the social API server host and port. Defaults to 0.0.0.0:9126
+          when `--with-social-indexer` is set.
 
       --fullnode-rpc-port <FULLNODE_RPC_PORT>
           Port to start the Fullnode RPC server on. Default port is 9000
@@ -225,7 +241,7 @@ The response resembles the following:
 Use the TypeScript SDK to add example data to your network. This requires that you start a local network with an indexer and GraphQL. To do so, use the following command:
 
 ```sh
-myso start --force-regenesis --with-faucet --with-indexer --with-graphql
+myso start --force-regenesis --with-faucet --with-indexer --with-social-indexer --with-graphql
 ```
 
 Then run the following command from the `myso` root folder:

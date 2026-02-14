@@ -1,0 +1,1 @@
+-- Down migration is a no-op; we cannot restore the previous wrong schema.

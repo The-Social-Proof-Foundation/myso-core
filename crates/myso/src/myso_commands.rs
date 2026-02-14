@@ -61,6 +61,7 @@ use myso_move::{self, execute_move_command};
 use myso_move_build::BuildConfig as MySoBuildConfig;
 use myso_package_alt::{MySoFlavor, find_environment};
 use myso_pg_db::DbArgs;
+use myso_pg_db::ensure_database;
 use myso_pg_db::temp::{LocalDatabase, get_available_port};
 use myso_protocol_config::Chain;
 use myso_replay_2 as SR2;
@@ -101,6 +102,7 @@ const DEFAULT_FAUCET_PORT: u16 = 9123;
 
 const DEFAULT_CONSISTENT_STORE_PORT: u16 = 9124;
 const DEFAULT_GRAPHQL_PORT: u16 = 9125;
+const DEFAULT_SOCIAL_SERVER_PORT: u16 = 9126;
 
 #[derive(Args)]
 pub struct RpcArgs {
@@ -151,6 +153,27 @@ pub struct RpcArgs {
         value_name = "GRAPHQL_HOST_PORT"
     )]
     with_graphql: Option<String>,
+
+    /// Start the social indexer and social API server. Requires --with-indexer.
+    /// - `--with-social-indexer`: Use a social database derived from the main indexer URL
+    /// - `--with-social-indexer=<URL>`: Use the provided PostgreSQL database URL for social
+    #[clap(
+        long,
+        num_args = 0..=1,
+        require_equals = true,
+        value_name = "DATABASE_URL"
+    )]
+    with_social_indexer: Option<Option<Url>>,
+
+    /// Social API server host and port. Defaults to 0.0.0.0:9126 when --with-social-indexer is set.
+    #[clap(
+        long,
+        default_missing_value = "0.0.0.0:9126",
+        num_args = 0..=1,
+        require_equals = true,
+        value_name = "SOCIAL_SERVER_HOST_PORT"
+    )]
+    with_social_server: Option<String>,
 }
 
 impl RpcArgs {
@@ -159,6 +182,8 @@ impl RpcArgs {
             with_indexer: None,
             with_consistent_store: None,
             with_graphql: None,
+            with_social_indexer: None,
+            with_social_server: None,
         }
     }
 }
@@ -827,6 +852,8 @@ async fn start(
         with_indexer,
         mut with_consistent_store,
         with_graphql,
+        with_social_indexer,
+        with_social_server,
     } = rpc_args;
 
     // Automatically enable consistent store if GraphQL is enabled
@@ -846,6 +873,13 @@ async fn start(
         ensure!(
             !no_full_node,
             "Cannot start the indexer without a fullnode."
+        );
+    }
+
+    if with_social_indexer.is_some() {
+        ensure!(
+            with_indexer.is_some(),
+            "Cannot start the social indexer without --with-indexer."
         );
     }
 
@@ -1096,6 +1130,71 @@ async fn start(
     } else {
         vec![]
     };
+
+    if let (Some(ref db_url), Some(ref social_indexer_opt)) =
+        (database_url.as_ref(), with_social_indexer.as_ref())
+    {
+        info!(
+            "Starting social indexer (profiles, governance, platforms, posts, etc.) — \
+             required for governance tables and social API"
+        );
+
+        let social_database_url = match social_indexer_opt.as_ref() {
+            Some(url) => url.clone(),
+            None => ensure_database(db_url, "social")
+                .await
+                .context("Failed to create social database")?,
+        };
+
+        let client_args = ClientArgs {
+            ingestion: IngestionClientArgs {
+                local_ingestion_path: data_ingestion_dir.clone(),
+                ..Default::default()
+            },
+            ..Default::default()
+        };
+
+        let social_indexer_metrics_addr: SocketAddr = "0.0.0.0:9185".parse().unwrap();
+        let social_server_metrics_addr: SocketAddr = "0.0.0.0:9186".parse().unwrap();
+
+        let social_indexer_service = social_indexer::setup_social_indexer(
+            social_database_url.clone(),
+            DbArgs::default(),
+            IndexerArgs::default(),
+            client_args,
+            myso_indexer_alt_metrics::MetricsArgs {
+                metrics_address: social_indexer_metrics_addr,
+            },
+            &prometheus_registry,
+        )
+        .await
+        .context("Failed to setup social indexer")?;
+
+        rpc_services = rpc_services.merge(social_indexer_service);
+
+        let social_server_addr = match with_social_server.as_ref() {
+            Some(input) => parse_host_port(input.clone(), DEFAULT_SOCIAL_SERVER_PORT)
+                .context("Invalid social server host and port")?,
+            None => SocketAddr::from(([0, 0, 0, 0], DEFAULT_SOCIAL_SERVER_PORT)),
+        };
+
+        let social_server_service = myso_social_server::server::start_server(
+            social_server_addr.port(),
+            social_database_url,
+            DbArgs::default(),
+            social_server_metrics_addr,
+            &prometheus_registry,
+        )
+        .await
+        .context("Failed to start social server")?;
+
+        rpc_services = rpc_services.merge(social_server_service);
+
+        info!(
+            "Social indexer and server started — API on port {}, metrics on 9185/9186",
+            social_server_addr.port()
+        );
+    }
 
     let consistent_store_url = if let Some(input) = with_consistent_store {
         let address = parse_host_port(input, DEFAULT_CONSISTENT_STORE_PORT)

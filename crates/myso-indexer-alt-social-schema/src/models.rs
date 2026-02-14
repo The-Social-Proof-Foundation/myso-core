@@ -7,11 +7,58 @@ use diesel::prelude::*;
 use serde::{Deserialize, Serialize};
 
 use crate::schema::{
-    anonymous_votes, blocked_events, blocked_profiles, community_votes, delegate_ratings,
+    anonymous_votes, blocked_events, blocked_profiles, comments, community_votes, delegate_ratings,
     delegate_votes, delegates, governance_events, governance_registries, nominated_delegates,
-    profile_badges, profile_events, profiles, proposals, reward_distributions, social_graph_events,
-    social_graph_relationships, vote_decryption_failures,
+    platform_blocked_profiles, platform_events, platform_memberships, platform_moderators,
+    platform_token_airdrops, platforms, posts, posts_deletion_events, posts_moderation_events,
+    posts_reports, profile_badges, profile_events, profiles, proposals, reaction_counts, reactions,
+    reposts, reward_distributions, social_graph_events, social_graph_relationships, tips,
+    vote_decryption_failures,
 };
+
+#[derive(Debug, Clone, Queryable, Selectable, Serialize, Deserialize)]
+#[diesel(table_name = profiles)]
+pub struct Profile {
+    pub id: i32,
+    pub owner_address: String,
+    pub username: String,
+    pub display_name: Option<String>,
+    pub bio: Option<String>,
+    pub profile_photo: Option<String>,
+    pub website: Option<String>,
+    pub created_at: NaiveDateTime,
+    pub updated_at: NaiveDateTime,
+    pub cover_photo: Option<String>,
+    pub profile_id: Option<String>,
+    pub followers_count: i32,
+    pub following_count: i32,
+    pub blocked_count: i32,
+    pub post_count: i32,
+    pub min_offer_amount: Option<i64>,
+    pub birthdate: Option<String>,
+    pub current_location: Option<String>,
+    pub raised_location: Option<String>,
+    pub phone: Option<String>,
+    pub email: Option<String>,
+    pub gender: Option<String>,
+    pub political_view: Option<String>,
+    pub religion: Option<String>,
+    pub education: Option<String>,
+    pub primary_language: Option<String>,
+    pub relationship_status: Option<String>,
+    pub x_username: Option<String>,
+    pub facebook_username: Option<String>,
+    pub reddit_username: Option<String>,
+    pub github_username: Option<String>,
+    pub instagram_username: Option<String>,
+    pub linkedin_username: Option<String>,
+    pub twitch_username: Option<String>,
+    pub social_proof_token_address: Option<String>,
+    pub reservation_pool_address: Option<String>,
+    pub selected_badge_id: Option<String>,
+    pub paid_messaging_enabled: bool,
+    pub paid_messaging_min_cost: Option<i64>,
+}
 
 #[derive(Debug, Clone, Insertable, Serialize, Deserialize)]
 #[diesel(table_name = profiles)]
@@ -347,4 +394,260 @@ pub struct GovernanceRegistryUpdate {
     pub quorum_votes: i64,
     pub updated_at: i64,
     pub transaction_id: String,
+}
+
+// =============================================================================
+// POST MODELS
+// =============================================================================
+
+#[derive(Debug, Clone, Insertable, Serialize, Deserialize)]
+#[diesel(table_name = posts)]
+pub struct NewPost {
+    pub id: String,
+    pub post_id: String,
+    pub owner: String,
+    pub profile_id: String,
+    pub content: String,
+    pub media_urls: Option<serde_json::Value>,
+    pub mentions: Option<serde_json::Value>,
+    pub metadata_json: Option<serde_json::Value>,
+    pub post_type: String,
+    pub parent_post_id: Option<String>,
+    pub created_at: i64,
+    pub updated_at: Option<i64>,
+    pub deleted_at: Option<i64>,
+    pub reaction_count: i64,
+    pub comment_count: i64,
+    pub repost_count: i64,
+    pub tips_received: i64,
+    pub removed_from_platform: bool,
+    pub removed_by: Option<String>,
+    pub transaction_id: String,
+    pub time: chrono::DateTime<chrono::Utc>,
+    pub mydata_id: Option<String>,
+    pub revenue_recipient: Option<String>,
+    pub poc_id: Option<String>,
+    pub poc_reasoning: Option<String>,
+    pub poc_evidence_urls: Option<serde_json::Value>,
+    pub poc_similarity_score: Option<i64>,
+    pub poc_media_type: Option<i16>,
+    pub poc_oracle_address: Option<String>,
+    pub poc_analyzed_at: Option<i64>,
+    pub revenue_redirect_to: Option<String>,
+    pub revenue_redirect_percentage: Option<i64>,
+    pub requires_subscription: Option<bool>,
+    pub subscription_service_id: Option<String>,
+    pub subscription_price: Option<i64>,
+    pub encrypted_content_hash: Option<String>,
+    pub promotion_id: Option<String>,
+    pub enable_spt: bool,
+    pub enable_poc: bool,
+    pub enable_spot: bool,
+    pub spot_id: Option<String>,
+    pub spt_id: Option<String>,
+}
+
+#[derive(Debug, Clone, Insertable, Serialize, Deserialize)]
+#[diesel(table_name = comments)]
+pub struct NewComment {
+    pub id: String,
+    pub comment_id: String,
+    pub post_id: String,
+    pub parent_comment_id: Option<String>,
+    pub owner: String,
+    pub profile_id: String,
+    pub content: String,
+    pub media_urls: Option<serde_json::Value>,
+    pub mentions: Option<serde_json::Value>,
+    pub metadata_json: Option<serde_json::Value>,
+    pub created_at: i64,
+    pub updated_at: Option<i64>,
+    pub deleted_at: Option<i64>,
+    pub reaction_count: i64,
+    pub comment_count: i64,
+    pub repost_count: i64,
+    pub tips_received: i64,
+    pub removed_from_platform: bool,
+    pub removed_by: Option<String>,
+    pub transaction_id: String,
+    pub time: chrono::DateTime<chrono::Utc>,
+}
+
+#[derive(Debug, Clone, Insertable, Serialize, Deserialize)]
+#[diesel(table_name = reactions)]
+pub struct NewReaction {
+    pub object_id: String,
+    pub user_address: String,
+    pub reaction_text: String,
+    pub is_post: bool,
+    pub created_at: i64,
+    pub time: chrono::DateTime<chrono::Utc>,
+    pub transaction_id: String,
+}
+
+#[derive(Debug, Clone, Insertable, Serialize, Deserialize)]
+#[diesel(table_name = reaction_counts)]
+pub struct NewReactionCount {
+    pub object_id: String,
+    pub reaction_text: String,
+    pub count: i64,
+}
+
+#[derive(Debug, Clone, Insertable, Serialize, Deserialize)]
+#[diesel(table_name = reposts)]
+pub struct NewRepost {
+    pub id: String,
+    pub repost_id: String,
+    pub original_id: String,
+    pub original_post_id: String,
+    pub is_original_post: bool,
+    pub owner: String,
+    pub profile_id: String,
+    pub created_at: i64,
+    pub time: chrono::DateTime<chrono::Utc>,
+    pub transaction_id: String,
+}
+
+#[derive(Debug, Clone, Insertable, Serialize, Deserialize)]
+#[diesel(table_name = tips)]
+pub struct NewTip {
+    pub tipper: String,
+    pub recipient: String,
+    pub object_id: String,
+    pub amount: i64,
+    pub is_post: bool,
+    pub created_at: i64,
+    pub time: chrono::DateTime<chrono::Utc>,
+    pub transaction_id: String,
+}
+
+#[derive(Debug, Clone, Insertable, Serialize, Deserialize)]
+#[diesel(table_name = posts_moderation_events)]
+pub struct NewModerationEvent {
+    pub object_id: String,
+    pub platform_id: String,
+    pub removed: bool,
+    pub moderated_by: String,
+    pub moderated_at: i64,
+    pub time: chrono::DateTime<chrono::Utc>,
+    pub transaction_id: String,
+}
+
+#[derive(Debug, Clone, Insertable, Serialize, Deserialize)]
+#[diesel(table_name = posts_reports)]
+pub struct NewReport {
+    pub object_id: String,
+    pub is_comment: bool,
+    pub reporter: String,
+    pub reason_code: i16,
+    pub description: String,
+    pub reported_at: i64,
+    pub time: chrono::DateTime<chrono::Utc>,
+    pub transaction_id: String,
+}
+
+#[derive(Debug, Clone, Insertable, Serialize, Deserialize)]
+#[diesel(table_name = posts_deletion_events)]
+pub struct NewDeletionEvent {
+    pub object_id: String,
+    pub owner: String,
+    pub profile_id: String,
+    pub is_post: bool,
+    pub post_type: Option<String>,
+    pub post_id: Option<String>,
+    pub deleted_at: i64,
+    pub time: chrono::DateTime<chrono::Utc>,
+    pub transaction_id: String,
+}
+
+// =============================================================================
+// PLATFORM MODELS
+// =============================================================================
+
+#[derive(Debug, Clone, Insertable, Serialize, Deserialize)]
+#[diesel(table_name = platforms)]
+pub struct NewPlatform {
+    pub platform_id: String,
+    pub name: String,
+    pub tagline: String,
+    pub description: Option<String>,
+    pub logo: Option<String>,
+    pub developer_address: String,
+    pub terms_of_service: Option<String>,
+    pub privacy_policy: Option<String>,
+    pub platform_names: Option<serde_json::Value>,
+    pub links: Option<serde_json::Value>,
+    pub status: i16,
+    pub release_date: Option<String>,
+    pub shutdown_date: Option<String>,
+    pub created_at: NaiveDateTime,
+    pub updated_at: NaiveDateTime,
+    pub is_approved: bool,
+    pub approval_changed_at: Option<NaiveDateTime>,
+    pub approved_by: Option<String>,
+    pub wants_dao_governance: Option<bool>,
+    pub governance_registry_id: Option<String>,
+    pub delegate_count: Option<i64>,
+    pub delegate_term_epochs: Option<i64>,
+    pub max_votes_per_user: Option<i64>,
+    pub min_on_chain_age_days: Option<i64>,
+    pub proposal_submission_cost: Option<i64>,
+    pub quadratic_base_cost: Option<i64>,
+    pub quorum_votes: Option<i64>,
+    pub voting_period_epochs: Option<i64>,
+    pub treasury: Option<i64>,
+    pub version: Option<i64>,
+    pub primary_category: String,
+    pub secondary_category: Option<String>,
+    pub deleted_at: Option<NaiveDateTime>,
+}
+
+#[derive(Debug, Clone, Insertable, Serialize, Deserialize)]
+#[diesel(table_name = platform_moderators)]
+pub struct NewPlatformModerator {
+    pub platform_id: String,
+    pub moderator_address: String,
+    pub added_by: String,
+    pub created_at: NaiveDateTime,
+}
+
+#[derive(Debug, Clone, Insertable, Serialize, Deserialize)]
+#[diesel(table_name = platform_blocked_profiles)]
+pub struct NewPlatformBlockedProfile {
+    pub platform_id: String,
+    pub wallet_address: String,
+    pub blocked_by: String,
+    pub created_at: NaiveDateTime,
+}
+
+#[derive(Debug, Clone, Insertable, Serialize, Deserialize)]
+#[diesel(table_name = platform_events)]
+pub struct NewPlatformEvent {
+    pub event_type: String,
+    pub platform_id: String,
+    pub event_data: serde_json::Value,
+    pub event_id: Option<String>,
+    pub created_at: NaiveDateTime,
+    pub reasoning: Option<String>,
+}
+
+#[derive(Debug, Clone, Insertable, Serialize, Deserialize)]
+#[diesel(table_name = platform_memberships)]
+pub struct NewPlatformMembership {
+    pub platform_id: String,
+    pub wallet_address: String,
+    pub joined_at: NaiveDateTime,
+}
+
+#[derive(Debug, Clone, Insertable, Serialize, Deserialize)]
+#[diesel(table_name = platform_token_airdrops)]
+pub struct NewPlatformTokenAirdrop {
+    pub platform_id: String,
+    pub recipient: String,
+    pub amount: i64,
+    pub reason_code: i16,
+    pub executed_by: String,
+    pub timestamp: i64,
+    pub created_at: NaiveDateTime,
+    pub event_id: Option<String>,
 }

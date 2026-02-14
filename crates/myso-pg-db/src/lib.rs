@@ -197,6 +197,26 @@ impl Default for DbArgs {
     }
 }
 
+/// Ensure a database exists in the postgres instance pointed to by `base_url`.
+/// Connects to the default "postgres" database, creates `db_name` if it does not exist,
+/// and returns the URL for the new database.
+pub async fn ensure_database(base_url: &Url, db_name: &str) -> anyhow::Result<Url> {
+    let mut connect_url = base_url.clone();
+    connect_url.set_path("postgres");
+    let db = Db::for_write(connect_url, DbArgs::default()).await?;
+    let mut conn = db.connect().await?;
+    let quoted = format!("\"{}\"", db_name.replace('\\', "\\\\").replace('"', "\\\""));
+    let sql = format!("CREATE DATABASE {quoted}");
+    if let Err(e) = diesel::sql_query(&sql).execute(&mut conn).await {
+        if !e.to_string().contains("already exists") {
+            return Err(e.into());
+        }
+    }
+    let mut result = base_url.clone();
+    result.set_path(&format!("/{db_name}"));
+    Ok(result)
+}
+
 /// Drop all tables, and re-run migrations if supplied.
 pub async fn reset_database(
     database_url: Url,

@@ -44,7 +44,6 @@ myso-default-config.workspace = true
 myso-indexer-alt-framework = { workspace = true, features = ["postgres"] }
 myso-indexer-alt-metrics.workspace = true
 myso-indexer-alt-schema.workspace = true
-myso-indexer-alt-social-schema.workspace = true
 myso-protocol-config.workspace = true
 myso-types.workspace = true
 myso-synthetic-ingestion = { workspace = true, optional = true }

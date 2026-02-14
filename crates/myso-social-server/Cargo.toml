@@ -1,0 +1,33 @@
+[package]
+name = "myso-social-server"
+version = "0.1.0"
+authors = ["The Social Proof Foundation <brandon@mysocial.network>"]
+license = "Apache-2.0"
+publish = false
+edition = "2021"
+
+[dependencies]
+myso-indexer-alt-social-schema = { path = "../myso-indexer-alt-social-schema" }
+tokio.workspace = true
+futures = "0.3.31"
+clap = { workspace = true, features = ["env"] }
+diesel = { workspace = true, features = ["postgres", "uuid", "chrono", "serde_json", "numeric"] }
+diesel-async = { workspace = true, features = ["bb8", "postgres"] }
+anyhow.workspace = true
+serde = { workspace = true, features = ["derive"] }
+serde_json.workspace = true
+url.workspace = true
+prometheus.workspace = true
+myso-futures.workspace = true
+myso-indexer-alt-metrics.workspace = true
+telemetry-subscribers.workspace = true
+axum = { version = "0.7", features = ["json"] }
+myso-pg-db.workspace = true
+tower-http = { version = "0.5", features = ["cors"] }
+chrono = "0.4.42"
+thiserror = "1.0"
+tracing.workspace = true
+
+[[bin]]
+name = "myso-social-server"
+path = "src/main.rs"

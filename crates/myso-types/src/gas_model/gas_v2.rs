@@ -41,6 +41,8 @@ mod checked {
         }
     }
 
+    const BUCKET_THRESHOLDS: &[u64] = &[1_000, 5_000, 10_000, 20_000, 50_000, 200_000, 1_000_000];
+
     fn get_bucket_cost(table: &[ComputationBucket], computation_cost: u64) -> u64 {
         for bucket in table {
             if bucket.max >= computation_cost {
@@ -48,26 +50,29 @@ mod checked {
             }
         }
         match table.last() {
-            // maybe not a literal here could be better?
-            None => 5_000_000,
+            None => BUCKET_THRESHOLDS.last().copied().unwrap_or(1_000_000),
             Some(bucket) => bucket.cost,
         }
     }
 
-    // define the bucket table for computation charging
-    // If versioning defines multiple functions and
     fn computation_bucket(max_bucket_cost: u64) -> Vec<ComputationBucket> {
-        assert!(max_bucket_cost >= 5_000_000);
-        vec![
-            ComputationBucket::simple(0, 1_000),
-            ComputationBucket::simple(1_000, 5_000),
-            ComputationBucket::simple(5_000, 10_000),
-            ComputationBucket::simple(10_000, 20_000),
-            ComputationBucket::simple(20_000, 50_000),
-            ComputationBucket::simple(50_000, 200_000),
-            ComputationBucket::simple(200_000, 1_000_000),
-            ComputationBucket::simple(1_000_000, max_bucket_cost),
-        ]
+        let mut buckets = Vec::new();
+        let mut prev = 0u64;
+        for &threshold in BUCKET_THRESHOLDS {
+            if threshold <= max_bucket_cost {
+                buckets.push(ComputationBucket::simple(prev, threshold));
+                prev = threshold;
+            } else {
+                break;
+            }
+        }
+        if prev < max_bucket_cost {
+            buckets.push(ComputationBucket::simple(prev, max_bucket_cost));
+        }
+        if buckets.is_empty() {
+            buckets.push(ComputationBucket::simple(0, max_bucket_cost.max(1)));
+        }
+        buckets
     }
 
     /// Portion of the storage rebate that gets passed on to the transaction sender. The remainder

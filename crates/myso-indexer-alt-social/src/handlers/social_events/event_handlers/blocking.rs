@@ -1,4 +1,3 @@
-// Copyright (c) Mysten Labs, Inc.
 // Copyright (c) The Social Proof Foundation, LLC.
 // SPDX-License-Identifier: Apache-2.0
 
@@ -110,8 +109,8 @@ fn process_profile_unblock_event(
         event_type: "BlockRemoved".to_string(),
         profile_id: ev.blocker.clone(),
         event_data: serde_json::json!({
-            "blocker_profile_id": ev.blocker,
-            "blocked_profile_id": ev.unblocked,
+            "blocker_profile_id": ev.blocker.clone(),
+            "blocked_profile_id": ev.unblocked.clone(),
             "timestamp": now.and_utc().timestamp() as u64,
             "is_platform_block": false,
         }),

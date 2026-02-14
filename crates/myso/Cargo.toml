@@ -65,6 +65,9 @@ myso-indexer-alt-framework.workspace = true
 myso-indexer-alt-graphql.workspace = true
 myso-indexer-alt-consistent-store.workspace = true
 myso-indexer-alt-reader.workspace = true
+social_indexer = { path = "../myso-indexer-alt-social", package = "myso-indexer-alt-social" }
+myso-indexer-alt-metrics.workspace = true
+myso-social-server = { path = "../myso-social-server" }
 myso-pg-db.workspace = true
 myso-genesis-builder.workspace = true
 myso-types.workspace = true
