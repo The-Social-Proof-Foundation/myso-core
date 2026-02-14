@@ -8,10 +8,11 @@ use myso_config::{
     transaction_deny_config::TransactionDenyConfig,
 };
 use myso_types::{
-    base_types::ObjectRef,
+    base_types::{MySoAddress, ObjectRef},
     error::{MySoError, MySoErrorKind, MySoResult, UserInputError},
+    object::Owner,
     signature::GenericSignature,
-    storage::BackingPackageStore,
+    storage::{BackingPackageStore, ObjectStore},
     transaction::{Command, InputObjectKind, TransactionData, TransactionDataAPI},
 };
 use tracing::{error, warn};
@@ -36,8 +37,16 @@ pub fn check_transaction_for_signing(
     receiving_objects: &[ObjectRef],
     filter_config: &TransactionDenyConfig,
     package_store: &dyn BackingPackageStore,
+    object_store: &dyn ObjectStore,
 ) -> MySoResult {
-    check_disabled_features(filter_config, tx_data, tx_signatures)?;
+    check_disabled_features(
+        filter_config,
+        tx_data,
+        tx_signatures,
+        input_object_kinds,
+        package_store,
+        object_store,
+    )?;
 
     check_signers(filter_config, tx_data)?;
 
@@ -129,6 +138,9 @@ fn check_disabled_features(
     filter_config: &TransactionDenyConfig,
     tx_data: &TransactionData,
     tx_signatures: &[GenericSignature],
+    input_object_kinds: &[InputObjectKind],
+    _package_store: &dyn BackingPackageStore,
+    object_store: &dyn ObjectStore,
 ) -> MySoResult {
     deny_if_true!(
         filter_config.user_transaction_disabled(),
@@ -144,7 +156,9 @@ fn check_disabled_features(
             deny_if_true!(
                 filter_config.zklogin_disabled_providers().contains(
                     &OIDCProvider::from_iss(z.get_iss())
-                        .map_err(|_| MySoErrorKind::UnexpectedMessage(z.get_iss().to_string()))?
+                        .map_err(|_| MySoError::from(MySoErrorKind::UnexpectedMessage(
+                            z.get_iss().to_string()
+                        )))?
                         .to_string()
                 ),
                 "zkLogin OAuth provider is temporarily disabled"
@@ -153,21 +167,106 @@ fn check_disabled_features(
         Ok(())
     })?;
 
-    if !filter_config.package_publish_disabled() && !filter_config.package_upgrade_disabled() {
+    // Check if publish/upgrade restrictions apply
+    let publish_disabled = filter_config.package_publish_disabled();
+    let upgrade_disabled = filter_config.package_upgrade_disabled();
+
+    if !publish_disabled && !upgrade_disabled {
         return Ok(());
     }
 
+    // Check if sender owns an UpgradeAdminCap or PackagePublishingAdminCap (admin bypass)
+    let sender = tx_data.sender();
+    let sender_has_upgrade_admin_cap =
+        has_upgrade_admin_cap(sender, input_object_kinds, object_store);
+    let sender_has_publish_admin_cap =
+        has_package_publishing_admin_cap(sender, input_object_kinds, object_store);
+
     for command in tx_data.kind().iter_commands() {
+        // Allow publish if sender owns UpgradeAdminCap or PackagePublishingAdminCap, otherwise check the disable flag
         deny_if_true!(
-            filter_config.package_publish_disabled() && matches!(command, Command::Publish(..)),
+            publish_disabled
+                && !sender_has_upgrade_admin_cap
+                && !sender_has_publish_admin_cap
+                && matches!(command, Command::Publish(..)),
             "Package publish is temporarily disabled"
         );
         deny_if_true!(
-            filter_config.package_upgrade_disabled() && matches!(command, Command::Upgrade(..)),
+            upgrade_disabled
+                && !sender_has_upgrade_admin_cap
+                && matches!(command, Command::Upgrade(..)),
             "Package upgrade is temporarily disabled"
         );
     }
     Ok(())
+}
+
+/// Check if the sender owns an UpgradeAdminCap from the social contracts package
+fn has_upgrade_admin_cap(
+    sender: MySoAddress,
+    input_object_kinds: &[InputObjectKind],
+    object_store: &dyn ObjectStore,
+) -> bool {
+    // For each input object, check if it's an owned object that could be an UpgradeAdminCap
+    for input_kind in input_object_kinds {
+        if let InputObjectKind::ImmOrOwnedMoveObject((object_id, _, _)) = input_kind {
+            // Try to get the object to check its type and ownership
+            if let Some(object) = object_store.get_object(object_id) {
+                // Check if this object is owned by the sender (must be Address owner)
+                if let Owner::AddressOwner(owner_addr) = object.owner {
+                    if owner_addr == sender {
+                        // Check the type - we need to find the social contracts package first
+                        // The UpgradeAdminCap has type: social_contracts::upgrade::UpgradeAdminCap
+                        if let Some(move_object) = object.data.try_as_move() {
+                            let type_tag = move_object.type_();
+                            // Check if the type matches the expected UpgradeAdminCap structure
+                            // For now, we'll check if it contains "upgrade" and "UpgradeAdminCap" in the type name
+                            let type_name = format!("{}", type_tag);
+                            if type_name.contains("upgrade")
+                                && type_name.contains("UpgradeAdminCap")
+                            {
+                                return true;
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+    false
+}
+
+/// Check if the sender owns a PackagePublishingAdminCap from the mys framework package
+fn has_package_publishing_admin_cap(
+    sender: MySoAddress,
+    input_object_kinds: &[InputObjectKind],
+    object_store: &dyn ObjectStore,
+) -> bool {
+    // For each input object, check if it's an owned object that could be a PackagePublishingAdminCap
+    for input_kind in input_object_kinds {
+        if let InputObjectKind::ImmOrOwnedMoveObject((object_id, _, _)) = input_kind {
+            // Try to get the object to check its type and ownership
+            if let Some(object) = object_store.get_object(object_id) {
+                // Check if this object is owned by the sender (must be Address owner)
+                if let Owner::AddressOwner(owner_addr) = object.owner {
+                    if owner_addr == sender {
+                        // Check the type - PackagePublishingAdminCap has type: mys::package::PackagePublishingAdminCap
+                        if let Some(move_object) = object.data.try_as_move() {
+                            let type_tag = move_object.type_();
+                            // Check if the type matches the expected PackagePublishingAdminCap structure
+                            let type_name = format!("{}", type_tag);
+                            if type_name.contains("package")
+                                && type_name.contains("PackagePublishingAdminCap")
+                            {
+                                return true;
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+    false
 }
 
 fn check_signers(filter_config: &TransactionDenyConfig, tx_data: &TransactionData) -> MySoResult {

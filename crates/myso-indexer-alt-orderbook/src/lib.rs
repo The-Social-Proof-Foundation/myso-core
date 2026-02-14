@@ -233,8 +233,8 @@ impl OrderbookEnv {
     }
 
     pub fn package_ids(&self) -> Vec<myso_types::base_types::ObjectID> {
-        use std::str::FromStr;
         use myso_types::base_types::ObjectID;
+        use std::str::FromStr;
 
         self.get_all_package_strings()
             .iter()

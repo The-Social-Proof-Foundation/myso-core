@@ -12,7 +12,7 @@ use myso::deny_list::DenyList;
 public struct REGCOIN_NEW has drop {}
 
 fun init(witness: REGCOIN_NEW, ctx: &mut TxContext) {
-    let (mut currency, treasury_cap) = coin_registry::new_currency_with_otw(
+    let (mut currency, treasury_cap) = coin_registry::new_currency_with_otw_genesis(
         witness,
         6, // Decimals
         b"REGCOIN".to_string(), // Symbol

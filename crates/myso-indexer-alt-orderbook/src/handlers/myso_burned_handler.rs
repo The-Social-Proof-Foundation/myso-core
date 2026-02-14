@@ -1,18 +1,18 @@
 use crate::handlers::{is_orderbook_tx, try_extract_move_call_package};
-use crate::models::orderbook::pool::MysoBurned as MysoBurnedEvent;
 use crate::models::myso::myso::MYSO;
+use crate::models::orderbook::pool::MysoBurned as MysoBurnedEvent;
 use crate::traits::MoveStruct;
 use crate::OrderbookEnv;
 use async_trait::async_trait;
-use myso_indexer_alt_orderbook_schema::models::MysoBurned;
-use myso_indexer_alt_orderbook_schema::schema::myso_burned;
 use diesel_async::RunQueryDsl;
-use std::sync::Arc;
 use myso_indexer_alt_framework::pipeline::Processor;
 use myso_indexer_alt_framework::postgres::handler::Handler;
 use myso_indexer_alt_framework::postgres::Connection;
 use myso_indexer_alt_framework::types::full_checkpoint_content::Checkpoint;
+use myso_indexer_alt_orderbook_schema::models::MysoBurned;
+use myso_indexer_alt_orderbook_schema::schema::myso_burned;
 use myso_types::transaction::TransactionDataAPI;
+use std::sync::Arc;
 use tracing::debug;
 
 pub struct MysoBurnedHandler {

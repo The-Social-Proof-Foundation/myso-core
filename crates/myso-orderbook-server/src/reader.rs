@@ -1,15 +1,5 @@
 use crate::error::OrderbookError;
 use crate::metrics::RpcMetrics;
-use orderbook_schema::models::{
-    AssetSupplied, AssetWithdrawn, CollateralEvent, OrderbookPoolConfigUpdated,
-    OrderbookPoolRegistered, OrderbookPoolUpdated, OrderbookPoolUpdatedRegistry,
-    InterestParamsUpdated, Liquidation, LoanBorrowed, LoanRepaid, MaintainerCapUpdated,
-    MaintainerFeesWithdrawn, MarginManagerCreated, MarginManagerState, MarginPoolConfigUpdated,
-    MarginPoolCreated, OrderFillSummary, OrderStatus, PauseCapUpdated, Pools,
-    ProtocolFeesIncreasedEvent, ProtocolFeesWithdrawn, ReferralFeeEvent, ReferralFeesClaimedEvent,
-    SupplierCapMinted, SupplyReferralMinted,
-};
-use orderbook_schema::schema;
 use diesel::deserialize::FromSqlRow;
 use diesel::dsl::sql;
 use diesel::expression::QueryMetadata;
@@ -21,6 +11,16 @@ use diesel::{
     BoolExpressionMethods, ExpressionMethods, QueryDsl, QueryableByName, SelectableHelper,
     TextExpressionMethods,
 };
+use orderbook_schema::models::{
+    AssetSupplied, AssetWithdrawn, CollateralEvent, InterestParamsUpdated, Liquidation,
+    LoanBorrowed, LoanRepaid, MaintainerCapUpdated, MaintainerFeesWithdrawn, MarginManagerCreated,
+    MarginManagerState, MarginPoolConfigUpdated, MarginPoolCreated, OrderFillSummary, OrderStatus,
+    OrderbookPoolConfigUpdated, OrderbookPoolRegistered, OrderbookPoolUpdated,
+    OrderbookPoolUpdatedRegistry, PauseCapUpdated, Pools, ProtocolFeesIncreasedEvent,
+    ProtocolFeesWithdrawn, ReferralFeeEvent, ReferralFeesClaimedEvent, SupplierCapMinted,
+    SupplyReferralMinted,
+};
+use orderbook_schema::schema;
 
 /// Converts an empty string to "%" for SQL LIKE pattern matching.
 /// This allows using required parameters instead of Option<String>,
@@ -35,10 +35,10 @@ fn to_pattern(s: &str) -> String {
 
 use diesel_async::methods::LoadQuery;
 use diesel_async::{AsyncPgConnection, RunQueryDsl};
-use prometheus::Registry;
-use std::sync::Arc;
 use myso_indexer_alt_metrics::db::DbConnectionStatsCollector;
 use myso_pg_db::{Db, DbArgs};
+use prometheus::Registry;
+use std::sync::Arc;
 use url::Url;
 
 #[derive(QueryableByName, Debug)]
@@ -998,7 +998,9 @@ impl Reader {
                 schema::orderbook_pool_config_updated::checkpoint_timestamp_ms
                     .between(start_time, end_time),
             )
-            .filter(schema::orderbook_pool_config_updated::pool_id.like(to_pattern(&pool_id_filter)))
+            .filter(
+                schema::orderbook_pool_config_updated::pool_id.like(to_pattern(&pool_id_filter)),
+            )
             .order_by(schema::orderbook_pool_config_updated::checkpoint_timestamp_ms.desc())
             .limit(limit);
 
@@ -1115,8 +1117,8 @@ impl Reader {
         quote_asset_symbol_filter: Option<String>,
     ) -> Result<Vec<MarginManagerState>, OrderbookError> {
         use bigdecimal::BigDecimal;
-        use orderbook_schema::schema::margin_manager_state::dsl::*;
         use diesel::PgSortExpressionMethods;
+        use orderbook_schema::schema::margin_manager_state::dsl::*;
         use std::str::FromStr;
 
         let mut connection = self.db.connect().await?;

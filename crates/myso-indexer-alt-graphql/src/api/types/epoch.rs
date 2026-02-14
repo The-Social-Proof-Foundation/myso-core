@@ -311,7 +311,10 @@ impl Epoch {
     }
 
     /// Stake subsidy parameters at the start of this epoch (balance, APY, period, etc.).
-    async fn system_stake_subsidy(&self, ctx: &Context<'_>) -> Option<Result<Option<StakeSubsidy>, RpcError>> {
+    async fn system_stake_subsidy(
+        &self,
+        ctx: &Context<'_>,
+    ) -> Option<Result<Option<StakeSubsidy>, RpcError>> {
         async {
             let Some(system_state) = self.system_state_impl(ctx).await? else {
                 return Ok(None);
@@ -319,7 +322,8 @@ impl Epoch {
             let Some(layout) = system_state.type_.layout_impl().await? else {
                 return Ok(None);
             };
-            let stake_subsidy_v1 = stake_subsidy::extract_from_system_state(&system_state.native, &layout)?;
+            let stake_subsidy_v1 =
+                stake_subsidy::extract_from_system_state(&system_state.native, &layout)?;
             Ok(Some(stake_subsidy_v1.map(|v| StakeSubsidy::from_v1(&v))))
         }
         .await

@@ -13,7 +13,7 @@ use std::string::String;
 use std::type_name::{Self, TypeName};
 use myso::bag::{Self, Bag};
 use myso::balance::{Supply, Balance};
-use myso::coin::{Self, TreasuryCap, DenyCapV2, CoinMetadata, RegulatedCoinMetadata, Coin};
+use myso::coin::{Self, TreasuryCap, DenyCapV2, CoinMetadata, RegulatedCoinMetadata, Coin, CoinCreationAdminCap};
 use myso::derived_object;
 use myso::dynamic_field as df;
 use myso::transfer::Receiving;
@@ -172,6 +172,7 @@ public struct CurrencyInitializer<phantom T> {
 ///
 /// Note: This constructor has no long term difference from `new_currency_with_otw`.
 /// This can be called from the module that defines `T` any time after it has been published.
+/// Requires `CoinCreationAdminCap` to authorize coin creation.
 public fun new_currency<T: /* internal */ key>(
     registry: &mut CoinRegistry,
     decimals: u8,
@@ -179,12 +180,13 @@ public fun new_currency<T: /* internal */ key>(
     name: String,
     description: String,
     icon_url: String,
+    admin_cap: &CoinCreationAdminCap,
     ctx: &mut TxContext,
 ): (CurrencyInitializer<T>, TreasuryCap<T>) {
     assert!(!registry.exists<T>(), ECurrencyAlreadyExists);
     assert!(is_ascii_printable!(&symbol), EInvalidSymbol);
 
-    let treasury_cap = coin::new_treasury_cap(ctx);
+    let treasury_cap = coin::new_treasury_cap_with_admin(admin_cap, ctx);
     let currency = Currency<T> {
         id: derived_object::claim(&mut registry.id, CurrencyKey<T>()),
         decimals,
@@ -207,7 +209,41 @@ public fun new_currency<T: /* internal */ key>(
 /// This is a two-step operation:
 /// 1. `Currency` is constructed in the `init` function and sent to the `CoinRegistry`;
 /// 2. `Currency` is promoted to a shared object in the `finalize_registration` call;
+/// Requires `CoinCreationAdminCap` to authorize coin creation.
 public fun new_currency_with_otw<T: drop>(
+    otw: T,
+    decimals: u8,
+    symbol: String,
+    name: String,
+    description: String,
+    icon_url: String,
+    admin_cap: &CoinCreationAdminCap,
+    ctx: &mut TxContext,
+): (CurrencyInitializer<T>, TreasuryCap<T>) {
+    assert!(myso::types::is_one_time_witness(&otw), ENotOneTimeWitness);
+    assert!(is_ascii_printable!(&symbol), EInvalidSymbol);
+
+    let treasury_cap = coin::new_treasury_cap_with_admin(admin_cap, ctx);
+    let currency = Currency<T> {
+        id: object::new(ctx),
+        decimals,
+        name,
+        symbol,
+        description,
+        icon_url,
+        supply: option::some(SupplyState::Unknown),
+        regulated: RegulatedState::Unregulated,
+        treasury_cap_id: option::some(object::id(&treasury_cap)),
+        metadata_cap_id: MetadataCapState::Unclaimed,
+        extra_fields: vec_map::empty(),
+    };
+
+    (CurrencyInitializer { currency, is_otw: true, extra_fields: bag::new(ctx) }, treasury_cap)
+}
+
+/// Genesis-only variant of `new_currency_with_otw`. Only works when `ctx.sender() == @0x0` and `ctx.epoch() == 0`.
+/// Use `new_currency_with_otw` with `CoinCreationAdminCap` for post-genesis coin creation.
+public fun new_currency_with_otw_genesis<T: drop>(
     otw: T,
     decimals: u8,
     symbol: String,
@@ -216,6 +252,8 @@ public fun new_currency_with_otw<T: drop>(
     icon_url: String,
     ctx: &mut TxContext,
 ): (CurrencyInitializer<T>, TreasuryCap<T>) {
+    assert!(ctx.sender() == @0x0, ENotSystemAddress);
+    assert!(ctx.epoch() == 0, ENotSystemAddress);
     assert!(myso::types::is_one_time_witness(&otw), ENotOneTimeWitness);
     assert!(is_ascii_printable!(&symbol), EInvalidSymbol);
 
@@ -235,6 +273,39 @@ public fun new_currency_with_otw<T: drop>(
     };
 
     (CurrencyInitializer { currency, is_otw: true, extra_fields: bag::new(ctx) }, treasury_cap)
+}
+
+/// Genesis-only variant of `new_currency`. Only works when `ctx.sender() == @0x0` and `ctx.epoch() == 0`.
+public(package) fun new_currency_genesis<T: key>(
+    registry: &mut CoinRegistry,
+    decimals: u8,
+    symbol: String,
+    name: String,
+    description: String,
+    icon_url: String,
+    ctx: &mut TxContext,
+): (CurrencyInitializer<T>, TreasuryCap<T>) {
+    assert!(ctx.sender() == @0x0, ENotSystemAddress);
+    assert!(ctx.epoch() == 0, ENotSystemAddress);
+    assert!(!registry.exists<T>(), ECurrencyAlreadyExists);
+    assert!(is_ascii_printable!(&symbol), EInvalidSymbol);
+
+    let treasury_cap = coin::new_treasury_cap(ctx);
+    let currency = Currency<T> {
+        id: derived_object::claim(&mut registry.id, CurrencyKey<T>()),
+        decimals,
+        name,
+        symbol,
+        description,
+        icon_url,
+        supply: option::some(SupplyState::Unknown),
+        regulated: RegulatedState::Unregulated,
+        treasury_cap_id: option::some(object::id(&treasury_cap)),
+        metadata_cap_id: MetadataCapState::Unclaimed,
+        extra_fields: vec_map::empty(),
+    };
+
+    (CurrencyInitializer { currency, is_otw: false, extra_fields: bag::new(ctx) }, treasury_cap)
 }
 
 /// Claim a `MetadataCap` for a coin type.

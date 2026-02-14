@@ -22,7 +22,12 @@ public struct MyCoin has key { id: UID }
 
 #[allow(lint(self_transfer))]
 /// Creates a new currency with a non-OTW proof of uniqueness.
-public fun new_currency(registry: &mut CoinRegistry, ctx: &mut TxContext): Coin<MyCoin> {
+/// Requires CoinCreationAdminCap for authorization.
+public fun new_currency(
+    registry: &mut CoinRegistry,
+    admin_cap: &myso::coin::CoinCreationAdminCap,
+    ctx: &mut TxContext,
+): Coin<MyCoin> {
     let (mut currency, mut treasury_cap) = coin_registry::new_currency(
         registry,
         6, // Decimals
@@ -30,6 +35,7 @@ public fun new_currency(registry: &mut CoinRegistry, ctx: &mut TxContext): Coin<
         b"My Coin".to_string(), // Name
         b"Standard Unregulated Coin".to_string(), // Description
         b"https://example.com/my_coin.png".to_string(), // Icon URL
+        admin_cap,
         ctx,
     );
 

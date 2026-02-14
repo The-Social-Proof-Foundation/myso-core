@@ -9,8 +9,8 @@ use serde::{Deserialize, Serialize};
 use crate::schema::{
     anonymous_votes, blocked_events, blocked_profiles, community_votes, delegate_ratings,
     delegate_votes, delegates, governance_events, governance_registries, nominated_delegates,
-    profile_badges, profile_events, profiles, proposals, reward_distributions,
-    social_graph_events, social_graph_relationships, vote_decryption_failures,
+    profile_badges, profile_events, profiles, proposals, reward_distributions, social_graph_events,
+    social_graph_relationships, vote_decryption_failures,
 };
 
 #[derive(Debug, Clone, Insertable, Serialize, Deserialize)]

@@ -18,6 +18,7 @@ public struct Treasury has key {
 }
 
 fun init(witness: UNKNOWN, ctx: &mut TxContext) {
+    let admin_cap = myso::coin::create_coin_creation_admin_cap_for_testing(ctx);
     let (init, mut treasury_cap) = coin_registry::new_currency_with_otw(
         witness,
         2,
@@ -25,6 +26,7 @@ fun init(witness: UNKNOWN, ctx: &mut TxContext) {
         b"Unknown".to_string(),
         b"A fake unknown treasury coin for test purposes".to_string(),
         b"https://example.com/unknown.png".to_string(),
+        &admin_cap,
         ctx,
     );
 

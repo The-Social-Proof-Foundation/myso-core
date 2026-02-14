@@ -4,11 +4,13 @@
 
 module burn_only::burn;
 
+use myso::coin;
 use myso::coin_registry;
 
 public struct BURN() has drop;
 
 fun init(witness: BURN, ctx: &mut TxContext) {
+    let admin_cap = coin::create_coin_creation_admin_cap_for_testing(ctx);
     let (mut init, mut treasury_cap) = coin_registry::new_currency_with_otw(
         witness,
         2,
@@ -16,6 +18,7 @@ fun init(witness: BURN, ctx: &mut TxContext) {
         b"Burn".to_string(),
         b"A fake burn-only coin for test purposes".to_string(),
         b"https://example.com/fake.png".to_string(),
+        &admin_cap,
         ctx,
     );
 

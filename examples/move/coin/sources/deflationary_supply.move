@@ -24,7 +24,7 @@ public struct BURN_ONLY_SUPPLY has drop {}
 // - `TreasuryCap` is given up to the `Currency`
 // - Total supply is sent to the publisher along with `MetadataCap`
 fun init(witness: BURN_ONLY_SUPPLY, ctx: &mut TxContext) {
-    let (mut currency, mut treasury_cap) = coin_registry::new_currency_with_otw(
+    let (mut currency, mut treasury_cap) = coin_registry::new_currency_with_otw_genesis(
         witness,
         6, // Decimals
         b"BURN_ONLY_SUPPLY".to_string(), // Symbol

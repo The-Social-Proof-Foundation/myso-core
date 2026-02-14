@@ -3,15 +3,15 @@ use crate::models::orderbook::governance::TradeParamsUpdateEvent;
 use crate::traits::MoveStruct;
 use crate::OrderbookEnv;
 use async_trait::async_trait;
-use myso_indexer_alt_orderbook_schema::models::TradeParamsUpdate;
-use myso_indexer_alt_orderbook_schema::schema::trade_params_update;
 use diesel_async::RunQueryDsl;
-use std::sync::Arc;
 use myso_indexer_alt_framework::pipeline::Processor;
 use myso_indexer_alt_framework::postgres::handler::Handler;
 use myso_indexer_alt_framework::postgres::Connection;
 use myso_indexer_alt_framework::types::full_checkpoint_content::Checkpoint;
+use myso_indexer_alt_orderbook_schema::models::TradeParamsUpdate;
+use myso_indexer_alt_orderbook_schema::schema::trade_params_update;
 use myso_types::transaction::TransactionDataAPI;
+use std::sync::Arc;
 use tracing::debug;
 
 pub struct TradeParamsUpdateHandler {

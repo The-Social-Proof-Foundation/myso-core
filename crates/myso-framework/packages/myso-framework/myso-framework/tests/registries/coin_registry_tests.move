@@ -21,7 +21,8 @@ public struct TestDynamic has key { id: UID }
 #[test]
 fun default_scenario() {
     let ctx = &mut tx_context::dummy();
-    let (builder, t_cap) = new_builder().build_otw(COIN_REGISTRY_TESTS {}, ctx);
+    let admin_cap = coin::create_coin_creation_admin_cap_for_testing(ctx);
+    let (builder, t_cap) = new_builder().build_otw(COIN_REGISTRY_TESTS {}, &admin_cap, ctx);
     let (currency, metadata_cap) = builder.finalize_unwrap_for_testing(ctx);
 
     // Treasury and Metadata Caps registered properly.
@@ -45,6 +46,7 @@ fun default_scenario() {
     destroy(metadata_cap);
     destroy(currency);
     destroy(t_cap);
+    destroy(admin_cap);
 }
 
 // === Regulated Currency ===
@@ -52,7 +54,8 @@ fun default_scenario() {
 #[test]
 fun regulated_default() {
     let ctx = &mut tx_context::dummy();
-    let (mut builder, t_cap) = new_builder().build_otw(COIN_REGISTRY_TESTS {}, ctx);
+    let admin_cap = coin::create_coin_creation_admin_cap_for_testing(ctx);
+    let (mut builder, t_cap) = new_builder().build_otw(COIN_REGISTRY_TESTS {}, &admin_cap, ctx);
     let deny_cap = builder.make_regulated(true, ctx);
     let (currency, metadata_cap) = builder.finalize_unwrap_for_testing(ctx);
 
@@ -63,12 +66,14 @@ fun regulated_default() {
     destroy(deny_cap);
     destroy(currency);
     destroy(t_cap);
+    destroy(admin_cap);
 }
 
 #[test, expected_failure(abort_code = coin_registry::EDenyCapAlreadyCreated)]
 fun regulated_twice_fail() {
     let ctx = &mut tx_context::dummy();
-    let (mut builder, _t_cap) = new_builder().build_otw(COIN_REGISTRY_TESTS {}, ctx);
+    let admin_cap = coin::create_coin_creation_admin_cap_for_testing(ctx);
+    let (mut builder, _t_cap) = new_builder().build_otw(COIN_REGISTRY_TESTS {}, &admin_cap, ctx);
     let _deny_cap = builder.make_regulated(true, ctx);
     let _deny_cap2 = builder.make_regulated(true, ctx);
 
@@ -80,7 +85,8 @@ fun regulated_twice_fail() {
 #[test]
 fun update_metadata() {
     let ctx = &mut tx_context::dummy();
-    let (builder, t_cap) = new_builder().build_otw(COIN_REGISTRY_TESTS {}, ctx);
+    let admin_cap = coin::create_coin_creation_admin_cap_for_testing(ctx);
+    let (builder, t_cap) = new_builder().build_otw(COIN_REGISTRY_TESTS {}, &admin_cap, ctx);
     let (mut currency, metadata_cap) = builder.finalize_unwrap_for_testing(ctx);
 
     // Perform updates on metadata.
@@ -95,14 +101,16 @@ fun update_metadata() {
     destroy(metadata_cap);
     destroy(currency);
     destroy(t_cap);
+    destroy(admin_cap);
 }
 
 #[test, expected_failure(abort_code = coin_registry::EInvalidSymbol)]
 fun create_symbol_non_ascii() {
     let ctx = &mut tx_context::dummy();
+    let admin_cap = coin::create_coin_creation_admin_cap_for_testing(ctx);
     let (_builder, _t_cap) = new_builder()
         .symbol(b"\x00".to_string())
-        .build_otw(COIN_REGISTRY_TESTS {}, ctx);
+        .build_otw(COIN_REGISTRY_TESTS {}, &admin_cap, ctx);
 
     abort
 }
@@ -110,13 +118,15 @@ fun create_symbol_non_ascii() {
 #[test]
 fun delete_metadata_cap() {
     let ctx = &mut tx_context::dummy();
-    let (builder, t_cap) = new_builder().build_otw(COIN_REGISTRY_TESTS {}, ctx);
+    let admin_cap = coin::create_coin_creation_admin_cap_for_testing(ctx);
+    let (builder, t_cap) = new_builder().build_otw(COIN_REGISTRY_TESTS {}, &admin_cap, ctx);
     let (mut currency, metadata_cap) = builder.finalize_unwrap_for_testing(ctx);
 
     currency.delete_metadata_cap(metadata_cap);
 
     destroy(currency);
     destroy(t_cap);
+    destroy(admin_cap);
 }
 
 // === Supply States ===
@@ -128,7 +138,8 @@ fun delete_metadata_cap() {
 // 3. check the total supply value
 fun fixed_supply() {
     let ctx = &mut tx_context::dummy();
-    let (builder, mut t_cap) = new_builder().build_otw(COIN_REGISTRY_TESTS {}, ctx);
+    let admin_cap = coin::create_coin_creation_admin_cap_for_testing(ctx);
+    let (builder, mut t_cap) = new_builder().build_otw(COIN_REGISTRY_TESTS {}, &admin_cap, ctx);
     let (mut currency, metadata_cap) = builder.finalize_unwrap_for_testing(ctx);
 
     assert!(currency.total_supply().is_none());
@@ -145,12 +156,14 @@ fun fixed_supply() {
 
     destroy(metadata_cap);
     destroy(currency);
+    destroy(admin_cap);
 }
 
 #[test, expected_failure(abort_code = coin_registry::ESupplyNotBurnOnly)]
 fun burn_fixed_supply() {
     let ctx = &mut tx_context::dummy();
-    let (builder, mut t_cap) = new_builder().build_otw(COIN_REGISTRY_TESTS {}, ctx);
+    let admin_cap = coin::create_coin_creation_admin_cap_for_testing(ctx);
+    let (builder, mut t_cap) = new_builder().build_otw(COIN_REGISTRY_TESTS {}, &admin_cap, ctx);
     let (mut currency, _metadata_cap) = builder.finalize_unwrap_for_testing(ctx);
     let coins = t_cap.mint(10_000, ctx);
 
@@ -163,7 +176,8 @@ fun burn_fixed_supply() {
 #[test, expected_failure(abort_code = coin_registry::ESupplyNotBurnOnly)]
 fun burn_unknown_supply() {
     let ctx = &mut tx_context::dummy();
-    let (builder, mut t_cap) = new_builder().build_otw(COIN_REGISTRY_TESTS {}, ctx);
+    let admin_cap = coin::create_coin_creation_admin_cap_for_testing(ctx);
+    let (builder, mut t_cap) = new_builder().build_otw(COIN_REGISTRY_TESTS {}, &admin_cap, ctx);
     let (mut currency, _metadata_cap) = builder.finalize_unwrap_for_testing(ctx);
 
     currency.burn(t_cap.mint(10_000, ctx));
@@ -174,7 +188,8 @@ fun burn_unknown_supply() {
 #[test, expected_failure(abort_code = coin_registry::ESupplyNotBurnOnly)]
 fun burn_balance_fixed_supply() {
     let ctx = &mut tx_context::dummy();
-    let (builder, mut t_cap) = new_builder().build_otw(COIN_REGISTRY_TESTS {}, ctx);
+    let admin_cap = coin::create_coin_creation_admin_cap_for_testing(ctx);
+    let (builder, mut t_cap) = new_builder().build_otw(COIN_REGISTRY_TESTS {}, &admin_cap, ctx);
     let (mut currency, _metadata_cap) = builder.finalize_unwrap_for_testing(ctx);
     let coins = t_cap.mint(10_000, ctx);
 
@@ -187,7 +202,8 @@ fun burn_balance_fixed_supply() {
 #[test, expected_failure(abort_code = coin_registry::ESupplyNotBurnOnly)]
 fun burn_balance_unknown_supply() {
     let ctx = &mut tx_context::dummy();
-    let (builder, mut t_cap) = new_builder().build_otw(COIN_REGISTRY_TESTS {}, ctx);
+    let admin_cap = coin::create_coin_creation_admin_cap_for_testing(ctx);
+    let (builder, mut t_cap) = new_builder().build_otw(COIN_REGISTRY_TESTS {}, &admin_cap, ctx);
     let (mut currency, _metadata_cap) = builder.finalize_unwrap_for_testing(ctx);
 
     currency.burn_balance(t_cap.mint(10_000, ctx).into_balance());
@@ -202,7 +218,8 @@ fun burn_balance_unknown_supply() {
 // 3. burn all coins
 fun burn_only_supply() {
     let ctx = &mut tx_context::dummy();
-    let (builder, mut t_cap) = new_builder().build_otw(COIN_REGISTRY_TESTS {}, ctx);
+    let admin_cap = coin::create_coin_creation_admin_cap_for_testing(ctx);
+    let (builder, mut t_cap) = new_builder().build_otw(COIN_REGISTRY_TESTS {}, &admin_cap, ctx);
     let (mut currency, metadata_cap) = builder.finalize_unwrap_for_testing(ctx);
 
     assert!(currency.total_supply().is_none());
@@ -225,6 +242,7 @@ fun burn_only_supply() {
 
     destroy(metadata_cap);
     destroy(currency);
+    destroy(admin_cap);
 }
 
 // === Dynamic Currency Creation ===
@@ -232,8 +250,9 @@ fun burn_only_supply() {
 #[test]
 fun dynamic_currency_default() {
     let ctx = &mut tx_context::dummy();
+    let admin_cap = coin::create_coin_creation_admin_cap_for_testing(ctx);
     let mut registry = coin_registry::create_coin_data_registry_for_testing(ctx);
-    let (builder, t_cap) = new_builder().build_dynamic(&mut registry, ctx);
+    let (builder, t_cap) = new_builder().build_dynamic(&mut registry, &admin_cap, ctx);
     let (currency, metadata_cap) = builder.finalize_unwrap_for_testing(ctx);
 
     assert!(registry.exists<TestDynamic>());
@@ -253,14 +272,16 @@ fun dynamic_currency_default() {
     destroy(registry);
     destroy(currency);
     destroy(t_cap);
+    destroy(admin_cap);
 }
 
 #[test, expected_failure(abort_code = coin_registry::ECurrencyAlreadyExists)]
 fun dynamic_currency_duplicate() {
     let ctx = &mut tx_context::dummy();
+    let admin_cap = coin::create_coin_creation_admin_cap_for_testing(ctx);
     let mut registry = coin_registry::create_coin_data_registry_for_testing(ctx);
-    let (_builder, _t_cap) = new_builder().build_dynamic(&mut registry, ctx);
-    let (_builder2, _t_cap2) = new_builder().build_dynamic(&mut registry, ctx);
+    let (_builder, _t_cap) = new_builder().build_dynamic(&mut registry, &admin_cap, ctx);
+    let (_builder2, _t_cap2) = new_builder().build_dynamic(&mut registry, &admin_cap, ctx);
 
     abort
 }
@@ -417,7 +438,8 @@ fun update_legacy_fail() {
 // 5. borrow the legacy metadata again and check the values
 fun borrow_legacy_coin_metadata() {
     let ctx = &mut tx_context::dummy();
-    let (builder, t_cap) = new_builder().build_otw(COIN_REGISTRY_TESTS {}, ctx);
+    let admin_cap = coin::create_coin_creation_admin_cap_for_testing(ctx);
+    let (builder, t_cap) = new_builder().build_otw(COIN_REGISTRY_TESTS {}, &admin_cap, ctx);
     let (mut currency, metadata_cap) = builder.finalize_unwrap_for_testing(ctx);
 
     // Borrow the legacy metadata and check the values.
@@ -450,6 +472,7 @@ fun borrow_legacy_coin_metadata() {
     destroy(t_cap);
     destroy(currency);
     destroy(metadata_cap);
+    destroy(admin_cap);
 }
 
 #[test, expected_failure(abort_code = coin_registry::EBorrowLegacyMetadata)]
@@ -466,7 +489,8 @@ fun try_borrowing_from_migrated_currency_fail() {
 #[test, expected_failure(abort_code = coin_registry::EDuplicateBorrow)]
 fun borrow_legacy_coin_metadata_twice() {
     let ctx = &mut tx_context::dummy();
-    let (builder, _t_cap) = new_builder().build_otw(COIN_REGISTRY_TESTS {}, ctx);
+    let admin_cap = coin::create_coin_creation_admin_cap_for_testing(ctx);
+    let (builder, _t_cap) = new_builder().build_otw(COIN_REGISTRY_TESTS {}, &admin_cap, ctx);
     let (mut currency, _metadata_cap) = builder.finalize_unwrap_for_testing(ctx);
 
     let (legacy_1, borrow_1) = currency.borrow_legacy_metadata(ctx);
@@ -483,7 +507,8 @@ fun borrow_legacy_coin_metadata_twice() {
 #[test]
 fun otw_currency_promotion() {
     let mut test = test_scenario::begin(@0);
-    let (builder, t_cap) = new_builder().build_otw(COIN_REGISTRY_TESTS {}, test.ctx());
+    let admin_cap = coin::create_coin_creation_admin_cap_for_testing(test.ctx());
+    let (builder, t_cap) = new_builder().build_otw(COIN_REGISTRY_TESTS {}, &admin_cap, test.ctx());
     let metadata_cap = builder.finalize(test.ctx());
 
     test.next_tx(@10);
@@ -502,8 +527,9 @@ fun otw_currency_promotion() {
 #[test]
 fun new_currency_is_shared() {
     let mut test = test_scenario::begin(@0);
+    let admin_cap = coin::create_coin_creation_admin_cap_for_testing(test.ctx());
     let mut registry = coin_registry::create_coin_data_registry_for_testing(test.ctx());
-    let (builder, t_cap) = new_builder().build_dynamic(&mut registry, test.ctx());
+    let (builder, t_cap) = new_builder().build_dynamic(&mut registry, &admin_cap, test.ctx());
     let metadata_cap = builder.finalize(test.ctx());
 
     test.next_tx(@0);
@@ -521,8 +547,9 @@ fun new_currency_is_shared() {
 #[test]
 fun new_currency_is_shared_and_metadata_cap_is_deleted() {
     let mut test = test_scenario::begin(@0);
+    let admin_cap = coin::create_coin_creation_admin_cap_for_testing(test.ctx());
     let mut registry = coin_registry::create_coin_data_registry_for_testing(test.ctx());
-    let (builder, t_cap) = new_builder().build_dynamic(&mut registry, test.ctx());
+    let (builder, t_cap) = new_builder().build_dynamic(&mut registry, &admin_cap, test.ctx());
     builder.finalize_and_delete_metadata_cap(test.ctx());
 
     test.next_tx(@0);
@@ -566,6 +593,7 @@ public fun symbol(mut b: MetadataBuilder, symbol: String): MetadataBuilder {
 public fun build_dynamic(
     b: MetadataBuilder,
     registry: &mut CoinRegistry,
+    admin_cap: &coin::CoinCreationAdminCap,
     ctx: &mut TxContext,
 ): (CurrencyInitializer<TestDynamic>, TreasuryCap<TestDynamic>) {
     registry.new_currency<TestDynamic>(
@@ -574,6 +602,7 @@ public fun build_dynamic(
         b.name,
         b.description,
         b.icon_url,
+        admin_cap,
         ctx,
     )
 }
@@ -581,6 +610,7 @@ public fun build_dynamic(
 public fun build_otw<T: drop>(
     b: MetadataBuilder,
     otw: T,
+    admin_cap: &coin::CoinCreationAdminCap,
     ctx: &mut TxContext,
 ): (CurrencyInitializer<T>, TreasuryCap<T>) {
     coin_registry::new_currency_with_otw(
@@ -590,6 +620,7 @@ public fun build_otw<T: drop>(
         b.name,
         b.description,
         b.icon_url,
+        admin_cap,
         ctx,
     )
 }

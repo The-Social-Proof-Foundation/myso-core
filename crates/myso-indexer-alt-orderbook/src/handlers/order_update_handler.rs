@@ -4,15 +4,15 @@ use crate::models::orderbook::order_info::{OrderExpired, OrderPlaced};
 use crate::traits::MoveStruct;
 use crate::OrderbookEnv;
 use async_trait::async_trait;
-use myso_indexer_alt_orderbook_schema::models::{OrderUpdate, OrderUpdateStatus};
-use myso_indexer_alt_orderbook_schema::schema::order_updates;
 use diesel_async::RunQueryDsl;
-use std::sync::Arc;
 use myso_indexer_alt_framework::pipeline::Processor;
 use myso_indexer_alt_framework::postgres::handler::Handler;
 use myso_indexer_alt_framework::postgres::Connection;
 use myso_indexer_alt_framework::types::full_checkpoint_content::Checkpoint;
+use myso_indexer_alt_orderbook_schema::models::{OrderUpdate, OrderUpdateStatus};
+use myso_indexer_alt_orderbook_schema::schema::order_updates;
 use myso_types::transaction::TransactionDataAPI;
+use std::sync::Arc;
 use tracing::debug;
 
 type TransactionMetadata = (String, u64, u64, String, String);

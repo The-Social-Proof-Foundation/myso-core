@@ -3,13 +3,13 @@
 //! This module provides the MoveStruct trait for handling Move structs and event types.
 //! Module definitions and related functions have been moved to lib.rs for centralized configuration.
 
-use serde::Serialize;
-use std::str::FromStr;
 use move_core_types::{
     account_address::AccountAddress,
     identifier::Identifier,
     language_storage::{StructTag, TypeTag},
 };
+use serde::Serialize;
+use std::str::FromStr;
 
 // Import types and functions from lib.rs
 use crate::{get_module_type, ModuleType};
@@ -22,15 +22,14 @@ pub trait MoveStruct: Serialize {
     const TYPE_PARAMS: &'static [&'static str] = &[];
 
     /// Get the list of acceptable package addresses for this event type based on environment
-    fn acceptable_package_addresses(env: crate::OrderbookEnv) -> Result<Vec<AccountAddress>, String> {
+    fn acceptable_package_addresses(
+        env: crate::OrderbookEnv,
+    ) -> Result<Vec<AccountAddress>, String> {
         get_package_addresses_for_module(Self::MODULE, env)
     }
 
     /// Check if a struct tag matches this event type from any supported package version
-    fn matches_event_type(
-        event_type: &StructTag,
-        env: crate::OrderbookEnv,
-    ) -> bool {
+    fn matches_event_type(event_type: &StructTag, env: crate::OrderbookEnv) -> bool {
         // Get all possible struct types for this event
         let all_struct_types = Self::get_all_struct_types(env);
 
@@ -123,9 +122,7 @@ pub fn get_package_addresses_for_module(
                 Err("Failed to parse MYSO system address".to_string())
             }
         }
-        ModuleType::Unknown => {
-            Err(format!("Unknown module: {}", module))
-        }
+        ModuleType::Unknown => Err(format!("Unknown module: {}", module)),
     }
 }
 
@@ -140,7 +137,11 @@ fn parse_address_from_hex(hex_str: &str) -> Result<AccountAddress, String> {
     let bytes = hex::decode(hex_str).map_err(|e| format!("Failed to decode hex: {}", e))?;
 
     if bytes.len() != AccountAddress::LENGTH {
-        return Err(format!("Expected {} bytes, got {}", AccountAddress::LENGTH, bytes.len()));
+        return Err(format!(
+            "Expected {} bytes, got {}",
+            AccountAddress::LENGTH,
+            bytes.len()
+        ));
     }
 
     let mut addr_bytes = [0u8; AccountAddress::LENGTH];

@@ -10,11 +10,7 @@ use move_package_alt_compilation::{
 };
 use myso_move_build::BuildConfig;
 use myso_package_alt::mainnet_environment;
-use std::{
-    collections::BTreeMap,
-    env, fs,
-    path::Path,
-};
+use std::{collections::BTreeMap, env, fs, path::Path};
 
 const CRATE_ROOT: &str = env!("CARGO_MANIFEST_DIR");
 const COMPILED_PACKAGES_DIR: &str = "packages_compiled";

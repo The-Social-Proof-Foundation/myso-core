@@ -1023,6 +1023,7 @@ impl AuthorityState {
             &receiving_objects_refs,
             &self.config.transaction_deny_config,
             self.get_backing_package_store().as_ref(),
+            self.get_object_store().as_ref(),
         )?;
 
         let withdraws = tx_data.process_funds_withdrawals_for_signing(
@@ -2266,6 +2267,7 @@ impl AuthorityState {
             &receiving_object_refs,
             &self.config.transaction_deny_config,
             self.get_backing_package_store().as_ref(),
+            self.get_object_store().as_ref(),
         )?;
 
         let (input_objects, receiving_objects) = self.input_loader.read_objects_for_signing(
@@ -2475,6 +2477,7 @@ impl AuthorityState {
             &receiving_object_refs,
             &self.config.transaction_deny_config,
             self.get_backing_package_store().as_ref(),
+            self.get_object_store().as_ref(),
         )?;
 
         let (mut input_objects, receiving_objects) = self.input_loader.read_objects_for_signing(
@@ -2699,6 +2702,7 @@ impl AuthorityState {
             &receiving_object_refs,
             &self.config.transaction_deny_config,
             self.get_backing_package_store().as_ref(),
+            self.get_object_store().as_ref(),
         )?;
 
         let (mut input_objects, receiving_objects) = self.input_loader.read_objects_for_signing(

@@ -4,11 +4,13 @@
 
 module fixed_supply::fixed;
 
+use myso::coin;
 use myso::coin_registry;
 
 public struct FIXED() has drop;
 
 fun init(witness: FIXED, ctx: &mut TxContext) {
+    let admin_cap = coin::create_coin_creation_admin_cap_for_testing(ctx);
     let (mut init, mut treasury_cap) = coin_registry::new_currency_with_otw(
         witness,
         2,
@@ -16,6 +18,7 @@ fun init(witness: FIXED, ctx: &mut TxContext) {
         b"Fixed".to_string(),
         b"A fake fixed-supply coin for test purposes".to_string(),
         b"https://example.com/fake.png".to_string(),
+        &admin_cap,
         ctx,
     );
 

@@ -13,7 +13,7 @@ fun init(otw: REGULATED_COIN, ctx: &mut TxContext) {
     // Creates a new currency using `create_currency`, but with an extra capability that
     // allows for specific addresses to have their coins frozen. Those addresses cannot interact
     // with the coin as input objects.
-    let (mut currency, treasury_cap) = coin_registry::new_currency_with_otw(
+    let (mut currency, treasury_cap) = coin_registry::new_currency_with_otw_genesis(
         otw,
         5, // Decimals
         b"$TABLE".to_string(), // Symbol

@@ -4,12 +4,31 @@
 
 module dynamic::dynamic;
 
+use myso::coin::{CoinCreationAdminCap};
 use myso::coin_registry::{Self, CoinRegistry};
 
 public struct Dynamic has key { id: UID }
 
 entry fun new_currency(
     registry: &mut CoinRegistry,
+    admin_cap: &CoinCreationAdminCap,
+    ctx: &mut TxContext,
+) {
+    new_currency_impl(registry, admin_cap, ctx);
+}
+
+#[test_only]
+entry fun new_currency_with_test_cap(
+    registry: &mut CoinRegistry,
+    ctx: &mut TxContext,
+) {
+    let admin_cap = myso::coin::create_coin_creation_admin_cap_for_testing(ctx);
+    new_currency_impl(registry, &admin_cap, ctx);
+}
+
+fun new_currency_impl(
+    registry: &mut CoinRegistry,
+    admin_cap: &CoinCreationAdminCap,
     ctx: &mut TxContext,
 ) {
     let (mut init, mut treasury_cap) = coin_registry::new_currency<Dynamic>(
@@ -19,6 +38,7 @@ entry fun new_currency(
         b"Dynamic".to_string(),
         b"A fake dynamic coin for test purposes".to_string(),
         b"https://example.com/dynamic.png".to_string(),
+        admin_cap,
         ctx,
     );
 

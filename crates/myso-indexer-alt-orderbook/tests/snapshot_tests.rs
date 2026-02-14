@@ -3,11 +3,6 @@ use chrono::NaiveDateTime;
 use orderbook_indexer::handlers::asset_supplied_handler::AssetSuppliedHandler;
 use orderbook_indexer::handlers::asset_withdrawn_handler::AssetWithdrawnHandler;
 use orderbook_indexer::handlers::balances_handler::BalancesHandler;
-use orderbook_indexer::handlers::myso_burned_handler::MysoBurnedHandler;
-use orderbook_indexer::handlers::orderbook_pool_config_updated_handler::OrderbookPoolConfigUpdatedHandler;
-use orderbook_indexer::handlers::orderbook_pool_registered_handler::OrderbookPoolRegisteredHandler;
-use orderbook_indexer::handlers::orderbook_pool_updated_handler::OrderbookPoolUpdatedHandler;
-use orderbook_indexer::handlers::orderbook_pool_updated_registry_handler::OrderbookPoolUpdatedRegistryHandler;
 use orderbook_indexer::handlers::flash_loan_handler::FlashLoanHandler;
 use orderbook_indexer::handlers::interest_params_updated_handler::InterestParamsUpdatedHandler;
 use orderbook_indexer::handlers::liquidation_handler::LiquidationHandler;
@@ -18,8 +13,13 @@ use orderbook_indexer::handlers::maintainer_fees_withdrawn_handler::MaintainerFe
 use orderbook_indexer::handlers::margin_manager_created_handler::MarginManagerCreatedHandler;
 use orderbook_indexer::handlers::margin_pool_config_updated_handler::MarginPoolConfigUpdatedHandler;
 use orderbook_indexer::handlers::margin_pool_created_handler::MarginPoolCreatedHandler;
+use orderbook_indexer::handlers::myso_burned_handler::MysoBurnedHandler;
 use orderbook_indexer::handlers::order_fill_handler::OrderFillHandler;
 use orderbook_indexer::handlers::order_update_handler::OrderUpdateHandler;
+use orderbook_indexer::handlers::orderbook_pool_config_updated_handler::OrderbookPoolConfigUpdatedHandler;
+use orderbook_indexer::handlers::orderbook_pool_registered_handler::OrderbookPoolRegisteredHandler;
+use orderbook_indexer::handlers::orderbook_pool_updated_handler::OrderbookPoolUpdatedHandler;
+use orderbook_indexer::handlers::orderbook_pool_updated_registry_handler::OrderbookPoolUpdatedRegistryHandler;
 use orderbook_indexer::handlers::pause_cap_updated_handler::PauseCapUpdatedHandler;
 use orderbook_indexer::handlers::pool_created_handler::PoolCreatedHandler;
 use orderbook_indexer::handlers::pool_price_handler::PoolPriceHandler;
@@ -40,19 +40,12 @@ use orderbook_indexer::handlers::conditional_order_cancelled_handler::Conditiona
 use orderbook_indexer::handlers::conditional_order_executed_handler::ConditionalOrderExecutedHandler;
 use orderbook_indexer::handlers::conditional_order_insufficient_funds_handler::ConditionalOrderInsufficientFundsHandler;
 
-use orderbook_indexer::OrderbookEnv;
-use myso_indexer_alt_orderbook_schema::MIGRATIONS;
 use fastcrypto::hash::{HashFunction, Sha256};
 use insta::assert_json_snapshot;
-use serde_json::Value;
-use sqlx::{Column, PgPool, Row, ValueRef};
-use std::env;
-use std::fs;
-use std::path::Path;
-use std::sync::Arc;
 use myso_indexer_alt_framework::pipeline::concurrent::Handler;
 use myso_indexer_alt_framework::pipeline::Processor;
 use myso_indexer_alt_framework::store::Store;
+use myso_indexer_alt_orderbook_schema::MIGRATIONS;
 use myso_pg_db::temp::TempDb;
 use myso_pg_db::Connection;
 use myso_pg_db::Db;
@@ -60,6 +53,13 @@ use myso_pg_db::DbArgs;
 use myso_storage::blob::Blob;
 use myso_types::full_checkpoint_content::Checkpoint;
 use myso_types::full_checkpoint_content::CheckpointData;
+use orderbook_indexer::OrderbookEnv;
+use serde_json::Value;
+use sqlx::{Column, PgPool, Row, ValueRef};
+use std::env;
+use std::fs;
+use std::path::Path;
+use std::sync::Arc;
 
 #[tokio::test]
 async fn balances_test() -> Result<(), anyhow::Error> {
@@ -179,7 +179,12 @@ async fn margin_pool_created_test() -> Result<(), anyhow::Error> {
 #[tokio::test]
 async fn orderbook_pool_updated_test() -> Result<(), anyhow::Error> {
     let handler = OrderbookPoolUpdatedHandler::new(OrderbookEnv::Testnet);
-    data_test("orderbook_pool_updated", handler, ["orderbook_pool_updated"]).await?;
+    data_test(
+        "orderbook_pool_updated",
+        handler,
+        ["orderbook_pool_updated"],
+    )
+    .await?;
     Ok(())
 }
 

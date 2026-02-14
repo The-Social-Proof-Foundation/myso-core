@@ -4,8 +4,8 @@
 
 use clap::Parser;
 use myso_orderbook_server::server::run_server;
-use std::net::SocketAddr;
 use myso_pg_db::DbArgs;
+use std::net::SocketAddr;
 use url::Url;
 
 #[derive(Parser)]
@@ -23,7 +23,11 @@ struct Args {
         default_value = "postgres://postgres:postgrespw@localhost:5432/orderbook"
     )]
     database_url: Url,
-    #[clap(env, long, default_value = "https://fullnode.mainnet.mysocial.network:443")]
+    #[clap(
+        env,
+        long,
+        default_value = "https://fullnode.mainnet.mysocial.network:443"
+    )]
     rpc_url: Url,
     #[clap(
         env,

@@ -252,6 +252,9 @@ public fun create_currency<T: drop>(
     icon_url: Option<Url>,
     ctx: &mut TxContext,
 ): (TreasuryCap<T>, CoinMetadata<T>) {
+    // Only allow genesis (@0x0 at epoch 0)
+    assert!(ctx.sender() == @0x0 && ctx.epoch() == 0, ENotAuthorized);
+
     // Make sure there's only one instance of the type T
     assert!(myso::types::is_one_time_witness(&witness), EBadWitness);
 
@@ -266,6 +269,34 @@ public fun create_currency<T: drop>(
             name: name.to_string(),
             symbol: symbol.to_ascii_string(),
             description: description.to_string(),
+            icon_url,
+        },
+    )
+}
+
+/// Create a new currency with admin authorization
+/// Requires CoinCreationAdminCap - only the admin can create new coins.
+/// Uniqueness is enforced by admin discretion (only CoinCreationAdminCap holder can create).
+public fun create_currency_with_admin<T>(
+    decimals: u8,
+    symbol: vector<u8>,
+    name: vector<u8>,
+    description: vector<u8>,
+    icon_url: Option<Url>,
+    _admin_cap: &CoinCreationAdminCap,
+    ctx: &mut TxContext,
+): (TreasuryCap<T>, CoinMetadata<T>) {
+    (
+        TreasuryCap {
+            id: object::new(ctx),
+            total_supply: balance::create_supply_internal(),
+        },
+        CoinMetadata {
+            id: object::new(ctx),
+            decimals,
+            name: string::utf8(name),
+            symbol: ascii::string(symbol),
+            description: string::utf8(description),
             icon_url,
         },
     )
@@ -298,6 +329,40 @@ public fun create_regulated_currency_v2<T: drop>(
         name,
         description,
         icon_url,
+        ctx,
+    );
+    let deny_cap = DenyCapV2 {
+        id: object::new(ctx),
+        allow_global_pause,
+    };
+    transfer::freeze_object(RegulatedCoinMetadata<T> {
+        id: object::new(ctx),
+        coin_metadata_object: object::id(&metadata),
+        deny_cap_object: object::id(&deny_cap),
+    });
+
+    (treasury_cap, deny_cap, metadata)
+}
+
+/// Admin-cap variant of `create_regulated_currency_v2`.
+/// Creates a regulated currency using `CoinCreationAdminCap` instead of a one-time witness.
+public fun create_regulated_currency_with_admin<T>(
+    decimals: u8,
+    symbol: vector<u8>,
+    name: vector<u8>,
+    description: vector<u8>,
+    icon_url: Option<Url>,
+    allow_global_pause: bool,
+    _admin_cap: &CoinCreationAdminCap,
+    ctx: &mut TxContext,
+): (TreasuryCap<T>, DenyCapV2<T>, CoinMetadata<T>) {
+    let (treasury_cap, metadata) = create_currency_with_admin(
+        decimals,
+        symbol,
+        name,
+        description,
+        icon_url,
+        _admin_cap,
         ctx,
     );
     let deny_cap = DenyCapV2 {
@@ -549,6 +614,17 @@ public(package) fun new_treasury_cap<T>(ctx: &mut TxContext): TreasuryCap<T> {
     }
 }
 
+/// Admin-cap-gated variant of `new_treasury_cap`. Used by coin_registry when creating coins post-genesis.
+public(package) fun new_treasury_cap_with_admin<T>(
+    _admin_cap: &CoinCreationAdminCap,
+    ctx: &mut TxContext,
+): TreasuryCap<T> {
+    TreasuryCap {
+        id: object::new(ctx),
+        total_supply: balance::create_supply_internal(),
+    }
+}
+
 public(package) fun allow_global_pause<T>(cap: &DenyCapV2<T>): bool {
     cap.allow_global_pause
 }
@@ -587,6 +663,14 @@ public(package) fun update_coin_metadata<T>(
 }
 
 // === Test-only code ===
+
+#[test_only]
+/// Create CoinCreationAdminCap for testing purposes.
+public fun create_coin_creation_admin_cap_for_testing(ctx: &mut TxContext): CoinCreationAdminCap {
+    CoinCreationAdminCap {
+        id: object::new(ctx),
+    }
+}
 
 #[test_only]
 /// Mint coins of any type for (obviously!) testing purposes only

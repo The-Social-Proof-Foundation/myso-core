@@ -1,10 +1,10 @@
 use crate::OrderbookEnv;
-use std::sync::Arc;
 use myso_indexer_alt_framework::types::full_checkpoint_content::{
     Checkpoint, ExecutedTransaction, ObjectSet,
 };
 use myso_types::effects::TransactionEffectsAPI;
 use myso_types::transaction::{Command, TransactionDataAPI};
+use std::sync::Arc;
 
 /// Captures common transaction metadata for event processing.
 /// Used by the `define_handler!` macro to avoid repetitive field extraction.
@@ -162,11 +162,6 @@ pub mod conditional_order_added_handler;
 pub mod conditional_order_cancelled_handler;
 pub mod conditional_order_executed_handler;
 pub mod conditional_order_insufficient_funds_handler;
-pub mod myso_burned_handler;
-pub mod orderbook_pool_config_updated_handler;
-pub mod orderbook_pool_registered_handler;
-pub mod orderbook_pool_updated_handler;
-pub mod orderbook_pool_updated_registry_handler;
 pub mod deposit_collateral_handler;
 pub mod flash_loan_handler;
 pub mod interest_params_updated_handler;
@@ -178,8 +173,13 @@ pub mod maintainer_fees_withdrawn_handler;
 pub mod margin_manager_created_handler;
 pub mod margin_pool_config_updated_handler;
 pub mod margin_pool_created_handler;
+pub mod myso_burned_handler;
 pub mod order_fill_handler;
 pub mod order_update_handler;
+pub mod orderbook_pool_config_updated_handler;
+pub mod orderbook_pool_registered_handler;
+pub mod orderbook_pool_updated_handler;
+pub mod orderbook_pool_updated_registry_handler;
 pub mod pause_cap_updated_handler;
 pub mod pool_created_handler;
 pub mod pool_price_handler;

@@ -4,10 +4,10 @@
 
 use crate::admin::handlers::{CreateAssetRequest, CreatePoolRequest, UpdatePoolRequest};
 use crate::error::OrderbookError;
-use orderbook_schema::schema;
 use diesel::{AsChangeset, ExpressionMethods, QueryDsl};
 use diesel_async::RunQueryDsl;
 use myso_pg_db::{Db, DbArgs};
+use orderbook_schema::schema;
 use url::Url;
 
 #[derive(AsChangeset)]
@@ -59,7 +59,11 @@ impl Writer {
         Ok(())
     }
 
-    pub async fn update_pool(&self, id: &str, req: UpdatePoolRequest) -> Result<(), OrderbookError> {
+    pub async fn update_pool(
+        &self,
+        id: &str,
+        req: UpdatePoolRequest,
+    ) -> Result<(), OrderbookError> {
         let mut conn = self
             .db
             .connect()

@@ -7,11 +7,6 @@ use crate::schema::{
     collateral_events,
     // TPSL (Take Profit/Stop Loss) Events
     conditional_order_events,
-    myso_burned,
-    orderbook_pool_config_updated,
-    orderbook_pool_registered,
-    orderbook_pool_updated,
-    orderbook_pool_updated_registry,
     flashloans,
     interest_params_updated,
     liquidation,
@@ -28,8 +23,14 @@ use crate::schema::{
     margin_pool_created,
     // snapshots for analytics
     margin_pool_snapshots,
+    myso_burned,
+    myso_error_transactions,
     order_fills,
     order_updates,
+    orderbook_pool_config_updated,
+    orderbook_pool_registered,
+    orderbook_pool_updated,
+    orderbook_pool_updated_registry,
     pause_cap_updated,
     points,
     pool_created,
@@ -42,7 +43,6 @@ use crate::schema::{
     referral_fee_events,
     referral_fees_claimed,
     stakes,
-    myso_error_transactions,
     supplier_cap_minted,
     supply_referral_minted,
     trade_params_update,
@@ -54,10 +54,10 @@ use diesel::pg::{Pg, PgValue};
 use diesel::serialize::{Output, ToSql};
 use diesel::sql_types::Text;
 use diesel::{AsExpression, Identifiable, Insertable, Queryable, QueryableByName, Selectable};
+use myso_field_count::FieldCount;
 use serde::{Serialize, Serializer};
 use std::str::FromStr;
 use strum_macros::{AsRefStr, EnumString};
-use myso_field_count::FieldCount;
 
 fn serialize_bigdecimal_option<S>(
     value: &Option<BigDecimal>,

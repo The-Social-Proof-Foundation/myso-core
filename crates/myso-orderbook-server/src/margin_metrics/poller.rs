@@ -1,14 +1,14 @@
 use super::metrics::MarginMetrics;
 use super::rpc_client::{MarginPoolState, MarginRpcClient};
 use anyhow::Result;
-use orderbook_schema::models::NewMarginPoolSnapshot;
-use orderbook_schema::schema::{assets, margin_pool_created, margin_pool_snapshots};
 use diesel::QueryDsl;
 use diesel_async::RunQueryDsl;
-use std::sync::Arc;
-use std::time::Duration;
 use myso_pg_db::Db;
 use myso_sdk::MySoClientBuilder;
+use orderbook_schema::models::NewMarginPoolSnapshot;
+use orderbook_schema::schema::{assets, margin_pool_created, margin_pool_snapshots};
+use std::sync::Arc;
+use std::time::Duration;
 use tokio_util::sync::CancellationToken;
 use url::Url;
 

@@ -160,7 +160,7 @@ pub async fn create_dynamic_currency(
         .move_call(
             coin_type.address.into(),
             coin_type.module.clone(),
-            ident_str!("new_currency").to_owned(),
+            ident_str!("new_currency_with_test_cap").to_owned(),
             vec![],
             vec![CallArg::Object(ObjectArg::SharedObject {
                 id: MYSO_COIN_REGISTRY_OBJECT_ID,

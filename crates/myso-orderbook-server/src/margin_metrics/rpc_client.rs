@@ -1,13 +1,13 @@
 use anyhow::{anyhow, Result};
-use std::str::FromStr;
 use myso_sdk::MySoClient;
 use myso_types::{
-    base_types::{ObjectID, SequenceNumber, MySoAddress},
+    base_types::{MySoAddress, ObjectID, SequenceNumber},
     programmable_transaction_builder::ProgrammableTransactionBuilder,
     transaction::{Argument, CallArg, Command, ObjectArg, ProgrammableMoveCall, TransactionKind},
     type_input::TypeInput,
     TypeTag,
 };
+use std::str::FromStr;
 
 const MARGIN_POOL_MODULE: &str = "margin_pool";
 const MYSO_CLOCK_OBJECT_ID: &str =

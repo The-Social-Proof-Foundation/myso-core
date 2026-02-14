@@ -10,19 +10,20 @@ use axum::{
     routing::get,
     Json, Router,
 };
-use orderbook_schema::models::{
-    AssetSupplied, AssetWithdrawn, CollateralEvent, OrderbookPoolConfigUpdated,
-    OrderbookPoolRegistered, OrderbookPoolUpdated, OrderbookPoolUpdatedRegistry,
-    InterestParamsUpdated, Liquidation, LoanBorrowed, LoanRepaid, MaintainerCapUpdated,
-    MaintainerFeesWithdrawn, MarginManagerCreated, MarginManagerState, MarginPoolConfigUpdated,
-    MarginPoolCreated, PauseCapUpdated, Pools, ProtocolFeesIncreasedEvent, ProtocolFeesWithdrawn,
-    ReferralFeeEvent, ReferralFeesClaimedEvent, SupplierCapMinted, SupplyReferralMinted,
-};
-use orderbook_schema::*;
 use diesel::dsl::count_star;
 use diesel::dsl::{max, min};
 use diesel::{ExpressionMethods, QueryDsl};
 use governor::{Quota, RateLimiter};
+use myso_pg_db::DbArgs;
+use orderbook_schema::models::{
+    AssetSupplied, AssetWithdrawn, CollateralEvent, InterestParamsUpdated, Liquidation,
+    LoanBorrowed, LoanRepaid, MaintainerCapUpdated, MaintainerFeesWithdrawn, MarginManagerCreated,
+    MarginManagerState, MarginPoolConfigUpdated, MarginPoolCreated, OrderbookPoolConfigUpdated,
+    OrderbookPoolRegistered, OrderbookPoolUpdated, OrderbookPoolUpdatedRegistry, PauseCapUpdated,
+    Pools, ProtocolFeesIncreasedEvent, ProtocolFeesWithdrawn, ReferralFeeEvent,
+    ReferralFeesClaimedEvent, SupplierCapMinted, SupplyReferralMinted,
+};
+use orderbook_schema::*;
 use secrecy::{ExposeSecret, Secret};
 use serde::Deserialize;
 use serde_json::Value;
@@ -30,7 +31,6 @@ use std::net::{IpAddr, Ipv4Addr};
 use std::num::NonZeroU32;
 use std::time::{SystemTime, UNIX_EPOCH};
 use std::{collections::HashMap, net::SocketAddr};
-use myso_pg_db::DbArgs;
 use tokio::net::TcpListener;
 use tokio::sync::oneshot;
 use tokio::sync::OnceCell;
@@ -44,20 +44,20 @@ use crate::reader::Reader;
 use crate::writer::Writer;
 use axum::middleware::from_fn_with_state;
 use futures::future::join_all;
-use prometheus::Registry;
-use std::str::FromStr;
-use std::sync::Arc;
 use myso_futures::service::Service;
 use myso_indexer_alt_metrics::{MetricsArgs, MetricsService};
 use myso_json_rpc_types::{MySoObjectData, MySoObjectDataOptions, MySoObjectResponse};
 use myso_sdk::MySoClientBuilder;
 use myso_types::{
-    base_types::{ObjectID, MySoAddress},
+    base_types::{MySoAddress, ObjectID},
     programmable_transaction_builder::ProgrammableTransactionBuilder,
     transaction::{Argument, CallArg, Command, ObjectArg, ProgrammableMoveCall, TransactionKind},
     type_input::TypeInput,
     TypeTag,
 };
+use prometheus::Registry;
+use std::str::FromStr;
+use std::sync::Arc;
 use tokio::join;
 
 pub const GET_POOLS_PATH: &str = "/get_pools";
@@ -387,7 +387,10 @@ pub(crate) fn make_router(state: Arc<AppState>) -> Router {
         .route(PROTOCOL_FEES_INCREASED_PATH, get(protocol_fees_increased))
         .route(REFERRAL_FEES_CLAIMED_PATH, get(referral_fees_claimed))
         .route(REFERRAL_FEE_EVENTS_PATH, get(referral_fee_events))
-        .route(ORDERBOOK_POOL_REGISTERED_PATH, get(orderbook_pool_registered))
+        .route(
+            ORDERBOOK_POOL_REGISTERED_PATH,
+            get(orderbook_pool_registered),
+        )
         .route(
             ORDERBOOK_POOL_UPDATED_REGISTRY_PATH,
             get(orderbook_pool_updated_registry),
@@ -1504,9 +1507,14 @@ async fn orderbook(
             MySoObjectDataOptions::full_content().with_owner(),
         )
         .await?;
-    let pool_data: &MySoObjectData = pool_object.data.as_ref().ok_or(OrderbookError::rpc(
-        format!("Missing data in pool object response for '{}'", pool_name),
-    ))?;
+    let pool_data: &MySoObjectData =
+        pool_object
+            .data
+            .as_ref()
+            .ok_or(OrderbookError::rpc(format!(
+                "Missing data in pool object response for '{}'",
+                pool_name
+            )))?;
 
     let initial_shared_version = match &pool_data.owner {
         Some(myso_types::object::Owner::Shared {
@@ -1682,8 +1690,9 @@ async fn myso_supply(State(state): State<Arc<AppState>>) -> Result<Json<u64>, Or
     });
     ptb.input(myso_treasury_input)?;
 
-    let package = ObjectID::from_hex_literal(&state.myso_token_package_id)
-        .map_err(|e| OrderbookError::bad_request(format!("Invalid myso token package ID: {}", e)))?;
+    let package = ObjectID::from_hex_literal(&state.myso_token_package_id).map_err(|e| {
+        OrderbookError::bad_request(format!("Invalid myso token package ID: {}", e))
+    })?;
     let module = MYSO_SUPPLY_MODULE.to_string();
     let function = MYSO_SUPPLY_FUNCTION.to_string();
 
@@ -1761,9 +1770,14 @@ async fn margin_supply(
             )
             .await?;
 
-        let pool_data: &MySoObjectData = pool_object.data.as_ref().ok_or(OrderbookError::rpc(
-            format!("Missing data in pool object response for '{}'", pool_id),
-        ))?;
+        let pool_data: &MySoObjectData =
+            pool_object
+                .data
+                .as_ref()
+                .ok_or(OrderbookError::rpc(format!(
+                    "Missing data in pool object response for '{}'",
+                    pool_id
+                )))?;
 
         let initial_shared_version = match &pool_data.owner {
             Some(myso_types::object::Owner::Shared {

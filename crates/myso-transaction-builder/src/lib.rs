@@ -492,9 +492,34 @@ impl TransactionBuilder {
         sender: MySoAddress,
         modules: Vec<Vec<u8>>,
         dep_ids: Vec<ObjectID>,
+        admin_cap: Option<ObjectID>,
+        coin_admin_cap: Option<ObjectID>,
     ) -> Result<TransactionKind, anyhow::Error> {
         let pt = {
             let mut builder = ProgrammableTransactionBuilder::new();
+            for cap_id in admin_cap.into_iter().chain(coin_admin_cap) {
+                let obj = self.0.get_object(cap_id).await?;
+                let owner = obj.owner().clone();
+                let obj_ref = obj.compute_object_reference();
+                let obj_arg = match owner {
+                    Owner::AddressOwner(_) => ObjectArg::ImmOrOwnedObject(obj_ref),
+                    Owner::Shared {
+                        initial_shared_version,
+                    }
+                    | Owner::ConsensusAddressOwner {
+                        start_version: initial_shared_version,
+                        ..
+                    } => ObjectArg::SharedObject {
+                        id: obj_ref.0,
+                        initial_shared_version,
+                        mutability: SharedObjectMutability::Mutable,
+                    },
+                    Owner::Immutable | Owner::ObjectOwner(_) => {
+                        bail!("Admin cap must be owned or shared, not immutable or object-owned")
+                    }
+                };
+                builder.obj(obj_arg)?;
+            }
             let upgrade_cap = builder.publish_upgradeable(modules, dep_ids);
             builder.transfer_arg(sender, upgrade_cap);
             builder.finish()

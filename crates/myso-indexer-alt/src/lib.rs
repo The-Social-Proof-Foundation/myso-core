@@ -4,7 +4,6 @@
 
 use anyhow::Context;
 use myso_indexer_alt_framework::Indexer;
-use tracing::info;
 use myso_indexer_alt_framework::IndexerArgs;
 use myso_indexer_alt_framework::ingestion::ClientArgs;
 use myso_indexer_alt_framework::ingestion::IngestionConfig;
@@ -18,6 +17,7 @@ use myso_indexer_alt_metrics::db::DbConnectionStatsCollector;
 use myso_indexer_alt_schema::MIGRATIONS;
 use myso_indexer_alt_social_schema::MIGRATIONS as SOCIAL_MIGRATIONS;
 use prometheus::Registry;
+use tracing::info;
 use url::Url;
 
 use crate::bootstrap::bootstrap;

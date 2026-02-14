@@ -1,9 +1,9 @@
 use crate::traits::MoveStruct;
 use move_core_types::account_address::AccountAddress;
-use serde::{Deserialize, Serialize};
-use std::marker::PhantomData;
 use myso_types::base_types::ObjectID;
 use myso_types::collection_types::VecMap;
+use serde::{Deserialize, Serialize};
+use std::marker::PhantomData;
 
 /// Alias for the Move `address` type used in BCS-deserialized event fields.
 type Address = AccountAddress;

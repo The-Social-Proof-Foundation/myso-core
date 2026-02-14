@@ -1,8 +1,8 @@
 use anyhow::Context;
 use clap::Parser;
 use orderbook_indexer::handlers::balances_handler::BalancesHandler;
-use orderbook_indexer::handlers::myso_burned_handler::MysoBurnedHandler;
 use orderbook_indexer::handlers::flash_loan_handler::FlashLoanHandler;
+use orderbook_indexer::handlers::myso_burned_handler::MysoBurnedHandler;
 use orderbook_indexer::handlers::order_fill_handler::OrderFillHandler;
 use orderbook_indexer::handlers::order_update_handler::OrderUpdateHandler;
 use orderbook_indexer::handlers::pool_price_handler::PoolPriceHandler;
@@ -28,16 +28,16 @@ use orderbook_indexer::handlers::supplier_cap_minted_handler::SupplierCapMintedH
 use orderbook_indexer::handlers::supply_referral_minted_handler::SupplyReferralMintedHandler;
 
 // Margin Pool Admin Events
-use orderbook_indexer::handlers::orderbook_pool_updated_handler::OrderbookPoolUpdatedHandler;
 use orderbook_indexer::handlers::interest_params_updated_handler::InterestParamsUpdatedHandler;
 use orderbook_indexer::handlers::margin_pool_config_updated_handler::MarginPoolConfigUpdatedHandler;
 use orderbook_indexer::handlers::margin_pool_created_handler::MarginPoolCreatedHandler;
+use orderbook_indexer::handlers::orderbook_pool_updated_handler::OrderbookPoolUpdatedHandler;
 
 // Margin Registry Events
+use orderbook_indexer::handlers::maintainer_cap_updated_handler::MaintainerCapUpdatedHandler;
 use orderbook_indexer::handlers::orderbook_pool_config_updated_handler::OrderbookPoolConfigUpdatedHandler;
 use orderbook_indexer::handlers::orderbook_pool_registered_handler::OrderbookPoolRegisteredHandler;
 use orderbook_indexer::handlers::orderbook_pool_updated_registry_handler::OrderbookPoolUpdatedRegistryHandler;
-use orderbook_indexer::handlers::maintainer_cap_updated_handler::MaintainerCapUpdatedHandler;
 use orderbook_indexer::handlers::pause_cap_updated_handler::PauseCapUpdatedHandler;
 
 // Protocol Fees Events
@@ -54,17 +54,17 @@ use orderbook_indexer::handlers::conditional_order_cancelled_handler::Conditiona
 use orderbook_indexer::handlers::conditional_order_executed_handler::ConditionalOrderExecutedHandler;
 use orderbook_indexer::handlers::conditional_order_insufficient_funds_handler::ConditionalOrderInsufficientFundsHandler;
 
-use orderbook_indexer::OrderbookEnv;
-use myso_indexer_alt_orderbook_schema::MIGRATIONS;
-use prometheus::Registry;
-use std::net::SocketAddr;
 use myso_indexer_alt_framework::ingestion::ingestion_client::IngestionClientArgs;
 use myso_indexer_alt_framework::ingestion::streaming_client::StreamingClientArgs;
 use myso_indexer_alt_framework::ingestion::{ClientArgs, IngestionConfig};
 use myso_indexer_alt_framework::{Indexer, IndexerArgs};
 use myso_indexer_alt_metrics::db::DbConnectionStatsCollector;
 use myso_indexer_alt_metrics::{MetricsArgs, MetricsService};
+use myso_indexer_alt_orderbook_schema::MIGRATIONS;
 use myso_pg_db::{Db, DbArgs};
+use orderbook_indexer::OrderbookEnv;
+use prometheus::Registry;
+use std::net::SocketAddr;
 
 use url::Url;
 

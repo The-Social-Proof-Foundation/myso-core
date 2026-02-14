@@ -18,35 +18,34 @@ use diesel::BoolExpressionMethods;
 use diesel::ExpressionMethods;
 use diesel::QueryDsl;
 use diesel_async::RunQueryDsl;
+use move_core_types::account_address::AccountAddress;
 use myso_indexer_alt_framework::FieldCount;
 use myso_indexer_alt_framework::pipeline::Processor;
 use myso_indexer_alt_framework::postgres::Connection;
 use myso_indexer_alt_framework::postgres::handler::Handler;
 use myso_indexer_alt_framework::types::full_checkpoint_content::Checkpoint;
 use myso_indexer_alt_social_schema::models::{
-    GovernanceRegistryUpdate, NewAnonymousVote, NewBlockedEvent, NewBlockedProfile, NewCommunityVote,
-    NewDelegate, NewDelegateRating, NewDelegateVote, NewGovernanceEvent, NewGovernanceRegistry,
-    NewNominatedDelegate, NewProfile, NewProfileBadge, NewProfileEvent, NewProposal,
-    NewRewardDistribution, NewSocialGraphEvent, NewSocialGraphRelationship, NewVoteDecryptionFailure,
-    ProfileUpdateSet, ProposalUpdateSet,
+    GovernanceRegistryUpdate, NewAnonymousVote, NewBlockedEvent, NewBlockedProfile,
+    NewCommunityVote, NewDelegate, NewDelegateRating, NewDelegateVote, NewGovernanceEvent,
+    NewGovernanceRegistry, NewNominatedDelegate, NewProfile, NewProfileBadge, NewProfileEvent,
+    NewProposal, NewRewardDistribution, NewSocialGraphEvent, NewSocialGraphRelationship,
+    NewVoteDecryptionFailure, ProfileUpdateSet, ProposalUpdateSet,
 };
 use myso_indexer_alt_social_schema::schema::{
     anonymous_votes, blocked_events, blocked_profiles, community_votes, delegate_ratings,
     delegate_votes, delegates, governance_events, governance_registries, nominated_delegates,
-    profile_badges, profile_events, profiles, proposals, reward_distributions,
-    social_graph_events, social_graph_relationships, vote_decryption_failures,
+    profile_badges, profile_events, profiles, proposals, reward_distributions, social_graph_events,
+    social_graph_relationships, vote_decryption_failures,
 };
-use move_core_types::account_address::AccountAddress;
-use myso_types::base_types::ObjectID;
 use myso_types::MYSO_SOCIAL_PACKAGE_ID;
+use myso_types::base_types::ObjectID;
 use tracing::{debug, trace};
 
 use self::events::parse_event_contents;
 
 fn is_social_package_event(package_id: &ObjectID, type_address: &AccountAddress) -> bool {
     use std::ops::Deref;
-    *package_id == MYSO_SOCIAL_PACKAGE_ID
-        || type_address == MYSO_SOCIAL_PACKAGE_ID.deref()
+    *package_id == MYSO_SOCIAL_PACKAGE_ID || type_address == MYSO_SOCIAL_PACKAGE_ID.deref()
 }
 
 pub(crate) struct SocialEvents;
@@ -156,8 +155,7 @@ impl Processor for SocialEvents {
             };
 
             for (event_seq, ev) in events.data.iter().enumerate() {
-                let package_matches =
-                    is_social_package_event(&ev.package_id, &ev.type_.address);
+                let package_matches = is_social_package_event(&ev.package_id, &ev.type_.address);
                 if !package_matches {
                     #[cfg(debug_assertions)]
                     if ev.type_.module.as_str() == "profile"
@@ -385,7 +383,8 @@ impl Handler for SocialEvents {
                             governance_registries::registry_id.eq(registry_id),
                             governance_registries::delegate_count.eq(delegate_count),
                             governance_registries::delegate_term_epochs.eq(delegate_term_epochs),
-                            governance_registries::proposal_submission_cost.eq(proposal_submission_cost),
+                            governance_registries::proposal_submission_cost
+                                .eq(proposal_submission_cost),
                             governance_registries::max_votes_per_user.eq(max_votes_per_user),
                             governance_registries::quadratic_base_cost.eq(quadratic_base_cost),
                             governance_registries::voting_period_ms.eq(voting_period_ms),
@@ -401,7 +400,8 @@ impl Handler for SocialEvents {
                         .set((
                             governance_registries::delegate_count.eq(up.delegate_count),
                             governance_registries::delegate_term_epochs.eq(up.delegate_term_epochs),
-                            governance_registries::proposal_submission_cost.eq(up.proposal_submission_cost),
+                            governance_registries::proposal_submission_cost
+                                .eq(up.proposal_submission_cost),
                             governance_registries::max_votes_per_user.eq(up.max_votes_per_user),
                             governance_registries::quadratic_base_cost.eq(up.quadratic_base_cost),
                             governance_registries::voting_period_ms.eq(up.voting_period_ms),

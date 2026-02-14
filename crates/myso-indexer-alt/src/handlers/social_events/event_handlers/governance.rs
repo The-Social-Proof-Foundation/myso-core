@@ -68,13 +68,17 @@ pub fn handle_governance_event(
         "ProposalApprovedForVoting" => process_proposal_approved_for_voting_event(data, event_id),
         "ProposalRejected" => process_proposal_rejected_event(data, event_id),
         "ProposalRescinded" => process_proposal_rescinded_event(data, event_id),
-        "ProposalRejectedByCommunity" => process_proposal_rejected_by_community_event(data, event_id),
+        "ProposalRejectedByCommunity" => {
+            process_proposal_rejected_by_community_event(data, event_id)
+        }
         "ProposalApproved" => process_proposal_approved_event(data, event_id),
         "ProposalImplemented" => process_proposal_implemented_event(data, event_id),
         "RewardsDistributed" => process_rewards_distributed_event(data, event_id),
         "AnonymousVote" => process_anonymous_vote_event(data, event_id),
         "VoteDecryptionFailed" => process_vote_decryption_failed_event(data, event_id),
-        "GovernanceParametersUpdated" => process_governance_parameters_updated_event(data, event_id),
+        "GovernanceParametersUpdated" => {
+            process_governance_parameters_updated_event(data, event_id)
+        }
         _ => None,
     }
 }
@@ -135,7 +139,10 @@ fn process_governance_registry_created_event(
     ])
 }
 
-fn process_delegate_nominated_event(data: &serde_json::Value, event_id: &str) -> Option<Vec<SocialEventRow>> {
+fn process_delegate_nominated_event(
+    data: &serde_json::Value,
+    event_id: &str,
+) -> Option<Vec<SocialEventRow>> {
     #[derive(serde::Deserialize)]
     struct Ev {
         nominee_address: String,
@@ -170,7 +177,10 @@ fn process_delegate_nominated_event(data: &serde_json::Value, event_id: &str) ->
     ])
 }
 
-fn process_delegate_elected_event(data: &serde_json::Value, event_id: &str) -> Option<Vec<SocialEventRow>> {
+fn process_delegate_elected_event(
+    data: &serde_json::Value,
+    event_id: &str,
+) -> Option<Vec<SocialEventRow>> {
     #[derive(serde::Deserialize)]
     struct Ev {
         delegate_address: String,
@@ -213,7 +223,10 @@ fn process_delegate_elected_event(data: &serde_json::Value, event_id: &str) -> O
     ])
 }
 
-fn process_delegate_voted_event(data: &serde_json::Value, event_id: &str) -> Option<Vec<SocialEventRow>> {
+fn process_delegate_voted_event(
+    data: &serde_json::Value,
+    event_id: &str,
+) -> Option<Vec<SocialEventRow>> {
     #[derive(serde::Deserialize)]
     struct Ev {
         target_address: String,
@@ -252,7 +265,10 @@ fn process_delegate_voted_event(data: &serde_json::Value, event_id: &str) -> Opt
     ])
 }
 
-fn process_proposal_submitted_event(data: &serde_json::Value, event_id: &str) -> Option<Vec<SocialEventRow>> {
+fn process_proposal_submitted_event(
+    data: &serde_json::Value,
+    event_id: &str,
+) -> Option<Vec<SocialEventRow>> {
     #[derive(serde::Deserialize)]
     struct Ev {
         proposal_id: String,
@@ -269,9 +285,7 @@ fn process_proposal_submitted_event(data: &serde_json::Value, event_id: &str) ->
         submission_time: u64,
     }
     let ev: Ev = serde_json::from_value(data.clone()).ok()?;
-    let metadata_json = ev
-        .metadata_json
-        .and_then(|s| serde_json::from_str(&s).ok());
+    let metadata_json = ev.metadata_json.and_then(|s| serde_json::from_str(&s).ok());
     let proposal = NewProposal {
         id: ev.proposal_id.clone(),
         title: ev.title,
@@ -305,7 +319,10 @@ fn process_proposal_submitted_event(data: &serde_json::Value, event_id: &str) ->
     ])
 }
 
-fn process_delegate_vote_event(data: &serde_json::Value, event_id: &str) -> Option<Vec<SocialEventRow>> {
+fn process_delegate_vote_event(
+    data: &serde_json::Value,
+    event_id: &str,
+) -> Option<Vec<SocialEventRow>> {
     #[derive(serde::Deserialize)]
     struct Ev {
         proposal_id: String,
@@ -336,7 +353,10 @@ fn process_delegate_vote_event(data: &serde_json::Value, event_id: &str) -> Opti
     ])
 }
 
-fn process_community_vote_event(data: &serde_json::Value, event_id: &str) -> Option<Vec<SocialEventRow>> {
+fn process_community_vote_event(
+    data: &serde_json::Value,
+    event_id: &str,
+) -> Option<Vec<SocialEventRow>> {
     #[derive(serde::Deserialize)]
     struct Ev {
         proposal_id: String,
@@ -406,7 +426,10 @@ fn process_proposal_approved_for_voting_event(
     }])
 }
 
-fn process_proposal_rejected_event(data: &serde_json::Value, event_id: &str) -> Option<Vec<SocialEventRow>> {
+fn process_proposal_rejected_event(
+    data: &serde_json::Value,
+    event_id: &str,
+) -> Option<Vec<SocialEventRow>> {
     #[derive(serde::Deserialize)]
     struct Ev {
         proposal_id: String,
@@ -434,7 +457,10 @@ fn process_proposal_rejected_event(data: &serde_json::Value, event_id: &str) -> 
     }])
 }
 
-fn process_proposal_rescinded_event(data: &serde_json::Value, event_id: &str) -> Option<Vec<SocialEventRow>> {
+fn process_proposal_rescinded_event(
+    data: &serde_json::Value,
+    event_id: &str,
+) -> Option<Vec<SocialEventRow>> {
     #[derive(serde::Deserialize)]
     struct Ev {
         proposal_id: String,
@@ -513,7 +539,10 @@ fn process_proposal_rejected_by_community_event(
     }])
 }
 
-fn process_proposal_approved_event(data: &serde_json::Value, event_id: &str) -> Option<Vec<SocialEventRow>> {
+fn process_proposal_approved_event(
+    data: &serde_json::Value,
+    event_id: &str,
+) -> Option<Vec<SocialEventRow>> {
     #[derive(serde::Deserialize)]
     struct Ev {
         proposal_id: String,
@@ -614,7 +643,10 @@ fn process_rewards_distributed_event(
     ])
 }
 
-fn process_anonymous_vote_event(data: &serde_json::Value, event_id: &str) -> Option<Vec<SocialEventRow>> {
+fn process_anonymous_vote_event(
+    data: &serde_json::Value,
+    event_id: &str,
+) -> Option<Vec<SocialEventRow>> {
     #[derive(serde::Deserialize)]
     struct Ev {
         proposal_id: String,
