@@ -141,7 +141,7 @@ impl BuiltInFramework {
             ),
             (
                 ORDERBOOK_PACKAGE_ID,
-                "OrderBook",
+                "Orderbook",
                 "orderbook",
                 [MOVE_STDLIB_PACKAGE_ID, MYSO_FRAMEWORK_PACKAGE_ID]
             ),

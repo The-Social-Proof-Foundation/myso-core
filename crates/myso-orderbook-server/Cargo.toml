@@ -1,0 +1,42 @@
+[package]
+name = "myso-orderbook-server"
+version = "0.1.0"
+authors = ["The Social Proof Foundation <brandon@mysocial.network>"]
+license = "Apache-2.0"
+publish = false
+edition = "2021"
+
+[dependencies]
+orderbook-schema = { path = "../myso-indexer-alt-orderbook-schema", package = "myso-indexer-alt-orderbook-schema" }
+tokio.workspace = true
+futures = "0.3.31"
+clap = { workspace = true, features = ["env"] }
+diesel = { workspace = true, features = ["postgres", "uuid", "chrono", "serde_json", "numeric"] }
+diesel-async = { workspace = true, features = ["bb8", "postgres"] }
+bcs.workspace = true
+anyhow.workspace = true
+serde = { workspace = true, features = ["derive"] }
+serde_json.workspace = true
+url.workspace = true
+prometheus.workspace = true
+myso-futures.workspace = true
+myso-types.workspace = true
+myso-indexer-alt-metrics.workspace = true
+telemetry-subscribers.workspace = true
+axum = { version = "0.7", features = ["json"] }
+myso-json-rpc-types.workspace = true
+myso-pg-db.workspace = true
+tower-http = { version = "0.5", features = ["cors"] }
+myso-sdk.workspace = true
+bigdecimal = "0.4.9"
+chrono = "0.4.42"
+thiserror = "1.0"
+tokio-util = "0.7"
+subtle = "2.5"
+tracing.workspace = true
+governor = "0.6"
+secrecy = "0.8"
+
+[[bin]]
+name = "myso-orderbook-server"
+path = "src/main.rs"

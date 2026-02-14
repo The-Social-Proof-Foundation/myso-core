@@ -140,13 +140,16 @@ mod zk_login {
     pub static SHORT_ADDRESS_SEED: &str =
         "380704556853533152350240698167704405529973457670972223618755249929828551006";
 
-    const MYSO_PRIV_KEY_PREFIX: &str = "mysoprivkey";
-
     fn decode_zklogin_test_key(kp_str: &str) -> MySoKeyPair {
         MySoKeyPair::decode(kp_str).unwrap_or_else(|_| {
-            let bytes = Bech32::decode(kp_str, MYSO_PRIV_KEY_PREFIX)
-                .unwrap_or_else(|e| panic!("Failed to decode zkLogin test key: {e}"));
-            MySoKeyPair::from_bytes(&bytes).unwrap_or_else(|e| panic!("Invalid key bytes: {e}"))
+            const PREFIXES: &[&str] = &["mysoprivkey", "suiprivkey"];
+            for prefix in PREFIXES {
+                if let Ok(bytes) = Bech32::decode(kp_str, prefix) {
+                    return MySoKeyPair::from_bytes(&bytes)
+                        .unwrap_or_else(|e| panic!("Invalid key bytes: {e}"));
+                }
+            }
+            panic!("Failed to decode zkLogin test key: Invalid value was given to the function");
         })
     }
 

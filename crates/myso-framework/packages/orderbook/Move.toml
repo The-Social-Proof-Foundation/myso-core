@@ -1,12 +1,12 @@
 [package]
-name = "OrderBook"
+name = "Orderbook"
 version = "0.0.1"
-published-at = "0xdee9"
+published-at = "0x0b0c"
 edition = "2024.beta"
 
 [dependencies]
 MoveStdlib = { local = "../move-stdlib" }
-MySo = { local = "../myso-framework" }
+MySo = { local = "../myso-framework/myso-framework" }
 
 [addresses]
-orderbook = "0xdee9"
+orderbook = "0x0b0c"

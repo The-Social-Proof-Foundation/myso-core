@@ -2,204 +2,74 @@
 // Copyright (c) The Social Proof Foundation, LLC.
 // SPDX-License-Identifier: Apache-2.0
 
-module orderbook::order_query {
-    use std::option::{some, none};
-    use orderbook::critbit::CritbitTree;
-    use myso::linked_table;
-    use orderbook::critbit;
-    use orderbook::clob_v2;
-    use orderbook::clob_v2::{Order, Pool, TickLevel};
+/// This module defines the OrderPage struct and its methods to iterate over orders in a pool.
+module orderbook::order_query;
 
-    const PAGE_LIMIT: u64 = 100;
+use orderbook::{big_vector::slice_borrow, constants, order::Order, pool::Pool};
 
-    public struct OrderPage has drop {
-        orders: vector<Order>,
-        // false if this is the last page
-        has_next_page: bool,
-        // tick level where the next page begins (if any)
-        next_tick_level: Option<u64>,
-        // order id where the next page begins (if any)
-        next_order_id: Option<u64>
-    }
+// === Structs ===
+public struct OrderPage has drop {
+    orders: vector<Order>,
+    has_next_page: bool,
+}
 
-    // return an OrderPage starting from start_tick_level + start_order_id
-    // containing as many orders as possible without going over the
-    // dynamic fields accessed/tx limit
-    public fun iter_bids<T1, T2>(
-        pool: &Pool<T1, T2>,
-        // tick level to start from
-        start_tick_level: Option<u64>,
-        // order id within that tick level to start from
-        start_order_id: Option<u64>,
-        // if provided, do not include orders with an expire timestamp less than the provided value (expired order),
-        // value is in microseconds
-        min_expire_timestamp: Option<u64>,
-        // do not show orders with an ID larger than max_id--
-        // i.e., orders added later than this one
-        max_id: Option<u64>,
-        // if true, the orders are returned in ascending tick level.
-        ascending: bool,
-    ): OrderPage {
-        let bids = clob_v2::bids(pool);
-        let mut orders = iter_ticks_internal(
-            bids,
-            start_tick_level,
-            start_order_id,
-            min_expire_timestamp,
-            max_id,
-            ascending
-        );
-        let (orders, has_next_page, next_tick_level, next_order_id) = if (vector::length(&orders) > PAGE_LIMIT) {
-            let last_order = vector::pop_back(&mut orders);
-            (orders, true, some(clob_v2::tick_level(&last_order)), some(clob_v2::order_id(&last_order)))
-        } else {
-            (orders, false, none(), none())
+// === Public Functions ===
+/// Bid minimum order id has 0 for its first bit, 0 for next 63 bits for price, and 1 for next 64 bits for order id.
+/// Ask minimum order id has 1 for its first bit, 0 for next 63 bits for price, and 0 for next 64 bits for order id.
+/// Bids are iterated from high to low order id, and asks are iterated from low to high order id.
+public fun iter_orders<BaseAsset, QuoteAsset>(
+    self: &Pool<BaseAsset, QuoteAsset>,
+    start_order_id: Option<u128>,
+    end_order_id: Option<u128>,
+    min_expire_timestamp: Option<u64>,
+    limit: u64,
+    bids: bool,
+): OrderPage {
+    let self = self.load_inner();
+    let bid_min_order_id = 0;
+    let bid_max_order_id = 1u128 << 127;
+
+    let ask_min_order_id = 1u128 << 127;
+    let ask_max_order_id = constants::max_u128();
+
+    let start = start_order_id.get_with_default({
+        if (bids) bid_max_order_id else ask_min_order_id
+    });
+
+    let end = end_order_id.get_with_default({
+        if (bids) bid_min_order_id else ask_max_order_id
+    });
+
+    let min_expire = min_expire_timestamp.get_with_default(0);
+    let side = if (bids) self.bids() else self.asks();
+    let mut orders = vector[];
+    let (mut ref, mut offset) = if (bids) {
+        side.slice_before(start)
+    } else {
+        side.slice_following(start)
+    };
+
+    while (!ref.is_null() && orders.length() < limit) {
+        let order = slice_borrow(side.borrow_slice(ref), offset);
+        if (bids && order.order_id() < end) break;
+        if (!bids && order.order_id() > end) break;
+        if (order.expire_timestamp() >= min_expire) {
+            orders.push_back(order.copy_order());
         };
 
-        OrderPage {
-            orders,
-            has_next_page,
-            next_tick_level,
-            next_order_id
-        }
+        (ref, offset) = if (bids) side.prev_slice(ref, offset) else side.next_slice(ref, offset);
+    };
+
+    OrderPage {
+        orders: orders,
+        has_next_page: !ref.is_null(),
     }
+}
 
-    public fun iter_asks<T1, T2>(
-        pool: &Pool<T1, T2>,
-        // tick level to start from
-        start_tick_level: Option<u64>,
-        // order id within that tick level to start from
-        start_order_id: Option<u64>,
-        // if provided, do not include orders with an expire timestamp less than the provided value (expired order),
-        // value is in microseconds
-        min_expire_timestamp: Option<u64>,
-        // do not show orders with an ID larger than max_id--
-        // i.e., orders added later than this one
-        max_id: Option<u64>,
-        // if true, the orders are returned in ascending tick level.
-        ascending: bool,
-    ): OrderPage {
-        let asks = clob_v2::asks(pool);
-        let mut orders = iter_ticks_internal(
-            asks,
-            start_tick_level,
-            start_order_id,
-            min_expire_timestamp,
-            max_id,
-            ascending
-        );
-        let (orders, has_next_page, next_tick_level, next_order_id) = if (vector::length(&orders) > PAGE_LIMIT) {
-            let last_order = vector::pop_back(&mut orders);
-            (orders, true, some(clob_v2::tick_level(&last_order)), some(clob_v2::order_id(&last_order)))
-        } else {
-            (orders, false, none(), none())
-        };
+public fun orders(self: &OrderPage): &vector<Order> {
+    &self.orders
+}
 
-        OrderPage {
-            orders,
-            has_next_page,
-            next_tick_level,
-            next_order_id
-        }
-    }
-
-    fun iter_ticks_internal(
-        ticks: &CritbitTree<TickLevel>,
-        // tick level to start from
-        start_tick_level: Option<u64>,
-        // order id within that tick level to start from
-        mut start_order_id: Option<u64>,
-        // if provided, do not include orders with an expire timestamp less than the provided value (expired order),
-        // value is in microseconds
-        min_expire_timestamp: Option<u64>,
-        // do not show orders with an ID larger than max_id--
-        // i.e., orders added later than this one
-        max_id: Option<u64>,
-        // if true, the orders are returned in ascending tick level.
-        ascending: bool,
-    ): vector<Order> {
-        let mut tick_level_key = if (option::is_some(&start_tick_level)) {
-            option::destroy_some(start_tick_level)
-        } else {
-            let (key, _) = if (ascending) {
-                critbit::min_leaf(ticks)
-            }else {
-                critbit::max_leaf(ticks)
-            };
-            key
-        };
-
-        let mut orders = vector[];
-
-        while (tick_level_key != 0 && vector::length(&orders) < PAGE_LIMIT + 1) {
-            let tick_level = critbit::borrow_leaf_by_key(ticks, tick_level_key);
-            let open_orders = clob_v2::open_orders(tick_level);
-
-            let mut next_order_key = if (option::is_some(&start_order_id)) {
-                let key = option::destroy_some(start_order_id);
-                if (!linked_table::contains(open_orders, key)) {
-                    let (next_leaf, _) = if (ascending) {
-                        critbit::next_leaf(ticks, tick_level_key)
-                    }else {
-                        critbit::previous_leaf(ticks, tick_level_key)
-                    };
-                    tick_level_key = next_leaf;
-                    continue
-                };
-                start_order_id = option::none();
-                some(key)
-            }else {
-                *linked_table::front(open_orders)
-            };
-
-            while (option::is_some(&next_order_key) && vector::length(&orders) < PAGE_LIMIT + 1) {
-                let key = option::destroy_some(next_order_key);
-                let order = linked_table::borrow(open_orders, key);
-
-                // if the order id is greater than max_id, we end the iteration for this tick level.
-                if (option::is_some(&max_id) && key > option::destroy_some(max_id)) {
-                    break
-                };
-
-                next_order_key = *linked_table::next(open_orders, key);
-
-                // if expire timestamp is set, and if the order is expired, we skip it.
-                if (option::is_none(&min_expire_timestamp) ||
-                    clob_v2::expire_timestamp(order) > option::destroy_some(min_expire_timestamp)) {
-                    vector::push_back(&mut orders, clob_v2::clone_order(order));
-                };
-            };
-            let (next_leaf, _) = if (ascending) {
-                critbit::next_leaf(ticks, tick_level_key)
-            }else {
-                critbit::previous_leaf(ticks, tick_level_key)
-            };
-            tick_level_key = next_leaf;
-        };
-        orders
-    }
-
-    public fun orders(page: &OrderPage): &vector<Order> {
-        &page.orders
-    }
-
-    public fun has_next_page(page: &OrderPage): bool {
-        page.has_next_page
-    }
-
-    public fun next_tick_level(page: &OrderPage): Option<u64> {
-        page.next_tick_level
-    }
-
-    public fun next_order_id(page: &OrderPage): Option<u64> {
-        page.next_order_id
-    }
-
-    public fun order_id(order: &Order): u64 {
-        clob_v2::order_id(order)
-    }
-
-    public fun tick_level(order: &Order): u64 {
-        clob_v2::tick_level(order)
-    }
+public fun has_next_page(self: &OrderPage): bool {
+    self.has_next_page
 }

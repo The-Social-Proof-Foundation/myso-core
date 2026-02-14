@@ -2,19 +2,13 @@
 title: Module `orderbook::order_query`
 ---
 
+This module defines the OrderPage struct and its methods to iterate over orders in a pool.
 
 
 -  [Struct `OrderPage`](#orderbook_order_query_OrderPage)
--  [Constants](#@Constants_0)
--  [Function `iter_bids`](#orderbook_order_query_iter_bids)
--  [Function `iter_asks`](#orderbook_order_query_iter_asks)
--  [Function `iter_ticks_internal`](#orderbook_order_query_iter_ticks_internal)
+-  [Function `iter_orders`](#orderbook_order_query_iter_orders)
 -  [Function `orders`](#orderbook_order_query_orders)
 -  [Function `has_next_page`](#orderbook_order_query_has_next_page)
--  [Function `next_tick_level`](#orderbook_order_query_next_tick_level)
--  [Function `next_order_id`](#orderbook_order_query_next_order_id)
--  [Function `order_id`](#orderbook_order_query_order_id)
--  [Function `tick_level`](#orderbook_order_query_tick_level)
 
 
 <pre><code><b>use</b> <a href="../myso/accumulator.md#myso_accumulator">myso::accumulator</a>;
@@ -34,7 +28,6 @@ title: Module `orderbook::order_query`
 <b>use</b> <a href="../myso/funds_accumulator.md#myso_funds_accumulator">myso::funds_accumulator</a>;
 <b>use</b> <a href="../myso/hash.md#myso_hash">myso::hash</a>;
 <b>use</b> <a href="../myso/hex.md#myso_hex">myso::hex</a>;
-<b>use</b> <a href="../myso/linked_table.md#myso_linked_table">myso::linked_table</a>;
 <b>use</b> <a href="../myso/myso.md#myso_myso">myso::myso</a>;
 <b>use</b> <a href="../myso/object.md#myso_object">myso::object</a>;
 <b>use</b> <a href="../myso/party.md#myso_party">myso::party</a>;
@@ -46,10 +39,27 @@ title: Module `orderbook::order_query`
 <b>use</b> <a href="../myso/url.md#myso_url">myso::url</a>;
 <b>use</b> <a href="../myso/vec_map.md#myso_vec_map">myso::vec_map</a>;
 <b>use</b> <a href="../myso/vec_set.md#myso_vec_set">myso::vec_set</a>;
-<b>use</b> <a href="../orderbook/clob_v2.md#orderbook_clob_v2">orderbook::clob_v2</a>;
-<b>use</b> <a href="../orderbook/critbit.md#orderbook_critbit">orderbook::critbit</a>;
-<b>use</b> <a href="../orderbook/custodian_v2.md#orderbook_custodian_v2">orderbook::custodian_v2</a>;
+<b>use</b> <a href="../myso/versioned.md#myso_versioned">myso::versioned</a>;
+<b>use</b> <a href="../orderbook/account.md#orderbook_account">orderbook::account</a>;
+<b>use</b> <a href="../orderbook/balance_manager.md#orderbook_balance_manager">orderbook::balance_manager</a>;
+<b>use</b> <a href="../orderbook/balances.md#orderbook_balances">orderbook::balances</a>;
+<b>use</b> <a href="../orderbook/big_vector.md#orderbook_big_vector">orderbook::big_vector</a>;
+<b>use</b> <a href="../orderbook/book.md#orderbook_book">orderbook::book</a>;
+<b>use</b> <a href="../orderbook/constants.md#orderbook_constants">orderbook::constants</a>;
+<b>use</b> <a href="../orderbook/ewma.md#orderbook_ewma">orderbook::ewma</a>;
+<b>use</b> <a href="../orderbook/fill.md#orderbook_fill">orderbook::fill</a>;
+<b>use</b> <a href="../orderbook/governance.md#orderbook_governance">orderbook::governance</a>;
+<b>use</b> <a href="../orderbook/history.md#orderbook_history">orderbook::history</a>;
 <b>use</b> <a href="../orderbook/math.md#orderbook_math">orderbook::math</a>;
+<b>use</b> <a href="../orderbook/myso_price.md#orderbook_myso_price">orderbook::myso_price</a>;
+<b>use</b> <a href="../orderbook/order.md#orderbook_order">orderbook::order</a>;
+<b>use</b> <a href="../orderbook/order_info.md#orderbook_order_info">orderbook::order_info</a>;
+<b>use</b> <a href="../orderbook/pool.md#orderbook_pool">orderbook::pool</a>;
+<b>use</b> <a href="../orderbook/registry.md#orderbook_registry">orderbook::registry</a>;
+<b>use</b> <a href="../orderbook/state.md#orderbook_state">orderbook::state</a>;
+<b>use</b> <a href="../orderbook/trade_params.md#orderbook_trade_params">orderbook::trade_params</a>;
+<b>use</b> <a href="../orderbook/utils.md#orderbook_utils">orderbook::utils</a>;
+<b>use</b> <a href="../orderbook/vault.md#orderbook_vault">orderbook::vault</a>;
 <b>use</b> <a href="../std/address.md#std_address">std::address</a>;
 <b>use</b> <a href="../std/ascii.md#std_ascii">std::ascii</a>;
 <b>use</b> <a href="../std/bcs.md#std_bcs">std::bcs</a>;
@@ -58,6 +68,7 @@ title: Module `orderbook::order_query`
 <b>use</b> <a href="../std/string.md#std_string">std::string</a>;
 <b>use</b> <a href="../std/type_name.md#std_type_name">std::type_name</a>;
 <b>use</b> <a href="../std/u128.md#std_u128">std::u128</a>;
+<b>use</b> <a href="../std/u64.md#std_u64">std::u64</a>;
 <b>use</b> <a href="../std/vector.md#std_vector">std::vector</a>;
 </code></pre>
 
@@ -80,7 +91,7 @@ title: Module `orderbook::order_query`
 
 <dl>
 <dt>
-<code><a href="../orderbook/order_query.md#orderbook_order_query_orders">orders</a>: vector&lt;<a href="../orderbook/clob_v2.md#orderbook_clob_v2_Order">orderbook::clob_v2::Order</a>&gt;</code>
+<code><a href="../orderbook/order_query.md#orderbook_order_query_orders">orders</a>: vector&lt;<a href="../orderbook/order.md#orderbook_order_Order">orderbook::order::Order</a>&gt;</code>
 </dt>
 <dd>
 </dd>
@@ -89,42 +100,21 @@ title: Module `orderbook::order_query`
 </dt>
 <dd>
 </dd>
-<dt>
-<code><a href="../orderbook/order_query.md#orderbook_order_query_next_tick_level">next_tick_level</a>: <a href="../std/option.md#std_option_Option">std::option::Option</a>&lt;u64&gt;</code>
-</dt>
-<dd>
-</dd>
-<dt>
-<code><a href="../orderbook/order_query.md#orderbook_order_query_next_order_id">next_order_id</a>: <a href="../std/option.md#std_option_Option">std::option::Option</a>&lt;u64&gt;</code>
-</dt>
-<dd>
-</dd>
 </dl>
 
 
 </details>
 
-<a name="@Constants_0"></a>
+<a name="orderbook_order_query_iter_orders"></a>
 
-## Constants
+## Function `iter_orders`
 
-
-<a name="orderbook_order_query_PAGE_LIMIT"></a>
-
-
-
-<pre><code><b>const</b> <a href="../orderbook/order_query.md#orderbook_order_query_PAGE_LIMIT">PAGE_LIMIT</a>: u64 = 100;
-</code></pre>
+Bid minimum order id has 0 for its first bit, 0 for next 63 bits for price, and 1 for next 64 bits for order id.
+Ask minimum order id has 1 for its first bit, 0 for next 63 bits for price, and 0 for next 64 bits for order id.
+Bids are iterated from high to low order id, and asks are iterated from low to high order id.
 
 
-
-<a name="orderbook_order_query_iter_bids"></a>
-
-## Function `iter_bids`
-
-
-
-<pre><code><b>public</b> <b>fun</b> <a href="../orderbook/order_query.md#orderbook_order_query_iter_bids">iter_bids</a>&lt;T1, T2&gt;(pool: &<a href="../orderbook/clob_v2.md#orderbook_clob_v2_Pool">orderbook::clob_v2::Pool</a>&lt;T1, T2&gt;, start_tick_level: <a href="../std/option.md#std_option_Option">std::option::Option</a>&lt;u64&gt;, start_order_id: <a href="../std/option.md#std_option_Option">std::option::Option</a>&lt;u64&gt;, min_expire_timestamp: <a href="../std/option.md#std_option_Option">std::option::Option</a>&lt;u64&gt;, max_id: <a href="../std/option.md#std_option_Option">std::option::Option</a>&lt;u64&gt;, ascending: bool): <a href="../orderbook/order_query.md#orderbook_order_query_OrderPage">orderbook::order_query::OrderPage</a>
+<pre><code><b>public</b> <b>fun</b> <a href="../orderbook/order_query.md#orderbook_order_query_iter_orders">iter_orders</a>&lt;BaseAsset, QuoteAsset&gt;(self: &<a href="../orderbook/pool.md#orderbook_pool_Pool">orderbook::pool::Pool</a>&lt;BaseAsset, QuoteAsset&gt;, start_order_id: <a href="../std/option.md#std_option_Option">std::option::Option</a>&lt;u128&gt;, end_order_id: <a href="../std/option.md#std_option_Option">std::option::Option</a>&lt;u128&gt;, min_expire_timestamp: <a href="../std/option.md#std_option_Option">std::option::Option</a>&lt;u64&gt;, limit: u64, bids: bool): <a href="../orderbook/order_query.md#orderbook_order_query_OrderPage">orderbook::order_query::OrderPage</a>
 </code></pre>
 
 
@@ -133,189 +123,46 @@ title: Module `orderbook::order_query`
 <summary>Implementation</summary>
 
 
-<pre><code><b>public</b> <b>fun</b> <a href="../orderbook/order_query.md#orderbook_order_query_iter_bids">iter_bids</a>&lt;T1, T2&gt;(
-    pool: &Pool&lt;T1, T2&gt;,
-    // tick level to start from
-    start_tick_level: Option&lt;u64&gt;,
-    // order id within that tick level to start from
-    start_order_id: Option&lt;u64&gt;,
-    // <b>if</b> provided, do not include <a href="../orderbook/order_query.md#orderbook_order_query_orders">orders</a> with an expire timestamp less than the provided value (expired order),
-    // value is in microseconds
+<pre><code><b>public</b> <b>fun</b> <a href="../orderbook/order_query.md#orderbook_order_query_iter_orders">iter_orders</a>&lt;BaseAsset, QuoteAsset&gt;(
+    self: &Pool&lt;BaseAsset, QuoteAsset&gt;,
+    start_order_id: Option&lt;u128&gt;,
+    end_order_id: Option&lt;u128&gt;,
     min_expire_timestamp: Option&lt;u64&gt;,
-    // do not show <a href="../orderbook/order_query.md#orderbook_order_query_orders">orders</a> with an ID larger than max_id--
-    // i.e., <a href="../orderbook/order_query.md#orderbook_order_query_orders">orders</a> added later than this one
-    max_id: Option&lt;u64&gt;,
-    // <b>if</b> <b>true</b>, the <a href="../orderbook/order_query.md#orderbook_order_query_orders">orders</a> are returned in ascending tick level.
-    ascending: bool,
+    limit: u64,
+    bids: bool,
 ): <a href="../orderbook/order_query.md#orderbook_order_query_OrderPage">OrderPage</a> {
-    <b>let</b> bids = <a href="../orderbook/clob_v2.md#orderbook_clob_v2_bids">clob_v2::bids</a>(pool);
-    <b>let</b> <b>mut</b> <a href="../orderbook/order_query.md#orderbook_order_query_orders">orders</a> = <a href="../orderbook/order_query.md#orderbook_order_query_iter_ticks_internal">iter_ticks_internal</a>(
-        bids,
-        start_tick_level,
-        start_order_id,
-        min_expire_timestamp,
-        max_id,
-        ascending
-    );
-    <b>let</b> (<a href="../orderbook/order_query.md#orderbook_order_query_orders">orders</a>, <a href="../orderbook/order_query.md#orderbook_order_query_has_next_page">has_next_page</a>, <a href="../orderbook/order_query.md#orderbook_order_query_next_tick_level">next_tick_level</a>, <a href="../orderbook/order_query.md#orderbook_order_query_next_order_id">next_order_id</a>) = <b>if</b> (vector::length(&<a href="../orderbook/order_query.md#orderbook_order_query_orders">orders</a>) &gt; <a href="../orderbook/order_query.md#orderbook_order_query_PAGE_LIMIT">PAGE_LIMIT</a>) {
-        <b>let</b> last_order = vector::pop_back(&<b>mut</b> <a href="../orderbook/order_query.md#orderbook_order_query_orders">orders</a>);
-        (<a href="../orderbook/order_query.md#orderbook_order_query_orders">orders</a>, <b>true</b>, some(<a href="../orderbook/clob_v2.md#orderbook_clob_v2_tick_level">clob_v2::tick_level</a>(&last_order)), some(<a href="../orderbook/clob_v2.md#orderbook_clob_v2_order_id">clob_v2::order_id</a>(&last_order)))
-    } <b>else</b> {
-        (<a href="../orderbook/order_query.md#orderbook_order_query_orders">orders</a>, <b>false</b>, none(), none())
-    };
-    <a href="../orderbook/order_query.md#orderbook_order_query_OrderPage">OrderPage</a> {
-        <a href="../orderbook/order_query.md#orderbook_order_query_orders">orders</a>,
-        <a href="../orderbook/order_query.md#orderbook_order_query_has_next_page">has_next_page</a>,
-        <a href="../orderbook/order_query.md#orderbook_order_query_next_tick_level">next_tick_level</a>,
-        <a href="../orderbook/order_query.md#orderbook_order_query_next_order_id">next_order_id</a>
-    }
-}
-</code></pre>
-
-
-
-</details>
-
-<a name="orderbook_order_query_iter_asks"></a>
-
-## Function `iter_asks`
-
-
-
-<pre><code><b>public</b> <b>fun</b> <a href="../orderbook/order_query.md#orderbook_order_query_iter_asks">iter_asks</a>&lt;T1, T2&gt;(pool: &<a href="../orderbook/clob_v2.md#orderbook_clob_v2_Pool">orderbook::clob_v2::Pool</a>&lt;T1, T2&gt;, start_tick_level: <a href="../std/option.md#std_option_Option">std::option::Option</a>&lt;u64&gt;, start_order_id: <a href="../std/option.md#std_option_Option">std::option::Option</a>&lt;u64&gt;, min_expire_timestamp: <a href="../std/option.md#std_option_Option">std::option::Option</a>&lt;u64&gt;, max_id: <a href="../std/option.md#std_option_Option">std::option::Option</a>&lt;u64&gt;, ascending: bool): <a href="../orderbook/order_query.md#orderbook_order_query_OrderPage">orderbook::order_query::OrderPage</a>
-</code></pre>
-
-
-
-<details>
-<summary>Implementation</summary>
-
-
-<pre><code><b>public</b> <b>fun</b> <a href="../orderbook/order_query.md#orderbook_order_query_iter_asks">iter_asks</a>&lt;T1, T2&gt;(
-    pool: &Pool&lt;T1, T2&gt;,
-    // tick level to start from
-    start_tick_level: Option&lt;u64&gt;,
-    // order id within that tick level to start from
-    start_order_id: Option&lt;u64&gt;,
-    // <b>if</b> provided, do not include <a href="../orderbook/order_query.md#orderbook_order_query_orders">orders</a> with an expire timestamp less than the provided value (expired order),
-    // value is in microseconds
-    min_expire_timestamp: Option&lt;u64&gt;,
-    // do not show <a href="../orderbook/order_query.md#orderbook_order_query_orders">orders</a> with an ID larger than max_id--
-    // i.e., <a href="../orderbook/order_query.md#orderbook_order_query_orders">orders</a> added later than this one
-    max_id: Option&lt;u64&gt;,
-    // <b>if</b> <b>true</b>, the <a href="../orderbook/order_query.md#orderbook_order_query_orders">orders</a> are returned in ascending tick level.
-    ascending: bool,
-): <a href="../orderbook/order_query.md#orderbook_order_query_OrderPage">OrderPage</a> {
-    <b>let</b> asks = <a href="../orderbook/clob_v2.md#orderbook_clob_v2_asks">clob_v2::asks</a>(pool);
-    <b>let</b> <b>mut</b> <a href="../orderbook/order_query.md#orderbook_order_query_orders">orders</a> = <a href="../orderbook/order_query.md#orderbook_order_query_iter_ticks_internal">iter_ticks_internal</a>(
-        asks,
-        start_tick_level,
-        start_order_id,
-        min_expire_timestamp,
-        max_id,
-        ascending
-    );
-    <b>let</b> (<a href="../orderbook/order_query.md#orderbook_order_query_orders">orders</a>, <a href="../orderbook/order_query.md#orderbook_order_query_has_next_page">has_next_page</a>, <a href="../orderbook/order_query.md#orderbook_order_query_next_tick_level">next_tick_level</a>, <a href="../orderbook/order_query.md#orderbook_order_query_next_order_id">next_order_id</a>) = <b>if</b> (vector::length(&<a href="../orderbook/order_query.md#orderbook_order_query_orders">orders</a>) &gt; <a href="../orderbook/order_query.md#orderbook_order_query_PAGE_LIMIT">PAGE_LIMIT</a>) {
-        <b>let</b> last_order = vector::pop_back(&<b>mut</b> <a href="../orderbook/order_query.md#orderbook_order_query_orders">orders</a>);
-        (<a href="../orderbook/order_query.md#orderbook_order_query_orders">orders</a>, <b>true</b>, some(<a href="../orderbook/clob_v2.md#orderbook_clob_v2_tick_level">clob_v2::tick_level</a>(&last_order)), some(<a href="../orderbook/clob_v2.md#orderbook_clob_v2_order_id">clob_v2::order_id</a>(&last_order)))
-    } <b>else</b> {
-        (<a href="../orderbook/order_query.md#orderbook_order_query_orders">orders</a>, <b>false</b>, none(), none())
-    };
-    <a href="../orderbook/order_query.md#orderbook_order_query_OrderPage">OrderPage</a> {
-        <a href="../orderbook/order_query.md#orderbook_order_query_orders">orders</a>,
-        <a href="../orderbook/order_query.md#orderbook_order_query_has_next_page">has_next_page</a>,
-        <a href="../orderbook/order_query.md#orderbook_order_query_next_tick_level">next_tick_level</a>,
-        <a href="../orderbook/order_query.md#orderbook_order_query_next_order_id">next_order_id</a>
-    }
-}
-</code></pre>
-
-
-
-</details>
-
-<a name="orderbook_order_query_iter_ticks_internal"></a>
-
-## Function `iter_ticks_internal`
-
-
-
-<pre><code><b>fun</b> <a href="../orderbook/order_query.md#orderbook_order_query_iter_ticks_internal">iter_ticks_internal</a>(ticks: &<a href="../orderbook/critbit.md#orderbook_critbit_CritbitTree">orderbook::critbit::CritbitTree</a>&lt;<a href="../orderbook/clob_v2.md#orderbook_clob_v2_TickLevel">orderbook::clob_v2::TickLevel</a>&gt;, start_tick_level: <a href="../std/option.md#std_option_Option">std::option::Option</a>&lt;u64&gt;, start_order_id: <a href="../std/option.md#std_option_Option">std::option::Option</a>&lt;u64&gt;, min_expire_timestamp: <a href="../std/option.md#std_option_Option">std::option::Option</a>&lt;u64&gt;, max_id: <a href="../std/option.md#std_option_Option">std::option::Option</a>&lt;u64&gt;, ascending: bool): vector&lt;<a href="../orderbook/clob_v2.md#orderbook_clob_v2_Order">orderbook::clob_v2::Order</a>&gt;
-</code></pre>
-
-
-
-<details>
-<summary>Implementation</summary>
-
-
-<pre><code><b>fun</b> <a href="../orderbook/order_query.md#orderbook_order_query_iter_ticks_internal">iter_ticks_internal</a>(
-    ticks: &CritbitTree&lt;TickLevel&gt;,
-    // tick level to start from
-    start_tick_level: Option&lt;u64&gt;,
-    // order id within that tick level to start from
-    <b>mut</b> start_order_id: Option&lt;u64&gt;,
-    // <b>if</b> provided, do not include <a href="../orderbook/order_query.md#orderbook_order_query_orders">orders</a> with an expire timestamp less than the provided value (expired order),
-    // value is in microseconds
-    min_expire_timestamp: Option&lt;u64&gt;,
-    // do not show <a href="../orderbook/order_query.md#orderbook_order_query_orders">orders</a> with an ID larger than max_id--
-    // i.e., <a href="../orderbook/order_query.md#orderbook_order_query_orders">orders</a> added later than this one
-    max_id: Option&lt;u64&gt;,
-    // <b>if</b> <b>true</b>, the <a href="../orderbook/order_query.md#orderbook_order_query_orders">orders</a> are returned in ascending tick level.
-    ascending: bool,
-): vector&lt;Order&gt; {
-    <b>let</b> <b>mut</b> tick_level_key = <b>if</b> (option::is_some(&start_tick_level)) {
-        option::destroy_some(start_tick_level)
-    } <b>else</b> {
-        <b>let</b> (key, _) = <b>if</b> (ascending) {
-            <a href="../orderbook/critbit.md#orderbook_critbit_min_leaf">critbit::min_leaf</a>(ticks)
-        }<b>else</b> {
-            <a href="../orderbook/critbit.md#orderbook_critbit_max_leaf">critbit::max_leaf</a>(ticks)
-        };
-        key
-    };
+    <b>let</b> self = self.load_inner();
+    <b>let</b> bid_min_order_id = 0;
+    <b>let</b> bid_max_order_id = 1u128 &lt;&lt; 127;
+    <b>let</b> ask_min_order_id = 1u128 &lt;&lt; 127;
+    <b>let</b> ask_max_order_id = <a href="../orderbook/constants.md#orderbook_constants_max_u128">constants::max_u128</a>();
+    <b>let</b> start = start_order_id.get_with_default({
+        <b>if</b> (bids) bid_max_order_id <b>else</b> ask_min_order_id
+    });
+    <b>let</b> end = end_order_id.get_with_default({
+        <b>if</b> (bids) bid_min_order_id <b>else</b> ask_max_order_id
+    });
+    <b>let</b> min_expire = min_expire_timestamp.get_with_default(0);
+    <b>let</b> side = <b>if</b> (bids) self.bids() <b>else</b> self.asks();
     <b>let</b> <b>mut</b> <a href="../orderbook/order_query.md#orderbook_order_query_orders">orders</a> = vector[];
-    <b>while</b> (tick_level_key != 0 && vector::length(&<a href="../orderbook/order_query.md#orderbook_order_query_orders">orders</a>) &lt; <a href="../orderbook/order_query.md#orderbook_order_query_PAGE_LIMIT">PAGE_LIMIT</a> + 1) {
-        <b>let</b> <a href="../orderbook/order_query.md#orderbook_order_query_tick_level">tick_level</a> = <a href="../orderbook/critbit.md#orderbook_critbit_borrow_leaf_by_key">critbit::borrow_leaf_by_key</a>(ticks, tick_level_key);
-        <b>let</b> open_orders = <a href="../orderbook/clob_v2.md#orderbook_clob_v2_open_orders">clob_v2::open_orders</a>(<a href="../orderbook/order_query.md#orderbook_order_query_tick_level">tick_level</a>);
-        <b>let</b> <b>mut</b> next_order_key = <b>if</b> (option::is_some(&start_order_id)) {
-            <b>let</b> key = option::destroy_some(start_order_id);
-            <b>if</b> (!linked_table::contains(open_orders, key)) {
-                <b>let</b> (next_leaf, _) = <b>if</b> (ascending) {
-                    <a href="../orderbook/critbit.md#orderbook_critbit_next_leaf">critbit::next_leaf</a>(ticks, tick_level_key)
-                }<b>else</b> {
-                    <a href="../orderbook/critbit.md#orderbook_critbit_previous_leaf">critbit::previous_leaf</a>(ticks, tick_level_key)
-                };
-                tick_level_key = next_leaf;
-                <b>continue</b>
-            };
-            start_order_id = option::none();
-            some(key)
-        }<b>else</b> {
-            *linked_table::front(open_orders)
-        };
-        <b>while</b> (option::is_some(&next_order_key) && vector::length(&<a href="../orderbook/order_query.md#orderbook_order_query_orders">orders</a>) &lt; <a href="../orderbook/order_query.md#orderbook_order_query_PAGE_LIMIT">PAGE_LIMIT</a> + 1) {
-            <b>let</b> key = option::destroy_some(next_order_key);
-            <b>let</b> order = linked_table::borrow(open_orders, key);
-            // <b>if</b> the order id is greater than max_id, we end the iteration <b>for</b> this tick level.
-            <b>if</b> (option::is_some(&max_id) && key &gt; option::destroy_some(max_id)) {
-                <b>break</b>
-            };
-            next_order_key = *linked_table::next(open_orders, key);
-            // <b>if</b> expire timestamp is set, and <b>if</b> the order is expired, we skip it.
-            <b>if</b> (option::is_none(&min_expire_timestamp) ||
-                <a href="../orderbook/clob_v2.md#orderbook_clob_v2_expire_timestamp">clob_v2::expire_timestamp</a>(order) &gt; option::destroy_some(min_expire_timestamp)) {
-                vector::push_back(&<b>mut</b> <a href="../orderbook/order_query.md#orderbook_order_query_orders">orders</a>, <a href="../orderbook/clob_v2.md#orderbook_clob_v2_clone_order">clob_v2::clone_order</a>(order));
-            };
-        };
-        <b>let</b> (next_leaf, _) = <b>if</b> (ascending) {
-            <a href="../orderbook/critbit.md#orderbook_critbit_next_leaf">critbit::next_leaf</a>(ticks, tick_level_key)
-        }<b>else</b> {
-            <a href="../orderbook/critbit.md#orderbook_critbit_previous_leaf">critbit::previous_leaf</a>(ticks, tick_level_key)
-        };
-        tick_level_key = next_leaf;
+    <b>let</b> (<b>mut</b> ref, <b>mut</b> offset) = <b>if</b> (bids) {
+        side.slice_before(start)
+    } <b>else</b> {
+        side.slice_following(start)
     };
-    <a href="../orderbook/order_query.md#orderbook_order_query_orders">orders</a>
+    <b>while</b> (!ref.is_null() && <a href="../orderbook/order_query.md#orderbook_order_query_orders">orders</a>.length() &lt; limit) {
+        <b>let</b> <a href="../orderbook/order.md#orderbook_order">order</a> = slice_borrow(side.borrow_slice(ref), offset);
+        <b>if</b> (bids && <a href="../orderbook/order.md#orderbook_order">order</a>.order_id() &lt; end) <b>break</b>;
+        <b>if</b> (!bids && <a href="../orderbook/order.md#orderbook_order">order</a>.order_id() &gt; end) <b>break</b>;
+        <b>if</b> (<a href="../orderbook/order.md#orderbook_order">order</a>.expire_timestamp() &gt;= min_expire) {
+            <a href="../orderbook/order_query.md#orderbook_order_query_orders">orders</a>.push_back(<a href="../orderbook/order.md#orderbook_order">order</a>.copy_order());
+        };
+        (ref, offset) = <b>if</b> (bids) side.prev_slice(ref, offset) <b>else</b> side.next_slice(ref, offset);
+    };
+    <a href="../orderbook/order_query.md#orderbook_order_query_OrderPage">OrderPage</a> {
+        <a href="../orderbook/order_query.md#orderbook_order_query_orders">orders</a>: <a href="../orderbook/order_query.md#orderbook_order_query_orders">orders</a>,
+        <a href="../orderbook/order_query.md#orderbook_order_query_has_next_page">has_next_page</a>: !ref.is_null(),
+    }
 }
 </code></pre>
 
@@ -329,7 +176,7 @@ title: Module `orderbook::order_query`
 
 
 
-<pre><code><b>public</b> <b>fun</b> <a href="../orderbook/order_query.md#orderbook_order_query_orders">orders</a>(page: &<a href="../orderbook/order_query.md#orderbook_order_query_OrderPage">orderbook::order_query::OrderPage</a>): &vector&lt;<a href="../orderbook/clob_v2.md#orderbook_clob_v2_Order">orderbook::clob_v2::Order</a>&gt;
+<pre><code><b>public</b> <b>fun</b> <a href="../orderbook/order_query.md#orderbook_order_query_orders">orders</a>(self: &<a href="../orderbook/order_query.md#orderbook_order_query_OrderPage">orderbook::order_query::OrderPage</a>): &vector&lt;<a href="../orderbook/order.md#orderbook_order_Order">orderbook::order::Order</a>&gt;
 </code></pre>
 
 
@@ -338,8 +185,8 @@ title: Module `orderbook::order_query`
 <summary>Implementation</summary>
 
 
-<pre><code><b>public</b> <b>fun</b> <a href="../orderbook/order_query.md#orderbook_order_query_orders">orders</a>(page: &<a href="../orderbook/order_query.md#orderbook_order_query_OrderPage">OrderPage</a>): &vector&lt;Order&gt; {
-    &page.<a href="../orderbook/order_query.md#orderbook_order_query_orders">orders</a>
+<pre><code><b>public</b> <b>fun</b> <a href="../orderbook/order_query.md#orderbook_order_query_orders">orders</a>(self: &<a href="../orderbook/order_query.md#orderbook_order_query_OrderPage">OrderPage</a>): &vector&lt;Order&gt; {
+    &self.<a href="../orderbook/order_query.md#orderbook_order_query_orders">orders</a>
 }
 </code></pre>
 
@@ -353,7 +200,7 @@ title: Module `orderbook::order_query`
 
 
 
-<pre><code><b>public</b> <b>fun</b> <a href="../orderbook/order_query.md#orderbook_order_query_has_next_page">has_next_page</a>(page: &<a href="../orderbook/order_query.md#orderbook_order_query_OrderPage">orderbook::order_query::OrderPage</a>): bool
+<pre><code><b>public</b> <b>fun</b> <a href="../orderbook/order_query.md#orderbook_order_query_has_next_page">has_next_page</a>(self: &<a href="../orderbook/order_query.md#orderbook_order_query_OrderPage">orderbook::order_query::OrderPage</a>): bool
 </code></pre>
 
 
@@ -362,104 +209,8 @@ title: Module `orderbook::order_query`
 <summary>Implementation</summary>
 
 
-<pre><code><b>public</b> <b>fun</b> <a href="../orderbook/order_query.md#orderbook_order_query_has_next_page">has_next_page</a>(page: &<a href="../orderbook/order_query.md#orderbook_order_query_OrderPage">OrderPage</a>): bool {
-    page.<a href="../orderbook/order_query.md#orderbook_order_query_has_next_page">has_next_page</a>
-}
-</code></pre>
-
-
-
-</details>
-
-<a name="orderbook_order_query_next_tick_level"></a>
-
-## Function `next_tick_level`
-
-
-
-<pre><code><b>public</b> <b>fun</b> <a href="../orderbook/order_query.md#orderbook_order_query_next_tick_level">next_tick_level</a>(page: &<a href="../orderbook/order_query.md#orderbook_order_query_OrderPage">orderbook::order_query::OrderPage</a>): <a href="../std/option.md#std_option_Option">std::option::Option</a>&lt;u64&gt;
-</code></pre>
-
-
-
-<details>
-<summary>Implementation</summary>
-
-
-<pre><code><b>public</b> <b>fun</b> <a href="../orderbook/order_query.md#orderbook_order_query_next_tick_level">next_tick_level</a>(page: &<a href="../orderbook/order_query.md#orderbook_order_query_OrderPage">OrderPage</a>): Option&lt;u64&gt; {
-    page.<a href="../orderbook/order_query.md#orderbook_order_query_next_tick_level">next_tick_level</a>
-}
-</code></pre>
-
-
-
-</details>
-
-<a name="orderbook_order_query_next_order_id"></a>
-
-## Function `next_order_id`
-
-
-
-<pre><code><b>public</b> <b>fun</b> <a href="../orderbook/order_query.md#orderbook_order_query_next_order_id">next_order_id</a>(page: &<a href="../orderbook/order_query.md#orderbook_order_query_OrderPage">orderbook::order_query::OrderPage</a>): <a href="../std/option.md#std_option_Option">std::option::Option</a>&lt;u64&gt;
-</code></pre>
-
-
-
-<details>
-<summary>Implementation</summary>
-
-
-<pre><code><b>public</b> <b>fun</b> <a href="../orderbook/order_query.md#orderbook_order_query_next_order_id">next_order_id</a>(page: &<a href="../orderbook/order_query.md#orderbook_order_query_OrderPage">OrderPage</a>): Option&lt;u64&gt; {
-    page.<a href="../orderbook/order_query.md#orderbook_order_query_next_order_id">next_order_id</a>
-}
-</code></pre>
-
-
-
-</details>
-
-<a name="orderbook_order_query_order_id"></a>
-
-## Function `order_id`
-
-
-
-<pre><code><b>public</b> <b>fun</b> <a href="../orderbook/order_query.md#orderbook_order_query_order_id">order_id</a>(order: &<a href="../orderbook/clob_v2.md#orderbook_clob_v2_Order">orderbook::clob_v2::Order</a>): u64
-</code></pre>
-
-
-
-<details>
-<summary>Implementation</summary>
-
-
-<pre><code><b>public</b> <b>fun</b> <a href="../orderbook/order_query.md#orderbook_order_query_order_id">order_id</a>(order: &Order): u64 {
-    <a href="../orderbook/clob_v2.md#orderbook_clob_v2_order_id">clob_v2::order_id</a>(order)
-}
-</code></pre>
-
-
-
-</details>
-
-<a name="orderbook_order_query_tick_level"></a>
-
-## Function `tick_level`
-
-
-
-<pre><code><b>public</b> <b>fun</b> <a href="../orderbook/order_query.md#orderbook_order_query_tick_level">tick_level</a>(order: &<a href="../orderbook/clob_v2.md#orderbook_clob_v2_Order">orderbook::clob_v2::Order</a>): u64
-</code></pre>
-
-
-
-<details>
-<summary>Implementation</summary>
-
-
-<pre><code><b>public</b> <b>fun</b> <a href="../orderbook/order_query.md#orderbook_order_query_tick_level">tick_level</a>(order: &Order): u64 {
-    <a href="../orderbook/clob_v2.md#orderbook_clob_v2_tick_level">clob_v2::tick_level</a>(order)
+<pre><code><b>public</b> <b>fun</b> <a href="../orderbook/order_query.md#orderbook_order_query_has_next_page">has_next_page</a>(self: &<a href="../orderbook/order_query.md#orderbook_order_query_OrderPage">OrderPage</a>): bool {
+    self.<a href="../orderbook/order_query.md#orderbook_order_query_has_next_page">has_next_page</a>
 }
 </code></pre>
 

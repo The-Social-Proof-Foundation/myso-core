@@ -126,7 +126,7 @@ Response: {
         {
           "cursor": "AAAAAAAAAAAgAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA3ukBAAAAAAAAAA==",
           "node": {
-            "address": "0x000000000000000000000000000000000000000000000000000000000000dee9",
+            "address": "0x0000000000000000000000000000000000000000000000000000000000000b0c",
             "version": 1
           }
         },
@@ -528,7 +528,7 @@ Response: {
             {
               "cursor": "AAAAAAAAAAAgAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA3ukBAAAAAAAAAA==",
               "node": {
-                "address": "0x000000000000000000000000000000000000000000000000000000000000dee9",
+                "address": "0x0000000000000000000000000000000000000000000000000000000000000b0c",
                 "version": 1
               }
             },

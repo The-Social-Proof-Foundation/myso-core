@@ -130,7 +130,7 @@ built_in_pkgs! {
     MYSO_FRAMEWORK_ADDRESS / MYSO_FRAMEWORK_PACKAGE_ID = 0x2;
     MYSO_SYSTEM_ADDRESS / MYSO_SYSTEM_PACKAGE_ID = 0x3;
     BRIDGE_ADDRESS / BRIDGE_PACKAGE_ID = 0xb;
-    ORDERBOOK_ADDRESS / ORDERBOOK_PACKAGE_ID = 0xdee9;
+    ORDERBOOK_ADDRESS / ORDERBOOK_PACKAGE_ID = 0x0b0c;
     MYDATA_ADDRESS / MYDATA_PACKAGE_ID = 0xda7a;
     MYSO_SOCIAL_ADDRESS / MYSO_SOCIAL_PACKAGE_ID = 0x50c1;
 }
@@ -477,17 +477,17 @@ mod tests {
     #[test]
     fn test_dynamic_field_short_addr() {
         let result = parse_myso_struct_tag(
-            "0x2::dynamic_field::Field<address, 0xdee9::custodian_v2::Account<0x234::coin::COIN>>",
+            "0x2::dynamic_field::Field<address, 0x0b0c::custodian_v2::Account<0x234::coin::COIN>>",
         )
         .expect("should not error");
 
         let expected = expect![
-            "0x2::dynamic_field::Field<address, 0xdee9::custodian_v2::Account<0x234::coin::COIN>>"
+            "0x2::dynamic_field::Field<address, 0xb0c::custodian_v2::Account<0x234::coin::COIN>>"
         ];
         expected.assert_eq(&result.to_string());
 
         let expected = expect![
-            "0x0000000000000000000000000000000000000000000000000000000000000002::dynamic_field::Field<address,0x000000000000000000000000000000000000000000000000000000000000dee9::custodian_v2::Account<0x0000000000000000000000000000000000000000000000000000000000000234::coin::COIN>>"
+            "0x0000000000000000000000000000000000000000000000000000000000000002::dynamic_field::Field<address,0x0000000000000000000000000000000000000000000000000000000000000b0c::custodian_v2::Account<0x0000000000000000000000000000000000000000000000000000000000000234::coin::COIN>>"
         ];
         expected.assert_eq(&result.to_canonical_string(/* with_prefix */ true));
     }
@@ -495,17 +495,17 @@ mod tests {
     #[test]
     fn test_dynamic_field_long_addr() {
         let result = parse_myso_struct_tag(
-            "0x2::dynamic_field::Field<address, 0xdee9::custodian_v2::Account<0x234::coin::COIN>>",
+            "0x2::dynamic_field::Field<address, 0x0b0c::custodian_v2::Account<0x234::coin::COIN>>",
         )
         .expect("should not error");
 
         let expected = expect![
-            "0x2::dynamic_field::Field<address, 0xdee9::custodian_v2::Account<0x234::coin::COIN>>"
+            "0x2::dynamic_field::Field<address, 0xb0c::custodian_v2::Account<0x234::coin::COIN>>"
         ];
         expected.assert_eq(&result.to_string());
 
         let expected = expect![
-            "0x0000000000000000000000000000000000000000000000000000000000000002::dynamic_field::Field<address,0x000000000000000000000000000000000000000000000000000000000000dee9::custodian_v2::Account<0x0000000000000000000000000000000000000000000000000000000000000234::coin::COIN>>"
+            "0x0000000000000000000000000000000000000000000000000000000000000002::dynamic_field::Field<address,0x0000000000000000000000000000000000000000000000000000000000000b0c::custodian_v2::Account<0x0000000000000000000000000000000000000000000000000000000000000234::coin::COIN>>"
         ];
         expected.assert_eq(&result.to_canonical_string(/* with_prefix */ true));
     }

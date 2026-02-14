@@ -1,0 +1,18 @@
+[package]
+name = "myso-indexer-alt-orderbook-schema"
+version = "0.1.0"
+authors = ["The Social Proof Foundation, LLC."]
+license = "Apache-2.0"
+publish = false
+edition = "2021"
+
+[dependencies]
+myso-field-count.workspace = true
+diesel = { workspace = true, features = ["postgres", "uuid", "chrono", "serde_json", "numeric"] }
+diesel_migrations.workspace = true
+serde = { workspace = true }
+serde_json = { workspace = true }
+strum = "0.27.1"
+strum_macros = "0.27.1"
+bigdecimal = { version = "0.4", features = ["serde"] }
+chrono = "0.4"

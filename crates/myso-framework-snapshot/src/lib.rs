@@ -117,24 +117,25 @@ pub fn load_bytecode_snapshot(protocol_version: u64) -> anyhow::Result<Vec<Syste
         })
         .collect::<anyhow::Result<_>>()?;
 
-    for (id, package) in &snapshots {
-        if package.bytes.is_empty() {
+    let mut snapshot_objects = Vec::new();
+    for package_id in SYSTEM_PACKAGE_PUBLISH_ORDER {
+        let Some(object) = snapshots.remove(package_id) else {
+            anyhow::bail!(
+                "Bytecode snapshot for protocol version {} missing package {}. \
+                 Regenerate with: cargo run -p myso-framework-snapshot",
+                protocol_version,
+                package_id
+            );
+        };
+        if object.bytes.is_empty() {
             anyhow::bail!(
                 "Bytecode snapshot for protocol version {} has empty package {} (corrupted). \
                  Regenerate with: cargo run -p myso-framework-snapshot",
                 protocol_version,
-                id
+                package_id
             );
         }
-    }
-
-    // system packages need to be restored in a specific order
-    assert!(snapshots.len() <= SYSTEM_PACKAGE_PUBLISH_ORDER.len());
-    let mut snapshot_objects = Vec::new();
-    for package_id in SYSTEM_PACKAGE_PUBLISH_ORDER {
-        if let Some(object) = snapshots.remove(package_id) {
-            snapshot_objects.push(object);
-        }
+        snapshot_objects.push(object);
     }
     Ok(snapshot_objects)
 }

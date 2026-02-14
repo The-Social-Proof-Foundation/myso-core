@@ -6,7 +6,7 @@ edition = "2024.beta"
 
 [dependencies]
 MoveStdlib = { local = "../move-stdlib" }
-MySo = { local = "../myso-framework" }
+MySo = { local = "../myso-framework/myso-framework" }
 
 [addresses]
 myso_system = "0x3"

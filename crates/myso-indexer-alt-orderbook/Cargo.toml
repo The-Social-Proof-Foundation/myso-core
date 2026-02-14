@@ -1,0 +1,48 @@
+[package]
+name = "myso-indexer-alt-orderbook"
+version = "0.1.0"
+authors = ["The Social Proof Foundation, LLC. <brandon@mysocial.network>"]
+license = "Apache-2.0"
+publish = false
+edition = "2021"
+
+[dependencies]
+tokio.workspace = true
+myso-indexer-alt-framework = { workspace = true, features = ["postgres"] }
+clap = { workspace = true, features = ["env"] }
+diesel = { workspace = true, features = ["postgres", "uuid", "chrono", "serde_json", "numeric"] }
+diesel-async = { workspace = true, features = ["bb8", "postgres"] }
+hex = "0.4"
+bigdecimal = "0.4"
+tracing.workspace = true
+async-trait.workspace = true
+bcs.workspace = true
+serde.workspace = true
+serde_json = { workspace = true }
+anyhow.workspace = true
+url.workspace = true
+
+myso-pg-db.workspace = true
+prometheus.workspace = true
+myso-indexer-alt-metrics.workspace = true
+myso-types.workspace = true
+move-core-types.workspace = true
+telemetry-subscribers.workspace = true
+
+myso-indexer-alt-orderbook-schema = { path = "../myso-indexer-alt-orderbook-schema" }
+
+[lib]
+name = "orderbook_indexer"
+path = "src/lib.rs"
+
+[dev-dependencies]
+myso-storage.workspace = true
+insta = { version = "1.43.1", features = ["json"] }
+serde_json = "1.0.140"
+sqlx = { version = "0.8.3", features = ["runtime-tokio", "postgres", "chrono", "bigdecimal"] }
+fastcrypto.workspace = true
+chrono = "0.4.39"
+
+[[bin]]
+name = "myso-orderbook-indexer"
+path = "src/main.rs"

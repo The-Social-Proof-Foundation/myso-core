@@ -3,7 +3,6 @@
 // SPDX-License-Identifier: Apache-2.0
 
 use anyhow::Result;
-use fs_extra::dir::CopyOptions;
 use move_binary_format::{CompiledModule, file_format::Visibility};
 use move_compiler::editions::{Edition, Flavor};
 use move_package_alt_compilation::{
@@ -14,7 +13,7 @@ use myso_package_alt::mainnet_environment;
 use std::{
     collections::BTreeMap,
     env, fs,
-    path::{Path, PathBuf},
+    path::Path,
 };
 
 const CRATE_ROOT: &str = env!("CARGO_MANIFEST_DIR");
@@ -39,46 +38,6 @@ async fn build_system_packages() {
     std::fs::create_dir_all(out_dir.join(DOCS_DIR)).unwrap();
 
     let packages_path = Path::new(CRATE_ROOT).join("packages");
-    let indir = tempfile::tempdir().unwrap();
-    fs_extra::dir::copy(
-        packages_path,
-        indir.path(),
-        &CopyOptions::new().content_only(true),
-    )
-    .unwrap();
-    let packages_path = indir.path();
-
-    // Fix Move.toml dependency paths for nested package structure
-    // myso-framework/myso-framework/Move.toml references ../move-stdlib, but needs ../../move-stdlib
-    let framework_move_toml = packages_path
-        .join("myso-framework")
-        .join("myso-framework")
-        .join("Move.toml");
-    if framework_move_toml.exists() {
-        let content = fs::read_to_string(&framework_move_toml).unwrap();
-        let fixed = content.replace("../move-stdlib", "../../move-stdlib");
-        fs::write(&framework_move_toml, fixed).unwrap();
-    }
-
-    // Fix bridge, orderbook, mydata, myso-social, myso-system Move.toml - point to nested
-    // myso-framework at myso-framework/myso-framework. ../move-stdlib is correct for all (same
-    // level in temp copy); do not change it.
-    for pkg_name in [
-        "bridge",
-        "orderbook",
-        "mydata",
-        "myso-social",
-        "myso-system",
-    ] {
-        let move_toml = packages_path.join(pkg_name).join("Move.toml");
-        if move_toml.exists() {
-            let content = fs::read_to_string(&move_toml).unwrap();
-            let fixed = content.replace("../myso-framework", "../myso-framework/myso-framework");
-            if fixed != content {
-                fs::write(&move_toml, fixed).unwrap();
-            }
-        }
-    }
 
     let bridge_path = packages_path.join("bridge");
     let orderbook_path = packages_path.join("orderbook");
@@ -138,7 +97,7 @@ async fn build_packages(
     let config = MoveBuildConfig {
         generate_docs: true,
         warnings_are_errors: true,
-        install_dir: Some(PathBuf::from(".")),
+        install_dir: None,
         lint_flag: LintFlag::LEVEL_NONE,
         default_edition: Some(Edition::E2024_BETA),
         default_flavor: Some(Flavor::MySo),

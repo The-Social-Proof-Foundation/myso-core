@@ -6,7 +6,7 @@ edition = "2024"
 
 [dependencies]
 MoveStdlib = { local = "../move-stdlib" }
-myso = { local = "../myso-framework" }
+myso = { local = "../myso-framework/myso-framework" }
 mydata = { local = "../mydata" }
 
 [addresses]

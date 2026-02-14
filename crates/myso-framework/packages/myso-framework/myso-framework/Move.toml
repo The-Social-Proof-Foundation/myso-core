@@ -4,7 +4,7 @@ edition = "2024.beta"
 published-at = "0x2" # Deprecated, kept for backwards compatibility
 
 [dependencies]
-MoveStdlib = { local = "../move-stdlib" }
+MoveStdlib = { local = "../../move-stdlib" }
 
 [addresses]
 myso = "0x2"
