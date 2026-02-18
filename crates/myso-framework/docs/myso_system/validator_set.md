@@ -941,10 +941,9 @@ Only an active validator can request to be removed.
 
 <pre><code><b>public</b>(package) <b>fun</b> <a href="../myso_system/validator_set.md#myso_system_validator_set_request_remove_validator">request_remove_validator</a>(self: &<b>mut</b> <a href="../myso_system/validator_set.md#myso_system_validator_set_ValidatorSet">ValidatorSet</a>, ctx: &TxContext) {
     <b>let</b> validator_address = ctx.sender();
-    <b>let</b> validator_index = <a href="../myso_system/validator_set.md#myso_system_validator_set_find_validator">find_validator</a>(
-        &self.<a href="../myso_system/validator_set.md#myso_system_validator_set_active_validators">active_validators</a>,
-        validator_address,
-    ).destroy_or!(<b>abort</b> <a href="../myso_system/validator_set.md#myso_system_validator_set_ENotAValidator">ENotAValidator</a>);
+    <b>let</b> <b>mut</b> validator_index_opt = <a href="../myso_system/validator_set.md#myso_system_validator_set_find_validator">find_validator</a>(&self.<a href="../myso_system/validator_set.md#myso_system_validator_set_active_validators">active_validators</a>, validator_address);
+    <b>assert</b>!(validator_index_opt.is_some(), <a href="../myso_system/validator_set.md#myso_system_validator_set_ENotAValidator">ENotAValidator</a>);
+    <b>let</b> validator_index = validator_index_opt.extract();
     <b>assert</b>!(!self.pending_removals.contains(&validator_index), <a href="../myso_system/validator_set.md#myso_system_validator_set_EValidatorAlreadyRemoved">EValidatorAlreadyRemoved</a>);
     self.pending_removals.push_back(validator_index);
 }

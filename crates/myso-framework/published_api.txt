@@ -2566,7 +2566,13 @@ destroy_zero
 create_currency
 	public fun
 	0x2::coin
+create_currency_with_admin
+	public fun
+	0x2::coin
 create_regulated_currency_v2
+	public fun
+	0x2::coin
+create_regulated_currency_with_admin
 	public fun
 	0x2::coin
 migrate_regulated_currency_to_v2
@@ -2647,6 +2653,9 @@ new_deny_cap_v2
 new_treasury_cap
 	public(package) fun
 	0x2::coin
+new_treasury_cap_with_admin
+	public(package) fun
+	0x2::coin
 allow_global_pause
 	public(package) fun
 	0x2::coin
@@ -2709,6 +2718,12 @@ new_currency
 	0x2::coin_registry
 new_currency_with_otw
 	public fun
+	0x2::coin_registry
+new_currency_with_otw_genesis
+	public fun
+	0x2::coin_registry
+new_currency_genesis
+	public(package) fun
 	0x2::coin_registry
 claim_metadata_cap
 	public fun

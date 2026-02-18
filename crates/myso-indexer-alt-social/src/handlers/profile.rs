@@ -67,34 +67,27 @@ where
     }
 }
 
-/// Event emitted when a profile is created. Ported from mys-indexer.
+/// Event emitted when a profile is created. Aligned with Move ProfileCreatedEvent.
 #[derive(Debug, Clone, Deserialize)]
 struct ProfileCreatedEvent {
-    #[serde(rename = "profile_id", alias = "id", default)]
+    #[serde(rename = "profile_id", alias = "id")]
     profile_id: String,
 
-    #[serde(rename = "owner_address", alias = "owner", default)]
+    #[serde(rename = "owner_address", alias = "owner")]
     owner_address: String,
 
-    #[serde(default)]
-    username: Option<String>,
+    username: String,
 
-    #[serde(rename = "display_name", default)]
+    #[serde(rename = "display_name")]
     display_name: String,
 
-    #[serde(
-        rename = "profile_photo",
-        alias = "profile_picture",
-        alias = "avatar_url",
-        default
-    )]
+    bio: String,
+
+    #[serde(rename = "profile_photo", alias = "profile_picture", alias = "avatar_url")]
     profile_photo: Option<String>,
 
-    #[serde(rename = "cover_photo", alias = "cover_url", default)]
+    #[serde(rename = "cover_photo", alias = "cover_url")]
     cover_photo: Option<String>,
-
-    #[serde(default)]
-    bio: Option<String>,
 
     #[serde(
         rename = "created_at",
@@ -104,7 +97,7 @@ struct ProfileCreatedEvent {
     _created_at: u64,
 }
 
-/// Event emitted when a profile is updated. Ported from mys-indexer.
+/// Event emitted when a profile is updated. Aligned with Move ProfileUpdatedEvent.
 #[derive(Debug, Clone, Deserialize)]
 struct ProfileUpdatedEvent {
     #[serde(rename = "profile_id", alias = "id", default)]
@@ -113,8 +106,7 @@ struct ProfileUpdatedEvent {
     #[serde(rename = "display_name", default)]
     display_name: Option<String>,
 
-    #[serde(default)]
-    username: Option<String>,
+    username: String,
 
     #[serde(rename = "owner_address", alias = "owner", default)]
     owner_address: String,
@@ -130,8 +122,8 @@ struct ProfileUpdatedEvent {
     #[serde(rename = "cover_photo", alias = "cover_url", default)]
     cover_photo: Option<String>,
 
-    #[serde(rename = "bio", alias = "description", default)]
-    bio: Option<String>,
+    #[serde(rename = "bio", alias = "description")]
+    bio: String,
 
     #[serde(default)]
     birthdate: Option<String>,
@@ -195,23 +187,19 @@ impl ProfileCreatedEvent {
     fn into_model(&self) -> NewProfile {
         let now = Utc::now().naive_utc();
 
-        let username = match &self.username {
-            Some(name) if !name.is_empty() => name.clone(),
-            _ => format!(
-                "user_{}",
-                self.owner_address.chars().take(8).collect::<String>()
-            ),
-        };
-
         NewProfile {
             owner_address: self.owner_address.clone(),
-            username,
+            username: self.username.clone(),
             display_name: if self.display_name.is_empty() {
                 None
             } else {
                 Some(self.display_name.clone())
             },
-            bio: self.bio.clone(),
+            bio: if self.bio.is_empty() {
+                None
+            } else {
+                Some(self.bio.clone())
+            },
             profile_photo: self.profile_photo.clone(),
             website: None,
             created_at: now,
@@ -260,8 +248,8 @@ pub fn handle_profile_event(
     event_id: &str,
 ) -> Option<Vec<SocialEventRow>> {
     match event_name {
-        "ProfileCreatedEvent" => process_profile_created_event(data),
-        "ProfileUpdatedEvent" => process_profile_updated_event(data),
+        "ProfileCreatedEvent" => process_profile_created_event(data, event_id),
+        "ProfileUpdatedEvent" => process_profile_updated_event(data, event_id),
         "UsernameRegisteredEvent" => process_username_registered_event(data),
         "UsernameUpdatedEvent" => process_username_updated_event(data),
         "BadgeAssignedEvent" => process_badge_assigned_event(data, event_id),
@@ -272,19 +260,95 @@ pub fn handle_profile_event(
     }
 }
 
-fn process_profile_created_event(data: &serde_json::Value) -> Option<Vec<SocialEventRow>> {
-    let ev: ProfileCreatedEvent = serde_json::from_value(data.clone()).ok()?;
+fn process_profile_created_event(
+    data: &serde_json::Value,
+    event_id: &str,
+) -> Option<Vec<SocialEventRow>> {
+    let ev: ProfileCreatedEvent = match serde_json::from_value(data.clone()) {
+        Ok(e) => e,
+        Err(e) => {
+            let keys: Vec<String> = data
+                .as_object()
+                .map(|o| o.keys().cloned().collect())
+                .unwrap_or_default();
+            tracing::warn!(
+                event_id = %event_id,
+                error = %e,
+                json_keys = ?keys,
+                "ProfileCreatedEvent JSON deserialization failed"
+            );
+            return None;
+        }
+    };
+    tracing::debug!(
+        event_id = %event_id,
+        owner_address = %ev.owner_address,
+        username = ?ev.username,
+        display_name = ?ev.display_name,
+        bio_len = ev.bio.len(),
+        profile_photo = ev.profile_photo.as_ref().map(|_| "set").unwrap_or("none"),
+        cover_photo = ev.cover_photo.as_ref().map(|_| "set").unwrap_or("none"),
+        "ProfileCreatedEvent parsed successfully, indexing"
+    );
+    let now = Utc::now().naive_utc();
+    let profile_id = ev.profile_id.clone();
+    let owner_address = ev.owner_address.clone();
     let profile = ev.into_model();
-    Some(vec![SocialEventRow::Profile(profile)])
+
+    let audit_event = NewProfileEvent {
+        event_type: "ProfileCreated".to_string(),
+        profile_id: if profile_id.is_empty() {
+            owner_address.clone()
+        } else {
+            profile_id
+        },
+        event_data: serde_json::json!({
+            "owner_address": owner_address,
+            "username": profile.username,
+            "display_name": profile.display_name,
+        }),
+        event_id: Some(event_id.to_string()),
+        created_at: now,
+        updated_at: now,
+    };
+
+    Some(vec![
+        SocialEventRow::Profile(profile),
+        SocialEventRow::ProfileEvent(audit_event),
+    ])
 }
 
-fn process_profile_updated_event(data: &serde_json::Value) -> Option<Vec<SocialEventRow>> {
+fn process_profile_updated_event(
+    data: &serde_json::Value,
+    event_id: &str,
+) -> Option<Vec<SocialEventRow>> {
     let ev: ProfileUpdatedEvent = serde_json::from_value(data.clone()).ok()?;
+    let now = Utc::now().naive_utc();
+    let profile_id = ev.profile_id.clone();
+    let owner_address = ev.owner_address.clone();
+
+    let audit_event = NewProfileEvent {
+        event_type: "ProfileUpdated".to_string(),
+        profile_id: profile_id.clone(),
+        event_data: serde_json::json!({
+            "owner_address": owner_address,
+            "display_name": ev.display_name,
+            "username": ev.username,
+        }),
+        event_id: Some(event_id.to_string()),
+        created_at: now,
+        updated_at: now,
+    };
+
     let up = ProfileUpdate {
         profile_id: ev.profile_id,
         owner_address: ev.owner_address,
         display_name: ev.display_name,
-        bio: ev.bio,
+        bio: if ev.bio.is_empty() {
+            None
+        } else {
+            Some(ev.bio)
+        },
         profile_photo: ev.profile_photo,
         cover_photo: ev.cover_photo,
         birthdate: ev.birthdate,
@@ -306,12 +370,15 @@ fn process_profile_updated_event(data: &serde_json::Value) -> Option<Vec<SocialE
         linkedin_username: ev.linkedin_username,
         twitch_username: ev.twitch_username,
         min_offer_amount: ev.min_offer_amount,
-        username: ev.username,
+        username: Some(ev.username),
         selected_badge_id: None,
         paid_messaging_enabled: None,
         paid_messaging_min_cost: None,
     };
-    Some(vec![SocialEventRow::ProfileUpdate(up)])
+    Some(vec![
+        SocialEventRow::ProfileUpdate(up),
+        SocialEventRow::ProfileEvent(audit_event),
+    ])
 }
 
 /// Event emitted when a username is registered. Ported from mys-indexer.
@@ -667,4 +734,45 @@ fn process_paid_messaging_settings_updated_event(
         paid_messaging_min_cost: ev.min_cost.map(|v| v as i64),
     };
     Some(vec![SocialEventRow::ProfileUpdate(up)])
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::handlers::events::parse_event_contents;
+
+    #[test]
+    fn test_profile_created_bcs_to_handler_to_new_profile() {
+        let contents: Vec<u8> = vec![
+            217, 0, 116, 168, 192, 241, 38, 98, 208, 170, 122, 181, 129, 167, 139, 149, 123, 82,
+            250, 151, 203, 248, 61, 180, 210, 122, 244, 238, 112, 6, 36, 122, 12, 66, 114, 97, 110,
+            100, 111, 110, 32, 83, 104, 97, 119, 7, 98, 114, 97, 110, 100, 111, 110, 36, 87, 101,
+            98, 56, 32, 100, 101, 118, 101, 108, 111, 112, 101, 114, 32, 97, 110, 100, 32, 99, 114,
+            121, 112, 116, 111, 32, 101, 110, 116, 104, 117, 115, 105, 97, 115, 116, 1, 31, 104,
+            116, 116, 112, 115, 58, 47, 47, 101, 120, 97, 109, 112, 108, 101, 46, 99, 111, 109, 47,
+            112, 114, 111, 102, 105, 108, 101, 46, 106, 112, 103, 1, 29, 104, 116, 116, 112, 115,
+            58, 47, 47, 101, 120, 97, 109, 112, 108, 101, 46, 99, 111, 109, 47, 99, 111, 118, 101,
+            114, 46, 112, 110, 103, 156, 200, 104, 135, 157, 106, 255, 74, 171, 250, 160, 27, 141,
+            86, 246, 73, 253, 178, 164, 32, 199, 252, 9, 96, 225, 249, 235, 52, 206, 192, 0, 124,
+            5, 0, 0, 0, 0, 0, 0, 0,
+        ];
+        let json = parse_event_contents("profile", "ProfileCreatedEvent", &contents)
+            .expect("parse_event_contents should succeed");
+        let rows = handle_profile_event("ProfileCreatedEvent", &json, "test-event-id")
+            .expect("handle_profile_event should return Some");
+        assert_eq!(rows.len(), 2, "expect Profile + ProfileEvent");
+        let (profile_row, event_row) = match (&rows[0], &rows[1]) {
+            (SocialEventRow::Profile(p), SocialEventRow::ProfileEvent(e)) => (p, e),
+            (SocialEventRow::ProfileEvent(e), SocialEventRow::Profile(p)) => (p, e),
+            _ => panic!("expected Profile and ProfileEvent rows"),
+        };
+        assert_eq!(profile_row.username, "brandon");
+        assert_eq!(profile_row.display_name, Some("Brandon Shaw".to_string()));
+        assert_eq!(
+            profile_row.bio,
+            Some("Web8 developer and crypto enthusiast".to_string())
+        );
+        assert!(profile_row.owner_address.starts_with("0x"));
+        assert_eq!(event_row.event_type, "ProfileCreated");
+    }
 }

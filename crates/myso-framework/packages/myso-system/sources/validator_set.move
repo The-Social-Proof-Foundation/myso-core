@@ -271,10 +271,9 @@ public(package) fun assert_no_pending_or_active_duplicates(
 /// Only an active validator can request to be removed.
 public(package) fun request_remove_validator(self: &mut ValidatorSet, ctx: &TxContext) {
     let validator_address = ctx.sender();
-    let validator_index = find_validator(
-        &self.active_validators,
-        validator_address,
-    ).destroy_or!(abort ENotAValidator);
+    let mut validator_index_opt = find_validator(&self.active_validators, validator_address);
+    assert!(validator_index_opt.is_some(), ENotAValidator);
+    let validator_index = validator_index_opt.extract();
     assert!(!self.pending_removals.contains(&validator_index), EValidatorAlreadyRemoved);
     self.pending_removals.push_back(validator_index);
 }

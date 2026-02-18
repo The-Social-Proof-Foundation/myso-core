@@ -36,7 +36,9 @@ tokens and coins. <code><a href="../myso/coin.md#myso_coin_Coin">Coin</a></code>
 -  [Function `zero`](#myso_coin_zero)
 -  [Function `destroy_zero`](#myso_coin_destroy_zero)
 -  [Function `create_currency`](#myso_coin_create_currency)
+-  [Function `create_currency_with_admin`](#myso_coin_create_currency_with_admin)
 -  [Function `create_regulated_currency_v2`](#myso_coin_create_regulated_currency_v2)
+-  [Function `create_regulated_currency_with_admin`](#myso_coin_create_regulated_currency_with_admin)
 -  [Function `migrate_regulated_currency_to_v2`](#myso_coin_migrate_regulated_currency_to_v2)
 -  [Function `mint`](#myso_coin_mint)
 -  [Function `mint_balance`](#myso_coin_mint_balance)
@@ -63,6 +65,7 @@ tokens and coins. <code><a href="../myso/coin.md#myso_coin_Coin">Coin</a></code>
 -  [Function `deny_cap_id`](#myso_coin_deny_cap_id)
 -  [Function `new_deny_cap_v2`](#myso_coin_new_deny_cap_v2)
 -  [Function `new_treasury_cap`](#myso_coin_new_treasury_cap)
+-  [Function `new_treasury_cap_with_admin`](#myso_coin_new_treasury_cap_with_admin)
 -  [Function `allow_global_pause`](#myso_coin_allow_global_pause)
 -  [Function `new_coin_metadata`](#myso_coin_new_coin_metadata)
 -  [Function `update_coin_metadata`](#myso_coin_update_coin_metadata)
@@ -992,6 +995,8 @@ type, ensuring that there's only one <code><a href="../myso/coin.md#myso_coin_Tr
     icon_url: Option&lt;Url&gt;,
     ctx: &<b>mut</b> TxContext,
 ): (<a href="../myso/coin.md#myso_coin_TreasuryCap">TreasuryCap</a>&lt;T&gt;, <a href="../myso/coin.md#myso_coin_CoinMetadata">CoinMetadata</a>&lt;T&gt;) {
+    // Only allow genesis (@0x0 at epoch 0)
+    <b>assert</b>!(ctx.sender() == @0x0 && ctx.epoch() == 0, <a href="../myso/coin.md#myso_coin_ENotAuthorized">ENotAuthorized</a>);
     // Make sure there's only one instance of the type T
     <b>assert</b>!(<a href="../myso/types.md#myso_types_is_one_time_witness">myso::types::is_one_time_witness</a>(&witness), <a href="../myso/coin.md#myso_coin_EBadWitness">EBadWitness</a>);
     (
@@ -1005,6 +1010,54 @@ type, ensuring that there's only one <code><a href="../myso/coin.md#myso_coin_Tr
             name: name.to_string(),
             symbol: symbol.to_ascii_string(),
             description: description.to_string(),
+            icon_url,
+        },
+    )
+}
+</code></pre>
+
+
+
+</details>
+
+<a name="myso_coin_create_currency_with_admin"></a>
+
+## Function `create_currency_with_admin`
+
+Create a new currency with admin authorization
+Requires CoinCreationAdminCap - only the admin can create new coins.
+Uniqueness is enforced by admin discretion (only CoinCreationAdminCap holder can create).
+
+
+<pre><code><b>public</b> <b>fun</b> <a href="../myso/coin.md#myso_coin_create_currency_with_admin">create_currency_with_admin</a>&lt;T&gt;(decimals: u8, symbol: vector&lt;u8&gt;, name: vector&lt;u8&gt;, description: vector&lt;u8&gt;, icon_url: <a href="../std/option.md#std_option_Option">std::option::Option</a>&lt;<a href="../myso/url.md#myso_url_Url">myso::url::Url</a>&gt;, _admin_cap: &<a href="../myso/coin.md#myso_coin_CoinCreationAdminCap">myso::coin::CoinCreationAdminCap</a>, ctx: &<b>mut</b> <a href="../myso/tx_context.md#myso_tx_context_TxContext">myso::tx_context::TxContext</a>): (<a href="../myso/coin.md#myso_coin_TreasuryCap">myso::coin::TreasuryCap</a>&lt;T&gt;, <a href="../myso/coin.md#myso_coin_CoinMetadata">myso::coin::CoinMetadata</a>&lt;T&gt;)
+</code></pre>
+
+
+
+<details>
+<summary>Implementation</summary>
+
+
+<pre><code><b>public</b> <b>fun</b> <a href="../myso/coin.md#myso_coin_create_currency_with_admin">create_currency_with_admin</a>&lt;T&gt;(
+    decimals: u8,
+    symbol: vector&lt;u8&gt;,
+    name: vector&lt;u8&gt;,
+    description: vector&lt;u8&gt;,
+    icon_url: Option&lt;Url&gt;,
+    _admin_cap: &<a href="../myso/coin.md#myso_coin_CoinCreationAdminCap">CoinCreationAdminCap</a>,
+    ctx: &<b>mut</b> TxContext,
+): (<a href="../myso/coin.md#myso_coin_TreasuryCap">TreasuryCap</a>&lt;T&gt;, <a href="../myso/coin.md#myso_coin_CoinMetadata">CoinMetadata</a>&lt;T&gt;) {
+    (
+        <a href="../myso/coin.md#myso_coin_TreasuryCap">TreasuryCap</a> {
+            id: <a href="../myso/object.md#myso_object_new">object::new</a>(ctx),
+            <a href="../myso/coin.md#myso_coin_total_supply">total_supply</a>: <a href="../myso/balance.md#myso_balance_create_supply_internal">balance::create_supply_internal</a>(),
+        },
+        <a href="../myso/coin.md#myso_coin_CoinMetadata">CoinMetadata</a> {
+            id: <a href="../myso/object.md#myso_object_new">object::new</a>(ctx),
+            decimals,
+            name: string::utf8(name),
+            symbol: ascii::string(symbol),
+            description: string::utf8(description),
             icon_url,
         },
     )
@@ -1055,6 +1108,59 @@ will not change the result of the "contains" APIs.
         name,
         description,
         icon_url,
+        ctx,
+    );
+    <b>let</b> deny_cap = <a href="../myso/coin.md#myso_coin_DenyCapV2">DenyCapV2</a> {
+        id: <a href="../myso/object.md#myso_object_new">object::new</a>(ctx),
+        <a href="../myso/coin.md#myso_coin_allow_global_pause">allow_global_pause</a>,
+    };
+    <a href="../myso/transfer.md#myso_transfer_freeze_object">transfer::freeze_object</a>(<a href="../myso/coin.md#myso_coin_RegulatedCoinMetadata">RegulatedCoinMetadata</a>&lt;T&gt; {
+        id: <a href="../myso/object.md#myso_object_new">object::new</a>(ctx),
+        coin_metadata_object: <a href="../myso/object.md#myso_object_id">object::id</a>(&metadata),
+        deny_cap_object: <a href="../myso/object.md#myso_object_id">object::id</a>(&deny_cap),
+    });
+    (treasury_cap, deny_cap, metadata)
+}
+</code></pre>
+
+
+
+</details>
+
+<a name="myso_coin_create_regulated_currency_with_admin"></a>
+
+## Function `create_regulated_currency_with_admin`
+
+Admin-cap variant of <code><a href="../myso/coin.md#myso_coin_create_regulated_currency_v2">create_regulated_currency_v2</a></code>.
+Creates a regulated currency using <code><a href="../myso/coin.md#myso_coin_CoinCreationAdminCap">CoinCreationAdminCap</a></code> instead of a one-time witness.
+
+
+<pre><code><b>public</b> <b>fun</b> <a href="../myso/coin.md#myso_coin_create_regulated_currency_with_admin">create_regulated_currency_with_admin</a>&lt;T&gt;(decimals: u8, symbol: vector&lt;u8&gt;, name: vector&lt;u8&gt;, description: vector&lt;u8&gt;, icon_url: <a href="../std/option.md#std_option_Option">std::option::Option</a>&lt;<a href="../myso/url.md#myso_url_Url">myso::url::Url</a>&gt;, <a href="../myso/coin.md#myso_coin_allow_global_pause">allow_global_pause</a>: bool, _admin_cap: &<a href="../myso/coin.md#myso_coin_CoinCreationAdminCap">myso::coin::CoinCreationAdminCap</a>, ctx: &<b>mut</b> <a href="../myso/tx_context.md#myso_tx_context_TxContext">myso::tx_context::TxContext</a>): (<a href="../myso/coin.md#myso_coin_TreasuryCap">myso::coin::TreasuryCap</a>&lt;T&gt;, <a href="../myso/coin.md#myso_coin_DenyCapV2">myso::coin::DenyCapV2</a>&lt;T&gt;, <a href="../myso/coin.md#myso_coin_CoinMetadata">myso::coin::CoinMetadata</a>&lt;T&gt;)
+</code></pre>
+
+
+
+<details>
+<summary>Implementation</summary>
+
+
+<pre><code><b>public</b> <b>fun</b> <a href="../myso/coin.md#myso_coin_create_regulated_currency_with_admin">create_regulated_currency_with_admin</a>&lt;T&gt;(
+    decimals: u8,
+    symbol: vector&lt;u8&gt;,
+    name: vector&lt;u8&gt;,
+    description: vector&lt;u8&gt;,
+    icon_url: Option&lt;Url&gt;,
+    <a href="../myso/coin.md#myso_coin_allow_global_pause">allow_global_pause</a>: bool,
+    _admin_cap: &<a href="../myso/coin.md#myso_coin_CoinCreationAdminCap">CoinCreationAdminCap</a>,
+    ctx: &<b>mut</b> TxContext,
+): (<a href="../myso/coin.md#myso_coin_TreasuryCap">TreasuryCap</a>&lt;T&gt;, <a href="../myso/coin.md#myso_coin_DenyCapV2">DenyCapV2</a>&lt;T&gt;, <a href="../myso/coin.md#myso_coin_CoinMetadata">CoinMetadata</a>&lt;T&gt;) {
+    <b>let</b> (treasury_cap, metadata) = <a href="../myso/coin.md#myso_coin_create_currency_with_admin">create_currency_with_admin</a>(
+        decimals,
+        symbol,
+        name,
+        description,
+        icon_url,
+        _admin_cap,
         ctx,
     );
     <b>let</b> deny_cap = <a href="../myso/coin.md#myso_coin_DenyCapV2">DenyCapV2</a> {
@@ -1805,6 +1911,37 @@ Destroy legacy <code><a href="../myso/coin.md#myso_coin_CoinMetadata">CoinMetada
 
 
 <pre><code><b>public</b>(<a href="../myso/package.md#myso_package">package</a>) <b>fun</b> <a href="../myso/coin.md#myso_coin_new_treasury_cap">new_treasury_cap</a>&lt;T&gt;(ctx: &<b>mut</b> TxContext): <a href="../myso/coin.md#myso_coin_TreasuryCap">TreasuryCap</a>&lt;T&gt; {
+    <a href="../myso/coin.md#myso_coin_TreasuryCap">TreasuryCap</a> {
+        id: <a href="../myso/object.md#myso_object_new">object::new</a>(ctx),
+        <a href="../myso/coin.md#myso_coin_total_supply">total_supply</a>: <a href="../myso/balance.md#myso_balance_create_supply_internal">balance::create_supply_internal</a>(),
+    }
+}
+</code></pre>
+
+
+
+</details>
+
+<a name="myso_coin_new_treasury_cap_with_admin"></a>
+
+## Function `new_treasury_cap_with_admin`
+
+Admin-cap-gated variant of <code><a href="../myso/coin.md#myso_coin_new_treasury_cap">new_treasury_cap</a></code>. Used by coin_registry when creating coins post-genesis.
+
+
+<pre><code><b>public</b>(<a href="../myso/package.md#myso_package">package</a>) <b>fun</b> <a href="../myso/coin.md#myso_coin_new_treasury_cap_with_admin">new_treasury_cap_with_admin</a>&lt;T&gt;(_admin_cap: &<a href="../myso/coin.md#myso_coin_CoinCreationAdminCap">myso::coin::CoinCreationAdminCap</a>, ctx: &<b>mut</b> <a href="../myso/tx_context.md#myso_tx_context_TxContext">myso::tx_context::TxContext</a>): <a href="../myso/coin.md#myso_coin_TreasuryCap">myso::coin::TreasuryCap</a>&lt;T&gt;
+</code></pre>
+
+
+
+<details>
+<summary>Implementation</summary>
+
+
+<pre><code><b>public</b>(<a href="../myso/package.md#myso_package">package</a>) <b>fun</b> <a href="../myso/coin.md#myso_coin_new_treasury_cap_with_admin">new_treasury_cap_with_admin</a>&lt;T&gt;(
+    _admin_cap: &<a href="../myso/coin.md#myso_coin_CoinCreationAdminCap">CoinCreationAdminCap</a>,
+    ctx: &<b>mut</b> TxContext,
+): <a href="../myso/coin.md#myso_coin_TreasuryCap">TreasuryCap</a>&lt;T&gt; {
     <a href="../myso/coin.md#myso_coin_TreasuryCap">TreasuryCap</a> {
         id: <a href="../myso/object.md#myso_object_new">object::new</a>(ctx),
         <a href="../myso/coin.md#myso_coin_total_supply">total_supply</a>: <a href="../myso/balance.md#myso_balance_create_supply_internal">balance::create_supply_internal</a>(),

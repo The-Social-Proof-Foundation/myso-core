@@ -80,7 +80,7 @@ object_runtime_max_num_cached_objects: 1000
 object_runtime_max_num_cached_objects_system_tx: 16000
 object_runtime_max_num_store_entries: 1000
 object_runtime_max_num_store_entries_system_tx: 16000
-base_tx_cost_fixed: 1000
+base_tx_cost_fixed: 1
 package_publish_cost_fixed: 1000
 base_tx_cost_per_byte: 0
 package_publish_cost_per_byte: 80
@@ -191,4 +191,3 @@ hmac_hmac_sha3_256_input_cost_per_byte: 2
 hmac_hmac_sha3_256_input_cost_per_block: 2
 execution_version: 1
 consensus_bad_nodes_stake_threshold: 20
-

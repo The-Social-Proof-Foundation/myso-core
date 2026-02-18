@@ -22,6 +22,8 @@ supply information, regulatory status, and metadata capabilities.
 -  [Constants](#@Constants_0)
 -  [Function `new_currency`](#myso_coin_registry_new_currency)
 -  [Function `new_currency_with_otw`](#myso_coin_registry_new_currency_with_otw)
+-  [Function `new_currency_with_otw_genesis`](#myso_coin_registry_new_currency_with_otw_genesis)
+-  [Function `new_currency_genesis`](#myso_coin_registry_new_currency_genesis)
 -  [Function `claim_metadata_cap`](#myso_coin_registry_claim_metadata_cap)
 -  [Function `make_regulated`](#myso_coin_registry_make_regulated)
 -  [Function `make_supply_fixed_init`](#myso_coin_registry_make_supply_fixed_init)
@@ -771,9 +773,10 @@ Creates a new currency.
 
 Note: This constructor has no long term difference from <code><a href="../myso/coin_registry.md#myso_coin_registry_new_currency_with_otw">new_currency_with_otw</a></code>.
 This can be called from the module that defines <code>T</code> any time after it has been published.
+Requires <code>CoinCreationAdminCap</code> to authorize coin creation.
 
 
-<pre><code><b>public</b> <b>fun</b> <a href="../myso/coin_registry.md#myso_coin_registry_new_currency">new_currency</a>&lt;T: key&gt;(registry: &<b>mut</b> <a href="../myso/coin_registry.md#myso_coin_registry_CoinRegistry">myso::coin_registry::CoinRegistry</a>, <a href="../myso/coin_registry.md#myso_coin_registry_decimals">decimals</a>: u8, <a href="../myso/coin_registry.md#myso_coin_registry_symbol">symbol</a>: <a href="../std/string.md#std_string_String">std::string::String</a>, <a href="../myso/coin_registry.md#myso_coin_registry_name">name</a>: <a href="../std/string.md#std_string_String">std::string::String</a>, <a href="../myso/coin_registry.md#myso_coin_registry_description">description</a>: <a href="../std/string.md#std_string_String">std::string::String</a>, <a href="../myso/coin_registry.md#myso_coin_registry_icon_url">icon_url</a>: <a href="../std/string.md#std_string_String">std::string::String</a>, ctx: &<b>mut</b> <a href="../myso/tx_context.md#myso_tx_context_TxContext">myso::tx_context::TxContext</a>): (<a href="../myso/coin_registry.md#myso_coin_registry_CurrencyInitializer">myso::coin_registry::CurrencyInitializer</a>&lt;T&gt;, <a href="../myso/coin.md#myso_coin_TreasuryCap">myso::coin::TreasuryCap</a>&lt;T&gt;)
+<pre><code><b>public</b> <b>fun</b> <a href="../myso/coin_registry.md#myso_coin_registry_new_currency">new_currency</a>&lt;T: key&gt;(registry: &<b>mut</b> <a href="../myso/coin_registry.md#myso_coin_registry_CoinRegistry">myso::coin_registry::CoinRegistry</a>, <a href="../myso/coin_registry.md#myso_coin_registry_decimals">decimals</a>: u8, <a href="../myso/coin_registry.md#myso_coin_registry_symbol">symbol</a>: <a href="../std/string.md#std_string_String">std::string::String</a>, <a href="../myso/coin_registry.md#myso_coin_registry_name">name</a>: <a href="../std/string.md#std_string_String">std::string::String</a>, <a href="../myso/coin_registry.md#myso_coin_registry_description">description</a>: <a href="../std/string.md#std_string_String">std::string::String</a>, <a href="../myso/coin_registry.md#myso_coin_registry_icon_url">icon_url</a>: <a href="../std/string.md#std_string_String">std::string::String</a>, admin_cap: &<a href="../myso/coin.md#myso_coin_CoinCreationAdminCap">myso::coin::CoinCreationAdminCap</a>, ctx: &<b>mut</b> <a href="../myso/tx_context.md#myso_tx_context_TxContext">myso::tx_context::TxContext</a>): (<a href="../myso/coin_registry.md#myso_coin_registry_CurrencyInitializer">myso::coin_registry::CurrencyInitializer</a>&lt;T&gt;, <a href="../myso/coin.md#myso_coin_TreasuryCap">myso::coin::TreasuryCap</a>&lt;T&gt;)
 </code></pre>
 
 
@@ -789,11 +792,12 @@ This can be called from the module that defines <code>T</code> any time after it
     <a href="../myso/coin_registry.md#myso_coin_registry_name">name</a>: String,
     <a href="../myso/coin_registry.md#myso_coin_registry_description">description</a>: String,
     <a href="../myso/coin_registry.md#myso_coin_registry_icon_url">icon_url</a>: String,
+    admin_cap: &CoinCreationAdminCap,
     ctx: &<b>mut</b> TxContext,
 ): (<a href="../myso/coin_registry.md#myso_coin_registry_CurrencyInitializer">CurrencyInitializer</a>&lt;T&gt;, TreasuryCap&lt;T&gt;) {
     <b>assert</b>!(!registry.<a href="../myso/coin_registry.md#myso_coin_registry_exists">exists</a>&lt;T&gt;(), <a href="../myso/coin_registry.md#myso_coin_registry_ECurrencyAlreadyExists">ECurrencyAlreadyExists</a>);
     <b>assert</b>!(<a href="../myso/coin_registry.md#myso_coin_registry_is_ascii_printable">is_ascii_printable</a>!(&<a href="../myso/coin_registry.md#myso_coin_registry_symbol">symbol</a>), <a href="../myso/coin_registry.md#myso_coin_registry_EInvalidSymbol">EInvalidSymbol</a>);
-    <b>let</b> treasury_cap = <a href="../myso/coin.md#myso_coin_new_treasury_cap">coin::new_treasury_cap</a>(ctx);
+    <b>let</b> treasury_cap = <a href="../myso/coin.md#myso_coin_new_treasury_cap_with_admin">coin::new_treasury_cap_with_admin</a>(admin_cap, ctx);
     <b>let</b> currency = <a href="../myso/coin_registry.md#myso_coin_registry_Currency">Currency</a>&lt;T&gt; {
         id: <a href="../myso/derived_object.md#myso_derived_object_claim">derived_object::claim</a>(&<b>mut</b> registry.id, <a href="../myso/coin_registry.md#myso_coin_registry_CurrencyKey">CurrencyKey</a>&lt;T&gt;()),
         <a href="../myso/coin_registry.md#myso_coin_registry_decimals">decimals</a>,
@@ -824,9 +828,10 @@ Creates a new currency with using an OTW as proof of uniqueness.
 This is a two-step operation:
 1. <code><a href="../myso/coin_registry.md#myso_coin_registry_Currency">Currency</a></code> is constructed in the <code>init</code> function and sent to the <code><a href="../myso/coin_registry.md#myso_coin_registry_CoinRegistry">CoinRegistry</a></code>;
 2. <code><a href="../myso/coin_registry.md#myso_coin_registry_Currency">Currency</a></code> is promoted to a shared object in the <code><a href="../myso/coin_registry.md#myso_coin_registry_finalize_registration">finalize_registration</a></code> call;
+Requires <code>CoinCreationAdminCap</code> to authorize coin creation.
 
 
-<pre><code><b>public</b> <b>fun</b> <a href="../myso/coin_registry.md#myso_coin_registry_new_currency_with_otw">new_currency_with_otw</a>&lt;T: drop&gt;(otw: T, <a href="../myso/coin_registry.md#myso_coin_registry_decimals">decimals</a>: u8, <a href="../myso/coin_registry.md#myso_coin_registry_symbol">symbol</a>: <a href="../std/string.md#std_string_String">std::string::String</a>, <a href="../myso/coin_registry.md#myso_coin_registry_name">name</a>: <a href="../std/string.md#std_string_String">std::string::String</a>, <a href="../myso/coin_registry.md#myso_coin_registry_description">description</a>: <a href="../std/string.md#std_string_String">std::string::String</a>, <a href="../myso/coin_registry.md#myso_coin_registry_icon_url">icon_url</a>: <a href="../std/string.md#std_string_String">std::string::String</a>, ctx: &<b>mut</b> <a href="../myso/tx_context.md#myso_tx_context_TxContext">myso::tx_context::TxContext</a>): (<a href="../myso/coin_registry.md#myso_coin_registry_CurrencyInitializer">myso::coin_registry::CurrencyInitializer</a>&lt;T&gt;, <a href="../myso/coin.md#myso_coin_TreasuryCap">myso::coin::TreasuryCap</a>&lt;T&gt;)
+<pre><code><b>public</b> <b>fun</b> <a href="../myso/coin_registry.md#myso_coin_registry_new_currency_with_otw">new_currency_with_otw</a>&lt;T: drop&gt;(otw: T, <a href="../myso/coin_registry.md#myso_coin_registry_decimals">decimals</a>: u8, <a href="../myso/coin_registry.md#myso_coin_registry_symbol">symbol</a>: <a href="../std/string.md#std_string_String">std::string::String</a>, <a href="../myso/coin_registry.md#myso_coin_registry_name">name</a>: <a href="../std/string.md#std_string_String">std::string::String</a>, <a href="../myso/coin_registry.md#myso_coin_registry_description">description</a>: <a href="../std/string.md#std_string_String">std::string::String</a>, <a href="../myso/coin_registry.md#myso_coin_registry_icon_url">icon_url</a>: <a href="../std/string.md#std_string_String">std::string::String</a>, admin_cap: &<a href="../myso/coin.md#myso_coin_CoinCreationAdminCap">myso::coin::CoinCreationAdminCap</a>, ctx: &<b>mut</b> <a href="../myso/tx_context.md#myso_tx_context_TxContext">myso::tx_context::TxContext</a>): (<a href="../myso/coin_registry.md#myso_coin_registry_CurrencyInitializer">myso::coin_registry::CurrencyInitializer</a>&lt;T&gt;, <a href="../myso/coin.md#myso_coin_TreasuryCap">myso::coin::TreasuryCap</a>&lt;T&gt;)
 </code></pre>
 
 
@@ -842,8 +847,61 @@ This is a two-step operation:
     <a href="../myso/coin_registry.md#myso_coin_registry_name">name</a>: String,
     <a href="../myso/coin_registry.md#myso_coin_registry_description">description</a>: String,
     <a href="../myso/coin_registry.md#myso_coin_registry_icon_url">icon_url</a>: String,
+    admin_cap: &CoinCreationAdminCap,
     ctx: &<b>mut</b> TxContext,
 ): (<a href="../myso/coin_registry.md#myso_coin_registry_CurrencyInitializer">CurrencyInitializer</a>&lt;T&gt;, TreasuryCap&lt;T&gt;) {
+    <b>assert</b>!(<a href="../myso/types.md#myso_types_is_one_time_witness">myso::types::is_one_time_witness</a>(&otw), <a href="../myso/coin_registry.md#myso_coin_registry_ENotOneTimeWitness">ENotOneTimeWitness</a>);
+    <b>assert</b>!(<a href="../myso/coin_registry.md#myso_coin_registry_is_ascii_printable">is_ascii_printable</a>!(&<a href="../myso/coin_registry.md#myso_coin_registry_symbol">symbol</a>), <a href="../myso/coin_registry.md#myso_coin_registry_EInvalidSymbol">EInvalidSymbol</a>);
+    <b>let</b> treasury_cap = <a href="../myso/coin.md#myso_coin_new_treasury_cap_with_admin">coin::new_treasury_cap_with_admin</a>(admin_cap, ctx);
+    <b>let</b> currency = <a href="../myso/coin_registry.md#myso_coin_registry_Currency">Currency</a>&lt;T&gt; {
+        id: <a href="../myso/object.md#myso_object_new">object::new</a>(ctx),
+        <a href="../myso/coin_registry.md#myso_coin_registry_decimals">decimals</a>,
+        <a href="../myso/coin_registry.md#myso_coin_registry_name">name</a>,
+        <a href="../myso/coin_registry.md#myso_coin_registry_symbol">symbol</a>,
+        <a href="../myso/coin_registry.md#myso_coin_registry_description">description</a>,
+        <a href="../myso/coin_registry.md#myso_coin_registry_icon_url">icon_url</a>,
+        supply: option::some(SupplyState::Unknown),
+        regulated: RegulatedState::Unregulated,
+        <a href="../myso/coin_registry.md#myso_coin_registry_treasury_cap_id">treasury_cap_id</a>: option::some(<a href="../myso/object.md#myso_object_id">object::id</a>(&treasury_cap)),
+        <a href="../myso/coin_registry.md#myso_coin_registry_metadata_cap_id">metadata_cap_id</a>: MetadataCapState::Unclaimed,
+        extra_fields: <a href="../myso/vec_map.md#myso_vec_map_empty">vec_map::empty</a>(),
+    };
+    (<a href="../myso/coin_registry.md#myso_coin_registry_CurrencyInitializer">CurrencyInitializer</a> { currency, is_otw: <b>true</b>, extra_fields: <a href="../myso/bag.md#myso_bag_new">bag::new</a>(ctx) }, treasury_cap)
+}
+</code></pre>
+
+
+
+</details>
+
+<a name="myso_coin_registry_new_currency_with_otw_genesis"></a>
+
+## Function `new_currency_with_otw_genesis`
+
+Genesis-only variant of <code><a href="../myso/coin_registry.md#myso_coin_registry_new_currency_with_otw">new_currency_with_otw</a></code>. Only works when <code>ctx.sender() == @0x0</code> and <code>ctx.epoch() == 0</code>.
+Use <code><a href="../myso/coin_registry.md#myso_coin_registry_new_currency_with_otw">new_currency_with_otw</a></code> with <code>CoinCreationAdminCap</code> for post-genesis coin creation.
+
+
+<pre><code><b>public</b> <b>fun</b> <a href="../myso/coin_registry.md#myso_coin_registry_new_currency_with_otw_genesis">new_currency_with_otw_genesis</a>&lt;T: drop&gt;(otw: T, <a href="../myso/coin_registry.md#myso_coin_registry_decimals">decimals</a>: u8, <a href="../myso/coin_registry.md#myso_coin_registry_symbol">symbol</a>: <a href="../std/string.md#std_string_String">std::string::String</a>, <a href="../myso/coin_registry.md#myso_coin_registry_name">name</a>: <a href="../std/string.md#std_string_String">std::string::String</a>, <a href="../myso/coin_registry.md#myso_coin_registry_description">description</a>: <a href="../std/string.md#std_string_String">std::string::String</a>, <a href="../myso/coin_registry.md#myso_coin_registry_icon_url">icon_url</a>: <a href="../std/string.md#std_string_String">std::string::String</a>, ctx: &<b>mut</b> <a href="../myso/tx_context.md#myso_tx_context_TxContext">myso::tx_context::TxContext</a>): (<a href="../myso/coin_registry.md#myso_coin_registry_CurrencyInitializer">myso::coin_registry::CurrencyInitializer</a>&lt;T&gt;, <a href="../myso/coin.md#myso_coin_TreasuryCap">myso::coin::TreasuryCap</a>&lt;T&gt;)
+</code></pre>
+
+
+
+<details>
+<summary>Implementation</summary>
+
+
+<pre><code><b>public</b> <b>fun</b> <a href="../myso/coin_registry.md#myso_coin_registry_new_currency_with_otw_genesis">new_currency_with_otw_genesis</a>&lt;T: drop&gt;(
+    otw: T,
+    <a href="../myso/coin_registry.md#myso_coin_registry_decimals">decimals</a>: u8,
+    <a href="../myso/coin_registry.md#myso_coin_registry_symbol">symbol</a>: String,
+    <a href="../myso/coin_registry.md#myso_coin_registry_name">name</a>: String,
+    <a href="../myso/coin_registry.md#myso_coin_registry_description">description</a>: String,
+    <a href="../myso/coin_registry.md#myso_coin_registry_icon_url">icon_url</a>: String,
+    ctx: &<b>mut</b> TxContext,
+): (<a href="../myso/coin_registry.md#myso_coin_registry_CurrencyInitializer">CurrencyInitializer</a>&lt;T&gt;, TreasuryCap&lt;T&gt;) {
+    <b>assert</b>!(ctx.sender() == @0x0, <a href="../myso/coin_registry.md#myso_coin_registry_ENotSystemAddress">ENotSystemAddress</a>);
+    <b>assert</b>!(ctx.epoch() == 0, <a href="../myso/coin_registry.md#myso_coin_registry_ENotSystemAddress">ENotSystemAddress</a>);
     <b>assert</b>!(<a href="../myso/types.md#myso_types_is_one_time_witness">myso::types::is_one_time_witness</a>(&otw), <a href="../myso/coin_registry.md#myso_coin_registry_ENotOneTimeWitness">ENotOneTimeWitness</a>);
     <b>assert</b>!(<a href="../myso/coin_registry.md#myso_coin_registry_is_ascii_printable">is_ascii_printable</a>!(&<a href="../myso/coin_registry.md#myso_coin_registry_symbol">symbol</a>), <a href="../myso/coin_registry.md#myso_coin_registry_EInvalidSymbol">EInvalidSymbol</a>);
     <b>let</b> treasury_cap = <a href="../myso/coin.md#myso_coin_new_treasury_cap">coin::new_treasury_cap</a>(ctx);
@@ -861,6 +919,57 @@ This is a two-step operation:
         extra_fields: <a href="../myso/vec_map.md#myso_vec_map_empty">vec_map::empty</a>(),
     };
     (<a href="../myso/coin_registry.md#myso_coin_registry_CurrencyInitializer">CurrencyInitializer</a> { currency, is_otw: <b>true</b>, extra_fields: <a href="../myso/bag.md#myso_bag_new">bag::new</a>(ctx) }, treasury_cap)
+}
+</code></pre>
+
+
+
+</details>
+
+<a name="myso_coin_registry_new_currency_genesis"></a>
+
+## Function `new_currency_genesis`
+
+Genesis-only variant of <code><a href="../myso/coin_registry.md#myso_coin_registry_new_currency">new_currency</a></code>. Only works when <code>ctx.sender() == @0x0</code> and <code>ctx.epoch() == 0</code>.
+
+
+<pre><code><b>public</b>(<a href="../myso/package.md#myso_package">package</a>) <b>fun</b> <a href="../myso/coin_registry.md#myso_coin_registry_new_currency_genesis">new_currency_genesis</a>&lt;T: key&gt;(registry: &<b>mut</b> <a href="../myso/coin_registry.md#myso_coin_registry_CoinRegistry">myso::coin_registry::CoinRegistry</a>, <a href="../myso/coin_registry.md#myso_coin_registry_decimals">decimals</a>: u8, <a href="../myso/coin_registry.md#myso_coin_registry_symbol">symbol</a>: <a href="../std/string.md#std_string_String">std::string::String</a>, <a href="../myso/coin_registry.md#myso_coin_registry_name">name</a>: <a href="../std/string.md#std_string_String">std::string::String</a>, <a href="../myso/coin_registry.md#myso_coin_registry_description">description</a>: <a href="../std/string.md#std_string_String">std::string::String</a>, <a href="../myso/coin_registry.md#myso_coin_registry_icon_url">icon_url</a>: <a href="../std/string.md#std_string_String">std::string::String</a>, ctx: &<b>mut</b> <a href="../myso/tx_context.md#myso_tx_context_TxContext">myso::tx_context::TxContext</a>): (<a href="../myso/coin_registry.md#myso_coin_registry_CurrencyInitializer">myso::coin_registry::CurrencyInitializer</a>&lt;T&gt;, <a href="../myso/coin.md#myso_coin_TreasuryCap">myso::coin::TreasuryCap</a>&lt;T&gt;)
+</code></pre>
+
+
+
+<details>
+<summary>Implementation</summary>
+
+
+<pre><code><b>public</b>(<a href="../myso/package.md#myso_package">package</a>) <b>fun</b> <a href="../myso/coin_registry.md#myso_coin_registry_new_currency_genesis">new_currency_genesis</a>&lt;T: key&gt;(
+    registry: &<b>mut</b> <a href="../myso/coin_registry.md#myso_coin_registry_CoinRegistry">CoinRegistry</a>,
+    <a href="../myso/coin_registry.md#myso_coin_registry_decimals">decimals</a>: u8,
+    <a href="../myso/coin_registry.md#myso_coin_registry_symbol">symbol</a>: String,
+    <a href="../myso/coin_registry.md#myso_coin_registry_name">name</a>: String,
+    <a href="../myso/coin_registry.md#myso_coin_registry_description">description</a>: String,
+    <a href="../myso/coin_registry.md#myso_coin_registry_icon_url">icon_url</a>: String,
+    ctx: &<b>mut</b> TxContext,
+): (<a href="../myso/coin_registry.md#myso_coin_registry_CurrencyInitializer">CurrencyInitializer</a>&lt;T&gt;, TreasuryCap&lt;T&gt;) {
+    <b>assert</b>!(ctx.sender() == @0x0, <a href="../myso/coin_registry.md#myso_coin_registry_ENotSystemAddress">ENotSystemAddress</a>);
+    <b>assert</b>!(ctx.epoch() == 0, <a href="../myso/coin_registry.md#myso_coin_registry_ENotSystemAddress">ENotSystemAddress</a>);
+    <b>assert</b>!(!registry.<a href="../myso/coin_registry.md#myso_coin_registry_exists">exists</a>&lt;T&gt;(), <a href="../myso/coin_registry.md#myso_coin_registry_ECurrencyAlreadyExists">ECurrencyAlreadyExists</a>);
+    <b>assert</b>!(<a href="../myso/coin_registry.md#myso_coin_registry_is_ascii_printable">is_ascii_printable</a>!(&<a href="../myso/coin_registry.md#myso_coin_registry_symbol">symbol</a>), <a href="../myso/coin_registry.md#myso_coin_registry_EInvalidSymbol">EInvalidSymbol</a>);
+    <b>let</b> treasury_cap = <a href="../myso/coin.md#myso_coin_new_treasury_cap">coin::new_treasury_cap</a>(ctx);
+    <b>let</b> currency = <a href="../myso/coin_registry.md#myso_coin_registry_Currency">Currency</a>&lt;T&gt; {
+        id: <a href="../myso/derived_object.md#myso_derived_object_claim">derived_object::claim</a>(&<b>mut</b> registry.id, <a href="../myso/coin_registry.md#myso_coin_registry_CurrencyKey">CurrencyKey</a>&lt;T&gt;()),
+        <a href="../myso/coin_registry.md#myso_coin_registry_decimals">decimals</a>,
+        <a href="../myso/coin_registry.md#myso_coin_registry_name">name</a>,
+        <a href="../myso/coin_registry.md#myso_coin_registry_symbol">symbol</a>,
+        <a href="../myso/coin_registry.md#myso_coin_registry_description">description</a>,
+        <a href="../myso/coin_registry.md#myso_coin_registry_icon_url">icon_url</a>,
+        supply: option::some(SupplyState::Unknown),
+        regulated: RegulatedState::Unregulated,
+        <a href="../myso/coin_registry.md#myso_coin_registry_treasury_cap_id">treasury_cap_id</a>: option::some(<a href="../myso/object.md#myso_object_id">object::id</a>(&treasury_cap)),
+        <a href="../myso/coin_registry.md#myso_coin_registry_metadata_cap_id">metadata_cap_id</a>: MetadataCapState::Unclaimed,
+        extra_fields: <a href="../myso/vec_map.md#myso_vec_map_empty">vec_map::empty</a>(),
+    };
+    (<a href="../myso/coin_registry.md#myso_coin_registry_CurrencyInitializer">CurrencyInitializer</a> { currency, is_otw: <b>false</b>, extra_fields: <a href="../myso/bag.md#myso_bag_new">bag::new</a>(ctx) }, treasury_cap)
 }
 </code></pre>
 

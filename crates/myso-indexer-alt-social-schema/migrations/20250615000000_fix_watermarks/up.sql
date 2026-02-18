@@ -1,16 +1,17 @@
 -- Fix watermarks table if it was created with the wrong schema (worker_id, stream_name).
 -- The indexer framework expects pipeline, epoch_hi_inclusive, etc.
+-- CASCADE on DROP avoids lock contention from dependent objects.
 
 DO $$
 BEGIN
     IF EXISTS (
         SELECT 1
         FROM information_schema.columns
-        WHERE table_name = 'watermarks'
+        WHERE table_schema = 'public'
+        AND table_name = 'watermarks'
         AND column_name = 'worker_id'
-        AND table_schema = 'public'
     ) THEN
-        DROP TABLE IF EXISTS watermarks;
+        DROP TABLE IF EXISTS watermarks CASCADE;
         CREATE TABLE watermarks
         (
             pipeline                    TEXT          PRIMARY KEY,

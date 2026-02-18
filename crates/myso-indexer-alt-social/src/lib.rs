@@ -3,7 +3,9 @@
 
 use url::Url;
 
-pub mod handlers;
+mod handlers;
+
+pub use handlers::SocialEvents;
 
 pub const MAINNET_REMOTE_STORE_URL: &str = "https://checkpoints.mainnet.mysocial.network";
 pub const TESTNET_REMOTE_STORE_URL: &str = "https://checkpoints.testnet.mysocial.network";
@@ -70,7 +72,7 @@ pub async fn setup_social_indexer(
     .context("Failed to create social indexer")?;
 
     indexer
-        .concurrent_pipeline(handlers::social_events::SocialEvents, Default::default())
+        .concurrent_pipeline(SocialEvents, Default::default())
         .await
         .context("Failed to add SocialEvents pipeline")?;
 

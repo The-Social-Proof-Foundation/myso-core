@@ -129,7 +129,7 @@ object_runtime_max_num_cached_objects: 1000
 object_runtime_max_num_cached_objects_system_tx: 16000
 object_runtime_max_num_store_entries: 1000
 object_runtime_max_num_store_entries_system_tx: 16000
-base_tx_cost_fixed: 1000
+base_tx_cost_fixed: 1
 package_publish_cost_fixed: 1000
 base_tx_cost_per_byte: 0
 package_publish_cost_per_byte: 80
@@ -289,4 +289,3 @@ consensus_max_transactions_in_block_bytes: 6291456
 max_deferral_rounds_for_congestion_control: 10
 min_checkpoint_interval_ms: 200
 checkpoint_summary_version_specific_data: 1
-
