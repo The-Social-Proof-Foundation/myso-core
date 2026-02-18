@@ -2,16 +2,25 @@
 // SPDX-License-Identifier: Apache-2.0
 
 use diesel::sql_types::{
-    BigInt, Bool, Date, Integer, Jsonb, Nullable, SmallInt, Text, Timestamp, Timestamptz,
+    BigInt, Bool, Date, Double, Integer, Jsonb, Nullable, SmallInt, Text, Timestamp, Timestamptz,
 };
+use diesel::BoolExpressionMethods;
 use diesel::ExpressionMethods;
 use diesel::OptionalExtension;
+use diesel::PgTextExpressionMethods;
 use diesel::QueryDsl;
 use diesel::QueryableByName;
 use diesel::SelectableHelper;
 use diesel_async::RunQueryDsl;
 use myso_indexer_alt_social_schema::models::Profile;
-use myso_indexer_alt_social_schema::schema::profiles;
+use myso_indexer_alt_social_schema::schema::{
+    blocked_events, blocked_profiles, comments, ecosystem_treasury, platform_blocked_profiles,
+    platform_events, platform_memberships, platform_moderators, platforms, poc_analysis_results,
+    poc_configuration, poc_dispute_votes, post_config, posts, profile_events,
+    profile_subscription_services, profile_subscriptions, profiles, promotion_views, reactions,
+    reposts, social_graph_relationships, spt_holdings, spt_reservations, subscription_revenue,
+    unified_revenue, vesting_events, vesting_wallets, wallet_social_graph,
+};
 use myso_pg_db::{Db, DbArgs};
 use serde::Serialize;
 use url::Url;
@@ -478,6 +487,38 @@ pub struct SptReservationPoolRow {
 }
 
 #[derive(Debug, Serialize, QueryableByName)]
+pub struct SptReservationPoolWithDisplayRow {
+    #[diesel(sql_type = Integer)]
+    pub id: i32,
+    #[diesel(sql_type = Text)]
+    pub pool_id: String,
+    #[diesel(sql_type = Text)]
+    pub associated_id: String,
+    #[diesel(sql_type = SmallInt)]
+    pub token_type: i16,
+    #[diesel(sql_type = Text)]
+    pub owner: String,
+    #[diesel(sql_type = BigInt)]
+    pub total_reserved: i64,
+    #[diesel(sql_type = BigInt)]
+    pub required_threshold: i64,
+    #[diesel(sql_type = Text)]
+    pub status: String,
+    #[diesel(sql_type = BigInt)]
+    pub created_at_epoch: i64,
+    #[diesel(sql_type = Timestamptz)]
+    pub created_at: chrono::DateTime<chrono::Utc>,
+    #[diesel(sql_type = Text)]
+    pub transaction_id: String,
+    #[diesel(sql_type = Nullable<Text>)]
+    pub icon: Option<String>,
+    #[diesel(sql_type = Nullable<Text>)]
+    pub primary_label: Option<String>,
+    #[diesel(sql_type = Nullable<Text>)]
+    pub secondary_label: Option<String>,
+}
+
+#[derive(Debug, Serialize, QueryableByName)]
 pub struct SptReservationRow {
     #[diesel(sql_type = Text)]
     pub pool_id: String,
@@ -529,6 +570,36 @@ pub struct SptRevenueRow {
     pub myso_amount: i64,
     #[diesel(sql_type = BigInt)]
     pub token_price: i64,
+    #[diesel(sql_type = BigInt)]
+    pub revenue_time: i64,
+    #[diesel(sql_type = Timestamptz)]
+    pub time: chrono::DateTime<chrono::Utc>,
+    #[diesel(sql_type = Text)]
+    pub transaction_id: String,
+}
+
+#[derive(Debug, Serialize, QueryableByName)]
+pub struct UnifiedRevenueRow {
+    #[diesel(sql_type = Text)]
+    pub revenue_source: String,
+    #[diesel(sql_type = Text)]
+    pub revenue_type: String,
+    #[diesel(sql_type = Text)]
+    pub creator_address: String,
+    #[diesel(sql_type = Nullable<Text>)]
+    pub platform_address: Option<String>,
+    #[diesel(sql_type = BigInt)]
+    pub amount: i64,
+    #[diesel(sql_type = Text)]
+    pub currency: String,
+    #[diesel(sql_type = Nullable<Text>)]
+    pub content_id: Option<String>,
+    #[diesel(sql_type = Nullable<Text>)]
+    pub content_type: Option<String>,
+    #[diesel(sql_type = Text)]
+    pub payer_address: String,
+    #[diesel(sql_type = Text)]
+    pub recipient_address: String,
     #[diesel(sql_type = BigInt)]
     pub revenue_time: i64,
     #[diesel(sql_type = Timestamptz)]
@@ -965,6 +1036,382 @@ pub struct InsurancePolicyRow {
     pub premium_paid: i64,
     #[diesel(sql_type = SmallInt)]
     pub status: i16,
+}
+
+#[derive(Debug, Serialize)]
+pub struct SystemStatsResponse {
+    pub profiles: i64,
+    pub platforms: i64,
+    pub total_posts: i64,
+    pub total_comments: i64,
+    pub total_reactions: i64,
+    pub social_proof_tokens: i64,
+    pub total_social_relationships: i64,
+}
+
+#[derive(Debug, Serialize, QueryableByName)]
+pub struct PostBasicRow {
+    #[diesel(sql_type = Text)]
+    pub post_id: String,
+    #[diesel(sql_type = Text)]
+    pub owner: String,
+    #[diesel(sql_type = Text)]
+    pub profile_id: String,
+    #[diesel(sql_type = Text)]
+    pub content: String,
+    #[diesel(sql_type = Text)]
+    pub post_type: String,
+    #[diesel(sql_type = BigInt)]
+    pub created_at: i64,
+    #[diesel(sql_type = Nullable<BigInt>)]
+    pub deleted_at: Option<i64>,
+    #[diesel(sql_type = BigInt)]
+    pub reaction_count: i64,
+    #[diesel(sql_type = BigInt)]
+    pub comment_count: i64,
+    #[diesel(sql_type = BigInt)]
+    pub repost_count: i64,
+    #[diesel(sql_type = BigInt)]
+    pub tips_received: i64,
+}
+
+#[derive(Debug, Serialize)]
+pub struct ProfileEventRow {
+    pub event_type: String,
+    pub profile_id: String,
+    pub event_data: serde_json::Value,
+    pub event_id: Option<String>,
+    pub created_at: chrono::NaiveDateTime,
+}
+
+#[derive(Debug, Serialize)]
+pub struct PlatformMembershipRow {
+    pub platform_id: String,
+    pub name: String,
+    pub is_approved: bool,
+    pub joined_at: chrono::NaiveDateTime,
+}
+
+#[derive(Debug, Serialize)]
+pub struct ProfilePlatformEventRow {
+    pub event_type: String,
+    pub platform_id: String,
+    pub created_at: chrono::NaiveDateTime,
+    pub event_id: Option<String>,
+    pub event_data: serde_json::Value,
+}
+
+#[derive(Debug, Serialize)]
+pub struct BlockedEventRow {
+    pub event_type: String,
+    pub blocked_address: Option<String>,
+    pub processed_at: chrono::NaiveDateTime,
+    pub event_id: Option<String>,
+}
+
+#[derive(Debug, Serialize, QueryableByName)]
+pub struct ProfileBadgeRow {
+    #[diesel(sql_type = Text)]
+    pub badge_id: String,
+    #[diesel(sql_type = Text)]
+    pub badge_name: String,
+    #[diesel(sql_type = Nullable<Text>)]
+    pub badge_description: Option<String>,
+    #[diesel(sql_type = Nullable<Text>)]
+    pub badge_media_url: Option<String>,
+    #[diesel(sql_type = Nullable<Text>)]
+    pub badge_icon_url: Option<String>,
+    #[diesel(sql_type = Text)]
+    pub platform_id: String,
+    #[diesel(sql_type = Text)]
+    pub assigned_by: String,
+    #[diesel(sql_type = BigInt)]
+    pub assigned_at: i64,
+    #[diesel(sql_type = Bool)]
+    pub revoked: bool,
+    #[diesel(sql_type = Nullable<BigInt>)]
+    pub revoked_at: Option<i64>,
+    #[diesel(sql_type = Nullable<Text>)]
+    pub revoked_by: Option<String>,
+    #[diesel(sql_type = SmallInt)]
+    pub badge_type: i16,
+}
+
+#[derive(Debug, Serialize)]
+pub struct SocialGraphAddressRow {
+    pub address: String,
+    pub created_at: chrono::NaiveDateTime,
+}
+
+#[derive(Debug, Serialize)]
+pub struct SocialStatsRow {
+    pub followers_count: i64,
+    pub following_count: i64,
+    pub blocked_count: i64,
+}
+
+#[derive(Debug, Serialize)]
+pub struct BlockedProfileRow {
+    pub blocked_address: String,
+    pub blocked_username: String,
+    pub blocked_display_name: Option<String>,
+    pub blocked_profile_photo: Option<String>,
+    pub first_blocked_at: chrono::NaiveDateTime,
+    pub last_blocked_at: chrono::NaiveDateTime,
+}
+
+#[derive(Debug, Serialize)]
+pub struct BlockedPlatformRow {
+    pub platform_id: String,
+    pub name: String,
+    pub blocked_by: String,
+    pub created_at: chrono::NaiveDateTime,
+}
+
+#[derive(Debug, Serialize, QueryableByName)]
+pub struct SocialGraphChartRow {
+    #[diesel(sql_type = Date)]
+    pub day: chrono::NaiveDate,
+    #[diesel(sql_type = Text)]
+    pub event_type: String,
+    #[diesel(sql_type = BigInt)]
+    pub count: i64,
+}
+
+#[derive(Debug, Serialize)]
+pub struct PlatformRow {
+    pub platform_id: String,
+    pub name: String,
+    pub tagline: String,
+    pub description: Option<String>,
+    pub logo: Option<String>,
+    pub developer_address: String,
+    pub status: i16,
+    pub is_approved: bool,
+    pub primary_category: String,
+    pub secondary_category: Option<String>,
+    pub created_at: chrono::NaiveDateTime,
+    pub updated_at: chrono::NaiveDateTime,
+    pub deleted_at: Option<chrono::NaiveDateTime>,
+}
+
+#[derive(Debug, Serialize)]
+pub struct PlatformModeratorRow {
+    pub moderator_address: String,
+    pub added_by: String,
+    pub created_at: chrono::NaiveDateTime,
+}
+
+#[derive(Debug, Serialize)]
+pub struct PlatformBlockedProfileRow {
+    pub wallet_address: String,
+    pub blocked_by: String,
+    pub created_at: chrono::NaiveDateTime,
+}
+
+#[derive(Debug, Serialize)]
+pub struct PlatformApprovalRow {
+    pub is_approved: bool,
+    pub approval_changed_at: Option<chrono::NaiveDateTime>,
+    pub approved_by: Option<String>,
+}
+
+#[derive(Debug, Serialize)]
+pub struct PlatformMemberRow {
+    pub wallet_address: String,
+    pub joined_at: chrono::NaiveDateTime,
+}
+
+#[derive(Debug, Serialize)]
+pub struct PlatformEventRow {
+    pub event_type: String,
+    pub event_data: serde_json::Value,
+    pub event_id: Option<String>,
+    pub created_at: chrono::NaiveDateTime,
+}
+
+#[derive(Debug, Serialize)]
+pub struct PostConfigRow {
+    pub updated_by: String,
+    pub max_content_length: i64,
+    pub max_media_urls: i64,
+    pub max_mentions: i64,
+    pub max_metadata_size: i64,
+    pub max_description_length: i64,
+    pub max_reaction_length: i64,
+    pub commenter_tip_percentage: i64,
+    pub repost_tip_percentage: i64,
+    pub version: i64,
+    pub updated_at: i64,
+}
+
+#[derive(Debug, Serialize)]
+pub struct CommentRow {
+    pub comment_id: String,
+    pub post_id: String,
+    pub parent_comment_id: Option<String>,
+    pub owner: String,
+    pub profile_id: String,
+    pub content: String,
+    pub created_at: i64,
+    pub reaction_count: i64,
+    pub comment_count: i64,
+}
+
+#[derive(Debug, Serialize)]
+pub struct ReactionRow {
+    pub user_address: String,
+    pub reaction_text: String,
+    pub created_at: i64,
+}
+
+#[derive(Debug, Serialize)]
+pub struct RepostRow {
+    pub repost_id: String,
+    pub original_post_id: String,
+    pub owner: String,
+    pub profile_id: String,
+    pub created_at: i64,
+}
+
+#[derive(Debug, Serialize)]
+pub struct PromotedPostRow {
+    pub promotion_id: String,
+    pub post_id: String,
+    pub owner: String,
+    pub profile_id: String,
+    pub payment_per_view: i64,
+    pub total_budget: i64,
+    pub remaining_budget: i64,
+    pub active: bool,
+    pub created_at: i64,
+}
+
+#[derive(Debug, Serialize)]
+pub struct PromotionViewRow {
+    pub post_id: String,
+    pub promotion_id: String,
+    pub viewer: String,
+    pub payment_amount: i64,
+    pub view_duration: i64,
+    pub platform_id: String,
+    pub timestamp: i64,
+}
+
+#[derive(Debug, Serialize)]
+pub struct PromotionStatsRow {
+    pub total_views: i64,
+    pub total_spent: i64,
+    pub remaining_budget: i64,
+}
+
+#[derive(Debug, Serialize, QueryableByName)]
+pub struct PromotionTimeSeriesRow {
+    #[diesel(sql_type = Date)]
+    pub day: chrono::NaiveDate,
+    #[diesel(sql_type = BigInt)]
+    pub views: i64,
+    #[diesel(sql_type = BigInt)]
+    pub spent: i64,
+}
+
+#[derive(Debug, Serialize, QueryableByName)]
+pub struct PromotionHourlyRow {
+    #[diesel(sql_type = Integer)]
+    pub hour: i32,
+    #[diesel(sql_type = BigInt)]
+    pub views: i64,
+    #[diesel(sql_type = BigInt)]
+    pub spent: i64,
+}
+
+#[derive(Debug, Serialize)]
+pub struct PocBadgeRow {
+    pub badge_id: String,
+    pub post_id: String,
+    pub media_type: i16,
+    pub issued_by: String,
+    pub issued_at: i64,
+    pub revoked: bool,
+}
+
+#[derive(Debug, Serialize)]
+pub struct PocRevenueRedirectionRow {
+    pub redirection_id: String,
+    pub accused_post_id: String,
+    pub original_post_id: String,
+    pub redirect_percentage: i64,
+    pub similarity_score: i64,
+    pub created_at: i64,
+    pub removed: bool,
+}
+
+#[derive(Debug, Serialize)]
+pub struct PocAnalysisResultRow {
+    pub post_id: String,
+    pub media_type: i16,
+    pub similarity_detected: bool,
+    pub highest_similarity_score: i64,
+    pub oracle_address: String,
+    pub analysis_timestamp: i64,
+}
+
+#[derive(Debug, Serialize)]
+pub struct PocDisputeRow {
+    pub dispute_id: String,
+    pub post_id: String,
+    pub disputer: String,
+    pub dispute_type: i16,
+    pub evidence: String,
+    pub status: i16,
+    pub stake_amount: i64,
+    pub submitted_at: i64,
+    pub resolved_at: Option<i64>,
+}
+
+#[derive(Debug, Serialize)]
+pub struct PocDisputeVoteRow {
+    pub dispute_id: String,
+    pub voter: String,
+    pub vote_choice: i16,
+    pub stake_amount: i64,
+    pub voted_at: i64,
+}
+
+#[derive(Debug, Serialize)]
+pub struct PocConfigRow {
+    pub image_threshold: i64,
+    pub video_threshold: i64,
+    pub audio_threshold: i64,
+    pub revenue_redirect_percentage: i64,
+    pub dispute_cost: i64,
+    pub updated_at: i64,
+}
+
+#[derive(Debug, Serialize)]
+pub struct VestingWalletRow {
+    pub wallet_id: String,
+    pub owner_address: String,
+    pub total_amount: i64,
+    pub claimed_amount: i64,
+    pub remaining_balance: i64,
+    pub start_time: i64,
+    pub duration: i64,
+    pub created_at: chrono::NaiveDateTime,
+}
+
+#[derive(Debug, Serialize)]
+pub struct VestingEventRow {
+    pub wallet_id: String,
+    pub event_type: String,
+    pub amount: i64,
+    pub event_time: i64,
+}
+
+#[derive(Debug, Serialize)]
+pub struct SubscriberSummaryRow {
+    pub active_subscriptions: i64,
+    pub total_revenue: i64,
 }
 
 #[derive(Clone)]
@@ -2201,6 +2648,518 @@ impl Reader {
         Ok(result)
     }
 
+    pub async fn list_spt_reservation_pools(
+        &self,
+        limit: i64,
+        offset: i64,
+    ) -> Result<(Vec<SptReservationPoolWithDisplayRow>, i64), crate::error::SocialError> {
+        let mut conn = self.db.connect().await?;
+        let query = r#"
+        WITH latest_reservation_pools AS (
+            SELECT DISTINCT ON (pool_id) *
+            FROM spt_reservation_pools
+            ORDER BY pool_id, time DESC
+        ),
+        latest_profiles AS (
+            SELECT DISTINCT ON (profile_id) *
+            FROM profiles
+            WHERE profile_id IS NOT NULL
+            ORDER BY profile_id, updated_at DESC
+        ),
+        latest_posts AS (
+            SELECT DISTINCT ON (post_id) *
+            FROM posts
+            ORDER BY post_id, time DESC
+        )
+        SELECT
+            rp.id, rp.pool_id, rp.associated_id, rp.token_type, rp.owner,
+            rp.total_reserved, rp.required_threshold, rp.status,
+            rp.created_at as created_at_epoch, rp.time as created_at, rp.transaction_id,
+            CASE
+                WHEN rp.token_type = 1 THEN prof.profile_photo
+                WHEN rp.token_type = 2 THEN
+                    CASE
+                        WHEN post.media_urls IS NOT NULL AND jsonb_typeof(post.media_urls) = 'array' AND jsonb_array_length(post.media_urls) > 0 THEN
+                            CASE
+                                WHEN jsonb_typeof(post.media_urls->0) = 'string' THEN post.media_urls->>0
+                                WHEN jsonb_typeof(post.media_urls->0) = 'object' THEN post.media_urls->0->>'url'
+                                ELSE NULL
+                            END
+                        ELSE NULL
+                    END
+                ELSE NULL
+            END as icon,
+            CASE
+                WHEN rp.token_type = 1 THEN
+                    CASE
+                        WHEN prof.profile_id IS NOT NULL THEN COALESCE(prof.display_name, prof.username)
+                        ELSE 'Anonymous wallet'
+                    END
+                WHEN rp.token_type = 2 THEN post.content
+                ELSE NULL
+            END as primary_label,
+            CASE
+                WHEN rp.token_type = 1 THEN prof.username
+                ELSE NULL
+            END as secondary_label
+        FROM latest_reservation_pools rp
+        LEFT JOIN latest_profiles prof ON
+            rp.token_type = 1 AND
+            (CASE
+                WHEN rp.associated_id LIKE 'profile_%' THEN SUBSTRING(rp.associated_id FROM 9)
+                ELSE rp.associated_id
+            END) = prof.profile_id
+        LEFT JOIN latest_posts post ON
+            rp.token_type = 2 AND
+            (CASE
+                WHEN rp.associated_id LIKE 'post_%' THEN SUBSTRING(rp.associated_id FROM 6)
+                ELSE rp.associated_id
+            END) = post.post_id
+        WHERE rp.status = 'active' OR rp.status = 'threshold_met'
+        ORDER BY rp.total_reserved DESC
+        LIMIT $1 OFFSET $2
+        "#;
+        let pools: Vec<SptReservationPoolWithDisplayRow> = diesel::sql_query(query)
+            .bind::<BigInt, _>(limit)
+            .bind::<BigInt, _>(offset)
+            .load(&mut conn)
+            .await?;
+        let count_query = r#"
+        WITH latest_reservation_pools AS (
+            SELECT DISTINCT ON (pool_id) *
+            FROM spt_reservation_pools
+            ORDER BY pool_id, time DESC
+        )
+        SELECT COUNT(*) as count
+        FROM latest_reservation_pools
+        WHERE status = 'active' OR status = 'threshold_met'
+        "#;
+        #[derive(QueryableByName)]
+        struct CountRow {
+            #[diesel(sql_type = BigInt)]
+            count: i64,
+        }
+        let total: CountRow = diesel::sql_query(count_query).get_result(&mut conn).await?;
+        Ok((pools, total.count))
+    }
+
+    pub async fn get_spt_analytics_top_performers(
+        &self,
+    ) -> Result<Vec<serde_json::Value>, crate::error::SocialError> {
+        let mut conn = self.db.connect().await?;
+        let query = r#"
+        WITH current_prices AS (
+            SELECT DISTINCT ON (pool_id) pool_id, price as current_price
+            FROM spt_price_history
+            ORDER BY pool_id, time DESC
+        ),
+        previous_prices AS (
+            SELECT DISTINCT ON (pool_id) pool_id, price as previous_price
+            FROM spt_price_history
+            WHERE time < NOW() - INTERVAL '24 hours'
+            ORDER BY pool_id, time DESC
+        ),
+        current_volume AS (
+            SELECT pool_id, COALESCE(SUM(myso_amount), 0) as vol
+            FROM spt_transactions
+            WHERE time > NOW() - INTERVAL '24 hours'
+            GROUP BY pool_id
+        ),
+        previous_volume AS (
+            SELECT pool_id, COALESCE(SUM(myso_amount), 0) as vol
+            FROM spt_transactions
+            WHERE time BETWEEN NOW() - INTERVAL '48 hours' AND NOW() - INTERVAL '24 hours'
+            GROUP BY pool_id
+        ),
+        pool_info AS (
+            SELECT DISTINCT ON (pool_id) pool_id, name, symbol
+            FROM spt_pools
+            ORDER BY pool_id, time DESC
+        )
+        SELECT
+            p.pool_id, p.name, p.symbol,
+            COALESCE(cp.current_price, 0) as current_price,
+            COALESCE(pp.previous_price, 0) as previous_price,
+            COALESCE(cv.vol, 0) as current_volume,
+            COALESCE(pv.vol, 0) as previous_volume,
+            CASE WHEN COALESCE(pp.previous_price, 0) = 0 THEN 0.0
+                 ELSE (COALESCE(cp.current_price, 0) - COALESCE(pp.previous_price, 0)) * 100.0 / pp.previous_price
+            END as price_change_percentage,
+            CASE WHEN COALESCE(pv.vol, 0) = 0 THEN 0.0
+                 ELSE (COALESCE(cv.vol, 0) - COALESCE(pv.vol, 0)) * 100.0 / pv.vol
+            END as volume_change_percentage
+        FROM pool_info p
+        LEFT JOIN current_prices cp ON p.pool_id = cp.pool_id
+        LEFT JOIN previous_prices pp ON p.pool_id = pp.pool_id
+        LEFT JOIN current_volume cv ON p.pool_id = cv.pool_id
+        LEFT JOIN previous_volume pv ON p.pool_id = pv.pool_id
+        ORDER BY price_change_percentage DESC NULLS LAST
+        LIMIT 50
+        "#;
+        #[derive(QueryableByName)]
+        struct Row {
+            #[diesel(sql_type = Text)]
+            pool_id: String,
+            #[diesel(sql_type = Text)]
+            name: String,
+            #[diesel(sql_type = Text)]
+            symbol: String,
+            #[diesel(sql_type = BigInt)]
+            current_price: i64,
+            #[diesel(sql_type = BigInt)]
+            previous_price: i64,
+            #[diesel(sql_type = BigInt)]
+            current_volume: i64,
+            #[diesel(sql_type = BigInt)]
+            previous_volume: i64,
+            #[diesel(sql_type = Double)]
+            price_change_percentage: f64,
+            #[diesel(sql_type = Double)]
+            volume_change_percentage: f64,
+        }
+        let rows: Vec<Row> = diesel::sql_query(query).load(&mut conn).await?;
+        Ok(rows
+            .into_iter()
+            .map(|r| {
+                serde_json::json!({
+                    "pool_id": r.pool_id,
+                    "name": r.name,
+                    "symbol": r.symbol,
+                    "current_price": r.current_price,
+                    "previous_price": r.previous_price,
+                    "current_volume": r.current_volume,
+                    "previous_volume": r.previous_volume,
+                    "price_change_percentage": r.price_change_percentage,
+                    "volume_change_percentage": r.volume_change_percentage
+                })
+            })
+            .collect())
+    }
+
+    pub async fn get_spt_portfolio_performance(
+        &self,
+        address: &str,
+    ) -> Result<serde_json::Value, crate::error::SocialError> {
+        let mut conn = self.db.connect().await?;
+        let query = r#"
+        WITH latest_holdings AS (
+            SELECT DISTINCT ON (pool_id) pool_id, amount
+            FROM spt_holdings
+            WHERE holder_address = $1
+            ORDER BY pool_id, time DESC
+        ),
+        initial_tx AS (
+            SELECT DISTINCT ON (pool_id) pool_id, price
+            FROM spt_transactions
+            WHERE sender = $1 AND transaction_type = 'BUY'
+            ORDER BY pool_id, time ASC
+        ),
+        current_prices AS (
+            SELECT DISTINCT ON (pool_id) pool_id, price
+            FROM spt_price_history
+            ORDER BY pool_id, time DESC
+        ),
+        pool_info AS (
+            SELECT DISTINCT ON (pool_id) pool_id, name, symbol
+            FROM spt_pools
+            ORDER BY pool_id, time DESC
+        )
+        SELECT 
+            h.pool_id, p.name, p.symbol, h.amount,
+            h.amount * cp.price as current_value,
+            COALESCE(it.price * h.amount, 0) as initial_value,
+            CASE WHEN COALESCE(it.price * h.amount, 0) = 0 THEN 0.0
+                 ELSE ((h.amount * cp.price) - (it.price * h.amount)) * 100.0 / (it.price * h.amount)
+            END as roi_percentage
+        FROM latest_holdings h
+        JOIN pool_info p ON h.pool_id = p.pool_id
+        JOIN current_prices cp ON h.pool_id = cp.pool_id
+        LEFT JOIN initial_tx it ON h.pool_id = it.pool_id
+        WHERE h.amount > 0
+        "#;
+        #[derive(QueryableByName)]
+        struct HoldingRow {
+            #[diesel(sql_type = Text)]
+            pool_id: String,
+            #[diesel(sql_type = Text)]
+            name: String,
+            #[diesel(sql_type = Text)]
+            symbol: String,
+            #[diesel(sql_type = BigInt)]
+            amount: i64,
+            #[diesel(sql_type = BigInt)]
+            current_value: i64,
+            #[diesel(sql_type = BigInt)]
+            initial_value: i64,
+            #[diesel(sql_type = Double)]
+            roi_percentage: f64,
+        }
+        let holdings: Vec<HoldingRow> = diesel::sql_query(query)
+            .bind::<Text, _>(address)
+            .load(&mut conn)
+            .await?;
+        let current_value: i64 = holdings.iter().map(|h| h.current_value).sum();
+        let initial_value: i64 = holdings.iter().map(|h| h.initial_value).sum();
+        let roi = if initial_value > 0 {
+            (current_value - initial_value) as f64 * 100.0 / initial_value as f64
+        } else {
+            0.0
+        };
+        let holdings_json: Vec<serde_json::Value> = holdings
+            .into_iter()
+            .map(|h| {
+                serde_json::json!({
+                    "pool_id": h.pool_id,
+                    "name": h.name,
+                    "symbol": h.symbol,
+                    "amount": h.amount,
+                    "current_value": h.current_value,
+                    "initial_value": h.initial_value,
+                    "roi_percentage": h.roi_percentage
+                })
+            })
+            .collect();
+        Ok(serde_json::json!({
+            "address": address,
+            "current_value": current_value,
+            "initial_investment": initial_value,
+            "roi_percentage": roi,
+            "holdings": holdings_json,
+            "value_history": []
+        }))
+    }
+
+    pub async fn get_spt_creator_revenue_streams(
+        &self,
+        address: &str,
+        from_ts: chrono::DateTime<chrono::Utc>,
+        to_ts: chrono::DateTime<chrono::Utc>,
+    ) -> Result<serde_json::Value, crate::error::SocialError> {
+        let mut conn = self.db.connect().await?;
+        let query = r#"
+        WITH token_pools AS (
+            SELECT DISTINCT ON (pool_id) pool_id, name, symbol
+            FROM spt_pools
+            WHERE owner = $1
+            ORDER BY pool_id, time DESC
+        ),
+        buy_rev AS (
+            SELECT pool_id, SUM(creator_fee) as buy_revenue, COUNT(*) as buy_count
+            FROM spt_transactions
+            WHERE transaction_type = 'BUY' AND pool_id IN (SELECT pool_id FROM token_pools)
+              AND time >= $2 AND time <= $3
+            GROUP BY pool_id
+        ),
+        sell_rev AS (
+            SELECT pool_id, SUM(creator_fee) as sell_revenue, COUNT(*) as sell_count
+            FROM spt_transactions
+            WHERE transaction_type = 'SELL' AND pool_id IN (SELECT pool_id FROM token_pools)
+              AND time >= $2 AND time <= $3
+            GROUP BY pool_id
+        )
+        SELECT 
+            tp.pool_id, tp.name, tp.symbol,
+            COALESCE(bt.buy_revenue, 0) as buy_revenue,
+            COALESCE(st.sell_revenue, 0) as sell_revenue,
+            COALESCE(bt.buy_revenue, 0) + COALESCE(st.sell_revenue, 0) as total_revenue,
+            COALESCE(bt.buy_count, 0) + COALESCE(st.sell_count, 0) as transactions_count
+        FROM token_pools tp
+        LEFT JOIN buy_rev bt ON tp.pool_id = bt.pool_id
+        LEFT JOIN sell_rev st ON tp.pool_id = st.pool_id
+        ORDER BY total_revenue DESC
+        "#;
+        #[derive(QueryableByName)]
+        struct Row {
+            #[diesel(sql_type = Text)]
+            pool_id: String,
+            #[diesel(sql_type = Text)]
+            name: String,
+            #[diesel(sql_type = Text)]
+            symbol: String,
+            #[diesel(sql_type = BigInt)]
+            buy_revenue: i64,
+            #[diesel(sql_type = BigInt)]
+            sell_revenue: i64,
+            #[diesel(sql_type = BigInt)]
+            total_revenue: i64,
+            #[diesel(sql_type = BigInt)]
+            transactions_count: i64,
+        }
+        let rows: Vec<Row> = diesel::sql_query(query)
+            .bind::<Text, _>(address)
+            .bind::<Timestamptz, _>(from_ts)
+            .bind::<Timestamptz, _>(to_ts)
+            .load(&mut conn)
+            .await?;
+        let total_revenue: i64 = rows.iter().map(|r| r.total_revenue).sum();
+        let token_pools: Vec<serde_json::Value> = rows
+            .into_iter()
+            .map(|r| {
+                serde_json::json!({
+                    "pool_id": r.pool_id,
+                    "name": r.name,
+                    "symbol": r.symbol,
+                    "total_revenue": r.total_revenue,
+                    "buy_revenue": r.buy_revenue,
+                    "sell_revenue": r.sell_revenue,
+                    "transactions_count": r.transactions_count
+                })
+            })
+            .collect();
+        Ok(serde_json::json!({
+            "address": address,
+            "total_revenue": total_revenue,
+            "token_pools": token_pools,
+            "revenue_by_period": []
+        }))
+    }
+
+    pub async fn get_spt_market_sentiment(
+        &self,
+    ) -> Result<serde_json::Value, crate::error::SocialError> {
+        let mut conn = self.db.connect().await?;
+        let query = r#"
+        WITH current_volume AS (
+            SELECT
+                COALESCE(SUM(CASE WHEN transaction_type = 'BUY' THEN myso_amount ELSE 0 END), 0) as buy_volume,
+                COALESCE(SUM(CASE WHEN transaction_type = 'SELL' THEN myso_amount ELSE 0 END), 0) as sell_volume,
+                COALESCE(COUNT(*), 0) as transaction_count,
+                COALESCE(COUNT(DISTINCT CASE WHEN transaction_type = 'BUY' THEN sender END), 0) as unique_buyers,
+                COALESCE(COUNT(DISTINCT CASE WHEN transaction_type = 'SELL' THEN sender END), 0) as unique_sellers
+            FROM spt_transactions
+            WHERE time > NOW() - INTERVAL '24 hours'
+        ),
+        previous_volume AS (
+            SELECT COALESCE(SUM(myso_amount), 0) as total_volume
+            FROM spt_transactions
+            WHERE time BETWEEN NOW() - INTERVAL '48 hours' AND NOW() - INTERVAL '24 hours'
+        )
+        SELECT 
+            c.buy_volume, c.sell_volume, c.transaction_count,
+            c.unique_buyers, c.unique_sellers,
+            CASE WHEN COALESCE(p.total_volume, 0) = 0 THEN 0.0
+                 ELSE ((c.buy_volume + c.sell_volume) - p.total_volume) * 100.0 / p.total_volume
+            END as volume_change_percentage,
+            CASE WHEN (c.buy_volume + c.sell_volume) = 0 THEN 0.0
+                 ELSE (c.buy_volume - c.sell_volume) * 1.0 / (c.buy_volume + c.sell_volume)
+            END as sentiment_score
+        FROM current_volume c
+        CROSS JOIN previous_volume p
+        "#;
+        #[derive(QueryableByName)]
+        struct Row {
+            #[diesel(sql_type = BigInt)]
+            buy_volume: i64,
+            #[diesel(sql_type = BigInt)]
+            sell_volume: i64,
+            #[diesel(sql_type = BigInt)]
+            transaction_count: i64,
+            #[diesel(sql_type = BigInt)]
+            unique_buyers: i64,
+            #[diesel(sql_type = BigInt)]
+            unique_sellers: i64,
+            #[diesel(sql_type = Double)]
+            volume_change_percentage: f64,
+            #[diesel(sql_type = Double)]
+            sentiment_score: f64,
+        }
+        let row: Row = diesel::sql_query(query).get_result(&mut conn).await?;
+        Ok(serde_json::json!({
+            "overall_sentiment": row.sentiment_score,
+            "buy_volume_24h": row.buy_volume,
+            "sell_volume_24h": row.sell_volume,
+            "transaction_count_24h": row.transaction_count,
+            "unique_buyers_24h": row.unique_buyers,
+            "unique_sellers_24h": row.unique_sellers,
+            "volume_change_percentage": row.volume_change_percentage,
+            "price_momentum": []
+        }))
+    }
+
+    pub async fn get_spt_liquidity_profile(
+        &self,
+        pool_id: &str,
+    ) -> Result<serde_json::Value, crate::error::SocialError> {
+        let mut conn = self.db.connect().await?;
+        let pool_query = "
+            SELECT name, symbol
+            FROM spt_pools
+            WHERE pool_id = $1
+            ORDER BY time DESC
+            LIMIT 1
+        ";
+        #[derive(QueryableByName)]
+        struct PoolRow {
+            #[diesel(sql_type = Text)]
+            name: String,
+            #[diesel(sql_type = Text)]
+            symbol: String,
+        }
+        let pool_info: Option<PoolRow> = diesel::sql_query(pool_query)
+            .bind::<Text, _>(pool_id)
+            .get_result(&mut conn)
+            .await
+            .optional()?;
+        let (name, symbol) = pool_info
+            .map(|p| (p.name, p.symbol))
+            .unwrap_or_else(|| ("Unknown".to_string(), "?".to_string()));
+
+        let metrics_query = "
+            SELECT 
+                COALESCE(SUM(myso_amount), 0) as total_volume,
+                COALESCE(COUNT(*), 0) as transaction_count,
+                COALESCE(MAX(myso_amount), 0) as largest_transaction,
+                COALESCE(COUNT(DISTINCT sender), 0) as unique_traders_count,
+                COALESCE(SUM(CASE WHEN transaction_type = 'BUY' THEN myso_amount ELSE 0 END), 0) as buy_volume,
+                COALESCE(SUM(CASE WHEN transaction_type = 'SELL' THEN myso_amount ELSE 0 END), 0) as sell_volume
+            FROM spt_transactions
+            WHERE pool_id = $1 AND time > NOW() - INTERVAL '24 hours'
+        ";
+        #[derive(QueryableByName)]
+        struct MetricsRow {
+            #[diesel(sql_type = BigInt)]
+            total_volume: i64,
+            #[diesel(sql_type = BigInt)]
+            transaction_count: i64,
+            #[diesel(sql_type = BigInt)]
+            largest_transaction: i64,
+            #[diesel(sql_type = BigInt)]
+            unique_traders_count: i64,
+            #[diesel(sql_type = BigInt)]
+            buy_volume: i64,
+            #[diesel(sql_type = BigInt)]
+            sell_volume: i64,
+        }
+        let metrics: MetricsRow = diesel::sql_query(metrics_query)
+            .bind::<Text, _>(pool_id)
+            .get_result(&mut conn)
+            .await?;
+        let avg_tx = if metrics.transaction_count > 0 {
+            metrics.total_volume / metrics.transaction_count
+        } else {
+            0
+        };
+        let buy_sell_ratio = if metrics.sell_volume > 0 {
+            metrics.buy_volume as f64 / metrics.sell_volume as f64
+        } else {
+            0.0
+        };
+        Ok(serde_json::json!({
+            "pool_id": pool_id,
+            "name": name,
+            "symbol": symbol,
+            "total_volume_24h": metrics.total_volume,
+            "transaction_count_24h": metrics.transaction_count,
+            "average_transaction_size": avg_tx,
+            "largest_transaction": metrics.largest_transaction,
+            "unique_traders_count": metrics.unique_traders_count,
+            "buy_volume_24h": metrics.buy_volume,
+            "sell_volume_24h": metrics.sell_volume,
+            "buy_sell_ratio": buy_sell_ratio,
+            "reservation_metrics": {}
+        }))
+    }
+
     pub async fn list_spt_reservations(
         &self,
         pool_id: &str,
@@ -2255,6 +3214,846 @@ impl Reader {
             .load::<SptRevenueRow>(&mut conn)
             .await?;
         Ok(results)
+    }
+
+    pub async fn get_revenue_dashboard(
+        &self,
+    ) -> Result<serde_json::Value, crate::error::SocialError> {
+        let mut conn = self.db.connect().await?;
+        let dashboard_query = r#"
+            SELECT revenue_source, total_revenue_24h, total_transactions_24h, largest_transaction_24h
+            FROM revenue_dashboard_24h
+            ORDER BY total_revenue_24h DESC
+        "#;
+        #[derive(QueryableByName)]
+        struct DashboardRow {
+            #[diesel(sql_type = Text)]
+            revenue_source: String,
+            #[diesel(sql_type = BigInt)]
+            total_revenue_24h: i64,
+            #[diesel(sql_type = BigInt)]
+            total_transactions_24h: i64,
+            #[diesel(sql_type = BigInt)]
+            largest_transaction_24h: i64,
+        }
+        let dashboard_rows: Vec<DashboardRow> =
+            diesel::sql_query(dashboard_query).load(&mut conn).await?;
+        let total_revenue_24h: i64 = dashboard_rows.iter().map(|r| r.total_revenue_24h).sum();
+        let total_transactions_24h: i64 = dashboard_rows
+            .iter()
+            .map(|r| r.total_transactions_24h)
+            .sum();
+        let largest_transaction_24h = dashboard_rows
+            .iter()
+            .map(|r| r.largest_transaction_24h)
+            .max()
+            .unwrap_or(0);
+
+        let unique_query = r#"
+            SELECT COUNT(DISTINCT creator_address) as unique_creators_24h,
+                   COUNT(DISTINCT payer_address) as unique_payers_24h
+            FROM unified_revenue
+            WHERE time >= NOW() - INTERVAL '24 hours' AND amount > 0 AND currency = 'MYS'
+        "#;
+        #[derive(QueryableByName)]
+        struct UniqueRow {
+            #[diesel(sql_type = BigInt)]
+            unique_creators_24h: i64,
+            #[diesel(sql_type = BigInt)]
+            unique_payers_24h: i64,
+        }
+        let unique: UniqueRow = diesel::sql_query(unique_query)
+            .get_result(&mut conn)
+            .await?;
+
+        fn pct(a: i64, b: i64) -> f64 {
+            if b == 0 {
+                0.0
+            } else {
+                (a as f64 / b as f64) * 100.0
+            }
+        }
+        let revenue_by_source: Vec<serde_json::Value> = dashboard_rows
+            .into_iter()
+            .map(|r| {
+                serde_json::json!({
+                    "revenue_source": r.revenue_source,
+                    "total_revenue": r.total_revenue_24h,
+                    "transaction_count": r.total_transactions_24h,
+                    "percentage_of_total": pct(r.total_revenue_24h, total_revenue_24h),
+                    "growth_rate": serde_json::Value::Null
+                })
+            })
+            .collect();
+
+        let top_creators = self.get_revenue_leaderboard_internal(10, 0, None).await?;
+        let recent_trends = self.get_revenue_chart_data_internal(None, 24).await?;
+
+        Ok(serde_json::json!({
+            "total_revenue_24h": total_revenue_24h,
+            "total_transactions_24h": total_transactions_24h,
+            "unique_creators_24h": unique.unique_creators_24h,
+            "unique_payers_24h": unique.unique_payers_24h,
+            "largest_transaction_24h": largest_transaction_24h,
+            "revenue_by_source": revenue_by_source,
+            "top_creators": top_creators,
+            "recent_trends": recent_trends
+        }))
+    }
+
+    async fn get_revenue_leaderboard_internal(
+        &self,
+        limit: i64,
+        min_revenue: i64,
+        revenue_source: Option<&str>,
+    ) -> Result<Vec<serde_json::Value>, crate::error::SocialError> {
+        let mut conn = self.db.connect().await?;
+        let mut query = "
+            SELECT creator_address, total_revenue, total_subscription_revenue,
+                   total_mydata_revenue, total_spt_revenue, total_tips_revenue,
+                   total_transactions, total_unique_payers,
+                   ROW_NUMBER() OVER (ORDER BY total_revenue DESC) as rank
+            FROM spt_creator_revenue_summary
+            WHERE total_revenue >= $1
+        "
+        .to_string();
+        if let Some(src) = revenue_source {
+            match src {
+                "subscription" => query.push_str(" AND total_subscription_revenue > 0"),
+                "mydata" => query.push_str(" AND total_mydata_revenue > 0"),
+                "spt" => query.push_str(" AND total_spt_revenue > 0"),
+                "tips" => query.push_str(" AND total_tips_revenue > 0"),
+                _ => {}
+            }
+        }
+        query.push_str(" ORDER BY total_revenue DESC LIMIT $2");
+        #[derive(QueryableByName)]
+        struct Row {
+            #[diesel(sql_type = Text)]
+            creator_address: String,
+            #[diesel(sql_type = BigInt)]
+            total_revenue: i64,
+            #[diesel(sql_type = BigInt)]
+            total_subscription_revenue: i64,
+            #[diesel(sql_type = BigInt)]
+            total_mydata_revenue: i64,
+            #[diesel(sql_type = BigInt)]
+            total_spt_revenue: i64,
+            #[diesel(sql_type = BigInt)]
+            total_tips_revenue: i64,
+            #[diesel(sql_type = BigInt)]
+            total_transactions: i64,
+            #[diesel(sql_type = BigInt)]
+            total_unique_payers: i64,
+            #[diesel(sql_type = BigInt)]
+            rank: i64,
+        }
+        let rows: Vec<Row> = diesel::sql_query(query)
+            .bind::<BigInt, _>(min_revenue)
+            .bind::<BigInt, _>(limit)
+            .load(&mut conn)
+            .await?;
+        Ok(rows
+            .into_iter()
+            .map(|r| {
+                serde_json::json!({
+                    "rank": r.rank,
+                    "creator_address": r.creator_address,
+                    "total_revenue": r.total_revenue,
+                    "revenue_breakdown": {
+                        "subscription_revenue": r.total_subscription_revenue,
+                        "mydata_revenue": r.total_mydata_revenue,
+                        "spt_revenue": r.total_spt_revenue,
+                        "tips_revenue": r.total_tips_revenue,
+                        "posts_revenue": 0
+                    },
+                    "growth_rate": serde_json::Value::Null,
+                    "transaction_count": r.total_transactions,
+                    "unique_payers": r.total_unique_payers
+                })
+            })
+            .collect())
+    }
+
+    pub async fn get_revenue_leaderboard(
+        &self,
+        limit: i64,
+        min_revenue: i64,
+        revenue_source: Option<&str>,
+    ) -> Result<Vec<serde_json::Value>, crate::error::SocialError> {
+        self.get_revenue_leaderboard_internal(limit, min_revenue, revenue_source)
+            .await
+    }
+
+    async fn get_revenue_chart_data_internal(
+        &self,
+        creator_address: Option<&str>,
+        hours: i64,
+    ) -> Result<Vec<serde_json::Value>, crate::error::SocialError> {
+        let mut conn = self.db.connect().await?;
+        let start_time = chrono::Utc::now() - chrono::Duration::hours(hours);
+        let start_naive = start_time.naive_utc();
+        let query = if creator_address.is_some() {
+            "SELECT time_bucket('1 hour', time) as bucket, revenue_source, SUM(amount) as total_revenue,
+                    COUNT(*) as transaction_count, COUNT(DISTINCT creator_address) as unique_creators,
+                    COUNT(DISTINCT payer_address) as unique_payers
+             FROM unified_revenue WHERE time >= $1 AND creator_address = $2
+             GROUP BY bucket, revenue_source ORDER BY bucket ASC"
+        } else {
+            "SELECT time_bucket('1 hour', time) as bucket, revenue_source, SUM(amount) as total_revenue,
+                    COUNT(*) as transaction_count, COUNT(DISTINCT creator_address) as unique_creators,
+                    COUNT(DISTINCT payer_address) as unique_payers
+             FROM unified_revenue WHERE time >= $1
+             GROUP BY bucket, revenue_source ORDER BY bucket ASC"
+        };
+        #[derive(QueryableByName)]
+        struct ChartRow {
+            #[diesel(sql_type = Timestamp)]
+            bucket: chrono::NaiveDateTime,
+            #[diesel(sql_type = Text)]
+            revenue_source: String,
+            #[diesel(sql_type = BigInt)]
+            total_revenue: i64,
+            #[diesel(sql_type = BigInt)]
+            transaction_count: i64,
+            #[diesel(sql_type = BigInt)]
+            unique_creators: i64,
+            #[diesel(sql_type = BigInt)]
+            unique_payers: i64,
+        }
+        let rows: Vec<ChartRow> = if let Some(addr) = creator_address {
+            diesel::sql_query(query)
+                .bind::<Timestamp, _>(start_naive)
+                .bind::<Text, _>(addr)
+                .load(&mut conn)
+                .await?
+        } else {
+            diesel::sql_query(query)
+                .bind::<Timestamp, _>(start_naive)
+                .load(&mut conn)
+                .await?
+        };
+        Ok(rows
+            .into_iter()
+            .map(|r| {
+                serde_json::json!({
+                    "timestamp": r.bucket.and_utc().to_rfc3339(),
+                    "revenue_source": r.revenue_source,
+                    "total_revenue": r.total_revenue,
+                    "transaction_count": r.transaction_count,
+                    "unique_creators": r.unique_creators,
+                    "unique_payers": r.unique_payers
+                })
+            })
+            .collect())
+    }
+
+    pub async fn get_revenue_chart_data(
+        &self,
+        creator_address: Option<&str>,
+        period: &str,
+        start_date: chrono::NaiveDateTime,
+        end_date: chrono::NaiveDateTime,
+        _points: i64,
+    ) -> Result<Vec<serde_json::Value>, crate::error::SocialError> {
+        let time_bucket = match period {
+            "hour" => "1 hour",
+            "day" => "1 day",
+            "week" => "1 week",
+            "month" => "1 month",
+            _ => "1 day",
+        };
+        let mut conn = self.db.connect().await?;
+        let (query, has_creator) = if creator_address.is_some() {
+            (
+                format!(
+                    "SELECT time_bucket('{}', time) as bucket, revenue_source, SUM(amount) as total_revenue,
+                            COUNT(*) as transaction_count, COUNT(DISTINCT creator_address) as unique_creators,
+                            COUNT(DISTINCT payer_address) as unique_payers
+                     FROM unified_revenue WHERE time BETWEEN $1 AND $2 AND creator_address = $3
+                     GROUP BY bucket, revenue_source ORDER BY bucket ASC",
+                    time_bucket
+                ),
+                true,
+            )
+        } else {
+            (
+                format!(
+                    "SELECT time_bucket('{}', time) as bucket, revenue_source, SUM(amount) as total_revenue,
+                            COUNT(*) as transaction_count, COUNT(DISTINCT creator_address) as unique_creators,
+                            COUNT(DISTINCT payer_address) as unique_payers
+                     FROM unified_revenue WHERE time BETWEEN $1 AND $2
+                     GROUP BY bucket, revenue_source ORDER BY bucket ASC",
+                    time_bucket
+                ),
+                false,
+            )
+        };
+        #[derive(QueryableByName)]
+        struct ChartRow {
+            #[diesel(sql_type = Timestamp)]
+            bucket: chrono::NaiveDateTime,
+            #[diesel(sql_type = Text)]
+            revenue_source: String,
+            #[diesel(sql_type = BigInt)]
+            total_revenue: i64,
+            #[diesel(sql_type = BigInt)]
+            transaction_count: i64,
+            #[diesel(sql_type = BigInt)]
+            unique_creators: i64,
+            #[diesel(sql_type = BigInt)]
+            unique_payers: i64,
+        }
+        let rows: Vec<ChartRow> = if has_creator {
+            diesel::sql_query(&query)
+                .bind::<Timestamp, _>(start_date)
+                .bind::<Timestamp, _>(end_date)
+                .bind::<Text, _>(creator_address.unwrap())
+                .load(&mut conn)
+                .await?
+        } else {
+            diesel::sql_query(&query)
+                .bind::<Timestamp, _>(start_date)
+                .bind::<Timestamp, _>(end_date)
+                .load(&mut conn)
+                .await?
+        };
+        Ok(rows
+            .into_iter()
+            .map(|r| {
+                serde_json::json!({
+                    "timestamp": r.bucket.and_utc().to_rfc3339(),
+                    "revenue_source": r.revenue_source,
+                    "total_revenue": r.total_revenue,
+                    "transaction_count": r.transaction_count,
+                    "unique_creators": r.unique_creators,
+                    "unique_payers": r.unique_payers
+                })
+            })
+            .collect())
+    }
+
+    pub async fn get_unified_revenue(
+        &self,
+        creator_address: Option<&str>,
+        platform_address: Option<&str>,
+        revenue_source: Option<&str>,
+        revenue_type: Option<&str>,
+        content_id: Option<&str>,
+        content_type: Option<&str>,
+        start_date: Option<chrono::NaiveDateTime>,
+        end_date: Option<chrono::NaiveDateTime>,
+        limit: i64,
+        offset: i64,
+    ) -> Result<(Vec<UnifiedRevenueRow>, i64, i64), crate::error::SocialError> {
+        use diesel::dsl::sum;
+        let mut conn = self.db.connect().await?;
+        let mut query = unified_revenue::table.into_boxed();
+        if let Some(a) = creator_address {
+            query = query.filter(unified_revenue::creator_address.eq(a));
+        }
+        if let Some(a) = platform_address {
+            query = query.filter(unified_revenue::platform_address.eq(a));
+        }
+        if let Some(s) = revenue_source {
+            query = query.filter(unified_revenue::revenue_source.eq(s));
+        }
+        if let Some(t) = revenue_type {
+            query = query.filter(unified_revenue::revenue_type.eq(t));
+        }
+        if let Some(c) = content_id {
+            query = query.filter(unified_revenue::content_id.eq(c));
+        }
+        if let Some(c) = content_type {
+            query = query.filter(unified_revenue::content_type.eq(c));
+        }
+        if let Some(d) = start_date {
+            query = query.filter(unified_revenue::time.ge(
+                chrono::DateTime::<chrono::Utc>::from_naive_utc_and_offset(d, chrono::Utc),
+            ));
+        }
+        if let Some(d) = end_date {
+            query = query.filter(unified_revenue::time.le(
+                chrono::DateTime::<chrono::Utc>::from_naive_utc_and_offset(d, chrono::Utc),
+            ));
+        }
+        let total_count: i64 = {
+            let mut q = unified_revenue::table.into_boxed();
+            if let Some(a) = creator_address {
+                q = q.filter(unified_revenue::creator_address.eq(a));
+            }
+            if let Some(a) = platform_address {
+                q = q.filter(unified_revenue::platform_address.eq(a));
+            }
+            if let Some(s) = revenue_source {
+                q = q.filter(unified_revenue::revenue_source.eq(s));
+            }
+            if let Some(t) = revenue_type {
+                q = q.filter(unified_revenue::revenue_type.eq(t));
+            }
+            if let Some(c) = content_id {
+                q = q.filter(unified_revenue::content_id.eq(c));
+            }
+            if let Some(c) = content_type {
+                q = q.filter(unified_revenue::content_type.eq(c));
+            }
+            if let Some(d) = start_date {
+                q = q.filter(unified_revenue::time.ge(
+                    chrono::DateTime::<chrono::Utc>::from_naive_utc_and_offset(d, chrono::Utc),
+                ));
+            }
+            if let Some(d) = end_date {
+                q = q.filter(unified_revenue::time.le(
+                    chrono::DateTime::<chrono::Utc>::from_naive_utc_and_offset(d, chrono::Utc),
+                ));
+            }
+            q.count().get_result(&mut conn).await?
+        };
+        let total_amount: Option<bigdecimal::BigDecimal> = {
+            let mut q = unified_revenue::table.into_boxed();
+            if let Some(a) = creator_address {
+                q = q.filter(unified_revenue::creator_address.eq(a));
+            }
+            if let Some(a) = platform_address {
+                q = q.filter(unified_revenue::platform_address.eq(a));
+            }
+            if let Some(s) = revenue_source {
+                q = q.filter(unified_revenue::revenue_source.eq(s));
+            }
+            if let Some(t) = revenue_type {
+                q = q.filter(unified_revenue::revenue_type.eq(t));
+            }
+            if let Some(c) = content_id {
+                q = q.filter(unified_revenue::content_id.eq(c));
+            }
+            if let Some(c) = content_type {
+                q = q.filter(unified_revenue::content_type.eq(c));
+            }
+            if let Some(d) = start_date {
+                q = q.filter(unified_revenue::time.ge(
+                    chrono::DateTime::<chrono::Utc>::from_naive_utc_and_offset(d, chrono::Utc),
+                ));
+            }
+            if let Some(d) = end_date {
+                q = q.filter(unified_revenue::time.le(
+                    chrono::DateTime::<chrono::Utc>::from_naive_utc_and_offset(d, chrono::Utc),
+                ));
+            }
+            q.select(sum(unified_revenue::amount))
+                .get_result(&mut conn)
+                .await?
+        };
+        let total_amount: i64 = total_amount
+            .and_then(|bd| bigdecimal::ToPrimitive::to_i64(&bd))
+            .unwrap_or(0);
+        let rows: Vec<(
+            String,
+            String,
+            String,
+            Option<String>,
+            i64,
+            String,
+            Option<String>,
+            Option<String>,
+            String,
+            String,
+            i64,
+            chrono::DateTime<chrono::Utc>,
+            String,
+        )> = query
+            .order_by(unified_revenue::time.desc())
+            .limit(limit)
+            .offset(offset)
+            .select((
+                unified_revenue::revenue_source,
+                unified_revenue::revenue_type,
+                unified_revenue::creator_address,
+                unified_revenue::platform_address,
+                unified_revenue::amount,
+                unified_revenue::currency,
+                unified_revenue::content_id,
+                unified_revenue::content_type,
+                unified_revenue::payer_address,
+                unified_revenue::recipient_address,
+                unified_revenue::revenue_time,
+                unified_revenue::time,
+                unified_revenue::transaction_id,
+            ))
+            .load(&mut conn)
+            .await?;
+        let records: Vec<UnifiedRevenueRow> = rows
+            .into_iter()
+            .map(
+                |(
+                    revenue_source,
+                    revenue_type,
+                    creator_address,
+                    platform_address,
+                    amount,
+                    currency,
+                    content_id,
+                    content_type,
+                    payer_address,
+                    recipient_address,
+                    revenue_time,
+                    time,
+                    transaction_id,
+                )| UnifiedRevenueRow {
+                    revenue_source,
+                    revenue_type,
+                    creator_address,
+                    platform_address,
+                    amount,
+                    currency,
+                    content_id,
+                    content_type,
+                    payer_address,
+                    recipient_address,
+                    revenue_time,
+                    time,
+                    transaction_id,
+                },
+            )
+            .collect();
+        Ok((records, total_count, total_amount))
+    }
+
+    pub async fn get_creator_revenue_stats(
+        &self,
+        creator_address: &str,
+    ) -> Result<Option<serde_json::Value>, crate::error::SocialError> {
+        let mut conn = self.db.connect().await?;
+        let query = "
+            SELECT creator_address, total_revenue, total_subscription_revenue, total_mydata_revenue,
+                   total_spt_revenue, total_tips_revenue, total_transactions, total_unique_payers,
+                   largest_single_transaction, active_days, last_revenue_date
+            FROM spt_creator_revenue_summary WHERE creator_address = $1
+        ";
+        #[derive(QueryableByName)]
+        struct Row {
+            #[diesel(sql_type = Text)]
+            creator_address: String,
+            #[diesel(sql_type = BigInt)]
+            total_revenue: i64,
+            #[diesel(sql_type = BigInt)]
+            total_subscription_revenue: i64,
+            #[diesel(sql_type = BigInt)]
+            total_mydata_revenue: i64,
+            #[diesel(sql_type = BigInt)]
+            total_spt_revenue: i64,
+            #[diesel(sql_type = BigInt)]
+            total_tips_revenue: i64,
+            #[diesel(sql_type = BigInt)]
+            total_transactions: i64,
+            #[diesel(sql_type = BigInt)]
+            total_unique_payers: i64,
+            #[diesel(sql_type = BigInt)]
+            largest_single_transaction: i64,
+            #[diesel(sql_type = BigInt)]
+            active_days: i64,
+            #[diesel(sql_type = Nullable<Timestamptz>)]
+            last_revenue_date: Option<chrono::DateTime<chrono::Utc>>,
+        }
+        let result: Option<Row> = diesel::sql_query(query)
+            .bind::<Text, _>(creator_address)
+            .get_result(&mut conn)
+            .await
+            .optional()?;
+        Ok(result.map(|r| {
+            serde_json::json!({
+                "creator_address": r.creator_address,
+                "total_revenue": r.total_revenue,
+                "subscription_revenue": r.total_subscription_revenue,
+                "mydata_revenue": r.total_mydata_revenue,
+                "spt_revenue": r.total_spt_revenue,
+                "tips_revenue": r.total_tips_revenue,
+                "posts_revenue": 0,
+                "total_transactions": r.total_transactions,
+                "unique_payers": r.total_unique_payers,
+                "largest_transaction": r.largest_single_transaction,
+                "active_days": r.active_days,
+                "last_revenue_date": r.last_revenue_date.map(|d| d.to_rfc3339()),
+                "revenue_rank": serde_json::Value::Null
+            })
+        }))
+    }
+
+    pub async fn get_platform_revenue_stats(
+        &self,
+        platform_address: &str,
+    ) -> Result<serde_json::Value, crate::error::SocialError> {
+        let mut conn = self.db.connect().await?;
+        let query = "
+            SELECT platform_address, total_revenue, total_subscription_revenue, total_mydata_revenue,
+                   total_spt_revenue, total_transactions, total_creators, total_payers,
+                   avg_transaction_amount, active_months, last_active_month
+            FROM platform_revenue_summary WHERE platform_address = $1
+        ";
+        #[derive(QueryableByName)]
+        struct Row {
+            #[diesel(sql_type = Text)]
+            platform_address: String,
+            #[diesel(sql_type = BigInt)]
+            total_revenue: i64,
+            #[diesel(sql_type = BigInt)]
+            total_subscription_revenue: i64,
+            #[diesel(sql_type = BigInt)]
+            total_mydata_revenue: i64,
+            #[diesel(sql_type = BigInt)]
+            total_spt_revenue: i64,
+            #[diesel(sql_type = BigInt)]
+            total_transactions: i64,
+            #[diesel(sql_type = BigInt)]
+            total_creators: i64,
+            #[diesel(sql_type = BigInt)]
+            total_payers: i64,
+            #[diesel(sql_type = Double)]
+            avg_transaction_amount: f64,
+            #[diesel(sql_type = BigInt)]
+            active_months: i64,
+            #[diesel(sql_type = Nullable<Date>)]
+            last_active_month: Option<chrono::NaiveDate>,
+        }
+        let result: Option<Row> = diesel::sql_query(query)
+            .bind::<Text, _>(platform_address)
+            .get_result(&mut conn)
+            .await
+            .optional()?;
+        Ok(result.map_or_else(
+            || {
+                serde_json::json!({
+                    "platform_address": platform_address,
+                    "total_revenue": 0,
+                    "subscription_revenue": 0,
+                    "mydata_revenue": 0,
+                    "spt_revenue": 0,
+                    "total_transactions": 0,
+                    "unique_creators": 0,
+                    "unique_payers": 0,
+                    "avg_transaction_amount": 0.0,
+                    "active_months": 0,
+                    "last_active_month": serde_json::Value::Null
+                })
+            },
+            |r| {
+                serde_json::json!({
+                    "platform_address": r.platform_address,
+                    "total_revenue": r.total_revenue,
+                    "subscription_revenue": r.total_subscription_revenue,
+                    "mydata_revenue": r.total_mydata_revenue,
+                    "spt_revenue": r.total_spt_revenue,
+                    "total_transactions": r.total_transactions,
+                    "unique_creators": r.total_creators,
+                    "unique_payers": r.total_payers,
+                    "avg_transaction_amount": r.avg_transaction_amount,
+                    "active_months": r.active_months,
+                    "last_active_month": r.last_active_month.map(|d| d.format("%Y-%m-%d").to_string())
+                })
+            },
+        ))
+    }
+
+    pub async fn get_current_treasury(
+        &self,
+    ) -> Result<Option<serde_json::Value>, crate::error::SocialError> {
+        let mut conn = self.db.connect().await?;
+        let row: Option<(String, String, i64, chrono::DateTime<chrono::Utc>, String)> =
+            ecosystem_treasury::table
+                .order_by(ecosystem_treasury::time.desc())
+                .limit(1)
+                .select((
+                    ecosystem_treasury::treasury_address,
+                    ecosystem_treasury::updated_by,
+                    ecosystem_treasury::timestamp_ms,
+                    ecosystem_treasury::time,
+                    ecosystem_treasury::transaction_id,
+                ))
+                .get_result(&mut conn)
+                .await
+                .optional()?;
+        Ok(row.map(
+            |(treasury_address, updated_by, timestamp_ms, time, transaction_id)| {
+                serde_json::json!({
+                    "treasury_address": treasury_address,
+                    "updated_by": updated_by,
+                    "timestamp_ms": timestamp_ms,
+                    "time": time.timestamp(),
+                    "transaction_id": transaction_id
+                })
+            },
+        ))
+    }
+
+    pub async fn get_subscription_analytics(
+        &self,
+        service_id: Option<&str>,
+        _profile_owner: Option<&str>,
+        start_date: chrono::NaiveDateTime,
+        end_date: chrono::NaiveDateTime,
+    ) -> Result<serde_json::Value, crate::error::SocialError> {
+        use diesel::dsl::sum;
+        let mut conn = self.db.connect().await?;
+        let start_dt =
+            chrono::DateTime::<chrono::Utc>::from_naive_utc_and_offset(start_date, chrono::Utc);
+        let end_dt =
+            chrono::DateTime::<chrono::Utc>::from_naive_utc_and_offset(end_date, chrono::Utc);
+
+        let total_subscriptions: i64 = {
+            let mut q = profile_subscriptions::table.into_boxed();
+            q = q.filter(profile_subscriptions::time.between(start_dt, end_dt));
+            if let Some(sid) = service_id {
+                q = q.filter(profile_subscriptions::service_id.eq(sid));
+            }
+            q.count().get_result(&mut conn).await?
+        };
+        let active_subscriptions: i64 = {
+            let mut q = profile_subscriptions::table.into_boxed();
+            q = q.filter(profile_subscriptions::time.between(start_dt, end_dt));
+            if let Some(sid) = service_id {
+                q = q.filter(profile_subscriptions::service_id.eq(sid));
+            }
+            q.filter(profile_subscriptions::cancelled_at.is_null())
+                .count()
+                .get_result(&mut conn)
+                .await?
+        };
+        let cancelled_subscriptions: i64 = {
+            let mut q = profile_subscriptions::table.into_boxed();
+            q = q.filter(profile_subscriptions::time.between(start_dt, end_dt));
+            if let Some(sid) = service_id {
+                q = q.filter(profile_subscriptions::service_id.eq(sid));
+            }
+            q.filter(profile_subscriptions::cancelled_at.is_not_null())
+                .count()
+                .get_result(&mut conn)
+                .await?
+        };
+
+        let churn_rate = if total_subscriptions > 0 {
+            cancelled_subscriptions as f64 / total_subscriptions as f64
+        } else {
+            0.0
+        };
+
+        let mut rev_query = subscription_revenue::table.into_boxed();
+        rev_query = rev_query.filter(subscription_revenue::time.between(start_dt, end_dt));
+        if let Some(sid) = service_id {
+            rev_query = rev_query.filter(subscription_revenue::service_id.eq(sid));
+        }
+        let total_revenue: Option<bigdecimal::BigDecimal> = rev_query
+            .select(sum(subscription_revenue::amount))
+            .get_result(&mut conn)
+            .await?;
+        let total_revenue: i64 = total_revenue
+            .and_then(|bd| bigdecimal::ToPrimitive::to_i64(&bd))
+            .unwrap_or(0);
+        let monthly_recurring_revenue = if total_revenue > 0 {
+            total_revenue / 30
+        } else {
+            0
+        };
+
+        let service_id_str = service_id.unwrap_or("all").to_string();
+        Ok(serde_json::json!({
+            "service_id": service_id_str,
+            "total_revenue": total_revenue,
+            "active_subscriptions": active_subscriptions,
+            "cancelled_subscriptions": cancelled_subscriptions,
+            "monthly_recurring_revenue": monthly_recurring_revenue,
+            "churn_rate": churn_rate,
+            "average_subscription_duration": 30.0,
+            "total_renewals": 0,
+            "auto_renewal_rate": 0.0,
+            "refund_rate": 0.0,
+            "growth_metrics": []
+        }))
+    }
+
+    pub async fn get_service_performance(
+        &self,
+        profile_owner: Option<&str>,
+    ) -> Result<Vec<serde_json::Value>, crate::error::SocialError> {
+        let mut conn = self.db.connect().await?;
+        let mut query = profile_subscription_services::table.into_boxed();
+        if let Some(owner) = profile_owner {
+            query = query.filter(profile_subscription_services::profile_owner.eq(owner));
+        }
+        let rows: Vec<(String, String, String, i64, bool, i64, i64)> = query
+            .select((
+                profile_subscription_services::service_id,
+                profile_subscription_services::profile_owner,
+                profile_subscription_services::profile_id,
+                profile_subscription_services::monthly_fee,
+                profile_subscription_services::active,
+                profile_subscription_services::subscriber_count,
+                profile_subscription_services::created_at,
+            ))
+            .load(&mut conn)
+            .await?;
+        let services: Vec<serde_json::Value> = rows
+            .into_iter()
+            .map(
+                |(
+                    service_id,
+                    profile_owner,
+                    profile_id,
+                    monthly_fee,
+                    _active,
+                    subscriber_count,
+                    _created_at,
+                )| {
+                    let mrr = monthly_fee * subscriber_count;
+                    serde_json::json!({
+                        "service_id": service_id,
+                        "profile_owner": profile_owner,
+                        "profile_id": profile_id,
+                        "monthly_fee": monthly_fee,
+                        "total_subscribers": subscriber_count,
+                        "active_subscribers": subscriber_count,
+                        "total_revenue": mrr,
+                        "monthly_recurring_revenue": mrr,
+                        "churn_rate": 0.0,
+                        "average_lifetime_value": 0.0,
+                        "conversion_rate": 0.0
+                    })
+                },
+            )
+            .collect();
+        Ok(services)
+    }
+
+    pub async fn get_treasury_history(
+        &self,
+        limit: i64,
+    ) -> Result<Vec<serde_json::Value>, crate::error::SocialError> {
+        let mut conn = self.db.connect().await?;
+        let rows: Vec<(String, String, i64, chrono::DateTime<chrono::Utc>, String)> =
+            ecosystem_treasury::table
+                .order_by(ecosystem_treasury::time.desc())
+                .limit(limit)
+                .select((
+                    ecosystem_treasury::treasury_address,
+                    ecosystem_treasury::updated_by,
+                    ecosystem_treasury::timestamp_ms,
+                    ecosystem_treasury::time,
+                    ecosystem_treasury::transaction_id,
+                ))
+                .load(&mut conn)
+                .await?;
+        Ok(rows
+            .into_iter()
+            .map(
+                |(treasury_address, updated_by, timestamp_ms, time, transaction_id)| {
+                    serde_json::json!({
+                        "treasury_address": treasury_address,
+                        "updated_by": updated_by,
+                        "timestamp_ms": timestamp_ms,
+                        "time": time.timestamp(),
+                        "transaction_id": transaction_id
+                    })
+                },
+            )
+            .collect())
     }
 
     pub async fn get_upgrade_events(
@@ -2478,5 +4277,2764 @@ impl Reader {
             .await
             .optional()?;
         Ok(result.is_some())
+    }
+
+    pub async fn get_system_stats(&self) -> Result<SystemStatsResponse, crate::error::SocialError> {
+        let mut conn = self.db.connect().await?;
+        let profiles_count: i64 = profiles::table.count().get_result(&mut conn).await?;
+        let platforms_count: i64 = platforms::table.count().get_result(&mut conn).await?;
+        let social_relationships_count: i64 = social_graph_relationships::table
+            .count()
+            .get_result(&mut conn)
+            .await?;
+        let query = "
+            SELECT
+                (SELECT COUNT(*) FROM posts WHERE deleted_at IS NULL)::bigint as total_posts,
+                (SELECT COUNT(*) FROM comments WHERE deleted_at IS NULL)::bigint as total_comments,
+                (SELECT COUNT(*) FROM reactions)::bigint as total_reactions,
+                (SELECT COUNT(*) FROM spt_pools)::bigint as social_proof_tokens
+        ";
+        #[derive(QueryableByName)]
+        struct StatsRow {
+            #[diesel(sql_type = BigInt)]
+            total_posts: i64,
+            #[diesel(sql_type = BigInt)]
+            total_comments: i64,
+            #[diesel(sql_type = BigInt)]
+            total_reactions: i64,
+            #[diesel(sql_type = BigInt)]
+            social_proof_tokens: i64,
+        }
+        let row = diesel::sql_query(query)
+            .get_result::<StatsRow>(&mut conn)
+            .await?;
+        Ok(SystemStatsResponse {
+            profiles: profiles_count,
+            platforms: platforms_count,
+            total_posts: row.total_posts,
+            total_comments: row.total_comments,
+            total_reactions: row.total_reactions,
+            social_proof_tokens: row.social_proof_tokens,
+            total_social_relationships: social_relationships_count,
+        })
+    }
+
+    pub async fn check_username_availability(
+        &self,
+        username: &str,
+        exclude_address: Option<&str>,
+    ) -> Result<bool, crate::error::SocialError> {
+        let mut conn = self.db.connect().await?;
+        let count: i64 = match exclude_address {
+            Some(addr) => {
+                profiles::table
+                    .filter(profiles::username.eq(username))
+                    .filter(profiles::owner_address.ne(addr))
+                    .count()
+                    .get_result(&mut conn)
+                    .await?
+            }
+            None => {
+                profiles::table
+                    .filter(profiles::username.eq(username))
+                    .count()
+                    .get_result(&mut conn)
+                    .await?
+            }
+        };
+        Ok(count == 0)
+    }
+
+    pub async fn get_profile_posts(
+        &self,
+        address: &str,
+        limit: i64,
+        offset: i64,
+    ) -> Result<Vec<PostBasicRow>, crate::error::SocialError> {
+        let mut conn = self.db.connect().await?;
+        let profile_id_opt: Option<String> = profiles::table
+            .filter(profiles::owner_address.eq(address))
+            .select(profiles::profile_id)
+            .first::<Option<String>>(&mut conn)
+            .await
+            .optional()?
+            .flatten();
+        let query = "
+            SELECT post_id, owner, profile_id, content, post_type, created_at, deleted_at,
+                   reaction_count, comment_count, repost_count, tips_received
+            FROM posts
+            WHERE (owner = $1 OR ($2::text IS NOT NULL AND profile_id = $2))
+              AND deleted_at IS NULL
+            ORDER BY created_at DESC
+            LIMIT $3 OFFSET $4
+        ";
+        let results = diesel::sql_query(query)
+            .bind::<Text, _>(address)
+            .bind::<Nullable<Text>, _>(profile_id_opt.as_deref())
+            .bind::<BigInt, _>(limit)
+            .bind::<BigInt, _>(offset)
+            .load::<PostBasicRow>(&mut conn)
+            .await?;
+        Ok(results)
+    }
+
+    pub async fn get_profile_events(
+        &self,
+        address: &str,
+        limit: i64,
+        offset: i64,
+    ) -> Result<Vec<ProfileEventRow>, crate::error::SocialError> {
+        let mut conn = self.db.connect().await?;
+        let profile_id_opt: Option<String> = profiles::table
+            .filter(profiles::owner_address.eq(address))
+            .select(profiles::profile_id)
+            .first::<Option<String>>(&mut conn)
+            .await
+            .optional()?
+            .flatten();
+        let profile_ids: Vec<String> = if let Some(pid) = &profile_id_opt {
+            vec![address.to_string(), pid.clone()]
+        } else {
+            vec![address.to_string()]
+        };
+        let results = profile_events::table
+            .filter(profile_events::profile_id.eq_any(&profile_ids))
+            .order_by(profile_events::created_at.desc())
+            .limit(limit)
+            .offset(offset)
+            .select((
+                profile_events::event_type,
+                profile_events::profile_id,
+                profile_events::event_data,
+                profile_events::event_id,
+                profile_events::created_at,
+            ))
+            .load::<(
+                String,
+                String,
+                serde_json::Value,
+                Option<String>,
+                chrono::NaiveDateTime,
+            )>(&mut conn)
+            .await?;
+        Ok(results
+            .into_iter()
+            .map(
+                |(event_type, profile_id, event_data, event_id, created_at)| ProfileEventRow {
+                    event_type,
+                    profile_id,
+                    event_data,
+                    event_id,
+                    created_at,
+                },
+            )
+            .collect())
+    }
+
+    pub async fn get_profile_platform_memberships(
+        &self,
+        address: &str,
+        limit: i64,
+        offset: i64,
+    ) -> Result<Vec<PlatformMembershipRow>, crate::error::SocialError> {
+        let mut conn = self.db.connect().await?;
+        let query = "
+            SELECT p.platform_id, p.name, p.is_approved, pm.joined_at
+            FROM platform_memberships pm
+            INNER JOIN platforms p ON pm.platform_id = p.platform_id
+            WHERE pm.wallet_address = $1
+            ORDER BY pm.joined_at DESC
+            LIMIT $2 OFFSET $3
+        ";
+        #[derive(QueryableByName)]
+        struct Row {
+            #[diesel(sql_type = Text)]
+            platform_id: String,
+            #[diesel(sql_type = Text)]
+            name: String,
+            #[diesel(sql_type = Bool)]
+            is_approved: bool,
+            #[diesel(sql_type = Timestamp)]
+            joined_at: chrono::NaiveDateTime,
+        }
+        let results = diesel::sql_query(query)
+            .bind::<Text, _>(address)
+            .bind::<BigInt, _>(limit)
+            .bind::<BigInt, _>(offset)
+            .load::<Row>(&mut conn)
+            .await?;
+        Ok(results
+            .into_iter()
+            .map(|r| PlatformMembershipRow {
+                platform_id: r.platform_id,
+                name: r.name,
+                is_approved: r.is_approved,
+                joined_at: r.joined_at,
+            })
+            .collect())
+    }
+
+    pub async fn get_profile_platform_events(
+        &self,
+        address: &str,
+        limit: i64,
+        offset: i64,
+    ) -> Result<(Vec<ProfilePlatformEventRow>, i64), crate::error::SocialError> {
+        let mut conn = self.db.connect().await?;
+        #[derive(QueryableByName)]
+        struct CountRow {
+            #[diesel(sql_type = BigInt)]
+            count: i64,
+        }
+        let total: i64 = diesel::sql_query(
+            "SELECT COUNT(*)::bigint as count FROM platform_events
+             WHERE event_type IN ('UserJoinedPlatform', 'UserLeftPlatform')
+             AND event_data->>'wallet_address' = $1",
+        )
+        .bind::<Text, _>(address)
+        .get_result::<CountRow>(&mut conn)
+        .await?
+        .count;
+        let query = "
+            SELECT event_type, platform_id, created_at, event_id, event_data
+            FROM platform_events
+            WHERE event_type IN ('UserJoinedPlatform', 'UserLeftPlatform')
+            AND event_data->>'wallet_address' = $1
+            ORDER BY created_at DESC
+            LIMIT $2 OFFSET $3
+        ";
+        #[derive(QueryableByName)]
+        struct Row {
+            #[diesel(sql_type = Text)]
+            event_type: String,
+            #[diesel(sql_type = Text)]
+            platform_id: String,
+            #[diesel(sql_type = Timestamp)]
+            created_at: chrono::NaiveDateTime,
+            #[diesel(sql_type = Nullable<Text>)]
+            event_id: Option<String>,
+            #[diesel(sql_type = Jsonb)]
+            event_data: serde_json::Value,
+        }
+        let results = diesel::sql_query(query)
+            .bind::<Text, _>(address)
+            .bind::<BigInt, _>(limit)
+            .bind::<BigInt, _>(offset)
+            .load::<Row>(&mut conn)
+            .await?;
+        let events = results
+            .into_iter()
+            .map(|r| ProfilePlatformEventRow {
+                event_type: r.event_type,
+                platform_id: r.platform_id,
+                created_at: r.created_at,
+                event_id: r.event_id,
+                event_data: r.event_data,
+            })
+            .collect();
+        Ok((events, total))
+    }
+
+    pub async fn get_blocking_history(
+        &self,
+        address: &str,
+        limit: i64,
+        offset: i64,
+    ) -> Result<Vec<BlockedEventRow>, crate::error::SocialError> {
+        let mut conn = self.db.connect().await?;
+        let results = blocked_events::table
+            .filter(blocked_events::blocker_address.eq(address))
+            .order_by(blocked_events::created_at.desc())
+            .limit(limit)
+            .offset(offset)
+            .select((
+                blocked_events::event_type,
+                blocked_events::blocked_address,
+                blocked_events::processed_at,
+                blocked_events::event_id,
+            ))
+            .load::<(
+                String,
+                Option<String>,
+                chrono::NaiveDateTime,
+                Option<String>,
+            )>(&mut conn)
+            .await?;
+        Ok(results
+            .into_iter()
+            .map(
+                |(event_type, blocked_address, processed_at, event_id)| BlockedEventRow {
+                    event_type,
+                    blocked_address,
+                    processed_at,
+                    event_id,
+                },
+            )
+            .collect())
+    }
+
+    pub async fn get_profile_badges(
+        &self,
+        address: &str,
+        limit: i64,
+        offset: i64,
+    ) -> Result<Vec<ProfileBadgeRow>, crate::error::SocialError> {
+        let mut conn = self.db.connect().await?;
+        let profile_id_opt: Option<String> = profiles::table
+            .filter(profiles::owner_address.eq(address))
+            .select(profiles::profile_id)
+            .first::<Option<String>>(&mut conn)
+            .await
+            .optional()?
+            .flatten();
+        let id2 = profile_id_opt.as_deref().unwrap_or(address).to_string();
+        let query = "
+            SELECT pb.badge_id, pb.badge_name, pb.badge_description, pb.badge_media_url,
+                   pb.badge_icon_url, pb.platform_id, pb.assigned_by, pb.assigned_at,
+                   pb.revoked, pb.revoked_at, pb.revoked_by, pb.badge_type
+            FROM (
+                SELECT DISTINCT ON (badge_id) *
+                FROM profile_badges
+                WHERE profile_id = $1 OR profile_id = $2
+                ORDER BY badge_id, time DESC
+            ) pb
+            WHERE pb.revoked = false
+            ORDER BY pb.assigned_at DESC
+            LIMIT $3 OFFSET $4
+        ";
+        let results = diesel::sql_query(query)
+            .bind::<Text, _>(address)
+            .bind::<Text, _>(&id2)
+            .bind::<BigInt, _>(limit)
+            .bind::<BigInt, _>(offset)
+            .load::<ProfileBadgeRow>(&mut conn)
+            .await?;
+        Ok(results)
+    }
+
+    pub async fn get_following(
+        &self,
+        address: &str,
+        limit: i64,
+        offset: i64,
+    ) -> Result<Vec<SocialGraphAddressRow>, crate::error::SocialError> {
+        let mut conn = self.db.connect().await?;
+        let profile_id_opt: Option<String> = profiles::table
+            .filter(profiles::owner_address.eq(address))
+            .select(profiles::profile_id)
+            .first::<Option<String>>(&mut conn)
+            .await
+            .optional()?
+            .flatten();
+        let addrs: Vec<&str> = if let Some(ref pid) = profile_id_opt {
+            vec![address, pid.as_str()]
+        } else {
+            vec![address]
+        };
+        let results = social_graph_relationships::table
+            .filter(social_graph_relationships::follower_address.eq_any(&addrs))
+            .order_by(social_graph_relationships::created_at.desc())
+            .limit(limit)
+            .offset(offset)
+            .select((
+                social_graph_relationships::following_address,
+                social_graph_relationships::created_at,
+            ))
+            .load::<(String, chrono::NaiveDateTime)>(&mut conn)
+            .await?;
+        Ok(results
+            .into_iter()
+            .map(|(address, created_at)| SocialGraphAddressRow {
+                address,
+                created_at,
+            })
+            .collect())
+    }
+
+    pub async fn get_followers(
+        &self,
+        address: &str,
+        limit: i64,
+        offset: i64,
+    ) -> Result<Vec<SocialGraphAddressRow>, crate::error::SocialError> {
+        let mut conn = self.db.connect().await?;
+        let profile_id_opt: Option<String> = profiles::table
+            .filter(profiles::owner_address.eq(address))
+            .select(profiles::profile_id)
+            .first::<Option<String>>(&mut conn)
+            .await
+            .optional()?
+            .flatten();
+        let addrs: Vec<&str> = if let Some(ref pid) = profile_id_opt {
+            vec![address, pid.as_str()]
+        } else {
+            vec![address]
+        };
+        let results = social_graph_relationships::table
+            .filter(social_graph_relationships::following_address.eq_any(&addrs))
+            .order_by(social_graph_relationships::created_at.desc())
+            .limit(limit)
+            .offset(offset)
+            .select((
+                social_graph_relationships::follower_address,
+                social_graph_relationships::created_at,
+            ))
+            .load::<(String, chrono::NaiveDateTime)>(&mut conn)
+            .await?;
+        Ok(results
+            .into_iter()
+            .map(|(address, created_at)| SocialGraphAddressRow {
+                address,
+                created_at,
+            })
+            .collect())
+    }
+
+    pub async fn get_social_stats(
+        &self,
+        address: &str,
+    ) -> Result<SocialStatsRow, crate::error::SocialError> {
+        let mut conn = self.db.connect().await?;
+        let profile = profiles::table
+            .filter(profiles::owner_address.eq(address))
+            .select((
+                profiles::followers_count,
+                profiles::following_count,
+                profiles::blocked_count,
+            ))
+            .first::<(i32, i32, i32)>(&mut conn)
+            .await
+            .optional()?;
+        if let Some((followers_count, following_count, blocked_count)) = profile {
+            return Ok(SocialStatsRow {
+                followers_count: followers_count as i64,
+                following_count: following_count as i64,
+                blocked_count: blocked_count as i64,
+            });
+        }
+        let ws = wallet_social_graph::table
+            .filter(wallet_social_graph::wallet_address.eq(address))
+            .select((
+                wallet_social_graph::followers_count,
+                wallet_social_graph::following_count,
+                wallet_social_graph::blocked_count,
+            ))
+            .first::<(i32, i32, i32)>(&mut conn)
+            .await
+            .optional()?;
+        if let Some((followers_count, following_count, blocked_count)) = ws {
+            return Ok(SocialStatsRow {
+                followers_count: followers_count as i64,
+                following_count: following_count as i64,
+                blocked_count: blocked_count as i64,
+            });
+        }
+        Err(crate::error::SocialError::not_found(format!(
+            "Profile or wallet '{}'",
+            address
+        )))
+    }
+
+    pub async fn get_blocked_profiles(
+        &self,
+        address: &str,
+        limit: i64,
+        offset: i64,
+    ) -> Result<Vec<BlockedProfileRow>, crate::error::SocialError> {
+        let mut conn = self.db.connect().await?;
+        let results = blocked_profiles::table
+            .filter(blocked_profiles::blocker_address.eq(address))
+            .order_by(blocked_profiles::last_blocked_at.desc())
+            .limit(limit)
+            .offset(offset)
+            .select((
+                blocked_profiles::blocked_address,
+                blocked_profiles::blocked_username,
+                blocked_profiles::blocked_display_name,
+                blocked_profiles::blocked_profile_photo,
+                blocked_profiles::first_blocked_at,
+                blocked_profiles::last_blocked_at,
+            ))
+            .load::<(
+                String,
+                String,
+                Option<String>,
+                Option<String>,
+                chrono::NaiveDateTime,
+                chrono::NaiveDateTime,
+            )>(&mut conn)
+            .await?;
+        Ok(results
+            .into_iter()
+            .map(
+                |(
+                    blocked_address,
+                    blocked_username,
+                    blocked_display_name,
+                    blocked_profile_photo,
+                    first_blocked_at,
+                    last_blocked_at,
+                )| BlockedProfileRow {
+                    blocked_address,
+                    blocked_username,
+                    blocked_display_name,
+                    blocked_profile_photo,
+                    first_blocked_at,
+                    last_blocked_at,
+                },
+            )
+            .collect())
+    }
+
+    pub async fn get_blocked_platforms(
+        &self,
+        address: &str,
+        limit: i64,
+        offset: i64,
+    ) -> Result<Vec<BlockedPlatformRow>, crate::error::SocialError> {
+        let mut conn = self.db.connect().await?;
+        let query = "
+            SELECT p.platform_id, p.name, pbp.blocked_by, pbp.created_at
+            FROM platform_blocked_profiles pbp
+            INNER JOIN platforms p ON pbp.platform_id = p.platform_id
+            WHERE pbp.wallet_address = $1
+            ORDER BY pbp.created_at DESC
+            LIMIT $2 OFFSET $3
+        ";
+        #[derive(QueryableByName)]
+        struct Row {
+            #[diesel(sql_type = Text)]
+            platform_id: String,
+            #[diesel(sql_type = Text)]
+            name: String,
+            #[diesel(sql_type = Text)]
+            blocked_by: String,
+            #[diesel(sql_type = Timestamp)]
+            created_at: chrono::NaiveDateTime,
+        }
+        let results = diesel::sql_query(query)
+            .bind::<Text, _>(address)
+            .bind::<BigInt, _>(limit)
+            .bind::<BigInt, _>(offset)
+            .load::<Row>(&mut conn)
+            .await?;
+        Ok(results
+            .into_iter()
+            .map(|r| BlockedPlatformRow {
+                platform_id: r.platform_id,
+                name: r.name,
+                blocked_by: r.blocked_by,
+                created_at: r.created_at,
+            })
+            .collect())
+    }
+
+    pub async fn check_following(
+        &self,
+        follower: &str,
+        following: &str,
+    ) -> Result<bool, crate::error::SocialError> {
+        let mut conn = self.db.connect().await?;
+        let follower_profile: Option<(String, Option<String>)> = profiles::table
+            .filter(
+                profiles::owner_address
+                    .eq(follower)
+                    .or(profiles::profile_id.eq(follower)),
+            )
+            .select((profiles::owner_address, profiles::profile_id))
+            .first(&mut conn)
+            .await
+            .optional()?;
+        let following_profile: Option<(String, Option<String>)> = profiles::table
+            .filter(
+                profiles::owner_address
+                    .eq(following)
+                    .or(profiles::profile_id.eq(following)),
+            )
+            .select((profiles::owner_address, profiles::profile_id))
+            .first(&mut conn)
+            .await
+            .optional()?;
+        let follower_addrs: Vec<String> = match &follower_profile {
+            Some((owner, pid)) => {
+                let mut v = vec![owner.clone()];
+                if let Some(p) = pid {
+                    v.push(p.clone());
+                }
+                v
+            }
+            None => vec![follower.to_string()],
+        };
+        let following_addrs: Vec<String> = match &following_profile {
+            Some((owner, pid)) => {
+                let mut v = vec![owner.clone()];
+                if let Some(p) = pid {
+                    v.push(p.clone());
+                }
+                v
+            }
+            None => vec![following.to_string()],
+        };
+        let follower_refs: Vec<&str> = follower_addrs.iter().map(String::as_str).collect();
+        let following_refs: Vec<&str> = following_addrs.iter().map(String::as_str).collect();
+        let count: i64 = social_graph_relationships::table
+            .filter(social_graph_relationships::follower_address.eq_any(&follower_refs))
+            .filter(social_graph_relationships::following_address.eq_any(&following_refs))
+            .count()
+            .get_result(&mut conn)
+            .await?;
+        Ok(count > 0)
+    }
+
+    pub async fn get_social_graph_chart_data(
+        &self,
+        limit: i64,
+    ) -> Result<Vec<SocialGraphChartRow>, crate::error::SocialError> {
+        let mut conn = self.db.connect().await?;
+        let query = "
+            SELECT DATE(created_at) as day, event_type, COUNT(*)::bigint as count
+            FROM social_graph_events
+            WHERE created_at >= NOW() - INTERVAL '30 days'
+            GROUP BY DATE(created_at), event_type
+            ORDER BY day ASC, event_type
+            LIMIT $1
+        ";
+        let results = diesel::sql_query(query)
+            .bind::<BigInt, _>(limit)
+            .load::<SocialGraphChartRow>(&mut conn)
+            .await?;
+        Ok(results)
+    }
+
+    pub async fn check_profile_blocked(
+        &self,
+        blocker: &str,
+        blocked: &str,
+    ) -> Result<bool, crate::error::SocialError> {
+        let mut conn = self.db.connect().await?;
+        let count: i64 = blocked_profiles::table
+            .filter(blocked_profiles::blocker_address.eq(blocker))
+            .filter(blocked_profiles::blocked_address.eq(blocked))
+            .count()
+            .get_result(&mut conn)
+            .await?;
+        Ok(count > 0)
+    }
+
+    pub async fn check_platform_blocked(
+        &self,
+        profile_address: &str,
+        platform_id: &str,
+    ) -> Result<bool, crate::error::SocialError> {
+        let mut conn = self.db.connect().await?;
+        let count: i64 = platform_blocked_profiles::table
+            .filter(platform_blocked_profiles::wallet_address.eq(profile_address))
+            .filter(platform_blocked_profiles::platform_id.eq(platform_id))
+            .count()
+            .get_result(&mut conn)
+            .await?;
+        Ok(count > 0)
+    }
+
+    pub async fn list_badges(
+        &self,
+        limit: i64,
+        offset: i64,
+    ) -> Result<Vec<ProfileBadgeRow>, crate::error::SocialError> {
+        let mut conn = self.db.connect().await?;
+        let query = "
+            SELECT DISTINCT ON (badge_id) badge_id, badge_name, badge_description, badge_media_url,
+                   badge_icon_url, platform_id, assigned_by, assigned_at, revoked, revoked_at, revoked_by, badge_type
+            FROM profile_badges
+            WHERE revoked = false
+            ORDER BY badge_id, time DESC
+            LIMIT $1 OFFSET $2
+        ";
+        let results = diesel::sql_query(query)
+            .bind::<BigInt, _>(limit)
+            .bind::<BigInt, _>(offset)
+            .load::<ProfileBadgeRow>(&mut conn)
+            .await?;
+        Ok(results)
+    }
+
+    pub async fn get_badge_by_id(
+        &self,
+        badge_id: &str,
+    ) -> Result<Option<ProfileBadgeRow>, crate::error::SocialError> {
+        let mut conn = self.db.connect().await?;
+        let query = "
+            SELECT badge_id, badge_name, badge_description, badge_media_url, badge_icon_url,
+                   platform_id, assigned_by, assigned_at, revoked, revoked_at, revoked_by, badge_type
+            FROM (
+                SELECT DISTINCT ON (badge_id) *
+                FROM profile_badges
+                WHERE badge_id = $1
+                ORDER BY badge_id, time DESC
+            ) sub
+        ";
+        let result = diesel::sql_query(query)
+            .bind::<Text, _>(badge_id)
+            .get_result::<ProfileBadgeRow>(&mut conn)
+            .await
+            .optional()?;
+        Ok(result)
+    }
+
+    pub async fn list_platforms(
+        &self,
+        approved_only: bool,
+        limit: i64,
+        offset: i64,
+    ) -> Result<Vec<PlatformRow>, crate::error::SocialError> {
+        let mut conn = self.db.connect().await?;
+        let mut query = platforms::table
+            .filter(platforms::deleted_at.is_null())
+            .into_boxed();
+        if approved_only {
+            query = query.filter(platforms::is_approved.eq(true));
+        }
+        let results = query
+            .order_by(platforms::created_at.desc())
+            .limit(limit)
+            .offset(offset)
+            .select((
+                platforms::platform_id,
+                platforms::name,
+                platforms::tagline,
+                platforms::description,
+                platforms::logo,
+                platforms::developer_address,
+                platforms::status,
+                platforms::is_approved,
+                platforms::primary_category,
+                platforms::secondary_category,
+                platforms::created_at,
+                platforms::updated_at,
+                platforms::deleted_at,
+            ))
+            .load::<(
+                String,
+                String,
+                String,
+                Option<String>,
+                Option<String>,
+                String,
+                i16,
+                bool,
+                String,
+                Option<String>,
+                chrono::NaiveDateTime,
+                chrono::NaiveDateTime,
+                Option<chrono::NaiveDateTime>,
+            )>(&mut conn)
+            .await?;
+        Ok(results
+            .into_iter()
+            .map(
+                |(
+                    platform_id,
+                    name,
+                    tagline,
+                    description,
+                    logo,
+                    developer_address,
+                    status,
+                    is_approved,
+                    primary_category,
+                    secondary_category,
+                    created_at,
+                    updated_at,
+                    deleted_at,
+                )| {
+                    PlatformRow {
+                        platform_id,
+                        name,
+                        tagline,
+                        description,
+                        logo,
+                        developer_address,
+                        status,
+                        is_approved,
+                        primary_category,
+                        secondary_category,
+                        created_at,
+                        updated_at,
+                        deleted_at,
+                    }
+                },
+            )
+            .collect())
+    }
+
+    pub async fn get_platform_by_id(
+        &self,
+        platform_id: &str,
+    ) -> Result<Option<PlatformRow>, crate::error::SocialError> {
+        let mut conn = self.db.connect().await?;
+        let result = platforms::table
+            .filter(platforms::platform_id.eq(platform_id))
+            .filter(platforms::deleted_at.is_null())
+            .select((
+                platforms::platform_id,
+                platforms::name,
+                platforms::tagline,
+                platforms::description,
+                platforms::logo,
+                platforms::developer_address,
+                platforms::status,
+                platforms::is_approved,
+                platforms::primary_category,
+                platforms::secondary_category,
+                platforms::created_at,
+                platforms::updated_at,
+                platforms::deleted_at,
+            ))
+            .first::<(
+                String,
+                String,
+                String,
+                Option<String>,
+                Option<String>,
+                String,
+                i16,
+                bool,
+                String,
+                Option<String>,
+                chrono::NaiveDateTime,
+                chrono::NaiveDateTime,
+                Option<chrono::NaiveDateTime>,
+            )>(&mut conn)
+            .await
+            .optional()?;
+        Ok(result.map(
+            |(
+                platform_id,
+                name,
+                tagline,
+                description,
+                logo,
+                developer_address,
+                status,
+                is_approved,
+                primary_category,
+                secondary_category,
+                created_at,
+                updated_at,
+                deleted_at,
+            )| {
+                PlatformRow {
+                    platform_id,
+                    name,
+                    tagline,
+                    description,
+                    logo,
+                    developer_address,
+                    status,
+                    is_approved,
+                    primary_category,
+                    secondary_category,
+                    created_at,
+                    updated_at,
+                    deleted_at,
+                }
+            },
+        ))
+    }
+
+    pub async fn get_platform_moderators(
+        &self,
+        platform_id: &str,
+        limit: i64,
+        offset: i64,
+    ) -> Result<Vec<PlatformModeratorRow>, crate::error::SocialError> {
+        let mut conn = self.db.connect().await?;
+        let results = platform_moderators::table
+            .filter(platform_moderators::platform_id.eq(platform_id))
+            .order_by(platform_moderators::created_at.desc())
+            .limit(limit)
+            .offset(offset)
+            .select((
+                platform_moderators::moderator_address,
+                platform_moderators::added_by,
+                platform_moderators::created_at,
+            ))
+            .load::<(String, String, chrono::NaiveDateTime)>(&mut conn)
+            .await?;
+        Ok(results
+            .into_iter()
+            .map(
+                |(moderator_address, added_by, created_at)| PlatformModeratorRow {
+                    moderator_address,
+                    added_by,
+                    created_at,
+                },
+            )
+            .collect())
+    }
+
+    pub async fn get_platform_approval(
+        &self,
+        platform_id: &str,
+    ) -> Result<Option<PlatformApprovalRow>, crate::error::SocialError> {
+        let mut conn = self.db.connect().await?;
+        let result = platforms::table
+            .filter(platforms::platform_id.eq(platform_id))
+            .filter(platforms::deleted_at.is_null())
+            .select((
+                platforms::is_approved,
+                platforms::approval_changed_at,
+                platforms::approved_by,
+            ))
+            .first::<(bool, Option<chrono::NaiveDateTime>, Option<String>)>(&mut conn)
+            .await
+            .optional()?;
+        Ok(result.map(
+            |(is_approved, approval_changed_at, approved_by)| PlatformApprovalRow {
+                is_approved,
+                approval_changed_at,
+                approved_by,
+            },
+        ))
+    }
+
+    pub async fn get_platform_blocked_profiles(
+        &self,
+        platform_id: &str,
+        limit: i64,
+        offset: i64,
+    ) -> Result<Vec<PlatformBlockedProfileRow>, crate::error::SocialError> {
+        let mut conn = self.db.connect().await?;
+        let results = platform_blocked_profiles::table
+            .filter(platform_blocked_profiles::platform_id.eq(platform_id))
+            .order_by(platform_blocked_profiles::created_at.desc())
+            .limit(limit)
+            .offset(offset)
+            .select((
+                platform_blocked_profiles::wallet_address,
+                platform_blocked_profiles::blocked_by,
+                platform_blocked_profiles::created_at,
+            ))
+            .load::<(String, String, chrono::NaiveDateTime)>(&mut conn)
+            .await?;
+        Ok(results
+            .into_iter()
+            .map(
+                |(wallet_address, blocked_by, created_at)| PlatformBlockedProfileRow {
+                    wallet_address,
+                    blocked_by,
+                    created_at,
+                },
+            )
+            .collect())
+    }
+
+    pub async fn get_platform_members(
+        &self,
+        platform_id: &str,
+        limit: i64,
+        offset: i64,
+    ) -> Result<Vec<PlatformMemberRow>, crate::error::SocialError> {
+        let mut conn = self.db.connect().await?;
+        let results = platform_memberships::table
+            .filter(platform_memberships::platform_id.eq(platform_id))
+            .order_by(platform_memberships::joined_at.desc())
+            .limit(limit)
+            .offset(offset)
+            .select((
+                platform_memberships::wallet_address,
+                platform_memberships::joined_at,
+            ))
+            .load::<(String, chrono::NaiveDateTime)>(&mut conn)
+            .await?;
+        Ok(results
+            .into_iter()
+            .map(|(wallet_address, joined_at)| PlatformMemberRow {
+                wallet_address,
+                joined_at,
+            })
+            .collect())
+    }
+
+    pub async fn check_platform_membership(
+        &self,
+        platform_id: &str,
+        profile_address: &str,
+    ) -> Result<bool, crate::error::SocialError> {
+        let mut conn = self.db.connect().await?;
+        let count: i64 = platform_memberships::table
+            .filter(platform_memberships::platform_id.eq(platform_id))
+            .filter(platform_memberships::wallet_address.eq(profile_address))
+            .count()
+            .get_result(&mut conn)
+            .await?;
+        Ok(count > 0)
+    }
+
+    pub async fn get_platform_events(
+        &self,
+        platform_id: &str,
+        limit: i64,
+        offset: i64,
+    ) -> Result<Vec<PlatformEventRow>, crate::error::SocialError> {
+        let mut conn = self.db.connect().await?;
+        let results = platform_events::table
+            .filter(platform_events::platform_id.eq(platform_id))
+            .order_by(platform_events::created_at.desc())
+            .limit(limit)
+            .offset(offset)
+            .select((
+                platform_events::event_type,
+                platform_events::event_data,
+                platform_events::event_id,
+                platform_events::created_at,
+            ))
+            .load::<(
+                String,
+                serde_json::Value,
+                Option<String>,
+                chrono::NaiveDateTime,
+            )>(&mut conn)
+            .await?;
+        Ok(results
+            .into_iter()
+            .map(
+                |(event_type, event_data, event_id, created_at)| PlatformEventRow {
+                    event_type,
+                    event_data,
+                    event_id,
+                    created_at,
+                },
+            )
+            .collect())
+    }
+
+    pub async fn list_posts(
+        &self,
+        owner: Option<&str>,
+        post_type: Option<&str>,
+        limit: i64,
+        offset: i64,
+    ) -> Result<Vec<PostBasicRow>, crate::error::SocialError> {
+        let mut conn = self.db.connect().await?;
+        let mut query = posts::table
+            .filter(posts::deleted_at.is_null())
+            .into_boxed();
+        if let Some(o) = owner {
+            query = query.filter(posts::owner.eq(o));
+        }
+        if let Some(pt) = post_type {
+            query = query.filter(posts::post_type.eq(pt));
+        }
+        let results = query
+            .order_by(posts::created_at.desc())
+            .limit(limit)
+            .offset(offset)
+            .select((
+                posts::post_id,
+                posts::owner,
+                posts::profile_id,
+                posts::content,
+                posts::post_type,
+                posts::created_at,
+                posts::deleted_at,
+                posts::reaction_count,
+                posts::comment_count,
+                posts::repost_count,
+                posts::tips_received,
+            ))
+            .load::<(
+                String,
+                String,
+                String,
+                String,
+                String,
+                i64,
+                Option<i64>,
+                i64,
+                i64,
+                i64,
+                i64,
+            )>(&mut conn)
+            .await?;
+        Ok(results
+            .into_iter()
+            .map(
+                |(
+                    post_id,
+                    owner,
+                    profile_id,
+                    content,
+                    post_type,
+                    created_at,
+                    deleted_at,
+                    reaction_count,
+                    comment_count,
+                    repost_count,
+                    tips_received,
+                )| {
+                    PostBasicRow {
+                        post_id,
+                        owner,
+                        profile_id,
+                        content,
+                        post_type,
+                        created_at,
+                        deleted_at,
+                        reaction_count,
+                        comment_count,
+                        repost_count,
+                        tips_received,
+                    }
+                },
+            )
+            .collect())
+    }
+
+    pub async fn get_post_config(
+        &self,
+    ) -> Result<Option<PostConfigRow>, crate::error::SocialError> {
+        let mut conn = self.db.connect().await?;
+        let result = post_config::table
+            .order_by(post_config::time.desc())
+            .limit(1)
+            .select((
+                post_config::updated_by,
+                post_config::max_content_length,
+                post_config::max_media_urls,
+                post_config::max_mentions,
+                post_config::max_metadata_size,
+                post_config::max_description_length,
+                post_config::max_reaction_length,
+                post_config::commenter_tip_percentage,
+                post_config::repost_tip_percentage,
+                post_config::version,
+                post_config::updated_at,
+            ))
+            .first::<(String, i64, i64, i64, i64, i64, i64, i64, i64, i64, i64)>(&mut conn)
+            .await
+            .optional()?;
+        Ok(result.map(
+            |(
+                updated_by,
+                max_content_length,
+                max_media_urls,
+                max_mentions,
+                max_metadata_size,
+                max_description_length,
+                max_reaction_length,
+                commenter_tip_percentage,
+                repost_tip_percentage,
+                version,
+                updated_at,
+            )| {
+                PostConfigRow {
+                    updated_by,
+                    max_content_length,
+                    max_media_urls,
+                    max_mentions,
+                    max_metadata_size,
+                    max_description_length,
+                    max_reaction_length,
+                    commenter_tip_percentage,
+                    repost_tip_percentage,
+                    version,
+                    updated_at,
+                }
+            },
+        ))
+    }
+
+    pub async fn get_trending_posts(
+        &self,
+        limit: i64,
+        offset: i64,
+    ) -> Result<Vec<PostBasicRow>, crate::error::SocialError> {
+        let mut conn = self.db.connect().await?;
+        let query = "
+            SELECT post_id, owner, profile_id, content, post_type, created_at, deleted_at,
+                   reaction_count, comment_count, repost_count, tips_received
+            FROM posts
+            WHERE deleted_at IS NULL
+            ORDER BY (reaction_count + comment_count + repost_count) DESC, created_at DESC
+            LIMIT $1 OFFSET $2
+        ";
+        let results = diesel::sql_query(query)
+            .bind::<BigInt, _>(limit)
+            .bind::<BigInt, _>(offset)
+            .load::<PostBasicRow>(&mut conn)
+            .await?;
+        Ok(results)
+    }
+
+    pub async fn get_post_by_id(
+        &self,
+        post_id: &str,
+    ) -> Result<Option<PostBasicRow>, crate::error::SocialError> {
+        let mut conn = self.db.connect().await?;
+        let query = "
+            SELECT post_id, owner, profile_id, content, post_type, created_at, deleted_at,
+                   reaction_count, comment_count, repost_count, tips_received
+            FROM posts
+            WHERE (post_id = $1 OR id = $1) AND deleted_at IS NULL
+            ORDER BY created_at DESC
+            LIMIT 1
+        ";
+        let result = diesel::sql_query(query)
+            .bind::<Text, _>(post_id)
+            .get_result::<PostBasicRow>(&mut conn)
+            .await
+            .optional()?;
+        Ok(result)
+    }
+
+    pub async fn get_post_comments(
+        &self,
+        post_id: &str,
+        limit: i64,
+        offset: i64,
+    ) -> Result<Vec<CommentRow>, crate::error::SocialError> {
+        let mut conn = self.db.connect().await?;
+        let results = comments::table
+            .filter(comments::post_id.eq(post_id))
+            .filter(comments::deleted_at.is_null())
+            .order_by(comments::created_at.desc())
+            .limit(limit)
+            .offset(offset)
+            .select((
+                comments::comment_id,
+                comments::post_id,
+                comments::parent_comment_id,
+                comments::owner,
+                comments::profile_id,
+                comments::content,
+                comments::created_at,
+                comments::reaction_count,
+                comments::comment_count,
+            ))
+            .load::<(
+                String,
+                String,
+                Option<String>,
+                String,
+                String,
+                String,
+                i64,
+                i64,
+                i64,
+            )>(&mut conn)
+            .await?;
+        Ok(results
+            .into_iter()
+            .map(
+                |(
+                    comment_id,
+                    post_id,
+                    parent_comment_id,
+                    owner,
+                    profile_id,
+                    content,
+                    created_at,
+                    reaction_count,
+                    comment_count,
+                )| {
+                    CommentRow {
+                        comment_id,
+                        post_id,
+                        parent_comment_id,
+                        owner,
+                        profile_id,
+                        content,
+                        created_at,
+                        reaction_count,
+                        comment_count,
+                    }
+                },
+            )
+            .collect())
+    }
+
+    pub async fn get_post_reactions(
+        &self,
+        post_id: &str,
+        limit: i64,
+        offset: i64,
+    ) -> Result<Vec<ReactionRow>, crate::error::SocialError> {
+        let mut conn = self.db.connect().await?;
+        let results = reactions::table
+            .filter(reactions::object_id.eq(post_id))
+            .filter(reactions::is_post.eq(true))
+            .order_by(reactions::created_at.desc())
+            .limit(limit)
+            .offset(offset)
+            .select((
+                reactions::user_address,
+                reactions::reaction_text,
+                reactions::created_at,
+            ))
+            .load::<(String, String, i64)>(&mut conn)
+            .await?;
+        Ok(results
+            .into_iter()
+            .map(|(user_address, reaction_text, created_at)| ReactionRow {
+                user_address,
+                reaction_text,
+                created_at,
+            })
+            .collect())
+    }
+
+    pub async fn get_post_reposts(
+        &self,
+        post_id: &str,
+        limit: i64,
+        offset: i64,
+    ) -> Result<Vec<RepostRow>, crate::error::SocialError> {
+        let mut conn = self.db.connect().await?;
+        let results = reposts::table
+            .filter(reposts::original_post_id.eq(post_id))
+            .filter(reposts::is_original_post.eq(true))
+            .order_by(reposts::created_at.desc())
+            .limit(limit)
+            .offset(offset)
+            .select((
+                reposts::repost_id,
+                reposts::original_post_id,
+                reposts::owner,
+                reposts::profile_id,
+                reposts::created_at,
+            ))
+            .load::<(String, String, String, String, i64)>(&mut conn)
+            .await?;
+        Ok(results
+            .into_iter()
+            .map(
+                |(repost_id, original_post_id, owner, profile_id, created_at)| RepostRow {
+                    repost_id,
+                    original_post_id,
+                    owner,
+                    profile_id,
+                    created_at,
+                },
+            )
+            .collect())
+    }
+
+    pub async fn list_promotions(
+        &self,
+        limit: i64,
+        offset: i64,
+    ) -> Result<Vec<PromotedPostRow>, crate::error::SocialError> {
+        let mut conn = self.db.connect().await?;
+        let query = "
+            SELECT promotion_id, post_id, owner, profile_id, payment_per_view, total_budget,
+                   remaining_budget, active, created_at
+            FROM (
+                SELECT DISTINCT ON (promotion_id) *
+                FROM promoted_posts
+                ORDER BY promotion_id, time DESC
+            ) sub
+            ORDER BY created_at DESC
+            LIMIT $1 OFFSET $2
+        ";
+        #[derive(QueryableByName)]
+        struct Row {
+            #[diesel(sql_type = Text)]
+            promotion_id: String,
+            #[diesel(sql_type = Text)]
+            post_id: String,
+            #[diesel(sql_type = Text)]
+            owner: String,
+            #[diesel(sql_type = Text)]
+            profile_id: String,
+            #[diesel(sql_type = BigInt)]
+            payment_per_view: i64,
+            #[diesel(sql_type = BigInt)]
+            total_budget: i64,
+            #[diesel(sql_type = BigInt)]
+            remaining_budget: i64,
+            #[diesel(sql_type = Bool)]
+            active: bool,
+            #[diesel(sql_type = BigInt)]
+            created_at: i64,
+        }
+        let results = diesel::sql_query(query)
+            .bind::<BigInt, _>(limit)
+            .bind::<BigInt, _>(offset)
+            .load::<Row>(&mut conn)
+            .await?;
+        Ok(results
+            .into_iter()
+            .map(|r| PromotedPostRow {
+                promotion_id: r.promotion_id,
+                post_id: r.post_id,
+                owner: r.owner,
+                profile_id: r.profile_id,
+                payment_per_view: r.payment_per_view,
+                total_budget: r.total_budget,
+                remaining_budget: r.remaining_budget,
+                active: r.active,
+                created_at: r.created_at,
+            })
+            .collect())
+    }
+
+    pub async fn get_promotion_by_post_id(
+        &self,
+        post_id: &str,
+    ) -> Result<Option<PromotedPostRow>, crate::error::SocialError> {
+        let mut conn = self.db.connect().await?;
+        let query = "
+            SELECT promotion_id, post_id, owner, profile_id, payment_per_view, total_budget,
+                   remaining_budget, active, created_at
+            FROM (
+                SELECT DISTINCT ON (promotion_id) *
+                FROM promoted_posts
+                WHERE post_id = $1
+                ORDER BY promotion_id, time DESC
+            ) sub
+            LIMIT 1
+        ";
+        #[derive(QueryableByName)]
+        struct Row {
+            #[diesel(sql_type = Text)]
+            promotion_id: String,
+            #[diesel(sql_type = Text)]
+            post_id: String,
+            #[diesel(sql_type = Text)]
+            owner: String,
+            #[diesel(sql_type = Text)]
+            profile_id: String,
+            #[diesel(sql_type = BigInt)]
+            payment_per_view: i64,
+            #[diesel(sql_type = BigInt)]
+            total_budget: i64,
+            #[diesel(sql_type = BigInt)]
+            remaining_budget: i64,
+            #[diesel(sql_type = Bool)]
+            active: bool,
+            #[diesel(sql_type = BigInt)]
+            created_at: i64,
+        }
+        let result = diesel::sql_query(query)
+            .bind::<Text, _>(post_id)
+            .get_result::<Row>(&mut conn)
+            .await
+            .optional()?;
+        Ok(result.map(|r| PromotedPostRow {
+            promotion_id: r.promotion_id,
+            post_id: r.post_id,
+            owner: r.owner,
+            profile_id: r.profile_id,
+            payment_per_view: r.payment_per_view,
+            total_budget: r.total_budget,
+            remaining_budget: r.remaining_budget,
+            active: r.active,
+            created_at: r.created_at,
+        }))
+    }
+
+    pub async fn get_promotion_views(
+        &self,
+        promotion_id: &str,
+        limit: i64,
+        offset: i64,
+    ) -> Result<Vec<PromotionViewRow>, crate::error::SocialError> {
+        let mut conn = self.db.connect().await?;
+        let results = promotion_views::table
+            .filter(promotion_views::promotion_id.eq(promotion_id))
+            .order_by(promotion_views::timestamp.desc())
+            .limit(limit)
+            .offset(offset)
+            .select((
+                promotion_views::post_id,
+                promotion_views::promotion_id,
+                promotion_views::viewer,
+                promotion_views::payment_amount,
+                promotion_views::view_duration,
+                promotion_views::platform_id,
+                promotion_views::timestamp,
+            ))
+            .load::<(String, String, String, i64, i64, String, i64)>(&mut conn)
+            .await?;
+        Ok(results
+            .into_iter()
+            .map(
+                |(
+                    post_id,
+                    promotion_id,
+                    viewer,
+                    payment_amount,
+                    view_duration,
+                    platform_id,
+                    timestamp,
+                )| {
+                    PromotionViewRow {
+                        post_id,
+                        promotion_id,
+                        viewer,
+                        payment_amount,
+                        view_duration,
+                        platform_id,
+                        timestamp,
+                    }
+                },
+            )
+            .collect())
+    }
+
+    pub async fn get_promotion_stats(
+        &self,
+        promotion_id: &str,
+    ) -> Result<Option<PromotionStatsRow>, crate::error::SocialError> {
+        let mut conn = self.db.connect().await?;
+        let views_query = "
+            SELECT COUNT(*)::bigint as cnt, COALESCE(SUM(payment_amount), 0)::bigint as spent
+            FROM promotion_views WHERE promotion_id = $1
+        ";
+        #[derive(QueryableByName)]
+        struct ViewsRow {
+            #[diesel(sql_type = BigInt)]
+            cnt: i64,
+            #[diesel(sql_type = BigInt)]
+            spent: i64,
+        }
+        let views = diesel::sql_query(views_query)
+            .bind::<Text, _>(promotion_id)
+            .get_result::<ViewsRow>(&mut conn)
+            .await?;
+        let budget_query = "
+            SELECT remaining_budget as val FROM (
+                SELECT DISTINCT ON (promotion_id) remaining_budget
+                FROM promoted_posts WHERE promotion_id = $1
+                ORDER BY promotion_id, time DESC
+            ) sub
+        ";
+        #[derive(QueryableByName)]
+        struct BudgetRow {
+            #[diesel(sql_type = BigInt)]
+            val: i64,
+        }
+        let remaining: Option<i64> = diesel::sql_query(budget_query)
+            .bind::<Text, _>(promotion_id)
+            .get_result::<BudgetRow>(&mut conn)
+            .await
+            .optional()?
+            .map(|r| r.val);
+        Ok(Some(PromotionStatsRow {
+            total_views: views.cnt,
+            total_spent: views.spent,
+            remaining_budget: remaining.unwrap_or(0),
+        }))
+    }
+
+    pub async fn get_promotion_time_series(
+        &self,
+        promotion_id: &str,
+        limit: i64,
+    ) -> Result<Vec<PromotionTimeSeriesRow>, crate::error::SocialError> {
+        let mut conn = self.db.connect().await?;
+        let query = "
+            SELECT DATE(to_timestamp(timestamp/1000)) as day,
+                   COUNT(*)::bigint as views,
+                   COALESCE(SUM(payment_amount), 0)::bigint as spent
+            FROM promotion_views
+            WHERE promotion_id = $1
+              AND timestamp >= EXTRACT(EPOCH FROM NOW() - INTERVAL '30 days') * 1000
+            GROUP BY DATE(to_timestamp(timestamp/1000))
+            ORDER BY day ASC
+            LIMIT $2
+        ";
+        let results = diesel::sql_query(query)
+            .bind::<Text, _>(promotion_id)
+            .bind::<BigInt, _>(limit)
+            .load::<PromotionTimeSeriesRow>(&mut conn)
+            .await?;
+        Ok(results)
+    }
+
+    pub async fn get_promotion_hourly(
+        &self,
+        promotion_id: &str,
+        limit: i64,
+    ) -> Result<Vec<PromotionHourlyRow>, crate::error::SocialError> {
+        let mut conn = self.db.connect().await?;
+        let query = "
+            SELECT EXTRACT(HOUR FROM to_timestamp(timestamp/1000))::int as hour,
+                   COUNT(*)::bigint as views,
+                   COALESCE(SUM(payment_amount), 0)::bigint as spent
+            FROM promotion_views
+            WHERE promotion_id = $1
+              AND timestamp >= EXTRACT(EPOCH FROM NOW() - INTERVAL '7 days') * 1000
+            GROUP BY EXTRACT(HOUR FROM to_timestamp(timestamp/1000))
+            ORDER BY hour ASC
+            LIMIT $2
+        ";
+        let results = diesel::sql_query(query)
+            .bind::<Text, _>(promotion_id)
+            .bind::<BigInt, _>(limit)
+            .load::<PromotionHourlyRow>(&mut conn)
+            .await?;
+        Ok(results)
+    }
+
+    pub async fn get_top_performing_promotions(
+        &self,
+        limit: i64,
+    ) -> Result<Vec<PromotedPostRow>, crate::error::SocialError> {
+        let mut conn = self.db.connect().await?;
+        let query = "
+            SELECT pp.promotion_id, pp.post_id, pp.owner, pp.profile_id, pp.payment_per_view,
+                   pp.total_budget, pp.remaining_budget, pp.active, pp.created_at
+            FROM (
+                SELECT DISTINCT ON (promotion_id) promotion_id, post_id, owner, profile_id,
+                       payment_per_view, total_budget, remaining_budget, active, created_at
+                FROM promoted_posts
+                ORDER BY promotion_id, time DESC
+            ) pp
+            JOIN (
+                SELECT promotion_id, COUNT(*) as view_count
+                FROM promotion_views
+                GROUP BY promotion_id
+            ) pv ON pp.promotion_id = pv.promotion_id
+            ORDER BY pv.view_count DESC
+            LIMIT $1
+        ";
+        #[derive(QueryableByName)]
+        struct Row {
+            #[diesel(sql_type = Text)]
+            promotion_id: String,
+            #[diesel(sql_type = Text)]
+            post_id: String,
+            #[diesel(sql_type = Text)]
+            owner: String,
+            #[diesel(sql_type = Text)]
+            profile_id: String,
+            #[diesel(sql_type = BigInt)]
+            payment_per_view: i64,
+            #[diesel(sql_type = BigInt)]
+            total_budget: i64,
+            #[diesel(sql_type = BigInt)]
+            remaining_budget: i64,
+            #[diesel(sql_type = Bool)]
+            active: bool,
+            #[diesel(sql_type = BigInt)]
+            created_at: i64,
+        }
+        let results = diesel::sql_query(query)
+            .bind::<BigInt, _>(limit)
+            .load::<Row>(&mut conn)
+            .await?;
+        Ok(results
+            .into_iter()
+            .map(|r| PromotedPostRow {
+                promotion_id: r.promotion_id,
+                post_id: r.post_id,
+                owner: r.owner,
+                profile_id: r.profile_id,
+                payment_per_view: r.payment_per_view,
+                total_budget: r.total_budget,
+                remaining_budget: r.remaining_budget,
+                active: r.active,
+                created_at: r.created_at,
+            })
+            .collect())
+    }
+
+    pub async fn get_spending_trends(
+        &self,
+        limit: i64,
+    ) -> Result<Vec<PromotionTimeSeriesRow>, crate::error::SocialError> {
+        let mut conn = self.db.connect().await?;
+        let query = "
+            SELECT DATE(to_timestamp(timestamp/1000)) as day,
+                   COUNT(*)::bigint as views,
+                   COALESCE(SUM(payment_amount), 0)::bigint as spent
+            FROM promotion_views
+            WHERE timestamp >= EXTRACT(EPOCH FROM NOW() - INTERVAL '30 days') * 1000
+            GROUP BY DATE(to_timestamp(timestamp/1000))
+            ORDER BY day ASC
+            LIMIT $1
+        ";
+        let results = diesel::sql_query(query)
+            .bind::<BigInt, _>(limit)
+            .load::<PromotionTimeSeriesRow>(&mut conn)
+            .await?;
+        Ok(results)
+    }
+
+    pub async fn list_poc_badges(
+        &self,
+        limit: i64,
+        offset: i64,
+    ) -> Result<Vec<PocBadgeRow>, crate::error::SocialError> {
+        let mut conn = self.db.connect().await?;
+        let query = "
+            SELECT badge_id, post_id, media_type, issued_by, issued_at, revoked
+            FROM (
+                SELECT DISTINCT ON (badge_id) *
+                FROM poc_badges
+                ORDER BY badge_id, time DESC
+            ) sub
+            WHERE revoked = false
+            ORDER BY issued_at DESC
+            LIMIT $1 OFFSET $2
+        ";
+        #[derive(QueryableByName)]
+        struct Row {
+            #[diesel(sql_type = Text)]
+            badge_id: String,
+            #[diesel(sql_type = Text)]
+            post_id: String,
+            #[diesel(sql_type = SmallInt)]
+            media_type: i16,
+            #[diesel(sql_type = Text)]
+            issued_by: String,
+            #[diesel(sql_type = BigInt)]
+            issued_at: i64,
+            #[diesel(sql_type = Bool)]
+            revoked: bool,
+        }
+        let results = diesel::sql_query(query)
+            .bind::<BigInt, _>(limit)
+            .bind::<BigInt, _>(offset)
+            .load::<Row>(&mut conn)
+            .await?;
+        Ok(results
+            .into_iter()
+            .map(|r| PocBadgeRow {
+                badge_id: r.badge_id,
+                post_id: r.post_id,
+                media_type: r.media_type,
+                issued_by: r.issued_by,
+                issued_at: r.issued_at,
+                revoked: r.revoked,
+            })
+            .collect())
+    }
+
+    pub async fn get_poc_badge_by_id(
+        &self,
+        badge_id: &str,
+    ) -> Result<Option<PocBadgeRow>, crate::error::SocialError> {
+        let mut conn = self.db.connect().await?;
+        let query = "
+            SELECT badge_id, post_id, media_type, issued_by, issued_at, revoked
+            FROM (
+                SELECT DISTINCT ON (badge_id) *
+                FROM poc_badges
+                WHERE badge_id = $1
+                ORDER BY badge_id, time DESC
+            ) sub
+        ";
+        #[derive(QueryableByName)]
+        struct Row {
+            #[diesel(sql_type = Text)]
+            badge_id: String,
+            #[diesel(sql_type = Text)]
+            post_id: String,
+            #[diesel(sql_type = SmallInt)]
+            media_type: i16,
+            #[diesel(sql_type = Text)]
+            issued_by: String,
+            #[diesel(sql_type = BigInt)]
+            issued_at: i64,
+            #[diesel(sql_type = Bool)]
+            revoked: bool,
+        }
+        let result = diesel::sql_query(query)
+            .bind::<Text, _>(badge_id)
+            .get_result::<Row>(&mut conn)
+            .await
+            .optional()?;
+        Ok(result.map(|r| PocBadgeRow {
+            badge_id: r.badge_id,
+            post_id: r.post_id,
+            media_type: r.media_type,
+            issued_by: r.issued_by,
+            issued_at: r.issued_at,
+            revoked: r.revoked,
+        }))
+    }
+
+    pub async fn list_poc_revenue_redirections(
+        &self,
+        limit: i64,
+        offset: i64,
+    ) -> Result<Vec<PocRevenueRedirectionRow>, crate::error::SocialError> {
+        let mut conn = self.db.connect().await?;
+        let query = "
+            SELECT redirection_id, accused_post_id, original_post_id, redirect_percentage,
+                   similarity_score, created_at, removed
+            FROM (
+                SELECT DISTINCT ON (redirection_id) *
+                FROM poc_revenue_redirections
+                ORDER BY redirection_id, time DESC
+            ) sub
+            WHERE removed = false
+            ORDER BY created_at DESC
+            LIMIT $1 OFFSET $2
+        ";
+        #[derive(QueryableByName)]
+        struct Row {
+            #[diesel(sql_type = Text)]
+            redirection_id: String,
+            #[diesel(sql_type = Text)]
+            accused_post_id: String,
+            #[diesel(sql_type = Text)]
+            original_post_id: String,
+            #[diesel(sql_type = BigInt)]
+            redirect_percentage: i64,
+            #[diesel(sql_type = BigInt)]
+            similarity_score: i64,
+            #[diesel(sql_type = BigInt)]
+            created_at: i64,
+            #[diesel(sql_type = Bool)]
+            removed: bool,
+        }
+        let results = diesel::sql_query(query)
+            .bind::<BigInt, _>(limit)
+            .bind::<BigInt, _>(offset)
+            .load::<Row>(&mut conn)
+            .await?;
+        Ok(results
+            .into_iter()
+            .map(|r| PocRevenueRedirectionRow {
+                redirection_id: r.redirection_id,
+                accused_post_id: r.accused_post_id,
+                original_post_id: r.original_post_id,
+                redirect_percentage: r.redirect_percentage,
+                similarity_score: r.similarity_score,
+                created_at: r.created_at,
+                removed: r.removed,
+            })
+            .collect())
+    }
+
+    pub async fn list_poc_analysis_results(
+        &self,
+        limit: i64,
+        offset: i64,
+    ) -> Result<Vec<PocAnalysisResultRow>, crate::error::SocialError> {
+        let mut conn = self.db.connect().await?;
+        let results = poc_analysis_results::table
+            .order_by(poc_analysis_results::analysis_timestamp.desc())
+            .limit(limit)
+            .offset(offset)
+            .select((
+                poc_analysis_results::post_id,
+                poc_analysis_results::media_type,
+                poc_analysis_results::similarity_detected,
+                poc_analysis_results::highest_similarity_score,
+                poc_analysis_results::oracle_address,
+                poc_analysis_results::analysis_timestamp,
+            ))
+            .load::<(String, i16, bool, i64, String, i64)>(&mut conn)
+            .await?;
+        Ok(results
+            .into_iter()
+            .map(
+                |(
+                    post_id,
+                    media_type,
+                    similarity_detected,
+                    highest_similarity_score,
+                    oracle_address,
+                    analysis_timestamp,
+                )| {
+                    PocAnalysisResultRow {
+                        post_id,
+                        media_type,
+                        similarity_detected,
+                        highest_similarity_score,
+                        oracle_address,
+                        analysis_timestamp,
+                    }
+                },
+            )
+            .collect())
+    }
+
+    pub async fn list_poc_disputes(
+        &self,
+        limit: i64,
+        offset: i64,
+    ) -> Result<Vec<PocDisputeRow>, crate::error::SocialError> {
+        let mut conn = self.db.connect().await?;
+        let query = "
+            SELECT dispute_id, post_id, disputer, dispute_type, evidence, status,
+                   stake_amount, submitted_at, resolved_at
+            FROM (
+                SELECT DISTINCT ON (dispute_id) *
+                FROM poc_disputes
+                ORDER BY dispute_id, time DESC
+            ) sub
+            ORDER BY submitted_at DESC
+            LIMIT $1 OFFSET $2
+        ";
+        #[derive(QueryableByName)]
+        struct Row {
+            #[diesel(sql_type = Text)]
+            dispute_id: String,
+            #[diesel(sql_type = Text)]
+            post_id: String,
+            #[diesel(sql_type = Text)]
+            disputer: String,
+            #[diesel(sql_type = SmallInt)]
+            dispute_type: i16,
+            #[diesel(sql_type = Text)]
+            evidence: String,
+            #[diesel(sql_type = SmallInt)]
+            status: i16,
+            #[diesel(sql_type = BigInt)]
+            stake_amount: i64,
+            #[diesel(sql_type = BigInt)]
+            submitted_at: i64,
+            #[diesel(sql_type = Nullable<BigInt>)]
+            resolved_at: Option<i64>,
+        }
+        let results = diesel::sql_query(query)
+            .bind::<BigInt, _>(limit)
+            .bind::<BigInt, _>(offset)
+            .load::<Row>(&mut conn)
+            .await?;
+        Ok(results
+            .into_iter()
+            .map(|r| PocDisputeRow {
+                dispute_id: r.dispute_id,
+                post_id: r.post_id,
+                disputer: r.disputer,
+                dispute_type: r.dispute_type,
+                evidence: r.evidence,
+                status: r.status,
+                stake_amount: r.stake_amount,
+                submitted_at: r.submitted_at,
+                resolved_at: r.resolved_at,
+            })
+            .collect())
+    }
+
+    pub async fn get_poc_dispute_by_id(
+        &self,
+        dispute_id: &str,
+    ) -> Result<Option<PocDisputeRow>, crate::error::SocialError> {
+        let mut conn = self.db.connect().await?;
+        let query = "
+            SELECT dispute_id, post_id, disputer, dispute_type, evidence, status,
+                   stake_amount, submitted_at, resolved_at
+            FROM (
+                SELECT DISTINCT ON (dispute_id) *
+                FROM poc_disputes
+                WHERE dispute_id = $1
+                ORDER BY dispute_id, time DESC
+            ) sub
+        ";
+        #[derive(QueryableByName)]
+        struct Row {
+            #[diesel(sql_type = Text)]
+            dispute_id: String,
+            #[diesel(sql_type = Text)]
+            post_id: String,
+            #[diesel(sql_type = Text)]
+            disputer: String,
+            #[diesel(sql_type = SmallInt)]
+            dispute_type: i16,
+            #[diesel(sql_type = Text)]
+            evidence: String,
+            #[diesel(sql_type = SmallInt)]
+            status: i16,
+            #[diesel(sql_type = BigInt)]
+            stake_amount: i64,
+            #[diesel(sql_type = BigInt)]
+            submitted_at: i64,
+            #[diesel(sql_type = Nullable<BigInt>)]
+            resolved_at: Option<i64>,
+        }
+        let result = diesel::sql_query(query)
+            .bind::<Text, _>(dispute_id)
+            .get_result::<Row>(&mut conn)
+            .await
+            .optional()?;
+        Ok(result.map(|r| PocDisputeRow {
+            dispute_id: r.dispute_id,
+            post_id: r.post_id,
+            disputer: r.disputer,
+            dispute_type: r.dispute_type,
+            evidence: r.evidence,
+            status: r.status,
+            stake_amount: r.stake_amount,
+            submitted_at: r.submitted_at,
+            resolved_at: r.resolved_at,
+        }))
+    }
+
+    pub async fn get_poc_dispute_votes(
+        &self,
+        dispute_id: &str,
+        limit: i64,
+        offset: i64,
+    ) -> Result<Vec<PocDisputeVoteRow>, crate::error::SocialError> {
+        let mut conn = self.db.connect().await?;
+        let results = poc_dispute_votes::table
+            .filter(poc_dispute_votes::dispute_id.eq(dispute_id))
+            .order_by(poc_dispute_votes::voted_at.desc())
+            .limit(limit)
+            .offset(offset)
+            .select((
+                poc_dispute_votes::dispute_id,
+                poc_dispute_votes::voter,
+                poc_dispute_votes::vote_choice,
+                poc_dispute_votes::stake_amount,
+                poc_dispute_votes::voted_at,
+            ))
+            .load::<(String, String, i16, i64, i64)>(&mut conn)
+            .await?;
+        Ok(results
+            .into_iter()
+            .map(
+                |(dispute_id, voter, vote_choice, stake_amount, voted_at)| PocDisputeVoteRow {
+                    dispute_id,
+                    voter,
+                    vote_choice,
+                    stake_amount,
+                    voted_at,
+                },
+            )
+            .collect())
+    }
+
+    pub async fn get_poc_configuration(
+        &self,
+    ) -> Result<Option<PocConfigRow>, crate::error::SocialError> {
+        let mut conn = self.db.connect().await?;
+        let result = poc_configuration::table
+            .order_by(poc_configuration::updated_at.desc())
+            .limit(1)
+            .select((
+                poc_configuration::image_threshold,
+                poc_configuration::video_threshold,
+                poc_configuration::audio_threshold,
+                poc_configuration::revenue_redirect_percentage,
+                poc_configuration::dispute_cost,
+                poc_configuration::updated_at,
+            ))
+            .first::<(i64, i64, i64, i64, i64, i64)>(&mut conn)
+            .await
+            .optional()?;
+        Ok(result.map(
+            |(
+                image_threshold,
+                video_threshold,
+                audio_threshold,
+                revenue_redirect_percentage,
+                dispute_cost,
+                updated_at,
+            )| {
+                PocConfigRow {
+                    image_threshold,
+                    video_threshold,
+                    audio_threshold,
+                    revenue_redirect_percentage,
+                    dispute_cost,
+                    updated_at,
+                }
+            },
+        ))
+    }
+
+    pub async fn get_post_poc_badges(
+        &self,
+        post_id: &str,
+        limit: i64,
+        offset: i64,
+    ) -> Result<Vec<PocBadgeRow>, crate::error::SocialError> {
+        let mut conn = self.db.connect().await?;
+        let query = "
+            SELECT badge_id, post_id, media_type, issued_by, issued_at, revoked
+            FROM (
+                SELECT DISTINCT ON (badge_id) *
+                FROM poc_badges
+                WHERE post_id = $1
+                ORDER BY badge_id, time DESC
+            ) sub
+            WHERE revoked = false
+            ORDER BY issued_at DESC
+            LIMIT $2 OFFSET $3
+        ";
+        #[derive(QueryableByName)]
+        struct Row {
+            #[diesel(sql_type = Text)]
+            badge_id: String,
+            #[diesel(sql_type = Text)]
+            post_id: String,
+            #[diesel(sql_type = SmallInt)]
+            media_type: i16,
+            #[diesel(sql_type = Text)]
+            issued_by: String,
+            #[diesel(sql_type = BigInt)]
+            issued_at: i64,
+            #[diesel(sql_type = Bool)]
+            revoked: bool,
+        }
+        let results = diesel::sql_query(query)
+            .bind::<Text, _>(post_id)
+            .bind::<BigInt, _>(limit)
+            .bind::<BigInt, _>(offset)
+            .load::<Row>(&mut conn)
+            .await?;
+        Ok(results
+            .into_iter()
+            .map(|r| PocBadgeRow {
+                badge_id: r.badge_id,
+                post_id: r.post_id,
+                media_type: r.media_type,
+                issued_by: r.issued_by,
+                issued_at: r.issued_at,
+                revoked: r.revoked,
+            })
+            .collect())
+    }
+
+    pub async fn get_post_revenue_redirections(
+        &self,
+        post_id: &str,
+        limit: i64,
+        offset: i64,
+    ) -> Result<Vec<PocRevenueRedirectionRow>, crate::error::SocialError> {
+        let mut conn = self.db.connect().await?;
+        let query = "
+            SELECT redirection_id, accused_post_id, original_post_id, redirect_percentage,
+                   similarity_score, created_at, removed
+            FROM (
+                SELECT DISTINCT ON (redirection_id) *
+                FROM poc_revenue_redirections
+                WHERE accused_post_id = $1 OR original_post_id = $1
+                ORDER BY redirection_id, time DESC
+            ) sub
+            WHERE removed = false
+            ORDER BY created_at DESC
+            LIMIT $2 OFFSET $3
+        ";
+        #[derive(QueryableByName)]
+        struct Row {
+            #[diesel(sql_type = Text)]
+            redirection_id: String,
+            #[diesel(sql_type = Text)]
+            accused_post_id: String,
+            #[diesel(sql_type = Text)]
+            original_post_id: String,
+            #[diesel(sql_type = BigInt)]
+            redirect_percentage: i64,
+            #[diesel(sql_type = BigInt)]
+            similarity_score: i64,
+            #[diesel(sql_type = BigInt)]
+            created_at: i64,
+            #[diesel(sql_type = Bool)]
+            removed: bool,
+        }
+        let results = diesel::sql_query(query)
+            .bind::<Text, _>(post_id)
+            .bind::<BigInt, _>(limit)
+            .bind::<BigInt, _>(offset)
+            .load::<Row>(&mut conn)
+            .await?;
+        Ok(results
+            .into_iter()
+            .map(|r| PocRevenueRedirectionRow {
+                redirection_id: r.redirection_id,
+                accused_post_id: r.accused_post_id,
+                original_post_id: r.original_post_id,
+                redirect_percentage: r.redirect_percentage,
+                similarity_score: r.similarity_score,
+                created_at: r.created_at,
+                removed: r.removed,
+            })
+            .collect())
+    }
+
+    pub async fn get_poc_analytics(&self) -> Result<serde_json::Value, crate::error::SocialError> {
+        let mut conn = self.db.connect().await?;
+        #[derive(QueryableByName)]
+        struct CountRow {
+            #[diesel(sql_type = BigInt)]
+            count: i64,
+        }
+        let badges_count: i64 = diesel::sql_query(
+            "SELECT COUNT(DISTINCT badge_id)::bigint as count FROM poc_badges WHERE revoked = false",
+        )
+        .get_result::<CountRow>(&mut conn)
+        .await
+        .map(|r| r.count)?;
+        let disputes_count: i64 = diesel::sql_query(
+            "SELECT COUNT(DISTINCT dispute_id)::bigint as count FROM poc_disputes",
+        )
+        .get_result::<CountRow>(&mut conn)
+        .await
+        .map(|r| r.count)?;
+        let redirections_count: i64 = diesel::sql_query(
+            "SELECT COUNT(DISTINCT redirection_id)::bigint as count FROM poc_revenue_redirections WHERE removed = false",
+        )
+        .get_result::<CountRow>(&mut conn)
+        .await
+        .map(|r| r.count)?;
+        Ok(serde_json::json!({
+            "total_badges": badges_count,
+            "total_disputes": disputes_count,
+            "total_revenue_redirections": redirections_count,
+        }))
+    }
+
+    pub async fn list_subscriptions(
+        &self,
+        subscriber: Option<&str>,
+        service_id: Option<&str>,
+        limit: i64,
+        offset: i64,
+    ) -> Result<Vec<ProfileSubscriptionInfo>, crate::error::SocialError> {
+        let mut conn = self.db.connect().await?;
+        let query = "
+            SELECT sub.subscription_id, sub.service_id, sub.subscriber, sub.created_at,
+                   sub.expires_at, sub.auto_renew, sub.renewal_balance, sub.renewal_count,
+                   sub.cancelled_at, s.monthly_fee, s.profile_owner,
+                   p.username, p.display_name
+            FROM (
+                SELECT DISTINCT ON (subscription_id) *
+                FROM profile_subscriptions
+                WHERE ($1::text IS NULL OR subscriber = $1)
+                  AND ($2::text IS NULL OR service_id = $2)
+                ORDER BY subscription_id, time DESC
+            ) sub
+            JOIN profile_subscription_services s ON s.service_id = sub.service_id
+            LEFT JOIN profiles p ON p.owner_address = s.profile_owner
+            ORDER BY sub.expires_at DESC
+            LIMIT $3 OFFSET $4
+        ";
+        let results = diesel::sql_query(query)
+            .bind::<Nullable<Text>, _>(subscriber)
+            .bind::<Nullable<Text>, _>(service_id)
+            .bind::<BigInt, _>(limit)
+            .bind::<BigInt, _>(offset)
+            .load::<ProfileSubscriptionInfo>(&mut conn)
+            .await?;
+        Ok(results)
+    }
+
+    pub async fn list_subscription_services(
+        &self,
+        limit: i64,
+        offset: i64,
+    ) -> Result<Vec<ProfileSubscriptionServiceInfo>, crate::error::SocialError> {
+        let mut conn = self.db.connect().await?;
+        let query = "
+            SELECT s.service_id, s.profile_owner, s.profile_id, s.monthly_fee, s.active,
+                   s.subscriber_count, s.created_at, s.updated_at,
+                   p.username, p.display_name, p.profile_photo
+            FROM profile_subscription_services s
+            LEFT JOIN profiles p ON p.owner_address = s.profile_owner
+            ORDER BY s.subscriber_count DESC, s.created_at DESC
+            LIMIT $1 OFFSET $2
+        ";
+        let results = diesel::sql_query(query)
+            .bind::<BigInt, _>(limit)
+            .bind::<BigInt, _>(offset)
+            .load::<ProfileSubscriptionServiceInfo>(&mut conn)
+            .await?;
+        Ok(results)
+    }
+
+    pub async fn list_subscription_revenue(
+        &self,
+        service_id: Option<&str>,
+        limit: i64,
+        offset: i64,
+    ) -> Result<Vec<ProfileSubscriptionRevenueRow>, crate::error::SocialError> {
+        let mut conn = self.db.connect().await?;
+        let (query, bind_service) = if service_id.is_some() {
+            (
+                "SELECT service_id, subscription_id, from_address, to_address, amount,
+                        revenue_type, payment_time, time, transaction_id
+                 FROM subscription_revenue WHERE service_id = $1
+                 ORDER BY time DESC LIMIT $2 OFFSET $3",
+                true,
+            )
+        } else {
+            (
+                "SELECT service_id, subscription_id, from_address, to_address, amount,
+                        revenue_type, payment_time, time, transaction_id
+                 FROM subscription_revenue
+                 ORDER BY time DESC LIMIT $1 OFFSET $2",
+                false,
+            )
+        };
+        let results = if bind_service {
+            diesel::sql_query(query)
+                .bind::<Text, _>(service_id.unwrap())
+                .bind::<BigInt, _>(limit)
+                .bind::<BigInt, _>(offset)
+                .load::<ProfileSubscriptionRevenueRow>(&mut conn)
+                .await?
+        } else {
+            diesel::sql_query(query)
+                .bind::<BigInt, _>(limit)
+                .bind::<BigInt, _>(offset)
+                .load::<ProfileSubscriptionRevenueRow>(&mut conn)
+                .await?
+        };
+        Ok(results)
+    }
+
+    pub async fn get_subscriber_summary(
+        &self,
+        address: &str,
+    ) -> Result<SubscriberSummaryRow, crate::error::SocialError> {
+        let mut conn = self.db.connect().await?;
+        let now_ms = chrono::Utc::now().timestamp_millis();
+        #[derive(QueryableByName)]
+        struct Row {
+            #[diesel(sql_type = BigInt)]
+            active: i64,
+            #[diesel(sql_type = BigInt)]
+            revenue: i64,
+        }
+        let query = "
+            SELECT
+                (SELECT COUNT(DISTINCT subscription_id)::bigint FROM profile_subscriptions
+                 WHERE subscriber = $1 AND cancelled_at IS NULL AND expires_at > $2) as active,
+                (SELECT COALESCE(SUM(amount), 0)::bigint FROM subscription_revenue
+                 WHERE from_address = $1) as revenue
+        ";
+        let row = diesel::sql_query(query)
+            .bind::<Text, _>(address)
+            .bind::<BigInt, _>(now_ms)
+            .get_result::<Row>(&mut conn)
+            .await?;
+        Ok(SubscriberSummaryRow {
+            active_subscriptions: row.active,
+            total_revenue: row.revenue,
+        })
+    }
+
+    pub async fn list_vesting_wallets(
+        &self,
+        active_only: bool,
+        owner: Option<&str>,
+        limit: i64,
+        offset: i64,
+    ) -> Result<Vec<VestingWalletRow>, crate::error::SocialError> {
+        let mut conn = self.db.connect().await?;
+        let mut query = vesting_wallets::table.into_boxed();
+        if active_only {
+            query = query.filter(vesting_wallets::remaining_balance.gt(0));
+        }
+        if let Some(o) = owner {
+            query = query.filter(vesting_wallets::owner_address.eq(o));
+        }
+        let results = query
+            .order_by(vesting_wallets::created_at.desc())
+            .limit(limit)
+            .offset(offset)
+            .select((
+                vesting_wallets::wallet_id,
+                vesting_wallets::owner_address,
+                vesting_wallets::total_amount,
+                vesting_wallets::claimed_amount,
+                vesting_wallets::remaining_balance,
+                vesting_wallets::start_time,
+                vesting_wallets::duration,
+                vesting_wallets::created_at,
+            ))
+            .load::<(
+                String,
+                String,
+                i64,
+                i64,
+                i64,
+                i64,
+                i64,
+                chrono::NaiveDateTime,
+            )>(&mut conn)
+            .await?;
+        Ok(results
+            .into_iter()
+            .map(
+                |(
+                    wallet_id,
+                    owner_address,
+                    total_amount,
+                    claimed_amount,
+                    remaining_balance,
+                    start_time,
+                    duration,
+                    created_at,
+                )| {
+                    VestingWalletRow {
+                        wallet_id,
+                        owner_address,
+                        total_amount,
+                        claimed_amount,
+                        remaining_balance,
+                        start_time,
+                        duration,
+                        created_at,
+                    }
+                },
+            )
+            .collect())
+    }
+
+    pub async fn get_vesting_wallet_by_id(
+        &self,
+        wallet_id: &str,
+    ) -> Result<Option<VestingWalletRow>, crate::error::SocialError> {
+        let mut conn = self.db.connect().await?;
+        let result = vesting_wallets::table
+            .filter(vesting_wallets::wallet_id.eq(wallet_id))
+            .select((
+                vesting_wallets::wallet_id,
+                vesting_wallets::owner_address,
+                vesting_wallets::total_amount,
+                vesting_wallets::claimed_amount,
+                vesting_wallets::remaining_balance,
+                vesting_wallets::start_time,
+                vesting_wallets::duration,
+                vesting_wallets::created_at,
+            ))
+            .first::<(
+                String,
+                String,
+                i64,
+                i64,
+                i64,
+                i64,
+                i64,
+                chrono::NaiveDateTime,
+            )>(&mut conn)
+            .await
+            .optional()?;
+        Ok(result.map(
+            |(
+                wallet_id,
+                owner_address,
+                total_amount,
+                claimed_amount,
+                remaining_balance,
+                start_time,
+                duration,
+                created_at,
+            )| {
+                VestingWalletRow {
+                    wallet_id,
+                    owner_address,
+                    total_amount,
+                    claimed_amount,
+                    remaining_balance,
+                    start_time,
+                    duration,
+                    created_at,
+                }
+            },
+        ))
+    }
+
+    pub async fn get_vesting_wallet_events(
+        &self,
+        wallet_id: &str,
+        limit: i64,
+        offset: i64,
+    ) -> Result<Vec<VestingEventRow>, crate::error::SocialError> {
+        let mut conn = self.db.connect().await?;
+        let results = vesting_events::table
+            .filter(vesting_events::wallet_id.eq(wallet_id))
+            .order_by(vesting_events::event_time.desc())
+            .limit(limit)
+            .offset(offset)
+            .select((
+                vesting_events::wallet_id,
+                vesting_events::event_type,
+                vesting_events::amount,
+                vesting_events::event_time,
+            ))
+            .load::<(String, String, i64, i64)>(&mut conn)
+            .await?;
+        Ok(results
+            .into_iter()
+            .map(
+                |(wallet_id, event_type, amount, event_time)| VestingEventRow {
+                    wallet_id,
+                    event_type,
+                    amount,
+                    event_time,
+                },
+            )
+            .collect())
+    }
+
+    pub async fn get_vesting_claimable(
+        &self,
+        wallet_id: &str,
+    ) -> Result<Option<i64>, crate::error::SocialError> {
+        let mut conn = self.db.connect().await?;
+        let result = vesting_wallets::table
+            .filter(vesting_wallets::wallet_id.eq(wallet_id))
+            .select(vesting_wallets::remaining_balance)
+            .first::<i64>(&mut conn)
+            .await
+            .optional()?;
+        Ok(result)
+    }
+
+    pub async fn get_user_vesting_wallets(
+        &self,
+        address: &str,
+        limit: i64,
+        offset: i64,
+    ) -> Result<Vec<VestingWalletRow>, crate::error::SocialError> {
+        self.list_vesting_wallets(false, Some(address), limit, offset)
+            .await
+    }
+
+    pub async fn list_vesting_events(
+        &self,
+        limit: i64,
+        offset: i64,
+    ) -> Result<Vec<VestingEventRow>, crate::error::SocialError> {
+        let mut conn = self.db.connect().await?;
+        let results = vesting_events::table
+            .order_by(vesting_events::event_time.desc())
+            .limit(limit)
+            .offset(offset)
+            .select((
+                vesting_events::wallet_id,
+                vesting_events::event_type,
+                vesting_events::amount,
+                vesting_events::event_time,
+            ))
+            .load::<(String, String, i64, i64)>(&mut conn)
+            .await?;
+        Ok(results
+            .into_iter()
+            .map(
+                |(wallet_id, event_type, amount, event_time)| VestingEventRow {
+                    wallet_id,
+                    event_type,
+                    amount,
+                    event_time,
+                },
+            )
+            .collect())
+    }
+
+    pub async fn get_vesting_analytics(
+        &self,
+    ) -> Result<serde_json::Value, crate::error::SocialError> {
+        let mut conn = self.db.connect().await?;
+        #[derive(QueryableByName)]
+        struct CountRow {
+            #[diesel(sql_type = BigInt)]
+            count: i64,
+        }
+        #[derive(QueryableByName)]
+        struct SumRow {
+            #[diesel(sql_type = BigInt)]
+            total: i64,
+        }
+        let wallets: i64 =
+            diesel::sql_query("SELECT COUNT(*)::bigint as count FROM vesting_wallets")
+                .get_result::<CountRow>(&mut conn)
+                .await
+                .map(|r| r.count)?;
+        let total_vested: i64 = diesel::sql_query(
+            "SELECT COALESCE(SUM(total_amount), 0)::bigint as total FROM vesting_wallets",
+        )
+        .get_result::<SumRow>(&mut conn)
+        .await
+        .map(|r| r.total)?;
+        let total_claimed: i64 = diesel::sql_query(
+            "SELECT COALESCE(SUM(claimed_amount), 0)::bigint as total FROM vesting_wallets",
+        )
+        .get_result::<SumRow>(&mut conn)
+        .await
+        .map(|r| r.total)?;
+        Ok(serde_json::json!({
+            "total_wallets": wallets,
+            "total_vested": total_vested,
+            "total_claimed": total_claimed,
+            "total_remaining": total_vested - total_claimed,
+        }))
+    }
+
+    pub async fn get_vesting_leaderboard(
+        &self,
+        limit: i64,
+    ) -> Result<Vec<VestingWalletRow>, crate::error::SocialError> {
+        let mut conn = self.db.connect().await?;
+        let results = vesting_wallets::table
+            .order_by(vesting_wallets::remaining_balance.desc())
+            .limit(limit)
+            .select((
+                vesting_wallets::wallet_id,
+                vesting_wallets::owner_address,
+                vesting_wallets::total_amount,
+                vesting_wallets::claimed_amount,
+                vesting_wallets::remaining_balance,
+                vesting_wallets::start_time,
+                vesting_wallets::duration,
+                vesting_wallets::created_at,
+            ))
+            .load::<(
+                String,
+                String,
+                i64,
+                i64,
+                i64,
+                i64,
+                i64,
+                chrono::NaiveDateTime,
+            )>(&mut conn)
+            .await?;
+        Ok(results
+            .into_iter()
+            .map(
+                |(
+                    wallet_id,
+                    owner_address,
+                    total_amount,
+                    claimed_amount,
+                    remaining_balance,
+                    start_time,
+                    duration,
+                    created_at,
+                )| {
+                    VestingWalletRow {
+                        wallet_id,
+                        owner_address,
+                        total_amount,
+                        claimed_amount,
+                        remaining_balance,
+                        start_time,
+                        duration,
+                        created_at,
+                    }
+                },
+            )
+            .collect())
+    }
+
+    pub async fn get_spt_pool_by_associated_id(
+        &self,
+        associated_id: &str,
+    ) -> Result<Option<SptPoolRow>, crate::error::SocialError> {
+        let mut conn = self.db.connect().await?;
+        let query = "
+            SELECT pool_id, token_type, owner, associated_id, symbol, name,
+                   circulating_supply, base_price, quadratic_coefficient, created_at, time, transaction_id
+            FROM (SELECT DISTINCT ON (pool_id) * FROM spt_pools WHERE associated_id = $1 ORDER BY pool_id, time DESC) p
+        ";
+        let result = diesel::sql_query(query)
+            .bind::<Text, _>(associated_id)
+            .get_result::<SptPoolRow>(&mut conn)
+            .await
+            .optional()?;
+        Ok(result)
+    }
+
+    pub async fn get_spt_popular(
+        &self,
+        limit: i64,
+    ) -> Result<Vec<SptPoolRow>, crate::error::SocialError> {
+        let mut conn = self.db.connect().await?;
+        let query = "
+            SELECT pool_id, token_type, owner, associated_id, symbol, name,
+                   circulating_supply, base_price, quadratic_coefficient, created_at, time, transaction_id
+            FROM (SELECT DISTINCT ON (pool_id) * FROM spt_pools ORDER BY pool_id, time DESC) p
+            ORDER BY circulating_supply DESC
+            LIMIT $1
+        ";
+        let results = diesel::sql_query(query)
+            .bind::<BigInt, _>(limit)
+            .load::<SptPoolRow>(&mut conn)
+            .await?;
+        Ok(results)
+    }
+
+    pub async fn get_spt_user_holdings(
+        &self,
+        address: &str,
+        limit: i64,
+        offset: i64,
+    ) -> Result<Vec<(String, i64, i64)>, crate::error::SocialError> {
+        let mut conn = self.db.connect().await?;
+        let results = spt_holdings::table
+            .filter(spt_holdings::holder_address.eq(address))
+            .order_by(spt_holdings::acquired_at.desc())
+            .limit(limit)
+            .offset(offset)
+            .select((
+                spt_holdings::pool_id,
+                spt_holdings::amount,
+                spt_holdings::acquired_at,
+            ))
+            .load::<(String, i64, i64)>(&mut conn)
+            .await?;
+        Ok(results)
+    }
+
+    pub async fn get_spt_user_reservations(
+        &self,
+        address: &str,
+        limit: i64,
+        offset: i64,
+    ) -> Result<Vec<(String, i64, i64)>, crate::error::SocialError> {
+        let mut conn = self.db.connect().await?;
+        let results = spt_reservations::table
+            .filter(spt_reservations::reserver_address.eq(address))
+            .order_by(spt_reservations::reserved_at.desc())
+            .limit(limit)
+            .offset(offset)
+            .select((
+                spt_reservations::pool_id,
+                spt_reservations::amount,
+                spt_reservations::reserved_at,
+            ))
+            .load::<(String, i64, i64)>(&mut conn)
+            .await?;
+        Ok(results)
+    }
+
+    pub async fn search(
+        &self,
+        q: &str,
+        limit: i64,
+    ) -> Result<serde_json::Value, crate::error::SocialError> {
+        let mut conn = self.db.connect().await?;
+        let pattern = format!("%{}%", q);
+        let profiles: Vec<Profile> = profiles::table
+            .filter(
+                profiles::username
+                    .ilike(&pattern)
+                    .or(profiles::display_name.ilike(&pattern))
+                    .or(profiles::owner_address.eq(q)),
+            )
+            .limit(limit)
+            .select(Profile::as_select())
+            .load(&mut conn)
+            .await?;
+        let posts_count: i64 = posts::table
+            .filter(posts::content.ilike(&pattern))
+            .filter(posts::deleted_at.is_null())
+            .count()
+            .get_result(&mut conn)
+            .await?;
+        let platforms_count: i64 = platforms::table
+            .filter(platforms::name.ilike(&pattern))
+            .filter(platforms::deleted_at.is_null())
+            .count()
+            .get_result(&mut conn)
+            .await?;
+        Ok(serde_json::json!({
+            "profiles": profiles,
+            "posts_count": posts_count,
+            "platforms_count": platforms_count,
+        }))
     }
 }

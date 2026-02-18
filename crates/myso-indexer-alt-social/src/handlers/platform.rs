@@ -204,11 +204,11 @@ pub fn handle_platform_event(
             process_platform_approval_changed_event(data, event_id)
         }
         "ModeratorAddedEvent" => process_moderator_added_event(data, event_id),
-        "ModeratorRemovedEvent" => process_moderator_removed_event(data),
+        "ModeratorRemovedEvent" => process_moderator_removed_event(data, event_id),
         "PlatformBlockedProfileEvent" => process_platform_blocked_profile_event(data, event_id),
-        "PlatformUnblockedProfileEvent" => process_platform_unblocked_profile_event(data),
+        "PlatformUnblockedProfileEvent" => process_platform_unblocked_profile_event(data, event_id),
         "UserJoinedPlatformEvent" => process_user_joined_platform_event(data, event_id),
-        "UserLeftPlatformEvent" => process_user_left_platform_event(data),
+        "UserLeftPlatformEvent" => process_user_left_platform_event(data, event_id),
         "TokenAirdropEvent" => process_token_airdrop_event(data, event_id),
         "PlatformDeletedEvent" => process_platform_deleted_event(data, event_id),
         _ => None,
@@ -368,12 +368,27 @@ fn process_moderator_added_event(
     ])
 }
 
-fn process_moderator_removed_event(data: &serde_json::Value) -> Option<Vec<SocialEventRow>> {
+fn process_moderator_removed_event(
+    data: &serde_json::Value,
+    event_id: &str,
+) -> Option<Vec<SocialEventRow>> {
     let ev: ModeratorRemovedEvent = serde_json::from_value(data.clone()).ok()?;
-    Some(vec![SocialEventRow::PlatformModeratorRemove {
-        platform_id: ev.platform_id,
-        moderator_address: ev.moderator_address,
-    }])
+    let now = Utc::now().naive_utc();
+    let platform_event = NewPlatformEvent {
+        event_type: "ModeratorRemoved".to_string(),
+        platform_id: ev.platform_id.clone(),
+        event_data: data.clone(),
+        event_id: Some(event_id.to_string()),
+        created_at: now,
+        reasoning: None,
+    };
+    Some(vec![
+        SocialEventRow::PlatformEvent(platform_event),
+        SocialEventRow::PlatformModeratorRemove {
+            platform_id: ev.platform_id,
+            moderator_address: ev.moderator_address,
+        },
+    ])
 }
 
 fn process_platform_blocked_profile_event(
@@ -407,12 +422,25 @@ fn process_platform_blocked_profile_event(
 
 fn process_platform_unblocked_profile_event(
     data: &serde_json::Value,
+    event_id: &str,
 ) -> Option<Vec<SocialEventRow>> {
     let ev: PlatformUnblockedProfileEvent = serde_json::from_value(data.clone()).ok()?;
-    Some(vec![SocialEventRow::PlatformBlockedProfileRemove {
-        platform_id: ev.platform_id,
-        wallet_address: ev.profile_id,
-    }])
+    let now = Utc::now().naive_utc();
+    let platform_event = NewPlatformEvent {
+        event_type: "PlatformUnblockedProfile".to_string(),
+        platform_id: ev.platform_id.clone(),
+        event_data: data.clone(),
+        event_id: Some(event_id.to_string()),
+        created_at: now,
+        reasoning: None,
+    };
+    Some(vec![
+        SocialEventRow::PlatformEvent(platform_event),
+        SocialEventRow::PlatformBlockedProfileRemove {
+            platform_id: ev.platform_id,
+            wallet_address: ev.profile_id,
+        },
+    ])
 }
 
 fn process_user_joined_platform_event(
@@ -444,12 +472,27 @@ fn process_user_joined_platform_event(
     ])
 }
 
-fn process_user_left_platform_event(data: &serde_json::Value) -> Option<Vec<SocialEventRow>> {
+fn process_user_left_platform_event(
+    data: &serde_json::Value,
+    event_id: &str,
+) -> Option<Vec<SocialEventRow>> {
     let ev: UserLeftPlatformEvent = serde_json::from_value(data.clone()).ok()?;
-    Some(vec![SocialEventRow::PlatformMembershipRemove {
-        platform_id: ev.platform_id,
-        wallet_address: ev.wallet_address,
-    }])
+    let now = Utc::now().naive_utc();
+    let platform_event = NewPlatformEvent {
+        event_type: "UserLeftPlatform".to_string(),
+        platform_id: ev.platform_id.clone(),
+        event_data: data.clone(),
+        event_id: Some(event_id.to_string()),
+        created_at: now,
+        reasoning: None,
+    };
+    Some(vec![
+        SocialEventRow::PlatformEvent(platform_event),
+        SocialEventRow::PlatformMembershipRemove {
+            platform_id: ev.platform_id,
+            wallet_address: ev.wallet_address,
+        },
+    ])
 }
 
 fn process_token_airdrop_event(
