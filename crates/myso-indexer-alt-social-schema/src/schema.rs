@@ -975,7 +975,7 @@ diesel::table! {
         id -> Int4,
         proposal_id -> Varchar,
         voter_address -> Varchar,
-        encrypted_vote_data -> Nullable<Bytea>,
+        encrypted_vote_data -> Bytea,
         submitted_at -> Int8,
         decrypted -> Bool,
         decrypted_at -> Nullable<Int8>,
@@ -1650,6 +1650,33 @@ diesel::table! {
         timestamp_ms -> Int8,
         time -> Timestamptz,
         transaction_id -> Varchar,
+    }
+}
+
+// upgrade_events: audit log of package upgrades (from upgrade.move UpgradeEvent)
+diesel::table! {
+    upgrade_events (id) {
+        id -> Integer,
+        package_id -> Varchar,
+        version -> BigInt,
+        event_id -> Varchar,
+        transaction_id -> Varchar,
+        created_at -> Timestamptz,
+    }
+}
+
+// object_migrated_events: audit log of object migrations (from upgrade.move ObjectMigratedEvent)
+diesel::table! {
+    object_migrated_events (id) {
+        id -> Integer,
+        object_id -> Varchar,
+        object_type -> Varchar,
+        old_version -> BigInt,
+        new_version -> BigInt,
+        migrated_by -> Varchar,
+        event_id -> Varchar,
+        transaction_id -> Varchar,
+        created_at -> Timestamptz,
     }
 }
 

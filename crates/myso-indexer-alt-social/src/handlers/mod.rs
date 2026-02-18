@@ -25,9 +25,11 @@ use std::sync::Arc;
 
 use anyhow::Result;
 use async_trait::async_trait;
+use diesel::sql_types::{BigInt, Bool, Int2, Nullable, Text};
 use diesel::BoolExpressionMethods;
 use diesel::ExpressionMethods;
 use diesel::QueryDsl;
+use diesel::QueryableByName;
 use diesel_async::RunQueryDsl;
 use move_core_types::account_address::AccountAddress;
 use myso_indexer_alt_framework::pipeline::Processor;
@@ -38,21 +40,52 @@ use myso_indexer_alt_framework::FieldCount;
 use myso_indexer_alt_social_schema::models::{
     GovernanceRegistryUpdate, NewAnonymousVote, NewBlockedEvent, NewBlockedProfile, NewComment,
     NewCommunityVote, NewDelegate, NewDelegateRating, NewDelegateVote, NewDeletionEvent,
-    NewGovernanceEvent, NewGovernanceRegistry, NewModerationEvent, NewNominatedDelegate,
+    NewGovernanceEvent, NewGovernanceRegistry, NewInsuranceConfig, NewInsuranceEventLog,
+    NewInsuranceMarketExposure, NewInsurancePolicy, NewInsurancePolicyEvent,
+    NewInsuranceUserExposure, NewInsuranceVault, NewInsuranceVaultTransaction, NewModerationEvent,
+    NewMyDataAccessLog, NewMyDataConfig, NewMyDataData, NewMyDataPurchase, NewMyDataRegistry,
+    NewMyDataRevenue, NewMyDataSubscription, NewNominatedDelegate, NewObjectMigratedEvent,
     NewPlatform, NewPlatformBlockedProfile, NewPlatformEvent, NewPlatformMembership,
-    NewPlatformModerator, NewPlatformTokenAirdrop, NewPost, NewProfile, NewProfileBadge,
-    NewProfileEvent, NewProposal, NewReaction, NewReactionCount, NewReport, NewRepost,
-    NewRewardDistribution, NewSocialGraphEvent, NewSocialGraphRelationship, NewTip,
-    NewVoteDecryptionFailure, ProfileUpdateSet, ProposalUpdateSet,
+    NewPlatformModerator, NewPlatformTokenAirdrop, NewPocAnalysisResult, NewPocBadge,
+    NewPocConfiguration, NewPocDispute, NewPocDisputeVote, NewPocRevenueRedirection, NewPost,
+    NewProfile, NewProfileBadge, NewProfileEvent, NewProfileSubscription,
+    NewProfileSubscriptionService, NewProposal, NewReaction, NewReactionCount, NewReport,
+    NewRepost, NewRewardDistribution, NewSocialGraphEvent, NewSocialGraphRelationship,
+    NewSocialProofTokensConfig, NewSocialProofTokensEvent, NewSpotBet, NewSpotBetWithdrawal,
+    NewSpotConfig, NewSpotEventLog, NewSpotPayout, NewSpotRecord, NewSpotRefund, NewSpotResolution,
+    NewSptExchangeConfig, NewSptHolding, NewSptPool, NewSptPriceHistory, NewSptReservation,
+    NewSptReservationPool, NewSptRevenue, NewSptTransaction, NewSubscriptionEvent,
+    NewSubscriptionRevenue, NewTip, NewUnifiedRevenue, NewUpgradeEvent, NewVoteDecryptionFailure,
+    ProfileUpdateSet, ProposalUpdateSet,
 };
 use myso_indexer_alt_social_schema::schema::{
     anonymous_votes, blocked_events, blocked_profiles, comments, community_votes, delegate_ratings,
     delegate_votes, delegates, governance_events, governance_registries, nominated_delegates,
     platform_blocked_profiles, platform_events, platform_memberships, platform_moderators,
-    platform_token_airdrops, platforms, posts, posts_deletion_events, posts_moderation_events,
-    posts_reports, profile_badges, profile_events, profiles, proposals, reaction_counts, reactions,
-    reposts, reward_distributions, social_graph_events, social_graph_relationships, tips,
-    vote_decryption_failures,
+    platform_token_airdrops, platforms, poc_analysis_results, poc_badges, poc_configuration,
+    poc_dispute_votes, poc_disputes, poc_revenue_redirections, posts, posts_deletion_events,
+    posts_moderation_events, posts_reports, profile_badges, profile_events, profiles, proposals,
+    reaction_counts, reactions, reposts, reward_distributions, social_graph_events,
+    social_graph_relationships, tips, vote_decryption_failures,
+};
+use myso_indexer_alt_social_schema::schema::{
+    ecosystem_treasury, object_migrated_events, social_proof_tokens_config,
+    social_proof_tokens_events, spt_exchange_config, spt_holdings, spt_pools, spt_price_history,
+    spt_reservation_pools, spt_reservations, spt_revenue, spt_transactions, unified_revenue,
+    upgrade_events,
+};
+use myso_indexer_alt_social_schema::schema::{
+    insurance_config, insurance_events, insurance_market_exposures, insurance_policies,
+    insurance_policy_events, insurance_user_exposures, insurance_vault_transactions,
+    insurance_vaults, mydata_access_logs, mydata_config, mydata_data, mydata_purchases,
+    mydata_registry, mydata_revenue, mydata_subscriptions,
+};
+use myso_indexer_alt_social_schema::schema::{
+    profile_subscription_services, profile_subscriptions, subscription_events, subscription_revenue,
+};
+use myso_indexer_alt_social_schema::schema::{
+    spot_bet_withdrawals, spot_bets, spot_config, spot_events, spot_payouts, spot_records,
+    spot_refunds, spot_resolutions,
 };
 use myso_types::base_types::ObjectID;
 use myso_types::MYSO_SOCIAL_PACKAGE_ID;
@@ -98,6 +131,7 @@ pub enum SocialEventRow {
         proposal_id: String,
         set: ProposalUpdateSet,
         governance_event: Option<(String, serde_json::Value, String)>,
+        submitter_filter: Option<String>,
     },
     DelegateRating(NewDelegateRating),
     DelegateVote(NewDelegateVote),
@@ -176,6 +210,231 @@ pub enum SocialEventRow {
         platform_id: String,
         deleted_at: chrono::NaiveDateTime,
     },
+    PocBadge(NewPocBadge),
+    PocAnalysisResult(NewPocAnalysisResult),
+    PocRevenueRedirection(NewPocRevenueRedirection),
+    PocDispute(NewPocDispute),
+    PocDisputeVote(NewPocDisputeVote),
+    PocConfiguration(NewPocConfiguration),
+    PostPocUpdate {
+        post_id: String,
+        poc_reasoning: Option<String>,
+        poc_evidence_urls: Option<serde_json::Value>,
+        poc_similarity_score: Option<i64>,
+        poc_media_type: Option<i16>,
+        poc_oracle_address: Option<String>,
+        poc_analyzed_at: Option<i64>,
+    },
+    PostRevenueRedirectUpdate {
+        post_id: String,
+        revenue_redirect_to: String,
+        revenue_redirect_percentage: i64,
+    },
+    PocDisputeResolved {
+        dispute_id: String,
+        post_id: String,
+        resolution: i16,
+        winning_side: i16,
+        total_winning_stake: i64,
+        total_losing_stake: i64,
+        resolved_at: i64,
+        badge_revoked: bool,
+        redirection_removed: bool,
+    },
+    PocVoteRewardClaimed {
+        dispute_id: String,
+        voter: String,
+        reward_amount: i64,
+    },
+    MyDataData(NewMyDataData),
+    MyDataPurchase(NewMyDataPurchase),
+    MyDataSubscription(NewMyDataSubscription),
+    MyDataRevenue(NewMyDataRevenue),
+    MyDataAccessLog(NewMyDataAccessLog),
+    MyDataRegistry(NewMyDataRegistry),
+    MyDataRegistryUpdate {
+        ip_id: String,
+        owner: String,
+        unregistered_at: i64,
+        transaction_id: String,
+    },
+    MyDataConfig(NewMyDataConfig),
+    MyDataContentUpdate {
+        mydata_id: String,
+        last_updated: i64,
+        transaction_id: String,
+    },
+    InsuranceConfig(NewInsuranceConfig),
+    InsuranceVault(NewInsuranceVault),
+    InsuranceVaultTransaction(NewInsuranceVaultTransaction),
+    InsuranceVaultBalanceUpdate {
+        vault_id: String,
+        new_balance: i64,
+    },
+    InsurancePolicy(NewInsurancePolicy),
+    InsurancePolicyEvent(NewInsurancePolicyEvent),
+    InsuranceMarketExposure(NewInsuranceMarketExposure),
+    InsuranceUserExposure(NewInsuranceUserExposure),
+    InsuranceEventLog(NewInsuranceEventLog),
+    InsurancePolicyStatusUpdate {
+        policy_id: String,
+        status: i16,
+    },
+    InsurancePolicyEventFromPolicy {
+        policy_id: String,
+        event_type: String,
+        refunded_amount: Option<i64>,
+        fee_paid: Option<i64>,
+        payout: Option<i64>,
+        reserve_released: Option<i64>,
+        timestamp_ms: i64,
+        transaction_id: String,
+    },
+    NominatedDelegateStatusUpdate {
+        address: String,
+        registry_type: i16,
+        status: i16,
+    },
+    DelegateVoteCountsUpdate {
+        target_address: String,
+        registry_type: i16,
+        is_active_delegate: bool,
+        upvotes: i64,
+        downvotes: i64,
+    },
+    ProposalDelegateVoteIncrement {
+        proposal_id: String,
+        approve: bool,
+    },
+    DelegateProposalsReviewedIncrement {
+        address: String,
+    },
+    ProposalCommunityVoteUpdate {
+        proposal_id: String,
+        votes_for_delta: i64,
+        votes_against_delta: i64,
+    },
+    DelegateSidedProposalUpdate {
+        address: String,
+        is_winning: bool,
+    },
+    ProposalOutcomeApplyDelegateSidedUpdates {
+        proposal_id: String,
+        approvers_win: bool,
+    },
+    DelegateProposalsSubmittedIncrement {
+        address: String,
+        registry_type: i16,
+    },
+    ProposalAnonymousVotersIncrement {
+        proposal_id: String,
+    },
+    SpotBet(NewSpotBet),
+    SpotResolution(NewSpotResolution),
+    SpotPayout(NewSpotPayout),
+    SpotRefund(NewSpotRefund),
+    SpotEventLog(NewSpotEventLog),
+    SpotConfig(NewSpotConfig),
+    SpotBetWithdrawal(NewSpotBetWithdrawal),
+    SpotRecordUpsert(NewSpotRecord),
+    SpotRecordUpdate {
+        post_id: String,
+        status: i16,
+        outcome: Option<i16>,
+        last_resolution_epoch: i64,
+    },
+    SptPool(NewSptPool),
+    SptTransaction(NewSptTransaction),
+    SptHolding(NewSptHolding),
+    SptPoolSupplyUpdate {
+        pool_id: String,
+        delta: i64,
+    },
+    SptPriceHistory(NewSptPriceHistory),
+    SptReservationPool(NewSptReservationPool),
+    SptReservation(NewSptReservation),
+    SptReservationPoolUpdate {
+        pool_id: String,
+        associated_id: String,
+        total_reserved: i64,
+        status: Option<String>,
+    },
+    SptExchangeConfig(NewSptExchangeConfig),
+    SocialProofTokensConfig(NewSocialProofTokensConfig),
+    SocialProofTokensEvent(NewSocialProofTokensEvent),
+    SptRevenue(NewSptRevenue),
+    UnifiedRevenue(NewUnifiedRevenue),
+    SptBuySellRevenueData {
+        pool_id: String,
+        associated_id: String,
+        token_type: i16,
+        trader: String,
+        transaction_type: String,
+        creator_fee: i64,
+        platform_fee: i64,
+        treasury_fee: i64,
+        amount: i64,
+        myso_amount: i64,
+        token_price: i64,
+        revenue_time: i64,
+        transaction_id: String,
+    },
+    UpgradeEvent(NewUpgradeEvent),
+    ObjectMigratedEvent(NewObjectMigratedEvent),
+    ProfileSubscriptionService(NewProfileSubscriptionService),
+    ProfileSubscription(NewProfileSubscription),
+    SubscriptionEvent(NewSubscriptionEvent),
+    SubscriptionRevenue(NewSubscriptionRevenue),
+    ProfileSubscriptionServiceSubscriberIncrement {
+        service_id: String,
+    },
+    ProfileSubscriptionUpdate {
+        subscription_id: String,
+        expires_at: i64,
+        renewal_count: i64,
+    },
+    ProfileSubscriptionCancel {
+        subscription_id: String,
+    },
+    ProfileSubscriptionServiceUpdate {
+        service_id: String,
+        monthly_fee: i64,
+        updated_at: i64,
+    },
+    ProfileSubscriptionRenewalBalanceUpdate {
+        subscription_id: String,
+        new_balance: i64,
+    },
+    ProfileSubscriptionServiceDeactivate {
+        service_id: String,
+        updated_at: i64,
+    },
+    ProfileSubscriptionServiceSubscriberDecrementBySubscription {
+        subscription_id: String,
+    },
+    SubscriptionRevenueFromCreated {
+        service_id: String,
+        subscription_id: String,
+        from_address: String,
+        amount: i64,
+        revenue_type: String,
+        payment_time: i64,
+        transaction_id: String,
+    },
+    SubscriptionRevenueFromRefund {
+        subscription_id: String,
+        subscriber: String,
+        refunded_amount: i64,
+        transaction_id: String,
+    },
+    SubscriptionRevenueFromRenewal {
+        subscription_id: String,
+        subscriber: String,
+        new_expires_at: i64,
+        renewal_count: i64,
+        auto_renewed: bool,
+        transaction_id: String,
+    },
 }
 
 #[derive(Debug, Clone)]
@@ -212,7 +471,7 @@ pub struct ProfileUpdate {
 }
 
 impl FieldCount for SocialEventRow {
-    const FIELD_COUNT: usize = 62;
+    const FIELD_COUNT: usize = 111;
 }
 
 /// Routes a parsed event to the appropriate domain handler based on Move module name.
@@ -221,6 +480,8 @@ fn route_event(
     event_name: &str,
     data: &serde_json::Value,
     event_id: &str,
+    epoch: u64,
+    timestamp_ms: u64,
 ) -> Option<Vec<SocialEventRow>> {
     match module {
         "governance" => governance::handle_governance_event(event_name, data, event_id),
@@ -235,10 +496,14 @@ fn route_event(
         "subscription" | "profile_subscription" => {
             subscription::handle_subscription_event(event_name, data, event_id)
         }
-        "insurance" => insurance::handle_insurance_event(event_name, data, event_id),
+        "insurance" => insurance::handle_insurance_event(event_name, data, event_id, timestamp_ms),
         "poc" | "proof_of_creativity" => poc::handle_poc_event(event_name, data, event_id),
-        "social_proof_of_truth" | "spot" => spot::handle_spot_event(event_name, data, event_id),
-        "social_proof_tokens" | "spt" => spt::handle_spt_event(event_name, data, event_id),
+        "social_proof_of_truth" | "spot" => {
+            spot::handle_spot_event(event_name, data, event_id, epoch, timestamp_ms)
+        }
+        "social_proof_tokens" | "spt" => {
+            spt::handle_spt_event(event_name, data, event_id, epoch, timestamp_ms)
+        }
         "upgrade" => upgrade::handle_upgrade_event(event_name, data, event_id),
         _ => None,
     }
@@ -349,7 +614,16 @@ impl Processor for SocialEvents {
                     }
                 };
 
-                if let Some(rows) = route_event(module, event_name, &event_data, &event_id) {
+                let epoch = summary.epoch;
+                let timestamp_ms = summary.timestamp_ms;
+                if let Some(rows) = route_event(
+                    module,
+                    event_name,
+                    &event_data,
+                    &event_id,
+                    epoch,
+                    timestamp_ms,
+                ) {
                     values.extend(rows);
                 } else {
                     debug!(
@@ -535,32 +809,42 @@ impl Handler for SocialEvents {
                 }
                 SocialEventRow::GovernanceRegistry(reg) => {
                     let registry_id = reg.registry_id.clone();
-                    let delegate_count = reg.delegate_count;
-                    let delegate_term_epochs = reg.delegate_term_epochs;
-                    let proposal_submission_cost = reg.proposal_submission_cost;
-                    let max_votes_per_user = reg.max_votes_per_user;
-                    let quadratic_base_cost = reg.quadratic_base_cost;
-                    let voting_period_ms = reg.voting_period_ms;
-                    let quorum_votes = reg.quorum_votes;
-                    let updated_at = reg.updated_at;
-                    total += diesel::insert_into(governance_registries::table)
-                        .values(reg)
-                        .on_conflict(governance_registries::registry_type)
-                        .do_update()
-                        .set((
-                            governance_registries::registry_id.eq(registry_id),
-                            governance_registries::delegate_count.eq(delegate_count),
-                            governance_registries::delegate_term_epochs.eq(delegate_term_epochs),
-                            governance_registries::proposal_submission_cost
-                                .eq(proposal_submission_cost),
-                            governance_registries::max_votes_per_user.eq(max_votes_per_user),
-                            governance_registries::quadratic_base_cost.eq(quadratic_base_cost),
-                            governance_registries::voting_period_ms.eq(voting_period_ms),
-                            governance_registries::quorum_votes.eq(quorum_votes),
-                            governance_registries::updated_at.eq(updated_at),
-                        ))
-                        .execute(conn)
-                        .await?;
+                    let exists = governance_registries::table
+                        .filter(governance_registries::registry_id.eq(&registry_id))
+                        .count()
+                        .get_result::<i64>(conn)
+                        .await
+                        .unwrap_or(0)
+                        > 0;
+                    if !exists {
+                        let delegate_count = reg.delegate_count;
+                        let delegate_term_epochs = reg.delegate_term_epochs;
+                        let proposal_submission_cost = reg.proposal_submission_cost;
+                        let max_votes_per_user = reg.max_votes_per_user;
+                        let quadratic_base_cost = reg.quadratic_base_cost;
+                        let voting_period_ms = reg.voting_period_ms;
+                        let quorum_votes = reg.quorum_votes;
+                        let updated_at = reg.updated_at;
+                        total += diesel::insert_into(governance_registries::table)
+                            .values(reg)
+                            .on_conflict(governance_registries::registry_type)
+                            .do_update()
+                            .set((
+                                governance_registries::registry_id.eq(registry_id),
+                                governance_registries::delegate_count.eq(delegate_count),
+                                governance_registries::delegate_term_epochs
+                                    .eq(delegate_term_epochs),
+                                governance_registries::proposal_submission_cost
+                                    .eq(proposal_submission_cost),
+                                governance_registries::max_votes_per_user.eq(max_votes_per_user),
+                                governance_registries::quadratic_base_cost.eq(quadratic_base_cost),
+                                governance_registries::voting_period_ms.eq(voting_period_ms),
+                                governance_registries::quorum_votes.eq(quorum_votes),
+                                governance_registries::updated_at.eq(updated_at),
+                            ))
+                            .execute(conn)
+                            .await?;
+                    }
                 }
                 SocialEventRow::GovernanceRegistryUpdate(up) => {
                     total += diesel::update(governance_registries::table)
@@ -602,12 +886,22 @@ impl Handler for SocialEvents {
                     proposal_id,
                     set,
                     governance_event,
+                    submitter_filter,
                 } => {
-                    total += diesel::update(proposals::table)
-                        .filter(proposals::id.eq(proposal_id))
-                        .set(set)
-                        .execute(conn)
-                        .await?;
+                    total += if let Some(ref s) = submitter_filter {
+                        diesel::update(proposals::table)
+                            .filter(proposals::id.eq(proposal_id))
+                            .filter(proposals::submitter.eq(s))
+                            .set(set)
+                            .execute(conn)
+                            .await?
+                    } else {
+                        diesel::update(proposals::table)
+                            .filter(proposals::id.eq(proposal_id))
+                            .set(set)
+                            .execute(conn)
+                            .await?
+                    };
                     if let Some((event_type, event_data, event_id)) = governance_event {
                         let proposal_type: Option<i16> = proposals::table
                             .filter(proposals::id.eq(&proposal_id))
@@ -704,6 +998,136 @@ impl Handler for SocialEvents {
                         .values(f)
                         .execute(conn)
                         .await?;
+                }
+                SocialEventRow::NominatedDelegateStatusUpdate {
+                    address,
+                    registry_type,
+                    status,
+                } => {
+                    let upd = diesel::sql_query(
+                        "UPDATE nominated_delegates SET status = $1 WHERE address = $2 AND registry_type = $3 AND time = (SELECT max(time) FROM nominated_delegates WHERE address = $2 AND registry_type = $3)",
+                    )
+                    .bind::<Int2, _>(*status)
+                    .bind::<Text, _>(address)
+                    .bind::<Int2, _>(*registry_type);
+                    total += upd.execute(conn).await?;
+                }
+                SocialEventRow::DelegateVoteCountsUpdate {
+                    target_address,
+                    registry_type,
+                    is_active_delegate,
+                    upvotes,
+                    downvotes,
+                } => {
+                    if *is_active_delegate {
+                        let upd = diesel::sql_query(
+                            "UPDATE delegates SET upvotes = $1, downvotes = $2 WHERE address = $3 AND registry_type = $4 AND time = (SELECT max(time) FROM delegates WHERE address = $3 AND registry_type = $4)",
+                        )
+                        .bind::<BigInt, _>(*upvotes)
+                        .bind::<BigInt, _>(*downvotes)
+                        .bind::<Text, _>(target_address)
+                        .bind::<Int2, _>(*registry_type);
+                        total += upd.execute(conn).await?;
+                    } else {
+                        let upd = diesel::sql_query(
+                            "UPDATE nominated_delegates SET upvotes = $1, downvotes = $2 WHERE address = $3 AND registry_type = $4 AND time = (SELECT max(time) FROM nominated_delegates WHERE address = $3 AND registry_type = $4)",
+                        )
+                        .bind::<BigInt, _>(*upvotes)
+                        .bind::<BigInt, _>(*downvotes)
+                        .bind::<Text, _>(target_address)
+                        .bind::<Int2, _>(*registry_type);
+                        total += upd.execute(conn).await?;
+                    }
+                }
+                SocialEventRow::ProposalDelegateVoteIncrement {
+                    proposal_id,
+                    approve,
+                } => {
+                    let sql = if *approve {
+                        "UPDATE proposals SET delegate_approval_count = delegate_approval_count + 1 WHERE id = $1 AND time = (SELECT max(time) FROM proposals WHERE id = $1)"
+                    } else {
+                        "UPDATE proposals SET delegate_rejection_count = delegate_rejection_count + 1 WHERE id = $1 AND time = (SELECT max(time) FROM proposals WHERE id = $1)"
+                    };
+                    total += diesel::sql_query(sql)
+                        .bind::<Text, _>(proposal_id)
+                        .execute(conn)
+                        .await?;
+                }
+                SocialEventRow::DelegateProposalsReviewedIncrement { address } => {
+                    let upd = diesel::sql_query(
+                        "UPDATE delegates SET proposals_reviewed = proposals_reviewed + 1 WHERE address = $1 AND is_active = true",
+                    )
+                    .bind::<Text, _>(address);
+                    total += upd.execute(conn).await?;
+                }
+                SocialEventRow::ProposalCommunityVoteUpdate {
+                    proposal_id,
+                    votes_for_delta,
+                    votes_against_delta,
+                } => {
+                    let upd = diesel::sql_query(
+                        "UPDATE proposals SET community_votes_for = community_votes_for + $1, community_votes_against = community_votes_against + $2 WHERE id = $3 AND time = (SELECT max(time) FROM proposals WHERE id = $3)",
+                    )
+                    .bind::<BigInt, _>(*votes_for_delta)
+                    .bind::<BigInt, _>(*votes_against_delta)
+                    .bind::<Text, _>(proposal_id);
+                    total += upd.execute(conn).await?;
+                }
+                SocialEventRow::DelegateSidedProposalUpdate {
+                    address,
+                    is_winning,
+                } => {
+                    let sql = if *is_winning {
+                        "UPDATE delegates SET sided_winning_proposals = sided_winning_proposals + 1 WHERE address = $1"
+                    } else {
+                        "UPDATE delegates SET sided_losing_proposals = sided_losing_proposals + 1 WHERE address = $1"
+                    };
+                    total += diesel::sql_query(sql)
+                        .bind::<Text, _>(address)
+                        .execute(conn)
+                        .await?;
+                }
+                SocialEventRow::ProposalOutcomeApplyDelegateSidedUpdates {
+                    proposal_id,
+                    approvers_win,
+                } => {
+                    let subq = "SELECT DISTINCT ON (delegate_address) delegate_address, approve FROM delegate_votes WHERE proposal_id = $1 ORDER BY delegate_address, time DESC";
+                    let win_sql = format!(
+                        "UPDATE delegates d SET sided_winning_proposals = sided_winning_proposals + 1 FROM ({}) dv WHERE d.address = dv.delegate_address AND dv.approve = $2",
+                        subq
+                    );
+                    let lose_sql = format!(
+                        "UPDATE delegates d SET sided_losing_proposals = sided_losing_proposals + 1 FROM ({}) dv WHERE d.address = dv.delegate_address AND dv.approve = $2",
+                        subq
+                    );
+                    total += diesel::sql_query(&win_sql)
+                        .bind::<Text, _>(proposal_id)
+                        .bind::<Bool, _>(*approvers_win)
+                        .execute(conn)
+                        .await?;
+                    total += diesel::sql_query(&lose_sql)
+                        .bind::<Text, _>(proposal_id)
+                        .bind::<Bool, _>(!*approvers_win)
+                        .execute(conn)
+                        .await?;
+                }
+                SocialEventRow::DelegateProposalsSubmittedIncrement {
+                    address,
+                    registry_type,
+                } => {
+                    let upd = diesel::sql_query(
+                        "UPDATE delegates SET proposals_submitted = proposals_submitted + 1 WHERE address = $1 AND registry_type = $2 AND is_active = true",
+                    )
+                    .bind::<Text, _>(address)
+                    .bind::<Int2, _>(*registry_type);
+                    total += upd.execute(conn).await?;
+                }
+                SocialEventRow::ProposalAnonymousVotersIncrement { proposal_id } => {
+                    let upd = diesel::sql_query(
+                        "UPDATE proposals SET anonymous_voters_count = COALESCE(anonymous_voters_count, 0) + 1 WHERE id = $1 AND time = (SELECT max(time) FROM proposals WHERE id = $1)",
+                    )
+                    .bind::<Text, _>(proposal_id);
+                    total += upd.execute(conn).await?;
                 }
                 SocialEventRow::Post(p) => {
                     total += diesel::insert_into(posts::table)
@@ -941,6 +1365,991 @@ impl Handler for SocialEvents {
                             platforms::deleted_at.eq(Some(deleted_at)),
                             platforms::updated_at.eq(deleted_at),
                         ))
+                        .execute(conn)
+                        .await?;
+                }
+                SocialEventRow::PocBadge(badge) => {
+                    total += diesel::insert_into(poc_badges::table)
+                        .values(badge)
+                        .execute(conn)
+                        .await?;
+                }
+                SocialEventRow::PocAnalysisResult(r) => {
+                    total += diesel::insert_into(poc_analysis_results::table)
+                        .values(r)
+                        .execute(conn)
+                        .await?;
+                }
+                SocialEventRow::PocRevenueRedirection(r) => {
+                    total += diesel::insert_into(poc_revenue_redirections::table)
+                        .values(r)
+                        .execute(conn)
+                        .await?;
+                }
+                SocialEventRow::PocDispute(d) => {
+                    total += diesel::insert_into(poc_disputes::table)
+                        .values(d)
+                        .execute(conn)
+                        .await?;
+                }
+                SocialEventRow::PocDisputeVote(v) => {
+                    total += diesel::insert_into(poc_dispute_votes::table)
+                        .values(v)
+                        .execute(conn)
+                        .await?;
+                }
+                SocialEventRow::PocConfiguration(c) => {
+                    total += diesel::insert_into(poc_configuration::table)
+                        .values(c)
+                        .execute(conn)
+                        .await?;
+                }
+                SocialEventRow::PostPocUpdate {
+                    post_id,
+                    poc_reasoning,
+                    poc_evidence_urls,
+                    poc_similarity_score,
+                    poc_media_type,
+                    poc_oracle_address,
+                    poc_analyzed_at,
+                } => {
+                    total += diesel::update(posts::table)
+                        .filter(posts::post_id.eq(post_id))
+                        .set((
+                            posts::poc_reasoning.eq(poc_reasoning),
+                            posts::poc_evidence_urls.eq(poc_evidence_urls),
+                            posts::poc_similarity_score.eq(poc_similarity_score),
+                            posts::poc_media_type.eq(poc_media_type),
+                            posts::poc_oracle_address.eq(poc_oracle_address),
+                            posts::poc_analyzed_at.eq(poc_analyzed_at),
+                        ))
+                        .execute(conn)
+                        .await?;
+                }
+                SocialEventRow::PostRevenueRedirectUpdate {
+                    post_id,
+                    revenue_redirect_to,
+                    revenue_redirect_percentage,
+                } => {
+                    total += diesel::update(posts::table)
+                        .filter(posts::post_id.eq(post_id))
+                        .set((
+                            posts::revenue_redirect_to.eq(Some(revenue_redirect_to)),
+                            posts::revenue_redirect_percentage
+                                .eq(Some(revenue_redirect_percentage)),
+                        ))
+                        .execute(conn)
+                        .await?;
+                }
+                SocialEventRow::PocDisputeResolved {
+                    dispute_id,
+                    post_id,
+                    resolution,
+                    winning_side,
+                    total_winning_stake,
+                    total_losing_stake,
+                    resolved_at,
+                    badge_revoked,
+                    redirection_removed,
+                } => {
+                    let update_sql = "UPDATE poc_disputes SET status = $1, resolution = $2, winning_side = $3, total_winning_stake = $4, total_losing_stake = $5, resolved_at = $6 \
+                        WHERE dispute_id = $7 AND time = (SELECT time FROM poc_disputes WHERE dispute_id = $7 ORDER BY time DESC LIMIT 1)";
+                    total += diesel::sql_query(update_sql)
+                        .bind::<Int2, _>(resolution)
+                        .bind::<Nullable<Int2>, _>(Some(resolution))
+                        .bind::<Nullable<Int2>, _>(Some(winning_side))
+                        .bind::<Nullable<BigInt>, _>(Some(total_winning_stake))
+                        .bind::<Nullable<BigInt>, _>(Some(total_losing_stake))
+                        .bind::<Nullable<BigInt>, _>(Some(resolved_at))
+                        .bind::<Text, _>(dispute_id)
+                        .execute(conn)
+                        .await?;
+
+                    if *badge_revoked {
+                        let revoke_sql = "UPDATE poc_badges SET revoked = TRUE, revoked_at = $1 \
+                            WHERE post_id = $2 AND time = (SELECT time FROM poc_badges WHERE post_id = $2 ORDER BY time DESC LIMIT 1)";
+                        total += diesel::sql_query(revoke_sql)
+                            .bind::<Nullable<BigInt>, _>(Some(resolved_at))
+                            .bind::<Text, _>(post_id)
+                            .execute(conn)
+                            .await?;
+                    }
+
+                    if *redirection_removed {
+                        let remove_sql = "UPDATE poc_revenue_redirections SET removed = TRUE, removed_at = $1 \
+                            WHERE accused_post_id = $2 AND time = (SELECT time FROM poc_revenue_redirections WHERE accused_post_id = $2 ORDER BY time DESC LIMIT 1)";
+                        total += diesel::sql_query(remove_sql)
+                            .bind::<Nullable<BigInt>, _>(Some(resolved_at))
+                            .bind::<Text, _>(post_id)
+                            .execute(conn)
+                            .await?;
+                    }
+                }
+                SocialEventRow::PocVoteRewardClaimed {
+                    dispute_id,
+                    voter,
+                    reward_amount,
+                } => {
+                    let update_sql = "UPDATE poc_dispute_votes SET reward_claimed = $1, reward_amount = $2 \
+                        WHERE dispute_id = $3 AND voter = $4 AND time = (SELECT time FROM poc_dispute_votes WHERE dispute_id = $3 AND voter = $4 ORDER BY time DESC LIMIT 1)";
+                    total += diesel::sql_query(update_sql)
+                        .bind::<Bool, _>(true)
+                        .bind::<Nullable<BigInt>, _>(Some(*reward_amount))
+                        .bind::<Text, _>(dispute_id)
+                        .bind::<Text, _>(voter)
+                        .execute(conn)
+                        .await?;
+                }
+                SocialEventRow::MyDataData(d) => {
+                    let owner = d.owner.clone();
+                    let media_type = d.media_type.clone();
+                    let tags = d.tags.clone();
+                    let platform_id = d.platform_id.clone();
+                    let one_time_price = d.one_time_price;
+                    let subscription_price = d.subscription_price;
+                    let last_updated = d.last_updated;
+                    let transaction_id = d.transaction_id.clone();
+                    total += diesel::insert_into(mydata_data::table)
+                        .values(d)
+                        .on_conflict(mydata_data::mydata_id)
+                        .do_update()
+                        .set((
+                            mydata_data::owner.eq(owner),
+                            mydata_data::media_type.eq(media_type),
+                            mydata_data::tags.eq(tags),
+                            mydata_data::platform_id.eq(platform_id),
+                            mydata_data::one_time_price.eq(one_time_price),
+                            mydata_data::subscription_price.eq(subscription_price),
+                            mydata_data::last_updated.eq(last_updated),
+                            mydata_data::transaction_id.eq(transaction_id),
+                        ))
+                        .execute(conn)
+                        .await?;
+                }
+                SocialEventRow::MyDataPurchase(p) => {
+                    total += diesel::insert_into(mydata_purchases::table)
+                        .values(p)
+                        .execute(conn)
+                        .await?;
+                }
+                SocialEventRow::MyDataSubscription(s) => {
+                    total += diesel::insert_into(mydata_subscriptions::table)
+                        .values(s)
+                        .execute(conn)
+                        .await?;
+                }
+                SocialEventRow::MyDataRevenue(r) => {
+                    let mut to_address = r.to_address.clone();
+                    if to_address.is_empty() {
+                        to_address = mydata_data::table
+                            .filter(mydata_data::mydata_id.eq(&r.mydata_id))
+                            .select(mydata_data::owner)
+                            .first::<String>(conn)
+                            .await
+                            .unwrap_or_else(|_| "unknown".to_string());
+                    }
+                    let row = NewMyDataRevenue {
+                        mydata_id: r.mydata_id.clone(),
+                        from_address: r.from_address.clone(),
+                        to_address,
+                        amount: r.amount,
+                        revenue_type: r.revenue_type.clone(),
+                        revenue_time: r.revenue_time,
+                        transaction_id: r.transaction_id.clone(),
+                    };
+                    total += diesel::insert_into(mydata_revenue::table)
+                        .values(&row)
+                        .execute(conn)
+                        .await?;
+                }
+                SocialEventRow::MyDataAccessLog(a) => {
+                    total += diesel::insert_into(mydata_access_logs::table)
+                        .values(a)
+                        .execute(conn)
+                        .await?;
+                }
+                SocialEventRow::MyDataRegistry(reg) => {
+                    let owner = reg.owner.clone();
+                    let registered_at = reg.registered_at;
+                    let transaction_id = reg.transaction_id.clone();
+                    total += diesel::insert_into(mydata_registry::table)
+                        .values(reg)
+                        .on_conflict(mydata_registry::ip_id)
+                        .do_update()
+                        .set((
+                            mydata_registry::owner.eq(owner),
+                            mydata_registry::registered_at.eq(registered_at),
+                            mydata_registry::unregistered_at.eq(None::<i64>),
+                            mydata_registry::is_active.eq(true),
+                            mydata_registry::transaction_id.eq(transaction_id),
+                        ))
+                        .execute(conn)
+                        .await?;
+                }
+                SocialEventRow::MyDataRegistryUpdate {
+                    ip_id,
+                    owner,
+                    unregistered_at,
+                    transaction_id,
+                } => {
+                    total += diesel::update(mydata_registry::table)
+                        .filter(mydata_registry::ip_id.eq(ip_id))
+                        .filter(mydata_registry::owner.eq(owner))
+                        .filter(mydata_registry::is_active.eq(true))
+                        .set((
+                            mydata_registry::unregistered_at.eq(Some(*unregistered_at)),
+                            mydata_registry::is_active.eq(false),
+                            mydata_registry::transaction_id.eq(transaction_id),
+                        ))
+                        .execute(conn)
+                        .await?;
+                }
+                SocialEventRow::MyDataConfig(c) => {
+                    total += diesel::insert_into(mydata_config::table)
+                        .values(c)
+                        .execute(conn)
+                        .await?;
+                }
+                SocialEventRow::MyDataContentUpdate {
+                    mydata_id,
+                    last_updated,
+                    transaction_id,
+                } => {
+                    total += diesel::update(mydata_data::table)
+                        .filter(mydata_data::mydata_id.eq(mydata_id))
+                        .set((
+                            mydata_data::last_updated.eq(*last_updated),
+                            mydata_data::transaction_id.eq(transaction_id),
+                        ))
+                        .execute(conn)
+                        .await?;
+                }
+                SocialEventRow::InsuranceConfig(c) => {
+                    total += diesel::insert_into(insurance_config::table)
+                        .values(c)
+                        .execute(conn)
+                        .await?;
+                }
+                SocialEventRow::InsuranceVault(v) => {
+                    total += diesel::insert_into(insurance_vaults::table)
+                        .values(v)
+                        .on_conflict(insurance_vaults::vault_id)
+                        .do_nothing()
+                        .execute(conn)
+                        .await?;
+                }
+                SocialEventRow::InsuranceVaultTransaction(t) => {
+                    total += diesel::insert_into(insurance_vault_transactions::table)
+                        .values(t)
+                        .execute(conn)
+                        .await?;
+                }
+                SocialEventRow::InsuranceVaultBalanceUpdate {
+                    vault_id,
+                    new_balance,
+                } => {
+                    let now = chrono::Utc::now().naive_utc();
+                    total += diesel::update(insurance_vaults::table)
+                        .filter(insurance_vaults::vault_id.eq(vault_id))
+                        .set((
+                            insurance_vaults::capital_balance.eq(*new_balance),
+                            insurance_vaults::updated_at.eq(now),
+                        ))
+                        .execute(conn)
+                        .await?;
+                }
+                SocialEventRow::InsurancePolicy(p) => {
+                    total += diesel::insert_into(insurance_policies::table)
+                        .values(p)
+                        .on_conflict(insurance_policies::policy_id)
+                        .do_nothing()
+                        .execute(conn)
+                        .await?;
+                }
+                SocialEventRow::InsurancePolicyEvent(pe) => {
+                    total += diesel::insert_into(insurance_policy_events::table)
+                        .values(pe)
+                        .execute(conn)
+                        .await?;
+                }
+                SocialEventRow::InsuranceMarketExposure(me) => {
+                    total += diesel::insert_into(insurance_market_exposures::table)
+                        .values(me)
+                        .execute(conn)
+                        .await?;
+                }
+                SocialEventRow::InsuranceUserExposure(ue) => {
+                    total += diesel::insert_into(insurance_user_exposures::table)
+                        .values(ue)
+                        .execute(conn)
+                        .await?;
+                }
+                SocialEventRow::InsuranceEventLog(log) => {
+                    total += diesel::insert_into(insurance_events::table)
+                        .values(log)
+                        .execute(conn)
+                        .await?;
+                }
+                SocialEventRow::InsurancePolicyStatusUpdate { policy_id, status } => {
+                    let now = chrono::Utc::now().naive_utc();
+                    total += diesel::update(insurance_policies::table)
+                        .filter(insurance_policies::policy_id.eq(policy_id))
+                        .set((
+                            insurance_policies::status.eq(*status),
+                            insurance_policies::updated_at.eq(now),
+                        ))
+                        .execute(conn)
+                        .await?;
+                }
+                SocialEventRow::InsurancePolicyEventFromPolicy {
+                    policy_id,
+                    event_type,
+                    refunded_amount,
+                    fee_paid,
+                    payout,
+                    reserve_released,
+                    timestamp_ms,
+                    transaction_id,
+                } => {
+                    #[derive(QueryableByName)]
+                    struct PolicyRow {
+                        #[diesel(sql_type = Text)]
+                        market_id: String,
+                        #[diesel(sql_type = Int2)]
+                        option_id: i16,
+                        #[diesel(sql_type = BigInt)]
+                        covered_amount: i64,
+                        #[diesel(sql_type = BigInt)]
+                        coverage_bps: i64,
+                        #[diesel(sql_type = BigInt)]
+                        premium_paid: i64,
+                        #[diesel(sql_type = Text)]
+                        insured: String,
+                    }
+                    let policy_row: Option<PolicyRow> = diesel::sql_query(
+                        "SELECT market_id, option_id, covered_amount, coverage_bps, premium_paid, insured FROM insurance_policies WHERE policy_id = $1",
+                    )
+                    .bind::<Text, _>(policy_id)
+                    .get_result(conn)
+                    .await
+                    .ok();
+                    if let Some(row) = policy_row {
+                        let reserve_locked = reserve_released.unwrap_or_else(|| {
+                            ((row.covered_amount as i128 * row.coverage_bps as i128) / 10000i128)
+                                as i64
+                        });
+                        let policy_event = NewInsurancePolicyEvent {
+                            policy_id: policy_id.clone(),
+                            event_type: event_type.clone(),
+                            market_id: row.market_id,
+                            insured: row.insured,
+                            option_id: row.option_id,
+                            covered_amount: row.covered_amount,
+                            coverage_bps: row.coverage_bps,
+                            premium_paid: row.premium_paid,
+                            reserve_locked,
+                            refunded_amount: *refunded_amount,
+                            fee_paid: *fee_paid,
+                            payout: *payout,
+                            timestamp_ms: *timestamp_ms,
+                            time: chrono::Utc::now(),
+                            transaction_id: transaction_id.clone(),
+                        };
+                        total += diesel::insert_into(insurance_policy_events::table)
+                            .values(&policy_event)
+                            .execute(conn)
+                            .await?;
+                    }
+                }
+                SocialEventRow::SpotBet(bet) => {
+                    total += diesel::insert_into(spot_bets::table)
+                        .values(bet)
+                        .execute(conn)
+                        .await?;
+                }
+                SocialEventRow::SpotResolution(r) => {
+                    total += diesel::insert_into(spot_resolutions::table)
+                        .values(r)
+                        .execute(conn)
+                        .await?;
+                }
+                SocialEventRow::SpotPayout(p) => {
+                    total += diesel::insert_into(spot_payouts::table)
+                        .values(p)
+                        .execute(conn)
+                        .await?;
+                }
+                SocialEventRow::SpotRefund(r) => {
+                    total += diesel::insert_into(spot_refunds::table)
+                        .values(r)
+                        .execute(conn)
+                        .await?;
+                }
+                SocialEventRow::SpotEventLog(log) => {
+                    total += diesel::insert_into(spot_events::table)
+                        .values(log)
+                        .execute(conn)
+                        .await?;
+                }
+                SocialEventRow::SpotConfig(c) => {
+                    total += diesel::insert_into(spot_config::table)
+                        .values(c)
+                        .execute(conn)
+                        .await?;
+                }
+                SocialEventRow::SpotBetWithdrawal(w) => {
+                    total += diesel::insert_into(spot_bet_withdrawals::table)
+                        .values(w)
+                        .execute(conn)
+                        .await?;
+                }
+                SocialEventRow::SpotRecordUpsert(record) => {
+                    let betting_options = record.betting_options.clone();
+                    let resolution_window_epochs = record.resolution_window_epochs;
+                    let max_resolution_window_epochs = record.max_resolution_window_epochs;
+                    total += diesel::insert_into(spot_records::table)
+                        .values(record)
+                        .on_conflict(spot_records::post_id)
+                        .do_update()
+                        .set((
+                            spot_records::betting_options.eq(betting_options),
+                            spot_records::resolution_window_epochs.eq(resolution_window_epochs),
+                            spot_records::max_resolution_window_epochs
+                                .eq(max_resolution_window_epochs),
+                            spot_records::updated_at.eq(chrono::Utc::now().naive_utc()),
+                        ))
+                        .execute(conn)
+                        .await?;
+                }
+                SocialEventRow::SpotRecordUpdate {
+                    post_id,
+                    status,
+                    outcome,
+                    last_resolution_epoch,
+                } => {
+                    total += diesel::update(spot_records::table)
+                        .filter(spot_records::post_id.eq(post_id))
+                        .set((
+                            spot_records::status.eq(*status),
+                            spot_records::outcome.eq(*outcome),
+                            spot_records::last_resolution_epoch.eq(Some(*last_resolution_epoch)),
+                            spot_records::updated_at.eq(chrono::Utc::now().naive_utc()),
+                        ))
+                        .execute(conn)
+                        .await?;
+                }
+                SocialEventRow::SptPool(p) => {
+                    total += diesel::insert_into(spt_pools::table)
+                        .values(p)
+                        .execute(conn)
+                        .await?;
+                }
+                SocialEventRow::SptTransaction(t) => {
+                    total += diesel::insert_into(spt_transactions::table)
+                        .values(t)
+                        .execute(conn)
+                        .await?;
+                }
+                SocialEventRow::SptHolding(h) => {
+                    total += diesel::insert_into(spt_holdings::table)
+                        .values(h)
+                        .execute(conn)
+                        .await?;
+                }
+                SocialEventRow::SptPoolSupplyUpdate { pool_id, delta } => {
+                    let update_sql =
+                        "UPDATE spt_pools SET circulating_supply = circulating_supply + $1 \
+                         WHERE pool_id = $2 AND time = (SELECT time FROM spt_pools WHERE pool_id = $2 ORDER BY time DESC LIMIT 1)";
+                    total += diesel::sql_query(update_sql)
+                        .bind::<BigInt, _>(*delta)
+                        .bind::<Text, _>(pool_id)
+                        .execute(conn)
+                        .await?;
+                }
+                SocialEventRow::SptPriceHistory(ph) => {
+                    total += diesel::insert_into(spt_price_history::table)
+                        .values(ph)
+                        .execute(conn)
+                        .await?;
+                }
+                SocialEventRow::SptReservationPool(rp) => {
+                    total += diesel::insert_into(spt_reservation_pools::table)
+                        .values(rp)
+                        .execute(conn)
+                        .await?;
+                }
+                SocialEventRow::SptReservation(r) => {
+                    total += diesel::insert_into(spt_reservations::table)
+                        .values(r)
+                        .execute(conn)
+                        .await?;
+                }
+                SocialEventRow::SptReservationPoolUpdate {
+                    pool_id: _pool_id,
+                    associated_id,
+                    total_reserved,
+                    status,
+                } => {
+                    let update_sql =
+                        "UPDATE spt_reservation_pools SET total_reserved = $1, status = COALESCE($2, status) \
+                         WHERE associated_id = $3 AND time = (SELECT time FROM spt_reservation_pools WHERE associated_id = $3 ORDER BY time DESC LIMIT 1)";
+                    total += diesel::sql_query(update_sql)
+                        .bind::<BigInt, _>(*total_reserved)
+                        .bind::<Nullable<Text>, _>(status.as_deref())
+                        .bind::<Text, _>(associated_id)
+                        .execute(conn)
+                        .await?;
+                }
+                SocialEventRow::SptExchangeConfig(c) => {
+                    total += diesel::insert_into(spt_exchange_config::table)
+                        .values(c)
+                        .execute(conn)
+                        .await?;
+                }
+                SocialEventRow::SocialProofTokensConfig(c) => {
+                    total += diesel::insert_into(social_proof_tokens_config::table)
+                        .values(c)
+                        .execute(conn)
+                        .await?;
+                }
+                SocialEventRow::SocialProofTokensEvent(e) => {
+                    total += diesel::insert_into(social_proof_tokens_events::table)
+                        .values(e)
+                        .execute(conn)
+                        .await?;
+                }
+                SocialEventRow::SptRevenue(r) => {
+                    total += diesel::insert_into(spt_revenue::table)
+                        .values(r)
+                        .execute(conn)
+                        .await?;
+                }
+                SocialEventRow::UnifiedRevenue(r) => {
+                    total += diesel::insert_into(unified_revenue::table)
+                        .values(r)
+                        .execute(conn)
+                        .await?;
+                }
+                SocialEventRow::SptBuySellRevenueData {
+                    pool_id,
+                    trader,
+                    transaction_type,
+                    creator_fee,
+                    platform_fee,
+                    treasury_fee,
+                    amount,
+                    myso_amount,
+                    token_price,
+                    revenue_time,
+                    transaction_id,
+                    ..
+                } => {
+                    use myso_indexer_alt_social_schema::models::{
+                        NewSptRevenue, NewUnifiedRevenue, REVENUE_TYPE_SPT_CREATOR_FEE,
+                        REVENUE_TYPE_SPT_PLATFORM_FEE, REVENUE_TYPE_SPT_TREASURY_FEE,
+                    };
+
+                    let pool_row: Option<(String, String, i16)> = spt_pools::table
+                        .filter(spt_pools::pool_id.eq(pool_id))
+                        .order(spt_pools::time.desc())
+                        .select((
+                            spt_pools::owner,
+                            spt_pools::associated_id,
+                            spt_pools::token_type,
+                        ))
+                        .first::<(String, String, i16)>(conn)
+                        .await
+                        .ok();
+
+                    let (creator_address, platform_address, treasury_address): (
+                        String,
+                        String,
+                        String,
+                    ) = if let Some((owner, _associated_id, _token_type)) = pool_row {
+                        let treasury = ecosystem_treasury::table
+                            .order(ecosystem_treasury::time.desc())
+                            .select(ecosystem_treasury::treasury_address)
+                            .first::<String>(conn)
+                            .await
+                            .ok()
+                            .unwrap_or_default();
+                        (owner, String::new(), treasury)
+                    } else {
+                        (String::new(), String::new(), String::new())
+                    };
+
+                    if *creator_fee != 0 || *platform_fee != 0 || *treasury_fee != 0 {
+                        let spt_rev = if transaction_type == "SELL" {
+                            NewSptRevenue::from_sell_event(
+                                pool_id.clone(),
+                                trader.clone(),
+                                creator_address.clone(),
+                                platform_address.clone(),
+                                treasury_address.clone(),
+                                *creator_fee,
+                                *platform_fee,
+                                *treasury_fee,
+                                *amount,
+                                *myso_amount,
+                                *token_price,
+                                *revenue_time,
+                                transaction_id.clone(),
+                            )
+                        } else {
+                            NewSptRevenue::from_buy_event(
+                                pool_id.clone(),
+                                trader.clone(),
+                                creator_address.clone(),
+                                platform_address.clone(),
+                                treasury_address.clone(),
+                                *creator_fee,
+                                *platform_fee,
+                                *treasury_fee,
+                                *amount,
+                                *myso_amount,
+                                *token_price,
+                                *revenue_time,
+                                transaction_id.clone(),
+                            )
+                        };
+                        total += diesel::insert_into(spt_revenue::table)
+                            .values(&spt_rev)
+                            .execute(conn)
+                            .await?;
+
+                        if *creator_fee > 0 {
+                            total += diesel::insert_into(unified_revenue::table)
+                                .values(NewUnifiedRevenue::from_spt(
+                                    REVENUE_TYPE_SPT_CREATOR_FEE.to_string(),
+                                    creator_address.clone(),
+                                    Some(platform_address.clone()),
+                                    *creator_fee,
+                                    pool_id.clone(),
+                                    trader.clone(),
+                                    creator_address.clone(),
+                                    *revenue_time,
+                                    transaction_id.clone(),
+                                ))
+                                .execute(conn)
+                                .await?;
+                        }
+                        if *platform_fee > 0 {
+                            total += diesel::insert_into(unified_revenue::table)
+                                .values(NewUnifiedRevenue::from_spt(
+                                    REVENUE_TYPE_SPT_PLATFORM_FEE.to_string(),
+                                    creator_address.clone(),
+                                    Some(platform_address.clone()),
+                                    *platform_fee,
+                                    pool_id.clone(),
+                                    trader.clone(),
+                                    platform_address.clone(),
+                                    *revenue_time,
+                                    transaction_id.clone(),
+                                ))
+                                .execute(conn)
+                                .await?;
+                        }
+                        if *treasury_fee > 0 {
+                            total += diesel::insert_into(unified_revenue::table)
+                                .values(NewUnifiedRevenue::from_spt(
+                                    REVENUE_TYPE_SPT_TREASURY_FEE.to_string(),
+                                    creator_address.clone(),
+                                    None,
+                                    *treasury_fee,
+                                    pool_id.clone(),
+                                    trader.clone(),
+                                    treasury_address.clone(),
+                                    *revenue_time,
+                                    transaction_id.clone(),
+                                ))
+                                .execute(conn)
+                                .await?;
+                        }
+                    }
+                }
+                SocialEventRow::ProfileSubscriptionService(s) => {
+                    let profile_id = profiles::table
+                        .filter(profiles::owner_address.eq(&s.profile_owner))
+                        .select(profiles::profile_id)
+                        .first::<Option<String>>(conn)
+                        .await
+                        .ok()
+                        .flatten()
+                        .unwrap_or_else(|| s.profile_owner.clone());
+                    let service = NewProfileSubscriptionService {
+                        profile_id,
+                        ..s.clone()
+                    };
+                    total += diesel::insert_into(profile_subscription_services::table)
+                        .values(&service)
+                        .on_conflict(profile_subscription_services::service_id)
+                        .do_nothing()
+                        .execute(conn)
+                        .await?;
+                }
+                SocialEventRow::ProfileSubscription(s) => {
+                    total += diesel::insert_into(profile_subscriptions::table)
+                        .values(s)
+                        .on_conflict((
+                            profile_subscriptions::subscription_id,
+                            profile_subscriptions::time,
+                        ))
+                        .do_nothing()
+                        .execute(conn)
+                        .await?;
+                }
+                SocialEventRow::SubscriptionEvent(ev) => {
+                    total += diesel::insert_into(subscription_events::table)
+                        .values(ev)
+                        .execute(conn)
+                        .await?;
+                }
+                SocialEventRow::SubscriptionRevenue(r) => {
+                    total += diesel::insert_into(subscription_revenue::table)
+                        .values(r)
+                        .execute(conn)
+                        .await?;
+                }
+                SocialEventRow::ProfileSubscriptionServiceSubscriberIncrement { service_id } => {
+                    let _ = diesel::update(profile_subscription_services::table)
+                        .filter(profile_subscription_services::service_id.eq(service_id))
+                        .set(
+                            profile_subscription_services::subscriber_count
+                                .eq(profile_subscription_services::subscriber_count + 1),
+                        )
+                        .execute(conn)
+                        .await;
+                }
+                SocialEventRow::ProfileSubscriptionServiceSubscriberDecrementBySubscription {
+                    subscription_id,
+                } => {
+                    let service_id: Option<String> = profile_subscriptions::table
+                        .filter(profile_subscriptions::subscription_id.eq(subscription_id))
+                        .order(profile_subscriptions::time.desc())
+                        .select(profile_subscriptions::service_id)
+                        .first(conn)
+                        .await
+                        .ok();
+                    if let Some(sid) = service_id {
+                        let _ = diesel::update(profile_subscription_services::table)
+                            .filter(profile_subscription_services::service_id.eq(&sid))
+                            .set(
+                                profile_subscription_services::subscriber_count
+                                    .eq(profile_subscription_services::subscriber_count - 1),
+                            )
+                            .execute(conn)
+                            .await;
+                    }
+                }
+                SocialEventRow::ProfileSubscriptionUpdate {
+                    subscription_id,
+                    expires_at,
+                    renewal_count,
+                } => {
+                    let update_sql = "UPDATE profile_subscriptions SET expires_at = $1, renewal_count = $2 \
+                        WHERE subscription_id = $3 AND time = (SELECT time FROM profile_subscriptions WHERE subscription_id = $3 ORDER BY time DESC LIMIT 1)";
+                    total += diesel::sql_query(update_sql)
+                        .bind::<BigInt, _>(expires_at)
+                        .bind::<BigInt, _>(renewal_count)
+                        .bind::<Text, _>(subscription_id)
+                        .execute(conn)
+                        .await?;
+                }
+                SocialEventRow::ProfileSubscriptionCancel { subscription_id } => {
+                    let now = chrono::Utc::now().timestamp_millis();
+                    let update_sql = "UPDATE profile_subscriptions SET cancelled_at = $1 \
+                        WHERE subscription_id = $2 AND time = (SELECT time FROM profile_subscriptions WHERE subscription_id = $2 ORDER BY time DESC LIMIT 1)";
+                    total += diesel::sql_query(update_sql)
+                        .bind::<Nullable<BigInt>, _>(Some(now))
+                        .bind::<Text, _>(subscription_id)
+                        .execute(conn)
+                        .await?;
+                }
+                SocialEventRow::ProfileSubscriptionServiceUpdate {
+                    service_id,
+                    monthly_fee,
+                    updated_at,
+                } => {
+                    total += diesel::update(profile_subscription_services::table)
+                        .filter(profile_subscription_services::service_id.eq(service_id))
+                        .set((
+                            profile_subscription_services::monthly_fee.eq(monthly_fee),
+                            profile_subscription_services::updated_at.eq(Some(updated_at)),
+                        ))
+                        .execute(conn)
+                        .await?;
+                }
+                SocialEventRow::ProfileSubscriptionRenewalBalanceUpdate {
+                    subscription_id,
+                    new_balance,
+                } => {
+                    let update_sql = "UPDATE profile_subscriptions SET renewal_balance = $1 \
+                        WHERE subscription_id = $2 AND time = (SELECT time FROM profile_subscriptions WHERE subscription_id = $2 ORDER BY time DESC LIMIT 1)";
+                    total += diesel::sql_query(update_sql)
+                        .bind::<BigInt, _>(new_balance)
+                        .bind::<Text, _>(subscription_id)
+                        .execute(conn)
+                        .await?;
+                }
+                SocialEventRow::ProfileSubscriptionServiceDeactivate {
+                    service_id,
+                    updated_at,
+                } => {
+                    total += diesel::update(profile_subscription_services::table)
+                        .filter(profile_subscription_services::service_id.eq(service_id))
+                        .set((
+                            profile_subscription_services::active.eq(false),
+                            profile_subscription_services::updated_at.eq(Some(updated_at)),
+                        ))
+                        .execute(conn)
+                        .await?;
+                }
+                SocialEventRow::SubscriptionRevenueFromCreated {
+                    service_id,
+                    subscription_id,
+                    from_address,
+                    amount,
+                    revenue_type,
+                    payment_time,
+                    transaction_id,
+                } => {
+                    let profile_owner: Option<String> = profile_subscription_services::table
+                        .filter(profile_subscription_services::service_id.eq(service_id))
+                        .select(profile_subscription_services::profile_owner)
+                        .first(conn)
+                        .await
+                        .ok();
+                    if let Some(to_address) = profile_owner {
+                        let revenue = NewSubscriptionRevenue {
+                            service_id: service_id.clone(),
+                            subscription_id: Some(subscription_id.clone()),
+                            from_address: from_address.clone(),
+                            to_address,
+                            amount: *amount,
+                            revenue_type: revenue_type.clone(),
+                            payment_time: *payment_time,
+                            time: chrono::Utc::now(),
+                            transaction_id: transaction_id.clone(),
+                            processing_success: true,
+                            processing_error: None,
+                        };
+                        total += diesel::insert_into(subscription_revenue::table)
+                            .values(&revenue)
+                            .execute(conn)
+                            .await?;
+                    }
+                }
+                SocialEventRow::SubscriptionRevenueFromRefund {
+                    subscription_id,
+                    subscriber,
+                    refunded_amount,
+                    transaction_id,
+                } => {
+                    let sub_row: Option<(String, String)> = profile_subscriptions::table
+                        .filter(profile_subscriptions::subscription_id.eq(subscription_id))
+                        .order(profile_subscriptions::time.desc())
+                        .select((
+                            profile_subscriptions::service_id,
+                            profile_subscriptions::subscriber,
+                        ))
+                        .first(conn)
+                        .await
+                        .ok();
+                    if let Some((service_id, _)) = sub_row {
+                        let profile_owner: Option<String> = profile_subscription_services::table
+                            .filter(profile_subscription_services::service_id.eq(&service_id))
+                            .select(profile_subscription_services::profile_owner)
+                            .first(conn)
+                            .await
+                            .ok();
+                        if let Some(profile_owner) = profile_owner {
+                            let revenue = NewSubscriptionRevenue {
+                                service_id,
+                                subscription_id: Some(subscription_id.clone()),
+                                from_address: profile_owner,
+                                to_address: subscriber.clone(),
+                                amount: -(*refunded_amount),
+                                revenue_type: "refund".to_string(),
+                                payment_time: chrono::Utc::now().timestamp_millis(),
+                                time: chrono::Utc::now(),
+                                transaction_id: transaction_id.clone(),
+                                processing_success: true,
+                                processing_error: None,
+                            };
+                            total += diesel::insert_into(subscription_revenue::table)
+                                .values(&revenue)
+                                .execute(conn)
+                                .await?;
+                        }
+                    }
+                }
+                SocialEventRow::SubscriptionRevenueFromRenewal {
+                    subscription_id,
+                    subscriber,
+                    new_expires_at,
+                    renewal_count: _,
+                    auto_renewed,
+                    transaction_id,
+                } => {
+                    let sub_row: Option<(String, i64)> = profile_subscriptions::table
+                        .filter(profile_subscriptions::subscription_id.eq(subscription_id))
+                        .order(profile_subscriptions::time.desc())
+                        .select((
+                            profile_subscriptions::service_id,
+                            profile_subscriptions::renewal_balance,
+                        ))
+                        .first(conn)
+                        .await
+                        .ok();
+                    if let Some((service_id, _)) = sub_row {
+                        let profile_owner: Option<String> = profile_subscription_services::table
+                            .filter(profile_subscription_services::service_id.eq(&service_id))
+                            .select(profile_subscription_services::profile_owner)
+                            .first(conn)
+                            .await
+                            .ok();
+                        let monthly_fee: Option<i64> = profile_subscription_services::table
+                            .filter(profile_subscription_services::service_id.eq(&service_id))
+                            .select(profile_subscription_services::monthly_fee)
+                            .first(conn)
+                            .await
+                            .ok();
+                        if let (Some(to_address), Some(amount)) = (profile_owner, monthly_fee) {
+                            let revenue_type = if *auto_renewed {
+                                "auto_renewal"
+                            } else {
+                                "renewal"
+                            };
+                            let payment_time = *new_expires_at - (30 * 24 * 60 * 60 * 1000);
+                            let revenue = NewSubscriptionRevenue {
+                                service_id,
+                                subscription_id: Some(subscription_id.clone()),
+                                from_address: subscriber.clone(),
+                                to_address,
+                                amount,
+                                revenue_type: revenue_type.to_string(),
+                                payment_time,
+                                time: chrono::Utc::now(),
+                                transaction_id: transaction_id.clone(),
+                                processing_success: true,
+                                processing_error: None,
+                            };
+                            total += diesel::insert_into(subscription_revenue::table)
+                                .values(&revenue)
+                                .execute(conn)
+                                .await?;
+                        }
+                    }
+                }
+                SocialEventRow::UpgradeEvent(ev) => {
+                    total += diesel::insert_into(upgrade_events::table)
+                        .values(ev)
+                        .execute(conn)
+                        .await?;
+                }
+                SocialEventRow::ObjectMigratedEvent(ev) => {
+                    total += diesel::insert_into(object_migrated_events::table)
+                        .values(ev)
                         .execute(conn)
                         .await?;
                 }

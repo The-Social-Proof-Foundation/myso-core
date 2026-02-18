@@ -10,8 +10,9 @@ use myso_indexer_alt_social_schema::models::{
     NewRewardDistribution, NewVoteDecryptionFailure, ProposalUpdateSet,
 };
 use myso_indexer_alt_social_schema::{
-    GOVERNANCE_STATUS_APPROVED, GOVERNANCE_STATUS_COMMUNITY_VOTING, GOVERNANCE_STATUS_IMPLEMENTED,
-    GOVERNANCE_STATUS_OWNER_RESCINDED, GOVERNANCE_STATUS_REJECTED,
+    GOVERNANCE_STATUS_APPROVED, GOVERNANCE_STATUS_COMMUNITY_VOTING,
+    GOVERNANCE_STATUS_DELEGATE_REVIEW, GOVERNANCE_STATUS_IMPLEMENTED,
+    GOVERNANCE_STATUS_OWNER_RESCINDED, GOVERNANCE_STATUS_REJECTED, NOMINEE_STATUS_ELECTED,
 };
 
 fn de_u64<'de, D>(d: D) -> Result<u64, D::Error>
@@ -192,6 +193,11 @@ fn process_delegate_elected_event(
     }
     let ev: Ev = serde_json::from_value(data.clone()).ok()?;
     let now = Utc::now().timestamp_millis() as i64;
+    let status_update = SocialEventRow::NominatedDelegateStatusUpdate {
+        address: ev.delegate_address.clone(),
+        registry_type: ev.registry_type as i16,
+        status: NOMINEE_STATUS_ELECTED,
+    };
     let delegate = NewDelegate {
         address: ev.delegate_address,
         registry_type: ev.registry_type as i16,
@@ -217,6 +223,7 @@ fn process_delegate_elected_event(
         anonymous_voting_related: None,
     };
     Some(vec![
+        status_update,
         SocialEventRow::Delegate(delegate),
         SocialEventRow::GovernanceEvent(gov_ev),
     ])
@@ -235,12 +242,19 @@ fn process_delegate_voted_event(
         is_active_delegate: bool,
         upvote: bool,
         #[serde(rename = "new_upvote_count", deserialize_with = "de_u64")]
-        _new_upvote_count: u64,
+        new_upvote_count: u64,
         #[serde(rename = "new_downvote_count", deserialize_with = "de_u64")]
-        _new_downvote_count: u64,
+        new_downvote_count: u64,
     }
     let ev: Ev = serde_json::from_value(data.clone()).ok()?;
     let now = Utc::now().timestamp() as i64;
+    let vote_counts = SocialEventRow::DelegateVoteCountsUpdate {
+        target_address: ev.target_address.clone(),
+        registry_type: ev.registry_type as i16,
+        is_active_delegate: ev.is_active_delegate,
+        upvotes: ev.new_upvote_count as i64,
+        downvotes: ev.new_downvote_count as i64,
+    };
     let rating = NewDelegateRating {
         target_address: ev.target_address,
         voter_address: ev.voter,
@@ -260,6 +274,7 @@ fn process_delegate_voted_event(
     };
     Some(vec![
         SocialEventRow::DelegateRating(rating),
+        vote_counts,
         SocialEventRow::GovernanceEvent(gov_ev),
     ])
 }
@@ -292,13 +307,13 @@ fn process_proposal_submitted_event(
         proposal_type: ev.proposal_type as i16,
         reference_id: ev.reference_id,
         metadata_json,
-        submitter: ev.submitter,
+        submitter: ev.submitter.clone(),
         submission_time: ev.submission_time as i64,
         delegate_approval_count: 0,
         delegate_rejection_count: 0,
         community_votes_for: 0,
         community_votes_against: 0,
-        status: 0,
+        status: GOVERNANCE_STATUS_DELEGATE_REVIEW,
         voting_start_time: None,
         voting_end_time: None,
         reward_pool: ev.reward_amount as i64,
@@ -314,6 +329,10 @@ fn process_proposal_submitted_event(
     };
     Some(vec![
         SocialEventRow::Proposal(proposal),
+        SocialEventRow::DelegateProposalsSubmittedIncrement {
+            address: ev.submitter,
+            registry_type: ev.proposal_type as i16,
+        },
         SocialEventRow::GovernanceEvent(gov_ev),
     ])
 }
@@ -334,7 +353,7 @@ fn process_delegate_vote_event(
     let ev: Ev = serde_json::from_value(data.clone()).ok()?;
     let vote = NewDelegateVote {
         proposal_id: ev.proposal_id.clone(),
-        delegate_address: ev.delegate_address,
+        delegate_address: ev.delegate_address.clone(),
         approve: ev.approve,
         vote_time: ev.vote_time as i64,
         reason: ev.reason,
@@ -342,6 +361,13 @@ fn process_delegate_vote_event(
     };
     Some(vec![
         SocialEventRow::DelegateVote(vote),
+        SocialEventRow::ProposalDelegateVoteIncrement {
+            proposal_id: ev.proposal_id.clone(),
+            approve: ev.approve,
+        },
+        SocialEventRow::DelegateProposalsReviewedIncrement {
+            address: ev.delegate_address.clone(),
+        },
         SocialEventRow::GovernanceEventFromProposal {
             proposal_id: ev.proposal_id,
             event_type: "DelegateVoteEvent".to_string(),
@@ -369,6 +395,11 @@ fn process_community_vote_event(
         vote_cost: u64,
     }
     let ev: Ev = serde_json::from_value(data.clone()).ok()?;
+    let (votes_for_delta, votes_against_delta) = if ev.approve {
+        (ev.vote_weight as i64, 0)
+    } else {
+        (0, ev.vote_weight as i64)
+    };
     let vote = NewCommunityVote {
         proposal_id: ev.proposal_id.clone(),
         voter_address: ev.voter,
@@ -380,6 +411,11 @@ fn process_community_vote_event(
     };
     Some(vec![
         SocialEventRow::CommunityVote(vote),
+        SocialEventRow::ProposalCommunityVoteUpdate {
+            proposal_id: ev.proposal_id.clone(),
+            votes_for_delta,
+            votes_against_delta,
+        },
         SocialEventRow::GovernanceEventFromProposal {
             proposal_id: ev.proposal_id,
             event_type: "CommunityVoteEvent".to_string(),
@@ -422,6 +458,7 @@ fn process_proposal_approved_for_voting_event(
             data.clone(),
             event_id.to_string(),
         )),
+        submitter_filter: None,
     }])
 }
 
@@ -445,15 +482,22 @@ fn process_proposal_rejected_event(
         implementation_time: None,
         implemented_description: None,
     };
-    Some(vec![SocialEventRow::ProposalUpdate {
-        proposal_id: ev.proposal_id,
-        set,
-        governance_event: Some((
-            "ProposalRejectedEvent".to_string(),
-            data.clone(),
-            event_id.to_string(),
-        )),
-    }])
+    Some(vec![
+        SocialEventRow::ProposalUpdate {
+            proposal_id: ev.proposal_id.clone(),
+            set,
+            governance_event: Some((
+                "ProposalRejectedEvent".to_string(),
+                data.clone(),
+                event_id.to_string(),
+            )),
+            submitter_filter: None,
+        },
+        SocialEventRow::ProposalOutcomeApplyDelegateSidedUpdates {
+            proposal_id: ev.proposal_id,
+            approvers_win: false,
+        },
+    ])
 }
 
 fn process_proposal_rescinded_event(
@@ -481,6 +525,7 @@ fn process_proposal_rescinded_event(
         implementation_time: None,
         implemented_description: None,
     };
+    let submitter = ev.submitter.clone();
     let rows = vec![
         SocialEventRow::ProposalUpdate {
             proposal_id: ev.proposal_id.clone(),
@@ -490,10 +535,11 @@ fn process_proposal_rescinded_event(
                 data.clone(),
                 event_id.to_string(),
             )),
+            submitter_filter: Some(submitter.clone()),
         },
         SocialEventRow::RewardDistribution(NewRewardDistribution {
             proposal_id: ev.proposal_id,
-            recipient_address: ev.submitter,
+            recipient_address: submitter,
             amount: ev.refund_amount as i64,
             distribution_time: ev.rescind_time as i64,
             distribution_type: Some("rescind_refund".to_string()),
@@ -527,15 +573,22 @@ fn process_proposal_rejected_by_community_event(
         implementation_time: None,
         implemented_description: None,
     };
-    Some(vec![SocialEventRow::ProposalUpdate {
-        proposal_id: ev.proposal_id,
-        set,
-        governance_event: Some((
-            "ProposalRejectedByCommunityEvent".to_string(),
-            data.clone(),
-            event_id.to_string(),
-        )),
-    }])
+    Some(vec![
+        SocialEventRow::ProposalUpdate {
+            proposal_id: ev.proposal_id.clone(),
+            set,
+            governance_event: Some((
+                "ProposalRejectedByCommunityEvent".to_string(),
+                data.clone(),
+                event_id.to_string(),
+            )),
+            submitter_filter: None,
+        },
+        SocialEventRow::ProposalOutcomeApplyDelegateSidedUpdates {
+            proposal_id: ev.proposal_id,
+            approvers_win: false,
+        },
+    ])
 }
 
 fn process_proposal_approved_event(
@@ -562,15 +615,22 @@ fn process_proposal_approved_event(
         implementation_time: None,
         implemented_description: None,
     };
-    Some(vec![SocialEventRow::ProposalUpdate {
-        proposal_id: ev.proposal_id,
-        set,
-        governance_event: Some((
-            "ProposalApprovedEvent".to_string(),
-            data.clone(),
-            event_id.to_string(),
-        )),
-    }])
+    Some(vec![
+        SocialEventRow::ProposalUpdate {
+            proposal_id: ev.proposal_id.clone(),
+            set,
+            governance_event: Some((
+                "ProposalApprovedEvent".to_string(),
+                data.clone(),
+                event_id.to_string(),
+            )),
+            submitter_filter: None,
+        },
+        SocialEventRow::ProposalOutcomeApplyDelegateSidedUpdates {
+            proposal_id: ev.proposal_id,
+            approvers_win: true,
+        },
+    ])
 }
 
 fn process_proposal_implemented_event(
@@ -604,6 +664,7 @@ fn process_proposal_implemented_event(
             data.clone(),
             event_id.to_string(),
         )),
+        submitter_filter: None,
     }])
 }
 
@@ -652,8 +713,7 @@ fn process_anonymous_vote_event(
         voter: String,
         #[serde(deserialize_with = "de_u64")]
         vote_time: u64,
-        #[serde(default)]
-        encrypted_vote_data: Option<Vec<u8>>,
+        encrypted_vote_data: Vec<u8>,
     }
     let ev: Ev = serde_json::from_value(data.clone()).ok()?;
     let vote = NewAnonymousVote {
@@ -668,6 +728,9 @@ fn process_anonymous_vote_event(
     };
     Some(vec![
         SocialEventRow::AnonymousVote(vote),
+        SocialEventRow::ProposalAnonymousVotersIncrement {
+            proposal_id: ev.proposal_id.clone(),
+        },
         SocialEventRow::GovernanceEventFromProposal {
             proposal_id: ev.proposal_id,
             event_type: "AnonymousVoteEvent".to_string(),

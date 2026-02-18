@@ -13,6 +13,14 @@ pub const GOVERNANCE_STATUS_APPROVED: i16 = 3;
 pub const GOVERNANCE_STATUS_REJECTED: i16 = 4;
 pub const GOVERNANCE_STATUS_IMPLEMENTED: i16 = 5;
 pub const GOVERNANCE_STATUS_OWNER_RESCINDED: i16 = 6;
+
+pub const NOMINEE_STATUS_PENDING: i16 = 0;
+pub const NOMINEE_STATUS_ELECTED: i16 = 1;
+
+pub const ANONYMOUS_VOTE_STATUS_PENDING: i16 = 0;
+pub const ANONYMOUS_VOTE_STATUS_SUCCESS: i16 = 1;
+pub const ANONYMOUS_VOTE_STATUS_FAILED: i16 = 2;
+
 pub mod schema;
 
 pub const MIGRATIONS: EmbeddedMigrations = embed_migrations!("migrations");

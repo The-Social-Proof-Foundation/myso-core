@@ -83,7 +83,11 @@ struct ProfileCreatedEvent {
 
     bio: String,
 
-    #[serde(rename = "profile_photo", alias = "profile_picture", alias = "avatar_url")]
+    #[serde(
+        rename = "profile_photo",
+        alias = "profile_picture",
+        alias = "avatar_url"
+    )]
     profile_photo: Option<String>,
 
     #[serde(rename = "cover_photo", alias = "cover_url")]
