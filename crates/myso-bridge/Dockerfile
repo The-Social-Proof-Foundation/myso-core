@@ -20,8 +20,10 @@ COPY crates/myso-bridge/bridge-config-validator-1.yaml /app/bridge-config-valida
 COPY crates/myso-bridge/bridge-config-validator-2.yaml /app/bridge-config-validator-2.yaml
 COPY crates/myso-bridge/bridge-config-validator-3.yaml /app/bridge-config-validator-3.yaml
 
-# Build the project
-RUN cargo build --release --bin myso-bridge
+# Set GIT_REVISION for compile-time (bin_version macro; avoids panic when .git unavailable)
+ARG RAILWAY_GIT_COMMIT_SHA
+RUN GIT_REVISION="${RAILWAY_GIT_COMMIT_SHA:-$(git rev-parse HEAD 2>/dev/null || echo 'unknown')}" \
+    cargo build --release --bin myso-bridge
 
 # Expose ports
 EXPOSE 8080 9090
