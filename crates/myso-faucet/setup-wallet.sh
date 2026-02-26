@@ -19,7 +19,7 @@ if [ -z "$WALLET_PRIVATE_KEY" ] && [ -z "$WALLET_MNEMONIC" ]; then
 fi
 
 # Set default network if not provided
-NETWORK_URL=${NETWORK_URL:-"https://fullnode.testnet.mysocial.network:8082"}
+NETWORK_URL=${NETWORK_URL:-"http://fullnode.testnet.mysocial.network:8082"}
 NETWORK_ALIAS=${NETWORK_ALIAS:-"testnet"}
 
 echo "🔧 Setting up wallet configuration..."
@@ -89,4 +89,4 @@ echo "✅ Created myso.keystore"
 echo "🚀 Starting MySocial faucet..."
 
 # Start the faucet with correct host binding for Railway
-exec ./bin/myso-faucet --write-ahead-log /app/faucet.wal --host-ip 0.0.0.0 --port 5003 
+exec ./bin/myso-faucet --write-ahead-log /app/faucet.wal --host-ip 0.0.0.0 --port ${PORT:-5003}
