@@ -57,11 +57,12 @@ impl MetricsService {
     pub async fn run(self) -> anyhow::Result<Service> {
         let Self { addr, registry } = self;
 
-        let listener = TcpListener::bind(&self.addr)
+        let listener = TcpListener::bind(&addr)
             .await
             .with_context(|| format!("Failed to bind metrics at {addr}"))?;
 
         let app = Router::new()
+            .route("/health", get(health))
             .route("/metrics", get(metrics))
             .layer(Extension(registry));
 
@@ -101,6 +102,11 @@ pub fn uptime(version: &str) -> anyhow::Result<Box<dyn Collector>> {
         .context("Failed to create uptime metric")?;
 
     Ok(Box::new(uptime))
+}
+
+/// Route handler for health check
+async fn health() -> StatusCode {
+    StatusCode::OK
 }
 
 /// Route handler for metrics service
