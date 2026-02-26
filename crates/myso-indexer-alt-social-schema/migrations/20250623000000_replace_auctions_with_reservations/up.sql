@@ -2,9 +2,26 @@
 
 -- ============================================================================
 -- 0. DROP FUNCTIONS FIRST (PostgreSQL cannot change return type with CREATE OR REPLACE)
+-- Drop all overloads by name since signature may vary across migrations
 -- ============================================================================
-DROP FUNCTION IF EXISTS get_current_exchange_config() CASCADE;
-DROP FUNCTION IF EXISTS is_reservation_threshold_met(TEXT) CASCADE;
+DO $$
+DECLARE
+    r RECORD;
+BEGIN
+    FOR r IN (
+        SELECT p.oid::regprocedure AS func_sig
+        FROM pg_proc p
+        JOIN pg_namespace n ON p.pronamespace = n.oid
+        WHERE n.nspname = 'public'
+        AND p.proname IN ('get_current_exchange_config', 'is_reservation_threshold_met')
+    ) LOOP
+        EXECUTE 'DROP FUNCTION IF EXISTS ' || r.func_sig::text || ' CASCADE';
+    END LOOP;
+END $$;
+
+-- Drop views that may exist with different column structure (triggers same error as functions)
+DROP VIEW IF EXISTS active_reservation_pools CASCADE;
+DROP VIEW IF EXISTS user_reservation_holdings CASCADE;
 
 -- ============================================================================
 -- 1. REMOVE AUCTION SYSTEM
