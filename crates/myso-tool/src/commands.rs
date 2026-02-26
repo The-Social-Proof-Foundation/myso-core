@@ -757,7 +757,7 @@ impl ToolCommand {
 
                 let ingestion_url = match network {
                     Chain::Mainnet => "https://checkpoints.mainnet.mysocial.network",
-                    Chain::Testnet => "https://checkpoints.testnet.mysocial.network",
+                    Chain::Testnet => "https://storage.googleapis.com/mysocial-testnet-checkpoints",
                     _ => panic!("Cannot generate default ingestion url for unknown network"),
                 };
 

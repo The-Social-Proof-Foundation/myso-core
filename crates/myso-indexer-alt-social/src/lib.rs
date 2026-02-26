@@ -8,7 +8,7 @@ mod handlers;
 pub use handlers::SocialEvents;
 
 pub const MAINNET_REMOTE_STORE_URL: &str = "https://checkpoints.mainnet.mysocial.network";
-pub const TESTNET_REMOTE_STORE_URL: &str = "https://checkpoints.testnet.mysocial.network";
+pub const TESTNET_REMOTE_STORE_URL: &str = "https://storage.googleapis.com/mysocial-testnet-checkpoints";
 
 #[derive(Debug, Clone, Copy, clap::ValueEnum)]
 pub enum SocialEnv {

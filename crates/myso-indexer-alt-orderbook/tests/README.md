@@ -59,7 +59,7 @@ Once you have the checkpoint sequence number, download the checkpoint file:
 cd <project_root>/crates/indexer/tests/checkpoints/[event_type]
 
 # Download the checkpoint file
-curl -o [checkpoint_number].chk "https://checkpoints.testnet.mysocial.network/[checkpoint_number].chk"
+curl -o [checkpoint_number].chk "https://storage.googleapis.com/mysocial-testnet-checkpoints/[checkpoint_number].chk"
 ```
 
 #### Example: Downloading DeepbookPoolRegistered Event
@@ -70,7 +70,7 @@ mkdir -p <project_root>/crates/indexer/tests/checkpoints/deepbook_pool_registere
 
 # Download checkpoint 248053954
 cd <project_root>/crates/indexer/tests/checkpoints/deepbook_pool_registered
-curl -o 248053954.chk "https://checkpoints.testnet.mysocial.network/248053954.chk"
+curl -o 248053954.chk "https://storage.googleapis.com/mysocial-testnet-checkpoints/248053954.chk"
 ```
 
 ### 3. Verifying Checkpoint Files
@@ -78,7 +78,7 @@ curl -o 248053954.chk "https://checkpoints.testnet.mysocial.network/248053954.ch
 Check that the checkpoint file is downloadable and has content:
 
 ```bash
-curl -I "https://checkpoints.testnet.mysocial.network/248053954.chk"
+curl -I "https://storage.googleapis.com/mysocial-testnet-checkpoints/248053954.chk"
 ```
 
 Expected response should include:
@@ -136,7 +136,7 @@ mkdir -p <project_root>/crates/indexer/tests/checkpoints/[event_type]
 
 # Download checkpoint files
 cd <project_root>/crates/indexer/tests/checkpoints/[event_type]
-curl -o [checkpoint_number].chk "https://checkpoints.testnet.mysocial.network/[checkpoint_number].chk"
+curl -o [checkpoint_number].chk "https://storage.googleapis.com/mysocial-testnet-checkpoints/[checkpoint_number].chk"
 ```
 
 ### 3. Update Test File
@@ -186,7 +186,7 @@ The tests use temporary databases, so no external database setup is required. If
 
 #### 3. Checkpoint File Not Found
 - Verify the checkpoint number is correct
-- Check that the checkpoint file exists: `curl -I "https://checkpoints.testnet.mysocial.network/[checkpoint].chk"`
+- Check that the checkpoint file exists: `curl -I "https://storage.googleapis.com/mysocial-testnet-checkpoints/[checkpoint].chk"`
 - Ensure the checkpoint is from the testnet (not mainnet)
 
 #### 4. No Events Found
@@ -216,5 +216,5 @@ cargo check --package deepbook-indexer
 ## References
 
 - [MySo GraphQL API Documentation](https://docs.mysocial.network/guides/developer/getting-started/graphql-rpc)
-- [MySo Testnet Checkpoints](https://checkpoints.testnet.mysocial.network/)
+- [MySo Testnet Checkpoints](https://storage.googleapis.com/mysocial-testnet-checkpoints/)
 - [Insta Snapshot Testing](https://insta.rs/)

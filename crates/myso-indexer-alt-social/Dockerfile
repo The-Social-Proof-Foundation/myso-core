@@ -18,7 +18,7 @@ RUN apt-get update && apt-get install -y \
 COPY . .
 
 # Build
-RUN cargo build --release --bin myso-indexer-alt-social
+RUN cargo build --release --bin myso-social-indexer
 
 # Production Image
 FROM debian:bullseye-slim AS runtime
@@ -37,7 +37,7 @@ RUN apt-get update && apt-get install -y \
 ENV LD_PRELOAD=/usr/lib/x86_64-linux-gnu/libjemalloc.so
 
 WORKDIR /app
-COPY --from=builder /app/target/release/myso-indexer-alt-social /usr/local/bin
+COPY --from=builder /app/target/release/myso-social-indexer /usr/local/bin
 COPY --from=builder /app/crates/myso-indexer-alt-social-schema/migrations /app/migrations
 
 # Create entrypoint script with forced migration
@@ -69,10 +69,10 @@ echo "Setting RESET_BLOCKING_SCHEMA=true to force blocking schema update"\n\
 echo "Migrations will be handled by the application startup process"\n\
 echo "=== MIGRATIONS WILL BE FORCED ==="\n\
 \n\
-echo "Starting myso-indexer-alt-social..."\n\
+echo "Starting myso-social-indexer..."\n\
 echo ""\n\
 \n\
-exec myso-indexer-alt-social' > /usr/local/bin/entrypoint.sh && \
+exec myso-social-indexer' > /usr/local/bin/entrypoint.sh && \
     chmod +x /usr/local/bin/entrypoint.sh
 
 ARG BUILD_DATE

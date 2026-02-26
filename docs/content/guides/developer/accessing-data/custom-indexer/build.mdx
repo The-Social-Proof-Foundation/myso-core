@@ -53,7 +53,7 @@ $ diesel --version
 
 The following steps show how to create an indexer that:
 
-- Connects to MySo Testnet: Uses the remote checkpoint store at https://checkpoints.testnet.mysocial.network.
+- Connects to MySo Testnet: Uses the remote checkpoint store at https://storage.googleapis.com/mysocial-testnet-checkpoints.
 - Processes checkpoints: Streams checkpoint data continuously.
 - Extracts transaction data: Pulls transaction digests from each checkpoint.
 - Stores in local PostgreSQL: Commits data to a local PostgreSQL database.
@@ -65,7 +65,7 @@ In the end, you have a working indexer that demonstrates all core framework conc
 
 MySo provides checkpoint stores for both Mainnet and Testnet.
 
-- Testnet: `https://checkpoints.testnet.mysocial.network`
+- Testnet: `https://storage.googleapis.com/mysocial-testnet-checkpoints`
 - Mainnet: `https://checkpoints.mainnet.mysocial.network`
 
 :::
@@ -398,13 +398,13 @@ Use the `cargo run` command to run your indexer against Testnet. You can choose 
 **Using remote checkpoint storage:**
 
 ```sh
-$ cargo run -- --remote-store-url https://checkpoints.testnet.mysocial.network
+$ cargo run -- --remote-store-url https://storage.googleapis.com/mysocial-testnet-checkpoints
 ```
 
 **Using gRPC streaming from a full node (with remote checkpoint store fallback):**
 
 ```sh
-$ cargo run -- --remote-store-url https://checkpoints.testnet.mysocial.network --streaming-url https://fullnode.testnet.mysocial.network:443
+$ cargo run -- --remote-store-url https://storage.googleapis.com/mysocial-testnet-checkpoints --streaming-url https://fullnode.testnet.mysocial.network:443
 ```
 
 :::info

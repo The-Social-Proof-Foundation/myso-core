@@ -1,10 +1,10 @@
 [build]
 builder = "dockerfile"
 dockerfilePath = "crates/myso-indexer-alt-social/Dockerfile"
-buildCommand = "cargo build --release --bin myso-indexer-alt-social"
+buildCommand = "cargo build --release --bin myso-social-indexer"
 
 [deploy]
-startCommand = "myso-indexer-alt-social"
+startCommand = "myso-social-indexer"
 healthcheckPath = "/health"
 healthcheckTimeout = 300
 restartPolicyType = "on_failure"
@@ -15,7 +15,7 @@ PORT = { sync = false }
 # Explicitly tell Railway this is a Rust project
 [build.env]
 NIXPACKS_LANGUAGE = "rust"
-NIXPACKS_BUILD_CMD = "cargo build --release --bin myso-indexer-alt-social"
+NIXPACKS_BUILD_CMD = "cargo build --release --bin myso-social-indexer"
 
 [variables]
 # Database Configuration
@@ -31,7 +31,7 @@ PGUSER = "${{Postgres.PGUSER}}"
 SERVER_HOST = "0.0.0.0"
 
 # Logging configuration  
-RUST_LOG = "info,mys_social_indexer=debug"
+RUST_LOG = "info,myso_social_indexer=debug"
 RUST_BACKTRACE = "1"
 
 # Blockchain Configuration

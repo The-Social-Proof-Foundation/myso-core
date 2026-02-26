@@ -7,7 +7,7 @@ pub mod traits;
 pub const NOT_MAINNET_PACKAGE: &str = "<not on mainnet>";
 
 pub const MAINNET_REMOTE_STORE_URL: &str = "https://checkpoints.mainnet.mysocial.network";
-pub const TESTNET_REMOTE_STORE_URL: &str = "https://checkpoints.testnet.mysocial.network";
+pub const TESTNET_REMOTE_STORE_URL: &str = "https://storage.googleapis.com/mysocial-testnet-checkpoints";
 
 // Package addresses for different environments
 const MAINNET_PACKAGES: &[&str] = &[

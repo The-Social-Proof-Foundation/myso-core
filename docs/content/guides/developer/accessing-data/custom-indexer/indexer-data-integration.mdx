@@ -23,7 +23,7 @@ Push-based sources deliver real-time checkpoint data as it becomes available, of
 gRPC streaming delivers real-time checkpoint data pushed from full nodes for the latest checkpoints. Because it only streams latest data, you must configure a polling-based fallback source (remote store, local path, or full node RPC) to retrieve historical checkpoints and ensure reliability:
 
 ```sh
-$ cargo run -- --remote-store-url https://checkpoints.testnet.mysocial.network --streaming-url https://fullnode.testnet.mysocial.network:443
+$ cargo run -- --remote-store-url https://storage.googleapis.com/mysocial-testnet-checkpoints --streaming-url https://fullnode.testnet.mysocial.network:443
 ```
 
 **Endpoint format:** `https://fullnode.NETWORK.mysocial.network:443` where `NETWORK` is one of the available networks:
@@ -53,11 +53,11 @@ Polling-based sources periodically check for new checkpoints using the polling m
 
 The most direct stream source is a subscription to a remote checkpoint store. MySo provides the following endpoints:
 
-- **Testnet**: `https://checkpoints.testnet.mysocial.network`
+- **Testnet**: `https://storage.googleapis.com/mysocial-testnet-checkpoints`
 - **Mainnet**: `https://checkpoints.mainnet.mysocial.network`
 
 ```sh
-$ cargo run -- --remote-store-url https://checkpoints.testnet.mysocial.network
+$ cargo run -- --remote-store-url https://storage.googleapis.com/mysocial-testnet-checkpoints
 ```
 
 #### Local path
@@ -207,7 +207,7 @@ async fn main() -> anyhow::Result<()> {
         IndexerArgs::default(),
         ClientArgs {
             ingestion: IngestionClientArgs {
-                remote_store_url: Some("https://checkpoints.testnet.mysocial.network".to_string()),
+                remote_store_url: Some("https://storage.googleapis.com/mysocial-testnet-checkpoints".to_string()),
                 ..Default::default()
             },
             ..Default::default()
