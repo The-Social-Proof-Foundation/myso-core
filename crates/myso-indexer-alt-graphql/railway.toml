@@ -5,7 +5,7 @@ buildCommand = "cargo build --release --bin myso-indexer-alt-graphql"
 
 [deploy]
 # Uses Dockerfile ENTRYPOINT which expands DATABASE_URL and RPC_URL from env
-healthcheckPath = "/health"
+healthcheckPath = "/graphql/health"
 healthcheckTimeout = 300
 restartPolicyType = "on_failure"
 
