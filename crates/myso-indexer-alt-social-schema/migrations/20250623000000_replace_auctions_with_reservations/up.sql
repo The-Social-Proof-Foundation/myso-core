@@ -318,6 +318,10 @@ END $$;
 -- 6. CREATE FUNCTIONS FOR RESERVATION POOL MANAGEMENT
 -- ============================================================================
 
+-- Drop functions first; PostgreSQL does not allow changing return type with CREATE OR REPLACE
+DROP FUNCTION IF EXISTS get_current_exchange_config() CASCADE;
+DROP FUNCTION IF EXISTS is_reservation_threshold_met(TEXT) CASCADE;
+
 -- Function to get current exchange configuration
 CREATE OR REPLACE FUNCTION get_current_exchange_config()
 RETURNS TABLE(
