@@ -47,6 +47,7 @@ ENV LD_PRELOAD=/usr/lib/x86_64-linux-gnu/libjemalloc.so
 
 WORKDIR /app
 COPY --from=builder /app/target/release/myso-indexer-alt-graphql /usr/local/bin
+COPY crates/myso-indexer-alt-graphql/config/indexer-config.toml /app/config/indexer-config.toml
 
 # Create entrypoint script
 RUN echo '#!/bin/sh\n\
@@ -79,6 +80,7 @@ echo ""\n\
 exec myso-indexer-alt-graphql rpc \\\n\
     --database-url "$DATABASE_URL" \\\n\
     --fullnode-rpc-url "$RPC_URL" \\\n\
+    --indexer-config /app/config/indexer-config.toml \\\n\
     --rpc-listen-address "0.0.0.0:${PORT:-8080}"' > /usr/local/bin/entrypoint.sh && \
     chmod +x /usr/local/bin/entrypoint.sh
 
