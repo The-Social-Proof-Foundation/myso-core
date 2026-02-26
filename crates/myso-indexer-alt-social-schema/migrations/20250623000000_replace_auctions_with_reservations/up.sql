@@ -1,6 +1,12 @@
 -- Production-ready implementation for reservation pools and reservations
 
 -- ============================================================================
+-- 0. DROP FUNCTIONS FIRST (PostgreSQL cannot change return type with CREATE OR REPLACE)
+-- ============================================================================
+DROP FUNCTION IF EXISTS get_current_exchange_config() CASCADE;
+DROP FUNCTION IF EXISTS is_reservation_threshold_met(TEXT) CASCADE;
+
+-- ============================================================================
 -- 1. REMOVE AUCTION SYSTEM
 -- ============================================================================
 
@@ -220,7 +226,8 @@ ORDER BY
     total_volume DESC;
 
 -- Create view for active reservation pools with aggregated data
-CREATE OR REPLACE VIEW active_reservation_pools AS
+DROP VIEW IF EXISTS active_reservation_pools CASCADE;
+CREATE VIEW active_reservation_pools AS
 SELECT
     sp.pool_id,
     sp.associated_id,
@@ -249,7 +256,8 @@ ORDER BY
     sp.total_reserved DESC;
 
 -- Create view for user reservation holdings across all pools
-CREATE OR REPLACE VIEW user_reservation_holdings AS
+DROP VIEW IF EXISTS user_reservation_holdings CASCADE;
+CREATE VIEW user_reservation_holdings AS
 SELECT
     s.reservatior_address,
     s.pool_id,
@@ -318,12 +326,8 @@ END $$;
 -- 6. CREATE FUNCTIONS FOR RESERVATION POOL MANAGEMENT
 -- ============================================================================
 
--- Drop functions first; PostgreSQL does not allow changing return type with CREATE OR REPLACE
-DROP FUNCTION IF EXISTS get_current_exchange_config() CASCADE;
-DROP FUNCTION IF EXISTS is_reservation_threshold_met(TEXT) CASCADE;
-
 -- Function to get current exchange configuration
-CREATE OR REPLACE FUNCTION get_current_exchange_config()
+CREATE FUNCTION get_current_exchange_config()
 RETURNS TABLE(
     post_threshold BIGINT,
     profile_threshold BIGINT,
@@ -344,7 +348,7 @@ END;
 $$ LANGUAGE plpgsql;
 
 -- Function to check if reservation pool threshold is met
-CREATE OR REPLACE FUNCTION is_reservation_threshold_met(pool_id_param TEXT)
+CREATE FUNCTION is_reservation_threshold_met(pool_id_param TEXT)
 RETURNS BOOLEAN AS $$
 DECLARE
     result BOOLEAN;
