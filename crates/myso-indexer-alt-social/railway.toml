@@ -18,6 +18,9 @@ NIXPACKS_LANGUAGE = "rust"
 NIXPACKS_BUILD_CMD = "cargo build --release --bin myso-social-indexer"
 
 [variables]
+# Environment (required: mainnet | testnet)
+ENV = "testnet"
+
 # Database Configuration
 DATABASE_URL = "${{Postgres.DATABASE_URL}}"
 DATABASE_PRIVATE_URL = "${{Postgres.DATABASE_PRIVATE_URL}}"
