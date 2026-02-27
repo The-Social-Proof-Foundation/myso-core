@@ -4,8 +4,6 @@
 # that have watermark rows in the database.
 # Note: Balances, objects by owner/type require the Consistent Store (separate gRPC service).
 
-[pipeline.cp_bloom_blocks]
-[pipeline.cp_blooms]
 [pipeline.coin_balance_buckets]
 [pipeline.obj_info]
 [pipeline.sum_displays]
