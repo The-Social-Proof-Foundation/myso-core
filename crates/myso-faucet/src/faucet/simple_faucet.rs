@@ -717,7 +717,7 @@ impl SimpleFaucet {
         );
 
         match timeout(
-            Duration::from_secs(300),
+            Duration::from_secs(self.config.txn_execution_timeout_secs),
             self.execute_pay_myso_txn_with_retries(&tx, coin_id, recipient, uuid),
         )
         .await

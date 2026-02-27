@@ -106,7 +106,7 @@ pub struct FaucetConfig {
     #[clap(long, default_value_t = 10)]
     pub max_request_per_second: u64,
 
-    #[clap(long, default_value_t = 60)]
+    #[clap(long, default_value_t = 30)]
     pub wallet_client_timeout_secs: u64,
 
     #[clap(long)]
@@ -164,6 +164,10 @@ pub struct FaucetConfig {
     /// Amount to split from large coins when pool is low (in mist). If 0, auto-calculate
     #[clap(long, default_value_t = 5000000000)]
     pub split_amount: u64,
+
+    /// Seconds to wait for fullnode confirmation before timing out. Coin is retried via WAL on timeout.
+    #[clap(long, default_value_t = 30)]
+    pub txn_execution_timeout_secs: u64,
 }
 
 impl Default for FaucetConfig {
@@ -190,6 +194,7 @@ impl Default for FaucetConfig {
             auto_split_coins: true,
             min_coin_threshold: 5,
             split_amount: 5000000000,
+            txn_execution_timeout_secs: 30,
         }
     }
 }
