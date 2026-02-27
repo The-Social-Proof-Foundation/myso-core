@@ -1410,8 +1410,8 @@ impl MySoClientCommands {
                 let address = context.get_identity_address(address)?;
                 let url = if let Some(url) = url {
                     ensure!(
-                        !url.starts_with("https://faucet.testnet.mysocial.network"),
-                        "For testnet tokens, please use the Web UI: https://faucet.mysocial.network/?address={address}"
+                        !url.starts_with("https://faucet.mysocial.network"),
+                        "For testnet tokens, please use the Web UI: https://mysocial.network/faucet?address={address}"
                     );
                     url
                 } else {
