@@ -72,7 +72,7 @@ echo "=== MIGRATIONS WILL BE FORCED ==="\n\
 echo "Starting myso-social-indexer..."\n\
 echo ""\n\
 \n\
-exec myso-social-indexer' > /usr/local/bin/entrypoint.sh && \
+exec myso-social-indexer --metrics-address "0.0.0.0:${PORT:-8080}"' > /usr/local/bin/entrypoint.sh && \
     chmod +x /usr/local/bin/entrypoint.sh
 
 ARG BUILD_DATE
