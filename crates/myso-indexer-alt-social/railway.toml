@@ -4,7 +4,6 @@ dockerfilePath = "crates/myso-indexer-alt-social/Dockerfile"
 buildCommand = "cargo build --release --bin myso-social-indexer"
 
 [deploy]
-startCommand = "myso-social-indexer"
 healthcheckPath = "/health"
 healthcheckTimeout = 300
 restartPolicyType = "on_failure"

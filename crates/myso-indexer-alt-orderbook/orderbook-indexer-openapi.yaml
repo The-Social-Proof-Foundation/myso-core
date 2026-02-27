@@ -6,7 +6,7 @@ info:
     REST endpoints for Orderbook order book + analytics data.
     Volumes are returned in the smallest unit of the asset unless stated otherwise.
 servers:
-  - url: https://deepbook-indexer.mainnet.mystenlabs.com
+  - url: https://orderbook.testnet.mysocial.network
     description: Public Orderbook Indexer
 
 tags:
