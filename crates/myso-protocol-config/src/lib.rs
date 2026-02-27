@@ -4560,6 +4560,11 @@ impl ProtocolConfig {
                     if let Some(price) = cfg.storage_gas_price {
                         cfg.storage_gas_price = Some(price / 10);
                     }
+
+                    // Computation costs - 100x reduction
+                    if let Some(bucket) = cfg.max_gas_computation_bucket {
+                        cfg.max_gas_computation_bucket = Some(bucket / 100);
+                    }
                 }
                 // Use this template when making changes:
                 //
