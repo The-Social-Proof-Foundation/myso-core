@@ -19,7 +19,7 @@ if [ -z "$WALLET_PRIVATE_KEY" ] && [ -z "$WALLET_MNEMONIC" ]; then
 fi
 
 # Set default network if not provided
-NETWORK_URL=${NETWORK_URL:-"http://fullnode.testnet.mysocial.network:8082"}
+NETWORK_URL=${NETWORK_URL:-"http://fullnode.testnet.mysocial.network:9000"}
 NETWORK_ALIAS=${NETWORK_ALIAS:-"testnet"}
 
 echo "🔧 Setting up wallet configuration..."
@@ -30,7 +30,7 @@ echo "💳 Address: $WALLET_ADDRESS"
 echo "🌐 Testing MySocial network connectivity..."
 
 ENDPOINTS=(
-    "http://fullnode.testnet.mysocial.network:8082"
+    "http://fullnode.testnet.mysocial.network:9000"
 )
 
 WORKING_ENDPOINT=""

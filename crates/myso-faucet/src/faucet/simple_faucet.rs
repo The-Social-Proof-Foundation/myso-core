@@ -92,9 +92,9 @@ enum GasCoinResponse {
 
 // TODO: replace this with dryrun at the SDK level
 const DEFAULT_GAS_COMPUTATION_BUCKET: u64 = 10_000_000;
-const LOCK_TIMEOUT: Duration = Duration::from_secs(10);
-const RECV_TIMEOUT: Duration = Duration::from_secs(5);
-const BATCH_TIMEOUT: Duration = Duration::from_secs(10);
+const LOCK_TIMEOUT: Duration = Duration::from_secs(2);
+const RECV_TIMEOUT: Duration = Duration::from_secs(2);
+const BATCH_TIMEOUT: Duration = Duration::from_secs(2);
 
 impl SimpleFaucet {
     /// Check if we need to split coins on-demand (when pool is running low)
