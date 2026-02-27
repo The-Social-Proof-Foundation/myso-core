@@ -73,6 +73,10 @@ if [ -n "$RPC_URL" ]; then\n\
   echo "RPC_URL: [SET]"\n\
 fi\n\
 \n\
+if [ -n "$CONSISTENT_STORE_URL" ]; then\n\
+  echo "CONSISTENT_STORE_URL: [SET]"\n\
+fi\n\
+\n\
 echo "PORT: ${PORT:-8080}"\n\
 echo "Starting myso-indexer-alt-graphql..."\n\
 echo ""\n\
@@ -80,6 +84,7 @@ echo ""\n\
 exec myso-indexer-alt-graphql rpc \\\n\
     --database-url "$DATABASE_URL" \\\n\
     --fullnode-rpc-url "$RPC_URL" \\\n\
+    ${CONSISTENT_STORE_URL:+--consistent-store-url "$CONSISTENT_STORE_URL" }\\\n\
     --indexer-config /app/config/indexer-config.toml \\\n\
     --rpc-listen-address "0.0.0.0:${PORT:-8080}"' > /usr/local/bin/entrypoint.sh && \
     chmod +x /usr/local/bin/entrypoint.sh

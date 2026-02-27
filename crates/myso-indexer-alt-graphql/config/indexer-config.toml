@@ -2,7 +2,10 @@
 # Pipeline names must match those written by myso-indexer-alt to the watermarks table.
 # Use the same config as your indexer, or ensure this list is a superset of pipelines
 # that have watermark rows in the database.
+# Note: Balances, objects by owner/type require the Consistent Store (separate gRPC service).
 
+[pipeline.cp_bloom_blocks]
+[pipeline.cp_blooms]
 [pipeline.coin_balance_buckets]
 [pipeline.obj_info]
 [pipeline.sum_displays]

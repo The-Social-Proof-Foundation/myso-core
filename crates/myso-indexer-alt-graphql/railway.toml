@@ -13,6 +13,7 @@ restartPolicyType = "on_failure"
 PORT = { sync = false }
 DATABASE_URL = { sync = false }
 RPC_URL = { sync = false }
+CONSISTENT_STORE_URL = { sync = false }
 
 # Explicitly tell Railway this is a Rust project
 [build.env]
