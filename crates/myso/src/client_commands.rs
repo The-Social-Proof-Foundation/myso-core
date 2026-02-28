@@ -1411,14 +1411,22 @@ impl MySoClientCommands {
             MySoClientCommands::Faucet { address, url } => {
                 let address = context.get_identity_address(address)?;
                 let url = if let Some(url) = url {
-                    ensure!(
-                        !url.starts_with("https://faucet.mysocial.network"),
-                        "For testnet tokens, please use the Web UI: https://mysocial.network/faucet?address={address}"
-                    );
+                    if url.starts_with("https://faucet.mysocial.network") {
+                        open_testnet_faucet_browser(address);
+                        let _ = context.cache_chain_id().await?;
+                        return Ok(MySoClientCommandResult::NoOutput);
+                    }
                     url
                 } else {
                     let active_env = context.get_active_env();
                     if let Ok(env) = active_env {
+                        let host = url_to_host(&env.rpc)?;
+                        let testnet_host = url_to_host(MYSO_TESTNET_URL)?;
+                        if host == testnet_host {
+                            open_testnet_faucet_browser(address);
+                            let _ = context.cache_chain_id().await?;
+                            return Ok(MySoClientCommandResult::NoOutput);
+                        }
                         find_faucet_url(address, &env.rpc)?
                     } else {
                         bail!("No URL for faucet was provided and there is no active network.")
@@ -3700,6 +3708,16 @@ fn verify_no_test_mode(build_config: &MoveBuildConfig) -> anyhow::Result<()> {
     Ok(())
 }
 
+const FAUCET_FRONTEND_URL: &str = "https://www.mysocial.network/faucet";
+
+fn open_testnet_faucet_browser(address: MySoAddress) {
+    let url = format!("{FAUCET_FRONTEND_URL}?address={address}");
+    println!("Opening your browser to request testnet MySo tokens...");
+    if let Err(_) = open::that(&url) {
+        println!("Could not open browser. Please visit: {url}");
+    }
+}
+
 /// Extract the host from a URL string
 fn url_to_host(url: &str) -> anyhow::Result<String> {
     url::Url::parse(url)?
@@ -3723,7 +3741,7 @@ fn find_faucet_url(address: MySoAddress, rpc: &str) -> anyhow::Result<String> {
 
     if host == testnet_host {
         bail!(
-            "For testnet tokens, please use the Web UI: https://faucet.mysocial.network/?address={address}"
+            "For testnet tokens, please use the Web UI: https://www.mysocial.network/faucet?address={address}"
         );
     }
 

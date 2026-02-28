@@ -7,7 +7,7 @@ use thiserror::Error;
 #[derive(Error, Debug, PartialEq, Eq)]
 pub enum FaucetError {
     #[error(
-        "Missing X-Turnstile-Token header. For testnet tokens, please use the Web UI: https://faucet.mysocial.network"
+        "Missing X-Turnstile-Token header. For testnet tokens, please use the Web UI: https://www.mysocial.network/faucet"
     )]
     MissingTurnstileTokenHeader,
 

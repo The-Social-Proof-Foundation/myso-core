@@ -10197,6 +10197,7 @@ dependencies = [
  "mysten-common",
  "normalize-line-endings",
  "num-bigint 0.4.6",
+ "open",
  "prometheus",
  "rand 0.8.5",
  "regex",
