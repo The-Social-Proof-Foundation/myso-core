@@ -30,7 +30,7 @@ ETH_RPC_URL = ""
 ETH_BRIDGE_PROXY_ADDRESS = "0x02D265E77590025660a4eff50E7227136762b0d2"
 
 # Optional: Override other config values
-# MYS_RPC_URL = "http://fullnode.testnet.mysocial.network:8082"
+# MYSO_RPC_URL = "http://fullnode.testnet.mysocial.network:9000"
 
 # Bridge Node Configuration
 BRIDGE_NODE_PORT = "8080"

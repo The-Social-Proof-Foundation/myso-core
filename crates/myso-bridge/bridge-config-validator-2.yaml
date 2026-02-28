@@ -59,7 +59,7 @@ approved-governance-actions:
       call_data: []  # Update with actual call data bytes when proposal is created
 
 myso:
-  myso-rpc-url: "http://fullnode.testnet.mysocial.network:8082"
+  myso-rpc-url: "http://fullnode.testnet.mysocial.network:9000"
   myso-bridge-chain-id: 2
 
 eth:
