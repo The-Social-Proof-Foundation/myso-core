@@ -16,8 +16,10 @@ RUST_LOG = "info,myso_analytics_indexer=debug"
 
 # Core MySocial configuration (RPC_API_URL or REST_URL for backward compatibility)
 RPC_API_URL = "http://fullnode.testnet.mysocial.network:9000"
-# gRPC streaming URL - when set, uses gRPC for checkpoint ingestion instead of HTTP object store
+# gRPC streaming URL - when set, uses gRPC for checkpoint ingestion (primary), HTTP store fallback
 STREAMING_URL = "http://fullnode.testnet.mysocial.network:9000"
+# Start near chain head to avoid massive backfill (update periodically as chain grows)
+FIRST_CHECKPOINT = "755000"
 # Pipelines: Checkpoint, Transaction, or comma-separated (e.g. "Checkpoint,Transaction")
 PIPELINES = "Checkpoint"
 
@@ -30,8 +32,8 @@ TIME_INTERVAL_S = "600"
 # Google Cloud Storage (REQUIRED) - output bucket for Parquet files
 REMOTE_STORE_BUCKET = "mysocial-testnet-analytics"
 REMOTE_STORE_REGION = "us"
-# Only used when STREAMING_URL is not set (HTTP checkpoint ingestion)
-REMOTE_STORE_URL = "https://mysocial-testnet-checkpoints.storage.googleapis.com"
+# HTTP checkpoint store (fallback when streaming, or primary when STREAMING_URL not set)
+REMOTE_STORE_URL = "https://storage.googleapis.com/mysocial-testnet-checkpoints"
 
 # GCS Authentication - Set this in Railway UI (not here for security)
 # GCS_SERVICE_ACCOUNT_JSON = "{ your service account JSON content }" 

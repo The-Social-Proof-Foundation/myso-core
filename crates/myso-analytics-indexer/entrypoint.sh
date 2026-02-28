@@ -78,6 +78,7 @@ if [ "$USE_GRPC" = "true" ]; then
   echo "streaming_url: \"$STREAMING_URL\"" >> /app/config.yaml
   echo "remote_store_url: \"$REMOTE_STORE_URL\"" >> /app/config.yaml
 else
+  echo "WARNING: STREAMING_URL not set - using HTTP only (slower). Set STREAMING_URL for gRPC streaming."
   echo "remote_store_url: \"$REMOTE_STORE_URL\"" >> /app/config.yaml
 fi
 
@@ -117,6 +118,7 @@ echo "BUCKET: $REMOTE_STORE_BUCKET"
 echo "PIPELINES: $PIPELINE_TYPES"
 echo "METRICS_PORT: $METRICS_PORT"
 echo "CHECKPOINT_INTERVAL: $CHECKPOINT_INTERVAL"
+[ -n "$FIRST_CHECKPOINT" ] && echo "FIRST_CHECKPOINT: $FIRST_CHECKPOINT"
 if [ "$USE_GRPC" = "true" ]; then
   echo "STREAMING_URL (gRPC): $STREAMING_URL"
   echo "REMOTE_STORE_URL (fallback): $REMOTE_STORE_URL"
