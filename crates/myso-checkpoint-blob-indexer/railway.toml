@@ -20,9 +20,9 @@ RPC_API_URL = "http://fullnode.testnet.mysocial.network:9000"
 STREAMING_URL = "http://fullnode.testnet.mysocial.network:9000"
 
 # Google Cloud Storage (REQUIRED) - output bucket for checkpoint blobs
-REMOTE_STORE_BUCKET = "mysocial-testnet-checkpoint-blobs"
+REMOTE_STORE_BUCKET = "mysocial-testnet-archive"
 # HTTP checkpoint store for ingestion (fallback when streaming, or primary when STREAMING_URL not set)
-REMOTE_STORE_URL = "https://mysocial-testnet-checkpoints.storage.googleapis.com"
+REMOTE_STORE_URL = "https://storage.googleapis.com/mysocial-testnet-checkpoints"
 
 # GCS Authentication - Set this in Railway UI (not here for security)
 # GCS_SERVICE_ACCOUNT_JSON = "{ your service account JSON content }"

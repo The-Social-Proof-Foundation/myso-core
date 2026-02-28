@@ -14,7 +14,7 @@ fi
 
 if [ -z "$REMOTE_STORE_BUCKET" ]; then
   echo "ERROR: REMOTE_STORE_BUCKET environment variable is not set"
-  echo "Expected: REMOTE_STORE_BUCKET=mysocial-testnet-checkpoint-blobs"
+  echo "Expected: REMOTE_STORE_BUCKET=mysocial-testnet-archive"
   exit 1
 fi
 
@@ -47,7 +47,7 @@ fi
 
 # Use PORT from Railway (or default 9184) so health checks reach the metrics server
 METRICS_PORT="${PORT:-9184}"
-REMOTE_STORE_URL="${REMOTE_STORE_URL:-https://mysocial-testnet-checkpoints.storage.googleapis.com}"
+REMOTE_STORE_URL="${REMOTE_STORE_URL:-https://storage.googleapis.com/mysocial-testnet-checkpoints}"
 
 # Build CLI args
 set -- --gcs "$REMOTE_STORE_BUCKET" \
