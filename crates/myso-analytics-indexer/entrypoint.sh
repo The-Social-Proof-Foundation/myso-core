@@ -62,7 +62,7 @@ TIME_INTERVAL_S="${TIME_INTERVAL_S:-600}"
 FILE_FORMAT="${FILE_FORMAT:-parquet}"
 REMOTE_STORE_URL="${REMOTE_STORE_URL:-https://mysocial-testnet-checkpoints.storage.googleapis.com}"
 # Default FIRST_CHECKPOINT near chain head to avoid massive backfill (update as chain grows)
-FIRST_CHECKPOINT="${FIRST_CHECKPOINT:-765000}"
+FIRST_CHECKPOINT="${FIRST_CHECKPOINT:-770000}"
 
 # When STREAMING_URL is set, use gRPC for checkpoint ingestion (streaming primary, remote_store fallback).
 USE_GRPC=false
