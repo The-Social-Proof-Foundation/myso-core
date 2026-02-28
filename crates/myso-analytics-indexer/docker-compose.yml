@@ -24,10 +24,10 @@ services:
       # Storage
       CHECKPOINT_DIR: "/tmp/analytics"
       PACKAGE_CACHE_PATH: "/opt/myso/db/package_cache"
-      REMOTE_STORE_URL: "https://storage.googleapis.com/mysocial-testnet-archive"
+      REMOTE_STORE_URL: "https://storage.googleapis.com/mysocial-testnet-analytics"
       
       # Mock GCS config for testing (would need real bucket in production)
-      REMOTE_STORE_BUCKET: "mysocial-testnet-archive"
+      REMOTE_STORE_BUCKET: "mysocial-testnet-analytics"
       REMOTE_STORE_REGION: "us-central1"
       
       # Logging
@@ -63,9 +63,9 @@ services:
       
       CHECKPOINT_DIR: "/tmp/analytics"
       PACKAGE_CACHE_PATH: "/opt/myso/db/package_cache"
-      REMOTE_STORE_URL: "https://storage.googleapis.com/mysocial-testnet-archive"
+      REMOTE_STORE_URL: "https://storage.googleapis.com/mysocial-testnet-analytics"
       
-      REMOTE_STORE_BUCKET: "mysocial-testnet-archive"
+      REMOTE_STORE_BUCKET: "mysocial-testnet-analytics"
       REMOTE_STORE_REGION: "us-central1"
       
       RUST_LOG: "info,myso_analytics_indexer=debug"
