@@ -15,9 +15,9 @@ PORT = { sync = false }
 RUST_LOG = "info,myso_analytics_indexer=debug"
 
 # Core MySocial configuration (RPC_API_URL or REST_URL for backward compatibility)
-RPC_API_URL = "https://fullnode.testnet.mysocial.network:9000"
+RPC_API_URL = "http://fullnode.testnet.mysocial.network:9000"
 # gRPC streaming URL - when set, uses gRPC for checkpoint ingestion instead of HTTP object store
-STREAMING_URL = "https://fullnode.testnet.mysocial.network:9000"
+STREAMING_URL = "http://fullnode.testnet.mysocial.network:9000"
 # Pipelines: Checkpoint, Transaction, or comma-separated (e.g. "Checkpoint,Transaction")
 PIPELINES = "Checkpoint"
 
