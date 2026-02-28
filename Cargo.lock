@@ -10908,7 +10908,7 @@ dependencies = [
 [[package]]
 name = "myso-crypto"
 version = "0.2.0"
-source = "git+https://github.com/the-social-proof-foundation/myso-rust-sdk.git#30a041097b841d8febdd82bef4a4c9513a3d11e8"
+source = "git+https://github.com/the-social-proof-foundation/myso-rust-sdk.git#b82443982c9af6798a3af0499ef944f7d5ae76d0"
 dependencies = [
  "ark-bn254",
  "ark-ff 0.4.2",
@@ -12982,7 +12982,7 @@ dependencies = [
 [[package]]
 name = "myso-rpc"
 version = "0.2.2"
-source = "git+https://github.com/the-social-proof-foundation/myso-rust-sdk.git#30a041097b841d8febdd82bef4a4c9513a3d11e8"
+source = "git+https://github.com/the-social-proof-foundation/myso-rust-sdk.git#b82443982c9af6798a3af0499ef944f7d5ae76d0"
 dependencies = [
  "base64 0.22.1",
  "bcs",
@@ -13173,7 +13173,7 @@ dependencies = [
 [[package]]
 name = "myso-sdk-types"
 version = "0.2.2"
-source = "git+https://github.com/the-social-proof-foundation/myso-rust-sdk.git#30a041097b841d8febdd82bef4a4c9513a3d11e8"
+source = "git+https://github.com/the-social-proof-foundation/myso-rust-sdk.git#b82443982c9af6798a3af0499ef944f7d5ae76d0"
 dependencies = [
  "base64ct",
  "bcs",
