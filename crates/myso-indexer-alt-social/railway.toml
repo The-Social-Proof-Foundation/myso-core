@@ -4,7 +4,7 @@ dockerfilePath = "crates/myso-indexer-alt-social/Dockerfile"
 buildCommand = "cargo build --release --bin myso-social-indexer"
 
 [deploy]
-startCommand = '/bin/sh -c "exec myso-social-indexer --metrics-address 0.0.0.0:${PORT:-8080}"'
+startCommand = '/bin/sh -c "EXTRA_ARGS=\"\"; [ -n \"$STREAMING_URL\" ] && EXTRA_ARGS=\"$EXTRA_ARGS --streaming-url $STREAMING_URL\"; [ -n \"${RPC_API_URL:-$RPC_URL}\" ] && EXTRA_ARGS=\"$EXTRA_ARGS --rpc-api-url ${RPC_API_URL:-$RPC_URL}\"; exec myso-social-indexer --metrics-address 0.0.0.0:${PORT:-8080} $EXTRA_ARGS"'
 healthcheckPath = "/health"
 healthcheckTimeout = 300
 restartPolicyType = "on_failure"
@@ -37,8 +37,9 @@ SERVER_HOST = "0.0.0.0"
 RUST_LOG = "info,myso_social_indexer=debug"
 RUST_BACKTRACE = "1"
 
-# Blockchain Configuration
-RPC_URL = "https://fullnode.testnet.mysocial.network:9000"
+# Blockchain Configuration - gRPC for streaming and ingestion fallback
+RPC_API_URL = "https://fullnode.testnet.mysocial.network:9000"
+STREAMING_URL = "https://fullnode.testnet.mysocial.network:9000"
 
 # Force migrations on startup
 FORCE_MIGRATIONS = "true"

@@ -72,7 +72,19 @@ echo "=== MIGRATIONS WILL BE FORCED ==="\n\
 echo "Starting myso-social-indexer..."\n\
 echo ""\n\
 \n\
-exec myso-social-indexer --metrics-address "0.0.0.0:${PORT:-8080}"' > /usr/local/bin/entrypoint.sh && \
+# Build optional args for gRPC (streaming + ingestion fallback)\n\
+EXTRA_ARGS=""\n\
+if [ -n "$STREAMING_URL" ]; then\n\
+  EXTRA_ARGS="$EXTRA_ARGS --streaming-url $STREAMING_URL"\n\
+  echo "STREAMING_URL (gRPC): $STREAMING_URL"\n\
+fi\n\
+RPC_URL="${RPC_API_URL:-$RPC_URL}"\n\
+if [ -n "$RPC_URL" ]; then\n\
+  EXTRA_ARGS="$EXTRA_ARGS --rpc-api-url $RPC_URL"\n\
+  echo "RPC_API_URL (gRPC ingestion): $RPC_URL"\n\
+fi\n\
+\n\
+exec myso-social-indexer --metrics-address "0.0.0.0:${PORT:-8080}" $EXTRA_ARGS' > /usr/local/bin/entrypoint.sh && \
     chmod +x /usr/local/bin/entrypoint.sh
 
 ARG BUILD_DATE
