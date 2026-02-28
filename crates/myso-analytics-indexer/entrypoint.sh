@@ -61,6 +61,8 @@ CHECKPOINT_INTERVAL="${CHECKPOINT_INTERVAL:-10000}"
 TIME_INTERVAL_S="${TIME_INTERVAL_S:-600}"
 FILE_FORMAT="${FILE_FORMAT:-parquet}"
 REMOTE_STORE_URL="${REMOTE_STORE_URL:-https://mysocial-testnet-checkpoints.storage.googleapis.com}"
+# Default FIRST_CHECKPOINT near chain head to avoid massive backfill (update as chain grows)
+FIRST_CHECKPOINT="${FIRST_CHECKPOINT:-765000}"
 
 # When STREAMING_URL is set, use gRPC for checkpoint ingestion (streaming primary, remote_store fallback).
 USE_GRPC=false
@@ -104,10 +106,8 @@ echo "$PIPELINE_TYPES" | tr ',' '\n' | while read -r p; do
 PIPELINE
 done
 
-# Add optional first_checkpoint if set
-if [ -n "$FIRST_CHECKPOINT" ]; then
-  echo "first_checkpoint: $FIRST_CHECKPOINT" >> /app/config.yaml
-fi
+# Add first_checkpoint (default 765000 to avoid massive backfill)
+echo "first_checkpoint: $FIRST_CHECKPOINT" >> /app/config.yaml
 if [ -n "$LAST_CHECKPOINT" ]; then
   echo "last_checkpoint: $LAST_CHECKPOINT" >> /app/config.yaml
 fi
@@ -118,7 +118,7 @@ echo "BUCKET: $REMOTE_STORE_BUCKET"
 echo "PIPELINES: $PIPELINE_TYPES"
 echo "METRICS_PORT: $METRICS_PORT"
 echo "CHECKPOINT_INTERVAL: $CHECKPOINT_INTERVAL"
-[ -n "$FIRST_CHECKPOINT" ] && echo "FIRST_CHECKPOINT: $FIRST_CHECKPOINT"
+echo "FIRST_CHECKPOINT: $FIRST_CHECKPOINT"
 if [ "$USE_GRPC" = "true" ]; then
   echo "STREAMING_URL (gRPC): $STREAMING_URL"
   echo "REMOTE_STORE_URL (fallback): $REMOTE_STORE_URL"
