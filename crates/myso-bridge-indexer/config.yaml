@@ -1,22 +1,14 @@
-# config.yaml format:
+# Bridge indexer config - testnet defaults.
+# For Railway/deploy: use entrypoint.sh which generates config from env vars.
+# For local dev: set DB_URL or DATABASE_URL; override other values as needed.
 
-# URL of the remote store
-# remote_store_url: <url>
-# URL for Ethereum RPC
-# eth_rpc_url: <url>
-# Database connection URL
-# db_url: <url>
-# Path to the checkpoints
-# checkpoints_path: <path>
-# Number of concurrent operations
-# concurrency: 1
-# Bridge genesis checkpoint in MYSO, for testnet = 43917829
-# bridge_genesis_checkpoint: <myso bridge genesis checkpoint>
-# Ethereum to MySo bridge contract address
-# eth_myso_bridge_contract_address: <contract_address>
-# Starting block number
-# start_block: <indexing_start_block>
-# Client metric URL
-# metric_url: <url>
-# Client metric port
-# metric_port: <port>
+remote_store_url: https://storage.googleapis.com/mysocial-testnet-checkpoints
+myso_rpc_url: http://fullnode.testnet.mysocial.network:9000
+eth_rpc_url: https://eth-sepolia.g.alchemy.com/v2/YOUR_KEY
+eth_ws_url: wss://eth-sepolia.g.alchemy.com/v2/YOUR_KEY
+db_url: postgres://localhost:5432/bridge
+concurrency: 500
+myso_bridge_genesis_checkpoint: 43917829
+eth_bridge_genesis_block: 5997013
+eth_myso_bridge_contract_address: 0xAE68F87938439afEEDd6552B0E83D2CbC2473623
+metric_port: 9184

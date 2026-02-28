@@ -24,14 +24,23 @@ RUN cargo build --release --package myso-bridge-indexer --bin bridge-indexer
 # Production Image
 FROM debian:bullseye-slim AS runtime
 # Use jemalloc as memory allocator
-RUN apt-get update && apt-get install -y libjemalloc-dev ca-certificates curl
+RUN apt-get update && apt-get install -y libjemalloc-dev ca-certificates curl libpq5
 ENV LD_PRELOAD /usr/lib/x86_64-linux-gnu/libjemalloc.so
-WORKDIR "$WORKDIR/myso"
+WORKDIR /myso
+
 COPY --from=builder /myso/target/release/bridge-indexer /usr/local/bin
 COPY crates/myso-bridge-indexer/config.yaml /myso/config.yaml
-RUN apt update && apt install -y libpq5 ca-certificates libpq-dev postgresql
+COPY crates/myso-bridge-indexer/entrypoint.sh /usr/local/bin/entrypoint.sh
+RUN chmod +x /usr/local/bin/entrypoint.sh
 
 ARG BUILD_DATE
 ARG GIT_REVISION
 LABEL build-date=$BUILD_DATE
 LABEL git-revision=$GIT_REVISION
+
+EXPOSE 9184
+
+HEALTHCHECK --interval=30s --timeout=10s --start-period=5s --retries=3 \
+    CMD sh -c 'curl -f http://localhost:${PORT:-9184}/metrics || exit 1'
+
+ENTRYPOINT ["/usr/local/bin/entrypoint.sh"]

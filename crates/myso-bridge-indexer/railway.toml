@@ -3,13 +3,31 @@ builder = "dockerfile"
 dockerfilePath = "crates/myso-bridge-indexer/Dockerfile"
 
 [deploy]
-startCommand = "bridge-indexer"
-# healthcheckPath = "/"
-# healthcheckTimeout = 60
+healthcheckPath = "/metrics"
+healthcheckTimeout = 60
+restartPolicyType = "on_failure"
+
+[deploy.envVars]
+PORT = { sync = false }
 
 [variables]
 # Database Configuration
 DATABASE_URL = "${{Postgres.DATABASE_URL}}"
 
-# Optional: Logging configuration  
-RUST_LOG = "info,myso_bridge_indexer=debug" 
+# Logging configuration
+RUST_LOG = "info,myso_bridge_indexer=debug"
+
+# Required - RPC endpoints
+ETH_RPC_URL = "https://eth-sepolia.g.alchemy.com/v2/YOUR_KEY"
+ETH_WS_URL = "wss://eth-sepolia.g.alchemy.com/v2/YOUR_KEY"
+MYSO_RPC_URL = "http://fullnode.testnet.mysocial.network:9000"
+
+# Required - Bridge config (testnet values)
+REMOTE_STORE_URL = "https://storage.googleapis.com/mysocial-testnet-checkpoints"
+ETH_MYSO_BRIDGE_CONTRACT_ADDRESS = "0xAE68F87938439afEEDd6552B0E83D2CbC2473623"
+MYSO_BRIDGE_GENESIS_CHECKPOINT = "43917829"
+ETH_BRIDGE_GENESIS_BLOCK = "5997013"
+
+# Optional - defaults in entrypoint
+# CONCURRENCY = "500"
+# CHECKPOINTS_PATH = ""
