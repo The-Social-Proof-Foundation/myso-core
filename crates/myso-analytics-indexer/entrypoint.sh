@@ -62,8 +62,7 @@ TIME_INTERVAL_S="${TIME_INTERVAL_S:-600}"
 FILE_FORMAT="${FILE_FORMAT:-parquet}"
 REMOTE_STORE_URL="${REMOTE_STORE_URL:-https://mysocial-testnet-checkpoints.storage.googleapis.com}"
 
-# When STREAMING_URL is set, use gRPC for checkpoint ingestion (streaming + fallback).
-# Omit remote_store_url so ingestion uses rpc_api_url via gRPC instead of HTTP object store.
+# When STREAMING_URL is set, use gRPC for checkpoint ingestion (streaming primary, remote_store fallback).
 USE_GRPC=false
 if [ -n "$STREAMING_URL" ]; then
   USE_GRPC=true
@@ -77,6 +76,7 @@ EOF
 
 if [ "$USE_GRPC" = "true" ]; then
   echo "streaming_url: \"$STREAMING_URL\"" >> /app/config.yaml
+  echo "remote_store_url: \"$REMOTE_STORE_URL\"" >> /app/config.yaml
 else
   echo "remote_store_url: \"$REMOTE_STORE_URL\"" >> /app/config.yaml
 fi
@@ -119,11 +119,16 @@ echo "METRICS_PORT: $METRICS_PORT"
 echo "CHECKPOINT_INTERVAL: $CHECKPOINT_INTERVAL"
 if [ "$USE_GRPC" = "true" ]; then
   echo "STREAMING_URL (gRPC): $STREAMING_URL"
-  echo "Ingestion: gRPC (streaming + rpc_api_url fallback)"
+  echo "REMOTE_STORE_URL (fallback): $REMOTE_STORE_URL"
+  echo "Ingestion: streaming primary, HTTP store fallback"
 else
   echo "REMOTE_STORE_URL: $REMOTE_STORE_URL"
   echo "Ingestion: HTTP object store"
 fi
+echo ""
+echo "=== Generated config.yaml ==="
+cat /app/config.yaml
+echo "============================="
 echo ""
 echo "Starting: myso-analytics-indexer /app/config.yaml"
 echo ""

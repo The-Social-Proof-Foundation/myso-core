@@ -4188,6 +4188,21 @@ async fn test_parse_host_port() {
     assert!(parse_host_port(input.to_string(), 9123).is_err());
 }
 
+#[tokio::test]
+#[allow(deprecated)]
+async fn test_pay_myso_subcommand_names() {
+    assert_cmd::Command::cargo_bin("myso")
+        .unwrap()
+        .args(["client", "pay-myso", "--help"])
+        .assert()
+        .success();
+    assert_cmd::Command::cargo_bin("myso")
+        .unwrap()
+        .args(["client", "pay-all-myso", "--help"])
+        .assert()
+        .success();
+}
+
 #[sim_test]
 async fn test_tree_shaking_package_with_unpublished_deps() -> Result<(), anyhow::Error> {
     let mut test = TreeShakingTest::new().await.unwrap();

@@ -356,6 +356,7 @@ pub enum MySoClientCommands {
 
     /// Pay all residual MYSO coins to the recipient with input coins, after deducting the gas cost.
     /// The input coins also include the coin for gas payment, so no extra gas coin is required.
+    #[clap(name = "pay-all-myso")]
     PayAllMySo {
         /// The input coins to be used for pay recipients, including the gas coin.
         #[clap(long, num_args(1..))]
@@ -375,6 +376,7 @@ pub enum MySoClientCommands {
     /// Pay MYSO coins to recipients following specified amounts, with input coins.
     /// Length of recipients must be the same as that of amounts.
     /// The input coins also include the coin for gas payment, so no extra gas coin is required.
+    #[clap(name = "pay-myso")]
     PayMySo {
         /// The input coins to be used for pay recipients, including the gas coin.
         #[clap(long, num_args(1..))]
