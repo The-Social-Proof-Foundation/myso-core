@@ -1,0 +1,32 @@
+version: '3.8'
+
+services:
+  bridge-indexer-alt:
+    build:
+      context: ../..
+      dockerfile: crates/myso-bridge-indexer-alt/Dockerfile
+    environment:
+      DATABASE_URL: "postgres://postgres:postgrespw@postgres:5432/bridge"
+      REMOTE_STORE_URL: "https://storage.googleapis.com/mysocial-testnet-checkpoint-blobs"
+      STREAMING_URL: "http://fullnode.testnet.mysocial.network:9000"
+      FIRST_CHECKPOINT: "43917829"
+      RUST_LOG: "info,myso_bridge_indexer_alt=debug"
+    ports:
+      - "9186:9184"
+    depends_on:
+      - postgres
+    restart: unless-stopped
+
+  postgres:
+    image: postgres:15
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgrespw
+      POSTGRES_DB: bridge
+    ports:
+      - "5432:5432"
+    volumes:
+      - bridge_postgres_data:/var/lib/postgresql/data
+
+volumes:
+  bridge_postgres_data:

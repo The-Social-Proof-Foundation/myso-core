@@ -1,0 +1,27 @@
+[build]
+builder = "dockerfile"
+dockerfilePath = "crates/myso-bridge-indexer-alt/Dockerfile"
+
+[deploy]
+healthcheckPath = "/metrics"
+healthcheckTimeout = 60
+restartPolicyType = "on_failure"
+
+[deploy.envVars]
+PORT = { sync = false }
+
+[variables]
+# Logging configuration
+RUST_LOG = "info,myso_bridge_indexer_alt=debug"
+
+# Postgres - set via Railway Postgres plugin (DATABASE_URL)
+# DATABASE_URL = "${{Postgres.DATABASE_URL}}"
+
+# Checkpoint store (testnet) - use same bucket as checkpoint-blob-indexer writes to
+REMOTE_STORE_URL = "https://storage.googleapis.com/mysocial-testnet-checkpoint-blobs"
+
+# gRPC streaming (optional, for faster ingestion)
+STREAMING_URL = "http://fullnode.testnet.mysocial.network:9000"
+
+# Start near bridge genesis to avoid massive backfill (testnet = 43917829)
+FIRST_CHECKPOINT = "43917829"

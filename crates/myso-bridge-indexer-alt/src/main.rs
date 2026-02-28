@@ -9,7 +9,9 @@ use myso_bridge_indexer_alt::handlers::token_transfer_data_handler::TokenTransfe
 use myso_bridge_indexer_alt::handlers::token_transfer_handler::TokenTransferHandler;
 use myso_bridge_indexer_alt::metrics::BridgeIndexerMetrics;
 use myso_bridge_schema::MIGRATIONS;
-use myso_indexer_alt_framework::ingestion::{ClientArgs, ingestion_client::IngestionClientArgs};
+use myso_indexer_alt_framework::ingestion::{
+    streaming_client::StreamingClientArgs, ClientArgs, ingestion_client::IngestionClientArgs,
+};
 use myso_indexer_alt_framework::postgres::DbArgs;
 use myso_indexer_alt_framework::service::Error;
 use myso_indexer_alt_framework::{Indexer, IndexerArgs};
@@ -39,6 +41,9 @@ struct Args {
         default_value = "https://checkpoints.mainnet.mysocial.network"
     )]
     remote_store_url: Url,
+    /// gRPC endpoint for streaming checkpoints (optional, enables faster ingestion)
+    #[clap(env, long)]
+    streaming_url: Option<Url>,
 }
 #[tokio::main]
 async fn main() -> Result<(), anyhow::Error> {
@@ -52,6 +57,7 @@ async fn main() -> Result<(), anyhow::Error> {
         metrics_address,
         database_url,
         remote_store_url,
+        streaming_url,
     } = Args::parse();
 
     let is_bounded_job = indexer_args.last_checkpoint.is_some();
@@ -73,7 +79,9 @@ async fn main() -> Result<(), anyhow::Error> {
                 remote_store_url: Some(remote_store_url),
                 ..Default::default()
             },
-            ..Default::default()
+            streaming: StreamingClientArgs {
+                streaming_url: streaming_url.and_then(|u| u.as_str().parse().ok()),
+            },
         },
         Default::default(),
         Some(&MIGRATIONS),
