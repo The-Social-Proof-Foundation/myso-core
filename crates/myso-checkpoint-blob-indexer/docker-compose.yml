@@ -1,0 +1,20 @@
+version: '3.8'
+
+services:
+  checkpoint-blob-indexer:
+    build:
+      context: ../..
+      dockerfile: crates/myso-checkpoint-blob-indexer/Dockerfile
+    environment:
+      RPC_API_URL: "http://fullnode.testnet.mysocial.network:9000"
+      STREAMING_URL: "http://fullnode.testnet.mysocial.network:9000"
+      REMOTE_STORE_BUCKET: "mysocial-testnet-archive"
+      REMOTE_STORE_URL: "https://mysocial-testnet-checkpoints.storage.googleapis.com"
+      RUST_LOG: "info,myso_checkpoint_blob_indexer=debug"
+      RUST_BACKTRACE: "1"
+    ports:
+      - "9184:9184"
+    # Optional: mount GCS credentials for local dev
+    # volumes:
+    #   - ./credentials/gcs-key.json:/app/credentials/gcs-key.json:ro
+    restart: unless-stopped

@@ -1,0 +1,28 @@
+[build]
+builder = "dockerfile"
+dockerfilePath = "crates/myso-checkpoint-blob-indexer/Dockerfile"
+
+[deploy]
+healthcheckPath = "/metrics"
+healthcheckTimeout = 60
+restartPolicyType = "on_failure"
+
+[deploy.envVars]
+PORT = { sync = false }
+
+[variables]
+# Logging configuration
+RUST_LOG = "info,myso_checkpoint_blob_indexer=debug"
+
+# Core MySocial configuration (RPC_API_URL or REST_URL for backward compatibility)
+RPC_API_URL = "http://fullnode.testnet.mysocial.network:9000"
+# gRPC streaming URL - when set, uses gRPC for checkpoint ingestion (primary), remote store fallback
+STREAMING_URL = "http://fullnode.testnet.mysocial.network:9000"
+
+# Google Cloud Storage (REQUIRED) - output bucket for checkpoint blobs
+REMOTE_STORE_BUCKET = "mysocial-testnet-checkpoint-blobs"
+# HTTP checkpoint store for ingestion (fallback when streaming, or primary when STREAMING_URL not set)
+REMOTE_STORE_URL = "https://mysocial-testnet-checkpoints.storage.googleapis.com"
+
+# GCS Authentication - Set this in Railway UI (not here for security)
+# GCS_SERVICE_ACCOUNT_JSON = "{ your service account JSON content }"
