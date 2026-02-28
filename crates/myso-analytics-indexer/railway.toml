@@ -5,6 +5,10 @@ dockerfilePath = "crates/myso-analytics-indexer/Dockerfile"
 [deploy]
 healthcheckPath = "/metrics"
 healthcheckTimeout = 60
+restartPolicyType = "on_failure"
+
+[deploy.envVars]
+PORT = { sync = false }
 
 [variables]
 # Logging configuration

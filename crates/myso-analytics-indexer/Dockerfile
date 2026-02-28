@@ -61,12 +61,12 @@ ARG GIT_REVISION
 LABEL build-date=$BUILD_DATE
 LABEL git-revision=$GIT_REVISION
 
-# Expose standard metrics port
+# Expose metrics port (9184 default; Railway uses PORT)
 EXPOSE 9184
 
-# Health check endpoint for metrics
+# Health check endpoint for metrics (uses PORT when set by Railway)
 HEALTHCHECK --interval=30s --timeout=10s --start-period=5s --retries=3 \
-    CMD curl -f http://localhost:9184/metrics || exit 1
+    CMD sh -c 'curl -f http://localhost:${PORT:-9184}/metrics || exit 1'
 
 # Use the entrypoint script
 ENTRYPOINT ["/usr/local/bin/entrypoint.sh"] 

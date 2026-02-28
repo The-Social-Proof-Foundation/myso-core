@@ -55,6 +55,8 @@ esac
 PIPELINE_TYPES="${PIPELINES:-$DEFAULT_PIPELINE}"
 
 # Generate YAML config from environment variables
+# Use PORT from Railway (or default 9184) so health checks reach the metrics server
+METRICS_PORT="${PORT:-9184}"
 CHECKPOINT_INTERVAL="${CHECKPOINT_INTERVAL:-10000}"
 TIME_INTERVAL_S="${TIME_INTERVAL_S:-600}"
 FILE_FORMAT="${FILE_FORMAT:-parquet}"
@@ -62,7 +64,7 @@ REMOTE_STORE_URL="${REMOTE_STORE_URL:-https://mysocial-testnet-checkpoints.stora
 
 cat > /app/config.yaml << EOF
 client_metric_host: "0.0.0.0"
-client_metric_port: 9184
+client_metric_port: $METRICS_PORT
 rpc_api_url: "$RPC_URL"
 remote_store_url: "$REMOTE_STORE_URL"
 output_store:
@@ -97,6 +99,7 @@ echo "=== Configuration ==="
 echo "RPC_URL: $RPC_URL"
 echo "BUCKET: $REMOTE_STORE_BUCKET"
 echo "PIPELINES: $PIPELINE_TYPES"
+echo "METRICS_PORT: $METRICS_PORT"
 echo "CHECKPOINT_INTERVAL: $CHECKPOINT_INTERVAL"
 echo ""
 echo "Starting: myso-analytics-indexer /app/config.yaml"
