@@ -18,8 +18,8 @@ ENV = "testnet"
 # Database Configuration
 DATABASE_URL = "${{Postgres.DATABASE_URL}}"
 
-# Logging configuration
-RUST_LOG = "info,myso_indexer_alt_orderbook=debug"
+# Logging configuration - framework=warn to avoid Railway 500 logs/sec rate limit at startup (50+ pipelines)
+RUST_LOG = "info,myso_indexer_alt_framework=warn,myso_indexer_alt_orderbook=info"
 
 # Blockchain Configuration - gRPC for streaming and ingestion fallback
 RPC_API_URL = "http://fullnode.testnet.mysocial.network:9000"
