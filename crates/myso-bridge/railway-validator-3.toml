@@ -3,7 +3,7 @@ builder = "dockerfile"
 dockerfilePath = "crates/myso-bridge/Dockerfile"
 
 [deploy]
-startCommand = "sh -c 'echo \"$BRIDGE_AUTHORITY_KEY\" > /tmp/bridge_key_validator_3 && cargo run --release --bin myso-bridge -- --config-path /app/bridge-config-validator-3.yaml'"
+startCommand = "sh -c 'echo \"$BRIDGE_AUTHORITY_KEY\" > /tmp/bridge_key_validator_3 && /work/target/release/myso-bridge --config-path /app/bridge-config-validator-3.yaml'"
 healthcheckPath = "/ping"
 healthcheckTimeout = 300
 restartPolicyType = "on_failure"
