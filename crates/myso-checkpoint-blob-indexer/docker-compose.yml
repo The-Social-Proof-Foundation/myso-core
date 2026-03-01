@@ -9,6 +9,7 @@ services:
       RPC_API_URL: "http://fullnode.testnet.mysocial.network:9000"
       STREAMING_URL: "http://fullnode.testnet.mysocial.network:9000"
       REMOTE_STORE_BUCKET: "mysocial-testnet-archive"
+      COMPRESSION_LEVEL: "3"
       REMOTE_STORE_URL: "https://storage.googleapis.com/mysocial-testnet-checkpoints"
       RUST_LOG: "info,myso_checkpoint_blob_indexer=debug"
       RUST_BACKTRACE: "1"

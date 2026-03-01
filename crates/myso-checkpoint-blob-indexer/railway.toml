@@ -19,6 +19,9 @@ RPC_API_URL = "http://fullnode.testnet.mysocial.network:9000"
 # gRPC streaming URL - when set, uses gRPC for checkpoint ingestion (primary), remote store fallback
 STREAMING_URL = "http://fullnode.testnet.mysocial.network:9000"
 
+# Zstd compression level for checkpoint blobs (produces .binpb.zst format expected by downstream consumers)
+COMPRESSION_LEVEL = "3"
+
 # Google Cloud Storage (REQUIRED) - output bucket for checkpoint blobs
 REMOTE_STORE_BUCKET = "mysocial-testnet-archive"
 # HTTP checkpoint store for ingestion (fallback when streaming, or primary when STREAMING_URL not set)

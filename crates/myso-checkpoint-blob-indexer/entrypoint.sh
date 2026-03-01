@@ -48,10 +48,12 @@ fi
 # Use PORT from Railway (or default 9184) so health checks reach the metrics server
 METRICS_PORT="${PORT:-9184}"
 REMOTE_STORE_URL="${REMOTE_STORE_URL:-https://storage.googleapis.com/mysocial-testnet-checkpoints}"
+COMPRESSION_LEVEL="${COMPRESSION_LEVEL:-3}"
 
 # Build CLI args - when streaming is set, ingestion uses gRPC fallback (no remote-store-url needed)
 set -- --gcs "$REMOTE_STORE_BUCKET" \
-  --metrics-address "0.0.0.0:$METRICS_PORT"
+  --metrics-address "0.0.0.0:$METRICS_PORT" \
+  --compression-level "$COMPRESSION_LEVEL"
 
 if [ -n "$STREAMING_URL" ]; then
   set -- "$@" --streaming-url "$STREAMING_URL" --rpc-api-url "$STREAMING_URL"
@@ -72,6 +74,7 @@ echo "RPC_URL: $RPC_URL"
 echo "BUCKET: $REMOTE_STORE_BUCKET"
 echo "REMOTE_STORE_URL: $REMOTE_STORE_URL"
 echo "METRICS_PORT: $METRICS_PORT"
+echo "COMPRESSION_LEVEL: $COMPRESSION_LEVEL"
 if [ -n "$STREAMING_URL" ]; then
   echo "STREAMING_URL (gRPC): $STREAMING_URL"
   echo "Ingestion: streaming + gRPC GetCheckpoint fallback"
