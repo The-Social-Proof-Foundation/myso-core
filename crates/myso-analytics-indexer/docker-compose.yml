@@ -14,7 +14,8 @@ services:
       PIPELINES: "Checkpoint"
       FILE_FORMAT: "parquet"
       
-      # Processing settings
+      # Processing settings - FIRST_CHECKPOINT near chain head to avoid massive backfill
+      FIRST_CHECKPOINT: "1159000"
       CHECKPOINT_INTERVAL: "1000"  # Smaller for testing
       MAX_FILE_SIZE_MB: "10"       # Smaller for testing
       TIME_INTERVAL_S: "300"       # 5 minutes for testing
@@ -55,6 +56,7 @@ services:
       PIPELINES: "Transaction"
       FILE_FORMAT: "parquet"
       
+      FIRST_CHECKPOINT: "1159000"
       CHECKPOINT_INTERVAL: "1000"
       MAX_FILE_SIZE_MB: "10"
       TIME_INTERVAL_S: "300"

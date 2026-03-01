@@ -62,7 +62,7 @@ TIME_INTERVAL_S="${TIME_INTERVAL_S:-600}"
 FILE_FORMAT="${FILE_FORMAT:-parquet}"
 REMOTE_STORE_URL="${REMOTE_STORE_URL:-https://mysocial-testnet-checkpoints.storage.googleapis.com}"
 # Default FIRST_CHECKPOINT near chain head to avoid massive backfill (update as chain grows)
-FIRST_CHECKPOINT="${FIRST_CHECKPOINT:-786000}"
+FIRST_CHECKPOINT="${FIRST_CHECKPOINT:-1159000}"
 
 # When STREAMING_URL is set, use gRPC for checkpoint ingestion (streaming primary, remote_store fallback).
 USE_GRPC=false
@@ -78,7 +78,7 @@ EOF
 
 if [ "$USE_GRPC" = "true" ]; then
   echo "streaming_url: \"$STREAMING_URL\"" >> /app/config.yaml
-  echo "remote_store_url: \"$REMOTE_STORE_URL\"" >> /app/config.yaml
+  # When streaming is set, ingestion uses gRPC GetCheckpoint - no remote_store_url needed
 else
   echo "WARNING: STREAMING_URL not set - using HTTP only (slower). Set STREAMING_URL for gRPC streaming."
   echo "remote_store_url: \"$REMOTE_STORE_URL\"" >> /app/config.yaml
@@ -121,8 +121,7 @@ echo "CHECKPOINT_INTERVAL: $CHECKPOINT_INTERVAL"
 echo "FIRST_CHECKPOINT: $FIRST_CHECKPOINT"
 if [ "$USE_GRPC" = "true" ]; then
   echo "STREAMING_URL (gRPC): $STREAMING_URL"
-  echo "REMOTE_STORE_URL (fallback): $REMOTE_STORE_URL"
-  echo "Ingestion: streaming primary, HTTP store fallback"
+  echo "Ingestion: streaming + gRPC GetCheckpoint fallback"
 else
   echo "REMOTE_STORE_URL: $REMOTE_STORE_URL"
   echo "Ingestion: HTTP object store"

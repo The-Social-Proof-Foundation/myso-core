@@ -72,24 +72,32 @@ pub async fn build_analytics_indexer(
         task: Default::default(),
     };
 
-    let client_args = myso_indexer_alt_framework::ingestion::ClientArgs {
-        ingestion: myso_indexer_alt_framework::ingestion::ingestion_client::IngestionClientArgs {
-            // Only use remote_store_url if local_ingestion_path is not provided
-            remote_store_url: if config.local_ingestion_path.is_some() {
-                None
-            } else {
-                config
-                    .remote_store_url
-                    .as_ref()
-                    .map(|url| url::Url::parse(url))
-                    .transpose()?
-            },
+    // When streaming is configured, use gRPC GetCheckpoint for ingestion fallback (when outside
+    // buffer). This avoids depending on checkpoint-blob-indexer/remote store.
+    let ingestion_args = if config.streaming_url.is_some() {
+        myso_indexer_alt_framework::ingestion::ingestion_client::IngestionClientArgs {
+            rpc_api_url: Some(config.rpc_api_url.parse()?),
+            rpc_username: config.rpc_username.clone(),
+            rpc_password: config.rpc_password.clone(),
+            ..Default::default()
+        }
+    } else {
+        myso_indexer_alt_framework::ingestion::ingestion_client::IngestionClientArgs {
+            remote_store_url: config
+                .remote_store_url
+                .as_ref()
+                .map(|u| url::Url::parse(u))
+                .transpose()?,
             local_ingestion_path: config.local_ingestion_path.clone(),
             rpc_api_url: Some(config.rpc_api_url.parse()?),
             rpc_username: config.rpc_username.clone(),
             rpc_password: config.rpc_password.clone(),
             ..Default::default()
-        },
+        }
+    };
+
+    let client_args = myso_indexer_alt_framework::ingestion::ClientArgs {
+        ingestion: ingestion_args,
         streaming: myso_indexer_alt_framework::ingestion::streaming_client::StreamingClientArgs {
             streaming_url: config
                 .streaming_url
