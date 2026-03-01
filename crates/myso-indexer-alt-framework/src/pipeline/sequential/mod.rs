@@ -9,7 +9,7 @@ use myso_futures::service::Service;
 use serde::Deserialize;
 use serde::Serialize;
 use tokio::sync::mpsc;
-use tracing::info;
+use tracing::debug;
 
 use crate::metrics::IndexerMetrics;
 use crate::pipeline::CommitterConfig;
@@ -121,7 +121,7 @@ pub(crate) fn pipeline<H: Handler + Send + Sync + 'static>(
     watermark_tx: mpsc::UnboundedSender<(&'static str, u64)>,
     metrics: Arc<IndexerMetrics>,
 ) -> Service {
-    info!(
+    debug!(
         pipeline = H::NAME,
         "Starting pipeline with config: {config:#?}",
     );

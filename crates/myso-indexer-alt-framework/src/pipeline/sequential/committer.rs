@@ -96,7 +96,7 @@ where
         let mut pending: BTreeMap<u64, IndexedCheckpoint<H>> = BTreeMap::new();
         let mut pending_rows = 0;
 
-        info!(pipeline = H::NAME, "Starting committer");
+        debug!(pipeline = H::NAME, "Starting committer");
 
         loop {
             tokio::select! {

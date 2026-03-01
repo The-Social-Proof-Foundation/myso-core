@@ -48,7 +48,7 @@ pub(super) fn committer<H: Handler + 'static>(
     metrics: Arc<IndexerMetrics>,
 ) -> Service {
     Service::new().spawn_aborting(async move {
-        info!(pipeline = H::NAME, "Starting committer");
+        debug!(pipeline = H::NAME, "Starting committer");
         let checkpoint_lag_reporter = CheckpointLagMetricReporter::new_for_pipeline::<H>(
             &metrics.partially_committed_checkpoint_timestamp_lag,
             &metrics.latest_partially_committed_checkpoint_timestamp_lag_ms,

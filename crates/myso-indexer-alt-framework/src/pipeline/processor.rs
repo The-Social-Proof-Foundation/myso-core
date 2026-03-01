@@ -70,7 +70,7 @@ pub(super) fn processor<P: Processor>(
     metrics: Arc<IndexerMetrics>,
 ) -> Service {
     Service::new().spawn_aborting(async move {
-        info!(pipeline = P::NAME, "Starting processor");
+        debug!(pipeline = P::NAME, "Starting processor");
         let checkpoint_lag_reporter = CheckpointLagMetricReporter::new_for_pipeline::<P>(
             &metrics.processed_checkpoint_timestamp_lag,
             &metrics.latest_processed_checkpoint_timestamp_lag_ms,

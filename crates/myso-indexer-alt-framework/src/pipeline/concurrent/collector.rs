@@ -95,7 +95,7 @@ pub(super) fn collector<H: Handler + 'static>(
         let mut pending: BTreeMap<u64, PendingCheckpoint<H>> = BTreeMap::new();
         let mut pending_rows = 0;
 
-        info!(pipeline = H::NAME, "Starting collector");
+        debug!(pipeline = H::NAME, "Starting collector");
 
         loop {
             tokio::select! {

@@ -13,7 +13,6 @@ use tokio::time::MissedTickBehavior;
 use tokio::time::interval;
 use tracing::debug;
 use tracing::error;
-use tracing::info;
 use tracing::warn;
 
 use crate::metrics::IndexerMetrics;
@@ -104,11 +103,11 @@ pub(super) fn pruner<H: Handler + Send + Sync + 'static>(
 ) -> Service {
     Service::new().spawn_aborting(async move {
         let Some(config) = config else {
-            info!(pipeline = H::NAME, "Skipping pruner task");
+            debug!(pipeline = H::NAME, "Skipping pruner task");
             return Ok(());
         };
 
-        info!(
+        debug!(
             pipeline = H::NAME,
             "Starting pruner with config: {:?}", config
         );

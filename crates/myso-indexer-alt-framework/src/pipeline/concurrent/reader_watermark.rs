@@ -33,7 +33,7 @@ pub(super) fn reader_watermark<H: Handler + 'static>(
 ) -> Service {
     Service::new().spawn_aborting(async move {
         let Some(config) = config else {
-            info!(pipeline = H::NAME, "Skipping reader watermark task");
+            debug!(pipeline = H::NAME, "Skipping reader watermark task");
             return Ok(());
         };
 
