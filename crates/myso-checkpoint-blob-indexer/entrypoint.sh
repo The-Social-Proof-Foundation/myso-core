@@ -49,13 +49,14 @@ fi
 METRICS_PORT="${PORT:-9184}"
 REMOTE_STORE_URL="${REMOTE_STORE_URL:-https://storage.googleapis.com/mysocial-testnet-checkpoints}"
 
-# Build CLI args
+# Build CLI args - when streaming is set, ingestion uses gRPC fallback (no remote-store-url needed)
 set -- --gcs "$REMOTE_STORE_BUCKET" \
-  --remote-store-url "$REMOTE_STORE_URL" \
   --metrics-address "0.0.0.0:$METRICS_PORT"
 
 if [ -n "$STREAMING_URL" ]; then
   set -- "$@" --streaming-url "$STREAMING_URL"
+else
+  set -- "$@" --remote-store-url "$REMOTE_STORE_URL"
 fi
 
 if [ -n "$FIRST_CHECKPOINT" ]; then
@@ -73,7 +74,7 @@ echo "REMOTE_STORE_URL: $REMOTE_STORE_URL"
 echo "METRICS_PORT: $METRICS_PORT"
 if [ -n "$STREAMING_URL" ]; then
   echo "STREAMING_URL (gRPC): $STREAMING_URL"
-  echo "Ingestion: streaming primary, HTTP store fallback"
+  echo "Ingestion: streaming + gRPC GetCheckpoint fallback"
 else
   echo "Ingestion: HTTP object store"
 fi

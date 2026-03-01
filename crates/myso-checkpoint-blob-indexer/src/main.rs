@@ -8,6 +8,7 @@ use std::time::Duration;
 
 use myso_indexer_alt_framework::Indexer;
 use myso_indexer_alt_framework::IndexerArgs;
+use myso_indexer_alt_framework::ingestion::ingestion_client::IngestionClientArgs;
 use myso_indexer_alt_framework::ingestion::ClientArgs;
 use myso_indexer_alt_framework::service::Error;
 use myso_indexer_alt_metrics::MetricsArgs;
@@ -176,10 +177,32 @@ async fn main() -> anyhow::Result<()> {
         ..Default::default()
     };
 
+    // When streaming is configured, use gRPC GetCheckpoint for ingestion fallback (when outside
+    // buffer). This avoids depending on checkpoint-blob-indexer/remote store.
+    let client_args = if args.client_args.streaming.streaming_url.is_some() {
+        let rpc_url = args
+            .client_args
+            .streaming
+            .streaming_url
+            .as_ref()
+            .and_then(|u| u.to_string().parse::<Url>().ok());
+        ClientArgs {
+            ingestion: IngestionClientArgs {
+                rpc_api_url: rpc_url,
+                rpc_username: args.client_args.ingestion.rpc_username.clone(),
+                rpc_password: args.client_args.ingestion.rpc_password.clone(),
+                ..Default::default()
+            },
+            streaming: args.client_args.streaming.clone(),
+        }
+    } else {
+        args.client_args.clone()
+    };
+
     let mut indexer = Indexer::new(
         store.clone(),
         args.indexer_args,
-        args.client_args,
+        client_args,
         ingestion_config,
         None,
         &registry,
