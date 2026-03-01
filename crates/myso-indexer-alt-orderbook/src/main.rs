@@ -136,14 +136,35 @@ async fn main() -> Result<(), anyhow::Error> {
         store.clone(),
     )))?;
 
+    // For testnet: GCS bucket uses epoch_N/X_Y.obj format, not N.binpb.zst.
+    // Use fullnode gRPC for checkpoint ingestion instead.
+    let ingestion = match env {
+        OrderbookEnv::Testnet => {
+            let rpc_url = match streaming_args.streaming_url.as_ref() {
+                Some(u) => Url::parse(&u.to_string())
+                    .context("Invalid streaming URL for testnet RPC")?,
+                None => {
+                    anyhow::bail!(
+                        "Testnet requires --streaming-url for checkpoint ingestion (e.g. http://fullnode.testnet.mysocial.network:9000)"
+                    );
+                }
+            };
+            IngestionClientArgs {
+                rpc_api_url: Some(rpc_url),
+                ..Default::default()
+            }
+        }
+        OrderbookEnv::Mainnet => IngestionClientArgs {
+            remote_store_url: Some(env.remote_store_url()),
+            ..Default::default()
+        },
+    };
+
     let mut indexer = Indexer::new(
         store,
         indexer_args,
         ClientArgs {
-            ingestion: IngestionClientArgs {
-                remote_store_url: Some(env.remote_store_url()),
-                ..Default::default()
-            },
+            ingestion,
             streaming: streaming_args,
         },
         IngestionConfig::default(),
