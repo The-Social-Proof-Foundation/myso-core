@@ -1,0 +1,26 @@
+[build]
+builder = "dockerfile"
+dockerfilePath = "crates/myso-indexer-alt-orderbook/Dockerfile"
+
+[deploy]
+startCommand = '/bin/sh -c "EXTRA_ARGS=\"\"; [ -n \"$STREAMING_URL\" ] && EXTRA_ARGS=\"$EXTRA_ARGS --streaming-url $STREAMING_URL\"; [ -n \"${RPC_API_URL:-$RPC_URL}\" ] && EXTRA_ARGS=\"$EXTRA_ARGS --rpc-api-url ${RPC_API_URL:-$RPC_URL}\"; exec myso-orderbook-indexer --env ${ENV:-testnet} --metrics-address 0.0.0.0:${PORT:-9184} --database-url \"$DATABASE_URL\" $EXTRA_ARGS"'
+healthcheckPath = "/health"
+healthcheckTimeout = 300
+restartPolicyType = "on_failure"
+
+[deploy.envVars]
+PORT = { sync = false }
+
+[variables]
+# Environment (required: mainnet | testnet)
+ENV = "testnet"
+
+# Database Configuration
+DATABASE_URL = "${{Postgres.DATABASE_URL}}"
+
+# Logging configuration
+RUST_LOG = "info,myso_indexer_alt_orderbook=debug"
+
+# Blockchain Configuration - gRPC for streaming and ingestion fallback
+RPC_API_URL = "http://fullnode.testnet.mysocial.network:9000"
+STREAMING_URL = "http://fullnode.testnet.mysocial.network:9000"

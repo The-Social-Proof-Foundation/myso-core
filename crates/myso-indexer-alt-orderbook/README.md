@@ -1,79 +1,65 @@
-# DeepBook indexer - WIP
+# Orderbook Indexer
 
-The DeepBook Indexer uses myso-indexer-alt framework for indexing DeepBook move events. 
-It processes checkpoints from the MySo blockchain and extracts event data for use in 
-applications or analysis.
-
----
+The Orderbook Indexer uses the myso-indexer-alt framework to index Orderbook Move events from the MySo blockchain. It processes checkpoints and extracts event data for orders, trades, pools, margin trading, and governance.
 
 ## Getting Started
 
 ### Prerequisites
 
-Ensure that the following dependencies are installed:
+- **Rust** (latest stable)
+- **PostgreSQL** (13+)
 
-- **Rust** (latest stable version recommended)
-- **PostgreSQL** (version 13 or higher)
-
-### Installation
-
-Clone the repository:
+### Running Locally
 
 ```bash
-git clone https://github.com/MystenLabs/deepbookv3.git
-cd deepbookv3/crates/indexer
+DATABASE_URL="postgresql://user:pass@localhost/orderbook" \
+cargo run -p myso-indexer-alt-orderbook --bin myso-orderbook-indexer -- \
+  --env testnet \
+  --packages orderbook orderbook-margin
 ```
 
-### Running the Indexer
+### Parameters
 
-To run the DeepBook Indexer, you need to specify the environment and which packages to index:
+- `--env` (required) – MySo network:
+  - `testnet` – Development and testing
+  - `mainnet` – Production (margin trading not yet on mainnet)
 
-#### Basic Usage
+- `--packages` (optional, default: both) – Event types to index:
+  - `orderbook` – Core events (orders, trades, pools, governance)
+  - `orderbook-margin` – Margin events (lending, borrowing, liquidations)
+  - Example: `--packages orderbook orderbook-margin`
 
+- `--database-url` (optional) – PostgreSQL connection string. Also via `DATABASE_URL`.
+
+- `--metrics-address` (optional, default: `0.0.0.0:9184`) – Prometheus metrics and health endpoint.
+
+- `--streaming-url` (optional) – gRPC endpoint for checkpoint streaming. When unset, uses remote store HTTP ingestion.
+
+### Examples
+
+**Core Orderbook on testnet:**
 ```bash
-DATABASE_URL="postgresql://user:pass@localhost/test_db" \
-cargo run --package deepbook-indexer -- --env testnet --packages deepbook
+DATABASE_URL="postgresql://user:pass@localhost/orderbook" \
+cargo run -p myso-indexer-alt-orderbook --bin myso-orderbook-indexer -- \
+  --env testnet --packages orderbook
 ```
 
-#### Parameters
-
-- `--env` (required) – Choose the MYSO network environment:
-  - `testnet` – For development and testing
-  - `mainnet` – For production (note: margin trading not yet deployed on mainnet)
-
-- `--packages` (required) – Specify which event types to index:
-  - `deepbook` – Core DeepBook events (orders, trades, pools, governance)
-  - `deepbook-margin` – Margin trading events (lending, borrowing, liquidations)
-  - You can specify multiple packages: `--packages deepbook deepbook-margin`
-
-- `--database-url` (optional) – PostgreSQL connection string. Can also be set via `DATABASE_URL` environment variable.
-
-- `--metrics-address` (optional, default: `0.0.0.0:9184`) – Prometheus metrics endpoint address.
-
-#### Examples
-
-**Index only core DeepBook events on testnet:**
+**Core + margin on testnet:**
 ```bash
-DATABASE_URL="postgresql://user:pass@localhost/test_db" \
-cargo run --package deepbook-indexer -- --env testnet --packages deepbook
+DATABASE_URL="postgresql://user:pass@localhost/orderbook" \
+cargo run -p myso-indexer-alt-orderbook --bin myso-orderbook-indexer -- \
+  --env testnet --packages orderbook orderbook-margin
 ```
 
-**Index both core and margin events on testnet:**
+**With gRPC streaming:**
 ```bash
-DATABASE_URL="postgresql://user:pass@localhost/test_db" \
-cargo run --package deepbook-indexer -- --env testnet --packages deepbook deepbook-margin
+DATABASE_URL="postgresql://user:pass@localhost/orderbook" \
+cargo run -p myso-indexer-alt-orderbook --bin myso-orderbook-indexer -- \
+  --env testnet --streaming-url http://fullnode.testnet.mysocial.network:9000
 ```
 
-**Index only core events on mainnet:**
-```bash
-DATABASE_URL="postgresql://user:pass@localhost/test_db" \
-cargo run --package deepbook-indexer -- --env mainnet --packages deepbook
-```
+### Notes
 
-#### Important Notes
-
-- **Margin events on mainnet**: The margin trading package is not yet deployed on mainnet, so `--packages deepbook-margin` will fail on mainnet.
-- **Database migrations**: The indexer automatically runs database migrations on startup.
-- **Environment variable**: You can set `DATABASE_URL` as an environment variable instead of using the `--database-url` parameter.
-
----
+- **Mainnet margin**: `--packages orderbook-margin` is not supported on mainnet yet.
+- **Migrations**: Run automatically on startup.
+- **Health**: Metrics service exposes `/health` and `/metrics` on the metrics address.
