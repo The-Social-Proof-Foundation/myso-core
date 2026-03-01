@@ -136,28 +136,28 @@ async fn main() -> Result<(), anyhow::Error> {
         store.clone(),
     )))?;
 
-    // For testnet: GCS bucket uses epoch_N/X_Y.obj format, not N.binpb.zst.
-    // Use fullnode gRPC for checkpoint ingestion instead.
-    let ingestion = match env {
-        OrderbookEnv::Testnet => {
-            let rpc_url = match streaming_args.streaming_url.as_ref() {
-                Some(u) => Url::parse(&u.to_string())
-                    .context("Invalid streaming URL for testnet RPC")?,
-                None => {
-                    anyhow::bail!(
-                        "Testnet requires --streaming-url for checkpoint ingestion (e.g. http://fullnode.testnet.mysocial.network:9000)"
-                    );
-                }
-            };
-            IngestionClientArgs {
-                rpc_api_url: Some(rpc_url),
-                ..Default::default()
-            }
-        }
-        OrderbookEnv::Mainnet => IngestionClientArgs {
-            remote_store_url: Some(env.remote_store_url()),
+    // When streaming is configured, use gRPC GetCheckpoint for ingestion.
+    // This avoids remote store 404s and ensures we use the same endpoint for both streaming and ingestion.
+    // When streaming is not set, use env-specific remote store (testnet requires streaming_url).
+    let ingestion = if let Some(ref u) = streaming_args.streaming_url {
+        let rpc_url = Url::parse(&u.to_string())
+            .context("Invalid streaming URL for RPC")?;
+        IngestionClientArgs {
+            rpc_api_url: Some(rpc_url),
             ..Default::default()
-        },
+        }
+    } else {
+        match env {
+            OrderbookEnv::Testnet => {
+                anyhow::bail!(
+                    "Testnet requires --streaming-url for checkpoint ingestion (e.g. http://fullnode.testnet.mysocial.network:9000)"
+                );
+            }
+            OrderbookEnv::Mainnet => IngestionClientArgs {
+                remote_store_url: Some(env.remote_store_url()),
+                ..Default::default()
+            },
+        }
     };
 
     let mut indexer = Indexer::new(
