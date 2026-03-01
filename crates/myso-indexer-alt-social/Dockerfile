@@ -96,4 +96,4 @@ LABEL git-revision=$GIT_REVISION
 EXPOSE 8080
 
 # Use the entrypoint script
-ENTRYPOINT /usr/local/bin/entrypoint.sh
+ENTRYPOINT ["/usr/local/bin/entrypoint.sh"]
