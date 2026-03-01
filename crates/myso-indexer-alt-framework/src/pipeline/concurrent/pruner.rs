@@ -11,8 +11,9 @@ use myso_futures::service::Service;
 use tokio::sync::Semaphore;
 use tokio::time::MissedTickBehavior;
 use tokio::time::interval;
-use tracing::info;
+use tracing::debug;
 use tracing::error;
+use tracing::info;
 use tracing::warn;
 
 use crate::metrics::IndexerMetrics;
