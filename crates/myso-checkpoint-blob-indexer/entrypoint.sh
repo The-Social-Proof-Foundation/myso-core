@@ -54,7 +54,7 @@ set -- --gcs "$REMOTE_STORE_BUCKET" \
   --metrics-address "0.0.0.0:$METRICS_PORT"
 
 if [ -n "$STREAMING_URL" ]; then
-  set -- "$@" --streaming-url "$STREAMING_URL"
+  set -- "$@" --streaming-url "$STREAMING_URL" --rpc-api-url "$STREAMING_URL"
 else
   set -- "$@" --remote-store-url "$REMOTE_STORE_URL"
 fi
