@@ -18,8 +18,8 @@ RUST_LOG = "info,myso_bridge_indexer_alt=debug"
 # Postgres - set via Railway Postgres plugin (DATABASE_URL)
 # DATABASE_URL = "${{Postgres.DATABASE_URL}}"
 
-# Checkpoint store - MUST point to bucket where checkpoint-blob-indexer writes .binpb.zst files.
-# Use mysocial-testnet-archive (same as checkpoint-blob BUCKET), NOT mysocial-testnet-checkpoints.
+# Checkpoint store - only used when STREAMING_URL is not set. When streaming is set, gRPC GetCheckpoint
+# is used for ingestion fallback (no remote store needed). Use mysocial-testnet-archive for .binpb.zst.
 REMOTE_STORE_URL = "https://storage.googleapis.com/mysocial-testnet-archive"
 
 # gRPC streaming (optional, for faster ingestion)

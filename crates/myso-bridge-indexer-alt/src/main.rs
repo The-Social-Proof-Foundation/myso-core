@@ -69,16 +69,27 @@ async fn main() -> Result<(), anyhow::Error> {
 
     let metrics = MetricsService::new(MetricsArgs { metrics_address }, registry);
 
+    // When streaming is configured, use gRPC GetCheckpoint for ingestion fallback (when outside
+    // buffer). This avoids depending on checkpoint-blob-indexer/remote store. When streaming is not set, use remote_store_url for HTTP ingestion.
+    let ingestion_args = if let Some(ref url) = streaming_url {
+        IngestionClientArgs {
+            rpc_api_url: Some(url.clone()),
+            ..Default::default()
+        }
+    } else {
+        IngestionClientArgs {
+            remote_store_url: Some(remote_store_url),
+            ..Default::default()
+        }
+    };
+
     let metrics_prefix = None;
     let mut indexer = Indexer::new_from_pg(
         database_url,
         db_args,
         indexer_args,
         ClientArgs {
-            ingestion: IngestionClientArgs {
-                remote_store_url: Some(remote_store_url),
-                ..Default::default()
-            },
+            ingestion: ingestion_args,
             streaming: StreamingClientArgs {
                 streaming_url: streaming_url.and_then(|u| u.as_str().parse().ok()),
             },
