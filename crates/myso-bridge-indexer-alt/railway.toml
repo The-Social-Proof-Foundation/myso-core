@@ -3,6 +3,7 @@ builder = "dockerfile"
 dockerfilePath = "crates/myso-bridge-indexer-alt/Dockerfile"
 
 [deploy]
+startCommand = "/usr/local/bin/entrypoint.sh"
 healthcheckPath = "/metrics"
 healthcheckTimeout = 60
 restartPolicyType = "on_failure"
