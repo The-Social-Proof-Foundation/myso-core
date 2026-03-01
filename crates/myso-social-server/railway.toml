@@ -1,0 +1,15 @@
+[build]
+builder = "dockerfile"
+dockerfilePath = "crates/myso-social-server/Dockerfile"
+
+[deploy]
+healthcheckPath = "/health"
+healthcheckTimeout = 300
+restartPolicyType = "on_failure"
+
+[deploy.envVars]
+PORT = { sync = false }
+
+[variables]
+DATABASE_URL = "${{Postgres.DATABASE_URL}}"
+RUST_LOG = "info"

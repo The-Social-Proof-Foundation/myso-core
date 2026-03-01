@@ -3,17 +3,16 @@ version: '3.8'
 services:
   postgres:
     image: timescale/timescaledb:latest-pg15
-    container_name: myso-indexer-alt-social-db
+    container_name: myso-indexer-alt-orderbook-db
     restart: unless-stopped
     environment:
       POSTGRES_USER: postgres
       POSTGRES_PASSWORD: postgres
-      POSTGRES_DB: myso_social_indexer
+      POSTGRES_DB: orderbook
       TIMESCALEDB_TUNE_MAX_CONNECTIONS: "200"
       TIMESCALEDB_TUNE_MAX_MEMORY: "2GB"
     volumes:
-      - postgres_data:/var/lib/postgresql/data
-      - ./docker/init-scripts:/docker-entrypoint-initdb.d
+      - orderbook_postgres_data:/var/lib/postgresql/data
     ports:
       - "5432:5432"
     healthcheck:
@@ -25,42 +24,38 @@ services:
   indexer:
     build:
       context: ../..
-      dockerfile: crates/myso-indexer-alt-social/Dockerfile
-    container_name: myso-indexer-alt-social
+      dockerfile: crates/myso-indexer-alt-orderbook/Dockerfile
+    container_name: myso-indexer-alt-orderbook
     restart: unless-stopped
     depends_on:
       postgres:
         condition: service_healthy
     environment:
       - ENV=testnet
-      - PORT=8080
-      - DATABASE_URL=postgres://postgres:postgres@postgres:5432/myso_social_indexer
-      - DATABASE_MAX_CONNECTIONS=10
-      - SERVER_HOST=0.0.0.0
-      - SERVER_PORT=8080
+      - PORT=9184
+      - DATABASE_URL=postgres://postgres:postgres@postgres:5432/orderbook
       - STREAMING_URL=http://fullnode.testnet.mysocial.network:9000
       - RPC_API_URL=http://fullnode.testnet.mysocial.network:9000
-      - INDEXER_CONCURRENCY=5
-      - RUST_LOG=info,myso_social_indexer=debug
-      - PROFILE_PACKAGE_ADDRESS=0x00000000000000000000000000000000000000000000000000000000000050c1
+      - RUST_LOG=info,myso_indexer_alt_framework=warn,myso_indexer_alt_orderbook=info
     ports:
-      - "8080:8080"
+      - "9184:9184"
 
   server:
     build:
       context: ../..
-      dockerfile: crates/myso-social-server/Dockerfile
-    container_name: myso-social-server
+      dockerfile: crates/myso-orderbook-server/Dockerfile
+    container_name: myso-orderbook-server
     restart: unless-stopped
     depends_on:
       postgres:
         condition: service_healthy
     environment:
-      - PORT=9009
-      - DATABASE_URL=postgres://postgres:postgres@postgres:5432/myso_social_indexer
+      - PORT=9008
+      - DATABASE_URL=postgres://postgres:postgres@postgres:5432/orderbook
+      - RPC_URL=https://fullnode.testnet.mysocial.network:443
       - RUST_LOG=info
     ports:
-      - "9009:9009"
+      - "9008:9008"
 
 volumes:
-  postgres_data:
+  orderbook_postgres_data:

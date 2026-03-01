@@ -1,0 +1,16 @@
+[build]
+builder = "dockerfile"
+dockerfilePath = "crates/myso-orderbook-server/Dockerfile"
+
+[deploy]
+healthcheckPath = "/admin/health"
+healthcheckTimeout = 300
+restartPolicyType = "on_failure"
+
+[deploy.envVars]
+PORT = { sync = false }
+
+[variables]
+DATABASE_URL = "${{Postgres.DATABASE_URL}}"
+RPC_URL = "http://fullnode.testnet.mysocial.network:9000"
+RUST_LOG = "info"
