@@ -11,7 +11,7 @@ use serde::Deserialize;
 use serde::Serialize;
 use tokio::sync::SetOnce;
 use tokio::sync::mpsc;
-use tracing::debug;
+use tracing::info;
 
 use crate::Task;
 use crate::metrics::IndexerMetrics;
@@ -222,7 +222,7 @@ pub(crate) fn pipeline<H: Handler + Send + Sync + 'static>(
     commit_hi_tx: mpsc::UnboundedSender<(&'static str, u64)>,
     metrics: Arc<IndexerMetrics>,
 ) -> Service {
-    debug!(
+    info!(
         pipeline = H::NAME,
         "Starting pipeline with config: {config:#?}",
     );

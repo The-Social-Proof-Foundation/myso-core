@@ -73,7 +73,7 @@ pub(super) fn commit_watermark<H: Handler + 'static>(
             &metrics.watermark_checkpoint_in_db,
         );
 
-        debug!(
+        info!(
             pipeline = H::NAME,
             next_checkpoint, "Starting commit watermark task"
         );

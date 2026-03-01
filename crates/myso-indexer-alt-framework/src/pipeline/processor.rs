@@ -12,7 +12,6 @@ use myso_futures::stream::TrySpawnStreamExt;
 use myso_types::full_checkpoint_content::Checkpoint;
 use tokio::sync::mpsc;
 use tokio_stream::wrappers::ReceiverStream;
-use tracing::debug;
 use tracing::error;
 use tracing::info;
 
@@ -70,7 +69,7 @@ pub(super) fn processor<P: Processor>(
     metrics: Arc<IndexerMetrics>,
 ) -> Service {
     Service::new().spawn_aborting(async move {
-        debug!(pipeline = P::NAME, "Starting processor");
+        info!(pipeline = P::NAME, "Starting processor");
         let checkpoint_lag_reporter = CheckpointLagMetricReporter::new_for_pipeline::<P>(
             &metrics.processed_checkpoint_timestamp_lag,
             &metrics.latest_processed_checkpoint_timestamp_lag_ms,

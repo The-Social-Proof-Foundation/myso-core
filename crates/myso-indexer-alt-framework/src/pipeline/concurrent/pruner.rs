@@ -11,7 +11,7 @@ use myso_futures::service::Service;
 use tokio::sync::Semaphore;
 use tokio::time::MissedTickBehavior;
 use tokio::time::interval;
-use tracing::debug;
+use tracing::info;
 use tracing::error;
 use tracing::warn;
 
@@ -103,11 +103,11 @@ pub(super) fn pruner<H: Handler + Send + Sync + 'static>(
 ) -> Service {
     Service::new().spawn_aborting(async move {
         let Some(config) = config else {
-            debug!(pipeline = H::NAME, "Skipping pruner task");
+            info!(pipeline = H::NAME, "Skipping pruner task");
             return Ok(());
         };
 
-        debug!(
+        info!(
             pipeline = H::NAME,
             "Starting pruner with config: {:?}", config
         );

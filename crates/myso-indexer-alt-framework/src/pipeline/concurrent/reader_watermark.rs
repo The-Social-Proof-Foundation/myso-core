@@ -6,7 +6,6 @@ use std::sync::Arc;
 
 use myso_futures::service::Service;
 use tokio::time::interval;
-use tracing::debug;
 use tracing::info;
 use tracing::warn;
 
@@ -33,7 +32,7 @@ pub(super) fn reader_watermark<H: Handler + 'static>(
 ) -> Service {
     Service::new().spawn_aborting(async move {
         let Some(config) = config else {
-            debug!(pipeline = H::NAME, "Skipping reader watermark task");
+            info!(pipeline = H::NAME, "Skipping reader watermark task");
             return Ok(());
         };
 

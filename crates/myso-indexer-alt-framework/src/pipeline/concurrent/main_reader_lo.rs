@@ -11,7 +11,7 @@ use myso_futures::service::Service;
 use tokio::sync::SetOnce;
 use tokio::time::MissedTickBehavior;
 use tokio::time::interval;
-use tracing::debug;
+use tracing::info;
 use tracing::warn;
 
 use crate::pipeline::concurrent::Handler;
@@ -27,7 +27,7 @@ pub(super) fn track_main_reader_lo<H: Handler + 'static>(
 ) -> Service {
     Service::new().spawn_aborting(async move {
         let Some(reader_interval) = reader_interval else {
-            debug!(
+            info!(
                 pipeline = H::NAME,
                 "Not a tasked indexer, skipping main reader lo task"
             );
