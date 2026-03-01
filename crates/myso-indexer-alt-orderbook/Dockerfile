@@ -38,6 +38,10 @@ ENV LD_PRELOAD=/usr/lib/x86_64-linux-gnu/libjemalloc.so
 WORKDIR /app
 COPY --from=builder /app/target/release/myso-orderbook-indexer /usr/local/bin
 
+# Copy and install entrypoint script (ensures RUST_LOG, echoes to stdout for Railway log visibility)
+COPY crates/myso-indexer-alt-orderbook/entrypoint.sh /usr/local/bin/entrypoint.sh
+RUN chmod +x /usr/local/bin/entrypoint.sh
+
 ARG BUILD_DATE
 ARG GIT_REVISION
 LABEL build-date=$BUILD_DATE
@@ -46,4 +50,4 @@ LABEL git-revision=$GIT_REVISION
 # Expose metrics/health port
 EXPOSE 9184
 
-CMD ["myso-orderbook-indexer", "--env", "testnet", "--metrics-address", "0.0.0.0:9184"]
+ENTRYPOINT ["/usr/local/bin/entrypoint.sh"]

@@ -3,7 +3,6 @@ builder = "dockerfile"
 dockerfilePath = "crates/myso-indexer-alt-orderbook/Dockerfile"
 
 [deploy]
-startCommand = '/bin/sh -c "EXTRA_ARGS=\"\"; [ -n \"$STREAMING_URL\" ] && EXTRA_ARGS=\"$EXTRA_ARGS --streaming-url $STREAMING_URL\"; exec myso-orderbook-indexer --env ${ENV:-testnet} --metrics-address 0.0.0.0:${PORT:-9184} --database-url \"$DATABASE_URL\" $EXTRA_ARGS"'
 healthcheckPath = "/health"
 healthcheckTimeout = 300
 restartPolicyType = "on_failure"
