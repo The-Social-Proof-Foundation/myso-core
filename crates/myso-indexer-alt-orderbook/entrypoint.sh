@@ -18,6 +18,15 @@ else
   echo "STREAMING_URL not set, using HTTP checkpoint store"
 fi
 
+if [ -n "$REMOTE_STORE_URL" ]; then
+  set -- "$@" --remote-store-url "$REMOTE_STORE_URL"
+  echo "Using HTTP remote store: $REMOTE_STORE_URL"
+fi
+
+if [ -n "$FIRST_CHECKPOINT" ]; then
+  set -- "$@" --first-checkpoint "$FIRST_CHECKPOINT"
+fi
+
 echo "Starting: myso-orderbook-indexer $*"
 echo ""
 

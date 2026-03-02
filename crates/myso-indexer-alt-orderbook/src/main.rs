@@ -99,6 +99,9 @@ struct Args {
     /// Packages to index events for (can specify multiple)
     #[clap(long, value_enum, default_values = ["orderbook", "orderbook-margin"])]
     packages: Vec<Package>,
+    /// HTTP checkpoint store URL (optional). When set, used for ingestion instead of gRPC.
+    #[clap(long, env = "REMOTE_STORE_URL")]
+    remote_store_url: Option<Url>,
 }
 
 #[tokio::main]
@@ -115,6 +118,7 @@ async fn main() -> Result<(), anyhow::Error> {
         database_url,
         env,
         packages,
+        remote_store_url,
     } = Args::parse();
 
     let registry = Registry::new_custom(Some("orderbook".into()), None)
@@ -136,10 +140,12 @@ async fn main() -> Result<(), anyhow::Error> {
         store.clone(),
     )))?;
 
-    // When streaming is configured, use gRPC GetCheckpoint for ingestion.
-    // This avoids remote store 404s and ensures we use the same endpoint for both streaming and ingestion.
-    // When streaming is not set, use env-specific remote store (testnet requires streaming_url).
-    let ingestion = if let Some(ref u) = streaming_args.streaming_url {
+    let ingestion = if let Some(remote_url) = remote_store_url {
+        IngestionClientArgs {
+            remote_store_url: Some(remote_url),
+            ..Default::default()
+        }
+    } else if let Some(ref u) = streaming_args.streaming_url {
         let rpc_url = Url::parse(&u.to_string()).context("Invalid streaming URL for RPC")?;
         IngestionClientArgs {
             rpc_api_url: Some(rpc_url),
@@ -147,11 +153,11 @@ async fn main() -> Result<(), anyhow::Error> {
         }
     } else {
         match env {
-            OrderbookEnv::Testnet => {
-                anyhow::bail!(
-                    "Testnet requires --streaming-url for checkpoint ingestion (e.g. http://fullnode.testnet.mysocial.network:9000)"
-                );
-            }
+            OrderbookEnv::Testnet => anyhow::bail!(
+                "Testnet requires --streaming-url or --remote-store-url for checkpoint ingestion \
+                 (e.g. --streaming-url http://fullnode.testnet.mysocial.network:9000 or \
+                 --remote-store-url https://storage.googleapis.com/mysocial-testnet-checkpoint-blobs)"
+            ),
             OrderbookEnv::Mainnet => IngestionClientArgs {
                 remote_store_url: Some(env.remote_store_url()),
                 ..Default::default()
