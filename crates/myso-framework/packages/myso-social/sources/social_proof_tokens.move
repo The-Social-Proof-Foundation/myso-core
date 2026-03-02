@@ -7,7 +7,7 @@
 /// It includes fee distribution mechanisms for transactions, splitting between profile owner,
 /// platform, and ecosystem treasury.
 
-#[allow(unused_field, deprecated_usage, unused_const, duplicate_alias, unused_use)]
+#[allow(unused_field, deprecated_usage, unused_const, duplicate_alias, unused_use, lint(public_entry))]
 module social_contracts::social_proof_tokens {
     use std::string::{Self, String};
     use std::option::{Self, Option};

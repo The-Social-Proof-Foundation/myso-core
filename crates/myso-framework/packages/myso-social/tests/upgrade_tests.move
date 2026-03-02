@@ -20,10 +20,10 @@ module social_contracts::upgrade_tests {
         
         // Test with longer than 32 bytes
         let mut input_long = std::vector::empty<u8>();
-        let mut i = 0;
-        while (i < 64) {
+        let mut i = 0u64;
+        while (i < 64u64) {
             std::vector::push_back(&mut input_long, (i as u8));
-            i = i + 1;
+            i = i + 1u64;
         };
         let result_long = upgrade::create_test_digest(input_long);
         assert!(std::vector::length(&result_long) == 32, 0);
@@ -32,10 +32,10 @@ module social_contracts::upgrade_tests {
     /// Create a test 32-byte digest
     fun create_test_digest(): vector<u8> {
         let mut result = std::vector::empty<u8>();
-        let mut i = 0;
-        while (i < 32) {
+        let mut i = 0u64;
+        while (i < 32u64) {
             std::vector::push_back(&mut result, (i as u8));
-            i = i + 1;
+            i = i + 1u64;
         };
         result
     }

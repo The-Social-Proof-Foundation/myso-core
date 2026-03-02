@@ -465,7 +465,8 @@ pub struct ProfileUpdate {
     pub twitch_username: Option<String>,
     pub min_offer_amount: Option<i64>,
     pub username: Option<String>,
-    pub selected_badge_id: Option<String>,
+    pub selected_badge_id: Option<Option<String>>,
+    pub selected_ecosystem_badge_id: Option<Option<String>>,
     pub paid_messaging_enabled: Option<bool>,
     pub paid_messaging_min_cost: Option<i64>,
 }
@@ -696,7 +697,8 @@ impl Handler for SocialEvents {
                         twitch_username: up.twitch_username.clone().map(Some),
                         min_offer_amount: up.min_offer_amount.map(Some),
                         username: up.username.clone(),
-                        selected_badge_id: up.selected_badge_id.clone().map(Some),
+                        selected_badge_id: up.selected_badge_id.clone(),
+                        selected_ecosystem_badge_id: up.selected_ecosystem_badge_id.clone(),
                         paid_messaging_enabled: up.paid_messaging_enabled,
                         paid_messaging_min_cost: up.paid_messaging_min_cost.map(Some),
                     };

@@ -4,7 +4,7 @@
 /// Block list module for the MySocial network
 /// Manages user blocking between wallet addresses
 
-#[allow(duplicate_alias, unused_use)]
+#[allow(duplicate_alias, unused_use, lint(public_entry))]
 module social_contracts::block_list {
     use myso::{
         object::{Self, UID, ID},

@@ -521,6 +521,7 @@ fun otw_currency_promotion() {
     destroy(metadata_cap);
     destroy(currency);
     destroy(t_cap);
+    destroy(admin_cap);
     test.end();
 }
 
@@ -540,6 +541,7 @@ fun new_currency_is_shared() {
 
     destroy(registry);
     destroy(t_cap);
+    destroy(admin_cap);
 
     test.end();
 }
@@ -561,6 +563,7 @@ fun new_currency_is_shared_and_metadata_cap_is_deleted() {
 
     destroy(registry);
     destroy(t_cap);
+    destroy(admin_cap);
 
     test.end();
 }

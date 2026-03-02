@@ -5,7 +5,7 @@
 /// Manages the decentralized governance system with delegate council and community assembly
 /// Implements proposal submission, voting, and execution processes
 
-#[allow(duplicate_alias, unused_use)]
+#[allow(duplicate_alias, unused_use, lint(public_entry))]
 module social_contracts::governance {
     use std::string::{Self, String};
     

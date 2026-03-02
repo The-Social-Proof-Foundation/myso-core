@@ -240,6 +240,7 @@ impl ProfileCreatedEvent {
             social_proof_token_address: None,
             reservation_pool_address: None,
             selected_badge_id: None,
+            selected_ecosystem_badge_id: None,
             paid_messaging_enabled: false,
             paid_messaging_min_cost: None,
         }
@@ -376,6 +377,7 @@ fn process_profile_updated_event(
         min_offer_amount: ev.min_offer_amount,
         username: Some(ev.username),
         selected_badge_id: None,
+        selected_ecosystem_badge_id: None,
         paid_messaging_enabled: None,
         paid_messaging_min_cost: None,
     };
@@ -428,6 +430,7 @@ fn process_username_registered_event(data: &serde_json::Value) -> Option<Vec<Soc
         min_offer_amount: None,
         username: Some(ev.username),
         selected_badge_id: None,
+        selected_ecosystem_badge_id: None,
         paid_messaging_enabled: None,
         paid_messaging_min_cost: None,
     };
@@ -477,6 +480,7 @@ fn process_username_updated_event(data: &serde_json::Value) -> Option<Vec<Social
         min_offer_amount: None,
         username: Some(ev.new_username),
         selected_badge_id: None,
+        selected_ecosystem_badge_id: None,
         paid_messaging_enabled: None,
         paid_messaging_min_cost: None,
     };
@@ -630,6 +634,8 @@ fn process_badge_revoked_event(
     ])
 }
 
+const ECOSYSTEM_BADGE_PREFIX: &str = "ecosystem_badge_";
+
 /// Event emitted when a badge is selected. Ported from mys-indexer.
 #[derive(Debug, Clone, Deserialize)]
 struct BadgeSelectedEvent {
@@ -648,6 +654,13 @@ fn process_badge_selected_event(
     _event_id: &str,
 ) -> Option<Vec<SocialEventRow>> {
     let ev: BadgeSelectedEvent = serde_json::from_value(data.clone()).ok()?;
+    let (selected_badge_id, selected_ecosystem_badge_id) = if ev.badge_id.is_empty() {
+        (Some(None), None)
+    } else if ev.badge_id.starts_with(ECOSYSTEM_BADGE_PREFIX) {
+        (None, Some(Some(ev.badge_id)))
+    } else {
+        (Some(Some(ev.badge_id)), None)
+    };
     let up = ProfileUpdate {
         profile_id: ev.profile_id,
         owner_address: ev.selected_by,
@@ -675,7 +688,8 @@ fn process_badge_selected_event(
         twitch_username: None,
         min_offer_amount: None,
         username: None,
-        selected_badge_id: Some(ev.badge_id),
+        selected_badge_id,
+        selected_ecosystem_badge_id,
         paid_messaging_enabled: None,
         paid_messaging_min_cost: None,
     };
@@ -734,6 +748,7 @@ fn process_paid_messaging_settings_updated_event(
         min_offer_amount: None,
         username: None,
         selected_badge_id: None,
+        selected_ecosystem_badge_id: None,
         paid_messaging_enabled: Some(ev.enabled),
         paid_messaging_min_cost: ev.min_cost.map(|v| v as i64),
     };

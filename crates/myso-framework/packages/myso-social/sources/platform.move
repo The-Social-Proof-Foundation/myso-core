@@ -4,7 +4,7 @@
 /// Platform module for the MySocial network
 /// Manages social media platforms and their timelines
 
-#[allow(duplicate_alias, unused_use)]
+#[allow(duplicate_alias, unused_use, lint(public_entry))]
 module social_contracts::platform {
     use std::{string::{Self, String}, option, vector};
     

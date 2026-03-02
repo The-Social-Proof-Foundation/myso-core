@@ -79,6 +79,7 @@ pub struct Profile {
     pub social_proof_token_address: Option<String>,
     pub reservation_pool_address: Option<String>,
     pub selected_badge_id: Option<String>,
+    pub selected_ecosystem_badge_id: Option<String>,
     pub paid_messaging_enabled: bool,
     pub paid_messaging_min_cost: Option<i64>,
 }
@@ -122,6 +123,7 @@ pub struct NewProfile {
     pub social_proof_token_address: Option<String>,
     pub reservation_pool_address: Option<String>,
     pub selected_badge_id: Option<String>,
+    pub selected_ecosystem_badge_id: Option<String>,
     pub paid_messaging_enabled: bool,
     pub paid_messaging_min_cost: Option<i64>,
 }
@@ -231,6 +233,7 @@ pub struct ProfileUpdateSet {
     pub min_offer_amount: Option<Option<i64>>,
     pub username: Option<String>,
     pub selected_badge_id: Option<Option<String>>,
+    pub selected_ecosystem_badge_id: Option<Option<String>>,
     pub paid_messaging_enabled: Option<bool>,
     pub paid_messaging_min_cost: Option<Option<i64>>,
 }

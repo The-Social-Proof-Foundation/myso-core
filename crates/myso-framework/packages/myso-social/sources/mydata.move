@@ -5,7 +5,7 @@
 /// Supports both one-time purchases and subscription access
 /// Can be attached to posts (gated content) or profiles (data monetization)
 
-#[allow(duplicate_alias, unused_use, unused_const)]
+#[allow(duplicate_alias, unused_use, unused_const, lint(public_entry))]
 module social_contracts::mydata {
     use std::string::{Self, String};
     use std::option::{Self, Option};

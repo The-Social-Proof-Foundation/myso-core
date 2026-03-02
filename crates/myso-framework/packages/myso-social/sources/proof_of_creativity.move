@@ -5,7 +5,7 @@
 /// Manages content originality verification through oracle analysis,
 /// PoC badge issuance, revenue redirection, and community dispute voting
 
-#[allow(duplicate_alias, unused_use, unused_const, unused_variable)]
+#[allow(duplicate_alias, unused_use, unused_const, unused_variable, lint(public_entry))]
 module social_contracts::proof_of_creativity {
     use std::string::{Self, String};
     use std::option::{Self, Option};

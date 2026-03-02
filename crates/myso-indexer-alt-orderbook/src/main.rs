@@ -140,8 +140,7 @@ async fn main() -> Result<(), anyhow::Error> {
     // This avoids remote store 404s and ensures we use the same endpoint for both streaming and ingestion.
     // When streaming is not set, use env-specific remote store (testnet requires streaming_url).
     let ingestion = if let Some(ref u) = streaming_args.streaming_url {
-        let rpc_url = Url::parse(&u.to_string())
-            .context("Invalid streaming URL for RPC")?;
+        let rpc_url = Url::parse(&u.to_string()).context("Invalid streaming URL for RPC")?;
         IngestionClientArgs {
             rpc_api_url: Some(rpc_url),
             ..Default::default()

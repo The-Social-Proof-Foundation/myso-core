@@ -38,12 +38,12 @@ module social_contracts::governance_tests {
             let ctx = test_scenario::ctx(&mut scenario);
             
             // Test proposal details
-            let proposal_id = 1;
+            let proposal_id = 1u64;
             let description = string::utf8(PROPOSAL_DESCRIPTION);
             let creator = tx_context::sender(ctx);
             
             // Verify proposal basic properties
-            assert!(proposal_id == 1, 0);
+            assert!(proposal_id == 1u64, 0);
             assert!(string::length(&description) > 0, 1);
             assert!(creator == ADMIN, 2);
         };
@@ -454,12 +454,12 @@ module social_contracts::governance_tests {
             let submitter = tx_context::sender(ctx);
             
             // Simulate proposal creation
-            let status = 1; // STATUS_DELEGATE_REVIEW
+            let status = 1u8; // STATUS_DELEGATE_REVIEW
             let staked_amount = STAKE_AMOUNT;
             
             // Verify proposal initial state
             assert!(submitter == USER1, 0);
-            assert!(status == 1, 1); // In delegate review
+            assert!(status == 1u8, 1); // In delegate review
             assert!(staked_amount == STAKE_AMOUNT, 2);
         };
         
@@ -483,10 +483,10 @@ module social_contracts::governance_tests {
         test_scenario::next_tx(&mut scenario, USER1);
         {
             // Simulate proposal with incorrect status
-            let status = 2; // STATUS_COMMUNITY_VOTING - not in delegate review
+            let status = 2u8; // STATUS_COMMUNITY_VOTING - not in delegate review
             
             // Check status
-            let in_delegate_review = status == 1; // STATUS_DELEGATE_REVIEW
+            let in_delegate_review = status == 1u8; // STATUS_DELEGATE_REVIEW
             assert!(!in_delegate_review, 4); // Not in delegate review, should fail
             
             // In real implementation, this would abort with EInvalidProposalStatus
@@ -499,26 +499,26 @@ module social_contracts::governance_tests {
             let sender = tx_context::sender(ctx);
             
             // Simulate proposal data
-            let proposal_id = 1;
+            let proposal_id = 1u64;
             let submitter = USER1;
-            let mut status = 1; // STATUS_DELEGATE_REVIEW
+            let mut status = 1u8; // STATUS_DELEGATE_REVIEW
             let mut staked_amount = STAKE_AMOUNT;
             let current_time = tx_context::epoch_timestamp_ms(ctx);
             
             // Check authorization and status
             let is_owner = sender == submitter;
-            let in_delegate_review = status == 1; // STATUS_DELEGATE_REVIEW
-            
+            let in_delegate_review = status == 1u8; // STATUS_DELEGATE_REVIEW
+
             assert!(is_owner, 5);
             assert!(in_delegate_review, 6);
             
             // Perform rescind simulation
-            status = 6; // STATUS_OWNER_RESCIND
+            status = 6u8; // STATUS_OWNER_RESCIND
             let refund_amount = staked_amount;
             staked_amount = 0; // Tokens refunded
             
             // Verify post-rescind state
-            assert!(status == 6, 7); // Status updated to owner rescinded
+            assert!(status == 6u8, 7); // Status updated to owner rescinded
             assert!(staked_amount == 0, 8); // All tokens refunded
             assert!(refund_amount == STAKE_AMOUNT, 9);
             
@@ -538,10 +538,10 @@ module social_contracts::governance_tests {
         test_scenario::next_tx(&mut scenario, USER1);
         {
             // Simulate already rescinded proposal
-            let status = 6; // STATUS_OWNER_RESCIND
+            let status = 6u8; // STATUS_OWNER_RESCIND
             
             // Check status
-            let in_delegate_review = status == 1; // STATUS_DELEGATE_REVIEW
+            let in_delegate_review = status == 1u8; // STATUS_DELEGATE_REVIEW
             assert!(!in_delegate_review, 14); // Not in delegate review anymore
             
             // In real implementation, this would abort with EInvalidProposalStatus

@@ -7,7 +7,7 @@
 /// pro-rata payouts from the total escrow pool. Users can withdraw bets before resolution
 /// with the same fee structure as payouts. Time-based resolution windows are optional per record.
 
-#[allow(duplicate_alias, unused_use, unused_const, unused_variable, lint(self_transfer, share_owned))]
+#[allow(duplicate_alias, unused_use, unused_const, unused_variable, lint(self_transfer, share_owned, public_entry))]
 module social_contracts::social_proof_of_truth {
     use std::option::{Self, Option};
     use std::string::{Self, String};

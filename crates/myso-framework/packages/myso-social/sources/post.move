@@ -5,7 +5,7 @@
 /// Handles creation and management of posts and comments
 /// Implements features like comments, reposts, and quotes
 
-#[allow(duplicate_alias, unused_use, unused_const, unused_variable)]
+#[allow(duplicate_alias, unused_use, unused_const, unused_variable, lint(public_entry))]
 module social_contracts::post {
     use std::string::{Self, String};
     use std::option::{Self, Option};

@@ -4,7 +4,7 @@
 /// Social graph module for the MySocial network
 /// Manages social relationships between users (following/followers)
 
-#[allow(duplicate_alias, unused_use)]
+#[allow(duplicate_alias, unused_use, lint(public_entry))]
 module social_contracts::social_graph {
     use std::{string, option, vector};
     

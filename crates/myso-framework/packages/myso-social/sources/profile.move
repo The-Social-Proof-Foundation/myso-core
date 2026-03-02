@@ -4,7 +4,7 @@
 /// Profile module for the MySocial network
 /// Handles user identity, profile creation, management, and username registration
 
-#[allow(duplicate_alias)]
+#[allow(duplicate_alias, lint(public_entry))]
 module social_contracts::profile {
     use std::string::{Self, String};
     use std::ascii;
@@ -22,6 +22,7 @@ module social_contracts::profile {
         clock::{Self, Clock}
     };
     use myso::myso::MYSO;
+    use myso::address;
 
     use social_contracts::subscription::{Self, ProfileSubscriptionService, ProfileSubscription};
     
@@ -33,7 +34,6 @@ module social_contracts::profile {
     const EInvalidUsername: u64 = 2;
     const EReservedName: u64 = 4;
     const EUsernameNotAvailable: u64 = 5;
-    // New error codes for profile offers
     const EOfferAlreadyExists: u64 = 7;
     const EOfferDoesNotExist: u64 = 8;
     const ECannotOfferOwnProfile: u64 = 9;
@@ -43,7 +43,12 @@ module social_contracts::profile {
     const EBadgeNotFound: u64 = 13;
     const EBadgeAlreadyExists: u64 = 14;
     const ESelectedBadgeNotFound: u64 = 18;
-    // Vesting error codes
+    const EInvalidBadgeType: u64 = 19;
+    const EBadgeNameTooLong: u64 = 20;
+    const EBadgeDescriptionTooLong: u64 = 21;
+    const EBadgeMediaUrlTooLong: u64 = 22;
+    const EBadgeIconUrlTooLong: u64 = 23;
+    const ENotEcosystemBadge: u64 = 24;
     const EInvalidStartTime: u64 = 15;
     const ENotVestingWalletOwner: u64 = 16;
     const EOverflow: u64 = 17;
@@ -74,8 +79,19 @@ module social_contracts::profile {
     // Field name for offers dynamic field
     const OFFERS_FIELD: vector<u8> = b"profile_offers";
 
+    const MAX_BADGE_NAME_LENGTH: u64 = 100;
+    const MAX_BADGE_DESCRIPTION_LENGTH: u64 = 500;
+    const MAX_BADGE_MEDIA_URL_LENGTH: u64 = 2048;
+    const MAX_BADGE_ICON_URL_LENGTH: u64 = 2048;
+    const ECOSYSTEM_BADGE_PREFIX: vector<u8> = b"ecosystem_badge_";
+
     /// Admin capability for Ecosystem Treasury management
     public struct EcosystemTreasuryAdminCap has key, store {
+        id: UID,
+    }
+
+    /// Admin capability for assigning ecosystem badges to user profiles
+    public struct EcosystemBadgeAdminCap has key, store {
         id: UID,
     }
 
@@ -137,6 +153,9 @@ module social_contracts::profile {
         /// Badge ID of the selected/primary badge to display (optional)
         /// If None, the first badge in the badges vector should be displayed
         selected_badge_id: Option<String>,
+        /// Badge ID of the selected ecosystem badge to display (optional)
+        /// If None, the first ecosystem badge in the badges vector should be displayed
+        selected_ecosystem_badge_id: Option<String>,
         /// Paid messaging: minimum cost to send a message to this profile (optional)
         min_message_cost: Option<u64>,
         /// Paid messaging: toggle to enable/disable paid messaging
@@ -483,6 +502,35 @@ module social_contracts::profile {
         string::utf8(ascii::into_bytes(ascii_str))
     }
 
+    fun is_ecosystem_badge(badge_id: &String): bool {
+        let bytes = string::as_bytes(badge_id);
+        let prefix = ECOSYSTEM_BADGE_PREFIX;
+        let prefix_len = vector::length(&prefix);
+        if (vector::length(bytes) < prefix_len) {
+            return false
+        };
+        let mut i = 0;
+        while (i < prefix_len) {
+            if (*vector::borrow(bytes, i) != *vector::borrow(&prefix, i)) {
+                return false
+            };
+            i = i + 1;
+        };
+        true
+    }
+
+    fun copy_string(s: &String): String {
+        let bytes = string::as_bytes(s);
+        let len = vector::length(bytes);
+        let mut result = vector::empty<u8>();
+        let mut i = 0;
+        while (i < len) {
+            vector::push_back(&mut result, *vector::borrow(bytes, i));
+            i = i + 1;
+        };
+        string::utf8(result)
+    }
+
     // === Profile Creation and Management ===
 
     /// Create a new profile with a required username
@@ -556,6 +604,7 @@ module social_contracts::profile {
             min_offer_amount: option::none(),
             badges: vector::empty<ProfileBadge>(),
             selected_badge_id: option::none(),
+            selected_ecosystem_badge_id: option::none(),
             min_message_cost: option::none(),
             paid_messaging_enabled: false,
             version: upgrade::current_version(),
@@ -1184,6 +1233,72 @@ module social_contracts::profile {
         }
     }
 
+    /// Create an EcosystemBadgeAdminCap for bootstrap (package visibility only)
+    public(package) fun create_ecosystem_badge_admin_cap(ctx: &mut TxContext): EcosystemBadgeAdminCap {
+        EcosystemBadgeAdminCap {
+            id: object::new(ctx)
+        }
+    }
+
+    /// Assign an ecosystem badge to a profile - called by EcosystemBadgeAdminCap holder
+    public entry fun assign_ecosystem_badge(
+        _: &EcosystemBadgeAdminCap,
+        profile: &mut Profile,
+        badge_name: String,
+        badge_description: String,
+        badge_media_url: String,
+        badge_icon_url: String,
+        badge_type: u8,
+        ctx: &mut TxContext
+    ) {
+        assert!(badge_type >= 1 && badge_type <= 100, EInvalidBadgeType);
+        assert!(string::length(&badge_name) > 0 && string::length(&badge_name) <= MAX_BADGE_NAME_LENGTH, EBadgeNameTooLong);
+        assert!(string::length(&badge_description) <= MAX_BADGE_DESCRIPTION_LENGTH, EBadgeDescriptionTooLong);
+        assert!(string::length(&badge_media_url) > 0 && string::length(&badge_media_url) <= MAX_BADGE_MEDIA_URL_LENGTH, EBadgeMediaUrlTooLong);
+        assert!(string::length(&badge_icon_url) > 0 && string::length(&badge_icon_url) <= MAX_BADGE_ICON_URL_LENGTH, EBadgeIconUrlTooLong);
+
+        let issuer = tx_context::sender(ctx);
+        let now = tx_context::epoch(ctx);
+
+        let badge_name_for_id = copy_string(&badge_name);
+        let mut badge_id = string::utf8(ECOSYSTEM_BADGE_PREFIX);
+        let issuer_str = address::to_string(issuer);
+        string::append(&mut badge_id, issuer_str);
+        string::append(&mut badge_id, string::utf8(b"_"));
+        string::append(&mut badge_id, badge_name_for_id);
+
+        let badge_id_for_select = copy_string(&badge_id);
+
+        add_badge_to_profile(
+            profile,
+            badge_id,
+            badge_name,
+            badge_description,
+            badge_media_url,
+            badge_icon_url,
+            issuer,
+            now,
+            issuer,
+            badge_type
+        );
+
+        if (option::is_none(&profile.selected_ecosystem_badge_id)) {
+            profile.selected_ecosystem_badge_id = option::some(badge_id_for_select);
+        };
+    }
+
+    /// Revoke an ecosystem badge from a profile - called by EcosystemBadgeAdminCap holder
+    public entry fun revoke_ecosystem_badge(
+        _: &EcosystemBadgeAdminCap,
+        profile: &mut Profile,
+        badge_id: String,
+        ctx: &mut TxContext
+    ) {
+        let revoker = tx_context::sender(ctx);
+        let now = tx_context::epoch(ctx);
+        remove_badge_from_profile(profile, &badge_id, revoker, revoker, now);
+    }
+
     // Accessor for version field
     public fun version(registry: &UsernameRegistry): u64 {
         registry.version
@@ -1272,6 +1387,7 @@ module social_contracts::profile {
             min_offer_amount: option::none(),
             badges: vector::empty<ProfileBadge>(),
             selected_badge_id: option::none(),
+            selected_ecosystem_badge_id: option::none(),
             min_message_cost: option::none(),
             paid_messaging_enabled: false,
             version: upgrade::current_version(),
@@ -1392,6 +1508,12 @@ module social_contracts::profile {
                         profile.selected_badge_id = option::none();
                     };
                 };
+                if (option::is_some(&profile.selected_ecosystem_badge_id) && is_ecosystem_badge(badge_id)) {
+                    let selected_id = option::borrow(&profile.selected_ecosystem_badge_id);
+                    if (string::as_bytes(selected_id) == string::as_bytes(badge_id)) {
+                        profile.selected_ecosystem_badge_id = option::none();
+                    };
+                };
                 
                 // Emit badge revoked event
                 event::emit(BadgeRevokedEvent {
@@ -1445,6 +1567,12 @@ module social_contracts::profile {
                     let selected_id = option::borrow(&profile.selected_badge_id);
                     if (string::as_bytes(selected_id) == string::as_bytes(&badge_id)) {
                         profile.selected_badge_id = option::none();
+                    };
+                };
+                if (option::is_some(&profile.selected_ecosystem_badge_id) && is_ecosystem_badge(&badge_id)) {
+                    let selected_id = option::borrow(&profile.selected_ecosystem_badge_id);
+                    if (string::as_bytes(selected_id) == string::as_bytes(&badge_id)) {
+                        profile.selected_ecosystem_badge_id = option::none();
                     };
                 };
                 
@@ -1738,6 +1866,113 @@ module social_contracts::profile {
             event::emit(BadgeSelectedEvent {
                 profile_id: object::uid_to_address(&profile.id),
                 badge_id: string::utf8(b""), // Empty string indicates clearing
+                selected_by: sender,
+                selected_at: clock::timestamp_ms(clock),
+            });
+        };
+    }
+
+    /// Set the selected ecosystem badge to display for a profile (owner only)
+    /// The badge must exist and have the ecosystem_badge_ prefix
+    public fun set_selected_ecosystem_badge(
+        profile: &mut Profile,
+        badge_id: String,
+        clock: &Clock,
+        ctx: &mut TxContext
+    ) {
+        let sender = tx_context::sender(ctx);
+        assert!(profile.owner == sender, EUnauthorized);
+        assert!(is_ecosystem_badge(&badge_id), ENotEcosystemBadge);
+
+        let mut badge_exists = false;
+        let mut i = 0;
+        let len = vector::length(&profile.badges);
+        while (i < len) {
+            let badge = vector::borrow(&profile.badges, i);
+            if (string::as_bytes(&badge.badge_id) == string::as_bytes(&badge_id)) {
+                badge_exists = true;
+                break
+            };
+            i = i + 1;
+        };
+        assert!(badge_exists, ESelectedBadgeNotFound);
+
+        let badge_id_for_event = copy_string(&badge_id);
+        profile.selected_ecosystem_badge_id = option::some(badge_id);
+
+        event::emit(BadgeSelectedEvent {
+            profile_id: object::uid_to_address(&profile.id),
+            badge_id: badge_id_for_event,
+            selected_by: sender,
+            selected_at: clock::timestamp_ms(clock),
+        });
+    }
+
+    /// Get the selected ecosystem badge ID for a profile
+    public fun get_selected_ecosystem_badge_id(profile: &Profile): Option<String> {
+        profile.selected_ecosystem_badge_id
+    }
+
+    /// Get the ecosystem badge that should be displayed for a profile
+    /// Returns the selected ecosystem badge if one is set, otherwise the first ecosystem badge
+    /// Returns None if the profile has no ecosystem badges
+    public fun get_display_ecosystem_badge(profile: &Profile): Option<BadgeData> {
+        let mut ecosystem_badges = vector::empty<BadgeData>();
+        let mut i = 0;
+        let len = vector::length(&profile.badges);
+        while (i < len) {
+            let badge = vector::borrow(&profile.badges, i);
+            if (is_ecosystem_badge(&badge.badge_id)) {
+                vector::push_back(&mut ecosystem_badges, BadgeData {
+                    badge_id: badge.badge_id,
+                    name: badge.name,
+                    description: badge.description,
+                    media_url: badge.media_url,
+                    icon_url: badge.icon_url,
+                    platform_id: badge.platform_id,
+                    issued_at: badge.issued_at,
+                    issued_by: badge.issued_by,
+                    badge_type: badge.badge_type,
+                });
+            };
+            i = i + 1;
+        };
+
+        let count = vector::length(&ecosystem_badges);
+        if (count == 0) {
+            return option::none()
+        };
+
+        if (option::is_some(&profile.selected_ecosystem_badge_id)) {
+            let selected_id = option::borrow(&profile.selected_ecosystem_badge_id);
+            let mut j = 0;
+            while (j < count) {
+                let data = vector::borrow(&ecosystem_badges, j);
+                if (string::as_bytes(&data.badge_id) == string::as_bytes(selected_id)) {
+                    return option::some(*data)
+                };
+                j = j + 1;
+            };
+        };
+
+        let first = vector::borrow(&ecosystem_badges, 0);
+        option::some(*first)
+    }
+
+    /// Clear the selected ecosystem badge (owner only)
+    public fun clear_selected_ecosystem_badge(
+        profile: &mut Profile,
+        clock: &Clock,
+        ctx: &mut TxContext
+    ) {
+        let sender = tx_context::sender(ctx);
+        assert!(profile.owner == sender, EUnauthorized);
+
+        if (option::is_some(&profile.selected_ecosystem_badge_id)) {
+            profile.selected_ecosystem_badge_id = option::none();
+            event::emit(BadgeSelectedEvent {
+                profile_id: object::uid_to_address(&profile.id),
+                badge_id: string::utf8(b""),
                 selected_by: sender,
                 selected_at: clock::timestamp_ms(clock),
             });

@@ -5,7 +5,7 @@
 /// Stores only message digests (hashes) while keeping full content off-chain
 /// Features: idempotency, message ordering, replay protection, access control, rate limiting
 
-#[allow(unused_const, duplicate_alias)]
+#[allow(unused_const, duplicate_alias, lint(public_entry))]
 module social_contracts::message {
     use std::option::{Self, Option};
     use std::string;

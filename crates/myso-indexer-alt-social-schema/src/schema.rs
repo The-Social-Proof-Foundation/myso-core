@@ -53,6 +53,8 @@ diesel::table! {
         reservation_pool_address -> Nullable<Varchar>,
         // Selected badge ID - the badge currently selected for display
         selected_badge_id -> Nullable<Varchar>,
+        // Selected ecosystem badge ID - ecosystem badge for display (prefix ecosystem_badge_)
+        selected_ecosystem_badge_id -> Nullable<Varchar>,
         // Paid messaging settings
         paid_messaging_enabled -> Bool,
         paid_messaging_min_cost -> Nullable<BigInt>,

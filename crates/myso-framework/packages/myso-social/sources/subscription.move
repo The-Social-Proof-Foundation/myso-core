@@ -4,7 +4,7 @@
 /// Subscription module for the MySocial network
 /// Handles subscription services for profiles & MyData
 
-#[allow(duplicate_alias)]
+#[allow(duplicate_alias, lint(public_entry))]
 module social_contracts::subscription {
     use std::string;
     

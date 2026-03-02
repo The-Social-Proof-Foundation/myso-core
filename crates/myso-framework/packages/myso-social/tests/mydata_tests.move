@@ -5,8 +5,8 @@ module social_contracts::mydata_tests {
     use std::option;
     use std::vector;
     
+    use std::unit_test::assert_eq;
     use myso::test_scenario;
-    use myso::test_utils::assert_eq;
     use myso::transfer;
     use myso::coin::{Self, Coin};
     use myso::clock::{Self, Clock};
@@ -68,13 +68,13 @@ module social_contracts::mydata_tests {
             test_scenario::next_tx(&mut scenario, CREATOR);
             let mydata = test_scenario::take_shared<MyData>(&scenario);
             
-            assert_eq(mydata::owner(&mydata), CREATOR);
-            assert_eq(mydata::media_type(&mydata), string::utf8(b"data"));
-            assert_eq(mydata::one_time_price(&mydata), option::some(100));
-            assert_eq(mydata::subscription_price(&mydata), option::some(50));
-            assert_eq(mydata::subscription_duration_days(&mydata), 30);
-            assert_eq(mydata::is_one_time_for_sale(&mydata), true);
-            assert_eq(mydata::is_subscription_available(&mydata), true);
+            assert_eq!(mydata::owner(&mydata), CREATOR);
+            assert_eq!(mydata::media_type(&mydata), string::utf8(b"data"));
+            assert_eq!(mydata::one_time_price(&mydata), option::some(100));
+            assert_eq!(mydata::subscription_price(&mydata), option::some(50));
+            assert_eq!(mydata::subscription_duration_days(&mydata), 30);
+            assert_eq!(mydata::is_one_time_for_sale(&mydata), true);
+            assert_eq!(mydata::is_subscription_available(&mydata), true);
             
             test_scenario::return_shared(mydata);
         };
@@ -124,8 +124,8 @@ module social_contracts::mydata_tests {
             let mydata = test_scenario::take_shared<MyData>(&scenario);
             let clock = test_scenario::take_shared<Clock>(&scenario);
             
-            assert_eq(mydata::has_access(&mydata, BUYER, &clock), true);
-            assert_eq(mydata::has_access(&mydata, ANOTHER_USER, &clock), false);
+            assert_eq!(mydata::has_access(&mydata, BUYER, &clock), true);
+            assert_eq!(mydata::has_access(&mydata, ANOTHER_USER, &clock), false);
             
             test_scenario::return_shared(mydata);
             test_scenario::return_shared(clock);
@@ -176,9 +176,9 @@ module social_contracts::mydata_tests {
             let mydata = test_scenario::take_shared<MyData>(&scenario);
             let clock = test_scenario::take_shared<Clock>(&scenario);
             
-            assert_eq(mydata::has_access(&mydata, BUYER, &clock), true);
-            assert_eq(mydata::has_active_subscription(&mydata, BUYER, &clock), true);
-            assert_eq(mydata::has_access(&mydata, ANOTHER_USER, &clock), false);
+            assert_eq!(mydata::has_access(&mydata, BUYER, &clock), true);
+            assert_eq!(mydata::has_active_subscription(&mydata, BUYER, &clock), true);
+            assert_eq!(mydata::has_access(&mydata, ANOTHER_USER, &clock), false);
             
             test_scenario::return_shared(mydata);
             test_scenario::return_shared(clock);
@@ -211,9 +211,9 @@ module social_contracts::mydata_tests {
             );
             
             // Verify pricing was updated
-            assert_eq(mydata::one_time_price(&mydata), option::some(150));
-            assert_eq(mydata::subscription_price(&mydata), option::some(75));
-            assert_eq(mydata::subscription_duration_days(&mydata), 60);
+            assert_eq!(mydata::one_time_price(&mydata), option::some(150));
+            assert_eq!(mydata::subscription_price(&mydata), option::some(75));
+            assert_eq!(mydata::subscription_duration_days(&mydata), 60);
             
             test_scenario::return_shared(mydata);
             test_scenario::return_shared(clock);
@@ -258,7 +258,7 @@ module social_contracts::mydata_tests {
             let mydata = test_scenario::take_shared<MyData>(&scenario);
             let clock = test_scenario::take_shared<Clock>(&scenario);
             
-            assert_eq(mydata::has_access(&mydata, BUYER, &clock), true);
+            assert_eq!(mydata::has_access(&mydata, BUYER, &clock), true);
             
             test_scenario::return_shared(mydata);
             test_scenario::return_shared(clock);
@@ -281,9 +281,9 @@ module social_contracts::mydata_tests {
             let mydata = test_scenario::take_shared<MyData>(&scenario);
             let clock = test_scenario::take_shared<Clock>(&scenario);
             
-            assert_eq(mydata::has_access(&mydata, CREATOR, &clock), true);
-            assert_eq(mydata::has_access(&mydata, BUYER, &clock), false);
-            assert_eq(mydata::has_access(&mydata, ANOTHER_USER, &clock), false);
+            assert_eq!(mydata::has_access(&mydata, CREATOR, &clock), true);
+            assert_eq!(mydata::has_access(&mydata, BUYER, &clock), false);
+            assert_eq!(mydata::has_access(&mydata, ANOTHER_USER, &clock), false);
             
             test_scenario::return_shared(mydata);
             test_scenario::return_shared(clock);

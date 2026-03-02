@@ -4,7 +4,7 @@
 /// Insurance module for SPoT positions
 /// Sells coverage against losing outcomes and pays out deterministically on SPoT resolution.
 
-#[allow(duplicate_alias, unused_use, unused_const, unused_variable, lint(self_transfer, share_owned))]
+#[allow(duplicate_alias, unused_use, unused_const, unused_variable, lint(self_transfer, share_owned, public_entry))]
 module social_contracts::insurance {
     use std::option::{Self, Option};
     use std::vector;
