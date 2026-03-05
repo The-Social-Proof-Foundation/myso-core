@@ -5,51 +5,47 @@
 use anyhow::Result;
 use async_trait::async_trait;
 use chrono::Utc;
-use clickhouse::{Client, Row};
+use clickhouse_native_client::ClientOptions;
 use scoped_futures::ScopedBoxFuture;
-use serde::{Deserialize, Serialize};
+use std::sync::Arc;
 use std::time::Duration;
 use myso_indexer_alt_framework::store::{
     CommitterWatermark, Connection, PrunerWatermark, ReaderWatermark, Store, TransactionalStore,
 };
-use url::Url;
+
+use crate::block_conv::{block_to_checkpoint, block_to_committer_watermark, block_to_reader_watermark,
+                        block_to_pruner_watermark, watermark_row_to_block, WatermarkRow};
+use crate::native_bridge::NativeClientBridge;
 
 #[derive(Clone)]
 pub struct ClickHouseStore {
-    client: Client,
+    bridge: Arc<NativeClientBridge>,
 }
 
 pub struct ClickHouseConnection {
-    pub client: Client,
-}
-
-/// Row structure for watermark table operations
-#[derive(Row, Serialize, Deserialize, Debug, Default)]
-struct WatermarkRow {
-    pipeline_task: String,
-    epoch_hi_inclusive: u64,
-    checkpoint_hi_inclusive: u64,
-    tx_hi: u64,
-    timestamp_ms_hi_inclusive: u64,
-    reader_lo: u64,
-    pruner_hi: u64,
-    pruner_timestamp: u64, // Unix timestamp in milliseconds
+    pub bridge: Arc<NativeClientBridge>,
 }
 
 impl ClickHouseStore {
-    pub fn new(url: Url) -> Self {
-        let client = Client::default()
-            .with_url(url.as_str())
-            .with_user("dev") // Simple user for local development
-            .with_compression(clickhouse::Compression::Lz4);
-        Self { client }
+    pub fn new(host: &str, port: u16, user: &str) -> Self {
+        let opts = Self::client_options(host, port, user);
+        let bridge = NativeClientBridge::new(opts).expect("ClickHouse connection");
+        Self {
+            bridge: Arc::new(bridge),
+        }
+    }
+
+    fn client_options(host: &str, port: u16, user: &str) -> ClientOptions {
+        ClientOptions::new(host.to_string(), port)
+            .database("default")
+            .user(user.to_string())
+            .compression(None)
     }
 
     /// Create tables if they don't exist
     pub async fn create_tables_if_not_exists(&self) -> Result<()> {
-        // Create watermarks table for pipeline state management
-        self.client
-            .query(
+        self.bridge
+            .execute(
                 "
                 CREATE TABLE IF NOT EXISTS watermarks
                 (
@@ -66,26 +62,45 @@ impl ClickHouseStore {
                 ORDER BY pipeline
                 ",
             )
-            .execute()
             .await?;
 
-        // Create transactions table for the actual indexing data
-        self.client
-            .query(
+        self.bridge
+            .execute(
                 "
                 CREATE TABLE IF NOT EXISTS transactions
                 (
                     checkpoint_sequence_number UInt64,
                     transaction_digest String,
+                    sender String,
+                    timestamp_ms Int64,
+                    tx_kind LowCardinality(String),
+                    gas_computation_cost UInt64,
+                    gas_storage_cost UInt64,
+                    gas_storage_rebate UInt64,
+                    status UInt8,
+                    epoch UInt64,
+                    gas_price UInt64,
+                    gas_budget UInt64,
+                    gas_owner String,
+                    is_sponsored UInt8,
+                    created_objects UInt32,
+                    mutated_objects UInt32,
+                    execution_error Nullable(String),
                     indexed_at DateTime64(3, 'UTC') DEFAULT now()
                 )
                 ENGINE = MergeTree()
-                ORDER BY checkpoint_sequence_number
+                ORDER BY (checkpoint_sequence_number, transaction_digest)
                 ",
             )
-            .execute()
             .await?;
 
+        Ok(())
+    }
+
+    /// Drop watermarks and transactions tables for a clean reset.
+    pub async fn reset_tables(&self) -> Result<()> {
+        self.bridge.execute("DROP TABLE IF EXISTS watermarks").await?;
+        self.bridge.execute("DROP TABLE IF EXISTS transactions").await?;
         Ok(())
     }
 }
@@ -96,7 +111,7 @@ impl Store for ClickHouseStore {
 
     async fn connect<'c>(&'c self) -> Result<Self::Connection<'c>> {
         Ok(ClickHouseConnection {
-            client: self.client.clone(),
+            bridge: self.bridge.clone(),
         })
     }
 }
@@ -116,6 +131,10 @@ impl TransactionalStore for ClickHouseStore {
     }
 }
 
+fn escape_sql_string(s: &str) -> String {
+    s.replace('\\', "\\\\").replace('\'', "\\'")
+}
+
 #[async_trait]
 impl Connection for ClickHouseConnection {
     async fn init_watermark(
@@ -133,9 +152,8 @@ impl Connection for ClickHouseConnection {
             return Ok(Some(existing.checkpoint_hi_inclusive));
         }
 
-        let mut inserter = self.client.inserter("watermarks")?;
-        inserter.write(&WatermarkRow {
-            pipeline_task: pipeline_task.to_string(),
+        let block = watermark_row_to_block(WatermarkRow {
+            pipeline: pipeline_task.to_string(),
             epoch_hi_inclusive: 0,
             checkpoint_hi_inclusive,
             tx_hi: 0,
@@ -144,56 +162,59 @@ impl Connection for ClickHouseConnection {
             pruner_hi: default_next_checkpoint,
             pruner_timestamp: 0,
         })?;
-
-        inserter.end().await?;
+        self.bridge.insert("watermarks", block).await?;
         Ok(Some(checkpoint_hi_inclusive))
     }
 
     async fn committer_watermark(&mut self, pipeline: &str) -> Result<Option<CommitterWatermark>> {
-        let mut cursor = self
-            .client
-            .query(
-                "SELECT epoch_hi_inclusive, checkpoint_hi_inclusive, tx_hi, timestamp_ms_hi_inclusive
-                 FROM watermarks
-                 WHERE pipeline = ?
-                 ORDER BY pruner_timestamp DESC
-                 LIMIT 1"
-            )
-            .bind(pipeline)
-            .fetch::<(u64, u64, u64, u64)>()?;
-
-        let row: Option<(u64, u64, u64, u64)> = cursor.next().await?;
-        Ok(row.map(
-            |(epoch_hi, checkpoint_hi, tx_hi, timestamp_hi)| CommitterWatermark {
-                epoch_hi_inclusive: epoch_hi,
-                checkpoint_hi_inclusive: checkpoint_hi,
-                tx_hi,
-                timestamp_ms_hi_inclusive: timestamp_hi,
-            },
-        ))
+        let escaped = escape_sql_string(pipeline);
+        let query = format!(
+            "SELECT epoch_hi_inclusive, checkpoint_hi_inclusive, tx_hi, timestamp_ms_hi_inclusive
+             FROM watermarks
+             WHERE pipeline = '{}'
+             ORDER BY pruner_timestamp DESC
+             LIMIT 1",
+            escaped
+        );
+        let result = self.bridge.query(&query).await?;
+        for block in &result.blocks {
+            if let Some((epoch_hi, checkpoint_hi, tx_hi, timestamp_hi)) =
+                block_to_committer_watermark(block)
+            {
+                return Ok(Some(CommitterWatermark {
+                    epoch_hi_inclusive: epoch_hi,
+                    checkpoint_hi_inclusive: checkpoint_hi,
+                    tx_hi,
+                    timestamp_ms_hi_inclusive: timestamp_hi,
+                }));
+            }
+        }
+        Ok(None)
     }
 
     async fn reader_watermark(
         &mut self,
         pipeline: &'static str,
     ) -> Result<Option<ReaderWatermark>> {
-        let mut cursor = self
-            .client
-            .query(
-                "SELECT checkpoint_hi_inclusive, reader_lo
-                 FROM watermarks
-                 WHERE pipeline = ?
-                 ORDER BY pruner_timestamp DESC
-                 LIMIT 1",
-            )
-            .bind(pipeline)
-            .fetch::<(u64, u64)>()?;
-
-        let row: Option<(u64, u64)> = cursor.next().await?;
-        Ok(row.map(|(checkpoint_hi, reader_lo)| ReaderWatermark {
-            checkpoint_hi_inclusive: checkpoint_hi,
-            reader_lo,
-        }))
+        let escaped = escape_sql_string(pipeline);
+        let query = format!(
+            "SELECT checkpoint_hi_inclusive, reader_lo
+             FROM watermarks
+             WHERE pipeline = '{}'
+             ORDER BY pruner_timestamp DESC
+             LIMIT 1",
+            escaped
+        );
+        let result = self.bridge.query(&query).await?;
+        for block in &result.blocks {
+            if let Some((checkpoint_hi, reader_lo)) = block_to_reader_watermark(block) {
+                return Ok(Some(ReaderWatermark {
+                    checkpoint_hi_inclusive: checkpoint_hi,
+                    reader_lo,
+                }));
+            }
+        }
+        Ok(None)
     }
 
     async fn pruner_watermark(
@@ -201,32 +222,28 @@ impl Connection for ClickHouseConnection {
         pipeline: &'static str,
         delay: Duration,
     ) -> Result<Option<PrunerWatermark>> {
-        // Follow PostgreSQL pattern: calculate wait_for_ms on database side
-        // We do this so that we can rely on the database to keep a consistent sense of time.
-        // Using own clocks can potentially be subject to some clock skew.
         let delay_ms = delay.as_millis() as i64;
-        let mut cursor = self
-            .client
-            .query(
-                "SELECT reader_lo, pruner_hi,
-                        toInt64(? + (pruner_timestamp - toUnixTimestamp64Milli(now64()))) as wait_for_ms
-                 FROM watermarks
-                 WHERE pipeline = ?
-                 ORDER BY pruner_timestamp DESC
-                 LIMIT 1"
-            )
-            .bind(delay_ms)
-            .bind(pipeline)
-            .fetch::<(u64, u64, i64)>()?;
-
-        let row: Option<(u64, u64, i64)> = cursor.next().await?;
-        Ok(
-            row.map(|(reader_lo, pruner_hi, wait_for_ms)| PrunerWatermark {
-                wait_for_ms,
-                reader_lo,
-                pruner_hi,
-            }),
-        )
+        let escaped = escape_sql_string(pipeline);
+        let query = format!(
+            "SELECT reader_lo, pruner_hi,
+                    toInt64({} + (pruner_timestamp - toUnixTimestamp64Milli(now64()))) as wait_for_ms
+             FROM watermarks
+             WHERE pipeline = '{}'
+             ORDER BY pruner_timestamp DESC
+             LIMIT 1",
+            delay_ms, escaped
+        );
+        let result = self.bridge.query(&query).await?;
+        for block in &result.blocks {
+            if let Some((reader_lo, pruner_hi, wait_for_ms)) = block_to_pruner_watermark(block) {
+                return Ok(Some(PrunerWatermark {
+                    wait_for_ms,
+                    reader_lo,
+                    pruner_hi,
+                }));
+            }
+        }
+        Ok(None)
     }
 
     async fn set_committer_watermark(
@@ -234,52 +251,43 @@ impl Connection for ClickHouseConnection {
         pipeline: &str,
         watermark: CommitterWatermark,
     ) -> Result<bool> {
-        // Follow PostgreSQL pattern: check if row exists, then UPDATE or INSERT accordingly
-
-        // First check if pipeline exists and get current checkpoint
-        let mut cursor = self
-            .client
-            .query("SELECT checkpoint_hi_inclusive FROM watermarks WHERE pipeline = ? LIMIT 1")
-            .bind(pipeline)
-            .fetch::<u64>()?;
-
-        let existing_checkpoint: Option<u64> = cursor.next().await?;
+        let escaped = escape_sql_string(pipeline);
+        let check_query = format!(
+            "SELECT checkpoint_hi_inclusive FROM watermarks WHERE pipeline = '{}' LIMIT 1",
+            escaped
+        );
+        let result = self.bridge.query(&check_query).await?;
+        let existing_checkpoint = result.blocks.first().and_then(block_to_checkpoint);
 
         if let Some(existing_checkpoint) = existing_checkpoint {
-            // Row exists - only update if checkpoint advances
             if existing_checkpoint < watermark.checkpoint_hi_inclusive {
-                self.client
-                    .query(
-                        "ALTER TABLE watermarks
-                         UPDATE
-                             epoch_hi_inclusive = ?,
-                             checkpoint_hi_inclusive = ?,
-                             tx_hi = ?,
-                             timestamp_ms_hi_inclusive = ?
-                         WHERE pipeline = ?",
-                    )
-                    .bind(watermark.epoch_hi_inclusive)
-                    .bind(watermark.checkpoint_hi_inclusive)
-                    .bind(watermark.tx_hi)
-                    .bind(watermark.timestamp_ms_hi_inclusive)
-                    .bind(pipeline)
-                    .execute()
-                    .await?;
+                let update = format!(
+                    "ALTER TABLE watermarks UPDATE
+                     epoch_hi_inclusive = {},
+                     checkpoint_hi_inclusive = {},
+                     tx_hi = {},
+                     timestamp_ms_hi_inclusive = {}
+                 WHERE pipeline = '{}'",
+                    watermark.epoch_hi_inclusive,
+                    watermark.checkpoint_hi_inclusive,
+                    watermark.tx_hi,
+                    watermark.timestamp_ms_hi_inclusive,
+                    escaped
+                );
+                self.bridge.execute(&update).await?;
             }
         } else {
-            // No existing row - insert new one
-            let mut inserter = self.client.inserter("watermarks")?;
-            inserter.write(&WatermarkRow {
-                pipeline_task: pipeline.to_string(),
+            let block = watermark_row_to_block(WatermarkRow {
+                pipeline: pipeline.to_string(),
                 epoch_hi_inclusive: watermark.epoch_hi_inclusive,
                 checkpoint_hi_inclusive: watermark.checkpoint_hi_inclusive,
                 tx_hi: watermark.tx_hi,
                 timestamp_ms_hi_inclusive: watermark.timestamp_ms_hi_inclusive,
-                reader_lo: 0, // Will be updated by reader
-                pruner_hi: 0, // Will be updated by pruner
+                reader_lo: 0,
+                pruner_hi: 0,
                 pruner_timestamp: Utc::now().timestamp_millis() as u64,
             })?;
-            inserter.end().await?;
+            self.bridge.insert("watermarks", block).await?;
         }
 
         Ok(true)
@@ -290,19 +298,14 @@ impl Connection for ClickHouseConnection {
         pipeline: &'static str,
         reader_lo: u64,
     ) -> Result<bool> {
-        // Follow PostgreSQL pattern: simple UPDATE with timestamp update and advancement check
-        self.client
-            .query(
-                "ALTER TABLE watermarks
-                 UPDATE reader_lo = ?, pruner_timestamp = toUnixTimestamp64Milli(now64())
-                 WHERE pipeline = ? AND reader_lo < ?",
-            )
-            .bind(reader_lo)
-            .bind(pipeline)
-            .bind(reader_lo)
-            .execute()
-            .await?;
-
+        let escaped = escape_sql_string(pipeline);
+        let update = format!(
+            "ALTER TABLE watermarks
+             UPDATE reader_lo = {}, pruner_timestamp = toUnixTimestamp64Milli(now64())
+             WHERE pipeline = '{}' AND reader_lo < {}",
+            reader_lo, escaped, reader_lo
+        );
+        self.bridge.execute(&update).await?;
         Ok(true)
     }
 
@@ -311,18 +314,12 @@ impl Connection for ClickHouseConnection {
         pipeline: &'static str,
         pruner_hi: u64,
     ) -> Result<bool> {
-        // Follow PostgreSQL pattern: simple UPDATE statement
-        self.client
-            .query(
-                "ALTER TABLE watermarks
-                 UPDATE pruner_hi = ?
-                 WHERE pipeline = ?",
-            )
-            .bind(pruner_hi)
-            .bind(pipeline)
-            .execute()
-            .await?;
-
+        let escaped = escape_sql_string(pipeline);
+        let update = format!(
+            "ALTER TABLE watermarks UPDATE pruner_hi = {} WHERE pipeline = '{}'",
+            pruner_hi, escaped
+        );
+        self.bridge.execute(&update).await?;
         Ok(true)
     }
 }

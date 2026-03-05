@@ -325,7 +325,7 @@ checksum = "c3ac9f8b63eca6fd385229b3675f6cc0dc5c8a5c8a54a59d4f52ffd670d87b0c"
 
 [[package]]
 name = "bytecode-interpreter-crypto"
-version = "0.1.0"
+version = "0.0.1"
 dependencies = [
  "anyhow",
  "curve25519-dalek-fiat",
@@ -336,7 +336,7 @@ dependencies = [
 
 [[package]]
 name = "bytecode-verifier-libfuzzer"
-version = "0.0.0"
+version = "0.0.1"
 dependencies = [
  "arbitrary",
  "libfuzzer-sys",
@@ -347,7 +347,7 @@ dependencies = [
 
 [[package]]
 name = "bytecode-verifier-prop-tests"
-version = "0.1.0"
+version = "0.0.1"
 dependencies = [
  "fail",
  "hex",
@@ -363,7 +363,7 @@ dependencies = [
 
 [[package]]
 name = "bytecode-verifier-tests"
-version = "0.1.0"
+version = "0.0.1"
 dependencies = [
  "fail",
  "hex",
@@ -378,7 +378,7 @@ dependencies = [
 
 [[package]]
 name = "bytecode-verifier-tests-v0"
-version = "0.1.0"
+version = "0.0.1"
 dependencies = [
  "fail",
  "hex",
@@ -393,7 +393,7 @@ dependencies = [
 
 [[package]]
 name = "bytecode-verifier-tests-v1"
-version = "0.1.0"
+version = "0.0.1"
 dependencies = [
  "fail",
  "hex",
@@ -408,7 +408,7 @@ dependencies = [
 
 [[package]]
 name = "bytecode-verifier-tests-v2"
-version = "0.1.0"
+version = "0.0.1"
 dependencies = [
  "fail",
  "hex",
@@ -423,7 +423,7 @@ dependencies = [
 
 [[package]]
 name = "bytecode-verifier-transactional-tests"
-version = "0.1.0"
+version = "0.0.1"
 dependencies = [
  "datatest-stable",
  "move-transactional-test-runner",
@@ -1013,7 +1013,7 @@ checksum = "34aa73646ffb006b8f5147f3dc182bd4bcb190227ce861fc4a4844bf8e3cb2c0"
 
 [[package]]
 name = "enum-compat-util"
-version = "0.1.0"
+version = "0.0.1"
 dependencies = [
  "serde_yaml",
 ]
@@ -1686,7 +1686,7 @@ dependencies = [
 
 [[package]]
 name = "invalid-mutations"
-version = "0.1.0"
+version = "0.0.1"
 dependencies = [
  "move-binary-format",
  "move-core-types",
@@ -1761,7 +1761,7 @@ checksum = "9dbbfed4e59ba9750e15ba154fdfd9329cee16ff3df539c2666b70f58cc32105"
 
 [[package]]
 name = "jsonrpc"
-version = "0.1.0"
+version = "0.0.1"
 dependencies = [
  "serde",
  "serde_json",
@@ -1782,7 +1782,7 @@ dependencies = [
 
 [[package]]
 name = "language-benchmarks"
-version = "0.1.0"
+version = "0.0.1"
 dependencies = [
  "criterion",
  "move-binary-format",
@@ -1991,7 +1991,7 @@ dependencies = [
 
 [[package]]
 name = "module-generation"
-version = "0.1.0"
+version = "0.0.1"
 dependencies = [
  "move-binary-format",
  "move-bytecode-verifier",
@@ -2004,14 +2004,14 @@ dependencies = [
 
 [[package]]
 name = "move-abstract-interpreter"
-version = "0.1.0"
+version = "0.0.1"
 dependencies = [
  "itertools 0.10.5",
 ]
 
 [[package]]
 name = "move-abstract-interpreter-v2"
-version = "0.1.0"
+version = "0.0.1"
 dependencies = [
  "move-binary-format",
 ]
@@ -2022,7 +2022,7 @@ version = "0.0.1"
 
 [[package]]
 name = "move-analyzer"
-version = "1.0.0"
+version = "0.0.1"
 dependencies = [
  "anyhow",
  "clap 4.5.28",
@@ -2057,7 +2057,7 @@ dependencies = [
 
 [[package]]
 name = "move-binary-format"
-version = "0.0.3"
+version = "0.0.1"
 dependencies = [
  "anyhow",
  "arbitrary",
@@ -2081,7 +2081,7 @@ version = "0.0.1"
 
 [[package]]
 name = "move-bytecode-source-map"
-version = "0.1.0"
+version = "0.0.1"
 dependencies = [
  "anyhow",
  "bcs",
@@ -2096,7 +2096,7 @@ dependencies = [
 
 [[package]]
 name = "move-bytecode-utils"
-version = "0.1.0"
+version = "0.0.1"
 dependencies = [
  "anyhow",
  "indexmap 2.8.0",
@@ -2108,7 +2108,7 @@ dependencies = [
 
 [[package]]
 name = "move-bytecode-verifier"
-version = "0.1.0"
+version = "0.0.1"
 dependencies = [
  "hex-literal",
  "move-abstract-interpreter",
@@ -2125,7 +2125,7 @@ dependencies = [
 
 [[package]]
 name = "move-bytecode-verifier-meter"
-version = "0.1.0"
+version = "0.0.1"
 dependencies = [
  "move-binary-format",
  "move-core-types",
@@ -2134,7 +2134,7 @@ dependencies = [
 
 [[package]]
 name = "move-bytecode-verifier-v0"
-version = "0.1.0"
+version = "0.0.1"
 dependencies = [
  "hex-literal",
  "move-abstract-interpreter-v2",
@@ -2149,7 +2149,7 @@ dependencies = [
 
 [[package]]
 name = "move-bytecode-verifier-v1"
-version = "0.1.0"
+version = "0.0.1"
 dependencies = [
  "hex-literal",
  "move-abstract-interpreter-v2",
@@ -2164,7 +2164,7 @@ dependencies = [
 
 [[package]]
 name = "move-bytecode-verifier-v2"
-version = "0.1.0"
+version = "0.0.1"
 dependencies = [
  "hex-literal",
  "move-abstract-interpreter-v2",
@@ -2179,7 +2179,7 @@ dependencies = [
 
 [[package]]
 name = "move-bytecode-viewer"
-version = "0.1.0"
+version = "0.0.1"
 dependencies = [
  "anyhow",
  "clap 4.5.28",
@@ -2193,7 +2193,7 @@ dependencies = [
 
 [[package]]
 name = "move-cli"
-version = "0.1.0"
+version = "0.0.1"
 dependencies = [
  "anyhow",
  "bcs",
@@ -2244,7 +2244,7 @@ dependencies = [
 
 [[package]]
 name = "move-command-line-common"
-version = "0.1.0"
+version = "0.0.1"
 dependencies = [
  "anyhow",
  "bcs",
@@ -2301,7 +2301,7 @@ dependencies = [
 
 [[package]]
 name = "move-compiler-transactional-tests"
-version = "0.1.0"
+version = "0.0.1"
 dependencies = [
  "datatest-stable",
  "move-transactional-test-runner",
@@ -2309,7 +2309,7 @@ dependencies = [
 
 [[package]]
 name = "move-core-types"
-version = "0.0.4"
+version = "0.0.1"
 dependencies = [
  "anyhow",
  "arbitrary",
@@ -2338,7 +2338,7 @@ dependencies = [
 
 [[package]]
 name = "move-coverage"
-version = "0.1.0"
+version = "0.0.1"
 dependencies = [
  "anyhow",
  "bcs",
@@ -2362,7 +2362,7 @@ dependencies = [
 
 [[package]]
 name = "move-decompiler"
-version = "0.1.0"
+version = "0.0.1"
 dependencies = [
  "anyhow",
  "bcs",
@@ -2391,7 +2391,7 @@ dependencies = [
 
 [[package]]
 name = "move-disassembler"
-version = "0.1.0"
+version = "0.0.1"
 dependencies = [
  "anyhow",
  "bcs",
@@ -2411,7 +2411,7 @@ dependencies = [
 
 [[package]]
 name = "move-docgen"
-version = "0.1.0"
+version = "0.0.1"
 dependencies = [
  "anyhow",
  "clap 4.5.28",
@@ -2432,7 +2432,7 @@ dependencies = [
 
 [[package]]
 name = "move-docgen-tests"
-version = "0.1.0"
+version = "0.0.1"
 dependencies = [
  "anyhow",
  "codespan",
@@ -2460,7 +2460,7 @@ dependencies = [
 
 [[package]]
 name = "move-ir-compiler"
-version = "0.1.0"
+version = "0.0.1"
 dependencies = [
  "anyhow",
  "bcs",
@@ -2477,7 +2477,7 @@ dependencies = [
 
 [[package]]
 name = "move-ir-compiler-transactional-tests"
-version = "0.1.0"
+version = "0.0.1"
 dependencies = [
  "datatest-stable",
  "move-transactional-test-runner",
@@ -2485,7 +2485,7 @@ dependencies = [
 
 [[package]]
 name = "move-ir-to-bytecode"
-version = "0.1.0"
+version = "0.0.1"
 dependencies = [
  "anyhow",
  "codespan-reporting",
@@ -2502,7 +2502,7 @@ dependencies = [
 
 [[package]]
 name = "move-ir-to-bytecode-syntax"
-version = "0.1.0"
+version = "0.0.1"
 dependencies = [
  "anyhow",
  "hex",
@@ -2514,7 +2514,7 @@ dependencies = [
 
 [[package]]
 name = "move-ir-types"
-version = "0.1.0"
+version = "0.0.1"
 dependencies = [
  "hex",
  "move-command-line-common",
@@ -2525,7 +2525,7 @@ dependencies = [
 
 [[package]]
 name = "move-model"
-version = "0.1.0"
+version = "0.0.1"
 dependencies = [
  "anyhow",
  "codespan",
@@ -2548,7 +2548,7 @@ dependencies = [
 
 [[package]]
 name = "move-model-2"
-version = "0.1.0"
+version = "0.0.1"
 dependencies = [
  "anyhow",
  "bcs",
@@ -2572,7 +2572,7 @@ dependencies = [
 
 [[package]]
 name = "move-package"
-version = "0.1.0"
+version = "0.0.1"
 dependencies = [
  "anyhow",
  "clap 4.5.28",
@@ -2608,7 +2608,7 @@ dependencies = [
 
 [[package]]
 name = "move-package-alt"
-version = "0.1.0"
+version = "0.0.1"
 dependencies = [
  "anyhow",
  "append-only-vec",
@@ -2654,7 +2654,7 @@ dependencies = [
 
 [[package]]
 name = "move-package-alt-compilation"
-version = "0.1.0"
+version = "0.0.1"
 dependencies = [
  "anyhow",
  "clap 4.5.28",
@@ -2683,7 +2683,7 @@ dependencies = [
 
 [[package]]
 name = "move-proc-macros"
-version = "0.1.0"
+version = "0.0.1"
 dependencies = [
  "enum-compat-util",
  "quote",
@@ -2706,7 +2706,7 @@ dependencies = [
 
 [[package]]
 name = "move-stackless-bytecode"
-version = "0.1.0"
+version = "0.0.1"
 dependencies = [
  "anyhow",
  "codespan",
@@ -2730,7 +2730,7 @@ dependencies = [
 
 [[package]]
 name = "move-stackless-bytecode-2"
-version = "0.1.0"
+version = "0.0.1"
 dependencies = [
  "anyhow",
  "bcs",
@@ -2756,7 +2756,7 @@ dependencies = [
 
 [[package]]
 name = "move-stdlib"
-version = "0.1.1"
+version = "0.0.1"
 dependencies = [
  "anyhow",
  "dir-diff",
@@ -2781,7 +2781,7 @@ dependencies = [
 
 [[package]]
 name = "move-stdlib-natives"
-version = "0.1.1"
+version = "0.0.1"
 dependencies = [
  "hex",
  "move-binary-format",
@@ -2795,7 +2795,7 @@ dependencies = [
 
 [[package]]
 name = "move-stdlib-natives-v0"
-version = "0.1.1"
+version = "0.0.1"
 dependencies = [
  "hex",
  "move-binary-format",
@@ -2809,7 +2809,7 @@ dependencies = [
 
 [[package]]
 name = "move-stdlib-natives-v1"
-version = "0.1.1"
+version = "0.0.1"
 dependencies = [
  "hex",
  "move-binary-format",
@@ -2823,7 +2823,7 @@ dependencies = [
 
 [[package]]
 name = "move-stdlib-natives-v2"
-version = "0.1.1"
+version = "0.0.1"
 dependencies = [
  "hex",
  "move-binary-format",
@@ -2837,7 +2837,7 @@ dependencies = [
 
 [[package]]
 name = "move-symbol-pool"
-version = "0.1.0"
+version = "0.0.1"
 dependencies = [
  "phf",
  "serde",
@@ -2857,7 +2857,7 @@ dependencies = [
 
 [[package]]
 name = "move-transactional-test-runner"
-version = "0.1.0"
+version = "0.0.1"
 dependencies = [
  "anyhow",
  "async-trait",
@@ -2891,7 +2891,7 @@ dependencies = [
 
 [[package]]
 name = "move-unit-test"
-version = "0.1.0"
+version = "0.0.1"
 dependencies = [
  "anyhow",
  "bcs",
@@ -2924,14 +2924,14 @@ dependencies = [
 
 [[package]]
 name = "move-vm-config"
-version = "0.1.0"
+version = "0.0.1"
 dependencies = [
  "move-binary-format",
 ]
 
 [[package]]
 name = "move-vm-integration-tests"
-version = "0.1.0"
+version = "0.0.1"
 dependencies = [
  "anyhow",
  "fail",
@@ -2953,7 +2953,7 @@ dependencies = [
 
 [[package]]
 name = "move-vm-profiler"
-version = "0.1.0"
+version = "0.0.1"
 dependencies = [
  "move-trace-format",
  "move-vm-config",
@@ -2964,7 +2964,7 @@ dependencies = [
 
 [[package]]
 name = "move-vm-runtime"
-version = "0.1.0"
+version = "0.0.1"
 dependencies = [
  "anyhow",
  "better_any",
@@ -2986,7 +2986,7 @@ dependencies = [
 
 [[package]]
 name = "move-vm-runtime-v0"
-version = "0.1.0"
+version = "0.0.1"
 dependencies = [
  "anyhow",
  "better_any",
@@ -3008,7 +3008,7 @@ dependencies = [
 
 [[package]]
 name = "move-vm-runtime-v1"
-version = "0.1.0"
+version = "0.0.1"
 dependencies = [
  "anyhow",
  "better_any",
@@ -3030,7 +3030,7 @@ dependencies = [
 
 [[package]]
 name = "move-vm-runtime-v2"
-version = "0.1.0"
+version = "0.0.1"
 dependencies = [
  "anyhow",
  "better_any",
@@ -3052,7 +3052,7 @@ dependencies = [
 
 [[package]]
 name = "move-vm-test-utils"
-version = "0.1.0"
+version = "0.0.1"
 dependencies = [
  "anyhow",
  "move-binary-format",
@@ -3064,7 +3064,7 @@ dependencies = [
 
 [[package]]
 name = "move-vm-transactional-tests"
-version = "0.1.0"
+version = "0.0.1"
 dependencies = [
  "datatest-stable",
  "move-transactional-test-runner",
@@ -3072,7 +3072,7 @@ dependencies = [
 
 [[package]]
 name = "move-vm-types"
-version = "0.1.0"
+version = "0.0.1"
 dependencies = [
  "bcs",
  "move-binary-format",
@@ -3085,7 +3085,7 @@ dependencies = [
 
 [[package]]
 name = "move-vm-types-v0"
-version = "0.1.0"
+version = "0.0.1"
 dependencies = [
  "bcs",
  "move-binary-format",
@@ -3097,7 +3097,7 @@ dependencies = [
 
 [[package]]
 name = "move-vm-types-v1"
-version = "0.1.0"
+version = "0.0.1"
 dependencies = [
  "bcs",
  "move-binary-format",
@@ -3109,7 +3109,7 @@ dependencies = [
 
 [[package]]
 name = "move-vm-types-v2"
-version = "0.1.0"
+version = "0.0.1"
 dependencies = [
  "bcs",
  "move-binary-format",
@@ -4111,7 +4111,7 @@ dependencies = [
 
 [[package]]
 name = "serializer-tests"
-version = "0.1.0"
+version = "0.0.1"
 dependencies = [
  "move-binary-format",
  "proptest",
@@ -4407,7 +4407,7 @@ dependencies = [
 
 [[package]]
 name = "test-generation"
-version = "0.1.0"
+version = "0.0.1"
 dependencies = [
  "clap 4.5.28",
  "crossbeam-channel",

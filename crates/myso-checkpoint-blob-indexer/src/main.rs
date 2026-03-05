@@ -8,8 +8,8 @@ use std::time::Duration;
 
 use myso_indexer_alt_framework::Indexer;
 use myso_indexer_alt_framework::IndexerArgs;
-use myso_indexer_alt_framework::ingestion::ingestion_client::IngestionClientArgs;
 use myso_indexer_alt_framework::ingestion::ClientArgs;
+use myso_indexer_alt_framework::ingestion::ingestion_client::IngestionClientArgs;
 use myso_indexer_alt_framework::service::Error;
 use myso_indexer_alt_metrics::MetricsArgs;
 use myso_indexer_alt_object_store::ObjectStore;

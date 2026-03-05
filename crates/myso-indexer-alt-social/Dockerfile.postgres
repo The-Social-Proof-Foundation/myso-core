@@ -1,0 +1,19 @@
+# TimescaleDB PostgreSQL 17 with pg_textsearch for BM25 full-text search
+FROM timescale/timescaledb:latest-pg17
+
+ARG PG_TEXTSEARCH_VERSION=0.5.1
+
+# Install pg_textsearch extension (pre-built for pg17 from releases)
+RUN set -ex && \
+    apk add --no-cache curl && \
+    curl -sSL "https://github.com/timescale/pg_textsearch/releases/download/v${PG_TEXTSEARCH_VERSION}/pg_textsearch-pg17-v${PG_TEXTSEARCH_VERSION}.tar.gz" \
+        -o /tmp/pg_textsearch.tar.gz && \
+    tar -xzf /tmp/pg_textsearch.tar.gz -C /tmp && \
+    cp /tmp/pg17/pg_textsearch.so /usr/local/lib/postgresql/ && \
+    cp /tmp/pg17/pg_textsearch.control /tmp/pg17/pg_textsearch--*.sql /usr/local/share/postgresql/extension/ && \
+    rm -rf /tmp/pg_textsearch.tar.gz /tmp/pg17 && \
+    apk del curl
+
+# Add pg_textsearch to shared_preload_libraries (alongside timescaledb)
+RUN sed -i "s/shared_preload_libraries = 'timescaledb'/shared_preload_libraries = 'timescaledb,pg_textsearch'/" /usr/local/share/postgresql/postgresql.conf.sample 2>/dev/null || \
+    echo "shared_preload_libraries = 'timescaledb,pg_textsearch'" >> /usr/local/share/postgresql/postgresql.conf.sample

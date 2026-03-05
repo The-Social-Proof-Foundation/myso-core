@@ -1,0 +1,10 @@
+<!--
+  Example: Override ClickHouse data path via environment variable.
+  Copy to path.xml and set CLICKHOUSE_DATA_PATH before starting the server:
+    export CLICKHOUSE_DATA_PATH=/var/lib/clickhouse
+    clickhouse server
+  Or use --path for a one-off:
+    clickhouse server -- --path=/var/lib/clickhouse
+-->
+<clickhouse>
+    <path from_env="CLICKHOUSE_DATA_PATH"/>

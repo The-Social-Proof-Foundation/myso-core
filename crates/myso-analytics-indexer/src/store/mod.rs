@@ -115,6 +115,7 @@ impl Batch {
     }
 }
 
+mod clickhouse;
 mod live;
 mod migration;
 mod uploader;
@@ -127,11 +128,115 @@ pub use migration::WatermarkUpdateError;
 
 use uploader::PendingFileUpload;
 
+#[derive(Clone)]
+pub struct ClickHouseStore {
+    pub bridge: std::sync::Arc<clickhouse::NativeClientBridge>,
+}
+
+impl ClickHouseStore {
+    pub(crate) async fn committer_watermark(
+        &self,
+        _pipeline: &str,
+    ) -> anyhow::Result<Option<myso_indexer_alt_framework_store_traits::CommitterWatermark>> {
+        use clickhouse_native_client::column::numeric::ColumnUInt64;
+
+        let result = self
+            .bridge
+            .query("SELECT max(checkpoint_sequence_number) as cp, max(epoch) as ep FROM transactions")
+            .await
+            .map_err(|e| anyhow::anyhow!("ClickHouse query: {}", e))?;
+
+        for block in &result.blocks {
+            if block.row_count() == 0 {
+                continue;
+            }
+            let cp_col = block.column_by_name("cp").ok_or_else(|| anyhow::anyhow!("no cp column"))?;
+            let ep_col = block.column_by_name("ep").ok_or_else(|| anyhow::anyhow!("no ep column"))?;
+            let cp = cp_col.as_ref().as_any().downcast_ref::<ColumnUInt64>().and_then(|c| c.get(0));
+            let ep = ep_col.as_ref().as_any().downcast_ref::<ColumnUInt64>().and_then(|c| c.get(0));
+            if let (Some(&checkpoint_hi), Some(&epoch)) = (cp, ep) {
+                return Ok(Some(myso_indexer_alt_framework_store_traits::CommitterWatermark {
+                    epoch_hi_inclusive: epoch,
+                    checkpoint_hi_inclusive: checkpoint_hi,
+                    tx_hi: 0,
+                    timestamp_ms_hi_inclusive: 0,
+                }));
+            }
+        }
+        Ok(None)
+    }
+
+    pub fn new(host: &str, port: u16, user: &str) -> anyhow::Result<Self> {
+        let opts = clickhouse::create_client_options(host, port, user);
+        let bridge = clickhouse::NativeClientBridge::new(host, port, opts)
+            .map_err(|e| anyhow::anyhow!("ClickHouse connect: {}", e))?;
+        Ok(Self {
+            bridge: std::sync::Arc::new(bridge),
+        })
+    }
+
+    pub(crate) fn split_framework_batch_into_files(
+        &self,
+        pipeline_config: &PipelineConfig,
+        rows_by_checkpoint: &[CheckpointRows],
+        mut pending_batch: Batch,
+    ) -> (Batch, Vec<Batch>) {
+        use crate::config::BatchSizeConfig;
+        use std::time::Duration;
+
+        let batch_size = pipeline_config
+            .batch_size
+            .as_ref()
+            .expect("batch_size not configured for pipeline");
+
+        let max_duration = Duration::from_secs(pipeline_config.force_batch_cut_after_secs);
+
+        let mut complete_batches: Vec<Batch> = Vec::new();
+
+        for checkpoint_rows in rows_by_checkpoint {
+            if pending_batch
+                .epoch()
+                .is_some_and(|e| e != checkpoint_rows.epoch)
+            {
+                if !pending_batch.checkpoints_rows.is_empty() {
+                    complete_batches.push(pending_batch);
+                    pending_batch = Batch::default();
+                }
+            }
+
+            match *batch_size {
+                BatchSizeConfig::Rows(n) => {
+                    if pending_batch.row_count() >= n {
+                        complete_batches.push(pending_batch);
+                        pending_batch = Batch::default();
+                    }
+                    pending_batch.add(checkpoint_rows.clone());
+                }
+                BatchSizeConfig::Checkpoints(n) => {
+                    pending_batch.add(checkpoint_rows.clone());
+                    if pending_batch.checkpoint_count() == n {
+                        complete_batches.push(pending_batch);
+                        pending_batch = Batch::default();
+                    }
+                }
+            }
+
+            if pending_batch.checkpoint_count() > 0 && pending_batch.elapsed() >= max_duration {
+                complete_batches.push(pending_batch);
+                pending_batch = Batch::default();
+            }
+        }
+
+        (pending_batch, complete_batches)
+    }
+}
+
 /// The operational mode of the analytics store.
 #[derive(Clone)]
 pub enum StoreMode {
     Live(LiveStore),
     Migration(MigrationStore),
+    ClickHouse(ClickHouseStore),
 }
 
 use crate::config::PipelineConfig;
@@ -189,6 +294,11 @@ impl StoreMode {
                 pending_batch,
                 watermark,
             ),
+            StoreMode::ClickHouse(store) => store.split_framework_batch_into_files(
+                pipeline_config,
+                batch_from_framework,
+                pending_batch,
+            ),
         }
     }
 
@@ -211,6 +321,7 @@ impl StoreMode {
                     .write_to_object_store(pipeline, path, checkpoint_range, payload)
                     .await
             }
+            StoreMode::ClickHouse(_) => Ok(()),
         }
     }
 
@@ -231,6 +342,7 @@ impl StoreMode {
                     .update_watermark(pipeline, epoch, checkpoint_hi_inclusive)
                     .await
             }
+            StoreMode::ClickHouse(_) => Ok(()),
         }
     }
 
@@ -276,6 +388,22 @@ impl AnalyticsStore {
         }
     }
 
+    pub fn new_clickhouse(
+        clickhouse_store: ClickHouseStore,
+        config: IndexerConfig,
+        metrics: Metrics,
+    ) -> Self {
+        Self {
+            mode: StoreMode::ClickHouse(clickhouse_store),
+            pending_by_pipeline: Arc::new(RwLock::new(HashMap::new())),
+            metrics,
+            uploader_senders: Arc::new(RwLock::new(HashMap::new())),
+            worker_handles: Arc::new(tokio::sync::Mutex::new(Vec::new())),
+            config,
+            schemas_by_pipeline: Arc::new(RwLock::new(HashMap::new())),
+        }
+    }
+
     /// Find the checkpoint range for ingestion, snapping to file boundaries in migration mode.
     ///
     /// In migration mode, loads file ranges and snaps both `first_checkpoint` and
@@ -293,6 +421,7 @@ impl AnalyticsStore {
     ) -> Result<(Option<u64>, Option<u64>)> {
         match &self.mode {
             StoreMode::Live(_) => Ok((first_checkpoint, last_checkpoint)),
+            StoreMode::ClickHouse(_) => Ok((first_checkpoint, last_checkpoint)),
             StoreMode::Migration(store) => {
                 // Pass (pipeline_name, output_prefix) pairs.
                 // pipeline_name is used as the key in the file_ranges map.
@@ -386,7 +515,7 @@ impl AnalyticsStore {
         };
 
         match &self.mode {
-            StoreMode::Live(_) => {
+            StoreMode::Live(_) | StoreMode::ClickHouse(_) => {
                 for (pipeline_name, batch) in pending {
                     if batch.checkpoint_count() == 0 {
                         continue;
@@ -638,8 +767,7 @@ impl Connection for AnalyticsConnection<'_> {
         default_next_checkpoint: u64,
     ) -> anyhow::Result<Option<u64>> {
         match &self.store.mode {
-            StoreMode::Live(_) => {
-                // Live mode: derive from file names
+            StoreMode::Live(_) | StoreMode::ClickHouse(_) => {
                 Ok(self
                     .committer_watermark(pipeline_task)
                     .await?
@@ -666,6 +794,7 @@ impl Connection for AnalyticsConnection<'_> {
         match &self.store.mode {
             StoreMode::Live(store) => store.committer_watermark(&output_prefix).await,
             StoreMode::Migration(store) => store.committer_watermark(&output_prefix).await,
+            StoreMode::ClickHouse(store) => store.committer_watermark(&output_prefix).await,
         }
     }
 

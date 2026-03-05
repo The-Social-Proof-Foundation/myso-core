@@ -58,6 +58,8 @@ diesel::table! {
         // Paid messaging settings
         paid_messaging_enabled -> Bool,
         paid_messaging_min_cost -> Nullable<BigInt>,
+        // BM25 search: generated from username + display_name
+        search_text -> Nullable<Text>,
     }
 }
 

@@ -101,16 +101,21 @@ async fn main() -> Result<()> {
     info!("Starting myso-kvstore-alt indexer");
     info!(instance_id = %args.instance_id);
 
-    let client = BigTableClient::new_remote(
-        args.instance_id,
-        args.bigtable_project,
-        false,
-        None,
-        "myso-kvstore-alt".to_string(),
-        None,
-        args.app_profile_id,
-    )
-    .await?;
+    let client = if let Ok(emulator_host) = std::env::var("BIGTABLE_EMULATOR_HOST") {
+        info!(emulator_host = %emulator_host, "Using Bigtable emulator");
+        BigTableClient::new_local(emulator_host, args.instance_id.clone()).await?
+    } else {
+        BigTableClient::new_remote(
+            args.instance_id,
+            args.bigtable_project,
+            false,
+            None,
+            "myso-kvstore-alt".to_string(),
+            None,
+            args.app_profile_id,
+        )
+        .await?
+    };
 
     let store = BigTableStore::new(client);
 

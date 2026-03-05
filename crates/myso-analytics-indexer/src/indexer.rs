@@ -7,6 +7,7 @@
 use std::sync::Arc;
 use std::time::Duration;
 
+use anyhow::bail;
 use anyhow::Context;
 use anyhow::Result;
 use object_store::ClientOptions;
@@ -31,19 +32,37 @@ use crate::progress_monitoring::spawn_snowflake_monitors;
 use crate::store::AnalyticsStore;
 
 /// Build and run an analytics indexer, returning a Service handle.
-///
-/// The returned Service integrates store shutdown - when the service shuts down
-/// gracefully, it will wait for all pending uploads to complete.
 pub async fn build_analytics_indexer(
     config: IndexerConfig,
     metrics: Metrics,
     registry: prometheus::Registry,
 ) -> Result<Service> {
-    // Validate config (checks for duplicate pipelines, batch_size requirements, etc.)
     config.validate()?;
 
-    let object_store = create_object_store(&config.output_store)?;
-    let store = AnalyticsStore::new(object_store.clone(), config.clone(), metrics.clone());
+    let store = match &config.output_store {
+        crate::config::OutputStoreConfig::ClickHouse { host, port, user } => {
+            let ch_store = crate::store::ClickHouseStore::new(host, *port, user)?;
+            ch_store
+                .bridge
+                .execute(
+                    "CREATE TABLE IF NOT EXISTS transactions (\
+                    checkpoint_sequence_number UInt64, transaction_digest String, sender String, \
+                    timestamp_ms Int64, tx_kind LowCardinality(String), gas_computation_cost UInt64, \
+                    gas_storage_cost UInt64, gas_storage_rebate UInt64, status UInt8, epoch UInt64, \
+                    gas_price UInt64, gas_budget UInt64, gas_owner String, is_sponsored UInt8, \
+                    created_objects UInt32, mutated_objects UInt32, execution_error Nullable(String), \
+                    indexed_at DateTime64(3, 'UTC') DEFAULT now()) \
+                    ENGINE = MergeTree() ORDER BY (checkpoint_sequence_number, transaction_digest)",
+                )
+                .await
+                .map_err(|e| anyhow::anyhow!("Create ClickHouse table: {}", e))?;
+            AnalyticsStore::new_clickhouse(ch_store, config.clone(), metrics.clone())
+        }
+        _ => {
+            let object_store = create_object_store(&config.output_store)?;
+            AnalyticsStore::new(object_store.clone(), config.clone(), metrics.clone())
+        }
+    };
 
     // Find checkpoint range (snaps to file boundaries in migration mode)
     let (adjusted_first_checkpoint, adjusted_last_checkpoint) = store
@@ -153,6 +172,9 @@ pub async fn build_analytics_indexer(
 
 fn create_object_store(config: &OutputStoreConfig) -> Result<Arc<dyn object_store::ObjectStore>> {
     match config {
+        OutputStoreConfig::ClickHouse { .. } => {
+            bail!("Use build_analytics_indexer_clickhouse for ClickHouse output")
+        }
         OutputStoreConfig::Gcs {
             bucket,
             service_account_path,

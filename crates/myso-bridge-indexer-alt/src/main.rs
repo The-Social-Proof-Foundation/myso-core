@@ -10,7 +10,7 @@ use myso_bridge_indexer_alt::handlers::token_transfer_handler::TokenTransferHand
 use myso_bridge_indexer_alt::metrics::BridgeIndexerMetrics;
 use myso_bridge_schema::MIGRATIONS;
 use myso_indexer_alt_framework::ingestion::{
-    streaming_client::StreamingClientArgs, ClientArgs, ingestion_client::IngestionClientArgs,
+    ClientArgs, ingestion_client::IngestionClientArgs, streaming_client::StreamingClientArgs,
 };
 use myso_indexer_alt_framework::postgres::DbArgs;
 use myso_indexer_alt_framework::service::Error;

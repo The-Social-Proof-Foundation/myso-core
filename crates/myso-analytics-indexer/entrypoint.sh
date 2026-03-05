@@ -12,14 +12,22 @@ if [ -z "$RPC_URL" ]; then
   exit 1
 fi
 
-if [ -z "$REMOTE_STORE_BUCKET" ]; then
-  echo "ERROR: REMOTE_STORE_BUCKET environment variable is not set"
-  echo "Expected: REMOTE_STORE_BUCKET=mysocial-testnet-analytics"
+# ClickHouse output: set CLICKHOUSE_HOST (and optionally CLICKHOUSE_PORT, CLICKHOUSE_USER)
+# GCS output: set REMOTE_STORE_BUCKET and GCS_SERVICE_ACCOUNT_JSON
+USE_CLICKHOUSE=false
+if [ -n "$CLICKHOUSE_HOST" ]; then
+  USE_CLICKHOUSE=true
+  CLICKHOUSE_PORT="${CLICKHOUSE_PORT:-9000}"
+  CLICKHOUSE_USER="${CLICKHOUSE_USER:-default}"
+fi
+
+if [ "$USE_CLICKHOUSE" = "false" ] && [ -z "$REMOTE_STORE_BUCKET" ]; then
+  echo "ERROR: Set REMOTE_STORE_BUCKET for GCS, or CLICKHOUSE_HOST for ClickHouse"
   exit 1
 fi
 
-# Create GCS service account key from environment variables
-if [ -n "$GCS_SERVICE_ACCOUNT_JSON" ]; then
+# Create GCS service account key from environment variables (only when not using ClickHouse)
+if [ "$USE_CLICKHOUSE" = "false" ] && [ -n "$GCS_SERVICE_ACCOUNT_JSON" ]; then
   echo "Creating GCS service account key file..."
   printf "%s" "$GCS_SERVICE_ACCOUNT_JSON" > /app/credentials/gcs-key.json
   export GOOGLE_APPLICATION_CREDENTIALS="/app/credentials/gcs-key.json"
@@ -41,18 +49,21 @@ if [ -n "$GCS_SERVICE_ACCOUNT_JSON" ]; then
     echo "✗ GCS key file not found"
     exit 1
   fi
-else
+elif [ "$USE_CLICKHOUSE" = "false" ]; then
   echo "WARNING: GCS_SERVICE_ACCOUNT_JSON not set - uploads may fail"
 fi
 
-# Resolve pipeline types: PIPELINES env or FILE_TYPE (legacy) or default Checkpoint
-# FILE_TYPE: checkpoint -> Checkpoint, transaction -> Transaction
+# When using ClickHouse, default to Transaction pipeline
 case "${FILE_TYPE:-checkpoint}" in
   checkpoint) DEFAULT_PIPELINE="Checkpoint" ;;
   transaction) DEFAULT_PIPELINE="Transaction" ;;
   *) DEFAULT_PIPELINE="Checkpoint" ;;
 esac
-PIPELINE_TYPES="${PIPELINES:-$DEFAULT_PIPELINE}"
+if [ "$USE_CLICKHOUSE" = "true" ]; then
+  PIPELINE_TYPES="${PIPELINES:-Transaction}"
+else
+  PIPELINE_TYPES="${PIPELINES:-$DEFAULT_PIPELINE}"
+fi
 
 # Generate YAML config from environment variables
 # Use PORT from Railway (or default 9184) so health checks reach the metrics server
@@ -84,7 +95,18 @@ else
   echo "remote_store_url: \"$REMOTE_STORE_URL\"" >> /app/config.yaml
 fi
 
-cat >> /app/config.yaml << EOF
+if [ "$USE_CLICKHOUSE" = "true" ]; then
+  cat >> /app/config.yaml << EOF
+
+output_store:
+  type: clickhouse
+  host: "$CLICKHOUSE_HOST"
+  port: $CLICKHOUSE_PORT
+  user: "$CLICKHOUSE_USER"
+pipelines:
+EOF
+else
+  cat >> /app/config.yaml << EOF
 
 output_store:
   type: gcs
@@ -92,6 +114,7 @@ output_store:
   service_account_path: "/app/credentials/gcs-key.json"
 pipelines:
 EOF
+fi
 
 # Add each pipeline (comma-separated)
 echo "$PIPELINE_TYPES" | tr ',' '\n' | while read -r p; do
@@ -114,7 +137,11 @@ fi
 
 echo "=== Configuration ==="
 echo "RPC_URL: $RPC_URL"
-echo "BUCKET: $REMOTE_STORE_BUCKET"
+if [ "$USE_CLICKHOUSE" = "true" ]; then
+  echo "OUTPUT: ClickHouse $CLICKHOUSE_HOST:$CLICKHOUSE_PORT"
+else
+  echo "BUCKET: $REMOTE_STORE_BUCKET"
+fi
 echo "PIPELINES: $PIPELINE_TYPES"
 echo "METRICS_PORT: $METRICS_PORT"
 echo "CHECKPOINT_INTERVAL: $CHECKPOINT_INTERVAL"

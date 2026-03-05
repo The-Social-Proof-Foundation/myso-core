@@ -1,6 +1,6 @@
 # Copyright (c) Mysten Labs, Inc.
 # SPDX-License-Identifier: Apache-2.0
-INSTANCE_ID=${1:-myso}
+INSTANCE_ID=${1:-myso-kv}
 command=(
   cbt
   -instance
@@ -10,8 +10,7 @@ if [[ -n $BIGTABLE_EMULATOR_HOST ]]; then
   command+=(-project emulator)
 fi
 
-for table in objects transactions checkpoints checkpoints_by_digest watermark_alt epochs object_types; do
-  (
+for table in objects transactions checkpoints checkpoints_by_digest watermark watermark_alt epochs object_types; do  (
     set -x
     "${command[@]}" createtable $table
     "${command[@]}" createfamily $table myso

@@ -58,6 +58,11 @@ pub enum FileFormat {
 #[derive(Clone, Debug, Serialize, Deserialize)]
 #[serde(rename_all = "lowercase", tag = "type")]
 pub enum OutputStoreConfig {
+    ClickHouse {
+        host: String,
+        port: u16,
+        user: String,
+    },
     Gcs {
         bucket: String,
         /// Path to service account JSON file

@@ -21,7 +21,6 @@ use futures::StreamExt;
 use futures::stream::FuturesUnordered;
 use myso_types::base_types::EpochId;
 use object_store::PutPayload;
-use object_store::path::Path as ObjectPath;
 use tokio::sync::mpsc;
 use tokio::task::JoinHandle;
 use tracing::debug;
@@ -36,6 +35,7 @@ use crate::handlers::record_file_metrics;
 use crate::metrics::Metrics;
 use crate::store::StoreMode;
 use crate::store::WatermarkUpdateError;
+use crate::store::clickhouse;
 use crate::store::construct_object_store_path;
 use crate::writers::CsvWriter;
 use crate::writers::ParquetWriter;
@@ -87,6 +87,11 @@ struct SerializedFile {
     bytes: Bytes,
 }
 
+enum UploadMessage {
+    File(SerializedFile),
+    ClickHouseBatch { seq: u64, pending: PendingFileUpload },
+}
+
 /// Spawn an upload worker for a pipeline.
 ///
 /// Returns the sender for queueing files and the worker's JoinHandle for shutdown.
@@ -97,18 +102,18 @@ pub fn spawn_uploader(
     metrics: Metrics,
     config: &IndexerConfig,
 ) -> (mpsc::Sender<PendingFileUpload>, JoinHandle<()>) {
-    // Size 1: backpressure to handler, limits unserialized batches in memory
     let (tx, rx) = mpsc::channel(1);
 
-    // Channel between serialization and upload tasks.
-    // When full, serialization blocks until uploads complete.
     let (upload_tx, upload_rx) = mpsc::channel(config.max_pending_uploads);
+
+    let is_clickhouse_tx = matches!(&mode, StoreMode::ClickHouse(_)) && pipeline_name == "Transaction";
 
     let dispatcher = Dispatcher::new(
         rx,
         upload_tx,
         pipeline_name.clone(),
         config.max_concurrent_serialization,
+        is_clickhouse_tx,
     );
 
     let uploader = SequentialUploader::new(
@@ -138,23 +143,21 @@ pub fn spawn_uploader(
 /// Ordering is handled by the uploader via sequence numbers.
 struct Dispatcher {
     rx: mpsc::Receiver<PendingFileUpload>,
-    upload_tx: mpsc::Sender<SerializedFile>,
-    /// Next sequence number to assign (used by uploader for ordering)
+    upload_tx: mpsc::Sender<UploadMessage>,
     next_seq: u64,
-    /// Serialization tasks in flight
     serializing: FuturesUnordered<JoinHandle<Result<SerializedFile>>>,
-    /// Pipeline name (for logging)
     pipeline: String,
-    /// Maximum concurrent serialization tasks
     max_concurrent_serialization: usize,
+    is_clickhouse_tx: bool,
 }
 
 impl Dispatcher {
     fn new(
         rx: mpsc::Receiver<PendingFileUpload>,
-        upload_tx: mpsc::Sender<SerializedFile>,
+        upload_tx: mpsc::Sender<UploadMessage>,
         pipeline: String,
         max_concurrent_serialization: usize,
+        is_clickhouse_tx: bool,
     ) -> Self {
         Self {
             rx,
@@ -163,6 +166,7 @@ impl Dispatcher {
             serializing: FuturesUnordered::new(),
             pipeline,
             max_concurrent_serialization,
+            is_clickhouse_tx,
         }
     }
 
@@ -173,9 +177,20 @@ impl Dispatcher {
             let serializing_inflight = self.serializing.len();
 
             tokio::select! {
-                // Receive new batch to serialize (only if below concurrency limit)
-                Some(pending) = self.rx.recv(), if serializing_inflight < self.max_concurrent_serialization => {
-                    self.spawn_serialization(pending);
+                Some(pending) = self.rx.recv(), if serializing_inflight < self.max_concurrent_serialization || self.is_clickhouse_tx => {
+                    let rows: usize = pending.checkpoints_rows.iter().map(|c| c.len()).sum();
+                    debug!(pipeline = %self.pipeline, rows, is_ch = self.is_clickhouse_tx, "Dispatcher received");
+                    if self.is_clickhouse_tx {
+                        let seq = self.next_seq;
+                        self.next_seq += 1;
+                        let rows: usize = pending.checkpoints_rows.iter().map(|c| c.len()).sum();
+                        info!(pipeline = %self.pipeline, seq, rows, "Sending ClickHouseBatch");
+                        if self.upload_tx.send(UploadMessage::ClickHouseBatch { seq, pending }).await.is_err() {
+                            return;
+                        }
+                    } else {
+                        self.spawn_serialization(pending);
+                    }
                 }
 
                 // Serialization task completed - send to uploader
@@ -194,10 +209,9 @@ impl Dispatcher {
             }
         }
 
-        // Drain remaining serialization tasks
         while let Some(join_result) = self.serializing.next().await {
             if let Ok(Ok(serialized)) = join_result {
-                let _ = self.upload_tx.send(serialized).await;
+                let _ = self.upload_tx.send(UploadMessage::File(serialized)).await;
             }
         }
 
@@ -252,7 +266,7 @@ impl Dispatcher {
                 return Err(());
             }
         };
-        if self.upload_tx.send(serialized).await.is_err() {
+        if self.upload_tx.send(UploadMessage::File(serialized)).await.is_err() {
             error!(pipeline = %self.pipeline, "Upload channel closed, stopping");
             return Err(());
         }
@@ -260,11 +274,10 @@ impl Dispatcher {
     }
 }
 
-/// Worker that receives serialized files, reorders them, and uploads sequentially.
+/// Worker that receives serialized files or ClickHouse batches, reorders them, and uploads sequentially.
 struct SequentialUploader {
-    rx: mpsc::Receiver<SerializedFile>,
-    /// Files received out of order, waiting to be uploaded
-    pending: BTreeMap<u64, SerializedFile>,
+    rx: mpsc::Receiver<UploadMessage>,
+    pending: BTreeMap<u64, UploadMessage>,
     /// Next sequence number to upload
     next_upload_seq: u64,
     pipeline_name: String,
@@ -281,7 +294,7 @@ struct SequentialUploader {
 
 impl SequentialUploader {
     fn new(
-        rx: mpsc::Receiver<SerializedFile>,
+        rx: mpsc::Receiver<UploadMessage>,
         pipeline_name: String,
         output_prefix: String,
         mode: StoreMode,
@@ -305,9 +318,19 @@ impl SequentialUploader {
     async fn run(mut self) {
         debug!(pipeline = %self.pipeline_name, "Upload worker starting");
 
-        // Receive files and upload in sequence order
-        while let Some(file) = self.rx.recv().await {
-            self.pending.insert(file.seq, file);
+        while let Some(msg) = self.rx.recv().await {
+            let seq = match &msg {
+                UploadMessage::File(f) => {
+                    debug!(pipeline = %self.pipeline_name, seq = f.seq, "Received File");
+                    f.seq
+                }
+                UploadMessage::ClickHouseBatch { seq, pending, .. } => {
+                    let rows: usize = pending.checkpoints_rows.iter().map(|c| c.len()).sum();
+                    info!(pipeline = %self.pipeline_name, seq, rows, "Received ClickHouseBatch");
+                    *seq
+                }
+            };
+            self.pending.insert(seq, msg);
             self.drain_and_upload().await;
         }
 
@@ -329,32 +352,19 @@ impl SequentialUploader {
     }
 
     async fn drain_and_upload(&mut self) {
-        // Upload files in sequence order
-        while let Some(file) = self.pending.remove(&self.next_upload_seq) {
-            self.upload_with_retry(&file).await;
+        while let Some(msg) = self.pending.remove(&self.next_upload_seq) {
+            self.upload_with_retry(msg).await;
             self.next_upload_seq += 1;
         }
     }
 
-    async fn upload_with_retry(&mut self, file: &SerializedFile) {
+    async fn upload_with_retry(&mut self, msg: UploadMessage) {
         let mut backoff = Backoff::new();
 
-        let path = construct_object_store_path(
-            &self.output_prefix,
-            file.epoch,
-            &file.checkpoint_range,
-            file.file_format,
-        );
-
         loop {
-            match self
-                .do_upload(&path, &file.checkpoint_range, file.bytes.clone())
-                .await
-            {
-                Ok(()) => {
-                    let checkpoint_hi = file.checkpoint_range.end - 1;
-
-                    record_file_metrics(&self.metrics, &self.pipeline_name, file.bytes.len());
+            match self.do_upload(&msg).await {
+                Ok((epoch, checkpoint_hi, bytes_len)) => {
+                    record_file_metrics(&self.metrics, &self.pipeline_name, bytes_len);
                     self.metrics
                         .latest_uploaded_checkpoint
                         .with_label_values(&[&self.pipeline_name])
@@ -362,27 +372,17 @@ impl SequentialUploader {
                     self.metrics
                         .latest_uploaded_epoch
                         .with_label_values(&[&self.pipeline_name])
-                        .set(file.epoch as i64);
+                        .set(epoch as i64);
 
-                    info!(
-                        pipeline = %self.pipeline_name,
-                        epoch = file.epoch,
-                        checkpoint_range = ?file.checkpoint_range,
-                        bytes = file.bytes.len(),
-                        "Uploaded file"
-                    );
+                    self.latest_watermark = Some((epoch, checkpoint_hi));
 
-                    // Always track latest watermark in memory (for shutdown flush)
-                    self.latest_watermark = Some((file.epoch, checkpoint_hi));
-
-                    // Rate-limit writes to object store
                     let should_update = self
                         .last_watermark_update
                         .map(|last| last.elapsed() >= self.watermark_update_interval)
                         .unwrap_or(true);
 
                     if should_update {
-                        self.update_watermark_with_retry(file.epoch, checkpoint_hi)
+                        self.update_watermark_with_retry(epoch, checkpoint_hi)
                             .await;
                         self.last_watermark_update = Some(std::time::Instant::now());
                     }
@@ -390,9 +390,15 @@ impl SequentialUploader {
                     return;
                 }
                 Err(e) => {
+                    let (_epoch, checkpoint_range) = match &msg {
+                        UploadMessage::File(f) => (f.epoch, f.checkpoint_range.clone()),
+                        UploadMessage::ClickHouseBatch { pending, .. } => {
+                            (pending.epoch, pending.checkpoint_range.clone())
+                        }
+                    };
                     warn!(
                         pipeline = %self.pipeline_name,
-                        checkpoint_range = ?file.checkpoint_range,
+                        checkpoint_range = ?checkpoint_range,
                         error = %e,
                         backoff_ms = backoff.current_ms(),
                         "Upload failed, retrying"
@@ -405,18 +411,53 @@ impl SequentialUploader {
 
     async fn do_upload(
         &self,
-        path: &ObjectPath,
-        checkpoint_range: &Range<u64>,
-        bytes: Bytes,
-    ) -> Result<()> {
-        self.mode
-            .write_to_object_store(
-                &self.output_prefix,
-                path,
-                checkpoint_range,
-                PutPayload::from(bytes),
-            )
-            .await
+        msg: &UploadMessage,
+    ) -> Result<(EpochId, u64, usize)> {
+        match msg {
+            UploadMessage::File(file) => {
+                let path = construct_object_store_path(
+                    &self.output_prefix,
+                    file.epoch,
+                    &file.checkpoint_range,
+                    file.file_format,
+                );
+                self.mode
+                    .write_to_object_store(
+                        &self.output_prefix,
+                        &path,
+                        &file.checkpoint_range,
+                        PutPayload::from(file.bytes.clone()),
+                    )
+                    .await?;
+                Ok((
+                    file.epoch,
+                    file.checkpoint_range.end - 1,
+                    file.bytes.len(),
+                ))
+            }
+            UploadMessage::ClickHouseBatch { pending, .. } => {
+                if let StoreMode::ClickHouse(store) = &self.mode {
+                    let total_rows: usize = pending.checkpoints_rows.iter().map(|c| c.len()).sum();
+                    let block = clickhouse::transaction_rows_to_block(
+                        &pending.checkpoints_rows,
+                        pending.schema,
+                    )?;
+                    let rows = block.row_count();
+                    debug!(pipeline = %self.pipeline_name, total_rows, block_rows = rows, "ClickHouse batch");
+                    if rows > 0 {
+                        store.bridge.insert_http("transactions", &block).await?;
+                        info!(pipeline = %self.pipeline_name, rows, "Inserted into ClickHouse");
+                    } else {
+                        debug!(pipeline = %self.pipeline_name, checkpoints = pending.checkpoints_rows.len(), "ClickHouse block empty, skipping");
+                    }
+                    let checkpoint_hi = pending.checkpoint_range.end - 1;
+                    let bytes_len = pending.checkpoints_rows.iter().map(|c| c.len()).sum::<usize>() * 64;
+                    Ok((pending.epoch, checkpoint_hi, bytes_len))
+                } else {
+                    unreachable!()
+                }
+            }
+        }
     }
 
     /// Update watermark with retry on transient errors, panic on concurrent writer.

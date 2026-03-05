@@ -82,6 +82,8 @@ pub struct Profile {
     pub selected_ecosystem_badge_id: Option<String>,
     pub paid_messaging_enabled: bool,
     pub paid_messaging_min_cost: Option<i64>,
+    #[serde(skip)]
+    pub search_text: Option<String>,
 }
 
 #[derive(Debug, Clone, Insertable, Serialize, Deserialize)]

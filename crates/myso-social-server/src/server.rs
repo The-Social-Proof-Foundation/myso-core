@@ -259,22 +259,49 @@ fn make_router(state: Arc<AppState>) -> Router {
         .route("/profiles", get(latest_profiles))
         .route("/profiles/address/:address", get(get_profile_by_address))
         .route("/profiles/username/:username", get(get_profile_by_username))
-        .route("/profiles/username/:username/availability", get(check_username_availability))
+        .route(
+            "/profiles/username/:username/availability",
+            get(check_username_availability),
+        )
         .route("/profiles/:address/posts", get(get_profile_posts))
         .route("/profiles/:address/events", get(get_profile_events))
-        .route("/profiles/:address/platform-memberships", get(get_profile_platform_memberships))
-        .route("/profiles/:address/platforms", get(get_profile_platform_events))
-        .route("/profiles/:address/blocking-history", get(get_profile_blocking_history))
+        .route(
+            "/profiles/:address/platform-memberships",
+            get(get_profile_platform_memberships),
+        )
+        .route(
+            "/profiles/:address/platforms",
+            get(get_profile_platform_events),
+        )
+        .route(
+            "/profiles/:address/blocking-history",
+            get(get_profile_blocking_history),
+        )
         .route("/profiles/:address/badges", get(get_profile_badges))
         .route("/profiles/:address/following", get(get_profile_following))
         .route("/profiles/:address/followers", get(get_profile_followers))
-        .route("/profiles/:address/social-stats", get(get_profile_social_stats))
+        .route(
+            "/profiles/:address/social-stats",
+            get(get_profile_social_stats),
+        )
         .route("/profiles/:address/blocked", get(get_profile_blocked))
-        .route("/profiles/:address/blocked-platforms", get(get_profile_blocked_platforms))
-        .route("/social-graph/check/:follower/:following", get(check_social_graph_following))
+        .route(
+            "/profiles/:address/blocked-platforms",
+            get(get_profile_blocked_platforms),
+        )
+        .route(
+            "/social-graph/check/:follower/:following",
+            get(check_social_graph_following),
+        )
         .route("/social-graph/chart-data", get(get_social_graph_chart_data))
-        .route("/blocklist/check/profile/:blocker/:blocked", get(check_profile_blocked))
-        .route("/blocklist/check/platform/:profile/:platform", get(check_platform_blocked))
+        .route(
+            "/blocklist/check/profile/:blocker/:blocked",
+            get(check_profile_blocked),
+        )
+        .route(
+            "/blocklist/check/platform/:profile/:platform",
+            get(check_platform_blocked),
+        )
         .route("/badges", get(list_badges))
         .route("/badges/:badge_id", get(get_badge_by_id))
         .route("/platforms", get(list_platforms))
@@ -284,7 +311,10 @@ fn make_router(state: Arc<AppState>) -> Router {
         .route("/platforms/:id/approval", get(get_platform_approval))
         .route("/platforms/:id/blocked", get(get_platform_blocked))
         .route("/platforms/:id/members", get(get_platform_members))
-        .route("/platforms/:id/membership/:profile_address", get(check_platform_membership))
+        .route(
+            "/platforms/:id/membership/:profile_address",
+            get(check_platform_membership),
+        )
         .route("/platforms/:id/events", get(get_platform_events))
         .route("/posts", get(list_posts))
         .route("/posts/configuration", get(get_post_config))
@@ -295,17 +325,35 @@ fn make_router(state: Arc<AppState>) -> Router {
         .route("/posts/:id/reposts", get(get_post_reposts))
         .route("/posts/:id/promotion", get(get_post_promotion))
         .route("/posts/:id/poc-badges", get(get_post_poc_badges))
-        .route("/posts/:id/revenue-redirections", get(get_post_revenue_redirections))
+        .route(
+            "/posts/:id/revenue-redirections",
+            get(get_post_revenue_redirections),
+        )
         .route("/promotions", get(list_promotions))
-        .route("/promotions/analytics/top-performing", get(get_top_performing_promotions))
-        .route("/promotions/analytics/spending-trends", get(get_spending_trends))
+        .route(
+            "/promotions/analytics/top-performing",
+            get(get_top_performing_promotions),
+        )
+        .route(
+            "/promotions/analytics/spending-trends",
+            get(get_spending_trends),
+        )
         .route("/promotions/:id/views", get(get_promotion_views))
         .route("/promotions/:id/stats", get(get_promotion_stats))
-        .route("/promotions/:id/analytics/time-series", get(get_promotion_time_series))
-        .route("/promotions/:id/analytics/hourly", get(get_promotion_hourly))
+        .route(
+            "/promotions/:id/analytics/time-series",
+            get(get_promotion_time_series),
+        )
+        .route(
+            "/promotions/:id/analytics/hourly",
+            get(get_promotion_hourly),
+        )
         .route("/poc/badges", get(list_poc_badges))
         .route("/poc/badges/:id", get(get_poc_badge_by_id))
-        .route("/poc/revenue-redirections", get(list_poc_revenue_redirections))
+        .route(
+            "/poc/revenue-redirections",
+            get(list_poc_revenue_redirections),
+        )
         .route("/poc/analysis-results", get(list_poc_analysis_results))
         .route("/poc/disputes", get(list_poc_disputes))
         .route("/poc/disputes/:id", get(get_poc_dispute_by_id))
@@ -320,9 +368,18 @@ fn make_router(state: Arc<AppState>) -> Router {
         .route("/vesting/wallets", get(list_vesting_wallets))
         .route("/vesting/wallets/active", get(list_vesting_wallets_active))
         .route("/vesting/wallets/:wallet_id", get(get_vesting_wallet))
-        .route("/vesting/wallets/:wallet_id/events", get(get_vesting_wallet_events))
-        .route("/vesting/wallets/:wallet_id/claimable", get(get_vesting_claimable))
-        .route("/vesting/users/:address/wallets", get(get_user_vesting_wallets))
+        .route(
+            "/vesting/wallets/:wallet_id/events",
+            get(get_vesting_wallet_events),
+        )
+        .route(
+            "/vesting/wallets/:wallet_id/claimable",
+            get(get_vesting_claimable),
+        )
+        .route(
+            "/vesting/users/:address/wallets",
+            get(get_user_vesting_wallets),
+        )
         .route("/vesting/events", get(list_vesting_events))
         .route("/vesting/analytics", get(get_vesting_analytics))
         .route("/vesting/leaderboard", get(get_vesting_leaderboard))
@@ -330,17 +387,41 @@ fn make_router(state: Arc<AppState>) -> Router {
         .route("/revenue/leaderboard", get(get_revenue_leaderboard))
         .route("/revenue/chart-data", get(get_revenue_chart_data))
         .route("/revenue/unified", get(get_unified_revenue))
-        .route("/revenue/creators/:address/stats", get(get_creator_revenue_stats))
-        .route("/revenue/platforms/:address/stats", get(get_platform_revenue_stats))
+        .route(
+            "/revenue/creators/:address/stats",
+            get(get_creator_revenue_stats),
+        )
+        .route(
+            "/revenue/platforms/:address/stats",
+            get(get_platform_revenue_stats),
+        )
         .route("/treasury/current", get(get_treasury_current))
         .route("/treasury/history", get(get_treasury_history))
         .route("/search", get(search))
-        .route("/profiles/:owner/subscription-services", get(list_profile_subscription_services))
-        .route("/subscription-services/:service_id", get(get_profile_subscription_service))
-        .route("/subscription-services/:service_id/revenue", get(get_subscription_revenue_by_service))
-        .route("/subscriptions/subscriber/:address", get(list_subscriptions_by_subscriber))
-        .route("/subscriptions/:subscription_id", get(get_subscription_by_id))
-        .route("/subscription-access/:subscriber/:service_id", get(check_subscription_access))
+        .route(
+            "/profiles/:owner/subscription-services",
+            get(list_profile_subscription_services),
+        )
+        .route(
+            "/subscription-services/:service_id",
+            get(get_profile_subscription_service),
+        )
+        .route(
+            "/subscription-services/:service_id/revenue",
+            get(get_subscription_revenue_by_service),
+        )
+        .route(
+            "/subscriptions/subscriber/:address",
+            get(list_subscriptions_by_subscriber),
+        )
+        .route(
+            "/subscriptions/:subscription_id",
+            get(get_subscription_by_id),
+        )
+        .route(
+            "/subscription-access/:subscriber/:service_id",
+            get(check_subscription_access),
+        )
         .route("/subscription-analytics", get(get_subscription_analytics))
         .route("/service-performance", get(get_service_performance))
         .route("/mydata", get(list_mydata))
@@ -352,56 +433,125 @@ fn make_router(state: Arc<AppState>) -> Router {
         .route("/mydata/:id/revenue", get(get_mydata_revenue))
         .route("/mydata/:id/access-logs", get(get_mydata_access_logs))
         .route("/mydata/:id/stats", get(get_mydata_stats))
-        .route("/mydata/:id/revenue-timeline", get(get_mydata_revenue_timeline))
-        .route("/mydata/:id/access-analytics", get(get_mydata_access_analytics))
+        .route(
+            "/mydata/:id/revenue-timeline",
+            get(get_mydata_revenue_timeline),
+        )
+        .route(
+            "/mydata/:id/access-analytics",
+            get(get_mydata_access_analytics),
+        )
         .route("/creators/:id/mydata", get(get_creator_mydata))
         .route("/insurance/config", get(get_insurance_config))
         .route("/insurance/vaults", get(list_insurance_vaults))
         .route("/insurance/vaults/:vault_id", get(get_insurance_vault))
-        .route("/insurance/vaults/:vault_id/transactions", get(list_insurance_vault_transactions))
-        .route("/insurance/vaults/:vault_id/exposures", get(get_insurance_vault_exposures))
+        .route(
+            "/insurance/vaults/:vault_id/transactions",
+            get(list_insurance_vault_transactions),
+        )
+        .route(
+            "/insurance/vaults/:vault_id/exposures",
+            get(get_insurance_vault_exposures),
+        )
         .route("/insurance/policies", get(list_insurance_policies))
         .route("/insurance/policies/:policy_id", get(get_insurance_policy))
-        .route("/insurance/markets/:market_id/policies", get(list_insurance_market_policies))
+        .route(
+            "/insurance/markets/:market_id/policies",
+            get(list_insurance_market_policies),
+        )
         .route("/spot/records/:post_id", get(get_spot_record))
         .route("/spot/records/:post_id/bets", get(list_spot_bets))
         .route("/spot/records/:post_id/payouts", get(list_spot_payouts))
         .route("/spot/records/:post_id/refunds", get(list_spot_refunds))
         .route("/spot/configuration", get(get_spot_configuration))
         .route("/spt/pools", get(list_spt_pools))
-        .route("/spt/pools/by-associated-id/:id", get(get_spt_pool_by_associated_id))
+        .route(
+            "/spt/pools/by-associated-id/:id",
+            get(get_spt_pool_by_associated_id),
+        )
         .route("/spt/popular", get(get_spt_popular))
         .route("/spt/users/:address/holdings", get(get_spt_user_holdings))
-        .route("/spt/users/:address/reservations", get(get_spt_user_reservations))
-        .route("/spt/analytics/top-performers", get(get_spt_analytics_top_performers))
-        .route("/spt/portfolios/:address/performance", get(get_spt_portfolio_performance))
-        .route("/spt/creators/:address/revenue-streams", get(get_spt_creator_revenue_streams))
+        .route(
+            "/spt/users/:address/reservations",
+            get(get_spt_user_reservations),
+        )
+        .route(
+            "/spt/analytics/top-performers",
+            get(get_spt_analytics_top_performers),
+        )
+        .route(
+            "/spt/portfolios/:address/performance",
+            get(get_spt_portfolio_performance),
+        )
+        .route(
+            "/spt/creators/:address/revenue-streams",
+            get(get_spt_creator_revenue_streams),
+        )
         .route("/spt/market-sentiment", get(get_spt_market_sentiment))
-        .route("/spt/pools/:id/liquidity-profile", get(get_spt_liquidity_profile))
+        .route(
+            "/spt/pools/:id/liquidity-profile",
+            get(get_spt_liquidity_profile),
+        )
         .route("/spt/pools/:id", get(get_spt_pool))
-        .route("/spt/pools/:id/transactions", get(get_spt_pool_transactions))
+        .route(
+            "/spt/pools/:id/transactions",
+            get(get_spt_pool_transactions),
+        )
         .route("/spt/pools/:id/holdings", get(get_spt_pool_holdings))
-        .route("/spt/pools/:id/price-history", get(get_spt_pool_price_history))
+        .route(
+            "/spt/pools/:id/price-history",
+            get(get_spt_pool_price_history),
+        )
         .route("/spt/pools/:id/revenue", get(get_spt_pool_revenue))
         .route("/spt/config", get(get_spt_config))
         .route("/spt/reservation-pools", get(list_spt_reservation_pools))
         .route("/spt/reservation-pools/:id", get(get_spt_reservation_pool))
-        .route("/spt/reservation-pools/:id/reservations", get(list_spt_reservation_pool_reservations))
+        .route(
+            "/spt/reservation-pools/:id/reservations",
+            get(list_spt_reservation_pool_reservations),
+        )
         .route("/governance/proposals", get(list_governance_proposals))
         .route("/governance/proposals/:id", get(get_governance_proposal))
-        .route("/governance/proposals/:id/community-votes", get(get_governance_proposal_community_votes))
-        .route("/governance/proposals/:id/anonymous-stats", get(get_governance_proposal_anonymous_stats))
-        .route("/governance/proposals/:id/anonymous-votes", get(get_governance_proposal_anonymous_votes))
-        .route("/governance/proposals/:id/decryption-failures", get(get_governance_proposal_decryption_failures))
+        .route(
+            "/governance/proposals/:id/community-votes",
+            get(get_governance_proposal_community_votes),
+        )
+        .route(
+            "/governance/proposals/:id/anonymous-stats",
+            get(get_governance_proposal_anonymous_stats),
+        )
+        .route(
+            "/governance/proposals/:id/anonymous-votes",
+            get(get_governance_proposal_anonymous_votes),
+        )
+        .route(
+            "/governance/proposals/:id/decryption-failures",
+            get(get_governance_proposal_decryption_failures),
+        )
         .route("/governance/delegates", get(list_governance_delegates))
-        .route("/governance/delegates/:address", get(get_governance_delegate))
-        .route("/governance/delegates/:address/proposals", get(get_governance_delegate_proposals))
-        .route("/governance/delegates/:address/ratings", get(get_governance_delegate_ratings))
+        .route(
+            "/governance/delegates/:address",
+            get(get_governance_delegate),
+        )
+        .route(
+            "/governance/delegates/:address/proposals",
+            get(get_governance_delegate_proposals),
+        )
+        .route(
+            "/governance/delegates/:address/ratings",
+            get(get_governance_delegate_ratings),
+        )
         .route("/governance/nominees", get(list_governance_nominees))
         .route("/governance/registries", get(list_governance_registries))
-        .route("/governance/registries/:registry_type", get(get_governance_registry))
+        .route(
+            "/governance/registries/:registry_type",
+            get(get_governance_registry),
+        )
         .route("/governance/events", get(list_governance_events))
-        .route("/governance/anonymous-voting/trends", get(get_governance_anonymous_voting_trends))
+        .route(
+            "/governance/anonymous-voting/trends",
+            get(get_governance_anonymous_voting_trends),
+        )
         .route("/upgrade/events", get(list_upgrade_events))
         .route("/upgrade/migrations", get(list_object_migrated_events))
         .with_state(state)
@@ -1781,7 +1931,7 @@ async fn search(
     if q.is_empty() {
         return Ok(Json(serde_json::json!({
             "profiles": [],
-            "posts_count": 0,
+            "posts": [],
             "platforms_count": 0,
         })));
     }

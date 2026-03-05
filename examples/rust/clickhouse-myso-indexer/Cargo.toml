@@ -6,9 +6,9 @@ publish = false
 
 [dependencies]
 # MySo indexer framework dependencies
-myso-indexer-alt-framework = { git = "https://github.com/the-social-proof-foundation/myso-core.git", branch = "testnet" }
-myso-indexer-alt-framework-store-traits = { git = "https://github.com/the-social-proof-foundation/myso-core.git", branch = "testnet" }
-myso-types = { git = "https://github.com/the-social-proof-foundation/myso-core.git", branch = "testnet" }
+myso-indexer-alt-framework = { git = "https://github.com/the-social-proof-foundation/myso-core.git", branch = "main" }
+myso-indexer-alt-framework-store-traits = { git = "https://github.com/the-social-proof-foundation/myso-core.git", branch = "main" }
+myso-types = { git = "https://github.com/the-social-proof-foundation/myso-core.git", branch = "main" }
 
 # Async runtime
 tokio = { version = "1.0", features = ["full"] }
@@ -19,9 +19,6 @@ anyhow = "1.0"
 
 # Async traits
 async-trait = "0.1"
-
-# URL parsing
-url = "2.0"
 
 # Command line parsing
 clap = { version = "4.0", features = ["derive"] }
@@ -39,8 +36,12 @@ chrono = { version = "0.4", features = ["serde"] }
 # Serialization
 serde = { version = "1.0", features = ["derive"] }
 
-# ClickHouse client with recommended features
-clickhouse = { version = "0.12.2", features = ["rustls-tls", "lz4", "inserter", "time"] }
+# ClickHouse native protocol client (port 9000, faster than HTTP)
+clickhouse-native-client = "0.1"
 
-# rustls for crypto provider (needed for HTTPS connections)
+# rustls for crypto provider (optional TLS for ClickHouse)
 rustls = { version = "0.23", features = ["ring"] }
+
+# Logging
+tracing = "0.1"
+tracing-subscriber = { version = "0.3", features = ["env-filter"] }

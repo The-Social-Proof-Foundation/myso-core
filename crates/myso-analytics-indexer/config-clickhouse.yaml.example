@@ -1,0 +1,19 @@
+client_metric_host: "127.0.0.1"
+client_metric_port: 9184
+rpc_api_url: "http://fullnode.testnet.mysocial.network:9000"
+streaming_url: "http://fullnode.testnet.mysocial.network:9000"
+
+output_store:
+  type: clickhouse
+  host: "localhost"
+  port: 9000
+  user: "default"
+
+pipelines:
+  - pipeline: Transaction
+    file_format: parquet
+    batch_size:
+      checkpoints: 1000
+    force_batch_cut_after_secs: 300
+
+first_checkpoint: 2587781
