@@ -8,3 +8,4 @@
 -->
 <clickhouse>
     <path from_env="CLICKHOUSE_DATA_PATH"/>
+</clickhouse>

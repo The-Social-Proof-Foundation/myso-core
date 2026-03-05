@@ -7,6 +7,7 @@ Handles user identity, profile creation, management, and username registration
 
 
 -  [Struct `EcosystemTreasuryAdminCap`](#social_contracts_profile_EcosystemTreasuryAdminCap)
+-  [Struct `EcosystemBadgeAdminCap`](#social_contracts_profile_EcosystemBadgeAdminCap)
 -  [Struct `EcosystemTreasury`](#social_contracts_profile_EcosystemTreasury)
 -  [Struct `UsernameRegistry`](#social_contracts_profile_UsernameRegistry)
 -  [Struct `Profile`](#social_contracts_profile_Profile)
@@ -35,6 +36,8 @@ Handles user identity, profile creation, management, and username registration
 -  [Function `to_lowercase_bytes`](#social_contracts_profile_to_lowercase_bytes)
 -  [Function `to_lowercase_byte`](#social_contracts_profile_to_lowercase_byte)
 -  [Function `ascii_to_string`](#social_contracts_profile_ascii_to_string)
+-  [Function `is_ecosystem_badge`](#social_contracts_profile_is_ecosystem_badge)
+-  [Function `copy_string`](#social_contracts_profile_copy_string)
 -  [Function `create_profile`](#social_contracts_profile_create_profile)
 -  [Function `transfer_profile`](#social_contracts_profile_transfer_profile)
 -  [Function `update_profile`](#social_contracts_profile_update_profile)
@@ -61,6 +64,9 @@ Handles user identity, profile creation, management, and username registration
 -  [Function `treasury_version`](#social_contracts_profile_treasury_version)
 -  [Function `migrate_ecosystem_treasury`](#social_contracts_profile_migrate_ecosystem_treasury)
 -  [Function `create_ecosystem_treasury_admin_cap`](#social_contracts_profile_create_ecosystem_treasury_admin_cap)
+-  [Function `create_ecosystem_badge_admin_cap`](#social_contracts_profile_create_ecosystem_badge_admin_cap)
+-  [Function `assign_ecosystem_badge`](#social_contracts_profile_assign_ecosystem_badge)
+-  [Function `revoke_ecosystem_badge`](#social_contracts_profile_revoke_ecosystem_badge)
 -  [Function `version`](#social_contracts_profile_version)
 -  [Function `borrow_version_mut`](#social_contracts_profile_borrow_version_mut)
 -  [Function `migrate_registry`](#social_contracts_profile_migrate_registry)
@@ -88,6 +94,10 @@ Handles user identity, profile creation, management, and username registration
 -  [Function `get_selected_badge_id`](#social_contracts_profile_get_selected_badge_id)
 -  [Function `get_display_badge`](#social_contracts_profile_get_display_badge)
 -  [Function `clear_selected_badge`](#social_contracts_profile_clear_selected_badge)
+-  [Function `set_selected_ecosystem_badge`](#social_contracts_profile_set_selected_ecosystem_badge)
+-  [Function `get_selected_ecosystem_badge_id`](#social_contracts_profile_get_selected_ecosystem_badge_id)
+-  [Function `get_display_ecosystem_badge`](#social_contracts_profile_get_display_ecosystem_badge)
+-  [Function `clear_selected_ecosystem_badge`](#social_contracts_profile_clear_selected_ecosystem_badge)
 -  [Function `vest_myso`](#social_contracts_profile_vest_myso)
 -  [Function `claim_vested_tokens`](#social_contracts_profile_claim_vested_tokens)
 -  [Function `claimable`](#social_contracts_profile_claimable)
@@ -159,6 +169,33 @@ Admin capability for Ecosystem Treasury management
 
 
 <pre><code><b>public</b> <b>struct</b> <a href="../social_contracts/profile.md#social_contracts_profile_EcosystemTreasuryAdminCap">EcosystemTreasuryAdminCap</a> <b>has</b> key, store
+</code></pre>
+
+
+
+<details>
+<summary>Fields</summary>
+
+
+<dl>
+<dt>
+<code><a href="../social_contracts/profile.md#social_contracts_profile_id">id</a>: <a href="../myso/object.md#myso_object_UID">myso::object::UID</a></code>
+</dt>
+<dd>
+</dd>
+</dl>
+
+
+</details>
+
+<a name="social_contracts_profile_EcosystemBadgeAdminCap"></a>
+
+## Struct `EcosystemBadgeAdminCap`
+
+Admin capability for assigning ecosystem badges to user profiles
+
+
+<pre><code><b>public</b> <b>struct</b> <a href="../social_contracts/profile.md#social_contracts_profile_EcosystemBadgeAdminCap">EcosystemBadgeAdminCap</a> <b>has</b> key, store
 </code></pre>
 
 
@@ -383,6 +420,13 @@ Profile object that contains user information
 <dd>
  Badge ID of the selected/primary badge to display (optional)
  If None, the first badge in the badges vector should be displayed
+</dd>
+<dt>
+<code>selected_ecosystem_badge_id: <a href="../std/option.md#std_option_Option">std::option::Option</a>&lt;<a href="../std/string.md#std_string_String">std::string::String</a>&gt;</code>
+</dt>
+<dd>
+ Badge ID of the selected ecosystem badge to display (optional)
+ If None, the first ecosystem badge in the badges vector should be displayed
 </dd>
 <dt>
 <code>min_message_cost: <a href="../std/option.md#std_option_Option">std::option::Option</a>&lt;u64&gt;</code>
@@ -1615,6 +1659,60 @@ Error codes
 
 
 
+<a name="social_contracts_profile_EInvalidBadgeType"></a>
+
+
+
+<pre><code><b>const</b> <a href="../social_contracts/profile.md#social_contracts_profile_EInvalidBadgeType">EInvalidBadgeType</a>: u64 = 19;
+</code></pre>
+
+
+
+<a name="social_contracts_profile_EBadgeNameTooLong"></a>
+
+
+
+<pre><code><b>const</b> <a href="../social_contracts/profile.md#social_contracts_profile_EBadgeNameTooLong">EBadgeNameTooLong</a>: u64 = 20;
+</code></pre>
+
+
+
+<a name="social_contracts_profile_EBadgeDescriptionTooLong"></a>
+
+
+
+<pre><code><b>const</b> <a href="../social_contracts/profile.md#social_contracts_profile_EBadgeDescriptionTooLong">EBadgeDescriptionTooLong</a>: u64 = 21;
+</code></pre>
+
+
+
+<a name="social_contracts_profile_EBadgeMediaUrlTooLong"></a>
+
+
+
+<pre><code><b>const</b> <a href="../social_contracts/profile.md#social_contracts_profile_EBadgeMediaUrlTooLong">EBadgeMediaUrlTooLong</a>: u64 = 22;
+</code></pre>
+
+
+
+<a name="social_contracts_profile_EBadgeIconUrlTooLong"></a>
+
+
+
+<pre><code><b>const</b> <a href="../social_contracts/profile.md#social_contracts_profile_EBadgeIconUrlTooLong">EBadgeIconUrlTooLong</a>: u64 = 23;
+</code></pre>
+
+
+
+<a name="social_contracts_profile_ENotEcosystemBadge"></a>
+
+
+
+<pre><code><b>const</b> <a href="../social_contracts/profile.md#social_contracts_profile_ENotEcosystemBadge">ENotEcosystemBadge</a>: u64 = 24;
+</code></pre>
+
+
+
 <a name="social_contracts_profile_EInvalidStartTime"></a>
 
 
@@ -1684,6 +1782,51 @@ Reserved usernames that cannot be registered
 
 
 <pre><code><b>const</b> <a href="../social_contracts/profile.md#social_contracts_profile_OFFERS_FIELD">OFFERS_FIELD</a>: vector&lt;u8&gt; = vector[112, 114, 111, 102, 105, 108, 101, 95, 111, 102, 102, 101, 114, 115];
+</code></pre>
+
+
+
+<a name="social_contracts_profile_MAX_BADGE_NAME_LENGTH"></a>
+
+
+
+<pre><code><b>const</b> <a href="../social_contracts/profile.md#social_contracts_profile_MAX_BADGE_NAME_LENGTH">MAX_BADGE_NAME_LENGTH</a>: u64 = 100;
+</code></pre>
+
+
+
+<a name="social_contracts_profile_MAX_BADGE_DESCRIPTION_LENGTH"></a>
+
+
+
+<pre><code><b>const</b> <a href="../social_contracts/profile.md#social_contracts_profile_MAX_BADGE_DESCRIPTION_LENGTH">MAX_BADGE_DESCRIPTION_LENGTH</a>: u64 = 500;
+</code></pre>
+
+
+
+<a name="social_contracts_profile_MAX_BADGE_MEDIA_URL_LENGTH"></a>
+
+
+
+<pre><code><b>const</b> <a href="../social_contracts/profile.md#social_contracts_profile_MAX_BADGE_MEDIA_URL_LENGTH">MAX_BADGE_MEDIA_URL_LENGTH</a>: u64 = 2048;
+</code></pre>
+
+
+
+<a name="social_contracts_profile_MAX_BADGE_ICON_URL_LENGTH"></a>
+
+
+
+<pre><code><b>const</b> <a href="../social_contracts/profile.md#social_contracts_profile_MAX_BADGE_ICON_URL_LENGTH">MAX_BADGE_ICON_URL_LENGTH</a>: u64 = 2048;
+</code></pre>
+
+
+
+<a name="social_contracts_profile_ECOSYSTEM_BADGE_PREFIX"></a>
+
+
+
+<pre><code><b>const</b> <a href="../social_contracts/profile.md#social_contracts_profile_ECOSYSTEM_BADGE_PREFIX">ECOSYSTEM_BADGE_PREFIX</a>: vector&lt;u8&gt; = vector[101, 99, 111, 115, 121, 115, 116, 101, 109, 95, 98, 97, 100, 103, 101, 95];
 </code></pre>
 
 
@@ -1867,6 +2010,75 @@ Convert an ASCII String to a String
 
 </details>
 
+<a name="social_contracts_profile_is_ecosystem_badge"></a>
+
+## Function `is_ecosystem_badge`
+
+
+
+<pre><code><b>fun</b> <a href="../social_contracts/profile.md#social_contracts_profile_is_ecosystem_badge">is_ecosystem_badge</a>(<a href="../social_contracts/profile.md#social_contracts_profile_badge_id">badge_id</a>: &<a href="../std/string.md#std_string_String">std::string::String</a>): bool
+</code></pre>
+
+
+
+<details>
+<summary>Implementation</summary>
+
+
+<pre><code><b>fun</b> <a href="../social_contracts/profile.md#social_contracts_profile_is_ecosystem_badge">is_ecosystem_badge</a>(<a href="../social_contracts/profile.md#social_contracts_profile_badge_id">badge_id</a>: &String): bool {
+    <b>let</b> bytes = string::as_bytes(<a href="../social_contracts/profile.md#social_contracts_profile_badge_id">badge_id</a>);
+    <b>let</b> prefix = <a href="../social_contracts/profile.md#social_contracts_profile_ECOSYSTEM_BADGE_PREFIX">ECOSYSTEM_BADGE_PREFIX</a>;
+    <b>let</b> prefix_len = vector::length(&prefix);
+    <b>if</b> (vector::length(bytes) &lt; prefix_len) {
+        <b>return</b> <b>false</b>
+    };
+    <b>let</b> <b>mut</b> i = 0;
+    <b>while</b> (i &lt; prefix_len) {
+        <b>if</b> (*vector::borrow(bytes, i) != *vector::borrow(&prefix, i)) {
+            <b>return</b> <b>false</b>
+        };
+        i = i + 1;
+    };
+    <b>true</b>
+}
+</code></pre>
+
+
+
+</details>
+
+<a name="social_contracts_profile_copy_string"></a>
+
+## Function `copy_string`
+
+
+
+<pre><code><b>fun</b> <a href="../social_contracts/profile.md#social_contracts_profile_copy_string">copy_string</a>(s: &<a href="../std/string.md#std_string_String">std::string::String</a>): <a href="../std/string.md#std_string_String">std::string::String</a>
+</code></pre>
+
+
+
+<details>
+<summary>Implementation</summary>
+
+
+<pre><code><b>fun</b> <a href="../social_contracts/profile.md#social_contracts_profile_copy_string">copy_string</a>(s: &String): String {
+    <b>let</b> bytes = string::as_bytes(s);
+    <b>let</b> len = vector::length(bytes);
+    <b>let</b> <b>mut</b> result = vector::empty&lt;u8&gt;();
+    <b>let</b> <b>mut</b> i = 0;
+    <b>while</b> (i &lt; len) {
+        vector::push_back(&<b>mut</b> result, *vector::borrow(bytes, i));
+        i = i + 1;
+    };
+    string::utf8(result)
+}
+</code></pre>
+
+
+
+</details>
+
 <a name="social_contracts_profile_create_profile"></a>
 
 ## Function `create_profile`
@@ -1943,6 +2155,7 @@ This is the main entry point for new users, combining profile and username creat
         <a href="../social_contracts/profile.md#social_contracts_profile_min_offer_amount">min_offer_amount</a>: option::none(),
         badges: vector::empty&lt;<a href="../social_contracts/profile.md#social_contracts_profile_ProfileBadge">ProfileBadge</a>&gt;(),
         selected_badge_id: option::none(),
+        selected_ecosystem_badge_id: option::none(),
         min_message_cost: option::none(),
         paid_messaging_enabled: <b>false</b>,
         <a href="../social_contracts/profile.md#social_contracts_profile_version">version</a>: <a href="../social_contracts/upgrade.md#social_contracts_upgrade_current_version">upgrade::current_version</a>(),
@@ -2998,6 +3211,127 @@ This function is only callable by other modules in the same package
 
 </details>
 
+<a name="social_contracts_profile_create_ecosystem_badge_admin_cap"></a>
+
+## Function `create_ecosystem_badge_admin_cap`
+
+Create an EcosystemBadgeAdminCap for bootstrap (package visibility only)
+
+
+<pre><code><b>public</b>(package) <b>fun</b> <a href="../social_contracts/profile.md#social_contracts_profile_create_ecosystem_badge_admin_cap">create_ecosystem_badge_admin_cap</a>(ctx: &<b>mut</b> <a href="../myso/tx_context.md#myso_tx_context_TxContext">myso::tx_context::TxContext</a>): <a href="../social_contracts/profile.md#social_contracts_profile_EcosystemBadgeAdminCap">social_contracts::profile::EcosystemBadgeAdminCap</a>
+</code></pre>
+
+
+
+<details>
+<summary>Implementation</summary>
+
+
+<pre><code><b>public</b>(package) <b>fun</b> <a href="../social_contracts/profile.md#social_contracts_profile_create_ecosystem_badge_admin_cap">create_ecosystem_badge_admin_cap</a>(ctx: &<b>mut</b> TxContext): <a href="../social_contracts/profile.md#social_contracts_profile_EcosystemBadgeAdminCap">EcosystemBadgeAdminCap</a> {
+    <a href="../social_contracts/profile.md#social_contracts_profile_EcosystemBadgeAdminCap">EcosystemBadgeAdminCap</a> {
+        <a href="../social_contracts/profile.md#social_contracts_profile_id">id</a>: object::new(ctx)
+    }
+}
+</code></pre>
+
+
+
+</details>
+
+<a name="social_contracts_profile_assign_ecosystem_badge"></a>
+
+## Function `assign_ecosystem_badge`
+
+Assign an ecosystem badge to a profile - called by EcosystemBadgeAdminCap holder
+
+
+<pre><code><b>public</b> <b>entry</b> <b>fun</b> <a href="../social_contracts/profile.md#social_contracts_profile_assign_ecosystem_badge">assign_ecosystem_badge</a>(_: &<a href="../social_contracts/profile.md#social_contracts_profile_EcosystemBadgeAdminCap">social_contracts::profile::EcosystemBadgeAdminCap</a>, <a href="../social_contracts/profile.md#social_contracts_profile">profile</a>: &<b>mut</b> <a href="../social_contracts/profile.md#social_contracts_profile_Profile">social_contracts::profile::Profile</a>, badge_name: <a href="../std/string.md#std_string_String">std::string::String</a>, badge_description: <a href="../std/string.md#std_string_String">std::string::String</a>, badge_media_url: <a href="../std/string.md#std_string_String">std::string::String</a>, badge_icon_url: <a href="../std/string.md#std_string_String">std::string::String</a>, badge_type: u8, ctx: &<b>mut</b> <a href="../myso/tx_context.md#myso_tx_context_TxContext">myso::tx_context::TxContext</a>)
+</code></pre>
+
+
+
+<details>
+<summary>Implementation</summary>
+
+
+<pre><code><b>public</b> <b>entry</b> <b>fun</b> <a href="../social_contracts/profile.md#social_contracts_profile_assign_ecosystem_badge">assign_ecosystem_badge</a>(
+    _: &<a href="../social_contracts/profile.md#social_contracts_profile_EcosystemBadgeAdminCap">EcosystemBadgeAdminCap</a>,
+    <a href="../social_contracts/profile.md#social_contracts_profile">profile</a>: &<b>mut</b> <a href="../social_contracts/profile.md#social_contracts_profile_Profile">Profile</a>,
+    badge_name: String,
+    badge_description: String,
+    badge_media_url: String,
+    badge_icon_url: String,
+    badge_type: u8,
+    ctx: &<b>mut</b> TxContext
+) {
+    <b>assert</b>!(badge_type &gt;= 1 && badge_type &lt;= 100, <a href="../social_contracts/profile.md#social_contracts_profile_EInvalidBadgeType">EInvalidBadgeType</a>);
+    <b>assert</b>!(string::length(&badge_name) &gt; 0 && string::length(&badge_name) &lt;= <a href="../social_contracts/profile.md#social_contracts_profile_MAX_BADGE_NAME_LENGTH">MAX_BADGE_NAME_LENGTH</a>, <a href="../social_contracts/profile.md#social_contracts_profile_EBadgeNameTooLong">EBadgeNameTooLong</a>);
+    <b>assert</b>!(string::length(&badge_description) &lt;= <a href="../social_contracts/profile.md#social_contracts_profile_MAX_BADGE_DESCRIPTION_LENGTH">MAX_BADGE_DESCRIPTION_LENGTH</a>, <a href="../social_contracts/profile.md#social_contracts_profile_EBadgeDescriptionTooLong">EBadgeDescriptionTooLong</a>);
+    <b>assert</b>!(string::length(&badge_media_url) &gt; 0 && string::length(&badge_media_url) &lt;= <a href="../social_contracts/profile.md#social_contracts_profile_MAX_BADGE_MEDIA_URL_LENGTH">MAX_BADGE_MEDIA_URL_LENGTH</a>, <a href="../social_contracts/profile.md#social_contracts_profile_EBadgeMediaUrlTooLong">EBadgeMediaUrlTooLong</a>);
+    <b>assert</b>!(string::length(&badge_icon_url) &gt; 0 && string::length(&badge_icon_url) &lt;= <a href="../social_contracts/profile.md#social_contracts_profile_MAX_BADGE_ICON_URL_LENGTH">MAX_BADGE_ICON_URL_LENGTH</a>, <a href="../social_contracts/profile.md#social_contracts_profile_EBadgeIconUrlTooLong">EBadgeIconUrlTooLong</a>);
+    <b>let</b> issuer = tx_context::sender(ctx);
+    <b>let</b> now = tx_context::epoch(ctx);
+    <b>let</b> badge_name_for_id = <a href="../social_contracts/profile.md#social_contracts_profile_copy_string">copy_string</a>(&badge_name);
+    <b>let</b> <b>mut</b> <a href="../social_contracts/profile.md#social_contracts_profile_badge_id">badge_id</a> = string::utf8(<a href="../social_contracts/profile.md#social_contracts_profile_ECOSYSTEM_BADGE_PREFIX">ECOSYSTEM_BADGE_PREFIX</a>);
+    <b>let</b> issuer_str = address::to_string(issuer);
+    string::append(&<b>mut</b> <a href="../social_contracts/profile.md#social_contracts_profile_badge_id">badge_id</a>, issuer_str);
+    string::append(&<b>mut</b> <a href="../social_contracts/profile.md#social_contracts_profile_badge_id">badge_id</a>, string::utf8(b"_"));
+    string::append(&<b>mut</b> <a href="../social_contracts/profile.md#social_contracts_profile_badge_id">badge_id</a>, badge_name_for_id);
+    <b>let</b> badge_id_for_select = <a href="../social_contracts/profile.md#social_contracts_profile_copy_string">copy_string</a>(&<a href="../social_contracts/profile.md#social_contracts_profile_badge_id">badge_id</a>);
+    <a href="../social_contracts/profile.md#social_contracts_profile_add_badge_to_profile">add_badge_to_profile</a>(
+        <a href="../social_contracts/profile.md#social_contracts_profile">profile</a>,
+        <a href="../social_contracts/profile.md#social_contracts_profile_badge_id">badge_id</a>,
+        badge_name,
+        badge_description,
+        badge_media_url,
+        badge_icon_url,
+        issuer,
+        now,
+        issuer,
+        badge_type
+    );
+    <b>if</b> (option::is_none(&<a href="../social_contracts/profile.md#social_contracts_profile">profile</a>.selected_ecosystem_badge_id)) {
+        <a href="../social_contracts/profile.md#social_contracts_profile">profile</a>.selected_ecosystem_badge_id = option::some(badge_id_for_select);
+    };
+}
+</code></pre>
+
+
+
+</details>
+
+<a name="social_contracts_profile_revoke_ecosystem_badge"></a>
+
+## Function `revoke_ecosystem_badge`
+
+Revoke an ecosystem badge from a profile - called by EcosystemBadgeAdminCap holder
+
+
+<pre><code><b>public</b> <b>entry</b> <b>fun</b> <a href="../social_contracts/profile.md#social_contracts_profile_revoke_ecosystem_badge">revoke_ecosystem_badge</a>(_: &<a href="../social_contracts/profile.md#social_contracts_profile_EcosystemBadgeAdminCap">social_contracts::profile::EcosystemBadgeAdminCap</a>, <a href="../social_contracts/profile.md#social_contracts_profile">profile</a>: &<b>mut</b> <a href="../social_contracts/profile.md#social_contracts_profile_Profile">social_contracts::profile::Profile</a>, <a href="../social_contracts/profile.md#social_contracts_profile_badge_id">badge_id</a>: <a href="../std/string.md#std_string_String">std::string::String</a>, ctx: &<b>mut</b> <a href="../myso/tx_context.md#myso_tx_context_TxContext">myso::tx_context::TxContext</a>)
+</code></pre>
+
+
+
+<details>
+<summary>Implementation</summary>
+
+
+<pre><code><b>public</b> <b>entry</b> <b>fun</b> <a href="../social_contracts/profile.md#social_contracts_profile_revoke_ecosystem_badge">revoke_ecosystem_badge</a>(
+    _: &<a href="../social_contracts/profile.md#social_contracts_profile_EcosystemBadgeAdminCap">EcosystemBadgeAdminCap</a>,
+    <a href="../social_contracts/profile.md#social_contracts_profile">profile</a>: &<b>mut</b> <a href="../social_contracts/profile.md#social_contracts_profile_Profile">Profile</a>,
+    <a href="../social_contracts/profile.md#social_contracts_profile_badge_id">badge_id</a>: String,
+    ctx: &<b>mut</b> TxContext
+) {
+    <b>let</b> revoker = tx_context::sender(ctx);
+    <b>let</b> now = tx_context::epoch(ctx);
+    <a href="../social_contracts/profile.md#social_contracts_profile_remove_badge_from_profile">remove_badge_from_profile</a>(<a href="../social_contracts/profile.md#social_contracts_profile">profile</a>, &<a href="../social_contracts/profile.md#social_contracts_profile_badge_id">badge_id</a>, revoker, revoker, now);
+}
+</code></pre>
+
+
+
+</details>
+
 <a name="social_contracts_profile_version"></a>
 
 ## Function `version`
@@ -3259,6 +3593,12 @@ This function trusts the caller has done authorization checks
                     <a href="../social_contracts/profile.md#social_contracts_profile">profile</a>.selected_badge_id = option::none();
                 };
             };
+            <b>if</b> (option::is_some(&<a href="../social_contracts/profile.md#social_contracts_profile">profile</a>.selected_ecosystem_badge_id) && <a href="../social_contracts/profile.md#social_contracts_profile_is_ecosystem_badge">is_ecosystem_badge</a>(<a href="../social_contracts/profile.md#social_contracts_profile_badge_id">badge_id</a>)) {
+                <b>let</b> selected_id = option::borrow(&<a href="../social_contracts/profile.md#social_contracts_profile">profile</a>.selected_ecosystem_badge_id);
+                <b>if</b> (string::as_bytes(selected_id) == string::as_bytes(<a href="../social_contracts/profile.md#social_contracts_profile_badge_id">badge_id</a>)) {
+                    <a href="../social_contracts/profile.md#social_contracts_profile">profile</a>.selected_ecosystem_badge_id = option::none();
+                };
+            };
             // Emit badge revoked event
             event::emit(<a href="../social_contracts/profile.md#social_contracts_profile_BadgeRevokedEvent">BadgeRevokedEvent</a> {
                 profile_id: object::uid_to_address(&<a href="../social_contracts/profile.md#social_contracts_profile">profile</a>.<a href="../social_contracts/profile.md#social_contracts_profile_id">id</a>),
@@ -3324,6 +3664,12 @@ Note: Badges are tied to profile identity and cannot be transferred separately
                 <b>let</b> selected_id = option::borrow(&<a href="../social_contracts/profile.md#social_contracts_profile">profile</a>.selected_badge_id);
                 <b>if</b> (string::as_bytes(selected_id) == string::as_bytes(&<a href="../social_contracts/profile.md#social_contracts_profile_badge_id">badge_id</a>)) {
                     <a href="../social_contracts/profile.md#social_contracts_profile">profile</a>.selected_badge_id = option::none();
+                };
+            };
+            <b>if</b> (option::is_some(&<a href="../social_contracts/profile.md#social_contracts_profile">profile</a>.selected_ecosystem_badge_id) && <a href="../social_contracts/profile.md#social_contracts_profile_is_ecosystem_badge">is_ecosystem_badge</a>(&<a href="../social_contracts/profile.md#social_contracts_profile_badge_id">badge_id</a>)) {
+                <b>let</b> selected_id = option::borrow(&<a href="../social_contracts/profile.md#social_contracts_profile">profile</a>.selected_ecosystem_badge_id);
+                <b>if</b> (string::as_bytes(selected_id) == string::as_bytes(&<a href="../social_contracts/profile.md#social_contracts_profile_badge_id">badge_id</a>)) {
+                    <a href="../social_contracts/profile.md#social_contracts_profile">profile</a>.selected_ecosystem_badge_id = option::none();
                 };
             };
             // Emit badge removed event (user-initiated, different from revoked)
@@ -3972,6 +4318,186 @@ After clearing, the first badge will be displayed by default
         event::emit(<a href="../social_contracts/profile.md#social_contracts_profile_BadgeSelectedEvent">BadgeSelectedEvent</a> {
             profile_id: object::uid_to_address(&<a href="../social_contracts/profile.md#social_contracts_profile">profile</a>.<a href="../social_contracts/profile.md#social_contracts_profile_id">id</a>),
             <a href="../social_contracts/profile.md#social_contracts_profile_badge_id">badge_id</a>: string::utf8(b""), // Empty string indicates clearing
+            selected_by: sender,
+            selected_at: clock::timestamp_ms(clock),
+        });
+    };
+}
+</code></pre>
+
+
+
+</details>
+
+<a name="social_contracts_profile_set_selected_ecosystem_badge"></a>
+
+## Function `set_selected_ecosystem_badge`
+
+Set the selected ecosystem badge to display for a profile (owner only)
+The badge must exist and have the ecosystem_badge_ prefix
+
+
+<pre><code><b>public</b> <b>fun</b> <a href="../social_contracts/profile.md#social_contracts_profile_set_selected_ecosystem_badge">set_selected_ecosystem_badge</a>(<a href="../social_contracts/profile.md#social_contracts_profile">profile</a>: &<b>mut</b> <a href="../social_contracts/profile.md#social_contracts_profile_Profile">social_contracts::profile::Profile</a>, <a href="../social_contracts/profile.md#social_contracts_profile_badge_id">badge_id</a>: <a href="../std/string.md#std_string_String">std::string::String</a>, clock: &<a href="../myso/clock.md#myso_clock_Clock">myso::clock::Clock</a>, ctx: &<b>mut</b> <a href="../myso/tx_context.md#myso_tx_context_TxContext">myso::tx_context::TxContext</a>)
+</code></pre>
+
+
+
+<details>
+<summary>Implementation</summary>
+
+
+<pre><code><b>public</b> <b>fun</b> <a href="../social_contracts/profile.md#social_contracts_profile_set_selected_ecosystem_badge">set_selected_ecosystem_badge</a>(
+    <a href="../social_contracts/profile.md#social_contracts_profile">profile</a>: &<b>mut</b> <a href="../social_contracts/profile.md#social_contracts_profile_Profile">Profile</a>,
+    <a href="../social_contracts/profile.md#social_contracts_profile_badge_id">badge_id</a>: String,
+    clock: &Clock,
+    ctx: &<b>mut</b> TxContext
+) {
+    <b>let</b> sender = tx_context::sender(ctx);
+    <b>assert</b>!(<a href="../social_contracts/profile.md#social_contracts_profile">profile</a>.<a href="../social_contracts/profile.md#social_contracts_profile_owner">owner</a> == sender, <a href="../social_contracts/profile.md#social_contracts_profile_EUnauthorized">EUnauthorized</a>);
+    <b>assert</b>!(<a href="../social_contracts/profile.md#social_contracts_profile_is_ecosystem_badge">is_ecosystem_badge</a>(&<a href="../social_contracts/profile.md#social_contracts_profile_badge_id">badge_id</a>), <a href="../social_contracts/profile.md#social_contracts_profile_ENotEcosystemBadge">ENotEcosystemBadge</a>);
+    <b>let</b> <b>mut</b> badge_exists = <b>false</b>;
+    <b>let</b> <b>mut</b> i = 0;
+    <b>let</b> len = vector::length(&<a href="../social_contracts/profile.md#social_contracts_profile">profile</a>.badges);
+    <b>while</b> (i &lt; len) {
+        <b>let</b> badge = vector::borrow(&<a href="../social_contracts/profile.md#social_contracts_profile">profile</a>.badges, i);
+        <b>if</b> (string::as_bytes(&badge.<a href="../social_contracts/profile.md#social_contracts_profile_badge_id">badge_id</a>) == string::as_bytes(&<a href="../social_contracts/profile.md#social_contracts_profile_badge_id">badge_id</a>)) {
+            badge_exists = <b>true</b>;
+            <b>break</b>
+        };
+        i = i + 1;
+    };
+    <b>assert</b>!(badge_exists, <a href="../social_contracts/profile.md#social_contracts_profile_ESelectedBadgeNotFound">ESelectedBadgeNotFound</a>);
+    <b>let</b> badge_id_for_event = <a href="../social_contracts/profile.md#social_contracts_profile_copy_string">copy_string</a>(&<a href="../social_contracts/profile.md#social_contracts_profile_badge_id">badge_id</a>);
+    <a href="../social_contracts/profile.md#social_contracts_profile">profile</a>.selected_ecosystem_badge_id = option::some(<a href="../social_contracts/profile.md#social_contracts_profile_badge_id">badge_id</a>);
+    event::emit(<a href="../social_contracts/profile.md#social_contracts_profile_BadgeSelectedEvent">BadgeSelectedEvent</a> {
+        profile_id: object::uid_to_address(&<a href="../social_contracts/profile.md#social_contracts_profile">profile</a>.<a href="../social_contracts/profile.md#social_contracts_profile_id">id</a>),
+        <a href="../social_contracts/profile.md#social_contracts_profile_badge_id">badge_id</a>: badge_id_for_event,
+        selected_by: sender,
+        selected_at: clock::timestamp_ms(clock),
+    });
+}
+</code></pre>
+
+
+
+</details>
+
+<a name="social_contracts_profile_get_selected_ecosystem_badge_id"></a>
+
+## Function `get_selected_ecosystem_badge_id`
+
+Get the selected ecosystem badge ID for a profile
+
+
+<pre><code><b>public</b> <b>fun</b> <a href="../social_contracts/profile.md#social_contracts_profile_get_selected_ecosystem_badge_id">get_selected_ecosystem_badge_id</a>(<a href="../social_contracts/profile.md#social_contracts_profile">profile</a>: &<a href="../social_contracts/profile.md#social_contracts_profile_Profile">social_contracts::profile::Profile</a>): <a href="../std/option.md#std_option_Option">std::option::Option</a>&lt;<a href="../std/string.md#std_string_String">std::string::String</a>&gt;
+</code></pre>
+
+
+
+<details>
+<summary>Implementation</summary>
+
+
+<pre><code><b>public</b> <b>fun</b> <a href="../social_contracts/profile.md#social_contracts_profile_get_selected_ecosystem_badge_id">get_selected_ecosystem_badge_id</a>(<a href="../social_contracts/profile.md#social_contracts_profile">profile</a>: &<a href="../social_contracts/profile.md#social_contracts_profile_Profile">Profile</a>): Option&lt;String&gt; {
+    <a href="../social_contracts/profile.md#social_contracts_profile">profile</a>.selected_ecosystem_badge_id
+}
+</code></pre>
+
+
+
+</details>
+
+<a name="social_contracts_profile_get_display_ecosystem_badge"></a>
+
+## Function `get_display_ecosystem_badge`
+
+Get the ecosystem badge that should be displayed for a profile
+Returns the selected ecosystem badge if one is set, otherwise the first ecosystem badge
+Returns None if the profile has no ecosystem badges
+
+
+<pre><code><b>public</b> <b>fun</b> <a href="../social_contracts/profile.md#social_contracts_profile_get_display_ecosystem_badge">get_display_ecosystem_badge</a>(<a href="../social_contracts/profile.md#social_contracts_profile">profile</a>: &<a href="../social_contracts/profile.md#social_contracts_profile_Profile">social_contracts::profile::Profile</a>): <a href="../std/option.md#std_option_Option">std::option::Option</a>&lt;<a href="../social_contracts/profile.md#social_contracts_profile_BadgeData">social_contracts::profile::BadgeData</a>&gt;
+</code></pre>
+
+
+
+<details>
+<summary>Implementation</summary>
+
+
+<pre><code><b>public</b> <b>fun</b> <a href="../social_contracts/profile.md#social_contracts_profile_get_display_ecosystem_badge">get_display_ecosystem_badge</a>(<a href="../social_contracts/profile.md#social_contracts_profile">profile</a>: &<a href="../social_contracts/profile.md#social_contracts_profile_Profile">Profile</a>): Option&lt;<a href="../social_contracts/profile.md#social_contracts_profile_BadgeData">BadgeData</a>&gt; {
+    <b>let</b> <b>mut</b> ecosystem_badges = vector::empty&lt;<a href="../social_contracts/profile.md#social_contracts_profile_BadgeData">BadgeData</a>&gt;();
+    <b>let</b> <b>mut</b> i = 0;
+    <b>let</b> len = vector::length(&<a href="../social_contracts/profile.md#social_contracts_profile">profile</a>.badges);
+    <b>while</b> (i &lt; len) {
+        <b>let</b> badge = vector::borrow(&<a href="../social_contracts/profile.md#social_contracts_profile">profile</a>.badges, i);
+        <b>if</b> (<a href="../social_contracts/profile.md#social_contracts_profile_is_ecosystem_badge">is_ecosystem_badge</a>(&badge.<a href="../social_contracts/profile.md#social_contracts_profile_badge_id">badge_id</a>)) {
+            vector::push_back(&<b>mut</b> ecosystem_badges, <a href="../social_contracts/profile.md#social_contracts_profile_BadgeData">BadgeData</a> {
+                <a href="../social_contracts/profile.md#social_contracts_profile_badge_id">badge_id</a>: badge.<a href="../social_contracts/profile.md#social_contracts_profile_badge_id">badge_id</a>,
+                name: badge.name,
+                description: badge.description,
+                media_url: badge.media_url,
+                icon_url: badge.icon_url,
+                platform_id: badge.platform_id,
+                issued_at: badge.issued_at,
+                issued_by: badge.issued_by,
+                badge_type: badge.badge_type,
+            });
+        };
+        i = i + 1;
+    };
+    <b>let</b> count = vector::length(&ecosystem_badges);
+    <b>if</b> (count == 0) {
+        <b>return</b> option::none()
+    };
+    <b>if</b> (option::is_some(&<a href="../social_contracts/profile.md#social_contracts_profile">profile</a>.selected_ecosystem_badge_id)) {
+        <b>let</b> selected_id = option::borrow(&<a href="../social_contracts/profile.md#social_contracts_profile">profile</a>.selected_ecosystem_badge_id);
+        <b>let</b> <b>mut</b> j = 0;
+        <b>while</b> (j &lt; count) {
+            <b>let</b> data = vector::borrow(&ecosystem_badges, j);
+            <b>if</b> (string::as_bytes(&data.<a href="../social_contracts/profile.md#social_contracts_profile_badge_id">badge_id</a>) == string::as_bytes(selected_id)) {
+                <b>return</b> option::some(*data)
+            };
+            j = j + 1;
+        };
+    };
+    <b>let</b> first = vector::borrow(&ecosystem_badges, 0);
+    option::some(*first)
+}
+</code></pre>
+
+
+
+</details>
+
+<a name="social_contracts_profile_clear_selected_ecosystem_badge"></a>
+
+## Function `clear_selected_ecosystem_badge`
+
+Clear the selected ecosystem badge (owner only)
+
+
+<pre><code><b>public</b> <b>fun</b> <a href="../social_contracts/profile.md#social_contracts_profile_clear_selected_ecosystem_badge">clear_selected_ecosystem_badge</a>(<a href="../social_contracts/profile.md#social_contracts_profile">profile</a>: &<b>mut</b> <a href="../social_contracts/profile.md#social_contracts_profile_Profile">social_contracts::profile::Profile</a>, clock: &<a href="../myso/clock.md#myso_clock_Clock">myso::clock::Clock</a>, ctx: &<b>mut</b> <a href="../myso/tx_context.md#myso_tx_context_TxContext">myso::tx_context::TxContext</a>)
+</code></pre>
+
+
+
+<details>
+<summary>Implementation</summary>
+
+
+<pre><code><b>public</b> <b>fun</b> <a href="../social_contracts/profile.md#social_contracts_profile_clear_selected_ecosystem_badge">clear_selected_ecosystem_badge</a>(
+    <a href="../social_contracts/profile.md#social_contracts_profile">profile</a>: &<b>mut</b> <a href="../social_contracts/profile.md#social_contracts_profile_Profile">Profile</a>,
+    clock: &Clock,
+    ctx: &<b>mut</b> TxContext
+) {
+    <b>let</b> sender = tx_context::sender(ctx);
+    <b>assert</b>!(<a href="../social_contracts/profile.md#social_contracts_profile">profile</a>.<a href="../social_contracts/profile.md#social_contracts_profile_owner">owner</a> == sender, <a href="../social_contracts/profile.md#social_contracts_profile_EUnauthorized">EUnauthorized</a>);
+    <b>if</b> (option::is_some(&<a href="../social_contracts/profile.md#social_contracts_profile">profile</a>.selected_ecosystem_badge_id)) {
+        <a href="../social_contracts/profile.md#social_contracts_profile">profile</a>.selected_ecosystem_badge_id = option::none();
+        event::emit(<a href="../social_contracts/profile.md#social_contracts_profile_BadgeSelectedEvent">BadgeSelectedEvent</a> {
+            profile_id: object::uid_to_address(&<a href="../social_contracts/profile.md#social_contracts_profile">profile</a>.<a href="../social_contracts/profile.md#social_contracts_profile_id">id</a>),
+            <a href="../social_contracts/profile.md#social_contracts_profile_badge_id">badge_id</a>: string::utf8(b""),
             selected_by: sender,
             selected_at: clock::timestamp_ms(clock),
         });

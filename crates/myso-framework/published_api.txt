@@ -7165,6 +7165,9 @@ migrate_service
 EcosystemTreasuryAdminCap
 	public struct
 	0x50c1::profile
+EcosystemBadgeAdminCap
+	public struct
+	0x50c1::profile
 EcosystemTreasury
 	public struct
 	0x50c1::profile
@@ -7246,6 +7249,12 @@ to_lowercase_byte
 ascii_to_string
 	fun
 	0x50c1::profile
+is_ecosystem_badge
+	fun
+	0x50c1::profile
+copy_string
+	fun
+	0x50c1::profile
 create_profile
 	public entry fun
 	0x50c1::profile
@@ -7323,6 +7332,15 @@ migrate_ecosystem_treasury
 	0x50c1::profile
 create_ecosystem_treasury_admin_cap
 	public(package) fun
+	0x50c1::profile
+create_ecosystem_badge_admin_cap
+	public(package) fun
+	0x50c1::profile
+assign_ecosystem_badge
+	public entry fun
+	0x50c1::profile
+revoke_ecosystem_badge
+	public entry fun
 	0x50c1::profile
 version
 	public fun
@@ -7404,6 +7422,18 @@ get_display_badge
 	0x50c1::profile
 clear_selected_badge
 	public entry fun
+	0x50c1::profile
+set_selected_ecosystem_badge
+	public fun
+	0x50c1::profile
+get_selected_ecosystem_badge_id
+	public fun
+	0x50c1::profile
+get_display_ecosystem_badge
+	public fun
+	0x50c1::profile
+clear_selected_ecosystem_badge
+	public fun
 	0x50c1::profile
 vest_myso
 	public entry fun
