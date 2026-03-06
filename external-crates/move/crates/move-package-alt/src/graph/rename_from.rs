@@ -250,7 +250,9 @@ mod tests {
                 pkg.set_legacy().set_legacy_name("MySoSystem")
             })
             .add_deps([("root", "std")])
-            .add_dep("root", "myso", |dep| dep.name("my_myso").rename_from("myso"))
+            .add_dep("root", "myso", |dep| {
+                dep.name("my_myso").rename_from("myso")
+            })
             .add_dep("root", "myso_system", |dep| {
                 dep.name("my_myso_system").rename_from("myso_system")
             })

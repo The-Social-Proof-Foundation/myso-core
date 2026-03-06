@@ -27,12 +27,6 @@ use crate::{
         BaseType, BaseType_, Exp, LValue, LValue_, Label, ModuleCall, SingleType, SingleType_,
         Type, Type_, TypeName_, UnannotatedExp_, Var,
     },
-    naming::ast::BuiltinTypeName_,
-    parser::ast::{Ability_, DatatypeName},
-    shared::{
-        Identifier,
-        program_info::{DatatypeKind, TypingProgramInfo},
-    },
     myso_mode::{
         MYSO_ADDR_VALUE, TX_CONTEXT_MODULE_NAME, TX_CONTEXT_TYPE_NAME,
         info::TransferKind,
@@ -40,6 +34,12 @@ use crate::{
             LINT_WARNING_PREFIX, LinterDiagnosticCategory, LinterDiagnosticCode, PUBLIC_SHARE_FUN,
             SHARE_FUN, TRANSFER_MOD_NAME, type_abilities,
         },
+    },
+    naming::ast::BuiltinTypeName_,
+    parser::ast::{Ability_, DatatypeName},
+    shared::{
+        Identifier,
+        program_info::{DatatypeKind, TypingProgramInfo},
     },
 };
 use move_core_types::account_address::AccountAddress;

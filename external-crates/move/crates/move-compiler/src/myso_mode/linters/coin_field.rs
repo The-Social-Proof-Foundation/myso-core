@@ -9,9 +9,9 @@ use crate::{
     diag,
     diagnostics::codes::{DiagnosticInfo, Severity, custom},
     expansion::ast::ModuleIdent,
+    myso_mode::MYSO_ADDR_VALUE,
     naming::ast as N,
     parser::ast::DatatypeName,
-    myso_mode::MYSO_ADDR_VALUE,
     typing::{ast as T, visitor::simple_visitor},
 };
 

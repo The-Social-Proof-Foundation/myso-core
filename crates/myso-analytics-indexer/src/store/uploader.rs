@@ -89,7 +89,10 @@ struct SerializedFile {
 
 enum UploadMessage {
     File(SerializedFile),
-    ClickHouseBatch { seq: u64, pending: PendingFileUpload },
+    ClickHouseBatch {
+        seq: u64,
+        pending: PendingFileUpload,
+    },
 }
 
 /// Spawn an upload worker for a pipeline.
@@ -106,7 +109,8 @@ pub fn spawn_uploader(
 
     let (upload_tx, upload_rx) = mpsc::channel(config.max_pending_uploads);
 
-    let is_clickhouse_tx = matches!(&mode, StoreMode::ClickHouse(_)) && pipeline_name == "Transaction";
+    let is_clickhouse_tx =
+        matches!(&mode, StoreMode::ClickHouse(_)) && pipeline_name == "Transaction";
 
     let dispatcher = Dispatcher::new(
         rx,
@@ -266,7 +270,12 @@ impl Dispatcher {
                 return Err(());
             }
         };
-        if self.upload_tx.send(UploadMessage::File(serialized)).await.is_err() {
+        if self
+            .upload_tx
+            .send(UploadMessage::File(serialized))
+            .await
+            .is_err()
+        {
             error!(pipeline = %self.pipeline, "Upload channel closed, stopping");
             return Err(());
         }
@@ -382,8 +391,7 @@ impl SequentialUploader {
                         .unwrap_or(true);
 
                     if should_update {
-                        self.update_watermark_with_retry(epoch, checkpoint_hi)
-                            .await;
+                        self.update_watermark_with_retry(epoch, checkpoint_hi).await;
                         self.last_watermark_update = Some(std::time::Instant::now());
                     }
 
@@ -409,10 +417,7 @@ impl SequentialUploader {
         }
     }
 
-    async fn do_upload(
-        &self,
-        msg: &UploadMessage,
-    ) -> Result<(EpochId, u64, usize)> {
+    async fn do_upload(&self, msg: &UploadMessage) -> Result<(EpochId, u64, usize)> {
         match msg {
             UploadMessage::File(file) => {
                 let path = construct_object_store_path(
@@ -429,11 +434,7 @@ impl SequentialUploader {
                         PutPayload::from(file.bytes.clone()),
                     )
                     .await?;
-                Ok((
-                    file.epoch,
-                    file.checkpoint_range.end - 1,
-                    file.bytes.len(),
-                ))
+                Ok((file.epoch, file.checkpoint_range.end - 1, file.bytes.len()))
             }
             UploadMessage::ClickHouseBatch { pending, .. } => {
                 if let StoreMode::ClickHouse(store) = &self.mode {
@@ -451,7 +452,12 @@ impl SequentialUploader {
                         debug!(pipeline = %self.pipeline_name, checkpoints = pending.checkpoints_rows.len(), "ClickHouse block empty, skipping");
                     }
                     let checkpoint_hi = pending.checkpoint_range.end - 1;
-                    let bytes_len = pending.checkpoints_rows.iter().map(|c| c.len()).sum::<usize>() * 64;
+                    let bytes_len = pending
+                        .checkpoints_rows
+                        .iter()
+                        .map(|c| c.len())
+                        .sum::<usize>()
+                        * 64;
                     Ok((pending.epoch, checkpoint_hi, bytes_len))
                 } else {
                     unreachable!()

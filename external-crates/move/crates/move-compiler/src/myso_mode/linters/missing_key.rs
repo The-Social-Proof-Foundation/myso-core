@@ -9,9 +9,9 @@ use crate::parser::ast::DatatypeName;
 use crate::{
     diag,
     diagnostics::codes::{DiagnosticInfo, Severity, custom},
+    myso_mode::{ID_FIELD_NAME, MYSO_ADDR_VALUE, OBJECT_MODULE_NAME, UID_TYPE_NAME},
     naming::ast::{StructDefinition, StructFields},
     parser::ast::Ability_,
-    myso_mode::{ID_FIELD_NAME, OBJECT_MODULE_NAME, MYSO_ADDR_VALUE, UID_TYPE_NAME},
     typing::visitor::simple_visitor,
 };
 

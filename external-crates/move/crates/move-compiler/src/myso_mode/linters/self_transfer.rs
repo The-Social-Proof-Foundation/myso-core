@@ -24,8 +24,8 @@ use crate::{
         codes::{DiagnosticInfo, Severity, custom},
     },
     hlir::ast::{Label, ModuleCall, Type, Type_, Var},
-    parser::ast::Ability_,
     myso_mode::{MYSO_ADDR_VALUE, TX_CONTEXT_MODULE_NAME},
+    parser::ast::Ability_,
 };
 use std::collections::BTreeMap;
 

@@ -12,8 +12,8 @@ use move_symbol_pool::Symbol;
 use crate::{
     diag,
     diagnostics::codes::{DiagnosticInfo, Severity, custom},
-    parser::ast as P,
     myso_mode::{MYSO_ADDR_NAME, MYSO_ADDR_VALUE},
+    parser::ast as P,
     typing::{ast as T, visitor::simple_visitor},
 };
 
@@ -34,7 +34,12 @@ const COLLECTIONS_EQUALITY_DIAG: DiagnosticInfo = custom(
 );
 
 const COLLECTION_TYPES: &[(Symbol, AccountAddress, &str, &str)] = &[
-    (MYSO_ADDR_NAME, MYSO_ADDR_VALUE, BAG_MOD_NAME, BAG_STRUCT_NAME),
+    (
+        MYSO_ADDR_NAME,
+        MYSO_ADDR_VALUE,
+        BAG_MOD_NAME,
+        BAG_STRUCT_NAME,
+    ),
     (
         MYSO_ADDR_NAME,
         MYSO_ADDR_VALUE,

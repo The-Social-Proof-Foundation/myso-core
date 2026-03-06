@@ -9,8 +9,8 @@ use std::time::Duration;
 
 use anyhow::Result;
 use clickhouse_native_client::column::nullable::ColumnNullable;
-use clickhouse_native_client::column::numeric::{ColumnInt64, ColumnUInt32, ColumnUInt8};
 use clickhouse_native_client::column::numeric::ColumnUInt64;
+use clickhouse_native_client::column::numeric::{ColumnInt64, ColumnUInt8, ColumnUInt32};
 use clickhouse_native_client::column::string::ColumnString;
 use clickhouse_native_client::types::Type;
 use clickhouse_native_client::{Block, Client, ClientOptions};
@@ -30,8 +30,14 @@ pub struct QueryResponse {
 }
 
 enum Request {
-    Execute { query: String, tx: oneshot::Sender<ClientResult<()>> },
-    Query { query: String, tx: oneshot::Sender<ClientResult<QueryResponse>> },
+    Execute {
+        query: String,
+        tx: oneshot::Sender<ClientResult<()>>,
+    },
+    Query {
+        query: String,
+        tx: oneshot::Sender<ClientResult<QueryResponse>>,
+    },
 }
 
 fn is_recoverable(e: &clickhouse_native_client::Error) -> bool {
@@ -96,7 +102,9 @@ impl NativeClientBridge {
                     Request::Query { query, tx } => {
                         let r = rt.block_on(client.query(query.as_str()));
                         let reconnect = r.as_ref().err().is_some_and(is_recoverable);
-                        let response = r.map(|result| QueryResponse { blocks: result.blocks });
+                        let response = r.map(|result| QueryResponse {
+                            blocks: result.blocks,
+                        });
                         let _ = tx.send(response);
                         reconnect
                     }
@@ -368,14 +376,18 @@ pub fn transaction_rows_to_block(checkpoints: &[CheckpointRows], schema: &[&str]
         return Ok(Block::new());
     }
 
-    let mut checkpoint_sequence_number = clickhouse_native_client::column::numeric::ColumnUInt64::with_capacity(n);
+    let mut checkpoint_sequence_number =
+        clickhouse_native_client::column::numeric::ColumnUInt64::with_capacity(n);
     let mut transaction_digest = ColumnString::new(Type::string());
     let mut sender = ColumnString::new(Type::string());
     let mut timestamp_ms = ColumnInt64::with_capacity(n);
     let mut tx_kind = ColumnString::new(Type::string());
-    let mut gas_computation_cost = clickhouse_native_client::column::numeric::ColumnUInt64::with_capacity(n);
-    let mut gas_storage_cost = clickhouse_native_client::column::numeric::ColumnUInt64::with_capacity(n);
-    let mut gas_storage_rebate = clickhouse_native_client::column::numeric::ColumnUInt64::with_capacity(n);
+    let mut gas_computation_cost =
+        clickhouse_native_client::column::numeric::ColumnUInt64::with_capacity(n);
+    let mut gas_storage_cost =
+        clickhouse_native_client::column::numeric::ColumnUInt64::with_capacity(n);
+    let mut gas_storage_rebate =
+        clickhouse_native_client::column::numeric::ColumnUInt64::with_capacity(n);
     let mut status = ColumnUInt8::with_capacity(n);
     let mut epoch = clickhouse_native_client::column::numeric::ColumnUInt64::with_capacity(n);
     let mut gas_price = clickhouse_native_client::column::numeric::ColumnUInt64::with_capacity(n);
@@ -472,14 +484,26 @@ pub fn transaction_rows_to_block(checkpoints: &[CheckpointRows], schema: &[&str]
     }
 
     let mut block = Block::new();
-    block.append_column("checkpoint_sequence_number", std::sync::Arc::new(checkpoint_sequence_number))?;
-    block.append_column("transaction_digest", std::sync::Arc::new(transaction_digest))?;
+    block.append_column(
+        "checkpoint_sequence_number",
+        std::sync::Arc::new(checkpoint_sequence_number),
+    )?;
+    block.append_column(
+        "transaction_digest",
+        std::sync::Arc::new(transaction_digest),
+    )?;
     block.append_column("sender", std::sync::Arc::new(sender))?;
     block.append_column("timestamp_ms", std::sync::Arc::new(timestamp_ms))?;
     block.append_column("tx_kind", std::sync::Arc::new(tx_kind))?;
-    block.append_column("gas_computation_cost", std::sync::Arc::new(gas_computation_cost))?;
+    block.append_column(
+        "gas_computation_cost",
+        std::sync::Arc::new(gas_computation_cost),
+    )?;
     block.append_column("gas_storage_cost", std::sync::Arc::new(gas_storage_cost))?;
-    block.append_column("gas_storage_rebate", std::sync::Arc::new(gas_storage_rebate))?;
+    block.append_column(
+        "gas_storage_rebate",
+        std::sync::Arc::new(gas_storage_rebate),
+    )?;
     block.append_column("status", std::sync::Arc::new(status))?;
     block.append_column("epoch", std::sync::Arc::new(epoch))?;
     block.append_column("gas_price", std::sync::Arc::new(gas_price))?;

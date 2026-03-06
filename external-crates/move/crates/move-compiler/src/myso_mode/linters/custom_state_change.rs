@@ -30,9 +30,9 @@ use crate::{
     hlir::ast::{
         BaseType_, Label, ModuleCall, SingleType, SingleType_, Type, Type_, TypeName_, Var,
     },
+    myso_mode::MYSO_ADDR_VALUE,
     parser::ast::Ability_,
     shared::Identifier,
-    myso_mode::MYSO_ADDR_VALUE,
 };
 use std::collections::BTreeMap;
 

@@ -7,6 +7,7 @@ use self::known_attributes::AttributePosition;
 use crate::{
     PreCompiledProgramInfo,
     expansion::ast::{AbilitySet, Attributes, ModuleIdent, Visibility},
+    myso_mode::info::{MySoInfo, MySoModInfo},
     naming::ast::{
         self as N, BuiltinTypeName_, DatatypeTypeParameter, EnumDefinition, FunctionSignature,
         ResolvedUseFuns, StructDefinition, StructFields, SyntaxMethods, Type, TypeInner, TypeName_,
@@ -16,7 +17,6 @@ use crate::{
         ConstantName, DatatypeName, DocComment, Field, FunctionName, TargetKind, VariantName,
     },
     shared::{unique_map::UniqueMap, *},
-    myso_mode::info::{MySoInfo, MySoModInfo},
     typing::ast::{self as T},
 };
 use move_core_types::runtime_value;

@@ -11,13 +11,13 @@ use crate::{
     diagnostics::{Diagnostic, DiagnosticReporter, Diagnostics, warning_filters::WarningFilters},
     editions::Flavor,
     expansion::ast::{AbilitySet, Fields, ModuleIdent, Mutability, Visibility},
+    myso_mode::*,
     naming::ast::{
         self as N, BuiltinTypeName_, FunctionSignature, StructFields, Type, Type_, TypeInner as TI,
         TypeName_, UNIT_TYPE, Var,
     },
     parser::ast::{Ability_, DatatypeName, DocComment, FunctionName, TargetKind},
     shared::{CompilationEnv, Identifier, program_info::TypingProgramInfo},
-    myso_mode::*,
     typing::{
         ast::{self as T, ModuleCall},
         core::{Subst, ability_not_satisfied_tips, error_format, error_format_},

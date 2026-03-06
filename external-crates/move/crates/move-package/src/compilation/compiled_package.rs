@@ -28,11 +28,11 @@ use move_compiler::{
     compiled_unit::{AnnotatedCompiledUnit, CompiledUnit, NamedCompiledModule},
     editions::Flavor,
     linters,
+    myso_mode::{self},
     shared::{
         NamedAddressMap, NumericalAddress, PackageConfig, PackagePaths, SaveFlag, SaveHook,
         files::MappedFiles,
     },
-    myso_mode::{self},
 };
 use move_disassembler::disassembler::Disassembler;
 use move_docgen::{Docgen, DocgenFlags, DocgenOptions};

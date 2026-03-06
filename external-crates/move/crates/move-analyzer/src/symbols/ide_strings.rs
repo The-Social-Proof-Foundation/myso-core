@@ -12,8 +12,8 @@ use move_compiler::{
     expansion::{
         ast::{self as E, AbilitySet, ModuleIdent_, Value, Value_, Visibility},
         name_validation::{
-            IMPLICIT_STD_MEMBERS, IMPLICIT_STD_MODULES, IMPLICIT_MYSO_MEMBERS, IMPLICIT_MYSO_MODULES,
-            ModuleMemberKind,
+            IMPLICIT_MYSO_MEMBERS, IMPLICIT_MYSO_MODULES, IMPLICIT_STD_MEMBERS,
+            IMPLICIT_STD_MODULES, ModuleMemberKind,
         },
     },
     naming::ast::{Type, TypeInner, TypeName_},

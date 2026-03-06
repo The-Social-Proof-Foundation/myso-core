@@ -23,12 +23,11 @@ use move_compiler::{
     compiled_unit::AnnotatedCompiledUnit,
     diagnostics::warning_filters::WarningFiltersBuilder,
     editions::{Edition, Flavor},
-    linters,
+    linters, myso_mode,
     shared::{
         PackageConfig, PackagePaths, SaveFlag, SaveHook, files::MappedFiles,
         known_attributes::ModeAttribute,
     },
-    myso_mode,
 };
 use move_docgen::DocgenFlags;
 use move_package_alt::{

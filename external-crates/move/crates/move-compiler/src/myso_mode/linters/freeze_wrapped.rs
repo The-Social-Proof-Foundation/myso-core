@@ -14,9 +14,6 @@ use crate::{
         warning_filters::WarningFilters,
     },
     expansion::ast as E,
-    naming::ast as N,
-    parser::ast::{self as P, Ability_},
-    shared::{CompilationEnv, Identifier, program_info::TypingProgramInfo},
     myso_mode::{
         MYSO_ADDR_VALUE,
         linters::{
@@ -24,6 +21,9 @@ use crate::{
             PUBLIC_FREEZE_FUN, TRANSFER_MOD_NAME,
         },
     },
+    naming::ast as N,
+    parser::ast::{self as P, Ability_},
+    shared::{CompilationEnv, Identifier, program_info::TypingProgramInfo},
     typing::{
         ast as T,
         visitor::{TypingVisitorConstructor, TypingVisitorContext},

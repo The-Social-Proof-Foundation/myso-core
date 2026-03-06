@@ -13,6 +13,7 @@ use crate::{
         match_compilation,
     },
     ice,
+    myso_mode::ID_FIELD_NAME,
     naming::ast as N,
     parser::ast::{
         Ability_, BinOp, BinOp_, ConstantName, DatatypeName, Field, FunctionName, TargetKind,
@@ -25,7 +26,6 @@ use crate::{
         unique_map::UniqueMap,
         *,
     },
-    myso_mode::ID_FIELD_NAME,
     typing::ast as T,
 };
 

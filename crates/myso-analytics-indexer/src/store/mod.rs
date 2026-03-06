@@ -142,7 +142,9 @@ impl ClickHouseStore {
 
         let result = self
             .bridge
-            .query("SELECT max(checkpoint_sequence_number) as cp, max(epoch) as ep FROM transactions")
+            .query(
+                "SELECT max(checkpoint_sequence_number) as cp, max(epoch) as ep FROM transactions",
+            )
             .await
             .map_err(|e| anyhow::anyhow!("ClickHouse query: {}", e))?;
 
@@ -150,17 +152,31 @@ impl ClickHouseStore {
             if block.row_count() == 0 {
                 continue;
             }
-            let cp_col = block.column_by_name("cp").ok_or_else(|| anyhow::anyhow!("no cp column"))?;
-            let ep_col = block.column_by_name("ep").ok_or_else(|| anyhow::anyhow!("no ep column"))?;
-            let cp = cp_col.as_ref().as_any().downcast_ref::<ColumnUInt64>().and_then(|c| c.get(0));
-            let ep = ep_col.as_ref().as_any().downcast_ref::<ColumnUInt64>().and_then(|c| c.get(0));
+            let cp_col = block
+                .column_by_name("cp")
+                .ok_or_else(|| anyhow::anyhow!("no cp column"))?;
+            let ep_col = block
+                .column_by_name("ep")
+                .ok_or_else(|| anyhow::anyhow!("no ep column"))?;
+            let cp = cp_col
+                .as_ref()
+                .as_any()
+                .downcast_ref::<ColumnUInt64>()
+                .and_then(|c| c.get(0));
+            let ep = ep_col
+                .as_ref()
+                .as_any()
+                .downcast_ref::<ColumnUInt64>()
+                .and_then(|c| c.get(0));
             if let (Some(&checkpoint_hi), Some(&epoch)) = (cp, ep) {
-                return Ok(Some(myso_indexer_alt_framework_store_traits::CommitterWatermark {
-                    epoch_hi_inclusive: epoch,
-                    checkpoint_hi_inclusive: checkpoint_hi,
-                    tx_hi: 0,
-                    timestamp_ms_hi_inclusive: 0,
-                }));
+                return Ok(Some(
+                    myso_indexer_alt_framework_store_traits::CommitterWatermark {
+                        epoch_hi_inclusive: epoch,
+                        checkpoint_hi_inclusive: checkpoint_hi,
+                        tx_hi: 0,
+                        timestamp_ms_hi_inclusive: 0,
+                    },
+                ));
             }
         }
         Ok(None)
@@ -767,12 +783,10 @@ impl Connection for AnalyticsConnection<'_> {
         default_next_checkpoint: u64,
     ) -> anyhow::Result<Option<u64>> {
         match &self.store.mode {
-            StoreMode::Live(_) | StoreMode::ClickHouse(_) => {
-                Ok(self
-                    .committer_watermark(pipeline_task)
-                    .await?
-                    .map(|w| w.checkpoint_hi_inclusive))
-            }
+            StoreMode::Live(_) | StoreMode::ClickHouse(_) => Ok(self
+                .committer_watermark(pipeline_task)
+                .await?
+                .map(|w| w.checkpoint_hi_inclusive)),
             StoreMode::Migration(store) => {
                 let output_prefix = self.pipeline_config(pipeline_task).output_prefix();
                 store

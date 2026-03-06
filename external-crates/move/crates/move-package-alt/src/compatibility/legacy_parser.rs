@@ -173,7 +173,9 @@ fn parse_source_manifest<F: MoveFlavor>(
                         PackageName::new(legacy).ok()
                     }
                 })
-                .unwrap_or_else(|| PackageName::new(NO_NAME_LEGACY_PACKAGE_NAME).expect("Cannot fail"));
+                .unwrap_or_else(|| {
+                    PackageName::new(NO_NAME_LEGACY_PACKAGE_NAME).expect("Cannot fail")
+                });
             let new_name = temporary_spanned(modern_name.clone());
 
             let original_id = addresses.get(modern_name.as_str()).copied().flatten();

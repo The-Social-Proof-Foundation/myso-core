@@ -9,15 +9,15 @@ use std::collections::{BTreeMap, BTreeSet};
 use crate::{
     diagnostics::warning_filters::WarningFilters,
     expansion::ast::{Fields, ModuleIdent},
+    myso_mode::{
+        MYSO_ADDR_VALUE, OBJECT_MODULE_NAME, TRANSFER_FUNCTION_NAME, TRANSFER_MODULE_NAME,
+        UID_TYPE_NAME,
+    },
     naming::ast as N,
     parser::ast::{Ability_, DatatypeName, DocComment, Field},
     shared::{
         program_info::{DatatypeKind, TypingProgramInfo},
         unique_map::UniqueMap,
-    },
-    myso_mode::{
-        OBJECT_MODULE_NAME, MYSO_ADDR_VALUE, TRANSFER_FUNCTION_NAME, TRANSFER_MODULE_NAME,
-        UID_TYPE_NAME,
     },
     typing::{ast as T, visitor::TypingVisitorContext},
 };

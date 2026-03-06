@@ -5,8 +5,8 @@
 //! This analysis flags uses of random::Random and random::RandomGenerator in public functions.
 
 use crate::expansion::ast::ModuleIdent;
-use crate::parser::ast::FunctionName;
 use crate::myso_mode::{MYSO_ADDR_NAME, MYSO_ADDR_VALUE};
+use crate::parser::ast::FunctionName;
 use crate::typing::visitor::simple_visitor;
 use crate::{
     diag,
