@@ -102,18 +102,33 @@ impl std::fmt::Debug for SystemPackage {
     }
 }
 
+/// Single path: repo_path == compiled_path. Use for all packages except MySo.
+macro_rules! sys_pkg {
+    ($id:expr, $name:expr, $path:expr, $deps:expr) => {
+        SystemPackageMetadata::new(
+            $name,
+            concat!("crates/myso-framework/packages/", $path),
+            $id,
+            include_bytes!(concat!(env!("CARGO_MANIFEST_DIR"), "/packages_compiled/", $path)),
+            &$deps,
+        )
+    };
+    // Double path: MySo has nested layout (packages/myso-framework/myso-framework/).
+    ($id:expr, $name:expr, $repo:expr, $compiled:expr, $deps:expr) => {
+        SystemPackageMetadata::new(
+            $name,
+            concat!("crates/myso-framework/packages/", $repo),
+            $id,
+            include_bytes!(concat!(env!("CARGO_MANIFEST_DIR"), "/packages_compiled/", $compiled)),
+            &$deps,
+        )
+    };
+}
+
 macro_rules! define_system_package_metadata {
-    ([$(($id:expr, $name: expr, $path:expr, $deps:expr)),* $(,)?]) => {{
+    ([$( $pkg:tt ),* $(,)?]) => {{
         static PACKAGES: LazyLock<Vec<SystemPackageMetadata>> = LazyLock::new(|| {
-            vec![
-                $(SystemPackageMetadata::new(
-                    $name,
-                    concat!("crates/myso-framework/packages/", $path),
-                    $id,
-                    include_bytes!(concat!(env!("CARGO_MANIFEST_DIR"), "/packages_compiled", "/", $path)),
-                    &$deps,
-                )),*
-            ]
+            vec![$(sys_pkg! $pkg),*]
         });
         &PACKAGES
     }}
@@ -130,6 +145,7 @@ impl BuiltInFramework {
             (
                 MYSO_FRAMEWORK_PACKAGE_ID,
                 "MySo",
+                "myso-framework/myso-framework",
                 "myso-framework",
                 [MOVE_STDLIB_PACKAGE_ID]
             ),

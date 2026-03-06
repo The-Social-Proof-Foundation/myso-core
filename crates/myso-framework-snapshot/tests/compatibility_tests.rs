@@ -78,6 +78,15 @@ mod compatibility_tests {
         );
     }
 
+    /// Manifest names (canonical) may differ from Move.toml package names.
+    fn expected_display_name(manifest_name: &str) -> &str {
+        match manifest_name {
+            "MyData" => "mydata",
+            "MySoSocial" => "MySocialContracts",
+            _ => manifest_name,
+        }
+    }
+
     /// This test checks that the `SinglePackage` entries in `manifest.json` match the metadata
     /// in the `Move.toml` files in the repo.
     ///
@@ -100,7 +109,8 @@ mod compatibility_tests {
                     .await
                     .expect("can load system packages");
 
-                assert_eq!(root_pkg.package_info().display_name(), package.name);
+                let expected = expected_display_name(&package.name);
+                assert_eq!(root_pkg.package_info().display_name(), expected);
                 assert_eq!(
                     root_pkg
                         .package_info()

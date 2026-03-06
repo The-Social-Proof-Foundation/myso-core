@@ -9,7 +9,7 @@
       },
       {
         "name": "MySo",
-        "path": "crates/myso-framework/packages/myso-framework",
+        "path": "crates/myso-framework/packages/myso-framework/myso-framework",
         "id": "0x0000000000000000000000000000000000000000000000000000000000000002"
       },
       {
@@ -29,7 +29,7 @@
       },
       {
         "name": "MySo",
-        "path": "crates/myso-framework/packages/myso-framework",
+        "path": "crates/myso-framework/packages/myso-framework/myso-framework",
         "id": "0x0000000000000000000000000000000000000000000000000000000000000002"
       },
       {
@@ -49,7 +49,7 @@
       },
       {
         "name": "MySo",
-        "path": "crates/myso-framework/packages/myso-framework",
+        "path": "crates/myso-framework/packages/myso-framework/myso-framework",
         "id": "0x0000000000000000000000000000000000000000000000000000000000000002"
       },
       {
@@ -74,7 +74,7 @@
       },
       {
         "name": "MySo",
-        "path": "crates/myso-framework/packages/myso-framework",
+        "path": "crates/myso-framework/packages/myso-framework/myso-framework",
         "id": "0x0000000000000000000000000000000000000000000000000000000000000002"
       },
       {
@@ -99,7 +99,7 @@
       },
       {
         "name": "MySo",
-        "path": "crates/myso-framework/packages/myso-framework",
+        "path": "crates/myso-framework/packages/myso-framework/myso-framework",
         "id": "0x0000000000000000000000000000000000000000000000000000000000000002"
       },
       {
@@ -124,7 +124,7 @@
       },
       {
         "name": "MySo",
-        "path": "crates/myso-framework/packages/myso-framework",
+        "path": "crates/myso-framework/packages/myso-framework/myso-framework",
         "id": "0x0000000000000000000000000000000000000000000000000000000000000002"
       },
       {
@@ -149,7 +149,7 @@
       },
       {
         "name": "MySo",
-        "path": "crates/myso-framework/packages/myso-framework",
+        "path": "crates/myso-framework/packages/myso-framework/myso-framework",
         "id": "0x0000000000000000000000000000000000000000000000000000000000000002"
       },
       {
@@ -174,7 +174,7 @@
       },
       {
         "name": "MySo",
-        "path": "crates/myso-framework/packages/myso-framework",
+        "path": "crates/myso-framework/packages/myso-framework/myso-framework",
         "id": "0x0000000000000000000000000000000000000000000000000000000000000002"
       },
       {
@@ -199,7 +199,7 @@
       },
       {
         "name": "MySo",
-        "path": "crates/myso-framework/packages/myso-framework",
+        "path": "crates/myso-framework/packages/myso-framework/myso-framework",
         "id": "0x0000000000000000000000000000000000000000000000000000000000000002"
       },
       {
@@ -224,7 +224,7 @@
       },
       {
         "name": "MySo",
-        "path": "crates/myso-framework/packages/myso-framework",
+        "path": "crates/myso-framework/packages/myso-framework/myso-framework",
         "id": "0x0000000000000000000000000000000000000000000000000000000000000002"
       },
       {
@@ -249,7 +249,7 @@
       },
       {
         "name": "MySo",
-        "path": "crates/myso-framework/packages/myso-framework",
+        "path": "crates/myso-framework/packages/myso-framework/myso-framework",
         "id": "0x0000000000000000000000000000000000000000000000000000000000000002"
       },
       {
@@ -274,7 +274,7 @@
       },
       {
         "name": "MySo",
-        "path": "crates/myso-framework/packages/myso-framework",
+        "path": "crates/myso-framework/packages/myso-framework/myso-framework",
         "id": "0x0000000000000000000000000000000000000000000000000000000000000002"
       },
       {
@@ -299,7 +299,7 @@
       },
       {
         "name": "MySo",
-        "path": "crates/myso-framework/packages/myso-framework",
+        "path": "crates/myso-framework/packages/myso-framework/myso-framework",
         "id": "0x0000000000000000000000000000000000000000000000000000000000000002"
       },
       {
@@ -324,7 +324,7 @@
       },
       {
         "name": "MySo",
-        "path": "crates/myso-framework/packages/myso-framework",
+        "path": "crates/myso-framework/packages/myso-framework/myso-framework",
         "id": "0x0000000000000000000000000000000000000000000000000000000000000002"
       },
       {
@@ -349,7 +349,7 @@
       },
       {
         "name": "MySo",
-        "path": "crates/myso-framework/packages/myso-framework",
+        "path": "crates/myso-framework/packages/myso-framework/myso-framework",
         "id": "0x0000000000000000000000000000000000000000000000000000000000000002"
       },
       {
@@ -374,7 +374,7 @@
       },
       {
         "name": "MySo",
-        "path": "crates/myso-framework/packages/myso-framework",
+        "path": "crates/myso-framework/packages/myso-framework/myso-framework",
         "id": "0x0000000000000000000000000000000000000000000000000000000000000002"
       },
       {
@@ -399,7 +399,7 @@
       },
       {
         "name": "MySo",
-        "path": "crates/myso-framework/packages/myso-framework",
+        "path": "crates/myso-framework/packages/myso-framework/myso-framework",
         "id": "0x0000000000000000000000000000000000000000000000000000000000000002"
       },
       {
@@ -424,7 +424,7 @@
       },
       {
         "name": "MySo",
-        "path": "crates/myso-framework/packages/myso-framework",
+        "path": "crates/myso-framework/packages/myso-framework/myso-framework",
         "id": "0x0000000000000000000000000000000000000000000000000000000000000002"
       },
       {
@@ -449,7 +449,7 @@
       },
       {
         "name": "MySo",
-        "path": "crates/myso-framework/packages/myso-framework",
+        "path": "crates/myso-framework/packages/myso-framework/myso-framework",
         "id": "0x0000000000000000000000000000000000000000000000000000000000000002"
       },
       {
@@ -474,7 +474,7 @@
       },
       {
         "name": "MySo",
-        "path": "crates/myso-framework/packages/myso-framework",
+        "path": "crates/myso-framework/packages/myso-framework/myso-framework",
         "id": "0x0000000000000000000000000000000000000000000000000000000000000002"
       },
       {
@@ -499,7 +499,7 @@
       },
       {
         "name": "MySo",
-        "path": "crates/myso-framework/packages/myso-framework",
+        "path": "crates/myso-framework/packages/myso-framework/myso-framework",
         "id": "0x0000000000000000000000000000000000000000000000000000000000000002"
       },
       {
@@ -524,7 +524,7 @@
       },
       {
         "name": "MySo",
-        "path": "crates/myso-framework/packages/myso-framework",
+        "path": "crates/myso-framework/packages/myso-framework/myso-framework",
         "id": "0x0000000000000000000000000000000000000000000000000000000000000002"
       },
       {
@@ -549,7 +549,7 @@
       },
       {
         "name": "MySo",
-        "path": "crates/myso-framework/packages/myso-framework",
+        "path": "crates/myso-framework/packages/myso-framework/myso-framework",
         "id": "0x0000000000000000000000000000000000000000000000000000000000000002"
       },
       {
@@ -574,7 +574,7 @@
       },
       {
         "name": "MySo",
-        "path": "crates/myso-framework/packages/myso-framework",
+        "path": "crates/myso-framework/packages/myso-framework/myso-framework",
         "id": "0x0000000000000000000000000000000000000000000000000000000000000002"
       },
       {
@@ -599,7 +599,7 @@
       },
       {
         "name": "MySo",
-        "path": "crates/myso-framework/packages/myso-framework",
+        "path": "crates/myso-framework/packages/myso-framework/myso-framework",
         "id": "0x0000000000000000000000000000000000000000000000000000000000000002"
       },
       {
@@ -624,7 +624,7 @@
       },
       {
         "name": "MySo",
-        "path": "crates/myso-framework/packages/myso-framework",
+        "path": "crates/myso-framework/packages/myso-framework/myso-framework",
         "id": "0x0000000000000000000000000000000000000000000000000000000000000002"
       },
       {
@@ -649,7 +649,7 @@
       },
       {
         "name": "MySo",
-        "path": "crates/myso-framework/packages/myso-framework",
+        "path": "crates/myso-framework/packages/myso-framework/myso-framework",
         "id": "0x0000000000000000000000000000000000000000000000000000000000000002"
       },
       {
@@ -674,7 +674,7 @@
       },
       {
         "name": "MySo",
-        "path": "crates/myso-framework/packages/myso-framework",
+        "path": "crates/myso-framework/packages/myso-framework/myso-framework",
         "id": "0x0000000000000000000000000000000000000000000000000000000000000002"
       },
       {
@@ -699,7 +699,7 @@
       },
       {
         "name": "MySo",
-        "path": "crates/myso-framework/packages/myso-framework",
+        "path": "crates/myso-framework/packages/myso-framework/myso-framework",
         "id": "0x0000000000000000000000000000000000000000000000000000000000000002"
       },
       {
@@ -724,7 +724,7 @@
       },
       {
         "name": "MySo",
-        "path": "crates/myso-framework/packages/myso-framework",
+        "path": "crates/myso-framework/packages/myso-framework/myso-framework",
         "id": "0x0000000000000000000000000000000000000000000000000000000000000002"
       },
       {
@@ -749,7 +749,7 @@
       },
       {
         "name": "MySo",
-        "path": "crates/myso-framework/packages/myso-framework",
+        "path": "crates/myso-framework/packages/myso-framework/myso-framework",
         "id": "0x0000000000000000000000000000000000000000000000000000000000000002"
       },
       {
@@ -774,7 +774,7 @@
       },
       {
         "name": "MySo",
-        "path": "crates/myso-framework/packages/myso-framework",
+        "path": "crates/myso-framework/packages/myso-framework/myso-framework",
         "id": "0x0000000000000000000000000000000000000000000000000000000000000002"
       },
       {
@@ -799,7 +799,7 @@
       },
       {
         "name": "MySo",
-        "path": "crates/myso-framework/packages/myso-framework",
+        "path": "crates/myso-framework/packages/myso-framework/myso-framework",
         "id": "0x0000000000000000000000000000000000000000000000000000000000000002"
       },
       {
@@ -824,7 +824,7 @@
       },
       {
         "name": "MySo",
-        "path": "crates/myso-framework/packages/myso-framework",
+        "path": "crates/myso-framework/packages/myso-framework/myso-framework",
         "id": "0x0000000000000000000000000000000000000000000000000000000000000002"
       },
       {
@@ -849,7 +849,7 @@
       },
       {
         "name": "MySo",
-        "path": "crates/myso-framework/packages/myso-framework",
+        "path": "crates/myso-framework/packages/myso-framework/myso-framework",
         "id": "0x0000000000000000000000000000000000000000000000000000000000000002"
       },
       {
@@ -874,7 +874,7 @@
       },
       {
         "name": "MySo",
-        "path": "crates/myso-framework/packages/myso-framework",
+        "path": "crates/myso-framework/packages/myso-framework/myso-framework",
         "id": "0x0000000000000000000000000000000000000000000000000000000000000002"
       },
       {
@@ -899,7 +899,7 @@
       },
       {
         "name": "MySo",
-        "path": "crates/myso-framework/packages/myso-framework",
+        "path": "crates/myso-framework/packages/myso-framework/myso-framework",
         "id": "0x0000000000000000000000000000000000000000000000000000000000000002"
       },
       {
@@ -924,7 +924,7 @@
       },
       {
         "name": "MySo",
-        "path": "crates/myso-framework/packages/myso-framework",
+        "path": "crates/myso-framework/packages/myso-framework/myso-framework",
         "id": "0x0000000000000000000000000000000000000000000000000000000000000002"
       },
       {
@@ -949,7 +949,7 @@
       },
       {
         "name": "MySo",
-        "path": "crates/myso-framework/packages/myso-framework",
+        "path": "crates/myso-framework/packages/myso-framework/myso-framework",
         "id": "0x0000000000000000000000000000000000000000000000000000000000000002"
       },
       {
@@ -974,7 +974,7 @@
       },
       {
         "name": "MySo",
-        "path": "crates/myso-framework/packages/myso-framework",
+        "path": "crates/myso-framework/packages/myso-framework/myso-framework",
         "id": "0x0000000000000000000000000000000000000000000000000000000000000002"
       },
       {
@@ -999,7 +999,7 @@
       },
       {
         "name": "MySo",
-        "path": "crates/myso-framework/packages/myso-framework",
+        "path": "crates/myso-framework/packages/myso-framework/myso-framework",
         "id": "0x0000000000000000000000000000000000000000000000000000000000000002"
       },
       {
@@ -1029,7 +1029,7 @@
       },
       {
         "name": "MySo",
-        "path": "crates/myso-framework/packages/myso-framework",
+        "path": "crates/myso-framework/packages/myso-framework/myso-framework",
         "id": "0x0000000000000000000000000000000000000000000000000000000000000002"
       },
       {
@@ -1059,7 +1059,7 @@
       },
       {
         "name": "MySo",
-        "path": "crates/myso-framework/packages/myso-framework",
+        "path": "crates/myso-framework/packages/myso-framework/myso-framework",
         "id": "0x0000000000000000000000000000000000000000000000000000000000000002"
       },
       {
@@ -1089,7 +1089,7 @@
       },
       {
         "name": "MySo",
-        "path": "crates/myso-framework/packages/myso-framework",
+        "path": "crates/myso-framework/packages/myso-framework/myso-framework",
         "id": "0x0000000000000000000000000000000000000000000000000000000000000002"
       },
       {
@@ -1119,7 +1119,7 @@
       },
       {
         "name": "MySo",
-        "path": "crates/myso-framework/packages/myso-framework",
+        "path": "crates/myso-framework/packages/myso-framework/myso-framework",
         "id": "0x0000000000000000000000000000000000000000000000000000000000000002"
       },
       {
@@ -1149,7 +1149,7 @@
       },
       {
         "name": "MySo",
-        "path": "crates/myso-framework/packages/myso-framework",
+        "path": "crates/myso-framework/packages/myso-framework/myso-framework",
         "id": "0x0000000000000000000000000000000000000000000000000000000000000002"
       },
       {
@@ -1179,7 +1179,7 @@
       },
       {
         "name": "MySo",
-        "path": "crates/myso-framework/packages/myso-framework",
+        "path": "crates/myso-framework/packages/myso-framework/myso-framework",
         "id": "0x0000000000000000000000000000000000000000000000000000000000000002"
       },
       {
@@ -1209,7 +1209,7 @@
       },
       {
         "name": "MySo",
-        "path": "crates/myso-framework/packages/myso-framework",
+        "path": "crates/myso-framework/packages/myso-framework/myso-framework",
         "id": "0x0000000000000000000000000000000000000000000000000000000000000002"
       },
       {
@@ -1239,7 +1239,7 @@
       },
       {
         "name": "MySo",
-        "path": "crates/myso-framework/packages/myso-framework",
+        "path": "crates/myso-framework/packages/myso-framework/myso-framework",
         "id": "0x0000000000000000000000000000000000000000000000000000000000000002"
       },
       {
@@ -1269,7 +1269,7 @@
       },
       {
         "name": "MySo",
-        "path": "crates/myso-framework/packages/myso-framework",
+        "path": "crates/myso-framework/packages/myso-framework/myso-framework",
         "id": "0x0000000000000000000000000000000000000000000000000000000000000002"
       },
       {
@@ -1299,7 +1299,7 @@
       },
       {
         "name": "MySo",
-        "path": "crates/myso-framework/packages/myso-framework",
+        "path": "crates/myso-framework/packages/myso-framework/myso-framework",
         "id": "0x0000000000000000000000000000000000000000000000000000000000000002"
       },
       {
@@ -1329,7 +1329,7 @@
       },
       {
         "name": "MySo",
-        "path": "crates/myso-framework/packages/myso-framework",
+        "path": "crates/myso-framework/packages/myso-framework/myso-framework",
         "id": "0x0000000000000000000000000000000000000000000000000000000000000002"
       },
       {
@@ -1359,7 +1359,7 @@
       },
       {
         "name": "MySo",
-        "path": "crates/myso-framework/packages/myso-framework",
+        "path": "crates/myso-framework/packages/myso-framework/myso-framework",
         "id": "0x0000000000000000000000000000000000000000000000000000000000000002"
       },
       {
@@ -1389,7 +1389,7 @@
       },
       {
         "name": "MySo",
-        "path": "crates/myso-framework/packages/myso-framework",
+        "path": "crates/myso-framework/packages/myso-framework/myso-framework",
         "id": "0x0000000000000000000000000000000000000000000000000000000000000002"
       },
       {
@@ -1419,7 +1419,7 @@
       },
       {
         "name": "MySo",
-        "path": "crates/myso-framework/packages/myso-framework",
+        "path": "crates/myso-framework/packages/myso-framework/myso-framework",
         "id": "0x0000000000000000000000000000000000000000000000000000000000000002"
       },
       {
@@ -1449,7 +1449,7 @@
       },
       {
         "name": "MySo",
-        "path": "crates/myso-framework/packages/myso-framework",
+        "path": "crates/myso-framework/packages/myso-framework/myso-framework",
         "id": "0x0000000000000000000000000000000000000000000000000000000000000002"
       },
       {
@@ -1479,7 +1479,7 @@
       },
       {
         "name": "MySo",
-        "path": "crates/myso-framework/packages/myso-framework",
+        "path": "crates/myso-framework/packages/myso-framework/myso-framework",
         "id": "0x0000000000000000000000000000000000000000000000000000000000000002"
       },
       {
@@ -1509,7 +1509,7 @@
       },
       {
         "name": "MySo",
-        "path": "crates/myso-framework/packages/myso-framework",
+        "path": "crates/myso-framework/packages/myso-framework/myso-framework",
         "id": "0x0000000000000000000000000000000000000000000000000000000000000002"
       },
       {
@@ -1539,7 +1539,7 @@
       },
       {
         "name": "MySo",
-        "path": "crates/myso-framework/packages/myso-framework",
+        "path": "crates/myso-framework/packages/myso-framework/myso-framework",
         "id": "0x0000000000000000000000000000000000000000000000000000000000000002"
       },
       {
@@ -1569,7 +1569,7 @@
       },
       {
         "name": "MySo",
-        "path": "crates/myso-framework/packages/myso-framework",
+        "path": "crates/myso-framework/packages/myso-framework/myso-framework",
         "id": "0x0000000000000000000000000000000000000000000000000000000000000002"
       },
       {
@@ -1599,7 +1599,7 @@
       },
       {
         "name": "MySo",
-        "path": "crates/myso-framework/packages/myso-framework",
+        "path": "crates/myso-framework/packages/myso-framework/myso-framework",
         "id": "0x0000000000000000000000000000000000000000000000000000000000000002"
       },
       {
@@ -1629,7 +1629,7 @@
       },
       {
         "name": "MySo",
-        "path": "crates/myso-framework/packages/myso-framework",
+        "path": "crates/myso-framework/packages/myso-framework/myso-framework",
         "id": "0x0000000000000000000000000000000000000000000000000000000000000002"
       },
       {
@@ -1659,7 +1659,7 @@
       },
       {
         "name": "MySo",
-        "path": "crates/myso-framework/packages/myso-framework",
+        "path": "crates/myso-framework/packages/myso-framework/myso-framework",
         "id": "0x0000000000000000000000000000000000000000000000000000000000000002"
       },
       {
@@ -1689,7 +1689,7 @@
       },
       {
         "name": "MySo",
-        "path": "crates/myso-framework/packages/myso-framework",
+        "path": "crates/myso-framework/packages/myso-framework/myso-framework",
         "id": "0x0000000000000000000000000000000000000000000000000000000000000002"
       },
       {
@@ -1719,7 +1719,7 @@
       },
       {
         "name": "MySo",
-        "path": "crates/myso-framework/packages/myso-framework",
+        "path": "crates/myso-framework/packages/myso-framework/myso-framework",
         "id": "0x0000000000000000000000000000000000000000000000000000000000000002"
       },
       {
@@ -1749,7 +1749,7 @@
       },
       {
         "name": "MySo",
-        "path": "crates/myso-framework/packages/myso-framework",
+        "path": "crates/myso-framework/packages/myso-framework/myso-framework",
         "id": "0x0000000000000000000000000000000000000000000000000000000000000002"
       },
       {
@@ -1779,7 +1779,7 @@
       },
       {
         "name": "MySo",
-        "path": "crates/myso-framework/packages/myso-framework",
+        "path": "crates/myso-framework/packages/myso-framework/myso-framework",
         "id": "0x0000000000000000000000000000000000000000000000000000000000000002"
       },
       {
@@ -1809,7 +1809,7 @@
       },
       {
         "name": "MySo",
-        "path": "crates/myso-framework/packages/myso-framework",
+        "path": "crates/myso-framework/packages/myso-framework/myso-framework",
         "id": "0x0000000000000000000000000000000000000000000000000000000000000002"
       },
       {
@@ -1839,7 +1839,7 @@
       },
       {
         "name": "MySo",
-        "path": "crates/myso-framework/packages/myso-framework",
+        "path": "crates/myso-framework/packages/myso-framework/myso-framework",
         "id": "0x0000000000000000000000000000000000000000000000000000000000000002"
       },
       {
@@ -1869,7 +1869,7 @@
       },
       {
         "name": "MySo",
-        "path": "crates/myso-framework/packages/myso-framework",
+        "path": "crates/myso-framework/packages/myso-framework/myso-framework",
         "id": "0x0000000000000000000000000000000000000000000000000000000000000002"
       },
       {
@@ -1899,7 +1899,7 @@
       },
       {
         "name": "MySo",
-        "path": "crates/myso-framework/packages/myso-framework",
+        "path": "crates/myso-framework/packages/myso-framework/myso-framework",
         "id": "0x0000000000000000000000000000000000000000000000000000000000000002"
       },
       {
@@ -1929,7 +1929,7 @@
       },
       {
         "name": "MySo",
-        "path": "crates/myso-framework/packages/myso-framework",
+        "path": "crates/myso-framework/packages/myso-framework/myso-framework",
         "id": "0x0000000000000000000000000000000000000000000000000000000000000002"
       },
       {
@@ -1959,7 +1959,7 @@
       },
       {
         "name": "MySo",
-        "path": "crates/myso-framework/packages/myso-framework",
+        "path": "crates/myso-framework/packages/myso-framework/myso-framework",
         "id": "0x0000000000000000000000000000000000000000000000000000000000000002"
       },
       {
@@ -1989,7 +1989,7 @@
       },
       {
         "name": "MySo",
-        "path": "crates/myso-framework/packages/myso-framework",
+        "path": "crates/myso-framework/packages/myso-framework/myso-framework",
         "id": "0x0000000000000000000000000000000000000000000000000000000000000002"
       },
       {
@@ -2019,7 +2019,7 @@
       },
       {
         "name": "MySo",
-        "path": "crates/myso-framework/packages/myso-framework",
+        "path": "crates/myso-framework/packages/myso-framework/myso-framework",
         "id": "0x0000000000000000000000000000000000000000000000000000000000000002"
       },
       {
@@ -2049,7 +2049,7 @@
       },
       {
         "name": "MySo",
-        "path": "crates/myso-framework/packages/myso-framework",
+        "path": "crates/myso-framework/packages/myso-framework/myso-framework",
         "id": "0x0000000000000000000000000000000000000000000000000000000000000002"
       },
       {
@@ -2079,7 +2079,7 @@
       },
       {
         "name": "MySo",
-        "path": "crates/myso-framework/packages/myso-framework",
+        "path": "crates/myso-framework/packages/myso-framework/myso-framework",
         "id": "0x0000000000000000000000000000000000000000000000000000000000000002"
       },
       {
@@ -2109,7 +2109,7 @@
       },
       {
         "name": "MySo",
-        "path": "crates/myso-framework/packages/myso-framework",
+        "path": "crates/myso-framework/packages/myso-framework/myso-framework",
         "id": "0x0000000000000000000000000000000000000000000000000000000000000002"
       },
       {
@@ -2139,7 +2139,7 @@
       },
       {
         "name": "MySo",
-        "path": "crates/myso-framework/packages/myso-framework",
+        "path": "crates/myso-framework/packages/myso-framework/myso-framework",
         "id": "0x0000000000000000000000000000000000000000000000000000000000000002"
       },
       {
@@ -2169,7 +2169,7 @@
       },
       {
         "name": "MySo",
-        "path": "crates/myso-framework/packages/myso-framework",
+        "path": "crates/myso-framework/packages/myso-framework/myso-framework",
         "id": "0x0000000000000000000000000000000000000000000000000000000000000002"
       },
       {
@@ -2199,7 +2199,7 @@
       },
       {
         "name": "MySo",
-        "path": "crates/myso-framework/packages/myso-framework",
+        "path": "crates/myso-framework/packages/myso-framework/myso-framework",
         "id": "0x0000000000000000000000000000000000000000000000000000000000000002"
       },
       {
@@ -2229,7 +2229,7 @@
       },
       {
         "name": "MySo",
-        "path": "crates/myso-framework/packages/myso-framework",
+        "path": "crates/myso-framework/packages/myso-framework/myso-framework",
         "id": "0x0000000000000000000000000000000000000000000000000000000000000002"
       },
       {
@@ -2259,7 +2259,7 @@
       },
       {
         "name": "MySo",
-        "path": "crates/myso-framework/packages/myso-framework",
+        "path": "crates/myso-framework/packages/myso-framework/myso-framework",
         "id": "0x0000000000000000000000000000000000000000000000000000000000000002"
       },
       {
@@ -2289,7 +2289,7 @@
       },
       {
         "name": "MySo",
-        "path": "crates/myso-framework/packages/myso-framework",
+        "path": "crates/myso-framework/packages/myso-framework/myso-framework",
         "id": "0x0000000000000000000000000000000000000000000000000000000000000002"
       },
       {
@@ -2319,7 +2319,7 @@
       },
       {
         "name": "MySo",
-        "path": "crates/myso-framework/packages/myso-framework",
+        "path": "crates/myso-framework/packages/myso-framework/myso-framework",
         "id": "0x0000000000000000000000000000000000000000000000000000000000000002"
       },
       {
@@ -2349,7 +2349,7 @@
       },
       {
         "name": "MySo",
-        "path": "crates/myso-framework/packages/myso-framework",
+        "path": "crates/myso-framework/packages/myso-framework/myso-framework",
         "id": "0x0000000000000000000000000000000000000000000000000000000000000002"
       },
       {
@@ -2379,7 +2379,7 @@
       },
       {
         "name": "MySo",
-        "path": "crates/myso-framework/packages/myso-framework",
+        "path": "crates/myso-framework/packages/myso-framework/myso-framework",
         "id": "0x0000000000000000000000000000000000000000000000000000000000000002"
       },
       {
@@ -2400,7 +2400,7 @@
     ]
   },
   "110": {
-    "git_revision": "34bdd5677982b7fa45016a3ec83166af8837f329-dirty",
+    "git_revision": "31f0af7bc35c4745d824bbb728256234153d2d19-dirty",
     "packages": [
       {
         "name": "MoveStdlib",

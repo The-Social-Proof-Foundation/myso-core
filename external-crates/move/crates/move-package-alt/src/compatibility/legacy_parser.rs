@@ -833,7 +833,7 @@ fn to_modern_system_dep_name(name: &str) -> SystemDepName {
         "MySo" => "myso".to_string(),
         "MoveStdlib" => "std".to_string(),
         "Bridge" => "bridge".to_string(),
-        "OrderBook" => "orderbook".to_string(),
+        "Orderbook" => "orderbook".to_string(),
         "MySoSystem" => "myso_system".to_string(),
         _ => name.to_string(),
     }
