@@ -1,19 +1,18 @@
-// Copyright (c) Mysten Labs, Inc.
 // Copyright (c) The Social Proof Foundation, LLC.
 // SPDX-License-Identifier: Apache-2.0
 
-module bridged_eth::eth {
+module bridged_myusd::myusd {
     use std::option;
 
     use myso::coin::{Self, CoinCreationAdminCap};
     use myso::transfer;
     use myso::tx_context::{Self, TxContext};
 
-    struct ETH has drop {}
+    struct MYUSD has drop {}
 
-    const DECIMAL: u8 = 8;
+    const DECIMAL: u8 = 6;
 
-    fun init(_otw: ETH, _ctx: &mut TxContext) {
+    fun init(_otw: MYUSD, _ctx: &mut TxContext) {
         // Empty - coin creation moved to init_coin entry function
     }
 
@@ -21,11 +20,11 @@ module bridged_eth::eth {
         admin_cap: &CoinCreationAdminCap,
         ctx: &mut TxContext
     ) {
-        let (treasury_cap, metadata) = coin::create_currency_with_admin<ETH>(
+        let (treasury_cap, metadata) = coin::create_currency_with_admin<MYUSD>(
             DECIMAL,
-            b"ETH",
-            b"Ethereum",
-            b"Bridged Ethereum token",
+            b"MyUSD",
+            b"MyUSD",
+            b"The official MySocial USD stablecoin.",
             option::none(),
             admin_cap,
             ctx

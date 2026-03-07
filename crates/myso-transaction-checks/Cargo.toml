@@ -7,6 +7,7 @@ publish = false
 edition = "2024"
 
 [dependencies]
+move-core-types.workspace = true
 once_cell.workspace = true
 myso-macros.workspace = true
 myso-config.workspace = true

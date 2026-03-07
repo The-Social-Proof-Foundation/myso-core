@@ -13691,6 +13691,7 @@ name = "myso-transaction-checks"
 version = "0.0.1"
 dependencies = [
  "fastcrypto-zkp",
+ "move-core-types",
  "myso-config",
  "myso-execution",
  "myso-macros",

@@ -5,6 +5,7 @@
 use std::{collections::BTreeMap, fmt, path::Path};
 
 use indexmap::IndexMap;
+use toml::Value as TomlValue;
 use tracing::debug;
 
 use super::paths::{EphemeralPubfilePath, OutputPath, PackagePath};
@@ -65,12 +66,43 @@ impl<F: MoveFlavor + fmt::Debug> RootPackage<F> {
         let mtx = package_path.lock()?;
         let mut environments = F::default_environments();
 
-        if let Ok(modern_manifest) = Manifest::read_from_file(&package_path, &mtx) {
-            environments.extend(modern_manifest.environments());
+        let modern_result = Manifest::read_from_file(&package_path, &mtx);
+        match &modern_result {
+            Ok(modern_manifest) => {
+                environments.extend(modern_manifest.environments());
+            }
+            Err(_e) => {
+                if let Some(legacy_envs) = Self::environments_from_legacy_manifest(&package_path) {
+                    environments.extend(legacy_envs);
+                }
+            }
         }
 
         Ok(environments)
     }
+
+    /// For legacy manifests (e.g. with [addresses]) that fail modern parsing, extract
+    /// [environments] from raw TOML so custom environments like localnet are available.
+    fn environments_from_legacy_manifest(
+        package_path: &PackagePath,
+    ) -> Option<IndexMap<EnvironmentName, EnvironmentID>> {
+        let manifest_path = package_path.path().join("Move.toml");
+        let contents = std::fs::read_to_string(&manifest_path).ok()?;
+        let parsed: TomlValue = toml::from_str(&contents).ok()?;
+        let table = parsed.as_table()?;
+        let envs = table.get("environments")?.as_table()?;
+        let mut result = IndexMap::new();
+        for (name, value) in envs {
+            let id = value.as_str()?;
+            result.insert(name.clone(), id.to_string());
+        }
+        if result.is_empty() {
+            None
+        } else {
+            Some(result)
+        }
+    }
+
 
     /// The metadata for the root package in [PackageInfo] form
     pub fn package_info(&self) -> PackageInfo<'_, F> {

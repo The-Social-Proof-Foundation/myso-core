@@ -3,6 +3,8 @@
 // SPDX-License-Identifier: Apache-2.0
 
 use fastcrypto_zkp::bn254::zk_login::OIDCProvider;
+use move_core_types::ident_str;
+use move_core_types::language_storage::TypeTag;
 use myso_config::{
     dynamic_transaction_signing_checks::DynamicCheckRunnerError,
     transaction_deny_config::TransactionDenyConfig,
@@ -15,7 +17,8 @@ use myso_types::{
     storage::{BackingPackageStore, ObjectStore},
     transaction::{Command, InputObjectKind, TransactionData, TransactionDataAPI},
 };
-use tracing::{error, warn};
+use myso_types::{MYSO_FRAMEWORK_ADDRESS, MYSO_SOCIAL_ADDRESS};
+use tracing::{error, trace, warn};
 macro_rules! deny_if_true {
     ($cond:expr, $msg:expr) => {
         if ($cond) {
@@ -201,68 +204,110 @@ fn check_disabled_features(
     Ok(())
 }
 
+fn is_package_publishing_admin_cap_type(type_tag: &TypeTag) -> bool {
+    if let TypeTag::Struct(st) = type_tag {
+        st.address == MYSO_FRAMEWORK_ADDRESS
+            && st.module.as_ident_str() == ident_str!("package")
+            && st.name.as_ident_str() == ident_str!("PackagePublishingAdminCap")
+    } else {
+        false
+    }
+}
+
+fn is_upgrade_admin_cap_type(type_tag: &TypeTag) -> bool {
+    if let TypeTag::Struct(st) = type_tag {
+        st.address == MYSO_SOCIAL_ADDRESS
+            && st.module.as_ident_str() == ident_str!("upgrade")
+            && st.name.as_ident_str() == ident_str!("UpgradeAdminCap")
+    } else {
+        false
+    }
+}
+
 /// Check if the sender owns an UpgradeAdminCap from the social contracts package
 fn has_upgrade_admin_cap(
     sender: MySoAddress,
     input_object_kinds: &[InputObjectKind],
     object_store: &dyn ObjectStore,
 ) -> bool {
-    // For each input object, check if it's an owned object that could be an UpgradeAdminCap
     for input_kind in input_object_kinds {
         if let InputObjectKind::ImmOrOwnedMoveObject((object_id, _, _)) = input_kind {
-            // Try to get the object to check its type and ownership
-            if let Some(object) = object_store.get_object(object_id) {
-                // Check if this object is owned by the sender (must be Address owner)
-                if let Owner::AddressOwner(owner_addr) = object.owner {
-                    if owner_addr == sender {
-                        // Check the type - we need to find the social contracts package first
-                        // The UpgradeAdminCap has type: social_contracts::upgrade::UpgradeAdminCap
-                        if let Some(move_object) = object.data.try_as_move() {
-                            let type_tag = move_object.type_();
-                            // Check if the type matches the expected UpgradeAdminCap structure
-                            // For now, we'll check if it contains "upgrade" and "UpgradeAdminCap" in the type name
-                            let type_name = format!("{}", type_tag);
-                            if type_name.contains("upgrade")
-                                && type_name.contains("UpgradeAdminCap")
-                            {
-                                return true;
-                            }
-                        }
-                    }
+            let Some(object) = object_store.get_object(object_id) else {
+                trace!("admin cap check: object {} not found", object_id);
+                continue;
+            };
+            let Owner::AddressOwner(owner_addr) = object.owner else {
+                trace!(
+                    "admin cap check: object {} owner {:?} is not AddressOwner",
+                    object_id,
+                    object.owner
+                );
+                continue;
+            };
+            if owner_addr != sender {
+                trace!(
+                    "admin cap check: object {} owner {:?} != sender {:?}",
+                    object_id,
+                    owner_addr,
+                    sender
+                );
+                continue;
+            }
+            if let Some(move_object) = object.data.try_as_move() {
+                let type_tag = TypeTag::from(move_object.type_().clone());
+                if is_upgrade_admin_cap_type(&type_tag) {
+                    return true;
                 }
+                trace!(
+                    "admin cap check: object {} type {} does not match UpgradeAdminCap",
+                    object_id,
+                    type_tag
+                );
             }
         }
     }
     false
 }
 
-/// Check if the sender owns a PackagePublishingAdminCap from the mys framework package
+/// Check if the sender owns a PackagePublishingAdminCap from the myso framework package
 fn has_package_publishing_admin_cap(
     sender: MySoAddress,
     input_object_kinds: &[InputObjectKind],
     object_store: &dyn ObjectStore,
 ) -> bool {
-    // For each input object, check if it's an owned object that could be a PackagePublishingAdminCap
     for input_kind in input_object_kinds {
         if let InputObjectKind::ImmOrOwnedMoveObject((object_id, _, _)) = input_kind {
-            // Try to get the object to check its type and ownership
-            if let Some(object) = object_store.get_object(object_id) {
-                // Check if this object is owned by the sender (must be Address owner)
-                if let Owner::AddressOwner(owner_addr) = object.owner {
-                    if owner_addr == sender {
-                        // Check the type - PackagePublishingAdminCap has type: mys::package::PackagePublishingAdminCap
-                        if let Some(move_object) = object.data.try_as_move() {
-                            let type_tag = move_object.type_();
-                            // Check if the type matches the expected PackagePublishingAdminCap structure
-                            let type_name = format!("{}", type_tag);
-                            if type_name.contains("package")
-                                && type_name.contains("PackagePublishingAdminCap")
-                            {
-                                return true;
-                            }
-                        }
-                    }
+            let Some(object) = object_store.get_object(object_id) else {
+                trace!("admin cap check: object {} not found", object_id);
+                continue;
+            };
+            let Owner::AddressOwner(owner_addr) = object.owner else {
+                trace!(
+                    "admin cap check: object {} owner {:?} is not AddressOwner",
+                    object_id,
+                    object.owner
+                );
+                continue;
+            };
+            if owner_addr != sender {
+                trace!(
+                    "admin cap check: object {} owner {:?} != sender {:?}",
+                    object_id,
+                    owner_addr,
+                    sender
+                );
+                continue;
+            }
+            if let Some(move_object) = object.data.try_as_move() {
+                let type_tag = TypeTag::from(move_object.type_().clone());
+                if is_package_publishing_admin_cap_type(&type_tag) {
+                    return true;
                 }
+                trace!(
+                    "admin cap check: object {} type {} does not match PackagePublishingAdminCap",
+                    object_id,
+                    type_tag
+                );
             }
         }
     }
@@ -370,4 +415,94 @@ fn check_package_dependencies(
         );
     }
     Ok(())
+}
+
+#[cfg(test)]
+mod tests {
+    use super::{is_package_publishing_admin_cap_type, is_upgrade_admin_cap_type};
+    use move_core_types::ident_str;
+    use move_core_types::language_storage::{StructTag, TypeTag};
+    use myso_types::{MYSO_FRAMEWORK_ADDRESS, MYSO_SOCIAL_ADDRESS};
+
+    #[test]
+    fn test_is_package_publishing_admin_cap_type_positive() {
+        let tag = TypeTag::Struct(Box::new(StructTag {
+            address: MYSO_FRAMEWORK_ADDRESS,
+            module: ident_str!("package").to_owned(),
+            name: ident_str!("PackagePublishingAdminCap").to_owned(),
+            type_params: vec![],
+        }));
+        assert!(is_package_publishing_admin_cap_type(&tag));
+    }
+
+    #[test]
+    fn test_is_package_publishing_admin_cap_type_negative_wrong_module() {
+        let tag = TypeTag::Struct(Box::new(StructTag {
+            address: MYSO_FRAMEWORK_ADDRESS,
+            module: ident_str!("other").to_owned(),
+            name: ident_str!("PackagePublishingAdminCap").to_owned(),
+            type_params: vec![],
+        }));
+        assert!(!is_package_publishing_admin_cap_type(&tag));
+    }
+
+    #[test]
+    fn test_is_package_publishing_admin_cap_type_negative_wrong_name() {
+        let tag = TypeTag::Struct(Box::new(StructTag {
+            address: MYSO_FRAMEWORK_ADDRESS,
+            module: ident_str!("package").to_owned(),
+            name: ident_str!("Other").to_owned(),
+            type_params: vec![],
+        }));
+        assert!(!is_package_publishing_admin_cap_type(&tag));
+    }
+
+    #[test]
+    fn test_is_package_publishing_admin_cap_type_negative_wrong_address() {
+        let tag = TypeTag::Struct(Box::new(StructTag {
+            address: MYSO_SOCIAL_ADDRESS,
+            module: ident_str!("package").to_owned(),
+            name: ident_str!("PackagePublishingAdminCap").to_owned(),
+            type_params: vec![],
+        }));
+        assert!(!is_package_publishing_admin_cap_type(&tag));
+    }
+
+    #[test]
+    fn test_is_package_publishing_admin_cap_type_negative_not_struct() {
+        assert!(!is_package_publishing_admin_cap_type(&TypeTag::Bool));
+    }
+
+    #[test]
+    fn test_is_upgrade_admin_cap_type_positive() {
+        let tag = TypeTag::Struct(Box::new(StructTag {
+            address: MYSO_SOCIAL_ADDRESS,
+            module: ident_str!("upgrade").to_owned(),
+            name: ident_str!("UpgradeAdminCap").to_owned(),
+            type_params: vec![],
+        }));
+        assert!(is_upgrade_admin_cap_type(&tag));
+    }
+
+    #[test]
+    fn test_is_upgrade_admin_cap_type_negative_wrong_module() {
+        let tag = TypeTag::Struct(Box::new(StructTag {
+            address: MYSO_SOCIAL_ADDRESS,
+            module: ident_str!("other").to_owned(),
+            name: ident_str!("UpgradeAdminCap").to_owned(),
+            type_params: vec![],
+        }));
+        assert!(!is_upgrade_admin_cap_type(&tag));
+    }
+
+    #[test]
+    fn test_is_upgrade_admin_cap_type_negative_wrong_address() {
+        let tag = TypeTag::Struct(Box::new(StructTag {
+            address: MYSO_FRAMEWORK_ADDRESS,
+            module: ident_str!("upgrade").to_owned(),
+            name: ident_str!("UpgradeAdminCap").to_owned(),
+            type_params: vec![],
+        }));
+        assert!(!is_upgrade_admin_cap_type(&tag));
+    }
 }

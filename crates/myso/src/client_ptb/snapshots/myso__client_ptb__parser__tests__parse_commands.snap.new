@@ -1,6 +1,6 @@
 ---
 source: crates/myso/src/client_ptb/parser.rs
-assertion_line: 1130
+assertion_line: 1131
 expression: parsed
 ---
 [
