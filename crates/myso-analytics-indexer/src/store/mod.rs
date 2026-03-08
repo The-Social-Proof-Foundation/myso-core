@@ -133,18 +133,34 @@ pub struct ClickHouseStore {
     pub bridge: std::sync::Arc<clickhouse::NativeClientBridge>,
 }
 
+fn pipeline_output_prefix_to_table(prefix: &str) -> Option<&'static str> {
+    match prefix {
+        "Transaction" | "transactions" => Some("transactions"),
+        "Event" | "events" => Some("events"),
+        "MoveCall" | "move_call" | "move_calls" => Some("move_calls"),
+        _ => None,
+    }
+}
+
 impl ClickHouseStore {
     pub(crate) async fn committer_watermark(
         &self,
-        _pipeline: &str,
+        output_prefix: &str,
     ) -> anyhow::Result<Option<myso_indexer_alt_framework_store_traits::CommitterWatermark>> {
         use clickhouse_native_client::column::numeric::ColumnUInt64;
 
+        let table = pipeline_output_prefix_to_table(output_prefix);
+        let Some(table) = table else {
+            return Ok(None);
+        };
+
+        let query = format!(
+            "SELECT max(checkpoint_sequence_number) as cp, max(epoch) as ep FROM {}",
+            table
+        );
         let result = self
             .bridge
-            .query(
-                "SELECT max(checkpoint_sequence_number) as cp, max(epoch) as ep FROM transactions",
-            )
+            .query(&query)
             .await
             .map_err(|e| anyhow::anyhow!("ClickHouse query: {}", e))?;
 

@@ -53,14 +53,16 @@ elif [ "$USE_CLICKHOUSE" = "false" ]; then
   echo "WARNING: GCS_SERVICE_ACCOUNT_JSON not set - uploads may fail"
 fi
 
-# When using ClickHouse, default to Transaction pipeline
+# When using ClickHouse, default to Transaction,Event,MoveCall pipelines
 case "${FILE_TYPE:-checkpoint}" in
   checkpoint) DEFAULT_PIPELINE="Checkpoint" ;;
   transaction) DEFAULT_PIPELINE="Transaction" ;;
   *) DEFAULT_PIPELINE="Checkpoint" ;;
 esac
 if [ "$USE_CLICKHOUSE" = "true" ]; then
-  PIPELINE_TYPES="${PIPELINES:-Transaction}"
+  PIPELINE_TYPES="${PIPELINES:-Transaction,Event,MoveCall}"
+  CLICKHOUSE_BATCH_ROWS="${CLICKHOUSE_BATCH_ROWS:-100}"
+  CLICKHOUSE_FORCE_CUT_SECS="${CLICKHOUSE_FORCE_CUT_SECS:-5}"
 else
   PIPELINE_TYPES="${PIPELINES:-$DEFAULT_PIPELINE}"
 fi
@@ -117,16 +119,28 @@ EOF
 fi
 
 # Add each pipeline (comma-separated)
+# ClickHouse mode: use rows-based batching (100 rows, 5 sec) to match clickhouse-myso-indexer example
+# GCS mode: use checkpoint-based batching
 echo "$PIPELINE_TYPES" | tr ',' '\n' | while read -r p; do
   p=$(echo "$p" | tr -d ' ')
   [ -z "$p" ] && continue
-  cat >> /app/config.yaml << PIPELINE
+  if [ "$USE_CLICKHOUSE" = "true" ]; then
+    cat >> /app/config.yaml << PIPELINE
+  - pipeline: $p
+    file_format: $FILE_FORMAT
+    batch_size:
+      rows: $CLICKHOUSE_BATCH_ROWS
+    force_batch_cut_after_secs: $CLICKHOUSE_FORCE_CUT_SECS
+PIPELINE
+  else
+    cat >> /app/config.yaml << PIPELINE
   - pipeline: $p
     file_format: $FILE_FORMAT
     batch_size:
       checkpoints: $CHECKPOINT_INTERVAL
     force_batch_cut_after_secs: $TIME_INTERVAL_S
 PIPELINE
+  fi
 done
 
 # Add first_checkpoint (default 765000 to avoid massive backfill)

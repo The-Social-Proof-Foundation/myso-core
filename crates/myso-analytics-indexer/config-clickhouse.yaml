@@ -13,7 +13,17 @@ pipelines:
   - pipeline: Transaction
     file_format: parquet
     batch_size:
-      checkpoints: 10
-    force_batch_cut_after_secs: 60
+      rows: 100
+    force_batch_cut_after_secs: 5
+  - pipeline: Event
+    file_format: parquet
+    batch_size:
+      rows: 100
+    force_batch_cut_after_secs: 5
+  - pipeline: MoveCall
+    file_format: parquet
+    batch_size:
+      rows: 100
+    force_batch_cut_after_secs: 5
 
 first_checkpoint: 2587781

@@ -68,6 +68,19 @@ impl CheckpointRows {
     pub fn iter(&self) -> impl Iterator<Item = &dyn Row> + '_ {
         self.rows.iter()
     }
+
+    #[cfg(test)]
+    pub fn from_rows<T: Row + 'static>(
+        checkpoint: u64,
+        epoch: EpochId,
+        rows: Vec<T>,
+    ) -> Self {
+        Self {
+            checkpoint,
+            epoch,
+            rows: Arc::new(rows) as Arc<dyn TypeErasedRows>,
+        }
+    }
 }
 
 /// Batch of rows grouped by checkpoint, ready for commit.

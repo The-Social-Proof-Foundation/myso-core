@@ -56,6 +56,29 @@ pub async fn build_analytics_indexer(
                 )
                 .await
                 .map_err(|e| anyhow::anyhow!("Create ClickHouse table: {}", e))?;
+            ch_store
+                .bridge
+                .execute(
+                    "CREATE TABLE IF NOT EXISTS events (\
+                    checkpoint_sequence_number UInt64, transaction_digest String, event_index UInt64, \
+                    epoch UInt64, timestamp_ms Int64, sender String, package String, module String, \
+                    event_type LowCardinality(String), event_json String, bcs_length UInt64, \
+                    indexed_at DateTime64(3, 'UTC') DEFAULT now()) \
+                    ENGINE = MergeTree() ORDER BY (checkpoint_sequence_number, transaction_digest, event_index)",
+                )
+                .await
+                .map_err(|e| anyhow::anyhow!("Create ClickHouse events table: {}", e))?;
+            ch_store
+                .bridge
+                .execute(
+                    "CREATE TABLE IF NOT EXISTS move_calls (\
+                    checkpoint_sequence_number UInt64, transaction_digest String, cmd_idx UInt64, \
+                    epoch UInt64, timestamp_ms Int64, package String, module LowCardinality(String), \
+                    function LowCardinality(String), indexed_at DateTime64(3, 'UTC') DEFAULT now()) \
+                    ENGINE = MergeTree() ORDER BY (checkpoint_sequence_number, transaction_digest, cmd_idx)",
+                )
+                .await
+                .map_err(|e| anyhow::anyhow!("Create ClickHouse move_calls table: {}", e))?;
             AnalyticsStore::new_clickhouse(ch_store, config.clone(), metrics.clone())
         }
         _ => {

@@ -109,15 +109,15 @@ pub fn spawn_uploader(
 
     let (upload_tx, upload_rx) = mpsc::channel(config.max_pending_uploads);
 
-    let is_clickhouse_tx =
-        matches!(&mode, StoreMode::ClickHouse(_)) && pipeline_name == "Transaction";
+    let is_clickhouse_direct_insert = matches!(&mode, StoreMode::ClickHouse(_))
+        && matches!(pipeline_name.as_str(), "Transaction" | "Event" | "MoveCall");
 
     let dispatcher = Dispatcher::new(
         rx,
         upload_tx,
         pipeline_name.clone(),
         config.max_concurrent_serialization,
-        is_clickhouse_tx,
+        is_clickhouse_direct_insert,
     );
 
     let uploader = SequentialUploader::new(
@@ -152,7 +152,7 @@ struct Dispatcher {
     serializing: FuturesUnordered<JoinHandle<Result<SerializedFile>>>,
     pipeline: String,
     max_concurrent_serialization: usize,
-    is_clickhouse_tx: bool,
+    is_clickhouse_direct_insert: bool,
 }
 
 impl Dispatcher {
@@ -161,7 +161,7 @@ impl Dispatcher {
         upload_tx: mpsc::Sender<UploadMessage>,
         pipeline: String,
         max_concurrent_serialization: usize,
-        is_clickhouse_tx: bool,
+        is_clickhouse_direct_insert: bool,
     ) -> Self {
         Self {
             rx,
@@ -170,7 +170,7 @@ impl Dispatcher {
             serializing: FuturesUnordered::new(),
             pipeline,
             max_concurrent_serialization,
-            is_clickhouse_tx,
+            is_clickhouse_direct_insert,
         }
     }
 
@@ -181,10 +181,10 @@ impl Dispatcher {
             let serializing_inflight = self.serializing.len();
 
             tokio::select! {
-                Some(pending) = self.rx.recv(), if serializing_inflight < self.max_concurrent_serialization || self.is_clickhouse_tx => {
+                Some(pending) = self.rx.recv(), if serializing_inflight < self.max_concurrent_serialization || self.is_clickhouse_direct_insert => {
                     let rows: usize = pending.checkpoints_rows.iter().map(|c| c.len()).sum();
-                    debug!(pipeline = %self.pipeline, rows, is_ch = self.is_clickhouse_tx, "Dispatcher received");
-                    if self.is_clickhouse_tx {
+                    debug!(pipeline = %self.pipeline, rows, is_ch = self.is_clickhouse_direct_insert, "Dispatcher received");
+                    if self.is_clickhouse_direct_insert {
                         let seq = self.next_seq;
                         self.next_seq += 1;
                         let rows: usize = pending.checkpoints_rows.iter().map(|c| c.len()).sum();
@@ -439,15 +439,35 @@ impl SequentialUploader {
             UploadMessage::ClickHouseBatch { pending, .. } => {
                 if let StoreMode::ClickHouse(store) = &self.mode {
                     let total_rows: usize = pending.checkpoints_rows.iter().map(|c| c.len()).sum();
-                    let block = clickhouse::transaction_rows_to_block(
-                        &pending.checkpoints_rows,
-                        pending.schema,
-                    )?;
+                    let (block, table) = match self.pipeline_name.as_str() {
+                        "Transaction" => (
+                            clickhouse::transaction_rows_to_block(
+                                &pending.checkpoints_rows,
+                                pending.schema,
+                            )?,
+                            "transactions",
+                        ),
+                        "Event" => (
+                            clickhouse::event_rows_to_block(
+                                &pending.checkpoints_rows,
+                                pending.schema,
+                            )?,
+                            "events",
+                        ),
+                        "MoveCall" => (
+                            clickhouse::move_call_rows_to_block(
+                                &pending.checkpoints_rows,
+                                pending.schema,
+                            )?,
+                            "move_calls",
+                        ),
+                        _ => unreachable!("ClickHouse direct insert only for Transaction, Event, MoveCall"),
+                    };
                     let rows = block.row_count();
-                    debug!(pipeline = %self.pipeline_name, total_rows, block_rows = rows, "ClickHouse batch");
+                    debug!(pipeline = %self.pipeline_name, total_rows, block_rows = rows, table, "ClickHouse batch");
                     if rows > 0 {
-                        store.bridge.insert_http("transactions", &block).await?;
-                        info!(pipeline = %self.pipeline_name, rows, "Inserted into ClickHouse");
+                        store.bridge.insert_http(table, &block).await?;
+                        info!(pipeline = %self.pipeline_name, rows, table, "Inserted into ClickHouse");
                     } else {
                         debug!(pipeline = %self.pipeline_name, checkpoints = pending.checkpoints_rows.len(), "ClickHouse block empty, skipping");
                     }

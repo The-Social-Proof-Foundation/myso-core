@@ -153,192 +153,10 @@ impl NativeClientBridge {
     }
 
     pub async fn insert_http(&self, table: &str, block: &Block) -> Result<()> {
-        let rows = block.row_count();
-        if rows == 0 {
+        let lines = block_to_json_each_row(block)?;
+        if lines.is_empty() {
             return Ok(());
         }
-        let mut lines = Vec::with_capacity(rows);
-        let cp_col = block
-            .column_by_name("checkpoint_sequence_number")
-            .ok_or_else(|| anyhow::anyhow!("missing checkpoint_sequence_number"))?;
-        let digest_col = block
-            .column_by_name("transaction_digest")
-            .ok_or_else(|| anyhow::anyhow!("missing transaction_digest"))?;
-        let sender_col = block
-            .column_by_name("sender")
-            .ok_or_else(|| anyhow::anyhow!("missing sender"))?;
-        let ts_col = block
-            .column_by_name("timestamp_ms")
-            .ok_or_else(|| anyhow::anyhow!("missing timestamp_ms"))?;
-        let kind_col = block
-            .column_by_name("tx_kind")
-            .ok_or_else(|| anyhow::anyhow!("missing tx_kind"))?;
-        let comp_col = block
-            .column_by_name("gas_computation_cost")
-            .ok_or_else(|| anyhow::anyhow!("missing gas_computation_cost"))?;
-        let stor_col = block
-            .column_by_name("gas_storage_cost")
-            .ok_or_else(|| anyhow::anyhow!("missing gas_storage_cost"))?;
-        let rebate_col = block
-            .column_by_name("gas_storage_rebate")
-            .ok_or_else(|| anyhow::anyhow!("missing gas_storage_rebate"))?;
-        let status_col = block
-            .column_by_name("status")
-            .ok_or_else(|| anyhow::anyhow!("missing status"))?;
-        let epoch_col = block
-            .column_by_name("epoch")
-            .ok_or_else(|| anyhow::anyhow!("missing epoch"))?;
-        let price_col = block
-            .column_by_name("gas_price")
-            .ok_or_else(|| anyhow::anyhow!("missing gas_price"))?;
-        let budget_col = block
-            .column_by_name("gas_budget")
-            .ok_or_else(|| anyhow::anyhow!("missing gas_budget"))?;
-        let owner_col = block
-            .column_by_name("gas_owner")
-            .ok_or_else(|| anyhow::anyhow!("missing gas_owner"))?;
-        let sponsored_col = block
-            .column_by_name("is_sponsored")
-            .ok_or_else(|| anyhow::anyhow!("missing is_sponsored"))?;
-        let created_col = block
-            .column_by_name("created_objects")
-            .ok_or_else(|| anyhow::anyhow!("missing created_objects"))?;
-        let mutated_col = block
-            .column_by_name("mutated_objects")
-            .ok_or_else(|| anyhow::anyhow!("missing mutated_objects"))?;
-
-        for i in 0..rows {
-            let checkpoint = cp_col
-                .as_ref()
-                .as_any()
-                .downcast_ref::<ColumnUInt64>()
-                .and_then(|c| c.get(i))
-                .copied()
-                .unwrap_or(0);
-            let digest = digest_col
-                .as_ref()
-                .as_any()
-                .downcast_ref::<ColumnString>()
-                .map(|c| c.get(i).unwrap_or("").to_string())
-                .unwrap_or_default();
-            let sender = sender_col
-                .as_ref()
-                .as_any()
-                .downcast_ref::<ColumnString>()
-                .map(|c| c.get(i).unwrap_or("").to_string())
-                .unwrap_or_default();
-            let ts = ts_col
-                .as_ref()
-                .as_any()
-                .downcast_ref::<ColumnInt64>()
-                .and_then(|c| c.get(i))
-                .copied()
-                .unwrap_or(0);
-            let kind = kind_col
-                .as_ref()
-                .as_any()
-                .downcast_ref::<ColumnString>()
-                .map(|c| c.get(i).unwrap_or("").to_string())
-                .unwrap_or_default();
-            let comp = comp_col
-                .as_ref()
-                .as_any()
-                .downcast_ref::<ColumnUInt64>()
-                .and_then(|c| c.get(i))
-                .copied()
-                .unwrap_or(0);
-            let stor = stor_col
-                .as_ref()
-                .as_any()
-                .downcast_ref::<ColumnUInt64>()
-                .and_then(|c| c.get(i))
-                .copied()
-                .unwrap_or(0);
-            let rebate = rebate_col
-                .as_ref()
-                .as_any()
-                .downcast_ref::<ColumnUInt64>()
-                .and_then(|c| c.get(i))
-                .copied()
-                .unwrap_or(0);
-            let status = status_col
-                .as_ref()
-                .as_any()
-                .downcast_ref::<ColumnUInt8>()
-                .and_then(|c| c.get(i))
-                .copied()
-                .unwrap_or(0);
-            let epoch = epoch_col
-                .as_ref()
-                .as_any()
-                .downcast_ref::<ColumnUInt64>()
-                .and_then(|c| c.get(i))
-                .copied()
-                .unwrap_or(0);
-            let price = price_col
-                .as_ref()
-                .as_any()
-                .downcast_ref::<ColumnUInt64>()
-                .and_then(|c| c.get(i))
-                .copied()
-                .unwrap_or(0);
-            let budget = budget_col
-                .as_ref()
-                .as_any()
-                .downcast_ref::<ColumnUInt64>()
-                .and_then(|c| c.get(i))
-                .copied()
-                .unwrap_or(0);
-            let owner = owner_col
-                .as_ref()
-                .as_any()
-                .downcast_ref::<ColumnString>()
-                .map(|c| c.get(i).unwrap_or("").to_string())
-                .unwrap_or_default();
-            let sponsored = sponsored_col
-                .as_ref()
-                .as_any()
-                .downcast_ref::<ColumnUInt8>()
-                .and_then(|c| c.get(i))
-                .copied()
-                .unwrap_or(0);
-            let created = created_col
-                .as_ref()
-                .as_any()
-                .downcast_ref::<ColumnUInt32>()
-                .and_then(|c| c.get(i))
-                .copied()
-                .unwrap_or(0);
-            let mutated = mutated_col
-                .as_ref()
-                .as_any()
-                .downcast_ref::<ColumnUInt32>()
-                .and_then(|c| c.get(i))
-                .copied()
-                .unwrap_or(0);
-
-            let json = serde_json::json!({
-                "checkpoint_sequence_number": checkpoint,
-                "transaction_digest": digest,
-                "sender": sender,
-                "timestamp_ms": ts,
-                "tx_kind": kind,
-                "gas_computation_cost": comp,
-                "gas_storage_cost": stor,
-                "gas_storage_rebate": rebate,
-                "status": status,
-                "epoch": epoch,
-                "gas_price": price,
-                "gas_budget": budget,
-                "gas_owner": owner,
-                "is_sponsored": sponsored,
-                "created_objects": created,
-                "mutated_objects": mutated,
-                "execution_error": serde_json::Value::Null
-            });
-            lines.push(json.to_string());
-        }
-
         let body = lines.join("\n");
         let query = format!("INSERT INTO {} FORMAT JSONEachRow", table);
         let url = format!("{}/", self.http_base);
@@ -361,6 +179,60 @@ impl NativeClientBridge {
         }
         Ok(())
     }
+}
+
+fn extract_column_value(col: &std::sync::Arc<dyn clickhouse_native_client::column::Column>, row: usize) -> serde_json::Value {
+    let any = col.as_ref().as_any();
+    if let Some(c) = any.downcast_ref::<ColumnUInt64>() {
+        serde_json::json!(c.get(row).copied().unwrap_or(0))
+    } else if let Some(c) = any.downcast_ref::<ColumnInt64>() {
+        serde_json::json!(c.get(row).copied().unwrap_or(0))
+    } else if let Some(c) = any.downcast_ref::<ColumnUInt8>() {
+        serde_json::json!(c.get(row).copied().unwrap_or(0))
+    } else if let Some(c) = any.downcast_ref::<ColumnUInt32>() {
+        serde_json::json!(c.get(row).copied().unwrap_or(0))
+    } else if let Some(c) = any.downcast_ref::<ColumnString>() {
+        serde_json::json!(c.get(row).map(|s| s.to_string()).unwrap_or_default())
+    } else if let Some(nullable) = any.downcast_ref::<ColumnNullable>() {
+        if nullable.is_null(row) {
+            serde_json::Value::Null
+        } else {
+            extract_column_value(&nullable.nested_ref(), row)
+        }
+    } else {
+        serde_json::Value::Null
+    }
+}
+
+fn block_to_json_each_row(block: &Block) -> Result<Vec<String>> {
+    let rows = block.row_count();
+    if rows == 0 {
+        return Ok(vec![]);
+    }
+    let col_count = block.column_count();
+    let mut col_names = Vec::with_capacity(col_count);
+    let mut col_refs = Vec::with_capacity(col_count);
+    for i in 0..col_count {
+        let name = block
+            .column_name(i)
+            .ok_or_else(|| anyhow::anyhow!("missing column name at index {}", i))?
+            .to_string();
+        let col = block
+            .column(i)
+            .ok_or_else(|| anyhow::anyhow!("missing column at index {}", i))?;
+        col_names.push(name);
+        col_refs.push(col);
+    }
+    let mut lines = Vec::with_capacity(rows);
+    for row in 0..rows {
+        let mut obj = serde_json::Map::new();
+        for (name, col) in col_names.iter().zip(col_refs.iter()) {
+            let val = extract_column_value(col, row);
+            obj.insert(name.clone(), val);
+        }
+        lines.push(serde_json::Value::Object(obj).to_string());
+    }
+    Ok(lines)
 }
 
 pub fn create_client_options(host: &str, port: u16, user: &str) -> ClientOptions {
@@ -515,4 +387,295 @@ pub fn transaction_rows_to_block(checkpoints: &[CheckpointRows], schema: &[&str]
     block.append_column("execution_error", std::sync::Arc::new(execution_error))?;
 
     Ok(block)
+}
+
+pub fn event_rows_to_block(checkpoints: &[CheckpointRows], schema: &[&str]) -> Result<Block> {
+    let n: usize = checkpoints.iter().map(|c| c.len()).sum();
+    if n == 0 {
+        return Ok(Block::new());
+    }
+
+    fn col_idx(schema: &[&str], name: &str) -> Option<usize> {
+        schema.iter().position(|s| *s == name)
+    }
+
+    fn get_u64(row: &dyn Row, schema: &[&str], name: &str) -> u64 {
+        col_idx(schema, name)
+            .and_then(|i| row.get_column(i).ok())
+            .and_then(|v| match v {
+                ColumnValue::U64(x) => Some(x),
+                _ => None,
+            })
+            .unwrap_or(0)
+    }
+
+    fn get_str(row: &dyn Row, schema: &[&str], name: &str) -> String {
+        col_idx(schema, name)
+            .and_then(|i| row.get_column(i).ok())
+            .map(|v| match v {
+                ColumnValue::Str(s) => s.to_string(),
+                ColumnValue::OptionStr(Some(s)) => s.to_string(),
+                _ => String::new(),
+            })
+            .unwrap_or_default()
+    }
+
+    let mut checkpoint_sequence_number =
+        clickhouse_native_client::column::numeric::ColumnUInt64::with_capacity(n);
+    let mut transaction_digest = ColumnString::new(Type::string());
+    let mut event_index = clickhouse_native_client::column::numeric::ColumnUInt64::with_capacity(n);
+    let mut epoch = clickhouse_native_client::column::numeric::ColumnUInt64::with_capacity(n);
+    let mut timestamp_ms = ColumnInt64::with_capacity(n);
+    let mut sender = ColumnString::new(Type::string());
+    let mut package = ColumnString::new(Type::string());
+    let mut module = ColumnString::new(Type::string());
+    let mut event_type = ColumnString::new(Type::string());
+    let mut event_json = ColumnString::new(Type::string());
+    let mut bcs_length =
+        clickhouse_native_client::column::numeric::ColumnUInt64::with_capacity(n);
+
+    for cp in checkpoints {
+        for row in cp.iter() {
+            let checkpoint = get_u64(row, schema, "checkpoint");
+            let digest = get_str(row, schema, "transaction_digest");
+            let ev_idx = get_u64(row, schema, "event_index");
+            let ep = get_u64(row, schema, "epoch");
+            let ts = get_u64(row, schema, "timestamp_ms") as i64;
+            let s = get_str(row, schema, "sender");
+            let pkg = get_str(row, schema, "package");
+            let mod_ = get_str(row, schema, "module");
+            let ev_type = get_str(row, schema, "event_type");
+            let ev_json = get_str(row, schema, "event_json");
+            let bcs_len = get_u64(row, schema, "bcs_length");
+
+            checkpoint_sequence_number.append(checkpoint);
+            transaction_digest.append(digest);
+            event_index.append(ev_idx);
+            epoch.append(ep);
+            timestamp_ms.append(ts);
+            sender.append(s);
+            package.append(pkg);
+            module.append(mod_);
+            event_type.append(ev_type);
+            event_json.append(ev_json);
+            bcs_length.append(bcs_len);
+        }
+    }
+
+    let mut block = Block::new();
+    block.append_column(
+        "checkpoint_sequence_number",
+        std::sync::Arc::new(checkpoint_sequence_number),
+    )?;
+    block.append_column(
+        "transaction_digest",
+        std::sync::Arc::new(transaction_digest),
+    )?;
+    block.append_column("event_index", std::sync::Arc::new(event_index))?;
+    block.append_column("epoch", std::sync::Arc::new(epoch))?;
+    block.append_column("timestamp_ms", std::sync::Arc::new(timestamp_ms))?;
+    block.append_column("sender", std::sync::Arc::new(sender))?;
+    block.append_column("package", std::sync::Arc::new(package))?;
+    block.append_column("module", std::sync::Arc::new(module))?;
+    block.append_column("event_type", std::sync::Arc::new(event_type))?;
+    block.append_column("event_json", std::sync::Arc::new(event_json))?;
+    block.append_column("bcs_length", std::sync::Arc::new(bcs_length))?;
+
+    Ok(block)
+}
+
+pub fn move_call_rows_to_block(checkpoints: &[CheckpointRows], schema: &[&str]) -> Result<Block> {
+    let n: usize = checkpoints.iter().map(|c| c.len()).sum();
+    if n == 0 {
+        return Ok(Block::new());
+    }
+
+    fn col_idx(schema: &[&str], name: &str) -> Option<usize> {
+        schema.iter().position(|s| *s == name)
+    }
+
+    fn get_u64(row: &dyn Row, schema: &[&str], name: &str) -> u64 {
+        col_idx(schema, name)
+            .and_then(|i| row.get_column(i).ok())
+            .and_then(|v| match v {
+                ColumnValue::U64(x) => Some(x),
+                _ => None,
+            })
+            .unwrap_or(0)
+    }
+
+    fn get_str(row: &dyn Row, schema: &[&str], name: &str) -> String {
+        col_idx(schema, name)
+            .and_then(|i| row.get_column(i).ok())
+            .map(|v| match v {
+                ColumnValue::Str(s) => s.to_string(),
+                ColumnValue::OptionStr(Some(s)) => s.to_string(),
+                _ => String::new(),
+            })
+            .unwrap_or_default()
+    }
+
+    let mut checkpoint_sequence_number =
+        clickhouse_native_client::column::numeric::ColumnUInt64::with_capacity(n);
+    let mut transaction_digest = ColumnString::new(Type::string());
+    let mut cmd_idx = clickhouse_native_client::column::numeric::ColumnUInt64::with_capacity(n);
+    let mut epoch = clickhouse_native_client::column::numeric::ColumnUInt64::with_capacity(n);
+    let mut timestamp_ms = ColumnInt64::with_capacity(n);
+    let mut package = ColumnString::new(Type::string());
+    let mut module = ColumnString::new(Type::string());
+    let mut function = ColumnString::new(Type::string());
+
+    for cp in checkpoints {
+        for row in cp.iter() {
+            let checkpoint = get_u64(row, schema, "checkpoint");
+            let digest = get_str(row, schema, "transaction_digest");
+            let cmd = get_u64(row, schema, "cmd_idx");
+            let ep = get_u64(row, schema, "epoch");
+            let ts = get_u64(row, schema, "timestamp_ms") as i64;
+            let pkg = get_str(row, schema, "package");
+            let mod_ = get_str(row, schema, "module");
+            let func = get_str(row, schema, "function");
+
+            checkpoint_sequence_number.append(checkpoint);
+            transaction_digest.append(digest);
+            cmd_idx.append(cmd);
+            epoch.append(ep);
+            timestamp_ms.append(ts);
+            package.append(pkg);
+            module.append(mod_);
+            function.append(func);
+        }
+    }
+
+    let mut block = Block::new();
+    block.append_column(
+        "checkpoint_sequence_number",
+        std::sync::Arc::new(checkpoint_sequence_number),
+    )?;
+    block.append_column(
+        "transaction_digest",
+        std::sync::Arc::new(transaction_digest),
+    )?;
+    block.append_column("cmd_idx", std::sync::Arc::new(cmd_idx))?;
+    block.append_column("epoch", std::sync::Arc::new(epoch))?;
+    block.append_column("timestamp_ms", std::sync::Arc::new(timestamp_ms))?;
+    block.append_column("package", std::sync::Arc::new(package))?;
+    block.append_column("module", std::sync::Arc::new(module))?;
+    block.append_column("function", std::sync::Arc::new(function))?;
+
+    Ok(block)
+}
+
+#[cfg(test)]
+mod tests {
+    use crate::handlers::CheckpointRows;
+    use crate::schema::RowSchema;
+    use crate::tables::{EventRow, MoveCallRow};
+
+    use super::{event_rows_to_block, move_call_rows_to_block};
+
+    fn make_event_checkpoint_rows() -> Vec<CheckpointRows> {
+        let rows = vec![
+            EventRow {
+                transaction_digest: "digest1".to_string(),
+                event_index: 0,
+                checkpoint: 100,
+                epoch: 1,
+                timestamp_ms: 1000,
+                sender: "0xabc".to_string(),
+                package: "0xpkg".to_string(),
+                module: "mymodule".to_string(),
+                event_type: "mydata::ProfileCreated".to_string(),
+                bcs: "".to_string(),
+                event_json: r#"{"user":"alice"}"#.to_string(),
+                bcs_length: 0,
+            },
+            EventRow {
+                transaction_digest: "digest1".to_string(),
+                event_index: 1,
+                checkpoint: 100,
+                epoch: 1,
+                timestamp_ms: 1000,
+                sender: "0xabc".to_string(),
+                package: "0xpkg".to_string(),
+                module: "mymodule".to_string(),
+                event_type: "mydata::PostLiked".to_string(),
+                bcs: "".to_string(),
+                event_json: r#"{"post_id":"0x123"}"#.to_string(),
+                bcs_length: 0,
+            },
+        ];
+        vec![CheckpointRows::from_rows(100, 1, rows)]
+    }
+
+    #[test]
+    fn test_event_rows_to_block() {
+        let checkpoints = make_event_checkpoint_rows();
+        let schema = EventRow::schema();
+        let block = event_rows_to_block(&checkpoints, schema).unwrap();
+        assert_eq!(block.row_count(), 2);
+        assert_eq!(block.column_count(), 11);
+        assert!(block.column_by_name("checkpoint_sequence_number").is_some());
+        assert!(block.column_by_name("transaction_digest").is_some());
+        assert!(block.column_by_name("event_index").is_some());
+        assert!(block.column_by_name("event_type").is_some());
+        assert!(block.column_by_name("event_json").is_some());
+    }
+
+    fn make_move_call_checkpoint_rows() -> Vec<CheckpointRows> {
+        let rows = vec![
+            MoveCallRow {
+                transaction_digest: "digest2".to_string(),
+                cmd_idx: 0,
+                checkpoint: 200,
+                epoch: 2,
+                timestamp_ms: 2000,
+                package: "0xpkg".to_string(),
+                module: "mydata".to_string(),
+                function: "like_post".to_string(),
+            },
+            MoveCallRow {
+                transaction_digest: "digest2".to_string(),
+                cmd_idx: 1,
+                checkpoint: 200,
+                epoch: 2,
+                timestamp_ms: 2000,
+                package: "0xpkg".to_string(),
+                module: "mydata".to_string(),
+                function: "create_profile".to_string(),
+            },
+        ];
+        vec![CheckpointRows::from_rows(200, 2, rows)]
+    }
+
+    #[test]
+    fn test_move_call_rows_to_block() {
+        let checkpoints = make_move_call_checkpoint_rows();
+        let schema = MoveCallRow::schema();
+        let block = move_call_rows_to_block(&checkpoints, schema).unwrap();
+        assert_eq!(block.row_count(), 2);
+        assert_eq!(block.column_count(), 8);
+        assert!(block.column_by_name("checkpoint_sequence_number").is_some());
+        assert!(block.column_by_name("transaction_digest").is_some());
+        assert!(block.column_by_name("cmd_idx").is_some());
+        assert!(block.column_by_name("module").is_some());
+        assert!(block.column_by_name("function").is_some());
+    }
+
+
+    #[test]
+    fn test_event_rows_to_block_empty() {
+        let checkpoints: Vec<CheckpointRows> = vec![];
+        let schema = EventRow::schema();
+        let block = event_rows_to_block(&checkpoints, schema).unwrap();
+        assert_eq!(block.row_count(), 0);
+    }
+
+    #[test]
+    fn test_move_call_rows_to_block_empty() {
+        let checkpoints: Vec<CheckpointRows> = vec![];
+        let schema = MoveCallRow::schema();
+        let block = move_call_rows_to_block(&checkpoints, schema).unwrap();
+        assert_eq!(block.row_count(), 0);
+    }
 }
