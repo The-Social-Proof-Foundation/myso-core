@@ -32,6 +32,7 @@ use crate::tables::InputObjectKind;
 use crate::tables::ObjectStatus;
 use crate::tables::OwnerType;
 
+pub mod balance_change;
 pub mod checkpoint;
 pub mod df;
 pub mod event;
@@ -44,6 +45,7 @@ pub mod transaction_bcs;
 pub mod transaction_objects;
 pub mod wrapped_object;
 
+pub use balance_change::BalanceChangeProcessor;
 pub use checkpoint::CheckpointProcessor;
 pub use df::DynamicFieldProcessor;
 pub use event::EventProcessor;

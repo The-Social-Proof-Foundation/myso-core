@@ -110,7 +110,10 @@ pub fn spawn_uploader(
     let (upload_tx, upload_rx) = mpsc::channel(config.max_pending_uploads);
 
     let is_clickhouse_direct_insert = matches!(&mode, StoreMode::ClickHouse(_))
-        && matches!(pipeline_name.as_str(), "Transaction" | "Event" | "MoveCall");
+        && matches!(
+            pipeline_name.as_str(),
+            "Transaction" | "Event" | "MoveCall" | "Object" | "BalanceChange"
+        );
 
     let dispatcher = Dispatcher::new(
         rx,
@@ -461,8 +464,22 @@ impl SequentialUploader {
                             )?,
                             "move_calls",
                         ),
+                        "Object" => (
+                            clickhouse::object_rows_to_block(
+                                &pending.checkpoints_rows,
+                                pending.schema,
+                            )?,
+                            "objects",
+                        ),
+                        "BalanceChange" => (
+                            clickhouse::balance_change_rows_to_block(
+                                &pending.checkpoints_rows,
+                                pending.schema,
+                            )?,
+                            "balance_changes",
+                        ),
                         _ => unreachable!(
-                            "ClickHouse direct insert only for Transaction, Event, MoveCall"
+                            "ClickHouse direct insert only for Transaction, Event, MoveCall, Object, BalanceChange"
                         ),
                     };
                     let rows = block.row_count();

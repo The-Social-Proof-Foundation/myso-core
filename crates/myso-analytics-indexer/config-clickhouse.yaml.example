@@ -28,5 +28,15 @@ pipelines:
     batch_size:
       rows: 10
     force_batch_cut_after_secs: 5
+  - pipeline: Object
+    file_format: parquet
+    batch_size:
+      rows: 100
+    force_batch_cut_after_secs: 5
+  - pipeline: BalanceChange
+    file_format: parquet
+    batch_size:
+      rows: 100
+    force_batch_cut_after_secs: 5
 
 first_checkpoint: 2587781

@@ -1,7 +1,8 @@
 version: '3.8'
 
 services:
-  # Analytics Indexer - Checkpoint processor
+  # Analytics Indexer - Full pipeline processor (Checkpoint, Transaction, Event, Object, MoveCall)
+  # A single indexer process can run multiple pipelines; GCS writes to checkpoints/, transactions/, etc.
   analytics-indexer-checkpoints:
     build:
       context: ../..
@@ -11,7 +12,7 @@ services:
       RPC_API_URL: "http://fullnode.testnet.mysocial.network:9000"
       # gRPC streaming - when set, uses gRPC instead of HTTP checkpoint store
       STREAMING_URL: "http://fullnode.testnet.mysocial.network:9000"
-      PIPELINES: "Checkpoint"
+      PIPELINES: "Checkpoint,Transaction,Event,Object,MoveCall"
       FILE_FORMAT: "parquet"
       
       # Processing settings - FIRST_CHECKPOINT near chain head to avoid massive backfill
@@ -45,7 +46,7 @@ services:
       - analytics
     restart: unless-stopped
 
-  # Analytics Indexer - Transaction processor  
+  # Analytics Indexer - Transaction processor (legacy; prefer analytics-indexer-checkpoints with full pipelines)
   analytics-indexer-transactions:
     build:
       context: ../..
@@ -53,7 +54,7 @@ services:
     environment:
       RPC_API_URL: "http://fullnode.testnet.mysocial.network:9000"
       STREAMING_URL: "http://fullnode.testnet.mysocial.network:9000"
-      PIPELINES: "Transaction"
+      PIPELINES: "Checkpoint,Transaction,Event,Object,MoveCall"
       FILE_FORMAT: "parquet"
       
       FIRST_CHECKPOINT: "1159000"

@@ -61,14 +61,15 @@ case "${FILE_TYPE:-checkpoint}" in
   *) DEFAULT_PIPELINE="Checkpoint" ;;
 esac
 if [ "$USE_CLICKHOUSE" = "true" ]; then
-  PIPELINE_TYPES="${PIPELINES:-Transaction,Event,MoveCall}"
+  PIPELINE_TYPES="${PIPELINES:-Transaction,Event,MoveCall,Object,BalanceChange}"
   CLICKHOUSE_BATCH_ROWS="${CLICKHOUSE_BATCH_ROWS:-100}"
   # Sparse pipelines (Event, MoveCall) default to 10 rows for sooner flush when data is infrequent
   CLICKHOUSE_EVENT_BATCH_ROWS="${CLICKHOUSE_EVENT_BATCH_ROWS:-10}"
   CLICKHOUSE_MOVECALL_BATCH_ROWS="${CLICKHOUSE_MOVECALL_BATCH_ROWS:-10}"
+  CLICKHOUSE_BALANCECHANGE_BATCH_ROWS="${CLICKHOUSE_BALANCECHANGE_BATCH_ROWS:-100}"
   CLICKHOUSE_FORCE_CUT_SECS="${CLICKHOUSE_FORCE_CUT_SECS:-5}"
 else
-  PIPELINE_TYPES="${PIPELINES:-$DEFAULT_PIPELINE}"
+  PIPELINE_TYPES="${PIPELINES:-Checkpoint,Transaction,Event,Object,MoveCall}"
 fi
 
 # Generate YAML config from environment variables
@@ -135,6 +136,7 @@ echo "$PIPELINE_TYPES" | tr ',' '\n' | while read -r p; do
     case "$p" in
       Event) BATCH_ROWS="${CLICKHOUSE_EVENT_BATCH_ROWS:-$CLICKHOUSE_BATCH_ROWS}" ;;
       MoveCall) BATCH_ROWS="${CLICKHOUSE_MOVECALL_BATCH_ROWS:-$CLICKHOUSE_BATCH_ROWS}" ;;
+      BalanceChange) BATCH_ROWS="${CLICKHOUSE_BALANCECHANGE_BATCH_ROWS:-$CLICKHOUSE_BATCH_ROWS}" ;;
       *) BATCH_ROWS="$CLICKHOUSE_BATCH_ROWS" ;;
     esac
     cat >> /app/config.yaml << PIPELINE

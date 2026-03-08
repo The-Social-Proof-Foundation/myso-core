@@ -197,6 +197,18 @@ pub struct ObjectRow {
     pub(crate) bcs_length: u64,
 }
 
+// Balance change per transaction (owner, coin_type, amount).
+#[derive(Serialize, Clone, SerializeRow)]
+pub struct BalanceChangeRow {
+    pub(crate) checkpoint: u64,
+    pub(crate) transaction_digest: String,
+    pub(crate) epoch: u64,
+    pub(crate) timestamp_ms: u64,
+    pub(crate) owner: String,
+    pub(crate) coin_type: String,
+    pub(crate) amount: i64,
+}
+
 // Objects used and manipulated in a transaction.
 // Both input object and objects in effects are reported here with the proper
 // input kind (for input objects) and status (for objets in effects).

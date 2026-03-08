@@ -20,8 +20,8 @@ RPC_API_URL = "http://fullnode.testnet.mysocial.network:9000"
 STREAMING_URL = "http://fullnode.testnet.mysocial.network:9000"
 # Start near chain head to avoid massive backfill (update periodically as chain grows)
 FIRST_CHECKPOINT = "1159000"
-# Pipelines: Checkpoint, Transaction, or comma-separated (e.g. "Checkpoint,Transaction")
-PIPELINES = "Checkpoint"
+# Pipelines: full set for GCS (Checkpoint,Transaction,Event,Object,MoveCall) or ClickHouse defaults
+PIPELINES = "Checkpoint,Transaction,Event,Object,MoveCall"
 
 # Processing settings
 CHECKPOINT_INTERVAL = "10000"

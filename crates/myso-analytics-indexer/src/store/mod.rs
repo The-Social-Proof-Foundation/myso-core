@@ -138,6 +138,8 @@ fn pipeline_output_prefix_to_table(prefix: &str) -> Option<&'static str> {
         "Transaction" | "transactions" => Some("transactions"),
         "Event" | "events" => Some("events"),
         "MoveCall" | "move_call" | "move_calls" => Some("move_calls"),
+        "Object" | "objects" => Some("objects"),
+        "BalanceChange" | "balance_changes" => Some("balance_changes"),
         _ => None,
     }
 }
@@ -229,11 +231,10 @@ impl ClickHouseStore {
             if pending_batch
                 .epoch()
                 .is_some_and(|e| e != checkpoint_rows.epoch)
+                && !pending_batch.checkpoints_rows.is_empty()
             {
-                if !pending_batch.checkpoints_rows.is_empty() {
-                    complete_batches.push(pending_batch);
-                    pending_batch = Batch::default();
-                }
+                complete_batches.push(pending_batch);
+                pending_batch = Batch::default();
             }
 
             match *batch_size {

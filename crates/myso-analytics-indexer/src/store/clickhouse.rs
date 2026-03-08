@@ -81,7 +81,7 @@ impl NativeClientBridge {
         let http_client = ReqwestClient::builder()
             .timeout(OPERATION_TIMEOUT)
             .build()
-            .map_err(|e| clickhouse_native_client::Error::Connection(e.to_string().into()))?;
+            .map_err(|e| clickhouse_native_client::Error::Connection(e.to_string()))?;
 
         thread::spawn(move || {
             let rt = tokio::runtime::Builder::new_current_thread()
@@ -587,13 +587,221 @@ pub fn move_call_rows_to_block(checkpoints: &[CheckpointRows], schema: &[&str]) 
     Ok(block)
 }
 
+pub fn object_rows_to_block(checkpoints: &[CheckpointRows], schema: &[&str]) -> Result<Block> {
+    let n: usize = checkpoints.iter().map(|c| c.len()).sum();
+    if n == 0 {
+        return Ok(Block::new());
+    }
+
+    fn col_idx(schema: &[&str], name: &str) -> Option<usize> {
+        schema.iter().position(|s| *s == name)
+    }
+
+    fn get_u64(row: &dyn Row, schema: &[&str], name: &str) -> u64 {
+        col_idx(schema, name)
+            .and_then(|i| row.get_column(i).ok())
+            .and_then(|v| match v {
+                ColumnValue::U64(x) => Some(x),
+                ColumnValue::OptionU64(Some(x)) => Some(x),
+                _ => None,
+            })
+            .unwrap_or(0)
+    }
+
+    fn get_str(row: &dyn Row, schema: &[&str], name: &str) -> String {
+        col_idx(schema, name)
+            .and_then(|i| row.get_column(i).ok())
+            .map(|v| match v {
+                ColumnValue::Str(s) => s.to_string(),
+                ColumnValue::OptionStr(Some(s)) => s.to_string(),
+                _ => String::new(),
+            })
+            .unwrap_or_default()
+    }
+
+    fn get_bool(row: &dyn Row, schema: &[&str], name: &str) -> bool {
+        col_idx(schema, name)
+            .and_then(|i| row.get_column(i).ok())
+            .and_then(|v| match v {
+                ColumnValue::Bool(b) => Some(b),
+                _ => None,
+            })
+            .unwrap_or(false)
+    }
+
+    let mut object_id = ColumnString::new(Type::string());
+    let mut version = ColumnUInt64::with_capacity(n);
+    let mut digest = ColumnString::new(Type::string());
+    let mut type_ = ColumnString::new(Type::string());
+    let mut checkpoint_sequence_number = ColumnUInt64::with_capacity(n);
+    let mut epoch = ColumnUInt64::with_capacity(n);
+    let mut timestamp_ms = ColumnInt64::with_capacity(n);
+    let mut owner_type = ColumnString::new(Type::string());
+    let mut owner_address = ColumnString::new(Type::string());
+    let mut object_status = ColumnString::new(Type::string());
+    let mut initial_shared_version = ColumnUInt64::with_capacity(n);
+    let mut previous_transaction = ColumnString::new(Type::string());
+    let mut has_public_transfer = ColumnUInt8::with_capacity(n);
+    let mut is_consensus = ColumnUInt8::with_capacity(n);
+    let mut storage_rebate = ColumnUInt64::with_capacity(n);
+    let mut bcs = ColumnString::new(Type::string());
+    let mut coin_type = ColumnString::new(Type::string());
+    let mut coin_balance = ColumnUInt64::with_capacity(n);
+    let mut struct_tag = ColumnString::new(Type::string());
+    let mut object_json = ColumnString::new(Type::string());
+    let mut bcs_length = ColumnUInt64::with_capacity(n);
+
+    for cp in checkpoints {
+        for row in cp.iter() {
+            object_id.append(get_str(row, schema, "object_id"));
+            version.append(get_u64(row, schema, "version"));
+            digest.append(get_str(row, schema, "digest"));
+            type_.append(get_str(row, schema, "type_"));
+            checkpoint_sequence_number.append(get_u64(row, schema, "checkpoint"));
+            epoch.append(get_u64(row, schema, "epoch"));
+            timestamp_ms.append(get_u64(row, schema, "timestamp_ms") as i64);
+            owner_type.append(get_str(row, schema, "owner_type"));
+            owner_address.append(get_str(row, schema, "owner_address"));
+            object_status.append(get_str(row, schema, "object_status"));
+            initial_shared_version.append(get_u64(row, schema, "initial_shared_version"));
+            previous_transaction.append(get_str(row, schema, "previous_transaction"));
+            has_public_transfer.append(get_bool(row, schema, "has_public_transfer") as u8);
+            is_consensus.append(get_bool(row, schema, "is_consensus") as u8);
+            storage_rebate.append(get_u64(row, schema, "storage_rebate"));
+            bcs.append(get_str(row, schema, "bcs"));
+            coin_type.append(get_str(row, schema, "coin_type"));
+            coin_balance.append(get_u64(row, schema, "coin_balance"));
+            struct_tag.append(get_str(row, schema, "struct_tag"));
+            object_json.append(get_str(row, schema, "object_json"));
+            bcs_length.append(get_u64(row, schema, "bcs_length"));
+        }
+    }
+
+    let mut block = Block::new();
+    block.append_column("object_id", std::sync::Arc::new(object_id))?;
+    block.append_column("version", std::sync::Arc::new(version))?;
+    block.append_column("digest", std::sync::Arc::new(digest))?;
+    block.append_column("type_", std::sync::Arc::new(type_))?;
+    block.append_column(
+        "checkpoint_sequence_number",
+        std::sync::Arc::new(checkpoint_sequence_number),
+    )?;
+    block.append_column("epoch", std::sync::Arc::new(epoch))?;
+    block.append_column("timestamp_ms", std::sync::Arc::new(timestamp_ms))?;
+    block.append_column("owner_type", std::sync::Arc::new(owner_type))?;
+    block.append_column("owner_address", std::sync::Arc::new(owner_address))?;
+    block.append_column("object_status", std::sync::Arc::new(object_status))?;
+    block.append_column(
+        "initial_shared_version",
+        std::sync::Arc::new(initial_shared_version),
+    )?;
+    block.append_column(
+        "previous_transaction",
+        std::sync::Arc::new(previous_transaction),
+    )?;
+    block.append_column("has_public_transfer", std::sync::Arc::new(has_public_transfer))?;
+    block.append_column("is_consensus", std::sync::Arc::new(is_consensus))?;
+    block.append_column("storage_rebate", std::sync::Arc::new(storage_rebate))?;
+    block.append_column("bcs", std::sync::Arc::new(bcs))?;
+    block.append_column("coin_type", std::sync::Arc::new(coin_type))?;
+    block.append_column("coin_balance", std::sync::Arc::new(coin_balance))?;
+    block.append_column("struct_tag", std::sync::Arc::new(struct_tag))?;
+    block.append_column("object_json", std::sync::Arc::new(object_json))?;
+    block.append_column("bcs_length", std::sync::Arc::new(bcs_length))?;
+
+    Ok(block)
+}
+
+pub fn balance_change_rows_to_block(
+    checkpoints: &[CheckpointRows],
+    schema: &[&str],
+) -> Result<Block> {
+    let n: usize = checkpoints.iter().map(|c| c.len()).sum();
+    if n == 0 {
+        return Ok(Block::new());
+    }
+
+    fn col_idx(schema: &[&str], name: &str) -> Option<usize> {
+        schema.iter().position(|s| *s == name)
+    }
+
+    fn get_u64(row: &dyn Row, schema: &[&str], name: &str) -> u64 {
+        col_idx(schema, name)
+            .and_then(|i| row.get_column(i).ok())
+            .and_then(|v| match v {
+                ColumnValue::U64(x) => Some(x),
+                _ => None,
+            })
+            .unwrap_or(0)
+    }
+
+    fn get_i64(row: &dyn Row, schema: &[&str], name: &str) -> i64 {
+        col_idx(schema, name)
+            .and_then(|i| row.get_column(i).ok())
+            .and_then(|v| match v {
+                ColumnValue::I64(x) => Some(x),
+                ColumnValue::U64(x) => Some(x as i64),
+                _ => None,
+            })
+            .unwrap_or(0)
+    }
+
+    fn get_str(row: &dyn Row, schema: &[&str], name: &str) -> String {
+        col_idx(schema, name)
+            .and_then(|i| row.get_column(i).ok())
+            .map(|v| match v {
+                ColumnValue::Str(s) => s.to_string(),
+                ColumnValue::OptionStr(Some(s)) => s.to_string(),
+                _ => String::new(),
+            })
+            .unwrap_or_default()
+    }
+
+    let mut checkpoint_sequence_number = ColumnUInt64::with_capacity(n);
+    let mut transaction_digest = ColumnString::new(Type::string());
+    let mut epoch = ColumnUInt64::with_capacity(n);
+    let mut timestamp_ms = ColumnInt64::with_capacity(n);
+    let mut owner = ColumnString::new(Type::string());
+    let mut coin_type = ColumnString::new(Type::string());
+    let mut amount = ColumnInt64::with_capacity(n);
+
+    for cp in checkpoints {
+        for row in cp.iter() {
+            checkpoint_sequence_number.append(get_u64(row, schema, "checkpoint"));
+            transaction_digest.append(get_str(row, schema, "transaction_digest"));
+            epoch.append(get_u64(row, schema, "epoch"));
+            timestamp_ms.append(get_u64(row, schema, "timestamp_ms") as i64);
+            owner.append(get_str(row, schema, "owner"));
+            coin_type.append(get_str(row, schema, "coin_type"));
+            amount.append(get_i64(row, schema, "amount"));
+        }
+    }
+
+    let mut block = Block::new();
+    block.append_column(
+        "checkpoint_sequence_number",
+        std::sync::Arc::new(checkpoint_sequence_number),
+    )?;
+    block.append_column(
+        "transaction_digest",
+        std::sync::Arc::new(transaction_digest),
+    )?;
+    block.append_column("epoch", std::sync::Arc::new(epoch))?;
+    block.append_column("timestamp_ms", std::sync::Arc::new(timestamp_ms))?;
+    block.append_column("owner", std::sync::Arc::new(owner))?;
+    block.append_column("coin_type", std::sync::Arc::new(coin_type))?;
+    block.append_column("amount", std::sync::Arc::new(amount))?;
+
+    Ok(block)
+}
+
 #[cfg(test)]
 mod tests {
     use crate::handlers::CheckpointRows;
     use crate::schema::RowSchema;
-    use crate::tables::{EventRow, MoveCallRow};
+    use crate::tables::{EventRow, MoveCallRow, ObjectRow, ObjectStatus, OwnerType};
 
-    use super::{event_rows_to_block, move_call_rows_to_block};
+    use super::{event_rows_to_block, move_call_rows_to_block, object_rows_to_block};
 
     fn make_event_checkpoint_rows() -> Vec<CheckpointRows> {
         let rows = vec![
@@ -696,6 +904,55 @@ mod tests {
         let checkpoints: Vec<CheckpointRows> = vec![];
         let schema = MoveCallRow::schema();
         let block = move_call_rows_to_block(&checkpoints, schema).unwrap();
+        assert_eq!(block.row_count(), 0);
+    }
+
+    fn make_object_checkpoint_rows() -> Vec<CheckpointRows> {
+        let rows = vec![
+            ObjectRow {
+                object_id: "0xobj1".to_string(),
+                version: 1,
+                digest: "dig1".to_string(),
+                type_: Some("0x2::coin::Coin<0x2::myso::MYSO>".to_string()),
+                checkpoint: 100,
+                epoch: 1,
+                timestamp_ms: 1000,
+                owner_type: Some(OwnerType::AddressOwner),
+                owner_address: Some("0xabc".to_string()),
+                object_status: ObjectStatus::Mutated,
+                initial_shared_version: None,
+                previous_transaction: "tx1".to_string(),
+                has_public_transfer: true,
+                is_consensus: false,
+                storage_rebate: Some(100),
+                bcs: "".to_string(),
+                coin_type: Some("0x2::myso::MYSO".to_string()),
+                coin_balance: Some(1000),
+                struct_tag: None,
+                object_json: None,
+                bcs_length: 0,
+            },
+        ];
+        vec![CheckpointRows::from_rows(100, 1, rows)]
+    }
+
+    #[test]
+    fn test_object_rows_to_block() {
+        let checkpoints = make_object_checkpoint_rows();
+        let schema = ObjectRow::schema();
+        let block = object_rows_to_block(&checkpoints, schema).unwrap();
+        assert_eq!(block.row_count(), 1);
+        assert!(block.column_by_name("object_id").is_some());
+        assert!(block.column_by_name("checkpoint_sequence_number").is_some());
+        assert!(block.column_by_name("coin_type").is_some());
+        assert!(block.column_by_name("coin_balance").is_some());
+    }
+
+    #[test]
+    fn test_object_rows_to_block_empty() {
+        let checkpoints: Vec<CheckpointRows> = vec![];
+        let schema = ObjectRow::schema();
+        let block = object_rows_to_block(&checkpoints, schema).unwrap();
         assert_eq!(block.row_count(), 0);
     }
 }

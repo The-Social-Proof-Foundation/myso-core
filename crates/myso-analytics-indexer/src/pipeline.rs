@@ -19,6 +19,7 @@ use strum_macros::EnumIter;
 use crate::config::PipelineConfig;
 use crate::handlers::AnalyticsHandler;
 use crate::handlers::Row;
+use crate::handlers::tables::BalanceChangeProcessor;
 use crate::handlers::tables::CheckpointProcessor;
 use crate::handlers::tables::DynamicFieldProcessor;
 use crate::handlers::tables::EventProcessor;
@@ -76,6 +77,7 @@ pub enum Pipeline {
     TransactionObjects,
     Event,
     MoveCall,
+    BalanceChange,
     MovePackage,
     MovePackageBCS,
     DynamicField,
@@ -95,6 +97,7 @@ impl Pipeline {
             Pipeline::Object => "Object",
             Pipeline::Event => "Event",
             Pipeline::MoveCall => "MoveCall",
+            Pipeline::BalanceChange => "BalanceChange",
             Pipeline::MovePackage => "MovePackage",
             Pipeline::MovePackageBCS => "MovePackageBCS",
             Pipeline::DynamicField => "DynamicField",
@@ -114,6 +117,7 @@ impl Pipeline {
             Pipeline::Object => "objects",
             Pipeline::Event => "events",
             Pipeline::MoveCall => "move_call",
+            Pipeline::BalanceChange => "balance_changes",
             Pipeline::MovePackage => "move_package",
             Pipeline::MovePackageBCS => "move_package_bcs",
             Pipeline::DynamicField => "dynamic_field",
@@ -151,6 +155,10 @@ impl Pipeline {
             }
             Pipeline::MoveCall => {
                 register_sequential_pipeline(indexer, MoveCallProcessor, sequential_config).await
+            }
+            Pipeline::BalanceChange => {
+                register_sequential_pipeline(indexer, BalanceChangeProcessor, sequential_config)
+                    .await
             }
             Pipeline::Object => {
                 register_sequential_pipeline(

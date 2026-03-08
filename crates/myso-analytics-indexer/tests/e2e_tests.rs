@@ -41,6 +41,7 @@ use myso_analytics_indexer::tables::DynamicFieldRow;
 use myso_analytics_indexer::tables::EventRow;
 use myso_analytics_indexer::tables::MoveCallRow;
 use myso_analytics_indexer::tables::MovePackageRow;
+use myso_analytics_indexer::tables::BalanceChangeRow;
 use myso_analytics_indexer::tables::ObjectRow;
 use myso_analytics_indexer::tables::PackageBCSRow;
 use myso_analytics_indexer::tables::TransactionBCSRow;
@@ -58,6 +59,7 @@ fn pipeline_schema(pipeline: &Pipeline) -> &'static [&'static str] {
         Pipeline::TransactionBCS => TransactionBCSRow::schema(),
         Pipeline::TransactionObjects => TransactionObjectRow::schema(),
         Pipeline::Object => ObjectRow::schema(),
+        Pipeline::BalanceChange => BalanceChangeRow::schema(),
         Pipeline::Event => EventRow::schema(),
         Pipeline::MoveCall => MoveCallRow::schema(),
         Pipeline::MovePackage => MovePackageRow::schema(),
@@ -316,6 +318,7 @@ impl TestHarness {
             "Checkpoint" | "checkpoints" => Pipeline::Checkpoint,
             "Transaction" | "transactions" => Pipeline::Transaction,
             "Object" | "objects" => Pipeline::Object,
+            "BalanceChange" | "balance_changes" => Pipeline::BalanceChange,
             _ => panic!("Unknown pipeline: {}", pipeline),
         };
         let config = IndexerConfig {
@@ -564,6 +567,7 @@ impl MockTestHarness {
             "Checkpoint" | "checkpoints" => Pipeline::Checkpoint,
             "Transaction" | "transactions" => Pipeline::Transaction,
             "Object" | "objects" => Pipeline::Object,
+            "BalanceChange" | "balance_changes" => Pipeline::BalanceChange,
             _ => panic!("Unknown pipeline: {}", pipeline),
         };
         let config = IndexerConfig {

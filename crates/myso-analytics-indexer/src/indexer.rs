@@ -85,6 +85,33 @@ pub async fn build_analytics_indexer(
                 )
                 .await
                 .map_err(|e| anyhow::anyhow!("Create ClickHouse move_calls table: {}", e))?;
+            ch_store
+                .bridge
+                .execute(
+                    "CREATE TABLE IF NOT EXISTS objects (\
+                    object_id String, version UInt64, digest String, type_ Nullable(String), \
+                    checkpoint_sequence_number UInt64, epoch UInt64, timestamp_ms Int64, \
+                    owner_type Nullable(String), owner_address Nullable(String), object_status String, \
+                    initial_shared_version Nullable(UInt64), previous_transaction String, \
+                    has_public_transfer UInt8, is_consensus UInt8, storage_rebate Nullable(UInt64), \
+                    bcs String, coin_type Nullable(String), coin_balance Nullable(UInt64), \
+                    struct_tag Nullable(String), object_json Nullable(String), bcs_length UInt64, \
+                    indexed_at DateTime64(3, 'UTC') DEFAULT now()) \
+                    ENGINE = MergeTree() ORDER BY (checkpoint_sequence_number, object_id, version)",
+                )
+                .await
+                .map_err(|e| anyhow::anyhow!("Create ClickHouse objects table: {}", e))?;
+            ch_store
+                .bridge
+                .execute(
+                    "CREATE TABLE IF NOT EXISTS balance_changes (\
+                    checkpoint_sequence_number UInt64, transaction_digest String, epoch UInt64, \
+                    timestamp_ms Int64, owner String, coin_type String, amount Int64, \
+                    indexed_at DateTime64(3, 'UTC') DEFAULT now()) \
+                    ENGINE = MergeTree() ORDER BY (checkpoint_sequence_number, transaction_digest, owner, coin_type)",
+                )
+                .await
+                .map_err(|e| anyhow::anyhow!("Create ClickHouse balance_changes table: {}", e))?;
             AnalyticsStore::new_clickhouse(ch_store, config.clone(), metrics.clone())
         }
         _ => {
