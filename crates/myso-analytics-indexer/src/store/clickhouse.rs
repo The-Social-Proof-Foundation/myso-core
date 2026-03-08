@@ -59,6 +59,8 @@ pub struct NativeClientBridge {
     tx: mpsc::Sender<Request>,
     http_client: ReqwestClient,
     http_base: String,
+    http_user: String,
+    http_password: String,
 }
 
 fn http_port(native_port: u16) -> u16 {
@@ -74,6 +76,8 @@ impl NativeClientBridge {
         let opts_for_reconnect = opts.clone();
         let (req_tx, req_rx) = mpsc::channel();
         let http_base = format!("http://{}:{}", host, http_port(port));
+        let http_user = opts.user.clone();
+        let http_password = opts.password.clone();
         let http_client = ReqwestClient::builder()
             .timeout(OPERATION_TIMEOUT)
             .build()
@@ -121,6 +125,8 @@ impl NativeClientBridge {
             tx: req_tx,
             http_client,
             http_base,
+            http_user,
+            http_password,
         })
     }
 
@@ -160,11 +166,15 @@ impl NativeClientBridge {
         let body = lines.join("\n");
         let query = format!("INSERT INTO {} FORMAT JSONEachRow", table);
         let url = format!("{}/", self.http_base);
-        let resp = self
+        let mut req = self
             .http_client
             .post(&url)
             .query(&[("query", query)])
-            .body(body)
+            .body(body);
+        if !self.http_password.is_empty() {
+            req = req.basic_auth(&self.http_user, Some(&self.http_password));
+        }
+        let resp = req
             .send()
             .await
             .map_err(|e| anyhow::anyhow!("ClickHouse HTTP insert: {}", e))?;
