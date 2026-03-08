@@ -64,6 +64,9 @@ pub enum OutputStoreConfig {
         user: String,
         #[serde(default)]
         password: Option<String>,
+        /// Database name. Default "default". Set to "railway" for Railway ClickHouse.
+        #[serde(default)]
+        database: Option<String>,
     },
     Gcs {
         bucket: String,

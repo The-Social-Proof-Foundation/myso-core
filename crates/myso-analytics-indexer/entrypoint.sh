@@ -103,6 +103,7 @@ else
 fi
 
 if [ "$USE_CLICKHOUSE" = "true" ]; then
+  CLICKHOUSE_DATABASE="${CLICKHOUSE_DATABASE:-default}"
   cat >> /app/config.yaml << EOF
 
 output_store:
@@ -110,6 +111,7 @@ output_store:
   host: "$CLICKHOUSE_HOST"
   port: $CLICKHOUSE_PORT
   user: "$CLICKHOUSE_USER"
+  database: "$CLICKHOUSE_DATABASE"
 EOF
   if [ -n "$CLICKHOUSE_PASSWORD" ]; then
     echo "  password: \"$CLICKHOUSE_PASSWORD\"" >> /app/config.yaml
@@ -166,7 +168,7 @@ fi
 echo "=== Configuration ==="
 echo "RPC_URL: $RPC_URL"
 if [ "$USE_CLICKHOUSE" = "true" ]; then
-  echo "OUTPUT: ClickHouse $CLICKHOUSE_HOST:$CLICKHOUSE_PORT"
+  echo "OUTPUT: ClickHouse $CLICKHOUSE_HOST:$CLICKHOUSE_PORT database=$CLICKHOUSE_DATABASE"
 else
   echo "BUCKET: $REMOTE_STORE_BUCKET"
 fi

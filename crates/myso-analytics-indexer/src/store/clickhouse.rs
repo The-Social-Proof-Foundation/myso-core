@@ -61,6 +61,7 @@ pub struct NativeClientBridge {
     http_base: String,
     http_user: String,
     http_password: String,
+    database: String,
 }
 
 fn http_port(native_port: u16) -> u16 {
@@ -72,7 +73,7 @@ fn http_port(native_port: u16) -> u16 {
 }
 
 impl NativeClientBridge {
-    pub fn new(host: &str, port: u16, opts: ClientOptions) -> ClientResult<Self> {
+    pub fn new(host: &str, port: u16, opts: ClientOptions, database: &str) -> ClientResult<Self> {
         let opts_for_reconnect = opts.clone();
         let (req_tx, req_rx) = mpsc::channel();
         let http_base = format!("http://{}:{}", host, http_port(port));
@@ -127,6 +128,7 @@ impl NativeClientBridge {
             http_base,
             http_user,
             http_password,
+            database: database.to_string(),
         })
     }
 
@@ -164,8 +166,9 @@ impl NativeClientBridge {
             return Ok(());
         }
         let body = lines.join("\n");
-        let query = format!("INSERT INTO {} FORMAT JSONEachRow", table);
-        let url = format!("{}/", self.http_base);
+        let full_table = format!("{}.{}", self.database, table);
+        let query = format!("INSERT INTO {} FORMAT JSONEachRow", full_table);
+        let url = format!("{}/?database={}", self.http_base, self.database);
         let mut req = self
             .http_client
             .post(&url)
@@ -180,11 +183,13 @@ impl NativeClientBridge {
             .map_err(|e| anyhow::anyhow!("ClickHouse HTTP insert: {}", e))?;
         if !resp.status().is_success() {
             let status = resp.status();
-            let body = resp.text().await.unwrap_or_default();
+            let err_body = resp.text().await.unwrap_or_default();
             return Err(anyhow::anyhow!(
-                "ClickHouse HTTP insert: {} {}",
+                "ClickHouse HTTP insert failed: {} {} (database={}, table={})",
                 status,
-                body
+                err_body,
+                self.database,
+                table
             ));
         }
         Ok(())
@@ -253,9 +258,10 @@ pub fn create_client_options(
     port: u16,
     user: &str,
     password: Option<&str>,
+    database: &str,
 ) -> ClientOptions {
     let mut opts = ClientOptions::new(host.to_string(), port)
-        .database("default")
+        .database(database)
         .user(user.to_string())
         .compression(None);
     if let Some(pw) = password {

@@ -45,13 +45,22 @@ pub async fn build_analytics_indexer(
             port,
             user,
             password,
+            database,
         } => {
-            let ch_store =
-                crate::store::ClickHouseStore::new(host, *port, user, password.as_deref())?;
+            let db = database.as_deref().unwrap_or("default");
+            info!(host, port, database = db, "Connecting to ClickHouse");
+            let ch_store = crate::store::ClickHouseStore::new(
+                host,
+                *port,
+                user,
+                password.as_deref(),
+                db,
+            )?;
+            let db_prefix = format!("{}.", db);
             ch_store
                 .bridge
-                .execute(
-                    "CREATE TABLE IF NOT EXISTS transactions (\
+                .execute(&format!(
+                    "CREATE TABLE IF NOT EXISTS {}transactions (\
                     checkpoint_sequence_number UInt64, transaction_digest String, sender String, \
                     timestamp_ms Int64, tx_kind LowCardinality(String), gas_computation_cost UInt64, \
                     gas_storage_cost UInt64, gas_storage_rebate UInt64, status UInt8, epoch UInt64, \
@@ -59,36 +68,39 @@ pub async fn build_analytics_indexer(
                     created_objects UInt32, mutated_objects UInt32, execution_error Nullable(String), \
                     indexed_at DateTime64(3, 'UTC') DEFAULT now()) \
                     ENGINE = MergeTree() ORDER BY (checkpoint_sequence_number, transaction_digest)",
-                )
+                    db_prefix
+                ))
                 .await
                 .map_err(|e| anyhow::anyhow!("Create ClickHouse table: {}", e))?;
             ch_store
                 .bridge
-                .execute(
-                    "CREATE TABLE IF NOT EXISTS events (\
+                .execute(&format!(
+                    "CREATE TABLE IF NOT EXISTS {}events (\
                     checkpoint_sequence_number UInt64, transaction_digest String, event_index UInt64, \
                     epoch UInt64, timestamp_ms Int64, sender String, package String, module String, \
                     event_type LowCardinality(String), event_json String, bcs_length UInt64, \
                     indexed_at DateTime64(3, 'UTC') DEFAULT now()) \
                     ENGINE = MergeTree() ORDER BY (checkpoint_sequence_number, transaction_digest, event_index)",
-                )
+                    db_prefix
+                ))
                 .await
                 .map_err(|e| anyhow::anyhow!("Create ClickHouse events table: {}", e))?;
             ch_store
                 .bridge
-                .execute(
-                    "CREATE TABLE IF NOT EXISTS move_calls (\
+                .execute(&format!(
+                    "CREATE TABLE IF NOT EXISTS {}move_calls (\
                     checkpoint_sequence_number UInt64, transaction_digest String, cmd_idx UInt64, \
                     epoch UInt64, timestamp_ms Int64, package String, module LowCardinality(String), \
                     function LowCardinality(String), indexed_at DateTime64(3, 'UTC') DEFAULT now()) \
                     ENGINE = MergeTree() ORDER BY (checkpoint_sequence_number, transaction_digest, cmd_idx)",
-                )
+                    db_prefix
+                ))
                 .await
                 .map_err(|e| anyhow::anyhow!("Create ClickHouse move_calls table: {}", e))?;
             ch_store
                 .bridge
-                .execute(
-                    "CREATE TABLE IF NOT EXISTS objects (\
+                .execute(&format!(
+                    "CREATE TABLE IF NOT EXISTS {}objects (\
                     object_id String, version UInt64, digest String, type_ Nullable(String), \
                     checkpoint_sequence_number UInt64, epoch UInt64, timestamp_ms Int64, \
                     owner_type Nullable(String), owner_address Nullable(String), object_status String, \
@@ -98,18 +110,20 @@ pub async fn build_analytics_indexer(
                     struct_tag Nullable(String), object_json Nullable(String), bcs_length UInt64, \
                     indexed_at DateTime64(3, 'UTC') DEFAULT now()) \
                     ENGINE = MergeTree() ORDER BY (checkpoint_sequence_number, object_id, version)",
-                )
+                    db_prefix
+                ))
                 .await
                 .map_err(|e| anyhow::anyhow!("Create ClickHouse objects table: {}", e))?;
             ch_store
                 .bridge
-                .execute(
-                    "CREATE TABLE IF NOT EXISTS balance_changes (\
+                .execute(&format!(
+                    "CREATE TABLE IF NOT EXISTS {}balance_changes (\
                     checkpoint_sequence_number UInt64, transaction_digest String, epoch UInt64, \
                     timestamp_ms Int64, owner String, coin_type String, amount Int64, \
                     indexed_at DateTime64(3, 'UTC') DEFAULT now()) \
                     ENGINE = MergeTree() ORDER BY (checkpoint_sequence_number, transaction_digest, owner, coin_type)",
-                )
+                    db_prefix
+                ))
                 .await
                 .map_err(|e| anyhow::anyhow!("Create ClickHouse balance_changes table: {}", e))?;
             AnalyticsStore::new_clickhouse(ch_store, config.clone(), metrics.clone())
