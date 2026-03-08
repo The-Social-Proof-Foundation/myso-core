@@ -70,11 +70,7 @@ impl CheckpointRows {
     }
 
     #[cfg(test)]
-    pub fn from_rows<T: Row + 'static>(
-        checkpoint: u64,
-        epoch: EpochId,
-        rows: Vec<T>,
-    ) -> Self {
+    pub fn from_rows<T: Row + 'static>(checkpoint: u64, epoch: EpochId, rows: Vec<T>) -> Self {
         Self {
             checkpoint,
             epoch,

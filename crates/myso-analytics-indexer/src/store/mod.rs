@@ -198,12 +198,7 @@ impl ClickHouseStore {
         Ok(None)
     }
 
-    pub fn new(
-        host: &str,
-        port: u16,
-        user: &str,
-        password: Option<&str>,
-    ) -> anyhow::Result<Self> {
+    pub fn new(host: &str, port: u16, user: &str, password: Option<&str>) -> anyhow::Result<Self> {
         let opts = clickhouse::create_client_options(host, port, user, password);
         let bridge = clickhouse::NativeClientBridge::new(host, port, opts)
             .map_err(|e| anyhow::anyhow!("ClickHouse connect: {}", e))?;

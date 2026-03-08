@@ -191,7 +191,10 @@ impl NativeClientBridge {
     }
 }
 
-fn extract_column_value(col: &std::sync::Arc<dyn clickhouse_native_client::column::Column>, row: usize) -> serde_json::Value {
+fn extract_column_value(
+    col: &std::sync::Arc<dyn clickhouse_native_client::column::Column>,
+    row: usize,
+) -> serde_json::Value {
     let any = col.as_ref().as_any();
     if let Some(c) = any.downcast_ref::<ColumnUInt64>() {
         serde_json::json!(c.get(row).copied().unwrap_or(0))
@@ -450,8 +453,7 @@ pub fn event_rows_to_block(checkpoints: &[CheckpointRows], schema: &[&str]) -> R
     let mut module = ColumnString::new(Type::string());
     let mut event_type = ColumnString::new(Type::string());
     let mut event_json = ColumnString::new(Type::string());
-    let mut bcs_length =
-        clickhouse_native_client::column::numeric::ColumnUInt64::with_capacity(n);
+    let mut bcs_length = clickhouse_native_client::column::numeric::ColumnUInt64::with_capacity(n);
 
     for cp in checkpoints {
         for row in cp.iter() {
@@ -680,7 +682,6 @@ mod tests {
         assert!(block.column_by_name("module").is_some());
         assert!(block.column_by_name("function").is_some());
     }
-
 
     #[test]
     fn test_event_rows_to_block_empty() {

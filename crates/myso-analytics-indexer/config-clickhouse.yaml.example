@@ -18,13 +18,15 @@ pipelines:
     force_batch_cut_after_secs: 5
   - pipeline: Event
     file_format: parquet
+    # Sparse pipeline: lower rows so data flushes sooner when events are infrequent
     batch_size:
-      rows: 100
+      rows: 10
     force_batch_cut_after_secs: 5
   - pipeline: MoveCall
     file_format: parquet
+    # Sparse pipeline: lower rows so data flushes sooner when move calls are infrequent
     batch_size:
-      rows: 100
+      rows: 10
     force_batch_cut_after_secs: 5
 
 first_checkpoint: 2587781

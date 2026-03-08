@@ -461,7 +461,9 @@ impl SequentialUploader {
                             )?,
                             "move_calls",
                         ),
-                        _ => unreachable!("ClickHouse direct insert only for Transaction, Event, MoveCall"),
+                        _ => unreachable!(
+                            "ClickHouse direct insert only for Transaction, Event, MoveCall"
+                        ),
                     };
                     let rows = block.row_count();
                     debug!(pipeline = %self.pipeline_name, total_rows, block_rows = rows, table, "ClickHouse batch");
@@ -469,7 +471,18 @@ impl SequentialUploader {
                         store.bridge.insert_http(table, &block).await?;
                         info!(pipeline = %self.pipeline_name, rows, table, "Inserted into ClickHouse");
                     } else {
-                        debug!(pipeline = %self.pipeline_name, checkpoints = pending.checkpoints_rows.len(), "ClickHouse block empty, skipping");
+                        let checkpoint_range = &pending.checkpoint_range;
+                        if matches!(self.pipeline_name.as_str(), "Event" | "MoveCall") {
+                            warn!(
+                                pipeline = %self.pipeline_name,
+                                checkpoint_range = %format!("{}..{}", checkpoint_range.start, checkpoint_range.end),
+                                total_rows,
+                                checkpoints = pending.checkpoints_rows.len(),
+                                "ClickHouse block empty for Event/MoveCall - no rows produced or block conversion failed"
+                            );
+                        } else {
+                            debug!(pipeline = %self.pipeline_name, checkpoints = pending.checkpoints_rows.len(), "ClickHouse block empty, skipping");
+                        }
                     }
                     let checkpoint_hi = pending.checkpoint_range.end - 1;
                     let bytes_len = pending

@@ -63,6 +63,9 @@ esac
 if [ "$USE_CLICKHOUSE" = "true" ]; then
   PIPELINE_TYPES="${PIPELINES:-Transaction,Event,MoveCall}"
   CLICKHOUSE_BATCH_ROWS="${CLICKHOUSE_BATCH_ROWS:-100}"
+  # Sparse pipelines (Event, MoveCall) default to 10 rows for sooner flush when data is infrequent
+  CLICKHOUSE_EVENT_BATCH_ROWS="${CLICKHOUSE_EVENT_BATCH_ROWS:-10}"
+  CLICKHOUSE_MOVECALL_BATCH_ROWS="${CLICKHOUSE_MOVECALL_BATCH_ROWS:-10}"
   CLICKHOUSE_FORCE_CUT_SECS="${CLICKHOUSE_FORCE_CUT_SECS:-5}"
 else
   PIPELINE_TYPES="${PIPELINES:-$DEFAULT_PIPELINE}"
@@ -129,11 +132,16 @@ echo "$PIPELINE_TYPES" | tr ',' '\n' | while read -r p; do
   p=$(echo "$p" | tr -d ' ')
   [ -z "$p" ] && continue
   if [ "$USE_CLICKHOUSE" = "true" ]; then
+    case "$p" in
+      Event) BATCH_ROWS="${CLICKHOUSE_EVENT_BATCH_ROWS:-$CLICKHOUSE_BATCH_ROWS}" ;;
+      MoveCall) BATCH_ROWS="${CLICKHOUSE_MOVECALL_BATCH_ROWS:-$CLICKHOUSE_BATCH_ROWS}" ;;
+      *) BATCH_ROWS="$CLICKHOUSE_BATCH_ROWS" ;;
+    esac
     cat >> /app/config.yaml << PIPELINE
   - pipeline: $p
     file_format: $FILE_FORMAT
     batch_size:
-      rows: $CLICKHOUSE_BATCH_ROWS
+      rows: $BATCH_ROWS
     force_batch_cut_after_secs: $CLICKHOUSE_FORCE_CUT_SECS
 PIPELINE
   else

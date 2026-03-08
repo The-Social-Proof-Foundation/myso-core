@@ -9,6 +9,7 @@ use myso_config::{
     dynamic_transaction_signing_checks::DynamicCheckRunnerError,
     transaction_deny_config::TransactionDenyConfig,
 };
+use myso_types::{MYSO_FRAMEWORK_ADDRESS, MYSO_SOCIAL_ADDRESS};
 use myso_types::{
     base_types::{MySoAddress, ObjectRef},
     error::{MySoError, MySoErrorKind, MySoResult, UserInputError},
@@ -17,7 +18,6 @@ use myso_types::{
     storage::{BackingPackageStore, ObjectStore},
     transaction::{Command, InputObjectKind, TransactionData, TransactionDataAPI},
 };
-use myso_types::{MYSO_FRAMEWORK_ADDRESS, MYSO_SOCIAL_ADDRESS};
 use tracing::{error, trace, warn};
 macro_rules! deny_if_true {
     ($cond:expr, $msg:expr) => {
@@ -239,17 +239,14 @@ fn has_upgrade_admin_cap(
             let Owner::AddressOwner(owner_addr) = object.owner else {
                 trace!(
                     "admin cap check: object {} owner {:?} is not AddressOwner",
-                    object_id,
-                    object.owner
+                    object_id, object.owner
                 );
                 continue;
             };
             if owner_addr != sender {
                 trace!(
                     "admin cap check: object {} owner {:?} != sender {:?}",
-                    object_id,
-                    owner_addr,
-                    sender
+                    object_id, owner_addr, sender
                 );
                 continue;
             }
@@ -260,8 +257,7 @@ fn has_upgrade_admin_cap(
                 }
                 trace!(
                     "admin cap check: object {} type {} does not match UpgradeAdminCap",
-                    object_id,
-                    type_tag
+                    object_id, type_tag
                 );
             }
         }
@@ -284,17 +280,14 @@ fn has_package_publishing_admin_cap(
             let Owner::AddressOwner(owner_addr) = object.owner else {
                 trace!(
                     "admin cap check: object {} owner {:?} is not AddressOwner",
-                    object_id,
-                    object.owner
+                    object_id, object.owner
                 );
                 continue;
             };
             if owner_addr != sender {
                 trace!(
                     "admin cap check: object {} owner {:?} != sender {:?}",
-                    object_id,
-                    owner_addr,
-                    sender
+                    object_id, owner_addr, sender
                 );
                 continue;
             }
@@ -305,8 +298,7 @@ fn has_package_publishing_admin_cap(
                 }
                 trace!(
                     "admin cap check: object {} type {} does not match PackagePublishingAdminCap",
-                    object_id,
-                    type_tag
+                    object_id, type_tag
                 );
             }
         }

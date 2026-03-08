@@ -109,7 +109,11 @@ macro_rules! sys_pkg {
             $name,
             concat!("crates/myso-framework/packages/", $path),
             $id,
-            include_bytes!(concat!(env!("CARGO_MANIFEST_DIR"), "/packages_compiled/", $path)),
+            include_bytes!(concat!(
+                env!("CARGO_MANIFEST_DIR"),
+                "/packages_compiled/",
+                $path
+            )),
             &$deps,
         )
     };
@@ -119,7 +123,11 @@ macro_rules! sys_pkg {
             $name,
             concat!("crates/myso-framework/packages/", $repo),
             $id,
-            include_bytes!(concat!(env!("CARGO_MANIFEST_DIR"), "/packages_compiled/", $compiled)),
+            include_bytes!(concat!(
+                env!("CARGO_MANIFEST_DIR"),
+                "/packages_compiled/",
+                $compiled
+            )),
             &$deps,
         )
     };
