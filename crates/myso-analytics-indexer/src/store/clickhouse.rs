@@ -235,11 +235,20 @@ fn block_to_json_each_row(block: &Block) -> Result<Vec<String>> {
     Ok(lines)
 }
 
-pub fn create_client_options(host: &str, port: u16, user: &str) -> ClientOptions {
-    ClientOptions::new(host.to_string(), port)
+pub fn create_client_options(
+    host: &str,
+    port: u16,
+    user: &str,
+    password: Option<&str>,
+) -> ClientOptions {
+    let mut opts = ClientOptions::new(host.to_string(), port)
         .database("default")
         .user(user.to_string())
-        .compression(None)
+        .compression(None);
+    if let Some(pw) = password {
+        opts = opts.password(pw);
+    }
+    opts
 }
 
 pub fn transaction_rows_to_block(checkpoints: &[CheckpointRows], schema: &[&str]) -> Result<Block> {

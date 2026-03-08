@@ -8,6 +8,7 @@ output_store:
   host: "localhost"
   port: 9000
   user: "default"
+  # password: "optional"  # Required for Railway Cloud and other managed ClickHouse
 
 pipelines:
   - pipeline: Transaction

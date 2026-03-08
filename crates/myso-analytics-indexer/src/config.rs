@@ -62,6 +62,8 @@ pub enum OutputStoreConfig {
         host: String,
         port: u16,
         user: String,
+        #[serde(default)]
+        password: Option<String>,
     },
     Gcs {
         bucket: String,

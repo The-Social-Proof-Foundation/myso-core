@@ -40,8 +40,14 @@ pub async fn build_analytics_indexer(
     config.validate()?;
 
     let store = match &config.output_store {
-        crate::config::OutputStoreConfig::ClickHouse { host, port, user } => {
-            let ch_store = crate::store::ClickHouseStore::new(host, *port, user)?;
+        crate::config::OutputStoreConfig::ClickHouse {
+            host,
+            port,
+            user,
+            password,
+        } => {
+            let ch_store =
+                crate::store::ClickHouseStore::new(host, *port, user, password.as_deref())?;
             ch_store
                 .bridge
                 .execute(

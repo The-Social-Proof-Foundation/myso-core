@@ -12,7 +12,8 @@ if [ -z "$RPC_URL" ]; then
   exit 1
 fi
 
-# ClickHouse output: set CLICKHOUSE_HOST (and optionally CLICKHOUSE_PORT, CLICKHOUSE_USER)
+# ClickHouse output: set CLICKHOUSE_HOST (and optionally CLICKHOUSE_PORT, CLICKHOUSE_USER, CLICKHOUSE_PASSWORD)
+# Railway Cloud and other managed ClickHouse typically require CLICKHOUSE_PASSWORD
 # GCS output: set REMOTE_STORE_BUCKET and GCS_SERVICE_ACCOUNT_JSON
 USE_CLICKHOUSE=false
 if [ -n "$CLICKHOUSE_HOST" ]; then
@@ -105,8 +106,11 @@ output_store:
   host: "$CLICKHOUSE_HOST"
   port: $CLICKHOUSE_PORT
   user: "$CLICKHOUSE_USER"
-pipelines:
 EOF
+  if [ -n "$CLICKHOUSE_PASSWORD" ]; then
+    echo "  password: \"$CLICKHOUSE_PASSWORD\"" >> /app/config.yaml
+  fi
+  echo "pipelines:" >> /app/config.yaml
 else
   cat >> /app/config.yaml << EOF
 
