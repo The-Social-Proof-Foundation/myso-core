@@ -7008,8 +7008,8 @@ impl Reader {
     ) -> Result<serde_json::Value, crate::error::SocialError> {
         let mut conn = self.db.connect().await?;
 
-        let profiles = self.search_profiles_bm25(&mut conn, q, limit).await?;
-        let posts = self.search_posts_bm25(&mut conn, q, limit).await?;
+        let profiles = self.search_profiles_fts(&mut conn, q, limit).await?;
+        let posts = self.search_posts_fts(&mut conn, q, limit).await?;
         let platforms_count: i64 = platforms::table
             .filter(platforms::name.ilike(&format!("%{}%", q)))
             .filter(platforms::deleted_at.is_null())
@@ -7024,7 +7024,7 @@ impl Reader {
         }))
     }
 
-    async fn search_profiles_bm25(
+    async fn search_profiles_fts(
         &self,
         conn: &mut myso_pg_db::Connection<'_>,
         q: &str,
@@ -7037,7 +7037,7 @@ impl Reader {
             .load(conn)
             .await?;
 
-        let bm25_query = r#"
+        let fts_query = r#"
             SELECT id, owner_address, username, display_name, bio, profile_photo, website,
                    created_at, updated_at, cover_photo, profile_id, followers_count, following_count,
                    blocked_count, post_count, min_offer_amount, birthdate, current_location, raised_location,
@@ -7047,8 +7047,8 @@ impl Reader {
                    reservation_pool_address, selected_badge_id, selected_ecosystem_badge_id,
                    paid_messaging_enabled, paid_messaging_min_cost
             FROM profiles
-            WHERE search_text <@> to_bm25query($1, 'idx_profiles_search_bm25') < -0.1
-            ORDER BY search_text <@> to_bm25query($1, 'idx_profiles_search_bm25')
+            WHERE to_tsvector('english', coalesce(search_text, '')) @@ plainto_tsquery('english', $1)
+            ORDER BY ts_rank(to_tsvector('english', coalesce(search_text, '')), plainto_tsquery('english', $1)) DESC
             LIMIT $2
         "#;
 
@@ -7136,14 +7136,14 @@ impl Reader {
             paid_messaging_min_cost: Option<i64>,
         }
 
-        let bm25_profiles: Vec<ProfileRow> = diesel::sql_query(bm25_query)
+        let fts_profiles: Vec<ProfileRow> = diesel::sql_query(fts_query)
             .bind::<Text, _>(q)
             .bind::<BigInt, _>(limit)
             .load(conn)
             .await?;
 
         let exact_ids: std::collections::HashSet<i32> = exact_match.iter().map(|p| p.id).collect();
-        let bm25_profiles: Vec<Profile> = bm25_profiles
+        let fts_profiles: Vec<Profile> = fts_profiles
             .into_iter()
             .filter(|p| !exact_ids.contains(&p.id))
             .map(|p| Profile {
@@ -7192,12 +7192,12 @@ impl Reader {
             .collect();
 
         let mut results = exact_match;
-        results.extend(bm25_profiles);
+        results.extend(fts_profiles);
         results.truncate(limit as usize);
         Ok(results)
     }
 
-    async fn search_posts_bm25(
+    async fn search_posts_fts(
         &self,
         conn: &mut myso_pg_db::Connection<'_>,
         q: &str,
@@ -7207,17 +7207,17 @@ impl Reader {
             WITH ranked AS (
                 SELECT post_id, owner, profile_id, content, post_type, created_at, deleted_at,
                        reaction_count, comment_count, repost_count, tips_received,
-                       content <@> to_bm25query($1, 'idx_posts_content_bm25') as score,
+                       ts_rank(to_tsvector('english', coalesce(content, '')), plainto_tsquery('english', $1)) as score,
                        ROW_NUMBER() OVER (PARTITION BY post_id ORDER BY time DESC) as rn
                 FROM posts
                 WHERE deleted_at IS NULL
-                  AND content <@> to_bm25query($1, 'idx_posts_content_bm25') < -0.1
+                  AND to_tsvector('english', coalesce(content, '')) @@ plainto_tsquery('english', $1)
             )
             SELECT post_id, owner, profile_id, content, post_type, created_at, deleted_at,
                    reaction_count, comment_count, repost_count, tips_received
             FROM ranked
             WHERE rn = 1
-            ORDER BY score
+            ORDER BY score DESC
             LIMIT $2
         "#;
 

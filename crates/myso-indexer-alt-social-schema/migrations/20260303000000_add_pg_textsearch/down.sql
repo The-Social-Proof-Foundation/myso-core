@@ -1,6 +1,5 @@
--- Rollback pg_textsearch BM25 indexes and extension
+-- Rollback full-text search indexes
 
-DROP INDEX IF EXISTS idx_posts_content_bm25;
-DROP INDEX IF EXISTS idx_profiles_search_bm25;
+DROP INDEX IF EXISTS idx_posts_content_gin;
+DROP INDEX IF EXISTS idx_profiles_search_gin;
 ALTER TABLE profiles DROP COLUMN IF EXISTS search_text;
-DROP EXTENSION IF EXISTS pg_textsearch;
