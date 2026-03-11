@@ -7008,8 +7008,8 @@ impl Reader {
     ) -> Result<serde_json::Value, crate::error::SocialError> {
         let mut conn = self.db.connect().await?;
 
-        let profiles = self.search_profiles_fts(&mut conn, q, limit).await?;
-        let posts = self.search_posts_fts(&mut conn, q, limit).await?;
+        let profiles = self.search_profiles(&mut conn, q, limit).await?;
+        let posts = self.search_posts(&mut conn, q, limit).await?;
         let platforms_count: i64 = platforms::table
             .filter(platforms::name.ilike(&format!("%{}%", q)))
             .filter(platforms::deleted_at.is_null())
@@ -7024,205 +7024,52 @@ impl Reader {
         }))
     }
 
-    async fn search_profiles_fts(
+    async fn search_profiles(
         &self,
         conn: &mut myso_pg_db::Connection<'_>,
         q: &str,
         limit: i64,
     ) -> Result<Vec<Profile>, crate::error::SocialError> {
-        let exact_match: Vec<Profile> = profiles::table
-            .filter(profiles::owner_address.eq(q))
-            .limit(1)
+        let pattern = format!("%{}%", q);
+        let profiles: Vec<Profile> = profiles::table
+            .filter(
+                profiles::username
+                    .ilike(&pattern)
+                    .or(profiles::display_name.ilike(&pattern))
+                    .or(profiles::owner_address.eq(q)),
+            )
+            .limit(limit)
             .select(Profile::as_select())
             .load(conn)
             .await?;
-
-        let fts_query = r#"
-            SELECT id, owner_address, username, display_name, bio, profile_photo, website,
-                   created_at, updated_at, cover_photo, profile_id, followers_count, following_count,
-                   blocked_count, post_count, min_offer_amount, birthdate, current_location, raised_location,
-                   phone, email, gender, political_view, religion, education, primary_language,
-                   relationship_status, x_username, facebook_username, reddit_username, github_username,
-                   instagram_username, linkedin_username, twitch_username, social_proof_token_address,
-                   reservation_pool_address, selected_badge_id, selected_ecosystem_badge_id,
-                   paid_messaging_enabled, paid_messaging_min_cost
-            FROM profiles
-            WHERE to_tsvector('english', coalesce(search_text, '')) @@ plainto_tsquery('english', $1)
-            ORDER BY ts_rank(to_tsvector('english', coalesce(search_text, '')), plainto_tsquery('english', $1)) DESC
-            LIMIT $2
-        "#;
-
-        #[derive(QueryableByName)]
-        struct ProfileRow {
-            #[diesel(sql_type = Integer)]
-            id: i32,
-            #[diesel(sql_type = Text)]
-            owner_address: String,
-            #[diesel(sql_type = Text)]
-            username: String,
-            #[diesel(sql_type = Nullable<Text>)]
-            display_name: Option<String>,
-            #[diesel(sql_type = Nullable<Text>)]
-            bio: Option<String>,
-            #[diesel(sql_type = Nullable<Text>)]
-            profile_photo: Option<String>,
-            #[diesel(sql_type = Nullable<Text>)]
-            website: Option<String>,
-            #[diesel(sql_type = Timestamp)]
-            created_at: chrono::NaiveDateTime,
-            #[diesel(sql_type = Timestamp)]
-            updated_at: chrono::NaiveDateTime,
-            #[diesel(sql_type = Nullable<Text>)]
-            cover_photo: Option<String>,
-            #[diesel(sql_type = Nullable<Text>)]
-            profile_id: Option<String>,
-            #[diesel(sql_type = Integer)]
-            followers_count: i32,
-            #[diesel(sql_type = Integer)]
-            following_count: i32,
-            #[diesel(sql_type = Integer)]
-            blocked_count: i32,
-            #[diesel(sql_type = Integer)]
-            post_count: i32,
-            #[diesel(sql_type = Nullable<BigInt>)]
-            min_offer_amount: Option<i64>,
-            #[diesel(sql_type = Nullable<Text>)]
-            birthdate: Option<String>,
-            #[diesel(sql_type = Nullable<Text>)]
-            current_location: Option<String>,
-            #[diesel(sql_type = Nullable<Text>)]
-            raised_location: Option<String>,
-            #[diesel(sql_type = Nullable<Text>)]
-            phone: Option<String>,
-            #[diesel(sql_type = Nullable<Text>)]
-            email: Option<String>,
-            #[diesel(sql_type = Nullable<Text>)]
-            gender: Option<String>,
-            #[diesel(sql_type = Nullable<Text>)]
-            political_view: Option<String>,
-            #[diesel(sql_type = Nullable<Text>)]
-            religion: Option<String>,
-            #[diesel(sql_type = Nullable<Text>)]
-            education: Option<String>,
-            #[diesel(sql_type = Nullable<Text>)]
-            primary_language: Option<String>,
-            #[diesel(sql_type = Nullable<Text>)]
-            relationship_status: Option<String>,
-            #[diesel(sql_type = Nullable<Text>)]
-            x_username: Option<String>,
-            #[diesel(sql_type = Nullable<Text>)]
-            facebook_username: Option<String>,
-            #[diesel(sql_type = Nullable<Text>)]
-            reddit_username: Option<String>,
-            #[diesel(sql_type = Nullable<Text>)]
-            github_username: Option<String>,
-            #[diesel(sql_type = Nullable<Text>)]
-            instagram_username: Option<String>,
-            #[diesel(sql_type = Nullable<Text>)]
-            linkedin_username: Option<String>,
-            #[diesel(sql_type = Nullable<Text>)]
-            twitch_username: Option<String>,
-            #[diesel(sql_type = Nullable<Text>)]
-            social_proof_token_address: Option<String>,
-            #[diesel(sql_type = Nullable<Text>)]
-            reservation_pool_address: Option<String>,
-            #[diesel(sql_type = Nullable<Text>)]
-            selected_badge_id: Option<String>,
-            #[diesel(sql_type = Nullable<Text>)]
-            selected_ecosystem_badge_id: Option<String>,
-            #[diesel(sql_type = Bool)]
-            paid_messaging_enabled: bool,
-            #[diesel(sql_type = Nullable<BigInt>)]
-            paid_messaging_min_cost: Option<i64>,
-        }
-
-        let fts_profiles: Vec<ProfileRow> = diesel::sql_query(fts_query)
-            .bind::<Text, _>(q)
-            .bind::<BigInt, _>(limit)
-            .load(conn)
-            .await?;
-
-        let exact_ids: std::collections::HashSet<i32> = exact_match.iter().map(|p| p.id).collect();
-        let fts_profiles: Vec<Profile> = fts_profiles
-            .into_iter()
-            .filter(|p| !exact_ids.contains(&p.id))
-            .map(|p| Profile {
-                id: p.id,
-                owner_address: p.owner_address,
-                username: p.username,
-                display_name: p.display_name,
-                bio: p.bio,
-                profile_photo: p.profile_photo,
-                website: p.website,
-                created_at: p.created_at,
-                updated_at: p.updated_at,
-                cover_photo: p.cover_photo,
-                profile_id: p.profile_id,
-                followers_count: p.followers_count,
-                following_count: p.following_count,
-                blocked_count: p.blocked_count,
-                post_count: p.post_count,
-                min_offer_amount: p.min_offer_amount,
-                birthdate: p.birthdate,
-                current_location: p.current_location,
-                raised_location: p.raised_location,
-                phone: p.phone,
-                email: p.email,
-                gender: p.gender,
-                political_view: p.political_view,
-                religion: p.religion,
-                education: p.education,
-                primary_language: p.primary_language,
-                relationship_status: p.relationship_status,
-                x_username: p.x_username,
-                facebook_username: p.facebook_username,
-                reddit_username: p.reddit_username,
-                github_username: p.github_username,
-                instagram_username: p.instagram_username,
-                linkedin_username: p.linkedin_username,
-                twitch_username: p.twitch_username,
-                social_proof_token_address: p.social_proof_token_address,
-                reservation_pool_address: p.reservation_pool_address,
-                selected_badge_id: p.selected_badge_id,
-                selected_ecosystem_badge_id: p.selected_ecosystem_badge_id,
-                paid_messaging_enabled: p.paid_messaging_enabled,
-                paid_messaging_min_cost: p.paid_messaging_min_cost,
-                search_text: None,
-            })
-            .collect();
-
-        let mut results = exact_match;
-        results.extend(fts_profiles);
-        results.truncate(limit as usize);
-        Ok(results)
+        Ok(profiles)
     }
 
-    async fn search_posts_fts(
+    async fn search_posts(
         &self,
         conn: &mut myso_pg_db::Connection<'_>,
         q: &str,
         limit: i64,
     ) -> Result<Vec<PostBasicRow>, crate::error::SocialError> {
+        let pattern = format!("%{}%", q);
         let query = r#"
             WITH ranked AS (
                 SELECT post_id, owner, profile_id, content, post_type, created_at, deleted_at,
                        reaction_count, comment_count, repost_count, tips_received,
-                       ts_rank(to_tsvector('english', coalesce(content, '')), plainto_tsquery('english', $1)) as score,
                        ROW_NUMBER() OVER (PARTITION BY post_id ORDER BY time DESC) as rn
                 FROM posts
-                WHERE deleted_at IS NULL
-                  AND to_tsvector('english', coalesce(content, '')) @@ plainto_tsquery('english', $1)
+                WHERE deleted_at IS NULL AND content ILIKE $1
             )
             SELECT post_id, owner, profile_id, content, post_type, created_at, deleted_at,
                    reaction_count, comment_count, repost_count, tips_received
             FROM ranked
             WHERE rn = 1
-            ORDER BY score DESC
+            ORDER BY created_at DESC
             LIMIT $2
         "#;
 
         let results = diesel::sql_query(query)
-            .bind::<Text, _>(q)
+            .bind::<Text, _>(&pattern)
             .bind::<BigInt, _>(limit)
             .load::<PostBasicRow>(conn)
             .await?;
