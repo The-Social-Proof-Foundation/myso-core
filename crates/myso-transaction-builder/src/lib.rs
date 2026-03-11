@@ -517,7 +517,9 @@ impl TransactionBuilder {
                         mutability: SharedObjectMutability::Mutable,
                     },
                     Owner::Immutable | Owner::ObjectOwner(_) => {
-                        bail!("UpgradeAdminCap must be owned or shared, not immutable or object-owned")
+                        bail!(
+                            "UpgradeAdminCap must be owned or shared, not immutable or object-owned"
+                        )
                     }
                 };
                 builder.obj(obj_arg)?;
@@ -541,7 +543,9 @@ impl TransactionBuilder {
                         mutability: SharedObjectMutability::Mutable,
                     },
                     Owner::Immutable | Owner::ObjectOwner(_) => {
-                        bail!("PackagePublishingAdminCap must be owned or shared, not immutable or object-owned")
+                        bail!(
+                            "PackagePublishingAdminCap must be owned or shared, not immutable or object-owned"
+                        )
                     }
                 };
                 builder.obj(obj_arg)?;
@@ -565,7 +569,9 @@ impl TransactionBuilder {
                         mutability: SharedObjectMutability::Mutable,
                     },
                     Owner::Immutable | Owner::ObjectOwner(_) => {
-                        bail!("CoinCreationAdminCap must be owned or shared, not immutable or object-owned")
+                        bail!(
+                            "CoinCreationAdminCap must be owned or shared, not immutable or object-owned"
+                        )
                     }
                 };
                 builder.obj(obj_arg)?;

@@ -728,29 +728,31 @@ async fn get_profile_badges(
 async fn get_profile_following(
     State(state): State<Arc<AppState>>,
     Path(address): Path<String>,
-    Query(params): Query<PageParams>,
-) -> Result<Json<Vec<crate::reader::SocialGraphAddressRow>>, SocialError> {
-    let limit = params.limit();
-    let offset = params.offset();
-    let following = state.reader.get_following(&address, limit, offset).await?;
-    Ok(Json(following))
+    Query(query): Query<crate::reader::FollowsQuery>,
+) -> Result<Json<serde_json::Value>, SocialError> {
+    let (profiles, pagination) = state.reader.get_following(&address, &query).await?;
+    Ok(Json(serde_json::json!({
+        "profiles": profiles,
+        "pagination": pagination
+    })))
 }
 
 async fn get_profile_followers(
     State(state): State<Arc<AppState>>,
     Path(address): Path<String>,
-    Query(params): Query<PageParams>,
-) -> Result<Json<Vec<crate::reader::SocialGraphAddressRow>>, SocialError> {
-    let limit = params.limit();
-    let offset = params.offset();
-    let followers = state.reader.get_followers(&address, limit, offset).await?;
-    Ok(Json(followers))
+    Query(query): Query<crate::reader::FollowsQuery>,
+) -> Result<Json<serde_json::Value>, SocialError> {
+    let (profiles, pagination) = state.reader.get_followers(&address, &query).await?;
+    Ok(Json(serde_json::json!({
+        "profiles": profiles,
+        "pagination": pagination
+    })))
 }
 
 async fn get_profile_social_stats(
     State(state): State<Arc<AppState>>,
     Path(address): Path<String>,
-) -> Result<Json<crate::reader::SocialStatsRow>, SocialError> {
+) -> Result<Json<crate::reader::FollowStatsRow>, SocialError> {
     let stats = state.reader.get_social_stats(&address).await?;
     Ok(Json(stats))
 }
@@ -787,16 +789,19 @@ async fn check_social_graph_following(
     State(state): State<Arc<AppState>>,
     Path((follower, following)): Path<(String, String)>,
 ) -> Result<Json<serde_json::Value>, SocialError> {
-    let is_following = state.reader.check_following(&follower, &following).await?;
-    Ok(Json(serde_json::json!({ "is_following": is_following })))
+    let (is_following, following_back) =
+        state.reader.check_following(&follower, &following).await?;
+    Ok(Json(serde_json::json!({
+        "is_following": is_following,
+        "following_back": following_back
+    })))
 }
 
 async fn get_social_graph_chart_data(
     State(state): State<Arc<AppState>>,
-    Query(params): Query<PageParams>,
-) -> Result<Json<Vec<crate::reader::SocialGraphChartRow>>, SocialError> {
-    let limit = params.limit();
-    let data = state.reader.get_social_graph_chart_data(limit).await?;
+    Query(query): Query<crate::reader::SocialGraphChartQuery>,
+) -> Result<Json<crate::reader::SocialGraphChartData>, SocialError> {
+    let data = state.reader.get_social_graph_chart_data(&query).await?;
     Ok(Json(data))
 }
 

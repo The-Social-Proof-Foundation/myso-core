@@ -705,7 +705,10 @@ pub fn object_rows_to_block(checkpoints: &[CheckpointRows], schema: &[&str]) -> 
         "previous_transaction",
         std::sync::Arc::new(previous_transaction),
     )?;
-    block.append_column("has_public_transfer", std::sync::Arc::new(has_public_transfer))?;
+    block.append_column(
+        "has_public_transfer",
+        std::sync::Arc::new(has_public_transfer),
+    )?;
     block.append_column("is_consensus", std::sync::Arc::new(is_consensus))?;
     block.append_column("storage_rebate", std::sync::Arc::new(storage_rebate))?;
     block.append_column("bcs", std::sync::Arc::new(bcs))?;
@@ -914,31 +917,29 @@ mod tests {
     }
 
     fn make_object_checkpoint_rows() -> Vec<CheckpointRows> {
-        let rows = vec![
-            ObjectRow {
-                object_id: "0xobj1".to_string(),
-                version: 1,
-                digest: "dig1".to_string(),
-                type_: Some("0x2::coin::Coin<0x2::myso::MYSO>".to_string()),
-                checkpoint: 100,
-                epoch: 1,
-                timestamp_ms: 1000,
-                owner_type: Some(OwnerType::AddressOwner),
-                owner_address: Some("0xabc".to_string()),
-                object_status: ObjectStatus::Mutated,
-                initial_shared_version: None,
-                previous_transaction: "tx1".to_string(),
-                has_public_transfer: true,
-                is_consensus: false,
-                storage_rebate: Some(100),
-                bcs: "".to_string(),
-                coin_type: Some("0x2::myso::MYSO".to_string()),
-                coin_balance: Some(1000),
-                struct_tag: None,
-                object_json: None,
-                bcs_length: 0,
-            },
-        ];
+        let rows = vec![ObjectRow {
+            object_id: "0xobj1".to_string(),
+            version: 1,
+            digest: "dig1".to_string(),
+            type_: Some("0x2::coin::Coin<0x2::myso::MYSO>".to_string()),
+            checkpoint: 100,
+            epoch: 1,
+            timestamp_ms: 1000,
+            owner_type: Some(OwnerType::AddressOwner),
+            owner_address: Some("0xabc".to_string()),
+            object_status: ObjectStatus::Mutated,
+            initial_shared_version: None,
+            previous_transaction: "tx1".to_string(),
+            has_public_transfer: true,
+            is_consensus: false,
+            storage_rebate: Some(100),
+            bcs: "".to_string(),
+            coin_type: Some("0x2::myso::MYSO".to_string()),
+            coin_balance: Some(1000),
+            struct_tag: None,
+            object_json: None,
+            bcs_length: 0,
+        }];
         vec![CheckpointRows::from_rows(100, 1, rows)]
     }
 

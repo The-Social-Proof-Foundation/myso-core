@@ -49,13 +49,8 @@ pub async fn build_analytics_indexer(
         } => {
             let db = database.as_deref().unwrap_or("default");
             info!(host, port, database = db, "Connecting to ClickHouse");
-            let ch_store = crate::store::ClickHouseStore::new(
-                host,
-                *port,
-                user,
-                password.as_deref(),
-                db,
-            )?;
+            let ch_store =
+                crate::store::ClickHouseStore::new(host, *port, user, password.as_deref(), db)?;
             let db_prefix = format!("{}.", db);
             ch_store
                 .bridge

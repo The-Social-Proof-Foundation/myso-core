@@ -208,9 +208,8 @@ impl ClickHouseStore {
         database: &str,
     ) -> anyhow::Result<Self> {
         let opts = clickhouse::create_client_options(host, port, user, password, database);
-        let bridge =
-            clickhouse::NativeClientBridge::new(host, port, opts, database)
-                .map_err(|e| anyhow::anyhow!("ClickHouse connect: {}", e))?;
+        let bridge = clickhouse::NativeClientBridge::new(host, port, opts, database)
+            .map_err(|e| anyhow::anyhow!("ClickHouse connect: {}", e))?;
         Ok(Self {
             bridge: std::sync::Arc::new(bridge),
         })

@@ -2,7 +2,8 @@
 // SPDX-License-Identifier: Apache-2.0
 
 use diesel::sql_types::{
-    BigInt, Bool, Date, Double, Integer, Jsonb, Nullable, SmallInt, Text, Timestamp, Timestamptz,
+    Array, BigInt, Bool, Date, Double, Integer, Jsonb, Nullable, SmallInt, Text, Timestamp,
+    Timestamptz,
 };
 use diesel::BoolExpressionMethods;
 use diesel::ExpressionMethods;
@@ -1141,6 +1142,132 @@ pub struct ProfileBadgeRow {
 pub struct SocialGraphAddressRow {
     pub address: String,
     pub created_at: chrono::NaiveDateTime,
+}
+
+#[derive(Debug, Clone, Serialize, serde::Deserialize)]
+pub struct UniversalUserResult {
+    pub wallet_address: String,
+    pub username: Option<String>,
+    pub fullname: Option<String>,
+    pub profile_photo: Option<String>,
+    pub social_proof_token: Option<SocialProofTokenInfo>,
+    pub selected_badge: Option<SelectedBadgeInfo>,
+}
+
+#[derive(Debug, Clone, Serialize, serde::Deserialize)]
+pub struct SocialProofTokenInfo {
+    pub pool_id: Option<String>,
+    pub token_address: Option<String>,
+    pub is_active: bool,
+    pub reservation_pool_id: Option<String>,
+    pub reservation_percentage: f64,
+    pub reservation_status: ReservationStatus,
+    pub total_reserved: i64,
+    pub required_threshold: i64,
+}
+
+#[derive(Debug, Clone, Serialize, serde::Deserialize)]
+#[serde(rename_all = "snake_case")]
+pub enum ReservationStatus {
+    Active,
+    ThresholdMet,
+    Inactive,
+    None,
+}
+
+#[derive(Debug, Clone, Serialize, serde::Deserialize)]
+pub struct SelectedBadgeInfo {
+    pub badge_id: String,
+    pub badge_name: String,
+    pub badge_icon_url: Option<String>,
+    pub badge_media_url: Option<String>,
+    pub platform_id: String,
+    pub badge_type: i16,
+}
+
+#[derive(Debug, Serialize, serde::Deserialize)]
+pub struct FollowDetail {
+    pub id: i32,
+    pub profile_id: Option<String>,
+    #[serde(flatten)]
+    pub user: UniversalUserResult,
+    pub follows_back: bool,
+    pub is_following: bool,
+}
+
+#[derive(Debug, serde::Deserialize)]
+pub struct FollowsQuery {
+    pub limit: Option<i64>,
+    pub offset: Option<i64>,
+    pub page: Option<i64>,
+    pub viewer_id: Option<String>,
+    pub sort: Option<String>,
+    pub search: Option<String>,
+}
+
+impl FollowsQuery {
+    pub fn limit(&self) -> i64 {
+        self.limit.unwrap_or(50).min(100)
+    }
+    pub fn offset(&self) -> i64 {
+        let page = self.page.unwrap_or(1).max(1);
+        let limit = self.limit();
+        self.offset.unwrap_or_else(|| (page - 1) * limit)
+    }
+}
+
+#[derive(Debug, Serialize)]
+pub struct PaginationInfo {
+    pub total: i64,
+    pub limit: i64,
+    pub offset: i64,
+    pub page: i64,
+    pub total_pages: i64,
+}
+
+#[derive(Debug, serde::Deserialize)]
+pub struct SocialGraphChartQuery {
+    pub bucket: Option<String>,
+}
+
+#[derive(Debug, Serialize)]
+pub struct DailyStatsPoint {
+    pub day: String,
+    pub event_type: String,
+    pub event_count: i64,
+}
+
+#[derive(Debug, Serialize)]
+pub struct DateRange {
+    pub start_date: String,
+    pub end_date: String,
+    pub days: i32,
+    pub bucket: String,
+}
+
+#[derive(Debug, Serialize)]
+pub struct ChartSummary {
+    pub total_follows: i64,
+    pub total_unfollows: i64,
+}
+
+#[derive(Debug, Serialize)]
+pub struct SocialGraphChartData {
+    pub chart_data: Vec<DailyStatsPoint>,
+    pub date_range: DateRange,
+    pub summary: ChartSummary,
+}
+
+#[derive(Debug, Serialize)]
+pub struct FollowStatsRow {
+    pub profile_id: Option<String>,
+    pub wallet_address: String,
+    pub username: Option<String>,
+    pub display_name: Option<String>,
+    pub profile_photo: Option<String>,
+    pub followers_count: i64,
+    pub following_count: i64,
+    pub blocked_count: i64,
 }
 
 #[derive(Debug, Serialize)]
@@ -4612,108 +4739,901 @@ impl Reader {
         Ok(results)
     }
 
+    async fn enrich_users_with_universal_data(
+        &self,
+        wallet_addresses: Vec<String>,
+        conn: &mut diesel_async::AsyncPgConnection,
+    ) -> Result<std::collections::HashMap<String, UniversalUserResult>, crate::error::SocialError>
+    {
+        use std::collections::HashMap;
+        if wallet_addresses.is_empty() {
+            return Ok(HashMap::new());
+        }
+        let associated_ids: Vec<String> = wallet_addresses
+            .iter()
+            .map(|addr| format!("profile_{}", addr))
+            .collect();
+        let query = diesel::sql_query(
+            r#"
+            WITH latest_profiles AS (
+                SELECT DISTINCT ON (COALESCE(profile_id, owner_address)) *
+                FROM profiles
+                WHERE owner_address = ANY($1::TEXT[])
+                ORDER BY COALESCE(profile_id, owner_address), updated_at DESC
+            ),
+            latest_spt_pools AS (
+                SELECT DISTINCT ON (pool_id) *
+                FROM spt_pools
+                WHERE associated_id = ANY($2::TEXT[])
+                ORDER BY pool_id, time DESC
+            ),
+            latest_reservation_pools AS (
+                SELECT DISTINCT ON (pool_id) *
+                FROM spt_reservation_pools
+                WHERE associated_id = ANY($2::TEXT[])
+                ORDER BY pool_id, time DESC
+            )
+            SELECT
+                p.owner_address,
+                p.username,
+                p.display_name,
+                p.profile_photo,
+                p.social_proof_token_address,
+                pb.badge_id as badge_id,
+                pb.badge_name,
+                pb.badge_icon_url,
+                pb.badge_media_url,
+                pb.platform_id as badge_platform_id,
+                pb.badge_type,
+                spt.pool_id as spt_pool_id,
+                rp.pool_id as reservation_pool_id,
+                rp.total_reserved,
+                rp.required_threshold,
+                rp.status as reservation_status
+            FROM latest_profiles p
+            LEFT JOIN profile_badges pb ON
+                p.selected_badge_id IS NOT NULL AND
+                pb.badge_id = p.selected_badge_id AND
+                pb.profile_id = p.profile_id AND
+                pb.revoked = false
+            LEFT JOIN latest_spt_pools spt ON
+                spt.associated_id = 'profile_' || p.owner_address
+            LEFT JOIN latest_reservation_pools rp ON
+                rp.associated_id = 'profile_' || p.owner_address
+            WHERE p.owner_address = ANY($1::TEXT[])
+            "#,
+        )
+        .bind::<Array<Text>, _>(&wallet_addresses)
+        .bind::<Array<Text>, _>(&associated_ids);
+
+        #[derive(QueryableByName)]
+        #[diesel(check_for_backend(diesel::pg::Pg))]
+        struct EnrichmentRow {
+            #[diesel(sql_type = Text)]
+            owner_address: String,
+            #[diesel(sql_type = Text)]
+            username: String,
+            #[diesel(sql_type = Nullable<Text>)]
+            display_name: Option<String>,
+            #[diesel(sql_type = Nullable<Text>)]
+            profile_photo: Option<String>,
+            #[diesel(sql_type = Nullable<Text>)]
+            social_proof_token_address: Option<String>,
+            #[diesel(sql_type = Nullable<Text>)]
+            badge_id: Option<String>,
+            #[diesel(sql_type = Nullable<Text>)]
+            badge_name: Option<String>,
+            #[diesel(sql_type = Nullable<Text>)]
+            badge_icon_url: Option<String>,
+            #[diesel(sql_type = Nullable<Text>)]
+            badge_media_url: Option<String>,
+            #[diesel(sql_type = Nullable<Text>)]
+            badge_platform_id: Option<String>,
+            #[diesel(sql_type = Nullable<SmallInt>)]
+            badge_type: Option<i16>,
+            #[diesel(sql_type = Nullable<Text>)]
+            spt_pool_id: Option<String>,
+            #[diesel(sql_type = Nullable<Text>)]
+            reservation_pool_id: Option<String>,
+            #[diesel(sql_type = Nullable<BigInt>)]
+            total_reserved: Option<i64>,
+            #[diesel(sql_type = Nullable<BigInt>)]
+            required_threshold: Option<i64>,
+            #[diesel(sql_type = Nullable<Text>)]
+            reservation_status: Option<String>,
+        }
+
+        let rows: Vec<EnrichmentRow> = query.load::<EnrichmentRow>(conn).await?;
+
+        let mut result = HashMap::new();
+        for row in rows {
+            let selected_badge =
+                if let (Some(badge_id), Some(badge_name), Some(platform_id), Some(badge_type)) = (
+                    row.badge_id.clone(),
+                    row.badge_name.clone(),
+                    row.badge_platform_id.clone(),
+                    row.badge_type,
+                ) {
+                    Some(SelectedBadgeInfo {
+                        badge_id,
+                        badge_name,
+                        badge_icon_url: row.badge_icon_url.clone(),
+                        badge_media_url: row.badge_media_url.clone(),
+                        platform_id,
+                        badge_type,
+                    })
+                } else {
+                    None
+                };
+
+            let reservation_status = match row.reservation_status.as_deref() {
+                Some("active") => ReservationStatus::Active,
+                Some("threshold_met") => ReservationStatus::ThresholdMet,
+                Some("inactive") => ReservationStatus::Inactive,
+                _ => ReservationStatus::None,
+            };
+
+            let reservation_percentage = if let (Some(total_reserved), Some(required_threshold)) =
+                (row.total_reserved, row.required_threshold)
+            {
+                if required_threshold > 0 {
+                    (total_reserved as f64 / required_threshold as f64 * 100.0)
+                        .min(100.0)
+                        .max(0.0)
+                } else {
+                    0.0
+                }
+            } else {
+                0.0
+            };
+
+            let spt_pool_id = row.spt_pool_id.clone();
+            let reservation_pool_id = row.reservation_pool_id.clone();
+            let social_proof_token_address = row.social_proof_token_address.clone();
+            let is_active = spt_pool_id.is_some();
+
+            let social_proof_token = if spt_pool_id.is_some()
+                || reservation_pool_id.is_some()
+                || social_proof_token_address.is_some()
+            {
+                Some(SocialProofTokenInfo {
+                    pool_id: spt_pool_id,
+                    token_address: social_proof_token_address,
+                    is_active,
+                    reservation_pool_id,
+                    reservation_percentage,
+                    reservation_status: reservation_status.clone(),
+                    total_reserved: row.total_reserved.unwrap_or(0),
+                    required_threshold: row.required_threshold.unwrap_or(0),
+                })
+            } else {
+                None
+            };
+
+            let user_result = UniversalUserResult {
+                wallet_address: row.owner_address.clone(),
+                username: Some(row.username),
+                fullname: row.display_name,
+                profile_photo: row.profile_photo,
+                social_proof_token,
+                selected_badge,
+            };
+            result.insert(row.owner_address, user_result);
+        }
+
+        for wallet_address in wallet_addresses {
+            if !result.contains_key(&wallet_address) {
+                result.insert(
+                    wallet_address.clone(),
+                    UniversalUserResult {
+                        wallet_address: wallet_address.clone(),
+                        username: None,
+                        fullname: None,
+                        profile_photo: None,
+                        social_proof_token: None,
+                        selected_badge: None,
+                    },
+                );
+            }
+        }
+
+        Ok(result)
+    }
+
+    async fn resolve_profile_input(
+        &self,
+        conn: &mut diesel_async::AsyncPgConnection,
+        input: &str,
+    ) -> Result<(Option<String>, String), diesel::result::Error> {
+        let normalized = input.to_lowercase();
+        let profile_info = profiles::table
+            .filter(
+                profiles::owner_address
+                    .ilike(&normalized)
+                    .or(profiles::profile_id.ilike(&normalized))
+                    .or(profiles::username.ilike(&normalized)),
+            )
+            .select((profiles::profile_id, profiles::owner_address))
+            .first::<(Option<String>, String)>(conn)
+            .await;
+
+        match profile_info {
+            Ok((profile_id, owner_address)) => Ok((profile_id, owner_address)),
+            Err(diesel::result::Error::NotFound) => Ok((None, input.to_string())),
+            Err(e) => Err(e),
+        }
+    }
+
     pub async fn get_following(
         &self,
         address: &str,
-        limit: i64,
-        offset: i64,
-    ) -> Result<Vec<SocialGraphAddressRow>, crate::error::SocialError> {
+        query: &FollowsQuery,
+    ) -> Result<(Vec<FollowDetail>, PaginationInfo), crate::error::SocialError> {
         let mut conn = self.db.connect().await?;
-        let profile_id_opt: Option<String> = profiles::table
-            .filter(profiles::owner_address.eq(address))
-            .select(profiles::profile_id)
-            .first::<Option<String>>(&mut conn)
+        let limit = query.limit();
+        let offset = query.offset();
+        let page = query.page.unwrap_or(1).max(1);
+
+        let (resolved_profile_id, resolved_owner_address) = match profiles::table
+            .filter(
+                profiles::owner_address
+                    .ilike(address)
+                    .or(profiles::profile_id.ilike(address)),
+            )
+            .select((profiles::profile_id, profiles::owner_address))
+            .first::<(Option<String>, String)>(&mut conn)
             .await
-            .optional()?
-            .flatten();
-        let addrs: Vec<&str> = if let Some(ref pid) = profile_id_opt {
-            vec![address, pid.as_str()]
-        } else {
-            vec![address]
+        {
+            Ok((pid, addr)) => (pid, addr),
+            Err(diesel::result::Error::NotFound) => {
+                let wallet_exists = wallet_social_graph::table
+                    .filter(wallet_social_graph::wallet_address.eq(address))
+                    .count()
+                    .get_result::<i64>(&mut conn)
+                    .await
+                    .unwrap_or(0)
+                    > 0;
+                let has_relationships = social_graph_relationships::table
+                    .filter(social_graph_relationships::follower_address.eq(address))
+                    .count()
+                    .get_result::<i64>(&mut conn)
+                    .await
+                    .unwrap_or(0)
+                    > 0;
+                if !wallet_exists && !has_relationships {
+                    return Ok((
+                        vec![],
+                        PaginationInfo {
+                            total: 0,
+                            limit,
+                            offset,
+                            page,
+                            total_pages: 0,
+                        },
+                    ));
+                }
+                (None, address.to_string())
+            }
+            Err(e) => return Err(e.into()),
         };
-        let results = social_graph_relationships::table
-            .filter(social_graph_relationships::follower_address.eq_any(&addrs))
-            .order_by(social_graph_relationships::created_at.desc())
-            .limit(limit)
-            .offset(offset)
-            .select((
-                social_graph_relationships::following_address,
-                social_graph_relationships::created_at,
-            ))
-            .load::<(String, chrono::NaiveDateTime)>(&mut conn)
-            .await?;
-        Ok(results
+
+        let search_filter = query
+            .search
+            .as_ref()
+            .filter(|t| !t.trim().is_empty())
+            .map(|t| format!("%{}%", t.trim()));
+        let search_suffix = search_filter
+            .as_ref()
+            .map(|_| " AND (p.username ILIKE $3 OR p.display_name ILIKE $3 OR sgr.following_address ILIKE $3)")
+            .unwrap_or("");
+        let order_sql = match query.sort.as_ref().map(|s| s.to_lowercase()).as_deref() {
+            Some("earliest") => "sgr.created_at ASC",
+            Some("alphabetical") => "COALESCE(p.username, sgr.following_address) ASC",
+            Some("followers_count") => "COALESCE(p.followers_count, 0) DESC",
+            _ => "sgr.created_at DESC",
+        };
+
+        let (data_sql, count_sql) = if search_filter.is_some() {
+            (
+                format!(
+                    r#"SELECT p.id, p.profile_id, sgr.following_address AS addr,
+                       p.username, p.display_name, p.profile_photo
+                    FROM social_graph_relationships sgr
+                    LEFT JOIN profiles p ON p.owner_address = sgr.following_address
+                    WHERE (sgr.follower_address = $1 OR sgr.follower_address = $2){}
+                    ORDER BY {}
+                    LIMIT $4 OFFSET $5"#,
+                    search_suffix, order_sql,
+                ),
+                format!(
+                    r#"SELECT COUNT(*)::bigint as cnt
+                    FROM social_graph_relationships sgr
+                    LEFT JOIN profiles p ON p.owner_address = sgr.following_address
+                    WHERE (sgr.follower_address = $1 OR sgr.follower_address = $2){}"#,
+                    search_suffix,
+                ),
+            )
+        } else {
+            (
+                format!(
+                    r#"SELECT p.id, p.profile_id, sgr.following_address AS addr,
+                       p.username, p.display_name, p.profile_photo
+                    FROM social_graph_relationships sgr
+                    LEFT JOIN profiles p ON p.owner_address = sgr.following_address
+                    WHERE (sgr.follower_address = $1 OR sgr.follower_address = $2)
+                    ORDER BY {}
+                    LIMIT $3 OFFSET $4"#,
+                    order_sql,
+                ),
+                format!(
+                    r#"SELECT COUNT(*)::bigint as cnt
+                    FROM social_graph_relationships sgr
+                    WHERE (sgr.follower_address = $1 OR sgr.follower_address = $2)"#,
+                ),
+            )
+        };
+
+        #[derive(QueryableByName)]
+        #[diesel(check_for_backend(diesel::pg::Pg))]
+        struct CountRow {
+            #[diesel(sql_type = BigInt)]
+            cnt: i64,
+        }
+
+        #[derive(QueryableByName)]
+        #[diesel(check_for_backend(diesel::pg::Pg))]
+        struct FollowRow {
+            #[diesel(sql_type = Nullable<Integer>)]
+            id: Option<i32>,
+            #[diesel(sql_type = Nullable<Text>)]
+            profile_id: Option<String>,
+            #[diesel(sql_type = Text)]
+            addr: String,
+            #[diesel(sql_type = Nullable<Text>)]
+            username: Option<String>,
+            #[diesel(sql_type = Nullable<Text>)]
+            display_name: Option<String>,
+            #[diesel(sql_type = Nullable<Text>)]
+            profile_photo: Option<String>,
+        }
+
+        let follows: Vec<FollowRow> = if let Some(ref pat) = search_filter {
+            diesel::sql_query(&data_sql)
+                .bind::<Text, _>(&resolved_owner_address)
+                .bind::<Text, _>(
+                    resolved_profile_id
+                        .as_ref()
+                        .unwrap_or(&resolved_owner_address),
+                )
+                .bind::<Text, _>(pat)
+                .bind::<BigInt, _>(limit)
+                .bind::<BigInt, _>(offset)
+                .load(&mut conn)
+                .await?
+        } else {
+            diesel::sql_query(&data_sql)
+                .bind::<Text, _>(&resolved_owner_address)
+                .bind::<Text, _>(
+                    resolved_profile_id
+                        .as_ref()
+                        .unwrap_or(&resolved_owner_address),
+                )
+                .bind::<BigInt, _>(limit)
+                .bind::<BigInt, _>(offset)
+                .load(&mut conn)
+                .await?
+        };
+
+        let total_count: i64 = if let Some(ref pat) = search_filter {
+            let row: CountRow = diesel::sql_query(&count_sql)
+                .bind::<Text, _>(&resolved_owner_address)
+                .bind::<Text, _>(
+                    resolved_profile_id
+                        .as_ref()
+                        .unwrap_or(&resolved_owner_address),
+                )
+                .bind::<Text, _>(pat)
+                .get_result(&mut conn)
+                .await?;
+            row.cnt
+        } else {
+            let row: CountRow = diesel::sql_query(&count_sql)
+                .bind::<Text, _>(&resolved_owner_address)
+                .bind::<Text, _>(
+                    resolved_profile_id
+                        .as_ref()
+                        .unwrap_or(&resolved_owner_address),
+                )
+                .get_result(&mut conn)
+                .await?;
+            row.cnt
+        };
+
+        let follows: Vec<(
+            Option<i32>,
+            Option<String>,
+            String,
+            Option<String>,
+            Option<String>,
+            Option<String>,
+        )> = follows
             .into_iter()
-            .map(|(address, created_at)| SocialGraphAddressRow {
-                address,
-                created_at,
+            .map(|r| {
+                (
+                    r.id,
+                    r.profile_id,
+                    r.addr,
+                    r.username,
+                    r.display_name,
+                    r.profile_photo,
+                )
             })
-            .collect())
+            .collect();
+        let total_pages = (total_count as f64 / limit as f64).ceil() as i64;
+
+        let wallet_addresses: Vec<String> = follows
+            .iter()
+            .map(|(_, _, addr, _, _, _)| addr.clone())
+            .collect();
+        let enriched_users = self
+            .enrich_users_with_universal_data(wallet_addresses, &mut conn)
+            .await
+            .unwrap_or_default();
+
+        let (viewer_profile_id, viewer_wallet_address) = if let Some(ref vid) = query.viewer_id {
+            match self.resolve_profile_input(&mut conn, vid).await {
+                Ok((pid, addr)) => (pid, addr),
+                Err(_) => (None, String::new()),
+            }
+        } else {
+            (None, String::new())
+        };
+
+        let mut follows_detail = Vec::new();
+        for (
+            id_opt,
+            followed_profile_id,
+            owner_address,
+            username_opt,
+            display_name,
+            profile_photo,
+        ) in follows
+        {
+            let id = id_opt.unwrap_or(0);
+            let (is_following, follows_back) = if !viewer_wallet_address.is_empty() {
+                let viewer_follows_this = social_graph_relationships::table
+                    .filter(
+                        social_graph_relationships::follower_address
+                            .eq(&viewer_wallet_address)
+                            .or(social_graph_relationships::follower_address
+                                .eq(viewer_profile_id.as_ref().unwrap_or(&viewer_wallet_address)))
+                            .and(
+                                social_graph_relationships::following_address
+                                    .eq(followed_profile_id.as_ref().unwrap_or(&owner_address))
+                                    .or(social_graph_relationships::following_address
+                                        .eq(&owner_address)),
+                            ),
+                    )
+                    .count()
+                    .get_result::<i64>(&mut conn)
+                    .await
+                    .unwrap_or(0)
+                    > 0;
+
+                let this_follows_viewer = social_graph_relationships::table
+                    .filter(
+                        (social_graph_relationships::follower_address
+                            .eq(followed_profile_id.as_ref().unwrap_or(&owner_address))
+                            .or(social_graph_relationships::follower_address.eq(&owner_address)))
+                        .and(
+                            social_graph_relationships::following_address
+                                .eq(&viewer_wallet_address)
+                                .or(social_graph_relationships::following_address.eq(
+                                    viewer_profile_id.as_ref().unwrap_or(&viewer_wallet_address),
+                                )),
+                        ),
+                    )
+                    .count()
+                    .get_result::<i64>(&mut conn)
+                    .await
+                    .unwrap_or(0)
+                    > 0;
+
+                (viewer_follows_this, this_follows_viewer)
+            } else {
+                (false, false)
+            };
+
+            let user = enriched_users
+                .get(&owner_address)
+                .cloned()
+                .unwrap_or_else(|| UniversalUserResult {
+                    wallet_address: owner_address.clone(),
+                    username: username_opt,
+                    fullname: display_name,
+                    profile_photo,
+                    social_proof_token: None,
+                    selected_badge: None,
+                });
+
+            follows_detail.push(FollowDetail {
+                id,
+                profile_id: followed_profile_id,
+                user,
+                follows_back,
+                is_following,
+            });
+        }
+
+        Ok((
+            follows_detail,
+            PaginationInfo {
+                total: total_count,
+                limit,
+                offset,
+                page,
+                total_pages,
+            },
+        ))
     }
 
     pub async fn get_followers(
         &self,
         address: &str,
-        limit: i64,
-        offset: i64,
-    ) -> Result<Vec<SocialGraphAddressRow>, crate::error::SocialError> {
+        query: &FollowsQuery,
+    ) -> Result<(Vec<FollowDetail>, PaginationInfo), crate::error::SocialError> {
         let mut conn = self.db.connect().await?;
-        let profile_id_opt: Option<String> = profiles::table
-            .filter(profiles::owner_address.eq(address))
-            .select(profiles::profile_id)
-            .first::<Option<String>>(&mut conn)
+        let limit = query.limit();
+        let offset = query.offset();
+        let page = query.page.unwrap_or(1).max(1);
+
+        let (resolved_profile_id, resolved_owner_address) = match profiles::table
+            .filter(
+                profiles::owner_address
+                    .ilike(address)
+                    .or(profiles::profile_id.ilike(address)),
+            )
+            .select((profiles::profile_id, profiles::owner_address))
+            .first::<(Option<String>, String)>(&mut conn)
             .await
-            .optional()?
-            .flatten();
-        let addrs: Vec<&str> = if let Some(ref pid) = profile_id_opt {
-            vec![address, pid.as_str()]
-        } else {
-            vec![address]
+        {
+            Ok((pid, addr)) => (pid, addr),
+            Err(diesel::result::Error::NotFound) => {
+                let wallet_exists = wallet_social_graph::table
+                    .filter(wallet_social_graph::wallet_address.eq(address))
+                    .count()
+                    .get_result::<i64>(&mut conn)
+                    .await
+                    .unwrap_or(0)
+                    > 0;
+                let has_relationships = social_graph_relationships::table
+                    .filter(social_graph_relationships::following_address.eq(address))
+                    .count()
+                    .get_result::<i64>(&mut conn)
+                    .await
+                    .unwrap_or(0)
+                    > 0;
+                if !wallet_exists && !has_relationships {
+                    return Ok((
+                        vec![],
+                        PaginationInfo {
+                            total: 0,
+                            limit,
+                            offset,
+                            page,
+                            total_pages: 0,
+                        },
+                    ));
+                }
+                (None, address.to_string())
+            }
+            Err(e) => return Err(e.into()),
         };
-        let results = social_graph_relationships::table
-            .filter(social_graph_relationships::following_address.eq_any(&addrs))
-            .order_by(social_graph_relationships::created_at.desc())
-            .limit(limit)
-            .offset(offset)
-            .select((
-                social_graph_relationships::follower_address,
-                social_graph_relationships::created_at,
-            ))
-            .load::<(String, chrono::NaiveDateTime)>(&mut conn)
-            .await?;
-        Ok(results
+
+        let search_filter = query
+            .search
+            .as_ref()
+            .filter(|t| !t.trim().is_empty())
+            .map(|t| format!("%{}%", t.trim()));
+        let search_suffix = search_filter
+            .as_ref()
+            .map(|_| " AND (p.username ILIKE $3 OR p.display_name ILIKE $3 OR sgr.follower_address ILIKE $3)")
+            .unwrap_or("");
+        let order_sql = match query.sort.as_ref().map(|s| s.to_lowercase()).as_deref() {
+            Some("earliest") => "sgr.created_at ASC",
+            Some("alphabetical") => "COALESCE(p.username, sgr.follower_address) ASC",
+            Some("followers_count") => "COALESCE(p.followers_count, 0) DESC",
+            _ => "sgr.created_at DESC",
+        };
+
+        let (data_sql, count_sql) = if search_filter.is_some() {
+            (
+                format!(
+                    r#"SELECT p.id, p.profile_id, sgr.follower_address AS addr,
+                       p.username, p.display_name, p.profile_photo
+                    FROM social_graph_relationships sgr
+                    LEFT JOIN profiles p ON p.owner_address = sgr.follower_address
+                    WHERE (sgr.following_address = $1 OR sgr.following_address = $2){}
+                    ORDER BY {}
+                    LIMIT $4 OFFSET $5"#,
+                    search_suffix, order_sql,
+                ),
+                format!(
+                    r#"SELECT COUNT(*)::bigint as cnt
+                    FROM social_graph_relationships sgr
+                    LEFT JOIN profiles p ON p.owner_address = sgr.follower_address
+                    WHERE (sgr.following_address = $1 OR sgr.following_address = $2){}"#,
+                    search_suffix,
+                ),
+            )
+        } else {
+            (
+                format!(
+                    r#"SELECT p.id, p.profile_id, sgr.follower_address AS addr,
+                       p.username, p.display_name, p.profile_photo
+                    FROM social_graph_relationships sgr
+                    LEFT JOIN profiles p ON p.owner_address = sgr.follower_address
+                    WHERE (sgr.following_address = $1 OR sgr.following_address = $2)
+                    ORDER BY {}
+                    LIMIT $3 OFFSET $4"#,
+                    order_sql,
+                ),
+                format!(
+                    r#"SELECT COUNT(*)::bigint as cnt
+                    FROM social_graph_relationships sgr
+                    WHERE (sgr.following_address = $1 OR sgr.following_address = $2)"#,
+                ),
+            )
+        };
+
+        #[derive(QueryableByName)]
+        #[diesel(check_for_backend(diesel::pg::Pg))]
+        struct FollowerCountRow {
+            #[diesel(sql_type = BigInt)]
+            cnt: i64,
+        }
+
+        #[derive(QueryableByName)]
+        #[diesel(check_for_backend(diesel::pg::Pg))]
+        struct FollowerRow {
+            #[diesel(sql_type = Nullable<Integer>)]
+            id: Option<i32>,
+            #[diesel(sql_type = Nullable<Text>)]
+            profile_id: Option<String>,
+            #[diesel(sql_type = Text)]
+            addr: String,
+            #[diesel(sql_type = Nullable<Text>)]
+            username: Option<String>,
+            #[diesel(sql_type = Nullable<Text>)]
+            display_name: Option<String>,
+            #[diesel(sql_type = Nullable<Text>)]
+            profile_photo: Option<String>,
+        }
+
+        let follows: Vec<FollowerRow> = if let Some(ref pat) = search_filter {
+            diesel::sql_query(&data_sql)
+                .bind::<Text, _>(&resolved_owner_address)
+                .bind::<Text, _>(
+                    resolved_profile_id
+                        .as_ref()
+                        .unwrap_or(&resolved_owner_address),
+                )
+                .bind::<Text, _>(pat)
+                .bind::<BigInt, _>(limit)
+                .bind::<BigInt, _>(offset)
+                .load(&mut conn)
+                .await?
+        } else {
+            diesel::sql_query(&data_sql)
+                .bind::<Text, _>(&resolved_owner_address)
+                .bind::<Text, _>(
+                    resolved_profile_id
+                        .as_ref()
+                        .unwrap_or(&resolved_owner_address),
+                )
+                .bind::<BigInt, _>(limit)
+                .bind::<BigInt, _>(offset)
+                .load(&mut conn)
+                .await?
+        };
+
+        let total_count: i64 = if let Some(ref pat) = search_filter {
+            let row: FollowerCountRow = diesel::sql_query(&count_sql)
+                .bind::<Text, _>(&resolved_owner_address)
+                .bind::<Text, _>(
+                    resolved_profile_id
+                        .as_ref()
+                        .unwrap_or(&resolved_owner_address),
+                )
+                .bind::<Text, _>(pat)
+                .get_result(&mut conn)
+                .await?;
+            row.cnt
+        } else {
+            let row: FollowerCountRow = diesel::sql_query(&count_sql)
+                .bind::<Text, _>(&resolved_owner_address)
+                .bind::<Text, _>(
+                    resolved_profile_id
+                        .as_ref()
+                        .unwrap_or(&resolved_owner_address),
+                )
+                .get_result(&mut conn)
+                .await?;
+            row.cnt
+        };
+
+        let follows: Vec<(
+            Option<i32>,
+            Option<String>,
+            String,
+            Option<String>,
+            Option<String>,
+            Option<String>,
+        )> = follows
             .into_iter()
-            .map(|(address, created_at)| SocialGraphAddressRow {
-                address,
-                created_at,
+            .map(|r| {
+                (
+                    r.id,
+                    r.profile_id,
+                    r.addr,
+                    r.username,
+                    r.display_name,
+                    r.profile_photo,
+                )
             })
-            .collect())
+            .collect();
+        let total_pages = (total_count as f64 / limit as f64).ceil() as i64;
+
+        let wallet_addresses: Vec<String> = follows
+            .iter()
+            .map(|(_, _, addr, _, _, _)| addr.clone())
+            .collect();
+        let enriched_users = self
+            .enrich_users_with_universal_data(wallet_addresses, &mut conn)
+            .await
+            .unwrap_or_default();
+
+        let (viewer_profile_id, viewer_wallet_address) = if let Some(ref vid) = query.viewer_id {
+            match self.resolve_profile_input(&mut conn, vid).await {
+                Ok((pid, addr)) => (pid, addr),
+                Err(_) => (None, String::new()),
+            }
+        } else {
+            (None, String::new())
+        };
+
+        let mut follows_detail = Vec::new();
+        for (
+            id_opt,
+            follower_profile_id,
+            owner_address,
+            username_opt,
+            display_name,
+            profile_photo,
+        ) in follows
+        {
+            let id = id_opt.unwrap_or(0);
+            let (is_following, follows_back) = if !viewer_wallet_address.is_empty() {
+                let viewer_follows_this = social_graph_relationships::table
+                    .filter(
+                        social_graph_relationships::follower_address
+                            .eq(&viewer_wallet_address)
+                            .or(social_graph_relationships::follower_address
+                                .eq(viewer_profile_id.as_ref().unwrap_or(&viewer_wallet_address)))
+                            .and(
+                                social_graph_relationships::following_address
+                                    .eq(follower_profile_id.as_ref().unwrap_or(&owner_address))
+                                    .or(social_graph_relationships::following_address
+                                        .eq(&owner_address)),
+                            ),
+                    )
+                    .count()
+                    .get_result::<i64>(&mut conn)
+                    .await
+                    .unwrap_or(0)
+                    > 0;
+
+                let this_follows_viewer = social_graph_relationships::table
+                    .filter(
+                        (social_graph_relationships::follower_address
+                            .eq(follower_profile_id.as_ref().unwrap_or(&owner_address))
+                            .or(social_graph_relationships::follower_address.eq(&owner_address)))
+                        .and(
+                            social_graph_relationships::following_address
+                                .eq(&viewer_wallet_address)
+                                .or(social_graph_relationships::following_address.eq(
+                                    viewer_profile_id.as_ref().unwrap_or(&viewer_wallet_address),
+                                )),
+                        ),
+                    )
+                    .count()
+                    .get_result::<i64>(&mut conn)
+                    .await
+                    .unwrap_or(0)
+                    > 0;
+
+                (viewer_follows_this, this_follows_viewer)
+            } else {
+                (false, false)
+            };
+
+            let user = enriched_users
+                .get(&owner_address)
+                .cloned()
+                .unwrap_or_else(|| UniversalUserResult {
+                    wallet_address: owner_address.clone(),
+                    username: username_opt,
+                    fullname: display_name,
+                    profile_photo,
+                    social_proof_token: None,
+                    selected_badge: None,
+                });
+
+            follows_detail.push(FollowDetail {
+                id,
+                profile_id: follower_profile_id,
+                user,
+                follows_back,
+                is_following,
+            });
+        }
+
+        Ok((
+            follows_detail,
+            PaginationInfo {
+                total: total_count,
+                limit,
+                offset,
+                page,
+                total_pages,
+            },
+        ))
     }
 
     pub async fn get_social_stats(
         &self,
         address: &str,
-    ) -> Result<SocialStatsRow, crate::error::SocialError> {
+    ) -> Result<FollowStatsRow, crate::error::SocialError> {
         let mut conn = self.db.connect().await?;
+        let (resolved_profile_id, resolved_owner_address) =
+            self.resolve_profile_input(&mut conn, address).await?;
+
         let profile = profiles::table
-            .filter(profiles::owner_address.eq(address))
+            .filter(profiles::owner_address.eq(&resolved_owner_address))
             .select((
+                profiles::profile_id,
+                profiles::username,
+                profiles::display_name,
+                profiles::profile_photo,
                 profiles::followers_count,
                 profiles::following_count,
                 profiles::blocked_count,
             ))
-            .first::<(i32, i32, i32)>(&mut conn)
+            .first::<(
+                Option<String>,
+                String,
+                Option<String>,
+                Option<String>,
+                i32,
+                i32,
+                i32,
+            )>(&mut conn)
             .await
             .optional()?;
-        if let Some((followers_count, following_count, blocked_count)) = profile {
-            return Ok(SocialStatsRow {
-                followers_count: followers_count as i64,
-                following_count: following_count as i64,
-                blocked_count: blocked_count as i64,
+        if let Some((profile_id, username, display_name, profile_photo, fc, fg, bc)) = profile {
+            return Ok(FollowStatsRow {
+                profile_id,
+                wallet_address: resolved_owner_address,
+                username: Some(username),
+                display_name,
+                profile_photo,
+                followers_count: fc as i64,
+                following_count: fg as i64,
+                blocked_count: bc as i64,
             });
         }
         let ws = wallet_social_graph::table
-            .filter(wallet_social_graph::wallet_address.eq(address))
+            .filter(wallet_social_graph::wallet_address.eq(&resolved_owner_address))
             .select((
                 wallet_social_graph::followers_count,
                 wallet_social_graph::following_count,
@@ -4723,16 +5643,27 @@ impl Reader {
             .await
             .optional()?;
         if let Some((followers_count, following_count, blocked_count)) = ws {
-            return Ok(SocialStatsRow {
+            return Ok(FollowStatsRow {
+                profile_id: resolved_profile_id,
+                wallet_address: resolved_owner_address,
+                username: None,
+                display_name: None,
+                profile_photo: None,
                 followers_count: followers_count as i64,
                 following_count: following_count as i64,
                 blocked_count: blocked_count as i64,
             });
         }
-        Err(crate::error::SocialError::not_found(format!(
-            "Profile or wallet '{}'",
-            address
-        )))
+        Ok(FollowStatsRow {
+            profile_id: resolved_profile_id,
+            wallet_address: resolved_owner_address,
+            username: None,
+            display_name: None,
+            profile_photo: None,
+            followers_count: 0,
+            following_count: 0,
+            blocked_count: 0,
+        })
     }
 
     pub async fn get_blocked_profiles(
@@ -4833,77 +5764,123 @@ impl Reader {
         &self,
         follower: &str,
         following: &str,
-    ) -> Result<bool, crate::error::SocialError> {
+    ) -> Result<(bool, bool), crate::error::SocialError> {
         let mut conn = self.db.connect().await?;
-        let follower_profile: Option<(String, Option<String>)> = profiles::table
-            .filter(
-                profiles::owner_address
-                    .eq(follower)
-                    .or(profiles::profile_id.eq(follower)),
-            )
-            .select((profiles::owner_address, profiles::profile_id))
-            .first(&mut conn)
-            .await
-            .optional()?;
-        let following_profile: Option<(String, Option<String>)> = profiles::table
-            .filter(
-                profiles::owner_address
-                    .eq(following)
-                    .or(profiles::profile_id.eq(following)),
-            )
-            .select((profiles::owner_address, profiles::profile_id))
-            .first(&mut conn)
-            .await
-            .optional()?;
-        let follower_addrs: Vec<String> = match &follower_profile {
-            Some((owner, pid)) => {
-                let mut v = vec![owner.clone()];
-                if let Some(p) = pid {
-                    v.push(p.clone());
-                }
-                v
-            }
-            None => vec![follower.to_string()],
-        };
-        let following_addrs: Vec<String> = match &following_profile {
-            Some((owner, pid)) => {
-                let mut v = vec![owner.clone()];
-                if let Some(p) = pid {
-                    v.push(p.clone());
-                }
-                v
-            }
-            None => vec![following.to_string()],
-        };
-        let follower_refs: Vec<&str> = follower_addrs.iter().map(String::as_str).collect();
-        let following_refs: Vec<&str> = following_addrs.iter().map(String::as_str).collect();
-        let count: i64 = social_graph_relationships::table
+        let (follower_profile_id, follower_owner_address) =
+            self.resolve_profile_input(&mut conn, follower).await?;
+        let (following_profile_id, following_owner_address) =
+            self.resolve_profile_input(&mut conn, following).await?;
+
+        let follower_refs: Vec<&str> = vec![
+            &follower_owner_address,
+            follower_profile_id
+                .as_ref()
+                .unwrap_or(&follower_owner_address),
+        ];
+        let following_refs: Vec<&str> = vec![
+            &following_owner_address,
+            following_profile_id
+                .as_ref()
+                .unwrap_or(&following_owner_address),
+        ];
+
+        let is_following: i64 = social_graph_relationships::table
             .filter(social_graph_relationships::follower_address.eq_any(&follower_refs))
             .filter(social_graph_relationships::following_address.eq_any(&following_refs))
             .count()
             .get_result(&mut conn)
             .await?;
-        Ok(count > 0)
+
+        let following_back: i64 = social_graph_relationships::table
+            .filter(social_graph_relationships::follower_address.eq_any(&following_refs))
+            .filter(social_graph_relationships::following_address.eq_any(&follower_refs))
+            .count()
+            .get_result(&mut conn)
+            .await?;
+
+        Ok((is_following > 0, following_back > 0))
     }
 
     pub async fn get_social_graph_chart_data(
         &self,
-        limit: i64,
-    ) -> Result<Vec<SocialGraphChartRow>, crate::error::SocialError> {
+        query: &SocialGraphChartQuery,
+    ) -> Result<SocialGraphChartData, crate::error::SocialError> {
+        fn bucket_to_days(bucket: &str) -> Result<i32, String> {
+            match bucket.to_lowercase().as_str() {
+                "7d" => Ok(7),
+                "30d" => Ok(30),
+                "90d" => Ok(90),
+                "180d" => Ok(180),
+                "1y" => Ok(365),
+                _ => Err(format!(
+                    "Invalid bucket '{}'. Must be one of: 7d, 30d, 90d, 180d, 1y",
+                    bucket
+                )),
+            }
+        }
+
+        let bucket_str = query.bucket.as_deref().unwrap_or("30d").to_lowercase();
+        let days =
+            bucket_to_days(&bucket_str).map_err(|e| crate::error::SocialError::bad_request(e))?;
+
         let mut conn = self.db.connect().await?;
-        let query = "
-            SELECT DATE(created_at) as day, event_type, COUNT(*)::bigint as count
-            FROM social_graph_events
-            WHERE created_at >= NOW() - INTERVAL '30 days'
-            GROUP BY DATE(created_at), event_type
-            ORDER BY day ASC, event_type
-            LIMIT $1
-        ";
-        let results = diesel::sql_query(query)
-            .bind::<BigInt, _>(limit)
-            .load::<SocialGraphChartRow>(&mut conn)
-            .await?;
-        Ok(results)
+        let end_date = chrono::Utc::now().date_naive();
+        let start_date = end_date - chrono::Duration::days(days as i64);
+
+        #[derive(QueryableByName)]
+        #[diesel(check_for_backend(diesel::pg::Pg))]
+        struct ChartRow {
+            #[diesel(sql_type = Date)]
+            day: chrono::NaiveDate,
+            #[diesel(sql_type = Text)]
+            event_type: String,
+            #[diesel(sql_type = BigInt)]
+            event_count: i64,
+        }
+
+        let rows: Vec<ChartRow> = diesel::sql_query(
+            r#"SELECT day::DATE as day, event_type, event_count::BIGINT as event_count
+               FROM social_graph_daily_stats
+               WHERE day >= $1::DATE
+               ORDER BY day ASC, event_type ASC"#,
+        )
+        .bind::<Date, _>(start_date)
+        .load::<ChartRow>(&mut conn)
+        .await?;
+
+        let chart_data: Vec<DailyStatsPoint> = rows
+            .into_iter()
+            .map(|r| DailyStatsPoint {
+                day: r.day.format("%Y-%m-%d").to_string(),
+                event_type: r.event_type,
+                event_count: r.event_count,
+            })
+            .collect();
+
+        let total_follows: i64 = chart_data
+            .iter()
+            .filter(|p| p.event_type == "follow")
+            .map(|p| p.event_count)
+            .sum();
+        let total_unfollows: i64 = chart_data
+            .iter()
+            .filter(|p| p.event_type == "unfollow")
+            .map(|p| p.event_count)
+            .sum();
+
+        Ok(SocialGraphChartData {
+            chart_data,
+            date_range: DateRange {
+                start_date: start_date.format("%Y-%m-%d").to_string(),
+                end_date: end_date.format("%Y-%m-%d").to_string(),
+                days,
+                bucket: bucket_str,
+            },
+            summary: ChartSummary {
+                total_follows,
+                total_unfollows,
+            },
+        })
     }
 
     pub async fn check_profile_blocked(

@@ -37,25 +37,20 @@ fn balance_changes(
 ) -> Result<Vec<(String, String, i128)>> {
     if transaction.effects.status().is_err() {
         let net_gas_usage = transaction.effects.gas_cost_summary().net_gas_usage();
-        return Ok(
-            (net_gas_usage > 0)
-                .then(|| {
-                    let owner = transaction.effects.gas_object().1;
-                    owner
-                        .get_owner_address()
-                        .ok()
-                        .map(|addr| {
-                            (
-                                addr.to_string(),
-                                GAS::type_tag().to_canonical_string(true),
-                                -(net_gas_usage as i128),
-                            )
-                        })
+        return Ok((net_gas_usage > 0)
+            .then(|| {
+                let owner = transaction.effects.gas_object().1;
+                owner.get_owner_address().ok().map(|addr| {
+                    (
+                        addr.to_string(),
+                        GAS::type_tag().to_canonical_string(true),
+                        -(net_gas_usage as i128),
+                    )
                 })
-                .into_iter()
-                .flatten()
-                .collect(),
-        );
+            })
+            .into_iter()
+            .flatten()
+            .collect());
     }
 
     let mut changes: BTreeMap<(Owner, move_core_types::language_storage::TypeTag), i128> =
