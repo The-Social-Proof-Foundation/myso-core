@@ -24,7 +24,8 @@ module social_contracts::mydata {
     
     // Proper encryption support
     use mydata::bf_hmac_encryption::{Self, EncryptedObject, VerifiedDerivedKey, PublicKey};
-    
+    use mydata::pool::{Self, MyDataPoolRegistry};
+
     use social_contracts::upgrade::{Self, UpgradeAdminCap};
 
     // === Default constants for config initialization ===
@@ -561,6 +562,19 @@ module social_contracts::mydata {
         });
     }
 
+    /// Assign MyData to sub-pools (owner only). Bridge to mydata::pool for ownership verification.
+    public entry fun assign_mydata_to_pools(
+        mydata: &MyData,
+        pool_registry: &mut MyDataPoolRegistry,
+        sub_pool_ids: vector<ID>,
+        clock: &Clock,
+        ctx: &mut TxContext,
+    ) {
+        assert!(tx_context::sender(ctx) == mydata.owner, EUnauthorized);
+        let ip_id = object::uid_to_address(&mydata.id);
+        pool::assign_mydata_to_sub_pools(pool_registry, ip_id, sub_pool_ids, clock);
+    }
+
     /// Check if user has access to MyData data
     public fun has_access(mydata: &MyData, user: address, clock: &Clock): bool {
         // Owner always has access
@@ -659,6 +673,7 @@ module social_contracts::mydata {
     // === Getter Functions ===
     
     public fun owner(mydata: &MyData): address { mydata.owner }
+    public fun object_address(mydata: &MyData): address { object::uid_to_address(&mydata.id) }
     public fun media_type(mydata: &MyData): String { mydata.media_type }
     public fun tags(mydata: &MyData): vector<String> { mydata.tags }
     public fun platform_id(mydata: &MyData): Option<address> { mydata.platform_id }

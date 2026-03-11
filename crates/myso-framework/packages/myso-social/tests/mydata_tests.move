@@ -15,6 +15,7 @@ module social_contracts::mydata_tests {
     
     use social_contracts::mydata::{Self, MyData, MyDataRegistry, MyDataConfig, MyDataAdminCap};
     use social_contracts::profile::{Self, Profile, UsernameRegistry};
+    use mydata::pool::{Self, MyDataPoolRegistry, MyDataPoolAdminCap, SnapshotAnchorRegistry, MyDataClaimVault};
     
     // Test addresses
     const CREATOR: address = @0xA1;
@@ -315,6 +316,136 @@ module social_contracts::mydata_tests {
         
         test_scenario::end(scenario);
     }
+
+    #[test]
+    fun test_create_broad_pool() {
+        let mut scenario = test_scenario::begin(CREATOR);
+        init_test_environment(&mut scenario);
+
+        {
+            test_scenario::next_tx(&mut scenario, CREATOR);
+            let admin = test_scenario::take_from_sender<MyDataPoolAdminCap>(&scenario);
+            let mut pool_registry = test_scenario::take_shared<MyDataPoolRegistry>(&scenario);
+            let clock = test_scenario::take_shared<Clock>(&scenario);
+
+            pool::create_broad_pool(
+                &admin,
+                &mut pool_registry,
+                string::utf8(b"coffee_pool"),
+                string::utf8(b"Coffee consumer data"),
+                &clock,
+                test_scenario::ctx(&mut scenario)
+            );
+
+            test_scenario::return_to_sender(&scenario, admin);
+            test_scenario::return_shared(pool_registry);
+            test_scenario::return_shared(clock);
+        };
+
+        test_scenario::end(scenario);
+    }
+
+    #[test]
+    fun test_create_sub_pool() {
+        let mut scenario = test_scenario::begin(CREATOR);
+        init_test_environment(&mut scenario);
+
+        {
+            test_scenario::next_tx(&mut scenario, CREATOR);
+            let admin = test_scenario::take_from_sender<MyDataPoolAdminCap>(&scenario);
+            let mut pool_registry = test_scenario::take_shared<MyDataPoolRegistry>(&scenario);
+            let clock = test_scenario::take_shared<Clock>(&scenario);
+
+            pool::create_broad_pool(
+                &admin,
+                &mut pool_registry,
+                string::utf8(b"coffee_pool"),
+                string::utf8(b"Coffee data"),
+                &clock,
+                test_scenario::ctx(&mut scenario)
+            );
+
+            let broad_pool = pool::get_broad_pool(&pool_registry, pool::last_created_pool_id(&pool_registry));
+            assert!(option::is_some(&broad_pool), 0);
+            let broad_pool_id = pool::broad_pool_id(option::borrow(&broad_pool));
+
+            pool::create_sub_pool(
+                &admin,
+                &mut pool_registry,
+                broad_pool_id,
+                string::utf8(b"coffee_us_genz"),
+                string::utf8(b"US GenZ coffee consumers"),
+                option::none<vector<u8>>(),
+                &clock,
+                test_scenario::ctx(&mut scenario)
+            );
+
+            test_scenario::return_to_sender(&scenario, admin);
+            test_scenario::return_shared(pool_registry);
+            test_scenario::return_shared(clock);
+        };
+
+        test_scenario::end(scenario);
+    }
+
+    #[test]
+    fun test_assign_mydata_to_sub_pools() {
+        let mut scenario = test_scenario::begin(CREATOR);
+        init_test_environment(&mut scenario);
+        create_test_mydata(&mut scenario);
+
+        {
+            test_scenario::next_tx(&mut scenario, CREATOR);
+            let admin = test_scenario::take_from_sender<MyDataPoolAdminCap>(&scenario);
+            let mut pool_registry = test_scenario::take_shared<MyDataPoolRegistry>(&scenario);
+            let clock = test_scenario::take_shared<Clock>(&scenario);
+            let mydata = test_scenario::take_shared<MyData>(&scenario);
+
+            pool::create_broad_pool(
+                &admin,
+                &mut pool_registry,
+                string::utf8(b"test_pool"),
+                string::utf8(b"Test"),
+                &clock,
+                test_scenario::ctx(&mut scenario)
+            );
+
+            let broad_pool = pool::get_broad_pool(&pool_registry, pool::last_created_pool_id(&pool_registry));
+            let broad_pool_id = pool::broad_pool_id(option::borrow(&broad_pool));
+
+            pool::create_sub_pool(
+                &admin,
+                &mut pool_registry,
+                broad_pool_id,
+                string::utf8(b"test_sub"),
+                string::utf8(b"Test sub"),
+                option::none<vector<u8>>(),
+                &clock,
+                test_scenario::ctx(&mut scenario)
+            );
+
+            let sub_pool_id = pool::last_created_sub_pool_id(&pool_registry);
+            mydata::assign_mydata_to_pools(
+                &mydata,
+                &mut pool_registry,
+                vector[sub_pool_id],
+                &clock,
+                test_scenario::ctx(&mut scenario)
+            );
+
+            let ip_id = mydata::object_address(&mydata);
+            let sub_pools = pool::get_mydata_sub_pools(&pool_registry, ip_id);
+            assert!(option::is_some(&sub_pools), 0);
+            assert!(vector::length(option::borrow(&sub_pools)) == 1, 0);
+
+            test_scenario::return_to_sender(&scenario, admin);
+            test_scenario::return_shared(pool_registry);
+            test_scenario::return_shared(mydata);
+            test_scenario::return_shared(clock);
+        };
+
+        test_scenario::end(scenario);
+    }
     
     // Helper functions
     
@@ -323,6 +454,7 @@ module social_contracts::mydata_tests {
         test_scenario::next_tx(scenario, CREATOR);
         {
             mydata::test_init(test_scenario::ctx(scenario));
+            pool::test_init(test_scenario::ctx(scenario));
             profile::init_for_testing(test_scenario::ctx(scenario));
             let _witness = test_utils::create_one_time_witness<myso::myso::MYSO>();
             clock::share_for_testing(clock::create_for_testing(test_scenario::ctx(scenario)));

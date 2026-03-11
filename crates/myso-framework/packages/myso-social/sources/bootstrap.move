@@ -20,6 +20,7 @@ module social_contracts::bootstrap {
     use social_contracts::platform::{Self, PlatformAdminCap};
     use social_contracts::governance::{Self, GovernanceAdminCap};
     use social_contracts::mydata::{Self, MyDataAdminCap};
+    use mydata::pool::{Self, MyDataPoolAdminCap};
     use social_contracts::social_proof_of_truth::{Self, SpotAdminCap, SpotOracleAdminCap};
     use social_contracts::insurance::{Self, InsuranceAdminCap};
     use social_contracts::profile::{Self, EcosystemTreasuryAdminCap, EcosystemBadgeAdminCap};
@@ -44,6 +45,7 @@ module social_contracts::bootstrap {
         social_contracts::profile::bootstrap_init(ctx);
         social_contracts::block_list::bootstrap_init(ctx);
         social_contracts::mydata::bootstrap_init(ctx);
+        pool::bootstrap_init(ctx);
         social_contracts::governance::bootstrap_init(ctx);
         social_contracts::post::bootstrap_init(ctx);
         social_contracts::social_proof_tokens::bootstrap_init(ctx);
@@ -60,6 +62,7 @@ module social_contracts::bootstrap {
         transfer::public_transfer(platform::create_platform_admin_cap(ctx), admin);
         transfer::public_transfer(governance::create_governance_admin_cap(ctx), admin);
         transfer::public_transfer(mydata::create_mydata_admin_cap(ctx), admin);
+        transfer::public_transfer(pool::create_admin_cap(ctx), admin);
         transfer::public_transfer(social_proof_of_truth::create_spot_admin_cap(ctx), admin);
         transfer::public_transfer(social_proof_of_truth::create_spot_oracle_admin_cap(ctx), admin);
         transfer::public_transfer(profile::create_ecosystem_treasury_admin_cap(ctx), admin);
