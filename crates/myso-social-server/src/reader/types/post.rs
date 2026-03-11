@@ -1,0 +1,189 @@
+// Copyright (c) The Social Proof Foundation, LLC.
+// SPDX-License-Identifier: Apache-2.0
+
+use diesel::sql_types::{BigInt, Bool, Date, Integer, Nullable, SmallInt, Text};
+use diesel::QueryableByName;
+use serde::Serialize;
+
+#[derive(Debug, Serialize, QueryableByName)]
+pub struct PostBasicRow {
+    #[diesel(sql_type = Text)]
+    pub post_id: String,
+    #[diesel(sql_type = Text)]
+    pub owner: String,
+    #[diesel(sql_type = Text)]
+    pub profile_id: String,
+    #[diesel(sql_type = Text)]
+    pub content: String,
+    #[diesel(sql_type = Text)]
+    pub post_type: String,
+    #[diesel(sql_type = BigInt)]
+    pub created_at: i64,
+    #[diesel(sql_type = Nullable<BigInt>)]
+    pub deleted_at: Option<i64>,
+    #[diesel(sql_type = BigInt)]
+    pub reaction_count: i64,
+    #[diesel(sql_type = BigInt)]
+    pub comment_count: i64,
+    #[diesel(sql_type = BigInt)]
+    pub repost_count: i64,
+    #[diesel(sql_type = BigInt)]
+    pub tips_received: i64,
+}
+
+#[derive(Debug, Serialize)]
+pub struct ProfileEventRow {
+    pub event_type: String,
+    pub profile_id: String,
+    pub event_data: serde_json::Value,
+    pub event_id: Option<String>,
+    pub created_at: chrono::NaiveDateTime,
+}
+
+#[derive(Debug, Serialize)]
+pub struct PlatformMembershipRow {
+    pub platform_id: String,
+    pub name: String,
+    pub is_approved: bool,
+    pub joined_at: chrono::NaiveDateTime,
+}
+
+#[derive(Debug, Serialize)]
+pub struct ProfilePlatformEventRow {
+    pub event_type: String,
+    pub platform_id: String,
+    pub created_at: chrono::NaiveDateTime,
+    pub event_id: Option<String>,
+    pub event_data: serde_json::Value,
+}
+
+#[derive(Debug, Serialize)]
+pub struct BlockedEventRow {
+    pub event_type: String,
+    pub blocked_address: Option<String>,
+    pub processed_at: chrono::NaiveDateTime,
+    pub event_id: Option<String>,
+}
+
+#[derive(Debug, Serialize, QueryableByName)]
+pub struct ProfileBadgeRow {
+    #[diesel(sql_type = Text)]
+    pub badge_id: String,
+    #[diesel(sql_type = Text)]
+    pub badge_name: String,
+    #[diesel(sql_type = Nullable<Text>)]
+    pub badge_description: Option<String>,
+    #[diesel(sql_type = Nullable<Text>)]
+    pub badge_media_url: Option<String>,
+    #[diesel(sql_type = Nullable<Text>)]
+    pub badge_icon_url: Option<String>,
+    #[diesel(sql_type = Text)]
+    pub platform_id: String,
+    #[diesel(sql_type = Text)]
+    pub assigned_by: String,
+    #[diesel(sql_type = BigInt)]
+    pub assigned_at: i64,
+    #[diesel(sql_type = Bool)]
+    pub revoked: bool,
+    #[diesel(sql_type = Nullable<BigInt>)]
+    pub revoked_at: Option<i64>,
+    #[diesel(sql_type = Nullable<Text>)]
+    pub revoked_by: Option<String>,
+    #[diesel(sql_type = SmallInt)]
+    pub badge_type: i16,
+}
+
+#[derive(Debug, Serialize)]
+pub struct PostConfigRow {
+    pub updated_by: String,
+    pub max_content_length: i64,
+    pub max_media_urls: i64,
+    pub max_mentions: i64,
+    pub max_metadata_size: i64,
+    pub max_description_length: i64,
+    pub max_reaction_length: i64,
+    pub commenter_tip_percentage: i64,
+    pub repost_tip_percentage: i64,
+    pub version: i64,
+    pub updated_at: i64,
+}
+
+#[derive(Debug, Serialize)]
+pub struct CommentRow {
+    pub comment_id: String,
+    pub post_id: String,
+    pub parent_comment_id: Option<String>,
+    pub owner: String,
+    pub profile_id: String,
+    pub content: String,
+    pub created_at: i64,
+    pub reaction_count: i64,
+    pub comment_count: i64,
+}
+
+#[derive(Debug, Serialize)]
+pub struct ReactionRow {
+    pub user_address: String,
+    pub reaction_text: String,
+    pub created_at: i64,
+}
+
+#[derive(Debug, Serialize)]
+pub struct RepostRow {
+    pub repost_id: String,
+    pub original_post_id: String,
+    pub owner: String,
+    pub profile_id: String,
+    pub created_at: i64,
+}
+
+#[derive(Debug, Serialize)]
+pub struct PromotedPostRow {
+    pub promotion_id: String,
+    pub post_id: String,
+    pub owner: String,
+    pub profile_id: String,
+    pub payment_per_view: i64,
+    pub total_budget: i64,
+    pub remaining_budget: i64,
+    pub active: bool,
+    pub created_at: i64,
+}
+
+#[derive(Debug, Serialize)]
+pub struct PromotionViewRow {
+    pub post_id: String,
+    pub promotion_id: String,
+    pub viewer: String,
+    pub payment_amount: i64,
+    pub view_duration: i64,
+    pub platform_id: String,
+    pub timestamp: i64,
+}
+
+#[derive(Debug, Serialize)]
+pub struct PromotionStatsRow {
+    pub total_views: i64,
+    pub total_spent: i64,
+    pub remaining_budget: i64,
+}
+
+#[derive(Debug, Serialize, QueryableByName)]
+pub struct PromotionTimeSeriesRow {
+    #[diesel(sql_type = Date)]
+    pub day: chrono::NaiveDate,
+    #[diesel(sql_type = BigInt)]
+    pub views: i64,
+    #[diesel(sql_type = BigInt)]
+    pub spent: i64,
+}
+
+#[derive(Debug, Serialize, QueryableByName)]
+pub struct PromotionHourlyRow {
+    #[diesel(sql_type = Integer)]
+    pub hour: i32,
+    #[diesel(sql_type = BigInt)]
+    pub views: i64,
+    #[diesel(sql_type = BigInt)]
+    pub spent: i64,
+}
