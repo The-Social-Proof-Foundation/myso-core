@@ -697,9 +697,13 @@ pub struct PublishArgs {
     #[clap(long)]
     pub with_unpublished_dependencies: bool,
 
-    /// Object ID of UpgradeAdminCap or PackagePublishingAdminCap to include in transaction (allows bypassing publish restrictions)
+    /// Object ID of UpgradeAdminCap to include in transaction (allows bypassing publish restrictions)
     #[clap(long)]
-    pub admin_cap: Option<ObjectID>,
+    pub upgrade_admin_cap: Option<ObjectID>,
+
+    /// Object ID of PackagePublishingAdminCap to include in transaction (allows bypassing publish restrictions)
+    #[clap(long)]
+    pub publish_admin_cap: Option<ObjectID>,
 
     /// Object ID of CoinCreationAdminCap to include in transaction (allows coin creation during publish when init creates coins)
     #[clap(long)]
@@ -3057,9 +3061,9 @@ pub(crate) async fn dry_run_or_execute_or_serialize(
             debug!("Transaction executed: {:?}", transaction);
             if let ExecutionStatus::Failure { error, command } = response.effects.status() {
                 let description = if let Some(command) = command {
-                    format!("{error:?} in command {command}")
+                    format!("{} in command {command}", error)
                 } else {
-                    format!("{error:?}")
+                    format!("{}", error)
                 };
 
                 let error = render_clever_error_opt(&description, &client)
@@ -3377,7 +3381,8 @@ async fn publish_command(
         skip_dependency_verification: _,
         verify_deps: _,
         with_unpublished_dependencies,
-        admin_cap,
+        upgrade_admin_cap,
+        publish_admin_cap,
         coin_admin_cap,
         payment,
         gas_data,
@@ -3415,7 +3420,14 @@ async fn publish_command(
 
     let tx_kind = client
         .transaction_builder()
-        .publish_tx_kind(sender, compiled_modules, dep_ids, admin_cap, coin_admin_cap)
+        .publish_tx_kind(
+            sender,
+            compiled_modules,
+            dep_ids,
+            upgrade_admin_cap,
+            publish_admin_cap,
+            coin_admin_cap,
+        )
         .await?;
 
     let gas_payment = client
@@ -3675,7 +3687,8 @@ async fn publish_ephemeral_unpublished_dependencies(
             skip_dependency_verification: args.publish_args.skip_dependency_verification,
             verify_deps: args.publish_args.verify_deps,
             with_unpublished_dependencies: false,
-            admin_cap: args.publish_args.admin_cap,
+            upgrade_admin_cap: args.publish_args.upgrade_admin_cap,
+            publish_admin_cap: args.publish_args.publish_admin_cap,
             coin_admin_cap: args.publish_args.coin_admin_cap,
             payment: PaymentArgs::default(),
             gas_data: args.publish_args.gas_data.clone(),
