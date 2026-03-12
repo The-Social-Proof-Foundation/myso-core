@@ -7,7 +7,7 @@ mod mydata;
 mod platform;
 mod poc;
 mod post;
-mod profile;
+pub mod profile;
 mod promotion;
 mod revenue;
 mod search;
@@ -65,6 +65,13 @@ impl Reader {
         address: &str,
     ) -> Result<Option<Profile>, crate::error::SocialError> {
         profile::get_profile_by_address(&self.db, address).await
+    }
+
+    pub async fn get_profile_or_wallet_by_address(
+        &self,
+        address: &str,
+    ) -> Result<profile::ProfileOrWallet, crate::error::SocialError> {
+        profile::get_profile_or_wallet_by_address(&self.db, address).await
     }
 
     pub async fn get_profile_by_username(

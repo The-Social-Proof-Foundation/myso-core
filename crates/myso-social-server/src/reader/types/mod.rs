@@ -48,7 +48,7 @@ pub use social_graph::{
     BlockedPlatformRow, BlockedProfileRow, DailyStatsPoint, FollowDetail, FollowStatsRow,
     FollowsQuery, PaginationInfo, ReservationStatus, SelectedBadgeInfo, SocialGraphAddressRow,
     SocialGraphChartData, SocialGraphChartQuery, SocialGraphChartRow, SocialProofTokenInfo,
-    SocialStatsRow, UniversalUserResult,
+    SocialStatsRow, UniversalUserResult, WalletOnlyProfile,
 };
 pub use spot::{SpotBetRow, SpotConfigInfo, SpotRecordResponse, SpotTransferRow};
 pub use spt::{
