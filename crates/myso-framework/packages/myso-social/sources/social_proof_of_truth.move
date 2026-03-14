@@ -112,7 +112,7 @@ module social_contracts::social_proof_of_truth {
     }
 
     /// SPoT record per post
-    public struct SpotRecord has key, store {
+    public struct SpotRecord has key {
         id: UID,
         post_id: address,
         created_epoch: u64,

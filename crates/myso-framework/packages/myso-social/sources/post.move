@@ -123,7 +123,7 @@ module social_contracts::post {
     }
 
     /// Post object that contains content information
-    public struct Post has key, store {
+    public struct Post has key {
         id: UID,
         /// Owner's wallet address (the true owner)
         owner: address,
@@ -331,7 +331,7 @@ module social_contracts::post {
     }
 
     /// Comment object for posts, supporting nested comments
-    public struct Comment has key, store {
+    public struct Comment has key {
         id: UID,
         /// The post this comment belongs to
         post_id: address,
@@ -370,7 +370,7 @@ module social_contracts::post {
     }
 
     /// Repost reference
-    public struct Repost has key, store {
+    public struct Repost has key {
         id: UID,
         /// The post/comment being reposted
         original_id: address,
@@ -395,7 +395,7 @@ module social_contracts::post {
     }
 
     /// Promoted post metadata
-    public struct PromotionData has key, store {
+    public struct PromotionData has key {
         id: UID,
         post_id: address,
         /// Amount of MYSO to pay per view

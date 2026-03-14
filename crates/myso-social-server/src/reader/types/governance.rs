@@ -7,6 +7,9 @@ use diesel::sql_types::{
 use diesel::QueryableByName;
 use serde::Serialize;
 
+/// Proposal row from the indexer. The `id` field is the object ID of the shared Proposal on-chain.
+/// Clients must pass the Proposal object (fetched at this ID) when calling rescind_proposal,
+/// delegate_vote_on_proposal, community_vote_on_proposal, finalize_proposal, etc.
 #[derive(Debug, Serialize, QueryableByName)]
 pub struct ProposalRow {
     #[diesel(sql_type = Text)]

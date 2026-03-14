@@ -5,16 +5,34 @@ use axum::extract::{Path, Query, State};
 use axum::Json;
 use std::sync::Arc;
 
+use myso_indexer_alt_social_schema::{
+    PROPOSAL_TYPE_ECOSYSTEM, PROPOSAL_TYPE_PLATFORM, PROPOSAL_TYPE_PROOF_OF_CREATIVITY,
+};
+
 use crate::error::SocialError;
 
 use super::super::{
     AppState, GovernanceDelegateQuery, GovernanceNomineeQuery, GovernanceProposalQuery, PageParams,
 };
 
+fn is_valid_proposal_type(t: i16) -> bool {
+    t == PROPOSAL_TYPE_ECOSYSTEM
+        || t == PROPOSAL_TYPE_PROOF_OF_CREATIVITY
+        || t == PROPOSAL_TYPE_PLATFORM
+}
+
 pub async fn list_governance_proposals(
     State(state): State<Arc<AppState>>,
     Query(params): Query<GovernanceProposalQuery>,
 ) -> Result<Json<Vec<crate::reader::ProposalRow>>, SocialError> {
+    if let Some(pt) = params.proposal_type {
+        if !is_valid_proposal_type(pt) {
+            return Err(SocialError::bad_request(
+                "Invalid proposal_type: must be 0 (Ecosystem), 1 (Proof of Creativity), or 3 (Platform)",
+            ));
+        }
+    }
+
     let limit = params.limit.unwrap_or(20).min(100);
     let offset = params.offset.unwrap_or(0);
     let data = state
@@ -42,8 +60,18 @@ pub async fn get_governance_proposal(
     let delegate_votes = state.reader.get_proposal_delegate_votes(&id).await?;
     let community_votes_count = state.reader.get_proposal_community_votes_count(&id).await?;
     let reward_distributions = state.reader.get_proposal_reward_distributions(&id).await?;
+
+    let mut proposal_json =
+        serde_json::to_value(&proposal).map_err(|e| SocialError::internal(e.to_string()))?;
+    if let Some(obj) = proposal_json.as_object_mut() {
+        obj.insert(
+            "object_id".to_string(),
+            serde_json::Value::String(proposal.id.clone()),
+        );
+    }
+
     Ok(Json(serde_json::json!({
-        "proposal": proposal,
+        "proposal": proposal_json,
         "delegate_votes": delegate_votes,
         "community_votes_count": community_votes_count,
         "reward_distributions": reward_distributions

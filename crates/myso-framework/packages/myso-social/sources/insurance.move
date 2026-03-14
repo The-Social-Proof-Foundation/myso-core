@@ -95,7 +95,7 @@ module social_contracts::insurance {
         reserved_by_option: Table<u8, u64>,
     }
 
-    public struct CoveragePolicy has key, store {
+    public struct CoveragePolicy has key {
         id: UID,
         market_id: address,
         insured: address,
@@ -477,7 +477,7 @@ module social_contracts::insurance {
             status: STATUS_ACTIVE,
         };
         let policy_id = object::id(&policy);
-        transfer::public_transfer(policy, insured);
+        transfer::share_object(policy);
 
         event::emit(CoveragePurchasedEvent {
             policy_id,

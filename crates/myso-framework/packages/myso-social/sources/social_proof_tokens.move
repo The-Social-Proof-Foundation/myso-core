@@ -222,7 +222,7 @@ module social_contracts::social_proof_tokens {
     }
 
     /// Liquidity pool for a token
-    public struct TokenPool has key, store {
+    public struct TokenPool has key {
         id: UID,
         /// The token's info
         info: TokenInfo,

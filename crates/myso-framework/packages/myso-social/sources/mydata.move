@@ -52,7 +52,7 @@ module social_contracts::mydata {
     const MAX_U64: u64 = 18446744073709551615; // Max u64 value for overflow protection
 
     /// Universal MyData for encrypted data monetization
-    public struct MyData has key, store {
+    public struct MyData has key {
         id: UID,
         owner: address,
         
