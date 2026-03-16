@@ -417,6 +417,20 @@ pub struct BcsTipEvent {
 }
 
 #[derive(Debug, Deserialize)]
+pub struct BcsPostParametersUpdatedEvent {
+    updated_by: AccountAddress,
+    timestamp: u64,
+    max_content_length: u64,
+    max_media_urls: u64,
+    max_mentions: u64,
+    max_metadata_size: u64,
+    max_description_length: u64,
+    max_reaction_length: u64,
+    commenter_tip_percentage: u64,
+    repost_tip_percentage: u64,
+}
+
+#[derive(Debug, Deserialize)]
 pub struct BcsPostModerationEvent {
     post_id: AccountAddress,
     platform_id: AccountAddress,
@@ -1741,6 +1755,22 @@ fn parse_post_event(
                 "owner": addr_to_string(&ev.owner),
                 "withdrawn_amount": ev.withdrawn_amount,
                 "timestamp": ev.timestamp,
+            })))
+        }
+        "PostParametersUpdatedEvent" => {
+            let ev = bcs::from_bytes::<BcsPostParametersUpdatedEvent>(contents)
+                .map_err(|e| bcs_parse_err(e, contents))?;
+            Ok(Some(serde_json::json!({
+                "updated_by": addr_to_string(&ev.updated_by),
+                "timestamp": ev.timestamp,
+                "max_content_length": ev.max_content_length,
+                "max_media_urls": ev.max_media_urls,
+                "max_mentions": ev.max_mentions,
+                "max_metadata_size": ev.max_metadata_size,
+                "max_description_length": ev.max_description_length,
+                "max_reaction_length": ev.max_reaction_length,
+                "commenter_tip_percentage": ev.commenter_tip_percentage,
+                "repost_tip_percentage": ev.repost_tip_percentage,
             })))
         }
         _ => Ok(None),
