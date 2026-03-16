@@ -83,6 +83,10 @@ if [ -n "$RPC_URL" ]; then\n\
   EXTRA_ARGS="$EXTRA_ARGS --rpc-api-url $RPC_URL"\n\
   echo "RPC_API_URL (gRPC ingestion): $RPC_URL"\n\
 fi\n\
+if [ -n "$FIRST_CHECKPOINT" ]; then\n\
+  EXTRA_ARGS="$EXTRA_ARGS --first-checkpoint $FIRST_CHECKPOINT"\n\
+  echo "FIRST_CHECKPOINT: $FIRST_CHECKPOINT (used when pipeline has no watermark)"\n\
+fi\n\
 \n\
 exec myso-social-indexer --metrics-address "0.0.0.0:${PORT:-8080}" $EXTRA_ARGS' > /usr/local/bin/entrypoint.sh && \
     chmod +x /usr/local/bin/entrypoint.sh

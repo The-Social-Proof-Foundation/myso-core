@@ -35,6 +35,13 @@ RUST_BACKTRACE = "1"
 RPC_API_URL = "http://fullnode.testnet.mysocial.network:9000"
 STREAMING_URL = "http://fullnode.testnet.mysocial.network:9000"
 
+# Optional: Start from a specific checkpoint when pipeline has no watermark.
+# Set near chain head to catch up (e.g. current_head - 10000). Update as chain grows.
+# If Grafana shows 0 checkpoints: 1) Set FIRST_CHECKPOINT near head (uncomment below).
+# 2) If resuming from too far back, reset watermark: DELETE FROM watermarks WHERE pipeline = 'social_events';
+# 3) Restart the indexer.
+# FIRST_CHECKPOINT = "2000000"
+
 # Force migrations on startup
 FORCE_MIGRATIONS = "true"
 RESET_BLOCKING_SCHEMA = "true"
