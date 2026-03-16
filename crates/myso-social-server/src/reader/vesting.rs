@@ -169,13 +169,27 @@ pub(crate) async fn get_vesting_claimable(
     wallet_id: &str,
 ) -> Result<Option<i64>, SocialError> {
     let mut conn = db.connect().await?;
-    let result = vesting_wallets::table
-        .filter(vesting_wallets::wallet_id.eq(wallet_id))
-        .select(vesting_wallets::remaining_balance)
-        .first::<i64>(&mut conn)
+    let current_time_ms = chrono::Utc::now().timestamp_millis();
+    let query = r#"
+        SELECT calculate_vesting_claimable(
+            total_amount, start_time, duration, curve_factor,
+            claimed_amount, $2::bigint
+        )::bigint as claimable
+        FROM vesting_wallets
+        WHERE wallet_id = $1
+    "#;
+    #[derive(QueryableByName)]
+    struct ClaimableRow {
+        #[diesel(sql_type = BigInt)]
+        claimable: i64,
+    }
+    let result = diesel::sql_query(query)
+        .bind::<diesel::sql_types::Text, _>(wallet_id)
+        .bind::<BigInt, _>(current_time_ms)
+        .get_result::<ClaimableRow>(&mut conn)
         .await
         .optional()?;
-    Ok(result)
+    Ok(result.map(|r| r.claimable))
 }
 
 pub(crate) async fn get_user_vesting_wallets(
