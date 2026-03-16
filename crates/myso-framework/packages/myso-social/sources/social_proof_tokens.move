@@ -221,7 +221,7 @@ module social_contracts::social_proof_tokens {
         created_at: u64,
     }
 
-    /// Liquidity pool for a token
+    /// Liquidity pool for a token (key only - not transferable)
     public struct TokenPool has key {
         id: UID,
         /// The token's info
@@ -523,27 +523,51 @@ module social_contracts::social_proof_tokens {
 
     /// Bootstrap initialization function - creates the social proof tokens configuration and registry
     public(package) fun bootstrap_init(ctx: &mut TxContext) {
+        let sender = tx_context::sender(ctx);
+        let config = SocialProofTokensConfig {
+            id: object::new(ctx),
+            version: upgrade::current_version(),
+            trading_creator_fee_bps: DEFAULT_TRADING_CREATOR_FEE_BPS,
+            trading_platform_fee_bps: DEFAULT_TRADING_PLATFORM_FEE_BPS,
+            trading_treasury_fee_bps: DEFAULT_TRADING_TREASURY_FEE_BPS,
+            reservation_creator_fee_bps: DEFAULT_RESERVATION_CREATOR_FEE_BPS,
+            reservation_platform_fee_bps: DEFAULT_RESERVATION_PLATFORM_FEE_BPS,
+            reservation_treasury_fee_bps: DEFAULT_RESERVATION_TREASURY_FEE_BPS,
+            base_price: DEFAULT_BASE_PRICE,
+            quadratic_coefficient: DEFAULT_QUADRATIC_COEFFICIENT,
+            max_hold_percent_bps: MAX_HOLD_PERCENT_BPS,
+            post_threshold: DEFAULT_POST_THRESHOLD,
+            profile_threshold: DEFAULT_PROFILE_THRESHOLD,
+            max_individual_reservation_bps: DEFAULT_MAX_INDIVIDUAL_RESERVATION_BPS,
+            max_reservers_per_pool: DEFAULT_MAX_RESERVERS_PER_POOL,
+            trading_enabled: false, // Trading disabled by default during bootstrap
+        };
+
+        // Emit event so indexer can populate spt_exchange_config table
+        let total_fee_bps = DEFAULT_TRADING_CREATOR_FEE_BPS + DEFAULT_TRADING_PLATFORM_FEE_BPS + DEFAULT_TRADING_TREASURY_FEE_BPS;
+        let reservation_total_fee_bps = DEFAULT_RESERVATION_CREATOR_FEE_BPS + DEFAULT_RESERVATION_PLATFORM_FEE_BPS + DEFAULT_RESERVATION_TREASURY_FEE_BPS;
+        event::emit(ConfigUpdatedEvent {
+            updated_by: sender,
+            timestamp: tx_context::epoch(ctx),
+            total_fee_bps,
+            trading_creator_fee_bps: DEFAULT_TRADING_CREATOR_FEE_BPS,
+            trading_platform_fee_bps: DEFAULT_TRADING_PLATFORM_FEE_BPS,
+            trading_treasury_fee_bps: DEFAULT_TRADING_TREASURY_FEE_BPS,
+            reservation_total_fee_bps,
+            reservation_creator_fee_bps: DEFAULT_RESERVATION_CREATOR_FEE_BPS,
+            reservation_platform_fee_bps: DEFAULT_RESERVATION_PLATFORM_FEE_BPS,
+            reservation_treasury_fee_bps: DEFAULT_RESERVATION_TREASURY_FEE_BPS,
+            base_price: DEFAULT_BASE_PRICE,
+            quadratic_coefficient: DEFAULT_QUADRATIC_COEFFICIENT,
+            max_hold_percent_bps: MAX_HOLD_PERCENT_BPS,
+            post_threshold: DEFAULT_POST_THRESHOLD,
+            profile_threshold: DEFAULT_PROFILE_THRESHOLD,
+            max_individual_reservation_bps: DEFAULT_MAX_INDIVIDUAL_RESERVATION_BPS,
+            max_reservers_per_pool: DEFAULT_MAX_RESERVERS_PER_POOL,
+        });
+
         // Create and share social proof tokens config with proper treasury
-        transfer::share_object(
-            SocialProofTokensConfig {
-                id: object::new(ctx),
-                version: upgrade::current_version(),
-                trading_creator_fee_bps: DEFAULT_TRADING_CREATOR_FEE_BPS,
-                trading_platform_fee_bps: DEFAULT_TRADING_PLATFORM_FEE_BPS,
-                trading_treasury_fee_bps: DEFAULT_TRADING_TREASURY_FEE_BPS,
-                reservation_creator_fee_bps: DEFAULT_RESERVATION_CREATOR_FEE_BPS,
-                reservation_platform_fee_bps: DEFAULT_RESERVATION_PLATFORM_FEE_BPS,
-                reservation_treasury_fee_bps: DEFAULT_RESERVATION_TREASURY_FEE_BPS,
-                base_price: DEFAULT_BASE_PRICE,
-                quadratic_coefficient: DEFAULT_QUADRATIC_COEFFICIENT,
-                max_hold_percent_bps: MAX_HOLD_PERCENT_BPS,
-                post_threshold: DEFAULT_POST_THRESHOLD,
-                profile_threshold: DEFAULT_PROFILE_THRESHOLD,
-                max_individual_reservation_bps: DEFAULT_MAX_INDIVIDUAL_RESERVATION_BPS,
-                max_reservers_per_pool: DEFAULT_MAX_RESERVERS_PER_POOL,
-                trading_enabled: false, // Trading disabled by default during bootstrap
-            }
-        );
+        transfer::share_object(config);
         
         // Create and share token registry
         transfer::share_object(
@@ -3499,6 +3523,12 @@ module social_contracts::social_proof_tokens {
             poc_redirect_percentage: option::none(),
             version: upgrade::current_version(),
         }
+    }
+
+    /// Share a TokenPool for test cleanup (TokenPool is not transferable)
+    #[test_only]
+    public fun share_token_pool_for_testing(pool: TokenPool) {
+        transfer::share_object(pool);
     }
 
     // === Versioning Functions ===

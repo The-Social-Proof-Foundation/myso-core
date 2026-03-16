@@ -207,16 +207,29 @@ module social_contracts::mydata {
 
     /// Bootstrap initialization function - creates the MyData registry and config
     public(package) fun bootstrap_init(ctx: &mut TxContext) {
-        // Create and share MyData config
-        transfer::share_object(MyDataConfig {
+        let sender = tx_context::sender(ctx);
+        let config = MyDataConfig {
             id: object::new(ctx),
             enable_flag: DEFAULT_ENABLE,
             max_tags: MAX_TAGS,
             max_subscription_days: MAX_SUBSCRIPTION_DAYS,
             max_free_access_grants: MAX_FREE_ACCESS_GRANTS,
             version: upgrade::current_version(),
+        };
+
+        // Emit event so indexer can populate mydata_config table
+        event::emit(MyDataConfigUpdatedEvent {
+            updated_by: sender,
+            enable_flag: DEFAULT_ENABLE,
+            max_tags: MAX_TAGS,
+            max_subscription_days: MAX_SUBSCRIPTION_DAYS,
+            max_free_access_grants: MAX_FREE_ACCESS_GRANTS,
+            timestamp: tx_context::epoch_timestamp_ms(ctx),
         });
-        
+
+        // Create and share MyData config
+        transfer::share_object(config);
+
         // Create and share registry
         let registry = MyDataRegistry {
             id: object::new(ctx),

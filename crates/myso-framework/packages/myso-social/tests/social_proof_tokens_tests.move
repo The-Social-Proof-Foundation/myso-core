@@ -556,8 +556,8 @@ module social_contracts::token_exchange_tests {
             assert!(*option::borrow(redirect_to) == USER3, 3);
             assert!(*option::borrow(redirect_percentage) == 75, 4);
             
-            // Clean up by transferring back to test framework
-            transfer::public_transfer(token_pool, CREATOR);
+            // Clean up: share to scenario (TokenPool is not transferable)
+            social_proof_tokens::share_token_pool_for_testing(token_pool);
         };
         
         test_scenario::end(scenario);
@@ -594,8 +594,8 @@ module social_contracts::token_exchange_tests {
             assert!(option::is_none(redirect_to), 2);
             assert!(option::is_none(redirect_percentage), 3);
             
-            // Clean up by transferring back to test framework
-            transfer::public_transfer(token_pool, CREATOR);
+            // Clean up: share to scenario (TokenPool is not transferable)
+            social_proof_tokens::share_token_pool_for_testing(token_pool);
         };
         
         test_scenario::end(scenario);
@@ -636,8 +636,8 @@ module social_contracts::token_exchange_tests {
             transfer::public_transfer(redirected_coin, USER3); // Original creator gets 60%
             transfer::public_transfer(remaining_coin, CREATOR); // Post owner gets 40%
             
-            // Clean up by transferring back to test framework
-            transfer::public_transfer(token_pool, CREATOR);
+            // Clean up: share to scenario (TokenPool is not transferable)
+            social_proof_tokens::share_token_pool_for_testing(token_pool);
         };
         
         // Verify USER3 received the redirected amount
@@ -681,8 +681,8 @@ module social_contracts::token_exchange_tests {
             assert!(option::is_none(redirect_to), 2);
             assert!(option::is_none(redirect_percentage), 3);
             
-            // Clean up by transferring back to test framework
-            transfer::public_transfer(token_pool, CREATOR);
+            // Clean up: share to scenario (TokenPool is not transferable)
+            social_proof_tokens::share_token_pool_for_testing(token_pool);
         };
         
         test_scenario::end(scenario);

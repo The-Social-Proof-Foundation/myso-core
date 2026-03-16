@@ -654,22 +654,35 @@ module social_contracts::post {
     /// Bootstrap initialization function - creates the post configuration
     public(package) fun bootstrap_init(ctx: &mut TxContext) {
         let admin = tx_context::sender(ctx);
-        
+        let config = PostConfig {
+            id: object::new(ctx),
+            max_content_length: MAX_CONTENT_LENGTH,
+            max_media_urls: MAX_MEDIA_URLS,
+            max_mentions: MAX_MENTIONS,
+            max_metadata_size: MAX_METADATA_SIZE,
+            max_description_length: MAX_DESCRIPTION_LENGTH,
+            max_reaction_length: MAX_REACTION_LENGTH,
+            commenter_tip_percentage: COMMENTER_TIP_PERCENTAGE,
+            repost_tip_percentage: REPOST_TIP_PERCENTAGE,
+            version: upgrade::current_version(),
+        };
+
+        // Emit event so indexer can populate post_config table
+        event::emit(PostParametersUpdatedEvent {
+            updated_by: admin,
+            timestamp: tx_context::epoch_timestamp_ms(ctx),
+            max_content_length: MAX_CONTENT_LENGTH,
+            max_media_urls: MAX_MEDIA_URLS,
+            max_mentions: MAX_MENTIONS,
+            max_metadata_size: MAX_METADATA_SIZE,
+            max_description_length: MAX_DESCRIPTION_LENGTH,
+            max_reaction_length: MAX_REACTION_LENGTH,
+            commenter_tip_percentage: COMMENTER_TIP_PERCENTAGE,
+            repost_tip_percentage: REPOST_TIP_PERCENTAGE,
+        });
+
         // Create and share post configuration
-        transfer::share_object(
-            PostConfig {
-                id: object::new(ctx),
-                max_content_length: MAX_CONTENT_LENGTH,
-                max_media_urls: MAX_MEDIA_URLS,
-                max_mentions: MAX_MENTIONS,
-                max_metadata_size: MAX_METADATA_SIZE,
-                max_description_length: MAX_DESCRIPTION_LENGTH,
-                max_reaction_length: MAX_REACTION_LENGTH,
-                commenter_tip_percentage: COMMENTER_TIP_PERCENTAGE,
-                repost_tip_percentage: REPOST_TIP_PERCENTAGE,
-                version: upgrade::current_version(),
-            }
-        );
+        transfer::share_object(config);
     }
 
     /// Convert Option<vector<Url>> to Option<vector<String>> for events

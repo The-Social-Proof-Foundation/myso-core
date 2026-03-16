@@ -278,28 +278,47 @@ module social_contracts::proof_of_creativity {
     /// Bootstrap initialization function - creates the PoC configuration and registry
     public(package) fun bootstrap_init(ctx: &mut TxContext) {
         let sender = tx_context::sender(ctx);
-        
+
+        let config = PoCConfig {
+            id: object::new(ctx),
+            oracle_address: sender, // Initially set to deployer, should be updated
+            image_threshold: DEFAULT_IMAGE_THRESHOLD,
+            video_threshold: DEFAULT_VIDEO_THRESHOLD,
+            audio_threshold: DEFAULT_AUDIO_THRESHOLD,
+            revenue_redirect_percentage: DEFAULT_REVENUE_REDIRECT_PERCENTAGE,
+            dispute_cost: DEFAULT_DISPUTE_COST,
+            dispute_protocol_fee: DEFAULT_DISPUTE_PROTOCOL_FEE,
+            min_vote_stake: DEFAULT_MIN_VOTE_STAKE,
+            max_vote_stake: DEFAULT_MAX_VOTE_STAKE,
+            voting_duration_epochs: DEFAULT_VOTING_DURATION_EPOCHS,
+            max_reasoning_length: MAX_REASONING_LENGTH,
+            max_evidence_urls: MAX_EVIDENCE_URLS,
+            max_votes_per_dispute: DEFAULT_MAX_VOTES_PER_DISPUTE,
+            dispute_governance_id: object::id_from_address(@0x0), // Placeholder for future governance
+            version: upgrade::current_version(),
+        };
+
+        // Emit event so indexer can populate poc_configuration table
+        event::emit(PoCConfigUpdatedEvent {
+            updated_by: sender,
+            oracle_address: sender,
+            image_threshold: DEFAULT_IMAGE_THRESHOLD,
+            video_threshold: DEFAULT_VIDEO_THRESHOLD,
+            audio_threshold: DEFAULT_AUDIO_THRESHOLD,
+            revenue_redirect_percentage: DEFAULT_REVENUE_REDIRECT_PERCENTAGE,
+            dispute_cost: DEFAULT_DISPUTE_COST,
+            dispute_protocol_fee: DEFAULT_DISPUTE_PROTOCOL_FEE,
+            min_vote_stake: DEFAULT_MIN_VOTE_STAKE,
+            max_vote_stake: DEFAULT_MAX_VOTE_STAKE,
+            voting_duration_epochs: DEFAULT_VOTING_DURATION_EPOCHS,
+            max_reasoning_length: MAX_REASONING_LENGTH,
+            max_evidence_urls: MAX_EVIDENCE_URLS,
+            max_votes_per_dispute: DEFAULT_MAX_VOTES_PER_DISPUTE,
+            timestamp: tx_context::epoch_timestamp_ms(ctx),
+        });
+
         // Create and share PoC configuration
-        transfer::share_object(
-            PoCConfig {
-                id: object::new(ctx),
-                oracle_address: sender, // Initially set to deployer, should be updated
-                image_threshold: DEFAULT_IMAGE_THRESHOLD,
-                video_threshold: DEFAULT_VIDEO_THRESHOLD,
-                audio_threshold: DEFAULT_AUDIO_THRESHOLD,
-                revenue_redirect_percentage: DEFAULT_REVENUE_REDIRECT_PERCENTAGE,
-                dispute_cost: DEFAULT_DISPUTE_COST,
-                dispute_protocol_fee: DEFAULT_DISPUTE_PROTOCOL_FEE,
-                min_vote_stake: DEFAULT_MIN_VOTE_STAKE,
-                max_vote_stake: DEFAULT_MAX_VOTE_STAKE,
-                voting_duration_epochs: DEFAULT_VOTING_DURATION_EPOCHS,
-                max_reasoning_length: MAX_REASONING_LENGTH,
-                max_evidence_urls: MAX_EVIDENCE_URLS,
-                max_votes_per_dispute: DEFAULT_MAX_VOTES_PER_DISPUTE,
-                dispute_governance_id: object::id_from_address(@0x0), // Placeholder for future governance
-                version: upgrade::current_version(),
-            }
-        );
+        transfer::share_object(config);
         
         // Create and share PoC registry
         transfer::share_object(

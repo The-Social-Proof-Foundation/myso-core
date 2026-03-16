@@ -359,10 +359,10 @@ module social_contracts::insurance_tests {
             let mut vault = test_scenario::take_shared<insurance::UnderwriterVault>(&scen);
             let record = test_scenario::take_shared<spot::SpotRecord>(&scen);
             let clock = test_scenario::take_shared<Clock>(&scen);
-            let mut policy_id_opt = test_scenario::most_recent_id_for_sender<insurance::CoveragePolicy>(&scen);
+            let mut policy_id_opt = test_scenario::most_recent_id_shared<insurance::CoveragePolicy>();
             assert!(option::is_some(&policy_id_opt), 1);
             let policy_id = option::extract(&mut policy_id_opt);
-            let mut policy = test_scenario::take_from_sender_by_id<insurance::CoveragePolicy>(&scen, policy_id);
+            let mut policy = test_scenario::take_shared_by_id<insurance::CoveragePolicy>(&scen, policy_id);
 
             let spot_config = test_scenario::take_shared<spot::SpotConfig>(&scen);
             insurance::claim(&config, &spot_config, &mut vault, &record, &mut policy, &clock, test_scenario::ctx(&mut scen));
@@ -372,7 +372,7 @@ module social_contracts::insurance_tests {
             test_scenario::return_shared(vault);
             test_scenario::return_shared(record);
             test_scenario::return_shared(clock);
-            test_scenario::return_to_sender(&scen, policy);
+            test_scenario::return_shared(policy);
         };
 
         test_scenario::end(scen);
@@ -430,10 +430,10 @@ module social_contracts::insurance_tests {
             let mut vault = test_scenario::take_shared<insurance::UnderwriterVault>(&scen);
             let record = test_scenario::take_shared<spot::SpotRecord>(&scen);
             let clock = test_scenario::take_shared<Clock>(&scen);
-            let mut policy_id_opt = test_scenario::most_recent_id_for_sender<insurance::CoveragePolicy>(&scen);
+            let mut policy_id_opt = test_scenario::most_recent_id_shared<insurance::CoveragePolicy>();
             assert!(option::is_some(&policy_id_opt), 1);
             let policy_id = option::extract(&mut policy_id_opt);
-            let mut policy = test_scenario::take_from_sender_by_id<insurance::CoveragePolicy>(&scen, policy_id);
+            let mut policy = test_scenario::take_shared_by_id<insurance::CoveragePolicy>(&scen, policy_id);
 
             let spot_config = test_scenario::take_shared<spot::SpotConfig>(&scen);
             let treasury = test_scenario::take_shared<EcosystemTreasury>(&scen);
@@ -454,7 +454,7 @@ module social_contracts::insurance_tests {
             test_scenario::return_shared(vault);
             test_scenario::return_shared(record);
             test_scenario::return_shared(clock);
-            test_scenario::return_to_sender(&scen, policy);
+            test_scenario::return_shared(policy);
         };
 
         test_scenario::end(scen);
@@ -533,15 +533,15 @@ module social_contracts::insurance_tests {
         {
             let mut vault = test_scenario::take_shared<insurance::UnderwriterVault>(&scen);
             let clock = test_scenario::take_shared<Clock>(&scen);
-            let mut policy_id_opt = test_scenario::most_recent_id_for_sender<insurance::CoveragePolicy>(&scen);
+            let mut policy_id_opt = test_scenario::most_recent_id_shared<insurance::CoveragePolicy>();
             assert!(option::is_some(&policy_id_opt), 1);
             let policy_id = option::extract(&mut policy_id_opt);
-            let mut policy = test_scenario::take_from_sender_by_id<insurance::CoveragePolicy>(&scen, policy_id);
+            let mut policy = test_scenario::take_shared_by_id<insurance::CoveragePolicy>(&scen, policy_id);
 
             insurance::expire_policy(&mut vault, &mut policy, &clock);
 
             test_scenario::return_shared(vault);
-            test_scenario::return_to_sender(&scen, policy);
+            test_scenario::return_shared(policy);
             test_scenario::return_shared(clock);
         };
 

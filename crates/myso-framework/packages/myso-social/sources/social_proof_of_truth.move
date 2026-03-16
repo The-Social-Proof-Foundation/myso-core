@@ -237,7 +237,7 @@ module social_contracts::social_proof_of_truth {
     // Bootstrap
     public(package) fun bootstrap_init(ctx: &mut TxContext) {
         let admin = tx_context::sender(ctx);
-        transfer::share_object(SpotConfig {
+        let config = SpotConfig {
             id: object::new(ctx),
             enable_flag: DEFAULT_ENABLE,
             confidence_threshold_bps: DEFAULT_CONFIDENCE_THRESHOLD_BPS,
@@ -250,7 +250,25 @@ module social_contracts::social_proof_of_truth {
             max_single_bet: 0,
             max_bets_per_record: DEFAULT_MAX_BETS_PER_RECORD,
             version: upgrade::current_version(),
+        };
+
+        // Emit event so indexer can populate spot_config table
+        event::emit(SpotConfigUpdatedEvent {
+            updated_by: admin,
+            enable_flag: DEFAULT_ENABLE,
+            confidence_threshold_bps: DEFAULT_CONFIDENCE_THRESHOLD_BPS,
+            resolution_window_epochs: DEFAULT_RESOLUTION_WINDOW_EPOCHS,
+            max_resolution_window_epochs: DEFAULT_MAX_RESOLUTION_WINDOW_EPOCHS,
+            payout_delay_ms: DEFAULT_PAYOUT_DELAY_MS,
+            fee_bps: DEFAULT_FEE_BPS,
+            fee_split_bps_platform: DEFAULT_FEE_SPLIT_PLATFORM_BPS,
+            oracle_address: admin,
+            max_single_bet: 0,
+            max_bets_per_record: DEFAULT_MAX_BETS_PER_RECORD,
+            timestamp: tx_context::epoch_timestamp_ms(ctx),
         });
+
+        transfer::share_object(config);
     }
 
     /// Create a SpotAdminCap for bootstrap (package visibility only)

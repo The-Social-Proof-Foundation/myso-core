@@ -422,11 +422,19 @@ module social_contracts::profile {
         };
         
         // Create the Ecosystem treasury owned by the contract deployer
+        let sender = tx_context::sender(ctx);
         let treasury = EcosystemTreasury {
             id: object::new(ctx),
-            treasury_address: tx_context::sender(ctx),
+            treasury_address: sender,
             version: current_version,
         };
+
+        // Emit event so indexer can populate ecosystem_treasury table
+        event::emit(EcosystemTreasuryUpdatedEvent {
+            updated_by: sender,
+            new_treasury_address: sender,
+            timestamp: tx_context::epoch_timestamp_ms(ctx),
+        });
         
         // Share the registry to make it globally accessible
         transfer::share_object(registry);

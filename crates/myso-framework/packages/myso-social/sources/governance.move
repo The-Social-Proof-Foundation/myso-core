@@ -93,7 +93,7 @@ module social_contracts::governance {
         quorum_votes: u64,  // Minimum number of votes required for a valid proposal outcome
         /// Tables and mappings
         delegates: Table<address, Delegate>,
-        proposals: Table<ID, ()>,
+        proposals: Table<ID, bool>,
         proposal_types: Table<ID, u8>,
         proposals_by_status: Table<u8, vector<ID>>,
         treasury: Balance<MYSO>, /// Treasury for proposal costs and rewards
@@ -322,7 +322,7 @@ module social_contracts::governance {
             quorum_votes: 20, // 20 votes required for ecosystem proposals
             // Tables
             delegates: table::new<address, Delegate>(ctx),
-            proposals: table::new<ID, ()>(ctx),
+            proposals: table::new<ID, bool>(ctx),
             proposal_types: table::new<ID, u8>(ctx),
             proposals_by_status: table::new<u8, vector<ID>>(ctx),
             treasury: balance::zero(),
@@ -370,7 +370,7 @@ module social_contracts::governance {
             quorum_votes: 10, // 10 votes required for proof of creativity proposals
             // Tables
             delegates: table::new<address, Delegate>(ctx),
-            proposals: table::new<ID, ()>(ctx),
+            proposals: table::new<ID, bool>(ctx),
             proposal_types: table::new<ID, u8>(ctx),
             proposals_by_status: table::new<u8, vector<ID>>(ctx),
             treasury: balance::zero(),
@@ -1113,7 +1113,7 @@ module social_contracts::governance {
         // Share proposal as shared object and register in registry
         let proposal_id_copy = object::id(&proposal);
         transfer::share_object(proposal);
-        table::add(&mut registry.proposals, proposal_id_copy, ());
+        table::add(&mut registry.proposals, proposal_id_copy, true);
         table::add(&mut registry.proposal_types, proposal_id_copy, proposal_type);
         
         // Add to proposals by status
@@ -2050,7 +2050,7 @@ module social_contracts::governance {
             quorum_votes,
             // Tables
             delegates: table::new<address, Delegate>(ctx),
-            proposals: table::new<ID, ()>(ctx),
+            proposals: table::new<ID, bool>(ctx),
             proposal_types: table::new<ID, u8>(ctx),
             proposals_by_status: table::new<u8, vector<ID>>(ctx),
             treasury: balance::zero(),
