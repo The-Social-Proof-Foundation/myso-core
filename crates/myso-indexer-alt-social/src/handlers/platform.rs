@@ -284,13 +284,21 @@ fn process_platform_created_event(
         normalize_dao_fields(&ev);
     let release_date = normalize_date_format(&ev.release_date);
 
+    let developer = ev.developer;
+    let moderator = NewPlatformModerator {
+        platform_id: ev.platform_id.clone(),
+        moderator_address: developer.clone(),
+        added_by: developer.clone(),
+        created_at: now,
+    };
+
     let platform = NewPlatform {
         platform_id: ev.platform_id.clone(),
         name: ev.name,
         tagline: ev.tagline,
         description: Some(ev.description).filter(|s| !s.is_empty()),
         logo: Some(ev.logo).filter(|s| !s.is_empty()),
-        developer_address: ev.developer,
+        developer_address: developer,
         terms_of_service: Some(ev.terms_of_service),
         privacy_policy: Some(ev.privacy_policy),
         platform_names: Some(serde_json::to_value(&ev.platforms).unwrap_or_default()),
@@ -331,6 +339,7 @@ fn process_platform_created_event(
 
     Some(vec![
         SocialEventRow::Platform(platform),
+        SocialEventRow::PlatformModerator(moderator),
         SocialEventRow::PlatformEvent(platform_event),
     ])
 }
