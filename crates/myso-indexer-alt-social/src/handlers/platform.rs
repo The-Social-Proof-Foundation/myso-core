@@ -34,6 +34,38 @@ where
     Option::deserialize(d)
 }
 
+fn normalize_date_format(date_str: &str) -> String {
+    if date_str.is_empty() {
+        return date_str.to_string();
+    }
+    if date_str.matches('-').count() == 2 {
+        let parts: Vec<&str> = date_str.split('-').collect();
+        if parts.len() == 3 && parts[0].len() == 4 {
+            return date_str.to_string();
+        }
+    }
+    let parts: Vec<&str> = date_str.split('/').collect();
+    if parts.len() == 3 {
+        if let (Ok(month), Ok(day), year_str) = (
+            parts[0].parse::<u32>(),
+            parts[1].parse::<u32>(),
+            parts[2],
+        ) {
+            let year = if year_str.len() == 2 {
+                year_str.parse::<u32>().map(|yy| if yy < 50 { 2000 + yy } else { 1900 + yy }).unwrap_or(0)
+            } else if year_str.len() == 4 {
+                year_str.parse::<u32>().unwrap_or(0)
+            } else {
+                0
+            };
+            if (1..=12).contains(&month) && (1..=31).contains(&day) && year > 0 {
+                return format!("{:04}-{:02}-{:02}", year, month, day);
+            }
+        }
+    }
+    date_str.to_string()
+}
+
 fn ms_to_naive(ms: u64) -> chrono::NaiveDateTime {
     if ms == 0 {
         return Utc::now().naive_utc();
@@ -69,7 +101,7 @@ struct PlatformCreatedEvent {
     status: PlatformStatus,
     release_date: String,
     #[serde(default)]
-    wants_dao_governance: bool,
+    wants_dao_governance: Option<bool>,
     #[serde(default)]
     governance_registry_id: Option<String>,
     #[serde(default, deserialize_with = "de_opt_u64")]
@@ -215,12 +247,42 @@ pub fn handle_platform_event(
     }
 }
 
+fn normalize_dao_fields(ev: &PlatformCreatedEvent) -> (bool, Option<String>, Option<i64>, Option<i64>, Option<i64>, Option<i64>, Option<i64>, Option<i64>, Option<i64>, Option<i64>) {
+    let explicit_dao = ev.wants_dao_governance.unwrap_or(false);
+    let has_governance_registry = ev.governance_registry_id.is_some();
+    let has_dao_fields = ev.delegate_count.is_some()
+        || ev.delegate_term_epochs.is_some()
+        || ev.max_votes_per_user.is_some()
+        || ev.min_on_chain_age_days.is_some()
+        || ev.proposal_submission_cost.is_some()
+        || ev.quadratic_base_cost.is_some()
+        || ev.quorum_votes.is_some()
+        || ev.voting_period_epochs.is_some();
+    let is_dao = explicit_dao || has_governance_registry || has_dao_fields;
+    let wants_dao = is_dao;
+    (
+        wants_dao,
+        ev.governance_registry_id.clone(),
+        ev.delegate_count.map(|v| v as i64),
+        ev.delegate_term_epochs.map(|v| v as i64),
+        ev.max_votes_per_user.map(|v| v as i64),
+        ev.min_on_chain_age_days.map(|v| v as i64),
+        ev.proposal_submission_cost.map(|v| v as i64),
+        ev.quadratic_base_cost.map(|v| v as i64),
+        ev.quorum_votes.map(|v| v as i64),
+        ev.voting_period_epochs.map(|v| v as i64),
+    )
+}
+
 fn process_platform_created_event(
     data: &serde_json::Value,
     event_id: &str,
 ) -> Option<Vec<SocialEventRow>> {
     let ev: PlatformCreatedEvent = serde_json::from_value(data.clone()).ok()?;
     let now = Utc::now().naive_utc();
+    let (wants_dao, governance_registry_id, delegate_count, delegate_term_epochs, max_votes_per_user, min_on_chain_age_days, proposal_submission_cost, quadratic_base_cost, quorum_votes, voting_period_epochs) =
+        normalize_dao_fields(&ev);
+    let release_date = normalize_date_format(&ev.release_date);
 
     let platform = NewPlatform {
         platform_id: ev.platform_id.clone(),
@@ -234,23 +296,23 @@ fn process_platform_created_event(
         platform_names: Some(serde_json::to_value(&ev.platforms).unwrap_or_default()),
         links: Some(serde_json::to_value(&ev.links).unwrap_or_default()),
         status: ev.status.status as i16,
-        release_date: Some(ev.release_date),
+        release_date: Some(release_date),
         shutdown_date: None,
         created_at: now,
         updated_at: now,
         is_approved: false,
         approval_changed_at: None,
         approved_by: None,
-        wants_dao_governance: Some(ev.wants_dao_governance),
-        governance_registry_id: ev.governance_registry_id,
-        delegate_count: ev.delegate_count.map(|v| v as i64),
-        delegate_term_epochs: ev.delegate_term_epochs.map(|v| v as i64),
-        max_votes_per_user: ev.max_votes_per_user.map(|v| v as i64),
-        min_on_chain_age_days: ev.min_on_chain_age_days.map(|v| v as i64),
-        proposal_submission_cost: ev.proposal_submission_cost.map(|v| v as i64),
-        quadratic_base_cost: ev.quadratic_base_cost.map(|v| v as i64),
-        quorum_votes: ev.quorum_votes.map(|v| v as i64),
-        voting_period_epochs: ev.voting_period_epochs.map(|v| v as i64),
+        wants_dao_governance: Some(wants_dao),
+        governance_registry_id,
+        delegate_count,
+        delegate_term_epochs,
+        max_votes_per_user,
+        min_on_chain_age_days,
+        proposal_submission_cost,
+        quadratic_base_cost,
+        quorum_votes,
+        voting_period_epochs,
         treasury: None,
         version: None,
         primary_category: ev.primary_category,
@@ -290,6 +352,7 @@ fn process_platform_updated_event(
         reasoning: None,
     };
 
+    let release_date = normalize_date_format(&ev.release_date);
     Some(vec![
         SocialEventRow::PlatformUpdate {
             platform_id: ev.platform_id,
@@ -301,7 +364,7 @@ fn process_platform_updated_event(
             platform_names: Some(serde_json::to_value(&ev.platforms).unwrap_or_default()),
             links: Some(serde_json::to_value(&ev.links).unwrap_or_default()),
             status: ev.status.status as i16,
-            release_date: Some(ev.release_date),
+            release_date: Some(release_date),
             shutdown_date: ev.shutdown_date,
             updated_at,
             primary_category: ev.primary_category,

@@ -27,7 +27,7 @@ use crate::reader::types::{
 };
 use myso_pg_db::Db;
 
-async fn enrich_users_with_universal_data(
+pub(crate) async fn enrich_users_with_universal_data(
     conn: &mut diesel_async::AsyncPgConnection,
     wallet_addresses: Vec<String>,
 ) -> Result<HashMap<String, UniversalUserResult>, SocialError> {

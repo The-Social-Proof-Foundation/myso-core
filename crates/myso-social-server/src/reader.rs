@@ -56,6 +56,14 @@ impl Reader {
         profile::get_profiles(&self.db, limit, offset).await
     }
 
+    pub async fn get_profiles_enriched(
+        &self,
+        limit: i64,
+        offset: i64,
+    ) -> Result<Vec<crate::reader::UniversalUserResult>, crate::error::SocialError> {
+        profile::get_profiles_enriched(&self.db, limit, offset).await
+    }
+
     pub async fn get_profile_count(&self) -> Result<i64, crate::error::SocialError> {
         profile::get_profile_count(&self.db).await
     }

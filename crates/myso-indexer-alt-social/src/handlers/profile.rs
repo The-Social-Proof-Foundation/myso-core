@@ -8,7 +8,9 @@ use serde::{Deserialize, Deserializer};
 use std::str::FromStr;
 
 use super::{ProfileUpdate, SocialEventRow};
-use myso_indexer_alt_social_schema::models::{NewProfile, NewProfileEvent};
+use myso_indexer_alt_social_schema::models::{
+    NewProfile, NewProfileEvent, NewVestingEvent, NewVestingWallet,
+};
 
 fn deserialize_number_from_string<'de, T, D>(deserializer: D) -> Result<T, D::Error>
 where
@@ -259,8 +261,12 @@ pub fn handle_profile_event(
         "UsernameUpdatedEvent" => process_username_updated_event(data),
         "BadgeAssignedEvent" => process_badge_assigned_event(data, event_id),
         "BadgeRevokedEvent" => process_badge_revoked_event(data, event_id),
+        "BadgeRemovedEvent" => process_badge_removed_event(data, event_id),
         "BadgeSelectedEvent" => process_badge_selected_event(data, event_id),
         "PaidMessagingSettingsUpdatedEvent" => process_paid_messaging_settings_updated_event(data),
+        "TokensVestedEvent" => process_tokens_vested_event(data, event_id),
+        "TokensClaimedEvent" => process_tokens_claimed_event(data, event_id),
+        "VestingWalletDeletedEvent" => process_vesting_wallet_deleted_event(data, event_id),
         _ => None,
     }
 }
@@ -753,6 +759,228 @@ fn process_paid_messaging_settings_updated_event(
         paid_messaging_min_cost: ev.min_cost.map(|v| v as i64),
     };
     Some(vec![SocialEventRow::ProfileUpdate(up)])
+}
+
+#[derive(Debug, Clone, Deserialize)]
+struct BadgeRemovedEvent {
+    #[serde(rename = "profile_id", default)]
+    profile_id: String,
+    #[serde(rename = "badge_id", default)]
+    badge_id: String,
+    #[serde(rename = "platform_id", default)]
+    _platform_id: String,
+    #[serde(rename = "removed_by", default)]
+    removed_by: String,
+    #[serde(
+        rename = "removed_at",
+        default = "default_timestamp",
+        deserialize_with = "deserialize_number_from_string"
+    )]
+    removed_at: u64,
+}
+
+fn process_badge_removed_event(
+    data: &serde_json::Value,
+    event_id: &str,
+) -> Option<Vec<SocialEventRow>> {
+    let ev: BadgeRemovedEvent = serde_json::from_value(data.clone()).ok()?;
+    let event = NewProfileEvent {
+        event_type: "BadgeRemoved".to_string(),
+        profile_id: ev.profile_id.clone(),
+        event_data: serde_json::json!({
+            "badge_id": ev.badge_id,
+            "removed_by": ev.removed_by,
+            "removed_at": ev.removed_at,
+        }),
+        event_id: Some(event_id.to_string()),
+        created_at: chrono::Utc::now().naive_utc(),
+        updated_at: chrono::Utc::now().naive_utc(),
+    };
+    Some(vec![
+        SocialEventRow::ProfileBadgeRevoke {
+            profile_id: ev.profile_id,
+            badge_id: ev.badge_id,
+            revoked_at: ev.removed_at as i64,
+            revoked_by: ev.removed_by,
+        },
+        SocialEventRow::ProfileEvent(event),
+    ])
+}
+
+#[derive(Debug, Clone, Deserialize)]
+struct TokensVestedEvent {
+    #[serde(rename = "wallet_id", default)]
+    wallet_id: String,
+    #[serde(rename = "owner", default)]
+    owner: String,
+    #[serde(
+        rename = "total_amount",
+        default,
+        deserialize_with = "deserialize_optional_number_from_string"
+    )]
+    total_amount: Option<u64>,
+    #[serde(
+        rename = "start_time",
+        default,
+        deserialize_with = "deserialize_optional_number_from_string"
+    )]
+    start_time: Option<u64>,
+    #[serde(
+        rename = "duration",
+        default,
+        deserialize_with = "deserialize_optional_number_from_string"
+    )]
+    duration: Option<u64>,
+    #[serde(
+        rename = "curve_factor",
+        default,
+        deserialize_with = "deserialize_optional_number_from_string"
+    )]
+    curve_factor: Option<u64>,
+    #[serde(
+        rename = "vested_at",
+        default,
+        deserialize_with = "deserialize_optional_number_from_string"
+    )]
+    vested_at: Option<u64>,
+}
+
+fn process_tokens_vested_event(
+    data: &serde_json::Value,
+    event_id: &str,
+) -> Option<Vec<SocialEventRow>> {
+    let ev: TokensVestedEvent = serde_json::from_value(data.clone()).ok()?;
+    let total_amount = ev.total_amount.unwrap_or(0) as i64;
+    let start_time = ev.start_time.unwrap_or(0) as i64;
+    let duration = ev.duration.unwrap_or(0) as i64;
+    let curve_factor = ev.curve_factor.unwrap_or(1000) as i64;
+    let now = Utc::now().naive_utc();
+    let wallet = NewVestingWallet {
+        wallet_id: ev.wallet_id.clone(),
+        owner_address: ev.owner.clone(),
+        total_amount,
+        start_time,
+        duration,
+        curve_factor,
+        claimed_amount: 0,
+        remaining_balance: total_amount,
+        created_at: now,
+        updated_at: now,
+        transaction_id: event_id.to_string(),
+    };
+    let vest_event = NewVestingEvent {
+        wallet_id: ev.wallet_id,
+        event_type: "vested".to_string(),
+        owner_address: ev.owner,
+        amount: total_amount,
+        remaining_balance: Some(total_amount),
+        start_time: Some(start_time),
+        duration: Some(duration),
+        curve_factor: Some(curve_factor),
+        event_time: ev.vested_at.unwrap_or(0) as i64,
+        time: Utc::now(),
+        transaction_id: event_id.to_string(),
+    };
+    Some(vec![
+        SocialEventRow::VestingWallet(wallet),
+        SocialEventRow::VestingEvent(vest_event),
+    ])
+}
+
+#[derive(Debug, Clone, Deserialize)]
+struct TokensClaimedEvent {
+    #[serde(rename = "wallet_id", default)]
+    wallet_id: String,
+    #[serde(rename = "owner", default)]
+    owner: String,
+    #[serde(
+        rename = "claimed_amount",
+        default,
+        deserialize_with = "deserialize_optional_number_from_string"
+    )]
+    claimed_amount: Option<u64>,
+    #[serde(
+        rename = "remaining_balance",
+        default,
+        deserialize_with = "deserialize_optional_number_from_string"
+    )]
+    remaining_balance: Option<u64>,
+    #[serde(
+        rename = "claimed_at",
+        default,
+        deserialize_with = "deserialize_optional_number_from_string"
+    )]
+    claimed_at: Option<u64>,
+}
+
+fn process_tokens_claimed_event(
+    data: &serde_json::Value,
+    event_id: &str,
+) -> Option<Vec<SocialEventRow>> {
+    let ev: TokensClaimedEvent = serde_json::from_value(data.clone()).ok()?;
+    let claimed_amount = ev.claimed_amount.unwrap_or(0) as i64;
+    let remaining_balance = ev.remaining_balance.unwrap_or(0) as i64;
+    let vest_event = NewVestingEvent {
+        wallet_id: ev.wallet_id.clone(),
+        event_type: "claimed".to_string(),
+        owner_address: ev.owner.clone(),
+        amount: claimed_amount,
+        remaining_balance: Some(remaining_balance),
+        start_time: None,
+        duration: None,
+        curve_factor: None,
+        event_time: ev.claimed_at.unwrap_or(0) as i64,
+        time: Utc::now(),
+        transaction_id: event_id.to_string(),
+    };
+    Some(vec![
+        SocialEventRow::VestingEvent(vest_event),
+        SocialEventRow::VestingWalletClaimUpdate {
+            wallet_id: ev.wallet_id,
+            claimed_amount,
+            remaining_balance,
+        },
+    ])
+}
+
+#[derive(Debug, Clone, Deserialize)]
+struct VestingWalletDeletedEvent {
+    #[serde(rename = "wallet_id", default)]
+    wallet_id: String,
+    #[serde(rename = "owner", default)]
+    _owner: String,
+    #[serde(
+        rename = "deleted_at",
+        default,
+        deserialize_with = "deserialize_optional_number_from_string"
+    )]
+    deleted_at: Option<u64>,
+}
+
+fn process_vesting_wallet_deleted_event(
+    data: &serde_json::Value,
+    event_id: &str,
+) -> Option<Vec<SocialEventRow>> {
+    let ev: VestingWalletDeletedEvent = serde_json::from_value(data.clone()).ok()?;
+    let vest_event = NewVestingEvent {
+        wallet_id: ev.wallet_id.clone(),
+        event_type: "deleted".to_string(),
+        owner_address: ev._owner.clone(),
+        amount: 0,
+        remaining_balance: None,
+        start_time: None,
+        duration: None,
+        curve_factor: None,
+        event_time: ev.deleted_at.unwrap_or(0) as i64,
+        time: Utc::now(),
+        transaction_id: event_id.to_string(),
+    };
+    Some(vec![
+        SocialEventRow::VestingEvent(vest_event),
+        SocialEventRow::VestingWalletDelete {
+            wallet_id: ev.wallet_id,
+        },
+    ])
 }
 
 #[cfg(test)]

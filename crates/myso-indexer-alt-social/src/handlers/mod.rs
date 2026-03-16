@@ -49,17 +49,19 @@ use myso_indexer_alt_social_schema::models::{
     NewPlatformModerator, NewPlatformTokenAirdrop, NewPocAnalysisResult, NewPocBadge,
     NewPocConfiguration, NewPocDispute, NewPocDisputeVote, NewPocRevenueRedirection, NewPost,
     NewProfile, NewProfileBadge, NewProfileEvent, NewProfileSubscription,
-    NewProfileSubscriptionService, NewProposal, NewReaction, NewReactionCount, NewReport,
+    NewProfileSubscriptionService, NewPromotedPost, NewPromotionBudgetEvent, NewPromotionStatusEvent,
+    NewPromotionView, NewProposal, NewReaction, NewReactionCount, NewReport,
     NewRepost, NewRewardDistribution, NewSocialGraphEvent, NewSocialGraphRelationship,
     NewSocialProofTokensConfig, NewSocialProofTokensEvent, NewSpotBet, NewSpotBetWithdrawal,
     NewSpotConfig, NewSpotEventLog, NewSpotPayout, NewSpotRecord, NewSpotRefund, NewSpotResolution,
     NewSptExchangeConfig, NewSptHolding, NewSptPool, NewSptPriceHistory, NewSptReservation,
     NewSptReservationPool, NewSptRevenue, NewSptTransaction, NewSubscriptionEvent,
-    NewSubscriptionRevenue, NewTip, NewUnifiedRevenue, NewUpgradeEvent, NewVoteDecryptionFailure,
-    ProfileUpdateSet, ProposalUpdateSet,
+    NewSubscriptionRevenue, NewTip, NewUnifiedRevenue, NewUpgradeEvent, NewVestingEvent,
+    NewVestingWallet, NewVoteDecryptionFailure, ProfileUpdateSet, ProposalUpdateSet,
 };
 use myso_indexer_alt_social_schema::schema::{
     anonymous_votes, blocked_events, blocked_profiles, comments, community_votes, delegate_ratings,
+    post_config, promoted_posts, promotion_budget_events, promotion_status_events, promotion_views,
     delegate_votes, delegates, governance_events, governance_registries, nominated_delegates,
     platform_blocked_profiles, platform_events, platform_memberships, platform_moderators,
     platform_token_airdrops, platforms, poc_analysis_results, poc_badges, poc_configuration,
@@ -87,6 +89,7 @@ use myso_indexer_alt_social_schema::schema::{
     spot_bet_withdrawals, spot_bets, spot_config, spot_events, spot_payouts, spot_records,
     spot_refunds, spot_resolutions,
 };
+use myso_indexer_alt_social_schema::schema::{vesting_events, vesting_wallets};
 use myso_types::base_types::ObjectID;
 use myso_types::MYSO_SOCIAL_PACKAGE_ID;
 use tracing::{debug, warn};
@@ -165,6 +168,96 @@ pub enum SocialEventRow {
     PostCommentCountIncrement {
         post_id: String,
         delta: i64,
+    },
+    PostCommentCountDecrementByComment {
+        comment_id: String,
+        owner: String,
+    },
+    ProfilePostCountIncrement { owner_address: String },
+    ProfilePostCountDecrement { owner_address: String },
+    PostRepostCountIncrement {
+        original_id: String,
+        is_original_post: bool,
+    },
+    PostTipsReceivedIncrement {
+        object_id: String,
+        amount: i64,
+        is_post: bool,
+    },
+    PostModerationUpdate {
+        object_id: String,
+        removed: bool,
+        moderated_by: String,
+    },
+    PostDeletedAtUpdate {
+        object_id: String,
+        owner: String,
+        deleted_at: i64,
+    },
+    CommentDeletedAtUpdate {
+        object_id: String,
+        owner: String,
+        deleted_at: i64,
+    },
+    PostContentUpdate {
+        object_id: String,
+        content: String,
+        media_urls: Option<serde_json::Value>,
+        mentions: Option<serde_json::Value>,
+        metadata_json: Option<serde_json::Value>,
+        is_post: bool,
+        updated_at: i64,
+    },
+    PostOwnerUpdate {
+        object_id: String,
+        new_owner: String,
+        is_post: bool,
+    },
+    PostConfig {
+        updated_by: String,
+        max_content_length: i64,
+        max_media_urls: i64,
+        max_mentions: i64,
+        max_metadata_size: i64,
+        max_description_length: i64,
+        max_reaction_length: i64,
+        commenter_tip_percentage: i64,
+        repost_tip_percentage: i64,
+        version: Option<i64>,
+        updated_at: i64,
+        transaction_id: String,
+    },
+    PromotedPost {
+        post_id: String,
+        owner: String,
+        profile_id: String,
+        payment_per_view: i64,
+        total_budget: i64,
+        created_at: i64,
+        transaction_id: String,
+    },
+    PromotionView {
+        promotion_id: String,
+        viewer: String,
+        payment_amount: i64,
+        view_duration: i64,
+        platform_id: String,
+        timestamp: i64,
+        transaction_id: String,
+    },
+    PromotionStatusEvent {
+        promotion_id: String,
+        toggled_by: String,
+        new_status: bool,
+        timestamp: i64,
+        transaction_id: String,
+    },
+    PromotionBudgetEvent {
+        promotion_id: String,
+        owner: String,
+        withdrawn_amount: i64,
+        timestamp: i64,
+        transaction_id: String,
     },
     Platform(NewPlatform),
     PlatformUpdate {
@@ -381,6 +474,16 @@ pub enum SocialEventRow {
     },
     UpgradeEvent(NewUpgradeEvent),
     ObjectMigratedEvent(NewObjectMigratedEvent),
+    VestingWallet(NewVestingWallet),
+    VestingEvent(NewVestingEvent),
+    VestingWalletClaimUpdate {
+        wallet_id: String,
+        claimed_amount: i64,
+        remaining_balance: i64,
+    },
+    VestingWalletDelete {
+        wallet_id: String,
+    },
     ProfileSubscriptionService(NewProfileSubscriptionService),
     ProfileSubscription(NewProfileSubscription),
     SubscriptionEvent(NewSubscriptionEvent),
@@ -472,7 +575,7 @@ pub struct ProfileUpdate {
 }
 
 impl FieldCount for SocialEventRow {
-    const FIELD_COUNT: usize = 111;
+    const FIELD_COUNT: usize = 115;
 }
 
 /// Routes a parsed event to the appropriate domain handler based on Move module name.
@@ -1220,6 +1323,384 @@ impl Handler for SocialEvents {
                         .set(posts::comment_count.eq(posts::comment_count + delta))
                         .execute(conn)
                         .await;
+                }
+                SocialEventRow::PostCommentCountDecrementByComment {
+                    comment_id,
+                    owner,
+                } => {
+                    use diesel::sql_query;
+                    use diesel::sql_types::Text;
+                    let _ = sql_query(
+                        "UPDATE posts SET comment_count = comment_count - 1 WHERE post_id = (SELECT post_id FROM comments WHERE comment_id = $1 AND owner = $2 LIMIT 1)",
+                    )
+                    .bind::<Text, _>(comment_id)
+                    .bind::<Text, _>(owner)
+                    .execute(conn)
+                    .await;
+                }
+                SocialEventRow::ProfilePostCountIncrement { owner_address } => {
+                    let _ = diesel::update(profiles::table)
+                        .filter(profiles::owner_address.eq(owner_address))
+                        .set(profiles::post_count.eq(profiles::post_count + 1))
+                        .execute(conn)
+                        .await;
+                }
+                SocialEventRow::ProfilePostCountDecrement { owner_address } => {
+                    let _ = diesel::update(profiles::table)
+                        .filter(profiles::owner_address.eq(owner_address))
+                        .set(profiles::post_count.eq(profiles::post_count - 1))
+                        .execute(conn)
+                        .await;
+                }
+                SocialEventRow::PostRepostCountIncrement {
+                    original_id,
+                    is_original_post,
+                } => {
+                    if *is_original_post {
+                        let _ = diesel::update(posts::table)
+                            .filter(posts::post_id.eq(original_id))
+                            .set(posts::repost_count.eq(posts::repost_count + 1))
+                            .execute(conn)
+                            .await;
+                    } else {
+                        let _ = diesel::update(comments::table)
+                            .filter(comments::comment_id.eq(original_id))
+                            .set(comments::repost_count.eq(comments::repost_count + 1))
+                            .execute(conn)
+                            .await;
+                    }
+                }
+                SocialEventRow::PostTipsReceivedIncrement {
+                    object_id,
+                    amount,
+                    is_post,
+                } => {
+                    if *is_post {
+                        let _ = diesel::update(posts::table)
+                            .filter(posts::post_id.eq(object_id))
+                            .set(posts::tips_received.eq(posts::tips_received + amount))
+                            .execute(conn)
+                            .await;
+                    } else {
+                        let _ = diesel::update(comments::table)
+                            .filter(comments::comment_id.eq(object_id))
+                            .set(comments::tips_received.eq(comments::tips_received + amount))
+                            .execute(conn)
+                            .await;
+                    }
+                }
+                SocialEventRow::PostModerationUpdate {
+                    object_id,
+                    removed,
+                    moderated_by,
+                } => {
+                    let post_updated = diesel::update(posts::table)
+                        .filter(posts::post_id.eq(object_id))
+                        .set((
+                            posts::removed_from_platform.eq(*removed),
+                            posts::removed_by.eq(Some(moderated_by.clone())),
+                        ))
+                        .execute(conn)
+                        .await
+                        .unwrap_or(0);
+                    if post_updated == 0 {
+                        let _ = diesel::update(comments::table)
+                            .filter(comments::comment_id.eq(object_id))
+                            .set((
+                                comments::removed_from_platform.eq(*removed),
+                                comments::removed_by.eq(Some(moderated_by.clone())),
+                            ))
+                            .execute(conn)
+                            .await;
+                    }
+                }
+                SocialEventRow::PostDeletedAtUpdate {
+                    object_id,
+                    owner,
+                    deleted_at,
+                } => {
+                    let _ = diesel::update(posts::table)
+                        .filter(posts::post_id.eq(object_id))
+                        .filter(posts::owner.eq(owner))
+                        .set(posts::deleted_at.eq(Some(*deleted_at)))
+                        .execute(conn)
+                        .await;
+                }
+                SocialEventRow::CommentDeletedAtUpdate {
+                    object_id,
+                    owner,
+                    deleted_at,
+                } => {
+                    let _ = diesel::update(comments::table)
+                        .filter(comments::comment_id.eq(object_id))
+                        .filter(comments::owner.eq(owner))
+                        .set(comments::deleted_at.eq(Some(*deleted_at)))
+                        .execute(conn)
+                        .await;
+                }
+                SocialEventRow::PostContentUpdate {
+                    object_id,
+                    content,
+                    media_urls,
+                    mentions,
+                    metadata_json,
+                    is_post,
+                    updated_at,
+                } => {
+                    if *is_post {
+                        let _ = diesel::update(posts::table)
+                            .filter(posts::post_id.eq(object_id))
+                            .set((
+                                posts::content.eq(content),
+                                posts::media_urls.eq(media_urls),
+                                posts::mentions.eq(mentions),
+                                posts::metadata_json.eq(metadata_json),
+                                posts::updated_at.eq(Some(*updated_at)),
+                            ))
+                            .execute(conn)
+                            .await;
+                    } else {
+                        let _ = diesel::update(comments::table)
+                            .filter(comments::comment_id.eq(object_id))
+                            .set((
+                                comments::content.eq(content),
+                                comments::media_urls.eq(media_urls),
+                                comments::mentions.eq(mentions),
+                                comments::metadata_json.eq(metadata_json),
+                                comments::updated_at.eq(Some(*updated_at)),
+                            ))
+                            .execute(conn)
+                            .await;
+                    }
+                }
+                SocialEventRow::PostOwnerUpdate {
+                    object_id,
+                    new_owner,
+                    is_post,
+                } => {
+                    if *is_post {
+                        let _ = diesel::update(posts::table)
+                            .filter(posts::post_id.eq(object_id))
+                            .set(posts::owner.eq(new_owner))
+                            .execute(conn)
+                            .await;
+                    } else {
+                        let _ = diesel::update(comments::table)
+                            .filter(comments::comment_id.eq(object_id))
+                            .set(comments::owner.eq(new_owner))
+                            .execute(conn)
+                            .await;
+                    }
+                }
+                SocialEventRow::PostConfig {
+                    updated_by,
+                    max_content_length,
+                    max_media_urls,
+                    max_mentions,
+                    max_metadata_size,
+                    max_description_length,
+                    max_reaction_length,
+                    commenter_tip_percentage,
+                    repost_tip_percentage,
+                    version,
+                    updated_at,
+                    transaction_id,
+                } => {
+                    use diesel::sql_query;
+                    use diesel::sql_types::{BigInt, Text};
+                    let version_val = version.unwrap_or(-1);
+                    if version_val >= 0 {
+                        let _ = diesel::insert_into(post_config::table)
+                            .values((
+                                post_config::updated_by.eq(updated_by),
+                                post_config::max_content_length.eq(max_content_length),
+                                post_config::max_media_urls.eq(max_media_urls),
+                                post_config::max_mentions.eq(max_mentions),
+                                post_config::max_metadata_size.eq(max_metadata_size),
+                                post_config::max_description_length.eq(max_description_length),
+                                post_config::max_reaction_length.eq(max_reaction_length),
+                                post_config::commenter_tip_percentage.eq(commenter_tip_percentage),
+                                post_config::repost_tip_percentage.eq(repost_tip_percentage),
+                                post_config::version.eq(version_val),
+                                post_config::updated_at.eq(updated_at),
+                                post_config::transaction_id.eq(transaction_id),
+                            ))
+                            .execute(conn)
+                            .await;
+                    } else {
+                        let _ = sql_query(
+                            r#"INSERT INTO post_config (updated_by, max_content_length, max_media_urls, max_mentions, max_metadata_size, max_description_length, max_reaction_length, commenter_tip_percentage, repost_tip_percentage, version, updated_at, transaction_id)
+                               SELECT $1, $2, $3, $4, $5, $6, $7, $8, $9, COALESCE((SELECT MAX(version) FROM post_config), 0) + 1, $10, $11"#,
+                        )
+                        .bind::<Text, _>(updated_by)
+                        .bind::<BigInt, _>(max_content_length)
+                        .bind::<BigInt, _>(max_media_urls)
+                        .bind::<BigInt, _>(max_mentions)
+                        .bind::<BigInt, _>(max_metadata_size)
+                        .bind::<BigInt, _>(max_description_length)
+                        .bind::<BigInt, _>(max_reaction_length)
+                        .bind::<BigInt, _>(commenter_tip_percentage)
+                        .bind::<BigInt, _>(repost_tip_percentage)
+                        .bind::<BigInt, _>(updated_at)
+                        .bind::<Text, _>(transaction_id)
+                        .execute(conn)
+                        .await;
+                    }
+                }
+                SocialEventRow::PromotedPost {
+                    post_id,
+                    owner,
+                    profile_id,
+                    payment_per_view,
+                    total_budget,
+                    created_at,
+                    transaction_id,
+                } => {
+                    let promotion_id_opt: Option<String> = posts::table
+                        .filter(posts::post_id.eq(&post_id))
+                        .order(posts::time.desc())
+                        .select(posts::promotion_id)
+                        .first::<Option<String>>(conn)
+                        .await
+                        .ok()
+                        .flatten();
+                    if let Some(promotion_id) = promotion_id_opt {
+                        let time = chrono::DateTime::from_timestamp(created_at / 1000, 0)
+                            .unwrap_or_else(chrono::Utc::now);
+                        let row = NewPromotedPost {
+                            promotion_id,
+                            post_id: post_id.clone(),
+                            owner: owner.clone(),
+                            profile_id: profile_id.clone(),
+                            payment_per_view: *payment_per_view,
+                            total_budget: *total_budget,
+                            remaining_budget: *total_budget,
+                            active: false,
+                            created_at: *created_at,
+                            time,
+                            transaction_id: transaction_id.clone(),
+                        };
+                        total += diesel::insert_into(promoted_posts::table)
+                            .values(&row)
+                            .execute(conn)
+                            .await?;
+                    }
+                }
+                SocialEventRow::PromotionView {
+                    promotion_id,
+                    viewer,
+                    payment_amount,
+                    view_duration,
+                    platform_id,
+                    timestamp,
+                    transaction_id,
+                } => {
+                    let post_id_opt: Option<String> = promoted_posts::table
+                        .filter(promoted_posts::promotion_id.eq(promotion_id))
+                        .order(promoted_posts::time.desc())
+                        .select(promoted_posts::post_id)
+                        .first::<String>(conn)
+                        .await
+                        .ok();
+                    if let Some(post_id) = post_id_opt {
+                        let time = chrono::DateTime::from_timestamp(*timestamp / 1000, 0)
+                            .unwrap_or_else(chrono::Utc::now);
+                        let row = NewPromotionView {
+                            post_id,
+                            promotion_id: promotion_id.clone(),
+                            viewer: viewer.clone(),
+                            payment_amount: *payment_amount,
+                            view_duration: *view_duration,
+                            platform_id: platform_id.clone(),
+                            timestamp: *timestamp,
+                            time,
+                            transaction_id: transaction_id.clone(),
+                        };
+                        total += diesel::insert_into(promotion_views::table)
+                            .values(&row)
+                            .execute(conn)
+                            .await?;
+                    }
+                }
+                SocialEventRow::PromotionStatusEvent {
+                    promotion_id,
+                    toggled_by,
+                    new_status,
+                    timestamp,
+                    transaction_id,
+                } => {
+                    let post_id_opt: Option<String> = promoted_posts::table
+                        .filter(promoted_posts::promotion_id.eq(promotion_id))
+                        .order(promoted_posts::time.desc())
+                        .select(promoted_posts::post_id)
+                        .first::<String>(conn)
+                        .await
+                        .ok();
+                    if let Some(post_id) = post_id_opt {
+                        let time = chrono::DateTime::from_timestamp(*timestamp / 1000, 0)
+                            .unwrap_or_else(chrono::Utc::now);
+                        let row = NewPromotionStatusEvent {
+                            post_id,
+                            promotion_id: promotion_id.clone(),
+                            event_type: "status_toggled".to_string(),
+                            triggered_by: toggled_by.clone(),
+                            new_status: Some(*new_status),
+                            amount: None,
+                            timestamp: *timestamp,
+                            time,
+                            transaction_id: transaction_id.clone(),
+                        };
+                        total += diesel::insert_into(promotion_status_events::table)
+                            .values(&row)
+                            .execute(conn)
+                            .await?;
+                        total += diesel::update(promoted_posts::table)
+                            .filter(promoted_posts::promotion_id.eq(promotion_id))
+                            .set(promoted_posts::active.eq(*new_status))
+                            .execute(conn)
+                            .await?;
+                    }
+                }
+                SocialEventRow::PromotionBudgetEvent {
+                    promotion_id,
+                    owner: _,
+                    withdrawn_amount,
+                    timestamp,
+                    transaction_id,
+                } => {
+                    let post_id_opt: Option<String> = promoted_posts::table
+                        .filter(promoted_posts::promotion_id.eq(promotion_id))
+                        .order(promoted_posts::time.desc())
+                        .select(promoted_posts::post_id)
+                        .first::<String>(conn)
+                        .await
+                        .ok();
+                    if let Some(post_id) = post_id_opt {
+                        let time = chrono::DateTime::from_timestamp(*timestamp / 1000, 0)
+                            .unwrap_or_else(chrono::Utc::now);
+                        let row = NewPromotionBudgetEvent {
+                            promotion_id: promotion_id.clone(),
+                            post_id,
+                            event_type: "withdrawal".to_string(),
+                            amount: *withdrawn_amount,
+                            remaining_budget: 0,
+                            timestamp: *timestamp,
+                            time,
+                            transaction_id: transaction_id.clone(),
+                        };
+                        total += diesel::insert_into(promotion_budget_events::table)
+                            .values(&row)
+                            .execute(conn)
+                            .await?;
+                        total += diesel::update(promoted_posts::table)
+                            .filter(promoted_posts::promotion_id.eq(promotion_id))
+                            .set((
+                                promoted_posts::remaining_budget.eq(0),
+                                promoted_posts::active.eq(false),
+                            ))
+                            .execute(conn)
+                            .await?;
+                    }
                 }
                 SocialEventRow::Platform(p) => {
                     total += diesel::insert_into(platforms::table)
@@ -2352,6 +2833,42 @@ impl Handler for SocialEvents {
                 SocialEventRow::ObjectMigratedEvent(ev) => {
                     total += diesel::insert_into(object_migrated_events::table)
                         .values(ev)
+                        .execute(conn)
+                        .await?;
+                }
+                SocialEventRow::VestingWallet(w) => {
+                    total += diesel::insert_into(vesting_wallets::table)
+                        .values(w)
+                        .on_conflict(vesting_wallets::wallet_id)
+                        .do_nothing()
+                        .execute(conn)
+                        .await?;
+                }
+                SocialEventRow::VestingEvent(ev) => {
+                    total += diesel::insert_into(vesting_events::table)
+                        .values(ev)
+                        .execute(conn)
+                        .await?;
+                }
+                SocialEventRow::VestingWalletClaimUpdate {
+                    wallet_id,
+                    claimed_amount,
+                    remaining_balance,
+                } => {
+                    let now = chrono::Utc::now().naive_utc();
+                    total += diesel::update(vesting_wallets::table)
+                        .filter(vesting_wallets::wallet_id.eq(wallet_id))
+                        .set((
+                            vesting_wallets::claimed_amount.eq(vesting_wallets::claimed_amount + claimed_amount),
+                            vesting_wallets::remaining_balance.eq(remaining_balance),
+                            vesting_wallets::updated_at.eq(now),
+                        ))
+                        .execute(conn)
+                        .await?;
+                }
+                SocialEventRow::VestingWalletDelete { wallet_id } => {
+                    total += diesel::delete(vesting_wallets::table)
+                        .filter(vesting_wallets::wallet_id.eq(wallet_id))
                         .execute(conn)
                         .await?;
                 }

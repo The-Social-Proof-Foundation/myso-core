@@ -12,14 +12,16 @@ use myso_indexer_alt_social_schema::schema::{profiles, wallet_social_graph};
 use serde::Serialize;
 
 use crate::error::SocialError;
+use crate::reader::social_graph::enrich_users_with_universal_data;
+use crate::reader::types::UniversalUserResult;
 use crate::reader::WalletOnlyProfile;
 use myso_pg_db::Db;
 
-/// Result of looking up a profile by address: either a full profile or wallet-only data.
+/// Result of looking up a profile by address: either enriched profile or wallet-only data.
 #[derive(Debug, Serialize)]
 #[serde(untagged)]
 pub enum ProfileOrWallet {
-    Profile(Profile),
+    Profile(UniversalUserResult),
     WalletOnly(WalletOnlyProfile),
 }
 
@@ -37,6 +39,25 @@ pub(crate) async fn get_profiles(
         .load::<Profile>(&mut conn)
         .await?;
     Ok(results)
+}
+
+pub(crate) async fn get_profiles_enriched(
+    db: &Db,
+    limit: i64,
+    offset: i64,
+) -> Result<Vec<UniversalUserResult>, SocialError> {
+    let profiles = get_profiles(db, limit, offset).await?;
+    if profiles.is_empty() {
+        return Ok(vec![]);
+    }
+    let wallet_addresses: Vec<String> = profiles.iter().map(|p| p.owner_address.clone()).collect();
+    let mut conn = db.connect().await?;
+    let enriched = enrich_users_with_universal_data(&mut conn, wallet_addresses).await?;
+    let result: Vec<UniversalUserResult> = profiles
+        .iter()
+        .filter_map(|p| enriched.get(&p.owner_address).cloned())
+        .collect();
+    Ok(result)
 }
 
 pub(crate) async fn get_profile_count(db: &Db) -> Result<i64, SocialError> {
@@ -60,7 +81,7 @@ pub(crate) async fn get_profile_by_address(
 }
 
 /// Get profile by address, or fall back to wallet_social_graph for wallet-only addresses.
-/// Returns Profile when found in profiles table; otherwise WalletOnly with counts from
+/// Returns enriched UniversalUserResult when found in profiles table; otherwise WalletOnly with counts from
 /// wallet_social_graph (or zero counts if not in WSG either).
 pub(crate) async fn get_profile_or_wallet_by_address(
     db: &Db,
@@ -74,7 +95,21 @@ pub(crate) async fn get_profile_or_wallet_by_address(
         .await;
 
     match profile_result {
-        Ok(profile) => Ok(ProfileOrWallet::Profile(profile)),
+        Ok(_profile) => {
+            let enriched = enrich_users_with_universal_data(&mut conn, vec![address.to_string()])
+                .await?;
+            let user = enriched.get(address).cloned().unwrap_or_else(|| {
+                UniversalUserResult {
+                    wallet_address: address.to_string(),
+                    username: None,
+                    fullname: None,
+                    profile_photo: None,
+                    social_proof_token: None,
+                    selected_badge: None,
+                }
+            });
+            Ok(ProfileOrWallet::Profile(user))
+        }
         Err(diesel::result::Error::NotFound) => {
             let wallet_result = wallet_social_graph::table
                 .filter(wallet_social_graph::wallet_address.eq(address))

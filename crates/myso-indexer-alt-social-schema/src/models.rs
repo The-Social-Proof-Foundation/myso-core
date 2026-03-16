@@ -38,6 +38,10 @@ use crate::schema::{
     spot_bet_withdrawals, spot_bets, spot_config, spot_events, spot_payouts, spot_records,
     spot_refunds, spot_resolutions,
 };
+use crate::schema::{
+    promoted_posts, promotion_budget_events, promotion_status_events, promotion_views,
+};
+use crate::schema::{vesting_events, vesting_wallets};
 
 #[derive(Debug, Clone, Queryable, Selectable, Serialize, Deserialize)]
 #[diesel(table_name = profiles)]
@@ -587,6 +591,67 @@ pub struct NewDeletionEvent {
 }
 
 // =============================================================================
+// PROMOTION MODELS
+// =============================================================================
+
+#[derive(Debug, Clone, Insertable, Serialize, Deserialize)]
+#[diesel(table_name = promoted_posts)]
+pub struct NewPromotedPost {
+    pub promotion_id: String,
+    pub post_id: String,
+    pub owner: String,
+    pub profile_id: String,
+    pub payment_per_view: i64,
+    pub total_budget: i64,
+    pub remaining_budget: i64,
+    pub active: bool,
+    pub created_at: i64,
+    pub time: chrono::DateTime<chrono::Utc>,
+    pub transaction_id: String,
+}
+
+#[derive(Debug, Clone, Insertable, Serialize, Deserialize)]
+#[diesel(table_name = promotion_views)]
+pub struct NewPromotionView {
+    pub post_id: String,
+    pub promotion_id: String,
+    pub viewer: String,
+    pub payment_amount: i64,
+    pub view_duration: i64,
+    pub platform_id: String,
+    pub timestamp: i64,
+    pub time: chrono::DateTime<chrono::Utc>,
+    pub transaction_id: String,
+}
+
+#[derive(Debug, Clone, Insertable, Serialize, Deserialize)]
+#[diesel(table_name = promotion_status_events)]
+pub struct NewPromotionStatusEvent {
+    pub post_id: String,
+    pub promotion_id: String,
+    pub event_type: String,
+    pub triggered_by: String,
+    pub new_status: Option<bool>,
+    pub amount: Option<i64>,
+    pub timestamp: i64,
+    pub time: chrono::DateTime<chrono::Utc>,
+    pub transaction_id: String,
+}
+
+#[derive(Debug, Clone, Insertable, Serialize, Deserialize)]
+#[diesel(table_name = promotion_budget_events)]
+pub struct NewPromotionBudgetEvent {
+    pub promotion_id: String,
+    pub post_id: String,
+    pub event_type: String,
+    pub amount: i64,
+    pub remaining_budget: i64,
+    pub timestamp: i64,
+    pub time: chrono::DateTime<chrono::Utc>,
+    pub transaction_id: String,
+}
+
+// =============================================================================
 // PLATFORM MODELS
 // =============================================================================
 
@@ -1119,11 +1184,16 @@ pub const TRANSACTION_TYPE_SELL: &str = "SELL";
 pub const RESERVATION_POOL_STATUS_ACTIVE: &str = "active";
 pub const RESERVATION_POOL_STATUS_THRESHOLD_MET: &str = "threshold_met";
 pub const REVENUE_SOURCE_SPT: &str = "spt";
+pub const REVENUE_SOURCE_TIPS: &str = "tips";
 pub const REVENUE_TYPE_SPT_CREATOR_FEE: &str = "creator_fee";
 pub const REVENUE_TYPE_SPT_PLATFORM_FEE: &str = "platform_fee";
 pub const REVENUE_TYPE_SPT_TREASURY_FEE: &str = "treasury_fee";
+pub const REVENUE_TYPE_TIPS_POST: &str = "post_tip";
+pub const REVENUE_TYPE_TIPS_COMMENT: &str = "comment_tip";
 pub const CURRENCY_MYSO: &str = "MYSO";
 pub const CONTENT_TYPE_TOKEN: &str = "token";
+pub const CONTENT_TYPE_POST: &str = "post";
+pub const CONTENT_TYPE_COMMENT: &str = "comment";
 
 // =============================================================================
 // SOCIAL PROOF TOKEN (SPT) MODELS
@@ -1354,6 +1424,33 @@ pub struct NewUnifiedRevenue {
 }
 
 impl NewUnifiedRevenue {
+    pub fn from_tip(
+        revenue_type: String,
+        creator_address: String,
+        amount: i64,
+        content_id: String,
+        content_type: String,
+        payer_address: String,
+        revenue_time: i64,
+        transaction_id: String,
+    ) -> Self {
+        Self {
+            revenue_source: REVENUE_SOURCE_TIPS.to_string(),
+            revenue_type,
+            creator_address: creator_address.clone(),
+            platform_address: None,
+            amount,
+            currency: CURRENCY_MYSO.to_string(),
+            content_id: Some(content_id),
+            content_type: Some(content_type),
+            payer_address,
+            recipient_address: creator_address,
+            revenue_time,
+            time: chrono::Utc::now(),
+            transaction_id,
+        }
+    }
+
     pub fn from_spt(
         revenue_type: String,
         creator_address: String,
@@ -1428,6 +1525,42 @@ pub struct NewObjectMigratedEvent {
     pub event_id: String,
     pub transaction_id: String,
     pub created_at: chrono::DateTime<chrono::Utc>,
+}
+
+// =============================================================================
+// VESTING MODELS
+// =============================================================================
+
+#[derive(Debug, Clone, Insertable, Serialize, Deserialize)]
+#[diesel(table_name = vesting_wallets)]
+pub struct NewVestingWallet {
+    pub wallet_id: String,
+    pub owner_address: String,
+    pub total_amount: i64,
+    pub start_time: i64,
+    pub duration: i64,
+    pub curve_factor: i64,
+    pub claimed_amount: i64,
+    pub remaining_balance: i64,
+    pub created_at: chrono::NaiveDateTime,
+    pub updated_at: chrono::NaiveDateTime,
+    pub transaction_id: String,
+}
+
+#[derive(Debug, Clone, Insertable, Serialize, Deserialize)]
+#[diesel(table_name = vesting_events)]
+pub struct NewVestingEvent {
+    pub wallet_id: String,
+    pub event_type: String,
+    pub owner_address: String,
+    pub amount: i64,
+    pub remaining_balance: Option<i64>,
+    pub start_time: Option<i64>,
+    pub duration: Option<i64>,
+    pub curve_factor: Option<i64>,
+    pub event_time: i64,
+    pub time: chrono::DateTime<chrono::Utc>,
+    pub transaction_id: String,
 }
 
 // =============================================================================

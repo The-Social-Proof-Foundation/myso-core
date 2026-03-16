@@ -323,6 +323,33 @@ pub struct BcsBadgeRemovedEvent {
 }
 
 #[derive(Debug, Deserialize)]
+pub struct BcsTokensVestedEvent {
+    wallet_id: AccountAddress,
+    owner: AccountAddress,
+    total_amount: u64,
+    start_time: u64,
+    duration: u64,
+    curve_factor: u64,
+    vested_at: u64,
+}
+
+#[derive(Debug, Deserialize)]
+pub struct BcsTokensClaimedEvent {
+    wallet_id: AccountAddress,
+    owner: AccountAddress,
+    claimed_amount: u64,
+    remaining_balance: u64,
+    claimed_at: u64,
+}
+
+#[derive(Debug, Deserialize)]
+pub struct BcsVestingWalletDeletedEvent {
+    wallet_id: AccountAddress,
+    owner: AccountAddress,
+    deleted_at: u64,
+}
+
+#[derive(Debug, Deserialize)]
 pub struct BcsPostCreatedEvent {
     post_id: AccountAddress,
     owner: AccountAddress,
@@ -431,6 +458,43 @@ pub struct BcsCommentDeletedEvent {
     owner: AccountAddress,
     profile_id: AccountAddress,
     deleted_at: u64,
+}
+
+// Promotion event structs - field order matches post.move
+#[derive(Debug, Deserialize)]
+pub struct BcsPromotedPostCreatedEvent {
+    post_id: AccountAddress,
+    owner: AccountAddress,
+    profile_id: AccountAddress,
+    payment_per_view: u64,
+    total_budget: u64,
+    created_at: u64,
+}
+
+#[derive(Debug, Deserialize)]
+pub struct BcsPromotedPostViewConfirmedEvent {
+    post_id: AccountAddress, // promotion_id (PromotionData object address)
+    viewer: AccountAddress,
+    payment_amount: u64,
+    view_duration: u64,
+    platform_id: AccountAddress,
+    timestamp: u64,
+}
+
+#[derive(Debug, Deserialize)]
+pub struct BcsPromotionStatusToggledEvent {
+    post_id: AccountAddress, // promotion_id
+    toggled_by: AccountAddress,
+    new_status: bool,
+    timestamp: u64,
+}
+
+#[derive(Debug, Deserialize)]
+pub struct BcsPromotionFundsWithdrawnEvent {
+    post_id: AccountAddress, // promotion_id
+    owner: AccountAddress,
+    withdrawn_amount: u64,
+    timestamp: u64,
 }
 
 // Proof of Creativity (PoC) event structs - field order matches proof_of_creativity.move
@@ -1204,6 +1268,39 @@ fn parse_profile_event(
                 "removed_at": ev.removed_at,
             })))
         }
+        "TokensVestedEvent" => {
+            let ev = bcs::from_bytes::<BcsTokensVestedEvent>(contents)
+                .map_err(|e| bcs_parse_err(e, contents))?;
+            Ok(Some(serde_json::json!({
+                "wallet_id": addr_to_string(&ev.wallet_id),
+                "owner": addr_to_string(&ev.owner),
+                "total_amount": ev.total_amount,
+                "start_time": ev.start_time,
+                "duration": ev.duration,
+                "curve_factor": ev.curve_factor,
+                "vested_at": ev.vested_at,
+            })))
+        }
+        "TokensClaimedEvent" => {
+            let ev = bcs::from_bytes::<BcsTokensClaimedEvent>(contents)
+                .map_err(|e| bcs_parse_err(e, contents))?;
+            Ok(Some(serde_json::json!({
+                "wallet_id": addr_to_string(&ev.wallet_id),
+                "owner": addr_to_string(&ev.owner),
+                "claimed_amount": ev.claimed_amount,
+                "remaining_balance": ev.remaining_balance,
+                "claimed_at": ev.claimed_at,
+            })))
+        }
+        "VestingWalletDeletedEvent" => {
+            let ev = bcs::from_bytes::<BcsVestingWalletDeletedEvent>(contents)
+                .map_err(|e| bcs_parse_err(e, contents))?;
+            Ok(Some(serde_json::json!({
+                "wallet_id": addr_to_string(&ev.wallet_id),
+                "owner": addr_to_string(&ev.owner),
+                "deleted_at": ev.deleted_at,
+            })))
+        }
         // PaidMessagingSettingsUpdatedEvent and other profile events fall through to JSON
         _ => Ok(None),
     }
@@ -1600,6 +1697,50 @@ fn parse_post_event(
                 "post_type": serde_json::Value::Null,
                 "post_id": addr_to_string(&ev.post_id),
                 "deleted_at": ev.deleted_at,
+            })))
+        }
+        "PromotedPostCreatedEvent" => {
+            let ev = bcs::from_bytes::<BcsPromotedPostCreatedEvent>(contents)
+                .map_err(|e| bcs_parse_err(e, contents))?;
+            Ok(Some(serde_json::json!({
+                "post_id": addr_to_string(&ev.post_id),
+                "owner": addr_to_string(&ev.owner),
+                "profile_id": addr_to_string(&ev.profile_id),
+                "payment_per_view": ev.payment_per_view,
+                "total_budget": ev.total_budget,
+                "created_at": ev.created_at,
+            })))
+        }
+        "PromotedPostViewConfirmedEvent" => {
+            let ev = bcs::from_bytes::<BcsPromotedPostViewConfirmedEvent>(contents)
+                .map_err(|e| bcs_parse_err(e, contents))?;
+            Ok(Some(serde_json::json!({
+                "promotion_id": addr_to_string(&ev.post_id),
+                "viewer": addr_to_string(&ev.viewer),
+                "payment_amount": ev.payment_amount,
+                "view_duration": ev.view_duration,
+                "platform_id": addr_to_string(&ev.platform_id),
+                "timestamp": ev.timestamp,
+            })))
+        }
+        "PromotionStatusToggledEvent" => {
+            let ev = bcs::from_bytes::<BcsPromotionStatusToggledEvent>(contents)
+                .map_err(|e| bcs_parse_err(e, contents))?;
+            Ok(Some(serde_json::json!({
+                "promotion_id": addr_to_string(&ev.post_id),
+                "toggled_by": addr_to_string(&ev.toggled_by),
+                "new_status": ev.new_status,
+                "timestamp": ev.timestamp,
+            })))
+        }
+        "PromotionFundsWithdrawnEvent" => {
+            let ev = bcs::from_bytes::<BcsPromotionFundsWithdrawnEvent>(contents)
+                .map_err(|e| bcs_parse_err(e, contents))?;
+            Ok(Some(serde_json::json!({
+                "promotion_id": addr_to_string(&ev.post_id),
+                "owner": addr_to_string(&ev.owner),
+                "withdrawn_amount": ev.withdrawn_amount,
+                "timestamp": ev.timestamp,
             })))
         }
         _ => Ok(None),

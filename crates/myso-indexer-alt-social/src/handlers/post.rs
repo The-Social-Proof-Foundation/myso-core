@@ -7,7 +7,10 @@ use serde::Deserialize;
 use super::SocialEventRow;
 use myso_indexer_alt_social_schema::models::{
     NewComment, NewDeletionEvent, NewModerationEvent, NewPost, NewReaction, NewReactionCount,
-    NewReport, NewRepost, NewTip,
+    NewReport, NewRepost, NewTip, NewUnifiedRevenue,
+};
+use myso_indexer_alt_social_schema::models::{
+    CONTENT_TYPE_COMMENT, CONTENT_TYPE_POST, REVENUE_TYPE_TIPS_COMMENT, REVENUE_TYPE_TIPS_POST,
 };
 
 fn de_u64<'de, D>(d: D) -> Result<u64, D::Error>
@@ -135,6 +138,54 @@ struct ReportEvent {
 }
 
 #[derive(Debug, Deserialize)]
+struct ContentUpdateEvent {
+    object_id: String,
+    #[serde(default)]
+    is_post: bool,
+    content: String,
+    media_urls: Option<serde_json::Value>,
+    mentions: Option<serde_json::Value>,
+    metadata_json: Option<String>,
+    #[serde(default, deserialize_with = "de_u64")]
+    updated_at: u64,
+}
+
+#[derive(Debug, Deserialize)]
+struct PostParametersUpdatedEvent {
+    updated_by: String,
+    #[serde(default, deserialize_with = "de_u64")]
+    timestamp: u64,
+    #[serde(default, deserialize_with = "de_u64")]
+    max_content_length: u64,
+    #[serde(default, deserialize_with = "de_u64")]
+    max_media_urls: u64,
+    #[serde(default, deserialize_with = "de_u64")]
+    max_mentions: u64,
+    #[serde(default, deserialize_with = "de_u64")]
+    max_metadata_size: u64,
+    #[serde(default, deserialize_with = "de_u64")]
+    max_description_length: u64,
+    #[serde(default, deserialize_with = "de_u64")]
+    max_reaction_length: u64,
+    #[serde(default, deserialize_with = "de_u64")]
+    commenter_tip_percentage: u64,
+    #[serde(default, deserialize_with = "de_u64")]
+    repost_tip_percentage: u64,
+    #[serde(default, deserialize_with = "de_opt_u64")]
+    version: Option<u64>,
+}
+
+#[derive(Debug, Deserialize)]
+struct OwnershipTransferEvent {
+    object_id: String,
+    #[serde(rename = "previous_owner")]
+    _previous_owner: String,
+    new_owner: String,
+    #[serde(default)]
+    is_post: bool,
+}
+
+#[derive(Debug, Deserialize)]
 struct DeletionEvent {
     object_id: String,
     owner: String,
@@ -144,6 +195,51 @@ struct DeletionEvent {
     post_id: Option<String>,
     #[serde(deserialize_with = "de_u64")]
     deleted_at: u64,
+}
+
+#[derive(Debug, Deserialize)]
+struct PromotedPostCreatedEvent {
+    post_id: String,
+    owner: String,
+    profile_id: String,
+    #[serde(deserialize_with = "de_u64")]
+    payment_per_view: u64,
+    #[serde(deserialize_with = "de_u64")]
+    total_budget: u64,
+    #[serde(deserialize_with = "de_u64")]
+    created_at: u64,
+}
+
+#[derive(Debug, Deserialize)]
+struct PromotedPostViewConfirmedEvent {
+    promotion_id: String,
+    viewer: String,
+    #[serde(deserialize_with = "de_u64")]
+    payment_amount: u64,
+    #[serde(deserialize_with = "de_u64")]
+    view_duration: u64,
+    platform_id: String,
+    #[serde(deserialize_with = "de_u64")]
+    timestamp: u64,
+}
+
+#[derive(Debug, Deserialize)]
+struct PromotionStatusToggledEvent {
+    promotion_id: String,
+    toggled_by: String,
+    new_status: bool,
+    #[serde(deserialize_with = "de_u64")]
+    timestamp: u64,
+}
+
+#[derive(Debug, Deserialize)]
+struct PromotionFundsWithdrawnEvent {
+    promotion_id: String,
+    owner: String,
+    #[serde(deserialize_with = "de_u64")]
+    withdrawn_amount: u64,
+    #[serde(deserialize_with = "de_u64")]
+    timestamp: u64,
 }
 
 pub fn handle_post_event(
@@ -167,13 +263,15 @@ pub fn handle_post_event(
         "DeletionEvent" | "ContentDeletedEvent" | "PostDeletedEvent" | "CommentDeletedEvent" => {
             process_deletion_event(data, event_id)
         }
-        "ContentUpdateEvent" | "PostUpdatedEvent" | "CommentUpdatedEvent" => None,
-        "OwnershipTransferEvent" => None,
-        "PostParametersUpdatedEvent" => None,
-        "PromotedPostCreatedEvent" => None,
-        "PromotedPostViewConfirmedEvent" => None,
-        "PromotionStatusToggledEvent" => None,
-        "PromotionFundsWithdrawnEvent" => None,
+        "ContentUpdateEvent" | "PostUpdatedEvent" | "CommentUpdatedEvent" => {
+            process_content_update_event(data)
+        }
+        "OwnershipTransferEvent" => process_ownership_transfer_event(data),
+        "PostParametersUpdatedEvent" => process_post_parameters_updated_event(data, event_id),
+        "PromotedPostCreatedEvent" => process_promoted_post_created_event(data, event_id),
+        "PromotedPostViewConfirmedEvent" => process_promoted_post_view_confirmed_event(data, event_id),
+        "PromotionStatusToggledEvent" => process_promotion_status_toggled_event(data, event_id),
+        "PromotionFundsWithdrawnEvent" => process_promotion_funds_withdrawn_event(data, event_id),
         _ => None,
     }
 }
@@ -190,7 +288,7 @@ fn process_post_created_event(
     let post = NewPost {
         id: id.clone(),
         post_id: ev.post_id,
-        owner: ev.owner,
+        owner: ev.owner.clone(),
         profile_id: ev.profile_id,
         content: ev.content,
         media_urls: ev.media_urls,
@@ -231,7 +329,12 @@ fn process_post_created_event(
         spot_id: ev.spot_id,
         spt_id: ev.spt_id,
     };
-    Some(vec![SocialEventRow::Post(post)])
+    Some(vec![
+        SocialEventRow::Post(post),
+        SocialEventRow::ProfilePostCountIncrement {
+            owner_address: ev.owner.clone(),
+        },
+    ])
 }
 
 fn process_comment_created_event(
@@ -325,7 +428,7 @@ fn process_repost_event(data: &serde_json::Value, event_id: &str) -> Option<Vec<
     let repost = NewRepost {
         id,
         repost_id: ev.repost_id,
-        original_id: ev.original_id,
+        original_id: ev.original_id.clone(),
         original_post_id: ev.original_post_id,
         is_original_post: ev.is_original_post,
         owner: ev.owner,
@@ -334,7 +437,13 @@ fn process_repost_event(data: &serde_json::Value, event_id: &str) -> Option<Vec<
         time: now,
         transaction_id: event_id.to_string(),
     };
-    Some(vec![SocialEventRow::Repost(repost)])
+    Some(vec![
+        SocialEventRow::Repost(repost),
+        SocialEventRow::PostRepostCountIncrement {
+            original_id: ev.original_id.clone(),
+            is_original_post: ev.is_original_post,
+        },
+    ])
 }
 
 fn process_tip_event(data: &serde_json::Value, event_id: &str) -> Option<Vec<SocialEventRow>> {
@@ -347,16 +456,44 @@ fn process_tip_event(data: &serde_json::Value, event_id: &str) -> Option<Vec<Soc
     };
 
     let tip = NewTip {
-        tipper: ev.from,
-        recipient: ev.to,
-        object_id: ev.object_id,
+        tipper: ev.from.clone(),
+        recipient: ev.to.clone(),
+        object_id: ev.object_id.clone(),
         amount: ev.amount as i64,
         is_post: ev.is_post,
         created_at,
         time: now,
         transaction_id: event_id.to_string(),
     };
-    Some(vec![SocialEventRow::Tip(tip)])
+    let revenue_type = if ev.is_post {
+        REVENUE_TYPE_TIPS_POST.to_string()
+    } else {
+        REVENUE_TYPE_TIPS_COMMENT.to_string()
+    };
+    let content_type = if ev.is_post {
+        CONTENT_TYPE_POST.to_string()
+    } else {
+        CONTENT_TYPE_COMMENT.to_string()
+    };
+    let unified_revenue = NewUnifiedRevenue::from_tip(
+        revenue_type,
+        ev.to.clone(),
+        ev.amount as i64,
+        ev.object_id.clone(),
+        content_type,
+        ev.from.clone(),
+        created_at,
+        event_id.to_string(),
+    );
+    Some(vec![
+        SocialEventRow::Tip(tip),
+        SocialEventRow::PostTipsReceivedIncrement {
+            object_id: ev.object_id,
+            amount: ev.amount as i64,
+            is_post: ev.is_post,
+        },
+        SocialEventRow::UnifiedRevenue(unified_revenue),
+    ])
 }
 
 fn process_moderation_event(
@@ -372,15 +509,71 @@ fn process_moderation_event(
     };
 
     let mod_ev = NewModerationEvent {
-        object_id: ev.object_id,
+        object_id: ev.object_id.clone(),
         platform_id: ev.platform_id,
         removed: ev.removed,
-        moderated_by: ev.moderated_by,
+        moderated_by: ev.moderated_by.clone(),
         moderated_at,
         time: now,
         transaction_id: event_id.to_string(),
     };
-    Some(vec![SocialEventRow::ModerationEvent(mod_ev)])
+    Some(vec![
+        SocialEventRow::ModerationEvent(mod_ev),
+        SocialEventRow::PostModerationUpdate {
+            object_id: ev.object_id,
+            removed: ev.removed,
+            moderated_by: ev.moderated_by,
+        },
+    ])
+}
+
+fn process_content_update_event(data: &serde_json::Value) -> Option<Vec<SocialEventRow>> {
+    let ev: ContentUpdateEvent = serde_json::from_value(data.clone()).ok()?;
+    let media_urls = ev.media_urls.clone();
+    let mentions = ev.mentions.clone();
+    let metadata_json = ev
+        .metadata_json
+        .as_ref()
+        .and_then(|s| serde_json::from_str(s).ok());
+    Some(vec![SocialEventRow::PostContentUpdate {
+        object_id: ev.object_id,
+        content: ev.content,
+        media_urls,
+        mentions,
+        metadata_json,
+        is_post: ev.is_post,
+        updated_at: ev.updated_at as i64,
+    }])
+}
+
+fn process_post_parameters_updated_event(
+    data: &serde_json::Value,
+    event_id: &str,
+) -> Option<Vec<SocialEventRow>> {
+    let ev: PostParametersUpdatedEvent = serde_json::from_value(data.clone()).ok()?;
+    Some(vec![SocialEventRow::PostConfig {
+        updated_by: ev.updated_by,
+        max_content_length: ev.max_content_length as i64,
+        max_media_urls: ev.max_media_urls as i64,
+        max_mentions: ev.max_mentions as i64,
+        max_metadata_size: ev.max_metadata_size as i64,
+        max_description_length: ev.max_description_length as i64,
+        max_reaction_length: ev.max_reaction_length as i64,
+        commenter_tip_percentage: ev.commenter_tip_percentage as i64,
+        repost_tip_percentage: ev.repost_tip_percentage as i64,
+        version: ev.version.map(|v| v as i64),
+        updated_at: ev.timestamp as i64,
+        transaction_id: event_id.to_string(),
+    }])
+}
+
+fn process_ownership_transfer_event(data: &serde_json::Value) -> Option<Vec<SocialEventRow>> {
+    let ev: OwnershipTransferEvent = serde_json::from_value(data.clone()).ok()?;
+    Some(vec![SocialEventRow::PostOwnerUpdate {
+        object_id: ev.object_id,
+        new_owner: ev.new_owner,
+        is_post: ev.is_post,
+    }])
 }
 
 fn process_report_event(data: &serde_json::Value, event_id: &str) -> Option<Vec<SocialEventRow>> {
@@ -403,17 +596,95 @@ fn process_report_event(data: &serde_json::Value, event_id: &str) -> Option<Vec<
 fn process_deletion_event(data: &serde_json::Value, event_id: &str) -> Option<Vec<SocialEventRow>> {
     let ev: DeletionEvent = serde_json::from_value(data.clone()).ok()?;
     let now = Utc::now();
+    let deleted_at = ev.deleted_at as i64;
 
     let del_ev = NewDeletionEvent {
-        object_id: ev.object_id,
-        owner: ev.owner,
+        object_id: ev.object_id.clone(),
+        owner: ev.owner.clone(),
         profile_id: ev.profile_id,
         is_post: ev.is_post,
         post_type: ev.post_type,
-        post_id: ev.post_id,
-        deleted_at: ev.deleted_at as i64,
+        post_id: ev.post_id.clone(),
+        deleted_at,
         time: now,
         transaction_id: event_id.to_string(),
     };
-    Some(vec![SocialEventRow::DeletionEvent(del_ev)])
+
+    let mut rows = vec![SocialEventRow::DeletionEvent(del_ev)];
+    if ev.is_post {
+        rows.push(SocialEventRow::ProfilePostCountDecrement {
+            owner_address: ev.owner.clone(),
+        });
+        rows.push(SocialEventRow::PostDeletedAtUpdate {
+            object_id: ev.object_id.clone(),
+            owner: ev.owner,
+            deleted_at,
+        });
+    } else {
+        if let Some(ref post_id) = ev.post_id {
+            rows.push(SocialEventRow::PostCommentCountIncrement {
+                post_id: post_id.clone(),
+                delta: -1,
+            });
+        } else {
+            rows.push(SocialEventRow::PostCommentCountDecrementByComment {
+                comment_id: ev.object_id.clone(),
+                owner: ev.owner.clone(),
+            });
+        }
+        rows.push(SocialEventRow::CommentDeletedAtUpdate {
+            object_id: ev.object_id,
+            owner: ev.owner,
+            deleted_at,
+        });
+    }
+    Some(rows)
+}
+
+fn process_promoted_post_created_event(data: &serde_json::Value, event_id: &str) -> Option<Vec<SocialEventRow>> {
+    let ev: PromotedPostCreatedEvent = serde_json::from_value(data.clone()).ok()?;
+    Some(vec![SocialEventRow::PromotedPost {
+        post_id: ev.post_id,
+        owner: ev.owner,
+        profile_id: ev.profile_id,
+        payment_per_view: ev.payment_per_view as i64,
+        total_budget: ev.total_budget as i64,
+        created_at: ev.created_at as i64,
+        transaction_id: event_id.to_string(),
+    }])
+}
+
+fn process_promoted_post_view_confirmed_event(data: &serde_json::Value, event_id: &str) -> Option<Vec<SocialEventRow>> {
+    let ev: PromotedPostViewConfirmedEvent = serde_json::from_value(data.clone()).ok()?;
+    Some(vec![SocialEventRow::PromotionView {
+        promotion_id: ev.promotion_id,
+        viewer: ev.viewer,
+        payment_amount: ev.payment_amount as i64,
+        view_duration: ev.view_duration as i64,
+        platform_id: ev.platform_id,
+        timestamp: ev.timestamp as i64,
+        transaction_id: event_id.to_string(),
+    }])
+}
+
+fn process_promotion_status_toggled_event(data: &serde_json::Value, event_id: &str) -> Option<Vec<SocialEventRow>> {
+    let ev: PromotionStatusToggledEvent = serde_json::from_value(data.clone()).ok()?;
+    Some(vec![SocialEventRow::PromotionStatusEvent {
+        promotion_id: ev.promotion_id,
+        toggled_by: ev.toggled_by,
+        new_status: ev.new_status,
+        timestamp: ev.timestamp as i64,
+        transaction_id: event_id.to_string(),
+    }])
+}
+
+fn process_promotion_funds_withdrawn_event(data: &serde_json::Value, event_id: &str) -> Option<Vec<SocialEventRow>> {
+    let ev: PromotionFundsWithdrawnEvent = serde_json::from_value(data.clone()).ok()?;
+    Some(vec![SocialEventRow::PromotionBudgetEvent {
+        promotion_id: ev.promotion_id,
+        owner: ev.owner,
+        withdrawn_amount: ev.withdrawn_amount as i64,
+        timestamp: ev.timestamp as i64,
+        transaction_id: event_id.to_string(),
+    }])
 }

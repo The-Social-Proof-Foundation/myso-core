@@ -23,7 +23,7 @@ pub async fn latest_profiles(
     let total_count = state.reader.get_profile_count().await?;
     let total_pages = ((total_count as f64) / (limit as f64)).ceil() as i64;
 
-    let profiles = state.reader.get_profiles(limit, offset).await?;
+    let profiles = state.reader.get_profiles_enriched(limit, offset).await?;
 
     Ok(Json(serde_json::json!({
         "profiles": profiles,
