@@ -109,6 +109,13 @@ impl BcsUserUnblockEvent {
 }
 
 #[derive(Debug, Deserialize)]
+pub struct BcsEcosystemTreasuryUpdatedEvent {
+    updated_by: AccountAddress,
+    new_treasury_address: AccountAddress,
+    timestamp: u64,
+}
+
+#[derive(Debug, Deserialize)]
 pub struct BcsGovernanceRegistryCreatedEvent {
     registry_id: AccountAddress,
     registry_type: u8,
@@ -1313,6 +1320,15 @@ fn parse_profile_event(
                 "wallet_id": addr_to_string(&ev.wallet_id),
                 "owner": addr_to_string(&ev.owner),
                 "deleted_at": ev.deleted_at,
+            })))
+        }
+        "EcosystemTreasuryUpdatedEvent" => {
+            let ev = bcs::from_bytes::<BcsEcosystemTreasuryUpdatedEvent>(contents)
+                .map_err(|e| bcs_parse_err(e, contents))?;
+            Ok(Some(serde_json::json!({
+                "updated_by": addr_to_string(&ev.updated_by),
+                "new_treasury_address": addr_to_string(&ev.new_treasury_address),
+                "timestamp": ev.timestamp,
             })))
         }
         // PaidMessagingSettingsUpdatedEvent and other profile events fall through to JSON

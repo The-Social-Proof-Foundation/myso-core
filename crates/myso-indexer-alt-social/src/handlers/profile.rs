@@ -3,13 +3,13 @@
 
 //! Pipeline pattern follows myso-indexer-alt.
 
-use chrono::Utc;
+use chrono::{TimeZone, Utc};
 use serde::{Deserialize, Deserializer};
 use std::str::FromStr;
 
 use super::{ProfileUpdate, SocialEventRow};
 use myso_indexer_alt_social_schema::models::{
-    NewProfile, NewProfileEvent, NewVestingEvent, NewVestingWallet,
+    NewEcosystemTreasury, NewProfile, NewProfileEvent, NewVestingEvent, NewVestingWallet,
 };
 
 fn deserialize_number_from_string<'de, T, D>(deserializer: D) -> Result<T, D::Error>
@@ -267,6 +267,7 @@ pub fn handle_profile_event(
         "TokensVestedEvent" => process_tokens_vested_event(data, event_id),
         "TokensClaimedEvent" => process_tokens_claimed_event(data, event_id),
         "VestingWalletDeletedEvent" => process_vesting_wallet_deleted_event(data, event_id),
+        "EcosystemTreasuryUpdatedEvent" => process_ecosystem_treasury_updated_event(data, event_id),
         _ => None,
     }
 }
@@ -391,6 +392,30 @@ fn process_profile_updated_event(
         SocialEventRow::ProfileUpdate(up),
         SocialEventRow::ProfileEvent(audit_event),
     ])
+}
+
+fn process_ecosystem_treasury_updated_event(
+    data: &serde_json::Value,
+    event_id: &str,
+) -> Option<Vec<SocialEventRow>> {
+    let updated_by = data.get("updated_by")?.as_str()?.to_string();
+    let new_treasury_address = data.get("new_treasury_address")?.as_str()?.to_string();
+    let timestamp_ms = data.get("timestamp")?.as_u64().unwrap_or(0) as i64;
+    let time = if timestamp_ms > 0 {
+        Utc.timestamp_millis_opt(timestamp_ms)
+            .single()
+            .unwrap_or_else(Utc::now)
+    } else {
+        Utc::now()
+    };
+    let row = NewEcosystemTreasury {
+        treasury_address: new_treasury_address,
+        updated_by,
+        timestamp_ms,
+        time,
+        transaction_id: event_id.to_string(),
+    };
+    Some(vec![SocialEventRow::EcosystemTreasury(row)])
 }
 
 /// Event emitted when a username is registered. Ported from mys-indexer.

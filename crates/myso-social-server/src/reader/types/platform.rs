@@ -18,6 +18,26 @@ pub struct PlatformRow {
     pub created_at: chrono::NaiveDateTime,
     pub updated_at: chrono::NaiveDateTime,
     pub deleted_at: Option<chrono::NaiveDateTime>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub wants_dao_governance: Option<bool>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub governance_registry_id: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub delegate_count: Option<i64>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub delegate_term_epochs: Option<i64>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub max_votes_per_user: Option<i64>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub min_on_chain_age_days: Option<i64>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub proposal_submission_cost: Option<i64>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub quadratic_base_cost: Option<i64>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub quorum_votes: Option<i64>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub voting_period_epochs: Option<i64>,
 }
 
 #[derive(Debug, Serialize)]

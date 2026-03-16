@@ -39,8 +39,9 @@ use myso_indexer_alt_framework::types::full_checkpoint_content::Checkpoint;
 use myso_indexer_alt_framework::FieldCount;
 use myso_indexer_alt_social_schema::models::{
     GovernanceRegistryUpdate, NewAnonymousVote, NewBlockedEvent, NewBlockedProfile, NewComment,
-    NewCommunityVote, NewDelegate, NewDelegateRating, NewDelegateVote, NewDeletionEvent,
-    NewGovernanceEvent, NewGovernanceRegistry, NewInsuranceConfig, NewInsuranceEventLog,
+    NewCommunityVote,     NewDelegate, NewDelegateRating, NewDelegateVote, NewDeletionEvent,
+    NewEcosystemTreasury, NewGovernanceEvent, NewGovernanceRegistry, NewInsuranceConfig,
+    NewInsuranceEventLog,
     NewInsuranceMarketExposure, NewInsurancePolicy, NewInsurancePolicyEvent,
     NewInsuranceUserExposure, NewInsuranceVault, NewInsuranceVaultTransaction, NewModerationEvent,
     NewMyDataAccessLog, NewMyDataConfig, NewMyDataData, NewMyDataPurchase, NewMyDataRegistry,
@@ -105,6 +106,7 @@ pub struct SocialEvents;
 pub enum SocialEventRow {
     Profile(NewProfile),
     ProfileUpdate(ProfileUpdate),
+    EcosystemTreasury(NewEcosystemTreasury),
     SocialGraphRelationship(NewSocialGraphRelationship),
     SocialGraphEvent(NewSocialGraphEvent),
     SocialGraphUnfollow {
@@ -575,7 +577,7 @@ pub struct ProfileUpdate {
 }
 
 impl FieldCount for SocialEventRow {
-    const FIELD_COUNT: usize = 115;
+    const FIELD_COUNT: usize = 116;
 }
 
 /// Routes a parsed event to the appropriate domain handler based on Move module name.
@@ -860,6 +862,32 @@ impl Handler for SocialEvents {
                         .values(ev)
                         .execute(conn)
                         .await?;
+                }
+                SocialEventRow::EcosystemTreasury(c) => {
+                    let latest: Option<(i32, chrono::NaiveDateTime)> = ecosystem_treasury::table
+                        .order(ecosystem_treasury::time.desc())
+                        .select((ecosystem_treasury::id, ecosystem_treasury::time))
+                        .first(conn)
+                        .await
+                        .ok();
+                    if let Some((id, time)) = latest {
+                        total += diesel::update(ecosystem_treasury::table)
+                            .filter(ecosystem_treasury::id.eq(id))
+                            .filter(ecosystem_treasury::time.eq(time))
+                            .set((
+                                ecosystem_treasury::treasury_address.eq(&c.treasury_address),
+                                ecosystem_treasury::updated_by.eq(&c.updated_by),
+                                ecosystem_treasury::timestamp_ms.eq(c.timestamp_ms),
+                                ecosystem_treasury::transaction_id.eq(&c.transaction_id),
+                            ))
+                            .execute(conn)
+                            .await?;
+                    } else {
+                        total += diesel::insert_into(ecosystem_treasury::table)
+                            .values(c)
+                            .execute(conn)
+                            .await?;
+                    }
                 }
                 SocialEventRow::ProfileBadge(badge) => {
                     total += diesel::insert_into(profile_badges::table)
@@ -2384,16 +2412,83 @@ impl Handler for SocialEvents {
                         .await?;
                 }
                 SocialEventRow::SptExchangeConfig(c) => {
-                    total += diesel::insert_into(spt_exchange_config::table)
-                        .values(c)
-                        .execute(conn)
-                        .await?;
+                    let latest: Option<(i32, chrono::NaiveDateTime)> = spt_exchange_config::table
+                        .order(spt_exchange_config::time.desc())
+                        .select((spt_exchange_config::id, spt_exchange_config::time))
+                        .first(conn)
+                        .await
+                        .ok();
+                    if let Some((id, time)) = latest {
+                        total += diesel::update(spt_exchange_config::table)
+                            .filter(spt_exchange_config::id.eq(id))
+                            .filter(spt_exchange_config::time.eq(time))
+                            .set((
+                                spt_exchange_config::updated_by.eq(&c.updated_by),
+                                spt_exchange_config::post_threshold.eq(c.post_threshold),
+                                spt_exchange_config::profile_threshold.eq(c.profile_threshold),
+                                spt_exchange_config::max_individual_reservation_bps
+                                    .eq(c.max_individual_reservation_bps),
+                                spt_exchange_config::total_fee_bps.eq(c.total_fee_bps),
+                                spt_exchange_config::creator_fee_bps.eq(c.creator_fee_bps),
+                                spt_exchange_config::platform_fee_bps.eq(c.platform_fee_bps),
+                                spt_exchange_config::treasury_fee_bps.eq(c.treasury_fee_bps),
+                                spt_exchange_config::trading_creator_fee_bps
+                                    .eq(c.trading_creator_fee_bps),
+                                spt_exchange_config::trading_platform_fee_bps
+                                    .eq(c.trading_platform_fee_bps),
+                                spt_exchange_config::trading_treasury_fee_bps
+                                    .eq(c.trading_treasury_fee_bps),
+                                spt_exchange_config::reservation_creator_fee_bps
+                                    .eq(c.reservation_creator_fee_bps),
+                                spt_exchange_config::reservation_platform_fee_bps
+                                    .eq(c.reservation_platform_fee_bps),
+                                spt_exchange_config::reservation_treasury_fee_bps
+                                    .eq(c.reservation_treasury_fee_bps),
+                                spt_exchange_config::max_reservers_per_pool
+                                    .eq(c.max_reservers_per_pool),
+                                spt_exchange_config::base_price.eq(c.base_price),
+                                spt_exchange_config::quadratic_coefficient.eq(c.quadratic_coefficient),
+                                spt_exchange_config::max_hold_percent_bps.eq(c.max_hold_percent_bps),
+                                spt_exchange_config::trading_enabled.eq(c.trading_enabled),
+                                spt_exchange_config::updated_at.eq(c.updated_at),
+                                spt_exchange_config::transaction_id.eq(&c.transaction_id),
+                            ))
+                            .execute(conn)
+                            .await?;
+                    } else {
+                        total += diesel::insert_into(spt_exchange_config::table)
+                            .values(c)
+                            .execute(conn)
+                            .await?;
+                    }
                 }
                 SocialEventRow::SocialProofTokensConfig(c) => {
-                    total += diesel::insert_into(social_proof_tokens_config::table)
-                        .values(c)
-                        .execute(conn)
-                        .await?;
+                    use diesel::dsl::max;
+                    let max_id: Option<i32> = social_proof_tokens_config::table
+                        .select(max(social_proof_tokens_config::id))
+                        .get_result(conn)
+                        .await
+                        .ok()
+                        .flatten();
+                    if let Some(id) = max_id {
+                        total += diesel::update(social_proof_tokens_config::table)
+                            .filter(social_proof_tokens_config::id.eq(id))
+                            .set((
+                                social_proof_tokens_config::trading_enabled.eq(c.trading_enabled),
+                                social_proof_tokens_config::admin_address.eq(&c.admin_address),
+                                social_proof_tokens_config::reason.eq(&c.reason),
+                                social_proof_tokens_config::timestamp_ms.eq(c.timestamp_ms),
+                                social_proof_tokens_config::updated_at.eq(c.updated_at),
+                                social_proof_tokens_config::transaction_id.eq(&c.transaction_id),
+                            ))
+                            .execute(conn)
+                            .await?;
+                    } else {
+                        total += diesel::insert_into(social_proof_tokens_config::table)
+                            .values(c)
+                            .execute(conn)
+                            .await?;
+                    }
                 }
                 SocialEventRow::SocialProofTokensEvent(e) => {
                     total += diesel::insert_into(social_proof_tokens_events::table)

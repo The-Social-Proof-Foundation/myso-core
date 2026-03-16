@@ -30,9 +30,9 @@ use crate::schema::{
     profile_subscription_services, profile_subscriptions, subscription_events, subscription_revenue,
 };
 use crate::schema::{
-    social_proof_tokens_config, social_proof_tokens_events, spt_exchange_config, spt_holdings,
-    spt_pools, spt_price_history, spt_reservation_pools, spt_reservations, spt_revenue,
-    spt_transactions, unified_revenue,
+    ecosystem_treasury, social_proof_tokens_config, social_proof_tokens_events, spt_exchange_config,
+    spt_holdings, spt_pools, spt_price_history, spt_reservation_pools, spt_reservations,
+    spt_revenue, spt_transactions, unified_revenue,
 };
 use crate::schema::{
     spot_bet_withdrawals, spot_bets, spot_config, spot_events, spot_payouts, spot_records,
@@ -1271,6 +1271,16 @@ pub struct NewSptReservation {
     pub creator_fee: Option<i64>,
     pub platform_fee: Option<i64>,
     pub treasury_fee: Option<i64>,
+    pub time: chrono::DateTime<chrono::Utc>,
+    pub transaction_id: String,
+}
+
+#[derive(Debug, Clone, Insertable, Serialize, Deserialize)]
+#[diesel(table_name = ecosystem_treasury)]
+pub struct NewEcosystemTreasury {
+    pub treasury_address: String,
+    pub updated_by: String,
+    pub timestamp_ms: i64,
     pub time: chrono::DateTime<chrono::Utc>,
     pub transaction_id: String,
 }
