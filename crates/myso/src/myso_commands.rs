@@ -1287,11 +1287,11 @@ async fn start(
     // succeed if a non-default port was provided.
 
     if config_dir.join(MYSO_CLIENT_CONFIG).exists() {
-        let _ = update_wallet_config_rpc(config_dir.clone(), fullnode_rpc_url.clone())?;
+        let _ = update_wallet_config_rpc(config_dir.clone(), fullnode_rpc_url.clone()).await?;
     }
 
     if force_regenesis && myso_config_dir()?.join(MYSO_CLIENT_CONFIG).exists() {
-        let _ = update_wallet_config_rpc(myso_config_dir()?, fullnode_rpc_url.clone())?;
+        let _ = update_wallet_config_rpc(myso_config_dir()?, fullnode_rpc_url.clone()).await?;
     }
 
     if let Some(input) = with_faucet {
@@ -1345,7 +1345,8 @@ async fn start(
         const FAUCET_CONCURRENCY_LIMIT: usize = 30;
 
         let local_faucet = SimpleFaucet::new(
-            create_wallet_context(config.wallet_client_timeout_secs, config_dir.clone())?,
+            create_wallet_context(config.wallet_client_timeout_secs, config_dir.clone())
+                .await?,
             &prometheus_registry,
             &config.write_ahead_log,
             config.clone(),
@@ -1918,14 +1919,15 @@ fn normalize_bind_addr(addr: SocketAddr) -> IpAddr {
     }
 }
 
-fn update_wallet_config_rpc(
+async fn update_wallet_config_rpc(
     config_dir: PathBuf,
     fullnode_rpc_url: String,
 ) -> anyhow::Result<WalletContext, anyhow::Error> {
     let mut wallet_context = create_wallet_context(
         FaucetConfig::default().wallet_client_timeout_secs,
         config_dir.clone(),
-    )?;
+    )
+    .await?;
     if let Some(env) = wallet_context
         .config
         .envs

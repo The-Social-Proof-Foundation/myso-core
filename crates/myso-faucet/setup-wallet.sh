@@ -76,12 +76,9 @@ if [ ! -z "$WALLET_PRIVATE_KEY" ]; then
 ]
 EOF
 elif [ ! -z "$WALLET_MNEMONIC" ]; then
-    echo "🎯 Using mnemonic to derive keypair"
-    # For now, we'll require the private key since deriving from mnemonic 
-    # requires more complex crypto operations that would need the MySo binary
-    echo "❌ Mnemonic derivation not yet implemented in this script"
-    echo "   Please provide WALLET_PRIVATE_KEY instead"
-    exit 1
+    echo "🎯 Using mnemonic - faucet will derive keypair at runtime"
+    # Faucet derives key from mnemonic internally; create empty keystore placeholder
+    echo "[]" > /root/.myso/myso_config/myso.keystore
 fi
 
 echo "✅ Created client.yaml"

@@ -74,7 +74,8 @@ async fn init_faucet_with_retry(
 ) -> Result<Arc<SimpleFaucet>, anyhow::Error> {
     let mut last_error = None;
     for attempt in 1..=INIT_RETRY_ATTEMPTS {
-        let context = create_wallet_context(wallet_client_timeout_secs, config_dir.to_path_buf())?;
+        let context =
+            create_wallet_context(wallet_client_timeout_secs, config_dir.to_path_buf()).await?;
         match SimpleFaucet::new(
             context,
             prometheus_registry,

@@ -19,7 +19,10 @@ use axum::{
 };
 use http::Method;
 use myso_config::MYSO_CLIENT_CONFIG;
+use myso_keys::keystore::{AccountKeystore, InMemKeystore, Keystore};
+use myso_sdk::myso_client_config::MySoEnv;
 use myso_sdk::wallet_context::WalletContext;
+use myso_types::crypto::{EncodeDecodeBase64, MySoKeyPair, SignatureScheme};
 use mysten_metrics::spawn_monitored_task;
 use prometheus::Registry;
 use std::{
@@ -582,13 +585,52 @@ async fn request_gas(
     }
 }
 
-pub fn create_wallet_context(
+pub async fn create_wallet_context(
     _timeout_secs: u64,
     config_dir: PathBuf,
 ) -> Result<WalletContext, anyhow::Error> {
     let wallet_conf = config_dir.join(MYSO_CLIENT_CONFIG);
-    info!("Initialize wallet from config path: {:?}", wallet_conf);
-    WalletContext::new(&wallet_conf)
+
+    let keystore = if let Ok(key) = std::env::var("WALLET_PRIVATE_KEY") {
+        info!("Initialize wallet from WALLET_PRIVATE_KEY env");
+        let kp = MySoKeyPair::decode_base64(key.trim())
+            .map_err(|e| anyhow::anyhow!("Invalid WALLET_PRIVATE_KEY: {}", e))?;
+        let mut ks = Keystore::InMem(InMemKeystore::default());
+        ks.import(None, kp).await?;
+        ks
+    } else if let Ok(mnemonic) = std::env::var("WALLET_MNEMONIC") {
+        info!("Initialize wallet from WALLET_MNEMONIC env (deriving key)");
+        let mut ks = Keystore::InMem(InMemKeystore::default());
+        ks.import_from_mnemonic(mnemonic.trim(), SignatureScheme::ED25519, None, None)
+            .await
+            .map_err(|e| anyhow::anyhow!("Invalid WALLET_MNEMONIC: {}", e))?;
+        ks
+    } else {
+        info!("Initialize wallet from config path: {:?}", wallet_conf);
+        return WalletContext::new(&wallet_conf);
+    };
+
+    let network_url = std::env::var("NETWORK_URL")
+        .unwrap_or_else(|_| "http://fullnode.testnet.mysocial.network:9000".to_string());
+    let network_alias = std::env::var("NETWORK_ALIAS").unwrap_or_else(|_| "testnet".to_string());
+
+    let mut context = WalletContext::new_for_tests(
+        keystore,
+        None,
+        Some(wallet_conf.clone()),
+    );
+
+    context.config.add_env(MySoEnv {
+        alias: network_alias.clone(),
+        rpc: network_url,
+        ws: None,
+        basic_auth: None,
+        chain_id: None,
+    });
+    context.config.active_env = Some(network_alias);
+    context.config.active_address = context.config.keystore.addresses().first().copied();
+
+    Ok(context)
 }
 
 async fn handle_error(error: BoxError) -> impl IntoResponse {
