@@ -104,13 +104,17 @@ BEGIN
     END IF;
 END $$;
 
--- Individual Reservations table with time dimension
+-- Individual Reservations table with time dimension (fee columns match spt_transactions)
 CREATE TABLE IF NOT EXISTS spt_reservations (
     id SERIAL NOT NULL,
     pool_id TEXT NOT NULL,
     reservatior_address TEXT NOT NULL,
     amount BIGINT NOT NULL,
     reserved_at BIGINT NOT NULL,
+    fee_amount BIGINT,
+    creator_fee BIGINT,
+    platform_fee BIGINT,
+    treasury_fee BIGINT,
     time TIMESTAMPTZ NOT NULL DEFAULT NOW(),
     transaction_id TEXT NOT NULL,
     CONSTRAINT pk_spt_reservations PRIMARY KEY (id, time)
