@@ -387,6 +387,7 @@ fn process_profile_updated_event(
         selected_ecosystem_badge_id: None,
         paid_messaging_enabled: None,
         paid_messaging_min_cost: None,
+        reservation_pool_address: None,
     };
     Some(vec![
         SocialEventRow::ProfileUpdate(up),
@@ -464,6 +465,7 @@ fn process_username_registered_event(data: &serde_json::Value) -> Option<Vec<Soc
         selected_ecosystem_badge_id: None,
         paid_messaging_enabled: None,
         paid_messaging_min_cost: None,
+        reservation_pool_address: None,
     };
     Some(vec![SocialEventRow::ProfileUpdate(up)])
 }
@@ -514,6 +516,7 @@ fn process_username_updated_event(data: &serde_json::Value) -> Option<Vec<Social
         selected_ecosystem_badge_id: None,
         paid_messaging_enabled: None,
         paid_messaging_min_cost: None,
+        reservation_pool_address: None,
     };
     Some(vec![SocialEventRow::ProfileUpdate(up)])
 }
@@ -723,6 +726,7 @@ fn process_badge_selected_event(
         selected_ecosystem_badge_id,
         paid_messaging_enabled: None,
         paid_messaging_min_cost: None,
+        reservation_pool_address: None,
     };
     Some(vec![SocialEventRow::ProfileUpdate(up)])
 }
@@ -782,6 +786,7 @@ fn process_paid_messaging_settings_updated_event(
         selected_ecosystem_badge_id: None,
         paid_messaging_enabled: Some(ev.enabled),
         paid_messaging_min_cost: ev.min_cost.map(|v| v as i64),
+        reservation_pool_address: None,
     };
     Some(vec![SocialEventRow::ProfileUpdate(up)])
 }

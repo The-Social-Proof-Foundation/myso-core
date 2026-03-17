@@ -574,6 +574,7 @@ pub struct ProfileUpdate {
     pub selected_ecosystem_badge_id: Option<Option<String>>,
     pub paid_messaging_enabled: Option<bool>,
     pub paid_messaging_min_cost: Option<i64>,
+    pub reservation_pool_address: Option<Option<String>>,
 }
 
 impl FieldCount for SocialEventRow {
@@ -806,6 +807,7 @@ impl Handler for SocialEvents {
                         selected_ecosystem_badge_id: up.selected_ecosystem_badge_id.clone(),
                         paid_messaging_enabled: up.paid_messaging_enabled,
                         paid_messaging_min_cost: up.paid_messaging_min_cost.map(Some),
+                        reservation_pool_address: up.reservation_pool_address.clone(),
                     };
                     let filter = profiles::profile_id
                         .eq(&up.profile_id)

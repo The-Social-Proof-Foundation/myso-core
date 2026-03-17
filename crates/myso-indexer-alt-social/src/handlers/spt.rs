@@ -1,7 +1,7 @@
 // Copyright (c) The Social Proof Foundation, LLC.
 // SPDX-License-Identifier: Apache-2.0
 
-use super::SocialEventRow;
+use super::{ProfileUpdate, SocialEventRow};
 use myso_indexer_alt_social_schema::models::{
     NewSocialProofTokensConfig, NewSocialProofTokensEvent, NewSptExchangeConfig, NewSptHolding,
     NewSptPool, NewSptPriceHistory, NewSptReservation, NewSptReservationPool, NewSptTransaction,
@@ -322,10 +322,10 @@ fn process_reservation_pool_created_event(
     let required_threshold = json_to_i64(data.get("required_threshold")?);
 
     let pool = NewSptReservationPool {
-        pool_id: pool_object_id,
-        associated_id,
+        pool_id: pool_object_id.clone(),
+        associated_id: associated_id.clone(),
         token_type,
-        owner,
+        owner: owner.clone(),
         total_reserved: 0,
         required_threshold,
         status: RESERVATION_POOL_STATUS_ACTIVE.to_string(),
@@ -334,7 +334,46 @@ fn process_reservation_pool_created_event(
         transaction_id: transaction_id.to_string(),
     };
 
-    Some(vec![SocialEventRow::SptReservationPool(pool)])
+    let mut rows = vec![SocialEventRow::SptReservationPool(pool)];
+
+    if token_type == TOKEN_TYPE_PROFILE {
+        let profile_update = ProfileUpdate {
+            profile_id: associated_id,
+            owner_address: owner,
+            display_name: None,
+            bio: None,
+            profile_photo: None,
+            cover_photo: None,
+            birthdate: None,
+            current_location: None,
+            raised_location: None,
+            phone: None,
+            email: None,
+            gender: None,
+            political_view: None,
+            religion: None,
+            education: None,
+            primary_language: None,
+            relationship_status: None,
+            x_username: None,
+            facebook_username: None,
+            reddit_username: None,
+            github_username: None,
+            instagram_username: None,
+            linkedin_username: None,
+            twitch_username: None,
+            min_offer_amount: None,
+            username: None,
+            selected_badge_id: None,
+            selected_ecosystem_badge_id: None,
+            paid_messaging_enabled: None,
+            paid_messaging_min_cost: None,
+            reservation_pool_address: Some(Some(pool_object_id)),
+        };
+        rows.push(SocialEventRow::ProfileUpdate(profile_update));
+    }
+
+    Some(rows)
 }
 
 fn process_reservation_created_event(

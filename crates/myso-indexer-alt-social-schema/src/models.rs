@@ -240,6 +240,7 @@ pub struct ProfileUpdateSet {
     pub selected_ecosystem_badge_id: Option<Option<String>>,
     pub paid_messaging_enabled: Option<bool>,
     pub paid_messaging_min_cost: Option<Option<i64>>,
+    pub reservation_pool_address: Option<Option<String>>,
 }
 
 // =============================================================================
