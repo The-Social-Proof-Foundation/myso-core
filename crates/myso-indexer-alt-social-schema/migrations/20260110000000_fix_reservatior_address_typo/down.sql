@@ -125,3 +125,13 @@ WHERE
 ORDER BY 
     s.reserved_at DESC;
 
+-- ============================================================================
+-- 8. DROP PRIMARY KEYS (reverts section 0 from up)
+-- ============================================================================
+
+ALTER TABLE profile_subscriptions DROP CONSTRAINT IF EXISTS pk_profile_subscriptions;
+ALTER TABLE spt_revenue DROP CONSTRAINT IF EXISTS pk_spt_revenue;
+ALTER TABLE subscription_access_logs DROP CONSTRAINT IF EXISTS pk_subscription_access_logs;
+ALTER TABLE subscription_events DROP CONSTRAINT IF EXISTS pk_subscription_events;
+ALTER TABLE subscription_revenue DROP CONSTRAINT IF EXISTS pk_subscription_revenue;
+ALTER TABLE unified_revenue DROP CONSTRAINT IF EXISTS pk_unified_revenue;

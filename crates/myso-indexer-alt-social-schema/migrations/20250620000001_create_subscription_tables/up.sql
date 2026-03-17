@@ -78,7 +78,8 @@ CREATE TABLE IF NOT EXISTS subscription_events (
     time TIMESTAMPTZ NOT NULL DEFAULT NOW(),
     transaction_id TEXT NOT NULL,
     processing_success BOOLEAN NOT NULL DEFAULT true,
-    processing_error TEXT
+    processing_error TEXT,
+    CONSTRAINT pk_subscription_events PRIMARY KEY (event_type, time)
 );
 
 -- Convert to TimescaleDB hypertable for event analytics
@@ -110,7 +111,8 @@ CREATE TABLE IF NOT EXISTS subscription_revenue (
     time TIMESTAMPTZ NOT NULL DEFAULT NOW(),
     transaction_id TEXT NOT NULL,
     processing_success BOOLEAN NOT NULL DEFAULT true,
-    processing_error TEXT
+    processing_error TEXT,
+    CONSTRAINT pk_subscription_revenue PRIMARY KEY (service_id, time)
 );
 
 -- Convert to TimescaleDB hypertable for revenue analytics
@@ -141,7 +143,8 @@ CREATE TABLE IF NOT EXISTS subscription_access_logs (
     time TIMESTAMPTZ NOT NULL DEFAULT NOW(),
     transaction_id TEXT NOT NULL,
     processing_success BOOLEAN NOT NULL DEFAULT true,
-    processing_error TEXT
+    processing_error TEXT,
+    CONSTRAINT pk_subscription_access_logs PRIMARY KEY (subscription_id, time)
 );
 
 -- Convert to TimescaleDB hypertable with daily chunks for access logs

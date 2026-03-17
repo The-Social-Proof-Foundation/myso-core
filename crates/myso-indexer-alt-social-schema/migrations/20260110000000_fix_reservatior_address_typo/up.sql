@@ -2,6 +2,82 @@
 -- This fixes the column name mismatch that prevents inserts from working
 
 -- ============================================================================
+-- 0. ADD profile_subscriptions PRIMARY KEY (if missing; fixes DBs created before PK was in CREATE TABLE)
+-- ============================================================================
+
+DO $$
+BEGIN
+    IF NOT EXISTS (
+        SELECT 1 FROM pg_constraint
+        WHERE conrelid = 'profile_subscriptions'::regclass
+        AND conname = 'pk_profile_subscriptions'
+    ) THEN
+        ALTER TABLE profile_subscriptions
+        ADD CONSTRAINT pk_profile_subscriptions PRIMARY KEY (subscription_id, time);
+    END IF;
+END $$;
+
+DO $$
+BEGIN
+    IF NOT EXISTS (
+        SELECT 1 FROM pg_constraint
+        WHERE conrelid = 'spt_revenue'::regclass
+        AND conname = 'pk_spt_revenue'
+    ) THEN
+        ALTER TABLE spt_revenue
+        ADD CONSTRAINT pk_spt_revenue PRIMARY KEY (pool_id, time);
+    END IF;
+END $$;
+
+DO $$
+BEGIN
+    IF NOT EXISTS (
+        SELECT 1 FROM pg_constraint
+        WHERE conrelid = 'subscription_access_logs'::regclass
+        AND conname = 'pk_subscription_access_logs'
+    ) THEN
+        ALTER TABLE subscription_access_logs
+        ADD CONSTRAINT pk_subscription_access_logs PRIMARY KEY (subscription_id, time);
+    END IF;
+END $$;
+
+DO $$
+BEGIN
+    IF NOT EXISTS (
+        SELECT 1 FROM pg_constraint
+        WHERE conrelid = 'subscription_events'::regclass
+        AND conname = 'pk_subscription_events'
+    ) THEN
+        ALTER TABLE subscription_events
+        ADD CONSTRAINT pk_subscription_events PRIMARY KEY (event_type, time);
+    END IF;
+END $$;
+
+DO $$
+BEGIN
+    IF NOT EXISTS (
+        SELECT 1 FROM pg_constraint
+        WHERE conrelid = 'subscription_revenue'::regclass
+        AND conname = 'pk_subscription_revenue'
+    ) THEN
+        ALTER TABLE subscription_revenue
+        ADD CONSTRAINT pk_subscription_revenue PRIMARY KEY (service_id, time);
+    END IF;
+END $$;
+
+DO $$
+BEGIN
+    IF NOT EXISTS (
+        SELECT 1 FROM pg_constraint
+        WHERE conrelid = 'unified_revenue'::regclass
+        AND conname = 'pk_unified_revenue'
+    ) THEN
+        ALTER TABLE unified_revenue
+        ADD CONSTRAINT pk_unified_revenue PRIMARY KEY (revenue_source, time);
+    END IF;
+END $$;
+
+-- ============================================================================
 -- 1. DROP VIEWS THAT DEPEND ON THE COLUMN
 -- ============================================================================
 

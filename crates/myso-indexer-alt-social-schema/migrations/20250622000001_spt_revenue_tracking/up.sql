@@ -23,7 +23,8 @@ CREATE TABLE IF NOT EXISTS spt_revenue (
     token_price BIGINT NOT NULL,
     revenue_time BIGINT NOT NULL,
     time TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-    transaction_id TEXT NOT NULL
+    transaction_id TEXT NOT NULL,
+    CONSTRAINT pk_spt_revenue PRIMARY KEY (pool_id, time)
 );
 
 -- Convert to TimescaleDB hypertable with 1-hour chunks for real-time SPT analytics
@@ -51,7 +52,7 @@ CREATE INDEX IF NOT EXISTS idx_spt_revenue_trader_time ON spt_revenue (trader, t
 -- Unified Revenue Summary (TimescaleDB hypertable for cross-platform analytics)
 CREATE TABLE IF NOT EXISTS unified_revenue (
     revenue_source TEXT NOT NULL CHECK (revenue_source IN ('subscription', 'my_ip', 'spt', 'tips', 'posts')),
-    revenue_type TEXT NOT NULL, 
+    revenue_type TEXT NOT NULL,
     creator_address TEXT NOT NULL,
     platform_address TEXT,
     amount BIGINT NOT NULL,
@@ -62,7 +63,8 @@ CREATE TABLE IF NOT EXISTS unified_revenue (
     recipient_address TEXT NOT NULL,
     revenue_time BIGINT NOT NULL,
     time TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-    transaction_id TEXT NOT NULL
+    transaction_id TEXT NOT NULL,
+    CONSTRAINT pk_unified_revenue PRIMARY KEY (revenue_source, time)
 );
 
 -- Convert to TimescaleDB hypertable with 1-hour chunks for unified analytics
