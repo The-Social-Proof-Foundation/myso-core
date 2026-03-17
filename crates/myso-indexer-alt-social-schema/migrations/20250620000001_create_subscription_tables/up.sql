@@ -36,7 +36,8 @@ CREATE TABLE IF NOT EXISTS profile_subscriptions (
     time TIMESTAMPTZ NOT NULL DEFAULT NOW(),
     transaction_id TEXT NOT NULL,
     processing_success BOOLEAN NOT NULL DEFAULT true,
-    processing_error TEXT
+    processing_error TEXT,
+    CONSTRAINT pk_profile_subscriptions PRIMARY KEY (subscription_id, time)
 );
 
 -- Convert to TimescaleDB hypertable for subscription analytics
@@ -47,6 +48,14 @@ BEGIN
         WHERE hypertable_schema = 'public' AND hypertable_name = 'profile_subscriptions'
     ) THEN
         PERFORM create_hypertable('profile_subscriptions'::regclass, 'time'::name, chunk_time_interval => INTERVAL '14 days');
+    END IF;
+END $$;
+
+-- Ensure primary key exists (for DBs created before it was added to CREATE TABLE)
+DO $$
+BEGIN
+    IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conrelid = 'profile_subscriptions'::regclass AND conname = 'pk_profile_subscriptions') THEN
+        ALTER TABLE profile_subscriptions ADD CONSTRAINT pk_profile_subscriptions PRIMARY KEY (subscription_id, time);
     END IF;
 END $$;
 
