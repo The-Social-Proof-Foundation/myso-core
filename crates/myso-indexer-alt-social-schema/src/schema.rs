@@ -562,8 +562,7 @@ diesel::table! {
         developer_address -> Text,
         terms_of_service -> Nullable<Text>,
         privacy_policy -> Nullable<Text>,
-        #[sql_name = "platforms"]
-        platform_names -> Nullable<Jsonb>,
+        platforms -> Nullable<Jsonb>,
         links -> Nullable<Jsonb>,
         status -> Int2,
         release_date -> Nullable<Text>,
@@ -737,8 +736,6 @@ diesel::table! {
         removed_by -> Nullable<Text>,
         transaction_id -> Text,
         time -> Timestamptz,
-        mydata_id -> Nullable<Text>,
-        revenue_recipient -> Nullable<Text>,
         promotion_id -> Nullable<Text>,
         poc_id -> Nullable<Text>,
         revenue_redirect_to -> Nullable<Text>,
@@ -1270,16 +1267,6 @@ diesel::table! {
 }
 
 diesel::table! {
-    social_proof_tokens_events (id) {
-        id -> Int4,
-        event_type -> Text,
-        event_data -> Jsonb,
-        event_id -> Text,
-        created_at -> Timestamptz,
-    }
-}
-
-diesel::table! {
     spot_bet_withdrawals (id, time) {
         id -> Int4,
         post_id -> Text,
@@ -1489,10 +1476,6 @@ diesel::table! {
         reserver_address -> Text,
         amount -> Int8,
         reserved_at -> Int8,
-        fee_amount -> Nullable<Int8>,
-        creator_fee -> Nullable<Int8>,
-        platform_fee -> Nullable<Int8>,
-        treasury_fee -> Nullable<Int8>,
         time -> Timestamptz,
         transaction_id -> Text,
     }
@@ -1804,7 +1787,6 @@ diesel::allow_tables_to_appear_in_same_query!(
     social_graph_relationships,
     social_proof_of_truth,
     social_proof_tokens_config,
-    social_proof_tokens_events,
     spot_bet_withdrawals,
     spot_bets,
     spot_config,

@@ -651,29 +651,31 @@ pub(crate) async fn get_platform_revenue_stats(
 pub(crate) async fn get_current_treasury(
     db: &Db,
 ) -> Result<Option<serde_json::Value>, SocialError> {
-    let mut conn = db.connect().await?;
-    #[derive(diesel::Queryable)]
+    use diesel::prelude::QueryableByName;
+
+    #[derive(QueryableByName)]
     struct TreasuryRow {
+        #[diesel(sql_type = Text)]
         treasury_address: String,
+        #[diesel(sql_type = Text)]
         updated_by: String,
+        #[diesel(sql_type = BigInt)]
         timestamp_ms: i64,
+        #[diesel(sql_type = Timestamptz)]
         time: chrono::DateTime<chrono::Utc>,
+        #[diesel(sql_type = Text)]
         transaction_id: String,
     }
-    let row: Option<TreasuryRow> = ecosystem_treasury::table
-        .order_by(ecosystem_treasury::time.desc())
-        .limit(1)
-        .select((
-            ecosystem_treasury::treasury_address,
-            ecosystem_treasury::updated_by,
-            ecosystem_treasury::timestamp_ms,
-            ecosystem_treasury::time,
-            ecosystem_treasury::transaction_id,
-        ))
-        .load::<TreasuryRow>(&mut conn)
-        .await?
-        .into_iter()
-        .next();
+
+    let mut conn = db.connect().await?;
+    let row = diesel::sql_query(
+        "SELECT treasury_address, updated_by, timestamp_ms, time, transaction_id \
+         FROM ecosystem_treasury ORDER BY time DESC LIMIT 1",
+    )
+    .get_result::<TreasuryRow>(&mut conn)
+    .await
+    .optional()?;
+
     Ok(row.map(|r| {
         serde_json::json!({
             "treasury_address": r.treasury_address,

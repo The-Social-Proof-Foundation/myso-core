@@ -160,7 +160,7 @@ pub async fn get_treasury_current(
         .reader
         .get_current_treasury()
         .await?
-        .ok_or_else(|| SocialError::not_found("Treasury".to_string()))?;
+        .unwrap_or(serde_json::Value::Null);
     Ok(Json(treasury))
 }
 
