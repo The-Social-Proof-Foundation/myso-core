@@ -35,22 +35,13 @@ DROP INDEX IF EXISTS idx_spt_reservations_reserver_address;
 ALTER TABLE spt_reservations RENAME COLUMN reserver_address TO reservatior_address;
 
 -- ============================================================================
--- 4b. DROP FEE COLUMNS
--- ============================================================================
-
-ALTER TABLE spt_reservations DROP COLUMN IF EXISTS treasury_fee;
-ALTER TABLE spt_reservations DROP COLUMN IF EXISTS platform_fee;
-ALTER TABLE spt_reservations DROP COLUMN IF EXISTS creator_fee;
-ALTER TABLE spt_reservations DROP COLUMN IF EXISTS fee_amount;
-
--- ============================================================================
--- 5. RECREATE INDEXES WITH OLD COLUMN NAME
+-- 4. RECREATE INDEXES WITH OLD COLUMN NAME
 -- ============================================================================
 
 CREATE INDEX IF NOT EXISTS idx_spt_reservations_reservatior_address ON spt_reservations(reservatior_address);
 
 -- ============================================================================
--- 6. UPDATE COMPRESSION CONFIGURATION BACK
+-- 5. UPDATE COMPRESSION CONFIGURATION BACK
 -- ============================================================================
 
 DO $$
@@ -92,7 +83,7 @@ BEGIN
 END $$;
 
 -- ============================================================================
--- 7. RECREATE VIEWS WITH OLD COLUMN NAME
+-- 6. RECREATE VIEWS WITH OLD COLUMN NAME
 -- ============================================================================
 
 CREATE OR REPLACE VIEW user_reservation_holdings AS

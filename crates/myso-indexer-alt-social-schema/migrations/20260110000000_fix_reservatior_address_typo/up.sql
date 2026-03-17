@@ -107,28 +107,19 @@ END $$;
 DROP INDEX IF EXISTS idx_spt_reservations_reservatior_address;
 
 -- ============================================================================
--- 4. ADD FEE COLUMNS (if not exist)
--- ============================================================================
-
-ALTER TABLE spt_reservations ADD COLUMN IF NOT EXISTS fee_amount BIGINT;
-ALTER TABLE spt_reservations ADD COLUMN IF NOT EXISTS creator_fee BIGINT;
-ALTER TABLE spt_reservations ADD COLUMN IF NOT EXISTS platform_fee BIGINT;
-ALTER TABLE spt_reservations ADD COLUMN IF NOT EXISTS treasury_fee BIGINT;
-
--- ============================================================================
--- 5. RENAME THE COLUMN
+-- 4. RENAME THE COLUMN
 -- ============================================================================
 
 ALTER TABLE spt_reservations RENAME COLUMN reservatior_address TO reserver_address;
 
 -- ============================================================================
--- 6. RECREATE INDEXES WITH CORRECT COLUMN NAME
+-- 5. RECREATE INDEXES WITH CORRECT COLUMN NAME
 -- ============================================================================
 
 CREATE INDEX IF NOT EXISTS idx_spt_reservations_reserver_address ON spt_reservations(reserver_address);
 
 -- ============================================================================
--- 7. UPDATE COMPRESSION CONFIGURATION
+-- 6. UPDATE COMPRESSION CONFIGURATION
 -- ============================================================================
 
 -- Update compression segmentby with correct column name
@@ -175,7 +166,7 @@ BEGIN
 END $$;
 
 -- ============================================================================
--- 8. RECREATE VIEWS WITH CORRECT COLUMN NAME
+-- 7. RECREATE VIEWS WITH CORRECT COLUMN NAME
 -- ============================================================================
 
 -- Recreate user_reservation_holdings view with correct column name
