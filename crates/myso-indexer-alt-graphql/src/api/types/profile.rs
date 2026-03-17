@@ -98,10 +98,7 @@ impl Profile {
 
     /// The profile's username.
     async fn username(&self) -> String {
-        self.inner
-            .username
-            .clone()
-            .unwrap_or_default()
+        self.inner.username.clone().unwrap_or_default()
     }
 
     /// The profile's display name.

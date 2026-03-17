@@ -7,11 +7,14 @@ use diesel::QueryDsl;
 use diesel::SelectableHelper;
 use diesel_async::RunQueryDsl;
 use myso_indexer_alt_social_schema::models::Profile;
-use myso_indexer_alt_social_schema::schema::{profiles, wallet_social_graph};
+use myso_indexer_alt_social_schema::schema::{
+    profile_offers, profile_sale_fees, profiles, wallet_social_graph,
+};
 
 use crate::error::SocialError;
 use crate::reader::social_graph::enrich_users_with_universal_data;
 use crate::reader::types::{ProfileByAddressResponse, UniversalUserResult};
+use myso_indexer_alt_social_schema::models::{ProfileOffer, ProfileSaleFee};
 use crate::reader::WalletOnlyProfile;
 use myso_pg_db::Db;
 
@@ -86,11 +89,8 @@ pub(crate) async fn get_profile_or_wallet_by_address(
 
     match profile_result {
         Ok(profile) => {
-            let enriched = enrich_users_with_universal_data(
-                &mut conn,
-                vec![address.to_string()],
-            )
-            .await?;
+            let enriched =
+                enrich_users_with_universal_data(&mut conn, vec![address.to_string()]).await?;
             let mut response = ProfileByAddressResponse::from(profile);
             if let Some(e) = enriched.get(address) {
                 response = response.with_enrichment(e);
@@ -107,9 +107,7 @@ pub(crate) async fn get_profile_or_wallet_by_address(
                     wallet_social_graph::created_at,
                     wallet_social_graph::updated_at,
                 ))
-                .first::<(i32, i32, i32, chrono::NaiveDateTime, chrono::NaiveDateTime)>(
-                    &mut conn,
-                )
+                .first::<(i32, i32, i32, chrono::NaiveDateTime, chrono::NaiveDateTime)>(&mut conn)
                 .await;
 
             let wallet_only = match wallet_result {
@@ -141,4 +139,54 @@ pub(crate) async fn get_profile_by_username(
         .await
         .optional()?;
     Ok(result)
+}
+
+async fn resolve_profile_id(db: &Db, address: &str) -> Result<String, SocialError> {
+    let mut conn = db.connect().await?;
+    let profile_id: Option<String> = profiles::table
+        .filter(profiles::owner_address.eq(address))
+        .select(profiles::profile_id)
+        .first(&mut conn)
+        .await
+        .optional()?
+        .flatten();
+    Ok(profile_id.unwrap_or_else(|| address.to_string()))
+}
+
+pub(crate) async fn list_profile_offers(
+    db: &Db,
+    address: &str,
+    limit: i64,
+    offset: i64,
+) -> Result<Vec<ProfileOffer>, SocialError> {
+    let profile_id = resolve_profile_id(db, address).await?;
+    let mut conn = db.connect().await?;
+    let results = profile_offers::table
+        .filter(profile_offers::profile_id.eq(&profile_id))
+        .order_by(profile_offers::created_at.desc())
+        .limit(limit)
+        .offset(offset)
+        .select(ProfileOffer::as_select())
+        .load::<ProfileOffer>(&mut conn)
+        .await?;
+    Ok(results)
+}
+
+pub(crate) async fn list_profile_sale_fees(
+    db: &Db,
+    address: &str,
+    limit: i64,
+    offset: i64,
+) -> Result<Vec<ProfileSaleFee>, SocialError> {
+    let profile_id = resolve_profile_id(db, address).await?;
+    let mut conn = db.connect().await?;
+    let results = profile_sale_fees::table
+        .filter(profile_sale_fees::profile_id.eq(&profile_id))
+        .order_by(profile_sale_fees::timestamp.desc())
+        .limit(limit)
+        .offset(offset)
+        .select(ProfileSaleFee::as_select())
+        .load::<ProfileSaleFee>(&mut conn)
+        .await?;
+    Ok(results)
 }

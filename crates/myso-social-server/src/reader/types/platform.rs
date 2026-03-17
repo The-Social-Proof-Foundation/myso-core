@@ -3,6 +3,9 @@
 
 use serde::Serialize;
 
+// API-layer type: subset of Platform for list/detail responses.
+// DB-table type: myso_indexer_alt_social_schema::models::Platform.
+
 #[derive(Debug, Serialize)]
 pub struct PlatformRow {
     pub platform_id: String,
@@ -38,6 +41,36 @@ pub struct PlatformRow {
     pub quorum_votes: Option<i64>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub voting_period_epochs: Option<i64>,
+}
+
+impl From<myso_indexer_alt_social_schema::models::Platform> for PlatformRow {
+    fn from(p: myso_indexer_alt_social_schema::models::Platform) -> Self {
+        Self {
+            platform_id: p.platform_id,
+            name: p.name,
+            tagline: p.tagline,
+            description: p.description,
+            logo: p.logo,
+            developer_address: p.developer_address,
+            status: p.status,
+            is_approved: p.is_approved,
+            primary_category: p.primary_category,
+            secondary_category: p.secondary_category,
+            created_at: p.created_at,
+            updated_at: p.updated_at,
+            deleted_at: p.deleted_at,
+            wants_dao_governance: p.wants_dao_governance,
+            governance_registry_id: p.governance_registry_id,
+            delegate_count: p.delegate_count,
+            delegate_term_epochs: p.delegate_term_epochs,
+            max_votes_per_user: p.max_votes_per_user,
+            min_on_chain_age_days: p.min_on_chain_age_days,
+            proposal_submission_cost: p.proposal_submission_cost,
+            quadratic_base_cost: p.quadratic_base_cost,
+            quorum_votes: p.quorum_votes,
+            voting_period_epochs: p.voting_period_epochs,
+        }
+    }
 }
 
 #[derive(Debug, Serialize)]

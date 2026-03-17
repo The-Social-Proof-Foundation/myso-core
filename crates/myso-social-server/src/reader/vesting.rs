@@ -172,23 +172,28 @@ pub(crate) async fn list_vesting_wallets(
         };
         let results: Vec<VestingWalletRow> = rows
             .into_iter()
-            .map(|r| vesting_wallet_row_from_tuple(
-                r.wallet_id,
-                r.owner_address,
-                r.total_amount,
-                r.start_time,
-                r.duration,
-                r.curve_factor,
-                r.claimed_amount,
-                r.remaining_balance,
-                r.created_at,
-                r.updated_at,
-                r.transaction_id,
-            ))
+            .map(|r| {
+                vesting_wallet_row_from_tuple(
+                    r.wallet_id,
+                    r.owner_address,
+                    r.total_amount,
+                    r.start_time,
+                    r.duration,
+                    r.curve_factor,
+                    r.claimed_amount,
+                    r.remaining_balance,
+                    r.created_at,
+                    r.updated_at,
+                    r.transaction_id,
+                )
+            })
             .collect();
         (total, results)
     } else {
-        let total = vesting_wallets::table.count().get_result::<i64>(&mut conn).await?;
+        let total = vesting_wallets::table
+            .count()
+            .get_result::<i64>(&mut conn)
+            .await?;
         let rows = vesting_wallets::table
             .order_by(vesting_wallets::created_at.desc())
             .limit(limit)
@@ -235,19 +240,21 @@ pub(crate) async fn list_vesting_wallets(
                     created_at,
                     updated_at,
                     transaction_id,
-                )| vesting_wallet_row_from_tuple(
-                    wallet_id,
-                    owner_address,
-                    total_amount,
-                    start_time,
-                    duration,
-                    curve_factor,
-                    claimed_amount,
-                    remaining_balance,
-                    created_at,
-                    updated_at,
-                    transaction_id,
-                ),
+                )| {
+                    vesting_wallet_row_from_tuple(
+                        wallet_id,
+                        owner_address,
+                        total_amount,
+                        start_time,
+                        duration,
+                        curve_factor,
+                        claimed_amount,
+                        remaining_balance,
+                        created_at,
+                        updated_at,
+                        transaction_id,
+                    )
+                },
             )
             .collect();
         (total, results)
@@ -258,29 +265,29 @@ pub(crate) async fn list_vesting_wallets(
     let owner_addresses: Vec<String> = wallets.iter().map(|w| w.owner_address.clone()).collect();
     let user_map = enrich_users_with_universal_data(&mut conn, owner_addresses).await?;
 
-    let wallets_with_profile: Vec<VestingWalletWithProfile> = wallets
-        .into_iter()
-        .map(|w| {
-            let with_status =
-                VestingWalletWithStatus::from_wallet(w.clone(), current_time_ms as u64);
-            let user = user_map
-                .get(&w.owner_address)
-                .cloned()
-                .unwrap_or_else(|| UniversalUserResult {
-                    owner_address: w.owner_address.clone(),
-                    wallet_address: w.owner_address.clone(),
-                    username: None,
-                    fullname: None,
-                    profile_photo: None,
-                    social_proof_token: None,
-                    selected_badge: None,
+    let wallets_with_profile: Vec<VestingWalletWithProfile> =
+        wallets
+            .into_iter()
+            .map(|w| {
+                let with_status =
+                    VestingWalletWithStatus::from_wallet(w.clone(), current_time_ms as u64);
+                let user = user_map.get(&w.owner_address).cloned().unwrap_or_else(|| {
+                    UniversalUserResult {
+                        owner_address: w.owner_address.clone(),
+                        wallet_address: w.owner_address.clone(),
+                        username: None,
+                        fullname: None,
+                        profile_photo: None,
+                        social_proof_token: None,
+                        selected_badge: None,
+                    }
                 });
-            VestingWalletWithProfile {
-                wallet: with_status,
-                user,
-            }
-        })
-        .collect();
+                VestingWalletWithProfile {
+                    wallet: with_status,
+                    user,
+                }
+            })
+            .collect();
 
     let total_pages = if total > 0 {
         ((total as f64) / (limit as f64)).ceil() as i64
@@ -339,9 +346,7 @@ pub(crate) async fn get_vesting_wallet_by_id(
     let current_time_ms = chrono::Utc::now().timestamp_millis() as u64;
     Ok(result.map(|r| {
         VestingWalletWithStatus::from_wallet(
-            vesting_wallet_row_from_tuple(
-                r.0, r.1, r.2, r.3, r.4, r.5, r.6, r.7, r.8, r.9, r.10,
-            ),
+            vesting_wallet_row_from_tuple(r.0, r.1, r.2, r.3, r.4, r.5, r.6, r.7, r.8, r.9, r.10),
             current_time_ms,
         )
     }))
@@ -663,10 +668,11 @@ pub(crate) async fn get_vesting_analytics(
         mode: i64,
     }
 
-    let total_wallets: i64 = diesel::sql_query("SELECT COUNT(*)::bigint as count FROM vesting_wallets")
-        .get_result::<CountRow>(&mut conn)
-        .await
-        .map(|r| r.count)?;
+    let total_wallets: i64 =
+        diesel::sql_query("SELECT COUNT(*)::bigint as count FROM vesting_wallets")
+            .get_result::<CountRow>(&mut conn)
+            .await
+            .map(|r| r.count)?;
 
     let total_vested_amount: i64 = diesel::sql_query(
         "SELECT COALESCE(SUM(total_amount), 0)::bigint as total FROM vesting_wallets",
@@ -800,34 +806,30 @@ pub(crate) async fn get_vesting_leaderboard(
     let owner_addresses: Vec<String> = rows.iter().map(|r| r.owner_address.clone()).collect();
     let user_map = enrich_users_with_universal_data(&mut conn, owner_addresses).await?;
 
-    let entries: Vec<VestingLeaderboardEntry> = rows
-        .into_iter()
-        .map(|r| {
-            let user = user_map
-                .get(&r.owner_address)
-                .cloned()
-                .unwrap_or_else(|| UniversalUserResult {
-                    owner_address: r.owner_address.clone(),
-                    wallet_address: r.owner_address.clone(),
-                    username: None,
-                    fullname: None,
-                    profile_photo: None,
-                    social_proof_token: None,
-                    selected_badge: None,
+    let entries: Vec<VestingLeaderboardEntry> =
+        rows.into_iter()
+            .map(|r| {
+                let user = user_map.get(&r.owner_address).cloned().unwrap_or_else(|| {
+                    UniversalUserResult {
+                        owner_address: r.owner_address.clone(),
+                        wallet_address: r.owner_address.clone(),
+                        username: None,
+                        fullname: None,
+                        profile_photo: None,
+                        social_proof_token: None,
+                        selected_badge: None,
+                    }
                 });
-            VestingLeaderboardEntry {
-                owner_address: r.owner_address,
-                total_vested: r.total_vested,
-                total_claimed: r.total_claimed,
-                active_wallets: r.active_wallets,
-                completed_wallets: r.completed_wallets,
-                user,
-            }
-        })
-        .collect();
+                VestingLeaderboardEntry {
+                    owner_address: r.owner_address,
+                    total_vested: r.total_vested,
+                    total_claimed: r.total_claimed,
+                    active_wallets: r.active_wallets,
+                    completed_wallets: r.completed_wallets,
+                    user,
+                }
+            })
+            .collect();
 
-    Ok(VestingLeaderboardResponse {
-        entries,
-        total,
-    })
+    Ok(VestingLeaderboardResponse { entries, total })
 }

@@ -89,6 +89,33 @@ impl Reader {
         profile::get_profile_by_username(&self.db, username).await
     }
 
+    pub async fn list_profile_offers(
+        &self,
+        address: &str,
+        limit: i64,
+        offset: i64,
+    ) -> Result<Vec<ProfileOffer>, crate::error::SocialError> {
+        profile::list_profile_offers(&self.db, address, limit, offset).await
+    }
+
+    pub async fn list_profile_sale_fees(
+        &self,
+        address: &str,
+        limit: i64,
+        offset: i64,
+    ) -> Result<Vec<ProfileSaleFee>, crate::error::SocialError> {
+        profile::list_profile_sale_fees(&self.db, address, limit, offset).await
+    }
+
+    pub async fn list_post_transfers(
+        &self,
+        post_id: &str,
+        limit: i64,
+        offset: i64,
+    ) -> Result<Vec<PostTransfer>, crate::error::SocialError> {
+        post::list_post_transfers(&self.db, post_id, limit, offset).await
+    }
+
     pub async fn get_mydata_by_id(
         &self,
         mydata_id: &str,
@@ -609,7 +636,7 @@ impl Reader {
         end_date: Option<chrono::NaiveDateTime>,
         limit: i64,
         offset: i64,
-    ) -> Result<(Vec<UnifiedRevenueRow>, i64, i64), crate::error::SocialError> {
+    ) -> Result<(Vec<UnifiedRevenue>, i64, i64), crate::error::SocialError> {
         revenue::get_unified_revenue(
             &self.db,
             creator_address,

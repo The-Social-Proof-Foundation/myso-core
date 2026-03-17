@@ -45,13 +45,13 @@ use myso_indexer_alt_reader::fullnode_client::FullnodeArgs;
 use myso_indexer_alt_reader::fullnode_client::FullnodeClient;
 use myso_indexer_alt_reader::kv_loader::KvLoader;
 use myso_indexer_alt_reader::ledger_grpc_reader::LedgerGrpcReader;
-use myso_indexer_alt_social_reader::SocialPgReader;
 use myso_indexer_alt_reader::package_resolver::DbPackageStore;
 use myso_indexer_alt_reader::package_resolver::PackageCache;
 use myso_indexer_alt_reader::pg_reader::PgReader;
 use myso_indexer_alt_reader::pg_reader::db::DbArgs;
 use myso_indexer_alt_reader::system_package_task::SystemPackageTask;
 use myso_indexer_alt_reader::system_package_task::SystemPackageTaskArgs;
+use myso_indexer_alt_social_reader::SocialPgReader;
 use prometheus::Registry;
 use task::chain_identifier;
 use task::watermark::WatermarkTask;
@@ -300,8 +300,13 @@ pub async fn start_rpc(
     let fullnode_client =
         FullnodeClient::new(Some("graphql_fullnode"), fullnode_args, registry).await?;
 
-    let pg_reader =
-        PgReader::new(Some("graphql_db"), database_url.clone(), db_args.clone(), registry).await?;
+    let pg_reader = PgReader::new(
+        Some("graphql_db"),
+        database_url.clone(),
+        db_args.clone(),
+        registry,
+    )
+    .await?;
 
     let bigtable_reader = if let Some(instance_id) = kv_args.bigtable_instance.as_ref() {
         let reader = BigtableReader::new(

@@ -206,3 +206,31 @@ pub async fn get_profile_blocked_platforms(
         .await?;
     Ok(Json(platforms))
 }
+
+pub async fn get_profile_offers(
+    State(state): State<Arc<AppState>>,
+    Path(address): Path<String>,
+    Query(params): Query<PageParams>,
+) -> Result<Json<Vec<crate::reader::ProfileOffer>>, SocialError> {
+    let limit = params.limit();
+    let offset = params.offset();
+    let offers = state
+        .reader
+        .list_profile_offers(&address, limit, offset)
+        .await?;
+    Ok(Json(offers))
+}
+
+pub async fn get_profile_sale_fees(
+    State(state): State<Arc<AppState>>,
+    Path(address): Path<String>,
+    Query(params): Query<PageParams>,
+) -> Result<Json<Vec<crate::reader::ProfileSaleFee>>, SocialError> {
+    let limit = params.limit();
+    let offset = params.offset();
+    let fees = state
+        .reader
+        .list_profile_sale_fees(&address, limit, offset)
+        .await?;
+    Ok(Json(fees))
+}

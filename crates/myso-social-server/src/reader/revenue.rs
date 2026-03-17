@@ -7,12 +7,16 @@ use diesel::sql_types::{BigInt, Date, Double, Nullable, Text, Timestamp, Timesta
 use diesel::OptionalExtension;
 use diesel::QueryDsl;
 use diesel::QueryableByName;
+use diesel::SelectableHelper;
 use diesel_async::RunQueryDsl;
+use myso_indexer_alt_social_schema::models::{
+    REVENUE_SOURCE_MYDATA, REVENUE_SOURCE_SPT, REVENUE_SOURCE_SUBSCRIPTION, REVENUE_SOURCE_TIPS,
+    UnifiedRevenue,
+};
 use myso_indexer_alt_social_schema::schema::{ecosystem_treasury, unified_revenue};
 use myso_pg_db::Db;
 
 use crate::error::SocialError;
-use crate::reader::types::UnifiedRevenueRow;
 
 fn pct(a: i64, b: i64) -> f64 {
     if b == 0 {
@@ -40,10 +44,12 @@ async fn get_revenue_leaderboard_internal(
     .to_string();
     if let Some(src) = revenue_source {
         match src {
-            "subscription" => query.push_str(" AND total_subscription_revenue > 0"),
-            "mydata" => query.push_str(" AND total_mydata_revenue > 0"),
-            "spt" => query.push_str(" AND total_spt_revenue > 0"),
-            "tips" => query.push_str(" AND total_tips_revenue > 0"),
+            x if x == REVENUE_SOURCE_SUBSCRIPTION => {
+                query.push_str(" AND total_subscription_revenue > 0")
+            }
+            x if x == REVENUE_SOURCE_MYDATA => query.push_str(" AND total_mydata_revenue > 0"),
+            x if x == REVENUE_SOURCE_SPT => query.push_str(" AND total_spt_revenue > 0"),
+            x if x == REVENUE_SOURCE_TIPS => query.push_str(" AND total_tips_revenue > 0"),
             _ => {}
         }
     }
@@ -341,7 +347,7 @@ pub(crate) async fn get_unified_revenue(
     end_date: Option<chrono::NaiveDateTime>,
     limit: i64,
     offset: i64,
-) -> Result<(Vec<UnifiedRevenueRow>, i64, i64), SocialError> {
+) -> Result<(Vec<UnifiedRevenue>, i64, i64), SocialError> {
     let mut conn = db.connect().await?;
     let mut query = unified_revenue::table.into_boxed();
     if let Some(a) = creator_address {
@@ -441,75 +447,13 @@ pub(crate) async fn get_unified_revenue(
     let total_amount: i64 = total_amount
         .and_then(|bd| bigdecimal::ToPrimitive::to_i64(&bd))
         .unwrap_or(0);
-    let rows: Vec<(
-        String,
-        String,
-        String,
-        Option<String>,
-        i64,
-        String,
-        Option<String>,
-        Option<String>,
-        String,
-        String,
-        i64,
-        chrono::DateTime<chrono::Utc>,
-        String,
-    )> = query
+    let records: Vec<UnifiedRevenue> = query
         .order_by(unified_revenue::time.desc())
         .limit(limit)
         .offset(offset)
-        .select((
-            unified_revenue::revenue_source,
-            unified_revenue::revenue_type,
-            unified_revenue::creator_address,
-            unified_revenue::platform_address,
-            unified_revenue::amount,
-            unified_revenue::currency,
-            unified_revenue::content_id,
-            unified_revenue::content_type,
-            unified_revenue::payer_address,
-            unified_revenue::recipient_address,
-            unified_revenue::revenue_time,
-            unified_revenue::time,
-            unified_revenue::transaction_id,
-        ))
+        .select(UnifiedRevenue::as_select())
         .load(&mut conn)
         .await?;
-    let records: Vec<UnifiedRevenueRow> = rows
-        .into_iter()
-        .map(
-            |(
-                revenue_source,
-                revenue_type,
-                creator_address,
-                platform_address,
-                amount,
-                currency,
-                content_id,
-                content_type,
-                payer_address,
-                recipient_address,
-                revenue_time,
-                time,
-                transaction_id,
-            )| UnifiedRevenueRow {
-                revenue_source,
-                revenue_type,
-                creator_address,
-                platform_address,
-                amount,
-                currency,
-                content_id,
-                content_type,
-                payer_address,
-                recipient_address,
-                revenue_time,
-                time,
-                transaction_id,
-            },
-        )
-        .collect();
     Ok((records, total_count, total_amount))
 }
 

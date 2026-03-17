@@ -46,13 +46,14 @@ fn normalize_date_format(date_str: &str) -> String {
     }
     let parts: Vec<&str> = date_str.split('/').collect();
     if parts.len() == 3 {
-        if let (Ok(month), Ok(day), year_str) = (
-            parts[0].parse::<u32>(),
-            parts[1].parse::<u32>(),
-            parts[2],
-        ) {
+        if let (Ok(month), Ok(day), year_str) =
+            (parts[0].parse::<u32>(), parts[1].parse::<u32>(), parts[2])
+        {
             let year = if year_str.len() == 2 {
-                year_str.parse::<u32>().map(|yy| if yy < 50 { 2000 + yy } else { 1900 + yy }).unwrap_or(0)
+                year_str
+                    .parse::<u32>()
+                    .map(|yy| if yy < 50 { 2000 + yy } else { 1900 + yy })
+                    .unwrap_or(0)
             } else if year_str.len() == 4 {
                 year_str.parse::<u32>().unwrap_or(0)
             } else {
@@ -247,7 +248,20 @@ pub fn handle_platform_event(
     }
 }
 
-fn normalize_dao_fields(ev: &PlatformCreatedEvent) -> (bool, Option<String>, Option<i64>, Option<i64>, Option<i64>, Option<i64>, Option<i64>, Option<i64>, Option<i64>, Option<i64>) {
+fn normalize_dao_fields(
+    ev: &PlatformCreatedEvent,
+) -> (
+    bool,
+    Option<String>,
+    Option<i64>,
+    Option<i64>,
+    Option<i64>,
+    Option<i64>,
+    Option<i64>,
+    Option<i64>,
+    Option<i64>,
+    Option<i64>,
+) {
     let explicit_dao = ev.wants_dao_governance.unwrap_or(false);
     let has_governance_registry = ev.governance_registry_id.is_some();
     let has_dao_fields = ev.delegate_count.is_some()
@@ -280,8 +294,18 @@ fn process_platform_created_event(
 ) -> Option<Vec<SocialEventRow>> {
     let ev: PlatformCreatedEvent = serde_json::from_value(data.clone()).ok()?;
     let now = Utc::now().naive_utc();
-    let (wants_dao, governance_registry_id, delegate_count, delegate_term_epochs, max_votes_per_user, min_on_chain_age_days, proposal_submission_cost, quadratic_base_cost, quorum_votes, voting_period_epochs) =
-        normalize_dao_fields(&ev);
+    let (
+        wants_dao,
+        governance_registry_id,
+        delegate_count,
+        delegate_term_epochs,
+        max_votes_per_user,
+        min_on_chain_age_days,
+        proposal_submission_cost,
+        quadratic_base_cost,
+        quorum_votes,
+        voting_period_epochs,
+    ) = normalize_dao_fields(&ev);
     let release_date = normalize_date_format(&ev.release_date);
 
     let developer = ev.developer;

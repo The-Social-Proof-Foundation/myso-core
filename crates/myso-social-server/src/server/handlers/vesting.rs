@@ -7,9 +7,7 @@ use std::sync::Arc;
 
 use crate::error::SocialError;
 
-use super::super::{
-    AppState, VestingEventsQuery, VestingPageParams, VestingWalletsQuery,
-};
+use super::super::{AppState, VestingEventsQuery, VestingPageParams, VestingWalletsQuery};
 
 pub async fn list_vesting_wallets(
     State(state): State<Arc<AppState>>,

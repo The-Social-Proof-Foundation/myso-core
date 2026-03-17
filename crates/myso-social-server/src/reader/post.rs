@@ -5,11 +5,15 @@ use diesel::sql_types::{BigInt, Text};
 use diesel::ExpressionMethods;
 use diesel::OptionalExtension;
 use diesel::QueryDsl;
+use diesel::SelectableHelper;
 use diesel_async::RunQueryDsl;
-use myso_indexer_alt_social_schema::schema::{comments, post_config, posts, reactions, reposts};
+use myso_indexer_alt_social_schema::schema::{
+    comments, post_config, posts, posts_transfers, reactions, reposts,
+};
 
 use crate::error::SocialError;
 use crate::reader::types::{CommentRow, PostBasicRow, PostConfigRow, ReactionRow, RepostRow};
+use myso_indexer_alt_social_schema::models::PostTransfer;
 use myso_pg_db::Db;
 
 pub(crate) async fn list_posts(
@@ -313,4 +317,22 @@ pub(crate) async fn get_post_reposts(
             },
         )
         .collect())
+}
+
+pub(crate) async fn list_post_transfers(
+    db: &Db,
+    post_id: &str,
+    limit: i64,
+    offset: i64,
+) -> Result<Vec<PostTransfer>, SocialError> {
+    let mut conn = db.connect().await?;
+    let results = posts_transfers::table
+        .filter(posts_transfers::object_id.eq(post_id))
+        .order_by(posts_transfers::transferred_at.desc())
+        .limit(limit)
+        .offset(offset)
+        .select(PostTransfer::as_select())
+        .load::<PostTransfer>(&mut conn)
+        .await?;
+    Ok(results)
 }

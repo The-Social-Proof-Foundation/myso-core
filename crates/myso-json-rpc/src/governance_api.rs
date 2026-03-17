@@ -303,7 +303,7 @@ pub fn calculate_apys(
             let apys = er_e
                 .zip(er_e_1)
                 .map(|(rate_e, rate_e_1)| calculate_apy(rate_e, rate_e_1, epochs_per_year))
-                .filter(|apy| *apy > 0.0 && *apy < 0.1)
+                .filter(|apy| apy.is_finite() && *apy > 0.0 && *apy < 2.0)
                 .take(30)
                 .collect::<Vec<_>>();
 

@@ -363,11 +363,14 @@ fn make_router(state: Arc<AppState>) -> Router {
             "/profiles/:address/social-stats",
             get(get_profile_social_stats),
         )
+        .route("/profiles/:address/stats", get(get_profile_social_stats))
         .route("/profiles/:address/blocked", get(get_profile_blocked))
         .route(
             "/profiles/:address/blocked-platforms",
             get(get_profile_blocked_platforms),
         )
+        .route("/profiles/:address/offers", get(get_profile_offers))
+        .route("/profiles/:address/sale-fees", get(get_profile_sale_fees))
         .route(
             "/social-graph/check/:follower/:following",
             get(check_social_graph_following),
@@ -408,6 +411,7 @@ fn make_router(state: Arc<AppState>) -> Router {
             "/posts/:id/revenue-redirections",
             get(get_post_revenue_redirections),
         )
+        .route("/posts/:id/transfers", get(get_post_transfers))
         .route("/promotions", get(list_promotions))
         .route(
             "/promotions/analytics/top-performing",

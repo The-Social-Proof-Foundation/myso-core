@@ -8,6 +8,7 @@ mod mydata;
 mod platform;
 mod poc;
 mod post;
+mod profile;
 mod revenue;
 mod social_graph;
 mod spot;
@@ -38,15 +39,18 @@ pub use poc::{
     PocAnalysisResultRow, PocBadgeRow, PocConfigRow, PocDisputeRow, PocDisputeVoteRow,
     PocRevenueRedirectionRow,
 };
+pub use myso_indexer_alt_social_schema::models::{ProfileOffer, ProfileSaleFee, PostTransfer};
 pub use post::{
     BlockedEventRow, CommentRow, PlatformMembershipRow, PostBasicRow, PostConfigRow,
-    ProfileBadgeRow, ProfileEventRow, ProfilePlatformEventRow, PromotedPostRow, PromotionHourlyRow,
-    PromotionStatsRow, PromotionTimeSeriesRow, PromotionViewRow, ReactionRow, RepostRow,
+    PromotedPostRow, PromotionHourlyRow, PromotionStatsRow, PromotionTimeSeriesRow,
+    PromotionViewRow, ReactionRow, RepostRow,
 };
-pub use revenue::UnifiedRevenueRow;
+pub use profile::{ProfileBadgeRow, ProfileEventRow, ProfilePlatformEventRow};
+pub use revenue::UnifiedRevenue;
 pub use social_graph::{
     BlockedPlatformRow, BlockedProfileRow, DailyStatsPoint, FollowDetail, FollowStatsRow,
-    FollowsQuery, PaginationInfo, ProfileByAddressResponse, ReservationStatus, SelectedBadgeInfo,
+    FollowsQuery, PaginationInfo, ProfileByAddressResponse, ReservationPoolInfo, ReservationStatus,
+    SelectedBadgeInfo,
     SocialGraphAddressRow, SocialGraphChartData, SocialGraphChartQuery, SocialGraphChartRow,
     SocialProofTokenInfo, SocialStatsRow, UniversalUserResult, WalletOnlyProfile,
 };

@@ -3,8 +3,8 @@
 
 use chrono::NaiveDateTime;
 use diesel::OptionalExtension;
-use diesel::sql_types::{BigInt, Bool, Nullable, SmallInt, Text, Timestamp};
 use diesel::QueryableByName;
+use diesel::sql_types::{BigInt, Bool, Nullable, SmallInt, Text, Timestamp};
 use diesel_async::RunQueryDsl;
 
 use myso_pg_db::Connection;

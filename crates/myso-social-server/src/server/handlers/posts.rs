@@ -131,3 +131,14 @@ pub async fn get_post_revenue_redirections(
         .await?;
     Ok(Json(redirections))
 }
+
+pub async fn get_post_transfers(
+    State(state): State<Arc<AppState>>,
+    Path(id): Path<String>,
+    Query(params): Query<PageParams>,
+) -> Result<Json<Vec<crate::reader::PostTransfer>>, SocialError> {
+    let limit = params.limit();
+    let offset = params.offset();
+    let transfers = state.reader.list_post_transfers(&id, limit, offset).await?;
+    Ok(Json(transfers))
+}

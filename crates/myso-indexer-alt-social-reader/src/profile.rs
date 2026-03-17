@@ -3,12 +3,12 @@
 
 use std::collections::HashMap;
 
-use diesel::sql_types::{Array, BigInt, Nullable, SmallInt, Text};
 use diesel::ExpressionMethods;
 use diesel::OptionalExtension;
 use diesel::QueryDsl;
 use diesel::QueryableByName;
 use diesel::SelectableHelper;
+use diesel::sql_types::{Array, BigInt, Nullable, SmallInt, Text};
 use diesel_async::RunQueryDsl;
 use myso_indexer_alt_social_schema::models::Profile;
 use myso_indexer_alt_social_schema::schema::{profiles, wallet_social_graph};
@@ -341,12 +341,8 @@ pub(crate) async fn get_profile_or_wallet_by_address(
 
     match profile_result {
         Ok(profile) => {
-            let enriched = enrich_users_with_universal_data(
-                conn,
-                vec![address.to_string()],
-                metrics,
-            )
-            .await?;
+            let enriched =
+                enrich_users_with_universal_data(conn, vec![address.to_string()], metrics).await?;
             let mut response = profile_to_response(profile);
             if let Some(e) = enriched.get(address) {
                 response.social_proof_token = e.social_proof_token.clone();
@@ -364,9 +360,7 @@ pub(crate) async fn get_profile_or_wallet_by_address(
                     wallet_social_graph::created_at,
                     wallet_social_graph::updated_at,
                 ))
-                .first::<(i32, i32, i32, chrono::NaiveDateTime, chrono::NaiveDateTime)>(
-                    conn,
-                )
+                .first::<(i32, i32, i32, chrono::NaiveDateTime, chrono::NaiveDateTime)>(conn)
                 .await;
 
             let wallet_only = match wallet_result {

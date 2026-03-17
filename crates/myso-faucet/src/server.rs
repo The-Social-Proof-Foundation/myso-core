@@ -331,9 +331,7 @@ async fn health() -> &'static str {
     "OK"
 }
 
-async fn serve_metrics(
-    Extension(registry): Extension<Registry>,
-) -> (StatusCode, String) {
+async fn serve_metrics(Extension(registry): Extension<Registry>) -> (StatusCode, String) {
     match TextEncoder.encode_to_string(&registry.gather()) {
         Ok(s) => (StatusCode::OK, s),
         Err(e) => (
@@ -628,11 +626,7 @@ pub async fn create_wallet_context(
         .unwrap_or_else(|_| "http://fullnode.testnet.mysocial.network:9000".to_string());
     let network_alias = std::env::var("NETWORK_ALIAS").unwrap_or_else(|_| "testnet".to_string());
 
-    let mut context = WalletContext::new_for_tests(
-        keystore,
-        None,
-        Some(wallet_conf.clone()),
-    );
+    let mut context = WalletContext::new_for_tests(keystore, None, Some(wallet_conf.clone()));
 
     context.config.add_env(MySoEnv {
         alias: network_alias.clone(),

@@ -9,7 +9,8 @@ use std::str::FromStr;
 
 use super::{ProfileUpdate, SocialEventRow};
 use myso_indexer_alt_social_schema::models::{
-    NewEcosystemTreasury, NewProfile, NewProfileEvent, NewVestingEvent, NewVestingWallet,
+    NewEcosystemTreasury, NewProfile, NewProfileEvent, NewProfileOffer, NewProfileSaleFee,
+    NewVestingEvent, NewVestingWallet,
 };
 
 fn deserialize_number_from_string<'de, T, D>(deserializer: D) -> Result<T, D::Error>
@@ -268,6 +269,10 @@ pub fn handle_profile_event(
         "TokensClaimedEvent" => process_tokens_claimed_event(data, event_id),
         "VestingWalletDeletedEvent" => process_vesting_wallet_deleted_event(data, event_id),
         "EcosystemTreasuryUpdatedEvent" => process_ecosystem_treasury_updated_event(data, event_id),
+        "ProfileOfferCreatedEvent" => process_profile_offer_created_event(data, event_id),
+        "ProfileOfferAcceptedEvent" => process_profile_offer_accepted_event(data, event_id),
+        "ProfileOfferRejectedEvent" => process_profile_offer_rejected_event(data, event_id),
+        "ProfileSaleFeeEvent" => process_profile_sale_fee_event(data, event_id),
         _ => None,
     }
 }
@@ -974,6 +979,86 @@ fn process_tokens_claimed_event(
 }
 
 #[derive(Debug, Clone, Deserialize)]
+struct ProfileOfferCreatedEvent {
+    #[serde(rename = "profile_id")]
+    profile_id: String,
+    #[serde(rename = "offeror")]
+    offeror: String,
+    #[serde(default, deserialize_with = "deserialize_number_from_string")]
+    amount: u64,
+    #[serde(
+        rename = "created_at",
+        default,
+        deserialize_with = "deserialize_number_from_string"
+    )]
+    created_at: u64,
+}
+
+#[derive(Debug, Clone, Deserialize)]
+struct ProfileOfferAcceptedEvent {
+    #[serde(rename = "profile_id")]
+    profile_id: String,
+    #[serde(rename = "offeror")]
+    offeror: String,
+    #[serde(rename = "previous_owner")]
+    _previous_owner: String,
+    #[serde(default, deserialize_with = "deserialize_number_from_string")]
+    _amount: u64,
+    #[serde(
+        rename = "accepted_at",
+        default,
+        deserialize_with = "deserialize_number_from_string"
+    )]
+    accepted_at: u64,
+}
+
+#[derive(Debug, Clone, Deserialize)]
+struct ProfileOfferRejectedEvent {
+    #[serde(rename = "profile_id")]
+    profile_id: String,
+    #[serde(rename = "offeror")]
+    offeror: String,
+    #[serde(rename = "rejected_by")]
+    _rejected_by: String,
+    #[serde(default, deserialize_with = "deserialize_number_from_string")]
+    _amount: u64,
+    #[serde(
+        rename = "rejected_at",
+        default,
+        deserialize_with = "deserialize_number_from_string"
+    )]
+    rejected_at: u64,
+    #[serde(rename = "is_revoked", default)]
+    is_revoked: bool,
+}
+
+#[derive(Debug, Clone, Deserialize)]
+struct ProfileSaleFeeEvent {
+    #[serde(rename = "profile_id")]
+    profile_id: String,
+    #[serde(rename = "offeror")]
+    offeror: String,
+    #[serde(rename = "previous_owner")]
+    previous_owner: String,
+    #[serde(
+        rename = "sale_amount",
+        default,
+        deserialize_with = "deserialize_number_from_string"
+    )]
+    sale_amount: u64,
+    #[serde(
+        rename = "fee_amount",
+        default,
+        deserialize_with = "deserialize_number_from_string"
+    )]
+    fee_amount: u64,
+    #[serde(rename = "fee_recipient")]
+    fee_recipient: String,
+    #[serde(default, deserialize_with = "deserialize_number_from_string")]
+    timestamp: u64,
+}
+
+#[derive(Debug, Clone, Deserialize)]
 struct VestingWalletDeletedEvent {
     #[serde(rename = "wallet_id", default)]
     wallet_id: String,
@@ -985,6 +1070,80 @@ struct VestingWalletDeletedEvent {
         deserialize_with = "deserialize_optional_number_from_string"
     )]
     deleted_at: Option<u64>,
+}
+
+fn process_profile_offer_created_event(
+    data: &serde_json::Value,
+    event_id: &str,
+) -> Option<Vec<SocialEventRow>> {
+    let ev: ProfileOfferCreatedEvent = serde_json::from_value(data.clone()).ok()?;
+    let created_at = ev.created_at as i64;
+    let offer = NewProfileOffer {
+        profile_id: ev.profile_id,
+        offeror_address: ev.offeror,
+        amount: ev.amount as i64,
+        status: "pending".to_string(),
+        created_at,
+        updated_at: created_at,
+        resolved_at: None,
+        transaction_id: event_id.to_string(),
+    };
+    Some(vec![SocialEventRow::ProfileOffer(offer)])
+}
+
+fn process_profile_offer_accepted_event(
+    data: &serde_json::Value,
+    event_id: &str,
+) -> Option<Vec<SocialEventRow>> {
+    let ev: ProfileOfferAcceptedEvent = serde_json::from_value(data.clone()).ok()?;
+    let accepted_at = ev.accepted_at as i64;
+    Some(vec![SocialEventRow::ProfileOfferStatusUpdate {
+        profile_id: ev.profile_id,
+        offeror_address: ev.offeror,
+        status: "accepted".to_string(),
+        resolved_at: accepted_at,
+        updated_at: accepted_at,
+        transaction_id: event_id.to_string(),
+    }])
+}
+
+fn process_profile_offer_rejected_event(
+    data: &serde_json::Value,
+    event_id: &str,
+) -> Option<Vec<SocialEventRow>> {
+    let ev: ProfileOfferRejectedEvent = serde_json::from_value(data.clone()).ok()?;
+    let rejected_at = ev.rejected_at as i64;
+    let status = if ev.is_revoked {
+        "revoked".to_string()
+    } else {
+        "rejected".to_string()
+    };
+    Some(vec![SocialEventRow::ProfileOfferStatusUpdate {
+        profile_id: ev.profile_id,
+        offeror_address: ev.offeror,
+        status,
+        resolved_at: rejected_at,
+        updated_at: rejected_at,
+        transaction_id: event_id.to_string(),
+    }])
+}
+
+fn process_profile_sale_fee_event(
+    data: &serde_json::Value,
+    event_id: &str,
+) -> Option<Vec<SocialEventRow>> {
+    let ev: ProfileSaleFeeEvent = serde_json::from_value(data.clone()).ok()?;
+    let fee = NewProfileSaleFee {
+        profile_id: ev.profile_id,
+        offeror_address: ev.offeror,
+        previous_owner_address: ev.previous_owner,
+        sale_amount: ev.sale_amount as i64,
+        fee_amount: ev.fee_amount as i64,
+        fee_recipient_address: ev.fee_recipient,
+        timestamp: ev.timestamp as i64,
+        transaction_id: event_id.to_string(),
+    };
+    Some(vec![SocialEventRow::ProfileSaleFee(fee)])
 }
 
 fn process_vesting_wallet_deleted_event(

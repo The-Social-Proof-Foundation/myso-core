@@ -1,4 +1,3 @@
-// Copyright (c) Mysten Labs, Inc.
 // Copyright (c) The Social Proof Foundation, LLC.
 // SPDX-License-Identifier: Apache-2.0
 
@@ -7,6 +6,7 @@ use diesel_migrations::embed_migrations;
 
 pub mod models;
 
+pub const GOVERNANCE_STATUS_SUBMITTED: i16 = 0;
 pub const GOVERNANCE_STATUS_DELEGATE_REVIEW: i16 = 1;
 pub const GOVERNANCE_STATUS_COMMUNITY_VOTING: i16 = 2;
 pub const GOVERNANCE_STATUS_APPROVED: i16 = 3;

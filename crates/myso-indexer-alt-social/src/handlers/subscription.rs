@@ -3,12 +3,10 @@
 
 use super::SocialEventRow;
 use myso_indexer_alt_social_schema::models::{
-    NewProfileSubscription, NewProfileSubscriptionService, NewSubscriptionEvent,
+    NewProfileSubscription, NewProfileSubscriptionService, NewSubscriptionEvent, THIRTY_DAYS_MS,
 };
 use serde::Deserialize;
 use serde_json::Value;
-
-const THIRTY_DAYS_MS: i64 = 30 * 24 * 60 * 60 * 1000;
 
 fn generate_subscription_id() -> String {
     format!("sub_{}", uuid::Uuid::new_v4().to_string().replace('-', ""))

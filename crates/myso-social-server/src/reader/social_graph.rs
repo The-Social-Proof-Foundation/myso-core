@@ -13,7 +13,7 @@ use diesel::QueryableByName;
 use diesel_async::RunQueryDsl;
 use myso_indexer_alt_social_schema::schema::{
     blocked_events, blocked_profiles, platform_blocked_profiles, profile_events, profiles,
-    social_graph_relationships, wallet_social_graph,
+    social_graph_relationships, spt_exchange_config, wallet_social_graph,
 };
 
 use crate::error::SocialError;
@@ -21,9 +21,9 @@ use crate::reader::types::PostBasicRow;
 use crate::reader::types::{
     BlockedEventRow, BlockedPlatformRow, BlockedProfileRow, ChartSummary, DailyStatsPoint,
     DateRange, FollowDetail, FollowStatsRow, FollowsQuery, PaginationInfo, PlatformMembershipRow,
-    ProfileBadgeRow, ProfileEventRow, ProfilePlatformEventRow, ReservationStatus,
-    SelectedBadgeInfo, SocialGraphChartData, SocialGraphChartQuery, SocialProofTokenInfo,
-    UniversalUserResult,
+    ProfileBadgeRow, ProfileEventRow, ProfilePlatformEventRow, ReservationPoolInfo,
+    ReservationStatus, SelectedBadgeInfo, SocialGraphChartData, SocialGraphChartQuery,
+    SocialProofTokenInfo, UniversalUserResult,
 };
 use myso_pg_db::Db;
 
@@ -248,6 +248,86 @@ async fn resolve_profile_input(
         Err(diesel::result::Error::NotFound) => Ok((None, input.to_string())),
         Err(e) => Err(e),
     }
+}
+
+async fn get_reservation_pool_info_for_profiles(
+    conn: &mut diesel_async::AsyncPgConnection,
+    wallet_addresses: Vec<String>,
+) -> Result<HashMap<String, ReservationPoolInfo>, SocialError> {
+    use diesel::ExpressionMethods;
+    use diesel::QueryDsl;
+
+    if wallet_addresses.is_empty() {
+        return Ok(HashMap::new());
+    }
+
+    let profile_threshold: i64 = spt_exchange_config::table
+        .order_by(spt_exchange_config::time.desc())
+        .select(spt_exchange_config::profile_threshold)
+        .first(conn)
+        .await
+        .unwrap_or(10_000_000_000_000);
+
+    let associated_ids: Vec<String> = wallet_addresses
+        .iter()
+        .map(|addr| format!("profile_{}", addr))
+        .collect();
+
+    let query = diesel::sql_query(
+        r#"
+        WITH latest_pools AS (
+            SELECT DISTINCT ON (associated_id)
+                associated_id, pool_id, total_reserved, required_threshold, status
+            FROM spt_reservation_pools
+            WHERE associated_id = ANY($1::TEXT[])
+            ORDER BY associated_id, time DESC
+        )
+        SELECT associated_id, pool_id, total_reserved, required_threshold, status
+        FROM latest_pools
+        "#,
+    )
+    .bind::<Array<Text>, _>(&associated_ids);
+
+    #[derive(QueryableByName)]
+    struct PoolRow {
+        #[diesel(sql_type = Text)]
+        associated_id: String,
+        #[diesel(sql_type = Text)]
+        pool_id: String,
+        #[diesel(sql_type = BigInt)]
+        total_reserved: i64,
+        #[diesel(sql_type = BigInt)]
+        required_threshold: i64,
+        #[diesel(sql_type = Text)]
+        status: String,
+    }
+
+    let pools: Vec<PoolRow> = query.load::<PoolRow>(conn).await?;
+    let mut result = HashMap::new();
+    for pool in pools {
+        if let Some(owner_address) = pool.associated_id.strip_prefix("profile_") {
+            let claimed_percentage = if profile_threshold > 0 {
+                (pool.total_reserved as f64 / profile_threshold as f64 * 100.0)
+                    .min(100.0)
+                    .max(0.0)
+            } else {
+                0.0
+            };
+            let is_active =
+                pool.status == "active" && pool.total_reserved < pool.required_threshold;
+            result.insert(
+                owner_address.to_string(),
+                ReservationPoolInfo {
+                    claimed_percentage,
+                    is_active,
+                    total_reserved: pool.total_reserved,
+                    required_threshold: pool.required_threshold,
+                    pool_id: Some(pool.pool_id),
+                },
+            );
+        }
+    }
+    Ok(result)
 }
 
 pub(crate) async fn get_profile_posts(
@@ -728,9 +808,8 @@ pub(crate) async fn get_following(
         .iter()
         .map(|(_, _, addr, _, _, _)| addr.clone())
         .collect();
-    let enriched_users = enrich_users_with_universal_data(&mut conn, wallet_addresses)
-        .await
-        .unwrap_or_default();
+    let reservation_info =
+        get_reservation_pool_info_for_profiles(&mut conn, wallet_addresses).await?;
 
     let (viewer_profile_id, viewer_wallet_address) = if let Some(ref vid) = query.viewer_id {
         match resolve_profile_input(&mut conn, vid).await {
@@ -789,25 +868,22 @@ pub(crate) async fn get_following(
             (false, false)
         };
 
-        let user = enriched_users
-            .get(&owner_address)
-            .cloned()
-            .unwrap_or_else(|| UniversalUserResult {
-                owner_address: owner_address.clone(),
-                wallet_address: owner_address.clone(),
-                username: username_opt,
-                fullname: display_name,
-                profile_photo,
-                social_proof_token: None,
-                selected_badge: None,
-            });
+        let res_info = if id > 0 {
+            reservation_info.get(&owner_address).cloned()
+        } else {
+            None
+        };
 
         follows_detail.push(FollowDetail {
             id,
             profile_id: followed_profile_id,
-            user,
+            owner_address,
+            username: username_opt.unwrap_or_default(),
+            display_name,
+            profile_photo,
             follows_back,
             is_following,
+            reservation_pool: res_info,
         });
     }
 
@@ -1036,9 +1112,8 @@ pub(crate) async fn get_followers(
         .iter()
         .map(|(_, _, addr, _, _, _)| addr.clone())
         .collect();
-    let enriched_users = enrich_users_with_universal_data(&mut conn, wallet_addresses)
-        .await
-        .unwrap_or_default();
+    let reservation_info =
+        get_reservation_pool_info_for_profiles(&mut conn, wallet_addresses).await?;
 
     let (viewer_profile_id, viewer_wallet_address) = if let Some(ref vid) = query.viewer_id {
         match resolve_profile_input(&mut conn, vid).await {
@@ -1097,25 +1172,22 @@ pub(crate) async fn get_followers(
             (false, false)
         };
 
-        let user = enriched_users
-            .get(&owner_address)
-            .cloned()
-            .unwrap_or_else(|| UniversalUserResult {
-                owner_address: owner_address.clone(),
-                wallet_address: owner_address.clone(),
-                username: username_opt,
-                fullname: display_name,
-                profile_photo,
-                social_proof_token: None,
-                selected_badge: None,
-            });
+        let res_info = if id > 0 {
+            reservation_info.get(&owner_address).cloned()
+        } else {
+            None
+        };
 
         follows_detail.push(FollowDetail {
             id,
             profile_id: follower_profile_id,
-            user,
+            owner_address,
+            username: username_opt.unwrap_or_default(),
+            display_name,
+            profile_photo,
             follows_back,
             is_following,
+            reservation_pool: res_info,
         });
     }
 

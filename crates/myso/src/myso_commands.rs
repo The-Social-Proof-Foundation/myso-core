@@ -1345,8 +1345,7 @@ async fn start(
         const FAUCET_CONCURRENCY_LIMIT: usize = 30;
 
         let local_faucet = SimpleFaucet::new(
-            create_wallet_context(config.wallet_client_timeout_secs, config_dir.clone())
-                .await?,
+            create_wallet_context(config.wallet_client_timeout_secs, config_dir.clone()).await?,
             &prometheus_registry,
             &config.write_ahead_log,
             config.clone(),

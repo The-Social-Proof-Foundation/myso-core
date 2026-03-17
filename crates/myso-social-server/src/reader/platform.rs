@@ -4,7 +4,9 @@
 use diesel::ExpressionMethods;
 use diesel::OptionalExtension;
 use diesel::QueryDsl;
+use diesel::SelectableHelper;
 use diesel_async::RunQueryDsl;
+use myso_indexer_alt_social_schema::models::Platform;
 use myso_indexer_alt_social_schema::schema::{
     platform_blocked_profiles, platform_events, platform_memberships, platform_moderators,
     platforms,
@@ -30,115 +32,14 @@ pub(crate) async fn list_platforms(
     if approved_only {
         query = query.filter(platforms::is_approved.eq(true));
     }
-    let results = query
+    let results: Vec<Platform> = query
         .order_by(platforms::created_at.desc())
         .limit(limit)
         .offset(offset)
-        .select((
-            platforms::platform_id,
-            platforms::name,
-            platforms::tagline,
-            platforms::description,
-            platforms::logo,
-            platforms::developer_address,
-            platforms::status,
-            platforms::is_approved,
-            platforms::primary_category,
-            platforms::secondary_category,
-            platforms::created_at,
-            platforms::updated_at,
-            platforms::deleted_at,
-            platforms::wants_dao_governance,
-            platforms::governance_registry_id,
-            platforms::delegate_count,
-            platforms::delegate_term_epochs,
-            platforms::max_votes_per_user,
-            platforms::min_on_chain_age_days,
-            platforms::proposal_submission_cost,
-            platforms::quadratic_base_cost,
-            platforms::quorum_votes,
-            platforms::voting_period_epochs,
-        ))
-        .load::<(
-            String,
-            String,
-            String,
-            Option<String>,
-            Option<String>,
-            String,
-            i16,
-            bool,
-            String,
-            Option<String>,
-            chrono::NaiveDateTime,
-            chrono::NaiveDateTime,
-            Option<chrono::NaiveDateTime>,
-            Option<bool>,
-            Option<String>,
-            Option<i64>,
-            Option<i64>,
-            Option<i64>,
-            Option<i64>,
-            Option<i64>,
-            Option<i64>,
-            Option<i64>,
-            Option<i64>,
-        )>(&mut conn)
+        .select(Platform::as_select())
+        .load(&mut conn)
         .await?;
-    Ok(results
-        .into_iter()
-        .map(
-            |(
-                platform_id,
-                name,
-                tagline,
-                description,
-                logo,
-                developer_address,
-                status,
-                is_approved,
-                primary_category,
-                secondary_category,
-                created_at,
-                updated_at,
-                deleted_at,
-                wants_dao_governance,
-                governance_registry_id,
-                delegate_count,
-                delegate_term_epochs,
-                max_votes_per_user,
-                min_on_chain_age_days,
-                proposal_submission_cost,
-                quadratic_base_cost,
-                quorum_votes,
-                voting_period_epochs,
-            )| PlatformRow {
-                platform_id,
-                name,
-                tagline,
-                description,
-                logo,
-                developer_address,
-                status,
-                is_approved,
-                primary_category,
-                secondary_category,
-                created_at,
-                updated_at,
-                deleted_at,
-                wants_dao_governance,
-                governance_registry_id,
-                delegate_count,
-                delegate_term_epochs,
-                max_votes_per_user,
-                min_on_chain_age_days,
-                proposal_submission_cost,
-                quadratic_base_cost,
-                quorum_votes,
-                voting_period_epochs,
-            },
-        )
-        .collect())
+    Ok(results.into_iter().map(PlatformRow::from).collect())
 }
 
 pub(crate) async fn get_platform_by_id(
@@ -146,112 +47,14 @@ pub(crate) async fn get_platform_by_id(
     platform_id: &str,
 ) -> Result<Option<PlatformRow>, SocialError> {
     let mut conn = db.connect().await?;
-    let result = platforms::table
+    let result: Option<Platform> = platforms::table
         .filter(platforms::platform_id.eq(platform_id))
         .filter(platforms::deleted_at.is_null())
-        .select((
-            platforms::platform_id,
-            platforms::name,
-            platforms::tagline,
-            platforms::description,
-            platforms::logo,
-            platforms::developer_address,
-            platforms::status,
-            platforms::is_approved,
-            platforms::primary_category,
-            platforms::secondary_category,
-            platforms::created_at,
-            platforms::updated_at,
-            platforms::deleted_at,
-            platforms::wants_dao_governance,
-            platforms::governance_registry_id,
-            platforms::delegate_count,
-            platforms::delegate_term_epochs,
-            platforms::max_votes_per_user,
-            platforms::min_on_chain_age_days,
-            platforms::proposal_submission_cost,
-            platforms::quadratic_base_cost,
-            platforms::quorum_votes,
-            platforms::voting_period_epochs,
-        ))
-        .first::<(
-            String,
-            String,
-            String,
-            Option<String>,
-            Option<String>,
-            String,
-            i16,
-            bool,
-            String,
-            Option<String>,
-            chrono::NaiveDateTime,
-            chrono::NaiveDateTime,
-            Option<chrono::NaiveDateTime>,
-            Option<bool>,
-            Option<String>,
-            Option<i64>,
-            Option<i64>,
-            Option<i64>,
-            Option<i64>,
-            Option<i64>,
-            Option<i64>,
-            Option<i64>,
-            Option<i64>,
-        )>(&mut conn)
+        .select(Platform::as_select())
+        .first(&mut conn)
         .await
         .optional()?;
-    Ok(result.map(
-        |(
-            platform_id,
-            name,
-            tagline,
-            description,
-            logo,
-            developer_address,
-            status,
-            is_approved,
-            primary_category,
-            secondary_category,
-            created_at,
-            updated_at,
-            deleted_at,
-            wants_dao_governance,
-            governance_registry_id,
-            delegate_count,
-            delegate_term_epochs,
-            max_votes_per_user,
-            min_on_chain_age_days,
-            proposal_submission_cost,
-            quadratic_base_cost,
-            quorum_votes,
-            voting_period_epochs,
-        )| PlatformRow {
-            platform_id,
-            name,
-            tagline,
-            description,
-            logo,
-            developer_address,
-            status,
-            is_approved,
-            primary_category,
-            secondary_category,
-            created_at,
-            updated_at,
-            deleted_at,
-            wants_dao_governance,
-            governance_registry_id,
-            delegate_count,
-            delegate_term_epochs,
-            max_votes_per_user,
-            min_on_chain_age_days,
-            proposal_submission_cost,
-            quadratic_base_cost,
-            quorum_votes,
-            voting_period_epochs,
-        },
-    ))
+    Ok(result.map(PlatformRow::from))
 }
 
 pub(crate) async fn get_platform_moderators(

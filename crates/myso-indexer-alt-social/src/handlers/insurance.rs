@@ -7,12 +7,8 @@ use myso_indexer_alt_social_schema::models::{
     NewInsuranceConfig, NewInsuranceEventLog, NewInsuranceMarketExposure, NewInsurancePolicy,
     NewInsurancePolicyEvent, NewInsuranceUserExposure, NewInsuranceVault,
     NewInsuranceVaultTransaction,
+    STATUS_ACTIVE, STATUS_CANCELLED, STATUS_CLAIMED, STATUS_EXPIRED,
 };
-
-const STATUS_ACTIVE: i16 = 1;
-const STATUS_CLAIMED: i16 = 2;
-const STATUS_CANCELLED: i16 = 3;
-const STATUS_EXPIRED: i16 = 4;
 
 fn transaction_id_from_event_id(event_id: &str) -> String {
     event_id.split(':').next().unwrap_or(event_id).to_string()

@@ -7,9 +7,8 @@ use super::SocialEventRow;
 use myso_indexer_alt_social_schema::models::{
     NewPocAnalysisResult, NewPocBadge, NewPocConfiguration, NewPocDispute, NewPocDisputeVote,
     NewPocRevenueRedirection,
+    DISPUTE_STATUS_VOTING,
 };
-
-const DISPUTE_STATUS_VOTING: i16 = 1;
 
 fn transaction_id_from_event_id(event_id: &str) -> String {
     event_id.split(':').next().unwrap_or(event_id).to_string()

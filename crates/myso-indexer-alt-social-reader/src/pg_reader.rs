@@ -3,8 +3,8 @@
 
 use std::sync::Arc;
 
-use anyhow::bail;
 use anyhow::Context;
+use anyhow::bail;
 use async_graphql::dataloader::DataLoader;
 use myso_indexer_alt_metrics::db::DbConnectionStatsCollector;
 use prometheus::Registry;
@@ -101,11 +101,7 @@ impl SocialPgReader {
     }
 
     /// Get profiles with pagination.
-    pub async fn get_profiles(
-        &self,
-        limit: i64,
-        offset: i64,
-    ) -> anyhow::Result<Vec<Profile>> {
+    pub async fn get_profiles(&self, limit: i64, offset: i64) -> anyhow::Result<Vec<Profile>> {
         let mut conn = self.connect().await?;
         get_profiles(&mut conn, limit, offset, &self.metrics).await
     }
@@ -145,14 +141,8 @@ impl SocialPgReader {
         offset: i64,
     ) -> anyhow::Result<Vec<PlatformRow>> {
         let mut conn = self.connect().await?;
-        crate::platform::list_platforms(
-            &mut conn,
-            approved_only,
-            limit,
-            offset,
-            &self.metrics,
-        )
-        .await
+        crate::platform::list_platforms(&mut conn, approved_only, limit, offset, &self.metrics)
+            .await
     }
 
     /// Check if follower follows following.
@@ -162,7 +152,12 @@ impl SocialPgReader {
         following_address: &str,
     ) -> anyhow::Result<bool> {
         let mut conn = self.connect().await?;
-        check_following(&mut conn, follower_address, following_address, &self.metrics).await
+        check_following(
+            &mut conn,
+            follower_address,
+            following_address,
+            &self.metrics,
+        )
+        .await
     }
 }
-

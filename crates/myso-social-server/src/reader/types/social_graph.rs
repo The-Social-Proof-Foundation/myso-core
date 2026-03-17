@@ -1,6 +1,9 @@
 // Copyright (c) The Social Proof Foundation, LLC.
 // SPDX-License-Identifier: Apache-2.0
 
+// API-layer types: DTOs, query params, and aggregates.
+// DB-table types live in myso_indexer_alt_social_schema::models.
+
 use diesel::sql_types::{BigInt, Date, Text};
 use diesel::QueryableByName;
 use serde::{Deserialize, Serialize};
@@ -53,14 +56,28 @@ pub struct SelectedBadgeInfo {
     pub badge_type: i16,
 }
 
+/// Reservation pool info for a profile. Matches mys-indexer JSON shape.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct ReservationPoolInfo {
+    pub claimed_percentage: f64,
+    pub is_active: bool,
+    pub total_reserved: i64,
+    pub required_threshold: i64,
+    pub pool_id: Option<String>,
+}
+
+/// Follow detail for social graph endpoints. Matches mys-indexer JSON shape exactly.
 #[derive(Debug, Serialize, Deserialize)]
 pub struct FollowDetail {
     pub id: i32,
     pub profile_id: Option<String>,
-    #[serde(flatten)]
-    pub user: UniversalUserResult,
+    pub owner_address: String,
+    pub username: String,
+    pub display_name: Option<String>,
+    pub profile_photo: Option<String>,
     pub follows_back: bool,
     pub is_following: bool,
+    pub reservation_pool: Option<ReservationPoolInfo>,
 }
 
 #[derive(Debug, Deserialize)]
@@ -163,6 +180,9 @@ pub struct ProfileByAddressResponse {
     pub relationship_status: Option<String>,
     pub x_username: Option<String>,
     pub mastodon_username: Option<String>,
+    pub instagram_username: Option<String>,
+    pub linkedin_username: Option<String>,
+    pub twitch_username: Option<String>,
     pub facebook_username: Option<String>,
     pub reddit_username: Option<String>,
     pub github_username: Option<String>,
@@ -211,6 +231,9 @@ impl From<myso_indexer_alt_social_schema::models::Profile> for ProfileByAddressR
             relationship_status: p.relationship_status,
             x_username: p.x_username,
             mastodon_username: None,
+            instagram_username: p.instagram_username,
+            linkedin_username: p.linkedin_username,
+            twitch_username: p.twitch_username,
             facebook_username: p.facebook_username,
             reddit_username: p.reddit_username,
             github_username: p.github_username,
@@ -265,6 +288,9 @@ impl From<WalletOnlyProfile> for ProfileByAddressResponse {
             relationship_status: w.relationship_status,
             x_username: w.x_username,
             mastodon_username: None,
+            instagram_username: w.instagram_username,
+            linkedin_username: w.linkedin_username,
+            twitch_username: w.twitch_username,
             facebook_username: w.facebook_username,
             reddit_username: w.reddit_username,
             github_username: w.github_username,

@@ -6,8 +6,8 @@ use serde::Deserialize;
 
 use super::SocialEventRow;
 use myso_indexer_alt_social_schema::models::{
-    NewComment, NewDeletionEvent, NewModerationEvent, NewPost, NewReaction, NewReactionCount,
-    NewReport, NewRepost, NewTip, NewUnifiedRevenue,
+    NewComment, NewDeletionEvent, NewModerationEvent, NewPost, NewPostTransfer, NewReaction,
+    NewReactionCount, NewReport, NewRepost, NewTip, NewUnifiedRevenue,
 };
 use myso_indexer_alt_social_schema::models::{
     CONTENT_TYPE_COMMENT, CONTENT_TYPE_POST, REVENUE_TYPE_TIPS_COMMENT, REVENUE_TYPE_TIPS_POST,
@@ -178,8 +178,7 @@ struct PostParametersUpdatedEvent {
 #[derive(Debug, Deserialize)]
 struct OwnershipTransferEvent {
     object_id: String,
-    #[serde(rename = "previous_owner")]
-    _previous_owner: String,
+    previous_owner: String,
     new_owner: String,
     #[serde(default)]
     is_post: bool,
@@ -266,10 +265,12 @@ pub fn handle_post_event(
         "ContentUpdateEvent" | "PostUpdatedEvent" | "CommentUpdatedEvent" => {
             process_content_update_event(data)
         }
-        "OwnershipTransferEvent" => process_ownership_transfer_event(data),
+        "OwnershipTransferEvent" => process_ownership_transfer_event(data, event_id),
         "PostParametersUpdatedEvent" => process_post_parameters_updated_event(data, event_id),
         "PromotedPostCreatedEvent" => process_promoted_post_created_event(data, event_id),
-        "PromotedPostViewConfirmedEvent" => process_promoted_post_view_confirmed_event(data, event_id),
+        "PromotedPostViewConfirmedEvent" => {
+            process_promoted_post_view_confirmed_event(data, event_id)
+        }
         "PromotionStatusToggledEvent" => process_promotion_status_toggled_event(data, event_id),
         "PromotionFundsWithdrawnEvent" => process_promotion_funds_withdrawn_event(data, event_id),
         _ => None,
@@ -567,13 +568,29 @@ fn process_post_parameters_updated_event(
     }])
 }
 
-fn process_ownership_transfer_event(data: &serde_json::Value) -> Option<Vec<SocialEventRow>> {
+fn process_ownership_transfer_event(
+    data: &serde_json::Value,
+    event_id: &str,
+) -> Option<Vec<SocialEventRow>> {
     let ev: OwnershipTransferEvent = serde_json::from_value(data.clone()).ok()?;
-    Some(vec![SocialEventRow::PostOwnerUpdate {
-        object_id: ev.object_id,
-        new_owner: ev.new_owner,
+    let now = Utc::now();
+    let transferred_at = now.timestamp();
+    let transfer = NewPostTransfer {
+        object_id: ev.object_id.clone(),
+        previous_owner: ev.previous_owner.clone(),
+        new_owner: ev.new_owner.clone(),
         is_post: ev.is_post,
-    }])
+        transferred_at,
+        transaction_id: event_id.to_string(),
+    };
+    Some(vec![
+        SocialEventRow::PostOwnerUpdate {
+            object_id: ev.object_id,
+            new_owner: ev.new_owner,
+            is_post: ev.is_post,
+        },
+        SocialEventRow::PostTransfer(transfer),
+    ])
 }
 
 fn process_report_event(data: &serde_json::Value, event_id: &str) -> Option<Vec<SocialEventRow>> {
@@ -641,7 +658,10 @@ fn process_deletion_event(data: &serde_json::Value, event_id: &str) -> Option<Ve
     Some(rows)
 }
 
-fn process_promoted_post_created_event(data: &serde_json::Value, event_id: &str) -> Option<Vec<SocialEventRow>> {
+fn process_promoted_post_created_event(
+    data: &serde_json::Value,
+    event_id: &str,
+) -> Option<Vec<SocialEventRow>> {
     let ev: PromotedPostCreatedEvent = serde_json::from_value(data.clone()).ok()?;
     Some(vec![SocialEventRow::PromotedPost {
         post_id: ev.post_id,
@@ -654,7 +674,10 @@ fn process_promoted_post_created_event(data: &serde_json::Value, event_id: &str)
     }])
 }
 
-fn process_promoted_post_view_confirmed_event(data: &serde_json::Value, event_id: &str) -> Option<Vec<SocialEventRow>> {
+fn process_promoted_post_view_confirmed_event(
+    data: &serde_json::Value,
+    event_id: &str,
+) -> Option<Vec<SocialEventRow>> {
     let ev: PromotedPostViewConfirmedEvent = serde_json::from_value(data.clone()).ok()?;
     Some(vec![SocialEventRow::PromotionView {
         promotion_id: ev.promotion_id,
@@ -667,7 +690,10 @@ fn process_promoted_post_view_confirmed_event(data: &serde_json::Value, event_id
     }])
 }
 
-fn process_promotion_status_toggled_event(data: &serde_json::Value, event_id: &str) -> Option<Vec<SocialEventRow>> {
+fn process_promotion_status_toggled_event(
+    data: &serde_json::Value,
+    event_id: &str,
+) -> Option<Vec<SocialEventRow>> {
     let ev: PromotionStatusToggledEvent = serde_json::from_value(data.clone()).ok()?;
     Some(vec![SocialEventRow::PromotionStatusEvent {
         promotion_id: ev.promotion_id,
@@ -678,7 +704,10 @@ fn process_promotion_status_toggled_event(data: &serde_json::Value, event_id: &s
     }])
 }
 
-fn process_promotion_funds_withdrawn_event(data: &serde_json::Value, event_id: &str) -> Option<Vec<SocialEventRow>> {
+fn process_promotion_funds_withdrawn_event(
+    data: &serde_json::Value,
+    event_id: &str,
+) -> Option<Vec<SocialEventRow>> {
     let ev: PromotionFundsWithdrawnEvent = serde_json::from_value(data.clone()).ok()?;
     Some(vec![SocialEventRow::PromotionBudgetEvent {
         promotion_id: ev.promotion_id,

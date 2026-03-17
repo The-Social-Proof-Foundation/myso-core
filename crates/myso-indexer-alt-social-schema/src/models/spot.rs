@@ -1,0 +1,134 @@
+// Copyright (c) The Social Proof Foundation, LLC.
+// SPDX-License-Identifier: Apache-2.0
+
+use chrono::NaiveDateTime;
+use diesel::prelude::*;
+use serde::{Deserialize, Serialize};
+
+use crate::schema::{
+    spot_bet_withdrawals, spot_bets, spot_config, spot_events, spot_payouts, spot_records,
+    spot_refunds, spot_resolutions,
+};
+
+pub const STATUS_OPEN: i16 = 1;
+pub const STATUS_DAO_REQUIRED: i16 = 2;
+pub const STATUS_RESOLVED: i16 = 3;
+pub const STATUS_REFUNDABLE: i16 = 4;
+pub const OUTCOME_DRAW: i16 = 255;
+pub const OUTCOME_UNAPPLICABLE: i16 = 254;
+pub const DEFAULT_CONFIDENCE_THRESHOLD_BPS: i32 = 7000;
+pub const DEFAULT_FEE_BPS: i32 = 100;
+pub const DEFAULT_FEE_SPLIT_PLATFORM_BPS: i32 = 5000;
+pub const DEFAULT_MAX_BETS_PER_RECORD: i32 = 10000;
+pub const MAX_BETTING_OPTIONS: i16 = 10;
+pub const MIN_BETTING_OPTIONS: i16 = 2;
+
+#[derive(Debug, Clone, Insertable, Serialize, Deserialize)]
+#[diesel(table_name = spot_records)]
+pub struct NewSpotRecord {
+    pub post_id: String,
+    pub status: i16,
+    pub outcome: Option<i16>,
+    pub amm_split_bps_used: i32,
+    pub betting_options: Option<serde_json::Value>,
+    pub option_escrow: Option<serde_json::Value>,
+    pub resolution_window_epochs: Option<i64>,
+    pub max_resolution_window_epochs: Option<i64>,
+    pub created_epoch: i64,
+    pub last_resolution_epoch: Option<i64>,
+    pub version: i64,
+    pub created_at: NaiveDateTime,
+    pub updated_at: NaiveDateTime,
+    pub transaction_id: String,
+}
+
+#[derive(Debug, Clone, Insertable, Serialize, Deserialize)]
+#[diesel(table_name = spot_bets)]
+pub struct NewSpotBet {
+    pub post_id: String,
+    pub user_address: String,
+    pub option_id: i16,
+    pub escrow_amount: i64,
+    pub amm_amount: i64,
+    pub timestamp_epoch: i64,
+    pub time: chrono::DateTime<chrono::Utc>,
+    pub transaction_id: String,
+}
+
+#[derive(Debug, Clone, Insertable, Serialize, Deserialize)]
+#[diesel(table_name = spot_payouts)]
+pub struct NewSpotPayout {
+    pub post_id: String,
+    pub user_address: String,
+    pub amount: i64,
+    pub timestamp_epoch: i64,
+    pub time: chrono::DateTime<chrono::Utc>,
+    pub transaction_id: String,
+}
+
+#[derive(Debug, Clone, Insertable, Serialize, Deserialize)]
+#[diesel(table_name = spot_refunds)]
+pub struct NewSpotRefund {
+    pub post_id: String,
+    pub user_address: String,
+    pub amount: i64,
+    pub timestamp_epoch: i64,
+    pub time: chrono::DateTime<chrono::Utc>,
+    pub transaction_id: String,
+}
+
+#[derive(Debug, Clone, Insertable, Serialize, Deserialize)]
+#[diesel(table_name = spot_resolutions)]
+pub struct NewSpotResolution {
+    pub post_id: String,
+    pub outcome: i16,
+    pub total_escrow: i64,
+    pub fee_taken: i64,
+    pub resolved_epoch: i64,
+    pub time: chrono::DateTime<chrono::Utc>,
+    pub transaction_id: String,
+    pub reasoning: String,
+    pub evidence_urls: serde_json::Value,
+}
+
+#[derive(Debug, Clone, Insertable, Serialize, Deserialize)]
+#[diesel(table_name = spot_events)]
+pub struct NewSpotEventLog {
+    pub event_type: String,
+    pub post_id: String,
+    pub event_data: serde_json::Value,
+    pub event_id: String,
+    pub created_at: chrono::DateTime<chrono::Utc>,
+}
+
+#[derive(Debug, Clone, Insertable, Serialize, Deserialize)]
+#[diesel(table_name = spot_config)]
+pub struct NewSpotConfig {
+    pub updated_by: String,
+    pub enable_flag: bool,
+    pub confidence_threshold_bps: i64,
+    pub resolution_window_epochs: i64,
+    pub max_resolution_window_epochs: i64,
+    pub payout_delay_ms: i64,
+    pub fee_bps: i64,
+    pub fee_split_bps_platform: i64,
+    pub oracle_address: String,
+    pub max_single_bet: i64,
+    pub version: i64,
+    pub timestamp_ms: i64,
+    pub time: chrono::DateTime<chrono::Utc>,
+    pub transaction_id: String,
+}
+
+#[derive(Debug, Clone, Insertable, Serialize, Deserialize)]
+#[diesel(table_name = spot_bet_withdrawals)]
+pub struct NewSpotBetWithdrawal {
+    pub post_id: String,
+    pub user_address: String,
+    pub option_id: i16,
+    pub amount: i64,
+    pub fee_taken: i64,
+    pub timestamp_epoch: i64,
+    pub time: chrono::DateTime<chrono::Utc>,
+    pub transaction_id: String,
+}

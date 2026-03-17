@@ -52,14 +52,15 @@ pub use poc::{
 };
 pub use posts::{
     get_post_by_id, get_post_comments, get_post_config, get_post_poc_badges, get_post_promotion,
-    get_post_reactions, get_post_reposts, get_post_revenue_redirections, get_trending_posts,
-    list_posts,
+    get_post_reactions, get_post_reposts, get_post_revenue_redirections, get_post_transfers,
+    get_trending_posts, list_posts,
 };
 pub use profiles::{
     get_profile_badges, get_profile_blocked, get_profile_blocked_platforms,
     get_profile_blocking_history, get_profile_by_address, get_profile_by_username,
-    get_profile_events, get_profile_followers, get_profile_following, get_profile_platform_events,
-    get_profile_platform_memberships, get_profile_posts, get_profile_social_stats, latest_profiles,
+    get_profile_events, get_profile_followers, get_profile_following, get_profile_offers,
+    get_profile_platform_events, get_profile_platform_memberships, get_profile_posts,
+    get_profile_sale_fees, get_profile_social_stats, latest_profiles,
 };
 pub use promotions::{
     get_promotion_hourly, get_promotion_stats, get_promotion_time_series, get_promotion_views,

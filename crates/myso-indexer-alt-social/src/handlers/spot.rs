@@ -5,10 +5,8 @@ use super::SocialEventRow;
 use myso_indexer_alt_social_schema::models::{
     NewSpotBet, NewSpotBetWithdrawal, NewSpotConfig, NewSpotEventLog, NewSpotPayout, NewSpotRecord,
     NewSpotRefund, NewSpotResolution,
+    STATUS_OPEN, STATUS_RESOLVED,
 };
-
-const STATUS_OPEN: i16 = 1;
-const STATUS_RESOLVED: i16 = 2;
 
 fn transaction_id_from_event_id(event_id: &str) -> String {
     event_id.split(':').next().unwrap_or(event_id).to_string()

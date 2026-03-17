@@ -40,37 +40,38 @@ use myso_indexer_alt_framework::types::full_checkpoint_content::Checkpoint;
 use myso_indexer_alt_framework::FieldCount;
 use myso_indexer_alt_social_schema::models::{
     GovernanceRegistryUpdate, NewAnonymousVote, NewBlockedEvent, NewBlockedProfile, NewComment,
-    NewCommunityVote,     NewDelegate, NewDelegateRating, NewDelegateVote, NewDeletionEvent,
+    NewCommunityVote, NewDelegate, NewDelegateRating, NewDelegateVote, NewDeletionEvent,
     NewEcosystemTreasury, NewGovernanceEvent, NewGovernanceRegistry, NewInsuranceConfig,
-    NewInsuranceEventLog,
-    NewInsuranceMarketExposure, NewInsurancePolicy, NewInsurancePolicyEvent,
+    NewInsuranceEventLog, NewInsuranceMarketExposure, NewInsurancePolicy, NewInsurancePolicyEvent,
     NewInsuranceUserExposure, NewInsuranceVault, NewInsuranceVaultTransaction, NewModerationEvent,
     NewMyDataAccessLog, NewMyDataConfig, NewMyDataData, NewMyDataPurchase, NewMyDataRegistry,
     NewMyDataRevenue, NewMyDataSubscription, NewNominatedDelegate, NewObjectMigratedEvent,
     NewPlatform, NewPlatformBlockedProfile, NewPlatformEvent, NewPlatformMembership,
     NewPlatformModerator, NewPlatformTokenAirdrop, NewPocAnalysisResult, NewPocBadge,
     NewPocConfiguration, NewPocDispute, NewPocDisputeVote, NewPocRevenueRedirection, NewPost,
-    NewProfile, NewProfileBadge, NewProfileEvent, NewProfileSubscription,
-    NewProfileSubscriptionService, NewPromotedPost, NewPromotionBudgetEvent, NewPromotionStatusEvent,
-    NewPromotionView, NewProposal, NewReaction, NewReactionCount, NewReport,
-    NewRepost, NewRewardDistribution, NewSocialGraphEvent, NewSocialGraphRelationship,
-    NewSocialProofTokensConfig, NewSocialProofTokensEvent, NewSpotBet, NewSpotBetWithdrawal,
-    NewSpotConfig, NewSpotEventLog, NewSpotPayout, NewSpotRecord, NewSpotRefund, NewSpotResolution,
-    NewSptExchangeConfig, NewSptHolding, NewSptPool, NewSptPriceHistory, NewSptReservation,
-    NewSptReservationPool, NewSptRevenue, NewSptTransaction, NewSubscriptionEvent,
-    NewSubscriptionRevenue, NewTip, NewUnifiedRevenue, NewUpgradeEvent, NewVestingEvent,
-    NewVestingWallet, NewVoteDecryptionFailure, ProfileUpdateSet, ProposalUpdateSet,
+    NewPostTransfer, NewProfile, NewProfileBadge, NewProfileEvent, NewProfileOffer,
+    NewProfileSaleFee, NewProfileSubscription, NewProfileSubscriptionService, NewPromotedPost,
+    NewPromotionBudgetEvent, NewPromotionStatusEvent, NewPromotionView, NewProposal, NewReaction,
+    NewReactionCount, NewReport, NewRepost, NewRewardDistribution, NewSocialGraphEvent,
+    NewSocialGraphRelationship, NewSocialProofTokensConfig, NewSocialProofTokensEvent, NewSpotBet,
+    NewSpotBetWithdrawal, NewSpotConfig, NewSpotEventLog, NewSpotPayout, NewSpotRecord,
+    NewSpotRefund, NewSpotResolution, NewSptExchangeConfig, NewSptHolding, NewSptPool,
+    NewSptPriceHistory, NewSptReservation, NewSptReservationPool, NewSptRevenue, NewSptTransaction,
+    NewSubscriptionEvent, NewSubscriptionRevenue, NewTip, NewUnifiedRevenue, NewUpgradeEvent,
+    NewVestingEvent, NewVestingWallet, NewVoteDecryptionFailure, ProfileUpdateSet,
+    ProposalUpdateSet,
 };
 use myso_indexer_alt_social_schema::schema::{
     anonymous_votes, blocked_events, blocked_profiles, comments, community_votes, delegate_ratings,
-    post_config, promoted_posts, promotion_budget_events, promotion_status_events, promotion_views,
     delegate_votes, delegates, governance_events, governance_registries, nominated_delegates,
     platform_blocked_profiles, platform_events, platform_memberships, platform_moderators,
     platform_token_airdrops, platforms, poc_analysis_results, poc_badges, poc_configuration,
-    poc_dispute_votes, poc_disputes, poc_revenue_redirections, posts, posts_deletion_events,
-    posts_moderation_events, posts_reports, profile_badges, profile_events, profiles, proposals,
-    reaction_counts, reactions, reposts, reward_distributions, social_graph_events,
-    social_graph_relationships, tips, vote_decryption_failures,
+    poc_dispute_votes, poc_disputes, poc_revenue_redirections, post_config, posts,
+    posts_deletion_events, posts_moderation_events, posts_reports, posts_transfers, profile_badges,
+    profile_events, profile_offers, profile_sale_fees, profiles, promoted_posts,
+    promotion_budget_events, promotion_status_events, promotion_views, proposals, reaction_counts,
+    reactions, reposts, reward_distributions, social_graph_events, social_graph_relationships,
+    tips, vote_decryption_failures,
 };
 use myso_indexer_alt_social_schema::schema::{
     ecosystem_treasury, object_migrated_events, social_proof_tokens_config,
@@ -121,6 +122,16 @@ pub enum SocialEventRow {
         blocked_address: String,
     },
     ProfileEvent(NewProfileEvent),
+    ProfileOffer(NewProfileOffer),
+    ProfileOfferStatusUpdate {
+        profile_id: String,
+        offeror_address: String,
+        status: String,
+        resolved_at: i64,
+        updated_at: i64,
+        transaction_id: String,
+    },
+    ProfileSaleFee(NewProfileSaleFee),
     ProfileBadge(NewProfileBadge),
     ProfileBadgeRevoke {
         profile_id: String,
@@ -176,8 +187,12 @@ pub enum SocialEventRow {
         comment_id: String,
         owner: String,
     },
-    ProfilePostCountIncrement { owner_address: String },
-    ProfilePostCountDecrement { owner_address: String },
+    ProfilePostCountIncrement {
+        owner_address: String,
+    },
+    ProfilePostCountDecrement {
+        owner_address: String,
+    },
     PostRepostCountIncrement {
         original_id: String,
         is_original_post: bool,
@@ -216,6 +231,7 @@ pub enum SocialEventRow {
         new_owner: String,
         is_post: bool,
     },
+    PostTransfer(NewPostTransfer),
     PostConfig {
         updated_by: String,
         max_content_length: i64,
@@ -869,6 +885,39 @@ impl Handler for SocialEvents {
                         .execute(conn)
                         .await?;
                 }
+                SocialEventRow::ProfileOffer(offer) => {
+                    total += diesel::insert_into(profile_offers::table)
+                        .values(offer)
+                        .execute(conn)
+                        .await?;
+                }
+                SocialEventRow::ProfileOfferStatusUpdate {
+                    profile_id,
+                    offeror_address,
+                    status,
+                    resolved_at,
+                    updated_at,
+                    transaction_id,
+                } => {
+                    let _ = diesel::update(profile_offers::table)
+                        .filter(profile_offers::profile_id.eq(profile_id))
+                        .filter(profile_offers::offeror_address.eq(offeror_address))
+                        .filter(profile_offers::status.eq("pending"))
+                        .set((
+                            profile_offers::status.eq(status),
+                            profile_offers::resolved_at.eq(Some(*resolved_at)),
+                            profile_offers::updated_at.eq(*updated_at),
+                            profile_offers::transaction_id.eq(transaction_id),
+                        ))
+                        .execute(conn)
+                        .await;
+                }
+                SocialEventRow::ProfileSaleFee(fee) => {
+                    total += diesel::insert_into(profile_sale_fees::table)
+                        .values(fee)
+                        .execute(conn)
+                        .await?;
+                }
                 SocialEventRow::EcosystemTreasury(c) => {
                     let latest: Option<(i32, chrono::NaiveDateTime)> = ecosystem_treasury::table
                         .order(ecosystem_treasury::time.desc())
@@ -1358,10 +1407,7 @@ impl Handler for SocialEvents {
                         .execute(conn)
                         .await;
                 }
-                SocialEventRow::PostCommentCountDecrementByComment {
-                    comment_id,
-                    owner,
-                } => {
+                SocialEventRow::PostCommentCountDecrementByComment { comment_id, owner } => {
                     use diesel::sql_query;
                     use diesel::sql_types::Text;
                     let _ = sql_query(
@@ -1525,6 +1571,12 @@ impl Handler for SocialEvents {
                             .execute(conn)
                             .await;
                     }
+                }
+                SocialEventRow::PostTransfer(transfer) => {
+                    total += diesel::insert_into(posts_transfers::table)
+                        .values(transfer)
+                        .execute(conn)
+                        .await?;
                 }
                 SocialEventRow::PostConfig {
                     updated_by,
@@ -2398,7 +2450,10 @@ impl Handler for SocialEvents {
                         .execute(conn)
                         .await?;
                 }
-                SocialEventRow::SptReservation { associated_id, reservation } => {
+                SocialEventRow::SptReservation {
+                    associated_id,
+                    reservation,
+                } => {
                     #[derive(QueryableByName)]
                     struct PoolIdRow {
                         #[diesel(sql_type = Text)]
@@ -2477,8 +2532,10 @@ impl Handler for SocialEvents {
                                 spt_exchange_config::max_reservers_per_pool
                                     .eq(c.max_reservers_per_pool),
                                 spt_exchange_config::base_price.eq(c.base_price),
-                                spt_exchange_config::quadratic_coefficient.eq(c.quadratic_coefficient),
-                                spt_exchange_config::max_hold_percent_bps.eq(c.max_hold_percent_bps),
+                                spt_exchange_config::quadratic_coefficient
+                                    .eq(c.quadratic_coefficient),
+                                spt_exchange_config::max_hold_percent_bps
+                                    .eq(c.max_hold_percent_bps),
                                 spt_exchange_config::trading_enabled.eq(c.trading_enabled),
                                 spt_exchange_config::updated_at.eq(c.updated_at),
                                 spt_exchange_config::transaction_id.eq(&c.transaction_id),
@@ -2984,7 +3041,8 @@ impl Handler for SocialEvents {
                     total += diesel::update(vesting_wallets::table)
                         .filter(vesting_wallets::wallet_id.eq(wallet_id))
                         .set((
-                            vesting_wallets::claimed_amount.eq(vesting_wallets::claimed_amount + claimed_amount),
+                            vesting_wallets::claimed_amount
+                                .eq(vesting_wallets::claimed_amount + claimed_amount),
                             vesting_wallets::remaining_balance.eq(remaining_balance),
                             vesting_wallets::updated_at.eq(now),
                         ))

@@ -45,14 +45,14 @@ use crate::api::types::move_type;
 use crate::api::types::move_type::MoveType;
 use crate::api::types::node::Node;
 use crate::api::types::object;
-use crate::api::types::platform::Platform;
-use crate::api::types::post::Post;
-use crate::api::types::profile::Profile;
 use crate::api::types::object::Object;
 use crate::api::types::object::ObjectKey;
 use crate::api::types::object::VersionFilter;
 use crate::api::types::object_filter::ObjectFilter;
 use crate::api::types::object_filter::ObjectFilterValidator as OFValidator;
+use crate::api::types::platform::Platform;
+use crate::api::types::post::Post;
+use crate::api::types::profile::Profile;
 use crate::api::types::protocol_configs::ProtocolConfigs;
 use crate::api::types::service_config::ServiceConfig;
 use crate::api::types::simulation_result::SimulationResult;
@@ -206,7 +206,8 @@ impl Query {
         ctx: &Context<'_>,
         address: MySoAddress,
     ) -> Option<Result<Option<Profile>, RpcError>> {
-        let reader_opt = ctx.data_opt::<std::sync::Arc<Option<myso_indexer_alt_social_reader::SocialPgReader>>>()?;
+        let reader_opt = ctx
+            .data_opt::<std::sync::Arc<Option<myso_indexer_alt_social_reader::SocialPgReader>>>()?;
         let reader = reader_opt.as_ref().as_ref()?;
         let addr_str = address.to_string();
         Some(
@@ -225,7 +226,8 @@ impl Query {
         limit: Option<u64>,
         offset: Option<u64>,
     ) -> Option<Result<Vec<Profile>, RpcError>> {
-        let reader_opt = ctx.data_opt::<std::sync::Arc<Option<myso_indexer_alt_social_reader::SocialPgReader>>>()?;
+        let reader_opt = ctx
+            .data_opt::<std::sync::Arc<Option<myso_indexer_alt_social_reader::SocialPgReader>>>()?;
         let reader = reader_opt.as_ref().as_ref()?;
         let limit = limit.unwrap_or(20).min(100) as i64;
         let offset = offset.unwrap_or(0) as i64;
@@ -244,7 +246,8 @@ impl Query {
         ctx: &Context<'_>,
         id: async_graphql::ID,
     ) -> Option<Result<Option<Post>, RpcError>> {
-        let reader_opt = ctx.data_opt::<std::sync::Arc<Option<myso_indexer_alt_social_reader::SocialPgReader>>>()?;
+        let reader_opt = ctx
+            .data_opt::<std::sync::Arc<Option<myso_indexer_alt_social_reader::SocialPgReader>>>()?;
         let reader = reader_opt.as_ref().as_ref()?;
         Some(
             reader
@@ -264,18 +267,14 @@ impl Query {
         limit: Option<u64>,
         offset: Option<u64>,
     ) -> Option<Result<Vec<Post>, RpcError>> {
-        let reader_opt = ctx.data_opt::<std::sync::Arc<Option<myso_indexer_alt_social_reader::SocialPgReader>>>()?;
+        let reader_opt = ctx
+            .data_opt::<std::sync::Arc<Option<myso_indexer_alt_social_reader::SocialPgReader>>>()?;
         let reader = reader_opt.as_ref().as_ref()?;
         let limit = limit.unwrap_or(20).min(100) as i64;
         let offset = offset.unwrap_or(0) as i64;
         Some(
             reader
-                .list_posts(
-                    owner.as_deref(),
-                    post_type.as_deref(),
-                    limit,
-                    offset,
-                )
+                .list_posts(owner.as_deref(), post_type.as_deref(), limit, offset)
                 .await
                 .map_err(Into::into)
                 .map(|v| v.into_iter().map(Post::from_db).collect()),
@@ -288,7 +287,8 @@ impl Query {
         ctx: &Context<'_>,
         id: async_graphql::ID,
     ) -> Option<Result<Option<Platform>, RpcError>> {
-        let reader_opt = ctx.data_opt::<std::sync::Arc<Option<myso_indexer_alt_social_reader::SocialPgReader>>>()?;
+        let reader_opt = ctx
+            .data_opt::<std::sync::Arc<Option<myso_indexer_alt_social_reader::SocialPgReader>>>()?;
         let reader = reader_opt.as_ref().as_ref()?;
         Some(
             reader
@@ -307,7 +307,8 @@ impl Query {
         limit: Option<u64>,
         offset: Option<u64>,
     ) -> Option<Result<Vec<Platform>, RpcError>> {
-        let reader_opt = ctx.data_opt::<std::sync::Arc<Option<myso_indexer_alt_social_reader::SocialPgReader>>>()?;
+        let reader_opt = ctx
+            .data_opt::<std::sync::Arc<Option<myso_indexer_alt_social_reader::SocialPgReader>>>()?;
         let reader = reader_opt.as_ref().as_ref()?;
         let limit = limit.unwrap_or(20).min(100) as i64;
         let offset = offset.unwrap_or(0) as i64;
@@ -327,7 +328,8 @@ impl Query {
         follower: MySoAddress,
         following: MySoAddress,
     ) -> Option<Result<bool, RpcError>> {
-        let reader_opt = ctx.data_opt::<std::sync::Arc<Option<myso_indexer_alt_social_reader::SocialPgReader>>>()?;
+        let reader_opt = ctx
+            .data_opt::<std::sync::Arc<Option<myso_indexer_alt_social_reader::SocialPgReader>>>()?;
         let reader = reader_opt.as_ref().as_ref()?;
         Some(
             reader
