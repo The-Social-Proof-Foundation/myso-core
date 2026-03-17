@@ -1080,7 +1080,7 @@ impl Reader {
         platform_id: &str,
         limit: i64,
         offset: i64,
-    ) -> Result<Vec<PlatformEventRow>, crate::error::SocialError> {
+    ) -> Result<(Vec<PlatformEventRow>, i64), crate::error::SocialError> {
         platform::get_platform_events(&self.db, platform_id, limit, offset).await
     }
 

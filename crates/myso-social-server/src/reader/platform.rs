@@ -388,35 +388,49 @@ pub(crate) async fn get_platform_events(
     platform_id: &str,
     limit: i64,
     offset: i64,
-) -> Result<Vec<PlatformEventRow>, SocialError> {
+) -> Result<(Vec<PlatformEventRow>, i64), SocialError> {
     let mut conn = db.connect().await?;
+    let total: i64 = platform_events::table
+        .filter(platform_events::platform_id.eq(platform_id))
+        .count()
+        .get_result(&mut conn)
+        .await?;
     let results = platform_events::table
         .filter(platform_events::platform_id.eq(platform_id))
         .order_by(platform_events::created_at.desc())
         .limit(limit)
         .offset(offset)
         .select((
+            platform_events::platform_id,
             platform_events::event_type,
             platform_events::event_data,
             platform_events::event_id,
             platform_events::created_at,
+            platform_events::reasoning,
         ))
         .load::<(
+            String,
             String,
             serde_json::Value,
             Option<String>,
             chrono::NaiveDateTime,
+            Option<String>,
         )>(&mut conn)
         .await?;
-    Ok(results
+    let events = results
         .into_iter()
         .map(
-            |(event_type, event_data, event_id, created_at)| PlatformEventRow {
-                event_type,
-                event_data,
-                event_id,
-                created_at,
+            |(platform_id, event_type, event_data, event_id, created_at, reasoning)| {
+                PlatformEventRow {
+                    platform_id,
+                    event_type,
+                    event_data,
+                    event_id,
+                    created_at,
+                    reasoning,
+                }
             },
         )
-        .collect())
+        .collect();
+    Ok((events, total))
 }

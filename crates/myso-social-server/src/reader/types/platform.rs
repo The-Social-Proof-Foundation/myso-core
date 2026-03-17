@@ -69,8 +69,11 @@ pub struct PlatformMemberRow {
 
 #[derive(Debug, Serialize)]
 pub struct PlatformEventRow {
+    pub platform_id: String,
     pub event_type: String,
     pub event_data: serde_json::Value,
     pub event_id: Option<String>,
     pub created_at: chrono::NaiveDateTime,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub reasoning: Option<String>,
 }

@@ -115,9 +115,12 @@ pub async fn get_platform_events(
     State(state): State<Arc<AppState>>,
     Path(id): Path<String>,
     Query(params): Query<PageParams>,
-) -> Result<Json<Vec<crate::reader::PlatformEventRow>>, SocialError> {
+) -> Result<Json<serde_json::Value>, SocialError> {
     let limit = params.limit();
     let offset = params.offset();
-    let events = state.reader.get_platform_events(&id, limit, offset).await?;
-    Ok(Json(events))
+    let (events, total) = state.reader.get_platform_events(&id, limit, offset).await?;
+    Ok(Json(serde_json::json!({
+        "events": events,
+        "total": total
+    })))
 }
