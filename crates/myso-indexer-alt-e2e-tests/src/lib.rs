@@ -396,6 +396,7 @@ impl OffchainCluster {
 
         let graphql = start_graphql(
             Some(database_url.clone()),
+            None,
             fullnode_args,
             DbArgs::default(),
             GraphQlKvArgs::default(),

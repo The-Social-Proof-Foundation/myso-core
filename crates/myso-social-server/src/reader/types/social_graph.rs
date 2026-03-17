@@ -13,6 +13,7 @@ pub struct SocialGraphAddressRow {
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct UniversalUserResult {
+    pub owner_address: String,
     pub wallet_address: String,
     pub username: Option<String>,
     pub fullname: Option<String>,

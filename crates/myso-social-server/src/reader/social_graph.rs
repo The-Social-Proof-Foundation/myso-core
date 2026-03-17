@@ -196,6 +196,7 @@ pub(crate) async fn enrich_users_with_universal_data(
         };
 
         let user_result = UniversalUserResult {
+            owner_address: row.owner_address.clone(),
             wallet_address: row.owner_address.clone(),
             username: Some(row.username),
             fullname: row.display_name,
@@ -211,6 +212,7 @@ pub(crate) async fn enrich_users_with_universal_data(
             result.insert(
                 wallet_address.clone(),
                 UniversalUserResult {
+                    owner_address: wallet_address.clone(),
                     wallet_address: wallet_address.clone(),
                     username: None,
                     fullname: None,
@@ -791,6 +793,7 @@ pub(crate) async fn get_following(
             .get(&owner_address)
             .cloned()
             .unwrap_or_else(|| UniversalUserResult {
+                owner_address: owner_address.clone(),
                 wallet_address: owner_address.clone(),
                 username: username_opt,
                 fullname: display_name,
@@ -1098,6 +1101,7 @@ pub(crate) async fn get_followers(
             .get(&owner_address)
             .cloned()
             .unwrap_or_else(|| UniversalUserResult {
+                owner_address: owner_address.clone(),
                 wallet_address: owner_address.clone(),
                 username: username_opt,
                 fullname: display_name,

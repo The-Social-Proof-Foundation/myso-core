@@ -19,7 +19,6 @@ pub(crate) struct DbReaderMetrics {
     pub latency: Histogram,
     pub requests_received: IntCounter,
     pub requests_succeeded: IntCounter,
-    pub requests_failed: IntCounter,
 }
 
 impl DbReaderMetrics {
@@ -46,13 +45,6 @@ impl DbReaderMetrics {
             requests_succeeded: register_int_counter_with_registry!(
                 name("requests_succeeded"),
                 "Number of social database requests that completed successfully",
-                registry,
-            )
-            .unwrap(),
-
-            requests_failed: register_int_counter_with_registry!(
-                name("requests_failed"),
-                "Number of social database requests that completed with an error",
                 registry,
             )
             .unwrap(),

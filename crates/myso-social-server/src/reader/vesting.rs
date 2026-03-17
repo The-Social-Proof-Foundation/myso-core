@@ -267,6 +267,7 @@ pub(crate) async fn list_vesting_wallets(
                 .get(&w.owner_address)
                 .cloned()
                 .unwrap_or_else(|| UniversalUserResult {
+                    owner_address: w.owner_address.clone(),
                     wallet_address: w.owner_address.clone(),
                     username: None,
                     fullname: None,
@@ -806,6 +807,7 @@ pub(crate) async fn get_vesting_leaderboard(
                 .get(&r.owner_address)
                 .cloned()
                 .unwrap_or_else(|| UniversalUserResult {
+                    owner_address: r.owner_address.clone(),
                     wallet_address: r.owner_address.clone(),
                     username: None,
                     fullname: None,
