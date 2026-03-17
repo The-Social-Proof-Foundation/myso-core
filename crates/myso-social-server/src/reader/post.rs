@@ -54,10 +54,10 @@ pub(crate) async fn list_posts(
             String,
             i64,
             Option<i64>,
-            i64,
-            i64,
-            i64,
-            i64,
+            Option<i64>,
+            Option<i64>,
+            Option<i64>,
+            Option<i64>,
         )>(&mut conn)
         .await?;
     Ok(results
@@ -83,10 +83,10 @@ pub(crate) async fn list_posts(
                 post_type,
                 created_at,
                 deleted_at,
-                reaction_count,
-                comment_count,
-                repost_count,
-                tips_received,
+                reaction_count: reaction_count.unwrap_or(0),
+                comment_count: comment_count.unwrap_or(0),
+                repost_count: repost_count.unwrap_or(0),
+                tips_received: tips_received.unwrap_or(0),
             },
         )
         .collect())
@@ -217,8 +217,8 @@ pub(crate) async fn get_post_comments(
             String,
             String,
             i64,
-            i64,
-            i64,
+            Option<i64>,
+            Option<i64>,
         )>(&mut conn)
         .await?;
     Ok(results
@@ -242,8 +242,8 @@ pub(crate) async fn get_post_comments(
                 profile_id,
                 content,
                 created_at,
-                reaction_count,
-                comment_count,
+                reaction_count: reaction_count.unwrap_or(0),
+                comment_count: comment_count.unwrap_or(0),
             },
         )
         .collect())
