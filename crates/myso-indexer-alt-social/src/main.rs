@@ -45,7 +45,6 @@ struct Args {
     rpc_api_url: Option<Url>,
 }
 
-
 #[tokio::main]
 async fn main() -> Result<(), anyhow::Error> {
     let _guard = telemetry_subscribers::TelemetryConfig::new()
