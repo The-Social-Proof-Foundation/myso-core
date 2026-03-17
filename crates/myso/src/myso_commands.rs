@@ -1131,6 +1131,8 @@ async fn start(
         vec![]
     };
 
+    let mut social_database_url_for_graphql: Option<Url> = None;
+
     if let (Some(ref db_url), Some(ref social_indexer_opt)) =
         (database_url.as_ref(), with_social_indexer.as_ref())
     {
@@ -1145,6 +1147,8 @@ async fn start(
                 .await
                 .context("Failed to create social database")?,
         };
+
+        social_database_url_for_graphql = Some(social_database_url.clone());
 
         let client_args = ClientArgs {
             ingestion: IngestionClientArgs {
@@ -1260,6 +1264,7 @@ async fn start(
         rpc_services = rpc_services.merge(
             start_graphql(
                 database_url.clone(),
+                social_database_url_for_graphql.clone(),
                 fullnode_args,
                 DbArgs::default(),
                 GraphQlKvArgs::default(),

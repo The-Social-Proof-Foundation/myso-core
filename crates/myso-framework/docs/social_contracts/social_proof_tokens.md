@@ -497,10 +497,10 @@ Information about a token
 
 ## Struct `TokenPool`
 
-Liquidity pool for a token
+Liquidity pool for a token (key only - not transferable)
 
 
-<pre><code><b>public</b> <b>struct</b> <a href="../social_contracts/social_proof_tokens.md#social_contracts_social_proof_tokens_TokenPool">TokenPool</a> <b>has</b> key, store
+<pre><code><b>public</b> <b>struct</b> <a href="../social_contracts/social_proof_tokens.md#social_contracts_social_proof_tokens_TokenPool">TokenPool</a> <b>has</b> key
 </code></pre>
 
 
@@ -1985,27 +1985,49 @@ Bootstrap initialization function - creates the social proof tokens configuratio
 
 
 <pre><code><b>public</b>(package) <b>fun</b> <a href="../social_contracts/social_proof_tokens.md#social_contracts_social_proof_tokens_bootstrap_init">bootstrap_init</a>(ctx: &<b>mut</b> TxContext) {
+    <b>let</b> sender = tx_context::sender(ctx);
+    <b>let</b> config = <a href="../social_contracts/social_proof_tokens.md#social_contracts_social_proof_tokens_SocialProofTokensConfig">SocialProofTokensConfig</a> {
+        id: object::new(ctx),
+        version: <a href="../social_contracts/upgrade.md#social_contracts_upgrade_current_version">upgrade::current_version</a>(),
+        trading_creator_fee_bps: <a href="../social_contracts/social_proof_tokens.md#social_contracts_social_proof_tokens_DEFAULT_TRADING_CREATOR_FEE_BPS">DEFAULT_TRADING_CREATOR_FEE_BPS</a>,
+        trading_platform_fee_bps: <a href="../social_contracts/social_proof_tokens.md#social_contracts_social_proof_tokens_DEFAULT_TRADING_PLATFORM_FEE_BPS">DEFAULT_TRADING_PLATFORM_FEE_BPS</a>,
+        trading_treasury_fee_bps: <a href="../social_contracts/social_proof_tokens.md#social_contracts_social_proof_tokens_DEFAULT_TRADING_TREASURY_FEE_BPS">DEFAULT_TRADING_TREASURY_FEE_BPS</a>,
+        reservation_creator_fee_bps: <a href="../social_contracts/social_proof_tokens.md#social_contracts_social_proof_tokens_DEFAULT_RESERVATION_CREATOR_FEE_BPS">DEFAULT_RESERVATION_CREATOR_FEE_BPS</a>,
+        reservation_platform_fee_bps: <a href="../social_contracts/social_proof_tokens.md#social_contracts_social_proof_tokens_DEFAULT_RESERVATION_PLATFORM_FEE_BPS">DEFAULT_RESERVATION_PLATFORM_FEE_BPS</a>,
+        reservation_treasury_fee_bps: <a href="../social_contracts/social_proof_tokens.md#social_contracts_social_proof_tokens_DEFAULT_RESERVATION_TREASURY_FEE_BPS">DEFAULT_RESERVATION_TREASURY_FEE_BPS</a>,
+        base_price: <a href="../social_contracts/social_proof_tokens.md#social_contracts_social_proof_tokens_DEFAULT_BASE_PRICE">DEFAULT_BASE_PRICE</a>,
+        quadratic_coefficient: <a href="../social_contracts/social_proof_tokens.md#social_contracts_social_proof_tokens_DEFAULT_QUADRATIC_COEFFICIENT">DEFAULT_QUADRATIC_COEFFICIENT</a>,
+        max_hold_percent_bps: <a href="../social_contracts/social_proof_tokens.md#social_contracts_social_proof_tokens_MAX_HOLD_PERCENT_BPS">MAX_HOLD_PERCENT_BPS</a>,
+        post_threshold: <a href="../social_contracts/social_proof_tokens.md#social_contracts_social_proof_tokens_DEFAULT_POST_THRESHOLD">DEFAULT_POST_THRESHOLD</a>,
+        profile_threshold: <a href="../social_contracts/social_proof_tokens.md#social_contracts_social_proof_tokens_DEFAULT_PROFILE_THRESHOLD">DEFAULT_PROFILE_THRESHOLD</a>,
+        max_individual_reservation_bps: <a href="../social_contracts/social_proof_tokens.md#social_contracts_social_proof_tokens_DEFAULT_MAX_INDIVIDUAL_RESERVATION_BPS">DEFAULT_MAX_INDIVIDUAL_RESERVATION_BPS</a>,
+        max_reservers_per_pool: <a href="../social_contracts/social_proof_tokens.md#social_contracts_social_proof_tokens_DEFAULT_MAX_RESERVERS_PER_POOL">DEFAULT_MAX_RESERVERS_PER_POOL</a>,
+        trading_enabled: <b>false</b>, // Trading disabled by default during <a href="../social_contracts/bootstrap.md#social_contracts_bootstrap">bootstrap</a>
+    };
+    // Emit event so indexer can populate spt_exchange_config table
+    <b>let</b> total_fee_bps = <a href="../social_contracts/social_proof_tokens.md#social_contracts_social_proof_tokens_DEFAULT_TRADING_CREATOR_FEE_BPS">DEFAULT_TRADING_CREATOR_FEE_BPS</a> + <a href="../social_contracts/social_proof_tokens.md#social_contracts_social_proof_tokens_DEFAULT_TRADING_PLATFORM_FEE_BPS">DEFAULT_TRADING_PLATFORM_FEE_BPS</a> + <a href="../social_contracts/social_proof_tokens.md#social_contracts_social_proof_tokens_DEFAULT_TRADING_TREASURY_FEE_BPS">DEFAULT_TRADING_TREASURY_FEE_BPS</a>;
+    <b>let</b> reservation_total_fee_bps = <a href="../social_contracts/social_proof_tokens.md#social_contracts_social_proof_tokens_DEFAULT_RESERVATION_CREATOR_FEE_BPS">DEFAULT_RESERVATION_CREATOR_FEE_BPS</a> + <a href="../social_contracts/social_proof_tokens.md#social_contracts_social_proof_tokens_DEFAULT_RESERVATION_PLATFORM_FEE_BPS">DEFAULT_RESERVATION_PLATFORM_FEE_BPS</a> + <a href="../social_contracts/social_proof_tokens.md#social_contracts_social_proof_tokens_DEFAULT_RESERVATION_TREASURY_FEE_BPS">DEFAULT_RESERVATION_TREASURY_FEE_BPS</a>;
+    event::emit(<a href="../social_contracts/social_proof_tokens.md#social_contracts_social_proof_tokens_ConfigUpdatedEvent">ConfigUpdatedEvent</a> {
+        updated_by: sender,
+        timestamp: tx_context::epoch(ctx),
+        total_fee_bps,
+        trading_creator_fee_bps: <a href="../social_contracts/social_proof_tokens.md#social_contracts_social_proof_tokens_DEFAULT_TRADING_CREATOR_FEE_BPS">DEFAULT_TRADING_CREATOR_FEE_BPS</a>,
+        trading_platform_fee_bps: <a href="../social_contracts/social_proof_tokens.md#social_contracts_social_proof_tokens_DEFAULT_TRADING_PLATFORM_FEE_BPS">DEFAULT_TRADING_PLATFORM_FEE_BPS</a>,
+        trading_treasury_fee_bps: <a href="../social_contracts/social_proof_tokens.md#social_contracts_social_proof_tokens_DEFAULT_TRADING_TREASURY_FEE_BPS">DEFAULT_TRADING_TREASURY_FEE_BPS</a>,
+        reservation_total_fee_bps,
+        reservation_creator_fee_bps: <a href="../social_contracts/social_proof_tokens.md#social_contracts_social_proof_tokens_DEFAULT_RESERVATION_CREATOR_FEE_BPS">DEFAULT_RESERVATION_CREATOR_FEE_BPS</a>,
+        reservation_platform_fee_bps: <a href="../social_contracts/social_proof_tokens.md#social_contracts_social_proof_tokens_DEFAULT_RESERVATION_PLATFORM_FEE_BPS">DEFAULT_RESERVATION_PLATFORM_FEE_BPS</a>,
+        reservation_treasury_fee_bps: <a href="../social_contracts/social_proof_tokens.md#social_contracts_social_proof_tokens_DEFAULT_RESERVATION_TREASURY_FEE_BPS">DEFAULT_RESERVATION_TREASURY_FEE_BPS</a>,
+        base_price: <a href="../social_contracts/social_proof_tokens.md#social_contracts_social_proof_tokens_DEFAULT_BASE_PRICE">DEFAULT_BASE_PRICE</a>,
+        quadratic_coefficient: <a href="../social_contracts/social_proof_tokens.md#social_contracts_social_proof_tokens_DEFAULT_QUADRATIC_COEFFICIENT">DEFAULT_QUADRATIC_COEFFICIENT</a>,
+        max_hold_percent_bps: <a href="../social_contracts/social_proof_tokens.md#social_contracts_social_proof_tokens_MAX_HOLD_PERCENT_BPS">MAX_HOLD_PERCENT_BPS</a>,
+        post_threshold: <a href="../social_contracts/social_proof_tokens.md#social_contracts_social_proof_tokens_DEFAULT_POST_THRESHOLD">DEFAULT_POST_THRESHOLD</a>,
+        profile_threshold: <a href="../social_contracts/social_proof_tokens.md#social_contracts_social_proof_tokens_DEFAULT_PROFILE_THRESHOLD">DEFAULT_PROFILE_THRESHOLD</a>,
+        max_individual_reservation_bps: <a href="../social_contracts/social_proof_tokens.md#social_contracts_social_proof_tokens_DEFAULT_MAX_INDIVIDUAL_RESERVATION_BPS">DEFAULT_MAX_INDIVIDUAL_RESERVATION_BPS</a>,
+        max_reservers_per_pool: <a href="../social_contracts/social_proof_tokens.md#social_contracts_social_proof_tokens_DEFAULT_MAX_RESERVERS_PER_POOL">DEFAULT_MAX_RESERVERS_PER_POOL</a>,
+    });
     // Create and share social proof tokens config with proper treasury
-    transfer::share_object(
-        <a href="../social_contracts/social_proof_tokens.md#social_contracts_social_proof_tokens_SocialProofTokensConfig">SocialProofTokensConfig</a> {
-            id: object::new(ctx),
-            version: <a href="../social_contracts/upgrade.md#social_contracts_upgrade_current_version">upgrade::current_version</a>(),
-            trading_creator_fee_bps: <a href="../social_contracts/social_proof_tokens.md#social_contracts_social_proof_tokens_DEFAULT_TRADING_CREATOR_FEE_BPS">DEFAULT_TRADING_CREATOR_FEE_BPS</a>,
-            trading_platform_fee_bps: <a href="../social_contracts/social_proof_tokens.md#social_contracts_social_proof_tokens_DEFAULT_TRADING_PLATFORM_FEE_BPS">DEFAULT_TRADING_PLATFORM_FEE_BPS</a>,
-            trading_treasury_fee_bps: <a href="../social_contracts/social_proof_tokens.md#social_contracts_social_proof_tokens_DEFAULT_TRADING_TREASURY_FEE_BPS">DEFAULT_TRADING_TREASURY_FEE_BPS</a>,
-            reservation_creator_fee_bps: <a href="../social_contracts/social_proof_tokens.md#social_contracts_social_proof_tokens_DEFAULT_RESERVATION_CREATOR_FEE_BPS">DEFAULT_RESERVATION_CREATOR_FEE_BPS</a>,
-            reservation_platform_fee_bps: <a href="../social_contracts/social_proof_tokens.md#social_contracts_social_proof_tokens_DEFAULT_RESERVATION_PLATFORM_FEE_BPS">DEFAULT_RESERVATION_PLATFORM_FEE_BPS</a>,
-            reservation_treasury_fee_bps: <a href="../social_contracts/social_proof_tokens.md#social_contracts_social_proof_tokens_DEFAULT_RESERVATION_TREASURY_FEE_BPS">DEFAULT_RESERVATION_TREASURY_FEE_BPS</a>,
-            base_price: <a href="../social_contracts/social_proof_tokens.md#social_contracts_social_proof_tokens_DEFAULT_BASE_PRICE">DEFAULT_BASE_PRICE</a>,
-            quadratic_coefficient: <a href="../social_contracts/social_proof_tokens.md#social_contracts_social_proof_tokens_DEFAULT_QUADRATIC_COEFFICIENT">DEFAULT_QUADRATIC_COEFFICIENT</a>,
-            max_hold_percent_bps: <a href="../social_contracts/social_proof_tokens.md#social_contracts_social_proof_tokens_MAX_HOLD_PERCENT_BPS">MAX_HOLD_PERCENT_BPS</a>,
-            post_threshold: <a href="../social_contracts/social_proof_tokens.md#social_contracts_social_proof_tokens_DEFAULT_POST_THRESHOLD">DEFAULT_POST_THRESHOLD</a>,
-            profile_threshold: <a href="../social_contracts/social_proof_tokens.md#social_contracts_social_proof_tokens_DEFAULT_PROFILE_THRESHOLD">DEFAULT_PROFILE_THRESHOLD</a>,
-            max_individual_reservation_bps: <a href="../social_contracts/social_proof_tokens.md#social_contracts_social_proof_tokens_DEFAULT_MAX_INDIVIDUAL_RESERVATION_BPS">DEFAULT_MAX_INDIVIDUAL_RESERVATION_BPS</a>,
-            max_reservers_per_pool: <a href="../social_contracts/social_proof_tokens.md#social_contracts_social_proof_tokens_DEFAULT_MAX_RESERVERS_PER_POOL">DEFAULT_MAX_RESERVERS_PER_POOL</a>,
-            trading_enabled: <b>false</b>, // Trading disabled by default during <a href="../social_contracts/bootstrap.md#social_contracts_bootstrap">bootstrap</a>
-        }
-    );
+    transfer::share_object(config);
     // Create and share token registry
     transfer::share_object(
         <a href="../social_contracts/social_proof_tokens.md#social_contracts_social_proof_tokens_TokenRegistry">TokenRegistry</a> {

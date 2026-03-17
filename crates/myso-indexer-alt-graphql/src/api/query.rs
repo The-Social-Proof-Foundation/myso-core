@@ -45,6 +45,9 @@ use crate::api::types::move_type;
 use crate::api::types::move_type::MoveType;
 use crate::api::types::node::Node;
 use crate::api::types::object;
+use crate::api::types::platform::Platform;
+use crate::api::types::post::Post;
+use crate::api::types::profile::Profile;
 use crate::api::types::object::Object;
 use crate::api::types::object::ObjectKey;
 use crate::api::types::object::VersionFilter;
@@ -138,10 +141,199 @@ impl Query {
                 Id::Transaction(d) => Some(Node::Transaction(Box::new(Transaction::with_digest(
                     scope, d,
                 )))),
+
+                Id::Profile(addr) => {
+                    let reader_opt = match ctx.data_opt::<std::sync::Arc<Option<myso_indexer_alt_social_reader::SocialPgReader>>>() {
+                        Some(r) => r,
+                        None => return Ok(None),
+                    };
+                    if let Some(reader) = reader_opt.as_ref() {
+                        if let Ok(Some(profile)) =
+                            reader.get_profile_by_address(&addr.to_string()).await
+                        {
+                            Some(Node::Profile(Box::new(Profile::from_db(profile))))
+                        } else {
+                            None
+                        }
+                    } else {
+                        None
+                    }
+                }
+
+                Id::Post(post_id) => {
+                    let reader_opt = match ctx.data_opt::<std::sync::Arc<Option<myso_indexer_alt_social_reader::SocialPgReader>>>() {
+                        Some(r) => r,
+                        None => return Ok(None),
+                    };
+                    if let Some(reader) = reader_opt.as_ref() {
+                        if let Ok(Some(post)) = reader.get_post_by_id(&post_id).await {
+                            Some(Node::Post(Box::new(Post::from_db(post))))
+                        } else {
+                            None
+                        }
+                    } else {
+                        None
+                    }
+                }
+
+                Id::Platform(platform_id) => {
+                    let reader_opt = match ctx.data_opt::<std::sync::Arc<Option<myso_indexer_alt_social_reader::SocialPgReader>>>() {
+                        Some(r) => r,
+                        None => return Ok(None),
+                    };
+                    if let Some(reader) = reader_opt.as_ref() {
+                        if let Ok(Some(platform)) =
+                            reader.get_platform_by_id(&platform_id).await
+                        {
+                            Some(Node::Platform(Box::new(Platform::from_db(platform))))
+                        } else {
+                            None
+                        }
+                    } else {
+                        None
+                    }
+                }
             })
         }
         .await
         .transpose()
+    }
+
+    /// Fetch a social profile by owner address. Returns null if social DB not configured or not found.
+    async fn profile(
+        &self,
+        ctx: &Context<'_>,
+        address: MySoAddress,
+    ) -> Option<Result<Option<Profile>, RpcError>> {
+        let reader_opt = ctx.data_opt::<std::sync::Arc<Option<myso_indexer_alt_social_reader::SocialPgReader>>>()?;
+        let reader = reader_opt.as_ref().as_ref()?;
+        let addr_str = address.to_string();
+        Some(
+            reader
+                .get_profile_by_address(&addr_str)
+                .await
+                .map_err(Into::into)
+                .map(|opt| opt.map(Profile::from_db)),
+        )
+    }
+
+    /// List social profiles with pagination. Returns empty when social DB not configured.
+    async fn profiles(
+        &self,
+        ctx: &Context<'_>,
+        limit: Option<u64>,
+        offset: Option<u64>,
+    ) -> Option<Result<Vec<Profile>, RpcError>> {
+        let reader_opt = ctx.data_opt::<std::sync::Arc<Option<myso_indexer_alt_social_reader::SocialPgReader>>>()?;
+        let reader = reader_opt.as_ref().as_ref()?;
+        let limit = limit.unwrap_or(20).min(100) as i64;
+        let offset = offset.unwrap_or(0) as i64;
+        Some(
+            reader
+                .get_profiles(limit, offset)
+                .await
+                .map_err(Into::into)
+                .map(|v| v.into_iter().map(Profile::from_db).collect()),
+        )
+    }
+
+    /// Fetch a post by ID. Returns null if social DB not configured or not found.
+    async fn post(
+        &self,
+        ctx: &Context<'_>,
+        id: async_graphql::ID,
+    ) -> Option<Result<Option<Post>, RpcError>> {
+        let reader_opt = ctx.data_opt::<std::sync::Arc<Option<myso_indexer_alt_social_reader::SocialPgReader>>>()?;
+        let reader = reader_opt.as_ref().as_ref()?;
+        Some(
+            reader
+                .get_post_by_id(id.as_str())
+                .await
+                .map_err(Into::into)
+                .map(|opt| opt.map(Post::from_db)),
+        )
+    }
+
+    /// List posts with optional filters. Returns empty when social DB not configured.
+    async fn posts(
+        &self,
+        ctx: &Context<'_>,
+        owner: Option<String>,
+        post_type: Option<String>,
+        limit: Option<u64>,
+        offset: Option<u64>,
+    ) -> Option<Result<Vec<Post>, RpcError>> {
+        let reader_opt = ctx.data_opt::<std::sync::Arc<Option<myso_indexer_alt_social_reader::SocialPgReader>>>()?;
+        let reader = reader_opt.as_ref().as_ref()?;
+        let limit = limit.unwrap_or(20).min(100) as i64;
+        let offset = offset.unwrap_or(0) as i64;
+        Some(
+            reader
+                .list_posts(
+                    owner.as_deref(),
+                    post_type.as_deref(),
+                    limit,
+                    offset,
+                )
+                .await
+                .map_err(Into::into)
+                .map(|v| v.into_iter().map(Post::from_db).collect()),
+        )
+    }
+
+    /// Fetch a platform by ID. Returns null if social DB not configured or not found.
+    async fn platform(
+        &self,
+        ctx: &Context<'_>,
+        id: async_graphql::ID,
+    ) -> Option<Result<Option<Platform>, RpcError>> {
+        let reader_opt = ctx.data_opt::<std::sync::Arc<Option<myso_indexer_alt_social_reader::SocialPgReader>>>()?;
+        let reader = reader_opt.as_ref().as_ref()?;
+        Some(
+            reader
+                .get_platform_by_id(id.as_str())
+                .await
+                .map_err(Into::into)
+                .map(|opt| opt.map(Platform::from_db)),
+        )
+    }
+
+    /// List platforms with optional approved filter. Returns empty when social DB not configured.
+    async fn platforms(
+        &self,
+        ctx: &Context<'_>,
+        approved_only: Option<bool>,
+        limit: Option<u64>,
+        offset: Option<u64>,
+    ) -> Option<Result<Vec<Platform>, RpcError>> {
+        let reader_opt = ctx.data_opt::<std::sync::Arc<Option<myso_indexer_alt_social_reader::SocialPgReader>>>()?;
+        let reader = reader_opt.as_ref().as_ref()?;
+        let limit = limit.unwrap_or(20).min(100) as i64;
+        let offset = offset.unwrap_or(0) as i64;
+        Some(
+            reader
+                .list_platforms(approved_only.unwrap_or(false), limit, offset)
+                .await
+                .map_err(Into::into)
+                .map(|v| v.into_iter().map(Platform::from_db).collect()),
+        )
+    }
+
+    /// Check if follower follows following. Returns null when social DB not configured.
+    async fn social_graph_following(
+        &self,
+        ctx: &Context<'_>,
+        follower: MySoAddress,
+        following: MySoAddress,
+    ) -> Option<Result<bool, RpcError>> {
+        let reader_opt = ctx.data_opt::<std::sync::Arc<Option<myso_indexer_alt_social_reader::SocialPgReader>>>()?;
+        let reader = reader_opt.as_ref().as_ref()?;
+        Some(
+            reader
+                .check_following(&follower.to_string(), &following.to_string())
+                .await
+                .map_err(Into::into),
+        )
     }
 
     /// Look-up an account by its MySoAddress.

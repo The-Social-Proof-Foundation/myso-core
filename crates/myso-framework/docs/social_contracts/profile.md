@@ -1857,11 +1857,18 @@ Bootstrap initialization function - creates the username registry and treasury
         <a href="../social_contracts/profile.md#social_contracts_profile_version">version</a>: current_version,
     };
     // Create the Ecosystem treasury owned by the contract deployer
+    <b>let</b> sender = tx_context::sender(ctx);
     <b>let</b> treasury = <a href="../social_contracts/profile.md#social_contracts_profile_EcosystemTreasury">EcosystemTreasury</a> {
         <a href="../social_contracts/profile.md#social_contracts_profile_id">id</a>: object::new(ctx),
-        treasury_address: tx_context::sender(ctx),
+        treasury_address: sender,
         <a href="../social_contracts/profile.md#social_contracts_profile_version">version</a>: current_version,
     };
+    // Emit event so indexer can populate ecosystem_treasury table
+    event::emit(<a href="../social_contracts/profile.md#social_contracts_profile_EcosystemTreasuryUpdatedEvent">EcosystemTreasuryUpdatedEvent</a> {
+        updated_by: sender,
+        new_treasury_address: sender,
+        timestamp: tx_context::epoch_timestamp_ms(ctx),
+    });
     // Share the registry to make it globally accessible
     transfer::share_object(registry);
     // Share the treasury to make it globally accessible

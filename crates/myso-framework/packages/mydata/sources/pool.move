@@ -28,14 +28,13 @@ module mydata::pool {
 
     const VERSION: u64 = 1;
 
-    const EUnauthorized: u64 = 1;
-    const EInvalidInput: u64 = 2;
-    const EPoolNotFound: u64 = 3;
-    const ESubPoolNotFound: u64 = 4;
-    const EInvalidProof: u64 = 5;
-    const EAlreadyClaimed: u64 = 6;
-    const EMerkleRootNotPublished: u64 = 7;
-    const EInsufficientPayment: u64 = 8;
+    const EInvalidInput: u64 = 1;
+    const EPoolNotFound: u64 = 2;
+    const ESubPoolNotFound: u64 = 3;
+    const EInvalidProof: u64 = 4;
+    const EAlreadyClaimed: u64 = 5;
+    const EMerkleRootNotPublished: u64 = 6;
+    const EInsufficientPayment: u64 = 7;
 
     // === Phase 1: Pool Registry ===
 
@@ -219,7 +218,6 @@ module mydata::pool {
         name: String,
         description: String,
         clock: &Clock,
-        ctx: &mut TxContext,
     ) {
         let nonce = registry.next_broad_pool_nonce;
         registry.next_broad_pool_nonce = nonce + 1;
@@ -252,7 +250,6 @@ module mydata::pool {
         description: String,
         schema_metadata: Option<vector<u8>>,
         clock: &Clock,
-        ctx: &mut TxContext,
     ) {
         assert!(table::contains(&registry.broad_pools, broad_pool_id), EPoolNotFound);
 
@@ -324,7 +321,6 @@ module mydata::pool {
         registry: &mut MyDataPoolRegistry,
         ip_id: address,
         sub_pool_id: ID,
-        clock: &Clock,
     ) {
         assert!(table::contains(&registry.mydata_to_sub_pools, ip_id), EInvalidInput);
         let sub_ids = table::borrow_mut(&mut registry.mydata_to_sub_pools, ip_id);

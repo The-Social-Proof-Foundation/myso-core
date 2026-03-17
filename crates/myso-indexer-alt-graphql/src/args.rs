@@ -79,6 +79,11 @@ pub enum Command {
         )]
         database_url: Url,
 
+        /// The URL of the social database (populated by myso-indexer-alt-social). When provided,
+        /// enables social queries (profiles, posts, platforms, social graph). Omit to disable.
+        #[arg(long)]
+        social_database_url: Option<Url>,
+
         #[command(flatten)]
         fullnode_args: FullnodeArgs,
 

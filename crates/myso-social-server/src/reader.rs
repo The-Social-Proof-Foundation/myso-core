@@ -1443,14 +1443,15 @@ impl Reader {
         owner: Option<&str>,
         limit: i64,
         offset: i64,
-    ) -> Result<Vec<VestingWalletRow>, crate::error::SocialError> {
-        vesting::list_vesting_wallets(&self.db, active_only, owner, limit, offset).await
+        page: i64,
+    ) -> Result<VestingWalletsResponse, crate::error::SocialError> {
+        vesting::list_vesting_wallets(&self.db, active_only, owner, limit, offset, page).await
     }
 
     pub async fn get_vesting_wallet_by_id(
         &self,
         wallet_id: &str,
-    ) -> Result<Option<VestingWalletRow>, crate::error::SocialError> {
+    ) -> Result<Option<VestingWalletWithStatus>, crate::error::SocialError> {
         vesting::get_vesting_wallet_by_id(&self.db, wallet_id).await
     }
 
@@ -1459,14 +1460,15 @@ impl Reader {
         wallet_id: &str,
         limit: i64,
         offset: i64,
-    ) -> Result<Vec<VestingEventRow>, crate::error::SocialError> {
-        vesting::get_vesting_wallet_events(&self.db, wallet_id, limit, offset).await
+        page: i64,
+    ) -> Result<VestingEventsResponse, crate::error::SocialError> {
+        vesting::get_vesting_wallet_events(&self.db, wallet_id, limit, offset, page).await
     }
 
     pub async fn get_vesting_claimable(
         &self,
         wallet_id: &str,
-    ) -> Result<Option<i64>, crate::error::SocialError> {
+    ) -> Result<Option<ClaimableResponse>, crate::error::SocialError> {
         vesting::get_vesting_claimable(&self.db, wallet_id).await
     }
 
@@ -1475,29 +1477,34 @@ impl Reader {
         address: &str,
         limit: i64,
         offset: i64,
-    ) -> Result<Vec<VestingWalletRow>, crate::error::SocialError> {
-        vesting::get_user_vesting_wallets(&self.db, address, limit, offset).await
+        page: i64,
+    ) -> Result<VestingWalletsResponse, crate::error::SocialError> {
+        vesting::get_user_vesting_wallets(&self.db, address, limit, offset, page).await
     }
 
     pub async fn list_vesting_events(
         &self,
         limit: i64,
         offset: i64,
-    ) -> Result<Vec<VestingEventRow>, crate::error::SocialError> {
-        vesting::list_vesting_events(&self.db, limit, offset).await
+        page: i64,
+        owner_address: Option<&str>,
+    ) -> Result<VestingEventsResponse, crate::error::SocialError> {
+        vesting::list_vesting_events(&self.db, limit, offset, page, owner_address).await
     }
 
     pub async fn get_vesting_analytics(
         &self,
-    ) -> Result<serde_json::Value, crate::error::SocialError> {
+    ) -> Result<VestingAnalyticsResponse, crate::error::SocialError> {
         vesting::get_vesting_analytics(&self.db).await
     }
 
     pub async fn get_vesting_leaderboard(
         &self,
         limit: i64,
-    ) -> Result<Vec<VestingWalletRow>, crate::error::SocialError> {
-        vesting::get_vesting_leaderboard(&self.db, limit).await
+        offset: i64,
+        page: i64,
+    ) -> Result<VestingLeaderboardResponse, crate::error::SocialError> {
+        vesting::get_vesting_leaderboard(&self.db, limit, offset, page).await
     }
 
     pub async fn get_spt_pool_by_associated_id(

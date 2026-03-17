@@ -6958,6 +6958,120 @@ update
 create_v1
 	fun
 	0xda7a::key_server
+verify_proof
+	public fun
+	0xda7a::merkle
+hash_pair
+	fun
+	0xda7a::merkle
+leaf_hash
+	public fun
+	0xda7a::merkle
+BroadPool
+	public struct
+	0xda7a::pool
+SubPool
+	public struct
+	0xda7a::pool
+MyDataPoolRegistry
+	public struct
+	0xda7a::pool
+MyDataPoolAdminCap
+	public struct
+	0xda7a::pool
+BroadPoolCreatedEvent
+	public struct
+	0xda7a::pool
+SubPoolCreatedEvent
+	public struct
+	0xda7a::pool
+MyDataAssignedToSubPoolEvent
+	public struct
+	0xda7a::pool
+QuerySnapshotAnchor
+	public struct
+	0xda7a::pool
+SnapshotAnchorRegistry
+	public struct
+	0xda7a::pool
+SnapshotAnchorRecordedEvent
+	public struct
+	0xda7a::pool
+MyDataClaimVault
+	public struct
+	0xda7a::pool
+MerkleRootPublishedEvent
+	public struct
+	0xda7a::pool
+ClaimExecutedEvent
+	public struct
+	0xda7a::pool
+DistributionRound
+	public struct
+	0xda7a::pool
+DistributionRegistry
+	public struct
+	0xda7a::pool
+create_admin_cap
+	public fun
+	0xda7a::pool
+bootstrap_init
+	public fun
+	0xda7a::pool
+gen_pool_id
+	fun
+	0xda7a::pool
+create_broad_pool
+	public entry fun
+	0xda7a::pool
+create_sub_pool
+	public entry fun
+	0xda7a::pool
+assign_mydata_to_sub_pools
+	public fun
+	0xda7a::pool
+remove_mydata_from_sub_pool
+	public entry fun
+	0xda7a::pool
+gen_snapshot_id
+	fun
+	0xda7a::pool
+record_snapshot_anchor
+	public entry fun
+	0xda7a::pool
+get_snapshot_anchor
+	public fun
+	0xda7a::pool
+publish_merkle_root
+	public entry fun
+	0xda7a::pool
+claim
+	public entry fun
+	0xda7a::pool
+deposit
+	public entry fun
+	0xda7a::pool
+record_distribution
+	public entry fun
+	0xda7a::pool
+get_broad_pool
+	public fun
+	0xda7a::pool
+get_sub_pool
+	public fun
+	0xda7a::pool
+get_mydata_sub_pools
+	public fun
+	0xda7a::pool
+get_distribution_round
+	public fun
+	0xda7a::pool
+broad_pool_id
+	public fun
+	0xda7a::pool
+sub_pool_id
+	public fun
+	0xda7a::pool
 check_staleness
 	public fun
 	0xda7a::time
@@ -7597,10 +7711,10 @@ rescind_proposal
 delegate_vote_on_proposal
 	public entry fun
 	0x50c1::governance
-move_to_community_voting_by_id
+move_to_community_voting
 	fun
 	0x50c1::governance
-reject_proposal_by_id
+reject_proposal
 	fun
 	0x50c1::governance
 community_vote_on_proposal
@@ -8755,6 +8869,9 @@ update_pricing
 update_content
 	public entry fun
 	0x50c1::mydata
+assign_mydata_to_pools
+	public entry fun
+	0x50c1::mydata
 has_access
 	public fun
 	0x50c1::mydata
@@ -8765,6 +8882,9 @@ grant_access
 	public entry fun
 	0x50c1::mydata
 owner
+	public fun
+	0x50c1::mydata
+object_address
 	public fun
 	0x50c1::mydata
 media_type

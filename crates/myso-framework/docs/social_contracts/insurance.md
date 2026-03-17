@@ -307,7 +307,7 @@ Sells coverage against losing outcomes and pays out deterministically on SPoT re
 
 
 
-<pre><code><b>public</b> <b>struct</b> <a href="../social_contracts/insurance.md#social_contracts_insurance_CoveragePolicy">CoveragePolicy</a> <b>has</b> key, store
+<pre><code><b>public</b> <b>struct</b> <a href="../social_contracts/insurance.md#social_contracts_insurance_CoveragePolicy">CoveragePolicy</a> <b>has</b> key
 </code></pre>
 
 
@@ -1255,9 +1255,8 @@ Emergency enable/disable toggle (admin only)
 
 
 <pre><code><b>public</b>(package) <b>fun</b> <a href="../social_contracts/insurance.md#social_contracts_insurance_bootstrap_init">bootstrap_init</a>(ctx: &<b>mut</b> TxContext) {
-    // Create and share the <a href="../social_contracts/insurance.md#social_contracts_insurance_InsuranceConfig">InsuranceConfig</a> object with default values
-    // Admin cap will be transferred separately in <a href="../social_contracts/bootstrap.md#social_contracts_bootstrap">bootstrap</a>.<b>move</b>
-    transfer::share_object(<a href="../social_contracts/insurance.md#social_contracts_insurance_InsuranceConfig">InsuranceConfig</a> {
+    <b>let</b> admin = tx_context::sender(ctx);
+    <b>let</b> config = <a href="../social_contracts/insurance.md#social_contracts_insurance_InsuranceConfig">InsuranceConfig</a> {
         id: object::new(ctx),
         enable_flag: <b>false</b>,
         min_coverage_bps: <a href="../social_contracts/insurance.md#social_contracts_insurance_DEFAULT_MIN_COVERAGE_BPS">DEFAULT_MIN_COVERAGE_BPS</a>,
@@ -1265,7 +1264,20 @@ Emergency enable/disable toggle (admin only)
         max_duration_ms: <a href="../social_contracts/insurance.md#social_contracts_insurance_DEFAULT_MAX_DURATION_MS">DEFAULT_MAX_DURATION_MS</a>,
         fee_bps: <a href="../social_contracts/insurance.md#social_contracts_insurance_DEFAULT_FEE_BPS">DEFAULT_FEE_BPS</a>,
         version: <a href="../social_contracts/insurance.md#social_contracts_insurance_DEFAULT_VERSION">DEFAULT_VERSION</a>,
+    };
+    // Emit event so indexer can populate insurance_config table
+    event::emit(<a href="../social_contracts/insurance.md#social_contracts_insurance_ConfigUpdatedEvent">ConfigUpdatedEvent</a> {
+        updated_by: admin,
+        enable_flag: <b>false</b>,
+        min_coverage_bps: <a href="../social_contracts/insurance.md#social_contracts_insurance_DEFAULT_MIN_COVERAGE_BPS">DEFAULT_MIN_COVERAGE_BPS</a>,
+        max_coverage_bps: <a href="../social_contracts/insurance.md#social_contracts_insurance_DEFAULT_MAX_COVERAGE_BPS">DEFAULT_MAX_COVERAGE_BPS</a>,
+        max_duration_ms: <a href="../social_contracts/insurance.md#social_contracts_insurance_DEFAULT_MAX_DURATION_MS">DEFAULT_MAX_DURATION_MS</a>,
+        fee_bps: <a href="../social_contracts/insurance.md#social_contracts_insurance_DEFAULT_FEE_BPS">DEFAULT_FEE_BPS</a>,
+        timestamp: tx_context::epoch_timestamp_ms(ctx),
     });
+    // Create and share the <a href="../social_contracts/insurance.md#social_contracts_insurance_InsuranceConfig">InsuranceConfig</a> object with default values
+    // Admin cap will be transferred separately in <a href="../social_contracts/bootstrap.md#social_contracts_bootstrap">bootstrap</a>.<b>move</b>
+    transfer::share_object(config);
 }
 </code></pre>
 
@@ -1537,7 +1549,7 @@ Buy coverage for a SPoT position
         status: <a href="../social_contracts/insurance.md#social_contracts_insurance_STATUS_ACTIVE">STATUS_ACTIVE</a>,
     };
     <b>let</b> policy_id = object::id(&policy);
-    transfer::public_transfer(policy, insured);
+    transfer::share_object(policy);
     event::emit(<a href="../social_contracts/insurance.md#social_contracts_insurance_CoveragePurchasedEvent">CoveragePurchasedEvent</a> {
         policy_id,
         market_id,

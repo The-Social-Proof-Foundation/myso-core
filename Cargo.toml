@@ -143,6 +143,7 @@ members = [
   "crates/myso-indexer-alt-restorer",
   "crates/myso-indexer-alt-schema",
   "crates/myso-indexer-alt-social",
+  "crates/myso-indexer-alt-social-reader",
   "crates/myso-indexer-alt-social-schema",
   "crates/myso-social-server",
   "crates/myso-json",
@@ -740,6 +741,7 @@ myso-indexer-alt-reader = { path = "crates/myso-indexer-alt-reader" }
 myso-indexer-alt-restorer = { path = "crates/myso-indexer-alt-restorer" }
 myso-indexer-alt-schema = { path = "crates/myso-indexer-alt-schema" }
 myso-indexer-alt-social = { path = "crates/myso-indexer-alt-social" }
+myso-indexer-alt-social-reader = { path = "crates/myso-indexer-alt-social-reader" }
 myso-indexer-alt-social-schema = { path = "crates/myso-indexer-alt-social-schema" }
 myso-indexer-alt-object-store = { path = "crates/myso-indexer-alt-object-store" }
 myso-json = { path = "crates/myso-json" }

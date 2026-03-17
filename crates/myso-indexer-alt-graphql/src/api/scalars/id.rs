@@ -28,6 +28,9 @@ pub(crate) enum Id {
     ObjectByAddress(NativeMySoAddress),
     ObjectByRef(NativeMySoAddress, SequenceNumber, ObjectDigest),
     Transaction(TransactionDigest),
+    Profile(NativeMySoAddress),
+    Post(String),
+    Platform(String),
 }
 
 #[derive(thiserror::Error, Debug)]

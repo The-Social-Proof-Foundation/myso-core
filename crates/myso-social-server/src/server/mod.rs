@@ -193,10 +193,67 @@ pub struct SubscriptionRevenueQuery {
 #[derive(Debug, Deserialize)]
 pub struct VestingWalletsQuery {
     pub active: Option<bool>,
-    pub owner: Option<String>,
+    pub owner_address: Option<String>,
     pub limit: Option<i64>,
     pub offset: Option<i64>,
     pub page: Option<i64>,
+}
+
+impl VestingWalletsQuery {
+    pub fn limit(&self) -> i64 {
+        self.limit.unwrap_or(50).min(100)
+    }
+    pub fn offset(&self) -> i64 {
+        let page = self.page.unwrap_or(1).max(1);
+        let limit = self.limit();
+        self.offset.unwrap_or_else(|| (page - 1) * limit)
+    }
+    pub fn page(&self) -> i64 {
+        self.page.unwrap_or(1).max(1)
+    }
+}
+
+#[derive(Debug, Deserialize)]
+pub struct VestingEventsQuery {
+    pub limit: Option<i64>,
+    pub offset: Option<i64>,
+    pub page: Option<i64>,
+    pub owner_address: Option<String>,
+}
+
+impl VestingEventsQuery {
+    pub fn limit(&self) -> i64 {
+        self.limit.unwrap_or(50).min(100)
+    }
+    pub fn offset(&self) -> i64 {
+        let page = self.page.unwrap_or(1).max(1);
+        let limit = self.limit();
+        self.offset.unwrap_or_else(|| (page - 1) * limit)
+    }
+    pub fn page(&self) -> i64 {
+        self.page.unwrap_or(1).max(1)
+    }
+}
+
+#[derive(Debug, Deserialize)]
+pub struct VestingPageParams {
+    pub limit: Option<i64>,
+    pub offset: Option<i64>,
+    pub page: Option<i64>,
+}
+
+impl VestingPageParams {
+    pub fn limit(&self) -> i64 {
+        self.limit.unwrap_or(50).min(100)
+    }
+    pub fn offset(&self) -> i64 {
+        let page = self.page.unwrap_or(1).max(1);
+        let limit = self.limit();
+        self.offset.unwrap_or_else(|| (page - 1) * limit)
+    }
+    pub fn page(&self) -> i64 {
+        self.page.unwrap_or(1).max(1)
+    }
 }
 
 /// Build and return the social API server as a Service without running it.

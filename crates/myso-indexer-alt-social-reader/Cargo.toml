@@ -1,0 +1,26 @@
+[package]
+name = "myso-indexer-alt-social-reader"
+version.workspace = true
+authors = ["The Social Proof Foundation, LLC. <brandon@mysocial.network>"]
+license = "Apache-2.0"
+publish = false
+edition = "2024"
+
+[lints]
+workspace = true
+
+[dependencies]
+anyhow.workspace = true
+async-graphql = { workspace = true, features = ["dataloader"] }
+async-trait.workspace = true
+chrono.workspace = true
+diesel.workspace = true
+diesel-async = { workspace = true, features = ["bb8", "postgres", "async-connection-wrapper"] }
+prometheus.workspace = true
+tokio.workspace = true
+tracing.workspace = true
+url.workspace = true
+
+myso-indexer-alt-metrics.workspace = true
+myso-indexer-alt-social-schema.workspace = true
+myso-pg-db.workspace = true

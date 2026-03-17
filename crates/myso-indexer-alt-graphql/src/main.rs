@@ -44,6 +44,7 @@ async fn main() -> anyhow::Result<()> {
     match args.command {
         Command::Rpc {
             database_url,
+            social_database_url,
             fullnode_args,
             db_args,
             kv_args,
@@ -92,6 +93,7 @@ async fn main() -> anyhow::Result<()> {
 
             let s_rpc = start_rpc(
                 Some(database_url),
+                social_database_url,
                 fullnode_args,
                 db_args,
                 kv_args,

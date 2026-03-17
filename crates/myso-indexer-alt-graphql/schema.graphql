@@ -3172,6 +3172,135 @@ type PerEpochConfig {
 	object: Object
 }
 
+type Platform implements Node {
+	"""
+	The platform description.
+	"""
+	description: String
+	"""
+	The developer's wallet address.
+	"""
+	developerAddress: String!
+	"""
+	The platform's globally unique identifier.
+	"""
+	id: ID!
+	"""
+	Whether the platform is approved.
+	"""
+	isApproved: Boolean!
+	"""
+	URL to the platform logo.
+	"""
+	logo: String
+	"""
+	The platform name.
+	"""
+	name: String!
+	"""
+	The platform ID.
+	"""
+	platformId: String!
+	"""
+	Primary category.
+	"""
+	primaryCategory: String!
+	"""
+	Secondary category.
+	"""
+	secondaryCategory: String
+	"""
+	The platform tagline.
+	"""
+	tagline: String!
+}
+
+type Post implements Node {
+	"""
+	Number of comments.
+	"""
+	commentCount: Int!
+	"""
+	The post content.
+	"""
+	content: String!
+	"""
+	When the post was created (Unix timestamp in milliseconds).
+	"""
+	createdAt: Int!
+	"""
+	The post's globally unique identifier.
+	"""
+	id: ID!
+	"""
+	The wallet address of the post owner.
+	"""
+	owner: String!
+	"""
+	The post ID.
+	"""
+	postId: String!
+	"""
+	The post type.
+	"""
+	postType: String!
+	"""
+	The profile ID of the post owner.
+	"""
+	profileId: String!
+	"""
+	Number of reactions.
+	"""
+	reactionCount: Int!
+	"""
+	Number of reposts.
+	"""
+	repostCount: Int!
+	"""
+	Total tips received.
+	"""
+	tipsReceived: Int!
+}
+
+type Profile implements Node {
+	"""
+	The wallet address that owns this profile.
+	"""
+	address: MySoAddress!
+	"""
+	The profile's bio.
+	"""
+	bio: String
+	"""
+	The profile's display name.
+	"""
+	displayName: String
+	"""
+	Number of followers.
+	"""
+	followersCount: Int!
+	"""
+	Number of accounts this profile follows.
+	"""
+	followingCount: Int!
+	"""
+	The profile's globally unique identifier.
+	"""
+	id: ID!
+	"""
+	Number of posts.
+	"""
+	postCount: Int!
+	"""
+	URL to the profile photo.
+	"""
+	profilePhoto: String
+	"""
+	The profile's username.
+	"""
+	username: String!
+}
+
 """
 ProgrammableSystemTransaction is identical to ProgrammableTransaction, but GraphQL does not allow multiple variants with the same type.
 """
@@ -3426,6 +3555,30 @@ type Query {
 	"""
 	packages(first: Int, after: String, last: Int, before: String, filter: PackageCheckpointFilter): MovePackageConnection
 	"""
+	Fetch a platform by ID. Returns null if social DB not configured or not found.
+	"""
+	platform(id: ID!): Platform
+	"""
+	List platforms with optional approved filter. Returns empty when social DB not configured.
+	"""
+	platforms(approvedOnly: Boolean, limit: Int, offset: Int): [Platform!]
+	"""
+	Fetch a post by ID. Returns null if social DB not configured or not found.
+	"""
+	post(id: ID!): Post
+	"""
+	List posts with optional filters. Returns empty when social DB not configured.
+	"""
+	posts(owner: String, postType: String, limit: Int, offset: Int): [Post!]
+	"""
+	Fetch a social profile by owner address. Returns null if social DB not configured or not found.
+	"""
+	profile(address: MySoAddress!): Profile
+	"""
+	List social profiles with pagination. Returns empty when social DB not configured.
+	"""
+	profiles(limit: Int, offset: Int): [Profile!]
+	"""
 	Fetch the protocol config by protocol version, or the latest protocol config used on chain if no version is provided.
 	"""
 	protocolConfigs(version: UInt53): ProtocolConfigs
@@ -3448,6 +3601,10 @@ type Query {
 	- `doGasSelection`: If true, enables automatic gas coin selection and budget estimation. Defaults to false.
 	"""
 	simulateTransaction(transaction: JSON!, checksEnabled: Boolean, doGasSelection: Boolean): SimulationResult!
+	"""
+	Check if follower follows following. Returns null when social DB not configured.
+	"""
+	socialGraphFollowing(follower: MySoAddress!, following: MySoAddress!): Boolean
 	"""
 	Fetch a transaction by its digest.
 	

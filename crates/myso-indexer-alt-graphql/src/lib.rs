@@ -45,6 +45,7 @@ use myso_indexer_alt_reader::fullnode_client::FullnodeArgs;
 use myso_indexer_alt_reader::fullnode_client::FullnodeClient;
 use myso_indexer_alt_reader::kv_loader::KvLoader;
 use myso_indexer_alt_reader::ledger_grpc_reader::LedgerGrpcReader;
+use myso_indexer_alt_social_reader::SocialPgReader;
 use myso_indexer_alt_reader::package_resolver::DbPackageStore;
 use myso_indexer_alt_reader::package_resolver::PackageCache;
 use myso_indexer_alt_reader::pg_reader::PgReader;
@@ -280,6 +281,7 @@ pub fn schema() -> SchemaBuilder<Query, Mutation, EmptySubscription> {
 /// and will clean these up on shutdown as well.
 pub async fn start_rpc(
     database_url: Option<Url>,
+    social_database_url: Option<Url>,
     fullnode_args: FullnodeArgs,
     db_args: DbArgs,
     kv_args: args::KvArgs,
@@ -299,7 +301,7 @@ pub async fn start_rpc(
         FullnodeClient::new(Some("graphql_fullnode"), fullnode_args, registry).await?;
 
     let pg_reader =
-        PgReader::new(Some("graphql_db"), database_url.clone(), db_args, registry).await?;
+        PgReader::new(Some("graphql_db"), database_url.clone(), db_args.clone(), registry).await?;
 
     let bigtable_reader = if let Some(instance_id) = kv_args.bigtable_instance.as_ref() {
         let reader = BigtableReader::new(
@@ -331,6 +333,20 @@ pub async fn start_rpc(
 
     let consistent_reader =
         ConsistentReader::new(Some("graphql_consistent"), consistent_reader_args, registry).await?;
+
+    let social_reader: Arc<Option<SocialPgReader>> = if let Some(url) = social_database_url {
+        let reader = SocialPgReader::new(
+            Some("graphql_social_db"),
+            Some(url),
+            db_args.clone(),
+            registry,
+        )
+        .await
+        .context("Failed to create social database reader")?;
+        Arc::new(Some(reader))
+    } else {
+        Arc::new(None)
+    };
 
     let pg_loader = Arc::new(pg_reader.as_data_loader());
     let kv_loader = if let Some(reader) = bigtable_reader.as_ref() {
@@ -385,7 +401,8 @@ pub async fn start_rpc(
         .data(pg_loader)
         .data(kv_loader)
         .data(package_store)
-        .data(fullnode_client);
+        .data(fullnode_client)
+        .data(social_reader);
 
     let s_rpc = rpc.run().await?;
     let s_system_package_task = system_package_task.run();

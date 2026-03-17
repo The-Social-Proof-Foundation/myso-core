@@ -27,10 +27,12 @@ Can be attached to posts (gated content) or profiles (data monetization)
 -  [Function `purchase_subscription`](#social_contracts_mydata_purchase_subscription)
 -  [Function `update_pricing`](#social_contracts_mydata_update_pricing)
 -  [Function `update_content`](#social_contracts_mydata_update_content)
+-  [Function `assign_mydata_to_pools`](#social_contracts_mydata_assign_mydata_to_pools)
 -  [Function `has_access`](#social_contracts_mydata_has_access)
 -  [Function `decrypt_data`](#social_contracts_mydata_decrypt_data)
 -  [Function `grant_access`](#social_contracts_mydata_grant_access)
 -  [Function `owner`](#social_contracts_mydata_owner)
+-  [Function `object_address`](#social_contracts_mydata_object_address)
 -  [Function `media_type`](#social_contracts_mydata_media_type)
 -  [Function `tags`](#social_contracts_mydata_tags)
 -  [Function `platform_id`](#social_contracts_mydata_platform_id)
@@ -72,7 +74,9 @@ Can be attached to posts (gated content) or profiles (data monetization)
 <b>use</b> <a href="../mydata/gf256.md#mydata_gf256">mydata::gf256</a>;
 <b>use</b> <a href="../mydata/hmac256ctr.md#mydata_hmac256ctr">mydata::hmac256ctr</a>;
 <b>use</b> <a href="../mydata/kdf.md#mydata_kdf">mydata::kdf</a>;
+<b>use</b> <a href="../mydata/merkle.md#mydata_merkle">mydata::merkle</a>;
 <b>use</b> <a href="../mydata/polynomial.md#mydata_polynomial">mydata::polynomial</a>;
+<b>use</b> <a href="../mydata/pool.md#mydata_pool">mydata::pool</a>;
 <b>use</b> <a href="../myso/accumulator.md#myso_accumulator">myso::accumulator</a>;
 <b>use</b> <a href="../myso/accumulator_settlement.md#myso_accumulator_settlement">myso::accumulator_settlement</a>;
 <b>use</b> <a href="../myso/address.md#myso_address">myso::address</a>;
@@ -127,7 +131,7 @@ Can be attached to posts (gated content) or profiles (data monetization)
 Universal MyData for encrypted data monetization
 
 
-<pre><code><b>public</b> <b>struct</b> <a href="../social_contracts/mydata.md#social_contracts_mydata_MyData">MyData</a> <b>has</b> key, store
+<pre><code><b>public</b> <b>struct</b> <a href="../social_contracts/mydata.md#social_contracts_mydata_MyData">MyData</a> <b>has</b> key
 </code></pre>
 
 
@@ -902,15 +906,26 @@ Bootstrap initialization function - creates the MyData registry and config
 
 
 <pre><code><b>public</b>(package) <b>fun</b> <a href="../social_contracts/mydata.md#social_contracts_mydata_bootstrap_init">bootstrap_init</a>(ctx: &<b>mut</b> TxContext) {
-    // Create and share <a href="../social_contracts/mydata.md#social_contracts_mydata_MyData">MyData</a> config
-    transfer::share_object(<a href="../social_contracts/mydata.md#social_contracts_mydata_MyDataConfig">MyDataConfig</a> {
+    <b>let</b> sender = tx_context::sender(ctx);
+    <b>let</b> config = <a href="../social_contracts/mydata.md#social_contracts_mydata_MyDataConfig">MyDataConfig</a> {
         id: object::new(ctx),
         enable_flag: <a href="../social_contracts/mydata.md#social_contracts_mydata_DEFAULT_ENABLE">DEFAULT_ENABLE</a>,
         max_tags: <a href="../social_contracts/mydata.md#social_contracts_mydata_MAX_TAGS">MAX_TAGS</a>,
         max_subscription_days: <a href="../social_contracts/mydata.md#social_contracts_mydata_MAX_SUBSCRIPTION_DAYS">MAX_SUBSCRIPTION_DAYS</a>,
         max_free_access_grants: <a href="../social_contracts/mydata.md#social_contracts_mydata_MAX_FREE_ACCESS_GRANTS">MAX_FREE_ACCESS_GRANTS</a>,
         <a href="../social_contracts/mydata.md#social_contracts_mydata_version">version</a>: <a href="../social_contracts/upgrade.md#social_contracts_upgrade_current_version">upgrade::current_version</a>(),
+    };
+    // Emit event so indexer can populate mydata_config table
+    event::emit(<a href="../social_contracts/mydata.md#social_contracts_mydata_MyDataConfigUpdatedEvent">MyDataConfigUpdatedEvent</a> {
+        updated_by: sender,
+        enable_flag: <a href="../social_contracts/mydata.md#social_contracts_mydata_DEFAULT_ENABLE">DEFAULT_ENABLE</a>,
+        max_tags: <a href="../social_contracts/mydata.md#social_contracts_mydata_MAX_TAGS">MAX_TAGS</a>,
+        max_subscription_days: <a href="../social_contracts/mydata.md#social_contracts_mydata_MAX_SUBSCRIPTION_DAYS">MAX_SUBSCRIPTION_DAYS</a>,
+        max_free_access_grants: <a href="../social_contracts/mydata.md#social_contracts_mydata_MAX_FREE_ACCESS_GRANTS">MAX_FREE_ACCESS_GRANTS</a>,
+        timestamp: tx_context::epoch_timestamp_ms(ctx),
     });
+    // Create and share <a href="../social_contracts/mydata.md#social_contracts_mydata_MyData">MyData</a> config
+    transfer::share_object(config);
     // Create and share registry
     <b>let</b> registry = <a href="../social_contracts/mydata.md#social_contracts_mydata_MyDataRegistry">MyDataRegistry</a> {
         id: object::new(ctx),
@@ -1335,6 +1350,39 @@ Update MyData content and metadata (owner only)
 
 </details>
 
+<a name="social_contracts_mydata_assign_mydata_to_pools"></a>
+
+## Function `assign_mydata_to_pools`
+
+Assign MyData to sub-pools (owner only). Bridge to mydata::pool for ownership verification.
+
+
+<pre><code><b>public</b> <b>entry</b> <b>fun</b> <a href="../social_contracts/mydata.md#social_contracts_mydata_assign_mydata_to_pools">assign_mydata_to_pools</a>(<a href="../social_contracts/mydata.md#social_contracts_mydata">mydata</a>: &<a href="../social_contracts/mydata.md#social_contracts_mydata_MyData">social_contracts::mydata::MyData</a>, pool_registry: &<b>mut</b> <a href="../mydata/pool.md#mydata_pool_MyDataPoolRegistry">mydata::pool::MyDataPoolRegistry</a>, sub_pool_ids: vector&lt;<a href="../myso/object.md#myso_object_ID">myso::object::ID</a>&gt;, clock: &<a href="../myso/clock.md#myso_clock_Clock">myso::clock::Clock</a>, ctx: &<b>mut</b> <a href="../myso/tx_context.md#myso_tx_context_TxContext">myso::tx_context::TxContext</a>)
+</code></pre>
+
+
+
+<details>
+<summary>Implementation</summary>
+
+
+<pre><code><b>public</b> <b>entry</b> <b>fun</b> <a href="../social_contracts/mydata.md#social_contracts_mydata_assign_mydata_to_pools">assign_mydata_to_pools</a>(
+    <a href="../social_contracts/mydata.md#social_contracts_mydata">mydata</a>: &<a href="../social_contracts/mydata.md#social_contracts_mydata_MyData">MyData</a>,
+    pool_registry: &<b>mut</b> MyDataPoolRegistry,
+    sub_pool_ids: vector&lt;ID&gt;,
+    clock: &Clock,
+    ctx: &<b>mut</b> TxContext,
+) {
+    <b>assert</b>!(tx_context::sender(ctx) == <a href="../social_contracts/mydata.md#social_contracts_mydata">mydata</a>.<a href="../social_contracts/mydata.md#social_contracts_mydata_owner">owner</a>, <a href="../social_contracts/mydata.md#social_contracts_mydata_EUnauthorized">EUnauthorized</a>);
+    <b>let</b> ip_id = object::uid_to_address(&<a href="../social_contracts/mydata.md#social_contracts_mydata">mydata</a>.id);
+    pool::assign_mydata_to_sub_pools(pool_registry, ip_id, sub_pool_ids, clock);
+}
+</code></pre>
+
+
+
+</details>
+
 <a name="social_contracts_mydata_has_access"></a>
 
 ## Function `has_access`
@@ -1494,6 +1542,28 @@ Grant free access (owner only) - useful for samples or promotions
 
 
 <pre><code><b>public</b> <b>fun</b> <a href="../social_contracts/mydata.md#social_contracts_mydata_owner">owner</a>(<a href="../social_contracts/mydata.md#social_contracts_mydata">mydata</a>: &<a href="../social_contracts/mydata.md#social_contracts_mydata_MyData">MyData</a>): <b>address</b> { <a href="../social_contracts/mydata.md#social_contracts_mydata">mydata</a>.<a href="../social_contracts/mydata.md#social_contracts_mydata_owner">owner</a> }
+</code></pre>
+
+
+
+</details>
+
+<a name="social_contracts_mydata_object_address"></a>
+
+## Function `object_address`
+
+
+
+<pre><code><b>public</b> <b>fun</b> <a href="../social_contracts/mydata.md#social_contracts_mydata_object_address">object_address</a>(<a href="../social_contracts/mydata.md#social_contracts_mydata">mydata</a>: &<a href="../social_contracts/mydata.md#social_contracts_mydata_MyData">social_contracts::mydata::MyData</a>): <b>address</b>
+</code></pre>
+
+
+
+<details>
+<summary>Implementation</summary>
+
+
+<pre><code><b>public</b> <b>fun</b> <a href="../social_contracts/mydata.md#social_contracts_mydata_object_address">object_address</a>(<a href="../social_contracts/mydata.md#social_contracts_mydata">mydata</a>: &<a href="../social_contracts/mydata.md#social_contracts_mydata_MyData">MyData</a>): <b>address</b> { object::uid_to_address(&<a href="../social_contracts/mydata.md#social_contracts_mydata">mydata</a>.id) }
 </code></pre>
 
 

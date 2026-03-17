@@ -6,7 +6,6 @@
 /// Uses Blake2b-256 for hashing, aligned with accumulator_settlement pattern.
 
 module mydata::merkle {
-    use std::vector;
     use myso::hash;
     use myso::bcs;
 

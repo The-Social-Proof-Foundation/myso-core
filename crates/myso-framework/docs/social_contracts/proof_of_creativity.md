@@ -1345,27 +1345,44 @@ Bootstrap initialization function - creates the PoC configuration and registry
 
 <pre><code><b>public</b>(package) <b>fun</b> <a href="../social_contracts/proof_of_creativity.md#social_contracts_proof_of_creativity_bootstrap_init">bootstrap_init</a>(ctx: &<b>mut</b> TxContext) {
     <b>let</b> sender = tx_context::sender(ctx);
+    <b>let</b> config = <a href="../social_contracts/proof_of_creativity.md#social_contracts_proof_of_creativity_PoCConfig">PoCConfig</a> {
+        id: object::new(ctx),
+        oracle_address: sender, // Initially set to deployer, should be updated
+        image_threshold: <a href="../social_contracts/proof_of_creativity.md#social_contracts_proof_of_creativity_DEFAULT_IMAGE_THRESHOLD">DEFAULT_IMAGE_THRESHOLD</a>,
+        video_threshold: <a href="../social_contracts/proof_of_creativity.md#social_contracts_proof_of_creativity_DEFAULT_VIDEO_THRESHOLD">DEFAULT_VIDEO_THRESHOLD</a>,
+        audio_threshold: <a href="../social_contracts/proof_of_creativity.md#social_contracts_proof_of_creativity_DEFAULT_AUDIO_THRESHOLD">DEFAULT_AUDIO_THRESHOLD</a>,
+        revenue_redirect_percentage: <a href="../social_contracts/proof_of_creativity.md#social_contracts_proof_of_creativity_DEFAULT_REVENUE_REDIRECT_PERCENTAGE">DEFAULT_REVENUE_REDIRECT_PERCENTAGE</a>,
+        dispute_cost: <a href="../social_contracts/proof_of_creativity.md#social_contracts_proof_of_creativity_DEFAULT_DISPUTE_COST">DEFAULT_DISPUTE_COST</a>,
+        dispute_protocol_fee: <a href="../social_contracts/proof_of_creativity.md#social_contracts_proof_of_creativity_DEFAULT_DISPUTE_PROTOCOL_FEE">DEFAULT_DISPUTE_PROTOCOL_FEE</a>,
+        min_vote_stake: <a href="../social_contracts/proof_of_creativity.md#social_contracts_proof_of_creativity_DEFAULT_MIN_VOTE_STAKE">DEFAULT_MIN_VOTE_STAKE</a>,
+        max_vote_stake: <a href="../social_contracts/proof_of_creativity.md#social_contracts_proof_of_creativity_DEFAULT_MAX_VOTE_STAKE">DEFAULT_MAX_VOTE_STAKE</a>,
+        voting_duration_epochs: <a href="../social_contracts/proof_of_creativity.md#social_contracts_proof_of_creativity_DEFAULT_VOTING_DURATION_EPOCHS">DEFAULT_VOTING_DURATION_EPOCHS</a>,
+        max_reasoning_length: <a href="../social_contracts/proof_of_creativity.md#social_contracts_proof_of_creativity_MAX_REASONING_LENGTH">MAX_REASONING_LENGTH</a>,
+        max_evidence_urls: <a href="../social_contracts/proof_of_creativity.md#social_contracts_proof_of_creativity_MAX_EVIDENCE_URLS">MAX_EVIDENCE_URLS</a>,
+        max_votes_per_dispute: <a href="../social_contracts/proof_of_creativity.md#social_contracts_proof_of_creativity_DEFAULT_MAX_VOTES_PER_DISPUTE">DEFAULT_MAX_VOTES_PER_DISPUTE</a>,
+        dispute_governance_id: object::id_from_address(@0x0), // Placeholder <b>for</b> future <a href="../social_contracts/governance.md#social_contracts_governance">governance</a>
+        version: <a href="../social_contracts/upgrade.md#social_contracts_upgrade_current_version">upgrade::current_version</a>(),
+    };
+    // Emit event so indexer can populate poc_configuration table
+    event::emit(<a href="../social_contracts/proof_of_creativity.md#social_contracts_proof_of_creativity_PoCConfigUpdatedEvent">PoCConfigUpdatedEvent</a> {
+        updated_by: sender,
+        oracle_address: sender,
+        image_threshold: <a href="../social_contracts/proof_of_creativity.md#social_contracts_proof_of_creativity_DEFAULT_IMAGE_THRESHOLD">DEFAULT_IMAGE_THRESHOLD</a>,
+        video_threshold: <a href="../social_contracts/proof_of_creativity.md#social_contracts_proof_of_creativity_DEFAULT_VIDEO_THRESHOLD">DEFAULT_VIDEO_THRESHOLD</a>,
+        audio_threshold: <a href="../social_contracts/proof_of_creativity.md#social_contracts_proof_of_creativity_DEFAULT_AUDIO_THRESHOLD">DEFAULT_AUDIO_THRESHOLD</a>,
+        revenue_redirect_percentage: <a href="../social_contracts/proof_of_creativity.md#social_contracts_proof_of_creativity_DEFAULT_REVENUE_REDIRECT_PERCENTAGE">DEFAULT_REVENUE_REDIRECT_PERCENTAGE</a>,
+        dispute_cost: <a href="../social_contracts/proof_of_creativity.md#social_contracts_proof_of_creativity_DEFAULT_DISPUTE_COST">DEFAULT_DISPUTE_COST</a>,
+        dispute_protocol_fee: <a href="../social_contracts/proof_of_creativity.md#social_contracts_proof_of_creativity_DEFAULT_DISPUTE_PROTOCOL_FEE">DEFAULT_DISPUTE_PROTOCOL_FEE</a>,
+        min_vote_stake: <a href="../social_contracts/proof_of_creativity.md#social_contracts_proof_of_creativity_DEFAULT_MIN_VOTE_STAKE">DEFAULT_MIN_VOTE_STAKE</a>,
+        max_vote_stake: <a href="../social_contracts/proof_of_creativity.md#social_contracts_proof_of_creativity_DEFAULT_MAX_VOTE_STAKE">DEFAULT_MAX_VOTE_STAKE</a>,
+        voting_duration_epochs: <a href="../social_contracts/proof_of_creativity.md#social_contracts_proof_of_creativity_DEFAULT_VOTING_DURATION_EPOCHS">DEFAULT_VOTING_DURATION_EPOCHS</a>,
+        max_reasoning_length: <a href="../social_contracts/proof_of_creativity.md#social_contracts_proof_of_creativity_MAX_REASONING_LENGTH">MAX_REASONING_LENGTH</a>,
+        max_evidence_urls: <a href="../social_contracts/proof_of_creativity.md#social_contracts_proof_of_creativity_MAX_EVIDENCE_URLS">MAX_EVIDENCE_URLS</a>,
+        max_votes_per_dispute: <a href="../social_contracts/proof_of_creativity.md#social_contracts_proof_of_creativity_DEFAULT_MAX_VOTES_PER_DISPUTE">DEFAULT_MAX_VOTES_PER_DISPUTE</a>,
+        timestamp: tx_context::epoch_timestamp_ms(ctx),
+    });
     // Create and share PoC configuration
-    transfer::share_object(
-        <a href="../social_contracts/proof_of_creativity.md#social_contracts_proof_of_creativity_PoCConfig">PoCConfig</a> {
-            id: object::new(ctx),
-            oracle_address: sender, // Initially set to deployer, should be updated
-            image_threshold: <a href="../social_contracts/proof_of_creativity.md#social_contracts_proof_of_creativity_DEFAULT_IMAGE_THRESHOLD">DEFAULT_IMAGE_THRESHOLD</a>,
-            video_threshold: <a href="../social_contracts/proof_of_creativity.md#social_contracts_proof_of_creativity_DEFAULT_VIDEO_THRESHOLD">DEFAULT_VIDEO_THRESHOLD</a>,
-            audio_threshold: <a href="../social_contracts/proof_of_creativity.md#social_contracts_proof_of_creativity_DEFAULT_AUDIO_THRESHOLD">DEFAULT_AUDIO_THRESHOLD</a>,
-            revenue_redirect_percentage: <a href="../social_contracts/proof_of_creativity.md#social_contracts_proof_of_creativity_DEFAULT_REVENUE_REDIRECT_PERCENTAGE">DEFAULT_REVENUE_REDIRECT_PERCENTAGE</a>,
-            dispute_cost: <a href="../social_contracts/proof_of_creativity.md#social_contracts_proof_of_creativity_DEFAULT_DISPUTE_COST">DEFAULT_DISPUTE_COST</a>,
-            dispute_protocol_fee: <a href="../social_contracts/proof_of_creativity.md#social_contracts_proof_of_creativity_DEFAULT_DISPUTE_PROTOCOL_FEE">DEFAULT_DISPUTE_PROTOCOL_FEE</a>,
-            min_vote_stake: <a href="../social_contracts/proof_of_creativity.md#social_contracts_proof_of_creativity_DEFAULT_MIN_VOTE_STAKE">DEFAULT_MIN_VOTE_STAKE</a>,
-            max_vote_stake: <a href="../social_contracts/proof_of_creativity.md#social_contracts_proof_of_creativity_DEFAULT_MAX_VOTE_STAKE">DEFAULT_MAX_VOTE_STAKE</a>,
-            voting_duration_epochs: <a href="../social_contracts/proof_of_creativity.md#social_contracts_proof_of_creativity_DEFAULT_VOTING_DURATION_EPOCHS">DEFAULT_VOTING_DURATION_EPOCHS</a>,
-            max_reasoning_length: <a href="../social_contracts/proof_of_creativity.md#social_contracts_proof_of_creativity_MAX_REASONING_LENGTH">MAX_REASONING_LENGTH</a>,
-            max_evidence_urls: <a href="../social_contracts/proof_of_creativity.md#social_contracts_proof_of_creativity_MAX_EVIDENCE_URLS">MAX_EVIDENCE_URLS</a>,
-            max_votes_per_dispute: <a href="../social_contracts/proof_of_creativity.md#social_contracts_proof_of_creativity_DEFAULT_MAX_VOTES_PER_DISPUTE">DEFAULT_MAX_VOTES_PER_DISPUTE</a>,
-            dispute_governance_id: object::id_from_address(@0x0), // Placeholder <b>for</b> future <a href="../social_contracts/governance.md#social_contracts_governance">governance</a>
-            version: <a href="../social_contracts/upgrade.md#social_contracts_upgrade_current_version">upgrade::current_version</a>(),
-        }
-    );
+    transfer::share_object(config);
     // Create and share PoC registry
     transfer::share_object(
         <a href="../social_contracts/proof_of_creativity.md#social_contracts_proof_of_creativity_PoCRegistry">PoCRegistry</a> {

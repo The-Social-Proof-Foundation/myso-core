@@ -45,8 +45,8 @@ Implements proposal submission, voting, and execution processes
 -  [Function `submit_proposal_internal`](#social_contracts_governance_submit_proposal_internal)
 -  [Function `rescind_proposal`](#social_contracts_governance_rescind_proposal)
 -  [Function `delegate_vote_on_proposal`](#social_contracts_governance_delegate_vote_on_proposal)
--  [Function `move_to_community_voting_by_id`](#social_contracts_governance_move_to_community_voting_by_id)
--  [Function `reject_proposal_by_id`](#social_contracts_governance_reject_proposal_by_id)
+-  [Function `move_to_community_voting`](#social_contracts_governance_move_to_community_voting)
+-  [Function `reject_proposal`](#social_contracts_governance_reject_proposal)
 -  [Function `community_vote_on_proposal`](#social_contracts_governance_community_vote_on_proposal)
 -  [Function `community_vote_anonymous`](#social_contracts_governance_community_vote_anonymous)
 -  [Function `finalize_proposal`](#social_contracts_governance_finalize_proposal)
@@ -220,7 +220,12 @@ Governance registry that keeps track of all delegates and proposals
  Tables and mappings
 </dd>
 <dt>
-<code>proposals: <a href="../myso/table.md#myso_table_Table">myso::table::Table</a>&lt;<a href="../myso/object.md#myso_object_ID">myso::object::ID</a>, <a href="../social_contracts/governance.md#social_contracts_governance_Proposal">social_contracts::governance::Proposal</a>&gt;</code>
+<code>proposals: <a href="../myso/table.md#myso_table_Table">myso::table::Table</a>&lt;<a href="../myso/object.md#myso_object_ID">myso::object::ID</a>, bool&gt;</code>
+</dt>
+<dd>
+</dd>
+<dt>
+<code>proposal_types: <a href="../myso/table.md#myso_table_Table">myso::table::Table</a>&lt;<a href="../myso/object.md#myso_object_ID">myso::object::ID</a>, u8&gt;</code>
 </dt>
 <dd>
 </dd>
@@ -381,7 +386,7 @@ Nominee struct representing a user nominated but not yet active
 Proposal struct representing a governance proposal
 
 
-<pre><code><b>public</b> <b>struct</b> <a href="../social_contracts/governance.md#social_contracts_governance_Proposal">Proposal</a> <b>has</b> key, store
+<pre><code><b>public</b> <b>struct</b> <a href="../social_contracts/governance.md#social_contracts_governance_Proposal">Proposal</a> <b>has</b> key
 </code></pre>
 
 
@@ -1679,7 +1684,8 @@ This function has the same logic as init() but can be called by bootstrap
         quorum_votes: 20, // 20 votes required <b>for</b> ecosystem proposals
         // Tables
         delegates: table::new&lt;<b>address</b>, <a href="../social_contracts/governance.md#social_contracts_governance_Delegate">Delegate</a>&gt;(ctx),
-        proposals: table::new&lt;ID, <a href="../social_contracts/governance.md#social_contracts_governance_Proposal">Proposal</a>&gt;(ctx),
+        proposals: table::new&lt;ID, bool&gt;(ctx),
+        proposal_types: table::new&lt;ID, u8&gt;(ctx),
         proposals_by_status: table::new&lt;u8, vector&lt;ID&gt;&gt;(ctx),
         treasury: balance::zero(),
         nominated_delegates: table::new&lt;<b>address</b>, <a href="../social_contracts/governance.md#social_contracts_governance_NominatedDelegate">NominatedDelegate</a>&gt;(ctx),
@@ -1721,7 +1727,8 @@ This function has the same logic as init() but can be called by bootstrap
         quorum_votes: 10, // 10 votes required <b>for</b> proof of creativity proposals
         // Tables
         delegates: table::new&lt;<b>address</b>, <a href="../social_contracts/governance.md#social_contracts_governance_Delegate">Delegate</a>&gt;(ctx),
-        proposals: table::new&lt;ID, <a href="../social_contracts/governance.md#social_contracts_governance_Proposal">Proposal</a>&gt;(ctx),
+        proposals: table::new&lt;ID, bool&gt;(ctx),
+        proposal_types: table::new&lt;ID, u8&gt;(ctx),
         proposals_by_status: table::new&lt;u8, vector&lt;ID&gt;&gt;(ctx),
         treasury: balance::zero(),
         nominated_delegates: table::new&lt;<b>address</b>, <a href="../social_contracts/governance.md#social_contracts_governance_NominatedDelegate">NominatedDelegate</a>&gt;(ctx),
@@ -2601,9 +2608,11 @@ Internal function for submitting proposals
     dynamic_field::add(&<b>mut</b> proposal.id, <a href="../social_contracts/governance.md#social_contracts_governance_VOTED_FOR_FIELD">VOTED_FOR_FIELD</a>, voted_for);
     <b>let</b> voted_against = vec_set::empty&lt;<b>address</b>&gt;();
     dynamic_field::add(&<b>mut</b> proposal.id, <a href="../social_contracts/governance.md#social_contracts_governance_VOTED_AGAINST_FIELD">VOTED_AGAINST_FIELD</a>, voted_against);
-    // Add proposal to registry
+    // Share proposal <b>as</b> shared object and register in registry
     <b>let</b> proposal_id_copy = object::id(&proposal);
-    table::add(&<b>mut</b> registry.proposals, proposal_id_copy, proposal);
+    transfer::share_object(proposal);
+    table::add(&<b>mut</b> registry.proposals, proposal_id_copy, <b>true</b>);
+    table::add(&<b>mut</b> registry.proposal_types, proposal_id_copy, proposal_type);
     // Add to proposals by status
     <b>let</b> proposals_of_status = table::borrow_mut(&<b>mut</b> registry.proposals_by_status, <a href="../social_contracts/governance.md#social_contracts_governance_STATUS_DELEGATE_REVIEW">STATUS_DELEGATE_REVIEW</a>);
     vector::push_back(proposals_of_status, proposal_id_copy);
@@ -2638,7 +2647,7 @@ Internal function for submitting proposals
 Allow a proposal owner to rescind their proposal if it's still in the delegate review stage
 
 
-<pre><code><b>public</b> <b>entry</b> <b>fun</b> <a href="../social_contracts/governance.md#social_contracts_governance_rescind_proposal">rescind_proposal</a>(registry: &<b>mut</b> <a href="../social_contracts/governance.md#social_contracts_governance_GovernanceDAO">social_contracts::governance::GovernanceDAO</a>, proposal_id: <a href="../myso/object.md#myso_object_ID">myso::object::ID</a>, ctx: &<b>mut</b> <a href="../myso/tx_context.md#myso_tx_context_TxContext">myso::tx_context::TxContext</a>)
+<pre><code><b>public</b> <b>entry</b> <b>fun</b> <a href="../social_contracts/governance.md#social_contracts_governance_rescind_proposal">rescind_proposal</a>(registry: &<b>mut</b> <a href="../social_contracts/governance.md#social_contracts_governance_GovernanceDAO">social_contracts::governance::GovernanceDAO</a>, proposal: &<b>mut</b> <a href="../social_contracts/governance.md#social_contracts_governance_Proposal">social_contracts::governance::Proposal</a>, ctx: &<b>mut</b> <a href="../myso/tx_context.md#myso_tx_context_TxContext">myso::tx_context::TxContext</a>)
 </code></pre>
 
 
@@ -2649,22 +2658,20 @@ Allow a proposal owner to rescind their proposal if it's still in the delegate r
 
 <pre><code><b>public</b> <b>entry</b> <b>fun</b> <a href="../social_contracts/governance.md#social_contracts_governance_rescind_proposal">rescind_proposal</a>(
     registry: &<b>mut</b> <a href="../social_contracts/governance.md#social_contracts_governance_GovernanceDAO">GovernanceDAO</a>,
-    proposal_id: ID,
+    proposal: &<b>mut</b> <a href="../social_contracts/governance.md#social_contracts_governance_Proposal">Proposal</a>,
     ctx: &<b>mut</b> TxContext
 ) {
     // Check <a href="../social_contracts/governance.md#social_contracts_governance_version">version</a> compatibility
     <b>assert</b>!(registry.<a href="../social_contracts/governance.md#social_contracts_governance_version">version</a> == <a href="../social_contracts/upgrade.md#social_contracts_upgrade_current_version">upgrade::current_version</a>(), <a href="../social_contracts/governance.md#social_contracts_governance_EWrongVersion">EWrongVersion</a>);
     <b>let</b> caller = tx_context::sender(ctx);
     <b>let</b> current_time = tx_context::epoch_timestamp_ms(ctx);
+    <b>let</b> proposal_id = object::id(proposal);
     // Verify proposal exists and is in delegate review phase
     <b>assert</b>!(table::contains(&registry.proposals, proposal_id), <a href="../social_contracts/governance.md#social_contracts_governance_EProposalNotFound">EProposalNotFound</a>);
-    <b>let</b> proposal = table::borrow(&registry.proposals, proposal_id);
     // Verify caller is the proposal submitter
     <b>assert</b>!(proposal.submitter == caller, <a href="../social_contracts/governance.md#social_contracts_governance_EUnauthorized">EUnauthorized</a>);
     // Verify proposal is still in delegate review stage
     <b>assert</b>!(proposal.status == <a href="../social_contracts/governance.md#social_contracts_governance_STATUS_DELEGATE_REVIEW">STATUS_DELEGATE_REVIEW</a>, <a href="../social_contracts/governance.md#social_contracts_governance_EInvalidProposalStatus">EInvalidProposalStatus</a>);
-    // Remove proposal from the registry to modify it
-    <b>let</b> <b>mut</b> proposal = table::remove(&<b>mut</b> registry.proposals, proposal_id);
     // Update proposals by status - remove from delegate review
     <b>let</b> from_status = table::borrow_mut(&<b>mut</b> registry.proposals_by_status, <a href="../social_contracts/governance.md#social_contracts_governance_STATUS_DELEGATE_REVIEW">STATUS_DELEGATE_REVIEW</a>);
     <b>let</b> <b>mut</b> index = 0;
@@ -2694,11 +2701,9 @@ Allow a proposal owner to rescind their proposal if it's still in the delegate r
     });
     // Update proposal status to owner rescinded
     proposal.status = <a href="../social_contracts/governance.md#social_contracts_governance_STATUS_OWNER_RESCIND">STATUS_OWNER_RESCIND</a>;
-    // Add to rejected proposals list (we still <b>use</b> the rejected table <b>for</b> tracking)
+    // Add to owner rescinded list
     <b>let</b> to_status = table::borrow_mut(&<b>mut</b> registry.proposals_by_status, <a href="../social_contracts/governance.md#social_contracts_governance_STATUS_OWNER_RESCIND">STATUS_OWNER_RESCIND</a>);
     vector::push_back(to_status, proposal_id);
-    // Add the modified proposal back to the registry
-    table::add(&<b>mut</b> registry.proposals, proposal_id, proposal);
 }
 </code></pre>
 
@@ -2713,7 +2718,7 @@ Allow a proposal owner to rescind their proposal if it's still in the delegate r
 Delegate votes on a proposal if it should move to community voting
 
 
-<pre><code><b>public</b> <b>entry</b> <b>fun</b> <a href="../social_contracts/governance.md#social_contracts_governance_delegate_vote_on_proposal">delegate_vote_on_proposal</a>(registry: &<b>mut</b> <a href="../social_contracts/governance.md#social_contracts_governance_GovernanceDAO">social_contracts::governance::GovernanceDAO</a>, proposal_id: <a href="../myso/object.md#myso_object_ID">myso::object::ID</a>, approve: bool, reason: <a href="../std/option.md#std_option_Option">std::option::Option</a>&lt;<a href="../std/string.md#std_string_String">std::string::String</a>&gt;, ctx: &<b>mut</b> <a href="../myso/tx_context.md#myso_tx_context_TxContext">myso::tx_context::TxContext</a>)
+<pre><code><b>public</b> <b>entry</b> <b>fun</b> <a href="../social_contracts/governance.md#social_contracts_governance_delegate_vote_on_proposal">delegate_vote_on_proposal</a>(registry: &<b>mut</b> <a href="../social_contracts/governance.md#social_contracts_governance_GovernanceDAO">social_contracts::governance::GovernanceDAO</a>, proposal: &<b>mut</b> <a href="../social_contracts/governance.md#social_contracts_governance_Proposal">social_contracts::governance::Proposal</a>, approve: bool, reason: <a href="../std/option.md#std_option_Option">std::option::Option</a>&lt;<a href="../std/string.md#std_string_String">std::string::String</a>&gt;, ctx: &<b>mut</b> <a href="../myso/tx_context.md#myso_tx_context_TxContext">myso::tx_context::TxContext</a>)
 </code></pre>
 
 
@@ -2724,7 +2729,7 @@ Delegate votes on a proposal if it should move to community voting
 
 <pre><code><b>public</b> <b>entry</b> <b>fun</b> <a href="../social_contracts/governance.md#social_contracts_governance_delegate_vote_on_proposal">delegate_vote_on_proposal</a>(
     registry: &<b>mut</b> <a href="../social_contracts/governance.md#social_contracts_governance_GovernanceDAO">GovernanceDAO</a>,
-    proposal_id: ID,
+    proposal: &<b>mut</b> <a href="../social_contracts/governance.md#social_contracts_governance_Proposal">Proposal</a>,
     approve: bool,
     <b>mut</b> reason: Option&lt;String&gt;,
     ctx: &<b>mut</b> TxContext
@@ -2733,11 +2738,11 @@ Delegate votes on a proposal if it should move to community voting
     <b>assert</b>!(registry.<a href="../social_contracts/governance.md#social_contracts_governance_version">version</a> == <a href="../social_contracts/upgrade.md#social_contracts_upgrade_current_version">upgrade::current_version</a>(), <a href="../social_contracts/governance.md#social_contracts_governance_EWrongVersion">EWrongVersion</a>);
     <b>let</b> caller = tx_context::sender(ctx);
     <b>let</b> current_time = tx_context::epoch_timestamp_ms(ctx);
-    // Verify caller is a delegate
-    <b>assert</b>!(table::contains(&registry.delegates, caller), <a href="../social_contracts/governance.md#social_contracts_governance_ENotDelegate">ENotDelegate</a>);
+    <b>let</b> proposal_id = object::id(proposal);
     // Verify proposal exists and is in delegate review phase
     <b>assert</b>!(table::contains(&registry.proposals, proposal_id), <a href="../social_contracts/governance.md#social_contracts_governance_EProposalNotFound">EProposalNotFound</a>);
-    <b>let</b> proposal = table::borrow_mut(&<b>mut</b> registry.proposals, proposal_id);
+    // Verify caller is a delegate
+    <b>assert</b>!(table::contains(&registry.delegates, caller), <a href="../social_contracts/governance.md#social_contracts_governance_ENotDelegate">ENotDelegate</a>);
     <b>assert</b>!(proposal.status == <a href="../social_contracts/governance.md#social_contracts_governance_STATUS_DELEGATE_REVIEW">STATUS_DELEGATE_REVIEW</a>, <a href="../social_contracts/governance.md#social_contracts_governance_EInvalidProposalStatus">EInvalidProposalStatus</a>);
     // Check <b>if</b> delegate <b>has</b> already voted
     <b>let</b> delegate_votes: &<b>mut</b> Table&lt;<b>address</b>, bool&gt; = dynamic_field::borrow_mut(&<b>mut</b> proposal.id, <a href="../social_contracts/governance.md#social_contracts_governance_DELEGATE_VOTES_FIELD">DELEGATE_VOTES_FIELD</a>);
@@ -2777,11 +2782,11 @@ Delegate votes on a proposal if it should move to community voting
     <b>let</b> total_delegates = table::length(&registry.delegates);
     // If more than half of delegates approve, <b>move</b> to community voting
     <b>if</b> (delegate_approval_count &gt; total_delegates / 2) {
-        <a href="../social_contracts/governance.md#social_contracts_governance_move_to_community_voting_by_id">move_to_community_voting_by_id</a>(registry, proposal_id, ctx);
+        <a href="../social_contracts/governance.md#social_contracts_governance_move_to_community_voting">move_to_community_voting</a>(registry, proposal, ctx);
     }
     // If more than half of delegates reject, reject the proposal
     <b>else</b> <b>if</b> (delegate_rejection_count &gt; total_delegates / 2) {
-        <a href="../social_contracts/governance.md#social_contracts_governance_reject_proposal_by_id">reject_proposal_by_id</a>(registry, proposal_id, current_time, ctx);
+        <a href="../social_contracts/governance.md#social_contracts_governance_reject_proposal">reject_proposal</a>(registry, proposal, current_time, ctx);
     };
     // Emit event after potential state transitions so the event reflects a stable outcome path
     <b>let</b> reason_for_event = reason;
@@ -2799,14 +2804,14 @@ Delegate votes on a proposal if it should move to community voting
 
 </details>
 
-<a name="social_contracts_governance_move_to_community_voting_by_id"></a>
+<a name="social_contracts_governance_move_to_community_voting"></a>
 
-## Function `move_to_community_voting_by_id`
+## Function `move_to_community_voting`
 
 Move a proposal to community voting phase
 
 
-<pre><code><b>fun</b> <a href="../social_contracts/governance.md#social_contracts_governance_move_to_community_voting_by_id">move_to_community_voting_by_id</a>(registry: &<b>mut</b> <a href="../social_contracts/governance.md#social_contracts_governance_GovernanceDAO">social_contracts::governance::GovernanceDAO</a>, proposal_id: <a href="../myso/object.md#myso_object_ID">myso::object::ID</a>, ctx: &<a href="../myso/tx_context.md#myso_tx_context_TxContext">myso::tx_context::TxContext</a>)
+<pre><code><b>fun</b> <a href="../social_contracts/governance.md#social_contracts_governance_move_to_community_voting">move_to_community_voting</a>(registry: &<b>mut</b> <a href="../social_contracts/governance.md#social_contracts_governance_GovernanceDAO">social_contracts::governance::GovernanceDAO</a>, proposal: &<b>mut</b> <a href="../social_contracts/governance.md#social_contracts_governance_Proposal">social_contracts::governance::Proposal</a>, ctx: &<a href="../myso/tx_context.md#myso_tx_context_TxContext">myso::tx_context::TxContext</a>)
 </code></pre>
 
 
@@ -2815,19 +2820,17 @@ Move a proposal to community voting phase
 <summary>Implementation</summary>
 
 
-<pre><code><b>fun</b> <a href="../social_contracts/governance.md#social_contracts_governance_move_to_community_voting_by_id">move_to_community_voting_by_id</a>(
+<pre><code><b>fun</b> <a href="../social_contracts/governance.md#social_contracts_governance_move_to_community_voting">move_to_community_voting</a>(
     registry: &<b>mut</b> <a href="../social_contracts/governance.md#social_contracts_governance_GovernanceDAO">GovernanceDAO</a>,
-    proposal_id: ID,
+    proposal: &<b>mut</b> <a href="../social_contracts/governance.md#social_contracts_governance_Proposal">Proposal</a>,
     ctx: &TxContext
 ) {
-    // Get proposal from registry
-    <b>let</b> <b>mut</b> proposal = table::remove(&<b>mut</b> registry.proposals, proposal_id);
+    <b>let</b> proposal_id = object::id(proposal);
     // Update status
     proposal.status = <a href="../social_contracts/governance.md#social_contracts_governance_STATUS_COMMUNITY_VOTING">STATUS_COMMUNITY_VOTING</a>;
     // Get current timestamp in milliseconds <b>for</b> voting period calculation
     <b>let</b> current_time_ms = tx_context::epoch_timestamp_ms(ctx);
     // Set voting period based on registry voting period (using milliseconds)
-    // This allows flexible voting durations independent of epoch boundaries
     proposal.voting_start_time = current_time_ms;
     proposal.voting_end_time = current_time_ms + registry.voting_period_ms;
     // Update proposals by status
@@ -2843,8 +2846,6 @@ Move a proposal to community voting phase
     };
     <b>let</b> to_status = table::borrow_mut(&<b>mut</b> registry.proposals_by_status, <a href="../social_contracts/governance.md#social_contracts_governance_STATUS_COMMUNITY_VOTING">STATUS_COMMUNITY_VOTING</a>);
     vector::push_back(to_status, proposal_id);
-    // Put proposal back in registry
-    table::add(&<b>mut</b> registry.proposals, proposal_id, proposal);
     // Emit event - <b>use</b> millisecond timestamps
     event::emit(<a href="../social_contracts/governance.md#social_contracts_governance_ProposalApprovedForVotingEvent">ProposalApprovedForVotingEvent</a> {
         proposal_id,
@@ -2858,14 +2859,14 @@ Move a proposal to community voting phase
 
 </details>
 
-<a name="social_contracts_governance_reject_proposal_by_id"></a>
+<a name="social_contracts_governance_reject_proposal"></a>
 
-## Function `reject_proposal_by_id`
+## Function `reject_proposal`
 
-Reject a proposal by ID (avoids reference issues)
+Reject a proposal
 
 
-<pre><code><b>fun</b> <a href="../social_contracts/governance.md#social_contracts_governance_reject_proposal_by_id">reject_proposal_by_id</a>(registry: &<b>mut</b> <a href="../social_contracts/governance.md#social_contracts_governance_GovernanceDAO">social_contracts::governance::GovernanceDAO</a>, proposal_id: <a href="../myso/object.md#myso_object_ID">myso::object::ID</a>, current_time: u64, ctx: &<b>mut</b> <a href="../myso/tx_context.md#myso_tx_context_TxContext">myso::tx_context::TxContext</a>)
+<pre><code><b>fun</b> <a href="../social_contracts/governance.md#social_contracts_governance_reject_proposal">reject_proposal</a>(registry: &<b>mut</b> <a href="../social_contracts/governance.md#social_contracts_governance_GovernanceDAO">social_contracts::governance::GovernanceDAO</a>, proposal: &<b>mut</b> <a href="../social_contracts/governance.md#social_contracts_governance_Proposal">social_contracts::governance::Proposal</a>, current_time: u64, ctx: &<b>mut</b> <a href="../myso/tx_context.md#myso_tx_context_TxContext">myso::tx_context::TxContext</a>)
 </code></pre>
 
 
@@ -2874,14 +2875,13 @@ Reject a proposal by ID (avoids reference issues)
 <summary>Implementation</summary>
 
 
-<pre><code><b>fun</b> <a href="../social_contracts/governance.md#social_contracts_governance_reject_proposal_by_id">reject_proposal_by_id</a>(
+<pre><code><b>fun</b> <a href="../social_contracts/governance.md#social_contracts_governance_reject_proposal">reject_proposal</a>(
     registry: &<b>mut</b> <a href="../social_contracts/governance.md#social_contracts_governance_GovernanceDAO">GovernanceDAO</a>,
-    proposal_id: ID,
+    proposal: &<b>mut</b> <a href="../social_contracts/governance.md#social_contracts_governance_Proposal">Proposal</a>,
     current_time: u64,
     ctx: &<b>mut</b> TxContext
 ) {
-    // Get proposal from registry
-    <b>let</b> <b>mut</b> proposal = table::remove(&<b>mut</b> registry.proposals, proposal_id);
+    <b>let</b> proposal_id = object::id(proposal);
     // Update status
     proposal.status = <a href="../social_contracts/governance.md#social_contracts_governance_STATUS_REJECTED">STATUS_REJECTED</a>;
     // Update proposals by status
@@ -2904,11 +2904,8 @@ Reject a proposal by ID (avoids reference issues)
         <b>let</b> refund_coin = coin::from_balance(balance::withdraw_all(&<b>mut</b> proposal.reward_pool), ctx);
         transfer::public_transfer(refund_coin, submitter);
     } <b>else</b> {
-        // Empty the balance even <b>if</b> zero, <b>for</b> consistency
         balance::destroy_zero(balance::withdraw_all(&<b>mut</b> proposal.reward_pool));
     };
-    // Put modified proposal back in registry
-    table::add(&<b>mut</b> registry.proposals, proposal_id, proposal);
     // Emit event
     event::emit(<a href="../social_contracts/governance.md#social_contracts_governance_ProposalRejectedEvent">ProposalRejectedEvent</a> {
         proposal_id,
@@ -2929,7 +2926,7 @@ Community vote on a proposal with quadratic voting
 Users can cast multiple votes by paying a quadratically increasing cost
 
 
-<pre><code><b>public</b> <b>entry</b> <b>fun</b> <a href="../social_contracts/governance.md#social_contracts_governance_community_vote_on_proposal">community_vote_on_proposal</a>(registry: &<b>mut</b> <a href="../social_contracts/governance.md#social_contracts_governance_GovernanceDAO">social_contracts::governance::GovernanceDAO</a>, proposal_id: <a href="../myso/object.md#myso_object_ID">myso::object::ID</a>, vote_count: u64, approve: bool, coin: &<b>mut</b> <a href="../myso/coin.md#myso_coin_Coin">myso::coin::Coin</a>&lt;<a href="../myso/myso.md#myso_myso_MYSO">myso::myso::MYSO</a>&gt;, ctx: &<b>mut</b> <a href="../myso/tx_context.md#myso_tx_context_TxContext">myso::tx_context::TxContext</a>)
+<pre><code><b>public</b> <b>entry</b> <b>fun</b> <a href="../social_contracts/governance.md#social_contracts_governance_community_vote_on_proposal">community_vote_on_proposal</a>(registry: &<b>mut</b> <a href="../social_contracts/governance.md#social_contracts_governance_GovernanceDAO">social_contracts::governance::GovernanceDAO</a>, proposal: &<b>mut</b> <a href="../social_contracts/governance.md#social_contracts_governance_Proposal">social_contracts::governance::Proposal</a>, vote_count: u64, approve: bool, coin: &<b>mut</b> <a href="../myso/coin.md#myso_coin_Coin">myso::coin::Coin</a>&lt;<a href="../myso/myso.md#myso_myso_MYSO">myso::myso::MYSO</a>&gt;, ctx: &<b>mut</b> <a href="../myso/tx_context.md#myso_tx_context_TxContext">myso::tx_context::TxContext</a>)
 </code></pre>
 
 
@@ -2940,7 +2937,7 @@ Users can cast multiple votes by paying a quadratically increasing cost
 
 <pre><code><b>public</b> <b>entry</b> <b>fun</b> <a href="../social_contracts/governance.md#social_contracts_governance_community_vote_on_proposal">community_vote_on_proposal</a>(
     registry: &<b>mut</b> <a href="../social_contracts/governance.md#social_contracts_governance_GovernanceDAO">GovernanceDAO</a>,
-    proposal_id: ID,
+    proposal: &<b>mut</b> <a href="../social_contracts/governance.md#social_contracts_governance_Proposal">Proposal</a>,
     vote_count: u64,
     approve: bool,
     coin: &<b>mut</b> Coin&lt;MYSO&gt;,
@@ -2950,6 +2947,7 @@ Users can cast multiple votes by paying a quadratically increasing cost
     <b>assert</b>!(registry.<a href="../social_contracts/governance.md#social_contracts_governance_version">version</a> == <a href="../social_contracts/upgrade.md#social_contracts_upgrade_current_version">upgrade::current_version</a>(), <a href="../social_contracts/governance.md#social_contracts_governance_EWrongVersion">EWrongVersion</a>);
     <b>let</b> caller = tx_context::sender(ctx);
     <b>let</b> current_time_ms = tx_context::epoch_timestamp_ms(ctx);
+    <b>let</b> proposal_id = object::id(proposal);
     // Calculate vote cost before borrowing from registry
     <b>let</b> quadratic_base_cost = registry.quadratic_base_cost;
     <b>let</b> vote_cost = <b>if</b> (vote_count &lt;= 1) {
@@ -2960,7 +2958,6 @@ Users can cast multiple votes by paying a quadratically increasing cost
     };
     // Verify proposal exists and is in community voting phase
     <b>assert</b>!(table::contains(&registry.proposals, proposal_id), <a href="../social_contracts/governance.md#social_contracts_governance_EProposalNotFound">EProposalNotFound</a>);
-    <b>let</b> proposal = table::borrow_mut(&<b>mut</b> registry.proposals, proposal_id);
     <b>assert</b>!(proposal.status == <a href="../social_contracts/governance.md#social_contracts_governance_STATUS_COMMUNITY_VOTING">STATUS_COMMUNITY_VOTING</a>, <a href="../social_contracts/governance.md#social_contracts_governance_ENotVotingPhase">ENotVotingPhase</a>);
     // Verify voting period hasn't ended (check using milliseconds)
     <b>assert</b>!(current_time_ms &lt;= proposal.voting_end_time, <a href="../social_contracts/governance.md#social_contracts_governance_EVotingPeriodEnded">EVotingPeriodEnded</a>);
@@ -3014,7 +3011,7 @@ Users can cast multiple votes by paying a quadratically increasing cost
 Submit an anonymous encrypted vote on a proposal
 
 
-<pre><code><b>public</b> <b>fun</b> <a href="../social_contracts/governance.md#social_contracts_governance_community_vote_anonymous">community_vote_anonymous</a>(registry: &<b>mut</b> <a href="../social_contracts/governance.md#social_contracts_governance_GovernanceDAO">social_contracts::governance::GovernanceDAO</a>, proposal_id: <a href="../myso/object.md#myso_object_ID">myso::object::ID</a>, encrypted_vote: <a href="../mydata/bf_hmac_encryption.md#mydata_bf_hmac_encryption_EncryptedObject">mydata::bf_hmac_encryption::EncryptedObject</a>, ctx: &<b>mut</b> <a href="../myso/tx_context.md#myso_tx_context_TxContext">myso::tx_context::TxContext</a>)
+<pre><code><b>public</b> <b>fun</b> <a href="../social_contracts/governance.md#social_contracts_governance_community_vote_anonymous">community_vote_anonymous</a>(registry: &<b>mut</b> <a href="../social_contracts/governance.md#social_contracts_governance_GovernanceDAO">social_contracts::governance::GovernanceDAO</a>, proposal: &<b>mut</b> <a href="../social_contracts/governance.md#social_contracts_governance_Proposal">social_contracts::governance::Proposal</a>, encrypted_vote: <a href="../mydata/bf_hmac_encryption.md#mydata_bf_hmac_encryption_EncryptedObject">mydata::bf_hmac_encryption::EncryptedObject</a>, ctx: &<b>mut</b> <a href="../myso/tx_context.md#myso_tx_context_TxContext">myso::tx_context::TxContext</a>)
 </code></pre>
 
 
@@ -3025,14 +3022,14 @@ Submit an anonymous encrypted vote on a proposal
 
 <pre><code><b>public</b> <b>fun</b> <a href="../social_contracts/governance.md#social_contracts_governance_community_vote_anonymous">community_vote_anonymous</a>(
     registry: &<b>mut</b> <a href="../social_contracts/governance.md#social_contracts_governance_GovernanceDAO">GovernanceDAO</a>,
-    proposal_id: ID,
+    proposal: &<b>mut</b> <a href="../social_contracts/governance.md#social_contracts_governance_Proposal">Proposal</a>,
     encrypted_vote: EncryptedObject,
     ctx: &<b>mut</b> TxContext
 ) {
     <b>let</b> caller = tx_context::sender(ctx);
     <b>let</b> current_time_ms = tx_context::epoch_timestamp_ms(ctx);
+    <b>let</b> proposal_id = object::id(proposal);
     <b>assert</b>!(table::contains(&registry.proposals, proposal_id), <a href="../social_contracts/governance.md#social_contracts_governance_EProposalNotFound">EProposalNotFound</a>);
-    <b>let</b> proposal = table::borrow_mut(&<b>mut</b> registry.proposals, proposal_id);
     <b>assert</b>!(proposal.status == <a href="../social_contracts/governance.md#social_contracts_governance_STATUS_COMMUNITY_VOTING">STATUS_COMMUNITY_VOTING</a>, <a href="../social_contracts/governance.md#social_contracts_governance_ENotVotingPhase">ENotVotingPhase</a>);
     <b>assert</b>!(current_time_ms &lt;= proposal.voting_end_time, <a href="../social_contracts/governance.md#social_contracts_governance_EVotingPeriodEnded">EVotingPeriodEnded</a>);
     <b>assert</b>!(!table::contains(&registry.delegates, caller), <a href="../social_contracts/governance.md#social_contracts_governance_EDelegateAnonNotAllowed">EDelegateAnonNotAllowed</a>);
@@ -3074,7 +3071,7 @@ Submit an anonymous encrypted vote on a proposal
 Finalize a proposal after the voting period ends
 
 
-<pre><code><b>public</b> <b>entry</b> <b>fun</b> <a href="../social_contracts/governance.md#social_contracts_governance_finalize_proposal">finalize_proposal</a>(registry: &<b>mut</b> <a href="../social_contracts/governance.md#social_contracts_governance_GovernanceDAO">social_contracts::governance::GovernanceDAO</a>, proposal_id: <a href="../myso/object.md#myso_object_ID">myso::object::ID</a>, ctx: &<b>mut</b> <a href="../myso/tx_context.md#myso_tx_context_TxContext">myso::tx_context::TxContext</a>)
+<pre><code><b>public</b> <b>entry</b> <b>fun</b> <a href="../social_contracts/governance.md#social_contracts_governance_finalize_proposal">finalize_proposal</a>(registry: &<b>mut</b> <a href="../social_contracts/governance.md#social_contracts_governance_GovernanceDAO">social_contracts::governance::GovernanceDAO</a>, proposal: &<b>mut</b> <a href="../social_contracts/governance.md#social_contracts_governance_Proposal">social_contracts::governance::Proposal</a>, ctx: &<b>mut</b> <a href="../myso/tx_context.md#myso_tx_context_TxContext">myso::tx_context::TxContext</a>)
 </code></pre>
 
 
@@ -3085,15 +3082,15 @@ Finalize a proposal after the voting period ends
 
 <pre><code><b>public</b> <b>entry</b> <b>fun</b> <a href="../social_contracts/governance.md#social_contracts_governance_finalize_proposal">finalize_proposal</a>(
     registry: &<b>mut</b> <a href="../social_contracts/governance.md#social_contracts_governance_GovernanceDAO">GovernanceDAO</a>,
-    proposal_id: ID,
+    proposal: &<b>mut</b> <a href="../social_contracts/governance.md#social_contracts_governance_Proposal">Proposal</a>,
     ctx: &<b>mut</b> TxContext
 ) {
     // Check <a href="../social_contracts/governance.md#social_contracts_governance_version">version</a> compatibility
     <b>assert</b>!(registry.<a href="../social_contracts/governance.md#social_contracts_governance_version">version</a> == <a href="../social_contracts/upgrade.md#social_contracts_upgrade_current_version">upgrade::current_version</a>(), <a href="../social_contracts/governance.md#social_contracts_governance_EWrongVersion">EWrongVersion</a>);
     <b>let</b> current_time_ms = tx_context::epoch_timestamp_ms(ctx);
+    <b>let</b> proposal_id = object::id(proposal);
     // Verify proposal exists and is in community voting phase
     <b>assert</b>!(table::contains(&registry.proposals, proposal_id), <a href="../social_contracts/governance.md#social_contracts_governance_EProposalNotFound">EProposalNotFound</a>);
-    <b>let</b> proposal = table::borrow_mut(&<b>mut</b> registry.proposals, proposal_id);
     <b>assert</b>!(proposal.status == <a href="../social_contracts/governance.md#social_contracts_governance_STATUS_COMMUNITY_VOTING">STATUS_COMMUNITY_VOTING</a>, <a href="../social_contracts/governance.md#social_contracts_governance_EInvalidProposalStatus">EInvalidProposalStatus</a>);
     // Verify voting period <b>has</b> ended (using millisecond-based timing)
     <b>assert</b>!(current_time_ms &gt; proposal.voting_end_time, <a href="../social_contracts/governance.md#social_contracts_governance_EVotingPeriodNotEnded">EVotingPeriodNotEnded</a>);
@@ -3203,7 +3200,7 @@ Finalize a proposal after the voting period ends
 Finalize a proposal with anonymous votes by decrypting them first
 
 
-<pre><code><b>public</b> <b>fun</b> <a href="../social_contracts/governance.md#social_contracts_governance_finalize_proposal_anonymous">finalize_proposal_anonymous</a>(registry: &<b>mut</b> <a href="../social_contracts/governance.md#social_contracts_governance_GovernanceDAO">social_contracts::governance::GovernanceDAO</a>, proposal_id: <a href="../myso/object.md#myso_object_ID">myso::object::ID</a>, keys: &vector&lt;<a href="../mydata/bf_hmac_encryption.md#mydata_bf_hmac_encryption_VerifiedDerivedKey">mydata::bf_hmac_encryption::VerifiedDerivedKey</a>&gt;, public_keys: &vector&lt;<a href="../mydata/bf_hmac_encryption.md#mydata_bf_hmac_encryption_PublicKey">mydata::bf_hmac_encryption::PublicKey</a>&gt;, ctx: &<b>mut</b> <a href="../myso/tx_context.md#myso_tx_context_TxContext">myso::tx_context::TxContext</a>)
+<pre><code><b>public</b> <b>fun</b> <a href="../social_contracts/governance.md#social_contracts_governance_finalize_proposal_anonymous">finalize_proposal_anonymous</a>(registry: &<b>mut</b> <a href="../social_contracts/governance.md#social_contracts_governance_GovernanceDAO">social_contracts::governance::GovernanceDAO</a>, proposal: &<b>mut</b> <a href="../social_contracts/governance.md#social_contracts_governance_Proposal">social_contracts::governance::Proposal</a>, keys: &vector&lt;<a href="../mydata/bf_hmac_encryption.md#mydata_bf_hmac_encryption_VerifiedDerivedKey">mydata::bf_hmac_encryption::VerifiedDerivedKey</a>&gt;, public_keys: &vector&lt;<a href="../mydata/bf_hmac_encryption.md#mydata_bf_hmac_encryption_PublicKey">mydata::bf_hmac_encryption::PublicKey</a>&gt;, ctx: &<b>mut</b> <a href="../myso/tx_context.md#myso_tx_context_TxContext">myso::tx_context::TxContext</a>)
 </code></pre>
 
 
@@ -3214,7 +3211,7 @@ Finalize a proposal with anonymous votes by decrypting them first
 
 <pre><code><b>public</b> <b>fun</b> <a href="../social_contracts/governance.md#social_contracts_governance_finalize_proposal_anonymous">finalize_proposal_anonymous</a>(
     registry: &<b>mut</b> <a href="../social_contracts/governance.md#social_contracts_governance_GovernanceDAO">GovernanceDAO</a>,
-    proposal_id: ID,
+    proposal: &<b>mut</b> <a href="../social_contracts/governance.md#social_contracts_governance_Proposal">Proposal</a>,
     keys: &vector&lt;VerifiedDerivedKey&gt;,
     public_keys: &vector&lt;PublicKey&gt;,
     ctx: &<b>mut</b> TxContext
@@ -3222,13 +3219,13 @@ Finalize a proposal with anonymous votes by decrypting them first
     // Check <a href="../social_contracts/governance.md#social_contracts_governance_version">version</a> compatibility
     <b>assert</b>!(registry.<a href="../social_contracts/governance.md#social_contracts_governance_version">version</a> == <a href="../social_contracts/upgrade.md#social_contracts_upgrade_current_version">upgrade::current_version</a>(), <a href="../social_contracts/governance.md#social_contracts_governance_EWrongVersion">EWrongVersion</a>);
     <b>let</b> current_time_ms = tx_context::epoch_timestamp_ms(ctx);
+    <b>let</b> proposal_id = object::id(proposal);
     <b>assert</b>!(table::contains(&registry.proposals, proposal_id), <a href="../social_contracts/governance.md#social_contracts_governance_EProposalNotFound">EProposalNotFound</a>);
     // First, collect all the decrypted votes
     <b>let</b> <b>mut</b> votes_for = vector::empty&lt;<b>address</b>&gt;();
     <b>let</b> <b>mut</b> votes_against = vector::empty&lt;<b>address</b>&gt;();
     <b>let</b> <b>mut</b> invalid_votes = vector::empty&lt;<b>address</b>&gt;(); // Track invalid votes
     {
-        <b>let</b> proposal = table::borrow_mut(&<b>mut</b> registry.proposals, proposal_id);
         <b>assert</b>!(proposal.status == <a href="../social_contracts/governance.md#social_contracts_governance_STATUS_COMMUNITY_VOTING">STATUS_COMMUNITY_VOTING</a>, <a href="../social_contracts/governance.md#social_contracts_governance_EInvalidProposalStatus">EInvalidProposalStatus</a>);
         <b>assert</b>!(current_time_ms &gt; proposal.voting_end_time, <a href="../social_contracts/governance.md#social_contracts_governance_EVotingPeriodNotEnded">EVotingPeriodNotEnded</a>);
         <b>if</b> (dynamic_field::exists_(&proposal.id, <a href="../social_contracts/governance.md#social_contracts_governance_ENCRYPTED_VOTES_FIELD">ENCRYPTED_VOTES_FIELD</a>)) {
@@ -3291,7 +3288,6 @@ Finalize a proposal with anonymous votes by decrypting them first
     vector::destroy_empty(invalid_votes);
     // Now apply all the valid votes
     {
-        <b>let</b> proposal = table::borrow_mut(&<b>mut</b> registry.proposals, proposal_id);
         // Process votes <b>for</b> with overflow protection
         <b>let</b> <b>mut</b> i = 0;
         <b>let</b> len = vector::length(&votes_for);
@@ -3319,7 +3315,7 @@ Finalize a proposal with anonymous votes by decrypting them first
     vector::destroy_empty(votes_for);
     vector::destroy_empty(votes_against);
     // All encrypted votes processed
-    <a href="../social_contracts/governance.md#social_contracts_governance_finalize_proposal">finalize_proposal</a>(registry, proposal_id, ctx);
+    <a href="../social_contracts/governance.md#social_contracts_governance_finalize_proposal">finalize_proposal</a>(registry, proposal, ctx);
 }
 </code></pre>
 
@@ -3410,7 +3406,7 @@ Rewards are distributed equally among all voters who voted for the winning side
 Mark a proposal as implemented
 
 
-<pre><code><b>public</b> <b>entry</b> <b>fun</b> <a href="../social_contracts/governance.md#social_contracts_governance_mark_proposal_implemented">mark_proposal_implemented</a>(registry: &<b>mut</b> <a href="../social_contracts/governance.md#social_contracts_governance_GovernanceDAO">social_contracts::governance::GovernanceDAO</a>, proposal_id: <a href="../myso/object.md#myso_object_ID">myso::object::ID</a>, description: <a href="../std/option.md#std_option_Option">std::option::Option</a>&lt;<a href="../std/string.md#std_string_String">std::string::String</a>&gt;, ctx: &<b>mut</b> <a href="../myso/tx_context.md#myso_tx_context_TxContext">myso::tx_context::TxContext</a>)
+<pre><code><b>public</b> <b>entry</b> <b>fun</b> <a href="../social_contracts/governance.md#social_contracts_governance_mark_proposal_implemented">mark_proposal_implemented</a>(registry: &<b>mut</b> <a href="../social_contracts/governance.md#social_contracts_governance_GovernanceDAO">social_contracts::governance::GovernanceDAO</a>, proposal: &<b>mut</b> <a href="../social_contracts/governance.md#social_contracts_governance_Proposal">social_contracts::governance::Proposal</a>, description: <a href="../std/option.md#std_option_Option">std::option::Option</a>&lt;<a href="../std/string.md#std_string_String">std::string::String</a>&gt;, ctx: &<b>mut</b> <a href="../myso/tx_context.md#myso_tx_context_TxContext">myso::tx_context::TxContext</a>)
 </code></pre>
 
 
@@ -3421,7 +3417,7 @@ Mark a proposal as implemented
 
 <pre><code><b>public</b> <b>entry</b> <b>fun</b> <a href="../social_contracts/governance.md#social_contracts_governance_mark_proposal_implemented">mark_proposal_implemented</a>(
     registry: &<b>mut</b> <a href="../social_contracts/governance.md#social_contracts_governance_GovernanceDAO">GovernanceDAO</a>,
-    proposal_id: ID,
+    proposal: &<b>mut</b> <a href="../social_contracts/governance.md#social_contracts_governance_Proposal">Proposal</a>,
     description: Option&lt;String&gt;,
     ctx: &<b>mut</b> TxContext
 ) {
@@ -3429,9 +3425,9 @@ Mark a proposal as implemented
     <b>assert</b>!(registry.<a href="../social_contracts/governance.md#social_contracts_governance_version">version</a> == <a href="../social_contracts/upgrade.md#social_contracts_upgrade_current_version">upgrade::current_version</a>(), <a href="../social_contracts/governance.md#social_contracts_governance_EWrongVersion">EWrongVersion</a>);
     <b>let</b> caller = tx_context::sender(ctx);
     <b>let</b> current_time = tx_context::epoch_timestamp_ms(ctx);
+    <b>let</b> proposal_id = object::id(proposal);
     // Verify proposal exists and is approved
     <b>assert</b>!(table::contains(&registry.proposals, proposal_id), <a href="../social_contracts/governance.md#social_contracts_governance_EProposalNotFound">EProposalNotFound</a>);
-    <b>let</b> proposal = table::borrow_mut(&<b>mut</b> registry.proposals, proposal_id);
     <b>assert</b>!(proposal.status == <a href="../social_contracts/governance.md#social_contracts_governance_STATUS_APPROVED">STATUS_APPROVED</a>, <a href="../social_contracts/governance.md#social_contracts_governance_EInvalidProposalStatus">EInvalidProposalStatus</a>);
     // Only the submitter or a delegate can mark <b>as</b> implemented
     <b>assert</b>!(
@@ -3497,8 +3493,7 @@ Get all proposals of a specific type
         <b>let</b> num_proposals = vector::length(proposals_of_status);
         <b>while</b> (p &lt; num_proposals) {
             <b>let</b> proposal_id = *vector::borrow(proposals_of_status, p);
-            <b>let</b> proposal: &<a href="../social_contracts/governance.md#social_contracts_governance_Proposal">Proposal</a> = table::borrow(&registry.proposals, proposal_id);
-            <b>if</b> (proposal.proposal_type == proposal_type) {
+            <b>if</b> (table::contains(&registry.proposal_types, proposal_id) && *table::borrow(&registry.proposal_types, proposal_id) == proposal_type) {
                 vector::push_back(&<b>mut</b> result, proposal_id);
             };
             p = p + 1;
@@ -3614,7 +3609,7 @@ Get delegate information
 Get proposal information
 
 
-<pre><code><b>public</b> <b>fun</b> <a href="../social_contracts/governance.md#social_contracts_governance_get_proposal_info">get_proposal_info</a>(registry: &<a href="../social_contracts/governance.md#social_contracts_governance_GovernanceDAO">social_contracts::governance::GovernanceDAO</a>, id: <a href="../myso/object.md#myso_object_ID">myso::object::ID</a>): (<a href="../std/string.md#std_string_String">std::string::String</a>, <a href="../std/string.md#std_string_String">std::string::String</a>, u8, <a href="../std/option.md#std_option_Option">std::option::Option</a>&lt;<a href="../myso/object.md#myso_object_ID">myso::object::ID</a>&gt;, <a href="../std/option.md#std_option_Option">std::option::Option</a>&lt;<a href="../std/string.md#std_string_String">std::string::String</a>&gt;, <b>address</b>, u64, u8, u64, u64)
+<pre><code><b>public</b> <b>fun</b> <a href="../social_contracts/governance.md#social_contracts_governance_get_proposal_info">get_proposal_info</a>(registry: &<a href="../social_contracts/governance.md#social_contracts_governance_GovernanceDAO">social_contracts::governance::GovernanceDAO</a>, proposal: &<a href="../social_contracts/governance.md#social_contracts_governance_Proposal">social_contracts::governance::Proposal</a>): (<a href="../std/string.md#std_string_String">std::string::String</a>, <a href="../std/string.md#std_string_String">std::string::String</a>, u8, <a href="../std/option.md#std_option_Option">std::option::Option</a>&lt;<a href="../myso/object.md#myso_object_ID">myso::object::ID</a>&gt;, <a href="../std/option.md#std_option_Option">std::option::Option</a>&lt;<a href="../std/string.md#std_string_String">std::string::String</a>&gt;, <b>address</b>, u64, u8, u64, u64)
 </code></pre>
 
 
@@ -3625,10 +3620,9 @@ Get proposal information
 
 <pre><code><b>public</b> <b>fun</b> <a href="../social_contracts/governance.md#social_contracts_governance_get_proposal_info">get_proposal_info</a>(
     registry: &<a href="../social_contracts/governance.md#social_contracts_governance_GovernanceDAO">GovernanceDAO</a>,
-    id: ID
+    proposal: &<a href="../social_contracts/governance.md#social_contracts_governance_Proposal">Proposal</a>
 ): (String, String, u8, Option&lt;ID&gt;, Option&lt;String&gt;, <b>address</b>, u64, u8, u64, u64) {
-    <b>assert</b>!(table::contains(&registry.proposals, id), <a href="../social_contracts/governance.md#social_contracts_governance_EProposalNotFound">EProposalNotFound</a>);
-    <b>let</b> proposal = table::borrow(&registry.proposals, id);
+    <b>assert</b>!(table::contains(&registry.proposals, object::id(proposal)), <a href="../social_contracts/governance.md#social_contracts_governance_EProposalNotFound">EProposalNotFound</a>);
     (
         proposal.title,
         proposal.description,
@@ -3805,7 +3799,7 @@ Get governance parameters
 If more than half of delegates reject, reject the proposal manually
 
 
-<pre><code><b>public</b> <b>entry</b> <b>fun</b> <a href="../social_contracts/governance.md#social_contracts_governance_reject_proposal_manually">reject_proposal_manually</a>(registry: &<b>mut</b> <a href="../social_contracts/governance.md#social_contracts_governance_GovernanceDAO">social_contracts::governance::GovernanceDAO</a>, proposal_id: <a href="../myso/object.md#myso_object_ID">myso::object::ID</a>, ctx: &<b>mut</b> <a href="../myso/tx_context.md#myso_tx_context_TxContext">myso::tx_context::TxContext</a>)
+<pre><code><b>public</b> <b>entry</b> <b>fun</b> <a href="../social_contracts/governance.md#social_contracts_governance_reject_proposal_manually">reject_proposal_manually</a>(registry: &<b>mut</b> <a href="../social_contracts/governance.md#social_contracts_governance_GovernanceDAO">social_contracts::governance::GovernanceDAO</a>, proposal: &<b>mut</b> <a href="../social_contracts/governance.md#social_contracts_governance_Proposal">social_contracts::governance::Proposal</a>, ctx: &<b>mut</b> <a href="../myso/tx_context.md#myso_tx_context_TxContext">myso::tx_context::TxContext</a>)
 </code></pre>
 
 
@@ -3816,7 +3810,7 @@ If more than half of delegates reject, reject the proposal manually
 
 <pre><code><b>public</b> <b>entry</b> <b>fun</b> <a href="../social_contracts/governance.md#social_contracts_governance_reject_proposal_manually">reject_proposal_manually</a>(
     registry: &<b>mut</b> <a href="../social_contracts/governance.md#social_contracts_governance_GovernanceDAO">GovernanceDAO</a>,
-    proposal_id: ID,
+    proposal: &<b>mut</b> <a href="../social_contracts/governance.md#social_contracts_governance_Proposal">Proposal</a>,
     ctx: &<b>mut</b> TxContext
 ) {
     // Check <a href="../social_contracts/governance.md#social_contracts_governance_version">version</a> compatibility
@@ -3825,12 +3819,12 @@ If more than half of delegates reject, reject the proposal manually
     <b>let</b> caller = tx_context::sender(ctx);
     <b>assert</b>!(table::contains(&registry.delegates, caller), <a href="../social_contracts/governance.md#social_contracts_governance_ENotDelegate">ENotDelegate</a>);
     // Verify proposal exists and is in delegate review phase
+    <b>let</b> proposal_id = object::id(proposal);
     <b>assert</b>!(table::contains(&registry.proposals, proposal_id), <a href="../social_contracts/governance.md#social_contracts_governance_EProposalNotFound">EProposalNotFound</a>);
-    <b>let</b> proposal = table::borrow(&registry.proposals, proposal_id);
     <b>assert</b>!(proposal.status == <a href="../social_contracts/governance.md#social_contracts_governance_STATUS_DELEGATE_REVIEW">STATUS_DELEGATE_REVIEW</a>, <a href="../social_contracts/governance.md#social_contracts_governance_EInvalidProposalStatus">EInvalidProposalStatus</a>);
     // Reject the proposal
     <b>let</b> current_time = tx_context::epoch_timestamp_ms(ctx);
-    <a href="../social_contracts/governance.md#social_contracts_governance_reject_proposal_by_id">reject_proposal_by_id</a>(registry, proposal_id, current_time, ctx);
+    <a href="../social_contracts/governance.md#social_contracts_governance_reject_proposal">reject_proposal</a>(registry, proposal, current_time, ctx);
 }
 </code></pre>
 
@@ -3880,7 +3874,8 @@ This function can only be called by the platform toggle_platform_approval functi
         quorum_votes,
         // Tables
         delegates: table::new&lt;<b>address</b>, <a href="../social_contracts/governance.md#social_contracts_governance_Delegate">Delegate</a>&gt;(ctx),
-        proposals: table::new&lt;ID, <a href="../social_contracts/governance.md#social_contracts_governance_Proposal">Proposal</a>&gt;(ctx),
+        proposals: table::new&lt;ID, bool&gt;(ctx),
+        proposal_types: table::new&lt;ID, u8&gt;(ctx),
         proposals_by_status: table::new&lt;u8, vector&lt;ID&gt;&gt;(ctx),
         treasury: balance::zero(),
         nominated_delegates: table::new&lt;<b>address</b>, <a href="../social_contracts/governance.md#social_contracts_governance_NominatedDelegate">NominatedDelegate</a>&gt;(ctx),

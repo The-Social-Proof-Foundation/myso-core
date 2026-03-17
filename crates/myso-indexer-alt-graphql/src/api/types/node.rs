@@ -12,6 +12,9 @@ use crate::api::types::epoch::Epoch;
 use crate::api::types::move_object::MoveObject;
 use crate::api::types::move_package::MovePackage;
 use crate::api::types::object::Object;
+use crate::api::types::platform::Platform;
+use crate::api::types::post::Post;
+use crate::api::types::profile::Profile;
 use crate::api::types::transaction::Transaction;
 
 /// An interface implemented by types that can be uniquely identified by a globally unique `ID`, following the GraphQL Global Object Identification specification.
@@ -33,4 +36,7 @@ pub(crate) enum Node {
     MovePackage(Box<MovePackage>),
     Object(Box<Object>),
     Transaction(Box<Transaction>),
+    Profile(Box<Profile>),
+    Post(Box<Post>),
+    Platform(Box<Platform>),
 }

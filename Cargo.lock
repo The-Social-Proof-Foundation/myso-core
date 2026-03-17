@@ -11645,6 +11645,7 @@ dependencies = [
  "myso-indexer-alt-metrics",
  "myso-indexer-alt-reader",
  "myso-indexer-alt-schema",
+ "myso-indexer-alt-social-reader",
  "myso-package-resolver",
  "myso-pg-db",
  "myso-protocol-config",
@@ -11911,6 +11912,25 @@ dependencies = [
  "tracing",
  "url",
  "uuid",
+]
+
+[[package]]
+name = "myso-indexer-alt-social-reader"
+version = "0.0.1"
+dependencies = [
+ "anyhow",
+ "async-graphql",
+ "async-trait",
+ "chrono",
+ "diesel",
+ "diesel-async",
+ "myso-indexer-alt-metrics",
+ "myso-indexer-alt-social-schema",
+ "myso-pg-db",
+ "prometheus",
+ "tokio",
+ "tracing",
+ "url",
 ]
 
 [[package]]

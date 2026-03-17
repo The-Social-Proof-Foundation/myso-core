@@ -60,4 +60,8 @@ pub use subscription::{
     SubscriberSummaryRow,
 };
 pub use upgrade::{ObjectMigratedEventRow, UpgradeEventRow};
-pub use vesting::{VestingEventRow, VestingWalletRow};
+pub use vesting::{
+    ClaimableResponse, VestingAnalyticsResponse, VestingEventRow, VestingEventsResponse,
+    VestingLeaderboardEntry, VestingLeaderboardResponse, VestingWalletRow,
+    VestingWalletWithProfile, VestingWalletWithStatus, VestingWalletsResponse,
+};
