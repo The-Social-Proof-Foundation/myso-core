@@ -24,7 +24,7 @@ use myso_sdk::myso_client_config::MySoEnv;
 use myso_sdk::wallet_context::WalletContext;
 use myso_types::crypto::{EncodeDecodeBase64, MySoKeyPair, SignatureScheme};
 use mysten_metrics::spawn_monitored_task;
-use prometheus::Registry;
+use prometheus::{Registry, TextEncoder};
 use std::{
     borrow::Cow,
     net::{IpAddr, SocketAddr},
@@ -275,6 +275,7 @@ pub async fn start_faucet(
     let unrestricted_routes = Router::new()
         .route("/", get(redirect))
         .route("/health", get(health))
+        .route("/metrics", get(serve_metrics))
         .route("/v1/faucet_discord", post(batch_faucet_discord))
         .route("/v1/status/{task_id}", get(request_status));
 
@@ -292,6 +293,7 @@ pub async fn start_faucet(
                 .concurrency_limit(concurrency_limit)
                 .layer(Extension(app_state.clone()))
                 .layer(Extension(token_manager.clone()))
+                .layer(Extension(prometheus_registry.clone()))
                 .layer(cors)
                 .into_inner(),
         );
@@ -327,6 +329,18 @@ pub async fn start_faucet(
 /// basic handler that responds with a static string
 async fn health() -> &'static str {
     "OK"
+}
+
+async fn serve_metrics(
+    Extension(registry): Extension<Registry>,
+) -> (StatusCode, String) {
+    match TextEncoder.encode_to_string(&registry.gather()) {
+        Ok(s) => (StatusCode::OK, s),
+        Err(e) => (
+            StatusCode::INTERNAL_SERVER_ERROR,
+            format!("unable to encode metrics: {e}"),
+        ),
+    }
 }
 
 /// Redirect to faucet.mysocial.network/?network if it's testnet/devnet network. For local network, keep the
