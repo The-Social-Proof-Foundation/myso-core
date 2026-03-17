@@ -2321,7 +2321,10 @@ impl Handler for SocialEvents {
                         .await?;
                 }
                 SocialEventRow::SpotRecordUpsert(record) => {
-                    let betting_options = record.betting_options.clone();
+                    let betting_options = record
+                        .betting_options
+                        .clone()
+                        .unwrap_or_else(|| serde_json::json!([]));
                     let resolution_window_epochs = record.resolution_window_epochs;
                     let max_resolution_window_epochs = record.max_resolution_window_epochs;
                     total += diesel::insert_into(spot_records::table)
