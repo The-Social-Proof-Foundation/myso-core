@@ -28,6 +28,7 @@ use async_trait::async_trait;
 use diesel::sql_types::{BigInt, Bool, Int2, Nullable, Text};
 use diesel::BoolExpressionMethods;
 use diesel::ExpressionMethods;
+use diesel::OptionalExtension;
 use diesel::QueryDsl;
 use diesel::QueryableByName;
 use diesel_async::RunQueryDsl;
@@ -447,7 +448,10 @@ pub enum SocialEventRow {
     },
     SptPriceHistory(NewSptPriceHistory),
     SptReservationPool(NewSptReservationPool),
-    SptReservation(NewSptReservation),
+    SptReservation {
+        associated_id: String,
+        reservation: NewSptReservation,
+    },
     SptReservationPoolUpdate {
         pool_id: String,
         associated_id: String,
@@ -2391,11 +2395,32 @@ impl Handler for SocialEvents {
                         .execute(conn)
                         .await?;
                 }
-                SocialEventRow::SptReservation(r) => {
-                    total += diesel::insert_into(spt_reservations::table)
-                        .values(r)
-                        .execute(conn)
-                        .await?;
+                SocialEventRow::SptReservation { associated_id, reservation } => {
+                    #[derive(QueryableByName)]
+                    struct PoolIdRow {
+                        #[diesel(sql_type = Text)]
+                        pool_id: String,
+                    }
+                    let pool_id_row: Option<PoolIdRow> = diesel::sql_query(
+                        "SELECT pool_id FROM spt_reservation_pools WHERE associated_id = $1 ORDER BY time DESC LIMIT 1",
+                    )
+                    .bind::<Text, _>(associated_id)
+                    .get_result(conn)
+                    .await
+                    .optional()?;
+                    if let Some(row) = pool_id_row {
+                        let mut r = reservation.clone();
+                        r.pool_id = row.pool_id;
+                        total += diesel::insert_into(spt_reservations::table)
+                            .values(r)
+                            .execute(conn)
+                            .await?;
+                    } else {
+                        warn!(
+                            associated_id = %associated_id,
+                            "skipping SptReservation insert: no pool found in spt_reservation_pools"
+                        );
+                    }
                 }
                 SocialEventRow::SptReservationPoolUpdate {
                     pool_id: _pool_id,

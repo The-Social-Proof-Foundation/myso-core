@@ -414,7 +414,10 @@ fn process_reservation_created_event(
     };
 
     Some(vec![
-        SocialEventRow::SptReservation(reservation),
+        SocialEventRow::SptReservation {
+            associated_id: associated_id.clone(),
+            reservation,
+        },
         SocialEventRow::SptReservationPoolUpdate {
             pool_id,
             associated_id: associated_id.clone(),
@@ -455,7 +458,10 @@ fn process_reservation_withdrawn_event(
     };
 
     Some(vec![
-        SocialEventRow::SptReservation(reservation),
+        SocialEventRow::SptReservation {
+            associated_id: associated_id.clone(),
+            reservation,
+        },
         SocialEventRow::SptReservationPoolUpdate {
             pool_id,
             associated_id: associated_id.clone(),
