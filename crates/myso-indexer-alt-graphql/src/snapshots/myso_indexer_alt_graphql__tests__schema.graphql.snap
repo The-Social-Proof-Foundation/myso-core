@@ -3276,9 +3276,41 @@ type Profile implements Node {
 	"""
 	bio: String
 	"""
+	Birthdate.
+	"""
+	birthdate: String
+	"""
+	Block list address.
+	"""
+	blockListAddress: String
+	"""
+	URL to the cover photo.
+	"""
+	coverPhoto: String
+	"""
+	When the profile was created (ISO 8601).
+	"""
+	createdAt: String
+	"""
+	Current location.
+	"""
+	currentLocation: String
+	"""
 	The profile's display name.
 	"""
 	displayName: String
+	"""
+	Education.
+	"""
+	education: String
+	"""
+	Email (encrypted).
+	"""
+	email: String
+	"""
+	Facebook username.
+	"""
+	facebookUsername: String
 	"""
 	Number of followers.
 	"""
@@ -3288,21 +3320,105 @@ type Profile implements Node {
 	"""
 	followingCount: Int!
 	"""
+	Gender.
+	"""
+	gender: String
+	"""
+	GitHub username.
+	"""
+	githubUsername: String
+	"""
 	The profile's globally unique identifier.
 	"""
 	id: ID!
+	"""
+	Mastodon username.
+	"""
+	mastodonUsername: String
+	"""
+	Minimum offer amount for profile sales.
+	"""
+	minOfferAmount: Int
+	"""
+	Phone (encrypted).
+	"""
+	phone: String
+	"""
+	Political view.
+	"""
+	politicalView: String
 	"""
 	Number of posts.
 	"""
 	postCount: Int!
 	"""
+	Primary language.
+	"""
+	primaryLanguage: String
+	"""
+	The profile ID (object address).
+	"""
+	profileId: String
+	"""
 	URL to the profile photo.
 	"""
 	profilePhoto: String
 	"""
+	Raised location.
+	"""
+	raisedLocation: String
+	"""
+	Reddit username.
+	"""
+	redditUsername: String
+	"""
+	Relationship status.
+	"""
+	relationshipStatus: String
+	"""
+	Religion.
+	"""
+	religion: String
+	"""
+	Reservation pool address.
+	"""
+	reservationPoolAddress: String
+	"""
+	Selected badge info.
+	"""
+	selectedBadge: SelectedBadge
+	"""
+	Selected badge ID.
+	"""
+	selectedBadgeId: String
+	"""
+	Selected ecosystem badge ID.
+	"""
+	selectedEcosystemBadgeId: String
+	"""
+	Social proof token info.
+	"""
+	socialProofToken: SocialProofToken
+	"""
+	Social proof token address.
+	"""
+	socialProofTokenAddress: String
+	"""
+	When the profile was last updated (ISO 8601).
+	"""
+	updatedAt: String
+	"""
 	The profile's username.
 	"""
 	username: String!
+	"""
+	The profile's website.
+	"""
+	website: String
+	"""
+	X (Twitter) username.
+	"""
+	xUsername: String
 }
 
 """
@@ -3713,6 +3829,15 @@ enum RegulatedState {
 	UNREGULATED
 }
 
+type SelectedBadge {
+	badgeIconUrl: String
+	badgeId: String!
+	badgeMediaUrl: String
+	badgeName: String!
+	badgeType: Int!
+	platformId: String!
+}
+
 type ServiceConfig {
 	"""
 	Range of checkpoints for which data is available for a query type, field and optional filter. If filter is not provided, the strictest retention range for the query and type is returned.
@@ -3896,6 +4021,17 @@ type SimulationResult {
 	The intermediate outputs for each command of the transaction simulation, including contents of mutated references and return values.
 	"""
 	outputs: [CommandResult!]
+}
+
+type SocialProofToken {
+	isActive: Boolean!
+	poolId: String
+	requiredThreshold: Int!
+	reservationPercentage: Float!
+	reservationPoolId: String
+	reservationStatus: String!
+	tokenAddress: String
+	totalReserved: Int!
 }
 
 """

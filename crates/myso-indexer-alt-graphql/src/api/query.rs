@@ -148,10 +148,11 @@ impl Query {
                         None => return Ok(None),
                     };
                     if let Some(reader) = reader_opt.as_ref() {
-                        if let Ok(Some(profile)) =
-                            reader.get_profile_by_address(&addr.to_string()).await
+                        if let Ok(response) =
+                            reader.get_profile_or_wallet_by_address(&addr.to_string()).await
                         {
-                            Some(Node::Profile(Box::new(Profile::from_db(profile))))
+                            Profile::from_response(response)
+                                .map(|p| Node::Profile(Box::new(p)))
                         } else {
                             None
                         }
@@ -210,10 +211,10 @@ impl Query {
         let addr_str = address.to_string();
         Some(
             reader
-                .get_profile_by_address(&addr_str)
+                .get_profile_or_wallet_by_address(&addr_str)
                 .await
                 .map_err(Into::into)
-                .map(|opt| opt.map(Profile::from_db)),
+                .map(|r| Profile::from_response(r)),
         )
     }
 

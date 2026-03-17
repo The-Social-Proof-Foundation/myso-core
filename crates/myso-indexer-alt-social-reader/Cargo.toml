@@ -17,6 +17,7 @@ chrono.workspace = true
 diesel.workspace = true
 diesel-async = { workspace = true, features = ["bb8", "postgres", "async-connection-wrapper"] }
 prometheus.workspace = true
+serde.workspace = true
 tokio.workspace = true
 tracing.workspace = true
 url.workspace = true

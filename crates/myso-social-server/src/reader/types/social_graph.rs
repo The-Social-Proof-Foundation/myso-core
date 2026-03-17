@@ -130,6 +130,154 @@ pub struct SocialStatsRow {
     pub blocked_count: i64,
 }
 
+/// Unified profile response for GET /profiles/address/:address.
+/// Single JSON shape for both profile-owning and wallet-only addresses.
+#[derive(Debug, Clone, Serialize)]
+pub struct ProfileByAddressResponse {
+    pub id: Option<i32>,
+    pub owner_address: String,
+    pub profile_id: Option<String>,
+    pub username: Option<String>,
+    pub display_name: Option<String>,
+    pub bio: Option<String>,
+    pub profile_photo: Option<String>,
+    pub cover_photo: Option<String>,
+    pub website: Option<String>,
+    pub created_at: Option<String>,
+    pub updated_at: Option<String>,
+    pub followers_count: i32,
+    pub following_count: i32,
+    pub post_count: i32,
+    pub min_offer_amount: Option<i64>,
+    pub birthdate: Option<String>,
+    pub current_location: Option<String>,
+    pub raised_location: Option<String>,
+    pub phone: Option<String>,
+    pub email: Option<String>,
+    pub gender: Option<String>,
+    pub political_view: Option<String>,
+    pub religion: Option<String>,
+    pub education: Option<String>,
+    pub primary_language: Option<String>,
+    pub relationship_status: Option<String>,
+    pub x_username: Option<String>,
+    pub mastodon_username: Option<String>,
+    pub facebook_username: Option<String>,
+    pub reddit_username: Option<String>,
+    pub github_username: Option<String>,
+    pub block_list_address: Option<String>,
+    pub social_proof_token_address: Option<String>,
+    pub reservation_pool_address: Option<String>,
+    pub social_proof_token: Option<SocialProofTokenInfo>,
+    pub selected_badge: Option<SelectedBadgeInfo>,
+    pub selected_badge_id: Option<String>,
+    pub selected_ecosystem_badge_id: Option<String>,
+}
+
+fn to_iso8601_utc(dt: chrono::NaiveDateTime) -> String {
+    chrono::DateTime::<chrono::Utc>::from_naive_utc_and_offset(dt, chrono::Utc)
+        .to_rfc3339_opts(chrono::SecondsFormat::Millis, true)
+}
+
+impl From<myso_indexer_alt_social_schema::models::Profile> for ProfileByAddressResponse {
+    fn from(p: myso_indexer_alt_social_schema::models::Profile) -> Self {
+        Self {
+            id: Some(p.id),
+            owner_address: p.owner_address,
+            profile_id: p.profile_id,
+            username: Some(p.username),
+            display_name: p.display_name,
+            bio: p.bio,
+            profile_photo: p.profile_photo,
+            cover_photo: p.cover_photo,
+            website: p.website,
+            created_at: Some(to_iso8601_utc(p.created_at)),
+            updated_at: Some(to_iso8601_utc(p.updated_at)),
+            followers_count: p.followers_count,
+            following_count: p.following_count,
+            post_count: p.post_count,
+            min_offer_amount: p.min_offer_amount,
+            birthdate: p.birthdate,
+            current_location: p.current_location,
+            raised_location: p.raised_location,
+            phone: p.phone,
+            email: p.email,
+            gender: p.gender,
+            political_view: p.political_view,
+            religion: p.religion,
+            education: p.education,
+            primary_language: p.primary_language,
+            relationship_status: p.relationship_status,
+            x_username: p.x_username,
+            mastodon_username: None,
+            facebook_username: p.facebook_username,
+            reddit_username: p.reddit_username,
+            github_username: p.github_username,
+            block_list_address: None,
+            social_proof_token_address: p.social_proof_token_address,
+            reservation_pool_address: p.reservation_pool_address,
+            social_proof_token: None,
+            selected_badge: None,
+            selected_badge_id: p.selected_badge_id,
+            selected_ecosystem_badge_id: p.selected_ecosystem_badge_id,
+        }
+    }
+}
+
+impl ProfileByAddressResponse {
+    /// Apply enrichment (social_proof_token, selected_badge) from UniversalUserResult.
+    pub fn with_enrichment(mut self, enriched: &UniversalUserResult) -> Self {
+        self.social_proof_token = enriched.social_proof_token.clone();
+        self.selected_badge = enriched.selected_badge.clone();
+        self
+    }
+}
+
+impl From<WalletOnlyProfile> for ProfileByAddressResponse {
+    fn from(w: WalletOnlyProfile) -> Self {
+        Self {
+            id: w.id,
+            owner_address: w.owner_address,
+            profile_id: w.profile_id,
+            username: w.username,
+            display_name: w.display_name,
+            bio: w.bio,
+            profile_photo: w.profile_photo,
+            cover_photo: w.cover_photo,
+            website: w.website,
+            created_at: w.created_at,
+            updated_at: w.updated_at,
+            followers_count: w.followers_count,
+            following_count: w.following_count,
+            post_count: w.post_count,
+            min_offer_amount: w.min_offer_amount,
+            birthdate: w.birthdate,
+            current_location: w.current_location,
+            raised_location: w.raised_location,
+            phone: w.phone,
+            email: w.email,
+            gender: w.gender,
+            political_view: w.political_view,
+            religion: w.religion,
+            education: w.education,
+            primary_language: w.primary_language,
+            relationship_status: w.relationship_status,
+            x_username: w.x_username,
+            mastodon_username: None,
+            facebook_username: w.facebook_username,
+            reddit_username: w.reddit_username,
+            github_username: w.github_username,
+            block_list_address: None,
+            social_proof_token_address: w.social_proof_token_address,
+            reservation_pool_address: w.reservation_pool_address,
+            social_proof_token: None,
+            selected_badge: None,
+            selected_badge_id: w.selected_badge_id,
+            selected_ecosystem_badge_id: None,
+        }
+    }
+}
+
 /// Minimal profile-like structure for wallet addresses without profiles.
 /// Mirrors the JSON shape returned by mys-indexer when falling back to wallet_social_graph.
 #[derive(Debug, Clone, Serialize)]
@@ -200,8 +348,8 @@ impl WalletOnlyProfile {
             blocked_count,
             post_count: 0,
             min_offer_amount: None,
-            created_at: created_at.map(|dt| dt.format("%Y-%m-%d %H:%M:%S").to_string()),
-            updated_at: updated_at.map(|dt| dt.format("%Y-%m-%d %H:%M:%S").to_string()),
+            created_at: created_at.map(to_iso8601_utc),
+            updated_at: updated_at.map(to_iso8601_utc),
             birthdate: None,
             current_location: None,
             raised_location: None,

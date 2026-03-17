@@ -7,7 +7,7 @@ use myso_indexer_alt_social_schema::models::Profile;
 use std::sync::Arc;
 
 use crate::error::SocialError;
-use crate::reader::profile::ProfileOrWallet;
+use crate::reader::ProfileByAddressResponse;
 
 use super::super::{AppState, PageParams, ProfileQuery};
 
@@ -40,7 +40,7 @@ pub async fn latest_profiles(
 pub async fn get_profile_by_address(
     State(state): State<Arc<AppState>>,
     Path(address): Path<String>,
-) -> Result<Json<ProfileOrWallet>, SocialError> {
+) -> Result<Json<ProfileByAddressResponse>, SocialError> {
     let result = state
         .reader
         .get_profile_or_wallet_by_address(&address)

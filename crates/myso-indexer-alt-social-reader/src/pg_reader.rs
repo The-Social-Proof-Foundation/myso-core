@@ -16,6 +16,7 @@ use crate::metrics::DbReaderMetrics;
 use crate::platform::PlatformRow;
 use crate::post::PostRow;
 use crate::profile::get_profile_by_address;
+use crate::profile::get_profile_or_wallet_by_address;
 use crate::profile::get_profiles;
 use crate::social_graph::check_following;
 
@@ -88,6 +89,15 @@ impl SocialPgReader {
     pub async fn get_profile_by_address(&self, address: &str) -> anyhow::Result<Option<Profile>> {
         let mut conn = self.connect().await?;
         get_profile_by_address(&mut conn, address, &self.metrics).await
+    }
+
+    /// Get profile by address, or wallet-only data when no profile exists.
+    pub async fn get_profile_or_wallet_by_address(
+        &self,
+        address: &str,
+    ) -> anyhow::Result<crate::profile::ProfileByAddressResponse> {
+        let mut conn = self.connect().await?;
+        get_profile_or_wallet_by_address(&mut conn, address, &self.metrics).await
     }
 
     /// Get profiles with pagination.

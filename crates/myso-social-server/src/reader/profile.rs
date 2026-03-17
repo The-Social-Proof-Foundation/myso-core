@@ -9,21 +9,11 @@ use diesel_async::RunQueryDsl;
 use myso_indexer_alt_social_schema::models::Profile;
 use myso_indexer_alt_social_schema::schema::{profiles, wallet_social_graph};
 
-use serde::Serialize;
-
 use crate::error::SocialError;
 use crate::reader::social_graph::enrich_users_with_universal_data;
-use crate::reader::types::UniversalUserResult;
+use crate::reader::types::{ProfileByAddressResponse, UniversalUserResult};
 use crate::reader::WalletOnlyProfile;
 use myso_pg_db::Db;
-
-/// Result of looking up a profile by address: either enriched profile or wallet-only data.
-#[derive(Debug, Serialize)]
-#[serde(untagged)]
-pub enum ProfileOrWallet {
-    Profile(UniversalUserResult),
-    WalletOnly(WalletOnlyProfile),
-}
 
 pub(crate) async fn get_profiles(
     db: &Db,
@@ -81,12 +71,12 @@ pub(crate) async fn get_profile_by_address(
 }
 
 /// Get profile by address, or fall back to wallet_social_graph for wallet-only addresses.
-/// Returns enriched UniversalUserResult when found in profiles table; otherwise WalletOnly with counts from
-/// wallet_social_graph (or zero counts if not in WSG either).
+/// Returns unified ProfileByAddressResponse with full profile fields when found in profiles table;
+/// otherwise wallet-only response with counts from wallet_social_graph (or zero counts if not in WSG).
 pub(crate) async fn get_profile_or_wallet_by_address(
     db: &Db,
     address: &str,
-) -> Result<ProfileOrWallet, SocialError> {
+) -> Result<ProfileByAddressResponse, SocialError> {
     let mut conn = db.connect().await?;
     let profile_result = profiles::table
         .filter(profiles::owner_address.eq(address))
@@ -95,20 +85,17 @@ pub(crate) async fn get_profile_or_wallet_by_address(
         .await;
 
     match profile_result {
-        Ok(_profile) => {
-            let enriched = enrich_users_with_universal_data(&mut conn, vec![address.to_string()])
-                .await?;
-            let user = enriched.get(address).cloned().unwrap_or_else(|| {
-                UniversalUserResult {
-                    wallet_address: address.to_string(),
-                    username: None,
-                    fullname: None,
-                    profile_photo: None,
-                    social_proof_token: None,
-                    selected_badge: None,
-                }
-            });
-            Ok(ProfileOrWallet::Profile(user))
+        Ok(profile) => {
+            let enriched = enrich_users_with_universal_data(
+                &mut conn,
+                vec![address.to_string()],
+            )
+            .await?;
+            let mut response = ProfileByAddressResponse::from(profile);
+            if let Some(e) = enriched.get(address) {
+                response = response.with_enrichment(e);
+            }
+            Ok(response)
         }
         Err(diesel::result::Error::NotFound) => {
             let wallet_result = wallet_social_graph::table
@@ -125,26 +112,18 @@ pub(crate) async fn get_profile_or_wallet_by_address(
                 )
                 .await;
 
-            match wallet_result {
-                Ok((fc, fg, bc, created_at, updated_at)) => Ok(ProfileOrWallet::WalletOnly(
-                    WalletOnlyProfile::new(
-                        address.to_string(),
-                        fc,
-                        fg,
-                        bc,
-                        Some(created_at),
-                        Some(updated_at),
-                    ),
-                )),
-                Err(_) => Ok(ProfileOrWallet::WalletOnly(WalletOnlyProfile::new(
+            let wallet_only = match wallet_result {
+                Ok((fc, fg, bc, created_at, updated_at)) => WalletOnlyProfile::new(
                     address.to_string(),
-                    0,
-                    0,
-                    0,
-                    None,
-                    None,
-                ))),
-            }
+                    fc,
+                    fg,
+                    bc,
+                    Some(created_at),
+                    Some(updated_at),
+                ),
+                Err(_) => WalletOnlyProfile::new(address.to_string(), 0, 0, 0, None, None),
+            };
+            Ok(ProfileByAddressResponse::from(wallet_only))
         }
         Err(e) => Err(e.into()),
     }

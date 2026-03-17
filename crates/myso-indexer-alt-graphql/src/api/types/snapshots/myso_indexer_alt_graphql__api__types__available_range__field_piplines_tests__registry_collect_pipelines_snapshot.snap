@@ -1232,6 +1232,183 @@ PageInfo.endCursor
 PerEpochConfig.object
   => {}
 
+Platform.id
+  => {}
+
+Platform.platformId
+  => {}
+
+Platform.name
+  => {}
+
+Platform.tagline
+  => {}
+
+Platform.description
+  => {}
+
+Platform.logo
+  => {}
+
+Platform.developerAddress
+  => {}
+
+Platform.isApproved
+  => {}
+
+Platform.primaryCategory
+  => {}
+
+Platform.secondaryCategory
+  => {}
+
+Post.id
+  => {}
+
+Post.postId
+  => {}
+
+Post.owner
+  => {}
+
+Post.profileId
+  => {}
+
+Post.content
+  => {}
+
+Post.postType
+  => {}
+
+Post.createdAt
+  => {}
+
+Post.reactionCount
+  => {}
+
+Post.commentCount
+  => {}
+
+Post.repostCount
+  => {}
+
+Post.tipsReceived
+  => {}
+
+Profile.id
+  => {}
+
+Profile.address
+  => {}
+
+Profile.username
+  => {}
+
+Profile.displayName
+  => {}
+
+Profile.bio
+  => {}
+
+Profile.profilePhoto
+  => {}
+
+Profile.coverPhoto
+  => {}
+
+Profile.website
+  => {}
+
+Profile.createdAt
+  => {}
+
+Profile.updatedAt
+  => {}
+
+Profile.profileId
+  => {}
+
+Profile.followersCount
+  => {}
+
+Profile.followingCount
+  => {}
+
+Profile.postCount
+  => {}
+
+Profile.minOfferAmount
+  => {}
+
+Profile.birthdate
+  => {}
+
+Profile.currentLocation
+  => {}
+
+Profile.raisedLocation
+  => {}
+
+Profile.phone
+  => {}
+
+Profile.email
+  => {}
+
+Profile.gender
+  => {}
+
+Profile.politicalView
+  => {}
+
+Profile.religion
+  => {}
+
+Profile.education
+  => {}
+
+Profile.primaryLanguage
+  => {}
+
+Profile.relationshipStatus
+  => {}
+
+Profile.xUsername
+  => {}
+
+Profile.mastodonUsername
+  => {}
+
+Profile.facebookUsername
+  => {}
+
+Profile.redditUsername
+  => {}
+
+Profile.githubUsername
+  => {}
+
+Profile.blockListAddress
+  => {}
+
+Profile.socialProofTokenAddress
+  => {}
+
+Profile.reservationPoolAddress
+  => {}
+
+Profile.socialProofToken
+  => {}
+
+Profile.selectedBadge
+  => {}
+
+Profile.selectedBadgeId
+  => {}
+
+Profile.selectedEcosystemBadgeId
+  => {}
+
 ProgrammableSystemTransaction.inputs
   => {}
 
@@ -1275,6 +1452,27 @@ Pure.bytes
   => {}
 
 Query.node
+  => {}
+
+Query.profile
+  => {}
+
+Query.profiles
+  => {}
+
+Query.post
+  => {}
+
+Query.posts
+  => {}
+
+Query.platform
+  => {}
+
+Query.platforms
+  => {}
+
+Query.socialGraphFollowing
   => {}
 
 Query.address
@@ -1418,6 +1616,24 @@ ReadConsensusStreamEnded.sequenceNumber
 Receiving.object
   => {}
 
+SelectedBadge.badgeId
+  => {}
+
+SelectedBadge.badgeName
+  => {}
+
+SelectedBadge.badgeIconUrl
+  => {}
+
+SelectedBadge.badgeMediaUrl
+  => {}
+
+SelectedBadge.platformId
+  => {}
+
+SelectedBadge.badgeType
+  => {}
+
 ServiceConfig.mutationTimeoutMs
   => {}
 
@@ -1503,6 +1719,30 @@ SimulationResult.outputs
   => {}
 
 SimulationResult.error
+  => {}
+
+SocialProofToken.poolId
+  => {}
+
+SocialProofToken.tokenAddress
+  => {}
+
+SocialProofToken.isActive
+  => {}
+
+SocialProofToken.reservationPoolId
+  => {}
+
+SocialProofToken.reservationPercentage
+  => {}
+
+SocialProofToken.reservationStatus
+  => {}
+
+SocialProofToken.totalReserved
+  => {}
+
+SocialProofToken.requiredThreshold
   => {}
 
 SplitCoinsCommand.coin

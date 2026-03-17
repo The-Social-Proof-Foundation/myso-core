@@ -764,7 +764,7 @@ All pool/marketplace logic in one module.
 
 
 
-<pre><code><b>const</b> <a href="../mydata/pool.md#mydata_pool_EInvalidInput">EInvalidInput</a>: u64 = 2;
+<pre><code><b>const</b> <a href="../mydata/pool.md#mydata_pool_EInvalidInput">EInvalidInput</a>: u64 = 1;
 </code></pre>
 
 
@@ -773,7 +773,7 @@ All pool/marketplace logic in one module.
 
 
 
-<pre><code><b>const</b> <a href="../mydata/pool.md#mydata_pool_EPoolNotFound">EPoolNotFound</a>: u64 = 3;
+<pre><code><b>const</b> <a href="../mydata/pool.md#mydata_pool_EPoolNotFound">EPoolNotFound</a>: u64 = 2;
 </code></pre>
 
 
@@ -782,7 +782,7 @@ All pool/marketplace logic in one module.
 
 
 
-<pre><code><b>const</b> <a href="../mydata/pool.md#mydata_pool_ESubPoolNotFound">ESubPoolNotFound</a>: u64 = 4;
+<pre><code><b>const</b> <a href="../mydata/pool.md#mydata_pool_ESubPoolNotFound">ESubPoolNotFound</a>: u64 = 3;
 </code></pre>
 
 
@@ -791,7 +791,7 @@ All pool/marketplace logic in one module.
 
 
 
-<pre><code><b>const</b> <a href="../mydata/pool.md#mydata_pool_EInvalidProof">EInvalidProof</a>: u64 = 5;
+<pre><code><b>const</b> <a href="../mydata/pool.md#mydata_pool_EInvalidProof">EInvalidProof</a>: u64 = 4;
 </code></pre>
 
 
@@ -800,7 +800,7 @@ All pool/marketplace logic in one module.
 
 
 
-<pre><code><b>const</b> <a href="../mydata/pool.md#mydata_pool_EAlreadyClaimed">EAlreadyClaimed</a>: u64 = 6;
+<pre><code><b>const</b> <a href="../mydata/pool.md#mydata_pool_EAlreadyClaimed">EAlreadyClaimed</a>: u64 = 5;
 </code></pre>
 
 
@@ -809,7 +809,7 @@ All pool/marketplace logic in one module.
 
 
 
-<pre><code><b>const</b> <a href="../mydata/pool.md#mydata_pool_EMerkleRootNotPublished">EMerkleRootNotPublished</a>: u64 = 7;
+<pre><code><b>const</b> <a href="../mydata/pool.md#mydata_pool_EMerkleRootNotPublished">EMerkleRootNotPublished</a>: u64 = 6;
 </code></pre>
 
 
@@ -818,7 +818,7 @@ All pool/marketplace logic in one module.
 
 
 
-<pre><code><b>const</b> <a href="../mydata/pool.md#mydata_pool_EInsufficientPayment">EInsufficientPayment</a>: u64 = 8;
+<pre><code><b>const</b> <a href="../mydata/pool.md#mydata_pool_EInsufficientPayment">EInsufficientPayment</a>: u64 = 7;
 </code></pre>
 
 
@@ -936,7 +936,7 @@ All pool/marketplace logic in one module.
 
 
 
-<pre><code><b>public</b> <b>entry</b> <b>fun</b> <a href="../mydata/pool.md#mydata_pool_create_broad_pool">create_broad_pool</a>(_: &<a href="../mydata/pool.md#mydata_pool_MyDataPoolAdminCap">mydata::pool::MyDataPoolAdminCap</a>, registry: &<b>mut</b> <a href="../mydata/pool.md#mydata_pool_MyDataPoolRegistry">mydata::pool::MyDataPoolRegistry</a>, name: <a href="../std/string.md#std_string_String">std::string::String</a>, description: <a href="../std/string.md#std_string_String">std::string::String</a>, clock: &<a href="../myso/clock.md#myso_clock_Clock">myso::clock::Clock</a>, _ctx: &<b>mut</b> <a href="../myso/tx_context.md#myso_tx_context_TxContext">myso::tx_context::TxContext</a>)
+<pre><code><b>public</b> <b>entry</b> <b>fun</b> <a href="../mydata/pool.md#mydata_pool_create_broad_pool">create_broad_pool</a>(_: &<a href="../mydata/pool.md#mydata_pool_MyDataPoolAdminCap">mydata::pool::MyDataPoolAdminCap</a>, registry: &<b>mut</b> <a href="../mydata/pool.md#mydata_pool_MyDataPoolRegistry">mydata::pool::MyDataPoolRegistry</a>, name: <a href="../std/string.md#std_string_String">std::string::String</a>, description: <a href="../std/string.md#std_string_String">std::string::String</a>, clock: &<a href="../myso/clock.md#myso_clock_Clock">myso::clock::Clock</a>)
 </code></pre>
 
 
@@ -951,7 +951,6 @@ All pool/marketplace logic in one module.
     name: String,
     description: String,
     clock: &Clock,
-    _ctx: &<b>mut</b> TxContext,
 ) {
     <b>let</b> nonce = registry.next_broad_pool_nonce;
     registry.next_broad_pool_nonce = nonce + 1;
@@ -984,7 +983,7 @@ All pool/marketplace logic in one module.
 
 
 
-<pre><code><b>public</b> <b>entry</b> <b>fun</b> <a href="../mydata/pool.md#mydata_pool_create_sub_pool">create_sub_pool</a>(_: &<a href="../mydata/pool.md#mydata_pool_MyDataPoolAdminCap">mydata::pool::MyDataPoolAdminCap</a>, registry: &<b>mut</b> <a href="../mydata/pool.md#mydata_pool_MyDataPoolRegistry">mydata::pool::MyDataPoolRegistry</a>, <a href="../mydata/pool.md#mydata_pool_broad_pool_id">broad_pool_id</a>: <a href="../myso/object.md#myso_object_ID">myso::object::ID</a>, name: <a href="../std/string.md#std_string_String">std::string::String</a>, description: <a href="../std/string.md#std_string_String">std::string::String</a>, schema_metadata: <a href="../std/option.md#std_option_Option">std::option::Option</a>&lt;vector&lt;u8&gt;&gt;, clock: &<a href="../myso/clock.md#myso_clock_Clock">myso::clock::Clock</a>, _ctx: &<b>mut</b> <a href="../myso/tx_context.md#myso_tx_context_TxContext">myso::tx_context::TxContext</a>)
+<pre><code><b>public</b> <b>entry</b> <b>fun</b> <a href="../mydata/pool.md#mydata_pool_create_sub_pool">create_sub_pool</a>(_: &<a href="../mydata/pool.md#mydata_pool_MyDataPoolAdminCap">mydata::pool::MyDataPoolAdminCap</a>, registry: &<b>mut</b> <a href="../mydata/pool.md#mydata_pool_MyDataPoolRegistry">mydata::pool::MyDataPoolRegistry</a>, <a href="../mydata/pool.md#mydata_pool_broad_pool_id">broad_pool_id</a>: <a href="../myso/object.md#myso_object_ID">myso::object::ID</a>, name: <a href="../std/string.md#std_string_String">std::string::String</a>, description: <a href="../std/string.md#std_string_String">std::string::String</a>, schema_metadata: <a href="../std/option.md#std_option_Option">std::option::Option</a>&lt;vector&lt;u8&gt;&gt;, clock: &<a href="../myso/clock.md#myso_clock_Clock">myso::clock::Clock</a>)
 </code></pre>
 
 
@@ -1001,7 +1000,6 @@ All pool/marketplace logic in one module.
     description: String,
     schema_metadata: Option&lt;vector&lt;u8&gt;&gt;,
     clock: &Clock,
-    _ctx: &<b>mut</b> TxContext,
 ) {
     <b>assert</b>!(table::contains(&registry.broad_pools, <a href="../mydata/pool.md#mydata_pool_broad_pool_id">broad_pool_id</a>), <a href="../mydata/pool.md#mydata_pool_EPoolNotFound">EPoolNotFound</a>);
     <b>let</b> nonce = registry.next_sub_pool_nonce;
@@ -1092,7 +1090,7 @@ All pool/marketplace logic in one module.
 
 
 
-<pre><code><b>public</b> <b>entry</b> <b>fun</b> <a href="../mydata/pool.md#mydata_pool_remove_mydata_from_sub_pool">remove_mydata_from_sub_pool</a>(registry: &<b>mut</b> <a href="../mydata/pool.md#mydata_pool_MyDataPoolRegistry">mydata::pool::MyDataPoolRegistry</a>, ip_id: <b>address</b>, <a href="../mydata/pool.md#mydata_pool_sub_pool_id">sub_pool_id</a>: <a href="../myso/object.md#myso_object_ID">myso::object::ID</a>, _clock: &<a href="../myso/clock.md#myso_clock_Clock">myso::clock::Clock</a>)
+<pre><code><b>public</b> <b>entry</b> <b>fun</b> <a href="../mydata/pool.md#mydata_pool_remove_mydata_from_sub_pool">remove_mydata_from_sub_pool</a>(registry: &<b>mut</b> <a href="../mydata/pool.md#mydata_pool_MyDataPoolRegistry">mydata::pool::MyDataPoolRegistry</a>, ip_id: <b>address</b>, <a href="../mydata/pool.md#mydata_pool_sub_pool_id">sub_pool_id</a>: <a href="../myso/object.md#myso_object_ID">myso::object::ID</a>)
 </code></pre>
 
 
@@ -1105,7 +1103,6 @@ All pool/marketplace logic in one module.
     registry: &<b>mut</b> <a href="../mydata/pool.md#mydata_pool_MyDataPoolRegistry">MyDataPoolRegistry</a>,
     ip_id: <b>address</b>,
     <a href="../mydata/pool.md#mydata_pool_sub_pool_id">sub_pool_id</a>: ID,
-    _clock: &Clock,
 ) {
     <b>assert</b>!(table::contains(&registry.mydata_to_sub_pools, ip_id), <a href="../mydata/pool.md#mydata_pool_EInvalidInput">EInvalidInput</a>);
     <b>let</b> sub_ids = table::borrow_mut(&<b>mut</b> registry.mydata_to_sub_pools, ip_id);

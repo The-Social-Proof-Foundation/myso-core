@@ -9,5 +9,8 @@ pub mod profile;
 pub mod social_graph;
 
 pub use pg_reader::SocialPgReader;
-pub use post::PostRow;
 pub use platform::PlatformRow;
+pub use post::PostRow;
+pub use profile::{
+    ProfileByAddressResponse, ReservationStatus, SelectedBadgeInfo, SocialProofTokenInfo,
+};

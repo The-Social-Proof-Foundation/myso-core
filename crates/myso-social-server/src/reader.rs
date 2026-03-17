@@ -78,7 +78,7 @@ impl Reader {
     pub async fn get_profile_or_wallet_by_address(
         &self,
         address: &str,
-    ) -> Result<profile::ProfileOrWallet, crate::error::SocialError> {
+    ) -> Result<ProfileByAddressResponse, crate::error::SocialError> {
         profile::get_profile_or_wallet_by_address(&self.db, address).await
     }
 
