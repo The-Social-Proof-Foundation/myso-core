@@ -2,6 +2,8 @@
 // SPDX-License-Identifier: Apache-2.0
 
 use diesel::prelude::*;
+use diesel::QueryableByName;
+use diesel::sql_types::{BigInt, Bool, Nullable, SmallInt, Text};
 use serde::{Deserialize, Serialize};
 
 use crate::schema::{
@@ -17,6 +19,84 @@ pub const DISPUTE_STATUS_RESOLVED_UPHELD: i16 = 2;
 pub const DISPUTE_STATUS_RESOLVED_OVERTURNED: i16 = 3;
 pub const VOTE_UPHOLD: i16 = 1;
 pub const VOTE_OVERTURN: i16 = 2;
+
+/// Query result for POC analysis (latest per post).
+#[derive(Debug, Clone, QueryableByName, Serialize, Deserialize)]
+pub struct PocAnalysisResultRow {
+    #[diesel(sql_type = Text)]
+    pub post_id: String,
+    #[diesel(sql_type = Bool)]
+    pub similarity_detected: bool,
+    #[diesel(sql_type = BigInt)]
+    pub highest_similarity_score: i64,
+    #[diesel(sql_type = SmallInt)]
+    pub media_type: i16,
+    #[diesel(sql_type = Text)]
+    pub oracle_address: String,
+    #[diesel(sql_type = BigInt)]
+    pub analysis_timestamp: i64,
+}
+
+/// Query result for POC badge (non-revoked badges for a post).
+#[derive(Debug, Clone, QueryableByName, Serialize, Deserialize)]
+pub struct PocBadgeRow {
+    #[diesel(sql_type = Text)]
+    pub badge_id: String,
+    #[diesel(sql_type = Text)]
+    pub post_id: String,
+    #[diesel(sql_type = SmallInt)]
+    pub media_type: i16,
+    #[diesel(sql_type = Text)]
+    pub issued_by: String,
+    #[diesel(sql_type = BigInt)]
+    pub issued_at: i64,
+    #[diesel(sql_type = Bool)]
+    pub revoked: bool,
+}
+
+/// Query result for POC dispute.
+#[derive(Debug, Clone, QueryableByName, Serialize, Deserialize)]
+pub struct PocDisputeRow {
+    #[diesel(sql_type = Text)]
+    pub dispute_id: String,
+    #[diesel(sql_type = Text)]
+    pub post_id: String,
+    #[diesel(sql_type = Text)]
+    pub disputer: String,
+    #[diesel(sql_type = SmallInt)]
+    pub dispute_type: i16,
+    #[diesel(sql_type = Text)]
+    pub evidence: String,
+    #[diesel(sql_type = SmallInt)]
+    pub status: i16,
+    #[diesel(sql_type = Nullable<SmallInt>)]
+    pub resolution: Option<i16>,
+    #[diesel(sql_type = BigInt)]
+    pub stake_amount: i64,
+    #[diesel(sql_type = BigInt)]
+    pub submitted_at: i64,
+    #[diesel(sql_type = Nullable<BigInt>)]
+    pub resolved_at: Option<i64>,
+}
+
+/// Query result for latest POC configuration.
+#[derive(Debug, Clone, QueryableByName, Serialize, Deserialize)]
+pub struct PocConfigRow {
+    #[diesel(sql_type = BigInt)]
+    pub image_threshold: i64,
+    #[diesel(sql_type = BigInt)]
+    pub video_threshold: i64,
+    #[diesel(sql_type = BigInt)]
+    pub audio_threshold: i64,
+    #[diesel(sql_type = BigInt)]
+    pub revenue_redirect_percentage: i64,
+    #[diesel(sql_type = BigInt)]
+    pub dispute_cost: i64,
+    #[diesel(sql_type = Nullable<Text>)]
+    pub oracle_address: Option<String>,
+    #[diesel(sql_type = BigInt)]
+    pub updated_at: i64,
+}
 
 #[derive(Debug, Clone, Insertable, Serialize, Deserialize)]
 #[diesel(table_name = poc_badges)]

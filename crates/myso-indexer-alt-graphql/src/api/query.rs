@@ -447,7 +447,7 @@ impl Query {
         profile_address: Option<MySoAddress>,
         pool_id: Option<async_graphql::ID>,
         limit: Option<u64>,
-    ) -> Option<Result<Vec<SptPriceHistory>, RpcError>> {
+    ) -> Option<Result<Vec<SptPriceHistory>, RpcError<std::io::Error>>> {
         let reader_opt = ctx
             .data_opt::<std::sync::Arc<Option<myso_indexer_alt_social_reader::SocialPgReader>>>()?;
         let reader = reader_opt.as_ref().as_ref()?;
@@ -461,8 +461,9 @@ impl Query {
                 .ok()
                 .flatten()
         } else {
-            return Some(Err(bad_user_input(anyhow!(
-                "Either profileAddress or poolId is required"
+            return Some(Err(bad_user_input(std::io::Error::new(
+                std::io::ErrorKind::InvalidInput,
+                "Either profileAddress or poolId is required",
             ))));
         };
 

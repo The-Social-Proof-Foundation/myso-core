@@ -4,6 +4,7 @@
 mod metrics;
 pub mod pg_reader;
 pub mod platform;
+pub mod poc;
 pub mod post;
 pub mod profile;
 pub mod spt;
@@ -26,4 +27,7 @@ pub use social_graph::{BlockedPlatformRow, BlockedProfileRow, ProfileSummaryRow}
 pub use vesting::{
     VestingLeaderboardEntry, VestingLeaderboardResponse, VestingWalletRow,
     VestingWalletWithStatus,
+};
+pub use myso_indexer_alt_social_schema::models::{
+    PocAnalysisResultRow, PocBadgeRow, PocConfigRow, PocDisputeRow,
 };

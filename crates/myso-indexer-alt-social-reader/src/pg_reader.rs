@@ -24,6 +24,10 @@ use crate::social_graph::{
     check_following, check_platform_blocked, check_profile_blocked, get_blocked_platforms,
     get_blocked_profiles, get_followers, get_following,
 };
+use crate::poc::{
+    get_poc_analysis_for_post, get_poc_badges_for_post, get_poc_configuration,
+    get_poc_disputes_for_post,
+};
 use crate::spt::{
     get_spt_holdings_by_holder, get_spt_pool, get_spt_pool_id_for_profile, get_spt_price_history,
     get_spt_transactions,
@@ -392,5 +396,44 @@ impl SocialPgReader {
     ) -> anyhow::Result<Vec<crate::SptTransaction>> {
         let mut conn = self.connect().await?;
         get_spt_transactions(&mut conn, pool_id, limit, offset, &self.metrics).await
+    }
+
+    /// Get latest POC analysis for a post.
+    pub async fn get_poc_analysis_for_post(
+        &self,
+        post_id: &str,
+    ) -> anyhow::Result<Option<crate::PocAnalysisResultRow>> {
+        let mut conn = self.connect().await?;
+        get_poc_analysis_for_post(&mut conn, post_id, &self.metrics).await
+    }
+
+    /// Get POC badges for a post (non-revoked only).
+    pub async fn get_poc_badges_for_post(
+        &self,
+        post_id: &str,
+        limit: i64,
+        offset: i64,
+    ) -> anyhow::Result<Vec<crate::PocBadgeRow>> {
+        let mut conn = self.connect().await?;
+        get_poc_badges_for_post(&mut conn, post_id, limit, offset, &self.metrics).await
+    }
+
+    /// Get POC disputes for a post.
+    pub async fn get_poc_disputes_for_post(
+        &self,
+        post_id: &str,
+        limit: i64,
+        offset: i64,
+    ) -> anyhow::Result<Vec<crate::PocDisputeRow>> {
+        let mut conn = self.connect().await?;
+        get_poc_disputes_for_post(&mut conn, post_id, limit, offset, &self.metrics).await
+    }
+
+    /// Get latest POC configuration.
+    pub async fn get_poc_configuration(
+        &self,
+    ) -> anyhow::Result<Option<crate::PocConfigRow>> {
+        let mut conn = self.connect().await?;
+        get_poc_configuration(&mut conn, &self.metrics).await
     }
 }
