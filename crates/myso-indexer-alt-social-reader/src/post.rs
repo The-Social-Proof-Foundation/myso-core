@@ -7,6 +7,7 @@ use diesel::sql_types::{BigInt, Nullable, Text};
 use diesel_async::RunQueryDsl;
 use serde_json::Value as JsonValue;
 
+pub use myso_indexer_alt_social_schema::models::{CommentRow, ReactionRow, RepostRow, TipRow};
 use myso_pg_db::Connection;
 
 use crate::metrics::DbReaderMetrics;
@@ -46,43 +47,6 @@ pub struct PostRow {
 }
 
 #[derive(Debug, Clone)]
-pub struct CommentRow {
-    pub comment_id: String,
-    pub post_id: String,
-    pub parent_comment_id: Option<String>,
-    pub owner: String,
-    pub profile_id: String,
-    pub content: String,
-    pub created_at: i64,
-    pub reaction_count: i64,
-    pub comment_count: i64,
-}
-
-#[derive(Debug, Clone)]
-pub struct ReactionRow {
-    pub user_address: String,
-    pub reaction_text: String,
-    pub created_at: i64,
-}
-
-#[derive(Debug, Clone)]
-pub struct RepostRow {
-    pub repost_id: String,
-    pub original_post_id: String,
-    pub owner: String,
-    pub profile_id: String,
-    pub created_at: i64,
-}
-
-#[derive(Debug, Clone)]
-pub struct TipRow {
-    pub tipper: String,
-    pub recipient: String,
-    pub amount: i64,
-    pub created_at: i64,
-}
-
-#[derive(Debug, Clone)]
 pub struct PostTransferRow {
     pub object_id: String,
     pub previous_owner: String,
@@ -114,6 +78,61 @@ pub(crate) async fn get_post_by_id(
     .optional()?;
     metrics.requests_succeeded.inc();
     Ok(result)
+}
+
+pub(crate) async fn get_comment_by_id(
+    conn: &mut Connection<'_>,
+    comment_id: &str,
+    metrics: &DbReaderMetrics,
+) -> anyhow::Result<Option<CommentRow>> {
+    metrics.requests_received.inc();
+    let _guard = metrics.latency.start_timer();
+    #[derive(QueryableByName)]
+    struct Row {
+        #[diesel(sql_type = Text)]
+        comment_id: String,
+        #[diesel(sql_type = Text)]
+        post_id: String,
+        #[diesel(sql_type = Nullable<Text>)]
+        parent_comment_id: Option<String>,
+        #[diesel(sql_type = Text)]
+        owner: String,
+        #[diesel(sql_type = Text)]
+        profile_id: String,
+        #[diesel(sql_type = Text)]
+        content: String,
+        #[diesel(sql_type = BigInt)]
+        created_at: i64,
+        #[diesel(sql_type = Nullable<BigInt>)]
+        reaction_count: Option<i64>,
+        #[diesel(sql_type = Nullable<BigInt>)]
+        comment_count: Option<i64>,
+    }
+    let query = "
+        SELECT comment_id, post_id, parent_comment_id, owner, profile_id, content, created_at,
+               reaction_count, comment_count
+        FROM comments
+        WHERE (comment_id = $1 OR id = $1) AND deleted_at IS NULL
+        ORDER BY created_at DESC
+        LIMIT 1
+    ";
+    let result = diesel::sql_query(query)
+        .bind::<Text, _>(comment_id)
+        .get_result::<Row>(conn)
+        .await
+        .optional()?;
+    metrics.requests_succeeded.inc();
+    Ok(result.map(|r| CommentRow {
+        comment_id: r.comment_id,
+        post_id: r.post_id,
+        parent_comment_id: r.parent_comment_id,
+        owner: r.owner,
+        profile_id: r.profile_id,
+        content: r.content,
+        created_at: r.created_at,
+        reaction_count: r.reaction_count.unwrap_or(0),
+        comment_count: r.comment_count.unwrap_or(0),
+    }))
 }
 
 pub(crate) async fn list_posts(

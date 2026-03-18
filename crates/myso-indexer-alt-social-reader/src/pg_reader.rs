@@ -319,6 +319,15 @@ impl SocialPgReader {
         check_platform_blocked(&mut conn, profile_address, platform_id, &self.metrics).await
     }
 
+    /// Get a comment by ID.
+    pub async fn get_comment_by_id(
+        &self,
+        comment_id: &str,
+    ) -> anyhow::Result<Option<crate::post::CommentRow>> {
+        let mut conn = self.connect().await?;
+        crate::post::get_comment_by_id(&mut conn, comment_id, &self.metrics).await
+    }
+
     /// Get comments for a post.
     pub async fn get_post_comments(
         &self,

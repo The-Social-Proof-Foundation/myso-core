@@ -52,6 +52,10 @@ use crate::api::types::object_filter::ObjectFilter;
 use crate::api::types::object_filter::ObjectFilterValidator as OFValidator;
 use crate::api::types::platform::Platform;
 use crate::api::types::post::Post;
+use crate::api::types::post_comment::CommentSummary;
+use crate::api::types::post_reaction::ReactionSummary;
+use crate::api::types::post_repost::RepostSummary;
+use crate::api::types::post_tip::TipSummary;
 use crate::api::types::promotion::Promotion;
 use crate::api::types::profile::Profile;
 use crate::api::types::governance::{Delegate, GovernanceRegistry, Proposal};
@@ -287,6 +291,90 @@ impl Query {
                 .await
                 .map_err(Into::into)
                 .map(|v| v.into_iter().map(Post::from_db).collect()),
+        )
+    }
+
+    /// Fetch a comment by ID. Returns null if social DB not configured or not found.
+    async fn comment(
+        &self,
+        ctx: &Context<'_>,
+        id: async_graphql::ID,
+    ) -> Option<Result<Option<CommentSummary>, RpcError>> {
+        let reader_opt = ctx
+            .data_opt::<std::sync::Arc<Option<myso_indexer_alt_social_reader::SocialPgReader>>>()?;
+        let reader = reader_opt.as_ref().as_ref()?;
+        Some(
+            reader
+                .get_comment_by_id(id.as_str())
+                .await
+                .map_err(Into::into)
+                .map(|opt| opt.map(CommentSummary::from_row)),
+        )
+    }
+
+    /// Reactions for a post (paginated). Returns empty when social DB not configured.
+    async fn reactions(
+        &self,
+        ctx: &Context<'_>,
+        post_id: async_graphql::ID,
+        limit: Option<u64>,
+        offset: Option<u64>,
+    ) -> Option<Result<Vec<ReactionSummary>, RpcError>> {
+        let reader_opt = ctx
+            .data_opt::<std::sync::Arc<Option<myso_indexer_alt_social_reader::SocialPgReader>>>()?;
+        let reader = reader_opt.as_ref().as_ref()?;
+        let limit = limit.unwrap_or(20).min(100) as i64;
+        let offset = offset.unwrap_or(0) as i64;
+        Some(
+            reader
+                .get_post_reactions(post_id.as_str(), limit, offset)
+                .await
+                .map_err(Into::into)
+                .map(|v| v.into_iter().map(ReactionSummary::from_row).collect()),
+        )
+    }
+
+    /// Reposts of a post (paginated). Returns empty when social DB not configured.
+    async fn reposts(
+        &self,
+        ctx: &Context<'_>,
+        post_id: async_graphql::ID,
+        limit: Option<u64>,
+        offset: Option<u64>,
+    ) -> Option<Result<Vec<RepostSummary>, RpcError>> {
+        let reader_opt = ctx
+            .data_opt::<std::sync::Arc<Option<myso_indexer_alt_social_reader::SocialPgReader>>>()?;
+        let reader = reader_opt.as_ref().as_ref()?;
+        let limit = limit.unwrap_or(20).min(100) as i64;
+        let offset = offset.unwrap_or(0) as i64;
+        Some(
+            reader
+                .get_post_reposts(post_id.as_str(), limit, offset)
+                .await
+                .map_err(Into::into)
+                .map(|v| v.into_iter().map(RepostSummary::from_row).collect()),
+        )
+    }
+
+    /// Tips received for a post (paginated). Returns empty when social DB not configured.
+    async fn tips(
+        &self,
+        ctx: &Context<'_>,
+        post_id: async_graphql::ID,
+        limit: Option<u64>,
+        offset: Option<u64>,
+    ) -> Option<Result<Vec<TipSummary>, RpcError>> {
+        let reader_opt = ctx
+            .data_opt::<std::sync::Arc<Option<myso_indexer_alt_social_reader::SocialPgReader>>>()?;
+        let reader = reader_opt.as_ref().as_ref()?;
+        let limit = limit.unwrap_or(20).min(100) as i64;
+        let offset = offset.unwrap_or(0) as i64;
+        Some(
+            reader
+                .get_post_tips(post_id.as_str(), limit, offset)
+                .await
+                .map_err(Into::into)
+                .map(|v| v.into_iter().map(TipSummary::from_row).collect()),
         )
     }
 

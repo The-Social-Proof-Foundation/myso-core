@@ -224,3 +224,40 @@ pub struct PostTransfer {
     pub time: chrono::DateTime<chrono::Utc>,
     pub transaction_id: String,
 }
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct CommentRow {
+    pub comment_id: String,
+    pub post_id: String,
+    pub parent_comment_id: Option<String>,
+    pub owner: String,
+    pub profile_id: String,
+    pub content: String,
+    pub created_at: i64,
+    pub reaction_count: i64,
+    pub comment_count: i64,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct ReactionRow {
+    pub user_address: String,
+    pub reaction_text: String,
+    pub created_at: i64,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct RepostRow {
+    pub repost_id: String,
+    pub original_post_id: String,
+    pub owner: String,
+    pub profile_id: String,
+    pub created_at: i64,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct TipRow {
+    pub tipper: String,
+    pub recipient: String,
+    pub amount: i64,
+    pub created_at: i64,
+}
