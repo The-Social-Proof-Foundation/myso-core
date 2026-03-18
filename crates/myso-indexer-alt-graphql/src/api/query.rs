@@ -53,7 +53,8 @@ use crate::api::types::object_filter::ObjectFilterValidator as OFValidator;
 use crate::api::types::platform::Platform;
 use crate::api::types::post::Post;
 use crate::api::types::profile::Profile;
-use crate::api::types::spt::{SPTHolding, SPTPool, SptPriceHistory};
+use crate::api::types::spot::{SpotBet, SpotRecord};
+use crate::api::types::spt::{SptHolding, SptPool, SptPriceHistory};
 use crate::api::types::vesting::{
     VestingLeaderboardEntry, VestingLeaderboardResponse, VestingWallet,
 };
@@ -407,7 +408,7 @@ impl Query {
         profile: MySoAddress,
         limit: Option<u64>,
         offset: Option<u64>,
-    ) -> Option<Result<Vec<SPTHolding>, RpcError>> {
+    ) -> Option<Result<Vec<SptHolding>, RpcError>> {
         let reader_opt = ctx
             .data_opt::<std::sync::Arc<Option<myso_indexer_alt_social_reader::SocialPgReader>>>()?;
         let reader = reader_opt.as_ref().as_ref()?;
@@ -418,7 +419,7 @@ impl Query {
                 .get_spt_holdings_by_holder(&profile.to_string(), limit, offset)
                 .await
                 .map_err(Into::into)
-                .map(|v| v.into_iter().map(SPTHolding::from_row).collect()),
+                .map(|v| v.into_iter().map(SptHolding::from_row).collect()),
         )
     }
 
@@ -427,7 +428,7 @@ impl Query {
         &self,
         ctx: &Context<'_>,
         id: async_graphql::ID,
-    ) -> Option<Result<Option<SPTPool>, RpcError>> {
+    ) -> Option<Result<Option<SptPool>, RpcError>> {
         let reader_opt = ctx
             .data_opt::<std::sync::Arc<Option<myso_indexer_alt_social_reader::SocialPgReader>>>()?;
         let reader = reader_opt.as_ref().as_ref()?;
@@ -436,7 +437,7 @@ impl Query {
                 .get_spt_pool(id.as_str())
                 .await
                 .map_err(Into::into)
-                .map(|opt| opt.map(SPTPool::from_row)),
+                .map(|opt| opt.map(SptPool::from_row)),
         )
     }
 
@@ -479,6 +480,46 @@ impl Query {
                 .await
                 .map_err(Into::into)
                 .map(|v| v.into_iter().map(SptPriceHistory::from_row).collect()),
+        )
+    }
+
+    /// Spot bets for a post. Returns empty when social DB not configured.
+    async fn spot_bets(
+        &self,
+        ctx: &Context<'_>,
+        post_id: async_graphql::ID,
+        limit: Option<u64>,
+        offset: Option<u64>,
+    ) -> Option<Result<Vec<SpotBet>, RpcError>> {
+        let reader_opt = ctx
+            .data_opt::<std::sync::Arc<Option<myso_indexer_alt_social_reader::SocialPgReader>>>()?;
+        let reader = reader_opt.as_ref().as_ref()?;
+        let limit = limit.unwrap_or(20).min(100) as i64;
+        let offset = offset.unwrap_or(0) as i64;
+        Some(
+            reader
+                .list_spot_bets(post_id.as_str(), limit, offset)
+                .await
+                .map_err(Into::into)
+                .map(|v| v.into_iter().map(SpotBet::from_row).collect()),
+        )
+    }
+
+    /// Spot record for a post (1:1). Returns null when social DB not configured or no record.
+    async fn spot_record(
+        &self,
+        ctx: &Context<'_>,
+        post_id: async_graphql::ID,
+    ) -> Option<Result<Option<SpotRecord>, RpcError>> {
+        let reader_opt = ctx
+            .data_opt::<std::sync::Arc<Option<myso_indexer_alt_social_reader::SocialPgReader>>>()?;
+        let reader = reader_opt.as_ref().as_ref()?;
+        Some(
+            reader
+                .get_spot_record(post_id.as_str())
+                .await
+                .map_err(Into::into)
+                .map(|opt| opt.map(SpotRecord::from_row)),
         )
     }
 

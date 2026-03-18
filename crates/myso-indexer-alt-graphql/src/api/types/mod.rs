@@ -43,6 +43,7 @@ pub(crate) mod post_tip;
 pub(crate) mod post_transfer;
 pub(crate) mod profile;
 pub(crate) mod spt;
+pub(crate) mod spot;
 pub(crate) mod profile_badge;
 pub(crate) mod profile_summary;
 pub(crate) mod protocol_configs;

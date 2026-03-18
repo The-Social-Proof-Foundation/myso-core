@@ -28,6 +28,7 @@ use crate::poc::{
     get_poc_analysis_for_post, get_poc_badges_for_post, get_poc_configuration,
     get_poc_disputes_for_post,
 };
+use crate::spot::{get_spot_record, list_spot_bets};
 use crate::spt::{
     get_spt_holdings_by_holder, get_spt_pool, get_spt_pool_id_for_profile, get_spt_price_history,
     get_spt_transactions,
@@ -435,5 +436,25 @@ impl SocialPgReader {
     ) -> anyhow::Result<Option<crate::PocConfigRow>> {
         let mut conn = self.connect().await?;
         get_poc_configuration(&mut conn, &self.metrics).await
+    }
+
+    /// Get spot record for a post (1:1).
+    pub async fn get_spot_record(
+        &self,
+        post_id: &str,
+    ) -> anyhow::Result<Option<crate::SpotRecordRow>> {
+        let mut conn = self.connect().await?;
+        get_spot_record(&mut conn, post_id, &self.metrics).await
+    }
+
+    /// List spot bets for a post (paginated).
+    pub async fn list_spot_bets(
+        &self,
+        post_id: &str,
+        limit: i64,
+        offset: i64,
+    ) -> anyhow::Result<Vec<crate::SpotBetRow>> {
+        let mut conn = self.connect().await?;
+        list_spot_bets(&mut conn, post_id, limit, offset, &self.metrics).await
     }
 }

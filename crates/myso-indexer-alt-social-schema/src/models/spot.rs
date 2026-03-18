@@ -3,6 +3,8 @@
 
 use chrono::NaiveDateTime;
 use diesel::prelude::*;
+use diesel::QueryableByName;
+use diesel::sql_types::{BigInt, Int4, Nullable, SmallInt, Text};
 use serde::{Deserialize, Serialize};
 
 use crate::schema::{
@@ -22,6 +24,38 @@ pub const DEFAULT_FEE_SPLIT_PLATFORM_BPS: i32 = 5000;
 pub const DEFAULT_MAX_BETS_PER_RECORD: i32 = 10000;
 pub const MAX_BETTING_OPTIONS: i16 = 10;
 pub const MIN_BETTING_OPTIONS: i16 = 2;
+
+/// Query result for a spot bet (for GraphQL/reader).
+#[derive(Debug, Clone, QueryableByName, Serialize, Deserialize)]
+pub struct SpotBetRow {
+    #[diesel(sql_type = Int4)]
+    pub id: i32,
+    #[diesel(sql_type = Text)]
+    pub post_id: String,
+    #[diesel(sql_type = Text)]
+    pub user_address: String,
+    #[diesel(sql_type = SmallInt)]
+    pub option_id: i16,
+    #[diesel(sql_type = BigInt)]
+    pub escrow_amount: i64,
+    #[diesel(sql_type = BigInt)]
+    pub amm_amount: i64,
+    #[diesel(sql_type = BigInt)]
+    pub timestamp_epoch: i64,
+}
+
+/// Query result for a spot record (for GraphQL/reader).
+#[derive(Debug, Clone, QueryableByName, Serialize, Deserialize)]
+pub struct SpotRecordRow {
+    #[diesel(sql_type = Int4)]
+    pub id: i32,
+    #[diesel(sql_type = Text)]
+    pub post_id: String,
+    #[diesel(sql_type = SmallInt)]
+    pub status: i16,
+    #[diesel(sql_type = Nullable<SmallInt>)]
+    pub outcome: Option<i16>,
+}
 
 #[derive(Debug, Clone, Insertable, Serialize, Deserialize)]
 #[diesel(table_name = spot_records)]

@@ -12,6 +12,7 @@ use crate::api::types::post_reaction::ReactionSummary;
 use crate::api::types::post_repost::RepostSummary;
 use crate::api::types::post_tip::TipSummary;
 use crate::api::types::post_transfer::PostTransferSummary;
+use crate::api::types::spot::{SpotBet, SpotRecord};
 
 #[derive(Clone)]
 pub(crate) struct Post {
@@ -200,5 +201,33 @@ impl Post {
             .await
             .ok()?;
         Some(rows.into_iter().map(PostTransferSummary::from_row).collect())
+    }
+
+    /// Spot bets for this post (paginated).
+    async fn spot_bets(
+        &self,
+        ctx: &Context<'_>,
+        limit: Option<u64>,
+        offset: Option<u64>,
+    ) -> Option<Vec<SpotBet>> {
+        let reader_opt = ctx
+            .data_opt::<std::sync::Arc<Option<myso_indexer_alt_social_reader::SocialPgReader>>>()?;
+        let reader = reader_opt.as_ref().as_ref()?;
+        let limit = limit.unwrap_or(20).min(100) as i64;
+        let offset = offset.unwrap_or(0) as i64;
+        let rows = reader
+            .list_spot_bets(&self.inner.post_id, limit, offset)
+            .await
+            .ok()?;
+        Some(rows.into_iter().map(SpotBet::from_row).collect())
+    }
+
+    /// Spot record for this post (1:1, null if no record).
+    async fn spot_record(&self, ctx: &Context<'_>) -> Option<SpotRecord> {
+        let reader_opt = ctx
+            .data_opt::<std::sync::Arc<Option<myso_indexer_alt_social_reader::SocialPgReader>>>()?;
+        let reader = reader_opt.as_ref().as_ref()?;
+        let row = reader.get_spot_record(&self.inner.post_id).await.ok()?;
+        row.map(SpotRecord::from_row)
     }
 }

@@ -131,6 +131,36 @@ BalanceWithdraw.type
 BalanceWithdraw.withdrawFrom
   => {}
 
+BlockedPlatformSummary.platformId
+  => {}
+
+BlockedPlatformSummary.platformName
+  => {}
+
+BlockedPlatformSummary.blockedBy
+  => {}
+
+BlockedPlatformSummary.createdAt
+  => {}
+
+BlockedProfileSummary.address
+  => {}
+
+BlockedProfileSummary.username
+  => {}
+
+BlockedProfileSummary.displayName
+  => {}
+
+BlockedProfileSummary.profilePhoto
+  => {}
+
+BlockedProfileSummary.firstBlockedAt
+  => {}
+
+BlockedProfileSummary.lastBlockedAt
+  => {}
+
 BridgeCommitteeInitTransaction.bridgeObjectVersion
   => {}
 
@@ -339,6 +369,33 @@ CommandResult.returnValues
   => {}
 
 CommandResult.mutatedReferences
+  => {}
+
+CommentSummary.commentId
+  => {}
+
+CommentSummary.postId
+  => {}
+
+CommentSummary.parentCommentId
+  => {}
+
+CommentSummary.owner
+  => {}
+
+CommentSummary.profileId
+  => {}
+
+CommentSummary.content
+  => {}
+
+CommentSummary.createdAt
+  => {}
+
+CommentSummary.reactionCount
+  => {}
+
+CommentSummary.commentCount
   => {}
 
 ConsensusAddressOwner.startVersion
@@ -1262,6 +1319,78 @@ Platform.primaryCategory
 Platform.secondaryCategory
   => {}
 
+Platform.termsOfService
+  => {}
+
+Platform.privacyPolicy
+  => {}
+
+Platform.links
+  => {}
+
+Platform.platformNames
+  => {}
+
+Platform.statusText
+  => {}
+
+Platform.releaseDate
+  => {}
+
+Platform.shutdownDate
+  => {}
+
+Platform.createdAt
+  => {}
+
+Platform.updatedAt
+  => {}
+
+Platform.treasury
+  => {}
+
+Platform.wantsDaoGovernance
+  => {}
+
+Platform.governanceRegistryId
+  => {}
+
+Platform.delegateCount
+  => {}
+
+Platform.delegateTermEpochs
+  => {}
+
+Platform.maxVotesPerUser
+  => {}
+
+Platform.minOnChainAgeDays
+  => {}
+
+Platform.proposalSubmissionCost
+  => {}
+
+Platform.quadraticBaseCost
+  => {}
+
+Platform.quorumVotes
+  => {}
+
+Platform.votingPeriodEpochs
+  => {}
+
+Platform.blockedProfiles
+  => {}
+
+PlatformBlockedProfileSummary.walletAddress
+  => {}
+
+PlatformBlockedProfileSummary.blockedBy
+  => {}
+
+PlatformBlockedProfileSummary.createdAt
+  => {}
+
 Post.id
   => {}
 
@@ -1293,6 +1422,51 @@ Post.repostCount
   => {}
 
 Post.tipsReceived
+  => {}
+
+Post.mediaUrls
+  => {}
+
+Post.mentions
+  => {}
+
+Post.parentPostId
+  => {}
+
+Post.updatedAt
+  => {}
+
+Post.comments
+  => {}
+
+Post.reactions
+  => {}
+
+Post.reposts
+  => {}
+
+Post.tips
+  => {}
+
+Post.transfers
+  => {}
+
+Post.spotBets
+  => {}
+
+Post.spotRecord
+  => {}
+
+PostTransferSummary.previousOwner
+  => {}
+
+PostTransferSummary.newOwner
+  => {}
+
+PostTransferSummary.transferredAt
+  => {}
+
+PostTransferSummary.transactionId
   => {}
 
 Profile.id
@@ -1409,6 +1583,66 @@ Profile.selectedBadgeId
 Profile.selectedEcosystemBadgeId
   => {}
 
+Profile.badges
+  => {}
+
+Profile.followers
+  => {}
+
+Profile.following
+  => {}
+
+Profile.blockedProfiles
+  => {}
+
+Profile.blockedPlatforms
+  => {}
+
+Profile.vestingWallets
+  => {}
+
+Profile.sptHoldings
+  => {}
+
+ProfileBadge.badgeId
+  => {}
+
+ProfileBadge.badgeName
+  => {}
+
+ProfileBadge.badgeDescription
+  => {}
+
+ProfileBadge.badgeMediaUrl
+  => {}
+
+ProfileBadge.badgeIconUrl
+  => {}
+
+ProfileBadge.platformId
+  => {}
+
+ProfileBadge.assignedBy
+  => {}
+
+ProfileBadge.assignedAt
+  => {}
+
+ProfileBadge.badgeType
+  => {}
+
+ProfileSummary.address
+  => {}
+
+ProfileSummary.username
+  => {}
+
+ProfileSummary.displayName
+  => {}
+
+ProfileSummary.profilePhoto
+  => {}
+
 ProgrammableSystemTransaction.inputs
   => {}
 
@@ -1472,7 +1706,37 @@ Query.platform
 Query.platforms
   => {}
 
+Query.vestingWallet
+  => {}
+
+Query.vestingWallets
+  => {}
+
+Query.vestingLeaderboard
+  => {}
+
+Query.sptHoldings
+  => {}
+
+Query.sptPool
+  => {}
+
+Query.sptPriceHistory
+  => {}
+
+Query.spotBets
+  => {}
+
+Query.spotRecord
+  => {}
+
 Query.socialGraphFollowing
+  => {}
+
+Query.checkProfileBlocked
+  => {}
+
+Query.checkPlatformBlocked
   => {}
 
 Query.address
@@ -1607,6 +1871,15 @@ RandomnessStateUpdateTransaction.randomBytes
 RandomnessStateUpdateTransaction.randomnessObjInitialSharedVersion
   => {}
 
+ReactionSummary.userAddress
+  => {}
+
+ReactionSummary.reactionText
+  => {}
+
+ReactionSummary.createdAt
+  => {}
+
 ReadConsensusStreamEnded.address
   => {}
 
@@ -1614,6 +1887,21 @@ ReadConsensusStreamEnded.sequenceNumber
   => {}
 
 Receiving.object
+  => {}
+
+RepostSummary.repostId
+  => {}
+
+RepostSummary.originalPostId
+  => {}
+
+RepostSummary.owner
+  => {}
+
+RepostSummary.profileId
+  => {}
+
+RepostSummary.createdAt
   => {}
 
 SelectedBadge.badgeId
@@ -1751,6 +2039,96 @@ SplitCoinsCommand.coin
 SplitCoinsCommand.amounts
   => {}
 
+SpotBet.betId
+  => {}
+
+SpotBet.postId
+  => {}
+
+SpotBet.better
+  => {}
+
+SpotBet.amount
+  => {}
+
+SpotBet.outcome
+  => {}
+
+SpotRecord.recordId
+  => {}
+
+SpotRecord.postId
+  => {}
+
+SpotRecord.resolution
+  => {}
+
+SptHolding.address
+  => {}
+
+SptHolding.amount
+  => {}
+
+SptHolding.profile
+  => {}
+
+SptPool.poolId
+  => {}
+
+SptPool.totalSupply
+  => {}
+
+SptPool.price
+  => {}
+
+SptPool.symbol
+  => {}
+
+SptPool.name
+  => {}
+
+SptPool.owner
+  => {}
+
+SptPool.tokenType
+  => {}
+
+SptPool.transactions
+  => {}
+
+SptPool.priceHistory
+  => {}
+
+SptPriceHistory.poolId
+  => {}
+
+SptPriceHistory.price
+  => {}
+
+SptPriceHistory.circulatingSupply
+  => {}
+
+SptPriceHistory.timestamp
+  => {}
+
+SptPriceHistory.transactionId
+  => {}
+
+SptTransaction.type
+  => {}
+
+SptTransaction.amount
+  => {}
+
+SptTransaction.from
+  => {}
+
+SptTransaction.to
+  => {}
+
+SptTransaction.timestamp
+  => {}
+
 StakeSubsidy.balance
   => {}
 
@@ -1779,6 +2157,18 @@ StakeSubsidy.apy
   => {}
 
 StoreExecutionTimeObservationsTransaction._
+  => {}
+
+TipSummary.tipper
+  => {}
+
+TipSummary.recipient
+  => {}
+
+TipSummary.amount
+  => {}
+
+TipSummary.createdAt
   => {}
 
 Transaction.id
@@ -1926,6 +2316,75 @@ ValidatorSet.activeValidators
   => {}
 
 ValidatorSet.contents
+  => {}
+
+VestingLeaderboardEntry.ownerAddress
+  => {}
+
+VestingLeaderboardEntry.totalVested
+  => {}
+
+VestingLeaderboardEntry.totalClaimed
+  => {}
+
+VestingLeaderboardEntry.activeWallets
+  => {}
+
+VestingLeaderboardEntry.completedWallets
+  => {}
+
+VestingLeaderboardEntry.user
+  => {}
+
+VestingLeaderboardResponse.entries
+  => {}
+
+VestingLeaderboardResponse.total
+  => {}
+
+VestingWallet.walletId
+  => {}
+
+VestingWallet.ownerAddress
+  => {}
+
+VestingWallet.totalAmount
+  => {}
+
+VestingWallet.startTime
+  => {}
+
+VestingWallet.duration
+  => {}
+
+VestingWallet.curveFactor
+  => {}
+
+VestingWallet.claimedAmount
+  => {}
+
+VestingWallet.remainingBalance
+  => {}
+
+VestingWallet.claimedPercentage
+  => {}
+
+VestingWallet.vestingProgress
+  => {}
+
+VestingWallet.hasStarted
+  => {}
+
+VestingWallet.hasEnded
+  => {}
+
+VestingWallet.endTime
+  => {}
+
+VestingWallet.createdAt
+  => {}
+
+VestingWallet.transactionId
   => {}
 
 WithdrawMaxAmountU64.amount

@@ -3403,6 +3403,14 @@ type Post implements Node {
 	"""
 	reposts(limit: Int, offset: Int): [RepostSummary!]
 	"""
+	Spot bets for this post (paginated).
+	"""
+	spotBets(limit: Int, offset: Int): [SpotBet!]
+	"""
+	Spot record for this post (1:1, null if no record).
+	"""
+	spotRecord: SpotRecord
+	"""
 	Tips received for this post (paginated).
 	"""
 	tips(limit: Int, offset: Int): [TipSummary!]
@@ -3584,6 +3592,10 @@ type Profile implements Node {
 	Social proof token address.
 	"""
 	socialProofTokenAddress: String
+	"""
+	SPT holdings for this profile (paginated).
+	"""
+	sptHoldings(limit: Int, offset: Int): [SptHolding!]
 	"""
 	When the profile was last updated (ISO 8601).
 	"""
@@ -3977,6 +3989,26 @@ type Query {
 	"""
 	socialGraphFollowing(follower: MySoAddress!, following: MySoAddress!): Boolean
 	"""
+	Spot bets for a post. Returns empty when social DB not configured.
+	"""
+	spotBets(postId: ID!, limit: Int, offset: Int): [SpotBet!]
+	"""
+	Spot record for a post (1:1). Returns null when social DB not configured or no record.
+	"""
+	spotRecord(postId: ID!): SpotRecord
+	"""
+	SPT holdings for a profile (holder address). Returns empty when social DB not configured.
+	"""
+	sptHoldings(profile: MySoAddress!, limit: Int, offset: Int): [SptHolding!]
+	"""
+	SPT pool by ID. Returns null if social DB not configured or not found.
+	"""
+	sptPool(id: ID!): SptPool
+	"""
+	SPT price history. Provide profileAddress or poolId (at least one required). Returns empty when social DB not configured.
+	"""
+	sptPriceHistory(profileAddress: MySoAddress, poolId: ID, limit: Int): [SptPriceHistory!]
+	"""
 	Fetch a transaction by its digest.
 	
 	Returns `null` if the transaction does not exist in the store, either because it never existed or because it was pruned.
@@ -4323,6 +4355,144 @@ type SplitCoinsCommand {
 	The coin to split.
 	"""
 	coin: TransactionArgument
+}
+
+type SpotBet {
+	"""
+	Total amount staked (escrow + AMM).
+	"""
+	amount: Int!
+	"""
+	Unique bet identifier.
+	"""
+	betId: String!
+	"""
+	Address of the bettor.
+	"""
+	better: MySoAddress!
+	"""
+	Option ID the bettor chose (outcome bet on).
+	"""
+	outcome: Int!
+	"""
+	Post ID this bet is for.
+	"""
+	postId: String!
+}
+
+type SpotRecord {
+	"""
+	Post ID this record is for.
+	"""
+	postId: String!
+	"""
+	Unique record identifier.
+	"""
+	recordId: String!
+	"""
+	Resolved outcome (when resolved).
+	"""
+	resolution: Int
+}
+
+type SptHolding {
+	"""
+	Holder wallet address.
+	"""
+	address: MySoAddress!
+	"""
+	Token balance held.
+	"""
+	amount: Int!
+	"""
+	Profile whose token this holding represents.
+	"""
+	profile: ProfileSummary!
+}
+
+type SptPool {
+	"""
+	Token name.
+	"""
+	name: String!
+	"""
+	Pool owner address.
+	"""
+	owner: MySoAddress!
+	"""
+	Pool ID.
+	"""
+	poolId: String!
+	"""
+	Current price (smallest units).
+	"""
+	price: Int!
+	"""
+	Price history for this pool.
+	"""
+	priceHistory(limit: Int, offset: Int): [SptPriceHistory!]
+	"""
+	Token symbol.
+	"""
+	symbol: String!
+	"""
+	Token type (1=profile, 2=post).
+	"""
+	tokenType: Int!
+	"""
+	Total circulating supply.
+	"""
+	totalSupply: Int!
+	"""
+	Recent transactions for this pool.
+	"""
+	transactions(limit: Int, offset: Int): [SptTransaction!]
+}
+
+type SptPriceHistory {
+	"""
+	Circulating supply at this point.
+	"""
+	circulatingSupply: Int!
+	"""
+	Pool ID.
+	"""
+	poolId: String!
+	"""
+	Price at this point.
+	"""
+	price: Int!
+	"""
+	Timestamp (ISO 8601).
+	"""
+	timestamp: String!
+	"""
+	Transaction ID.
+	"""
+	transactionId: String!
+}
+
+type SptTransaction {
+	"""
+	Token amount.
+	"""
+	amount: Int!
+	"""
+	Sender address.
+	"""
+	from: MySoAddress!
+	"""
+	Transaction timestamp (ISO 8601).
+	"""
+	timestamp: String!
+	"""
+	Counterparty (pool ID).
+	"""
+	to: String
+	"""
+	Transaction type (BUY or SELL).
+	"""
+	type: String!
 }
 
 """

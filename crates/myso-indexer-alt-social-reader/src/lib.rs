@@ -7,6 +7,7 @@ pub mod platform;
 pub mod poc;
 pub mod post;
 pub mod profile;
+pub mod spot;
 pub mod spt;
 pub mod social_graph;
 pub mod vesting;
@@ -31,3 +32,4 @@ pub use vesting::{
 pub use myso_indexer_alt_social_schema::models::{
     PocAnalysisResultRow, PocBadgeRow, PocConfigRow, PocDisputeRow,
 };
+pub use myso_indexer_alt_social_schema::models::{SpotBetRow, SpotRecordRow};

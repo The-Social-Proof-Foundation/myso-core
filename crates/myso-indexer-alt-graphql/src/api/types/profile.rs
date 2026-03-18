@@ -16,7 +16,7 @@ use crate::api::scalars::myso_address::MySoAddress;
 use crate::api::types::blocked::{BlockedPlatformSummary, BlockedProfileSummary};
 use crate::api::types::profile_badge::ProfileBadge;
 use crate::api::types::profile_summary::ProfileSummary;
-use crate::api::types::spt::SPTHolding;
+use crate::api::types::spt::SptHolding;
 use crate::api::types::vesting::VestingWallet;
 
 fn to_iso8601_utc(dt: chrono::NaiveDateTime) -> String {
@@ -405,7 +405,7 @@ impl Profile {
         ctx: &Context<'_>,
         limit: Option<u64>,
         offset: Option<u64>,
-    ) -> Option<Vec<SPTHolding>> {
+    ) -> Option<Vec<SptHolding>> {
         let reader_opt = ctx
             .data_opt::<std::sync::Arc<Option<myso_indexer_alt_social_reader::SocialPgReader>>>()?;
         let reader = reader_opt.as_ref().as_ref()?;
@@ -415,7 +415,7 @@ impl Profile {
             .get_spt_holdings_by_holder(&self.inner.owner_address, limit, offset)
             .await
             .ok()?;
-        Some(rows.into_iter().map(SPTHolding::from_row).collect())
+        Some(rows.into_iter().map(SptHolding::from_row).collect())
     }
 }
 

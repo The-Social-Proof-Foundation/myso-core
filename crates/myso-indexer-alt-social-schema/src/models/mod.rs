@@ -93,8 +93,8 @@ pub use spot::{
     DEFAULT_CONFIDENCE_THRESHOLD_BPS, DEFAULT_FEE_BPS, DEFAULT_FEE_SPLIT_PLATFORM_BPS,
     DEFAULT_MAX_BETS_PER_RECORD, MAX_BETTING_OPTIONS, MIN_BETTING_OPTIONS, NewSpotBet,
     NewSpotBetWithdrawal, NewSpotConfig, NewSpotEventLog, NewSpotPayout, NewSpotRecord,
-    NewSpotRefund, NewSpotResolution, OUTCOME_DRAW, OUTCOME_UNAPPLICABLE, STATUS_DAO_REQUIRED,
-    STATUS_OPEN, STATUS_REFUNDABLE, STATUS_RESOLVED,
+    NewSpotRefund, NewSpotResolution, OUTCOME_DRAW, OUTCOME_UNAPPLICABLE, SpotBetRow,
+    SpotRecordRow, STATUS_DAO_REQUIRED, STATUS_OPEN, STATUS_REFUNDABLE, STATUS_RESOLVED,
 };
 pub use revenue::{
     calculate_growth_rate, calculate_percentage, format_myso_amount, myso_from_blockchain_units,

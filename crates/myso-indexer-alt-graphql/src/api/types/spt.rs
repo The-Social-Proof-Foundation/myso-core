@@ -17,18 +17,18 @@ fn to_iso8601_utc(dt: chrono::DateTime<chrono::Utc>) -> String {
 }
 
 #[derive(Clone)]
-pub(crate) struct SPTHolding {
+pub(crate) struct SptHolding {
     inner: SptHoldingRow,
 }
 
-impl SPTHolding {
+impl SptHolding {
     pub(crate) fn from_row(inner: SptHoldingRow) -> Self {
         Self { inner }
     }
 }
 
 #[Object]
-impl SPTHolding {
+impl SptHolding {
     /// Holder wallet address.
     async fn address(&self) -> MySoAddress {
         MySoAddress::from_str(&self.inner.holder_address)
@@ -52,18 +52,18 @@ impl SPTHolding {
 }
 
 #[derive(Clone)]
-pub(crate) struct SPTPool {
+pub(crate) struct SptPool {
     inner: SptPoolRow,
 }
 
-impl SPTPool {
+impl SptPool {
     pub(crate) fn from_row(inner: SptPoolRow) -> Self {
         Self { inner }
     }
 }
 
 #[Object]
-impl SPTPool {
+impl SptPool {
     /// Pool ID.
     async fn pool_id(&self) -> &str {
         &self.inner.pool_id
@@ -106,7 +106,7 @@ impl SPTPool {
         ctx: &Context<'_>,
         limit: Option<u64>,
         offset: Option<u64>,
-    ) -> Option<Vec<SPTTransaction>> {
+    ) -> Option<Vec<SptTransaction>> {
         let reader_opt = ctx
             .data_opt::<std::sync::Arc<Option<myso_indexer_alt_social_reader::SocialPgReader>>>()?;
         let reader = reader_opt.as_ref().as_ref()?;
@@ -116,7 +116,7 @@ impl SPTPool {
             .get_spt_transactions(&self.inner.pool_id, limit, offset)
             .await
             .ok()?;
-        Some(rows.into_iter().map(SPTTransaction::from_row).collect())
+        Some(rows.into_iter().map(SptTransaction::from_row).collect())
     }
 
     /// Price history for this pool.
@@ -140,18 +140,18 @@ impl SPTPool {
 }
 
 #[derive(Clone)]
-pub(crate) struct SPTTransaction {
+pub(crate) struct SptTransaction {
     inner: SptTransactionRow,
 }
 
-impl SPTTransaction {
+impl SptTransaction {
     pub(crate) fn from_row(inner: SptTransactionRow) -> Self {
         Self { inner }
     }
 }
 
 #[Object]
-impl SPTTransaction {
+impl SptTransaction {
     /// Transaction type (BUY or SELL).
     async fn r#type(&self) -> &str {
         &self.inner.transaction_type
