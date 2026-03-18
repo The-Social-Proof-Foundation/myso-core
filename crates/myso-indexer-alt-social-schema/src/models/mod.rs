@@ -29,7 +29,8 @@ pub use governance::{
 pub use insurance::{
     BPS_DENOM, DAY_MS, DEFAULT_FEE_BPS as INSURANCE_DEFAULT_FEE_BPS, DEFAULT_MAX_COVERAGE_BPS,
     DEFAULT_MAX_DURATION_MS,
-    DEFAULT_MIN_COVERAGE_BPS, InsuranceConfig, InsurancePolicy, InsuranceVault, NewInsuranceConfig,
+    DEFAULT_MIN_COVERAGE_BPS, InsuranceConfig, InsurancePolicy, InsurancePolicyRow, InsuranceVault,
+    InsuranceVaultRow, NewInsuranceConfig,
     NewInsuranceEventLog, NewInsuranceMarketExposure, NewInsurancePolicy, NewInsurancePolicyEvent,
     NewInsuranceUserExposure, NewInsuranceVault, NewInsuranceVaultTransaction,
     STATUS_ACTIVE, STATUS_CANCELLED, STATUS_CLAIMED, STATUS_EXPIRED, UpdateInsurancePolicy,

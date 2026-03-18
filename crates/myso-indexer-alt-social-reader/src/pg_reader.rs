@@ -28,6 +28,9 @@ use crate::poc::{
     get_poc_analysis_for_post, get_poc_badges_for_post, get_poc_configuration,
     get_poc_disputes_for_post,
 };
+use crate::insurance::{
+    get_insurance_policy, list_insurance_policies_by_insured, list_insurance_vaults,
+};
 use crate::mydata::{
     get_mydata_record, list_mydata_purchases_by_buyer, list_mydata_records_by_owner,
 };
@@ -499,5 +502,35 @@ impl SocialPgReader {
     ) -> anyhow::Result<Vec<crate::MyDataPurchaseRow>> {
         let mut conn = self.connect().await?;
         list_mydata_purchases_by_buyer(&mut conn, buyer, limit, offset, &self.metrics).await
+    }
+
+    /// Get insurance policy by ID.
+    pub async fn get_insurance_policy(
+        &self,
+        policy_id: &str,
+    ) -> anyhow::Result<Option<crate::InsurancePolicyRow>> {
+        let mut conn = self.connect().await?;
+        get_insurance_policy(&mut conn, policy_id, &self.metrics).await
+    }
+
+    /// List insurance policies by insured address (paginated).
+    pub async fn list_insurance_policies_by_insured(
+        &self,
+        insured: &str,
+        limit: i64,
+        offset: i64,
+    ) -> anyhow::Result<Vec<crate::InsurancePolicyRow>> {
+        let mut conn = self.connect().await?;
+        list_insurance_policies_by_insured(&mut conn, insured, limit, offset, &self.metrics).await
+    }
+
+    /// List insurance vaults (paginated).
+    pub async fn list_insurance_vaults(
+        &self,
+        limit: i64,
+        offset: i64,
+    ) -> anyhow::Result<Vec<crate::InsuranceVaultRow>> {
+        let mut conn = self.connect().await?;
+        list_insurance_vaults(&mut conn, limit, offset, &self.metrics).await
     }
 }

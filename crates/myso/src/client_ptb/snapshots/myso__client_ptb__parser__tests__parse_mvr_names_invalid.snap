@@ -39,8 +39,8 @@ expression: parsed
     PTBError {
         message: "Invalid MVR package reference",
         span: Span {
-            start: 7,
-            end: 7,
+            start: 8,
+            end: 8,
         },
         help: Some(
             "MVR packages must contain a slash and be in the format '(@<domain>|<domain>.myso)/<package>[/<version>]'",

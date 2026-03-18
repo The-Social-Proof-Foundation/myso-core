@@ -57,6 +57,7 @@ kiosk.yaml
 kiosk_extension.yaml
 linked_table.yaml
 math.yaml
+myso.yaml
 nitro_attestation.yaml
 object.yaml
 object_bag.yaml
@@ -69,7 +70,6 @@ priority_queue.yaml
 protocol_config.yaml
 prover.yaml
 random.yaml
-myso.yaml
 table.yaml
 table_vec.yaml
 token.yaml

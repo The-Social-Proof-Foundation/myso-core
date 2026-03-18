@@ -1,5 +1,6 @@
 ---
 source: crates/myso-indexer-alt-graphql/src/api/types/available_range.rs
+assertion_line: 619
 expression: output
 ---
 AccumulatorRootCreateTransaction._
@@ -792,6 +793,33 @@ Immutable._
   => {}
 
 Input.ix
+  => {}
+
+InsurancePolicy.policyId
+  => {}
+
+InsurancePolicy.marketId
+  => {}
+
+InsurancePolicy.insured
+  => {}
+
+InsurancePolicy.coveredAmount
+  => {}
+
+InsurancePolicy.premiumPaid
+  => {}
+
+InsurancePolicy.status
+  => {}
+
+InsuranceVault.vaultId
+  => {}
+
+InsuranceVault.underwriter
+  => {}
+
+InsuranceVault.capitalBalance
   => {}
 
 Linkage.originalId
@@ -1797,6 +1825,15 @@ Query.mydataRecords
   => {}
 
 Query.mydataPurchases
+  => {}
+
+Query.insurancePolicy
+  => {}
+
+Query.insurancePolicies
+  => {}
+
+Query.insuranceVaults
   => {}
 
 Query.socialGraphFollowing

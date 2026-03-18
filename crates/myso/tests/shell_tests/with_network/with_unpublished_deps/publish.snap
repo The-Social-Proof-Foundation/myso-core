@@ -38,6 +38,6 @@ Caused by:
 
 ----- stderr -----
 INCLUDING DEPENDENCY MoveStdlib
-INCLUDING DEPENDENCYMySo
+INCLUDING DEPENDENCY MySo
 INCLUDING DEPENDENCY UnpublishedNonZeroAddress
 BUILDING examples

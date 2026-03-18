@@ -1,5 +1,6 @@
 ---
 source: crates/myso-indexer-alt-graphql/src/lib.rs
+assertion_line: 493
 expression: sdl
 ---
 """
@@ -1781,6 +1782,48 @@ type Input {
 	The index of the input.
 	"""
 	ix: Int
+}
+
+type InsurancePolicy {
+	"""
+	Covered amount.
+	"""
+	coveredAmount: Int!
+	"""
+	Insured address.
+	"""
+	insured: MySoAddress!
+	"""
+	Market ID this policy covers.
+	"""
+	marketId: String!
+	"""
+	Unique policy identifier.
+	"""
+	policyId: String!
+	"""
+	Premium paid.
+	"""
+	premiumPaid: Int!
+	"""
+	Policy status (1=ACTIVE, 2=CANCELLED, 3=CLAIMED, 4=EXPIRED).
+	"""
+	status: Int!
+}
+
+type InsuranceVault {
+	"""
+	Capital balance.
+	"""
+	capitalBalance: Int!
+	"""
+	Underwriter address.
+	"""
+	underwriter: MySoAddress!
+	"""
+	Unique vault identifier.
+	"""
+	vaultId: String!
 }
 
 
@@ -3911,6 +3954,18 @@ type Query {
 	Paginate events that are emitted in the network, optionally filtered by event filters.
 	"""
 	events(first: Int, after: String, last: Int, before: String, filter: EventFilter): EventConnection
+	"""
+	Insurance policies by insured address. Returns empty when social DB not configured.
+	"""
+	insurancePolicies(insured: MySoAddress!, limit: Int, offset: Int): [InsurancePolicy!]
+	"""
+	Insurance policy by ID. Returns null when social DB not configured or not found.
+	"""
+	insurancePolicy(id: ID!): InsurancePolicy
+	"""
+	Insurance vaults. Returns empty when social DB not configured.
+	"""
+	insuranceVaults(limit: Int, offset: Int): [InsuranceVault!]
 	"""
 	Fetch addresses by their keys.
 	

@@ -3965,7 +3965,7 @@ Distribute creator fees without PoC (for profile reservations)
 ## Function `distribute_reservation_fees_with_post`
 
 Calculate and distribute all reservation fees (for post reservations with PoC)
-Non-platform version: routes platform fees to ecosystem treasury
+Non-platform version: split platform fee 50/50 between creator and treasury; emit platform_fee 0
 
 
 <pre><code><b>public</b>(package) <b>fun</b> <a href="../social_contracts/social_proof_tokens.md#social_contracts_social_proof_tokens_distribute_reservation_fees_with_post">distribute_reservation_fees_with_post</a>(config: &<a href="../social_contracts/social_proof_tokens.md#social_contracts_social_proof_tokens_SocialProofTokensConfig">social_contracts::social_proof_tokens::SocialProofTokensConfig</a>, reservation_pool: &<a href="../social_contracts/social_proof_tokens.md#social_contracts_social_proof_tokens_ReservationPoolObject">social_contracts::social_proof_tokens::ReservationPoolObject</a>, <a href="../social_contracts/post.md#social_contracts_post">post</a>: &<a href="../social_contracts/post.md#social_contracts_post_Post">social_contracts::post::Post</a>, amount: u64, payment: <a href="../myso/coin.md#myso_coin_Coin">myso::coin::Coin</a>&lt;<a href="../myso/myso.md#myso_myso_MYSO">myso::myso::MYSO</a>&gt;, treasury: &<a href="../social_contracts/profile.md#social_contracts_profile_EcosystemTreasury">social_contracts::profile::EcosystemTreasury</a>, ctx: &<b>mut</b> <a href="../myso/tx_context.md#myso_tx_context_TxContext">myso::tx_context::TxContext</a>): (<a href="../myso/coin.md#myso_coin_Coin">myso::coin::Coin</a>&lt;<a href="../myso/myso.md#myso_myso_MYSO">myso::myso::MYSO</a>&gt;, u64, u64, u64, u64)
@@ -3993,25 +3993,20 @@ Non-platform version: routes platform fees to ecosystem treasury
     <b>let</b> creator_fee = <a href="../social_contracts/social_proof_tokens.md#social_contracts_social_proof_tokens_calculate_component_fee_safe">calculate_component_fee_safe</a>(fee_amount, config.reservation_creator_fee_bps, reservation_total_fee_bps);
     <b>let</b> platform_fee = <a href="../social_contracts/social_proof_tokens.md#social_contracts_social_proof_tokens_calculate_component_fee_safe">calculate_component_fee_safe</a>(fee_amount, config.reservation_platform_fee_bps, reservation_total_fee_bps);
     <b>let</b> treasury_fee = fee_amount - creator_fee - platform_fee;
-    // Distribute fees (same pattern <b>as</b> trading fees)
+    <b>let</b> platform_fee_half_to_creator = platform_fee / 2;
+    <b>let</b> platform_fee_half_to_treasury = platform_fee - platform_fee_half_to_creator;
     <b>if</b> (fee_amount &gt; 0) {
-        // Send creator fee with PoC redirection support
-        <b>if</b> (creator_fee &gt; 0) {
-            <a href="../social_contracts/social_proof_tokens.md#social_contracts_social_proof_tokens_distribute_reservation_creator_fee">distribute_reservation_creator_fee</a>(reservation_pool, <a href="../social_contracts/post.md#social_contracts_post">post</a>, creator_fee, &<b>mut</b> payment, ctx);
+        <b>let</b> creator_total = creator_fee + platform_fee_half_to_creator;
+        <b>if</b> (creator_total &gt; 0) {
+            <a href="../social_contracts/social_proof_tokens.md#social_contracts_social_proof_tokens_distribute_reservation_creator_fee">distribute_reservation_creator_fee</a>(reservation_pool, <a href="../social_contracts/post.md#social_contracts_post">post</a>, creator_total, &<b>mut</b> payment, ctx);
         };
-        // Send <a href="../social_contracts/platform.md#social_contracts_platform">platform</a> fee to ecosystem treasury (no <a href="../social_contracts/platform.md#social_contracts_platform">platform</a> involved)
-        <b>if</b> (platform_fee &gt; 0) {
-            <b>let</b> platform_fee_coin = coin::split(&<b>mut</b> payment, platform_fee, ctx);
-            transfer::public_transfer(platform_fee_coin, <a href="../social_contracts/profile.md#social_contracts_profile_get_treasury_address">profile::get_treasury_address</a>(treasury));
-        };
-        // Send treasury fee
-        <b>if</b> (treasury_fee &gt; 0) {
-            <b>let</b> treasury_fee_coin = coin::split(&<b>mut</b> payment, treasury_fee, ctx);
+        <b>let</b> treasury_total = treasury_fee + platform_fee_half_to_treasury;
+        <b>if</b> (treasury_total &gt; 0) {
+            <b>let</b> treasury_fee_coin = coin::split(&<b>mut</b> payment, treasury_total, ctx);
             transfer::public_transfer(treasury_fee_coin, <a href="../social_contracts/profile.md#social_contracts_profile_get_treasury_address">profile::get_treasury_address</a>(treasury));
         };
     };
-    // Return remaining payment and fee amounts
-    (payment, fee_amount, creator_fee, platform_fee, treasury_fee)
+    (payment, fee_amount, creator_fee + platform_fee_half_to_creator, 0, treasury_fee + platform_fee_half_to_treasury)
 }
 </code></pre>
 
@@ -4085,7 +4080,7 @@ Platform version: routes platform fees to platform treasury
 ## Function `distribute_reservation_fees_no_poc`
 
 Calculate and distribute all reservation fees (for profile reservations without PoC)
-Non-platform version: routes platform fees to ecosystem treasury
+Non-platform version: split platform fee 50/50 between creator and treasury; emit platform_fee 0
 
 
 <pre><code><b>public</b>(package) <b>fun</b> <a href="../social_contracts/social_proof_tokens.md#social_contracts_social_proof_tokens_distribute_reservation_fees_no_poc">distribute_reservation_fees_no_poc</a>(config: &<a href="../social_contracts/social_proof_tokens.md#social_contracts_social_proof_tokens_SocialProofTokensConfig">social_contracts::social_proof_tokens::SocialProofTokensConfig</a>, reservation_pool: &<a href="../social_contracts/social_proof_tokens.md#social_contracts_social_proof_tokens_ReservationPoolObject">social_contracts::social_proof_tokens::ReservationPoolObject</a>, amount: u64, payment: <a href="../myso/coin.md#myso_coin_Coin">myso::coin::Coin</a>&lt;<a href="../myso/myso.md#myso_myso_MYSO">myso::myso::MYSO</a>&gt;, treasury: &<a href="../social_contracts/profile.md#social_contracts_profile_EcosystemTreasury">social_contracts::profile::EcosystemTreasury</a>, ctx: &<b>mut</b> <a href="../myso/tx_context.md#myso_tx_context_TxContext">myso::tx_context::TxContext</a>): (<a href="../myso/coin.md#myso_coin_Coin">myso::coin::Coin</a>&lt;<a href="../myso/myso.md#myso_myso_MYSO">myso::myso::MYSO</a>&gt;, u64, u64, u64, u64)
@@ -4112,25 +4107,20 @@ Non-platform version: routes platform fees to ecosystem treasury
     <b>let</b> creator_fee = <a href="../social_contracts/social_proof_tokens.md#social_contracts_social_proof_tokens_calculate_component_fee_safe">calculate_component_fee_safe</a>(fee_amount, config.reservation_creator_fee_bps, reservation_total_fee_bps);
     <b>let</b> platform_fee = <a href="../social_contracts/social_proof_tokens.md#social_contracts_social_proof_tokens_calculate_component_fee_safe">calculate_component_fee_safe</a>(fee_amount, config.reservation_platform_fee_bps, reservation_total_fee_bps);
     <b>let</b> treasury_fee = fee_amount - creator_fee - platform_fee;
-    // Distribute fees (same pattern <b>as</b> trading fees)
+    <b>let</b> platform_fee_half_to_creator = platform_fee / 2;
+    <b>let</b> platform_fee_half_to_treasury = platform_fee - platform_fee_half_to_creator;
     <b>if</b> (fee_amount &gt; 0) {
-        // Send creator fee without PoC redirection
-        <b>if</b> (creator_fee &gt; 0) {
-            <a href="../social_contracts/social_proof_tokens.md#social_contracts_social_proof_tokens_distribute_reservation_creator_fee_no_poc">distribute_reservation_creator_fee_no_poc</a>(reservation_pool, creator_fee, &<b>mut</b> payment, ctx);
+        <b>let</b> creator_total = creator_fee + platform_fee_half_to_creator;
+        <b>if</b> (creator_total &gt; 0) {
+            <a href="../social_contracts/social_proof_tokens.md#social_contracts_social_proof_tokens_distribute_reservation_creator_fee_no_poc">distribute_reservation_creator_fee_no_poc</a>(reservation_pool, creator_total, &<b>mut</b> payment, ctx);
         };
-        // Send <a href="../social_contracts/platform.md#social_contracts_platform">platform</a> fee to ecosystem treasury (no <a href="../social_contracts/platform.md#social_contracts_platform">platform</a> involved)
-        <b>if</b> (platform_fee &gt; 0) {
-            <b>let</b> platform_fee_coin = coin::split(&<b>mut</b> payment, platform_fee, ctx);
-            transfer::public_transfer(platform_fee_coin, <a href="../social_contracts/profile.md#social_contracts_profile_get_treasury_address">profile::get_treasury_address</a>(treasury));
-        };
-        // Send treasury fee
-        <b>if</b> (treasury_fee &gt; 0) {
-            <b>let</b> treasury_fee_coin = coin::split(&<b>mut</b> payment, treasury_fee, ctx);
+        <b>let</b> treasury_total = treasury_fee + platform_fee_half_to_treasury;
+        <b>if</b> (treasury_total &gt; 0) {
+            <b>let</b> treasury_fee_coin = coin::split(&<b>mut</b> payment, treasury_total, ctx);
             transfer::public_transfer(treasury_fee_coin, <a href="../social_contracts/profile.md#social_contracts_profile_get_treasury_address">profile::get_treasury_address</a>(treasury));
         };
     };
-    // Return remaining payment and fee amounts
-    (payment, fee_amount, creator_fee, platform_fee, treasury_fee)
+    (payment, fee_amount, creator_fee + platform_fee_half_to_creator, 0, treasury_fee + platform_fee_half_to_treasury)
 }
 </code></pre>
 

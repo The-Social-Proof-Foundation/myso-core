@@ -133,7 +133,7 @@ Returns the taker fee for a user based on the active stake and volume in myso.
 Taker fee is halved if user has enough stake and volume.
 
 
-<pre><code><b>public</b>(package) <b>fun</b> <a href="../orderbook/trade_params.md#orderbook_trade_params_taker_fee_for_user">taker_fee_for_user</a>(self: &<a href="../orderbook/trade_params.md#orderbook_trade_params_TradeParams">orderbook::trade_params::TradeParams</a>, active_stake: u64, volume_in_deep: u128): u64
+<pre><code><b>public</b>(package) <b>fun</b> <a href="../orderbook/trade_params.md#orderbook_trade_params_taker_fee_for_user">taker_fee_for_user</a>(self: &<a href="../orderbook/trade_params.md#orderbook_trade_params_TradeParams">orderbook::trade_params::TradeParams</a>, active_stake: u64, volume_in_myso: u128): u64
 </code></pre>
 
 
@@ -145,11 +145,11 @@ Taker fee is halved if user has enough stake and volume.
 <pre><code><b>public</b>(package) <b>fun</b> <a href="../orderbook/trade_params.md#orderbook_trade_params_taker_fee_for_user">taker_fee_for_user</a>(
     self: &<a href="../orderbook/trade_params.md#orderbook_trade_params_TradeParams">TradeParams</a>,
     active_stake: u64,
-    volume_in_deep: u128,
+    volume_in_myso: u128,
 ): u64 {
     <b>if</b> (
         active_stake &gt;= self.<a href="../orderbook/trade_params.md#orderbook_trade_params_stake_required">stake_required</a> &&
-        volume_in_deep &gt;= (self.<a href="../orderbook/trade_params.md#orderbook_trade_params_stake_required">stake_required</a> <b>as</b> u128)
+        volume_in_myso &gt;= (self.<a href="../orderbook/trade_params.md#orderbook_trade_params_stake_required">stake_required</a> <b>as</b> u128)
     ) {
         self.<a href="../orderbook/trade_params.md#orderbook_trade_params_taker_fee">taker_fee</a> / 2
     } <b>else</b> {

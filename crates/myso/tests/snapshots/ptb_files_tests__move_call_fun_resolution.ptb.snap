@@ -27,9 +27,9 @@ expression: "&String::from_iter(normalized(results.join(\"\\n\").chars()))"
    ·                  ╰── Unbound named address: 'zero_x_zero'
  2 │ --assign a none
    ╰────
-  help: This is most likely because the named address 'zero_x_zero' is not
-        in scope. You can either bind a variable to the address that you
-        want to use or use the address in the command.
+  help: This is most likely because the named address 'zero_x_zero' is not in
+        scope. You can either bind a variable to the address that you want to
+        use or use the address in the command.
 
   × Error when processing PTB
    ╭─[4:13]
@@ -79,10 +79,13 @@ expression: "&String::from_iter(normalized(results.join(\"\\n\").chars()))"
    ╰────
 
   × Error when processing PTB
-    ╭─[9:37]
+    ╭─[9:13]
   8 │ --move-call std::option::is_none<u64> a b
   9 │ --move-call myso::coin::destroy_zero @0x1
-    ·                                     ──┬─
-    ·                                       ╰── Not enough type parameters supplied for Move call
+    ·             ─┬─
+    ·              ╰── Unbound named address: 'myso'
  10 │ --move-call std::option::is_none<u64, bool> a 
     ╰────
+  help: This is most likely because the named address 'myso' is not in scope.
+        You can either bind a variable to the address that you want to use or
+        use the address in the command.

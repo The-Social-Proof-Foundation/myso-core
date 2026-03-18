@@ -1,6 +1,6 @@
 ---
 source: crates/myso/tests/ptb_files_tests.rs
-expression: "results.join(\"\\n\")"
+expression: "&String::from_iter(normalized(results.join(\"\\n\").chars()))"
 ---
  === PREVIEW === 
 ╭─────────────────────────────────────────────────────────────────────────────────────────────────────────╮
@@ -17,21 +17,30 @@ expression: "results.join(\"\\n\")"
 │ make-move-vec │ <myso::string::String> ["1", "2,       3", "", "4                        "]              │
 │ make-move-vec │ <myso::string::String> ["1", "2,       3", "", "4                       \n            "] │
 ╰───────────────┴─────────────────────────────────────────────────────────────────────────────────────────╯
- === BUILT PTB === 
-Input 0: Pure([1, 0])
-Input 1: Pure([2, 0])
-Input 2: Pure([3, 0])
-Input 3: Pure([4, 0])
-Input 4: Pure([1, 0, 0, 0, 0, 0, 0, 0])
-Input 5: Pure([2, 0, 0, 0, 0, 0, 0, 0])
-Input 6: Pure([3, 0, 0, 0, 0, 0, 0, 0])
-Input 7: Pure([4, 0, 0, 0, 0, 0, 0, 0])
-Input 8: Pure([1, 49])
-Input 9: Pure([10, 50, 44, 32, 32, 32, 32, 32, 32, 32, 51])
-Input 10: Pure([0])
-Input 11: Pure([25, 52, 32, 32, 32, 32, 32, 32, 32, 32, 32, 32, 32, 32, 32, 32, 32, 32, 32, 32, 32, 32, 32, 32, 32, 32])
-Input 12: Pure([37, 52, 32, 32, 32, 32, 32, 32, 32, 32, 32, 32, 32, 32, 32, 32, 32, 32, 32, 32, 32, 32, 32, 32, 32, 10, 32, 32, 32, 32, 32, 32, 32, 32, 32, 32, 32, 32])
-Command 0: MakeMoveVec(Someu16,[Input(0),Input(1),Input(2),Input(3)])
-Command 1: MakeMoveVec(Some0x2::string::String,[Input(4),Input(5),Input(6),Input(7)])
-Command 2: MakeMoveVec(Some0x2::string::String,[Input(8),Input(9),Input(10),Input(11)])
-Command 3: MakeMoveVec(Some0x2::string::String,[Input(8),Input(9),Input(10),Input(12)])
+ === BUILDING PTB ERRORS === 
+  × Error when processing PTB
+   ╭─[7:18]
+ 6 │ --make-move-vec <u16> [1, 2, 3,4 ]
+ 7 │ --make-move-vec <myso::string::String> [1,               2,       3,4                        ]
+   ·                  ─────────┬─────────
+   ·                           ╰── Unbound named address: 'myso'
+ 8 │ --make-move-vec <myso::string::String> ['1',               '2,       3','',"4                        "]
+   ╰────
+
+  × Error when processing PTB
+   ╭─[8:18]
+ 7 │ --make-move-vec <myso::string::String> [1,               2,       3,4                        ]
+ 8 │ --make-move-vec <myso::string::String> ['1',               '2,       3','',"4                        "]
+   ·                  ─────────┬─────────
+   ·                           ╰── Unbound named address: 'myso'
+ 9 │ --make-move-vec <myso::string::String> ['1',               '2,       3','',"4                       
+   ╰────
+
+  × Error when processing PTB
+    ╭─[9:18]
+  8 │ --make-move-vec <myso::string::String> ['1',               '2,       3','',"4                        "]
+  9 │ --make-move-vec <myso::string::String> ['1',               '2,       3','',"4                       
+    ·                  ─────────┬─────────
+    ·                           ╰── Unbound named address: 'myso'
+ 10 │             "] 
+    ╰────

@@ -71,38 +71,48 @@ success: false
 exit_code: 1
 ----- stdout -----
 === test-publish a, then test-publish b, then add a module to b & upgrade b ===
+Downloading from https://github.comthe-social-proof-foundation/myso-core.git
+output from `git -c advice.detachedHead=false clone --quiet --sparse --filter=blob:none --no-checkout --depth 1 https://github.comthe-social-proof-foundation/myso-core.git /Users/brandonshaw/.move/git/https___github_com_MystenLabs_myso_git_0676e11409f87c38733863475d0819407b568a9d`
+  │ remote: Repository not found.
+  │ fatal: repository 'https://github.comthe-social-proof-foundation/myso-core.git/' not found
+Error while loading dependency /Users/brandonshaw/.move/git/https___github_com_MystenLabs_myso_git_0676e11409f87c38733863475d0819407b568a9d/crates/myso-framework/packages/myso-framework: Error while fetching `{ git = "https://...abs/myso.git", path = "crates/myso-framework/packages/myso-framework", rev = "0676e1...9d" }`: error while executing git command `Command { std: GIT_CONFIG_GLOBAL="" "git" "-c" "advice.detachedHead=false" "clone" "--quiet" "--sparse" "--filter=blob:none" "--no-checkout" "--depth" "1" "https://github.comthe-social-proof-foundation/myso-core.git" "/Users/brandonshaw/.move/git/https___github_com_MystenLabs_myso_git_0676e11409f87c38733863475d0819407b568a9d", kill_on_drop: false }`:
+ErrorCode(ExitStatus(unix_wait_status(32768)))
 === published a ===
-[published.localnet]
-version = 1
-
+Downloading from https://github.comthe-social-proof-foundation/myso-core.git
+output from `git -c advice.detachedHead=false clone --quiet --sparse --filter=blob:none --no-checkout --depth 1 https://github.comthe-social-proof-foundation/myso-core.git /Users/brandonshaw/.move/git/https___github_com_MystenLabs_myso_git_0676e11409f87c38733863475d0819407b568a9d`
+  │ remote: Repository not found.
+  │ fatal: repository 'https://github.comthe-social-proof-foundation/myso-core.git/' not found
+Error while loading dependency /Users/brandonshaw/.move/git/https___github_com_MystenLabs_myso_git_0676e11409f87c38733863475d0819407b568a9d/crates/myso-framework/packages/myso-framework: Error while fetching `{ git = "https://...abs/myso.git", path = "crates/myso-framework/packages/myso-framework", rev = "0676e1...9d" }`: error while executing git command `Command { std: GIT_CONFIG_GLOBAL="" "git" "-c" "advice.detachedHead=false" "clone" "--quiet" "--sparse" "--filter=blob:none" "--no-checkout" "--depth" "1" "https://github.comthe-social-proof-foundation/myso-core.git" "/Users/brandonshaw/.move/git/https___github_com_MystenLabs_myso_git_0676e11409f87c38733863475d0819407b568a9d", kill_on_drop: false }`:
+ErrorCode(ExitStatus(unix_wait_status(32768)))
 === published b ===
-[published.localnet]
-version = 1
-
+Downloading from https://github.comthe-social-proof-foundation/myso-core.git
+output from `git -c advice.detachedHead=false clone --quiet --sparse --filter=blob:none --no-checkout --depth 1 https://github.comthe-social-proof-foundation/myso-core.git /Users/brandonshaw/.move/git/https___github_com_MystenLabs_myso_git_0676e11409f87c38733863475d0819407b568a9d`
+  │ remote: Repository not found.
+  │ fatal: repository 'https://github.comthe-social-proof-foundation/myso-core.git/' not found
+Error while loading dependency /Users/brandonshaw/.move/git/https___github_com_MystenLabs_myso_git_0676e11409f87c38733863475d0819407b568a9d/crates/myso-framework/packages/myso-framework: Error while fetching `{ git = "https://...abs/myso.git", path = "crates/myso-framework/packages/myso-framework", rev = "0676e1...9d" }`: error while executing git command `Command { std: GIT_CONFIG_GLOBAL="" "git" "-c" "advice.detachedHead=false" "clone" "--quiet" "--sparse" "--filter=blob:none" "--no-checkout" "--depth" "1" "https://github.comthe-social-proof-foundation/myso-core.git" "/Users/brandonshaw/.move/git/https___github_com_MystenLabs_myso_git_0676e11409f87c38733863475d0819407b568a9d", kill_on_drop: false }`:
+ErrorCode(ExitStatus(unix_wait_status(32768)))
 === upgraded b ===
-[published.localnet]
-version = 2
-
+Downloading from https://github.comthe-social-proof-foundation/myso-core.git
+output from `git -c advice.detachedHead=false clone --quiet --sparse --filter=blob:none --no-checkout --depth 1 https://github.comthe-social-proof-foundation/myso-core.git /Users/brandonshaw/.move/git/https___github_com_MystenLabs_myso_git_0676e11409f87c38733863475d0819407b568a9d`
+  │ remote: Repository not found.
+  │ fatal: repository 'https://github.comthe-social-proof-foundation/myso-core.git/' not found
+Error while loading dependency /Users/brandonshaw/.move/git/https___github_com_MystenLabs_myso_git_0676e11409f87c38733863475d0819407b568a9d/crates/myso-framework/packages/myso-framework: Error while fetching `{ git = "https://...abs/myso.git", path = "crates/myso-framework/packages/myso-framework", rev = "0676e1...9d" }`: error while executing git command `Command { std: GIT_CONFIG_GLOBAL="" "git" "-c" "advice.detachedHead=false" "clone" "--quiet" "--sparse" "--filter=blob:none" "--no-checkout" "--depth" "1" "https://github.comthe-social-proof-foundation/myso-core.git" "/Users/brandonshaw/.move/git/https___github_com_MystenLabs_myso_git_0676e11409f87c38733863475d0819407b568a9d", kill_on_drop: false }`:
+ErrorCode(ExitStatus(unix_wait_status(32768)))
 === upgraded a ===
-[published.localnet]
-version = 2
-
 === expect to fail when upgrading a because it is not compatible with b ===
-error[Compatibility E03001]: function signature mismatch
-  ┌─ <SANDBOX_DIR>/b/sources/new_module.move:1:34
-  │
-1 │ module b::new_module; public fun b(): bool { true }
-  │                                  ^ Expected 0 return types, found 1
-  │
-  = Functions are part of a module's public interface and cannot be removed or changed during a 'compatible' upgrade.
-  = Restore the original function's return types for function 'b'.
-
-
-Upgrade failed, this package requires changes to be compatible with the existing package. Its upgrade policy is set to 'compatible'. Use --skip-verify-compatibility to bypass this check locally.
+Error while loading dependency /Users/brandonshaw/.move/git/https___github_com_MystenLabs_myso_git_0676e11409f87c38733863475d0819407b568a9d/crates/myso-framework/packages/myso-framework: Error while fetching `{ git = "https://...abs/myso.git", path = "crates/myso-framework/packages/myso-framework", rev = "0676e1...9d" }`: error while executing git command `Command { std: GIT_CONFIG_GLOBAL="" "git" "-c" "advice.detachedHead=false" "clone" "--quiet" "--sparse" "--filter=blob:none" "--no-checkout" "--depth" "1" "https://github.comthe-social-proof-foundation/myso-core.git" "/Users/brandonshaw/.move/git/https___github_com_MystenLabs_myso_git_0676e11409f87c38733863475d0819407b568a9d", kill_on_drop: false }`:
+ErrorCode(ExitStatus(unix_wait_status(32768)))
 
 ----- stderr -----
-[Note]: Dependency sources are no longer verified automatically during publication and upgrade. You can pass the `--verify-deps` option if you would like to verify them as part of publication or upgrade.
-INCLUDING DEPENDENCY MoveStdlib
-INCLUDING DEPENDENCYMySo
-INCLUDING DEPENDENCY a
-BUILDING b
+awk: can't open file a/Published.toml
+ source line number 7
+awk: can't open file b/Published.toml
+ source line number 7
+awk: can't open file b/Published.toml
+ source line number 7
+awk: can't open file a/Published.toml
+ source line number 7
+Downloading from https://github.comthe-social-proof-foundation/myso-core.git
+output from `git -c advice.detachedHead=false clone --quiet --sparse --filter=blob:none --no-checkout --depth 1 https://github.comthe-social-proof-foundation/myso-core.git /Users/brandonshaw/.move/git/https___github_com_MystenLabs_myso_git_0676e11409f87c38733863475d0819407b568a9d`
+  │ remote: Repository not found.
+  │ fatal: repository 'https://github.comthe-social-proof-foundation/myso-core.git/' not found

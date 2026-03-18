@@ -53,6 +53,7 @@ use crate::api::types::object_filter::ObjectFilterValidator as OFValidator;
 use crate::api::types::platform::Platform;
 use crate::api::types::post::Post;
 use crate::api::types::profile::Profile;
+use crate::api::types::insurance::{InsurancePolicy, InsuranceVault};
 use crate::api::types::mydata::{MyDataPurchase, MyDataRecord};
 use crate::api::types::spot::{SpotBet, SpotRecord};
 use crate::api::types::spt::{SptHolding, SptPool, SptPriceHistory};
@@ -583,6 +584,67 @@ impl Query {
                 .await
                 .map_err(Into::into)
                 .map(|v| v.into_iter().map(MyDataPurchase::from_row).collect()),
+        )
+    }
+
+    /// Insurance policy by ID. Returns null when social DB not configured or not found.
+    async fn insurance_policy(
+        &self,
+        ctx: &Context<'_>,
+        id: async_graphql::ID,
+    ) -> Option<Result<Option<InsurancePolicy>, RpcError>> {
+        let reader_opt = ctx
+            .data_opt::<std::sync::Arc<Option<myso_indexer_alt_social_reader::SocialPgReader>>>()?;
+        let reader = reader_opt.as_ref().as_ref()?;
+        Some(
+            reader
+                .get_insurance_policy(id.as_str())
+                .await
+                .map_err(Into::into)
+                .map(|opt| opt.map(InsurancePolicy::from_row)),
+        )
+    }
+
+    /// Insurance policies by insured address. Returns empty when social DB not configured.
+    async fn insurance_policies(
+        &self,
+        ctx: &Context<'_>,
+        insured: MySoAddress,
+        limit: Option<u64>,
+        offset: Option<u64>,
+    ) -> Option<Result<Vec<InsurancePolicy>, RpcError>> {
+        let reader_opt = ctx
+            .data_opt::<std::sync::Arc<Option<myso_indexer_alt_social_reader::SocialPgReader>>>()?;
+        let reader = reader_opt.as_ref().as_ref()?;
+        let limit = limit.unwrap_or(20).min(100) as i64;
+        let offset = offset.unwrap_or(0) as i64;
+        Some(
+            reader
+                .list_insurance_policies_by_insured(&insured.to_string(), limit, offset)
+                .await
+                .map_err(Into::into)
+                .map(|v| v.into_iter().map(InsurancePolicy::from_row).collect()),
+        )
+    }
+
+    /// Insurance vaults. Returns empty when social DB not configured.
+    async fn insurance_vaults(
+        &self,
+        ctx: &Context<'_>,
+        limit: Option<u64>,
+        offset: Option<u64>,
+    ) -> Option<Result<Vec<InsuranceVault>, RpcError>> {
+        let reader_opt = ctx
+            .data_opt::<std::sync::Arc<Option<myso_indexer_alt_social_reader::SocialPgReader>>>()?;
+        let reader = reader_opt.as_ref().as_ref()?;
+        let limit = limit.unwrap_or(20).min(100) as i64;
+        let offset = offset.unwrap_or(0) as i64;
+        Some(
+            reader
+                .list_insurance_vaults(limit, offset)
+                .await
+                .map_err(Into::into)
+                .map(|v| v.into_iter().map(InsuranceVault::from_row).collect()),
         )
     }
 

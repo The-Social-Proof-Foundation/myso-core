@@ -1,6 +1,6 @@
 ---
 source: crates/myso/tests/ptb_files_tests.rs
-expression: "results.join(\"\\n\")"
+expression: "&String::from_iter(normalized(results.join(\"\\n\").chars()))"
 ---
  === PREVIEW === 
 ╭──────────────────────────────────────────────────────────╮
@@ -13,8 +13,15 @@ expression: "results.join(\"\\n\")"
 │ assign        │ s @0x2                                   │
 │ make-move-vec │ <address> [s]                            │
 ╰───────────────┴──────────────────────────────────────────╯
- === BUILT PTB === 
-Input 0: ImmutableOrOwnedObject
-Input 1: Pure([0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 2])
-Command 0: MoveCall(0x0000000000000000000000000000000000000000000000000000000000000002::coin::destroy_zero<0x2::myso::MYSO>(Input(0)))
-Command 1: MakeMoveVec(Someaddress,[Input(1)])
+ === BUILDING PTB ERRORS === 
+  × Error when processing PTB
+   ╭─[2:13]
+ 1 │ --assign s @0x1
+ 2 │ --move-call myso::coin::destroy_zero<myso::myso::MYSO> s
+   ·             ─┬─
+   ·              ╰── Unbound named address: 'myso'
+ 3 │ --assign s @0x2
+   ╰────
+  help: This is most likely because the named address 'myso' is not in scope.
+        You can either bind a variable to the address that you want to use or
+        use the address in the command.

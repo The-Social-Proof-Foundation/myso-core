@@ -515,18 +515,18 @@ balances are settled.
     } <b>else</b> {
         0
     };
-    <b>let</b> account_volume_in_deep = <a href="../orderbook/order_info.md#orderbook_order_info">order_info</a>
+    <b>let</b> account_volume_in_myso = <a href="../orderbook/order_info.md#orderbook_order_info">order_info</a>
         .order_myso_price()
         .myso_quantity_u128(
             account_volume,
             <a href="../orderbook/math.md#orderbook_math_mul_u128">math::mul_u128</a>(account_volume, avg_executed_price <b>as</b> u128),
         );
     // taker fee will always be calculated <b>as</b> 0 <b>for</b> whitelisted pools by
-    // default, <b>as</b> account_volume_in_deep is 0
+    // default, <b>as</b> account_volume_in_myso is 0
     <b>let</b> taker_fee_without_penalty = self
         .<a href="../orderbook/governance.md#orderbook_governance">governance</a>
         .<a href="../orderbook/trade_params.md#orderbook_trade_params">trade_params</a>()
-        .taker_fee_for_user(account_stake, account_volume_in_deep);
+        .taker_fee_for_user(account_stake, account_volume_in_myso);
     <b>let</b> taker_fee = ewma_state.apply_taker_penalty(taker_fee_without_penalty, ctx);
     <b>if</b> (taker_fee &gt; taker_fee_without_penalty) {
         event::emit(<a href="../orderbook/state.md#orderbook_state_TakerFeePenaltyApplied">TakerFeePenaltyApplied</a> {

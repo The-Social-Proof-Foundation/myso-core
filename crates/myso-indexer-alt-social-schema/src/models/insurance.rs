@@ -3,6 +3,8 @@
 
 use chrono::NaiveDateTime;
 use diesel::prelude::*;
+use diesel::QueryableByName;
+use diesel::sql_types::{BigInt, SmallInt, Text, Timestamp};
 use serde::{Deserialize, Serialize};
 
 use crate::schema::{
@@ -21,6 +23,68 @@ pub const DEFAULT_MIN_COVERAGE_BPS: i64 = 1000;
 pub const DEFAULT_MAX_COVERAGE_BPS: i64 = 9000;
 pub const DEFAULT_MAX_DURATION_MS: i64 = 2_592_000_000;
 pub const DEFAULT_FEE_BPS: i64 = 50;
+
+/// Query result for an insurance policy (for GraphQL/reader).
+#[derive(Debug, Clone, QueryableByName, Serialize, Deserialize)]
+pub struct InsurancePolicyRow {
+    #[diesel(sql_type = Text)]
+    pub policy_id: String,
+    #[diesel(sql_type = Text)]
+    pub market_id: String,
+    #[diesel(sql_type = Text)]
+    pub insured: String,
+    #[diesel(sql_type = SmallInt)]
+    pub option_id: i16,
+    #[diesel(sql_type = BigInt)]
+    pub covered_amount: i64,
+    #[diesel(sql_type = BigInt)]
+    pub coverage_bps: i64,
+    #[diesel(sql_type = BigInt)]
+    pub premium_paid: i64,
+    #[diesel(sql_type = BigInt)]
+    pub start_time_ms: i64,
+    #[diesel(sql_type = BigInt)]
+    pub expiry_time_ms: i64,
+    #[diesel(sql_type = Text)]
+    pub vault_id: String,
+    #[diesel(sql_type = SmallInt)]
+    pub status: i16,
+    #[diesel(sql_type = Timestamp)]
+    pub created_at: NaiveDateTime,
+    #[diesel(sql_type = Timestamp)]
+    pub updated_at: NaiveDateTime,
+    #[diesel(sql_type = Text)]
+    pub transaction_id: String,
+}
+
+/// Query result for an insurance vault (for GraphQL/reader).
+#[derive(Debug, Clone, QueryableByName, Serialize, Deserialize)]
+pub struct InsuranceVaultRow {
+    #[diesel(sql_type = Text)]
+    pub vault_id: String,
+    #[diesel(sql_type = Text)]
+    pub underwriter: String,
+    #[diesel(sql_type = BigInt)]
+    pub capital_balance: i64,
+    #[diesel(sql_type = BigInt)]
+    pub reserved: i64,
+    #[diesel(sql_type = BigInt)]
+    pub base_rate_bps_per_day: i64,
+    #[diesel(sql_type = BigInt)]
+    pub utilization_multiplier_bps: i64,
+    #[diesel(sql_type = BigInt)]
+    pub max_exposure_per_market: i64,
+    #[diesel(sql_type = BigInt)]
+    pub max_exposure_per_user: i64,
+    #[diesel(sql_type = BigInt)]
+    pub version: i64,
+    #[diesel(sql_type = Timestamp)]
+    pub created_at: NaiveDateTime,
+    #[diesel(sql_type = Timestamp)]
+    pub updated_at: NaiveDateTime,
+    #[diesel(sql_type = Text)]
+    pub transaction_id: String,
+}
 
 #[derive(Debug, Clone, Queryable, Selectable, Serialize, Deserialize)]
 #[diesel(table_name = insurance_config)]

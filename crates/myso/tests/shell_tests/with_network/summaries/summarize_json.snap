@@ -59,6 +59,7 @@ kiosk.json
 kiosk_extension.json
 linked_table.json
 math.json
+myso.json
 nitro_attestation.json
 object.json
 object_bag.json
@@ -71,7 +72,6 @@ priority_queue.json
 protocol_config.json
 prover.json
 random.json
-myso.json
 table.json
 table_vec.json
 token.json

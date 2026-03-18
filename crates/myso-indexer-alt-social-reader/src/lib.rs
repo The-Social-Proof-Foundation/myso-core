@@ -11,6 +11,7 @@ pub mod spot;
 pub mod spt;
 pub mod mydata;
 pub mod social_graph;
+pub mod insurance;
 pub mod vesting;
 
 pub use pg_reader::SocialPgReader;
@@ -34,5 +35,6 @@ pub use myso_indexer_alt_social_schema::models::{
     PocAnalysisResultRow, PocBadgeRow, PocConfigRow, PocDisputeRow,
 };
 pub use myso_indexer_alt_social_schema::models::{
-    MyDataPurchaseRow, MyDataRecordRow, SpotBetRow, SpotRecordRow,
+    InsurancePolicyRow, InsuranceVaultRow, MyDataPurchaseRow, MyDataRecordRow, SpotBetRow,
+    SpotRecordRow,
 };

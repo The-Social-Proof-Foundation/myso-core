@@ -22,15 +22,15 @@ success: true
 exit_code: 0
 ----- stdout -----
 INCLUDING DEPENDENCY MoveStdlib
-INCLUDING DEPENDENCYMySo
+INCLUDING DEPENDENCY MySo
 BUILDING move_package
 
 Summary generation successful. Summaries stored in 'package_summaries'
 address_mapping.yaml
 move_package
+myso
 root_package_metadata.yaml
 std
-myso
 move_package.yaml
 accumulator.yaml
 accumulator_metadata.yaml
@@ -67,6 +67,7 @@ kiosk.yaml
 kiosk_extension.yaml
 linked_table.yaml
 math.yaml
+myso.yaml
 nitro_attestation.yaml
 object.yaml
 object_bag.yaml
@@ -79,7 +80,6 @@ priority_queue.yaml
 protocol_config.yaml
 prover.yaml
 random.yaml
-myso.yaml
 table.yaml
 table_vec.yaml
 token.yaml
@@ -120,8 +120,8 @@ vector.yaml
 {}
 ---
 move_package: "0x0000000000000000000000000000000000000000000000000000000000000000"
-std: "0x0000000000000000000000000000000000000000000000000000000000000001"
 myso: "0x0000000000000000000000000000000000000000000000000000000000000002"
+std: "0x0000000000000000000000000000000000000000000000000000000000000001"
 
 ----- stderr -----
-[NOTE] Dependencies onMySo, MoveStdlib, Bridge, Orderbook, and MySoSystem are automatically added, but this feature is disabled for your package because you have explicitly included dependencies on MySo. Consider removing these dependencies from `Move.toml`.
+[NOTE] Dependencies on MySo, MoveStdlib, Bridge, Orderbook, and MySoSystem are automatically added, but this feature is disabled for your package because you have explicitly included dependencies on MySo. Consider removing these dependencies from `Move.toml`.

@@ -24,7 +24,8 @@ success: false
 exit_code: 1
 ----- stdout -----
 === expect to fail when upgrading a because it is not even published yet ===
-Cannot determine the publication information. Please pass the upgrade cap with `-c <UPGRADE_CAP>`.
+Error while loading dependency /Users/brandonshaw/.move/git/https___github_com_MystenLabs_myso_git_0676e11409f87c38733863475d0819407b568a9d/crates/myso-framework/packages/myso-framework: Error while fetching `{ git = "https://...abs/myso.git", path = "crates/myso-framework/packages/myso-framework", rev = "0676e1...9d" }`: error while executing git command `Command { std: GIT_CONFIG_GLOBAL="" "git" "-c" "advice.detachedHead=false" "clone" "--quiet" "--sparse" "--filter=blob:none" "--no-checkout" "--depth" "1" "https://github.comthe-social-proof-foundation/myso-core.git" "/Users/brandonshaw/.move/git/https___github_com_MystenLabs_myso_git_0676e11409f87c38733863475d0819407b568a9d", kill_on_drop: false }`:
+ErrorCode(ExitStatus(unix_wait_status(32768)))
 === expect to fail because we should never upgrade with --test flag ===
 Failed to publish the Move module(s), reason: The `publish` or `upgrade` subcommand should not be used with the `--test` flag
 
@@ -33,4 +34,8 @@ In order to fix this and publish or upgrade the package without `--test`, remove
 You can ensure all test-only dependencies have been removed by compiling the package normally with `myso move build`.
 
 ----- stderr -----
-[Note]: Dependency sources are no longer verified automatically during publication and upgrade. You can pass the `--verify-deps` option if you would like to verify them as part of publication or upgrade.
+[NOTE] Updating dependencies for `testnet` environment because "<SANDBOX_DIR>/a/Move.toml" has been changed since the last update.
+Downloading from https://github.comthe-social-proof-foundation/myso-core.git
+output from `git -c advice.detachedHead=false clone --quiet --sparse --filter=blob:none --no-checkout --depth 1 https://github.comthe-social-proof-foundation/myso-core.git /Users/brandonshaw/.move/git/https___github_com_MystenLabs_myso_git_0676e11409f87c38733863475d0819407b568a9d`
+  │ remote: Repository not found.
+  │ fatal: repository 'https://github.comthe-social-proof-foundation/myso-core.git/' not found

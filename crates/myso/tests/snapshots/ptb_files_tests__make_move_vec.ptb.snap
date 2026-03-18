@@ -1,6 +1,6 @@
 ---
 source: crates/myso/tests/ptb_files_tests.rs
-expression: "results.join(\"\\n\")"
+expression: "&String::from_iter(normalized(results.join(\"\\n\").chars()))"
 ---
  === PREVIEW === 
 ╭──────────────────────────────────────────────────────────────────╮
@@ -30,3 +30,10 @@ expression: "results.join(\"\\n\")"
     ╰────
   help: Literal option values cannot contain object values.
 
+  × Error when processing PTB
+    ╭─[10:18]
+  9 │ --make-move-vec <std::option::Option<u64>> [none,some(some(1))]
+ 10 │ --make-move-vec <myso::coin::Coin<myso::myso::MYSO>> [gas] 
+    ·                  ───────────────┬──────────────
+    ·                                 ╰── Unbound named address: 'myso'
+    ╰────
