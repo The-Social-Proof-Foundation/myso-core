@@ -131,7 +131,7 @@ public(package) fun process_create(
     } else {
         0
     };
-    let account_volume_in_deep = order_info
+    let account_volume_in_myso = order_info
         .order_myso_price()
         .myso_quantity_u128(
             account_volume,
@@ -139,11 +139,11 @@ public(package) fun process_create(
         );
 
     // taker fee will always be calculated as 0 for whitelisted pools by
-    // default, as account_volume_in_deep is 0
+    // default, as account_volume_in_myso is 0
     let taker_fee_without_penalty = self
         .governance
         .trade_params()
-        .taker_fee_for_user(account_stake, account_volume_in_deep);
+        .taker_fee_for_user(account_stake, account_volume_in_myso);
     let taker_fee = ewma_state.apply_taker_penalty(taker_fee_without_penalty, ctx);
     if (taker_fee > taker_fee_without_penalty) {
         event::emit(TakerFeePenaltyApplied {

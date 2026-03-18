@@ -30,11 +30,11 @@ public(package) fun taker_fee(trade_params: &TradeParams): u64 {
 public(package) fun taker_fee_for_user(
     self: &TradeParams,
     active_stake: u64,
-    volume_in_deep: u128,
+    volume_in_myso: u128,
 ): u64 {
     if (
         active_stake >= self.stake_required &&
-        volume_in_deep >= (self.stake_required as u128)
+        volume_in_myso >= (self.stake_required as u128)
     ) {
         self.taker_fee / 2
     } else {

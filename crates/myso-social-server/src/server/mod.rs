@@ -545,7 +545,7 @@ fn make_router(state: Arc<AppState>) -> Router {
             get(get_mydata_access_analytics),
         )
         .route("/creators/:id/mydata", get(get_creator_mydata))
-        .route("/insurance/config", get(get_insurance_config))
+        .route("/insurance/configuration", get(get_insurance_config))
         .route("/insurance/vaults", get(list_insurance_vaults))
         .route("/insurance/vaults/:vault_id", get(get_insurance_vault))
         .route(
@@ -606,7 +606,7 @@ fn make_router(state: Arc<AppState>) -> Router {
             get(get_spt_pool_price_history),
         )
         .route("/spt/pools/:id/revenue", get(get_spt_pool_revenue))
-        .route("/spt/config", get(get_spt_config))
+        .route("/spt/configuration", get(get_spt_config))
         .route("/spt/reservation-pools", get(list_spt_reservation_pools))
         .route("/spt/reservation-pools/:id", get(get_spt_reservation_pool))
         .route(

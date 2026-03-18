@@ -214,7 +214,7 @@ curl http://localhost:9009/health
 
 | Method | Endpoint | Description |
 |--------|----------|-------------|
-| GET | `/insurance/config` | Get insurance config |
+| GET | `/insurance/configuration` | Get insurance configuration |
 | GET | `/insurance/vaults` | List insurance vaults |
 | GET | `/insurance/vaults/:vault_id` | Get insurance vault |
 | GET | `/insurance/vaults/:vault_id/transactions` | List vault transactions |
@@ -256,7 +256,7 @@ curl http://localhost:9009/health
 | GET | `/spt/portfolios/:address/performance` | Portfolio performance |
 | GET | `/spt/creators/:address/revenue-streams` | Creator revenue streams |
 | GET | `/spt/market-sentiment` | Market sentiment |
-| GET | `/spt/config` | Get SPT config |
+| GET | `/spt/configuration` | Get SPT configuration |
 | GET | `/spt/reservation-pools` | List reservation pools |
 | GET | `/spt/reservation-pools/:id` | Get reservation pool |
 | GET | `/spt/reservation-pools/:id/reservations` | List pool reservations |
