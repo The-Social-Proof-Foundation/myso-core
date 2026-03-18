@@ -3479,6 +3479,10 @@ type Post implements Node {
 	"""
 	profileId: String!
 	"""
+	Promotion for this post (null if not promoted).
+	"""
+	promotion: Promotion
+	"""
 	Number of reactions.
 	"""
 	reactionCount: Int!
@@ -3825,6 +3829,33 @@ type ProgrammableTransaction {
 	inputs(first: Int, after: String, last: Int, before: String): TransactionInputConnection
 }
 
+type Promotion {
+	"""
+	Total budget (in MIST).
+	"""
+	budget: Int!
+	"""
+	The post ID this promotion is for.
+	"""
+	postId: String!
+	"""
+	The promotion ID.
+	"""
+	promotionId: String!
+	"""
+	Remaining budget (in MIST).
+	"""
+	remainingBudget: Int!
+	"""
+	Promotion status: "active" or "inactive".
+	"""
+	status: String!
+	"""
+	Number of views.
+	"""
+	views: Int!
+}
+
 """
 A protocol configuration that can hold an arbitrary value (or no value at all).
 """
@@ -4109,6 +4140,14 @@ type Query {
 	List social profiles with pagination. Returns empty when social DB not configured.
 	"""
 	profiles(limit: Int, offset: Int): [Profile!]
+	"""
+	List promoted posts (paginated, optionally filtered by platform). Returns empty when social DB not configured.
+	"""
+	promotedPosts(platformId: String, limit: Int, offset: Int): [Promotion!]
+	"""
+	Fetch a promotion by ID. Returns null if social DB not configured or not found.
+	"""
+	promotion(id: ID!): Promotion
 	"""
 	Fetch the protocol config by protocol version, or the latest protocol config used on chain if no version is provided.
 	"""

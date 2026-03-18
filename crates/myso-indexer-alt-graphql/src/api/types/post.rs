@@ -12,6 +12,7 @@ use crate::api::types::post_reaction::ReactionSummary;
 use crate::api::types::post_repost::RepostSummary;
 use crate::api::types::post_tip::TipSummary;
 use crate::api::types::post_transfer::PostTransferSummary;
+use crate::api::types::promotion::Promotion;
 use crate::api::types::spot::{SpotBet, SpotRecord};
 
 #[derive(Clone)]
@@ -229,5 +230,16 @@ impl Post {
         let reader = reader_opt.as_ref().as_ref()?;
         let row = reader.get_spot_record(&self.inner.post_id).await.ok()?;
         row.map(SpotRecord::from_row)
+    }
+
+    /// Promotion for this post (null if not promoted).
+    async fn promotion(&self, ctx: &Context<'_>) -> Option<Promotion> {
+        let reader_opt = ctx
+            .data_opt::<std::sync::Arc<Option<myso_indexer_alt_social_reader::SocialPgReader>>>()?;
+        let reader = reader_opt.as_ref().as_ref()?;
+        let row = reader.get_promotion_by_post_id(&self.inner.post_id).await.ok()?;
+        let row = row?;
+        let views = reader.get_promotion_views_count(&row.promotion_id).await.ok()?;
+        Some(Promotion::from_row(row, views))
     }
 }

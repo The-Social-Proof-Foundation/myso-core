@@ -35,6 +35,9 @@ use crate::mydata::{
     get_mydata_record, list_mydata_purchases_by_buyer, list_mydata_records_by_owner,
 };
 use crate::spot::{get_spot_record, list_spot_bets};
+use crate::promotion::{
+    get_promotion, get_promotion_by_post_id, get_promotion_views_count, list_promoted_posts,
+};
 use crate::spt::{
     get_spt_holdings_by_holder, get_spt_pool, get_spt_pool_id_for_profile, get_spt_price_history,
     get_spt_transactions,
@@ -471,6 +474,44 @@ impl SocialPgReader {
     ) -> anyhow::Result<Vec<crate::SpotBetRow>> {
         let mut conn = self.connect().await?;
         list_spot_bets(&mut conn, post_id, limit, offset, &self.metrics).await
+    }
+
+    /// Get a promotion by ID.
+    pub async fn get_promotion(
+        &self,
+        promotion_id: &str,
+    ) -> anyhow::Result<Option<crate::PromotedPostRow>> {
+        let mut conn = self.connect().await?;
+        get_promotion(&mut conn, promotion_id, &self.metrics).await
+    }
+
+    /// Get promotion for a post by post ID.
+    pub async fn get_promotion_by_post_id(
+        &self,
+        post_id: &str,
+    ) -> anyhow::Result<Option<crate::PromotedPostRow>> {
+        let mut conn = self.connect().await?;
+        get_promotion_by_post_id(&mut conn, post_id, &self.metrics).await
+    }
+
+    /// Get view count for a promotion.
+    pub async fn get_promotion_views_count(
+        &self,
+        promotion_id: &str,
+    ) -> anyhow::Result<i64> {
+        let mut conn = self.connect().await?;
+        get_promotion_views_count(&mut conn, promotion_id, &self.metrics).await
+    }
+
+    /// List promoted posts (paginated, optionally filtered by platform).
+    pub async fn list_promoted_posts(
+        &self,
+        platform_id: Option<&str>,
+        limit: i64,
+        offset: i64,
+    ) -> anyhow::Result<Vec<crate::PromotedPostRow>> {
+        let mut conn = self.connect().await?;
+        list_promoted_posts(&mut conn, platform_id, limit, offset, &self.metrics).await
     }
 
     /// Get a mydata record by ID.

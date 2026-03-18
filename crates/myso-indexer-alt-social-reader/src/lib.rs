@@ -6,6 +6,7 @@ pub mod pg_reader;
 pub mod platform;
 pub mod poc;
 pub mod post;
+pub mod promotion;
 pub mod profile;
 pub mod spot;
 pub mod spt;
@@ -35,6 +36,6 @@ pub use myso_indexer_alt_social_schema::models::{
     PocAnalysisResultRow, PocBadgeRow, PocConfigRow, PocDisputeRow,
 };
 pub use myso_indexer_alt_social_schema::models::{
-    InsurancePolicyRow, InsuranceVaultRow, MyDataPurchaseRow, MyDataRecordRow, SpotBetRow,
-    SpotRecordRow,
+    InsurancePolicyRow, InsuranceVaultRow, MyDataPurchaseRow, MyDataRecordRow, PromotedPostRow,
+    SpotBetRow, SpotRecordRow,
 };

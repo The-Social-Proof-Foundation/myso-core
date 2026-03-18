@@ -52,6 +52,7 @@ use crate::api::types::object_filter::ObjectFilter;
 use crate::api::types::object_filter::ObjectFilterValidator as OFValidator;
 use crate::api::types::platform::Platform;
 use crate::api::types::post::Post;
+use crate::api::types::promotion::Promotion;
 use crate::api::types::profile::Profile;
 use crate::api::types::insurance::{InsurancePolicy, InsuranceVault};
 use crate::api::types::mydata::{MyDataPurchase, MyDataRecord};
@@ -285,6 +286,68 @@ impl Query {
                 .await
                 .map_err(Into::into)
                 .map(|v| v.into_iter().map(Post::from_db).collect()),
+        )
+    }
+
+    /// Fetch a promotion by ID. Returns null if social DB not configured or not found.
+    async fn promotion(
+        &self,
+        ctx: &Context<'_>,
+        id: async_graphql::ID,
+    ) -> Option<Result<Option<Promotion>, RpcError>> {
+        let reader_opt = ctx
+            .data_opt::<std::sync::Arc<Option<myso_indexer_alt_social_reader::SocialPgReader>>>()?;
+        let reader = reader_opt.as_ref().as_ref()?;
+        Some(
+            async {
+                let row = reader
+                    .get_promotion(id.as_str())
+                    .await
+                    .map_err(RpcError::from)?;
+                let row = match row {
+                    Some(r) => r,
+                    None => return Ok::<Option<Promotion>, RpcError>(None),
+                };
+                let views = reader
+                    .get_promotion_views_count(&row.promotion_id)
+                    .await
+                    .map_err(RpcError::from)?;
+                Ok(Some(Promotion::from_row(row, views)))
+            }
+            .await,
+        )
+    }
+
+    /// List promoted posts (paginated, optionally filtered by platform). Returns empty when social DB not configured.
+    async fn promoted_posts(
+        &self,
+        ctx: &Context<'_>,
+        platform_id: Option<String>,
+        limit: Option<u64>,
+        offset: Option<u64>,
+    ) -> Option<Result<Vec<Promotion>, RpcError>> {
+        let reader_opt = ctx
+            .data_opt::<std::sync::Arc<Option<myso_indexer_alt_social_reader::SocialPgReader>>>()?;
+        let reader = reader_opt.as_ref().as_ref()?;
+        let limit = limit.unwrap_or(20).min(100) as i64;
+        let offset = offset.unwrap_or(0) as i64;
+        Some(
+            async {
+                let rows = reader
+                    .list_promoted_posts(platform_id.as_deref(), limit, offset)
+                    .await
+                    .map_err(RpcError::from)?;
+                let mut out = Vec::with_capacity(rows.len());
+                for row in rows {
+                    let views = reader
+                        .get_promotion_views_count(&row.promotion_id)
+                        .await
+                        .map_err(RpcError::from)?;
+                    out.push(Promotion::from_row(row, views));
+                }
+                Ok::<Vec<Promotion>, RpcError>(out)
+            }
+            .await,
         )
     }
 

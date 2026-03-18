@@ -2,11 +2,36 @@
 // SPDX-License-Identifier: Apache-2.0
 
 use diesel::prelude::*;
+use diesel::QueryableByName;
+use diesel::sql_types::{BigInt, Bool, Text};
 use serde::{Deserialize, Serialize};
 
 use crate::schema::{
     promotion_budget_events, promotion_status_events, promotion_views, promoted_posts,
 };
+
+/// Query result for a promoted post (for GraphQL/reader).
+#[derive(Debug, Clone, QueryableByName, Serialize, Deserialize)]
+pub struct PromotedPostRow {
+    #[diesel(sql_type = Text)]
+    pub promotion_id: String,
+    #[diesel(sql_type = Text)]
+    pub post_id: String,
+    #[diesel(sql_type = Text)]
+    pub owner: String,
+    #[diesel(sql_type = Text)]
+    pub profile_id: String,
+    #[diesel(sql_type = BigInt)]
+    pub payment_per_view: i64,
+    #[diesel(sql_type = BigInt)]
+    pub total_budget: i64,
+    #[diesel(sql_type = BigInt)]
+    pub remaining_budget: i64,
+    #[diesel(sql_type = Bool)]
+    pub active: bool,
+    #[diesel(sql_type = BigInt)]
+    pub created_at: i64,
+}
 
 #[derive(Debug, Clone, Insertable, Serialize, Deserialize)]
 #[diesel(table_name = promoted_posts)]

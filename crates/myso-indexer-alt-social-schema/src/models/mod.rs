@@ -82,6 +82,7 @@ pub use profile::{
 };
 pub use promotion::{
     NewPromotedPost, NewPromotionBudgetEvent, NewPromotionStatusEvent, NewPromotionView,
+    PromotedPostRow,
 };
 pub use blocked::{
     BlockedEvent, BlockedProfile, EVENT_TYPE_BLOCK, EVENT_TYPE_UNBLOCK, NewBlockedEvent,

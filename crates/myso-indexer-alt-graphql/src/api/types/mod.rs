@@ -39,6 +39,7 @@ pub(crate) mod owner;
 pub(crate) mod platform;
 pub(crate) mod post;
 pub(crate) mod post_comment;
+pub(crate) mod promotion;
 pub(crate) mod post_reaction;
 pub(crate) mod post_repost;
 pub(crate) mod post_tip;
