@@ -2,12 +2,9 @@
 // SPDX-License-Identifier: Apache-2.0
 
 use diesel::sql_types::{BigInt, Double, Nullable, SmallInt, Text};
-use diesel::ExpressionMethods;
 use diesel::OptionalExtension;
-use diesel::QueryDsl;
 use diesel::QueryableByName;
 use diesel_async::RunQueryDsl;
-use myso_indexer_alt_social_schema::schema::{spt_holdings, spt_reservations};
 use myso_pg_db::Db;
 
 use crate::error::SocialError;
@@ -776,6 +773,16 @@ pub(crate) async fn get_spt_popular(db: &Db, limit: i64) -> Result<Vec<SptPoolRo
     Ok(results)
 }
 
+#[derive(QueryableByName)]
+struct UserHoldingRow {
+    #[diesel(sql_type = Text)]
+    pool_id: String,
+    #[diesel(sql_type = BigInt)]
+    amount: i64,
+    #[diesel(sql_type = BigInt)]
+    acquired_at: i64,
+}
+
 pub(crate) async fn get_spt_user_holdings(
     db: &Db,
     address: &str,
@@ -783,19 +790,35 @@ pub(crate) async fn get_spt_user_holdings(
     offset: i64,
 ) -> Result<Vec<(String, i64, i64)>, SocialError> {
     let mut conn = db.connect().await?;
-    let results = spt_holdings::table
-        .filter(spt_holdings::holder_address.eq(address))
-        .order_by(spt_holdings::acquired_at.desc())
-        .limit(limit)
-        .offset(offset)
-        .select((
-            spt_holdings::pool_id,
-            spt_holdings::amount,
-            spt_holdings::acquired_at,
-        ))
-        .load::<(String, i64, i64)>(&mut conn)
+    let query = r#"
+        SELECT pool_id, SUM(amount)::bigint as amount, MAX(acquired_at)::bigint as acquired_at
+        FROM spt_holdings
+        WHERE holder_address = $1
+        GROUP BY pool_id
+        HAVING SUM(amount) != 0
+        ORDER BY acquired_at DESC NULLS LAST
+        LIMIT $2 OFFSET $3
+    "#;
+    let rows: Vec<UserHoldingRow> = diesel::sql_query(query)
+        .bind::<Text, _>(address)
+        .bind::<BigInt, _>(limit)
+        .bind::<BigInt, _>(offset)
+        .load(&mut conn)
         .await?;
-    Ok(results)
+    Ok(rows
+        .into_iter()
+        .map(|r| (r.pool_id, r.amount, r.acquired_at))
+        .collect())
+}
+
+#[derive(QueryableByName)]
+struct UserReservationRow {
+    #[diesel(sql_type = Text)]
+    pool_id: String,
+    #[diesel(sql_type = BigInt)]
+    amount: i64,
+    #[diesel(sql_type = BigInt)]
+    reserved_at: i64,
 }
 
 pub(crate) async fn get_spt_user_reservations(
@@ -805,17 +828,55 @@ pub(crate) async fn get_spt_user_reservations(
     offset: i64,
 ) -> Result<Vec<(String, i64, i64)>, SocialError> {
     let mut conn = db.connect().await?;
-    let results = spt_reservations::table
-        .filter(spt_reservations::reserver_address.eq(address))
-        .order_by(spt_reservations::reserved_at.desc())
-        .limit(limit)
-        .offset(offset)
-        .select((
-            spt_reservations::pool_id,
-            spt_reservations::amount,
-            spt_reservations::reserved_at,
-        ))
-        .load::<(String, i64, i64)>(&mut conn)
+    let query = r#"
+        SELECT pool_id, amount, reserved_at
+        FROM user_reservation_holdings
+        WHERE reserver_address = $1
+        ORDER BY reserved_at DESC NULLS LAST
+        LIMIT $2 OFFSET $3
+    "#;
+    let rows: Vec<UserReservationRow> = diesel::sql_query(query)
+        .bind::<Text, _>(address)
+        .bind::<BigInt, _>(limit)
+        .bind::<BigInt, _>(offset)
+        .load(&mut conn)
         .await?;
-    Ok(results)
+    Ok(rows
+        .into_iter()
+        .map(|r| (r.pool_id, r.amount, r.reserved_at))
+        .collect())
+}
+
+pub(crate) async fn get_spt_user_holdings_with_reservations(
+    db: &Db,
+    address: &str,
+    limit: i64,
+    offset: i64,
+) -> Result<Vec<crate::reader::SptUserHoldingItem>, SocialError> {
+    let holdings = get_spt_user_holdings(db, address, 500, 0).await?;
+    let reservations = get_spt_user_reservations(db, address, 500, 0).await?;
+
+    let mut items: Vec<crate::reader::SptUserHoldingItem> = holdings
+        .into_iter()
+        .map(|(pool_id, amount, acquired_at)| crate::reader::SptUserHoldingItem {
+            pool_id,
+            amount,
+            acquired_at,
+            source: "holding".to_string(),
+        })
+        .chain(reservations.into_iter().map(
+            |(pool_id, amount, reserved_at)| crate::reader::SptUserHoldingItem {
+                pool_id,
+                amount,
+                acquired_at: reserved_at,
+                source: "reservation".to_string(),
+            },
+        ))
+        .collect();
+
+    items.sort_by(|a, b| b.acquired_at.cmp(&a.acquired_at));
+    let skip = offset as usize;
+    let take = limit as usize;
+    let result: Vec<_> = items.into_iter().skip(skip).take(take).collect();
+    Ok(result)
 }

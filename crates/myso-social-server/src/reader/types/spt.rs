@@ -189,6 +189,14 @@ pub struct SptReservationPoolWithDisplayRow {
     pub secondary_label: Option<String>,
 }
 
+#[derive(Debug, Clone, Serialize)]
+pub struct SptUserHoldingItem {
+    pub pool_id: String,
+    pub amount: i64,
+    pub acquired_at: i64,
+    pub source: String,
+}
+
 #[derive(Debug, Serialize, QueryableByName)]
 pub struct SptReservationRow {
     #[diesel(sql_type = Text)]

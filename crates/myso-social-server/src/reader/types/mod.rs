@@ -58,6 +58,7 @@ pub use spot::{SpotBetRow, SpotConfigInfo, SpotRecordResponse, SpotTransferRow};
 pub use spt::{
     SptExchangeConfigRow, SptHoldingRow, SptPoolRow, SptPriceHistoryRow, SptReservationPoolRow,
     SptReservationPoolWithDisplayRow, SptReservationRow, SptRevenueRow, SptTransactionRow,
+    SptUserHoldingItem,
 };
 pub use subscription::{
     ProfileSubscriptionInfo, ProfileSubscriptionRevenueRow, ProfileSubscriptionServiceInfo,

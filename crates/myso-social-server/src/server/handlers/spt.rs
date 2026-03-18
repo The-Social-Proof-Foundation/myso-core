@@ -7,7 +7,7 @@ use std::sync::Arc;
 
 use crate::error::SocialError;
 
-use super::super::{AppState, PageParams, SptPoolsQuery, TimeRangeParams};
+use super::super::{AppState, PageParams, SptPoolsQuery, SptUserHoldingsQuery, TimeRangeParams};
 
 pub async fn list_spt_pools(
     State(state): State<Arc<AppState>>,
@@ -46,15 +46,23 @@ pub async fn get_spt_popular(
 pub async fn get_spt_user_holdings(
     State(state): State<Arc<AppState>>,
     Path(address): Path<String>,
-    Query(params): Query<PageParams>,
-) -> Result<Json<Vec<(String, i64, i64)>>, SocialError> {
+    Query(params): Query<SptUserHoldingsQuery>,
+) -> Result<Json<serde_json::Value>, SocialError> {
     let limit = params.limit();
     let offset = params.offset();
-    let holdings = state
-        .reader
-        .get_spt_user_holdings(&address, limit, offset)
-        .await?;
-    Ok(Json(holdings))
+    if params.include_reservations == Some(true) {
+        let items = state
+            .reader
+            .get_spt_user_holdings_with_reservations(&address, limit, offset)
+            .await?;
+        Ok(Json(serde_json::to_value(items).map_err(|e| SocialError::internal(e.to_string()))?))
+    } else {
+        let items = state
+            .reader
+            .get_spt_user_holdings(&address, limit, offset)
+            .await?;
+        Ok(Json(serde_json::to_value(items).map_err(|e| SocialError::internal(e.to_string()))?))
+    }
 }
 
 pub async fn get_spt_user_reservations(

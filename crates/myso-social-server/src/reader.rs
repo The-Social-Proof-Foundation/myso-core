@@ -1557,6 +1557,15 @@ impl Reader {
         spt::get_spt_user_holdings(&self.db, address, limit, offset).await
     }
 
+    pub async fn get_spt_user_holdings_with_reservations(
+        &self,
+        address: &str,
+        limit: i64,
+        offset: i64,
+    ) -> Result<Vec<SptUserHoldingItem>, crate::error::SocialError> {
+        spt::get_spt_user_holdings_with_reservations(&self.db, address, limit, offset).await
+    }
+
     pub async fn get_spt_user_reservations(
         &self,
         address: &str,
