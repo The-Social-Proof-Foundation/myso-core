@@ -14,6 +14,7 @@ PORT = { sync = false }
 DATABASE_URL = { sync = false }
 RPC_URL = { sync = false }
 CONSISTENT_STORE_URL = { sync = false }
+SOCIAL_DATABASE_URL = { sync = false }
 
 # Explicitly tell Railway this is a Rust project
 [build.env]

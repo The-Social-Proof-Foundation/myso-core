@@ -1,9 +1,11 @@
 // Copyright (c) The Social Proof Foundation, LLC.
 // SPDX-License-Identifier: Apache-2.0
 
+use std::collections::HashMap;
+
 use chrono::NaiveDateTime;
 use diesel::QueryableByName;
-use diesel::sql_types::{BigInt, Bool, Nullable, Text, Timestamp};
+use diesel::sql_types::{Array, BigInt, Bool, Nullable, Text, Timestamp};
 use diesel_async::RunQueryDsl;
 
 use myso_pg_db::Connection;
@@ -34,6 +36,66 @@ pub struct ProfileSummaryRow {
     pub username: Option<String>,
     pub display_name: Option<String>,
     pub profile_photo: Option<String>,
+}
+
+pub(crate) async fn get_profile_summaries_for_addresses(
+    conn: &mut Connection<'_>,
+    addresses: &[String],
+    metrics: &DbReaderMetrics,
+) -> anyhow::Result<HashMap<String, ProfileSummaryRow>> {
+    if addresses.is_empty() {
+        return Ok(HashMap::new());
+    }
+    metrics.requests_received.inc();
+    let _guard = metrics.latency.start_timer();
+    #[derive(QueryableByName)]
+    struct Row {
+        #[diesel(sql_type = Text)]
+        owner_address: String,
+        #[diesel(sql_type = Nullable<Text>)]
+        username: Option<String>,
+        #[diesel(sql_type = Nullable<Text>)]
+        display_name: Option<String>,
+        #[diesel(sql_type = Nullable<Text>)]
+        profile_photo: Option<String>,
+    }
+    let query = "
+        SELECT DISTINCT ON (owner_address) owner_address, username, display_name, profile_photo
+        FROM profiles
+        WHERE owner_address = ANY($1::TEXT[])
+        ORDER BY owner_address, updated_at DESC
+    ";
+    let rows = diesel::sql_query(query)
+        .bind::<Array<Text>, _>(addresses)
+        .load::<Row>(conn)
+        .await?;
+    metrics.requests_succeeded.inc();
+    let mut result = HashMap::new();
+    for row in rows {
+        result.insert(
+            row.owner_address.clone(),
+            ProfileSummaryRow {
+                owner_address: row.owner_address,
+                username: row.username,
+                display_name: row.display_name,
+                profile_photo: row.profile_photo,
+            },
+        );
+    }
+    for addr in addresses {
+        if !result.contains_key(addr) {
+            result.insert(
+                addr.clone(),
+                ProfileSummaryRow {
+                    owner_address: addr.clone(),
+                    username: None,
+                    display_name: None,
+                    profile_photo: None,
+                },
+            );
+        }
+    }
+    Ok(result)
 }
 
 pub(crate) async fn get_followers(

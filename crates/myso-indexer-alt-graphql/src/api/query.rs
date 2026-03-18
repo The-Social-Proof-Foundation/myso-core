@@ -53,6 +53,9 @@ use crate::api::types::object_filter::ObjectFilterValidator as OFValidator;
 use crate::api::types::platform::Platform;
 use crate::api::types::post::Post;
 use crate::api::types::profile::Profile;
+use crate::api::types::vesting::{
+    VestingLeaderboardEntry, VestingLeaderboardResponse, VestingWallet,
+};
 use crate::api::types::protocol_configs::ProtocolConfigs;
 use crate::api::types::service_config::ServiceConfig;
 use crate::api::types::simulation_result::SimulationResult;
@@ -318,6 +321,81 @@ impl Query {
                 .await
                 .map_err(Into::into)
                 .map(|v| v.into_iter().map(Platform::from_db).collect()),
+        )
+    }
+
+    /// Fetch a vesting wallet by ID. Returns null if social DB not configured or not found.
+    async fn vesting_wallet(
+        &self,
+        ctx: &Context<'_>,
+        id: async_graphql::ID,
+    ) -> Option<Result<Option<VestingWallet>, RpcError>> {
+        let reader_opt = ctx
+            .data_opt::<std::sync::Arc<Option<myso_indexer_alt_social_reader::SocialPgReader>>>()?;
+        let reader = reader_opt.as_ref().as_ref()?;
+        Some(
+            reader
+                .get_vesting_wallet(id.as_str())
+                .await
+                .map_err(Into::into)
+                .map(|opt| opt.map(VestingWallet::from_row)),
+        )
+    }
+
+    /// List vesting wallets with optional owner and active-only filters. Returns empty when social DB not configured.
+    async fn vesting_wallets(
+        &self,
+        ctx: &Context<'_>,
+        owner: Option<MySoAddress>,
+        active_only: Option<bool>,
+        limit: Option<u64>,
+        offset: Option<u64>,
+    ) -> Option<Result<Vec<VestingWallet>, RpcError>> {
+        let reader_opt = ctx
+            .data_opt::<std::sync::Arc<Option<myso_indexer_alt_social_reader::SocialPgReader>>>()?;
+        let reader = reader_opt.as_ref().as_ref()?;
+        let limit = limit.unwrap_or(20).min(100) as i64;
+        let offset = offset.unwrap_or(0) as i64;
+        let owner_str = owner.as_ref().map(|a| a.to_string());
+        Some(
+            reader
+                .list_vesting_wallets(
+                    owner_str.as_deref(),
+                    active_only.unwrap_or(false),
+                    limit,
+                    offset,
+                )
+                .await
+                .map_err(Into::into)
+                .map(|v| v.into_iter().map(VestingWallet::from_row).collect()),
+        )
+    }
+
+    /// Vesting leaderboard by total vested amount. Returns empty when social DB not configured.
+    async fn vesting_leaderboard(
+        &self,
+        ctx: &Context<'_>,
+        limit: Option<u64>,
+        offset: Option<u64>,
+    ) -> Option<Result<VestingLeaderboardResponse, RpcError>> {
+        let reader_opt = ctx
+            .data_opt::<std::sync::Arc<Option<myso_indexer_alt_social_reader::SocialPgReader>>>()?;
+        let reader = reader_opt.as_ref().as_ref()?;
+        let limit = limit.unwrap_or(20).min(100) as i64;
+        let offset = offset.unwrap_or(0) as i64;
+        Some(
+            reader
+                .get_vesting_leaderboard(limit, offset)
+                .await
+                .map_err(Into::into)
+                .map(|r| VestingLeaderboardResponse {
+                    entries: r
+                        .entries
+                        .into_iter()
+                        .map(VestingLeaderboardEntry::from_row)
+                        .collect(),
+                    total: r.total,
+                }),
         )
     }
 

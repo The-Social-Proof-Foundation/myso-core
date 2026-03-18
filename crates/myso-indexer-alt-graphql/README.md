@@ -35,13 +35,7 @@ Fullnodes are used to execute and simulate transactions.
 
 ### (optional) Social Database
 
-When `--social-database-url` is provided, GraphQL can query social data (profiles,
-posts, platforms, social graph) from the database populated by
-`myso-indexer-alt-social`. The core indexer and social indexer use separate
-databases (required). See the social indexer's
-[README](../myso-indexer-alt-social/README.md) for setup. The social database
-must have `myso-indexer-alt-social-schema` migrations applied (the social
-indexer applies these on startup).
+When `--social-database-url` is provided (or `SOCIAL_DATABASE_URL` in production/Docker), GraphQL can query social data (profiles, posts, platforms, social graph, vesting) from the database populated by `myso-indexer-alt-social`. The core indexer and social indexer use separate databases (required). See the social indexer's [README](../myso-indexer-alt-social/README.md) for setup. The social database must have `myso-indexer-alt-social-schema` migrations applied (the social indexer applies these on startup).
 
 ## Tests
 

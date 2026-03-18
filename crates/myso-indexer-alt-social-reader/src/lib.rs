@@ -7,6 +7,7 @@ pub mod platform;
 pub mod post;
 pub mod profile;
 pub mod social_graph;
+pub mod vesting;
 
 pub use pg_reader::SocialPgReader;
 pub use platform::{PlatformBlockedProfileRow, PlatformRow};
@@ -18,3 +19,7 @@ pub use profile::{
     SocialProofTokenInfo,
 };
 pub use social_graph::{BlockedPlatformRow, BlockedProfileRow, ProfileSummaryRow};
+pub use vesting::{
+    VestingLeaderboardEntry, VestingLeaderboardResponse, VestingWalletRow,
+    VestingWalletWithStatus,
+};

@@ -3593,6 +3593,10 @@ type Profile implements Node {
 	"""
 	username: String!
 	"""
+	Vesting wallets owned by this profile (paginated).
+	"""
+	vestingWallets(limit: Int, offset: Int): [VestingWallet!]
+	"""
 	The profile's website.
 	"""
 	website: String
@@ -4007,6 +4011,18 @@ type Query {
 	- `author` is the signer's address.
 	"""
 	verifyZkLoginSignature(bytes: Base64!, signature: Base64!, intentScope: ZkLoginIntentScope!, author: MySoAddress!): ZkLoginVerifyResult!
+	"""
+	Vesting leaderboard by total vested amount. Returns empty when social DB not configured.
+	"""
+	vestingLeaderboard(limit: Int, offset: Int): VestingLeaderboardResponse
+	"""
+	Fetch a vesting wallet by ID. Returns null if social DB not configured or not found.
+	"""
+	vestingWallet(id: ID!): VestingWallet
+	"""
+	List vesting wallets with optional owner and active-only filters. Returns empty when social DB not configured.
+	"""
+	vestingWallets(owner: MySoAddress, activeOnly: Boolean, limit: Int, offset: Int): [VestingWallet!]
 }
 
 """
@@ -4842,6 +4858,107 @@ input VersionFilter {
 	Filter to versions that are strictly older than this one, defaults to fetching up to the latest version (inclusive).
 	"""
 	beforeVersion: UInt53
+}
+
+type VestingLeaderboardEntry {
+	"""
+	Number of active vesting wallets.
+	"""
+	activeWallets: Int!
+	"""
+	Number of completed vesting wallets.
+	"""
+	completedWallets: Int!
+	"""
+	Owner address.
+	"""
+	ownerAddress: MySoAddress!
+	"""
+	Total amount claimed across all wallets.
+	"""
+	totalClaimed: Int!
+	"""
+	Total amount vested across all wallets.
+	"""
+	totalVested: Int!
+	"""
+	User profile summary.
+	"""
+	user: ProfileSummary!
+}
+
+type VestingLeaderboardResponse {
+	"""
+	Leaderboard entries.
+	"""
+	entries: [VestingLeaderboardEntry!]!
+	"""
+	Total number of unique owners.
+	"""
+	total: Int!
+}
+
+type VestingWallet {
+	"""
+	Amount already claimed.
+	"""
+	claimedAmount: Int!
+	"""
+	Claimed percentage (0-100).
+	"""
+	claimedPercentage: Float!
+	"""
+	When the wallet was created (ISO 8601).
+	"""
+	createdAt: String!
+	"""
+	Curve factor (1000 = linear).
+	"""
+	curveFactor: Int!
+	"""
+	Vesting duration (ms).
+	"""
+	duration: Int!
+	"""
+	End time (ms since epoch).
+	"""
+	endTime: Int!
+	"""
+	Whether vesting has ended.
+	"""
+	hasEnded: Boolean!
+	"""
+	Whether vesting has started.
+	"""
+	hasStarted: Boolean!
+	"""
+	Owner address.
+	"""
+	ownerAddress: MySoAddress!
+	"""
+	Remaining balance.
+	"""
+	remainingBalance: Int!
+	"""
+	Vesting start time (ms since epoch).
+	"""
+	startTime: Int!
+	"""
+	Total amount vested.
+	"""
+	totalAmount: Int!
+	"""
+	Transaction ID that created the wallet.
+	"""
+	transactionId: String!
+	"""
+	Vesting progress (0.0-1.0).
+	"""
+	vestingProgress: Float!
+	"""
+	Vesting wallet ID (object address).
+	"""
+	walletId: String!
 }
 
 """

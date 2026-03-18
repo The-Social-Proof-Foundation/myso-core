@@ -24,6 +24,7 @@ use crate::social_graph::{
     check_following, check_platform_blocked, check_profile_blocked, get_blocked_platforms,
     get_blocked_profiles, get_followers, get_following,
 };
+use crate::vesting::{get_vesting_leaderboard, get_vesting_wallet, list_vesting_wallets};
 
 pub use myso_indexer_alt_social_schema::models::Profile;
 
@@ -305,5 +306,36 @@ impl SocialPgReader {
     ) -> anyhow::Result<Vec<crate::post::PostTransferRow>> {
         let mut conn = self.connect().await?;
         crate::post::get_post_transfers(&mut conn, post_id, limit, offset, &self.metrics).await
+    }
+
+    /// Get a vesting wallet by ID.
+    pub async fn get_vesting_wallet(
+        &self,
+        wallet_id: &str,
+    ) -> anyhow::Result<Option<crate::vesting::VestingWalletWithStatus>> {
+        let mut conn = self.connect().await?;
+        get_vesting_wallet(&mut conn, wallet_id, &self.metrics).await
+    }
+
+    /// List vesting wallets with optional owner and active-only filters.
+    pub async fn list_vesting_wallets(
+        &self,
+        owner: Option<&str>,
+        active_only: bool,
+        limit: i64,
+        offset: i64,
+    ) -> anyhow::Result<Vec<crate::vesting::VestingWalletWithStatus>> {
+        let mut conn = self.connect().await?;
+        list_vesting_wallets(&mut conn, owner, active_only, limit, offset, &self.metrics).await
+    }
+
+    /// Get vesting leaderboard.
+    pub async fn get_vesting_leaderboard(
+        &self,
+        limit: i64,
+        offset: i64,
+    ) -> anyhow::Result<crate::vesting::VestingLeaderboardResponse> {
+        let mut conn = self.connect().await?;
+        get_vesting_leaderboard(&mut conn, limit, offset, &self.metrics).await
     }
 }
