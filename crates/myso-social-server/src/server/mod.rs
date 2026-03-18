@@ -66,6 +66,7 @@ pub struct GovernanceProposalQuery {
     pub offset: Option<i64>,
     pub status: Option<i16>,
     pub proposal_type: Option<i16>,
+    pub platform_id: Option<String>,
     pub submitter: Option<String>,
 }
 
@@ -646,6 +647,10 @@ fn make_router(state: Arc<AppState>) -> Router {
         )
         .route("/governance/nominees", get(list_governance_nominees))
         .route("/governance/registries", get(list_governance_registries))
+        .route(
+            "/governance/registries/platform/:platform_id",
+            get(get_governance_registry_by_platform),
+        )
         .route(
             "/governance/registries/:registry_type",
             get(get_governance_registry),

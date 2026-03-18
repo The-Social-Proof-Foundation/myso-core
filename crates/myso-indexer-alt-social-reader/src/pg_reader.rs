@@ -19,10 +19,10 @@ use crate::profile::get_profile_badges;
 use crate::profile::get_profile_by_address;
 use crate::profile::get_profile_or_wallet_by_address;
 use crate::profile::get_profiles;
-use crate::platform::get_platform_blocked_profiles;
+use crate::platform::{get_platform_blocked_profiles, get_platform_members, get_platform_moderators};
 use crate::social_graph::{
     check_following, check_platform_blocked, check_profile_blocked, get_blocked_platforms,
-    get_blocked_profiles, get_followers, get_following,
+    get_blocked_profiles, get_followers, get_following, get_profile_platform_memberships,
 };
 use crate::poc::{
     get_poc_analysis_for_post, get_poc_badges_for_post, get_poc_configuration,
@@ -33,6 +33,11 @@ use crate::insurance::{
 };
 use crate::mydata::{
     get_mydata_record, list_mydata_purchases_by_buyer, list_mydata_records_by_owner,
+};
+use crate::governance::{
+    get_delegate_by_address, get_governance_registry_by_platform_id,
+    get_governance_registry_by_type, get_proposal_by_id, list_delegates,
+    list_governance_registries, list_proposals,
 };
 use crate::spot::{get_spot_record, list_spot_bets};
 use crate::promotion::{
@@ -258,6 +263,40 @@ impl SocialPgReader {
     ) -> anyhow::Result<Vec<crate::platform::PlatformBlockedProfileRow>> {
         let mut conn = self.connect().await?;
         get_platform_blocked_profiles(&mut conn, platform_id, limit, offset, &self.metrics).await
+    }
+
+    /// Get platforms this profile has joined (paginated).
+    pub async fn get_profile_platform_memberships(
+        &self,
+        address: &str,
+        limit: i64,
+        offset: i64,
+    ) -> anyhow::Result<Vec<myso_indexer_alt_social_schema::models::ProfilePlatformMembershipRow>>
+    {
+        let mut conn = self.connect().await?;
+        get_profile_platform_memberships(&mut conn, address, limit, offset, &self.metrics).await
+    }
+
+    /// Get members of a platform (paginated).
+    pub async fn get_platform_members(
+        &self,
+        platform_id: &str,
+        limit: i64,
+        offset: i64,
+    ) -> anyhow::Result<Vec<myso_indexer_alt_social_schema::models::PlatformMemberRow>> {
+        let mut conn = self.connect().await?;
+        get_platform_members(&mut conn, platform_id, limit, offset, &self.metrics).await
+    }
+
+    /// Get moderators of a platform (paginated).
+    pub async fn get_platform_moderators(
+        &self,
+        platform_id: &str,
+        limit: i64,
+        offset: i64,
+    ) -> anyhow::Result<Vec<myso_indexer_alt_social_schema::models::PlatformModeratorRow>> {
+        let mut conn = self.connect().await?;
+        get_platform_moderators(&mut conn, platform_id, limit, offset, &self.metrics).await
     }
 
     /// Check if blocker has blocked blocked.
@@ -573,5 +612,83 @@ impl SocialPgReader {
     ) -> anyhow::Result<Vec<crate::InsuranceVaultRow>> {
         let mut conn = self.connect().await?;
         list_insurance_vaults(&mut conn, limit, offset, &self.metrics).await
+    }
+
+    /// List governance proposals (paginated, optionally filtered by platform, status, proposal type).
+    pub async fn list_proposals(
+        &self,
+        platform_id: Option<&str>,
+        status: Option<i16>,
+        proposal_type: Option<i16>,
+        limit: i64,
+        offset: i64,
+    ) -> anyhow::Result<Vec<myso_indexer_alt_social_schema::models::ProposalRow>> {
+        let mut conn = self.connect().await?;
+        list_proposals(
+            &mut conn,
+            platform_id,
+            status,
+            proposal_type,
+            limit,
+            offset,
+            &self.metrics,
+        )
+        .await
+    }
+
+    /// Get a proposal by ID.
+    pub async fn get_proposal_by_id(
+        &self,
+        id: &str,
+    ) -> anyhow::Result<Option<myso_indexer_alt_social_schema::models::ProposalRow>> {
+        let mut conn = self.connect().await?;
+        get_proposal_by_id(&mut conn, id, &self.metrics).await
+    }
+
+    /// List delegates (paginated, optionally filtered by registry type and active status).
+    pub async fn list_delegates(
+        &self,
+        registry_type: Option<i16>,
+        is_active: Option<bool>,
+        limit: i64,
+        offset: i64,
+    ) -> anyhow::Result<Vec<myso_indexer_alt_social_schema::models::DelegateRow>> {
+        let mut conn = self.connect().await?;
+        list_delegates(&mut conn, registry_type, is_active, limit, offset, &self.metrics).await
+    }
+
+    /// Get a delegate by address.
+    pub async fn get_delegate_by_address(
+        &self,
+        address: &str,
+    ) -> anyhow::Result<Option<myso_indexer_alt_social_schema::models::DelegateRow>> {
+        let mut conn = self.connect().await?;
+        get_delegate_by_address(&mut conn, address, &self.metrics).await
+    }
+
+    /// List all governance registries.
+    pub async fn list_governance_registries(
+        &self,
+    ) -> anyhow::Result<Vec<myso_indexer_alt_social_schema::models::GovernanceRegistryRow>> {
+        let mut conn = self.connect().await?;
+        list_governance_registries(&mut conn, &self.metrics).await
+    }
+
+    /// Get governance registry by type.
+    pub async fn get_governance_registry_by_type(
+        &self,
+        registry_type: i16,
+    ) -> anyhow::Result<Option<myso_indexer_alt_social_schema::models::GovernanceRegistryRow>> {
+        let mut conn = self.connect().await?;
+        get_governance_registry_by_type(&mut conn, registry_type, &self.metrics).await
+    }
+
+    /// Get governance registry for a platform (by platform ID).
+    pub async fn get_governance_registry_by_platform_id(
+        &self,
+        platform_id: &str,
+    ) -> anyhow::Result<Option<myso_indexer_alt_social_schema::models::GovernanceRegistryRow>> {
+        let mut conn = self.connect().await?;
+        get_governance_registry_by_platform_id(&mut conn, platform_id, &self.metrics).await
     }
 }

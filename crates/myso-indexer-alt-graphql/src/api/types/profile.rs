@@ -14,6 +14,7 @@ use myso_indexer_alt_social_schema::models::Profile as SchemaProfile;
 use crate::api::scalars::id::Id;
 use crate::api::scalars::myso_address::MySoAddress;
 use crate::api::types::blocked::{BlockedPlatformSummary, BlockedProfileSummary};
+use crate::api::types::platform::PlatformMembershipSummary;
 use crate::api::types::profile_badge::ProfileBadge;
 use crate::api::types::profile_summary::ProfileSummary;
 use crate::api::types::mydata::MyDataRecord;
@@ -379,6 +380,25 @@ impl Profile {
             .await
             .ok()?;
         Some(rows.into_iter().map(BlockedPlatformSummary::from_row).collect())
+    }
+
+    /// Platforms this profile has joined (paginated).
+    async fn platform_memberships(
+        &self,
+        ctx: &Context<'_>,
+        limit: Option<u64>,
+        offset: Option<u64>,
+    ) -> Option<Vec<PlatformMembershipSummary>> {
+        let reader_opt = ctx
+            .data_opt::<std::sync::Arc<Option<myso_indexer_alt_social_reader::SocialPgReader>>>()?;
+        let reader = reader_opt.as_ref().as_ref()?;
+        let limit = limit.unwrap_or(20).min(100) as i64;
+        let offset = offset.unwrap_or(0) as i64;
+        let rows = reader
+            .get_profile_platform_memberships(&self.inner.owner_address, limit, offset)
+            .await
+            .ok()?;
+        Some(rows.into_iter().map(PlatformMembershipSummary::from_row).collect())
     }
 
     /// Vesting wallets owned by this profile (paginated).

@@ -16,9 +16,17 @@ pub(crate) async fn list_proposals(
     offset: i64,
     status: Option<i16>,
     proposal_type: Option<i16>,
+    platform_id: Option<&str>,
     submitter: Option<&str>,
 ) -> Result<Vec<ProposalRow>, SocialError> {
     let mut conn = db.connect().await?;
+
+    let effective_proposal_type = if let Some(pid) = platform_id {
+        resolve_registry_type_for_platform(&mut conn, pid).await?
+    } else {
+        proposal_type
+    };
+
     let query = "
         SELECT id, title, description, proposal_type, reference_id, metadata_json, submitter,
                submission_time, delegate_approval_count, delegate_rejection_count,
@@ -34,13 +42,53 @@ pub(crate) async fn list_proposals(
     ";
     let results = diesel::sql_query(query)
         .bind::<Nullable<SmallInt>, _>(status)
-        .bind::<Nullable<SmallInt>, _>(proposal_type)
+        .bind::<Nullable<SmallInt>, _>(effective_proposal_type)
         .bind::<Nullable<Text>, _>(submitter)
         .bind::<BigInt, _>(limit)
         .bind::<BigInt, _>(offset)
         .load::<ProposalRow>(&mut conn)
         .await?;
     Ok(results)
+}
+
+async fn resolve_registry_type_for_platform<C>(conn: &mut C, platform_id: &str) -> Result<Option<i16>, SocialError>
+where
+    C: diesel_async::AsyncConnection<Backend = diesel::pg::Pg> + Send,
+{
+    #[derive(QueryableByName)]
+    struct PlatformRegistry {
+        #[diesel(sql_type = Nullable<Text>)]
+        governance_registry_id: Option<String>,
+    }
+
+    use diesel::OptionalExtension;
+    let platform = diesel::sql_query(
+        "SELECT governance_registry_id FROM platforms WHERE platform_id = $1 AND deleted_at IS NULL LIMIT 1",
+    )
+    .bind::<Text, _>(platform_id)
+    .get_result::<PlatformRegistry>(conn)
+    .await
+    .optional()?;
+
+    let Some(reg_id) = platform.and_then(|p| p.governance_registry_id) else {
+        return Ok(Some(-1));
+    };
+
+    #[derive(QueryableByName)]
+    struct RegistryType {
+        #[diesel(sql_type = SmallInt)]
+        registry_type: i16,
+    }
+
+    let reg = diesel::sql_query(
+        "SELECT registry_type FROM governance_registries WHERE registry_id = $1 LIMIT 1",
+    )
+    .bind::<Text, _>(reg_id)
+    .get_result::<RegistryType>(conn)
+    .await
+    .optional()?;
+
+    Ok(reg.map(|r| r.registry_type).or(Some(-1)))
 }
 
 pub(crate) async fn get_proposal_by_id(
@@ -287,6 +335,44 @@ pub(crate) async fn get_governance_registry_by_type(
     ";
     let result = diesel::sql_query(query)
         .bind::<SmallInt, _>(registry_type)
+        .get_result::<GovernanceRegistryRow>(&mut conn)
+        .await
+        .optional()?;
+    Ok(result)
+}
+
+pub(crate) async fn get_governance_registry_by_platform_id(
+    db: &Db,
+    platform_id: &str,
+) -> Result<Option<GovernanceRegistryRow>, SocialError> {
+    let mut conn = db.connect().await?;
+
+    #[derive(QueryableByName)]
+    struct PlatformRegistry {
+        #[diesel(sql_type = Nullable<Text>)]
+        governance_registry_id: Option<String>,
+    }
+
+    let platform = diesel::sql_query(
+        "SELECT governance_registry_id FROM platforms WHERE platform_id = $1 AND deleted_at IS NULL LIMIT 1",
+    )
+    .bind::<Text, _>(platform_id)
+    .get_result::<PlatformRegistry>(&mut conn)
+    .await
+    .optional()?;
+
+    let Some(reg_id) = platform.and_then(|p| p.governance_registry_id) else {
+        return Ok(None);
+    };
+
+    let query = "
+        SELECT registry_type, registry_id, delegate_count, delegate_term_epochs,
+               proposal_submission_cost, max_votes_per_user, voting_period_ms, quorum_votes
+        FROM governance_registries
+        WHERE registry_id = $1
+    ";
+    let result = diesel::sql_query(query)
+        .bind::<Text, _>(reg_id)
         .get_result::<GovernanceRegistryRow>(&mut conn)
         .await
         .optional()?;

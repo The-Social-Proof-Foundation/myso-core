@@ -1,13 +1,25 @@
 // Copyright (c) The Social Proof Foundation, LLC.
 // SPDX-License-Identifier: Apache-2.0
 
+use std::str::FromStr;
+
 use async_graphql::Context;
 use async_graphql::Object;
+use chrono::DateTime;
 use myso_indexer_alt_social_reader::PlatformRow as DbPlatform;
+use myso_indexer_alt_social_schema::models::{
+    PlatformMemberRow, PlatformModeratorRow, ProfilePlatformMembershipRow,
+};
 
 use crate::api::scalars::id::Id;
 use crate::api::scalars::json::Json;
+use crate::api::scalars::myso_address::MySoAddress;
 use crate::api::types::blocked::PlatformBlockedProfileSummary;
+
+fn to_iso8601_utc(dt: chrono::NaiveDateTime) -> String {
+    DateTime::<chrono::Utc>::from_naive_utc_and_offset(dt, chrono::Utc)
+        .to_rfc3339_opts(chrono::SecondsFormat::Millis, true)
+}
 
 fn platform_status_to_text(status: i16) -> &'static str {
     match status {
@@ -214,5 +226,141 @@ impl Platform {
             .await
             .ok()?;
         Some(rows.into_iter().map(PlatformBlockedProfileSummary::from_row).collect())
+    }
+
+    /// Members of this platform (paginated).
+    async fn members(
+        &self,
+        ctx: &Context<'_>,
+        limit: Option<u64>,
+        offset: Option<u64>,
+    ) -> Option<Vec<PlatformMemberSummary>> {
+        let reader_opt = ctx
+            .data_opt::<std::sync::Arc<Option<myso_indexer_alt_social_reader::SocialPgReader>>>()?;
+        let reader = reader_opt.as_ref().as_ref()?;
+        let limit = limit.unwrap_or(20).min(100) as i64;
+        let offset = offset.unwrap_or(0) as i64;
+        let rows = reader
+            .get_platform_members(&self.inner.platform_id, limit, offset)
+            .await
+            .ok()?;
+        Some(rows.into_iter().map(PlatformMemberSummary::from_row).collect())
+    }
+
+    /// Moderators of this platform (paginated).
+    async fn moderators(
+        &self,
+        ctx: &Context<'_>,
+        limit: Option<u64>,
+        offset: Option<u64>,
+    ) -> Option<Vec<PlatformModeratorSummary>> {
+        let reader_opt = ctx
+            .data_opt::<std::sync::Arc<Option<myso_indexer_alt_social_reader::SocialPgReader>>>()?;
+        let reader = reader_opt.as_ref().as_ref()?;
+        let limit = limit.unwrap_or(20).min(100) as i64;
+        let offset = offset.unwrap_or(0) as i64;
+        let rows = reader
+            .get_platform_moderators(&self.inner.platform_id, limit, offset)
+            .await
+            .ok()?;
+        Some(rows.into_iter().map(PlatformModeratorSummary::from_row).collect())
+    }
+}
+
+#[derive(Clone)]
+pub(crate) struct PlatformMembershipSummary {
+    pub platform_id: String,
+    pub name: String,
+    pub is_approved: bool,
+    pub joined_at: chrono::NaiveDateTime,
+}
+
+impl PlatformMembershipSummary {
+    pub(crate) fn from_row(row: ProfilePlatformMembershipRow) -> Self {
+        Self {
+            platform_id: row.platform_id,
+            name: row.name,
+            is_approved: row.is_approved,
+            joined_at: row.joined_at,
+        }
+    }
+}
+
+#[Object]
+impl PlatformMembershipSummary {
+    async fn platform_id(&self) -> &str {
+        &self.platform_id
+    }
+
+    async fn name(&self) -> &str {
+        &self.name
+    }
+
+    async fn is_approved(&self) -> bool {
+        self.is_approved
+    }
+
+    async fn joined_at(&self) -> String {
+        to_iso8601_utc(self.joined_at)
+    }
+}
+
+#[derive(Clone)]
+pub(crate) struct PlatformMemberSummary {
+    pub wallet_address: String,
+    pub joined_at: chrono::NaiveDateTime,
+}
+
+impl PlatformMemberSummary {
+    pub(crate) fn from_row(row: PlatformMemberRow) -> Self {
+        Self {
+            wallet_address: row.wallet_address,
+            joined_at: row.joined_at,
+        }
+    }
+}
+
+#[Object]
+impl PlatformMemberSummary {
+    async fn wallet_address(&self) -> MySoAddress {
+        MySoAddress::from_str(&self.wallet_address)
+            .unwrap_or_else(|_| MySoAddress::from(myso_types::base_types::MySoAddress::ZERO))
+    }
+
+    async fn joined_at(&self) -> String {
+        to_iso8601_utc(self.joined_at)
+    }
+}
+
+#[derive(Clone)]
+pub(crate) struct PlatformModeratorSummary {
+    pub moderator_address: String,
+    pub added_by: String,
+    pub created_at: chrono::NaiveDateTime,
+}
+
+impl PlatformModeratorSummary {
+    pub(crate) fn from_row(row: PlatformModeratorRow) -> Self {
+        Self {
+            moderator_address: row.moderator_address,
+            added_by: row.added_by,
+            created_at: row.created_at,
+        }
+    }
+}
+
+#[Object]
+impl PlatformModeratorSummary {
+    async fn moderator_address(&self) -> MySoAddress {
+        MySoAddress::from_str(&self.moderator_address)
+            .unwrap_or_else(|_| MySoAddress::from(myso_types::base_types::MySoAddress::ZERO))
+    }
+
+    async fn added_by(&self) -> &str {
+        &self.added_by
+    }
+
+    async fn created_at(&self) -> String {
+        to_iso8601_utc(self.created_at)
     }
 }

@@ -338,9 +338,19 @@ impl Reader {
         offset: i64,
         status: Option<i16>,
         proposal_type: Option<i16>,
+        platform_id: Option<&str>,
         submitter: Option<&str>,
     ) -> Result<Vec<ProposalRow>, crate::error::SocialError> {
-        governance::list_proposals(&self.db, limit, offset, status, proposal_type, submitter).await
+        governance::list_proposals(
+            &self.db,
+            limit,
+            offset,
+            status,
+            proposal_type,
+            platform_id,
+            submitter,
+        )
+        .await
     }
 
     pub async fn get_proposal_by_id(
@@ -432,6 +442,13 @@ impl Reader {
         registry_type: i16,
     ) -> Result<Option<GovernanceRegistryRow>, crate::error::SocialError> {
         governance::get_governance_registry_by_type(&self.db, registry_type).await
+    }
+
+    pub async fn get_governance_registry_by_platform_id(
+        &self,
+        platform_id: &str,
+    ) -> Result<Option<GovernanceRegistryRow>, crate::error::SocialError> {
+        governance::get_governance_registry_by_platform_id(&self.db, platform_id).await
     }
 
     pub async fn list_governance_events(

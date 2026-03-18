@@ -7,7 +7,7 @@ use chrono::NaiveDateTime;
 use diesel::QueryableByName;
 use diesel::sql_types::{Array, BigInt, Bool, Nullable, Text, Timestamp};
 use diesel_async::RunQueryDsl;
-
+use myso_indexer_alt_social_schema::models::ProfilePlatformMembershipRow;
 use myso_pg_db::Connection;
 
 use crate::metrics::DbReaderMetrics;
@@ -401,6 +401,52 @@ pub(crate) async fn check_profile_blocked(
     .await?;
     metrics.requests_succeeded.inc();
     Ok(result.exists)
+}
+
+pub(crate) async fn get_profile_platform_memberships(
+    conn: &mut Connection<'_>,
+    address: &str,
+    limit: i64,
+    offset: i64,
+    metrics: &DbReaderMetrics,
+) -> anyhow::Result<Vec<ProfilePlatformMembershipRow>> {
+    metrics.requests_received.inc();
+    let _guard = metrics.latency.start_timer();
+    #[derive(QueryableByName)]
+    struct Row {
+        #[diesel(sql_type = Text)]
+        platform_id: String,
+        #[diesel(sql_type = Text)]
+        name: String,
+        #[diesel(sql_type = Bool)]
+        is_approved: bool,
+        #[diesel(sql_type = Timestamp)]
+        joined_at: NaiveDateTime,
+    }
+    let query = "
+        SELECT p.platform_id, p.name, p.is_approved, pm.joined_at
+        FROM platform_memberships pm
+        INNER JOIN platforms p ON pm.platform_id = p.platform_id
+        WHERE pm.wallet_address = $1
+        ORDER BY pm.joined_at DESC
+        LIMIT $2 OFFSET $3
+    ";
+    let rows = diesel::sql_query(query)
+        .bind::<Text, _>(address)
+        .bind::<BigInt, _>(limit)
+        .bind::<BigInt, _>(offset)
+        .load::<Row>(conn)
+        .await?;
+    metrics.requests_succeeded.inc();
+    Ok(rows
+        .into_iter()
+        .map(|r| ProfilePlatformMembershipRow {
+            platform_id: r.platform_id,
+            name: r.name,
+            is_approved: r.is_approved,
+            joined_at: r.joined_at,
+        })
+        .collect())
 }
 
 pub(crate) async fn check_platform_blocked(

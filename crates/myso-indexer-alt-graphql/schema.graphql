@@ -937,6 +937,45 @@ ISO-8601 Date and Time: RFC3339 in UTC with format: YYYY-MM-DDTHH:MM:SS.mmmZ. No
 """
 scalar DateTime
 
+type Delegate {
+	"""
+	Delegate address.
+	"""
+	address: MySoAddress!
+	"""
+	Downvotes (delegate ratings).
+	"""
+	downvotes: Int!
+	"""
+	Whether the delegate is currently active.
+	"""
+	isActive: Boolean!
+	"""
+	Proposals reviewed.
+	"""
+	proposalsReviewed: Int!
+	"""
+	Proposals submitted.
+	"""
+	proposalsSubmitted: Int!
+	"""
+	Registry type (0=ecosystem, 1=proof of creativity, 3=platform).
+	"""
+	registryType: Int!
+	"""
+	Term end (epoch).
+	"""
+	termEnd: Int!
+	"""
+	Term start (epoch).
+	"""
+	termStart: Int!
+	"""
+	Upvotes (delegate ratings).
+	"""
+	upvotes: Int!
+}
+
 """
 A rendered JSON blob based on an on-chain template.
 """
@@ -1601,6 +1640,48 @@ type GenesisTransaction {
 	Objects to be created during genesis.
 	"""
 	objects(first: Int, after: String, last: Int, before: String): ObjectConnection
+}
+
+type GovernanceRegistry {
+	"""
+	Voting configuration (term, costs, quorum, etc.).
+	"""
+	config: GovernanceRegistryConfig!
+	"""
+	Number of delegates.
+	"""
+	delegateCount: Int!
+	"""
+	Registry object ID on-chain.
+	"""
+	registryId: String!
+	"""
+	Registry type (0=ecosystem, 1=proof of creativity, 3=platform).
+	"""
+	registryType: Int!
+}
+
+type GovernanceRegistryConfig {
+	"""
+	Delegate term length in epochs.
+	"""
+	delegateTermEpochs: Int!
+	"""
+	Max votes per user in community voting.
+	"""
+	maxVotesPerUser: Int!
+	"""
+	Cost to submit a proposal.
+	"""
+	proposalSubmissionCost: Int!
+	"""
+	Quorum votes required.
+	"""
+	quorumVotes: Int!
+	"""
+	Voting period in milliseconds.
+	"""
+	votingPeriodMs: Int!
 }
 
 """
@@ -3346,9 +3427,17 @@ type Platform implements Node {
 	"""
 	maxVotesPerUser: Int
 	"""
+	Members of this platform (paginated).
+	"""
+	members(limit: Int, offset: Int): [PlatformMemberSummary!]
+	"""
 	Min on-chain age in days.
 	"""
 	minOnChainAgeDays: Int
+	"""
+	Moderators of this platform (paginated).
+	"""
+	moderators(limit: Int, offset: Int): [PlatformModeratorSummary!]
 	"""
 	The platform name.
 	"""
@@ -3427,6 +3516,24 @@ type PlatformBlockedProfileSummary {
 	blockedBy: String!
 	createdAt: String!
 	walletAddress: MySoAddress!
+}
+
+type PlatformMemberSummary {
+	joinedAt: String!
+	walletAddress: MySoAddress!
+}
+
+type PlatformMembershipSummary {
+	isApproved: Boolean!
+	joinedAt: String!
+	name: String!
+	platformId: String!
+}
+
+type PlatformModeratorSummary {
+	addedBy: String!
+	createdAt: String!
+	moderatorAddress: MySoAddress!
 }
 
 type Post implements Node {
@@ -3632,6 +3739,10 @@ type Profile implements Node {
 	Phone (encrypted).
 	"""
 	phone: String
+	"""
+	Platforms this profile has joined (paginated).
+	"""
+	platformMemberships(limit: Int, offset: Int): [PlatformMembershipSummary!]
 	"""
 	Political view.
 	"""
@@ -3856,6 +3967,92 @@ type Promotion {
 	views: Int!
 }
 
+type Proposal {
+	"""
+	Anonymous voters count (when anonymous voting enabled).
+	"""
+	anonymousVotersCount: Int
+	"""
+	Proposal description.
+	"""
+	description: String!
+	"""
+	Implementation time (epoch ms).
+	"""
+	implementationTime: Int
+	"""
+	Implemented description (when status=implemented).
+	"""
+	implementedDescription: String
+	"""
+	Unique proposal identifier (object ID on-chain).
+	"""
+	proposalId: String!
+	"""
+	Reference ID (e.g. linked post or object).
+	"""
+	referenceId: String
+	"""
+	Registry type (0=ecosystem, 1=proof of creativity, 3=platform).
+	"""
+	registryType: Int!
+	"""
+	Rescind time (epoch ms, when rescinded).
+	"""
+	rescindTime: Int
+	"""
+	Reward pool amount.
+	"""
+	rewardPool: Int!
+	"""
+	Proposal status (0=submitted, 1=delegate_review, 2=community_voting, 3=approved, 4=rejected, 5=implemented, 6=rescinded).
+	"""
+	status: Int!
+	"""
+	Submission time (epoch ms).
+	"""
+	submissionTime: Int!
+	"""
+	Submitter address.
+	"""
+	submitter: MySoAddress!
+	"""
+	Proposal title.
+	"""
+	title: String!
+	"""
+	Vote counts (delegate and community).
+	"""
+	votes: ProposalVotes!
+	"""
+	Voting end time (epoch ms).
+	"""
+	votingEndTime: Int
+	"""
+	Voting start time (epoch ms, when in community voting).
+	"""
+	votingStartTime: Int
+}
+
+type ProposalVotes {
+	"""
+	Community votes against (reject).
+	"""
+	communityAgainst: Int!
+	"""
+	Community votes for (approve).
+	"""
+	communityFor: Int!
+	"""
+	Delegate votes against (reject).
+	"""
+	delegateAgainst: Int!
+	"""
+	Delegate votes for (approve).
+	"""
+	delegateFor: Int!
+}
+
 """
 A protocol configuration that can hold an arbitrary value (or no value at all).
 """
@@ -3967,6 +4164,14 @@ type Query {
 	"""
 	coinMetadata(coinType: String!): CoinMetadata
 	"""
+	Fetch a delegate by address. Returns null when social DB not configured or not found.
+	"""
+	delegate(address: MySoAddress!): Delegate
+	"""
+	List delegates (paginated, optionally filtered by registry type). Returns empty when social DB not configured.
+	"""
+	delegates(registryType: Int, limit: Int, offset: Int): [Delegate!]
+	"""
 	Fetch an epoch by its ID, or fetch the latest epoch if no ID is provided.
 	
 	Returns `null` if the epoch does not exist yet, or was pruned.
@@ -3980,6 +4185,14 @@ type Query {
 	Paginate events that are emitted in the network, optionally filtered by event filters.
 	"""
 	events(first: Int, after: String, last: Int, before: String, filter: EventFilter): EventConnection
+	"""
+	List all governance registries. Returns empty when social DB not configured.
+	"""
+	governanceRegistries: [GovernanceRegistry!]
+	"""
+	Fetch governance registry for a platform (by platform ID). Returns null when social DB not configured or platform has no registry.
+	"""
+	governanceRegistry(platformId: String!): GovernanceRegistry
 	"""
 	Insurance policies by insured address. Returns empty when social DB not configured.
 	"""
@@ -4148,6 +4361,14 @@ type Query {
 	Fetch a promotion by ID. Returns null if social DB not configured or not found.
 	"""
 	promotion(id: ID!): Promotion
+	"""
+	Fetch a proposal by ID. Returns null when social DB not configured or not found.
+	"""
+	proposal(id: ID!): Proposal
+	"""
+	List governance proposals (paginated, optionally filtered by platform and status). Returns empty when social DB not configured.
+	"""
+	proposals(platformId: String, status: Int, limit: Int, offset: Int): [Proposal!]
 	"""
 	Fetch the protocol config by protocol version, or the latest protocol config used on chain if no version is provided.
 	"""

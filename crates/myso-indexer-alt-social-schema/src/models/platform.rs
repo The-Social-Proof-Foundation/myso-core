@@ -316,3 +316,24 @@ pub struct NewPlatformTokenAirdrop {
     pub created_at: NaiveDateTime,
     pub event_id: Option<String>,
 }
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct PlatformMemberRow {
+    pub wallet_address: String,
+    pub joined_at: NaiveDateTime,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct PlatformModeratorRow {
+    pub moderator_address: String,
+    pub added_by: String,
+    pub created_at: NaiveDateTime,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct ProfilePlatformMembershipRow {
+    pub platform_id: String,
+    pub name: String,
+    pub is_approved: bool,
+    pub joined_at: NaiveDateTime,
+}

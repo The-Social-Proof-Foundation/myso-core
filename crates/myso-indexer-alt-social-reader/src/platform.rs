@@ -8,6 +8,7 @@ use diesel::sql_types::{BigInt, Bool, Nullable, SmallInt, Text, Timestamp};
 use diesel_async::RunQueryDsl;
 use serde_json::Value as JsonValue;
 
+use myso_indexer_alt_social_schema::models::{PlatformMemberRow, PlatformModeratorRow};
 use myso_pg_db::Connection;
 
 use crate::metrics::DbReaderMetrics;
@@ -176,6 +177,87 @@ pub(crate) async fn get_platform_blocked_profiles(
         .map(|r| PlatformBlockedProfileRow {
             wallet_address: r.wallet_address,
             blocked_by: r.blocked_by,
+            created_at: r.created_at,
+        })
+        .collect())
+}
+
+pub(crate) async fn get_platform_members(
+    conn: &mut Connection<'_>,
+    platform_id: &str,
+    limit: i64,
+    offset: i64,
+    metrics: &DbReaderMetrics,
+) -> anyhow::Result<Vec<PlatformMemberRow>> {
+    metrics.requests_received.inc();
+    let _guard = metrics.latency.start_timer();
+    #[derive(QueryableByName)]
+    struct Row {
+        #[diesel(sql_type = Text)]
+        wallet_address: String,
+        #[diesel(sql_type = Timestamp)]
+        joined_at: NaiveDateTime,
+    }
+    let query = "
+        SELECT wallet_address, joined_at
+        FROM platform_memberships
+        WHERE platform_id = $1
+        ORDER BY joined_at DESC
+        LIMIT $2 OFFSET $3
+    ";
+    let rows = diesel::sql_query(query)
+        .bind::<Text, _>(platform_id)
+        .bind::<BigInt, _>(limit)
+        .bind::<BigInt, _>(offset)
+        .load::<Row>(conn)
+        .await?;
+    metrics.requests_succeeded.inc();
+    Ok(rows
+        .into_iter()
+        .map(|r| PlatformMemberRow {
+            wallet_address: r.wallet_address,
+            joined_at: r.joined_at,
+        })
+        .collect())
+}
+
+pub(crate) async fn get_platform_moderators(
+    conn: &mut Connection<'_>,
+    platform_id: &str,
+    limit: i64,
+    offset: i64,
+    metrics: &DbReaderMetrics,
+) -> anyhow::Result<Vec<PlatformModeratorRow>> {
+    metrics.requests_received.inc();
+    let _guard = metrics.latency.start_timer();
+    #[derive(QueryableByName)]
+    struct Row {
+        #[diesel(sql_type = Text)]
+        moderator_address: String,
+        #[diesel(sql_type = Text)]
+        added_by: String,
+        #[diesel(sql_type = Timestamp)]
+        created_at: NaiveDateTime,
+    }
+    let query = "
+        SELECT moderator_address, added_by, created_at
+        FROM platform_moderators
+        WHERE platform_id = $1
+        ORDER BY created_at DESC
+        LIMIT $2 OFFSET $3
+    ";
+    let rows = diesel::sql_query(query)
+        .bind::<Text, _>(platform_id)
+        .bind::<BigInt, _>(limit)
+        .bind::<BigInt, _>(offset)
+        .load::<Row>(conn)
+        .await?;
+    metrics.requests_succeeded.inc();
+    Ok(rows
+        .into_iter()
+        .map(|r| PlatformModeratorRow {
+            moderator_address: r.moderator_address,
+            added_by: r.added_by,
             created_at: r.created_at,
         })
         .collect())

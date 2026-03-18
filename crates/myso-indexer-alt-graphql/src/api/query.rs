@@ -54,6 +54,7 @@ use crate::api::types::platform::Platform;
 use crate::api::types::post::Post;
 use crate::api::types::promotion::Promotion;
 use crate::api::types::profile::Profile;
+use crate::api::types::governance::{Delegate, GovernanceRegistry, Proposal};
 use crate::api::types::insurance::{InsurancePolicy, InsuranceVault};
 use crate::api::types::mydata::{MyDataPurchase, MyDataRecord};
 use crate::api::types::spot::{SpotBet, SpotRecord};
@@ -647,6 +648,128 @@ impl Query {
                 .await
                 .map_err(Into::into)
                 .map(|v| v.into_iter().map(MyDataPurchase::from_row).collect()),
+        )
+    }
+
+    /// List governance proposals (paginated, optionally filtered by platform and status). Returns empty when social DB not configured.
+    async fn proposals(
+        &self,
+        ctx: &Context<'_>,
+        platform_id: Option<String>,
+        status: Option<i16>,
+        limit: Option<u64>,
+        offset: Option<u64>,
+    ) -> Option<Result<Vec<Proposal>, RpcError>> {
+        let reader_opt = ctx
+            .data_opt::<std::sync::Arc<Option<myso_indexer_alt_social_reader::SocialPgReader>>>()?;
+        let reader = reader_opt.as_ref().as_ref()?;
+        let limit = limit.unwrap_or(20).min(100) as i64;
+        let offset = offset.unwrap_or(0) as i64;
+        Some(
+            reader
+                .list_proposals(
+                    platform_id.as_deref(),
+                    status,
+                    None,
+                    limit,
+                    offset,
+                )
+                .await
+                .map_err(Into::into)
+                .map(|v| v.into_iter().map(Proposal::from_row).collect()),
+        )
+    }
+
+    /// Fetch a proposal by ID. Returns null when social DB not configured or not found.
+    async fn proposal(
+        &self,
+        ctx: &Context<'_>,
+        id: async_graphql::ID,
+    ) -> Option<Result<Option<Proposal>, RpcError>> {
+        let reader_opt = ctx
+            .data_opt::<std::sync::Arc<Option<myso_indexer_alt_social_reader::SocialPgReader>>>()?;
+        let reader = reader_opt.as_ref().as_ref()?;
+        Some(
+            reader
+                .get_proposal_by_id(id.as_str())
+                .await
+                .map_err(Into::into)
+                .map(|opt| opt.map(Proposal::from_row)),
+        )
+    }
+
+    /// List delegates (paginated, optionally filtered by registry type). Returns empty when social DB not configured.
+    async fn delegates(
+        &self,
+        ctx: &Context<'_>,
+        registry_type: Option<i16>,
+        limit: Option<u64>,
+        offset: Option<u64>,
+    ) -> Option<Result<Vec<Delegate>, RpcError>> {
+        let reader_opt = ctx
+            .data_opt::<std::sync::Arc<Option<myso_indexer_alt_social_reader::SocialPgReader>>>()?;
+        let reader = reader_opt.as_ref().as_ref()?;
+        let limit = limit.unwrap_or(50).min(100) as i64;
+        let offset = offset.unwrap_or(0) as i64;
+        Some(
+            reader
+                .list_delegates(registry_type, None, limit, offset)
+                .await
+                .map_err(Into::into)
+                .map(|v| v.into_iter().map(Delegate::from_row).collect()),
+        )
+    }
+
+    /// Fetch a delegate by address. Returns null when social DB not configured or not found.
+    async fn delegate(
+        &self,
+        ctx: &Context<'_>,
+        address: MySoAddress,
+    ) -> Option<Result<Option<Delegate>, RpcError>> {
+        let reader_opt = ctx
+            .data_opt::<std::sync::Arc<Option<myso_indexer_alt_social_reader::SocialPgReader>>>()?;
+        let reader = reader_opt.as_ref().as_ref()?;
+        Some(
+            reader
+                .get_delegate_by_address(&address.to_string())
+                .await
+                .map_err(Into::into)
+                .map(|opt| opt.map(Delegate::from_row)),
+        )
+    }
+
+    /// List all governance registries. Returns empty when social DB not configured.
+    async fn governance_registries(
+        &self,
+        ctx: &Context<'_>,
+    ) -> Option<Result<Vec<GovernanceRegistry>, RpcError>> {
+        let reader_opt = ctx
+            .data_opt::<std::sync::Arc<Option<myso_indexer_alt_social_reader::SocialPgReader>>>()?;
+        let reader = reader_opt.as_ref().as_ref()?;
+        Some(
+            reader
+                .list_governance_registries()
+                .await
+                .map_err(Into::into)
+                .map(|v| v.into_iter().map(GovernanceRegistry::from_row).collect()),
+        )
+    }
+
+    /// Fetch governance registry for a platform (by platform ID). Returns null when social DB not configured or platform has no registry.
+    async fn governance_registry(
+        &self,
+        ctx: &Context<'_>,
+        platform_id: String,
+    ) -> Option<Result<Option<GovernanceRegistry>, RpcError>> {
+        let reader_opt = ctx
+            .data_opt::<std::sync::Arc<Option<myso_indexer_alt_social_reader::SocialPgReader>>>()?;
+        let reader = reader_opt.as_ref().as_ref()?;
+        Some(
+            reader
+                .get_governance_registry_by_platform_id(&platform_id)
+                .await
+                .map_err(Into::into)
+                .map(|opt| opt.map(GovernanceRegistry::from_row)),
         )
     }
 

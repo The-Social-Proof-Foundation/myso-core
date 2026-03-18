@@ -42,6 +42,7 @@ pub async fn list_governance_proposals(
             offset,
             params.status,
             params.proposal_type,
+            params.platform_id.as_deref(),
             params.submitter.as_deref(),
         )
         .await?;
@@ -199,6 +200,18 @@ pub async fn get_governance_registry(
         .get_governance_registry_by_type(registry_type)
         .await?
         .ok_or_else(|| SocialError::not_found(format!("Registry type '{}'", registry_type)))?;
+    Ok(Json(registry))
+}
+
+pub async fn get_governance_registry_by_platform(
+    State(state): State<Arc<AppState>>,
+    Path(platform_id): Path<String>,
+) -> Result<Json<crate::reader::GovernanceRegistryRow>, SocialError> {
+    let registry = state
+        .reader
+        .get_governance_registry_by_platform_id(&platform_id)
+        .await?
+        .ok_or_else(|| SocialError::not_found(format!("Registry for platform '{}'", platform_id)))?;
     Ok(Json(registry))
 }
 

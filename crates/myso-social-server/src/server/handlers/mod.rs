@@ -25,8 +25,9 @@ pub use governance::{
     get_governance_delegate_proposals, get_governance_delegate_ratings, get_governance_proposal,
     get_governance_proposal_anonymous_stats, get_governance_proposal_anonymous_votes,
     get_governance_proposal_community_votes, get_governance_proposal_decryption_failures,
-    get_governance_registry, list_governance_delegates, list_governance_events,
-    list_governance_nominees, list_governance_proposals, list_governance_registries,
+    get_governance_registry, get_governance_registry_by_platform, list_governance_delegates,
+    list_governance_events, list_governance_nominees, list_governance_proposals,
+    list_governance_registries,
 };
 pub use health::health_check;
 pub use insurance::{

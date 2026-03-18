@@ -432,6 +432,33 @@ ConsensusObjectCancelled.cancellationReason
 ConsensusObjectRead.object
   => {}
 
+Delegate.address
+  => {}
+
+Delegate.registryType
+  => {}
+
+Delegate.upvotes
+  => {}
+
+Delegate.downvotes
+  => {}
+
+Delegate.proposalsReviewed
+  => {}
+
+Delegate.proposalsSubmitted
+  => {}
+
+Delegate.termStart
+  => {}
+
+Delegate.termEnd
+  => {}
+
+Delegate.isActive
+  => {}
+
 Display.output
   => {}
 
@@ -700,6 +727,33 @@ GasInput.gasPayment
   => {}
 
 GenesisTransaction.objects
+  => {}
+
+GovernanceRegistry.registryType
+  => {}
+
+GovernanceRegistry.registryId
+  => {}
+
+GovernanceRegistry.delegateCount
+  => {}
+
+GovernanceRegistry.config
+  => {}
+
+GovernanceRegistryConfig.delegateTermEpochs
+  => {}
+
+GovernanceRegistryConfig.proposalSubmissionCost
+  => {}
+
+GovernanceRegistryConfig.maxVotesPerUser
+  => {}
+
+GovernanceRegistryConfig.votingPeriodMs
+  => {}
+
+GovernanceRegistryConfig.quorumVotes
   => {}
 
 IAddressable.address
@@ -1446,6 +1500,12 @@ Platform.votingPeriodEpochs
 Platform.blockedProfiles
   => {}
 
+Platform.members
+  => {}
+
+Platform.moderators
+  => {}
+
 PlatformBlockedProfileSummary.walletAddress
   => {}
 
@@ -1453,6 +1513,33 @@ PlatformBlockedProfileSummary.blockedBy
   => {}
 
 PlatformBlockedProfileSummary.createdAt
+  => {}
+
+PlatformMemberSummary.walletAddress
+  => {}
+
+PlatformMemberSummary.joinedAt
+  => {}
+
+PlatformMembershipSummary.platformId
+  => {}
+
+PlatformMembershipSummary.name
+  => {}
+
+PlatformMembershipSummary.isApproved
+  => {}
+
+PlatformMembershipSummary.joinedAt
+  => {}
+
+PlatformModeratorSummary.moderatorAddress
+  => {}
+
+PlatformModeratorSummary.addedBy
+  => {}
+
+PlatformModeratorSummary.createdAt
   => {}
 
 Post.id
@@ -1519,6 +1606,9 @@ Post.spotBets
   => {}
 
 Post.spotRecord
+  => {}
+
+Post.promotion
   => {}
 
 PostTransferSummary.previousOwner
@@ -1662,6 +1752,9 @@ Profile.blockedProfiles
 Profile.blockedPlatforms
   => {}
 
+Profile.platformMemberships
+  => {}
+
 Profile.vestingWallets
   => {}
 
@@ -1743,6 +1836,84 @@ ProgrammableTransaction.inputs
 ProgrammableTransaction.commands
   => {}
 
+Promotion.promotionId
+  => {}
+
+Promotion.postId
+  => {}
+
+Promotion.budget
+  => {}
+
+Promotion.remainingBudget
+  => {}
+
+Promotion.status
+  => {}
+
+Promotion.views
+  => {}
+
+Proposal.proposalId
+  => {}
+
+Proposal.registryType
+  => {}
+
+Proposal.status
+  => {}
+
+Proposal.votes
+  => {}
+
+Proposal.title
+  => {}
+
+Proposal.description
+  => {}
+
+Proposal.submitter
+  => {}
+
+Proposal.submissionTime
+  => {}
+
+Proposal.votingStartTime
+  => {}
+
+Proposal.votingEndTime
+  => {}
+
+Proposal.rewardPool
+  => {}
+
+Proposal.referenceId
+  => {}
+
+Proposal.implementedDescription
+  => {}
+
+Proposal.implementationTime
+  => {}
+
+Proposal.rescindTime
+  => {}
+
+Proposal.anonymousVotersCount
+  => {}
+
+ProposalVotes.delegateFor
+  => {}
+
+ProposalVotes.delegateAgainst
+  => {}
+
+ProposalVotes.communityFor
+  => {}
+
+ProposalVotes.communityAgainst
+  => {}
+
 ProtocolConfig.key
   => {}
 
@@ -1788,6 +1959,12 @@ Query.post
 Query.posts
   => {}
 
+Query.promotion
+  => {}
+
+Query.promotedPosts
+  => {}
+
 Query.platform
   => {}
 
@@ -1825,6 +2002,24 @@ Query.mydataRecords
   => {}
 
 Query.mydataPurchases
+  => {}
+
+Query.proposals
+  => {}
+
+Query.proposal
+  => {}
+
+Query.delegates
+  => {}
+
+Query.delegate
+  => {}
+
+Query.governanceRegistries
+  => {}
+
+Query.governanceRegistry
   => {}
 
 Query.insurancePolicy

@@ -13,6 +13,7 @@ pub(crate) mod command_result;
 pub(crate) mod display;
 pub(crate) mod insurance;
 pub(crate) mod dynamic_field;
+pub(crate) mod governance;
 pub(crate) mod epoch;
 pub(crate) mod event;
 pub(crate) mod execution_error;

@@ -20,11 +20,15 @@ mod vesting;
 mod wallet_social_graph;
 
 pub use governance::{
-    AnonymousVote, CommunityVote, Delegate, DelegateRating, DelegateVote, GovernanceEvent,
-    GovernanceRegistry, GovernanceRegistryUpdate, NewAnonymousVote, NewCommunityVote, NewDelegate,
-    NewDelegateRating, NewDelegateVote, NewGovernanceEvent, NewGovernanceRegistry,
-    NewNominatedDelegate, NewProposal, NewRewardDistribution, NewVoteDecryptionFailure,
-    NominatedDelegate, Proposal, ProposalUpdateSet, RewardDistribution, VoteDecryptionFailure,
+    AnonymousVote, AnonymousVoteRow, AnonymousVotingStatsRow, AnonymousVotingTrendRow,
+    CommunityVote, CommunityVoteRow, Delegate, DelegateRating, DelegateRatingRow, DelegateRow,
+    DelegateVote, DelegateVoteRow, GovernanceEvent, GovernanceEventRow, GovernanceRegistry,
+    GovernanceRegistryConfig, GovernanceRegistryRow, GovernanceRegistryUpdate, NewAnonymousVote,
+    NewCommunityVote, NewDelegate, NewDelegateRating, NewDelegateVote, NewGovernanceEvent,
+    NewGovernanceRegistry, NewNominatedDelegate, NewProposal, NewRewardDistribution,
+    NewVoteDecryptionFailure, NominatedDelegate, NominatedDelegateRow, Proposal, ProposalRow,
+    ProposalUpdateSet, RewardDistribution, RewardDistributionRow, VoteDecryptionFailure,
+    VoteDecryptionFailureRow,
 };
 pub use insurance::{
     BPS_DENOM, DAY_MS, DEFAULT_FEE_BPS as INSURANCE_DEFAULT_FEE_BPS, DEFAULT_MAX_COVERAGE_BPS,
@@ -51,8 +55,9 @@ pub use platform::{
     platform_status_to_text, milliseconds_to_naive_datetime, validate_categories, validate_category,
     ALLOWED_CATEGORIES, NewPlatform, NewPlatformBlockedProfile, NewPlatformEvent,
     NewPlatformMembership, NewPlatformModerator, NewPlatformTokenAirdrop, Platform,
-    PlatformBlockedProfile, PlatformEvent, PlatformMembership, PlatformModerator,
-    PlatformTokenAirdrop, PLATFORM_STATUS_ALPHA, PLATFORM_STATUS_BETA, PLATFORM_STATUS_DEVELOPMENT,
+    PlatformBlockedProfile, PlatformEvent, PlatformMemberRow, PlatformMembership, PlatformModerator,
+    PlatformModeratorRow, PlatformTokenAirdrop, ProfilePlatformMembershipRow,
+    PLATFORM_STATUS_ALPHA, PLATFORM_STATUS_BETA, PLATFORM_STATUS_DEVELOPMENT,
     PLATFORM_STATUS_LIVE, PLATFORM_STATUS_MAINTENANCE, PLATFORM_STATUS_SHUTDOWN,
     PLATFORM_STATUS_SUNSET, UpdatePlatform,
 };
