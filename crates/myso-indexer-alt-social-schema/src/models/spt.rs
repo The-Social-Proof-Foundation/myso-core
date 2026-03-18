@@ -2,6 +2,8 @@
 // SPDX-License-Identifier: Apache-2.0
 
 use diesel::prelude::*;
+use diesel::QueryableByName;
+use diesel::sql_types::{BigInt, Nullable, SmallInt, Text, Timestamptz};
 use serde::{Deserialize, Serialize};
 
 use super::revenue::{
@@ -53,6 +55,56 @@ pub struct NewSptPool {
     pub transaction_id: String,
 }
 
+/// Query result for SPT holdings by holder (JOIN with pools + profiles).
+#[derive(Debug, Clone, QueryableByName, Serialize, Deserialize)]
+pub struct SptHoldingRow {
+    #[diesel(sql_type = Text)]
+    pub holder_address: String,
+    #[diesel(sql_type = Text)]
+    pub pool_id: String,
+    #[diesel(sql_type = BigInt)]
+    pub balance: i64,
+    #[diesel(sql_type = Text)]
+    pub profile_owner_address: String,
+    #[diesel(sql_type = Nullable<Text>)]
+    pub profile_username: Option<String>,
+    #[diesel(sql_type = Nullable<Text>)]
+    pub profile_display_name: Option<String>,
+    #[diesel(sql_type = Nullable<Text>)]
+    pub profile_photo: Option<String>,
+}
+
+/// Query result for SPT pool with latest price (JOIN with spt_price_history).
+#[derive(Debug, Clone, QueryableByName, Serialize, Deserialize)]
+pub struct SptPoolRow {
+    #[diesel(sql_type = Text)]
+    pub pool_id: String,
+    #[diesel(sql_type = SmallInt)]
+    pub token_type: i16,
+    #[diesel(sql_type = Text)]
+    pub owner: String,
+    #[diesel(sql_type = Text)]
+    pub associated_id: String,
+    #[diesel(sql_type = Text)]
+    pub symbol: String,
+    #[diesel(sql_type = Text)]
+    pub name: String,
+    #[diesel(sql_type = BigInt)]
+    pub circulating_supply: i64,
+    #[diesel(sql_type = BigInt)]
+    pub base_price: i64,
+    #[diesel(sql_type = BigInt)]
+    pub quadratic_coefficient: i64,
+    #[diesel(sql_type = BigInt)]
+    pub created_at: i64,
+    #[diesel(sql_type = Timestamptz)]
+    pub time: chrono::DateTime<chrono::Utc>,
+    #[diesel(sql_type = Text)]
+    pub transaction_id: String,
+    #[diesel(sql_type = BigInt)]
+    pub price: i64,
+}
+
 #[derive(Debug, Clone, Insertable, Serialize, Deserialize)]
 #[diesel(table_name = spt_holdings)]
 pub struct NewSptHolding {
@@ -60,6 +112,25 @@ pub struct NewSptHolding {
     pub holder_address: String,
     pub amount: i64,
     pub acquired_at: i64,
+    pub time: chrono::DateTime<chrono::Utc>,
+    pub transaction_id: String,
+}
+
+#[derive(Debug, Clone, Queryable, Selectable, Serialize, Deserialize)]
+#[diesel(table_name = spt_transactions)]
+pub struct SptTransaction {
+    pub id: i32,
+    pub pool_id: String,
+    pub transaction_type: String,
+    pub sender: String,
+    pub amount: i64,
+    pub myso_amount: i64,
+    pub fee_amount: i64,
+    pub creator_fee: i64,
+    pub platform_fee: i64,
+    pub treasury_fee: i64,
+    pub price: i64,
+    pub created_at: i64,
     pub time: chrono::DateTime<chrono::Utc>,
     pub transaction_id: String,
 }
@@ -177,6 +248,17 @@ pub struct NewSptExchangeConfig {
     pub max_hold_percent_bps: i64,
     pub trading_enabled: bool,
     pub updated_at: i64,
+    pub time: chrono::DateTime<chrono::Utc>,
+    pub transaction_id: String,
+}
+
+#[derive(Debug, Clone, Queryable, Selectable, Serialize, Deserialize)]
+#[diesel(table_name = spt_price_history)]
+pub struct SptPriceHistory {
+    pub id: i32,
+    pub pool_id: String,
+    pub price: i64,
+    pub circulating_supply: i64,
     pub time: chrono::DateTime<chrono::Utc>,
     pub transaction_id: String,
 }

@@ -53,6 +53,7 @@ use crate::api::types::object_filter::ObjectFilterValidator as OFValidator;
 use crate::api::types::platform::Platform;
 use crate::api::types::post::Post;
 use crate::api::types::profile::Profile;
+use crate::api::types::spt::{SPTHolding, SPTPool, SptPriceHistory};
 use crate::api::types::vesting::{
     VestingLeaderboardEntry, VestingLeaderboardResponse, VestingWallet,
 };
@@ -396,6 +397,87 @@ impl Query {
                         .collect(),
                     total: r.total,
                 }),
+        )
+    }
+
+    /// SPT holdings for a profile (holder address). Returns empty when social DB not configured.
+    async fn spt_holdings(
+        &self,
+        ctx: &Context<'_>,
+        profile: MySoAddress,
+        limit: Option<u64>,
+        offset: Option<u64>,
+    ) -> Option<Result<Vec<SPTHolding>, RpcError>> {
+        let reader_opt = ctx
+            .data_opt::<std::sync::Arc<Option<myso_indexer_alt_social_reader::SocialPgReader>>>()?;
+        let reader = reader_opt.as_ref().as_ref()?;
+        let limit = limit.unwrap_or(20).min(100) as i64;
+        let offset = offset.unwrap_or(0) as i64;
+        Some(
+            reader
+                .get_spt_holdings_by_holder(&profile.to_string(), limit, offset)
+                .await
+                .map_err(Into::into)
+                .map(|v| v.into_iter().map(SPTHolding::from_row).collect()),
+        )
+    }
+
+    /// SPT pool by ID. Returns null if social DB not configured or not found.
+    async fn spt_pool(
+        &self,
+        ctx: &Context<'_>,
+        id: async_graphql::ID,
+    ) -> Option<Result<Option<SPTPool>, RpcError>> {
+        let reader_opt = ctx
+            .data_opt::<std::sync::Arc<Option<myso_indexer_alt_social_reader::SocialPgReader>>>()?;
+        let reader = reader_opt.as_ref().as_ref()?;
+        Some(
+            reader
+                .get_spt_pool(id.as_str())
+                .await
+                .map_err(Into::into)
+                .map(|opt| opt.map(SPTPool::from_row)),
+        )
+    }
+
+    /// SPT price history. Provide profileAddress or poolId (at least one required). Returns empty when social DB not configured.
+    async fn spt_price_history(
+        &self,
+        ctx: &Context<'_>,
+        profile_address: Option<MySoAddress>,
+        pool_id: Option<async_graphql::ID>,
+        limit: Option<u64>,
+    ) -> Option<Result<Vec<SptPriceHistory>, RpcError>> {
+        let reader_opt = ctx
+            .data_opt::<std::sync::Arc<Option<myso_indexer_alt_social_reader::SocialPgReader>>>()?;
+        let reader = reader_opt.as_ref().as_ref()?;
+
+        let pool_id_resolved = if let Some(id) = &pool_id {
+            Some(id.as_str().to_string())
+        } else if let Some(addr) = &profile_address {
+            reader
+                .get_spt_pool_id_for_profile(&addr.to_string())
+                .await
+                .ok()
+                .flatten()
+        } else {
+            return Some(Err(bad_user_input(anyhow!(
+                "Either profileAddress or poolId is required"
+            ))));
+        };
+
+        let Some(pool_id_str) = pool_id_resolved else {
+            return Some(Ok(vec![]));
+        };
+
+        let limit = limit.unwrap_or(20).min(100) as i64;
+        let offset = 0i64;
+        Some(
+            reader
+                .get_spt_price_history(&pool_id_str, limit, offset)
+                .await
+                .map_err(Into::into)
+                .map(|v| v.into_iter().map(SptPriceHistory::from_row).collect()),
         )
     }
 

@@ -119,8 +119,9 @@ pub use spt::{
     MAX_HOLD_PERCENT_BPS, NewEcosystemTreasury, NewSocialProofTokensConfig, NewSocialProofTokensEvent,
     NewSptExchangeConfig, NewSptHolding, NewSptPool, NewSptPriceHistory, NewSptReservation,
     NewSptReservationPool, NewSptRevenue, NewSptTransaction, NewUnifiedRevenue,
-    RESERVATION_POOL_STATUS_ACTIVE, RESERVATION_POOL_STATUS_THRESHOLD_MET, TOKEN_TYPE_POST,
-    TOKEN_TYPE_PROFILE, TRANSACTION_TYPE_BUY, TRANSACTION_TYPE_SELL, UnifiedRevenue,
+    RESERVATION_POOL_STATUS_ACTIVE, RESERVATION_POOL_STATUS_THRESHOLD_MET, SptHoldingRow,
+    SptPoolRow, SptPriceHistory, SptTransaction, TOKEN_TYPE_POST, TOKEN_TYPE_PROFILE,
+    TRANSACTION_TYPE_BUY, TRANSACTION_TYPE_SELL, UnifiedRevenue,
 };
 pub use subscription::{
     MAX_RENEWAL_MONTHS, MAX_SUBSCRIPTION_DURATION_DAYS, MILLISECONDS_PER_DAY,

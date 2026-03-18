@@ -24,6 +24,10 @@ use crate::social_graph::{
     check_following, check_platform_blocked, check_profile_blocked, get_blocked_platforms,
     get_blocked_profiles, get_followers, get_following,
 };
+use crate::spt::{
+    get_spt_holdings_by_holder, get_spt_pool, get_spt_pool_id_for_profile, get_spt_price_history,
+    get_spt_transactions,
+};
 use crate::vesting::{get_vesting_leaderboard, get_vesting_wallet, list_vesting_wallets};
 
 pub use myso_indexer_alt_social_schema::models::Profile;
@@ -337,5 +341,56 @@ impl SocialPgReader {
     ) -> anyhow::Result<crate::vesting::VestingLeaderboardResponse> {
         let mut conn = self.connect().await?;
         get_vesting_leaderboard(&mut conn, limit, offset, &self.metrics).await
+    }
+
+    /// Get SPT holdings for a holder address.
+    pub async fn get_spt_holdings_by_holder(
+        &self,
+        address: &str,
+        limit: i64,
+        offset: i64,
+    ) -> anyhow::Result<Vec<crate::SptHoldingRow>> {
+        let mut conn = self.connect().await?;
+        get_spt_holdings_by_holder(&mut conn, address, limit, offset, &self.metrics).await
+    }
+
+    /// Get SPT pool by pool ID.
+    pub async fn get_spt_pool(
+        &self,
+        pool_id: &str,
+    ) -> anyhow::Result<Option<crate::SptPoolRow>> {
+        let mut conn = self.connect().await?;
+        get_spt_pool(&mut conn, pool_id, &self.metrics).await
+    }
+
+    /// Get SPT price history for a pool.
+    pub async fn get_spt_price_history(
+        &self,
+        pool_id: &str,
+        limit: i64,
+        offset: i64,
+    ) -> anyhow::Result<Vec<crate::SptPriceHistory>> {
+        let mut conn = self.connect().await?;
+        get_spt_price_history(&mut conn, pool_id, limit, offset, &self.metrics).await
+    }
+
+    /// Get pool ID for a profile's token (profile tokens have associated_id = 'profile_' || address).
+    pub async fn get_spt_pool_id_for_profile(
+        &self,
+        profile_address: &str,
+    ) -> anyhow::Result<Option<String>> {
+        let mut conn = self.connect().await?;
+        get_spt_pool_id_for_profile(&mut conn, profile_address, &self.metrics).await
+    }
+
+    /// Get SPT transactions for a pool.
+    pub async fn get_spt_transactions(
+        &self,
+        pool_id: &str,
+        limit: i64,
+        offset: i64,
+    ) -> anyhow::Result<Vec<crate::SptTransaction>> {
+        let mut conn = self.connect().await?;
+        get_spt_transactions(&mut conn, pool_id, limit, offset, &self.metrics).await
     }
 }
