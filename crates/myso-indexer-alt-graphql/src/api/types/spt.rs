@@ -47,6 +47,10 @@ impl SptHolding {
             username: self.inner.profile_username.clone(),
             display_name: self.inner.profile_display_name.clone(),
             profile_photo: self.inner.profile_photo.clone(),
+            bio: self.inner.profile_bio.clone(),
+            selected_badge_id: self.inner.profile_selected_badge_id.clone(),
+            social_proof_token_address: self.inner.profile_social_proof_token_address.clone(),
+            reservation_pool_address: self.inner.profile_reservation_pool_address.clone(),
         })
     }
 }

@@ -4,7 +4,7 @@
 use chrono::NaiveDateTime;
 use diesel::prelude::*;
 use diesel::QueryableByName;
-use diesel::sql_types::{BigInt, Int4, Nullable, SmallInt, Text};
+use diesel::sql_types::{BigInt, Int4, Jsonb, Nullable, SmallInt, Text};
 use serde::{Deserialize, Serialize};
 
 use crate::schema::{
@@ -42,6 +42,10 @@ pub struct SpotBetRow {
     pub amm_amount: i64,
     #[diesel(sql_type = BigInt)]
     pub timestamp_epoch: i64,
+    #[diesel(sql_type = Text)]
+    pub transaction_id: String,
+    #[diesel(sql_type = Nullable<Text>)]
+    pub option_label: Option<String>,
 }
 
 /// Query result for a spot record (for GraphQL/reader).
@@ -55,6 +59,18 @@ pub struct SpotRecordRow {
     pub status: i16,
     #[diesel(sql_type = Nullable<SmallInt>)]
     pub outcome: Option<i16>,
+    #[diesel(sql_type = Jsonb)]
+    pub betting_options: serde_json::Value,
+    #[diesel(sql_type = Jsonb)]
+    pub option_escrow: serde_json::Value,
+    #[diesel(sql_type = BigInt)]
+    pub created_epoch: i64,
+    #[diesel(sql_type = Nullable<BigInt>)]
+    pub resolution_window_epochs: Option<i64>,
+    #[diesel(sql_type = Nullable<BigInt>)]
+    pub max_resolution_window_epochs: Option<i64>,
+    #[diesel(sql_type = Nullable<BigInt>)]
+    pub last_resolution_epoch: Option<i64>,
 }
 
 #[derive(Debug, Clone, Insertable, Serialize, Deserialize)]

@@ -19,7 +19,9 @@ pub(crate) async fn get_spot_record(
     let _guard = metrics.latency.start_timer();
 
     let query = "
-        SELECT id, post_id, status, outcome
+        SELECT id, post_id, status, outcome, betting_options, option_escrow,
+               created_epoch, resolution_window_epochs, max_resolution_window_epochs,
+               last_resolution_epoch
         FROM spot_records
         WHERE post_id = $1
     ";
@@ -45,10 +47,16 @@ pub(crate) async fn list_spot_bets(
     let _guard = metrics.latency.start_timer();
 
     let query = "
-        SELECT id, post_id, user_address, option_id, escrow_amount, amm_amount, timestamp_epoch
-        FROM spot_bets
-        WHERE post_id = $1
-        ORDER BY time DESC
+        SELECT sb.id, sb.post_id, sb.user_address, sb.option_id, sb.escrow_amount, sb.amm_amount,
+               sb.timestamp_epoch, sb.transaction_id,
+               CASE WHEN sr.betting_options IS NOT NULL AND jsonb_array_length(sr.betting_options) > sb.option_id
+                    THEN jsonb_array_element_text(sr.betting_options, sb.option_id)
+                    ELSE NULL
+               END AS option_label
+        FROM spot_bets sb
+        LEFT JOIN spot_records sr ON sr.post_id = sb.post_id
+        WHERE sb.post_id = $1
+        ORDER BY sb.time DESC
         LIMIT $2 OFFSET $3
     ";
 

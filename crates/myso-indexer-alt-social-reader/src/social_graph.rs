@@ -36,6 +36,10 @@ pub struct ProfileSummaryRow {
     pub username: Option<String>,
     pub display_name: Option<String>,
     pub profile_photo: Option<String>,
+    pub bio: Option<String>,
+    pub selected_badge_id: Option<String>,
+    pub social_proof_token_address: Option<String>,
+    pub reservation_pool_address: Option<String>,
 }
 
 pub(crate) async fn get_profile_summaries_for_addresses(
@@ -58,9 +62,18 @@ pub(crate) async fn get_profile_summaries_for_addresses(
         display_name: Option<String>,
         #[diesel(sql_type = Nullable<Text>)]
         profile_photo: Option<String>,
+        #[diesel(sql_type = Nullable<Text>)]
+        bio: Option<String>,
+        #[diesel(sql_type = Nullable<Text>)]
+        selected_badge_id: Option<String>,
+        #[diesel(sql_type = Nullable<Text>)]
+        social_proof_token_address: Option<String>,
+        #[diesel(sql_type = Nullable<Text>)]
+        reservation_pool_address: Option<String>,
     }
     let query = "
-        SELECT DISTINCT ON (owner_address) owner_address, username, display_name, profile_photo
+        SELECT DISTINCT ON (owner_address) owner_address, username, display_name, profile_photo,
+               bio, selected_badge_id, social_proof_token_address, reservation_pool_address
         FROM profiles
         WHERE owner_address = ANY($1::TEXT[])
         ORDER BY owner_address, updated_at DESC
@@ -79,6 +92,10 @@ pub(crate) async fn get_profile_summaries_for_addresses(
                 username: row.username,
                 display_name: row.display_name,
                 profile_photo: row.profile_photo,
+                bio: row.bio,
+                selected_badge_id: row.selected_badge_id,
+                social_proof_token_address: row.social_proof_token_address,
+                reservation_pool_address: row.reservation_pool_address,
             },
         );
     }
@@ -91,6 +108,10 @@ pub(crate) async fn get_profile_summaries_for_addresses(
                     username: None,
                     display_name: None,
                     profile_photo: None,
+                    bio: None,
+                    selected_badge_id: None,
+                    social_proof_token_address: None,
+                    reservation_pool_address: None,
                 },
             );
         }
@@ -117,11 +138,27 @@ pub(crate) async fn get_followers(
         display_name: Option<String>,
         #[diesel(sql_type = Nullable<Text>)]
         profile_photo: Option<String>,
+        #[diesel(sql_type = Nullable<Text>)]
+        bio: Option<String>,
+        #[diesel(sql_type = Nullable<Text>)]
+        selected_badge_id: Option<String>,
+        #[diesel(sql_type = Nullable<Text>)]
+        social_proof_token_address: Option<String>,
+        #[diesel(sql_type = Nullable<Text>)]
+        reservation_pool_address: Option<String>,
     }
     let query = "
-        SELECT sgr.follower_address AS addr, p.username, p.display_name, p.profile_photo
+        SELECT sgr.follower_address AS addr, p.username, p.display_name, p.profile_photo,
+               p.bio, p.selected_badge_id, p.social_proof_token_address, p.reservation_pool_address
         FROM social_graph_relationships sgr
-        LEFT JOIN profiles p ON p.owner_address = sgr.follower_address
+        LEFT JOIN LATERAL (
+            SELECT username, display_name, profile_photo, bio, selected_badge_id,
+                   social_proof_token_address, reservation_pool_address
+            FROM profiles
+            WHERE owner_address = sgr.follower_address
+            ORDER BY updated_at DESC
+            LIMIT 1
+        ) p ON true
         WHERE sgr.following_address = $1
         ORDER BY sgr.created_at DESC
         LIMIT $2 OFFSET $3
@@ -140,6 +177,10 @@ pub(crate) async fn get_followers(
             username: r.username,
             display_name: r.display_name,
             profile_photo: r.profile_photo,
+            bio: r.bio,
+            selected_badge_id: r.selected_badge_id,
+            social_proof_token_address: r.social_proof_token_address,
+            reservation_pool_address: r.reservation_pool_address,
         })
         .collect())
 }
@@ -163,11 +204,27 @@ pub(crate) async fn get_following(
         display_name: Option<String>,
         #[diesel(sql_type = Nullable<Text>)]
         profile_photo: Option<String>,
+        #[diesel(sql_type = Nullable<Text>)]
+        bio: Option<String>,
+        #[diesel(sql_type = Nullable<Text>)]
+        selected_badge_id: Option<String>,
+        #[diesel(sql_type = Nullable<Text>)]
+        social_proof_token_address: Option<String>,
+        #[diesel(sql_type = Nullable<Text>)]
+        reservation_pool_address: Option<String>,
     }
     let query = "
-        SELECT sgr.following_address AS addr, p.username, p.display_name, p.profile_photo
+        SELECT sgr.following_address AS addr, p.username, p.display_name, p.profile_photo,
+               p.bio, p.selected_badge_id, p.social_proof_token_address, p.reservation_pool_address
         FROM social_graph_relationships sgr
-        LEFT JOIN profiles p ON p.owner_address = sgr.following_address
+        LEFT JOIN LATERAL (
+            SELECT username, display_name, profile_photo, bio, selected_badge_id,
+                   social_proof_token_address, reservation_pool_address
+            FROM profiles
+            WHERE owner_address = sgr.following_address
+            ORDER BY updated_at DESC
+            LIMIT 1
+        ) p ON true
         WHERE sgr.follower_address = $1
         ORDER BY sgr.created_at DESC
         LIMIT $2 OFFSET $3
@@ -186,6 +243,10 @@ pub(crate) async fn get_following(
             username: r.username,
             display_name: r.display_name,
             profile_photo: r.profile_photo,
+            bio: r.bio,
+            selected_badge_id: r.selected_badge_id,
+            social_proof_token_address: r.social_proof_token_address,
+            reservation_pool_address: r.reservation_pool_address,
         })
         .collect())
 }

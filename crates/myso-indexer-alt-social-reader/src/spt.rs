@@ -43,14 +43,18 @@ pub(crate) async fn get_spt_holdings_by_holder(
             ORDER BY p.pool_id, time DESC
         ),
         latest_profiles AS (
-            SELECT DISTINCT ON (owner_address) owner_address, username, display_name, profile_photo
+            SELECT DISTINCT ON (owner_address) owner_address, username, display_name, profile_photo,
+                   bio, selected_badge_id, social_proof_token_address, reservation_pool_address
             FROM profiles
             WHERE owner_address IN (SELECT owner FROM latest_pools)
             ORDER BY owner_address, updated_at DESC
         )
         SELECT h.holder_address, h.pool_id, h.balance, p.owner as profile_owner_address,
                pr.username as profile_username, pr.display_name as profile_display_name,
-               pr.profile_photo as profile_photo
+               pr.profile_photo as profile_photo, pr.bio as profile_bio,
+               pr.selected_badge_id as profile_selected_badge_id,
+               pr.social_proof_token_address as profile_social_proof_token_address,
+               pr.reservation_pool_address as profile_reservation_pool_address
         FROM holdings h
         JOIN latest_pools p ON h.pool_id = p.pool_id
         LEFT JOIN latest_profiles pr ON p.owner = pr.owner_address

@@ -115,6 +115,15 @@ impl SocialPgReader {
         get_profile_or_wallet_by_address(&mut conn, address, &self.metrics).await
     }
 
+    /// Get enriched profile summary (badge, SPT, reservation %) for a single address.
+    pub async fn get_profile_summary_enriched(
+        &self,
+        address: &str,
+    ) -> anyhow::Result<Option<crate::profile::UniversalUserResult>> {
+        let mut conn = self.connect().await?;
+        crate::profile::get_profile_summary_enriched(&mut conn, address, &self.metrics).await
+    }
+
     /// Get profiles with pagination.
     pub async fn get_profiles(&self, limit: i64, offset: i64) -> anyhow::Result<Vec<Profile>> {
         let mut conn = self.connect().await?;

@@ -3659,6 +3659,10 @@ type ProfileSummary {
 	"""
 	address: MySoAddress!
 	"""
+	Profile bio.
+	"""
+	bio: String
+	"""
 	Display name.
 	"""
 	displayName: String
@@ -3666,6 +3670,30 @@ type ProfileSummary {
 	Profile photo URL.
 	"""
 	profilePhoto: String
+	"""
+	Reservation percentage (when profile has SPT/reservation pool).
+	"""
+	reservationPercentage: Float
+	"""
+	Reservation pool address.
+	"""
+	reservationPoolAddress: String
+	"""
+	Selected badge info (when present).
+	"""
+	selectedBadge: SelectedBadge
+	"""
+	Selected badge ID.
+	"""
+	selectedBadgeId: String
+	"""
+	Social proof token info (when present).
+	"""
+	socialProofToken: SocialProofToken
+	"""
+	Social proof token address.
+	"""
+	socialProofTokenAddress: String
 	"""
 	Username.
 	"""
@@ -4355,6 +4383,10 @@ type SplitCoinsCommand {
 
 type SpotBet {
 	"""
+	AMM amount.
+	"""
+	ammAmount: Int!
+	"""
 	Total amount staked (escrow + AMM).
 	"""
 	amount: Int!
@@ -4367,16 +4399,63 @@ type SpotBet {
 	"""
 	better: MySoAddress!
 	"""
+	Escrow amount.
+	"""
+	escrowAmount: Int!
+	"""
+	Human-readable option label (e.g. "Yes", "No").
+	"""
+	optionLabel: String
+	"""
 	Option ID the bettor chose (outcome bet on).
 	"""
 	outcome: Int!
 	"""
+	Epoch timestamp when the bet was placed.
+	"""
+	placedAt: Int!
+	"""
 	Post ID this bet is for.
 	"""
 	postId: String!
+	"""
+	Transaction ID.
+	"""
+	transactionId: String!
+}
+
+type SpotOptionEscrow {
+	"""
+	Escrow amount for this option.
+	"""
+	amount: Int!
+	"""
+	Option ID.
+	"""
+	optionId: Int!
 }
 
 type SpotRecord {
+	"""
+	Betting option labels (e.g. ["Yes", "No"]).
+	"""
+	bettingOptions: [String!]!
+	"""
+	Epoch when the record was created.
+	"""
+	createdEpoch: Int!
+	"""
+	Last resolution epoch.
+	"""
+	lastResolutionEpoch: Int
+	"""
+	Max resolution window in epochs.
+	"""
+	maxResolutionWindowEpochs: Int
+	"""
+	Escrow amount per option (option_id -> amount).
+	"""
+	optionEscrow: [SpotOptionEscrow!]!
 	"""
 	Post ID this record is for.
 	"""
@@ -4389,6 +4468,18 @@ type SpotRecord {
 	Resolved outcome (when resolved).
 	"""
 	resolution: Int
+	"""
+	Resolution window in epochs.
+	"""
+	resolutionWindowEpochs: Int
+	"""
+	Record status (1=open, 2=dao_required, 3=resolved, 4=refundable).
+	"""
+	status: Int!
+	"""
+	Total escrow across all options.
+	"""
+	totalEscrow: Int!
 }
 
 type SptHolding {

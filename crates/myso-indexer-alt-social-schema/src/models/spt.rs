@@ -72,6 +72,14 @@ pub struct SptHoldingRow {
     pub profile_display_name: Option<String>,
     #[diesel(sql_type = Nullable<Text>)]
     pub profile_photo: Option<String>,
+    #[diesel(sql_type = Nullable<Text>)]
+    pub profile_bio: Option<String>,
+    #[diesel(sql_type = Nullable<Text>)]
+    pub profile_selected_badge_id: Option<String>,
+    #[diesel(sql_type = Nullable<Text>)]
+    pub profile_social_proof_token_address: Option<String>,
+    #[diesel(sql_type = Nullable<Text>)]
+    pub profile_reservation_pool_address: Option<String>,
 }
 
 /// Query result for SPT pool with latest price (JOIN with spt_price_history).

@@ -311,6 +311,17 @@ async fn enrich_users_with_universal_data(
     Ok(result)
 }
 
+/// Get enriched profile summary data (badge, SPT, reservation %) for a single address.
+pub(crate) async fn get_profile_summary_enriched(
+    conn: &mut Connection<'_>,
+    address: &str,
+    metrics: &DbReaderMetrics,
+) -> anyhow::Result<Option<UniversalUserResult>> {
+    let enriched =
+        enrich_users_with_universal_data(conn, vec![address.to_string()], metrics).await?;
+    Ok(enriched.get(address).cloned())
+}
+
 pub(crate) async fn get_profile_by_address(
     conn: &mut Connection<'_>,
     address: &str,

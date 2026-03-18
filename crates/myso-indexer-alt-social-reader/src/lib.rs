@@ -19,7 +19,7 @@ pub use post::{
 };
 pub use profile::{
     ProfileBadgeRow, ProfileByAddressResponse, ReservationStatus, SelectedBadgeInfo,
-    SocialProofTokenInfo,
+    SocialProofTokenInfo, UniversalUserResult,
 };
 pub use myso_indexer_alt_social_schema::models::{
     SptHoldingRow, SptPoolRow, SptPriceHistory, SptTransaction,

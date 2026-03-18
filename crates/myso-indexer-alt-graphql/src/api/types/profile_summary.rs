@@ -3,10 +3,12 @@
 
 use std::str::FromStr;
 
+use async_graphql::Context;
 use async_graphql::Object;
 use myso_indexer_alt_social_reader::ProfileSummaryRow;
 
 use crate::api::scalars::myso_address::MySoAddress;
+use crate::api::types::profile::{SelectedBadge, SocialProofToken};
 
 #[derive(Clone)]
 pub(crate) struct ProfileSummary {
@@ -40,5 +42,83 @@ impl ProfileSummary {
     /// Profile photo URL.
     async fn profile_photo(&self) -> Option<&str> {
         self.inner.profile_photo.as_deref()
+    }
+
+    /// Profile bio.
+    async fn bio(&self) -> Option<&str> {
+        self.inner.bio.as_deref()
+    }
+
+    /// Selected badge ID.
+    async fn selected_badge_id(&self) -> Option<&str> {
+        self.inner.selected_badge_id.as_deref()
+    }
+
+    /// Social proof token address.
+    async fn social_proof_token_address(&self) -> Option<&str> {
+        self.inner.social_proof_token_address.as_deref()
+    }
+
+    /// Reservation pool address.
+    async fn reservation_pool_address(&self) -> Option<&str> {
+        self.inner.reservation_pool_address.as_deref()
+    }
+
+    /// Selected badge info (when present).
+    async fn selected_badge(&self, ctx: &Context<'_>) -> Option<SelectedBadge> {
+        if self.inner.selected_badge_id.is_none() {
+            return None;
+        }
+        let reader_opt = ctx
+            .data_opt::<std::sync::Arc<Option<myso_indexer_alt_social_reader::SocialPgReader>>>()?;
+        let reader = reader_opt.as_ref().as_ref()?;
+        let enriched = reader
+            .get_profile_summary_enriched(&self.inner.owner_address)
+            .await
+            .ok()??;
+        enriched
+            .selected_badge
+            .as_ref()
+            .map(SelectedBadge::from)
+    }
+
+    /// Reservation percentage (when profile has SPT/reservation pool).
+    async fn reservation_percentage(&self, ctx: &Context<'_>) -> Option<f64> {
+        if self.inner.social_proof_token_address.is_none()
+            && self.inner.reservation_pool_address.is_none()
+        {
+            return None;
+        }
+        let reader_opt = ctx
+            .data_opt::<std::sync::Arc<Option<myso_indexer_alt_social_reader::SocialPgReader>>>()?;
+        let reader = reader_opt.as_ref().as_ref()?;
+        let enriched = reader
+            .get_profile_summary_enriched(&self.inner.owner_address)
+            .await
+            .ok()??;
+        enriched
+            .social_proof_token
+            .as_ref()
+            .map(|spt| spt.reservation_percentage)
+    }
+
+    /// Social proof token info (when present).
+    async fn social_proof_token(&self, ctx: &Context<'_>) -> Option<SocialProofToken> {
+        if self.inner.social_proof_token_address.is_none()
+            && self.inner.reservation_pool_address.is_none()
+        {
+            return None;
+        }
+        let reader_opt = ctx
+            .data_opt::<std::sync::Arc<Option<myso_indexer_alt_social_reader::SocialPgReader>>>()?;
+        let reader = reader_opt.as_ref().as_ref()?;
+        let enriched = reader
+            .get_profile_summary_enriched(&self.inner.owner_address)
+            .await
+            .ok()??;
+        enriched
+            .social_proof_token
+            .as_ref()
+            .map(SocialProofToken::from)
     }
 }
