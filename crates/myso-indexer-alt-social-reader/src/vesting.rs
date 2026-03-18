@@ -428,6 +428,8 @@ pub(crate) async fn get_vesting_leaderboard(
                     selected_badge_id: None,
                     social_proof_token_address: None,
                     reservation_pool_address: None,
+                    followers_count: None,
+                    following_count: None,
                 });
             VestingLeaderboardEntry {
                 owner_address: r.owner_address,

@@ -9,6 +9,7 @@ use myso_indexer_alt_social_reader::{
     SptHoldingRow, SptPriceHistory as SptPriceHistoryRow, SptPoolRow, SptTransaction as SptTransactionRow,
 };
 
+use crate::api::resolve_profile::resolve_profile_summary;
 use crate::api::scalars::myso_address::MySoAddress;
 use crate::api::types::profile_summary::ProfileSummary;
 
@@ -51,6 +52,8 @@ impl SptHolding {
             selected_badge_id: self.inner.profile_selected_badge_id.clone(),
             social_proof_token_address: self.inner.profile_social_proof_token_address.clone(),
             reservation_pool_address: self.inner.profile_reservation_pool_address.clone(),
+            followers_count: None,
+            following_count: None,
         })
     }
 }
@@ -97,6 +100,11 @@ impl SptPool {
     async fn owner(&self) -> MySoAddress {
         MySoAddress::from_str(&self.inner.owner)
             .unwrap_or_else(|_| MySoAddress::from(myso_types::base_types::MySoAddress::ZERO))
+    }
+
+    /// Profile of the pool owner.
+    async fn owner_profile(&self, ctx: &Context<'_>) -> Option<ProfileSummary> {
+        resolve_profile_summary(ctx, &self.inner.owner).await
     }
 
     /// Token type (1=profile, 2=post).

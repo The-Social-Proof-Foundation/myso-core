@@ -4,5 +4,6 @@
 
 pub(crate) mod mutation;
 pub(crate) mod query;
+pub(crate) mod resolve_profile;
 pub(crate) mod scalars;
 pub(crate) mod types;

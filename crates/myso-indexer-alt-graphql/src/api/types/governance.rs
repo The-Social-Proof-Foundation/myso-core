@@ -3,12 +3,15 @@
 
 use std::str::FromStr;
 
+use async_graphql::Context;
 use async_graphql::Object;
 use myso_indexer_alt_social_reader::{
     DelegateRow, GovernanceRegistryRow, ProposalRow,
 };
 
+use crate::api::resolve_profile::resolve_profile_summary;
 use crate::api::scalars::myso_address::MySoAddress;
+use crate::api::types::profile_summary::ProfileSummary;
 
 /// Governance registry config (voting params) for GraphQL.
 #[derive(Clone)]
@@ -80,6 +83,11 @@ impl Proposal {
     async fn submitter(&self) -> MySoAddress {
         MySoAddress::from_str(&self.inner.submitter)
             .unwrap_or_else(|_| MySoAddress::from(myso_types::base_types::MySoAddress::ZERO))
+    }
+
+    /// Profile of the proposal submitter.
+    async fn submitter_profile(&self, ctx: &Context<'_>) -> Option<ProfileSummary> {
+        resolve_profile_summary(ctx, &self.inner.submitter).await
     }
 
     /// Submission time (epoch ms).

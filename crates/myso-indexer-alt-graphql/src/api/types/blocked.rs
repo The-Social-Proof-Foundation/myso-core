@@ -3,10 +3,13 @@
 
 use std::str::FromStr;
 
+use async_graphql::Context;
 use async_graphql::Object;
 use chrono::DateTime;
 
+use crate::api::resolve_profile::resolve_profile_summary;
 use crate::api::scalars::myso_address::MySoAddress;
+use crate::api::types::profile_summary::ProfileSummary;
 
 fn to_iso8601_utc(dt: chrono::NaiveDateTime) -> String {
     DateTime::<chrono::Utc>::from_naive_utc_and_offset(dt, chrono::Utc)
@@ -89,6 +92,11 @@ impl BlockedPlatformSummary {
         &self.platform_id
     }
 
+    /// Profile of the user who blocked the platform.
+    async fn blocked_by_profile(&self, ctx: &Context<'_>) -> Option<ProfileSummary> {
+        resolve_profile_summary(ctx, &self.blocked_by).await
+    }
+
     async fn platform_name(&self) -> &str {
         &self.platform_name
     }
@@ -126,6 +134,11 @@ impl PlatformBlockedProfileSummary {
     async fn wallet_address(&self) -> MySoAddress {
         MySoAddress::from_str(&self.wallet_address)
             .unwrap_or_else(|_| MySoAddress::from(myso_types::base_types::MySoAddress::ZERO))
+    }
+
+    /// Profile of the blocked user.
+    async fn profile(&self, ctx: &Context<'_>) -> Option<ProfileSummary> {
+        resolve_profile_summary(ctx, &self.wallet_address).await
     }
 
     async fn blocked_by(&self) -> &str {

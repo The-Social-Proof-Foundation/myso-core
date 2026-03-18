@@ -11,10 +11,12 @@ use myso_indexer_alt_social_schema::models::{
     PlatformMemberRow, PlatformModeratorRow, ProfilePlatformMembershipRow,
 };
 
+use crate::api::resolve_profile::resolve_profile_summary;
 use crate::api::scalars::id::Id;
 use crate::api::scalars::json::Json;
 use crate::api::scalars::myso_address::MySoAddress;
 use crate::api::types::blocked::PlatformBlockedProfileSummary;
+use crate::api::types::profile_summary::ProfileSummary;
 
 fn to_iso8601_utc(dt: chrono::NaiveDateTime) -> String {
     DateTime::<chrono::Utc>::from_naive_utc_and_offset(dt, chrono::Utc)
@@ -80,6 +82,11 @@ impl Platform {
     /// The developer's wallet address.
     async fn developer_address(&self) -> &str {
         &self.inner.developer_address
+    }
+
+    /// Profile of the platform developer.
+    async fn developer_profile(&self, ctx: &Context<'_>) -> Option<ProfileSummary> {
+        resolve_profile_summary(ctx, &self.inner.developer_address).await
     }
 
     /// Whether the platform is approved.
@@ -327,6 +334,11 @@ impl PlatformMemberSummary {
             .unwrap_or_else(|_| MySoAddress::from(myso_types::base_types::MySoAddress::ZERO))
     }
 
+    /// Profile of the platform member.
+    async fn profile(&self, ctx: &Context<'_>) -> Option<ProfileSummary> {
+        resolve_profile_summary(ctx, &self.wallet_address).await
+    }
+
     async fn joined_at(&self) -> String {
         to_iso8601_utc(self.joined_at)
     }
@@ -356,8 +368,18 @@ impl PlatformModeratorSummary {
             .unwrap_or_else(|_| MySoAddress::from(myso_types::base_types::MySoAddress::ZERO))
     }
 
+    /// Profile of the moderator.
+    async fn moderator_profile(&self, ctx: &Context<'_>) -> Option<ProfileSummary> {
+        resolve_profile_summary(ctx, &self.moderator_address).await
+    }
+
     async fn added_by(&self) -> &str {
         &self.added_by
+    }
+
+    /// Profile of the user who added the moderator.
+    async fn added_by_profile(&self, ctx: &Context<'_>) -> Option<ProfileSummary> {
+        resolve_profile_summary(ctx, &self.added_by).await
     }
 
     async fn created_at(&self) -> String {

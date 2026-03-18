@@ -3,12 +3,14 @@
 
 use std::str::FromStr;
 
+use async_graphql::Context;
 use async_graphql::Object;
 use chrono::DateTime;
 use myso_indexer_alt_social_reader::{
     VestingLeaderboardEntry as LeaderboardEntryRow, VestingWalletWithStatus as VestingWalletRow,
 };
 
+use crate::api::resolve_profile::resolve_profile_summary;
 use crate::api::scalars::myso_address::MySoAddress;
 use crate::api::types::profile_summary::ProfileSummary;
 
@@ -39,6 +41,11 @@ impl VestingWallet {
     async fn owner_address(&self) -> MySoAddress {
         MySoAddress::from_str(&self.inner.wallet.owner_address)
             .unwrap_or_else(|_| MySoAddress::from(myso_types::base_types::MySoAddress::ZERO))
+    }
+
+    /// Profile of the vesting wallet owner.
+    async fn owner_profile(&self, ctx: &Context<'_>) -> Option<ProfileSummary> {
+        resolve_profile_summary(ctx, &self.inner.wallet.owner_address).await
     }
 
     /// Total amount vested.

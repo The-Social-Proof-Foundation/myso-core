@@ -40,6 +40,10 @@ pub struct ProfileSummaryRow {
     pub selected_badge_id: Option<String>,
     pub social_proof_token_address: Option<String>,
     pub reservation_pool_address: Option<String>,
+    /// Follower count (from profiles or wallet_social_graph). Present for both profile and wallet-only.
+    pub followers_count: Option<i32>,
+    /// Following count (from profiles or wallet_social_graph). Present for both profile and wallet-only.
+    pub following_count: Option<i32>,
 }
 
 pub(crate) async fn get_profile_summaries_for_addresses(
@@ -96,6 +100,8 @@ pub(crate) async fn get_profile_summaries_for_addresses(
                 selected_badge_id: row.selected_badge_id,
                 social_proof_token_address: row.social_proof_token_address,
                 reservation_pool_address: row.reservation_pool_address,
+                followers_count: None,
+                following_count: None,
             },
         );
     }
@@ -112,6 +118,8 @@ pub(crate) async fn get_profile_summaries_for_addresses(
                     selected_badge_id: None,
                     social_proof_token_address: None,
                     reservation_pool_address: None,
+                    followers_count: None,
+                    following_count: None,
                 },
             );
         }
@@ -181,6 +189,8 @@ pub(crate) async fn get_followers(
             selected_badge_id: r.selected_badge_id,
             social_proof_token_address: r.social_proof_token_address,
             reservation_pool_address: r.reservation_pool_address,
+            followers_count: None,
+            following_count: None,
         })
         .collect())
 }
@@ -247,6 +257,8 @@ pub(crate) async fn get_following(
             selected_badge_id: r.selected_badge_id,
             social_proof_token_address: r.social_proof_token_address,
             reservation_pool_address: r.reservation_pool_address,
+            followers_count: None,
+            following_count: None,
         })
         .collect())
 }

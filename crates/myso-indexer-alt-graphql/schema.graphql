@@ -388,6 +388,10 @@ scalar BigInt
 
 type BlockedPlatformSummary {
 	blockedBy: String!
+	"""
+	Profile of the user who blocked the platform.
+	"""
+	blockedByProfile: ProfileSummary
 	createdAt: String!
 	platformId: String!
 	platformName: String!
@@ -825,6 +829,10 @@ type CommentSummary {
 	content: String!
 	createdAt: Int!
 	owner: String!
+	"""
+	Profile of the comment owner (username, display name, photo, etc.).
+	"""
+	ownerProfile: ProfileSummary
 	parentCommentId: String
 	postId: String!
 	profileId: String!
@@ -2885,6 +2893,10 @@ type MyDataPurchase {
 	"""
 	buyer: MySoAddress!
 	"""
+	Profile of the buyer.
+	"""
+	buyerProfile: ProfileSummary
+	"""
 	MyData record ID this purchase is for.
 	"""
 	mydataId: String!
@@ -2923,6 +2935,10 @@ type MyDataRecord {
 	Owner address.
 	"""
 	owner: MySoAddress!
+	"""
+	Profile of the MyData record owner.
+	"""
+	ownerProfile: ProfileSummary
 	"""
 	Subscription price (null if not for sale).
 	"""
@@ -3403,6 +3419,10 @@ type Platform implements Node {
 	"""
 	developerAddress: String!
 	"""
+	Profile of the platform developer.
+	"""
+	developerProfile: ProfileSummary
+	"""
 	Governance registry ID.
 	"""
 	governanceRegistryId: String
@@ -3515,11 +3535,19 @@ type Platform implements Node {
 type PlatformBlockedProfileSummary {
 	blockedBy: String!
 	createdAt: String!
+	"""
+	Profile of the blocked user.
+	"""
+	profile: ProfileSummary
 	walletAddress: MySoAddress!
 }
 
 type PlatformMemberSummary {
 	joinedAt: String!
+	"""
+	Profile of the platform member.
+	"""
+	profile: ProfileSummary
 	walletAddress: MySoAddress!
 }
 
@@ -3532,8 +3560,16 @@ type PlatformMembershipSummary {
 
 type PlatformModeratorSummary {
 	addedBy: String!
+	"""
+	Profile of the user who added the moderator.
+	"""
+	addedByProfile: ProfileSummary
 	createdAt: String!
 	moderatorAddress: MySoAddress!
+	"""
+	Profile of the moderator.
+	"""
+	moderatorProfile: ProfileSummary
 }
 
 type Post implements Node {
@@ -3569,6 +3605,10 @@ type Post implements Node {
 	The wallet address of the post owner.
 	"""
 	owner: String!
+	"""
+	Profile of the post owner (username, display name, photo, etc.).
+	"""
+	ownerProfile: ProfileSummary
 	"""
 	Parent post ID (for quote reposts).
 	"""
@@ -3633,7 +3673,15 @@ type Post implements Node {
 
 type PostTransferSummary {
 	newOwner: MySoAddress!
+	"""
+	Profile of the new owner.
+	"""
+	newOwnerProfile: ProfileSummary
 	previousOwner: MySoAddress!
+	"""
+	Profile of the previous owner.
+	"""
+	previousOwnerProfile: ProfileSummary
 	transactionId: String!
 	transferredAt: Int!
 }
@@ -3839,6 +3887,10 @@ type ProfileBadge {
 	"""
 	assignedBy: String!
 	"""
+	Profile of the user who assigned the badge.
+	"""
+	assignedByProfile: ProfileSummary
+	"""
 	Badge description.
 	"""
 	badgeDescription: String
@@ -3881,6 +3933,14 @@ type ProfileSummary {
 	Display name.
 	"""
 	displayName: String
+	"""
+	Number of followers. Present for both profile and wallet-only addresses.
+	"""
+	followersCount: Int
+	"""
+	Number of accounts this address follows. Present for both profile and wallet-only addresses.
+	"""
+	followingCount: Int
 	"""
 	Profile photo URL.
 	"""
@@ -4016,6 +4076,10 @@ type Proposal {
 	Submitter address.
 	"""
 	submitter: MySoAddress!
+	"""
+	Profile of the proposal submitter.
+	"""
+	submitterProfile: ProfileSummary
 	"""
 	Proposal title.
 	"""
@@ -4517,6 +4581,10 @@ type ReactionSummary {
 	createdAt: Int!
 	reactionText: String!
 	userAddress: MySoAddress!
+	"""
+	Profile of the user who reacted.
+	"""
+	userProfile: ProfileSummary
 }
 
 """
@@ -4558,6 +4626,10 @@ type RepostSummary {
 	createdAt: Int!
 	originalPostId: String!
 	owner: MySoAddress!
+	"""
+	Profile of the repost owner.
+	"""
+	ownerProfile: ProfileSummary
 	profileId: String!
 	repostId: String!
 }
@@ -4819,6 +4891,10 @@ type SpotBet {
 	"""
 	postId: String!
 	"""
+	Profile of the bettor.
+	"""
+	profile: ProfileSummary
+	"""
 	Transaction ID.
 	"""
 	transactionId: String!
@@ -4906,6 +4982,10 @@ type SptPool {
 	Pool owner address.
 	"""
 	owner: MySoAddress!
+	"""
+	Profile of the pool owner.
+	"""
+	ownerProfile: ProfileSummary
 	"""
 	Pool ID.
 	"""
@@ -5053,7 +5133,15 @@ type TipSummary {
 	amount: Int!
 	createdAt: Int!
 	recipient: MySoAddress!
+	"""
+	Profile of the tip recipient.
+	"""
+	recipientProfile: ProfileSummary
 	tipper: MySoAddress!
+	"""
+	Profile of the tipper.
+	"""
+	tipperProfile: ProfileSummary
 }
 
 """
@@ -5592,6 +5680,10 @@ type VestingWallet {
 	Owner address.
 	"""
 	ownerAddress: MySoAddress!
+	"""
+	Profile of the vesting wallet owner.
+	"""
+	ownerProfile: ProfileSummary
 	"""
 	Remaining balance.
 	"""

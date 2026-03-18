@@ -23,6 +23,7 @@ use crate::platform::{get_platform_blocked_profiles, get_platform_members, get_p
 use crate::social_graph::{
     check_following, check_platform_blocked, check_profile_blocked, get_blocked_platforms,
     get_blocked_profiles, get_followers, get_following, get_profile_platform_memberships,
+    ProfileSummaryRow,
 };
 use crate::poc::{
     get_poc_analysis_for_post, get_poc_badges_for_post, get_poc_configuration,
@@ -127,6 +128,28 @@ impl SocialPgReader {
     ) -> anyhow::Result<crate::profile::ProfileByAddressResponse> {
         let mut conn = self.connect().await?;
         get_profile_or_wallet_by_address(&mut conn, address, &self.metrics).await
+    }
+
+    /// Get profile summary for a single address. Supports both profile and wallet-only addresses.
+    /// - Profile exists: returns profile data (username, display_name, photo, etc.) + followers_count, following_count
+    /// - Wallet only: returns address + followers_count, following_count from wallet_social_graph
+    pub async fn get_profile_summary(
+        &self,
+        address: &str,
+    ) -> anyhow::Result<ProfileSummaryRow> {
+        let response = self.get_profile_or_wallet_by_address(address).await?;
+        Ok(ProfileSummaryRow {
+            owner_address: response.owner_address,
+            username: response.username,
+            display_name: response.display_name,
+            profile_photo: response.profile_photo,
+            bio: response.bio,
+            selected_badge_id: response.selected_badge_id,
+            social_proof_token_address: response.social_proof_token_address,
+            reservation_pool_address: response.reservation_pool_address,
+            followers_count: Some(response.followers_count),
+            following_count: Some(response.following_count),
+        })
     }
 
     /// Get enriched profile summary (badge, SPT, reservation %) for a single address.

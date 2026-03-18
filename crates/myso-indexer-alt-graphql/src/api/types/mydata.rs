@@ -3,10 +3,13 @@
 
 use std::str::FromStr;
 
+use async_graphql::Context;
 use async_graphql::Object;
 use myso_indexer_alt_social_reader::{MyDataPurchaseRow, MyDataRecordRow};
 
+use crate::api::resolve_profile::resolve_profile_summary;
 use crate::api::scalars::myso_address::MySoAddress;
+use crate::api::types::profile_summary::ProfileSummary;
 
 fn parse_tags(value: &serde_json::Value) -> Vec<String> {
     value
@@ -41,6 +44,11 @@ impl MyDataRecord {
     async fn owner(&self) -> MySoAddress {
         MySoAddress::from_str(&self.inner.owner)
             .unwrap_or_else(|_| MySoAddress::from(myso_types::base_types::MySoAddress::ZERO))
+    }
+
+    /// Profile of the MyData record owner.
+    async fn owner_profile(&self, ctx: &Context<'_>) -> Option<ProfileSummary> {
+        resolve_profile_summary(ctx, &self.inner.owner).await
     }
 
     /// Media type (e.g. "text", "audio", "image", "video").
@@ -86,6 +94,11 @@ impl MyDataPurchase {
     async fn buyer(&self) -> MySoAddress {
         MySoAddress::from_str(&self.inner.buyer)
             .unwrap_or_else(|_| MySoAddress::from(myso_types::base_types::MySoAddress::ZERO))
+    }
+
+    /// Profile of the buyer.
+    async fn buyer_profile(&self, ctx: &Context<'_>) -> Option<ProfileSummary> {
+        resolve_profile_summary(ctx, &self.inner.buyer).await
     }
 
     /// Price paid.

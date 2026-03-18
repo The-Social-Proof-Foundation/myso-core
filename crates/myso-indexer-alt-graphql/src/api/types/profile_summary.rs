@@ -64,6 +64,16 @@ impl ProfileSummary {
         self.inner.reservation_pool_address.as_deref()
     }
 
+    /// Number of followers. Present for both profile and wallet-only addresses.
+    async fn followers_count(&self) -> Option<i32> {
+        self.inner.followers_count
+    }
+
+    /// Number of accounts this address follows. Present for both profile and wallet-only addresses.
+    async fn following_count(&self) -> Option<i32> {
+        self.inner.following_count
+    }
+
     /// Selected badge info (when present).
     async fn selected_badge(&self, ctx: &Context<'_>) -> Option<SelectedBadge> {
         if self.inner.selected_badge_id.is_none() {
