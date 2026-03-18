@@ -4164,6 +4164,10 @@ type Query {
 	"""
 	coinMetadata(coinType: String!): CoinMetadata
 	"""
+	Fetch a comment by ID. Returns null if social DB not configured or not found.
+	"""
+	comment(id: ID!): CommentSummary
+	"""
 	Fetch a delegate by address. Returns null when social DB not configured or not found.
 	"""
 	delegate(address: MySoAddress!): Delegate
@@ -4374,6 +4378,14 @@ type Query {
 	"""
 	protocolConfigs(version: UInt53): ProtocolConfigs
 	"""
+	Reactions for a post (paginated). Returns empty when social DB not configured.
+	"""
+	reactions(postId: ID!, limit: Int, offset: Int): [ReactionSummary!]
+	"""
+	Reposts of a post (paginated). Returns empty when social DB not configured.
+	"""
+	reposts(postId: ID!, limit: Int, offset: Int): [RepostSummary!]
+	"""
 	Configuration for this RPC service.
 	"""
 	serviceConfig: ServiceConfig!
@@ -4416,6 +4428,10 @@ type Query {
 	SPT price history. Provide profileAddress or poolId (at least one required). Returns empty when social DB not configured.
 	"""
 	sptPriceHistory(profileAddress: MySoAddress, poolId: ID, limit: Int): [SptPriceHistory!]
+	"""
+	Tips received for a post (paginated). Returns empty when social DB not configured.
+	"""
+	tips(postId: ID!, limit: Int, offset: Int): [TipSummary!]
 	"""
 	Fetch a transaction by its digest.
 	
