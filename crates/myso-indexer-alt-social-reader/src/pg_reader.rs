@@ -28,6 +28,9 @@ use crate::poc::{
     get_poc_analysis_for_post, get_poc_badges_for_post, get_poc_configuration,
     get_poc_disputes_for_post,
 };
+use crate::mydata::{
+    get_mydata_record, list_mydata_purchases_by_buyer, list_mydata_records_by_owner,
+};
 use crate::spot::{get_spot_record, list_spot_bets};
 use crate::spt::{
     get_spt_holdings_by_holder, get_spt_pool, get_spt_pool_id_for_profile, get_spt_price_history,
@@ -465,5 +468,36 @@ impl SocialPgReader {
     ) -> anyhow::Result<Vec<crate::SpotBetRow>> {
         let mut conn = self.connect().await?;
         list_spot_bets(&mut conn, post_id, limit, offset, &self.metrics).await
+    }
+
+    /// Get a mydata record by ID.
+    pub async fn get_mydata_record(
+        &self,
+        mydata_id: &str,
+    ) -> anyhow::Result<Option<crate::MyDataRecordRow>> {
+        let mut conn = self.connect().await?;
+        get_mydata_record(&mut conn, mydata_id, &self.metrics).await
+    }
+
+    /// List mydata records by owner (paginated).
+    pub async fn list_mydata_records_by_owner(
+        &self,
+        owner: &str,
+        limit: i64,
+        offset: i64,
+    ) -> anyhow::Result<Vec<crate::MyDataRecordRow>> {
+        let mut conn = self.connect().await?;
+        list_mydata_records_by_owner(&mut conn, owner, limit, offset, &self.metrics).await
+    }
+
+    /// List mydata purchases by buyer (paginated).
+    pub async fn list_mydata_purchases_by_buyer(
+        &self,
+        buyer: &str,
+        limit: i64,
+        offset: i64,
+    ) -> anyhow::Result<Vec<crate::MyDataPurchaseRow>> {
+        let mut conn = self.connect().await?;
+        list_mydata_purchases_by_buyer(&mut conn, buyer, limit, offset, &self.metrics).await
     }
 }

@@ -53,6 +53,7 @@ use crate::api::types::object_filter::ObjectFilterValidator as OFValidator;
 use crate::api::types::platform::Platform;
 use crate::api::types::post::Post;
 use crate::api::types::profile::Profile;
+use crate::api::types::mydata::{MyDataPurchase, MyDataRecord};
 use crate::api::types::spot::{SpotBet, SpotRecord};
 use crate::api::types::spt::{SptHolding, SptPool, SptPriceHistory};
 use crate::api::types::vesting::{
@@ -520,6 +521,68 @@ impl Query {
                 .await
                 .map_err(Into::into)
                 .map(|opt| opt.map(SpotRecord::from_row)),
+        )
+    }
+
+    /// MyData record by ID. Returns null when social DB not configured or not found.
+    async fn mydata_record(
+        &self,
+        ctx: &Context<'_>,
+        id: async_graphql::ID,
+    ) -> Option<Result<Option<MyDataRecord>, RpcError>> {
+        let reader_opt = ctx
+            .data_opt::<std::sync::Arc<Option<myso_indexer_alt_social_reader::SocialPgReader>>>()?;
+        let reader = reader_opt.as_ref().as_ref()?;
+        Some(
+            reader
+                .get_mydata_record(id.as_str())
+                .await
+                .map_err(Into::into)
+                .map(|opt| opt.map(MyDataRecord::from_row)),
+        )
+    }
+
+    /// MyData records by owner. Returns empty when social DB not configured.
+    async fn mydata_records(
+        &self,
+        ctx: &Context<'_>,
+        owner: MySoAddress,
+        limit: Option<u64>,
+        offset: Option<u64>,
+    ) -> Option<Result<Vec<MyDataRecord>, RpcError>> {
+        let reader_opt = ctx
+            .data_opt::<std::sync::Arc<Option<myso_indexer_alt_social_reader::SocialPgReader>>>()?;
+        let reader = reader_opt.as_ref().as_ref()?;
+        let limit = limit.unwrap_or(20).min(100) as i64;
+        let offset = offset.unwrap_or(0) as i64;
+        Some(
+            reader
+                .list_mydata_records_by_owner(&owner.to_string(), limit, offset)
+                .await
+                .map_err(Into::into)
+                .map(|v| v.into_iter().map(MyDataRecord::from_row).collect()),
+        )
+    }
+
+    /// MyData purchases by buyer. Returns empty when social DB not configured.
+    async fn mydata_purchases(
+        &self,
+        ctx: &Context<'_>,
+        buyer: MySoAddress,
+        limit: Option<u64>,
+        offset: Option<u64>,
+    ) -> Option<Result<Vec<MyDataPurchase>, RpcError>> {
+        let reader_opt = ctx
+            .data_opt::<std::sync::Arc<Option<myso_indexer_alt_social_reader::SocialPgReader>>>()?;
+        let reader = reader_opt.as_ref().as_ref()?;
+        let limit = limit.unwrap_or(20).min(100) as i64;
+        let offset = offset.unwrap_or(0) as i64;
+        Some(
+            reader
+                .list_mydata_purchases_by_buyer(&buyer.to_string(), limit, offset)
+                .await
+                .map_err(Into::into)
+                .map(|v| v.into_iter().map(MyDataPurchase::from_row).collect()),
         )
     }
 

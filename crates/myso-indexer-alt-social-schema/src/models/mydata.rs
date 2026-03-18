@@ -2,6 +2,8 @@
 // SPDX-License-Identifier: Apache-2.0
 
 use diesel::prelude::*;
+use diesel::QueryableByName;
+use diesel::sql_types::{BigInt, Int4, Jsonb, Nullable, Text, Timestamptz};
 use serde::{Deserialize, Serialize};
 
 use crate::schema::{
@@ -32,6 +34,44 @@ pub const UPDATE_FREQUENCY_YEARLY: &str = "yearly";
 pub const MAX_TAGS: usize = 10;
 pub const MAX_SUBSCRIPTION_DAYS: i64 = 365;
 pub const MAX_FREE_ACCESS_GRANTS: i64 = 100_000;
+
+/// Query result for a mydata record (for GraphQL/reader).
+#[derive(Debug, Clone, QueryableByName, Serialize, Deserialize)]
+pub struct MyDataRecordRow {
+    #[diesel(sql_type = Text)]
+    pub mydata_id: String,
+    #[diesel(sql_type = Text)]
+    pub owner: String,
+    #[diesel(sql_type = Text)]
+    pub media_type: String,
+    #[diesel(sql_type = Jsonb)]
+    pub tags: serde_json::Value,
+    #[diesel(sql_type = Nullable<BigInt>)]
+    pub one_time_price: Option<i64>,
+    #[diesel(sql_type = Nullable<BigInt>)]
+    pub subscription_price: Option<i64>,
+}
+
+/// Query result for a mydata purchase (for GraphQL/reader).
+#[derive(Debug, Clone, QueryableByName, Serialize, Deserialize)]
+pub struct MyDataPurchaseRow {
+    #[diesel(sql_type = Int4)]
+    pub id: i32,
+    #[diesel(sql_type = Text)]
+    pub mydata_id: String,
+    #[diesel(sql_type = Text)]
+    pub buyer: String,
+    #[diesel(sql_type = BigInt)]
+    pub price: i64,
+    #[diesel(sql_type = Text)]
+    pub purchase_type: String,
+    #[diesel(sql_type = BigInt)]
+    pub purchase_time: i64,
+    #[diesel(sql_type = Timestamptz)]
+    pub time: chrono::DateTime<chrono::Utc>,
+    #[diesel(sql_type = Text)]
+    pub transaction_id: String,
+}
 
 #[derive(Debug, Clone, Queryable, Selectable, Serialize, Deserialize)]
 #[diesel(table_name = mydata_data)]

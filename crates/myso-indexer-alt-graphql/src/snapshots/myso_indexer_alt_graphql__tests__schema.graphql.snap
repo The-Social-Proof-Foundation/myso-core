@@ -2760,6 +2760,60 @@ type Mutation {
 	executeTransaction(transactionDataBcs: Base64!, signatures: [Base64!]!): ExecutionResult!
 }
 
+type MyDataPurchase {
+	"""
+	Buyer address.
+	"""
+	buyer: MySoAddress!
+	"""
+	MyData record ID this purchase is for.
+	"""
+	mydataId: String!
+	"""
+	Price paid.
+	"""
+	price: Int!
+	"""
+	Epoch timestamp when the purchase was made.
+	"""
+	purchaseTime: Int!
+	"""
+	Purchase type ("one_time" or "subscription").
+	"""
+	purchaseType: String!
+	"""
+	Transaction ID.
+	"""
+	transactionId: String!
+}
+
+type MyDataRecord {
+	"""
+	Media type (e.g. "text", "audio", "image", "video").
+	"""
+	mediaType: String!
+	"""
+	Unique MyData record identifier.
+	"""
+	mydataId: String!
+	"""
+	One-time purchase price (null if not for sale).
+	"""
+	oneTimePrice: Int
+	"""
+	Owner address.
+	"""
+	owner: MySoAddress!
+	"""
+	Subscription price (null if not for sale).
+	"""
+	subscriptionPrice: Int
+	"""
+	Searchable tags.
+	"""
+	tags: [String!]!
+}
+
 """
 String containing 32 byte hex-encoded address, with a leading '0x'. Leading zeroes can be omitted on input but will always appear in outputs (MySoAddress in output is guaranteed to be 66 characters long).
 """
@@ -3529,6 +3583,10 @@ type Profile implements Node {
 	"""
 	minOfferAmount: Int
 	"""
+	MyData records owned by this profile (paginated).
+	"""
+	mydataRecords(limit: Int, offset: Int): [MyDataRecord!]
+	"""
 	Phone (encrypted).
 	"""
 	phone: String
@@ -3663,6 +3721,10 @@ type ProfileSummary {
 	"""
 	address: MySoAddress!
 	"""
+	Profile bio.
+	"""
+	bio: String
+	"""
 	Display name.
 	"""
 	displayName: String
@@ -3670,6 +3732,30 @@ type ProfileSummary {
 	Profile photo URL.
 	"""
 	profilePhoto: String
+	"""
+	Reservation percentage (when profile has SPT/reservation pool).
+	"""
+	reservationPercentage: Float
+	"""
+	Reservation pool address.
+	"""
+	reservationPoolAddress: String
+	"""
+	Selected badge info (when present).
+	"""
+	selectedBadge: SelectedBadge
+	"""
+	Selected badge ID.
+	"""
+	selectedBadgeId: String
+	"""
+	Social proof token info (when present).
+	"""
+	socialProofToken: SocialProofToken
+	"""
+	Social proof token address.
+	"""
+	socialProofTokenAddress: String
 	"""
 	Username.
 	"""
@@ -3875,6 +3961,18 @@ type Query {
 	Returns a list of types that is guaranteed to be the same length as `keys`. If a type in `keys` could not be found, its corresponding entry in the result will be `null`.
 	"""
 	multiGetTypes(keys: [String!]!): [MoveType]!
+	"""
+	MyData purchases by buyer. Returns empty when social DB not configured.
+	"""
+	mydataPurchases(buyer: MySoAddress!, limit: Int, offset: Int): [MyDataPurchase!]
+	"""
+	MyData record by ID. Returns null when social DB not configured or not found.
+	"""
+	mydataRecord(id: ID!): MyDataRecord
+	"""
+	MyData records by owner. Returns empty when social DB not configured.
+	"""
+	mydataRecords(owner: MySoAddress!, limit: Int, offset: Int): [MyDataRecord!]
 	"""
 	Fetch a `Node` by its globally unique `ID`. Returns `null` if the node cannot be found (e.g., the underlying data was pruned or never existed).
 	"""
@@ -4359,6 +4457,10 @@ type SplitCoinsCommand {
 
 type SpotBet {
 	"""
+	AMM amount.
+	"""
+	ammAmount: Int!
+	"""
 	Total amount staked (escrow + AMM).
 	"""
 	amount: Int!
@@ -4371,16 +4473,63 @@ type SpotBet {
 	"""
 	better: MySoAddress!
 	"""
+	Escrow amount.
+	"""
+	escrowAmount: Int!
+	"""
+	Human-readable option label (e.g. "Yes", "No").
+	"""
+	optionLabel: String
+	"""
 	Option ID the bettor chose (outcome bet on).
 	"""
 	outcome: Int!
 	"""
+	Epoch timestamp when the bet was placed.
+	"""
+	placedAt: Int!
+	"""
 	Post ID this bet is for.
 	"""
 	postId: String!
+	"""
+	Transaction ID.
+	"""
+	transactionId: String!
+}
+
+type SpotOptionEscrow {
+	"""
+	Escrow amount for this option.
+	"""
+	amount: Int!
+	"""
+	Option ID.
+	"""
+	optionId: Int!
 }
 
 type SpotRecord {
+	"""
+	Betting option labels (e.g. ["Yes", "No"]).
+	"""
+	bettingOptions: [String!]!
+	"""
+	Epoch when the record was created.
+	"""
+	createdEpoch: Int!
+	"""
+	Last resolution epoch.
+	"""
+	lastResolutionEpoch: Int
+	"""
+	Max resolution window in epochs.
+	"""
+	maxResolutionWindowEpochs: Int
+	"""
+	Escrow amount per option (option_id -> amount).
+	"""
+	optionEscrow: [SpotOptionEscrow!]!
 	"""
 	Post ID this record is for.
 	"""
@@ -4393,6 +4542,18 @@ type SpotRecord {
 	Resolved outcome (when resolved).
 	"""
 	resolution: Int
+	"""
+	Resolution window in epochs.
+	"""
+	resolutionWindowEpochs: Int
+	"""
+	Record status (1=open, 2=dao_required, 3=resolved, 4=refundable).
+	"""
+	status: Int!
+	"""
+	Total escrow across all options.
+	"""
+	totalEscrow: Int!
 }
 
 type SptHolding {

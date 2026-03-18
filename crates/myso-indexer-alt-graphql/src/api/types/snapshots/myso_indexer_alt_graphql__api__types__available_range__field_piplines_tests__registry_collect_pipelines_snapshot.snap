@@ -1169,6 +1169,42 @@ MutateConsensusStreamEnded.sequenceNumber
 Mutation.executeTransaction
   => {}
 
+MyDataPurchase.mydataId
+  => {}
+
+MyDataPurchase.buyer
+  => {}
+
+MyDataPurchase.price
+  => {}
+
+MyDataPurchase.purchaseType
+  => {}
+
+MyDataPurchase.purchaseTime
+  => {}
+
+MyDataPurchase.transactionId
+  => {}
+
+MyDataRecord.mydataId
+  => {}
+
+MyDataRecord.owner
+  => {}
+
+MyDataRecord.mediaType
+  => {}
+
+MyDataRecord.tags
+  => {}
+
+MyDataRecord.oneTimePrice
+  => {}
+
+MyDataRecord.subscriptionPrice
+  => {}
+
 Node.id
   => {}
 
@@ -1604,6 +1640,9 @@ Profile.vestingWallets
 Profile.sptHoldings
   => {}
 
+Profile.mydataRecords
+  => {}
+
 ProfileBadge.badgeId
   => {}
 
@@ -1641,6 +1680,27 @@ ProfileSummary.displayName
   => {}
 
 ProfileSummary.profilePhoto
+  => {}
+
+ProfileSummary.bio
+  => {}
+
+ProfileSummary.selectedBadgeId
+  => {}
+
+ProfileSummary.socialProofTokenAddress
+  => {}
+
+ProfileSummary.reservationPoolAddress
+  => {}
+
+ProfileSummary.selectedBadge
+  => {}
+
+ProfileSummary.reservationPercentage
+  => {}
+
+ProfileSummary.socialProofToken
   => {}
 
 ProgrammableSystemTransaction.inputs
@@ -1728,6 +1788,15 @@ Query.spotBets
   => {}
 
 Query.spotRecord
+  => {}
+
+Query.mydataRecord
+  => {}
+
+Query.mydataRecords
+  => {}
+
+Query.mydataPurchases
   => {}
 
 Query.socialGraphFollowing
@@ -2054,6 +2123,27 @@ SpotBet.amount
 SpotBet.outcome
   => {}
 
+SpotBet.optionLabel
+  => {}
+
+SpotBet.placedAt
+  => {}
+
+SpotBet.escrowAmount
+  => {}
+
+SpotBet.ammAmount
+  => {}
+
+SpotBet.transactionId
+  => {}
+
+SpotOptionEscrow.optionId
+  => {}
+
+SpotOptionEscrow.amount
+  => {}
+
 SpotRecord.recordId
   => {}
 
@@ -2061,6 +2151,30 @@ SpotRecord.postId
   => {}
 
 SpotRecord.resolution
+  => {}
+
+SpotRecord.status
+  => {}
+
+SpotRecord.bettingOptions
+  => {}
+
+SpotRecord.optionEscrow
+  => {}
+
+SpotRecord.createdEpoch
+  => {}
+
+SpotRecord.resolutionWindowEpochs
+  => {}
+
+SpotRecord.maxResolutionWindowEpochs
+  => {}
+
+SpotRecord.lastResolutionEpoch
+  => {}
+
+SpotRecord.totalEscrow
   => {}
 
 SptHolding.address
