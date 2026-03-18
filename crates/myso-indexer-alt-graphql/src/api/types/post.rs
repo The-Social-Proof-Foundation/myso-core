@@ -1,10 +1,17 @@
 // Copyright (c) The Social Proof Foundation, LLC.
 // SPDX-License-Identifier: Apache-2.0
 
+use async_graphql::Context;
 use async_graphql::Object;
 use myso_indexer_alt_social_reader::PostRow as DbPost;
 
 use crate::api::scalars::id::Id;
+use crate::api::scalars::json::Json;
+use crate::api::types::post_comment::CommentSummary;
+use crate::api::types::post_reaction::ReactionSummary;
+use crate::api::types::post_repost::RepostSummary;
+use crate::api::types::post_tip::TipSummary;
+use crate::api::types::post_transfer::PostTransferSummary;
 
 #[derive(Clone)]
 pub(crate) struct Post {
@@ -72,5 +79,126 @@ impl Post {
     /// Total tips received.
     async fn tips_received(&self) -> i64 {
         self.inner.tips_received
+    }
+
+    /// Media URLs (JSON array).
+    async fn media_urls(&self) -> Option<Json> {
+        self.inner
+            .media_urls
+            .as_ref()
+            .and_then(|v| Json::try_from(v.clone()).ok())
+    }
+
+    /// Mentions (JSON).
+    async fn mentions(&self) -> Option<Json> {
+        self.inner
+            .mentions
+            .as_ref()
+            .and_then(|v| Json::try_from(v.clone()).ok())
+    }
+
+    /// Parent post ID (for quote reposts).
+    async fn parent_post_id(&self) -> Option<&str> {
+        self.inner.parent_post_id.as_deref()
+    }
+
+    /// When the post was last updated (Unix timestamp in milliseconds).
+    async fn updated_at(&self) -> Option<i64> {
+        self.inner.updated_at
+    }
+
+    /// Comments on this post (paginated).
+    async fn comments(
+        &self,
+        ctx: &Context<'_>,
+        limit: Option<u64>,
+        offset: Option<u64>,
+    ) -> Option<Vec<CommentSummary>> {
+        let reader_opt = ctx
+            .data_opt::<std::sync::Arc<Option<myso_indexer_alt_social_reader::SocialPgReader>>>()?;
+        let reader = reader_opt.as_ref().as_ref()?;
+        let limit = limit.unwrap_or(20).min(100) as i64;
+        let offset = offset.unwrap_or(0) as i64;
+        let rows = reader
+            .get_post_comments(&self.inner.post_id, limit, offset)
+            .await
+            .ok()?;
+        Some(rows.into_iter().map(CommentSummary::from_row).collect())
+    }
+
+    /// Reactions on this post (paginated).
+    async fn reactions(
+        &self,
+        ctx: &Context<'_>,
+        limit: Option<u64>,
+        offset: Option<u64>,
+    ) -> Option<Vec<ReactionSummary>> {
+        let reader_opt = ctx
+            .data_opt::<std::sync::Arc<Option<myso_indexer_alt_social_reader::SocialPgReader>>>()?;
+        let reader = reader_opt.as_ref().as_ref()?;
+        let limit = limit.unwrap_or(20).min(100) as i64;
+        let offset = offset.unwrap_or(0) as i64;
+        let rows = reader
+            .get_post_reactions(&self.inner.post_id, limit, offset)
+            .await
+            .ok()?;
+        Some(rows.into_iter().map(ReactionSummary::from_row).collect())
+    }
+
+    /// Reposts of this post (paginated).
+    async fn reposts(
+        &self,
+        ctx: &Context<'_>,
+        limit: Option<u64>,
+        offset: Option<u64>,
+    ) -> Option<Vec<RepostSummary>> {
+        let reader_opt = ctx
+            .data_opt::<std::sync::Arc<Option<myso_indexer_alt_social_reader::SocialPgReader>>>()?;
+        let reader = reader_opt.as_ref().as_ref()?;
+        let limit = limit.unwrap_or(20).min(100) as i64;
+        let offset = offset.unwrap_or(0) as i64;
+        let rows = reader
+            .get_post_reposts(&self.inner.post_id, limit, offset)
+            .await
+            .ok()?;
+        Some(rows.into_iter().map(RepostSummary::from_row).collect())
+    }
+
+    /// Tips received for this post (paginated).
+    async fn tips(
+        &self,
+        ctx: &Context<'_>,
+        limit: Option<u64>,
+        offset: Option<u64>,
+    ) -> Option<Vec<TipSummary>> {
+        let reader_opt = ctx
+            .data_opt::<std::sync::Arc<Option<myso_indexer_alt_social_reader::SocialPgReader>>>()?;
+        let reader = reader_opt.as_ref().as_ref()?;
+        let limit = limit.unwrap_or(20).min(100) as i64;
+        let offset = offset.unwrap_or(0) as i64;
+        let rows = reader
+            .get_post_tips(&self.inner.post_id, limit, offset)
+            .await
+            .ok()?;
+        Some(rows.into_iter().map(TipSummary::from_row).collect())
+    }
+
+    /// Ownership transfers for this post (paginated).
+    async fn transfers(
+        &self,
+        ctx: &Context<'_>,
+        limit: Option<u64>,
+        offset: Option<u64>,
+    ) -> Option<Vec<PostTransferSummary>> {
+        let reader_opt = ctx
+            .data_opt::<std::sync::Arc<Option<myso_indexer_alt_social_reader::SocialPgReader>>>()?;
+        let reader = reader_opt.as_ref().as_ref()?;
+        let limit = limit.unwrap_or(20).min(100) as i64;
+        let offset = offset.unwrap_or(0) as i64;
+        let rows = reader
+            .get_post_transfers(&self.inner.post_id, limit, offset)
+            .await
+            .ok()?;
+        Some(rows.into_iter().map(PostTransferSummary::from_row).collect())
     }
 }

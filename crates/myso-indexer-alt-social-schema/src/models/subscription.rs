@@ -15,13 +15,9 @@ pub const MILLISECONDS_PER_DAY: i64 = 24 * 60 * 60 * 1000;
 pub const MAX_RENEWAL_MONTHS: i32 = 120;
 pub const THIRTY_DAYS_MS: i64 = 2_592_000_000;
 
-pub const REVENUE_TYPE_SUBSCRIPTION: &str = "subscription";
 pub const REVENUE_TYPE_RENEWAL: &str = "renewal";
 pub const REVENUE_TYPE_AUTO_RENEWAL: &str = "auto_renewal";
 pub const REVENUE_TYPE_REFUND: &str = "refund";
-
-pub const CONTENT_TYPE_PROFILE: &str = "profile";
-pub const CONTENT_TYPE_POST: &str = "post";
 
 #[derive(Debug, Clone, Queryable, Selectable, Serialize, Deserialize)]
 #[diesel(table_name = profile_subscription_services)]

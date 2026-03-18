@@ -3,7 +3,7 @@ builder = "dockerfile"
 dockerfilePath = "crates/myso-bridge/Dockerfile"
 
 [deploy]
-startCommand = "sh -c 'echo \"$BRIDGE_AUTHORITY_KEY\" > /tmp/bridge_key && cargo run --release --bin myso-bridge -- --config-path /app/bridge-config.yaml'"
+startCommand = "sh -c 'echo \"$BRIDGE_AUTHORITY_KEY\" > /tmp/bridge_key && cargo run --release --bin myso-bridge-node -- --config-path /app/bridge-config.yaml'"
 # healthcheckPath = "/metrics"
 # healthcheckTimeout = 300
 

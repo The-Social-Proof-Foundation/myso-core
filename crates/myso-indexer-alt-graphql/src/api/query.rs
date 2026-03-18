@@ -339,6 +339,42 @@ impl Query {
         )
     }
 
+    /// Check if blocker has blocked blocked. Returns null when social DB not configured.
+    async fn check_profile_blocked(
+        &self,
+        ctx: &Context<'_>,
+        blocker: MySoAddress,
+        blocked: MySoAddress,
+    ) -> Option<Result<bool, RpcError>> {
+        let reader_opt = ctx
+            .data_opt::<std::sync::Arc<Option<myso_indexer_alt_social_reader::SocialPgReader>>>()?;
+        let reader = reader_opt.as_ref().as_ref()?;
+        Some(
+            reader
+                .check_profile_blocked(&blocker.to_string(), &blocked.to_string())
+                .await
+                .map_err(Into::into),
+        )
+    }
+
+    /// Check if platform has blocked this profile. Returns null when social DB not configured.
+    async fn check_platform_blocked(
+        &self,
+        ctx: &Context<'_>,
+        profile: MySoAddress,
+        platform: async_graphql::ID,
+    ) -> Option<Result<bool, RpcError>> {
+        let reader_opt = ctx
+            .data_opt::<std::sync::Arc<Option<myso_indexer_alt_social_reader::SocialPgReader>>>()?;
+        let reader = reader_opt.as_ref().as_ref()?;
+        Some(
+            reader
+                .check_platform_blocked(&profile.to_string(), platform.as_str())
+                .await
+                .map_err(Into::into),
+        )
+    }
+
     /// Look-up an account by its MySoAddress.
     ///
     /// If `rootVersion` is specified, nested dynamic field accesses will be fetched at or before this version. This can be used to fetch a child or descendant object bounded by its root object's version, when its immediate parent is wrapped, or a value in a dynamic object field. For any wrapped or child (object-owned) object, its root object can be defined recursively as:

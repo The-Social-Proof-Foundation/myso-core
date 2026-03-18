@@ -512,3 +512,66 @@ pub(crate) async fn get_profiles(
     metrics.requests_succeeded.inc();
     Ok(results)
 }
+
+#[derive(Debug, Clone, QueryableByName)]
+pub struct ProfileBadgeRow {
+    #[diesel(sql_type = Text)]
+    pub badge_id: String,
+    #[diesel(sql_type = Text)]
+    pub badge_name: String,
+    #[diesel(sql_type = Nullable<Text>)]
+    pub badge_description: Option<String>,
+    #[diesel(sql_type = Nullable<Text>)]
+    pub badge_media_url: Option<String>,
+    #[diesel(sql_type = Nullable<Text>)]
+    pub badge_icon_url: Option<String>,
+    #[diesel(sql_type = Text)]
+    pub platform_id: String,
+    #[diesel(sql_type = Text)]
+    pub assigned_by: String,
+    #[diesel(sql_type = BigInt)]
+    pub assigned_at: i64,
+    #[diesel(sql_type = SmallInt)]
+    pub badge_type: i16,
+}
+
+pub(crate) async fn get_profile_badges(
+    conn: &mut Connection<'_>,
+    address: &str,
+    limit: i64,
+    offset: i64,
+    metrics: &DbReaderMetrics,
+) -> anyhow::Result<Vec<ProfileBadgeRow>> {
+    metrics.requests_received.inc();
+    let _guard = metrics.latency.start_timer();
+    let profile_id_opt: Option<String> = profiles::table
+        .filter(profiles::owner_address.eq(address))
+        .select(profiles::profile_id)
+        .first::<Option<String>>(conn)
+        .await
+        .optional()?
+        .flatten();
+    let id2 = profile_id_opt.as_deref().unwrap_or(address).to_string();
+    let query = "
+        SELECT pb.badge_id, pb.badge_name, pb.badge_description, pb.badge_media_url,
+               pb.badge_icon_url, pb.platform_id, pb.assigned_by, pb.assigned_at, pb.badge_type
+        FROM (
+            SELECT DISTINCT ON (badge_id) *
+            FROM profile_badges
+            WHERE profile_id = $1 OR profile_id = $2
+            ORDER BY badge_id, time DESC
+        ) pb
+        WHERE pb.revoked = false
+        ORDER BY pb.assigned_at DESC
+        LIMIT $3 OFFSET $4
+    ";
+    let results = diesel::sql_query(query)
+        .bind::<Text, _>(address)
+        .bind::<Text, _>(&id2)
+        .bind::<BigInt, _>(limit)
+        .bind::<BigInt, _>(offset)
+        .load::<ProfileBadgeRow>(conn)
+        .await?;
+    metrics.requests_succeeded.inc();
+    Ok(results)
+}

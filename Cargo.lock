@@ -11930,6 +11930,7 @@ dependencies = [
  "myso-pg-db",
  "prometheus",
  "serde",
+ "serde_json",
  "tokio",
  "tracing",
  "url",

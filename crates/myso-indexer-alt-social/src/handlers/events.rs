@@ -1149,6 +1149,15 @@ pub struct BcsTokenAirdropEvent {
     timestamp: u64,
 }
 
+#[derive(Debug, Deserialize)]
+pub struct BcsTreasuryFundedEvent {
+    platform_id: AccountAddress,
+    amount: u64,
+    funded_by: AccountAddress,
+    new_balance: u64,
+    timestamp: u64,
+}
+
 fn mentions_to_json(mentions: &Option<Vec<AccountAddress>>) -> Option<serde_json::Value> {
     mentions
         .as_ref()
@@ -1915,6 +1924,17 @@ fn parse_platform_event(
                 "amount": ev.amount,
                 "reason_code": ev.reason_code,
                 "executed_by": addr_to_string(&ev.executed_by),
+                "timestamp": ev.timestamp,
+            })))
+        }
+        "TreasuryFundedEvent" => {
+            let ev = bcs::from_bytes::<BcsTreasuryFundedEvent>(contents)
+                .map_err(|e| bcs_parse_err(e, contents))?;
+            Ok(Some(serde_json::json!({
+                "platform_id": addr_to_string(&ev.platform_id),
+                "amount": ev.amount,
+                "funded_by": addr_to_string(&ev.funded_by),
+                "new_balance": ev.new_balance,
                 "timestamp": ev.timestamp,
             })))
         }

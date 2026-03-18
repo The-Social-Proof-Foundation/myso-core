@@ -6,10 +6,18 @@ use diesel::OptionalExtension;
 use diesel::QueryableByName;
 use diesel::sql_types::{BigInt, Bool, Nullable, SmallInt, Text, Timestamp};
 use diesel_async::RunQueryDsl;
+use serde_json::Value as JsonValue;
 
 use myso_pg_db::Connection;
 
 use crate::metrics::DbReaderMetrics;
+
+#[derive(Debug, Clone)]
+pub struct PlatformBlockedProfileRow {
+    pub wallet_address: String,
+    pub blocked_by: String,
+    pub created_at: NaiveDateTime,
+}
 
 #[derive(Debug, Clone, QueryableByName)]
 pub struct PlatformRow {
@@ -37,6 +45,40 @@ pub struct PlatformRow {
     pub created_at: NaiveDateTime,
     #[diesel(sql_type = Timestamp)]
     pub updated_at: NaiveDateTime,
+    #[diesel(sql_type = Nullable<Text>)]
+    pub terms_of_service: Option<String>,
+    #[diesel(sql_type = Nullable<Text>)]
+    pub privacy_policy: Option<String>,
+    #[diesel(sql_type = Nullable<diesel::sql_types::Jsonb>)]
+    pub links: Option<JsonValue>,
+    #[diesel(sql_type = Nullable<diesel::sql_types::Jsonb>)]
+    pub platform_names: Option<JsonValue>,
+    #[diesel(sql_type = Nullable<Text>)]
+    pub release_date: Option<String>,
+    #[diesel(sql_type = Nullable<Text>)]
+    pub shutdown_date: Option<String>,
+    #[diesel(sql_type = Nullable<BigInt>)]
+    pub treasury: Option<i64>,
+    #[diesel(sql_type = Nullable<Bool>)]
+    pub wants_dao_governance: Option<bool>,
+    #[diesel(sql_type = Nullable<Text>)]
+    pub governance_registry_id: Option<String>,
+    #[diesel(sql_type = Nullable<BigInt>)]
+    pub delegate_count: Option<i64>,
+    #[diesel(sql_type = Nullable<BigInt>)]
+    pub delegate_term_epochs: Option<i64>,
+    #[diesel(sql_type = Nullable<BigInt>)]
+    pub max_votes_per_user: Option<i64>,
+    #[diesel(sql_type = Nullable<BigInt>)]
+    pub min_on_chain_age_days: Option<i64>,
+    #[diesel(sql_type = Nullable<BigInt>)]
+    pub proposal_submission_cost: Option<i64>,
+    #[diesel(sql_type = Nullable<BigInt>)]
+    pub quadratic_base_cost: Option<i64>,
+    #[diesel(sql_type = Nullable<BigInt>)]
+    pub quorum_votes: Option<i64>,
+    #[diesel(sql_type = Nullable<BigInt>)]
+    pub voting_period_epochs: Option<i64>,
 }
 
 pub(crate) async fn get_platform_by_id(
@@ -47,10 +89,14 @@ pub(crate) async fn get_platform_by_id(
     metrics.requests_received.inc();
     let _guard = metrics.latency.start_timer();
     let result = diesel::sql_query(
-        "SELECT platform_id, name, tagline, description, logo, developer_address,
-                status, is_approved, primary_category, secondary_category, created_at, updated_at
-         FROM platforms
-         WHERE platform_id = $1 AND deleted_at IS NULL
+        "SELECT p.platform_id, p.name, p.tagline, p.description, p.logo, p.developer_address,
+                p.status, p.is_approved, p.primary_category, p.secondary_category, p.created_at, p.updated_at,
+                p.terms_of_service, p.privacy_policy, p.links, p.platforms AS platform_names, p.release_date, p.shutdown_date,
+                p.treasury, p.wants_dao_governance, p.governance_registry_id, p.delegate_count,
+                p.delegate_term_epochs, p.max_votes_per_user, p.min_on_chain_age_days,
+                p.proposal_submission_cost, p.quadratic_base_cost, p.quorum_votes, p.voting_period_epochs
+         FROM platforms p
+         WHERE p.platform_id = $1 AND p.deleted_at IS NULL
          LIMIT 1",
     )
     .bind::<Text, _>(platform_id)
@@ -71,12 +117,16 @@ pub(crate) async fn list_platforms(
     metrics.requests_received.inc();
     let _guard = metrics.latency.start_timer();
     let query = "
-        SELECT platform_id, name, tagline, description, logo, developer_address,
-               status, is_approved, primary_category, secondary_category, created_at, updated_at
-        FROM platforms
-        WHERE deleted_at IS NULL
-        AND ($1::BOOL = FALSE OR is_approved = TRUE)
-        ORDER BY created_at DESC
+        SELECT p.platform_id, p.name, p.tagline, p.description, p.logo, p.developer_address,
+               p.status, p.is_approved, p.primary_category, p.secondary_category, p.created_at, p.updated_at,
+               p.terms_of_service, p.privacy_policy, p.links, p.platforms AS platform_names, p.release_date, p.shutdown_date,
+               p.treasury, p.wants_dao_governance, p.governance_registry_id, p.delegate_count,
+               p.delegate_term_epochs, p.max_votes_per_user, p.min_on_chain_age_days,
+               p.proposal_submission_cost, p.quadratic_base_cost, p.quorum_votes, p.voting_period_epochs
+        FROM platforms p
+        WHERE p.deleted_at IS NULL
+        AND ($1::BOOL = FALSE OR p.is_approved = TRUE)
+        ORDER BY p.created_at DESC
         LIMIT $2 OFFSET $3
     ";
     let results = diesel::sql_query(query)
@@ -87,4 +137,46 @@ pub(crate) async fn list_platforms(
         .await?;
     metrics.requests_succeeded.inc();
     Ok(results)
+}
+
+pub(crate) async fn get_platform_blocked_profiles(
+    conn: &mut Connection<'_>,
+    platform_id: &str,
+    limit: i64,
+    offset: i64,
+    metrics: &DbReaderMetrics,
+) -> anyhow::Result<Vec<PlatformBlockedProfileRow>> {
+    metrics.requests_received.inc();
+    let _guard = metrics.latency.start_timer();
+    #[derive(QueryableByName)]
+    struct Row {
+        #[diesel(sql_type = Text)]
+        wallet_address: String,
+        #[diesel(sql_type = Text)]
+        blocked_by: String,
+        #[diesel(sql_type = Timestamp)]
+        created_at: NaiveDateTime,
+    }
+    let query = "
+        SELECT wallet_address, blocked_by, created_at
+        FROM platform_blocked_profiles
+        WHERE platform_id = $1
+        ORDER BY created_at DESC
+        LIMIT $2 OFFSET $3
+    ";
+    let rows = diesel::sql_query(query)
+        .bind::<Text, _>(platform_id)
+        .bind::<BigInt, _>(limit)
+        .bind::<BigInt, _>(offset)
+        .load::<Row>(conn)
+        .await?;
+    metrics.requests_succeeded.inc();
+    Ok(rows
+        .into_iter()
+        .map(|r| PlatformBlockedProfileRow {
+            wallet_address: r.wallet_address,
+            blocked_by: r.blocked_by,
+            created_at: r.created_at,
+        })
+        .collect())
 }

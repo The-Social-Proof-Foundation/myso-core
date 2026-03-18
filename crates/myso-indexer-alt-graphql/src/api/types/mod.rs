@@ -4,6 +4,7 @@
 
 pub(crate) mod address;
 pub(crate) mod available_range;
+pub(crate) mod blocked;
 pub(crate) mod balance;
 pub(crate) mod balance_change;
 pub(crate) mod checkpoint;
@@ -35,7 +36,14 @@ pub(crate) mod open_move_type;
 pub(crate) mod owner;
 pub(crate) mod platform;
 pub(crate) mod post;
+pub(crate) mod post_comment;
+pub(crate) mod post_reaction;
+pub(crate) mod post_repost;
+pub(crate) mod post_tip;
+pub(crate) mod post_transfer;
 pub(crate) mod profile;
+pub(crate) mod profile_badge;
+pub(crate) mod profile_summary;
 pub(crate) mod protocol_configs;
 pub(crate) mod service_config;
 pub(crate) mod simulation_result;

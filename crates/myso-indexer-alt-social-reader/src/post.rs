@@ -5,6 +5,7 @@ use diesel::OptionalExtension;
 use diesel::QueryableByName;
 use diesel::sql_types::{BigInt, Nullable, Text};
 use diesel_async::RunQueryDsl;
+use serde_json::Value as JsonValue;
 
 use myso_pg_db::Connection;
 
@@ -34,6 +35,61 @@ pub struct PostRow {
     pub repost_count: i64,
     #[diesel(sql_type = BigInt)]
     pub tips_received: i64,
+    #[diesel(sql_type = Nullable<diesel::sql_types::Jsonb>)]
+    pub media_urls: Option<JsonValue>,
+    #[diesel(sql_type = Nullable<diesel::sql_types::Jsonb>)]
+    pub mentions: Option<JsonValue>,
+    #[diesel(sql_type = Nullable<Text>)]
+    pub parent_post_id: Option<String>,
+    #[diesel(sql_type = Nullable<BigInt>)]
+    pub updated_at: Option<i64>,
+}
+
+#[derive(Debug, Clone)]
+pub struct CommentRow {
+    pub comment_id: String,
+    pub post_id: String,
+    pub parent_comment_id: Option<String>,
+    pub owner: String,
+    pub profile_id: String,
+    pub content: String,
+    pub created_at: i64,
+    pub reaction_count: i64,
+    pub comment_count: i64,
+}
+
+#[derive(Debug, Clone)]
+pub struct ReactionRow {
+    pub user_address: String,
+    pub reaction_text: String,
+    pub created_at: i64,
+}
+
+#[derive(Debug, Clone)]
+pub struct RepostRow {
+    pub repost_id: String,
+    pub original_post_id: String,
+    pub owner: String,
+    pub profile_id: String,
+    pub created_at: i64,
+}
+
+#[derive(Debug, Clone)]
+pub struct TipRow {
+    pub tipper: String,
+    pub recipient: String,
+    pub amount: i64,
+    pub created_at: i64,
+}
+
+#[derive(Debug, Clone)]
+pub struct PostTransferRow {
+    pub object_id: String,
+    pub previous_owner: String,
+    pub new_owner: String,
+    pub is_post: bool,
+    pub transferred_at: i64,
+    pub transaction_id: String,
 }
 
 pub(crate) async fn get_post_by_id(
@@ -45,7 +101,8 @@ pub(crate) async fn get_post_by_id(
     let _guard = metrics.latency.start_timer();
     let result = diesel::sql_query(
         "SELECT post_id, owner, profile_id, content, post_type, created_at, deleted_at,
-                reaction_count, comment_count, repost_count, tips_received
+                reaction_count, comment_count, repost_count, tips_received,
+                media_urls, mentions, parent_post_id, updated_at
          FROM posts
          WHERE (post_id = $1 OR id = $1) AND deleted_at IS NULL
          ORDER BY created_at DESC
@@ -71,7 +128,8 @@ pub(crate) async fn list_posts(
     let _guard = metrics.latency.start_timer();
     let query = "
         SELECT post_id, owner, profile_id, content, post_type, created_at, deleted_at,
-               reaction_count, comment_count, repost_count, tips_received
+               reaction_count, comment_count, repost_count, tips_received,
+               media_urls, mentions, parent_post_id, updated_at
         FROM posts
         WHERE deleted_at IS NULL
         AND ($1::TEXT IS NULL OR owner = $1)
@@ -88,4 +146,251 @@ pub(crate) async fn list_posts(
         .await?;
     metrics.requests_succeeded.inc();
     Ok(results)
+}
+
+pub(crate) async fn get_post_comments(
+    conn: &mut Connection<'_>,
+    post_id: &str,
+    limit: i64,
+    offset: i64,
+    metrics: &DbReaderMetrics,
+) -> anyhow::Result<Vec<CommentRow>> {
+    metrics.requests_received.inc();
+    let _guard = metrics.latency.start_timer();
+    #[derive(QueryableByName)]
+    struct Row {
+        #[diesel(sql_type = Text)]
+        comment_id: String,
+        #[diesel(sql_type = Text)]
+        post_id: String,
+        #[diesel(sql_type = Nullable<Text>)]
+        parent_comment_id: Option<String>,
+        #[diesel(sql_type = Text)]
+        owner: String,
+        #[diesel(sql_type = Text)]
+        profile_id: String,
+        #[diesel(sql_type = Text)]
+        content: String,
+        #[diesel(sql_type = BigInt)]
+        created_at: i64,
+        #[diesel(sql_type = Nullable<BigInt>)]
+        reaction_count: Option<i64>,
+        #[diesel(sql_type = Nullable<BigInt>)]
+        comment_count: Option<i64>,
+    }
+    let query = "
+        SELECT comment_id, post_id, parent_comment_id, owner, profile_id, content, created_at,
+               reaction_count, comment_count
+        FROM comments
+        WHERE post_id = $1 AND deleted_at IS NULL
+        ORDER BY created_at DESC
+        LIMIT $2 OFFSET $3
+    ";
+    let rows = diesel::sql_query(query)
+        .bind::<Text, _>(post_id)
+        .bind::<BigInt, _>(limit)
+        .bind::<BigInt, _>(offset)
+        .load::<Row>(conn)
+        .await?;
+    metrics.requests_succeeded.inc();
+    Ok(rows
+        .into_iter()
+        .map(|r| CommentRow {
+            comment_id: r.comment_id,
+            post_id: r.post_id,
+            parent_comment_id: r.parent_comment_id,
+            owner: r.owner,
+            profile_id: r.profile_id,
+            content: r.content,
+            created_at: r.created_at,
+            reaction_count: r.reaction_count.unwrap_or(0),
+            comment_count: r.comment_count.unwrap_or(0),
+        })
+        .collect())
+}
+
+pub(crate) async fn get_post_reactions(
+    conn: &mut Connection<'_>,
+    post_id: &str,
+    limit: i64,
+    offset: i64,
+    metrics: &DbReaderMetrics,
+) -> anyhow::Result<Vec<ReactionRow>> {
+    metrics.requests_received.inc();
+    let _guard = metrics.latency.start_timer();
+    #[derive(QueryableByName)]
+    struct Row {
+        #[diesel(sql_type = Text)]
+        user_address: String,
+        #[diesel(sql_type = Text)]
+        reaction_text: String,
+        #[diesel(sql_type = BigInt)]
+        created_at: i64,
+    }
+    let query = "
+        SELECT user_address, reaction_text, created_at
+        FROM reactions
+        WHERE object_id = $1 AND is_post = true
+        ORDER BY created_at DESC
+        LIMIT $2 OFFSET $3
+    ";
+    let rows = diesel::sql_query(query)
+        .bind::<Text, _>(post_id)
+        .bind::<BigInt, _>(limit)
+        .bind::<BigInt, _>(offset)
+        .load::<Row>(conn)
+        .await?;
+    metrics.requests_succeeded.inc();
+    Ok(rows
+        .into_iter()
+        .map(|r| ReactionRow {
+            user_address: r.user_address,
+            reaction_text: r.reaction_text,
+            created_at: r.created_at,
+        })
+        .collect())
+}
+
+pub(crate) async fn get_post_reposts(
+    conn: &mut Connection<'_>,
+    post_id: &str,
+    limit: i64,
+    offset: i64,
+    metrics: &DbReaderMetrics,
+) -> anyhow::Result<Vec<RepostRow>> {
+    metrics.requests_received.inc();
+    let _guard = metrics.latency.start_timer();
+    #[derive(QueryableByName)]
+    struct Row {
+        #[diesel(sql_type = Text)]
+        repost_id: String,
+        #[diesel(sql_type = Text)]
+        original_post_id: String,
+        #[diesel(sql_type = Text)]
+        owner: String,
+        #[diesel(sql_type = Text)]
+        profile_id: String,
+        #[diesel(sql_type = BigInt)]
+        created_at: i64,
+    }
+    let query = "
+        SELECT repost_id, original_post_id, owner, profile_id, created_at
+        FROM reposts
+        WHERE original_post_id = $1 AND is_original_post = true
+        ORDER BY created_at DESC
+        LIMIT $2 OFFSET $3
+    ";
+    let rows = diesel::sql_query(query)
+        .bind::<Text, _>(post_id)
+        .bind::<BigInt, _>(limit)
+        .bind::<BigInt, _>(offset)
+        .load::<Row>(conn)
+        .await?;
+    metrics.requests_succeeded.inc();
+    Ok(rows
+        .into_iter()
+        .map(|r| RepostRow {
+            repost_id: r.repost_id,
+            original_post_id: r.original_post_id,
+            owner: r.owner,
+            profile_id: r.profile_id,
+            created_at: r.created_at,
+        })
+        .collect())
+}
+
+pub(crate) async fn get_post_tips(
+    conn: &mut Connection<'_>,
+    post_id: &str,
+    limit: i64,
+    offset: i64,
+    metrics: &DbReaderMetrics,
+) -> anyhow::Result<Vec<TipRow>> {
+    metrics.requests_received.inc();
+    let _guard = metrics.latency.start_timer();
+    #[derive(QueryableByName)]
+    struct Row {
+        #[diesel(sql_type = Text)]
+        tipper: String,
+        #[diesel(sql_type = Text)]
+        recipient: String,
+        #[diesel(sql_type = BigInt)]
+        amount: i64,
+        #[diesel(sql_type = BigInt)]
+        created_at: i64,
+    }
+    let query = "
+        SELECT tipper, recipient, amount, created_at
+        FROM tips
+        WHERE object_id = $1 AND is_post = true
+        ORDER BY created_at DESC
+        LIMIT $2 OFFSET $3
+    ";
+    let rows = diesel::sql_query(query)
+        .bind::<Text, _>(post_id)
+        .bind::<BigInt, _>(limit)
+        .bind::<BigInt, _>(offset)
+        .load::<Row>(conn)
+        .await?;
+    metrics.requests_succeeded.inc();
+    Ok(rows
+        .into_iter()
+        .map(|r| TipRow {
+            tipper: r.tipper,
+            recipient: r.recipient,
+            amount: r.amount,
+            created_at: r.created_at,
+        })
+        .collect())
+}
+
+pub(crate) async fn get_post_transfers(
+    conn: &mut Connection<'_>,
+    post_id: &str,
+    limit: i64,
+    offset: i64,
+    metrics: &DbReaderMetrics,
+) -> anyhow::Result<Vec<PostTransferRow>> {
+    metrics.requests_received.inc();
+    let _guard = metrics.latency.start_timer();
+    #[derive(QueryableByName)]
+    struct Row {
+        #[diesel(sql_type = Text)]
+        object_id: String,
+        #[diesel(sql_type = Text)]
+        previous_owner: String,
+        #[diesel(sql_type = Text)]
+        new_owner: String,
+        #[diesel(sql_type = diesel::sql_types::Bool)]
+        is_post: bool,
+        #[diesel(sql_type = BigInt)]
+        transferred_at: i64,
+        #[diesel(sql_type = Text)]
+        transaction_id: String,
+    }
+    let query = "
+        SELECT object_id, previous_owner, new_owner, is_post, transferred_at, transaction_id
+        FROM posts_transfers
+        WHERE object_id = $1
+        ORDER BY transferred_at DESC
+        LIMIT $2 OFFSET $3
+    ";
+    let rows = diesel::sql_query(query)
+        .bind::<Text, _>(post_id)
+        .bind::<BigInt, _>(limit)
+        .bind::<BigInt, _>(offset)
+        .load::<Row>(conn)
+        .await?;
+    metrics.requests_succeeded.inc();
+    Ok(rows
+        .into_iter()
+        .map(|r| PostTransferRow {
+            object_id: r.object_id,
+            previous_owner: r.previous_owner,
+            new_owner: r.new_owner,
+            is_post: r.is_post,
+            transferred_at: r.transferred_at,
+            transaction_id: r.transaction_id,
+        })
+        .collect())
 }

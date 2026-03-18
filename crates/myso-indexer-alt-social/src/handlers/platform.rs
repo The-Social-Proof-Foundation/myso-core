@@ -225,6 +225,18 @@ struct PlatformDeletedEvent {
     reasoning: Option<String>,
 }
 
+#[derive(Debug, Deserialize)]
+struct TreasuryFundedEvent {
+    platform_id: String,
+    #[serde(deserialize_with = "de_u64")]
+    _amount: u64,
+    _funded_by: String,
+    #[serde(deserialize_with = "de_u64")]
+    _new_balance: u64,
+    #[serde(deserialize_with = "de_u64")]
+    _timestamp: u64,
+}
+
 pub fn handle_platform_event(
     event_name: &str,
     data: &serde_json::Value,
@@ -244,6 +256,7 @@ pub fn handle_platform_event(
         "UserLeftPlatformEvent" => process_user_left_platform_event(data, event_id),
         "TokenAirdropEvent" => process_token_airdrop_event(data, event_id),
         "PlatformDeletedEvent" => process_platform_deleted_event(data, event_id),
+        "TreasuryFundedEvent" => process_treasury_funded_event(data, event_id),
         _ => None,
     }
 }
@@ -648,4 +661,21 @@ fn process_platform_deleted_event(
         },
         SocialEventRow::PlatformEvent(platform_event),
     ])
+}
+
+fn process_treasury_funded_event(
+    data: &serde_json::Value,
+    event_id: &str,
+) -> Option<Vec<SocialEventRow>> {
+    let ev: TreasuryFundedEvent = serde_json::from_value(data.clone()).ok()?;
+    let now = Utc::now().naive_utc();
+    let platform_event = NewPlatformEvent {
+        event_type: "TreasuryFunded".to_string(),
+        platform_id: ev.platform_id,
+        event_data: data.clone(),
+        event_id: Some(event_id.to_string()),
+        created_at: now,
+        reasoning: None,
+    };
+    Some(vec![SocialEventRow::PlatformEvent(platform_event)])
 }

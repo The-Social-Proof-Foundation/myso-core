@@ -15,10 +15,15 @@ use myso_pg_db as db;
 use crate::metrics::DbReaderMetrics;
 use crate::platform::PlatformRow;
 use crate::post::PostRow;
+use crate::profile::get_profile_badges;
 use crate::profile::get_profile_by_address;
 use crate::profile::get_profile_or_wallet_by_address;
 use crate::profile::get_profiles;
-use crate::social_graph::check_following;
+use crate::platform::get_platform_blocked_profiles;
+use crate::social_graph::{
+    check_following, check_platform_blocked, check_profile_blocked, get_blocked_platforms,
+    get_blocked_profiles, get_followers, get_following,
+};
 
 pub use myso_indexer_alt_social_schema::models::Profile;
 
@@ -145,6 +150,39 @@ impl SocialPgReader {
             .await
     }
 
+    /// Get profile badges by owner address.
+    pub async fn get_profile_badges(
+        &self,
+        address: &str,
+        limit: i64,
+        offset: i64,
+    ) -> anyhow::Result<Vec<crate::profile::ProfileBadgeRow>> {
+        let mut conn = self.connect().await?;
+        get_profile_badges(&mut conn, address, limit, offset, &self.metrics).await
+    }
+
+    /// Get followers of a profile (by owner address).
+    pub async fn get_followers(
+        &self,
+        address: &str,
+        limit: i64,
+        offset: i64,
+    ) -> anyhow::Result<Vec<crate::social_graph::ProfileSummaryRow>> {
+        let mut conn = self.connect().await?;
+        get_followers(&mut conn, address, limit, offset, &self.metrics).await
+    }
+
+    /// Get accounts that a profile follows (by owner address).
+    pub async fn get_following(
+        &self,
+        address: &str,
+        limit: i64,
+        offset: i64,
+    ) -> anyhow::Result<Vec<crate::social_graph::ProfileSummaryRow>> {
+        let mut conn = self.connect().await?;
+        get_following(&mut conn, address, limit, offset, &self.metrics).await
+    }
+
     /// Check if follower follows following.
     pub async fn check_following(
         &self,
@@ -159,5 +197,113 @@ impl SocialPgReader {
             &self.metrics,
         )
         .await
+    }
+
+    /// Get profiles blocked by this user.
+    pub async fn get_blocked_profiles(
+        &self,
+        address: &str,
+        limit: i64,
+        offset: i64,
+    ) -> anyhow::Result<Vec<crate::social_graph::BlockedProfileRow>> {
+        let mut conn = self.connect().await?;
+        get_blocked_profiles(&mut conn, address, limit, offset, &self.metrics).await
+    }
+
+    /// Get platforms that have blocked this profile.
+    pub async fn get_blocked_platforms(
+        &self,
+        address: &str,
+        limit: i64,
+        offset: i64,
+    ) -> anyhow::Result<Vec<crate::social_graph::BlockedPlatformRow>> {
+        let mut conn = self.connect().await?;
+        get_blocked_platforms(&mut conn, address, limit, offset, &self.metrics).await
+    }
+
+    /// Get profiles blocked by this platform.
+    pub async fn get_platform_blocked_profiles(
+        &self,
+        platform_id: &str,
+        limit: i64,
+        offset: i64,
+    ) -> anyhow::Result<Vec<crate::platform::PlatformBlockedProfileRow>> {
+        let mut conn = self.connect().await?;
+        get_platform_blocked_profiles(&mut conn, platform_id, limit, offset, &self.metrics).await
+    }
+
+    /// Check if blocker has blocked blocked.
+    pub async fn check_profile_blocked(
+        &self,
+        blocker: &str,
+        blocked: &str,
+    ) -> anyhow::Result<bool> {
+        let mut conn = self.connect().await?;
+        check_profile_blocked(&mut conn, blocker, blocked, &self.metrics).await
+    }
+
+    /// Check if platform has blocked this profile.
+    pub async fn check_platform_blocked(
+        &self,
+        profile_address: &str,
+        platform_id: &str,
+    ) -> anyhow::Result<bool> {
+        let mut conn = self.connect().await?;
+        check_platform_blocked(&mut conn, profile_address, platform_id, &self.metrics).await
+    }
+
+    /// Get comments for a post.
+    pub async fn get_post_comments(
+        &self,
+        post_id: &str,
+        limit: i64,
+        offset: i64,
+    ) -> anyhow::Result<Vec<crate::post::CommentRow>> {
+        let mut conn = self.connect().await?;
+        crate::post::get_post_comments(&mut conn, post_id, limit, offset, &self.metrics).await
+    }
+
+    /// Get reactions for a post.
+    pub async fn get_post_reactions(
+        &self,
+        post_id: &str,
+        limit: i64,
+        offset: i64,
+    ) -> anyhow::Result<Vec<crate::post::ReactionRow>> {
+        let mut conn = self.connect().await?;
+        crate::post::get_post_reactions(&mut conn, post_id, limit, offset, &self.metrics).await
+    }
+
+    /// Get reposts for a post.
+    pub async fn get_post_reposts(
+        &self,
+        post_id: &str,
+        limit: i64,
+        offset: i64,
+    ) -> anyhow::Result<Vec<crate::post::RepostRow>> {
+        let mut conn = self.connect().await?;
+        crate::post::get_post_reposts(&mut conn, post_id, limit, offset, &self.metrics).await
+    }
+
+    /// Get tips for a post.
+    pub async fn get_post_tips(
+        &self,
+        post_id: &str,
+        limit: i64,
+        offset: i64,
+    ) -> anyhow::Result<Vec<crate::post::TipRow>> {
+        let mut conn = self.connect().await?;
+        crate::post::get_post_tips(&mut conn, post_id, limit, offset, &self.metrics).await
+    }
+
+    /// Get transfers for a post.
+    pub async fn get_post_transfers(
+        &self,
+        post_id: &str,
+        limit: i64,
+        offset: i64,
+    ) -> anyhow::Result<Vec<crate::post::PostTransferRow>> {
+        let mut conn = self.connect().await?;
+        crate::post::get_post_transfers(&mut conn, post_id, limit, offset, &self.metrics).await
     }
 }

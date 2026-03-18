@@ -1,10 +1,26 @@
 // Copyright (c) The Social Proof Foundation, LLC.
 // SPDX-License-Identifier: Apache-2.0
 
+use async_graphql::Context;
 use async_graphql::Object;
 use myso_indexer_alt_social_reader::PlatformRow as DbPlatform;
 
 use crate::api::scalars::id::Id;
+use crate::api::scalars::json::Json;
+use crate::api::types::blocked::PlatformBlockedProfileSummary;
+
+fn platform_status_to_text(status: i16) -> &'static str {
+    match status {
+        0 => "Development",
+        1 => "Alpha",
+        2 => "Beta",
+        3 => "Live",
+        4 => "Maintenance",
+        5 => "Sunset",
+        6 => "Shutdown",
+        _ => "Unknown",
+    }
+}
 
 #[derive(Clone)]
 pub(crate) struct Platform {
@@ -67,5 +83,136 @@ impl Platform {
     /// Secondary category.
     async fn secondary_category(&self) -> Option<&str> {
         self.inner.secondary_category.as_deref()
+    }
+
+    /// Terms of service.
+    async fn terms_of_service(&self) -> Option<&str> {
+        self.inner.terms_of_service.as_deref()
+    }
+
+    /// Privacy policy.
+    async fn privacy_policy(&self) -> Option<&str> {
+        self.inner.privacy_policy.as_deref()
+    }
+
+    /// Links (JSON).
+    async fn links(&self) -> Option<Json> {
+        self.inner
+            .links
+            .as_ref()
+            .and_then(|v| Json::try_from(v.clone()).ok())
+    }
+
+    /// Platform names (e.g. Twitter, Instagram) as JSON array.
+    async fn platform_names(&self) -> Option<Json> {
+        self.inner
+            .platform_names
+            .as_ref()
+            .and_then(|v| Json::try_from(v.clone()).ok())
+    }
+
+    /// Platform status as text (Development, Alpha, Beta, Live, etc.).
+    async fn status_text(&self) -> &str {
+        platform_status_to_text(self.inner.status)
+    }
+
+    /// Release date.
+    async fn release_date(&self) -> Option<&str> {
+        self.inner.release_date.as_deref()
+    }
+
+    /// Shutdown date.
+    async fn shutdown_date(&self) -> Option<&str> {
+        self.inner.shutdown_date.as_deref()
+    }
+
+    /// When the platform was created (ISO 8601).
+    async fn created_at(&self) -> String {
+        self.inner
+            .created_at
+            .format("%Y-%m-%dT%H:%M:%S%.3fZ")
+            .to_string()
+    }
+
+    /// When the platform was last updated (ISO 8601).
+    async fn updated_at(&self) -> String {
+        self.inner
+            .updated_at
+            .format("%Y-%m-%dT%H:%M:%S%.3fZ")
+            .to_string()
+    }
+
+    /// Treasury balance.
+    async fn treasury(&self) -> Option<i64> {
+        self.inner.treasury
+    }
+
+    /// Whether the platform wants DAO governance.
+    async fn wants_dao_governance(&self) -> Option<bool> {
+        self.inner.wants_dao_governance
+    }
+
+    /// Governance registry ID.
+    async fn governance_registry_id(&self) -> Option<&str> {
+        self.inner.governance_registry_id.as_deref()
+    }
+
+    /// Delegate count for governance.
+    async fn delegate_count(&self) -> Option<i64> {
+        self.inner.delegate_count
+    }
+
+    /// Delegate term epochs.
+    async fn delegate_term_epochs(&self) -> Option<i64> {
+        self.inner.delegate_term_epochs
+    }
+
+    /// Max votes per user.
+    async fn max_votes_per_user(&self) -> Option<i64> {
+        self.inner.max_votes_per_user
+    }
+
+    /// Min on-chain age in days.
+    async fn min_on_chain_age_days(&self) -> Option<i64> {
+        self.inner.min_on_chain_age_days
+    }
+
+    /// Proposal submission cost.
+    async fn proposal_submission_cost(&self) -> Option<i64> {
+        self.inner.proposal_submission_cost
+    }
+
+    /// Quadratic base cost.
+    async fn quadratic_base_cost(&self) -> Option<i64> {
+        self.inner.quadratic_base_cost
+    }
+
+    /// Quorum votes.
+    async fn quorum_votes(&self) -> Option<i64> {
+        self.inner.quorum_votes
+    }
+
+    /// Voting period epochs.
+    async fn voting_period_epochs(&self) -> Option<i64> {
+        self.inner.voting_period_epochs
+    }
+
+    /// Wallets blocked by this platform (paginated).
+    async fn blocked_profiles(
+        &self,
+        ctx: &Context<'_>,
+        limit: Option<u64>,
+        offset: Option<u64>,
+    ) -> Option<Vec<PlatformBlockedProfileSummary>> {
+        let reader_opt = ctx
+            .data_opt::<std::sync::Arc<Option<myso_indexer_alt_social_reader::SocialPgReader>>>()?;
+        let reader = reader_opt.as_ref().as_ref()?;
+        let limit = limit.unwrap_or(20).min(100) as i64;
+        let offset = offset.unwrap_or(0) as i64;
+        let rows = reader
+            .get_platform_blocked_profiles(&self.inner.platform_id, limit, offset)
+            .await
+            .ok()?;
+        Some(rows.into_iter().map(PlatformBlockedProfileSummary::from_row).collect())
     }
 }

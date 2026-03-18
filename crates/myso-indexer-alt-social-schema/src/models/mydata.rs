@@ -31,7 +31,6 @@ pub const UPDATE_FREQUENCY_MONTHLY: &str = "monthly";
 pub const UPDATE_FREQUENCY_YEARLY: &str = "yearly";
 pub const MAX_TAGS: usize = 10;
 pub const MAX_SUBSCRIPTION_DAYS: i64 = 365;
-pub const MILLISECONDS_PER_DAY: i64 = 86_400_000;
 pub const MAX_FREE_ACCESS_GRANTS: i64 = 100_000;
 
 #[derive(Debug, Clone, Queryable, Selectable, Serialize, Deserialize)]

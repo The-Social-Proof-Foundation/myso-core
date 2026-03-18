@@ -2160,7 +2160,7 @@ module social_contracts::social_proof_tokens {
     }
 
     /// Calculate and distribute all reservation fees (for post reservations with PoC)
-    /// Non-platform version: routes platform fees to ecosystem treasury
+    /// Non-platform version: split platform fee 50/50 between creator and treasury; emit platform_fee 0
     public(package) fun distribute_reservation_fees_with_post(
         config: &SocialProofTokensConfig,
         reservation_pool: &ReservationPoolObject,
@@ -2178,28 +2178,22 @@ module social_contracts::social_proof_tokens {
         let platform_fee = calculate_component_fee_safe(fee_amount, config.reservation_platform_fee_bps, reservation_total_fee_bps);
         let treasury_fee = fee_amount - creator_fee - platform_fee;
         
-        // Distribute fees (same pattern as trading fees)
+        let platform_fee_half_to_creator = platform_fee / 2;
+        let platform_fee_half_to_treasury = platform_fee - platform_fee_half_to_creator;
+        
         if (fee_amount > 0) {
-            // Send creator fee with PoC redirection support
-            if (creator_fee > 0) {
-                distribute_reservation_creator_fee(reservation_pool, post, creator_fee, &mut payment, ctx);
+            let creator_total = creator_fee + platform_fee_half_to_creator;
+            if (creator_total > 0) {
+                distribute_reservation_creator_fee(reservation_pool, post, creator_total, &mut payment, ctx);
             };
-            
-            // Send platform fee to ecosystem treasury (no platform involved)
-            if (platform_fee > 0) {
-                let platform_fee_coin = coin::split(&mut payment, platform_fee, ctx);
-                transfer::public_transfer(platform_fee_coin, profile::get_treasury_address(treasury));
-            };
-            
-            // Send treasury fee
-            if (treasury_fee > 0) {
-                let treasury_fee_coin = coin::split(&mut payment, treasury_fee, ctx);
+            let treasury_total = treasury_fee + platform_fee_half_to_treasury;
+            if (treasury_total > 0) {
+                let treasury_fee_coin = coin::split(&mut payment, treasury_total, ctx);
                 transfer::public_transfer(treasury_fee_coin, profile::get_treasury_address(treasury));
             };
         };
         
-        // Return remaining payment and fee amounts
-        (payment, fee_amount, creator_fee, platform_fee, treasury_fee)
+        (payment, fee_amount, creator_fee + platform_fee_half_to_creator, 0, treasury_fee + platform_fee_half_to_treasury)
     }
 
     /// Calculate and distribute all reservation fees (for post reservations with PoC)
@@ -2248,7 +2242,7 @@ module social_contracts::social_proof_tokens {
     }
 
     /// Calculate and distribute all reservation fees (for profile reservations without PoC)
-    /// Non-platform version: routes platform fees to ecosystem treasury
+    /// Non-platform version: split platform fee 50/50 between creator and treasury; emit platform_fee 0
     public(package) fun distribute_reservation_fees_no_poc(
         config: &SocialProofTokensConfig,
         reservation_pool: &ReservationPoolObject,
@@ -2265,28 +2259,22 @@ module social_contracts::social_proof_tokens {
         let platform_fee = calculate_component_fee_safe(fee_amount, config.reservation_platform_fee_bps, reservation_total_fee_bps);
         let treasury_fee = fee_amount - creator_fee - platform_fee;
         
-        // Distribute fees (same pattern as trading fees)
+        let platform_fee_half_to_creator = platform_fee / 2;
+        let platform_fee_half_to_treasury = platform_fee - platform_fee_half_to_creator;
+        
         if (fee_amount > 0) {
-            // Send creator fee without PoC redirection
-            if (creator_fee > 0) {
-                distribute_reservation_creator_fee_no_poc(reservation_pool, creator_fee, &mut payment, ctx);
+            let creator_total = creator_fee + platform_fee_half_to_creator;
+            if (creator_total > 0) {
+                distribute_reservation_creator_fee_no_poc(reservation_pool, creator_total, &mut payment, ctx);
             };
-            
-            // Send platform fee to ecosystem treasury (no platform involved)
-            if (platform_fee > 0) {
-                let platform_fee_coin = coin::split(&mut payment, platform_fee, ctx);
-                transfer::public_transfer(platform_fee_coin, profile::get_treasury_address(treasury));
-            };
-            
-            // Send treasury fee
-            if (treasury_fee > 0) {
-                let treasury_fee_coin = coin::split(&mut payment, treasury_fee, ctx);
+            let treasury_total = treasury_fee + platform_fee_half_to_treasury;
+            if (treasury_total > 0) {
+                let treasury_fee_coin = coin::split(&mut payment, treasury_total, ctx);
                 transfer::public_transfer(treasury_fee_coin, profile::get_treasury_address(treasury));
             };
         };
         
-        // Return remaining payment and fee amounts
-        (payment, fee_amount, creator_fee, platform_fee, treasury_fee)
+        (payment, fee_amount, creator_fee + platform_fee_half_to_creator, 0, treasury_fee + platform_fee_half_to_treasury)
     }
 
     /// Calculate and distribute all reservation fees (for profile reservations without PoC)

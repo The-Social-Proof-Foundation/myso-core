@@ -386,6 +386,22 @@ String representation of an arbitrary width, possibly signed integer
 """
 scalar BigInt
 
+type BlockedPlatformSummary {
+	blockedBy: String!
+	createdAt: String!
+	platformId: String!
+	platformName: String!
+}
+
+type BlockedProfileSummary {
+	address: MySoAddress!
+	displayName: String
+	firstBlockedAt: String!
+	lastBlockedAt: String!
+	profilePhoto: String
+	username: String!
+}
+
 
 """
 System transaction for initializing bridge committee.
@@ -801,6 +817,18 @@ type CommandResult {
 	Return results of each command in this transaction.
 	"""
 	returnValues: [CommandOutput!]
+}
+
+type CommentSummary {
+	commentCount: Int!
+	commentId: String!
+	content: String!
+	createdAt: Int!
+	owner: String!
+	parentCommentId: String
+	postId: String!
+	profileId: String!
+	reactionCount: Int!
 }
 
 """
@@ -3174,6 +3202,22 @@ type PerEpochConfig {
 
 type Platform implements Node {
 	"""
+	Wallets blocked by this platform (paginated).
+	"""
+	blockedProfiles(limit: Int, offset: Int): [PlatformBlockedProfileSummary!]
+	"""
+	When the platform was created (ISO 8601).
+	"""
+	createdAt: String!
+	"""
+	Delegate count for governance.
+	"""
+	delegateCount: Int
+	"""
+	Delegate term epochs.
+	"""
+	delegateTermEpochs: Int
+	"""
 	The platform description.
 	"""
 	description: String
@@ -3181,6 +3225,10 @@ type Platform implements Node {
 	The developer's wallet address.
 	"""
 	developerAddress: String!
+	"""
+	Governance registry ID.
+	"""
+	governanceRegistryId: String
 	"""
 	The platform's globally unique identifier.
 	"""
@@ -3190,9 +3238,21 @@ type Platform implements Node {
 	"""
 	isApproved: Boolean!
 	"""
+	Links (JSON).
+	"""
+	links: JSON
+	"""
 	URL to the platform logo.
 	"""
 	logo: String
+	"""
+	Max votes per user.
+	"""
+	maxVotesPerUser: Int
+	"""
+	Min on-chain age in days.
+	"""
+	minOnChainAgeDays: Int
 	"""
 	The platform name.
 	"""
@@ -3202,17 +3262,75 @@ type Platform implements Node {
 	"""
 	platformId: String!
 	"""
+	Platform names (e.g. Twitter, Instagram) as JSON array.
+	"""
+	platformNames: JSON
+	"""
 	Primary category.
 	"""
 	primaryCategory: String!
+	"""
+	Privacy policy.
+	"""
+	privacyPolicy: String
+	"""
+	Proposal submission cost.
+	"""
+	proposalSubmissionCost: Int
+	"""
+	Quadratic base cost.
+	"""
+	quadraticBaseCost: Int
+	"""
+	Quorum votes.
+	"""
+	quorumVotes: Int
+	"""
+	Release date.
+	"""
+	releaseDate: String
 	"""
 	Secondary category.
 	"""
 	secondaryCategory: String
 	"""
+	Shutdown date.
+	"""
+	shutdownDate: String
+	"""
+	Platform status as text (Development, Alpha, Beta, Live, etc.).
+	"""
+	statusText: String!
+	"""
 	The platform tagline.
 	"""
 	tagline: String!
+	"""
+	Terms of service.
+	"""
+	termsOfService: String
+	"""
+	Treasury balance.
+	"""
+	treasury: Int
+	"""
+	When the platform was last updated (ISO 8601).
+	"""
+	updatedAt: String!
+	"""
+	Voting period epochs.
+	"""
+	votingPeriodEpochs: Int
+	"""
+	Whether the platform wants DAO governance.
+	"""
+	wantsDaoGovernance: Boolean
+}
+
+type PlatformBlockedProfileSummary {
+	blockedBy: String!
+	createdAt: String!
+	walletAddress: MySoAddress!
 }
 
 type Post implements Node {
@@ -3220,6 +3338,10 @@ type Post implements Node {
 	Number of comments.
 	"""
 	commentCount: Int!
+	"""
+	Comments on this post (paginated).
+	"""
+	comments(limit: Int, offset: Int): [CommentSummary!]
 	"""
 	The post content.
 	"""
@@ -3233,9 +3355,21 @@ type Post implements Node {
 	"""
 	id: ID!
 	"""
+	Media URLs (JSON array).
+	"""
+	mediaUrls: JSON
+	"""
+	Mentions (JSON).
+	"""
+	mentions: JSON
+	"""
 	The wallet address of the post owner.
 	"""
 	owner: String!
+	"""
+	Parent post ID (for quote reposts).
+	"""
+	parentPostId: String
 	"""
 	The post ID.
 	"""
@@ -3253,13 +3387,40 @@ type Post implements Node {
 	"""
 	reactionCount: Int!
 	"""
+	Reactions on this post (paginated).
+	"""
+	reactions(limit: Int, offset: Int): [ReactionSummary!]
+	"""
 	Number of reposts.
 	"""
 	repostCount: Int!
 	"""
+	Reposts of this post (paginated).
+	"""
+	reposts(limit: Int, offset: Int): [RepostSummary!]
+	"""
+	Tips received for this post (paginated).
+	"""
+	tips(limit: Int, offset: Int): [TipSummary!]
+	"""
 	Total tips received.
 	"""
 	tipsReceived: Int!
+	"""
+	Ownership transfers for this post (paginated).
+	"""
+	transfers(limit: Int, offset: Int): [PostTransferSummary!]
+	"""
+	When the post was last updated (Unix timestamp in milliseconds).
+	"""
+	updatedAt: Int
+}
+
+type PostTransferSummary {
+	newOwner: MySoAddress!
+	previousOwner: MySoAddress!
+	transactionId: String!
+	transferredAt: Int!
 }
 
 type Profile implements Node {
@@ -3267,6 +3428,10 @@ type Profile implements Node {
 	The wallet address that owns this profile.
 	"""
 	address: MySoAddress!
+	"""
+	Profile badges (paginated).
+	"""
+	badges(limit: Int, offset: Int): [ProfileBadge!]
 	"""
 	The profile's bio.
 	"""
@@ -3279,6 +3444,14 @@ type Profile implements Node {
 	Block list address.
 	"""
 	blockListAddress: String
+	"""
+	Platforms that have blocked this profile (paginated).
+	"""
+	blockedPlatforms(limit: Int, offset: Int): [BlockedPlatformSummary!]
+	"""
+	Profiles this user has blocked (paginated).
+	"""
+	blockedProfiles(limit: Int, offset: Int): [BlockedProfileSummary!]
 	"""
 	URL to the cover photo.
 	"""
@@ -3308,9 +3481,17 @@ type Profile implements Node {
 	"""
 	facebookUsername: String
 	"""
+	Followers (paginated).
+	"""
+	followers(limit: Int, offset: Int): [ProfileSummary!]
+	"""
 	Number of followers.
 	"""
 	followersCount: Int!
+	"""
+	Following (paginated).
+	"""
+	following(limit: Int, offset: Int): [ProfileSummary!]
 	"""
 	Number of accounts this profile follows.
 	"""
@@ -3415,6 +3596,64 @@ type Profile implements Node {
 	X (Twitter) username.
 	"""
 	xUsername: String
+}
+
+type ProfileBadge {
+	"""
+	When the badge was assigned (epoch ms).
+	"""
+	assignedAt: Int!
+	"""
+	Address that assigned the badge.
+	"""
+	assignedBy: String!
+	"""
+	Badge description.
+	"""
+	badgeDescription: String
+	"""
+	Badge icon URL.
+	"""
+	badgeIconUrl: String
+	"""
+	Badge ID.
+	"""
+	badgeId: String!
+	"""
+	Badge media URL.
+	"""
+	badgeMediaUrl: String
+	"""
+	Badge name.
+	"""
+	badgeName: String!
+	"""
+	Badge type.
+	"""
+	badgeType: Int!
+	"""
+	Platform ID.
+	"""
+	platformId: String!
+}
+
+type ProfileSummary {
+	"""
+	Wallet address.
+	"""
+	address: MySoAddress!
+	"""
+	Display name.
+	"""
+	displayName: String
+	"""
+	Profile photo URL.
+	"""
+	profilePhoto: String
+	"""
+	Username.
+	"""
+	username: String
 }
 
 """
@@ -3528,6 +3767,14 @@ type Query {
 	The network's genesis checkpoint digest (uniquely identifies the network), Base58-encoded.
 	"""
 	chainIdentifier: String!
+	"""
+	Check if platform has blocked this profile. Returns null when social DB not configured.
+	"""
+	checkPlatformBlocked(profile: MySoAddress!, platform: ID!): Boolean
+	"""
+	Check if blocker has blocked blocked. Returns null when social DB not configured.
+	"""
+	checkProfileBlocked(blocker: MySoAddress!, blocked: MySoAddress!): Boolean
 	"""
 	Fetch a checkpoint by its sequence number, or the latest checkpoint if no sequence number is provided.
 	
@@ -3790,6 +4037,12 @@ type RandomnessStateUpdateTransaction {
 	randomnessRound: Int
 }
 
+type ReactionSummary {
+	createdAt: Int!
+	reactionText: String!
+	userAddress: MySoAddress!
+}
+
 """
 A transaction that wanted to read a consensus-managed object but couldn't because it became not-consensus-managed before the transaction executed (for example, it was deleted, turned into an owned object, or wrapped).
 """
@@ -3823,6 +4076,14 @@ enum RegulatedState {
 	The currency was created without a deny list.
 	"""
 	UNREGULATED
+}
+
+type RepostSummary {
+	createdAt: Int!
+	originalPostId: String!
+	owner: MySoAddress!
+	profileId: String!
+	repostId: String!
 }
 
 type SelectedBadge {
@@ -4109,6 +4370,13 @@ enum SupplyState {
 	The supply can neither increase nor decrease.
 	"""
 	FIXED
+}
+
+type TipSummary {
+	amount: Int!
+	createdAt: Int!
+	recipient: MySoAddress!
+	tipper: MySoAddress!
 }
 
 """

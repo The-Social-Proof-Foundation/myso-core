@@ -3,6 +3,7 @@
 
 use std::str::FromStr;
 
+use async_graphql::Context;
 use async_graphql::Object;
 use chrono::DateTime;
 use myso_indexer_alt_social_reader::{
@@ -12,6 +13,9 @@ use myso_indexer_alt_social_schema::models::Profile as SchemaProfile;
 
 use crate::api::scalars::id::Id;
 use crate::api::scalars::myso_address::MySoAddress;
+use crate::api::types::blocked::{BlockedPlatformSummary, BlockedProfileSummary};
+use crate::api::types::profile_badge::ProfileBadge;
+use crate::api::types::profile_summary::ProfileSummary;
 
 fn to_iso8601_utc(dt: chrono::NaiveDateTime) -> String {
     DateTime::<chrono::Utc>::from_naive_utc_and_offset(dt, chrono::Utc)
@@ -277,6 +281,101 @@ impl Profile {
     /// Selected ecosystem badge ID.
     async fn selected_ecosystem_badge_id(&self) -> Option<&str> {
         self.inner.selected_ecosystem_badge_id.as_deref()
+    }
+
+    /// Profile badges (paginated).
+    async fn badges(
+        &self,
+        ctx: &Context<'_>,
+        limit: Option<u64>,
+        offset: Option<u64>,
+    ) -> Option<Vec<ProfileBadge>> {
+        let reader_opt = ctx
+            .data_opt::<std::sync::Arc<Option<myso_indexer_alt_social_reader::SocialPgReader>>>()?;
+        let reader = reader_opt.as_ref().as_ref()?;
+        let limit = limit.unwrap_or(20).min(100) as i64;
+        let offset = offset.unwrap_or(0) as i64;
+        let rows = reader
+            .get_profile_badges(&self.inner.owner_address, limit, offset)
+            .await
+            .ok()?;
+        Some(rows.into_iter().map(ProfileBadge::from_row).collect())
+    }
+
+    /// Followers (paginated).
+    async fn followers(
+        &self,
+        ctx: &Context<'_>,
+        limit: Option<u64>,
+        offset: Option<u64>,
+    ) -> Option<Vec<ProfileSummary>> {
+        let reader_opt = ctx
+            .data_opt::<std::sync::Arc<Option<myso_indexer_alt_social_reader::SocialPgReader>>>()?;
+        let reader = reader_opt.as_ref().as_ref()?;
+        let limit = limit.unwrap_or(20).min(100) as i64;
+        let offset = offset.unwrap_or(0) as i64;
+        let rows = reader
+            .get_followers(&self.inner.owner_address, limit, offset)
+            .await
+            .ok()?;
+        Some(rows.into_iter().map(ProfileSummary::from_row).collect())
+    }
+
+    /// Following (paginated).
+    async fn following(
+        &self,
+        ctx: &Context<'_>,
+        limit: Option<u64>,
+        offset: Option<u64>,
+    ) -> Option<Vec<ProfileSummary>> {
+        let reader_opt = ctx
+            .data_opt::<std::sync::Arc<Option<myso_indexer_alt_social_reader::SocialPgReader>>>()?;
+        let reader = reader_opt.as_ref().as_ref()?;
+        let limit = limit.unwrap_or(20).min(100) as i64;
+        let offset = offset.unwrap_or(0) as i64;
+        let rows = reader
+            .get_following(&self.inner.owner_address, limit, offset)
+            .await
+            .ok()?;
+        Some(rows.into_iter().map(ProfileSummary::from_row).collect())
+    }
+
+    /// Profiles this user has blocked (paginated).
+    async fn blocked_profiles(
+        &self,
+        ctx: &Context<'_>,
+        limit: Option<u64>,
+        offset: Option<u64>,
+    ) -> Option<Vec<BlockedProfileSummary>> {
+        let reader_opt = ctx
+            .data_opt::<std::sync::Arc<Option<myso_indexer_alt_social_reader::SocialPgReader>>>()?;
+        let reader = reader_opt.as_ref().as_ref()?;
+        let limit = limit.unwrap_or(20).min(100) as i64;
+        let offset = offset.unwrap_or(0) as i64;
+        let rows = reader
+            .get_blocked_profiles(&self.inner.owner_address, limit, offset)
+            .await
+            .ok()?;
+        Some(rows.into_iter().map(BlockedProfileSummary::from_row).collect())
+    }
+
+    /// Platforms that have blocked this profile (paginated).
+    async fn blocked_platforms(
+        &self,
+        ctx: &Context<'_>,
+        limit: Option<u64>,
+        offset: Option<u64>,
+    ) -> Option<Vec<BlockedPlatformSummary>> {
+        let reader_opt = ctx
+            .data_opt::<std::sync::Arc<Option<myso_indexer_alt_social_reader::SocialPgReader>>>()?;
+        let reader = reader_opt.as_ref().as_ref()?;
+        let limit = limit.unwrap_or(20).min(100) as i64;
+        let offset = offset.unwrap_or(0) as i64;
+        let rows = reader
+            .get_blocked_platforms(&self.inner.owner_address, limit, offset)
+            .await
+            .ok()?;
+        Some(rows.into_iter().map(BlockedPlatformSummary::from_row).collect())
     }
 }
 
