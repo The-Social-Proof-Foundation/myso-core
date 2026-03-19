@@ -392,6 +392,10 @@ scalar BigInt
 
 type BlockedPlatformSummary {
 	blockedBy: String!
+	"""
+	Profile of the user who blocked the platform.
+	"""
+	blockedByProfile: ProfileSummary
 	createdAt: String!
 	platformId: String!
 	platformName: String!
@@ -829,6 +833,10 @@ type CommentSummary {
 	content: String!
 	createdAt: Int!
 	owner: String!
+	"""
+	Profile of the comment owner (username, display name, photo, etc.).
+	"""
+	ownerProfile: ProfileSummary
 	parentCommentId: String
 	postId: String!
 	profileId: String!
@@ -940,6 +948,45 @@ type ConsensusObjectRead {
 ISO-8601 Date and Time: RFC3339 in UTC with format: YYYY-MM-DDTHH:MM:SS.mmmZ. Note that the milliseconds part is optional, and it may be omitted if its value is 0.
 """
 scalar DateTime
+
+type Delegate {
+	"""
+	Delegate address.
+	"""
+	address: MySoAddress!
+	"""
+	Downvotes (delegate ratings).
+	"""
+	downvotes: Int!
+	"""
+	Whether the delegate is currently active.
+	"""
+	isActive: Boolean!
+	"""
+	Proposals reviewed.
+	"""
+	proposalsReviewed: Int!
+	"""
+	Proposals submitted.
+	"""
+	proposalsSubmitted: Int!
+	"""
+	Registry type (0=ecosystem, 1=proof of creativity, 3=platform).
+	"""
+	registryType: Int!
+	"""
+	Term end (epoch).
+	"""
+	termEnd: Int!
+	"""
+	Term start (epoch).
+	"""
+	termStart: Int!
+	"""
+	Upvotes (delegate ratings).
+	"""
+	upvotes: Int!
+}
 
 """
 A rendered JSON blob based on an on-chain template.
@@ -1605,6 +1652,48 @@ type GenesisTransaction {
 	Objects to be created during genesis.
 	"""
 	objects(first: Int, after: String, last: Int, before: String): ObjectConnection
+}
+
+type GovernanceRegistry {
+	"""
+	Voting configuration (term, costs, quorum, etc.).
+	"""
+	config: GovernanceRegistryConfig!
+	"""
+	Number of delegates.
+	"""
+	delegateCount: Int!
+	"""
+	Registry object ID on-chain.
+	"""
+	registryId: String!
+	"""
+	Registry type (0=ecosystem, 1=proof of creativity, 3=platform).
+	"""
+	registryType: Int!
+}
+
+type GovernanceRegistryConfig {
+	"""
+	Delegate term length in epochs.
+	"""
+	delegateTermEpochs: Int!
+	"""
+	Max votes per user in community voting.
+	"""
+	maxVotesPerUser: Int!
+	"""
+	Cost to submit a proposal.
+	"""
+	proposalSubmissionCost: Int!
+	"""
+	Quorum votes required.
+	"""
+	quorumVotes: Int!
+	"""
+	Voting period in milliseconds.
+	"""
+	votingPeriodMs: Int!
 }
 
 """
@@ -2808,6 +2897,10 @@ type MyDataPurchase {
 	"""
 	buyer: MySoAddress!
 	"""
+	Profile of the buyer.
+	"""
+	buyerProfile: ProfileSummary
+	"""
 	MyData record ID this purchase is for.
 	"""
 	mydataId: String!
@@ -2846,6 +2939,10 @@ type MyDataRecord {
 	Owner address.
 	"""
 	owner: MySoAddress!
+	"""
+	Profile of the MyData record owner.
+	"""
+	ownerProfile: ProfileSummary
 	"""
 	Subscription price (null if not for sale).
 	"""
@@ -3326,6 +3423,10 @@ type Platform implements Node {
 	"""
 	developerAddress: String!
 	"""
+	Profile of the platform developer.
+	"""
+	developerProfile: ProfileSummary
+	"""
 	Governance registry ID.
 	"""
 	governanceRegistryId: String
@@ -3350,9 +3451,17 @@ type Platform implements Node {
 	"""
 	maxVotesPerUser: Int
 	"""
+	Members of this platform (paginated).
+	"""
+	members(limit: Int, offset: Int): [PlatformMemberSummary!]
+	"""
 	Min on-chain age in days.
 	"""
 	minOnChainAgeDays: Int
+	"""
+	Moderators of this platform (paginated).
+	"""
+	moderators(limit: Int, offset: Int): [PlatformModeratorSummary!]
 	"""
 	The platform name.
 	"""
@@ -3430,7 +3539,41 @@ type Platform implements Node {
 type PlatformBlockedProfileSummary {
 	blockedBy: String!
 	createdAt: String!
+	"""
+	Profile of the blocked user.
+	"""
+	profile: ProfileSummary
 	walletAddress: MySoAddress!
+}
+
+type PlatformMemberSummary {
+	joinedAt: String!
+	"""
+	Profile of the platform member.
+	"""
+	profile: ProfileSummary
+	walletAddress: MySoAddress!
+}
+
+type PlatformMembershipSummary {
+	isApproved: Boolean!
+	joinedAt: String!
+	name: String!
+	platformId: String!
+}
+
+type PlatformModeratorSummary {
+	addedBy: String!
+	"""
+	Profile of the user who added the moderator.
+	"""
+	addedByProfile: ProfileSummary
+	createdAt: String!
+	moderatorAddress: MySoAddress!
+	"""
+	Profile of the moderator.
+	"""
+	moderatorProfile: ProfileSummary
 }
 
 type Post implements Node {
@@ -3466,6 +3609,10 @@ type Post implements Node {
 	The wallet address of the post owner.
 	"""
 	owner: String!
+	"""
+	Profile of the post owner (username, display name, photo, etc.).
+	"""
+	ownerProfile: ProfileSummary
 	"""
 	Parent post ID (for quote reposts).
 	"""
@@ -3530,7 +3677,15 @@ type Post implements Node {
 
 type PostTransferSummary {
 	newOwner: MySoAddress!
+	"""
+	Profile of the new owner.
+	"""
+	newOwnerProfile: ProfileSummary
 	previousOwner: MySoAddress!
+	"""
+	Profile of the previous owner.
+	"""
+	previousOwnerProfile: ProfileSummary
 	transactionId: String!
 	transferredAt: Int!
 }
@@ -3637,6 +3792,10 @@ type Profile implements Node {
 	"""
 	phone: String
 	"""
+	Platforms this profile has joined (paginated).
+	"""
+	platformMemberships(limit: Int, offset: Int): [PlatformMembershipSummary!]
+	"""
 	Political view.
 	"""
 	politicalView: String
@@ -3732,6 +3891,10 @@ type ProfileBadge {
 	"""
 	assignedBy: String!
 	"""
+	Profile of the user who assigned the badge.
+	"""
+	assignedByProfile: ProfileSummary
+	"""
 	Badge description.
 	"""
 	badgeDescription: String
@@ -3774,6 +3937,14 @@ type ProfileSummary {
 	Display name.
 	"""
 	displayName: String
+	"""
+	Number of followers. Present for both profile and wallet-only addresses.
+	"""
+	followersCount: Int
+	"""
+	Number of accounts this address follows. Present for both profile and wallet-only addresses.
+	"""
+	followingCount: Int
 	"""
 	Profile photo URL.
 	"""
@@ -3858,6 +4029,96 @@ type Promotion {
 	Number of views.
 	"""
 	views: Int!
+}
+
+type Proposal {
+	"""
+	Anonymous voters count (when anonymous voting enabled).
+	"""
+	anonymousVotersCount: Int
+	"""
+	Proposal description.
+	"""
+	description: String!
+	"""
+	Implementation time (epoch ms).
+	"""
+	implementationTime: Int
+	"""
+	Implemented description (when status=implemented).
+	"""
+	implementedDescription: String
+	"""
+	Unique proposal identifier (object ID on-chain).
+	"""
+	proposalId: String!
+	"""
+	Reference ID (e.g. linked post or object).
+	"""
+	referenceId: String
+	"""
+	Registry type (0=ecosystem, 1=proof of creativity, 3=platform).
+	"""
+	registryType: Int!
+	"""
+	Rescind time (epoch ms, when rescinded).
+	"""
+	rescindTime: Int
+	"""
+	Reward pool amount.
+	"""
+	rewardPool: Int!
+	"""
+	Proposal status (0=submitted, 1=delegate_review, 2=community_voting, 3=approved, 4=rejected, 5=implemented, 6=rescinded).
+	"""
+	status: Int!
+	"""
+	Submission time (epoch ms).
+	"""
+	submissionTime: Int!
+	"""
+	Submitter address.
+	"""
+	submitter: MySoAddress!
+	"""
+	Profile of the proposal submitter.
+	"""
+	submitterProfile: ProfileSummary
+	"""
+	Proposal title.
+	"""
+	title: String!
+	"""
+	Vote counts (delegate and community).
+	"""
+	votes: ProposalVotes!
+	"""
+	Voting end time (epoch ms).
+	"""
+	votingEndTime: Int
+	"""
+	Voting start time (epoch ms, when in community voting).
+	"""
+	votingStartTime: Int
+}
+
+type ProposalVotes {
+	"""
+	Community votes against (reject).
+	"""
+	communityAgainst: Int!
+	"""
+	Community votes for (approve).
+	"""
+	communityFor: Int!
+	"""
+	Delegate votes against (reject).
+	"""
+	delegateAgainst: Int!
+	"""
+	Delegate votes for (approve).
+	"""
+	delegateFor: Int!
 }
 
 """
@@ -3971,6 +4232,18 @@ type Query {
 	"""
 	coinMetadata(coinType: String!): CoinMetadata
 	"""
+	Fetch a comment by ID. Returns null if social DB not configured or not found.
+	"""
+	comment(id: ID!): CommentSummary
+	"""
+	Fetch a delegate by address. Returns null when social DB not configured or not found.
+	"""
+	delegate(address: MySoAddress!): Delegate
+	"""
+	List delegates (paginated, optionally filtered by registry type). Returns empty when social DB not configured.
+	"""
+	delegates(registryType: Int, limit: Int, offset: Int): [Delegate!]
+	"""
 	Fetch an epoch by its ID, or fetch the latest epoch if no ID is provided.
 	
 	Returns `null` if the epoch does not exist yet, or was pruned.
@@ -3984,6 +4257,14 @@ type Query {
 	Paginate events that are emitted in the network, optionally filtered by event filters.
 	"""
 	events(first: Int, after: String, last: Int, before: String, filter: EventFilter): EventConnection
+	"""
+	List all governance registries. Returns empty when social DB not configured.
+	"""
+	governanceRegistries: [GovernanceRegistry!]
+	"""
+	Fetch governance registry for a platform (by platform ID). Returns null when social DB not configured or platform has no registry.
+	"""
+	governanceRegistry(platformId: String!): GovernanceRegistry
 	"""
 	Insurance policies by insured address. Returns empty when social DB not configured.
 	"""
@@ -4153,9 +4434,25 @@ type Query {
 	"""
 	promotion(id: ID!): Promotion
 	"""
+	Fetch a proposal by ID. Returns null when social DB not configured or not found.
+	"""
+	proposal(id: ID!): Proposal
+	"""
+	List governance proposals (paginated, optionally filtered by platform and status). Returns empty when social DB not configured.
+	"""
+	proposals(platformId: String, status: Int, limit: Int, offset: Int): [Proposal!]
+	"""
 	Fetch the protocol config by protocol version, or the latest protocol config used on chain if no version is provided.
 	"""
 	protocolConfigs(version: UInt53): ProtocolConfigs
+	"""
+	Reactions for a post (paginated). Returns empty when social DB not configured.
+	"""
+	reactions(postId: ID!, limit: Int, offset: Int): [ReactionSummary!]
+	"""
+	Reposts of a post (paginated). Returns empty when social DB not configured.
+	"""
+	reposts(postId: ID!, limit: Int, offset: Int): [RepostSummary!]
 	"""
 	Configuration for this RPC service.
 	"""
@@ -4199,6 +4496,10 @@ type Query {
 	SPT price history. Provide profileAddress or poolId (at least one required). Returns empty when social DB not configured.
 	"""
 	sptPriceHistory(profileAddress: MySoAddress, poolId: ID, limit: Int): [SptPriceHistory!]
+	"""
+	Tips received for a post (paginated). Returns empty when social DB not configured.
+	"""
+	tips(postId: ID!, limit: Int, offset: Int): [TipSummary!]
 	"""
 	Fetch a transaction by its digest.
 	
@@ -4284,6 +4585,10 @@ type ReactionSummary {
 	createdAt: Int!
 	reactionText: String!
 	userAddress: MySoAddress!
+	"""
+	Profile of the user who reacted.
+	"""
+	userProfile: ProfileSummary
 }
 
 """
@@ -4325,6 +4630,10 @@ type RepostSummary {
 	createdAt: Int!
 	originalPostId: String!
 	owner: MySoAddress!
+	"""
+	Profile of the repost owner.
+	"""
+	ownerProfile: ProfileSummary
 	profileId: String!
 	repostId: String!
 }
@@ -4586,6 +4895,10 @@ type SpotBet {
 	"""
 	postId: String!
 	"""
+	Profile of the bettor.
+	"""
+	profile: ProfileSummary
+	"""
 	Transaction ID.
 	"""
 	transactionId: String!
@@ -4673,6 +4986,10 @@ type SptPool {
 	Pool owner address.
 	"""
 	owner: MySoAddress!
+	"""
+	Profile of the pool owner.
+	"""
+	ownerProfile: ProfileSummary
 	"""
 	Pool ID.
 	"""
@@ -4820,7 +5137,15 @@ type TipSummary {
 	amount: Int!
 	createdAt: Int!
 	recipient: MySoAddress!
+	"""
+	Profile of the tip recipient.
+	"""
+	recipientProfile: ProfileSummary
 	tipper: MySoAddress!
+	"""
+	Profile of the tipper.
+	"""
+	tipperProfile: ProfileSummary
 }
 
 """
@@ -5359,6 +5684,10 @@ type VestingWallet {
 	Owner address.
 	"""
 	ownerAddress: MySoAddress!
+	"""
+	Profile of the vesting wallet owner.
+	"""
+	ownerProfile: ProfileSummary
 	"""
 	Remaining balance.
 	"""
