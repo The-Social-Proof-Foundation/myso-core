@@ -556,7 +556,7 @@ module social_contracts::profile {
         assert!(registry.version == upgrade::current_version(), 1);
         
         let owner = tx_context::sender(ctx);
-        let now = tx_context::epoch(ctx);
+        let now = tx_context::epoch_timestamp_ms(ctx);
 
         // Check that the sender doesn't already have a profile
         assert!(!table::contains(&registry.address_profiles, owner), EProfileAlreadyExists);
@@ -658,7 +658,7 @@ module social_contracts::profile {
             profile_picture: profile_picture_string,
             cover_photo: cover_photo_string,
             owner,
-            created_at: tx_context::epoch(ctx),
+            created_at: tx_context::epoch_timestamp_ms(ctx),
         });
 
         // Transfer profile to owner
@@ -717,7 +717,7 @@ module social_contracts::profile {
                 option::none()
             },
             owner: new_owner,
-            updated_at: tx_context::epoch(ctx),
+            updated_at: tx_context::epoch_timestamp_ms(ctx),
             // Social media usernames
             facebook_username: profile.facebook_username,
             github_username: profile.github_username,
@@ -756,7 +756,7 @@ module social_contracts::profile {
         assert!(profile.owner == tx_context::sender(ctx), EUnauthorized);
         
         // Get current timestamp
-        let now = tx_context::epoch(ctx);
+        let now = tx_context::epoch_timestamp_ms(ctx);
 
         // Update basic profile information
         // Set display name if provided, otherwise keep existing
@@ -943,7 +943,7 @@ module social_contracts::profile {
         let sender = tx_context::sender(ctx);
         let profile_owner = profile.owner;
         let profile_id = object::uid_to_address(&profile.id);
-        let now = tx_context::epoch(ctx);
+        let now = tx_context::epoch_timestamp_ms(ctx);
         
         // Cannot offer on your own profile
         assert!(sender != profile_owner, ECannotOfferOwnProfile);
@@ -1005,7 +1005,7 @@ module social_contracts::profile {
     ) {
         let sender = tx_context::sender(ctx);
         let profile_id = object::uid_to_address(&profile.id);
-        let now = tx_context::epoch(ctx);
+        let now = tx_context::epoch_timestamp_ms(ctx);
         
         // Verify sender is the profile owner
         assert!(profile.owner == sender, EUnauthorized);
@@ -1125,7 +1125,7 @@ module social_contracts::profile {
     ) {
         let sender = tx_context::sender(ctx);
         let profile_id = object::uid_to_address(&profile.id);
-        let now = tx_context::epoch(ctx);
+        let now = tx_context::epoch_timestamp_ms(ctx);
         
         // Check if offers table exists
         assert!(dynamic_field::exists_(&profile.id, OFFERS_FIELD), EOfferDoesNotExist);
@@ -1266,7 +1266,7 @@ module social_contracts::profile {
         assert!(string::length(&badge_icon_url) > 0 && string::length(&badge_icon_url) <= MAX_BADGE_ICON_URL_LENGTH, EBadgeIconUrlTooLong);
 
         let issuer = tx_context::sender(ctx);
-        let now = tx_context::epoch(ctx);
+        let now = tx_context::epoch_timestamp_ms(ctx);
 
         let badge_name_for_id = copy_string(&badge_name);
         let mut badge_id = string::utf8(ECOSYSTEM_BADGE_PREFIX);
@@ -1303,7 +1303,7 @@ module social_contracts::profile {
         ctx: &mut TxContext
     ) {
         let revoker = tx_context::sender(ctx);
-        let now = tx_context::epoch(ctx);
+        let now = tx_context::epoch_timestamp_ms(ctx);
         remove_badge_from_profile(profile, &badge_id, revoker, revoker, now);
     }
 
@@ -1373,7 +1373,7 @@ module social_contracts::profile {
         ctx: &mut TxContext
     ) {
         let owner = tx_context::sender(ctx);
-        let epoch = tx_context::epoch(ctx);
+        let epoch = tx_context::epoch_timestamp_ms(ctx);
         
         // Create a profile with a proper ID
         let profile = Profile {

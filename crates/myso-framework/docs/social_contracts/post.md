@@ -3230,7 +3230,7 @@ Internal function to create a post and return its ID
         metadata_json,
         post_type,
         parent_post_id,
-        created_at: tx_context::epoch(ctx),
+        created_at: tx_context::epoch_timestamp_ms(ctx),
         reaction_count: 0,
         comment_count: 0,
         repost_count: 0,
@@ -3531,7 +3531,7 @@ Returns the ID of the created comment
         media: media_option,
         mentions,
         metadata_json,
-        created_at: tx_context::epoch(ctx),
+        created_at: tx_context::epoch_timestamp_ms(ctx),
         reaction_count: 0,
         comment_count: 0,
         repost_count: 0,
@@ -3687,7 +3687,7 @@ If content is empty/none, it's treated as a standard repost
             is_original_post: <b>true</b>,
             owner,
             profile_id,
-            created_at: tx_context::epoch(ctx),
+            created_at: tx_context::epoch_timestamp_ms(ctx),
             <a href="../social_contracts/post.md#social_contracts_post_version">version</a>: <a href="../social_contracts/upgrade.md#social_contracts_upgrade_current_version">upgrade::current_version</a>(),
         };
         // Get repost ID before sharing
@@ -3831,7 +3831,7 @@ Delete a post owned by the caller
         owner: <a href="../social_contracts/post.md#social_contracts_post">post</a>.owner,
         profile_id: <a href="../social_contracts/post.md#social_contracts_post">post</a>.profile_id,
         post_type: <a href="../social_contracts/post.md#social_contracts_post">post</a>.post_type,
-        deleted_at: tx_context::epoch(ctx)
+        deleted_at: tx_context::epoch_timestamp_ms(ctx)
     });
     // Extract UID to delete the <a href="../social_contracts/post.md#social_contracts_post">post</a> object
     <b>let</b> <a href="../social_contracts/post.md#social_contracts_post_Post">Post</a> {
@@ -3911,7 +3911,7 @@ Delete a comment owned by the caller
         post_id,
         owner: comment.owner,
         profile_id: comment.profile_id,
-        deleted_at: tx_context::epoch(ctx)
+        deleted_at: tx_context::epoch_timestamp_ms(ctx)
     });
     // Extract UID to delete the comment object
     <b>let</b> <a href="../social_contracts/post.md#social_contracts_post_Comment">Comment</a> {
@@ -4744,7 +4744,7 @@ Update an existing post
         profile_id: <a href="../social_contracts/post.md#social_contracts_post">post</a>.profile_id,
         content: <a href="../social_contracts/post.md#social_contracts_post">post</a>.content,
         metadata_json: <a href="../social_contracts/post.md#social_contracts_post">post</a>.metadata_json,
-        updated_at: tx_context::epoch(ctx),
+        updated_at: tx_context::epoch_timestamp_ms(ctx),
     });
 }
 </code></pre>
@@ -4796,7 +4796,7 @@ Update an existing comment
         owner: comment.owner,
         profile_id: comment.profile_id,
         content: comment.content,
-        updated_at: tx_context::epoch(ctx),
+        updated_at: tx_context::epoch_timestamp_ms(ctx),
     });
 }
 </code></pre>
@@ -4849,7 +4849,7 @@ Report a post
         reporter,
         reason_code,
         description,
-        reported_at: tx_context::epoch(ctx),
+        reported_at: tx_context::epoch_timestamp_ms(ctx),
     });
 }
 </code></pre>
@@ -4902,7 +4902,7 @@ Report a comment
         reporter,
         reason_code,
         description,
-        reported_at: tx_context::epoch(ctx),
+        reported_at: tx_context::epoch_timestamp_ms(ctx),
     });
 }
 </code></pre>

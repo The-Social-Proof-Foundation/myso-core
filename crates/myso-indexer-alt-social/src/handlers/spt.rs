@@ -2,6 +2,7 @@
 // SPDX-License-Identifier: Apache-2.0
 
 use super::{ProfileUpdate, SocialEventRow};
+use crate::ensure_epoch_ms;
 use myso_indexer_alt_social_schema::models::{
     NewSocialProofTokensConfig, NewSocialProofTokensEvent, NewSptExchangeConfig, NewSptHolding,
     NewSptPool, NewSptPriceHistory, NewSptReservation, NewSptReservationPool, NewSptTransaction,
@@ -387,7 +388,7 @@ fn process_reservation_created_event(
     let amount = json_to_i64(data.get("amount")?);
     let total_reserved = json_to_i64(data.get("total_reserved")?);
     let threshold_met = data.get("threshold_met")?.as_bool().unwrap_or(false);
-    let reserved_at = json_to_i64(data.get("reserved_at")?);
+    let reserved_at = ensure_epoch_ms(json_to_i64(data.get("reserved_at")?), true);
     let fee_amount = data.get("fee_amount").map(json_to_i64);
     let creator_fee = data.get("creator_fee").map(json_to_i64);
     let platform_fee = data.get("platform_fee").map(json_to_i64);
@@ -436,7 +437,7 @@ fn process_reservation_withdrawn_event(
     let associated_id = json_str(data.get("associated_id")?)?;
     let reserver = json_str(data.get("reserver")?)?;
     let total_reserved = json_to_i64(data.get("total_reserved")?);
-    let withdrawn_at = json_to_i64(data.get("withdrawn_at")?);
+    let withdrawn_at = ensure_epoch_ms(json_to_i64(data.get("withdrawn_at")?), true);
     let fee_amount = data.get("fee_amount").map(json_to_i64);
     let creator_fee = data.get("creator_fee").map(json_to_i64);
     let platform_fee = data.get("platform_fee").map(json_to_i64);

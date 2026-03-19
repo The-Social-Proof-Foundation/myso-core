@@ -2115,7 +2115,7 @@ This is the main entry point for new users, combining profile and username creat
     // Check <a href="../social_contracts/profile.md#social_contracts_profile_version">version</a> compatibility
     <b>assert</b>!(registry.<a href="../social_contracts/profile.md#social_contracts_profile_version">version</a> == <a href="../social_contracts/upgrade.md#social_contracts_upgrade_current_version">upgrade::current_version</a>(), 1);
     <b>let</b> <a href="../social_contracts/profile.md#social_contracts_profile_owner">owner</a> = tx_context::sender(ctx);
-    <b>let</b> now = tx_context::epoch(ctx);
+    <b>let</b> now = tx_context::epoch_timestamp_ms(ctx);
     // Check that the sender doesn't already have a <a href="../social_contracts/profile.md#social_contracts_profile">profile</a>
     <b>assert</b>!(!table::contains(&registry.address_profiles, <a href="../social_contracts/profile.md#social_contracts_profile_owner">owner</a>), <a href="../social_contracts/profile.md#social_contracts_profile_EProfileAlreadyExists">EProfileAlreadyExists</a>);
     // Validate the <a href="../social_contracts/profile.md#social_contracts_profile_username">username</a>
@@ -2202,7 +2202,7 @@ This is the main entry point for new users, combining profile and username creat
         <a href="../social_contracts/profile.md#social_contracts_profile_profile_picture">profile_picture</a>: profile_picture_string,
         <a href="../social_contracts/profile.md#social_contracts_profile_cover_photo">cover_photo</a>: cover_photo_string,
         <a href="../social_contracts/profile.md#social_contracts_profile_owner">owner</a>,
-        created_at: tx_context::epoch(ctx),
+        created_at: tx_context::epoch_timestamp_ms(ctx),
     });
     // Transfer <a href="../social_contracts/profile.md#social_contracts_profile">profile</a> to <a href="../social_contracts/profile.md#social_contracts_profile_owner">owner</a>
     transfer::transfer(<a href="../social_contracts/profile.md#social_contracts_profile">profile</a>, <a href="../social_contracts/profile.md#social_contracts_profile_owner">owner</a>);
@@ -2272,7 +2272,7 @@ The username stays with the profile, and the transfer updates registry mappings
             option::none()
         },
         <a href="../social_contracts/profile.md#social_contracts_profile_owner">owner</a>: new_owner,
-        updated_at: tx_context::epoch(ctx),
+        updated_at: tx_context::epoch_timestamp_ms(ctx),
         // Social media usernames
         facebook_username: <a href="../social_contracts/profile.md#social_contracts_profile">profile</a>.facebook_username,
         github_username: <a href="../social_contracts/profile.md#social_contracts_profile">profile</a>.github_username,
@@ -2329,7 +2329,7 @@ Only the profile owner can update profile information
     // Verify sender is the <a href="../social_contracts/profile.md#social_contracts_profile_owner">owner</a>
     <b>assert</b>!(<a href="../social_contracts/profile.md#social_contracts_profile">profile</a>.<a href="../social_contracts/profile.md#social_contracts_profile_owner">owner</a> == tx_context::sender(ctx), <a href="../social_contracts/profile.md#social_contracts_profile_EUnauthorized">EUnauthorized</a>);
     // Get current timestamp
-    <b>let</b> now = tx_context::epoch(ctx);
+    <b>let</b> now = tx_context::epoch_timestamp_ms(ctx);
     // Update basic <a href="../social_contracts/profile.md#social_contracts_profile">profile</a> information
     // Set display name <b>if</b> provided, otherwise keep existing
     <b>if</b> (string::length(&new_display_name) &gt; 0) {
@@ -2778,7 +2778,7 @@ Locks MYSO tokens in the offer
     <b>let</b> sender = tx_context::sender(ctx);
     <b>let</b> profile_owner = <a href="../social_contracts/profile.md#social_contracts_profile">profile</a>.<a href="../social_contracts/profile.md#social_contracts_profile_owner">owner</a>;
     <b>let</b> profile_id = object::uid_to_address(&<a href="../social_contracts/profile.md#social_contracts_profile">profile</a>.<a href="../social_contracts/profile.md#social_contracts_profile_id">id</a>);
-    <b>let</b> now = tx_context::epoch(ctx);
+    <b>let</b> now = tx_context::epoch_timestamp_ms(ctx);
     // Cannot offer on your own <a href="../social_contracts/profile.md#social_contracts_profile">profile</a>
     <b>assert</b>!(sender != profile_owner, <a href="../social_contracts/profile.md#social_contracts_profile_ECannotOfferOwnProfile">ECannotOfferOwnProfile</a>);
     // Check <b>if</b> there's sufficient tokens
@@ -2850,7 +2850,7 @@ Transfers tokens to the profile owner and profile ownership to the offeror
 ) {
     <b>let</b> sender = tx_context::sender(ctx);
     <b>let</b> profile_id = object::uid_to_address(&<a href="../social_contracts/profile.md#social_contracts_profile">profile</a>.<a href="../social_contracts/profile.md#social_contracts_profile_id">id</a>);
-    <b>let</b> now = tx_context::epoch(ctx);
+    <b>let</b> now = tx_context::epoch_timestamp_ms(ctx);
     // Verify sender is the <a href="../social_contracts/profile.md#social_contracts_profile">profile</a> <a href="../social_contracts/profile.md#social_contracts_profile_owner">owner</a>
     <b>assert</b>!(<a href="../social_contracts/profile.md#social_contracts_profile">profile</a>.<a href="../social_contracts/profile.md#social_contracts_profile_owner">owner</a> == sender, <a href="../social_contracts/profile.md#social_contracts_profile_EUnauthorized">EUnauthorized</a>);
     // Check <b>if</b> offers table exists
@@ -2971,7 +2971,7 @@ Returns locked MYSO tokenv s to the offeror
 ) {
     <b>let</b> sender = tx_context::sender(ctx);
     <b>let</b> profile_id = object::uid_to_address(&<a href="../social_contracts/profile.md#social_contracts_profile">profile</a>.<a href="../social_contracts/profile.md#social_contracts_profile_id">id</a>);
-    <b>let</b> now = tx_context::epoch(ctx);
+    <b>let</b> now = tx_context::epoch_timestamp_ms(ctx);
     // Check <b>if</b> offers table exists
     <b>assert</b>!(dynamic_field::exists_(&<a href="../social_contracts/profile.md#social_contracts_profile">profile</a>.<a href="../social_contracts/profile.md#social_contracts_profile_id">id</a>, <a href="../social_contracts/profile.md#social_contracts_profile_OFFERS_FIELD">OFFERS_FIELD</a>), <a href="../social_contracts/profile.md#social_contracts_profile_EOfferDoesNotExist">EOfferDoesNotExist</a>);
     // Get the offers table
@@ -3277,7 +3277,7 @@ Assign an ecosystem badge to a profile - called by EcosystemBadgeAdminCap holder
     <b>assert</b>!(string::length(&badge_media_url) &gt; 0 && string::length(&badge_media_url) &lt;= <a href="../social_contracts/profile.md#social_contracts_profile_MAX_BADGE_MEDIA_URL_LENGTH">MAX_BADGE_MEDIA_URL_LENGTH</a>, <a href="../social_contracts/profile.md#social_contracts_profile_EBadgeMediaUrlTooLong">EBadgeMediaUrlTooLong</a>);
     <b>assert</b>!(string::length(&badge_icon_url) &gt; 0 && string::length(&badge_icon_url) &lt;= <a href="../social_contracts/profile.md#social_contracts_profile_MAX_BADGE_ICON_URL_LENGTH">MAX_BADGE_ICON_URL_LENGTH</a>, <a href="../social_contracts/profile.md#social_contracts_profile_EBadgeIconUrlTooLong">EBadgeIconUrlTooLong</a>);
     <b>let</b> issuer = tx_context::sender(ctx);
-    <b>let</b> now = tx_context::epoch(ctx);
+    <b>let</b> now = tx_context::epoch_timestamp_ms(ctx);
     <b>let</b> badge_name_for_id = <a href="../social_contracts/profile.md#social_contracts_profile_copy_string">copy_string</a>(&badge_name);
     <b>let</b> <b>mut</b> <a href="../social_contracts/profile.md#social_contracts_profile_badge_id">badge_id</a> = string::utf8(<a href="../social_contracts/profile.md#social_contracts_profile_ECOSYSTEM_BADGE_PREFIX">ECOSYSTEM_BADGE_PREFIX</a>);
     <b>let</b> issuer_str = address::to_string(issuer);
@@ -3330,7 +3330,7 @@ Revoke an ecosystem badge from a profile - called by EcosystemBadgeAdminCap hold
     ctx: &<b>mut</b> TxContext
 ) {
     <b>let</b> revoker = tx_context::sender(ctx);
-    <b>let</b> now = tx_context::epoch(ctx);
+    <b>let</b> now = tx_context::epoch_timestamp_ms(ctx);
     <a href="../social_contracts/profile.md#social_contracts_profile_remove_badge_from_profile">remove_badge_from_profile</a>(<a href="../social_contracts/profile.md#social_contracts_profile">profile</a>, &<a href="../social_contracts/profile.md#social_contracts_profile_badge_id">badge_id</a>, revoker, revoker, now);
 }
 </code></pre>

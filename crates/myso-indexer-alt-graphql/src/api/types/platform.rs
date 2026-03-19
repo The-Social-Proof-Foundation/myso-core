@@ -5,7 +5,6 @@ use std::str::FromStr;
 
 use async_graphql::Context;
 use async_graphql::Object;
-use chrono::DateTime;
 use myso_indexer_alt_social_reader::PlatformRow as DbPlatform;
 use myso_indexer_alt_social_schema::models::{
     PlatformMemberRow, PlatformModeratorRow, ProfilePlatformMembershipRow,
@@ -17,11 +16,6 @@ use crate::api::scalars::json::Json;
 use crate::api::scalars::myso_address::MySoAddress;
 use crate::api::types::blocked::PlatformBlockedProfileSummary;
 use crate::api::types::profile_summary::ProfileSummary;
-
-fn to_iso8601_utc(dt: chrono::NaiveDateTime) -> String {
-    DateTime::<chrono::Utc>::from_naive_utc_and_offset(dt, chrono::Utc)
-        .to_rfc3339_opts(chrono::SecondsFormat::Millis, true)
-}
 
 fn platform_status_to_text(status: i16) -> &'static str {
     match status {
@@ -145,20 +139,14 @@ impl Platform {
         self.inner.shutdown_date.as_deref()
     }
 
-    /// When the platform was created (ISO 8601).
-    async fn created_at(&self) -> String {
-        self.inner
-            .created_at
-            .format("%Y-%m-%dT%H:%M:%S%.3fZ")
-            .to_string()
+    /// When the platform was created (epoch milliseconds).
+    async fn created_at(&self) -> i64 {
+        self.inner.created_at.and_utc().timestamp_millis()
     }
 
-    /// When the platform was last updated (ISO 8601).
-    async fn updated_at(&self) -> String {
-        self.inner
-            .updated_at
-            .format("%Y-%m-%dT%H:%M:%S%.3fZ")
-            .to_string()
+    /// When the platform was last updated (epoch milliseconds).
+    async fn updated_at(&self) -> i64 {
+        self.inner.updated_at.and_utc().timestamp_millis()
     }
 
     /// Treasury balance.
@@ -307,8 +295,8 @@ impl PlatformMembershipSummary {
         self.is_approved
     }
 
-    async fn joined_at(&self) -> String {
-        to_iso8601_utc(self.joined_at)
+    async fn joined_at(&self) -> i64 {
+        self.joined_at.and_utc().timestamp_millis()
     }
 }
 
@@ -339,8 +327,8 @@ impl PlatformMemberSummary {
         resolve_profile_summary(ctx, &self.wallet_address).await
     }
 
-    async fn joined_at(&self) -> String {
-        to_iso8601_utc(self.joined_at)
+    async fn joined_at(&self) -> i64 {
+        self.joined_at.and_utc().timestamp_millis()
     }
 }
 
@@ -382,7 +370,7 @@ impl PlatformModeratorSummary {
         resolve_profile_summary(ctx, &self.added_by).await
     }
 
-    async fn created_at(&self) -> String {
-        to_iso8601_utc(self.created_at)
+    async fn created_at(&self) -> i64 {
+        self.created_at.and_utc().timestamp_millis()
     }
 }

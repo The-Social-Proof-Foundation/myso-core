@@ -396,7 +396,7 @@ type BlockedPlatformSummary {
 	Profile of the user who blocked the platform.
 	"""
 	blockedByProfile: ProfileSummary
-	createdAt: String!
+	createdAt: Int!
 	platformId: String!
 	platformName: String!
 }
@@ -404,8 +404,8 @@ type BlockedPlatformSummary {
 type BlockedProfileSummary {
 	address: MySoAddress!
 	displayName: String
-	firstBlockedAt: String!
-	lastBlockedAt: String!
+	firstBlockedAt: Int!
+	lastBlockedAt: Int!
 	profilePhoto: String
 	username: String!
 }
@@ -3458,9 +3458,9 @@ type Platform implements Node {
 	"""
 	blockedProfiles(limit: Int, offset: Int): [PlatformBlockedProfileSummary!]
 	"""
-	When the platform was created (ISO 8601).
+	When the platform was created (epoch milliseconds).
 	"""
-	createdAt: String!
+	createdAt: Int!
 	"""
 	Delegate count for governance.
 	"""
@@ -3578,9 +3578,9 @@ type Platform implements Node {
 	"""
 	treasury: Int
 	"""
-	When the platform was last updated (ISO 8601).
+	When the platform was last updated (epoch milliseconds).
 	"""
-	updatedAt: String!
+	updatedAt: Int!
 	"""
 	Voting period epochs.
 	"""
@@ -3593,7 +3593,7 @@ type Platform implements Node {
 
 type PlatformBlockedProfileSummary {
 	blockedBy: String!
-	createdAt: String!
+	createdAt: Int!
 	"""
 	Profile of the blocked user.
 	"""
@@ -3602,7 +3602,7 @@ type PlatformBlockedProfileSummary {
 }
 
 type PlatformMemberSummary {
-	joinedAt: String!
+	joinedAt: Int!
 	"""
 	Profile of the platform member.
 	"""
@@ -3612,7 +3612,7 @@ type PlatformMemberSummary {
 
 type PlatformMembershipSummary {
 	isApproved: Boolean!
-	joinedAt: String!
+	joinedAt: Int!
 	name: String!
 	platformId: String!
 }
@@ -3623,7 +3623,7 @@ type PlatformModeratorSummary {
 	Profile of the user who added the moderator.
 	"""
 	addedByProfile: ProfileSummary
-	createdAt: String!
+	createdAt: Int!
 	moderatorAddress: MySoAddress!
 	"""
 	Profile of the moderator.
@@ -3826,9 +3826,9 @@ type Profile implements Node {
 	"""
 	coverPhoto: String
 	"""
-	When the profile was created (ISO 8601).
+	When the profile was created (epoch milliseconds).
 	"""
-	createdAt: String
+	createdAt: Int
 	"""
 	Current location.
 	"""
@@ -3966,9 +3966,9 @@ type Profile implements Node {
 	"""
 	sptHoldings(limit: Int, offset: Int): [SptHolding!]
 	"""
-	When the profile was last updated (ISO 8601).
+	When the profile was last updated (epoch milliseconds).
 	"""
-	updatedAt: String
+	updatedAt: Int
 	"""
 	The profile's username.
 	"""
@@ -5869,9 +5869,9 @@ type VestingWallet {
 	"""
 	claimedPercentage: Float!
 	"""
-	When the wallet was created (ISO 8601).
+	When the wallet was created (epoch milliseconds).
 	"""
-	createdAt: String!
+	createdAt: Int!
 	"""
 	Curve factor (1000 = linear).
 	"""

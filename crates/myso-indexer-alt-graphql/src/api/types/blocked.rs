@@ -5,16 +5,10 @@ use std::str::FromStr;
 
 use async_graphql::Context;
 use async_graphql::Object;
-use chrono::DateTime;
 
 use crate::api::resolve_profile::resolve_profile_summary;
 use crate::api::scalars::myso_address::MySoAddress;
 use crate::api::types::profile_summary::ProfileSummary;
-
-fn to_iso8601_utc(dt: chrono::NaiveDateTime) -> String {
-    DateTime::<chrono::Utc>::from_naive_utc_and_offset(dt, chrono::Utc)
-        .to_rfc3339_opts(chrono::SecondsFormat::Millis, true)
-}
 
 #[derive(Clone)]
 pub(crate) struct BlockedProfileSummary {
@@ -58,12 +52,12 @@ impl BlockedProfileSummary {
         self.blocked_profile_photo.as_deref()
     }
 
-    async fn first_blocked_at(&self) -> String {
-        to_iso8601_utc(self.first_blocked_at)
+    async fn first_blocked_at(&self) -> i64 {
+        self.first_blocked_at.and_utc().timestamp_millis()
     }
 
-    async fn last_blocked_at(&self) -> String {
-        to_iso8601_utc(self.last_blocked_at)
+    async fn last_blocked_at(&self) -> i64 {
+        self.last_blocked_at.and_utc().timestamp_millis()
     }
 }
 
@@ -105,8 +99,8 @@ impl BlockedPlatformSummary {
         &self.blocked_by
     }
 
-    async fn created_at(&self) -> String {
-        to_iso8601_utc(self.created_at)
+    async fn created_at(&self) -> i64 {
+        self.created_at.and_utc().timestamp_millis()
     }
 }
 
@@ -145,7 +139,7 @@ impl PlatformBlockedProfileSummary {
         &self.blocked_by
     }
 
-    async fn created_at(&self) -> String {
-        to_iso8601_utc(self.created_at)
+    async fn created_at(&self) -> i64 {
+        self.created_at.and_utc().timestamp_millis()
     }
 }

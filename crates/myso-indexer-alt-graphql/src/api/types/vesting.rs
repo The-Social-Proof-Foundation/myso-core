@@ -5,7 +5,6 @@ use std::str::FromStr;
 
 use async_graphql::Context;
 use async_graphql::Object;
-use chrono::DateTime;
 use myso_indexer_alt_social_reader::{
     VestingLeaderboardEntry as LeaderboardEntryRow, VestingWalletWithStatus as VestingWalletRow,
 };
@@ -13,11 +12,6 @@ use myso_indexer_alt_social_reader::{
 use crate::api::resolve_profile::resolve_profile_summary;
 use crate::api::scalars::myso_address::MySoAddress;
 use crate::api::types::profile_summary::ProfileSummary;
-
-fn to_iso8601_utc(dt: chrono::NaiveDateTime) -> String {
-    DateTime::<chrono::Utc>::from_naive_utc_and_offset(dt, chrono::Utc)
-        .to_rfc3339_opts(chrono::SecondsFormat::Millis, true)
-}
 
 #[derive(Clone)]
 pub(crate) struct VestingWallet {
@@ -103,9 +97,9 @@ impl VestingWallet {
         self.inner.end_time
     }
 
-    /// When the wallet was created (ISO 8601).
-    async fn created_at(&self) -> String {
-        to_iso8601_utc(self.inner.wallet.created_at)
+    /// When the wallet was created (epoch milliseconds).
+    async fn created_at(&self) -> i64 {
+        self.inner.wallet.created_at.and_utc().timestamp_millis()
     }
 
     /// Transaction ID that created the wallet.

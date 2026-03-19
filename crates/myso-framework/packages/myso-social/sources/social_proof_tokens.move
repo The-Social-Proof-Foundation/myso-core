@@ -548,7 +548,7 @@ module social_contracts::social_proof_tokens {
         let reservation_total_fee_bps = DEFAULT_RESERVATION_CREATOR_FEE_BPS + DEFAULT_RESERVATION_PLATFORM_FEE_BPS + DEFAULT_RESERVATION_TREASURY_FEE_BPS;
         event::emit(ConfigUpdatedEvent {
             updated_by: sender,
-            timestamp: tx_context::epoch(ctx),
+            timestamp: tx_context::epoch_timestamp_ms(ctx),
             total_fee_bps,
             trading_creator_fee_bps: DEFAULT_TRADING_CREATOR_FEE_BPS,
             trading_platform_fee_bps: DEFAULT_TRADING_PLATFORM_FEE_BPS,
@@ -665,7 +665,7 @@ module social_contracts::social_proof_tokens {
         // Emit config updated event
         event::emit(ConfigUpdatedEvent {
             updated_by: tx_context::sender(ctx),
-            timestamp: tx_context::epoch(ctx),
+            timestamp: tx_context::epoch_timestamp_ms(ctx),
             total_fee_bps,
             trading_creator_fee_bps,
             trading_platform_fee_bps,
@@ -700,7 +700,7 @@ module social_contracts::social_proof_tokens {
         event::emit(EmergencyKillSwitchEvent {
             admin: tx_context::sender(ctx),
             trading_enabled: enable_trading,
-            timestamp: tx_context::epoch(ctx),
+            timestamp: tx_context::epoch_timestamp_ms(ctx),
             reason: string::utf8(reason),
         });
     }
@@ -782,7 +782,7 @@ module social_contracts::social_proof_tokens {
         // Get post ID and owner from reservation pool
         let post_id = reservation_pool_object.info.associated_id;
         let post_owner = reservation_pool_object.info.owner;
-        let now = tx_context::epoch(ctx);
+        let now = tx_context::epoch_timestamp_ms(ctx);
         
         // Verify reservation pool is for a post
         assert!(reservation_pool_object.info.token_type == TOKEN_TYPE_POST, EInvalidTokenType);
@@ -939,7 +939,7 @@ module social_contracts::social_proof_tokens {
         // Get post ID and owner from reservation pool
         let post_id = reservation_pool_object.info.associated_id;
         let post_owner = reservation_pool_object.info.owner;
-        let now = tx_context::epoch(ctx);
+        let now = tx_context::epoch_timestamp_ms(ctx);
         
         // Verify reservation pool is for a post
         assert!(reservation_pool_object.info.token_type == TOKEN_TYPE_POST, EInvalidTokenType);
@@ -1099,7 +1099,7 @@ module social_contracts::social_proof_tokens {
         // Get profile ID and owner from reservation pool
         let profile_id = reservation_pool_object.info.associated_id;
         let profile_owner = reservation_pool_object.info.owner;
-        let now = tx_context::epoch(ctx);
+        let now = tx_context::epoch_timestamp_ms(ctx);
         
         // Verify reservation pool is for a profile
         assert!(reservation_pool_object.info.token_type == TOKEN_TYPE_PROFILE, EInvalidTokenType);
@@ -1252,7 +1252,7 @@ module social_contracts::social_proof_tokens {
         // Get profile ID and owner from reservation pool
         let profile_id = reservation_pool_object.info.associated_id;
         let profile_owner = reservation_pool_object.info.owner;
-        let now = tx_context::epoch(ctx);
+        let now = tx_context::epoch_timestamp_ms(ctx);
         
         // Verify reservation pool is for a profile
         assert!(reservation_pool_object.info.token_type == TOKEN_TYPE_PROFILE, EInvalidTokenType);
@@ -1398,7 +1398,7 @@ module social_contracts::social_proof_tokens {
     ) {
         let reserver = tx_context::sender(ctx);
         let associated_id = reservation_pool_object.info.associated_id;
-        let now = tx_context::epoch(ctx);
+        let now = tx_context::epoch_timestamp_ms(ctx);
         
         // Prevent withdrawals after conversion to token
         assert!(!reservation_pool_object.converted, EReservationPoolConverted);
@@ -1485,7 +1485,7 @@ module social_contracts::social_proof_tokens {
     ) {
         let reserver = tx_context::sender(ctx);
         let associated_id = reservation_pool_object.info.associated_id;
-        let now = tx_context::epoch(ctx);
+        let now = tx_context::epoch_timestamp_ms(ctx);
         
         // Prevent withdrawals after conversion to token
         assert!(!reservation_pool_object.converted, EReservationPoolConverted);
@@ -1617,7 +1617,7 @@ module social_contracts::social_proof_tokens {
         // Check if reservation pool already exists
         assert!(!table::contains(&registry.reservation_pools, associated_id), ETokenAlreadyExists);
         
-        let now = tx_context::epoch(ctx);
+        let now = tx_context::epoch_timestamp_ms(ctx);
         let required_threshold = config.post_threshold;
         
         // Create reservation pool info (without reservers vector - only in ReservationPoolObject)
@@ -1690,7 +1690,7 @@ module social_contracts::social_proof_tokens {
         // Check if reservation pool already exists
         assert!(!table::contains(&registry.reservation_pools, associated_id), ETokenAlreadyExists);
         
-        let now = tx_context::epoch(ctx);
+        let now = tx_context::epoch_timestamp_ms(ctx);
         let required_threshold = config.profile_threshold;
         
         // Create reservation pool info (without reservers vector - only in ReservationPoolObject)
@@ -1821,7 +1821,7 @@ module social_contracts::social_proof_tokens {
             circulating_supply: initial_token_supply,
             base_price: config.base_price,
             quadratic_coefficient: config.quadratic_coefficient,
-            created_at: tx_context::epoch(ctx),
+            created_at: tx_context::epoch_timestamp_ms(ctx),
         };
         
         // Create token pool
@@ -2002,7 +2002,7 @@ module social_contracts::social_proof_tokens {
             redirect_to,
             redirect_percentage,
             updated_by: caller,
-            timestamp: tx_context::epoch(ctx),
+            timestamp: tx_context::epoch_timestamp_ms(ctx),
         });
     }
 

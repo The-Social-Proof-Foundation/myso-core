@@ -161,8 +161,8 @@ pub struct ProfileByAddressResponse {
     pub profile_photo: Option<String>,
     pub cover_photo: Option<String>,
     pub website: Option<String>,
-    pub created_at: Option<String>,
-    pub updated_at: Option<String>,
+    pub created_at: Option<i64>,
+    pub updated_at: Option<i64>,
     pub followers_count: i32,
     pub following_count: i32,
     pub post_count: i32,
@@ -195,11 +195,6 @@ pub struct ProfileByAddressResponse {
     pub selected_ecosystem_badge_id: Option<String>,
 }
 
-fn to_iso8601_utc(dt: chrono::NaiveDateTime) -> String {
-    chrono::DateTime::<chrono::Utc>::from_naive_utc_and_offset(dt, chrono::Utc)
-        .to_rfc3339_opts(chrono::SecondsFormat::Millis, true)
-}
-
 impl From<myso_indexer_alt_social_schema::models::Profile> for ProfileByAddressResponse {
     fn from(p: myso_indexer_alt_social_schema::models::Profile) -> Self {
         Self {
@@ -212,8 +207,8 @@ impl From<myso_indexer_alt_social_schema::models::Profile> for ProfileByAddressR
             profile_photo: p.profile_photo,
             cover_photo: p.cover_photo,
             website: p.website,
-            created_at: Some(to_iso8601_utc(p.created_at)),
-            updated_at: Some(to_iso8601_utc(p.updated_at)),
+            created_at: Some(p.created_at.and_utc().timestamp_millis()),
+            updated_at: Some(p.updated_at.and_utc().timestamp_millis()),
             followers_count: p.followers_count,
             following_count: p.following_count,
             post_count: p.post_count,
@@ -323,8 +318,8 @@ pub struct WalletOnlyProfile {
     pub blocked_count: i32,
     pub post_count: i32,
     pub min_offer_amount: Option<i64>,
-    pub created_at: Option<String>,
-    pub updated_at: Option<String>,
+    pub created_at: Option<i64>,
+    pub updated_at: Option<i64>,
     pub birthdate: Option<String>,
     pub current_location: Option<String>,
     pub raised_location: Option<String>,
@@ -375,8 +370,8 @@ impl WalletOnlyProfile {
             blocked_count,
             post_count: 0,
             min_offer_amount: None,
-            created_at: created_at.map(to_iso8601_utc),
-            updated_at: updated_at.map(to_iso8601_utc),
+            created_at: created_at.map(|dt| dt.and_utc().timestamp_millis()),
+            updated_at: updated_at.map(|dt| dt.and_utc().timestamp_millis()),
             birthdate: None,
             current_location: None,
             raised_location: None,

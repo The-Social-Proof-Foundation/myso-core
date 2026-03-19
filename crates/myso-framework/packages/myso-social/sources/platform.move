@@ -328,7 +328,7 @@ module social_contracts::platform {
         
         let platform_id = object::new(ctx);
         let developer = tx_context::sender(ctx);
-        let now = tx_context::epoch(ctx);
+        let now = tx_context::epoch_timestamp_ms(ctx);
 
         // Check if platform name is already taken
         assert!(!table::contains(&registry.platforms_by_name, name), EPlatformAlreadyExists);
@@ -537,7 +537,7 @@ module social_contracts::platform {
         // Check version compatibility
         assert!(platform.version == upgrade::current_version(), EWrongVersion);
         
-        let now = tx_context::epoch(ctx);
+        let now = tx_context::epoch_timestamp_ms(ctx);
 
         // Verify caller is platform developer
         assert!(platform.developer == tx_context::sender(ctx), EUnauthorized);
@@ -1287,7 +1287,7 @@ module social_contracts::platform {
         assert!(string::length(&badge_icon_url) > 0 && string::length(&badge_icon_url) <= MAX_BADGE_ICON_URL_LENGTH, EBadgeIconUrlTooLong);
         
         // Get current time
-        let now = tx_context::epoch(ctx);
+        let now = tx_context::epoch_timestamp_ms(ctx);
         
         // Create a unique badge ID by including platform ID to prevent collisions
         let mut badge_id = string::utf8(b"badge_");
@@ -1333,7 +1333,7 @@ module social_contracts::platform {
         assert!(is_approved(platform_registry, platform_id), EUnauthorized);
         
         // Get current time
-        let now = tx_context::epoch(ctx);
+        let now = tx_context::epoch_timestamp_ms(ctx);
         
         // Remove the badge directly from the profile
         profile::remove_badge_from_profile(

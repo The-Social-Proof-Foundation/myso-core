@@ -2009,7 +2009,7 @@ Bootstrap initialization function - creates the social proof tokens configuratio
     <b>let</b> reservation_total_fee_bps = <a href="../social_contracts/social_proof_tokens.md#social_contracts_social_proof_tokens_DEFAULT_RESERVATION_CREATOR_FEE_BPS">DEFAULT_RESERVATION_CREATOR_FEE_BPS</a> + <a href="../social_contracts/social_proof_tokens.md#social_contracts_social_proof_tokens_DEFAULT_RESERVATION_PLATFORM_FEE_BPS">DEFAULT_RESERVATION_PLATFORM_FEE_BPS</a> + <a href="../social_contracts/social_proof_tokens.md#social_contracts_social_proof_tokens_DEFAULT_RESERVATION_TREASURY_FEE_BPS">DEFAULT_RESERVATION_TREASURY_FEE_BPS</a>;
     event::emit(<a href="../social_contracts/social_proof_tokens.md#social_contracts_social_proof_tokens_ConfigUpdatedEvent">ConfigUpdatedEvent</a> {
         updated_by: sender,
-        timestamp: tx_context::epoch(ctx),
+        timestamp: tx_context::epoch_timestamp_ms(ctx),
         total_fee_bps,
         trading_creator_fee_bps: <a href="../social_contracts/social_proof_tokens.md#social_contracts_social_proof_tokens_DEFAULT_TRADING_CREATOR_FEE_BPS">DEFAULT_TRADING_CREATOR_FEE_BPS</a>,
         trading_platform_fee_bps: <a href="../social_contracts/social_proof_tokens.md#social_contracts_social_proof_tokens_DEFAULT_TRADING_PLATFORM_FEE_BPS">DEFAULT_TRADING_PLATFORM_FEE_BPS</a>,
@@ -2127,7 +2127,7 @@ Update social proof tokens configuration
     // Emit config updated event
     event::emit(<a href="../social_contracts/social_proof_tokens.md#social_contracts_social_proof_tokens_ConfigUpdatedEvent">ConfigUpdatedEvent</a> {
         updated_by: tx_context::sender(ctx),
-        timestamp: tx_context::epoch(ctx),
+        timestamp: tx_context::epoch_timestamp_ms(ctx),
         total_fee_bps,
         trading_creator_fee_bps,
         trading_platform_fee_bps,
@@ -2181,7 +2181,7 @@ This function can immediately enable or halt all trading on the platform
     event::emit(<a href="../social_contracts/social_proof_tokens.md#social_contracts_social_proof_tokens_EmergencyKillSwitchEvent">EmergencyKillSwitchEvent</a> {
         admin: tx_context::sender(ctx),
         trading_enabled: enable_trading,
-        timestamp: tx_context::epoch(ctx),
+        timestamp: tx_context::epoch_timestamp_ms(ctx),
         reason: string::utf8(reason),
     });
 }
@@ -2418,7 +2418,7 @@ Non-platform version: platform fees go to ecosystem treasury
     // Get <a href="../social_contracts/post.md#social_contracts_post">post</a> ID and owner from reservation pool
     <b>let</b> post_id = reservation_pool_object.info.associated_id;
     <b>let</b> post_owner = reservation_pool_object.info.owner;
-    <b>let</b> now = tx_context::epoch(ctx);
+    <b>let</b> now = tx_context::epoch_timestamp_ms(ctx);
     // Verify reservation pool is <b>for</b> a <a href="../social_contracts/post.md#social_contracts_post">post</a>
     <b>assert</b>!(reservation_pool_object.info.token_type == <a href="../social_contracts/social_proof_tokens.md#social_contracts_social_proof_tokens_TOKEN_TYPE_POST">TOKEN_TYPE_POST</a>, <a href="../social_contracts/social_proof_tokens.md#social_contracts_social_proof_tokens_EInvalidTokenType">EInvalidTokenType</a>);
     // Verify <a href="../social_contracts/post.md#social_contracts_post">post</a> matches reservation pool
@@ -2575,7 +2575,7 @@ Platform version: platform fees go to platform treasury, includes platform valid
     // Get <a href="../social_contracts/post.md#social_contracts_post">post</a> ID and owner from reservation pool
     <b>let</b> post_id = reservation_pool_object.info.associated_id;
     <b>let</b> post_owner = reservation_pool_object.info.owner;
-    <b>let</b> now = tx_context::epoch(ctx);
+    <b>let</b> now = tx_context::epoch_timestamp_ms(ctx);
     // Verify reservation pool is <b>for</b> a <a href="../social_contracts/post.md#social_contracts_post">post</a>
     <b>assert</b>!(reservation_pool_object.info.token_type == <a href="../social_contracts/social_proof_tokens.md#social_contracts_social_proof_tokens_TOKEN_TYPE_POST">TOKEN_TYPE_POST</a>, <a href="../social_contracts/social_proof_tokens.md#social_contracts_social_proof_tokens_EInvalidTokenType">EInvalidTokenType</a>);
     // Verify <a href="../social_contracts/post.md#social_contracts_post">post</a> matches reservation pool
@@ -2735,7 +2735,7 @@ Anyone can call this function - the profile owner is stored in the reservation p
     // Get <a href="../social_contracts/profile.md#social_contracts_profile">profile</a> ID and owner from reservation pool
     <b>let</b> profile_id = reservation_pool_object.info.associated_id;
     <b>let</b> profile_owner = reservation_pool_object.info.owner;
-    <b>let</b> now = tx_context::epoch(ctx);
+    <b>let</b> now = tx_context::epoch_timestamp_ms(ctx);
     // Verify reservation pool is <b>for</b> a <a href="../social_contracts/profile.md#social_contracts_profile">profile</a>
     <b>assert</b>!(reservation_pool_object.info.token_type == <a href="../social_contracts/social_proof_tokens.md#social_contracts_social_proof_tokens_TOKEN_TYPE_PROFILE">TOKEN_TYPE_PROFILE</a>, <a href="../social_contracts/social_proof_tokens.md#social_contracts_social_proof_tokens_EInvalidTokenType">EInvalidTokenType</a>);
     // Ensure reserver <b>has</b> enough funds
@@ -2889,7 +2889,7 @@ Anyone can call this function - the profile owner is stored in the reservation p
     // Get <a href="../social_contracts/profile.md#social_contracts_profile">profile</a> ID and owner from reservation pool
     <b>let</b> profile_id = reservation_pool_object.info.associated_id;
     <b>let</b> profile_owner = reservation_pool_object.info.owner;
-    <b>let</b> now = tx_context::epoch(ctx);
+    <b>let</b> now = tx_context::epoch_timestamp_ms(ctx);
     // Verify reservation pool is <b>for</b> a <a href="../social_contracts/profile.md#social_contracts_profile">profile</a>
     <b>assert</b>!(reservation_pool_object.info.token_type == <a href="../social_contracts/social_proof_tokens.md#social_contracts_social_proof_tokens_TOKEN_TYPE_PROFILE">TOKEN_TYPE_PROFILE</a>, <a href="../social_contracts/social_proof_tokens.md#social_contracts_social_proof_tokens_EInvalidTokenType">EInvalidTokenType</a>);
     // Ensure reserver <b>has</b> enough funds
@@ -3038,7 +3038,7 @@ Non-platform version: platform fees go to ecosystem treasury
 ) {
     <b>let</b> reserver = tx_context::sender(ctx);
     <b>let</b> associated_id = reservation_pool_object.info.associated_id;
-    <b>let</b> now = tx_context::epoch(ctx);
+    <b>let</b> now = tx_context::epoch_timestamp_ms(ctx);
     // Prevent withdrawals after conversion to token
     <b>assert</b>!(!reservation_pool_object.converted, <a href="../social_contracts/social_proof_tokens.md#social_contracts_social_proof_tokens_EReservationPoolConverted">EReservationPoolConverted</a>);
     // Validate amount is positive
@@ -3132,7 +3132,7 @@ Platform version: platform fees go to platform treasury
 ) {
     <b>let</b> reserver = tx_context::sender(ctx);
     <b>let</b> associated_id = reservation_pool_object.info.associated_id;
-    <b>let</b> now = tx_context::epoch(ctx);
+    <b>let</b> now = tx_context::epoch_timestamp_ms(ctx);
     // Prevent withdrawals after conversion to token
     <b>assert</b>!(!reservation_pool_object.converted, <a href="../social_contracts/social_proof_tokens.md#social_contracts_social_proof_tokens_EReservationPoolConverted">EReservationPoolConverted</a>);
     // Validate amount is positive
@@ -3261,7 +3261,7 @@ Create a new reservation pool for a post
     <b>assert</b>!(associated_id == <a href="../social_contracts/post.md#social_contracts_post_get_id_address">post::get_id_address</a>(<a href="../social_contracts/post.md#social_contracts_post">post</a>), <a href="../social_contracts/social_proof_tokens.md#social_contracts_social_proof_tokens_EInvalidID">EInvalidID</a>);
     // Check <b>if</b> reservation pool already exists
     <b>assert</b>!(!table::contains(&registry.reservation_pools, associated_id), <a href="../social_contracts/social_proof_tokens.md#social_contracts_social_proof_tokens_ETokenAlreadyExists">ETokenAlreadyExists</a>);
-    <b>let</b> now = tx_context::epoch(ctx);
+    <b>let</b> now = tx_context::epoch_timestamp_ms(ctx);
     <b>let</b> required_threshold = config.post_threshold;
     // Create reservation pool info (without reservers vector - only in <a href="../social_contracts/social_proof_tokens.md#social_contracts_social_proof_tokens_ReservationPoolObject">ReservationPoolObject</a>)
     <b>let</b> reservation_pool = <a href="../social_contracts/social_proof_tokens.md#social_contracts_social_proof_tokens_ReservationPool">ReservationPool</a> {
@@ -3343,7 +3343,7 @@ Create a new reservation pool for a profile
     <b>assert</b>!(associated_id == <a href="../social_contracts/profile.md#social_contracts_profile_get_id_address">profile::get_id_address</a>(<a href="../social_contracts/profile.md#social_contracts_profile">profile</a>), <a href="../social_contracts/social_proof_tokens.md#social_contracts_social_proof_tokens_EInvalidID">EInvalidID</a>);
     // Check <b>if</b> reservation pool already exists
     <b>assert</b>!(!table::contains(&registry.reservation_pools, associated_id), <a href="../social_contracts/social_proof_tokens.md#social_contracts_social_proof_tokens_ETokenAlreadyExists">ETokenAlreadyExists</a>);
-    <b>let</b> now = tx_context::epoch(ctx);
+    <b>let</b> now = tx_context::epoch_timestamp_ms(ctx);
     <b>let</b> required_threshold = config.profile_threshold;
     // Create reservation pool info (without reservers vector - only in <a href="../social_contracts/social_proof_tokens.md#social_contracts_social_proof_tokens_ReservationPoolObject">ReservationPoolObject</a>)
     <b>let</b> reservation_pool = <a href="../social_contracts/social_proof_tokens.md#social_contracts_social_proof_tokens_ReservationPool">ReservationPool</a> {
@@ -3498,7 +3498,7 @@ This replaces the auction system - only the post/profile owner can call this
         circulating_supply: initial_token_supply,
         base_price: config.base_price,
         quadratic_coefficient: config.quadratic_coefficient,
-        created_at: tx_context::epoch(ctx),
+        created_at: tx_context::epoch_timestamp_ms(ctx),
     };
     // Create token pool
     <b>let</b> pool_id = object::new(ctx);
@@ -3670,7 +3670,7 @@ This function copies PoC data from a post into the corresponding token pool
         redirect_to,
         redirect_percentage,
         updated_by: caller,
-        timestamp: tx_context::epoch(ctx),
+        timestamp: tx_context::epoch_timestamp_ms(ctx),
     });
 }
 </code></pre>

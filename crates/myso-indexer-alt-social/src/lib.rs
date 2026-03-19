@@ -91,3 +91,18 @@ pub async fn setup_social_indexer(
 
     Ok(s_indexer.attach(s_metrics))
 }
+
+/// Threshold: values below this are likely epoch seconds (e.g. year 2001+ in seconds).
+/// Values at or above are likely epoch milliseconds.
+const LIKELY_SECONDS_THRESHOLD: i64 = 1_000_000_000_000;
+
+/// Normalize a timestamp to epoch milliseconds.
+/// Use when parsing event payloads that may contain either seconds (pre-upgrade) or ms (post-upgrade).
+/// If `from_seconds` is true and value is below threshold, multiplies by 1000.
+pub fn ensure_epoch_ms(value: i64, from_seconds: bool) -> i64 {
+    if from_seconds && value > 0 && value < LIKELY_SECONDS_THRESHOLD {
+        value.saturating_mul(1000)
+    } else {
+        value
+    }
+}

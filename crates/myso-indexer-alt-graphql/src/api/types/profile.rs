@@ -5,7 +5,6 @@ use std::str::FromStr;
 
 use async_graphql::Context;
 use async_graphql::Object;
-use chrono::DateTime;
 use myso_indexer_alt_social_reader::{
     ProfileBadgeRow, ProfileByAddressResponse, ReservationStatus, SelectedBadgeInfo,
     SocialProofTokenInfo,
@@ -21,11 +20,6 @@ use crate::api::types::profile_summary::ProfileSummary;
 use crate::api::types::mydata::MyDataRecord;
 use crate::api::types::spt::{SptHolding, SptReservationHolding};
 use crate::api::types::vesting::VestingWallet;
-
-fn to_iso8601_utc(dt: chrono::NaiveDateTime) -> String {
-    DateTime::<chrono::Utc>::from_naive_utc_and_offset(dt, chrono::Utc)
-        .to_rfc3339_opts(chrono::SecondsFormat::Millis, true)
-}
 
 #[derive(Clone)]
 pub(crate) struct Profile {
@@ -52,8 +46,8 @@ impl Profile {
             profile_photo: inner.profile_photo,
             cover_photo: inner.cover_photo,
             website: inner.website,
-            created_at: Some(to_iso8601_utc(inner.created_at)),
-            updated_at: Some(to_iso8601_utc(inner.updated_at)),
+            created_at: Some(inner.created_at.and_utc().timestamp_millis()),
+            updated_at: Some(inner.updated_at.and_utc().timestamp_millis()),
             followers_count: inner.followers_count,
             following_count: inner.following_count,
             post_count: inner.post_count,
@@ -136,14 +130,14 @@ impl Profile {
         self.inner.website.as_deref()
     }
 
-    /// When the profile was created (ISO 8601).
-    async fn created_at(&self) -> Option<&str> {
-        self.inner.created_at.as_deref()
+    /// When the profile was created (epoch milliseconds).
+    async fn created_at(&self) -> Option<i64> {
+        self.inner.created_at
     }
 
-    /// When the profile was last updated (ISO 8601).
-    async fn updated_at(&self) -> Option<&str> {
-        self.inner.updated_at.as_deref()
+    /// When the profile was last updated (epoch milliseconds).
+    async fn updated_at(&self) -> Option<i64> {
+        self.inner.updated_at
     }
 
     /// The profile ID (object address).

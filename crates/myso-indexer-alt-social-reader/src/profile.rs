@@ -86,8 +86,8 @@ pub struct ProfileByAddressResponse {
     pub profile_photo: Option<String>,
     pub cover_photo: Option<String>,
     pub website: Option<String>,
-    pub created_at: Option<String>,
-    pub updated_at: Option<String>,
+    pub created_at: Option<i64>,
+    pub updated_at: Option<i64>,
     pub followers_count: i32,
     pub following_count: i32,
     pub post_count: i32,
@@ -116,11 +116,6 @@ pub struct ProfileByAddressResponse {
     pub selected_badge: Option<SelectedBadgeInfo>,
     pub selected_badge_id: Option<String>,
     pub selected_ecosystem_badge_id: Option<String>,
-}
-
-fn to_iso8601_utc(dt: chrono::NaiveDateTime) -> String {
-    chrono::DateTime::<chrono::Utc>::from_naive_utc_and_offset(dt, chrono::Utc)
-        .to_rfc3339_opts(chrono::SecondsFormat::Millis, true)
 }
 
 async fn enrich_users_with_universal_data(
@@ -490,8 +485,8 @@ pub(crate) async fn get_profile_or_wallet_by_address(
                     profile_photo: None,
                     cover_photo: None,
                     website: None,
-                    created_at: Some(to_iso8601_utc(created_at)),
-                    updated_at: Some(to_iso8601_utc(updated_at)),
+        created_at: Some(created_at.and_utc().timestamp_millis()),
+        updated_at: Some(updated_at.and_utc().timestamp_millis()),
                     followers_count: fc,
                     following_count: fg,
                     post_count: 0,
@@ -580,8 +575,8 @@ fn profile_to_response(p: Profile) -> ProfileByAddressResponse {
         profile_photo: p.profile_photo,
         cover_photo: p.cover_photo,
         website: p.website,
-        created_at: Some(to_iso8601_utc(p.created_at)),
-        updated_at: Some(to_iso8601_utc(p.updated_at)),
+        created_at: Some(p.created_at.and_utc().timestamp_millis()),
+        updated_at: Some(p.updated_at.and_utc().timestamp_millis()),
         followers_count: p.followers_count,
         following_count: p.following_count,
         post_count: p.post_count,

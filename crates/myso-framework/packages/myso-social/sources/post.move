@@ -754,7 +754,7 @@ module social_contracts::post {
             metadata_json,
             post_type,
             parent_post_id,
-            created_at: tx_context::epoch(ctx),
+            created_at: tx_context::epoch_timestamp_ms(ctx),
             reaction_count: 0,
             comment_count: 0,
             repost_count: 0,
@@ -1047,7 +1047,7 @@ module social_contracts::post {
             media: media_option,
             mentions,
             metadata_json,
-            created_at: tx_context::epoch(ctx),
+            created_at: tx_context::epoch_timestamp_ms(ctx),
             reaction_count: 0,
             comment_count: 0,
             repost_count: 0,
@@ -1203,7 +1203,7 @@ module social_contracts::post {
                 is_original_post: true,
                 owner,
                 profile_id,
-                created_at: tx_context::epoch(ctx),
+                created_at: tx_context::epoch_timestamp_ms(ctx),
                 version: upgrade::current_version(),
             };
             
@@ -1337,7 +1337,7 @@ module social_contracts::post {
             owner: post.owner,
             profile_id: post.profile_id,
             post_type: post.post_type,
-            deleted_at: tx_context::epoch(ctx)
+            deleted_at: tx_context::epoch_timestamp_ms(ctx)
         });
         
         // Extract UID to delete the post object
@@ -1403,7 +1403,7 @@ module social_contracts::post {
             post_id,
             owner: comment.owner,
             profile_id: comment.profile_id,
-            deleted_at: tx_context::epoch(ctx)
+            deleted_at: tx_context::epoch_timestamp_ms(ctx)
         });
         
         // Extract UID to delete the comment object
@@ -2078,7 +2078,7 @@ module social_contracts::post {
             profile_id: post.profile_id,
             content: post.content,
             metadata_json: post.metadata_json,
-            updated_at: tx_context::epoch(ctx),
+            updated_at: tx_context::epoch_timestamp_ms(ctx),
         });
     }
 
@@ -2114,7 +2114,7 @@ module social_contracts::post {
             owner: comment.owner,
             profile_id: comment.profile_id,
             content: comment.content,
-            updated_at: tx_context::epoch(ctx),
+            updated_at: tx_context::epoch_timestamp_ms(ctx),
         });
     }
 
@@ -2150,7 +2150,7 @@ module social_contracts::post {
             reporter,
             reason_code,
             description,
-            reported_at: tx_context::epoch(ctx),
+            reported_at: tx_context::epoch_timestamp_ms(ctx),
         });
     }
 
@@ -2186,7 +2186,7 @@ module social_contracts::post {
             reporter,
             reason_code,
             description,
-            reported_at: tx_context::epoch(ctx),
+            reported_at: tx_context::epoch_timestamp_ms(ctx),
         });
     }
 
@@ -2543,7 +2543,7 @@ module social_contracts::post {
             media: option::none(),
             mentions: option::none(),
             metadata_json: option::none(),
-            created_at: tx_context::epoch(ctx),
+            created_at: tx_context::epoch_timestamp_ms(ctx),
             reaction_count: 0,
             comment_count: 0,
             repost_count: 0,

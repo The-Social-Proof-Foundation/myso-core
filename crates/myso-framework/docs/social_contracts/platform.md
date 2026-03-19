@@ -1607,7 +1607,7 @@ Create a new platform and transfer to developer
     <b>assert</b>!(registry.version == <a href="../social_contracts/upgrade.md#social_contracts_upgrade_current_version">upgrade::current_version</a>(), <a href="../social_contracts/platform.md#social_contracts_platform_EWrongVersion">EWrongVersion</a>);
     <b>let</b> platform_id = object::new(ctx);
     <b>let</b> <a href="../social_contracts/platform.md#social_contracts_platform_developer">developer</a> = tx_context::sender(ctx);
-    <b>let</b> now = tx_context::epoch(ctx);
+    <b>let</b> now = tx_context::epoch_timestamp_ms(ctx);
     // Check <b>if</b> <a href="../social_contracts/platform.md#social_contracts_platform">platform</a> <a href="../social_contracts/platform.md#social_contracts_platform_name">name</a> is already taken
     <b>assert</b>!(!table::contains(&registry.platforms_by_name, <a href="../social_contracts/platform.md#social_contracts_platform_name">name</a>), <a href="../social_contracts/platform.md#social_contracts_platform_EPlatformAlreadyExists">EPlatformAlreadyExists</a>);
     // Validate primary category
@@ -1811,7 +1811,7 @@ Update platform information
 ) {
     // Check version compatibility
     <b>assert</b>!(<a href="../social_contracts/platform.md#social_contracts_platform">platform</a>.version == <a href="../social_contracts/upgrade.md#social_contracts_upgrade_current_version">upgrade::current_version</a>(), <a href="../social_contracts/platform.md#social_contracts_platform_EWrongVersion">EWrongVersion</a>);
-    <b>let</b> now = tx_context::epoch(ctx);
+    <b>let</b> now = tx_context::epoch_timestamp_ms(ctx);
     // Verify caller is <a href="../social_contracts/platform.md#social_contracts_platform">platform</a> <a href="../social_contracts/platform.md#social_contracts_platform_developer">developer</a>
     <b>assert</b>!(<a href="../social_contracts/platform.md#social_contracts_platform">platform</a>.<a href="../social_contracts/platform.md#social_contracts_platform_developer">developer</a> == tx_context::sender(ctx), <a href="../social_contracts/platform.md#social_contracts_platform_EUnauthorized">EUnauthorized</a>);
     // Validate primary category
@@ -3404,7 +3404,7 @@ This is the primary entry point for badge assignment
     <b>assert</b>!(string::length(&badge_media_url) &gt; 0 && string::length(&badge_media_url) &lt;= <a href="../social_contracts/platform.md#social_contracts_platform_MAX_BADGE_MEDIA_URL_LENGTH">MAX_BADGE_MEDIA_URL_LENGTH</a>, <a href="../social_contracts/platform.md#social_contracts_platform_EBadgeMediaUrlTooLong">EBadgeMediaUrlTooLong</a>);
     <b>assert</b>!(string::length(&badge_icon_url) &gt; 0 && string::length(&badge_icon_url) &lt;= <a href="../social_contracts/platform.md#social_contracts_platform_MAX_BADGE_ICON_URL_LENGTH">MAX_BADGE_ICON_URL_LENGTH</a>, <a href="../social_contracts/platform.md#social_contracts_platform_EBadgeIconUrlTooLong">EBadgeIconUrlTooLong</a>);
     // Get current time
-    <b>let</b> now = tx_context::epoch(ctx);
+    <b>let</b> now = tx_context::epoch_timestamp_ms(ctx);
     // Create a unique badge ID by including <a href="../social_contracts/platform.md#social_contracts_platform">platform</a> ID to prevent collisions
     <b>let</b> <b>mut</b> badge_id = string::utf8(b"badge_");
     // Convert <a href="../social_contracts/platform.md#social_contracts_platform">platform</a> ID to hex string and append to ensure uniqueness
@@ -3465,7 +3465,7 @@ This is the primary entry point for badge revocation
     <b>let</b> platform_id = object::uid_to_address(&<a href="../social_contracts/platform.md#social_contracts_platform">platform</a>.<a href="../social_contracts/platform.md#social_contracts_platform_id">id</a>);
     <b>assert</b>!(<a href="../social_contracts/platform.md#social_contracts_platform_is_approved">is_approved</a>(platform_registry, platform_id), <a href="../social_contracts/platform.md#social_contracts_platform_EUnauthorized">EUnauthorized</a>);
     // Get current time
-    <b>let</b> now = tx_context::epoch(ctx);
+    <b>let</b> now = tx_context::epoch_timestamp_ms(ctx);
     // Remove the badge directly from the <a href="../social_contracts/profile.md#social_contracts_profile">profile</a>
     <a href="../social_contracts/profile.md#social_contracts_profile_remove_badge_from_profile">profile::remove_badge_from_profile</a>(
         <a href="../social_contracts/profile.md#social_contracts_profile">profile</a>,

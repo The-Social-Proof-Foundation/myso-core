@@ -1868,6 +1868,9 @@ Profile.vestingWallets
 Profile.sptHoldings
   => {}
 
+Profile.reservationHoldings
+  => {}
+
 Profile.mydataRecords
   => {}
 
@@ -2657,6 +2660,9 @@ SptPool.transactions
 SptPool.priceHistory
   => {}
 
+SptPool.holders
+  => {}
+
 SptPriceHistory.poolId
   => {}
 
@@ -2670,6 +2676,30 @@ SptPriceHistory.timestamp
   => {}
 
 SptPriceHistory.transactionId
+  => {}
+
+SptReservationHolding.poolId
+  => {}
+
+SptReservationHolding.amount
+  => {}
+
+SptReservationHolding.reservedAt
+  => {}
+
+SptReservationHolding.profile
+  => {}
+
+SptReservationHolding.thresholdMet
+  => {}
+
+SptReservationHolding.poolStatus
+  => {}
+
+SptReservationHolding.totalReserved
+  => {}
+
+SptReservationHolding.requiredThreshold
   => {}
 
 SptTransaction.type
