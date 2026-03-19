@@ -207,6 +207,30 @@ enum AddressTransactionRelationship {
 	AFFECTED
 }
 
+type AnonymousVote {
+	decryptionStatus: Int!
+	processingSuccess: Boolean!
+	proposalId: String!
+	submittedAt: Int!
+	voterAddress: MySoAddress!
+}
+
+type AnonymousVotingStats {
+	anonymousVotesAgainst: Int!
+	anonymousVotesFor: Int!
+	failedDecryptions: Int!
+	pendingDecryption: Int!
+	successfullyDecrypted: Int!
+	totalAnonymousVotes: Int!
+}
+
+type AnonymousVotingTrend {
+	day: String!
+	failedDecryptions: Int!
+	successfulDecryptions: Int!
+	totalVotes: Int!
+}
+
 """
 System transaction for creating the on-chain state used by zkLogin.
 """
@@ -843,6 +867,15 @@ type CommentSummary {
 	reactionCount: Int!
 }
 
+type CommunityVote {
+	approve: Boolean!
+	proposalId: String!
+	voteCost: Int!
+	voteTime: Int!
+	voteWeight: Int!
+	voterAddress: MySoAddress!
+}
+
 """
 Object is exclusively owned by a single adderss and sequenced via consensus.
 """
@@ -963,6 +996,10 @@ type Delegate {
 	"""
 	isActive: Boolean!
 	"""
+	Proposals on which this delegate has voted.
+	"""
+	proposals: [Proposal!]
+	"""
 	Proposals reviewed.
 	"""
 	proposalsReviewed: Int!
@@ -971,9 +1008,21 @@ type Delegate {
 	"""
 	proposalsSubmitted: Int!
 	"""
+	Delegate ratings (upvotes/downvotes) for this delegate (paginated).
+	"""
+	ratings(limit: Int, offset: Int): [DelegateRating!]
+	"""
 	Registry type (0=ecosystem, 1=proof of creativity, 2=platform).
 	"""
 	registryType: Int!
+	"""
+	Proposals on which the delegate sided with the losing outcome.
+	"""
+	sidedLosingProposals: Int!
+	"""
+	Proposals on which the delegate sided with the winning outcome.
+	"""
+	sidedWinningProposals: Int!
 	"""
 	Term end (epoch).
 	"""
@@ -986,6 +1035,23 @@ type Delegate {
 	Upvotes (delegate ratings).
 	"""
 	upvotes: Int!
+}
+
+type DelegateRating {
+	isActiveDelegate: Boolean!
+	ratedAt: Int!
+	registryType: Int!
+	targetAddress: MySoAddress!
+	upvote: Boolean!
+	voterAddress: MySoAddress!
+}
+
+type DelegateVote {
+	approve: Boolean!
+	delegateAddress: MySoAddress!
+	proposalId: String!
+	reason: String
+	voteTime: Int!
 }
 
 """
@@ -1654,6 +1720,15 @@ type GenesisTransaction {
 	objects(first: Int, after: String, last: Int, before: String): ObjectConnection
 }
 
+type GovernanceEvent {
+	createdAt: Int!
+	eventData: JSON!
+	eventId: String!
+	eventType: String!
+	id: Int!
+	registryType: Int!
+}
+
 type GovernanceRegistry {
 	"""
 	Voting configuration (term, costs, quorum, etc.).
@@ -1695,9 +1770,17 @@ type GovernanceRegistryConfig {
 	"""
 	maxVotesPerUser: Int!
 	"""
+	Minimum on-chain age in days to submit proposals.
+	"""
+	minOnChainAgeDays: Int!
+	"""
 	Cost to submit a proposal.
 	"""
 	proposalSubmissionCost: Int!
+	"""
+	Quadratic base cost for additional votes.
+	"""
+	quadraticBaseCost: Int!
 	"""
 	Quorum votes required.
 	"""
@@ -1925,6 +2008,41 @@ type Input {
 	The index of the input.
 	"""
 	ix: Int
+}
+
+type InsuranceConfig {
+	"""
+	Whether insurance is enabled.
+	"""
+	enableFlag: Boolean!
+	"""
+	Fee in basis points.
+	"""
+	feeBps: Int!
+	"""
+	Maximum coverage in basis points.
+	"""
+	maxCoverageBps: Int!
+	"""
+	Maximum policy duration in milliseconds.
+	"""
+	maxDurationMs: Int!
+	"""
+	Minimum coverage in basis points.
+	"""
+	minCoverageBps: Int!
+	"""
+	Last updated timestamp (epoch milliseconds).
+	"""
+	timestampMs: Int!
+	"""
+	Address that last updated the configuration.
+	"""
+	updatedBy: String!
+	"""
+	Configuration version.
+	"""
+	version: Int!
 }
 
 type InsurancePolicy {
@@ -2946,6 +3064,33 @@ type Mutation {
 	executeTransaction(transactionDataBcs: Base64!, signatures: [Base64!]!): ExecutionResult!
 }
 
+type MyDataConfig {
+	"""
+	Whether MyData marketplace is enabled.
+	"""
+	enableFlag: Boolean!
+	"""
+	Maximum free access grants.
+	"""
+	maxFreeAccessGrants: Int!
+	"""
+	Maximum subscription duration in days.
+	"""
+	maxSubscriptionDays: Int!
+	"""
+	Maximum tags per record.
+	"""
+	maxTags: Int!
+	"""
+	Last updated timestamp (epoch milliseconds).
+	"""
+	timestampMs: Int!
+	"""
+	Address that last updated the configuration.
+	"""
+	updatedBy: String!
+}
+
 type MyDataPurchase {
 	"""
 	Buyer address.
@@ -3713,6 +3858,165 @@ type PlatformRevenueSummary {
 	totalTransactions: Int!
 }
 
+type PocAnalysisResult {
+	"""
+	When the analysis was performed (epoch milliseconds).
+	"""
+	analysisTimestamp: Int!
+	"""
+	Highest similarity score from the analysis (0-100).
+	"""
+	highestSimilarityScore: Int!
+	"""
+	Media type analyzed (1=image, 2=video, 3=audio).
+	"""
+	mediaType: Int!
+	"""
+	Address of the oracle that performed the analysis.
+	"""
+	oracleAddress: String!
+	"""
+	Address of the original creator if similarity was detected.
+	"""
+	originalCreator: String
+	"""
+	Post ID that was analyzed.
+	"""
+	postId: String!
+	"""
+	Whether similarity to existing content was detected.
+	"""
+	similarityDetected: Boolean!
+}
+
+type PocBadge {
+	"""
+	Badge ID.
+	"""
+	badgeId: String!
+	"""
+	When the badge was issued (epoch milliseconds).
+	"""
+	issuedAt: Int!
+	"""
+	Address of the oracle that issued the badge.
+	"""
+	issuedBy: MySoAddress!
+	"""
+	Media type (1=image, 2=video, 3=audio).
+	"""
+	mediaType: Int!
+	"""
+	Post ID this badge was issued for.
+	"""
+	postId: String!
+	"""
+	Whether the badge has been revoked.
+	"""
+	revoked: Boolean!
+}
+
+type PocConfig {
+	"""
+	Similarity threshold for audio content (0-100).
+	"""
+	audioThreshold: Int!
+	"""
+	Cost to submit a dispute.
+	"""
+	disputeCost: Int!
+	"""
+	Similarity threshold for image content (0-100).
+	"""
+	imageThreshold: Int!
+	"""
+	Oracle address used for verification.
+	"""
+	oracleAddress: String
+	"""
+	Revenue redirect percentage when similarity detected.
+	"""
+	revenueRedirectPercentage: Int!
+	"""
+	Last updated timestamp (epoch milliseconds).
+	"""
+	updatedAt: Int!
+	"""
+	Similarity threshold for video content (0-100).
+	"""
+	videoThreshold: Int!
+}
+
+type PocDispute {
+	"""
+	Dispute ID.
+	"""
+	disputeId: String!
+	"""
+	Dispute type (1=challenge badge, 2=challenge redirection).
+	"""
+	disputeType: Int!
+	"""
+	Address of the disputer.
+	"""
+	disputer: MySoAddress!
+	"""
+	Profile of the disputer.
+	"""
+	disputerProfile: ProfileSummary
+	"""
+	Evidence submitted by the disputer.
+	"""
+	evidence: String!
+	"""
+	Post ID being disputed.
+	"""
+	postId: String!
+	"""
+	When the dispute was resolved (epoch milliseconds), if resolved.
+	"""
+	resolvedAt: Int
+	"""
+	Stake amount required to submit the dispute.
+	"""
+	stakeAmount: Int!
+	"""
+	Status (1=voting, 2=resolved upheld, 3=resolved overturned).
+	"""
+	status: Int!
+	"""
+	When the dispute was submitted (epoch milliseconds).
+	"""
+	submittedAt: Int!
+}
+
+type PocRevenueRedirection {
+	"""
+	Post ID accused of being derivative (receiving redirected revenue).
+	"""
+	accusedPostId: String!
+	"""
+	When the redirection was created (epoch milliseconds).
+	"""
+	createdAt: Int!
+	"""
+	Original post ID that receives the redirected revenue.
+	"""
+	originalPostId: String!
+	"""
+	Percentage of revenue redirected to the original creator.
+	"""
+	redirectPercentage: Int!
+	"""
+	Redirection ID.
+	"""
+	redirectionId: String!
+	"""
+	Similarity score from the analysis (0-100).
+	"""
+	similarityScore: Int!
+}
+
 type Post implements Node {
 	"""
 	Number of comments.
@@ -3730,6 +4034,10 @@ type Post implements Node {
 	When the post was created (Unix timestamp in milliseconds).
 	"""
 	createdAt: Int!
+	"""
+	Opt-in for Proof of Creativity analysis.
+	"""
+	enablePoc: Boolean!
 	"""
 	The post's globally unique identifier.
 	"""
@@ -3754,6 +4062,46 @@ type Post implements Node {
 	Parent post ID (for quote reposts).
 	"""
 	parentPostId: String
+	"""
+	Latest PoC analysis result for this post.
+	"""
+	pocAnalysis: PocAnalysisResult
+	"""
+	When the post was analyzed (epoch milliseconds).
+	"""
+	pocAnalyzedAt: Int
+	"""
+	PoC badges for this post (paginated).
+	"""
+	pocBadges(limit: Int, offset: Int): [PocBadge!]
+	"""
+	PoC disputes for this post (paginated).
+	"""
+	pocDisputes(limit: Int, offset: Int): [PocDispute!]
+	"""
+	Evidence URLs from PoC analysis.
+	"""
+	pocEvidenceUrls: JSON
+	"""
+	PoC record/badge ID for original content.
+	"""
+	pocId: String
+	"""
+	Media type analyzed (1=image, 2=video, 3=audio).
+	"""
+	pocMediaType: Int
+	"""
+	Oracle address that performed the PoC analysis.
+	"""
+	pocOracleAddress: String
+	"""
+	Oracle reasoning from PoC analysis.
+	"""
+	pocReasoning: String
+	"""
+	Highest similarity score from PoC analysis (0-100).
+	"""
+	pocSimilarityScore: Int
 	"""
 	The post ID.
 	"""
@@ -3787,6 +4135,18 @@ type Post implements Node {
 	"""
 	reposts(limit: Int, offset: Int): [RepostSummary!]
 	"""
+	Percentage of revenue redirected to the original creator.
+	"""
+	revenueRedirectPercentage: Int
+	"""
+	Post ID receiving redirected revenue (for derivative content).
+	"""
+	revenueRedirectTo: String
+	"""
+	Revenue redirections for this post (as accused or original).
+	"""
+	revenueRedirections(limit: Int, offset: Int): [PocRevenueRedirection!]
+	"""
 	Spot bets for this post (paginated).
 	"""
 	spotBets(limit: Int, offset: Int): [SpotBet!]
@@ -3810,6 +4170,53 @@ type Post implements Node {
 	When the post was last updated (Unix timestamp in milliseconds).
 	"""
 	updatedAt: Int
+}
+
+type PostConfig {
+	"""
+	Commenter tip percentage (remainder to post owner).
+	"""
+	commenterTipPercentage: Int!
+	"""
+	Maximum content length in characters.
+	"""
+	maxContentLength: Int!
+	"""
+	Maximum report description length.
+	"""
+	maxDescriptionLength: Int!
+	"""
+	Maximum media URLs per post.
+	"""
+	maxMediaUrls: Int!
+	"""
+	Maximum mentions per post.
+	"""
+	maxMentions: Int!
+	"""
+	Maximum metadata size in bytes.
+	"""
+	maxMetadataSize: Int!
+	"""
+	Maximum reaction text length.
+	"""
+	maxReactionLength: Int!
+	"""
+	Repost tip percentage (remainder to original post owner).
+	"""
+	repostTipPercentage: Int!
+	"""
+	Last updated timestamp (epoch milliseconds).
+	"""
+	updatedAt: Int!
+	"""
+	Address that last updated the configuration.
+	"""
+	updatedBy: String!
+	"""
+	Configuration version.
+	"""
+	version: Int!
 }
 
 type PostTransferSummary {
@@ -4182,9 +4589,33 @@ type Promotion {
 
 type Proposal {
 	"""
+	Anonymous voting stats for this proposal.
+	"""
+	anonymousStats: AnonymousVotingStats
+	"""
 	Anonymous voters count (when anonymous voting enabled).
 	"""
 	anonymousVotersCount: Int
+	"""
+	Anonymous votes on this proposal (paginated).
+	"""
+	anonymousVotes(limit: Int, offset: Int): [AnonymousVote!]
+	"""
+	Community votes on this proposal (paginated).
+	"""
+	communityVotes(limit: Int, offset: Int): [CommunityVote!]
+	"""
+	Count of community votes on this proposal.
+	"""
+	communityVotesCount: Int
+	"""
+	Vote decryption failures for this proposal.
+	"""
+	decryptionFailures: [VoteDecryptionFailure!]
+	"""
+	Delegate votes on this proposal (paginated).
+	"""
+	delegateVotes(limit: Int, offset: Int): [DelegateVote!]
 	"""
 	Proposal description.
 	"""
@@ -4197,6 +4628,10 @@ type Proposal {
 	Implemented description (when status=implemented).
 	"""
 	implementedDescription: String
+	"""
+	Metadata JSON (arbitrary structured data).
+	"""
+	metadataJson: JSON
 	"""
 	Unique proposal identifier (object ID on-chain).
 	"""
@@ -4213,6 +4648,10 @@ type Proposal {
 	Rescind time (epoch ms, when rescinded).
 	"""
 	rescindTime: Int
+	"""
+	Reward distributions for this proposal.
+	"""
+	rewardDistributions: [RewardDistribution!]
 	"""
 	Reward pool amount.
 	"""
@@ -4353,6 +4792,10 @@ type Query {
 	"""
 	address(address: MySoAddress, rootVersion: UInt53, atCheckpoint: UInt53): Address
 	"""
+	Anonymous voting trends (daily aggregates). Returns empty when social DB not configured.
+	"""
+	anonymousVotingTrends(limit: Int): [AnonymousVotingTrend!]
+	"""
 	The network's genesis checkpoint digest (uniquely identifies the network), Base58-encoded.
 	"""
 	chainIdentifier: String!
@@ -4407,6 +4850,10 @@ type Query {
 	"""
 	events(first: Int, after: String, last: Int, before: String, filter: EventFilter): EventConnection
 	"""
+	List governance events (paginated). Returns empty when social DB not configured.
+	"""
+	governanceEvents(limit: Int, offset: Int): [GovernanceEvent!]
+	"""
 	List governance registries, optionally filtered by registry type. Returns empty when social DB not configured.
 	"""
 	governanceRegistries(registryType: Int): [GovernanceRegistry!]
@@ -4414,6 +4861,10 @@ type Query {
 	Fetch governance registry for a platform (by platform ID). Returns null when social DB not configured or platform has no registry.
 	"""
 	governanceRegistry(platformId: String!): GovernanceRegistry
+	"""
+	Insurance configuration. Returns null when social DB not configured or no config.
+	"""
+	insuranceConfiguration: InsuranceConfig
 	"""
 	Insurance policies by insured address. Returns empty when social DB not configured.
 	"""
@@ -4476,6 +4927,10 @@ type Query {
 	Returns a list of types that is guaranteed to be the same length as `keys`. If a type in `keys` could not be found, its corresponding entry in the result will be `null`.
 	"""
 	multiGetTypes(keys: [String!]!): [MoveType]!
+	"""
+	MyData configuration. Returns null when social DB not configured or no config.
+	"""
+	mydataConfiguration: MyDataConfig
 	"""
 	MyData purchases by buyer. Returns empty when social DB not configured.
 	"""
@@ -4563,9 +5018,17 @@ type Query {
 	"""
 	platforms(approvedOnly: Boolean, limit: Int, offset: Int): [Platform!]
 	"""
+	Proof of Creativity configuration. Returns null when social DB not configured or no config.
+	"""
+	pocConfiguration: PocConfig
+	"""
 	Fetch a post by ID. Returns null if social DB not configured or not found.
 	"""
 	post(id: ID!): Post
+	"""
+	Post configuration. Returns null when social DB not configured or no config.
+	"""
+	postConfiguration: PostConfig
 	"""
 	List posts with optional filters. Returns empty when social DB not configured.
 	"""
@@ -4591,9 +5054,9 @@ type Query {
 	"""
 	proposal(id: ID!): Proposal
 	"""
-	List governance proposals (paginated, optionally filtered by platform and status). Returns empty when social DB not configured.
+	List governance proposals (paginated, optionally filtered by platform, status, submitter). Returns empty when social DB not configured.
 	"""
-	proposals(platformId: String, status: Int, limit: Int, offset: Int): [Proposal!]
+	proposals(platformId: String, status: Int, submitter: String, limit: Int, offset: Int): [Proposal!]
 	"""
 	Fetch the protocol config by protocol version, or the latest protocol config used on chain if no version is provided.
 	"""
@@ -4634,9 +5097,17 @@ type Query {
 	"""
 	spotBets(postId: ID!, limit: Int, offset: Int): [SpotBet!]
 	"""
+	SPoT (Social Proof of Truth) configuration. Returns null when social DB not configured or no config.
+	"""
+	spotConfiguration: SpotConfig
+	"""
 	Spot record for a post (1:1). Returns null when social DB not configured or no record.
 	"""
 	spotRecord(postId: ID!): SpotRecord
+	"""
+	SPT exchange configuration. Returns null when social DB not configured or no config.
+	"""
+	sptConfiguration: SptExchangeConfig
 	"""
 	SPT holdings for a profile (holder address). Returns empty when social DB not configured.
 	"""
@@ -4793,6 +5264,14 @@ type RepostSummary {
 	ownerProfile: ProfileSummary
 	profileId: String!
 	repostId: String!
+}
+
+type RewardDistribution {
+	amount: Int!
+	distributionTime: Int!
+	distributionType: String
+	proposalId: String!
+	recipientAddress: MySoAddress!
 }
 
 type SelectedBadge {
@@ -5075,6 +5554,57 @@ type SpotBet {
 	transactionId: String!
 }
 
+type SpotConfig {
+	"""
+	Confidence threshold in basis points.
+	"""
+	confidenceThresholdBps: Int!
+	"""
+	Whether SPoT (Social Proof of Truth) is enabled.
+	"""
+	enableFlag: Boolean!
+	"""
+	Fee in basis points.
+	"""
+	feeBps: Int!
+	"""
+	Fee split to platform in basis points.
+	"""
+	feeSplitBpsPlatform: Int!
+	"""
+	Max resolution window in epochs.
+	"""
+	maxResolutionWindowEpochs: Int!
+	"""
+	Max single bet amount.
+	"""
+	maxSingleBet: Int!
+	"""
+	Oracle address for resolution.
+	"""
+	oracleAddress: String!
+	"""
+	Payout delay in milliseconds.
+	"""
+	payoutDelayMs: Int!
+	"""
+	Resolution window in epochs.
+	"""
+	resolutionWindowEpochs: Int!
+	"""
+	Last updated timestamp (epoch milliseconds).
+	"""
+	timestampMs: Int!
+	"""
+	Address that last updated the configuration.
+	"""
+	updatedBy: String!
+	"""
+	Configuration version.
+	"""
+	version: Int!
+}
+
 type SpotOptionEscrow {
 	"""
 	Escrow amount for this option.
@@ -5131,6 +5661,93 @@ type SpotRecord {
 	Total escrow across all options.
 	"""
 	totalEscrow: Int!
+}
+
+type SptExchangeConfig {
+	"""
+	Base price for new tokens.
+	"""
+	basePrice: Int!
+	"""
+	Creator fee in basis points.
+	"""
+	creatorFeeBps: Int!
+	"""
+	Max hold percentage in basis points.
+	"""
+	maxHoldPercentBps: Int!
+	"""
+	Max individual reservation in basis points.
+	"""
+	maxIndividualReservationBps: Int!
+	"""
+	Max reservers per pool.
+	"""
+	maxReserversPerPool: Int!
+	"""
+	Platform fee in basis points.
+	"""
+	platformFeeBps: Int!
+	"""
+	Post reservation threshold (basis points or amount).
+	"""
+	postThreshold: Int!
+	"""
+	Profile reservation threshold.
+	"""
+	profileThreshold: Int!
+	"""
+	Quadratic coefficient for pricing curve.
+	"""
+	quadraticCoefficient: Int!
+	"""
+	Reservation creator fee in basis points.
+	"""
+	reservationCreatorFeeBps: Int!
+	"""
+	Reservation platform fee in basis points.
+	"""
+	reservationPlatformFeeBps: Int!
+	"""
+	Reservation treasury fee in basis points.
+	"""
+	reservationTreasuryFeeBps: Int!
+	"""
+	Total fee in basis points.
+	"""
+	totalFeeBps: Int!
+	"""
+	Trading creator fee in basis points.
+	"""
+	tradingCreatorFeeBps: Int!
+	"""
+	Whether trading is enabled.
+	"""
+	tradingEnabled: Boolean!
+	"""
+	Trading platform fee in basis points.
+	"""
+	tradingPlatformFeeBps: Int!
+	"""
+	Trading treasury fee in basis points.
+	"""
+	tradingTreasuryFeeBps: Int!
+	"""
+	Transaction ID of last update.
+	"""
+	transactionId: String!
+	"""
+	Treasury fee in basis points.
+	"""
+	treasuryFeeBps: Int!
+	"""
+	Last updated timestamp (epoch milliseconds).
+	"""
+	updatedAt: Int!
+	"""
+	Address that last updated the configuration.
+	"""
+	updatedBy: String!
 }
 
 type SptHolding {
@@ -5963,6 +6580,13 @@ type VestingWallet {
 	Vesting wallet ID (object address).
 	"""
 	walletId: String!
+}
+
+type VoteDecryptionFailure {
+	attemptedAt: Int!
+	failureReason: String!
+	proposalId: String!
+	voterAddress: MySoAddress!
 }
 
 """

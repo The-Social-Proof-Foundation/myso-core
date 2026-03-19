@@ -3,7 +3,7 @@
 
 use diesel::OptionalExtension;
 use diesel::QueryableByName;
-use diesel::sql_types::{BigInt, Nullable, Text};
+use diesel::sql_types::{BigInt, Nullable, SmallInt, Text};
 use diesel_async::RunQueryDsl;
 use serde_json::Value as JsonValue;
 
@@ -44,6 +44,26 @@ pub struct PostRow {
     pub parent_post_id: Option<String>,
     #[diesel(sql_type = Nullable<BigInt>)]
     pub updated_at: Option<i64>,
+    #[diesel(sql_type = Nullable<Text>)]
+    pub poc_id: Option<String>,
+    #[diesel(sql_type = Nullable<Text>)]
+    pub revenue_redirect_to: Option<String>,
+    #[diesel(sql_type = Nullable<BigInt>)]
+    pub revenue_redirect_percentage: Option<i64>,
+    #[diesel(sql_type = diesel::sql_types::Bool)]
+    pub enable_poc: bool,
+    #[diesel(sql_type = Nullable<Text>)]
+    pub poc_reasoning: Option<String>,
+    #[diesel(sql_type = Nullable<diesel::sql_types::Jsonb>)]
+    pub poc_evidence_urls: Option<JsonValue>,
+    #[diesel(sql_type = Nullable<BigInt>)]
+    pub poc_similarity_score: Option<i64>,
+    #[diesel(sql_type = Nullable<SmallInt>)]
+    pub poc_media_type: Option<i16>,
+    #[diesel(sql_type = Nullable<Text>)]
+    pub poc_oracle_address: Option<String>,
+    #[diesel(sql_type = Nullable<BigInt>)]
+    pub poc_analyzed_at: Option<i64>,
 }
 
 #[derive(Debug, Clone)]
@@ -92,7 +112,10 @@ pub(crate) async fn get_post_by_id(
     let result = diesel::sql_query(
         "SELECT post_id, owner, profile_id, content, post_type, created_at, deleted_at,
                 reaction_count, comment_count, repost_count, tips_received,
-                media_urls, mentions, parent_post_id, updated_at
+                media_urls, mentions, parent_post_id, updated_at,
+                poc_id, revenue_redirect_to, revenue_redirect_percentage, enable_poc,
+                poc_reasoning, poc_evidence_urls, poc_similarity_score, poc_media_type,
+                poc_oracle_address, poc_analyzed_at
          FROM posts
          WHERE (post_id = $1 OR id = $1) AND deleted_at IS NULL
          ORDER BY created_at DESC
@@ -174,7 +197,10 @@ pub(crate) async fn list_posts(
     let query = "
         SELECT post_id, owner, profile_id, content, post_type, created_at, deleted_at,
                reaction_count, comment_count, repost_count, tips_received,
-               media_urls, mentions, parent_post_id, updated_at
+               media_urls, mentions, parent_post_id, updated_at,
+               poc_id, revenue_redirect_to, revenue_redirect_percentage, enable_poc,
+               poc_reasoning, poc_evidence_urls, poc_similarity_score, poc_media_type,
+               poc_oracle_address, poc_analyzed_at
         FROM posts
         WHERE deleted_at IS NULL
         AND ($1::TEXT IS NULL OR owner = $1)

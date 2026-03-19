@@ -203,6 +203,30 @@ enum AddressTransactionRelationship {
 	AFFECTED
 }
 
+type AnonymousVote {
+	decryptionStatus: Int!
+	processingSuccess: Boolean!
+	proposalId: String!
+	submittedAt: Int!
+	voterAddress: MySoAddress!
+}
+
+type AnonymousVotingStats {
+	anonymousVotesAgainst: Int!
+	anonymousVotesFor: Int!
+	failedDecryptions: Int!
+	pendingDecryption: Int!
+	successfullyDecrypted: Int!
+	totalAnonymousVotes: Int!
+}
+
+type AnonymousVotingTrend {
+	day: String!
+	failedDecryptions: Int!
+	successfulDecryptions: Int!
+	totalVotes: Int!
+}
+
 """
 System transaction for creating the on-chain state used by zkLogin.
 """
@@ -839,6 +863,15 @@ type CommentSummary {
 	reactionCount: Int!
 }
 
+type CommunityVote {
+	approve: Boolean!
+	proposalId: String!
+	voteCost: Int!
+	voteTime: Int!
+	voteWeight: Int!
+	voterAddress: MySoAddress!
+}
+
 """
 Object is exclusively owned by a single adderss and sequenced via consensus.
 """
@@ -959,6 +992,10 @@ type Delegate {
 	"""
 	isActive: Boolean!
 	"""
+	Proposals on which this delegate has voted.
+	"""
+	proposals: [Proposal!]
+	"""
 	Proposals reviewed.
 	"""
 	proposalsReviewed: Int!
@@ -967,9 +1004,21 @@ type Delegate {
 	"""
 	proposalsSubmitted: Int!
 	"""
+	Delegate ratings (upvotes/downvotes) for this delegate (paginated).
+	"""
+	ratings(limit: Int, offset: Int): [DelegateRating!]
+	"""
 	Registry type (0=ecosystem, 1=proof of creativity, 2=platform).
 	"""
 	registryType: Int!
+	"""
+	Proposals on which the delegate sided with the losing outcome.
+	"""
+	sidedLosingProposals: Int!
+	"""
+	Proposals on which the delegate sided with the winning outcome.
+	"""
+	sidedWinningProposals: Int!
 	"""
 	Term end (epoch).
 	"""
@@ -982,6 +1031,23 @@ type Delegate {
 	Upvotes (delegate ratings).
 	"""
 	upvotes: Int!
+}
+
+type DelegateRating {
+	isActiveDelegate: Boolean!
+	ratedAt: Int!
+	registryType: Int!
+	targetAddress: MySoAddress!
+	upvote: Boolean!
+	voterAddress: MySoAddress!
+}
+
+type DelegateVote {
+	approve: Boolean!
+	delegateAddress: MySoAddress!
+	proposalId: String!
+	reason: String
+	voteTime: Int!
 }
 
 """
@@ -1650,6 +1716,15 @@ type GenesisTransaction {
 	objects(first: Int, after: String, last: Int, before: String): ObjectConnection
 }
 
+type GovernanceEvent {
+	createdAt: Int!
+	eventData: JSON!
+	eventId: String!
+	eventType: String!
+	id: Int!
+	registryType: Int!
+}
+
 type GovernanceRegistry {
 	"""
 	Voting configuration (term, costs, quorum, etc.).
@@ -1691,9 +1766,17 @@ type GovernanceRegistryConfig {
 	"""
 	maxVotesPerUser: Int!
 	"""
+	Minimum on-chain age in days to submit proposals.
+	"""
+	minOnChainAgeDays: Int!
+	"""
 	Cost to submit a proposal.
 	"""
 	proposalSubmissionCost: Int!
+	"""
+	Quadratic base cost for additional votes.
+	"""
+	quadraticBaseCost: Int!
 	"""
 	Quorum votes required.
 	"""
@@ -3771,6 +3854,64 @@ type PlatformRevenueSummary {
 	totalTransactions: Int!
 }
 
+type PocAnalysisResult {
+	"""
+	When the analysis was performed (epoch milliseconds).
+	"""
+	analysisTimestamp: Int!
+	"""
+	Highest similarity score from the analysis (0-100).
+	"""
+	highestSimilarityScore: Int!
+	"""
+	Media type analyzed (1=image, 2=video, 3=audio).
+	"""
+	mediaType: Int!
+	"""
+	Address of the oracle that performed the analysis.
+	"""
+	oracleAddress: String!
+	"""
+	Address of the original creator if similarity was detected.
+	"""
+	originalCreator: String
+	"""
+	Post ID that was analyzed.
+	"""
+	postId: String!
+	"""
+	Whether similarity to existing content was detected.
+	"""
+	similarityDetected: Boolean!
+}
+
+type PocBadge {
+	"""
+	Badge ID.
+	"""
+	badgeId: String!
+	"""
+	When the badge was issued (epoch milliseconds).
+	"""
+	issuedAt: Int!
+	"""
+	Address of the oracle that issued the badge.
+	"""
+	issuedBy: MySoAddress!
+	"""
+	Media type (1=image, 2=video, 3=audio).
+	"""
+	mediaType: Int!
+	"""
+	Post ID this badge was issued for.
+	"""
+	postId: String!
+	"""
+	Whether the badge has been revoked.
+	"""
+	revoked: Boolean!
+}
+
 type PocConfig {
 	"""
 	Similarity threshold for audio content (0-100).
@@ -3802,6 +3943,76 @@ type PocConfig {
 	videoThreshold: Int!
 }
 
+type PocDispute {
+	"""
+	Dispute ID.
+	"""
+	disputeId: String!
+	"""
+	Dispute type (1=challenge badge, 2=challenge redirection).
+	"""
+	disputeType: Int!
+	"""
+	Address of the disputer.
+	"""
+	disputer: MySoAddress!
+	"""
+	Profile of the disputer.
+	"""
+	disputerProfile: ProfileSummary
+	"""
+	Evidence submitted by the disputer.
+	"""
+	evidence: String!
+	"""
+	Post ID being disputed.
+	"""
+	postId: String!
+	"""
+	When the dispute was resolved (epoch milliseconds), if resolved.
+	"""
+	resolvedAt: Int
+	"""
+	Stake amount required to submit the dispute.
+	"""
+	stakeAmount: Int!
+	"""
+	Status (1=voting, 2=resolved upheld, 3=resolved overturned).
+	"""
+	status: Int!
+	"""
+	When the dispute was submitted (epoch milliseconds).
+	"""
+	submittedAt: Int!
+}
+
+type PocRevenueRedirection {
+	"""
+	Post ID accused of being derivative (receiving redirected revenue).
+	"""
+	accusedPostId: String!
+	"""
+	When the redirection was created (epoch milliseconds).
+	"""
+	createdAt: Int!
+	"""
+	Original post ID that receives the redirected revenue.
+	"""
+	originalPostId: String!
+	"""
+	Percentage of revenue redirected to the original creator.
+	"""
+	redirectPercentage: Int!
+	"""
+	Redirection ID.
+	"""
+	redirectionId: String!
+	"""
+	Similarity score from the analysis (0-100).
+	"""
+	similarityScore: Int!
+}
+
 type Post implements Node {
 	"""
 	Number of comments.
@@ -3819,6 +4030,10 @@ type Post implements Node {
 	When the post was created (Unix timestamp in milliseconds).
 	"""
 	createdAt: Int!
+	"""
+	Opt-in for Proof of Creativity analysis.
+	"""
+	enablePoc: Boolean!
 	"""
 	The post's globally unique identifier.
 	"""
@@ -3843,6 +4058,46 @@ type Post implements Node {
 	Parent post ID (for quote reposts).
 	"""
 	parentPostId: String
+	"""
+	Latest PoC analysis result for this post.
+	"""
+	pocAnalysis: PocAnalysisResult
+	"""
+	When the post was analyzed (epoch milliseconds).
+	"""
+	pocAnalyzedAt: Int
+	"""
+	PoC badges for this post (paginated).
+	"""
+	pocBadges(limit: Int, offset: Int): [PocBadge!]
+	"""
+	PoC disputes for this post (paginated).
+	"""
+	pocDisputes(limit: Int, offset: Int): [PocDispute!]
+	"""
+	Evidence URLs from PoC analysis.
+	"""
+	pocEvidenceUrls: JSON
+	"""
+	PoC record/badge ID for original content.
+	"""
+	pocId: String
+	"""
+	Media type analyzed (1=image, 2=video, 3=audio).
+	"""
+	pocMediaType: Int
+	"""
+	Oracle address that performed the PoC analysis.
+	"""
+	pocOracleAddress: String
+	"""
+	Oracle reasoning from PoC analysis.
+	"""
+	pocReasoning: String
+	"""
+	Highest similarity score from PoC analysis (0-100).
+	"""
+	pocSimilarityScore: Int
 	"""
 	The post ID.
 	"""
@@ -3875,6 +4130,18 @@ type Post implements Node {
 	Reposts of this post (paginated).
 	"""
 	reposts(limit: Int, offset: Int): [RepostSummary!]
+	"""
+	Percentage of revenue redirected to the original creator.
+	"""
+	revenueRedirectPercentage: Int
+	"""
+	Post ID receiving redirected revenue (for derivative content).
+	"""
+	revenueRedirectTo: String
+	"""
+	Revenue redirections for this post (as accused or original).
+	"""
+	revenueRedirections(limit: Int, offset: Int): [PocRevenueRedirection!]
 	"""
 	Spot bets for this post (paginated).
 	"""
@@ -4318,9 +4585,33 @@ type Promotion {
 
 type Proposal {
 	"""
+	Anonymous voting stats for this proposal.
+	"""
+	anonymousStats: AnonymousVotingStats
+	"""
 	Anonymous voters count (when anonymous voting enabled).
 	"""
 	anonymousVotersCount: Int
+	"""
+	Anonymous votes on this proposal (paginated).
+	"""
+	anonymousVotes(limit: Int, offset: Int): [AnonymousVote!]
+	"""
+	Community votes on this proposal (paginated).
+	"""
+	communityVotes(limit: Int, offset: Int): [CommunityVote!]
+	"""
+	Count of community votes on this proposal.
+	"""
+	communityVotesCount: Int
+	"""
+	Vote decryption failures for this proposal.
+	"""
+	decryptionFailures: [VoteDecryptionFailure!]
+	"""
+	Delegate votes on this proposal (paginated).
+	"""
+	delegateVotes(limit: Int, offset: Int): [DelegateVote!]
 	"""
 	Proposal description.
 	"""
@@ -4333,6 +4624,10 @@ type Proposal {
 	Implemented description (when status=implemented).
 	"""
 	implementedDescription: String
+	"""
+	Metadata JSON (arbitrary structured data).
+	"""
+	metadataJson: JSON
 	"""
 	Unique proposal identifier (object ID on-chain).
 	"""
@@ -4349,6 +4644,10 @@ type Proposal {
 	Rescind time (epoch ms, when rescinded).
 	"""
 	rescindTime: Int
+	"""
+	Reward distributions for this proposal.
+	"""
+	rewardDistributions: [RewardDistribution!]
 	"""
 	Reward pool amount.
 	"""
@@ -4489,6 +4788,10 @@ type Query {
 	"""
 	address(address: MySoAddress, rootVersion: UInt53, atCheckpoint: UInt53): Address
 	"""
+	Anonymous voting trends (daily aggregates). Returns empty when social DB not configured.
+	"""
+	anonymousVotingTrends(limit: Int): [AnonymousVotingTrend!]
+	"""
 	The network's genesis checkpoint digest (uniquely identifies the network), Base58-encoded.
 	"""
 	chainIdentifier: String!
@@ -4542,6 +4845,10 @@ type Query {
 	Paginate events that are emitted in the network, optionally filtered by event filters.
 	"""
 	events(first: Int, after: String, last: Int, before: String, filter: EventFilter): EventConnection
+	"""
+	List governance events (paginated). Returns empty when social DB not configured.
+	"""
+	governanceEvents(limit: Int, offset: Int): [GovernanceEvent!]
 	"""
 	List governance registries, optionally filtered by registry type. Returns empty when social DB not configured.
 	"""
@@ -4743,9 +5050,9 @@ type Query {
 	"""
 	proposal(id: ID!): Proposal
 	"""
-	List governance proposals (paginated, optionally filtered by platform and status). Returns empty when social DB not configured.
+	List governance proposals (paginated, optionally filtered by platform, status, submitter). Returns empty when social DB not configured.
 	"""
-	proposals(platformId: String, status: Int, limit: Int, offset: Int): [Proposal!]
+	proposals(platformId: String, status: Int, submitter: String, limit: Int, offset: Int): [Proposal!]
 	"""
 	Fetch the protocol config by protocol version, or the latest protocol config used on chain if no version is provided.
 	"""
@@ -4953,6 +5260,14 @@ type RepostSummary {
 	ownerProfile: ProfileSummary
 	profileId: String!
 	repostId: String!
+}
+
+type RewardDistribution {
+	amount: Int!
+	distributionTime: Int!
+	distributionType: String
+	proposalId: String!
+	recipientAddress: MySoAddress!
 }
 
 type SelectedBadge {
@@ -6261,6 +6576,13 @@ type VestingWallet {
 	Vesting wallet ID (object address).
 	"""
 	walletId: String!
+}
+
+type VoteDecryptionFailure {
+	attemptedAt: Int!
+	failureReason: String!
+	proposalId: String!
+	voterAddress: MySoAddress!
 }
 
 """

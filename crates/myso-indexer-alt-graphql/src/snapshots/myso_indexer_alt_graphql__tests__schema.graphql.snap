@@ -3858,6 +3858,64 @@ type PlatformRevenueSummary {
 	totalTransactions: Int!
 }
 
+type PocAnalysisResult {
+	"""
+	When the analysis was performed (epoch milliseconds).
+	"""
+	analysisTimestamp: Int!
+	"""
+	Highest similarity score from the analysis (0-100).
+	"""
+	highestSimilarityScore: Int!
+	"""
+	Media type analyzed (1=image, 2=video, 3=audio).
+	"""
+	mediaType: Int!
+	"""
+	Address of the oracle that performed the analysis.
+	"""
+	oracleAddress: String!
+	"""
+	Address of the original creator if similarity was detected.
+	"""
+	originalCreator: String
+	"""
+	Post ID that was analyzed.
+	"""
+	postId: String!
+	"""
+	Whether similarity to existing content was detected.
+	"""
+	similarityDetected: Boolean!
+}
+
+type PocBadge {
+	"""
+	Badge ID.
+	"""
+	badgeId: String!
+	"""
+	When the badge was issued (epoch milliseconds).
+	"""
+	issuedAt: Int!
+	"""
+	Address of the oracle that issued the badge.
+	"""
+	issuedBy: MySoAddress!
+	"""
+	Media type (1=image, 2=video, 3=audio).
+	"""
+	mediaType: Int!
+	"""
+	Post ID this badge was issued for.
+	"""
+	postId: String!
+	"""
+	Whether the badge has been revoked.
+	"""
+	revoked: Boolean!
+}
+
 type PocConfig {
 	"""
 	Similarity threshold for audio content (0-100).
@@ -3889,6 +3947,76 @@ type PocConfig {
 	videoThreshold: Int!
 }
 
+type PocDispute {
+	"""
+	Dispute ID.
+	"""
+	disputeId: String!
+	"""
+	Dispute type (1=challenge badge, 2=challenge redirection).
+	"""
+	disputeType: Int!
+	"""
+	Address of the disputer.
+	"""
+	disputer: MySoAddress!
+	"""
+	Profile of the disputer.
+	"""
+	disputerProfile: ProfileSummary
+	"""
+	Evidence submitted by the disputer.
+	"""
+	evidence: String!
+	"""
+	Post ID being disputed.
+	"""
+	postId: String!
+	"""
+	When the dispute was resolved (epoch milliseconds), if resolved.
+	"""
+	resolvedAt: Int
+	"""
+	Stake amount required to submit the dispute.
+	"""
+	stakeAmount: Int!
+	"""
+	Status (1=voting, 2=resolved upheld, 3=resolved overturned).
+	"""
+	status: Int!
+	"""
+	When the dispute was submitted (epoch milliseconds).
+	"""
+	submittedAt: Int!
+}
+
+type PocRevenueRedirection {
+	"""
+	Post ID accused of being derivative (receiving redirected revenue).
+	"""
+	accusedPostId: String!
+	"""
+	When the redirection was created (epoch milliseconds).
+	"""
+	createdAt: Int!
+	"""
+	Original post ID that receives the redirected revenue.
+	"""
+	originalPostId: String!
+	"""
+	Percentage of revenue redirected to the original creator.
+	"""
+	redirectPercentage: Int!
+	"""
+	Redirection ID.
+	"""
+	redirectionId: String!
+	"""
+	Similarity score from the analysis (0-100).
+	"""
+	similarityScore: Int!
+}
+
 type Post implements Node {
 	"""
 	Number of comments.
@@ -3906,6 +4034,10 @@ type Post implements Node {
 	When the post was created (Unix timestamp in milliseconds).
 	"""
 	createdAt: Int!
+	"""
+	Opt-in for Proof of Creativity analysis.
+	"""
+	enablePoc: Boolean!
 	"""
 	The post's globally unique identifier.
 	"""
@@ -3930,6 +4062,46 @@ type Post implements Node {
 	Parent post ID (for quote reposts).
 	"""
 	parentPostId: String
+	"""
+	Latest PoC analysis result for this post.
+	"""
+	pocAnalysis: PocAnalysisResult
+	"""
+	When the post was analyzed (epoch milliseconds).
+	"""
+	pocAnalyzedAt: Int
+	"""
+	PoC badges for this post (paginated).
+	"""
+	pocBadges(limit: Int, offset: Int): [PocBadge!]
+	"""
+	PoC disputes for this post (paginated).
+	"""
+	pocDisputes(limit: Int, offset: Int): [PocDispute!]
+	"""
+	Evidence URLs from PoC analysis.
+	"""
+	pocEvidenceUrls: JSON
+	"""
+	PoC record/badge ID for original content.
+	"""
+	pocId: String
+	"""
+	Media type analyzed (1=image, 2=video, 3=audio).
+	"""
+	pocMediaType: Int
+	"""
+	Oracle address that performed the PoC analysis.
+	"""
+	pocOracleAddress: String
+	"""
+	Oracle reasoning from PoC analysis.
+	"""
+	pocReasoning: String
+	"""
+	Highest similarity score from PoC analysis (0-100).
+	"""
+	pocSimilarityScore: Int
 	"""
 	The post ID.
 	"""
@@ -3962,6 +4134,18 @@ type Post implements Node {
 	Reposts of this post (paginated).
 	"""
 	reposts(limit: Int, offset: Int): [RepostSummary!]
+	"""
+	Percentage of revenue redirected to the original creator.
+	"""
+	revenueRedirectPercentage: Int
+	"""
+	Post ID receiving redirected revenue (for derivative content).
+	"""
+	revenueRedirectTo: String
+	"""
+	Revenue redirections for this post (as accused or original).
+	"""
+	revenueRedirections(limit: Int, offset: Int): [PocRevenueRedirection!]
 	"""
 	Spot bets for this post (paginated).
 	"""

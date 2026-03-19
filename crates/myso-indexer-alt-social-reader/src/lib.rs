@@ -23,7 +23,7 @@ pub use myso_indexer_alt_social_schema::models::{
     SpotBetRow, SpotRecordRow,
 };
 pub use myso_indexer_alt_social_schema::models::{
-    PocAnalysisResultRow, PocBadgeRow, PocConfigRow, PocDisputeRow,
+    PocAnalysisResultRow, PocBadgeRow, PocConfigRow, PocDisputeRow, PocRevenueRedirectionRow,
 };
 pub use myso_indexer_alt_social_schema::models::{
     SptHoldingRow, SptPoolRow, SptPriceHistory, SptTransaction,

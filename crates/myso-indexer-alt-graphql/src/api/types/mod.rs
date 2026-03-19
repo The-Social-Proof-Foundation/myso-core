@@ -38,6 +38,7 @@ pub(crate) mod object_filter;
 pub(crate) mod open_move_type;
 pub(crate) mod owner;
 pub(crate) mod platform;
+pub(crate) mod poc;
 pub(crate) mod post;
 pub(crate) mod profile;
 pub(crate) mod profile_summary;

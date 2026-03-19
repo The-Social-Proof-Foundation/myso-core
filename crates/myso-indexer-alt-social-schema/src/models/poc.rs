@@ -33,8 +33,29 @@ pub struct PocAnalysisResultRow {
     pub media_type: i16,
     #[diesel(sql_type = Text)]
     pub oracle_address: String,
+    #[diesel(sql_type = Nullable<Text>)]
+    pub original_creator: Option<String>,
     #[diesel(sql_type = BigInt)]
     pub analysis_timestamp: i64,
+}
+
+/// Query result for POC revenue redirection.
+#[derive(Debug, Clone, QueryableByName, Serialize, Deserialize)]
+pub struct PocRevenueRedirectionRow {
+    #[diesel(sql_type = Text)]
+    pub redirection_id: String,
+    #[diesel(sql_type = Text)]
+    pub accused_post_id: String,
+    #[diesel(sql_type = Text)]
+    pub original_post_id: String,
+    #[diesel(sql_type = BigInt)]
+    pub redirect_percentage: i64,
+    #[diesel(sql_type = BigInt)]
+    pub similarity_score: i64,
+    #[diesel(sql_type = BigInt)]
+    pub created_at: i64,
+    #[diesel(sql_type = Nullable<Bool>)]
+    pub removed: Option<bool>,
 }
 
 /// Query result for POC badge (non-revoked badges for a post).

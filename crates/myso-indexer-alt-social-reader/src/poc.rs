@@ -6,7 +6,7 @@ use diesel::sql_types::{BigInt, Text};
 use diesel_async::RunQueryDsl;
 
 use myso_indexer_alt_social_schema::models::{
-    PocAnalysisResultRow, PocBadgeRow, PocConfigRow, PocDisputeRow,
+    PocAnalysisResultRow, PocBadgeRow, PocConfigRow, PocDisputeRow, PocRevenueRedirectionRow,
 };
 use myso_pg_db::Connection;
 
@@ -22,7 +22,7 @@ pub(crate) async fn get_poc_analysis_for_post(
 
     let query = "
         SELECT post_id, similarity_detected, highest_similarity_score, media_type,
-               oracle_address, analysis_timestamp
+               oracle_address, original_creator, analysis_timestamp
         FROM (
             SELECT DISTINCT ON (post_id) *
             FROM poc_analysis_results
@@ -69,6 +69,41 @@ pub(crate) async fn get_poc_badges_for_post(
         .bind::<BigInt, _>(limit)
         .bind::<BigInt, _>(offset)
         .load::<PocBadgeRow>(conn)
+        .await?;
+
+    metrics.requests_succeeded.inc();
+    Ok(results)
+}
+
+pub(crate) async fn get_post_revenue_redirections(
+    conn: &mut Connection<'_>,
+    post_id: &str,
+    limit: i64,
+    offset: i64,
+    metrics: &DbReaderMetrics,
+) -> anyhow::Result<Vec<PocRevenueRedirectionRow>> {
+    metrics.requests_received.inc();
+    let _guard = metrics.latency.start_timer();
+
+    let query = "
+        SELECT redirection_id, accused_post_id, original_post_id, redirect_percentage,
+               similarity_score, created_at, removed
+        FROM (
+            SELECT DISTINCT ON (redirection_id) *
+            FROM poc_revenue_redirections
+            WHERE accused_post_id = $1 OR original_post_id = $1
+            ORDER BY redirection_id, time DESC
+        ) sub
+        WHERE removed = false
+        ORDER BY created_at DESC
+        LIMIT $2 OFFSET $3
+    ";
+
+    let results = diesel::sql_query(query)
+        .bind::<Text, _>(post_id)
+        .bind::<BigInt, _>(limit)
+        .bind::<BigInt, _>(offset)
+        .load::<PocRevenueRedirectionRow>(conn)
         .await?;
 
     metrics.requests_succeeded.inc();

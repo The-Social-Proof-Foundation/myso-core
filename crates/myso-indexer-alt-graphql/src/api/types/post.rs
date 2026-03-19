@@ -13,6 +13,7 @@ use crate::api::resolve_profile::resolve_profile_summary;
 use crate::api::scalars::id::Id;
 use crate::api::scalars::json::Json;
 use crate::api::scalars::myso_address::MySoAddress;
+use crate::api::types::poc::{PocAnalysisResult, PocBadge, PocDispute, PocRevenueRedirection};
 use crate::api::types::profile_summary::ProfileSummary;
 use crate::api::types::promotion::Promotion;
 use crate::api::types::spot::{SpotBet, SpotRecord};
@@ -118,6 +119,59 @@ impl Post {
     /// When the post was last updated (Unix timestamp in milliseconds).
     async fn updated_at(&self) -> Option<i64> {
         self.inner.updated_at
+    }
+
+    /// PoC record/badge ID for original content.
+    async fn poc_id(&self) -> Option<&str> {
+        self.inner.poc_id.as_deref()
+    }
+
+    /// Post ID receiving redirected revenue (for derivative content).
+    async fn revenue_redirect_to(&self) -> Option<&str> {
+        self.inner.revenue_redirect_to.as_deref()
+    }
+
+    /// Percentage of revenue redirected to the original creator.
+    async fn revenue_redirect_percentage(&self) -> Option<i64> {
+        self.inner.revenue_redirect_percentage
+    }
+
+    /// Opt-in for Proof of Creativity analysis.
+    async fn enable_poc(&self) -> bool {
+        self.inner.enable_poc
+    }
+
+    /// Oracle reasoning from PoC analysis.
+    async fn poc_reasoning(&self) -> Option<&str> {
+        self.inner.poc_reasoning.as_deref()
+    }
+
+    /// Evidence URLs from PoC analysis.
+    async fn poc_evidence_urls(&self) -> Option<Json> {
+        self.inner
+            .poc_evidence_urls
+            .as_ref()
+            .and_then(|v| Json::try_from(v.clone()).ok())
+    }
+
+    /// Highest similarity score from PoC analysis (0-100).
+    async fn poc_similarity_score(&self) -> Option<i64> {
+        self.inner.poc_similarity_score
+    }
+
+    /// Media type analyzed (1=image, 2=video, 3=audio).
+    async fn poc_media_type(&self) -> Option<i16> {
+        self.inner.poc_media_type
+    }
+
+    /// Oracle address that performed the PoC analysis.
+    async fn poc_oracle_address(&self) -> Option<&str> {
+        self.inner.poc_oracle_address.as_deref()
+    }
+
+    /// When the post was analyzed (epoch milliseconds).
+    async fn poc_analyzed_at(&self) -> Option<i64> {
+        self.inner.poc_analyzed_at
     }
 
     /// Comments on this post (paginated).
@@ -262,6 +316,75 @@ impl Post {
             .await
             .ok()?;
         Some(Promotion::from_row(row, views))
+    }
+
+    /// PoC badges for this post (paginated).
+    async fn poc_badges(
+        &self,
+        ctx: &Context<'_>,
+        limit: Option<u64>,
+        offset: Option<u64>,
+    ) -> Option<Vec<PocBadge>> {
+        let reader_opt = ctx
+            .data_opt::<std::sync::Arc<Option<myso_indexer_alt_social_reader::SocialPgReader>>>()?;
+        let reader = reader_opt.as_ref().as_ref()?;
+        let limit = limit.unwrap_or(20).min(100) as i64;
+        let offset = offset.unwrap_or(0) as i64;
+        let rows = reader
+            .get_poc_badges_for_post(&self.inner.post_id, limit, offset)
+            .await
+            .ok()?;
+        Some(rows.into_iter().map(PocBadge::from_row).collect())
+    }
+
+    /// Revenue redirections for this post (as accused or original).
+    async fn revenue_redirections(
+        &self,
+        ctx: &Context<'_>,
+        limit: Option<u64>,
+        offset: Option<u64>,
+    ) -> Option<Vec<PocRevenueRedirection>> {
+        let reader_opt = ctx
+            .data_opt::<std::sync::Arc<Option<myso_indexer_alt_social_reader::SocialPgReader>>>()?;
+        let reader = reader_opt.as_ref().as_ref()?;
+        let limit = limit.unwrap_or(20).min(100) as i64;
+        let offset = offset.unwrap_or(0) as i64;
+        let rows = reader
+            .get_post_revenue_redirections(&self.inner.post_id, limit, offset)
+            .await
+            .ok()?;
+        Some(rows.into_iter().map(PocRevenueRedirection::from_row).collect())
+    }
+
+    /// Latest PoC analysis result for this post.
+    async fn poc_analysis(&self, ctx: &Context<'_>) -> Option<Option<PocAnalysisResult>> {
+        let reader_opt = ctx
+            .data_opt::<std::sync::Arc<Option<myso_indexer_alt_social_reader::SocialPgReader>>>()?;
+        let reader = reader_opt.as_ref().as_ref()?;
+        let row = reader
+            .get_poc_analysis_for_post(&self.inner.post_id)
+            .await
+            .ok()?;
+        Some(row.map(PocAnalysisResult::from_row))
+    }
+
+    /// PoC disputes for this post (paginated).
+    async fn poc_disputes(
+        &self,
+        ctx: &Context<'_>,
+        limit: Option<u64>,
+        offset: Option<u64>,
+    ) -> Option<Vec<PocDispute>> {
+        let reader_opt = ctx
+            .data_opt::<std::sync::Arc<Option<myso_indexer_alt_social_reader::SocialPgReader>>>()?;
+        let reader = reader_opt.as_ref().as_ref()?;
+        let limit = limit.unwrap_or(20).min(100) as i64;
+        let offset = offset.unwrap_or(0) as i64;
+        let rows = reader
+            .get_poc_disputes_for_post(&self.inner.post_id, limit, offset)
+            .await
+            .ok()?;
+        Some(rows.into_iter().map(PocDispute::from_row).collect())
     }
 }
 

@@ -67,7 +67,8 @@ pub use poc::{
     DISPUTE_STATUS_RESOLVED_OVERTURNED, DISPUTE_STATUS_RESOLVED_UPHELD, DISPUTE_STATUS_VOTING,
     MEDIA_TYPE_AUDIO, MEDIA_TYPE_IMAGE, MEDIA_TYPE_VIDEO, NewPocAnalysisResult, NewPocBadge,
     NewPocConfiguration, NewPocDispute, NewPocDisputeVote, NewPocRevenueRedirection,
-    PocAnalysisResultRow, PocBadgeRow, PocConfigRow, PocDisputeRow, VOTE_OVERTURN, VOTE_UPHOLD,
+    PocAnalysisResultRow, PocBadgeRow, PocConfigRow, PocDisputeRow, PocRevenueRedirectionRow,
+    VOTE_OVERTURN, VOTE_UPHOLD,
 };
 pub use post::{
     COMMENTER_TIP_PERCENTAGE, CommentRow, ENABLE_POC, ENABLE_SPOT, ENABLE_SPT, MAX_CONTENT_LENGTH,

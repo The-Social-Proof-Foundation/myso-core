@@ -1838,6 +1838,45 @@ PlatformRevenueSummary.activeMonths
 PlatformRevenueSummary.lastActiveMonth
   => {}
 
+PocAnalysisResult.postId
+  => {}
+
+PocAnalysisResult.similarityDetected
+  => {}
+
+PocAnalysisResult.highestSimilarityScore
+  => {}
+
+PocAnalysisResult.mediaType
+  => {}
+
+PocAnalysisResult.oracleAddress
+  => {}
+
+PocAnalysisResult.originalCreator
+  => {}
+
+PocAnalysisResult.analysisTimestamp
+  => {}
+
+PocBadge.badgeId
+  => {}
+
+PocBadge.postId
+  => {}
+
+PocBadge.mediaType
+  => {}
+
+PocBadge.issuedBy
+  => {}
+
+PocBadge.issuedAt
+  => {}
+
+PocBadge.revoked
+  => {}
+
 PocConfig.imageThreshold
   => {}
 
@@ -1857,6 +1896,54 @@ PocConfig.oracleAddress
   => {}
 
 PocConfig.updatedAt
+  => {}
+
+PocDispute.disputeId
+  => {}
+
+PocDispute.postId
+  => {}
+
+PocDispute.disputer
+  => {}
+
+PocDispute.disputerProfile
+  => {}
+
+PocDispute.disputeType
+  => {}
+
+PocDispute.evidence
+  => {}
+
+PocDispute.status
+  => {}
+
+PocDispute.stakeAmount
+  => {}
+
+PocDispute.submittedAt
+  => {}
+
+PocDispute.resolvedAt
+  => {}
+
+PocRevenueRedirection.redirectionId
+  => {}
+
+PocRevenueRedirection.accusedPostId
+  => {}
+
+PocRevenueRedirection.originalPostId
+  => {}
+
+PocRevenueRedirection.redirectPercentage
+  => {}
+
+PocRevenueRedirection.similarityScore
+  => {}
+
+PocRevenueRedirection.createdAt
   => {}
 
 Post.id
@@ -1907,6 +1994,36 @@ Post.parentPostId
 Post.updatedAt
   => {}
 
+Post.pocId
+  => {}
+
+Post.revenueRedirectTo
+  => {}
+
+Post.revenueRedirectPercentage
+  => {}
+
+Post.enablePoc
+  => {}
+
+Post.pocReasoning
+  => {}
+
+Post.pocEvidenceUrls
+  => {}
+
+Post.pocSimilarityScore
+  => {}
+
+Post.pocMediaType
+  => {}
+
+Post.pocOracleAddress
+  => {}
+
+Post.pocAnalyzedAt
+  => {}
+
 Post.comments
   => {}
 
@@ -1929,6 +2046,18 @@ Post.spotRecord
   => {}
 
 Post.promotion
+  => {}
+
+Post.pocBadges
+  => {}
+
+Post.revenueRedirections
+  => {}
+
+Post.pocAnalysis
+  => {}
+
+Post.pocDisputes
   => {}
 
 PostConfig.updatedBy

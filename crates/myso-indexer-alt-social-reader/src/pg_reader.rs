@@ -36,7 +36,7 @@ use crate::platform::{
 };
 use crate::poc::{
     get_poc_analysis_for_post, get_poc_badges_for_post, get_poc_configuration,
-    get_poc_disputes_for_post,
+    get_poc_disputes_for_post, get_post_revenue_redirections,
 };
 use crate::post::PostRow;
 use crate::profile::get_profile_badges;
@@ -579,6 +579,17 @@ impl SocialPgReader {
     ) -> anyhow::Result<Vec<crate::PocBadgeRow>> {
         let mut conn = self.connect().await?;
         get_poc_badges_for_post(&mut conn, post_id, limit, offset, &self.metrics).await
+    }
+
+    /// Get revenue redirections for a post (as accused or original).
+    pub async fn get_post_revenue_redirections(
+        &self,
+        post_id: &str,
+        limit: i64,
+        offset: i64,
+    ) -> anyhow::Result<Vec<crate::PocRevenueRedirectionRow>> {
+        let mut conn = self.connect().await?;
+        get_post_revenue_redirections(&mut conn, post_id, limit, offset, &self.metrics).await
     }
 
     /// Get POC disputes for a post.
