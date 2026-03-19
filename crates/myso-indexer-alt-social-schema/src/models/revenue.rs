@@ -1,8 +1,10 @@
 // Copyright (c) The Social Proof Foundation, LLC.
 // SPDX-License-Identifier: Apache-2.0
 
-use chrono::{DateTime, Utc};
+use chrono::{DateTime, NaiveDate, Utc};
 use diesel::prelude::*;
+use diesel::sql_types::{BigInt, Date, Double, Nullable, Text};
+use diesel::QueryableByName;
 use serde::{Deserialize, Serialize};
 
 use crate::schema::spt_revenue;
@@ -96,4 +98,31 @@ pub fn calculate_growth_rate(current: i64, previous: i64) -> Option<f64> {
     } else {
         Some(((current - previous) as f64 / previous as f64) * 100.0)
     }
+}
+
+/// Query result for platform_revenue_summary view (12-month revenue metrics per platform).
+#[derive(Debug, Clone, QueryableByName, Serialize, Deserialize)]
+pub struct PlatformRevenueSummaryRow {
+    #[diesel(sql_type = Text)]
+    pub platform_address: String,
+    #[diesel(sql_type = BigInt)]
+    pub total_revenue: i64,
+    #[diesel(sql_type = BigInt)]
+    pub total_subscription_revenue: i64,
+    #[diesel(sql_type = BigInt)]
+    pub total_mydata_revenue: i64,
+    #[diesel(sql_type = BigInt)]
+    pub total_spt_revenue: i64,
+    #[diesel(sql_type = BigInt)]
+    pub total_transactions: i64,
+    #[diesel(sql_type = BigInt)]
+    pub total_creators: i64,
+    #[diesel(sql_type = BigInt)]
+    pub total_payers: i64,
+    #[diesel(sql_type = Double)]
+    pub avg_transaction_amount: f64,
+    #[diesel(sql_type = BigInt)]
+    pub active_months: i64,
+    #[diesel(sql_type = Nullable<Date>)]
+    pub last_active_month: Option<NaiveDate>,
 }

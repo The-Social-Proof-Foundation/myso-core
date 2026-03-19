@@ -7,7 +7,7 @@ use diesel::sql_types::{BigInt, Bool, Nullable, SmallInt, Text};
 use diesel_async::RunQueryDsl;
 
 use myso_indexer_alt_social_schema::models::{
-    DelegateRow, GovernanceRegistryRow, ProposalRow,
+    DelegateRow, GovernanceRegistryRow, GovernanceStatsRow, ProposalRow,
 };
 use myso_pg_db::Connection;
 
@@ -185,6 +185,7 @@ pub(crate) async fn get_delegate_by_address(
 
 pub(crate) async fn list_governance_registries(
     conn: &mut Connection<'_>,
+    registry_type: Option<i16>,
     metrics: &DbReaderMetrics,
 ) -> anyhow::Result<Vec<GovernanceRegistryRow>> {
     metrics.requests_received.inc();
@@ -194,9 +195,11 @@ pub(crate) async fn list_governance_registries(
         SELECT registry_type, registry_id, delegate_count, delegate_term_epochs,
                proposal_submission_cost, max_votes_per_user, voting_period_ms, quorum_votes
         FROM governance_registries
+        WHERE ($1::smallint IS NULL OR registry_type = $1)
     ";
 
     let results = diesel::sql_query(query)
+        .bind::<Nullable<SmallInt>, _>(registry_type)
         .load::<GovernanceRegistryRow>(conn)
         .await?;
 
@@ -266,6 +269,32 @@ pub(crate) async fn get_governance_registry_by_platform_id(
     let result = diesel::sql_query(query)
         .bind::<Text, _>(reg_id)
         .get_result::<GovernanceRegistryRow>(conn)
+        .await
+        .optional()?;
+
+    metrics.requests_succeeded.inc();
+    Ok(result)
+}
+
+pub(crate) async fn get_governance_stats_by_registry_type(
+    conn: &mut Connection<'_>,
+    registry_type: i16,
+    metrics: &DbReaderMetrics,
+) -> anyhow::Result<Option<GovernanceStatsRow>> {
+    metrics.requests_received.inc();
+    let _guard = metrics.latency.start_timer();
+
+    let query = "
+        SELECT registry_type, active_delegates, pending_nominees, submitted_proposals,
+               in_review_proposals, voting_proposals, approved_proposals, rejected_proposals,
+               implemented_proposals, rescinded_proposals
+        FROM governance_stats
+        WHERE registry_type = $1
+    ";
+
+    let result = diesel::sql_query(query)
+        .bind::<SmallInt, _>(registry_type)
+        .get_result::<GovernanceStatsRow>(conn)
         .await
         .optional()?;
 

@@ -37,9 +37,10 @@ use crate::mydata::{
 };
 use crate::governance::{
     get_delegate_by_address, get_governance_registry_by_platform_id,
-    get_governance_registry_by_type, get_proposal_by_id, list_delegates,
-    list_governance_registries, list_proposals,
+    get_governance_registry_by_type, get_governance_stats_by_registry_type, get_proposal_by_id,
+    list_delegates, list_governance_registries, list_proposals,
 };
+use crate::revenue::get_platform_revenue_summary;
 use crate::spot::{get_spot_record, list_spot_bets};
 use crate::promotion::{
     get_promotion, get_promotion_by_post_id, get_promotion_views_count, list_promoted_posts,
@@ -192,6 +193,15 @@ impl SocialPgReader {
     ) -> anyhow::Result<Option<PlatformRow>> {
         let mut conn = self.connect().await?;
         crate::platform::get_platform_by_id(&mut conn, platform_id, &self.metrics).await
+    }
+
+    /// Get a platform by governance registry ID (first platform that references the registry).
+    pub async fn get_platform_by_registry_id(
+        &self,
+        registry_id: &str,
+    ) -> anyhow::Result<Option<PlatformRow>> {
+        let mut conn = self.connect().await?;
+        crate::platform::get_platform_by_registry_id(&mut conn, registry_id, &self.metrics).await
     }
 
     /// List platforms with optional approved filter.
@@ -698,12 +708,13 @@ impl SocialPgReader {
         get_delegate_by_address(&mut conn, address, &self.metrics).await
     }
 
-    /// List all governance registries.
+    /// List governance registries, optionally filtered by registry type.
     pub async fn list_governance_registries(
         &self,
+        registry_type: Option<i16>,
     ) -> anyhow::Result<Vec<myso_indexer_alt_social_schema::models::GovernanceRegistryRow>> {
         let mut conn = self.connect().await?;
-        list_governance_registries(&mut conn, &self.metrics).await
+        list_governance_registries(&mut conn, registry_type, &self.metrics).await
     }
 
     /// Get governance registry by type.
@@ -722,5 +733,23 @@ impl SocialPgReader {
     ) -> anyhow::Result<Option<myso_indexer_alt_social_schema::models::GovernanceRegistryRow>> {
         let mut conn = self.connect().await?;
         get_governance_registry_by_platform_id(&mut conn, platform_id, &self.metrics).await
+    }
+
+    /// Get governance stats by registry type (from governance_stats view).
+    pub async fn get_governance_stats_by_registry_type(
+        &self,
+        registry_type: i16,
+    ) -> anyhow::Result<Option<myso_indexer_alt_social_schema::models::GovernanceStatsRow>> {
+        let mut conn = self.connect().await?;
+        get_governance_stats_by_registry_type(&mut conn, registry_type, &self.metrics).await
+    }
+
+    /// Get platform revenue summary (from platform_revenue_summary view).
+    pub async fn get_platform_revenue_summary(
+        &self,
+        platform_address: &str,
+    ) -> anyhow::Result<Option<myso_indexer_alt_social_schema::models::PlatformRevenueSummaryRow>> {
+        let mut conn = self.connect().await?;
+        get_platform_revenue_summary(&mut conn, platform_address, &self.metrics).await
     }
 }

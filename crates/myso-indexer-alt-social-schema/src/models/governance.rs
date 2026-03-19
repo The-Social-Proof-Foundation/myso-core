@@ -462,6 +462,31 @@ pub struct DelegateRow {
     pub is_active: bool,
 }
 
+/// Query result for governance_stats view (delegate/proposal counts by registry type).
+#[derive(Debug, Clone, QueryableByName, Serialize, Deserialize)]
+pub struct GovernanceStatsRow {
+    #[diesel(sql_type = SmallInt)]
+    pub registry_type: i16,
+    #[diesel(sql_type = BigInt)]
+    pub active_delegates: i64,
+    #[diesel(sql_type = BigInt)]
+    pub pending_nominees: i64,
+    #[diesel(sql_type = BigInt)]
+    pub submitted_proposals: i64,
+    #[diesel(sql_type = BigInt)]
+    pub in_review_proposals: i64,
+    #[diesel(sql_type = BigInt)]
+    pub voting_proposals: i64,
+    #[diesel(sql_type = BigInt)]
+    pub approved_proposals: i64,
+    #[diesel(sql_type = BigInt)]
+    pub rejected_proposals: i64,
+    #[diesel(sql_type = BigInt)]
+    pub implemented_proposals: i64,
+    #[diesel(sql_type = BigInt)]
+    pub rescinded_proposals: i64,
+}
+
 /// Query result for a governance registry (for GraphQL/reader).
 #[derive(Debug, Clone, QueryableByName, Serialize, Deserialize)]
 pub struct GovernanceRegistryRow {

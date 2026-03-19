@@ -2,15 +2,18 @@
 // SPDX-License-Identifier: Apache-2.0
 
 use std::str::FromStr;
+use std::sync::Arc;
 
 use async_graphql::Context;
 use async_graphql::Object;
 use myso_indexer_alt_social_reader::{
-    DelegateRow, GovernanceRegistryRow, ProposalRow,
+    DelegateRow, GovernanceRegistryRow, GovernanceStatsRow, PlatformRevenueSummaryRow, ProposalRow,
+    SocialPgReader,
 };
 
 use crate::api::resolve_profile::resolve_profile_summary;
 use crate::api::scalars::myso_address::MySoAddress;
+use crate::api::types::platform::Platform;
 use crate::api::types::profile_summary::ProfileSummary;
 
 /// Governance registry config (voting params) for GraphQL.
@@ -222,12 +225,36 @@ impl Delegate {
 #[derive(Clone)]
 pub(crate) struct GovernanceRegistry {
     inner: GovernanceRegistryRow,
+    platform_id: Option<String>,
 }
 
 impl GovernanceRegistry {
     pub(crate) fn from_row(inner: GovernanceRegistryRow) -> Self {
-        Self { inner }
+        Self {
+            inner,
+            platform_id: None,
+        }
     }
+
+    pub(crate) fn from_row_with_platform(
+        inner: GovernanceRegistryRow,
+        platform_id: Option<String>,
+    ) -> Self {
+        Self {
+            inner,
+            platform_id,
+        }
+    }
+}
+
+#[derive(Clone)]
+pub(crate) struct GovernanceStats {
+    inner: GovernanceStatsRow,
+}
+
+#[derive(Clone)]
+pub(crate) struct PlatformRevenueSummary {
+    inner: PlatformRevenueSummaryRow,
 }
 
 #[Object]
@@ -256,6 +283,159 @@ impl GovernanceRegistry {
             voting_period_ms: self.inner.voting_period_ms,
             quorum_votes: self.inner.quorum_votes,
         }
+    }
+
+    /// Governance stats (delegate/proposal counts by registry type).
+    async fn stats(&self, ctx: &Context<'_>) -> Option<GovernanceStats> {
+        let reader_opt = ctx.data_opt::<Arc<Option<SocialPgReader>>>()?;
+        let reader = reader_opt.as_ref().as_ref()?;
+        let row = reader
+            .get_governance_stats_by_registry_type(self.inner.registry_type)
+            .await
+            .ok()??;
+        Some(GovernanceStats { inner: row })
+    }
+
+    /// Platform revenue summary (12-month metrics). Only when registry fetched via governanceRegistry(platformId).
+    async fn revenue(&self, ctx: &Context<'_>) -> Option<PlatformRevenueSummary> {
+        let platform_id = self.platform_id.as_ref()?;
+        let reader_opt = ctx.data_opt::<Arc<Option<SocialPgReader>>>()?;
+        let reader = reader_opt.as_ref().as_ref()?;
+        let row = reader
+            .get_platform_revenue_summary(platform_id)
+            .await
+            .ok()??;
+        Some(PlatformRevenueSummary { inner: row })
+    }
+
+    /// Platform details (when registry_type=2). Resolved by platform_id when from governanceRegistry(platformId), else by registry_id.
+    async fn platform(&self, ctx: &Context<'_>) -> Option<Platform> {
+        let reader_opt = ctx.data_opt::<Arc<Option<SocialPgReader>>>()?;
+        let reader = reader_opt.as_ref().as_ref()?;
+        let row = if let Some(pid) = &self.platform_id {
+            reader.get_platform_by_id(pid).await.ok()?
+        } else if self.inner.registry_type == 2 {
+            reader
+                .get_platform_by_registry_id(&self.inner.registry_id)
+                .await
+                .ok()?
+        } else {
+            return None;
+        };
+        row.map(Platform::from_db)
+    }
+}
+
+#[Object]
+impl GovernanceStats {
+    /// Registry type (0=ecosystem, 1=proof of creativity, 2=platform).
+    async fn registry_type(&self) -> i16 {
+        self.inner.registry_type
+    }
+
+    /// Active delegates count.
+    async fn active_delegates(&self) -> i64 {
+        self.inner.active_delegates
+    }
+
+    /// Pending nominees count.
+    async fn pending_nominees(&self) -> i64 {
+        self.inner.pending_nominees
+    }
+
+    /// Submitted proposals count.
+    async fn submitted_proposals(&self) -> i64 {
+        self.inner.submitted_proposals
+    }
+
+    /// In-review proposals count.
+    async fn in_review_proposals(&self) -> i64 {
+        self.inner.in_review_proposals
+    }
+
+    /// Voting proposals count.
+    async fn voting_proposals(&self) -> i64 {
+        self.inner.voting_proposals
+    }
+
+    /// Approved proposals count.
+    async fn approved_proposals(&self) -> i64 {
+        self.inner.approved_proposals
+    }
+
+    /// Rejected proposals count.
+    async fn rejected_proposals(&self) -> i64 {
+        self.inner.rejected_proposals
+    }
+
+    /// Implemented proposals count.
+    async fn implemented_proposals(&self) -> i64 {
+        self.inner.implemented_proposals
+    }
+
+    /// Rescinded proposals count.
+    async fn rescinded_proposals(&self) -> i64 {
+        self.inner.rescinded_proposals
+    }
+}
+
+#[Object]
+impl PlatformRevenueSummary {
+    /// Platform address (object ID).
+    async fn platform_address(&self) -> &str {
+        &self.inner.platform_address
+    }
+
+    /// Total revenue (12-month).
+    async fn total_revenue(&self) -> i64 {
+        self.inner.total_revenue
+    }
+
+    /// Subscription revenue (12-month).
+    async fn total_subscription_revenue(&self) -> i64 {
+        self.inner.total_subscription_revenue
+    }
+
+    /// MyData revenue (12-month).
+    async fn total_mydata_revenue(&self) -> i64 {
+        self.inner.total_mydata_revenue
+    }
+
+    /// SPT revenue (12-month).
+    async fn total_spt_revenue(&self) -> i64 {
+        self.inner.total_spt_revenue
+    }
+
+    /// Total transactions (12-month).
+    async fn total_transactions(&self) -> i64 {
+        self.inner.total_transactions
+    }
+
+    /// Total creators count.
+    async fn total_creators(&self) -> i64 {
+        self.inner.total_creators
+    }
+
+    /// Total payers count.
+    async fn total_payers(&self) -> i64 {
+        self.inner.total_payers
+    }
+
+    /// Average transaction amount.
+    async fn avg_transaction_amount(&self) -> f64 {
+        self.inner.avg_transaction_amount
+    }
+
+    /// Active months count.
+    async fn active_months(&self) -> i64 {
+        self.inner.active_months
+    }
+
+    /// Last active month (ISO date string).
+    async fn last_active_month(&self) -> Option<String> {
+        self.inner
+            .last_active_month
+            .map(|d| d.format("%Y-%m-%d").to_string())
     }
 }
 

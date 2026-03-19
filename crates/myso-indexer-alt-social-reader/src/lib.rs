@@ -5,6 +5,7 @@ mod metrics;
 pub mod pg_reader;
 pub mod platform;
 pub mod governance;
+pub mod revenue;
 pub mod poc;
 pub mod post;
 pub mod promotion;
@@ -37,6 +38,7 @@ pub use myso_indexer_alt_social_schema::models::{
     PocAnalysisResultRow, PocBadgeRow, PocConfigRow, PocDisputeRow,
 };
 pub use myso_indexer_alt_social_schema::models::{
-    DelegateRow, GovernanceRegistryRow, InsurancePolicyRow, InsuranceVaultRow, MyDataPurchaseRow,
-    MyDataRecordRow, ProposalRow, PromotedPostRow, SpotBetRow, SpotRecordRow,
+    DelegateRow, GovernanceRegistryRow, GovernanceStatsRow, InsurancePolicyRow, InsuranceVaultRow,
+    MyDataPurchaseRow, MyDataRecordRow, PlatformRevenueSummaryRow, ProposalRow, PromotedPostRow,
+    SpotBetRow, SpotRecordRow,
 };

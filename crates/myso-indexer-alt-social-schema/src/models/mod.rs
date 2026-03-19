@@ -23,7 +23,8 @@ pub use governance::{
     AnonymousVote, AnonymousVoteRow, AnonymousVotingStatsRow, AnonymousVotingTrendRow,
     CommunityVote, CommunityVoteRow, Delegate, DelegateRating, DelegateRatingRow, DelegateRow,
     DelegateVote, DelegateVoteRow, GovernanceEvent, GovernanceEventRow, GovernanceRegistry,
-    GovernanceRegistryConfig, GovernanceRegistryRow, GovernanceRegistryUpdate, NewAnonymousVote,
+    GovernanceRegistryConfig, GovernanceRegistryRow, GovernanceStatsRow, GovernanceRegistryUpdate,
+    NewAnonymousVote,
     NewCommunityVote, NewDelegate, NewDelegateRating, NewDelegateVote, NewGovernanceEvent,
     NewGovernanceRegistry, NewNominatedDelegate, NewProposal, NewRewardDistribution,
     NewVoteDecryptionFailure, NominatedDelegate, NominatedDelegateRow, Proposal, ProposalRow,
@@ -105,7 +106,8 @@ pub use spot::{
 };
 pub use revenue::{
     calculate_growth_rate, calculate_percentage, format_myso_amount, myso_from_blockchain_units,
-    myso_to_blockchain_units, CONTENT_TYPE_COMMENT, CONTENT_TYPE_DATA, CONTENT_TYPE_POST,
+    myso_to_blockchain_units, PlatformRevenueSummaryRow, CONTENT_TYPE_COMMENT, CONTENT_TYPE_DATA,
+    CONTENT_TYPE_POST,
     CONTENT_TYPE_PROFILE, CONTENT_TYPE_SERVICE, CONTENT_TYPE_TOKEN, CURRENCY_MYSO,
     MYSO_DECIMAL_FACTOR, MYSO_DECIMAL_PLACES, REVENUE_SOURCE_MYDATA, REVENUE_SOURCE_POSTS,
     REVENUE_SOURCE_SPT, REVENUE_SOURCE_SUBSCRIPTION, REVENUE_SOURCE_TIPS,

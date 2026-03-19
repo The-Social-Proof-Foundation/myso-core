@@ -1664,6 +1664,10 @@ type GovernanceRegistry {
 	"""
 	delegateCount: Int!
 	"""
+	Platform details (when registry_type=2). Resolved by platform_id when from governanceRegistry(platformId), else by registry_id.
+	"""
+	platform: Platform
+	"""
 	Registry object ID on-chain.
 	"""
 	registryId: String!
@@ -1671,6 +1675,14 @@ type GovernanceRegistry {
 	Registry type (0=ecosystem, 1=proof of creativity, 2=platform).
 	"""
 	registryType: Int!
+	"""
+	Platform revenue summary (12-month metrics). Only when registry fetched via governanceRegistry(platformId).
+	"""
+	revenue: PlatformRevenueSummary
+	"""
+	Governance stats (delegate/proposal counts by registry type).
+	"""
+	stats: GovernanceStats
 }
 
 type GovernanceRegistryConfig {
@@ -1694,6 +1706,49 @@ type GovernanceRegistryConfig {
 	Voting period in milliseconds.
 	"""
 	votingPeriodMs: Int!
+}
+
+type GovernanceStats {
+	"""
+	Active delegates count.
+	"""
+	activeDelegates: Int!
+	"""
+	Approved proposals count.
+	"""
+	approvedProposals: Int!
+	"""
+	Implemented proposals count.
+	"""
+	implementedProposals: Int!
+	"""
+	In-review proposals count.
+	"""
+	inReviewProposals: Int!
+	"""
+	Pending nominees count.
+	"""
+	pendingNominees: Int!
+	"""
+	Registry type (0=ecosystem, 1=proof of creativity, 2=platform).
+	"""
+	registryType: Int!
+	"""
+	Rejected proposals count.
+	"""
+	rejectedProposals: Int!
+	"""
+	Rescinded proposals count.
+	"""
+	rescindedProposals: Int!
+	"""
+	Submitted proposals count.
+	"""
+	submittedProposals: Int!
+	"""
+	Voting proposals count.
+	"""
+	votingProposals: Int!
 }
 
 """
@@ -3576,6 +3631,53 @@ type PlatformModeratorSummary {
 	moderatorProfile: ProfileSummary
 }
 
+type PlatformRevenueSummary {
+	"""
+	Active months count.
+	"""
+	activeMonths: Int!
+	"""
+	Average transaction amount.
+	"""
+	avgTransactionAmount: Float!
+	"""
+	Last active month (ISO date string).
+	"""
+	lastActiveMonth: String
+	"""
+	Platform address (object ID).
+	"""
+	platformAddress: String!
+	"""
+	Total creators count.
+	"""
+	totalCreators: Int!
+	"""
+	MyData revenue (12-month).
+	"""
+	totalMydataRevenue: Int!
+	"""
+	Total payers count.
+	"""
+	totalPayers: Int!
+	"""
+	Total revenue (12-month).
+	"""
+	totalRevenue: Int!
+	"""
+	SPT revenue (12-month).
+	"""
+	totalSptRevenue: Int!
+	"""
+	Subscription revenue (12-month).
+	"""
+	totalSubscriptionRevenue: Int!
+	"""
+	Total transactions (12-month).
+	"""
+	totalTransactions: Int!
+}
+
 type Post implements Node {
 	"""
 	Number of comments.
@@ -4240,9 +4342,9 @@ type Query {
 	"""
 	delegate(address: MySoAddress!): Delegate
 	"""
-	List delegates (paginated, optionally filtered by registry type). Returns empty when social DB not configured.
+	List delegates (paginated, optionally filtered by registry type and active status). Returns empty when social DB not configured.
 	"""
-	delegates(registryType: Int, limit: Int, offset: Int): [Delegate!]
+	delegates(registryType: Int, isActive: Boolean, limit: Int, offset: Int): [Delegate!]
 	"""
 	Fetch an epoch by its ID, or fetch the latest epoch if no ID is provided.
 	
@@ -4258,9 +4360,9 @@ type Query {
 	"""
 	events(first: Int, after: String, last: Int, before: String, filter: EventFilter): EventConnection
 	"""
-	List all governance registries. Returns empty when social DB not configured.
+	List governance registries, optionally filtered by registry type. Returns empty when social DB not configured.
 	"""
-	governanceRegistries: [GovernanceRegistry!]
+	governanceRegistries(registryType: Int): [GovernanceRegistry!]
 	"""
 	Fetch governance registry for a platform (by platform ID). Returns null when social DB not configured or platform has no registry.
 	"""

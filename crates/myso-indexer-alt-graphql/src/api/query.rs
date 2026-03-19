@@ -782,11 +782,12 @@ impl Query {
         )
     }
 
-    /// List delegates (paginated, optionally filtered by registry type). Returns empty when social DB not configured.
+    /// List delegates (paginated, optionally filtered by registry type and active status). Returns empty when social DB not configured.
     async fn delegates(
         &self,
         ctx: &Context<'_>,
         registry_type: Option<i16>,
+        is_active: Option<bool>,
         limit: Option<u64>,
         offset: Option<u64>,
     ) -> Option<Result<Vec<Delegate>, RpcError>> {
@@ -797,7 +798,7 @@ impl Query {
         let offset = offset.unwrap_or(0) as i64;
         Some(
             reader
-                .list_delegates(registry_type, None, limit, offset)
+                .list_delegates(registry_type, is_active, limit, offset)
                 .await
                 .map_err(Into::into)
                 .map(|v| v.into_iter().map(Delegate::from_row).collect()),
@@ -822,17 +823,18 @@ impl Query {
         )
     }
 
-    /// List all governance registries. Returns empty when social DB not configured.
+    /// List governance registries, optionally filtered by registry type. Returns empty when social DB not configured.
     async fn governance_registries(
         &self,
         ctx: &Context<'_>,
+        registry_type: Option<i16>,
     ) -> Option<Result<Vec<GovernanceRegistry>, RpcError>> {
         let reader_opt = ctx
             .data_opt::<std::sync::Arc<Option<myso_indexer_alt_social_reader::SocialPgReader>>>()?;
         let reader = reader_opt.as_ref().as_ref()?;
         Some(
             reader
-                .list_governance_registries()
+                .list_governance_registries(registry_type)
                 .await
                 .map_err(Into::into)
                 .map(|v| v.into_iter().map(GovernanceRegistry::from_row).collect()),
@@ -853,7 +855,9 @@ impl Query {
                 .get_governance_registry_by_platform_id(&platform_id)
                 .await
                 .map_err(Into::into)
-                .map(|opt| opt.map(GovernanceRegistry::from_row)),
+                .map(|opt| {
+                    opt.map(|row| GovernanceRegistry::from_row_with_platform(row, Some(platform_id)))
+                }),
         )
     }
 

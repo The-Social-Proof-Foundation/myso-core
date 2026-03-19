@@ -108,6 +108,32 @@ pub(crate) async fn get_platform_by_id(
     Ok(result)
 }
 
+pub(crate) async fn get_platform_by_registry_id(
+    conn: &mut Connection<'_>,
+    registry_id: &str,
+    metrics: &DbReaderMetrics,
+) -> anyhow::Result<Option<PlatformRow>> {
+    metrics.requests_received.inc();
+    let _guard = metrics.latency.start_timer();
+    let result = diesel::sql_query(
+        "SELECT p.platform_id, p.name, p.tagline, p.description, p.logo, p.developer_address,
+                p.status, p.is_approved, p.primary_category, p.secondary_category, p.created_at, p.updated_at,
+                p.terms_of_service, p.privacy_policy, p.links, p.platforms AS platform_names, p.release_date, p.shutdown_date,
+                p.treasury, p.wants_dao_governance, p.governance_registry_id, p.delegate_count,
+                p.delegate_term_epochs, p.max_votes_per_user, p.min_on_chain_age_days,
+                p.proposal_submission_cost, p.quadratic_base_cost, p.quorum_votes, p.voting_period_epochs
+         FROM platforms p
+         WHERE p.governance_registry_id = $1 AND p.deleted_at IS NULL
+         LIMIT 1",
+    )
+    .bind::<Text, _>(registry_id)
+    .get_result::<PlatformRow>(conn)
+    .await
+    .optional()?;
+    metrics.requests_succeeded.inc();
+    Ok(result)
+}
+
 pub(crate) async fn list_platforms(
     conn: &mut Connection<'_>,
     approved_only: bool,
