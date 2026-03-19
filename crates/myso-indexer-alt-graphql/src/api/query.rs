@@ -36,6 +36,11 @@ use crate::api::types::epoch::Epoch;
 use crate::api::types::event::CEvent;
 use crate::api::types::event::Event;
 use crate::api::types::event::filter::EventFilter;
+use crate::api::types::governance::{
+    AnonymousVotingTrend, Delegate, GovernanceEvent, GovernanceRegistry, NominatedDelegate,
+    Proposal,
+};
+use crate::api::types::insurance::{InsurancePolicy, InsuranceVault};
 use crate::api::types::move_object::MoveObject;
 use crate::api::types::move_package;
 use crate::api::types::move_package::MovePackage;
@@ -43,6 +48,7 @@ use crate::api::types::move_package::PackageCheckpointFilter;
 use crate::api::types::move_package::PackageKey;
 use crate::api::types::move_type;
 use crate::api::types::move_type::MoveType;
+use crate::api::types::mydata::{MyDataPurchase, MyDataRecord};
 use crate::api::types::node::Node;
 use crate::api::types::object;
 use crate::api::types::object::Object;
@@ -52,27 +58,24 @@ use crate::api::types::object_filter::ObjectFilter;
 use crate::api::types::object_filter::ObjectFilterValidator as OFValidator;
 use crate::api::types::platform::Platform;
 use crate::api::types::post::{CommentSummary, Post, ReactionSummary, RepostSummary, TipSummary};
-use crate::api::types::promotion::Promotion;
 use crate::api::types::profile::Profile;
-use crate::api::types::governance::{Delegate, GovernanceRegistry, Proposal};
-use crate::api::types::insurance::{InsurancePolicy, InsuranceVault};
-use crate::api::types::mydata::{MyDataPurchase, MyDataRecord};
-use crate::api::types::spot::{SpotBet, SpotRecord};
-use crate::api::types::spt::{SptHolding, SptOrder, SptPool, SptPriceHistory, SptSortBy};
-use crate::api::types::social_config::{
-    InsuranceConfig, MyDataConfig, PocConfig, PostConfig, SpotConfig, SptExchangeConfig,
-};
-use crate::api::types::vesting::{
-    VestingLeaderboardEntry, VestingLeaderboardResponse, VestingWallet,
-};
+use crate::api::types::promotion::Promotion;
 use crate::api::types::protocol_configs::ProtocolConfigs;
 use crate::api::types::service_config::ServiceConfig;
 use crate::api::types::simulation_result::SimulationResult;
+use crate::api::types::social_config::{
+    InsuranceConfig, MyDataConfig, PocConfig, PostConfig, SpotConfig, SptExchangeConfig,
+};
+use crate::api::types::spot::{SpotBet, SpotRecord};
+use crate::api::types::spt::{SptHolding, SptOrder, SptPool, SptPriceHistory, SptSortBy};
 use crate::api::types::transaction::CTransaction;
 use crate::api::types::transaction::Transaction;
 use crate::api::types::transaction::filter::TransactionFilter;
 use crate::api::types::transaction::filter::TransactionFilterValidator as TFValidator;
 use crate::api::types::transaction_effects::TransactionEffects;
+use crate::api::types::vesting::{
+    VestingLeaderboardEntry, VestingLeaderboardResponse, VestingWallet,
+};
 use crate::api::types::zklogin;
 use crate::api::types::zklogin::ZkLoginIntentScope;
 use crate::api::types::zklogin::ZkLoginVerifyResult;
@@ -765,12 +768,13 @@ impl Query {
         )
     }
 
-    /// List governance proposals (paginated, optionally filtered by platform and status). Returns empty when social DB not configured.
+    /// List governance proposals (paginated, optionally filtered by platform, status, submitter). Returns empty when social DB not configured.
     async fn proposals(
         &self,
         ctx: &Context<'_>,
         platform_id: Option<String>,
         status: Option<i16>,
+        submitter: Option<String>,
         limit: Option<u64>,
         offset: Option<u64>,
     ) -> Option<Result<Vec<Proposal>, RpcError>> {
@@ -785,6 +789,7 @@ impl Query {
                     platform_id.as_deref(),
                     status,
                     None,
+                    submitter.as_deref(),
                     limit,
                     offset,
                 )
@@ -853,6 +858,29 @@ impl Query {
         )
     }
 
+    /// List nominated delegates (paginated, optionally filtered by registry type and status). Returns empty when social DB not configured.
+    async fn nominated_delegates(
+        &self,
+        ctx: &Context<'_>,
+        registry_type: Option<i16>,
+        status: Option<i16>,
+        limit: Option<u64>,
+        offset: Option<u64>,
+    ) -> Option<Result<Vec<NominatedDelegate>, RpcError>> {
+        let reader_opt = ctx
+            .data_opt::<std::sync::Arc<Option<myso_indexer_alt_social_reader::SocialPgReader>>>()?;
+        let reader = reader_opt.as_ref().as_ref()?;
+        let limit = limit.unwrap_or(50).min(100) as i64;
+        let offset = offset.unwrap_or(0) as i64;
+        Some(
+            reader
+                .list_nominated_delegates(registry_type, status, limit, offset)
+                .await
+                .map_err(Into::into)
+                .map(|v| v.into_iter().map(NominatedDelegate::from_row).collect()),
+        )
+    }
+
     /// List governance registries, optionally filtered by registry type. Returns empty when social DB not configured.
     async fn governance_registries(
         &self,
@@ -871,6 +899,46 @@ impl Query {
         )
     }
 
+    /// List governance events (paginated). Returns empty when social DB not configured.
+    async fn governance_events(
+        &self,
+        ctx: &Context<'_>,
+        limit: Option<u64>,
+        offset: Option<u64>,
+    ) -> Option<Result<Vec<GovernanceEvent>, RpcError>> {
+        let reader_opt = ctx
+            .data_opt::<std::sync::Arc<Option<myso_indexer_alt_social_reader::SocialPgReader>>>()?;
+        let reader = reader_opt.as_ref().as_ref()?;
+        let limit = limit.unwrap_or(50).min(100) as i64;
+        let offset = offset.unwrap_or(0) as i64;
+        Some(
+            reader
+                .list_governance_events(limit, offset)
+                .await
+                .map_err(Into::into)
+                .map(|v| v.into_iter().map(GovernanceEvent::from_row).collect()),
+        )
+    }
+
+    /// Anonymous voting trends (daily aggregates). Returns empty when social DB not configured.
+    async fn anonymous_voting_trends(
+        &self,
+        ctx: &Context<'_>,
+        limit: Option<u64>,
+    ) -> Option<Result<Vec<AnonymousVotingTrend>, RpcError>> {
+        let reader_opt = ctx
+            .data_opt::<std::sync::Arc<Option<myso_indexer_alt_social_reader::SocialPgReader>>>()?;
+        let reader = reader_opt.as_ref().as_ref()?;
+        let limit = limit.unwrap_or(30).min(100) as i64;
+        Some(
+            reader
+                .get_anonymous_voting_trends(limit)
+                .await
+                .map_err(Into::into)
+                .map(|v| v.into_iter().map(AnonymousVotingTrend::from_row).collect()),
+        )
+    }
+
     /// Fetch governance registry for a platform (by platform ID). Returns null when social DB not configured or platform has no registry.
     async fn governance_registry(
         &self,
@@ -886,7 +954,9 @@ impl Query {
                 .await
                 .map_err(Into::into)
                 .map(|opt| {
-                    opt.map(|row| GovernanceRegistry::from_row_with_platform(row, Some(platform_id)))
+                    opt.map(|row| {
+                        GovernanceRegistry::from_row_with_platform(row, Some(platform_id))
+                    })
                 }),
         )
     }

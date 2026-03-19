@@ -2,7 +2,7 @@
 // SPDX-License-Identifier: Apache-2.0
 
 use diesel::OptionalExtension;
-use diesel::sql_types::{Text};
+use diesel::sql_types::Text;
 use diesel_async::RunQueryDsl;
 
 use myso_indexer_alt_social_schema::models::PlatformRevenueSummaryRow;

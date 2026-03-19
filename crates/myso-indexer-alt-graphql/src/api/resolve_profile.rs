@@ -13,8 +13,7 @@ pub(crate) async fn resolve_profile_summary(
     ctx: &Context<'_>,
     address: &str,
 ) -> Option<ProfileSummary> {
-    let reader_opt = ctx
-        .data_opt::<Arc<Option<SocialPgReader>>>()?;
+    let reader_opt = ctx.data_opt::<Arc<Option<SocialPgReader>>>()?;
     let reader = reader_opt.as_ref().as_ref()?;
     let row = reader.get_profile_summary(address).await.ok()?;
     Some(ProfileSummary::from_row(row))

@@ -10,8 +10,8 @@ use diesel::QueryableByName;
 use diesel::SelectableHelper;
 use diesel_async::RunQueryDsl;
 use myso_indexer_alt_social_schema::models::{
-    REVENUE_SOURCE_MYDATA, REVENUE_SOURCE_SPT, REVENUE_SOURCE_SUBSCRIPTION, REVENUE_SOURCE_TIPS,
-    UnifiedRevenue,
+    UnifiedRevenue, REVENUE_SOURCE_MYDATA, REVENUE_SOURCE_SPT, REVENUE_SOURCE_SUBSCRIPTION,
+    REVENUE_SOURCE_TIPS,
 };
 use myso_indexer_alt_social_schema::schema::{ecosystem_treasury, unified_revenue};
 use myso_pg_db::Db;

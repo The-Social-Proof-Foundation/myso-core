@@ -2,18 +2,18 @@
 // SPDX-License-Identifier: Apache-2.0
 
 use chrono::NaiveDateTime;
-use diesel::sql_types::{BigInt, Text};
 use diesel::ExpressionMethods;
 use diesel::OptionalExtension;
 use diesel::QueryDsl;
 use diesel::QueryableByName;
+use diesel::sql_types::{BigInt, Text};
 use diesel_async::RunQueryDsl;
 use myso_indexer_alt_social_schema::schema::vesting_wallets;
 
 use myso_pg_db::Connection;
 
 use crate::metrics::DbReaderMetrics;
-use crate::social_graph::{get_profile_summaries_for_addresses, ProfileSummaryRow};
+use crate::social_graph::{ProfileSummaryRow, get_profile_summaries_for_addresses};
 
 #[derive(Debug, Clone)]
 pub struct VestingWalletRow {
@@ -416,25 +416,26 @@ pub(crate) async fn get_vesting_leaderboard(
     let entries: Vec<VestingLeaderboardEntry> = rows
         .into_iter()
         .map(|r| {
-            let user = user_map
-                .get(&r.owner_address)
-                .cloned()
-                .unwrap_or_else(|| ProfileSummaryRow {
-                    owner_address: r.owner_address.clone(),
-                    username: None,
-                    display_name: None,
-                    profile_photo: None,
-                    bio: None,
-                    selected_badge_id: None,
-                    social_proof_token_address: None,
-                    reservation_pool_address: None,
-                    followers_count: None,
-                    following_count: None,
-                    post_count: None,
-                    blocked_count: None,
-                    is_following: None,
-                    follows_viewer: None,
-                });
+            let user =
+                user_map
+                    .get(&r.owner_address)
+                    .cloned()
+                    .unwrap_or_else(|| ProfileSummaryRow {
+                        owner_address: r.owner_address.clone(),
+                        username: None,
+                        display_name: None,
+                        profile_photo: None,
+                        bio: None,
+                        selected_badge_id: None,
+                        social_proof_token_address: None,
+                        reservation_pool_address: None,
+                        followers_count: None,
+                        following_count: None,
+                        post_count: None,
+                        blocked_count: None,
+                        is_following: None,
+                        follows_viewer: None,
+                    });
             VestingLeaderboardEntry {
                 owner_address: r.owner_address,
                 total_vested: r.total_vested,

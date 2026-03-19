@@ -12,41 +12,47 @@ use url::Url;
 
 use myso_pg_db as db;
 
-use crate::metrics::DbReaderMetrics;
-use crate::platform::PlatformRow;
-use crate::post::PostRow;
-use crate::profile::get_profile_badges;
-use crate::profile::get_profile_by_address;
-use crate::profile::get_profile_or_wallet_by_address;
-use crate::profile::get_profiles;
-use crate::platform::{get_platform_blocked_profiles, get_platform_members, get_platform_moderators};
-use crate::social_graph::{
-    check_following, check_platform_blocked, check_profile_blocked, get_blocked_platforms,
-    get_blocked_profiles, get_followers, get_following, get_profile_platform_memberships,
-    FollowSortBy, ProfileSummaryRow,
-};
-use crate::poc::{
-    get_poc_analysis_for_post, get_poc_badges_for_post, get_poc_configuration,
-    get_poc_disputes_for_post,
+use crate::governance::{
+    get_anonymous_voting_trends, get_delegate_by_address, get_delegate_proposals,
+    get_delegate_ratings, get_governance_registry_by_platform_id, get_governance_registry_by_type,
+    get_governance_stats_by_registry_type, get_proposal_anonymous_stats,
+    get_proposal_anonymous_votes, get_proposal_by_id, get_proposal_community_votes,
+    get_proposal_community_votes_count, get_proposal_decryption_failures,
+    get_proposal_delegate_votes, get_proposal_reward_distributions, list_delegates,
+    list_governance_events, list_governance_registries, list_nominated_delegates, list_proposals,
 };
 use crate::insurance::{
     get_insurance_config, get_insurance_policy, list_insurance_policies_by_insured,
     list_insurance_vaults,
 };
+use crate::metrics::DbReaderMetrics;
 use crate::mydata::{
     get_mydata_config, get_mydata_record, list_mydata_purchases_by_buyer,
     list_mydata_records_by_owner,
 };
-use crate::governance::{
-    get_delegate_by_address, get_governance_registry_by_platform_id,
-    get_governance_registry_by_type, get_governance_stats_by_registry_type, get_proposal_by_id,
-    list_delegates, list_governance_registries, list_proposals,
+use crate::platform::PlatformRow;
+use crate::platform::{
+    get_platform_blocked_profiles, get_platform_members, get_platform_moderators,
 };
-use crate::revenue::get_platform_revenue_summary;
-use crate::spot::{get_spot_config, get_spot_record, list_spot_bets};
+use crate::poc::{
+    get_poc_analysis_for_post, get_poc_badges_for_post, get_poc_configuration,
+    get_poc_disputes_for_post,
+};
+use crate::post::PostRow;
+use crate::profile::get_profile_badges;
+use crate::profile::get_profile_by_address;
+use crate::profile::get_profile_or_wallet_by_address;
+use crate::profile::get_profiles;
 use crate::promotion::{
     get_promotion, get_promotion_by_post_id, get_promotion_views_count, list_promoted_posts,
 };
+use crate::revenue::get_platform_revenue_summary;
+use crate::social_graph::{
+    FollowSortBy, ProfileSummaryRow, check_following, check_platform_blocked,
+    check_profile_blocked, get_blocked_platforms, get_blocked_profiles, get_followers,
+    get_following, get_profile_platform_memberships,
+};
+use crate::spot::{get_spot_config, get_spot_record, list_spot_bets};
 use crate::spt::{
     get_spt_exchange_config, get_spt_holdings_by_holder, get_spt_holdings_by_pool, get_spt_pool,
     get_spt_pool_id_for_profile, get_spt_price_history, get_spt_transactions,
@@ -137,10 +143,7 @@ impl SocialPgReader {
     /// Get profile summary for a single address. Supports both profile and wallet-only addresses.
     /// - Profile exists: returns profile data (username, display_name, photo, etc.) + followers_count, following_count
     /// - Wallet only: returns address + followers_count, following_count from wallet_social_graph
-    pub async fn get_profile_summary(
-        &self,
-        address: &str,
-    ) -> anyhow::Result<ProfileSummaryRow> {
+    pub async fn get_profile_summary(&self, address: &str) -> anyhow::Result<ProfileSummaryRow> {
         let response = self.get_profile_or_wallet_by_address(address).await?;
         Ok(ProfileSummaryRow {
             owner_address: response.owner_address,
@@ -488,10 +491,7 @@ impl SocialPgReader {
     }
 
     /// Get SPT pool by pool ID.
-    pub async fn get_spt_pool(
-        &self,
-        pool_id: &str,
-    ) -> anyhow::Result<Option<crate::SptPoolRow>> {
+    pub async fn get_spt_pool(&self, pool_id: &str) -> anyhow::Result<Option<crate::SptPoolRow>> {
         let mut conn = self.connect().await?;
         get_spt_pool(&mut conn, pool_id, &self.metrics).await
     }
@@ -533,7 +533,8 @@ impl SocialPgReader {
         address: &str,
         limit: i64,
         offset: i64,
-    ) -> anyhow::Result<Vec<myso_indexer_alt_social_schema::models::UserReservationHoldingRow>> {
+    ) -> anyhow::Result<Vec<myso_indexer_alt_social_schema::models::UserReservationHoldingRow>>
+    {
         let mut conn = self.connect().await?;
         get_user_reservation_holdings(&mut conn, address, limit, offset, &self.metrics).await
     }
@@ -592,9 +593,7 @@ impl SocialPgReader {
     }
 
     /// Get latest POC configuration.
-    pub async fn get_poc_configuration(
-        &self,
-    ) -> anyhow::Result<Option<crate::PocConfigRow>> {
+    pub async fn get_poc_configuration(&self) -> anyhow::Result<Option<crate::PocConfigRow>> {
         let mut conn = self.connect().await?;
         get_poc_configuration(&mut conn, &self.metrics).await
     }
@@ -608,17 +607,13 @@ impl SocialPgReader {
     }
 
     /// Get latest post configuration.
-    pub async fn get_post_config(
-        &self,
-    ) -> anyhow::Result<Option<crate::post::PostConfigRow>> {
+    pub async fn get_post_config(&self) -> anyhow::Result<Option<crate::post::PostConfigRow>> {
         let mut conn = self.connect().await?;
         crate::post::get_post_config(&mut conn, &self.metrics).await
     }
 
     /// Get latest SPoT configuration.
-    pub async fn get_spot_config(
-        &self,
-    ) -> anyhow::Result<Option<crate::spot::SpotConfigRow>> {
+    pub async fn get_spot_config(&self) -> anyhow::Result<Option<crate::spot::SpotConfigRow>> {
         let mut conn = self.connect().await?;
         get_spot_config(&mut conn, &self.metrics).await
     }
@@ -678,10 +673,7 @@ impl SocialPgReader {
     }
 
     /// Get view count for a promotion.
-    pub async fn get_promotion_views_count(
-        &self,
-        promotion_id: &str,
-    ) -> anyhow::Result<i64> {
+    pub async fn get_promotion_views_count(&self, promotion_id: &str) -> anyhow::Result<i64> {
         let mut conn = self.connect().await?;
         get_promotion_views_count(&mut conn, promotion_id, &self.metrics).await
     }
@@ -758,12 +750,13 @@ impl SocialPgReader {
         list_insurance_vaults(&mut conn, limit, offset, &self.metrics).await
     }
 
-    /// List governance proposals (paginated, optionally filtered by platform, status, proposal type).
+    /// List governance proposals (paginated, optionally filtered by platform, status, proposal type, submitter).
     pub async fn list_proposals(
         &self,
         platform_id: Option<&str>,
         status: Option<i16>,
         proposal_type: Option<i16>,
+        submitter: Option<&str>,
         limit: i64,
         offset: i64,
     ) -> anyhow::Result<Vec<myso_indexer_alt_social_schema::models::ProposalRow>> {
@@ -773,6 +766,7 @@ impl SocialPgReader {
             platform_id,
             status,
             proposal_type,
+            submitter,
             limit,
             offset,
             &self.metrics,
@@ -798,7 +792,15 @@ impl SocialPgReader {
         offset: i64,
     ) -> anyhow::Result<Vec<myso_indexer_alt_social_schema::models::DelegateRow>> {
         let mut conn = self.connect().await?;
-        list_delegates(&mut conn, registry_type, is_active, limit, offset, &self.metrics).await
+        list_delegates(
+            &mut conn,
+            registry_type,
+            is_active,
+            limit,
+            offset,
+            &self.metrics,
+        )
+        .await
     }
 
     /// Get a delegate by address.
@@ -808,6 +810,26 @@ impl SocialPgReader {
     ) -> anyhow::Result<Option<myso_indexer_alt_social_schema::models::DelegateRow>> {
         let mut conn = self.connect().await?;
         get_delegate_by_address(&mut conn, address, &self.metrics).await
+    }
+
+    /// List nominated delegates (paginated, optionally filtered by registry type and status).
+    pub async fn list_nominated_delegates(
+        &self,
+        registry_type: Option<i16>,
+        status: Option<i16>,
+        limit: i64,
+        offset: i64,
+    ) -> anyhow::Result<Vec<myso_indexer_alt_social_schema::models::NominatedDelegateRow>> {
+        let mut conn = self.connect().await?;
+        list_nominated_delegates(
+            &mut conn,
+            registry_type,
+            status,
+            limit,
+            offset,
+            &self.metrics,
+        )
+        .await
     }
 
     /// List governance registries, optionally filtered by registry type.
@@ -837,6 +859,113 @@ impl SocialPgReader {
         get_governance_registry_by_platform_id(&mut conn, platform_id, &self.metrics).await
     }
 
+    /// Get delegate votes for a proposal (paginated).
+    pub async fn get_proposal_delegate_votes(
+        &self,
+        proposal_id: &str,
+        limit: i64,
+        offset: i64,
+    ) -> anyhow::Result<Vec<myso_indexer_alt_social_schema::models::DelegateVoteRow>> {
+        let mut conn = self.connect().await?;
+        get_proposal_delegate_votes(&mut conn, proposal_id, limit, offset, &self.metrics).await
+    }
+
+    /// Get count of community votes for a proposal.
+    pub async fn get_proposal_community_votes_count(
+        &self,
+        proposal_id: &str,
+    ) -> anyhow::Result<i64> {
+        let mut conn = self.connect().await?;
+        get_proposal_community_votes_count(&mut conn, proposal_id, &self.metrics).await
+    }
+
+    /// Get community votes for a proposal (paginated).
+    pub async fn get_proposal_community_votes(
+        &self,
+        proposal_id: &str,
+        limit: i64,
+        offset: i64,
+    ) -> anyhow::Result<Vec<myso_indexer_alt_social_schema::models::CommunityVoteRow>> {
+        let mut conn = self.connect().await?;
+        get_proposal_community_votes(&mut conn, proposal_id, limit, offset, &self.metrics).await
+    }
+
+    /// Get reward distributions for a proposal.
+    pub async fn get_proposal_reward_distributions(
+        &self,
+        proposal_id: &str,
+    ) -> anyhow::Result<Vec<myso_indexer_alt_social_schema::models::RewardDistributionRow>> {
+        let mut conn = self.connect().await?;
+        get_proposal_reward_distributions(&mut conn, proposal_id, &self.metrics).await
+    }
+
+    /// Get proposals voted on by a delegate.
+    pub async fn get_delegate_proposals(
+        &self,
+        address: &str,
+    ) -> anyhow::Result<Vec<myso_indexer_alt_social_schema::models::ProposalRow>> {
+        let mut conn = self.connect().await?;
+        get_delegate_proposals(&mut conn, address, &self.metrics).await
+    }
+
+    /// Get delegate ratings for an address.
+    pub async fn get_delegate_ratings(
+        &self,
+        address: &str,
+    ) -> anyhow::Result<Vec<myso_indexer_alt_social_schema::models::DelegateRatingRow>> {
+        let mut conn = self.connect().await?;
+        get_delegate_ratings(&mut conn, address, &self.metrics).await
+    }
+
+    /// List governance events (paginated).
+    pub async fn list_governance_events(
+        &self,
+        limit: i64,
+        offset: i64,
+    ) -> anyhow::Result<Vec<myso_indexer_alt_social_schema::models::GovernanceEventRow>> {
+        let mut conn = self.connect().await?;
+        list_governance_events(&mut conn, limit, offset, &self.metrics).await
+    }
+
+    /// Get anonymous voting stats for a proposal.
+    pub async fn get_proposal_anonymous_stats(
+        &self,
+        proposal_id: &str,
+    ) -> anyhow::Result<Option<myso_indexer_alt_social_schema::models::AnonymousVotingStatsRow>>
+    {
+        let mut conn = self.connect().await?;
+        get_proposal_anonymous_stats(&mut conn, proposal_id, &self.metrics).await
+    }
+
+    /// Get anonymous votes for a proposal (paginated).
+    pub async fn get_proposal_anonymous_votes(
+        &self,
+        proposal_id: &str,
+        limit: i64,
+        offset: i64,
+    ) -> anyhow::Result<Vec<myso_indexer_alt_social_schema::models::AnonymousVoteRow>> {
+        let mut conn = self.connect().await?;
+        get_proposal_anonymous_votes(&mut conn, proposal_id, limit, offset, &self.metrics).await
+    }
+
+    /// Get vote decryption failures for a proposal.
+    pub async fn get_proposal_decryption_failures(
+        &self,
+        proposal_id: &str,
+    ) -> anyhow::Result<Vec<myso_indexer_alt_social_schema::models::VoteDecryptionFailureRow>> {
+        let mut conn = self.connect().await?;
+        get_proposal_decryption_failures(&mut conn, proposal_id, &self.metrics).await
+    }
+
+    /// Get anonymous voting trends (daily aggregates).
+    pub async fn get_anonymous_voting_trends(
+        &self,
+        limit: i64,
+    ) -> anyhow::Result<Vec<myso_indexer_alt_social_schema::models::AnonymousVotingTrendRow>> {
+        let mut conn = self.connect().await?;
+        get_anonymous_voting_trends(&mut conn, limit, &self.metrics).await
+    }
+
     /// Get governance stats by registry type (from governance_stats view).
     pub async fn get_governance_stats_by_registry_type(
         &self,
@@ -850,7 +979,8 @@ impl SocialPgReader {
     pub async fn get_platform_revenue_summary(
         &self,
         platform_address: &str,
-    ) -> anyhow::Result<Option<myso_indexer_alt_social_schema::models::PlatformRevenueSummaryRow>> {
+    ) -> anyhow::Result<Option<myso_indexer_alt_social_schema::models::PlatformRevenueSummaryRow>>
+    {
         let mut conn = self.connect().await?;
         get_platform_revenue_summary(&mut conn, platform_address, &self.metrics).await
     }

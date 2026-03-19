@@ -7,7 +7,7 @@ use async_graphql::Context;
 use async_graphql::Enum;
 use async_graphql::Object;
 use myso_indexer_alt_social_reader::{
-    SptHoldingRow, SptPriceHistory as SptPriceHistoryRow, SptPoolRow, SptSortBy as SptSortByReader,
+    SptHoldingRow, SptPoolRow, SptPriceHistory as SptPriceHistoryRow, SptSortBy as SptSortByReader,
     SptTransaction as SptTransactionRow,
 };
 use myso_indexer_alt_social_schema::models::UserReservationHoldingRow;
@@ -158,7 +158,9 @@ impl SptPool {
 
     /// Market cap (price * circulating supply).
     async fn market_cap(&self) -> i64 {
-        self.inner.price.saturating_mul(self.inner.circulating_supply)
+        self.inner
+            .price
+            .saturating_mul(self.inner.circulating_supply)
     }
 
     /// 24-hour price change (percentage).

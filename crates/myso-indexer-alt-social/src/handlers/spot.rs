@@ -4,8 +4,7 @@
 use super::SocialEventRow;
 use myso_indexer_alt_social_schema::models::{
     NewSpotBet, NewSpotBetWithdrawal, NewSpotConfig, NewSpotEventLog, NewSpotPayout, NewSpotRecord,
-    NewSpotRefund, NewSpotResolution,
-    STATUS_OPEN, STATUS_RESOLVED,
+    NewSpotRefund, NewSpotResolution, STATUS_OPEN, STATUS_RESOLVED,
 };
 
 fn transaction_id_from_event_id(event_id: &str) -> String {

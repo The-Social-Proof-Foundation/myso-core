@@ -220,7 +220,11 @@ impl Platform {
             .get_platform_blocked_profiles(&self.inner.platform_id, limit, offset)
             .await
             .ok()?;
-        Some(rows.into_iter().map(PlatformBlockedProfileSummary::from_row).collect())
+        Some(
+            rows.into_iter()
+                .map(PlatformBlockedProfileSummary::from_row)
+                .collect(),
+        )
     }
 
     /// Members of this platform (paginated).
@@ -239,7 +243,11 @@ impl Platform {
             .get_platform_members(&self.inner.platform_id, limit, offset)
             .await
             .ok()?;
-        Some(rows.into_iter().map(PlatformMemberSummary::from_row).collect())
+        Some(
+            rows.into_iter()
+                .map(PlatformMemberSummary::from_row)
+                .collect(),
+        )
     }
 
     /// Moderators of this platform (paginated).
@@ -258,7 +266,11 @@ impl Platform {
             .get_platform_moderators(&self.inner.platform_id, limit, offset)
             .await
             .ok()?;
-        Some(rows.into_iter().map(PlatformModeratorSummary::from_row).collect())
+        Some(
+            rows.into_iter()
+                .map(PlatformModeratorSummary::from_row)
+                .collect(),
+        )
     }
 }
 

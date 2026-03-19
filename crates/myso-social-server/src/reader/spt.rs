@@ -858,20 +858,26 @@ pub(crate) async fn get_spt_user_holdings_with_reservations(
 
     let mut items: Vec<crate::reader::SptUserHoldingItem> = holdings
         .into_iter()
-        .map(|(pool_id, amount, acquired_at)| crate::reader::SptUserHoldingItem {
-            pool_id,
-            amount,
-            acquired_at,
-            source: "holding".to_string(),
-        })
-        .chain(reservations.into_iter().map(
-            |(pool_id, amount, reserved_at)| crate::reader::SptUserHoldingItem {
+        .map(
+            |(pool_id, amount, acquired_at)| crate::reader::SptUserHoldingItem {
                 pool_id,
                 amount,
-                acquired_at: reserved_at,
-                source: "reservation".to_string(),
+                acquired_at,
+                source: "holding".to_string(),
             },
-        ))
+        )
+        .chain(
+            reservations
+                .into_iter()
+                .map(
+                    |(pool_id, amount, reserved_at)| crate::reader::SptUserHoldingItem {
+                        pool_id,
+                        amount,
+                        acquired_at: reserved_at,
+                        source: "reservation".to_string(),
+                    },
+                ),
+        )
         .collect();
 
     items.sort_by(|a, b| b.acquired_at.cmp(&a.acquired_at));

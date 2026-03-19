@@ -1,8 +1,8 @@
 // Copyright (c) The Social Proof Foundation, LLC.
 // SPDX-License-Identifier: Apache-2.0
 
-use diesel::prelude::*;
 use diesel::QueryableByName;
+use diesel::prelude::*;
 use diesel::sql_types::{BigInt, Int4, Jsonb, Nullable, Text, Timestamptz};
 use serde::{Deserialize, Serialize};
 

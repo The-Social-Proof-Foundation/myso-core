@@ -6,8 +6,7 @@ use serde::Deserialize;
 use super::SocialEventRow;
 use myso_indexer_alt_social_schema::models::{
     NewPocAnalysisResult, NewPocBadge, NewPocConfiguration, NewPocDispute, NewPocDisputeVote,
-    NewPocRevenueRedirection,
-    DISPUTE_STATUS_VOTING,
+    NewPocRevenueRedirection, DISPUTE_STATUS_VOTING,
 };
 
 fn transaction_id_from_event_id(event_id: &str) -> String {

@@ -66,10 +66,9 @@ fn follow_order_clause(sort: FollowSortBy, addr_col: &str) -> String {
     match sort {
         FollowSortBy::Latest => "sgr.created_at DESC".to_string(),
         FollowSortBy::Earliest => "sgr.created_at ASC".to_string(),
-        FollowSortBy::Alphabetical => format!(
-            "COALESCE(p.username, p.display_name, {}) ASC",
-            addr_col
-        ),
+        FollowSortBy::Alphabetical => {
+            format!("COALESCE(p.username, p.display_name, {}) ASC", addr_col)
+        }
         FollowSortBy::MostFollowers => {
             "COALESCE(p.followers_count, wsg.followers_count, 0) DESC".to_string()
         }
@@ -281,7 +280,10 @@ pub(crate) async fn get_followers(
         .unwrap_or_default();
 
     let order_clause = follow_order_clause(sort, "sgr.follower_address");
-    let needs_join = matches!(sort, FollowSortBy::Alphabetical | FollowSortBy::MostFollowers);
+    let needs_join = matches!(
+        sort,
+        FollowSortBy::Alphabetical | FollowSortBy::MostFollowers
+    );
 
     let (data_sql, count_sql) = if needs_join {
         let join_clause = "LEFT JOIN profiles p ON p.owner_address = sgr.follower_address
@@ -452,10 +454,8 @@ pub(crate) async fn get_followers(
     let result: Vec<ProfileSummaryRow> = rows
         .into_iter()
         .map(|r| {
-            let (is_following, follows_viewer) = viewer_ctx
-                .get(&r.addr)
-                .copied()
-                .unwrap_or((false, false));
+            let (is_following, follows_viewer) =
+                viewer_ctx.get(&r.addr).copied().unwrap_or((false, false));
             ProfileSummaryRow {
                 owner_address: r.addr,
                 username: r.username,

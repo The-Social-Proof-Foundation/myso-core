@@ -401,8 +401,7 @@ pub(crate) async fn list_spt_pools(
         ORDER BY {}
         LIMIT $1 OFFSET $2
         "#,
-        token_filter,
-        order_clause
+        token_filter, order_clause
     );
 
     let results = diesel::sql_query(&query)

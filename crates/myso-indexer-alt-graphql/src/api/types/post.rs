@@ -212,7 +212,11 @@ impl Post {
             .get_post_transfers(&self.inner.post_id, limit, offset)
             .await
             .ok()?;
-        Some(rows.into_iter().map(PostTransferSummary::from_row).collect())
+        Some(
+            rows.into_iter()
+                .map(PostTransferSummary::from_row)
+                .collect(),
+        )
     }
 
     /// Spot bets for this post (paginated).
@@ -248,9 +252,15 @@ impl Post {
         let reader_opt = ctx
             .data_opt::<std::sync::Arc<Option<myso_indexer_alt_social_reader::SocialPgReader>>>()?;
         let reader = reader_opt.as_ref().as_ref()?;
-        let row = reader.get_promotion_by_post_id(&self.inner.post_id).await.ok()?;
+        let row = reader
+            .get_promotion_by_post_id(&self.inner.post_id)
+            .await
+            .ok()?;
         let row = row?;
-        let views = reader.get_promotion_views_count(&row.promotion_id).await.ok()?;
+        let views = reader
+            .get_promotion_views_count(&row.promotion_id)
+            .await
+            .ok()?;
         Some(Promotion::from_row(row, views))
     }
 }

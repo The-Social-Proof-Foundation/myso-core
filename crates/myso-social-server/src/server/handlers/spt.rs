@@ -55,13 +55,17 @@ pub async fn get_spt_user_holdings(
             .reader
             .get_spt_user_holdings_with_reservations(&address, limit, offset)
             .await?;
-        Ok(Json(serde_json::to_value(items).map_err(|e| SocialError::internal(e.to_string()))?))
+        Ok(Json(
+            serde_json::to_value(items).map_err(|e| SocialError::internal(e.to_string()))?,
+        ))
     } else {
         let items = state
             .reader
             .get_spt_user_holdings(&address, limit, offset)
             .await?;
-        Ok(Json(serde_json::to_value(items).map_err(|e| SocialError::internal(e.to_string()))?))
+        Ok(Json(
+            serde_json::to_value(items).map_err(|e| SocialError::internal(e.to_string()))?,
+        ))
     }
 }
 

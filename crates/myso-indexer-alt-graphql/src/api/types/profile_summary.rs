@@ -96,10 +96,7 @@ impl ProfileSummary {
             .get_profile_summary_enriched(&self.inner.owner_address)
             .await
             .ok()??;
-        enriched
-            .selected_badge
-            .as_ref()
-            .map(SelectedBadge::from)
+        enriched.selected_badge.as_ref().map(SelectedBadge::from)
     }
 
     /// Reservation percentage (when profile has SPT/reservation pool).

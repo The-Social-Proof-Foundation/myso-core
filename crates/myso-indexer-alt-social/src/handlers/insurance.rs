@@ -6,8 +6,7 @@ use chrono::Utc;
 use myso_indexer_alt_social_schema::models::{
     NewInsuranceConfig, NewInsuranceEventLog, NewInsuranceMarketExposure, NewInsurancePolicy,
     NewInsurancePolicyEvent, NewInsuranceUserExposure, NewInsuranceVault,
-    NewInsuranceVaultTransaction,
-    STATUS_ACTIVE, STATUS_CANCELLED, STATUS_CLAIMED, STATUS_EXPIRED,
+    NewInsuranceVaultTransaction, STATUS_ACTIVE, STATUS_CANCELLED, STATUS_CLAIMED, STATUS_EXPIRED,
 };
 
 fn transaction_id_from_event_id(event_id: &str) -> String {

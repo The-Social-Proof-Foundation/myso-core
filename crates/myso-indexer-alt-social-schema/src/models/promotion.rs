@@ -1,13 +1,13 @@
 // Copyright (c) The Social Proof Foundation, LLC.
 // SPDX-License-Identifier: Apache-2.0
 
-use diesel::prelude::*;
 use diesel::QueryableByName;
+use diesel::prelude::*;
 use diesel::sql_types::{BigInt, Bool, Text};
 use serde::{Deserialize, Serialize};
 
 use crate::schema::{
-    promotion_budget_events, promotion_status_events, promotion_views, promoted_posts,
+    promoted_posts, promotion_budget_events, promotion_status_events, promotion_views,
 };
 
 /// Query result for a promoted post (for GraphQL/reader).

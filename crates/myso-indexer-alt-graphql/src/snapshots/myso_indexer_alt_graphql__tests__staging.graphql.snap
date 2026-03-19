@@ -3023,6 +3023,41 @@ interface Node {
 	id: ID!
 }
 
+type NominatedDelegate {
+	"""
+	Nominee address.
+	"""
+	address: MySoAddress!
+	"""
+	Downvotes (nominee ratings).
+	"""
+	downvotes: Int!
+	"""
+	Nomination time (epoch ms).
+	"""
+	nominationTime: Int!
+	"""
+	Registry type (0=ecosystem, 1=proof of creativity, 2=platform).
+	"""
+	registryType: Int!
+	"""
+	Scheduled term start epoch (when elected).
+	"""
+	scheduledTermStartEpoch: Int!
+	"""
+	Status (0=Pending, 1=Elected, 2=Rejected).
+	"""
+	status: Int!
+	"""
+	Profile of the nominee.
+	"""
+	submitterProfile: ProfileSummary
+	"""
+	Upvotes (nominee ratings).
+	"""
+	upvotes: Int!
+}
+
 """
 An Object on MySo is either a typed value (a Move Object) or a Package (modules containing functions and types).
 
@@ -4457,6 +4492,10 @@ type Query {
 	Fetch a `Node` by its globally unique `ID`. Returns `null` if the node cannot be found (e.g., the underlying data was pruned or never existed).
 	"""
 	node(id: ID!): Node
+	"""
+	List nominated delegates (paginated, optionally filtered by registry type and status). Returns empty when social DB not configured.
+	"""
+	nominatedDelegates(registryType: Int, status: Int, limit: Int, offset: Int): [NominatedDelegate!]
 	"""
 	Fetch an object by its address.
 	

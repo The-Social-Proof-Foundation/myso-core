@@ -112,9 +112,7 @@ pub(crate) struct PlatformBlockedProfileSummary {
 }
 
 impl PlatformBlockedProfileSummary {
-    pub(crate) fn from_row(
-        row: myso_indexer_alt_social_reader::PlatformBlockedProfileRow,
-    ) -> Self {
+    pub(crate) fn from_row(row: myso_indexer_alt_social_reader::PlatformBlockedProfileRow) -> Self {
         Self {
             wallet_address: row.wallet_address,
             blocked_by: row.blocked_by,

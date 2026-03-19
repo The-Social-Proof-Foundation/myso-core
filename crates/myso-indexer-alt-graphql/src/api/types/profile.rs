@@ -15,9 +15,9 @@ use crate::api::resolve_profile::resolve_profile_summary;
 use crate::api::scalars::id::Id;
 use crate::api::scalars::myso_address::MySoAddress;
 use crate::api::types::blocked::{BlockedPlatformSummary, BlockedProfileSummary};
+use crate::api::types::mydata::MyDataRecord;
 use crate::api::types::platform::PlatformMembershipSummary;
 use crate::api::types::profile_summary::ProfileSummary;
-use crate::api::types::mydata::MyDataRecord;
 use crate::api::types::spt::{SptHolding, SptReservationHolding};
 use crate::api::types::vesting::VestingWallet;
 
@@ -356,7 +356,11 @@ impl Profile {
             .get_blocked_profiles(&self.inner.owner_address, limit, offset)
             .await
             .ok()?;
-        Some(rows.into_iter().map(BlockedProfileSummary::from_row).collect())
+        Some(
+            rows.into_iter()
+                .map(BlockedProfileSummary::from_row)
+                .collect(),
+        )
     }
 
     /// Platforms that have blocked this profile (paginated).
@@ -375,7 +379,11 @@ impl Profile {
             .get_blocked_platforms(&self.inner.owner_address, limit, offset)
             .await
             .ok()?;
-        Some(rows.into_iter().map(BlockedPlatformSummary::from_row).collect())
+        Some(
+            rows.into_iter()
+                .map(BlockedPlatformSummary::from_row)
+                .collect(),
+        )
     }
 
     /// Platforms this profile has joined (paginated).
@@ -394,7 +402,11 @@ impl Profile {
             .get_profile_platform_memberships(&self.inner.owner_address, limit, offset)
             .await
             .ok()?;
-        Some(rows.into_iter().map(PlatformMembershipSummary::from_row).collect())
+        Some(
+            rows.into_iter()
+                .map(PlatformMembershipSummary::from_row)
+                .collect(),
+        )
     }
 
     /// Vesting wallets owned by this profile (paginated).
@@ -451,7 +463,11 @@ impl Profile {
             .get_user_reservation_holdings(&self.inner.owner_address, limit, offset)
             .await
             .ok()?;
-        Some(rows.into_iter().map(SptReservationHolding::from_row).collect())
+        Some(
+            rows.into_iter()
+                .map(SptReservationHolding::from_row)
+                .collect(),
+        )
     }
 
     /// MyData records owned by this profile (paginated).

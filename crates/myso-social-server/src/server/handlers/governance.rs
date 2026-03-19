@@ -211,7 +211,9 @@ pub async fn get_governance_registry_by_platform(
         .reader
         .get_governance_registry_by_platform_id(&platform_id)
         .await?
-        .ok_or_else(|| SocialError::not_found(format!("Registry for platform '{}'", platform_id)))?;
+        .ok_or_else(|| {
+            SocialError::not_found(format!("Registry for platform '{}'", platform_id))
+        })?;
     Ok(Json(registry))
 }
 

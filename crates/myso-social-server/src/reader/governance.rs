@@ -51,7 +51,10 @@ pub(crate) async fn list_proposals(
     Ok(results)
 }
 
-async fn resolve_registry_type_for_platform<C>(conn: &mut C, platform_id: &str) -> Result<Option<i16>, SocialError>
+async fn resolve_registry_type_for_platform<C>(
+    conn: &mut C,
+    platform_id: &str,
+) -> Result<Option<i16>, SocialError>
 where
     C: diesel_async::AsyncConnection<Backend = diesel::pg::Pg> + Send,
 {

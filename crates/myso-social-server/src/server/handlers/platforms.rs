@@ -31,7 +31,10 @@ pub async fn list_platforms_approved(
 ) -> Result<Json<Vec<crate::reader::PlatformRow>>, SocialError> {
     let limit = params.limit();
     let offset = params.offset();
-    let platforms = state.reader.list_platforms(true, None, limit, offset).await?;
+    let platforms = state
+        .reader
+        .list_platforms(true, None, limit, offset)
+        .await?;
     Ok(Json(platforms))
 }
 

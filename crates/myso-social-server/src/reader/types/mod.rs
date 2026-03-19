@@ -31,6 +31,7 @@ pub use mydata::{
     AccessAnalytics, AccessLogInfo, DailyRevenue, MyDataBasic, MyDataConfigInfo,
     MyDataStatsResponse, PurchaseInfo, RevenueInfo, SubscriptionInfo,
 };
+pub use myso_indexer_alt_social_schema::models::{PostTransfer, ProfileOffer, ProfileSaleFee};
 pub use platform::{
     PlatformApprovalRow, PlatformBlockedProfileRow, PlatformEventRow, PlatformMemberRow,
     PlatformModeratorRow, PlatformRow,
@@ -39,7 +40,6 @@ pub use poc::{
     PocAnalysisResultRow, PocBadgeRow, PocConfigRow, PocDisputeRow, PocDisputeVoteRow,
     PocRevenueRedirectionRow,
 };
-pub use myso_indexer_alt_social_schema::models::{ProfileOffer, ProfileSaleFee, PostTransfer};
 pub use post::{
     BlockedEventRow, CommentRow, PlatformMembershipRow, PostBasicRow, PostConfigRow,
     PromotedPostRow, PromotionHourlyRow, PromotionStatsRow, PromotionTimeSeriesRow,
@@ -50,9 +50,9 @@ pub use revenue::UnifiedRevenue;
 pub use social_graph::{
     BlockedPlatformRow, BlockedProfileRow, DailyStatsPoint, FollowDetail, FollowStatsRow,
     FollowsQuery, PaginationInfo, ProfileByAddressResponse, ReservationPoolInfo, ReservationStatus,
-    SelectedBadgeInfo,
-    SocialGraphAddressRow, SocialGraphChartData, SocialGraphChartQuery, SocialGraphChartRow,
-    SocialProofTokenInfo, SocialStatsRow, UniversalUserResult, WalletOnlyProfile,
+    SelectedBadgeInfo, SocialGraphAddressRow, SocialGraphChartData, SocialGraphChartQuery,
+    SocialGraphChartRow, SocialProofTokenInfo, SocialStatsRow, UniversalUserResult,
+    WalletOnlyProfile,
 };
 pub use spot::{SpotBetRow, SpotConfigInfo, SpotRecordResponse, SpotTransferRow};
 pub use spt::{

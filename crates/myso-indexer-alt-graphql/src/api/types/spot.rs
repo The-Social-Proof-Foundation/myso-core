@@ -38,7 +38,10 @@ fn parse_option_escrow(value: &serde_json::Value) -> Vec<(i16, i64)> {
 }
 
 fn total_escrow_from_option_escrow(value: &serde_json::Value) -> i64 {
-    parse_option_escrow(value).into_iter().map(|(_, amt)| amt).sum()
+    parse_option_escrow(value)
+        .into_iter()
+        .map(|(_, amt)| amt)
+        .sum()
 }
 
 #[derive(Clone)]

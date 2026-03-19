@@ -333,21 +333,20 @@ async fn enrich_users_with_universal_data(
         let social_proof_token_address = row.social_proof_token_address.clone();
         let is_active = spt_pool_id.is_some();
 
-        let (market_cap, price_change_24h) = if let (Some(current), Some(circ)) =
-            (row.current_price, row.spt_circulating_supply)
-        {
-            let cap = current.saturating_mul(circ);
-            let change = row.price_24h_ago.and_then(|prev| {
-                if prev > 0 {
-                    Some(((current - prev) as f64 / prev as f64) * 100.0)
-                } else {
-                    None
-                }
-            });
-            (Some(cap), change)
-        } else {
-            (None, None)
-        };
+        let (market_cap, price_change_24h) =
+            if let (Some(current), Some(circ)) = (row.current_price, row.spt_circulating_supply) {
+                let cap = current.saturating_mul(circ);
+                let change = row.price_24h_ago.and_then(|prev| {
+                    if prev > 0 {
+                        Some(((current - prev) as f64 / prev as f64) * 100.0)
+                    } else {
+                        None
+                    }
+                });
+                (Some(cap), change)
+            } else {
+                (None, None)
+            };
 
         let social_proof_token = if spt_pool_id.is_some()
             || reservation_pool_id.is_some()
@@ -485,8 +484,8 @@ pub(crate) async fn get_profile_or_wallet_by_address(
                     profile_photo: None,
                     cover_photo: None,
                     website: None,
-        created_at: Some(created_at.and_utc().timestamp_millis()),
-        updated_at: Some(updated_at.and_utc().timestamp_millis()),
+                    created_at: Some(created_at.and_utc().timestamp_millis()),
+                    updated_at: Some(updated_at.and_utc().timestamp_millis()),
                     followers_count: fc,
                     following_count: fg,
                     post_count: 0,

@@ -74,6 +74,51 @@ AddressAliasStateCreateTransaction._
 AddressOwner.address
   => {}
 
+AnonymousVote.proposalId
+  => {}
+
+AnonymousVote.voterAddress
+  => {}
+
+AnonymousVote.submittedAt
+  => {}
+
+AnonymousVote.decryptionStatus
+  => {}
+
+AnonymousVote.processingSuccess
+  => {}
+
+AnonymousVotingStats.totalAnonymousVotes
+  => {}
+
+AnonymousVotingStats.successfullyDecrypted
+  => {}
+
+AnonymousVotingStats.failedDecryptions
+  => {}
+
+AnonymousVotingStats.anonymousVotesFor
+  => {}
+
+AnonymousVotingStats.anonymousVotesAgainst
+  => {}
+
+AnonymousVotingStats.pendingDecryption
+  => {}
+
+AnonymousVotingTrend.day
+  => {}
+
+AnonymousVotingTrend.totalVotes
+  => {}
+
+AnonymousVotingTrend.successfulDecryptions
+  => {}
+
+AnonymousVotingTrend.failedDecryptions
+  => {}
+
 AuthenticatorStateCreateTransaction._
   => {}
 
@@ -404,6 +449,24 @@ CommentSummary.reactionCount
 CommentSummary.commentCount
   => {}
 
+CommunityVote.proposalId
+  => {}
+
+CommunityVote.voterAddress
+  => {}
+
+CommunityVote.voteWeight
+  => {}
+
+CommunityVote.approve
+  => {}
+
+CommunityVote.voteTime
+  => {}
+
+CommunityVote.voteCost
+  => {}
+
 ConsensusAddressOwner.startVersion
   => {}
 
@@ -462,6 +525,51 @@ Delegate.termEnd
   => {}
 
 Delegate.isActive
+  => {}
+
+Delegate.sidedWinningProposals
+  => {}
+
+Delegate.sidedLosingProposals
+  => {}
+
+Delegate.proposals
+  => {}
+
+Delegate.ratings
+  => {}
+
+DelegateRating.targetAddress
+  => {}
+
+DelegateRating.voterAddress
+  => {}
+
+DelegateRating.registryType
+  => {}
+
+DelegateRating.isActiveDelegate
+  => {}
+
+DelegateRating.upvote
+  => {}
+
+DelegateRating.ratedAt
+  => {}
+
+DelegateVote.proposalId
+  => {}
+
+DelegateVote.delegateAddress
+  => {}
+
+DelegateVote.approve
+  => {}
+
+DelegateVote.voteTime
+  => {}
+
+DelegateVote.reason
   => {}
 
 Display.output
@@ -734,6 +842,24 @@ GasInput.gasPayment
 GenesisTransaction.objects
   => {}
 
+GovernanceEvent.id
+  => {}
+
+GovernanceEvent.eventType
+  => {}
+
+GovernanceEvent.registryType
+  => {}
+
+GovernanceEvent.eventData
+  => {}
+
+GovernanceEvent.eventId
+  => {}
+
+GovernanceEvent.createdAt
+  => {}
+
 GovernanceRegistry.registryType
   => {}
 
@@ -761,7 +887,13 @@ GovernanceRegistryConfig.delegateTermEpochs
 GovernanceRegistryConfig.proposalSubmissionCost
   => {}
 
+GovernanceRegistryConfig.minOnChainAgeDays
+  => {}
+
 GovernanceRegistryConfig.maxVotesPerUser
+  => {}
+
+GovernanceRegistryConfig.quadraticBaseCost
   => {}
 
 GovernanceRegistryConfig.votingPeriodMs
@@ -1380,6 +1512,30 @@ MyDataRecord.subscriptionPrice
   => {}
 
 Node.id
+  => {}
+
+NominatedDelegate.address
+  => {}
+
+NominatedDelegate.registryType
+  => {}
+
+NominatedDelegate.upvotes
+  => {}
+
+NominatedDelegate.downvotes
+  => {}
+
+NominatedDelegate.scheduledTermStartEpoch
+  => {}
+
+NominatedDelegate.nominationTime
+  => {}
+
+NominatedDelegate.status
+  => {}
+
+NominatedDelegate.submitterProfile
   => {}
 
 Object.id
@@ -2126,6 +2282,30 @@ Proposal.rescindTime
 Proposal.anonymousVotersCount
   => {}
 
+Proposal.metadataJson
+  => {}
+
+Proposal.delegateVotes
+  => {}
+
+Proposal.communityVotesCount
+  => {}
+
+Proposal.communityVotes
+  => {}
+
+Proposal.rewardDistributions
+  => {}
+
+Proposal.anonymousStats
+  => {}
+
+Proposal.anonymousVotes
+  => {}
+
+Proposal.decryptionFailures
+  => {}
+
 ProposalVotes.delegateFor
   => {}
 
@@ -2255,7 +2435,16 @@ Query.delegates
 Query.delegate
   => {}
 
+Query.nominatedDelegates
+  => {}
+
 Query.governanceRegistries
+  => {}
+
+Query.governanceEvents
+  => {}
+
+Query.anonymousVotingTrends
   => {}
 
 Query.governanceRegistry
@@ -2466,6 +2655,21 @@ RepostSummary.profileId
   => {}
 
 RepostSummary.createdAt
+  => {}
+
+RewardDistribution.proposalId
+  => {}
+
+RewardDistribution.recipientAddress
+  => {}
+
+RewardDistribution.amount
+  => {}
+
+RewardDistribution.distributionTime
+  => {}
+
+RewardDistribution.distributionType
   => {}
 
 SelectedBadge.badgeId
@@ -3195,6 +3399,18 @@ VestingWallet.createdAt
   => {}
 
 VestingWallet.transactionId
+  => {}
+
+VoteDecryptionFailure.proposalId
+  => {}
+
+VoteDecryptionFailure.voterAddress
+  => {}
+
+VoteDecryptionFailure.failureReason
+  => {}
+
+VoteDecryptionFailure.attemptedAt
   => {}
 
 WithdrawMaxAmountU64.amount

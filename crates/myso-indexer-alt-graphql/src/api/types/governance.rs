@@ -6,12 +6,19 @@ use std::sync::Arc;
 
 use async_graphql::Context;
 use async_graphql::Object;
+use async_graphql::Value;
 use myso_indexer_alt_social_reader::{
     DelegateRow, GovernanceRegistryRow, GovernanceStatsRow, PlatformRevenueSummaryRow, ProposalRow,
     SocialPgReader,
 };
+use myso_indexer_alt_social_schema::models::{
+    AnonymousVoteRow, AnonymousVotingStatsRow, AnonymousVotingTrendRow, CommunityVoteRow,
+    DelegateRatingRow, DelegateVoteRow, GovernanceEventRow, NominatedDelegateRow,
+    RewardDistributionRow, VoteDecryptionFailureRow,
+};
 
 use crate::api::resolve_profile::resolve_profile_summary;
+use crate::api::scalars::json::Json;
 use crate::api::scalars::myso_address::MySoAddress;
 use crate::api::types::platform::Platform;
 use crate::api::types::profile_summary::ProfileSummary;
@@ -21,7 +28,9 @@ use crate::api::types::profile_summary::ProfileSummary;
 pub(crate) struct GovernanceRegistryConfig {
     pub delegate_term_epochs: i64,
     pub proposal_submission_cost: i64,
+    pub min_on_chain_age_days: i64,
     pub max_votes_per_user: i64,
+    pub quadratic_base_cost: i64,
     pub voting_period_ms: i64,
     pub quorum_votes: i64,
 }
@@ -137,6 +146,115 @@ impl Proposal {
     async fn anonymous_voters_count(&self) -> Option<i64> {
         self.inner.anonymous_voters_count
     }
+
+    /// Metadata JSON (arbitrary structured data).
+    async fn metadata_json(&self) -> Option<Json> {
+        self.inner
+            .metadata_json
+            .as_ref()
+            .and_then(|v| Json::try_from(v.clone()).ok())
+    }
+
+    /// Delegate votes on this proposal (paginated).
+    async fn delegate_votes(
+        &self,
+        ctx: &Context<'_>,
+        limit: Option<u64>,
+        offset: Option<u64>,
+    ) -> Option<Vec<DelegateVote>> {
+        let reader_opt = ctx.data_opt::<Arc<Option<SocialPgReader>>>()?;
+        let reader = reader_opt.as_ref().as_ref()?;
+        let limit = limit.unwrap_or(50).min(100) as i64;
+        let offset = offset.unwrap_or(0) as i64;
+        let rows = reader
+            .get_proposal_delegate_votes(&self.inner.id, limit, offset)
+            .await
+            .ok()?;
+        Some(rows.into_iter().map(DelegateVote::from_row).collect())
+    }
+
+    /// Count of community votes on this proposal.
+    async fn community_votes_count(&self, ctx: &Context<'_>) -> Option<i64> {
+        let reader_opt = ctx.data_opt::<Arc<Option<SocialPgReader>>>()?;
+        let reader = reader_opt.as_ref().as_ref()?;
+        reader
+            .get_proposal_community_votes_count(&self.inner.id)
+            .await
+            .ok()
+    }
+
+    /// Community votes on this proposal (paginated).
+    async fn community_votes(
+        &self,
+        ctx: &Context<'_>,
+        limit: Option<u64>,
+        offset: Option<u64>,
+    ) -> Option<Vec<CommunityVote>> {
+        let reader_opt = ctx.data_opt::<Arc<Option<SocialPgReader>>>()?;
+        let reader = reader_opt.as_ref().as_ref()?;
+        let limit = limit.unwrap_or(50).min(100) as i64;
+        let offset = offset.unwrap_or(0) as i64;
+        let rows = reader
+            .get_proposal_community_votes(&self.inner.id, limit, offset)
+            .await
+            .ok()?;
+        Some(rows.into_iter().map(CommunityVote::from_row).collect())
+    }
+
+    /// Reward distributions for this proposal.
+    async fn reward_distributions(&self, ctx: &Context<'_>) -> Option<Vec<RewardDistribution>> {
+        let reader_opt = ctx.data_opt::<Arc<Option<SocialPgReader>>>()?;
+        let reader = reader_opt.as_ref().as_ref()?;
+        let rows = reader
+            .get_proposal_reward_distributions(&self.inner.id)
+            .await
+            .ok()?;
+        Some(rows.into_iter().map(RewardDistribution::from_row).collect())
+    }
+
+    /// Anonymous voting stats for this proposal.
+    async fn anonymous_stats(&self, ctx: &Context<'_>) -> Option<AnonymousVotingStats> {
+        let reader_opt = ctx.data_opt::<Arc<Option<SocialPgReader>>>()?;
+        let reader = reader_opt.as_ref().as_ref()?;
+        let row = reader
+            .get_proposal_anonymous_stats(&self.inner.id)
+            .await
+            .ok()??;
+        Some(AnonymousVotingStats { inner: row })
+    }
+
+    /// Anonymous votes on this proposal (paginated).
+    async fn anonymous_votes(
+        &self,
+        ctx: &Context<'_>,
+        limit: Option<u64>,
+        offset: Option<u64>,
+    ) -> Option<Vec<AnonymousVote>> {
+        let reader_opt = ctx.data_opt::<Arc<Option<SocialPgReader>>>()?;
+        let reader = reader_opt.as_ref().as_ref()?;
+        let limit = limit.unwrap_or(50).min(100) as i64;
+        let offset = offset.unwrap_or(0) as i64;
+        let rows = reader
+            .get_proposal_anonymous_votes(&self.inner.id, limit, offset)
+            .await
+            .ok()?;
+        Some(rows.into_iter().map(AnonymousVote::from_row).collect())
+    }
+
+    /// Vote decryption failures for this proposal.
+    async fn decryption_failures(&self, ctx: &Context<'_>) -> Option<Vec<VoteDecryptionFailure>> {
+        let reader_opt = ctx.data_opt::<Arc<Option<SocialPgReader>>>()?;
+        let reader = reader_opt.as_ref().as_ref()?;
+        let rows = reader
+            .get_proposal_decryption_failures(&self.inner.id)
+            .await
+            .ok()?;
+        Some(
+            rows.into_iter()
+                .map(VoteDecryptionFailure::from_row)
+                .collect(),
+        )
+    }
 }
 
 #[Object]
@@ -159,6 +277,321 @@ impl ProposalVotes {
     /// Community votes against (reject).
     async fn community_against(&self) -> i64 {
         self.community_against
+    }
+}
+
+#[derive(Clone)]
+pub(crate) struct DelegateVote {
+    inner: DelegateVoteRow,
+}
+
+impl DelegateVote {
+    pub(crate) fn from_row(inner: DelegateVoteRow) -> Self {
+        Self { inner }
+    }
+}
+
+#[derive(Clone)]
+pub(crate) struct CommunityVote {
+    inner: CommunityVoteRow,
+}
+
+impl CommunityVote {
+    pub(crate) fn from_row(inner: CommunityVoteRow) -> Self {
+        Self { inner }
+    }
+}
+
+#[derive(Clone)]
+pub(crate) struct DelegateRating {
+    inner: DelegateRatingRow,
+}
+
+impl DelegateRating {
+    pub(crate) fn from_row(inner: DelegateRatingRow) -> Self {
+        Self { inner }
+    }
+}
+
+#[derive(Clone)]
+pub(crate) struct RewardDistribution {
+    inner: RewardDistributionRow,
+}
+
+impl RewardDistribution {
+    pub(crate) fn from_row(inner: RewardDistributionRow) -> Self {
+        Self { inner }
+    }
+}
+
+#[derive(Clone)]
+pub(crate) struct GovernanceEvent {
+    inner: GovernanceEventRow,
+}
+
+impl GovernanceEvent {
+    pub(crate) fn from_row(inner: GovernanceEventRow) -> Self {
+        Self { inner }
+    }
+}
+
+#[derive(Clone)]
+pub(crate) struct AnonymousVote {
+    inner: AnonymousVoteRow,
+}
+
+impl AnonymousVote {
+    pub(crate) fn from_row(inner: AnonymousVoteRow) -> Self {
+        Self { inner }
+    }
+}
+
+#[derive(Clone)]
+pub(crate) struct VoteDecryptionFailure {
+    inner: VoteDecryptionFailureRow,
+}
+
+impl VoteDecryptionFailure {
+    pub(crate) fn from_row(inner: VoteDecryptionFailureRow) -> Self {
+        Self { inner }
+    }
+}
+
+#[derive(Clone)]
+pub(crate) struct AnonymousVotingStats {
+    inner: AnonymousVotingStatsRow,
+}
+
+#[derive(Clone)]
+pub(crate) struct AnonymousVotingTrend {
+    inner: AnonymousVotingTrendRow,
+}
+
+impl AnonymousVotingTrend {
+    pub(crate) fn from_row(inner: AnonymousVotingTrendRow) -> Self {
+        Self { inner }
+    }
+}
+
+#[Object]
+impl DelegateVote {
+    async fn proposal_id(&self) -> &str {
+        &self.inner.proposal_id
+    }
+
+    async fn delegate_address(&self) -> MySoAddress {
+        MySoAddress::from_str(&self.inner.delegate_address)
+            .unwrap_or_else(|_| MySoAddress::from(myso_types::base_types::MySoAddress::ZERO))
+    }
+
+    async fn approve(&self) -> bool {
+        self.inner.approve
+    }
+
+    async fn vote_time(&self) -> i64 {
+        self.inner.vote_time
+    }
+
+    async fn reason(&self) -> Option<&str> {
+        self.inner.reason.as_deref()
+    }
+}
+
+#[Object]
+impl CommunityVote {
+    async fn proposal_id(&self) -> &str {
+        &self.inner.proposal_id
+    }
+
+    async fn voter_address(&self) -> MySoAddress {
+        MySoAddress::from_str(&self.inner.voter_address)
+            .unwrap_or_else(|_| MySoAddress::from(myso_types::base_types::MySoAddress::ZERO))
+    }
+
+    async fn vote_weight(&self) -> i64 {
+        self.inner.vote_weight
+    }
+
+    async fn approve(&self) -> bool {
+        self.inner.approve
+    }
+
+    async fn vote_time(&self) -> i64 {
+        self.inner.vote_time
+    }
+
+    async fn vote_cost(&self) -> i64 {
+        self.inner.vote_cost
+    }
+}
+
+#[Object]
+impl DelegateRating {
+    async fn target_address(&self) -> MySoAddress {
+        MySoAddress::from_str(&self.inner.target_address)
+            .unwrap_or_else(|_| MySoAddress::from(myso_types::base_types::MySoAddress::ZERO))
+    }
+
+    async fn voter_address(&self) -> MySoAddress {
+        MySoAddress::from_str(&self.inner.voter_address)
+            .unwrap_or_else(|_| MySoAddress::from(myso_types::base_types::MySoAddress::ZERO))
+    }
+
+    async fn registry_type(&self) -> i16 {
+        self.inner.registry_type
+    }
+
+    async fn is_active_delegate(&self) -> bool {
+        self.inner.is_active_delegate
+    }
+
+    async fn upvote(&self) -> bool {
+        self.inner.upvote
+    }
+
+    async fn rated_at(&self) -> i64 {
+        self.inner.rated_at
+    }
+}
+
+#[Object]
+impl RewardDistribution {
+    async fn proposal_id(&self) -> &str {
+        &self.inner.proposal_id
+    }
+
+    async fn recipient_address(&self) -> MySoAddress {
+        MySoAddress::from_str(&self.inner.recipient_address)
+            .unwrap_or_else(|_| MySoAddress::from(myso_types::base_types::MySoAddress::ZERO))
+    }
+
+    async fn amount(&self) -> i64 {
+        self.inner.amount
+    }
+
+    async fn distribution_time(&self) -> i64 {
+        self.inner.distribution_time
+    }
+
+    async fn distribution_type(&self) -> Option<&str> {
+        self.inner.distribution_type.as_deref()
+    }
+}
+
+#[Object]
+impl GovernanceEvent {
+    async fn id(&self) -> i32 {
+        self.inner.id
+    }
+
+    async fn event_type(&self) -> &str {
+        &self.inner.event_type
+    }
+
+    async fn registry_type(&self) -> i16 {
+        self.inner.registry_type
+    }
+
+    async fn event_data(&self) -> Json {
+        Json::try_from(self.inner.event_data.clone()).unwrap_or_else(|_| Json::from(Value::Null))
+    }
+
+    async fn event_id(&self) -> &str {
+        &self.inner.event_id
+    }
+
+    async fn created_at(&self) -> i64 {
+        self.inner.created_at.timestamp_millis()
+    }
+}
+
+#[Object]
+impl AnonymousVote {
+    async fn proposal_id(&self) -> &str {
+        &self.inner.proposal_id
+    }
+
+    async fn voter_address(&self) -> MySoAddress {
+        MySoAddress::from_str(&self.inner.voter_address)
+            .unwrap_or_else(|_| MySoAddress::from(myso_types::base_types::MySoAddress::ZERO))
+    }
+
+    async fn submitted_at(&self) -> i64 {
+        self.inner.submitted_at
+    }
+
+    async fn decryption_status(&self) -> i16 {
+        self.inner.decryption_status
+    }
+
+    async fn processing_success(&self) -> bool {
+        self.inner.processing_success
+    }
+}
+
+#[Object]
+impl VoteDecryptionFailure {
+    async fn proposal_id(&self) -> &str {
+        &self.inner.proposal_id
+    }
+
+    async fn voter_address(&self) -> MySoAddress {
+        MySoAddress::from_str(&self.inner.voter_address)
+            .unwrap_or_else(|_| MySoAddress::from(myso_types::base_types::MySoAddress::ZERO))
+    }
+
+    async fn failure_reason(&self) -> &str {
+        &self.inner.failure_reason
+    }
+
+    async fn attempted_at(&self) -> i64 {
+        self.inner.attempted_at
+    }
+}
+
+#[Object]
+impl AnonymousVotingStats {
+    async fn total_anonymous_votes(&self) -> i64 {
+        self.inner.total_anonymous_votes
+    }
+
+    async fn successfully_decrypted(&self) -> i64 {
+        self.inner.successfully_decrypted
+    }
+
+    async fn failed_decryptions(&self) -> i64 {
+        self.inner.failed_decryptions
+    }
+
+    async fn anonymous_votes_for(&self) -> i64 {
+        self.inner.anonymous_votes_for
+    }
+
+    async fn anonymous_votes_against(&self) -> i64 {
+        self.inner.anonymous_votes_against
+    }
+
+    async fn pending_decryption(&self) -> i64 {
+        self.inner.pending_decryption
+    }
+}
+
+#[Object]
+impl AnonymousVotingTrend {
+    async fn day(&self) -> String {
+        self.inner.day.format("%Y-%m-%d").to_string()
+    }
+
+    async fn total_votes(&self) -> i64 {
+        self.inner.total_votes
+    }
+
+    async fn successful_decryptions(&self) -> i64 {
+        self.inner.successful_decryptions
+    }
+
+    async fn failed_decryptions(&self) -> i64 {
+        self.inner.failed_decryptions
     }
 }
 
@@ -220,6 +653,106 @@ impl Delegate {
     async fn is_active(&self) -> bool {
         self.inner.is_active
     }
+
+    /// Proposals on which the delegate sided with the winning outcome.
+    async fn sided_winning_proposals(&self) -> i64 {
+        self.inner.sided_winning_proposals
+    }
+
+    /// Proposals on which the delegate sided with the losing outcome.
+    async fn sided_losing_proposals(&self) -> i64 {
+        self.inner.sided_losing_proposals
+    }
+
+    /// Proposals on which this delegate has voted.
+    async fn proposals(&self, ctx: &Context<'_>) -> Option<Vec<Proposal>> {
+        let reader_opt = ctx.data_opt::<Arc<Option<SocialPgReader>>>()?;
+        let reader = reader_opt.as_ref().as_ref()?;
+        let rows = reader
+            .get_delegate_proposals(&self.inner.address)
+            .await
+            .ok()?;
+        Some(rows.into_iter().map(Proposal::from_row).collect())
+    }
+
+    /// Delegate ratings (upvotes/downvotes) for this delegate (paginated).
+    async fn ratings(
+        &self,
+        ctx: &Context<'_>,
+        limit: Option<u64>,
+        offset: Option<u64>,
+    ) -> Option<Vec<DelegateRating>> {
+        let reader_opt = ctx.data_opt::<Arc<Option<SocialPgReader>>>()?;
+        let reader = reader_opt.as_ref().as_ref()?;
+        let rows = reader
+            .get_delegate_ratings(&self.inner.address)
+            .await
+            .ok()?;
+        let limit = limit.unwrap_or(50).min(100) as usize;
+        let offset = offset.unwrap_or(0) as usize;
+        Some(
+            rows.into_iter()
+                .skip(offset)
+                .take(limit)
+                .map(DelegateRating::from_row)
+                .collect(),
+        )
+    }
+}
+
+#[derive(Clone)]
+pub(crate) struct NominatedDelegate {
+    inner: NominatedDelegateRow,
+}
+
+impl NominatedDelegate {
+    pub(crate) fn from_row(inner: NominatedDelegateRow) -> Self {
+        Self { inner }
+    }
+}
+
+#[Object]
+impl NominatedDelegate {
+    /// Nominee address.
+    async fn address(&self) -> MySoAddress {
+        MySoAddress::from_str(&self.inner.address)
+            .unwrap_or_else(|_| MySoAddress::from(myso_types::base_types::MySoAddress::ZERO))
+    }
+
+    /// Registry type (0=ecosystem, 1=proof of creativity, 2=platform).
+    async fn registry_type(&self) -> i16 {
+        self.inner.registry_type
+    }
+
+    /// Upvotes (nominee ratings).
+    async fn upvotes(&self) -> i64 {
+        self.inner.upvotes
+    }
+
+    /// Downvotes (nominee ratings).
+    async fn downvotes(&self) -> i64 {
+        self.inner.downvotes
+    }
+
+    /// Scheduled term start epoch (when elected).
+    async fn scheduled_term_start_epoch(&self) -> i64 {
+        self.inner.scheduled_term_start_epoch
+    }
+
+    /// Nomination time (epoch ms).
+    async fn nomination_time(&self) -> i64 {
+        self.inner.nomination_time
+    }
+
+    /// Status (0=Pending, 1=Elected, 2=Rejected).
+    async fn status(&self) -> i16 {
+        self.inner.status
+    }
+
+    /// Profile of the nominee.
+    async fn submitter_profile(&self, ctx: &Context<'_>) -> Option<ProfileSummary> {
+        resolve_profile_summary(ctx, &self.inner.address).await
+    }
 }
 
 #[derive(Clone)]
@@ -240,10 +773,7 @@ impl GovernanceRegistry {
         inner: GovernanceRegistryRow,
         platform_id: Option<String>,
     ) -> Self {
-        Self {
-            inner,
-            platform_id,
-        }
+        Self { inner, platform_id }
     }
 }
 
@@ -279,7 +809,9 @@ impl GovernanceRegistry {
         GovernanceRegistryConfig {
             delegate_term_epochs: self.inner.delegate_term_epochs,
             proposal_submission_cost: self.inner.proposal_submission_cost,
+            min_on_chain_age_days: self.inner.min_on_chain_age_days,
             max_votes_per_user: self.inner.max_votes_per_user,
+            quadratic_base_cost: self.inner.quadratic_base_cost,
             voting_period_ms: self.inner.voting_period_ms,
             quorum_votes: self.inner.quorum_votes,
         }
@@ -451,9 +983,19 @@ impl GovernanceRegistryConfig {
         self.proposal_submission_cost
     }
 
+    /// Minimum on-chain age in days to submit proposals.
+    async fn min_on_chain_age_days(&self) -> i64 {
+        self.min_on_chain_age_days
+    }
+
     /// Max votes per user in community voting.
     async fn max_votes_per_user(&self) -> i64 {
         self.max_votes_per_user
+    }
+
+    /// Quadratic base cost for additional votes.
+    async fn quadratic_base_cost(&self) -> i64 {
+        self.quadratic_base_cost
     }
 
     /// Voting period in milliseconds.

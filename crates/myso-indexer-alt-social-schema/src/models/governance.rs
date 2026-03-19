@@ -1,19 +1,19 @@
 // Copyright (c) The Social Proof Foundation, LLC.
 // SPDX-License-Identifier: Apache-2.0
 
+use diesel::QueryableByName;
 use diesel::prelude::*;
 use diesel::sql_types::{
     BigInt, Bool, Date, Integer, Jsonb, Nullable, SmallInt, Text, Timestamptz,
 };
-use diesel::QueryableByName;
 
 type NullableJsonb = Nullable<Jsonb>;
 use serde::{Deserialize, Serialize};
 
 use crate::schema::{
     anonymous_votes, community_votes, delegate_ratings, delegate_votes, delegates,
-    governance_events, governance_registries, nominated_delegates, proposals,
-    reward_distributions, vote_decryption_failures,
+    governance_events, governance_registries, nominated_delegates, proposals, reward_distributions,
+    vote_decryption_failures,
 };
 
 #[derive(Debug, Clone, Queryable, Selectable, Serialize, Deserialize)]
@@ -385,7 +385,9 @@ pub struct GovernanceRegistryUpdate {
 pub struct GovernanceRegistryConfig {
     pub delegate_term_epochs: i64,
     pub proposal_submission_cost: i64,
+    pub min_on_chain_age_days: i64,
     pub max_votes_per_user: i64,
+    pub quadratic_base_cost: i64,
     pub voting_period_ms: i64,
     pub quorum_votes: i64,
 }
@@ -501,7 +503,11 @@ pub struct GovernanceRegistryRow {
     #[diesel(sql_type = BigInt)]
     pub proposal_submission_cost: i64,
     #[diesel(sql_type = BigInt)]
+    pub min_on_chain_age_days: i64,
+    #[diesel(sql_type = BigInt)]
     pub max_votes_per_user: i64,
+    #[diesel(sql_type = BigInt)]
+    pub quadratic_base_cost: i64,
     #[diesel(sql_type = BigInt)]
     pub voting_period_ms: i64,
     #[diesel(sql_type = BigInt)]

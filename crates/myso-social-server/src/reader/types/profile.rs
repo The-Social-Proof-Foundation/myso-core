@@ -50,4 +50,3 @@ pub struct ProfileBadgeRow {
     #[diesel(sql_type = SmallInt)]
     pub badge_type: i16,
 }
-

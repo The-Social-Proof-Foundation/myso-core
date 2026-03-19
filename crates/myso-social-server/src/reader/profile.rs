@@ -14,8 +14,8 @@ use myso_indexer_alt_social_schema::schema::{
 use crate::error::SocialError;
 use crate::reader::social_graph::enrich_users_with_universal_data;
 use crate::reader::types::{ProfileByAddressResponse, UniversalUserResult};
-use myso_indexer_alt_social_schema::models::{ProfileOffer, ProfileSaleFee};
 use crate::reader::WalletOnlyProfile;
+use myso_indexer_alt_social_schema::models::{ProfileOffer, ProfileSaleFee};
 use myso_pg_db::Db;
 
 pub(crate) async fn get_profiles(
