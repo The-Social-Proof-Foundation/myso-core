@@ -43,7 +43,7 @@ Add constants matching the Move governance module:
 // Proposal types (must match governance.move)
 pub const PROPOSAL_TYPE_ECOSYSTEM: i16 = 0;
 pub const PROPOSAL_TYPE_PROOF_OF_CREATIVITY: i16 = 1;
-pub const PROPOSAL_TYPE_PLATFORM: i16 = 3;
+pub const PROPOSAL_TYPE_PLATFORM: i16 = 2;
 ```
 
 **Rationale:** Enables type-safe filtering and validation in the server and clients.
@@ -82,8 +82,8 @@ pub const PROPOSAL_TYPE_PLATFORM: i16 = 3;
 **File:** [myso-social-server/src/server/mod.rs](crates/myso-social-server/src/server/mod.rs)
 
 - `GovernanceProposalQuery` already has `proposal_type: Option<i16>`.
-- Add validation: when `proposal_type` is provided, reject invalid values (only 0, 1, 3 are valid).
-- Document the valid values in the struct or via OpenAPI: `0` = Ecosystem, `1` = Proof of Creativity, `3` = Platform.
+- Add validation: when `proposal_type` is provided, reject invalid values (only 0, 1, 2 are valid).
+- Document the valid values in the struct or via OpenAPI: `0` = Ecosystem, `1` = Proof of Creativity, `2` = Platform.
 
 **File:** [myso-social-server/src/reader/governance.rs](crates/myso-social-server/src/reader/governance.rs)
 
@@ -97,7 +97,7 @@ If the API returns a list of proposals, each row already has `proposal_type`. En
 
 - `0` — Ecosystem
 - `1` — Proof of Creativity  
-- `3` — Platform
+- `2` — Platform
 
 No schema migration required; `proposal_type` already exists in the `proposals` table.
 
@@ -122,7 +122,7 @@ Create or update API documentation (e.g. `API_RESPONSE_FORMATS.md` or OpenAPI sp
 2. For **rescind_proposal**, **delegate_vote_on_proposal**, **community_vote_on_proposal**, **finalize_proposal**, **mark_proposal_implemented**, **reject_proposal_manually**, and **community_vote_anonymous**, clients must:
   - Fetch the Proposal object at `id` (e.g. via `myso_getObject` or equivalent).
   - Include the Proposal object as an input in the Programmable Transaction Block (PTB).
-3. **Proposal types** for filtering: `0` (Ecosystem), `1` (Proof of Creativity), `3` (Platform).
+3. **Proposal types** for filtering: `0` (Ecosystem), `1` (Proof of Creativity), `2` (Platform).
 
 ---
 

@@ -17,9 +17,10 @@ pub async fn list_platforms(
     let page = params.page.unwrap_or(1).max(1);
     let offset = params.offset.unwrap_or_else(|| (page - 1) * limit);
     let approved_only = params.approved.unwrap_or(false);
+    let governance = params.governance;
     let platforms = state
         .reader
-        .list_platforms(approved_only, limit, offset)
+        .list_platforms(approved_only, governance, limit, offset)
         .await?;
     Ok(Json(platforms))
 }
@@ -30,7 +31,7 @@ pub async fn list_platforms_approved(
 ) -> Result<Json<Vec<crate::reader::PlatformRow>>, SocialError> {
     let limit = params.limit();
     let offset = params.offset();
-    let platforms = state.reader.list_platforms(true, limit, offset).await?;
+    let platforms = state.reader.list_platforms(true, None, limit, offset).await?;
     Ok(Json(platforms))
 }
 

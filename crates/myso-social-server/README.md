@@ -23,7 +23,7 @@ curl http://localhost:9009/health
 
 | Method | Endpoint | Description |
 |--------|----------|-------------|
-| GET | `/platforms` | List all platforms. Query: `approved` (optional), `limit`, `offset`, `page` |
+| GET | `/platforms` | List all platforms. Query: `approved` (optional), `governance` (optional), `limit`, `offset`, `page` |
 | GET | `/platforms/approved` | List approved platforms only. Query: `limit`, `offset`, `page` |
 | GET | `/platforms/:id` | Get platform by ID |
 | GET | `/platforms/:id/moderators` | Get platform moderators |

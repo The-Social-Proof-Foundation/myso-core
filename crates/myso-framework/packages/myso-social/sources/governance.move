@@ -52,7 +52,7 @@ module social_contracts::governance {
     /// Proposal type constants
     const PROPOSAL_TYPE_ECOSYSTEM: u8 = 0;
     const PROPOSAL_TYPE_PROOF_OF_CREATIVITY: u8 = 1;
-    const PROPOSAL_TYPE_PLATFORM: u8 = 3;
+    const PROPOSAL_TYPE_PLATFORM: u8 = 2;
 
     /// Proposal status constants
     const STATUS_SUBMITTED: u8 = 0;

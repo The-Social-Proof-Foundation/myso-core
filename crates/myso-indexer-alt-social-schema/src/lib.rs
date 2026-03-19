@@ -17,7 +17,7 @@ pub const GOVERNANCE_STATUS_OWNER_RESCINDED: i16 = 6;
 /// Proposal types (must match governance.move)
 pub const PROPOSAL_TYPE_ECOSYSTEM: i16 = 0;
 pub const PROPOSAL_TYPE_PROOF_OF_CREATIVITY: i16 = 1;
-pub const PROPOSAL_TYPE_PLATFORM: i16 = 3;
+pub const PROPOSAL_TYPE_PLATFORM: i16 = 2;
 
 pub const NOMINEE_STATUS_PENDING: i16 = 0;
 pub const NOMINEE_STATUS_ELECTED: i16 = 1;

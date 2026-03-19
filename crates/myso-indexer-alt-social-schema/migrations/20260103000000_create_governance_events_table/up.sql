@@ -17,3 +17,6 @@ CREATE INDEX IF NOT EXISTS idx_governance_events_event_id ON governance_events(e
 CREATE INDEX IF NOT EXISTS idx_governance_events_anonymous ON governance_events(anonymous_voting_related, created_at DESC) 
     WHERE anonymous_voting_related IS NOT NULL;
 
+-- Correct PROPOSAL_TYPE_PLATFORM from 3 to 2 (must match governance.move)
+UPDATE governance_events SET registry_type = 2 WHERE registry_type = 3;
+

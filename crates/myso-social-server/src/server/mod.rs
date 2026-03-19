@@ -180,6 +180,7 @@ pub struct SubscriptionAnalyticsQuery {
 #[derive(Debug, Deserialize)]
 pub struct PlatformsQuery {
     pub approved: Option<bool>,
+    pub governance: Option<bool>,
     pub limit: Option<i64>,
     pub offset: Option<i64>,
     pub page: Option<i64>,

@@ -28,7 +28,7 @@ pub async fn list_governance_proposals(
     if let Some(pt) = params.proposal_type {
         if !is_valid_proposal_type(pt) {
             return Err(SocialError::bad_request(
-                "Invalid proposal_type: must be 0 (Ecosystem), 1 (Proof of Creativity), or 3 (Platform)",
+                "Invalid proposal_type: must be 0 (Ecosystem), 1 (Proof of Creativity), or 2 (Platform)",
             ));
         }
     }

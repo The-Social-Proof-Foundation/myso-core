@@ -971,7 +971,7 @@ type Delegate {
 	"""
 	proposalsSubmitted: Int!
 	"""
-	Registry type (0=ecosystem, 1=proof of creativity, 3=platform).
+	Registry type (0=ecosystem, 1=proof of creativity, 2=platform).
 	"""
 	registryType: Int!
 	"""
@@ -1668,7 +1668,7 @@ type GovernanceRegistry {
 	"""
 	registryId: String!
 	"""
-	Registry type (0=ecosystem, 1=proof of creativity, 3=platform).
+	Registry type (0=ecosystem, 1=proof of creativity, 2=platform).
 	"""
 	registryType: Int!
 }
@@ -4057,7 +4057,7 @@ type Proposal {
 	"""
 	referenceId: String
 	"""
-	Registry type (0=ecosystem, 1=proof of creativity, 3=platform).
+	Registry type (0=ecosystem, 1=proof of creativity, 2=platform).
 	"""
 	registryType: Int!
 	"""

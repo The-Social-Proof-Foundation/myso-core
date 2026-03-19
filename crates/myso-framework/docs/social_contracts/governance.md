@@ -1509,7 +1509,7 @@ Proposal type constants
 
 
 
-<pre><code><b>const</b> <a href="../social_contracts/governance.md#social_contracts_governance_PROPOSAL_TYPE_PLATFORM">PROPOSAL_TYPE_PLATFORM</a>: u8 = 3;
+<pre><code><b>const</b> <a href="../social_contracts/governance.md#social_contracts_governance_PROPOSAL_TYPE_PLATFORM">PROPOSAL_TYPE_PLATFORM</a>: u8 = 2;
 </code></pre>
 
 

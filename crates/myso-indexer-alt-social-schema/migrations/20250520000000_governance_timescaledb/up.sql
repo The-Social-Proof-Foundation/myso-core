@@ -18,7 +18,7 @@ $$;
 -- Governance registries table - configuration data for governance types
 CREATE TABLE IF NOT EXISTS governance_registries (
     id SERIAL PRIMARY KEY,
-    registry_type SMALLINT NOT NULL,  -- 0: Ecosystem, 1: Reputation, 2: Community Notes
+    registry_type SMALLINT NOT NULL,  -- 0: Ecosystem, 1: Proof of Creativity, 2: Platform
     delegate_count BIGINT NOT NULL,
     delegate_term_epochs BIGINT NOT NULL,
     proposal_submission_cost BIGINT NOT NULL,
@@ -234,7 +234,7 @@ CREATE TABLE IF NOT EXISTS proposals (
     id TEXT NOT NULL,
     title TEXT NOT NULL,
     description TEXT NOT NULL,
-    proposal_type SMALLINT NOT NULL, -- 0: Ecosystem, 1: Reputation, 2: Community Notes
+    proposal_type SMALLINT NOT NULL, -- 0: Ecosystem, 1: Proof of Creativity, 2: Platform
     reference_id TEXT,
     metadata_json JSONB,
     submitter TEXT NOT NULL,
@@ -972,6 +972,13 @@ BEGIN
     END IF;
 END
 $$;
+
+-- Correct PROPOSAL_TYPE_PLATFORM from 3 to 2 (must match governance.move)
+UPDATE governance_registries SET registry_type = 2 WHERE registry_type = 3;
+UPDATE proposals SET proposal_type = 2 WHERE proposal_type = 3;
+UPDATE delegates SET registry_type = 2 WHERE registry_type = 3;
+UPDATE nominated_delegates SET registry_type = 2 WHERE registry_type = 3;
+UPDATE delegate_ratings SET registry_type = 2 WHERE registry_type = 3;
 
 -- Record the views that have been created in the tracking table
 INSERT INTO continuous_aggregate_refresh_status (view_name, notes) 

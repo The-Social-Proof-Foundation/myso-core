@@ -49,7 +49,7 @@ impl Proposal {
         &self.inner.id
     }
 
-    /// Registry type (0=ecosystem, 1=proof of creativity, 3=platform).
+    /// Registry type (0=ecosystem, 1=proof of creativity, 2=platform).
     async fn registry_type(&self) -> i16 {
         self.inner.proposal_type
     }
@@ -178,7 +178,7 @@ impl Delegate {
             .unwrap_or_else(|_| MySoAddress::from(myso_types::base_types::MySoAddress::ZERO))
     }
 
-    /// Registry type (0=ecosystem, 1=proof of creativity, 3=platform).
+    /// Registry type (0=ecosystem, 1=proof of creativity, 2=platform).
     async fn registry_type(&self) -> i16 {
         self.inner.registry_type
     }
@@ -232,7 +232,7 @@ impl GovernanceRegistry {
 
 #[Object]
 impl GovernanceRegistry {
-    /// Registry type (0=ecosystem, 1=proof of creativity, 3=platform).
+    /// Registry type (0=ecosystem, 1=proof of creativity, 2=platform).
     async fn registry_type(&self) -> i16 {
         self.inner.registry_type
     }

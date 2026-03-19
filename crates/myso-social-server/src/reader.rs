@@ -1064,10 +1064,11 @@ impl Reader {
     pub async fn list_platforms(
         &self,
         approved_only: bool,
+        governance: Option<bool>,
         limit: i64,
         offset: i64,
     ) -> Result<Vec<PlatformRow>, crate::error::SocialError> {
-        platform::list_platforms(&self.db, approved_only, limit, offset).await
+        platform::list_platforms(&self.db, approved_only, governance, limit, offset).await
     }
 
     pub async fn get_platform_by_id(

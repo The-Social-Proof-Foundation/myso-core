@@ -22,6 +22,7 @@ use myso_pg_db::Db;
 pub(crate) async fn list_platforms(
     db: &Db,
     approved_only: bool,
+    governance: Option<bool>,
     limit: i64,
     offset: i64,
 ) -> Result<Vec<PlatformRow>, SocialError> {
@@ -31,6 +32,13 @@ pub(crate) async fn list_platforms(
         .into_boxed();
     if approved_only {
         query = query.filter(platforms::is_approved.eq(true));
+    }
+    if let Some(wg) = governance {
+        if wg {
+            query = query.filter(platforms::governance_registry_id.is_not_null());
+        } else {
+            query = query.filter(platforms::governance_registry_id.is_null());
+        }
     }
     let results: Vec<Platform> = query
         .order_by(platforms::created_at.desc())
