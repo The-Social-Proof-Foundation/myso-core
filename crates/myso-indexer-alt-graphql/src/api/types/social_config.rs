@@ -428,4 +428,14 @@ impl InsuranceConfig {
     async fn timestamp_ms(&self) -> i64 {
         self.inner.timestamp_ms
     }
+
+    /// When the configuration was last updated.
+    async fn time(&self) -> DateTime {
+        DateTime::from_chrono(self.inner.time)
+    }
+
+    /// Transaction ID of the last config update.
+    async fn transaction_id(&self) -> &str {
+        &self.inner.transaction_id
+    }
 }

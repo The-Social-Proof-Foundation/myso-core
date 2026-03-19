@@ -1049,6 +1049,12 @@ InsuranceConfig.version
 InsuranceConfig.timestampMs
   => {}
 
+InsuranceConfig.time
+  => {}
+
+InsuranceConfig.transactionId
+  => {}
+
 InsurancePolicy.policyId
   => {}
 
@@ -1058,13 +1064,37 @@ InsurancePolicy.marketId
 InsurancePolicy.insured
   => {}
 
+InsurancePolicy.optionId
+  => {}
+
 InsurancePolicy.coveredAmount
+  => {}
+
+InsurancePolicy.coverageBps
   => {}
 
 InsurancePolicy.premiumPaid
   => {}
 
+InsurancePolicy.startTimeMs
+  => {}
+
+InsurancePolicy.expiryTimeMs
+  => {}
+
+InsurancePolicy.vaultId
+  => {}
+
 InsurancePolicy.status
+  => {}
+
+InsurancePolicy.createdAt
+  => {}
+
+InsurancePolicy.updatedAt
+  => {}
+
+InsurancePolicy.transactionId
   => {}
 
 InsuranceVault.vaultId
@@ -1074,6 +1104,60 @@ InsuranceVault.underwriter
   => {}
 
 InsuranceVault.capitalBalance
+  => {}
+
+InsuranceVault.reserved
+  => {}
+
+InsuranceVault.baseRateBpsPerDay
+  => {}
+
+InsuranceVault.utilizationMultiplierBps
+  => {}
+
+InsuranceVault.maxExposurePerMarket
+  => {}
+
+InsuranceVault.maxExposurePerUser
+  => {}
+
+InsuranceVault.version
+  => {}
+
+InsuranceVault.createdAt
+  => {}
+
+InsuranceVault.updatedAt
+  => {}
+
+InsuranceVault.transactionId
+  => {}
+
+InsuranceVault.transactions
+  => {}
+
+InsuranceVault.exposures
+  => {}
+
+InsuranceVaultExposure.marketId
+  => {}
+
+InsuranceVaultExposure.optionId
+  => {}
+
+InsuranceVaultExposure.totalExposure
+  => {}
+
+InsuranceVaultTransaction.transactionType
+  => {}
+
+InsuranceVaultTransaction.amount
+  => {}
+
+InsuranceVaultTransaction.balanceAfter
+  => {}
+
+InsuranceVaultTransaction.timestampMs
   => {}
 
 Linkage.originalId
@@ -2613,6 +2697,9 @@ Query.insurancePolicy
   => {}
 
 Query.insurancePolicies
+  => {}
+
+Query.insuranceVault
   => {}
 
 Query.insuranceVaults

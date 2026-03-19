@@ -22,8 +22,9 @@ use crate::governance::{
     list_governance_events, list_governance_registries, list_nominated_delegates, list_proposals,
 };
 use crate::insurance::{
-    get_insurance_config, get_insurance_policy, list_insurance_policies_by_insured,
-    list_insurance_vaults,
+    get_insurance_config, get_insurance_policy, get_insurance_vault, get_insurance_vault_exposures,
+    list_insurance_market_policies, list_insurance_policies, list_insurance_policies_by_insured,
+    list_insurance_vault_transactions, list_insurance_vaults,
 };
 use crate::metrics::DbReaderMetrics;
 use crate::mydata::{
@@ -804,6 +805,70 @@ impl SocialPgReader {
     ) -> anyhow::Result<Vec<crate::InsuranceVaultRow>> {
         let mut conn = self.connect().await?;
         list_insurance_vaults(&mut conn, limit, offset, &self.metrics).await
+    }
+
+    /// Get insurance vault by ID.
+    pub async fn get_insurance_vault(
+        &self,
+        vault_id: &str,
+    ) -> anyhow::Result<Option<crate::InsuranceVaultRow>> {
+        let mut conn = self.connect().await?;
+        get_insurance_vault(&mut conn, vault_id, &self.metrics).await
+    }
+
+    /// List insurance vault transactions (paginated).
+    pub async fn list_insurance_vault_transactions(
+        &self,
+        vault_id: &str,
+        limit: i64,
+        offset: i64,
+    ) -> anyhow::Result<Vec<crate::insurance::InsuranceVaultTransactionRow>> {
+        let mut conn = self.connect().await?;
+        list_insurance_vault_transactions(&mut conn, vault_id, limit, offset, &self.metrics).await
+    }
+
+    /// Get insurance vault exposures by market/option.
+    pub async fn get_insurance_vault_exposures(
+        &self,
+        vault_id: &str,
+    ) -> anyhow::Result<Vec<crate::insurance::InsuranceVaultExposureRow>> {
+        let mut conn = self.connect().await?;
+        get_insurance_vault_exposures(&mut conn, vault_id, &self.metrics).await
+    }
+
+    /// List insurance policies with optional filters (paginated).
+    pub async fn list_insurance_policies(
+        &self,
+        insured: Option<&str>,
+        market_id: Option<&str>,
+        vault_id: Option<&str>,
+        status: Option<i16>,
+        limit: i64,
+        offset: i64,
+    ) -> anyhow::Result<Vec<crate::InsurancePolicyRow>> {
+        let mut conn = self.connect().await?;
+        list_insurance_policies(
+            &mut conn,
+            insured,
+            market_id,
+            vault_id,
+            status,
+            limit,
+            offset,
+            &self.metrics,
+        )
+        .await
+    }
+
+    /// List insurance policies by market (paginated).
+    pub async fn list_insurance_market_policies(
+        &self,
+        market_id: &str,
+        limit: i64,
+        offset: i64,
+    ) -> anyhow::Result<Vec<crate::InsurancePolicyRow>> {
+        let mut conn = self.connect().await?;
+        list_insurance_market_policies(&mut conn, market_id, limit, offset, &self.metrics).await
     }
 
     /// List governance proposals (paginated, optionally filtered by platform, status, proposal type, submitter).

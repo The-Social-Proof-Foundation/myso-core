@@ -2028,9 +2028,17 @@ type InsuranceConfig {
 	"""
 	minCoverageBps: Int!
 	"""
+	When the configuration was last updated.
+	"""
+	time: DateTime!
+	"""
 	Last updated timestamp (epoch milliseconds).
 	"""
 	timestampMs: Int!
+	"""
+	Transaction ID of the last config update.
+	"""
+	transactionId: String!
 	"""
 	Address that last updated the configuration.
 	"""
@@ -2043,9 +2051,21 @@ type InsuranceConfig {
 
 type InsurancePolicy {
 	"""
+	Coverage in basis points.
+	"""
+	coverageBps: Int!
+	"""
 	Covered amount.
 	"""
 	coveredAmount: Int!
+	"""
+	Created at (epoch milliseconds).
+	"""
+	createdAt: Int!
+	"""
+	Policy expiry time (epoch milliseconds).
+	"""
+	expiryTimeMs: Int!
 	"""
 	Insured address.
 	"""
@@ -2055,6 +2075,10 @@ type InsurancePolicy {
 	"""
 	marketId: String!
 	"""
+	Option ID (0 or 1 for binary markets).
+	"""
+	optionId: Int!
+	"""
 	Unique policy identifier.
 	"""
 	policyId: String!
@@ -2063,24 +2087,118 @@ type InsurancePolicy {
 	"""
 	premiumPaid: Int!
 	"""
+	Policy start time (epoch milliseconds).
+	"""
+	startTimeMs: Int!
+	"""
 	Policy status (1=ACTIVE, 2=CANCELLED, 3=CLAIMED, 4=EXPIRED).
 	"""
 	status: Int!
+	"""
+	Transaction ID of the policy creation.
+	"""
+	transactionId: String!
+	"""
+	Updated at (epoch milliseconds).
+	"""
+	updatedAt: Int!
+	"""
+	Vault ID backing this policy.
+	"""
+	vaultId: String!
 }
 
 type InsuranceVault {
+	"""
+	Base rate in basis points per day.
+	"""
+	baseRateBpsPerDay: Int!
 	"""
 	Capital balance.
 	"""
 	capitalBalance: Int!
 	"""
+	Created at (epoch milliseconds).
+	"""
+	createdAt: Int!
+	"""
+	Vault exposures by market/option. Returns empty when social DB not configured.
+	"""
+	exposures: [InsuranceVaultExposure!]
+	"""
+	Maximum exposure per market.
+	"""
+	maxExposurePerMarket: Int!
+	"""
+	Maximum exposure per user.
+	"""
+	maxExposurePerUser: Int!
+	"""
+	Reserved amount (locked for active policies).
+	"""
+	reserved: Int!
+	"""
+	Transaction ID of the vault creation.
+	"""
+	transactionId: String!
+	"""
+	Vault transactions (paginated). Returns empty when social DB not configured.
+	"""
+	transactions(limit: Int, offset: Int): [InsuranceVaultTransaction!]
+	"""
 	Underwriter address.
 	"""
 	underwriter: MySoAddress!
 	"""
+	Updated at (epoch milliseconds).
+	"""
+	updatedAt: Int!
+	"""
+	Utilization multiplier in basis points.
+	"""
+	utilizationMultiplierBps: Int!
+	"""
 	Unique vault identifier.
 	"""
 	vaultId: String!
+	"""
+	Vault version.
+	"""
+	version: Int!
+}
+
+type InsuranceVaultExposure {
+	"""
+	Market ID.
+	"""
+	marketId: String!
+	"""
+	Option ID (0 or 1).
+	"""
+	optionId: Int!
+	"""
+	Total exposure (reserved amount) for this market/option.
+	"""
+	totalExposure: Int!
+}
+
+type InsuranceVaultTransaction {
+	"""
+	Amount (positive for credits, negative for debits).
+	"""
+	amount: Int!
+	"""
+	Balance after this transaction.
+	"""
+	balanceAfter: Int!
+	"""
+	Timestamp (epoch milliseconds).
+	"""
+	timestampMs: Int!
+	"""
+	Transaction type (e.g. deposit, withdraw, reserve, release).
+	"""
+	transactionType: String!
 }
 
 
@@ -4886,13 +5004,17 @@ type Query {
 	"""
 	insuranceConfiguration: InsuranceConfig
 	"""
-	Insurance policies by insured address. Returns empty when social DB not configured.
+	Insurance policies with optional filters. Returns empty when social DB not configured.
 	"""
-	insurancePolicies(insured: MySoAddress!, limit: Int, offset: Int): [InsurancePolicy!]
+	insurancePolicies(insured: MySoAddress, marketId: String, vaultId: String, status: Int, limit: Int, offset: Int): [InsurancePolicy!]
 	"""
 	Insurance policy by ID. Returns null when social DB not configured or not found.
 	"""
 	insurancePolicy(id: ID!): InsurancePolicy
+	"""
+	Insurance vault by ID. Returns null when social DB not configured or not found.
+	"""
+	insuranceVault(vaultId: ID!): InsuranceVault
 	"""
 	Insurance vaults. Returns empty when social DB not configured.
 	"""

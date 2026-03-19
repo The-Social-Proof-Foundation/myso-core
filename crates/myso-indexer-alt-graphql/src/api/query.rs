@@ -1065,11 +1065,14 @@ impl Query {
         )
     }
 
-    /// Insurance policies by insured address. Returns empty when social DB not configured.
+    /// Insurance policies with optional filters. Returns empty when social DB not configured.
     async fn insurance_policies(
         &self,
         ctx: &Context<'_>,
-        insured: MySoAddress,
+        insured: Option<MySoAddress>,
+        market_id: Option<String>,
+        vault_id: Option<String>,
+        status: Option<i16>,
         limit: Option<u64>,
         offset: Option<u64>,
     ) -> Option<Result<Vec<InsurancePolicy>, RpcError>> {
@@ -1078,12 +1081,38 @@ impl Query {
         let reader = reader_opt.as_ref().as_ref()?;
         let limit = limit.unwrap_or(20).min(100) as i64;
         let offset = offset.unwrap_or(0) as i64;
+        let insured_str = insured.map(|a| a.to_string());
         Some(
             reader
-                .list_insurance_policies_by_insured(&insured.to_string(), limit, offset)
+                .list_insurance_policies(
+                    insured_str.as_deref(),
+                    market_id.as_deref(),
+                    vault_id.as_deref(),
+                    status,
+                    limit,
+                    offset,
+                )
                 .await
                 .map_err(Into::into)
                 .map(|v| v.into_iter().map(InsurancePolicy::from_row).collect()),
+        )
+    }
+
+    /// Insurance vault by ID. Returns null when social DB not configured or not found.
+    async fn insurance_vault(
+        &self,
+        ctx: &Context<'_>,
+        vault_id: async_graphql::ID,
+    ) -> Option<Result<Option<InsuranceVault>, RpcError>> {
+        let reader_opt = ctx
+            .data_opt::<std::sync::Arc<Option<myso_indexer_alt_social_reader::SocialPgReader>>>()?;
+        let reader = reader_opt.as_ref().as_ref()?;
+        Some(
+            reader
+                .get_insurance_vault(vault_id.as_str())
+                .await
+                .map_err(Into::into)
+                .map(|opt| opt.map(InsuranceVault::from_row)),
         )
     }
 
