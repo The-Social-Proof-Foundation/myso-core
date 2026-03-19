@@ -893,6 +893,30 @@ Immutable._
 Input.ix
   => {}
 
+InsuranceConfig.updatedBy
+  => {}
+
+InsuranceConfig.enableFlag
+  => {}
+
+InsuranceConfig.minCoverageBps
+  => {}
+
+InsuranceConfig.maxCoverageBps
+  => {}
+
+InsuranceConfig.maxDurationMs
+  => {}
+
+InsuranceConfig.feeBps
+  => {}
+
+InsuranceConfig.version
+  => {}
+
+InsuranceConfig.timestampMs
+  => {}
+
 InsurancePolicy.policyId
   => {}
 
@@ -1295,6 +1319,24 @@ MutateConsensusStreamEnded.sequenceNumber
 Mutation.executeTransaction
   => {}
 
+MyDataConfig.updatedBy
+  => {}
+
+MyDataConfig.enableFlag
+  => {}
+
+MyDataConfig.maxTags
+  => {}
+
+MyDataConfig.maxSubscriptionDays
+  => {}
+
+MyDataConfig.maxFreeAccessGrants
+  => {}
+
+MyDataConfig.timestampMs
+  => {}
+
 MyDataPurchase.mydataId
   => {}
 
@@ -1640,6 +1682,27 @@ PlatformRevenueSummary.activeMonths
 PlatformRevenueSummary.lastActiveMonth
   => {}
 
+PocConfig.imageThreshold
+  => {}
+
+PocConfig.videoThreshold
+  => {}
+
+PocConfig.audioThreshold
+  => {}
+
+PocConfig.revenueRedirectPercentage
+  => {}
+
+PocConfig.disputeCost
+  => {}
+
+PocConfig.oracleAddress
+  => {}
+
+PocConfig.updatedAt
+  => {}
+
 Post.id
   => {}
 
@@ -1710,6 +1773,39 @@ Post.spotRecord
   => {}
 
 Post.promotion
+  => {}
+
+PostConfig.updatedBy
+  => {}
+
+PostConfig.maxContentLength
+  => {}
+
+PostConfig.maxMediaUrls
+  => {}
+
+PostConfig.maxMentions
+  => {}
+
+PostConfig.maxMetadataSize
+  => {}
+
+PostConfig.maxDescriptionLength
+  => {}
+
+PostConfig.maxReactionLength
+  => {}
+
+PostConfig.commenterTipPercentage
+  => {}
+
+PostConfig.repostTipPercentage
+  => {}
+
+PostConfig.version
+  => {}
+
+PostConfig.updatedAt
   => {}
 
 PostTransferSummary.previousOwner
@@ -2174,6 +2270,24 @@ Query.insurancePolicies
 Query.insuranceVaults
   => {}
 
+Query.sptConfiguration
+  => {}
+
+Query.postConfiguration
+  => {}
+
+Query.pocConfiguration
+  => {}
+
+Query.spotConfiguration
+  => {}
+
+Query.mydataConfiguration
+  => {}
+
+Query.insuranceConfiguration
+  => {}
+
 Query.socialGraphFollowing
   => {}
 
@@ -2564,6 +2678,42 @@ SpotBet.ammAmount
 SpotBet.transactionId
   => {}
 
+SpotConfig.updatedBy
+  => {}
+
+SpotConfig.enableFlag
+  => {}
+
+SpotConfig.confidenceThresholdBps
+  => {}
+
+SpotConfig.resolutionWindowEpochs
+  => {}
+
+SpotConfig.maxResolutionWindowEpochs
+  => {}
+
+SpotConfig.payoutDelayMs
+  => {}
+
+SpotConfig.feeBps
+  => {}
+
+SpotConfig.feeSplitBpsPlatform
+  => {}
+
+SpotConfig.oracleAddress
+  => {}
+
+SpotConfig.maxSingleBet
+  => {}
+
+SpotConfig.version
+  => {}
+
+SpotConfig.timestampMs
+  => {}
+
 SpotOptionEscrow.optionId
   => {}
 
@@ -2601,6 +2751,69 @@ SpotRecord.lastResolutionEpoch
   => {}
 
 SpotRecord.totalEscrow
+  => {}
+
+SptExchangeConfig.updatedBy
+  => {}
+
+SptExchangeConfig.postThreshold
+  => {}
+
+SptExchangeConfig.profileThreshold
+  => {}
+
+SptExchangeConfig.maxIndividualReservationBps
+  => {}
+
+SptExchangeConfig.totalFeeBps
+  => {}
+
+SptExchangeConfig.creatorFeeBps
+  => {}
+
+SptExchangeConfig.platformFeeBps
+  => {}
+
+SptExchangeConfig.treasuryFeeBps
+  => {}
+
+SptExchangeConfig.tradingCreatorFeeBps
+  => {}
+
+SptExchangeConfig.tradingPlatformFeeBps
+  => {}
+
+SptExchangeConfig.tradingTreasuryFeeBps
+  => {}
+
+SptExchangeConfig.reservationCreatorFeeBps
+  => {}
+
+SptExchangeConfig.reservationPlatformFeeBps
+  => {}
+
+SptExchangeConfig.reservationTreasuryFeeBps
+  => {}
+
+SptExchangeConfig.maxReserversPerPool
+  => {}
+
+SptExchangeConfig.basePrice
+  => {}
+
+SptExchangeConfig.quadraticCoefficient
+  => {}
+
+SptExchangeConfig.maxHoldPercentBps
+  => {}
+
+SptExchangeConfig.tradingEnabled
+  => {}
+
+SptExchangeConfig.updatedAt
+  => {}
+
+SptExchangeConfig.transactionId
   => {}
 
 SptHolding.address

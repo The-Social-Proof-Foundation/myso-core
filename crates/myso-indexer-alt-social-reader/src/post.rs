@@ -56,6 +56,32 @@ pub struct PostTransferRow {
     pub transaction_id: String,
 }
 
+#[derive(Debug, Clone, QueryableByName)]
+pub struct PostConfigRow {
+    #[diesel(sql_type = Text)]
+    pub updated_by: String,
+    #[diesel(sql_type = BigInt)]
+    pub max_content_length: i64,
+    #[diesel(sql_type = BigInt)]
+    pub max_media_urls: i64,
+    #[diesel(sql_type = BigInt)]
+    pub max_mentions: i64,
+    #[diesel(sql_type = BigInt)]
+    pub max_metadata_size: i64,
+    #[diesel(sql_type = BigInt)]
+    pub max_description_length: i64,
+    #[diesel(sql_type = BigInt)]
+    pub max_reaction_length: i64,
+    #[diesel(sql_type = BigInt)]
+    pub commenter_tip_percentage: i64,
+    #[diesel(sql_type = BigInt)]
+    pub repost_tip_percentage: i64,
+    #[diesel(sql_type = BigInt)]
+    pub version: i64,
+    #[diesel(sql_type = BigInt)]
+    pub updated_at: i64,
+}
+
 pub(crate) async fn get_post_by_id(
     conn: &mut Connection<'_>,
     post_id: &str,
@@ -412,4 +438,29 @@ pub(crate) async fn get_post_transfers(
             transaction_id: r.transaction_id,
         })
         .collect())
+}
+
+pub(crate) async fn get_post_config(
+    conn: &mut Connection<'_>,
+    metrics: &DbReaderMetrics,
+) -> anyhow::Result<Option<PostConfigRow>> {
+    metrics.requests_received.inc();
+    let _guard = metrics.latency.start_timer();
+
+    let query = "
+        SELECT updated_by, max_content_length, max_media_urls, max_mentions, max_metadata_size,
+               max_description_length, max_reaction_length, commenter_tip_percentage,
+               repost_tip_percentage, version, updated_at
+        FROM post_config
+        ORDER BY time DESC
+        LIMIT 1
+    ";
+
+    let result = diesel::sql_query(query)
+        .get_result::<PostConfigRow>(conn)
+        .await
+        .optional()?;
+
+    metrics.requests_succeeded.inc();
+    Ok(result)
 }

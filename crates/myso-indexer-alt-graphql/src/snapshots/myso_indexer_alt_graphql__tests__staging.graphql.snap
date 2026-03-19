@@ -396,7 +396,7 @@ type BlockedPlatformSummary {
 	Profile of the user who blocked the platform.
 	"""
 	blockedByProfile: ProfileSummary
-	createdAt: String!
+	createdAt: Int!
 	platformId: String!
 	platformName: String!
 }
@@ -404,8 +404,8 @@ type BlockedPlatformSummary {
 type BlockedProfileSummary {
 	address: MySoAddress!
 	displayName: String
-	firstBlockedAt: String!
-	lastBlockedAt: String!
+	firstBlockedAt: Int!
+	lastBlockedAt: Int!
 	profilePhoto: String
 	username: String!
 }
@@ -3458,9 +3458,9 @@ type Platform implements Node {
 	"""
 	blockedProfiles(limit: Int, offset: Int): [PlatformBlockedProfileSummary!]
 	"""
-	When the platform was created (ISO 8601).
+	When the platform was created (epoch milliseconds).
 	"""
-	createdAt: String!
+	createdAt: Int!
 	"""
 	Delegate count for governance.
 	"""
@@ -3578,9 +3578,9 @@ type Platform implements Node {
 	"""
 	treasury: Int
 	"""
-	When the platform was last updated (ISO 8601).
+	When the platform was last updated (epoch milliseconds).
 	"""
-	updatedAt: String!
+	updatedAt: Int!
 	"""
 	Voting period epochs.
 	"""
@@ -3593,7 +3593,7 @@ type Platform implements Node {
 
 type PlatformBlockedProfileSummary {
 	blockedBy: String!
-	createdAt: String!
+	createdAt: Int!
 	"""
 	Profile of the blocked user.
 	"""
@@ -3602,7 +3602,7 @@ type PlatformBlockedProfileSummary {
 }
 
 type PlatformMemberSummary {
-	joinedAt: String!
+	joinedAt: Int!
 	"""
 	Profile of the platform member.
 	"""
@@ -3612,7 +3612,7 @@ type PlatformMemberSummary {
 
 type PlatformMembershipSummary {
 	isApproved: Boolean!
-	joinedAt: String!
+	joinedAt: Int!
 	name: String!
 	platformId: String!
 }
@@ -3623,7 +3623,7 @@ type PlatformModeratorSummary {
 	Profile of the user who added the moderator.
 	"""
 	addedByProfile: ProfileSummary
-	createdAt: String!
+	createdAt: Int!
 	moderatorAddress: MySoAddress!
 	"""
 	Profile of the moderator.
@@ -3826,9 +3826,9 @@ type Profile implements Node {
 	"""
 	coverPhoto: String
 	"""
-	When the profile was created (ISO 8601).
+	When the profile was created (epoch milliseconds).
 	"""
-	createdAt: String
+	createdAt: Int
 	"""
 	Current location.
 	"""
@@ -3934,6 +3934,10 @@ type Profile implements Node {
 	"""
 	religion: String
 	"""
+	Reservation SPT holdings for this profile (paginated).
+	"""
+	reservationHoldings(limit: Int, offset: Int): [SptReservationHolding!]
+	"""
 	Reservation pool address.
 	"""
 	reservationPoolAddress: String
@@ -3962,9 +3966,9 @@ type Profile implements Node {
 	"""
 	sptHoldings(limit: Int, offset: Int): [SptHolding!]
 	"""
-	When the profile was last updated (ISO 8601).
+	When the profile was last updated (epoch milliseconds).
 	"""
-	updatedAt: String
+	updatedAt: Int
 	"""
 	The profile's username.
 	"""
@@ -4036,6 +4040,10 @@ type ProfileSummary {
 	"""
 	bio: String
 	"""
+	Number of blocked accounts. Present for both profile and wallet-only addresses.
+	"""
+	blockedCount: Int
+	"""
 	Display name.
 	"""
 	displayName: String
@@ -4047,6 +4055,10 @@ type ProfileSummary {
 	Number of accounts this address follows. Present for both profile and wallet-only addresses.
 	"""
 	followingCount: Int
+	"""
+	Number of posts. Present for both profile and wallet-only addresses.
+	"""
+	postCount: Int
 	"""
 	Profile photo URL.
 	"""
@@ -4595,6 +4607,10 @@ type Query {
 	"""
 	sptPool(id: ID!): SptPool
 	"""
+	List SPT pools with optional token type filter and sorting. Returns empty when social DB not configured.
+	"""
+	sptPools(tokenType: Int, sortBy: SptSortBy, order: SptOrder, limit: Int, offset: Int): [SptPool!]
+	"""
 	SPT price history. Provide profileAddress or poolId (at least one required). Returns empty when social DB not configured.
 	"""
 	sptPriceHistory(profileAddress: MySoAddress, poolId: ID, limit: Int): [SptPriceHistory!]
@@ -4935,14 +4951,28 @@ type SimulationResult {
 }
 
 type SocialProofToken {
+	basePrice: Int
+	circulatingSupply: Int
+	createdAt: Int
+	creatorEarnings: Int
+	currentPrice: Int
+	ecosystemEarnings: Int
 	isActive: Boolean!
+	marketCap: Int
+	name: String
+	owner: MySoAddress
+	platformEarnings: Int
 	poolId: String
+	priceChange24H: Float
 	requiredThreshold: Int!
 	reservationPercentage: Float!
 	reservationPoolId: String
 	reservationStatus: String!
+	symbol: String
 	tokenAddress: String
+	tokenType: Int
 	totalReserved: Int!
+	volume24H: Int
 }
 
 """
@@ -5079,7 +5109,28 @@ type SptHolding {
 	profile: ProfileSummary!
 }
 
+enum SptOrder {
+	DESC
+	ASC
+}
+
 type SptPool {
+	"""
+	Total creator fees earned.
+	"""
+	creatorEarnings: Int
+	"""
+	Total ecosystem/treasury fees earned.
+	"""
+	ecosystemEarnings: Int
+	"""
+	Current holders of this token (paginated, ordered by balance DESC).
+	"""
+	holders(limit: Int, offset: Int): [SptHolding!]
+	"""
+	Market cap (price * circulating supply).
+	"""
+	marketCap: Int!
 	"""
 	Token name.
 	"""
@@ -5093,6 +5144,10 @@ type SptPool {
 	"""
 	ownerProfile: ProfileSummary
 	"""
+	Total platform fees earned.
+	"""
+	platformEarnings: Int
+	"""
 	Pool ID.
 	"""
 	poolId: String!
@@ -5100,6 +5155,10 @@ type SptPool {
 	Current price (smallest units).
 	"""
 	price: Int!
+	"""
+	24-hour price change (percentage).
+	"""
+	priceChange24H: Float
 	"""
 	Price history for this pool.
 	"""
@@ -5120,6 +5179,10 @@ type SptPool {
 	Recent transactions for this pool.
 	"""
 	transactions(limit: Int, offset: Int): [SptTransaction!]
+	"""
+	24-hour trading volume (MYSO).
+	"""
+	volume24H: Int
 }
 
 type SptPriceHistory {
@@ -5143,6 +5206,53 @@ type SptPriceHistory {
 	Transaction ID.
 	"""
 	transactionId: String!
+}
+
+type SptReservationHolding {
+	"""
+	Reserved amount.
+	"""
+	amount: Int!
+	"""
+	Reservation pool ID.
+	"""
+	poolId: String!
+	"""
+	Pool status (e.g. active, threshold_met).
+	"""
+	poolStatus: String!
+	"""
+	Profile whose token this reservation is for.
+	"""
+	profile: ProfileSummary!
+	"""
+	Required threshold for the pool.
+	"""
+	requiredThreshold: Int!
+	"""
+	Epoch timestamp when reserved.
+	"""
+	reservedAt: Int!
+	"""
+	Whether the reservation pool threshold is met.
+	"""
+	thresholdMet: Boolean!
+	"""
+	Total reserved across all reservers in this pool.
+	"""
+	totalReserved: Int!
+}
+
+enum SptSortBy {
+	PRICE
+	MARKET_CAP
+	PRICE_CHANGE_2_4H
+	VOLUME_2_4H
+	CREATOR_EARNINGS
+	PLATFORM_EARNINGS
+	ECOSYSTEM_EARNINGS
+	TOTAL_EARNINGS
+	CREATED_AT
 }
 
 type SptTransaction {
@@ -5759,9 +5869,9 @@ type VestingWallet {
 	"""
 	claimedPercentage: Float!
 	"""
-	When the wallet was created (ISO 8601).
+	When the wallet was created (epoch milliseconds).
 	"""
-	createdAt: String!
+	createdAt: Int!
 	"""
 	Curve factor (1000 = linear).
 	"""

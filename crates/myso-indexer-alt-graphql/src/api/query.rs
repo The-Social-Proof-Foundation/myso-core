@@ -59,6 +59,9 @@ use crate::api::types::insurance::{InsurancePolicy, InsuranceVault};
 use crate::api::types::mydata::{MyDataPurchase, MyDataRecord};
 use crate::api::types::spot::{SpotBet, SpotRecord};
 use crate::api::types::spt::{SptHolding, SptOrder, SptPool, SptPriceHistory, SptSortBy};
+use crate::api::types::social_config::{
+    InsuranceConfig, MyDataConfig, PocConfig, PostConfig, SpotConfig, SptExchangeConfig,
+};
 use crate::api::types::vesting::{
     VestingLeaderboardEntry, VestingLeaderboardResponse, VestingWallet,
 };
@@ -946,6 +949,108 @@ impl Query {
                 .await
                 .map_err(Into::into)
                 .map(|v| v.into_iter().map(InsuranceVault::from_row).collect()),
+        )
+    }
+
+    /// SPT exchange configuration. Returns null when social DB not configured or no config.
+    async fn spt_configuration(
+        &self,
+        ctx: &Context<'_>,
+    ) -> Option<Result<Option<SptExchangeConfig>, RpcError>> {
+        let reader_opt = ctx
+            .data_opt::<std::sync::Arc<Option<myso_indexer_alt_social_reader::SocialPgReader>>>()?;
+        let reader = reader_opt.as_ref().as_ref()?;
+        Some(
+            reader
+                .get_spt_exchange_config()
+                .await
+                .map_err(Into::into)
+                .map(|opt| opt.map(SptExchangeConfig::from_row)),
+        )
+    }
+
+    /// Post configuration. Returns null when social DB not configured or no config.
+    async fn post_configuration(
+        &self,
+        ctx: &Context<'_>,
+    ) -> Option<Result<Option<PostConfig>, RpcError>> {
+        let reader_opt = ctx
+            .data_opt::<std::sync::Arc<Option<myso_indexer_alt_social_reader::SocialPgReader>>>()?;
+        let reader = reader_opt.as_ref().as_ref()?;
+        Some(
+            reader
+                .get_post_config()
+                .await
+                .map_err(Into::into)
+                .map(|opt| opt.map(PostConfig::from_row)),
+        )
+    }
+
+    /// Proof of Creativity configuration. Returns null when social DB not configured or no config.
+    async fn poc_configuration(
+        &self,
+        ctx: &Context<'_>,
+    ) -> Option<Result<Option<PocConfig>, RpcError>> {
+        let reader_opt = ctx
+            .data_opt::<std::sync::Arc<Option<myso_indexer_alt_social_reader::SocialPgReader>>>()?;
+        let reader = reader_opt.as_ref().as_ref()?;
+        Some(
+            reader
+                .get_poc_configuration()
+                .await
+                .map_err(Into::into)
+                .map(|opt| opt.map(PocConfig::from_row)),
+        )
+    }
+
+    /// SPoT (Social Proof of Truth) configuration. Returns null when social DB not configured or no config.
+    async fn spot_configuration(
+        &self,
+        ctx: &Context<'_>,
+    ) -> Option<Result<Option<SpotConfig>, RpcError>> {
+        let reader_opt = ctx
+            .data_opt::<std::sync::Arc<Option<myso_indexer_alt_social_reader::SocialPgReader>>>()?;
+        let reader = reader_opt.as_ref().as_ref()?;
+        Some(
+            reader
+                .get_spot_config()
+                .await
+                .map_err(Into::into)
+                .map(|opt| opt.map(SpotConfig::from_row)),
+        )
+    }
+
+    /// MyData configuration. Returns null when social DB not configured or no config.
+    async fn mydata_configuration(
+        &self,
+        ctx: &Context<'_>,
+    ) -> Option<Result<Option<MyDataConfig>, RpcError>> {
+        let reader_opt = ctx
+            .data_opt::<std::sync::Arc<Option<myso_indexer_alt_social_reader::SocialPgReader>>>()?;
+        let reader = reader_opt.as_ref().as_ref()?;
+        Some(
+            reader
+                .get_mydata_config()
+                .await
+                .map_err(Into::into)
+                .map(|opt| opt.map(MyDataConfig::from_row)),
+        )
+    }
+
+    /// Insurance configuration. Returns null when social DB not configured or no config.
+    async fn insurance_configuration(
+        &self,
+        ctx: &Context<'_>,
+    ) -> Option<Result<Option<InsuranceConfig>, RpcError>> {
+        let reader_opt = ctx
+            .data_opt::<std::sync::Arc<Option<myso_indexer_alt_social_reader::SocialPgReader>>>()?;
+        let reader = reader_opt.as_ref().as_ref()?;
+        Some(
+            reader
+                .get_insurance_config()
+                .await
+                .map_err(Into::into)
+                .map(|opt| opt.map(InsuranceConfig::from_row)),
         )
     }
 

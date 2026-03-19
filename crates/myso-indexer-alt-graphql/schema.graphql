@@ -1923,6 +1923,41 @@ type Input {
 	ix: Int
 }
 
+type InsuranceConfig {
+	"""
+	Whether insurance is enabled.
+	"""
+	enableFlag: Boolean!
+	"""
+	Fee in basis points.
+	"""
+	feeBps: Int!
+	"""
+	Maximum coverage in basis points.
+	"""
+	maxCoverageBps: Int!
+	"""
+	Maximum policy duration in milliseconds.
+	"""
+	maxDurationMs: Int!
+	"""
+	Minimum coverage in basis points.
+	"""
+	minCoverageBps: Int!
+	"""
+	Last updated timestamp (epoch milliseconds).
+	"""
+	timestampMs: Int!
+	"""
+	Address that last updated the configuration.
+	"""
+	updatedBy: String!
+	"""
+	Configuration version.
+	"""
+	version: Int!
+}
+
 type InsurancePolicy {
 	"""
 	Covered amount.
@@ -2942,6 +2977,33 @@ type Mutation {
 	executeTransaction(transactionDataBcs: Base64!, signatures: [Base64!]!): ExecutionResult!
 }
 
+type MyDataConfig {
+	"""
+	Whether MyData marketplace is enabled.
+	"""
+	enableFlag: Boolean!
+	"""
+	Maximum free access grants.
+	"""
+	maxFreeAccessGrants: Int!
+	"""
+	Maximum subscription duration in days.
+	"""
+	maxSubscriptionDays: Int!
+	"""
+	Maximum tags per record.
+	"""
+	maxTags: Int!
+	"""
+	Last updated timestamp (epoch milliseconds).
+	"""
+	timestampMs: Int!
+	"""
+	Address that last updated the configuration.
+	"""
+	updatedBy: String!
+}
+
 type MyDataPurchase {
 	"""
 	Buyer address.
@@ -3674,6 +3736,37 @@ type PlatformRevenueSummary {
 	totalTransactions: Int!
 }
 
+type PocConfig {
+	"""
+	Similarity threshold for audio content (0-100).
+	"""
+	audioThreshold: Int!
+	"""
+	Cost to submit a dispute.
+	"""
+	disputeCost: Int!
+	"""
+	Similarity threshold for image content (0-100).
+	"""
+	imageThreshold: Int!
+	"""
+	Oracle address used for verification.
+	"""
+	oracleAddress: String
+	"""
+	Revenue redirect percentage when similarity detected.
+	"""
+	revenueRedirectPercentage: Int!
+	"""
+	Last updated timestamp (epoch milliseconds).
+	"""
+	updatedAt: Int!
+	"""
+	Similarity threshold for video content (0-100).
+	"""
+	videoThreshold: Int!
+}
+
 type Post implements Node {
 	"""
 	Number of comments.
@@ -3771,6 +3864,53 @@ type Post implements Node {
 	When the post was last updated (Unix timestamp in milliseconds).
 	"""
 	updatedAt: Int
+}
+
+type PostConfig {
+	"""
+	Commenter tip percentage (remainder to post owner).
+	"""
+	commenterTipPercentage: Int!
+	"""
+	Maximum content length in characters.
+	"""
+	maxContentLength: Int!
+	"""
+	Maximum report description length.
+	"""
+	maxDescriptionLength: Int!
+	"""
+	Maximum media URLs per post.
+	"""
+	maxMediaUrls: Int!
+	"""
+	Maximum mentions per post.
+	"""
+	maxMentions: Int!
+	"""
+	Maximum metadata size in bytes.
+	"""
+	maxMetadataSize: Int!
+	"""
+	Maximum reaction text length.
+	"""
+	maxReactionLength: Int!
+	"""
+	Repost tip percentage (remainder to original post owner).
+	"""
+	repostTipPercentage: Int!
+	"""
+	Last updated timestamp (epoch milliseconds).
+	"""
+	updatedAt: Int!
+	"""
+	Address that last updated the configuration.
+	"""
+	updatedBy: String!
+	"""
+	Configuration version.
+	"""
+	version: Int!
 }
 
 type PostTransferSummary {
@@ -4376,6 +4516,10 @@ type Query {
 	"""
 	governanceRegistry(platformId: String!): GovernanceRegistry
 	"""
+	Insurance configuration. Returns null when social DB not configured or no config.
+	"""
+	insuranceConfiguration: InsuranceConfig
+	"""
 	Insurance policies by insured address. Returns empty when social DB not configured.
 	"""
 	insurancePolicies(insured: MySoAddress!, limit: Int, offset: Int): [InsurancePolicy!]
@@ -4437,6 +4581,10 @@ type Query {
 	Returns a list of types that is guaranteed to be the same length as `keys`. If a type in `keys` could not be found, its corresponding entry in the result will be `null`.
 	"""
 	multiGetTypes(keys: [String!]!): [MoveType]!
+	"""
+	MyData configuration. Returns null when social DB not configured or no config.
+	"""
+	mydataConfiguration: MyDataConfig
 	"""
 	MyData purchases by buyer. Returns empty when social DB not configured.
 	"""
@@ -4520,9 +4668,17 @@ type Query {
 	"""
 	platforms(approvedOnly: Boolean, limit: Int, offset: Int): [Platform!]
 	"""
+	Proof of Creativity configuration. Returns null when social DB not configured or no config.
+	"""
+	pocConfiguration: PocConfig
+	"""
 	Fetch a post by ID. Returns null if social DB not configured or not found.
 	"""
 	post(id: ID!): Post
+	"""
+	Post configuration. Returns null when social DB not configured or no config.
+	"""
+	postConfiguration: PostConfig
 	"""
 	List posts with optional filters. Returns empty when social DB not configured.
 	"""
@@ -4591,9 +4747,17 @@ type Query {
 	"""
 	spotBets(postId: ID!, limit: Int, offset: Int): [SpotBet!]
 	"""
+	SPoT (Social Proof of Truth) configuration. Returns null when social DB not configured or no config.
+	"""
+	spotConfiguration: SpotConfig
+	"""
 	Spot record for a post (1:1). Returns null when social DB not configured or no record.
 	"""
 	spotRecord(postId: ID!): SpotRecord
+	"""
+	SPT exchange configuration. Returns null when social DB not configured or no config.
+	"""
+	sptConfiguration: SptExchangeConfig
 	"""
 	SPT holdings for a profile (holder address). Returns empty when social DB not configured.
 	"""
@@ -5032,6 +5196,57 @@ type SpotBet {
 	transactionId: String!
 }
 
+type SpotConfig {
+	"""
+	Confidence threshold in basis points.
+	"""
+	confidenceThresholdBps: Int!
+	"""
+	Whether SPoT (Social Proof of Truth) is enabled.
+	"""
+	enableFlag: Boolean!
+	"""
+	Fee in basis points.
+	"""
+	feeBps: Int!
+	"""
+	Fee split to platform in basis points.
+	"""
+	feeSplitBpsPlatform: Int!
+	"""
+	Max resolution window in epochs.
+	"""
+	maxResolutionWindowEpochs: Int!
+	"""
+	Max single bet amount.
+	"""
+	maxSingleBet: Int!
+	"""
+	Oracle address for resolution.
+	"""
+	oracleAddress: String!
+	"""
+	Payout delay in milliseconds.
+	"""
+	payoutDelayMs: Int!
+	"""
+	Resolution window in epochs.
+	"""
+	resolutionWindowEpochs: Int!
+	"""
+	Last updated timestamp (epoch milliseconds).
+	"""
+	timestampMs: Int!
+	"""
+	Address that last updated the configuration.
+	"""
+	updatedBy: String!
+	"""
+	Configuration version.
+	"""
+	version: Int!
+}
+
 type SpotOptionEscrow {
 	"""
 	Escrow amount for this option.
@@ -5088,6 +5303,93 @@ type SpotRecord {
 	Total escrow across all options.
 	"""
 	totalEscrow: Int!
+}
+
+type SptExchangeConfig {
+	"""
+	Base price for new tokens.
+	"""
+	basePrice: Int!
+	"""
+	Creator fee in basis points.
+	"""
+	creatorFeeBps: Int!
+	"""
+	Max hold percentage in basis points.
+	"""
+	maxHoldPercentBps: Int!
+	"""
+	Max individual reservation in basis points.
+	"""
+	maxIndividualReservationBps: Int!
+	"""
+	Max reservers per pool.
+	"""
+	maxReserversPerPool: Int!
+	"""
+	Platform fee in basis points.
+	"""
+	platformFeeBps: Int!
+	"""
+	Post reservation threshold (basis points or amount).
+	"""
+	postThreshold: Int!
+	"""
+	Profile reservation threshold.
+	"""
+	profileThreshold: Int!
+	"""
+	Quadratic coefficient for pricing curve.
+	"""
+	quadraticCoefficient: Int!
+	"""
+	Reservation creator fee in basis points.
+	"""
+	reservationCreatorFeeBps: Int!
+	"""
+	Reservation platform fee in basis points.
+	"""
+	reservationPlatformFeeBps: Int!
+	"""
+	Reservation treasury fee in basis points.
+	"""
+	reservationTreasuryFeeBps: Int!
+	"""
+	Total fee in basis points.
+	"""
+	totalFeeBps: Int!
+	"""
+	Trading creator fee in basis points.
+	"""
+	tradingCreatorFeeBps: Int!
+	"""
+	Whether trading is enabled.
+	"""
+	tradingEnabled: Boolean!
+	"""
+	Trading platform fee in basis points.
+	"""
+	tradingPlatformFeeBps: Int!
+	"""
+	Trading treasury fee in basis points.
+	"""
+	tradingTreasuryFeeBps: Int!
+	"""
+	Transaction ID of last update.
+	"""
+	transactionId: String!
+	"""
+	Treasury fee in basis points.
+	"""
+	treasuryFeeBps: Int!
+	"""
+	Last updated timestamp (epoch milliseconds).
+	"""
+	updatedAt: Int!
+	"""
+	Address that last updated the configuration.
+	"""
+	updatedBy: String!
 }
 
 type SptHolding {

@@ -30,10 +30,12 @@ use crate::poc::{
     get_poc_disputes_for_post,
 };
 use crate::insurance::{
-    get_insurance_policy, list_insurance_policies_by_insured, list_insurance_vaults,
+    get_insurance_config, get_insurance_policy, list_insurance_policies_by_insured,
+    list_insurance_vaults,
 };
 use crate::mydata::{
-    get_mydata_record, list_mydata_purchases_by_buyer, list_mydata_records_by_owner,
+    get_mydata_config, get_mydata_record, list_mydata_purchases_by_buyer,
+    list_mydata_records_by_owner,
 };
 use crate::governance::{
     get_delegate_by_address, get_governance_registry_by_platform_id,
@@ -41,13 +43,14 @@ use crate::governance::{
     list_delegates, list_governance_registries, list_proposals,
 };
 use crate::revenue::get_platform_revenue_summary;
-use crate::spot::{get_spot_record, list_spot_bets};
+use crate::spot::{get_spot_config, get_spot_record, list_spot_bets};
 use crate::promotion::{
     get_promotion, get_promotion_by_post_id, get_promotion_views_count, list_promoted_posts,
 };
 use crate::spt::{
-    get_spt_holdings_by_holder, get_spt_holdings_by_pool, get_spt_pool, get_spt_pool_id_for_profile,
-    get_spt_price_history, get_spt_transactions, get_user_reservation_holdings, list_spt_pools,
+    get_spt_exchange_config, get_spt_holdings_by_holder, get_spt_holdings_by_pool, get_spt_pool,
+    get_spt_pool_id_for_profile, get_spt_price_history, get_spt_transactions,
+    get_user_reservation_holdings, list_spt_pools,
 };
 use crate::vesting::{get_vesting_leaderboard, get_vesting_wallet, list_vesting_wallets};
 
@@ -594,6 +597,46 @@ impl SocialPgReader {
     ) -> anyhow::Result<Option<crate::PocConfigRow>> {
         let mut conn = self.connect().await?;
         get_poc_configuration(&mut conn, &self.metrics).await
+    }
+
+    /// Get latest SPT exchange configuration.
+    pub async fn get_spt_exchange_config(
+        &self,
+    ) -> anyhow::Result<Option<crate::spt::SptExchangeConfigRow>> {
+        let mut conn = self.connect().await?;
+        get_spt_exchange_config(&mut conn, &self.metrics).await
+    }
+
+    /// Get latest post configuration.
+    pub async fn get_post_config(
+        &self,
+    ) -> anyhow::Result<Option<crate::post::PostConfigRow>> {
+        let mut conn = self.connect().await?;
+        crate::post::get_post_config(&mut conn, &self.metrics).await
+    }
+
+    /// Get latest SPoT configuration.
+    pub async fn get_spot_config(
+        &self,
+    ) -> anyhow::Result<Option<crate::spot::SpotConfigRow>> {
+        let mut conn = self.connect().await?;
+        get_spot_config(&mut conn, &self.metrics).await
+    }
+
+    /// Get latest MyData configuration.
+    pub async fn get_mydata_config(
+        &self,
+    ) -> anyhow::Result<Option<crate::mydata::MyDataConfigRow>> {
+        let mut conn = self.connect().await?;
+        get_mydata_config(&mut conn, &self.metrics).await
+    }
+
+    /// Get latest insurance configuration.
+    pub async fn get_insurance_config(
+        &self,
+    ) -> anyhow::Result<Option<crate::insurance::InsuranceConfigRow>> {
+        let mut conn = self.connect().await?;
+        get_insurance_config(&mut conn, &self.metrics).await
     }
 
     /// Get spot record for a post (1:1).

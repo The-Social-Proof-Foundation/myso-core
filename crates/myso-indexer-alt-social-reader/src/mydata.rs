@@ -2,13 +2,30 @@
 // SPDX-License-Identifier: Apache-2.0
 
 use diesel::OptionalExtension;
-use diesel::sql_types::{BigInt, Text};
+use diesel::QueryableByName;
+use diesel::sql_types::{BigInt, Bool, Text};
 use diesel_async::RunQueryDsl;
 
 use myso_indexer_alt_social_schema::models::{MyDataPurchaseRow, MyDataRecordRow};
 use myso_pg_db::Connection;
 
 use crate::metrics::DbReaderMetrics;
+
+#[derive(Debug, Clone, QueryableByName)]
+pub struct MyDataConfigRow {
+    #[diesel(sql_type = Text)]
+    pub updated_by: String,
+    #[diesel(sql_type = Bool)]
+    pub enable_flag: bool,
+    #[diesel(sql_type = BigInt)]
+    pub max_tags: i64,
+    #[diesel(sql_type = BigInt)]
+    pub max_subscription_days: i64,
+    #[diesel(sql_type = BigInt)]
+    pub max_free_access_grants: i64,
+    #[diesel(sql_type = BigInt)]
+    pub timestamp_ms: i64,
+}
 
 pub(crate) async fn get_mydata_record(
     conn: &mut Connection<'_>,
@@ -90,4 +107,28 @@ pub(crate) async fn list_mydata_purchases_by_buyer(
 
     metrics.requests_succeeded.inc();
     Ok(results)
+}
+
+pub(crate) async fn get_mydata_config(
+    conn: &mut Connection<'_>,
+    metrics: &DbReaderMetrics,
+) -> anyhow::Result<Option<MyDataConfigRow>> {
+    metrics.requests_received.inc();
+    let _guard = metrics.latency.start_timer();
+
+    let query = "
+        SELECT updated_by, enable_flag, max_tags, max_subscription_days, max_free_access_grants,
+               timestamp_ms
+        FROM mydata_config
+        ORDER BY time DESC
+        LIMIT 1
+    ";
+
+    let result = diesel::sql_query(query)
+        .get_result::<MyDataConfigRow>(conn)
+        .await
+        .optional()?;
+
+    metrics.requests_succeeded.inc();
+    Ok(result)
 }

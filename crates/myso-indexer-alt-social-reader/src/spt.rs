@@ -6,7 +6,7 @@ use diesel::OptionalExtension;
 use diesel::QueryDsl;
 use diesel::QueryableByName;
 use diesel::SelectableHelper;
-use diesel::sql_types::{BigInt, Text};
+use diesel::sql_types::{BigInt, Bool, Text};
 use diesel_async::RunQueryDsl;
 use myso_indexer_alt_social_schema::models::{
     SptHoldingRow, SptPoolRow, SptPriceHistory, SptTransaction, UserReservationHoldingRow,
@@ -16,6 +16,52 @@ use myso_indexer_alt_social_schema::schema::{spt_price_history, spt_transactions
 use myso_pg_db::Connection;
 
 use crate::metrics::DbReaderMetrics;
+
+#[derive(Debug, Clone, QueryableByName)]
+pub struct SptExchangeConfigRow {
+    #[diesel(sql_type = Text)]
+    pub updated_by: String,
+    #[diesel(sql_type = BigInt)]
+    pub post_threshold: i64,
+    #[diesel(sql_type = BigInt)]
+    pub profile_threshold: i64,
+    #[diesel(sql_type = BigInt)]
+    pub max_individual_reservation_bps: i64,
+    #[diesel(sql_type = BigInt)]
+    pub total_fee_bps: i64,
+    #[diesel(sql_type = BigInt)]
+    pub creator_fee_bps: i64,
+    #[diesel(sql_type = BigInt)]
+    pub platform_fee_bps: i64,
+    #[diesel(sql_type = BigInt)]
+    pub treasury_fee_bps: i64,
+    #[diesel(sql_type = BigInt)]
+    pub trading_creator_fee_bps: i64,
+    #[diesel(sql_type = BigInt)]
+    pub trading_platform_fee_bps: i64,
+    #[diesel(sql_type = BigInt)]
+    pub trading_treasury_fee_bps: i64,
+    #[diesel(sql_type = BigInt)]
+    pub reservation_creator_fee_bps: i64,
+    #[diesel(sql_type = BigInt)]
+    pub reservation_platform_fee_bps: i64,
+    #[diesel(sql_type = BigInt)]
+    pub reservation_treasury_fee_bps: i64,
+    #[diesel(sql_type = BigInt)]
+    pub max_reservers_per_pool: i64,
+    #[diesel(sql_type = BigInt)]
+    pub base_price: i64,
+    #[diesel(sql_type = BigInt)]
+    pub quadratic_coefficient: i64,
+    #[diesel(sql_type = BigInt)]
+    pub max_hold_percent_bps: i64,
+    #[diesel(sql_type = Bool)]
+    pub trading_enabled: bool,
+    #[diesel(sql_type = BigInt)]
+    pub updated_at: i64,
+    #[diesel(sql_type = Text)]
+    pub transaction_id: String,
+}
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum SptSortBy {
@@ -437,4 +483,32 @@ pub(crate) async fn get_user_reservation_holdings(
 
     metrics.requests_succeeded.inc();
     Ok(results)
+}
+
+pub(crate) async fn get_spt_exchange_config(
+    conn: &mut Connection<'_>,
+    metrics: &DbReaderMetrics,
+) -> anyhow::Result<Option<SptExchangeConfigRow>> {
+    metrics.requests_received.inc();
+    let _guard = metrics.latency.start_timer();
+
+    let query = "
+        SELECT updated_by, post_threshold, profile_threshold, max_individual_reservation_bps,
+               total_fee_bps, creator_fee_bps, platform_fee_bps, treasury_fee_bps,
+               trading_creator_fee_bps, trading_platform_fee_bps, trading_treasury_fee_bps,
+               reservation_creator_fee_bps, reservation_platform_fee_bps, reservation_treasury_fee_bps,
+               max_reservers_per_pool, base_price, quadratic_coefficient, max_hold_percent_bps,
+               trading_enabled, updated_at, transaction_id
+        FROM spt_exchange_config
+        ORDER BY time DESC
+        LIMIT 1
+    ";
+
+    let result = diesel::sql_query(query)
+        .get_result::<SptExchangeConfigRow>(conn)
+        .await
+        .optional()?;
+
+    metrics.requests_succeeded.inc();
+    Ok(result)
 }

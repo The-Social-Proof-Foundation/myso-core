@@ -2,13 +2,34 @@
 // SPDX-License-Identifier: Apache-2.0
 
 use diesel::OptionalExtension;
-use diesel::sql_types::{BigInt, Text};
+use diesel::QueryableByName;
+use diesel::sql_types::{BigInt, Bool, Text};
 use diesel_async::RunQueryDsl;
 
 use myso_indexer_alt_social_schema::models::{InsurancePolicyRow, InsuranceVaultRow};
 use myso_pg_db::Connection;
 
 use crate::metrics::DbReaderMetrics;
+
+#[derive(Debug, Clone, QueryableByName)]
+pub struct InsuranceConfigRow {
+    #[diesel(sql_type = Text)]
+    pub updated_by: String,
+    #[diesel(sql_type = Bool)]
+    pub enable_flag: bool,
+    #[diesel(sql_type = BigInt)]
+    pub min_coverage_bps: i64,
+    #[diesel(sql_type = BigInt)]
+    pub max_coverage_bps: i64,
+    #[diesel(sql_type = BigInt)]
+    pub max_duration_ms: i64,
+    #[diesel(sql_type = BigInt)]
+    pub fee_bps: i64,
+    #[diesel(sql_type = BigInt)]
+    pub version: i64,
+    #[diesel(sql_type = BigInt)]
+    pub timestamp_ms: i64,
+}
 
 pub(crate) async fn get_insurance_policy(
     conn: &mut Connection<'_>,
@@ -93,4 +114,28 @@ pub(crate) async fn list_insurance_vaults(
 
     metrics.requests_succeeded.inc();
     Ok(results)
+}
+
+pub(crate) async fn get_insurance_config(
+    conn: &mut Connection<'_>,
+    metrics: &DbReaderMetrics,
+) -> anyhow::Result<Option<InsuranceConfigRow>> {
+    metrics.requests_received.inc();
+    let _guard = metrics.latency.start_timer();
+
+    let query = "
+        SELECT updated_by, enable_flag, min_coverage_bps, max_coverage_bps, max_duration_ms,
+               fee_bps, version, timestamp_ms
+        FROM insurance_config
+        ORDER BY time DESC
+        LIMIT 1
+    ";
+
+    let result = diesel::sql_query(query)
+        .get_result::<InsuranceConfigRow>(conn)
+        .await
+        .optional()?;
+
+    metrics.requests_succeeded.inc();
+    Ok(result)
 }

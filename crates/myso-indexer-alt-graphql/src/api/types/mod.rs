@@ -42,6 +42,7 @@ pub(crate) mod post;
 pub(crate) mod promotion;
 pub(crate) mod profile;
 pub(crate) mod spt;
+pub(crate) mod social_config;
 pub(crate) mod spot;
 pub(crate) mod profile_summary;
 pub(crate) mod protocol_configs;
