@@ -430,6 +430,10 @@ pub(crate) async fn get_vesting_leaderboard(
                     reservation_pool_address: None,
                     followers_count: None,
                     following_count: None,
+                    post_count: None,
+                    blocked_count: None,
+                    is_following: None,
+                    follows_viewer: None,
                 });
             VestingLeaderboardEntry {
                 owner_address: r.owner_address,

@@ -44,6 +44,36 @@ pub struct ProfileSummaryRow {
     pub followers_count: Option<i32>,
     /// Following count (from profiles or wallet_social_graph). Present for both profile and wallet-only.
     pub following_count: Option<i32>,
+    /// Post count (from profiles). Present for both profile and wallet-only.
+    pub post_count: Option<i32>,
+    /// Blocked count (from profiles or wallet_social_graph). Present for both profile and wallet-only.
+    pub blocked_count: Option<i32>,
+    /// Viewer follows this profile. Set when viewer_address provided in followers/following query.
+    pub is_following: Option<bool>,
+    /// This profile follows viewer ("Follows you" badge). Set when viewer_address provided.
+    pub follows_viewer: Option<bool>,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum FollowSortBy {
+    Latest,
+    Earliest,
+    Alphabetical,
+    MostFollowers,
+}
+
+fn follow_order_clause(sort: FollowSortBy, addr_col: &str) -> String {
+    match sort {
+        FollowSortBy::Latest => "sgr.created_at DESC".to_string(),
+        FollowSortBy::Earliest => "sgr.created_at ASC".to_string(),
+        FollowSortBy::Alphabetical => format!(
+            "COALESCE(p.username, p.display_name, {}) ASC",
+            addr_col
+        ),
+        FollowSortBy::MostFollowers => {
+            "COALESCE(p.followers_count, wsg.followers_count, 0) DESC".to_string()
+        }
+    }
 }
 
 pub(crate) async fn get_profile_summaries_for_addresses(
@@ -74,10 +104,15 @@ pub(crate) async fn get_profile_summaries_for_addresses(
         social_proof_token_address: Option<String>,
         #[diesel(sql_type = Nullable<Text>)]
         reservation_pool_address: Option<String>,
+        #[diesel(sql_type = BigInt)]
+        post_count: i64,
+        #[diesel(sql_type = BigInt)]
+        blocked_count: i64,
     }
     let query = "
         SELECT DISTINCT ON (owner_address) owner_address, username, display_name, profile_photo,
-               bio, selected_badge_id, social_proof_token_address, reservation_pool_address
+               bio, selected_badge_id, social_proof_token_address, reservation_pool_address,
+               post_count, blocked_count
         FROM profiles
         WHERE owner_address = ANY($1::TEXT[])
         ORDER BY owner_address, updated_at DESC
@@ -102,6 +137,10 @@ pub(crate) async fn get_profile_summaries_for_addresses(
                 reservation_pool_address: row.reservation_pool_address,
                 followers_count: None,
                 following_count: None,
+                post_count: Some(row.post_count as i32),
+                blocked_count: Some(row.blocked_count as i32),
+                is_following: None,
+                follows_viewer: None,
             },
         );
     }
@@ -120,6 +159,10 @@ pub(crate) async fn get_profile_summaries_for_addresses(
                     reservation_pool_address: None,
                     followers_count: None,
                     following_count: None,
+                    post_count: None,
+                    blocked_count: None,
+                    is_following: None,
+                    follows_viewer: None,
                 },
             );
         }
@@ -127,15 +170,213 @@ pub(crate) async fn get_profile_summaries_for_addresses(
     Ok(result)
 }
 
+async fn resolve_profile_address(
+    conn: &mut Connection<'_>,
+    address: &str,
+) -> anyhow::Result<(Option<String>, String)> {
+    #[derive(QueryableByName)]
+    struct ResolveRow {
+        #[diesel(sql_type = Nullable<Text>)]
+        profile_id: Option<String>,
+        #[diesel(sql_type = Text)]
+        owner_address: String,
+    }
+    let result = diesel::sql_query(
+        "SELECT profile_id, owner_address FROM profiles
+         WHERE owner_address = $1 OR profile_id = $1
+         ORDER BY updated_at DESC LIMIT 1",
+    )
+    .bind::<Text, _>(address)
+    .get_result::<ResolveRow>(conn)
+    .await;
+    match result {
+        Ok(r) => Ok((r.profile_id, r.owner_address)),
+        Err(diesel::result::Error::NotFound) => Ok((None, address.to_string())),
+        Err(e) => Err(e.into()),
+    }
+}
+
+async fn batch_check_viewer_context(
+    conn: &mut Connection<'_>,
+    list_addresses: &[String],
+    viewer_profile_id: &Option<String>,
+    viewer_owner: &str,
+) -> anyhow::Result<HashMap<String, (bool, bool)>> {
+    if list_addresses.is_empty() {
+        return Ok(HashMap::new());
+    }
+    let mut viewer_refs = vec![viewer_owner];
+    if let Some(pid) = viewer_profile_id {
+        if pid != viewer_owner {
+            viewer_refs.push(pid.as_str());
+        }
+    }
+    if viewer_refs.iter().all(|s| s.is_empty()) {
+        return Ok(HashMap::new());
+    }
+    let addrs: Vec<&str> = list_addresses.iter().map(|s| s.as_str()).collect();
+    #[derive(QueryableByName)]
+    struct ViewerContextRow {
+        #[diesel(sql_type = Text)]
+        addr: String,
+        #[diesel(sql_type = Bool)]
+        is_following: bool,
+        #[diesel(sql_type = Bool)]
+        follows_viewer: bool,
+    }
+    let query = r#"
+        WITH list_addrs AS (SELECT unnest($1::TEXT[]) AS addr),
+        viewer_follows AS (
+            SELECT la.addr,
+                EXISTS(SELECT 1 FROM social_graph_relationships sgr
+                    WHERE sgr.follower_address = ANY($2::TEXT[])
+                    AND sgr.following_address = la.addr) AS is_following
+            FROM list_addrs la
+        ),
+        this_follows_viewer AS (
+            SELECT la.addr,
+                EXISTS(SELECT 1 FROM social_graph_relationships sgr
+                    WHERE sgr.follower_address = la.addr
+                    AND sgr.following_address = ANY($2::TEXT[])) AS follows_viewer
+            FROM list_addrs la
+        )
+        SELECT vf.addr, vf.is_following, tf.follows_viewer
+        FROM viewer_follows vf
+        JOIN this_follows_viewer tf ON vf.addr = tf.addr
+    "#;
+    let rows: Vec<ViewerContextRow> = diesel::sql_query(query)
+        .bind::<Array<Text>, _>(addrs)
+        .bind::<Array<Text>, _>(viewer_refs)
+        .load(conn)
+        .await?;
+    Ok(rows
+        .into_iter()
+        .map(|r| (r.addr, (r.is_following, r.follows_viewer)))
+        .collect())
+}
+
 pub(crate) async fn get_followers(
     conn: &mut Connection<'_>,
     address: &str,
+    sort: FollowSortBy,
+    search: Option<&str>,
+    viewer_address: Option<&str>,
     limit: i64,
     offset: i64,
     metrics: &DbReaderMetrics,
-) -> anyhow::Result<Vec<ProfileSummaryRow>> {
+) -> anyhow::Result<(Vec<ProfileSummaryRow>, i64)> {
     metrics.requests_received.inc();
     let _guard = metrics.latency.start_timer();
+
+    let (profile_id, owner_address) = resolve_profile_address(conn, address).await?;
+    let ref1 = &owner_address;
+    let ref2 = profile_id.as_ref().unwrap_or(&owner_address);
+
+    let search_filter = search
+        .filter(|s| !s.trim().is_empty())
+        .map(|s| format!("%{}%", s.trim()));
+    let search_suffix = search_filter
+        .as_ref()
+        .map(|_| " AND (p.username ILIKE $3 OR p.display_name ILIKE $3 OR sgr.follower_address ILIKE $3)")
+        .unwrap_or_default();
+
+    let order_clause = follow_order_clause(sort, "sgr.follower_address");
+    let needs_join = matches!(sort, FollowSortBy::Alphabetical | FollowSortBy::MostFollowers);
+
+    let (data_sql, count_sql) = if needs_join {
+        let join_clause = "LEFT JOIN profiles p ON p.owner_address = sgr.follower_address
+            LEFT JOIN wallet_social_graph wsg ON wsg.wallet_address = sgr.follower_address AND p.owner_address IS NULL";
+        let data_sql = if search_filter.is_some() {
+            format!(
+                r#"SELECT sgr.follower_address AS addr, p.username, p.display_name, p.profile_photo,
+                   p.bio, p.selected_badge_id, p.social_proof_token_address, p.reservation_pool_address,
+                   COALESCE(p.post_count, 0)::bigint AS post_count, COALESCE(p.blocked_count, wsg.blocked_count, 0)::bigint AS blocked_count,
+                   COALESCE(p.followers_count, wsg.followers_count) AS followers_count, COALESCE(p.following_count, wsg.following_count) AS following_count
+                FROM social_graph_relationships sgr
+                {}
+                WHERE (sgr.following_address = $1 OR sgr.following_address = $2){}
+                ORDER BY {}
+                LIMIT $4 OFFSET $5"#,
+                join_clause, search_suffix, order_clause
+            )
+        } else {
+            format!(
+                r#"SELECT sgr.follower_address AS addr, p.username, p.display_name, p.profile_photo,
+                   p.bio, p.selected_badge_id, p.social_proof_token_address, p.reservation_pool_address,
+                   COALESCE(p.post_count, 0)::bigint AS post_count, COALESCE(p.blocked_count, wsg.blocked_count, 0)::bigint AS blocked_count,
+                   COALESCE(p.followers_count, wsg.followers_count) AS followers_count, COALESCE(p.following_count, wsg.following_count) AS following_count
+                FROM social_graph_relationships sgr
+                {}
+                WHERE (sgr.following_address = $1 OR sgr.following_address = $2)
+                ORDER BY {}
+                LIMIT $3 OFFSET $4"#,
+                join_clause, order_clause
+            )
+        };
+        let count_sql = if search_filter.is_some() {
+            format!(
+                r#"SELECT COUNT(*)::bigint AS cnt FROM social_graph_relationships sgr
+                LEFT JOIN profiles p ON p.owner_address = sgr.follower_address
+                WHERE (sgr.following_address = $1 OR sgr.following_address = $2){}"#,
+                search_suffix
+            )
+        } else {
+            format!(
+                r#"SELECT COUNT(*)::bigint AS cnt FROM social_graph_relationships sgr
+                WHERE (sgr.following_address = $1 OR sgr.following_address = $2)"#
+            )
+        };
+        (data_sql, count_sql)
+    } else {
+        let data_sql = if search_filter.is_some() {
+            format!(
+                r#"SELECT sgr.follower_address AS addr, p.username, p.display_name, p.profile_photo,
+                   p.bio, p.selected_badge_id, p.social_proof_token_address, p.reservation_pool_address,
+                   COALESCE(p.post_count, 0)::bigint AS post_count, COALESCE(p.blocked_count, 0)::bigint AS blocked_count,
+                   NULL::int AS followers_count, NULL::int AS following_count
+                FROM social_graph_relationships sgr
+                LEFT JOIN LATERAL (
+                    SELECT username, display_name, profile_photo, bio, selected_badge_id,
+                           social_proof_token_address, reservation_pool_address, post_count, blocked_count
+                    FROM profiles WHERE owner_address = sgr.follower_address ORDER BY updated_at DESC LIMIT 1
+                ) p ON true
+                WHERE (sgr.following_address = $1 OR sgr.following_address = $2){}
+                ORDER BY {}
+                LIMIT $4 OFFSET $5"#,
+                search_suffix, order_clause
+            )
+        } else {
+            format!(
+                r#"SELECT sgr.follower_address AS addr, p.username, p.display_name, p.profile_photo,
+                   p.bio, p.selected_badge_id, p.social_proof_token_address, p.reservation_pool_address,
+                   COALESCE(p.post_count, 0)::bigint AS post_count, COALESCE(p.blocked_count, 0)::bigint AS blocked_count,
+                   NULL::int AS followers_count, NULL::int AS following_count
+                FROM social_graph_relationships sgr
+                LEFT JOIN LATERAL (
+                    SELECT username, display_name, profile_photo, bio, selected_badge_id,
+                           social_proof_token_address, reservation_pool_address, post_count, blocked_count
+                    FROM profiles WHERE owner_address = sgr.follower_address ORDER BY updated_at DESC LIMIT 1
+                ) p ON true
+                WHERE (sgr.following_address = $1 OR sgr.following_address = $2)
+                ORDER BY {}
+                LIMIT $3 OFFSET $4"#,
+                order_clause
+            )
+        };
+        let count_sql = format!(
+            r#"SELECT COUNT(*)::bigint AS cnt FROM social_graph_relationships sgr
+            LEFT JOIN profiles p ON p.owner_address = sgr.follower_address
+            WHERE (sgr.following_address = $1 OR sgr.following_address = $2){}"#,
+            search_suffix
+        );
+        (data_sql, count_sql)
+    };
+
+    #[derive(QueryableByName)]
+    struct CountRow {
+        #[diesel(sql_type = BigInt)]
+        cnt: i64,
+    }
     #[derive(QueryableByName)]
     struct Row {
         #[diesel(sql_type = Text)]
@@ -154,45 +395,88 @@ pub(crate) async fn get_followers(
         social_proof_token_address: Option<String>,
         #[diesel(sql_type = Nullable<Text>)]
         reservation_pool_address: Option<String>,
+        #[diesel(sql_type = Nullable<BigInt>)]
+        post_count: Option<i64>,
+        #[diesel(sql_type = Nullable<BigInt>)]
+        blocked_count: Option<i64>,
+        #[diesel(sql_type = Nullable<BigInt>)]
+        followers_count: Option<i64>,
+        #[diesel(sql_type = Nullable<BigInt>)]
+        following_count: Option<i64>,
     }
-    let query = "
-        SELECT sgr.follower_address AS addr, p.username, p.display_name, p.profile_photo,
-               p.bio, p.selected_badge_id, p.social_proof_token_address, p.reservation_pool_address
-        FROM social_graph_relationships sgr
-        LEFT JOIN LATERAL (
-            SELECT username, display_name, profile_photo, bio, selected_badge_id,
-                   social_proof_token_address, reservation_pool_address
-            FROM profiles
-            WHERE owner_address = sgr.follower_address
-            ORDER BY updated_at DESC
-            LIMIT 1
-        ) p ON true
-        WHERE sgr.following_address = $1
-        ORDER BY sgr.created_at DESC
-        LIMIT $2 OFFSET $3
-    ";
-    let rows = diesel::sql_query(query)
-        .bind::<Text, _>(address)
-        .bind::<BigInt, _>(limit)
-        .bind::<BigInt, _>(offset)
-        .load::<Row>(conn)
-        .await?;
-    metrics.requests_succeeded.inc();
-    Ok(rows
+
+    let total_count: i64 = if let Some(ref pat) = search_filter {
+        diesel::sql_query(&count_sql)
+            .bind::<Text, _>(ref1)
+            .bind::<Text, _>(ref2)
+            .bind::<Text, _>(pat)
+            .get_result::<CountRow>(conn)
+            .await?
+            .cnt
+    } else {
+        diesel::sql_query(&count_sql)
+            .bind::<Text, _>(ref1)
+            .bind::<Text, _>(ref2)
+            .get_result::<CountRow>(conn)
+            .await?
+            .cnt
+    };
+
+    let rows: Vec<Row> = if let Some(ref pat) = search_filter {
+        diesel::sql_query(&data_sql)
+            .bind::<Text, _>(ref1)
+            .bind::<Text, _>(ref2)
+            .bind::<Text, _>(pat)
+            .bind::<BigInt, _>(limit)
+            .bind::<BigInt, _>(offset)
+            .load(conn)
+            .await?
+    } else {
+        diesel::sql_query(&data_sql)
+            .bind::<Text, _>(ref1)
+            .bind::<Text, _>(ref2)
+            .bind::<BigInt, _>(limit)
+            .bind::<BigInt, _>(offset)
+            .load(conn)
+            .await?
+    };
+
+    let addresses: Vec<String> = rows.iter().map(|r| r.addr.clone()).collect();
+    let viewer_ctx = if let Some(v) = viewer_address {
+        let (v_pid, v_owner) = resolve_profile_address(conn, v).await?;
+        batch_check_viewer_context(conn, &addresses, &v_pid, &v_owner).await?
+    } else {
+        HashMap::new()
+    };
+
+    let result: Vec<ProfileSummaryRow> = rows
         .into_iter()
-        .map(|r| ProfileSummaryRow {
-            owner_address: r.addr,
-            username: r.username,
-            display_name: r.display_name,
-            profile_photo: r.profile_photo,
-            bio: r.bio,
-            selected_badge_id: r.selected_badge_id,
-            social_proof_token_address: r.social_proof_token_address,
-            reservation_pool_address: r.reservation_pool_address,
-            followers_count: None,
-            following_count: None,
+        .map(|r| {
+            let (is_following, follows_viewer) = viewer_ctx
+                .get(&r.addr)
+                .copied()
+                .unwrap_or((false, false));
+            ProfileSummaryRow {
+                owner_address: r.addr,
+                username: r.username,
+                display_name: r.display_name,
+                profile_photo: r.profile_photo,
+                bio: r.bio,
+                selected_badge_id: r.selected_badge_id,
+                social_proof_token_address: r.social_proof_token_address,
+                reservation_pool_address: r.reservation_pool_address,
+                followers_count: r.followers_count.map(|v| v as i32),
+                following_count: r.following_count.map(|v| v as i32),
+                post_count: r.post_count.map(|v| v as i32),
+                blocked_count: r.blocked_count.map(|v| v as i32),
+                is_following: viewer_address.map(|_| is_following),
+                follows_viewer: viewer_address.map(|_| follows_viewer),
+            }
         })
-        .collect())
+        .collect();
+
+    metrics.requests_succeeded.inc();
+    Ok((result, total_count))
 }
 
 pub(crate) async fn get_following(
@@ -222,14 +506,19 @@ pub(crate) async fn get_following(
         social_proof_token_address: Option<String>,
         #[diesel(sql_type = Nullable<Text>)]
         reservation_pool_address: Option<String>,
+        #[diesel(sql_type = Nullable<BigInt>)]
+        post_count: Option<i64>,
+        #[diesel(sql_type = Nullable<BigInt>)]
+        blocked_count: Option<i64>,
     }
     let query = "
         SELECT sgr.following_address AS addr, p.username, p.display_name, p.profile_photo,
-               p.bio, p.selected_badge_id, p.social_proof_token_address, p.reservation_pool_address
+               p.bio, p.selected_badge_id, p.social_proof_token_address, p.reservation_pool_address,
+               p.post_count, p.blocked_count
         FROM social_graph_relationships sgr
         LEFT JOIN LATERAL (
             SELECT username, display_name, profile_photo, bio, selected_badge_id,
-                   social_proof_token_address, reservation_pool_address
+                   social_proof_token_address, reservation_pool_address, post_count, blocked_count
             FROM profiles
             WHERE owner_address = sgr.following_address
             ORDER BY updated_at DESC
@@ -259,6 +548,10 @@ pub(crate) async fn get_following(
             reservation_pool_address: r.reservation_pool_address,
             followers_count: None,
             following_count: None,
+            post_count: r.post_count.map(|v| v as i32),
+            blocked_count: r.blocked_count.map(|v| v as i32),
+            is_following: None,
+            follows_viewer: None,
         })
         .collect())
 }

@@ -42,6 +42,7 @@ DROP MATERIALIZED VIEW IF EXISTS spt_price_daily CASCADE;
 -- ============================================================================
 
 -- Drop price history table and indexes
+DROP INDEX IF EXISTS idx_spt_price_history_pool_time;
 DROP INDEX IF EXISTS idx_spt_price_history_pool_id;
 DROP TABLE IF EXISTS spt_price_history CASCADE;
 
@@ -58,6 +59,7 @@ DROP INDEX IF EXISTS idx_spt_auction_pools_status;
 DROP TABLE IF EXISTS spt_auction_pools CASCADE;
 
 -- Drop transactions table and indexes
+DROP INDEX IF EXISTS idx_spt_transactions_pool_time;
 DROP INDEX IF EXISTS idx_spt_transactions_pool_id;
 DROP INDEX IF EXISTS idx_spt_transactions_sender;
 DROP INDEX IF EXISTS idx_spt_transactions_transaction_type;

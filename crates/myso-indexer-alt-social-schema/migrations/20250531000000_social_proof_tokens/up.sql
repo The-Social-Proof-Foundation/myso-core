@@ -243,6 +243,7 @@ CREATE INDEX IF NOT EXISTS idx_spt_holdings_holder_address ON spt_holdings(holde
 
 -- Transactions indexes
 CREATE INDEX IF NOT EXISTS idx_spt_transactions_pool_id ON spt_transactions(pool_id);
+CREATE INDEX IF NOT EXISTS idx_spt_transactions_pool_time ON spt_transactions (pool_id, time DESC);
 CREATE INDEX IF NOT EXISTS idx_spt_transactions_sender ON spt_transactions(sender);
 CREATE INDEX IF NOT EXISTS idx_spt_transactions_transaction_type ON spt_transactions(transaction_type);
 
@@ -258,6 +259,7 @@ CREATE INDEX IF NOT EXISTS idx_spt_auction_contributions_contributor_address ON 
 
 -- Price history indexes
 CREATE INDEX IF NOT EXISTS idx_spt_price_history_pool_id ON spt_price_history(pool_id);
+CREATE INDEX IF NOT EXISTS idx_spt_price_history_pool_time ON spt_price_history (pool_id, time DESC);
 
 -- ============================================================================
 -- 3. CREATE VIEWS AND MATERIALIZED VIEWS

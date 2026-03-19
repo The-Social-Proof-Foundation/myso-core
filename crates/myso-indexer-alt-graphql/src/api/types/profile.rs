@@ -57,6 +57,7 @@ impl Profile {
             followers_count: inner.followers_count,
             following_count: inner.following_count,
             post_count: inner.post_count,
+            blocked_count: inner.blocked_count,
             min_offer_amount: inner.min_offer_amount,
             birthdate: inner.birthdate,
             current_location: inner.current_location,
@@ -510,6 +511,65 @@ impl SocialProofToken {
 
     async fn required_threshold(&self) -> i64 {
         self.inner.required_threshold
+    }
+
+    async fn symbol(&self) -> Option<&str> {
+        self.inner.symbol.as_deref()
+    }
+
+    async fn name(&self) -> Option<&str> {
+        self.inner.name.as_deref()
+    }
+
+    async fn circulating_supply(&self) -> Option<i64> {
+        self.inner.circulating_supply
+    }
+
+    async fn base_price(&self) -> Option<i64> {
+        self.inner.base_price
+    }
+
+    async fn current_price(&self) -> Option<i64> {
+        self.inner.current_price
+    }
+
+    async fn market_cap(&self) -> Option<i64> {
+        self.inner.market_cap
+    }
+
+    async fn price_change_24h(&self) -> Option<f64> {
+        self.inner.price_change_24h
+    }
+
+    async fn volume_24h(&self) -> Option<i64> {
+        self.inner.volume_24h
+    }
+
+    async fn creator_earnings(&self) -> Option<i64> {
+        self.inner.creator_earnings
+    }
+
+    async fn platform_earnings(&self) -> Option<i64> {
+        self.inner.platform_earnings
+    }
+
+    async fn ecosystem_earnings(&self) -> Option<i64> {
+        self.inner.ecosystem_earnings
+    }
+
+    async fn owner(&self) -> Option<MySoAddress> {
+        self.inner
+            .owner
+            .as_ref()
+            .and_then(|s| MySoAddress::from_str(s).ok())
+    }
+
+    async fn created_at(&self) -> Option<i64> {
+        self.inner.created_at
+    }
+
+    async fn token_type(&self) -> Option<i16> {
+        self.inner.token_type
     }
 }
 

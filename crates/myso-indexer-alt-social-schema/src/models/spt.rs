@@ -111,6 +111,16 @@ pub struct SptPoolRow {
     pub transaction_id: String,
     #[diesel(sql_type = BigInt)]
     pub price: i64,
+    #[diesel(sql_type = Nullable<BigInt>)]
+    pub price_24h_ago: Option<i64>,
+    #[diesel(sql_type = Nullable<BigInt>)]
+    pub volume_24h: Option<i64>,
+    #[diesel(sql_type = Nullable<BigInt>)]
+    pub creator_earnings: Option<i64>,
+    #[diesel(sql_type = Nullable<BigInt>)]
+    pub platform_earnings: Option<i64>,
+    #[diesel(sql_type = Nullable<BigInt>)]
+    pub ecosystem_earnings: Option<i64>,
 }
 
 #[derive(Debug, Clone, Insertable, Serialize, Deserialize)]

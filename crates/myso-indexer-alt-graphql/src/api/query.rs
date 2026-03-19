@@ -58,7 +58,7 @@ use crate::api::types::governance::{Delegate, GovernanceRegistry, Proposal};
 use crate::api::types::insurance::{InsurancePolicy, InsuranceVault};
 use crate::api::types::mydata::{MyDataPurchase, MyDataRecord};
 use crate::api::types::spot::{SpotBet, SpotRecord};
-use crate::api::types::spt::{SptHolding, SptPool, SptPriceHistory};
+use crate::api::types::spt::{SptHolding, SptOrder, SptPool, SptPriceHistory, SptSortBy};
 use crate::api::types::vesting::{
     VestingLeaderboardEntry, VestingLeaderboardResponse, VestingWallet,
 };
@@ -588,6 +588,33 @@ impl Query {
                 .await
                 .map_err(Into::into)
                 .map(|opt| opt.map(SptPool::from_row)),
+        )
+    }
+
+    /// List SPT pools with optional token type filter and sorting. Returns empty when social DB not configured.
+    async fn spt_pools(
+        &self,
+        ctx: &Context<'_>,
+        token_type: Option<i32>,
+        sort_by: Option<SptSortBy>,
+        order: Option<SptOrder>,
+        limit: Option<u64>,
+        offset: Option<u64>,
+    ) -> Option<Result<Vec<SptPool>, RpcError>> {
+        let reader_opt = ctx
+            .data_opt::<std::sync::Arc<Option<myso_indexer_alt_social_reader::SocialPgReader>>>()?;
+        let reader = reader_opt.as_ref().as_ref()?;
+        let sort_by = sort_by.unwrap_or_default();
+        let ascending = matches!(order, Some(SptOrder::Asc));
+        let limit = limit.unwrap_or(20).min(100) as i64;
+        let offset = offset.unwrap_or(0) as i64;
+        let token_type = token_type.map(|t| t as i16);
+        Some(
+            reader
+                .list_spt_pools(token_type, sort_by.into(), ascending, limit, offset)
+                .await
+                .map_err(Into::into)
+                .map(|v| v.into_iter().map(SptPool::from_row).collect()),
         )
     }
 

@@ -23,7 +23,7 @@ use crate::platform::{get_platform_blocked_profiles, get_platform_members, get_p
 use crate::social_graph::{
     check_following, check_platform_blocked, check_profile_blocked, get_blocked_platforms,
     get_blocked_profiles, get_followers, get_following, get_profile_platform_memberships,
-    ProfileSummaryRow,
+    FollowSortBy, ProfileSummaryRow,
 };
 use crate::poc::{
     get_poc_analysis_for_post, get_poc_badges_for_post, get_poc_configuration,
@@ -47,7 +47,7 @@ use crate::promotion::{
 };
 use crate::spt::{
     get_spt_holdings_by_holder, get_spt_pool, get_spt_pool_id_for_profile, get_spt_price_history,
-    get_spt_transactions,
+    get_spt_transactions, list_spt_pools,
 };
 use crate::vesting::{get_vesting_leaderboard, get_vesting_wallet, list_vesting_wallets};
 
@@ -150,6 +150,10 @@ impl SocialPgReader {
             reservation_pool_address: response.reservation_pool_address,
             followers_count: Some(response.followers_count),
             following_count: Some(response.following_count),
+            post_count: Some(response.post_count),
+            blocked_count: Some(response.blocked_count),
+            is_following: None,
+            follows_viewer: None,
         })
     }
 
@@ -235,7 +239,18 @@ impl SocialPgReader {
         offset: i64,
     ) -> anyhow::Result<Vec<crate::social_graph::ProfileSummaryRow>> {
         let mut conn = self.connect().await?;
-        get_followers(&mut conn, address, limit, offset, &self.metrics).await
+        let (rows, _) = get_followers(
+            &mut conn,
+            address,
+            FollowSortBy::Latest,
+            None,
+            None,
+            limit,
+            offset,
+            &self.metrics,
+        )
+        .await?;
+        Ok(rows)
     }
 
     /// Get accounts that a profile follows (by owner address).
@@ -496,6 +511,28 @@ impl SocialPgReader {
     ) -> anyhow::Result<Vec<crate::SptTransaction>> {
         let mut conn = self.connect().await?;
         get_spt_transactions(&mut conn, pool_id, limit, offset, &self.metrics).await
+    }
+
+    /// List SPT pools with optional token type filter and sorting.
+    pub async fn list_spt_pools(
+        &self,
+        token_type: Option<i16>,
+        sort_by: crate::spt::SptSortBy,
+        ascending: bool,
+        limit: i64,
+        offset: i64,
+    ) -> anyhow::Result<Vec<crate::SptPoolRow>> {
+        let mut conn = self.connect().await?;
+        list_spt_pools(
+            &mut conn,
+            token_type,
+            sort_by,
+            ascending,
+            limit,
+            offset,
+            &self.metrics,
+        )
+        .await
     }
 
     /// Get latest POC analysis for a post.

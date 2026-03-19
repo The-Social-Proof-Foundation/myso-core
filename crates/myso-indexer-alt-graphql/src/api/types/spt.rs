@@ -4,9 +4,11 @@
 use std::str::FromStr;
 
 use async_graphql::Context;
+use async_graphql::Enum;
 use async_graphql::Object;
 use myso_indexer_alt_social_reader::{
-    SptHoldingRow, SptPriceHistory as SptPriceHistoryRow, SptPoolRow, SptTransaction as SptTransactionRow,
+    SptHoldingRow, SptPriceHistory as SptPriceHistoryRow, SptPoolRow, SptSortBy as SptSortByReader,
+    SptTransaction as SptTransactionRow,
 };
 
 use crate::api::resolve_profile::resolve_profile_summary;
@@ -15,6 +17,43 @@ use crate::api::types::profile_summary::ProfileSummary;
 
 fn to_iso8601_utc(dt: chrono::DateTime<chrono::Utc>) -> String {
     dt.to_rfc3339_opts(chrono::SecondsFormat::Millis, true)
+}
+
+#[derive(Enum, Copy, Clone, Eq, PartialEq, Default)]
+pub enum SptOrder {
+    #[default]
+    Desc,
+    Asc,
+}
+
+#[derive(Enum, Copy, Clone, Eq, PartialEq, Default)]
+pub enum SptSortBy {
+    #[default]
+    Price,
+    MarketCap,
+    PriceChange24h,
+    Volume24h,
+    CreatorEarnings,
+    PlatformEarnings,
+    EcosystemEarnings,
+    TotalEarnings,
+    CreatedAt,
+}
+
+impl From<SptSortBy> for SptSortByReader {
+    fn from(v: SptSortBy) -> Self {
+        match v {
+            SptSortBy::Price => SptSortByReader::Price,
+            SptSortBy::MarketCap => SptSortByReader::MarketCap,
+            SptSortBy::PriceChange24h => SptSortByReader::PriceChange24h,
+            SptSortBy::Volume24h => SptSortByReader::Volume24h,
+            SptSortBy::CreatorEarnings => SptSortByReader::CreatorEarnings,
+            SptSortBy::PlatformEarnings => SptSortByReader::PlatformEarnings,
+            SptSortBy::EcosystemEarnings => SptSortByReader::EcosystemEarnings,
+            SptSortBy::TotalEarnings => SptSortByReader::TotalEarnings,
+            SptSortBy::CreatedAt => SptSortByReader::CreatedAt,
+        }
+    }
 }
 
 #[derive(Clone)]
@@ -54,6 +93,10 @@ impl SptHolding {
             reservation_pool_address: self.inner.profile_reservation_pool_address.clone(),
             followers_count: None,
             following_count: None,
+            post_count: None,
+            blocked_count: None,
+            is_following: None,
+            follows_viewer: None,
         })
     }
 }
@@ -110,6 +153,42 @@ impl SptPool {
     /// Token type (1=profile, 2=post).
     async fn token_type(&self) -> i16 {
         self.inner.token_type
+    }
+
+    /// Market cap (price * circulating supply).
+    async fn market_cap(&self) -> i64 {
+        self.inner.price.saturating_mul(self.inner.circulating_supply)
+    }
+
+    /// 24-hour price change (percentage).
+    async fn price_change_24h(&self) -> Option<f64> {
+        self.inner.price_24h_ago.and_then(|prev| {
+            if prev > 0 {
+                Some(((self.inner.price - prev) as f64 / prev as f64) * 100.0)
+            } else {
+                None
+            }
+        })
+    }
+
+    /// 24-hour trading volume (MYSO).
+    async fn volume_24h(&self) -> Option<i64> {
+        self.inner.volume_24h
+    }
+
+    /// Total creator fees earned.
+    async fn creator_earnings(&self) -> Option<i64> {
+        self.inner.creator_earnings
+    }
+
+    /// Total platform fees earned.
+    async fn platform_earnings(&self) -> Option<i64> {
+        self.inner.platform_earnings
+    }
+
+    /// Total ecosystem/treasury fees earned.
+    async fn ecosystem_earnings(&self) -> Option<i64> {
+        self.inner.ecosystem_earnings
     }
 
     /// Recent transactions for this pool.

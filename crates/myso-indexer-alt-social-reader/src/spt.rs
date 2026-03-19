@@ -17,6 +17,38 @@ use myso_pg_db::Connection;
 
 use crate::metrics::DbReaderMetrics;
 
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum SptSortBy {
+    Price,
+    MarketCap,
+    PriceChange24h,
+    Volume24h,
+    CreatorEarnings,
+    PlatformEarnings,
+    EcosystemEarnings,
+    TotalEarnings,
+    CreatedAt,
+}
+
+fn order_by_clause(sort_by: SptSortBy, ascending: bool) -> String {
+    let col = match sort_by {
+        SptSortBy::Price => "price",
+        SptSortBy::MarketCap => "market_cap",
+        SptSortBy::PriceChange24h => "price_change_24h",
+        SptSortBy::Volume24h => "volume_24h",
+        SptSortBy::CreatorEarnings => "creator_earnings",
+        SptSortBy::PlatformEarnings => "platform_earnings",
+        SptSortBy::EcosystemEarnings => "ecosystem_earnings",
+        SptSortBy::TotalEarnings => "total_earnings",
+        SptSortBy::CreatedAt => "created_at",
+    };
+    let dir = if ascending {
+        "ASC NULLS LAST"
+    } else {
+        "DESC NULLS FIRST"
+    };
+    format!("{} {}", col, dir)
+}
 
 pub(crate) async fn get_spt_holdings_by_holder(
     conn: &mut Connection<'_>,
@@ -95,12 +127,39 @@ pub(crate) async fn get_spt_pool(
             WHERE pool_id = $1
             ORDER BY time DESC
             LIMIT 1
+        ),
+        price_24h AS (
+            SELECT price FROM spt_price_history
+            WHERE pool_id = $1 AND time <= NOW() - INTERVAL '24 hours'
+            ORDER BY time DESC
+            LIMIT 1
+        ),
+        vol_24h AS (
+            SELECT COALESCE(SUM(myso_amount), 0)::bigint as vol
+            FROM spt_transactions
+            WHERE pool_id = $1 AND time >= NOW() - INTERVAL '24 hours'
+        ),
+        rev AS (
+            SELECT
+                COALESCE(SUM(creator_fee), 0)::bigint as creator_earnings,
+                COALESCE(SUM(platform_fee), 0)::bigint as platform_earnings,
+                COALESCE(SUM(treasury_fee), 0)::bigint as ecosystem_earnings
+            FROM spt_revenue
+            WHERE pool_id = $1
         )
         SELECT p.pool_id, p.token_type, p.owner, p.associated_id, p.symbol, p.name,
                p.circulating_supply, p.base_price, p.quadratic_coefficient, p.created_at,
-               p.time, p.transaction_id, COALESCE(lp.price, 0)::bigint as price
+               p.time, p.transaction_id, COALESCE(lp.price, 0)::bigint as price,
+               ph24.price as price_24h_ago,
+               v.vol as volume_24h,
+               r.creator_earnings,
+               r.platform_earnings,
+               r.ecosystem_earnings
         FROM latest_pool p
         LEFT JOIN latest_price lp ON true
+        LEFT JOIN price_24h ph24 ON true
+        LEFT JOIN vol_24h v ON true
+        LEFT JOIN rev r ON true
     "#;
 
     let result = diesel::sql_query(query)
@@ -153,6 +212,102 @@ pub(crate) async fn get_spt_price_history(
         .offset(offset)
         .select(SptPriceHistory::as_select())
         .load::<SptPriceHistory>(conn)
+        .await?;
+
+    metrics.requests_succeeded.inc();
+    Ok(results)
+}
+
+pub(crate) async fn list_spt_pools(
+    conn: &mut Connection<'_>,
+    token_type: Option<i16>,
+    sort_by: SptSortBy,
+    ascending: bool,
+    limit: i64,
+    offset: i64,
+    metrics: &DbReaderMetrics,
+) -> anyhow::Result<Vec<SptPoolRow>> {
+    metrics.requests_received.inc();
+    let _guard = metrics.latency.start_timer();
+
+    let token_filter = token_type
+        .map(|t| format!("AND token_type = {}", t))
+        .unwrap_or_default();
+    let order_clause = order_by_clause(sort_by, ascending);
+
+    let query = format!(
+        r#"
+        WITH latest_pools AS (
+            SELECT DISTINCT ON (pool_id) pool_id, token_type, owner, associated_id, symbol, name,
+                   circulating_supply, base_price, quadratic_coefficient, created_at, time, transaction_id
+            FROM spt_pools
+            WHERE 1=1 {}
+            ORDER BY pool_id, time DESC
+        ),
+        pool_metrics AS (
+            SELECT
+                p.pool_id,
+                p.token_type,
+                p.owner,
+                p.associated_id,
+                p.symbol,
+                p.name,
+                p.circulating_supply,
+                p.base_price,
+                p.quadratic_coefficient,
+                p.created_at,
+                p.time,
+                p.transaction_id,
+                COALESCE(ph.price, 0)::bigint as price,
+                ph24.price as price_24h_ago,
+                COALESCE(v.vol, 0)::bigint as volume_24h,
+                COALESCE(r.creator_earnings, 0)::bigint as creator_earnings,
+                COALESCE(r.platform_earnings, 0)::bigint as platform_earnings,
+                COALESCE(r.ecosystem_earnings, 0)::bigint as ecosystem_earnings,
+                (COALESCE(ph.price, 0) * p.circulating_supply)::bigint as market_cap,
+                CASE WHEN ph24.price IS NOT NULL AND ph24.price > 0
+                    THEN ((COALESCE(ph.price, 0) - ph24.price)::float / ph24.price * 100)
+                    ELSE NULL
+                END as price_change_24h,
+                (COALESCE(r.creator_earnings, 0) + COALESCE(r.platform_earnings, 0) + COALESCE(r.ecosystem_earnings, 0))::bigint as total_earnings
+            FROM latest_pools p
+            LEFT JOIN LATERAL (
+                SELECT price FROM spt_price_history
+                WHERE pool_id = p.pool_id ORDER BY time DESC LIMIT 1
+            ) ph ON true
+            LEFT JOIN LATERAL (
+                SELECT price FROM spt_price_history
+                WHERE pool_id = p.pool_id AND time <= NOW() - INTERVAL '24 hours'
+                ORDER BY time DESC LIMIT 1
+            ) ph24 ON true
+            LEFT JOIN LATERAL (
+                SELECT COALESCE(SUM(myso_amount), 0)::bigint as vol
+                FROM spt_transactions
+                WHERE pool_id = p.pool_id AND time >= NOW() - INTERVAL '24 hours'
+            ) v ON true
+            LEFT JOIN LATERAL (
+                SELECT
+                    COALESCE(SUM(creator_fee), 0)::bigint as creator_earnings,
+                    COALESCE(SUM(platform_fee), 0)::bigint as platform_earnings,
+                    COALESCE(SUM(treasury_fee), 0)::bigint as ecosystem_earnings
+                FROM spt_revenue WHERE pool_id = p.pool_id
+            ) r ON true
+        )
+        SELECT pool_id, token_type, owner, associated_id, symbol, name, circulating_supply,
+               base_price, quadratic_coefficient, created_at, time, transaction_id, price,
+               price_24h_ago, volume_24h, creator_earnings, platform_earnings, ecosystem_earnings
+        FROM pool_metrics
+        ORDER BY {}
+        LIMIT $1 OFFSET $2
+        "#,
+        token_filter,
+        order_clause
+    );
+
+    let results = diesel::sql_query(&query)
+        .bind::<BigInt, _>(limit)
+        .bind::<BigInt, _>(offset)
+        .load::<SptPoolRow>(conn)
         .await?;
 
     metrics.requests_succeeded.inc();

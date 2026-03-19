@@ -29,6 +29,20 @@ pub struct SocialProofTokenInfo {
     pub reservation_status: ReservationStatus,
     pub total_reserved: i64,
     pub required_threshold: i64,
+    pub symbol: Option<String>,
+    pub name: Option<String>,
+    pub circulating_supply: Option<i64>,
+    pub base_price: Option<i64>,
+    pub current_price: Option<i64>,
+    pub market_cap: Option<i64>,
+    pub price_change_24h: Option<f64>,
+    pub volume_24h: Option<i64>,
+    pub creator_earnings: Option<i64>,
+    pub platform_earnings: Option<i64>,
+    pub ecosystem_earnings: Option<i64>,
+    pub owner: Option<String>,
+    pub created_at: Option<i64>,
+    pub token_type: Option<i16>,
 }
 
 #[derive(Debug, Clone, Serialize)]
@@ -77,6 +91,7 @@ pub struct ProfileByAddressResponse {
     pub followers_count: i32,
     pub following_count: i32,
     pub post_count: i32,
+    pub blocked_count: i32,
     pub min_offer_amount: Option<i64>,
     pub birthdate: Option<String>,
     pub current_location: Option<String>,
@@ -156,6 +171,19 @@ async fn enrich_users_with_universal_data(
             pb.platform_id as badge_platform_id,
             pb.badge_type,
             spt.pool_id as spt_pool_id,
+            spt.symbol as spt_symbol,
+            spt.name as spt_name,
+            spt.circulating_supply as spt_circulating_supply,
+            spt.base_price as spt_base_price,
+            spt.owner as spt_owner,
+            spt.created_at as spt_created_at,
+            spt.token_type as spt_token_type,
+            ph.price as current_price,
+            ph24.price as price_24h_ago,
+            COALESCE(vol24.vol, 0)::bigint as volume_24h,
+            COALESCE(rev.creator_earnings, 0)::bigint as creator_earnings,
+            COALESCE(rev.platform_earnings, 0)::bigint as platform_earnings,
+            COALESCE(rev.ecosystem_earnings, 0)::bigint as ecosystem_earnings,
             rp.pool_id as reservation_pool_id,
             rp.total_reserved,
             rp.required_threshold,
@@ -168,6 +196,27 @@ async fn enrich_users_with_universal_data(
             pb.revoked = false
         LEFT JOIN latest_spt_pools spt ON
             spt.associated_id = 'profile_' || p.owner_address
+        LEFT JOIN LATERAL (
+            SELECT price FROM spt_price_history
+            WHERE pool_id = spt.pool_id
+            ORDER BY time DESC LIMIT 1
+        ) ph ON spt.pool_id IS NOT NULL
+        LEFT JOIN LATERAL (
+            SELECT price FROM spt_price_history
+            WHERE pool_id = spt.pool_id AND time <= NOW() - INTERVAL '24 hours'
+            ORDER BY time DESC LIMIT 1
+        ) ph24 ON spt.pool_id IS NOT NULL
+        LEFT JOIN LATERAL (
+            SELECT COALESCE(SUM(myso_amount), 0)::bigint as vol FROM spt_transactions
+            WHERE pool_id = spt.pool_id AND time >= NOW() - INTERVAL '24 hours'
+        ) vol24 ON spt.pool_id IS NOT NULL
+        LEFT JOIN LATERAL (
+            SELECT
+                SUM(creator_fee)::bigint as creator_earnings,
+                SUM(platform_fee)::bigint as platform_earnings,
+                SUM(treasury_fee)::bigint as ecosystem_earnings
+            FROM spt_revenue WHERE pool_id = spt.pool_id
+        ) rev ON spt.pool_id IS NOT NULL
         LEFT JOIN latest_reservation_pools rp ON
             rp.associated_id = 'profile_' || p.owner_address
         WHERE p.owner_address = ANY($1::TEXT[])
@@ -203,6 +252,32 @@ async fn enrich_users_with_universal_data(
         badge_type: Option<i16>,
         #[diesel(sql_type = Nullable<Text>)]
         spt_pool_id: Option<String>,
+        #[diesel(sql_type = Nullable<Text>)]
+        spt_symbol: Option<String>,
+        #[diesel(sql_type = Nullable<Text>)]
+        spt_name: Option<String>,
+        #[diesel(sql_type = Nullable<BigInt>)]
+        spt_circulating_supply: Option<i64>,
+        #[diesel(sql_type = Nullable<BigInt>)]
+        spt_base_price: Option<i64>,
+        #[diesel(sql_type = Nullable<Text>)]
+        spt_owner: Option<String>,
+        #[diesel(sql_type = Nullable<BigInt>)]
+        spt_created_at: Option<i64>,
+        #[diesel(sql_type = Nullable<SmallInt>)]
+        spt_token_type: Option<i16>,
+        #[diesel(sql_type = Nullable<BigInt>)]
+        current_price: Option<i64>,
+        #[diesel(sql_type = Nullable<BigInt>)]
+        price_24h_ago: Option<i64>,
+        #[diesel(sql_type = Nullable<BigInt>)]
+        volume_24h: Option<i64>,
+        #[diesel(sql_type = Nullable<BigInt>)]
+        creator_earnings: Option<i64>,
+        #[diesel(sql_type = Nullable<BigInt>)]
+        platform_earnings: Option<i64>,
+        #[diesel(sql_type = Nullable<BigInt>)]
+        ecosystem_earnings: Option<i64>,
         #[diesel(sql_type = Nullable<Text>)]
         reservation_pool_id: Option<String>,
         #[diesel(sql_type = Nullable<BigInt>)]
@@ -263,6 +338,22 @@ async fn enrich_users_with_universal_data(
         let social_proof_token_address = row.social_proof_token_address.clone();
         let is_active = spt_pool_id.is_some();
 
+        let (market_cap, price_change_24h) = if let (Some(current), Some(circ)) =
+            (row.current_price, row.spt_circulating_supply)
+        {
+            let cap = current.saturating_mul(circ);
+            let change = row.price_24h_ago.and_then(|prev| {
+                if prev > 0 {
+                    Some(((current - prev) as f64 / prev as f64) * 100.0)
+                } else {
+                    None
+                }
+            });
+            (Some(cap), change)
+        } else {
+            (None, None)
+        };
+
         let social_proof_token = if spt_pool_id.is_some()
             || reservation_pool_id.is_some()
             || social_proof_token_address.is_some()
@@ -276,6 +367,20 @@ async fn enrich_users_with_universal_data(
                 reservation_status: reservation_status.clone(),
                 total_reserved: row.total_reserved.unwrap_or(0),
                 required_threshold: row.required_threshold.unwrap_or(0),
+                symbol: row.spt_symbol,
+                name: row.spt_name,
+                circulating_supply: row.spt_circulating_supply,
+                base_price: row.spt_base_price,
+                current_price: row.current_price,
+                market_cap,
+                price_change_24h,
+                volume_24h: row.volume_24h,
+                creator_earnings: row.creator_earnings,
+                platform_earnings: row.platform_earnings,
+                ecosystem_earnings: row.ecosystem_earnings,
+                owner: row.spt_owner,
+                created_at: row.spt_created_at,
+                token_type: row.spt_token_type,
             })
         } else {
             None
@@ -375,7 +480,7 @@ pub(crate) async fn get_profile_or_wallet_by_address(
                 .await;
 
             let wallet_only = match wallet_result {
-                Ok((fc, fg, _bc, created_at, updated_at)) => ProfileByAddressResponse {
+                Ok((fc, fg, bc, created_at, updated_at)) => ProfileByAddressResponse {
                     id: None,
                     owner_address: address.to_string(),
                     profile_id: None,
@@ -390,6 +495,7 @@ pub(crate) async fn get_profile_or_wallet_by_address(
                     followers_count: fc,
                     following_count: fg,
                     post_count: 0,
+                    blocked_count: bc,
                     min_offer_amount: None,
                     birthdate: None,
                     current_location: None,
@@ -430,6 +536,7 @@ pub(crate) async fn get_profile_or_wallet_by_address(
                     followers_count: 0,
                     following_count: 0,
                     post_count: 0,
+                    blocked_count: 0,
                     min_offer_amount: None,
                     birthdate: None,
                     current_location: None,
@@ -478,6 +585,7 @@ fn profile_to_response(p: Profile) -> ProfileByAddressResponse {
         followers_count: p.followers_count,
         following_count: p.following_count,
         post_count: p.post_count,
+        blocked_count: p.blocked_count,
         min_offer_amount: p.min_offer_amount,
         birthdate: p.birthdate,
         current_location: p.current_location,

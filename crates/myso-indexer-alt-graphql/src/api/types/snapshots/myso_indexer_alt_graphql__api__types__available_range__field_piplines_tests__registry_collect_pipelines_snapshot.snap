@@ -1,6 +1,5 @@
 ---
 source: crates/myso-indexer-alt-graphql/src/api/types/available_range.rs
-assertion_line: 619
 expression: output
 ---
 AccumulatorRootCreateTransaction._
@@ -133,6 +132,9 @@ BalanceWithdraw.withdrawFrom
   => {}
 
 BlockedPlatformSummary.platformId
+  => {}
+
+BlockedPlatformSummary.blockedByProfile
   => {}
 
 BlockedPlatformSummary.platformName
@@ -382,6 +384,9 @@ CommentSummary.parentCommentId
   => {}
 
 CommentSummary.owner
+  => {}
+
+CommentSummary.ownerProfile
   => {}
 
 CommentSummary.profileId
@@ -741,6 +746,15 @@ GovernanceRegistry.delegateCount
 GovernanceRegistry.config
   => {}
 
+GovernanceRegistry.stats
+  => {}
+
+GovernanceRegistry.revenue
+  => {}
+
+GovernanceRegistry.platform
+  => {}
+
 GovernanceRegistryConfig.delegateTermEpochs
   => {}
 
@@ -754,6 +768,36 @@ GovernanceRegistryConfig.votingPeriodMs
   => {}
 
 GovernanceRegistryConfig.quorumVotes
+  => {}
+
+GovernanceStats.registryType
+  => {}
+
+GovernanceStats.activeDelegates
+  => {}
+
+GovernanceStats.pendingNominees
+  => {}
+
+GovernanceStats.submittedProposals
+  => {}
+
+GovernanceStats.inReviewProposals
+  => {}
+
+GovernanceStats.votingProposals
+  => {}
+
+GovernanceStats.approvedProposals
+  => {}
+
+GovernanceStats.rejectedProposals
+  => {}
+
+GovernanceStats.implementedProposals
+  => {}
+
+GovernanceStats.rescindedProposals
   => {}
 
 IAddressable.address
@@ -1257,6 +1301,9 @@ MyDataPurchase.mydataId
 MyDataPurchase.buyer
   => {}
 
+MyDataPurchase.buyerProfile
+  => {}
+
 MyDataPurchase.price
   => {}
 
@@ -1273,6 +1320,9 @@ MyDataRecord.mydataId
   => {}
 
 MyDataRecord.owner
+  => {}
+
+MyDataRecord.ownerProfile
   => {}
 
 MyDataRecord.mediaType
@@ -1428,6 +1478,9 @@ Platform.logo
 Platform.developerAddress
   => {}
 
+Platform.developerProfile
+  => {}
+
 Platform.isApproved
   => {}
 
@@ -1509,6 +1562,9 @@ Platform.moderators
 PlatformBlockedProfileSummary.walletAddress
   => {}
 
+PlatformBlockedProfileSummary.profile
+  => {}
+
 PlatformBlockedProfileSummary.blockedBy
   => {}
 
@@ -1516,6 +1572,9 @@ PlatformBlockedProfileSummary.createdAt
   => {}
 
 PlatformMemberSummary.walletAddress
+  => {}
+
+PlatformMemberSummary.profile
   => {}
 
 PlatformMemberSummary.joinedAt
@@ -1536,10 +1595,49 @@ PlatformMembershipSummary.joinedAt
 PlatformModeratorSummary.moderatorAddress
   => {}
 
+PlatformModeratorSummary.moderatorProfile
+  => {}
+
 PlatformModeratorSummary.addedBy
   => {}
 
+PlatformModeratorSummary.addedByProfile
+  => {}
+
 PlatformModeratorSummary.createdAt
+  => {}
+
+PlatformRevenueSummary.platformAddress
+  => {}
+
+PlatformRevenueSummary.totalRevenue
+  => {}
+
+PlatformRevenueSummary.totalSubscriptionRevenue
+  => {}
+
+PlatformRevenueSummary.totalMydataRevenue
+  => {}
+
+PlatformRevenueSummary.totalSptRevenue
+  => {}
+
+PlatformRevenueSummary.totalTransactions
+  => {}
+
+PlatformRevenueSummary.totalCreators
+  => {}
+
+PlatformRevenueSummary.totalPayers
+  => {}
+
+PlatformRevenueSummary.avgTransactionAmount
+  => {}
+
+PlatformRevenueSummary.activeMonths
+  => {}
+
+PlatformRevenueSummary.lastActiveMonth
   => {}
 
 Post.id
@@ -1552,6 +1650,9 @@ Post.owner
   => {}
 
 Post.profileId
+  => {}
+
+Post.ownerProfile
   => {}
 
 Post.content
@@ -1615,6 +1716,12 @@ PostTransferSummary.previousOwner
   => {}
 
 PostTransferSummary.newOwner
+  => {}
+
+PostTransferSummary.newOwnerProfile
+  => {}
+
+PostTransferSummary.previousOwnerProfile
   => {}
 
 PostTransferSummary.transferredAt
@@ -1785,6 +1892,9 @@ ProfileBadge.platformId
 ProfileBadge.assignedBy
   => {}
 
+ProfileBadge.assignedByProfile
+  => {}
+
 ProfileBadge.assignedAt
   => {}
 
@@ -1813,6 +1923,18 @@ ProfileSummary.socialProofTokenAddress
   => {}
 
 ProfileSummary.reservationPoolAddress
+  => {}
+
+ProfileSummary.followersCount
+  => {}
+
+ProfileSummary.followingCount
+  => {}
+
+ProfileSummary.postCount
+  => {}
+
+ProfileSummary.blockedCount
   => {}
 
 ProfileSummary.selectedBadge
@@ -1873,6 +1995,9 @@ Proposal.description
   => {}
 
 Proposal.submitter
+  => {}
+
+Proposal.submitterProfile
   => {}
 
 Proposal.submissionTime
@@ -1959,6 +2084,18 @@ Query.post
 Query.posts
   => {}
 
+Query.comment
+  => {}
+
+Query.reactions
+  => {}
+
+Query.reposts
+  => {}
+
+Query.tips
+  => {}
+
 Query.promotion
   => {}
 
@@ -1984,6 +2121,9 @@ Query.sptHoldings
   => {}
 
 Query.sptPool
+  => {}
+
+Query.sptPools
   => {}
 
 Query.sptPriceHistory
@@ -2175,6 +2315,9 @@ RandomnessStateUpdateTransaction.randomnessObjInitialSharedVersion
 ReactionSummary.userAddress
   => {}
 
+ReactionSummary.userProfile
+  => {}
+
 ReactionSummary.reactionText
   => {}
 
@@ -2197,6 +2340,9 @@ RepostSummary.originalPostId
   => {}
 
 RepostSummary.owner
+  => {}
+
+RepostSummary.ownerProfile
   => {}
 
 RepostSummary.profileId
@@ -2334,6 +2480,48 @@ SocialProofToken.totalReserved
 SocialProofToken.requiredThreshold
   => {}
 
+SocialProofToken.symbol
+  => {}
+
+SocialProofToken.name
+  => {}
+
+SocialProofToken.circulatingSupply
+  => {}
+
+SocialProofToken.basePrice
+  => {}
+
+SocialProofToken.currentPrice
+  => {}
+
+SocialProofToken.marketCap
+  => {}
+
+SocialProofToken.priceChange24H
+  => {}
+
+SocialProofToken.volume24H
+  => {}
+
+SocialProofToken.creatorEarnings
+  => {}
+
+SocialProofToken.platformEarnings
+  => {}
+
+SocialProofToken.ecosystemEarnings
+  => {}
+
+SocialProofToken.owner
+  => {}
+
+SocialProofToken.createdAt
+  => {}
+
+SocialProofToken.tokenType
+  => {}
+
 SplitCoinsCommand.coin
   => {}
 
@@ -2347,6 +2535,9 @@ SpotBet.postId
   => {}
 
 SpotBet.better
+  => {}
+
+SpotBet.profile
   => {}
 
 SpotBet.amount
@@ -2436,7 +2627,28 @@ SptPool.name
 SptPool.owner
   => {}
 
+SptPool.ownerProfile
+  => {}
+
 SptPool.tokenType
+  => {}
+
+SptPool.marketCap
+  => {}
+
+SptPool.priceChange24H
+  => {}
+
+SptPool.volume24H
+  => {}
+
+SptPool.creatorEarnings
+  => {}
+
+SptPool.platformEarnings
+  => {}
+
+SptPool.ecosystemEarnings
   => {}
 
 SptPool.transactions
@@ -2509,6 +2721,12 @@ TipSummary.tipper
   => {}
 
 TipSummary.recipient
+  => {}
+
+TipSummary.recipientProfile
+  => {}
+
+TipSummary.tipperProfile
   => {}
 
 TipSummary.amount
@@ -2692,6 +2910,9 @@ VestingWallet.walletId
   => {}
 
 VestingWallet.ownerAddress
+  => {}
+
+VestingWallet.ownerProfile
   => {}
 
 VestingWallet.totalAmount

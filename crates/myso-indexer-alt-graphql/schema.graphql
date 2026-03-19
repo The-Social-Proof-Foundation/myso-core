@@ -4032,6 +4032,10 @@ type ProfileSummary {
 	"""
 	bio: String
 	"""
+	Number of blocked accounts. Present for both profile and wallet-only addresses.
+	"""
+	blockedCount: Int
+	"""
 	Display name.
 	"""
 	displayName: String
@@ -4043,6 +4047,10 @@ type ProfileSummary {
 	Number of accounts this address follows. Present for both profile and wallet-only addresses.
 	"""
 	followingCount: Int
+	"""
+	Number of posts. Present for both profile and wallet-only addresses.
+	"""
+	postCount: Int
 	"""
 	Profile photo URL.
 	"""
@@ -4591,6 +4599,10 @@ type Query {
 	"""
 	sptPool(id: ID!): SptPool
 	"""
+	List SPT pools with optional token type filter and sorting. Returns empty when social DB not configured.
+	"""
+	sptPools(tokenType: Int, sortBy: SptSortBy, order: SptOrder, limit: Int, offset: Int): [SptPool!]
+	"""
 	SPT price history. Provide profileAddress or poolId (at least one required). Returns empty when social DB not configured.
 	"""
 	sptPriceHistory(profileAddress: MySoAddress, poolId: ID, limit: Int): [SptPriceHistory!]
@@ -4931,14 +4943,28 @@ type SimulationResult {
 }
 
 type SocialProofToken {
+	basePrice: Int
+	circulatingSupply: Int
+	createdAt: Int
+	creatorEarnings: Int
+	currentPrice: Int
+	ecosystemEarnings: Int
 	isActive: Boolean!
+	marketCap: Int
+	name: String
+	owner: MySoAddress
+	platformEarnings: Int
 	poolId: String
+	priceChange24H: Float
 	requiredThreshold: Int!
 	reservationPercentage: Float!
 	reservationPoolId: String
 	reservationStatus: String!
+	symbol: String
 	tokenAddress: String
+	tokenType: Int
 	totalReserved: Int!
+	volume24H: Int
 }
 
 """
@@ -5075,7 +5101,24 @@ type SptHolding {
 	profile: ProfileSummary!
 }
 
+enum SptOrder {
+	DESC
+	ASC
+}
+
 type SptPool {
+	"""
+	Total creator fees earned.
+	"""
+	creatorEarnings: Int
+	"""
+	Total ecosystem/treasury fees earned.
+	"""
+	ecosystemEarnings: Int
+	"""
+	Market cap (price * circulating supply).
+	"""
+	marketCap: Int!
 	"""
 	Token name.
 	"""
@@ -5089,6 +5132,10 @@ type SptPool {
 	"""
 	ownerProfile: ProfileSummary
 	"""
+	Total platform fees earned.
+	"""
+	platformEarnings: Int
+	"""
 	Pool ID.
 	"""
 	poolId: String!
@@ -5096,6 +5143,10 @@ type SptPool {
 	Current price (smallest units).
 	"""
 	price: Int!
+	"""
+	24-hour price change (percentage).
+	"""
+	priceChange24H: Float
 	"""
 	Price history for this pool.
 	"""
@@ -5116,6 +5167,10 @@ type SptPool {
 	Recent transactions for this pool.
 	"""
 	transactions(limit: Int, offset: Int): [SptTransaction!]
+	"""
+	24-hour trading volume (MYSO).
+	"""
+	volume24H: Int
 }
 
 type SptPriceHistory {
@@ -5139,6 +5194,18 @@ type SptPriceHistory {
 	Transaction ID.
 	"""
 	transactionId: String!
+}
+
+enum SptSortBy {
+	PRICE
+	MARKET_CAP
+	PRICE_CHANGE_2_4H
+	VOLUME_2_4H
+	CREATOR_EARNINGS
+	PLATFORM_EARNINGS
+	ECOSYSTEM_EARNINGS
+	TOTAL_EARNINGS
+	CREATED_AT
 }
 
 type SptTransaction {

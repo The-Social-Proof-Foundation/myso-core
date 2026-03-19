@@ -74,6 +74,16 @@ impl ProfileSummary {
         self.inner.following_count
     }
 
+    /// Number of posts. Present for both profile and wallet-only addresses.
+    async fn post_count(&self) -> Option<i32> {
+        self.inner.post_count
+    }
+
+    /// Number of blocked accounts. Present for both profile and wallet-only addresses.
+    async fn blocked_count(&self) -> Option<i32> {
+        self.inner.blocked_count
+    }
+
     /// Selected badge info (when present).
     async fn selected_badge(&self, ctx: &Context<'_>) -> Option<SelectedBadge> {
         if self.inner.selected_badge_id.is_none() {

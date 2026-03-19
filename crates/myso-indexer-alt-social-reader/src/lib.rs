@@ -29,6 +29,7 @@ pub use profile::{
 pub use myso_indexer_alt_social_schema::models::{
     SptHoldingRow, SptPoolRow, SptPriceHistory, SptTransaction,
 };
+pub use spt::SptSortBy;
 pub use social_graph::{BlockedPlatformRow, BlockedProfileRow, ProfileSummaryRow};
 pub use vesting::{
     VestingLeaderboardEntry, VestingLeaderboardResponse, VestingWalletRow,
