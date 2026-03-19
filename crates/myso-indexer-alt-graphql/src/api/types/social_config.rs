@@ -3,6 +3,7 @@
 
 use async_graphql::Object;
 
+use crate::api::scalars::date_time::DateTime;
 use myso_indexer_alt_social_reader::insurance::InsuranceConfigRow;
 use myso_indexer_alt_social_reader::mydata::MyDataConfigRow;
 use myso_indexer_alt_social_reader::post::PostConfigRow;
@@ -318,6 +319,16 @@ impl SpotConfig {
     /// Last updated timestamp (epoch milliseconds).
     async fn timestamp_ms(&self) -> i64 {
         self.inner.timestamp_ms
+    }
+
+    /// When the configuration was last updated.
+    async fn time(&self) -> DateTime {
+        DateTime::from_chrono(self.inner.time)
+    }
+
+    /// Transaction ID of the last config update.
+    async fn transaction_id(&self) -> &str {
+        &self.inner.transaction_id
     }
 }
 

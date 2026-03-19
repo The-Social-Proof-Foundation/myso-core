@@ -64,6 +64,10 @@ pub struct PostRow {
     pub poc_oracle_address: Option<String>,
     #[diesel(sql_type = Nullable<BigInt>)]
     pub poc_analyzed_at: Option<i64>,
+    #[diesel(sql_type = diesel::sql_types::Bool)]
+    pub enable_spot: bool,
+    #[diesel(sql_type = Nullable<Text>)]
+    pub spot_id: Option<String>,
 }
 
 #[derive(Debug, Clone)]
@@ -115,7 +119,7 @@ pub(crate) async fn get_post_by_id(
                 media_urls, mentions, parent_post_id, updated_at,
                 poc_id, revenue_redirect_to, revenue_redirect_percentage, enable_poc,
                 poc_reasoning, poc_evidence_urls, poc_similarity_score, poc_media_type,
-                poc_oracle_address, poc_analyzed_at
+                poc_oracle_address, poc_analyzed_at, enable_spot, spot_id
          FROM posts
          WHERE (post_id = $1 OR id = $1) AND deleted_at IS NULL
          ORDER BY created_at DESC
@@ -200,7 +204,7 @@ pub(crate) async fn list_posts(
                media_urls, mentions, parent_post_id, updated_at,
                poc_id, revenue_redirect_to, revenue_redirect_percentage, enable_poc,
                poc_reasoning, poc_evidence_urls, poc_similarity_score, poc_media_type,
-               poc_oracle_address, poc_analyzed_at
+               poc_oracle_address, poc_analyzed_at, enable_spot, spot_id
         FROM posts
         WHERE deleted_at IS NULL
         AND ($1::TEXT IS NULL OR owner = $1)

@@ -66,7 +66,9 @@ use crate::api::types::simulation_result::SimulationResult;
 use crate::api::types::social_config::{
     InsuranceConfig, MyDataConfig, PocConfig, PostConfig, SpotConfig, SptExchangeConfig,
 };
-use crate::api::types::spot::{SpotBet, SpotRecord};
+use crate::api::types::spot::{
+    SpotBet, SpotBetWithdrawal, SpotPayout, SpotRecord, SpotRefund, SpotResolution,
+};
 use crate::api::types::spt::{SptHolding, SptOrder, SptPool, SptPriceHistory, SptSortBy};
 use crate::api::types::transaction::CTransaction;
 use crate::api::types::transaction::Transaction;
@@ -703,6 +705,90 @@ impl Query {
                 .await
                 .map_err(Into::into)
                 .map(|opt| opt.map(SpotRecord::from_row)),
+        )
+    }
+
+    /// Spot payouts for a post. Returns empty when social DB not configured.
+    async fn spot_payouts(
+        &self,
+        ctx: &Context<'_>,
+        post_id: async_graphql::ID,
+        limit: Option<u64>,
+        offset: Option<u64>,
+    ) -> Option<Result<Vec<SpotPayout>, RpcError>> {
+        let reader_opt = ctx
+            .data_opt::<std::sync::Arc<Option<myso_indexer_alt_social_reader::SocialPgReader>>>()?;
+        let reader = reader_opt.as_ref().as_ref()?;
+        let limit = limit.unwrap_or(20).min(100) as i64;
+        let offset = offset.unwrap_or(0) as i64;
+        Some(
+            reader
+                .list_spot_payouts(post_id.as_str(), limit, offset)
+                .await
+                .map_err(Into::into)
+                .map(|v| v.into_iter().map(SpotPayout::from_row).collect()),
+        )
+    }
+
+    /// Spot refunds for a post. Returns empty when social DB not configured.
+    async fn spot_refunds(
+        &self,
+        ctx: &Context<'_>,
+        post_id: async_graphql::ID,
+        limit: Option<u64>,
+        offset: Option<u64>,
+    ) -> Option<Result<Vec<SpotRefund>, RpcError>> {
+        let reader_opt = ctx
+            .data_opt::<std::sync::Arc<Option<myso_indexer_alt_social_reader::SocialPgReader>>>()?;
+        let reader = reader_opt.as_ref().as_ref()?;
+        let limit = limit.unwrap_or(20).min(100) as i64;
+        let offset = offset.unwrap_or(0) as i64;
+        Some(
+            reader
+                .list_spot_refunds(post_id.as_str(), limit, offset)
+                .await
+                .map_err(Into::into)
+                .map(|v| v.into_iter().map(SpotRefund::from_row).collect()),
+        )
+    }
+
+    /// Spot resolution for a post (1:1). Returns null when social DB not configured or not resolved.
+    async fn spot_resolution(
+        &self,
+        ctx: &Context<'_>,
+        post_id: async_graphql::ID,
+    ) -> Option<Result<Option<SpotResolution>, RpcError>> {
+        let reader_opt = ctx
+            .data_opt::<std::sync::Arc<Option<myso_indexer_alt_social_reader::SocialPgReader>>>()?;
+        let reader = reader_opt.as_ref().as_ref()?;
+        Some(
+            reader
+                .get_spot_resolution(post_id.as_str())
+                .await
+                .map_err(Into::into)
+                .map(|opt| opt.map(SpotResolution::from_row)),
+        )
+    }
+
+    /// Spot bet withdrawals for a post. Returns empty when social DB not configured.
+    async fn spot_bet_withdrawals(
+        &self,
+        ctx: &Context<'_>,
+        post_id: async_graphql::ID,
+        limit: Option<u64>,
+        offset: Option<u64>,
+    ) -> Option<Result<Vec<SpotBetWithdrawal>, RpcError>> {
+        let reader_opt = ctx
+            .data_opt::<std::sync::Arc<Option<myso_indexer_alt_social_reader::SocialPgReader>>>()?;
+        let reader = reader_opt.as_ref().as_ref()?;
+        let limit = limit.unwrap_or(20).min(100) as i64;
+        let offset = offset.unwrap_or(0) as i64;
+        Some(
+            reader
+                .list_spot_bet_withdrawals(post_id.as_str(), limit, offset)
+                .await
+                .map_err(Into::into)
+                .map(|v| v.into_iter().map(SpotBetWithdrawal::from_row).collect()),
         )
     }
 

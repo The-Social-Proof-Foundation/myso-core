@@ -2024,6 +2024,12 @@ Post.pocOracleAddress
 Post.pocAnalyzedAt
   => {}
 
+Post.enableSpot
+  => {}
+
+Post.spotId
+  => {}
+
 Post.comments
   => {}
 
@@ -2043,6 +2049,18 @@ Post.spotBets
   => {}
 
 Post.spotRecord
+  => {}
+
+Post.spotPayouts
+  => {}
+
+Post.spotRefunds
+  => {}
+
+Post.spotResolution
+  => {}
+
+Post.spotBetWithdrawals
   => {}
 
 Post.promotion
@@ -2543,6 +2561,18 @@ Query.spotBets
 Query.spotRecord
   => {}
 
+Query.spotPayouts
+  => {}
+
+Query.spotRefunds
+  => {}
+
+Query.spotResolution
+  => {}
+
+Query.spotBetWithdrawals
+  => {}
+
 Query.mydataRecord
   => {}
 
@@ -3011,6 +3041,27 @@ SpotBet.ammAmount
 SpotBet.transactionId
   => {}
 
+SpotBetWithdrawal.withdrawer
+  => {}
+
+SpotBetWithdrawal.withdrawerProfile
+  => {}
+
+SpotBetWithdrawal.optionId
+  => {}
+
+SpotBetWithdrawal.amount
+  => {}
+
+SpotBetWithdrawal.feeTaken
+  => {}
+
+SpotBetWithdrawal.withdrawnAt
+  => {}
+
+SpotBetWithdrawal.transactionId
+  => {}
+
 SpotConfig.updatedBy
   => {}
 
@@ -3047,10 +3098,31 @@ SpotConfig.version
 SpotConfig.timestampMs
   => {}
 
+SpotConfig.time
+  => {}
+
+SpotConfig.transactionId
+  => {}
+
 SpotOptionEscrow.optionId
   => {}
 
 SpotOptionEscrow.amount
+  => {}
+
+SpotPayout.recipient
+  => {}
+
+SpotPayout.recipientProfile
+  => {}
+
+SpotPayout.amount
+  => {}
+
+SpotPayout.paidAt
+  => {}
+
+SpotPayout.transactionId
   => {}
 
 SpotRecord.recordId
@@ -3084,6 +3156,45 @@ SpotRecord.lastResolutionEpoch
   => {}
 
 SpotRecord.totalEscrow
+  => {}
+
+SpotRecord.transactionId
+  => {}
+
+SpotRefund.recipient
+  => {}
+
+SpotRefund.recipientProfile
+  => {}
+
+SpotRefund.amount
+  => {}
+
+SpotRefund.refundedAt
+  => {}
+
+SpotRefund.transactionId
+  => {}
+
+SpotResolution.outcome
+  => {}
+
+SpotResolution.totalEscrow
+  => {}
+
+SpotResolution.feeTaken
+  => {}
+
+SpotResolution.resolvedEpoch
+  => {}
+
+SpotResolution.transactionId
+  => {}
+
+SpotResolution.reasoning
+  => {}
+
+SpotResolution.evidenceUrls
   => {}
 
 SptExchangeConfig.updatedBy

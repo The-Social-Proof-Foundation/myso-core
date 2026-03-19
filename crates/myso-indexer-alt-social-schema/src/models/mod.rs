@@ -114,7 +114,8 @@ pub use spot::{
     DEFAULT_MAX_BETS_PER_RECORD, MAX_BETTING_OPTIONS, MIN_BETTING_OPTIONS, NewSpotBet,
     NewSpotBetWithdrawal, NewSpotConfig, NewSpotEventLog, NewSpotPayout, NewSpotRecord,
     NewSpotRefund, NewSpotResolution, OUTCOME_DRAW, OUTCOME_UNAPPLICABLE, STATUS_DAO_REQUIRED,
-    STATUS_OPEN, STATUS_REFUNDABLE, STATUS_RESOLVED, SpotBetRow, SpotRecordRow,
+    STATUS_OPEN, STATUS_REFUNDABLE, STATUS_RESOLVED, SpotBetRow, SpotBetWithdrawalRow,
+    SpotPayoutRow, SpotRecordRow, SpotRefundRow, SpotResolutionRow,
 };
 pub use spt::{
     DEFAULT_BASE_PRICE, DEFAULT_MAX_INDIVIDUAL_RESERVATION_BPS, DEFAULT_MAX_RESERVERS_PER_POOL,

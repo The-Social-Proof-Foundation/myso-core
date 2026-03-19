@@ -5,7 +5,10 @@ use std::str::FromStr;
 
 use async_graphql::Context;
 use async_graphql::Object;
-use myso_indexer_alt_social_reader::{SpotBetRow, SpotRecordRow};
+use myso_indexer_alt_social_reader::{
+    SpotBetRow, SpotBetWithdrawalRow, SpotPayoutRow, SpotRecordRow, SpotRefundRow,
+    SpotResolutionRow,
+};
 
 use crate::api::resolve_profile::resolve_profile_summary;
 use crate::api::scalars::myso_address::MySoAddress;
@@ -183,6 +186,201 @@ impl SpotRecord {
     /// Total escrow across all options.
     async fn total_escrow(&self) -> i64 {
         total_escrow_from_option_escrow(&self.inner.option_escrow)
+    }
+
+    /// Transaction ID of the record creation/update.
+    async fn transaction_id(&self) -> &str {
+        &self.inner.transaction_id
+    }
+}
+
+#[derive(Clone)]
+pub(crate) struct SpotPayout {
+    inner: SpotPayoutRow,
+}
+
+impl SpotPayout {
+    pub(crate) fn from_row(inner: SpotPayoutRow) -> Self {
+        Self { inner }
+    }
+}
+
+#[Object]
+impl SpotPayout {
+    /// Address of the payout recipient.
+    async fn recipient(&self) -> MySoAddress {
+        MySoAddress::from_str(&self.inner.user_address)
+            .unwrap_or_else(|_| MySoAddress::from(myso_types::base_types::MySoAddress::ZERO))
+    }
+
+    /// Profile of the recipient.
+    async fn recipient_profile(&self, ctx: &Context<'_>) -> Option<ProfileSummary> {
+        resolve_profile_summary(ctx, &self.inner.user_address).await
+    }
+
+    /// Payout amount.
+    async fn amount(&self) -> i64 {
+        self.inner.amount
+    }
+
+    /// Epoch timestamp when the payout was made.
+    async fn paid_at(&self) -> i64 {
+        self.inner.timestamp_epoch
+    }
+
+    /// Transaction ID.
+    async fn transaction_id(&self) -> &str {
+        &self.inner.transaction_id
+    }
+}
+
+#[derive(Clone)]
+pub(crate) struct SpotRefund {
+    inner: SpotRefundRow,
+}
+
+impl SpotRefund {
+    pub(crate) fn from_row(inner: SpotRefundRow) -> Self {
+        Self { inner }
+    }
+}
+
+#[Object]
+impl SpotRefund {
+    /// Address of the refund recipient.
+    async fn recipient(&self) -> MySoAddress {
+        MySoAddress::from_str(&self.inner.user_address)
+            .unwrap_or_else(|_| MySoAddress::from(myso_types::base_types::MySoAddress::ZERO))
+    }
+
+    /// Profile of the recipient.
+    async fn recipient_profile(&self, ctx: &Context<'_>) -> Option<ProfileSummary> {
+        resolve_profile_summary(ctx, &self.inner.user_address).await
+    }
+
+    /// Refund amount.
+    async fn amount(&self) -> i64 {
+        self.inner.amount
+    }
+
+    /// Epoch timestamp when the refund was made.
+    async fn refunded_at(&self) -> i64 {
+        self.inner.timestamp_epoch
+    }
+
+    /// Transaction ID.
+    async fn transaction_id(&self) -> &str {
+        &self.inner.transaction_id
+    }
+}
+
+fn parse_evidence_urls(value: &serde_json::Value) -> Vec<String> {
+    value
+        .as_array()
+        .map(|arr| {
+            arr.iter()
+                .filter_map(|v| v.as_str().map(String::from))
+                .collect()
+        })
+        .unwrap_or_default()
+}
+
+#[derive(Clone)]
+pub(crate) struct SpotResolution {
+    inner: SpotResolutionRow,
+}
+
+impl SpotResolution {
+    pub(crate) fn from_row(inner: SpotResolutionRow) -> Self {
+        Self { inner }
+    }
+}
+
+#[Object]
+impl SpotResolution {
+    /// Resolved outcome (winning option_id).
+    async fn outcome(&self) -> i16 {
+        self.inner.outcome
+    }
+
+    /// Total escrow at resolution.
+    async fn total_escrow(&self) -> i64 {
+        self.inner.total_escrow
+    }
+
+    /// Fee taken at resolution.
+    async fn fee_taken(&self) -> i64 {
+        self.inner.fee_taken
+    }
+
+    /// Epoch when the record was resolved.
+    async fn resolved_epoch(&self) -> i64 {
+        self.inner.resolved_epoch
+    }
+
+    /// Transaction ID.
+    async fn transaction_id(&self) -> &str {
+        &self.inner.transaction_id
+    }
+
+    /// Oracle reasoning for the resolution.
+    async fn reasoning(&self) -> &str {
+        &self.inner.reasoning
+    }
+
+    /// Evidence URLs (required for resolution).
+    async fn evidence_urls(&self) -> Vec<String> {
+        parse_evidence_urls(&self.inner.evidence_urls)
+    }
+}
+
+#[derive(Clone)]
+pub(crate) struct SpotBetWithdrawal {
+    inner: SpotBetWithdrawalRow,
+}
+
+impl SpotBetWithdrawal {
+    pub(crate) fn from_row(inner: SpotBetWithdrawalRow) -> Self {
+        Self { inner }
+    }
+}
+
+#[Object]
+impl SpotBetWithdrawal {
+    /// Address of the withdrawer.
+    async fn withdrawer(&self) -> MySoAddress {
+        MySoAddress::from_str(&self.inner.user_address)
+            .unwrap_or_else(|_| MySoAddress::from(myso_types::base_types::MySoAddress::ZERO))
+    }
+
+    /// Profile of the withdrawer.
+    async fn withdrawer_profile(&self, ctx: &Context<'_>) -> Option<ProfileSummary> {
+        resolve_profile_summary(ctx, &self.inner.user_address).await
+    }
+
+    /// Option ID the bet was on.
+    async fn option_id(&self) -> i16 {
+        self.inner.option_id
+    }
+
+    /// Withdrawn amount.
+    async fn amount(&self) -> i64 {
+        self.inner.amount
+    }
+
+    /// Fee taken on withdrawal.
+    async fn fee_taken(&self) -> i64 {
+        self.inner.fee_taken
+    }
+
+    /// Epoch timestamp when the withdrawal was made.
+    async fn withdrawn_at(&self) -> i64 {
+        self.inner.timestamp_epoch
+    }
+
+    /// Transaction ID.
+    async fn transaction_id(&self) -> &str {
+        &self.inner.transaction_id
     }
 }
 

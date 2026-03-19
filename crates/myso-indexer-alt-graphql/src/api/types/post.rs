@@ -16,7 +16,9 @@ use crate::api::scalars::myso_address::MySoAddress;
 use crate::api::types::poc::{PocAnalysisResult, PocBadge, PocDispute, PocRevenueRedirection};
 use crate::api::types::profile_summary::ProfileSummary;
 use crate::api::types::promotion::Promotion;
-use crate::api::types::spot::{SpotBet, SpotRecord};
+use crate::api::types::spot::{
+    SpotBet, SpotBetWithdrawal, SpotPayout, SpotRecord, SpotRefund, SpotResolution,
+};
 
 // -----------------------------------------------------------------------------
 // Post
@@ -174,6 +176,16 @@ impl Post {
         self.inner.poc_analyzed_at
     }
 
+    /// Whether SPoT (Social Proof of Truth) prediction markets are enabled for this post.
+    async fn enable_spot(&self) -> bool {
+        self.inner.enable_spot
+    }
+
+    /// Address of the SpotRecord object (set when a SPoT record is created). Null if no record.
+    async fn spot_id(&self) -> Option<&str> {
+        self.inner.spot_id.as_deref()
+    }
+
     /// Comments on this post (paginated).
     async fn comments(
         &self,
@@ -301,6 +313,72 @@ impl Post {
         row.map(SpotRecord::from_row)
     }
 
+    /// Spot payouts for this post (paginated).
+    async fn spot_payouts(
+        &self,
+        ctx: &Context<'_>,
+        limit: Option<u64>,
+        offset: Option<u64>,
+    ) -> Option<Vec<SpotPayout>> {
+        let reader_opt = ctx
+            .data_opt::<std::sync::Arc<Option<myso_indexer_alt_social_reader::SocialPgReader>>>()?;
+        let reader = reader_opt.as_ref().as_ref()?;
+        let limit = limit.unwrap_or(20).min(100) as i64;
+        let offset = offset.unwrap_or(0) as i64;
+        let rows = reader
+            .list_spot_payouts(&self.inner.post_id, limit, offset)
+            .await
+            .ok()?;
+        Some(rows.into_iter().map(SpotPayout::from_row).collect())
+    }
+
+    /// Spot refunds for this post (paginated).
+    async fn spot_refunds(
+        &self,
+        ctx: &Context<'_>,
+        limit: Option<u64>,
+        offset: Option<u64>,
+    ) -> Option<Vec<SpotRefund>> {
+        let reader_opt = ctx
+            .data_opt::<std::sync::Arc<Option<myso_indexer_alt_social_reader::SocialPgReader>>>()?;
+        let reader = reader_opt.as_ref().as_ref()?;
+        let limit = limit.unwrap_or(20).min(100) as i64;
+        let offset = offset.unwrap_or(0) as i64;
+        let rows = reader
+            .list_spot_refunds(&self.inner.post_id, limit, offset)
+            .await
+            .ok()?;
+        Some(rows.into_iter().map(SpotRefund::from_row).collect())
+    }
+
+    /// Spot resolution for this post (1:1, null if not resolved).
+    async fn spot_resolution(&self, ctx: &Context<'_>) -> Option<SpotResolution> {
+        let reader_opt = ctx
+            .data_opt::<std::sync::Arc<Option<myso_indexer_alt_social_reader::SocialPgReader>>>()?;
+        let reader = reader_opt.as_ref().as_ref()?;
+        let row = reader.get_spot_resolution(&self.inner.post_id).await.ok()?;
+        row.map(SpotResolution::from_row)
+    }
+
+    /// Spot bet withdrawals for this post (paginated).
+    async fn spot_bet_withdrawals(
+        &self,
+        ctx: &Context<'_>,
+        limit: Option<u64>,
+        offset: Option<u64>,
+    ) -> Option<Vec<SpotBetWithdrawal>> {
+        let reader_opt = ctx
+            .data_opt::<std::sync::Arc<Option<myso_indexer_alt_social_reader::SocialPgReader>>>()?;
+        let reader = reader_opt.as_ref().as_ref()?;
+        let limit = limit.unwrap_or(20).min(100) as i64;
+        let offset = offset.unwrap_or(0) as i64;
+        let rows = reader
+            .list_spot_bet_withdrawals(&self.inner.post_id, limit, offset)
+            .await
+            .ok()?;
+        Some(rows.into_iter().map(SpotBetWithdrawal::from_row).collect())
+    }
+
     /// Promotion for this post (null if not promoted).
     async fn promotion(&self, ctx: &Context<'_>) -> Option<Promotion> {
         let reader_opt = ctx
@@ -353,7 +431,11 @@ impl Post {
             .get_post_revenue_redirections(&self.inner.post_id, limit, offset)
             .await
             .ok()?;
-        Some(rows.into_iter().map(PocRevenueRedirection::from_row).collect())
+        Some(
+            rows.into_iter()
+                .map(PocRevenueRedirection::from_row)
+                .collect(),
+        )
     }
 
     /// Latest PoC analysis result for this post.

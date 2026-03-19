@@ -20,7 +20,8 @@ pub mod vesting;
 pub use myso_indexer_alt_social_schema::models::{
     DelegateRow, GovernanceRegistryRow, GovernanceStatsRow, InsurancePolicyRow, InsuranceVaultRow,
     MyDataPurchaseRow, MyDataRecordRow, PlatformRevenueSummaryRow, PromotedPostRow, ProposalRow,
-    SpotBetRow, SpotRecordRow,
+    SpotBetRow, SpotBetWithdrawalRow, SpotPayoutRow, SpotRecordRow, SpotRefundRow,
+    SpotResolutionRow,
 };
 pub use myso_indexer_alt_social_schema::models::{
     PocAnalysisResultRow, PocBadgeRow, PocConfigRow, PocDisputeRow, PocRevenueRedirectionRow,

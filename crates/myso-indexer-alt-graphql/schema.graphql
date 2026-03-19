@@ -4035,6 +4035,10 @@ type Post implements Node {
 	"""
 	enablePoc: Boolean!
 	"""
+	Whether SPoT (Social Proof of Truth) prediction markets are enabled for this post.
+	"""
+	enableSpot: Boolean!
+	"""
 	The post's globally unique identifier.
 	"""
 	id: ID!
@@ -4143,13 +4147,33 @@ type Post implements Node {
 	"""
 	revenueRedirections(limit: Int, offset: Int): [PocRevenueRedirection!]
 	"""
+	Spot bet withdrawals for this post (paginated).
+	"""
+	spotBetWithdrawals(limit: Int, offset: Int): [SpotBetWithdrawal!]
+	"""
 	Spot bets for this post (paginated).
 	"""
 	spotBets(limit: Int, offset: Int): [SpotBet!]
 	"""
+	Address of the SpotRecord object (set when a SPoT record is created). Null if no record.
+	"""
+	spotId: String
+	"""
+	Spot payouts for this post (paginated).
+	"""
+	spotPayouts(limit: Int, offset: Int): [SpotPayout!]
+	"""
 	Spot record for this post (1:1, null if no record).
 	"""
 	spotRecord: SpotRecord
+	"""
+	Spot refunds for this post (paginated).
+	"""
+	spotRefunds(limit: Int, offset: Int): [SpotRefund!]
+	"""
+	Spot resolution for this post (1:1, null if not resolved).
+	"""
+	spotResolution: SpotResolution
 	"""
 	Tips received for this post (paginated).
 	"""
@@ -5089,6 +5113,10 @@ type Query {
 	"""
 	socialGraphFollowing(follower: MySoAddress!, following: MySoAddress!): Boolean
 	"""
+	Spot bet withdrawals for a post. Returns empty when social DB not configured.
+	"""
+	spotBetWithdrawals(postId: ID!, limit: Int, offset: Int): [SpotBetWithdrawal!]
+	"""
 	Spot bets for a post. Returns empty when social DB not configured.
 	"""
 	spotBets(postId: ID!, limit: Int, offset: Int): [SpotBet!]
@@ -5097,9 +5125,21 @@ type Query {
 	"""
 	spotConfiguration: SpotConfig
 	"""
+	Spot payouts for a post. Returns empty when social DB not configured.
+	"""
+	spotPayouts(postId: ID!, limit: Int, offset: Int): [SpotPayout!]
+	"""
 	Spot record for a post (1:1). Returns null when social DB not configured or no record.
 	"""
 	spotRecord(postId: ID!): SpotRecord
+	"""
+	Spot refunds for a post. Returns empty when social DB not configured.
+	"""
+	spotRefunds(postId: ID!, limit: Int, offset: Int): [SpotRefund!]
+	"""
+	Spot resolution for a post (1:1). Returns null when social DB not configured or not resolved.
+	"""
+	spotResolution(postId: ID!): SpotResolution
 	"""
 	SPT exchange configuration. Returns null when social DB not configured or no config.
 	"""
@@ -5550,6 +5590,37 @@ type SpotBet {
 	transactionId: String!
 }
 
+type SpotBetWithdrawal {
+	"""
+	Withdrawn amount.
+	"""
+	amount: Int!
+	"""
+	Fee taken on withdrawal.
+	"""
+	feeTaken: Int!
+	"""
+	Option ID the bet was on.
+	"""
+	optionId: Int!
+	"""
+	Transaction ID.
+	"""
+	transactionId: String!
+	"""
+	Address of the withdrawer.
+	"""
+	withdrawer: MySoAddress!
+	"""
+	Profile of the withdrawer.
+	"""
+	withdrawerProfile: ProfileSummary
+	"""
+	Epoch timestamp when the withdrawal was made.
+	"""
+	withdrawnAt: Int!
+}
+
 type SpotConfig {
 	"""
 	Confidence threshold in basis points.
@@ -5588,9 +5659,17 @@ type SpotConfig {
 	"""
 	resolutionWindowEpochs: Int!
 	"""
+	When the configuration was last updated.
+	"""
+	time: DateTime!
+	"""
 	Last updated timestamp (epoch milliseconds).
 	"""
 	timestampMs: Int!
+	"""
+	Transaction ID of the last config update.
+	"""
+	transactionId: String!
 	"""
 	Address that last updated the configuration.
 	"""
@@ -5610,6 +5689,29 @@ type SpotOptionEscrow {
 	Option ID.
 	"""
 	optionId: Int!
+}
+
+type SpotPayout {
+	"""
+	Payout amount.
+	"""
+	amount: Int!
+	"""
+	Epoch timestamp when the payout was made.
+	"""
+	paidAt: Int!
+	"""
+	Address of the payout recipient.
+	"""
+	recipient: MySoAddress!
+	"""
+	Profile of the recipient.
+	"""
+	recipientProfile: ProfileSummary
+	"""
+	Transaction ID.
+	"""
+	transactionId: String!
 }
 
 type SpotRecord {
@@ -5657,6 +5759,64 @@ type SpotRecord {
 	Total escrow across all options.
 	"""
 	totalEscrow: Int!
+	"""
+	Transaction ID of the record creation/update.
+	"""
+	transactionId: String!
+}
+
+type SpotRefund {
+	"""
+	Refund amount.
+	"""
+	amount: Int!
+	"""
+	Address of the refund recipient.
+	"""
+	recipient: MySoAddress!
+	"""
+	Profile of the recipient.
+	"""
+	recipientProfile: ProfileSummary
+	"""
+	Epoch timestamp when the refund was made.
+	"""
+	refundedAt: Int!
+	"""
+	Transaction ID.
+	"""
+	transactionId: String!
+}
+
+type SpotResolution {
+	"""
+	Evidence URLs (required for resolution).
+	"""
+	evidenceUrls: [String!]!
+	"""
+	Fee taken at resolution.
+	"""
+	feeTaken: Int!
+	"""
+	Resolved outcome (winning option_id).
+	"""
+	outcome: Int!
+	"""
+	Oracle reasoning for the resolution.
+	"""
+	reasoning: String!
+	"""
+	Epoch when the record was resolved.
+	"""
+	resolvedEpoch: Int!
+	"""
+	Total escrow at resolution.
+	"""
+	totalEscrow: Int!
+	"""
+	Transaction ID.
+	"""
+	transactionId: String!
 }
 
 type SptExchangeConfig {

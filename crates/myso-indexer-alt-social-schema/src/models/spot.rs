@@ -71,6 +71,86 @@ pub struct SpotRecordRow {
     pub max_resolution_window_epochs: Option<i64>,
     #[diesel(sql_type = Nullable<BigInt>)]
     pub last_resolution_epoch: Option<i64>,
+    #[diesel(sql_type = Text)]
+    pub transaction_id: String,
+}
+
+/// Query result for a spot payout (for GraphQL/reader).
+#[derive(Debug, Clone, QueryableByName, Serialize, Deserialize)]
+pub struct SpotPayoutRow {
+    #[diesel(sql_type = Int4)]
+    pub id: i32,
+    #[diesel(sql_type = Text)]
+    pub post_id: String,
+    #[diesel(sql_type = Text)]
+    pub user_address: String,
+    #[diesel(sql_type = BigInt)]
+    pub amount: i64,
+    #[diesel(sql_type = BigInt)]
+    pub timestamp_epoch: i64,
+    #[diesel(sql_type = Text)]
+    pub transaction_id: String,
+}
+
+/// Query result for a spot refund (for GraphQL/reader).
+#[derive(Debug, Clone, QueryableByName, Serialize, Deserialize)]
+pub struct SpotRefundRow {
+    #[diesel(sql_type = Int4)]
+    pub id: i32,
+    #[diesel(sql_type = Text)]
+    pub post_id: String,
+    #[diesel(sql_type = Text)]
+    pub user_address: String,
+    #[diesel(sql_type = BigInt)]
+    pub amount: i64,
+    #[diesel(sql_type = BigInt)]
+    pub timestamp_epoch: i64,
+    #[diesel(sql_type = Text)]
+    pub transaction_id: String,
+}
+
+/// Query result for a spot resolution (for GraphQL/reader).
+#[derive(Debug, Clone, QueryableByName, Serialize, Deserialize)]
+pub struct SpotResolutionRow {
+    #[diesel(sql_type = Int4)]
+    pub id: i32,
+    #[diesel(sql_type = Text)]
+    pub post_id: String,
+    #[diesel(sql_type = SmallInt)]
+    pub outcome: i16,
+    #[diesel(sql_type = BigInt)]
+    pub total_escrow: i64,
+    #[diesel(sql_type = BigInt)]
+    pub fee_taken: i64,
+    #[diesel(sql_type = BigInt)]
+    pub resolved_epoch: i64,
+    #[diesel(sql_type = Text)]
+    pub transaction_id: String,
+    #[diesel(sql_type = Text)]
+    pub reasoning: String,
+    #[diesel(sql_type = Jsonb)]
+    pub evidence_urls: serde_json::Value,
+}
+
+/// Query result for a spot bet withdrawal (for GraphQL/reader).
+#[derive(Debug, Clone, QueryableByName, Serialize, Deserialize)]
+pub struct SpotBetWithdrawalRow {
+    #[diesel(sql_type = Int4)]
+    pub id: i32,
+    #[diesel(sql_type = Text)]
+    pub post_id: String,
+    #[diesel(sql_type = Text)]
+    pub user_address: String,
+    #[diesel(sql_type = SmallInt)]
+    pub option_id: i16,
+    #[diesel(sql_type = BigInt)]
+    pub amount: i64,
+    #[diesel(sql_type = BigInt)]
+    pub fee_taken: i64,
+    #[diesel(sql_type = BigInt)]
+    pub timestamp_epoch: i64,
+    #[diesel(sql_type = Text)]
+    pub transaction_id: String,
 }
 
 #[derive(Debug, Clone, Insertable, Serialize, Deserialize)]

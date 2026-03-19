@@ -52,7 +52,10 @@ use crate::social_graph::{
     check_profile_blocked, get_blocked_platforms, get_blocked_profiles, get_followers,
     get_following, get_profile_platform_memberships,
 };
-use crate::spot::{get_spot_config, get_spot_record, list_spot_bets};
+use crate::spot::{
+    get_spot_config, get_spot_record, get_spot_resolution, list_spot_bet_withdrawals,
+    list_spot_bets, list_spot_payouts, list_spot_refunds,
+};
 use crate::spt::{
     get_spt_exchange_config, get_spt_holdings_by_holder, get_spt_holdings_by_pool, get_spt_pool,
     get_spt_pool_id_for_profile, get_spt_price_history, get_spt_transactions,
@@ -663,6 +666,48 @@ impl SocialPgReader {
     ) -> anyhow::Result<Vec<crate::SpotBetRow>> {
         let mut conn = self.connect().await?;
         list_spot_bets(&mut conn, post_id, limit, offset, &self.metrics).await
+    }
+
+    /// List spot payouts for a post (paginated).
+    pub async fn list_spot_payouts(
+        &self,
+        post_id: &str,
+        limit: i64,
+        offset: i64,
+    ) -> anyhow::Result<Vec<crate::SpotPayoutRow>> {
+        let mut conn = self.connect().await?;
+        list_spot_payouts(&mut conn, post_id, limit, offset, &self.metrics).await
+    }
+
+    /// List spot refunds for a post (paginated).
+    pub async fn list_spot_refunds(
+        &self,
+        post_id: &str,
+        limit: i64,
+        offset: i64,
+    ) -> anyhow::Result<Vec<crate::SpotRefundRow>> {
+        let mut conn = self.connect().await?;
+        list_spot_refunds(&mut conn, post_id, limit, offset, &self.metrics).await
+    }
+
+    /// Get spot resolution for a post (1:1, null if not resolved).
+    pub async fn get_spot_resolution(
+        &self,
+        post_id: &str,
+    ) -> anyhow::Result<Option<crate::SpotResolutionRow>> {
+        let mut conn = self.connect().await?;
+        get_spot_resolution(&mut conn, post_id, &self.metrics).await
+    }
+
+    /// List spot bet withdrawals for a post (paginated).
+    pub async fn list_spot_bet_withdrawals(
+        &self,
+        post_id: &str,
+        limit: i64,
+        offset: i64,
+    ) -> anyhow::Result<Vec<crate::SpotBetWithdrawalRow>> {
+        let mut conn = self.connect().await?;
+        list_spot_bet_withdrawals(&mut conn, post_id, limit, offset, &self.metrics).await
     }
 
     /// Get a promotion by ID.

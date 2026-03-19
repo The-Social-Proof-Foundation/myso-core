@@ -14,6 +14,11 @@ use crate::error::RpcError;
 pub(crate) struct DateTime(chrono::DateTime<chrono::Utc>);
 
 impl DateTime {
+    /// Wraps a chrono DateTime in the scalar.
+    pub(crate) fn from_chrono(dt: chrono::DateTime<chrono::Utc>) -> Self {
+        Self(dt)
+    }
+
     /// Takes a timestamp since the unix epoch in milliseconds and wraps it in the scalar.
     pub(crate) fn from_ms(timestamp_ms: i64) -> Result<Self, RpcError> {
         Ok(Self(
