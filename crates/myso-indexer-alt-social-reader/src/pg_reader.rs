@@ -46,8 +46,8 @@ use crate::promotion::{
     get_promotion, get_promotion_by_post_id, get_promotion_views_count, list_promoted_posts,
 };
 use crate::spt::{
-    get_spt_holdings_by_holder, get_spt_pool, get_spt_pool_id_for_profile, get_spt_price_history,
-    get_spt_transactions, list_spt_pools,
+    get_spt_holdings_by_holder, get_spt_holdings_by_pool, get_spt_pool, get_spt_pool_id_for_profile,
+    get_spt_price_history, get_spt_transactions, get_user_reservation_holdings, list_spt_pools,
 };
 use crate::vesting::{get_vesting_leaderboard, get_vesting_wallet, list_vesting_wallets};
 
@@ -473,6 +473,17 @@ impl SocialPgReader {
         get_spt_holdings_by_holder(&mut conn, address, limit, offset, &self.metrics).await
     }
 
+    /// Get SPT holders for a pool (token-centric).
+    pub async fn get_spt_holdings_by_pool(
+        &self,
+        pool_id: &str,
+        limit: i64,
+        offset: i64,
+    ) -> anyhow::Result<Vec<crate::SptHoldingRow>> {
+        let mut conn = self.connect().await?;
+        get_spt_holdings_by_pool(&mut conn, pool_id, limit, offset, &self.metrics).await
+    }
+
     /// Get SPT pool by pool ID.
     pub async fn get_spt_pool(
         &self,
@@ -511,6 +522,17 @@ impl SocialPgReader {
     ) -> anyhow::Result<Vec<crate::SptTransaction>> {
         let mut conn = self.connect().await?;
         get_spt_transactions(&mut conn, pool_id, limit, offset, &self.metrics).await
+    }
+
+    /// Get user reservation holdings (reservation SPT positions).
+    pub async fn get_user_reservation_holdings(
+        &self,
+        address: &str,
+        limit: i64,
+        offset: i64,
+    ) -> anyhow::Result<Vec<myso_indexer_alt_social_schema::models::UserReservationHoldingRow>> {
+        let mut conn = self.connect().await?;
+        get_user_reservation_holdings(&mut conn, address, limit, offset, &self.metrics).await
     }
 
     /// List SPT pools with optional token type filter and sorting.

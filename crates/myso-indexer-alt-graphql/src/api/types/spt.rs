@@ -10,6 +10,7 @@ use myso_indexer_alt_social_reader::{
     SptHoldingRow, SptPriceHistory as SptPriceHistoryRow, SptPoolRow, SptSortBy as SptSortByReader,
     SptTransaction as SptTransactionRow,
 };
+use myso_indexer_alt_social_schema::models::UserReservationHoldingRow;
 
 use crate::api::resolve_profile::resolve_profile_summary;
 use crate::api::scalars::myso_address::MySoAddress;
@@ -228,6 +229,25 @@ impl SptPool {
             .ok()?;
         Some(rows.into_iter().map(SptPriceHistory::from_row).collect())
     }
+
+    /// Current holders of this token (paginated, ordered by balance DESC).
+    async fn holders(
+        &self,
+        ctx: &Context<'_>,
+        limit: Option<u64>,
+        offset: Option<u64>,
+    ) -> Option<Vec<SptHolding>> {
+        let reader_opt = ctx
+            .data_opt::<std::sync::Arc<Option<myso_indexer_alt_social_reader::SocialPgReader>>>()?;
+        let reader = reader_opt.as_ref().as_ref()?;
+        let limit = limit.unwrap_or(20).min(100) as i64;
+        let offset = offset.unwrap_or(0) as i64;
+        let rows = reader
+            .get_spt_holdings_by_pool(&self.inner.pool_id, limit, offset)
+            .await
+            .ok()?;
+        Some(rows.into_iter().map(SptHolding::from_row).collect())
+    }
 }
 
 #[derive(Clone)]
@@ -306,5 +326,74 @@ impl SptPriceHistory {
     /// Transaction ID.
     async fn transaction_id(&self) -> &str {
         &self.inner.transaction_id
+    }
+}
+
+#[derive(Clone)]
+pub(crate) struct SptReservationHolding {
+    inner: UserReservationHoldingRow,
+}
+
+impl SptReservationHolding {
+    pub(crate) fn from_row(inner: UserReservationHoldingRow) -> Self {
+        Self { inner }
+    }
+}
+
+#[Object]
+impl SptReservationHolding {
+    /// Reservation pool ID.
+    async fn pool_id(&self) -> &str {
+        &self.inner.pool_id
+    }
+
+    /// Reserved amount.
+    async fn amount(&self) -> i64 {
+        self.inner.amount
+    }
+
+    /// Epoch timestamp when reserved.
+    async fn reserved_at(&self) -> i64 {
+        self.inner.reserved_at
+    }
+
+    /// Profile whose token this reservation is for.
+    async fn profile(&self) -> ProfileSummary {
+        ProfileSummary::from_row(myso_indexer_alt_social_reader::ProfileSummaryRow {
+            owner_address: self.inner.owner.clone(),
+            username: self.inner.profile_username.clone(),
+            display_name: self.inner.profile_display_name.clone(),
+            profile_photo: self.inner.profile_photo.clone(),
+            bio: None,
+            selected_badge_id: None,
+            social_proof_token_address: self.inner.profile_social_proof_token_address.clone(),
+            reservation_pool_address: self.inner.profile_reservation_pool_address.clone(),
+            followers_count: None,
+            following_count: None,
+            post_count: None,
+            blocked_count: None,
+            is_following: None,
+            follows_viewer: None,
+        })
+    }
+
+    /// Whether the reservation pool threshold is met.
+    async fn threshold_met(&self) -> bool {
+        self.inner.threshold_met
+    }
+
+    /// Pool status (e.g. active, threshold_met).
+    async fn pool_status(&self) -> &str {
+        &self.inner.pool_status
+    }
+
+    /// Total reserved across all reservers in this pool.
+    async fn total_reserved(&self) -> i64 {
+        self.inner.total_reserved
+    }
+
+    /// Required threshold for the pool.
+    async fn required_threshold(&self) -> i64 {
+        self.inner.required_threshold
     }
 }

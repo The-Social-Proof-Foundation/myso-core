@@ -130,6 +130,7 @@ pub use spt::{
     NewSptReservationPool, NewSptRevenue, NewSptTransaction, NewUnifiedRevenue,
     RESERVATION_POOL_STATUS_ACTIVE, RESERVATION_POOL_STATUS_THRESHOLD_MET, SptHoldingRow,
     SptPoolRow, SptPriceHistory, SptTransaction, TOKEN_TYPE_POST, TOKEN_TYPE_PROFILE,
+    UserReservationHoldingRow,
     TRANSACTION_TYPE_BUY, TRANSACTION_TYPE_SELL, UnifiedRevenue,
 };
 pub use subscription::{

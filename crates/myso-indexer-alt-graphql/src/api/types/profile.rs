@@ -19,7 +19,7 @@ use crate::api::types::blocked::{BlockedPlatformSummary, BlockedProfileSummary};
 use crate::api::types::platform::PlatformMembershipSummary;
 use crate::api::types::profile_summary::ProfileSummary;
 use crate::api::types::mydata::MyDataRecord;
-use crate::api::types::spt::SptHolding;
+use crate::api::types::spt::{SptHolding, SptReservationHolding};
 use crate::api::types::vesting::VestingWallet;
 
 fn to_iso8601_utc(dt: chrono::NaiveDateTime) -> String {
@@ -439,6 +439,25 @@ impl Profile {
             .await
             .ok()?;
         Some(rows.into_iter().map(SptHolding::from_row).collect())
+    }
+
+    /// Reservation SPT holdings for this profile (paginated).
+    async fn reservation_holdings(
+        &self,
+        ctx: &Context<'_>,
+        limit: Option<u64>,
+        offset: Option<u64>,
+    ) -> Option<Vec<SptReservationHolding>> {
+        let reader_opt = ctx
+            .data_opt::<std::sync::Arc<Option<myso_indexer_alt_social_reader::SocialPgReader>>>()?;
+        let reader = reader_opt.as_ref().as_ref()?;
+        let limit = limit.unwrap_or(20).min(100) as i64;
+        let offset = offset.unwrap_or(0) as i64;
+        let rows = reader
+            .get_user_reservation_holdings(&self.inner.owner_address, limit, offset)
+            .await
+            .ok()?;
+        Some(rows.into_iter().map(SptReservationHolding::from_row).collect())
     }
 
     /// MyData records owned by this profile (paginated).

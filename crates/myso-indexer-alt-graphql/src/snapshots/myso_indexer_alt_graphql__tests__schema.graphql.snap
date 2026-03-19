@@ -3934,6 +3934,10 @@ type Profile implements Node {
 	"""
 	religion: String
 	"""
+	Reservation SPT holdings for this profile (paginated).
+	"""
+	reservationHoldings(limit: Int, offset: Int): [SptReservationHolding!]
+	"""
 	Reservation pool address.
 	"""
 	reservationPoolAddress: String
@@ -5120,6 +5124,10 @@ type SptPool {
 	"""
 	ecosystemEarnings: Int
 	"""
+	Current holders of this token (paginated, ordered by balance DESC).
+	"""
+	holders(limit: Int, offset: Int): [SptHolding!]
+	"""
 	Market cap (price * circulating supply).
 	"""
 	marketCap: Int!
@@ -5198,6 +5206,41 @@ type SptPriceHistory {
 	Transaction ID.
 	"""
 	transactionId: String!
+}
+
+type SptReservationHolding {
+	"""
+	Reserved amount.
+	"""
+	amount: Int!
+	"""
+	Reservation pool ID.
+	"""
+	poolId: String!
+	"""
+	Pool status (e.g. active, threshold_met).
+	"""
+	poolStatus: String!
+	"""
+	Profile whose token this reservation is for.
+	"""
+	profile: ProfileSummary!
+	"""
+	Required threshold for the pool.
+	"""
+	requiredThreshold: Int!
+	"""
+	Epoch timestamp when reserved.
+	"""
+	reservedAt: Int!
+	"""
+	Whether the reservation pool threshold is met.
+	"""
+	thresholdMet: Boolean!
+	"""
+	Total reserved across all reservers in this pool.
+	"""
+	totalReserved: Int!
 }
 
 enum SptSortBy {

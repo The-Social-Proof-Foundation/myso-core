@@ -3,7 +3,7 @@
 
 use diesel::prelude::*;
 use diesel::QueryableByName;
-use diesel::sql_types::{BigInt, Nullable, SmallInt, Text, Timestamptz};
+use diesel::sql_types::{BigInt, Bool, Nullable, SmallInt, Text, Timestamptz};
 use serde::{Deserialize, Serialize};
 
 use super::revenue::{
@@ -76,6 +76,43 @@ pub struct SptHoldingRow {
     pub profile_bio: Option<String>,
     #[diesel(sql_type = Nullable<Text>)]
     pub profile_selected_badge_id: Option<String>,
+    #[diesel(sql_type = Nullable<Text>)]
+    pub profile_social_proof_token_address: Option<String>,
+    #[diesel(sql_type = Nullable<Text>)]
+    pub profile_reservation_pool_address: Option<String>,
+}
+
+/// Query result for user reservation holdings (from user_reservation_holdings view + profiles).
+#[derive(Debug, Clone, QueryableByName, Serialize, Deserialize)]
+pub struct UserReservationHoldingRow {
+    #[diesel(sql_type = Text)]
+    pub reserver_address: String,
+    #[diesel(sql_type = Text)]
+    pub pool_id: String,
+    #[diesel(sql_type = Text)]
+    pub associated_id: String,
+    #[diesel(sql_type = SmallInt)]
+    pub token_type: i16,
+    #[diesel(sql_type = Text)]
+    pub owner: String,
+    #[diesel(sql_type = BigInt)]
+    pub amount: i64,
+    #[diesel(sql_type = BigInt)]
+    pub reserved_at: i64,
+    #[diesel(sql_type = BigInt)]
+    pub total_reserved: i64,
+    #[diesel(sql_type = BigInt)]
+    pub required_threshold: i64,
+    #[diesel(sql_type = Bool)]
+    pub threshold_met: bool,
+    #[diesel(sql_type = Text)]
+    pub pool_status: String,
+    #[diesel(sql_type = Nullable<Text>)]
+    pub profile_username: Option<String>,
+    #[diesel(sql_type = Nullable<Text>)]
+    pub profile_display_name: Option<String>,
+    #[diesel(sql_type = Nullable<Text>)]
+    pub profile_photo: Option<String>,
     #[diesel(sql_type = Nullable<Text>)]
     pub profile_social_proof_token_address: Option<String>,
     #[diesel(sql_type = Nullable<Text>)]

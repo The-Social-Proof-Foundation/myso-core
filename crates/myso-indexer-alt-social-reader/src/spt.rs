@@ -9,7 +9,7 @@ use diesel::SelectableHelper;
 use diesel::sql_types::{BigInt, Text};
 use diesel_async::RunQueryDsl;
 use myso_indexer_alt_social_schema::models::{
-    SptHoldingRow, SptPoolRow, SptPriceHistory, SptTransaction,
+    SptHoldingRow, SptPoolRow, SptPriceHistory, SptTransaction, UserReservationHoldingRow,
 };
 use myso_indexer_alt_social_schema::schema::{spt_price_history, spt_transactions};
 
@@ -96,6 +96,61 @@ pub(crate) async fn get_spt_holdings_by_holder(
 
     let results = diesel::sql_query(query)
         .bind::<Text, _>(holder_address)
+        .bind::<BigInt, _>(limit)
+        .bind::<BigInt, _>(offset)
+        .load::<SptHoldingRow>(conn)
+        .await?;
+
+    metrics.requests_succeeded.inc();
+    Ok(results)
+}
+
+pub(crate) async fn get_spt_holdings_by_pool(
+    conn: &mut Connection<'_>,
+    pool_id: &str,
+    limit: i64,
+    offset: i64,
+    metrics: &DbReaderMetrics,
+) -> anyhow::Result<Vec<SptHoldingRow>> {
+    metrics.requests_received.inc();
+    let _guard = metrics.latency.start_timer();
+
+    let query = r#"
+        WITH holdings AS (
+            SELECT pool_id, holder_address, SUM(amount)::bigint as balance
+            FROM spt_holdings
+            WHERE pool_id = $1
+            GROUP BY pool_id, holder_address
+            HAVING SUM(amount) != 0
+        ),
+        latest_pools AS (
+            SELECT DISTINCT ON (p.pool_id) p.pool_id, p.owner
+            FROM spt_pools p
+            WHERE p.pool_id IN (SELECT pool_id FROM holdings)
+            ORDER BY p.pool_id, time DESC
+        ),
+        latest_profiles AS (
+            SELECT DISTINCT ON (owner_address) owner_address, username, display_name, profile_photo,
+                   bio, selected_badge_id, social_proof_token_address, reservation_pool_address
+            FROM profiles
+            WHERE owner_address IN (SELECT owner FROM latest_pools)
+            ORDER BY owner_address, updated_at DESC
+        )
+        SELECT h.holder_address, h.pool_id, h.balance, p.owner as profile_owner_address,
+               pr.username as profile_username, pr.display_name as profile_display_name,
+               pr.profile_photo as profile_photo, pr.bio as profile_bio,
+               pr.selected_badge_id as profile_selected_badge_id,
+               pr.social_proof_token_address as profile_social_proof_token_address,
+               pr.reservation_pool_address as profile_reservation_pool_address
+        FROM holdings h
+        JOIN latest_pools p ON h.pool_id = p.pool_id
+        LEFT JOIN latest_profiles pr ON p.owner = pr.owner_address
+        ORDER BY h.balance DESC
+        LIMIT $2 OFFSET $3
+    "#;
+
+    let results = diesel::sql_query(query)
+        .bind::<Text, _>(pool_id)
         .bind::<BigInt, _>(limit)
         .bind::<BigInt, _>(offset)
         .load::<SptHoldingRow>(conn)
@@ -341,4 +396,45 @@ pub(crate) async fn get_spt_pool_id_for_profile(
 
     metrics.requests_succeeded.inc();
     Ok(result.map(|r| r.pool_id))
+}
+
+pub(crate) async fn get_user_reservation_holdings(
+    conn: &mut Connection<'_>,
+    reserver_address: &str,
+    limit: i64,
+    offset: i64,
+    metrics: &DbReaderMetrics,
+) -> anyhow::Result<Vec<UserReservationHoldingRow>> {
+    metrics.requests_received.inc();
+    let _guard = metrics.latency.start_timer();
+
+    let query = r#"
+        SELECT urh.reserver_address, urh.pool_id, urh.associated_id, urh.token_type, urh.owner,
+               urh.amount, urh.reserved_at, urh.total_reserved, urh.required_threshold,
+               urh.threshold_met, urh.pool_status,
+               p.username as profile_username, p.display_name as profile_display_name,
+               p.profile_photo as profile_photo, p.social_proof_token_address as profile_social_proof_token_address,
+               p.reservation_pool_address as profile_reservation_pool_address
+        FROM user_reservation_holdings urh
+        LEFT JOIN LATERAL (
+            SELECT username, display_name, profile_photo, social_proof_token_address, reservation_pool_address
+            FROM profiles
+            WHERE owner_address = urh.owner
+            ORDER BY updated_at DESC
+            LIMIT 1
+        ) p ON true
+        WHERE urh.reserver_address = $1
+        ORDER BY urh.reserved_at DESC
+        LIMIT $2 OFFSET $3
+    "#;
+
+    let results = diesel::sql_query(query)
+        .bind::<Text, _>(reserver_address)
+        .bind::<BigInt, _>(limit)
+        .bind::<BigInt, _>(offset)
+        .load::<UserReservationHoldingRow>(conn)
+        .await?;
+
+    metrics.requests_succeeded.inc();
+    Ok(results)
 }
