@@ -29,19 +29,31 @@ impl SptExchangeConfig {
         &self.inner.updated_by
     }
 
-    /// Post reservation threshold (basis points or amount).
+    /// Total MYSO required to reserve toward a post before the pool can graduate (global config).
     async fn post_threshold(&self) -> i64 {
         self.inner.post_threshold
     }
 
-    /// Profile reservation threshold.
+    /// Total MYSO required to reserve toward a profile before the pool can graduate (global config).
     async fn profile_threshold(&self) -> i64 {
         self.inner.profile_threshold
     }
 
-    /// Max individual reservation in basis points.
+    /// Max share of the pool threshold any single wallet may reserve, in basis points (10000 = 100%).
     async fn max_individual_reservation_bps(&self) -> i64 {
         self.inner.max_individual_reservation_bps
+    }
+
+    /// Per-wallet reservation cap for **post** pools: `(postThreshold * maxIndividualReservationBps) / 10000` in MYSO base units (matches on-chain `social_proof_tokens`).
+    async fn max_individual_reservation_amount_post(&self) -> i64 {
+        (self.inner.post_threshold as i128 * self.inner.max_individual_reservation_bps as i128
+            / 10_000) as i64
+    }
+
+    /// Per-wallet reservation cap for **profile** pools: `(profileThreshold * maxIndividualReservationBps) / 10000` in MYSO base units.
+    async fn max_individual_reservation_amount_profile(&self) -> i64 {
+        (self.inner.profile_threshold as i128 * self.inner.max_individual_reservation_bps as i128
+            / 10_000) as i64
     }
 
     /// Total fee in basis points.

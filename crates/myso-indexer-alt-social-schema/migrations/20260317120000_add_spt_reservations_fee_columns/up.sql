@@ -19,3 +19,28 @@ END $$;
 -- Add mydata_id and revenue_recipient to posts for MyData marketplace integration
 ALTER TABLE posts ADD COLUMN IF NOT EXISTS mydata_id TEXT;
 ALTER TABLE posts ADD COLUMN IF NOT EXISTS revenue_recipient TEXT;
+
+-- Fix indexer bug (ThresholdMetEvent used to INSERT spt_reservation_pools with synthetic pool_id).
+-- Repoint reservations to the on-chain pool object id and drop erroneous synthetic pool rows.
+WITH canonical AS (
+    SELECT DISTINCT ON (associated_id)
+        associated_id,
+        pool_id AS canonical_pool_id
+    FROM spt_reservation_pools
+    WHERE pool_id NOT LIKE 'reservation_pool_%'
+    ORDER BY associated_id, time ASC
+)
+UPDATE spt_reservations r
+SET pool_id = c.canonical_pool_id
+FROM canonical c
+WHERE r.pool_id LIKE 'reservation_pool_%'
+  AND r.pool_id = ('reservation_pool_' || c.associated_id);
+
+DELETE FROM spt_reservation_pools s
+WHERE s.pool_id LIKE 'reservation_pool_%'
+  AND EXISTS (
+      SELECT 1
+      FROM spt_reservation_pools c
+      WHERE c.associated_id = s.associated_id
+        AND c.pool_id NOT LIKE 'reservation_pool_%'
+  );

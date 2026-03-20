@@ -2,7 +2,6 @@
 // SPDX-License-Identifier: Apache-2.0
 
 use super::{ProfileUpdate, SocialEventRow};
-use crate::ensure_epoch_ms;
 use myso_indexer_alt_social_schema::models::{
     NewSocialProofTokensConfig, NewSocialProofTokensEvent, NewSptExchangeConfig, NewSptHolding,
     NewSptPool, NewSptPriceHistory, NewSptReservation, NewSptReservationPool, NewSptTransaction,
@@ -388,7 +387,8 @@ fn process_reservation_created_event(
     let amount = json_to_i64(data.get("amount")?);
     let total_reserved = json_to_i64(data.get("total_reserved")?);
     let threshold_met = data.get("threshold_met")?.as_bool().unwrap_or(false);
-    let reserved_at = ensure_epoch_ms(json_to_i64(data.get("reserved_at")?), true);
+    // Move uses `epoch_timestamp_ms` for this field — already milliseconds (including sim / small values).
+    let reserved_at = json_to_i64(data.get("reserved_at")?);
     let fee_amount = data.get("fee_amount").map(json_to_i64);
     let creator_fee = data.get("creator_fee").map(json_to_i64);
     let platform_fee = data.get("platform_fee").map(json_to_i64);
@@ -424,6 +424,7 @@ fn process_reservation_created_event(
             associated_id: associated_id.clone(),
             total_reserved,
             status: Some(status),
+            required_threshold: None,
         },
     ])
 }
@@ -437,7 +438,8 @@ fn process_reservation_withdrawn_event(
     let associated_id = json_str(data.get("associated_id")?)?;
     let reserver = json_str(data.get("reserver")?)?;
     let total_reserved = json_to_i64(data.get("total_reserved")?);
-    let withdrawn_at = ensure_epoch_ms(json_to_i64(data.get("withdrawn_at")?), true);
+    // Same as `reserved_at`: chain supplies epoch milliseconds.
+    let withdrawn_at = json_to_i64(data.get("withdrawn_at")?);
     let fee_amount = data.get("fee_amount").map(json_to_i64);
     let creator_fee = data.get("creator_fee").map(json_to_i64);
     let platform_fee = data.get("platform_fee").map(json_to_i64);
@@ -468,38 +470,30 @@ fn process_reservation_withdrawn_event(
             associated_id: associated_id.clone(),
             total_reserved,
             status: None,
+            required_threshold: None,
         },
     ])
 }
 
 fn process_threshold_met_event(
     data: &serde_json::Value,
-    transaction_id: &str,
-    ts: i64,
-    now: chrono::DateTime<chrono::Utc>,
+    _transaction_id: &str,
+    _ts: i64,
+    _now: chrono::DateTime<chrono::Utc>,
 ) -> Option<Vec<SocialEventRow>> {
     let associated_id = json_str(data.get("associated_id")?)?;
-    let token_type = token_type_from_u8(data.get("token_type")?.as_u64()?)?;
-    let owner = json_str(data.get("owner")?)?;
     let total_reserved = json_to_i64(data.get("total_reserved")?);
     let required_threshold = json_to_i64(data.get("required_threshold")?);
 
     let pool_id = format!("reservation_pool_{}", associated_id);
 
-    let pool = NewSptReservationPool {
+    Some(vec![SocialEventRow::SptReservationPoolUpdate {
         pool_id,
         associated_id,
-        token_type,
-        owner,
         total_reserved,
-        required_threshold,
-        status: RESERVATION_POOL_STATUS_THRESHOLD_MET.to_string(),
-        created_at: ts,
-        time: now,
-        transaction_id: transaction_id.to_string(),
-    };
-
-    Some(vec![SocialEventRow::SptReservationPool(pool)])
+        status: Some(RESERVATION_POOL_STATUS_THRESHOLD_MET.to_string()),
+        required_threshold: Some(required_threshold),
+    }])
 }
 
 fn process_spt_config_updated_event(
@@ -680,4 +674,165 @@ fn process_poc_redirection_updated_event(
         revenue_redirect_to,
         revenue_redirect_percentage,
     }])
+}
+
+#[cfg(test)]
+mod tests {
+    use super::super::SocialEventRow;
+    use super::handle_spt_event;
+    use myso_indexer_alt_social_schema::models::{
+        RESERVATION_POOL_STATUS_ACTIVE, RESERVATION_POOL_STATUS_THRESHOLD_MET, TOKEN_TYPE_PROFILE,
+    };
+    use serde_json::json;
+
+    #[test]
+    fn reservation_created_stores_reserved_at_ms_without_scaling() {
+        let data = json!({
+            "associated_id": "0xprof",
+            "token_type": TOKEN_TYPE_PROFILE,
+            "reserver": "0xr",
+            "amount": 1i64,
+            "total_reserved": 1i64,
+            "threshold_met": false,
+            "reserved_at": 126000i64,
+        });
+        let rows = handle_spt_event("ReservationCreatedEvent", &data, "tx:0", 0, 0).expect("rows");
+        let reservation = rows.iter().find_map(|r| {
+            if let SocialEventRow::SptReservation { reservation, .. } = r {
+                Some(reservation)
+            } else {
+                None
+            }
+        });
+        assert_eq!(
+            reservation.expect("reservation").reserved_at,
+            126000,
+            "Move uses epoch ms; values below 1e12 must not be treated as seconds"
+        );
+    }
+
+    #[test]
+    fn threshold_met_emits_pool_update_not_new_pool_row() {
+        let data = json!({
+            "associated_id": "0xabc123",
+            "token_type": 1u64,
+            "owner": "0xowner",
+            "total_reserved": 5000i64,
+            "required_threshold": 100i64,
+            "timestamp": 1u64,
+        });
+        let rows = handle_spt_event("ThresholdMetEvent", &data, "tx1:0", 0, 1000)
+            .expect("handler should return rows");
+
+        assert_eq!(rows.len(), 1);
+        match &rows[0] {
+            SocialEventRow::SptReservationPoolUpdate {
+                associated_id,
+                total_reserved,
+                status,
+                required_threshold,
+                ..
+            } => {
+                assert_eq!(associated_id, "0xabc123");
+                assert_eq!(*total_reserved, 5000);
+                assert_eq!(
+                    status.as_deref(),
+                    Some(RESERVATION_POOL_STATUS_THRESHOLD_MET)
+                );
+                assert_eq!(*required_threshold, Some(100));
+            }
+            SocialEventRow::SptReservationPool(_) => {
+                panic!("ThresholdMetEvent must not insert a new spt_reservation_pools row");
+            }
+            other => panic!("unexpected row: {other:?}"),
+        }
+    }
+
+    #[test]
+    fn reservation_pool_created_uses_object_id_threshold_met_does_not_add_second_pool() {
+        let pool_object_id = "0xpoolobjectdeadbeef";
+        let created = json!({
+            "pool_object_id": pool_object_id,
+            "associated_id": "0xprofile",
+            "token_type": 1u64,
+            "owner": "0xowner",
+            "required_threshold": 10_000_000_000_000i64,
+            "created_at": 100i64,
+        });
+        let created_rows =
+            handle_spt_event("ReservationPoolCreatedEvent", &created, "tx0:0", 0, 1000)
+                .expect("pool created");
+        assert!(
+            created_rows
+                .iter()
+                .any(|r| matches!(r, SocialEventRow::SptReservationPool(p) if p.pool_id == pool_object_id)),
+            "expected reservation pool row with on-chain pool_object_id"
+        );
+
+        let threshold = json!({
+            "associated_id": "0xprofile",
+            "token_type": 1u64,
+            "owner": "0xowner",
+            "total_reserved": 10_000_000_000_000i64,
+            "required_threshold": 10_000_000_000_000i64,
+            "timestamp": 200u64,
+        });
+        let th_rows = handle_spt_event("ThresholdMetEvent", &threshold, "tx1:0", 0, 2000)
+            .expect("threshold met");
+        assert!(
+            th_rows
+                .iter()
+                .all(|r| !matches!(r, SocialEventRow::SptReservationPool(_))),
+            "threshold met must only update the existing pool, not insert another row"
+        );
+
+        let reserve = json!({
+            "associated_id": "0xprofile",
+            "token_type": TOKEN_TYPE_PROFILE,
+            "reserver": "0xreserver",
+            "amount": 100i64,
+            "total_reserved": 100i64,
+            "threshold_met": false,
+            "reserved_at": 300i64,
+        });
+        let res_rows = handle_spt_event("ReservationCreatedEvent", &reserve, "tx2:0", 0, 3000)
+            .expect("reservation");
+        let reservation = res_rows.iter().find_map(|r| {
+            if let SocialEventRow::SptReservation { reservation, .. } = r {
+                Some(reservation)
+            } else {
+                None
+            }
+        });
+        assert!(reservation.is_some(), "expected SptReservation row");
+        let placeholder = format!("reservation_pool_{}", "0xprofile");
+        assert_eq!(
+            reservation.unwrap().pool_id,
+            placeholder,
+            "handler placeholder id; DB apply overwrites from latest spt_reservation_pools.pool_id"
+        );
+
+        let update = res_rows.iter().find_map(|r| {
+            if let SocialEventRow::SptReservationPoolUpdate {
+                total_reserved,
+                status,
+                required_threshold,
+                ..
+            } = r
+            {
+                Some((total_reserved, status, required_threshold))
+            } else {
+                None
+            }
+        });
+        assert_eq!(
+            update,
+            Some((
+                &100i64,
+                &Some(RESERVATION_POOL_STATUS_ACTIVE.to_string()),
+                &None
+            )),
+            "reservation-created pool update"
+        );
+    }
 }

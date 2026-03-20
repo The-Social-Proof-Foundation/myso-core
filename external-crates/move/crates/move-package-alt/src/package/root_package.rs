@@ -103,7 +103,6 @@ impl<F: MoveFlavor + fmt::Debug> RootPackage<F> {
         }
     }
 
-
     /// The metadata for the root package in [PackageInfo] form
     pub fn package_info(&self) -> PackageInfo<'_, F> {
         self.filtered_graph.root_package_info()

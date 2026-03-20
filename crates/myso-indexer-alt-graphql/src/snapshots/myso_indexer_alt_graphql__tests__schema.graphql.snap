@@ -6313,7 +6313,15 @@ type SptExchangeConfig {
 	"""
 	maxHoldPercentBps: Int!
 	"""
-	Max individual reservation in basis points.
+	Per-wallet reservation cap for **post** pools: `(postThreshold * maxIndividualReservationBps) / 10000` in MYSO base units (matches on-chain `social_proof_tokens`).
+	"""
+	maxIndividualReservationAmountPost: Int!
+	"""
+	Per-wallet reservation cap for **profile** pools: `(profileThreshold * maxIndividualReservationBps) / 10000` in MYSO base units.
+	"""
+	maxIndividualReservationAmountProfile: Int!
+	"""
+	Max share of the pool threshold any single wallet may reserve, in basis points (10000 = 100%).
 	"""
 	maxIndividualReservationBps: Int!
 	"""
@@ -6325,11 +6333,11 @@ type SptExchangeConfig {
 	"""
 	platformFeeBps: Int!
 	"""
-	Post reservation threshold (basis points or amount).
+	Total MYSO required to reserve toward a post before the pool can graduate (global config).
 	"""
 	postThreshold: Int!
 	"""
-	Profile reservation threshold.
+	Total MYSO required to reserve toward a profile before the pool can graduate (global config).
 	"""
 	profileThreshold: Int!
 	"""

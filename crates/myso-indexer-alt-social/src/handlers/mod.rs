@@ -473,6 +473,7 @@ pub enum SocialEventRow {
         associated_id: String,
         total_reserved: i64,
         status: Option<String>,
+        required_threshold: Option<i64>,
     },
     SptExchangeConfig(NewSptExchangeConfig),
     SocialProofTokensConfig(NewSocialProofTokensConfig),
@@ -2485,18 +2486,26 @@ impl Handler for SocialEvents {
                     associated_id,
                     total_reserved,
                     status,
+                    required_threshold,
                 } => {
                     let update_sql =
-                        "UPDATE spt_reservation_pools SET total_reserved = $1, status = COALESCE($2, status) \
+                        "UPDATE spt_reservation_pools SET total_reserved = $1, \
+                         status = COALESCE($2, status), \
+                         required_threshold = COALESCE($4, required_threshold) \
                          WHERE associated_id = $3 AND time = (SELECT time FROM spt_reservation_pools WHERE associated_id = $3 ORDER BY time DESC LIMIT 1)";
                     total += diesel::sql_query(update_sql)
                         .bind::<BigInt, _>(*total_reserved)
                         .bind::<Nullable<Text>, _>(status.as_deref())
                         .bind::<Text, _>(associated_id)
+                        .bind::<Nullable<BigInt>, _>(*required_threshold)
                         .execute(conn)
                         .await?;
                 }
                 SocialEventRow::SptExchangeConfig(c) => {
+                    let sync_reservation_pool_thresholds =
+                        c.profile_threshold > 0 && c.post_threshold > 0;
+                    let profile_threshold = c.profile_threshold;
+                    let post_threshold = c.post_threshold;
                     let latest: Option<(i32, chrono::NaiveDateTime)> = spt_exchange_config::table
                         .order(spt_exchange_config::time.desc())
                         .select((spt_exchange_config::id, spt_exchange_config::time))
@@ -2545,6 +2554,27 @@ impl Handler for SocialEvents {
                     } else {
                         total += diesel::insert_into(spt_exchange_config::table)
                             .values(c)
+                            .execute(conn)
+                            .await?;
+                    }
+                    if sync_reservation_pool_thresholds {
+                        let sync_sql = r#"
+                            UPDATE spt_reservation_pools sp
+                            SET required_threshold = CASE sp.token_type
+                                WHEN 1 THEN $1
+                                WHEN 2 THEN $2
+                                ELSE sp.required_threshold
+                            END
+                            FROM (
+                                SELECT DISTINCT ON (pool_id) pool_id, time
+                                FROM spt_reservation_pools
+                                ORDER BY pool_id, time DESC
+                            ) AS latest
+                            WHERE sp.pool_id = latest.pool_id AND sp.time = latest.time
+                        "#;
+                        total += diesel::sql_query(sync_sql)
+                            .bind::<BigInt, _>(profile_threshold)
+                            .bind::<BigInt, _>(post_threshold)
                             .execute(conn)
                             .await?;
                     }
