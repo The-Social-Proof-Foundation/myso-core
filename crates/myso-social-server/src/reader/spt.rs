@@ -576,12 +576,12 @@ pub(crate) async fn get_spt_market_sentiment(db: &Db) -> Result<serde_json::Valu
             COALESCE(r.reservation_volume, 0)::bigint as reservation_volume,
             COALESCE(r.reservation_count, 0)::bigint as reservation_count,
             COALESCE(r.unique_reservers, 0)::bigint as unique_reservers,
-            CASE WHEN COALESCE(p.total_volume, 0) + COALESCE(pr.total_volume, 0) = 0 THEN 0.0
+            (CASE WHEN COALESCE(p.total_volume, 0) + COALESCE(pr.total_volume, 0) = 0 THEN 0.0
                  ELSE ((c.buy_volume + c.sell_volume + COALESCE(r.reservation_volume, 0)) - (p.total_volume + COALESCE(pr.total_volume, 0))) * 100.0 / (p.total_volume + COALESCE(pr.total_volume, 0))
-            END as volume_change_percentage,
-            CASE WHEN (c.buy_volume + c.sell_volume + COALESCE(r.reservation_volume, 0)) = 0 THEN 0.0
+            END)::double precision as volume_change_percentage,
+            (CASE WHEN (c.buy_volume + c.sell_volume + COALESCE(r.reservation_volume, 0)) = 0 THEN 0.0
                  ELSE ((c.buy_volume + COALESCE(r.reservation_volume, 0)) - c.sell_volume) * 1.0 / (c.buy_volume + c.sell_volume + COALESCE(r.reservation_volume, 0))
-            END as sentiment_score
+            END)::double precision as sentiment_score
         FROM current_volume c
         CROSS JOIN previous_volume p
         CROSS JOIN reservation_volume r
