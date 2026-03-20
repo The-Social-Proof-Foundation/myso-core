@@ -28,7 +28,9 @@ use crate::insurance::{
 };
 use crate::metrics::DbReaderMetrics;
 use crate::mydata::{
-    get_mydata_config, get_mydata_record, list_mydata_purchases_by_buyer,
+    get_mydata_access_analytics, get_mydata_access_logs, get_mydata_config, get_mydata_purchases,
+    get_mydata_record, get_mydata_revenue, get_mydata_revenue_timeline, get_mydata_stats,
+    get_mydata_subscriptions, get_popular_mydata, list_mydata, list_mydata_purchases_by_buyer,
     list_mydata_records_by_owner,
 };
 use crate::platform::PlatformRow;
@@ -45,7 +47,9 @@ use crate::profile::get_profile_by_address;
 use crate::profile::get_profile_or_wallet_by_address;
 use crate::profile::get_profiles;
 use crate::promotion::{
-    get_promotion, get_promotion_by_post_id, get_promotion_views_count, list_promoted_posts,
+    get_promotion, get_promotion_by_post_id, get_promotion_hourly, get_promotion_stats,
+    get_promotion_time_series, get_promotion_views, get_promotion_views_count, get_spending_trends,
+    get_top_performing_promotions, list_promoted_posts,
 };
 use crate::revenue::get_platform_revenue_summary;
 use crate::social_graph::{
@@ -746,6 +750,64 @@ impl SocialPgReader {
         list_promoted_posts(&mut conn, platform_id, limit, offset, &self.metrics).await
     }
 
+    /// Get promotion views (paginated).
+    pub async fn get_promotion_views(
+        &self,
+        promotion_id: &str,
+        limit: i64,
+        offset: i64,
+    ) -> anyhow::Result<Vec<crate::PromotionViewRow>> {
+        let mut conn = self.connect().await?;
+        get_promotion_views(&mut conn, promotion_id, limit, offset, &self.metrics).await
+    }
+
+    /// Get aggregated stats for a promotion.
+    pub async fn get_promotion_stats(
+        &self,
+        promotion_id: &str,
+    ) -> anyhow::Result<Option<crate::PromotionStatsRow>> {
+        let mut conn = self.connect().await?;
+        get_promotion_stats(&mut conn, promotion_id, &self.metrics).await
+    }
+
+    /// Get daily time series for a promotion (last 30 days).
+    pub async fn get_promotion_time_series(
+        &self,
+        promotion_id: &str,
+        limit: i64,
+    ) -> anyhow::Result<Vec<crate::PromotionTimeSeriesRow>> {
+        let mut conn = self.connect().await?;
+        get_promotion_time_series(&mut conn, promotion_id, limit, &self.metrics).await
+    }
+
+    /// Get hourly aggregates for a promotion (last 7 days).
+    pub async fn get_promotion_hourly(
+        &self,
+        promotion_id: &str,
+        limit: i64,
+    ) -> anyhow::Result<Vec<crate::PromotionHourlyRow>> {
+        let mut conn = self.connect().await?;
+        get_promotion_hourly(&mut conn, promotion_id, limit, &self.metrics).await
+    }
+
+    /// Get top performing promotions by view count.
+    pub async fn get_top_performing_promotions(
+        &self,
+        limit: i64,
+    ) -> anyhow::Result<Vec<crate::PromotedPostRow>> {
+        let mut conn = self.connect().await?;
+        get_top_performing_promotions(&mut conn, limit, &self.metrics).await
+    }
+
+    /// Get global spending trends (last 30 days).
+    pub async fn get_spending_trends(
+        &self,
+        limit: i64,
+    ) -> anyhow::Result<Vec<crate::PromotionTimeSeriesRow>> {
+        let mut conn = self.connect().await?;
+        get_spending_trends(&mut conn, limit, &self.metrics).await
+    }
+
     /// Get a mydata record by ID.
     pub async fn get_mydata_record(
         &self,
@@ -766,6 +828,40 @@ impl SocialPgReader {
         list_mydata_records_by_owner(&mut conn, owner, limit, offset, &self.metrics).await
     }
 
+    /// List mydata records (paginated, optionally filtered by creator, media_type, platform_id).
+    pub async fn list_mydata(
+        &self,
+        creator: Option<&str>,
+        media_type: Option<&str>,
+        platform_id: Option<&str>,
+        sort_by: Option<&str>,
+        limit: i64,
+        offset: i64,
+    ) -> anyhow::Result<Vec<crate::MyDataRecordRow>> {
+        let mut conn = self.connect().await?;
+        list_mydata(
+            &mut conn,
+            creator,
+            media_type,
+            platform_id,
+            sort_by,
+            limit,
+            offset,
+            &self.metrics,
+        )
+        .await
+    }
+
+    /// Get popular mydata records (ordered by purchase + revenue + access counts).
+    pub async fn get_popular_mydata(
+        &self,
+        limit: i64,
+        offset: i64,
+    ) -> anyhow::Result<Vec<crate::MyDataRecordRow>> {
+        let mut conn = self.connect().await?;
+        get_popular_mydata(&mut conn, limit, offset, &self.metrics).await
+    }
+
     /// List mydata purchases by buyer (paginated).
     pub async fn list_mydata_purchases_by_buyer(
         &self,
@@ -775,6 +871,77 @@ impl SocialPgReader {
     ) -> anyhow::Result<Vec<crate::MyDataPurchaseRow>> {
         let mut conn = self.connect().await?;
         list_mydata_purchases_by_buyer(&mut conn, buyer, limit, offset, &self.metrics).await
+    }
+
+    /// List mydata purchases for a record (paginated).
+    pub async fn get_mydata_purchases(
+        &self,
+        mydata_id: &str,
+        limit: i64,
+        offset: i64,
+    ) -> anyhow::Result<Vec<crate::MyDataPurchaseRow>> {
+        let mut conn = self.connect().await?;
+        get_mydata_purchases(&mut conn, mydata_id, limit, offset, &self.metrics).await
+    }
+
+    /// List mydata subscriptions for a record (paginated).
+    pub async fn get_mydata_subscriptions(
+        &self,
+        mydata_id: &str,
+        limit: i64,
+        offset: i64,
+    ) -> anyhow::Result<Vec<myso_indexer_alt_social_schema::models::MyDataSubscriptionRow>> {
+        let mut conn = self.connect().await?;
+        get_mydata_subscriptions(&mut conn, mydata_id, limit, offset, &self.metrics).await
+    }
+
+    /// List mydata revenue for a record (paginated).
+    pub async fn get_mydata_revenue(
+        &self,
+        mydata_id: &str,
+        limit: i64,
+        offset: i64,
+    ) -> anyhow::Result<Vec<myso_indexer_alt_social_schema::models::MyDataRevenueRow>> {
+        let mut conn = self.connect().await?;
+        get_mydata_revenue(&mut conn, mydata_id, limit, offset, &self.metrics).await
+    }
+
+    /// List mydata access logs for a record (paginated).
+    pub async fn get_mydata_access_logs(
+        &self,
+        mydata_id: &str,
+        limit: i64,
+        offset: i64,
+    ) -> anyhow::Result<Vec<myso_indexer_alt_social_schema::models::MyDataAccessLogRow>> {
+        let mut conn = self.connect().await?;
+        get_mydata_access_logs(&mut conn, mydata_id, limit, offset, &self.metrics).await
+    }
+
+    /// Get mydata stats for a record.
+    pub async fn get_mydata_stats(
+        &self,
+        mydata_id: &str,
+    ) -> anyhow::Result<Option<myso_indexer_alt_social_schema::models::MyDataStatsRow>> {
+        let mut conn = self.connect().await?;
+        get_mydata_stats(&mut conn, mydata_id, &self.metrics).await
+    }
+
+    /// Get mydata revenue timeline (daily aggregates).
+    pub async fn get_mydata_revenue_timeline(
+        &self,
+        mydata_id: &str,
+    ) -> anyhow::Result<Vec<myso_indexer_alt_social_schema::models::MyDataDailyRevenueRow>> {
+        let mut conn = self.connect().await?;
+        get_mydata_revenue_timeline(&mut conn, mydata_id, &self.metrics).await
+    }
+
+    /// Get mydata access analytics (daily aggregates by access type).
+    pub async fn get_mydata_access_analytics(
+        &self,
+        mydata_id: &str,
+    ) -> anyhow::Result<Vec<myso_indexer_alt_social_schema::models::MyDataAccessAnalyticsRow>> {
+        let mut conn = self.connect().await?;
+        get_mydata_access_analytics(&mut conn, mydata_id, &self.metrics).await
     }
 
     /// Get insurance policy by ID.

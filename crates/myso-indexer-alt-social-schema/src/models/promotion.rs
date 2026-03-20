@@ -3,7 +3,7 @@
 
 use diesel::QueryableByName;
 use diesel::prelude::*;
-use diesel::sql_types::{BigInt, Bool, Text};
+use diesel::sql_types::{BigInt, Bool, Date, Integer, Text};
 use serde::{Deserialize, Serialize};
 
 use crate::schema::{
@@ -31,6 +31,55 @@ pub struct PromotedPostRow {
     pub active: bool,
     #[diesel(sql_type = BigInt)]
     pub created_at: i64,
+}
+
+/// Query result for a promotion view (individual view record).
+#[derive(Debug, Clone, QueryableByName, Serialize, Deserialize)]
+pub struct PromotionViewRow {
+    #[diesel(sql_type = Text)]
+    pub post_id: String,
+    #[diesel(sql_type = Text)]
+    pub promotion_id: String,
+    #[diesel(sql_type = Text)]
+    pub viewer: String,
+    #[diesel(sql_type = BigInt)]
+    pub payment_amount: i64,
+    #[diesel(sql_type = BigInt)]
+    pub view_duration: i64,
+    #[diesel(sql_type = Text)]
+    pub platform_id: String,
+    #[diesel(sql_type = BigInt)]
+    pub timestamp: i64,
+}
+
+/// Aggregated stats for a promotion (result of analytics queries).
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct PromotionStatsRow {
+    pub total_views: i64,
+    pub total_spent: i64,
+    pub remaining_budget: i64,
+}
+
+/// Daily aggregate for promotion analytics.
+#[derive(Debug, Clone, QueryableByName, Serialize, Deserialize)]
+pub struct PromotionTimeSeriesRow {
+    #[diesel(sql_type = Date)]
+    pub day: chrono::NaiveDate,
+    #[diesel(sql_type = BigInt)]
+    pub views: i64,
+    #[diesel(sql_type = BigInt)]
+    pub spent: i64,
+}
+
+/// Hourly aggregate for promotion analytics.
+#[derive(Debug, Clone, QueryableByName, Serialize, Deserialize)]
+pub struct PromotionHourlyRow {
+    #[diesel(sql_type = Integer)]
+    pub hour: i32,
+    #[diesel(sql_type = BigInt)]
+    pub views: i64,
+    #[diesel(sql_type = BigInt)]
+    pub spent: i64,
 }
 
 #[derive(Debug, Clone, Insertable, Serialize, Deserialize)]

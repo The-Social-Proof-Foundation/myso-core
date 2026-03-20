@@ -45,11 +45,13 @@ pub use insurance::{
 pub use mydata::{
     ACCESS_TYPE_CONTENT_UPDATE, ACCESS_TYPE_GRANT, ACCESS_TYPE_ONE_TIME, ACCESS_TYPE_PREVIEW,
     ACCESS_TYPE_PRICING_UPDATE, ACCESS_TYPE_SUBSCRIPTION, DATA_QUALITY_HIGH, DATA_QUALITY_LOW,
-    DATA_QUALITY_MEDIUM, MAX_FREE_ACCESS_GRANTS, MAX_SUBSCRIPTION_DAYS, MAX_TAGS, MyDataAccessLog,
-    MyDataConfig, MyDataData, MyDataPurchase, MyDataPurchaseRow, MyDataRecordRow, MyDataRegistry,
-    MyDataRevenue, MyDataSubscription, NewMyDataAccessLog, NewMyDataConfig, NewMyDataData,
-    NewMyDataPurchase, NewMyDataRegistry, NewMyDataRevenue, NewMyDataSubscription,
-    PURCHASE_TYPE_ONE_TIME, PURCHASE_TYPE_SUBSCRIPTION, REVENUE_TYPE_GRANT, REVENUE_TYPE_ONE_TIME,
+    DATA_QUALITY_MEDIUM, MAX_FREE_ACCESS_GRANTS, MAX_SUBSCRIPTION_DAYS, MAX_TAGS,
+    MyDataAccessAnalyticsRow, MyDataAccessLog, MyDataAccessLogRow, MyDataConfig,
+    MyDataDailyRevenueRow, MyDataData, MyDataPurchase, MyDataPurchaseRow, MyDataRecordRow,
+    MyDataRegistry, MyDataRevenue, MyDataRevenueRow, MyDataStatsRow, MyDataSubscription,
+    MyDataSubscriptionRow, NewMyDataAccessLog, NewMyDataConfig, NewMyDataData, NewMyDataPurchase,
+    NewMyDataRegistry, NewMyDataRevenue, NewMyDataSubscription, PURCHASE_TYPE_ONE_TIME,
+    PURCHASE_TYPE_SUBSCRIPTION, REVENUE_TYPE_GRANT, REVENUE_TYPE_ONE_TIME,
     REVENUE_TYPE_SUBSCRIPTION, UPDATE_FREQUENCY_DAILY, UPDATE_FREQUENCY_HOURLY,
     UPDATE_FREQUENCY_MONTHLY, UPDATE_FREQUENCY_WEEKLY, UPDATE_FREQUENCY_YEARLY,
 };
@@ -90,7 +92,8 @@ pub use profile::{
 };
 pub use promotion::{
     NewPromotedPost, NewPromotionBudgetEvent, NewPromotionStatusEvent, NewPromotionView,
-    PromotedPostRow,
+    PromotedPostRow, PromotionHourlyRow, PromotionStatsRow, PromotionTimeSeriesRow,
+    PromotionViewRow,
 };
 pub use revenue::{
     CONTENT_TYPE_COMMENT, CONTENT_TYPE_DATA, CONTENT_TYPE_POST, CONTENT_TYPE_PROFILE,

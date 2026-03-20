@@ -1535,6 +1535,36 @@ MutateConsensusStreamEnded.sequenceNumber
 Mutation.executeTransaction
   => {}
 
+MyDataAccessAnalytics.day
+  => {}
+
+MyDataAccessAnalytics.accessType
+  => {}
+
+MyDataAccessAnalytics.uniqueUsers
+  => {}
+
+MyDataAccessAnalytics.totalAccesses
+  => {}
+
+MyDataAccessLog.userAddress
+  => {}
+
+MyDataAccessLog.userProfile
+  => {}
+
+MyDataAccessLog.accessType
+  => {}
+
+MyDataAccessLog.accessTime
+  => {}
+
+MyDataAccessLog.time
+  => {}
+
+MyDataAccessLog.transactionId
+  => {}
+
 MyDataConfig.updatedBy
   => {}
 
@@ -1553,6 +1583,15 @@ MyDataConfig.maxFreeAccessGrants
 MyDataConfig.timestampMs
   => {}
 
+MyDataDailyRevenue.day
+  => {}
+
+MyDataDailyRevenue.dailyRevenue
+  => {}
+
+MyDataDailyRevenue.dailyTransactions
+  => {}
+
 MyDataPurchase.mydataId
   => {}
 
@@ -1569,6 +1608,9 @@ MyDataPurchase.purchaseType
   => {}
 
 MyDataPurchase.purchaseTime
+  => {}
+
+MyDataPurchase.time
   => {}
 
 MyDataPurchase.transactionId
@@ -1593,6 +1635,120 @@ MyDataRecord.oneTimePrice
   => {}
 
 MyDataRecord.subscriptionPrice
+  => {}
+
+MyDataRecord.platformId
+  => {}
+
+MyDataRecord.timestampStart
+  => {}
+
+MyDataRecord.timestampEnd
+  => {}
+
+MyDataRecord.createdAt
+  => {}
+
+MyDataRecord.lastUpdated
+  => {}
+
+MyDataRecord.subscriptionDurationDays
+  => {}
+
+MyDataRecord.geographicRegion
+  => {}
+
+MyDataRecord.dataQuality
+  => {}
+
+MyDataRecord.sampleSize
+  => {}
+
+MyDataRecord.isUpdating
+  => {}
+
+MyDataRecord.updateFrequency
+  => {}
+
+MyDataRecord.purchases
+  => {}
+
+MyDataRecord.subscriptions
+  => {}
+
+MyDataRecord.revenue
+  => {}
+
+MyDataRecord.accessLogs
+  => {}
+
+MyDataRecord.stats
+  => {}
+
+MyDataRecord.revenueTimeline
+  => {}
+
+MyDataRecord.accessAnalytics
+  => {}
+
+MyDataRevenue.fromAddress
+  => {}
+
+MyDataRevenue.toAddress
+  => {}
+
+MyDataRevenue.amount
+  => {}
+
+MyDataRevenue.revenueType
+  => {}
+
+MyDataRevenue.revenueTime
+  => {}
+
+MyDataRevenue.time
+  => {}
+
+MyDataRevenue.transactionId
+  => {}
+
+MyDataStats.totalRevenue
+  => {}
+
+MyDataStats.purchaseCount
+  => {}
+
+MyDataStats.subscriptionCount
+  => {}
+
+MyDataStats.accessCount
+  => {}
+
+MyDataStats.createdAt
+  => {}
+
+MyDataStats.lastUpdated
+  => {}
+
+MyDataSubscription.subscriber
+  => {}
+
+MyDataSubscription.subscriberProfile
+  => {}
+
+MyDataSubscription.subscriptionStart
+  => {}
+
+MyDataSubscription.subscriptionEnd
+  => {}
+
+MyDataSubscription.price
+  => {}
+
+MyDataSubscription.time
+  => {}
+
+MyDataSubscription.transactionId
   => {}
 
 Node.id
@@ -2450,6 +2606,15 @@ Promotion.promotionId
 Promotion.postId
   => {}
 
+Promotion.owner
+  => {}
+
+Promotion.profileId
+  => {}
+
+Promotion.paymentPerView
+  => {}
+
 Promotion.budget
   => {}
 
@@ -2460,6 +2625,72 @@ Promotion.status
   => {}
 
 Promotion.views
+  => {}
+
+Promotion.createdAt
+  => {}
+
+Promotion.viewsDetail
+  => {}
+
+Promotion.stats
+  => {}
+
+Promotion.timeSeries
+  => {}
+
+Promotion.hourly
+  => {}
+
+PromotionHourly.hour
+  => {}
+
+PromotionHourly.views
+  => {}
+
+PromotionHourly.spent
+  => {}
+
+PromotionStats.totalViews
+  => {}
+
+PromotionStats.totalSpent
+  => {}
+
+PromotionStats.remainingBudget
+  => {}
+
+PromotionTimeSeries.day
+  => {}
+
+PromotionTimeSeries.views
+  => {}
+
+PromotionTimeSeries.spent
+  => {}
+
+PromotionView.postId
+  => {}
+
+PromotionView.promotionId
+  => {}
+
+PromotionView.viewer
+  => {}
+
+PromotionView.viewerProfile
+  => {}
+
+PromotionView.paymentAmount
+  => {}
+
+PromotionView.viewDuration
+  => {}
+
+PromotionView.platformId
+  => {}
+
+PromotionView.timestamp
   => {}
 
 Proposal.proposalId
@@ -2612,6 +2843,12 @@ Query.promotion
 Query.promotedPosts
   => {}
 
+Query.topPerformingPromotions
+  => {}
+
+Query.promotionSpendingTrends
+  => {}
+
 Query.platform
   => {}
 
@@ -2664,6 +2901,12 @@ Query.mydataRecords
   => {}
 
 Query.mydataPurchases
+  => {}
+
+Query.listMydata
+  => {}
+
+Query.popularMydata
   => {}
 
 Query.proposals

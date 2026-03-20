@@ -17,9 +17,11 @@ pub mod spot;
 pub mod spt;
 pub mod vesting;
 
+pub use insurance::{InsuranceVaultExposureRow, InsuranceVaultTransactionRow};
 pub use myso_indexer_alt_social_schema::models::{
     DelegateRow, GovernanceRegistryRow, GovernanceStatsRow, InsurancePolicyRow, InsuranceVaultRow,
-    MyDataPurchaseRow, MyDataRecordRow, PlatformRevenueSummaryRow, PromotedPostRow, ProposalRow,
+    MyDataPurchaseRow, MyDataRecordRow, PlatformRevenueSummaryRow, PromotedPostRow,
+    PromotionHourlyRow, PromotionStatsRow, PromotionTimeSeriesRow, PromotionViewRow, ProposalRow,
     SpotBetRow, SpotBetWithdrawalRow, SpotPayoutRow, SpotRecordRow, SpotRefundRow,
     SpotResolutionRow,
 };
@@ -29,7 +31,6 @@ pub use myso_indexer_alt_social_schema::models::{
 pub use myso_indexer_alt_social_schema::models::{
     SptHoldingRow, SptPoolRow, SptPriceHistory, SptTransaction,
 };
-pub use insurance::{InsuranceVaultExposureRow, InsuranceVaultTransactionRow};
 pub use pg_reader::SocialPgReader;
 pub use platform::{PlatformBlockedProfileRow, PlatformRow};
 pub use post::{CommentRow, PostRow, PostTransferRow, ReactionRow, RepostRow, TipRow};

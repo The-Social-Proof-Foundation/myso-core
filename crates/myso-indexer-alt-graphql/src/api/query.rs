@@ -59,7 +59,7 @@ use crate::api::types::object_filter::ObjectFilterValidator as OFValidator;
 use crate::api::types::platform::Platform;
 use crate::api::types::post::{CommentSummary, Post, ReactionSummary, RepostSummary, TipSummary};
 use crate::api::types::profile::Profile;
-use crate::api::types::promotion::Promotion;
+use crate::api::types::promotion::{Promotion, PromotionTimeSeries};
 use crate::api::types::protocol_configs::ProtocolConfigs;
 use crate::api::types::service_config::ServiceConfig;
 use crate::api::types::simulation_result::SimulationResult;
@@ -441,6 +441,59 @@ impl Query {
                 Ok::<Vec<Promotion>, RpcError>(out)
             }
             .await,
+        )
+    }
+
+    /// Top performing promotions by view count.
+    async fn top_performing_promotions(
+        &self,
+        ctx: &Context<'_>,
+        limit: Option<u64>,
+    ) -> Option<Result<Vec<Promotion>, RpcError>> {
+        let reader_opt = ctx
+            .data_opt::<std::sync::Arc<Option<myso_indexer_alt_social_reader::SocialPgReader>>>()?;
+        let reader = reader_opt.as_ref().as_ref()?;
+        let limit = limit.unwrap_or(20).min(100) as i64;
+        Some(
+            async {
+                let rows = reader
+                    .get_top_performing_promotions(limit)
+                    .await
+                    .map_err(RpcError::from)?;
+                let mut out = Vec::with_capacity(rows.len());
+                for row in rows {
+                    let views = reader
+                        .get_promotion_views_count(&row.promotion_id)
+                        .await
+                        .map_err(RpcError::from)?;
+                    out.push(Promotion::from_row(row, views));
+                }
+                Ok::<Vec<Promotion>, RpcError>(out)
+            }
+            .await,
+        )
+    }
+
+    /// Global promotion spending trends (last 30 days).
+    async fn promotion_spending_trends(
+        &self,
+        ctx: &Context<'_>,
+        limit: Option<u64>,
+    ) -> Option<Result<Vec<PromotionTimeSeries>, RpcError>> {
+        let reader_opt = ctx
+            .data_opt::<std::sync::Arc<Option<myso_indexer_alt_social_reader::SocialPgReader>>>()?;
+        let reader = reader_opt.as_ref().as_ref()?;
+        let limit = limit.unwrap_or(30).min(90) as i64;
+        Some(
+            reader
+                .get_spending_trends(limit)
+                .await
+                .map_err(RpcError::from)
+                .map(|rows| {
+                    rows.into_iter()
+                        .map(PromotionTimeSeries::from_row)
+                        .collect()
+                }),
         )
     }
 
@@ -851,6 +904,60 @@ impl Query {
                 .await
                 .map_err(Into::into)
                 .map(|v| v.into_iter().map(MyDataPurchase::from_row).collect()),
+        )
+    }
+
+    /// List MyData records (paginated, optionally filtered by creator, media_type, platform_id). Returns empty when social DB not configured.
+    async fn list_mydata(
+        &self,
+        ctx: &Context<'_>,
+        creator: Option<MySoAddress>,
+        media_type: Option<String>,
+        platform_id: Option<String>,
+        sort_by: Option<String>,
+        limit: Option<u64>,
+        offset: Option<u64>,
+    ) -> Option<Result<Vec<MyDataRecord>, RpcError>> {
+        let reader_opt = ctx
+            .data_opt::<std::sync::Arc<Option<myso_indexer_alt_social_reader::SocialPgReader>>>()?;
+        let reader = reader_opt.as_ref().as_ref()?;
+        let limit = limit.unwrap_or(20).min(100) as i64;
+        let offset = offset.unwrap_or(0) as i64;
+        let creator_str = creator.as_ref().map(|a| a.to_string());
+        Some(
+            reader
+                .list_mydata(
+                    creator_str.as_deref(),
+                    media_type.as_deref(),
+                    platform_id.as_deref(),
+                    sort_by.as_deref(),
+                    limit,
+                    offset,
+                )
+                .await
+                .map_err(Into::into)
+                .map(|v| v.into_iter().map(MyDataRecord::from_row).collect()),
+        )
+    }
+
+    /// Popular MyData records (ordered by purchase + revenue + access counts). Returns empty when social DB not configured.
+    async fn popular_mydata(
+        &self,
+        ctx: &Context<'_>,
+        limit: Option<u64>,
+        offset: Option<u64>,
+    ) -> Option<Result<Vec<MyDataRecord>, RpcError>> {
+        let reader_opt = ctx
+            .data_opt::<std::sync::Arc<Option<myso_indexer_alt_social_reader::SocialPgReader>>>()?;
+        let reader = reader_opt.as_ref().as_ref()?;
+        let limit = limit.unwrap_or(20).min(100) as i64;
+        let offset = offset.unwrap_or(0) as i64;
+        Some(
+            reader
+                .get_popular_mydata(limit, offset)
+                .await
+                .map_err(Into::into)
+                .map(|v| v.into_iter().map(MyDataRecord::from_row).collect()),
         )
     }
 

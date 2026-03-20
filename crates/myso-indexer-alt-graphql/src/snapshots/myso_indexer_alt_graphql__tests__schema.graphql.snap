@@ -3182,6 +3182,52 @@ type Mutation {
 	executeTransaction(transactionDataBcs: Base64!, signatures: [Base64!]!): ExecutionResult!
 }
 
+type MyDataAccessAnalytics {
+	"""
+	Access type.
+	"""
+	accessType: String!
+	"""
+	Day (YYYY-MM-DD).
+	"""
+	day: String!
+	"""
+	Total access events that day.
+	"""
+	totalAccesses: Int!
+	"""
+	Number of unique users that day.
+	"""
+	uniqueUsers: Int!
+}
+
+type MyDataAccessLog {
+	"""
+	Epoch timestamp when access occurred.
+	"""
+	accessTime: Int!
+	"""
+	Access type ("one_time", "subscription", "grant", "preview", etc.).
+	"""
+	accessType: String!
+	"""
+	Indexer timestamp.
+	"""
+	time: DateTime!
+	"""
+	Transaction ID.
+	"""
+	transactionId: String!
+	"""
+	User address that accessed.
+	"""
+	userAddress: MySoAddress!
+	"""
+	Profile of the user.
+	"""
+	userProfile: ProfileSummary
+}
+
 type MyDataConfig {
 	"""
 	Whether MyData marketplace is enabled.
@@ -3207,6 +3253,21 @@ type MyDataConfig {
 	Address that last updated the configuration.
 	"""
 	updatedBy: String!
+}
+
+type MyDataDailyRevenue {
+	"""
+	Revenue for that day.
+	"""
+	dailyRevenue: Int!
+	"""
+	Number of transactions that day.
+	"""
+	dailyTransactions: Int!
+	"""
+	Day (YYYY-MM-DD).
+	"""
+	day: String!
 }
 
 type MyDataPurchase {
@@ -3235,12 +3296,44 @@ type MyDataPurchase {
 	"""
 	purchaseType: String!
 	"""
+	Indexer timestamp when the purchase was recorded.
+	"""
+	time: DateTime!
+	"""
 	Transaction ID.
 	"""
 	transactionId: String!
 }
 
 type MyDataRecord {
+	"""
+	Access analytics for this MyData record.
+	"""
+	accessAnalytics: [MyDataAccessAnalytics!]
+	"""
+	Access logs for this MyData record (paginated).
+	"""
+	accessLogs(limit: Int, offset: Int): [MyDataAccessLog!]
+	"""
+	Epoch timestamp when the record was created.
+	"""
+	createdAt: Int!
+	"""
+	Data quality indicator ("high", "medium", "low").
+	"""
+	dataQuality: String
+	"""
+	Geographic region for the data.
+	"""
+	geographicRegion: String
+	"""
+	Whether this data updates over time.
+	"""
+	isUpdating: Boolean!
+	"""
+	Epoch timestamp when the record was last updated.
+	"""
+	lastUpdated: Int!
 	"""
 	Media type (e.g. "text", "audio", "image", "video").
 	"""
@@ -3262,13 +3355,146 @@ type MyDataRecord {
 	"""
 	ownerProfile: ProfileSummary
 	"""
+	Optional platform identification.
+	"""
+	platformId: String
+	"""
+	Purchases for this MyData record (paginated).
+	"""
+	purchases(limit: Int, offset: Int): [MyDataPurchase!]
+	"""
+	Revenue entries for this MyData record (paginated).
+	"""
+	revenue(limit: Int, offset: Int): [MyDataRevenue!]
+	"""
+	Daily revenue timeline for this MyData record.
+	"""
+	revenueTimeline: [MyDataDailyRevenue!]
+	"""
+	Sample size for the dataset.
+	"""
+	sampleSize: Int
+	"""
+	Aggregated stats for this MyData record.
+	"""
+	stats: MyDataStats
+	"""
+	Subscription duration in days.
+	"""
+	subscriptionDurationDays: Int!
+	"""
 	Subscription price (null if not for sale).
 	"""
 	subscriptionPrice: Int
 	"""
+	Subscriptions for this MyData record (paginated).
+	"""
+	subscriptions(limit: Int, offset: Int): [MyDataSubscription!]
+	"""
 	Searchable tags.
 	"""
 	tags: [String!]!
+	"""
+	End timestamp for time-range data (null if not applicable).
+	"""
+	timestampEnd: Int
+	"""
+	Start timestamp for time-range data.
+	"""
+	timestampStart: Int!
+	"""
+	Update frequency (e.g. "daily", "weekly", "monthly").
+	"""
+	updateFrequency: String
+}
+
+type MyDataRevenue {
+	"""
+	Amount.
+	"""
+	amount: Int!
+	"""
+	Address that paid (from).
+	"""
+	fromAddress: MySoAddress!
+	"""
+	Epoch timestamp when the revenue was recorded.
+	"""
+	revenueTime: Int!
+	"""
+	Revenue type ("one_time", "subscription", "grant").
+	"""
+	revenueType: String!
+	"""
+	Indexer timestamp.
+	"""
+	time: DateTime!
+	"""
+	Address that received (to).
+	"""
+	toAddress: MySoAddress!
+	"""
+	Transaction ID.
+	"""
+	transactionId: String!
+}
+
+type MyDataStats {
+	"""
+	Number of access events.
+	"""
+	accessCount: Int!
+	"""
+	Epoch timestamp when the record was created.
+	"""
+	createdAt: Int!
+	"""
+	Epoch timestamp when the record was last updated.
+	"""
+	lastUpdated: Int!
+	"""
+	Number of one-time purchases.
+	"""
+	purchaseCount: Int!
+	"""
+	Number of active subscriptions.
+	"""
+	subscriptionCount: Int!
+	"""
+	Total revenue for this record.
+	"""
+	totalRevenue: Int!
+}
+
+type MyDataSubscription {
+	"""
+	Price paid.
+	"""
+	price: Int!
+	"""
+	Subscriber address.
+	"""
+	subscriber: MySoAddress!
+	"""
+	Profile of the subscriber.
+	"""
+	subscriberProfile: ProfileSummary
+	"""
+	Subscription end timestamp (epoch).
+	"""
+	subscriptionEnd: Int!
+	"""
+	Subscription start timestamp (epoch).
+	"""
+	subscriptionStart: Int!
+	"""
+	Indexer timestamp when the subscription was recorded.
+	"""
+	time: DateTime!
+	"""
+	Transaction ID.
+	"""
+	transactionId: String!
 }
 
 """
@@ -4708,9 +4934,29 @@ type Promotion {
 	"""
 	budget: Int!
 	"""
+	Creation timestamp (epoch ms).
+	"""
+	createdAt: Int!
+	"""
+	Hourly aggregates (last 7 days).
+	"""
+	hourly(limit: Int): [PromotionHourly!]
+	"""
+	Owner address.
+	"""
+	owner: MySoAddress!
+	"""
+	Payment per view (in MIST).
+	"""
+	paymentPerView: Int!
+	"""
 	The post ID this promotion is for.
 	"""
 	postId: String!
+	"""
+	Profile ID of the promotion owner.
+	"""
+	profileId: String!
 	"""
 	The promotion ID.
 	"""
@@ -4720,13 +4966,105 @@ type Promotion {
 	"""
 	remainingBudget: Int!
 	"""
+	Aggregated stats for this promotion.
+	"""
+	stats: PromotionStats
+	"""
 	Promotion status: "active" or "inactive".
 	"""
 	status: String!
 	"""
+	Daily time series (last 30 days).
+	"""
+	timeSeries(limit: Int): [PromotionTimeSeries!]
+	"""
 	Number of views.
 	"""
 	views: Int!
+	"""
+	Individual view records (paginated).
+	"""
+	viewsDetail(limit: Int, offset: Int): [PromotionView!]
+}
+
+type PromotionHourly {
+	"""
+	Hour of day (0-23).
+	"""
+	hour: Int!
+	"""
+	Amount spent this hour (MIST).
+	"""
+	spent: Int!
+	"""
+	View count for this hour.
+	"""
+	views: Int!
+}
+
+type PromotionStats {
+	"""
+	Remaining budget (MIST).
+	"""
+	remainingBudget: Int!
+	"""
+	Total amount spent (MIST).
+	"""
+	totalSpent: Int!
+	"""
+	Total view count.
+	"""
+	totalViews: Int!
+}
+
+type PromotionTimeSeries {
+	"""
+	Day (YYYY-MM-DD).
+	"""
+	day: String!
+	"""
+	Amount spent this day (MIST).
+	"""
+	spent: Int!
+	"""
+	View count for this day.
+	"""
+	views: Int!
+}
+
+type PromotionView {
+	"""
+	Payment amount for this view (MIST).
+	"""
+	paymentAmount: Int!
+	"""
+	Platform where the view occurred.
+	"""
+	platformId: String!
+	"""
+	Post ID.
+	"""
+	postId: String!
+	"""
+	Promotion ID.
+	"""
+	promotionId: String!
+	"""
+	View timestamp (epoch ms).
+	"""
+	timestamp: Int!
+	"""
+	View duration (ms).
+	"""
+	viewDuration: Int!
+	"""
+	Viewer address.
+	"""
+	viewer: MySoAddress!
+	"""
+	Profile of the viewer.
+	"""
+	viewerProfile: ProfileSummary
 }
 
 type Proposal {
@@ -5024,6 +5362,10 @@ type Query {
 	"""
 	insuranceVaults(limit: Int, offset: Int): [InsuranceVault!]
 	"""
+	List MyData records (paginated, optionally filtered by creator, media_type, platform_id). Returns empty when social DB not configured.
+	"""
+	listMydata(creator: MySoAddress, mediaType: String, platformId: String, sortBy: String, limit: Int, offset: Int): [MyDataRecord!]
+	"""
 	Fetch addresses by their keys.
 	
 	Returns a list of addresses that is guaranteed to be the same length as `keys`. If an address in `keys` does not exist, its corresponding entry in the result will be `null`.
@@ -5168,6 +5510,10 @@ type Query {
 	"""
 	pocConfiguration: PocConfig
 	"""
+	Popular MyData records (ordered by purchase + revenue + access counts). Returns empty when social DB not configured.
+	"""
+	popularMydata(limit: Int, offset: Int): [MyDataRecord!]
+	"""
 	Fetch a post by ID. Returns null if social DB not configured or not found.
 	"""
 	post(id: ID!): Post
@@ -5195,6 +5541,10 @@ type Query {
 	Fetch a promotion by ID. Returns null if social DB not configured or not found.
 	"""
 	promotion(id: ID!): Promotion
+	"""
+	Global promotion spending trends (last 30 days).
+	"""
+	promotionSpendingTrends(limit: Int): [PromotionTimeSeries!]
 	"""
 	Fetch a proposal by ID. Returns null when social DB not configured or not found.
 	"""
@@ -5290,6 +5640,10 @@ type Query {
 	Tips received for a post (paginated). Returns empty when social DB not configured.
 	"""
 	tips(postId: ID!, limit: Int, offset: Int): [TipSummary!]
+	"""
+	Top performing promotions by view count.
+	"""
+	topPerformingPromotions(limit: Int): [Promotion!]
 	"""
 	Fetch a transaction by its digest.
 	

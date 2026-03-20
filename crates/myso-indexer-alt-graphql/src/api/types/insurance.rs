@@ -6,8 +6,7 @@ use std::str::FromStr;
 use async_graphql::Context;
 use async_graphql::Object;
 use myso_indexer_alt_social_reader::{
-    InsurancePolicyRow, InsuranceVaultExposureRow, InsuranceVaultRow,
-    InsuranceVaultTransactionRow,
+    InsurancePolicyRow, InsuranceVaultExposureRow, InsuranceVaultRow, InsuranceVaultTransactionRow,
 };
 
 use crate::api::scalars::myso_address::MySoAddress;
@@ -189,12 +188,19 @@ impl InsuranceVault {
                 .list_insurance_vault_transactions(&self.inner.vault_id, limit, offset)
                 .await
                 .map_err(Into::into)
-                .map(|v| v.into_iter().map(InsuranceVaultTransaction::from_row).collect()),
+                .map(|v| {
+                    v.into_iter()
+                        .map(InsuranceVaultTransaction::from_row)
+                        .collect()
+                }),
         )
     }
 
     /// Vault exposures by market/option. Returns empty when social DB not configured.
-    async fn exposures(&self, ctx: &Context<'_>) -> Option<Result<Vec<InsuranceVaultExposure>, RpcError>> {
+    async fn exposures(
+        &self,
+        ctx: &Context<'_>,
+    ) -> Option<Result<Vec<InsuranceVaultExposure>, RpcError>> {
         let reader_opt = ctx
             .data_opt::<std::sync::Arc<Option<myso_indexer_alt_social_reader::SocialPgReader>>>()?;
         let reader = reader_opt.as_ref().as_ref()?;
@@ -203,7 +209,11 @@ impl InsuranceVault {
                 .get_insurance_vault_exposures(&self.inner.vault_id)
                 .await
                 .map_err(Into::into)
-                .map(|v| v.into_iter().map(InsuranceVaultExposure::from_row).collect()),
+                .map(|v| {
+                    v.into_iter()
+                        .map(InsuranceVaultExposure::from_row)
+                        .collect()
+                }),
         )
     }
 }
