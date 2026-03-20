@@ -175,7 +175,7 @@ async fn enrich_users_with_universal_data(
             spt.token_type as spt_token_type,
             ph.price as current_price,
             ph24.price as price_24h_ago,
-            COALESCE(vol24.vol, 0)::bigint as volume_24h,
+            (COALESCE(vol24.vol, 0) + COALESCE(res_vol24.vol, 0))::bigint as volume_24h,
             COALESCE(rev.creator_earnings, 0)::bigint as creator_earnings,
             COALESCE(rev.platform_earnings, 0)::bigint as platform_earnings,
             COALESCE(rev.ecosystem_earnings, 0)::bigint as ecosystem_earnings,
@@ -214,6 +214,10 @@ async fn enrich_users_with_universal_data(
         ) rev ON spt.pool_id IS NOT NULL
         LEFT JOIN latest_reservation_pools rp ON
             rp.associated_id = 'profile_' || p.owner_address
+        LEFT JOIN LATERAL (
+            SELECT COALESCE(SUM(amount), 0)::bigint as vol FROM spt_reservations
+            WHERE pool_id = rp.pool_id AND time >= NOW() - INTERVAL '24 hours'
+        ) res_vol24 ON rp.pool_id IS NOT NULL
         WHERE p.owner_address = ANY($1::TEXT[])
         "#,
     )

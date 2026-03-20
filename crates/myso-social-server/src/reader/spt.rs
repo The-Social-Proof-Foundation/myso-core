@@ -556,18 +556,36 @@ pub(crate) async fn get_spt_market_sentiment(db: &Db) -> Result<serde_json::Valu
             SELECT COALESCE(SUM(myso_amount), 0) as total_volume
             FROM spt_transactions
             WHERE time BETWEEN NOW() - INTERVAL '48 hours' AND NOW() - INTERVAL '24 hours'
+        ),
+        reservation_volume AS (
+            SELECT
+                COALESCE(SUM(amount), 0) as reservation_volume,
+                COALESCE(COUNT(*), 0) as reservation_count,
+                COALESCE(COUNT(DISTINCT reserver_address), 0) as unique_reservers
+            FROM spt_reservations
+            WHERE time > NOW() - INTERVAL '24 hours'
+        ),
+        previous_reservation_volume AS (
+            SELECT COALESCE(SUM(amount), 0) as total_volume
+            FROM spt_reservations
+            WHERE time BETWEEN NOW() - INTERVAL '48 hours' AND NOW() - INTERVAL '24 hours'
         )
         SELECT 
             c.buy_volume, c.sell_volume, c.transaction_count,
             c.unique_buyers, c.unique_sellers,
-            CASE WHEN COALESCE(p.total_volume, 0) = 0 THEN 0.0
-                 ELSE ((c.buy_volume + c.sell_volume) - p.total_volume) * 100.0 / p.total_volume
+            COALESCE(r.reservation_volume, 0) as reservation_volume,
+            COALESCE(r.reservation_count, 0) as reservation_count,
+            COALESCE(r.unique_reservers, 0) as unique_reservers,
+            CASE WHEN COALESCE(p.total_volume, 0) + COALESCE(pr.total_volume, 0) = 0 THEN 0.0
+                 ELSE ((c.buy_volume + c.sell_volume + COALESCE(r.reservation_volume, 0)) - (p.total_volume + COALESCE(pr.total_volume, 0))) * 100.0 / (p.total_volume + COALESCE(pr.total_volume, 0))
             END as volume_change_percentage,
-            CASE WHEN (c.buy_volume + c.sell_volume) = 0 THEN 0.0
-                 ELSE (c.buy_volume - c.sell_volume) * 1.0 / (c.buy_volume + c.sell_volume)
+            CASE WHEN (c.buy_volume + c.sell_volume + COALESCE(r.reservation_volume, 0)) = 0 THEN 0.0
+                 ELSE ((c.buy_volume + COALESCE(r.reservation_volume, 0)) - c.sell_volume) * 1.0 / (c.buy_volume + c.sell_volume + COALESCE(r.reservation_volume, 0))
             END as sentiment_score
         FROM current_volume c
         CROSS JOIN previous_volume p
+        CROSS JOIN reservation_volume r
+        CROSS JOIN previous_reservation_volume pr
         "#;
     #[derive(QueryableByName)]
     struct Row {
@@ -581,19 +599,29 @@ pub(crate) async fn get_spt_market_sentiment(db: &Db) -> Result<serde_json::Valu
         unique_buyers: i64,
         #[diesel(sql_type = BigInt)]
         unique_sellers: i64,
+        #[diesel(sql_type = BigInt)]
+        reservation_volume: i64,
+        #[diesel(sql_type = BigInt)]
+        reservation_count: i64,
+        #[diesel(sql_type = BigInt)]
+        unique_reservers: i64,
         #[diesel(sql_type = Double)]
         volume_change_percentage: f64,
         #[diesel(sql_type = Double)]
         sentiment_score: f64,
     }
     let row: Row = diesel::sql_query(query).get_result(&mut conn).await?;
+    let total_transaction_count = row.transaction_count + row.reservation_count;
     Ok(serde_json::json!({
         "overall_sentiment": row.sentiment_score,
         "buy_volume_24h": row.buy_volume,
         "sell_volume_24h": row.sell_volume,
-        "transaction_count_24h": row.transaction_count,
+        "transaction_count_24h": total_transaction_count,
         "unique_buyers_24h": row.unique_buyers,
         "unique_sellers_24h": row.unique_sellers,
+        "reservation_volume_24h": row.reservation_volume,
+        "reservation_count_24h": row.reservation_count,
+        "unique_reservers_24h": row.unique_reservers,
         "volume_change_percentage": row.volume_change_percentage,
         "price_momentum": []
     }))
@@ -623,62 +651,155 @@ pub(crate) async fn get_spt_liquidity_profile(
         .get_result(&mut conn)
         .await
         .optional()?;
-    let (name, symbol) = pool_info
-        .map(|p| (p.name, p.symbol))
-        .unwrap_or_else(|| ("Unknown".to_string(), "?".to_string()));
 
-    let metrics_query = "
-        SELECT 
-            COALESCE(SUM(myso_amount), 0) as total_volume,
-            COALESCE(COUNT(*), 0) as transaction_count,
-            COALESCE(MAX(myso_amount), 0) as largest_transaction,
-            COALESCE(COUNT(DISTINCT sender), 0) as unique_traders_count,
-            COALESCE(SUM(CASE WHEN transaction_type = 'BUY' THEN myso_amount ELSE 0 END), 0) as buy_volume,
-            COALESCE(SUM(CASE WHEN transaction_type = 'SELL' THEN myso_amount ELSE 0 END), 0) as sell_volume
-        FROM spt_transactions
-        WHERE pool_id = $1 AND time > NOW() - INTERVAL '24 hours'
+    if let Some(p) = pool_info {
+        let metrics_query = "
+            SELECT 
+                COALESCE(SUM(myso_amount), 0) as total_volume,
+                COALESCE(COUNT(*), 0) as transaction_count,
+                COALESCE(MAX(myso_amount), 0) as largest_transaction,
+                COALESCE(COUNT(DISTINCT sender), 0) as unique_traders_count,
+                COALESCE(SUM(CASE WHEN transaction_type = 'BUY' THEN myso_amount ELSE 0 END), 0) as buy_volume,
+                COALESCE(SUM(CASE WHEN transaction_type = 'SELL' THEN myso_amount ELSE 0 END), 0) as sell_volume
+            FROM spt_transactions
+            WHERE pool_id = $1 AND time > NOW() - INTERVAL '24 hours'
+        ";
+        #[derive(QueryableByName)]
+        struct MetricsRow {
+            #[diesel(sql_type = BigInt)]
+            total_volume: i64,
+            #[diesel(sql_type = BigInt)]
+            transaction_count: i64,
+            #[diesel(sql_type = BigInt)]
+            largest_transaction: i64,
+            #[diesel(sql_type = BigInt)]
+            unique_traders_count: i64,
+            #[diesel(sql_type = BigInt)]
+            buy_volume: i64,
+            #[diesel(sql_type = BigInt)]
+            sell_volume: i64,
+        }
+        let metrics: MetricsRow = diesel::sql_query(metrics_query)
+            .bind::<Text, _>(pool_id)
+            .get_result(&mut conn)
+            .await?;
+        let avg_tx = if metrics.transaction_count > 0 {
+            metrics.total_volume / metrics.transaction_count
+        } else {
+            0
+        };
+        let buy_sell_ratio = if metrics.sell_volume > 0 {
+            metrics.buy_volume as f64 / metrics.sell_volume as f64
+        } else {
+            0.0
+        };
+        return Ok(serde_json::json!({
+            "pool_id": pool_id,
+            "name": p.name,
+            "symbol": p.symbol,
+            "total_volume_24h": metrics.total_volume,
+            "transaction_count_24h": metrics.transaction_count,
+            "average_transaction_size": avg_tx,
+            "largest_transaction": metrics.largest_transaction,
+            "unique_traders_count": metrics.unique_traders_count,
+            "buy_volume_24h": metrics.buy_volume,
+            "sell_volume_24h": metrics.sell_volume,
+            "buy_sell_ratio": buy_sell_ratio,
+            "reservation_metrics": {}
+        }));
+    }
+
+    let reservation_pool_query = "
+        SELECT total_reserved, required_threshold, status, associated_id, token_type
+        FROM spt_reservation_pools
+        WHERE pool_id = $1
+        ORDER BY time DESC
+        LIMIT 1
     ";
     #[derive(QueryableByName)]
-    struct MetricsRow {
+    struct ReservationPoolRow {
         #[diesel(sql_type = BigInt)]
-        total_volume: i64,
+        total_reserved: i64,
         #[diesel(sql_type = BigInt)]
-        transaction_count: i64,
-        #[diesel(sql_type = BigInt)]
-        largest_transaction: i64,
-        #[diesel(sql_type = BigInt)]
-        unique_traders_count: i64,
-        #[diesel(sql_type = BigInt)]
-        buy_volume: i64,
-        #[diesel(sql_type = BigInt)]
-        sell_volume: i64,
+        required_threshold: i64,
+        #[diesel(sql_type = Text)]
+        status: String,
+        #[diesel(sql_type = Text)]
+        associated_id: String,
+        #[diesel(sql_type = SmallInt)]
+        token_type: i16,
     }
-    let metrics: MetricsRow = diesel::sql_query(metrics_query)
-        .bind::<Text, _>(pool_id)
-        .get_result(&mut conn)
-        .await?;
-    let avg_tx = if metrics.transaction_count > 0 {
-        metrics.total_volume / metrics.transaction_count
-    } else {
-        0
-    };
-    let buy_sell_ratio = if metrics.sell_volume > 0 {
-        metrics.buy_volume as f64 / metrics.sell_volume as f64
-    } else {
-        0.0
-    };
+    let reservation_pool_info: Option<ReservationPoolRow> =
+        diesel::sql_query(reservation_pool_query)
+            .bind::<Text, _>(pool_id)
+            .get_result(&mut conn)
+            .await
+            .optional()?;
+
+    if let Some(rp) = reservation_pool_info {
+        let reservation_metrics_query = "
+            SELECT 
+                COALESCE(SUM(amount), 0) as total_volume,
+                COALESCE(COUNT(*), 0) as transaction_count,
+                COALESCE(MAX(amount), 0) as largest_transaction,
+                COALESCE(COUNT(DISTINCT reserver_address), 0) as unique_traders_count
+            FROM spt_reservations
+            WHERE pool_id = $1 AND time > NOW() - INTERVAL '24 hours'
+        ";
+        #[derive(QueryableByName)]
+        struct ReservationMetricsRow {
+            #[diesel(sql_type = BigInt)]
+            total_volume: i64,
+            #[diesel(sql_type = BigInt)]
+            transaction_count: i64,
+            #[diesel(sql_type = BigInt)]
+            largest_transaction: i64,
+            #[diesel(sql_type = BigInt)]
+            unique_traders_count: i64,
+        }
+        let metrics: ReservationMetricsRow = diesel::sql_query(reservation_metrics_query)
+            .bind::<Text, _>(pool_id)
+            .get_result(&mut conn)
+            .await?;
+        let avg_tx = if metrics.transaction_count > 0 {
+            metrics.total_volume / metrics.transaction_count
+        } else {
+            0
+        };
+        return Ok(serde_json::json!({
+            "pool_id": pool_id,
+            "name": "Reservation Pool",
+            "symbol": "?",
+            "total_volume_24h": metrics.total_volume,
+            "transaction_count_24h": metrics.transaction_count,
+            "average_transaction_size": avg_tx,
+            "largest_transaction": metrics.largest_transaction,
+            "unique_traders_count": metrics.unique_traders_count,
+            "buy_volume_24h": metrics.total_volume,
+            "sell_volume_24h": 0,
+            "buy_sell_ratio": 0.0,
+            "reservation_metrics": {
+                "total_reserved": rp.total_reserved,
+                "required_threshold": rp.required_threshold,
+                "status": rp.status,
+                "associated_id": rp.associated_id,
+                "token_type": rp.token_type
+            }
+        }));
+    }
+
     Ok(serde_json::json!({
         "pool_id": pool_id,
-        "name": name,
-        "symbol": symbol,
-        "total_volume_24h": metrics.total_volume,
-        "transaction_count_24h": metrics.transaction_count,
-        "average_transaction_size": avg_tx,
-        "largest_transaction": metrics.largest_transaction,
-        "unique_traders_count": metrics.unique_traders_count,
-        "buy_volume_24h": metrics.buy_volume,
-        "sell_volume_24h": metrics.sell_volume,
-        "buy_sell_ratio": buy_sell_ratio,
+        "name": "Unknown",
+        "symbol": "?",
+        "total_volume_24h": 0,
+        "transaction_count_24h": 0,
+        "average_transaction_size": 0,
+        "largest_transaction": 0,
+        "unique_traders_count": 0,
+        "buy_volume_24h": 0,
+        "sell_volume_24h": 0,
+        "buy_sell_ratio": 0.0,
         "reservation_metrics": {}
     }))
 }
