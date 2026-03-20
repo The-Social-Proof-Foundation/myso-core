@@ -544,38 +544,38 @@ pub(crate) async fn get_spt_market_sentiment(db: &Db) -> Result<serde_json::Valu
     let query = r#"
         WITH current_volume AS (
             SELECT
-                COALESCE(SUM(CASE WHEN transaction_type = 'BUY' THEN myso_amount ELSE 0 END), 0) as buy_volume,
-                COALESCE(SUM(CASE WHEN transaction_type = 'SELL' THEN myso_amount ELSE 0 END), 0) as sell_volume,
-                COALESCE(COUNT(*), 0) as transaction_count,
-                COALESCE(COUNT(DISTINCT CASE WHEN transaction_type = 'BUY' THEN sender END), 0) as unique_buyers,
-                COALESCE(COUNT(DISTINCT CASE WHEN transaction_type = 'SELL' THEN sender END), 0) as unique_sellers
+                COALESCE(SUM(CASE WHEN transaction_type = 'BUY' THEN myso_amount ELSE 0 END), 0)::bigint as buy_volume,
+                COALESCE(SUM(CASE WHEN transaction_type = 'SELL' THEN myso_amount ELSE 0 END), 0)::bigint as sell_volume,
+                COALESCE(COUNT(*), 0)::bigint as transaction_count,
+                COALESCE(COUNT(DISTINCT CASE WHEN transaction_type = 'BUY' THEN sender END), 0)::bigint as unique_buyers,
+                COALESCE(COUNT(DISTINCT CASE WHEN transaction_type = 'SELL' THEN sender END), 0)::bigint as unique_sellers
             FROM spt_transactions
             WHERE time > NOW() - INTERVAL '24 hours'
         ),
         previous_volume AS (
-            SELECT COALESCE(SUM(myso_amount), 0) as total_volume
+            SELECT COALESCE(SUM(myso_amount), 0)::bigint as total_volume
             FROM spt_transactions
             WHERE time BETWEEN NOW() - INTERVAL '48 hours' AND NOW() - INTERVAL '24 hours'
         ),
         reservation_volume AS (
             SELECT
-                COALESCE(SUM(amount), 0) as reservation_volume,
-                COALESCE(COUNT(*), 0) as reservation_count,
-                COALESCE(COUNT(DISTINCT reserver_address), 0) as unique_reservers
+                COALESCE(SUM(amount), 0)::bigint as reservation_volume,
+                COALESCE(COUNT(*), 0)::bigint as reservation_count,
+                COALESCE(COUNT(DISTINCT reserver_address), 0)::bigint as unique_reservers
             FROM spt_reservations
             WHERE time > NOW() - INTERVAL '24 hours'
         ),
         previous_reservation_volume AS (
-            SELECT COALESCE(SUM(amount), 0) as total_volume
+            SELECT COALESCE(SUM(amount), 0)::bigint as total_volume
             FROM spt_reservations
             WHERE time BETWEEN NOW() - INTERVAL '48 hours' AND NOW() - INTERVAL '24 hours'
         )
         SELECT 
             c.buy_volume, c.sell_volume, c.transaction_count,
             c.unique_buyers, c.unique_sellers,
-            COALESCE(r.reservation_volume, 0) as reservation_volume,
-            COALESCE(r.reservation_count, 0) as reservation_count,
-            COALESCE(r.unique_reservers, 0) as unique_reservers,
+            COALESCE(r.reservation_volume, 0)::bigint as reservation_volume,
+            COALESCE(r.reservation_count, 0)::bigint as reservation_count,
+            COALESCE(r.unique_reservers, 0)::bigint as unique_reservers,
             CASE WHEN COALESCE(p.total_volume, 0) + COALESCE(pr.total_volume, 0) = 0 THEN 0.0
                  ELSE ((c.buy_volume + c.sell_volume + COALESCE(r.reservation_volume, 0)) - (p.total_volume + COALESCE(pr.total_volume, 0))) * 100.0 / (p.total_volume + COALESCE(pr.total_volume, 0))
             END as volume_change_percentage,
