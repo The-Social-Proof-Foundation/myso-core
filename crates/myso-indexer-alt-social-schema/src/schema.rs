@@ -562,7 +562,8 @@ diesel::table! {
         developer_address -> Text,
         terms_of_service -> Nullable<Text>,
         privacy_policy -> Nullable<Text>,
-        platforms -> Nullable<Jsonb>,
+        #[sql_name = "platforms"]
+        platform_names -> Nullable<Jsonb>,
         links -> Nullable<Jsonb>,
         status -> Int2,
         release_date -> Nullable<Text>,
@@ -755,6 +756,8 @@ diesel::table! {
         poc_media_type -> Nullable<Int2>,
         poc_oracle_address -> Nullable<Text>,
         poc_analyzed_at -> Nullable<Int8>,
+        mydata_id -> Nullable<Text>,
+        revenue_recipient -> Nullable<Text>,
     }
 }
 
