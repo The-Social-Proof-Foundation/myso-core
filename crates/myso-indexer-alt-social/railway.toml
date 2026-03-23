@@ -28,7 +28,7 @@ PGUSER = "${{Postgres.PGUSER}}"
 SERVER_HOST = "0.0.0.0"
 
 # Logging configuration  
-RUST_LOG = "info,myso_social_indexer=debug"
+RUST_LOG = "info,myso_indexer_alt_social=debug,myso_indexer_alt_framework=info"
 RUST_BACKTRACE = "1"
 
 # Blockchain Configuration - gRPC for streaming and ingestion fallback

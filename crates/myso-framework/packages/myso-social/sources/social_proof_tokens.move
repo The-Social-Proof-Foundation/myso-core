@@ -1781,12 +1781,8 @@ module social_contracts::social_proof_tokens {
         let total_reserved = reservation_pool_object.info.total_reserved;
         let sqrt_reserved = math::sqrt(total_reserved);
         let fourth_root_reserved = math::sqrt(sqrt_reserved); // fourth root: sqrt(sqrt(x)) = x^(1/4)
-        // Overflow protection: check before multiplication
-        assert!(sqrt_reserved == 0 || sqrt_reserved <= MAX_U64 / fourth_root_reserved, EOverflow);
-        let mut scale_factor = sqrt_reserved * fourth_root_reserved; // reserved^0.75
-        
-        // Divide the scale factor to make each token worth more than 1 MYSO
-        scale_factor = scale_factor / 1000;
+        // Use u128 to avoid overflow in sqrt * fourth_root (reserved^0.75)
+        let mut scale_factor = (((sqrt_reserved as u128) * (fourth_root_reserved as u128)) / 1000) as u64;
         
         // Apply different base multipliers for profile vs post tokens
         let mut initial_token_supply = if (reservation_pool_object.info.token_type == TOKEN_TYPE_PROFILE) {
@@ -1869,9 +1865,8 @@ module social_contracts::social_proof_tokens {
             let reservation_amount = *table::borrow(&reservation_pool_object.reservations, reserver);
             
             // Calculate token amount based on reserver's proportion of total reservation
-            // Overflow protection: check before multiplication
-            assert!(reservation_amount <= MAX_U64 / initial_token_supply, EOverflow);
-            let token_amount = (reservation_amount * initial_token_supply) / total_reserved;
+            // Use u128 to avoid overflow when reservation_amount * initial_token_supply exceeds u64
+            let token_amount = (((reservation_amount as u128) * (initial_token_supply as u128)) / (total_reserved as u128)) as u64;
             
             if (token_amount > 0) {
                 // Update holder's balance in the pool

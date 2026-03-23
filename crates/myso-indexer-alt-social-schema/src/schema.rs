@@ -562,8 +562,7 @@ diesel::table! {
         developer_address -> Text,
         terms_of_service -> Nullable<Text>,
         privacy_policy -> Nullable<Text>,
-        #[sql_name = "platforms"]
-        platform_names -> Nullable<Jsonb>,
+        platforms -> Nullable<Jsonb>,
         links -> Nullable<Jsonb>,
         status -> Int2,
         release_date -> Nullable<Text>,
@@ -739,8 +738,6 @@ diesel::table! {
         time -> Timestamptz,
         promotion_id -> Nullable<Text>,
         poc_id -> Nullable<Text>,
-        mydata_id -> Nullable<Text>,
-        revenue_recipient -> Nullable<Text>,
         revenue_redirect_to -> Nullable<Text>,
         revenue_redirect_percentage -> Nullable<Int8>,
         requires_subscription -> Nullable<Bool>,
@@ -1489,12 +1486,12 @@ diesel::table! {
         reserver_address -> Text,
         amount -> Int8,
         reserved_at -> Int8,
-        fee_amount -> Nullable<Int8>,
-        creator_fee -> Nullable<Int8>,
-        platform_fee -> Nullable<Int8>,
-        treasury_fee -> Nullable<Int8>,
         time -> Timestamptz,
         transaction_id -> Text,
+        treasury_fee -> Nullable<Int8>,
+        platform_fee -> Nullable<Int8>,
+        creator_fee -> Nullable<Int8>,
+        fee_amount -> Nullable<Int8>,
     }
 }
 

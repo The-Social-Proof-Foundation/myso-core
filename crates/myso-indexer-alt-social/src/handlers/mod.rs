@@ -59,7 +59,8 @@ use myso_indexer_alt_social_schema::models::{
     NewSptPriceHistory, NewSptReservation, NewSptReservationPool, NewSptRevenue, NewSptTransaction,
     NewSubscriptionEvent, NewSubscriptionRevenue, NewTip, NewUnifiedRevenue, NewUpgradeEvent,
     NewVestingEvent, NewVestingWallet, NewVoteDecryptionFailure, ProfileUpdateSet,
-    ProposalUpdateSet,
+    ProposalUpdateSet, RESERVATION_POOL_STATUS_ACTIVE, RESERVATION_POOL_STATUS_THRESHOLD_MET,
+    TOKEN_TYPE_POST,
 };
 use myso_indexer_alt_social_schema::schema::{
     anonymous_votes, blocked_events, blocked_profiles, comments, community_votes, delegate_ratings,
@@ -95,7 +96,7 @@ use myso_indexer_alt_social_schema::schema::{
 use myso_indexer_alt_social_schema::schema::{vesting_events, vesting_wallets};
 use myso_types::base_types::ObjectID;
 use myso_types::MYSO_SOCIAL_PACKAGE_ID;
-use tracing::{debug, warn};
+use tracing::{debug, info, warn};
 
 fn is_social_package_event(package_id: &ObjectID, type_address: &AccountAddress) -> bool {
     use std::ops::Deref;
@@ -467,6 +468,10 @@ pub enum SocialEventRow {
     SptReservation {
         associated_id: String,
         reservation: NewSptReservation,
+        token_type: i16,
+        total_reserved: i64,
+        threshold_met: bool,
+        created_at: i64,
     },
     SptReservationPoolUpdate {
         pool_id: String,
@@ -673,11 +678,13 @@ impl Processor for SocialEvents {
                 if !package_matches {
                     if ev.type_.module.as_str() == "profile"
                         || ev.type_.module.as_str() == "governance"
+                        || ev.type_.module.as_str() == "social_proof_tokens"
                     {
-                        debug!(
+                        warn!(
                             package_id = %ev.package_id,
                             type_address = %ev.type_.address,
                             module = %ev.type_.module,
+                            event_name = %ev.type_.name,
                             "skipping event: package mismatch (expected 0x50c1)"
                         );
                     }
@@ -699,13 +706,22 @@ impl Processor for SocialEvents {
                         "profile event received for processing"
                     );
                 }
-                if ev.contents.is_empty() && module == "profile" {
+                if module == "social_proof_tokens" {
+                    info!(
+                        event_name = %event_name,
+                        event_id = %event_id,
+                        contents_len = ev.contents.len(),
+                        is_empty = ev.contents.is_empty(),
+                        "SPT event received for processing"
+                    );
+                }
+                if ev.contents.is_empty() && (module == "profile" || module == "social_proof_tokens") {
                     warn!(
                         module = %module,
                         event_name = %event_name,
                         event_id = %event_id,
                         event_type = %ev.type_.to_canonical_string(true),
-                        "skipping profile event: empty contents (proto/ingestion may not populate event.contents)"
+                        "skipping event: empty contents (proto/ingestion may not populate event.contents)"
                     );
                     continue;
                 }
@@ -752,14 +768,31 @@ impl Processor for SocialEvents {
                     epoch,
                     timestamp_ms,
                 ) {
+                    if module == "social_proof_tokens" && !rows.is_empty() {
+                        info!(
+                            event_name = %event_name,
+                            event_id = %event_id,
+                            rows = rows.len(),
+                            "SPT event produced rows"
+                        );
+                    }
                     values.extend(rows);
                 } else {
-                    debug!(
-                        module = %module,
-                        event_name = %event_name,
-                        event_id = %event_id,
-                        "skipping event: no handler for this module/event"
-                    );
+                    if module == "social_proof_tokens" {
+                        info!(
+                            module = %module,
+                            event_name = %event_name,
+                            event_id = %event_id,
+                            "skipping SPT event: no handler for this module/event"
+                        );
+                    } else {
+                        debug!(
+                            module = %module,
+                            event_name = %event_name,
+                            event_id = %event_id,
+                            "skipping event: no handler for this module/event"
+                        );
+                    }
                 }
             }
         }
@@ -2454,6 +2487,10 @@ impl Handler for SocialEvents {
                 SocialEventRow::SptReservation {
                     associated_id,
                     reservation,
+                    token_type,
+                    total_reserved,
+                    threshold_met,
+                    created_at,
                 } => {
                     #[derive(QueryableByName)]
                     struct PoolIdRow {
@@ -2467,19 +2504,76 @@ impl Handler for SocialEvents {
                     .get_result(conn)
                     .await
                     .optional()?;
-                    if let Some(row) = pool_id_row {
-                        let mut r = reservation.clone();
-                        r.pool_id = row.pool_id;
-                        total += diesel::insert_into(spt_reservations::table)
-                            .values(r)
+                    let pool_id = if let Some(ref row) = pool_id_row {
+                        row.pool_id.clone()
+                    } else {
+                        let synthetic_pool_id = format!("reservation_pool_{}", associated_id);
+                        #[derive(QueryableByName)]
+                        struct OwnerRow {
+                            #[diesel(sql_type = Text)]
+                            owner: String,
+                        }
+                        let owner = if *token_type == TOKEN_TYPE_POST {
+                            diesel::sql_query(
+                                "SELECT owner FROM posts WHERE post_id = $1 ORDER BY time DESC LIMIT 1",
+                            )
+                            .bind::<Text, _>(associated_id)
+                            .get_result::<OwnerRow>(conn)
+                            .await
+                            .ok()
+                            .map(|r| r.owner)
+                        } else {
+                            diesel::sql_query(
+                                "SELECT owner_address FROM profiles WHERE profile_id = $1 OR owner_address = $1 LIMIT 1",
+                            )
+                            .bind::<Text, _>(associated_id)
+                            .get_result::<OwnerRow>(conn)
+                            .await
+                            .ok()
+                            .map(|r| r.owner)
+                        }
+                        .unwrap_or_else(|| reservation.reserver_address.clone());
+                        let status = if *threshold_met {
+                            RESERVATION_POOL_STATUS_THRESHOLD_MET.to_string()
+                        } else {
+                            RESERVATION_POOL_STATUS_ACTIVE.to_string()
+                        };
+                        let synthetic_pool = NewSptReservationPool {
+                            pool_id: synthetic_pool_id.clone(),
+                            associated_id: associated_id.clone(),
+                            token_type: *token_type,
+                            owner: owner.clone(),
+                            total_reserved: *total_reserved,
+                            required_threshold: *total_reserved,
+                            status,
+                            created_at: *created_at,
+                            time: reservation.time,
+                            transaction_id: reservation.transaction_id.clone(),
+                        };
+                        total += diesel::insert_into(spt_reservation_pools::table)
+                            .values(&synthetic_pool)
                             .execute(conn)
                             .await?;
-                    } else {
-                        warn!(
+                        info!(
                             associated_id = %associated_id,
-                            "skipping SptReservation insert: no pool found in spt_reservation_pools"
+                            pool_id = %synthetic_pool_id,
+                            "created synthetic SptReservationPool (no canonical pool found)"
                         );
-                    }
+                        synthetic_pool_id
+                    };
+                    let mut r = reservation.clone();
+                    r.pool_id = pool_id.clone();
+                    total += diesel::insert_into(spt_reservations::table)
+                        .values(r)
+                        .execute(conn)
+                        .await?;
+                    info!(
+                        associated_id = %associated_id,
+                        pool_id = %pool_id,
+                        reserver = %reservation.reserver_address,
+                        amount = %reservation.amount,
+                        "SptReservation inserted"
+                    );
                 }
                 SocialEventRow::SptReservationPoolUpdate {
                     pool_id: _pool_id,

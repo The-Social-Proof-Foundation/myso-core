@@ -387,6 +387,7 @@ fn process_reservation_created_event(
     let amount = json_to_i64(data.get("amount")?);
     let total_reserved = json_to_i64(data.get("total_reserved")?);
     let threshold_met = data.get("threshold_met")?.as_bool().unwrap_or(false);
+    let token_type = token_type_from_u8(data.get("token_type")?.as_u64()?).unwrap_or(TOKEN_TYPE_POST);
     // Move uses `epoch_timestamp_ms` for this field — already milliseconds (including sim / small values).
     let reserved_at = json_to_i64(data.get("reserved_at")?);
     let fee_amount = data.get("fee_amount").map(json_to_i64);
@@ -418,6 +419,10 @@ fn process_reservation_created_event(
         SocialEventRow::SptReservation {
             associated_id: associated_id.clone(),
             reservation,
+            token_type,
+            total_reserved,
+            threshold_met,
+            created_at: reserved_at,
         },
         SocialEventRow::SptReservationPoolUpdate {
             pool_id,
@@ -438,6 +443,7 @@ fn process_reservation_withdrawn_event(
     let associated_id = json_str(data.get("associated_id")?)?;
     let reserver = json_str(data.get("reserver")?)?;
     let total_reserved = json_to_i64(data.get("total_reserved")?);
+    let token_type = token_type_from_u8(data.get("token_type")?.as_u64()?).unwrap_or(TOKEN_TYPE_POST);
     // Same as `reserved_at`: chain supplies epoch milliseconds.
     let withdrawn_at = json_to_i64(data.get("withdrawn_at")?);
     let fee_amount = data.get("fee_amount").map(json_to_i64);
@@ -464,6 +470,10 @@ fn process_reservation_withdrawn_event(
         SocialEventRow::SptReservation {
             associated_id: associated_id.clone(),
             reservation,
+            token_type,
+            total_reserved,
+            threshold_met: false,
+            created_at: withdrawn_at,
         },
         SocialEventRow::SptReservationPoolUpdate {
             pool_id,
