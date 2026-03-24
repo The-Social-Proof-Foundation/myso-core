@@ -85,7 +85,7 @@ if [ -n "$RPC_URL" ]; then\n\
 fi\n\
 if [ -n "$FIRST_CHECKPOINT" ]; then\n\
   EXTRA_ARGS="$EXTRA_ARGS --first-checkpoint $FIRST_CHECKPOINT"\n\
-  echo "FIRST_CHECKPOINT: $FIRST_CHECKPOINT (used when pipeline has no watermark)"\n\
+  echo "FIRST_CHECKPOINT: $FIRST_CHECKPOINT (used when pipelines have no watermarks)"\n\
 fi\n\
 \n\
 exec myso-social-indexer --metrics-address "0.0.0.0:${PORT:-8080}" $EXTRA_ARGS' > /usr/local/bin/entrypoint.sh && \

@@ -12,8 +12,11 @@ use myso_indexer_alt_metrics::{MetricsArgs, MetricsService};
 use myso_indexer_alt_social_schema::MIGRATIONS;
 use myso_pg_db::{Db, DbArgs};
 use prometheus::Registry;
-use social_indexer::SocialEnv;
-use social_indexer::SocialEvents;
+use social_indexer::{
+    BlockingHandler, GovernanceHandler, InsuranceHandler, MyDataHandler, PlatformHandler,
+    PocHandler, PostsHandler, ProfilesHandler, SocialEnv, SocialGraphHandler, SpotHandler,
+    SubscriptionHandler, SptHandler, UpgradeHandler,
+};
 use std::net::SocketAddr;
 use std::path::PathBuf;
 use url::Url;
@@ -111,7 +114,43 @@ async fn main() -> Result<(), anyhow::Error> {
     .await?;
 
     indexer
-        .concurrent_pipeline(SocialEvents, Default::default())
+        .concurrent_pipeline(BlockingHandler, Default::default())
+        .await?;
+    indexer
+        .concurrent_pipeline(GovernanceHandler, Default::default())
+        .await?;
+    indexer
+        .concurrent_pipeline(UpgradeHandler, Default::default())
+        .await?;
+    indexer
+        .concurrent_pipeline(SocialGraphHandler, Default::default())
+        .await?;
+    indexer
+        .concurrent_pipeline(PlatformHandler, Default::default())
+        .await?;
+    indexer
+        .concurrent_pipeline(MyDataHandler, Default::default())
+        .await?;
+    indexer
+        .concurrent_pipeline(InsuranceHandler, Default::default())
+        .await?;
+    indexer
+        .concurrent_pipeline(SpotHandler, Default::default())
+        .await?;
+    indexer
+        .concurrent_pipeline(SptHandler, Default::default())
+        .await?;
+    indexer
+        .concurrent_pipeline(PocHandler, Default::default())
+        .await?;
+    indexer
+        .concurrent_pipeline(SubscriptionHandler, Default::default())
+        .await?;
+    indexer
+        .concurrent_pipeline(ProfilesHandler, Default::default())
+        .await?;
+    indexer
+        .concurrent_pipeline(PostsHandler, Default::default())
         .await?;
 
     let s_indexer = indexer.run().await?;

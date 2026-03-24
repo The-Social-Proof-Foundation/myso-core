@@ -27,18 +27,20 @@ PGUSER = "${{Postgres.PGUSER}}"
 # Server Configuration
 SERVER_HOST = "0.0.0.0"
 
-# Logging configuration  
-RUST_LOG = "info,myso_indexer_alt_social=debug,myso_indexer_alt_framework=info"
+# Logging configuration - framework=warn to avoid Railway 500 logs/sec rate limit at startup (13 pipelines)
+RUST_LOG = "info,myso_indexer_alt_social=debug,myso_indexer_alt_framework=warn"
 RUST_BACKTRACE = "1"
 
 # Blockchain Configuration - gRPC for streaming and ingestion fallback
 RPC_API_URL = "http://fullnode.testnet.mysocial.network:9000"
 STREAMING_URL = "http://fullnode.testnet.mysocial.network:9000"
 
-# Optional: Start from a specific checkpoint when pipeline has no watermark.
+# Optional: Start from a specific checkpoint when pipelines have no watermarks.
 # Set near chain head to catch up (e.g. current_head - 10000). Update as chain grows.
 # If Grafana shows 0 checkpoints: 1) Set FIRST_CHECKPOINT near head (uncomment below).
-# 2) If resuming from too far back, reset watermark: DELETE FROM watermarks WHERE pipeline = 'social_events';
+# 2) If resuming from too far back, reset watermarks for affected pipelines, e.g.:
+#    DELETE FROM watermarks WHERE pipeline = 'profiles';
+#    Or reset all: DELETE FROM watermarks;
 # 3) Restart the indexer.
 # FIRST_CHECKPOINT = "2000000"
 

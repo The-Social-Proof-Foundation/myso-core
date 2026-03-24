@@ -5,7 +5,11 @@ use url::Url;
 
 mod handlers;
 
-pub use handlers::SocialEvents;
+pub use handlers::{
+    BlockingHandler, GovernanceHandler, InsuranceHandler, MyDataHandler, PlatformHandler,
+    PocHandler, PostsHandler, ProfilesHandler, SocialGraphHandler, SpotHandler, SubscriptionHandler,
+    SptHandler, UpgradeHandler,
+};
 
 pub const MAINNET_REMOTE_STORE_URL: &str = "https://checkpoints.mainnet.mysocial.network";
 pub const TESTNET_REMOTE_STORE_URL: &str =
@@ -73,14 +77,62 @@ pub async fn setup_social_indexer(
     .context("Failed to create social indexer")?;
 
     indexer
-        .concurrent_pipeline(SocialEvents, Default::default())
+        .concurrent_pipeline(BlockingHandler, Default::default())
         .await
-        .context("Failed to add SocialEvents pipeline")?;
+        .context("Failed to add BlockingHandler pipeline")?;
+    indexer
+        .concurrent_pipeline(GovernanceHandler, Default::default())
+        .await
+        .context("Failed to add GovernanceHandler pipeline")?;
+    indexer
+        .concurrent_pipeline(UpgradeHandler, Default::default())
+        .await
+        .context("Failed to add UpgradeHandler pipeline")?;
+    indexer
+        .concurrent_pipeline(SocialGraphHandler, Default::default())
+        .await
+        .context("Failed to add SocialGraphHandler pipeline")?;
+    indexer
+        .concurrent_pipeline(PlatformHandler, Default::default())
+        .await
+        .context("Failed to add PlatformHandler pipeline")?;
+    indexer
+        .concurrent_pipeline(MyDataHandler, Default::default())
+        .await
+        .context("Failed to add MyDataHandler pipeline")?;
+    indexer
+        .concurrent_pipeline(InsuranceHandler, Default::default())
+        .await
+        .context("Failed to add InsuranceHandler pipeline")?;
+    indexer
+        .concurrent_pipeline(SpotHandler, Default::default())
+        .await
+        .context("Failed to add SpotHandler pipeline")?;
+    indexer
+        .concurrent_pipeline(SptHandler, Default::default())
+        .await
+        .context("Failed to add SptHandler pipeline")?;
+    indexer
+        .concurrent_pipeline(PocHandler, Default::default())
+        .await
+        .context("Failed to add PocHandler pipeline")?;
+    indexer
+        .concurrent_pipeline(SubscriptionHandler, Default::default())
+        .await
+        .context("Failed to add SubscriptionHandler pipeline")?;
+    indexer
+        .concurrent_pipeline(ProfilesHandler, Default::default())
+        .await
+        .context("Failed to add ProfilesHandler pipeline")?;
+    indexer
+        .concurrent_pipeline(PostsHandler, Default::default())
+        .await
+        .context("Failed to add PostsHandler pipeline")?;
 
     tracing::info!(
-        pipeline = "social_events",
-        "Social pipeline registered — indexes profiles, governance, platforms, posts; \
-         resuming from watermark or checkpoint 0"
+        "Social indexer pipelines registered — blocking, governance, upgrade, social_graph, \
+         platform, mydata, insurance, spot, spt, poc, subscription, profiles, posts; \
+         resuming from watermarks or checkpoint 0"
     );
 
     let s_indexer = indexer

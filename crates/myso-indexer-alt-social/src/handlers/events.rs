@@ -21,6 +21,12 @@ impl EventParseError {
     }
 }
 
+impl std::fmt::Display for EventParseError {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "{} (hex preview: {})", self.error, self.contents_hex_preview(32))
+    }
+}
+
 fn bcs_parse_err(e: bcs::Error, contents: &[u8]) -> EventParseError {
     EventParseError {
         error: e.to_string(),
@@ -1172,6 +1178,17 @@ pub fn parse_event_contents(
     event_name: &str,
     contents: &[u8],
 ) -> Result<serde_json::Value, EventParseError> {
+    parse_event_contents_inner(module, event_name, contents).map_err(|e| {
+        tracing::debug!(%module, %event_name, error = %e.error, hex_preview = %e.contents_hex_preview(32), "event parse failed");
+        e
+    })
+}
+
+fn parse_event_contents_inner(
+    module: &str,
+    event_name: &str,
+    contents: &[u8],
+) -> Result<serde_json::Value, EventParseError> {
     let result = match module {
         "profile" => parse_profile_event(event_name, contents),
         "governance" => parse_governance_event(event_name, contents),
@@ -1196,15 +1213,16 @@ pub fn parse_event_contents(
     }
 
     match serde_json::from_slice::<serde_json::Value>(contents) {
-        Ok(json) => return Ok(json),
+        Ok(json) => Ok(json),
         Err(json_err) => {
             if let Err(e) = result {
-                return Err(e);
+                Err(e)
+            } else {
+                Err(EventParseError {
+                    error: json_err.to_string(),
+                    contents: contents.to_vec(),
+                })
             }
-            return Err(EventParseError {
-                error: json_err.to_string(),
-                contents: contents.to_vec(),
-            });
         }
     }
 }
