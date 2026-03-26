@@ -260,8 +260,22 @@ impl Profile {
         self.inner.reservation_pool_address.as_deref()
     }
 
-    /// Social proof token info.
-    async fn social_proof_token(&self) -> Option<SocialProofToken> {
+    /// Social proof token info (reservation pool fields match nested profile summaries; loads via social reader when configured).
+    async fn social_proof_token(&self, ctx: &Context<'_>) -> Option<SocialProofToken> {
+        if let Some(reader_opt) =
+            ctx.data_opt::<std::sync::Arc<Option<myso_indexer_alt_social_reader::SocialPgReader>>>()
+        {
+            if let Some(reader) = reader_opt.as_ref().as_ref() {
+                if let Ok(Some(enriched)) = reader
+                    .get_profile_summary_enriched(&self.inner.owner_address)
+                    .await
+                {
+                    if let Some(ref spt) = enriched.social_proof_token {
+                        return Some(SocialProofToken::from(spt));
+                    }
+                }
+            }
+        }
         self.inner
             .social_proof_token
             .as_ref()
