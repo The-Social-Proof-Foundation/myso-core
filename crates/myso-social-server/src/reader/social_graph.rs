@@ -34,12 +34,14 @@ pub(crate) async fn enrich_users_with_universal_data(
     if wallet_addresses.is_empty() {
         return Ok(HashMap::new());
     }
+    let wallet_lower: Vec<String> = wallet_addresses.iter().map(|a| a.to_lowercase()).collect();
+
     let query = diesel::sql_query(
         r#"
         WITH latest_profiles AS (
             SELECT DISTINCT ON (COALESCE(profile_id, owner_address)) *
             FROM profiles
-            WHERE owner_address = ANY($1::TEXT[])
+            WHERE LOWER(owner_address) = ANY($1::TEXT[])
             ORDER BY COALESCE(profile_id, owner_address), updated_at DESC
         )
         SELECT
@@ -67,25 +69,27 @@ pub(crate) async fn enrich_users_with_universal_data(
             pb.revoked = false
         LEFT JOIN LATERAL (
             SELECT * FROM spt_pools spt_row
-            WHERE spt_row.associated_id = ('profile_' || p.owner_address)
-               OR (p.profile_id IS NOT NULL AND spt_row.associated_id = p.profile_id)
+            WHERE LOWER(spt_row.associated_id) = LOWER('profile_' || p.owner_address)
+               OR (p.profile_id IS NOT NULL AND LOWER(spt_row.associated_id) = LOWER(p.profile_id))
             ORDER BY spt_row.time DESC
             LIMIT 1
         ) spt ON true
         LEFT JOIN LATERAL (
             SELECT * FROM spt_reservation_pools sr
-            WHERE (p.reservation_pool_address IS NOT NULL AND sr.pool_id = p.reservation_pool_address)
-               OR sr.associated_id = ('profile_' || p.owner_address)
-               OR (p.profile_id IS NOT NULL AND sr.associated_id = p.profile_id)
+            WHERE (p.reservation_pool_address IS NOT NULL
+                   AND LOWER(TRIM(sr.pool_id)) = LOWER(TRIM(p.reservation_pool_address)))
+               OR LOWER(sr.associated_id) = LOWER('profile_' || p.owner_address)
+               OR (p.profile_id IS NOT NULL AND LOWER(sr.associated_id) = LOWER(p.profile_id))
             ORDER BY
-                (p.reservation_pool_address IS NOT NULL AND sr.pool_id IS NOT DISTINCT FROM p.reservation_pool_address) DESC,
+                (p.reservation_pool_address IS NOT NULL
+                 AND LOWER(TRIM(sr.pool_id)) = LOWER(TRIM(p.reservation_pool_address))) DESC,
                 sr.time DESC
             LIMIT 1
         ) rp ON true
-        WHERE p.owner_address = ANY($1::TEXT[])
+        WHERE LOWER(p.owner_address) = ANY($1::TEXT[])
         "#,
     )
-    .bind::<Array<Text>, _>(&wallet_addresses);
+    .bind::<Array<Text>, _>(&wallet_lower);
 
     #[derive(QueryableByName)]
     #[diesel(check_for_backend(diesel::pg::Pg))]
@@ -191,25 +195,27 @@ pub(crate) async fn enrich_users_with_universal_data(
             None
         };
 
+        let owner_key = row.owner_address.to_lowercase();
         let user_result = UniversalUserResult {
-            owner_address: row.owner_address.clone(),
-            wallet_address: row.owner_address.clone(),
+            owner_address: owner_key.clone(),
+            wallet_address: owner_key.clone(),
             username: Some(row.username),
             fullname: row.display_name,
             profile_photo: row.profile_photo,
             social_proof_token,
             selected_badge,
         };
-        result.insert(row.owner_address, user_result);
+        result.insert(owner_key, user_result);
     }
 
-    for wallet_address in wallet_addresses {
-        if !result.contains_key(&wallet_address) {
+    for wallet_address in &wallet_addresses {
+        let key = wallet_address.to_lowercase();
+        if !result.contains_key(&key) {
             result.insert(
-                wallet_address.clone(),
+                key.clone(),
                 UniversalUserResult {
-                    owner_address: wallet_address.clone(),
-                    wallet_address: wallet_address.clone(),
+                    owner_address: key.clone(),
+                    wallet_address: key,
                     username: None,
                     fullname: None,
                     profile_photo: None,

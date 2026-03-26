@@ -48,7 +48,7 @@ pub(crate) async fn get_profiles_enriched(
     let enriched = enrich_users_with_universal_data(&mut conn, wallet_addresses).await?;
     let result: Vec<UniversalUserResult> = profiles
         .iter()
-        .filter_map(|p| enriched.get(&p.owner_address).cloned())
+        .filter_map(|p| enriched.get(&p.owner_address.to_lowercase()).cloned())
         .collect();
     Ok(result)
 }
@@ -92,7 +92,7 @@ pub(crate) async fn get_profile_or_wallet_by_address(
             let enriched =
                 enrich_users_with_universal_data(&mut conn, vec![address.to_string()]).await?;
             let mut response = ProfileByAddressResponse::from(profile);
-            if let Some(e) = enriched.get(address) {
+            if let Some(e) = enriched.get(&address.to_lowercase()) {
                 response = response.with_enrichment(e);
             }
             Ok(response)

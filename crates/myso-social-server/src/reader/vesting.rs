@@ -265,29 +265,29 @@ pub(crate) async fn list_vesting_wallets(
     let owner_addresses: Vec<String> = wallets.iter().map(|w| w.owner_address.clone()).collect();
     let user_map = enrich_users_with_universal_data(&mut conn, owner_addresses).await?;
 
-    let wallets_with_profile: Vec<VestingWalletWithProfile> =
-        wallets
-            .into_iter()
-            .map(|w| {
-                let with_status =
-                    VestingWalletWithStatus::from_wallet(w.clone(), current_time_ms as u64);
-                let user = user_map.get(&w.owner_address).cloned().unwrap_or_else(|| {
-                    UniversalUserResult {
-                        owner_address: w.owner_address.clone(),
-                        wallet_address: w.owner_address.clone(),
-                        username: None,
-                        fullname: None,
-                        profile_photo: None,
-                        social_proof_token: None,
-                        selected_badge: None,
-                    }
+    let wallets_with_profile: Vec<VestingWalletWithProfile> = wallets
+        .into_iter()
+        .map(|w| {
+            let with_status =
+                VestingWalletWithStatus::from_wallet(w.clone(), current_time_ms as u64);
+            let user = user_map
+                .get(&w.owner_address.to_lowercase())
+                .cloned()
+                .unwrap_or_else(|| UniversalUserResult {
+                    owner_address: w.owner_address.clone(),
+                    wallet_address: w.owner_address.clone(),
+                    username: None,
+                    fullname: None,
+                    profile_photo: None,
+                    social_proof_token: None,
+                    selected_badge: None,
                 });
-                VestingWalletWithProfile {
-                    wallet: with_status,
-                    user,
-                }
-            })
-            .collect();
+            VestingWalletWithProfile {
+                wallet: with_status,
+                user,
+            }
+        })
+        .collect();
 
     let total_pages = if total > 0 {
         ((total as f64) / (limit as f64)).ceil() as i64
@@ -806,30 +806,31 @@ pub(crate) async fn get_vesting_leaderboard(
     let owner_addresses: Vec<String> = rows.iter().map(|r| r.owner_address.clone()).collect();
     let user_map = enrich_users_with_universal_data(&mut conn, owner_addresses).await?;
 
-    let entries: Vec<VestingLeaderboardEntry> =
-        rows.into_iter()
-            .map(|r| {
-                let user = user_map.get(&r.owner_address).cloned().unwrap_or_else(|| {
-                    UniversalUserResult {
-                        owner_address: r.owner_address.clone(),
-                        wallet_address: r.owner_address.clone(),
-                        username: None,
-                        fullname: None,
-                        profile_photo: None,
-                        social_proof_token: None,
-                        selected_badge: None,
-                    }
+    let entries: Vec<VestingLeaderboardEntry> = rows
+        .into_iter()
+        .map(|r| {
+            let user = user_map
+                .get(&r.owner_address.to_lowercase())
+                .cloned()
+                .unwrap_or_else(|| UniversalUserResult {
+                    owner_address: r.owner_address.clone(),
+                    wallet_address: r.owner_address.clone(),
+                    username: None,
+                    fullname: None,
+                    profile_photo: None,
+                    social_proof_token: None,
+                    selected_badge: None,
                 });
-                VestingLeaderboardEntry {
-                    owner_address: r.owner_address,
-                    total_vested: r.total_vested,
-                    total_claimed: r.total_claimed,
-                    active_wallets: r.active_wallets,
-                    completed_wallets: r.completed_wallets,
-                    user,
-                }
-            })
-            .collect();
+            VestingLeaderboardEntry {
+                owner_address: r.owner_address,
+                total_vested: r.total_vested,
+                total_claimed: r.total_claimed,
+                active_wallets: r.active_wallets,
+                completed_wallets: r.completed_wallets,
+                user,
+            }
+        })
+        .collect();
 
     Ok(VestingLeaderboardResponse { entries, total })
 }

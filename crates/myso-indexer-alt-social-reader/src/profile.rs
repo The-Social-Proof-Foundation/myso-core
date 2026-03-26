@@ -129,12 +129,14 @@ async fn enrich_users_with_universal_data(
     metrics.requests_received.inc();
     let _guard = metrics.latency.start_timer();
 
+    let wallet_lower: Vec<String> = wallet_addresses.iter().map(|a| a.to_lowercase()).collect();
+
     let query = diesel::sql_query(
         r#"
         WITH latest_profiles AS (
             SELECT DISTINCT ON (COALESCE(profile_id, owner_address)) *
             FROM profiles
-            WHERE owner_address = ANY($1::TEXT[])
+            WHERE LOWER(owner_address) = ANY($1::TEXT[])
             ORDER BY COALESCE(profile_id, owner_address), updated_at DESC
         )
         SELECT
@@ -175,8 +177,8 @@ async fn enrich_users_with_universal_data(
             pb.revoked = false
         LEFT JOIN LATERAL (
             SELECT * FROM spt_pools spt_row
-            WHERE spt_row.associated_id = ('profile_' || p.owner_address)
-               OR (p.profile_id IS NOT NULL AND spt_row.associated_id = p.profile_id)
+            WHERE LOWER(spt_row.associated_id) = LOWER('profile_' || p.owner_address)
+               OR (p.profile_id IS NOT NULL AND LOWER(spt_row.associated_id) = LOWER(p.profile_id))
             ORDER BY spt_row.time DESC
             LIMIT 1
         ) spt ON true
@@ -203,11 +205,13 @@ async fn enrich_users_with_universal_data(
         ) rev ON spt.pool_id IS NOT NULL
         LEFT JOIN LATERAL (
             SELECT * FROM spt_reservation_pools sr
-            WHERE (p.reservation_pool_address IS NOT NULL AND sr.pool_id = p.reservation_pool_address)
-               OR sr.associated_id = ('profile_' || p.owner_address)
-               OR (p.profile_id IS NOT NULL AND sr.associated_id = p.profile_id)
+            WHERE (p.reservation_pool_address IS NOT NULL
+                   AND LOWER(TRIM(sr.pool_id)) = LOWER(TRIM(p.reservation_pool_address)))
+               OR LOWER(sr.associated_id) = LOWER('profile_' || p.owner_address)
+               OR (p.profile_id IS NOT NULL AND LOWER(sr.associated_id) = LOWER(p.profile_id))
             ORDER BY
-                (p.reservation_pool_address IS NOT NULL AND sr.pool_id IS NOT DISTINCT FROM p.reservation_pool_address) DESC,
+                (p.reservation_pool_address IS NOT NULL
+                 AND LOWER(TRIM(sr.pool_id)) = LOWER(TRIM(p.reservation_pool_address))) DESC,
                 sr.time DESC
             LIMIT 1
         ) rp ON true
@@ -215,10 +219,10 @@ async fn enrich_users_with_universal_data(
             SELECT COALESCE(SUM(amount), 0)::bigint as vol FROM spt_reservations
             WHERE pool_id = rp.pool_id AND time >= NOW() - INTERVAL '24 hours'
         ) res_vol24 ON rp.pool_id IS NOT NULL
-        WHERE p.owner_address = ANY($1::TEXT[])
+        WHERE LOWER(p.owner_address) = ANY($1::TEXT[])
         "#,
     )
-    .bind::<Array<Text>, _>(&wallet_addresses);
+    .bind::<Array<Text>, _>(&wallet_lower);
 
     #[derive(QueryableByName)]
     #[diesel(check_for_backend(diesel::pg::Pg))]
@@ -380,23 +384,25 @@ async fn enrich_users_with_universal_data(
             None
         };
 
+        let owner_key = row.owner_address.to_lowercase();
         let user_result = UniversalUserResult {
-            wallet_address: row.owner_address.clone(),
+            wallet_address: owner_key.clone(),
             username: Some(row.username),
             fullname: row.display_name,
             profile_photo: row.profile_photo,
             social_proof_token,
             selected_badge,
         };
-        result.insert(row.owner_address, user_result);
+        result.insert(owner_key, user_result);
     }
 
-    for wallet_address in wallet_addresses {
-        if !result.contains_key(&wallet_address) {
+    for wallet_address in &wallet_addresses {
+        let key = wallet_address.to_lowercase();
+        if !result.contains_key(&key) {
             result.insert(
-                wallet_address.clone(),
+                key.clone(),
                 UniversalUserResult {
-                    wallet_address: wallet_address.clone(),
+                    wallet_address: key,
                     username: None,
                     fullname: None,
                     profile_photo: None,
@@ -418,7 +424,7 @@ pub(crate) async fn get_profile_summary_enriched(
 ) -> anyhow::Result<Option<UniversalUserResult>> {
     let enriched =
         enrich_users_with_universal_data(conn, vec![address.to_string()], metrics).await?;
-    Ok(enriched.get(address).cloned())
+    Ok(enriched.get(&address.to_lowercase()).cloned())
 }
 
 pub(crate) async fn get_profile_by_address(
@@ -454,7 +460,7 @@ pub(crate) async fn get_profile_or_wallet_by_address(
             let enriched =
                 enrich_users_with_universal_data(conn, vec![address.to_string()], metrics).await?;
             let mut response = profile_to_response(profile);
-            if let Some(e) = enriched.get(address) {
+            if let Some(e) = enriched.get(&address.to_lowercase()) {
                 response.social_proof_token = e.social_proof_token.clone();
                 response.selected_badge = e.selected_badge.clone();
             }
