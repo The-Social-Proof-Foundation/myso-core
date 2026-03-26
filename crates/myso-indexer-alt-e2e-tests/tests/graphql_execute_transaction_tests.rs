@@ -128,7 +128,8 @@ impl GraphQlTestCluster {
 
         // Start GraphQL server that connects directly to TestCluster's RPC
         let service = start_graphql(
-            None, // No database - GraphQL will use fullnode RPC for executeTransaction
+            None, // No indexer DB
+            None, // No social DB
             fullnode_args,
             DbArgs::default(),
             GraphQlKvArgs::default(),

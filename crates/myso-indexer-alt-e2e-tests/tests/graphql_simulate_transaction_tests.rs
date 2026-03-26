@@ -191,6 +191,7 @@ impl GraphQlTestCluster {
 
         let s_graphql = start_graphql(
             Some(database_url),
+            None,
             fullnode_args,
             DbArgs::default(),
             GraphQlKvArgs::default(),

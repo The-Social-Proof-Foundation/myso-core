@@ -250,6 +250,68 @@ impl SptPool {
             .ok()?;
         Some(rows.into_iter().map(SptHolding::from_row).collect())
     }
+
+    /// Current reservation holders for this pool’s reservation phase (same `associated_id`).
+    async fn reservation_holders(
+        &self,
+        ctx: &Context<'_>,
+        limit: Option<u64>,
+        offset: Option<u64>,
+    ) -> Option<Vec<SptReservationHolding>> {
+        let reader_opt = ctx
+            .data_opt::<std::sync::Arc<Option<myso_indexer_alt_social_reader::SocialPgReader>>>()?;
+        let reader = reader_opt.as_ref().as_ref()?;
+        let reservation_pool_id = match reader
+            .get_reservation_pool_id_for_associated_id(&self.inner.associated_id)
+            .await
+            .ok()?
+        {
+            Some(id) => id,
+            None => return Some(vec![]),
+        };
+        let limit = limit.unwrap_or(20).min(100) as i64;
+        let offset = offset.unwrap_or(0) as i64;
+        let rows = reader
+            .get_reservation_holdings_for_pool(&reservation_pool_id, limit, offset)
+            .await
+            .ok()?;
+        Some(
+            rows.into_iter()
+                .map(SptReservationHolding::from_row)
+                .collect(),
+        )
+    }
+
+    /// Former reservation holders (withdrawn; latest indexed balance zero per reserver).
+    async fn former_reservation_holders(
+        &self,
+        ctx: &Context<'_>,
+        limit: Option<u64>,
+        offset: Option<u64>,
+    ) -> Option<Vec<SptReservationHolding>> {
+        let reader_opt = ctx
+            .data_opt::<std::sync::Arc<Option<myso_indexer_alt_social_reader::SocialPgReader>>>()?;
+        let reader = reader_opt.as_ref().as_ref()?;
+        let reservation_pool_id = match reader
+            .get_reservation_pool_id_for_associated_id(&self.inner.associated_id)
+            .await
+            .ok()?
+        {
+            Some(id) => id,
+            None => return Some(vec![]),
+        };
+        let limit = limit.unwrap_or(20).min(100) as i64;
+        let offset = offset.unwrap_or(0) as i64;
+        let rows = reader
+            .get_former_reservation_holdings_for_pool(&reservation_pool_id, limit, offset)
+            .await
+            .ok()?;
+        Some(
+            rows.into_iter()
+                .map(SptReservationHolding::from_row)
+                .collect(),
+        )
+    }
 }
 
 #[derive(Clone)]
@@ -344,6 +406,17 @@ impl SptReservationHolding {
 
 #[Object]
 impl SptReservationHolding {
+    /// Wallet that made the reservation.
+    async fn reserver(&self) -> MySoAddress {
+        MySoAddress::from_str(&self.inner.reserver_address)
+            .unwrap_or_else(|_| MySoAddress::from(myso_types::base_types::MySoAddress::ZERO))
+    }
+
+    /// Profile of the reserver (when indexed).
+    async fn reserver_profile(&self, ctx: &Context<'_>) -> Option<ProfileSummary> {
+        resolve_profile_summary(ctx, &self.inner.reserver_address).await
+    }
+
     /// Reservation pool ID.
     async fn pool_id(&self) -> &str {
         &self.inner.pool_id

@@ -32,7 +32,7 @@ pub use myso_indexer_alt_social_schema::models::{
     SptHoldingRow, SptPoolRow, SptPriceHistory, SptTransaction,
 };
 pub use pg_reader::SocialPgReader;
-pub use platform::{PlatformBlockedProfileRow, PlatformRow};
+pub use platform::{PlatformBlockedProfileRow, PlatformRow, PlatformUserAccessRow};
 pub use post::{CommentRow, PostRow, PostTransferRow, ReactionRow, RepostRow, TipRow};
 pub use profile::{
     ProfileBadgeRow, ProfileByAddressResponse, ReservationStatus, SelectedBadgeInfo,

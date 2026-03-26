@@ -56,7 +56,7 @@ use crate::api::types::object::ObjectKey;
 use crate::api::types::object::VersionFilter;
 use crate::api::types::object_filter::ObjectFilter;
 use crate::api::types::object_filter::ObjectFilterValidator as OFValidator;
-use crate::api::types::platform::Platform;
+use crate::api::types::platform::{Platform, PlatformUserAccess};
 use crate::api::types::post::{CommentSummary, Post, ReactionSummary, RepostSummary, TipSummary};
 use crate::api::types::profile::Profile;
 use crate::api::types::promotion::{Promotion, PromotionTimeSeries};
@@ -69,7 +69,9 @@ use crate::api::types::social_config::{
 use crate::api::types::spot::{
     SpotBet, SpotBetWithdrawal, SpotPayout, SpotRecord, SpotRefund, SpotResolution,
 };
-use crate::api::types::spt::{SptHolding, SptOrder, SptPool, SptPriceHistory, SptSortBy};
+use crate::api::types::spt::{
+    SptHolding, SptOrder, SptPool, SptPriceHistory, SptReservationHolding, SptSortBy,
+};
 use crate::api::types::transaction::CTransaction;
 use crate::api::types::transaction::Transaction;
 use crate::api::types::transaction::filter::TransactionFilter;
@@ -676,6 +678,50 @@ impl Query {
                 .await
                 .map_err(Into::into)
                 .map(|v| v.into_iter().map(SptPool::from_row).collect()),
+        )
+    }
+
+    /// Current reservation holders for a reservation pool id. Returns null when social DB not configured.
+    async fn spt_reservation_holders(
+        &self,
+        ctx: &Context<'_>,
+        pool_id: async_graphql::ID,
+        limit: Option<u64>,
+        offset: Option<u64>,
+    ) -> Option<Result<Vec<SptReservationHolding>, RpcError>> {
+        let reader_opt = ctx
+            .data_opt::<std::sync::Arc<Option<myso_indexer_alt_social_reader::SocialPgReader>>>()?;
+        let reader = reader_opt.as_ref().as_ref()?;
+        let limit = limit.unwrap_or(20).min(100) as i64;
+        let offset = offset.unwrap_or(0) as i64;
+        Some(
+            reader
+                .get_reservation_holdings_for_pool(pool_id.as_str(), limit, offset)
+                .await
+                .map_err(Into::into)
+                .map(|v| v.into_iter().map(SptReservationHolding::from_row).collect()),
+        )
+    }
+
+    /// Former reservation holders for a reservation pool id (withdrawn). Returns null when social DB not configured.
+    async fn spt_former_reservation_holders(
+        &self,
+        ctx: &Context<'_>,
+        pool_id: async_graphql::ID,
+        limit: Option<u64>,
+        offset: Option<u64>,
+    ) -> Option<Result<Vec<SptReservationHolding>, RpcError>> {
+        let reader_opt = ctx
+            .data_opt::<std::sync::Arc<Option<myso_indexer_alt_social_reader::SocialPgReader>>>()?;
+        let reader = reader_opt.as_ref().as_ref()?;
+        let limit = limit.unwrap_or(20).min(100) as i64;
+        let offset = offset.unwrap_or(0) as i64;
+        Some(
+            reader
+                .get_former_reservation_holdings_for_pool(pool_id.as_str(), limit, offset)
+                .await
+                .map_err(Into::into)
+                .map(|v| v.into_iter().map(SptReservationHolding::from_row).collect()),
         )
     }
 
@@ -1397,6 +1443,26 @@ impl Query {
                 .check_platform_blocked(&profile.to_string(), platform.as_str())
                 .await
                 .map_err(Into::into),
+        )
+    }
+
+    /// Member, platform-block, and moderator flags for a wallet (single DB round-trip).
+    /// Returns null when social DB not configured.
+    async fn platform_user_access(
+        &self,
+        ctx: &Context<'_>,
+        platform: async_graphql::ID,
+        user: MySoAddress,
+    ) -> Option<Result<PlatformUserAccess, RpcError>> {
+        let reader_opt = ctx
+            .data_opt::<std::sync::Arc<Option<myso_indexer_alt_social_reader::SocialPgReader>>>()?;
+        let reader = reader_opt.as_ref().as_ref()?;
+        Some(
+            reader
+                .get_platform_user_access(platform.as_str(), &user.to_string())
+                .await
+                .map_err(Into::into)
+                .map(PlatformUserAccess::from_row),
         )
     }
 

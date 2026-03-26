@@ -600,6 +600,54 @@ impl SocialProofToken {
     async fn token_type(&self) -> Option<i16> {
         self.inner.token_type
     }
+
+    /// Current reservation holders for this token’s reservation pool.
+    async fn reservation_holders(
+        &self,
+        ctx: &Context<'_>,
+        limit: Option<u64>,
+        offset: Option<u64>,
+    ) -> Option<Vec<SptReservationHolding>> {
+        let pool_id = self.inner.reservation_pool_id.as_deref()?;
+        let reader_opt = ctx
+            .data_opt::<std::sync::Arc<Option<myso_indexer_alt_social_reader::SocialPgReader>>>()?;
+        let reader = reader_opt.as_ref().as_ref()?;
+        let limit = limit.unwrap_or(20).min(100) as i64;
+        let offset = offset.unwrap_or(0) as i64;
+        let rows = reader
+            .get_reservation_holdings_for_pool(pool_id, limit, offset)
+            .await
+            .ok()?;
+        Some(
+            rows.into_iter()
+                .map(SptReservationHolding::from_row)
+                .collect(),
+        )
+    }
+
+    /// Former reservation holders (withdrawn; latest indexed balance zero per reserver).
+    async fn former_reservation_holders(
+        &self,
+        ctx: &Context<'_>,
+        limit: Option<u64>,
+        offset: Option<u64>,
+    ) -> Option<Vec<SptReservationHolding>> {
+        let pool_id = self.inner.reservation_pool_id.as_deref()?;
+        let reader_opt = ctx
+            .data_opt::<std::sync::Arc<Option<myso_indexer_alt_social_reader::SocialPgReader>>>()?;
+        let reader = reader_opt.as_ref().as_ref()?;
+        let limit = limit.unwrap_or(20).min(100) as i64;
+        let offset = offset.unwrap_or(0) as i64;
+        let rows = reader
+            .get_former_reservation_holdings_for_pool(pool_id, limit, offset)
+            .await
+            .ok()?;
+        Some(
+            rows.into_iter()
+                .map(SptReservationHolding::from_row)
+                .collect(),
+        )
+    }
 }
 
 #[derive(Clone)]

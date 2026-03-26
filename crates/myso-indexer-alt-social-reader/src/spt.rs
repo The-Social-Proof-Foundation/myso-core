@@ -443,6 +443,34 @@ pub(crate) async fn get_spt_pool_id_for_profile(
     Ok(result.map(|r| r.pool_id))
 }
 
+/// Latest reservation pool object id for a profile/post `associated_id` (`profile_...` / `post_...`).
+pub(crate) async fn get_reservation_pool_id_for_associated_id(
+    conn: &mut Connection<'_>,
+    associated_id: &str,
+    metrics: &DbReaderMetrics,
+) -> anyhow::Result<Option<String>> {
+    metrics.requests_received.inc();
+    let _guard = metrics.latency.start_timer();
+
+    #[derive(QueryableByName)]
+    #[diesel(check_for_backend(diesel::pg::Pg))]
+    struct Row {
+        #[diesel(sql_type = Text)]
+        pool_id: String,
+    }
+
+    let result = diesel::sql_query(
+        "SELECT pool_id FROM spt_reservation_pools WHERE associated_id = $1 ORDER BY time DESC LIMIT 1",
+    )
+    .bind::<Text, _>(associated_id)
+    .get_result::<Row>(conn)
+    .await
+    .optional()?;
+
+    metrics.requests_succeeded.inc();
+    Ok(result.map(|r| r.pool_id))
+}
+
 pub(crate) async fn get_user_reservation_holdings(
     conn: &mut Connection<'_>,
     reserver_address: &str,
@@ -475,6 +503,104 @@ pub(crate) async fn get_user_reservation_holdings(
 
     let results = diesel::sql_query(query)
         .bind::<Text, _>(reserver_address)
+        .bind::<BigInt, _>(limit)
+        .bind::<BigInt, _>(offset)
+        .load::<UserReservationHoldingRow>(conn)
+        .await?;
+
+    metrics.requests_succeeded.inc();
+    Ok(results)
+}
+
+/// Current reservation holders for a pool (from `user_reservation_holdings`), ordered by amount DESC.
+pub(crate) async fn get_reservation_holdings_for_pool(
+    conn: &mut Connection<'_>,
+    pool_id: &str,
+    limit: i64,
+    offset: i64,
+    metrics: &DbReaderMetrics,
+) -> anyhow::Result<Vec<UserReservationHoldingRow>> {
+    metrics.requests_received.inc();
+    let _guard = metrics.latency.start_timer();
+
+    let query = r#"
+        SELECT urh.reserver_address, urh.pool_id, urh.associated_id, urh.token_type, urh.owner,
+               urh.amount, urh.reserved_at, urh.total_reserved, urh.required_threshold,
+               urh.threshold_met, urh.pool_status,
+               p.username as profile_username, p.display_name as profile_display_name,
+               p.profile_photo as profile_photo, p.social_proof_token_address as profile_social_proof_token_address,
+               p.reservation_pool_address as profile_reservation_pool_address
+        FROM user_reservation_holdings urh
+        LEFT JOIN LATERAL (
+            SELECT username, display_name, profile_photo, social_proof_token_address, reservation_pool_address
+            FROM profiles
+            WHERE owner_address = urh.owner
+            ORDER BY updated_at DESC
+            LIMIT 1
+        ) p ON true
+        WHERE urh.pool_id = $1
+        ORDER BY urh.amount DESC, urh.reserved_at DESC
+        LIMIT $2 OFFSET $3
+    "#;
+
+    let results = diesel::sql_query(query)
+        .bind::<Text, _>(pool_id)
+        .bind::<BigInt, _>(limit)
+        .bind::<BigInt, _>(offset)
+        .load::<UserReservationHoldingRow>(conn)
+        .await?;
+
+    metrics.requests_succeeded.inc();
+    Ok(results)
+}
+
+/// Reservers whose latest indexed reservation row for this pool has amount 0 (withdrawn).
+pub(crate) async fn get_former_reservation_holdings_for_pool(
+    conn: &mut Connection<'_>,
+    pool_id: &str,
+    limit: i64,
+    offset: i64,
+    metrics: &DbReaderMetrics,
+) -> anyhow::Result<Vec<UserReservationHoldingRow>> {
+    metrics.requests_received.inc();
+    let _guard = metrics.latency.start_timer();
+
+    let query = r#"
+        SELECT l.reserver_address, l.pool_id, sp.associated_id, sp.token_type, sp.owner,
+               l.amount, l.reserved_at, sp.total_reserved, sp.required_threshold,
+               (sp.total_reserved >= sp.required_threshold) AS threshold_met,
+               sp.status AS pool_status,
+               po.username as profile_username, po.display_name as profile_display_name,
+               po.profile_photo as profile_photo, po.social_proof_token_address as profile_social_proof_token_address,
+               po.reservation_pool_address as profile_reservation_pool_address
+        FROM (
+            SELECT DISTINCT ON (reserver_address)
+                reserver_address, pool_id, amount, reserved_at
+            FROM spt_reservations
+            WHERE pool_id = $1
+            ORDER BY reserver_address, time DESC
+        ) l
+        INNER JOIN LATERAL (
+            SELECT associated_id, token_type, owner, total_reserved, required_threshold, status
+            FROM spt_reservation_pools sp2
+            WHERE sp2.pool_id = l.pool_id
+            ORDER BY sp2.time DESC
+            LIMIT 1
+        ) sp ON true
+        LEFT JOIN LATERAL (
+            SELECT username, display_name, profile_photo, social_proof_token_address, reservation_pool_address
+            FROM profiles
+            WHERE owner_address = sp.owner
+            ORDER BY updated_at DESC
+            LIMIT 1
+        ) po ON true
+        WHERE l.amount = 0
+        ORDER BY l.reserved_at DESC
+        LIMIT $2 OFFSET $3
+    "#;
+
+    let results = diesel::sql_query(query)
+        .bind::<Text, _>(pool_id)
         .bind::<BigInt, _>(limit)
         .bind::<BigInt, _>(offset)
         .load::<UserReservationHoldingRow>(conn)

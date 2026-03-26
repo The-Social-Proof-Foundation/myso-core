@@ -4102,6 +4102,10 @@ type Platform implements Node {
 	"""
 	updatedAt: Int!
 	"""
+	Member, platform-block, and moderator flags for a wallet (single DB round-trip).
+	"""
+	userAccess(user: MySoAddress!): PlatformUserAccess
+	"""
 	Voting period epochs.
 	"""
 	votingPeriodEpochs: Int
@@ -4196,6 +4200,21 @@ type PlatformRevenueSummary {
 	Total transactions (12-month).
 	"""
 	totalTransactions: Int!
+}
+
+type PlatformUserAccess {
+	"""
+	Whether the platform has blocked this wallet.
+	"""
+	isBlocked: Boolean!
+	"""
+	Whether the wallet is a member of this platform.
+	"""
+	isMember: Boolean!
+	"""
+	Whether the wallet is a moderator of this platform.
+	"""
+	isModerator: Boolean!
 }
 
 type PocAnalysisResult {
@@ -5498,6 +5517,11 @@ type Query {
 	"""
 	platform(id: ID!): Platform
 	"""
+	Member, platform-block, and moderator flags for a wallet (single DB round-trip).
+	Returns null when social DB not configured.
+	"""
+	platformUserAccess(platform: ID!, user: MySoAddress!): PlatformUserAccess
+	"""
 	List platforms with optional approved filter. Returns empty when social DB not configured.
 	"""
 	platforms(approvedOnly: Boolean, limit: Int, offset: Int): [Platform!]
@@ -5617,6 +5641,10 @@ type Query {
 	"""
 	sptConfiguration: SptExchangeConfig
 	"""
+	Former reservation holders for a reservation pool id (withdrawn). Returns null when social DB not configured.
+	"""
+	sptFormerReservationHolders(poolId: ID!, limit: Int, offset: Int): [SptReservationHolding!]
+	"""
 	SPT holdings for a profile (holder address). Returns empty when social DB not configured.
 	"""
 	sptHoldings(profile: MySoAddress!, limit: Int, offset: Int): [SptHolding!]
@@ -5632,6 +5660,10 @@ type Query {
 	SPT price history. Provide profileAddress or poolId (at least one required). Returns empty when social DB not configured.
 	"""
 	sptPriceHistory(profileAddress: MySoAddress, poolId: ID, limit: Int): [SptPriceHistory!]
+	"""
+	Current reservation holders for a reservation pool id. Returns null when social DB not configured.
+	"""
+	sptReservationHolders(poolId: ID!, limit: Int, offset: Int): [SptReservationHolding!]
 	"""
 	Tips received for a post (paginated). Returns empty when social DB not configured.
 	"""
@@ -5987,6 +6019,10 @@ type SocialProofToken {
 	creatorEarnings: Int
 	currentPrice: Int
 	ecosystemEarnings: Int
+	"""
+	Former reservation holders (withdrawn; latest indexed balance zero per reserver).
+	"""
+	formerReservationHolders(limit: Int, offset: Int): [SptReservationHolding!]
 	isActive: Boolean!
 	marketCap: Int
 	name: String
@@ -5995,6 +6031,10 @@ type SocialProofToken {
 	poolId: String
 	priceChange24H: Float
 	requiredThreshold: Int!
+	"""
+	Current reservation holders for this token’s reservation pool.
+	"""
+	reservationHolders(limit: Int, offset: Int): [SptReservationHolding!]
 	reservationPercentage: Float!
 	reservationPoolId: String
 	reservationStatus: String!
@@ -6309,7 +6349,15 @@ type SptExchangeConfig {
 	"""
 	maxHoldPercentBps: Int!
 	"""
-	Max individual reservation in basis points.
+	Per-wallet reservation cap for **post** pools: `(postThreshold * maxIndividualReservationBps) / 10000` in MYSO base units (matches on-chain `social_proof_tokens`).
+	"""
+	maxIndividualReservationAmountPost: Int!
+	"""
+	Per-wallet reservation cap for **profile** pools: `(profileThreshold * maxIndividualReservationBps) / 10000` in MYSO base units.
+	"""
+	maxIndividualReservationAmountProfile: Int!
+	"""
+	Max share of the pool threshold any single wallet may reserve, in basis points (10000 = 100%).
 	"""
 	maxIndividualReservationBps: Int!
 	"""
@@ -6321,11 +6369,11 @@ type SptExchangeConfig {
 	"""
 	platformFeeBps: Int!
 	"""
-	Post reservation threshold (basis points or amount).
+	Total MYSO required to reserve toward a post before the pool can graduate (global config).
 	"""
 	postThreshold: Int!
 	"""
-	Profile reservation threshold.
+	Total MYSO required to reserve toward a profile before the pool can graduate (global config).
 	"""
 	profileThreshold: Int!
 	"""
@@ -6412,6 +6460,10 @@ type SptPool {
 	"""
 	ecosystemEarnings: Int
 	"""
+	Former reservation holders (withdrawn; latest indexed balance zero per reserver).
+	"""
+	formerReservationHolders(limit: Int, offset: Int): [SptReservationHolding!]
+	"""
 	Current holders of this token (paginated, ordered by balance DESC).
 	"""
 	holders(limit: Int, offset: Int): [SptHolding!]
@@ -6451,6 +6503,10 @@ type SptPool {
 	Price history for this pool.
 	"""
 	priceHistory(limit: Int, offset: Int): [SptPriceHistory!]
+	"""
+	Current reservation holders for this pool’s reservation phase (same `associated_id`).
+	"""
+	reservationHolders(limit: Int, offset: Int): [SptReservationHolding!]
 	"""
 	Token symbol.
 	"""
@@ -6521,6 +6577,14 @@ type SptReservationHolding {
 	Epoch timestamp when reserved.
 	"""
 	reservedAt: Int!
+	"""
+	Wallet that made the reservation.
+	"""
+	reserver: MySoAddress!
+	"""
+	Profile of the reserver (when indexed).
+	"""
+	reserverProfile: ProfileSummary
 	"""
 	Whether the reservation pool threshold is met.
 	"""

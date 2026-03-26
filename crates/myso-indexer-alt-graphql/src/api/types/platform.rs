@@ -16,6 +16,7 @@ use crate::api::scalars::json::Json;
 use crate::api::scalars::myso_address::MySoAddress;
 use crate::api::types::blocked::PlatformBlockedProfileSummary;
 use crate::api::types::profile_summary::ProfileSummary;
+use crate::error::RpcError;
 
 fn platform_status_to_text(status: i16) -> &'static str {
     match status {
@@ -271,6 +272,59 @@ impl Platform {
                 .map(PlatformModeratorSummary::from_row)
                 .collect(),
         )
+    }
+
+    /// Member, platform-block, and moderator flags for a wallet (single DB round-trip).
+    async fn user_access(
+        &self,
+        ctx: &Context<'_>,
+        user: MySoAddress,
+    ) -> Option<Result<PlatformUserAccess, RpcError>> {
+        let reader_opt = ctx
+            .data_opt::<std::sync::Arc<Option<myso_indexer_alt_social_reader::SocialPgReader>>>()?;
+        let reader = reader_opt.as_ref().as_ref()?;
+        Some(
+            reader
+                .get_platform_user_access(&self.inner.platform_id, &user.to_string())
+                .await
+                .map_err(Into::into)
+                .map(PlatformUserAccess::from_row),
+        )
+    }
+}
+
+#[derive(Clone)]
+pub(crate) struct PlatformUserAccess {
+    is_member: bool,
+    is_blocked: bool,
+    is_moderator: bool,
+}
+
+impl PlatformUserAccess {
+    pub(crate) fn from_row(row: myso_indexer_alt_social_reader::PlatformUserAccessRow) -> Self {
+        Self {
+            is_member: row.is_member,
+            is_blocked: row.is_blocked,
+            is_moderator: row.is_moderator,
+        }
+    }
+}
+
+#[Object]
+impl PlatformUserAccess {
+    /// Whether the wallet is a member of this platform.
+    async fn is_member(&self) -> bool {
+        self.is_member
+    }
+
+    /// Whether the platform has blocked this wallet.
+    async fn is_blocked(&self) -> bool {
+        self.is_blocked
+    }
+
+    /// Whether the wallet is a moderator of this platform.
+    async fn is_moderator(&self) -> bool {
+        self.is_moderator
     }
 }
 

@@ -20,6 +20,17 @@ pub struct PlatformBlockedProfileRow {
     pub created_at: NaiveDateTime,
 }
 
+/// Membership, block, and moderator flags for a wallet on a platform (one DB round-trip).
+#[derive(Debug, Clone, QueryableByName)]
+pub struct PlatformUserAccessRow {
+    #[diesel(sql_type = Bool)]
+    pub is_member: bool,
+    #[diesel(sql_type = Bool)]
+    pub is_blocked: bool,
+    #[diesel(sql_type = Bool)]
+    pub is_moderator: bool,
+}
+
 #[derive(Debug, Clone, QueryableByName)]
 pub struct PlatformRow {
     #[diesel(sql_type = Text)]
@@ -287,4 +298,35 @@ pub(crate) async fn get_platform_moderators(
             created_at: r.created_at,
         })
         .collect())
+}
+
+pub(crate) async fn get_platform_user_access(
+    conn: &mut Connection<'_>,
+    platform_id: &str,
+    user_address: &str,
+    metrics: &DbReaderMetrics,
+) -> anyhow::Result<PlatformUserAccessRow> {
+    metrics.requests_received.inc();
+    let _guard = metrics.latency.start_timer();
+    let row = diesel::sql_query(
+        "SELECT
+            EXISTS(
+                SELECT 1 FROM platform_memberships
+                WHERE platform_id = $1 AND wallet_address = $2
+            ) AS is_member,
+            EXISTS(
+                SELECT 1 FROM platform_blocked_profiles
+                WHERE platform_id = $1 AND wallet_address = $2
+            ) AS is_blocked,
+            EXISTS(
+                SELECT 1 FROM platform_moderators
+                WHERE platform_id = $1 AND moderator_address = $2
+            ) AS is_moderator",
+    )
+    .bind::<Text, _>(platform_id)
+    .bind::<Text, _>(user_address)
+    .get_result::<PlatformUserAccessRow>(conn)
+    .await?;
+    metrics.requests_succeeded.inc();
+    Ok(row)
 }

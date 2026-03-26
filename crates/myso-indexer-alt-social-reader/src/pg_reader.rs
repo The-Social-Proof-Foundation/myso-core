@@ -36,6 +36,7 @@ use crate::mydata::{
 use crate::platform::PlatformRow;
 use crate::platform::{
     get_platform_blocked_profiles, get_platform_members, get_platform_moderators,
+    get_platform_user_access,
 };
 use crate::poc::{
     get_poc_analysis_for_post, get_poc_badges_for_post, get_poc_configuration,
@@ -62,9 +63,10 @@ use crate::spot::{
     list_spot_bets, list_spot_payouts, list_spot_refunds,
 };
 use crate::spt::{
-    get_spt_exchange_config, get_spt_holdings_by_holder, get_spt_holdings_by_pool, get_spt_pool,
-    get_spt_pool_id_for_profile, get_spt_price_history, get_spt_transactions,
-    get_user_reservation_holdings, list_spt_pools,
+    get_former_reservation_holdings_for_pool, get_reservation_holdings_for_pool,
+    get_reservation_pool_id_for_associated_id, get_spt_exchange_config, get_spt_holdings_by_holder,
+    get_spt_holdings_by_pool, get_spt_pool, get_spt_pool_id_for_profile, get_spt_price_history,
+    get_spt_transactions, get_user_reservation_holdings, list_spt_pools,
 };
 use crate::vesting::{get_vesting_leaderboard, get_vesting_wallet, list_vesting_wallets};
 
@@ -381,6 +383,16 @@ impl SocialPgReader {
         check_platform_blocked(&mut conn, profile_address, platform_id, &self.metrics).await
     }
 
+    /// Member, platform-block, and moderator flags for one wallet (single query).
+    pub async fn get_platform_user_access(
+        &self,
+        platform_id: &str,
+        user_address: &str,
+    ) -> anyhow::Result<crate::platform::PlatformUserAccessRow> {
+        let mut conn = self.connect().await?;
+        get_platform_user_access(&mut conn, platform_id, user_address, &self.metrics).await
+    }
+
     /// Get a comment by ID.
     pub async fn get_comment_by_id(
         &self,
@@ -545,6 +557,40 @@ impl SocialPgReader {
     {
         let mut conn = self.connect().await?;
         get_user_reservation_holdings(&mut conn, address, limit, offset, &self.metrics).await
+    }
+
+    /// Reservation pool id for an SPT `associated_id` (e.g. `profile_0x...`).
+    pub async fn get_reservation_pool_id_for_associated_id(
+        &self,
+        associated_id: &str,
+    ) -> anyhow::Result<Option<String>> {
+        let mut conn = self.connect().await?;
+        get_reservation_pool_id_for_associated_id(&mut conn, associated_id, &self.metrics).await
+    }
+
+    /// Current reservation holders for a reservation pool (positive balances only).
+    pub async fn get_reservation_holdings_for_pool(
+        &self,
+        pool_id: &str,
+        limit: i64,
+        offset: i64,
+    ) -> anyhow::Result<Vec<myso_indexer_alt_social_schema::models::UserReservationHoldingRow>>
+    {
+        let mut conn = self.connect().await?;
+        get_reservation_holdings_for_pool(&mut conn, pool_id, limit, offset, &self.metrics).await
+    }
+
+    /// Former reservation holders (latest indexed row per reserver has amount 0).
+    pub async fn get_former_reservation_holdings_for_pool(
+        &self,
+        pool_id: &str,
+        limit: i64,
+        offset: i64,
+    ) -> anyhow::Result<Vec<myso_indexer_alt_social_schema::models::UserReservationHoldingRow>>
+    {
+        let mut conn = self.connect().await?;
+        get_former_reservation_holdings_for_pool(&mut conn, pool_id, limit, offset, &self.metrics)
+            .await
     }
 
     /// List SPT pools with optional token type filter and sorting.
