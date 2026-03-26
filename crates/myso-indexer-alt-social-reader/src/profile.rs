@@ -3,12 +3,12 @@
 
 use std::collections::HashMap;
 
+use diesel::sql_types::{Array, BigInt, Nullable, SmallInt, Text};
 use diesel::ExpressionMethods;
 use diesel::OptionalExtension;
 use diesel::QueryDsl;
 use diesel::QueryableByName;
 use diesel::SelectableHelper;
-use diesel::sql_types::{Array, BigInt, Nullable, SmallInt, Text};
 use diesel_async::RunQueryDsl;
 use myso_indexer_alt_social_schema::models::Profile;
 use myso_indexer_alt_social_schema::schema::{profiles, wallet_social_graph};
@@ -129,10 +129,6 @@ async fn enrich_users_with_universal_data(
     metrics.requests_received.inc();
     let _guard = metrics.latency.start_timer();
 
-    let associated_ids: Vec<String> = wallet_addresses
-        .iter()
-        .map(|addr| format!("profile_{}", addr))
-        .collect();
     let query = diesel::sql_query(
         r#"
         WITH latest_profiles AS (
@@ -140,18 +136,6 @@ async fn enrich_users_with_universal_data(
             FROM profiles
             WHERE owner_address = ANY($1::TEXT[])
             ORDER BY COALESCE(profile_id, owner_address), updated_at DESC
-        ),
-        latest_spt_pools AS (
-            SELECT DISTINCT ON (pool_id) *
-            FROM spt_pools
-            WHERE associated_id = ANY($2::TEXT[])
-            ORDER BY pool_id, time DESC
-        ),
-        latest_reservation_pools AS (
-            SELECT DISTINCT ON (pool_id) *
-            FROM spt_reservation_pools
-            WHERE associated_id = ANY($2::TEXT[])
-            ORDER BY pool_id, time DESC
         )
         SELECT
             p.owner_address,
@@ -189,8 +173,13 @@ async fn enrich_users_with_universal_data(
             pb.badge_id = p.selected_badge_id AND
             pb.profile_id = p.profile_id AND
             pb.revoked = false
-        LEFT JOIN latest_spt_pools spt ON
-            spt.associated_id = 'profile_' || p.owner_address
+        LEFT JOIN LATERAL (
+            SELECT * FROM spt_pools spt_row
+            WHERE spt_row.associated_id = ('profile_' || p.owner_address)
+               OR (p.profile_id IS NOT NULL AND spt_row.associated_id = p.profile_id)
+            ORDER BY spt_row.time DESC
+            LIMIT 1
+        ) spt ON true
         LEFT JOIN LATERAL (
             SELECT price FROM spt_price_history
             WHERE pool_id = spt.pool_id
@@ -212,8 +201,16 @@ async fn enrich_users_with_universal_data(
                 SUM(treasury_fee)::bigint as ecosystem_earnings
             FROM spt_revenue WHERE pool_id = spt.pool_id
         ) rev ON spt.pool_id IS NOT NULL
-        LEFT JOIN latest_reservation_pools rp ON
-            rp.associated_id = 'profile_' || p.owner_address
+        LEFT JOIN LATERAL (
+            SELECT * FROM spt_reservation_pools sr
+            WHERE (p.reservation_pool_address IS NOT NULL AND sr.pool_id = p.reservation_pool_address)
+               OR sr.associated_id = ('profile_' || p.owner_address)
+               OR (p.profile_id IS NOT NULL AND sr.associated_id = p.profile_id)
+            ORDER BY
+                (p.reservation_pool_address IS NOT NULL AND sr.pool_id IS NOT DISTINCT FROM p.reservation_pool_address) DESC,
+                sr.time DESC
+            LIMIT 1
+        ) rp ON true
         LEFT JOIN LATERAL (
             SELECT COALESCE(SUM(amount), 0)::bigint as vol FROM spt_reservations
             WHERE pool_id = rp.pool_id AND time >= NOW() - INTERVAL '24 hours'
@@ -221,8 +218,7 @@ async fn enrich_users_with_universal_data(
         WHERE p.owner_address = ANY($1::TEXT[])
         "#,
     )
-    .bind::<Array<Text>, _>(&wallet_addresses)
-    .bind::<Array<Text>, _>(&associated_ids);
+    .bind::<Array<Text>, _>(&wallet_addresses);
 
     #[derive(QueryableByName)]
     #[diesel(check_for_backend(diesel::pg::Pg))]
