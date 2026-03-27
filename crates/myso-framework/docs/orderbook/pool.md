@@ -750,6 +750,15 @@ Public-facing interface for the package.
 
 
 
+<a name="orderbook_pool_ETreasuryNotConfigured"></a>
+
+
+
+<pre><code><b>const</b> <a href="../orderbook/pool.md#orderbook_pool_ETreasuryNotConfigured">ETreasuryNotConfigured</a>: u64 = 21;
+</code></pre>
+
+
+
 <a name="orderbook_pool_create_permissionless_pool"></a>
 
 ## Function `create_permissionless_pool`
@@ -3877,6 +3886,7 @@ Returns the quorum needed to pass proposal in the current epoch
     <b>let</b> taker_fee = params.taker_fee();
     <b>let</b> maker_fee = params.maker_fee();
     <b>let</b> treasury_address = <a href="../orderbook/registry.md#orderbook_registry">registry</a>.treasury_address();
+    <b>assert</b>!(treasury_address != @0x0, <a href="../orderbook/pool.md#orderbook_pool_ETreasuryNotConfigured">ETreasuryNotConfigured</a>);
     <b>let</b> <a href="../orderbook/pool.md#orderbook_pool">pool</a> = <a href="../orderbook/pool.md#orderbook_pool_Pool">Pool</a>&lt;BaseAsset, QuoteAsset&gt; {
         <a href="../orderbook/pool.md#orderbook_pool_id">id</a>: pool_id,
         inner: versioned::create(<a href="../orderbook/constants.md#orderbook_constants_current_version">constants::current_version</a>(), pool_inner, ctx),

@@ -8,8 +8,10 @@ edition = "2024"
 MoveStdlib = { local = "../move-stdlib" }
 myso = { local = "../myso-framework/myso-framework" }
 mydata = { local = "../mydata" }
+Orderbook = { local = "../orderbook" }
 
 [addresses]
 myso = "0x2"
 mydata = "0xda7a"
+orderbook = "0x0b0c"
 social_contracts = "0x50c1"

@@ -9,6 +9,7 @@ use orderbook::constants;
 use std::type_name::{Self, TypeName};
 use myso::{
     bag::{Self, Bag},
+    bootstrap_key::BootstrapKey,
     dynamic_field::{Self, Self as df},
     table::{Self, Table},
     vec_set::{Self, VecSet},
@@ -30,6 +31,7 @@ const ECoinAlreadyWhitelisted: u64 = 7;
 const ECoinNotWhitelisted: u64 = 8;
 const EMaxBalanceManagersReached: u64 = 9;
 const EAppNotAuthorized: u64 = 10;
+const EInvalidTreasuryAddress: u64 = 11;
 
 public struct REGISTRY has drop {}
 
@@ -79,11 +81,22 @@ public fun assert_app_is_authorized<App: drop>(self: &Registry) {
     assert!(self.id.exists_(AppKey<App> {}), EAppNotAuthorized);
 }
 
+/// Create OrderbookAdminCap for bootstrap (called by bootstrap module).
+/// Requires BootstrapKey parameter for security; bootstrap entry asserts single use before calling.
+public fun create_orderbook_admin_cap_for_bootstrap(
+    _bootstrap_key: &BootstrapKey,
+    ctx: &mut TxContext,
+): OrderbookAdminCap {
+    OrderbookAdminCap {
+        id: object::new(ctx),
+    }
+}
+
 fun init(_: REGISTRY, ctx: &mut TxContext) {
     let registry_inner = RegistryInner {
         allowed_versions: vec_set::singleton(constants::current_version()),
         pools: bag::new(ctx),
-        treasury_address: ctx.sender(),
+        treasury_address: @0x0,
     };
     let registry = Registry {
         id: object::new(ctx),
@@ -94,18 +107,17 @@ fun init(_: REGISTRY, ctx: &mut TxContext) {
         ),
     };
     transfer::share_object(registry);
-    let admin = OrderbookAdminCap { id: object::new(ctx) };
-    transfer::public_transfer(admin, ctx.sender());
 }
 
 // === Public Admin Functions ===
-/// Sets the treasury address where the pool creation fees are sent
-/// By default, the treasury address is the publisher of the orderbook package
+/// Sets the treasury address where pool creation fees are sent.
+/// At genesis the treasury is `@0x0` until bootstrap or an admin sets a real address.
 public fun set_treasury_address(
     self: &mut Registry,
     treasury_address: address,
     _cap: &OrderbookAdminCap,
 ) {
+    assert!(treasury_address != @0x0, EInvalidTreasuryAddress);
     let self = self.load_inner_mut();
     self.treasury_address = treasury_address;
 }

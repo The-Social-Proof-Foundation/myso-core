@@ -51,6 +51,9 @@ Uses the framework's centralized BootstrapKey for one-time initialization.
 <b>use</b> <a href="../myso/url.md#myso_url">myso::url</a>;
 <b>use</b> <a href="../myso/vec_map.md#myso_vec_map">myso::vec_map</a>;
 <b>use</b> <a href="../myso/vec_set.md#myso_vec_set">myso::vec_set</a>;
+<b>use</b> <a href="../myso/versioned.md#myso_versioned">myso::versioned</a>;
+<b>use</b> <a href="../orderbook/constants.md#orderbook_constants">orderbook::constants</a>;
+<b>use</b> <a href="../orderbook/registry.md#orderbook_registry">orderbook::registry</a>;
 <b>use</b> <a href="../social_contracts/block_list.md#social_contracts_block_list">social_contracts::block_list</a>;
 <b>use</b> <a href="../social_contracts/governance.md#social_contracts_governance">social_contracts::governance</a>;
 <b>use</b> <a href="../social_contracts/insurance.md#social_contracts_insurance">social_contracts::insurance</a>;
@@ -88,7 +91,7 @@ Claim all admin capabilities (one-time only)
 Creates and transfers all admin capabilities to caller, then seals the bootstrap key.
 
 
-<pre><code><b>public</b> <b>entry</b> <b>fun</b> <a href="../social_contracts/bootstrap.md#social_contracts_bootstrap_claim_all_admin_capabilities">claim_all_admin_capabilities</a>(bootstrap_key: &<b>mut</b> <a href="../myso/bootstrap_key.md#myso_bootstrap_key_BootstrapKey">myso::bootstrap_key::BootstrapKey</a>, ctx: &<b>mut</b> <a href="../myso/tx_context.md#myso_tx_context_TxContext">myso::tx_context::TxContext</a>)
+<pre><code><b>public</b> <b>entry</b> <b>fun</b> <a href="../social_contracts/bootstrap.md#social_contracts_bootstrap_claim_all_admin_capabilities">claim_all_admin_capabilities</a>(registry: &<b>mut</b> <a href="../orderbook/registry.md#orderbook_registry_Registry">orderbook::registry::Registry</a>, bootstrap_key: &<b>mut</b> <a href="../myso/bootstrap_key.md#myso_bootstrap_key_BootstrapKey">myso::bootstrap_key::BootstrapKey</a>, ctx: &<b>mut</b> <a href="../myso/tx_context.md#myso_tx_context_TxContext">myso::tx_context::TxContext</a>)
 </code></pre>
 
 
@@ -98,6 +101,7 @@ Creates and transfers all admin capabilities to caller, then seals the bootstrap
 
 
 <pre><code><b>public</b> <b>entry</b> <b>fun</b> <a href="../social_contracts/bootstrap.md#social_contracts_bootstrap_claim_all_admin_capabilities">claim_all_admin_capabilities</a>(
+    registry: &<b>mut</b> ob_registry::Registry,
     bootstrap_key: &<b>mut</b> BootstrapKey,
     ctx: &<b>mut</b> TxContext
 ) {
@@ -133,6 +137,10 @@ Creates and transfers all admin capabilities to caller, then seals the bootstrap
     transfer::public_transfer(<a href="../social_contracts/insurance.md#social_contracts_insurance_create_insurance_admin_cap">insurance::create_insurance_admin_cap</a>(ctx), admin);
     transfer::public_transfer(coin::create_coin_creation_admin_cap_for_bootstrap(bootstrap_key, ctx), admin);
     transfer::public_transfer(package::create_package_publishing_admin_cap_for_bootstrap(bootstrap_key, ctx), admin);
+    <b>let</b> orderbook_admin_cap =
+        ob_registry::create_orderbook_admin_cap_for_bootstrap(bootstrap_key, ctx);
+    ob_registry::set_treasury_address(registry, admin, &orderbook_admin_cap);
+    transfer::public_transfer(orderbook_admin_cap, admin);
     // Seal the <a href="../social_contracts/bootstrap.md#social_contracts_bootstrap">bootstrap</a> key permanently (prevents any future <a href="../social_contracts/bootstrap.md#social_contracts_bootstrap">bootstrap</a> attempts)
     bootstrap_key::finalize_bootstrap(bootstrap_key);
 }

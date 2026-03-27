@@ -67,6 +67,7 @@ const EInvalidEWMAAlpha: u64 = 17;
 const EInvalidZScoreThreshold: u64 = 18;
 const EInvalidAdditionalTakerFee: u64 = 19;
 const EWrongPoolReferral: u64 = 20;
+const ETreasuryNotConfigured: u64 = 21;
 
 // === Structs ===
 public struct Pool<phantom BaseAsset, phantom QuoteAsset> has key {
@@ -1798,6 +1799,8 @@ public(package) fun create_pool<BaseAsset, QuoteAsset>(
     let taker_fee = params.taker_fee();
     let maker_fee = params.maker_fee();
     let treasury_address = registry.treasury_address();
+    assert!(treasury_address != @0x0, ETreasuryNotConfigured);
+
     let pool = Pool<BaseAsset, QuoteAsset> {
         id: pool_id,
         inner: versioned::create(constants::current_version(), pool_inner, ctx),

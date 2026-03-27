@@ -17,6 +17,7 @@ Registry holds all created pools.
 -  [Function `authorize_app`](#orderbook_registry_authorize_app)
 -  [Function `deauthorize_app`](#orderbook_registry_deauthorize_app)
 -  [Function `assert_app_is_authorized`](#orderbook_registry_assert_app_is_authorized)
+-  [Function `create_orderbook_admin_cap_for_bootstrap`](#orderbook_registry_create_orderbook_admin_cap_for_bootstrap)
 -  [Function `init`](#orderbook_registry_init)
 -  [Function `set_treasury_address`](#orderbook_registry_set_treasury_address)
 -  [Function `enable_version`](#orderbook_registry_enable_version)
@@ -38,6 +39,7 @@ Registry holds all created pools.
 
 <pre><code><b>use</b> <a href="../myso/address.md#myso_address">myso::address</a>;
 <b>use</b> <a href="../myso/bag.md#myso_bag">myso::bag</a>;
+<b>use</b> <a href="../myso/bootstrap_key.md#myso_bootstrap_key">myso::bootstrap_key</a>;
 <b>use</b> <a href="../myso/dynamic_field.md#myso_dynamic_field">myso::dynamic_field</a>;
 <b>use</b> <a href="../myso/hex.md#myso_hex">myso::hex</a>;
 <b>use</b> <a href="../myso/object.md#myso_object">myso::object</a>;
@@ -366,6 +368,15 @@ The <code>App</code> type parameter is a witness which should be defined in the 
 
 
 
+<a name="orderbook_registry_EInvalidTreasuryAddress"></a>
+
+
+
+<pre><code><b>const</b> <a href="../orderbook/registry.md#orderbook_registry_EInvalidTreasuryAddress">EInvalidTreasuryAddress</a>: u64 = 11;
+</code></pre>
+
+
+
 <a name="orderbook_registry_authorize_app"></a>
 
 ## Function `authorize_app`
@@ -441,6 +452,37 @@ Assert that an application is authorized to access protected features of Orderbo
 
 </details>
 
+<a name="orderbook_registry_create_orderbook_admin_cap_for_bootstrap"></a>
+
+## Function `create_orderbook_admin_cap_for_bootstrap`
+
+Create OrderbookAdminCap for bootstrap (called by bootstrap module).
+Requires BootstrapKey parameter for security; bootstrap entry asserts single use before calling.
+
+
+<pre><code><b>public</b> <b>fun</b> <a href="../orderbook/registry.md#orderbook_registry_create_orderbook_admin_cap_for_bootstrap">create_orderbook_admin_cap_for_bootstrap</a>(_bootstrap_key: &<a href="../myso/bootstrap_key.md#myso_bootstrap_key_BootstrapKey">myso::bootstrap_key::BootstrapKey</a>, ctx: &<b>mut</b> <a href="../myso/tx_context.md#myso_tx_context_TxContext">myso::tx_context::TxContext</a>): <a href="../orderbook/registry.md#orderbook_registry_OrderbookAdminCap">orderbook::registry::OrderbookAdminCap</a>
+</code></pre>
+
+
+
+<details>
+<summary>Implementation</summary>
+
+
+<pre><code><b>public</b> <b>fun</b> <a href="../orderbook/registry.md#orderbook_registry_create_orderbook_admin_cap_for_bootstrap">create_orderbook_admin_cap_for_bootstrap</a>(
+    _bootstrap_key: &BootstrapKey,
+    ctx: &<b>mut</b> TxContext,
+): <a href="../orderbook/registry.md#orderbook_registry_OrderbookAdminCap">OrderbookAdminCap</a> {
+    <a href="../orderbook/registry.md#orderbook_registry_OrderbookAdminCap">OrderbookAdminCap</a> {
+        id: object::new(ctx),
+    }
+}
+</code></pre>
+
+
+
+</details>
+
 <a name="orderbook_registry_init"></a>
 
 ## Function `init`
@@ -460,7 +502,7 @@ Assert that an application is authorized to access protected features of Orderbo
     <b>let</b> registry_inner = <a href="../orderbook/registry.md#orderbook_registry_RegistryInner">RegistryInner</a> {
         <a href="../orderbook/registry.md#orderbook_registry_allowed_versions">allowed_versions</a>: vec_set::singleton(<a href="../orderbook/constants.md#orderbook_constants_current_version">constants::current_version</a>()),
         pools: bag::new(ctx),
-        <a href="../orderbook/registry.md#orderbook_registry_treasury_address">treasury_address</a>: ctx.sender(),
+        <a href="../orderbook/registry.md#orderbook_registry_treasury_address">treasury_address</a>: @0x0,
     };
     <b>let</b> <a href="../orderbook/registry.md#orderbook_registry">registry</a> = <a href="../orderbook/registry.md#orderbook_registry_Registry">Registry</a> {
         id: object::new(ctx),
@@ -471,8 +513,6 @@ Assert that an application is authorized to access protected features of Orderbo
         ),
     };
     transfer::share_object(<a href="../orderbook/registry.md#orderbook_registry">registry</a>);
-    <b>let</b> admin = <a href="../orderbook/registry.md#orderbook_registry_OrderbookAdminCap">OrderbookAdminCap</a> { id: object::new(ctx) };
-    transfer::public_transfer(admin, ctx.sender());
 }
 </code></pre>
 
@@ -484,8 +524,8 @@ Assert that an application is authorized to access protected features of Orderbo
 
 ## Function `set_treasury_address`
 
-Sets the treasury address where the pool creation fees are sent
-By default, the treasury address is the publisher of the orderbook package
+Sets the treasury address where pool creation fees are sent.
+At genesis the treasury is <code>@0x0</code> until bootstrap or an admin sets a real address.
 
 
 <pre><code><b>public</b> <b>fun</b> <a href="../orderbook/registry.md#orderbook_registry_set_treasury_address">set_treasury_address</a>(self: &<b>mut</b> <a href="../orderbook/registry.md#orderbook_registry_Registry">orderbook::registry::Registry</a>, <a href="../orderbook/registry.md#orderbook_registry_treasury_address">treasury_address</a>: <b>address</b>, _cap: &<a href="../orderbook/registry.md#orderbook_registry_OrderbookAdminCap">orderbook::registry::OrderbookAdminCap</a>)
@@ -502,6 +542,7 @@ By default, the treasury address is the publisher of the orderbook package
     <a href="../orderbook/registry.md#orderbook_registry_treasury_address">treasury_address</a>: <b>address</b>,
     _cap: &<a href="../orderbook/registry.md#orderbook_registry_OrderbookAdminCap">OrderbookAdminCap</a>,
 ) {
+    <b>assert</b>!(<a href="../orderbook/registry.md#orderbook_registry_treasury_address">treasury_address</a> != @0x0, <a href="../orderbook/registry.md#orderbook_registry_EInvalidTreasuryAddress">EInvalidTreasuryAddress</a>);
     <b>let</b> self = self.<a href="../orderbook/registry.md#orderbook_registry_load_inner_mut">load_inner_mut</a>();
     self.<a href="../orderbook/registry.md#orderbook_registry_treasury_address">treasury_address</a> = <a href="../orderbook/registry.md#orderbook_registry_treasury_address">treasury_address</a>;
 }

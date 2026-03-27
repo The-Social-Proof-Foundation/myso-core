@@ -4123,6 +4123,9 @@ deauthorize_app
 assert_app_is_authorized
 	public fun
 	0xb0c::registry
+create_orderbook_admin_cap_for_bootstrap
+	public fun
+	0xb0c::registry
 init
 	fun
 	0xb0c::registry

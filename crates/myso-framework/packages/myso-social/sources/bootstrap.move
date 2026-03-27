@@ -29,10 +29,12 @@ module social_contracts::bootstrap {
     use myso::coin::{Self, CoinCreationAdminCap};
     // Import framework package module for package publishing admin cap
     use myso::package::{Self, PackagePublishingAdminCap};
-    
+    use orderbook::registry::{Self as ob_registry};
+
     /// Claim all admin capabilities (one-time only)
     /// Creates and transfers all admin capabilities to caller, then seals the bootstrap key.
     public entry fun claim_all_admin_capabilities(
+        registry: &mut ob_registry::Registry,
         bootstrap_key: &mut BootstrapKey,
         ctx: &mut TxContext
     ) {
@@ -70,6 +72,11 @@ module social_contracts::bootstrap {
         transfer::public_transfer(insurance::create_insurance_admin_cap(ctx), admin);
         transfer::public_transfer(coin::create_coin_creation_admin_cap_for_bootstrap(bootstrap_key, ctx), admin);
         transfer::public_transfer(package::create_package_publishing_admin_cap_for_bootstrap(bootstrap_key, ctx), admin);
+
+        let orderbook_admin_cap =
+            ob_registry::create_orderbook_admin_cap_for_bootstrap(bootstrap_key, ctx);
+        ob_registry::set_treasury_address(registry, admin, &orderbook_admin_cap);
+        transfer::public_transfer(orderbook_admin_cap, admin);
 
         // Seal the bootstrap key permanently (prevents any future bootstrap attempts)
         bootstrap_key::finalize_bootstrap(bootstrap_key);

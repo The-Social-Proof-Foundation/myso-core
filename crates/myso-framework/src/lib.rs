@@ -192,7 +192,8 @@ impl BuiltInFramework {
                 [
                     MOVE_STDLIB_PACKAGE_ID,
                     MYSO_FRAMEWORK_PACKAGE_ID,
-                    MYDATA_PACKAGE_ID
+                    MYDATA_PACKAGE_ID,
+                    ORDERBOOK_PACKAGE_ID
                 ]
             )
         ])
