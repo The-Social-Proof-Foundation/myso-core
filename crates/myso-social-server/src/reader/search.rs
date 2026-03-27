@@ -8,7 +8,7 @@ use diesel::PgTextExpressionMethods;
 use diesel::QueryDsl;
 use diesel::SelectableHelper;
 use diesel_async::RunQueryDsl;
-use myso_indexer_alt_social_schema::models::Profile;
+use myso_indexer_alt_social_schema::models::{Platform, Profile};
 use myso_indexer_alt_social_schema::schema::{platforms, profiles};
 
 use crate::error::SocialError;
@@ -20,6 +20,7 @@ pub(crate) async fn search(db: &Db, q: &str, limit: i64) -> Result<serde_json::V
 
     let profiles_result = search_profiles_with_conn(&mut conn, q, limit).await?;
     let posts_result = search_posts_with_conn(&mut conn, q, limit).await?;
+    let platforms_result = search_platforms_with_conn(&mut conn, q, limit).await?;
     let platforms_count: i64 = platforms::table
         .filter(platforms::name.ilike(&format!("%{}%", q)))
         .filter(platforms::deleted_at.is_null())
@@ -30,8 +31,26 @@ pub(crate) async fn search(db: &Db, q: &str, limit: i64) -> Result<serde_json::V
     Ok(serde_json::json!({
         "profiles": profiles_result,
         "posts": posts_result,
+        "platforms": platforms_result,
         "platforms_count": platforms_count,
     }))
+}
+
+async fn search_platforms_with_conn(
+    conn: &mut diesel_async::AsyncPgConnection,
+    q: &str,
+    limit: i64,
+) -> Result<Vec<Platform>, SocialError> {
+    let pattern = format!("%{}%", q);
+    let rows: Vec<Platform> = platforms::table
+        .filter(platforms::name.ilike(&pattern))
+        .filter(platforms::deleted_at.is_null())
+        .order(platforms::updated_at.desc())
+        .limit(limit)
+        .select(Platform::as_select())
+        .load(conn)
+        .await?;
+    Ok(rows)
 }
 
 pub(crate) async fn search_profiles(

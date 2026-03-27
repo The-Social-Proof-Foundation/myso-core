@@ -25,6 +25,7 @@ pub async fn search(
         return Ok(Json(serde_json::json!({
             "profiles": [],
             "posts": [],
+            "platforms": [],
             "platforms_count": 0,
         })));
     }
