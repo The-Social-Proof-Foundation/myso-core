@@ -39,6 +39,7 @@ use myso_types::crypto::ToFromBytes;
 use myso_types::crypto::get_key_pair;
 use myso_types::digests::TransactionDigest;
 use myso_types::effects::TransactionEffectsAPI;
+use myso_types::gas_coin::GAS;
 use myso_types::object::Owner;
 use myso_types::transaction::{CallArg, ObjectArg, SharedObjectMutability};
 use myso_types::{BRIDGE_PACKAGE_ID, MYSO_BRIDGE_OBJECT_ID};
@@ -316,20 +317,37 @@ pub async fn bridge_token(
     let rgp = context.get_reference_gas_price().await.unwrap();
     let sender = context.active_address().unwrap();
     let gas_object = context.get_one_gas_object().await.unwrap().unwrap().1;
-    let tx = TestTransactionBuilder::new(sender, gas_object, rgp)
-        .move_call_with_type_args(
-            BRIDGE_PACKAGE_ID,
-            "bridge",
-            "send_token",
-            vec![token_type],
-            vec![
-                CallArg::Object(bridge_object_arg),
-                CallArg::Pure(bcs::to_bytes(&(BridgeChainId::EthCustom as u8)).unwrap()),
-                CallArg::Pure(bcs::to_bytes(&recv_address.as_slice()).unwrap()),
-                CallArg::Object(ObjectArg::ImmOrOwnedObject(token_ref)),
-            ],
-        )
-        .build();
+    let tx = if GAS::is_gas_type(&token_type) {
+        TestTransactionBuilder::new(sender, gas_object, rgp)
+            .move_call_with_type_args(
+                BRIDGE_PACKAGE_ID,
+                "bridge",
+                "send_myso_token",
+                vec![],
+                vec![
+                    CallArg::Object(bridge_object_arg),
+                    CallArg::Pure(bcs::to_bytes(&(BridgeChainId::EthCustom as u8)).unwrap()),
+                    CallArg::Pure(bcs::to_bytes(&recv_address.as_slice()).unwrap()),
+                    CallArg::Object(ObjectArg::ImmOrOwnedObject(token_ref)),
+                ],
+            )
+            .build()
+    } else {
+        TestTransactionBuilder::new(sender, gas_object, rgp)
+            .move_call_with_type_args(
+                BRIDGE_PACKAGE_ID,
+                "bridge",
+                "send_token",
+                vec![token_type],
+                vec![
+                    CallArg::Object(bridge_object_arg),
+                    CallArg::Pure(bcs::to_bytes(&(BridgeChainId::EthCustom as u8)).unwrap()),
+                    CallArg::Pure(bcs::to_bytes(&recv_address.as_slice()).unwrap()),
+                    CallArg::Object(ObjectArg::ImmOrOwnedObject(token_ref)),
+                ],
+            )
+            .build()
+    };
     let signed_tn = context.sign_transaction(&tx).await;
     let resp = context.execute_transaction_must_succeed(signed_tn).await;
     let events = resp.events.unwrap();

@@ -6,6 +6,7 @@ use crate::MYSO_BRIDGE_OBJECT_ID;
 use crate::base_types::ObjectID;
 use crate::base_types::SequenceNumber;
 use crate::collection_types::LinkedTableNode;
+use crate::balance::Balance;
 use crate::dynamic_field::{Field, get_dynamic_field_from_store};
 use crate::error::{MySoError, MySoErrorKind, MySoResult};
 use crate::myso_serde::BigInt;
@@ -187,7 +188,12 @@ impl Default for BridgeSummary {
             chain_id: 1,
             sequence_nums: vec![],
             committee: BridgeCommitteeSummary::default(),
-            treasury: BridgeTreasurySummary::default(),
+            treasury: BridgeTreasurySummary {
+                supported_tokens: vec![],
+                id_token_type_map: vec![],
+                native_myso_locked: 0,
+                native_myso_bootstrapped: false,
+            },
             bridge_records_id: ObjectID::random(),
             limiter: BridgeLimiterSummary::default(),
             is_frozen: false,
@@ -369,6 +375,8 @@ impl BridgeTrait for BridgeInnerV1 {
             treasury: BridgeTreasurySummary {
                 supported_tokens,
                 id_token_type_map,
+                native_myso_locked: self.treasury.native_myso_escrow.value(),
+                native_myso_bootstrapped: self.treasury.native_bridge_initialized,
             },
             is_frozen: self.frozen,
         })
@@ -384,6 +392,8 @@ pub struct MoveTypeBridgeTreasury {
     pub id_token_type_map: VecMap<u8, String>,
     // Bag for storing potential new token waiting to be approved
     pub waiting_room: Bag,
+    pub native_myso_escrow: Balance,
+    pub native_bridge_initialized: bool,
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone, JsonSchema, Default, PartialEq, Eq)]
@@ -436,6 +446,10 @@ pub struct BridgeLimiterSummary {
 pub struct BridgeTreasurySummary {
     pub supported_tokens: Vec<(String, BridgeTokenMetadata)>,
     pub id_token_type_map: Vec<(u8, String)>,
+    #[schemars(with = "BigInt<u64>")]
+    #[serde_as(as = "Readable<BigInt<u64>, _>")]
+    pub native_myso_locked: u64,
+    pub native_myso_bootstrapped: bool,
 }
 
 /// Rust version of the Move committee::CommitteeMember type.

@@ -17,6 +17,11 @@ title: Module `bridge::treasury`
 -  [Function `register_foreign_token`](#bridge_treasury_register_foreign_token)
 -  [Function `add_new_token`](#bridge_treasury_add_new_token)
 -  [Function `create`](#bridge_treasury_create)
+-  [Function `bootstrap_native_myso_once`](#bridge_treasury_bootstrap_native_myso_once)
+-  [Function `lock_native_myso`](#bridge_treasury_lock_native_myso)
+-  [Function `unlock_native_myso`](#bridge_treasury_unlock_native_myso)
+-  [Function `native_myso_locked_amount`](#bridge_treasury_native_myso_locked_amount)
+-  [Function `native_bridge_ready`](#bridge_treasury_native_bridge_ready)
 -  [Function `burn`](#bridge_treasury_burn)
 -  [Function `mint`](#bridge_treasury_mint)
 -  [Function `update_asset_notional_price`](#bridge_treasury_update_asset_notional_price)
@@ -39,6 +44,7 @@ title: Module `bridge::treasury`
 <b>use</b> <a href="../myso/funds_accumulator.md#myso_funds_accumulator">myso::funds_accumulator</a>;
 <b>use</b> <a href="../myso/hash.md#myso_hash">myso::hash</a>;
 <b>use</b> <a href="../myso/hex.md#myso_hex">myso::hex</a>;
+<b>use</b> <a href="../myso/myso.md#myso_myso">myso::myso</a>;
 <b>use</b> <a href="../myso/object.md#myso_object">myso::object</a>;
 <b>use</b> <a href="../myso/object_bag.md#myso_object_bag">myso::object_bag</a>;
 <b>use</b> <a href="../myso/package.md#myso_package">myso::package</a>;
@@ -98,6 +104,17 @@ title: Module `bridge::treasury`
 </dd>
 <dt>
 <code>waiting_room: <a href="../myso/bag.md#myso_bag_Bag">myso::bag::Bag</a></code>
+</dt>
+<dd>
+</dd>
+<dt>
+<code>native_myso_escrow: <a href="../myso/balance.md#myso_balance_Balance">myso::balance::Balance</a>&lt;<a href="../myso/myso.md#myso_myso_MYSO">myso::myso::MYSO</a>&gt;</code>
+</dt>
+<dd>
+ Escrow for native MYSO (bootstrap + send_myso_token locks); claims release from here.
+</dd>
+<dt>
+<code>native_bridge_initialized: bool</code>
 </dt>
 <dd>
 </dd>
@@ -337,6 +354,70 @@ title: Module `bridge::treasury`
 
 
 
+<a name="bridge_treasury_ENativeBridgeAlreadyInitialized"></a>
+
+
+
+<pre><code><b>const</b> <a href="../bridge/treasury.md#bridge_treasury_ENativeBridgeAlreadyInitialized">ENativeBridgeAlreadyInitialized</a>: u64 = 5;
+</code></pre>
+
+
+
+<a name="bridge_treasury_EInvalidBootstrapAmount"></a>
+
+
+
+<pre><code><b>const</b> <a href="../bridge/treasury.md#bridge_treasury_EInvalidBootstrapAmount">EInvalidBootstrapAmount</a>: u64 = 6;
+</code></pre>
+
+
+
+<a name="bridge_treasury_ENativeBridgeNotInitialized"></a>
+
+
+
+<pre><code><b>const</b> <a href="../bridge/treasury.md#bridge_treasury_ENativeBridgeNotInitialized">ENativeBridgeNotInitialized</a>: u64 = 7;
+</code></pre>
+
+
+
+<a name="bridge_treasury_EInsufficientNativeEscrow"></a>
+
+
+
+<pre><code><b>const</b> <a href="../bridge/treasury.md#bridge_treasury_EInsufficientNativeEscrow">EInsufficientNativeEscrow</a>: u64 = 8;
+</code></pre>
+
+
+
+<a name="bridge_treasury_MIST_PER_WHOLE_MYSO"></a>
+
+
+
+<pre><code><b>const</b> <a href="../bridge/treasury.md#bridge_treasury_MIST_PER_WHOLE_MYSO">MIST_PER_WHOLE_MYSO</a>: u64 = 1000000000;
+</code></pre>
+
+
+
+<a name="bridge_treasury_BOOTSTRAP_NATIVE_MYSO_MIST"></a>
+
+
+
+<pre><code><b>const</b> <a href="../bridge/treasury.md#bridge_treasury_BOOTSTRAP_NATIVE_MYSO_MIST">BOOTSTRAP_NATIVE_MYSO_MIST</a>: u64 = 50000000000000000;
+</code></pre>
+
+
+
+<a name="bridge_treasury_NATIVE_MYSO_INITIAL_NOTIONAL_USD"></a>
+
+Initial USD notional for limiter ($1.00 at 8 decimal places), same scale as bridge limiter.
+
+
+<pre><code><b>const</b> <a href="../bridge/treasury.md#bridge_treasury_NATIVE_MYSO_INITIAL_NOTIONAL_USD">NATIVE_MYSO_INITIAL_NOTIONAL_USD</a>: u64 = 100000000;
+</code></pre>
+
+
+
 <a name="bridge_treasury_token_id"></a>
 
 ## Function `token_id`
@@ -543,7 +624,166 @@ title: Module `bridge::treasury`
         supported_tokens: vec_map::empty(),
         id_token_type_map: vec_map::empty(),
         waiting_room: bag::new(ctx),
+        native_myso_escrow: balance::zero(),
+        native_bridge_initialized: <b>false</b>,
     }
+}
+</code></pre>
+
+
+
+</details>
+
+<a name="bridge_treasury_bootstrap_native_myso_once"></a>
+
+## Function `bootstrap_native_myso_once`
+
+One-time bootstrap: lock exactly <code><a href="../bridge/treasury.md#bridge_treasury_BOOTSTRAP_NATIVE_MYSO_MIST">BOOTSTRAP_NATIVE_MYSO_MIST</a></code>, register MYSO as token id 0 for limiter metadata.
+
+
+<pre><code><b>public</b>(package) <b>fun</b> <a href="../bridge/treasury.md#bridge_treasury_bootstrap_native_myso_once">bootstrap_native_myso_once</a>(self: &<b>mut</b> <a href="../bridge/treasury.md#bridge_treasury_BridgeTreasury">bridge::treasury::BridgeTreasury</a>, coin: <a href="../myso/coin.md#myso_coin_Coin">myso::coin::Coin</a>&lt;<a href="../myso/myso.md#myso_myso_MYSO">myso::myso::MYSO</a>&gt;)
+</code></pre>
+
+
+
+<details>
+<summary>Implementation</summary>
+
+
+<pre><code><b>public</b>(package) <b>fun</b> <a href="../bridge/treasury.md#bridge_treasury_bootstrap_native_myso_once">bootstrap_native_myso_once</a>(self: &<b>mut</b> <a href="../bridge/treasury.md#bridge_treasury_BridgeTreasury">BridgeTreasury</a>, coin: Coin&lt;MYSO&gt;) {
+    <b>assert</b>!(!self.native_bridge_initialized, <a href="../bridge/treasury.md#bridge_treasury_ENativeBridgeAlreadyInitialized">ENativeBridgeAlreadyInitialized</a>);
+    <b>assert</b>!(coin::value(&coin) == <a href="../bridge/treasury.md#bridge_treasury_BOOTSTRAP_NATIVE_MYSO_MIST">BOOTSTRAP_NATIVE_MYSO_MIST</a>, <a href="../bridge/treasury.md#bridge_treasury_EInvalidBootstrapAmount">EInvalidBootstrapAmount</a>);
+    balance::join(&<b>mut</b> self.native_myso_escrow, coin::into_balance(coin));
+    self.native_bridge_initialized = <b>true</b>;
+    <b>let</b> type_m = type_name::with_defining_ids&lt;MYSO&gt;();
+    <b>assert</b>!(!self.supported_tokens.contains(&type_m), <a href="../bridge/treasury.md#bridge_treasury_EUnsupportedTokenType">EUnsupportedTokenType</a>);
+    <b>assert</b>!(!self.id_token_type_map.contains(&0), <a href="../bridge/treasury.md#bridge_treasury_EUnsupportedTokenType">EUnsupportedTokenType</a>);
+    <b>let</b> <a href="../bridge/treasury.md#bridge_treasury_decimal_multiplier">decimal_multiplier</a> = <a href="../bridge/treasury.md#bridge_treasury_MIST_PER_WHOLE_MYSO">MIST_PER_WHOLE_MYSO</a>;
+    self
+        .supported_tokens
+        .insert(
+            type_m,
+            <a href="../bridge/treasury.md#bridge_treasury_BridgeTokenMetadata">BridgeTokenMetadata</a> {
+                id: 0,
+                <a href="../bridge/treasury.md#bridge_treasury_decimal_multiplier">decimal_multiplier</a>,
+                <a href="../bridge/treasury.md#bridge_treasury_notional_value">notional_value</a>: <a href="../bridge/treasury.md#bridge_treasury_NATIVE_MYSO_INITIAL_NOTIONAL_USD">NATIVE_MYSO_INITIAL_NOTIONAL_USD</a>,
+                native_token: <b>true</b>,
+            },
+        );
+    self.id_token_type_map.insert(0, type_m);
+    event::emit(<a href="../bridge/treasury.md#bridge_treasury_NewTokenEvent">NewTokenEvent</a> {
+        <a href="../bridge/treasury.md#bridge_treasury_token_id">token_id</a>: 0,
+        type_name: type_m,
+        native_token: <b>true</b>,
+        <a href="../bridge/treasury.md#bridge_treasury_decimal_multiplier">decimal_multiplier</a>,
+        <a href="../bridge/treasury.md#bridge_treasury_notional_value">notional_value</a>: <a href="../bridge/treasury.md#bridge_treasury_NATIVE_MYSO_INITIAL_NOTIONAL_USD">NATIVE_MYSO_INITIAL_NOTIONAL_USD</a>,
+    });
+}
+</code></pre>
+
+
+
+</details>
+
+<a name="bridge_treasury_lock_native_myso"></a>
+
+## Function `lock_native_myso`
+
+Lock MYSO into bridge escrow for <code>send_myso_token</code> (not TreasuryCap burn).
+
+
+<pre><code><b>public</b>(package) <b>fun</b> <a href="../bridge/treasury.md#bridge_treasury_lock_native_myso">lock_native_myso</a>(self: &<b>mut</b> <a href="../bridge/treasury.md#bridge_treasury_BridgeTreasury">bridge::treasury::BridgeTreasury</a>, coin: <a href="../myso/coin.md#myso_coin_Coin">myso::coin::Coin</a>&lt;<a href="../myso/myso.md#myso_myso_MYSO">myso::myso::MYSO</a>&gt;)
+</code></pre>
+
+
+
+<details>
+<summary>Implementation</summary>
+
+
+<pre><code><b>public</b>(package) <b>fun</b> <a href="../bridge/treasury.md#bridge_treasury_lock_native_myso">lock_native_myso</a>(self: &<b>mut</b> <a href="../bridge/treasury.md#bridge_treasury_BridgeTreasury">BridgeTreasury</a>, coin: Coin&lt;MYSO&gt;) {
+    <b>assert</b>!(self.native_bridge_initialized, <a href="../bridge/treasury.md#bridge_treasury_ENativeBridgeNotInitialized">ENativeBridgeNotInitialized</a>);
+    balance::join(&<b>mut</b> self.native_myso_escrow, coin::into_balance(coin));
+}
+</code></pre>
+
+
+
+</details>
+
+<a name="bridge_treasury_unlock_native_myso"></a>
+
+## Function `unlock_native_myso`
+
+Release MYSO from escrow for a completed inbound transfer claim.
+
+
+<pre><code><b>public</b>(package) <b>fun</b> <a href="../bridge/treasury.md#bridge_treasury_unlock_native_myso">unlock_native_myso</a>(self: &<b>mut</b> <a href="../bridge/treasury.md#bridge_treasury_BridgeTreasury">bridge::treasury::BridgeTreasury</a>, amount: u64, ctx: &<b>mut</b> <a href="../myso/tx_context.md#myso_tx_context_TxContext">myso::tx_context::TxContext</a>): <a href="../myso/coin.md#myso_coin_Coin">myso::coin::Coin</a>&lt;<a href="../myso/myso.md#myso_myso_MYSO">myso::myso::MYSO</a>&gt;
+</code></pre>
+
+
+
+<details>
+<summary>Implementation</summary>
+
+
+<pre><code><b>public</b>(package) <b>fun</b> <a href="../bridge/treasury.md#bridge_treasury_unlock_native_myso">unlock_native_myso</a>(
+    self: &<b>mut</b> <a href="../bridge/treasury.md#bridge_treasury_BridgeTreasury">BridgeTreasury</a>,
+    amount: u64,
+    ctx: &<b>mut</b> TxContext,
+): Coin&lt;MYSO&gt; {
+    <b>assert</b>!(self.native_bridge_initialized, <a href="../bridge/treasury.md#bridge_treasury_ENativeBridgeNotInitialized">ENativeBridgeNotInitialized</a>);
+    <b>assert</b>!(balance::value(&self.native_myso_escrow) &gt;= amount, <a href="../bridge/treasury.md#bridge_treasury_EInsufficientNativeEscrow">EInsufficientNativeEscrow</a>);
+    <b>let</b> b = balance::split(&<b>mut</b> self.native_myso_escrow, amount);
+    coin::from_balance(b, ctx)
+}
+</code></pre>
+
+
+
+</details>
+
+<a name="bridge_treasury_native_myso_locked_amount"></a>
+
+## Function `native_myso_locked_amount`
+
+
+
+<pre><code><b>public</b>(package) <b>fun</b> <a href="../bridge/treasury.md#bridge_treasury_native_myso_locked_amount">native_myso_locked_amount</a>(self: &<a href="../bridge/treasury.md#bridge_treasury_BridgeTreasury">bridge::treasury::BridgeTreasury</a>): u64
+</code></pre>
+
+
+
+<details>
+<summary>Implementation</summary>
+
+
+<pre><code><b>public</b>(package) <b>fun</b> <a href="../bridge/treasury.md#bridge_treasury_native_myso_locked_amount">native_myso_locked_amount</a>(self: &<a href="../bridge/treasury.md#bridge_treasury_BridgeTreasury">BridgeTreasury</a>): u64 {
+    balance::value(&self.native_myso_escrow)
+}
+</code></pre>
+
+
+
+</details>
+
+<a name="bridge_treasury_native_bridge_ready"></a>
+
+## Function `native_bridge_ready`
+
+
+
+<pre><code><b>public</b>(package) <b>fun</b> <a href="../bridge/treasury.md#bridge_treasury_native_bridge_ready">native_bridge_ready</a>(self: &<a href="../bridge/treasury.md#bridge_treasury_BridgeTreasury">bridge::treasury::BridgeTreasury</a>): bool
+</code></pre>
+
+
+
+<details>
+<summary>Implementation</summary>
+
+
+<pre><code><b>public</b>(package) <b>fun</b> <a href="../bridge/treasury.md#bridge_treasury_native_bridge_ready">native_bridge_ready</a>(self: &<a href="../bridge/treasury.md#bridge_treasury_BridgeTreasury">BridgeTreasury</a>): bool {
+    self.native_bridge_initialized
 }
 </code></pre>
 

@@ -3462,11 +3462,8 @@ This replaces the auction system - only the post/profile owner can call this
     <b>let</b> total_reserved = reservation_pool_object.info.total_reserved;
     <b>let</b> sqrt_reserved = math::sqrt(total_reserved);
     <b>let</b> fourth_root_reserved = math::sqrt(sqrt_reserved); // fourth root: sqrt(sqrt(x)) = x^(1/4)
-    // Overflow protection: check before multiplication
-    <b>assert</b>!(sqrt_reserved == 0 || sqrt_reserved &lt;= <a href="../social_contracts/social_proof_tokens.md#social_contracts_social_proof_tokens_MAX_U64">MAX_U64</a> / fourth_root_reserved, <a href="../social_contracts/social_proof_tokens.md#social_contracts_social_proof_tokens_EOverflow">EOverflow</a>);
-    <b>let</b> <b>mut</b> scale_factor = sqrt_reserved * fourth_root_reserved; // reserved^0.75
-    // Divide the scale factor to make each token worth more than 1 MYSO
-    scale_factor = scale_factor / 1000;
+    // Use u128 to avoid overflow in sqrt * fourth_root (reserved^0.75)
+    <b>let</b> scale_factor = (((sqrt_reserved <b>as</b> u128) * (fourth_root_reserved <b>as</b> u128)) / 1000) <b>as</b> u64;
     // Apply different base multipliers <b>for</b> <a href="../social_contracts/profile.md#social_contracts_profile">profile</a> vs <a href="../social_contracts/post.md#social_contracts_post">post</a> tokens
     <b>let</b> <b>mut</b> initial_token_supply = <b>if</b> (reservation_pool_object.info.token_type == <a href="../social_contracts/social_proof_tokens.md#social_contracts_social_proof_tokens_TOKEN_TYPE_PROFILE">TOKEN_TYPE_PROFILE</a>) {
         // Profile tokens - lower supply (more valuable per token)
@@ -3539,9 +3536,8 @@ This replaces the auction system - only the post/profile owner can call this
         <b>let</b> reserver = *vector::borrow(reservers, i);
         <b>let</b> reservation_amount = *table::borrow(&reservation_pool_object.reservations, reserver);
         // Calculate token amount based on reserver's proportion of total reservation
-        // Overflow protection: check before multiplication
-        <b>assert</b>!(reservation_amount &lt;= <a href="../social_contracts/social_proof_tokens.md#social_contracts_social_proof_tokens_MAX_U64">MAX_U64</a> / initial_token_supply, <a href="../social_contracts/social_proof_tokens.md#social_contracts_social_proof_tokens_EOverflow">EOverflow</a>);
-        <b>let</b> token_amount = (reservation_amount * initial_token_supply) / total_reserved;
+        // Use u128 to avoid overflow when reservation_amount * initial_token_supply exceeds u64
+        <b>let</b> token_amount = (((reservation_amount <b>as</b> u128) * (initial_token_supply <b>as</b> u128)) / (total_reserved <b>as</b> u128)) <b>as</b> u64;
         <b>if</b> (token_amount &gt; 0) {
             // Update holder's balance in the pool
             // Handle duplicate reservers: <b>if</b> already exists, add to existing balance

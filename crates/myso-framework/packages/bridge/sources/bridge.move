@@ -4,6 +4,8 @@
 
 module bridge::bridge;
 
+use std::type_name;
+
 use bridge::chain_ids;
 use bridge::committee::{Self, BridgeCommittee};
 use bridge::limiter::{Self, TransferLimiter};
@@ -22,7 +24,8 @@ use bridge::message_types;
 use bridge::treasury::{Self, BridgeTreasury};
 use myso::address;
 use myso::clock::Clock;
-use myso::coin::{Coin, TreasuryCap, CoinMetadata};
+use myso::coin::{Self, Coin, TreasuryCap, CoinMetadata};
+use myso::myso::MYSO;
 use myso::event;
 use myso::linked_table::{Self, LinkedTable};
 use myso::package::UpgradeCap;
@@ -116,6 +119,8 @@ const EInvalidBridgeRoute: u64 = 16;
 const EMustBeTokenMessage: u64 = 17;
 const EInvalidEvmAddress: u64 = 18;
 const ETokenValueIsZero: u64 = 19;
+const EMustUseSendMySoToken: u64 = 20;
+const EMustUseClaimMySoToken: u64 = 21;
 
 const CURRENT_VERSION: u64 = 1;
 
@@ -214,6 +219,12 @@ public fun register_foreign_token<T>(
     load_inner_mut(bridge).treasury.register_foreign_token<T>(tc, uc, metadata)
 }
 
+/// One-time native MYSO bridge bootstrap: locks exactly 50M MYSO (in mist) and registers token id 0.
+#[allow(lint(public_entry))]
+public entry fun bootstrap_native_myso(bridge: &mut Bridge, coin: Coin<MYSO>) {
+    load_inner_mut(bridge).treasury.bootstrap_native_myso_once(coin)
+}
+
 // Create bridge request to send token to other chain, the request will be in
 // pending state until approved
 public fun send_token<T>(
@@ -287,6 +298,85 @@ public fun send_token_v2<T>(
     inner.send_token_internal(target_chain, token, message);
 
     // emit event
+    event::emit(TokenDepositedEventV2 {
+        seq_num: bridge_seq_num,
+        source_chain: inner.chain_id,
+        sender_address: address::to_bytes(ctx.sender()),
+        target_chain,
+        target_address,
+        token_type: token_id,
+        amount: token_amount,
+        timestamp_ms: clock.timestamp_ms(),
+    });
+}
+
+/// Send native MYSO to another chain: locks into bridge escrow (not TreasuryCap burn).
+public fun send_myso_token(
+    bridge: &mut Bridge,
+    target_chain: u8,
+    target_address: vector<u8>,
+    token: Coin<MYSO>,
+    ctx: &mut TxContext,
+) {
+    let inner = load_inner_mut(bridge);
+    let bridge_seq_num = inner.get_current_seq_num_and_increment(message_types::token());
+    let token_id = 0;
+    let token_amount = coin::value(&token);
+    assert!(target_address.length() == EVM_ADDRESS_LENGTH, EInvalidEvmAddress);
+    assert!(token_amount > 0, ETokenValueIsZero);
+
+    let message = message::create_token_bridge_message(
+        inner.chain_id,
+        bridge_seq_num,
+        address::to_bytes(ctx.sender()),
+        target_chain,
+        target_address,
+        token_id,
+        token_amount,
+    );
+
+    inner.send_myso_token_internal(target_chain, token, message);
+
+    event::emit(TokenDepositedEvent {
+        seq_num: bridge_seq_num,
+        source_chain: inner.chain_id,
+        sender_address: address::to_bytes(ctx.sender()),
+        target_chain,
+        target_address,
+        token_type: token_id,
+        amount: token_amount,
+    });
+}
+
+/// Version 2 token bridge message (includes timestamp for limiter bypass after 48h on claim).
+public fun send_myso_token_v2(
+    bridge: &mut Bridge,
+    target_chain: u8,
+    target_address: vector<u8>,
+    token: Coin<MYSO>,
+    clock: &Clock,
+    ctx: &mut TxContext,
+) {
+    let inner = load_inner_mut(bridge);
+    let bridge_seq_num = inner.get_current_seq_num_and_increment(message_types::token());
+    let token_id = 0;
+    let token_amount = coin::value(&token);
+    assert!(target_address.length() == EVM_ADDRESS_LENGTH, EInvalidEvmAddress);
+    assert!(token_amount > 0, ETokenValueIsZero);
+
+    let message = message::create_token_bridge_message_v2(
+        inner.chain_id,
+        bridge_seq_num,
+        address::to_bytes(ctx.sender()),
+        target_chain,
+        target_address,
+        token_id,
+        token_amount,
+        clock.timestamp_ms(),
+    );
+
+    inner.send_myso_token_internal(target_chain, token, message);
+
     event::emit(TokenDepositedEventV2 {
         seq_num: bridge_seq_num,
         source_chain: inner.chain_id,
@@ -400,6 +490,44 @@ public fun claim_and_transfer_token<T>(
     ctx: &mut TxContext,
 ) {
     let (token, owner) = bridge.claim_token_internal<T>(clock, source_chain, bridge_seq_num, ctx);
+    if (token.is_some()) {
+        transfer::public_transfer(token.destroy_some(), owner)
+    } else {
+        token.destroy_none();
+    };
+}
+
+public fun claim_myso_token(
+    bridge: &mut Bridge,
+    clock: &Clock,
+    source_chain: u8,
+    bridge_seq_num: u64,
+    ctx: &mut TxContext,
+): Coin<MYSO> {
+    let (maybe_token, owner) = bridge.claim_myso_token_internal(
+        clock,
+        source_chain,
+        bridge_seq_num,
+        ctx,
+    );
+    assert!(ctx.sender() == owner, EUnauthorisedClaim);
+    assert!(maybe_token.is_some(), ETokenAlreadyClaimedOrHitLimit);
+    maybe_token.destroy_some()
+}
+
+public fun claim_and_transfer_myso_token(
+    bridge: &mut Bridge,
+    clock: &Clock,
+    source_chain: u8,
+    bridge_seq_num: u64,
+    ctx: &mut TxContext,
+) {
+    let (token, owner) = bridge.claim_myso_token_internal(
+        clock,
+        source_chain,
+        bridge_seq_num,
+        ctx,
+    );
     if (token.is_some()) {
         transfer::public_transfer(token.destroy_some(), owner)
     } else {
@@ -598,10 +726,82 @@ fun claim_token_internal<T>(
         return (option::none(), owner)
     };
 
-    // claim from treasury
+    assert!(token_payload.token_type() != 0, EMustUseClaimMySoToken);
+
     let token = inner.treasury.mint<T>(amount, ctx);
 
     // Record changes
+    record.claimed = true;
+    event::emit(TokenTransferClaimed { message_key: key });
+
+    (option::some(token), owner)
+}
+
+fun claim_myso_token_internal(
+    bridge: &mut Bridge,
+    clock: &Clock,
+    source_chain: u8,
+    bridge_seq_num: u64,
+    ctx: &mut TxContext,
+): (Option<Coin<MYSO>>, address) {
+    let inner = load_inner_mut(bridge);
+    assert!(!inner.paused, EBridgeUnavailable);
+
+    let key = message::create_key(source_chain, message_types::token(), bridge_seq_num);
+
+    assert!(inner.token_transfer_records.contains(key), EMessageNotFoundInRecords);
+
+    let record = &mut inner.token_transfer_records[key];
+    assert!(&record.message.message_type() == message_types::token(), EUnexpectedMessageType);
+    assert!(record.verified_signatures.is_some(), EUnauthorisedClaim);
+
+    let mut bypass_limiter = false;
+    let token_payload;
+    if (record.message.message_version() == 2) {
+        let token_payload_v2 = record.message.extract_token_bridge_payload_v2();
+
+        let timestamp = token_payload_v2.timestamp_ms();
+        bypass_limiter = clock.timestamp_ms() > timestamp + 48 * 3600000;
+        token_payload = token_payload_v2.to_token_payload_v1();
+    } else {
+        token_payload = record.message.extract_token_bridge_payload();
+    };
+
+    let owner = address::from_bytes(token_payload.token_target_address());
+
+    if (record.claimed) {
+        event::emit(TokenTransferAlreadyClaimed { message_key: key });
+        return (option::none(), owner)
+    };
+
+    let target_chain = token_payload.token_target_chain();
+    assert!(target_chain == inner.chain_id, EUnexpectedChainID);
+
+    let route = chain_ids::get_route(source_chain, target_chain);
+    assert!(token_payload.token_type() == 0, EUnexpectedTokenType);
+    assert!(
+        treasury::token_id<MYSO>(&inner.treasury) == token_payload.token_type(),
+        EUnexpectedTokenType,
+    );
+
+    let amount = token_payload.token_amount();
+    if (
+        !bypass_limiter &&
+        !inner
+            .limiter
+            .check_and_record_sending_transfer<MYSO>(
+                &inner.treasury,
+                clock,
+                route,
+                amount,
+            )
+    ) {
+        event::emit(TokenTransferLimitExceed { message_key: key });
+        return (option::none(), owner)
+    };
+
+    let token = inner.treasury.unlock_native_myso(amount, ctx);
+
     record.claimed = true;
     event::emit(TokenTransferClaimed { message_key: key });
 
@@ -617,10 +817,37 @@ fun send_token_internal<T>(
     assert!(!inner.paused, EBridgeUnavailable);
     assert!(chain_ids::is_valid_route(inner.chain_id, target_chain), EInvalidBridgeRoute);
 
+    assert!(
+        !(inner.treasury.native_bridge_ready()
+            && type_name::with_defining_ids<T>() == type_name::with_defining_ids<MYSO>()),
+        EMustUseSendMySoToken,
+    );
+
     // burn / escrow token, unsupported coins will fail in this step
     inner.treasury.burn(token);
 
     // Store pending bridge request
+    inner
+        .token_transfer_records
+        .push_back(
+            message.key(),
+            BridgeRecord {
+                message,
+                verified_signatures: option::none(),
+                claimed: false,
+            },
+        );
+}
+
+fun send_myso_token_internal(
+    inner: &mut BridgeInner,
+    target_chain: u8,
+    token: Coin<MYSO>,
+    message: BridgeMessage,
+) {
+    assert!(!inner.paused, EBridgeUnavailable);
+    assert!(chain_ids::is_valid_route(inner.chain_id, target_chain), EInvalidBridgeRoute);
+    inner.treasury.lock_native_myso(token);
     inner
         .token_transfer_records
         .push_back(

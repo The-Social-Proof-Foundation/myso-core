@@ -1782,7 +1782,7 @@ module social_contracts::social_proof_tokens {
         let sqrt_reserved = math::sqrt(total_reserved);
         let fourth_root_reserved = math::sqrt(sqrt_reserved); // fourth root: sqrt(sqrt(x)) = x^(1/4)
         // Use u128 to avoid overflow in sqrt * fourth_root (reserved^0.75)
-        let mut scale_factor = (((sqrt_reserved as u128) * (fourth_root_reserved as u128)) / 1000) as u64;
+        let scale_factor = (((sqrt_reserved as u128) * (fourth_root_reserved as u128)) / 1000) as u64;
         
         // Apply different base multipliers for profile vs post tokens
         let mut initial_token_supply = if (reservation_pool_object.info.token_type == TOKEN_TYPE_PROFILE) {

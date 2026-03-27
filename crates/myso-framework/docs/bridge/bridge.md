@@ -21,18 +21,25 @@ title: Module `bridge::bridge`
 -  [Function `committee_registration`](#bridge_bridge_committee_registration)
 -  [Function `update_node_url`](#bridge_bridge_update_node_url)
 -  [Function `register_foreign_token`](#bridge_bridge_register_foreign_token)
+-  [Function `bootstrap_native_myso`](#bridge_bridge_bootstrap_native_myso)
 -  [Function `send_token`](#bridge_bridge_send_token)
 -  [Function `send_token_v2`](#bridge_bridge_send_token_v2)
+-  [Function `send_myso_token`](#bridge_bridge_send_myso_token)
+-  [Function `send_myso_token_v2`](#bridge_bridge_send_myso_token_v2)
 -  [Function `approve_token_transfer`](#bridge_bridge_approve_token_transfer)
 -  [Function `claim_token`](#bridge_bridge_claim_token)
 -  [Function `claim_and_transfer_token`](#bridge_bridge_claim_and_transfer_token)
+-  [Function `claim_myso_token`](#bridge_bridge_claim_myso_token)
+-  [Function `claim_and_transfer_myso_token`](#bridge_bridge_claim_and_transfer_myso_token)
 -  [Function `execute_system_message`](#bridge_bridge_execute_system_message)
 -  [Function `get_token_transfer_action_status`](#bridge_bridge_get_token_transfer_action_status)
 -  [Function `get_token_transfer_action_signatures`](#bridge_bridge_get_token_transfer_action_signatures)
 -  [Function `load_inner`](#bridge_bridge_load_inner)
 -  [Function `load_inner_mut`](#bridge_bridge_load_inner_mut)
 -  [Function `claim_token_internal`](#bridge_bridge_claim_token_internal)
+-  [Function `claim_myso_token_internal`](#bridge_bridge_claim_myso_token_internal)
 -  [Function `send_token_internal`](#bridge_bridge_send_token_internal)
+-  [Function `send_myso_token_internal`](#bridge_bridge_send_myso_token_internal)
 -  [Function `execute_emergency_op`](#bridge_bridge_execute_emergency_op)
 -  [Function `execute_update_bridge_limit`](#bridge_bridge_execute_update_bridge_limit)
 -  [Function `execute_update_asset_price`](#bridge_bridge_execute_update_asset_price)
@@ -752,6 +759,24 @@ title: Module `bridge::bridge`
 
 
 
+<a name="bridge_bridge_EMustUseSendMySoToken"></a>
+
+
+
+<pre><code><b>const</b> <a href="../bridge/bridge.md#bridge_bridge_EMustUseSendMySoToken">EMustUseSendMySoToken</a>: u64 = 20;
+</code></pre>
+
+
+
+<a name="bridge_bridge_EMustUseClaimMySoToken"></a>
+
+
+
+<pre><code><b>const</b> <a href="../bridge/bridge.md#bridge_bridge_EMustUseClaimMySoToken">EMustUseClaimMySoToken</a>: u64 = 21;
+</code></pre>
+
+
+
 <a name="bridge_bridge_CURRENT_VERSION"></a>
 
 
@@ -925,6 +950,31 @@ title: Module `bridge::bridge`
 
 </details>
 
+<a name="bridge_bridge_bootstrap_native_myso"></a>
+
+## Function `bootstrap_native_myso`
+
+One-time native MYSO bridge bootstrap: locks exactly 50M MYSO (in mist) and registers token id 0.
+
+
+<pre><code><b>public</b> <b>entry</b> <b>fun</b> <a href="../bridge/bridge.md#bridge_bridge_bootstrap_native_myso">bootstrap_native_myso</a>(<a href="../bridge/bridge.md#bridge_bridge">bridge</a>: &<b>mut</b> <a href="../bridge/bridge.md#bridge_bridge_Bridge">bridge::bridge::Bridge</a>, coin: <a href="../myso/coin.md#myso_coin_Coin">myso::coin::Coin</a>&lt;<a href="../myso/myso.md#myso_myso_MYSO">myso::myso::MYSO</a>&gt;)
+</code></pre>
+
+
+
+<details>
+<summary>Implementation</summary>
+
+
+<pre><code><b>public</b> <b>entry</b> <b>fun</b> <a href="../bridge/bridge.md#bridge_bridge_bootstrap_native_myso">bootstrap_native_myso</a>(<a href="../bridge/bridge.md#bridge_bridge">bridge</a>: &<b>mut</b> <a href="../bridge/bridge.md#bridge_bridge_Bridge">Bridge</a>, coin: Coin&lt;MYSO&gt;) {
+    <a href="../bridge/bridge.md#bridge_bridge_load_inner_mut">load_inner_mut</a>(<a href="../bridge/bridge.md#bridge_bridge">bridge</a>).<a href="../bridge/treasury.md#bridge_treasury">treasury</a>.bootstrap_native_myso_once(coin)
+}
+</code></pre>
+
+
+
+</details>
+
 <a name="bridge_bridge_send_token"></a>
 
 ## Function `send_token`
@@ -1022,6 +1072,119 @@ title: Module `bridge::bridge`
     );
     inner.<a href="../bridge/bridge.md#bridge_bridge_send_token_internal">send_token_internal</a>(target_chain, token, <a href="../bridge/message.md#bridge_message">message</a>);
     // emit event
+    event::emit(<a href="../bridge/bridge.md#bridge_bridge_TokenDepositedEventV2">TokenDepositedEventV2</a> {
+        seq_num: bridge_seq_num,
+        source_chain: inner.chain_id,
+        sender_address: address::to_bytes(ctx.sender()),
+        target_chain,
+        target_address,
+        token_type: token_id,
+        amount: token_amount,
+        timestamp_ms: clock.timestamp_ms(),
+    });
+}
+</code></pre>
+
+
+
+</details>
+
+<a name="bridge_bridge_send_myso_token"></a>
+
+## Function `send_myso_token`
+
+Send native MYSO to another chain: locks into bridge escrow (not TreasuryCap burn).
+
+
+<pre><code><b>public</b> <b>fun</b> <a href="../bridge/bridge.md#bridge_bridge_send_myso_token">send_myso_token</a>(<a href="../bridge/bridge.md#bridge_bridge">bridge</a>: &<b>mut</b> <a href="../bridge/bridge.md#bridge_bridge_Bridge">bridge::bridge::Bridge</a>, target_chain: u8, target_address: vector&lt;u8&gt;, token: <a href="../myso/coin.md#myso_coin_Coin">myso::coin::Coin</a>&lt;<a href="../myso/myso.md#myso_myso_MYSO">myso::myso::MYSO</a>&gt;, ctx: &<b>mut</b> <a href="../myso/tx_context.md#myso_tx_context_TxContext">myso::tx_context::TxContext</a>)
+</code></pre>
+
+
+
+<details>
+<summary>Implementation</summary>
+
+
+<pre><code><b>public</b> <b>fun</b> <a href="../bridge/bridge.md#bridge_bridge_send_myso_token">send_myso_token</a>(
+    <a href="../bridge/bridge.md#bridge_bridge">bridge</a>: &<b>mut</b> <a href="../bridge/bridge.md#bridge_bridge_Bridge">Bridge</a>,
+    target_chain: u8,
+    target_address: vector&lt;u8&gt;,
+    token: Coin&lt;MYSO&gt;,
+    ctx: &<b>mut</b> TxContext,
+) {
+    <b>let</b> inner = <a href="../bridge/bridge.md#bridge_bridge_load_inner_mut">load_inner_mut</a>(<a href="../bridge/bridge.md#bridge_bridge">bridge</a>);
+    <b>let</b> bridge_seq_num = inner.<a href="../bridge/bridge.md#bridge_bridge_get_current_seq_num_and_increment">get_current_seq_num_and_increment</a>(<a href="../bridge/message_types.md#bridge_message_types_token">message_types::token</a>());
+    <b>let</b> token_id = 0;
+    <b>let</b> token_amount = coin::value(&token);
+    <b>assert</b>!(target_address.length() == <a href="../bridge/bridge.md#bridge_bridge_EVM_ADDRESS_LENGTH">EVM_ADDRESS_LENGTH</a>, <a href="../bridge/bridge.md#bridge_bridge_EInvalidEvmAddress">EInvalidEvmAddress</a>);
+    <b>assert</b>!(token_amount &gt; 0, <a href="../bridge/bridge.md#bridge_bridge_ETokenValueIsZero">ETokenValueIsZero</a>);
+    <b>let</b> <a href="../bridge/message.md#bridge_message">message</a> = <a href="../bridge/message.md#bridge_message_create_token_bridge_message">message::create_token_bridge_message</a>(
+        inner.chain_id,
+        bridge_seq_num,
+        address::to_bytes(ctx.sender()),
+        target_chain,
+        target_address,
+        token_id,
+        token_amount,
+    );
+    inner.<a href="../bridge/bridge.md#bridge_bridge_send_myso_token_internal">send_myso_token_internal</a>(target_chain, token, <a href="../bridge/message.md#bridge_message">message</a>);
+    event::emit(<a href="../bridge/bridge.md#bridge_bridge_TokenDepositedEvent">TokenDepositedEvent</a> {
+        seq_num: bridge_seq_num,
+        source_chain: inner.chain_id,
+        sender_address: address::to_bytes(ctx.sender()),
+        target_chain,
+        target_address,
+        token_type: token_id,
+        amount: token_amount,
+    });
+}
+</code></pre>
+
+
+
+</details>
+
+<a name="bridge_bridge_send_myso_token_v2"></a>
+
+## Function `send_myso_token_v2`
+
+Version 2 token bridge message (includes timestamp for limiter bypass after 48h on claim).
+
+
+<pre><code><b>public</b> <b>fun</b> <a href="../bridge/bridge.md#bridge_bridge_send_myso_token_v2">send_myso_token_v2</a>(<a href="../bridge/bridge.md#bridge_bridge">bridge</a>: &<b>mut</b> <a href="../bridge/bridge.md#bridge_bridge_Bridge">bridge::bridge::Bridge</a>, target_chain: u8, target_address: vector&lt;u8&gt;, token: <a href="../myso/coin.md#myso_coin_Coin">myso::coin::Coin</a>&lt;<a href="../myso/myso.md#myso_myso_MYSO">myso::myso::MYSO</a>&gt;, clock: &<a href="../myso/clock.md#myso_clock_Clock">myso::clock::Clock</a>, ctx: &<b>mut</b> <a href="../myso/tx_context.md#myso_tx_context_TxContext">myso::tx_context::TxContext</a>)
+</code></pre>
+
+
+
+<details>
+<summary>Implementation</summary>
+
+
+<pre><code><b>public</b> <b>fun</b> <a href="../bridge/bridge.md#bridge_bridge_send_myso_token_v2">send_myso_token_v2</a>(
+    <a href="../bridge/bridge.md#bridge_bridge">bridge</a>: &<b>mut</b> <a href="../bridge/bridge.md#bridge_bridge_Bridge">Bridge</a>,
+    target_chain: u8,
+    target_address: vector&lt;u8&gt;,
+    token: Coin&lt;MYSO&gt;,
+    clock: &Clock,
+    ctx: &<b>mut</b> TxContext,
+) {
+    <b>let</b> inner = <a href="../bridge/bridge.md#bridge_bridge_load_inner_mut">load_inner_mut</a>(<a href="../bridge/bridge.md#bridge_bridge">bridge</a>);
+    <b>let</b> bridge_seq_num = inner.<a href="../bridge/bridge.md#bridge_bridge_get_current_seq_num_and_increment">get_current_seq_num_and_increment</a>(<a href="../bridge/message_types.md#bridge_message_types_token">message_types::token</a>());
+    <b>let</b> token_id = 0;
+    <b>let</b> token_amount = coin::value(&token);
+    <b>assert</b>!(target_address.length() == <a href="../bridge/bridge.md#bridge_bridge_EVM_ADDRESS_LENGTH">EVM_ADDRESS_LENGTH</a>, <a href="../bridge/bridge.md#bridge_bridge_EInvalidEvmAddress">EInvalidEvmAddress</a>);
+    <b>assert</b>!(token_amount &gt; 0, <a href="../bridge/bridge.md#bridge_bridge_ETokenValueIsZero">ETokenValueIsZero</a>);
+    <b>let</b> <a href="../bridge/message.md#bridge_message">message</a> = <a href="../bridge/message.md#bridge_message_create_token_bridge_message_v2">message::create_token_bridge_message_v2</a>(
+        inner.chain_id,
+        bridge_seq_num,
+        address::to_bytes(ctx.sender()),
+        target_chain,
+        target_address,
+        token_id,
+        token_amount,
+        clock.timestamp_ms(),
+    );
+    inner.<a href="../bridge/bridge.md#bridge_bridge_send_myso_token_internal">send_myso_token_internal</a>(target_chain, token, <a href="../bridge/message.md#bridge_message">message</a>);
     event::emit(<a href="../bridge/bridge.md#bridge_bridge_TokenDepositedEventV2">TokenDepositedEventV2</a> {
         seq_num: bridge_seq_num,
         source_chain: inner.chain_id,
@@ -1183,6 +1346,84 @@ title: Module `bridge::bridge`
     ctx: &<b>mut</b> TxContext,
 ) {
     <b>let</b> (token, owner) = <a href="../bridge/bridge.md#bridge_bridge">bridge</a>.<a href="../bridge/bridge.md#bridge_bridge_claim_token_internal">claim_token_internal</a>&lt;T&gt;(clock, source_chain, bridge_seq_num, ctx);
+    <b>if</b> (token.is_some()) {
+        transfer::public_transfer(token.destroy_some(), owner)
+    } <b>else</b> {
+        token.destroy_none();
+    };
+}
+</code></pre>
+
+
+
+</details>
+
+<a name="bridge_bridge_claim_myso_token"></a>
+
+## Function `claim_myso_token`
+
+
+
+<pre><code><b>public</b> <b>fun</b> <a href="../bridge/bridge.md#bridge_bridge_claim_myso_token">claim_myso_token</a>(<a href="../bridge/bridge.md#bridge_bridge">bridge</a>: &<b>mut</b> <a href="../bridge/bridge.md#bridge_bridge_Bridge">bridge::bridge::Bridge</a>, clock: &<a href="../myso/clock.md#myso_clock_Clock">myso::clock::Clock</a>, source_chain: u8, bridge_seq_num: u64, ctx: &<b>mut</b> <a href="../myso/tx_context.md#myso_tx_context_TxContext">myso::tx_context::TxContext</a>): <a href="../myso/coin.md#myso_coin_Coin">myso::coin::Coin</a>&lt;<a href="../myso/myso.md#myso_myso_MYSO">myso::myso::MYSO</a>&gt;
+</code></pre>
+
+
+
+<details>
+<summary>Implementation</summary>
+
+
+<pre><code><b>public</b> <b>fun</b> <a href="../bridge/bridge.md#bridge_bridge_claim_myso_token">claim_myso_token</a>(
+    <a href="../bridge/bridge.md#bridge_bridge">bridge</a>: &<b>mut</b> <a href="../bridge/bridge.md#bridge_bridge_Bridge">Bridge</a>,
+    clock: &Clock,
+    source_chain: u8,
+    bridge_seq_num: u64,
+    ctx: &<b>mut</b> TxContext,
+): Coin&lt;MYSO&gt; {
+    <b>let</b> (maybe_token, owner) = <a href="../bridge/bridge.md#bridge_bridge">bridge</a>.<a href="../bridge/bridge.md#bridge_bridge_claim_myso_token_internal">claim_myso_token_internal</a>(
+        clock,
+        source_chain,
+        bridge_seq_num,
+        ctx,
+    );
+    <b>assert</b>!(ctx.sender() == owner, <a href="../bridge/bridge.md#bridge_bridge_EUnauthorisedClaim">EUnauthorisedClaim</a>);
+    <b>assert</b>!(maybe_token.is_some(), <a href="../bridge/bridge.md#bridge_bridge_ETokenAlreadyClaimedOrHitLimit">ETokenAlreadyClaimedOrHitLimit</a>);
+    maybe_token.destroy_some()
+}
+</code></pre>
+
+
+
+</details>
+
+<a name="bridge_bridge_claim_and_transfer_myso_token"></a>
+
+## Function `claim_and_transfer_myso_token`
+
+
+
+<pre><code><b>public</b> <b>fun</b> <a href="../bridge/bridge.md#bridge_bridge_claim_and_transfer_myso_token">claim_and_transfer_myso_token</a>(<a href="../bridge/bridge.md#bridge_bridge">bridge</a>: &<b>mut</b> <a href="../bridge/bridge.md#bridge_bridge_Bridge">bridge::bridge::Bridge</a>, clock: &<a href="../myso/clock.md#myso_clock_Clock">myso::clock::Clock</a>, source_chain: u8, bridge_seq_num: u64, ctx: &<b>mut</b> <a href="../myso/tx_context.md#myso_tx_context_TxContext">myso::tx_context::TxContext</a>)
+</code></pre>
+
+
+
+<details>
+<summary>Implementation</summary>
+
+
+<pre><code><b>public</b> <b>fun</b> <a href="../bridge/bridge.md#bridge_bridge_claim_and_transfer_myso_token">claim_and_transfer_myso_token</a>(
+    <a href="../bridge/bridge.md#bridge_bridge">bridge</a>: &<b>mut</b> <a href="../bridge/bridge.md#bridge_bridge_Bridge">Bridge</a>,
+    clock: &Clock,
+    source_chain: u8,
+    bridge_seq_num: u64,
+    ctx: &<b>mut</b> TxContext,
+) {
+    <b>let</b> (token, owner) = <a href="../bridge/bridge.md#bridge_bridge">bridge</a>.<a href="../bridge/bridge.md#bridge_bridge_claim_myso_token_internal">claim_myso_token_internal</a>(
+        clock,
+        source_chain,
+        bridge_seq_num,
+        ctx,
+    );
     <b>if</b> (token.is_some()) {
         transfer::public_transfer(token.destroy_some(), owner)
     } <b>else</b> {
@@ -1466,9 +1707,87 @@ title: Module `bridge::bridge`
         event::emit(<a href="../bridge/bridge.md#bridge_bridge_TokenTransferLimitExceed">TokenTransferLimitExceed</a> { message_key: key });
         <b>return</b> (option::none(), owner)
     };
-    // claim from <a href="../bridge/treasury.md#bridge_treasury">treasury</a>
+    <b>assert</b>!(token_payload.token_type() != 0, <a href="../bridge/bridge.md#bridge_bridge_EMustUseClaimMySoToken">EMustUseClaimMySoToken</a>);
     <b>let</b> token = inner.<a href="../bridge/treasury.md#bridge_treasury">treasury</a>.mint&lt;T&gt;(amount, ctx);
     // Record changes
+    record.claimed = <b>true</b>;
+    event::emit(<a href="../bridge/bridge.md#bridge_bridge_TokenTransferClaimed">TokenTransferClaimed</a> { message_key: key });
+    (option::some(token), owner)
+}
+</code></pre>
+
+
+
+</details>
+
+<a name="bridge_bridge_claim_myso_token_internal"></a>
+
+## Function `claim_myso_token_internal`
+
+
+
+<pre><code><b>fun</b> <a href="../bridge/bridge.md#bridge_bridge_claim_myso_token_internal">claim_myso_token_internal</a>(<a href="../bridge/bridge.md#bridge_bridge">bridge</a>: &<b>mut</b> <a href="../bridge/bridge.md#bridge_bridge_Bridge">bridge::bridge::Bridge</a>, clock: &<a href="../myso/clock.md#myso_clock_Clock">myso::clock::Clock</a>, source_chain: u8, bridge_seq_num: u64, ctx: &<b>mut</b> <a href="../myso/tx_context.md#myso_tx_context_TxContext">myso::tx_context::TxContext</a>): (<a href="../std/option.md#std_option_Option">std::option::Option</a>&lt;<a href="../myso/coin.md#myso_coin_Coin">myso::coin::Coin</a>&lt;<a href="../myso/myso.md#myso_myso_MYSO">myso::myso::MYSO</a>&gt;&gt;, <b>address</b>)
+</code></pre>
+
+
+
+<details>
+<summary>Implementation</summary>
+
+
+<pre><code><b>fun</b> <a href="../bridge/bridge.md#bridge_bridge_claim_myso_token_internal">claim_myso_token_internal</a>(
+    <a href="../bridge/bridge.md#bridge_bridge">bridge</a>: &<b>mut</b> <a href="../bridge/bridge.md#bridge_bridge_Bridge">Bridge</a>,
+    clock: &Clock,
+    source_chain: u8,
+    bridge_seq_num: u64,
+    ctx: &<b>mut</b> TxContext,
+): (Option&lt;Coin&lt;MYSO&gt;&gt;, <b>address</b>) {
+    <b>let</b> inner = <a href="../bridge/bridge.md#bridge_bridge_load_inner_mut">load_inner_mut</a>(<a href="../bridge/bridge.md#bridge_bridge">bridge</a>);
+    <b>assert</b>!(!inner.paused, <a href="../bridge/bridge.md#bridge_bridge_EBridgeUnavailable">EBridgeUnavailable</a>);
+    <b>let</b> key = <a href="../bridge/message.md#bridge_message_create_key">message::create_key</a>(source_chain, <a href="../bridge/message_types.md#bridge_message_types_token">message_types::token</a>(), bridge_seq_num);
+    <b>assert</b>!(inner.token_transfer_records.contains(key), <a href="../bridge/bridge.md#bridge_bridge_EMessageNotFoundInRecords">EMessageNotFoundInRecords</a>);
+    <b>let</b> record = &<b>mut</b> inner.token_transfer_records[key];
+    <b>assert</b>!(&record.<a href="../bridge/message.md#bridge_message">message</a>.message_type() == <a href="../bridge/message_types.md#bridge_message_types_token">message_types::token</a>(), <a href="../bridge/bridge.md#bridge_bridge_EUnexpectedMessageType">EUnexpectedMessageType</a>);
+    <b>assert</b>!(record.verified_signatures.is_some(), <a href="../bridge/bridge.md#bridge_bridge_EUnauthorisedClaim">EUnauthorisedClaim</a>);
+    <b>let</b> <b>mut</b> bypass_limiter = <b>false</b>;
+    <b>let</b> token_payload;
+    <b>if</b> (record.<a href="../bridge/message.md#bridge_message">message</a>.message_version() == 2) {
+        <b>let</b> token_payload_v2 = record.<a href="../bridge/message.md#bridge_message">message</a>.extract_token_bridge_payload_v2();
+        <b>let</b> timestamp = token_payload_v2.timestamp_ms();
+        bypass_limiter = clock.timestamp_ms() &gt; timestamp + 48 * 3600000;
+        token_payload = token_payload_v2.to_token_payload_v1();
+    } <b>else</b> {
+        token_payload = record.<a href="../bridge/message.md#bridge_message">message</a>.extract_token_bridge_payload();
+    };
+    <b>let</b> owner = address::from_bytes(token_payload.token_target_address());
+    <b>if</b> (record.claimed) {
+        event::emit(<a href="../bridge/bridge.md#bridge_bridge_TokenTransferAlreadyClaimed">TokenTransferAlreadyClaimed</a> { message_key: key });
+        <b>return</b> (option::none(), owner)
+    };
+    <b>let</b> target_chain = token_payload.token_target_chain();
+    <b>assert</b>!(target_chain == inner.chain_id, <a href="../bridge/bridge.md#bridge_bridge_EUnexpectedChainID">EUnexpectedChainID</a>);
+    <b>let</b> route = <a href="../bridge/chain_ids.md#bridge_chain_ids_get_route">chain_ids::get_route</a>(source_chain, target_chain);
+    <b>assert</b>!(token_payload.token_type() == 0, <a href="../bridge/bridge.md#bridge_bridge_EUnexpectedTokenType">EUnexpectedTokenType</a>);
+    <b>assert</b>!(
+        <a href="../bridge/treasury.md#bridge_treasury_token_id">treasury::token_id</a>&lt;MYSO&gt;(&inner.<a href="../bridge/treasury.md#bridge_treasury">treasury</a>) == token_payload.token_type(),
+        <a href="../bridge/bridge.md#bridge_bridge_EUnexpectedTokenType">EUnexpectedTokenType</a>,
+    );
+    <b>let</b> amount = token_payload.token_amount();
+    <b>if</b> (
+        !bypass_limiter &&
+        !inner
+            .<a href="../bridge/limiter.md#bridge_limiter">limiter</a>
+            .check_and_record_sending_transfer&lt;MYSO&gt;(
+                &inner.<a href="../bridge/treasury.md#bridge_treasury">treasury</a>,
+                clock,
+                route,
+                amount,
+            )
+    ) {
+        event::emit(<a href="../bridge/bridge.md#bridge_bridge_TokenTransferLimitExceed">TokenTransferLimitExceed</a> { message_key: key });
+        <b>return</b> (option::none(), owner)
+    };
+    <b>let</b> token = inner.<a href="../bridge/treasury.md#bridge_treasury">treasury</a>.unlock_native_myso(amount, ctx);
     record.claimed = <b>true</b>;
     event::emit(<a href="../bridge/bridge.md#bridge_bridge_TokenTransferClaimed">TokenTransferClaimed</a> { message_key: key });
     (option::some(token), owner)
@@ -1502,9 +1821,55 @@ title: Module `bridge::bridge`
 ) {
     <b>assert</b>!(!inner.paused, <a href="../bridge/bridge.md#bridge_bridge_EBridgeUnavailable">EBridgeUnavailable</a>);
     <b>assert</b>!(<a href="../bridge/chain_ids.md#bridge_chain_ids_is_valid_route">chain_ids::is_valid_route</a>(inner.chain_id, target_chain), <a href="../bridge/bridge.md#bridge_bridge_EInvalidBridgeRoute">EInvalidBridgeRoute</a>);
+    <b>assert</b>!(
+        !(inner.<a href="../bridge/treasury.md#bridge_treasury">treasury</a>.native_bridge_ready()
+            && type_name::with_defining_ids&lt;T&gt;() == type_name::with_defining_ids&lt;MYSO&gt;()),
+        <a href="../bridge/bridge.md#bridge_bridge_EMustUseSendMySoToken">EMustUseSendMySoToken</a>,
+    );
     // burn / escrow token, unsupported coins will fail in this step
     inner.<a href="../bridge/treasury.md#bridge_treasury">treasury</a>.burn(token);
     // Store pending <a href="../bridge/bridge.md#bridge_bridge">bridge</a> request
+    inner
+        .token_transfer_records
+        .push_back(
+            <a href="../bridge/message.md#bridge_message">message</a>.key(),
+            <a href="../bridge/bridge.md#bridge_bridge_BridgeRecord">BridgeRecord</a> {
+                <a href="../bridge/message.md#bridge_message">message</a>,
+                verified_signatures: option::none(),
+                claimed: <b>false</b>,
+            },
+        );
+}
+</code></pre>
+
+
+
+</details>
+
+<a name="bridge_bridge_send_myso_token_internal"></a>
+
+## Function `send_myso_token_internal`
+
+
+
+<pre><code><b>fun</b> <a href="../bridge/bridge.md#bridge_bridge_send_myso_token_internal">send_myso_token_internal</a>(inner: &<b>mut</b> <a href="../bridge/bridge.md#bridge_bridge_BridgeInner">bridge::bridge::BridgeInner</a>, target_chain: u8, token: <a href="../myso/coin.md#myso_coin_Coin">myso::coin::Coin</a>&lt;<a href="../myso/myso.md#myso_myso_MYSO">myso::myso::MYSO</a>&gt;, <a href="../bridge/message.md#bridge_message">message</a>: <a href="../bridge/message.md#bridge_message_BridgeMessage">bridge::message::BridgeMessage</a>)
+</code></pre>
+
+
+
+<details>
+<summary>Implementation</summary>
+
+
+<pre><code><b>fun</b> <a href="../bridge/bridge.md#bridge_bridge_send_myso_token_internal">send_myso_token_internal</a>(
+    inner: &<b>mut</b> <a href="../bridge/bridge.md#bridge_bridge_BridgeInner">BridgeInner</a>,
+    target_chain: u8,
+    token: Coin&lt;MYSO&gt;,
+    <a href="../bridge/message.md#bridge_message">message</a>: BridgeMessage,
+) {
+    <b>assert</b>!(!inner.paused, <a href="../bridge/bridge.md#bridge_bridge_EBridgeUnavailable">EBridgeUnavailable</a>);
+    <b>assert</b>!(<a href="../bridge/chain_ids.md#bridge_chain_ids_is_valid_route">chain_ids::is_valid_route</a>(inner.chain_id, target_chain), <a href="../bridge/bridge.md#bridge_bridge_EInvalidBridgeRoute">EInvalidBridgeRoute</a>);
+    inner.<a href="../bridge/treasury.md#bridge_treasury">treasury</a>.lock_native_myso(token);
     inner
         .token_transfer_records
         .push_back(

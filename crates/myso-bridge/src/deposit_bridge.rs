@@ -26,6 +26,7 @@ use move_core_types::language_storage::StructTag;
 use myso_types::base_types::ObjectRef;
 use myso_types::bridge::BRIDGE_MODULE_NAME;
 use myso_types::coin::Coin;
+use myso_types::gas_coin::GAS;
 use myso_types::digests::TransactionDigest;
 use myso_types::programmable_transaction_builder::ProgrammableTransactionBuilder;
 use myso_types::transaction::{ObjectArg, Transaction, TransactionData};
@@ -52,7 +53,7 @@ pub struct DepositBridgeHandler {
     /// Bridge chain ID (u8) for DepositTxKey - avoids truncation of full EVM chain ID
     eth_bridge_chain_id: u8,
     token_address_to_id: Arc<RwLock<HashMap<EthAddress, u8>>>,
-    /// MySo client for MySo→EVM bridging (send_token)
+    /// MySo client for MySo→EVM bridging (`send_token` / `send_myso_token` for native MYSO)
     myso_client: Arc<MySoBridgeClient>,
     /// MySo bridge chain ID for DepositTxKey (MySo chain)
     myso_bridge_chain_id: u8,
@@ -385,13 +386,23 @@ impl DepositBridgeHandler {
             .obj(bridge_object_arg)
             .map_err(|e| BridgeError::Generic(format!("Failed to build bridge arg: {:?}", e)))?;
 
-        builder.programmable_move_call(
-            BRIDGE_PACKAGE_ID,
-            BRIDGE_MODULE_NAME.to_owned(),
-            ident_str!("send_token").to_owned(),
-            vec![inner_type_tag],
-            vec![arg_bridge, arg_target_chain, arg_target_address, arg_token],
-        );
+        if GAS::is_gas_type(&inner_type_tag) {
+            builder.programmable_move_call(
+                BRIDGE_PACKAGE_ID,
+                BRIDGE_MODULE_NAME.to_owned(),
+                ident_str!("send_myso_token").to_owned(),
+                vec![],
+                vec![arg_bridge, arg_target_chain, arg_target_address, arg_token],
+            );
+        } else {
+            builder.programmable_move_call(
+                BRIDGE_PACKAGE_ID,
+                BRIDGE_MODULE_NAME.to_owned(),
+                ident_str!("send_token").to_owned(),
+                vec![inner_type_tag],
+                vec![arg_bridge, arg_target_chain, arg_target_address, arg_token],
+            );
+        }
 
         let pt = builder.finish();
         let tx_data =

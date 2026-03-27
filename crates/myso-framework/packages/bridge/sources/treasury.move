@@ -7,10 +7,12 @@ module bridge::treasury;
 use std::ascii::{Self, String};
 use std::type_name::{Self, TypeName};
 use myso::address;
+use myso::balance::{Self, Balance};
 use myso::bag::{Self, Bag};
 use myso::coin::{Self, Coin, TreasuryCap, CoinMetadata};
 use myso::event;
 use myso::hex;
+use myso::myso::MYSO;
 use myso::object_bag::{Self, ObjectBag};
 use myso::package::{Self, UpgradeCap};
 use myso::vec_map::{Self, VecMap};
@@ -19,6 +21,15 @@ const EUnsupportedTokenType: u64 = 1;
 const EInvalidUpgradeCap: u64 = 2;
 const ETokenSupplyNonZero: u64 = 3;
 const EInvalidNotionalValue: u64 = 4;
+const ENativeBridgeAlreadyInitialized: u64 = 5;
+const EInvalidBootstrapAmount: u64 = 6;
+const ENativeBridgeNotInitialized: u64 = 7;
+const EInsufficientNativeEscrow: u64 = 8;
+
+const MIST_PER_WHOLE_MYSO: u64 = 1_000_000_000;
+const BOOTSTRAP_NATIVE_MYSO_MIST: u64 = 50_000_000_000_000_000;
+/// Initial USD notional for limiter ($1.00 at 8 decimal places), same scale as bridge limiter.
+const NATIVE_MYSO_INITIAL_NOTIONAL_USD: u64 = 100_000_000;
 
 #[test_only]
 const USD_VALUE_MULTIPLIER: u64 = 100000000; // 8 DP accuracy
@@ -35,6 +46,9 @@ public struct BridgeTreasury has store {
     id_token_type_map: VecMap<u8, TypeName>,
     // Bag for storing potential new token waiting to be approved
     waiting_room: Bag,
+    /// Escrow for native MYSO (bootstrap + send_myso_token locks); claims release from here.
+    native_myso_escrow: Balance<MYSO>,
+    native_bridge_initialized: bool,
 }
 
 public struct BridgeTokenMetadata has copy, drop, store {
@@ -167,7 +181,69 @@ public(package) fun create(ctx: &mut TxContext): BridgeTreasury {
         supported_tokens: vec_map::empty(),
         id_token_type_map: vec_map::empty(),
         waiting_room: bag::new(ctx),
+        native_myso_escrow: balance::zero(),
+        native_bridge_initialized: false,
     }
+}
+
+/// One-time bootstrap: lock exactly `BOOTSTRAP_NATIVE_MYSO_MIST`, register MYSO as token id 0 for limiter metadata.
+public(package) fun bootstrap_native_myso_once(self: &mut BridgeTreasury, coin: Coin<MYSO>) {
+    assert!(!self.native_bridge_initialized, ENativeBridgeAlreadyInitialized);
+    assert!(coin::value(&coin) == BOOTSTRAP_NATIVE_MYSO_MIST, EInvalidBootstrapAmount);
+    balance::join(&mut self.native_myso_escrow, coin::into_balance(coin));
+    self.native_bridge_initialized = true;
+
+    let type_m = type_name::with_defining_ids<MYSO>();
+    assert!(!self.supported_tokens.contains(&type_m), EUnsupportedTokenType);
+    assert!(!self.id_token_type_map.contains(&0), EUnsupportedTokenType);
+
+    let decimal_multiplier = MIST_PER_WHOLE_MYSO;
+    self
+        .supported_tokens
+        .insert(
+            type_m,
+            BridgeTokenMetadata {
+                id: 0,
+                decimal_multiplier,
+                notional_value: NATIVE_MYSO_INITIAL_NOTIONAL_USD,
+                native_token: true,
+            },
+        );
+    self.id_token_type_map.insert(0, type_m);
+
+    event::emit(NewTokenEvent {
+        token_id: 0,
+        type_name: type_m,
+        native_token: true,
+        decimal_multiplier,
+        notional_value: NATIVE_MYSO_INITIAL_NOTIONAL_USD,
+    });
+}
+
+/// Lock MYSO into bridge escrow for `send_myso_token` (not TreasuryCap burn).
+public(package) fun lock_native_myso(self: &mut BridgeTreasury, coin: Coin<MYSO>) {
+    assert!(self.native_bridge_initialized, ENativeBridgeNotInitialized);
+    balance::join(&mut self.native_myso_escrow, coin::into_balance(coin));
+}
+
+/// Release MYSO from escrow for a completed inbound transfer claim.
+public(package) fun unlock_native_myso(
+    self: &mut BridgeTreasury,
+    amount: u64,
+    ctx: &mut TxContext,
+): Coin<MYSO> {
+    assert!(self.native_bridge_initialized, ENativeBridgeNotInitialized);
+    assert!(balance::value(&self.native_myso_escrow) >= amount, EInsufficientNativeEscrow);
+    let b = balance::split(&mut self.native_myso_escrow, amount);
+    coin::from_balance(b, ctx)
+}
+
+public(package) fun native_myso_locked_amount(self: &BridgeTreasury): u64 {
+    balance::value(&self.native_myso_escrow)
+}
+
+public(package) fun native_bridge_ready(self: &BridgeTreasury): bool {
+    self.native_bridge_initialized
 }
 
 public(package) fun burn<T>(self: &mut BridgeTreasury, token: Coin<T>) {

@@ -5494,6 +5494,21 @@ add_new_token
 create
 	public(package) fun
 	0xb::treasury
+bootstrap_native_myso_once
+	public(package) fun
+	0xb::treasury
+lock_native_myso
+	public(package) fun
+	0xb::treasury
+unlock_native_myso
+	public(package) fun
+	0xb::treasury
+native_myso_locked_amount
+	public(package) fun
+	0xb::treasury
+native_bridge_ready
+	public(package) fun
+	0xb::treasury
 burn
 	public(package) fun
 	0xb::treasury
@@ -5857,10 +5872,19 @@ update_node_url
 register_foreign_token
 	public fun
 	0xb::bridge
+bootstrap_native_myso
+	public entry fun
+	0xb::bridge
 send_token
 	public fun
 	0xb::bridge
 send_token_v2
+	public fun
+	0xb::bridge
+send_myso_token
+	public fun
+	0xb::bridge
+send_myso_token_v2
 	public fun
 	0xb::bridge
 approve_token_transfer
@@ -5870,6 +5894,12 @@ claim_token
 	public fun
 	0xb::bridge
 claim_and_transfer_token
+	public fun
+	0xb::bridge
+claim_myso_token
+	public fun
+	0xb::bridge
+claim_and_transfer_myso_token
 	public fun
 	0xb::bridge
 execute_system_message
@@ -5890,7 +5920,13 @@ load_inner_mut
 claim_token_internal
 	fun
 	0xb::bridge
+claim_myso_token_internal
+	fun
+	0xb::bridge
 send_token_internal
+	fun
+	0xb::bridge
+send_myso_token_internal
 	fun
 	0xb::bridge
 execute_emergency_op

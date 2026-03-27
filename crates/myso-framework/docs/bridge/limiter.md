@@ -36,6 +36,7 @@ title: Module `bridge::limiter`
 <b>use</b> <a href="../myso/funds_accumulator.md#myso_funds_accumulator">myso::funds_accumulator</a>;
 <b>use</b> <a href="../myso/hash.md#myso_hash">myso::hash</a>;
 <b>use</b> <a href="../myso/hex.md#myso_hex">myso::hex</a>;
+<b>use</b> <a href="../myso/myso.md#myso_myso">myso::myso</a>;
 <b>use</b> <a href="../myso/object.md#myso_object">myso::object</a>;
 <b>use</b> <a href="../myso/object_bag.md#myso_object_bag">myso::object_bag</a>;
 <b>use</b> <a href="../myso/package.md#myso_package">myso::package</a>;
