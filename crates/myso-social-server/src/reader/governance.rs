@@ -316,7 +316,8 @@ pub(crate) async fn list_governance_registries(
     let mut conn = db.connect().await?;
     let query = "
         SELECT registry_type, registry_id, delegate_count, delegate_term_epochs,
-               proposal_submission_cost, max_votes_per_user, voting_period_ms, quorum_votes
+               proposal_submission_cost, min_on_chain_age_days, max_votes_per_user,
+               quadratic_base_cost, voting_period_ms, quorum_votes
         FROM governance_registries
     ";
     let results = diesel::sql_query(query)
@@ -332,7 +333,8 @@ pub(crate) async fn get_governance_registry_by_type(
     let mut conn = db.connect().await?;
     let query = "
         SELECT registry_type, registry_id, delegate_count, delegate_term_epochs,
-               proposal_submission_cost, max_votes_per_user, voting_period_ms, quorum_votes
+               proposal_submission_cost, min_on_chain_age_days, max_votes_per_user,
+               quadratic_base_cost, voting_period_ms, quorum_votes
         FROM governance_registries
         WHERE registry_type = $1
     ";
@@ -370,7 +372,8 @@ pub(crate) async fn get_governance_registry_by_platform_id(
 
     let query = "
         SELECT registry_type, registry_id, delegate_count, delegate_term_epochs,
-               proposal_submission_cost, max_votes_per_user, voting_period_ms, quorum_votes
+               proposal_submission_cost, min_on_chain_age_days, max_votes_per_user,
+               quadratic_base_cost, voting_period_ms, quorum_votes
         FROM governance_registries
         WHERE registry_id = $1
     ";

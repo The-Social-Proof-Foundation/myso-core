@@ -152,7 +152,7 @@ fn process_delegate_nominated_event(
         scheduled_term_start_epoch: u64,
     }
     let ev: Ev = serde_json::from_value(data.clone()).ok()?;
-    let now = Utc::now().timestamp() as i64;
+    let now = Utc::now().timestamp_millis() as i64;
     let nominee = NewNominatedDelegate {
         address: ev.nominee_address,
         registry_type: ev.registry_type as i16,
@@ -247,7 +247,7 @@ fn process_delegate_voted_event(
         new_downvote_count: u64,
     }
     let ev: Ev = serde_json::from_value(data.clone()).ok()?;
-    let now = Utc::now().timestamp() as i64;
+    let now = Utc::now().timestamp_millis() as i64;
     let vote_counts = SocialEventRow::DelegateVoteCountsUpdate {
         target_address: ev.target_address.clone(),
         registry_type: ev.registry_type as i16,

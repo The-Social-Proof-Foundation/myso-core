@@ -242,9 +242,20 @@ impl Processor for GovernanceHandler {
                 }
                 let event_name = ev.type_.name.as_str();
                 let event_id = format!("{}:{}", tx_digest, event_seq);
-                let event_data = match events::parse_event_contents(module, event_name, &ev.contents) {
+                let event_data = match events::parse_event_contents(module, event_name, &ev.contents)
+                {
                     Ok(v) => v,
-                    Err(_) => continue,
+                    Err(e) => {
+                        tracing::warn!(
+                            tx_digest = %tx_digest,
+                            module,
+                            event_name,
+                            error = %e,
+                            hex_preview = %e.contents_hex_preview(32),
+                            "governance event parse failed"
+                        );
+                        continue;
+                    }
                 };
                 if let Some(rows) =
                     governance::handle_governance_event(event_name, &event_data, &event_id)

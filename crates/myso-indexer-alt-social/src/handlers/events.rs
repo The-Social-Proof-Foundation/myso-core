@@ -135,7 +135,7 @@ pub struct BcsGovernanceRegistryCreatedEvent {
     updated_at: u64,
 }
 
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Deserialize, Serialize)]
 pub struct BcsDelegateNominatedEvent {
     nominee_address: AccountAddress,
     scheduled_term_start_epoch: u64,
@@ -2843,6 +2843,25 @@ mod tests {
         assert_eq!(json["quadratic_base_cost"], 10_000_000);
         assert_eq!(json["quorum_votes"], 20);
         assert!(json["registry_id"].as_str().unwrap().starts_with("0x"));
+    }
+
+    #[test]
+    fn test_parse_delegate_nominated_event_bcs_round_trip() {
+        use move_core_types::account_address::AccountAddress;
+
+        let nominee = AccountAddress::from_hex_literal("0xace").unwrap();
+        let ev = BcsDelegateNominatedEvent {
+            nominee_address: nominee,
+            scheduled_term_start_epoch: 42,
+            registry_type: 3,
+        };
+        let bytes = bcs::to_bytes(&ev).expect("serialize");
+        let result = parse_event_contents("governance", "DelegateNominatedEvent", &bytes);
+        assert!(result.is_ok(), "BCS parse should succeed");
+        let json = result.unwrap();
+        assert_eq!(json["scheduled_term_start_epoch"], 42);
+        assert_eq!(json["registry_type"], 3);
+        assert_eq!(json["nominee_address"], addr_to_string(&nominee));
     }
 
     #[test]
