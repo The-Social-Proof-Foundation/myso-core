@@ -315,9 +315,9 @@ module social_contracts::governance {
             // Configuration parameters specific to ecosystem governance
             delegate_count: 3, // Larger council for ecosystem decisions
             delegate_term_epochs: 90, // 3 months for ecosystem delegates
-            proposal_submission_cost: 100_000_000, // 100 MYSO for ecosystem proposals
+            proposal_submission_cost: 100_000_000_000, // 100 MYSO for ecosystem proposals
             max_votes_per_user: 10, // Up to 10 votes per user
-            quadratic_base_cost: 10_000_000, // 10 MYSO per additional vote
+            quadratic_base_cost: 10_000_000_000, // 10 MYSO per additional vote
             voting_period_ms: 7 * 24 * 60 * 60 * 1000, // 7 days in milliseconds for ecosystem votes
             quorum_votes: 20, // 20 votes required for ecosystem proposals
             // Tables
@@ -363,9 +363,9 @@ module social_contracts::governance {
             // Configuration parameters specific to proof of creativity governance
             delegate_count: 2, // Smaller council for proof of creativity
             delegate_term_epochs: 180, // 3 months for proof of creativity delegates
-            proposal_submission_cost: 25_000_000, // 25 MYSO for proof of creativity
+            proposal_submission_cost: 25_000_000_000, // 25 MYSO for proof of creativity
             max_votes_per_user: 3, // Up to 3 votes per user
-            quadratic_base_cost: 2_500_000, // 2.5 MYSO per additional vote
+            quadratic_base_cost: 2_500_000_000, // 2.5 MYSO per additional vote
             voting_period_ms: 24 * 60 * 60 * 1000, // 1 day in milliseconds for proof of creativity votes
             quorum_votes: 10, // 10 votes required for proof of creativity proposals
             // Tables
