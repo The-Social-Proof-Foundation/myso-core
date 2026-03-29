@@ -126,6 +126,17 @@ impl SptUserHoldingsQuery {
 }
 
 #[derive(Debug, Deserialize)]
+pub struct SptReservationVolumeQuery {
+    /// `hour` or `day` (default `hour`).
+    pub interval: Option<String>,
+    pub limit: Option<i64>,
+    /// Start of range (epoch milliseconds, UTC).
+    pub from: Option<i64>,
+    /// End of range (epoch milliseconds, UTC).
+    pub to: Option<i64>,
+}
+
+#[derive(Debug, Deserialize)]
 pub struct TimeRangeParams {
     pub from: Option<i64>,
     pub to: Option<i64>,
@@ -614,6 +625,10 @@ fn make_router(state: Arc<AppState>) -> Router {
         .route(
             "/spt/reservation-pools/:id/reservations",
             get(list_spt_reservation_pool_reservations),
+        )
+        .route(
+            "/spt/reservation-pools/:id/volume-history",
+            get(get_spt_reservation_pool_volume_history),
         )
         .route("/governance/proposals", get(list_governance_proposals))
         .route("/governance/proposals/:id", get(get_governance_proposal))

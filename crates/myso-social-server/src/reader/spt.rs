@@ -835,6 +835,54 @@ pub(crate) async fn list_spt_reservations(
     Ok(results)
 }
 
+pub(crate) async fn get_spt_reservation_volume_history(
+    db: &Db,
+    pool_id_param: &str,
+    trunc: &str,
+    limit: i64,
+    from: Option<chrono::DateTime<chrono::Utc>>,
+    to: Option<chrono::DateTime<chrono::Utc>>,
+) -> Result<Vec<crate::reader::SptReservationVolumeBucketRow>, SocialError> {
+    let mut conn = db.connect().await?;
+    let limit = limit.clamp(1, 500);
+    let query = format!(
+        r#"
+        SELECT
+            date_trunc('{}', r.time) AS bucket_start,
+            COALESCE(SUM(CASE WHEN r.amount > 0 THEN r.amount ELSE 0 END), 0)::bigint AS deposit_volume,
+            COALESCE(SUM(CASE WHEN r.amount < 0 THEN -r.amount ELSE 0 END), 0)::bigint AS withdrawal_volume,
+            COUNT(*) FILTER (WHERE r.amount > 0)::bigint AS deposit_count,
+            COUNT(*) FILTER (WHERE r.amount < 0)::bigint AS withdrawal_count
+        FROM spt_reservations r
+        WHERE (
+            r.pool_id = $1
+            OR r.pool_id = (
+                SELECT 'reservation_pool_' || associated_id
+                FROM spt_reservation_pools
+                WHERE pool_id = $1 OR associated_id = $1
+                ORDER BY time DESC
+                LIMIT 1
+            )
+        )
+        AND ($2::timestamptz IS NULL OR r.time >= $2)
+        AND ($3::timestamptz IS NULL OR r.time <= $3)
+        GROUP BY 1
+        ORDER BY 1 DESC
+        LIMIT $4
+        "#,
+        trunc
+    );
+    use diesel::sql_types::{Nullable, Timestamptz};
+    let results = diesel::sql_query(&query)
+        .bind::<diesel::sql_types::Text, _>(pool_id_param)
+        .bind::<Nullable<Timestamptz>, _>(from)
+        .bind::<Nullable<Timestamptz>, _>(to)
+        .bind::<BigInt, _>(limit)
+        .load::<crate::reader::SptReservationVolumeBucketRow>(&mut conn)
+        .await?;
+    Ok(results)
+}
+
 pub(crate) async fn get_spt_revenue(
     db: &Db,
     pool_id: &str,

@@ -198,6 +198,20 @@ pub struct SptUserHoldingItem {
 }
 
 #[derive(Debug, Serialize, QueryableByName)]
+pub struct SptReservationVolumeBucketRow {
+    #[diesel(sql_type = Timestamptz)]
+    pub bucket_start: chrono::DateTime<chrono::Utc>,
+    #[diesel(sql_type = BigInt)]
+    pub deposit_volume: i64,
+    #[diesel(sql_type = BigInt)]
+    pub withdrawal_volume: i64,
+    #[diesel(sql_type = BigInt)]
+    pub deposit_count: i64,
+    #[diesel(sql_type = BigInt)]
+    pub withdrawal_count: i64,
+}
+
+#[derive(Debug, Serialize, QueryableByName)]
 pub struct SptReservationRow {
     #[diesel(sql_type = Text)]
     pub pool_id: String,

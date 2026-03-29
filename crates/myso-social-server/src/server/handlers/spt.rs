@@ -7,7 +7,10 @@ use std::sync::Arc;
 
 use crate::error::SocialError;
 
-use super::super::{AppState, PageParams, SptPoolsQuery, SptUserHoldingsQuery, TimeRangeParams};
+use super::super::{
+    AppState, PageParams, SptPoolsQuery, SptReservationVolumeQuery, SptUserHoldingsQuery,
+    TimeRangeParams,
+};
 
 pub async fn list_spt_pools(
     State(state): State<Arc<AppState>>,
@@ -254,6 +257,31 @@ pub async fn list_spt_reservation_pool_reservations(
     let data = state
         .reader
         .list_spt_reservations(&id, limit, offset)
+        .await?;
+    Ok(Json(data))
+}
+
+pub async fn get_spt_reservation_pool_volume_history(
+    State(state): State<Arc<AppState>>,
+    Path(id): Path<String>,
+    Query(params): Query<SptReservationVolumeQuery>,
+) -> Result<Json<Vec<crate::reader::SptReservationVolumeBucketRow>>, SocialError> {
+    let trunc = match params.interval.as_deref() {
+        Some(s) if s.eq_ignore_ascii_case("day") => "day",
+        Some(s) if s.eq_ignore_ascii_case("hour") => "hour",
+        None => "hour",
+        Some(other) => {
+            return Err(SocialError::bad_request(format!(
+                "invalid interval '{other}', expected hour or day"
+            )));
+        }
+    };
+    let limit = params.limit.unwrap_or(168).min(500);
+    let from = params.from.and_then(chrono::DateTime::from_timestamp_millis);
+    let to = params.to.and_then(chrono::DateTime::from_timestamp_millis);
+    let data = state
+        .reader
+        .get_spt_reservation_volume_history(&id, trunc, limit, from, to)
         .await?;
     Ok(Json(data))
 }

@@ -598,6 +598,17 @@ impl Reader {
         spt::list_spt_reservations(&self.db, pool_id, limit, offset).await
     }
 
+    pub async fn get_spt_reservation_volume_history(
+        &self,
+        pool_id: &str,
+        trunc: &str,
+        limit: i64,
+        from: Option<chrono::DateTime<chrono::Utc>>,
+        to: Option<chrono::DateTime<chrono::Utc>>,
+    ) -> Result<Vec<SptReservationVolumeBucketRow>, crate::error::SocialError> {
+        spt::get_spt_reservation_volume_history(&self.db, pool_id, trunc, limit, from, to).await
+    }
+
     pub async fn get_spt_revenue(
         &self,
         pool_id: &str,

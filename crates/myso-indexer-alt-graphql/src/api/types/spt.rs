@@ -7,7 +7,8 @@ use async_graphql::Context;
 use async_graphql::Enum;
 use async_graphql::Object;
 use myso_indexer_alt_social_reader::{
-    SptHoldingRow, SptPoolRow, SptPriceHistory as SptPriceHistoryRow, SptSortBy as SptSortByReader,
+    SptHoldingRow, SptPoolRow, SptPriceHistory as SptPriceHistoryRow,
+    SptReservationVolumeBucket as SptReservationVolumeBucketRow, SptSortBy as SptSortByReader,
     SptTransaction as SptTransactionRow,
 };
 use myso_indexer_alt_social_schema::models::UserReservationHoldingRow;
@@ -53,6 +54,21 @@ impl From<SptSortBy> for SptSortByReader {
             SptSortBy::EcosystemEarnings => SptSortByReader::EcosystemEarnings,
             SptSortBy::TotalEarnings => SptSortByReader::TotalEarnings,
             SptSortBy::CreatedAt => SptSortByReader::CreatedAt,
+        }
+    }
+}
+
+#[derive(Enum, Copy, Clone, Eq, PartialEq)]
+pub enum SptReservationVolumeInterval {
+    Hour,
+    Day,
+}
+
+impl From<SptReservationVolumeInterval> for myso_indexer_alt_social_reader::SptReservationVolumeInterval {
+    fn from(v: SptReservationVolumeInterval) -> Self {
+        match v {
+            SptReservationVolumeInterval::Hour => Self::Hour,
+            SptReservationVolumeInterval::Day => Self::Day,
         }
     }
 }
@@ -470,5 +486,44 @@ impl SptReservationHolding {
     /// Required threshold for the pool.
     async fn required_threshold(&self) -> i64 {
         self.inner.required_threshold
+    }
+}
+
+#[derive(Clone)]
+pub(crate) struct SptReservationVolumeBucket {
+    inner: SptReservationVolumeBucketRow,
+}
+
+impl SptReservationVolumeBucket {
+    pub(crate) fn from_row(inner: SptReservationVolumeBucketRow) -> Self {
+        Self { inner }
+    }
+}
+
+#[Object]
+impl SptReservationVolumeBucket {
+    /// Start of the bucket (UTC, ISO 8601).
+    async fn bucket_start(&self) -> String {
+        to_iso8601_utc(self.inner.bucket_start)
+    }
+
+    /// MYSO volume from reservation deposits (positive `amount` rows) in this bucket.
+    async fn deposit_volume(&self) -> i64 {
+        self.inner.deposit_volume
+    }
+
+    /// MYSO volume from reservation withdrawals (negative `amount` rows) in this bucket.
+    async fn withdrawal_volume(&self) -> i64 {
+        self.inner.withdrawal_volume
+    }
+
+    /// Number of deposit events in the bucket.
+    async fn deposit_count(&self) -> i64 {
+        self.inner.deposit_count
+    }
+
+    /// Number of withdrawal events in the bucket.
+    async fn withdrawal_count(&self) -> i64 {
+        self.inner.withdrawal_count
     }
 }

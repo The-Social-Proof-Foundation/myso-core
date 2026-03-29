@@ -1997,6 +1997,9 @@ Platform.members
 Platform.moderators
   => {}
 
+Platform.userAccess
+  => {}
+
 PlatformBlockedProfileSummary.walletAddress
   => {}
 
@@ -2076,6 +2079,15 @@ PlatformRevenueSummary.activeMonths
   => {}
 
 PlatformRevenueSummary.lastActiveMonth
+  => {}
+
+PlatformUserAccess.isMember
+  => {}
+
+PlatformUserAccess.isBlocked
+  => {}
+
+PlatformUserAccess.isModerator
   => {}
 
 PocAnalysisResult.postId
@@ -2873,7 +2885,16 @@ Query.sptPool
 Query.sptPools
   => {}
 
+Query.sptReservationHolders
+  => {}
+
+Query.sptFormerReservationHolders
+  => {}
+
 Query.sptPriceHistory
+  => {}
+
+Query.sptReservationVolumeHistory
   => {}
 
 Query.spotBets
@@ -2973,6 +2994,9 @@ Query.checkProfileBlocked
   => {}
 
 Query.checkPlatformBlocked
+  => {}
+
+Query.platformUserAccess
   => {}
 
 Query.address
@@ -3332,6 +3356,12 @@ SocialProofToken.createdAt
 SocialProofToken.tokenType
   => {}
 
+SocialProofToken.reservationHolders
+  => {}
+
+SocialProofToken.formerReservationHolders
+  => {}
+
 SplitCoinsCommand.coin
   => {}
 
@@ -3539,6 +3569,12 @@ SptExchangeConfig.profileThreshold
 SptExchangeConfig.maxIndividualReservationBps
   => {}
 
+SptExchangeConfig.maxIndividualReservationAmountPost
+  => {}
+
+SptExchangeConfig.maxIndividualReservationAmountProfile
+  => {}
+
 SptExchangeConfig.totalFeeBps
   => {}
 
@@ -3650,6 +3686,12 @@ SptPool.priceHistory
 SptPool.holders
   => {}
 
+SptPool.reservationHolders
+  => {}
+
+SptPool.formerReservationHolders
+  => {}
+
 SptPriceHistory.poolId
   => {}
 
@@ -3663,6 +3705,12 @@ SptPriceHistory.timestamp
   => {}
 
 SptPriceHistory.transactionId
+  => {}
+
+SptReservationHolding.reserver
+  => {}
+
+SptReservationHolding.reserverProfile
   => {}
 
 SptReservationHolding.poolId
@@ -3687,6 +3735,21 @@ SptReservationHolding.totalReserved
   => {}
 
 SptReservationHolding.requiredThreshold
+  => {}
+
+SptReservationVolumeBucket.bucketStart
+  => {}
+
+SptReservationVolumeBucket.depositVolume
+  => {}
+
+SptReservationVolumeBucket.withdrawalVolume
+  => {}
+
+SptReservationVolumeBucket.depositCount
+  => {}
+
+SptReservationVolumeBucket.withdrawalCount
   => {}
 
 SptTransaction.type

@@ -4779,7 +4779,7 @@ type Profile implements Node {
 	"""
 	selectedEcosystemBadgeId: String
 	"""
-	Social proof token info.
+	Social proof token info (reservation pool fields match nested profile summaries; loads via social reader when configured).
 	"""
 	socialProofToken: SocialProofToken
 	"""
@@ -5664,6 +5664,10 @@ type Query {
 	Current reservation holders for a reservation pool id. Returns null when social DB not configured.
 	"""
 	sptReservationHolders(poolId: ID!, limit: Int, offset: Int): [SptReservationHolding!]
+	"""
+	Time-bucketed reservation deposit / withdrawal volume for a reservation pool (MYSO base units). Returns empty when social DB not configured.
+	"""
+	sptReservationVolumeHistory(poolId: ID!, interval: SptReservationVolumeInterval!, limit: Int, from: String, to: String): [SptReservationVolumeBucket!]
 	"""
 	Tips received for a post (paginated). Returns empty when social DB not configured.
 	"""
@@ -6593,6 +6597,34 @@ type SptReservationHolding {
 	Total reserved across all reservers in this pool.
 	"""
 	totalReserved: Int!
+}
+
+type SptReservationVolumeBucket {
+	"""
+	Start of the bucket (UTC, ISO 8601).
+	"""
+	bucketStart: String!
+	"""
+	Number of deposit events in the bucket.
+	"""
+	depositCount: Int!
+	"""
+	MYSO volume from reservation deposits (positive `amount` rows) in this bucket.
+	"""
+	depositVolume: Int!
+	"""
+	Number of withdrawal events in the bucket.
+	"""
+	withdrawalCount: Int!
+	"""
+	MYSO volume from reservation withdrawals (negative `amount` rows) in this bucket.
+	"""
+	withdrawalVolume: Int!
+}
+
+enum SptReservationVolumeInterval {
+	HOUR
+	DAY
 }
 
 enum SptSortBy {

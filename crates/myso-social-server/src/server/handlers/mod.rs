@@ -86,8 +86,8 @@ pub use spt::{
     get_spt_pool_by_associated_id, get_spt_pool_holdings, get_spt_pool_price_history,
     get_spt_pool_revenue, get_spt_pool_transactions, get_spt_popular,
     get_spt_portfolio_performance, get_spt_reservation_pool, get_spt_user_holdings,
-    get_spt_user_reservations, list_spt_pools, list_spt_reservation_pool_reservations,
-    list_spt_reservation_pools,
+    get_spt_reservation_pool_volume_history, get_spt_user_reservations, list_spt_pools,
+    list_spt_reservation_pool_reservations, list_spt_reservation_pools,
 };
 pub use subscription::{
     check_subscription_access, get_profile_subscription_service, get_subscriber_summary,

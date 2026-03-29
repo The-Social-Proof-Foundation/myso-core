@@ -66,8 +66,10 @@ use crate::spt::{
     get_former_reservation_holdings_for_pool, get_reservation_holdings_for_pool,
     get_reservation_pool_id_for_associated_id, get_spt_exchange_config, get_spt_holdings_by_holder,
     get_spt_holdings_by_pool, get_spt_pool, get_spt_pool_id_for_profile, get_spt_price_history,
-    get_spt_transactions, get_user_reservation_holdings, list_spt_pools,
+    get_spt_reservation_volume_history, get_spt_transactions, get_user_reservation_holdings,
+    list_spt_pools,
 };
+use crate::spt::SptReservationVolumeInterval;
 use crate::vesting::{get_vesting_leaderboard, get_vesting_wallet, list_vesting_wallets};
 
 pub use myso_indexer_alt_social_schema::models::Profile;
@@ -514,6 +516,28 @@ impl SocialPgReader {
     pub async fn get_spt_pool(&self, pool_id: &str) -> anyhow::Result<Option<crate::SptPoolRow>> {
         let mut conn = self.connect().await?;
         get_spt_pool(&mut conn, pool_id, &self.metrics).await
+    }
+
+    /// Aggregated reservation deposit / withdrawal volume by hour or day (MYSO base units).
+    pub async fn get_spt_reservation_volume_history(
+        &self,
+        pool_id: &str,
+        interval: SptReservationVolumeInterval,
+        limit: i64,
+        from: Option<chrono::DateTime<chrono::Utc>>,
+        to: Option<chrono::DateTime<chrono::Utc>>,
+    ) -> anyhow::Result<Vec<crate::spt::SptReservationVolumeBucket>> {
+        let mut conn = self.connect().await?;
+        get_spt_reservation_volume_history(
+            &mut conn,
+            pool_id,
+            interval,
+            limit,
+            from,
+            to,
+            &self.metrics,
+        )
+        .await
     }
 
     /// Get SPT price history for a pool.

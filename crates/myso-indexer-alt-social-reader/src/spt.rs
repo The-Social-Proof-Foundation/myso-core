@@ -6,7 +6,7 @@ use diesel::OptionalExtension;
 use diesel::QueryDsl;
 use diesel::QueryableByName;
 use diesel::SelectableHelper;
-use diesel::sql_types::{BigInt, Bool, Text};
+use diesel::sql_types::{BigInt, Bool, Nullable, Text, Timestamptz};
 use diesel_async::RunQueryDsl;
 use myso_indexer_alt_social_schema::models::{
     SptHoldingRow, SptPoolRow, SptPriceHistory, SptTransaction, UserReservationHoldingRow,
@@ -594,7 +594,7 @@ pub(crate) async fn get_former_reservation_holdings_for_pool(
             ORDER BY updated_at DESC
             LIMIT 1
         ) po ON true
-        WHERE l.amount = 0
+        WHERE l.amount <= 0
         ORDER BY l.reserved_at DESC
         LIMIT $2 OFFSET $3
     "#;
@@ -636,4 +636,87 @@ pub(crate) async fn get_spt_exchange_config(
 
     metrics.requests_succeeded.inc();
     Ok(result)
+}
+
+/// Calendar period for aggregating [`SptReservationVolumeBucket`] rows.
+#[derive(Debug, Clone, Copy)]
+pub enum SptReservationVolumeInterval {
+    Hour,
+    Day,
+}
+
+/// One UTC bucket of reservation activity for a pool (`deposit_volume` / `withdrawal_volume` in MYSO base units).
+#[derive(Debug, Clone, QueryableByName)]
+#[diesel(check_for_backend(diesel::pg::Pg))]
+pub struct SptReservationVolumeBucket {
+    #[diesel(sql_type = Timestamptz)]
+    pub bucket_start: chrono::DateTime<chrono::Utc>,
+    #[diesel(sql_type = BigInt)]
+    pub deposit_volume: i64,
+    #[diesel(sql_type = BigInt)]
+    pub withdrawal_volume: i64,
+    #[diesel(sql_type = BigInt)]
+    pub deposit_count: i64,
+    #[diesel(sql_type = BigInt)]
+    pub withdrawal_count: i64,
+}
+
+const RESERVATION_VOLUME_HISTORY_MAX_LIMIT: i64 = 500;
+
+pub(crate) async fn get_spt_reservation_volume_history(
+    conn: &mut Connection<'_>,
+    pool_id_param: &str,
+    interval: SptReservationVolumeInterval,
+    limit: i64,
+    from: Option<chrono::DateTime<chrono::Utc>>,
+    to: Option<chrono::DateTime<chrono::Utc>>,
+    metrics: &DbReaderMetrics,
+) -> anyhow::Result<Vec<SptReservationVolumeBucket>> {
+    metrics.requests_received.inc();
+    let _guard = metrics.latency.start_timer();
+
+    let limit = limit.clamp(1, RESERVATION_VOLUME_HISTORY_MAX_LIMIT);
+    let trunc = match interval {
+        SptReservationVolumeInterval::Hour => "hour",
+        SptReservationVolumeInterval::Day => "day",
+    };
+
+    let query = format!(
+        r#"
+        SELECT
+            date_trunc('{}', r.time) AS bucket_start,
+            COALESCE(SUM(CASE WHEN r.amount > 0 THEN r.amount ELSE 0 END), 0)::bigint AS deposit_volume,
+            COALESCE(SUM(CASE WHEN r.amount < 0 THEN -r.amount ELSE 0 END), 0)::bigint AS withdrawal_volume,
+            COUNT(*) FILTER (WHERE r.amount > 0)::bigint AS deposit_count,
+            COUNT(*) FILTER (WHERE r.amount < 0)::bigint AS withdrawal_count
+        FROM spt_reservations r
+        WHERE (
+            r.pool_id = $1
+            OR r.pool_id = (
+                SELECT 'reservation_pool_' || associated_id
+                FROM spt_reservation_pools
+                WHERE pool_id = $1 OR associated_id = $1
+                ORDER BY time DESC
+                LIMIT 1
+            )
+        )
+        AND ($2::timestamptz IS NULL OR r.time >= $2)
+        AND ($3::timestamptz IS NULL OR r.time <= $3)
+        GROUP BY 1
+        ORDER BY 1 DESC
+        LIMIT $4
+        "#,
+        trunc
+    );
+
+    let results = diesel::sql_query(&query)
+        .bind::<Text, _>(pool_id_param)
+        .bind::<Nullable<Timestamptz>, _>(from)
+        .bind::<Nullable<Timestamptz>, _>(to)
+        .bind::<BigInt, _>(limit)
+        .load::<SptReservationVolumeBucket>(conn)
+        .await?;
+
+    metrics.requests_succeeded.inc();
+    Ok(results)
 }

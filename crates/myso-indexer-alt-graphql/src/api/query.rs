@@ -70,7 +70,8 @@ use crate::api::types::spot::{
     SpotBet, SpotBetWithdrawal, SpotPayout, SpotRecord, SpotRefund, SpotResolution,
 };
 use crate::api::types::spt::{
-    SptHolding, SptOrder, SptPool, SptPriceHistory, SptReservationHolding, SptSortBy,
+    SptHolding, SptOrder, SptPool, SptPriceHistory, SptReservationHolding,
+    SptReservationVolumeBucket, SptReservationVolumeInterval, SptSortBy,
 };
 use crate::api::types::transaction::CTransaction;
 use crate::api::types::transaction::Transaction;
@@ -764,6 +765,69 @@ impl Query {
                 .await
                 .map_err(Into::into)
                 .map(|v| v.into_iter().map(SptPriceHistory::from_row).collect()),
+        )
+    }
+
+    /// Time-bucketed reservation deposit / withdrawal volume for a reservation pool (MYSO base units). Returns empty when social DB not configured.
+    async fn spt_reservation_volume_history(
+        &self,
+        ctx: &Context<'_>,
+        pool_id: async_graphql::ID,
+        interval: SptReservationVolumeInterval,
+        limit: Option<u64>,
+        from: Option<String>,
+        to: Option<String>,
+    ) -> Option<Result<Vec<SptReservationVolumeBucket>, RpcError<std::io::Error>>> {
+        let reader_opt = ctx
+            .data_opt::<std::sync::Arc<Option<myso_indexer_alt_social_reader::SocialPgReader>>>()?;
+        let reader = reader_opt.as_ref().as_ref()?;
+
+        let parse_bound = |label: &str, s: &str| {
+            chrono::DateTime::parse_from_rfc3339(s)
+                .map(|dt| dt.with_timezone(&chrono::Utc))
+                .map_err(|e| {
+                    bad_user_input(std::io::Error::new(
+                        std::io::ErrorKind::InvalidInput,
+                        format!("invalid {label} (expected RFC3339): {e}"),
+                    ))
+                })
+        };
+
+        let from_dt = match from.as_deref() {
+            None => None,
+            Some(s) => match parse_bound("from", s) {
+                Ok(dt) => Some(dt),
+                Err(e) => return Some(Err(e)),
+            },
+        };
+        let to_dt = match to.as_deref() {
+            None => None,
+            Some(s) => match parse_bound("to", s) {
+                Ok(dt) => Some(dt),
+                Err(e) => return Some(Err(e)),
+            },
+        };
+
+        let limit = limit.unwrap_or(168).min(500) as i64;
+        let interval_reader = myso_indexer_alt_social_reader::SptReservationVolumeInterval::from(
+            interval,
+        );
+        Some(
+            reader
+                .get_spt_reservation_volume_history(
+                    pool_id.as_str(),
+                    interval_reader,
+                    limit,
+                    from_dt,
+                    to_dt,
+                )
+                .await
+                .map_err(Into::into)
+                .map(|v| {
+                    v.into_iter()
+                        .map(SptReservationVolumeBucket::from_row)
+                        .collect()
+                }),
         )
     }
 

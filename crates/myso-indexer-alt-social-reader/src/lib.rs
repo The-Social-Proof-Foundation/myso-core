@@ -39,7 +39,7 @@ pub use profile::{
     SocialProofTokenInfo, UniversalUserResult,
 };
 pub use social_graph::{BlockedPlatformRow, BlockedProfileRow, ProfileSummaryRow};
-pub use spt::SptSortBy;
+pub use spt::{SptReservationVolumeBucket, SptReservationVolumeInterval, SptSortBy};
 pub use vesting::{
     VestingLeaderboardEntry, VestingLeaderboardResponse, VestingWalletRow, VestingWalletWithStatus,
 };

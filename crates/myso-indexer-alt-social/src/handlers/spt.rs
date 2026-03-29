@@ -31,6 +31,10 @@ fn token_type_from_u8(t: u64) -> Option<i16> {
     }
 }
 
+/// `spt_reservations.amount` sign convention for volume analytics:
+/// - **Positive**: net MYSO deposited into the reservation pool (ReservationCreatedEvent).
+/// - **Negative**: net MYSO withdrawn by the reserver (ReservationWithdrawnEvent; magnitude is the withdrawn amount).
+
 pub fn handle_spt_event(
     event_name: &str,
     data: &serde_json::Value,
@@ -453,10 +457,17 @@ fn process_reservation_withdrawn_event(
 
     let pool_id = format!("reservation_pool_{}", associated_id);
 
+    let withdrawn = data
+        .get("amount")
+        .map(json_to_i64)
+        .filter(|&a| a > 0)
+        .unwrap_or(0);
+    let amount = withdrawn.checked_neg().unwrap_or(i64::MIN);
+
     let reservation = NewSptReservation {
         pool_id: pool_id.clone(),
         reserver_address: reserver,
-        amount: 0,
+        amount,
         reserved_at: withdrawn_at,
         fee_amount,
         creator_fee,
