@@ -7,25 +7,24 @@ use std::sync::Arc;
 
 use anyhow::Result;
 use async_trait::async_trait;
-use diesel::sql_types::{BigInt, Nullable, Text};
 use diesel::BoolExpressionMethods;
 use diesel::ExpressionMethods;
 use diesel::OptionalExtension;
 use diesel::QueryDsl;
 use diesel::QueryableByName;
+use diesel::sql_types::{BigInt, Nullable, SmallInt, Text};
 use diesel_async::RunQueryDsl;
-use myso_indexer_alt_framework::pipeline::Processor;
-use myso_indexer_alt_framework::postgres::handler::Handler;
-use myso_indexer_alt_framework::postgres::Connection;
-use myso_indexer_alt_framework::types::full_checkpoint_content::Checkpoint;
 use myso_indexer_alt_framework::FieldCount;
+use myso_indexer_alt_framework::pipeline::Processor;
+use myso_indexer_alt_framework::postgres::Connection;
+use myso_indexer_alt_framework::postgres::handler::Handler;
+use myso_indexer_alt_framework::types::full_checkpoint_content::Checkpoint;
 use myso_indexer_alt_social_schema::models::{
-    NewSptExchangeConfig, NewSptHolding, NewSptPool, NewSptPriceHistory, NewSptReservation,
-    NewSptReservationPool, NewSptRevenue, NewSptTransaction, NewSocialProofTokensConfig,
-    NewSocialProofTokensEvent, NewUnifiedRevenue, ProfileUpdateSet,
-    RESERVATION_POOL_STATUS_ACTIVE, RESERVATION_POOL_STATUS_THRESHOLD_MET,
-    REVENUE_TYPE_SPT_CREATOR_FEE, REVENUE_TYPE_SPT_PLATFORM_FEE, REVENUE_TYPE_SPT_TREASURY_FEE,
-    TOKEN_TYPE_POST,
+    NewSocialProofTokensConfig, NewSocialProofTokensEvent, NewSptExchangeConfig, NewSptHolding,
+    NewSptPool, NewSptPriceHistory, NewSptReservation, NewSptReservationPool, NewSptRevenue,
+    NewSptTransaction, NewUnifiedRevenue, ProfileUpdateSet, RESERVATION_POOL_STATUS_ACTIVE,
+    RESERVATION_POOL_STATUS_THRESHOLD_MET, REVENUE_TYPE_SPT_CREATOR_FEE,
+    REVENUE_TYPE_SPT_PLATFORM_FEE, REVENUE_TYPE_SPT_TREASURY_FEE, TOKEN_TYPE_POST,
 };
 use myso_indexer_alt_social_schema::schema::{
     ecosystem_treasury, posts, profiles, social_proof_tokens_config, social_proof_tokens_events,
@@ -33,10 +32,10 @@ use myso_indexer_alt_social_schema::schema::{
     spt_reservations, spt_revenue, spt_transactions, unified_revenue,
 };
 
+use super::ProfileUpdate;
 use super::common;
 use super::events;
 use super::spt;
-use super::ProfileUpdate;
 
 const SPT_MODULES: &[&str] = &["social_proof_tokens", "spt"];
 
@@ -266,8 +265,7 @@ impl Handler for SptHandler {
                         .await?;
                 }
                 SptRow::SptPoolSupplyUpdate { pool_id, delta } => {
-                    let update_sql =
-                        "UPDATE spt_pools SET circulating_supply = circulating_supply + $1 \
+                    let update_sql = "UPDATE spt_pools SET circulating_supply = circulating_supply + $1 \
                          WHERE pool_id = $2 AND time = (SELECT time FROM spt_pools WHERE pool_id = $2 ORDER BY time DESC LIMIT 1)";
                     total += diesel::sql_query(update_sql)
                         .bind::<BigInt, _>(*delta)
@@ -377,6 +375,194 @@ impl Handler for SptHandler {
                         amount = %reservation.amount,
                         "SptReservation inserted"
                     );
+
+                    let creator_fee = reservation.creator_fee.unwrap_or(0);
+                    let platform_fee = reservation.platform_fee.unwrap_or(0);
+                    let treasury_fee = reservation.treasury_fee.unwrap_or(0);
+                    if creator_fee != 0 || platform_fee != 0 || treasury_fee != 0 {
+                        #[derive(QueryableByName)]
+                        struct ReservationPoolOwnerRow {
+                            #[diesel(sql_type = Text)]
+                            owner: String,
+                        }
+                        let creator_address: String = diesel::sql_query(
+                            "SELECT owner FROM spt_reservation_pools WHERE pool_id = $1 ORDER BY time DESC LIMIT 1",
+                        )
+                        .bind::<Text, _>(&pool_id)
+                        .get_result::<ReservationPoolOwnerRow>(conn)
+                        .await
+                        .map(|row| row.owner)
+                        .unwrap_or_default();
+
+                        if creator_address.is_empty() {
+                            tracing::warn!(
+                                associated_id = %associated_id,
+                                pool_id = %pool_id,
+                                "SptReservation fees skipped: missing reservation pool owner"
+                            );
+                        } else {
+                            let treasury_address = ecosystem_treasury::table
+                                .order(ecosystem_treasury::time.desc())
+                                .select(ecosystem_treasury::treasury_address)
+                                .first::<String>(conn)
+                                .await
+                                .ok()
+                                .unwrap_or_default();
+
+                            #[derive(QueryableByName)]
+                            struct CreatorPlatformIdRow {
+                                #[diesel(sql_type = Text)]
+                                platform_id: String,
+                            }
+                            let linked_platform_id: Option<String> = diesel::sql_query(
+                                r#"SELECT pb.platform_id AS platform_id
+                                   FROM profiles p
+                                   INNER JOIN profile_badges pb ON pb.profile_id = p.profile_id
+                                       AND pb.badge_id = p.selected_badge_id
+                                   WHERE LOWER(TRIM(p.owner_address)) = LOWER(TRIM($1))
+                                     AND p.profile_id IS NOT NULL
+                                     AND p.selected_badge_id IS NOT NULL
+                                     AND (pb.revoked IS NULL OR pb.revoked = false)
+                                   ORDER BY pb.time DESC
+                                   LIMIT 1"#,
+                            )
+                            .bind::<Text, _>(&creator_address)
+                            .get_result::<CreatorPlatformIdRow>(conn)
+                            .await
+                            .optional()?
+                            .map(|row| row.platform_id)
+                            .filter(|s| !s.is_empty());
+
+                            #[derive(QueryableByName)]
+                            struct PlatformDeveloperRow {
+                                #[diesel(sql_type = Text)]
+                                developer_address: String,
+                            }
+                            let platform_fee_recipient: String = if let Some(ref pid) =
+                                linked_platform_id
+                            {
+                                diesel::sql_query(
+                                    "SELECT developer_address FROM platforms WHERE platform_id = $1 ORDER BY id DESC LIMIT 1",
+                                )
+                                .bind::<Text, _>(pid.as_str())
+                                .get_result::<PlatformDeveloperRow>(conn)
+                                .await
+                                .optional()?
+                                .map(|row| row.developer_address)
+                                .filter(|s| !s.is_empty())
+                                .unwrap_or_else(|| pid.clone())
+                            } else {
+                                String::new()
+                            };
+
+                            #[derive(QueryableByName)]
+                            struct TradingPoolIdRow {
+                                #[diesel(sql_type = Text)]
+                                pool_id: String,
+                            }
+                            let trading_pool_id: Option<String> = diesel::sql_query(
+                                "SELECT pool_id FROM spt_pools WHERE associated_id = $1 AND token_type = $2 ORDER BY time DESC LIMIT 1",
+                            )
+                            .bind::<Text, _>(associated_id)
+                            .bind::<SmallInt, _>(*token_type)
+                            .get_result::<TradingPoolIdRow>(conn)
+                            .await
+                            .optional()?
+                            .map(|row| row.pool_id);
+
+                            let revenue_spt_pool_id =
+                                trading_pool_id.unwrap_or_else(|| pool_id.clone());
+
+                            let withdraw = reservation.amount < 0;
+                            let revenue_time = reservation.reserved_at;
+                            let payer = reservation.reserver_address.clone();
+                            let tx_id = reservation.transaction_id.clone();
+
+                            let platform_scope_for_fees: Option<String> =
+                                Some(linked_platform_id.clone().unwrap_or_default());
+
+                            let spt_row_time = chrono::Utc::now();
+                            let spt_rev = NewSptRevenue::from_reservation_event(
+                                revenue_spt_pool_id,
+                                withdraw,
+                                payer.clone(),
+                                creator_address.clone(),
+                                platform_fee_recipient.clone(),
+                                treasury_address.clone(),
+                                creator_fee,
+                                platform_fee,
+                                treasury_fee,
+                                reservation.amount,
+                                0_i64,
+                                0_i64,
+                                revenue_time,
+                                tx_id.clone(),
+                                spt_row_time,
+                            );
+                            total += diesel::insert_into(spt_revenue::table)
+                                .values(&spt_rev)
+                                .execute(conn)
+                                .await?;
+
+                            let mut ur_time = chrono::Utc::now();
+                            if creator_fee != 0 {
+                                let row_time = ur_time;
+                                ur_time += chrono::Duration::microseconds(1);
+                                total += diesel::insert_into(unified_revenue::table)
+                                    .values(NewUnifiedRevenue::from_spt_at_time(
+                                        REVENUE_TYPE_SPT_CREATOR_FEE.to_string(),
+                                        creator_address.clone(),
+                                        None,
+                                        creator_fee,
+                                        pool_id.clone(),
+                                        payer.clone(),
+                                        creator_address.clone(),
+                                        revenue_time,
+                                        tx_id.clone(),
+                                        row_time,
+                                    ))
+                                    .execute(conn)
+                                    .await?;
+                            }
+                            if platform_fee != 0 {
+                                let row_time = ur_time;
+                                ur_time += chrono::Duration::microseconds(1);
+                                total += diesel::insert_into(unified_revenue::table)
+                                    .values(NewUnifiedRevenue::from_spt_at_time(
+                                        REVENUE_TYPE_SPT_PLATFORM_FEE.to_string(),
+                                        creator_address.clone(),
+                                        platform_scope_for_fees.clone(),
+                                        platform_fee,
+                                        pool_id.clone(),
+                                        payer.clone(),
+                                        platform_fee_recipient.clone(),
+                                        revenue_time,
+                                        tx_id.clone(),
+                                        row_time,
+                                    ))
+                                    .execute(conn)
+                                    .await?;
+                            }
+                            if treasury_fee != 0 {
+                                let row_time = ur_time;
+                                total += diesel::insert_into(unified_revenue::table)
+                                    .values(NewUnifiedRevenue::from_spt_at_time(
+                                        REVENUE_TYPE_SPT_TREASURY_FEE.to_string(),
+                                        creator_address.clone(),
+                                        None,
+                                        treasury_fee,
+                                        pool_id.clone(),
+                                        payer.clone(),
+                                        treasury_address.clone(),
+                                        revenue_time,
+                                        tx_id.clone(),
+                                        row_time,
+                                    ))
+                                    .execute(conn)
+                                    .await?;
+                            }
+                        }
+                    }
                 }
                 SptRow::SptReservationPoolUpdate {
                     pool_id: _pool_id,
@@ -385,8 +571,7 @@ impl Handler for SptHandler {
                     status,
                     required_threshold,
                 } => {
-                    let update_sql =
-                        "UPDATE spt_reservation_pools SET total_reserved = $1, \
+                    let update_sql = "UPDATE spt_reservation_pools SET total_reserved = $1, \
                          status = COALESCE($2, status), \
                          required_threshold = COALESCE($4, required_threshold) \
                          WHERE associated_id = $3 AND time = (SELECT time FROM spt_reservation_pools WHERE associated_id = $3 ORDER BY time DESC LIMIT 1)";

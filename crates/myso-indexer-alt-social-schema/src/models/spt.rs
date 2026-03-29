@@ -21,6 +21,8 @@ pub const TOKEN_TYPE_PROFILE: i16 = 1;
 pub const TOKEN_TYPE_POST: i16 = 2;
 pub const TRANSACTION_TYPE_BUY: &str = "BUY";
 pub const TRANSACTION_TYPE_SELL: &str = "SELL";
+pub const TRANSACTION_TYPE_RESERVATION: &str = "RESERVATION";
+pub const TRANSACTION_TYPE_RESERVATION_WITHDRAW: &str = "RESERVATION_WITHDRAW";
 pub const RESERVATION_POOL_STATUS_ACTIVE: &str = "active";
 pub const RESERVATION_POOL_STATUS_THRESHOLD_MET: &str = "threshold_met";
 
@@ -419,6 +421,50 @@ impl NewSptRevenue {
             transaction_id,
         }
     }
+
+    pub fn from_reservation_event(
+        pool_id: String,
+        withdraw: bool,
+        trader: String,
+        creator_address: String,
+        platform_address: String,
+        treasury_address: String,
+        creator_fee: i64,
+        platform_fee: i64,
+        treasury_fee: i64,
+        token_amount: i64,
+        myso_amount: i64,
+        token_price: i64,
+        revenue_time: i64,
+        transaction_id: String,
+        time: chrono::DateTime<chrono::Utc>,
+    ) -> Self {
+        let transaction_type = if withdraw {
+            TRANSACTION_TYPE_RESERVATION_WITHDRAW
+        } else {
+            TRANSACTION_TYPE_RESERVATION
+        };
+        Self {
+            pool_id,
+            transaction_type: transaction_type.to_string(),
+            trader,
+            creator_address,
+            platform_address,
+            treasury_address,
+            creator_fee,
+            platform_fee,
+            treasury_fee,
+            total_fee: creator_fee
+                .saturating_add(platform_fee)
+                .saturating_add(treasury_fee),
+            token_amount,
+            myso_amount,
+            token_price,
+            revenue_time,
+            time,
+            transaction_id,
+        }
+    }
 }
 
 #[derive(Debug, Clone, Queryable, Selectable, Serialize, Deserialize)]
@@ -509,6 +555,35 @@ impl NewUnifiedRevenue {
             recipient_address,
             revenue_time,
             time: chrono::Utc::now(),
+            transaction_id,
+        }
+    }
+
+    pub fn from_spt_at_time(
+        revenue_type: String,
+        creator_address: String,
+        platform_address: Option<String>,
+        amount: i64,
+        pool_id: String,
+        payer_address: String,
+        recipient_address: String,
+        revenue_time: i64,
+        transaction_id: String,
+        time: chrono::DateTime<chrono::Utc>,
+    ) -> Self {
+        Self {
+            revenue_source: REVENUE_SOURCE_SPT.to_string(),
+            revenue_type,
+            creator_address,
+            platform_address,
+            amount,
+            currency: CURRENCY_MYSO.to_string(),
+            content_id: Some(pool_id),
+            content_type: Some(CONTENT_TYPE_TOKEN.to_string()),
+            payer_address,
+            recipient_address,
+            revenue_time,
+            time,
             transaction_id,
         }
     }
