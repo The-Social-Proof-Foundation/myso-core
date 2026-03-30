@@ -142,6 +142,11 @@ impl Proposal {
         self.inner.rescind_time
     }
 
+    /// Time the delegate council rejected the proposal (epoch ms), when status=rejected from council review.
+    async fn rejection_time(&self) -> Option<i64> {
+        self.inner.rejection_time
+    }
+
     /// Anonymous voters count (when anonymous voting enabled).
     async fn anonymous_voters_count(&self) -> Option<i64> {
         self.inner.anonymous_voters_count

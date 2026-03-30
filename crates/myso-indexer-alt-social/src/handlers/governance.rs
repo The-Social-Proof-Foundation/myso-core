@@ -447,6 +447,7 @@ fn process_proposal_approved_for_voting_event(
         community_votes_for: None,
         community_votes_against: None,
         rescind_time: None,
+        rejection_time: None,
         implementation_time: None,
         implemented_description: None,
     };
@@ -469,6 +470,8 @@ fn process_proposal_rejected_event(
     #[derive(serde::Deserialize)]
     struct Ev {
         proposal_id: String,
+        #[serde(deserialize_with = "de_u64")]
+        rejection_time: u64,
     }
     let ev: Ev = serde_json::from_value(data.clone()).ok()?;
     let set = ProposalUpdateSet {
@@ -479,6 +482,7 @@ fn process_proposal_rejected_event(
         community_votes_for: None,
         community_votes_against: None,
         rescind_time: None,
+        rejection_time: Some(ev.rejection_time as i64),
         implementation_time: None,
         implemented_description: None,
     };
@@ -522,6 +526,7 @@ fn process_proposal_rescinded_event(
         community_votes_for: None,
         community_votes_against: None,
         rescind_time: Some(ev.rescind_time as i64),
+        rejection_time: None,
         implementation_time: None,
         implemented_description: None,
     };
@@ -570,6 +575,7 @@ fn process_proposal_rejected_by_community_event(
         community_votes_for: Some(ev.votes_for as i64),
         community_votes_against: Some(ev.votes_against as i64),
         rescind_time: None,
+        rejection_time: None,
         implementation_time: None,
         implemented_description: None,
     };
@@ -612,6 +618,7 @@ fn process_proposal_approved_event(
         community_votes_for: Some(ev.votes_for as i64),
         community_votes_against: Some(ev.votes_against as i64),
         rescind_time: None,
+        rejection_time: None,
         implementation_time: None,
         implemented_description: None,
     };
@@ -653,6 +660,7 @@ fn process_proposal_implemented_event(
         community_votes_for: None,
         community_votes_against: None,
         rescind_time: None,
+        rejection_time: None,
         implementation_time: Some(ev.implementation_time as i64),
         implemented_description: ev.description,
     };

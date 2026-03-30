@@ -12,6 +12,9 @@ ALTER TABLE proposals ADD COLUMN IF NOT EXISTS anonymous_voters_count BIGINT DEF
 ALTER TABLE proposals ADD COLUMN IF NOT EXISTS pending_anonymous_decryption BOOLEAN DEFAULT FALSE;
 ALTER TABLE proposals ADD COLUMN IF NOT EXISTS anonymous_decryption_completed_at BIGINT NULL;
 
+-- Delegate-council rejection timestamp (epoch ms); set from ProposalRejectedEvent
+ALTER TABLE proposals ADD COLUMN IF NOT EXISTS rejection_time BIGINT NULL;
+
 -- Add indexes for anonymous voting fields
 CREATE INDEX IF NOT EXISTS idx_proposals_anonymous_votes ON proposals(anonymous_votes_for, anonymous_votes_against, time);
 CREATE INDEX IF NOT EXISTS idx_proposals_pending_decryption ON proposals(pending_anonymous_decryption, time) 

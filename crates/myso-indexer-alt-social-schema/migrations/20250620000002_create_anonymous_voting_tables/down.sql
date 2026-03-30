@@ -68,6 +68,7 @@ DROP INDEX IF EXISTS idx_proposals_pending_decryption;
 DROP INDEX IF EXISTS idx_proposals_anonymous_votes;
 
 -- Remove anonymous voting columns from proposals table
+ALTER TABLE proposals DROP COLUMN IF EXISTS rejection_time;
 ALTER TABLE proposals DROP COLUMN IF EXISTS anonymous_decryption_completed_at;
 ALTER TABLE proposals DROP COLUMN IF EXISTS pending_anonymous_decryption;
 ALTER TABLE proposals DROP COLUMN IF EXISTS anonymous_voters_count;

@@ -149,6 +149,7 @@ pub struct Proposal {
     pub anonymous_voters_count: Option<i64>,
     pub pending_anonymous_decryption: Option<bool>,
     pub anonymous_decryption_completed_at: Option<i64>,
+    pub rejection_time: Option<i64>,
 }
 
 #[derive(Debug, Clone, Insertable, Serialize, Deserialize)]
@@ -362,6 +363,7 @@ pub struct ProposalUpdateSet {
     pub community_votes_for: Option<i64>,
     pub community_votes_against: Option<i64>,
     pub rescind_time: Option<i64>,
+    pub rejection_time: Option<i64>,
     pub implementation_time: Option<i64>,
     pub implemented_description: Option<String>,
 }
@@ -433,6 +435,8 @@ pub struct ProposalRow {
     pub implementation_time: Option<i64>,
     #[diesel(sql_type = Nullable<BigInt>)]
     pub rescind_time: Option<i64>,
+    #[diesel(sql_type = Nullable<BigInt>)]
+    pub rejection_time: Option<i64>,
     #[diesel(sql_type = Nullable<BigInt>)]
     pub anonymous_voters_count: Option<i64>,
 }

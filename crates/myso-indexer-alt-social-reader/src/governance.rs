@@ -41,7 +41,7 @@ pub(crate) async fn list_proposals(
                submission_time, delegate_approval_count, delegate_rejection_count,
                community_votes_for, community_votes_against, status, voting_start_time,
                voting_end_time, reward_pool, implemented_description, implementation_time,
-               rescind_time, anonymous_voters_count
+               rescind_time, rejection_time, anonymous_voters_count
         FROM (SELECT DISTINCT ON (id) * FROM proposals ORDER BY id, time DESC) p
         WHERE ($1::smallint IS NULL OR status = $1)
           AND ($2::smallint IS NULL OR proposal_type = $2)
@@ -115,7 +115,7 @@ pub(crate) async fn get_proposal_by_id(
                submission_time, delegate_approval_count, delegate_rejection_count,
                community_votes_for, community_votes_against, status, voting_start_time,
                voting_end_time, reward_pool, implemented_description, implementation_time,
-               rescind_time, anonymous_voters_count
+               rescind_time, rejection_time, anonymous_voters_count
         FROM proposals
         WHERE id = $1 AND time = (SELECT max(time) FROM proposals WHERE id = $1)
     ";
@@ -406,7 +406,7 @@ pub(crate) async fn get_delegate_proposals(
                submission_time, delegate_approval_count, delegate_rejection_count,
                community_votes_for, community_votes_against, status, voting_start_time,
                voting_end_time, reward_pool, implemented_description, implementation_time,
-               rescind_time, anonymous_voters_count
+               rescind_time, rejection_time, anonymous_voters_count
         FROM proposals
         WHERE id IN (SELECT proposal_id FROM delegate_votes WHERE delegate_address = $1)
           AND time = (SELECT max(time) FROM proposals p2 WHERE p2.id = proposals.id)
@@ -432,8 +432,13 @@ pub(crate) async fn get_delegate_ratings(
 
     let query = "
         SELECT target_address, voter_address, registry_type, is_active_delegate, upvote, rated_at
-        FROM delegate_ratings
-        WHERE target_address = $1
+        FROM (
+            SELECT DISTINCT ON (target_address, voter_address, registry_type, is_active_delegate)
+                   target_address, voter_address, registry_type, is_active_delegate, upvote, rated_at
+            FROM delegate_ratings
+            WHERE target_address = $1
+            ORDER BY target_address, voter_address, registry_type, is_active_delegate, time DESC
+        ) latest
         ORDER BY rated_at DESC
     ";
 

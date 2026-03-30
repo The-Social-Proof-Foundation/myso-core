@@ -1067,6 +1067,7 @@ diesel::table! {
         anonymous_voters_count -> Nullable<Int8>,
         pending_anonymous_decryption -> Nullable<Bool>,
         anonymous_decryption_completed_at -> Nullable<Int8>,
+        rejection_time -> Nullable<Int8>,
     }
 }
 
