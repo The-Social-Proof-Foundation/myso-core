@@ -192,7 +192,6 @@ pub struct SptReservationPoolWithDisplayRow {
     #[diesel(sql_type = BigInt)]
     pub volume_change_24h: i64,
     #[diesel(sql_type = Nullable<Double>)]
-    #[serde(skip_serializing_if = "Option::is_none")]
     pub volume_change_percent_24h: Option<f64>,
 }
 
