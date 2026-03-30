@@ -364,7 +364,7 @@ impl Handler for SptHandler {
                     };
                     let mut r = reservation.clone();
                     r.pool_id = pool_id.clone();
-                    total += diesel::insert_into(spt_reservations::table)
+                    let reservation_inserted = diesel::insert_into(spt_reservations::table)
                         .values(r)
                         .on_conflict((
                             spt_reservations::transaction_id,
@@ -373,18 +373,30 @@ impl Handler for SptHandler {
                         .do_nothing()
                         .execute(conn)
                         .await?;
-                    tracing::info!(
-                        associated_id = %associated_id,
-                        pool_id = %pool_id,
-                        reserver = %reservation.reserver_address,
-                        amount = %reservation.amount,
-                        "SptReservation inserted"
-                    );
+                    total += reservation_inserted;
+                    if reservation_inserted > 0 {
+                        tracing::info!(
+                            associated_id = %associated_id,
+                            pool_id = %pool_id,
+                            reserver = %reservation.reserver_address,
+                            amount = %reservation.amount,
+                            "SptReservation inserted"
+                        );
+                    } else {
+                        tracing::debug!(
+                            associated_id = %associated_id,
+                            pool_id = %pool_id,
+                            transaction_id = %reservation.transaction_id,
+                            "SptReservation skipped (duplicate transaction_id, time)"
+                        );
+                    }
 
                     let creator_fee = reservation.creator_fee.unwrap_or(0);
                     let platform_fee = reservation.platform_fee.unwrap_or(0);
                     let treasury_fee = reservation.treasury_fee.unwrap_or(0);
-                    if creator_fee != 0 || platform_fee != 0 || treasury_fee != 0 {
+                    if reservation_inserted > 0
+                        && (creator_fee != 0 || platform_fee != 0 || treasury_fee != 0)
+                    {
                         #[derive(QueryableByName)]
                         struct ReservationPoolOwnerRow {
                             #[diesel(sql_type = Text)]
@@ -486,85 +498,117 @@ impl Handler for SptHandler {
                             let platform_scope_for_fees: Option<String> =
                                 Some(linked_platform_id.clone().unwrap_or_default());
 
-                            let spt_row_time = chrono::Utc::now();
-                            let spt_rev = NewSptRevenue::from_reservation_event(
-                                revenue_spt_pool_id,
-                                withdraw,
-                                payer.clone(),
-                                creator_address.clone(),
-                                platform_fee_recipient.clone(),
-                                treasury_address.clone(),
-                                creator_fee,
-                                platform_fee,
-                                treasury_fee,
-                                reservation.amount,
-                                0_i64,
-                                0_i64,
-                                revenue_time,
-                                tx_id.clone(),
-                                spt_row_time,
-                            );
-                            total += diesel::insert_into(spt_revenue::table)
-                                .values(&spt_rev)
+                            diesel::sql_query("SAVEPOINT spt_reservation_revenue")
                                 .execute(conn)
                                 .await?;
 
-                            let mut ur_time = chrono::Utc::now();
-                            if creator_fee != 0 {
-                                let row_time = ur_time;
-                                ur_time += chrono::Duration::microseconds(1);
-                                total += diesel::insert_into(unified_revenue::table)
-                                    .values(NewUnifiedRevenue::from_spt_at_time(
-                                        REVENUE_TYPE_SPT_CREATOR_FEE.to_string(),
-                                        creator_address.clone(),
-                                        None,
-                                        creator_fee,
-                                        pool_id.clone(),
-                                        payer.clone(),
-                                        creator_address.clone(),
-                                        revenue_time,
-                                        tx_id.clone(),
-                                        row_time,
-                                    ))
+                            let fee_writes: Result<usize, diesel::result::Error> = async {
+                                let mut subtotal = 0usize;
+                                let spt_row_time = chrono::Utc::now();
+                                let spt_rev = NewSptRevenue::from_reservation_event(
+                                    revenue_spt_pool_id,
+                                    withdraw,
+                                    payer.clone(),
+                                    creator_address.clone(),
+                                    platform_fee_recipient.clone(),
+                                    treasury_address.clone(),
+                                    creator_fee,
+                                    platform_fee,
+                                    treasury_fee,
+                                    reservation.amount,
+                                    0_i64,
+                                    0_i64,
+                                    revenue_time,
+                                    tx_id.clone(),
+                                    spt_row_time,
+                                );
+                                subtotal += diesel::insert_into(spt_revenue::table)
+                                    .values(&spt_rev)
                                     .execute(conn)
                                     .await?;
+
+                                let mut ur_time = chrono::Utc::now();
+                                if creator_fee != 0 {
+                                    let row_time = ur_time;
+                                    ur_time += chrono::Duration::microseconds(1);
+                                    subtotal += diesel::insert_into(unified_revenue::table)
+                                        .values(NewUnifiedRevenue::from_spt_at_time(
+                                            REVENUE_TYPE_SPT_CREATOR_FEE.to_string(),
+                                            creator_address.clone(),
+                                            None,
+                                            creator_fee,
+                                            pool_id.clone(),
+                                            payer.clone(),
+                                            creator_address.clone(),
+                                            revenue_time,
+                                            tx_id.clone(),
+                                            row_time,
+                                        ))
+                                        .execute(conn)
+                                        .await?;
+                                }
+                                if platform_fee != 0 {
+                                    let row_time = ur_time;
+                                    ur_time += chrono::Duration::microseconds(1);
+                                    subtotal += diesel::insert_into(unified_revenue::table)
+                                        .values(NewUnifiedRevenue::from_spt_at_time(
+                                            REVENUE_TYPE_SPT_PLATFORM_FEE.to_string(),
+                                            creator_address.clone(),
+                                            platform_scope_for_fees.clone(),
+                                            platform_fee,
+                                            pool_id.clone(),
+                                            payer.clone(),
+                                            platform_fee_recipient.clone(),
+                                            revenue_time,
+                                            tx_id.clone(),
+                                            row_time,
+                                        ))
+                                        .execute(conn)
+                                        .await?;
+                                }
+                                if treasury_fee != 0 {
+                                    let row_time = ur_time;
+                                    subtotal += diesel::insert_into(unified_revenue::table)
+                                        .values(NewUnifiedRevenue::from_spt_at_time(
+                                            REVENUE_TYPE_SPT_TREASURY_FEE.to_string(),
+                                            creator_address.clone(),
+                                            None,
+                                            treasury_fee,
+                                            pool_id.clone(),
+                                            payer.clone(),
+                                            treasury_address.clone(),
+                                            revenue_time,
+                                            tx_id.clone(),
+                                            row_time,
+                                        ))
+                                        .execute(conn)
+                                        .await?;
+                                }
+                                Ok(subtotal)
                             }
-                            if platform_fee != 0 {
-                                let row_time = ur_time;
-                                ur_time += chrono::Duration::microseconds(1);
-                                total += diesel::insert_into(unified_revenue::table)
-                                    .values(NewUnifiedRevenue::from_spt_at_time(
-                                        REVENUE_TYPE_SPT_PLATFORM_FEE.to_string(),
-                                        creator_address.clone(),
-                                        platform_scope_for_fees.clone(),
-                                        platform_fee,
-                                        pool_id.clone(),
-                                        payer.clone(),
-                                        platform_fee_recipient.clone(),
-                                        revenue_time,
-                                        tx_id.clone(),
-                                        row_time,
-                                    ))
+                            .await;
+
+                            match fee_writes {
+                                Ok(n) => {
+                                    diesel::sql_query("RELEASE SAVEPOINT spt_reservation_revenue")
+                                        .execute(conn)
+                                        .await?;
+                                    total += n;
+                                }
+                                Err(e) => {
+                                    diesel::sql_query(
+                                        "ROLLBACK TO SAVEPOINT spt_reservation_revenue",
+                                    )
                                     .execute(conn)
                                     .await?;
-                            }
-                            if treasury_fee != 0 {
-                                let row_time = ur_time;
-                                total += diesel::insert_into(unified_revenue::table)
-                                    .values(NewUnifiedRevenue::from_spt_at_time(
-                                        REVENUE_TYPE_SPT_TREASURY_FEE.to_string(),
-                                        creator_address.clone(),
-                                        None,
-                                        treasury_fee,
-                                        pool_id.clone(),
-                                        payer.clone(),
-                                        treasury_address.clone(),
-                                        revenue_time,
-                                        tx_id.clone(),
-                                        row_time,
-                                    ))
-                                    .execute(conn)
-                                    .await?;
+                                    tracing::warn!(
+                                        error = %e,
+                                        transaction_id = %tx_id,
+                                        pool_id = %pool_id,
+                                        associated_id = %associated_id,
+                                        "spt_revenue/unified_revenue failed for reservation; spt_reservations row retained"
+                                    );
+                                }
                             }
                         }
                     }
