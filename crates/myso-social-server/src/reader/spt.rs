@@ -617,46 +617,63 @@ pub(crate) async fn get_spt_market_sentiment(db: &Db) -> Result<serde_json::Valu
     let query = r#"
         WITH current_volume AS (
             SELECT
-                COALESCE(SUM(CASE WHEN transaction_type = 'BUY' THEN myso_amount ELSE 0 END), 0)::bigint as buy_volume,
-                COALESCE(SUM(CASE WHEN transaction_type = 'SELL' THEN myso_amount ELSE 0 END), 0)::bigint as sell_volume,
+                COALESCE(SUM(CASE WHEN transaction_type = 'BUY' THEN ABS(myso_amount) ELSE 0 END), 0)::bigint as buy_volume,
+                COALESCE(SUM(CASE WHEN transaction_type = 'SELL' THEN ABS(myso_amount) ELSE 0 END), 0)::bigint as sell_volume,
                 COALESCE(COUNT(*), 0)::bigint as transaction_count,
                 COALESCE(COUNT(DISTINCT CASE WHEN transaction_type = 'BUY' THEN sender END), 0)::bigint as unique_buyers,
                 COALESCE(COUNT(DISTINCT CASE WHEN transaction_type = 'SELL' THEN sender END), 0)::bigint as unique_sellers
             FROM spt_transactions
             WHERE time > NOW() - INTERVAL '24 hours'
         ),
-        previous_volume AS (
-            SELECT COALESCE(SUM(myso_amount), 0)::bigint as total_volume
+        previous_trade_volume AS (
+            SELECT COALESCE(SUM(ABS(myso_amount)), 0)::bigint as total_gross
             FROM spt_transactions
-            WHERE time BETWEEN NOW() - INTERVAL '48 hours' AND NOW() - INTERVAL '24 hours'
+            WHERE time > NOW() - INTERVAL '48 hours'
+              AND time <= NOW() - INTERVAL '24 hours'
         ),
         reservation_volume AS (
             SELECT
-                COALESCE(SUM(amount), 0)::bigint as reservation_volume,
+                COALESCE(SUM(ABS(amount)), 0)::bigint as reservation_gross,
+                COALESCE(SUM(amount) FILTER (WHERE amount > 0), 0)::bigint as res_deposit,
+                COALESCE(SUM(-amount) FILTER (WHERE amount < 0), 0)::bigint as res_withdraw_mag,
                 COALESCE(COUNT(*), 0)::bigint as reservation_count,
                 COALESCE(COUNT(DISTINCT reserver_address), 0)::bigint as unique_reservers
             FROM spt_reservations
             WHERE time > NOW() - INTERVAL '24 hours'
         ),
         previous_reservation_volume AS (
-            SELECT COALESCE(SUM(amount), 0)::bigint as total_volume
+            SELECT COALESCE(SUM(ABS(amount)), 0)::bigint as total_gross
             FROM spt_reservations
-            WHERE time BETWEEN NOW() - INTERVAL '48 hours' AND NOW() - INTERVAL '24 hours'
+            WHERE time > NOW() - INTERVAL '48 hours'
+              AND time <= NOW() - INTERVAL '24 hours'
         )
-        SELECT 
+        SELECT
             c.buy_volume, c.sell_volume, c.transaction_count,
             c.unique_buyers, c.unique_sellers,
-            COALESCE(r.reservation_volume, 0)::bigint as reservation_volume,
+            COALESCE(r.reservation_gross, 0)::bigint as reservation_volume,
             COALESCE(r.reservation_count, 0)::bigint as reservation_count,
             COALESCE(r.unique_reservers, 0)::bigint as unique_reservers,
-            (CASE WHEN COALESCE(p.total_volume, 0) + COALESCE(pr.total_volume, 0) = 0 THEN 0.0
-                 ELSE ((c.buy_volume + c.sell_volume + COALESCE(r.reservation_volume, 0)) - (p.total_volume + COALESCE(pr.total_volume, 0))) * 100.0 / (p.total_volume + COALESCE(pr.total_volume, 0))
-            END)::double precision as volume_change_percentage,
-            (CASE WHEN (c.buy_volume + c.sell_volume + COALESCE(r.reservation_volume, 0)) = 0 THEN 0.0
-                 ELSE ((c.buy_volume + COALESCE(r.reservation_volume, 0)) - c.sell_volume) * 1.0 / (c.buy_volume + c.sell_volume + COALESCE(r.reservation_volume, 0))
-            END)::double precision as sentiment_score
+            (CASE
+                WHEN (COALESCE(p.total_gross, 0) + COALESCE(pr.total_gross, 0)) = 0
+                 AND (c.buy_volume + c.sell_volume + COALESCE(r.reservation_gross, 0)) = 0 THEN 0.0
+                WHEN (COALESCE(p.total_gross, 0) + COALESCE(pr.total_gross, 0)) = 0
+                 AND (c.buy_volume + c.sell_volume + COALESCE(r.reservation_gross, 0)) > 0 THEN 100.0
+                ELSE (
+                    (c.buy_volume + c.sell_volume + COALESCE(r.reservation_gross, 0)
+                     - COALESCE(p.total_gross, 0) - COALESCE(pr.total_gross, 0))::double precision
+                    * 100.0
+                    / (COALESCE(p.total_gross, 0) + COALESCE(pr.total_gross, 0))::double precision
+                )
+            END) as volume_change_percentage,
+            (CASE
+                WHEN (c.buy_volume + c.sell_volume + COALESCE(r.res_deposit, 0) + COALESCE(r.res_withdraw_mag, 0)) = 0 THEN 0.0
+                ELSE (
+                    (c.buy_volume + COALESCE(r.res_deposit, 0) - c.sell_volume - COALESCE(r.res_withdraw_mag, 0))::double precision
+                    / (c.buy_volume + c.sell_volume + COALESCE(r.res_deposit, 0) + COALESCE(r.res_withdraw_mag, 0))::double precision
+                )
+            END) as sentiment_score
         FROM current_volume c
-        CROSS JOIN previous_volume p
+        CROSS JOIN previous_trade_volume p
         CROSS JOIN reservation_volume r
         CROSS JOIN previous_reservation_volume pr
         "#;
