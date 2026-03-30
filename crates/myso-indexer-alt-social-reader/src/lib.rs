@@ -40,7 +40,9 @@ pub use profile::{
     ProfileBadgeRow, ProfileByAddressResponse, ReservationStatus, SelectedBadgeInfo,
     SocialProofTokenInfo, UniversalUserResult,
 };
-pub use social_graph::{BlockedPlatformRow, BlockedProfileRow, ProfileSummaryRow, ViewerSocialContext};
+pub use social_graph::{
+    BlockedPlatformRow, BlockedProfileRow, ProfileSummaryRow, ViewerSocialContext,
+};
 pub use spt::{
     SptReservationVolumeBucket, SptReservationVolumeInterval, SptSortBy, SptTransactionsWithViewer,
 };

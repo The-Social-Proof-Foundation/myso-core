@@ -749,8 +749,7 @@ mod tests {
         });
         let res = reservation.expect("reservation");
         assert_eq!(
-            res.reserved_at,
-            126000,
+            res.reserved_at, 126000,
             "Move uses epoch ms; values below 1e12 must not be treated as seconds"
         );
         assert_eq!(res.transaction_id, "tx:0");
@@ -857,8 +856,7 @@ mod tests {
         let res = reservation.unwrap();
         let placeholder = format!("reservation_pool_{}", "0xprofile");
         assert_eq!(
-            res.pool_id,
-            placeholder,
+            res.pool_id, placeholder,
             "handler placeholder id; DB apply overwrites from latest spt_reservation_pools.pool_id"
         );
         assert_eq!(res.transaction_id, "tx2:0");

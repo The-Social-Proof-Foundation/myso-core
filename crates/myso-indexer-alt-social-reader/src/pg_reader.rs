@@ -285,15 +285,7 @@ impl SocialPgReader {
         viewer: Option<&str>,
     ) -> anyhow::Result<Vec<crate::social_graph::ProfileSummaryRow>> {
         let mut conn = self.connect().await?;
-        get_following(
-            &mut conn,
-            address,
-            viewer,
-            limit,
-            offset,
-            &self.metrics,
-        )
-        .await
+        get_following(&mut conn, address, viewer, limit, offset, &self.metrics).await
     }
 
     /// Check if follower follows following.
@@ -1177,6 +1169,7 @@ impl SocialPgReader {
     }
 
     /// List governance proposals (paginated, optionally filtered by platform, status, proposal type, submitter).
+    /// When `platform_id` is set, `proposal_type` is ignored in favor of the platform's governance registry type.
     pub async fn list_proposals(
         &self,
         platform_id: Option<&str>,

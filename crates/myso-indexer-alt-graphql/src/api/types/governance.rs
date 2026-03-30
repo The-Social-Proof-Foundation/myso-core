@@ -61,12 +61,12 @@ impl Proposal {
         &self.inner.id
     }
 
-    /// Registry type (0=ecosystem, 1=proof of creativity, 2=platform).
+    /// Governance registry / proposal bucket (0=ecosystem, 1=proof of creativity, 2=platform). Same numeric space as chain `proposal_type`; not proposal lifecycle status.
     async fn registry_type(&self) -> i16 {
         self.inner.proposal_type
     }
 
-    /// Proposal status (0=submitted, 1=delegate_review, 2=community_voting, 3=approved, 4=rejected, 5=implemented, 6=rescinded).
+    /// Proposal lifecycle status (0=submitted, 1=delegate_review, 2=community_voting, 3=approved, 4=rejected, 5=implemented, 6=rescinded). New proposals created on chain enter delegate review (1); `0` is not used for newly submitted work.
     async fn status(&self) -> i16 {
         self.inner.status
     }

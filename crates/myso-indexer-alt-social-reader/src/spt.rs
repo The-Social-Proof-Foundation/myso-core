@@ -18,7 +18,9 @@ use myso_indexer_alt_social_schema::schema::{spt_price_history, spt_transactions
 use myso_pg_db::Connection;
 
 use crate::metrics::DbReaderMetrics;
-use crate::social_graph::{ViewerSocialContext, batch_viewer_social_context, resolve_profile_address};
+use crate::social_graph::{
+    ViewerSocialContext, batch_viewer_social_context, resolve_profile_address,
+};
 
 const SPT_HOLDING_VIEWER_NULLS: &str = ", NULL::boolean AS viewer_is_following, NULL::boolean AS viewer_follows_viewer, \
      NULL::boolean AS blocked_by_viewer, NULL::boolean AS blocked_by_subject";
@@ -259,9 +261,7 @@ pub(crate) async fn get_spt_holdings_by_pool(
                pr.reservation_pool_address as profile_reservation_pool_address
     "#;
 
-    let mut results: Vec<SptHoldingRow> = if prioritize_followed
-        && let Some(v) = viewer
-    {
+    let mut results: Vec<SptHoldingRow> = if prioritize_followed && let Some(v) = viewer {
         let (v_pid, v_owner) = resolve_profile_address(conn, v).await?;
         let refs = viewer_ref_strings(&v_owner, &v_pid);
         let query = format!(
@@ -446,9 +446,7 @@ pub(crate) async fn get_spt_transactions(
     metrics.requests_received.inc();
     let _guard = metrics.latency.start_timer();
 
-    let transactions: Vec<SptTransaction> = if prioritize_followed
-        && let Some(v) = viewer
-    {
+    let transactions: Vec<SptTransaction> = if prioritize_followed && let Some(v) = viewer {
         let (v_pid, v_owner) = resolve_profile_address(conn, v).await?;
         let refs = viewer_ref_strings(&v_owner, &v_pid);
         let q = r#"
@@ -741,8 +739,7 @@ pub(crate) async fn get_reservation_holdings_for_pool(
                p.reservation_pool_address as profile_reservation_pool_address
     "#;
 
-    let mut results: Vec<UserReservationHoldingRow> = if prioritize_followed
-        && let Some(v) = viewer
+    let mut results: Vec<UserReservationHoldingRow> = if prioritize_followed && let Some(v) = viewer
     {
         let (v_pid, v_owner) = resolve_profile_address(conn, v).await?;
         let refs = viewer_ref_strings(&v_owner, &v_pid);
@@ -858,8 +855,7 @@ pub(crate) async fn get_former_reservation_holdings_for_pool(
         WHERE l.amount <= 0
     "#;
 
-    let mut results: Vec<UserReservationHoldingRow> = if prioritize_followed
-        && let Some(v) = viewer
+    let mut results: Vec<UserReservationHoldingRow> = if prioritize_followed && let Some(v) = viewer
     {
         let (v_pid, v_owner) = resolve_profile_address(conn, v).await?;
         let refs = viewer_ref_strings(&v_owner, &v_pid);

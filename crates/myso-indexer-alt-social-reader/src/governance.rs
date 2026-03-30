@@ -16,6 +16,25 @@ use myso_pg_db::Connection;
 
 use crate::metrics::DbReaderMetrics;
 
+/// SQL for listing latest proposal rows with optional status, proposal type, and submitter filters.
+/// Bind order: status ($1), proposal_type ($2), submitter ($3), limit ($4), offset ($5).
+/// When `platform_id` is provided to `list_proposals`, `$2` is replaced by the platform's registry type (or -1), not the caller's `proposal_type`.
+const LIST_PROPOSALS_SQL: &str = "
+        SELECT id, title, description, proposal_type, reference_id, metadata_json, submitter,
+               submission_time, delegate_approval_count, delegate_rejection_count,
+               community_votes_for, community_votes_against, status, voting_start_time,
+               voting_end_time, reward_pool, implemented_description, implementation_time,
+               rescind_time, rejection_time, anonymous_voters_count
+        FROM (SELECT DISTINCT ON (id) * FROM proposals ORDER BY id, time DESC) p
+        WHERE ($1::smallint IS NULL OR status = $1)
+          AND ($2::smallint IS NULL OR proposal_type = $2)
+          AND ($3::text IS NULL OR submitter = $3)
+        ORDER BY submission_time DESC
+        LIMIT $4 OFFSET $5
+    ";
+
+/// List proposals from the social DB. When `platform_id` is set, filters by that platform's governance
+/// registry type and ignores `proposal_type`.
 pub(crate) async fn list_proposals(
     conn: &mut Connection<'_>,
     platform_id: Option<&str>,
@@ -36,21 +55,7 @@ pub(crate) async fn list_proposals(
         proposal_type
     };
 
-    let query = "
-        SELECT id, title, description, proposal_type, reference_id, metadata_json, submitter,
-               submission_time, delegate_approval_count, delegate_rejection_count,
-               community_votes_for, community_votes_against, status, voting_start_time,
-               voting_end_time, reward_pool, implemented_description, implementation_time,
-               rescind_time, rejection_time, anonymous_voters_count
-        FROM (SELECT DISTINCT ON (id) * FROM proposals ORDER BY id, time DESC) p
-        WHERE ($1::smallint IS NULL OR status = $1)
-          AND ($2::smallint IS NULL OR proposal_type = $2)
-          AND ($3::text IS NULL OR submitter = $3)
-        ORDER BY submission_time DESC
-        LIMIT $4 OFFSET $5
-    ";
-
-    let results = diesel::sql_query(query)
+    let results = diesel::sql_query(LIST_PROPOSALS_SQL)
         .bind::<Nullable<SmallInt>, _>(status)
         .bind::<Nullable<SmallInt>, _>(effective_proposal_type)
         .bind::<Nullable<Text>, _>(submitter)
@@ -651,4 +656,17 @@ pub(crate) async fn get_governance_stats_by_registry_type(
 
     metrics.requests_succeeded.inc();
     Ok(result)
+}
+
+#[cfg(test)]
+mod list_proposals_sql_tests {
+    use super::LIST_PROPOSALS_SQL;
+
+    #[test]
+    fn list_proposals_sql_filters_proposal_type_at_second_bind() {
+        assert!(
+            LIST_PROPOSALS_SQL.contains("proposal_type = $2"),
+            "registryType / proposal_type filter must use bind $2 for list_proposals"
+        );
+    }
 }

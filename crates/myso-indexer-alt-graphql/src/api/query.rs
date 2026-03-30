@@ -1090,11 +1090,16 @@ impl Query {
         )
     }
 
-    /// List governance proposals (paginated, optionally filtered by platform, status, submitter). Returns empty when social DB not configured.
+    /// List governance proposals (paginated, optionally filtered by platform, registry type, status, submitter). Returns empty when social DB not configured.
+    ///
+    /// `registryType` matches `Proposal.registryType` (0=ecosystem, 1=proof of creativity, 2=platform).
+    /// If `platformId` is set, the effective registry type comes from that platform's governance registry and `registryType` is ignored.
+    /// New on-chain proposals start in delegate review (`status` 1), not submitted (`status` 0).
     async fn proposals(
         &self,
         ctx: &Context<'_>,
         platform_id: Option<String>,
+        #[graphql(name = "registryType")] registry_type: Option<i16>,
         status: Option<i16>,
         submitter: Option<String>,
         limit: Option<u64>,
@@ -1110,7 +1115,7 @@ impl Query {
                 .list_proposals(
                     platform_id.as_deref(),
                     status,
-                    None,
+                    registry_type,
                     submitter.as_deref(),
                     limit,
                     offset,
@@ -1173,10 +1178,7 @@ impl Query {
                 Ok(rows
                     .into_iter()
                     .map(|row| {
-                        let c = ctx_map
-                            .as_ref()
-                            .and_then(|m| m.get(&row.address))
-                            .copied();
+                        let c = ctx_map.as_ref().and_then(|m| m.get(&row.address)).copied();
                         Delegate::with_viewer(row, c)
                     })
                     .collect())
@@ -1207,7 +1209,10 @@ impl Query {
                     Some(row) => {
                         let c = if let Some(ref vs) = viewer_s {
                             reader
-                                .batch_viewer_social_context_for_addresses(&[row.address.clone()], vs)
+                                .batch_viewer_social_context_for_addresses(
+                                    &[row.address.clone()],
+                                    vs,
+                                )
                                 .await
                                 .ok()
                                 .and_then(|m| m.get(&row.address).copied())
@@ -1259,10 +1264,7 @@ impl Query {
                 Ok(rows
                     .into_iter()
                     .map(|row| {
-                        let c = ctx_map
-                            .as_ref()
-                            .and_then(|m| m.get(&row.address))
-                            .copied();
+                        let c = ctx_map.as_ref().and_then(|m| m.get(&row.address)).copied();
                         NominatedDelegate::with_viewer(row, c)
                     })
                     .collect())

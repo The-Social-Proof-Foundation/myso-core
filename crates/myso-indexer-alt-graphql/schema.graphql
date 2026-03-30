@@ -5193,7 +5193,7 @@ type Proposal {
 	"""
 	referenceId: String
 	"""
-	Registry type (0=ecosystem, 1=proof of creativity, 2=platform).
+	Governance registry / proposal bucket (0=ecosystem, 1=proof of creativity, 2=platform). Same numeric space as chain `proposal_type`; not proposal lifecycle status.
 	"""
 	registryType: Int!
 	"""
@@ -5213,7 +5213,7 @@ type Proposal {
 	"""
 	rewardPool: Int!
 	"""
-	Proposal status (0=submitted, 1=delegate_review, 2=community_voting, 3=approved, 4=rejected, 5=implemented, 6=rescinded).
+	Proposal lifecycle status (0=submitted, 1=delegate_review, 2=community_voting, 3=approved, 4=rejected, 5=implemented, 6=rescinded). New proposals created on chain enter delegate review (1); `0` is not used for newly submitted work.
 	"""
 	status: Int!
 	"""
@@ -5631,9 +5631,13 @@ type Query {
 	"""
 	proposal(id: ID!): Proposal
 	"""
-	List governance proposals (paginated, optionally filtered by platform, status, submitter). Returns empty when social DB not configured.
+	List governance proposals (paginated, optionally filtered by platform, registry type, status, submitter). Returns empty when social DB not configured.
+	
+	`registryType` matches `Proposal.registryType` (0=ecosystem, 1=proof of creativity, 2=platform).
+	If `platformId` is set, the effective registry type comes from that platform's governance registry and `registryType` is ignored.
+	New on-chain proposals start in delegate review (`status` 1), not submitted (`status` 0).
 	"""
-	proposals(platformId: String, status: Int, submitter: String, limit: Int, offset: Int): [Proposal!]
+	proposals(platformId: String, registryType: Int, status: Int, submitter: String, limit: Int, offset: Int): [Proposal!]
 	"""
 	Fetch the protocol config by protocol version, or the latest protocol config used on chain if no version is provided.
 	"""
