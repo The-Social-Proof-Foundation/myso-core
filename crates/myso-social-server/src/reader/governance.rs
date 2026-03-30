@@ -299,7 +299,11 @@ pub(crate) async fn list_nominees(
     let query = "
         SELECT address, registry_type, upvotes, downvotes, scheduled_term_start_epoch,
                nomination_time, status
-        FROM (SELECT DISTINCT ON (address, registry_type) * FROM nominated_delegates ORDER BY address, registry_type, time DESC) n
+        FROM (
+            SELECT DISTINCT ON (address, registry_type) *
+            FROM nominated_delegates
+            ORDER BY address, registry_type, nomination_time DESC, time DESC
+        ) n
         WHERE ($1::smallint IS NULL OR registry_type = $1)
           AND ($2::smallint IS NULL OR status = $2)
         ORDER BY upvotes DESC

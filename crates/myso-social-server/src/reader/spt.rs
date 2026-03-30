@@ -615,21 +615,21 @@ pub(crate) async fn get_spt_creator_revenue_streams(
 pub(crate) async fn get_spt_market_sentiment(db: &Db) -> Result<serde_json::Value, SocialError> {
     let mut conn = db.connect().await?;
     let query = r#"
-        WITH current_volume AS (
+        WITH trade_current AS (
             SELECT
-                COALESCE(SUM(CASE WHEN transaction_type = 'BUY' THEN ABS(myso_amount) ELSE 0 END), 0)::bigint as buy_volume,
-                COALESCE(SUM(CASE WHEN transaction_type = 'SELL' THEN ABS(myso_amount) ELSE 0 END), 0)::bigint as sell_volume,
-                COALESCE(COUNT(*), 0)::bigint as transaction_count,
-                COALESCE(COUNT(DISTINCT CASE WHEN transaction_type = 'BUY' THEN sender END), 0)::bigint as unique_buyers,
-                COALESCE(COUNT(DISTINCT CASE WHEN transaction_type = 'SELL' THEN sender END), 0)::bigint as unique_sellers
+                COALESCE(SUM(CASE WHEN transaction_type = 'BUY' THEN ABS(myso_amount) ELSE 0 END), 0)::bigint AS trade_buy,
+                COALESCE(SUM(CASE WHEN transaction_type = 'SELL' THEN ABS(myso_amount) ELSE 0 END), 0)::bigint AS trade_sell,
+                COALESCE(COUNT(*), 0)::bigint AS transaction_count
             FROM spt_transactions
-            WHERE time > NOW() - INTERVAL '24 hours'
+            WHERE created_at > 0
+              AND to_timestamp(created_at / 1000.0) > NOW() - INTERVAL '24 hours'
         ),
-        previous_trade_volume AS (
-            SELECT COALESCE(SUM(ABS(myso_amount)), 0)::bigint as total_gross
+        trade_previous AS (
+            SELECT COALESCE(SUM(ABS(myso_amount)), 0)::bigint AS total_gross
             FROM spt_transactions
-            WHERE time > NOW() - INTERVAL '48 hours'
-              AND time <= NOW() - INTERVAL '24 hours'
+            WHERE created_at > 0
+              AND to_timestamp(created_at / 1000.0) > NOW() - INTERVAL '48 hours'
+              AND to_timestamp(created_at / 1000.0) <= NOW() - INTERVAL '24 hours'
         ),
         reservation_volume AS (
             SELECT
@@ -646,36 +646,67 @@ pub(crate) async fn get_spt_market_sentiment(db: &Db) -> Result<serde_json::Valu
             FROM spt_reservations
             WHERE time > NOW() - INTERVAL '48 hours'
               AND time <= NOW() - INTERVAL '24 hours'
+        ),
+        unique_buyers AS (
+            SELECT COALESCE(COUNT(*), 0)::bigint AS cnt
+            FROM (
+                SELECT sender AS addr FROM spt_transactions
+                WHERE created_at > 0
+                  AND to_timestamp(created_at / 1000.0) > NOW() - INTERVAL '24 hours'
+                  AND transaction_type = 'BUY'
+                UNION
+                SELECT reserver_address AS addr FROM spt_reservations
+                WHERE time > NOW() - INTERVAL '24 hours'
+                  AND amount > 0
+            ) u
+        ),
+        unique_sellers AS (
+            SELECT COALESCE(COUNT(*), 0)::bigint AS cnt
+            FROM (
+                SELECT sender AS addr FROM spt_transactions
+                WHERE created_at > 0
+                  AND to_timestamp(created_at / 1000.0) > NOW() - INTERVAL '24 hours'
+                  AND transaction_type = 'SELL'
+                UNION
+                SELECT reserver_address AS addr FROM spt_reservations
+                WHERE time > NOW() - INTERVAL '24 hours'
+                  AND amount < 0
+            ) u
         )
         SELECT
-            c.buy_volume, c.sell_volume, c.transaction_count,
-            c.unique_buyers, c.unique_sellers,
+            (t.trade_buy + COALESCE(r.res_deposit, 0))::bigint AS buy_volume,
+            (t.trade_sell + COALESCE(r.res_withdraw_mag, 0))::bigint AS sell_volume,
+            t.transaction_count,
+            ub.cnt AS unique_buyers,
+            us.cnt AS unique_sellers,
             COALESCE(r.reservation_gross, 0)::bigint as reservation_volume,
             COALESCE(r.reservation_count, 0)::bigint as reservation_count,
             COALESCE(r.unique_reservers, 0)::bigint as unique_reservers,
             (CASE
                 WHEN (COALESCE(p.total_gross, 0) + COALESCE(pr.total_gross, 0)) = 0
-                 AND (c.buy_volume + c.sell_volume + COALESCE(r.reservation_gross, 0)) = 0 THEN 0.0
+                 AND (t.trade_buy + t.trade_sell + COALESCE(r.reservation_gross, 0)) = 0 THEN 0.0
                 WHEN (COALESCE(p.total_gross, 0) + COALESCE(pr.total_gross, 0)) = 0
-                 AND (c.buy_volume + c.sell_volume + COALESCE(r.reservation_gross, 0)) > 0 THEN 100.0
+                 AND (t.trade_buy + t.trade_sell + COALESCE(r.reservation_gross, 0)) > 0 THEN 100.0
                 ELSE (
-                    (c.buy_volume + c.sell_volume + COALESCE(r.reservation_gross, 0)
+                    (t.trade_buy + t.trade_sell + COALESCE(r.reservation_gross, 0)
                      - COALESCE(p.total_gross, 0) - COALESCE(pr.total_gross, 0))::double precision
                     * 100.0
                     / (COALESCE(p.total_gross, 0) + COALESCE(pr.total_gross, 0))::double precision
                 )
             END) as volume_change_percentage,
             (CASE
-                WHEN (c.buy_volume + c.sell_volume + COALESCE(r.res_deposit, 0) + COALESCE(r.res_withdraw_mag, 0)) = 0 THEN 0.0
+                WHEN (t.trade_buy + t.trade_sell + COALESCE(r.res_deposit, 0) + COALESCE(r.res_withdraw_mag, 0)) = 0 THEN 0.0
                 ELSE (
-                    (c.buy_volume + COALESCE(r.res_deposit, 0) - c.sell_volume - COALESCE(r.res_withdraw_mag, 0))::double precision
-                    / (c.buy_volume + c.sell_volume + COALESCE(r.res_deposit, 0) + COALESCE(r.res_withdraw_mag, 0))::double precision
+                    (t.trade_buy + COALESCE(r.res_deposit, 0) - t.trade_sell - COALESCE(r.res_withdraw_mag, 0))::double precision
+                    / (t.trade_buy + t.trade_sell + COALESCE(r.res_deposit, 0) + COALESCE(r.res_withdraw_mag, 0))::double precision
                 )
             END) as sentiment_score
-        FROM current_volume c
-        CROSS JOIN previous_trade_volume p
+        FROM trade_current t
+        CROSS JOIN trade_previous p
         CROSS JOIN reservation_volume r
         CROSS JOIN previous_reservation_volume pr
+        CROSS JOIN unique_buyers ub
+        CROSS JOIN unique_sellers us
         "#;
     #[derive(QueryableByName)]
     struct Row {

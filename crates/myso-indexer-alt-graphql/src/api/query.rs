@@ -1235,7 +1235,10 @@ impl Query {
         let reader_opt = ctx
             .data_opt::<std::sync::Arc<Option<myso_indexer_alt_social_reader::SocialPgReader>>>()?;
         let reader = reader_opt.as_ref().as_ref()?;
-        let limit = limit.unwrap_or(50).min(100) as i64;
+        let mut limit = limit.unwrap_or(50).min(100) as i64;
+        if limit == 0 {
+            limit = 50;
+        }
         let offset = offset.unwrap_or(0) as i64;
         let viewer_s = viewer.map(|a| a.to_string());
         Some(

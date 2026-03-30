@@ -598,10 +598,17 @@ pub(crate) async fn list_nominated_delegates(
     metrics.requests_received.inc();
     let _guard = metrics.latency.start_timer();
 
+    // One row per (address, registry_type): latest nomination by event time, not hypertable chunk
+    // `time` alone can disagree with `nomination_time` (manual rows, old triggers), which would hide
+    // pending nominees from status=0 queries when the "latest" chunk row is wrong.
     let query = "
         SELECT address, registry_type, upvotes, downvotes, scheduled_term_start_epoch,
                nomination_time, status
-        FROM (SELECT DISTINCT ON (address, registry_type) * FROM nominated_delegates ORDER BY address, registry_type, time DESC) n
+        FROM (
+            SELECT DISTINCT ON (address, registry_type) *
+            FROM nominated_delegates
+            ORDER BY address, registry_type, nomination_time DESC, time DESC
+        ) n
         WHERE ($1::smallint IS NULL OR registry_type = $1)
           AND ($2::smallint IS NULL OR status = $2)
         ORDER BY upvotes DESC
