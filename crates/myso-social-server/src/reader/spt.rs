@@ -173,14 +173,16 @@ pub(crate) async fn get_spt_reservation_pool(
     Ok(result)
 }
 
-/// Lists reservation pools with display labels and per-pool **trade** volume for the last rolling 24h.
+/// Lists reservation pools with display labels and per-pool **total** rolling 24h volume:
+/// secondary-market trades (`spt_transactions`) plus reservation ledger activity (`spt_reservations`).
 ///
 /// Windows use the database clock (`NOW()`), i.e. **UTC** in PostgreSQL. **Current window:** rows with
-/// `spt_transactions.time > NOW() - 24h`. **Baseline (prior window):** `time` strictly after
-/// `NOW() - 48h` and on or before `NOW() - 24h` (contiguous prior 24h, not calendar midnight).
+/// `time > NOW() - 24h`. **Baseline (prior window):** `time` strictly after `NOW() - 48h` and on or
+/// before `NOW() - 24h` (contiguous prior 24h, not calendar midnight).
 ///
-/// `volume_24h` and deltas are **MYSO base units**: sum of `myso_amount` (BUY + SELL) on
-/// `spt_transactions` for the pool; reservation ledger volume is excluded (see volume-history endpoint).
+/// `volume_24h` and deltas are **MYSO base units**: sum of `myso_amount` on `spt_transactions` for
+/// matching `pool_id`, plus sum of `ABS(amount)` on `spt_reservations` matched to the pool via
+/// `pool_id` or `reservation_pool_{associated_id}` (same resolution as volume-history).
 pub(crate) async fn list_spt_reservation_pools(
     db: &Db,
     limit: i64,
@@ -215,6 +217,27 @@ pub(crate) async fn list_spt_reservation_pools(
             FROM spt_transactions
             WHERE time > NOW() - INTERVAL '48 hours' AND time <= NOW() - INTERVAL '24 hours'
             GROUP BY pool_id
+        ),
+        res_vol_current AS (
+            SELECT lp.pool_id, COALESCE(SUM(ABS(sr.amount)), 0)::bigint AS vol
+            FROM spt_reservations sr
+            INNER JOIN latest_reservation_pools lp ON (
+                sr.pool_id = lp.pool_id
+                OR sr.pool_id = ('reservation_pool_' || lp.associated_id)
+            )
+            WHERE sr.time > NOW() - INTERVAL '24 hours'
+            GROUP BY lp.pool_id
+        ),
+        res_vol_previous AS (
+            SELECT lp.pool_id, COALESCE(SUM(ABS(sr.amount)), 0)::bigint AS vol
+            FROM spt_reservations sr
+            INNER JOIN latest_reservation_pools lp ON (
+                sr.pool_id = lp.pool_id
+                OR sr.pool_id = ('reservation_pool_' || lp.associated_id)
+            )
+            WHERE sr.time > NOW() - INTERVAL '48 hours'
+              AND sr.time <= NOW() - INTERVAL '24 hours'
+            GROUP BY lp.pool_id
         )
         SELECT
             rp.id, rp.pool_id, rp.associated_id, rp.token_type, rp.owner,
@@ -247,14 +270,22 @@ pub(crate) async fn list_spt_reservation_pools(
                 WHEN rp.token_type = 1 THEN prof.username
                 ELSE NULL
             END as secondary_label,
-            COALESCE(cur.vol, 0) as volume_24h,
-            COALESCE(cur.vol, 0) - COALESCE(prev.vol, 0) as volume_change_24h,
-            (CASE WHEN COALESCE(prev.vol, 0) = 0 THEN NULL
-                  ELSE (COALESCE(cur.vol, 0) - COALESCE(prev.vol, 0))::double precision * 100.0 / prev.vol::double precision
+            (COALESCE(cur.vol, 0) + COALESCE(res_cur.vol, 0)) as volume_24h,
+            (COALESCE(cur.vol, 0) + COALESCE(res_cur.vol, 0))
+                - (COALESCE(prev.vol, 0) + COALESCE(res_prev.vol, 0)) as volume_change_24h,
+            (CASE WHEN (COALESCE(prev.vol, 0) + COALESCE(res_prev.vol, 0)) = 0 THEN NULL
+                  ELSE (
+                    (COALESCE(cur.vol, 0) + COALESCE(res_cur.vol, 0)
+                     - COALESCE(prev.vol, 0) - COALESCE(res_prev.vol, 0))::double precision
+                    * 100.0
+                    / (COALESCE(prev.vol, 0) + COALESCE(res_prev.vol, 0))::double precision
+                  )
              END) as volume_change_percent_24h
         FROM latest_reservation_pools rp
         LEFT JOIN tx_vol_current cur ON cur.pool_id = rp.pool_id
         LEFT JOIN tx_vol_previous prev ON prev.pool_id = rp.pool_id
+        LEFT JOIN res_vol_current res_cur ON res_cur.pool_id = rp.pool_id
+        LEFT JOIN res_vol_previous res_prev ON res_prev.pool_id = rp.pool_id
         LEFT JOIN latest_profiles prof ON
             rp.token_type = 1 AND
             (CASE
