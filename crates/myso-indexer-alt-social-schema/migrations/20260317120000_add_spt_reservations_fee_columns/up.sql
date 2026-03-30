@@ -4,6 +4,13 @@ ALTER TABLE spt_reservations ADD COLUMN IF NOT EXISTS creator_fee BIGINT;
 ALTER TABLE spt_reservations ADD COLUMN IF NOT EXISTS platform_fee BIGINT;
 ALTER TABLE spt_reservations ADD COLUMN IF NOT EXISTS treasury_fee BIGINT;
 
+-- Indexer checkpoint ms for 24h analytics (aligned with spt_transactions.created_at).
+ALTER TABLE spt_reservations ADD COLUMN IF NOT EXISTS created_at BIGINT NOT NULL DEFAULT 0;
+
+UPDATE spt_reservations
+SET created_at = (EXTRACT(EPOCH FROM time) * 1000)::bigint
+WHERE created_at = 0;
+
 -- Ensure platform_fee is nullable (reservations without platform have no platform fee)
 DO $$
 BEGIN

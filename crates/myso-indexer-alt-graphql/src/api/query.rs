@@ -1227,11 +1227,22 @@ impl Query {
         )
     }
 
-    /// List nominated delegates (paginated, optionally filtered by registry type and status). Returns empty when social DB not configured.
+    /// List nominated delegates (paginated, optionally filtered by platform, registry type, and status).
+    /// Returns empty when social DB not configured.
+    ///
+    /// `registryType`: 0=ecosystem, 1=proof of creativity, 2=platform DAO.
+    /// If `platformId` is set, results are scoped to that platform's governance registry (same resolution
+    /// as `proposals(platformId:)` / `governanceRegistry(platformId:)`), and `registryType` is ignored.
+    /// **Platform DAO (`registryType` 2) requires `platformId`:** when `registryType` is 2 and `platformId`
+    /// is omitted, returns an empty list (no cross-platform aggregation).
+    ///
+    /// Without `platformId`, only ecosystem/PoC nominee rows are returned (`governance_registry_id` unset).
+    /// Unfiltered lists omit `registryType` 2.
     async fn nominated_delegates(
         &self,
         ctx: &Context<'_>,
-        registry_type: Option<i16>,
+        platform_id: Option<String>,
+        #[graphql(name = "registryType")] registry_type: Option<i16>,
         status: Option<i16>,
         viewer: Option<MySoAddress>,
         limit: Option<u64>,
@@ -1240,16 +1251,30 @@ impl Query {
         let reader_opt = ctx
             .data_opt::<std::sync::Arc<Option<myso_indexer_alt_social_reader::SocialPgReader>>>()?;
         let reader = reader_opt.as_ref().as_ref()?;
+        if platform_id.is_none() && registry_type == Some(2) {
+            return Some(Ok(vec![]));
+        }
         let mut limit = limit.unwrap_or(50).min(100) as i64;
         if limit == 0 {
             limit = 50;
         }
         let offset = offset.unwrap_or(0) as i64;
         let viewer_s = viewer.map(|a| a.to_string());
+        let effective_registry_type = if platform_id.is_some() {
+            None
+        } else {
+            registry_type
+        };
         Some(
             async {
                 let rows = reader
-                    .list_nominated_delegates(registry_type, status, limit, offset)
+                    .list_nominated_delegates(
+                        platform_id.as_deref(),
+                        effective_registry_type,
+                        status,
+                        limit,
+                        offset,
+                    )
                     .await
                     .map_err(RpcError::from)?;
                 let ctx_map = if let Some(ref vs) = viewer_s {

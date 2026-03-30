@@ -55,13 +55,16 @@ pub fn handle_governance_event(
     event_name: &str,
     data: &serde_json::Value,
     event_id: &str,
+    governance_registry_id: Option<String>,
 ) -> Option<Vec<SocialEventRow>> {
     let normalized = event_name.strip_suffix("Event").unwrap_or(event_name);
     match normalized {
         "GovernanceRegistryCreated" => process_governance_registry_created_event(data, event_id),
-        "DelegateNominated" => process_delegate_nominated_event(data, event_id),
-        "DelegateElected" => process_delegate_elected_event(data, event_id),
-        "DelegateVoted" => process_delegate_voted_event(data, event_id),
+        "DelegateNominated" => {
+            process_delegate_nominated_event(data, event_id, governance_registry_id)
+        }
+        "DelegateElected" => process_delegate_elected_event(data, event_id, governance_registry_id),
+        "DelegateVoted" => process_delegate_voted_event(data, event_id, governance_registry_id),
         "ProposalSubmitted" => process_proposal_submitted_event(data, event_id),
         "DelegateVote" => process_delegate_vote_event(data, event_id),
         "CommunityVote" => process_community_vote_event(data, event_id),
@@ -80,6 +83,17 @@ pub fn handle_governance_event(
             process_governance_parameters_updated_event(data, event_id)
         }
         _ => None,
+    }
+}
+
+fn nominee_governance_registry_id(
+    registry_type: u8,
+    governance_registry_id: Option<String>,
+) -> Option<String> {
+    if registry_type == 2 {
+        governance_registry_id
+    } else {
+        None
     }
 }
 
@@ -142,6 +156,7 @@ fn process_governance_registry_created_event(
 fn process_delegate_nominated_event(
     data: &serde_json::Value,
     event_id: &str,
+    governance_registry_id: Option<String>,
 ) -> Option<Vec<SocialEventRow>> {
     #[derive(serde::Deserialize)]
     struct Ev {
@@ -162,6 +177,7 @@ fn process_delegate_nominated_event(
         nomination_time: now,
         status: 0,
         transaction_id: event_id.to_string(),
+        governance_registry_id: nominee_governance_registry_id(ev.registry_type, governance_registry_id),
     };
     let gov_ev = NewGovernanceEvent {
         event_type: "DelegateNominatedEvent".to_string(),
@@ -180,6 +196,7 @@ fn process_delegate_nominated_event(
 fn process_delegate_elected_event(
     data: &serde_json::Value,
     event_id: &str,
+    governance_registry_id: Option<String>,
 ) -> Option<Vec<SocialEventRow>> {
     #[derive(serde::Deserialize)]
     struct Ev {
@@ -197,6 +214,7 @@ fn process_delegate_elected_event(
         address: ev.delegate_address.clone(),
         registry_type: ev.registry_type as i16,
         status: NOMINEE_STATUS_ELECTED,
+        governance_registry_id: nominee_governance_registry_id(ev.registry_type, governance_registry_id),
     };
     let delegate = NewDelegate {
         address: ev.delegate_address,
@@ -232,6 +250,7 @@ fn process_delegate_elected_event(
 fn process_delegate_voted_event(
     data: &serde_json::Value,
     event_id: &str,
+    governance_registry_id: Option<String>,
 ) -> Option<Vec<SocialEventRow>> {
     #[derive(serde::Deserialize)]
     struct Ev {
@@ -254,6 +273,7 @@ fn process_delegate_voted_event(
         is_active_delegate: ev.is_active_delegate,
         upvotes: ev.new_upvote_count as i64,
         downvotes: ev.new_downvote_count as i64,
+        governance_registry_id: nominee_governance_registry_id(ev.registry_type, governance_registry_id),
     };
     let rating = NewDelegateRating {
         target_address: ev.target_address,

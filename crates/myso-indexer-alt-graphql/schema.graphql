@@ -5512,9 +5512,19 @@ type Query {
 	"""
 	node(id: ID!): Node
 	"""
-	List nominated delegates (paginated, optionally filtered by registry type and status). Returns empty when social DB not configured.
+	List nominated delegates (paginated, optionally filtered by platform, registry type, and status).
+	Returns empty when social DB not configured.
+	
+	`registryType`: 0=ecosystem, 1=proof of creativity, 2=platform DAO.
+	If `platformId` is set, results are scoped to that platform's governance registry (same resolution
+	as `proposals(platformId:)` / `governanceRegistry(platformId:)`), and `registryType` is ignored.
+	**Platform DAO (`registryType` 2) requires `platformId`:** when `registryType` is 2 and `platformId`
+	is omitted, returns an empty list (no cross-platform aggregation).
+	
+	Without `platformId`, only ecosystem/PoC nominee rows are returned (`governance_registry_id` unset).
+	Unfiltered lists omit `registryType` 2.
 	"""
-	nominatedDelegates(registryType: Int, status: Int, viewer: MySoAddress, limit: Int, offset: Int): [NominatedDelegate!]
+	nominatedDelegates(platformId: String, registryType: Int, status: Int, viewer: MySoAddress, limit: Int, offset: Int): [NominatedDelegate!]
 	"""
 	Fetch an object by its address.
 	

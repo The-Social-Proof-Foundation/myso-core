@@ -288,34 +288,116 @@ pub(crate) async fn get_delegate_ratings(
     Ok(results)
 }
 
+async fn governance_registry_row_for_platform<C>(
+    conn: &mut C,
+    platform_id: &str,
+) -> Result<Option<(i16, String)>, SocialError>
+where
+    C: diesel_async::AsyncConnection<Backend = diesel::pg::Pg> + Send,
+{
+    #[derive(QueryableByName)]
+    struct PlatformRegistry {
+        #[diesel(sql_type = Nullable<Text>)]
+        governance_registry_id: Option<String>,
+    }
+
+    let platform = diesel::sql_query(
+        "SELECT governance_registry_id FROM platforms WHERE platform_id = $1 AND deleted_at IS NULL LIMIT 1",
+    )
+    .bind::<Text, _>(platform_id)
+    .get_result::<PlatformRegistry>(conn)
+    .await
+    .optional()?;
+
+    let Some(reg_id) = platform.and_then(|p| p.governance_registry_id) else {
+        return Ok(None);
+    };
+
+    #[derive(QueryableByName)]
+    struct RegRow {
+        #[diesel(sql_type = SmallInt)]
+        registry_type: i16,
+        #[diesel(sql_type = Text)]
+        registry_id: String,
+    }
+
+    let reg = diesel::sql_query(
+        "SELECT registry_type, registry_id FROM governance_registries WHERE registry_id = $1 LIMIT 1",
+    )
+    .bind::<Text, _>(&reg_id)
+    .get_result::<RegRow>(conn)
+    .await
+    .optional()?;
+
+    Ok(reg.map(|r| (r.registry_type, r.registry_id)))
+}
+
 pub(crate) async fn list_nominees(
     db: &Db,
     limit: i64,
     offset: i64,
+    platform_id: Option<&str>,
     registry_type: Option<i16>,
     status: Option<i16>,
 ) -> Result<Vec<NominatedDelegateRow>, SocialError> {
+    if platform_id.is_none() && registry_type == Some(2) {
+        return Ok(vec![]);
+    }
     let mut conn = db.connect().await?;
-    let query = "
+    let results = if let Some(pid) = platform_id {
+        let Some((reg_type, reg_id)) = governance_registry_row_for_platform(&mut conn, pid).await?
+        else {
+            return Ok(vec![]);
+        };
+        let query = "
         SELECT address, registry_type, upvotes, downvotes, scheduled_term_start_epoch,
                nomination_time, status
         FROM (
-            SELECT DISTINCT ON (address, registry_type) *
+            SELECT DISTINCT ON (address, registry_type, COALESCE(governance_registry_id, '')) *
             FROM nominated_delegates
-            ORDER BY address, registry_type, nomination_time DESC, time DESC
+            ORDER BY address, registry_type, COALESCE(governance_registry_id, ''), nomination_time DESC, time DESC
+        ) n
+        WHERE registry_type = $1
+          AND ($2::smallint IS NULL OR status = $2)
+          AND governance_registry_id = $3
+        ORDER BY upvotes DESC
+        LIMIT $4 OFFSET $5
+    ";
+        diesel::sql_query(query)
+            .bind::<SmallInt, _>(reg_type)
+            .bind::<Nullable<SmallInt>, _>(status)
+            .bind::<Text, _>(&reg_id)
+            .bind::<BigInt, _>(limit)
+            .bind::<BigInt, _>(offset)
+            .load::<NominatedDelegateRow>(&mut conn)
+            .await?
+    } else {
+        let omnibus = registry_type.is_none();
+        let effective_registry_type = registry_type;
+        let query = "
+        SELECT address, registry_type, upvotes, downvotes, scheduled_term_start_epoch,
+               nomination_time, status
+        FROM (
+            SELECT DISTINCT ON (address, registry_type, COALESCE(governance_registry_id, '')) *
+            FROM nominated_delegates
+            ORDER BY address, registry_type, COALESCE(governance_registry_id, ''), nomination_time DESC, time DESC
         ) n
         WHERE ($1::smallint IS NULL OR registry_type = $1)
           AND ($2::smallint IS NULL OR status = $2)
+          AND governance_registry_id IS NULL
+          AND ($3::bool = false OR registry_type <> 2)
         ORDER BY upvotes DESC
-        LIMIT $3 OFFSET $4
+        LIMIT $4 OFFSET $5
     ";
-    let results = diesel::sql_query(query)
-        .bind::<Nullable<SmallInt>, _>(registry_type)
-        .bind::<Nullable<SmallInt>, _>(status)
-        .bind::<BigInt, _>(limit)
-        .bind::<BigInt, _>(offset)
-        .load::<NominatedDelegateRow>(&mut conn)
-        .await?;
+        diesel::sql_query(query)
+            .bind::<Nullable<SmallInt>, _>(effective_registry_type)
+            .bind::<Nullable<SmallInt>, _>(status)
+            .bind::<Bool, _>(omnibus)
+            .bind::<BigInt, _>(limit)
+            .bind::<BigInt, _>(offset)
+            .load::<NominatedDelegateRow>(&mut conn)
+            .await?
+    };
     Ok(results)
 }
 

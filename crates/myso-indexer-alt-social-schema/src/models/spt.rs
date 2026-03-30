@@ -1,9 +1,9 @@
 // Copyright (c) The Social Proof Foundation, LLC.
 // SPDX-License-Identifier: Apache-2.0
 
-use diesel::QueryableByName;
 use diesel::prelude::*;
 use diesel::sql_types::{BigInt, Bool, Nullable, SmallInt, Text, Timestamptz};
+use diesel::QueryableByName;
 use serde::{Deserialize, Serialize};
 
 use super::revenue::{
@@ -256,6 +256,7 @@ pub struct NewSptReservation {
     pub reserver_address: String,
     pub amount: i64,
     pub reserved_at: i64,
+    pub created_at: i64,
     pub fee_amount: Option<i64>,
     pub creator_fee: Option<i64>,
     pub platform_fee: Option<i64>,

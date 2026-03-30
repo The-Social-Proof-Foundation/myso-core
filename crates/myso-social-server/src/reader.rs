@@ -425,10 +425,11 @@ impl Reader {
         &self,
         limit: i64,
         offset: i64,
+        platform_id: Option<&str>,
         registry_type: Option<i16>,
         status: Option<i16>,
     ) -> Result<Vec<NominatedDelegateRow>, crate::error::SocialError> {
-        governance::list_nominees(&self.db, limit, offset, registry_type, status).await
+        governance::list_nominees(&self.db, limit, offset, platform_id, registry_type, status).await
     }
 
     pub async fn list_governance_registries(

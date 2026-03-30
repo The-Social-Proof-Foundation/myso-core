@@ -397,7 +397,7 @@ fn process_reservation_created_event(
     data: &serde_json::Value,
     event_id: &str,
     checkpoint_ts_ms: u64,
-    _ts: i64,
+    ts: i64,
     now: chrono::DateTime<chrono::Utc>,
 ) -> Option<Vec<SocialEventRow>> {
     let associated_id = json_str(data.get("associated_id")?)?;
@@ -430,6 +430,7 @@ fn process_reservation_created_event(
         reserver_address: reserver,
         amount,
         reserved_at,
+        created_at: ts,
         fee_amount,
         creator_fee,
         platform_fee,
@@ -461,7 +462,7 @@ fn process_reservation_withdrawn_event(
     data: &serde_json::Value,
     event_id: &str,
     checkpoint_ts_ms: u64,
-    _ts: i64,
+    ts: i64,
     now: chrono::DateTime<chrono::Utc>,
 ) -> Option<Vec<SocialEventRow>> {
     let associated_id = json_str(data.get("associated_id")?)?;
@@ -491,6 +492,7 @@ fn process_reservation_withdrawn_event(
         reserver_address: reserver,
         amount,
         reserved_at: withdrawn_at,
+        created_at: ts,
         fee_amount,
         creator_fee,
         platform_fee,
@@ -757,6 +759,7 @@ mod tests {
             res.time,
             chrono::DateTime::from_timestamp_millis(126000).unwrap()
         );
+        assert_eq!(res.created_at, 0, "checkpoint_ms 0 in test");
     }
 
     #[test]
@@ -864,6 +867,7 @@ mod tests {
             res.time,
             chrono::DateTime::from_timestamp_millis(300).unwrap()
         );
+        assert_eq!(res.created_at, 3000);
 
         let update = res_rows.iter().find_map(|r| {
             if let SocialEventRow::SptReservationPoolUpdate {

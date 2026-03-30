@@ -457,6 +457,7 @@ diesel::table! {
         status -> Int2,
         time -> Timestamptz,
         transaction_id -> Text,
+        governance_registry_id -> Nullable<Text>,
     }
 }
 
@@ -1490,6 +1491,7 @@ diesel::table! {
         reserver_address -> Text,
         amount -> Int8,
         reserved_at -> Int8,
+        created_at -> Int8,
         time -> Timestamptz,
         transaction_id -> Text,
         treasury_fee -> Nullable<Int8>,

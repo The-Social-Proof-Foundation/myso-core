@@ -1231,9 +1231,12 @@ impl SocialPgReader {
         get_delegate_by_address(&mut conn, address, &self.metrics).await
     }
 
-    /// List nominated delegates (paginated, optionally filtered by registry type and status).
+    /// List nominated delegates (paginated). With `platform_id`, scopes to that platform's governance
+    /// registry (same as `proposals(platformId:)`). Without it, returns only ecosystem/PoC rows
+    /// (`governance_registry_id` NULL); omnibus queries exclude `registry_type = platform`.
     pub async fn list_nominated_delegates(
         &self,
+        platform_id: Option<&str>,
         registry_type: Option<i16>,
         status: Option<i16>,
         limit: i64,
@@ -1242,6 +1245,7 @@ impl SocialPgReader {
         let mut conn = self.connect().await?;
         list_nominated_delegates(
             &mut conn,
+            platform_id,
             registry_type,
             status,
             limit,

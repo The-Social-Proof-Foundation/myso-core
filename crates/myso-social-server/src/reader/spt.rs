@@ -176,9 +176,9 @@ pub(crate) async fn get_spt_reservation_pool(
 /// Lists reservation pools with display labels and per-pool **total** rolling 24h volume:
 /// secondary-market trades (`spt_transactions`) plus reservation ledger activity (`spt_reservations`).
 ///
-/// Windows use the database clock (`NOW()`), i.e. **UTC** in PostgreSQL. **Current window:** rows with
-/// `time > NOW() - 24h`. **Baseline (prior window):** `time` strictly after `NOW() - 48h` and on or
-/// before `NOW() - 24h` (contiguous prior 24h, not calendar midnight).
+/// Windows use the database clock (`NOW()`), i.e. **UTC** in PostgreSQL. **Transactions:** rows whose
+/// indexer `created_at` (epoch ms) falls in the window, matching [`get_spt_market_sentiment`]. **Current**
+/// window: last 24h. **Prior window:** strictly after `NOW() - 48h` through `NOW() - 24h` (contiguous).
 ///
 /// `volume_24h` and deltas are **MYSO base units**: sum of `myso_amount` on `spt_transactions` for
 /// matching `pool_id`, plus sum of `ABS(amount)` on `spt_reservations` matched to the pool via
@@ -213,13 +213,16 @@ pub(crate) async fn list_spt_reservation_pools(
         tx_vol_current AS (
             SELECT pool_id, COALESCE(SUM(myso_amount), 0)::bigint AS vol
             FROM spt_transactions
-            WHERE time > NOW() - INTERVAL '24 hours'
+            WHERE created_at > 0
+              AND to_timestamp(created_at / 1000.0) > NOW() - INTERVAL '24 hours'
             GROUP BY pool_id
         ),
         tx_vol_previous AS (
             SELECT pool_id, COALESCE(SUM(myso_amount), 0)::bigint AS vol
             FROM spt_transactions
-            WHERE time > NOW() - INTERVAL '48 hours' AND time <= NOW() - INTERVAL '24 hours'
+            WHERE created_at > 0
+              AND to_timestamp(created_at / 1000.0) > NOW() - INTERVAL '48 hours'
+              AND to_timestamp(created_at / 1000.0) <= NOW() - INTERVAL '24 hours'
             GROUP BY pool_id
         ),
         res_vol_current AS (
@@ -229,7 +232,8 @@ pub(crate) async fn list_spt_reservation_pools(
                 sr.pool_id = lp.pool_id
                 OR sr.pool_id = ('reservation_pool_' || lp.associated_id)
             )
-            WHERE sr.time > NOW() - INTERVAL '24 hours'
+            WHERE sr.created_at > 0
+              AND to_timestamp(sr.created_at / 1000.0) > NOW() - INTERVAL '24 hours'
             GROUP BY lp.pool_id
         ),
         res_vol_previous AS (
@@ -239,8 +243,9 @@ pub(crate) async fn list_spt_reservation_pools(
                 sr.pool_id = lp.pool_id
                 OR sr.pool_id = ('reservation_pool_' || lp.associated_id)
             )
-            WHERE sr.time > NOW() - INTERVAL '48 hours'
-              AND sr.time <= NOW() - INTERVAL '24 hours'
+            WHERE sr.created_at > 0
+              AND to_timestamp(sr.created_at / 1000.0) > NOW() - INTERVAL '48 hours'
+              AND to_timestamp(sr.created_at / 1000.0) <= NOW() - INTERVAL '24 hours'
             GROUP BY lp.pool_id
         )
         SELECT
@@ -639,13 +644,15 @@ pub(crate) async fn get_spt_market_sentiment(db: &Db) -> Result<serde_json::Valu
                 COALESCE(COUNT(*), 0)::bigint as reservation_count,
                 COALESCE(COUNT(DISTINCT reserver_address), 0)::bigint as unique_reservers
             FROM spt_reservations
-            WHERE time > NOW() - INTERVAL '24 hours'
+            WHERE created_at > 0
+              AND to_timestamp(created_at / 1000.0) > NOW() - INTERVAL '24 hours'
         ),
         previous_reservation_volume AS (
             SELECT COALESCE(SUM(ABS(amount)), 0)::bigint as total_gross
             FROM spt_reservations
-            WHERE time > NOW() - INTERVAL '48 hours'
-              AND time <= NOW() - INTERVAL '24 hours'
+            WHERE created_at > 0
+              AND to_timestamp(created_at / 1000.0) > NOW() - INTERVAL '48 hours'
+              AND to_timestamp(created_at / 1000.0) <= NOW() - INTERVAL '24 hours'
         ),
         unique_buyers AS (
             SELECT COALESCE(COUNT(*), 0)::bigint AS cnt
@@ -656,7 +663,8 @@ pub(crate) async fn get_spt_market_sentiment(db: &Db) -> Result<serde_json::Valu
                   AND transaction_type = 'BUY'
                 UNION
                 SELECT reserver_address AS addr FROM spt_reservations
-                WHERE time > NOW() - INTERVAL '24 hours'
+                WHERE created_at > 0
+                  AND to_timestamp(created_at / 1000.0) > NOW() - INTERVAL '24 hours'
                   AND amount > 0
             ) u
         ),
@@ -669,7 +677,8 @@ pub(crate) async fn get_spt_market_sentiment(db: &Db) -> Result<serde_json::Valu
                   AND transaction_type = 'SELL'
                 UNION
                 SELECT reserver_address AS addr FROM spt_reservations
-                WHERE time > NOW() - INTERVAL '24 hours'
+                WHERE created_at > 0
+                  AND to_timestamp(created_at / 1000.0) > NOW() - INTERVAL '24 hours'
                   AND amount < 0
             ) u
         )
@@ -865,7 +874,9 @@ pub(crate) async fn get_spt_liquidity_profile(
                 COALESCE(MAX(amount), 0) as largest_transaction,
                 COALESCE(COUNT(DISTINCT reserver_address), 0) as unique_traders_count
             FROM spt_reservations
-            WHERE pool_id = $1 AND time > NOW() - INTERVAL '24 hours'
+            WHERE pool_id = $1
+              AND created_at > 0
+              AND to_timestamp(created_at / 1000.0) > NOW() - INTERVAL '24 hours'
         ";
         #[derive(QueryableByName)]
         struct ReservationMetricsRow {
@@ -933,7 +944,7 @@ pub(crate) async fn list_spt_reservations(
 ) -> Result<Vec<SptReservationRow>, SocialError> {
     let mut conn = db.connect().await?;
     let query = "
-        SELECT pool_id, reserver_address, amount, reserved_at, fee_amount, creator_fee,
+        SELECT pool_id, reserver_address, amount, reserved_at, created_at, fee_amount, creator_fee,
                platform_fee, treasury_fee, time, transaction_id
         FROM spt_reservations
         WHERE pool_id = $1

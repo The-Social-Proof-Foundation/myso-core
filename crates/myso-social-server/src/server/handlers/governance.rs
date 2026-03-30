@@ -176,7 +176,13 @@ pub async fn list_governance_nominees(
     let offset = params.offset.unwrap_or(0);
     let data = state
         .reader
-        .list_nominees(limit, offset, params.registry_type, params.status)
+        .list_nominees(
+            limit,
+            offset,
+            params.platform_id.as_deref(),
+            params.registry_type,
+            params.status,
+        )
         .await?;
     Ok(Json(data))
 }

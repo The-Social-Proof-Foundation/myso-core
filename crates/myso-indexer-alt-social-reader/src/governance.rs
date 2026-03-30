@@ -592,8 +592,44 @@ pub(crate) async fn get_anonymous_voting_trends(
     Ok(results)
 }
 
+/// Latest nominees for a single platform governance registry. Binds: registry_type ($1), status ($2),
+/// governance_registry_id ($3), limit ($4), offset ($5).
+const LIST_NOMINATED_DELEGATES_PLATFORM_SQL: &str = "
+        SELECT address, registry_type, upvotes, downvotes, scheduled_term_start_epoch,
+               nomination_time, status
+        FROM (
+            SELECT DISTINCT ON (address, registry_type, COALESCE(governance_registry_id, '')) *
+            FROM nominated_delegates
+            ORDER BY address, registry_type, COALESCE(governance_registry_id, ''), nomination_time DESC, time DESC
+        ) n
+        WHERE registry_type = $1
+          AND ($2::smallint IS NULL OR status = $2)
+          AND governance_registry_id = $3
+        ORDER BY upvotes DESC
+        LIMIT $4 OFFSET $5
+    ";
+
+/// Ecosystem / PoC nominees only (`governance_registry_id` NULL). Optional omnibus excludes `registry_type = 2`.
+/// Binds: registry_type ($1), status ($2), omnibus_exclude_type_2 ($3), limit ($4), offset ($5).
+const LIST_NOMINATED_DELEGATES_LEGACY_SQL: &str = "
+        SELECT address, registry_type, upvotes, downvotes, scheduled_term_start_epoch,
+               nomination_time, status
+        FROM (
+            SELECT DISTINCT ON (address, registry_type, COALESCE(governance_registry_id, '')) *
+            FROM nominated_delegates
+            ORDER BY address, registry_type, COALESCE(governance_registry_id, ''), nomination_time DESC, time DESC
+        ) n
+        WHERE ($1::smallint IS NULL OR registry_type = $1)
+          AND ($2::smallint IS NULL OR status = $2)
+          AND governance_registry_id IS NULL
+          AND ($3::bool = false OR registry_type <> 2)
+        ORDER BY upvotes DESC
+        LIMIT $4 OFFSET $5
+    ";
+
 pub(crate) async fn list_nominated_delegates(
     conn: &mut Connection<'_>,
+    platform_id: Option<&str>,
     registry_type: Option<i16>,
     status: Option<i16>,
     limit: i64,
@@ -603,30 +639,30 @@ pub(crate) async fn list_nominated_delegates(
     metrics.requests_received.inc();
     let _guard = metrics.latency.start_timer();
 
-    // One row per (address, registry_type): latest nomination by event time, not hypertable chunk
-    // `time` alone can disagree with `nomination_time` (manual rows, old triggers), which would hide
-    // pending nominees from status=0 queries when the "latest" chunk row is wrong.
-    let query = "
-        SELECT address, registry_type, upvotes, downvotes, scheduled_term_start_epoch,
-               nomination_time, status
-        FROM (
-            SELECT DISTINCT ON (address, registry_type) *
-            FROM nominated_delegates
-            ORDER BY address, registry_type, nomination_time DESC, time DESC
-        ) n
-        WHERE ($1::smallint IS NULL OR registry_type = $1)
-          AND ($2::smallint IS NULL OR status = $2)
-        ORDER BY upvotes DESC
-        LIMIT $3 OFFSET $4
-    ";
-
-    let results = diesel::sql_query(query)
-        .bind::<Nullable<SmallInt>, _>(registry_type)
-        .bind::<Nullable<SmallInt>, _>(status)
-        .bind::<BigInt, _>(limit)
-        .bind::<BigInt, _>(offset)
-        .load::<NominatedDelegateRow>(conn)
-        .await?;
+    let results = if let Some(pid) = platform_id {
+        let Some(reg) = get_governance_registry_by_platform_id(conn, pid, metrics).await? else {
+            metrics.requests_succeeded.inc();
+            return Ok(vec![]);
+        };
+        diesel::sql_query(LIST_NOMINATED_DELEGATES_PLATFORM_SQL)
+            .bind::<SmallInt, _>(reg.registry_type)
+            .bind::<Nullable<SmallInt>, _>(status)
+            .bind::<Text, _>(&reg.registry_id)
+            .bind::<BigInt, _>(limit)
+            .bind::<BigInt, _>(offset)
+            .load::<NominatedDelegateRow>(conn)
+            .await?
+    } else {
+        let omnibus = registry_type.is_none();
+        diesel::sql_query(LIST_NOMINATED_DELEGATES_LEGACY_SQL)
+            .bind::<Nullable<SmallInt>, _>(registry_type)
+            .bind::<Nullable<SmallInt>, _>(status)
+            .bind::<Bool, _>(omnibus)
+            .bind::<BigInt, _>(limit)
+            .bind::<BigInt, _>(offset)
+            .load::<NominatedDelegateRow>(conn)
+            .await?
+    };
 
     metrics.requests_succeeded.inc();
     Ok(results)
@@ -661,12 +697,31 @@ pub(crate) async fn get_governance_stats_by_registry_type(
 #[cfg(test)]
 mod list_proposals_sql_tests {
     use super::LIST_PROPOSALS_SQL;
+    use super::LIST_NOMINATED_DELEGATES_LEGACY_SQL;
+    use super::LIST_NOMINATED_DELEGATES_PLATFORM_SQL;
 
     #[test]
     fn list_proposals_sql_filters_proposal_type_at_second_bind() {
         assert!(
             LIST_PROPOSALS_SQL.contains("proposal_type = $2"),
             "registryType / proposal_type filter must use bind $2 for list_proposals"
+        );
+    }
+
+    #[test]
+    fn list_nominated_delegates_platform_sql_binds_registry_type_first() {
+        assert!(
+            LIST_NOMINATED_DELEGATES_PLATFORM_SQL.contains("registry_type = $1")
+                && LIST_NOMINATED_DELEGATES_PLATFORM_SQL.contains("governance_registry_id = $3"),
+            "platform nominee list must filter by registry type and governance_registry_id"
+        );
+    }
+
+    #[test]
+    fn list_nominated_delegates_legacy_sql_requires_null_governance_registry_id() {
+        assert!(
+            LIST_NOMINATED_DELEGATES_LEGACY_SQL.contains("governance_registry_id IS NULL"),
+            "legacy nominee list must only include ecosystem/PoC rows"
         );
     }
 }

@@ -7,14 +7,20 @@ use std::sync::Arc;
 
 use anyhow::Result;
 use async_trait::async_trait;
-use diesel::sql_types::{BigInt, Bool, Int2, Text};
+use diesel::sql_types::{BigInt, Bool, Int2, Nullable, Text};
 use diesel::ExpressionMethods;
 use diesel::QueryDsl;
 use diesel_async::RunQueryDsl;
 use myso_indexer_alt_framework::pipeline::Processor;
 use myso_indexer_alt_framework::postgres::handler::Handler;
 use myso_indexer_alt_framework::postgres::Connection;
-use myso_indexer_alt_framework::types::full_checkpoint_content::Checkpoint;
+use move_core_types::ident_str;
+use myso_indexer_alt_framework::types::full_checkpoint_content::{
+    Checkpoint, ExecutedTransaction, ObjectSet,
+};
+use myso_types::effects::TransactionEffectsAPI;
+use myso_types::storage::ObjectKey;
+use myso_types::MYSO_SOCIAL_ADDRESS;
 use myso_indexer_alt_framework::FieldCount;
 use myso_indexer_alt_social_schema::models::{
     GovernanceRegistryUpdate, NewAnonymousVote, NewCommunityVote, NewDelegate, NewDelegateRating,
@@ -64,6 +70,7 @@ pub enum GovernanceRow {
         address: String,
         registry_type: i16,
         status: i16,
+        governance_registry_id: Option<String>,
     },
     DelegateVoteCountsUpdate {
         target_address: String,
@@ -71,6 +78,7 @@ pub enum GovernanceRow {
         is_active_delegate: bool,
         upvotes: i64,
         downvotes: i64,
+        governance_registry_id: Option<String>,
     },
     ProposalDelegateVoteIncrement {
         proposal_id: String,
@@ -160,10 +168,12 @@ impl GovernanceRow {
                 address,
                 registry_type,
                 status,
+                governance_registry_id,
             } => Some(GovernanceRow::NominatedDelegateStatusUpdate {
                 address,
                 registry_type,
                 status,
+                governance_registry_id,
             }),
             crate::handlers::SocialEventRow::DelegateVoteCountsUpdate {
                 target_address,
@@ -171,12 +181,14 @@ impl GovernanceRow {
                 is_active_delegate,
                 upvotes,
                 downvotes,
+                governance_registry_id,
             } => Some(GovernanceRow::DelegateVoteCountsUpdate {
                 target_address,
                 registry_type,
                 is_active_delegate,
                 upvotes,
                 downvotes,
+                governance_registry_id,
             }),
             crate::handlers::SocialEventRow::ProposalDelegateVoteIncrement {
                 proposal_id,
@@ -225,6 +237,39 @@ impl FieldCount for GovernanceRow {
 
 pub struct GovernanceHandler;
 
+/// Identifies the mutated `GovernanceDAO` object for this transaction, if unambiguous.
+fn resolve_governance_registry_id_from_tx(
+    object_set: &ObjectSet,
+    tx: &ExecutedTransaction,
+) -> Option<String> {
+    let mut candidates: Vec<String> = Vec::new();
+    for ((oid, version, _), _) in tx.effects.mutated() {
+        let Some(obj) = object_set.get(&ObjectKey(oid, version)) else {
+            continue;
+        };
+        let Some(t) = obj.type_() else {
+            continue;
+        };
+        if t.address() != MYSO_SOCIAL_ADDRESS {
+            continue;
+        }
+        if t.module() == ident_str!("governance") && t.name() == ident_str!("GovernanceDAO") {
+            candidates.push(oid.to_string());
+        }
+    }
+    match candidates.len() {
+        0 => None,
+        1 => Some(candidates[0].clone()),
+        n => {
+            tracing::warn!(
+                count = n,
+                "ambiguous GovernanceDAO mutations in tx; omitting governance_registry_id for nominee rows"
+            );
+            None
+        }
+    }
+}
+
 #[async_trait]
 impl Processor for GovernanceHandler {
     const NAME: &'static str = "governance";
@@ -238,6 +283,8 @@ impl Processor for GovernanceHandler {
             let Some(events) = &tx.events else {
                 continue;
             };
+            let governance_registry_id =
+                resolve_governance_registry_id_from_tx(&checkpoint.object_set, tx);
             for (event_seq, ev) in events.data.iter().enumerate() {
                 if !common::is_social_package_event(&ev.package_id, &ev.type_.address) {
                     continue;
@@ -263,9 +310,12 @@ impl Processor for GovernanceHandler {
                             continue;
                         }
                     };
-                if let Some(rows) =
-                    governance::handle_governance_event(event_name, &event_data, &event_id)
-                {
+                if let Some(rows) = governance::handle_governance_event(
+                    event_name,
+                    &event_data,
+                    &event_id,
+                    governance_registry_id.clone(),
+                ) {
                     for row in rows {
                         if let Some(r) = GovernanceRow::from_social(row) {
                             values.push(r);
@@ -480,13 +530,15 @@ impl Handler for GovernanceHandler {
                     address,
                     registry_type,
                     status,
+                    governance_registry_id,
                 } => {
                     let upd = diesel::sql_query(
-                        "UPDATE nominated_delegates SET status = $1 WHERE address = $2 AND registry_type = $3 AND time = (SELECT max(time) FROM nominated_delegates WHERE address = $2 AND registry_type = $3)",
+                        "UPDATE nominated_delegates SET status = $1 WHERE address = $2 AND registry_type = $3 AND governance_registry_id IS NOT DISTINCT FROM $4 AND time = (SELECT max(time) FROM nominated_delegates WHERE address = $2 AND registry_type = $3 AND governance_registry_id IS NOT DISTINCT FROM $4)",
                     )
                     .bind::<Int2, _>(*status)
                     .bind::<Text, _>(address)
-                    .bind::<Int2, _>(*registry_type);
+                    .bind::<Int2, _>(*registry_type)
+                    .bind::<Nullable<Text>, _>(governance_registry_id.as_deref());
                     total += upd.execute(conn).await?;
                 }
                 GovernanceRow::DelegateVoteCountsUpdate {
@@ -495,6 +547,7 @@ impl Handler for GovernanceHandler {
                     is_active_delegate,
                     upvotes,
                     downvotes,
+                    governance_registry_id,
                 } => {
                     if *is_active_delegate {
                         let upd = diesel::sql_query(
@@ -507,12 +560,13 @@ impl Handler for GovernanceHandler {
                         total += upd.execute(conn).await?;
                     } else {
                         let upd = diesel::sql_query(
-                            "UPDATE nominated_delegates SET upvotes = $1, downvotes = $2 WHERE address = $3 AND registry_type = $4 AND time = (SELECT max(time) FROM nominated_delegates WHERE address = $3 AND registry_type = $4)",
+                            "UPDATE nominated_delegates SET upvotes = $1, downvotes = $2 WHERE address = $3 AND registry_type = $4 AND governance_registry_id IS NOT DISTINCT FROM $5 AND time = (SELECT max(time) FROM nominated_delegates WHERE address = $3 AND registry_type = $4 AND governance_registry_id IS NOT DISTINCT FROM $5)",
                         )
                         .bind::<BigInt, _>(*upvotes)
                         .bind::<BigInt, _>(*downvotes)
                         .bind::<Text, _>(target_address)
-                        .bind::<Int2, _>(*registry_type);
+                        .bind::<Int2, _>(*registry_type)
+                        .bind::<Nullable<Text>, _>(governance_registry_id.as_deref());
                         total += upd.execute(conn).await?;
                     }
                 }

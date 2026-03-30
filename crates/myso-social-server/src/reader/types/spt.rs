@@ -227,6 +227,8 @@ pub struct SptReservationRow {
     pub amount: i64,
     #[diesel(sql_type = BigInt)]
     pub reserved_at: i64,
+    #[diesel(sql_type = BigInt)]
+    pub created_at: i64,
     #[diesel(sql_type = Nullable<BigInt>)]
     pub fee_amount: Option<i64>,
     #[diesel(sql_type = Nullable<BigInt>)]

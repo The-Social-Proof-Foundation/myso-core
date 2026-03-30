@@ -105,6 +105,7 @@ pub struct NominatedDelegate {
     pub status: i16,
     pub time: chrono::DateTime<chrono::Utc>,
     pub transaction_id: String,
+    pub governance_registry_id: Option<String>,
 }
 
 #[derive(Debug, Clone, Insertable, Serialize, Deserialize)]
@@ -118,6 +119,7 @@ pub struct NewNominatedDelegate {
     pub nomination_time: i64,
     pub status: i16,
     pub transaction_id: String,
+    pub governance_registry_id: Option<String>,
 }
 
 #[derive(Debug, Clone, Queryable, Selectable, Serialize, Deserialize)]

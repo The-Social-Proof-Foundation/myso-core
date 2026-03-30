@@ -82,6 +82,7 @@ pub struct GovernanceDelegateQuery {
 pub struct GovernanceNomineeQuery {
     pub limit: Option<i64>,
     pub offset: Option<i64>,
+    pub platform_id: Option<String>,
     pub registry_type: Option<i16>,
     pub status: Option<i16>,
 }

@@ -374,6 +374,7 @@ pub enum SocialEventRow {
         address: String,
         registry_type: i16,
         status: i16,
+        governance_registry_id: Option<String>,
     },
     DelegateVoteCountsUpdate {
         target_address: String,
@@ -381,6 +382,7 @@ pub enum SocialEventRow {
         is_active_delegate: bool,
         upvotes: i64,
         downvotes: i64,
+        governance_registry_id: Option<String>,
     },
     ProposalDelegateVoteIncrement {
         proposal_id: String,
