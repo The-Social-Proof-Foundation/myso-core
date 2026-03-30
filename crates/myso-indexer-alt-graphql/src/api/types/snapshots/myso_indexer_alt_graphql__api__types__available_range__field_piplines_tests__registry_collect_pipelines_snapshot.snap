@@ -539,6 +539,18 @@ Delegate.proposals
 Delegate.ratings
   => {}
 
+Delegate.viewerIsFollowing
+  => {}
+
+Delegate.viewerFollowsViewer
+  => {}
+
+Delegate.blockedByViewer
+  => {}
+
+Delegate.blockedBySubject
+  => {}
+
 DelegateRating.targetAddress
   => {}
 
@@ -1778,6 +1790,18 @@ NominatedDelegate.status
 NominatedDelegate.submitterProfile
   => {}
 
+NominatedDelegate.viewerIsFollowing
+  => {}
+
+NominatedDelegate.viewerFollowsViewer
+  => {}
+
+NominatedDelegate.blockedByViewer
+  => {}
+
+NominatedDelegate.blockedBySubject
+  => {}
+
 Object.id
   => {}
 
@@ -2525,6 +2549,9 @@ Profile.reservationHoldings
 Profile.mydataRecords
   => {}
 
+Profile.pnl
+  => {}
+
 ProfileBadge.badgeId
   => {}
 
@@ -2553,6 +2580,39 @@ ProfileBadge.assignedAt
   => {}
 
 ProfileBadge.badgeType
+  => {}
+
+ProfilePnLWindowStats.window
+  => {}
+
+ProfilePnLWindowStats.swapNetMyso
+  => {}
+
+ProfilePnLWindowStats.reservationNetMyso
+  => {}
+
+ProfilePnLWindowStats.sptCreatorFeesMyso
+  => {}
+
+ProfilePnLWindowStats.tipsMyso
+  => {}
+
+ProfilePnLWindowStats.subscriptionsMyso
+  => {}
+
+ProfilePnLWindowStats.mydataMyso
+  => {}
+
+ProfilePnLWindowStats.postsMonetizationMyso
+  => {}
+
+ProfilePnLWindowStats.otherInboundMyso
+  => {}
+
+ProfilePnLWindowStats.grossInboundMyso
+  => {}
+
+ProfilePnLWindowStats.netCashFlowMyso
   => {}
 
 ProfileSummary.address
@@ -2589,6 +2649,18 @@ ProfileSummary.postCount
   => {}
 
 ProfileSummary.blockedCount
+  => {}
+
+ProfileSummary.isFollowing
+  => {}
+
+ProfileSummary.followsViewer
+  => {}
+
+ProfileSummary.blockedByViewer
+  => {}
+
+ProfileSummary.blockedBySubject
   => {}
 
 ProfileSummary.selectedBadge
@@ -2751,6 +2823,9 @@ Proposal.implementationTime
   => {}
 
 Proposal.rescindTime
+  => {}
+
+Proposal.rejectionTime
   => {}
 
 Proposal.anonymousVotersCount
@@ -3635,6 +3710,18 @@ SptHolding.amount
 SptHolding.profile
   => {}
 
+SptHolding.viewerIsFollowing
+  => {}
+
+SptHolding.viewerFollowsViewer
+  => {}
+
+SptHolding.blockedByViewer
+  => {}
+
+SptHolding.blockedBySubject
+  => {}
+
 SptPool.poolId
   => {}
 
@@ -3725,6 +3812,18 @@ SptReservationHolding.reservedAt
 SptReservationHolding.profile
   => {}
 
+SptReservationHolding.viewerIsFollowing
+  => {}
+
+SptReservationHolding.viewerFollowsViewer
+  => {}
+
+SptReservationHolding.blockedByViewer
+  => {}
+
+SptReservationHolding.blockedBySubject
+  => {}
+
 SptReservationHolding.thresholdMet
   => {}
 
@@ -3765,6 +3864,18 @@ SptTransaction.to
   => {}
 
 SptTransaction.timestamp
+  => {}
+
+SptTransaction.viewerIsFollowing
+  => {}
+
+SptTransaction.viewerFollowsViewer
+  => {}
+
+SptTransaction.blockedByViewer
+  => {}
+
+SptTransaction.blockedBySubject
   => {}
 
 StakeSubsidy.balance

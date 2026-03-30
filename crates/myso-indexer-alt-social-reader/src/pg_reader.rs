@@ -55,9 +55,10 @@ use crate::promotion::{
 };
 use crate::revenue::get_platform_revenue_summary;
 use crate::social_graph::{
-    FollowSortBy, ProfileSummaryRow, check_following, check_platform_blocked,
-    check_profile_blocked, get_blocked_platforms, get_blocked_profiles, get_followers,
-    get_following, get_profile_platform_memberships,
+    FollowSortBy, ProfileSummaryRow, ViewerSocialContext, batch_viewer_social_context,
+    check_following, check_platform_blocked, check_profile_blocked, get_blocked_platforms,
+    get_blocked_profiles, get_followers, get_following, get_profile_platform_memberships,
+    resolve_profile_address,
 };
 use crate::spot::{
     get_spot_config, get_spot_record, get_spot_resolution, list_spot_bet_withdrawals,
@@ -65,11 +66,11 @@ use crate::spot::{
 };
 use crate::spt::SptReservationVolumeInterval;
 use crate::spt::{
-    get_former_reservation_holdings_for_pool, get_reservation_holdings_for_pool,
-    get_reservation_pool_id_for_associated_id, get_spt_exchange_config, get_spt_holdings_by_holder,
-    get_spt_holdings_by_pool, get_spt_pool, get_spt_pool_id_for_profile, get_spt_price_history,
-    get_spt_reservation_volume_history, get_spt_transactions, get_user_reservation_holdings,
-    list_spt_pools,
+    SptTransactionsWithViewer, get_former_reservation_holdings_for_pool,
+    get_reservation_holdings_for_pool, get_reservation_pool_id_for_associated_id,
+    get_spt_exchange_config, get_spt_holdings_by_holder, get_spt_holdings_by_pool, get_spt_pool,
+    get_spt_pool_id_for_profile, get_spt_price_history, get_spt_reservation_volume_history,
+    get_spt_transactions, get_user_reservation_holdings, list_spt_pools,
 };
 use crate::vesting::{get_vesting_leaderboard, get_vesting_wallet, list_vesting_wallets};
 
@@ -173,6 +174,8 @@ impl SocialPgReader {
             blocked_count: Some(response.blocked_count),
             is_following: None,
             follows_viewer: None,
+            blocked_by_viewer: None,
+            blocked_by_subject: None,
         })
     }
 
@@ -256,6 +259,7 @@ impl SocialPgReader {
         address: &str,
         limit: i64,
         offset: i64,
+        viewer: Option<&str>,
     ) -> anyhow::Result<Vec<crate::social_graph::ProfileSummaryRow>> {
         let mut conn = self.connect().await?;
         let (rows, _) = get_followers(
@@ -263,7 +267,7 @@ impl SocialPgReader {
             address,
             FollowSortBy::Latest,
             None,
-            None,
+            viewer,
             limit,
             offset,
             &self.metrics,
@@ -278,9 +282,18 @@ impl SocialPgReader {
         address: &str,
         limit: i64,
         offset: i64,
+        viewer: Option<&str>,
     ) -> anyhow::Result<Vec<crate::social_graph::ProfileSummaryRow>> {
         let mut conn = self.connect().await?;
-        get_following(&mut conn, address, limit, offset, &self.metrics).await
+        get_following(
+            &mut conn,
+            address,
+            viewer,
+            limit,
+            offset,
+            &self.metrics,
+        )
+        .await
     }
 
     /// Check if follower follows following.
@@ -297,6 +310,17 @@ impl SocialPgReader {
             &self.metrics,
         )
         .await
+    }
+
+    /// Batch follow/block edges from `viewer` to each subject address (wallet or profile id).
+    pub async fn batch_viewer_social_context_for_addresses(
+        &self,
+        subject_addresses: &[String],
+        viewer: &str,
+    ) -> anyhow::Result<std::collections::HashMap<String, ViewerSocialContext>> {
+        let mut conn = self.connect().await?;
+        let (v_pid, v_owner) = resolve_profile_address(&mut conn, viewer).await?;
+        batch_viewer_social_context(&mut conn, subject_addresses, &v_pid, &v_owner).await
     }
 
     /// Get profiles blocked by this user.
@@ -508,9 +532,20 @@ impl SocialPgReader {
         pool_id: &str,
         limit: i64,
         offset: i64,
+        viewer: Option<&str>,
+        prioritize_followed: bool,
     ) -> anyhow::Result<Vec<crate::SptHoldingRow>> {
         let mut conn = self.connect().await?;
-        get_spt_holdings_by_pool(&mut conn, pool_id, limit, offset, &self.metrics).await
+        get_spt_holdings_by_pool(
+            &mut conn,
+            pool_id,
+            limit,
+            offset,
+            viewer,
+            prioritize_followed,
+            &self.metrics,
+        )
+        .await
     }
 
     /// Get SPT pool by pool ID.
@@ -567,9 +602,20 @@ impl SocialPgReader {
         pool_id: &str,
         limit: i64,
         offset: i64,
-    ) -> anyhow::Result<Vec<crate::SptTransaction>> {
+        viewer: Option<&str>,
+        prioritize_followed: bool,
+    ) -> anyhow::Result<SptTransactionsWithViewer> {
         let mut conn = self.connect().await?;
-        get_spt_transactions(&mut conn, pool_id, limit, offset, &self.metrics).await
+        get_spt_transactions(
+            &mut conn,
+            pool_id,
+            limit,
+            offset,
+            viewer,
+            prioritize_followed,
+            &self.metrics,
+        )
+        .await
     }
 
     /// Get user reservation holdings (reservation SPT positions).
@@ -599,10 +645,21 @@ impl SocialPgReader {
         pool_id: &str,
         limit: i64,
         offset: i64,
+        viewer: Option<&str>,
+        prioritize_followed: bool,
     ) -> anyhow::Result<Vec<myso_indexer_alt_social_schema::models::UserReservationHoldingRow>>
     {
         let mut conn = self.connect().await?;
-        get_reservation_holdings_for_pool(&mut conn, pool_id, limit, offset, &self.metrics).await
+        get_reservation_holdings_for_pool(
+            &mut conn,
+            pool_id,
+            limit,
+            offset,
+            viewer,
+            prioritize_followed,
+            &self.metrics,
+        )
+        .await
     }
 
     /// Former reservation holders (latest indexed row per reserver has amount 0).
@@ -611,11 +668,21 @@ impl SocialPgReader {
         pool_id: &str,
         limit: i64,
         offset: i64,
+        viewer: Option<&str>,
+        prioritize_followed: bool,
     ) -> anyhow::Result<Vec<myso_indexer_alt_social_schema::models::UserReservationHoldingRow>>
     {
         let mut conn = self.connect().await?;
-        get_former_reservation_holdings_for_pool(&mut conn, pool_id, limit, offset, &self.metrics)
-            .await
+        get_former_reservation_holdings_for_pool(
+            &mut conn,
+            pool_id,
+            limit,
+            offset,
+            viewer,
+            prioritize_followed,
+            &self.metrics,
+        )
+        .await
     }
 
     /// List SPT pools with optional token type filter and sorting.

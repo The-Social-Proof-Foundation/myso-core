@@ -9,7 +9,7 @@ use async_graphql::Object;
 use async_graphql::Value;
 use myso_indexer_alt_social_reader::{
     DelegateRow, GovernanceRegistryRow, GovernanceStatsRow, PlatformRevenueSummaryRow, ProposalRow,
-    SocialPgReader,
+    SocialPgReader, ViewerSocialContext,
 };
 use myso_indexer_alt_social_schema::models::{
     AnonymousVoteRow, AnonymousVotingStatsRow, AnonymousVotingTrendRow, CommunityVoteRow,
@@ -603,11 +603,12 @@ impl AnonymousVotingTrend {
 #[derive(Clone)]
 pub(crate) struct Delegate {
     inner: DelegateRow,
+    viewer_ctx: Option<ViewerSocialContext>,
 }
 
 impl Delegate {
-    pub(crate) fn from_row(inner: DelegateRow) -> Self {
-        Self { inner }
+    pub(crate) fn with_viewer(inner: DelegateRow, viewer_ctx: Option<ViewerSocialContext>) -> Self {
+        Self { inner, viewer_ctx }
     }
 }
 
@@ -703,16 +704,36 @@ impl Delegate {
                 .collect(),
         )
     }
+
+    async fn viewer_is_following(&self) -> Option<bool> {
+        self.viewer_ctx.map(|c| c.is_following)
+    }
+
+    async fn viewer_follows_viewer(&self) -> Option<bool> {
+        self.viewer_ctx.map(|c| c.follows_viewer)
+    }
+
+    async fn blocked_by_viewer(&self) -> Option<bool> {
+        self.viewer_ctx.map(|c| c.blocked_by_viewer)
+    }
+
+    async fn blocked_by_subject(&self) -> Option<bool> {
+        self.viewer_ctx.map(|c| c.blocked_by_subject)
+    }
 }
 
 #[derive(Clone)]
 pub(crate) struct NominatedDelegate {
     inner: NominatedDelegateRow,
+    viewer_ctx: Option<ViewerSocialContext>,
 }
 
 impl NominatedDelegate {
-    pub(crate) fn from_row(inner: NominatedDelegateRow) -> Self {
-        Self { inner }
+    pub(crate) fn with_viewer(
+        inner: NominatedDelegateRow,
+        viewer_ctx: Option<ViewerSocialContext>,
+    ) -> Self {
+        Self { inner, viewer_ctx }
     }
 }
 
@@ -757,6 +778,22 @@ impl NominatedDelegate {
     /// Profile of the nominee.
     async fn submitter_profile(&self, ctx: &Context<'_>) -> Option<ProfileSummary> {
         resolve_profile_summary(ctx, &self.inner.address).await
+    }
+
+    async fn viewer_is_following(&self) -> Option<bool> {
+        self.viewer_ctx.map(|c| c.is_following)
+    }
+
+    async fn viewer_follows_viewer(&self) -> Option<bool> {
+        self.viewer_ctx.map(|c| c.follows_viewer)
+    }
+
+    async fn blocked_by_viewer(&self) -> Option<bool> {
+        self.viewer_ctx.map(|c| c.blocked_by_viewer)
+    }
+
+    async fn blocked_by_subject(&self) -> Option<bool> {
+        self.viewer_ctx.map(|c| c.blocked_by_subject)
     }
 }
 

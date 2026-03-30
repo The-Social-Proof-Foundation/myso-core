@@ -13,6 +13,19 @@ fn transaction_id_from_event_id(event_id: &str) -> String {
     event_id.split(':').next().unwrap_or(event_id).to_string()
 }
 
+/// Hypertable `time` for reservation ledger rows: deterministic from the chain event so replays dedupe.
+fn reservation_row_time(
+    chain_event_ms: i64,
+    checkpoint_ts_ms: u64,
+    fallback: chrono::DateTime<chrono::Utc>,
+) -> chrono::DateTime<chrono::Utc> {
+    if chain_event_ms > 0 {
+        chrono::DateTime::from_timestamp_millis(chain_event_ms).unwrap_or(fallback)
+    } else {
+        chrono::DateTime::from_timestamp_millis(checkpoint_ts_ms as i64).unwrap_or(fallback)
+    }
+}
+
 fn json_to_i64(v: &serde_json::Value) -> i64 {
     v.as_i64()
         .or_else(|| v.as_u64().and_then(|u| u.try_into().ok()))
@@ -58,10 +71,10 @@ pub fn handle_spt_event(
             process_reservation_pool_created_event(data, &transaction_id, ts, now)
         }
         "ReservationCreatedEvent" => {
-            process_reservation_created_event(data, &transaction_id, ts, now)
+            process_reservation_created_event(data, event_id, timestamp_ms, ts, now)
         }
         "ReservationWithdrawnEvent" => {
-            process_reservation_withdrawn_event(data, &transaction_id, ts, now)
+            process_reservation_withdrawn_event(data, event_id, timestamp_ms, ts, now)
         }
         "ThresholdMetEvent" => process_threshold_met_event(data, &transaction_id, ts, now),
         "ConfigUpdatedEvent" => process_spt_config_updated_event(data, &transaction_id, ts, now),
@@ -382,7 +395,8 @@ fn process_reservation_pool_created_event(
 
 fn process_reservation_created_event(
     data: &serde_json::Value,
-    transaction_id: &str,
+    event_id: &str,
+    checkpoint_ts_ms: u64,
     _ts: i64,
     now: chrono::DateTime<chrono::Utc>,
 ) -> Option<Vec<SocialEventRow>> {
@@ -407,6 +421,7 @@ fn process_reservation_created_event(
         RESERVATION_POOL_STATUS_ACTIVE.to_string()
     };
 
+    let row_time = reservation_row_time(reserved_at, checkpoint_ts_ms, now);
     let reservation = NewSptReservation {
         pool_id: pool_id.clone(),
         reserver_address: reserver,
@@ -416,8 +431,8 @@ fn process_reservation_created_event(
         creator_fee,
         platform_fee,
         treasury_fee,
-        time: now,
-        transaction_id: transaction_id.to_string(),
+        time: row_time,
+        transaction_id: event_id.to_string(),
     };
 
     Some(vec![
@@ -441,7 +456,8 @@ fn process_reservation_created_event(
 
 fn process_reservation_withdrawn_event(
     data: &serde_json::Value,
-    transaction_id: &str,
+    event_id: &str,
+    checkpoint_ts_ms: u64,
     _ts: i64,
     now: chrono::DateTime<chrono::Utc>,
 ) -> Option<Vec<SocialEventRow>> {
@@ -466,6 +482,7 @@ fn process_reservation_withdrawn_event(
         .unwrap_or(0);
     let amount = withdrawn.checked_neg().unwrap_or(i64::MIN);
 
+    let row_time = reservation_row_time(withdrawn_at, checkpoint_ts_ms, now);
     let reservation = NewSptReservation {
         pool_id: pool_id.clone(),
         reserver_address: reserver,
@@ -475,8 +492,8 @@ fn process_reservation_withdrawn_event(
         creator_fee,
         platform_fee,
         treasury_fee,
-        time: now,
-        transaction_id: transaction_id.to_string(),
+        time: row_time,
+        transaction_id: event_id.to_string(),
     };
 
     Some(vec![
@@ -727,10 +744,16 @@ mod tests {
                 None
             }
         });
+        let res = reservation.expect("reservation");
         assert_eq!(
-            reservation.expect("reservation").reserved_at,
+            res.reserved_at,
             126000,
             "Move uses epoch ms; values below 1e12 must not be treated as seconds"
+        );
+        assert_eq!(res.transaction_id, "tx:0");
+        assert_eq!(
+            res.time,
+            chrono::DateTime::from_timestamp_millis(126000).unwrap()
         );
     }
 
@@ -828,11 +851,17 @@ mod tests {
             }
         });
         assert!(reservation.is_some(), "expected SptReservation row");
+        let res = reservation.unwrap();
         let placeholder = format!("reservation_pool_{}", "0xprofile");
         assert_eq!(
-            reservation.unwrap().pool_id,
+            res.pool_id,
             placeholder,
             "handler placeholder id; DB apply overwrites from latest spt_reservation_pools.pool_id"
+        );
+        assert_eq!(res.transaction_id, "tx2:0");
+        assert_eq!(
+            res.time,
+            chrono::DateTime::from_timestamp_millis(300).unwrap()
         );
 
         let update = res_rows.iter().find_map(|r| {

@@ -983,6 +983,8 @@ type Delegate {
 	Delegate address.
 	"""
 	address: MySoAddress!
+	blockedBySubject: Boolean
+	blockedByViewer: Boolean
 	"""
 	Downvotes (delegate ratings).
 	"""
@@ -1031,6 +1033,8 @@ type Delegate {
 	Upvotes (delegate ratings).
 	"""
 	upvotes: Int!
+	viewerFollowsViewer: Boolean
+	viewerIsFollowing: Boolean
 }
 
 type DelegateRating {
@@ -3513,6 +3517,8 @@ type NominatedDelegate {
 	Nominee address.
 	"""
 	address: MySoAddress!
+	blockedBySubject: Boolean
+	blockedByViewer: Boolean
 	"""
 	Downvotes (nominee ratings).
 	"""
@@ -3541,6 +3547,8 @@ type NominatedDelegate {
 	Upvotes (nominee ratings).
 	"""
 	upvotes: Int!
+	viewerFollowsViewer: Boolean
+	viewerIsFollowing: Boolean
 }
 
 """
@@ -4677,7 +4685,7 @@ type Profile implements Node {
 	"""
 	Followers (paginated).
 	"""
-	followers(limit: Int, offset: Int): [ProfileSummary!]
+	followers(viewer: MySoAddress, limit: Int, offset: Int): [ProfileSummary!]
 	"""
 	Number of followers.
 	"""
@@ -4685,7 +4693,7 @@ type Profile implements Node {
 	"""
 	Following (paginated).
 	"""
-	following(limit: Int, offset: Int): [ProfileSummary!]
+	following(viewer: MySoAddress, limit: Int, offset: Int): [ProfileSummary!]
 	"""
 	Number of accounts this profile follows.
 	"""
@@ -4722,6 +4730,11 @@ type Profile implements Node {
 	Platforms this profile has joined (paginated).
 	"""
 	platformMemberships(limit: Int, offset: Int): [PlatformMembershipSummary!]
+	"""
+	Cash-flow P&L for this profile's owner wallet (MYSO base units; not realized/FIFO P&L).
+	When `windows` is omitted, defaults to 7d, 30d, and all-time.
+	"""
+	pnl(windows: [ProfilePnLWindowGql!]): [ProfilePnLWindowStats!]
 	"""
 	Political view.
 	"""
@@ -4855,6 +4868,34 @@ type ProfileBadge {
 	platformId: String!
 }
 
+"""
+Time window for P&L aggregation (cutoff from database `NOW()`).
+"""
+enum ProfilePnLWindowGql {
+	DAYS_7
+	DAYS_30
+	DAYS_180
+	DAYS_365
+	ALL
+}
+
+"""
+Per-window cash-flow breakdown for the profile owner wallet.
+"""
+type ProfilePnLWindowStats {
+	grossInboundMyso: Int!
+	mydataMyso: Int!
+	netCashFlowMyso: Int!
+	otherInboundMyso: Int!
+	postsMonetizationMyso: Int!
+	reservationNetMyso: Int!
+	sptCreatorFeesMyso: Int!
+	subscriptionsMyso: Int!
+	swapNetMyso: Int!
+	tipsMyso: Int!
+	window: ProfilePnLWindowGql!
+}
+
 type ProfileSummary {
 	"""
 	Wallet address.
@@ -4864,6 +4905,14 @@ type ProfileSummary {
 	Profile bio.
 	"""
 	bio: String
+	"""
+	When `viewer` was passed, whether this address has blocked the viewer.
+	"""
+	blockedBySubject: Boolean
+	"""
+	When `viewer` was passed, whether the viewer has blocked this address.
+	"""
+	blockedByViewer: Boolean
 	"""
 	Number of blocked accounts. Present for both profile and wallet-only addresses.
 	"""
@@ -4880,6 +4929,14 @@ type ProfileSummary {
 	Number of accounts this address follows. Present for both profile and wallet-only addresses.
 	"""
 	followingCount: Int
+	"""
+	When `viewer` was passed, whether this address follows the viewer ("follows you").
+	"""
+	followsViewer: Boolean
+	"""
+	When the parent query passed `viewer`, whether the viewer follows this address.
+	"""
+	isFollowing: Boolean
 	"""
 	Number of posts. Present for both profile and wallet-only addresses.
 	"""
@@ -5140,6 +5197,10 @@ type Proposal {
 	"""
 	registryType: Int!
 	"""
+	Time the delegate council rejected the proposal (epoch ms), when status=rejected from council review.
+	"""
+	rejectionTime: Int
+	"""
 	Rescind time (epoch ms, when rescinded).
 	"""
 	rescindTime: Int
@@ -5325,11 +5386,11 @@ type Query {
 	"""
 	Fetch a delegate by address. Returns null when social DB not configured or not found.
 	"""
-	delegate(address: MySoAddress!): Delegate
+	delegate(address: MySoAddress!, viewer: MySoAddress): Delegate
 	"""
 	List delegates (paginated, optionally filtered by registry type and active status). Returns empty when social DB not configured.
 	"""
-	delegates(registryType: Int, isActive: Boolean, limit: Int, offset: Int): [Delegate!]
+	delegates(registryType: Int, isActive: Boolean, viewer: MySoAddress, limit: Int, offset: Int): [Delegate!]
 	"""
 	Fetch an epoch by its ID, or fetch the latest epoch if no ID is provided.
 	
@@ -5453,7 +5514,7 @@ type Query {
 	"""
 	List nominated delegates (paginated, optionally filtered by registry type and status). Returns empty when social DB not configured.
 	"""
-	nominatedDelegates(registryType: Int, status: Int, limit: Int, offset: Int): [NominatedDelegate!]
+	nominatedDelegates(registryType: Int, status: Int, viewer: MySoAddress, limit: Int, offset: Int): [NominatedDelegate!]
 	"""
 	Fetch an object by its address.
 	
@@ -5643,7 +5704,7 @@ type Query {
 	"""
 	Former reservation holders for a reservation pool id (withdrawn). Returns null when social DB not configured.
 	"""
-	sptFormerReservationHolders(poolId: ID!, limit: Int, offset: Int): [SptReservationHolding!]
+	sptFormerReservationHolders(poolId: ID!, viewer: MySoAddress, prioritizeFollowed: Boolean, limit: Int, offset: Int): [SptReservationHolding!]
 	"""
 	SPT holdings for a profile (holder address). Returns empty when social DB not configured.
 	"""
@@ -5663,7 +5724,7 @@ type Query {
 	"""
 	Current reservation holders for a reservation pool id. Returns null when social DB not configured.
 	"""
-	sptReservationHolders(poolId: ID!, limit: Int, offset: Int): [SptReservationHolding!]
+	sptReservationHolders(poolId: ID!, viewer: MySoAddress, prioritizeFollowed: Boolean, limit: Int, offset: Int): [SptReservationHolding!]
 	"""
 	Time-bucketed reservation deposit / withdrawal volume for a reservation pool (MYSO base units). Returns empty when social DB not configured.
 	"""
@@ -6026,7 +6087,7 @@ type SocialProofToken {
 	"""
 	Former reservation holders (withdrawn; latest indexed balance zero per reserver).
 	"""
-	formerReservationHolders(limit: Int, offset: Int): [SptReservationHolding!]
+	formerReservationHolders(viewer: MySoAddress, prioritizeFollowed: Boolean, limit: Int, offset: Int): [SptReservationHolding!]
 	isActive: Boolean!
 	marketCap: Int
 	name: String
@@ -6038,7 +6099,7 @@ type SocialProofToken {
 	"""
 	Current reservation holders for this token’s reservation pool.
 	"""
-	reservationHolders(limit: Int, offset: Int): [SptReservationHolding!]
+	reservationHolders(viewer: MySoAddress, prioritizeFollowed: Boolean, limit: Int, offset: Int): [SptReservationHolding!]
 	reservationPercentage: Float!
 	reservationPoolId: String
 	reservationStatus: String!
@@ -6444,9 +6505,25 @@ type SptHolding {
 	"""
 	amount: Int!
 	"""
+	Holder blocked the viewer.
+	"""
+	blockedBySubject: Boolean
+	"""
+	Viewer blocked the holder.
+	"""
+	blockedByViewer: Boolean
+	"""
 	Profile whose token this holding represents.
 	"""
 	profile: ProfileSummary!
+	"""
+	Holder follows the viewer.
+	"""
+	viewerFollowsViewer: Boolean
+	"""
+	Viewer follows the holder (requires `viewer` on [`SptPool.holders`]).
+	"""
+	viewerIsFollowing: Boolean
 }
 
 enum SptOrder {
@@ -6466,11 +6543,11 @@ type SptPool {
 	"""
 	Former reservation holders (withdrawn; latest indexed balance zero per reserver).
 	"""
-	formerReservationHolders(limit: Int, offset: Int): [SptReservationHolding!]
+	formerReservationHolders(viewer: MySoAddress, prioritizeFollowed: Boolean, limit: Int, offset: Int): [SptReservationHolding!]
 	"""
 	Current holders of this token (paginated, ordered by balance DESC).
 	"""
-	holders(limit: Int, offset: Int): [SptHolding!]
+	holders(viewer: MySoAddress, prioritizeFollowed: Boolean, limit: Int, offset: Int): [SptHolding!]
 	"""
 	Market cap (price * circulating supply).
 	"""
@@ -6510,7 +6587,7 @@ type SptPool {
 	"""
 	Current reservation holders for this pool’s reservation phase (same `associated_id`).
 	"""
-	reservationHolders(limit: Int, offset: Int): [SptReservationHolding!]
+	reservationHolders(viewer: MySoAddress, prioritizeFollowed: Boolean, limit: Int, offset: Int): [SptReservationHolding!]
 	"""
 	Token symbol.
 	"""
@@ -6526,7 +6603,7 @@ type SptPool {
 	"""
 	Recent transactions for this pool.
 	"""
-	transactions(limit: Int, offset: Int): [SptTransaction!]
+	transactions(viewer: MySoAddress, prioritizeFollowed: Boolean, limit: Int, offset: Int): [SptTransaction!]
 	"""
 	24-hour trading volume (MYSO).
 	"""
@@ -6561,6 +6638,8 @@ type SptReservationHolding {
 	Reserved amount.
 	"""
 	amount: Int!
+	blockedBySubject: Boolean
+	blockedByViewer: Boolean
 	"""
 	Reservation pool ID.
 	"""
@@ -6597,6 +6676,8 @@ type SptReservationHolding {
 	Total reserved across all reservers in this pool.
 	"""
 	totalReserved: Int!
+	viewerFollowsViewer: Boolean
+	viewerIsFollowing: Boolean
 }
 
 type SptReservationVolumeBucket {
@@ -6645,6 +6726,14 @@ type SptTransaction {
 	"""
 	amount: Int!
 	"""
+	Sender blocked the viewer.
+	"""
+	blockedBySubject: Boolean
+	"""
+	Viewer blocked the sender.
+	"""
+	blockedByViewer: Boolean
+	"""
 	Sender address.
 	"""
 	from: MySoAddress!
@@ -6660,6 +6749,14 @@ type SptTransaction {
 	Transaction type (BUY or SELL).
 	"""
 	type: String!
+	"""
+	Sender follows the viewer.
+	"""
+	viewerFollowsViewer: Boolean
+	"""
+	Viewer follows the trade sender (requires `viewer` on [`SptPool.transactions`]).
+	"""
+	viewerIsFollowing: Boolean
 }
 
 """

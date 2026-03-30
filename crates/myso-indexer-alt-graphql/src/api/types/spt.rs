@@ -9,7 +9,7 @@ use async_graphql::Object;
 use myso_indexer_alt_social_reader::{
     SptHoldingRow, SptPoolRow, SptPriceHistory as SptPriceHistoryRow,
     SptReservationVolumeBucket as SptReservationVolumeBucketRow, SptSortBy as SptSortByReader,
-    SptTransaction as SptTransactionRow,
+    SptTransaction as SptTransactionRow, ViewerSocialContext,
 };
 use myso_indexer_alt_social_schema::models::UserReservationHoldingRow;
 
@@ -116,7 +116,29 @@ impl SptHolding {
             blocked_count: None,
             is_following: None,
             follows_viewer: None,
+            blocked_by_viewer: None,
+            blocked_by_subject: None,
         })
+    }
+
+    /// Viewer follows the holder (requires `viewer` on [`SptPool.holders`]).
+    async fn viewer_is_following(&self) -> Option<bool> {
+        self.inner.viewer_is_following
+    }
+
+    /// Holder follows the viewer.
+    async fn viewer_follows_viewer(&self) -> Option<bool> {
+        self.inner.viewer_follows_viewer
+    }
+
+    /// Viewer blocked the holder.
+    async fn blocked_by_viewer(&self) -> Option<bool> {
+        self.inner.blocked_by_viewer
+    }
+
+    /// Holder blocked the viewer.
+    async fn blocked_by_subject(&self) -> Option<bool> {
+        self.inner.blocked_by_subject
     }
 }
 
@@ -216,6 +238,8 @@ impl SptPool {
     async fn transactions(
         &self,
         ctx: &Context<'_>,
+        viewer: Option<MySoAddress>,
+        prioritize_followed: Option<bool>,
         limit: Option<u64>,
         offset: Option<u64>,
     ) -> Option<Vec<SptTransaction>> {
@@ -224,11 +248,31 @@ impl SptPool {
         let reader = reader_opt.as_ref().as_ref()?;
         let limit = limit.unwrap_or(20).min(100) as i64;
         let offset = offset.unwrap_or(0) as i64;
-        let rows = reader
-            .get_spt_transactions(&self.inner.pool_id, limit, offset)
+        let viewer_s = viewer.map(|a| a.to_string());
+        let prioritize = prioritize_followed.unwrap_or(false);
+        let page = reader
+            .get_spt_transactions(
+                &self.inner.pool_id,
+                limit,
+                offset,
+                viewer_s.as_deref(),
+                prioritize,
+            )
             .await
             .ok()?;
-        Some(rows.into_iter().map(SptTransaction::from_row).collect())
+        Some(
+            page.transactions
+                .into_iter()
+                .map(|tx| {
+                    let vctx = page
+                        .viewer_by_sender
+                        .as_ref()
+                        .and_then(|m| m.get(&tx.sender))
+                        .copied();
+                    SptTransaction::with_viewer(tx, vctx)
+                })
+                .collect(),
+        )
     }
 
     /// Price history for this pool.
@@ -254,6 +298,8 @@ impl SptPool {
     async fn holders(
         &self,
         ctx: &Context<'_>,
+        viewer: Option<MySoAddress>,
+        prioritize_followed: Option<bool>,
         limit: Option<u64>,
         offset: Option<u64>,
     ) -> Option<Vec<SptHolding>> {
@@ -262,8 +308,16 @@ impl SptPool {
         let reader = reader_opt.as_ref().as_ref()?;
         let limit = limit.unwrap_or(20).min(100) as i64;
         let offset = offset.unwrap_or(0) as i64;
+        let viewer_s = viewer.map(|a| a.to_string());
+        let prioritize = prioritize_followed.unwrap_or(false);
         let rows = reader
-            .get_spt_holdings_by_pool(&self.inner.pool_id, limit, offset)
+            .get_spt_holdings_by_pool(
+                &self.inner.pool_id,
+                limit,
+                offset,
+                viewer_s.as_deref(),
+                prioritize,
+            )
             .await
             .ok()?;
         Some(rows.into_iter().map(SptHolding::from_row).collect())
@@ -273,6 +327,8 @@ impl SptPool {
     async fn reservation_holders(
         &self,
         ctx: &Context<'_>,
+        viewer: Option<MySoAddress>,
+        prioritize_followed: Option<bool>,
         limit: Option<u64>,
         offset: Option<u64>,
     ) -> Option<Vec<SptReservationHolding>> {
@@ -289,8 +345,16 @@ impl SptPool {
         };
         let limit = limit.unwrap_or(20).min(100) as i64;
         let offset = offset.unwrap_or(0) as i64;
+        let viewer_s = viewer.map(|a| a.to_string());
+        let prioritize = prioritize_followed.unwrap_or(false);
         let rows = reader
-            .get_reservation_holdings_for_pool(&reservation_pool_id, limit, offset)
+            .get_reservation_holdings_for_pool(
+                &reservation_pool_id,
+                limit,
+                offset,
+                viewer_s.as_deref(),
+                prioritize,
+            )
             .await
             .ok()?;
         Some(
@@ -304,6 +368,8 @@ impl SptPool {
     async fn former_reservation_holders(
         &self,
         ctx: &Context<'_>,
+        viewer: Option<MySoAddress>,
+        prioritize_followed: Option<bool>,
         limit: Option<u64>,
         offset: Option<u64>,
     ) -> Option<Vec<SptReservationHolding>> {
@@ -320,8 +386,16 @@ impl SptPool {
         };
         let limit = limit.unwrap_or(20).min(100) as i64;
         let offset = offset.unwrap_or(0) as i64;
+        let viewer_s = viewer.map(|a| a.to_string());
+        let prioritize = prioritize_followed.unwrap_or(false);
         let rows = reader
-            .get_former_reservation_holdings_for_pool(&reservation_pool_id, limit, offset)
+            .get_former_reservation_holdings_for_pool(
+                &reservation_pool_id,
+                limit,
+                offset,
+                viewer_s.as_deref(),
+                prioritize,
+            )
             .await
             .ok()?;
         Some(
@@ -335,11 +409,15 @@ impl SptPool {
 #[derive(Clone)]
 pub(crate) struct SptTransaction {
     inner: SptTransactionRow,
+    viewer_ctx: Option<ViewerSocialContext>,
 }
 
 impl SptTransaction {
-    pub(crate) fn from_row(inner: SptTransactionRow) -> Self {
-        Self { inner }
+    pub(crate) fn with_viewer(
+        inner: SptTransactionRow,
+        viewer_ctx: Option<ViewerSocialContext>,
+    ) -> Self {
+        Self { inner, viewer_ctx }
     }
 }
 
@@ -369,6 +447,26 @@ impl SptTransaction {
     /// Transaction timestamp (ISO 8601).
     async fn timestamp(&self) -> String {
         to_iso8601_utc(self.inner.time)
+    }
+
+    /// Viewer follows the trade sender (requires `viewer` on [`SptPool.transactions`]).
+    async fn viewer_is_following(&self) -> Option<bool> {
+        self.viewer_ctx.map(|c| c.is_following)
+    }
+
+    /// Sender follows the viewer.
+    async fn viewer_follows_viewer(&self) -> Option<bool> {
+        self.viewer_ctx.map(|c| c.follows_viewer)
+    }
+
+    /// Viewer blocked the sender.
+    async fn blocked_by_viewer(&self) -> Option<bool> {
+        self.viewer_ctx.map(|c| c.blocked_by_viewer)
+    }
+
+    /// Sender blocked the viewer.
+    async fn blocked_by_subject(&self) -> Option<bool> {
+        self.viewer_ctx.map(|c| c.blocked_by_subject)
     }
 }
 
@@ -467,7 +565,25 @@ impl SptReservationHolding {
             blocked_count: None,
             is_following: None,
             follows_viewer: None,
+            blocked_by_viewer: None,
+            blocked_by_subject: None,
         })
+    }
+
+    async fn viewer_is_following(&self) -> Option<bool> {
+        self.inner.viewer_is_following
+    }
+
+    async fn viewer_follows_viewer(&self) -> Option<bool> {
+        self.inner.viewer_follows_viewer
+    }
+
+    async fn blocked_by_viewer(&self) -> Option<bool> {
+        self.inner.blocked_by_viewer
+    }
+
+    async fn blocked_by_subject(&self) -> Option<bool> {
+        self.inner.blocked_by_subject
     }
 
     /// Whether the reservation pool threshold is met.

@@ -82,6 +82,18 @@ pub struct SptHoldingRow {
     pub profile_social_proof_token_address: Option<String>,
     #[diesel(sql_type = Nullable<Text>)]
     pub profile_reservation_pool_address: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    #[diesel(sql_type = Nullable<Bool>)]
+    pub viewer_is_following: Option<bool>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    #[diesel(sql_type = Nullable<Bool>)]
+    pub viewer_follows_viewer: Option<bool>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    #[diesel(sql_type = Nullable<Bool>)]
+    pub blocked_by_viewer: Option<bool>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    #[diesel(sql_type = Nullable<Bool>)]
+    pub blocked_by_subject: Option<bool>,
 }
 
 /// Query result for user reservation holdings (from user_reservation_holdings view + profiles).
@@ -119,6 +131,18 @@ pub struct UserReservationHoldingRow {
     pub profile_social_proof_token_address: Option<String>,
     #[diesel(sql_type = Nullable<Text>)]
     pub profile_reservation_pool_address: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    #[diesel(sql_type = Nullable<Bool>)]
+    pub viewer_is_following: Option<bool>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    #[diesel(sql_type = Nullable<Bool>)]
+    pub viewer_follows_viewer: Option<bool>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    #[diesel(sql_type = Nullable<Bool>)]
+    pub blocked_by_viewer: Option<bool>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    #[diesel(sql_type = Nullable<Bool>)]
+    pub blocked_by_subject: Option<bool>,
 }
 
 /// Query result for SPT pool with latest price (JOIN with spt_price_history).

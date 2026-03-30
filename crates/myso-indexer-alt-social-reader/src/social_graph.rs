@@ -30,6 +30,15 @@ pub struct BlockedPlatformRow {
     pub created_at: NaiveDateTime,
 }
 
+/// Per-subject social edges from a viewer's perspective (follow + block), for batch list APIs.
+#[derive(Debug, Clone, Copy, Default)]
+pub struct ViewerSocialContext {
+    pub is_following: bool,
+    pub follows_viewer: bool,
+    pub blocked_by_viewer: bool,
+    pub blocked_by_subject: bool,
+}
+
 #[derive(Debug, Clone)]
 pub struct ProfileSummaryRow {
     pub owner_address: String,
@@ -52,6 +61,10 @@ pub struct ProfileSummaryRow {
     pub is_following: Option<bool>,
     /// This profile follows viewer ("Follows you" badge). Set when viewer_address provided.
     pub follows_viewer: Option<bool>,
+    /// Viewer (wallet / profile owner refs) has blocked this subject's address.
+    pub blocked_by_viewer: Option<bool>,
+    /// This subject has blocked the viewer.
+    pub blocked_by_subject: Option<bool>,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -140,6 +153,8 @@ pub(crate) async fn get_profile_summaries_for_addresses(
                 blocked_count: Some(row.blocked_count as i32),
                 is_following: None,
                 follows_viewer: None,
+                blocked_by_viewer: None,
+                blocked_by_subject: None,
             },
         );
     }
@@ -162,6 +177,8 @@ pub(crate) async fn get_profile_summaries_for_addresses(
                     blocked_count: None,
                     is_following: None,
                     follows_viewer: None,
+                    blocked_by_viewer: None,
+                    blocked_by_subject: None,
                 },
             );
         }
@@ -169,7 +186,7 @@ pub(crate) async fn get_profile_summaries_for_addresses(
     Ok(result)
 }
 
-async fn resolve_profile_address(
+pub(crate) async fn resolve_profile_address(
     conn: &mut Connection<'_>,
     address: &str,
 ) -> anyhow::Result<(Option<String>, String)> {
@@ -195,12 +212,12 @@ async fn resolve_profile_address(
     }
 }
 
-async fn batch_check_viewer_context(
+pub async fn batch_viewer_social_context(
     conn: &mut Connection<'_>,
     list_addresses: &[String],
     viewer_profile_id: &Option<String>,
     viewer_owner: &str,
-) -> anyhow::Result<HashMap<String, (bool, bool)>> {
+) -> anyhow::Result<HashMap<String, ViewerSocialContext>> {
     if list_addresses.is_empty() {
         return Ok(HashMap::new());
     }
@@ -222,6 +239,10 @@ async fn batch_check_viewer_context(
         is_following: bool,
         #[diesel(sql_type = Bool)]
         follows_viewer: bool,
+        #[diesel(sql_type = Bool)]
+        blocked_by_viewer: bool,
+        #[diesel(sql_type = Bool)]
+        blocked_by_subject: bool,
     }
     let query = r#"
         WITH list_addrs AS (SELECT unnest($1::TEXT[]) AS addr),
@@ -238,10 +259,27 @@ async fn batch_check_viewer_context(
                     WHERE sgr.follower_address = la.addr
                     AND sgr.following_address = ANY($2::TEXT[])) AS follows_viewer
             FROM list_addrs la
+        ),
+        viewer_blocked_subject AS (
+            SELECT la.addr,
+                EXISTS(SELECT 1 FROM blocked_profiles bp
+                    WHERE bp.blocker_address = ANY($2::TEXT[])
+                    AND bp.blocked_address = la.addr) AS blocked_by_viewer
+            FROM list_addrs la
+        ),
+        subject_blocked_viewer AS (
+            SELECT la.addr,
+                EXISTS(SELECT 1 FROM blocked_profiles bp
+                    WHERE bp.blocker_address = la.addr
+                    AND bp.blocked_address = ANY($2::TEXT[])) AS blocked_by_subject
+            FROM list_addrs la
         )
-        SELECT vf.addr, vf.is_following, tf.follows_viewer
+        SELECT vf.addr, vf.is_following, tf.follows_viewer,
+               vb.blocked_by_viewer, sb.blocked_by_subject
         FROM viewer_follows vf
         JOIN this_follows_viewer tf ON vf.addr = tf.addr
+        JOIN viewer_blocked_subject vb ON vf.addr = vb.addr
+        JOIN subject_blocked_viewer sb ON vf.addr = sb.addr
     "#;
     let rows: Vec<ViewerContextRow> = diesel::sql_query(query)
         .bind::<Array<Text>, _>(addrs)
@@ -250,7 +288,17 @@ async fn batch_check_viewer_context(
         .await?;
     Ok(rows
         .into_iter()
-        .map(|r| (r.addr, (r.is_following, r.follows_viewer)))
+        .map(|r| {
+            (
+                r.addr,
+                ViewerSocialContext {
+                    is_following: r.is_following,
+                    follows_viewer: r.follows_viewer,
+                    blocked_by_viewer: r.blocked_by_viewer,
+                    blocked_by_subject: r.blocked_by_subject,
+                },
+            )
+        })
         .collect())
 }
 
@@ -444,9 +492,9 @@ pub(crate) async fn get_followers(
     };
 
     let addresses: Vec<String> = rows.iter().map(|r| r.addr.clone()).collect();
-    let viewer_ctx = if let Some(v) = viewer_address {
+    let viewer_ctx: HashMap<String, ViewerSocialContext> = if let Some(v) = viewer_address {
         let (v_pid, v_owner) = resolve_profile_address(conn, v).await?;
-        batch_check_viewer_context(conn, &addresses, &v_pid, &v_owner).await?
+        batch_viewer_social_context(conn, &addresses, &v_pid, &v_owner).await?
     } else {
         HashMap::new()
     };
@@ -454,8 +502,7 @@ pub(crate) async fn get_followers(
     let result: Vec<ProfileSummaryRow> = rows
         .into_iter()
         .map(|r| {
-            let (is_following, follows_viewer) =
-                viewer_ctx.get(&r.addr).copied().unwrap_or((false, false));
+            let ctx = viewer_ctx.get(&r.addr).copied().unwrap_or_default();
             ProfileSummaryRow {
                 owner_address: r.addr,
                 username: r.username,
@@ -469,8 +516,10 @@ pub(crate) async fn get_followers(
                 following_count: r.following_count.map(|v| v as i32),
                 post_count: r.post_count.map(|v| v as i32),
                 blocked_count: r.blocked_count.map(|v| v as i32),
-                is_following: viewer_address.map(|_| is_following),
-                follows_viewer: viewer_address.map(|_| follows_viewer),
+                is_following: viewer_address.map(|_| ctx.is_following),
+                follows_viewer: viewer_address.map(|_| ctx.follows_viewer),
+                blocked_by_viewer: viewer_address.map(|_| ctx.blocked_by_viewer),
+                blocked_by_subject: viewer_address.map(|_| ctx.blocked_by_subject),
             }
         })
         .collect();
@@ -482,6 +531,7 @@ pub(crate) async fn get_followers(
 pub(crate) async fn get_following(
     conn: &mut Connection<'_>,
     address: &str,
+    viewer_address: Option<&str>,
     limit: i64,
     offset: i64,
     metrics: &DbReaderMetrics,
@@ -534,24 +584,36 @@ pub(crate) async fn get_following(
         .bind::<BigInt, _>(offset)
         .load::<Row>(conn)
         .await?;
+    let addresses: Vec<String> = rows.iter().map(|r| r.addr.clone()).collect();
+    let viewer_ctx: HashMap<String, ViewerSocialContext> = if let Some(v) = viewer_address {
+        let (v_pid, v_owner) = resolve_profile_address(conn, v).await?;
+        batch_viewer_social_context(conn, &addresses, &v_pid, &v_owner).await?
+    } else {
+        HashMap::new()
+    };
     metrics.requests_succeeded.inc();
     Ok(rows
         .into_iter()
-        .map(|r| ProfileSummaryRow {
-            owner_address: r.addr,
-            username: r.username,
-            display_name: r.display_name,
-            profile_photo: r.profile_photo,
-            bio: r.bio,
-            selected_badge_id: r.selected_badge_id,
-            social_proof_token_address: r.social_proof_token_address,
-            reservation_pool_address: r.reservation_pool_address,
-            followers_count: None,
-            following_count: None,
-            post_count: r.post_count.map(|v| v as i32),
-            blocked_count: r.blocked_count.map(|v| v as i32),
-            is_following: None,
-            follows_viewer: None,
+        .map(|r| {
+            let ctx = viewer_ctx.get(&r.addr).copied().unwrap_or_default();
+            ProfileSummaryRow {
+                owner_address: r.addr,
+                username: r.username,
+                display_name: r.display_name,
+                profile_photo: r.profile_photo,
+                bio: r.bio,
+                selected_badge_id: r.selected_badge_id,
+                social_proof_token_address: r.social_proof_token_address,
+                reservation_pool_address: r.reservation_pool_address,
+                followers_count: None,
+                following_count: None,
+                post_count: r.post_count.map(|v| v as i32),
+                blocked_count: r.blocked_count.map(|v| v as i32),
+                is_following: viewer_address.map(|_| ctx.is_following),
+                follows_viewer: viewer_address.map(|_| ctx.follows_viewer),
+                blocked_by_viewer: viewer_address.map(|_| ctx.blocked_by_viewer),
+                blocked_by_subject: viewer_address.map(|_| ctx.blocked_by_subject),
+            }
         })
         .collect())
 }

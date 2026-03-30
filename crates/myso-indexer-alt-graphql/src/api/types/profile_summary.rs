@@ -84,6 +84,26 @@ impl ProfileSummary {
         self.inner.blocked_count
     }
 
+    /// When the parent query passed `viewer`, whether the viewer follows this address.
+    async fn is_following(&self) -> Option<bool> {
+        self.inner.is_following
+    }
+
+    /// When `viewer` was passed, whether this address follows the viewer ("follows you").
+    async fn follows_viewer(&self) -> Option<bool> {
+        self.inner.follows_viewer
+    }
+
+    /// When `viewer` was passed, whether the viewer has blocked this address.
+    async fn blocked_by_viewer(&self) -> Option<bool> {
+        self.inner.blocked_by_viewer
+    }
+
+    /// When `viewer` was passed, whether this address has blocked the viewer.
+    async fn blocked_by_subject(&self) -> Option<bool> {
+        self.inner.blocked_by_subject
+    }
+
     /// Selected badge info (when present).
     async fn selected_badge(&self, ctx: &Context<'_>) -> Option<SelectedBadge> {
         if self.inner.selected_badge_id.is_none() {

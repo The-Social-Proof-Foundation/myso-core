@@ -687,6 +687,8 @@ impl Query {
         &self,
         ctx: &Context<'_>,
         pool_id: async_graphql::ID,
+        viewer: Option<MySoAddress>,
+        prioritize_followed: Option<bool>,
         limit: Option<u64>,
         offset: Option<u64>,
     ) -> Option<Result<Vec<SptReservationHolding>, RpcError>> {
@@ -695,9 +697,17 @@ impl Query {
         let reader = reader_opt.as_ref().as_ref()?;
         let limit = limit.unwrap_or(20).min(100) as i64;
         let offset = offset.unwrap_or(0) as i64;
+        let viewer_s = viewer.map(|a| a.to_string());
+        let prioritize = prioritize_followed.unwrap_or(false);
         Some(
             reader
-                .get_reservation_holdings_for_pool(pool_id.as_str(), limit, offset)
+                .get_reservation_holdings_for_pool(
+                    pool_id.as_str(),
+                    limit,
+                    offset,
+                    viewer_s.as_deref(),
+                    prioritize,
+                )
                 .await
                 .map_err(Into::into)
                 .map(|v| v.into_iter().map(SptReservationHolding::from_row).collect()),
@@ -709,6 +719,8 @@ impl Query {
         &self,
         ctx: &Context<'_>,
         pool_id: async_graphql::ID,
+        viewer: Option<MySoAddress>,
+        prioritize_followed: Option<bool>,
         limit: Option<u64>,
         offset: Option<u64>,
     ) -> Option<Result<Vec<SptReservationHolding>, RpcError>> {
@@ -717,9 +729,17 @@ impl Query {
         let reader = reader_opt.as_ref().as_ref()?;
         let limit = limit.unwrap_or(20).min(100) as i64;
         let offset = offset.unwrap_or(0) as i64;
+        let viewer_s = viewer.map(|a| a.to_string());
+        let prioritize = prioritize_followed.unwrap_or(false);
         Some(
             reader
-                .get_former_reservation_holdings_for_pool(pool_id.as_str(), limit, offset)
+                .get_former_reservation_holdings_for_pool(
+                    pool_id.as_str(),
+                    limit,
+                    offset,
+                    viewer_s.as_deref(),
+                    prioritize,
+                )
                 .await
                 .map_err(Into::into)
                 .map(|v| v.into_iter().map(SptReservationHolding::from_row).collect()),
@@ -1125,6 +1145,7 @@ impl Query {
         ctx: &Context<'_>,
         registry_type: Option<i16>,
         is_active: Option<bool>,
+        viewer: Option<MySoAddress>,
         limit: Option<u64>,
         offset: Option<u64>,
     ) -> Option<Result<Vec<Delegate>, RpcError>> {
@@ -1133,12 +1154,34 @@ impl Query {
         let reader = reader_opt.as_ref().as_ref()?;
         let limit = limit.unwrap_or(50).min(100) as i64;
         let offset = offset.unwrap_or(0) as i64;
+        let viewer_s = viewer.map(|a| a.to_string());
         Some(
-            reader
-                .list_delegates(registry_type, is_active, limit, offset)
-                .await
-                .map_err(Into::into)
-                .map(|v| v.into_iter().map(Delegate::from_row).collect()),
+            async {
+                let rows = reader
+                    .list_delegates(registry_type, is_active, limit, offset)
+                    .await
+                    .map_err(RpcError::from)?;
+                let ctx_map = if let Some(ref vs) = viewer_s {
+                    let addrs: Vec<String> = rows.iter().map(|r| r.address.clone()).collect();
+                    reader
+                        .batch_viewer_social_context_for_addresses(&addrs, vs)
+                        .await
+                        .ok()
+                } else {
+                    None
+                };
+                Ok(rows
+                    .into_iter()
+                    .map(|row| {
+                        let c = ctx_map
+                            .as_ref()
+                            .and_then(|m| m.get(&row.address))
+                            .copied();
+                        Delegate::with_viewer(row, c)
+                    })
+                    .collect())
+            }
+            .await,
         )
     }
 
@@ -1147,16 +1190,35 @@ impl Query {
         &self,
         ctx: &Context<'_>,
         address: MySoAddress,
+        viewer: Option<MySoAddress>,
     ) -> Option<Result<Option<Delegate>, RpcError>> {
         let reader_opt = ctx
             .data_opt::<std::sync::Arc<Option<myso_indexer_alt_social_reader::SocialPgReader>>>()?;
         let reader = reader_opt.as_ref().as_ref()?;
+        let viewer_s = viewer.map(|a| a.to_string());
         Some(
-            reader
-                .get_delegate_by_address(&address.to_string())
-                .await
-                .map_err(Into::into)
-                .map(|opt| opt.map(Delegate::from_row)),
+            async {
+                let opt = reader
+                    .get_delegate_by_address(&address.to_string())
+                    .await
+                    .map_err(RpcError::from)?;
+                Ok(match opt {
+                    None => None,
+                    Some(row) => {
+                        let c = if let Some(ref vs) = viewer_s {
+                            reader
+                                .batch_viewer_social_context_for_addresses(&[row.address.clone()], vs)
+                                .await
+                                .ok()
+                                .and_then(|m| m.get(&row.address).copied())
+                        } else {
+                            None
+                        };
+                        Some(Delegate::with_viewer(row, c))
+                    }
+                })
+            }
+            .await,
         )
     }
 
@@ -1166,6 +1228,7 @@ impl Query {
         ctx: &Context<'_>,
         registry_type: Option<i16>,
         status: Option<i16>,
+        viewer: Option<MySoAddress>,
         limit: Option<u64>,
         offset: Option<u64>,
     ) -> Option<Result<Vec<NominatedDelegate>, RpcError>> {
@@ -1174,12 +1237,34 @@ impl Query {
         let reader = reader_opt.as_ref().as_ref()?;
         let limit = limit.unwrap_or(50).min(100) as i64;
         let offset = offset.unwrap_or(0) as i64;
+        let viewer_s = viewer.map(|a| a.to_string());
         Some(
-            reader
-                .list_nominated_delegates(registry_type, status, limit, offset)
-                .await
-                .map_err(Into::into)
-                .map(|v| v.into_iter().map(NominatedDelegate::from_row).collect()),
+            async {
+                let rows = reader
+                    .list_nominated_delegates(registry_type, status, limit, offset)
+                    .await
+                    .map_err(RpcError::from)?;
+                let ctx_map = if let Some(ref vs) = viewer_s {
+                    let addrs: Vec<String> = rows.iter().map(|r| r.address.clone()).collect();
+                    reader
+                        .batch_viewer_social_context_for_addresses(&addrs, vs)
+                        .await
+                        .ok()
+                } else {
+                    None
+                };
+                Ok(rows
+                    .into_iter()
+                    .map(|row| {
+                        let c = ctx_map
+                            .as_ref()
+                            .and_then(|m| m.get(&row.address))
+                            .copied();
+                        NominatedDelegate::with_viewer(row, c)
+                    })
+                    .collect())
+            }
+            .await,
         )
     }
 

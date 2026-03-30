@@ -1,12 +1,14 @@
 // Copyright (c) The Social Proof Foundation, LLC.
 // SPDX-License-Identifier: Apache-2.0
 
+use std::collections::HashMap;
+
 use diesel::ExpressionMethods;
 use diesel::OptionalExtension;
 use diesel::QueryDsl;
 use diesel::QueryableByName;
 use diesel::SelectableHelper;
-use diesel::sql_types::{BigInt, Bool, Nullable, Text, Timestamptz};
+use diesel::sql_types::{Array, BigInt, Bool, Integer, Nullable, Text, Timestamptz};
 use diesel_async::RunQueryDsl;
 use myso_indexer_alt_social_schema::models::{
     SptHoldingRow, SptPoolRow, SptPriceHistory, SptTransaction, UserReservationHoldingRow,
@@ -16,6 +18,67 @@ use myso_indexer_alt_social_schema::schema::{spt_price_history, spt_transactions
 use myso_pg_db::Connection;
 
 use crate::metrics::DbReaderMetrics;
+use crate::social_graph::{ViewerSocialContext, batch_viewer_social_context, resolve_profile_address};
+
+const SPT_HOLDING_VIEWER_NULLS: &str = ", NULL::boolean AS viewer_is_following, NULL::boolean AS viewer_follows_viewer, \
+     NULL::boolean AS blocked_by_viewer, NULL::boolean AS blocked_by_subject";
+
+const SPT_RESERVATION_VIEWER_NULLS: &str = SPT_HOLDING_VIEWER_NULLS;
+
+/// SPT transactions for a pool with optional batched per-sender [`ViewerSocialContext`].
+#[derive(Debug, Clone)]
+pub struct SptTransactionsWithViewer {
+    pub transactions: Vec<SptTransaction>,
+    pub viewer_by_sender: Option<HashMap<String, ViewerSocialContext>>,
+}
+
+fn viewer_ref_strings(viewer_owner: &str, viewer_profile_id: &Option<String>) -> Vec<String> {
+    let mut viewer_refs = vec![viewer_owner.to_string()];
+    if let Some(pid) = viewer_profile_id {
+        if pid != viewer_owner {
+            viewer_refs.push(pid.clone());
+        }
+    }
+    viewer_refs
+}
+
+async fn apply_viewer_context_to_holding_rows(
+    conn: &mut Connection<'_>,
+    rows: &mut [SptHoldingRow],
+    viewer: &str,
+) -> anyhow::Result<()> {
+    let (v_pid, v_owner) = resolve_profile_address(conn, viewer).await?;
+    let addrs: Vec<String> = rows.iter().map(|r| r.holder_address.clone()).collect();
+    let ctx = batch_viewer_social_context(conn, &addrs, &v_pid, &v_owner).await?;
+    for r in rows.iter_mut() {
+        if let Some(c) = ctx.get(&r.holder_address) {
+            r.viewer_is_following = Some(c.is_following);
+            r.viewer_follows_viewer = Some(c.follows_viewer);
+            r.blocked_by_viewer = Some(c.blocked_by_viewer);
+            r.blocked_by_subject = Some(c.blocked_by_subject);
+        }
+    }
+    Ok(())
+}
+
+async fn apply_viewer_context_to_reservation_rows(
+    conn: &mut Connection<'_>,
+    rows: &mut [UserReservationHoldingRow],
+    viewer: &str,
+) -> anyhow::Result<()> {
+    let (v_pid, v_owner) = resolve_profile_address(conn, viewer).await?;
+    let addrs: Vec<String> = rows.iter().map(|r| r.reserver_address.clone()).collect();
+    let ctx = batch_viewer_social_context(conn, &addrs, &v_pid, &v_owner).await?;
+    for r in rows.iter_mut() {
+        if let Some(c) = ctx.get(&r.reserver_address) {
+            r.viewer_is_following = Some(c.is_following);
+            r.viewer_follows_viewer = Some(c.follows_viewer);
+            r.blocked_by_viewer = Some(c.blocked_by_viewer);
+            r.blocked_by_subject = Some(c.blocked_by_subject);
+        }
+    }
+    Ok(())
+}
 
 #[derive(Debug, Clone, QueryableByName)]
 pub struct SptExchangeConfigRow {
@@ -106,7 +169,8 @@ pub(crate) async fn get_spt_holdings_by_holder(
     metrics.requests_received.inc();
     let _guard = metrics.latency.start_timer();
 
-    let query = r#"
+    let query = format!(
+        r#"
         WITH holdings AS (
             SELECT pool_id, holder_address, SUM(amount)::bigint as balance
             FROM spt_holdings
@@ -133,12 +197,15 @@ pub(crate) async fn get_spt_holdings_by_holder(
                pr.selected_badge_id as profile_selected_badge_id,
                pr.social_proof_token_address as profile_social_proof_token_address,
                pr.reservation_pool_address as profile_reservation_pool_address
+               {nulls}
         FROM holdings h
         JOIN latest_pools p ON h.pool_id = p.pool_id
         LEFT JOIN latest_profiles pr ON p.owner = pr.owner_address
         ORDER BY h.balance DESC
         LIMIT $2 OFFSET $3
-    "#;
+    "#,
+        nulls = SPT_HOLDING_VIEWER_NULLS,
+    );
 
     let results = diesel::sql_query(query)
         .bind::<Text, _>(holder_address)
@@ -156,12 +223,14 @@ pub(crate) async fn get_spt_holdings_by_pool(
     pool_id: &str,
     limit: i64,
     offset: i64,
+    viewer: Option<&str>,
+    prioritize_followed: bool,
     metrics: &DbReaderMetrics,
 ) -> anyhow::Result<Vec<SptHoldingRow>> {
     metrics.requests_received.inc();
     let _guard = metrics.latency.start_timer();
 
-    let query = r#"
+    let base = r#"
         WITH holdings AS (
             SELECT pool_id, holder_address, SUM(amount)::bigint as balance
             FROM spt_holdings
@@ -188,19 +257,60 @@ pub(crate) async fn get_spt_holdings_by_pool(
                pr.selected_badge_id as profile_selected_badge_id,
                pr.social_proof_token_address as profile_social_proof_token_address,
                pr.reservation_pool_address as profile_reservation_pool_address
+    "#;
+
+    let mut results: Vec<SptHoldingRow> = if prioritize_followed
+        && let Some(v) = viewer
+    {
+        let (v_pid, v_owner) = resolve_profile_address(conn, v).await?;
+        let refs = viewer_ref_strings(&v_owner, &v_pid);
+        let query = format!(
+            r#"{} {nulls}
+        FROM holdings h
+        JOIN latest_pools p ON h.pool_id = p.pool_id
+        LEFT JOIN latest_profiles pr ON p.owner = pr.owner_address
+        ORDER BY (
+            EXISTS (
+                SELECT 1 FROM social_graph_relationships sgr
+                WHERE sgr.follower_address = ANY($4::TEXT[])
+                AND sgr.following_address = h.holder_address
+            )
+        )::int DESC, h.balance DESC
+        LIMIT $2 OFFSET $3
+    "#,
+            base,
+            nulls = SPT_HOLDING_VIEWER_NULLS,
+        );
+        diesel::sql_query(query)
+            .bind::<Text, _>(pool_id)
+            .bind::<BigInt, _>(limit)
+            .bind::<BigInt, _>(offset)
+            .bind::<Array<Text>, _>(&refs)
+            .load(conn)
+            .await?
+    } else {
+        let query = format!(
+            r#"{} {nulls}
         FROM holdings h
         JOIN latest_pools p ON h.pool_id = p.pool_id
         LEFT JOIN latest_profiles pr ON p.owner = pr.owner_address
         ORDER BY h.balance DESC
         LIMIT $2 OFFSET $3
-    "#;
+    "#,
+            base,
+            nulls = SPT_HOLDING_VIEWER_NULLS,
+        );
+        diesel::sql_query(query)
+            .bind::<Text, _>(pool_id)
+            .bind::<BigInt, _>(limit)
+            .bind::<BigInt, _>(offset)
+            .load(conn)
+            .await?
+    };
 
-    let results = diesel::sql_query(query)
-        .bind::<Text, _>(pool_id)
-        .bind::<BigInt, _>(limit)
-        .bind::<BigInt, _>(offset)
-        .load::<SptHoldingRow>(conn)
-        .await?;
+    if let Some(v) = viewer {
+        apply_viewer_context_to_holding_rows(conn, &mut results, v).await?;
+    }
 
     metrics.requests_succeeded.inc();
     Ok(results)
@@ -273,27 +383,120 @@ pub(crate) async fn get_spt_pool(
     Ok(result)
 }
 
+#[derive(QueryableByName)]
+struct SptTransactionSqlRow {
+    #[diesel(sql_type = Integer)]
+    id: i32,
+    #[diesel(sql_type = Text)]
+    pool_id: String,
+    #[diesel(sql_type = Text)]
+    transaction_type: String,
+    #[diesel(sql_type = Text)]
+    sender: String,
+    #[diesel(sql_type = BigInt)]
+    amount: i64,
+    #[diesel(sql_type = BigInt)]
+    myso_amount: i64,
+    #[diesel(sql_type = BigInt)]
+    fee_amount: i64,
+    #[diesel(sql_type = BigInt)]
+    creator_fee: i64,
+    #[diesel(sql_type = BigInt)]
+    platform_fee: i64,
+    #[diesel(sql_type = BigInt)]
+    treasury_fee: i64,
+    #[diesel(sql_type = BigInt)]
+    price: i64,
+    #[diesel(sql_type = BigInt)]
+    created_at: i64,
+    #[diesel(sql_type = Timestamptz)]
+    time: chrono::DateTime<chrono::Utc>,
+    #[diesel(sql_type = Text)]
+    transaction_id: String,
+}
+
+fn spt_transaction_from_sql(r: SptTransactionSqlRow) -> SptTransaction {
+    SptTransaction {
+        id: r.id,
+        pool_id: r.pool_id,
+        transaction_type: r.transaction_type,
+        sender: r.sender,
+        amount: r.amount,
+        myso_amount: r.myso_amount,
+        fee_amount: r.fee_amount,
+        creator_fee: r.creator_fee,
+        platform_fee: r.platform_fee,
+        treasury_fee: r.treasury_fee,
+        price: r.price,
+        created_at: r.created_at,
+        time: r.time,
+        transaction_id: r.transaction_id,
+    }
+}
+
 pub(crate) async fn get_spt_transactions(
     conn: &mut Connection<'_>,
     pool_id: &str,
     limit: i64,
     offset: i64,
+    viewer: Option<&str>,
+    prioritize_followed: bool,
     metrics: &DbReaderMetrics,
-) -> anyhow::Result<Vec<SptTransaction>> {
+) -> anyhow::Result<SptTransactionsWithViewer> {
     metrics.requests_received.inc();
     let _guard = metrics.latency.start_timer();
 
-    let results = spt_transactions::table
-        .filter(spt_transactions::pool_id.eq(pool_id))
-        .order(spt_transactions::time.desc())
-        .limit(limit)
-        .offset(offset)
-        .select(SptTransaction::as_select())
-        .load::<SptTransaction>(conn)
-        .await?;
+    let transactions: Vec<SptTransaction> = if prioritize_followed
+        && let Some(v) = viewer
+    {
+        let (v_pid, v_owner) = resolve_profile_address(conn, v).await?;
+        let refs = viewer_ref_strings(&v_owner, &v_pid);
+        let q = r#"
+            SELECT id, pool_id, transaction_type, sender, amount, myso_amount, fee_amount,
+                   creator_fee, platform_fee, treasury_fee, price, created_at, time, transaction_id
+            FROM spt_transactions
+            WHERE pool_id = $1
+            ORDER BY (
+                EXISTS (
+                    SELECT 1 FROM social_graph_relationships sgr
+                    WHERE sgr.follower_address = ANY($4::TEXT[])
+                    AND sgr.following_address = spt_transactions.sender
+                )
+            )::int DESC, time DESC
+            LIMIT $2 OFFSET $3
+        "#;
+        let rows: Vec<SptTransactionSqlRow> = diesel::sql_query(q)
+            .bind::<Text, _>(pool_id)
+            .bind::<BigInt, _>(limit)
+            .bind::<BigInt, _>(offset)
+            .bind::<Array<Text>, _>(&refs)
+            .load(conn)
+            .await?;
+        rows.into_iter().map(spt_transaction_from_sql).collect()
+    } else {
+        spt_transactions::table
+            .filter(spt_transactions::pool_id.eq(pool_id))
+            .order(spt_transactions::time.desc())
+            .limit(limit)
+            .offset(offset)
+            .select(SptTransaction::as_select())
+            .load::<SptTransaction>(conn)
+            .await?
+    };
+
+    let viewer_by_sender = if let Some(v) = viewer {
+        let senders: Vec<String> = transactions.iter().map(|t| t.sender.clone()).collect();
+        let (v_pid, v_owner) = resolve_profile_address(conn, v).await?;
+        Some(batch_viewer_social_context(conn, &senders, &v_pid, &v_owner).await?)
+    } else {
+        None
+    };
 
     metrics.requests_succeeded.inc();
-    Ok(results)
+    Ok(SptTransactionsWithViewer {
+        transactions,
+        viewer_by_sender,
+    })
 }
 
 pub(crate) async fn get_spt_price_history(
@@ -481,13 +684,15 @@ pub(crate) async fn get_user_reservation_holdings(
     metrics.requests_received.inc();
     let _guard = metrics.latency.start_timer();
 
-    let query = r#"
+    let query = format!(
+        r#"
         SELECT urh.reserver_address, urh.pool_id, urh.associated_id, urh.token_type, urh.owner,
                urh.amount, urh.reserved_at, urh.total_reserved, urh.required_threshold,
                urh.threshold_met, urh.pool_status,
                p.username as profile_username, p.display_name as profile_display_name,
                p.profile_photo as profile_photo, p.social_proof_token_address as profile_social_proof_token_address,
                p.reservation_pool_address as profile_reservation_pool_address
+               {nulls}
         FROM user_reservation_holdings urh
         LEFT JOIN LATERAL (
             SELECT username, display_name, profile_photo, social_proof_token_address, reservation_pool_address
@@ -499,7 +704,9 @@ pub(crate) async fn get_user_reservation_holdings(
         WHERE urh.reserver_address = $1
         ORDER BY urh.reserved_at DESC
         LIMIT $2 OFFSET $3
-    "#;
+    "#,
+        nulls = SPT_RESERVATION_VIEWER_NULLS,
+    );
 
     let results = diesel::sql_query(query)
         .bind::<Text, _>(reserver_address)
@@ -518,18 +725,60 @@ pub(crate) async fn get_reservation_holdings_for_pool(
     pool_id: &str,
     limit: i64,
     offset: i64,
+    viewer: Option<&str>,
+    prioritize_followed: bool,
     metrics: &DbReaderMetrics,
 ) -> anyhow::Result<Vec<UserReservationHoldingRow>> {
     metrics.requests_received.inc();
     let _guard = metrics.latency.start_timer();
 
-    let query = r#"
+    let select_body = r#"
         SELECT urh.reserver_address, urh.pool_id, urh.associated_id, urh.token_type, urh.owner,
                urh.amount, urh.reserved_at, urh.total_reserved, urh.required_threshold,
                urh.threshold_met, urh.pool_status,
                p.username as profile_username, p.display_name as profile_display_name,
                p.profile_photo as profile_photo, p.social_proof_token_address as profile_social_proof_token_address,
                p.reservation_pool_address as profile_reservation_pool_address
+    "#;
+
+    let mut results: Vec<UserReservationHoldingRow> = if prioritize_followed
+        && let Some(v) = viewer
+    {
+        let (v_pid, v_owner) = resolve_profile_address(conn, v).await?;
+        let refs = viewer_ref_strings(&v_owner, &v_pid);
+        let query = format!(
+            r#"{} {nulls}
+        FROM user_reservation_holdings urh
+        LEFT JOIN LATERAL (
+            SELECT username, display_name, profile_photo, social_proof_token_address, reservation_pool_address
+            FROM profiles
+            WHERE owner_address = urh.owner
+            ORDER BY updated_at DESC
+            LIMIT 1
+        ) p ON true
+        WHERE urh.pool_id = $1
+        ORDER BY (
+            EXISTS (
+                SELECT 1 FROM social_graph_relationships sgr
+                WHERE sgr.follower_address = ANY($4::TEXT[])
+                AND sgr.following_address = urh.reserver_address
+            )
+        )::int DESC, urh.amount DESC, urh.reserved_at DESC
+        LIMIT $2 OFFSET $3
+    "#,
+            select_body,
+            nulls = SPT_RESERVATION_VIEWER_NULLS,
+        );
+        diesel::sql_query(query)
+            .bind::<Text, _>(pool_id)
+            .bind::<BigInt, _>(limit)
+            .bind::<BigInt, _>(offset)
+            .bind::<Array<Text>, _>(&refs)
+            .load(conn)
+            .await?
+    } else {
+        let query = format!(
+            r#"{} {nulls}
         FROM user_reservation_holdings urh
         LEFT JOIN LATERAL (
             SELECT username, display_name, profile_photo, social_proof_token_address, reservation_pool_address
@@ -541,14 +790,21 @@ pub(crate) async fn get_reservation_holdings_for_pool(
         WHERE urh.pool_id = $1
         ORDER BY urh.amount DESC, urh.reserved_at DESC
         LIMIT $2 OFFSET $3
-    "#;
+    "#,
+            select_body,
+            nulls = SPT_RESERVATION_VIEWER_NULLS,
+        );
+        diesel::sql_query(query)
+            .bind::<Text, _>(pool_id)
+            .bind::<BigInt, _>(limit)
+            .bind::<BigInt, _>(offset)
+            .load(conn)
+            .await?
+    };
 
-    let results = diesel::sql_query(query)
-        .bind::<Text, _>(pool_id)
-        .bind::<BigInt, _>(limit)
-        .bind::<BigInt, _>(offset)
-        .load::<UserReservationHoldingRow>(conn)
-        .await?;
+    if let Some(v) = viewer {
+        apply_viewer_context_to_reservation_rows(conn, &mut results, v).await?;
+    }
 
     metrics.requests_succeeded.inc();
     Ok(results)
@@ -560,12 +816,14 @@ pub(crate) async fn get_former_reservation_holdings_for_pool(
     pool_id: &str,
     limit: i64,
     offset: i64,
+    viewer: Option<&str>,
+    prioritize_followed: bool,
     metrics: &DbReaderMetrics,
 ) -> anyhow::Result<Vec<UserReservationHoldingRow>> {
     metrics.requests_received.inc();
     let _guard = metrics.latency.start_timer();
 
-    let query = r#"
+    let select_body = r#"
         SELECT l.reserver_address, l.pool_id, sp.associated_id, sp.token_type, sp.owner,
                l.amount, l.reserved_at, sp.total_reserved, sp.required_threshold,
                (sp.total_reserved >= sp.required_threshold) AS threshold_met,
@@ -573,6 +831,9 @@ pub(crate) async fn get_former_reservation_holdings_for_pool(
                po.username as profile_username, po.display_name as profile_display_name,
                po.profile_photo as profile_photo, po.social_proof_token_address as profile_social_proof_token_address,
                po.reservation_pool_address as profile_reservation_pool_address
+    "#;
+
+    let from_where = r#"
         FROM (
             SELECT DISTINCT ON (reserver_address)
                 reserver_address, pool_id, amount, reserved_at
@@ -595,16 +856,58 @@ pub(crate) async fn get_former_reservation_holdings_for_pool(
             LIMIT 1
         ) po ON true
         WHERE l.amount <= 0
-        ORDER BY l.reserved_at DESC
-        LIMIT $2 OFFSET $3
     "#;
 
-    let results = diesel::sql_query(query)
-        .bind::<Text, _>(pool_id)
-        .bind::<BigInt, _>(limit)
-        .bind::<BigInt, _>(offset)
-        .load::<UserReservationHoldingRow>(conn)
-        .await?;
+    let mut results: Vec<UserReservationHoldingRow> = if prioritize_followed
+        && let Some(v) = viewer
+    {
+        let (v_pid, v_owner) = resolve_profile_address(conn, v).await?;
+        let refs = viewer_ref_strings(&v_owner, &v_pid);
+        let query = format!(
+            r#"{} {nulls}
+        {}
+        ORDER BY (
+            EXISTS (
+                SELECT 1 FROM social_graph_relationships sgr
+                WHERE sgr.follower_address = ANY($4::TEXT[])
+                AND sgr.following_address = l.reserver_address
+            )
+        )::int DESC, l.reserved_at DESC
+        LIMIT $2 OFFSET $3
+    "#,
+            select_body,
+            from_where,
+            nulls = SPT_RESERVATION_VIEWER_NULLS,
+        );
+        diesel::sql_query(query)
+            .bind::<Text, _>(pool_id)
+            .bind::<BigInt, _>(limit)
+            .bind::<BigInt, _>(offset)
+            .bind::<Array<Text>, _>(&refs)
+            .load(conn)
+            .await?
+    } else {
+        let query = format!(
+            r#"{} {nulls}
+        {}
+        ORDER BY l.reserved_at DESC
+        LIMIT $2 OFFSET $3
+    "#,
+            select_body,
+            from_where,
+            nulls = SPT_RESERVATION_VIEWER_NULLS,
+        );
+        diesel::sql_query(query)
+            .bind::<Text, _>(pool_id)
+            .bind::<BigInt, _>(limit)
+            .bind::<BigInt, _>(offset)
+            .load(conn)
+            .await?
+    };
+
+    if let Some(v) = viewer {
+        apply_viewer_context_to_reservation_rows(conn, &mut results, v).await?;
+    }
 
     metrics.requests_succeeded.inc();
     Ok(results)

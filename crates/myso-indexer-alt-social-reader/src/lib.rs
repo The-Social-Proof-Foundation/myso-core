@@ -40,8 +40,10 @@ pub use profile::{
     ProfileBadgeRow, ProfileByAddressResponse, ReservationStatus, SelectedBadgeInfo,
     SocialProofTokenInfo, UniversalUserResult,
 };
-pub use social_graph::{BlockedPlatformRow, BlockedProfileRow, ProfileSummaryRow};
-pub use spt::{SptReservationVolumeBucket, SptReservationVolumeInterval, SptSortBy};
+pub use social_graph::{BlockedPlatformRow, BlockedProfileRow, ProfileSummaryRow, ViewerSocialContext};
+pub use spt::{
+    SptReservationVolumeBucket, SptReservationVolumeInterval, SptSortBy, SptTransactionsWithViewer,
+};
 pub use vesting::{
     VestingLeaderboardEntry, VestingLeaderboardResponse, VestingWalletRow, VestingWalletWithStatus,
 };

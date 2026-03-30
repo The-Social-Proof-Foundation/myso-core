@@ -321,6 +321,7 @@ impl Profile {
     async fn followers(
         &self,
         ctx: &Context<'_>,
+        viewer: Option<MySoAddress>,
         limit: Option<u64>,
         offset: Option<u64>,
     ) -> Option<Vec<ProfileSummary>> {
@@ -329,8 +330,14 @@ impl Profile {
         let reader = reader_opt.as_ref().as_ref()?;
         let limit = limit.unwrap_or(20).min(100) as i64;
         let offset = offset.unwrap_or(0) as i64;
+        let viewer_s = viewer.map(|a| a.to_string());
         let rows = reader
-            .get_followers(&self.inner.owner_address, limit, offset)
+            .get_followers(
+                &self.inner.owner_address,
+                limit,
+                offset,
+                viewer_s.as_deref(),
+            )
             .await
             .ok()?;
         Some(rows.into_iter().map(ProfileSummary::from_row).collect())
@@ -340,6 +347,7 @@ impl Profile {
     async fn following(
         &self,
         ctx: &Context<'_>,
+        viewer: Option<MySoAddress>,
         limit: Option<u64>,
         offset: Option<u64>,
     ) -> Option<Vec<ProfileSummary>> {
@@ -348,8 +356,14 @@ impl Profile {
         let reader = reader_opt.as_ref().as_ref()?;
         let limit = limit.unwrap_or(20).min(100) as i64;
         let offset = offset.unwrap_or(0) as i64;
+        let viewer_s = viewer.map(|a| a.to_string());
         let rows = reader
-            .get_following(&self.inner.owner_address, limit, offset)
+            .get_following(
+                &self.inner.owner_address,
+                limit,
+                offset,
+                viewer_s.as_deref(),
+            )
             .await
             .ok()?;
         Some(rows.into_iter().map(ProfileSummary::from_row).collect())
@@ -646,6 +660,8 @@ impl SocialProofToken {
     async fn reservation_holders(
         &self,
         ctx: &Context<'_>,
+        viewer: Option<MySoAddress>,
+        prioritize_followed: Option<bool>,
         limit: Option<u64>,
         offset: Option<u64>,
     ) -> Option<Vec<SptReservationHolding>> {
@@ -655,8 +671,16 @@ impl SocialProofToken {
         let reader = reader_opt.as_ref().as_ref()?;
         let limit = limit.unwrap_or(20).min(100) as i64;
         let offset = offset.unwrap_or(0) as i64;
+        let viewer_s = viewer.map(|a| a.to_string());
+        let prioritize = prioritize_followed.unwrap_or(false);
         let rows = reader
-            .get_reservation_holdings_for_pool(pool_id, limit, offset)
+            .get_reservation_holdings_for_pool(
+                pool_id,
+                limit,
+                offset,
+                viewer_s.as_deref(),
+                prioritize,
+            )
             .await
             .ok()?;
         Some(
@@ -670,6 +694,8 @@ impl SocialProofToken {
     async fn former_reservation_holders(
         &self,
         ctx: &Context<'_>,
+        viewer: Option<MySoAddress>,
+        prioritize_followed: Option<bool>,
         limit: Option<u64>,
         offset: Option<u64>,
     ) -> Option<Vec<SptReservationHolding>> {
@@ -679,8 +705,16 @@ impl SocialProofToken {
         let reader = reader_opt.as_ref().as_ref()?;
         let limit = limit.unwrap_or(20).min(100) as i64;
         let offset = offset.unwrap_or(0) as i64;
+        let viewer_s = viewer.map(|a| a.to_string());
+        let prioritize = prioritize_followed.unwrap_or(false);
         let rows = reader
-            .get_former_reservation_holdings_for_pool(pool_id, limit, offset)
+            .get_former_reservation_holdings_for_pool(
+                pool_id,
+                limit,
+                offset,
+                viewer_s.as_deref(),
+                prioritize,
+            )
             .await
             .ok()?;
         Some(

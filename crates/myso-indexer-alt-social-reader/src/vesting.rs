@@ -435,6 +435,8 @@ pub(crate) async fn get_vesting_leaderboard(
                         blocked_count: None,
                         is_following: None,
                         follows_viewer: None,
+                        blocked_by_viewer: None,
+                        blocked_by_subject: None,
                     });
             VestingLeaderboardEntry {
                 owner_address: r.owner_address,
