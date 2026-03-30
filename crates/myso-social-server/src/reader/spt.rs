@@ -183,6 +183,10 @@ pub(crate) async fn get_spt_reservation_pool(
 /// `volume_24h` and deltas are **MYSO base units**: sum of `myso_amount` on `spt_transactions` for
 /// matching `pool_id`, plus sum of `ABS(amount)` on `spt_reservations` matched to the pool via
 /// `pool_id` or `reservation_pool_{associated_id}` (same resolution as volume-history).
+///
+/// `volume_change_percent_24h` is **100.0** when the prior window had no volume but the current window
+/// does (division-by-zero avoided); **null** only when both windows have zero combined volume.
+///
 pub(crate) async fn list_spt_reservation_pools(
     db: &Db,
     limit: i64,
@@ -273,7 +277,11 @@ pub(crate) async fn list_spt_reservation_pools(
             (COALESCE(cur.vol, 0) + COALESCE(res_cur.vol, 0)) as volume_24h,
             (COALESCE(cur.vol, 0) + COALESCE(res_cur.vol, 0))
                 - (COALESCE(prev.vol, 0) + COALESCE(res_prev.vol, 0)) as volume_change_24h,
-            (CASE WHEN (COALESCE(prev.vol, 0) + COALESCE(res_prev.vol, 0)) = 0 THEN NULL
+            (CASE
+                  WHEN (COALESCE(prev.vol, 0) + COALESCE(res_prev.vol, 0)) = 0
+                   AND (COALESCE(cur.vol, 0) + COALESCE(res_cur.vol, 0)) = 0 THEN NULL
+                  WHEN (COALESCE(prev.vol, 0) + COALESCE(res_prev.vol, 0)) = 0
+                   AND (COALESCE(cur.vol, 0) + COALESCE(res_cur.vol, 0)) > 0 THEN 100.0::double precision
                   ELSE (
                     (COALESCE(cur.vol, 0) + COALESCE(res_cur.vol, 0)
                      - COALESCE(prev.vol, 0) - COALESCE(res_prev.vol, 0))::double precision
