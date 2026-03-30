@@ -404,7 +404,10 @@ fn process_reservation_created_event(
     let reserver = json_str(data.get("reserver")?)?;
     let amount = json_to_i64(data.get("amount")?);
     let total_reserved = json_to_i64(data.get("total_reserved")?);
-    let threshold_met = data.get("threshold_met")?.as_bool().unwrap_or(false);
+    let threshold_met = data
+        .get("threshold_met")
+        .and_then(|v| v.as_bool())
+        .unwrap_or(false);
     let token_type =
         token_type_from_u8(data.get("token_type")?.as_u64()?).unwrap_or(TOKEN_TYPE_POST);
     // Move uses `epoch_timestamp_ms` for this field — already milliseconds (including sim / small values).
