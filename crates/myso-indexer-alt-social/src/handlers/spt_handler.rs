@@ -366,6 +366,11 @@ impl Handler for SptHandler {
                     r.pool_id = pool_id.clone();
                     total += diesel::insert_into(spt_reservations::table)
                         .values(r)
+                        .on_conflict((
+                            spt_reservations::transaction_id,
+                            spt_reservations::time,
+                        ))
+                        .do_nothing()
                         .execute(conn)
                         .await?;
                     tracing::info!(
