@@ -62,7 +62,9 @@ pub enum ProfileRow {
         claimed_amount: i64,
         remaining_balance: i64,
     },
-    VestingWalletDelete { wallet_id: String },
+    VestingWalletDelete {
+        wallet_id: String,
+    },
 }
 
 impl ProfileRow {

@@ -183,10 +183,7 @@ impl PostRow {
                 Some(PostRow::PostCommentCountIncrement { post_id, delta })
             }
             SocialEventRow::PostCommentCountDecrementByComment { comment_id, owner } => {
-                Some(PostRow::PostCommentCountDecrementByComment {
-                    comment_id,
-                    owner,
-                })
+                Some(PostRow::PostCommentCountDecrementByComment { comment_id, owner })
             }
             SocialEventRow::ProfilePostCountIncrement { owner_address } => {
                 Some(PostRow::ProfilePostCountIncrement { owner_address })

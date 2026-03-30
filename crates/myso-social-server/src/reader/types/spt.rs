@@ -1,8 +1,8 @@
 // Copyright (c) The Social Proof Foundation, LLC.
 // SPDX-License-Identifier: Apache-2.0
 
-use diesel::sql_types::{BigInt, Bool, Integer, Nullable, SmallInt, Text, Timestamptz};
 use diesel::QueryableByName;
+use diesel::sql_types::{BigInt, Bool, Double, Integer, Nullable, SmallInt, Text, Timestamptz};
 use serde::Serialize;
 
 #[derive(Debug, Serialize, QueryableByName)]
@@ -187,6 +187,13 @@ pub struct SptReservationPoolWithDisplayRow {
     pub primary_label: Option<String>,
     #[diesel(sql_type = Nullable<Text>)]
     pub secondary_label: Option<String>,
+    #[diesel(sql_type = BigInt)]
+    pub volume_24h: i64,
+    #[diesel(sql_type = BigInt)]
+    pub volume_change_24h: i64,
+    #[diesel(sql_type = Nullable<Double>)]
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub volume_change_percent_24h: Option<f64>,
 }
 
 #[derive(Debug, Clone, Serialize)]

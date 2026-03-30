@@ -15,7 +15,7 @@ use prometheus::Registry;
 use social_indexer::{
     BlockingHandler, GovernanceHandler, InsuranceHandler, MyDataHandler, PlatformHandler,
     PocHandler, PostsHandler, ProfilesHandler, SocialEnv, SocialGraphHandler, SpotHandler,
-    SubscriptionHandler, SptHandler, UpgradeHandler,
+    SptHandler, SubscriptionHandler, UpgradeHandler,
 };
 use std::net::SocketAddr;
 use std::path::PathBuf;

@@ -49,12 +49,12 @@ use myso_indexer_alt_social_schema::models::{
     NewPocConfiguration, NewPocDispute, NewPocDisputeVote, NewPocRevenueRedirection, NewPost,
     NewPostTransfer, NewProfile, NewProfileBadge, NewProfileEvent, NewProfileOffer,
     NewProfileSaleFee, NewProfileSubscription, NewProfileSubscriptionService, NewProposal,
-    NewReaction, NewReactionCount, NewReport, NewRepost, NewRewardDistribution, NewSocialGraphEvent,
-    NewSocialGraphRelationship, NewSocialProofTokensConfig, NewSocialProofTokensEvent, NewSpotBet,
-    NewSpotBetWithdrawal, NewSpotConfig, NewSpotEventLog, NewSpotPayout, NewSpotRecord,
-    NewSpotRefund, NewSpotResolution, NewSptExchangeConfig, NewSptHolding, NewSptPool,
-    NewSptPriceHistory, NewSptReservation, NewSptReservationPool, NewSptTransaction,
-    NewSubscriptionEvent, NewTip, NewUnifiedRevenue, NewUpgradeEvent,
+    NewReaction, NewReactionCount, NewReport, NewRepost, NewRewardDistribution,
+    NewSocialGraphEvent, NewSocialGraphRelationship, NewSocialProofTokensConfig,
+    NewSocialProofTokensEvent, NewSpotBet, NewSpotBetWithdrawal, NewSpotConfig, NewSpotEventLog,
+    NewSpotPayout, NewSpotRecord, NewSpotRefund, NewSpotResolution, NewSptExchangeConfig,
+    NewSptHolding, NewSptPool, NewSptPriceHistory, NewSptReservation, NewSptReservationPool,
+    NewSptTransaction, NewSubscriptionEvent, NewTip, NewUnifiedRevenue, NewUpgradeEvent,
     NewVestingEvent, NewVestingWallet, NewVoteDecryptionFailure, ProposalUpdateSet,
 };
 
@@ -68,8 +68,8 @@ pub use posts_handler::PostsHandler;
 pub use profiles_handler::ProfilesHandler;
 pub use social_graph_handler::SocialGraphHandler;
 pub use spot_handler::SpotHandler;
-pub use subscription_handler::SubscriptionHandler;
 pub use spt_handler::SptHandler;
+pub use subscription_handler::SubscriptionHandler;
 pub use upgrade_handler::UpgradeHandler;
 
 #[derive(Debug, Clone)]

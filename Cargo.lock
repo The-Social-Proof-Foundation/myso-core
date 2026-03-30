@@ -13374,6 +13374,7 @@ dependencies = [
  "futures",
  "myso-futures",
  "myso-indexer-alt-metrics",
+ "myso-indexer-alt-social-reader",
  "myso-indexer-alt-social-schema",
  "myso-pg-db",
  "prometheus",

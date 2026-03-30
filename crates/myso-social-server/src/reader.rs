@@ -940,6 +940,20 @@ impl Reader {
         social_graph::get_profile_posts(&self.db, address, limit, offset).await
     }
 
+    pub async fn get_profile_pnl(
+        &self,
+        address: &str,
+        windows: &[myso_indexer_alt_social_reader::ProfilePnLWindow],
+    ) -> Result<
+        Vec<myso_indexer_alt_social_reader::ProfilePnLWindowResult>,
+        crate::error::SocialError,
+    > {
+        let mut conn = self.db.connect().await?;
+        myso_indexer_alt_social_reader::get_profile_pnl_for_windows(&mut conn, address, windows)
+            .await
+            .map_err(|e| crate::error::SocialError::internal(e.to_string()))
+    }
+
     pub async fn get_profile_events(
         &self,
         address: &str,

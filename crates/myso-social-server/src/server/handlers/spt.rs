@@ -277,7 +277,9 @@ pub async fn get_spt_reservation_pool_volume_history(
         }
     };
     let limit = params.limit.unwrap_or(168).min(500);
-    let from = params.from.and_then(chrono::DateTime::from_timestamp_millis);
+    let from = params
+        .from
+        .and_then(chrono::DateTime::from_timestamp_millis);
     let to = params.to.and_then(chrono::DateTime::from_timestamp_millis);
     let data = state
         .reader

@@ -81,9 +81,7 @@ impl PocRow {
                 Some(PocRow::PocRevenueRedirection(r))
             }
             crate::handlers::SocialEventRow::PocDispute(d) => Some(PocRow::PocDispute(d)),
-            crate::handlers::SocialEventRow::PocDisputeVote(v) => {
-                Some(PocRow::PocDisputeVote(v))
-            }
+            crate::handlers::SocialEventRow::PocDisputeVote(v) => Some(PocRow::PocDisputeVote(v)),
             crate::handlers::SocialEventRow::PocConfiguration(c) => {
                 Some(PocRow::PocConfiguration(c))
             }

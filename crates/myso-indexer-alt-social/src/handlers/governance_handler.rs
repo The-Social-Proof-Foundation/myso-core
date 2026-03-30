@@ -23,8 +23,8 @@ use myso_indexer_alt_social_schema::models::{
 };
 use myso_indexer_alt_social_schema::schema::{
     anonymous_votes, community_votes, delegate_ratings, delegate_votes, delegates,
-    governance_events, governance_registries, nominated_delegates, proposals,
-    reward_distributions, vote_decryption_failures,
+    governance_events, governance_registries, nominated_delegates, proposals, reward_distributions,
+    vote_decryption_failures,
 };
 
 use super::common;
@@ -76,7 +76,9 @@ pub enum GovernanceRow {
         proposal_id: String,
         approve: bool,
     },
-    DelegateProposalsReviewedIncrement { address: String },
+    DelegateProposalsReviewedIncrement {
+        address: String,
+    },
     ProposalCommunityVoteUpdate {
         proposal_id: String,
         votes_for_delta: i64,
@@ -90,7 +92,9 @@ pub enum GovernanceRow {
         address: String,
         registry_type: i16,
     },
-    ProposalAnonymousVotersIncrement { proposal_id: String },
+    ProposalAnonymousVotersIncrement {
+        proposal_id: String,
+    },
 }
 
 impl GovernanceRow {
@@ -121,7 +125,9 @@ impl GovernanceRow {
             crate::handlers::SocialEventRow::DelegateRating(r) => {
                 Some(GovernanceRow::DelegateRating(r))
             }
-            crate::handlers::SocialEventRow::DelegateVote(v) => Some(GovernanceRow::DelegateVote(v)),
+            crate::handlers::SocialEventRow::DelegateVote(v) => {
+                Some(GovernanceRow::DelegateVote(v))
+            }
             crate::handlers::SocialEventRow::CommunityVote(v) => {
                 Some(GovernanceRow::CommunityVote(v))
             }
@@ -242,21 +248,21 @@ impl Processor for GovernanceHandler {
                 }
                 let event_name = ev.type_.name.as_str();
                 let event_id = format!("{}:{}", tx_digest, event_seq);
-                let event_data = match events::parse_event_contents(module, event_name, &ev.contents)
-                {
-                    Ok(v) => v,
-                    Err(e) => {
-                        tracing::warn!(
-                            tx_digest = %tx_digest,
-                            module,
-                            event_name,
-                            error = %e,
-                            hex_preview = %e.contents_hex_preview(32),
-                            "governance event parse failed"
-                        );
-                        continue;
-                    }
-                };
+                let event_data =
+                    match events::parse_event_contents(module, event_name, &ev.contents) {
+                        Ok(v) => v,
+                        Err(e) => {
+                            tracing::warn!(
+                                tx_digest = %tx_digest,
+                                module,
+                                event_name,
+                                error = %e,
+                                hex_preview = %e.contents_hex_preview(32),
+                                "governance event parse failed"
+                            );
+                            continue;
+                        }
+                    };
                 if let Some(rows) =
                     governance::handle_governance_event(event_name, &event_data, &event_id)
                 {

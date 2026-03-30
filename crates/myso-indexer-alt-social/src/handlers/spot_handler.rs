@@ -54,9 +54,7 @@ impl SpotRow {
             crate::handlers::SocialEventRow::SpotResolution(r) => Some(SpotRow::SpotResolution(r)),
             crate::handlers::SocialEventRow::SpotPayout(p) => Some(SpotRow::SpotPayout(p)),
             crate::handlers::SocialEventRow::SpotRefund(r) => Some(SpotRow::SpotRefund(r)),
-            crate::handlers::SocialEventRow::SpotEventLog(log) => {
-                Some(SpotRow::SpotEventLog(log))
-            }
+            crate::handlers::SocialEventRow::SpotEventLog(log) => Some(SpotRow::SpotEventLog(log)),
             crate::handlers::SocialEventRow::SpotConfig(c) => Some(SpotRow::SpotConfig(c)),
             crate::handlers::SocialEventRow::SpotBetWithdrawal(w) => {
                 Some(SpotRow::SpotBetWithdrawal(w))

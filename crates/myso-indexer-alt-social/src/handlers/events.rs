@@ -23,7 +23,12 @@ impl EventParseError {
 
 impl std::fmt::Display for EventParseError {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(f, "{} (hex preview: {})", self.error, self.contents_hex_preview(32))
+        write!(
+            f,
+            "{} (hex preview: {})",
+            self.error,
+            self.contents_hex_preview(32)
+        )
     }
 }
 

@@ -1,9 +1,9 @@
 // Copyright (c) The Social Proof Foundation, LLC.
 // SPDX-License-Identifier: Apache-2.0
 
-use diesel::sql_types::{BigInt, Double, Nullable, SmallInt, Text};
 use diesel::OptionalExtension;
 use diesel::QueryableByName;
+use diesel::sql_types::{BigInt, Double, Nullable, SmallInt, Text};
 use diesel_async::RunQueryDsl;
 use myso_pg_db::Db;
 
@@ -173,6 +173,14 @@ pub(crate) async fn get_spt_reservation_pool(
     Ok(result)
 }
 
+/// Lists reservation pools with display labels and per-pool **trade** volume for the last rolling 24h.
+///
+/// Windows use the database clock (`NOW()`), i.e. **UTC** in PostgreSQL. **Current window:** rows with
+/// `spt_transactions.time > NOW() - 24h`. **Baseline (prior window):** `time` strictly after
+/// `NOW() - 48h` and on or before `NOW() - 24h` (contiguous prior 24h, not calendar midnight).
+///
+/// `volume_24h` and deltas are **MYSO base units**: sum of `myso_amount` (BUY + SELL) on
+/// `spt_transactions` for the pool; reservation ledger volume is excluded (see volume-history endpoint).
 pub(crate) async fn list_spt_reservation_pools(
     db: &Db,
     limit: i64,
@@ -195,6 +203,18 @@ pub(crate) async fn list_spt_reservation_pools(
             SELECT DISTINCT ON (post_id) *
             FROM posts
             ORDER BY post_id, time DESC
+        ),
+        tx_vol_current AS (
+            SELECT pool_id, COALESCE(SUM(myso_amount), 0)::bigint AS vol
+            FROM spt_transactions
+            WHERE time > NOW() - INTERVAL '24 hours'
+            GROUP BY pool_id
+        ),
+        tx_vol_previous AS (
+            SELECT pool_id, COALESCE(SUM(myso_amount), 0)::bigint AS vol
+            FROM spt_transactions
+            WHERE time > NOW() - INTERVAL '48 hours' AND time <= NOW() - INTERVAL '24 hours'
+            GROUP BY pool_id
         )
         SELECT
             rp.id, rp.pool_id, rp.associated_id, rp.token_type, rp.owner,
@@ -226,8 +246,15 @@ pub(crate) async fn list_spt_reservation_pools(
             CASE
                 WHEN rp.token_type = 1 THEN prof.username
                 ELSE NULL
-            END as secondary_label
+            END as secondary_label,
+            COALESCE(cur.vol, 0) as volume_24h,
+            COALESCE(cur.vol, 0) - COALESCE(prev.vol, 0) as volume_change_24h,
+            (CASE WHEN COALESCE(prev.vol, 0) = 0 THEN NULL
+                  ELSE (COALESCE(cur.vol, 0) - COALESCE(prev.vol, 0))::double precision * 100.0 / prev.vol::double precision
+             END) as volume_change_percent_24h
         FROM latest_reservation_pools rp
+        LEFT JOIN tx_vol_current cur ON cur.pool_id = rp.pool_id
+        LEFT JOIN tx_vol_previous prev ON prev.pool_id = rp.pool_id
         LEFT JOIN latest_profiles prof ON
             rp.token_type = 1 AND
             (CASE
@@ -244,11 +271,18 @@ pub(crate) async fn list_spt_reservation_pools(
         ORDER BY rp.total_reserved DESC
         LIMIT $1 OFFSET $2
         "#;
-    let pools: Vec<SptReservationPoolWithDisplayRow> = diesel::sql_query(query)
+    let mut pools: Vec<SptReservationPoolWithDisplayRow> = diesel::sql_query(query)
         .bind::<BigInt, _>(limit)
         .bind::<BigInt, _>(offset)
         .load(&mut conn)
         .await?;
+    for pool in &mut pools {
+        if let Some(pct) = pool.volume_change_percent_24h {
+            if !pct.is_finite() {
+                pool.volume_change_percent_24h = None;
+            }
+        }
+    }
     let count_query = r#"
         WITH latest_reservation_pools AS (
             SELECT DISTINCT ON (pool_id) *

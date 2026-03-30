@@ -36,13 +36,17 @@ pub enum SubscriptionRow {
     ProfileSubscriptionService(NewProfileSubscriptionService),
     ProfileSubscription(NewProfileSubscription),
     SubscriptionEvent(NewSubscriptionEvent),
-    ProfileSubscriptionServiceSubscriberIncrement { service_id: String },
+    ProfileSubscriptionServiceSubscriberIncrement {
+        service_id: String,
+    },
     ProfileSubscriptionUpdate {
         subscription_id: String,
         expires_at: i64,
         renewal_count: i64,
     },
-    ProfileSubscriptionCancel { subscription_id: String },
+    ProfileSubscriptionCancel {
+        subscription_id: String,
+    },
     ProfileSubscriptionServiceUpdate {
         service_id: String,
         monthly_fee: i64,

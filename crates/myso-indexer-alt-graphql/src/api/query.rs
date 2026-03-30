@@ -809,9 +809,8 @@ impl Query {
         };
 
         let limit = limit.unwrap_or(168).min(500) as i64;
-        let interval_reader = myso_indexer_alt_social_reader::SptReservationVolumeInterval::from(
-            interval,
-        );
+        let interval_reader =
+            myso_indexer_alt_social_reader::SptReservationVolumeInterval::from(interval);
         Some(
             reader
                 .get_spt_reservation_volume_history(

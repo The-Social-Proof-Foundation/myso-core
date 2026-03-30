@@ -205,7 +205,8 @@ impl Processor for PlatformHandler {
                         Ok(v) => v,
                         Err(_) => continue,
                     };
-                if let Some(rows) = platform::handle_platform_event(event_name, &event_data, &event_id)
+                if let Some(rows) =
+                    platform::handle_platform_event(event_name, &event_data, &event_id)
                 {
                     for row in rows {
                         if let Some(r) = PlatformRow::from_social(row) {

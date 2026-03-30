@@ -3,12 +3,12 @@
 
 use std::collections::HashMap;
 
-use diesel::sql_types::{Array, BigInt, Nullable, SmallInt, Text};
 use diesel::ExpressionMethods;
 use diesel::OptionalExtension;
 use diesel::QueryDsl;
 use diesel::QueryableByName;
 use diesel::SelectableHelper;
+use diesel::sql_types::{Array, BigInt, Nullable, SmallInt, Text};
 use diesel_async::RunQueryDsl;
 use myso_indexer_alt_social_schema::models::Profile;
 use myso_indexer_alt_social_schema::schema::{profiles, wallet_social_graph};

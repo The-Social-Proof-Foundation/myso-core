@@ -3,10 +3,10 @@
 // SPDX-License-Identifier: Apache-2.0
 
 use crate::MYSO_BRIDGE_OBJECT_ID;
+use crate::balance::Balance;
 use crate::base_types::ObjectID;
 use crate::base_types::SequenceNumber;
 use crate::collection_types::LinkedTableNode;
-use crate::balance::Balance;
 use crate::dynamic_field::{Field, get_dynamic_field_from_store};
 use crate::error::{MySoError, MySoErrorKind, MySoResult};
 use crate::myso_serde::BigInt;

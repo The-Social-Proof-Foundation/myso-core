@@ -57,8 +57,8 @@ pub use social_graph::{
 pub use spot::{SpotBetRow, SpotConfigInfo, SpotRecordResponse, SpotTransferRow};
 pub use spt::{
     SptExchangeConfigRow, SptHoldingRow, SptPoolRow, SptPriceHistoryRow, SptReservationPoolRow,
-    SptReservationPoolWithDisplayRow, SptReservationRow, SptReservationVolumeBucketRow, SptRevenueRow,
-    SptTransactionRow, SptUserHoldingItem,
+    SptReservationPoolWithDisplayRow, SptReservationRow, SptReservationVolumeBucketRow,
+    SptRevenueRow, SptTransactionRow, SptUserHoldingItem,
 };
 pub use subscription::{
     ProfileSubscriptionInfo, ProfileSubscriptionRevenueRow, ProfileSubscriptionServiceInfo,

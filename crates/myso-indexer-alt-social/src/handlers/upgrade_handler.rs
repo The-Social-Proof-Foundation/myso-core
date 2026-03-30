@@ -69,11 +69,14 @@ impl Processor for UpgradeHandler {
                 }
                 let event_name = ev.type_.name.as_str();
                 let event_id = format!("{}:{}", tx_digest, event_seq);
-                let event_data = match events::parse_event_contents(module, event_name, &ev.contents) {
-                    Ok(v) => v,
-                    Err(_) => continue,
-                };
-                if let Some(rows) = upgrade::handle_upgrade_event(event_name, &event_data, &event_id) {
+                let event_data =
+                    match events::parse_event_contents(module, event_name, &ev.contents) {
+                        Ok(v) => v,
+                        Err(_) => continue,
+                    };
+                if let Some(rows) =
+                    upgrade::handle_upgrade_event(event_name, &event_data, &event_id)
+                {
                     for row in rows {
                         if let Some(r) = UpgradeRow::from_social(row) {
                             values.push(r);

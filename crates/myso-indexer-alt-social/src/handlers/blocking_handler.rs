@@ -15,7 +15,9 @@ use myso_indexer_alt_framework::postgres::Connection;
 use myso_indexer_alt_framework::types::full_checkpoint_content::Checkpoint;
 use myso_indexer_alt_framework::FieldCount;
 use myso_indexer_alt_social_schema::models::{NewBlockedEvent, NewBlockedProfile, NewProfileEvent};
-use myso_indexer_alt_social_schema::schema::{blocked_events, blocked_profiles, profile_events, social_graph_relationships};
+use myso_indexer_alt_social_schema::schema::{
+    blocked_events, blocked_profiles, profile_events, social_graph_relationships,
+};
 
 use super::common;
 use super::events;
@@ -40,8 +42,12 @@ pub enum BlockingRow {
 impl BlockingRow {
     fn from_social(row: crate::handlers::SocialEventRow) -> Option<Self> {
         match row {
-            crate::handlers::SocialEventRow::BlockedEvent(ev) => Some(BlockingRow::BlockedEvent(ev)),
-            crate::handlers::SocialEventRow::BlockedProfile(bp) => Some(BlockingRow::BlockedProfile(bp)),
+            crate::handlers::SocialEventRow::BlockedEvent(ev) => {
+                Some(BlockingRow::BlockedEvent(ev))
+            }
+            crate::handlers::SocialEventRow::BlockedProfile(bp) => {
+                Some(BlockingRow::BlockedProfile(bp))
+            }
             crate::handlers::SocialEventRow::BlockedProfileDelete {
                 blocker_address,
                 blocked_address,
@@ -49,7 +55,9 @@ impl BlockingRow {
                 blocker_address,
                 blocked_address,
             }),
-            crate::handlers::SocialEventRow::ProfileEvent(ev) => Some(BlockingRow::ProfileEvent(ev)),
+            crate::handlers::SocialEventRow::ProfileEvent(ev) => {
+                Some(BlockingRow::ProfileEvent(ev))
+            }
             crate::handlers::SocialEventRow::SocialGraphUnfollow {
                 follower_address,
                 following_address,
@@ -91,15 +99,14 @@ impl Processor for BlockingHandler {
                 }
                 let event_name = ev.type_.name.as_str();
                 let event_id = format!("{}:{}", tx_digest, event_seq);
-                let event_data = match events::parse_event_contents(
-                    module,
-                    event_name,
-                    &ev.contents,
-                ) {
-                    Ok(v) => v,
-                    Err(_) => continue,
-                };
-                if let Some(rows) = super::blocking::handle_blocking_event(event_name, &event_data, &event_id) {
+                let event_data =
+                    match events::parse_event_contents(module, event_name, &ev.contents) {
+                        Ok(v) => v,
+                        Err(_) => continue,
+                    };
+                if let Some(rows) =
+                    super::blocking::handle_blocking_event(event_name, &event_data, &event_id)
+                {
                     for row in rows {
                         if let Some(r) = BlockingRow::from_social(row) {
                             values.push(r);

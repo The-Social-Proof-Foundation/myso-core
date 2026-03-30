@@ -7,18 +7,18 @@ use std::sync::Arc;
 
 use anyhow::Result;
 use async_trait::async_trait;
+use diesel::sql_types::{BigInt, Nullable, SmallInt, Text};
 use diesel::BoolExpressionMethods;
 use diesel::ExpressionMethods;
 use diesel::OptionalExtension;
 use diesel::QueryDsl;
 use diesel::QueryableByName;
-use diesel::sql_types::{BigInt, Nullable, SmallInt, Text};
 use diesel_async::RunQueryDsl;
-use myso_indexer_alt_framework::FieldCount;
 use myso_indexer_alt_framework::pipeline::Processor;
-use myso_indexer_alt_framework::postgres::Connection;
 use myso_indexer_alt_framework::postgres::handler::Handler;
+use myso_indexer_alt_framework::postgres::Connection;
 use myso_indexer_alt_framework::types::full_checkpoint_content::Checkpoint;
+use myso_indexer_alt_framework::FieldCount;
 use myso_indexer_alt_social_schema::models::{
     NewSocialProofTokensConfig, NewSocialProofTokensEvent, NewSptExchangeConfig, NewSptHolding,
     NewSptPool, NewSptPriceHistory, NewSptReservation, NewSptReservationPool, NewSptRevenue,
@@ -32,10 +32,10 @@ use myso_indexer_alt_social_schema::schema::{
     spt_reservations, spt_revenue, spt_transactions, unified_revenue,
 };
 
-use super::ProfileUpdate;
 use super::common;
 use super::events;
 use super::spt;
+use super::ProfileUpdate;
 
 const SPT_MODULES: &[&str] = &["social_proof_tokens", "spt"];
 

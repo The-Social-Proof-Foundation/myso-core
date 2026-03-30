@@ -64,7 +64,9 @@ pub enum SptReservationVolumeInterval {
     Day,
 }
 
-impl From<SptReservationVolumeInterval> for myso_indexer_alt_social_reader::SptReservationVolumeInterval {
+impl From<SptReservationVolumeInterval>
+    for myso_indexer_alt_social_reader::SptReservationVolumeInterval
+{
     fn from(v: SptReservationVolumeInterval) -> Self {
         match v {
             SptReservationVolumeInterval::Hour => Self::Hour,

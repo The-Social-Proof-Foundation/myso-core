@@ -7,8 +7,8 @@ mod handlers;
 
 pub use handlers::{
     BlockingHandler, GovernanceHandler, InsuranceHandler, MyDataHandler, PlatformHandler,
-    PocHandler, PostsHandler, ProfilesHandler, SocialGraphHandler, SpotHandler, SubscriptionHandler,
-    SptHandler, UpgradeHandler,
+    PocHandler, PostsHandler, ProfilesHandler, SocialGraphHandler, SpotHandler, SptHandler,
+    SubscriptionHandler, UpgradeHandler,
 };
 
 pub const MAINNET_REMOTE_STORE_URL: &str = "https://checkpoints.mainnet.mysocial.network";

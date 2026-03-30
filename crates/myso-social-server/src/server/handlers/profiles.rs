@@ -3,7 +3,9 @@
 
 use axum::extract::{Path, Query, State};
 use axum::Json;
+use myso_indexer_alt_social_reader::{ProfilePnLWindow, ProfilePnLWindowResult};
 use myso_indexer_alt_social_schema::models::Profile;
+use serde::Deserialize;
 use std::sync::Arc;
 
 use crate::error::SocialError;
@@ -233,4 +235,87 @@ pub async fn get_profile_sale_fees(
         .list_profile_sale_fees(&address, limit, offset)
         .await?;
     Ok(Json(fees))
+}
+
+#[derive(Debug, Deserialize)]
+pub struct ProfilePnLQuery {
+    /// Comma-separated windows: `days_7`, `days_30`, `days_180`, `days_365`, `all`.
+    pub windows: Option<String>,
+}
+
+pub async fn get_profile_pnl(
+    State(state): State<Arc<AppState>>,
+    Path(address): Path<String>,
+    Query(query): Query<ProfilePnLQuery>,
+) -> Result<Json<Vec<ProfilePnLWindowResult>>, SocialError> {
+    let windows = parse_profile_pnl_windows(query.windows.as_deref())?;
+    let rows = state.reader.get_profile_pnl(&address, &windows).await?;
+    Ok(Json(rows))
+}
+
+fn parse_profile_pnl_windows(raw: Option<&str>) -> Result<Vec<ProfilePnLWindow>, SocialError> {
+    let Some(raw) = raw.map(str::trim).filter(|s| !s.is_empty()) else {
+        return Ok(vec![
+            ProfilePnLWindow::Days7,
+            ProfilePnLWindow::Days30,
+            ProfilePnLWindow::All,
+        ]);
+    };
+    let mut out = Vec::new();
+    for part in raw.split(',') {
+        let part = part.trim();
+        let w = match part {
+            "days_7" | "7d" => ProfilePnLWindow::Days7,
+            "days_30" | "30d" => ProfilePnLWindow::Days30,
+            "days_180" | "180d" => ProfilePnLWindow::Days180,
+            "days_365" | "365d" | "1y" => ProfilePnLWindow::Days365,
+            "all" | "all_time" => ProfilePnLWindow::All,
+            _ => {
+                return Err(SocialError::bad_request(format!(
+                    "unknown pnl window '{part}'; use days_7, days_30, days_180, days_365, or all"
+                )));
+            }
+        };
+        out.push(w);
+    }
+    if out.is_empty() {
+        return Ok(vec![
+            ProfilePnLWindow::Days7,
+            ProfilePnLWindow::Days30,
+            ProfilePnLWindow::All,
+        ]);
+    }
+    Ok(out)
+}
+
+#[cfg(test)]
+mod pnl_window_parse_tests {
+    use super::parse_profile_pnl_windows;
+    use myso_indexer_alt_social_reader::ProfilePnLWindow;
+
+    #[test]
+    fn default_windows_when_missing() {
+        let w = parse_profile_pnl_windows(None).unwrap();
+        assert_eq!(
+            w,
+            vec![
+                ProfilePnLWindow::Days7,
+                ProfilePnLWindow::Days30,
+                ProfilePnLWindow::All,
+            ]
+        );
+    }
+
+    #[test]
+    fn parses_compact_aliases() {
+        let w = parse_profile_pnl_windows(Some("7d,30d,all")).unwrap();
+        assert_eq!(
+            w,
+            vec![
+                ProfilePnLWindow::Days7,
+                ProfilePnLWindow::Days30,
+                ProfilePnLWindow::All,
+            ]
+        );
+    }
 }

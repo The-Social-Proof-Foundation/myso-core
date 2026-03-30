@@ -38,6 +38,7 @@ use crate::platform::{
     get_platform_blocked_profiles, get_platform_members, get_platform_moderators,
     get_platform_user_access,
 };
+use crate::pnl::{ProfilePnLWindow, ProfilePnLWindowResult, get_profile_pnl_for_windows};
 use crate::poc::{
     get_poc_analysis_for_post, get_poc_badges_for_post, get_poc_configuration,
     get_poc_disputes_for_post, get_post_revenue_redirections,
@@ -62,6 +63,7 @@ use crate::spot::{
     get_spot_config, get_spot_record, get_spot_resolution, list_spot_bet_withdrawals,
     list_spot_bets, list_spot_payouts, list_spot_refunds,
 };
+use crate::spt::SptReservationVolumeInterval;
 use crate::spt::{
     get_former_reservation_holdings_for_pool, get_reservation_holdings_for_pool,
     get_reservation_pool_id_for_associated_id, get_spt_exchange_config, get_spt_holdings_by_holder,
@@ -69,7 +71,6 @@ use crate::spt::{
     get_spt_reservation_volume_history, get_spt_transactions, get_user_reservation_holdings,
     list_spt_pools,
 };
-use crate::spt::SptReservationVolumeInterval;
 use crate::vesting::{get_vesting_leaderboard, get_vesting_wallet, list_vesting_wallets};
 
 pub use myso_indexer_alt_social_schema::models::Profile;
@@ -1341,5 +1342,19 @@ impl SocialPgReader {
     {
         let mut conn = self.connect().await?;
         get_platform_revenue_summary(&mut conn, platform_address, &self.metrics).await
+    }
+
+    /// Cash-flow P&L for a profile owner wallet across the given windows (MYSO base units).
+    pub async fn get_profile_pnl(
+        &self,
+        owner_address: &str,
+        windows: &[ProfilePnLWindow],
+    ) -> anyhow::Result<Vec<ProfilePnLWindowResult>> {
+        self.metrics.requests_received.inc();
+        let _guard = self.metrics.latency.start_timer();
+        let mut conn = self.connect().await?;
+        let out = get_profile_pnl_for_windows(&mut conn, owner_address, windows).await?;
+        self.metrics.requests_succeeded.inc();
+        Ok(out)
     }
 }

@@ -17,6 +17,7 @@ use crate::api::scalars::myso_address::MySoAddress;
 use crate::api::types::blocked::{BlockedPlatformSummary, BlockedProfileSummary};
 use crate::api::types::mydata::MyDataRecord;
 use crate::api::types::platform::PlatformMembershipSummary;
+use crate::api::types::pnl::{ProfilePnLWindowGql, ProfilePnLWindowStats};
 use crate::api::types::profile_summary::ProfileSummary;
 use crate::api::types::spt::{SptHolding, SptReservationHolding};
 use crate::api::types::vesting::VestingWallet;
@@ -501,6 +502,32 @@ impl Profile {
             .await
             .ok()?;
         Some(rows.into_iter().map(MyDataRecord::from_row).collect())
+    }
+
+    /// Cash-flow P&L for this profile's owner wallet (MYSO base units; not realized/FIFO P&L).
+    /// When `windows` is omitted, defaults to 7d, 30d, and all-time.
+    async fn pnl(
+        &self,
+        ctx: &Context<'_>,
+        windows: Option<Vec<ProfilePnLWindowGql>>,
+    ) -> Option<Vec<ProfilePnLWindowStats>> {
+        let reader_opt = ctx
+            .data_opt::<std::sync::Arc<Option<myso_indexer_alt_social_reader::SocialPgReader>>>()?;
+        let reader = reader_opt.as_ref().as_ref()?;
+        let windows = windows.unwrap_or_else(|| {
+            vec![
+                ProfilePnLWindowGql::Days7,
+                ProfilePnLWindowGql::Days30,
+                ProfilePnLWindowGql::All,
+            ]
+        });
+        let windows_reader: Vec<myso_indexer_alt_social_reader::ProfilePnLWindow> =
+            windows.into_iter().map(Into::into).collect();
+        let rows = reader
+            .get_profile_pnl(&self.inner.owner_address, &windows_reader)
+            .await
+            .ok()?;
+        Some(rows.into_iter().map(ProfilePnLWindowStats::from).collect())
     }
 }
 

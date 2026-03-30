@@ -129,7 +129,8 @@ impl Processor for MyDataHandler {
                         Ok(v) => v,
                         Err(_) => continue,
                     };
-                if let Some(rows) = mydata::handle_mydata_event(event_name, &event_data, &event_id) {
+                if let Some(rows) = mydata::handle_mydata_event(event_name, &event_data, &event_id)
+                {
                     for row in rows {
                         if let Some(r) = MyDataRow::from_social(row) {
                             values.push(r);

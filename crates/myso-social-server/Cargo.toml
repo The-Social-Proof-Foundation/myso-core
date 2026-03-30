@@ -8,6 +8,7 @@ edition = "2021"
 
 [dependencies]
 myso-indexer-alt-social-schema = { path = "../myso-indexer-alt-social-schema" }
+myso-indexer-alt-social-reader = { path = "../myso-indexer-alt-social-reader" }
 tokio.workspace = true
 futures = "0.3.31"
 clap = { workspace = true, features = ["env"] }

@@ -404,6 +404,7 @@ fn make_router(state: Arc<AppState>) -> Router {
         )
         .route("/profiles/:address/offers", get(get_profile_offers))
         .route("/profiles/:address/sale-fees", get(get_profile_sale_fees))
+        .route("/profiles/:address/pnl", get(get_profile_pnl))
         .route(
             "/social-graph/check/:follower/:following",
             get(check_social_graph_following),

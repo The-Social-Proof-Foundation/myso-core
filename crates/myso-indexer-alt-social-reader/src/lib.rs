@@ -7,6 +7,7 @@ mod metrics;
 pub mod mydata;
 pub mod pg_reader;
 pub mod platform;
+pub mod pnl;
 pub mod poc;
 pub mod post;
 pub mod profile;
@@ -33,6 +34,7 @@ pub use myso_indexer_alt_social_schema::models::{
 };
 pub use pg_reader::SocialPgReader;
 pub use platform::{PlatformBlockedProfileRow, PlatformRow, PlatformUserAccessRow};
+pub use pnl::{ProfilePnLWindow, ProfilePnLWindowResult, get_profile_pnl_for_windows};
 pub use post::{CommentRow, PostRow, PostTransferRow, ReactionRow, RepostRow, TipRow};
 pub use profile::{
     ProfileBadgeRow, ProfileByAddressResponse, ReservationStatus, SelectedBadgeInfo,

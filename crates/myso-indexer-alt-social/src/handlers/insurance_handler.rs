@@ -159,9 +159,12 @@ impl Processor for InsuranceHandler {
                         Ok(v) => v,
                         Err(_) => continue,
                     };
-                if let Some(rows) =
-                    insurance::handle_insurance_event(event_name, &event_data, &event_id, timestamp_ms)
-                {
+                if let Some(rows) = insurance::handle_insurance_event(
+                    event_name,
+                    &event_data,
+                    &event_id,
+                    timestamp_ms,
+                ) {
                     for row in rows {
                         if let Some(r) = InsuranceRow::from_social(row) {
                             values.push(r);
