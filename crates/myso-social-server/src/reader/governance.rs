@@ -428,6 +428,8 @@ pub(crate) async fn get_governance_registry_by_type(
                quadratic_base_cost, voting_period_ms, quorum_votes
         FROM governance_registries
         WHERE registry_type = $1
+        ORDER BY registry_id ASC
+        LIMIT 1
     ";
     let result = diesel::sql_query(query)
         .bind::<SmallInt, _>(registry_type)

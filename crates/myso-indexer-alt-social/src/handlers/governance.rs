@@ -13,6 +13,7 @@ use myso_indexer_alt_social_schema::{
     GOVERNANCE_STATUS_APPROVED, GOVERNANCE_STATUS_COMMUNITY_VOTING,
     GOVERNANCE_STATUS_DELEGATE_REVIEW, GOVERNANCE_STATUS_IMPLEMENTED,
     GOVERNANCE_STATUS_OWNER_RESCINDED, GOVERNANCE_STATUS_REJECTED, NOMINEE_STATUS_ELECTED,
+    PROPOSAL_TYPE_PLATFORM,
 };
 
 fn de_u64<'de, D>(d: D) -> Result<u64, D::Error>
@@ -80,7 +81,7 @@ pub fn handle_governance_event(
         "AnonymousVote" => process_anonymous_vote_event(data, event_id),
         "VoteDecryptionFailed" => process_vote_decryption_failed_event(data, event_id),
         "GovernanceParametersUpdated" => {
-            process_governance_parameters_updated_event(data, event_id)
+            process_governance_parameters_updated_event(data, event_id, governance_registry_id)
         }
         _ => None,
     }
@@ -805,6 +806,7 @@ fn process_vote_decryption_failed_event(
 fn process_governance_parameters_updated_event(
     data: &serde_json::Value,
     event_id: &str,
+    governance_registry_id: Option<String>,
 ) -> Option<Vec<SocialEventRow>> {
     #[derive(serde::Deserialize)]
     struct Ev {
@@ -828,8 +830,15 @@ fn process_governance_parameters_updated_event(
         timestamp: u64,
     }
     let ev: Ev = serde_json::from_value(data.clone()).ok()?;
+    let registry_type_i16 = ev.registry_type as i16;
+    let registry_id = if registry_type_i16 == PROPOSAL_TYPE_PLATFORM {
+        governance_registry_id
+    } else {
+        None
+    };
     let update = GovernanceRegistryUpdate {
-        registry_type: ev.registry_type as i16,
+        registry_type: registry_type_i16,
+        registry_id,
         delegate_count: ev.delegate_count as i64,
         delegate_term_epochs: ev.delegate_term_epochs as i64,
         proposal_submission_cost: ev.proposal_submission_cost as i64,

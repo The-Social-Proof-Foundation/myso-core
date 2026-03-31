@@ -1,3 +1,12 @@
+DROP INDEX IF EXISTS idx_governance_registries_registry_id_unique;
+DROP INDEX IF EXISTS idx_governance_registries_type;
+
+CREATE UNIQUE INDEX IF NOT EXISTS idx_governance_registries_type
+    ON governance_registries (registry_type);
+
+CREATE INDEX IF NOT EXISTS idx_governance_registries_registry_id
+    ON governance_registries (registry_id);
+
 CREATE OR REPLACE VIEW governance_stats AS
 SELECT
     g.registry_type,

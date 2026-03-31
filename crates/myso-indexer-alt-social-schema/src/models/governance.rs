@@ -373,6 +373,8 @@ pub struct ProposalUpdateSet {
 #[derive(Debug, Clone)]
 pub struct GovernanceRegistryUpdate {
     pub registry_type: i16,
+    /// On-chain GovernanceDAO object id. Set for platform registries so updates match the correct row.
+    pub registry_id: Option<String>,
     pub delegate_count: i64,
     pub delegate_term_epochs: i64,
     pub proposal_submission_cost: i64,

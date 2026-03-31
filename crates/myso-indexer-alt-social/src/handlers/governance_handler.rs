@@ -29,9 +29,10 @@ use myso_indexer_alt_social_schema::models::{
 };
 use myso_indexer_alt_social_schema::schema::{
     anonymous_votes, community_votes, delegate_ratings, delegate_votes, delegates,
-    governance_events, governance_registries, nominated_delegates, proposals, reward_distributions,
-    vote_decryption_failures,
+    governance_events, governance_registries, nominated_delegates, platforms, proposals,
+    reward_distributions, vote_decryption_failures,
 };
+use myso_indexer_alt_social_schema::PROPOSAL_TYPE_PLATFORM;
 
 use super::common;
 use super::events;
@@ -335,61 +336,97 @@ impl Handler for GovernanceHandler {
         for row in values {
             match row {
                 GovernanceRow::GovernanceRegistry(reg) => {
+                    let registry_type = reg.registry_type;
                     let registry_id = reg.registry_id.clone();
-                    let exists = governance_registries::table
-                        .filter(governance_registries::registry_id.eq(&registry_id))
-                        .count()
-                        .get_result::<i64>(conn)
-                        .await
-                        .unwrap_or(0)
-                        > 0;
-                    if !exists {
-                        let delegate_count = reg.delegate_count;
-                        let delegate_term_epochs = reg.delegate_term_epochs;
-                        let proposal_submission_cost = reg.proposal_submission_cost;
-                        let max_votes_per_user = reg.max_votes_per_user;
-                        let quadratic_base_cost = reg.quadratic_base_cost;
-                        let voting_period_ms = reg.voting_period_ms;
-                        let quorum_votes = reg.quorum_votes;
-                        let updated_at = reg.updated_at;
-                        total += diesel::insert_into(governance_registries::table)
-                            .values(reg)
-                            .on_conflict(governance_registries::registry_type)
-                            .do_update()
-                            .set((
-                                governance_registries::registry_id.eq(registry_id),
-                                governance_registries::delegate_count.eq(delegate_count),
-                                governance_registries::delegate_term_epochs
-                                    .eq(delegate_term_epochs),
-                                governance_registries::proposal_submission_cost
-                                    .eq(proposal_submission_cost),
-                                governance_registries::max_votes_per_user.eq(max_votes_per_user),
-                                governance_registries::quadratic_base_cost.eq(quadratic_base_cost),
-                                governance_registries::voting_period_ms.eq(voting_period_ms),
-                                governance_registries::quorum_votes.eq(quorum_votes),
-                                governance_registries::updated_at.eq(updated_at),
-                            ))
-                            .execute(conn)
-                            .await?;
-                    }
-                }
-                GovernanceRow::GovernanceRegistryUpdate(up) => {
-                    total += diesel::update(governance_registries::table)
-                        .filter(governance_registries::registry_type.eq(up.registry_type))
+                    let delegate_count = reg.delegate_count;
+                    let delegate_term_epochs = reg.delegate_term_epochs;
+                    let proposal_submission_cost = reg.proposal_submission_cost;
+                    let max_votes_per_user = reg.max_votes_per_user;
+                    let quadratic_base_cost = reg.quadratic_base_cost;
+                    let voting_period_ms = reg.voting_period_ms;
+                    let quorum_votes = reg.quorum_votes;
+                    let updated_at = reg.updated_at;
+                    let transaction_id = reg.transaction_id.clone();
+                    let min_on_chain_age_days = reg.min_on_chain_age_days;
+                    total += diesel::insert_into(governance_registries::table)
+                        .values(reg.clone())
+                        .on_conflict(governance_registries::registry_id)
+                        .do_update()
                         .set((
-                            governance_registries::delegate_count.eq(up.delegate_count),
-                            governance_registries::delegate_term_epochs.eq(up.delegate_term_epochs),
+                            governance_registries::registry_type.eq(registry_type),
+                            governance_registries::delegate_count.eq(delegate_count),
+                            governance_registries::delegate_term_epochs.eq(delegate_term_epochs),
                             governance_registries::proposal_submission_cost
-                                .eq(up.proposal_submission_cost),
-                            governance_registries::max_votes_per_user.eq(up.max_votes_per_user),
-                            governance_registries::quadratic_base_cost.eq(up.quadratic_base_cost),
-                            governance_registries::voting_period_ms.eq(up.voting_period_ms),
-                            governance_registries::quorum_votes.eq(up.quorum_votes),
-                            governance_registries::updated_at.eq(up.updated_at),
-                            governance_registries::transaction_id.eq(up.transaction_id.clone()),
+                                .eq(proposal_submission_cost),
+                            governance_registries::min_on_chain_age_days.eq(min_on_chain_age_days),
+                            governance_registries::max_votes_per_user.eq(max_votes_per_user),
+                            governance_registries::quadratic_base_cost.eq(quadratic_base_cost),
+                            governance_registries::voting_period_ms.eq(voting_period_ms),
+                            governance_registries::quorum_votes.eq(quorum_votes),
+                            governance_registries::updated_at.eq(updated_at),
+                            governance_registries::transaction_id.eq(transaction_id),
+                            governance_registries::registry_id.eq(registry_id),
                         ))
                         .execute(conn)
                         .await?;
+                }
+                GovernanceRow::GovernanceRegistryUpdate(up) => {
+                    total += if let Some(ref rid) = up.registry_id {
+                        diesel::update(governance_registries::table)
+                            .filter(governance_registries::registry_id.eq(rid))
+                            .set((
+                                governance_registries::delegate_count.eq(up.delegate_count),
+                                governance_registries::delegate_term_epochs.eq(up.delegate_term_epochs),
+                                governance_registries::proposal_submission_cost
+                                    .eq(up.proposal_submission_cost),
+                                governance_registries::max_votes_per_user.eq(up.max_votes_per_user),
+                                governance_registries::quadratic_base_cost.eq(up.quadratic_base_cost),
+                                governance_registries::voting_period_ms.eq(up.voting_period_ms),
+                                governance_registries::quorum_votes.eq(up.quorum_votes),
+                                governance_registries::updated_at.eq(up.updated_at),
+                                governance_registries::transaction_id.eq(up.transaction_id.clone()),
+                            ))
+                            .execute(conn)
+                            .await?
+                    } else {
+                        diesel::update(governance_registries::table)
+                            .filter(governance_registries::registry_type.eq(up.registry_type))
+                            .set((
+                                governance_registries::delegate_count.eq(up.delegate_count),
+                                governance_registries::delegate_term_epochs.eq(up.delegate_term_epochs),
+                                governance_registries::proposal_submission_cost
+                                    .eq(up.proposal_submission_cost),
+                                governance_registries::max_votes_per_user.eq(up.max_votes_per_user),
+                                governance_registries::quadratic_base_cost.eq(up.quadratic_base_cost),
+                                governance_registries::voting_period_ms.eq(up.voting_period_ms),
+                                governance_registries::quorum_votes.eq(up.quorum_votes),
+                                governance_registries::updated_at.eq(up.updated_at),
+                                governance_registries::transaction_id.eq(up.transaction_id.clone()),
+                            ))
+                            .execute(conn)
+                            .await?
+                    };
+
+                    if up.registry_type == PROPOSAL_TYPE_PLATFORM {
+                        if let Some(ref rid) = up.registry_id {
+                            let now = chrono::Utc::now().naive_utc();
+                            total += diesel::update(platforms::table)
+                                .filter(platforms::governance_registry_id.eq(rid))
+                                .filter(platforms::deleted_at.is_null())
+                                .set((
+                                    platforms::delegate_count.eq(up.delegate_count),
+                                    platforms::delegate_term_epochs.eq(up.delegate_term_epochs),
+                                    platforms::proposal_submission_cost.eq(up.proposal_submission_cost),
+                                    platforms::max_votes_per_user.eq(up.max_votes_per_user),
+                                    platforms::quadratic_base_cost.eq(up.quadratic_base_cost),
+                                    platforms::voting_period_epochs.eq(up.voting_period_ms),
+                                    platforms::quorum_votes.eq(up.quorum_votes),
+                                    platforms::updated_at.eq(now),
+                                ))
+                                .execute(conn)
+                                .await?;
+                        }
+                    }
                 }
                 GovernanceRow::NominatedDelegate(n) => {
                     total += diesel::insert_into(nominated_delegates::table)

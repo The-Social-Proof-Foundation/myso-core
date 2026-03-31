@@ -1,5 +1,15 @@
 -- Per-registry scoping for platform DAO nominees (on-chain governance registry object id).
 
+-- Multiple platform GovernanceDAO objects share registry_type = 2; key rows by on-chain object id.
+DROP INDEX IF EXISTS idx_governance_registries_type;
+DROP INDEX IF EXISTS idx_governance_registries_registry_id;
+
+CREATE UNIQUE INDEX IF NOT EXISTS idx_governance_registries_registry_id_unique
+    ON governance_registries (registry_id);
+
+CREATE INDEX IF NOT EXISTS idx_governance_registries_type
+    ON governance_registries (registry_type);
+
 ALTER TABLE nominated_delegates
     ADD COLUMN IF NOT EXISTS governance_registry_id TEXT;
 
