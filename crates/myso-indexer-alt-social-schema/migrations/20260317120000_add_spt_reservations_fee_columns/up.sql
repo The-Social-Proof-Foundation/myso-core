@@ -51,3 +51,16 @@ WHERE s.pool_id LIKE 'reservation_pool_%'
       WHERE c.associated_id = s.associated_id
         AND c.pool_id NOT LIKE 'reservation_pool_%'
   );
+
+-- Backfill hypertable `time` when chain `reserved_at` was chain-local/sim ms (~1970) but `created_at`
+-- is already plausible checkpoint Unix ms (1e12+; matches MIN_PLAUSIBLE_RESERVATION_UNIX_MS in indexer).
+-- If this migration was applied before this block existed, run the same UPDATE separately or apply a
+-- follow-up migration. TimescaleDB: decompress affected chunks if compression blocks the UPDATE.
+
+UPDATE spt_reservations
+SET time = to_timestamp(created_at / 1000.0)
+WHERE created_at >= 1000000000000
+  AND (
+    time < timestamptz '2001-09-09 01:46:40+00'
+    OR reserved_at < 1000000000000
+  );

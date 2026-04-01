@@ -13,16 +13,25 @@ fn transaction_id_from_event_id(event_id: &str) -> String {
     event_id.split(':').next().unwrap_or(event_id).to_string()
 }
 
-/// Hypertable `time` for reservation ledger rows: deterministic from the chain event so replays dedupe.
+/// Minimum `reserved_at` / `withdrawn_at` value (milliseconds) treated as Unix epoch ms for hypertable
+/// `time`. Chain-local or sim clocks often emit small values (e.g. ms since genesis); those are not
+/// wall-clock Unix ms and would map to 1970 if used directly.
+const MIN_PLAUSIBLE_RESERVATION_UNIX_MS: i64 = 1_000_000_000_000;
+
+/// Hypertable `time` for reservation ledger rows. Prefers on-chain timestamps when they look like Unix
+/// ms; otherwise uses checkpoint ms (`created_at`) or `fallback` so analytics windows match indexing time.
 fn reservation_row_time(
     chain_event_ms: i64,
     checkpoint_ts_ms: u64,
     fallback: chrono::DateTime<chrono::Utc>,
 ) -> chrono::DateTime<chrono::Utc> {
-    if chain_event_ms > 0 {
-        chrono::DateTime::from_timestamp_millis(chain_event_ms).unwrap_or(fallback)
-    } else {
+    if chain_event_ms >= MIN_PLAUSIBLE_RESERVATION_UNIX_MS {
+        return chrono::DateTime::from_timestamp_millis(chain_event_ms).unwrap_or(fallback);
+    }
+    if checkpoint_ts_ms > 0 {
         chrono::DateTime::from_timestamp_millis(checkpoint_ts_ms as i64).unwrap_or(fallback)
+    } else {
+        fallback
     }
 }
 
@@ -731,7 +740,8 @@ mod tests {
     use serde_json::json;
 
     #[test]
-    fn reservation_created_stores_reserved_at_ms_without_scaling() {
+    fn reservation_created_small_reserved_at_uses_checkpoint_for_hypertable_time() {
+        const CK_MS: u64 = 1_700_000_000_000;
         let data = json!({
             "associated_id": "0xprof",
             "token_type": TOKEN_TYPE_PROFILE,
@@ -741,7 +751,8 @@ mod tests {
             "threshold_met": false,
             "reserved_at": 126000i64,
         });
-        let rows = handle_spt_event("ReservationCreatedEvent", &data, "tx:0", 0, 0).expect("rows");
+        let rows =
+            handle_spt_event("ReservationCreatedEvent", &data, "tx:0", 0, CK_MS).expect("rows");
         let reservation = rows.iter().find_map(|r| {
             if let SocialEventRow::SptReservation { reservation, .. } = r {
                 Some(reservation)
@@ -752,14 +763,15 @@ mod tests {
         let res = reservation.expect("reservation");
         assert_eq!(
             res.reserved_at, 126000,
-            "Move uses epoch ms; values below 1e12 must not be treated as seconds"
+            "raw chain field preserved; values below 1e12 are not used as Unix ms for time"
         );
         assert_eq!(res.transaction_id, "tx:0");
         assert_eq!(
             res.time,
-            chrono::DateTime::from_timestamp_millis(126000).unwrap()
+            chrono::DateTime::from_timestamp_millis(CK_MS as i64).unwrap(),
+            "sim/genesis-relative reserved_at must not set hypertable time to 1970"
         );
-        assert_eq!(res.created_at, 0, "checkpoint_ms 0 in test");
+        assert_eq!(res.created_at, CK_MS as i64);
     }
 
     #[test]
@@ -865,7 +877,8 @@ mod tests {
         assert_eq!(res.transaction_id, "tx2:0");
         assert_eq!(
             res.time,
-            chrono::DateTime::from_timestamp_millis(300).unwrap()
+            chrono::DateTime::from_timestamp_millis(3000).unwrap(),
+            "reserved_at 300 is not plausible Unix ms; time follows checkpoint"
         );
         assert_eq!(res.created_at, 3000);
 

@@ -177,8 +177,8 @@ pub(crate) async fn get_spt_reservation_pool(
 /// secondary-market trades (`spt_transactions`) plus reservation ledger activity (`spt_reservations`).
 ///
 /// Windows use the database clock (`NOW()`), i.e. **UTC** in PostgreSQL. **Transactions:** rows whose
-/// indexer `created_at` (epoch ms) falls in the window, matching [`get_spt_market_sentiment`]. **Reservations:**
-/// use hypertable `time` (compatible with DBs that predate the `created_at` column on `spt_reservations`).
+/// hypertable `time` (indexer ingestion instant) falls in the window, matching [`get_spt_market_sentiment`]. **Reservations:**
+/// use hypertable `time` on `spt_reservations`.
 /// **Current** window: last 24h. **Prior window:** strictly after `NOW() - 48h` through `NOW() - 24h` (contiguous).
 ///
 /// `volume_24h` and deltas are **MYSO base units**: sum of `myso_amount` on `spt_transactions` for
@@ -214,16 +214,13 @@ pub(crate) async fn list_spt_reservation_pools(
         tx_vol_current AS (
             SELECT pool_id, COALESCE(SUM(myso_amount), 0)::bigint AS vol
             FROM spt_transactions
-            WHERE created_at > 0
-              AND to_timestamp(created_at / 1000.0) > NOW() - INTERVAL '24 hours'
+            WHERE time > NOW() - INTERVAL '24 hours'
             GROUP BY pool_id
         ),
         tx_vol_previous AS (
             SELECT pool_id, COALESCE(SUM(myso_amount), 0)::bigint AS vol
             FROM spt_transactions
-            WHERE created_at > 0
-              AND to_timestamp(created_at / 1000.0) > NOW() - INTERVAL '48 hours'
-              AND to_timestamp(created_at / 1000.0) <= NOW() - INTERVAL '24 hours'
+            WHERE time BETWEEN NOW() - INTERVAL '48 hours' AND NOW() - INTERVAL '24 hours'
             GROUP BY pool_id
         ),
         res_vol_current AS (
@@ -616,6 +613,9 @@ pub(crate) async fn get_spt_creator_revenue_streams(
     }))
 }
 
+/// Global SPT sentiment and rolling volumes. **Trades** use `spt_transactions.time` (ingestion
+/// instant) for 24h / 48h windows, matching [`get_spt_analytics_top_performers`] and
+/// [`get_spt_liquidity_profile`]. **Reservations** use `spt_reservations.time`.
 pub(crate) async fn get_spt_market_sentiment(db: &Db) -> Result<serde_json::Value, SocialError> {
     let mut conn = db.connect().await?;
     let query = r#"
@@ -625,15 +625,12 @@ pub(crate) async fn get_spt_market_sentiment(db: &Db) -> Result<serde_json::Valu
                 COALESCE(SUM(CASE WHEN transaction_type = 'SELL' THEN ABS(myso_amount) ELSE 0 END), 0)::bigint AS trade_sell,
                 COALESCE(COUNT(*), 0)::bigint AS transaction_count
             FROM spt_transactions
-            WHERE created_at > 0
-              AND to_timestamp(created_at / 1000.0) > NOW() - INTERVAL '24 hours'
+            WHERE time > NOW() - INTERVAL '24 hours'
         ),
         trade_previous AS (
             SELECT COALESCE(SUM(ABS(myso_amount)), 0)::bigint AS total_gross
             FROM spt_transactions
-            WHERE created_at > 0
-              AND to_timestamp(created_at / 1000.0) > NOW() - INTERVAL '48 hours'
-              AND to_timestamp(created_at / 1000.0) <= NOW() - INTERVAL '24 hours'
+            WHERE time BETWEEN NOW() - INTERVAL '48 hours' AND NOW() - INTERVAL '24 hours'
         ),
         reservation_volume AS (
             SELECT
@@ -655,8 +652,7 @@ pub(crate) async fn get_spt_market_sentiment(db: &Db) -> Result<serde_json::Valu
             SELECT COALESCE(COUNT(*), 0)::bigint AS cnt
             FROM (
                 SELECT sender AS addr FROM spt_transactions
-                WHERE created_at > 0
-                  AND to_timestamp(created_at / 1000.0) > NOW() - INTERVAL '24 hours'
+                WHERE time > NOW() - INTERVAL '24 hours'
                   AND transaction_type = 'BUY'
                 UNION
                 SELECT reserver_address AS addr FROM spt_reservations
@@ -668,8 +664,7 @@ pub(crate) async fn get_spt_market_sentiment(db: &Db) -> Result<serde_json::Valu
             SELECT COALESCE(COUNT(*), 0)::bigint AS cnt
             FROM (
                 SELECT sender AS addr FROM spt_transactions
-                WHERE created_at > 0
-                  AND to_timestamp(created_at / 1000.0) > NOW() - INTERVAL '24 hours'
+                WHERE time > NOW() - INTERVAL '24 hours'
                   AND transaction_type = 'SELL'
                 UNION
                 SELECT reserver_address AS addr FROM spt_reservations

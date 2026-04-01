@@ -1,3 +1,5 @@
+-- Removing columns below does not restore `time` values possibly rewritten by the backfill in up.sql.
+
 -- Remove fee and indexer-timestamp columns from spt_reservations
 ALTER TABLE spt_reservations DROP COLUMN IF EXISTS created_at;
 ALTER TABLE spt_reservations DROP COLUMN IF EXISTS treasury_fee;
