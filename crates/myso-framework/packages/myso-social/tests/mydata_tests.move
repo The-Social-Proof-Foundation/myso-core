@@ -334,7 +334,6 @@ module social_contracts::mydata_tests {
                 string::utf8(b"coffee_pool"),
                 string::utf8(b"Coffee consumer data"),
                 &clock,
-                test_scenario::ctx(&mut scenario)
             );
 
             test_scenario::return_to_sender(&scenario, admin);
@@ -362,7 +361,6 @@ module social_contracts::mydata_tests {
                 string::utf8(b"coffee_pool"),
                 string::utf8(b"Coffee data"),
                 &clock,
-                test_scenario::ctx(&mut scenario)
             );
 
             let broad_pool = pool::get_broad_pool(&pool_registry, pool::last_created_pool_id(&pool_registry));
@@ -377,7 +375,6 @@ module social_contracts::mydata_tests {
                 string::utf8(b"US GenZ coffee consumers"),
                 option::none<vector<u8>>(),
                 &clock,
-                test_scenario::ctx(&mut scenario)
             );
 
             test_scenario::return_to_sender(&scenario, admin);
@@ -407,7 +404,6 @@ module social_contracts::mydata_tests {
                 string::utf8(b"test_pool"),
                 string::utf8(b"Test"),
                 &clock,
-                test_scenario::ctx(&mut scenario)
             );
 
             let broad_pool = pool::get_broad_pool(&pool_registry, pool::last_created_pool_id(&pool_registry));
@@ -421,7 +417,6 @@ module social_contracts::mydata_tests {
                 string::utf8(b"Test sub"),
                 option::none<vector<u8>>(),
                 &clock,
-                test_scenario::ctx(&mut scenario)
             );
 
             let sub_pool_id = pool::last_created_sub_pool_id(&pool_registry);

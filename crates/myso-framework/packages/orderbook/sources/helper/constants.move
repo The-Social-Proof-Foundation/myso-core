@@ -94,8 +94,6 @@ const MYSO_MULTIPLIER: u64 = 100 * FLOAT_SCALING;
 const TAKER_DISCOUNT: u64 = 500_000_000;
 #[test_only]
 const USDC_UNIT: u64 = 1_000_000;
-#[test_only]
-const MYSO_UNIT: u64 = 1_000_000_000;
 
 // Testing error codes
 #[test_only]
@@ -346,11 +344,6 @@ public fun e_incorrect_mid_price(): u64 {
 #[test_only]
 public fun usdc_unit(): u64 {
     USDC_UNIT
-}
-
-#[test_only]
-public fun myso_unit(): u64 {
-    MYSO_UNIT
 }
 
 #[test_only]

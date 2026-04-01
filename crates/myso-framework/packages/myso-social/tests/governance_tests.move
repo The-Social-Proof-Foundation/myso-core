@@ -633,6 +633,8 @@ module social_contracts::governance_tests {
                  actual_max_votes_per_user, actual_quadratic_base_cost, actual_voting_period_epochs,
                  actual_quorum_votes) = governance::get_governance_parameters(&registry);
             
+            assert!(governance::is_delegate(&registry, ADMIN), 8);
+            
             assert!(actual_delegate_count == 7, 1);
             assert!(actual_delegate_term_epochs == 30, 2);
             assert!(actual_proposal_submission_cost == 50000000, 3);
@@ -705,6 +707,8 @@ module social_contracts::governance_tests {
                  actual_max_votes_per_user, actual_quadratic_base_cost, actual_voting_period_epochs,
                  actual_quorum_votes) = governance::get_governance_parameters(&registry);
             
+            assert!(governance::is_delegate(&registry, ADMIN), 8);
+            
             assert!(actual_delegate_count == 7, 1);
             assert!(actual_delegate_term_epochs == 30, 2);
             assert!(actual_proposal_submission_cost == 50000000, 3);
@@ -724,7 +728,7 @@ module social_contracts::governance_tests {
             // Verify we can read parameters as a different user
             let (_, _, _, _, _, _, _) = governance::get_governance_parameters(&registry);
             
-            assert!(tx_context::sender(test_scenario::ctx(&mut scenario)) == USER1, 8);
+            assert!(tx_context::sender(test_scenario::ctx(&mut scenario)) == USER1, 9);
             
             test_scenario::return_shared(registry);
         };

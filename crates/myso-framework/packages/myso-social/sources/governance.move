@@ -307,7 +307,8 @@ module social_contracts::governance {
     /// This function has the same logic as init() but can be called by bootstrap
     public(package) fun bootstrap_init(ctx: &mut TxContext) {
         let current_time = tx_context::epoch_timestamp_ms(ctx);
-        
+        let founder = tx_context::sender(ctx);
+
         // Create MySocial Ecosystem Governance Registry
         let mut ecosystem_registry = GovernanceDAO {
             id: object::new(ctx),
@@ -352,6 +353,8 @@ module social_contracts::governance {
             quorum_votes: ecosystem_registry.quorum_votes,
             updated_at: current_time,
         });
+
+        seed_founding_delegate(&mut ecosystem_registry, founder, ctx);
         
         // Share the ecosystem registry object
         transfer::share_object(ecosystem_registry);
@@ -400,9 +403,40 @@ module social_contracts::governance {
             quorum_votes: proof_of_creativity_registry.quorum_votes,
             updated_at: current_time,
         });
+
+        seed_founding_delegate(&mut proof_of_creativity_registry, founder, ctx);
         
         // Share the proof of creativity registry object
         transfer::share_object(proof_of_creativity_registry);
+    }
+
+    /// Install the founding delegate without going through nomination (bootstrap / platform creation).
+    fun seed_founding_delegate(registry: &mut GovernanceDAO, addr: address, ctx: &TxContext) {
+        let current_epoch = tx_context::epoch(ctx);
+        let delegate_term_epochs = registry.delegate_term_epochs;
+        let term_start = current_epoch;
+        let term_end = term_start + delegate_term_epochs;
+
+        let new_delegate = Delegate {
+            address: addr,
+            upvotes: 0,
+            downvotes: 0,
+            proposals_reviewed: 0,
+            proposals_submitted: 0,
+            sided_winning_proposals: 0,
+            sided_losing_proposals: 0,
+            term_start,
+            term_end,
+        };
+        table::add(&mut registry.delegates, addr, new_delegate);
+        vec_set::insert(&mut registry.delegate_addresses, addr);
+
+        event::emit(DelegateElectedEvent {
+            delegate_address: addr,
+            term_start,
+            term_end,
+            registry_type: registry.registry_type,
+        });
     }
 
     fun initialize_registry_tables(registry: &mut GovernanceDAO, _ctx: &mut TxContext) {
@@ -2024,6 +2058,7 @@ module social_contracts::governance {
 
     /// Create a platform-specific governance registry when a platform is approved
     /// This function can only be called by the platform toggle_platform_approval function
+    /// The transaction sender is seeded as the founding delegate (same pattern as `bootstrap_init`).
     public(package) fun create_platform_governance(
         delegate_count: u64,
         delegate_term_epochs: u64,
@@ -2035,6 +2070,7 @@ module social_contracts::governance {
         ctx: &mut TxContext
     ): ID {
         let current_time = tx_context::epoch_timestamp_ms(ctx);
+        let founding_delegate = tx_context::sender(ctx);
         
         // Create Platform Governance Registry with parameters
         let mut platform_registry = GovernanceDAO {
@@ -2063,6 +2099,8 @@ module social_contracts::governance {
         
         // Initialize registry tables
         initialize_registry_tables(&mut platform_registry, ctx);
+
+        seed_founding_delegate(&mut platform_registry, founding_delegate, ctx);
         
         // Get the ID before sharing
         let registry_id = object::id(&platform_registry);

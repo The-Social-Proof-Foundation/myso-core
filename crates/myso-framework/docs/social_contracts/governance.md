@@ -3838,7 +3838,7 @@ If more than half of delegates reject, reject the proposal manually
 
 Create a platform-specific governance registry when a platform is approved
 This function can only be called by the platform toggle_platform_approval function
-
+The transaction sender is seeded as the founding delegate.
 
 <pre><code><b>public</b>(package) <b>fun</b> <a href="../social_contracts/governance.md#social_contracts_governance_create_platform_governance">create_platform_governance</a>(delegate_count: u64, delegate_term_epochs: u64, proposal_submission_cost: u64, max_votes_per_user: u64, quadratic_base_cost: u64, voting_period_ms: u64, quorum_votes: u64, ctx: &<b>mut</b> <a href="../myso/tx_context.md#myso_tx_context_TxContext">myso::tx_context::TxContext</a>): <a href="../myso/object.md#myso_object_ID">myso::object::ID</a>
 </code></pre>
@@ -3860,6 +3860,7 @@ This function can only be called by the platform toggle_platform_approval functi
     ctx: &<b>mut</b> TxContext
 ): ID {
     <b>let</b> current_time = tx_context::epoch_timestamp_ms(ctx);
+    <b>let</b> founding_delegate = tx_context::sender(ctx);
     // Create Platform Governance Registry with parameters
     <b>let</b> <b>mut</b> platform_registry = <a href="../social_contracts/governance.md#social_contracts_governance_GovernanceDAO">GovernanceDAO</a> {
         id: object::new(ctx),
@@ -3886,6 +3887,7 @@ This function can only be called by the platform toggle_platform_approval functi
     };
     // Initialize registry tables
     <a href="../social_contracts/governance.md#social_contracts_governance_initialize_registry_tables">initialize_registry_tables</a>(&<b>mut</b> platform_registry, ctx);
+    seed_founding_delegate(&<b>mut</b> platform_registry, founding_delegate, ctx);
     // Get the ID before sharing
     <b>let</b> registry_id = object::id(&platform_registry);
     // Emit event <b>for</b> <a href="../social_contracts/platform.md#social_contracts_platform">platform</a> registry creation
