@@ -11,16 +11,13 @@ use diesel::sql_types::{BigInt, Bool, Int2, Nullable, Text};
 use diesel::ExpressionMethods;
 use diesel::QueryDsl;
 use diesel_async::RunQueryDsl;
+use move_core_types::ident_str;
 use myso_indexer_alt_framework::pipeline::Processor;
 use myso_indexer_alt_framework::postgres::handler::Handler;
 use myso_indexer_alt_framework::postgres::Connection;
-use move_core_types::ident_str;
 use myso_indexer_alt_framework::types::full_checkpoint_content::{
     Checkpoint, ExecutedTransaction, ObjectSet,
 };
-use myso_types::effects::TransactionEffectsAPI;
-use myso_types::storage::ObjectKey;
-use myso_types::MYSO_SOCIAL_ADDRESS;
 use myso_indexer_alt_framework::FieldCount;
 use myso_indexer_alt_social_schema::models::{
     GovernanceRegistryUpdate, NewAnonymousVote, NewCommunityVote, NewDelegate, NewDelegateRating,
@@ -33,6 +30,9 @@ use myso_indexer_alt_social_schema::schema::{
     reward_distributions, vote_decryption_failures,
 };
 use myso_indexer_alt_social_schema::PROPOSAL_TYPE_PLATFORM;
+use myso_types::effects::TransactionEffectsAPI;
+use myso_types::storage::ObjectKey;
+use myso_types::MYSO_SOCIAL_ADDRESS;
 
 use super::common;
 use super::events;
@@ -376,11 +376,13 @@ impl Handler for GovernanceHandler {
                             .filter(governance_registries::registry_id.eq(rid))
                             .set((
                                 governance_registries::delegate_count.eq(up.delegate_count),
-                                governance_registries::delegate_term_epochs.eq(up.delegate_term_epochs),
+                                governance_registries::delegate_term_epochs
+                                    .eq(up.delegate_term_epochs),
                                 governance_registries::proposal_submission_cost
                                     .eq(up.proposal_submission_cost),
                                 governance_registries::max_votes_per_user.eq(up.max_votes_per_user),
-                                governance_registries::quadratic_base_cost.eq(up.quadratic_base_cost),
+                                governance_registries::quadratic_base_cost
+                                    .eq(up.quadratic_base_cost),
                                 governance_registries::voting_period_ms.eq(up.voting_period_ms),
                                 governance_registries::quorum_votes.eq(up.quorum_votes),
                                 governance_registries::updated_at.eq(up.updated_at),
@@ -393,11 +395,13 @@ impl Handler for GovernanceHandler {
                             .filter(governance_registries::registry_type.eq(up.registry_type))
                             .set((
                                 governance_registries::delegate_count.eq(up.delegate_count),
-                                governance_registries::delegate_term_epochs.eq(up.delegate_term_epochs),
+                                governance_registries::delegate_term_epochs
+                                    .eq(up.delegate_term_epochs),
                                 governance_registries::proposal_submission_cost
                                     .eq(up.proposal_submission_cost),
                                 governance_registries::max_votes_per_user.eq(up.max_votes_per_user),
-                                governance_registries::quadratic_base_cost.eq(up.quadratic_base_cost),
+                                governance_registries::quadratic_base_cost
+                                    .eq(up.quadratic_base_cost),
                                 governance_registries::voting_period_ms.eq(up.voting_period_ms),
                                 governance_registries::quorum_votes.eq(up.quorum_votes),
                                 governance_registries::updated_at.eq(up.updated_at),
@@ -416,7 +420,8 @@ impl Handler for GovernanceHandler {
                                 .set((
                                     platforms::delegate_count.eq(up.delegate_count),
                                     platforms::delegate_term_epochs.eq(up.delegate_term_epochs),
-                                    platforms::proposal_submission_cost.eq(up.proposal_submission_cost),
+                                    platforms::proposal_submission_cost
+                                        .eq(up.proposal_submission_cost),
                                     platforms::max_votes_per_user.eq(up.max_votes_per_user),
                                     platforms::quadratic_base_cost.eq(up.quadratic_base_cost),
                                     platforms::voting_period_epochs.eq(up.voting_period_ms),

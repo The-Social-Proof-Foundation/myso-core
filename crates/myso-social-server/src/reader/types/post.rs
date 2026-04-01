@@ -32,14 +32,6 @@ pub struct PostBasicRow {
 }
 
 #[derive(Debug, Serialize)]
-pub struct PlatformMembershipRow {
-    pub platform_id: String,
-    pub name: String,
-    pub is_approved: bool,
-    pub joined_at: chrono::NaiveDateTime,
-}
-
-#[derive(Debug, Serialize)]
 pub struct BlockedEventRow {
     pub event_type: String,
     pub blocked_address: Option<String>,

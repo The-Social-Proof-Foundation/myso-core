@@ -56,9 +56,9 @@ use crate::promotion::{
 use crate::revenue::get_platform_revenue_summary;
 use crate::social_graph::{
     FollowSortBy, ProfileSummaryRow, ViewerSocialContext, batch_viewer_social_context,
-    check_following, check_platform_blocked, check_profile_blocked, get_blocked_platforms,
-    get_blocked_profiles, get_followers, get_following, get_profile_platform_memberships,
-    resolve_profile_address,
+    check_following, check_platform_blocked, check_profile_blocked,
+    count_profile_platform_memberships, get_blocked_platforms, get_blocked_profiles, get_followers,
+    get_following, get_profile_platform_memberships, resolve_profile_address,
 };
 use crate::spot::{
     get_spot_config, get_spot_record, get_spot_resolution, list_spot_bet_withdrawals,
@@ -212,6 +212,28 @@ impl SocialPgReader {
         crate::post::list_posts(&mut conn, owner, post_type, limit, offset, &self.metrics).await
     }
 
+    /// Posts for a profile (owner or profile_id), same scope as REST profile posts.
+    pub async fn list_posts_for_profile(
+        &self,
+        owner_address: &str,
+        profile_id: Option<&str>,
+        post_type: Option<&str>,
+        limit: i64,
+        offset: i64,
+    ) -> anyhow::Result<Vec<crate::post::PostRow>> {
+        let mut conn = self.connect().await?;
+        crate::post::list_posts_for_profile(
+            &mut conn,
+            owner_address,
+            profile_id,
+            post_type,
+            limit,
+            offset,
+            &self.metrics,
+        )
+        .await
+    }
+
     /// Get a platform by ID.
     pub async fn get_platform_by_id(
         &self,
@@ -358,6 +380,12 @@ impl SocialPgReader {
     {
         let mut conn = self.connect().await?;
         get_profile_platform_memberships(&mut conn, address, limit, offset, &self.metrics).await
+    }
+
+    /// Count platforms this profile has joined (same join/filter as [`get_profile_platform_memberships`]).
+    pub async fn count_profile_platform_memberships(&self, address: &str) -> anyhow::Result<i64> {
+        let mut conn = self.connect().await?;
+        count_profile_platform_memberships(&mut conn, address, &self.metrics).await
     }
 
     /// Get members of a platform (paginated).

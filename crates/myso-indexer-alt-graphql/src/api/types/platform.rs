@@ -330,39 +330,255 @@ impl PlatformUserAccess {
 
 #[derive(Clone)]
 pub(crate) struct PlatformMembershipSummary {
-    pub platform_id: String,
-    pub name: String,
-    pub is_approved: bool,
-    pub joined_at: chrono::NaiveDateTime,
+    row: ProfilePlatformMembershipRow,
 }
 
 impl PlatformMembershipSummary {
     pub(crate) fn from_row(row: ProfilePlatformMembershipRow) -> Self {
-        Self {
-            platform_id: row.platform_id,
-            name: row.name,
-            is_approved: row.is_approved,
-            joined_at: row.joined_at,
-        }
+        Self { row }
     }
 }
 
 #[Object]
 impl PlatformMembershipSummary {
+    /// `platform_memberships` row id (stable for this wallet+platform join record).
+    async fn membership_id(&self) -> i32 {
+        self.row.membership_id
+    }
+
+    /// Surrogate key from the `platforms` table.
+    async fn platform_db_id(&self) -> i32 {
+        self.row.platform_db_id
+    }
+
     async fn platform_id(&self) -> &str {
-        &self.platform_id
+        &self.row.platform_id
     }
 
     async fn name(&self) -> &str {
-        &self.name
+        &self.row.name
+    }
+
+    async fn tagline(&self) -> &str {
+        &self.row.tagline
+    }
+
+    async fn description(&self) -> Option<&str> {
+        self.row.description.as_deref()
+    }
+
+    async fn logo(&self) -> Option<&str> {
+        self.row.logo.as_deref()
+    }
+
+    async fn developer_address(&self) -> &str {
+        &self.row.developer_address
+    }
+
+    /// Profile of the platform developer (optional; loads via social reader when selected).
+    async fn developer_profile(&self, ctx: &Context<'_>) -> Option<ProfileSummary> {
+        resolve_profile_summary(ctx, &self.row.developer_address).await
+    }
+
+    async fn terms_of_service(&self) -> Option<&str> {
+        self.row.terms_of_service.as_deref()
+    }
+
+    async fn privacy_policy(&self) -> Option<&str> {
+        self.row.privacy_policy.as_deref()
+    }
+
+    /// Alternate names / labels (JSON array in the DB `platforms` column).
+    async fn platform_names(&self) -> Option<Json> {
+        self.row
+            .platform_names
+            .as_ref()
+            .and_then(|v| Json::try_from(v.clone()).ok())
+    }
+
+    /// External links (JSON array in DB).
+    async fn links(&self) -> Option<Json> {
+        self.row
+            .links
+            .as_ref()
+            .and_then(|v| Json::try_from(v.clone()).ok())
+    }
+
+    /// Platform status code (indexer contract): 0=Development, 1=Alpha, 2=Beta, 3=Live, 4=Maintenance, 5=Sunset, 6=Shutdown.
+    async fn status(&self) -> i32 {
+        self.row.status as i32
+    }
+
+    async fn status_text(&self) -> &str {
+        platform_status_to_text(self.row.status)
+    }
+
+    async fn release_date(&self) -> Option<&str> {
+        self.row.release_date.as_deref()
+    }
+
+    async fn shutdown_date(&self) -> Option<&str> {
+        self.row.shutdown_date.as_deref()
+    }
+
+    /// When the platform row was created (epoch ms).
+    async fn created_at(&self) -> i64 {
+        self.row.platform_created_at.and_utc().timestamp_millis()
+    }
+
+    /// When the platform row was last updated (epoch ms).
+    async fn updated_at(&self) -> i64 {
+        self.row.platform_updated_at.and_utc().timestamp_millis()
     }
 
     async fn is_approved(&self) -> bool {
-        self.is_approved
+        self.row.is_approved
     }
 
+    async fn approval_changed_at(&self) -> Option<i64> {
+        self.row
+            .approval_changed_at
+            .map(|t| t.and_utc().timestamp_millis())
+    }
+
+    async fn approved_by(&self) -> Option<&str> {
+        self.row.approved_by.as_deref()
+    }
+
+    /// When this wallet joined the platform (epoch ms).
     async fn joined_at(&self) -> i64 {
-        self.joined_at.and_utc().timestamp_millis()
+        self.row.joined_at.and_utc().timestamp_millis()
+    }
+
+    async fn wants_dao_governance(&self) -> Option<bool> {
+        self.row.wants_dao_governance
+    }
+
+    async fn governance_registry_id(&self) -> Option<&str> {
+        self.row.governance_registry_id.as_deref()
+    }
+
+    async fn delegate_count(&self) -> Option<i64> {
+        self.row.delegate_count
+    }
+
+    async fn delegate_term_epochs(&self) -> Option<i64> {
+        self.row.delegate_term_epochs
+    }
+
+    async fn max_votes_per_user(&self) -> Option<i64> {
+        self.row.max_votes_per_user
+    }
+
+    async fn min_on_chain_age_days(&self) -> Option<i64> {
+        self.row.min_on_chain_age_days
+    }
+
+    async fn proposal_submission_cost(&self) -> Option<i64> {
+        self.row.proposal_submission_cost
+    }
+
+    async fn quadratic_base_cost(&self) -> Option<i64> {
+        self.row.quadratic_base_cost
+    }
+
+    async fn quorum_votes(&self) -> Option<i64> {
+        self.row.quorum_votes
+    }
+
+    async fn voting_period_epochs(&self) -> Option<i64> {
+        self.row.voting_period_epochs
+    }
+
+    /// Treasury balance in MYSO base units (nullable when unknown); same semantics as `Platform.treasury`.
+    async fn treasury(&self) -> Option<i64> {
+        self.row.treasury
+    }
+
+    /// On-chain treasury object id is not stored on `platforms`; always null until indexed elsewhere.
+    async fn treasury_address(&self) -> Option<String> {
+        None
+    }
+
+    async fn version(&self) -> Option<i64> {
+        self.row.version
+    }
+
+    async fn primary_category(&self) -> &str {
+        &self.row.primary_category
+    }
+
+    async fn secondary_category(&self) -> Option<&str> {
+        self.row.secondary_category.as_deref()
+    }
+
+    /// Present when the platform is soft-deleted (epoch ms).
+    async fn deleted_at(&self) -> Option<i64> {
+        self.row.deleted_at.map(|t| t.and_utc().timestamp_millis())
+    }
+
+    async fn moderator_count(&self) -> i64 {
+        self.row.moderator_count
+    }
+
+    async fn blocked_profiles_count(&self) -> i64 {
+        self.row.blocked_profiles_count
+    }
+}
+
+/// Paginated platform memberships for a profile (offset/limit + total count).
+#[derive(Clone)]
+pub(crate) struct PlatformMembershipPage {
+    pub(crate) items: Vec<PlatformMembershipSummary>,
+    pub(crate) total_count: i64,
+    pub(crate) limit: i64,
+    pub(crate) offset: i64,
+    total_pages: i64,
+}
+
+impl PlatformMembershipPage {
+    pub(crate) fn new(
+        items: Vec<PlatformMembershipSummary>,
+        total_count: i64,
+        limit: i64,
+        offset: i64,
+    ) -> Self {
+        let total_pages = if total_count == 0 {
+            0
+        } else {
+            (total_count + limit - 1) / limit
+        };
+        Self {
+            items,
+            total_count,
+            limit,
+            offset,
+            total_pages,
+        }
+    }
+}
+
+#[Object]
+impl PlatformMembershipPage {
+    async fn items(&self) -> Vec<PlatformMembershipSummary> {
+        self.items.clone()
+    }
+
+    async fn total_count(&self) -> i64 {
+        self.total_count
+    }
+
+    async fn limit(&self) -> i64 {
+        self.limit
+    }
+
+    async fn offset(&self) -> i64 {
+        self.offset
+    }
+
+    /// Total pages for this `limit` (0 when there are no memberships).
+    async fn total_pages(&self) -> i64 {
+        self.total_pages
     }
 }
 

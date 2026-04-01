@@ -4142,11 +4142,95 @@ type PlatformMemberSummary {
 	walletAddress: MySoAddress!
 }
 
+type PlatformMembershipPage {
+	items: [PlatformMembershipSummary!]!
+	limit: Int!
+	offset: Int!
+	totalCount: Int!
+	"""
+	Total pages for this `limit` (0 when there are no memberships).
+	"""
+	totalPages: Int!
+}
+
 type PlatformMembershipSummary {
+	approvalChangedAt: Int
+	approvedBy: String
+	blockedProfilesCount: Int!
+	"""
+	When the platform row was created (epoch ms).
+	"""
+	createdAt: Int!
+	delegateCount: Int
+	delegateTermEpochs: Int
+	"""
+	Present when the platform is soft-deleted (epoch ms).
+	"""
+	deletedAt: Int
+	description: String
+	developerAddress: String!
+	"""
+	Profile of the platform developer (optional; loads via social reader when selected).
+	"""
+	developerProfile: ProfileSummary
+	governanceRegistryId: String
 	isApproved: Boolean!
+	"""
+	When this wallet joined the platform (epoch ms).
+	"""
 	joinedAt: Int!
+	"""
+	External links (JSON array in DB).
+	"""
+	links: JSON
+	logo: String
+	maxVotesPerUser: Int
+	"""
+	`platform_memberships` row id (stable for this wallet+platform join record).
+	"""
+	membershipId: Int!
+	minOnChainAgeDays: Int
+	moderatorCount: Int!
 	name: String!
+	"""
+	Surrogate key from the `platforms` table.
+	"""
+	platformDbId: Int!
 	platformId: String!
+	"""
+	Alternate names / labels (JSON array in the DB `platforms` column).
+	"""
+	platformNames: JSON
+	primaryCategory: String!
+	privacyPolicy: String
+	proposalSubmissionCost: Int
+	quadraticBaseCost: Int
+	quorumVotes: Int
+	releaseDate: String
+	secondaryCategory: String
+	shutdownDate: String
+	"""
+	Platform status code (indexer contract): 0=Development, 1=Alpha, 2=Beta, 3=Live, 4=Maintenance, 5=Sunset, 6=Shutdown.
+	"""
+	status: Int!
+	statusText: String!
+	tagline: String!
+	termsOfService: String
+	"""
+	Treasury balance in MYSO base units (nullable when unknown); same semantics as `Platform.treasury`.
+	"""
+	treasury: Int
+	"""
+	On-chain treasury object id is not stored on `platforms`; always null until indexed elsewhere.
+	"""
+	treasuryAddress: String
+	"""
+	When the platform row was last updated (epoch ms).
+	"""
+	updatedAt: Int!
+	version: Int
+	votingPeriodEpochs: Int
+	wantsDaoGovernance: Boolean
 }
 
 type PlatformModeratorSummary {
@@ -4727,9 +4811,17 @@ type Profile implements Node {
 	"""
 	phone: String
 	"""
-	Platforms this profile has joined (paginated).
+	Platforms this profile has joined (paginated). Each row includes platform fields in one SQL round-trip.
 	"""
 	platformMemberships(limit: Int, offset: Int): [PlatformMembershipSummary!]
+	"""
+	Same rows as `platformMemberships` plus total count and `totalPages` for UI pagers.
+	"""
+	platformMembershipsPage(limit: Int, offset: Int): PlatformMembershipPage
+	"""
+	Total number of platform memberships for this profile (same filter as `platformMemberships`).
+	"""
+	platformMembershipsTotal: Int
 	"""
 	Cash-flow P&L for this profile's owner wallet (MYSO base units; not realized/FIFO P&L).
 	When `windows` is omitted, defaults to 7d, 30d, and all-time.

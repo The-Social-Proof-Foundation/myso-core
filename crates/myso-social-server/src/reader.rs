@@ -969,7 +969,7 @@ impl Reader {
         address: &str,
         limit: i64,
         offset: i64,
-    ) -> Result<Vec<PlatformMembershipRow>, crate::error::SocialError> {
+    ) -> Result<Vec<ProfilePlatformMembershipRow>, crate::error::SocialError> {
         social_graph::get_profile_platform_memberships(&self.db, address, limit, offset).await
     }
 

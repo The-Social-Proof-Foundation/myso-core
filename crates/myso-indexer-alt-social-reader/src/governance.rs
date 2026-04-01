@@ -698,9 +698,9 @@ pub(crate) async fn get_governance_stats_by_registry_type(
 
 #[cfg(test)]
 mod list_proposals_sql_tests {
-    use super::LIST_PROPOSALS_SQL;
     use super::LIST_NOMINATED_DELEGATES_LEGACY_SQL;
     use super::LIST_NOMINATED_DELEGATES_PLATFORM_SQL;
+    use super::LIST_PROPOSALS_SQL;
 
     #[test]
     fn list_proposals_sql_filters_proposal_type_at_second_bind() {

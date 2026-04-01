@@ -94,7 +94,7 @@ pub async fn get_profile_platform_memberships(
     State(state): State<Arc<AppState>>,
     Path(address): Path<String>,
     Query(params): Query<PageParams>,
-) -> Result<Json<Vec<crate::reader::PlatformMembershipRow>>, SocialError> {
+) -> Result<Json<Vec<crate::reader::ProfilePlatformMembershipRow>>, SocialError> {
     let limit = params.limit();
     let offset = params.offset();
     let memberships = state

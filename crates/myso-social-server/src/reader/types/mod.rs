@@ -31,7 +31,9 @@ pub use mydata::{
     AccessAnalytics, AccessLogInfo, DailyRevenue, MyDataBasic, MyDataConfigInfo,
     MyDataStatsResponse, PurchaseInfo, RevenueInfo, SubscriptionInfo,
 };
-pub use myso_indexer_alt_social_schema::models::{PostTransfer, ProfileOffer, ProfileSaleFee};
+pub use myso_indexer_alt_social_schema::models::{
+    PostTransfer, ProfileOffer, ProfilePlatformMembershipRow, ProfileSaleFee,
+};
 pub use platform::{
     PlatformApprovalRow, PlatformBlockedProfileRow, PlatformEventRow, PlatformMemberRow,
     PlatformModeratorRow, PlatformRow,
@@ -41,9 +43,8 @@ pub use poc::{
     PocRevenueRedirectionRow,
 };
 pub use post::{
-    BlockedEventRow, CommentRow, PlatformMembershipRow, PostBasicRow, PostConfigRow,
-    PromotedPostRow, PromotionHourlyRow, PromotionStatsRow, PromotionTimeSeriesRow,
-    PromotionViewRow, ReactionRow, RepostRow,
+    BlockedEventRow, CommentRow, PostBasicRow, PostConfigRow, PromotedPostRow, PromotionHourlyRow,
+    PromotionStatsRow, PromotionTimeSeriesRow, PromotionViewRow, ReactionRow, RepostRow,
 };
 pub use profile::{ProfileBadgeRow, ProfileEventRow, ProfilePlatformEventRow};
 pub use revenue::UnifiedRevenue;

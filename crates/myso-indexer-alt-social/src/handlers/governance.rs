@@ -178,7 +178,10 @@ fn process_delegate_nominated_event(
         nomination_time: now,
         status: 0,
         transaction_id: event_id.to_string(),
-        governance_registry_id: nominee_governance_registry_id(ev.registry_type, governance_registry_id),
+        governance_registry_id: nominee_governance_registry_id(
+            ev.registry_type,
+            governance_registry_id,
+        ),
     };
     let gov_ev = NewGovernanceEvent {
         event_type: "DelegateNominatedEvent".to_string(),
@@ -215,7 +218,10 @@ fn process_delegate_elected_event(
         address: ev.delegate_address.clone(),
         registry_type: ev.registry_type as i16,
         status: NOMINEE_STATUS_ELECTED,
-        governance_registry_id: nominee_governance_registry_id(ev.registry_type, governance_registry_id),
+        governance_registry_id: nominee_governance_registry_id(
+            ev.registry_type,
+            governance_registry_id,
+        ),
     };
     let delegate = NewDelegate {
         address: ev.delegate_address,
@@ -274,7 +280,10 @@ fn process_delegate_voted_event(
         is_active_delegate: ev.is_active_delegate,
         upvotes: ev.new_upvote_count as i64,
         downvotes: ev.new_downvote_count as i64,
-        governance_registry_id: nominee_governance_registry_id(ev.registry_type, governance_registry_id),
+        governance_registry_id: nominee_governance_registry_id(
+            ev.registry_type,
+            governance_registry_id,
+        ),
     };
     let rating = NewDelegateRating {
         target_address: ev.target_address,

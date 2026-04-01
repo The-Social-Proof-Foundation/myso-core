@@ -223,6 +223,45 @@ pub(crate) async fn list_posts(
     Ok(results)
 }
 
+/// Posts for a profile overview: `owner = profile owner` **or** `profile_id = linked object id`
+/// (matches REST `/profiles/:address/posts` scope).
+pub(crate) async fn list_posts_for_profile(
+    conn: &mut Connection<'_>,
+    owner_address: &str,
+    profile_id: Option<&str>,
+    post_type: Option<&str>,
+    limit: i64,
+    offset: i64,
+    metrics: &DbReaderMetrics,
+) -> anyhow::Result<Vec<PostRow>> {
+    metrics.requests_received.inc();
+    let _guard = metrics.latency.start_timer();
+    let query = "
+        SELECT post_id, owner, profile_id, content, post_type, created_at, deleted_at,
+               reaction_count, comment_count, repost_count, tips_received,
+               media_urls, mentions, parent_post_id, updated_at,
+               poc_id, revenue_redirect_to, revenue_redirect_percentage, enable_poc,
+               poc_reasoning, poc_evidence_urls, poc_similarity_score, poc_media_type,
+               poc_oracle_address, poc_analyzed_at, enable_spot, spot_id
+        FROM posts
+        WHERE deleted_at IS NULL
+        AND (owner = $1 OR ($2::TEXT IS NOT NULL AND profile_id = $2))
+        AND ($3::TEXT IS NULL OR post_type = $3)
+        ORDER BY created_at DESC
+        LIMIT $4 OFFSET $5
+    ";
+    let results = diesel::sql_query(query)
+        .bind::<Text, _>(owner_address)
+        .bind::<Nullable<Text>, _>(profile_id)
+        .bind::<Nullable<Text>, _>(post_type)
+        .bind::<BigInt, _>(limit)
+        .bind::<BigInt, _>(offset)
+        .load::<PostRow>(conn)
+        .await?;
+    metrics.requests_succeeded.inc();
+    Ok(results)
+}
+
 pub(crate) async fn get_post_comments(
     conn: &mut Connection<'_>,
     post_id: &str,

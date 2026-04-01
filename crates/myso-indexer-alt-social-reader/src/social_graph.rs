@@ -5,10 +5,11 @@ use std::collections::HashMap;
 
 use chrono::NaiveDateTime;
 use diesel::QueryableByName;
-use diesel::sql_types::{Array, BigInt, Bool, Nullable, Text, Timestamp};
+use diesel::sql_types::{Array, BigInt, Bool, Integer, Jsonb, Nullable, SmallInt, Text, Timestamp};
 use diesel_async::RunQueryDsl;
 use myso_indexer_alt_social_schema::models::ProfilePlatformMembershipRow;
 use myso_pg_db::Connection;
+use serde_json::Value as JsonValue;
 
 use crate::metrics::DbReaderMetrics;
 
@@ -770,6 +771,32 @@ pub(crate) async fn check_profile_blocked(
     Ok(result.exists)
 }
 
+pub(crate) async fn count_profile_platform_memberships(
+    conn: &mut Connection<'_>,
+    address: &str,
+    metrics: &DbReaderMetrics,
+) -> anyhow::Result<i64> {
+    metrics.requests_received.inc();
+    let _guard = metrics.latency.start_timer();
+    #[derive(QueryableByName)]
+    struct CountRow {
+        #[diesel(sql_type = BigInt)]
+        count: i64,
+    }
+    let total = diesel::sql_query(
+        "SELECT COUNT(*)::bigint AS count
+         FROM platform_memberships pm
+         INNER JOIN platforms p ON pm.platform_id = p.platform_id
+         WHERE pm.wallet_address = $1",
+    )
+    .bind::<Text, _>(address)
+    .get_result::<CountRow>(conn)
+    .await?
+    .count;
+    metrics.requests_succeeded.inc();
+    Ok(total)
+}
+
 pub(crate) async fn get_profile_platform_memberships(
     conn: &mut Connection<'_>,
     address: &str,
@@ -781,17 +808,124 @@ pub(crate) async fn get_profile_platform_memberships(
     let _guard = metrics.latency.start_timer();
     #[derive(QueryableByName)]
     struct Row {
+        #[diesel(sql_type = Integer)]
+        membership_id: i32,
+        #[diesel(sql_type = Timestamp)]
+        joined_at: NaiveDateTime,
+        #[diesel(sql_type = Integer)]
+        platform_db_id: i32,
         #[diesel(sql_type = Text)]
         platform_id: String,
         #[diesel(sql_type = Text)]
         name: String,
+        #[diesel(sql_type = Text)]
+        tagline: String,
+        #[diesel(sql_type = Nullable<Text>)]
+        description: Option<String>,
+        #[diesel(sql_type = Nullable<Text>)]
+        logo: Option<String>,
+        #[diesel(sql_type = Text)]
+        developer_address: String,
+        #[diesel(sql_type = Nullable<Text>)]
+        terms_of_service: Option<String>,
+        #[diesel(sql_type = Nullable<Text>)]
+        privacy_policy: Option<String>,
+        #[diesel(sql_type = Nullable<Jsonb>)]
+        platform_names: Option<JsonValue>,
+        #[diesel(sql_type = Nullable<Jsonb>)]
+        links: Option<JsonValue>,
+        #[diesel(sql_type = SmallInt)]
+        status: i16,
+        #[diesel(sql_type = Nullable<Text>)]
+        release_date: Option<String>,
+        #[diesel(sql_type = Nullable<Text>)]
+        shutdown_date: Option<String>,
+        #[diesel(sql_type = Timestamp)]
+        platform_created_at: NaiveDateTime,
+        #[diesel(sql_type = Timestamp)]
+        platform_updated_at: NaiveDateTime,
         #[diesel(sql_type = Bool)]
         is_approved: bool,
-        #[diesel(sql_type = Timestamp)]
-        joined_at: NaiveDateTime,
+        #[diesel(sql_type = Nullable<Timestamp>)]
+        approval_changed_at: Option<NaiveDateTime>,
+        #[diesel(sql_type = Nullable<Text>)]
+        approved_by: Option<String>,
+        #[diesel(sql_type = Nullable<Bool>)]
+        wants_dao_governance: Option<bool>,
+        #[diesel(sql_type = Nullable<Text>)]
+        governance_registry_id: Option<String>,
+        #[diesel(sql_type = Nullable<BigInt>)]
+        delegate_count: Option<i64>,
+        #[diesel(sql_type = Nullable<BigInt>)]
+        delegate_term_epochs: Option<i64>,
+        #[diesel(sql_type = Nullable<BigInt>)]
+        max_votes_per_user: Option<i64>,
+        #[diesel(sql_type = Nullable<BigInt>)]
+        min_on_chain_age_days: Option<i64>,
+        #[diesel(sql_type = Nullable<BigInt>)]
+        proposal_submission_cost: Option<i64>,
+        #[diesel(sql_type = Nullable<BigInt>)]
+        quadratic_base_cost: Option<i64>,
+        #[diesel(sql_type = Nullable<BigInt>)]
+        quorum_votes: Option<i64>,
+        #[diesel(sql_type = Nullable<BigInt>)]
+        voting_period_epochs: Option<i64>,
+        #[diesel(sql_type = Nullable<BigInt>)]
+        treasury: Option<i64>,
+        #[diesel(sql_type = Nullable<BigInt>)]
+        version: Option<i64>,
+        #[diesel(sql_type = Text)]
+        primary_category: String,
+        #[diesel(sql_type = Nullable<Text>)]
+        secondary_category: Option<String>,
+        #[diesel(sql_type = Nullable<Timestamp>)]
+        deleted_at: Option<NaiveDateTime>,
+        #[diesel(sql_type = BigInt)]
+        moderator_count: i64,
+        #[diesel(sql_type = BigInt)]
+        blocked_profiles_count: i64,
     }
     let query = "
-        SELECT p.platform_id, p.name, p.is_approved, pm.joined_at
+        SELECT pm.id AS membership_id,
+               pm.joined_at,
+               p.id AS platform_db_id,
+               p.platform_id,
+               p.name,
+               p.tagline,
+               p.description,
+               p.logo,
+               p.developer_address,
+               p.terms_of_service,
+               p.privacy_policy,
+               p.platforms AS platform_names,
+               p.links,
+               p.status,
+               p.release_date,
+               p.shutdown_date,
+               p.created_at AS platform_created_at,
+               p.updated_at AS platform_updated_at,
+               p.is_approved,
+               p.approval_changed_at,
+               p.approved_by,
+               p.wants_dao_governance,
+               p.governance_registry_id,
+               p.delegate_count,
+               p.delegate_term_epochs,
+               p.max_votes_per_user,
+               p.min_on_chain_age_days,
+               p.proposal_submission_cost,
+               p.quadratic_base_cost,
+               p.quorum_votes,
+               p.voting_period_epochs,
+               p.treasury,
+               p.version,
+               p.primary_category,
+               p.secondary_category,
+               p.deleted_at,
+               (SELECT COUNT(*)::bigint FROM platform_moderators m WHERE m.platform_id = p.platform_id)
+                   AS moderator_count,
+               (SELECT COUNT(*)::bigint FROM platform_blocked_profiles b WHERE b.platform_id = p.platform_id)
+                   AS blocked_profiles_count
         FROM platform_memberships pm
         INNER JOIN platforms p ON pm.platform_id = p.platform_id
         WHERE pm.wallet_address = $1
@@ -808,10 +942,44 @@ pub(crate) async fn get_profile_platform_memberships(
     Ok(rows
         .into_iter()
         .map(|r| ProfilePlatformMembershipRow {
+            membership_id: r.membership_id,
+            joined_at: r.joined_at,
+            platform_db_id: r.platform_db_id,
             platform_id: r.platform_id,
             name: r.name,
+            tagline: r.tagline,
+            description: r.description,
+            logo: r.logo,
+            developer_address: r.developer_address,
+            terms_of_service: r.terms_of_service,
+            privacy_policy: r.privacy_policy,
+            platform_names: r.platform_names,
+            links: r.links,
+            status: r.status,
+            release_date: r.release_date,
+            shutdown_date: r.shutdown_date,
+            platform_created_at: r.platform_created_at,
+            platform_updated_at: r.platform_updated_at,
             is_approved: r.is_approved,
-            joined_at: r.joined_at,
+            approval_changed_at: r.approval_changed_at,
+            approved_by: r.approved_by,
+            wants_dao_governance: r.wants_dao_governance,
+            governance_registry_id: r.governance_registry_id,
+            delegate_count: r.delegate_count,
+            delegate_term_epochs: r.delegate_term_epochs,
+            max_votes_per_user: r.max_votes_per_user,
+            min_on_chain_age_days: r.min_on_chain_age_days,
+            proposal_submission_cost: r.proposal_submission_cost,
+            quadratic_base_cost: r.quadratic_base_cost,
+            quorum_votes: r.quorum_votes,
+            voting_period_epochs: r.voting_period_epochs,
+            treasury: r.treasury,
+            version: r.version,
+            primary_category: r.primary_category,
+            secondary_category: r.secondary_category,
+            deleted_at: r.deleted_at,
+            moderator_count: r.moderator_count,
+            blocked_profiles_count: r.blocked_profiles_count,
         })
         .collect())
 }
