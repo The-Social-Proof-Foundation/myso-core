@@ -64,3 +64,85 @@ WHERE created_at >= 1000000000000
     time < timestamptz '2001-09-09 01:46:40+00'
     OR reserved_at < 1000000000000
   );
+
+-- `last_activity` = max per pool of GREATEST(ingestion time, checkpoint time from created_at when plausible).
+-- Matches MIN_PLAUSIBLE_RESERVATION_UNIX_MS (1e12) in myso-indexer-alt-social handlers/spt.rs.
+CREATE OR REPLACE VIEW active_reservation_pools AS
+SELECT
+    sp.pool_id,
+    sp.associated_id,
+    sp.token_type,
+    sp.owner,
+    sp.total_reserved,
+    sp.required_threshold,
+    sp.status,
+    sp.created_at,
+    (sp.total_reserved >= sp.required_threshold) AS threshold_met,
+    COUNT(s.id) AS reservatior_count,
+    COALESCE(
+        MAX(
+            GREATEST(
+                s.time,
+                CASE
+                    WHEN s.created_at >= 1000000000000 THEN to_timestamp(s.created_at / 1000.0)
+                    ELSE '-infinity'::timestamptz
+                END
+            )
+        ),
+        sp.time
+    ) AS last_activity
+FROM
+    spt_reservation_pools sp
+LEFT JOIN
+    spt_reservations s ON sp.pool_id = s.pool_id
+WHERE
+    sp.time = (
+        SELECT MAX(time) FROM spt_reservation_pools sub
+        WHERE sub.pool_id = sp.pool_id
+    )
+GROUP BY
+    sp.pool_id, sp.associated_id, sp.token_type, sp.owner,
+    sp.total_reserved, sp.required_threshold, sp.status, sp.created_at, sp.time
+ORDER BY
+    sp.total_reserved DESC;
+
+-- Latest holding row per (pool, reserver) by effective activity time (same GREATEST semantics as last_activity).
+CREATE OR REPLACE VIEW user_reservation_holdings AS
+SELECT
+    s.reserver_address,
+    s.pool_id,
+    sp.associated_id,
+    sp.token_type,
+    sp.owner,
+    s.amount,
+    s.reserved_at,
+    sp.total_reserved,
+    sp.required_threshold,
+    (sp.total_reserved >= sp.required_threshold) AS threshold_met,
+    sp.status AS pool_status
+FROM
+    spt_reservations s
+JOIN
+    spt_reservation_pools sp ON s.pool_id = sp.pool_id
+WHERE
+    s.time = (
+        SELECT sub.time
+        FROM spt_reservations sub
+        WHERE sub.pool_id = s.pool_id AND sub.reserver_address = s.reserver_address
+        ORDER BY GREATEST(
+            sub.time,
+            CASE
+                WHEN sub.created_at >= 1000000000000 THEN to_timestamp(sub.created_at / 1000.0)
+                ELSE '-infinity'::timestamptz
+            END
+        ) DESC,
+        sub.time DESC
+        LIMIT 1
+    )
+    AND sp.time = (
+        SELECT MAX(time) FROM spt_reservation_pools sub
+        WHERE sub.pool_id = sp.pool_id
+    )
+    AND s.amount > 0
+ORDER BY
+    s.reserved_at DESC;
