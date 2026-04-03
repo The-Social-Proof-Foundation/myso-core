@@ -370,6 +370,10 @@ fn make_router(state: Arc<AppState>) -> Router {
         .route("/health", get(health_check))
         .route("/stats/system", get(get_system_stats))
         .route("/profiles", get(latest_profiles))
+        .route(
+            "/profiles/daily-stats",
+            get(get_profile_daily_stats_chart),
+        )
         .route("/profiles/address/:address", get(get_profile_by_address))
         .route("/profiles/username/:username", get(get_profile_by_username))
         .route(

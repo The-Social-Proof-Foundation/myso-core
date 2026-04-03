@@ -89,6 +89,13 @@ impl Reader {
         profile::get_profile_by_username(&self.db, username).await
     }
 
+    pub async fn get_profile_daily_stats_chart(
+        &self,
+        query: &SocialGraphChartQuery,
+    ) -> Result<ProfileDailyStatsChartData, crate::error::SocialError> {
+        profile::get_profile_daily_stats_chart(&self.db, query).await
+    }
+
     pub async fn list_profile_offers(
         &self,
         address: &str,

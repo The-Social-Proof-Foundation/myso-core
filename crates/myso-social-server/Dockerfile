@@ -1,8 +1,6 @@
 # Build application
 FROM rust:1.82-bullseye AS builder
 ARG PROFILE=release
-ARG GIT_REVISION
-ENV GIT_REVISION=$GIT_REVISION
 WORKDIR /app
 
 # Install build dependencies

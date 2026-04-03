@@ -5,6 +5,9 @@ use diesel::sql_types::{BigInt, Bool, Nullable, SmallInt, Text};
 use diesel::QueryableByName;
 use serde::Serialize;
 
+use super::common::DateRange;
+use super::social_graph::DailyStatsPoint;
+
 #[derive(Debug, Serialize)]
 pub struct ProfileEventRow {
     pub event_type: String,
@@ -49,4 +52,19 @@ pub struct ProfileBadgeRow {
     pub revoked_by: Option<String>,
     #[diesel(sql_type = SmallInt)]
     pub badge_type: i16,
+}
+
+#[derive(Debug, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct ProfileDailyStatsSummary {
+    pub total_profile_created: i64,
+    pub total_profile_updated: i64,
+}
+
+#[derive(Debug, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct ProfileDailyStatsChartData {
+    pub chart_data: Vec<DailyStatsPoint>,
+    pub date_range: DateRange,
+    pub summary: ProfileDailyStatsSummary,
 }

@@ -46,7 +46,10 @@ pub use post::{
     BlockedEventRow, CommentRow, PostBasicRow, PostConfigRow, PromotedPostRow, PromotionHourlyRow,
     PromotionStatsRow, PromotionTimeSeriesRow, PromotionViewRow, ReactionRow, RepostRow,
 };
-pub use profile::{ProfileBadgeRow, ProfileEventRow, ProfilePlatformEventRow};
+pub use profile::{
+    ProfileBadgeRow, ProfileDailyStatsChartData, ProfileDailyStatsSummary, ProfileEventRow,
+    ProfilePlatformEventRow,
+};
 pub use revenue::UnifiedRevenue;
 pub use social_graph::{
     BlockedPlatformRow, BlockedProfileRow, DailyStatsPoint, FollowDetail, FollowStatsRow,

@@ -40,6 +40,7 @@ curl http://localhost:9009/health
 | Method | Endpoint | Description |
 |--------|----------|-------------|
 | GET | `/profiles` | List latest profiles |
+| GET | `/profiles/daily-stats` | Daily profile event aggregates for charts (Timescale `profile_daily_stats`). Query: `bucket` (optional: `7d`, `30d`, `90d`, `180d`, `1y`; default `30d`) |
 | GET | `/profiles/address/:address` | Get profile by wallet address |
 | GET | `/profiles/username/:username` | Get profile by username |
 | GET | `/profiles/username/:username/availability` | Check username availability |
@@ -64,7 +65,17 @@ curl http://localhost:9009/health
 | Method | Endpoint | Description |
 |--------|----------|-------------|
 | GET | `/social-graph/check/:follower/:following` | Check if follower follows following |
-| GET | `/social-graph/chart-data` | Get social graph chart data |
+| GET | `/social-graph/chart-data` | Get social graph chart data (Timescale `social_graph_daily_stats`). Query: `bucket` (optional, same as `/profiles/daily-stats`) |
+
+### Charts and Timescale continuous aggregates
+
+Endpoints `/profiles/daily-stats` and `/social-graph/chart-data` read from Timescale **continuous aggregates** backed by `profile_events` and `social_graph_events`. Those tables are populated by **myso-indexer-alt-social** against the same PostgreSQL database this server uses.
+
+- After a fresh database or migration, aggregates may be empty until the scheduled refresh policy runs (typically hourly). To backfill immediately in `psql`, you can run:  
+  `CALL refresh_continuous_aggregate('profile_daily_stats', NULL, NULL);`  
+  `CALL refresh_continuous_aggregate('social_graph_daily_stats', NULL, NULL);`  
+  (On large datasets, prefer a bounded time window instead of `NULL` bounds; decompress compressed chunks first if refresh errors.)
+- If charts stay flat, confirm the indexer is running and writing rows, then check raw counts: `SELECT count(*) FROM profile_events;` and `SELECT count(*) FROM social_graph_events;`.
 | GET | `/blocklist/check/profile/:blocker/:blocked` | Check if profile is blocked |
 | GET | `/blocklist/check/platform/:profile/:platform` | Check if platform is blocked for profile |
 

@@ -13,6 +13,17 @@ use crate::reader::ProfileByAddressResponse;
 
 use super::super::{AppState, PageParams, ProfileQuery};
 
+pub async fn get_profile_daily_stats_chart(
+    State(state): State<Arc<AppState>>,
+    Query(query): Query<crate::reader::SocialGraphChartQuery>,
+) -> Result<Json<crate::reader::ProfileDailyStatsChartData>, SocialError> {
+    let data = state
+        .reader
+        .get_profile_daily_stats_chart(&query)
+        .await?;
+    Ok(Json(data))
+}
+
 pub async fn latest_profiles(
     State(state): State<Arc<AppState>>,
     Query(query): Query<ProfileQuery>,

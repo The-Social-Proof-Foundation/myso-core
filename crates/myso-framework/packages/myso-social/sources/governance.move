@@ -2099,7 +2099,6 @@ module social_contracts::governance {
         
         // Initialize registry tables
         initialize_registry_tables(&mut platform_registry, ctx);
-
         seed_founding_delegate(&mut platform_registry, founding_delegate, ctx);
         
         // Get the ID before sharing

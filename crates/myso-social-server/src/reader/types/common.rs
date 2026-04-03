@@ -15,6 +15,7 @@ pub struct SystemStatsResponse {
 }
 
 #[derive(Debug, Serialize)]
+#[serde(rename_all = "camelCase")]
 pub struct DateRange {
     pub start_date: String,
     pub end_date: String,
@@ -23,6 +24,7 @@ pub struct DateRange {
 }
 
 #[derive(Debug, Serialize)]
+#[serde(rename_all = "camelCase")]
 pub struct ChartSummary {
     pub total_follows: i64,
     pub total_unfollows: i64,

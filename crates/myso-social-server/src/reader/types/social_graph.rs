@@ -116,6 +116,7 @@ pub struct SocialGraphChartQuery {
 }
 
 #[derive(Debug, Serialize)]
+#[serde(rename_all = "camelCase")]
 pub struct DailyStatsPoint {
     pub day: String,
     pub event_type: String,
@@ -123,6 +124,7 @@ pub struct DailyStatsPoint {
 }
 
 #[derive(Debug, Serialize)]
+#[serde(rename_all = "camelCase")]
 pub struct SocialGraphChartData {
     pub chart_data: Vec<DailyStatsPoint>,
     pub date_range: super::common::DateRange,
