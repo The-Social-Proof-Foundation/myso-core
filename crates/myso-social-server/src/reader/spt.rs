@@ -621,16 +621,26 @@ pub(crate) async fn get_spt_market_sentiment(db: &Db) -> Result<serde_json::Valu
     let query = r#"
         WITH trade_current AS (
             SELECT
-                COALESCE(SUM(CASE WHEN transaction_type = 'BUY' THEN ABS(myso_amount) ELSE 0 END), 0)::bigint AS trade_buy,
-                COALESCE(SUM(CASE WHEN transaction_type = 'SELL' THEN ABS(myso_amount) ELSE 0 END), 0)::bigint AS trade_sell,
+                COALESCE(SUM(CASE WHEN transaction_type = 'BUY' THEN myso_abs ELSE 0 END), 0)::bigint AS trade_buy,
+                COALESCE(SUM(CASE WHEN transaction_type = 'SELL' THEN myso_abs ELSE 0 END), 0)::bigint AS trade_sell,
                 COALESCE(COUNT(*), 0)::bigint AS transaction_count
-            FROM spt_transactions
-            WHERE time > NOW() - INTERVAL '24 hours'
+            FROM (
+                SELECT
+                    transaction_type,
+                    MAX(ABS(myso_amount))::bigint AS myso_abs
+                FROM spt_transactions
+                WHERE time > NOW() - INTERVAL '24 hours'
+                GROUP BY transaction_id, pool_id, transaction_type, sender, amount
+            ) buy_sell_groups
         ),
         trade_previous AS (
-            SELECT COALESCE(SUM(ABS(myso_amount)), 0)::bigint AS total_gross
-            FROM spt_transactions
-            WHERE time BETWEEN NOW() - INTERVAL '48 hours' AND NOW() - INTERVAL '24 hours'
+            SELECT COALESCE(SUM(myso_abs), 0)::bigint AS total_gross
+            FROM (
+                SELECT MAX(ABS(myso_amount))::bigint AS myso_abs
+                FROM spt_transactions
+                WHERE time BETWEEN NOW() - INTERVAL '48 hours' AND NOW() - INTERVAL '24 hours'
+                GROUP BY transaction_id, pool_id, transaction_type, sender, amount
+            ) prev_groups
         ),
         reservation_volume AS (
             SELECT
@@ -673,8 +683,8 @@ pub(crate) async fn get_spt_market_sentiment(db: &Db) -> Result<serde_json::Valu
             ) u
         )
         SELECT
-            (t.trade_buy + COALESCE(r.res_deposit, 0))::bigint AS buy_volume,
-            (t.trade_sell + COALESCE(r.res_withdraw_mag, 0))::bigint AS sell_volume,
+            t.trade_buy::bigint AS buy_volume,
+            t.trade_sell::bigint AS sell_volume,
             t.transaction_count,
             ub.cnt AS unique_buyers,
             us.cnt AS unique_sellers,
