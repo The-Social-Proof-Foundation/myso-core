@@ -7,6 +7,7 @@ use std::sync::Arc;
 
 use anyhow::Result;
 use async_trait::async_trait;
+use diesel::sql_types::{BigInt, Text, Timestamp};
 use diesel::BoolExpressionMethods;
 use diesel::ExpressionMethods;
 use diesel::QueryDsl;
@@ -18,7 +19,7 @@ use myso_indexer_alt_framework::types::full_checkpoint_content::Checkpoint;
 use myso_indexer_alt_framework::FieldCount;
 use myso_indexer_alt_social_schema::models::{
     NewEcosystemTreasury, NewProfile, NewProfileBadge, NewProfileEvent, NewProfileOffer,
-    NewProfileSaleFee, NewVestingEvent, NewVestingWallet, ProfileUpdateSet, UpdateVestingWallet,
+    NewProfileSaleFee, NewVestingEvent, NewVestingWallet, ProfileUpdateSet,
 };
 use myso_indexer_alt_social_schema::schema::{
     ecosystem_treasury, profile_badges, profile_events, profile_offers, profile_sale_fees,
@@ -331,20 +332,23 @@ impl Handler for ProfilesHandler {
                 }
                 ProfileRow::VestingWalletClaimUpdate {
                     wallet_id,
-                    claimed_amount,
+                    claimed_amount: _, // chain event field is per-claim delta, not cumulative
                     remaining_balance,
                 } => {
                     let now = chrono::Utc::now().naive_utc();
-                    let set = UpdateVestingWallet {
-                        claimed_amount: Some(*claimed_amount),
-                        remaining_balance: Some(*remaining_balance),
-                        updated_at: now,
-                    };
-                    total += diesel::update(vesting_wallets::table)
-                        .filter(vesting_wallets::wallet_id.eq(wallet_id))
-                        .set(set)
-                        .execute(conn)
-                        .await?;
+                    // Cumulative claimed = total_amount - balance after claim (see profile::VestingWallet).
+                    // Idempotent if the same TokensClaimed event is replayed.
+                    let upd = diesel::sql_query(
+                        "UPDATE vesting_wallets SET \
+                         claimed_amount = GREATEST(0, total_amount - $1), \
+                         remaining_balance = $1, \
+                         updated_at = $2 \
+                         WHERE wallet_id = $3",
+                    )
+                    .bind::<BigInt, _>(*remaining_balance)
+                    .bind::<Timestamp, _>(now)
+                    .bind::<Text, _>(wallet_id);
+                    total += upd.execute(conn).await?;
                 }
                 ProfileRow::VestingWalletDelete { wallet_id } => {
                     total += diesel::delete(vesting_wallets::table)
