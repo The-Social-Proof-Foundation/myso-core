@@ -20,6 +20,7 @@ Handles user identity, profile creation, management, and username registration
 -  [Struct `BadgeRemovedEvent`](#social_contracts_profile_BadgeRemovedEvent)
 -  [Struct `ProfileCreatedEvent`](#social_contracts_profile_ProfileCreatedEvent)
 -  [Struct `ProfileUpdatedEvent`](#social_contracts_profile_ProfileUpdatedEvent)
+-  [Struct `ProfileXUsernameUpdatedEvent`](#social_contracts_profile_ProfileXUsernameUpdatedEvent)
 -  [Struct `ProfileOfferCreatedEvent`](#social_contracts_profile_ProfileOfferCreatedEvent)
 -  [Struct `ProfileOfferAcceptedEvent`](#social_contracts_profile_ProfileOfferAcceptedEvent)
 -  [Struct `ProfileOfferRejectedEvent`](#social_contracts_profile_ProfileOfferRejectedEvent)
@@ -41,6 +42,7 @@ Handles user identity, profile creation, management, and username registration
 -  [Function `create_profile`](#social_contracts_profile_create_profile)
 -  [Function `transfer_profile`](#social_contracts_profile_transfer_profile)
 -  [Function `update_profile`](#social_contracts_profile_update_profile)
+-  [Function `admin_set_profile_x_username`](#social_contracts_profile_admin_set_profile_x_username)
 -  [Function `display_name`](#social_contracts_profile_display_name)
 -  [Function `bio`](#social_contracts_profile_bio)
 -  [Function `profile_picture`](#social_contracts_profile_profile_picture)
@@ -48,6 +50,7 @@ Handles user identity, profile creation, management, and username registration
 -  [Function `owner`](#social_contracts_profile_owner)
 -  [Function `id`](#social_contracts_profile_id)
 -  [Function `username`](#social_contracts_profile_username)
+-  [Function `x_username`](#social_contracts_profile_x_username)
 -  [Function `lookup_profile_by_username`](#social_contracts_profile_lookup_profile_by_username)
 -  [Function `lookup_profile_by_owner`](#social_contracts_profile_lookup_profile_by_owner)
 -  [Function `get_id_address`](#social_contracts_profile_get_id_address)
@@ -988,6 +991,53 @@ Profile updated event with all profile details
 </dd>
 <dt>
 <code><a href="../social_contracts/profile.md#social_contracts_profile_min_offer_amount">min_offer_amount</a>: <a href="../std/option.md#std_option_Option">std::option::Option</a>&lt;u64&gt;</code>
+</dt>
+<dd>
+</dd>
+</dl>
+
+
+</details>
+
+<a name="social_contracts_profile_ProfileXUsernameUpdatedEvent"></a>
+
+## Struct `ProfileXUsernameUpdatedEvent`
+
+X username set or cleared by an EcosystemBadgeAdminCap holder (audit trail).
+
+
+<pre><code><b>public</b> <b>struct</b> <a href="../social_contracts/profile.md#social_contracts_profile_ProfileXUsernameUpdatedEvent">ProfileXUsernameUpdatedEvent</a> <b>has</b> <b>copy</b>, drop
+</code></pre>
+
+
+
+<details>
+<summary>Fields</summary>
+
+
+<dl>
+<dt>
+<code>profile_id: <b>address</b></code>
+</dt>
+<dd>
+</dd>
+<dt>
+<code><a href="../social_contracts/profile.md#social_contracts_profile_owner">owner</a>: <b>address</b></code>
+</dt>
+<dd>
+</dd>
+<dt>
+<code>x_username: <a href="../std/option.md#std_option_Option">std::option::Option</a>&lt;<a href="../std/string.md#std_string_String">std::string::String</a>&gt;</code>
+</dt>
+<dd>
+</dd>
+<dt>
+<code>updated_by: <b>address</b></code>
+</dt>
+<dd>
+</dd>
+<dt>
+<code>updated_at: u64</code>
 </dt>
 <dd>
 </dd>
@@ -2217,10 +2267,10 @@ The username stays with the profile, and the transfer updates registry mappings
 
 ## Function `update_profile`
 
-Only the profile owner can update profile information
+Only the profile owner can update profile information. The X username is maintained separately via <code>admin_set_profile_x_username</code> (badge admin only).
 
 
-<pre><code><b>public</b> <b>entry</b> <b>fun</b> <a href="../social_contracts/profile.md#social_contracts_profile_update_profile">update_profile</a>(<a href="../social_contracts/profile.md#social_contracts_profile">profile</a>: &<b>mut</b> <a href="../social_contracts/profile.md#social_contracts_profile_Profile">social_contracts::profile::Profile</a>, new_display_name: <a href="../std/string.md#std_string_String">std::string::String</a>, new_bio: <a href="../std/string.md#std_string_String">std::string::String</a>, new_profile_picture_url: vector&lt;u8&gt;, new_cover_photo_url: vector&lt;u8&gt;, x_username: <a href="../std/option.md#std_option_Option">std::option::Option</a>&lt;<a href="../std/string.md#std_string_String">std::string::String</a>&gt;, <a href="../social_contracts/profile.md#social_contracts_profile_min_offer_amount">min_offer_amount</a>: <a href="../std/option.md#std_option_Option">std::option::Option</a>&lt;u64&gt;, ctx: &<b>mut</b> <a href="../myso/tx_context.md#myso_tx_context_TxContext">myso::tx_context::TxContext</a>)
+<pre><code><b>public</b> <b>entry</b> <b>fun</b> <a href="../social_contracts/profile.md#social_contracts_profile_update_profile">update_profile</a>(<a href="../social_contracts/profile.md#social_contracts_profile">profile</a>: &<b>mut</b> <a href="../social_contracts/profile.md#social_contracts_profile_Profile">social_contracts::profile::Profile</a>, new_display_name: <a href="../std/string.md#std_string_String">std::string::String</a>, new_bio: <a href="../std/string.md#std_string_String">std::string::String</a>, new_profile_picture_url: vector&lt;u8&gt;, new_cover_photo_url: vector&lt;u8&gt;, <a href="../social_contracts/profile.md#social_contracts_profile_min_offer_amount">min_offer_amount</a>: <a href="../std/option.md#std_option_Option">std::option::Option</a>&lt;u64&gt;, ctx: &<b>mut</b> <a href="../myso/tx_context.md#myso_tx_context_TxContext">myso::tx_context::TxContext</a>)
 </code></pre>
 
 
@@ -2236,7 +2286,6 @@ Only the profile owner can update profile information
     new_bio: String,
     new_profile_picture_url: vector&lt;u8&gt;,
     new_cover_photo_url: vector&lt;u8&gt;,
-    x_username: Option&lt;String&gt;,
     <a href="../social_contracts/profile.md#social_contracts_profile_min_offer_amount">min_offer_amount</a>: Option&lt;u64&gt;,
     ctx: &<b>mut</b> TxContext
 ) {
@@ -2255,9 +2304,6 @@ Only the profile owner can update profile information
     };
     <b>if</b> (vector::length(&new_cover_photo_url) &gt; 0) {
         <a href="../social_contracts/profile.md#social_contracts_profile">profile</a>.<a href="../social_contracts/profile.md#social_contracts_profile_cover_photo">cover_photo</a> = option::some(url::new_unsafe_from_bytes(new_cover_photo_url));
-    };
-    <b>if</b> (option::is_some(&x_username)) {
-        <a href="../social_contracts/profile.md#social_contracts_profile">profile</a>.x_username = x_username;
     };
     <b>if</b> (option::is_some(&<a href="../social_contracts/profile.md#social_contracts_profile_min_offer_amount">min_offer_amount</a>)) {
         <a href="../social_contracts/profile.md#social_contracts_profile">profile</a>.<a href="../social_contracts/profile.md#social_contracts_profile_min_offer_amount">min_offer_amount</a> = <a href="../social_contracts/profile.md#social_contracts_profile_min_offer_amount">min_offer_amount</a>;
@@ -2288,6 +2334,49 @@ Only the profile owner can update profile information
         updated_at: now,
         x_username: <a href="../social_contracts/profile.md#social_contracts_profile">profile</a>.x_username,
         <a href="../social_contracts/profile.md#social_contracts_profile_min_offer_amount">min_offer_amount</a>: <a href="../social_contracts/profile.md#social_contracts_profile">profile</a>.<a href="../social_contracts/profile.md#social_contracts_profile_min_offer_amount">min_offer_amount</a>,
+    });
+}
+</code></pre>
+
+
+
+</details>
+
+<a name="social_contracts_profile_admin_set_profile_x_username"></a>
+
+## Function `admin_set_profile_x_username`
+
+Set or clear a profile X username — only callable by an <code>EcosystemBadgeAdminCap</code> holder. <code>option::none()</code> clears the handle.
+
+
+<pre><code><b>public</b> <b>entry</b> <b>fun</b> admin_set_profile_x_username(
+    _: &<a href="../social_contracts/profile.md#social_contracts_profile_EcosystemBadgeAdminCap">EcosystemBadgeAdminCap</a>,
+    <a href="../social_contracts/profile.md#social_contracts_profile">profile</a>: &<b>mut</b> <a href="../social_contracts/profile.md#social_contracts_profile_Profile">Profile</a>,
+    new_x_username: <a href="../std/option.md#std_option_Option">std::option::Option</a>&lt;<a href="../std/string.md#std_string_String">std::string::String</a>&gt;,
+    ctx: &<b>mut</b> <a href="../myso/tx_context.md#myso_tx_context_TxContext">myso::tx_context::TxContext</a>
+)
+</code></pre>
+
+
+
+<details>
+<summary>Implementation</summary>
+
+
+<pre><code><b>public</b> <b>entry</b> <b>fun</b> admin_set_profile_x_username(
+    _: &EcosystemBadgeAdminCap,
+    <a href="../social_contracts/profile.md#social_contracts_profile">profile</a>: &<b>mut</b> Profile,
+    new_x_username: Option&lt;String&gt;,
+    ctx: &<b>mut</b> TxContext
+) {
+    <a href="../social_contracts/profile.md#social_contracts_profile">profile</a>.x_username = new_x_username;
+    <b>let</b> now = tx_context::epoch_timestamp_ms(ctx);
+    event::emit(ProfileXUsernameUpdatedEvent {
+        profile_id: object::uid_to_address(&<a href="../social_contracts/profile.md#social_contracts_profile">profile</a>.<a href="../social_contracts/profile.md#social_contracts_profile_id">id</a>),
+        <a href="../social_contracts/profile.md#social_contracts_profile_owner">owner</a>: <a href="../social_contracts/profile.md#social_contracts_profile">profile</a>.<a href="../social_contracts/profile.md#social_contracts_profile_owner">owner</a>,
+        x_username: <a href="../social_contracts/profile.md#social_contracts_profile">profile</a>.x_username,
+        updated_by: tx_context::sender(ctx),
+        updated_at: now,
     });
 }
 </code></pre>
@@ -2464,6 +2553,31 @@ Get the username string for a profile
 
 <pre><code><b>public</b> <b>fun</b> <a href="../social_contracts/profile.md#social_contracts_profile_username">username</a>(<a href="../social_contracts/profile.md#social_contracts_profile">profile</a>: &<a href="../social_contracts/profile.md#social_contracts_profile_Profile">Profile</a>): String {
     <a href="../social_contracts/profile.md#social_contracts_profile">profile</a>.<a href="../social_contracts/profile.md#social_contracts_profile_username">username</a>
+}
+</code></pre>
+
+
+
+</details>
+
+<a name="social_contracts_profile_x_username"></a>
+
+## Function `x_username`
+
+X/Twitter username on the profile (set or cleared only via the admin entry).
+
+
+<pre><code><b>public</b> <b>fun</b> x_username(<a href="../social_contracts/profile.md#social_contracts_profile">profile</a>: &<a href="../social_contracts/profile.md#social_contracts_profile_Profile">social_contracts::profile::Profile</a>): &<a href="../std/option.md#std_option_Option">std::option::Option</a>&lt;<a href="../std/string.md#std_string_String">std::string::String</a>&gt;
+</code></pre>
+
+
+
+<details>
+<summary>Implementation</summary>
+
+
+<pre><code><b>public</b> <b>fun</b> x_username(<a href="../social_contracts/profile.md#social_contracts_profile">profile</a>: &<a href="../social_contracts/profile.md#social_contracts_profile_Profile">Profile</a>): &Option&lt;String&gt; {
+    &<a href="../social_contracts/profile.md#social_contracts_profile">profile</a>.x_username
 }
 </code></pre>
 

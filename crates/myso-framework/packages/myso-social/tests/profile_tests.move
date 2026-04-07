@@ -8,7 +8,14 @@ module social_contracts::profile_tests {
     use std::option;
     
     use myso::test_scenario;
-    use social_contracts::profile::{Self, Profile, UsernameRegistry, EcosystemTreasury, VestingWallet};
+    use social_contracts::profile::{
+        Self,
+        Profile,
+        UsernameRegistry,
+        EcosystemTreasury,
+        VestingWallet,
+        EcosystemBadgeAdminCap,
+    };
     use myso::url;
     use myso::coin::{Self, Coin};
     use myso::myso::MYSO;
@@ -123,7 +130,6 @@ module social_contracts::profile_tests {
                 string::utf8(b"Updated bio"),
                 b"https://example.com/new_image.png",
                 b"https://example.com/new_cover.png",
-                option::none<string::String>(),
                 option::none<u64>(),
                 test_scenario::ctx(&mut scenario)
             );
@@ -190,7 +196,6 @@ module social_contracts::profile_tests {
                 string::utf8(b"Hacked bio"),
                 b"https://example.com/hacked.png",
                 b"https://example.com/hacked_cover.png",
-                option::none<string::String>(),
                 option::none<u64>(),
                 test_scenario::ctx(&mut scenario)
             );
@@ -198,6 +203,196 @@ module social_contracts::profile_tests {
             test_scenario::return_to_address(USER1, profile);
         };
         
+        test_scenario::end(scenario);
+    }
+
+    #[test]
+    fun test_admin_set_profile_x_username() {
+        let mut scenario = test_scenario::begin(ADMIN);
+        {
+            profile::init_for_testing(test_scenario::ctx(&mut scenario));
+            let clock = clock::create_for_testing(test_scenario::ctx(&mut scenario));
+            clock::share_for_testing(clock);
+            let coins = coin::mint_for_testing<MYSO>(20_000_000_000, test_scenario::ctx(&mut scenario));
+            transfer::public_transfer(coins, USER1);
+            let cap = profile::create_ecosystem_badge_admin_cap(test_scenario::ctx(&mut scenario));
+            transfer::public_transfer(cap, ADMIN);
+        };
+
+        test_scenario::next_tx(&mut scenario, USER1);
+        {
+            let mut registry = test_scenario::take_shared<UsernameRegistry>(&scenario);
+            let clock = test_scenario::take_shared<Clock>(&scenario);
+            profile::create_profile(
+                &mut registry,
+                string::utf8(b"User One"),
+                string::utf8(b"xuser"),
+                string::utf8(b"bio"),
+                b"https://example.com/p.png",
+                b"",
+                test_scenario::ctx(&mut scenario)
+            );
+            test_scenario::return_shared(registry);
+            test_scenario::return_shared(clock);
+        };
+
+        test_scenario::next_tx(&mut scenario, ADMIN);
+        {
+            let cap = test_scenario::take_from_sender<EcosystemBadgeAdminCap>(&scenario);
+            let mut profile = test_scenario::take_from_address<Profile>(&scenario, USER1);
+            profile::admin_set_profile_x_username(
+                &cap,
+                &mut profile,
+                option::some(string::utf8(b"verified_handle")),
+                test_scenario::ctx(&mut scenario)
+            );
+            test_scenario::return_to_sender(&scenario, cap);
+            test_scenario::return_to_address(USER1, profile);
+        };
+
+        test_scenario::next_tx(&mut scenario, USER1);
+        {
+            let profile = test_scenario::take_from_sender<Profile>(&scenario);
+            let x = profile::x_username(&profile);
+            assert!(option::is_some(x), 0);
+            assert!(option::borrow(x) == &string::utf8(b"verified_handle"), 1);
+            test_scenario::return_to_sender(&scenario, profile);
+        };
+
+        test_scenario::end(scenario);
+    }
+
+    #[test]
+    fun test_admin_clears_profile_x_username() {
+        let mut scenario = test_scenario::begin(ADMIN);
+        {
+            profile::init_for_testing(test_scenario::ctx(&mut scenario));
+            let clock = clock::create_for_testing(test_scenario::ctx(&mut scenario));
+            clock::share_for_testing(clock);
+            let coins = coin::mint_for_testing<MYSO>(20_000_000_000, test_scenario::ctx(&mut scenario));
+            transfer::public_transfer(coins, USER1);
+            let cap = profile::create_ecosystem_badge_admin_cap(test_scenario::ctx(&mut scenario));
+            transfer::public_transfer(cap, ADMIN);
+        };
+
+        test_scenario::next_tx(&mut scenario, USER1);
+        {
+            let mut registry = test_scenario::take_shared<UsernameRegistry>(&scenario);
+            let clock = test_scenario::take_shared<Clock>(&scenario);
+            profile::create_profile(
+                &mut registry,
+                string::utf8(b"User One"),
+                string::utf8(b"xuser2"),
+                string::utf8(b"bio"),
+                b"",
+                b"",
+                test_scenario::ctx(&mut scenario)
+            );
+            test_scenario::return_shared(registry);
+            test_scenario::return_shared(clock);
+        };
+
+        test_scenario::next_tx(&mut scenario, ADMIN);
+        {
+            let cap = test_scenario::take_from_sender<EcosystemBadgeAdminCap>(&scenario);
+            let mut profile = test_scenario::take_from_address<Profile>(&scenario, USER1);
+            profile::admin_set_profile_x_username(
+                &cap,
+                &mut profile,
+                option::some(string::utf8(b"temp")),
+                test_scenario::ctx(&mut scenario)
+            );
+            test_scenario::return_to_sender(&scenario, cap);
+            test_scenario::return_to_address(USER1, profile);
+        };
+
+        test_scenario::next_tx(&mut scenario, ADMIN);
+        {
+            let cap = test_scenario::take_from_sender<EcosystemBadgeAdminCap>(&scenario);
+            let mut profile = test_scenario::take_from_address<Profile>(&scenario, USER1);
+            profile::admin_set_profile_x_username(
+                &cap,
+                &mut profile,
+                option::none(),
+                test_scenario::ctx(&mut scenario)
+            );
+            test_scenario::return_to_sender(&scenario, cap);
+            test_scenario::return_to_address(USER1, profile);
+        };
+
+        test_scenario::next_tx(&mut scenario, USER1);
+        {
+            let profile = test_scenario::take_from_sender<Profile>(&scenario);
+            assert!(option::is_none(profile::x_username(&profile)), 0);
+            test_scenario::return_to_sender(&scenario, profile);
+        };
+
+        test_scenario::end(scenario);
+    }
+
+    #[test]
+    fun test_update_profile_does_not_change_x_username() {
+        let mut scenario = test_scenario::begin(ADMIN);
+        {
+            profile::init_for_testing(test_scenario::ctx(&mut scenario));
+            let clock = clock::create_for_testing(test_scenario::ctx(&mut scenario));
+            clock::share_for_testing(clock);
+            let coins = coin::mint_for_testing<MYSO>(20_000_000_000, test_scenario::ctx(&mut scenario));
+            transfer::public_transfer(coins, USER1);
+            let cap = profile::create_ecosystem_badge_admin_cap(test_scenario::ctx(&mut scenario));
+            transfer::public_transfer(cap, ADMIN);
+        };
+
+        test_scenario::next_tx(&mut scenario, USER1);
+        {
+            let mut registry = test_scenario::take_shared<UsernameRegistry>(&scenario);
+            let clock = test_scenario::take_shared<Clock>(&scenario);
+            profile::create_profile(
+                &mut registry,
+                string::utf8(b"User One"),
+                string::utf8(b"xuser3"),
+                string::utf8(b"original bio"),
+                b"",
+                b"",
+                test_scenario::ctx(&mut scenario)
+            );
+            test_scenario::return_shared(registry);
+            test_scenario::return_shared(clock);
+        };
+
+        test_scenario::next_tx(&mut scenario, ADMIN);
+        {
+            let cap = test_scenario::take_from_sender<EcosystemBadgeAdminCap>(&scenario);
+            let mut profile = test_scenario::take_from_address<Profile>(&scenario, USER1);
+            profile::admin_set_profile_x_username(
+                &cap,
+                &mut profile,
+                option::some(string::utf8(b"admin_set")),
+                test_scenario::ctx(&mut scenario)
+            );
+            test_scenario::return_to_sender(&scenario, cap);
+            test_scenario::return_to_address(USER1, profile);
+        };
+
+        test_scenario::next_tx(&mut scenario, USER1);
+        {
+            let mut profile = test_scenario::take_from_sender<Profile>(&scenario);
+            profile::update_profile(
+                &mut profile,
+                string::utf8(b"User One"),
+                string::utf8(b"new bio from owner"),
+                b"",
+                b"",
+                option::none<u64>(),
+                test_scenario::ctx(&mut scenario)
+            );
+            let x = profile::x_username(&profile);
+            assert!(option::is_some(x), 0);
+            assert!(option::borrow(x) == &string::utf8(b"admin_set"), 1);
+            assert!(profile::bio(&profile) == string::utf8(b"new bio from owner"), 2);
+            test_scenario::return_to_sender(&scenario, profile);
+        };
+
         test_scenario::end(scenario);
     }
 
@@ -838,7 +1033,6 @@ module social_contracts::profile_tests {
                 string::utf8(b"This is User1's profile"),
                 b"https://example.com/image.png",
                 b"",
-                option::none<string::String>(),
                 min_offer,
                 test_scenario::ctx(&mut scenario)
             );

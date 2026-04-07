@@ -172,6 +172,28 @@ struct ProfileUpdatedEvent {
     min_offer_amount: Option<i64>,
 }
 
+/// Emitted when an EcosystemBadgeAdminCap holder sets or clears `x_username` on-chain.
+#[derive(Debug, Clone, Deserialize)]
+struct ProfileXUsernameUpdatedEvent {
+    #[serde(rename = "profile_id", alias = "id", default)]
+    profile_id: String,
+
+    #[serde(rename = "owner_address", alias = "owner", default)]
+    owner_address: String,
+
+    x_username: Option<String>,
+
+    #[serde(default)]
+    updated_by: String,
+
+    #[serde(
+        rename = "updated_at",
+        default = "default_timestamp",
+        deserialize_with = "deserialize_number_from_string"
+    )]
+    updated_at: u64,
+}
+
 impl ProfileCreatedEvent {
     fn into_model(&self) -> NewProfile {
         let now = Utc::now().naive_utc();
@@ -234,6 +256,7 @@ pub fn handle_profile_event(
     match event_name {
         "ProfileCreatedEvent" => process_profile_created_event(data, event_id),
         "ProfileUpdatedEvent" => process_profile_updated_event(data, event_id),
+        "ProfileXUsernameUpdatedEvent" => process_profile_x_username_updated_event(data, event_id),
         "UsernameRegisteredEvent" => process_username_registered_event(data),
         "UsernameUpdatedEvent" => process_username_updated_event(data),
         "BadgeAssignedEvent" => process_badge_assigned_event(data, event_id),
@@ -366,6 +389,39 @@ fn process_profile_updated_event(
     };
     Some(vec![
         SocialEventRow::ProfileUpdate(up),
+        SocialEventRow::ProfileEvent(audit_event),
+    ])
+}
+
+fn process_profile_x_username_updated_event(
+    data: &serde_json::Value,
+    event_id: &str,
+) -> Option<Vec<SocialEventRow>> {
+    let ev: ProfileXUsernameUpdatedEvent = serde_json::from_value(data.clone()).ok()?;
+    let now = Utc::now().naive_utc();
+    let profile_id = ev.profile_id.clone();
+    let owner_address = ev.owner_address.clone();
+
+    let audit_event = NewProfileEvent {
+        event_type: "ProfileXUsernameUpdated".to_string(),
+        profile_id: profile_id.clone(),
+        event_data: serde_json::json!({
+            "owner_address": owner_address,
+            "x_username": ev.x_username,
+            "updated_by": ev.updated_by,
+            "updated_at": ev.updated_at,
+        }),
+        event_id: Some(event_id.to_string()),
+        created_at: now,
+        updated_at: now,
+    };
+
+    Some(vec![
+        SocialEventRow::ProfileXUsernameUpdate {
+            profile_id: ev.profile_id,
+            owner_address: ev.owner_address,
+            x_username: ev.x_username,
+        },
         SocialEventRow::ProfileEvent(audit_event),
     ])
 }
@@ -1156,5 +1212,95 @@ mod tests {
         );
         assert!(profile_row.owner_address.starts_with("0x"));
         assert_eq!(event_row.event_type, "ProfileCreated");
+    }
+
+    #[test]
+    fn test_profile_x_username_updated_json_sets_handle() {
+        let data = serde_json::json!({
+            "profile_id": "0xaa",
+            "owner_address": "0xbb",
+            "x_username": "verified",
+            "updated_by": "0xcc",
+            "updated_at": 1700000000000u64,
+        });
+        let rows = handle_profile_event("ProfileXUsernameUpdatedEvent", &data, "e-x-1")
+            .expect("handle_profile_event should return Some");
+        assert_eq!(rows.len(), 2, "expect ProfileXUsernameUpdate + ProfileEvent");
+        let (up_row, audit) = match (&rows[0], &rows[1]) {
+            (SocialEventRow::ProfileXUsernameUpdate { .. }, SocialEventRow::ProfileEvent(e)) => {
+                (&rows[0], e)
+            }
+            (SocialEventRow::ProfileEvent(e), SocialEventRow::ProfileXUsernameUpdate { .. }) => {
+                (&rows[1], e)
+            }
+            _ => panic!("expected ProfileXUsernameUpdate and ProfileEvent"),
+        };
+        let SocialEventRow::ProfileXUsernameUpdate {
+            profile_id,
+            owner_address,
+            x_username,
+        } = up_row
+        else {
+            unreachable!()
+        };
+        assert_eq!(profile_id, "0xaa");
+        assert_eq!(owner_address, "0xbb");
+        assert_eq!(x_username.as_deref(), Some("verified"));
+        assert_eq!(audit.event_type, "ProfileXUsernameUpdated");
+        assert_eq!(
+            audit.event_data.get("x_username").and_then(|v| v.as_str()),
+            Some("verified")
+        );
+    }
+
+    #[test]
+    fn test_profile_x_username_updated_json_clear_handle() {
+        let data = serde_json::json!({
+            "profile_id": "0xaa",
+            "owner_address": "0xbb",
+            "x_username": serde_json::Value::Null,
+            "updated_by": "0xcc",
+            "updated_at": 1700000000001u64,
+        });
+        let rows = handle_profile_event("ProfileXUsernameUpdatedEvent", &data, "e-x-2")
+            .expect("handle_profile_event should return Some");
+        let up_row = rows.iter().find_map(|r| match r {
+            SocialEventRow::ProfileXUsernameUpdate {
+                profile_id,
+                owner_address,
+                x_username,
+            } => Some((profile_id.clone(), owner_address.clone(), x_username.clone())),
+            _ => None,
+        });
+        let Some((pid, owner, x)) = up_row else {
+            panic!("expected ProfileXUsernameUpdate row");
+        };
+        assert_eq!(pid, "0xaa");
+        assert_eq!(owner, "0xbb");
+        assert_eq!(x, None);
+    }
+
+    #[test]
+    fn test_profile_x_username_updated_bcs_roundtrip() {
+        let pid = move_core_types::account_address::AccountAddress::random();
+        let owner = move_core_types::account_address::AccountAddress::random();
+        let upd = move_core_types::account_address::AccountAddress::random();
+        let ev = crate::handlers::events::BcsProfileXUsernameUpdatedEvent {
+            profile_id: pid,
+            owner,
+            x_username: Some("from_bcs".to_string()),
+            updated_by: upd,
+            updated_at: 42,
+        };
+        let bytes = bcs::to_bytes(&ev).expect("bcs serialize");
+        let json = parse_event_contents("profile", "ProfileXUsernameUpdatedEvent", &bytes)
+            .expect("parse_event_contents");
+        let rows = handle_profile_event("ProfileXUsernameUpdatedEvent", &json, "e-bcs")
+            .expect("handler");
+        let up_row = rows.iter().find_map(|r| match r {
+            SocialEventRow::ProfileXUsernameUpdate { x_username, .. } => x_username.clone(),
+            _ => None,
+        });
+        assert_eq!(up_row.as_deref(), Some("from_bcs"));
     }
 }

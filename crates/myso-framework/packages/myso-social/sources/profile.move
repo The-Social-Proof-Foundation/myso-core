@@ -301,6 +301,15 @@ module social_contracts::profile {
         min_offer_amount: Option<u64>,
     }
 
+    /// X username set or cleared by an EcosystemBadgeAdminCap holder (audit trail).
+    public struct ProfileXUsernameUpdatedEvent has copy, drop {
+        profile_id: address,
+        owner: address,
+        x_username: Option<String>,
+        updated_by: address,
+        updated_at: u64,
+    }
+
     /// Event emitted when an offer is created for a profile
     public struct ProfileOfferCreatedEvent has copy, drop {
         profile_id: address,
@@ -709,7 +718,6 @@ module social_contracts::profile {
         new_bio: String,
         new_profile_picture_url: vector<u8>,
         new_cover_photo_url: vector<u8>,
-        x_username: Option<String>,
         min_offer_amount: Option<u64>,
         ctx: &mut TxContext
     ) {
@@ -733,10 +741,6 @@ module social_contracts::profile {
         
         if (vector::length(&new_cover_photo_url) > 0) {
             profile.cover_photo = option::some(url::new_unsafe_from_bytes(new_cover_photo_url));
-        };
-
-        if (option::is_some(&x_username)) {
-            profile.x_username = x_username;
         };
 
         if (option::is_some(&min_offer_amount)) {
@@ -1217,6 +1221,24 @@ module social_contracts::profile {
         };
     }
 
+    /// Set or clear a profile X username — only callable by an EcosystemBadgeAdminCap holder.
+    public entry fun admin_set_profile_x_username(
+        _: &EcosystemBadgeAdminCap,
+        profile: &mut Profile,
+        new_x_username: Option<String>,
+        ctx: &mut TxContext
+    ) {
+        profile.x_username = new_x_username;
+        let now = tx_context::epoch_timestamp_ms(ctx);
+        event::emit(ProfileXUsernameUpdatedEvent {
+            profile_id: object::uid_to_address(&profile.id),
+            owner: profile.owner,
+            x_username: profile.x_username,
+            updated_by: tx_context::sender(ctx),
+            updated_at: now,
+        });
+    }
+
     /// Revoke an ecosystem badge from a profile - called by EcosystemBadgeAdminCap holder
     public entry fun revoke_ecosystem_badge(
         _: &EcosystemBadgeAdminCap,
@@ -1333,6 +1355,11 @@ module social_contracts::profile {
     /// Get the minimum offer amount for a profile
     public fun min_offer_amount(profile: &Profile): &Option<u64> {
         &profile.min_offer_amount
+    }
+
+    /// X/Twitter username on the profile (set or cleared only via admin entry).
+    public fun x_username(profile: &Profile): &Option<String> {
+        &profile.x_username
     }
 
     /// Check if a profile is for sale (has a minimum offer amount set)

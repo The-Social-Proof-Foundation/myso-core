@@ -76,6 +76,11 @@ pub use upgrade_handler::UpgradeHandler;
 pub enum SocialEventRow {
     Profile(NewProfile),
     ProfileUpdate(ProfileUpdate),
+    ProfileXUsernameUpdate {
+        profile_id: String,
+        owner_address: String,
+        x_username: Option<String>,
+    },
     EcosystemTreasury(NewEcosystemTreasury),
     SocialGraphRelationship(NewSocialGraphRelationship),
     SocialGraphEvent(NewSocialGraphEvent),

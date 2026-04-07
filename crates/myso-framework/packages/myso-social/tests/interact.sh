@@ -266,7 +266,7 @@ update_profile() {
     
     print_info "Updating profile..."
     # This is a simplified call, the actual function has many more parameters
-    myso client call --package $PACKAGE_ID --module profile --function update_profile --args "$profile_id" "$display_name" "$bio" "$profile_pic" "$cover_image" "option::none()" "option::none()" --gas-budget $GAS_BUDGET
+    myso client call --package $PACKAGE_ID --module profile --function update_profile --args "$profile_id" "$display_name" "$bio" "$profile_pic" "$cover_image" "option::none()" --gas-budget $GAS_BUDGET
     
     print_success "Profile updated!"
     

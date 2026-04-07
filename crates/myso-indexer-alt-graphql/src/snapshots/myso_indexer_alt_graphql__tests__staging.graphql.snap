@@ -4791,10 +4791,6 @@ type Profile implements Node {
 	"""
 	id: ID!
 	"""
-	Mastodon username.
-	"""
-	mastodonUsername: String
-	"""
 	Minimum offer amount for profile sales.
 	"""
 	minOfferAmount: Int

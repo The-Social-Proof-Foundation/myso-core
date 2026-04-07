@@ -37,6 +37,11 @@ const PROFILE_MODULES: &[&str] = &["profile"];
 pub enum ProfileRow {
     Profile(NewProfile),
     ProfileUpdate(ProfileUpdate),
+    ProfileXUsernameUpdate {
+        profile_id: String,
+        owner_address: String,
+        x_username: Option<String>,
+    },
     ProfileEvent(NewProfileEvent),
     ProfileOffer(NewProfileOffer),
     ProfileOfferStatusUpdate {
@@ -73,6 +78,15 @@ impl ProfileRow {
         match row {
             crate::handlers::SocialEventRow::Profile(p) => Some(ProfileRow::Profile(p)),
             crate::handlers::SocialEventRow::ProfileUpdate(u) => Some(ProfileRow::ProfileUpdate(u)),
+            crate::handlers::SocialEventRow::ProfileXUsernameUpdate {
+                profile_id,
+                owner_address,
+                x_username,
+            } => Some(ProfileRow::ProfileXUsernameUpdate {
+                profile_id,
+                owner_address,
+                x_username,
+            }),
             crate::handlers::SocialEventRow::ProfileEvent(e) => Some(ProfileRow::ProfileEvent(e)),
             crate::handlers::SocialEventRow::ProfileOffer(o) => Some(ProfileRow::ProfileOffer(o)),
             crate::handlers::SocialEventRow::ProfileOfferStatusUpdate {
@@ -187,6 +201,24 @@ impl Handler for ProfilesHandler {
                         .values(profile)
                         .on_conflict(profiles::owner_address)
                         .do_nothing()
+                        .execute(conn)
+                        .await?;
+                }
+                ProfileRow::ProfileXUsernameUpdate {
+                    profile_id,
+                    owner_address,
+                    x_username,
+                } => {
+                    let now = chrono::Utc::now().naive_utc();
+                    let filter = profiles::profile_id
+                        .eq(profile_id)
+                        .or(profiles::owner_address.eq(owner_address));
+                    total += diesel::update(profiles::table)
+                        .filter(filter)
+                        .set((
+                            profiles::x_username.eq(x_username),
+                            profiles::updated_at.eq(now),
+                        ))
                         .execute(conn)
                         .await?;
                 }

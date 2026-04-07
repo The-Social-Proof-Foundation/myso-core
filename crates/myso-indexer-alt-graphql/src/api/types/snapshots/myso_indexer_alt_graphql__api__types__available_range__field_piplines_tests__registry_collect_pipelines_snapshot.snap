@@ -2612,9 +2612,6 @@ Profile.relationshipStatus
 Profile.xUsername
   => {}
 
-Profile.mastodonUsername
-  => {}
-
 Profile.blockListAddress
   => {}
 

@@ -294,6 +294,15 @@ pub struct BcsProfileUpdatedEvent {
     min_offer_amount: Option<u64>,
 }
 
+#[derive(Debug, Deserialize, Serialize)]
+pub struct BcsProfileXUsernameUpdatedEvent {
+    pub(crate) profile_id: AccountAddress,
+    pub(crate) owner: AccountAddress,
+    pub(crate) x_username: Option<String>,
+    pub(crate) updated_by: AccountAddress,
+    pub(crate) updated_at: u64,
+}
+
 #[derive(Debug, Deserialize)]
 pub struct BcsBadgeAssignedEvent {
     profile_id: AccountAddress,
@@ -1259,6 +1268,17 @@ fn parse_profile_event(
                 "updated_at": ev.updated_at,
                 "x_username": ev.x_username,
                 "min_offer_amount": ev.min_offer_amount,
+            })))
+        }
+        "ProfileXUsernameUpdatedEvent" => {
+            let ev = bcs::from_bytes::<BcsProfileXUsernameUpdatedEvent>(contents)
+                .map_err(|e| bcs_parse_err(e, contents))?;
+            Ok(Some(serde_json::json!({
+                "profile_id": addr_to_string(&ev.profile_id),
+                "owner_address": addr_to_string(&ev.owner),
+                "x_username": ev.x_username,
+                "updated_by": addr_to_string(&ev.updated_by),
+                "updated_at": ev.updated_at,
             })))
         }
         "BadgeAssignedEvent" => {

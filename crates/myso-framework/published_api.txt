@@ -7357,6 +7357,9 @@ ProfileCreatedEvent
 ProfileUpdatedEvent
 	public struct
 	0x50c1::profile
+ProfileXUsernameUpdatedEvent
+	public struct
+	0x50c1::profile
 ProfileOfferCreatedEvent
 	public struct
 	0x50c1::profile
@@ -7438,6 +7441,9 @@ id
 username
 	public fun
 	0x50c1::profile
+x_username
+	public fun
+	0x50c1::profile
 lookup_profile_by_username
 	public fun
 	0x50c1::profile
@@ -7488,6 +7494,9 @@ create_ecosystem_treasury_admin_cap
 	0x50c1::profile
 create_ecosystem_badge_admin_cap
 	public(package) fun
+	0x50c1::profile
+admin_set_profile_x_username
+	public entry fun
 	0x50c1::profile
 assign_ecosystem_badge
 	public entry fun

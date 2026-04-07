@@ -67,7 +67,6 @@ impl Profile {
             primary_language: inner.primary_language,
             relationship_status: inner.relationship_status,
             x_username: inner.x_username,
-            mastodon_username: None,
             block_list_address: None,
             social_proof_token_address: inner.social_proof_token_address,
             reservation_pool_address: inner.reservation_pool_address,
@@ -222,11 +221,6 @@ impl Profile {
     /// X (Twitter) username.
     async fn x_username(&self) -> Option<&str> {
         self.inner.x_username.as_deref()
-    }
-
-    /// Mastodon username.
-    async fn mastodon_username(&self) -> Option<&str> {
-        self.inner.mastodon_username.as_deref()
     }
 
     /// Block list address.
