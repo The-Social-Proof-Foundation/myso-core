@@ -68,9 +68,6 @@ impl Profile {
             relationship_status: inner.relationship_status,
             x_username: inner.x_username,
             mastodon_username: None,
-            facebook_username: inner.facebook_username,
-            reddit_username: inner.reddit_username,
-            github_username: inner.github_username,
             block_list_address: None,
             social_proof_token_address: inner.social_proof_token_address,
             reservation_pool_address: inner.reservation_pool_address,
@@ -230,21 +227,6 @@ impl Profile {
     /// Mastodon username.
     async fn mastodon_username(&self) -> Option<&str> {
         self.inner.mastodon_username.as_deref()
-    }
-
-    /// Facebook username.
-    async fn facebook_username(&self) -> Option<&str> {
-        self.inner.facebook_username.as_deref()
-    }
-
-    /// Reddit username.
-    async fn reddit_username(&self) -> Option<&str> {
-        self.inner.reddit_username.as_deref()
-    }
-
-    /// GitHub username.
-    async fn github_username(&self) -> Option<&str> {
-        self.inner.github_username.as_deref()
     }
 
     /// Block list address.

@@ -2045,16 +2045,142 @@ PlatformMemberSummary.profile
 PlatformMemberSummary.joinedAt
   => {}
 
+PlatformMembershipPage.items
+  => {}
+
+PlatformMembershipPage.totalCount
+  => {}
+
+PlatformMembershipPage.limit
+  => {}
+
+PlatformMembershipPage.offset
+  => {}
+
+PlatformMembershipPage.totalPages
+  => {}
+
+PlatformMembershipSummary.membershipId
+  => {}
+
+PlatformMembershipSummary.platformDbId
+  => {}
+
 PlatformMembershipSummary.platformId
   => {}
 
 PlatformMembershipSummary.name
   => {}
 
+PlatformMembershipSummary.tagline
+  => {}
+
+PlatformMembershipSummary.description
+  => {}
+
+PlatformMembershipSummary.logo
+  => {}
+
+PlatformMembershipSummary.developerAddress
+  => {}
+
+PlatformMembershipSummary.developerProfile
+  => {}
+
+PlatformMembershipSummary.termsOfService
+  => {}
+
+PlatformMembershipSummary.privacyPolicy
+  => {}
+
+PlatformMembershipSummary.platformNames
+  => {}
+
+PlatformMembershipSummary.links
+  => {}
+
+PlatformMembershipSummary.status
+  => {}
+
+PlatformMembershipSummary.statusText
+  => {}
+
+PlatformMembershipSummary.releaseDate
+  => {}
+
+PlatformMembershipSummary.shutdownDate
+  => {}
+
+PlatformMembershipSummary.createdAt
+  => {}
+
+PlatformMembershipSummary.updatedAt
+  => {}
+
 PlatformMembershipSummary.isApproved
   => {}
 
+PlatformMembershipSummary.approvalChangedAt
+  => {}
+
+PlatformMembershipSummary.approvedBy
+  => {}
+
 PlatformMembershipSummary.joinedAt
+  => {}
+
+PlatformMembershipSummary.wantsDaoGovernance
+  => {}
+
+PlatformMembershipSummary.governanceRegistryId
+  => {}
+
+PlatformMembershipSummary.delegateCount
+  => {}
+
+PlatformMembershipSummary.delegateTermEpochs
+  => {}
+
+PlatformMembershipSummary.maxVotesPerUser
+  => {}
+
+PlatformMembershipSummary.minOnChainAgeDays
+  => {}
+
+PlatformMembershipSummary.proposalSubmissionCost
+  => {}
+
+PlatformMembershipSummary.quadraticBaseCost
+  => {}
+
+PlatformMembershipSummary.quorumVotes
+  => {}
+
+PlatformMembershipSummary.votingPeriodEpochs
+  => {}
+
+PlatformMembershipSummary.treasury
+  => {}
+
+PlatformMembershipSummary.treasuryAddress
+  => {}
+
+PlatformMembershipSummary.version
+  => {}
+
+PlatformMembershipSummary.primaryCategory
+  => {}
+
+PlatformMembershipSummary.secondaryCategory
+  => {}
+
+PlatformMembershipSummary.deletedAt
+  => {}
+
+PlatformMembershipSummary.moderatorCount
+  => {}
+
+PlatformMembershipSummary.blockedProfilesCount
   => {}
 
 PlatformModeratorSummary.moderatorAddress
@@ -2489,15 +2615,6 @@ Profile.xUsername
 Profile.mastodonUsername
   => {}
 
-Profile.facebookUsername
-  => {}
-
-Profile.redditUsername
-  => {}
-
-Profile.githubUsername
-  => {}
-
 Profile.blockListAddress
   => {}
 
@@ -2537,6 +2654,12 @@ Profile.blockedPlatforms
 Profile.platformMemberships
   => {}
 
+Profile.platformMembershipsPage
+  => {}
+
+Profile.platformMembershipsTotal
+  => {}
+
 Profile.vestingWallets
   => {}
 
@@ -2544,6 +2667,9 @@ Profile.sptHoldings
   => {}
 
 Profile.reservationHoldings
+  => {}
+
+Profile.posts
   => {}
 
 Profile.mydataRecords

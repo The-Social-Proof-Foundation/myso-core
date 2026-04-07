@@ -4767,10 +4767,6 @@ type Profile implements Node {
 	"""
 	email: String
 	"""
-	Facebook username.
-	"""
-	facebookUsername: String
-	"""
 	Followers (paginated).
 	"""
 	followers(viewer: MySoAddress, limit: Int, offset: Int): [ProfileSummary!]
@@ -4790,10 +4786,6 @@ type Profile implements Node {
 	Gender.
 	"""
 	gender: String
-	"""
-	GitHub username.
-	"""
-	githubUsername: String
 	"""
 	The profile's globally unique identifier.
 	"""
@@ -4840,6 +4832,11 @@ type Profile implements Node {
 	"""
 	postCount: Int!
 	"""
+	Posts by this profile (paginated, newest first). Matches REST `GET /profiles/:address/posts`
+	scope: `posts.owner` is this profile's wallet **or** `posts.profile_id` is this profile's object id.
+	"""
+	posts(postType: String, limit: Int, offset: Int): [Post!]
+	"""
 	Primary language.
 	"""
 	primaryLanguage: String
@@ -4855,10 +4852,6 @@ type Profile implements Node {
 	Raised location.
 	"""
 	raisedLocation: String
-	"""
-	Reddit username.
-	"""
-	redditUsername: String
 	"""
 	Relationship status.
 	"""

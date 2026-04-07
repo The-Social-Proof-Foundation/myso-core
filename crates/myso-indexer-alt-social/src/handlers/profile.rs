@@ -168,24 +168,6 @@ struct ProfileUpdatedEvent {
     #[serde(default)]
     x_username: Option<String>,
 
-    #[serde(default)]
-    facebook_username: Option<String>,
-
-    #[serde(default)]
-    reddit_username: Option<String>,
-
-    #[serde(default)]
-    github_username: Option<String>,
-
-    #[serde(default)]
-    instagram_username: Option<String>,
-
-    #[serde(default)]
-    linkedin_username: Option<String>,
-
-    #[serde(default)]
-    twitch_username: Option<String>,
-
     #[serde(default, deserialize_with = "deserialize_optional_number_from_string")]
     min_offer_amount: Option<i64>,
 }
@@ -234,12 +216,6 @@ impl ProfileCreatedEvent {
             primary_language: None,
             relationship_status: None,
             x_username: None,
-            facebook_username: None,
-            reddit_username: None,
-            github_username: None,
-            instagram_username: None,
-            linkedin_username: None,
-            twitch_username: None,
             social_proof_token_address: None,
             reservation_pool_address: None,
             selected_badge_id: None,
@@ -380,12 +356,6 @@ fn process_profile_updated_event(
         primary_language: ev.primary_language,
         relationship_status: ev.relationship_status,
         x_username: ev.x_username,
-        facebook_username: ev.facebook_username,
-        reddit_username: ev.reddit_username,
-        github_username: ev.github_username,
-        instagram_username: ev.instagram_username,
-        linkedin_username: ev.linkedin_username,
-        twitch_username: ev.twitch_username,
         min_offer_amount: ev.min_offer_amount,
         username: Some(ev.username),
         selected_badge_id: None,
@@ -458,12 +428,6 @@ fn process_username_registered_event(data: &serde_json::Value) -> Option<Vec<Soc
         primary_language: None,
         relationship_status: None,
         x_username: None,
-        facebook_username: None,
-        reddit_username: None,
-        github_username: None,
-        instagram_username: None,
-        linkedin_username: None,
-        twitch_username: None,
         min_offer_amount: None,
         username: Some(ev.username),
         selected_badge_id: None,
@@ -509,12 +473,6 @@ fn process_username_updated_event(data: &serde_json::Value) -> Option<Vec<Social
         primary_language: None,
         relationship_status: None,
         x_username: None,
-        facebook_username: None,
-        reddit_username: None,
-        github_username: None,
-        instagram_username: None,
-        linkedin_username: None,
-        twitch_username: None,
         min_offer_amount: None,
         username: Some(ev.new_username),
         selected_badge_id: None,
@@ -719,12 +677,6 @@ fn process_badge_selected_event(
         primary_language: None,
         relationship_status: None,
         x_username: None,
-        facebook_username: None,
-        reddit_username: None,
-        github_username: None,
-        instagram_username: None,
-        linkedin_username: None,
-        twitch_username: None,
         min_offer_amount: None,
         username: None,
         selected_badge_id,
@@ -779,12 +731,6 @@ fn process_paid_messaging_settings_updated_event(
         primary_language: None,
         relationship_status: None,
         x_username: None,
-        facebook_username: None,
-        reddit_username: None,
-        github_username: None,
-        instagram_username: None,
-        linkedin_username: None,
-        twitch_username: None,
         min_offer_amount: None,
         username: None,
         selected_badge_id: None,

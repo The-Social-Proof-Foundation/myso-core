@@ -132,18 +132,6 @@ module social_contracts::profile {
         owner: address,
         /// Username for the profile (required, immutable after creation)
         username: String,
-        /// Facebook username as encrypted string (optional)
-        facebook_username: Option<String>,
-        /// GitHub username as encrypted string (optional)
-        github_username: Option<String>,
-        /// Instagram username as encrypted string (optional)
-        instagram_username: Option<String>,
-        /// LinkedIn username as encrypted string (optional)
-        linkedin_username: Option<String>,
-        /// Reddit username as encrypted string (optional)
-        reddit_username: Option<String>,
-        /// Twitch username as encrypted string (optional)
-        twitch_username: Option<String>,
         /// X/Twitter username as encrypted string (optional)
         x_username: Option<String>,
         /// Minimum offer amount in MYSO tokens the owner is willing to accept (optional)
@@ -309,13 +297,6 @@ module social_contracts::profile {
         cover_photo: Option<String>,
         owner: address,
         updated_at: u64,
-        // Social media usernames
-        facebook_username: Option<String>,
-        github_username: Option<String>,
-        instagram_username: Option<String>,
-        linkedin_username: Option<String>,
-        reddit_username: Option<String>,
-        twitch_username: Option<String>,
         x_username: Option<String>,
         min_offer_amount: Option<u64>,
     }
@@ -602,12 +583,6 @@ module social_contracts::profile {
             created_at: now,
             owner,
             username,
-            facebook_username: option::none(),
-            github_username: option::none(),
-            instagram_username: option::none(),
-            linkedin_username: option::none(),
-            reddit_username: option::none(),
-            twitch_username: option::none(),
             x_username: option::none(),
             min_offer_amount: option::none(),
             badges: vector::empty<ProfileBadge>(),
@@ -718,13 +693,6 @@ module social_contracts::profile {
             },
             owner: new_owner,
             updated_at: tx_context::epoch_timestamp_ms(ctx),
-            // Social media usernames
-            facebook_username: profile.facebook_username,
-            github_username: profile.github_username,
-            instagram_username: profile.instagram_username,
-            linkedin_username: profile.linkedin_username,
-            reddit_username: profile.reddit_username,
-            twitch_username: profile.twitch_username,
             x_username: profile.x_username,
             min_offer_amount: profile.min_offer_amount,
         });
@@ -741,13 +709,6 @@ module social_contracts::profile {
         new_bio: String,
         new_profile_picture_url: vector<u8>,
         new_cover_photo_url: vector<u8>,
-        // Social media usernames (all optional)
-        facebook_username: Option<String>,
-        github_username: Option<String>,
-        instagram_username: Option<String>,
-        linkedin_username: Option<String>,
-        reddit_username: Option<String>,
-        twitch_username: Option<String>,
         x_username: Option<String>,
         min_offer_amount: Option<u64>,
         ctx: &mut TxContext
@@ -774,31 +735,6 @@ module social_contracts::profile {
             profile.cover_photo = option::some(url::new_unsafe_from_bytes(new_cover_photo_url));
         };
 
-        // Update social media usernames if provided
-        if (option::is_some(&facebook_username)) {
-            profile.facebook_username = facebook_username;
-        };
-        
-        if (option::is_some(&github_username)) {
-            profile.github_username = github_username;
-        };
-
-        if (option::is_some(&instagram_username)) {
-            profile.instagram_username = instagram_username;
-        };
-
-        if (option::is_some(&linkedin_username)) {
-            profile.linkedin_username = linkedin_username;
-        };
-        
-        if (option::is_some(&reddit_username)) {
-            profile.reddit_username = reddit_username;
-        };
-
-        if (option::is_some(&twitch_username)) {
-            profile.twitch_username = twitch_username;
-        };
-        
         if (option::is_some(&x_username)) {
             profile.x_username = x_username;
         };
@@ -833,13 +769,6 @@ module social_contracts::profile {
             cover_photo: cover_photo_string,
             owner: profile.owner,
             updated_at: now,
-            // Social media usernames
-            facebook_username: profile.facebook_username,
-            github_username: profile.github_username,
-            instagram_username: profile.instagram_username,
-            linkedin_username: profile.linkedin_username,
-            reddit_username: profile.reddit_username,
-            twitch_username: profile.twitch_username,
             x_username: profile.x_username,
             min_offer_amount: profile.min_offer_amount,
         });
@@ -1089,13 +1018,6 @@ module social_contracts::profile {
             },
             owner: offeror,
             updated_at: now,
-            // Social media usernames
-            facebook_username: profile.facebook_username,
-            github_username: profile.github_username,
-            instagram_username: profile.instagram_username,
-            linkedin_username: profile.linkedin_username,
-            reddit_username: profile.reddit_username,
-            twitch_username: profile.twitch_username,
             x_username: profile.x_username,
             min_offer_amount: profile.min_offer_amount,
         });
@@ -1385,12 +1307,6 @@ module social_contracts::profile {
             created_at: epoch,
             owner,
             username,
-            facebook_username: option::none(),
-            github_username: option::none(),
-            instagram_username: option::none(),
-            linkedin_username: option::none(),
-            reddit_username: option::none(),
-            twitch_username: option::none(),
             x_username: option::none(),
             min_offer_amount: option::none(),
             badges: vector::empty<ProfileBadge>(),

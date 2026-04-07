@@ -361,42 +361,6 @@ Profile object that contains user information
  Username for the profile (required, immutable after creation)
 </dd>
 <dt>
-<code>facebook_username: <a href="../std/option.md#std_option_Option">std::option::Option</a>&lt;<a href="../std/string.md#std_string_String">std::string::String</a>&gt;</code>
-</dt>
-<dd>
- Facebook username as encrypted string (optional)
-</dd>
-<dt>
-<code>github_username: <a href="../std/option.md#std_option_Option">std::option::Option</a>&lt;<a href="../std/string.md#std_string_String">std::string::String</a>&gt;</code>
-</dt>
-<dd>
- GitHub username as encrypted string (optional)
-</dd>
-<dt>
-<code>instagram_username: <a href="../std/option.md#std_option_Option">std::option::Option</a>&lt;<a href="../std/string.md#std_string_String">std::string::String</a>&gt;</code>
-</dt>
-<dd>
- Instagram username as encrypted string (optional)
-</dd>
-<dt>
-<code>linkedin_username: <a href="../std/option.md#std_option_Option">std::option::Option</a>&lt;<a href="../std/string.md#std_string_String">std::string::String</a>&gt;</code>
-</dt>
-<dd>
- LinkedIn username as encrypted string (optional)
-</dd>
-<dt>
-<code>reddit_username: <a href="../std/option.md#std_option_Option">std::option::Option</a>&lt;<a href="../std/string.md#std_string_String">std::string::String</a>&gt;</code>
-</dt>
-<dd>
- Reddit username as encrypted string (optional)
-</dd>
-<dt>
-<code>twitch_username: <a href="../std/option.md#std_option_Option">std::option::Option</a>&lt;<a href="../std/string.md#std_string_String">std::string::String</a>&gt;</code>
-</dt>
-<dd>
- Twitch username as encrypted string (optional)
-</dd>
-<dt>
 <code>x_username: <a href="../std/option.md#std_option_Option">std::option::Option</a>&lt;<a href="../std/string.md#std_string_String">std::string::String</a>&gt;</code>
 </dt>
 <dd>
@@ -1014,36 +978,6 @@ Profile updated event with all profile details
 </dd>
 <dt>
 <code>updated_at: u64</code>
-</dt>
-<dd>
-</dd>
-<dt>
-<code>facebook_username: <a href="../std/option.md#std_option_Option">std::option::Option</a>&lt;<a href="../std/string.md#std_string_String">std::string::String</a>&gt;</code>
-</dt>
-<dd>
-</dd>
-<dt>
-<code>github_username: <a href="../std/option.md#std_option_Option">std::option::Option</a>&lt;<a href="../std/string.md#std_string_String">std::string::String</a>&gt;</code>
-</dt>
-<dd>
-</dd>
-<dt>
-<code>instagram_username: <a href="../std/option.md#std_option_Option">std::option::Option</a>&lt;<a href="../std/string.md#std_string_String">std::string::String</a>&gt;</code>
-</dt>
-<dd>
-</dd>
-<dt>
-<code>linkedin_username: <a href="../std/option.md#std_option_Option">std::option::Option</a>&lt;<a href="../std/string.md#std_string_String">std::string::String</a>&gt;</code>
-</dt>
-<dd>
-</dd>
-<dt>
-<code>reddit_username: <a href="../std/option.md#std_option_Option">std::option::Option</a>&lt;<a href="../std/string.md#std_string_String">std::string::String</a>&gt;</code>
-</dt>
-<dd>
-</dd>
-<dt>
-<code>twitch_username: <a href="../std/option.md#std_option_Option">std::option::Option</a>&lt;<a href="../std/string.md#std_string_String">std::string::String</a>&gt;</code>
 </dt>
 <dd>
 </dd>
@@ -2152,12 +2086,6 @@ This is the main entry point for new users, combining profile and username creat
         created_at: now,
         <a href="../social_contracts/profile.md#social_contracts_profile_owner">owner</a>,
         <a href="../social_contracts/profile.md#social_contracts_profile_username">username</a>,
-        facebook_username: option::none(),
-        github_username: option::none(),
-        instagram_username: option::none(),
-        linkedin_username: option::none(),
-        reddit_username: option::none(),
-        twitch_username: option::none(),
         x_username: option::none(),
         <a href="../social_contracts/profile.md#social_contracts_profile_min_offer_amount">min_offer_amount</a>: option::none(),
         badges: vector::empty&lt;<a href="../social_contracts/profile.md#social_contracts_profile_ProfileBadge">ProfileBadge</a>&gt;(),
@@ -2273,13 +2201,6 @@ The username stays with the profile, and the transfer updates registry mappings
         },
         <a href="../social_contracts/profile.md#social_contracts_profile_owner">owner</a>: new_owner,
         updated_at: tx_context::epoch_timestamp_ms(ctx),
-        // Social media usernames
-        facebook_username: <a href="../social_contracts/profile.md#social_contracts_profile">profile</a>.facebook_username,
-        github_username: <a href="../social_contracts/profile.md#social_contracts_profile">profile</a>.github_username,
-        instagram_username: <a href="../social_contracts/profile.md#social_contracts_profile">profile</a>.instagram_username,
-        linkedin_username: <a href="../social_contracts/profile.md#social_contracts_profile">profile</a>.linkedin_username,
-        reddit_username: <a href="../social_contracts/profile.md#social_contracts_profile">profile</a>.reddit_username,
-        twitch_username: <a href="../social_contracts/profile.md#social_contracts_profile">profile</a>.twitch_username,
         x_username: <a href="../social_contracts/profile.md#social_contracts_profile">profile</a>.x_username,
         <a href="../social_contracts/profile.md#social_contracts_profile_min_offer_amount">min_offer_amount</a>: <a href="../social_contracts/profile.md#social_contracts_profile">profile</a>.<a href="../social_contracts/profile.md#social_contracts_profile_min_offer_amount">min_offer_amount</a>,
     });
@@ -2299,7 +2220,7 @@ The username stays with the profile, and the transfer updates registry mappings
 Only the profile owner can update profile information
 
 
-<pre><code><b>public</b> <b>entry</b> <b>fun</b> <a href="../social_contracts/profile.md#social_contracts_profile_update_profile">update_profile</a>(<a href="../social_contracts/profile.md#social_contracts_profile">profile</a>: &<b>mut</b> <a href="../social_contracts/profile.md#social_contracts_profile_Profile">social_contracts::profile::Profile</a>, new_display_name: <a href="../std/string.md#std_string_String">std::string::String</a>, new_bio: <a href="../std/string.md#std_string_String">std::string::String</a>, new_profile_picture_url: vector&lt;u8&gt;, new_cover_photo_url: vector&lt;u8&gt;, facebook_username: <a href="../std/option.md#std_option_Option">std::option::Option</a>&lt;<a href="../std/string.md#std_string_String">std::string::String</a>&gt;, github_username: <a href="../std/option.md#std_option_Option">std::option::Option</a>&lt;<a href="../std/string.md#std_string_String">std::string::String</a>&gt;, instagram_username: <a href="../std/option.md#std_option_Option">std::option::Option</a>&lt;<a href="../std/string.md#std_string_String">std::string::String</a>&gt;, linkedin_username: <a href="../std/option.md#std_option_Option">std::option::Option</a>&lt;<a href="../std/string.md#std_string_String">std::string::String</a>&gt;, reddit_username: <a href="../std/option.md#std_option_Option">std::option::Option</a>&lt;<a href="../std/string.md#std_string_String">std::string::String</a>&gt;, twitch_username: <a href="../std/option.md#std_option_Option">std::option::Option</a>&lt;<a href="../std/string.md#std_string_String">std::string::String</a>&gt;, x_username: <a href="../std/option.md#std_option_Option">std::option::Option</a>&lt;<a href="../std/string.md#std_string_String">std::string::String</a>&gt;, <a href="../social_contracts/profile.md#social_contracts_profile_min_offer_amount">min_offer_amount</a>: <a href="../std/option.md#std_option_Option">std::option::Option</a>&lt;u64&gt;, ctx: &<b>mut</b> <a href="../myso/tx_context.md#myso_tx_context_TxContext">myso::tx_context::TxContext</a>)
+<pre><code><b>public</b> <b>entry</b> <b>fun</b> <a href="../social_contracts/profile.md#social_contracts_profile_update_profile">update_profile</a>(<a href="../social_contracts/profile.md#social_contracts_profile">profile</a>: &<b>mut</b> <a href="../social_contracts/profile.md#social_contracts_profile_Profile">social_contracts::profile::Profile</a>, new_display_name: <a href="../std/string.md#std_string_String">std::string::String</a>, new_bio: <a href="../std/string.md#std_string_String">std::string::String</a>, new_profile_picture_url: vector&lt;u8&gt;, new_cover_photo_url: vector&lt;u8&gt;, x_username: <a href="../std/option.md#std_option_Option">std::option::Option</a>&lt;<a href="../std/string.md#std_string_String">std::string::String</a>&gt;, <a href="../social_contracts/profile.md#social_contracts_profile_min_offer_amount">min_offer_amount</a>: <a href="../std/option.md#std_option_Option">std::option::Option</a>&lt;u64&gt;, ctx: &<b>mut</b> <a href="../myso/tx_context.md#myso_tx_context_TxContext">myso::tx_context::TxContext</a>)
 </code></pre>
 
 
@@ -2315,13 +2236,6 @@ Only the profile owner can update profile information
     new_bio: String,
     new_profile_picture_url: vector&lt;u8&gt;,
     new_cover_photo_url: vector&lt;u8&gt;,
-    // Social media usernames (all optional)
-    facebook_username: Option&lt;String&gt;,
-    github_username: Option&lt;String&gt;,
-    instagram_username: Option&lt;String&gt;,
-    linkedin_username: Option&lt;String&gt;,
-    reddit_username: Option&lt;String&gt;,
-    twitch_username: Option&lt;String&gt;,
     x_username: Option&lt;String&gt;,
     <a href="../social_contracts/profile.md#social_contracts_profile_min_offer_amount">min_offer_amount</a>: Option&lt;u64&gt;,
     ctx: &<b>mut</b> TxContext
@@ -2341,25 +2255,6 @@ Only the profile owner can update profile information
     };
     <b>if</b> (vector::length(&new_cover_photo_url) &gt; 0) {
         <a href="../social_contracts/profile.md#social_contracts_profile">profile</a>.<a href="../social_contracts/profile.md#social_contracts_profile_cover_photo">cover_photo</a> = option::some(url::new_unsafe_from_bytes(new_cover_photo_url));
-    };
-    // Update social media usernames <b>if</b> provided
-    <b>if</b> (option::is_some(&facebook_username)) {
-        <a href="../social_contracts/profile.md#social_contracts_profile">profile</a>.facebook_username = facebook_username;
-    };
-    <b>if</b> (option::is_some(&github_username)) {
-        <a href="../social_contracts/profile.md#social_contracts_profile">profile</a>.github_username = github_username;
-    };
-    <b>if</b> (option::is_some(&instagram_username)) {
-        <a href="../social_contracts/profile.md#social_contracts_profile">profile</a>.instagram_username = instagram_username;
-    };
-    <b>if</b> (option::is_some(&linkedin_username)) {
-        <a href="../social_contracts/profile.md#social_contracts_profile">profile</a>.linkedin_username = linkedin_username;
-    };
-    <b>if</b> (option::is_some(&reddit_username)) {
-        <a href="../social_contracts/profile.md#social_contracts_profile">profile</a>.reddit_username = reddit_username;
-    };
-    <b>if</b> (option::is_some(&twitch_username)) {
-        <a href="../social_contracts/profile.md#social_contracts_profile">profile</a>.twitch_username = twitch_username;
     };
     <b>if</b> (option::is_some(&x_username)) {
         <a href="../social_contracts/profile.md#social_contracts_profile">profile</a>.x_username = x_username;
@@ -2391,13 +2286,6 @@ Only the profile owner can update profile information
         <a href="../social_contracts/profile.md#social_contracts_profile_cover_photo">cover_photo</a>: cover_photo_string,
         <a href="../social_contracts/profile.md#social_contracts_profile_owner">owner</a>: <a href="../social_contracts/profile.md#social_contracts_profile">profile</a>.<a href="../social_contracts/profile.md#social_contracts_profile_owner">owner</a>,
         updated_at: now,
-        // Social media usernames
-        facebook_username: <a href="../social_contracts/profile.md#social_contracts_profile">profile</a>.facebook_username,
-        github_username: <a href="../social_contracts/profile.md#social_contracts_profile">profile</a>.github_username,
-        instagram_username: <a href="../social_contracts/profile.md#social_contracts_profile">profile</a>.instagram_username,
-        linkedin_username: <a href="../social_contracts/profile.md#social_contracts_profile">profile</a>.linkedin_username,
-        reddit_username: <a href="../social_contracts/profile.md#social_contracts_profile">profile</a>.reddit_username,
-        twitch_username: <a href="../social_contracts/profile.md#social_contracts_profile">profile</a>.twitch_username,
         x_username: <a href="../social_contracts/profile.md#social_contracts_profile">profile</a>.x_username,
         <a href="../social_contracts/profile.md#social_contracts_profile_min_offer_amount">min_offer_amount</a>: <a href="../social_contracts/profile.md#social_contracts_profile">profile</a>.<a href="../social_contracts/profile.md#social_contracts_profile_min_offer_amount">min_offer_amount</a>,
     });
@@ -2917,13 +2805,6 @@ Transfers tokens to the profile owner and profile ownership to the offeror
         },
         <a href="../social_contracts/profile.md#social_contracts_profile_owner">owner</a>: offeror,
         updated_at: now,
-        // Social media usernames
-        facebook_username: <a href="../social_contracts/profile.md#social_contracts_profile">profile</a>.facebook_username,
-        github_username: <a href="../social_contracts/profile.md#social_contracts_profile">profile</a>.github_username,
-        instagram_username: <a href="../social_contracts/profile.md#social_contracts_profile">profile</a>.instagram_username,
-        linkedin_username: <a href="../social_contracts/profile.md#social_contracts_profile">profile</a>.linkedin_username,
-        reddit_username: <a href="../social_contracts/profile.md#social_contracts_profile">profile</a>.reddit_username,
-        twitch_username: <a href="../social_contracts/profile.md#social_contracts_profile">profile</a>.twitch_username,
         x_username: <a href="../social_contracts/profile.md#social_contracts_profile">profile</a>.x_username,
         <a href="../social_contracts/profile.md#social_contracts_profile_min_offer_amount">min_offer_amount</a>: <a href="../social_contracts/profile.md#social_contracts_profile">profile</a>.<a href="../social_contracts/profile.md#social_contracts_profile_min_offer_amount">min_offer_amount</a>,
     });

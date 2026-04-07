@@ -107,7 +107,7 @@ Implemented the full plan (excluding relay): posts_transfers, profile_offers, pr
 - **Post transfers**: `list_post_transfers`, `get_post_transfers` handler, GET `/posts/:id/transfers`
 
 ## Phase 3: Enrichment
-- **ProfileByAddressResponse**: Added instagram_username, linkedin_username, twitch_username (from schema Profile model); mapped in From impls for Profile and WalletOnlyProfile
+- **ProfileByAddressResponse**: Non-X social username fields removed from contract, DB, reader, and server; only `x_username` remains for external social handle (plus core `username`).
 
 ## Verification
 - `cargo check -p myso-social-server` passes
