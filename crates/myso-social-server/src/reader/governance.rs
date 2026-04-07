@@ -1,9 +1,9 @@
 // Copyright (c) The Social Proof Foundation, LLC.
 // SPDX-License-Identifier: Apache-2.0
 
-use diesel::sql_types::{BigInt, Bool, Nullable, SmallInt, Text};
 use diesel::OptionalExtension;
 use diesel::QueryableByName;
+use diesel::sql_types::{BigInt, Bool, Nullable, SmallInt, Text};
 use diesel_async::RunQueryDsl;
 use myso_pg_db::Db;
 
@@ -271,10 +271,10 @@ pub(crate) async fn get_delegate_ratings(
 ) -> Result<Vec<DelegateRatingRow>, SocialError> {
     let mut conn = db.connect().await?;
     let query = "
-        SELECT target_address, voter_address, registry_type, is_active_delegate, upvote, rated_at
+        SELECT target_address, voter_address, registry_type, is_active_delegate, vote_kind, rated_at
         FROM (
             SELECT DISTINCT ON (target_address, voter_address, registry_type, is_active_delegate)
-                   target_address, voter_address, registry_type, is_active_delegate, upvote, rated_at
+                   target_address, voter_address, registry_type, is_active_delegate, vote_kind, rated_at
             FROM delegate_ratings
             WHERE target_address = $1
             ORDER BY target_address, voter_address, registry_type, is_active_delegate, time DESC

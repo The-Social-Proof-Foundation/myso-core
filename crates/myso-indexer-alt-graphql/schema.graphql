@@ -1042,8 +1042,14 @@ type DelegateRating {
 	ratedAt: Int!
 	registryType: Int!
 	targetAddress: MySoAddress!
-	upvote: Boolean!
+	voteKind: DelegateRatingVoteKind!
 	voterAddress: MySoAddress!
+}
+
+enum DelegateRatingVoteKind {
+	DOWN
+	UP
+	CLEARED
 }
 
 type DelegateVote {

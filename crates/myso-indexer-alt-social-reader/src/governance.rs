@@ -438,10 +438,10 @@ pub(crate) async fn get_delegate_ratings(
     let _guard = metrics.latency.start_timer();
 
     let query = "
-        SELECT target_address, voter_address, registry_type, is_active_delegate, upvote, rated_at
+        SELECT target_address, voter_address, registry_type, is_active_delegate, vote_kind, rated_at
         FROM (
             SELECT DISTINCT ON (target_address, voter_address, registry_type, is_active_delegate)
-                   target_address, voter_address, registry_type, is_active_delegate, upvote, rated_at
+                   target_address, voter_address, registry_type, is_active_delegate, vote_kind, rated_at
             FROM delegate_ratings
             WHERE target_address = $1
             ORDER BY target_address, voter_address, registry_type, is_active_delegate, time DESC

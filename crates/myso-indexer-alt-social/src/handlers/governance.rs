@@ -66,6 +66,9 @@ pub fn handle_governance_event(
         }
         "DelegateElected" => process_delegate_elected_event(data, event_id, governance_registry_id),
         "DelegateVoted" => process_delegate_voted_event(data, event_id, governance_registry_id),
+        "DelegateVoteCleared" => {
+            process_delegate_vote_cleared_event(data, event_id, governance_registry_id)
+        }
         "ProposalSubmitted" => process_proposal_submitted_event(data, event_id),
         "DelegateVote" => process_delegate_vote_event(data, event_id),
         "CommunityVote" => process_community_vote_event(data, event_id),
@@ -290,12 +293,66 @@ fn process_delegate_voted_event(
         voter_address: ev.voter,
         registry_type: ev.registry_type as i16,
         is_active_delegate: ev.is_active_delegate,
-        upvote: ev.upvote,
+        vote_kind: if ev.upvote { 1 } else { 0 },
         rated_at: now,
         transaction_id: event_id.to_string(),
     };
     let gov_ev = NewGovernanceEvent {
         event_type: "DelegateVotedEvent".to_string(),
+        registry_type: ev.registry_type as i16,
+        event_data: data.clone(),
+        event_id: event_id.to_string(),
+        created_at: Utc::now(),
+        anonymous_voting_related: None,
+    };
+    Some(vec![
+        SocialEventRow::DelegateRating(rating),
+        vote_counts,
+        SocialEventRow::GovernanceEvent(gov_ev),
+    ])
+}
+
+fn process_delegate_vote_cleared_event(
+    data: &serde_json::Value,
+    event_id: &str,
+    governance_registry_id: Option<String>,
+) -> Option<Vec<SocialEventRow>> {
+    #[derive(serde::Deserialize)]
+    struct Ev {
+        target_address: String,
+        voter: String,
+        #[serde(deserialize_with = "de_u8")]
+        registry_type: u8,
+        is_active_delegate: bool,
+        #[serde(rename = "new_upvote_count", deserialize_with = "de_u64")]
+        new_upvote_count: u64,
+        #[serde(rename = "new_downvote_count", deserialize_with = "de_u64")]
+        new_downvote_count: u64,
+    }
+    let ev: Ev = serde_json::from_value(data.clone()).ok()?;
+    let now = Utc::now().timestamp_millis() as i64;
+    let vote_counts = SocialEventRow::DelegateVoteCountsUpdate {
+        target_address: ev.target_address.clone(),
+        registry_type: ev.registry_type as i16,
+        is_active_delegate: ev.is_active_delegate,
+        upvotes: ev.new_upvote_count as i64,
+        downvotes: ev.new_downvote_count as i64,
+        governance_registry_id: nominee_governance_registry_id(
+            ev.registry_type,
+            governance_registry_id,
+        ),
+    };
+    let rating = NewDelegateRating {
+        target_address: ev.target_address,
+        voter_address: ev.voter,
+        registry_type: ev.registry_type as i16,
+        is_active_delegate: ev.is_active_delegate,
+        vote_kind: 2,
+        rated_at: now,
+        transaction_id: event_id.to_string(),
+    };
+    let gov_ev = NewGovernanceEvent {
+        event_type: "DelegateVoteClearedEvent".to_string(),
         registry_type: ev.registry_type as i16,
         event_data: data.clone(),
         event_id: event_id.to_string(),

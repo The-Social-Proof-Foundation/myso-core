@@ -5,6 +5,7 @@ use std::str::FromStr;
 use std::sync::Arc;
 
 use async_graphql::Context;
+use async_graphql::Enum;
 use async_graphql::Object;
 use async_graphql::Value;
 use myso_indexer_alt_social_reader::{
@@ -22,6 +23,25 @@ use crate::api::scalars::json::Json;
 use crate::api::scalars::myso_address::MySoAddress;
 use crate::api::types::platform::Platform;
 use crate::api::types::profile_summary::ProfileSummary;
+
+#[derive(Enum, Copy, Clone, Eq, PartialEq)]
+#[graphql(rename_items = "SCREAMING_SNAKE_CASE")]
+pub(crate) enum DelegateRatingVoteKind {
+    Down,
+    Up,
+    Cleared,
+}
+
+impl From<i16> for DelegateRatingVoteKind {
+    fn from(v: i16) -> Self {
+        match v {
+            0 => Self::Down,
+            1 => Self::Up,
+            2 => Self::Cleared,
+            _ => Self::Down,
+        }
+    }
+}
 
 /// Governance registry config (voting params) for GraphQL.
 #[derive(Clone)]
@@ -450,8 +470,8 @@ impl DelegateRating {
         self.inner.is_active_delegate
     }
 
-    async fn upvote(&self) -> bool {
-        self.inner.upvote
+    async fn vote_kind(&self) -> DelegateRatingVoteKind {
+        DelegateRatingVoteKind::from(self.inner.vote_kind)
     }
 
     async fn rated_at(&self) -> i64 {

@@ -1225,7 +1225,11 @@ mod tests {
         });
         let rows = handle_profile_event("ProfileXUsernameUpdatedEvent", &data, "e-x-1")
             .expect("handle_profile_event should return Some");
-        assert_eq!(rows.len(), 2, "expect ProfileXUsernameUpdate + ProfileEvent");
+        assert_eq!(
+            rows.len(),
+            2,
+            "expect ProfileXUsernameUpdate + ProfileEvent"
+        );
         let (up_row, audit) = match (&rows[0], &rows[1]) {
             (SocialEventRow::ProfileXUsernameUpdate { .. }, SocialEventRow::ProfileEvent(e)) => {
                 (&rows[0], e)
@@ -1269,7 +1273,11 @@ mod tests {
                 profile_id,
                 owner_address,
                 x_username,
-            } => Some((profile_id.clone(), owner_address.clone(), x_username.clone())),
+            } => Some((
+                profile_id.clone(),
+                owner_address.clone(),
+                x_username.clone(),
+            )),
             _ => None,
         });
         let Some((pid, owner, x)) = up_row else {
@@ -1295,8 +1303,8 @@ mod tests {
         let bytes = bcs::to_bytes(&ev).expect("bcs serialize");
         let json = parse_event_contents("profile", "ProfileXUsernameUpdatedEvent", &bytes)
             .expect("parse_event_contents");
-        let rows = handle_profile_event("ProfileXUsernameUpdatedEvent", &json, "e-bcs")
-            .expect("handler");
+        let rows =
+            handle_profile_event("ProfileXUsernameUpdatedEvent", &json, "e-bcs").expect("handler");
         let up_row = rows.iter().find_map(|r| match r {
             SocialEventRow::ProfileXUsernameUpdate { x_username, .. } => x_username.clone(),
             _ => None,

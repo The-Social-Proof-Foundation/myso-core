@@ -45,6 +45,7 @@ module social_contracts::governance {
     const EWrongVersion: u64 = 17;
     const EDelegateAnonNotAllowed: u64 = 18;
     const EOverflow: u64 = 19;
+    const ENoExistingVote: u64 = 20;
 
     /// Maximum u64 value for overflow protection
     const MAX_U64: u64 = 18446744073709551615;
@@ -169,6 +170,16 @@ module social_contracts::governance {
         voter: address,
         is_active_delegate: bool,
         upvote: bool,
+        new_upvote_count: u64,
+        new_downvote_count: u64,
+        registry_type: u8,
+    }
+
+    /// Event emitted when a user clears their delegate/nominee up or down vote
+    public struct DelegateVoteClearedEvent has copy, drop {
+        target_address: address,
+        voter: address,
+        is_active_delegate: bool,
         new_upvote_count: u64,
         new_downvote_count: u64,
         registry_type: u8,
@@ -747,6 +758,74 @@ module social_contracts::governance {
             voter: caller,
             is_active_delegate,
             upvote,
+            new_upvote_count: upvote_count,
+            new_downvote_count: downvote_count,
+            registry_type: registry.registry_type,
+        });
+    }
+
+    /// Remove the caller's up or down vote on a delegate or nominee (neutral / undo).
+    /// Aborts with `ENoExistingVote` if the caller has not voted on this target.
+    public entry fun clear_vote_for_delegate(
+        registry: &mut GovernanceDAO,
+        target_address: address,
+        ctx: &mut TxContext
+    ) {
+        assert!(registry.version == upgrade::current_version(), EWrongVersion);
+
+        let caller = tx_context::sender(ctx);
+        assert!(caller != target_address, EUnauthorized);
+
+        let is_active_delegate: bool;
+        let upvote_count: u64;
+        let downvote_count: u64;
+
+        if (table::contains(&registry.delegates, target_address)) {
+            is_active_delegate = true;
+            assert!(table::contains(&registry.voters, target_address), ENoExistingVote);
+            let voter_table = table::borrow_mut(&mut registry.voters, target_address);
+            assert!(table::contains(voter_table, caller), ENoExistingVote);
+
+            let previous_vote = *table::borrow(voter_table, caller);
+            let delegate = table::borrow_mut(&mut registry.delegates, target_address);
+            if (previous_vote) {
+                assert!(delegate.upvotes > 0, EOverflow);
+                delegate.upvotes = delegate.upvotes - 1;
+            } else {
+                assert!(delegate.downvotes > 0, EOverflow);
+                delegate.downvotes = delegate.downvotes - 1;
+            };
+            table::remove(voter_table, caller);
+
+            upvote_count = delegate.upvotes;
+            downvote_count = delegate.downvotes;
+        } else if (table::contains(&registry.nominated_delegates, target_address)) {
+            is_active_delegate = false;
+            assert!(table::contains(&registry.voters, target_address), ENoExistingVote);
+            let voter_table = table::borrow_mut(&mut registry.voters, target_address);
+            assert!(table::contains(voter_table, caller), ENoExistingVote);
+
+            let previous_vote = *table::borrow(voter_table, caller);
+            let nominee = table::borrow_mut(&mut registry.nominated_delegates, target_address);
+            if (previous_vote) {
+                assert!(nominee.upvotes > 0, EOverflow);
+                nominee.upvotes = nominee.upvotes - 1;
+            } else {
+                assert!(nominee.downvotes > 0, EOverflow);
+                nominee.downvotes = nominee.downvotes - 1;
+            };
+            table::remove(voter_table, caller);
+
+            upvote_count = nominee.upvotes;
+            downvote_count = nominee.downvotes;
+        } else {
+            abort ENotDelegate
+        };
+
+        event::emit(DelegateVoteClearedEvent {
+            target_address,
+            voter: caller,
+            is_active_delegate,
             new_upvote_count: upvote_count,
             new_downvote_count: downvote_count,
             registry_type: registry.registry_type,

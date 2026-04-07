@@ -184,7 +184,8 @@ pub struct DelegateRating {
     pub voter_address: String,
     pub registry_type: i16,
     pub is_active_delegate: bool,
-    pub upvote: bool,
+    /// 0 = down, 1 = up, 2 = cleared (vote withdrawn).
+    pub vote_kind: i16,
     pub rated_at: i64,
     pub time: chrono::DateTime<chrono::Utc>,
     pub transaction_id: String,
@@ -197,7 +198,7 @@ pub struct NewDelegateRating {
     pub voter_address: String,
     pub registry_type: i16,
     pub is_active_delegate: bool,
-    pub upvote: bool,
+    pub vote_kind: i16,
     pub rated_at: i64,
     pub transaction_id: String,
 }
@@ -552,8 +553,8 @@ pub struct DelegateRatingRow {
     pub registry_type: i16,
     #[diesel(sql_type = Bool)]
     pub is_active_delegate: bool,
-    #[diesel(sql_type = Bool)]
-    pub upvote: bool,
+    #[diesel(sql_type = SmallInt)]
+    pub vote_kind: i16,
     #[diesel(sql_type = BigInt)]
     pub rated_at: i64,
 }

@@ -5,8 +5,8 @@ use diesel::sql_query;
 use diesel::sql_types::{BigInt, Date, Text, Timestamp};
 use diesel::ExpressionMethods;
 use diesel::OptionalExtension;
-use diesel::QueryableByName;
 use diesel::QueryDsl;
+use diesel::QueryableByName;
 use diesel::SelectableHelper;
 use diesel_async::RunQueryDsl;
 use myso_indexer_alt_social_schema::models::Profile;
@@ -221,9 +221,7 @@ pub(crate) async fn get_profile_daily_stats_chart(
     let mut conn = db.connect().await?;
     let end_date = chrono::Utc::now().date_naive();
     let start_date = end_date - chrono::Duration::days(days as i64);
-    let start_ts = start_date
-        .and_hms_opt(0, 0, 0)
-        .expect("valid start of day");
+    let start_ts = start_date.and_hms_opt(0, 0, 0).expect("valid start of day");
     let end_exclusive = (end_date + chrono::Duration::days(1))
         .and_hms_opt(0, 0, 0)
         .expect("valid end-exclusive bound");

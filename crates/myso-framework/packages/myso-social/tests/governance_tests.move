@@ -583,7 +583,7 @@ module social_contracts::governance_tests {
     #[test]
     #[allow(unused_mut_ref)]
     fun test_create_platform_governance() {
-        use myso::object::{Self, ID};
+        use myso::object::{Self};
         use social_contracts::governance;
         
         let mut scenario = test_scenario::begin(ADMIN);
@@ -656,7 +656,7 @@ module social_contracts::governance_tests {
     #[test]
     #[allow(unused_mut_ref)]
     fun test_platform_governance_parameters() {
-        use myso::object::{Self, ID};
+        use myso::object::{Self};
         use social_contracts::governance;
         
         let mut scenario = test_scenario::begin(ADMIN);
@@ -733,6 +733,161 @@ module social_contracts::governance_tests {
             test_scenario::return_shared(registry);
         };
         
+        test_scenario::end(scenario);
+    }
+
+    /// Clear an upvote on a platform delegate: counts return to zero.
+    #[test]
+    #[allow(unused_mut_ref)]
+    fun test_clear_delegate_vote_after_upvote() {
+        use myso::object::{Self};
+        use social_contracts::governance;
+
+        let mut scenario = test_scenario::begin(ADMIN);
+
+        test_scenario::next_tx(&mut scenario, ADMIN);
+        {
+            let ctx = test_scenario::ctx(&mut scenario);
+            let mut platform_uid = object::new(ctx);
+            let _registry_id = governance::create_platform_governance(
+                7,
+                30,
+                50000000,
+                5,
+                5000000,
+                3,
+                15,
+                ctx
+            );
+            object::delete(platform_uid);
+        };
+
+        test_scenario::next_tx(&mut scenario, USER1);
+        {
+            let mut registry = test_scenario::take_shared<governance::GovernanceDAO>(&mut scenario);
+            let ctx = test_scenario::ctx(&mut scenario);
+            governance::vote_for_delegate(&mut registry, ADMIN, true, ctx);
+            test_scenario::return_shared(registry);
+        };
+
+        test_scenario::next_tx(&mut scenario, USER1);
+        {
+            let registry = test_scenario::take_shared<governance::GovernanceDAO>(&mut scenario);
+            let (up, down, _, _, _, _, _, _) = governance::get_delegate_info(&registry, ADMIN);
+            assert!(up == 1, 0);
+            assert!(down == 0, 1);
+            test_scenario::return_shared(registry);
+        };
+
+        test_scenario::next_tx(&mut scenario, USER1);
+        {
+            let mut registry = test_scenario::take_shared<governance::GovernanceDAO>(&mut scenario);
+            let ctx = test_scenario::ctx(&mut scenario);
+            governance::clear_vote_for_delegate(&mut registry, ADMIN, ctx);
+            test_scenario::return_shared(registry);
+        };
+
+        test_scenario::next_tx(&mut scenario, USER1);
+        {
+            let registry = test_scenario::take_shared<governance::GovernanceDAO>(&mut scenario);
+            let (up, down, _, _, _, _, _, _) = governance::get_delegate_info(&registry, ADMIN);
+            assert!(up == 0, 2);
+            assert!(down == 0, 3);
+            test_scenario::return_shared(registry);
+        };
+
+        test_scenario::end(scenario);
+    }
+
+    /// Clear a downvote on a platform delegate.
+    #[test]
+    #[allow(unused_mut_ref)]
+    fun test_clear_delegate_vote_after_downvote() {
+        use myso::object::{Self};
+        use social_contracts::governance;
+
+        let mut scenario = test_scenario::begin(ADMIN);
+
+        test_scenario::next_tx(&mut scenario, ADMIN);
+        {
+            let ctx = test_scenario::ctx(&mut scenario);
+            let mut platform_uid = object::new(ctx);
+            let _registry_id = governance::create_platform_governance(
+                7,
+                30,
+                50000000,
+                5,
+                5000000,
+                3,
+                15,
+                ctx
+            );
+            object::delete(platform_uid);
+        };
+
+        test_scenario::next_tx(&mut scenario, USER1);
+        {
+            let mut registry = test_scenario::take_shared<governance::GovernanceDAO>(&mut scenario);
+            let ctx = test_scenario::ctx(&mut scenario);
+            governance::vote_for_delegate(&mut registry, ADMIN, false, ctx);
+            test_scenario::return_shared(registry);
+        };
+
+        test_scenario::next_tx(&mut scenario, USER1);
+        {
+            let mut registry = test_scenario::take_shared<governance::GovernanceDAO>(&mut scenario);
+            let ctx = test_scenario::ctx(&mut scenario);
+            governance::clear_vote_for_delegate(&mut registry, ADMIN, ctx);
+            test_scenario::return_shared(registry);
+        };
+
+        test_scenario::next_tx(&mut scenario, USER1);
+        {
+            let registry = test_scenario::take_shared<governance::GovernanceDAO>(&mut scenario);
+            let (up, down, _, _, _, _, _, _) = governance::get_delegate_info(&registry, ADMIN);
+            assert!(up == 0, 0);
+            assert!(down == 0, 1);
+            test_scenario::return_shared(registry);
+        };
+
+        test_scenario::end(scenario);
+    }
+
+    /// Clearing without a prior vote aborts.
+    #[test]
+    #[allow(unused_mut_ref)]
+    #[expected_failure(abort_code = social_contracts::governance::ENoExistingVote)]
+    fun test_clear_delegate_vote_aborts_without_prior_vote() {
+        use myso::object::{Self};
+        use social_contracts::governance;
+
+        let mut scenario = test_scenario::begin(ADMIN);
+
+        test_scenario::next_tx(&mut scenario, ADMIN);
+        {
+            let ctx = test_scenario::ctx(&mut scenario);
+            let mut platform_uid = object::new(ctx);
+            let _registry_id = governance::create_platform_governance(
+                7,
+                30,
+                50000000,
+                5,
+                5000000,
+                3,
+                15,
+                ctx
+            );
+            object::delete(platform_uid);
+        };
+
+        test_scenario::next_tx(&mut scenario, USER1);
+        {
+            let mut registry = test_scenario::take_shared<governance::GovernanceDAO>(&mut scenario);
+            let ctx = test_scenario::ctx(&mut scenario);
+            governance::clear_vote_for_delegate(&mut registry, ADMIN, ctx);
+            test_scenario::return_shared(registry);
+        };
+
         test_scenario::end(scenario);
     }
 } 

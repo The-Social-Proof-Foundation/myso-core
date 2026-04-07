@@ -121,7 +121,7 @@ diesel::table! {
         voter_address -> Text,
         registry_type -> Int2,
         is_active_delegate -> Bool,
-        upvote -> Bool,
+        vote_kind -> Int2,
         rated_at -> Int8,
         time -> Timestamptz,
         transaction_id -> Text,

@@ -563,7 +563,7 @@ DelegateRating.registryType
 DelegateRating.isActiveDelegate
   => {}
 
-DelegateRating.upvote
+DelegateRating.voteKind
   => {}
 
 DelegateRating.ratedAt

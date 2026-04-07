@@ -167,6 +167,16 @@ pub struct BcsDelegateVotedEvent {
 }
 
 #[derive(Debug, Deserialize)]
+pub struct BcsDelegateVoteClearedEvent {
+    target_address: AccountAddress,
+    voter: AccountAddress,
+    is_active_delegate: bool,
+    new_upvote_count: u64,
+    new_downvote_count: u64,
+    registry_type: u8,
+}
+
+#[derive(Debug, Deserialize)]
 pub struct BcsProposalSubmittedEvent {
     proposal_id: AccountAddress,
     title: String,
@@ -1425,6 +1435,18 @@ fn parse_governance_event(
                 "registry_type": ev.registry_type,
                 "is_active_delegate": ev.is_active_delegate,
                 "upvote": ev.upvote,
+                "new_upvote_count": ev.new_upvote_count,
+                "new_downvote_count": ev.new_downvote_count,
+            })))
+        }
+        "DelegateVoteClearedEvent" => {
+            let ev = bcs::from_bytes::<BcsDelegateVoteClearedEvent>(contents)
+                .map_err(|e| bcs_parse_err(e, contents))?;
+            Ok(Some(serde_json::json!({
+                "target_address": addr_to_string(&ev.target_address),
+                "voter": addr_to_string(&ev.voter),
+                "registry_type": ev.registry_type,
+                "is_active_delegate": ev.is_active_delegate,
                 "new_upvote_count": ev.new_upvote_count,
                 "new_downvote_count": ev.new_downvote_count,
             })))
