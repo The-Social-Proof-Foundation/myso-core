@@ -9,4 +9,4 @@ edition = "legacy"
 bridged_myusd = "0x0"
 
 [environments]
-localnet = "56a7099f"
+testnet = "56a7099f"
