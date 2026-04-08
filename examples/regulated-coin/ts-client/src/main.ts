@@ -2,7 +2,7 @@
 // Copyright (c) The Social Proof Foundation, LLC.
 // SPDX-License-Identifier: Apache-2.0
 
-import {MySoClient} from "@mysten/myso/client";
+import {MySoClient} from "@socialproof/myso/client";
 import {
     ADMIN_SECRET_KEY, COIN_TYPE,
     DENY_CAP_ID,
@@ -10,9 +10,9 @@ import {
     MYSO_NETWORK,
     TREASURY_CAP_ID,
 } from "./config";
-import {Transaction} from '@mysten/myso/transactions';
+import {Transaction} from '@socialproof/myso/transactions';
 import {program} from "commander";
-import {Ed25519Keypair} from "@mysten/myso/keypairs/ed25519";
+import {Ed25519Keypair} from "@socialproof/myso/keypairs/ed25519";
 
 
 const run = async () => {
