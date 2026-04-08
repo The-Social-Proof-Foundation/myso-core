@@ -2438,5 +2438,45 @@
         "id": "0x00000000000000000000000000000000000000000000000000000000000050c1"
       }
     ]
+  },
+  "111": {
+    "git_revision": "04a59df697bba4c56738aee0e49820896c695b16-dirty",
+    "packages": [
+      {
+        "name": "MoveStdlib",
+        "path": "crates/myso-framework/packages/move-stdlib",
+        "id": "0x0000000000000000000000000000000000000000000000000000000000000001"
+      },
+      {
+        "name": "MySo",
+        "path": "crates/myso-framework/packages/myso-framework/myso-framework",
+        "id": "0x0000000000000000000000000000000000000000000000000000000000000002"
+      },
+      {
+        "name": "MySoSystem",
+        "path": "crates/myso-framework/packages/myso-system",
+        "id": "0x0000000000000000000000000000000000000000000000000000000000000003"
+      },
+      {
+        "name": "Orderbook",
+        "path": "crates/myso-framework/packages/orderbook",
+        "id": "0x0000000000000000000000000000000000000000000000000000000000000b0c"
+      },
+      {
+        "name": "Bridge",
+        "path": "crates/myso-framework/packages/bridge",
+        "id": "0x000000000000000000000000000000000000000000000000000000000000000b"
+      },
+      {
+        "name": "MyData",
+        "path": "crates/myso-framework/packages/mydata",
+        "id": "0x000000000000000000000000000000000000000000000000000000000000da7a"
+      },
+      {
+        "name": "MySoSocial",
+        "path": "crates/myso-framework/packages/myso-social",
+        "id": "0x00000000000000000000000000000000000000000000000000000000000050c1"
+      }
+    ]
   }
 }

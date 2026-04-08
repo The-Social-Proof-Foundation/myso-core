@@ -25,7 +25,7 @@ use tracing::{info, warn};
 
 /// The minimum and maximum protocol versions supported by this build.
 const MIN_PROTOCOL_VERSION: u64 = 1;
-const MAX_PROTOCOL_VERSION: u64 = 110;
+const MAX_PROTOCOL_VERSION: u64 = 111;
 
 // Record history of protocol version allocations here:
 //
@@ -4565,6 +4565,9 @@ impl ProtocolConfig {
                     if let Some(bucket) = cfg.max_gas_computation_bucket {
                         cfg.max_gas_computation_bucket = Some(bucket / 100);
                     }
+                }
+                111 => {
+                    // no changes here
                 }
                 // Use this template when making changes:
                 //
