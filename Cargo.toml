@@ -819,6 +819,9 @@ myso-execution = { path = "myso-execution" }
 # move-vm-runtime = { path = "external-crates/move/move-vm/runtime" }
 # move-bytecode-verifier = { path = "external-crates/move/move-bytecode-verifier" }
 
+[patch.'https://github.com/0xsiddharthks/alloy-multiprovider-strategy']
+alloy-multiprovider-strategy = { path = "crates/alloy-multiprovider-strategy" }
+
 [patch.crates-io]
 async-graphql = { git = "https://github.com/amnn/async-graphql", branch = "v7.0.1-react-18-graphiql-4" }
 async-graphql-axum = { git = "https://github.com/amnn/async-graphql", branch = "v7.0.1-react-18-graphiql-4" }

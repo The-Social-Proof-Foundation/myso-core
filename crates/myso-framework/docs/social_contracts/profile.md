@@ -42,7 +42,6 @@ Handles user identity, profile creation, management, and username registration
 -  [Function `create_profile`](#social_contracts_profile_create_profile)
 -  [Function `transfer_profile`](#social_contracts_profile_transfer_profile)
 -  [Function `update_profile`](#social_contracts_profile_update_profile)
--  [Function `admin_set_profile_x_username`](#social_contracts_profile_admin_set_profile_x_username)
 -  [Function `display_name`](#social_contracts_profile_display_name)
 -  [Function `bio`](#social_contracts_profile_bio)
 -  [Function `profile_picture`](#social_contracts_profile_profile_picture)
@@ -50,7 +49,6 @@ Handles user identity, profile creation, management, and username registration
 -  [Function `owner`](#social_contracts_profile_owner)
 -  [Function `id`](#social_contracts_profile_id)
 -  [Function `username`](#social_contracts_profile_username)
--  [Function `x_username`](#social_contracts_profile_x_username)
 -  [Function `lookup_profile_by_username`](#social_contracts_profile_lookup_profile_by_username)
 -  [Function `lookup_profile_by_owner`](#social_contracts_profile_lookup_profile_by_owner)
 -  [Function `get_id_address`](#social_contracts_profile_get_id_address)
@@ -69,11 +67,13 @@ Handles user identity, profile creation, management, and username registration
 -  [Function `create_ecosystem_treasury_admin_cap`](#social_contracts_profile_create_ecosystem_treasury_admin_cap)
 -  [Function `create_ecosystem_badge_admin_cap`](#social_contracts_profile_create_ecosystem_badge_admin_cap)
 -  [Function `assign_ecosystem_badge`](#social_contracts_profile_assign_ecosystem_badge)
+-  [Function `admin_set_profile_x_username`](#social_contracts_profile_admin_set_profile_x_username)
 -  [Function `revoke_ecosystem_badge`](#social_contracts_profile_revoke_ecosystem_badge)
 -  [Function `version`](#social_contracts_profile_version)
 -  [Function `borrow_version_mut`](#social_contracts_profile_borrow_version_mut)
 -  [Function `migrate_registry`](#social_contracts_profile_migrate_registry)
 -  [Function `min_offer_amount`](#social_contracts_profile_min_offer_amount)
+-  [Function `x_username`](#social_contracts_profile_x_username)
 -  [Function `is_for_sale`](#social_contracts_profile_is_for_sale)
 -  [Function `add_badge_to_profile`](#social_contracts_profile_add_badge_to_profile)
 -  [Function `remove_badge_from_profile`](#social_contracts_profile_remove_badge_from_profile)
@@ -364,7 +364,7 @@ Profile object that contains user information
  Username for the profile (required, immutable after creation)
 </dd>
 <dt>
-<code>x_username: <a href="../std/option.md#std_option_Option">std::option::Option</a>&lt;<a href="../std/string.md#std_string_String">std::string::String</a>&gt;</code>
+<code><a href="../social_contracts/profile.md#social_contracts_profile_x_username">x_username</a>: <a href="../std/option.md#std_option_Option">std::option::Option</a>&lt;<a href="../std/string.md#std_string_String">std::string::String</a>&gt;</code>
 </dt>
 <dd>
  X/Twitter username as encrypted string (optional)
@@ -985,7 +985,7 @@ Profile updated event with all profile details
 <dd>
 </dd>
 <dt>
-<code>x_username: <a href="../std/option.md#std_option_Option">std::option::Option</a>&lt;<a href="../std/string.md#std_string_String">std::string::String</a>&gt;</code>
+<code><a href="../social_contracts/profile.md#social_contracts_profile_x_username">x_username</a>: <a href="../std/option.md#std_option_Option">std::option::Option</a>&lt;<a href="../std/string.md#std_string_String">std::string::String</a>&gt;</code>
 </dt>
 <dd>
 </dd>
@@ -1027,7 +1027,7 @@ X username set or cleared by an EcosystemBadgeAdminCap holder (audit trail).
 <dd>
 </dd>
 <dt>
-<code>x_username: <a href="../std/option.md#std_option_Option">std::option::Option</a>&lt;<a href="../std/string.md#std_string_String">std::string::String</a>&gt;</code>
+<code><a href="../social_contracts/profile.md#social_contracts_profile_x_username">x_username</a>: <a href="../std/option.md#std_option_Option">std::option::Option</a>&lt;<a href="../std/string.md#std_string_String">std::string::String</a>&gt;</code>
 </dt>
 <dd>
 </dd>
@@ -2136,7 +2136,7 @@ This is the main entry point for new users, combining profile and username creat
         created_at: now,
         <a href="../social_contracts/profile.md#social_contracts_profile_owner">owner</a>,
         <a href="../social_contracts/profile.md#social_contracts_profile_username">username</a>,
-        x_username: option::none(),
+        <a href="../social_contracts/profile.md#social_contracts_profile_x_username">x_username</a>: option::none(),
         <a href="../social_contracts/profile.md#social_contracts_profile_min_offer_amount">min_offer_amount</a>: option::none(),
         badges: vector::empty&lt;<a href="../social_contracts/profile.md#social_contracts_profile_ProfileBadge">ProfileBadge</a>&gt;(),
         selected_badge_id: option::none(),
@@ -2251,7 +2251,7 @@ The username stays with the profile, and the transfer updates registry mappings
         },
         <a href="../social_contracts/profile.md#social_contracts_profile_owner">owner</a>: new_owner,
         updated_at: tx_context::epoch_timestamp_ms(ctx),
-        x_username: <a href="../social_contracts/profile.md#social_contracts_profile">profile</a>.x_username,
+        <a href="../social_contracts/profile.md#social_contracts_profile_x_username">x_username</a>: <a href="../social_contracts/profile.md#social_contracts_profile">profile</a>.<a href="../social_contracts/profile.md#social_contracts_profile_x_username">x_username</a>,
         <a href="../social_contracts/profile.md#social_contracts_profile_min_offer_amount">min_offer_amount</a>: <a href="../social_contracts/profile.md#social_contracts_profile">profile</a>.<a href="../social_contracts/profile.md#social_contracts_profile_min_offer_amount">min_offer_amount</a>,
     });
     // Transfer <a href="../social_contracts/profile.md#social_contracts_profile">profile</a> to new <a href="../social_contracts/profile.md#social_contracts_profile_owner">owner</a>
@@ -2267,7 +2267,7 @@ The username stays with the profile, and the transfer updates registry mappings
 
 ## Function `update_profile`
 
-Only the profile owner can update profile information. The X username is maintained separately via <code>admin_set_profile_x_username</code> (badge admin only).
+Only the profile owner can update profile information
 
 
 <pre><code><b>public</b> <b>entry</b> <b>fun</b> <a href="../social_contracts/profile.md#social_contracts_profile_update_profile">update_profile</a>(<a href="../social_contracts/profile.md#social_contracts_profile">profile</a>: &<b>mut</b> <a href="../social_contracts/profile.md#social_contracts_profile_Profile">social_contracts::profile::Profile</a>, new_display_name: <a href="../std/string.md#std_string_String">std::string::String</a>, new_bio: <a href="../std/string.md#std_string_String">std::string::String</a>, new_profile_picture_url: vector&lt;u8&gt;, new_cover_photo_url: vector&lt;u8&gt;, <a href="../social_contracts/profile.md#social_contracts_profile_min_offer_amount">min_offer_amount</a>: <a href="../std/option.md#std_option_Option">std::option::Option</a>&lt;u64&gt;, ctx: &<b>mut</b> <a href="../myso/tx_context.md#myso_tx_context_TxContext">myso::tx_context::TxContext</a>)
@@ -2332,51 +2332,8 @@ Only the profile owner can update profile information. The X username is maintai
         <a href="../social_contracts/profile.md#social_contracts_profile_cover_photo">cover_photo</a>: cover_photo_string,
         <a href="../social_contracts/profile.md#social_contracts_profile_owner">owner</a>: <a href="../social_contracts/profile.md#social_contracts_profile">profile</a>.<a href="../social_contracts/profile.md#social_contracts_profile_owner">owner</a>,
         updated_at: now,
-        x_username: <a href="../social_contracts/profile.md#social_contracts_profile">profile</a>.x_username,
+        <a href="../social_contracts/profile.md#social_contracts_profile_x_username">x_username</a>: <a href="../social_contracts/profile.md#social_contracts_profile">profile</a>.<a href="../social_contracts/profile.md#social_contracts_profile_x_username">x_username</a>,
         <a href="../social_contracts/profile.md#social_contracts_profile_min_offer_amount">min_offer_amount</a>: <a href="../social_contracts/profile.md#social_contracts_profile">profile</a>.<a href="../social_contracts/profile.md#social_contracts_profile_min_offer_amount">min_offer_amount</a>,
-    });
-}
-</code></pre>
-
-
-
-</details>
-
-<a name="social_contracts_profile_admin_set_profile_x_username"></a>
-
-## Function `admin_set_profile_x_username`
-
-Set or clear a profile X username — only callable by an <code>EcosystemBadgeAdminCap</code> holder. <code>option::none()</code> clears the handle.
-
-
-<pre><code><b>public</b> <b>entry</b> <b>fun</b> admin_set_profile_x_username(
-    _: &<a href="../social_contracts/profile.md#social_contracts_profile_EcosystemBadgeAdminCap">EcosystemBadgeAdminCap</a>,
-    <a href="../social_contracts/profile.md#social_contracts_profile">profile</a>: &<b>mut</b> <a href="../social_contracts/profile.md#social_contracts_profile_Profile">Profile</a>,
-    new_x_username: <a href="../std/option.md#std_option_Option">std::option::Option</a>&lt;<a href="../std/string.md#std_string_String">std::string::String</a>&gt;,
-    ctx: &<b>mut</b> <a href="../myso/tx_context.md#myso_tx_context_TxContext">myso::tx_context::TxContext</a>
-)
-</code></pre>
-
-
-
-<details>
-<summary>Implementation</summary>
-
-
-<pre><code><b>public</b> <b>entry</b> <b>fun</b> admin_set_profile_x_username(
-    _: &EcosystemBadgeAdminCap,
-    <a href="../social_contracts/profile.md#social_contracts_profile">profile</a>: &<b>mut</b> Profile,
-    new_x_username: Option&lt;String&gt;,
-    ctx: &<b>mut</b> TxContext
-) {
-    <a href="../social_contracts/profile.md#social_contracts_profile">profile</a>.x_username = new_x_username;
-    <b>let</b> now = tx_context::epoch_timestamp_ms(ctx);
-    event::emit(ProfileXUsernameUpdatedEvent {
-        profile_id: object::uid_to_address(&<a href="../social_contracts/profile.md#social_contracts_profile">profile</a>.<a href="../social_contracts/profile.md#social_contracts_profile_id">id</a>),
-        <a href="../social_contracts/profile.md#social_contracts_profile_owner">owner</a>: <a href="../social_contracts/profile.md#social_contracts_profile">profile</a>.<a href="../social_contracts/profile.md#social_contracts_profile_owner">owner</a>,
-        x_username: <a href="../social_contracts/profile.md#social_contracts_profile">profile</a>.x_username,
-        updated_by: tx_context::sender(ctx),
-        updated_at: now,
     });
 }
 </code></pre>
@@ -2553,31 +2510,6 @@ Get the username string for a profile
 
 <pre><code><b>public</b> <b>fun</b> <a href="../social_contracts/profile.md#social_contracts_profile_username">username</a>(<a href="../social_contracts/profile.md#social_contracts_profile">profile</a>: &<a href="../social_contracts/profile.md#social_contracts_profile_Profile">Profile</a>): String {
     <a href="../social_contracts/profile.md#social_contracts_profile">profile</a>.<a href="../social_contracts/profile.md#social_contracts_profile_username">username</a>
-}
-</code></pre>
-
-
-
-</details>
-
-<a name="social_contracts_profile_x_username"></a>
-
-## Function `x_username`
-
-X/Twitter username on the profile (set or cleared only via the admin entry).
-
-
-<pre><code><b>public</b> <b>fun</b> x_username(<a href="../social_contracts/profile.md#social_contracts_profile">profile</a>: &<a href="../social_contracts/profile.md#social_contracts_profile_Profile">social_contracts::profile::Profile</a>): &<a href="../std/option.md#std_option_Option">std::option::Option</a>&lt;<a href="../std/string.md#std_string_String">std::string::String</a>&gt;
-</code></pre>
-
-
-
-<details>
-<summary>Implementation</summary>
-
-
-<pre><code><b>public</b> <b>fun</b> x_username(<a href="../social_contracts/profile.md#social_contracts_profile">profile</a>: &<a href="../social_contracts/profile.md#social_contracts_profile_Profile">Profile</a>): &Option&lt;String&gt; {
-    &<a href="../social_contracts/profile.md#social_contracts_profile">profile</a>.x_username
 }
 </code></pre>
 
@@ -2919,7 +2851,7 @@ Transfers tokens to the profile owner and profile ownership to the offeror
         },
         <a href="../social_contracts/profile.md#social_contracts_profile_owner">owner</a>: offeror,
         updated_at: now,
-        x_username: <a href="../social_contracts/profile.md#social_contracts_profile">profile</a>.x_username,
+        <a href="../social_contracts/profile.md#social_contracts_profile_x_username">x_username</a>: <a href="../social_contracts/profile.md#social_contracts_profile">profile</a>.<a href="../social_contracts/profile.md#social_contracts_profile_x_username">x_username</a>,
         <a href="../social_contracts/profile.md#social_contracts_profile_min_offer_amount">min_offer_amount</a>: <a href="../social_contracts/profile.md#social_contracts_profile">profile</a>.<a href="../social_contracts/profile.md#social_contracts_profile_min_offer_amount">min_offer_amount</a>,
     });
     // Emit a fee event
@@ -3302,6 +3234,44 @@ Assign an ecosystem badge to a profile - called by EcosystemBadgeAdminCap holder
 
 </details>
 
+<a name="social_contracts_profile_admin_set_profile_x_username"></a>
+
+## Function `admin_set_profile_x_username`
+
+Set or clear a profile X username — only callable by an EcosystemBadgeAdminCap holder.
+
+
+<pre><code><b>public</b> <b>entry</b> <b>fun</b> <a href="../social_contracts/profile.md#social_contracts_profile_admin_set_profile_x_username">admin_set_profile_x_username</a>(_: &<a href="../social_contracts/profile.md#social_contracts_profile_EcosystemBadgeAdminCap">social_contracts::profile::EcosystemBadgeAdminCap</a>, <a href="../social_contracts/profile.md#social_contracts_profile">profile</a>: &<b>mut</b> <a href="../social_contracts/profile.md#social_contracts_profile_Profile">social_contracts::profile::Profile</a>, new_x_username: <a href="../std/option.md#std_option_Option">std::option::Option</a>&lt;<a href="../std/string.md#std_string_String">std::string::String</a>&gt;, ctx: &<b>mut</b> <a href="../myso/tx_context.md#myso_tx_context_TxContext">myso::tx_context::TxContext</a>)
+</code></pre>
+
+
+
+<details>
+<summary>Implementation</summary>
+
+
+<pre><code><b>public</b> <b>entry</b> <b>fun</b> <a href="../social_contracts/profile.md#social_contracts_profile_admin_set_profile_x_username">admin_set_profile_x_username</a>(
+    _: &<a href="../social_contracts/profile.md#social_contracts_profile_EcosystemBadgeAdminCap">EcosystemBadgeAdminCap</a>,
+    <a href="../social_contracts/profile.md#social_contracts_profile">profile</a>: &<b>mut</b> <a href="../social_contracts/profile.md#social_contracts_profile_Profile">Profile</a>,
+    new_x_username: Option&lt;String&gt;,
+    ctx: &<b>mut</b> TxContext
+) {
+    <a href="../social_contracts/profile.md#social_contracts_profile">profile</a>.<a href="../social_contracts/profile.md#social_contracts_profile_x_username">x_username</a> = new_x_username;
+    <b>let</b> now = tx_context::epoch_timestamp_ms(ctx);
+    event::emit(<a href="../social_contracts/profile.md#social_contracts_profile_ProfileXUsernameUpdatedEvent">ProfileXUsernameUpdatedEvent</a> {
+        profile_id: object::uid_to_address(&<a href="../social_contracts/profile.md#social_contracts_profile">profile</a>.<a href="../social_contracts/profile.md#social_contracts_profile_id">id</a>),
+        <a href="../social_contracts/profile.md#social_contracts_profile_owner">owner</a>: <a href="../social_contracts/profile.md#social_contracts_profile">profile</a>.<a href="../social_contracts/profile.md#social_contracts_profile_owner">owner</a>,
+        <a href="../social_contracts/profile.md#social_contracts_profile_x_username">x_username</a>: <a href="../social_contracts/profile.md#social_contracts_profile">profile</a>.<a href="../social_contracts/profile.md#social_contracts_profile_x_username">x_username</a>,
+        updated_by: tx_context::sender(ctx),
+        updated_at: now,
+    });
+}
+</code></pre>
+
+
+
+</details>
+
 <a name="social_contracts_profile_revoke_ecosystem_badge"></a>
 
 ## Function `revoke_ecosystem_badge`
@@ -3443,6 +3413,31 @@ Get the minimum offer amount for a profile
 
 <pre><code><b>public</b> <b>fun</b> <a href="../social_contracts/profile.md#social_contracts_profile_min_offer_amount">min_offer_amount</a>(<a href="../social_contracts/profile.md#social_contracts_profile">profile</a>: &<a href="../social_contracts/profile.md#social_contracts_profile_Profile">Profile</a>): &Option&lt;u64&gt; {
     &<a href="../social_contracts/profile.md#social_contracts_profile">profile</a>.<a href="../social_contracts/profile.md#social_contracts_profile_min_offer_amount">min_offer_amount</a>
+}
+</code></pre>
+
+
+
+</details>
+
+<a name="social_contracts_profile_x_username"></a>
+
+## Function `x_username`
+
+X/Twitter username on the profile (set or cleared only via admin entry).
+
+
+<pre><code><b>public</b> <b>fun</b> <a href="../social_contracts/profile.md#social_contracts_profile_x_username">x_username</a>(<a href="../social_contracts/profile.md#social_contracts_profile">profile</a>: &<a href="../social_contracts/profile.md#social_contracts_profile_Profile">social_contracts::profile::Profile</a>): &<a href="../std/option.md#std_option_Option">std::option::Option</a>&lt;<a href="../std/string.md#std_string_String">std::string::String</a>&gt;
+</code></pre>
+
+
+
+<details>
+<summary>Implementation</summary>
+
+
+<pre><code><b>public</b> <b>fun</b> <a href="../social_contracts/profile.md#social_contracts_profile_x_username">x_username</a>(<a href="../social_contracts/profile.md#social_contracts_profile">profile</a>: &<a href="../social_contracts/profile.md#social_contracts_profile_Profile">Profile</a>): &Option&lt;String&gt; {
+    &<a href="../social_contracts/profile.md#social_contracts_profile">profile</a>.<a href="../social_contracts/profile.md#social_contracts_profile_x_username">x_username</a>
 }
 </code></pre>
 

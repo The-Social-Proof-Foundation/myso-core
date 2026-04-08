@@ -22,7 +22,7 @@ module bridged_myusd::myusd {
     ) {
         let (treasury_cap, metadata) = coin::create_currency_with_admin<MYUSD>(
             DECIMAL,
-            b"MyUSD",
+            b"myUSD",
             b"MyUSD",
             b"The official MySocial USD stablecoin.",
             option::none(),

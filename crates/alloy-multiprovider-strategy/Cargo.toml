@@ -1,0 +1,45 @@
+[package]
+name = "alloy-multiprovider-strategy"
+version = "0.1.0"
+edition = "2021"
+description = "Vendored from upstream; uses alloy_transport_http's reqwest Client for Alloy 1.8+ compatibility."
+license = "MIT OR Apache-2.0"
+publish = false
+readme = "README.md"
+repository = "https://github.com/0xsiddharthks/alloy-multiprovider-strategy"
+keywords = ["ethereum", "alloy", "provider", "quorum", "multi-provider"]
+categories = ["cryptography::cryptocurrencies", "network-programming"]
+
+[dependencies]
+# Alloy ecosystem (compatible with alloy 1.x)
+alloy-provider = { version = "1", default-features = false, features = ["reqwest", "reqwest-rustls-tls"] }
+alloy-transport = "1"
+alloy-transport-http = { version = "1", default-features = false, features = ["reqwest", "reqwest-rustls-tls"] }
+alloy-rpc-client = "1"
+alloy-primitives = "1"
+alloy-json-rpc = "1"
+alloy-network = "1"
+
+# Tower for Service trait
+tower = "0.5"
+
+# Async runtime
+tokio = { version = "1", features = ["full", "sync", "time"] }
+futures = "0.3"
+
+# Serialization
+serde = { version = "1.0", features = ["derive"] }
+serde_json = "1.0"
+
+# Utilities
+thiserror = "2.0"
+tracing = "0.1"
+parking_lot = "0.12"
+url = "2.5"
+
+[dev-dependencies]
+tokio-test = "0.4"
+tracing-subscriber = { version = "0.3", features = ["env-filter"] }
+
+[features]
+default = []

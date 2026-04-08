@@ -16,6 +16,7 @@ Implements proposal submission, voting, and execution processes
 -  [Struct `DelegateElectedEvent`](#social_contracts_governance_DelegateElectedEvent)
 -  [Struct `DelegateNominatedEvent`](#social_contracts_governance_DelegateNominatedEvent)
 -  [Struct `DelegateVotedEvent`](#social_contracts_governance_DelegateVotedEvent)
+-  [Struct `DelegateVoteClearedEvent`](#social_contracts_governance_DelegateVoteClearedEvent)
 -  [Struct `ProposalSubmittedEvent`](#social_contracts_governance_ProposalSubmittedEvent)
 -  [Struct `DelegateVoteEvent`](#social_contracts_governance_DelegateVoteEvent)
 -  [Struct `CommunityVoteEvent`](#social_contracts_governance_CommunityVoteEvent)
@@ -32,12 +33,14 @@ Implements proposal submission, voting, and execution processes
 -  [Struct `GovernanceRegistryCreatedEvent`](#social_contracts_governance_GovernanceRegistryCreatedEvent)
 -  [Constants](#@Constants_0)
 -  [Function `bootstrap_init`](#social_contracts_governance_bootstrap_init)
+-  [Function `seed_founding_delegate`](#social_contracts_governance_seed_founding_delegate)
 -  [Function `initialize_registry_tables`](#social_contracts_governance_initialize_registry_tables)
 -  [Function `update_governance_parameters_internal`](#social_contracts_governance_update_governance_parameters_internal)
 -  [Function `update_platform_governance_parameters`](#social_contracts_governance_update_platform_governance_parameters)
 -  [Function `update_governance_parameters`](#social_contracts_governance_update_governance_parameters)
 -  [Function `nominate_delegate`](#social_contracts_governance_nominate_delegate)
 -  [Function `vote_for_delegate`](#social_contracts_governance_vote_for_delegate)
+-  [Function `clear_vote_for_delegate`](#social_contracts_governance_clear_vote_for_delegate)
 -  [Function `update_delegate_panel`](#social_contracts_governance_update_delegate_panel)
 -  [Function `submit_proposal`](#social_contracts_governance_submit_proposal)
 -  [Function `submit_ecosystem_proposal`](#social_contracts_governance_submit_ecosystem_proposal)
@@ -616,6 +619,58 @@ Event emitted when a delegate or nominee is voted for/against
 </dd>
 <dt>
 <code>upvote: bool</code>
+</dt>
+<dd>
+</dd>
+<dt>
+<code>new_upvote_count: u64</code>
+</dt>
+<dd>
+</dd>
+<dt>
+<code>new_downvote_count: u64</code>
+</dt>
+<dd>
+</dd>
+<dt>
+<code>registry_type: u8</code>
+</dt>
+<dd>
+</dd>
+</dl>
+
+
+</details>
+
+<a name="social_contracts_governance_DelegateVoteClearedEvent"></a>
+
+## Struct `DelegateVoteClearedEvent`
+
+Event emitted when a user clears their delegate/nominee up or down vote
+
+
+<pre><code><b>public</b> <b>struct</b> <a href="../social_contracts/governance.md#social_contracts_governance_DelegateVoteClearedEvent">DelegateVoteClearedEvent</a> <b>has</b> <b>copy</b>, drop
+</code></pre>
+
+
+
+<details>
+<summary>Fields</summary>
+
+
+<dl>
+<dt>
+<code>target_address: <b>address</b></code>
+</dt>
+<dd>
+</dd>
+<dt>
+<code>voter: <b>address</b></code>
+</dt>
+<dd>
+</dd>
+<dt>
+<code>is_active_delegate: bool</code>
 </dt>
 <dd>
 </dd>
@@ -1476,6 +1531,15 @@ Error codes
 
 
 
+<a name="social_contracts_governance_ENoExistingVote"></a>
+
+
+
+<pre><code><b>const</b> <a href="../social_contracts/governance.md#social_contracts_governance_ENoExistingVote">ENoExistingVote</a>: u64 = 20;
+</code></pre>
+
+
+
 <a name="social_contracts_governance_MAX_U64"></a>
 
 Maximum u64 value for overflow protection
@@ -1670,6 +1734,7 @@ This function has the same logic as init() but can be called by bootstrap
 
 <pre><code><b>public</b>(package) <b>fun</b> <a href="../social_contracts/governance.md#social_contracts_governance_bootstrap_init">bootstrap_init</a>(ctx: &<b>mut</b> TxContext) {
     <b>let</b> current_time = tx_context::epoch_timestamp_ms(ctx);
+    <b>let</b> founder = tx_context::sender(ctx);
     // Create MySocial Ecosystem Governance Registry
     <b>let</b> <b>mut</b> ecosystem_registry = <a href="../social_contracts/governance.md#social_contracts_governance_GovernanceDAO">GovernanceDAO</a> {
         id: object::new(ctx),
@@ -1677,9 +1742,9 @@ This function has the same logic as init() but can be called by bootstrap
         // Configuration parameters specific to ecosystem <a href="../social_contracts/governance.md#social_contracts_governance">governance</a>
         delegate_count: 3, // Larger council <b>for</b> ecosystem decisions
         delegate_term_epochs: 90, // 3 months <b>for</b> ecosystem delegates
-        proposal_submission_cost: 100_000_000, // 100 MYSO <b>for</b> ecosystem proposals
+        proposal_submission_cost: 100_000_000_000, // 100 MYSO <b>for</b> ecosystem proposals
         max_votes_per_user: 10, // Up to 10 votes per user
-        quadratic_base_cost: 10_000_000, // 10 MYSO per additional vote
+        quadratic_base_cost: 10_000_000_000, // 10 MYSO per additional vote
         voting_period_ms: 7 * 24 * 60 * 60 * 1000, // 7 days in milliseconds <b>for</b> ecosystem votes
         quorum_votes: 20, // 20 votes required <b>for</b> ecosystem proposals
         // Tables
@@ -1711,6 +1776,7 @@ This function has the same logic as init() but can be called by bootstrap
         quorum_votes: ecosystem_registry.quorum_votes,
         updated_at: current_time,
     });
+    <a href="../social_contracts/governance.md#social_contracts_governance_seed_founding_delegate">seed_founding_delegate</a>(&<b>mut</b> ecosystem_registry, founder, ctx);
     // Share the ecosystem registry object
     transfer::share_object(ecosystem_registry);
     // Create Proof of Creativity Governance Registry
@@ -1720,9 +1786,9 @@ This function has the same logic as init() but can be called by bootstrap
         // Configuration parameters specific to proof of creativity <a href="../social_contracts/governance.md#social_contracts_governance">governance</a>
         delegate_count: 2, // Smaller council <b>for</b> proof of creativity
         delegate_term_epochs: 180, // 3 months <b>for</b> proof of creativity delegates
-        proposal_submission_cost: 25_000_000, // 25 MYSO <b>for</b> proof of creativity
+        proposal_submission_cost: 25_000_000_000, // 25 MYSO <b>for</b> proof of creativity
         max_votes_per_user: 3, // Up to 3 votes per user
-        quadratic_base_cost: 2_500_000, // 2.5 MYSO per additional vote
+        quadratic_base_cost: 2_500_000_000, // 2.5 MYSO per additional vote
         voting_period_ms: 24 * 60 * 60 * 1000, // 1 day in milliseconds <b>for</b> proof of creativity votes
         quorum_votes: 10, // 10 votes required <b>for</b> proof of creativity proposals
         // Tables
@@ -1754,8 +1820,56 @@ This function has the same logic as init() but can be called by bootstrap
         quorum_votes: proof_of_creativity_registry.quorum_votes,
         updated_at: current_time,
     });
+    <a href="../social_contracts/governance.md#social_contracts_governance_seed_founding_delegate">seed_founding_delegate</a>(&<b>mut</b> proof_of_creativity_registry, founder, ctx);
     // Share the proof of creativity registry object
     transfer::share_object(proof_of_creativity_registry);
+}
+</code></pre>
+
+
+
+</details>
+
+<a name="social_contracts_governance_seed_founding_delegate"></a>
+
+## Function `seed_founding_delegate`
+
+Install the founding delegate without going through nomination (bootstrap / platform creation).
+
+
+<pre><code><b>fun</b> <a href="../social_contracts/governance.md#social_contracts_governance_seed_founding_delegate">seed_founding_delegate</a>(registry: &<b>mut</b> <a href="../social_contracts/governance.md#social_contracts_governance_GovernanceDAO">social_contracts::governance::GovernanceDAO</a>, addr: <b>address</b>, ctx: &<a href="../myso/tx_context.md#myso_tx_context_TxContext">myso::tx_context::TxContext</a>)
+</code></pre>
+
+
+
+<details>
+<summary>Implementation</summary>
+
+
+<pre><code><b>fun</b> <a href="../social_contracts/governance.md#social_contracts_governance_seed_founding_delegate">seed_founding_delegate</a>(registry: &<b>mut</b> <a href="../social_contracts/governance.md#social_contracts_governance_GovernanceDAO">GovernanceDAO</a>, addr: <b>address</b>, ctx: &TxContext) {
+    <b>let</b> current_epoch = tx_context::epoch(ctx);
+    <b>let</b> delegate_term_epochs = registry.delegate_term_epochs;
+    <b>let</b> term_start = current_epoch;
+    <b>let</b> term_end = term_start + delegate_term_epochs;
+    <b>let</b> new_delegate = <a href="../social_contracts/governance.md#social_contracts_governance_Delegate">Delegate</a> {
+        <b>address</b>: addr,
+        upvotes: 0,
+        downvotes: 0,
+        proposals_reviewed: 0,
+        proposals_submitted: 0,
+        sided_winning_proposals: 0,
+        sided_losing_proposals: 0,
+        term_start,
+        term_end,
+    };
+    table::add(&<b>mut</b> registry.delegates, addr, new_delegate);
+    vec_set::insert(&<b>mut</b> registry.delegate_addresses, addr);
+    event::emit(<a href="../social_contracts/governance.md#social_contracts_governance_DelegateElectedEvent">DelegateElectedEvent</a> {
+        delegate_address: addr,
+        term_start,
+        term_end,
+        registry_type: registry.registry_type,
+    });
 }
 </code></pre>
 
@@ -2151,6 +2265,86 @@ Users can change their vote at any time
         voter: caller,
         is_active_delegate,
         upvote,
+        new_upvote_count: upvote_count,
+        new_downvote_count: downvote_count,
+        registry_type: registry.registry_type,
+    });
+}
+</code></pre>
+
+
+
+</details>
+
+<a name="social_contracts_governance_clear_vote_for_delegate"></a>
+
+## Function `clear_vote_for_delegate`
+
+Remove the caller's up or down vote on a delegate or nominee (neutral / undo).
+Aborts with <code><a href="../social_contracts/governance.md#social_contracts_governance_ENoExistingVote">ENoExistingVote</a></code> if the caller has not voted on this target.
+
+
+<pre><code><b>public</b> <b>entry</b> <b>fun</b> <a href="../social_contracts/governance.md#social_contracts_governance_clear_vote_for_delegate">clear_vote_for_delegate</a>(registry: &<b>mut</b> <a href="../social_contracts/governance.md#social_contracts_governance_GovernanceDAO">social_contracts::governance::GovernanceDAO</a>, target_address: <b>address</b>, ctx: &<b>mut</b> <a href="../myso/tx_context.md#myso_tx_context_TxContext">myso::tx_context::TxContext</a>)
+</code></pre>
+
+
+
+<details>
+<summary>Implementation</summary>
+
+
+<pre><code><b>public</b> <b>entry</b> <b>fun</b> <a href="../social_contracts/governance.md#social_contracts_governance_clear_vote_for_delegate">clear_vote_for_delegate</a>(
+    registry: &<b>mut</b> <a href="../social_contracts/governance.md#social_contracts_governance_GovernanceDAO">GovernanceDAO</a>,
+    target_address: <b>address</b>,
+    ctx: &<b>mut</b> TxContext
+) {
+    <b>assert</b>!(registry.<a href="../social_contracts/governance.md#social_contracts_governance_version">version</a> == <a href="../social_contracts/upgrade.md#social_contracts_upgrade_current_version">upgrade::current_version</a>(), <a href="../social_contracts/governance.md#social_contracts_governance_EWrongVersion">EWrongVersion</a>);
+    <b>let</b> caller = tx_context::sender(ctx);
+    <b>assert</b>!(caller != target_address, <a href="../social_contracts/governance.md#social_contracts_governance_EUnauthorized">EUnauthorized</a>);
+    <b>let</b> is_active_delegate: bool;
+    <b>let</b> upvote_count: u64;
+    <b>let</b> downvote_count: u64;
+    <b>if</b> (table::contains(&registry.delegates, target_address)) {
+        is_active_delegate = <b>true</b>;
+        <b>assert</b>!(table::contains(&registry.voters, target_address), <a href="../social_contracts/governance.md#social_contracts_governance_ENoExistingVote">ENoExistingVote</a>);
+        <b>let</b> voter_table = table::borrow_mut(&<b>mut</b> registry.voters, target_address);
+        <b>assert</b>!(table::contains(voter_table, caller), <a href="../social_contracts/governance.md#social_contracts_governance_ENoExistingVote">ENoExistingVote</a>);
+        <b>let</b> previous_vote = *table::borrow(voter_table, caller);
+        <b>let</b> delegate = table::borrow_mut(&<b>mut</b> registry.delegates, target_address);
+        <b>if</b> (previous_vote) {
+            <b>assert</b>!(delegate.upvotes &gt; 0, <a href="../social_contracts/governance.md#social_contracts_governance_EOverflow">EOverflow</a>);
+            delegate.upvotes = delegate.upvotes - 1;
+        } <b>else</b> {
+            <b>assert</b>!(delegate.downvotes &gt; 0, <a href="../social_contracts/governance.md#social_contracts_governance_EOverflow">EOverflow</a>);
+            delegate.downvotes = delegate.downvotes - 1;
+        };
+        table::remove(voter_table, caller);
+        upvote_count = delegate.upvotes;
+        downvote_count = delegate.downvotes;
+    } <b>else</b> <b>if</b> (table::contains(&registry.nominated_delegates, target_address)) {
+        is_active_delegate = <b>false</b>;
+        <b>assert</b>!(table::contains(&registry.voters, target_address), <a href="../social_contracts/governance.md#social_contracts_governance_ENoExistingVote">ENoExistingVote</a>);
+        <b>let</b> voter_table = table::borrow_mut(&<b>mut</b> registry.voters, target_address);
+        <b>assert</b>!(table::contains(voter_table, caller), <a href="../social_contracts/governance.md#social_contracts_governance_ENoExistingVote">ENoExistingVote</a>);
+        <b>let</b> previous_vote = *table::borrow(voter_table, caller);
+        <b>let</b> nominee = table::borrow_mut(&<b>mut</b> registry.nominated_delegates, target_address);
+        <b>if</b> (previous_vote) {
+            <b>assert</b>!(nominee.upvotes &gt; 0, <a href="../social_contracts/governance.md#social_contracts_governance_EOverflow">EOverflow</a>);
+            nominee.upvotes = nominee.upvotes - 1;
+        } <b>else</b> {
+            <b>assert</b>!(nominee.downvotes &gt; 0, <a href="../social_contracts/governance.md#social_contracts_governance_EOverflow">EOverflow</a>);
+            nominee.downvotes = nominee.downvotes - 1;
+        };
+        table::remove(voter_table, caller);
+        upvote_count = nominee.upvotes;
+        downvote_count = nominee.downvotes;
+    } <b>else</b> {
+        <b>abort</b> <a href="../social_contracts/governance.md#social_contracts_governance_ENotDelegate">ENotDelegate</a>
+    };
+    event::emit(<a href="../social_contracts/governance.md#social_contracts_governance_DelegateVoteClearedEvent">DelegateVoteClearedEvent</a> {
+        target_address,
+        voter: caller,
+        is_active_delegate,
         new_upvote_count: upvote_count,
         new_downvote_count: downvote_count,
         registry_type: registry.registry_type,
@@ -3838,7 +4032,8 @@ If more than half of delegates reject, reject the proposal manually
 
 Create a platform-specific governance registry when a platform is approved
 This function can only be called by the platform toggle_platform_approval function
-The transaction sender is seeded as the founding delegate.
+The transaction sender is seeded as the founding delegate (same pattern as <code><a href="../social_contracts/governance.md#social_contracts_governance_bootstrap_init">bootstrap_init</a></code>).
+
 
 <pre><code><b>public</b>(package) <b>fun</b> <a href="../social_contracts/governance.md#social_contracts_governance_create_platform_governance">create_platform_governance</a>(delegate_count: u64, delegate_term_epochs: u64, proposal_submission_cost: u64, max_votes_per_user: u64, quadratic_base_cost: u64, voting_period_ms: u64, quorum_votes: u64, ctx: &<b>mut</b> <a href="../myso/tx_context.md#myso_tx_context_TxContext">myso::tx_context::TxContext</a>): <a href="../myso/object.md#myso_object_ID">myso::object::ID</a>
 </code></pre>
@@ -3887,7 +4082,7 @@ The transaction sender is seeded as the founding delegate.
     };
     // Initialize registry tables
     <a href="../social_contracts/governance.md#social_contracts_governance_initialize_registry_tables">initialize_registry_tables</a>(&<b>mut</b> platform_registry, ctx);
-    seed_founding_delegate(&<b>mut</b> platform_registry, founding_delegate, ctx);
+    <a href="../social_contracts/governance.md#social_contracts_governance_seed_founding_delegate">seed_founding_delegate</a>(&<b>mut</b> platform_registry, founding_delegate, ctx);
     // Get the ID before sharing
     <b>let</b> registry_id = object::id(&platform_registry);
     // Emit event <b>for</b> <a href="../social_contracts/platform.md#social_contracts_platform">platform</a> registry creation

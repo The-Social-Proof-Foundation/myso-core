@@ -7441,9 +7441,6 @@ id
 username
 	public fun
 	0x50c1::profile
-x_username
-	public fun
-	0x50c1::profile
 lookup_profile_by_username
 	public fun
 	0x50c1::profile
@@ -7495,10 +7492,10 @@ create_ecosystem_treasury_admin_cap
 create_ecosystem_badge_admin_cap
 	public(package) fun
 	0x50c1::profile
-admin_set_profile_x_username
+assign_ecosystem_badge
 	public entry fun
 	0x50c1::profile
-assign_ecosystem_badge
+admin_set_profile_x_username
 	public entry fun
 	0x50c1::profile
 revoke_ecosystem_badge
@@ -7514,6 +7511,9 @@ migrate_registry
 	public entry fun
 	0x50c1::profile
 min_offer_amount
+	public fun
+	0x50c1::profile
+x_username
 	public fun
 	0x50c1::profile
 is_for_sale
@@ -7675,6 +7675,9 @@ DelegateNominatedEvent
 DelegateVotedEvent
 	public struct
 	0x50c1::governance
+DelegateVoteClearedEvent
+	public struct
+	0x50c1::governance
 ProposalSubmittedEvent
 	public struct
 	0x50c1::governance
@@ -7720,6 +7723,9 @@ GovernanceRegistryCreatedEvent
 bootstrap_init
 	public(package) fun
 	0x50c1::governance
+seed_founding_delegate
+	fun
+	0x50c1::governance
 initialize_registry_tables
 	fun
 	0x50c1::governance
@@ -7736,6 +7742,9 @@ nominate_delegate
 	public entry fun
 	0x50c1::governance
 vote_for_delegate
+	public entry fun
+	0x50c1::governance
+clear_vote_for_delegate
 	public entry fun
 	0x50c1::governance
 update_delegate_panel
