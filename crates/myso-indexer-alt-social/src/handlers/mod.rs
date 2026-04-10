@@ -42,8 +42,11 @@ use myso_indexer_alt_social_schema::models::{
     NewEcosystemTreasury, NewGovernanceEvent, NewGovernanceRegistry, NewInsuranceConfig,
     NewInsuranceEventLog, NewInsuranceMarketExposure, NewInsurancePolicy, NewInsurancePolicyEvent,
     NewInsuranceUserExposure, NewInsuranceVault, NewInsuranceVaultTransaction, NewModerationEvent,
-    NewMyDataAccessLog, NewMyDataConfig, NewMyDataData, NewMyDataPurchase, NewMyDataRegistry,
-    NewMyDataRevenue, NewMyDataSubscription, NewNominatedDelegate, NewObjectMigratedEvent,
+    NewMyDataAccessLog, NewMyDataConfig, NewMyDataData, NewMyDataPurchase, NewMyDataQueryBroadPool,
+    NewMyDataQueryClaim, NewMyDataQueryDistributionRound, NewMyDataQueryListingSubPool,
+    NewMyDataQueryMerkleRoot, NewMyDataQuerySnapshotAnchor, NewMyDataQuerySubPool,
+    NewMyDataRegistry, NewMyDataRevenue,
+    NewMyDataSubscription, NewNominatedDelegate, NewObjectMigratedEvent,
     NewPlatform, NewPlatformBlockedProfile, NewPlatformEvent, NewPlatformMembership,
     NewPlatformModerator, NewPlatformTokenAirdrop, NewPocAnalysisResult, NewPocBadge,
     NewPocConfiguration, NewPocDispute, NewPocDisputeVote, NewPocRevenueRedirection, NewPost,
@@ -349,6 +352,16 @@ pub enum SocialEventRow {
         last_updated: i64,
         transaction_id: String,
     },
+    MyDataQueryBroadPool(NewMyDataQueryBroadPool),
+    MyDataQuerySubPool(NewMyDataQuerySubPool),
+    MyDataQueryListingSubPoolsReplace {
+        listing_id: String,
+        rows: Vec<NewMyDataQueryListingSubPool>,
+    },
+    MyDataQuerySnapshotAnchor(NewMyDataQuerySnapshotAnchor),
+    MyDataQueryDistributionRound(NewMyDataQueryDistributionRound),
+    MyDataQueryMerkleRoot(NewMyDataQueryMerkleRoot),
+    MyDataQueryClaim(NewMyDataQueryClaim),
     InsuranceConfig(NewInsuranceConfig),
     InsuranceVault(NewInsuranceVault),
     InsuranceVaultTransaction(NewInsuranceVaultTransaction),
@@ -566,7 +579,7 @@ pub struct ProfileUpdate {
 }
 
 impl FieldCount for SocialEventRow {
-    const FIELD_COUNT: usize = 116;
+    const FIELD_COUNT: usize = 117;
 }
 
 // SocialEvents pipeline removed: profile and post events now handled by ProfilesHandler and PostsHandler.

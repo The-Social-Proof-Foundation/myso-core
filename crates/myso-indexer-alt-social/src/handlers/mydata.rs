@@ -3,8 +3,10 @@
 
 use super::SocialEventRow;
 use myso_indexer_alt_social_schema::models::{
-    NewMyDataAccessLog, NewMyDataConfig, NewMyDataData, NewMyDataPurchase, NewMyDataRegistry,
-    NewMyDataRevenue, NewMyDataSubscription,
+    NewMyDataAccessLog, NewMyDataConfig, NewMyDataData, NewMyDataPurchase, NewMyDataQueryBroadPool,
+    NewMyDataQueryClaim, NewMyDataQueryDistributionRound, NewMyDataQueryListingSubPool,
+    NewMyDataQueryMerkleRoot, NewMyDataQuerySnapshotAnchor, NewMyDataQuerySubPool,
+    NewMyDataRegistry, NewMyDataRevenue, NewMyDataSubscription,
 };
 
 fn json_to_i64(v: &serde_json::Value) -> i64 {
@@ -16,6 +18,10 @@ fn json_to_i64(v: &serde_json::Value) -> i64 {
 fn json_opt_i64(v: &serde_json::Value) -> Option<i64> {
     v.as_i64()
         .or_else(|| v.as_u64().and_then(|u| u.try_into().ok()))
+}
+
+fn u64_to_db_i64(n: u64) -> i64 {
+    i64::try_from(n).unwrap_or(i64::MAX)
 }
 
 pub fn handle_mydata_event(
@@ -43,6 +49,13 @@ pub fn handle_mydata_event(
         "MyDataConfigUpdatedEvent" | "ConfigUpdatedEvent" => {
             process_mydata_config_updated_event(data, &transaction_id)
         }
+        "BroadPoolCreatedEvent" => process_query_broad_pool_created(data, event_id),
+        "SubPoolCreatedEvent" => process_query_sub_pool_created(data, event_id),
+        "MyDataAssignedToSubPoolEvent" => process_query_listing_sub_pools_assigned(data, event_id),
+        "SnapshotAnchorRecordedEvent" => process_query_snapshot_anchor_recorded(data, event_id),
+        "DistributionRecordedEvent" => process_query_distribution_recorded(data, event_id),
+        "MerkleRootPublishedEvent" => process_query_merkle_root_published(data, event_id),
+        "ClaimExecutedEvent" => process_query_claim_executed(data, event_id),
         _ => None,
     }
 }
@@ -251,4 +264,169 @@ fn process_mydata_config_updated_event(
     };
 
     Some(vec![SocialEventRow::MyDataConfig(config)])
+}
+
+fn process_query_broad_pool_created(
+    data: &serde_json::Value,
+    event_id: &str,
+) -> Option<Vec<SocialEventRow>> {
+    let transaction_id = event_id.split(':').next()?.to_string();
+    let pool_id = data.get("pool_id")?.as_str()?.to_string();
+    let name = data.get("name")?.as_str()?.to_string();
+    let created_at_ms = json_to_i64(data.get("created_at")?);
+    Some(vec![SocialEventRow::MyDataQueryBroadPool(NewMyDataQueryBroadPool {
+        pool_id,
+        name,
+        created_at_ms,
+        event_id: event_id.to_string(),
+        transaction_id,
+    })])
+}
+
+fn process_query_sub_pool_created(
+    data: &serde_json::Value,
+    event_id: &str,
+) -> Option<Vec<SocialEventRow>> {
+    let transaction_id = event_id.split(':').next()?.to_string();
+    let sub_pool_id = data.get("sub_pool_id")?.as_str()?.to_string();
+    let broad_pool_id = data.get("broad_pool_id")?.as_str()?.to_string();
+    let name = data.get("name")?.as_str()?.to_string();
+    let created_at_ms = json_to_i64(data.get("created_at")?);
+    Some(vec![SocialEventRow::MyDataQuerySubPool(NewMyDataQuerySubPool {
+        sub_pool_id,
+        broad_pool_id,
+        name,
+        created_at_ms,
+        event_id: event_id.to_string(),
+        transaction_id,
+    })])
+}
+
+fn process_query_listing_sub_pools_assigned(
+    data: &serde_json::Value,
+    event_id: &str,
+) -> Option<Vec<SocialEventRow>> {
+    let transaction_id = event_id.split(':').next()?.to_string();
+    let listing_id = data.get("ip_id")?.as_str()?.to_string();
+    let assigned_at_ms = json_to_i64(data.get("assigned_at")?);
+    let arr = data.get("sub_pool_ids")?.as_array()?;
+    let mut rows = Vec::with_capacity(arr.len());
+    for v in arr {
+        let sub_pool_id = v.as_str()?.to_string();
+        rows.push(NewMyDataQueryListingSubPool {
+            listing_id: listing_id.clone(),
+            sub_pool_id,
+            assigned_at_ms,
+            event_id: event_id.to_string(),
+            transaction_id: transaction_id.clone(),
+        });
+    }
+    Some(vec![SocialEventRow::MyDataQueryListingSubPoolsReplace {
+        listing_id,
+        rows,
+    }])
+}
+
+fn process_query_snapshot_anchor_recorded(
+    data: &serde_json::Value,
+    event_id: &str,
+) -> Option<Vec<SocialEventRow>> {
+    let transaction_id = event_id.split(':').next()?.to_string();
+    let snapshot_id = data.get("snapshot_id")?.as_str()?.to_string();
+    let buyer_address = data.get("buyer_address")?.as_str()?.to_string();
+    let price_raw = data.get("price_paid")?;
+    let price_paid = price_raw
+        .as_i64()
+        .or_else(|| price_raw.as_u64().map(u64_to_db_i64))?;
+    let created_at_ms = json_to_i64(data.get("created_at")?);
+    let manifest_hash = data
+        .get("manifest_hash")
+        .and_then(|v| v.as_str())
+        .map(String::from);
+    let payment_reference = data
+        .get("payment_reference")
+        .and_then(|v| v.as_str())
+        .map(String::from);
+    Some(vec![SocialEventRow::MyDataQuerySnapshotAnchor(
+        NewMyDataQuerySnapshotAnchor {
+            snapshot_id,
+            buyer_address,
+            price_paid,
+            created_at_ms,
+            event_id: event_id.to_string(),
+            transaction_id,
+            manifest_hash,
+            payment_reference,
+        },
+    )])
+}
+
+fn process_query_distribution_recorded(
+    data: &serde_json::Value,
+    event_id: &str,
+) -> Option<Vec<SocialEventRow>> {
+    let transaction_id = event_id.split(':').next()?.to_string();
+    let snapshot_id = data.get("snapshot_id")?.as_str()?.to_string();
+    let total_raw = data.get("total_amount")?;
+    let total_amount = total_raw
+        .as_i64()
+        .or_else(|| total_raw.as_u64().map(u64_to_db_i64))?;
+    let count_raw = data.get("contributor_count")?;
+    let contributor_count = count_raw
+        .as_i64()
+        .or_else(|| count_raw.as_u64().map(u64_to_db_i64))?;
+    let merkle_root = data.get("merkle_root")?.as_str()?.to_string();
+    let published_at_ms = json_to_i64(data.get("published_at")?);
+    Some(vec![SocialEventRow::MyDataQueryDistributionRound(
+        NewMyDataQueryDistributionRound {
+            snapshot_id,
+            total_amount,
+            contributor_count,
+            merkle_root,
+            published_at_ms,
+            event_id: event_id.to_string(),
+            transaction_id,
+        },
+    )])
+}
+
+fn process_query_merkle_root_published(
+    data: &serde_json::Value,
+    event_id: &str,
+) -> Option<Vec<SocialEventRow>> {
+    let transaction_id = event_id.split(':').next()?.to_string();
+    let snapshot_id = data.get("snapshot_id")?.as_str()?.to_string();
+    let root_hash = data.get("root_hash")?.as_str()?.to_string();
+    let published_at_ms = json_to_i64(data.get("published_at")?);
+    Some(vec![SocialEventRow::MyDataQueryMerkleRoot(
+        NewMyDataQueryMerkleRoot {
+            snapshot_id,
+            root_hash,
+            published_at_ms,
+            event_id: event_id.to_string(),
+            transaction_id,
+        },
+    )])
+}
+
+fn process_query_claim_executed(
+    data: &serde_json::Value,
+    event_id: &str,
+) -> Option<Vec<SocialEventRow>> {
+    let transaction_id = event_id.split(':').next()?.to_string();
+    let snapshot_id = data.get("snapshot_id")?.as_str()?.to_string();
+    let claimant = data.get("claimant")?.as_str()?.to_string();
+    let amount_raw = data.get("amount")?;
+    let amount = amount_raw
+        .as_i64()
+        .or_else(|| amount_raw.as_u64().map(u64_to_db_i64))?;
+    let claimed_at_ms = json_to_i64(data.get("claimed_at")?);
+    Some(vec![SocialEventRow::MyDataQueryClaim(NewMyDataQueryClaim {
+        snapshot_id,
+        claimant,
+        amount,
+        claimed_at_ms,
+        event_id: event_id.to_string(),
+        transaction_id,
+    })])
 }

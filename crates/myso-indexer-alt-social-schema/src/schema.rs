@@ -446,6 +446,92 @@ diesel::table! {
 }
 
 diesel::table! {
+    mydata_query_broad_pools (pool_id) {
+        pool_id -> Text,
+        name -> Text,
+        created_at_ms -> Int8,
+        event_id -> Text,
+        transaction_id -> Text,
+        time -> Timestamptz,
+    }
+}
+
+diesel::table! {
+    mydata_query_sub_pools (sub_pool_id) {
+        sub_pool_id -> Text,
+        broad_pool_id -> Text,
+        name -> Text,
+        created_at_ms -> Int8,
+        event_id -> Text,
+        transaction_id -> Text,
+        time -> Timestamptz,
+    }
+}
+
+diesel::table! {
+    mydata_query_listing_sub_pools (listing_id, sub_pool_id) {
+        listing_id -> Text,
+        sub_pool_id -> Text,
+        assigned_at_ms -> Int8,
+        event_id -> Text,
+        transaction_id -> Text,
+        time -> Timestamptz,
+    }
+}
+
+diesel::table! {
+    mydata_query_merkle_roots (snapshot_id) {
+        snapshot_id -> Text,
+        root_hash -> Text,
+        published_at_ms -> Int8,
+        event_id -> Text,
+        transaction_id -> Text,
+        time -> Timestamptz,
+    }
+}
+
+diesel::table! {
+    mydata_query_snapshot_anchors (id, time) {
+        id -> Int4,
+        snapshot_id -> Text,
+        buyer_address -> Text,
+        price_paid -> Int8,
+        created_at_ms -> Int8,
+        event_id -> Text,
+        transaction_id -> Text,
+        time -> Timestamptz,
+        manifest_hash -> Nullable<Text>,
+        payment_reference -> Nullable<Text>,
+    }
+}
+
+diesel::table! {
+    mydata_query_distribution_rounds (snapshot_id) {
+        snapshot_id -> Text,
+        total_amount -> Int8,
+        contributor_count -> Int8,
+        merkle_root -> Text,
+        published_at_ms -> Int8,
+        event_id -> Text,
+        transaction_id -> Text,
+        time -> Timestamptz,
+    }
+}
+
+diesel::table! {
+    mydata_query_claims (id, time) {
+        id -> Int4,
+        snapshot_id -> Text,
+        claimant -> Text,
+        amount -> Int8,
+        claimed_at_ms -> Int8,
+        event_id -> Text,
+        transaction_id -> Text,
+        time -> Timestamptz,
+    }
+}
+
+diesel::table! {
     nominated_delegates (id, time) {
         id -> Int4,
         address -> Text,
@@ -1749,6 +1835,13 @@ diesel::allow_tables_to_appear_in_same_query!(
     mydata_config,
     mydata_data,
     mydata_purchases,
+    mydata_query_broad_pools,
+    mydata_query_claims,
+    mydata_query_distribution_rounds,
+    mydata_query_listing_sub_pools,
+    mydata_query_merkle_roots,
+    mydata_query_snapshot_anchors,
+    mydata_query_sub_pools,
     mydata_registry,
     mydata_revenue,
     mydata_subscriptions,

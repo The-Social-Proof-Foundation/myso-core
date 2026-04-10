@@ -231,6 +231,80 @@ impl Reader {
         mydata::get_mydata_access_analytics(&self.db, mydata_id).await
     }
 
+    pub async fn list_mydata_query_broad_pools(
+        &self,
+        limit: i64,
+        offset: i64,
+    ) -> Result<Vec<MyDataQueryBroadPoolInfo>, crate::error::SocialError> {
+        mydata::list_mydata_query_broad_pools(&self.db, limit, offset).await
+    }
+
+    pub async fn list_mydata_query_sub_pools_for_broad_pool(
+        &self,
+        broad_pool_id: &str,
+        limit: i64,
+        offset: i64,
+    ) -> Result<Vec<MyDataQuerySubPoolInfo>, crate::error::SocialError> {
+        mydata::list_mydata_query_sub_pools_for_broad_pool(&self.db, broad_pool_id, limit, offset)
+            .await
+    }
+
+    pub async fn list_mydata_query_sub_pools_for_listing(
+        &self,
+        listing_id: &str,
+        limit: i64,
+        offset: i64,
+    ) -> Result<Vec<MyDataQuerySubPoolInfo>, crate::error::SocialError> {
+        mydata::list_mydata_query_sub_pools_for_listing(&self.db, listing_id, limit, offset).await
+    }
+
+    pub async fn list_mydata_query_listings_for_sub_pool(
+        &self,
+        sub_pool_id: &str,
+        limit: i64,
+        offset: i64,
+    ) -> Result<Vec<MyDataQueryListingSubPoolInfo>, crate::error::SocialError> {
+        mydata::list_mydata_query_listings_for_sub_pool(&self.db, sub_pool_id, limit, offset).await
+    }
+
+    pub async fn get_mydata_query_snapshot_anchor(
+        &self,
+        snapshot_id: &str,
+    ) -> Result<Option<MyDataQuerySnapshotAnchorInfo>, crate::error::SocialError> {
+        mydata::get_mydata_query_snapshot_anchor(&self.db, snapshot_id).await
+    }
+
+    pub async fn get_mydata_query_distribution_round(
+        &self,
+        snapshot_id: &str,
+    ) -> Result<Option<MyDataQueryDistributionRoundInfo>, crate::error::SocialError> {
+        mydata::get_mydata_query_distribution_round(&self.db, snapshot_id).await
+    }
+
+    pub async fn list_mydata_query_distribution_rounds(
+        &self,
+        limit: i64,
+        offset: i64,
+    ) -> Result<Vec<MyDataQueryDistributionRoundInfo>, crate::error::SocialError> {
+        mydata::list_mydata_query_distribution_rounds(&self.db, limit, offset).await
+    }
+
+    pub async fn get_mydata_query_merkle_root(
+        &self,
+        snapshot_id: &str,
+    ) -> Result<Option<MyDataQueryMerkleRootInfo>, crate::error::SocialError> {
+        mydata::get_mydata_query_merkle_root(&self.db, snapshot_id).await
+    }
+
+    pub async fn list_mydata_query_claims_for_snapshot(
+        &self,
+        snapshot_id: &str,
+        limit: i64,
+        offset: i64,
+    ) -> Result<Vec<MyDataQueryClaimInfo>, crate::error::SocialError> {
+        mydata::list_mydata_query_claims_for_snapshot(&self.db, snapshot_id, limit, offset).await
+    }
+
     pub async fn get_insurance_configuration(
         &self,
     ) -> Result<Option<InsuranceConfigInfo>, crate::error::SocialError> {

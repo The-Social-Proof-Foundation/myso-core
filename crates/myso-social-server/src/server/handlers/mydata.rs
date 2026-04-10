@@ -153,3 +153,121 @@ pub async fn get_mydata_access_analytics(
     let data = state.reader.get_mydata_access_analytics(&id).await?;
     Ok(Json(data))
 }
+
+pub async fn list_mydata_query_broad_pools(
+    State(state): State<Arc<AppState>>,
+    Query(params): Query<MyDataQuery>,
+) -> Result<Json<Vec<crate::reader::MyDataQueryBroadPoolInfo>>, SocialError> {
+    let limit = params.limit.unwrap_or(50).min(100);
+    let offset = params.offset.unwrap_or(0);
+    let data = state
+        .reader
+        .list_mydata_query_broad_pools(limit, offset)
+        .await?;
+    Ok(Json(data))
+}
+
+pub async fn list_mydata_query_sub_pools_for_broad_pool(
+    State(state): State<Arc<AppState>>,
+    Path(pool_id): Path<String>,
+    Query(params): Query<MyDataQuery>,
+) -> Result<Json<Vec<crate::reader::MyDataQuerySubPoolInfo>>, SocialError> {
+    let limit = params.limit.unwrap_or(50).min(100);
+    let offset = params.offset.unwrap_or(0);
+    let data = state
+        .reader
+        .list_mydata_query_sub_pools_for_broad_pool(&pool_id, limit, offset)
+        .await?;
+    Ok(Json(data))
+}
+
+pub async fn list_mydata_query_sub_pools_for_mydata_listing(
+    State(state): State<Arc<AppState>>,
+    Path(id): Path<String>,
+    Query(params): Query<MyDataQuery>,
+) -> Result<Json<Vec<crate::reader::MyDataQuerySubPoolInfo>>, SocialError> {
+    let limit = params.limit.unwrap_or(50).min(100);
+    let offset = params.offset.unwrap_or(0);
+    let data = state
+        .reader
+        .list_mydata_query_sub_pools_for_listing(&id, limit, offset)
+        .await?;
+    Ok(Json(data))
+}
+
+pub async fn list_mydata_query_listings_for_sub_pool(
+    State(state): State<Arc<AppState>>,
+    Path(sub_pool_id): Path<String>,
+    Query(params): Query<MyDataQuery>,
+) -> Result<Json<Vec<crate::reader::MyDataQueryListingSubPoolInfo>>, SocialError> {
+    let limit = params.limit.unwrap_or(50).min(100);
+    let offset = params.offset.unwrap_or(0);
+    let data = state
+        .reader
+        .list_mydata_query_listings_for_sub_pool(&sub_pool_id, limit, offset)
+        .await?;
+    Ok(Json(data))
+}
+
+pub async fn get_mydata_query_snapshot_anchor(
+    State(state): State<Arc<AppState>>,
+    Path(snapshot_id): Path<String>,
+) -> Result<Json<crate::reader::MyDataQuerySnapshotAnchorInfo>, SocialError> {
+    let data = state
+        .reader
+        .get_mydata_query_snapshot_anchor(&snapshot_id)
+        .await?
+        .ok_or_else(|| SocialError::not_found(format!("snapshot anchor '{}'", snapshot_id)))?;
+    Ok(Json(data))
+}
+
+pub async fn get_mydata_query_distribution_round(
+    State(state): State<Arc<AppState>>,
+    Path(snapshot_id): Path<String>,
+) -> Result<Json<crate::reader::MyDataQueryDistributionRoundInfo>, SocialError> {
+    let data = state
+        .reader
+        .get_mydata_query_distribution_round(&snapshot_id)
+        .await?
+        .ok_or_else(|| SocialError::not_found(format!("distribution round '{}'", snapshot_id)))?;
+    Ok(Json(data))
+}
+
+pub async fn list_mydata_query_distribution_rounds(
+    State(state): State<Arc<AppState>>,
+    Query(params): Query<MyDataQuery>,
+) -> Result<Json<Vec<crate::reader::MyDataQueryDistributionRoundInfo>>, SocialError> {
+    let limit = params.limit.unwrap_or(50).min(100);
+    let offset = params.offset.unwrap_or(0);
+    let data = state
+        .reader
+        .list_mydata_query_distribution_rounds(limit, offset)
+        .await?;
+    Ok(Json(data))
+}
+
+pub async fn get_mydata_query_merkle_root(
+    State(state): State<Arc<AppState>>,
+    Path(snapshot_id): Path<String>,
+) -> Result<Json<crate::reader::MyDataQueryMerkleRootInfo>, SocialError> {
+    let data = state
+        .reader
+        .get_mydata_query_merkle_root(&snapshot_id)
+        .await?
+        .ok_or_else(|| SocialError::not_found(format!("merkle root '{}'", snapshot_id)))?;
+    Ok(Json(data))
+}
+
+pub async fn list_mydata_query_claims_for_snapshot(
+    State(state): State<Arc<AppState>>,
+    Path(snapshot_id): Path<String>,
+    Query(params): Query<MyDataQuery>,
+) -> Result<Json<Vec<crate::reader::MyDataQueryClaimInfo>>, SocialError> {
+    let limit = params.limit.unwrap_or(50).min(200);
+    let offset = params.offset.unwrap_or(0);
+    let data = state
+        .reader
+        .list_mydata_query_claims_for_snapshot(&snapshot_id, limit, offset)
+        .await?;
+    Ok(Json(data))
+}

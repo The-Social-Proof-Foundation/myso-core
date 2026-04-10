@@ -17,7 +17,6 @@ Uses the framework's centralized BootstrapKey for one-time initialization.
 <b>use</b> <a href="../mydata/kdf.md#mydata_kdf">mydata::kdf</a>;
 <b>use</b> <a href="../mydata/merkle.md#mydata_merkle">mydata::merkle</a>;
 <b>use</b> <a href="../mydata/polynomial.md#mydata_polynomial">mydata::polynomial</a>;
-<b>use</b> <a href="../mydata/pool.md#mydata_pool">mydata::pool</a>;
 <b>use</b> <a href="../myso/accumulator.md#myso_accumulator">myso::accumulator</a>;
 <b>use</b> <a href="../myso/accumulator_settlement.md#myso_accumulator_settlement">myso::accumulator_settlement</a>;
 <b>use</b> <a href="../myso/address.md#myso_address">myso::address</a>;
@@ -113,7 +112,6 @@ Creates and transfers all admin capabilities to caller, then seals the bootstrap
     <a href="../social_contracts/profile.md#social_contracts_profile_bootstrap_init">social_contracts::profile::bootstrap_init</a>(ctx);
     <a href="../social_contracts/block_list.md#social_contracts_block_list_bootstrap_init">social_contracts::block_list::bootstrap_init</a>(ctx);
     <a href="../social_contracts/mydata.md#social_contracts_mydata_bootstrap_init">social_contracts::mydata::bootstrap_init</a>(ctx);
-    pool::bootstrap_init(ctx);
     <a href="../social_contracts/governance.md#social_contracts_governance_bootstrap_init">social_contracts::governance::bootstrap_init</a>(ctx);
     <a href="../social_contracts/post.md#social_contracts_post_bootstrap_init">social_contracts::post::bootstrap_init</a>(ctx);
     <a href="../social_contracts/social_proof_tokens.md#social_contracts_social_proof_tokens_bootstrap_init">social_contracts::social_proof_tokens::bootstrap_init</a>(ctx);
@@ -129,7 +127,7 @@ Creates and transfers all admin capabilities to caller, then seals the bootstrap
     transfer::public_transfer(<a href="../social_contracts/platform.md#social_contracts_platform_create_platform_admin_cap">platform::create_platform_admin_cap</a>(ctx), admin);
     transfer::public_transfer(<a href="../social_contracts/governance.md#social_contracts_governance_create_governance_admin_cap">governance::create_governance_admin_cap</a>(ctx), admin);
     transfer::public_transfer(mydata::create_mydata_admin_cap(ctx), admin);
-    transfer::public_transfer(pool::create_admin_cap(ctx), admin);
+    transfer::public_transfer(<a href="../social_contracts/mydata.md#social_contracts_mydata_create_mydata_pool_admin_cap">mydata::create_mydata_pool_admin_cap</a>(ctx), admin);
     transfer::public_transfer(<a href="../social_contracts/social_proof_of_truth.md#social_contracts_social_proof_of_truth_create_spot_admin_cap">social_proof_of_truth::create_spot_admin_cap</a>(ctx), admin);
     transfer::public_transfer(<a href="../social_contracts/social_proof_of_truth.md#social_contracts_social_proof_of_truth_create_spot_oracle_admin_cap">social_proof_of_truth::create_spot_oracle_admin_cap</a>(ctx), admin);
     transfer::public_transfer(<a href="../social_contracts/profile.md#social_contracts_profile_create_ecosystem_treasury_admin_cap">profile::create_ecosystem_treasury_admin_cap</a>(ctx), admin);

@@ -21,10 +21,12 @@ pub mod vesting;
 pub use insurance::{InsuranceVaultExposureRow, InsuranceVaultTransactionRow};
 pub use myso_indexer_alt_social_schema::models::{
     DelegateRow, GovernanceRegistryRow, GovernanceStatsRow, InsurancePolicyRow, InsuranceVaultRow,
-    MyDataPurchaseRow, MyDataRecordRow, PlatformRevenueSummaryRow, PromotedPostRow,
-    PromotionHourlyRow, PromotionStatsRow, PromotionTimeSeriesRow, PromotionViewRow, ProposalRow,
-    SpotBetRow, SpotBetWithdrawalRow, SpotPayoutRow, SpotRecordRow, SpotRefundRow,
-    SpotResolutionRow,
+    MyDataPurchaseRow, MyDataQueryBroadPoolRow, MyDataQueryClaimRow,
+    MyDataQueryDistributionRoundRow, MyDataQueryListingSubPoolRow, MyDataQueryMerkleRootRow,
+    MyDataQuerySnapshotAnchorRow, MyDataQuerySubPoolRow, MyDataRecordRow,
+    PlatformRevenueSummaryRow, PromotedPostRow, PromotionHourlyRow, PromotionStatsRow,
+    PromotionTimeSeriesRow, PromotionViewRow, ProposalRow, SpotBetRow, SpotBetWithdrawalRow,
+    SpotPayoutRow, SpotRecordRow, SpotRefundRow, SpotResolutionRow,
 };
 pub use myso_indexer_alt_social_schema::models::{
     PocAnalysisResultRow, PocBadgeRow, PocConfigRow, PocDisputeRow, PocRevenueRedirectionRow,

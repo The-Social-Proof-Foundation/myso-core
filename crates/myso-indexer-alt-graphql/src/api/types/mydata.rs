@@ -9,7 +9,9 @@ use async_graphql::Object;
 use myso_indexer_alt_social_reader::SocialPgReader;
 use myso_indexer_alt_social_schema::models::{
     MyDataAccessAnalyticsRow, MyDataAccessLogRow, MyDataDailyRevenueRow, MyDataPurchaseRow,
-    MyDataRecordRow, MyDataRevenueRow, MyDataStatsRow, MyDataSubscriptionRow,
+    MyDataQueryBroadPoolRow, MyDataQueryClaimRow, MyDataQueryDistributionRoundRow,
+    MyDataQueryListingSubPoolRow, MyDataQueryMerkleRootRow, MyDataQuerySnapshotAnchorRow,
+    MyDataQuerySubPoolRow, MyDataRecordRow, MyDataRevenueRow, MyDataStatsRow, MyDataSubscriptionRow,
 };
 
 use crate::api::resolve_profile::resolve_profile_summary;
@@ -239,6 +241,24 @@ impl MyDataRecord {
                 .map(MyDataAccessAnalytics::from_row)
                 .collect(),
         )
+    }
+
+    /// Query-marketplace sub-pools this listing is assigned to (from `MyDataAssignedToSubPoolEvent`).
+    async fn query_sub_pools(
+        &self,
+        ctx: &Context<'_>,
+        limit: Option<u64>,
+        offset: Option<u64>,
+    ) -> Option<Vec<MyDataQuerySubPool>> {
+        let reader_opt = ctx.data_opt::<Arc<Option<SocialPgReader>>>()?;
+        let reader = reader_opt.as_ref().as_ref()?;
+        let limit = limit.unwrap_or(50).min(100) as i64;
+        let offset = offset.unwrap_or(0) as i64;
+        let rows = reader
+            .list_mydata_query_sub_pools_for_listing(&self.inner.mydata_id, limit, offset)
+            .await
+            .ok()?;
+        Some(rows.into_iter().map(MyDataQuerySubPool::from_row).collect())
     }
 }
 
@@ -547,5 +567,317 @@ impl MyDataAccessAnalytics {
     /// Total access events that day.
     async fn total_accesses(&self) -> i64 {
         self.inner.total_accesses
+    }
+}
+
+#[derive(Clone)]
+pub(crate) struct MyDataQueryBroadPool {
+    inner: MyDataQueryBroadPoolRow,
+}
+
+impl MyDataQueryBroadPool {
+    pub(crate) fn from_row(inner: MyDataQueryBroadPoolRow) -> Self {
+        Self { inner }
+    }
+}
+
+#[Object]
+impl MyDataQueryBroadPool {
+    async fn pool_id(&self) -> &str {
+        &self.inner.pool_id
+    }
+
+    async fn name(&self) -> &str {
+        &self.inner.name
+    }
+
+    async fn created_at_ms(&self) -> i64 {
+        self.inner.created_at_ms
+    }
+
+    async fn event_id(&self) -> &str {
+        &self.inner.event_id
+    }
+
+    async fn transaction_id(&self) -> &str {
+        &self.inner.transaction_id
+    }
+
+    async fn time(&self) -> DateTime {
+        DateTime::from_chrono(self.inner.time)
+    }
+}
+
+#[derive(Clone)]
+pub(crate) struct MyDataQuerySubPool {
+    inner: MyDataQuerySubPoolRow,
+}
+
+impl MyDataQuerySubPool {
+    pub(crate) fn from_row(inner: MyDataQuerySubPoolRow) -> Self {
+        Self { inner }
+    }
+}
+
+#[Object]
+impl MyDataQuerySubPool {
+    async fn sub_pool_id(&self) -> &str {
+        &self.inner.sub_pool_id
+    }
+
+    async fn broad_pool_id(&self) -> &str {
+        &self.inner.broad_pool_id
+    }
+
+    async fn name(&self) -> &str {
+        &self.inner.name
+    }
+
+    async fn created_at_ms(&self) -> i64 {
+        self.inner.created_at_ms
+    }
+
+    async fn event_id(&self) -> &str {
+        &self.inner.event_id
+    }
+
+    async fn transaction_id(&self) -> &str {
+        &self.inner.transaction_id
+    }
+
+    async fn time(&self) -> DateTime {
+        DateTime::from_chrono(self.inner.time)
+    }
+}
+
+#[derive(Clone)]
+pub(crate) struct MyDataQueryListingSubPool {
+    inner: MyDataQueryListingSubPoolRow,
+}
+
+impl MyDataQueryListingSubPool {
+    pub(crate) fn from_row(inner: MyDataQueryListingSubPoolRow) -> Self {
+        Self { inner }
+    }
+}
+
+#[Object]
+impl MyDataQueryListingSubPool {
+    async fn listing_id(&self) -> &str {
+        &self.inner.listing_id
+    }
+
+    async fn sub_pool_id(&self) -> &str {
+        &self.inner.sub_pool_id
+    }
+
+    async fn assigned_at_ms(&self) -> i64 {
+        self.inner.assigned_at_ms
+    }
+
+    async fn event_id(&self) -> &str {
+        &self.inner.event_id
+    }
+
+    async fn transaction_id(&self) -> &str {
+        &self.inner.transaction_id
+    }
+
+    async fn time(&self) -> DateTime {
+        DateTime::from_chrono(self.inner.time)
+    }
+}
+
+#[derive(Clone)]
+pub(crate) struct MyDataQuerySnapshotAnchor {
+    inner: MyDataQuerySnapshotAnchorRow,
+}
+
+impl MyDataQuerySnapshotAnchor {
+    pub(crate) fn from_row(inner: MyDataQuerySnapshotAnchorRow) -> Self {
+        Self { inner }
+    }
+}
+
+#[Object]
+impl MyDataQuerySnapshotAnchor {
+    async fn id(&self) -> i32 {
+        self.inner.id
+    }
+
+    async fn snapshot_id(&self) -> &str {
+        &self.inner.snapshot_id
+    }
+
+    async fn buyer(&self) -> MySoAddress {
+        MySoAddress::from_str(&self.inner.buyer_address)
+            .unwrap_or_else(|_| MySoAddress::from(myso_types::base_types::MySoAddress::ZERO))
+    }
+
+    async fn buyer_profile(&self, ctx: &Context<'_>) -> Option<ProfileSummary> {
+        resolve_profile_summary(ctx, &self.inner.buyer_address).await
+    }
+
+    async fn price_paid(&self) -> i64 {
+        self.inner.price_paid
+    }
+
+    async fn created_at_ms(&self) -> i64 {
+        self.inner.created_at_ms
+    }
+
+    async fn event_id(&self) -> &str {
+        &self.inner.event_id
+    }
+
+    async fn transaction_id(&self) -> &str {
+        &self.inner.transaction_id
+    }
+
+    async fn time(&self) -> DateTime {
+        DateTime::from_chrono(self.inner.time)
+    }
+
+    async fn manifest_hash(&self) -> Option<String> {
+        self.inner.manifest_hash.clone()
+    }
+
+    async fn payment_reference(&self) -> Option<String> {
+        self.inner.payment_reference.clone()
+    }
+}
+
+#[derive(Clone)]
+pub(crate) struct MyDataQueryDistributionRound {
+    inner: MyDataQueryDistributionRoundRow,
+}
+
+impl MyDataQueryDistributionRound {
+    pub(crate) fn from_row(inner: MyDataQueryDistributionRoundRow) -> Self {
+        Self { inner }
+    }
+}
+
+#[Object]
+impl MyDataQueryDistributionRound {
+    async fn snapshot_id(&self) -> &str {
+        &self.inner.snapshot_id
+    }
+
+    async fn total_amount(&self) -> i64 {
+        self.inner.total_amount
+    }
+
+    async fn contributor_count(&self) -> i64 {
+        self.inner.contributor_count
+    }
+
+    async fn merkle_root(&self) -> &str {
+        &self.inner.merkle_root
+    }
+
+    async fn published_at_ms(&self) -> i64 {
+        self.inner.published_at_ms
+    }
+
+    async fn event_id(&self) -> &str {
+        &self.inner.event_id
+    }
+
+    async fn transaction_id(&self) -> &str {
+        &self.inner.transaction_id
+    }
+
+    async fn time(&self) -> DateTime {
+        DateTime::from_chrono(self.inner.time)
+    }
+}
+
+#[derive(Clone)]
+pub(crate) struct MyDataQueryMerkleRoot {
+    inner: MyDataQueryMerkleRootRow,
+}
+
+impl MyDataQueryMerkleRoot {
+    pub(crate) fn from_row(inner: MyDataQueryMerkleRootRow) -> Self {
+        Self { inner }
+    }
+}
+
+#[Object]
+impl MyDataQueryMerkleRoot {
+    async fn snapshot_id(&self) -> &str {
+        &self.inner.snapshot_id
+    }
+
+    async fn root_hash(&self) -> &str {
+        &self.inner.root_hash
+    }
+
+    async fn published_at_ms(&self) -> i64 {
+        self.inner.published_at_ms
+    }
+
+    async fn event_id(&self) -> &str {
+        &self.inner.event_id
+    }
+
+    async fn transaction_id(&self) -> &str {
+        &self.inner.transaction_id
+    }
+
+    async fn time(&self) -> DateTime {
+        DateTime::from_chrono(self.inner.time)
+    }
+}
+
+#[derive(Clone)]
+pub(crate) struct MyDataQueryClaim {
+    inner: MyDataQueryClaimRow,
+}
+
+impl MyDataQueryClaim {
+    pub(crate) fn from_row(inner: MyDataQueryClaimRow) -> Self {
+        Self { inner }
+    }
+}
+
+#[Object]
+impl MyDataQueryClaim {
+    async fn id(&self) -> i32 {
+        self.inner.id
+    }
+
+    async fn snapshot_id(&self) -> &str {
+        &self.inner.snapshot_id
+    }
+
+    async fn claimant(&self) -> MySoAddress {
+        MySoAddress::from_str(&self.inner.claimant)
+            .unwrap_or_else(|_| MySoAddress::from(myso_types::base_types::MySoAddress::ZERO))
+    }
+
+    async fn claimant_profile(&self, ctx: &Context<'_>) -> Option<ProfileSummary> {
+        resolve_profile_summary(ctx, &self.inner.claimant).await
+    }
+
+    async fn amount(&self) -> i64 {
+        self.inner.amount
+    }
+
+    async fn claimed_at_ms(&self) -> i64 {
+        self.inner.claimed_at_ms
+    }
+
+    async fn event_id(&self) -> &str {
+        &self.inner.event_id
+    }
+
+    async fn transaction_id(&self) -> &str {
+        &self.inner.transaction_id
+    }
+
+    async fn time(&self) -> DateTime {
+        DateTime::from_chrono(self.inner.time)
     }
 }

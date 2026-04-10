@@ -8,7 +8,9 @@ use diesel_async::RunQueryDsl;
 
 use myso_indexer_alt_social_schema::models::{
     MyDataAccessAnalyticsRow, MyDataAccessLogRow, MyDataDailyRevenueRow, MyDataPurchaseRow,
-    MyDataRecordRow, MyDataRevenueRow, MyDataStatsRow, MyDataSubscriptionRow,
+    MyDataQueryBroadPoolRow, MyDataQueryClaimRow, MyDataQueryDistributionRoundRow,
+    MyDataQueryListingSubPoolRow, MyDataQueryMerkleRootRow, MyDataQuerySnapshotAnchorRow,
+    MyDataQuerySubPoolRow, MyDataRecordRow, MyDataRevenueRow, MyDataStatsRow, MyDataSubscriptionRow,
 };
 use myso_pg_db::Connection;
 
@@ -424,6 +426,249 @@ pub(crate) async fn get_mydata_access_analytics(
         .load::<MyDataAccessAnalyticsRow>(conn)
         .await?;
 
+    metrics.requests_succeeded.inc();
+    Ok(results)
+}
+
+pub(crate) async fn list_mydata_query_broad_pools(
+    conn: &mut Connection<'_>,
+    limit: i64,
+    offset: i64,
+    metrics: &DbReaderMetrics,
+) -> anyhow::Result<Vec<MyDataQueryBroadPoolRow>> {
+    metrics.requests_received.inc();
+    let _guard = metrics.latency.start_timer();
+    let query = "
+        SELECT pool_id, name, created_at_ms, event_id, transaction_id, time
+        FROM mydata_query_broad_pools
+        ORDER BY created_at_ms DESC
+        LIMIT $1 OFFSET $2
+    ";
+    let results = diesel::sql_query(query)
+        .bind::<BigInt, _>(limit)
+        .bind::<BigInt, _>(offset)
+        .load::<MyDataQueryBroadPoolRow>(conn)
+        .await?;
+    metrics.requests_succeeded.inc();
+    Ok(results)
+}
+
+pub(crate) async fn list_mydata_query_sub_pools_for_broad_pool(
+    conn: &mut Connection<'_>,
+    broad_pool_id: &str,
+    limit: i64,
+    offset: i64,
+    metrics: &DbReaderMetrics,
+) -> anyhow::Result<Vec<MyDataQuerySubPoolRow>> {
+    metrics.requests_received.inc();
+    let _guard = metrics.latency.start_timer();
+    let query = "
+        SELECT sub_pool_id, broad_pool_id, name, created_at_ms, event_id, transaction_id, time
+        FROM mydata_query_sub_pools
+        WHERE broad_pool_id = $1
+        ORDER BY created_at_ms DESC
+        LIMIT $2 OFFSET $3
+    ";
+    let results = diesel::sql_query(query)
+        .bind::<Text, _>(broad_pool_id)
+        .bind::<BigInt, _>(limit)
+        .bind::<BigInt, _>(offset)
+        .load::<MyDataQuerySubPoolRow>(conn)
+        .await?;
+    metrics.requests_succeeded.inc();
+    Ok(results)
+}
+
+pub(crate) async fn list_mydata_query_sub_pools_for_listing(
+    conn: &mut Connection<'_>,
+    listing_id: &str,
+    limit: i64,
+    offset: i64,
+    metrics: &DbReaderMetrics,
+) -> anyhow::Result<Vec<MyDataQuerySubPoolRow>> {
+    metrics.requests_received.inc();
+    let _guard = metrics.latency.start_timer();
+    let query = "
+        SELECT s.sub_pool_id, s.broad_pool_id, s.name, s.created_at_ms, j.event_id, j.transaction_id, j.time
+        FROM mydata_query_listing_sub_pools j
+        INNER JOIN mydata_query_sub_pools s ON s.sub_pool_id = j.sub_pool_id
+        WHERE j.listing_id = $1
+        ORDER BY j.assigned_at_ms DESC
+        LIMIT $2 OFFSET $3
+    ";
+    let results = diesel::sql_query(query)
+        .bind::<Text, _>(listing_id)
+        .bind::<BigInt, _>(limit)
+        .bind::<BigInt, _>(offset)
+        .load::<MyDataQuerySubPoolRow>(conn)
+        .await?;
+    metrics.requests_succeeded.inc();
+    Ok(results)
+}
+
+pub(crate) async fn list_mydata_query_listings_for_sub_pool(
+    conn: &mut Connection<'_>,
+    sub_pool_id: &str,
+    limit: i64,
+    offset: i64,
+    metrics: &DbReaderMetrics,
+) -> anyhow::Result<Vec<MyDataQueryListingSubPoolRow>> {
+    metrics.requests_received.inc();
+    let _guard = metrics.latency.start_timer();
+    let query = "
+        SELECT listing_id, sub_pool_id, assigned_at_ms, event_id, transaction_id, time
+        FROM mydata_query_listing_sub_pools
+        WHERE sub_pool_id = $1
+        ORDER BY assigned_at_ms DESC
+        LIMIT $2 OFFSET $3
+    ";
+    let results = diesel::sql_query(query)
+        .bind::<Text, _>(sub_pool_id)
+        .bind::<BigInt, _>(limit)
+        .bind::<BigInt, _>(offset)
+        .load::<MyDataQueryListingSubPoolRow>(conn)
+        .await?;
+    metrics.requests_succeeded.inc();
+    Ok(results)
+}
+
+pub(crate) async fn get_mydata_query_snapshot_anchor(
+    conn: &mut Connection<'_>,
+    snapshot_id: &str,
+    metrics: &DbReaderMetrics,
+) -> anyhow::Result<Option<MyDataQuerySnapshotAnchorRow>> {
+    metrics.requests_received.inc();
+    let _guard = metrics.latency.start_timer();
+    let query = "
+        SELECT id, snapshot_id, buyer_address, price_paid, created_at_ms, event_id, transaction_id, time,
+               manifest_hash, payment_reference
+        FROM mydata_query_snapshot_anchors
+        WHERE snapshot_id = $1
+        ORDER BY time DESC
+        LIMIT 1
+    ";
+    let result = diesel::sql_query(query)
+        .bind::<Text, _>(snapshot_id)
+        .get_result::<MyDataQuerySnapshotAnchorRow>(conn)
+        .await
+        .optional()?;
+    metrics.requests_succeeded.inc();
+    Ok(result)
+}
+
+pub(crate) async fn list_mydata_query_snapshot_anchors(
+    conn: &mut Connection<'_>,
+    limit: i64,
+    offset: i64,
+    metrics: &DbReaderMetrics,
+) -> anyhow::Result<Vec<MyDataQuerySnapshotAnchorRow>> {
+    metrics.requests_received.inc();
+    let _guard = metrics.latency.start_timer();
+    let query = "
+        SELECT id, snapshot_id, buyer_address, price_paid, created_at_ms, event_id, transaction_id, time,
+               manifest_hash, payment_reference
+        FROM mydata_query_snapshot_anchors
+        ORDER BY time DESC
+        LIMIT $1 OFFSET $2
+    ";
+    let results = diesel::sql_query(query)
+        .bind::<BigInt, _>(limit)
+        .bind::<BigInt, _>(offset)
+        .load::<MyDataQuerySnapshotAnchorRow>(conn)
+        .await?;
+    metrics.requests_succeeded.inc();
+    Ok(results)
+}
+
+pub(crate) async fn get_mydata_query_distribution_round(
+    conn: &mut Connection<'_>,
+    snapshot_id: &str,
+    metrics: &DbReaderMetrics,
+) -> anyhow::Result<Option<MyDataQueryDistributionRoundRow>> {
+    metrics.requests_received.inc();
+    let _guard = metrics.latency.start_timer();
+    let query = "
+        SELECT snapshot_id, total_amount, contributor_count, merkle_root, published_at_ms,
+               event_id, transaction_id, time
+        FROM mydata_query_distribution_rounds
+        WHERE snapshot_id = $1
+    ";
+    let result = diesel::sql_query(query)
+        .bind::<Text, _>(snapshot_id)
+        .get_result::<MyDataQueryDistributionRoundRow>(conn)
+        .await
+        .optional()?;
+    metrics.requests_succeeded.inc();
+    Ok(result)
+}
+
+pub(crate) async fn list_mydata_query_distribution_rounds(
+    conn: &mut Connection<'_>,
+    limit: i64,
+    offset: i64,
+    metrics: &DbReaderMetrics,
+) -> anyhow::Result<Vec<MyDataQueryDistributionRoundRow>> {
+    metrics.requests_received.inc();
+    let _guard = metrics.latency.start_timer();
+    let query = "
+        SELECT snapshot_id, total_amount, contributor_count, merkle_root, published_at_ms,
+               event_id, transaction_id, time
+        FROM mydata_query_distribution_rounds
+        ORDER BY time DESC
+        LIMIT $1 OFFSET $2
+    ";
+    let results = diesel::sql_query(query)
+        .bind::<BigInt, _>(limit)
+        .bind::<BigInt, _>(offset)
+        .load::<MyDataQueryDistributionRoundRow>(conn)
+        .await?;
+    metrics.requests_succeeded.inc();
+    Ok(results)
+}
+
+pub(crate) async fn get_mydata_query_merkle_root(
+    conn: &mut Connection<'_>,
+    snapshot_id: &str,
+    metrics: &DbReaderMetrics,
+) -> anyhow::Result<Option<MyDataQueryMerkleRootRow>> {
+    metrics.requests_received.inc();
+    let _guard = metrics.latency.start_timer();
+    let query = "
+        SELECT snapshot_id, root_hash, published_at_ms, event_id, transaction_id, time
+        FROM mydata_query_merkle_roots
+        WHERE snapshot_id = $1
+    ";
+    let result = diesel::sql_query(query)
+        .bind::<Text, _>(snapshot_id)
+        .get_result::<MyDataQueryMerkleRootRow>(conn)
+        .await
+        .optional()?;
+    metrics.requests_succeeded.inc();
+    Ok(result)
+}
+
+pub(crate) async fn list_mydata_query_claims_for_snapshot(
+    conn: &mut Connection<'_>,
+    snapshot_id: &str,
+    limit: i64,
+    offset: i64,
+    metrics: &DbReaderMetrics,
+) -> anyhow::Result<Vec<MyDataQueryClaimRow>> {
+    metrics.requests_received.inc();
+    let _guard = metrics.latency.start_timer();
+    let query = "
+        SELECT id, snapshot_id, claimant, amount, claimed_at_ms, event_id, transaction_id, time
+        FROM mydata_query_claims
+        WHERE snapshot_id = $1
+        ORDER BY claimed_at_ms DESC
+        LIMIT $2 OFFSET $3
+    ";
+    let results = diesel::sql_query(query)
+        .bind::<Text, _>(snapshot_id)
+        .bind::<BigInt, _>(limit)
+        .bind::<BigInt, _>(offset)
+        .load::<MyDataQueryClaimRow>(conn)
+        .await?;
     metrics.requests_succeeded.inc();
     Ok(results)
 }

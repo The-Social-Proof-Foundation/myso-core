@@ -3315,6 +3315,80 @@ type MyDataPurchase {
 	transactionId: String!
 }
 
+type MyDataQueryBroadPool {
+	createdAtMs: Int!
+	eventId: String!
+	name: String!
+	poolId: String!
+	time: DateTime!
+	transactionId: String!
+}
+
+type MyDataQueryClaim {
+	amount: Int!
+	claimant: MySoAddress!
+	claimantProfile: ProfileSummary
+	claimedAtMs: Int!
+	eventId: String!
+	id: Int!
+	snapshotId: String!
+	time: DateTime!
+	transactionId: String!
+}
+
+type MyDataQueryDistributionRound {
+	contributorCount: Int!
+	eventId: String!
+	merkleRoot: String!
+	publishedAtMs: Int!
+	snapshotId: String!
+	time: DateTime!
+	totalAmount: Int!
+	transactionId: String!
+}
+
+type MyDataQueryListingSubPool {
+	assignedAtMs: Int!
+	eventId: String!
+	listingId: String!
+	subPoolId: String!
+	time: DateTime!
+	transactionId: String!
+}
+
+type MyDataQueryMerkleRoot {
+	eventId: String!
+	publishedAtMs: Int!
+	rootHash: String!
+	snapshotId: String!
+	time: DateTime!
+	transactionId: String!
+}
+
+type MyDataQuerySnapshotAnchor {
+	buyer: MySoAddress!
+	buyerProfile: ProfileSummary
+	createdAtMs: Int!
+	eventId: String!
+	id: Int!
+	manifestHash: String
+	paymentReference: String
+	pricePaid: Int!
+	snapshotId: String!
+	time: DateTime!
+	transactionId: String!
+}
+
+type MyDataQuerySubPool {
+	broadPoolId: String!
+	createdAtMs: Int!
+	eventId: String!
+	name: String!
+	subPoolId: String!
+	time: DateTime!
+	transactionId: String!
+}
+
 type MyDataRecord {
 	"""
 	Access analytics for this MyData record.
@@ -3372,6 +3446,10 @@ type MyDataRecord {
 	Purchases for this MyData record (paginated).
 	"""
 	purchases(limit: Int, offset: Int): [MyDataPurchase!]
+	"""
+	Query-marketplace sub-pools this listing is assigned to (from `MyDataAssignedToSubPoolEvent`).
+	"""
+	querySubPools(limit: Int, offset: Int): [MyDataQuerySubPool!]
 	"""
 	Revenue entries for this MyData record (paginated).
 	"""
@@ -5590,6 +5668,42 @@ type Query {
 	MyData purchases by buyer. Returns empty when social DB not configured.
 	"""
 	mydataPurchases(buyer: MySoAddress!, limit: Int, offset: Int): [MyDataPurchase!]
+	"""
+	MyData query marketplace broad pools (indexed `BroadPoolCreatedEvent`). Empty when social DB not configured.
+	"""
+	mydataQueryBroadPools(limit: Int, offset: Int): [MyDataQueryBroadPool!]
+	"""
+	Claim events for a snapshot.
+	"""
+	mydataQueryClaimsForSnapshot(snapshotId: String!, limit: Int, offset: Int): [MyDataQueryClaim!]
+	"""
+	Distribution round for a snapshot (from `DistributionRecordedEvent` when indexed).
+	"""
+	mydataQueryDistributionRound(snapshotId: String!): MyDataQueryDistributionRound
+	"""
+	Recent distribution rounds (paginated).
+	"""
+	mydataQueryDistributionRounds(limit: Int, offset: Int): [MyDataQueryDistributionRound!]
+	"""
+	Listings assigned to a sub-pool (junction).
+	"""
+	mydataQueryListingsForSubPool(subPoolId: String!, limit: Int, offset: Int): [MyDataQueryListingSubPool!]
+	"""
+	Published Merkle root for a snapshot.
+	"""
+	mydataQueryMerkleRoot(snapshotId: String!): MyDataQueryMerkleRoot
+	"""
+	Latest snapshot anchor for a snapshot ID (includes manifest hash and payment reference when indexed from upgraded packages).
+	"""
+	mydataQuerySnapshotAnchor(snapshotId: String!): MyDataQuerySnapshotAnchor
+	"""
+	Recent snapshot anchors (paginated).
+	"""
+	mydataQuerySnapshotAnchors(limit: Int, offset: Int): [MyDataQuerySnapshotAnchor!]
+	"""
+	Sub-pools under a broad pool.
+	"""
+	mydataQuerySubPoolsForBroadPool(broadPoolId: String!, limit: Int, offset: Int): [MyDataQuerySubPool!]
 	"""
 	MyData record by ID. Returns null when social DB not configured or not found.
 	"""

@@ -783,6 +783,71 @@ pub struct BcsMyDataConfigUpdatedEvent {
     timestamp: u64,
 }
 
+#[derive(Debug, Deserialize, Serialize)]
+pub struct BcsBroadPoolCreatedEvent {
+    pool_id: AccountAddress,
+    name: String,
+    created_at: u64,
+}
+
+#[derive(Debug, Deserialize, Serialize)]
+pub struct BcsSubPoolCreatedEvent {
+    sub_pool_id: AccountAddress,
+    broad_pool_id: AccountAddress,
+    name: String,
+    created_at: u64,
+}
+
+#[derive(Debug, Deserialize, Serialize)]
+pub struct BcsMyDataAssignedToSubPoolEvent {
+    ip_id: AccountAddress,
+    sub_pool_ids: Vec<AccountAddress>,
+    assigned_at: u64,
+}
+
+/// Legacy `SnapshotAnchorRecordedEvent` BCS (four fields) from packages before manifest/reference were emitted.
+#[derive(Debug, Deserialize, Serialize)]
+pub struct BcsSnapshotAnchorRecordedEvent {
+    snapshot_id: AccountAddress,
+    buyer_address: AccountAddress,
+    price_paid: u64,
+    created_at: u64,
+}
+
+#[derive(Debug, Deserialize, Serialize)]
+pub struct BcsSnapshotAnchorRecordedEventV2 {
+    snapshot_id: AccountAddress,
+    buyer_address: AccountAddress,
+    price_paid: u64,
+    created_at: u64,
+    snapshot_manifest_hash: Vec<u8>,
+    payment_reference: Vec<u8>,
+}
+
+#[derive(Debug, Deserialize, Serialize)]
+pub struct BcsMerkleRootPublishedEvent {
+    snapshot_id: AccountAddress,
+    root_hash: Vec<u8>,
+    published_at: u64,
+}
+
+#[derive(Debug, Deserialize, Serialize)]
+pub struct BcsClaimExecutedEvent {
+    snapshot_id: AccountAddress,
+    claimant: AccountAddress,
+    amount: u64,
+    claimed_at: u64,
+}
+
+#[derive(Debug, Deserialize, Serialize)]
+pub struct BcsDistributionRecordedEvent {
+    snapshot_id: AccountAddress,
+    total_amount: u64,
+    contributor_count: u64,
+    merkle_root: Vec<u8>,
+    published_at: u64,
+}
+
 // Social Proof of Truth (SPoT) event structs - field order matches social_proof_of_truth.move
 #[derive(Debug, Deserialize)]
 pub struct BcsSpotBetPlacedEvent {
@@ -2195,6 +2260,90 @@ fn parse_mydata_event(
                 "timestamp": ev.timestamp,
             })))
         }
+        "BroadPoolCreatedEvent" => {
+            let ev = bcs::from_bytes::<BcsBroadPoolCreatedEvent>(contents)
+                .map_err(|e| bcs_parse_err(e, contents))?;
+            Ok(Some(serde_json::json!({
+                "pool_id": addr_to_string(&ev.pool_id),
+                "name": ev.name,
+                "created_at": ev.created_at,
+            })))
+        }
+        "SubPoolCreatedEvent" => {
+            let ev = bcs::from_bytes::<BcsSubPoolCreatedEvent>(contents)
+                .map_err(|e| bcs_parse_err(e, contents))?;
+            Ok(Some(serde_json::json!({
+                "sub_pool_id": addr_to_string(&ev.sub_pool_id),
+                "broad_pool_id": addr_to_string(&ev.broad_pool_id),
+                "name": ev.name,
+                "created_at": ev.created_at,
+            })))
+        }
+        "MyDataAssignedToSubPoolEvent" => {
+            let ev = bcs::from_bytes::<BcsMyDataAssignedToSubPoolEvent>(contents)
+                .map_err(|e| bcs_parse_err(e, contents))?;
+            let sub_pool_ids: Vec<String> = ev
+                .sub_pool_ids
+                .iter()
+                .map(addr_to_string)
+                .collect();
+            Ok(Some(serde_json::json!({
+                "ip_id": addr_to_string(&ev.ip_id),
+                "sub_pool_ids": sub_pool_ids,
+                "assigned_at": ev.assigned_at,
+            })))
+        }
+        "SnapshotAnchorRecordedEvent" => {
+            if let Ok(ev) = bcs::from_bytes::<BcsSnapshotAnchorRecordedEventV2>(contents) {
+                Ok(Some(serde_json::json!({
+                    "snapshot_id": addr_to_string(&ev.snapshot_id),
+                    "buyer_address": addr_to_string(&ev.buyer_address),
+                    "price_paid": ev.price_paid,
+                    "created_at": ev.created_at,
+                    "manifest_hash": format!("0x{}", hex::encode(&ev.snapshot_manifest_hash)),
+                    "payment_reference": format!("0x{}", hex::encode(&ev.payment_reference)),
+                })))
+            } else {
+                let ev = bcs::from_bytes::<BcsSnapshotAnchorRecordedEvent>(contents)
+                    .map_err(|e| bcs_parse_err(e, contents))?;
+                Ok(Some(serde_json::json!({
+                    "snapshot_id": addr_to_string(&ev.snapshot_id),
+                    "buyer_address": addr_to_string(&ev.buyer_address),
+                    "price_paid": ev.price_paid,
+                    "created_at": ev.created_at,
+                })))
+            }
+        }
+        "DistributionRecordedEvent" => {
+            let ev = bcs::from_bytes::<BcsDistributionRecordedEvent>(contents)
+                .map_err(|e| bcs_parse_err(e, contents))?;
+            Ok(Some(serde_json::json!({
+                "snapshot_id": addr_to_string(&ev.snapshot_id),
+                "total_amount": ev.total_amount,
+                "contributor_count": ev.contributor_count,
+                "merkle_root": format!("0x{}", hex::encode(&ev.merkle_root)),
+                "published_at": ev.published_at,
+            })))
+        }
+        "MerkleRootPublishedEvent" => {
+            let ev = bcs::from_bytes::<BcsMerkleRootPublishedEvent>(contents)
+                .map_err(|e| bcs_parse_err(e, contents))?;
+            Ok(Some(serde_json::json!({
+                "snapshot_id": addr_to_string(&ev.snapshot_id),
+                "root_hash": format!("0x{}", hex::encode(&ev.root_hash)),
+                "published_at": ev.published_at,
+            })))
+        }
+        "ClaimExecutedEvent" => {
+            let ev = bcs::from_bytes::<BcsClaimExecutedEvent>(contents)
+                .map_err(|e| bcs_parse_err(e, contents))?;
+            Ok(Some(serde_json::json!({
+                "snapshot_id": addr_to_string(&ev.snapshot_id),
+                "claimant": addr_to_string(&ev.claimant),
+                "amount": ev.amount,
+                "claimed_at": ev.claimed_at,
+            })))
+        }
         _ => Ok(None),
     };
     result
@@ -2954,5 +3103,121 @@ mod tests {
         assert_eq!(parsed["service_id"], "0x123");
         assert_eq!(parsed["monthly_fee"], 100);
         assert_eq!(parsed["auto_renew"], true);
+    }
+
+    #[test]
+    fn test_mydata_query_marketplace_events_bcs_roundtrip_and_parse() {
+        use move_core_types::account_address::AccountAddress;
+
+        let pool_id = AccountAddress::from_hex_literal("0x1").unwrap();
+        let broad = BcsBroadPoolCreatedEvent {
+            pool_id,
+            name: "pool-a".to_string(),
+            created_at: 1_700_000_000_000u64,
+        };
+        let bytes = bcs::to_bytes(&broad).expect("broad pool bcs");
+        let parsed = parse_mydata_event("BroadPoolCreatedEvent", &bytes).expect("parse");
+        let json = parsed.expect("some json");
+        assert_eq!(json["name"], "pool-a");
+        assert_eq!(json["created_at"], 1_700_000_000_000u64);
+
+        let sub_pool_id = AccountAddress::from_hex_literal("0x2").unwrap();
+        let sub = BcsSubPoolCreatedEvent {
+            sub_pool_id,
+            broad_pool_id: pool_id,
+            name: "sub-1".to_string(),
+            created_at: 2,
+        };
+        let bytes = bcs::to_bytes(&sub).expect("sub pool bcs");
+        let json = parse_mydata_event("SubPoolCreatedEvent", &bytes)
+            .expect("parse")
+            .expect("json");
+        assert_eq!(json["name"], "sub-1");
+
+        let ip = AccountAddress::from_hex_literal("0x3").unwrap();
+        let assign = BcsMyDataAssignedToSubPoolEvent {
+            ip_id: ip,
+            sub_pool_ids: vec![sub_pool_id, pool_id],
+            assigned_at: 99,
+        };
+        let bytes = bcs::to_bytes(&assign).expect("assign bcs");
+        let json = parse_mydata_event("MyDataAssignedToSubPoolEvent", &bytes)
+            .expect("parse")
+            .expect("json");
+        assert_eq!(json["assigned_at"], 99);
+        let ids = json["sub_pool_ids"].as_array().expect("array");
+        assert_eq!(ids.len(), 2);
+
+        let snap_id = AccountAddress::from_hex_literal("0x4").unwrap();
+        let buyer = AccountAddress::from_hex_literal("0x5").unwrap();
+        let anchor = BcsSnapshotAnchorRecordedEvent {
+            snapshot_id: snap_id,
+            buyer_address: buyer,
+            price_paid: 1_000,
+            created_at: 42,
+        };
+        let bytes = bcs::to_bytes(&anchor).expect("anchor bcs");
+        let json = parse_mydata_event("SnapshotAnchorRecordedEvent", &bytes)
+            .expect("parse")
+            .expect("json");
+        assert_eq!(json["price_paid"], 1_000);
+        assert!(json.get("manifest_hash").is_none());
+
+        let anchor_v2 = BcsSnapshotAnchorRecordedEventV2 {
+            snapshot_id: snap_id,
+            buyer_address: buyer,
+            price_paid: 2_000,
+            created_at: 43,
+            snapshot_manifest_hash: vec![1u8, 2u8, 3u8],
+            payment_reference: vec![0xabu8; 4],
+        };
+        let bytes = bcs::to_bytes(&anchor_v2).expect("anchor v2 bcs");
+        let json = parse_mydata_event("SnapshotAnchorRecordedEvent", &bytes)
+            .expect("parse")
+            .expect("json");
+        assert_eq!(json["manifest_hash"].as_str().unwrap(), "0x010203");
+        assert_eq!(json["payment_reference"].as_str().unwrap(), "0xabababab");
+
+        let root_bytes = [7u8; 32];
+        let dist = BcsDistributionRecordedEvent {
+            snapshot_id: snap_id,
+            total_amount: 9_000,
+            contributor_count: 12,
+            merkle_root: root_bytes.to_vec(),
+            published_at: 88,
+        };
+        let bytes = bcs::to_bytes(&dist).expect("distribution bcs");
+        let json = parse_mydata_event("DistributionRecordedEvent", &bytes)
+            .expect("parse")
+            .expect("json");
+        assert_eq!(json["total_amount"], 9_000);
+        assert_eq!(json["contributor_count"], 12);
+
+        let merkle = BcsMerkleRootPublishedEvent {
+            snapshot_id: snap_id,
+            root_hash: root_bytes.to_vec(),
+            published_at: 55,
+        };
+        let bytes = bcs::to_bytes(&merkle).expect("merkle bcs");
+        let json = parse_mydata_event("MerkleRootPublishedEvent", &bytes)
+            .expect("parse")
+            .expect("json");
+        assert_eq!(
+            json["root_hash"].as_str().unwrap(),
+            "0x0707070707070707070707070707070707070707070707070707070707070707"
+        );
+
+        let claimant = AccountAddress::from_hex_literal("0x6").unwrap();
+        let claim = BcsClaimExecutedEvent {
+            snapshot_id: snap_id,
+            claimant,
+            amount: 500,
+            claimed_at: 77,
+        };
+        let bytes = bcs::to_bytes(&claim).expect("claim bcs");
+        let json = parse_mydata_event("ClaimExecutedEvent", &bytes)
+            .expect("parse")
+            .expect("json");
+        assert_eq!(json["amount"], 500);
     }
 }

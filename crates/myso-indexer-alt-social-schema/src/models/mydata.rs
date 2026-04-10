@@ -7,8 +7,10 @@ use diesel::sql_types::{BigInt, Bool, Date, Int4, Jsonb, Nullable, Text, Timesta
 use serde::{Deserialize, Serialize};
 
 use crate::schema::{
-    mydata_access_logs, mydata_config, mydata_data, mydata_purchases, mydata_registry,
-    mydata_revenue, mydata_subscriptions,
+    mydata_access_logs, mydata_config, mydata_data, mydata_purchases, mydata_query_broad_pools,
+    mydata_query_claims, mydata_query_distribution_rounds, mydata_query_listing_sub_pools,
+    mydata_query_merkle_roots, mydata_query_snapshot_anchors, mydata_query_sub_pools,
+    mydata_registry, mydata_revenue, mydata_subscriptions,
 };
 
 // Constants matching social_contracts::mydata Move module
@@ -403,4 +405,299 @@ pub struct NewMyDataConfig {
     pub max_free_access_grants: i64,
     pub timestamp_ms: i64,
     pub transaction_id: String,
+}
+
+// --- MyData query marketplace (indexed from social_contracts::mydata) ---
+
+#[derive(Debug, Clone, Queryable, Selectable, Serialize, Deserialize)]
+#[diesel(table_name = mydata_query_broad_pools)]
+pub struct MyDataQueryBroadPool {
+    pub pool_id: String,
+    pub name: String,
+    pub created_at_ms: i64,
+    pub event_id: String,
+    pub transaction_id: String,
+    pub time: chrono::DateTime<chrono::Utc>,
+}
+
+#[derive(Debug, Clone, Insertable, Serialize, Deserialize)]
+#[diesel(table_name = mydata_query_broad_pools)]
+pub struct NewMyDataQueryBroadPool {
+    pub pool_id: String,
+    pub name: String,
+    pub created_at_ms: i64,
+    pub event_id: String,
+    pub transaction_id: String,
+}
+
+#[derive(Debug, Clone, Queryable, Selectable, Serialize, Deserialize)]
+#[diesel(table_name = mydata_query_sub_pools)]
+pub struct MyDataQuerySubPool {
+    pub sub_pool_id: String,
+    pub broad_pool_id: String,
+    pub name: String,
+    pub created_at_ms: i64,
+    pub event_id: String,
+    pub transaction_id: String,
+    pub time: chrono::DateTime<chrono::Utc>,
+}
+
+#[derive(Debug, Clone, Insertable, Serialize, Deserialize)]
+#[diesel(table_name = mydata_query_sub_pools)]
+pub struct NewMyDataQuerySubPool {
+    pub sub_pool_id: String,
+    pub broad_pool_id: String,
+    pub name: String,
+    pub created_at_ms: i64,
+    pub event_id: String,
+    pub transaction_id: String,
+}
+
+#[derive(Debug, Clone, Queryable, Selectable, Serialize, Deserialize)]
+#[diesel(table_name = mydata_query_listing_sub_pools)]
+pub struct MyDataQueryListingSubPool {
+    pub listing_id: String,
+    pub sub_pool_id: String,
+    pub assigned_at_ms: i64,
+    pub event_id: String,
+    pub transaction_id: String,
+    pub time: chrono::DateTime<chrono::Utc>,
+}
+
+#[derive(Debug, Clone, Insertable, Serialize, Deserialize)]
+#[diesel(table_name = mydata_query_listing_sub_pools)]
+pub struct NewMyDataQueryListingSubPool {
+    pub listing_id: String,
+    pub sub_pool_id: String,
+    pub assigned_at_ms: i64,
+    pub event_id: String,
+    pub transaction_id: String,
+}
+
+#[derive(Debug, Clone, Queryable, Selectable, Serialize, Deserialize)]
+#[diesel(table_name = mydata_query_merkle_roots)]
+pub struct MyDataQueryMerkleRoot {
+    pub snapshot_id: String,
+    pub root_hash: String,
+    pub published_at_ms: i64,
+    pub event_id: String,
+    pub transaction_id: String,
+    pub time: chrono::DateTime<chrono::Utc>,
+}
+
+#[derive(Debug, Clone, Insertable, Serialize, Deserialize)]
+#[diesel(table_name = mydata_query_merkle_roots)]
+pub struct NewMyDataQueryMerkleRoot {
+    pub snapshot_id: String,
+    pub root_hash: String,
+    pub published_at_ms: i64,
+    pub event_id: String,
+    pub transaction_id: String,
+}
+
+#[derive(Debug, Clone, Queryable, Selectable, Serialize, Deserialize)]
+#[diesel(table_name = mydata_query_snapshot_anchors)]
+pub struct MyDataQuerySnapshotAnchor {
+    pub id: i32,
+    pub snapshot_id: String,
+    pub buyer_address: String,
+    pub price_paid: i64,
+    pub created_at_ms: i64,
+    pub event_id: String,
+    pub transaction_id: String,
+    pub time: chrono::DateTime<chrono::Utc>,
+    pub manifest_hash: Option<String>,
+    pub payment_reference: Option<String>,
+}
+
+#[derive(Debug, Clone, Insertable, Serialize, Deserialize)]
+#[diesel(table_name = mydata_query_snapshot_anchors)]
+pub struct NewMyDataQuerySnapshotAnchor {
+    pub snapshot_id: String,
+    pub buyer_address: String,
+    pub price_paid: i64,
+    pub created_at_ms: i64,
+    pub event_id: String,
+    pub transaction_id: String,
+    pub manifest_hash: Option<String>,
+    pub payment_reference: Option<String>,
+}
+
+#[derive(Debug, Clone, Queryable, Selectable, Serialize, Deserialize)]
+#[diesel(table_name = mydata_query_distribution_rounds)]
+pub struct MyDataQueryDistributionRound {
+    pub snapshot_id: String,
+    pub total_amount: i64,
+    pub contributor_count: i64,
+    pub merkle_root: String,
+    pub published_at_ms: i64,
+    pub event_id: String,
+    pub transaction_id: String,
+    pub time: chrono::DateTime<chrono::Utc>,
+}
+
+#[derive(Debug, Clone, Insertable, Serialize, Deserialize)]
+#[diesel(table_name = mydata_query_distribution_rounds)]
+pub struct NewMyDataQueryDistributionRound {
+    pub snapshot_id: String,
+    pub total_amount: i64,
+    pub contributor_count: i64,
+    pub merkle_root: String,
+    pub published_at_ms: i64,
+    pub event_id: String,
+    pub transaction_id: String,
+}
+
+#[derive(Debug, Clone, Queryable, Selectable, Serialize, Deserialize)]
+#[diesel(table_name = mydata_query_claims)]
+pub struct MyDataQueryClaim {
+    pub id: i32,
+    pub snapshot_id: String,
+    pub claimant: String,
+    pub amount: i64,
+    pub claimed_at_ms: i64,
+    pub event_id: String,
+    pub transaction_id: String,
+    pub time: chrono::DateTime<chrono::Utc>,
+}
+
+#[derive(Debug, Clone, Insertable, Serialize, Deserialize)]
+#[diesel(table_name = mydata_query_claims)]
+pub struct NewMyDataQueryClaim {
+    pub snapshot_id: String,
+    pub claimant: String,
+    pub amount: i64,
+    pub claimed_at_ms: i64,
+    pub event_id: String,
+    pub transaction_id: String,
+}
+
+#[derive(Debug, Clone, QueryableByName, Serialize, Deserialize)]
+pub struct MyDataQueryBroadPoolRow {
+    #[diesel(sql_type = Text)]
+    pub pool_id: String,
+    #[diesel(sql_type = Text)]
+    pub name: String,
+    #[diesel(sql_type = BigInt)]
+    pub created_at_ms: i64,
+    #[diesel(sql_type = Text)]
+    pub event_id: String,
+    #[diesel(sql_type = Text)]
+    pub transaction_id: String,
+    #[diesel(sql_type = Timestamptz)]
+    pub time: chrono::DateTime<chrono::Utc>,
+}
+
+#[derive(Debug, Clone, QueryableByName, Serialize, Deserialize)]
+pub struct MyDataQuerySubPoolRow {
+    #[diesel(sql_type = Text)]
+    pub sub_pool_id: String,
+    #[diesel(sql_type = Text)]
+    pub broad_pool_id: String,
+    #[diesel(sql_type = Text)]
+    pub name: String,
+    #[diesel(sql_type = BigInt)]
+    pub created_at_ms: i64,
+    #[diesel(sql_type = Text)]
+    pub event_id: String,
+    #[diesel(sql_type = Text)]
+    pub transaction_id: String,
+    #[diesel(sql_type = Timestamptz)]
+    pub time: chrono::DateTime<chrono::Utc>,
+}
+
+#[derive(Debug, Clone, QueryableByName, Serialize, Deserialize)]
+pub struct MyDataQueryListingSubPoolRow {
+    #[diesel(sql_type = Text)]
+    pub listing_id: String,
+    #[diesel(sql_type = Text)]
+    pub sub_pool_id: String,
+    #[diesel(sql_type = BigInt)]
+    pub assigned_at_ms: i64,
+    #[diesel(sql_type = Text)]
+    pub event_id: String,
+    #[diesel(sql_type = Text)]
+    pub transaction_id: String,
+    #[diesel(sql_type = Timestamptz)]
+    pub time: chrono::DateTime<chrono::Utc>,
+}
+
+#[derive(Debug, Clone, QueryableByName, Serialize, Deserialize)]
+pub struct MyDataQuerySnapshotAnchorRow {
+    #[diesel(sql_type = Int4)]
+    pub id: i32,
+    #[diesel(sql_type = Text)]
+    pub snapshot_id: String,
+    #[diesel(sql_type = Text)]
+    pub buyer_address: String,
+    #[diesel(sql_type = BigInt)]
+    pub price_paid: i64,
+    #[diesel(sql_type = BigInt)]
+    pub created_at_ms: i64,
+    #[diesel(sql_type = Text)]
+    pub event_id: String,
+    #[diesel(sql_type = Text)]
+    pub transaction_id: String,
+    #[diesel(sql_type = Timestamptz)]
+    pub time: chrono::DateTime<chrono::Utc>,
+    #[diesel(sql_type = Nullable<Text>)]
+    pub manifest_hash: Option<String>,
+    #[diesel(sql_type = Nullable<Text>)]
+    pub payment_reference: Option<String>,
+}
+
+#[derive(Debug, Clone, QueryableByName, Serialize, Deserialize)]
+pub struct MyDataQueryDistributionRoundRow {
+    #[diesel(sql_type = Text)]
+    pub snapshot_id: String,
+    #[diesel(sql_type = BigInt)]
+    pub total_amount: i64,
+    #[diesel(sql_type = BigInt)]
+    pub contributor_count: i64,
+    #[diesel(sql_type = Text)]
+    pub merkle_root: String,
+    #[diesel(sql_type = BigInt)]
+    pub published_at_ms: i64,
+    #[diesel(sql_type = Text)]
+    pub event_id: String,
+    #[diesel(sql_type = Text)]
+    pub transaction_id: String,
+    #[diesel(sql_type = Timestamptz)]
+    pub time: chrono::DateTime<chrono::Utc>,
+}
+
+#[derive(Debug, Clone, QueryableByName, Serialize, Deserialize)]
+pub struct MyDataQueryMerkleRootRow {
+    #[diesel(sql_type = Text)]
+    pub snapshot_id: String,
+    #[diesel(sql_type = Text)]
+    pub root_hash: String,
+    #[diesel(sql_type = BigInt)]
+    pub published_at_ms: i64,
+    #[diesel(sql_type = Text)]
+    pub event_id: String,
+    #[diesel(sql_type = Text)]
+    pub transaction_id: String,
+    #[diesel(sql_type = Timestamptz)]
+    pub time: chrono::DateTime<chrono::Utc>,
+}
+
+#[derive(Debug, Clone, QueryableByName, Serialize, Deserialize)]
+pub struct MyDataQueryClaimRow {
+    #[diesel(sql_type = Int4)]
+    pub id: i32,
+    #[diesel(sql_type = Text)]
+    pub snapshot_id: String,
+    #[diesel(sql_type = Text)]
+    pub claimant: String,
+    #[diesel(sql_type = BigInt)]
+    pub amount: i64,
+    #[diesel(sql_type = BigInt)]
+    pub claimed_at_ms: i64,
+    #[diesel(sql_type = Text)]
+    pub event_id: String,
+    #[diesel(sql_type = Text)]
+    pub transaction_id: String,
+    #[diesel(sql_type = Timestamptz)]
+    pub time: chrono::DateTime<chrono::Utc>,
 }

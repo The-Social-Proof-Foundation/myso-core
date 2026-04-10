@@ -29,8 +29,14 @@ use crate::insurance::{
 use crate::metrics::DbReaderMetrics;
 use crate::mydata::{
     get_mydata_access_analytics, get_mydata_access_logs, get_mydata_config, get_mydata_purchases,
-    get_mydata_record, get_mydata_revenue, get_mydata_revenue_timeline, get_mydata_stats,
-    get_mydata_subscriptions, get_popular_mydata, list_mydata, list_mydata_purchases_by_buyer,
+    get_mydata_query_distribution_round, get_mydata_query_merkle_root,
+    get_mydata_query_snapshot_anchor, get_mydata_record,
+    get_mydata_revenue, get_mydata_revenue_timeline, get_mydata_stats, get_mydata_subscriptions,
+    get_popular_mydata, list_mydata, list_mydata_query_broad_pools,
+    list_mydata_query_claims_for_snapshot, list_mydata_query_listings_for_sub_pool,
+    list_mydata_query_distribution_rounds, list_mydata_query_snapshot_anchors,
+    list_mydata_query_sub_pools_for_broad_pool,
+    list_mydata_query_sub_pools_for_listing, list_mydata_purchases_by_buyer,
     list_mydata_records_by_owner,
 };
 use crate::platform::PlatformRow;
@@ -1100,6 +1106,123 @@ impl SocialPgReader {
     ) -> anyhow::Result<Vec<myso_indexer_alt_social_schema::models::MyDataAccessAnalyticsRow>> {
         let mut conn = self.connect().await?;
         get_mydata_access_analytics(&mut conn, mydata_id, &self.metrics).await
+    }
+
+    /// List MyData query marketplace broad pools (indexed events).
+    pub async fn list_mydata_query_broad_pools(
+        &self,
+        limit: i64,
+        offset: i64,
+    ) -> anyhow::Result<Vec<myso_indexer_alt_social_schema::models::MyDataQueryBroadPoolRow>> {
+        let mut conn = self.connect().await?;
+        list_mydata_query_broad_pools(&mut conn, limit, offset, &self.metrics).await
+    }
+
+    /// Sub-pools belonging to a broad pool.
+    pub async fn list_mydata_query_sub_pools_for_broad_pool(
+        &self,
+        broad_pool_id: &str,
+        limit: i64,
+        offset: i64,
+    ) -> anyhow::Result<Vec<myso_indexer_alt_social_schema::models::MyDataQuerySubPoolRow>> {
+        let mut conn = self.connect().await?;
+        list_mydata_query_sub_pools_for_broad_pool(
+            &mut conn,
+            broad_pool_id,
+            limit,
+            offset,
+            &self.metrics,
+        )
+        .await
+    }
+
+    /// Sub-pools a listing (MyData `ip_id`) is assigned to.
+    pub async fn list_mydata_query_sub_pools_for_listing(
+        &self,
+        listing_id: &str,
+        limit: i64,
+        offset: i64,
+    ) -> anyhow::Result<Vec<myso_indexer_alt_social_schema::models::MyDataQuerySubPoolRow>> {
+        let mut conn = self.connect().await?;
+        list_mydata_query_sub_pools_for_listing(&mut conn, listing_id, limit, offset, &self.metrics)
+            .await
+    }
+
+    /// Listings in a sub-pool (junction rows).
+    pub async fn list_mydata_query_listings_for_sub_pool(
+        &self,
+        sub_pool_id: &str,
+        limit: i64,
+        offset: i64,
+    ) -> anyhow::Result<Vec<myso_indexer_alt_social_schema::models::MyDataQueryListingSubPoolRow>>
+    {
+        let mut conn = self.connect().await?;
+        list_mydata_query_listings_for_sub_pool(&mut conn, sub_pool_id, limit, offset, &self.metrics)
+            .await
+    }
+
+    /// Latest snapshot anchor row for a snapshot ID (includes manifest hash and payment reference when present).
+    pub async fn get_mydata_query_snapshot_anchor(
+        &self,
+        snapshot_id: &str,
+    ) -> anyhow::Result<Option<myso_indexer_alt_social_schema::models::MyDataQuerySnapshotAnchorRow>>
+    {
+        let mut conn = self.connect().await?;
+        get_mydata_query_snapshot_anchor(&mut conn, snapshot_id, &self.metrics).await
+    }
+
+    /// Recent snapshot anchors (paginated).
+    pub async fn list_mydata_query_snapshot_anchors(
+        &self,
+        limit: i64,
+        offset: i64,
+    ) -> anyhow::Result<Vec<myso_indexer_alt_social_schema::models::MyDataQuerySnapshotAnchorRow>>
+    {
+        let mut conn = self.connect().await?;
+        list_mydata_query_snapshot_anchors(&mut conn, limit, offset, &self.metrics).await
+    }
+
+    /// Distribution round recorded for a snapshot (if any).
+    pub async fn get_mydata_query_distribution_round(
+        &self,
+        snapshot_id: &str,
+    ) -> anyhow::Result<Option<myso_indexer_alt_social_schema::models::MyDataQueryDistributionRoundRow>>
+    {
+        let mut conn = self.connect().await?;
+        get_mydata_query_distribution_round(&mut conn, snapshot_id, &self.metrics).await
+    }
+
+    /// Recent distribution rounds (paginated).
+    pub async fn list_mydata_query_distribution_rounds(
+        &self,
+        limit: i64,
+        offset: i64,
+    ) -> anyhow::Result<Vec<myso_indexer_alt_social_schema::models::MyDataQueryDistributionRoundRow>>
+    {
+        let mut conn = self.connect().await?;
+        list_mydata_query_distribution_rounds(&mut conn, limit, offset, &self.metrics).await
+    }
+
+    /// Merkle root published for a snapshot.
+    pub async fn get_mydata_query_merkle_root(
+        &self,
+        snapshot_id: &str,
+    ) -> anyhow::Result<Option<myso_indexer_alt_social_schema::models::MyDataQueryMerkleRootRow>>
+    {
+        let mut conn = self.connect().await?;
+        get_mydata_query_merkle_root(&mut conn, snapshot_id, &self.metrics).await
+    }
+
+    /// Claim events for a snapshot.
+    pub async fn list_mydata_query_claims_for_snapshot(
+        &self,
+        snapshot_id: &str,
+        limit: i64,
+        offset: i64,
+    ) -> anyhow::Result<Vec<myso_indexer_alt_social_schema::models::MyDataQueryClaimRow>> {
+        let mut conn = self.connect().await?;
+        list_mydata_query_claims_for_snapshot(&mut conn, snapshot_id, limit, offset, &self.metrics)
+            .await
     }
 
     /// Get insurance policy by ID.

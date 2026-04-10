@@ -190,3 +190,133 @@ pub struct AccessAnalytics {
     #[diesel(sql_type = BigInt)]
     pub total_accesses: i64,
 }
+
+#[derive(Debug, Serialize, QueryableByName)]
+pub struct MyDataQueryBroadPoolInfo {
+    #[diesel(sql_type = Text)]
+    pub pool_id: String,
+    #[diesel(sql_type = Text)]
+    pub name: String,
+    #[diesel(sql_type = BigInt)]
+    pub created_at_ms: i64,
+    #[diesel(sql_type = Text)]
+    pub event_id: String,
+    #[diesel(sql_type = Text)]
+    pub transaction_id: String,
+    #[diesel(sql_type = Timestamptz)]
+    pub time: chrono::DateTime<chrono::Utc>,
+}
+
+#[derive(Debug, Serialize, QueryableByName)]
+pub struct MyDataQuerySubPoolInfo {
+    #[diesel(sql_type = Text)]
+    pub sub_pool_id: String,
+    #[diesel(sql_type = Text)]
+    pub broad_pool_id: String,
+    #[diesel(sql_type = Text)]
+    pub name: String,
+    #[diesel(sql_type = BigInt)]
+    pub created_at_ms: i64,
+    #[diesel(sql_type = Text)]
+    pub event_id: String,
+    #[diesel(sql_type = Text)]
+    pub transaction_id: String,
+    #[diesel(sql_type = Timestamptz)]
+    pub time: chrono::DateTime<chrono::Utc>,
+}
+
+#[derive(Debug, Serialize, QueryableByName)]
+pub struct MyDataQueryListingSubPoolInfo {
+    #[diesel(sql_type = Text)]
+    pub listing_id: String,
+    #[diesel(sql_type = Text)]
+    pub sub_pool_id: String,
+    #[diesel(sql_type = BigInt)]
+    pub assigned_at_ms: i64,
+    #[diesel(sql_type = Text)]
+    pub event_id: String,
+    #[diesel(sql_type = Text)]
+    pub transaction_id: String,
+    #[diesel(sql_type = Timestamptz)]
+    pub time: chrono::DateTime<chrono::Utc>,
+}
+
+#[derive(Debug, Serialize, QueryableByName)]
+pub struct MyDataQuerySnapshotAnchorInfo {
+    #[diesel(sql_type = Integer)]
+    pub id: i32,
+    #[diesel(sql_type = Text)]
+    pub snapshot_id: String,
+    #[diesel(sql_type = Text)]
+    pub buyer_address: String,
+    #[diesel(sql_type = BigInt)]
+    pub price_paid: i64,
+    #[diesel(sql_type = BigInt)]
+    pub created_at_ms: i64,
+    #[diesel(sql_type = Text)]
+    pub event_id: String,
+    #[diesel(sql_type = Text)]
+    pub transaction_id: String,
+    #[diesel(sql_type = Timestamptz)]
+    pub time: chrono::DateTime<chrono::Utc>,
+    #[diesel(sql_type = Nullable<Text>)]
+    pub manifest_hash: Option<String>,
+    #[diesel(sql_type = Nullable<Text>)]
+    pub payment_reference: Option<String>,
+}
+
+#[derive(Debug, Serialize, QueryableByName)]
+pub struct MyDataQueryDistributionRoundInfo {
+    #[diesel(sql_type = Text)]
+    pub snapshot_id: String,
+    #[diesel(sql_type = BigInt)]
+    pub total_amount: i64,
+    #[diesel(sql_type = BigInt)]
+    pub contributor_count: i64,
+    #[diesel(sql_type = Text)]
+    pub merkle_root: String,
+    #[diesel(sql_type = BigInt)]
+    pub published_at_ms: i64,
+    #[diesel(sql_type = Text)]
+    pub event_id: String,
+    #[diesel(sql_type = Text)]
+    pub transaction_id: String,
+    #[diesel(sql_type = Timestamptz)]
+    pub time: chrono::DateTime<chrono::Utc>,
+}
+
+#[derive(Debug, Serialize, QueryableByName)]
+pub struct MyDataQueryMerkleRootInfo {
+    #[diesel(sql_type = Text)]
+    pub snapshot_id: String,
+    #[diesel(sql_type = Text)]
+    pub root_hash: String,
+    #[diesel(sql_type = BigInt)]
+    pub published_at_ms: i64,
+    #[diesel(sql_type = Text)]
+    pub event_id: String,
+    #[diesel(sql_type = Text)]
+    pub transaction_id: String,
+    #[diesel(sql_type = Timestamptz)]
+    pub time: chrono::DateTime<chrono::Utc>,
+}
+
+#[derive(Debug, Serialize, QueryableByName)]
+pub struct MyDataQueryClaimInfo {
+    #[diesel(sql_type = Integer)]
+    pub id: i32,
+    #[diesel(sql_type = Text)]
+    pub snapshot_id: String,
+    #[diesel(sql_type = Text)]
+    pub claimant: String,
+    #[diesel(sql_type = BigInt)]
+    pub amount: i64,
+    #[diesel(sql_type = BigInt)]
+    pub claimed_at_ms: i64,
+    #[diesel(sql_type = Text)]
+    pub event_id: String,
+    #[diesel(sql_type = Text)]
+    pub transaction_id: String,
+    #[diesel(sql_type = Timestamptz)]
+    pub time: chrono::DateTime<chrono::Utc>,
+}

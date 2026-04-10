@@ -2,7 +2,7 @@
 // SPDX-License-Identifier: Apache-2.0
 
 /// Implementation of decryption for MyData using Boneh-Franklin over BLS12-381 as KEM and Hmac256Ctr as DEM.
-/// Refer usage at docs https://mydata-docs.wal.app/UsingSeal/#on-chain-decryption
+/// See MyData documentation for on-chain decryption patterns (prefer client-side decrypt for app data).
 module mydata::bf_hmac_encryption;
 
 use mydata::{

@@ -2,10 +2,11 @@
 title: Module `social_contracts::mydata`
 ---
 
-Universal MyData module for encrypted data monetization
-Supports both one-time purchases and subscription access
-Can be attached to posts (gated content) or profiles (data monetization)
+Production decrypt is **client-only** (SDK + key server); see module doc in `mydata.move`.
+Supports one-time purchases, subscription access, and owner-only vaults (`has_access`).
+Use [`mydata_approve`](#social_contracts_mydata_mydata_approve) for `fetch_key` policy.
 
+**Indexer note:** Until the on-chain package is upgraded, `SnapshotAnchorRecordedEvent` BCS payloads may use the legacy four-field layout (no manifest hash or payment reference on the wire). Indexers should accept both shapes. `DistributionRecordedEvent` exists only after the package that introduces it is published.
 
 -  [Struct `MyData`](#social_contracts_mydata_MyData)
 -  [Struct `MyDataAdminCap`](#social_contracts_mydata_MyDataAdminCap)
@@ -28,8 +29,10 @@ Can be attached to posts (gated content) or profiles (data monetization)
 -  [Function `update_pricing`](#social_contracts_mydata_update_pricing)
 -  [Function `update_content`](#social_contracts_mydata_update_content)
 -  [Function `assign_mydata_to_pools`](#social_contracts_mydata_assign_mydata_to_pools)
+-  [Function `remove_mydata_from_sub_pools`](#social_contracts_mydata_remove_mydata_from_sub_pools)
 -  [Function `has_access`](#social_contracts_mydata_has_access)
--  [Function `decrypt_data`](#social_contracts_mydata_decrypt_data)
+-  [Function `encryption_id_matches`](#social_contracts_mydata_encryption_id_matches)
+-  [Function `mydata_approve`](#social_contracts_mydata_mydata_approve)
 -  [Function `grant_access`](#social_contracts_mydata_grant_access)
 -  [Function `owner`](#social_contracts_mydata_owner)
 -  [Function `object_address`](#social_contracts_mydata_object_address)
@@ -76,7 +79,6 @@ Can be attached to posts (gated content) or profiles (data monetization)
 <b>use</b> <a href="../mydata/kdf.md#mydata_kdf">mydata::kdf</a>;
 <b>use</b> <a href="../mydata/merkle.md#mydata_merkle">mydata::merkle</a>;
 <b>use</b> <a href="../mydata/polynomial.md#mydata_polynomial">mydata::polynomial</a>;
-<b>use</b> <a href="../mydata/pool.md#mydata_pool">mydata::pool</a>;
 <b>use</b> <a href="../myso/accumulator.md#myso_accumulator">myso::accumulator</a>;
 <b>use</b> <a href="../myso/accumulator_settlement.md#myso_accumulator_settlement">myso::accumulator_settlement</a>;
 <b>use</b> <a href="../myso/address.md#myso_address">myso::address</a>;
@@ -192,7 +194,7 @@ Universal MyData for encrypted data monetization
 <code>encrypted_data: vector&lt;u8&gt;</code>
 </dt>
 <dd>
- Properly sealed content using MyData encryption
+ Opaque ciphertext (MyData BF-HMAC or app-defined encoding)
 </dd>
 <dt>
 <code>encryption_id: vector&lt;u8&gt;</code>
@@ -1354,10 +1356,10 @@ Update MyData content and metadata (owner only)
 
 ## Function `assign_mydata_to_pools`
 
-Assign MyData to sub-pools (owner only). Bridge to mydata::pool for ownership verification.
+Assign MyData to sub-pools (owner only). Verifies the sender is the listing owner, then updates the pool registry.
 
 
-<pre><code><b>public</b> <b>entry</b> <b>fun</b> <a href="../social_contracts/mydata.md#social_contracts_mydata_assign_mydata_to_pools">assign_mydata_to_pools</a>(<a href="../social_contracts/mydata.md#social_contracts_mydata">mydata</a>: &<a href="../social_contracts/mydata.md#social_contracts_mydata_MyData">social_contracts::mydata::MyData</a>, pool_registry: &<b>mut</b> <a href="../mydata/pool.md#mydata_pool_MyDataPoolRegistry">mydata::pool::MyDataPoolRegistry</a>, sub_pool_ids: vector&lt;<a href="../myso/object.md#myso_object_ID">myso::object::ID</a>&gt;, clock: &<a href="../myso/clock.md#myso_clock_Clock">myso::clock::Clock</a>, ctx: &<b>mut</b> <a href="../myso/tx_context.md#myso_tx_context_TxContext">myso::tx_context::TxContext</a>)
+<pre><code><b>public</b> <b>entry</b> <b>fun</b> <a href="../social_contracts/mydata.md#social_contracts_mydata_assign_mydata_to_pools">assign_mydata_to_pools</a>(<a href="../social_contracts/mydata.md#social_contracts_mydata">mydata</a>: &<a href="../social_contracts/mydata.md#social_contracts_mydata_MyData">social_contracts::mydata::MyData</a>, pool_registry: &<b>mut</b> <a href="../social_contracts/mydata.md#social_contracts_mydata_MyDataPoolRegistry">social_contracts::mydata::MyDataPoolRegistry</a>, sub_pool_ids: vector&lt;<a href="../myso/object.md#myso_object_ID">myso::object::ID</a>&gt;, clock: &<a href="../myso/clock.md#myso_clock_Clock">myso::clock::Clock</a>, ctx: &<b>mut</b> <a href="../myso/tx_context.md#myso_tx_context_TxContext">myso::tx_context::TxContext</a>)
 </code></pre>
 
 
@@ -1375,7 +1377,39 @@ Assign MyData to sub-pools (owner only). Bridge to mydata::pool for ownership ve
 ) {
     <b>assert</b>!(tx_context::sender(ctx) == <a href="../social_contracts/mydata.md#social_contracts_mydata">mydata</a>.<a href="../social_contracts/mydata.md#social_contracts_mydata_owner">owner</a>, <a href="../social_contracts/mydata.md#social_contracts_mydata_EUnauthorized">EUnauthorized</a>);
     <b>let</b> ip_id = object::uid_to_address(&<a href="../social_contracts/mydata.md#social_contracts_mydata">mydata</a>.id);
-    pool::assign_mydata_to_sub_pools(pool_registry, ip_id, sub_pool_ids, clock);
+    assign_mydata_to_sub_pools(pool_registry, ip_id, sub_pool_ids, clock);
+}
+</code></pre>
+
+
+
+</details>
+
+<a name="social_contracts_mydata_remove_mydata_from_sub_pools"></a>
+
+## Function `remove_mydata_from_sub_pools`
+
+Remove a MyData listing from one sub-pool (owner only). Verifies the sender is the listing owner, then updates the pool registry.
+
+
+<pre><code><b>public</b> <b>entry</b> <b>fun</b> <a href="../social_contracts/mydata.md#social_contracts_mydata_remove_mydata_from_sub_pools">remove_mydata_from_sub_pools</a>(<a href="../social_contracts/mydata.md#social_contracts_mydata">mydata</a>: &<a href="../social_contracts/mydata.md#social_contracts_mydata_MyData">social_contracts::mydata::MyData</a>, pool_registry: &<b>mut</b> <a href="../social_contracts/mydata.md#social_contracts_mydata_MyDataPoolRegistry">social_contracts::mydata::MyDataPoolRegistry</a>, sub_pool_id: <a href="../myso/object.md#myso_object_ID">myso::object::ID</a>, ctx: &<b>mut</b> <a href="../myso/tx_context.md#myso_tx_context_TxContext">myso::tx_context::TxContext</a>)
+</code></pre>
+
+
+
+<details>
+<summary>Implementation</summary>
+
+
+<pre><code><b>public</b> <b>entry</b> <b>fun</b> <a href="../social_contracts/mydata.md#social_contracts_mydata_remove_mydata_from_sub_pools">remove_mydata_from_sub_pools</a>(
+    <a href="../social_contracts/mydata.md#social_contracts_mydata">mydata</a>: &<a href="../social_contracts/mydata.md#social_contracts_mydata_MyData">MyData</a>,
+    pool_registry: &<b>mut</b> MyDataPoolRegistry,
+    sub_pool_id: ID,
+    ctx: &<b>mut</b> TxContext,
+) {
+    <b>assert</b>!(tx_context::sender(ctx) == <a href="../social_contracts/mydata.md#social_contracts_mydata">mydata</a>.<a href="../social_contracts/mydata.md#social_contracts_mydata_owner">owner</a>, <a href="../social_contracts/mydata.md#social_contracts_mydata_EUnauthorized">EUnauthorized</a>);
+    <b>let</b> ip_id = object::uid_to_address(&<a href="../social_contracts/mydata.md#social_contracts_mydata">mydata</a>.id);
+    remove_mydata_from_sub_pool(pool_registry, ip_id, sub_pool_id);
 }
 </code></pre>
 
@@ -1418,41 +1452,24 @@ Check if user has access to MyData data
 
 </details>
 
-<a name="social_contracts_mydata_decrypt_data"></a>
+<a name="social_contracts_mydata_encryption_id_matches"></a>
 
-## Function `decrypt_data`
+## Function `encryption_id_matches`
 
-Decrypt MyData data for authorized users
+Returns true if `candidate` is the same byte sequence as this object’s `encryption_id` (MyData policy `id` bytes).
 
 
-<pre><code><b>public</b> <b>fun</b> <a href="../social_contracts/mydata.md#social_contracts_mydata_decrypt_data">decrypt_data</a>(<a href="../social_contracts/mydata.md#social_contracts_mydata">mydata</a>: &<a href="../social_contracts/mydata.md#social_contracts_mydata_MyData">social_contracts::mydata::MyData</a>, viewer: <b>address</b>, clock: &<a href="../myso/clock.md#myso_clock_Clock">myso::clock::Clock</a>, keys: &vector&lt;<a href="../mydata/bf_hmac_encryption.md#mydata_bf_hmac_encryption_VerifiedDerivedKey">mydata::bf_hmac_encryption::VerifiedDerivedKey</a>&gt;, pks: &vector&lt;<a href="../mydata/bf_hmac_encryption.md#mydata_bf_hmac_encryption_PublicKey">mydata::bf_hmac_encryption::PublicKey</a>&gt;): <a href="../std/option.md#std_option_Option">std::option::Option</a>&lt;vector&lt;u8&gt;&gt;
+<pre><code><b>public</b> <b>fun</b> <a href="../social_contracts/mydata.md#social_contracts_mydata_encryption_id_matches">encryption_id_matches</a>(<a href="../social_contracts/mydata.md#social_contracts_mydata">mydata</a>: &<a href="../social_contracts/mydata.md#social_contracts_mydata_MyData">social_contracts::mydata::MyData</a>, candidate: &vector&lt;u8&gt;): bool
 </code></pre>
 
+<a name="social_contracts_mydata_mydata_approve"></a>
 
+## Function `mydata_approve`
 
-<details>
-<summary>Implementation</summary>
+Key-server policy for `fetch_key`: `id` matches `encryption_id` and the sender has [`has_access`](#social_contracts_mydata_has_access).
 
-
-<pre><code><b>public</b> <b>fun</b> <a href="../social_contracts/mydata.md#social_contracts_mydata_decrypt_data">decrypt_data</a>(
-    <a href="../social_contracts/mydata.md#social_contracts_mydata">mydata</a>: &<a href="../social_contracts/mydata.md#social_contracts_mydata_MyData">MyData</a>,
-    viewer: <b>address</b>,
-    clock: &Clock,
-    keys: &vector&lt;VerifiedDerivedKey&gt;,
-    pks: &vector&lt;PublicKey&gt;,
-): Option&lt;vector&lt;u8&gt;&gt; {
-    // Only allow access <b>if</b> user <b>has</b> direct access to this <a href="../social_contracts/mydata.md#social_contracts_mydata_MyData">MyData</a>
-    <b>if</b> (<a href="../social_contracts/mydata.md#social_contracts_mydata_has_access">has_access</a>(<a href="../social_contracts/mydata.md#social_contracts_mydata">mydata</a>, viewer, clock)) {
-        <b>let</b> obj = bf_hmac_encryption::parse_encrypted_object(<a href="../social_contracts/mydata.md#social_contracts_mydata">mydata</a>.encrypted_data);
-        <b>return</b> bf_hmac_encryption::decrypt(&obj, keys, pks)
-    };
-    option::none()
-}
+<pre><code><b>public</b> <b>entry</b> <b>fun</b> <a href="../social_contracts/mydata.md#social_contracts_mydata_mydata_approve">mydata_approve</a>(id: vector&lt;u8&gt;, <a href="../social_contracts/mydata.md#social_contracts_mydata">mydata</a>: &<a href="../social_contracts/mydata.md#social_contracts_mydata_MyData">social_contracts::mydata::MyData</a>, clock: &<a href="../myso/clock.md#myso_clock_Clock">myso::clock::Clock</a>, ctx: &<a href="../myso/tx_context.md#myso_tx_context_TxContext">myso::tx_context::TxContext</a>)
 </code></pre>
-
-
-
-</details>
 
 <a name="social_contracts_mydata_grant_access"></a>
 
