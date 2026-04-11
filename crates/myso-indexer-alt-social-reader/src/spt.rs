@@ -807,7 +807,8 @@ pub(crate) async fn get_reservation_holdings_for_pool(
     Ok(results)
 }
 
-/// Reservers whose latest indexed reservation row for this pool has amount 0 (withdrawn).
+/// Reservers with net zero reserved MYSO for this pool (sum of deposit/withdraw deltas is 0)
+/// who have at least one indexed deposit, so they were holders and fully exited.
 pub(crate) async fn get_former_reservation_holdings_for_pool(
     conn: &mut Connection<'_>,
     pool_id: &str,
@@ -832,11 +833,16 @@ pub(crate) async fn get_former_reservation_holdings_for_pool(
 
     let from_where = r#"
         FROM (
-            SELECT DISTINCT ON (reserver_address)
-                reserver_address, pool_id, amount, reserved_at
+            SELECT
+                reserver_address,
+                pool_id,
+                SUM(amount) AS amount,
+                MAX(reserved_at) AS reserved_at
             FROM spt_reservations
             WHERE pool_id = $1
-            ORDER BY reserver_address, time DESC
+            GROUP BY reserver_address, pool_id
+            HAVING SUM(amount) = 0
+               AND SUM(CASE WHEN amount > 0 THEN 1 ELSE 0 END) > 0
         ) l
         INNER JOIN LATERAL (
             SELECT associated_id, token_type, owner, total_reserved, required_threshold, status
@@ -852,7 +858,6 @@ pub(crate) async fn get_former_reservation_holdings_for_pool(
             ORDER BY updated_at DESC
             LIMIT 1
         ) po ON true
-        WHERE l.amount <= 0
     "#;
 
     let mut results: Vec<UserReservationHoldingRow> = if prioritize_followed && let Some(v) = viewer

@@ -18,7 +18,7 @@ module social_contracts::token_exchange_tests {
     use myso::clock::{Self, Clock};
     
     use social_contracts::social_proof_tokens::{Self, SocialProofTokensConfig, TokenRegistry, SocialToken, TokenPool};
-    use social_contracts::profile::{Self, Profile, UsernameRegistry};
+    use social_contracts::profile::{Self, Profile, UsernameRegistry, EcosystemTreasury};
     use social_contracts::post::{Self, Post};
     use social_contracts::block_list::{Self, BlockListRegistry};
     use social_contracts::platform::{Self, Platform, PlatformRegistry};
@@ -108,6 +108,113 @@ module social_contracts::token_exchange_tests {
             test_scenario::return_shared(config);
         };
         
+        test_scenario::end(scenario);
+    }
+
+    #[test]
+    fun test_can_create_auction_uses_updated_config_threshold_for_existing_pool() {
+        let mut scenario = setup_test_scenario();
+
+        let profile_id = {
+            test_scenario::next_tx(&mut scenario, CREATOR);
+            let mut username_registry = test_scenario::take_shared<UsernameRegistry>(&scenario);
+            let mut registry = test_scenario::take_shared<social_proof_tokens::TokenRegistry>(&scenario);
+            let config = test_scenario::take_shared<social_proof_tokens::SocialProofTokensConfig>(&scenario);
+
+            profile::create_profile(
+                &mut username_registry,
+                string::utf8(b"Creator Threshold"),
+                string::utf8(b"creator_threshold"),
+                string::utf8(b"Threshold test profile"),
+                b"",
+                b"",
+                test_scenario::ctx(&mut scenario)
+            );
+
+            let profile = test_scenario::take_from_sender<Profile>(&scenario);
+            let profile_id = profile::get_id_address(&profile);
+
+            social_proof_tokens::create_reservation_pool_for_profile(
+                &mut registry,
+                &config,
+                &profile,
+                test_scenario::ctx(&mut scenario)
+            );
+
+            test_scenario::return_shared(username_registry);
+            test_scenario::return_shared(registry);
+            test_scenario::return_shared(config);
+            test_scenario::return_to_sender(&scenario, profile);
+            profile_id
+        };
+
+        test_scenario::next_tx(&mut scenario, USER1);
+        {
+            let mut registry = test_scenario::take_shared<social_proof_tokens::TokenRegistry>(&scenario);
+            let config = test_scenario::take_shared<social_proof_tokens::SocialProofTokensConfig>(&scenario);
+            let mut reservation_pool_object = test_scenario::take_shared<social_proof_tokens::ReservationPoolObject>(&scenario);
+            let treasury = test_scenario::take_shared<EcosystemTreasury>(&scenario);
+            let payment = test_scenario::take_from_sender<Coin<MYSO>>(&scenario);
+
+            social_proof_tokens::reserve_towards_profile(
+                &mut registry,
+                &config,
+                &mut reservation_pool_object,
+                &treasury,
+                payment,
+                1_500_000_000,
+                test_scenario::ctx(&mut scenario)
+            );
+
+            // Old config profile_threshold is 10_000_000_000 in setup_test_scenario, so this should still fail.
+            assert!(!social_proof_tokens::can_create_auction(&registry, &config, profile_id), 0);
+
+            test_scenario::return_shared(registry);
+            test_scenario::return_shared(config);
+            test_scenario::return_shared(reservation_pool_object);
+            test_scenario::return_shared(treasury);
+        };
+
+        test_scenario::next_tx(&mut scenario, ADMIN);
+        {
+            let admin_cap = test_scenario::take_from_sender<social_proof_tokens::SocialProofTokensAdminCap>(&scenario);
+            let mut config = test_scenario::take_shared<social_proof_tokens::SocialProofTokensConfig>(&scenario);
+
+            social_proof_tokens::update_social_proof_tokens_config(
+                &admin_cap,
+                &mut config,
+                100, // trading_creator_fee_bps
+                25,  // trading_platform_fee_bps
+                25,  // trading_treasury_fee_bps
+                100, // reservation_creator_fee_bps
+                25,  // reservation_platform_fee_bps
+                25,  // reservation_treasury_fee_bps
+                100_000_000, // base_price
+                100_000,     // quadratic_coefficient
+                500, // max_hold_percent_bps
+                1000_000_000, // post_threshold
+                1000_000_000, // profile_threshold lowered for existing pool check
+                2000, // max_individual_stake_bps
+                1000, // max_reservers_per_pool
+                test_scenario::ctx(&mut scenario)
+            );
+
+            test_scenario::return_to_sender(&scenario, admin_cap);
+            test_scenario::return_shared(config);
+        };
+
+        test_scenario::next_tx(&mut scenario, CREATOR);
+        {
+            let registry = test_scenario::take_shared<social_proof_tokens::TokenRegistry>(&scenario);
+            let config = test_scenario::take_shared<social_proof_tokens::SocialProofTokensConfig>(&scenario);
+
+            // After config update, eligibility should use live config, not stale pool.required_threshold.
+            assert!(social_proof_tokens::can_create_auction(&registry, &config, profile_id), 1);
+
+            test_scenario::return_shared(registry);
+            test_scenario::return_shared(config);
+        };
+
         test_scenario::end(scenario);
     }
     

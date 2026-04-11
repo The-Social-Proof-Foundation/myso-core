@@ -1743,6 +1743,7 @@ module social_contracts::social_proof_tokens {
     /// Check if reservation threshold is met for auction creation
     public fun can_create_auction(
         registry: &TokenRegistry,
+        config: &SocialProofTokensConfig,
         associated_id: address
     ): bool {
         if (!table::contains(&registry.reservation_pools, associated_id)) {
@@ -1750,7 +1751,12 @@ module social_contracts::social_proof_tokens {
         };
         
         let reservation_pool = table::borrow(&registry.reservation_pools, associated_id);
-        reservation_pool.total_reserved >= reservation_pool.required_threshold
+        let required_threshold = if (reservation_pool.token_type == TOKEN_TYPE_PROFILE) {
+            config.profile_threshold
+        } else {
+            config.post_threshold
+        };
+        reservation_pool.total_reserved >= required_threshold
     }
     
     /// Create a social proof token directly from a reservation pool once threshold is met
@@ -1771,7 +1777,7 @@ module social_contracts::social_proof_tokens {
         assert!(caller == reservation_pool_object.info.owner, ENotAuthorized);
         
         // Check if reservation threshold has been met
-        assert!(can_create_auction(registry, associated_id), EViralThresholdNotMet);
+        assert!(can_create_auction(registry, config, associated_id), EViralThresholdNotMet);
         
         // Verify token has not already been created
         assert!(!table::contains(&registry.tokens, associated_id), ETokenAlreadyExists);

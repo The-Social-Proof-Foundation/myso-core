@@ -690,6 +690,11 @@ impl Delegate {
         self.inner.sided_losing_proposals
     }
 
+    /// Social profile for this delegate's address.
+    async fn profile(&self, ctx: &Context<'_>) -> Option<ProfileSummary> {
+        resolve_profile_summary(ctx, &self.inner.address).await
+    }
+
     /// Proposals on which this delegate has voted.
     async fn proposals(&self, ctx: &Context<'_>) -> Option<Vec<Proposal>> {
         let reader_opt = ctx.data_opt::<Arc<Option<SocialPgReader>>>()?;

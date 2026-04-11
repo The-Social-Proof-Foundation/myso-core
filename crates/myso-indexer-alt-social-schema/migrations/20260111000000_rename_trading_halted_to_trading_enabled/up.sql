@@ -28,7 +28,7 @@ ALTER COLUMN trading_enabled SET NOT NULL;
 
 -- Set default value
 ALTER TABLE spt_exchange_config 
-ALTER COLUMN trading_enabled SET DEFAULT true;
+ALTER COLUMN trading_enabled SET DEFAULT false;
 
 -- Drop old column
 ALTER TABLE spt_exchange_config 
