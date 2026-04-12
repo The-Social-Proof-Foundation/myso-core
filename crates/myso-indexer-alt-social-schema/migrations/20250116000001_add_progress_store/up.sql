@@ -1,5 +1,5 @@
 -- Add enhanced progress store for detailed indexing state management
--- This extends the basic indexer_progress table with more granular tracking
+-- (Replaces ad-hoc indexer checkpoint tables; coordinates with watermarks.)
 
 -- Drop existing table if it exists with wrong schema (for clean migration)
 DROP TABLE IF EXISTS progress_store CASCADE;

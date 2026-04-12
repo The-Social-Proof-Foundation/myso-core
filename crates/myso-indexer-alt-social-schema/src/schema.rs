@@ -205,22 +205,6 @@ diesel::table! {
 }
 
 diesel::table! {
-    indexer_checkpoint_state (id) {
-        id -> Int4,
-        last_processed_checkpoint -> Int8,
-        last_processed_timestamp -> Timestamp,
-    }
-}
-
-diesel::table! {
-    indexer_progress (id) {
-        id -> Text,
-        last_checkpoint_processed -> Int8,
-        last_processed_at -> Timestamp,
-    }
-}
-
-diesel::table! {
     insurance_config (id, time) {
         id -> Int4,
         updated_by -> Text,
@@ -1727,8 +1711,6 @@ diesel::allow_tables_to_appear_in_same_query!(
     ecosystem_treasury,
     governance_events,
     governance_registries,
-    indexer_checkpoint_state,
-    indexer_progress,
     insurance_config,
     insurance_events,
     insurance_market_exposures,

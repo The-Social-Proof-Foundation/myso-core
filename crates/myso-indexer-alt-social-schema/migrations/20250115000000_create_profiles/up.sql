@@ -71,15 +71,3 @@ BEGIN
         CREATE UNIQUE INDEX IF NOT EXISTS idx_profiles_username ON profiles(username);
     END IF;
 END $$;
-
--- Create indexer checkpoint state table (only if it doesn't exist)
-CREATE TABLE IF NOT EXISTS indexer_checkpoint_state (
-    id SERIAL PRIMARY KEY,
-    last_processed_checkpoint BIGINT NOT NULL,
-    last_processed_timestamp TIMESTAMP NOT NULL DEFAULT NOW()
-);
-
--- Insert initial indexer checkpoint state (only if it doesn't exist)
-INSERT INTO indexer_checkpoint_state (id, last_processed_checkpoint, last_processed_timestamp)
-VALUES (1, 0, NOW())
-ON CONFLICT (id) DO NOTHING;
