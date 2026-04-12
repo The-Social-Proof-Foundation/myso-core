@@ -116,7 +116,7 @@ module social_contracts::profile {
     }
     
     /// Profile object that contains user information
-    public struct Profile has key, store {
+    public struct Profile has key {
         id: UID,
         /// Display name of the profile (optional)
         display_name: Option<String>,
@@ -707,7 +707,7 @@ module social_contracts::profile {
         });
         
         // Transfer profile to new owner
-        transfer::public_transfer(profile, new_owner);
+        transfer::transfer(profile, new_owner);
     }
 
     /// Only the profile owner can update profile information
@@ -1038,7 +1038,7 @@ module social_contracts::profile {
         });
         
         // Transfer the profile object to the new owner
-        transfer::public_transfer(profile, offeror);
+        transfer::transfer(profile, offeror);
     }
     
     /// Reject or revoke an offer on a profile

@@ -999,6 +999,18 @@ pub struct BcsProfileSubscriptionServiceDeactivatedEvent {
 
 // Social Proof Token (SPT) event structs - field order matches social_proof_tokens.move
 #[derive(Debug, Deserialize)]
+pub struct BcsTokenPoolCreatedEventLegacy {
+    id: AccountAddress,
+    token_type: u8,
+    owner: AccountAddress,
+    associated_id: AccountAddress,
+    symbol: String,
+    name: String,
+    base_price: u64,
+    quadratic_coefficient: u64,
+}
+
+#[derive(Debug, Deserialize)]
 pub struct BcsTokenPoolCreatedEvent {
     id: AccountAddress,
     token_type: u8,
@@ -1008,6 +1020,8 @@ pub struct BcsTokenPoolCreatedEvent {
     name: String,
     base_price: u64,
     quadratic_coefficient: u64,
+    circulating_supply: u64,
+    total_reserved_at_launch: u64,
 }
 
 #[derive(Debug, Deserialize)]
@@ -2565,8 +2579,31 @@ fn parse_spt_event(
 ) -> Result<Option<serde_json::Value>, EventParseError> {
     let result = match event_name {
         "TokenPoolCreatedEvent" | "PoolCreatedEvent" => {
-            let ev = bcs::from_bytes::<BcsTokenPoolCreatedEvent>(contents)
-                .map_err(|e| bcs_parse_err(e, contents))?;
+            let (circulating_supply, total_reserved_at_launch, ev) =
+                match bcs::from_bytes::<BcsTokenPoolCreatedEvent>(contents) {
+                    Ok(ev) => (
+                        ev.circulating_supply,
+                        ev.total_reserved_at_launch,
+                        ev,
+                    ),
+                    Err(_) => {
+                        let leg = bcs::from_bytes::<BcsTokenPoolCreatedEventLegacy>(contents)
+                            .map_err(|e| bcs_parse_err(e, contents))?;
+                        let ev = BcsTokenPoolCreatedEvent {
+                            id: leg.id,
+                            token_type: leg.token_type,
+                            owner: leg.owner,
+                            associated_id: leg.associated_id,
+                            symbol: leg.symbol,
+                            name: leg.name,
+                            base_price: leg.base_price,
+                            quadratic_coefficient: leg.quadratic_coefficient,
+                            circulating_supply: 0,
+                            total_reserved_at_launch: 0,
+                        };
+                        (0u64, 0u64, ev)
+                    }
+                };
             Ok(Some(serde_json::json!({
                 "id": addr_to_string(&ev.id),
                 "token_type": ev.token_type,
@@ -2576,6 +2613,8 @@ fn parse_spt_event(
                 "name": ev.name,
                 "base_price": ev.base_price,
                 "quadratic_coefficient": ev.quadratic_coefficient,
+                "circulating_supply": circulating_supply,
+                "total_reserved_at_launch": total_reserved_at_launch,
             })))
         }
         "TokenBoughtEvent" | "BuyEvent" => {

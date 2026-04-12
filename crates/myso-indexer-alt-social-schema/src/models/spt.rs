@@ -96,9 +96,9 @@ pub struct SptHoldingRow {
     pub blocked_by_subject: Option<bool>,
 }
 
-/// Query result for user reservation holdings (from user_reservation_holdings view + profiles).
+/// Query result for reservation holdings (from `spt_reservation_holdings` view + profiles).
 #[derive(Debug, Clone, QueryableByName, Serialize, Deserialize)]
-pub struct UserReservationHoldingRow {
+pub struct SptReservationHoldingRow {
     #[diesel(sql_type = Text)]
     pub reserver_address: String,
     #[diesel(sql_type = Text)]

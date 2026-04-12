@@ -386,6 +386,7 @@ fn process_profile_updated_event(
         paid_messaging_enabled: None,
         paid_messaging_min_cost: None,
         reservation_pool_address: None,
+        social_proof_token_address: None,
     };
     Some(vec![
         SocialEventRow::ProfileUpdate(up),
@@ -491,6 +492,7 @@ fn process_username_registered_event(data: &serde_json::Value) -> Option<Vec<Soc
         paid_messaging_enabled: None,
         paid_messaging_min_cost: None,
         reservation_pool_address: None,
+        social_proof_token_address: None,
     };
     Some(vec![SocialEventRow::ProfileUpdate(up)])
 }
@@ -536,6 +538,7 @@ fn process_username_updated_event(data: &serde_json::Value) -> Option<Vec<Social
         paid_messaging_enabled: None,
         paid_messaging_min_cost: None,
         reservation_pool_address: None,
+        social_proof_token_address: None,
     };
     Some(vec![SocialEventRow::ProfileUpdate(up)])
 }
@@ -740,6 +743,7 @@ fn process_badge_selected_event(
         paid_messaging_enabled: None,
         paid_messaging_min_cost: None,
         reservation_pool_address: None,
+        social_proof_token_address: None,
     };
     Some(vec![SocialEventRow::ProfileUpdate(up)])
 }
@@ -794,6 +798,7 @@ fn process_paid_messaging_settings_updated_event(
         paid_messaging_enabled: Some(ev.enabled),
         paid_messaging_min_cost: ev.min_cost.map(|v| v as i64),
         reservation_pool_address: None,
+        social_proof_token_address: None,
     };
     Some(vec![SocialEventRow::ProfileUpdate(up)])
 }

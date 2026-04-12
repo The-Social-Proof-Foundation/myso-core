@@ -11,7 +11,7 @@ use myso_indexer_alt_social_reader::{
     SptReservationVolumeBucket as SptReservationVolumeBucketRow, SptSortBy as SptSortByReader,
     SptTransaction as SptTransactionRow, ViewerSocialContext,
 };
-use myso_indexer_alt_social_schema::models::UserReservationHoldingRow;
+use myso_indexer_alt_social_schema::models::SptReservationHoldingRow;
 
 use crate::api::resolve_profile::resolve_profile_summary;
 use crate::api::scalars::myso_address::MySoAddress;
@@ -511,11 +511,11 @@ impl SptPriceHistory {
 
 #[derive(Clone)]
 pub(crate) struct SptReservationHolding {
-    inner: UserReservationHoldingRow,
+    inner: SptReservationHoldingRow,
 }
 
 impl SptReservationHolding {
-    pub(crate) fn from_row(inner: UserReservationHoldingRow) -> Self {
+    pub(crate) fn from_row(inner: SptReservationHoldingRow) -> Self {
         Self { inner }
     }
 }

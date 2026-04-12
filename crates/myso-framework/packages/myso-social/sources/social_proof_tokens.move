@@ -278,6 +278,8 @@ module social_contracts::social_proof_tokens {
         name: String,
         base_price: u64,
         quadratic_coefficient: u64,
+        circulating_supply: u64,
+        total_reserved_at_launch: u64,
     }
 
     /// Event emitted when a post pool is auto-initialized by SPoT flow
@@ -1925,6 +1927,9 @@ module social_contracts::social_proof_tokens {
         // Transfer all reserved MYSO to the token pool as initial liquidity
         balance::join(&mut token_pool.myso_balance, balance::withdraw_all(&mut reservation_pool_object.myso_balance));
         
+        // Snapshot for event (denominator for indexer proportional split) before clearing on-chain state
+        let total_reserved_at_launch = reservation_pool_object.info.total_reserved;
+
         // Mark reservation pool as converted and clear total reserved
         reservation_pool_object.converted = true;
         reservation_pool_object.info.total_reserved = 0;
@@ -1948,6 +1953,8 @@ module social_contracts::social_proof_tokens {
             name: token_pool.info.name,
             base_price: token_pool.info.base_price,
             quadratic_coefficient: token_pool.info.quadratic_coefficient,
+            circulating_supply: token_pool.info.circulating_supply,
+            total_reserved_at_launch,
         });
         
         // Share the token pool

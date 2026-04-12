@@ -149,6 +149,7 @@ pub struct ProfileUpdateSet {
     pub paid_messaging_enabled: Option<bool>,
     pub paid_messaging_min_cost: Option<Option<i64>>,
     pub reservation_pool_address: Option<Option<String>>,
+    pub social_proof_token_address: Option<Option<String>>,
 }
 
 #[derive(Debug, Clone, Insertable, Serialize, Deserialize)]

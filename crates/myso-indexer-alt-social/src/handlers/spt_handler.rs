@@ -40,6 +40,20 @@ use super::ProfileUpdate;
 
 const SPT_MODULES: &[&str] = &["social_proof_tokens", "spt"];
 
+#[derive(QueryableByName)]
+struct SptReservationCanonPoolRow {
+    #[diesel(sql_type = Text)]
+    pool_id: String,
+}
+
+#[derive(QueryableByName)]
+struct SptReserverAggRow {
+    #[diesel(sql_type = Text)]
+    reserver_address: String,
+    #[diesel(sql_type = BigInt)]
+    net_myso: i64,
+}
+
 #[derive(Debug, Clone)]
 pub enum SptRow {
     SptPool(NewSptPool),
@@ -50,6 +64,16 @@ pub enum SptRow {
         delta: i64,
     },
     SptPriceHistory(NewSptPriceHistory),
+    SptLaunchHoldingsFromReservations {
+        pool_id: String,
+        associated_id: String,
+        owner: String,
+        circulating_supply: i64,
+        total_reserved_at_launch: i64,
+        created_at: i64,
+        time: chrono::DateTime<chrono::Utc>,
+        transaction_id: String,
+    },
     SptReservationPool(NewSptReservationPool),
     SptReservation {
         associated_id: String,
@@ -104,6 +128,25 @@ impl SptRow {
             crate::handlers::SocialEventRow::SptPriceHistory(ph) => {
                 Some(SptRow::SptPriceHistory(ph))
             }
+            crate::handlers::SocialEventRow::SptLaunchHoldingsFromReservations {
+                pool_id,
+                associated_id,
+                owner,
+                circulating_supply,
+                total_reserved_at_launch,
+                created_at,
+                time,
+                transaction_id,
+            } => Some(SptRow::SptLaunchHoldingsFromReservations {
+                pool_id,
+                associated_id,
+                owner,
+                circulating_supply,
+                total_reserved_at_launch,
+                created_at,
+                time,
+                transaction_id,
+            }),
             crate::handlers::SocialEventRow::SptReservationPool(rp) => {
                 Some(SptRow::SptReservationPool(rp))
             }
@@ -189,7 +232,7 @@ impl SptRow {
 }
 
 impl FieldCount for SptRow {
-    const FIELD_COUNT: usize = 16;
+    const FIELD_COUNT: usize = 17;
 }
 
 pub struct SptHandler;
@@ -279,6 +322,118 @@ impl Handler for SptHandler {
                         .values(ph)
                         .execute(conn)
                         .await?;
+                }
+                SptRow::SptLaunchHoldingsFromReservations {
+                    pool_id,
+                    associated_id,
+                    owner,
+                    circulating_supply,
+                    total_reserved_at_launch,
+                    created_at,
+                    time,
+                    transaction_id,
+                } => {
+                    use std::collections::BTreeMap;
+
+                    if *circulating_supply > 0 {
+                    let canon: Option<SptReservationCanonPoolRow> = diesel::sql_query(
+                        "SELECT pool_id FROM spt_reservation_pools WHERE associated_id = $1 ORDER BY time DESC LIMIT 1",
+                    )
+                    .bind::<Text, _>(associated_id)
+                    .get_result(conn)
+                    .await
+                    .optional()?;
+
+                    let reservation_pool_key = canon
+                        .map(|c| c.pool_id)
+                        .unwrap_or_else(|| format!("reservation_pool_{}", associated_id));
+                    let placeholder = format!("reservation_pool_{}", associated_id);
+
+                    let aggs: Vec<SptReserverAggRow> = diesel::sql_query(
+                        r#"SELECT reserver_address, SUM(amount)::bigint AS net_myso
+ FROM spt_reservations
+                         WHERE pool_id = $1 OR pool_id = $2
+                         GROUP BY reserver_address
+                         HAVING SUM(amount) > 0"#,
+                    )
+                    .bind::<Text, _>(&reservation_pool_key)
+                    .bind::<Text, _>(&placeholder)
+                    .load(conn)
+                    .await?;
+
+                    if *total_reserved_at_launch > 0 && aggs.is_empty() {
+                        return Err(anyhow::anyhow!(
+                            "spt launch: expected reservation rows for pool {} (associated {}); index reservations before token pool or replay checkpoint",
+                            pool_id,
+                            associated_id
+                        ));
+                    }
+
+                    let ledger_sum: i128 = aggs.iter().map(|a| a.net_myso as i128).sum();
+                    if ledger_sum != *total_reserved_at_launch as i128 {
+                        tracing::warn!(
+                            target: "social_indexer::spt",
+                            associated_id = %associated_id,
+                            pool_id = %pool_id,
+                            ledger_sum,
+                            total_reserved_at_launch,
+                            "spt launch: reservation ledger sum differs from on-chain total_reserved_at_launch",
+                        );
+                    }
+
+                    let supply = *circulating_supply as i128;
+                    let denom = (*total_reserved_at_launch).max(0) as i128;
+                    let mut amounts: BTreeMap<String, i128> = BTreeMap::new();
+                    if denom > 0 {
+                        for a in &aggs {
+                            let share = (a.net_myso as i128 * supply) / denom;
+                            *amounts.entry(a.reserver_address.clone()).or_insert(0) += share;
+                        }
+                    }
+
+                    let floored_sum: i128 = amounts.values().sum();
+                    let delta = supply - floored_sum;
+                    let owner_entry = amounts.entry(owner.clone()).or_insert(0);
+                    *owner_entry = owner_entry
+                        .checked_add(delta)
+                        .ok_or_else(|| {
+                            anyhow::anyhow!(
+                                "spt launch: owner remainder overflow for pool {}",
+                                pool_id
+                            )
+                        })?;
+
+                    let final_sum: i128 = amounts.values().sum();
+                    if final_sum != supply {
+                        return Err(anyhow::anyhow!(
+                            "spt launch: holdings sum {} != circulating_supply {} for pool {}",
+                            final_sum,
+                            supply,
+                            pool_id
+                        ));
+                    }
+
+                    for (holder_address, amt) in amounts {
+                        if amt == 0 {
+                            continue;
+                        }
+                        let amt_i64 = i64::try_from(amt).map_err(|_| {
+                            anyhow::anyhow!("spt launch: holding amount overflow for pool {}", pool_id)
+                        })?;
+                        let h = NewSptHolding {
+                            pool_id: pool_id.clone(),
+                            holder_address,
+                            amount: amt_i64,
+                            acquired_at: *created_at,
+                            time: *time,
+                            transaction_id: transaction_id.clone(),
+                        };
+                        total += diesel::insert_into(spt_holdings::table)
+                            .values(h)
+                            .execute(conn)
+                            .await?;
+                    }
+                    }
                 }
                 SptRow::SptReservationPool(rp) => {
                     total += diesel::insert_into(spt_reservation_pools::table)
@@ -929,6 +1084,7 @@ impl Handler for SptHandler {
                         paid_messaging_enabled: up.paid_messaging_enabled,
                         paid_messaging_min_cost: up.paid_messaging_min_cost.map(Some),
                         reservation_pool_address: up.reservation_pool_address.clone(),
+                        social_proof_token_address: up.social_proof_token_address.clone(),
                     };
                     let filter = profiles::profile_id
                         .eq(&up.profile_id)

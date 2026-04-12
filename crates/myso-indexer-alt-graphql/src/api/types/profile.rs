@@ -5,6 +5,7 @@ use std::str::FromStr;
 
 use async_graphql::Context;
 use async_graphql::Object;
+use tracing::warn;
 use myso_indexer_alt_social_reader::{
     ProfileBadgeRow, ProfileByAddressResponse, ReservationStatus, SelectedBadgeInfo,
     SocialProofTokenInfo,
@@ -508,15 +509,24 @@ impl Profile {
         let reader = reader_opt.as_ref().as_ref()?;
         let limit = limit.unwrap_or(20).min(100) as i64;
         let offset = offset.unwrap_or(0) as i64;
-        let rows = reader
-            .get_user_reservation_holdings(&self.inner.owner_address, limit, offset)
+        match reader
+            .get_spt_reservation_holdings_for_reserver(&self.inner.owner_address, limit, offset)
             .await
-            .ok()?;
-        Some(
-            rows.into_iter()
-                .map(SptReservationHolding::from_row)
-                .collect(),
-        )
+        {
+            Ok(rows) => Some(
+                rows.into_iter()
+                    .map(SptReservationHolding::from_row)
+                    .collect(),
+            ),
+            Err(e) => {
+                warn!(
+                    owner_address = %self.inner.owner_address,
+                    error = %e,
+                    "reservation_holdings query failed"
+                );
+                None
+            }
+        }
     }
 
     /// Posts by this profile (paginated, newest first). Matches REST `GET /profiles/:address/posts`

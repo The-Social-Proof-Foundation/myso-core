@@ -890,4 +890,100 @@ module social_contracts::governance_tests {
 
         test_scenario::end(scenario);
     }
-} 
+
+    /// Piggyback: at a term boundary epoch, `vote_for_delegate` runs the same panel refresh as `update_delegate_panel`.
+    #[test]
+    #[allow(unused_mut_ref)]
+    fun test_piggyback_vote_runs_delegate_panel_on_term_epoch() {
+        use myso::object::{Self};
+        use social_contracts::governance;
+
+        let mut scenario = test_scenario::begin(ADMIN);
+
+        test_scenario::next_tx(&mut scenario, ADMIN);
+        {
+            let ctx = test_scenario::ctx(&mut scenario);
+            let mut platform_uid = object::new(ctx);
+            let _registry_id = governance::create_platform_governance(
+                7,
+                5,
+                50000000,
+                5,
+                5000000,
+                3,
+                15,
+                ctx
+            );
+            object::delete(platform_uid);
+        };
+
+        test_scenario::skip_to_epoch(&mut scenario, 5);
+
+        test_scenario::next_tx(&mut scenario, USER1);
+        {
+            let mut registry = test_scenario::take_shared<governance::GovernanceDAO>(&mut scenario);
+            let ctx = test_scenario::ctx(&mut scenario);
+            governance::vote_for_delegate(&mut registry, ADMIN, true, ctx);
+            test_scenario::return_shared(registry);
+        };
+
+        test_scenario::next_tx(&mut scenario, USER1);
+        {
+            let registry = test_scenario::take_shared<governance::GovernanceDAO>(&mut scenario);
+            let (_, _, _, _, _, _, term_start, term_end) = governance::get_delegate_info(&registry, ADMIN);
+            assert!(term_start == 5, 0);
+            assert!(term_end == 10, 1);
+            test_scenario::return_shared(registry);
+        };
+
+        test_scenario::end(scenario);
+    }
+
+    /// Off a boundary epoch, voting does not refresh terms.
+    #[test]
+    #[allow(unused_mut_ref)]
+    fun test_piggyback_vote_skips_panel_off_term_epoch() {
+        use myso::object::{Self};
+        use social_contracts::governance;
+
+        let mut scenario = test_scenario::begin(ADMIN);
+
+        test_scenario::next_tx(&mut scenario, ADMIN);
+        {
+            let ctx = test_scenario::ctx(&mut scenario);
+            let mut platform_uid = object::new(ctx);
+            let _registry_id = governance::create_platform_governance(
+                7,
+                5,
+                50000000,
+                5,
+                5000000,
+                3,
+                15,
+                ctx
+            );
+            object::delete(platform_uid);
+        };
+
+        test_scenario::skip_to_epoch(&mut scenario, 3);
+
+        test_scenario::next_tx(&mut scenario, USER1);
+        {
+            let mut registry = test_scenario::take_shared<governance::GovernanceDAO>(&mut scenario);
+            let ctx = test_scenario::ctx(&mut scenario);
+            governance::vote_for_delegate(&mut registry, ADMIN, true, ctx);
+            test_scenario::return_shared(registry);
+        };
+
+        test_scenario::next_tx(&mut scenario, USER1);
+        {
+            let registry = test_scenario::take_shared<governance::GovernanceDAO>(&mut scenario);
+            let (_, _, _, _, _, _, term_start, term_end) = governance::get_delegate_info(&registry, ADMIN);
+            assert!(term_start == 0, 0);
+            assert!(term_end == 5, 1);
+            test_scenario::return_shared(registry);
+        };
+
+        test_scenario::end(scenario);
+    }
+}

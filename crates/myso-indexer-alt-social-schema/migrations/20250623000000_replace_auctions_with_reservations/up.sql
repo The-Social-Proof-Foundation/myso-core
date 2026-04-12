@@ -21,7 +21,7 @@ END $$;
 
 -- Drop views that may exist with different column structure (triggers same error as functions)
 DROP VIEW IF EXISTS active_reservation_pools CASCADE;
-DROP VIEW IF EXISTS user_reservation_holdings CASCADE;
+DROP VIEW IF EXISTS spt_reservation_holdings CASCADE;
 
 -- ============================================================================
 -- 1. REMOVE AUCTION SYSTEM
@@ -277,8 +277,8 @@ ORDER BY
     sp.total_reserved DESC;
 
 -- Create view for user reservation holdings across all pools
-DROP VIEW IF EXISTS user_reservation_holdings CASCADE;
-CREATE VIEW user_reservation_holdings AS
+DROP VIEW IF EXISTS spt_reservation_holdings CASCADE;
+CREATE VIEW spt_reservation_holdings AS
 SELECT
     s.reservatior_address,
     s.pool_id,

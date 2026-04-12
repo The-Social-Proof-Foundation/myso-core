@@ -249,6 +249,7 @@ impl Handler for ProfilesHandler {
                         paid_messaging_enabled: up.paid_messaging_enabled,
                         paid_messaging_min_cost: up.paid_messaging_min_cost.map(Some),
                         reservation_pool_address: up.reservation_pool_address.clone(),
+                        social_proof_token_address: up.social_proof_token_address.clone(),
                     };
                     let filter = profiles::profile_id
                         .eq(&up.profile_id)

@@ -81,7 +81,7 @@ END $$;
 -- 1. DROP VIEWS THAT DEPEND ON THE COLUMN
 -- ============================================================================
 
-DROP VIEW IF EXISTS user_reservation_holdings CASCADE;
+DROP VIEW IF EXISTS spt_reservation_holdings CASCADE;
 
 -- ============================================================================
 -- 2. REMOVE COMPRESSION POLICY (if exists)
@@ -169,8 +169,8 @@ END $$;
 -- 7. RECREATE VIEWS WITH CORRECT COLUMN NAME
 -- ============================================================================
 
--- Recreate user_reservation_holdings view with correct column name
-CREATE OR REPLACE VIEW user_reservation_holdings AS
+-- Recreate spt_reservation_holdings view with correct column name
+CREATE OR REPLACE VIEW spt_reservation_holdings AS
 SELECT
     s.reserver_address,
     s.pool_id,

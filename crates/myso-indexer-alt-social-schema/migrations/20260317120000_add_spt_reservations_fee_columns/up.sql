@@ -107,7 +107,7 @@ ORDER BY
     sp.total_reserved DESC;
 
 -- Latest holding row per (pool, reserver) by effective activity time (same GREATEST semantics as last_activity).
-CREATE OR REPLACE VIEW user_reservation_holdings AS
+CREATE OR REPLACE VIEW spt_reservation_holdings AS
 SELECT
     s.reserver_address,
     s.pool_id,

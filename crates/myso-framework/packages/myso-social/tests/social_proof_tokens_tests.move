@@ -115,37 +115,45 @@ module social_contracts::token_exchange_tests {
     fun test_can_create_auction_uses_updated_config_threshold_for_existing_pool() {
         let mut scenario = setup_test_scenario();
 
+        // `create_profile` uses module-only `transfer::transfer`; test_scenario only exposes
+        // owned objects to `take_from_sender` after the transaction ends (see
+        // profile_tests::test_create_profile). Same-tx take aborts with EEmptyInventory.
         let profile_id = {
             test_scenario::next_tx(&mut scenario, CREATOR);
-            let mut username_registry = test_scenario::take_shared<UsernameRegistry>(&scenario);
-            let mut registry = test_scenario::take_shared<social_proof_tokens::TokenRegistry>(&scenario);
-            let config = test_scenario::take_shared<social_proof_tokens::SocialProofTokensConfig>(&scenario);
+            {
+                let mut username_registry = test_scenario::take_shared<UsernameRegistry>(&scenario);
+                profile::create_profile(
+                    &mut username_registry,
+                    string::utf8(b"Creator Threshold"),
+                    string::utf8(b"creator_threshold"),
+                    string::utf8(b"Threshold test profile"),
+                    b"",
+                    b"",
+                    test_scenario::ctx(&mut scenario)
+                );
+                test_scenario::return_shared(username_registry);
+            };
 
-            profile::create_profile(
-                &mut username_registry,
-                string::utf8(b"Creator Threshold"),
-                string::utf8(b"creator_threshold"),
-                string::utf8(b"Threshold test profile"),
-                b"",
-                b"",
-                test_scenario::ctx(&mut scenario)
-            );
+            test_scenario::next_tx(&mut scenario, CREATOR);
+            {
+                let mut registry = test_scenario::take_shared<social_proof_tokens::TokenRegistry>(&scenario);
+                let config = test_scenario::take_shared<social_proof_tokens::SocialProofTokensConfig>(&scenario);
 
-            let profile = test_scenario::take_from_sender<Profile>(&scenario);
-            let profile_id = profile::get_id_address(&profile);
+                let profile = test_scenario::take_from_sender<Profile>(&scenario);
+                let profile_id = profile::get_id_address(&profile);
 
-            social_proof_tokens::create_reservation_pool_for_profile(
-                &mut registry,
-                &config,
-                &profile,
-                test_scenario::ctx(&mut scenario)
-            );
+                social_proof_tokens::create_reservation_pool_for_profile(
+                    &mut registry,
+                    &config,
+                    &profile,
+                    test_scenario::ctx(&mut scenario)
+                );
 
-            test_scenario::return_shared(username_registry);
-            test_scenario::return_shared(registry);
-            test_scenario::return_shared(config);
-            test_scenario::return_to_sender(&scenario, profile);
-            profile_id
+                test_scenario::return_shared(registry);
+                test_scenario::return_shared(config);
+                test_scenario::return_to_sender(&scenario, profile);
+                profile_id
+            }
         };
 
         test_scenario::next_tx(&mut scenario, USER1);

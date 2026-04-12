@@ -447,6 +447,16 @@ pub enum SocialEventRow {
         delta: i64,
     },
     SptPriceHistory(NewSptPriceHistory),
+    SptLaunchHoldingsFromReservations {
+        pool_id: String,
+        associated_id: String,
+        owner: String,
+        circulating_supply: i64,
+        total_reserved_at_launch: i64,
+        created_at: i64,
+        time: chrono::DateTime<chrono::Utc>,
+        transaction_id: String,
+    },
     SptReservationPool(NewSptReservationPool),
     SptReservation {
         associated_id: String,
@@ -576,10 +586,11 @@ pub struct ProfileUpdate {
     pub paid_messaging_enabled: Option<bool>,
     pub paid_messaging_min_cost: Option<i64>,
     pub reservation_pool_address: Option<Option<String>>,
+    pub social_proof_token_address: Option<Option<String>>,
 }
 
 impl FieldCount for SocialEventRow {
-    const FIELD_COUNT: usize = 117;
+    const FIELD_COUNT: usize = 118;
 }
 
 // SocialEvents pipeline removed: profile and post events now handled by ProfilesHandler and PostsHandler.

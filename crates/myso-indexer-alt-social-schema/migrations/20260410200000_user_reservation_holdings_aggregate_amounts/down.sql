@@ -1,5 +1,5 @@
--- Restore previous definition (latest row per reserver/pool, not summed deltas).
-CREATE OR REPLACE VIEW user_reservation_holdings AS
+-- Restore previous definition (latest row per reserver/pool, not summed deltas; no launched-pool filter).
+CREATE OR REPLACE VIEW spt_reservation_holdings AS
 SELECT
     s.reserver_address,
     s.pool_id,

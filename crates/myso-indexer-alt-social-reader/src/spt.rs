@@ -11,7 +11,7 @@ use diesel::SelectableHelper;
 use diesel::sql_types::{Array, BigInt, Bool, Integer, Nullable, Text, Timestamptz};
 use diesel_async::RunQueryDsl;
 use myso_indexer_alt_social_schema::models::{
-    SptHoldingRow, SptPoolRow, SptPriceHistory, SptTransaction, UserReservationHoldingRow,
+    SptHoldingRow, SptPoolRow, SptPriceHistory, SptTransaction, SptReservationHoldingRow,
 };
 use myso_indexer_alt_social_schema::schema::{spt_price_history, spt_transactions};
 
@@ -65,7 +65,7 @@ async fn apply_viewer_context_to_holding_rows(
 
 async fn apply_viewer_context_to_reservation_rows(
     conn: &mut Connection<'_>,
-    rows: &mut [UserReservationHoldingRow],
+    rows: &mut [SptReservationHoldingRow],
     viewer: &str,
 ) -> anyhow::Result<()> {
     let (v_pid, v_owner) = resolve_profile_address(conn, viewer).await?;
@@ -672,13 +672,13 @@ pub(crate) async fn get_reservation_pool_id_for_associated_id(
     Ok(result.map(|r| r.pool_id))
 }
 
-pub(crate) async fn get_user_reservation_holdings(
+pub(crate) async fn get_spt_reservation_holdings_for_reserver(
     conn: &mut Connection<'_>,
     reserver_address: &str,
     limit: i64,
     offset: i64,
     metrics: &DbReaderMetrics,
-) -> anyhow::Result<Vec<UserReservationHoldingRow>> {
+) -> anyhow::Result<Vec<SptReservationHoldingRow>> {
     metrics.requests_received.inc();
     let _guard = metrics.latency.start_timer();
 
@@ -691,7 +691,7 @@ pub(crate) async fn get_user_reservation_holdings(
                p.profile_photo as profile_photo, p.social_proof_token_address as profile_social_proof_token_address,
                p.reservation_pool_address as profile_reservation_pool_address
                {nulls}
-        FROM user_reservation_holdings urh
+        FROM spt_reservation_holdings urh
         LEFT JOIN LATERAL (
             SELECT username, display_name, profile_photo, social_proof_token_address, reservation_pool_address
             FROM profiles
@@ -699,7 +699,7 @@ pub(crate) async fn get_user_reservation_holdings(
             ORDER BY updated_at DESC
             LIMIT 1
         ) p ON true
-        WHERE urh.reserver_address = $1
+        WHERE LOWER(TRIM(urh.reserver_address)) = LOWER(TRIM($1::text))
         ORDER BY urh.reserved_at DESC
         LIMIT $2 OFFSET $3
     "#,
@@ -710,14 +710,14 @@ pub(crate) async fn get_user_reservation_holdings(
         .bind::<Text, _>(reserver_address)
         .bind::<BigInt, _>(limit)
         .bind::<BigInt, _>(offset)
-        .load::<UserReservationHoldingRow>(conn)
+        .load::<SptReservationHoldingRow>(conn)
         .await?;
 
     metrics.requests_succeeded.inc();
     Ok(results)
 }
 
-/// Current reservation holders for a pool (from `user_reservation_holdings`), ordered by amount DESC.
+/// Current reservation holders for a pool (from `spt_reservation_holdings`), ordered by amount DESC.
 pub(crate) async fn get_reservation_holdings_for_pool(
     conn: &mut Connection<'_>,
     pool_id: &str,
@@ -726,7 +726,7 @@ pub(crate) async fn get_reservation_holdings_for_pool(
     viewer: Option<&str>,
     prioritize_followed: bool,
     metrics: &DbReaderMetrics,
-) -> anyhow::Result<Vec<UserReservationHoldingRow>> {
+) -> anyhow::Result<Vec<SptReservationHoldingRow>> {
     metrics.requests_received.inc();
     let _guard = metrics.latency.start_timer();
 
@@ -739,13 +739,13 @@ pub(crate) async fn get_reservation_holdings_for_pool(
                p.reservation_pool_address as profile_reservation_pool_address
     "#;
 
-    let mut results: Vec<UserReservationHoldingRow> = if prioritize_followed && let Some(v) = viewer
+    let mut results: Vec<SptReservationHoldingRow> = if prioritize_followed && let Some(v) = viewer
     {
         let (v_pid, v_owner) = resolve_profile_address(conn, v).await?;
         let refs = viewer_ref_strings(&v_owner, &v_pid);
         let query = format!(
             r#"{} {nulls}
-        FROM user_reservation_holdings urh
+        FROM spt_reservation_holdings urh
         LEFT JOIN LATERAL (
             SELECT username, display_name, profile_photo, social_proof_token_address, reservation_pool_address
             FROM profiles
@@ -776,7 +776,7 @@ pub(crate) async fn get_reservation_holdings_for_pool(
     } else {
         let query = format!(
             r#"{} {nulls}
-        FROM user_reservation_holdings urh
+        FROM spt_reservation_holdings urh
         LEFT JOIN LATERAL (
             SELECT username, display_name, profile_photo, social_proof_token_address, reservation_pool_address
             FROM profiles
@@ -817,7 +817,7 @@ pub(crate) async fn get_former_reservation_holdings_for_pool(
     viewer: Option<&str>,
     prioritize_followed: bool,
     metrics: &DbReaderMetrics,
-) -> anyhow::Result<Vec<UserReservationHoldingRow>> {
+) -> anyhow::Result<Vec<SptReservationHoldingRow>> {
     metrics.requests_received.inc();
     let _guard = metrics.latency.start_timer();
 
@@ -860,7 +860,7 @@ pub(crate) async fn get_former_reservation_holdings_for_pool(
         ) po ON true
     "#;
 
-    let mut results: Vec<UserReservationHoldingRow> = if prioritize_followed && let Some(v) = viewer
+    let mut results: Vec<SptReservationHoldingRow> = if prioritize_followed && let Some(v) = viewer
     {
         let (v_pid, v_owner) = resolve_profile_address(conn, v).await?;
         let refs = viewer_ref_strings(&v_owner, &v_pid);

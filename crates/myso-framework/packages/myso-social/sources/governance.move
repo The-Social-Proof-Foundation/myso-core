@@ -4,6 +4,11 @@
 /// Governance module for the MySocial network
 /// Manages the decentralized governance system with delegate council and community assembly
 /// Implements proposal submission, voting, and execution processes
+///
+/// Delegate panel refresh at term boundaries runs inside [`try_update_delegate_panel_if_due`], which is
+/// invoked from `update_delegate_panel` and piggybacked on delegate votes, nominations, and proposal
+/// submission. Refresh is lazy until one of those transactions runs in a qualifying epoch; use a keeper
+/// if you need a strict wall-clock guarantee when governance is idle.
 
 #[allow(duplicate_alias, unused_use, lint(public_entry))]
 module social_contracts::governance {
@@ -611,6 +616,8 @@ module social_contracts::governance {
             scheduled_term_start_epoch,
             registry_type: registry.registry_type,
         });
+
+        try_update_delegate_panel_if_due(registry, ctx);
     }
 
     /// Vote for or against a delegate or nominee delegate
@@ -653,6 +660,7 @@ module social_contracts::governance {
                 
                 // If same vote, do nothing
                 if (previous_vote == upvote) {
+                    try_update_delegate_panel_if_due(registry, ctx);
                     return
                 };
                 
@@ -711,6 +719,7 @@ module social_contracts::governance {
                 
                 // If same vote, do nothing
                 if (previous_vote == upvote) {
+                    try_update_delegate_panel_if_due(registry, ctx);
                     return
                 };
                 
@@ -762,6 +771,8 @@ module social_contracts::governance {
             new_downvote_count: downvote_count,
             registry_type: registry.registry_type,
         });
+
+        try_update_delegate_panel_if_due(registry, ctx);
     }
 
     /// Remove the caller's up or down vote on a delegate or nominee (neutral / undo).
@@ -830,12 +841,15 @@ module social_contracts::governance {
             new_downvote_count: downvote_count,
             registry_type: registry.registry_type,
         });
+
+        try_update_delegate_panel_if_due(registry, ctx);
     }
 
-    /// Updates delegate panel at the end of a delegate term cycle.
-    public entry fun update_delegate_panel(
+    /// When `ctx.epoch()` is a non-zero multiple of `delegate_term_epochs`, recomputes the delegate
+    /// council from incumbents and nominees. Otherwise returns immediately.
+    fun try_update_delegate_panel_if_due(
         registry: &mut GovernanceDAO,
-        ctx: &mut TxContext
+        ctx: &TxContext
     ) {
         // Check version compatibility
         assert!(registry.version == upgrade::current_version(), EWrongVersion);
@@ -1054,15 +1068,22 @@ module social_contracts::governance {
             m = m + 1;
         };
         
-        // Destroy helper vectors used for candidate data
-        vector::destroy_empty(candidate_addresses);
-        vector::destroy_empty(candidate_upvotes);
-        vector::destroy_empty(candidate_downvotes);
-        vector::destroy_empty(candidate_net_votes);
-        vector::destroy_empty(candidate_is_incumbent);
-        // Destroy key vectors obtained from into_keys
-        vector::destroy_empty(active_delegate_keys_vec);
-        vector::destroy_empty(nominee_keys_vec);
+        // Drop helper vectors (still contain sorted candidates / keys after winner pass)
+        candidate_addresses.destroy!(|_| {});
+        candidate_upvotes.destroy!(|_| {});
+        candidate_downvotes.destroy!(|_| {});
+        candidate_net_votes.destroy!(|_| {});
+        candidate_is_incumbent.destroy!(|_| {});
+        active_delegate_keys_vec.destroy!(|_| {});
+        nominee_keys_vec.destroy!(|_| {});
+    }
+
+    /// Updates delegate panel at the end of a delegate term cycle (keeper / manual backstop).
+    public entry fun update_delegate_panel(
+        registry: &mut GovernanceDAO,
+        ctx: &mut TxContext
+    ) {
+        try_update_delegate_panel_if_due(registry, ctx);
     }
 
     /// Universal function to submit any type of proposal
@@ -1251,6 +1272,8 @@ module social_contracts::governance {
             reward_amount: registry.proposal_submission_cost,
             submission_time: current_time,
         });
+
+        try_update_delegate_panel_if_due(registry, ctx);
     }
 
     /// Allow a proposal owner to rescind their proposal if it's still in the delegate review stage

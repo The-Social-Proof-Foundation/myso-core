@@ -1175,100 +1175,6 @@ diesel::table! {
 }
 
 diesel::table! {
-    relay_conversations (id) {
-        id -> Int8,
-        conversation_id -> Text,
-        participant1_address -> Text,
-        participant2_address -> Text,
-        last_message_at -> Nullable<Timestamptz>,
-        created_at -> Timestamptz,
-        updated_at -> Timestamptz,
-    }
-}
-
-diesel::table! {
-    relay_device_tokens (id) {
-        id -> Int8,
-        user_address -> Text,
-        device_token -> Text,
-        platform -> Text,
-        device_id -> Nullable<Text>,
-        app_version -> Nullable<Text>,
-        created_at -> Timestamptz,
-        updated_at -> Timestamptz,
-        last_used_at -> Timestamptz,
-    }
-}
-
-diesel::table! {
-    relay_messages (id) {
-        id -> Int8,
-        conversation_id -> Text,
-        sender_address -> Text,
-        recipient_address -> Text,
-        content_type -> Text,
-        media_urls -> Nullable<Jsonb>,
-        metadata -> Nullable<Jsonb>,
-        created_at -> Timestamptz,
-        delivered_at -> Nullable<Timestamptz>,
-        read_at -> Nullable<Timestamptz>,
-        content -> Nullable<Bytea>,
-    }
-}
-
-diesel::table! {
-    relay_notifications (id) {
-        id -> Int8,
-        user_address -> Text,
-        notification_type -> Text,
-        title -> Text,
-        body -> Text,
-        data -> Nullable<Jsonb>,
-        read_at -> Nullable<Timestamptz>,
-        created_at -> Timestamptz,
-        platform_id -> Nullable<Text>,
-    }
-}
-
-diesel::table! {
-    relay_outbox (id) {
-        id -> Int8,
-        event_type -> Text,
-        event_data -> Jsonb,
-        event_id -> Nullable<Text>,
-        transaction_id -> Nullable<Text>,
-        created_at -> Timestamptz,
-        processed_at -> Nullable<Timestamptz>,
-        published_at -> Nullable<Timestamptz>,
-        retry_count -> Int4,
-        error_message -> Nullable<Text>,
-    }
-}
-
-diesel::table! {
-    relay_user_preferences (user_address) {
-        user_address -> Text,
-        push_enabled -> Bool,
-        email_enabled -> Bool,
-        sms_enabled -> Bool,
-        notification_types -> Jsonb,
-        created_at -> Timestamptz,
-        updated_at -> Timestamptz,
-    }
-}
-
-diesel::table! {
-    relay_ws_connections (id) {
-        id -> Int8,
-        user_address -> Text,
-        connection_id -> Text,
-        connected_at -> Timestamptz,
-        last_heartbeat_at -> Timestamptz,
-        disconnected_at -> Nullable<Timestamptz>,
-    }
-}
-
-diesel::table! {
     reposts (id, time) {
         id -> Text,
         repost_id -> Text,
@@ -1881,13 +1787,6 @@ diesel::allow_tables_to_appear_in_same_query!(
     proposals,
     reaction_counts,
     reactions,
-    relay_conversations,
-    relay_device_tokens,
-    relay_messages,
-    relay_notifications,
-    relay_outbox,
-    relay_user_preferences,
-    relay_ws_connections,
     reposts,
     reward_distributions,
     social_graph_events,

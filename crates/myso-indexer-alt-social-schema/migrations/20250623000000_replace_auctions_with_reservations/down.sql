@@ -7,7 +7,7 @@
 
 -- Drop views that depend on staking tables
 DROP VIEW IF EXISTS active_reservation_pools CASCADE;
-DROP VIEW IF EXISTS user_reservation_holdings CASCADE;
+DROP VIEW IF EXISTS spt_reservation_holdings CASCADE;
 DROP VIEW IF EXISTS popular_token_pools CASCADE;
 
 -- Drop functions

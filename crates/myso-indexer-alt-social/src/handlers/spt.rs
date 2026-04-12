@@ -41,6 +41,20 @@ fn json_to_i64(v: &serde_json::Value) -> i64 {
         .unwrap_or(0)
 }
 
+/// JSON number from chain events (`u64` in Move) clamped to `i64` for BIGINT columns.
+fn json_u64_to_i64_opt(v: Option<&serde_json::Value>) -> i64 {
+    let Some(v) = v else {
+        return 0;
+    };
+    if let Some(i) = v.as_i64() {
+        return i;
+    }
+    if let Some(u) = v.as_u64() {
+        return u.min(i64::MAX as u64) as i64;
+    }
+    0
+}
+
 fn json_str(v: &serde_json::Value) -> Option<String> {
     v.as_str().map(String::from)
 }
@@ -117,6 +131,8 @@ fn process_token_pool_created_event(
     let name = json_str(data.get("name")?).unwrap_or_default();
     let base_price = json_to_i64(data.get("base_price")?);
     let quadratic_coefficient = json_to_i64(data.get("quadratic_coefficient")?);
+    let circulating_supply = json_u64_to_i64_opt(data.get("circulating_supply"));
+    let total_reserved_at_launch = json_u64_to_i64_opt(data.get("total_reserved_at_launch"));
 
     let pool = NewSptPool {
         pool_id: id.clone(),
@@ -125,7 +141,7 @@ fn process_token_pool_created_event(
         associated_id: associated_id.clone(),
         symbol,
         name,
-        circulating_supply: 0,
+        circulating_supply,
         base_price,
         quadratic_coefficient,
         created_at: ts,
@@ -134,17 +150,63 @@ fn process_token_pool_created_event(
     };
 
     let price_history = NewSptPriceHistory {
-        pool_id: id,
+        pool_id: id.clone(),
         price: base_price,
-        circulating_supply: 0,
+        circulating_supply,
         time: now,
         transaction_id: transaction_id.to_string(),
     };
 
-    Some(vec![
+    let mut rows = vec![
         SocialEventRow::SptPool(pool),
         SocialEventRow::SptPriceHistory(price_history),
-    ])
+    ];
+
+    if token_type == TOKEN_TYPE_PROFILE {
+        rows.push(SocialEventRow::ProfileUpdate(ProfileUpdate {
+            profile_id: associated_id.clone(),
+            owner_address: owner.clone(),
+            display_name: None,
+            bio: None,
+            profile_photo: None,
+            cover_photo: None,
+            birthdate: None,
+            current_location: None,
+            raised_location: None,
+            phone: None,
+            email: None,
+            gender: None,
+            political_view: None,
+            religion: None,
+            education: None,
+            primary_language: None,
+            relationship_status: None,
+            x_username: None,
+            min_offer_amount: None,
+            username: None,
+            selected_badge_id: None,
+            selected_ecosystem_badge_id: None,
+            paid_messaging_enabled: None,
+            paid_messaging_min_cost: None,
+            reservation_pool_address: None,
+            social_proof_token_address: Some(Some(id.clone())),
+        }));
+    }
+
+    if circulating_supply > 0 {
+        rows.push(SocialEventRow::SptLaunchHoldingsFromReservations {
+            pool_id: id,
+            associated_id,
+            owner,
+            circulating_supply,
+            total_reserved_at_launch,
+            created_at: ts,
+            time: now,
+            transaction_id: transaction_id.to_string(),
+        });
+    }
+
+    Some(rows)
 }
 
 fn process_token_bought_event(
@@ -389,6 +451,7 @@ fn process_reservation_pool_created_event(
             paid_messaging_enabled: None,
             paid_messaging_min_cost: None,
             reservation_pool_address: Some(Some(pool_object_id)),
+            social_proof_token_address: None,
         };
         rows.push(SocialEventRow::ProfileUpdate(profile_update));
     }
@@ -901,6 +964,125 @@ mod tests {
             )),
             "reservation-created pool update"
         );
+    }
+
+    #[test]
+    fn token_pool_created_sets_supply_price_profile_and_launch_holdings_marker() {
+        let data = json!({
+            "id": "0xpool1",
+            "token_type": 1u64,
+            "owner": "0xowner",
+            "associated_id": "0xprof",
+            "symbol": "S",
+            "name": "N",
+            "base_price": 5i64,
+            "quadratic_coefficient": 1i64,
+            "circulating_supply": 100u64,
+            "total_reserved_at_launch": 1000u64,
+        });
+        let rows = handle_spt_event("TokenPoolCreatedEvent", &data, "tx:0", 0, 5000).expect("rows");
+        let pool = rows
+            .iter()
+            .find_map(|r| {
+                if let SocialEventRow::SptPool(p) = r {
+                    Some(p)
+                } else {
+                    None
+                }
+            })
+            .expect("SptPool");
+        assert_eq!(pool.circulating_supply, 100);
+        let ph = rows
+            .iter()
+            .find_map(|r| {
+                if let SocialEventRow::SptPriceHistory(h) = r {
+                    Some(h)
+                } else {
+                    None
+                }
+            })
+            .expect("SptPriceHistory");
+        assert_eq!(ph.circulating_supply, 100);
+        assert!(
+            rows.iter()
+                .any(|r| matches!(r, SocialEventRow::ProfileUpdate(up) if up.social_proof_token_address == Some(Some("0xpool1".to_string())))),
+            "profile token sets social_proof_token_address"
+        );
+        let launch = rows.iter().find_map(|r| {
+            if let SocialEventRow::SptLaunchHoldingsFromReservations {
+                circulating_supply,
+                total_reserved_at_launch,
+                ..
+            } = r
+            {
+                Some((*circulating_supply, *total_reserved_at_launch))
+            } else {
+                None
+            }
+        })
+        .expect("SptLaunchHoldingsFromReservations");
+        assert_eq!(launch, (100, 1000));
+    }
+
+    #[test]
+    fn token_pool_created_post_type_has_no_profile_update() {
+        let data = json!({
+            "id": "0xpool2",
+            "token_type": 2u64,
+            "owner": "0xowner",
+            "associated_id": "0xpost",
+            "symbol": "",
+            "name": "",
+            "base_price": 0i64,
+            "quadratic_coefficient": 0i64,
+            "circulating_supply": 10u64,
+            "total_reserved_at_launch": 100u64,
+        });
+        let rows = handle_spt_event("TokenPoolCreatedEvent", &data, "tx:0", 0, 5000).expect("rows");
+        assert!(
+            !rows
+                .iter()
+                .any(|r| matches!(r, SocialEventRow::ProfileUpdate(_))),
+            "post token must not emit ProfileUpdate"
+        );
+        assert!(
+            rows
+                .iter()
+                .any(|r| matches!(r, SocialEventRow::SptLaunchHoldingsFromReservations { .. })),
+            "launch row when circulating_supply > 0"
+        );
+    }
+
+    #[test]
+    fn token_pool_created_without_supply_skips_launch_row() {
+        let data = json!({
+            "id": "0xpool1",
+            "token_type": 2u64,
+            "owner": "0xowner",
+            "associated_id": "0xpost",
+            "symbol": "",
+            "name": "",
+            "base_price": 0i64,
+            "quadratic_coefficient": 0i64,
+        });
+        let rows = handle_spt_event("TokenPoolCreatedEvent", &data, "tx:0", 0, 5000).expect("rows");
+        assert!(
+            !rows
+                .iter()
+                .any(|r| matches!(r, SocialEventRow::SptLaunchHoldingsFromReservations { .. })),
+            "legacy JSON omits circulating_supply → no launch holdings row"
+        );
+        let pool = rows
+            .iter()
+            .find_map(|r| {
+                if let SocialEventRow::SptPool(p) = r {
+                    Some(p)
+                } else {
+                    None
+                }
+            })
+            .expect("SptPool");
+        assert_eq!(pool.circulating_supply, 0);
     }
 
     #[test]

@@ -76,7 +76,8 @@ use crate::spt::{
     get_reservation_holdings_for_pool, get_reservation_pool_id_for_associated_id,
     get_spt_exchange_config, get_spt_holdings_by_holder, get_spt_holdings_by_pool, get_spt_pool,
     get_spt_pool_id_for_profile, get_spt_price_history, get_spt_reservation_volume_history,
-    get_spt_transactions, get_user_reservation_holdings, list_spt_pools,
+    get_spt_reservation_holdings_for_reserver as fetch_spt_reservation_holdings_for_reserver,
+    get_spt_transactions, list_spt_pools,
 };
 use crate::vesting::{get_vesting_leaderboard, get_vesting_wallet, list_vesting_wallets};
 
@@ -644,16 +645,17 @@ impl SocialPgReader {
         .await
     }
 
-    /// Get user reservation holdings (reservation SPT positions).
-    pub async fn get_user_reservation_holdings(
+    /// Reservation holdings for a reserver address (from `spt_reservation_holdings`).
+    pub async fn get_spt_reservation_holdings_for_reserver(
         &self,
         address: &str,
         limit: i64,
         offset: i64,
-    ) -> anyhow::Result<Vec<myso_indexer_alt_social_schema::models::UserReservationHoldingRow>>
+    ) -> anyhow::Result<Vec<myso_indexer_alt_social_schema::models::SptReservationHoldingRow>>
     {
         let mut conn = self.connect().await?;
-        get_user_reservation_holdings(&mut conn, address, limit, offset, &self.metrics).await
+        fetch_spt_reservation_holdings_for_reserver(&mut conn, address, limit, offset, &self.metrics)
+            .await
     }
 
     /// Reservation pool id for an SPT `associated_id` (e.g. `profile_0x...`).
@@ -673,7 +675,7 @@ impl SocialPgReader {
         offset: i64,
         viewer: Option<&str>,
         prioritize_followed: bool,
-    ) -> anyhow::Result<Vec<myso_indexer_alt_social_schema::models::UserReservationHoldingRow>>
+    ) -> anyhow::Result<Vec<myso_indexer_alt_social_schema::models::SptReservationHoldingRow>>
     {
         let mut conn = self.connect().await?;
         get_reservation_holdings_for_pool(
@@ -696,7 +698,7 @@ impl SocialPgReader {
         offset: i64,
         viewer: Option<&str>,
         prioritize_followed: bool,
-    ) -> anyhow::Result<Vec<myso_indexer_alt_social_schema::models::UserReservationHoldingRow>>
+    ) -> anyhow::Result<Vec<myso_indexer_alt_social_schema::models::SptReservationHoldingRow>>
     {
         let mut conn = self.connect().await?;
         get_former_reservation_holdings_for_pool(
