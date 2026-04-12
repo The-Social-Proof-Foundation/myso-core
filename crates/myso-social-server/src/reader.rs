@@ -484,8 +484,16 @@ impl Reader {
     pub async fn get_delegate_by_address(
         &self,
         address: &str,
+        registry_type: Option<i16>,
+        governance_registry_id: Option<&str>,
     ) -> Result<Option<DelegateRow>, crate::error::SocialError> {
-        governance::get_delegate_by_address(&self.db, address).await
+        governance::get_delegate_by_address(
+            &self.db,
+            address,
+            registry_type,
+            governance_registry_id,
+        )
+        .await
     }
 
     pub async fn get_delegate_proposals(

@@ -147,9 +147,9 @@ pub(crate) async fn list_delegates(
     let _guard = metrics.latency.start_timer();
 
     let query = "
-        SELECT address, registry_type, upvotes, downvotes, proposals_reviewed, proposals_submitted,
+        SELECT address, registry_type, governance_registry_id, upvotes, downvotes, proposals_reviewed, proposals_submitted,
                sided_winning_proposals, sided_losing_proposals, term_start, term_end, is_active
-        FROM (SELECT DISTINCT ON (address, registry_type) * FROM delegates ORDER BY address, registry_type, time DESC) d
+        FROM (SELECT DISTINCT ON (address, registry_type, COALESCE(governance_registry_id, '')) * FROM delegates ORDER BY address, registry_type, COALESCE(governance_registry_id, ''), time DESC) d
         WHERE ($1::smallint IS NULL OR registry_type = $1)
           AND ($2::bool IS NULL OR is_active = $2)
         ORDER BY upvotes DESC
@@ -171,21 +171,28 @@ pub(crate) async fn list_delegates(
 pub(crate) async fn get_delegate_by_address(
     conn: &mut Connection<'_>,
     address: &str,
+    registry_type: Option<i16>,
+    governance_registry_id: Option<&str>,
     metrics: &DbReaderMetrics,
 ) -> anyhow::Result<Option<DelegateRow>> {
     metrics.requests_received.inc();
     let _guard = metrics.latency.start_timer();
 
     let query = "
-        SELECT address, registry_type, upvotes, downvotes, proposals_reviewed, proposals_submitted,
+        SELECT address, registry_type, governance_registry_id, upvotes, downvotes, proposals_reviewed, proposals_submitted,
                sided_winning_proposals, sided_losing_proposals, term_start, term_end, is_active
-        FROM (SELECT DISTINCT ON (address, registry_type) * FROM delegates ORDER BY address, registry_type, time DESC) d
+        FROM (SELECT DISTINCT ON (address, registry_type, COALESCE(governance_registry_id, '')) * FROM delegates ORDER BY address, registry_type, COALESCE(governance_registry_id, ''), time DESC) d
         WHERE address = $1
+          AND ($2::smallint IS NULL OR registry_type = $2)
+          AND ($3::text IS NULL OR governance_registry_id IS NOT DISTINCT FROM $3)
+        ORDER BY registry_type, governance_registry_id NULLS FIRST
         LIMIT 1
     ";
 
     let result = diesel::sql_query(query)
         .bind::<Text, _>(address)
+        .bind::<Nullable<SmallInt>, _>(registry_type)
+        .bind::<Nullable<Text>, _>(governance_registry_id)
         .get_result::<DelegateRow>(conn)
         .await
         .optional()?;

@@ -79,6 +79,12 @@ pub struct GovernanceDelegateQuery {
 }
 
 #[derive(Debug, Deserialize)]
+pub struct GovernanceDelegateGetQuery {
+    pub registry_type: Option<i16>,
+    pub governance_registry_id: Option<String>,
+}
+
+#[derive(Debug, Deserialize)]
 pub struct GovernanceNomineeQuery {
     pub limit: Option<i64>,
     pub offset: Option<i64>,

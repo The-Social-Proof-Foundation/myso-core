@@ -645,6 +645,11 @@ impl Delegate {
         self.inner.registry_type
     }
 
+    /// On-chain governance registry object id when `registry_type` is platform (2); null for ecosystem/PoC.
+    async fn governance_registry_id(&self) -> Option<String> {
+        self.inner.governance_registry_id.clone()
+    }
+
     /// Upvotes (delegate ratings).
     async fn upvotes(&self) -> i64 {
         self.inner.upvotes

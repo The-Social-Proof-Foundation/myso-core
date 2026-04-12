@@ -1379,9 +1379,18 @@ impl SocialPgReader {
     pub async fn get_delegate_by_address(
         &self,
         address: &str,
+        registry_type: Option<i16>,
+        governance_registry_id: Option<&str>,
     ) -> anyhow::Result<Option<myso_indexer_alt_social_schema::models::DelegateRow>> {
         let mut conn = self.connect().await?;
-        get_delegate_by_address(&mut conn, address, &self.metrics).await
+        get_delegate_by_address(
+            &mut conn,
+            address,
+            registry_type,
+            governance_registry_id,
+            &self.metrics,
+        )
+        .await
     }
 
     /// List nominated delegates (paginated). With `platform_id`, scopes to that platform's governance

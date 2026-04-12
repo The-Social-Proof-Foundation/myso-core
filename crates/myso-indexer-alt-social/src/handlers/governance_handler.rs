@@ -86,7 +86,9 @@ pub enum GovernanceRow {
         approve: bool,
     },
     DelegateProposalsReviewedIncrement {
-        address: String,
+        proposal_id: String,
+        delegate_address: String,
+        governance_registry_id: Option<String>,
     },
     ProposalCommunityVoteUpdate {
         proposal_id: String,
@@ -96,10 +98,12 @@ pub enum GovernanceRow {
     ProposalOutcomeApplyDelegateSidedUpdates {
         proposal_id: String,
         approvers_win: bool,
+        governance_registry_id: Option<String>,
     },
     DelegateProposalsSubmittedIncrement {
         address: String,
         registry_type: i16,
+        governance_registry_id: Option<String>,
     },
     ProposalAnonymousVotersIncrement {
         proposal_id: String,
@@ -198,9 +202,15 @@ impl GovernanceRow {
                 proposal_id,
                 approve,
             }),
-            crate::handlers::SocialEventRow::DelegateProposalsReviewedIncrement { address } => {
-                Some(GovernanceRow::DelegateProposalsReviewedIncrement { address })
-            }
+            crate::handlers::SocialEventRow::DelegateProposalsReviewedIncrement {
+                proposal_id,
+                delegate_address,
+                governance_registry_id,
+            } => Some(GovernanceRow::DelegateProposalsReviewedIncrement {
+                proposal_id,
+                delegate_address,
+                governance_registry_id,
+            }),
             crate::handlers::SocialEventRow::ProposalCommunityVoteUpdate {
                 proposal_id,
                 votes_for_delta,
@@ -213,16 +223,20 @@ impl GovernanceRow {
             crate::handlers::SocialEventRow::ProposalOutcomeApplyDelegateSidedUpdates {
                 proposal_id,
                 approvers_win,
+                governance_registry_id,
             } => Some(GovernanceRow::ProposalOutcomeApplyDelegateSidedUpdates {
                 proposal_id,
                 approvers_win,
+                governance_registry_id,
             }),
             crate::handlers::SocialEventRow::DelegateProposalsSubmittedIncrement {
                 address,
                 registry_type,
+                governance_registry_id,
             } => Some(GovernanceRow::DelegateProposalsSubmittedIncrement {
                 address,
                 registry_type,
+                governance_registry_id,
             }),
             crate::handlers::SocialEventRow::ProposalAnonymousVotersIncrement { proposal_id } => {
                 Some(GovernanceRow::ProposalAnonymousVotersIncrement { proposal_id })
@@ -593,12 +607,13 @@ impl Handler for GovernanceHandler {
                 } => {
                     if *is_active_delegate {
                         let upd = diesel::sql_query(
-                            "UPDATE delegates SET upvotes = $1, downvotes = $2 WHERE address = $3 AND registry_type = $4 AND time = (SELECT max(time) FROM delegates WHERE address = $3 AND registry_type = $4)",
+                            "UPDATE delegates SET upvotes = $1, downvotes = $2 WHERE address = $3 AND registry_type = $4 AND governance_registry_id IS NOT DISTINCT FROM $5 AND time = (SELECT max(time) FROM delegates WHERE address = $3 AND registry_type = $4 AND governance_registry_id IS NOT DISTINCT FROM $5)",
                         )
                         .bind::<BigInt, _>(*upvotes)
                         .bind::<BigInt, _>(*downvotes)
                         .bind::<Text, _>(target_address)
-                        .bind::<Int2, _>(*registry_type);
+                        .bind::<Int2, _>(*registry_type)
+                        .bind::<Nullable<Text>, _>(governance_registry_id.as_deref());
                         total += upd.execute(conn).await?;
                     } else {
                         let upd = diesel::sql_query(
@@ -626,11 +641,27 @@ impl Handler for GovernanceHandler {
                         .execute(conn)
                         .await?;
                 }
-                GovernanceRow::DelegateProposalsReviewedIncrement { address } => {
-                    let upd = diesel::sql_query(
-                        "UPDATE delegates SET proposals_reviewed = proposals_reviewed + 1 WHERE address = $1 AND is_active = true",
-                    )
-                    .bind::<Text, _>(address);
+                GovernanceRow::DelegateProposalsReviewedIncrement {
+                    proposal_id,
+                    delegate_address,
+                    governance_registry_id,
+                } => {
+                    let sql = format!(
+                        "UPDATE delegates d SET proposals_reviewed = proposals_reviewed + 1 \
+                         FROM proposals p \
+                         WHERE p.id = $1 AND d.address = $2 AND d.registry_type = p.proposal_type \
+                         AND d.is_active = true \
+                         AND ((p.proposal_type <> {pt} AND d.governance_registry_id IS NULL) \
+                         OR (p.proposal_type = {pt} AND d.governance_registry_id IS NOT DISTINCT FROM $3)) \
+                         AND d.time = (SELECT max(time) FROM delegates d2 \
+                         WHERE d2.address = d.address AND d2.registry_type = d.registry_type \
+                         AND d2.governance_registry_id IS NOT DISTINCT FROM d.governance_registry_id)",
+                        pt = PROPOSAL_TYPE_PLATFORM
+                    );
+                    let upd = diesel::sql_query(sql)
+                        .bind::<Text, _>(proposal_id)
+                        .bind::<Text, _>(delegate_address)
+                        .bind::<Nullable<Text>, _>(governance_registry_id.as_deref());
                     total += upd.execute(conn).await?;
                 }
                 GovernanceRow::ProposalCommunityVoteUpdate {
@@ -649,23 +680,42 @@ impl Handler for GovernanceHandler {
                 GovernanceRow::ProposalOutcomeApplyDelegateSidedUpdates {
                     proposal_id,
                     approvers_win,
+                    governance_registry_id,
                 } => {
-                    let subq = "SELECT DISTINCT ON (delegate_address) delegate_address, approve FROM delegate_votes WHERE proposal_id = $1 ORDER BY delegate_address, time DESC";
+                    let subq = "SELECT DISTINCT ON (dv.delegate_address) dv.delegate_address, dv.approve, p.proposal_type FROM delegate_votes dv INNER JOIN proposals p ON p.id = dv.proposal_id WHERE dv.proposal_id = $1 ORDER BY dv.delegate_address, dv.time DESC";
                     let win_sql = format!(
-                        "UPDATE delegates d SET sided_winning_proposals = sided_winning_proposals + 1 FROM ({}) dv WHERE d.address = dv.delegate_address AND dv.approve = $2",
-                        subq
+                        "UPDATE delegates d SET sided_winning_proposals = sided_winning_proposals + 1 FROM ({}) x \
+                         WHERE d.address = x.delegate_address AND d.registry_type = x.proposal_type AND d.is_active = true \
+                         AND ((x.proposal_type <> {pt} AND d.governance_registry_id IS NULL) \
+                         OR (x.proposal_type = {pt} AND d.governance_registry_id IS NOT DISTINCT FROM $2)) \
+                         AND d.time = (SELECT max(time) FROM delegates d2 WHERE d2.address = d.address \
+                         AND d2.registry_type = d.registry_type \
+                         AND d2.governance_registry_id IS NOT DISTINCT FROM d.governance_registry_id) \
+                         AND x.approve = $3",
+                        subq,
+                        pt = PROPOSAL_TYPE_PLATFORM
                     );
                     let lose_sql = format!(
-                        "UPDATE delegates d SET sided_losing_proposals = sided_losing_proposals + 1 FROM ({}) dv WHERE d.address = dv.delegate_address AND dv.approve = $2",
-                        subq
+                        "UPDATE delegates d SET sided_losing_proposals = sided_losing_proposals + 1 FROM ({}) x \
+                         WHERE d.address = x.delegate_address AND d.registry_type = x.proposal_type AND d.is_active = true \
+                         AND ((x.proposal_type <> {pt} AND d.governance_registry_id IS NULL) \
+                         OR (x.proposal_type = {pt} AND d.governance_registry_id IS NOT DISTINCT FROM $2)) \
+                         AND d.time = (SELECT max(time) FROM delegates d2 WHERE d2.address = d.address \
+                         AND d2.registry_type = d.registry_type \
+                         AND d2.governance_registry_id IS NOT DISTINCT FROM d.governance_registry_id) \
+                         AND x.approve = $3",
+                        subq,
+                        pt = PROPOSAL_TYPE_PLATFORM
                     );
                     total += diesel::sql_query(&win_sql)
                         .bind::<Text, _>(proposal_id)
+                        .bind::<Nullable<Text>, _>(governance_registry_id.as_deref())
                         .bind::<Bool, _>(*approvers_win)
                         .execute(conn)
                         .await?;
                     total += diesel::sql_query(&lose_sql)
                         .bind::<Text, _>(proposal_id)
+                        .bind::<Nullable<Text>, _>(governance_registry_id.as_deref())
                         .bind::<Bool, _>(!*approvers_win)
                         .execute(conn)
                         .await?;
@@ -673,12 +723,14 @@ impl Handler for GovernanceHandler {
                 GovernanceRow::DelegateProposalsSubmittedIncrement {
                     address,
                     registry_type,
+                    governance_registry_id,
                 } => {
                     let upd = diesel::sql_query(
-                        "UPDATE delegates SET proposals_submitted = proposals_submitted + 1 WHERE address = $1 AND registry_type = $2 AND is_active = true",
+                        "UPDATE delegates SET proposals_submitted = proposals_submitted + 1 WHERE address = $1 AND registry_type = $2 AND is_active = true AND governance_registry_id IS NOT DISTINCT FROM $3",
                     )
                     .bind::<Text, _>(address)
-                    .bind::<Int2, _>(*registry_type);
+                    .bind::<Int2, _>(*registry_type)
+                    .bind::<Nullable<Text>, _>(governance_registry_id.as_deref());
                     total += upd.execute(conn).await?;
                 }
                 GovernanceRow::ProposalAnonymousVotersIncrement { proposal_id } => {

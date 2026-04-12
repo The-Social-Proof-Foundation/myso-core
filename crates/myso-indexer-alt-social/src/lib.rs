@@ -4,6 +4,7 @@
 use url::Url;
 
 mod handlers;
+pub mod metrics;
 
 pub use handlers::{
     BlockingHandler, GovernanceHandler, InsuranceHandler, MyDataHandler, PlatformHandler,
@@ -62,6 +63,9 @@ pub async fn setup_social_indexer(
         Some("social_indexer_db"),
         store.clone(),
     )))?;
+
+    let social_metrics = metrics::SocialMetrics::new(registry).context("SocialMetrics registration")?;
+    metrics::SocialMetrics::init(social_metrics);
 
     let metrics = MetricsService::new(metrics_args, registry.clone());
 

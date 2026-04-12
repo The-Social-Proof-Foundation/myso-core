@@ -40,20 +40,20 @@ CREATE INDEX IF NOT EXISTS idx_token_exchange_config_trading_enabled
 ON spt_exchange_config(trading_enabled);
 
 -- ============================================================================
--- 2. UPDATE social_proof_tokens_config TABLE
+-- 2. UPDATE spt_config TABLE
 -- ============================================================================
 
--- Check if social_proof_tokens_config table exists
+-- Check if spt_config table exists
 DO $$
 BEGIN
     -- If table doesn't exist, create it with the correct schema (trading_enabled)
     IF NOT EXISTS (
         SELECT 1 FROM information_schema.tables 
         WHERE table_schema = 'public' 
-        AND table_name = 'social_proof_tokens_config'
+        AND table_name = 'spt_config'
     ) THEN
         -- Create table with trading_enabled (final desired state)
-        CREATE TABLE social_proof_tokens_config (
+        CREATE TABLE spt_config (
             id SERIAL PRIMARY KEY,
             trading_enabled BOOLEAN NOT NULL DEFAULT true,
             admin_address TEXT NOT NULL,
@@ -69,46 +69,46 @@ BEGIN
         );
 
         -- Create index for trading_enabled
-        CREATE INDEX IF NOT EXISTS idx_social_proof_tokens_config_trading_enabled 
-        ON social_proof_tokens_config(trading_enabled);
+        CREATE INDEX IF NOT EXISTS idx_spt_config_trading_enabled 
+        ON spt_config(trading_enabled);
 
         -- Create index for updated_at
-        CREATE INDEX IF NOT EXISTS idx_social_proof_tokens_config_updated_at 
-        ON social_proof_tokens_config(updated_at DESC);
+        CREATE INDEX IF NOT EXISTS idx_spt_config_updated_at 
+        ON spt_config(updated_at DESC);
     ELSE
         -- Table exists, check if it has trading_halted column (needs migration)
         IF EXISTS (
             SELECT 1 FROM information_schema.columns 
             WHERE table_schema = 'public' 
-            AND table_name = 'social_proof_tokens_config' 
+            AND table_name = 'spt_config' 
             AND column_name = 'trading_halted'
         ) THEN
             -- Add new column trading_enabled
-            ALTER TABLE social_proof_tokens_config 
+            ALTER TABLE spt_config 
             ADD COLUMN trading_enabled BOOLEAN;
 
             -- Invert values: trading_enabled = NOT trading_halted
-            UPDATE social_proof_tokens_config 
+            UPDATE spt_config 
             SET trading_enabled = NOT trading_halted;
 
             -- Make trading_enabled NOT NULL (after data migration)
-            ALTER TABLE social_proof_tokens_config 
+            ALTER TABLE spt_config 
             ALTER COLUMN trading_enabled SET NOT NULL;
 
             -- Set default value
-            ALTER TABLE social_proof_tokens_config 
+            ALTER TABLE spt_config 
             ALTER COLUMN trading_enabled SET DEFAULT true;
 
             -- Drop old column
-            ALTER TABLE social_proof_tokens_config 
+            ALTER TABLE spt_config 
             DROP COLUMN trading_halted;
 
             -- Create index for trading_enabled if it doesn't exist
-            CREATE INDEX IF NOT EXISTS idx_social_proof_tokens_config_trading_enabled 
-            ON social_proof_tokens_config(trading_enabled);
+            CREATE INDEX IF NOT EXISTS idx_spt_config_trading_enabled 
+            ON spt_config(trading_enabled);
 
             -- Drop old index if it exists
-            DROP INDEX IF EXISTS idx_social_proof_tokens_config_trading_halted;
+            DROP INDEX IF EXISTS idx_spt_config_trading_halted;
         END IF;
         -- If table exists but already has trading_enabled, do nothing (already migrated)
     END IF;

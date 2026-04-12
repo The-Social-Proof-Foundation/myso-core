@@ -28,7 +28,7 @@ use myso_indexer_alt_social_schema::models::{
     TOKEN_TYPE_POST,
 };
 use myso_indexer_alt_social_schema::schema::{
-    ecosystem_treasury, posts, profiles, social_proof_tokens_config, social_proof_tokens_events,
+    ecosystem_treasury, posts, profiles, spt_config, spt_events,
     spt_exchange_config, spt_holdings, spt_pools, spt_price_history, spt_reservation_pools,
     spt_reservations, spt_revenue, spt_transactions, unified_revenue,
 };
@@ -37,6 +37,8 @@ use super::common;
 use super::events;
 use super::spt;
 use super::ProfileUpdate;
+
+use crate::metrics::SocialMetrics;
 
 const SPT_MODULES: &[&str] = &["social_proof_tokens", "spt"];
 
@@ -235,7 +237,83 @@ impl FieldCount for SptRow {
     const FIELD_COUNT: usize = 17;
 }
 
+/// SPT rows: live pools use `spt_holdings`; reservation phase uses `spt_reservations` (+ view
+/// `spt_reservation_holdings`). A unified hypertable was considered and **deferred** — readers and
+/// GraphQL assume this split.
+///
+/// **Optional future Move event:** `TokenPoolLaunchHoldingsEvent { pool_id, entries: Vec<(address, u64)> }`
+/// (or similar) could let the indexer skip proportional re-derivation from `spt_reservations` if
+/// on-chain emits exact per-holder SPT at launch. Not required when extended `TokenPoolCreatedEvent`
+/// + full reservation index + checkpoint replay are used (greenfield).
 pub struct SptHandler;
+
+impl SptHandler {
+    /// After applying all rows in the batch, detect pool rows with zero `circulating_supply` while
+    /// the reservation ledger still shows net MYSO for that `associated_id` (parser / legacy-event bug).
+    ///
+    /// Set `MYSO_SOCIAL_INDEXER_STRICT_SPT_LAUNCH=1` to fail the batch (staging / CI).
+    async fn validate_zero_circ_pools_after_batch<'a>(
+        conn: &mut Connection<'a>,
+        zero_circ: &[(String, String)],
+    ) -> Result<()> {
+        if zero_circ.is_empty() {
+            return Ok(());
+        }
+        let strict = std::env::var("MYSO_SOCIAL_INDEXER_STRICT_SPT_LAUNCH")
+            .map(|v| v == "1" || v.eq_ignore_ascii_case("true"))
+            .unwrap_or(false);
+
+        #[derive(QueryableByName)]
+        struct NetRow {
+            #[diesel(sql_type = BigInt)]
+            net_myso: i64,
+        }
+
+        for (pool_id, associated_id) in zero_circ {
+            let canon: Option<SptReservationCanonPoolRow> = diesel::sql_query(
+                "SELECT pool_id FROM spt_reservation_pools WHERE associated_id = $1 ORDER BY time DESC LIMIT 1",
+            )
+            .bind::<Text, _>(associated_id)
+            .get_result(conn)
+            .await
+            .optional()?;
+
+            let reservation_pool_key = canon
+                .map(|c| c.pool_id)
+                .unwrap_or_else(|| format!("reservation_pool_{}", associated_id));
+            let placeholder = format!("reservation_pool_{}", associated_id);
+
+            let net_row: NetRow = diesel::sql_query(
+                r#"SELECT COALESCE(SUM(amount), 0)::bigint AS net_myso FROM spt_reservations
+                   WHERE pool_id = $1 OR pool_id = $2"#,
+            )
+            .bind::<Text, _>(&reservation_pool_key)
+            .bind::<Text, _>(&placeholder)
+            .get_result(conn)
+            .await?;
+
+            if net_row.net_myso > 0 {
+                SocialMetrics::record_spt_pool_zero_supply_with_reservations();
+                tracing::error!(
+                    target: "social_indexer::spt",
+                    pool_id = %pool_id,
+                    associated_id = %associated_id,
+                    net_reservation_myso = net_row.net_myso,
+                    "spt pool inserted with circulating_supply=0 but reservation ledger has net MYSO; use extended TokenPoolCreatedEvent on chain and replay checkpoints (greenfield)"
+                );
+                if strict {
+                    return Err(anyhow::anyhow!(
+                        "spt strict launch check failed: pool {} associated {} has circulating_supply=0 but net reservation MYSO {}",
+                        pool_id,
+                        associated_id,
+                        net_row.net_myso
+                    ));
+                }
+            }
+        }
+        Ok(())
+    }
+}
 
 #[async_trait]
 impl Processor for SptHandler {
@@ -288,9 +366,13 @@ impl Handler for SptHandler {
         use diesel::dsl::max;
 
         let mut total = 0;
+        let mut zero_circ_pools: Vec<(String, String)> = Vec::new();
         for row in values {
             match row {
                 SptRow::SptPool(p) => {
+                    if p.circulating_supply == 0 {
+                        zero_circ_pools.push((p.pool_id.clone(), p.associated_id.clone()));
+                    }
                     total += diesel::insert_into(spt_pools::table)
                         .values(p)
                         .execute(conn)
@@ -893,34 +975,34 @@ impl Handler for SptHandler {
                     }
                 }
                 SptRow::SocialProofTokensConfig(c) => {
-                    let max_id: Option<i32> = social_proof_tokens_config::table
-                        .select(max(social_proof_tokens_config::id))
+                    let max_id: Option<i32> = spt_config::table
+                        .select(max(spt_config::id))
                         .get_result(conn)
                         .await
                         .ok()
                         .flatten();
                     if let Some(id) = max_id {
-                        total += diesel::update(social_proof_tokens_config::table)
-                            .filter(social_proof_tokens_config::id.eq(id))
+                        total += diesel::update(spt_config::table)
+                            .filter(spt_config::id.eq(id))
                             .set((
-                                social_proof_tokens_config::trading_enabled.eq(c.trading_enabled),
-                                social_proof_tokens_config::admin_address.eq(&c.admin_address),
-                                social_proof_tokens_config::reason.eq(&c.reason),
-                                social_proof_tokens_config::timestamp_ms.eq(c.timestamp_ms),
-                                social_proof_tokens_config::updated_at.eq(c.updated_at),
-                                social_proof_tokens_config::transaction_id.eq(&c.transaction_id),
+                                spt_config::trading_enabled.eq(c.trading_enabled),
+                                spt_config::admin_address.eq(&c.admin_address),
+                                spt_config::reason.eq(&c.reason),
+                                spt_config::timestamp_ms.eq(c.timestamp_ms),
+                                spt_config::updated_at.eq(c.updated_at),
+                                spt_config::transaction_id.eq(&c.transaction_id),
                             ))
                             .execute(conn)
                             .await?;
                     } else {
-                        total += diesel::insert_into(social_proof_tokens_config::table)
+                        total += diesel::insert_into(spt_config::table)
                             .values(c)
                             .execute(conn)
                             .await?;
                     }
                 }
                 SptRow::SocialProofTokensEvent(e) => {
-                    total += diesel::insert_into(social_proof_tokens_events::table)
+                    total += diesel::insert_into(spt_events::table)
                         .values(e)
                         .execute(conn)
                         .await?;
@@ -1112,6 +1194,7 @@ impl Handler for SptHandler {
                 }
             }
         }
+        SptHandler::validate_zero_circ_pools_after_batch(conn, &zero_circ_pools).await?;
         Ok(total)
     }
 }

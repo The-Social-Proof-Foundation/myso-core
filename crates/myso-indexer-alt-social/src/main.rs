@@ -100,6 +100,10 @@ async fn main() -> Result<(), anyhow::Error> {
         store.clone(),
     )))?;
 
+    let social_metrics = social_indexer::metrics::SocialMetrics::new(&registry)
+        .context("SocialMetrics registration")?;
+    social_indexer::metrics::SocialMetrics::init(social_metrics);
+
     let mut indexer = Indexer::new(
         store,
         indexer_args,

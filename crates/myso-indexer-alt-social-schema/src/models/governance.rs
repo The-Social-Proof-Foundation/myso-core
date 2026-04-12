@@ -58,6 +58,7 @@ pub struct Delegate {
     pub id: i32,
     pub address: String,
     pub registry_type: i16,
+    pub governance_registry_id: Option<String>,
     pub upvotes: i64,
     pub downvotes: i64,
     pub proposals_reviewed: i64,
@@ -78,6 +79,7 @@ pub struct Delegate {
 pub struct NewDelegate {
     pub address: String,
     pub registry_type: i16,
+    pub governance_registry_id: Option<String>,
     pub upvotes: i64,
     pub downvotes: i64,
     pub proposals_reviewed: i64,
@@ -453,6 +455,8 @@ pub struct DelegateRow {
     pub address: String,
     #[diesel(sql_type = SmallInt)]
     pub registry_type: i16,
+    #[diesel(sql_type = Nullable<Text>)]
+    pub governance_registry_id: Option<String>,
     #[diesel(sql_type = BigInt)]
     pub upvotes: i64,
     #[diesel(sql_type = BigInt)]

@@ -1010,7 +1010,7 @@ pub struct BcsTokenPoolCreatedEventLegacy {
     quadratic_coefficient: u64,
 }
 
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Deserialize, Serialize)]
 pub struct BcsTokenPoolCreatedEvent {
     id: AccountAddress,
     token_type: u8,
@@ -2589,6 +2589,13 @@ fn parse_spt_event(
                     Err(_) => {
                         let leg = bcs::from_bytes::<BcsTokenPoolCreatedEventLegacy>(contents)
                             .map_err(|e| bcs_parse_err(e, contents))?;
+                        tracing::warn!(
+                            target: "social_indexer::spt",
+                            pool_id = %addr_to_string(&leg.id),
+                            associated_id = %addr_to_string(&leg.associated_id),
+                            "TokenPoolCreatedEvent: legacy BCS layout; circulating_supply and total_reserved_at_launch forced to 0"
+                        );
+                        crate::metrics::SocialMetrics::record_spt_token_pool_created_legacy_bcs();
                         let ev = BcsTokenPoolCreatedEvent {
                             id: leg.id,
                             token_type: leg.token_type,
@@ -2931,6 +2938,31 @@ mod tests {
         assert_eq!(json["bio"], "Web8 developer and crypto enthusiast");
         assert_eq!(json["created_at"], 8);
         assert!(json["owner_address"].as_str().unwrap().starts_with("0x"));
+    }
+
+    #[test]
+    fn token_pool_created_extended_bcs_carries_circulating() {
+        let id = AccountAddress::from_hex_literal("0x1").unwrap();
+        let owner = AccountAddress::from_hex_literal("0x2").unwrap();
+        let associated_id = AccountAddress::from_hex_literal("0x3").unwrap();
+        let ev = BcsTokenPoolCreatedEvent {
+            id,
+            token_type: 1,
+            owner,
+            associated_id,
+            symbol: "S".to_string(),
+            name: "N".to_string(),
+            base_price: 10,
+            quadratic_coefficient: 2,
+            circulating_supply: 999,
+            total_reserved_at_launch: 5000,
+        };
+        let bytes = bcs::to_bytes(&ev).expect("bcs serialize TokenPoolCreatedEvent");
+        let json = parse_spt_event("TokenPoolCreatedEvent", &bytes)
+            .expect("parse_spt_event ok")
+            .expect("event json");
+        assert_eq!(json["circulating_supply"], 999);
+        assert_eq!(json["total_reserved_at_launch"], 5000);
     }
 
     #[test]

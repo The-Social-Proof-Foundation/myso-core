@@ -1384,6 +1384,8 @@ impl Query {
         ctx: &Context<'_>,
         address: MySoAddress,
         viewer: Option<MySoAddress>,
+        registry_type: Option<i16>,
+        governance_registry_id: Option<String>,
     ) -> Option<Result<Option<Delegate>, RpcError>> {
         let reader_opt = ctx
             .data_opt::<std::sync::Arc<Option<myso_indexer_alt_social_reader::SocialPgReader>>>()?;
@@ -1392,7 +1394,11 @@ impl Query {
         Some(
             async {
                 let opt = reader
-                    .get_delegate_by_address(&address.to_string())
+                    .get_delegate_by_address(
+                        &address.to_string(),
+                        registry_type,
+                        governance_registry_id.as_deref(),
+                    )
                     .await
                     .map_err(RpcError::from)?;
                 Ok(match opt {

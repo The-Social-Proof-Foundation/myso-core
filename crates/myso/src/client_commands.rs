@@ -2631,7 +2631,7 @@ pub async fn request_tokens_from_faucet(
                 bail!("Faucet request was unsuccessful: {err}")
             } else {
                 println!(
-                    "Request successful. It can take up to 1 minute to get the coin. Run myso client gas to check your gas coins."
+                    "Request successful. It can take up to 30 seconds to get the coin. Run myso client gas to check your gas coins."
                 );
             }
         }

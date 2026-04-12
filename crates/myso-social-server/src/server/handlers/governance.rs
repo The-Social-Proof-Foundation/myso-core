@@ -12,7 +12,8 @@ use myso_indexer_alt_social_schema::{
 use crate::error::SocialError;
 
 use super::super::{
-    AppState, GovernanceDelegateQuery, GovernanceNomineeQuery, GovernanceProposalQuery, PageParams,
+    AppState, GovernanceDelegateGetQuery, GovernanceDelegateQuery, GovernanceNomineeQuery,
+    GovernanceProposalQuery, PageParams,
 };
 
 fn is_valid_proposal_type(t: i16) -> bool {
@@ -143,10 +144,15 @@ pub async fn list_governance_delegates(
 pub async fn get_governance_delegate(
     State(state): State<Arc<AppState>>,
     Path(address): Path<String>,
+    Query(params): Query<GovernanceDelegateGetQuery>,
 ) -> Result<Json<crate::reader::DelegateRow>, SocialError> {
     let delegate = state
         .reader
-        .get_delegate_by_address(&address)
+        .get_delegate_by_address(
+            &address,
+            params.registry_type,
+            params.governance_registry_id.as_deref(),
+        )
         .await?
         .ok_or_else(|| SocialError::not_found(format!("Delegate '{}'", address)))?;
     Ok(Json(delegate))

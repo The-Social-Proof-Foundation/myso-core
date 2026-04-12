@@ -12,7 +12,7 @@ use super::revenue::{
     REVENUE_SOURCE_TIPS,
 };
 use crate::schema::{
-    ecosystem_treasury, social_proof_tokens_config, social_proof_tokens_events, spt_holdings,
+    ecosystem_treasury, spt_config, spt_events, spt_holdings,
     spt_pools, spt_price_history, spt_reservation_pools, spt_reservations, spt_revenue,
     spt_transactions, unified_revenue,
 };
@@ -759,7 +759,7 @@ impl NewUnifiedRevenue {
 }
 
 #[derive(Debug, Clone, Insertable, Serialize, Deserialize)]
-#[diesel(table_name = social_proof_tokens_config)]
+#[diesel(table_name = spt_config)]
 pub struct NewSocialProofTokensConfig {
     pub trading_enabled: bool,
     pub admin_address: String,
@@ -770,7 +770,7 @@ pub struct NewSocialProofTokensConfig {
 }
 
 #[derive(Debug, Clone, Insertable, Serialize, Deserialize)]
-#[diesel(table_name = social_proof_tokens_events)]
+#[diesel(table_name = spt_events)]
 pub struct NewSocialProofTokensEvent {
     pub event_type: String,
     pub event_data: serde_json::Value,

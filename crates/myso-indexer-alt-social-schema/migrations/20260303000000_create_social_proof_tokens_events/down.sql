@@ -1,1 +1,1 @@
-DROP TABLE IF EXISTS social_proof_tokens_events CASCADE;
+DROP TABLE IF EXISTS spt_events CASCADE;

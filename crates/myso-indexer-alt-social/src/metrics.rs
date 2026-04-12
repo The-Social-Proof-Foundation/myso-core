@@ -22,6 +22,11 @@ pub struct SocialMetrics {
     // Module-level metrics
     pub module_events_routed: CounterVec,
     pub module_events_ignored: CounterVec,
+
+    /// `TokenPoolCreatedEvent` parsed with legacy BCS (no circulating_supply / total_reserved_at_launch).
+    pub spt_token_pool_created_legacy_bcs: Counter,
+    /// Pool row inserted with zero circulating_supply while reservation ledger has net MYSO for that launch.
+    pub spt_pool_zero_supply_with_reservations: Counter,
 }
 
 impl SocialMetrics {
@@ -91,6 +96,18 @@ impl SocialMetrics {
             &["module"],
             registry
         )?;
+
+        let spt_token_pool_created_legacy_bcs = register_counter_with_registry!(
+            "myso_social_spt_token_pool_created_legacy_bcs_total",
+            "TokenPoolCreatedEvent BCS fell back to legacy layout (supply fields zeroed)",
+            registry
+        )?;
+
+        let spt_pool_zero_supply_with_reservations = register_counter_with_registry!(
+            "myso_social_spt_pool_zero_supply_with_reservations_total",
+            "SPT pool inserted with circulating_supply=0 but spt_reservations net MYSO > 0 for associated_id",
+            registry
+        )?;
         
         Ok(Self {
             events_processed,
@@ -103,6 +120,8 @@ impl SocialMetrics {
             profile_updates_failed,
             module_events_routed,
             module_events_ignored,
+            spt_token_pool_created_legacy_bcs,
+            spt_pool_zero_supply_with_reservations,
         })
     }
     
@@ -163,6 +182,18 @@ impl SocialMetrics {
     pub fn record_module_event_ignored(module: &str) {
         if let Some(metrics) = Self::get() {
             metrics.module_events_ignored.with_label_values(&[module]).inc();
+        }
+    }
+
+    pub fn record_spt_token_pool_created_legacy_bcs() {
+        if let Some(metrics) = Self::get() {
+            metrics.spt_token_pool_created_legacy_bcs.inc();
+        }
+    }
+
+    pub fn record_spt_pool_zero_supply_with_reservations() {
+        if let Some(metrics) = Self::get() {
+            metrics.spt_pool_zero_supply_with_reservations.inc();
         }
     }
     

@@ -146,6 +146,7 @@ diesel::table! {
         id -> Int4,
         address -> Text,
         registry_type -> Int2,
+        governance_registry_id -> Nullable<Text>,
         upvotes -> Int8,
         downvotes -> Int8,
         proposals_reviewed -> Int8,
@@ -1230,7 +1231,7 @@ diesel::table! {
 }
 
 diesel::table! {
-    social_proof_tokens_config (id) {
+    spt_config (id) {
         id -> Int4,
         trading_enabled -> Bool,
         admin_address -> Text,
@@ -1242,7 +1243,7 @@ diesel::table! {
 }
 
 diesel::table! {
-    social_proof_tokens_events (id) {
+    spt_events (id) {
         id -> Int4,
         event_type -> Varchar,
         event_data -> Jsonb,
@@ -1774,8 +1775,6 @@ diesel::allow_tables_to_appear_in_same_query!(
     social_graph_events,
     social_graph_relationships,
     social_proof_of_truth,
-    social_proof_tokens_config,
-    social_proof_tokens_events,
     spot_bet_withdrawals,
     spot_bets,
     spot_config,
@@ -1784,6 +1783,8 @@ diesel::allow_tables_to_appear_in_same_query!(
     spot_records,
     spot_refunds,
     spot_resolutions,
+    spt_config,
+    spt_events,
     spt_exchange_config,
     spt_holdings,
     spt_pools,
