@@ -994,6 +994,10 @@ type Delegate {
 	"""
 	isActive: Boolean!
 	"""
+	Social profile for this delegate's address.
+	"""
+	profile: ProfileSummary
+	"""
 	Proposals on which this delegate has voted.
 	"""
 	proposals: [Proposal!]

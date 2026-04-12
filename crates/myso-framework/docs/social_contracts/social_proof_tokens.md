@@ -3399,7 +3399,7 @@ Create a new reservation pool for a profile
 Check if reservation threshold is met for auction creation
 
 
-<pre><code><b>public</b> <b>fun</b> <a href="../social_contracts/social_proof_tokens.md#social_contracts_social_proof_tokens_can_create_auction">can_create_auction</a>(registry: &<a href="../social_contracts/social_proof_tokens.md#social_contracts_social_proof_tokens_TokenRegistry">social_contracts::social_proof_tokens::TokenRegistry</a>, associated_id: <b>address</b>): bool
+<pre><code><b>public</b> <b>fun</b> <a href="../social_contracts/social_proof_tokens.md#social_contracts_social_proof_tokens_can_create_auction">can_create_auction</a>(registry: &<a href="../social_contracts/social_proof_tokens.md#social_contracts_social_proof_tokens_TokenRegistry">social_contracts::social_proof_tokens::TokenRegistry</a>, config: &<a href="../social_contracts/social_proof_tokens.md#social_contracts_social_proof_tokens_SocialProofTokensConfig">social_contracts::social_proof_tokens::SocialProofTokensConfig</a>, associated_id: <b>address</b>): bool
 </code></pre>
 
 
@@ -3410,13 +3410,19 @@ Check if reservation threshold is met for auction creation
 
 <pre><code><b>public</b> <b>fun</b> <a href="../social_contracts/social_proof_tokens.md#social_contracts_social_proof_tokens_can_create_auction">can_create_auction</a>(
     registry: &<a href="../social_contracts/social_proof_tokens.md#social_contracts_social_proof_tokens_TokenRegistry">TokenRegistry</a>,
+    config: &<a href="../social_contracts/social_proof_tokens.md#social_contracts_social_proof_tokens_SocialProofTokensConfig">SocialProofTokensConfig</a>,
     associated_id: <b>address</b>
 ): bool {
     <b>if</b> (!table::contains(&registry.reservation_pools, associated_id)) {
         <b>return</b> <b>false</b>
     };
     <b>let</b> reservation_pool = table::borrow(&registry.reservation_pools, associated_id);
-    reservation_pool.total_reserved &gt;= reservation_pool.required_threshold
+    <b>let</b> required_threshold = <b>if</b> (reservation_pool.token_type == <a href="../social_contracts/social_proof_tokens.md#social_contracts_social_proof_tokens_TOKEN_TYPE_PROFILE">TOKEN_TYPE_PROFILE</a>) {
+        config.profile_threshold
+    } <b>else</b> {
+        config.post_threshold
+    };
+    reservation_pool.total_reserved &gt;= required_threshold
 }
 </code></pre>
 
@@ -3454,7 +3460,7 @@ This replaces the auction system - only the post/profile owner can call this
     // Verify caller is the owner of the <a href="../social_contracts/post.md#social_contracts_post">post</a>/<a href="../social_contracts/profile.md#social_contracts_profile">profile</a>
     <b>assert</b>!(caller == reservation_pool_object.info.owner, <a href="../social_contracts/social_proof_tokens.md#social_contracts_social_proof_tokens_ENotAuthorized">ENotAuthorized</a>);
     // Check <b>if</b> reservation threshold <b>has</b> been met
-    <b>assert</b>!(<a href="../social_contracts/social_proof_tokens.md#social_contracts_social_proof_tokens_can_create_auction">can_create_auction</a>(registry, associated_id), <a href="../social_contracts/social_proof_tokens.md#social_contracts_social_proof_tokens_EViralThresholdNotMet">EViralThresholdNotMet</a>);
+    <b>assert</b>!(<a href="../social_contracts/social_proof_tokens.md#social_contracts_social_proof_tokens_can_create_auction">can_create_auction</a>(registry, config, associated_id), <a href="../social_contracts/social_proof_tokens.md#social_contracts_social_proof_tokens_EViralThresholdNotMet">EViralThresholdNotMet</a>);
     // Verify token <b>has</b> not already been created
     <b>assert</b>!(!table::contains(&registry.tokens, associated_id), <a href="../social_contracts/social_proof_tokens.md#social_contracts_social_proof_tokens_ETokenAlreadyExists">ETokenAlreadyExists</a>);
     // Calculate initial token supply based on total reserved amount

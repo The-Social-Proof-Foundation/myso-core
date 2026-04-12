@@ -136,6 +136,7 @@ pub use spt::{
     DEFAULT_TRADING_PLATFORM_FEE_BPS, DEFAULT_TRADING_TREASURY_FEE_BPS, EcosystemTreasury,
     MAX_HOLD_PERCENT_BPS, NewEcosystemTreasury, NewSocialProofTokensConfig,
     NewSocialProofTokensEvent, NewSptExchangeConfig, NewSptHolding, NewSptPool, NewSptPriceHistory,
+    SptExchangeConfigChangeset,
     NewSptReservation, NewSptReservationPool, NewSptRevenue, NewSptTransaction, NewUnifiedRevenue,
     RESERVATION_POOL_STATUS_ACTIVE, RESERVATION_POOL_STATUS_THRESHOLD_MET, SptHoldingRow,
     SptPoolRow, SptPriceHistory, SptTransaction, TOKEN_TYPE_POST, TOKEN_TYPE_PROFILE,

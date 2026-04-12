@@ -12,9 +12,9 @@ use super::revenue::{
     REVENUE_SOURCE_TIPS,
 };
 use crate::schema::{
-    ecosystem_treasury, social_proof_tokens_config, social_proof_tokens_events,
-    spt_exchange_config, spt_holdings, spt_pools, spt_price_history, spt_reservation_pools,
-    spt_reservations, spt_revenue, spt_transactions, unified_revenue,
+    ecosystem_treasury, social_proof_tokens_config, social_proof_tokens_events, spt_holdings,
+    spt_pools, spt_price_history, spt_reservation_pools, spt_reservations, spt_revenue,
+    spt_transactions, unified_revenue,
 };
 
 pub const TOKEN_TYPE_PROFILE: i16 = 1;
@@ -307,8 +307,11 @@ impl NewEcosystemTreasury {
     }
 }
 
-#[derive(Debug, Clone, Insertable, Serialize, Deserialize)]
-#[diesel(table_name = spt_exchange_config)]
+/// `trading_enabled` is [`None`] for fee/threshold config events; kill-switch events set [`Some`].
+///
+/// When [`Self::apply_trading_enabled_only`] is true (emergency kill switch), the indexer must only
+/// update trading toggle and metadata columns on `spt_exchange_config`, not fee/threshold fields.
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct NewSptExchangeConfig {
     pub updated_by: String,
     pub post_threshold: i64,
@@ -328,10 +331,68 @@ pub struct NewSptExchangeConfig {
     pub base_price: i64,
     pub quadratic_coefficient: i64,
     pub max_hold_percent_bps: i64,
-    pub trading_enabled: bool,
+    pub trading_enabled: Option<bool>,
+    /// Kill-switch path: apply only `updated_by`, `trading_enabled`, `updated_at`, `transaction_id`.
+    #[serde(default)]
+    pub apply_trading_enabled_only: bool,
     pub updated_at: i64,
     pub time: chrono::DateTime<chrono::Utc>,
     pub transaction_id: String,
+}
+
+#[derive(Debug, Clone, AsChangeset)]
+#[diesel(table_name = crate::schema::spt_exchange_config)]
+#[diesel(treat_none_as_null = false)]
+pub struct SptExchangeConfigChangeset {
+    pub updated_by: String,
+    pub post_threshold: i64,
+    pub profile_threshold: i64,
+    pub max_individual_reservation_bps: i64,
+    pub total_fee_bps: i64,
+    pub creator_fee_bps: i64,
+    pub platform_fee_bps: i64,
+    pub treasury_fee_bps: i64,
+    pub trading_creator_fee_bps: i64,
+    pub trading_platform_fee_bps: i64,
+    pub trading_treasury_fee_bps: i64,
+    pub reservation_creator_fee_bps: i64,
+    pub reservation_platform_fee_bps: i64,
+    pub reservation_treasury_fee_bps: i64,
+    pub max_reservers_per_pool: i64,
+    pub base_price: i64,
+    pub quadratic_coefficient: i64,
+    pub max_hold_percent_bps: i64,
+    pub trading_enabled: Option<bool>,
+    pub updated_at: i64,
+    pub transaction_id: String,
+}
+
+impl From<&NewSptExchangeConfig> for SptExchangeConfigChangeset {
+    fn from(c: &NewSptExchangeConfig) -> Self {
+        Self {
+            updated_by: c.updated_by.clone(),
+            post_threshold: c.post_threshold,
+            profile_threshold: c.profile_threshold,
+            max_individual_reservation_bps: c.max_individual_reservation_bps,
+            total_fee_bps: c.total_fee_bps,
+            creator_fee_bps: c.creator_fee_bps,
+            platform_fee_bps: c.platform_fee_bps,
+            treasury_fee_bps: c.treasury_fee_bps,
+            trading_creator_fee_bps: c.trading_creator_fee_bps,
+            trading_platform_fee_bps: c.trading_platform_fee_bps,
+            trading_treasury_fee_bps: c.trading_treasury_fee_bps,
+            reservation_creator_fee_bps: c.reservation_creator_fee_bps,
+            reservation_platform_fee_bps: c.reservation_platform_fee_bps,
+            reservation_treasury_fee_bps: c.reservation_treasury_fee_bps,
+            max_reservers_per_pool: c.max_reservers_per_pool,
+            base_price: c.base_price,
+            quadratic_coefficient: c.quadratic_coefficient,
+            max_hold_percent_bps: c.max_hold_percent_bps,
+            trading_enabled: c.trading_enabled,
+            updated_at: c.updated_at,
+            transaction_id: c.transaction_id.clone(),
+        }
+    }
 }
 
 #[derive(Debug, Clone, Queryable, Selectable, Serialize, Deserialize)]
@@ -715,4 +776,64 @@ pub struct NewSocialProofTokensEvent {
     pub event_data: serde_json::Value,
     pub event_id: String,
     pub created_at: chrono::DateTime<chrono::Utc>,
+}
+
+#[cfg(test)]
+mod spt_exchange_config_changeset_tests {
+    use super::{NewSptExchangeConfig, SptExchangeConfigChangeset};
+    use crate::schema::spt_exchange_config;
+    use diesel::debug_query;
+    use diesel::pg::Pg;
+
+    fn sample_row(trading_enabled: Option<bool>) -> NewSptExchangeConfig {
+        NewSptExchangeConfig {
+            updated_by: "0x1".to_string(),
+            post_threshold: 1,
+            profile_threshold: 1,
+            max_individual_reservation_bps: 1,
+            total_fee_bps: 1,
+            creator_fee_bps: 1,
+            platform_fee_bps: 1,
+            treasury_fee_bps: 1,
+            trading_creator_fee_bps: 1,
+            trading_platform_fee_bps: 1,
+            trading_treasury_fee_bps: 1,
+            reservation_creator_fee_bps: 1,
+            reservation_platform_fee_bps: 1,
+            reservation_treasury_fee_bps: 1,
+            max_reservers_per_pool: 1,
+            base_price: 1,
+            quadratic_coefficient: 1,
+            max_hold_percent_bps: 1,
+            trading_enabled,
+            apply_trading_enabled_only: false,
+            updated_at: 0,
+            time: chrono::DateTime::UNIX_EPOCH,
+            transaction_id: "tx".to_string(),
+        }
+    }
+
+    #[test]
+    fn as_changeset_omits_trading_enabled_when_unset() {
+        let row = sample_row(None);
+        let q = diesel::update(spt_exchange_config::table)
+            .set(SptExchangeConfigChangeset::from(&row));
+        let sql = debug_query::<Pg, _>(&q).to_string();
+        assert!(
+            !sql.to_lowercase().contains("trading_enabled"),
+            "SET should not touch trading_enabled when None: {sql}"
+        );
+    }
+
+    #[test]
+    fn as_changeset_sets_trading_enabled_when_some() {
+        let row = sample_row(Some(true));
+        let q = diesel::update(spt_exchange_config::table)
+            .set(SptExchangeConfigChangeset::from(&row));
+        let sql = debug_query::<Pg, _>(&q).to_string();
+        assert!(
+            sql.to_lowercase().contains("trading_enabled"),
+            "SET should include trading_enabled when Some: {sql}"
+        );
+    }
 }

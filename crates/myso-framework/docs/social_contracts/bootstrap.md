@@ -127,7 +127,7 @@ Creates and transfers all admin capabilities to caller, then seals the bootstrap
     transfer::public_transfer(<a href="../social_contracts/platform.md#social_contracts_platform_create_platform_admin_cap">platform::create_platform_admin_cap</a>(ctx), admin);
     transfer::public_transfer(<a href="../social_contracts/governance.md#social_contracts_governance_create_governance_admin_cap">governance::create_governance_admin_cap</a>(ctx), admin);
     transfer::public_transfer(mydata::create_mydata_admin_cap(ctx), admin);
-    transfer::public_transfer(<a href="../social_contracts/mydata.md#social_contracts_mydata_create_mydata_pool_admin_cap">mydata::create_mydata_pool_admin_cap</a>(ctx), admin);
+    transfer::public_transfer(mydata::create_mydata_pool_admin_cap(ctx), admin);
     transfer::public_transfer(<a href="../social_contracts/social_proof_of_truth.md#social_contracts_social_proof_of_truth_create_spot_admin_cap">social_proof_of_truth::create_spot_admin_cap</a>(ctx), admin);
     transfer::public_transfer(<a href="../social_contracts/social_proof_of_truth.md#social_contracts_social_proof_of_truth_create_spot_oracle_admin_cap">social_proof_of_truth::create_spot_oracle_admin_cap</a>(ctx), admin);
     transfer::public_transfer(<a href="../social_contracts/profile.md#social_contracts_profile_create_ecosystem_treasury_admin_cap">profile::create_ecosystem_treasury_admin_cap</a>(ctx), admin);

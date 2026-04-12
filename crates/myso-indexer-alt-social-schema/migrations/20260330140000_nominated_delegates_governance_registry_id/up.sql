@@ -23,12 +23,13 @@ CREATE INDEX IF NOT EXISTS idx_nominees_governance_registry_list
     WHERE governance_registry_id IS NOT NULL;
 
 -- Pending nominees: ecosystem/PoC rows typically have NULL governance_registry_id; platform rows match registry_id.
+-- Proposals: use latest hypertable row per id (matches list_proposals). submitted_proposals = lifetime total;
 CREATE OR REPLACE VIEW governance_stats AS
 SELECT
     g.registry_type,
     COUNT(DISTINCT d.id) AS active_delegates,
     COUNT(DISTINCT n.id) AS pending_nominees,
-    COUNT(DISTINCT p.id) FILTER (WHERE p.status = 0) AS submitted_proposals,
+    COUNT(DISTINCT p.id) AS submitted_proposals,
     COUNT(DISTINCT p.id) FILTER (WHERE p.status = 1) AS in_review_proposals,
     COUNT(DISTINCT p.id) FILTER (WHERE p.status = 2) AS voting_proposals,
     COUNT(DISTINCT p.id) FILTER (WHERE p.status = 3) AS approved_proposals,
@@ -44,5 +45,9 @@ LEFT JOIN nominated_delegates n
         (g.registry_type <> 2 AND n.governance_registry_id IS NULL)
         OR (g.registry_type = 2 AND n.governance_registry_id = g.registry_id)
     )
-LEFT JOIN proposals p ON g.registry_type = p.proposal_type
+LEFT JOIN (
+    SELECT DISTINCT ON (id) *
+    FROM proposals
+    ORDER BY id, time DESC
+) p ON g.registry_type = p.proposal_type
 GROUP BY g.registry_type;

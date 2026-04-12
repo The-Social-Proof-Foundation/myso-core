@@ -24,7 +24,8 @@ use myso_indexer_alt_social_schema::models::{
     NewSptPool, NewSptPriceHistory, NewSptReservation, NewSptReservationPool, NewSptRevenue,
     NewSptTransaction, NewUnifiedRevenue, ProfileUpdateSet, RESERVATION_POOL_STATUS_ACTIVE,
     RESERVATION_POOL_STATUS_THRESHOLD_MET, REVENUE_TYPE_SPT_CREATOR_FEE,
-    REVENUE_TYPE_SPT_PLATFORM_FEE, REVENUE_TYPE_SPT_TREASURY_FEE, TOKEN_TYPE_POST,
+    REVENUE_TYPE_SPT_PLATFORM_FEE, REVENUE_TYPE_SPT_TREASURY_FEE, SptExchangeConfigChangeset,
+    TOKEN_TYPE_POST,
 };
 use myso_indexer_alt_social_schema::schema::{
     ecosystem_treasury, posts, profiles, social_proof_tokens_config, social_proof_tokens_events,
@@ -630,8 +631,9 @@ impl Handler for SptHandler {
                         .await?;
                 }
                 SptRow::SptExchangeConfig(c) => {
-                    let sync_reservation_pool_thresholds =
-                        c.profile_threshold > 0 && c.post_threshold > 0;
+                    let sync_reservation_pool_thresholds = !c.apply_trading_enabled_only
+                        && c.profile_threshold > 0
+                        && c.post_threshold > 0;
                     let profile_threshold = c.profile_threshold;
                     let post_threshold = c.post_threshold;
                     let latest: Option<(i32, chrono::NaiveDateTime)> = spt_exchange_config::table
@@ -641,10 +643,36 @@ impl Handler for SptHandler {
                         .await
                         .ok();
                     if let Some((id, time)) = latest {
-                        total += diesel::update(spt_exchange_config::table)
-                            .filter(spt_exchange_config::id.eq(id))
-                            .filter(spt_exchange_config::time.eq(time))
-                            .set((
+                        if c.apply_trading_enabled_only {
+                            if let Some(te) = c.trading_enabled {
+                                total += diesel::update(spt_exchange_config::table)
+                                    .filter(spt_exchange_config::id.eq(id))
+                                    .filter(spt_exchange_config::time.eq(time))
+                                    .set((
+                                        spt_exchange_config::updated_by.eq(&c.updated_by),
+                                        spt_exchange_config::trading_enabled.eq(te),
+                                        spt_exchange_config::updated_at.eq(c.updated_at),
+                                        spt_exchange_config::transaction_id.eq(&c.transaction_id),
+                                    ))
+                                    .execute(conn)
+                                    .await?;
+                            } else {
+                                tracing::warn!(
+                                    transaction_id = %c.transaction_id,
+                                    "SptExchangeConfig apply_trading_enabled_only missing trading_enabled; skipping spt_exchange_config update"
+                                );
+                            }
+                        } else {
+                            total += diesel::update(spt_exchange_config::table)
+                                .filter(spt_exchange_config::id.eq(id))
+                                .filter(spt_exchange_config::time.eq(time))
+                                .set(SptExchangeConfigChangeset::from(c))
+                                .execute(conn)
+                                .await?;
+                        }
+                    } else if !c.apply_trading_enabled_only {
+                        total += diesel::insert_into(spt_exchange_config::table)
+                            .values((
                                 spt_exchange_config::updated_by.eq(&c.updated_by),
                                 spt_exchange_config::post_threshold.eq(c.post_threshold),
                                 spt_exchange_config::profile_threshold.eq(c.profile_threshold),
@@ -673,17 +701,19 @@ impl Handler for SptHandler {
                                     .eq(c.quadratic_coefficient),
                                 spt_exchange_config::max_hold_percent_bps
                                     .eq(c.max_hold_percent_bps),
-                                spt_exchange_config::trading_enabled.eq(c.trading_enabled),
+                                spt_exchange_config::trading_enabled
+                                    .eq(c.trading_enabled.unwrap_or(false)),
                                 spt_exchange_config::updated_at.eq(c.updated_at),
+                                spt_exchange_config::time.eq(c.time),
                                 spt_exchange_config::transaction_id.eq(&c.transaction_id),
                             ))
                             .execute(conn)
                             .await?;
-                    } else {
-                        total += diesel::insert_into(spt_exchange_config::table)
-                            .values(c)
-                            .execute(conn)
-                            .await?;
+                    } else if c.apply_trading_enabled_only {
+                        tracing::warn!(
+                            transaction_id = %c.transaction_id,
+                            "SptExchangeConfig kill-switch has no spt_exchange_config row; skipping exchange config update"
+                        );
                     }
                     if sync_reservation_pool_thresholds {
                         let sync_sql = r#"

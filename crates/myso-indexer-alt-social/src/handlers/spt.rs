@@ -586,7 +586,8 @@ fn process_spt_config_updated_event(
         base_price,
         quadratic_coefficient,
         max_hold_percent_bps,
-        trading_enabled: true,
+        trading_enabled: None,
+        apply_trading_enabled_only: false,
         updated_at: ts,
         time: now,
         transaction_id: transaction_id.to_string(),
@@ -641,7 +642,8 @@ fn process_emergency_kill_switch_event(
         base_price: 0,
         quadratic_coefficient: 0,
         max_hold_percent_bps: 0,
-        trading_enabled,
+        trading_enabled: Some(trading_enabled),
+        apply_trading_enabled_only: true,
         updated_at: ts,
         time: now,
         transaction_id: transaction_id.to_string(),
@@ -729,7 +731,8 @@ mod tests {
     use super::super::SocialEventRow;
     use super::handle_spt_event;
     use myso_indexer_alt_social_schema::models::{
-        RESERVATION_POOL_STATUS_ACTIVE, RESERVATION_POOL_STATUS_THRESHOLD_MET, TOKEN_TYPE_PROFILE,
+        NewSptExchangeConfig, RESERVATION_POOL_STATUS_ACTIVE,
+        RESERVATION_POOL_STATUS_THRESHOLD_MET, TOKEN_TYPE_PROFILE,
     };
     use serde_json::json;
 
@@ -898,5 +901,61 @@ mod tests {
             )),
             "reservation-created pool update"
         );
+    }
+
+    #[test]
+    fn config_updated_event_does_not_set_trading_enabled_payload() {
+        let data = json!({
+            "updated_by": "0xadmin",
+            "total_fee_bps": 100i64,
+            "trading_creator_fee_bps": 30i64,
+            "trading_platform_fee_bps": 30i64,
+            "trading_treasury_fee_bps": 40i64,
+            "reservation_total_fee_bps": 100i64,
+            "reservation_creator_fee_bps": 30i64,
+            "reservation_platform_fee_bps": 30i64,
+            "reservation_treasury_fee_bps": 40i64,
+            "base_price": 1i64,
+            "quadratic_coefficient": 1i64,
+            "max_hold_percent_bps": 1000i64,
+            "post_threshold": 1i64,
+            "profile_threshold": 1i64,
+            "max_individual_reservation_bps": 100i64,
+            "max_reservers_per_pool": 100i64,
+        });
+        let rows =
+            handle_spt_event("ConfigUpdatedEvent", &data, "tx:0", 0, 1000).expect("rows");
+        let cfg = rows.iter().find_map(|r| {
+            if let SocialEventRow::SptExchangeConfig(c) = r {
+                Some(c)
+            } else {
+                None
+            }
+        });
+        let c: &NewSptExchangeConfig = cfg.expect("exchange config");
+        assert_eq!(c.trading_enabled, None);
+        assert!(!c.apply_trading_enabled_only);
+    }
+
+    #[test]
+    fn emergency_kill_switch_sets_explicit_trading_enabled_on_exchange_config() {
+        let data = json!({
+            "admin": "0xadmin",
+            "trading_enabled": true,
+            "timestamp": 1u64,
+            "reason": "",
+        });
+        let rows =
+            handle_spt_event("EmergencyKillSwitchEvent", &data, "tx:0:e", 0, 1000).expect("rows");
+        let cfg = rows.iter().find_map(|r| {
+            if let SocialEventRow::SptExchangeConfig(c) = r {
+                Some(c)
+            } else {
+                None
+            }
+        });
+        let c: &NewSptExchangeConfig = cfg.expect("exchange config");
+        assert_eq!(c.trading_enabled, Some(true));
+        assert!(c.apply_trading_enabled_only);
     }
 }

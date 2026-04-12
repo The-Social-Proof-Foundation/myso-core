@@ -7006,99 +7006,6 @@ hash_pair
 leaf_hash
 	public fun
 	0xda7a::merkle
-BroadPool
-	public struct
-	0x50c1::mydata
-SubPool
-	public struct
-	0x50c1::mydata
-MyDataPoolRegistry
-	public struct
-	0x50c1::mydata
-MyDataPoolAdminCap
-	public struct
-	0x50c1::mydata
-BroadPoolCreatedEvent
-	public struct
-	0x50c1::mydata
-SubPoolCreatedEvent
-	public struct
-	0x50c1::mydata
-MyDataAssignedToSubPoolEvent
-	public struct
-	0x50c1::mydata
-QuerySnapshotAnchor
-	public struct
-	0x50c1::mydata
-SnapshotAnchorRegistry
-	public struct
-	0x50c1::mydata
-SnapshotAnchorRecordedEvent
-	public struct
-	0x50c1::mydata
-DistributionRecordedEvent
-	public struct
-	0x50c1::mydata
-MyDataClaimVault
-	public struct
-	0x50c1::mydata
-MerkleRootPublishedEvent
-	public struct
-	0x50c1::mydata
-ClaimExecutedEvent
-	public struct
-	0x50c1::mydata
-DistributionRound
-	public struct
-	0x50c1::mydata
-DistributionRegistry
-	public struct
-	0x50c1::mydata
-create_mydata_pool_admin_cap
-	public fun
-	0x50c1::mydata
-create_broad_pool
-	public entry fun
-	0x50c1::mydata
-create_sub_pool
-	public entry fun
-	0x50c1::mydata
-record_snapshot_anchor
-	public entry fun
-	0x50c1::mydata
-get_snapshot_anchor
-	public fun
-	0x50c1::mydata
-publish_merkle_root
-	public entry fun
-	0x50c1::mydata
-claim
-	public entry fun
-	0x50c1::mydata
-deposit
-	public entry fun
-	0x50c1::mydata
-record_distribution
-	public entry fun
-	0x50c1::mydata
-get_broad_pool
-	public fun
-	0x50c1::mydata
-get_sub_pool
-	public fun
-	0x50c1::mydata
-get_mydata_sub_pools
-	public fun
-	0x50c1::mydata
-get_distribution_round
-	public fun
-	0x50c1::mydata
-broad_pool_id
-	public fun
-	0x50c1::mydata
-sub_pool_id
-	public fun
-	0x50c1::mydata
 check_staleness
 	public fun
 	0xda7a::time
@@ -8869,6 +8776,54 @@ MyDataConfig
 MyDataRegistry
 	public struct
 	0x50c1::mydata
+BroadPool
+	public struct
+	0x50c1::mydata
+SubPool
+	public struct
+	0x50c1::mydata
+MyDataPoolRegistry
+	public struct
+	0x50c1::mydata
+MyDataPoolAdminCap
+	public struct
+	0x50c1::mydata
+BroadPoolCreatedEvent
+	public struct
+	0x50c1::mydata
+SubPoolCreatedEvent
+	public struct
+	0x50c1::mydata
+MyDataAssignedToSubPoolEvent
+	public struct
+	0x50c1::mydata
+QuerySnapshotAnchor
+	public struct
+	0x50c1::mydata
+SnapshotAnchorRegistry
+	public struct
+	0x50c1::mydata
+SnapshotAnchorRecordedEvent
+	public struct
+	0x50c1::mydata
+DistributionRecordedEvent
+	public struct
+	0x50c1::mydata
+MyDataClaimVault
+	public struct
+	0x50c1::mydata
+MerkleRootPublishedEvent
+	public struct
+	0x50c1::mydata
+ClaimExecutedEvent
+	public struct
+	0x50c1::mydata
+DistributionRound
+	public struct
+	0x50c1::mydata
+DistributionRegistry
+	public struct
+	0x50c1::mydata
 MyDataCreatedEvent
 	public struct
 	0x50c1::mydata
@@ -8893,8 +8848,68 @@ create_mydata_admin_cap
 update_mydata_config
 	public entry fun
 	0x50c1::mydata
+share_mydata_system_objects
+	fun
+	0x50c1::mydata
 bootstrap_init
 	public(package) fun
+	0x50c1::mydata
+create_mydata_pool_admin_cap
+	public fun
+	0x50c1::mydata
+gen_pool_id
+	fun
+	0x50c1::mydata
+create_broad_pool
+	public entry fun
+	0x50c1::mydata
+create_sub_pool
+	public entry fun
+	0x50c1::mydata
+assign_mydata_to_sub_pools
+	fun
+	0x50c1::mydata
+remove_mydata_from_sub_pool
+	fun
+	0x50c1::mydata
+gen_snapshot_id
+	fun
+	0x50c1::mydata
+record_snapshot_anchor
+	public entry fun
+	0x50c1::mydata
+get_snapshot_anchor
+	public fun
+	0x50c1::mydata
+publish_merkle_root
+	public entry fun
+	0x50c1::mydata
+claim
+	public entry fun
+	0x50c1::mydata
+deposit
+	public entry fun
+	0x50c1::mydata
+record_distribution
+	public entry fun
+	0x50c1::mydata
+get_broad_pool
+	public fun
+	0x50c1::mydata
+get_sub_pool
+	public fun
+	0x50c1::mydata
+get_mydata_sub_pools
+	public fun
+	0x50c1::mydata
+get_distribution_round
+	public fun
+	0x50c1::mydata
+broad_pool_id
+	public fun
+	0x50c1::mydata
+sub_pool_id
+	public fun
 	0x50c1::mydata
 create
 	public fun
@@ -8925,6 +8940,12 @@ has_access
 	0x50c1::mydata
 encryption_id_matches
 	public fun
+	0x50c1::mydata
+mydata_approve
+	public entry fun
+	0x50c1::mydata
+bytes_equal_u8
+	fun
 	0x50c1::mydata
 grant_access
 	public entry fun
@@ -9038,9 +9059,6 @@ migrate_registry
 	public entry fun
 	0x50c1::mydata
 migrate_config
-	public entry fun
-	0x50c1::mydata
-mydata_approve
 	public entry fun
 	0x50c1::mydata
 Registry

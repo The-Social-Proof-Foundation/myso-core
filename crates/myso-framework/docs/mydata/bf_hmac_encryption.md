@@ -3,7 +3,7 @@ title: Module `mydata::bf_hmac_encryption`
 ---
 
 Implementation of decryption for MyData using Boneh-Franklin over BLS12-381 as KEM and Hmac256Ctr as DEM.
-See MyData documentation for usage; prefer client-side decrypt for application data where possible.
+See MyData documentation for on-chain decryption patterns (prefer client-side decrypt for app data).
 
 
 -  [Struct `EncryptedObject`](#mydata_bf_hmac_encryption_EncryptedObject)
