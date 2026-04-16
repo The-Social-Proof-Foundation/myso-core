@@ -178,7 +178,8 @@ pub(crate) async fn get_spt_reservation_pool(
 ///
 /// Windows use the database clock (`NOW()`), i.e. **UTC** in PostgreSQL. **Transactions:** rows whose
 /// hypertable `time` (indexer ingestion instant) falls in the window, matching [`get_spt_market_sentiment`]. **Reservations:**
-/// use hypertable `time` on `spt_reservations`.
+/// use hypertable `time` on `spt_reservations` for pools in this listing (pre-mint catalog only); [`get_spt_market_sentiment`]
+/// aggregates **all** reservation rows in the window, including after a token has minted.
 /// **Current** window: last 24h. **Prior window:** strictly after `NOW() - 48h` through `NOW() - 24h` (contiguous).
 ///
 /// `volume_24h` and deltas are **MYSO base units**: sum of `myso_amount` on `spt_transactions` for
@@ -649,37 +650,13 @@ pub(crate) async fn get_spt_creator_revenue_streams(
 
 /// Global SPT sentiment and rolling volumes. **Trades** use `spt_transactions.time` (ingestion
 /// instant) for 24h / 48h windows, matching [`get_spt_analytics_top_performers`] and
-/// [`get_spt_liquidity_profile`]. **Reservations** use `spt_reservations.time`.
+/// [`get_spt_liquidity_profile`]. **Reservations** use `spt_reservations.time` for **all** ledger
+/// rows in each window (deposits/withdrawals still count after the token has minted and left the
+/// pre-mint pool catalog).
 pub(crate) async fn get_spt_market_sentiment(db: &Db) -> Result<serde_json::Value, SocialError> {
     let mut conn = db.connect().await?;
     let query = r#"
-        WITH latest_reservation_states AS (
-            SELECT DISTINCT ON (pool_id) pool_id, associated_id
-            FROM spt_reservation_pools
-            ORDER BY pool_id, time DESC
-        ),
-        active_reservation_pools AS (
-            SELECT lp.pool_id, lp.associated_id
-            FROM latest_reservation_states lp
-            WHERE NOT EXISTS (
-                SELECT 1 FROM spt_pools tok
-                WHERE (
-                    tok.associated_id = lp.associated_id
-                    OR (
-                        LEFT(lp.associated_id, 8) = 'profile_'
-                        AND LENGTH(lp.associated_id) > 8
-                        AND tok.associated_id = SUBSTRING(lp.associated_id FROM 9)
-                    )
-                    OR (
-                        LEFT(tok.associated_id, 8) = 'profile_'
-                        AND LENGTH(tok.associated_id) > 8
-                        AND lp.associated_id = SUBSTRING(tok.associated_id FROM 9)
-                    )
-                )
-                LIMIT 1
-            )
-        ),
-        trade_current AS (
+        WITH trade_current AS (
             SELECT
                 COALESCE(SUM(CASE WHEN transaction_type = 'BUY' THEN myso_abs ELSE 0 END), 0)::bigint AS trade_buy,
                 COALESCE(SUM(CASE WHEN transaction_type = 'SELL' THEN myso_abs ELSE 0 END), 0)::bigint AS trade_sell,
@@ -711,22 +688,12 @@ pub(crate) async fn get_spt_market_sentiment(db: &Db) -> Result<serde_json::Valu
                 COALESCE(COUNT(DISTINCT reserver_address), 0)::bigint as unique_reservers
             FROM spt_reservations sr
             WHERE sr.time > NOW() - INTERVAL '24 hours'
-            AND EXISTS (
-                SELECT 1 FROM active_reservation_pools arp
-                WHERE sr.pool_id = arp.pool_id
-                   OR sr.pool_id = ('reservation_pool_' || arp.associated_id)
-            )
         ),
         previous_reservation_volume AS (
             SELECT COALESCE(SUM(ABS(sr.amount)), 0)::bigint as total_gross
             FROM spt_reservations sr
             WHERE sr.time > NOW() - INTERVAL '48 hours'
               AND sr.time <= NOW() - INTERVAL '24 hours'
-            AND EXISTS (
-                SELECT 1 FROM active_reservation_pools arp
-                WHERE sr.pool_id = arp.pool_id
-                   OR sr.pool_id = ('reservation_pool_' || arp.associated_id)
-            )
         ),
         unique_buyers AS (
             SELECT COALESCE(COUNT(*), 0)::bigint AS cnt
@@ -738,11 +705,6 @@ pub(crate) async fn get_spt_market_sentiment(db: &Db) -> Result<serde_json::Valu
                 SELECT sr.reserver_address AS addr FROM spt_reservations sr
                 WHERE sr.time > NOW() - INTERVAL '24 hours'
                   AND sr.amount > 0
-                AND EXISTS (
-                    SELECT 1 FROM active_reservation_pools arp
-                    WHERE sr.pool_id = arp.pool_id
-                       OR sr.pool_id = ('reservation_pool_' || arp.associated_id)
-                )
             ) u
         ),
         unique_sellers AS (
@@ -755,11 +717,6 @@ pub(crate) async fn get_spt_market_sentiment(db: &Db) -> Result<serde_json::Valu
                 SELECT sr.reserver_address AS addr FROM spt_reservations sr
                 WHERE sr.time > NOW() - INTERVAL '24 hours'
                   AND sr.amount < 0
-                AND EXISTS (
-                    SELECT 1 FROM active_reservation_pools arp
-                    WHERE sr.pool_id = arp.pool_id
-                       OR sr.pool_id = ('reservation_pool_' || arp.associated_id)
-                )
             ) u
         )
         SELECT

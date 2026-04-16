@@ -49,7 +49,7 @@ struct SptReservationCanonPoolRow {
 }
 
 #[derive(QueryableByName)]
-struct SptReserverAggRow {
+pub(crate) struct SptReserverAggRow {
     #[diesel(sql_type = Text)]
     reserver_address: String,
     #[diesel(sql_type = BigInt)]
@@ -241,11 +241,71 @@ impl FieldCount for SptRow {
 /// `spt_reservation_holdings`). A unified hypertable was considered and **deferred** — readers and
 /// GraphQL assume this split.
 ///
-/// **Optional future Move event:** `TokenPoolLaunchHoldingsEvent { pool_id, entries: Vec<(address, u64)> }`
-/// (or similar) could let the indexer skip proportional re-derivation from `spt_reservations` if
-/// on-chain emits exact per-holder SPT at launch. Not required when extended `TokenPoolCreatedEvent`
-/// + full reservation index + checkpoint replay are used (greenfield).
+/// At launch, initial `spt_holdings` rows are derived in SQL from `spt_reservations` using the same
+/// proportional split and owner remainder as `social_proof_tokens::create_social_proof_token`,
+/// keyed by `TokenPoolCreatedEvent` (`circulating_supply`, `total_reserved_at_launch`).
 pub struct SptHandler;
+
+/// Floored proportional split plus owner remainder; mirrors on-chain launch distribution.
+pub(crate) fn proportional_spt_launch_holdings(
+    aggs: &[SptReserverAggRow],
+    total_reserved_at_launch: i64,
+    circulating_supply: i64,
+    owner: &str,
+    pool_id: &str,
+    associated_id: &str,
+) -> Result<std::collections::BTreeMap<String, i128>, anyhow::Error> {
+    use std::collections::BTreeMap;
+
+    let ledger_sum: i128 = aggs.iter().map(|a| a.net_myso as i128).sum();
+    let supply = circulating_supply as i128;
+    let mut denom = total_reserved_at_launch.max(0) as i128;
+    if denom <= 0 && !aggs.is_empty() && supply > 0 {
+        denom = ledger_sum.max(0);
+        if denom > 0 {
+            SocialMetrics::record_spt_launch_denominator_ledger_fallback();
+            tracing::warn!(
+                target: "social_indexer::spt",
+                associated_id = %associated_id,
+                pool_id = %pool_id,
+                ledger_sum,
+                "spt launch: total_reserved_at_launch was 0 but reservation aggregates exist; using ledger sum as denominator",
+            );
+        }
+    }
+
+    let mut amounts: BTreeMap<String, i128> = BTreeMap::new();
+    if denom > 0 {
+        for a in aggs {
+            let share = (a.net_myso as i128 * supply) / denom;
+            *amounts.entry(a.reserver_address.clone()).or_insert(0) += share;
+        }
+    }
+
+    let floored_sum: i128 = amounts.values().sum();
+    let delta = supply - floored_sum;
+    let owner_entry = amounts.entry(owner.to_string()).or_insert(0);
+    *owner_entry = owner_entry
+        .checked_add(delta)
+        .ok_or_else(|| {
+            anyhow::anyhow!(
+                "spt launch: owner remainder overflow for pool {}",
+                pool_id
+            )
+        })?;
+
+    let final_sum: i128 = amounts.values().sum();
+    if final_sum != supply {
+        return Err(anyhow::anyhow!(
+            "spt launch: holdings sum {} != circulating_supply {} for pool {}",
+            final_sum,
+            supply,
+            pool_id
+        ));
+    }
+
+    Ok(amounts)
+}
 
 impl SptHandler {
     /// After applying all rows in the batch, detect pool rows with zero `circulating_supply` while
@@ -415,8 +475,6 @@ impl Handler for SptHandler {
                     time,
                     transaction_id,
                 } => {
-                    use std::collections::BTreeMap;
-
                     if *circulating_supply > 0 {
                     let canon: Option<SptReservationCanonPoolRow> = diesel::sql_query(
                         "SELECT pool_id FROM spt_reservation_pools WHERE associated_id = $1 ORDER BY time DESC LIMIT 1",
@@ -463,37 +521,14 @@ impl Handler for SptHandler {
                         );
                     }
 
-                    let supply = *circulating_supply as i128;
-                    let denom = (*total_reserved_at_launch).max(0) as i128;
-                    let mut amounts: BTreeMap<String, i128> = BTreeMap::new();
-                    if denom > 0 {
-                        for a in &aggs {
-                            let share = (a.net_myso as i128 * supply) / denom;
-                            *amounts.entry(a.reserver_address.clone()).or_insert(0) += share;
-                        }
-                    }
-
-                    let floored_sum: i128 = amounts.values().sum();
-                    let delta = supply - floored_sum;
-                    let owner_entry = amounts.entry(owner.clone()).or_insert(0);
-                    *owner_entry = owner_entry
-                        .checked_add(delta)
-                        .ok_or_else(|| {
-                            anyhow::anyhow!(
-                                "spt launch: owner remainder overflow for pool {}",
-                                pool_id
-                            )
-                        })?;
-
-                    let final_sum: i128 = amounts.values().sum();
-                    if final_sum != supply {
-                        return Err(anyhow::anyhow!(
-                            "spt launch: holdings sum {} != circulating_supply {} for pool {}",
-                            final_sum,
-                            supply,
-                            pool_id
-                        ));
-                    }
+                    let amounts = proportional_spt_launch_holdings(
+                        &aggs,
+                        *total_reserved_at_launch,
+                        *circulating_supply,
+                        owner,
+                        pool_id,
+                        associated_id,
+                    )?;
 
                     for (holder_address, amt) in amounts {
                         if amt == 0 {
@@ -1196,5 +1231,53 @@ impl Handler for SptHandler {
         }
         SptHandler::validate_zero_circ_pools_after_batch(conn, &zero_circ_pools).await?;
         Ok(total)
+    }
+}
+
+#[cfg(test)]
+mod proportional_spt_launch_tests {
+    use super::{proportional_spt_launch_holdings, SptReserverAggRow};
+
+    #[test]
+    fn proportional_uses_total_reserved_at_launch_when_set() {
+        let aggs = vec![
+            SptReserverAggRow {
+                reserver_address: "0xa".to_string(),
+                net_myso: 600,
+            },
+            SptReserverAggRow {
+                reserver_address: "0xb".to_string(),
+                net_myso: 400,
+            },
+        ];
+        let m = proportional_spt_launch_holdings(
+            &aggs,
+            1000,
+            10,
+            "0xowner",
+            "0xpool",
+            "0xassoc",
+        )
+        .unwrap();
+        assert_eq!(m["0xa"], 6);
+        assert_eq!(m["0xb"], 4);
+    }
+
+    #[test]
+    fn proportional_falls_back_to_ledger_sum_when_total_reserved_zero() {
+        let aggs = vec![
+            SptReserverAggRow {
+                reserver_address: "0xa".to_string(),
+                net_myso: 600,
+            },
+            SptReserverAggRow {
+                reserver_address: "0xb".to_string(),
+                net_myso: 400,
+            },
+        ];
+        let m =
+            proportional_spt_launch_holdings(&aggs, 0, 10, "0xowner", "0xpool", "0xassoc").unwrap();
+        assert_eq!(m["0xa"], 6);
+        assert_eq!(m["0xb"], 4);
     }
 }

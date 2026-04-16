@@ -84,7 +84,7 @@ pub fn handle_spt_event(
 
     match event_name {
         "TokenPoolCreatedEvent" | "PoolCreatedEvent" => {
-            process_token_pool_created_event(data, &transaction_id, ts, now)
+            process_token_pool_created_event(data, event_id, &transaction_id, ts, now)
         }
         "TokenBoughtEvent" | "BuyEvent" => {
             process_token_bought_event(data, &transaction_id, ts, now)
@@ -119,6 +119,7 @@ pub fn handle_spt_event(
 
 fn process_token_pool_created_event(
     data: &serde_json::Value,
+    event_id: &str,
     transaction_id: &str,
     ts: i64,
     now: chrono::DateTime<chrono::Utc>,
@@ -160,6 +161,12 @@ fn process_token_pool_created_event(
     let mut rows = vec![
         SocialEventRow::SptPool(pool),
         SocialEventRow::SptPriceHistory(price_history),
+        SocialEventRow::SocialProofTokensEvent(NewSocialProofTokensEvent {
+            event_type: "TokenPoolCreatedEvent".to_string(),
+            event_data: data.clone(),
+            event_id: event_id.to_string(),
+            created_at: now,
+        }),
     ];
 
     if token_type == TOKEN_TYPE_PROFILE {
@@ -1022,6 +1029,12 @@ mod tests {
         })
         .expect("SptLaunchHoldingsFromReservations");
         assert_eq!(launch, (100, 1000));
+        assert!(
+            rows.iter().any(|r| {
+                matches!(r, SocialEventRow::SocialProofTokensEvent(e) if e.event_type == "TokenPoolCreatedEvent" && e.event_id == "tx:0")
+            }),
+            "TokenPoolCreatedEvent is logged to spt_events pipeline"
+        );
     }
 
     #[test]
@@ -1050,6 +1063,12 @@ mod tests {
                 .iter()
                 .any(|r| matches!(r, SocialEventRow::SptLaunchHoldingsFromReservations { .. })),
             "launch row when circulating_supply > 0"
+        );
+        assert!(
+            rows.iter().any(|r| {
+                matches!(r, SocialEventRow::SocialProofTokensEvent(e) if e.event_type == "TokenPoolCreatedEvent")
+            }),
+            "spt_events row for pool create"
         );
     }
 
@@ -1083,6 +1102,12 @@ mod tests {
             })
             .expect("SptPool");
         assert_eq!(pool.circulating_supply, 0);
+        assert!(
+            rows.iter().any(|r| {
+                matches!(r, SocialEventRow::SocialProofTokensEvent(e) if e.event_type == "TokenPoolCreatedEvent")
+            }),
+            "TokenPoolCreatedEvent still logged when circulating_supply is 0"
+        );
     }
 
     #[test]

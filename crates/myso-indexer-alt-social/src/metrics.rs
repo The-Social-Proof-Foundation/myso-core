@@ -27,6 +27,8 @@ pub struct SocialMetrics {
     pub spt_token_pool_created_legacy_bcs: Counter,
     /// Pool row inserted with zero circulating_supply while reservation ledger has net MYSO for that launch.
     pub spt_pool_zero_supply_with_reservations: Counter,
+    /// Launch split used `SUM(spt_reservations)` as denominator because `total_reserved_at_launch` was 0.
+    pub spt_launch_denominator_ledger_fallback: Counter,
 }
 
 impl SocialMetrics {
@@ -108,6 +110,12 @@ impl SocialMetrics {
             "SPT pool inserted with circulating_supply=0 but spt_reservations net MYSO > 0 for associated_id",
             registry
         )?;
+
+        let spt_launch_denominator_ledger_fallback = register_counter_with_registry!(
+            "myso_social_spt_launch_denominator_ledger_fallback_total",
+            "SPT launch proportional split used reservation ledger sum because total_reserved_at_launch was 0",
+            registry
+        )?;
         
         Ok(Self {
             events_processed,
@@ -122,6 +130,7 @@ impl SocialMetrics {
             module_events_ignored,
             spt_token_pool_created_legacy_bcs,
             spt_pool_zero_supply_with_reservations,
+            spt_launch_denominator_ledger_fallback,
         })
     }
     
@@ -194,6 +203,12 @@ impl SocialMetrics {
     pub fn record_spt_pool_zero_supply_with_reservations() {
         if let Some(metrics) = Self::get() {
             metrics.spt_pool_zero_supply_with_reservations.inc();
+        }
+    }
+
+    pub fn record_spt_launch_denominator_ledger_fallback() {
+        if let Some(metrics) = Self::get() {
+            metrics.spt_launch_denominator_ledger_fallback.inc();
         }
     }
     
