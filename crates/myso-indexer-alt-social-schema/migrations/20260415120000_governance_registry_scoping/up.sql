@@ -75,8 +75,10 @@ BEGIN
 END
 $$;
 
--- One stats row per on-chain registry instance (registry_id), not merged by registry_type
-CREATE OR REPLACE VIEW governance_stats AS
+-- One stats row per on-chain registry instance (registry_id), not merged by registry_type.
+-- Must DROP first: prior view led with registry_type; replacing in place is not allowed (column rename/reorder).
+DROP VIEW IF EXISTS governance_stats CASCADE;
+CREATE VIEW governance_stats AS
 SELECT
     g.registry_id,
     g.registry_type,

@@ -1,5 +1,7 @@
--- Restore pre-scoping governance_stats (grouped by registry_type only)
-CREATE OR REPLACE VIEW governance_stats AS
+-- Restore pre-scoping governance_stats (grouped by registry_type only).
+-- Must DROP first: migrated view leads with registry_id; CREATE OR REPLACE cannot swap column order.
+DROP VIEW IF EXISTS governance_stats CASCADE;
+CREATE VIEW governance_stats AS
 SELECT
     g.registry_type,
     COUNT(DISTINCT d.id) AS active_delegates,
