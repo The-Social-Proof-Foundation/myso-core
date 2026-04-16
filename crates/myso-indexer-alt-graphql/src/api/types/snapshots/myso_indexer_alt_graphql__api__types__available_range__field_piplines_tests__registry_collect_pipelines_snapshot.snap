@@ -506,6 +506,9 @@ Delegate.address
 Delegate.registryType
   => {}
 
+Delegate.governanceRegistryId
+  => {}
+
 Delegate.upvotes
   => {}
 
@@ -533,6 +536,9 @@ Delegate.sidedWinningProposals
 Delegate.sidedLosingProposals
   => {}
 
+Delegate.profile
+  => {}
+
 Delegate.proposals
   => {}
 
@@ -551,6 +557,9 @@ Delegate.blockedByViewer
 Delegate.blockedBySubject
   => {}
 
+Delegate.viewerRatingVoteKind
+  => {}
+
 DelegateRating.targetAddress
   => {}
 
@@ -558,6 +567,9 @@ DelegateRating.voterAddress
   => {}
 
 DelegateRating.registryType
+  => {}
+
+DelegateRating.governanceRegistryId
   => {}
 
 DelegateRating.isActiveDelegate
@@ -863,6 +875,12 @@ GovernanceEvent.eventType
 GovernanceEvent.registryType
   => {}
 
+GovernanceEvent.governanceRegistryId
+  => {}
+
+GovernanceEvent.proposalId
+  => {}
+
 GovernanceEvent.eventData
   => {}
 
@@ -912,6 +930,9 @@ GovernanceRegistryConfig.votingPeriodMs
   => {}
 
 GovernanceRegistryConfig.quorumVotes
+  => {}
+
+GovernanceStats.registryId
   => {}
 
 GovernanceStats.registryType
@@ -1628,6 +1649,165 @@ MyDataPurchase.time
 MyDataPurchase.transactionId
   => {}
 
+MyDataQueryBroadPool.poolId
+  => {}
+
+MyDataQueryBroadPool.name
+  => {}
+
+MyDataQueryBroadPool.createdAtMs
+  => {}
+
+MyDataQueryBroadPool.eventId
+  => {}
+
+MyDataQueryBroadPool.transactionId
+  => {}
+
+MyDataQueryBroadPool.time
+  => {}
+
+MyDataQueryClaim.id
+  => {}
+
+MyDataQueryClaim.snapshotId
+  => {}
+
+MyDataQueryClaim.claimant
+  => {}
+
+MyDataQueryClaim.claimantProfile
+  => {}
+
+MyDataQueryClaim.amount
+  => {}
+
+MyDataQueryClaim.claimedAtMs
+  => {}
+
+MyDataQueryClaim.eventId
+  => {}
+
+MyDataQueryClaim.transactionId
+  => {}
+
+MyDataQueryClaim.time
+  => {}
+
+MyDataQueryDistributionRound.snapshotId
+  => {}
+
+MyDataQueryDistributionRound.totalAmount
+  => {}
+
+MyDataQueryDistributionRound.contributorCount
+  => {}
+
+MyDataQueryDistributionRound.merkleRoot
+  => {}
+
+MyDataQueryDistributionRound.publishedAtMs
+  => {}
+
+MyDataQueryDistributionRound.eventId
+  => {}
+
+MyDataQueryDistributionRound.transactionId
+  => {}
+
+MyDataQueryDistributionRound.time
+  => {}
+
+MyDataQueryListingSubPool.listingId
+  => {}
+
+MyDataQueryListingSubPool.subPoolId
+  => {}
+
+MyDataQueryListingSubPool.assignedAtMs
+  => {}
+
+MyDataQueryListingSubPool.eventId
+  => {}
+
+MyDataQueryListingSubPool.transactionId
+  => {}
+
+MyDataQueryListingSubPool.time
+  => {}
+
+MyDataQueryMerkleRoot.snapshotId
+  => {}
+
+MyDataQueryMerkleRoot.rootHash
+  => {}
+
+MyDataQueryMerkleRoot.publishedAtMs
+  => {}
+
+MyDataQueryMerkleRoot.eventId
+  => {}
+
+MyDataQueryMerkleRoot.transactionId
+  => {}
+
+MyDataQueryMerkleRoot.time
+  => {}
+
+MyDataQuerySnapshotAnchor.id
+  => {}
+
+MyDataQuerySnapshotAnchor.snapshotId
+  => {}
+
+MyDataQuerySnapshotAnchor.buyer
+  => {}
+
+MyDataQuerySnapshotAnchor.buyerProfile
+  => {}
+
+MyDataQuerySnapshotAnchor.pricePaid
+  => {}
+
+MyDataQuerySnapshotAnchor.createdAtMs
+  => {}
+
+MyDataQuerySnapshotAnchor.eventId
+  => {}
+
+MyDataQuerySnapshotAnchor.transactionId
+  => {}
+
+MyDataQuerySnapshotAnchor.time
+  => {}
+
+MyDataQuerySnapshotAnchor.manifestHash
+  => {}
+
+MyDataQuerySnapshotAnchor.paymentReference
+  => {}
+
+MyDataQuerySubPool.subPoolId
+  => {}
+
+MyDataQuerySubPool.broadPoolId
+  => {}
+
+MyDataQuerySubPool.name
+  => {}
+
+MyDataQuerySubPool.createdAtMs
+  => {}
+
+MyDataQuerySubPool.eventId
+  => {}
+
+MyDataQuerySubPool.transactionId
+  => {}
+
+MyDataQuerySubPool.time
+  => {}
+
 MyDataRecord.mydataId
   => {}
 
@@ -1701,6 +1881,9 @@ MyDataRecord.revenueTimeline
   => {}
 
 MyDataRecord.accessAnalytics
+  => {}
+
+MyDataRecord.querySubPools
   => {}
 
 MyDataRevenue.fromAddress
@@ -1800,6 +1983,9 @@ NominatedDelegate.blockedByViewer
   => {}
 
 NominatedDelegate.blockedBySubject
+  => {}
+
+NominatedDelegate.viewerRatingVoteKind
   => {}
 
 Object.id
@@ -2906,6 +3092,9 @@ Proposal.proposalId
 Proposal.registryType
   => {}
 
+Proposal.governanceRegistryId
+  => {}
+
 Proposal.status
   => {}
 
@@ -3126,6 +3315,33 @@ Query.listMydata
   => {}
 
 Query.popularMydata
+  => {}
+
+Query.mydataQueryBroadPools
+  => {}
+
+Query.mydataQuerySubPoolsForBroadPool
+  => {}
+
+Query.mydataQueryListingsForSubPool
+  => {}
+
+Query.mydataQuerySnapshotAnchor
+  => {}
+
+Query.mydataQuerySnapshotAnchors
+  => {}
+
+Query.mydataQueryDistributionRound
+  => {}
+
+Query.mydataQueryDistributionRounds
+  => {}
+
+Query.mydataQueryMerkleRoot
+  => {}
+
+Query.mydataQueryClaimsForSnapshot
   => {}
 
 Query.proposals
@@ -3960,6 +4176,15 @@ SptReservationHolding.requiredThreshold
   => {}
 
 SptReservationVolumeBucket.bucketStart
+  => {}
+
+SptReservationVolumeBucket.bucketEnd
+  => {}
+
+SptReservationVolumeBucket.earliestAt
+  => {}
+
+SptReservationVolumeBucket.latestAt
   => {}
 
 SptReservationVolumeBucket.depositVolume

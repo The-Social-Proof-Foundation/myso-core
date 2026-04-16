@@ -13,6 +13,7 @@ use fastcrypto::encoding::Encoding;
 use futures::future::try_join_all;
 use myso_indexer_alt_reader::fullnode_client::Error::GrpcExecutionError;
 use myso_indexer_alt_reader::fullnode_client::FullnodeClient;
+use myso_indexer_alt_social_reader::{DelegateRatingViewerTarget, delegate_rating_viewer_lookup_key};
 use myso_rpc::proto::myso::rpc::v2 as proto;
 
 use crate::api::mutation::TransactionInputError;
@@ -1366,11 +1367,37 @@ impl Query {
                 } else {
                     None
                 };
+                let vote_map = if let Some(ref vs) = viewer_s {
+                    let targets: Vec<DelegateRatingViewerTarget> = rows
+                        .iter()
+                        .map(|r| DelegateRatingViewerTarget {
+                            target_address: r.address.clone(),
+                            registry_type: r.registry_type,
+                            governance_registry_id: r.governance_registry_id.clone(),
+                            is_active_delegate: true,
+                        })
+                        .collect();
+                    reader
+                        .batch_viewer_delegate_rating_vote_kind_for_targets(vs, &targets)
+                        .await
+                        .ok()
+                } else {
+                    None
+                };
                 Ok(rows
                     .into_iter()
                     .map(|row| {
                         let c = ctx_map.as_ref().and_then(|m| m.get(&row.address)).copied();
-                        Delegate::with_viewer(row, c)
+                        let vote = vote_map.as_ref().and_then(|m| {
+                            let key = delegate_rating_viewer_lookup_key(&DelegateRatingViewerTarget {
+                                target_address: row.address.clone(),
+                                registry_type: row.registry_type,
+                                governance_registry_id: row.governance_registry_id.clone(),
+                                is_active_delegate: true,
+                            });
+                            m.get(&key).copied()
+                        });
+                        Delegate::with_viewer(row, c, vote)
                     })
                     .collect())
             }
@@ -1416,7 +1443,23 @@ impl Query {
                         } else {
                             None
                         };
-                        Some(Delegate::with_viewer(row, c))
+                        let vote = if let Some(ref vs) = viewer_s {
+                            let t = DelegateRatingViewerTarget {
+                                target_address: row.address.clone(),
+                                registry_type: row.registry_type,
+                                governance_registry_id: row.governance_registry_id.clone(),
+                                is_active_delegate: true,
+                            };
+                            let key = delegate_rating_viewer_lookup_key(&t);
+                            reader
+                                .batch_viewer_delegate_rating_vote_kind_for_targets(vs, &[t])
+                                .await
+                                .ok()
+                                .and_then(|m| m.get(&key).copied())
+                        } else {
+                            None
+                        };
+                        Some(Delegate::with_viewer(row, c, vote))
                     }
                 })
             }
@@ -1483,11 +1526,37 @@ impl Query {
                 } else {
                     None
                 };
+                let vote_map = if let Some(ref vs) = viewer_s {
+                    let targets: Vec<DelegateRatingViewerTarget> = rows
+                        .iter()
+                        .map(|r| DelegateRatingViewerTarget {
+                            target_address: r.address.clone(),
+                            registry_type: r.registry_type,
+                            governance_registry_id: r.governance_registry_id.clone(),
+                            is_active_delegate: false,
+                        })
+                        .collect();
+                    reader
+                        .batch_viewer_delegate_rating_vote_kind_for_targets(vs, &targets)
+                        .await
+                        .ok()
+                } else {
+                    None
+                };
                 Ok(rows
                     .into_iter()
                     .map(|row| {
                         let c = ctx_map.as_ref().and_then(|m| m.get(&row.address)).copied();
-                        NominatedDelegate::with_viewer(row, c)
+                        let vote = vote_map.as_ref().and_then(|m| {
+                            let key = delegate_rating_viewer_lookup_key(&DelegateRatingViewerTarget {
+                                target_address: row.address.clone(),
+                                registry_type: row.registry_type,
+                                governance_registry_id: row.governance_registry_id.clone(),
+                                is_active_delegate: false,
+                            });
+                            m.get(&key).copied()
+                        });
+                        NominatedDelegate::with_viewer(row, c, vote)
                     })
                     .collect())
             }
@@ -1519,15 +1588,35 @@ impl Query {
         ctx: &Context<'_>,
         limit: Option<u64>,
         offset: Option<u64>,
+        governance_registry_id: Option<String>,
+        registry_type: Option<i32>,
+        event_type: Option<String>,
+        proposal_id: Option<String>,
+        created_after_ms: Option<i64>,
+        created_before_ms: Option<i64>,
     ) -> Option<Result<Vec<GovernanceEvent>, RpcError>> {
         let reader_opt = ctx
             .data_opt::<std::sync::Arc<Option<myso_indexer_alt_social_reader::SocialPgReader>>>()?;
         let reader = reader_opt.as_ref().as_ref()?;
         let limit = limit.unwrap_or(50).min(100) as i64;
         let offset = offset.unwrap_or(0) as i64;
+        let registry_type = registry_type.map(|v| v as i16);
+        let created_after =
+            created_after_ms.and_then(chrono::DateTime::<chrono::Utc>::from_timestamp_millis);
+        let created_before =
+            created_before_ms.and_then(chrono::DateTime::<chrono::Utc>::from_timestamp_millis);
         Some(
             reader
-                .list_governance_events(limit, offset)
+                .list_governance_events(
+                    limit,
+                    offset,
+                    governance_registry_id.as_deref(),
+                    registry_type,
+                    event_type.as_deref(),
+                    proposal_id.as_deref(),
+                    created_after,
+                    created_before,
+                )
                 .await
                 .map_err(Into::into)
                 .map(|v| v.into_iter().map(GovernanceEvent::from_row).collect()),

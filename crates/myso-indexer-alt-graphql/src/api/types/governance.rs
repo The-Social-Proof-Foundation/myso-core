@@ -86,6 +86,11 @@ impl Proposal {
         self.inner.proposal_type
     }
 
+    /// On-chain `GovernanceDAO` object id when this proposal is scoped to a platform registry (`registry_type = 2`).
+    async fn governance_registry_id(&self) -> Option<&str> {
+        self.inner.governance_registry_id.as_deref()
+    }
+
     /// Proposal lifecycle status (0=submitted, 1=delegate_review, 2=community_voting, 3=approved, 4=rejected, 5=implemented, 6=rescinded). New proposals created on chain enter delegate review (1); `0` is not used for newly submitted work.
     async fn status(&self) -> i16 {
         self.inner.status
@@ -466,6 +471,10 @@ impl DelegateRating {
         self.inner.registry_type
     }
 
+    async fn governance_registry_id(&self) -> Option<&str> {
+        self.inner.governance_registry_id.as_deref()
+    }
+
     async fn is_active_delegate(&self) -> bool {
         self.inner.is_active_delegate
     }
@@ -515,6 +524,14 @@ impl GovernanceEvent {
 
     async fn registry_type(&self) -> i16 {
         self.inner.registry_type
+    }
+
+    async fn governance_registry_id(&self) -> Option<&str> {
+        self.inner.governance_registry_id.as_deref()
+    }
+
+    async fn proposal_id(&self) -> Option<&str> {
+        self.inner.proposal_id.as_deref()
     }
 
     async fn event_data(&self) -> Json {
@@ -624,11 +641,20 @@ impl AnonymousVotingTrend {
 pub(crate) struct Delegate {
     inner: DelegateRow,
     viewer_ctx: Option<ViewerSocialContext>,
+    viewer_rating_vote_kind: Option<i16>,
 }
 
 impl Delegate {
-    pub(crate) fn with_viewer(inner: DelegateRow, viewer_ctx: Option<ViewerSocialContext>) -> Self {
-        Self { inner, viewer_ctx }
+    pub(crate) fn with_viewer(
+        inner: DelegateRow,
+        viewer_ctx: Option<ViewerSocialContext>,
+        viewer_rating_vote_kind: Option<i16>,
+    ) -> Self {
+        Self {
+            inner,
+            viewer_ctx,
+            viewer_rating_vote_kind,
+        }
     }
 }
 
@@ -750,20 +776,33 @@ impl Delegate {
     async fn blocked_by_subject(&self) -> Option<bool> {
         self.viewer_ctx.map(|c| c.blocked_by_subject)
     }
+
+    /// The viewer's latest delegate rating (up / down / cleared) when `viewer` was set on `delegates` or `delegate`.
+    /// `CLEARED` means the viewer removed their vote; aggregate counts may still reflect prior activity.
+    async fn viewer_rating_vote_kind(&self) -> Option<DelegateRatingVoteKind> {
+        self.viewer_rating_vote_kind
+            .map(DelegateRatingVoteKind::from)
+    }
 }
 
 #[derive(Clone)]
 pub(crate) struct NominatedDelegate {
     inner: NominatedDelegateRow,
     viewer_ctx: Option<ViewerSocialContext>,
+    viewer_rating_vote_kind: Option<i16>,
 }
 
 impl NominatedDelegate {
     pub(crate) fn with_viewer(
         inner: NominatedDelegateRow,
         viewer_ctx: Option<ViewerSocialContext>,
+        viewer_rating_vote_kind: Option<i16>,
     ) -> Self {
-        Self { inner, viewer_ctx }
+        Self {
+            inner,
+            viewer_ctx,
+            viewer_rating_vote_kind,
+        }
     }
 }
 
@@ -824,6 +863,13 @@ impl NominatedDelegate {
 
     async fn blocked_by_subject(&self) -> Option<bool> {
         self.viewer_ctx.map(|c| c.blocked_by_subject)
+    }
+
+    /// The viewer's latest nominee rating when `viewer` was set on `nominatedDelegates`.
+    /// `CLEARED` means the viewer removed their vote; aggregate counts may still reflect prior activity.
+    async fn viewer_rating_vote_kind(&self) -> Option<DelegateRatingVoteKind> {
+        self.viewer_rating_vote_kind
+            .map(DelegateRatingVoteKind::from)
     }
 }
 
@@ -894,7 +940,7 @@ impl GovernanceRegistry {
         let reader_opt = ctx.data_opt::<Arc<Option<SocialPgReader>>>()?;
         let reader = reader_opt.as_ref().as_ref()?;
         let row = reader
-            .get_governance_stats_by_registry_type(self.inner.registry_type)
+            .get_governance_stats_by_registry_id(&self.inner.registry_id)
             .await
             .ok()??;
         Some(GovernanceStats { inner: row })
@@ -932,6 +978,11 @@ impl GovernanceRegistry {
 
 #[Object]
 impl GovernanceStats {
+    /// On-chain governance registry object id this row summarizes.
+    async fn registry_id(&self) -> &str {
+        &self.inner.registry_id
+    }
+
     /// Registry type (0=ecosystem, 1=proof of creativity, 2=platform).
     async fn registry_type(&self) -> i16 {
         self.inner.registry_type

@@ -135,6 +135,7 @@ fn process_governance_registry_created_event(
     }
     let ev: Ev = serde_json::from_value(data.clone()).ok()?;
     let now = Utc::now();
+    let registry_id_for_event = ev.registry_id.clone();
     let reg = NewGovernanceRegistry {
         registry_type: ev.registry_type as i16,
         registry_id: ev.registry_id,
@@ -156,6 +157,8 @@ fn process_governance_registry_created_event(
         event_id: event_id.to_string(),
         created_at: now,
         anonymous_voting_related: None,
+        governance_registry_id: Some(registry_id_for_event),
+        proposal_id: None,
     };
     Some(vec![
         SocialEventRow::GovernanceRegistry(reg),
@@ -199,6 +202,8 @@ fn process_delegate_nominated_event(
         event_id: event_id.to_string(),
         created_at: Utc::now(),
         anonymous_voting_related: None,
+        governance_registry_id: nominee.governance_registry_id.clone(),
+        proposal_id: None,
     };
     Some(vec![
         SocialEventRow::NominatedDelegate(nominee),
@@ -236,7 +241,7 @@ fn process_delegate_elected_event(
     let delegate = NewDelegate {
         address: ev.delegate_address,
         registry_type: ev.registry_type as i16,
-        governance_registry_id: scoped_registry_id,
+        governance_registry_id: scoped_registry_id.clone(),
         upvotes: 0,
         downvotes: 0,
         proposals_reviewed: 0,
@@ -257,6 +262,8 @@ fn process_delegate_elected_event(
         event_id: event_id.to_string(),
         created_at: Utc::now(),
         anonymous_voting_related: None,
+        governance_registry_id: scoped_registry_id,
+        proposal_id: None,
     };
     Some(vec![
         status_update,
@@ -285,21 +292,20 @@ fn process_delegate_voted_event(
     }
     let ev: Ev = serde_json::from_value(data.clone()).ok()?;
     let now = Utc::now().timestamp_millis() as i64;
+    let scoped = nominee_governance_registry_id(ev.registry_type, governance_registry_id);
     let vote_counts = SocialEventRow::DelegateVoteCountsUpdate {
         target_address: ev.target_address.clone(),
         registry_type: ev.registry_type as i16,
         is_active_delegate: ev.is_active_delegate,
         upvotes: ev.new_upvote_count as i64,
         downvotes: ev.new_downvote_count as i64,
-        governance_registry_id: nominee_governance_registry_id(
-            ev.registry_type,
-            governance_registry_id,
-        ),
+        governance_registry_id: scoped.clone(),
     };
     let rating = NewDelegateRating {
         target_address: ev.target_address,
         voter_address: ev.voter,
         registry_type: ev.registry_type as i16,
+        governance_registry_id: scoped.clone(),
         is_active_delegate: ev.is_active_delegate,
         vote_kind: if ev.upvote { 1 } else { 0 },
         rated_at: now,
@@ -312,6 +318,8 @@ fn process_delegate_voted_event(
         event_id: event_id.to_string(),
         created_at: Utc::now(),
         anonymous_voting_related: None,
+        governance_registry_id: scoped.clone(),
+        proposal_id: None,
     };
     Some(vec![
         SocialEventRow::DelegateRating(rating),
@@ -339,21 +347,20 @@ fn process_delegate_vote_cleared_event(
     }
     let ev: Ev = serde_json::from_value(data.clone()).ok()?;
     let now = Utc::now().timestamp_millis() as i64;
+    let scoped = nominee_governance_registry_id(ev.registry_type, governance_registry_id);
     let vote_counts = SocialEventRow::DelegateVoteCountsUpdate {
         target_address: ev.target_address.clone(),
         registry_type: ev.registry_type as i16,
         is_active_delegate: ev.is_active_delegate,
         upvotes: ev.new_upvote_count as i64,
         downvotes: ev.new_downvote_count as i64,
-        governance_registry_id: nominee_governance_registry_id(
-            ev.registry_type,
-            governance_registry_id,
-        ),
+        governance_registry_id: scoped.clone(),
     };
     let rating = NewDelegateRating {
         target_address: ev.target_address,
         voter_address: ev.voter,
         registry_type: ev.registry_type as i16,
+        governance_registry_id: scoped.clone(),
         is_active_delegate: ev.is_active_delegate,
         vote_kind: 2,
         rated_at: now,
@@ -366,6 +373,8 @@ fn process_delegate_vote_cleared_event(
         event_id: event_id.to_string(),
         created_at: Utc::now(),
         anonymous_voting_related: None,
+        governance_registry_id: scoped,
+        proposal_id: None,
     };
     Some(vec![
         SocialEventRow::DelegateRating(rating),
@@ -396,6 +405,7 @@ fn process_proposal_submitted_event(
     }
     let ev: Ev = serde_json::from_value(data.clone()).ok()?;
     let metadata_json = ev.metadata_json.and_then(|s| serde_json::from_str(&s).ok());
+    let proposal_scope = nominee_governance_registry_id(ev.proposal_type, governance_registry_id.clone());
     let proposal = NewProposal {
         id: ev.proposal_id.clone(),
         title: ev.title,
@@ -414,6 +424,7 @@ fn process_proposal_submitted_event(
         voting_end_time: None,
         reward_pool: ev.reward_amount as i64,
         transaction_id: event_id.to_string(),
+        governance_registry_id: proposal_scope.clone(),
     };
     let gov_ev = NewGovernanceEvent {
         event_type: "ProposalSubmittedEvent".to_string(),
@@ -422,6 +433,8 @@ fn process_proposal_submitted_event(
         event_id: event_id.to_string(),
         created_at: Utc::now(),
         anonymous_voting_related: None,
+        governance_registry_id: proposal_scope,
+        proposal_id: Some(ev.proposal_id.clone()),
     };
     Some(vec![
         SocialEventRow::Proposal(proposal),
@@ -920,13 +933,13 @@ fn process_governance_parameters_updated_event(
     let ev: Ev = serde_json::from_value(data.clone()).ok()?;
     let registry_type_i16 = ev.registry_type as i16;
     let registry_id = if registry_type_i16 == PROPOSAL_TYPE_PLATFORM {
-        governance_registry_id
+        governance_registry_id.clone()
     } else {
         None
     };
     let update = GovernanceRegistryUpdate {
         registry_type: registry_type_i16,
-        registry_id,
+        registry_id: registry_id.clone(),
         delegate_count: ev.delegate_count as i64,
         delegate_term_epochs: ev.delegate_term_epochs as i64,
         proposal_submission_cost: ev.proposal_submission_cost as i64,
@@ -944,6 +957,8 @@ fn process_governance_parameters_updated_event(
         event_id: event_id.to_string(),
         created_at: Utc::now(),
         anonymous_voting_related: None,
+        governance_registry_id: registry_id,
+        proposal_id: None,
     };
     Some(vec![
         SocialEventRow::GovernanceRegistryUpdate(update),

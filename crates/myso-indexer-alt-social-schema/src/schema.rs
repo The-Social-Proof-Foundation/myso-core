@@ -125,6 +125,7 @@ diesel::table! {
         rated_at -> Int8,
         time -> Timestamptz,
         transaction_id -> Text,
+        governance_registry_id -> Nullable<Text>,
     }
 }
 
@@ -183,6 +184,8 @@ diesel::table! {
         event_id -> Varchar,
         created_at -> Timestamptz,
         anonymous_voting_related -> Nullable<Bool>,
+        governance_registry_id -> Nullable<Text>,
+        proposal_id -> Nullable<Text>,
     }
 }
 
@@ -1134,6 +1137,7 @@ diesel::table! {
         pending_anonymous_decryption -> Nullable<Bool>,
         anonymous_decryption_completed_at -> Nullable<Int8>,
         rejection_time -> Nullable<Int8>,
+        governance_registry_id -> Nullable<Text>,
     }
 }
 

@@ -620,9 +620,24 @@ impl SptReservationVolumeBucket {
 
 #[Object]
 impl SptReservationVolumeBucket {
-    /// Start of the bucket (UTC, ISO 8601).
-    async fn bucket_start(&self) -> String {
-        to_iso8601_utc(self.inner.bucket_start)
+    /// Start of the bucket, Unix epoch seconds (UTC).
+    async fn bucket_start(&self) -> i64 {
+        self.inner.bucket_start
+    }
+
+    /// Exclusive end of the bucket, Unix epoch seconds (UTC).
+    async fn bucket_end(&self) -> i64 {
+        self.inner.bucket_end
+    }
+
+    /// Earliest indexer time in this bucket, Unix epoch seconds (UTC).
+    async fn earliest_at(&self) -> i64 {
+        self.inner.earliest_at
+    }
+
+    /// Latest indexer time in this bucket, Unix epoch seconds (UTC).
+    async fn latest_at(&self) -> i64 {
+        self.inner.latest_at
     }
 
     /// MYSO volume from reservation deposits (positive `amount` rows) in this bucket.

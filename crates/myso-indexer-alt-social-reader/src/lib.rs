@@ -2,6 +2,8 @@
 // SPDX-License-Identifier: Apache-2.0
 
 pub mod governance;
+
+pub use governance::{DelegateRatingViewerTarget, delegate_rating_viewer_lookup_key};
 pub mod insurance;
 mod metrics;
 pub mod mydata;

@@ -205,8 +205,18 @@ pub struct SptUserHoldingItem {
 
 #[derive(Debug, Serialize, QueryableByName)]
 pub struct SptReservationVolumeBucketRow {
-    #[diesel(sql_type = Timestamptz)]
-    pub bucket_start: chrono::DateTime<chrono::Utc>,
+    /// `date_trunc` bucket start, Unix epoch seconds (UTC).
+    #[diesel(sql_type = BigInt)]
+    pub bucket_start: i64,
+    /// Exclusive bucket end, Unix epoch seconds (UTC).
+    #[diesel(sql_type = BigInt)]
+    pub bucket_end: i64,
+    /// Earliest reservation row time in bucket, Unix epoch seconds (UTC).
+    #[diesel(sql_type = BigInt)]
+    pub earliest_at: i64,
+    /// Latest reservation row time in bucket, Unix epoch seconds (UTC).
+    #[diesel(sql_type = BigInt)]
+    pub latest_at: i64,
     #[diesel(sql_type = BigInt)]
     pub deposit_volume: i64,
     #[diesel(sql_type = BigInt)]

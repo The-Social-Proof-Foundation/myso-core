@@ -7,9 +7,9 @@ use std::sync::Arc;
 
 use anyhow::Result;
 use async_trait::async_trait;
-use diesel::sql_types::{BigInt, Bool, Int2, Nullable, Text};
+use diesel::sql_types::{BigInt, Bool, Int2, Nullable, SmallInt, Text};
 use diesel::ExpressionMethods;
-use diesel::QueryDsl;
+use diesel::QueryableByName;
 use diesel_async::RunQueryDsl;
 use move_core_types::ident_str;
 use myso_indexer_alt_framework::pipeline::Processor;
@@ -39,6 +39,28 @@ use super::events;
 use super::governance;
 
 const GOVERNANCE_MODULES: &[&str] = &["governance"];
+
+#[derive(QueryableByName)]
+struct LatestProposalGovernanceMeta {
+    #[diesel(sql_type = SmallInt)]
+    proposal_type: i16,
+    #[diesel(sql_type = Nullable<Text>)]
+    governance_registry_id: Option<String>,
+}
+
+async fn load_latest_proposal_governance_meta(
+    conn: &mut Connection<'_>,
+    proposal_id: &str,
+) -> Option<LatestProposalGovernanceMeta> {
+    diesel::sql_query(
+        r#"SELECT proposal_type, governance_registry_id FROM proposals
+           WHERE id = $1 AND time = (SELECT max(time) FROM proposals p2 WHERE p2.id = $1)"#,
+    )
+    .bind::<Text, _>(proposal_id)
+    .get_result::<LatestProposalGovernanceMeta>(conn)
+    .await
+    .ok()
+}
 
 #[derive(Debug, Clone)]
 pub enum GovernanceRow {
@@ -486,27 +508,29 @@ impl Handler for GovernanceHandler {
                             .await?
                     };
                     if let Some((event_type, event_data, event_id)) = governance_event {
-                        let proposal_type: Option<i16> = proposals::table
-                            .filter(proposals::id.eq(proposal_id))
-                            .select(proposals::proposal_type)
-                            .limit(1)
-                            .load::<i16>(conn)
-                            .await
-                            .ok()
-                            .and_then(|v| v.into_iter().next());
-                        if let Some(registry_type) = proposal_type {
+                        if let Some(meta) =
+                            load_latest_proposal_governance_meta(conn, proposal_id).await
+                        {
                             let gov_ev = NewGovernanceEvent {
                                 event_type: event_type.clone(),
-                                registry_type,
+                                registry_type: meta.proposal_type,
                                 event_data: event_data.clone(),
                                 event_id: event_id.clone(),
                                 created_at: chrono::Utc::now(),
                                 anonymous_voting_related: None,
+                                governance_registry_id: meta.governance_registry_id,
+                                proposal_id: Some(proposal_id.clone()),
                             };
                             total += diesel::insert_into(governance_events::table)
                                 .values(&gov_ev)
                                 .execute(conn)
                                 .await?;
+                        } else {
+                            tracing::warn!(
+                                proposal_id = %proposal_id,
+                                event_type = %event_type,
+                                "governance_events insert skipped: missing proposal row for lifecycle event"
+                            );
                         }
                     }
                 }
@@ -547,27 +571,29 @@ impl Handler for GovernanceHandler {
                     event_id,
                     anonymous_voting_related,
                 } => {
-                    let proposal_type: Option<i16> = proposals::table
-                        .filter(proposals::id.eq(proposal_id))
-                        .select(proposals::proposal_type)
-                        .limit(1)
-                        .load::<i16>(conn)
-                        .await
-                        .ok()
-                        .and_then(|v| v.into_iter().next());
-                    if let Some(registry_type) = proposal_type {
+                    if let Some(meta) =
+                        load_latest_proposal_governance_meta(conn, proposal_id).await
+                    {
                         let gov_ev = NewGovernanceEvent {
                             event_type: event_type.clone(),
-                            registry_type,
+                            registry_type: meta.proposal_type,
                             event_data: event_data.clone(),
                             event_id: event_id.clone(),
                             created_at: chrono::Utc::now(),
                             anonymous_voting_related: *anonymous_voting_related,
+                            governance_registry_id: meta.governance_registry_id,
+                            proposal_id: Some(proposal_id.clone()),
                         };
                         total += diesel::insert_into(governance_events::table)
                             .values(&gov_ev)
                             .execute(conn)
                             .await?;
+                    } else {
+                        tracing::warn!(
+                            proposal_id = %proposal_id,
+                            event_type = %event_type,
+                            "governance_events insert skipped: missing proposal row for proposal-linked event"
+                        );
                     }
                 }
                 GovernanceRow::AnonymousVote(v) => {

@@ -21,22 +21,24 @@ pub(crate) async fn list_proposals(
 ) -> Result<Vec<ProposalRow>, SocialError> {
     let mut conn = db.connect().await?;
 
-    let effective_proposal_type = if let Some(pid) = platform_id {
-        resolve_registry_type_for_platform(&mut conn, pid).await?
-    } else {
-        proposal_type
-    };
+    let (effective_proposal_type, platform_registry_scope) =
+        if let Some(pid) = platform_id {
+            resolve_platform_proposal_list_scope(&mut conn, pid).await?
+        } else {
+            (proposal_type, None)
+        };
 
     let query = "
         SELECT id, title, description, proposal_type, reference_id, metadata_json, submitter,
                submission_time, delegate_approval_count, delegate_rejection_count,
                community_votes_for, community_votes_against, status, voting_start_time,
                voting_end_time, reward_pool, implemented_description, implementation_time,
-               rescind_time, rejection_time, anonymous_voters_count
+               rescind_time, rejection_time, anonymous_voters_count, governance_registry_id
         FROM (SELECT DISTINCT ON (id) * FROM proposals ORDER BY id, time DESC) p
         WHERE ($1::smallint IS NULL OR status = $1)
           AND ($2::smallint IS NULL OR proposal_type = $2)
           AND ($3::text IS NULL OR submitter = $3)
+          AND ($6::text IS NULL OR governance_registry_id IS NOT DISTINCT FROM $6)
         ORDER BY submission_time DESC
         LIMIT $4 OFFSET $5
     ";
@@ -46,15 +48,16 @@ pub(crate) async fn list_proposals(
         .bind::<Nullable<Text>, _>(submitter)
         .bind::<BigInt, _>(limit)
         .bind::<BigInt, _>(offset)
+        .bind::<Nullable<Text>, _>(platform_registry_scope.as_deref())
         .load::<ProposalRow>(&mut conn)
         .await?;
     Ok(results)
 }
 
-async fn resolve_registry_type_for_platform<C>(
+async fn resolve_platform_proposal_list_scope<C>(
     conn: &mut C,
     platform_id: &str,
-) -> Result<Option<i16>, SocialError>
+) -> Result<(Option<i16>, Option<String>), SocialError>
 where
     C: diesel_async::AsyncConnection<Backend = diesel::pg::Pg> + Send,
 {
@@ -74,7 +77,7 @@ where
     .optional()?;
 
     let Some(reg_id) = platform.and_then(|p| p.governance_registry_id) else {
-        return Ok(Some(-1));
+        return Ok((Some(-1), None));
     };
 
     #[derive(QueryableByName)]
@@ -86,12 +89,16 @@ where
     let reg = diesel::sql_query(
         "SELECT registry_type FROM governance_registries WHERE registry_id = $1 LIMIT 1",
     )
-    .bind::<Text, _>(reg_id)
+    .bind::<Text, _>(&reg_id)
     .get_result::<RegistryType>(conn)
     .await
     .optional()?;
 
-    Ok(reg.map(|r| r.registry_type).or(Some(-1)))
+    let Some(r) = reg else {
+        return Ok((Some(-1), None));
+    };
+
+    Ok((Some(r.registry_type), Some(reg_id)))
 }
 
 pub(crate) async fn get_proposal_by_id(
@@ -104,7 +111,7 @@ pub(crate) async fn get_proposal_by_id(
                submission_time, delegate_approval_count, delegate_rejection_count,
                community_votes_for, community_votes_against, status, voting_start_time,
                voting_end_time, reward_pool, implemented_description, implementation_time,
-               rescind_time, rejection_time, anonymous_voters_count
+               rescind_time, rejection_time, anonymous_voters_count, governance_registry_id
         FROM proposals
         WHERE id = $1 AND time = (SELECT max(time) FROM proposals WHERE id = $1)
     ";
@@ -259,7 +266,7 @@ pub(crate) async fn get_delegate_proposals(
                submission_time, delegate_approval_count, delegate_rejection_count,
                community_votes_for, community_votes_against, status, voting_start_time,
                voting_end_time, reward_pool, implemented_description, implementation_time,
-               rescind_time, rejection_time, anonymous_voters_count
+               rescind_time, rejection_time, anonymous_voters_count, governance_registry_id
         FROM proposals
         WHERE id IN (SELECT proposal_id FROM delegate_votes WHERE delegate_address = $1)
           AND time = (SELECT max(time) FROM proposals p2 WHERE p2.id = proposals.id)
@@ -278,13 +285,13 @@ pub(crate) async fn get_delegate_ratings(
 ) -> Result<Vec<DelegateRatingRow>, SocialError> {
     let mut conn = db.connect().await?;
     let query = "
-        SELECT target_address, voter_address, registry_type, is_active_delegate, vote_kind, rated_at
+        SELECT target_address, voter_address, registry_type, governance_registry_id, is_active_delegate, vote_kind, rated_at
         FROM (
-            SELECT DISTINCT ON (target_address, voter_address, registry_type, is_active_delegate)
-                   target_address, voter_address, registry_type, is_active_delegate, vote_kind, rated_at
+            SELECT DISTINCT ON (target_address, voter_address, registry_type, COALESCE(governance_registry_id, ''), is_active_delegate)
+                   target_address, voter_address, registry_type, governance_registry_id, is_active_delegate, vote_kind, rated_at
             FROM delegate_ratings
             WHERE target_address = $1
-            ORDER BY target_address, voter_address, registry_type, is_active_delegate, time DESC
+            ORDER BY target_address, voter_address, registry_type, COALESCE(governance_registry_id, ''), is_active_delegate, time DESC
         ) latest
         ORDER BY rated_at DESC
     ";
@@ -357,7 +364,7 @@ pub(crate) async fn list_nominees(
             return Ok(vec![]);
         };
         let query = "
-        SELECT address, registry_type, upvotes, downvotes, scheduled_term_start_epoch,
+        SELECT address, registry_type, governance_registry_id, upvotes, downvotes, scheduled_term_start_epoch,
                nomination_time, status
         FROM (
             SELECT DISTINCT ON (address, registry_type, COALESCE(governance_registry_id, '')) *
@@ -382,7 +389,7 @@ pub(crate) async fn list_nominees(
         let omnibus = registry_type.is_none();
         let effective_registry_type = registry_type;
         let query = "
-        SELECT address, registry_type, upvotes, downvotes, scheduled_term_start_epoch,
+        SELECT address, registry_type, governance_registry_id, upvotes, downvotes, scheduled_term_start_epoch,
                nomination_time, status
         FROM (
             SELECT DISTINCT ON (address, registry_type, COALESCE(governance_registry_id, '')) *
@@ -492,7 +499,8 @@ pub(crate) async fn list_governance_events(
 ) -> Result<Vec<GovernanceEventRow>, SocialError> {
     let mut conn = db.connect().await?;
     let query = "
-        SELECT id, event_type, registry_type, event_data, event_id, created_at
+        SELECT id, event_type, registry_type, event_data, event_id, created_at,
+               governance_registry_id, proposal_id
         FROM governance_events
         ORDER BY created_at DESC
         LIMIT $1 OFFSET $2

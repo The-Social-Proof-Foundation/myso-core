@@ -994,6 +994,10 @@ type Delegate {
 	"""
 	downvotes: Int!
 	"""
+	On-chain governance registry object id when `registry_type` is platform (2); null for ecosystem/PoC.
+	"""
+	governanceRegistryId: String
+	"""
 	Whether the delegate is currently active.
 	"""
 	isActive: Boolean!
@@ -1043,9 +1047,15 @@ type Delegate {
 	upvotes: Int!
 	viewerFollowsViewer: Boolean
 	viewerIsFollowing: Boolean
+	"""
+	The viewer's latest delegate rating (up / down / cleared) when `viewer` was set on `delegates` or `delegate`.
+	`CLEARED` means the viewer removed their vote; aggregate counts may still reflect prior activity.
+	"""
+	viewerRatingVoteKind: DelegateRatingVoteKind
 }
 
 type DelegateRating {
+	governanceRegistryId: String
 	isActiveDelegate: Boolean!
 	ratedAt: Int!
 	registryType: Int!
@@ -1739,7 +1749,9 @@ type GovernanceEvent {
 	eventData: JSON!
 	eventId: String!
 	eventType: String!
+	governanceRegistryId: String
 	id: Int!
+	proposalId: String
 	registryType: Int!
 }
 
@@ -1826,6 +1838,10 @@ type GovernanceStats {
 	Pending nominees count.
 	"""
 	pendingNominees: Int!
+	"""
+	On-chain governance registry object id this row summarizes.
+	"""
+	registryId: String!
 	"""
 	Registry type (0=ecosystem, 1=proof of creativity, 2=platform).
 	"""
@@ -3641,6 +3657,11 @@ type NominatedDelegate {
 	upvotes: Int!
 	viewerFollowsViewer: Boolean
 	viewerIsFollowing: Boolean
+	"""
+	The viewer's latest nominee rating when `viewer` was set on `nominatedDelegates`.
+	`CLEARED` means the viewer removed their vote; aggregate counts may still reflect prior activity.
+	"""
+	viewerRatingVoteKind: DelegateRatingVoteKind
 }
 
 """
@@ -5346,6 +5367,10 @@ type Proposal {
 	"""
 	description: String!
 	"""
+	On-chain `GovernanceDAO` object id when this proposal is scoped to a platform registry (`registry_type = 2`).
+	"""
+	governanceRegistryId: String
+	"""
 	Implementation time (epoch ms).
 	"""
 	implementationTime: Int
@@ -5559,7 +5584,7 @@ type Query {
 	"""
 	Fetch a delegate by address. Returns null when social DB not configured or not found.
 	"""
-	delegate(address: MySoAddress!, viewer: MySoAddress): Delegate
+	delegate(address: MySoAddress!, viewer: MySoAddress, registryType: Int, governanceRegistryId: String): Delegate
 	"""
 	List delegates (paginated, optionally filtered by registry type and active status). Returns empty when social DB not configured.
 	"""
@@ -5581,7 +5606,7 @@ type Query {
 	"""
 	List governance events (paginated). Returns empty when social DB not configured.
 	"""
-	governanceEvents(limit: Int, offset: Int): [GovernanceEvent!]
+	governanceEvents(limit: Int, offset: Int, governanceRegistryId: String, registryType: Int, eventType: String, proposalId: String, createdAfterMs: Int, createdBeforeMs: Int): [GovernanceEvent!]
 	"""
 	List governance registries, optionally filtered by registry type. Returns empty when social DB not configured.
 	"""
@@ -6905,9 +6930,13 @@ type SptReservationHolding {
 
 type SptReservationVolumeBucket {
 	"""
-	Start of the bucket (UTC, ISO 8601).
+	Exclusive end of the bucket, Unix epoch seconds (UTC).
 	"""
-	bucketStart: String!
+	bucketEnd: Int!
+	"""
+	Start of the bucket, Unix epoch seconds (UTC).
+	"""
+	bucketStart: Int!
 	"""
 	Number of deposit events in the bucket.
 	"""
@@ -6916,6 +6945,14 @@ type SptReservationVolumeBucket {
 	MYSO volume from reservation deposits (positive `amount` rows) in this bucket.
 	"""
 	depositVolume: Int!
+	"""
+	Earliest indexer time in this bucket, Unix epoch seconds (UTC).
+	"""
+	earliestAt: Int!
+	"""
+	Latest indexer time in this bucket, Unix epoch seconds (UTC).
+	"""
+	latestAt: Int!
 	"""
 	Number of withdrawal events in the bucket.
 	"""

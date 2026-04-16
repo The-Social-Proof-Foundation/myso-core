@@ -1,6 +1,7 @@
 // Copyright (c) The Social Proof Foundation, LLC.
 // SPDX-License-Identifier: Apache-2.0
 
+use std::collections::HashMap;
 use std::sync::Arc;
 
 use anyhow::Context;
@@ -13,9 +14,10 @@ use url::Url;
 use myso_pg_db as db;
 
 use crate::governance::{
+    DelegateRatingViewerTarget, batch_viewer_latest_delegate_rating_vote_kind,
     get_anonymous_voting_trends, get_delegate_by_address, get_delegate_proposals,
     get_delegate_ratings, get_governance_registry_by_platform_id, get_governance_registry_by_type,
-    get_governance_stats_by_registry_type, get_proposal_anonymous_stats,
+    get_governance_stats_by_registry_id, get_proposal_anonymous_stats,
     get_proposal_anonymous_votes, get_proposal_by_id, get_proposal_community_votes,
     get_proposal_community_votes_count, get_proposal_decryption_failures,
     get_proposal_delegate_votes, get_proposal_reward_distributions, list_delegates,
@@ -342,6 +344,36 @@ impl SocialPgReader {
         let mut conn = self.connect().await?;
         let (v_pid, v_owner) = resolve_profile_address(&mut conn, viewer).await?;
         batch_viewer_social_context(&mut conn, subject_addresses, &v_pid, &v_owner).await
+    }
+
+    /// Latest delegate/nominee rating `vote_kind` from the viewer's perspective (wallet + profile id),
+    /// keyed by [`crate::governance::delegate_rating_viewer_lookup_key`].
+    pub async fn batch_viewer_delegate_rating_vote_kind_for_targets(
+        &self,
+        viewer: &str,
+        targets: &[DelegateRatingViewerTarget],
+    ) -> anyhow::Result<HashMap<String, i16>> {
+        if targets.is_empty() {
+            return Ok(HashMap::new());
+        }
+        let mut conn = self.connect().await?;
+        let (v_pid, v_owner) = resolve_profile_address(&mut conn, viewer).await?;
+        let mut viewer_refs = vec![v_owner];
+        if let Some(pid) = v_pid {
+            if pid != viewer_refs[0] {
+                viewer_refs.push(pid);
+            }
+        }
+        if viewer_refs.iter().all(|s| s.is_empty()) {
+            return Ok(HashMap::new());
+        }
+        batch_viewer_latest_delegate_rating_vote_kind(
+            &mut conn,
+            &viewer_refs,
+            targets,
+            &self.metrics,
+        )
+        .await
     }
 
     /// Get profiles blocked by this user.
@@ -1502,14 +1534,32 @@ impl SocialPgReader {
         get_delegate_ratings(&mut conn, address, &self.metrics).await
     }
 
-    /// List governance events (paginated).
+    /// List governance events (paginated, optional filters).
     pub async fn list_governance_events(
         &self,
         limit: i64,
         offset: i64,
+        governance_registry_id: Option<&str>,
+        registry_type: Option<i16>,
+        event_type: Option<&str>,
+        proposal_id: Option<&str>,
+        created_after: Option<chrono::DateTime<chrono::Utc>>,
+        created_before: Option<chrono::DateTime<chrono::Utc>>,
     ) -> anyhow::Result<Vec<myso_indexer_alt_social_schema::models::GovernanceEventRow>> {
         let mut conn = self.connect().await?;
-        list_governance_events(&mut conn, limit, offset, &self.metrics).await
+        list_governance_events(
+            &mut conn,
+            limit,
+            offset,
+            governance_registry_id,
+            registry_type,
+            event_type,
+            proposal_id,
+            created_after,
+            created_before,
+            &self.metrics,
+        )
+        .await
     }
 
     /// Get anonymous voting stats for a proposal.
@@ -1551,13 +1601,13 @@ impl SocialPgReader {
         get_anonymous_voting_trends(&mut conn, limit, &self.metrics).await
     }
 
-    /// Get governance stats by registry type (from governance_stats view).
-    pub async fn get_governance_stats_by_registry_type(
+    /// Get governance stats for one on-chain registry (from governance_stats view).
+    pub async fn get_governance_stats_by_registry_id(
         &self,
-        registry_type: i16,
+        registry_id: &str,
     ) -> anyhow::Result<Option<myso_indexer_alt_social_schema::models::GovernanceStatsRow>> {
         let mut conn = self.connect().await?;
-        get_governance_stats_by_registry_type(&mut conn, registry_type, &self.metrics).await
+        get_governance_stats_by_registry_id(&mut conn, registry_id, &self.metrics).await
     }
 
     /// Get platform revenue summary (from platform_revenue_summary view).

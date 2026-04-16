@@ -953,8 +953,18 @@ pub enum SptReservationVolumeInterval {
 #[derive(Debug, Clone, QueryableByName)]
 #[diesel(check_for_backend(diesel::pg::Pg))]
 pub struct SptReservationVolumeBucket {
-    #[diesel(sql_type = Timestamptz)]
-    pub bucket_start: chrono::DateTime<chrono::Utc>,
+    /// `date_trunc` bucket start, Unix epoch seconds (UTC).
+    #[diesel(sql_type = BigInt)]
+    pub bucket_start: i64,
+    /// Exclusive bucket end, Unix epoch seconds (UTC): start of next hour or day.
+    #[diesel(sql_type = BigInt)]
+    pub bucket_end: i64,
+    /// Earliest `spt_reservations.time` in this bucket, Unix epoch seconds (UTC).
+    #[diesel(sql_type = BigInt)]
+    pub earliest_at: i64,
+    /// Latest `spt_reservations.time` in this bucket, Unix epoch seconds (UTC).
+    #[diesel(sql_type = BigInt)]
+    pub latest_at: i64,
     #[diesel(sql_type = BigInt)]
     pub deposit_volume: i64,
     #[diesel(sql_type = BigInt)]
@@ -984,11 +994,18 @@ pub(crate) async fn get_spt_reservation_volume_history(
         SptReservationVolumeInterval::Hour => "hour",
         SptReservationVolumeInterval::Day => "day",
     };
+    let bucket_width = match interval {
+        SptReservationVolumeInterval::Hour => "interval '1 hour'",
+        SptReservationVolumeInterval::Day => "interval '1 day'",
+    };
 
     let query = format!(
         r#"
         SELECT
-            date_trunc('{}', r.time) AS bucket_start,
+            (EXTRACT(EPOCH FROM date_trunc('{trunc}', r.time)))::bigint AS bucket_start,
+            (EXTRACT(EPOCH FROM date_trunc('{trunc}', r.time) + {bucket_width}))::bigint AS bucket_end,
+            (EXTRACT(EPOCH FROM MIN(r.time)))::bigint AS earliest_at,
+            (EXTRACT(EPOCH FROM MAX(r.time)))::bigint AS latest_at,
             COALESCE(SUM(CASE WHEN r.amount > 0 THEN r.amount ELSE 0 END), 0)::bigint AS deposit_volume,
             COALESCE(SUM(CASE WHEN r.amount < 0 THEN -r.amount ELSE 0 END), 0)::bigint AS withdrawal_volume,
             COUNT(*) FILTER (WHERE r.amount > 0)::bigint AS deposit_count,
@@ -1006,11 +1023,12 @@ pub(crate) async fn get_spt_reservation_volume_history(
         )
         AND ($2::timestamptz IS NULL OR r.time >= $2)
         AND ($3::timestamptz IS NULL OR r.time <= $3)
-        GROUP BY 1
-        ORDER BY 1 DESC
+        GROUP BY date_trunc('{trunc}', r.time)
+        ORDER BY date_trunc('{trunc}', r.time) DESC
         LIMIT $4
         "#,
-        trunc
+        trunc = trunc,
+        bucket_width = bucket_width,
     );
 
     let results = diesel::sql_query(&query)
