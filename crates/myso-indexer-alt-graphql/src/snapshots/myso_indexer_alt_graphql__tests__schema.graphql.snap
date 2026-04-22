@@ -1765,6 +1765,10 @@ type GovernanceRegistry {
 	"""
 	delegateCount: Int!
 	"""
+	Largest completed delegate-term boundary epoch applied by a panel refresh on chain (`None` if unknown or pre-indexer).
+	"""
+	lastDelegatePanelBoundaryEpoch: Int
+	"""
 	Platform details (when registry_type=2). Resolved by platform_id when from governanceRegistry(platformId), else by registry_id.
 	"""
 	platform: Platform
@@ -5403,11 +5407,11 @@ type Proposal {
 	"""
 	rescindTime: Int
 	"""
-	Reward distributions for this proposal.
+	On-chain-observed pool movements: forfeits to ecosystem or platform-governance treasuries, implementation reward to submitter, rescind refund, etc. See `distributionType` on each row.
 	"""
 	rewardDistributions: [RewardDistribution!]
 	"""
-	Reward pool amount.
+	MYSO held in the proposal reward pool (submission stake plus quadratic vote fees). Drained on treasury forfeiture, implementation reward to submitter, or owner rescind.
 	"""
 	rewardPool: Int!
 	"""

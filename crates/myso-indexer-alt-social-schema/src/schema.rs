@@ -201,6 +201,7 @@ diesel::table! {
         quadratic_base_cost -> Int8,
         voting_period_ms -> Int8,
         quorum_votes -> Int8,
+        last_delegate_panel_boundary_epoch -> Nullable<Int8>,
         updated_at -> Int8,
         time -> Timestamptz,
         transaction_id -> Text,

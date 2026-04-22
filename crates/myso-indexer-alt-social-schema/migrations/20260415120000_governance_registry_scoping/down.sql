@@ -9,7 +9,7 @@ SELECT
     COUNT(DISTINCT p.id) AS submitted_proposals,
     COUNT(DISTINCT p.id) FILTER (WHERE p.status = 1) AS in_review_proposals,
     COUNT(DISTINCT p.id) FILTER (WHERE p.status = 2) AS voting_proposals,
-    COUNT(DISTINCT p.id) FILTER (WHERE p.status = 3) AS approved_proposals,
+    COUNT(DISTINCT p.id) FILTER (WHERE p.status IN (3, 5)) AS approved_proposals,
     COUNT(DISTINCT p.id) FILTER (WHERE p.status = 4) AS rejected_proposals,
     COUNT(DISTINCT p.id) FILTER (WHERE p.status = 5) AS implemented_proposals,
     COUNT(DISTINCT p.id) FILTER (WHERE p.status = 6) AS rescinded_proposals
@@ -88,3 +88,5 @@ ALTER TABLE governance_events DROP COLUMN IF EXISTS governance_registry_id;
 DROP INDEX IF EXISTS idx_proposals_governance_registry_list;
 
 ALTER TABLE proposals DROP COLUMN IF EXISTS governance_registry_id;
+
+ALTER TABLE governance_registries DROP COLUMN IF EXISTS last_delegate_panel_boundary_epoch;

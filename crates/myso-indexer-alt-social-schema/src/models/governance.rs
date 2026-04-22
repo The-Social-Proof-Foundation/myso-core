@@ -29,6 +29,7 @@ pub struct GovernanceRegistry {
     pub quadratic_base_cost: i64,
     pub voting_period_ms: i64,
     pub quorum_votes: i64,
+    pub last_delegate_panel_boundary_epoch: Option<i64>,
     pub updated_at: i64,
     pub time: chrono::DateTime<chrono::Utc>,
     pub transaction_id: String,
@@ -48,6 +49,7 @@ pub struct NewGovernanceRegistry {
     pub quadratic_base_cost: i64,
     pub voting_period_ms: i64,
     pub quorum_votes: i64,
+    pub last_delegate_panel_boundary_epoch: Option<i64>,
     pub updated_at: i64,
     pub transaction_id: String,
 }
@@ -397,6 +399,14 @@ pub struct GovernanceRegistryUpdate {
     pub transaction_id: String,
 }
 
+#[derive(Debug, Clone)]
+pub struct GovernanceRegistryPanelBoundaryUpdate {
+    pub registry_id: String,
+    pub last_delegate_panel_boundary_epoch: i64,
+    pub updated_at: i64,
+    pub transaction_id: String,
+}
+
 /// Config for a governance registry (voting params). Used by GraphQL and API.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct GovernanceRegistryConfig {
@@ -537,6 +547,8 @@ pub struct GovernanceRegistryRow {
     pub voting_period_ms: i64,
     #[diesel(sql_type = BigInt)]
     pub quorum_votes: i64,
+    #[diesel(sql_type = Nullable<BigInt>)]
+    pub last_delegate_panel_boundary_epoch: Option<i64>,
 }
 
 /// Query result for a nominated delegate (for GraphQL/reader).

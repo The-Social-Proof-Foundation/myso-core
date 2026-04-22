@@ -32,10 +32,17 @@ module social_contracts::platform_tests {
             platform::test_init(test_scenario::ctx(scenario));
         };
 
+        test_scenario::next_tx(scenario, ADMIN);
+        {
+            let c = clock::create_for_testing(test_scenario::ctx(scenario));
+            clock::share_for_testing(c);
+        };
+
         // Create a new platform in a separate transaction 
         test_scenario::next_tx(scenario, PLATFORM_ADMIN);
         {
             let mut registry = test_scenario::take_shared<PlatformRegistry>(scenario);
+            let clock = test_scenario::take_shared<Clock>(scenario);
             
             // Create platform
             platform::create_platform(
@@ -61,9 +68,11 @@ module social_contracts::platform_tests {
                 option::some(5_000_000), // quadratic_base_cost
                 option::some(3), // voting_period_epochs
                 option::some(15), // quorum_votes
+                &clock,
                 test_scenario::ctx(scenario)
             );
             
+            test_scenario::return_shared(clock);
             test_scenario::return_shared(registry);
         };
 

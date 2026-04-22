@@ -90,7 +90,7 @@ Claim all admin capabilities (one-time only)
 Creates and transfers all admin capabilities to caller, then seals the bootstrap key.
 
 
-<pre><code><b>public</b> <b>entry</b> <b>fun</b> <a href="../social_contracts/bootstrap.md#social_contracts_bootstrap_claim_all_admin_capabilities">claim_all_admin_capabilities</a>(registry: &<b>mut</b> <a href="../orderbook/registry.md#orderbook_registry_Registry">orderbook::registry::Registry</a>, bootstrap_key: &<b>mut</b> <a href="../myso/bootstrap_key.md#myso_bootstrap_key_BootstrapKey">myso::bootstrap_key::BootstrapKey</a>, ctx: &<b>mut</b> <a href="../myso/tx_context.md#myso_tx_context_TxContext">myso::tx_context::TxContext</a>)
+<pre><code><b>public</b> <b>entry</b> <b>fun</b> <a href="../social_contracts/bootstrap.md#social_contracts_bootstrap_claim_all_admin_capabilities">claim_all_admin_capabilities</a>(registry: &<b>mut</b> <a href="../orderbook/registry.md#orderbook_registry_Registry">orderbook::registry::Registry</a>, bootstrap_key: &<b>mut</b> <a href="../myso/bootstrap_key.md#myso_bootstrap_key_BootstrapKey">myso::bootstrap_key::BootstrapKey</a>, clock: &<a href="../myso/clock.md#myso_clock_Clock">myso::clock::Clock</a>, ctx: &<b>mut</b> <a href="../myso/tx_context.md#myso_tx_context_TxContext">myso::tx_context::TxContext</a>)
 </code></pre>
 
 
@@ -102,6 +102,7 @@ Creates and transfers all admin capabilities to caller, then seals the bootstrap
 <pre><code><b>public</b> <b>entry</b> <b>fun</b> <a href="../social_contracts/bootstrap.md#social_contracts_bootstrap_claim_all_admin_capabilities">claim_all_admin_capabilities</a>(
     registry: &<b>mut</b> ob_registry::Registry,
     bootstrap_key: &<b>mut</b> BootstrapKey,
+    clock: &Clock,
     ctx: &<b>mut</b> TxContext
 ) {
     bootstrap_key::assert_not_used(bootstrap_key);
@@ -112,7 +113,7 @@ Creates and transfers all admin capabilities to caller, then seals the bootstrap
     <a href="../social_contracts/profile.md#social_contracts_profile_bootstrap_init">social_contracts::profile::bootstrap_init</a>(ctx);
     <a href="../social_contracts/block_list.md#social_contracts_block_list_bootstrap_init">social_contracts::block_list::bootstrap_init</a>(ctx);
     <a href="../social_contracts/mydata.md#social_contracts_mydata_bootstrap_init">social_contracts::mydata::bootstrap_init</a>(ctx);
-    <a href="../social_contracts/governance.md#social_contracts_governance_bootstrap_init">social_contracts::governance::bootstrap_init</a>(ctx);
+    <a href="../social_contracts/governance.md#social_contracts_governance_bootstrap_init">social_contracts::governance::bootstrap_init</a>(clock, ctx);
     <a href="../social_contracts/post.md#social_contracts_post_bootstrap_init">social_contracts::post::bootstrap_init</a>(ctx);
     <a href="../social_contracts/social_proof_tokens.md#social_contracts_social_proof_tokens_bootstrap_init">social_contracts::social_proof_tokens::bootstrap_init</a>(ctx);
     <a href="../social_contracts/proof_of_creativity.md#social_contracts_proof_of_creativity_bootstrap_init">social_contracts::proof_of_creativity::bootstrap_init</a>(ctx);

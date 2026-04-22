@@ -1,6 +1,9 @@
 -- Per-registry scoping for proposals, governance_events, delegate_ratings; fix governance_stats per registry_id;
 -- extend delegate_ratings_daily grouping for platform DAOs.
 
+ALTER TABLE governance_registries
+    ADD COLUMN IF NOT EXISTS last_delegate_panel_boundary_epoch BIGINT;
+
 -- Proposals: tie platform proposals to on-chain GovernanceDAO object id
 ALTER TABLE proposals
     ADD COLUMN IF NOT EXISTS governance_registry_id TEXT;
@@ -87,7 +90,7 @@ SELECT
     COUNT(DISTINCT p.id) AS submitted_proposals,
     COUNT(DISTINCT p.id) FILTER (WHERE p.status = 1) AS in_review_proposals,
     COUNT(DISTINCT p.id) FILTER (WHERE p.status = 2) AS voting_proposals,
-    COUNT(DISTINCT p.id) FILTER (WHERE p.status = 3) AS approved_proposals,
+    COUNT(DISTINCT p.id) FILTER (WHERE p.status IN (3, 5)) AS approved_proposals,
     COUNT(DISTINCT p.id) FILTER (WHERE p.status = 4) AS rejected_proposals,
     COUNT(DISTINCT p.id) FILTER (WHERE p.status = 5) AS implemented_proposals,
     COUNT(DISTINCT p.id) FILTER (WHERE p.status = 6) AS rescinded_proposals
@@ -116,3 +119,6 @@ LEFT JOIN (
         OR (g.registry_type = 2 AND p.governance_registry_id = g.registry_id)
     )
 GROUP BY g.registry_id, g.registry_type;
+
+-- delegate_votes, community_votes, anonymous_votes, reward_distributions: scope via proposal_id joins to
+-- proposals.governance_registry_id; add dedicated columns here only if direct registry-keyed queries are needed.

@@ -255,7 +255,8 @@ pub(crate) async fn list_governance_registries(
     let query = "
         SELECT registry_type, registry_id, delegate_count, delegate_term_epochs,
                proposal_submission_cost, min_on_chain_age_days, max_votes_per_user,
-               quadratic_base_cost, voting_period_ms, quorum_votes
+               quadratic_base_cost, voting_period_ms, quorum_votes,
+               last_delegate_panel_boundary_epoch
         FROM governance_registries
         WHERE ($1::smallint IS NULL OR registry_type = $1)
     ";
@@ -280,7 +281,8 @@ pub(crate) async fn get_governance_registry_by_type(
     let query = "
         SELECT registry_type, registry_id, delegate_count, delegate_term_epochs,
                proposal_submission_cost, min_on_chain_age_days, max_votes_per_user,
-               quadratic_base_cost, voting_period_ms, quorum_votes
+               quadratic_base_cost, voting_period_ms, quorum_votes,
+               last_delegate_panel_boundary_epoch
         FROM governance_registries
         WHERE registry_type = $1
         ORDER BY registry_id ASC
@@ -327,7 +329,8 @@ pub(crate) async fn get_governance_registry_by_platform_id(
     let query = "
         SELECT registry_type, registry_id, delegate_count, delegate_term_epochs,
                proposal_submission_cost, min_on_chain_age_days, max_votes_per_user,
-               quadratic_base_cost, voting_period_ms, quorum_votes
+               quadratic_base_cost, voting_period_ms, quorum_votes,
+               last_delegate_panel_boundary_epoch
         FROM governance_registries
         WHERE registry_id = $1
     ";

@@ -142,7 +142,7 @@ impl Proposal {
         self.inner.voting_end_time
     }
 
-    /// Reward pool amount.
+    /// MYSO held in the proposal reward pool (submission stake plus quadratic vote fees). Drained on treasury forfeiture, implementation reward to submitter, or owner rescind.
     async fn reward_pool(&self) -> i64 {
         self.inner.reward_pool
     }
@@ -231,7 +231,7 @@ impl Proposal {
         Some(rows.into_iter().map(CommunityVote::from_row).collect())
     }
 
-    /// Reward distributions for this proposal.
+    /// On-chain-observed pool movements: forfeits to ecosystem or platform-governance treasuries, implementation reward to submitter, rescind refund, etc. See `distributionType` on each row.
     async fn reward_distributions(&self, ctx: &Context<'_>) -> Option<Vec<RewardDistribution>> {
         let reader_opt = ctx.data_opt::<Arc<Option<SocialPgReader>>>()?;
         let reader = reader_opt.as_ref().as_ref()?;
@@ -933,6 +933,11 @@ impl GovernanceRegistry {
             voting_period_ms: self.inner.voting_period_ms,
             quorum_votes: self.inner.quorum_votes,
         }
+    }
+
+    /// Largest completed delegate-term boundary epoch applied by a panel refresh on chain (`None` if unknown or pre-indexer).
+    async fn last_delegate_panel_boundary_epoch(&self) -> Option<i64> {
+        self.inner.last_delegate_panel_boundary_epoch
     }
 
     /// Governance stats (delegate/proposal counts by registry type).

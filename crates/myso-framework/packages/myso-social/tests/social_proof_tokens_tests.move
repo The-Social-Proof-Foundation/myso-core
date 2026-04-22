@@ -249,10 +249,18 @@ module social_contracts::token_exchange_tests {
             platform::test_init(test_scenario::ctx(&mut scenario));
         };
         
+        // Create and share a test clock (required by create_platform)
+        test_scenario::next_tx(&mut scenario, ADMIN);
+        {
+            let c = clock::create_for_testing(test_scenario::ctx(&mut scenario));
+            clock::share_for_testing(c);
+        };
+        
         // Create a platform for testing
         test_scenario::next_tx(&mut scenario, ADMIN);
         {
             let mut registry = test_scenario::take_shared<platform::PlatformRegistry>(&scenario);
+            let clock = test_scenario::take_shared<Clock>(&scenario);
             
             platform::create_platform(
                 &mut registry,
@@ -277,17 +285,12 @@ module social_contracts::token_exchange_tests {
                 option::none(),
                 option::none(),
                 option::none(),
+                &clock,
                 test_scenario::ctx(&mut scenario)
             );
             
+            test_scenario::return_shared(clock);
             test_scenario::return_shared(registry);
-        };
-        
-        // Create and share a test clock
-        test_scenario::next_tx(&mut scenario, ADMIN);
-        {
-            let clock = clock::create_for_testing(test_scenario::ctx(&mut scenario));
-            clock::share_for_testing(clock);
         };
         
         // Mint coins for testing users

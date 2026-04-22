@@ -12,6 +12,7 @@ module social_contracts::social_proof_of_truth_tests {
     use myso::coin::{Self, Coin};
     use myso::balance;
     use myso::myso::MYSO;
+    use myso::clock::{Self, Clock};
 
     use social_contracts::social_proof_of_truth as spot;
     use social_contracts::social_proof_tokens as spt;
@@ -51,6 +52,12 @@ module social_contracts::social_proof_of_truth_tests {
         test_scenario::next_tx(&mut scen, ADMIN);
         { spot::test_init(test_scenario::ctx(&mut scen)); };
 
+        test_scenario::next_tx(&mut scen, ADMIN);
+        {
+            let c = clock::create_for_testing(test_scenario::ctx(&mut scen));
+            clock::share_for_testing(c);
+        };
+
         // Mint funds
         test_scenario::next_tx(&mut scen, ADMIN);
         {
@@ -63,6 +70,7 @@ module social_contracts::social_proof_of_truth_tests {
         test_scenario::next_tx(&mut scen, USER1);
         {
             let mut preg = test_scenario::take_shared<PlatformRegistry>(&scen);
+            let clock = test_scenario::take_shared<Clock>(&scen);
             platform::create_platform(
                 &mut preg,
                 string::utf8(b"SPoT Test Platform"),
@@ -79,8 +87,10 @@ module social_contracts::social_proof_of_truth_tests {
                 string::utf8(b"2024-01-01"),
                 false,
                 option::none(), option::none(), option::none(), option::none(), option::none(), option::none(), option::none(), option::none(),
+                &clock,
                 test_scenario::ctx(&mut scen)
             );
+            test_scenario::return_shared(clock);
             test_scenario::return_shared(preg);
         };
 

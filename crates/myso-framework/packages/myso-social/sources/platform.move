@@ -11,6 +11,7 @@ module social_contracts::platform {
     use myso::{
         object::{Self, UID, ID},
         tx_context::{Self, TxContext},
+        clock::{Self, Clock},
         transfer,
         dynamic_field,
         vec_set::{Self, VecSet},
@@ -20,6 +21,7 @@ module social_contracts::platform {
         myso::MYSO,
         event
     };
+    use mydata::bf_hmac_encryption::{PublicKey, VerifiedDerivedKey};
     
     use social_contracts::profile;
     use social_contracts::governance;
@@ -321,6 +323,7 @@ module social_contracts::platform {
         quadratic_base_cost: Option<u64>,
         voting_period_epochs: Option<u64>,
         quorum_votes: Option<u64>,
+        clock: &Clock,
         ctx: &mut TxContext
     ) {
         // Check version compatibility
@@ -328,7 +331,7 @@ module social_contracts::platform {
         
         let platform_id = object::new(ctx);
         let developer = tx_context::sender(ctx);
-        let now = tx_context::epoch_timestamp_ms(ctx);
+        let now = clock::timestamp_ms(clock);
 
         // Check if platform name is already taken
         assert!(!table::contains(&registry.platforms_by_name, name), EPlatformAlreadyExists);
@@ -477,6 +480,7 @@ module social_contracts::platform {
                 quadratic_base_cost,
                 voting_period_epochs,
                 quorum_votes,
+                clock,
                 ctx
             );
             
@@ -634,6 +638,245 @@ module social_contracts::platform {
             new_balance,
             timestamp: tx_context::epoch_timestamp_ms(ctx),
         });
+    }
+
+    /// Mark a platform-linked governance proposal as implemented; pay the proposer the implementation pool.
+    public entry fun mark_platform_governance_proposal_implemented(
+        platform: &mut Platform,
+        registry: &mut governance::GovernanceDAO,
+        proposal: &mut governance::Proposal,
+        description: Option<String>,
+        clock: &Clock,
+        ctx: &mut TxContext
+    ) {
+        let registry_id = object::id(registry);
+        let opt = governance_registry_id(platform);
+        assert!(option::is_some(opt), EUnauthorized);
+        assert!(*option::borrow(opt) == registry_id, EUnauthorized);
+        assert!(
+            governance::registry_type(registry) == governance::proposal_type_platform_value(),
+            EUnauthorized
+        );
+        let sent_time = clock::timestamp_ms(clock);
+        let submitter = governance::proposal_submitter(proposal);
+        let bal = governance::mark_proposal_implemented_take_pool(registry, proposal, description, clock, ctx);
+        let amount = balance::value(&bal);
+        if (amount > 0) {
+            let c = coin::from_balance(bal, ctx);
+            transfer::public_transfer(c, submitter);
+        } else {
+            balance::destroy_zero(bal);
+        };
+        let proposal_id = object::id(proposal);
+        governance::emit_implementation_reward_to_submitter_event(
+            proposal_id,
+            submitter,
+            amount,
+            governance::proposal_type_platform_value(),
+            sent_time,
+        );
+    }
+
+    /// Platform-linked registry: delegate vote; on council rejection, the pool is forfeited to this platform’s treasury.
+    public entry fun delegate_vote_on_platform_governance_proposal(
+        platform: &mut Platform,
+        registry: &mut governance::GovernanceDAO,
+        proposal: &mut governance::Proposal,
+        approve: bool,
+        reason: Option<String>,
+        clock: &Clock,
+        ctx: &mut TxContext
+    ) {
+        let registry_id = object::id(registry);
+        let opt = governance_registry_id(platform);
+        assert!(option::is_some(opt), EUnauthorized);
+        assert!(*option::borrow(opt) == registry_id, EUnauthorized);
+        assert!(governance::registry_type(registry) == governance::proposal_type_platform_value(), EUnauthorized);
+        let current_time = clock::timestamp_ms(clock);
+        let out = governance::run_delegate_review_vote(
+            registry,
+            proposal,
+            approve,
+            reason,
+            clock,
+            ctx
+        );
+        let platform_addr = object::uid_to_address(&platform.id);
+        if (out == governance::delegate_vote_outcome_reject_value()) {
+            let bal = governance::complete_delegate_reject_drain_to_platform_governance(
+                registry,
+                proposal,
+                platform_addr,
+                current_time,
+                ctx
+            );
+            let amt = balance::value(&bal);
+            if (amt > 0) {
+                let mut c = coin::from_balance(bal, ctx);
+                add_to_treasury(platform, &mut c, amt, ctx);
+                coin::destroy_zero(c);
+            } else {
+                balance::destroy_zero(bal);
+            };
+        };
+        let proposal_id = object::id(proposal);
+        let caller = tx_context::sender(ctx);
+        governance::emit_delegate_vote_trailing_event(
+            proposal_id,
+            caller,
+            approve,
+            current_time,
+            option::none(),
+        );
+    }
+
+    /// After community voting, finalize a platform-governance proposal; on failure, pool to this platform’s treasury.
+    public entry fun finalize_platform_governance_proposal(
+        platform: &mut Platform,
+        registry: &mut governance::GovernanceDAO,
+        proposal: &mut governance::Proposal,
+        clock: &Clock,
+        ctx: &mut TxContext
+    ) {
+        let registry_id = object::id(registry);
+        let opt = governance_registry_id(platform);
+        assert!(option::is_some(opt), EUnauthorized);
+        assert!(*option::borrow(opt) == registry_id, EUnauthorized);
+        assert!(governance::registry_type(registry) == governance::proposal_type_platform_value(), EUnauthorized);
+        let (outcome, time_ms) = governance::finalize_community_voting_internals(
+            registry,
+            proposal,
+            clock,
+            ctx,
+        );
+        let platform_addr = object::uid_to_address(&platform.id);
+        if (outcome == governance::community_finalize_voting_reject_community_value()) {
+            let bal = governance::forfeit_proposal_pool_after_community_reject_to_platform_treasury(
+                registry,
+                proposal,
+                platform_addr,
+                governance::forfeit_reason_community_rejected_value(),
+                time_ms,
+            );
+            let amt = balance::value(&bal);
+            if (amt > 0) {
+                let mut c = coin::from_balance(bal, ctx);
+                add_to_treasury(platform, &mut c, amt, ctx);
+                coin::destroy_zero(c);
+            } else {
+                balance::destroy_zero(bal);
+            };
+        } else if (outcome == governance::community_finalize_voting_reject_quorum_value()) {
+            let bal = governance::forfeit_proposal_pool_after_community_reject_to_platform_treasury(
+                registry,
+                proposal,
+                platform_addr,
+                governance::forfeit_reason_quorum_not_met_value(),
+                time_ms,
+            );
+            let amt = balance::value(&bal);
+            if (amt > 0) {
+                let mut c = coin::from_balance(bal, ctx);
+                add_to_treasury(platform, &mut c, amt, ctx);
+                coin::destroy_zero(c);
+            } else {
+                balance::destroy_zero(bal);
+            };
+        };
+    }
+
+    /// Same constraints as [`governance::finalize_proposal_anonymous`]: non-`entry` so decryption key vectors are valid arguments.
+    public fun finalize_platform_governance_proposal_anonymous(
+        platform: &mut Platform,
+        registry: &mut governance::GovernanceDAO,
+        proposal: &mut governance::Proposal,
+        keys: &vector<VerifiedDerivedKey>,
+        public_keys: &vector<PublicKey>,
+        clock: &Clock,
+        ctx: &mut TxContext
+    ) {
+        let registry_id = object::id(registry);
+        let opt = governance_registry_id(platform);
+        assert!(option::is_some(opt), EUnauthorized);
+        assert!(*option::borrow(opt) == registry_id, EUnauthorized);
+        assert!(governance::registry_type(registry) == governance::proposal_type_platform_value(), EUnauthorized);
+        let (outcome, time_ms) = governance::anonymous_tally_votes_and_finalize_community_internals(
+            registry,
+            proposal,
+            keys,
+            public_keys,
+            clock,
+            ctx,
+        );
+        let platform_addr = object::uid_to_address(&platform.id);
+        if (outcome == governance::community_finalize_voting_reject_community_value()) {
+            let bal = governance::forfeit_proposal_pool_after_community_reject_to_platform_treasury(
+                registry,
+                proposal,
+                platform_addr,
+                governance::forfeit_reason_community_rejected_value(),
+                time_ms,
+            );
+            let amt = balance::value(&bal);
+            if (amt > 0) {
+                let mut c = coin::from_balance(bal, ctx);
+                add_to_treasury(platform, &mut c, amt, ctx);
+                coin::destroy_zero(c);
+            } else {
+                balance::destroy_zero(bal);
+            };
+        } else if (outcome == governance::community_finalize_voting_reject_quorum_value()) {
+            let bal = governance::forfeit_proposal_pool_after_community_reject_to_platform_treasury(
+                registry,
+                proposal,
+                platform_addr,
+                governance::forfeit_reason_quorum_not_met_value(),
+                time_ms,
+            );
+            let amt = balance::value(&bal);
+            if (amt > 0) {
+                let mut c = coin::from_balance(bal, ctx);
+                add_to_treasury(platform, &mut c, amt, ctx);
+                coin::destroy_zero(c);
+            } else {
+                balance::destroy_zero(bal);
+            };
+        };
+    }
+
+    public entry fun reject_platform_governance_proposal_manually(
+        platform: &mut Platform,
+        registry: &mut governance::GovernanceDAO,
+        proposal: &mut governance::Proposal,
+        clock: &Clock,
+        ctx: &mut TxContext
+    ) {
+        let registry_id = object::id(registry);
+        let opt = governance_registry_id(platform);
+        assert!(option::is_some(opt), EUnauthorized);
+        assert!(*option::borrow(opt) == registry_id, EUnauthorized);
+        let t = governance::assert_platform_delegate_manual_reject(
+            registry,
+            proposal,
+            clock,
+            ctx
+        );
+        let platform_addr = object::uid_to_address(&platform.id);
+        let bal = governance::complete_delegate_reject_drain_to_platform_governance(
+            registry,
+            proposal,
+            platform_addr,
+            t,
+            ctx
+        );
+        let amt = balance::value(&bal);
+        if (amt > 0) {
+            let mut c = coin::from_balance(bal, ctx);
+            add_to_treasury(platform, &mut c, amt, ctx);
+            coin::destroy_zero(c);
+        } else {
+            balance::destroy_zero(bal);
+        };
     }
 
     /// Add a moderator to a platform
@@ -1168,6 +1411,7 @@ module social_contracts::platform {
         quadratic_base_cost: u64,
         voting_period_epochs: u64,
         quorum_votes: u64,
+        clock: &Clock,
         ctx: &mut TxContext
     ) {
         // Verify caller is platform developer
@@ -1193,6 +1437,7 @@ module social_contracts::platform {
             quadratic_base_cost,
             voting_period_epochs,
             quorum_votes,
+            clock,
             ctx
         );
     }

@@ -76,6 +76,7 @@ module social_contracts::insurance_tests {
         test_scenario::next_tx(&mut scen, USER1);
         {
             let mut preg = test_scenario::take_shared<PlatformRegistry>(&scen);
+            let clock = test_scenario::take_shared<Clock>(&scen);
             platform::create_platform(
                 &mut preg,
                 string::utf8(b"Insurance Test Platform"),
@@ -93,8 +94,10 @@ module social_contracts::insurance_tests {
                 false,
                 option::none(), option::none(), option::none(), option::none(),
                 option::none(), option::none(), option::none(), option::none(),
+                &clock,
                 test_scenario::ctx(&mut scen)
             );
+            test_scenario::return_shared(clock);
             test_scenario::return_shared(preg);
         };
 

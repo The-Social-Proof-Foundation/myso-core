@@ -10,6 +10,7 @@ module social_contracts::governance_tests {
     
     use myso::test_scenario;
     use myso::tx_context;
+    use myso::clock::{Self, Clock};
     use myso::coin::{Self};
     use myso::myso::MYSO;
     use myso::table::{Self, Table};
@@ -591,6 +592,14 @@ module social_contracts::governance_tests {
         test_scenario::next_tx(&mut scenario, ADMIN);
         {
             let ctx = test_scenario::ctx(&mut scenario);
+            let c = clock::create_for_testing(ctx);
+            clock::share_for_testing(c);
+        };
+
+        test_scenario::next_tx(&mut scenario, ADMIN);
+        {
+            let clock = test_scenario::take_shared<Clock>(&scenario);
+            let ctx = test_scenario::ctx(&mut scenario);
             
             // Create a fake platform ID - using a UID that is owned by the test
             let mut platform_uid = object::new(ctx);
@@ -613,8 +622,11 @@ module social_contracts::governance_tests {
                 quadratic_base_cost,
                 voting_period_epochs,
                 quorum_votes,
+                &clock,
                 ctx
             );
+            
+            test_scenario::return_shared(clock);
             
             // Verify the registry ID is valid
             assert!(object::id_to_address(&registry_id) != @0x0, 0);
@@ -664,6 +676,14 @@ module social_contracts::governance_tests {
         test_scenario::next_tx(&mut scenario, ADMIN);
         {
             let ctx = test_scenario::ctx(&mut scenario);
+            let c = clock::create_for_testing(ctx);
+            clock::share_for_testing(c);
+        };
+
+        test_scenario::next_tx(&mut scenario, ADMIN);
+        {
+            let clock = test_scenario::take_shared<Clock>(&scenario);
+            let ctx = test_scenario::ctx(&mut scenario);
             
             // Create a fake platform ID
             let mut platform_uid = object::new(ctx);
@@ -687,8 +707,11 @@ module social_contracts::governance_tests {
                 quadratic_base_cost,
                 voting_period_epochs,
                 quorum_votes,
+                &clock,
                 ctx
             );
+            
+            test_scenario::return_shared(clock);
             
             // Verify the registry ID is valid
             assert!(object::id_to_address(&registry_id) != @0x0, 0);
@@ -748,6 +771,14 @@ module social_contracts::governance_tests {
         test_scenario::next_tx(&mut scenario, ADMIN);
         {
             let ctx = test_scenario::ctx(&mut scenario);
+            let c = clock::create_for_testing(ctx);
+            clock::share_for_testing(c);
+        };
+
+        test_scenario::next_tx(&mut scenario, ADMIN);
+        {
+            let clock = test_scenario::take_shared<Clock>(&scenario);
+            let ctx = test_scenario::ctx(&mut scenario);
             let mut platform_uid = object::new(ctx);
             let _registry_id = governance::create_platform_governance(
                 7,
@@ -757,8 +788,10 @@ module social_contracts::governance_tests {
                 5000000,
                 3,
                 15,
+                &clock,
                 ctx
             );
+            test_scenario::return_shared(clock);
             object::delete(platform_uid);
         };
 
@@ -811,6 +844,14 @@ module social_contracts::governance_tests {
         test_scenario::next_tx(&mut scenario, ADMIN);
         {
             let ctx = test_scenario::ctx(&mut scenario);
+            let c = clock::create_for_testing(ctx);
+            clock::share_for_testing(c);
+        };
+
+        test_scenario::next_tx(&mut scenario, ADMIN);
+        {
+            let clock = test_scenario::take_shared<Clock>(&scenario);
+            let ctx = test_scenario::ctx(&mut scenario);
             let mut platform_uid = object::new(ctx);
             let _registry_id = governance::create_platform_governance(
                 7,
@@ -820,8 +861,10 @@ module social_contracts::governance_tests {
                 5000000,
                 3,
                 15,
+                &clock,
                 ctx
             );
+            test_scenario::return_shared(clock);
             object::delete(platform_uid);
         };
 
@@ -866,6 +909,14 @@ module social_contracts::governance_tests {
         test_scenario::next_tx(&mut scenario, ADMIN);
         {
             let ctx = test_scenario::ctx(&mut scenario);
+            let c = clock::create_for_testing(ctx);
+            clock::share_for_testing(c);
+        };
+
+        test_scenario::next_tx(&mut scenario, ADMIN);
+        {
+            let clock = test_scenario::take_shared<Clock>(&scenario);
+            let ctx = test_scenario::ctx(&mut scenario);
             let mut platform_uid = object::new(ctx);
             let _registry_id = governance::create_platform_governance(
                 7,
@@ -875,8 +926,10 @@ module social_contracts::governance_tests {
                 5000000,
                 3,
                 15,
+                &clock,
                 ctx
             );
+            test_scenario::return_shared(clock);
             object::delete(platform_uid);
         };
 
@@ -903,6 +956,14 @@ module social_contracts::governance_tests {
         test_scenario::next_tx(&mut scenario, ADMIN);
         {
             let ctx = test_scenario::ctx(&mut scenario);
+            let c = clock::create_for_testing(ctx);
+            clock::share_for_testing(c);
+        };
+
+        test_scenario::next_tx(&mut scenario, ADMIN);
+        {
+            let clock = test_scenario::take_shared<Clock>(&scenario);
+            let ctx = test_scenario::ctx(&mut scenario);
             let mut platform_uid = object::new(ctx);
             let _registry_id = governance::create_platform_governance(
                 7,
@@ -912,8 +973,10 @@ module social_contracts::governance_tests {
                 5000000,
                 3,
                 15,
+                &clock,
                 ctx
             );
+            test_scenario::return_shared(clock);
             object::delete(platform_uid);
         };
 
@@ -951,6 +1014,14 @@ module social_contracts::governance_tests {
         test_scenario::next_tx(&mut scenario, ADMIN);
         {
             let ctx = test_scenario::ctx(&mut scenario);
+            let c = clock::create_for_testing(ctx);
+            clock::share_for_testing(c);
+        };
+
+        test_scenario::next_tx(&mut scenario, ADMIN);
+        {
+            let clock = test_scenario::take_shared<Clock>(&scenario);
+            let ctx = test_scenario::ctx(&mut scenario);
             let mut platform_uid = object::new(ctx);
             let _registry_id = governance::create_platform_governance(
                 7,
@@ -960,8 +1031,10 @@ module social_contracts::governance_tests {
                 5000000,
                 3,
                 15,
+                &clock,
                 ctx
             );
+            test_scenario::return_shared(clock);
             object::delete(platform_uid);
         };
 
@@ -981,6 +1054,132 @@ module social_contracts::governance_tests {
             let (_, _, _, _, _, _, term_start, term_end) = governance::get_delegate_info(&registry, ADMIN);
             assert!(term_start == 0, 0);
             assert!(term_end == 5, 1);
+            test_scenario::return_shared(registry);
+        };
+
+        test_scenario::end(scenario);
+    }
+
+    /// After a term boundary epoch, `update_delegate_panel` can run on a later epoch (catch-up).
+    #[test]
+    #[allow(unused_mut_ref)]
+    fun test_update_delegate_panel_catch_up_after_boundary() {
+        use myso::object::{Self};
+        use social_contracts::governance;
+
+        let mut scenario = test_scenario::begin(ADMIN);
+
+        test_scenario::next_tx(&mut scenario, ADMIN);
+        {
+            let ctx = test_scenario::ctx(&mut scenario);
+            let c = clock::create_for_testing(ctx);
+            clock::share_for_testing(c);
+        };
+
+        test_scenario::next_tx(&mut scenario, ADMIN);
+        {
+            let clock = test_scenario::take_shared<Clock>(&scenario);
+            let ctx = test_scenario::ctx(&mut scenario);
+            let mut platform_uid = object::new(ctx);
+            let _registry_id = governance::create_platform_governance(
+                7,
+                5,
+                50000000,
+                5,
+                5000000,
+                3,
+                15,
+                &clock,
+                ctx
+            );
+            test_scenario::return_shared(clock);
+            object::delete(platform_uid);
+        };
+
+        test_scenario::skip_to_epoch(&mut scenario, 8);
+
+        test_scenario::next_tx(&mut scenario, ADMIN);
+        {
+            let mut registry = test_scenario::take_shared<governance::GovernanceDAO>(&mut scenario);
+            let ctx = test_scenario::ctx(&mut scenario);
+            governance::update_delegate_panel(&mut registry, ctx);
+            assert!(governance::last_delegate_panel_boundary_epoch(&registry) == 5, 0);
+            test_scenario::return_shared(registry);
+        };
+
+        test_scenario::next_tx(&mut scenario, ADMIN);
+        {
+            let registry = test_scenario::take_shared<governance::GovernanceDAO>(&mut scenario);
+            let (_, _, _, _, _, _, term_start, term_end) = governance::get_delegate_info(&registry, ADMIN);
+            assert!(term_start == 8, 1);
+            assert!(term_end == 13, 2);
+            test_scenario::return_shared(registry);
+        };
+
+        test_scenario::end(scenario);
+    }
+
+    /// Second `update_delegate_panel` in the same term window is a no-op for panel rotation.
+    #[test]
+    #[allow(unused_mut_ref)]
+    fun test_update_delegate_panel_idempotent_after_catch_up() {
+        use myso::object::{Self};
+        use social_contracts::governance;
+
+        let mut scenario = test_scenario::begin(ADMIN);
+
+        test_scenario::next_tx(&mut scenario, ADMIN);
+        {
+            let ctx = test_scenario::ctx(&mut scenario);
+            let c = clock::create_for_testing(ctx);
+            clock::share_for_testing(c);
+        };
+
+        test_scenario::next_tx(&mut scenario, ADMIN);
+        {
+            let clock = test_scenario::take_shared<Clock>(&scenario);
+            let ctx = test_scenario::ctx(&mut scenario);
+            let mut platform_uid = object::new(ctx);
+            let _registry_id = governance::create_platform_governance(
+                7,
+                5,
+                50000000,
+                5,
+                5000000,
+                3,
+                15,
+                &clock,
+                ctx
+            );
+            test_scenario::return_shared(clock);
+            object::delete(platform_uid);
+        };
+
+        test_scenario::skip_to_epoch(&mut scenario, 8);
+
+        test_scenario::next_tx(&mut scenario, ADMIN);
+        {
+            let mut registry = test_scenario::take_shared<governance::GovernanceDAO>(&mut scenario);
+            let ctx = test_scenario::ctx(&mut scenario);
+            governance::update_delegate_panel(&mut registry, ctx);
+            test_scenario::return_shared(registry);
+        };
+
+        test_scenario::next_tx(&mut scenario, ADMIN);
+        {
+            let mut registry = test_scenario::take_shared<governance::GovernanceDAO>(&mut scenario);
+            let ctx = test_scenario::ctx(&mut scenario);
+            governance::update_delegate_panel(&mut registry, ctx);
+            assert!(governance::last_delegate_panel_boundary_epoch(&registry) == 5, 0);
+            test_scenario::return_shared(registry);
+        };
+
+        test_scenario::next_tx(&mut scenario, ADMIN);
+        {
+            let registry = test_scenario::take_shared<governance::GovernanceDAO>(&mut scenario);
+            let (_, _, _, _, _, _, term_start, term_end) = governance::get_delegate_info(&registry, ADMIN);
+            assert!(term_start == 8, 1);
+            assert!(term_end == 13, 2);
             test_scenario::return_shared(registry);
         };
 

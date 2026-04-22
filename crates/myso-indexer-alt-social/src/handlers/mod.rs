@@ -37,7 +37,8 @@ mod upgrade_handler;
 
 use myso_indexer_alt_framework::FieldCount;
 use myso_indexer_alt_social_schema::models::{
-    GovernanceRegistryUpdate, NewAnonymousVote, NewBlockedEvent, NewBlockedProfile, NewComment,
+    GovernanceRegistryPanelBoundaryUpdate, GovernanceRegistryUpdate, NewAnonymousVote,
+    NewBlockedEvent, NewBlockedProfile, NewComment,
     NewCommunityVote, NewDelegate, NewDelegateRating, NewDelegateVote, NewDeletionEvent,
     NewEcosystemTreasury, NewGovernanceEvent, NewGovernanceRegistry, NewInsuranceConfig,
     NewInsuranceEventLog, NewInsuranceMarketExposure, NewInsurancePolicy, NewInsurancePolicyEvent,
@@ -117,6 +118,7 @@ pub enum SocialEventRow {
     },
     GovernanceRegistry(NewGovernanceRegistry),
     GovernanceRegistryUpdate(GovernanceRegistryUpdate),
+    GovernanceRegistryPanelBoundary(GovernanceRegistryPanelBoundaryUpdate),
     NominatedDelegate(NewNominatedDelegate),
     Delegate(NewDelegate),
     Proposal(NewProposal),
@@ -415,6 +417,7 @@ pub enum SocialEventRow {
         proposal_id: String,
         votes_for_delta: i64,
         votes_against_delta: i64,
+        reward_pool_delta: i64,
     },
     ProposalOutcomeApplyDelegateSidedUpdates {
         proposal_id: String,

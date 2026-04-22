@@ -5,10 +5,15 @@
 /// Manages the decentralized governance system with delegate council and community assembly
 /// Implements proposal submission, voting, and execution processes
 ///
-/// Delegate panel refresh at term boundaries runs inside [`try_update_delegate_panel_if_due`], which is
-/// invoked from `update_delegate_panel` and piggybacked on delegate votes, nominations, and proposal
-/// submission. Refresh is lazy until one of those transactions runs in a qualifying epoch; use a keeper
-/// if you need a strict wall-clock guarantee when governance is idle.
+/// Delegate panel refresh runs inside [`try_update_delegate_panel_if_due`], which is invoked from
+/// `update_delegate_panel` and piggybacked on delegate-election flows (nominations,
+/// `vote_for_delegate` / `clear_vote_for_delegate`), proposal submission, delegate **proposal** review
+/// votes ([`run_delegate_review_vote`]), and community **finalize** ([`finalize_community_voting_internals`]).
+/// Community voting entries ([`community_vote_on_proposal`]) intentionally do not trigger refresh.
+/// A refresh applies when the epoch has reached at least one full `delegate_term_epochs` boundary and
+/// that boundary has not been applied yet (catch-up: e.g. epoch 93 applies boundary 90 if still pending).
+/// Refresh is lazy until one of those transactions runs while eligible; use a keeper if you need a
+/// strict wall-clock guarantee when governance is idle.
 
 #[allow(duplicate_alias, unused_use, lint(public_entry))]
 module social_contracts::governance {
@@ -17,6 +22,7 @@ module social_contracts::governance {
     use myso::{
         object::{Self, UID, ID},
         tx_context::{Self, TxContext},
+        clock::{Self, Clock},
         transfer,
         dynamic_field,
         vec_set::{Self, VecSet},
@@ -29,6 +35,7 @@ module social_contracts::governance {
 
     use mydata::bf_hmac_encryption::{EncryptedObject, VerifiedDerivedKey, PublicKey, decrypt};
     
+    use social_contracts::profile::{Self as profile, EcosystemTreasury};
     use social_contracts::upgrade::{Self, UpgradeAdminCap};
 
     /// Error codes
@@ -51,6 +58,16 @@ module social_contracts::governance {
     const EDelegateAnonNotAllowed: u64 = 18;
     const EOverflow: u64 = 19;
     const ENoExistingVote: u64 = 20;
+    const EWrongRegistryForTreasuryRoute: u64 = 21;
+
+    /// Forfeiture reason (indexer) — same values as old refund reason codes.
+    const FORFEIT_REASON_QUORUM_NOT_MET: u8 = 0;
+    const FORFEIT_REASON_COMMUNITY_REJECTED: u8 = 1;
+    const FORFEIT_REASON_DELEGATE_REJECTED: u8 = 2;
+    /// For [`ProposalRewardPoolForfeitedToTreasuryEvent`]: ecosystem treasury.
+    const TREASURY_ROUTE_ECOSYSTEM: u8 = 0;
+    /// Platform governance (on-platform treasury, not the shared ecosystem treasury object).
+    const TREASURY_ROUTE_PLATFORM: u8 = 1;
 
     /// Maximum u64 value for overflow protection
     const MAX_U64: u64 = 18446744073709551615;
@@ -72,8 +89,6 @@ module social_contracts::governance {
     /// Field names for dynamic fields
     const VOTED_COMMUNITY_FIELD: vector<u8> = b"voted_community";
     const DELEGATE_VOTES_FIELD: vector<u8> = b"delegate_votes";
-    const VOTED_FOR_FIELD: vector<u8> = b"voted_for";
-    const VOTED_AGAINST_FIELD: vector<u8> = b"voted_against";
     const VOTED_DELEGATES_LIST_FIELD: vector<u8> = b"voted_delegates_list";
     const DELEGATE_REASONS_FIELD: vector<u8> = b"delegate_reasons";
     const ENCRYPTED_VOTES_FIELD: vector<u8> = b"encrypted_votes";
@@ -108,6 +123,8 @@ module social_contracts::governance {
         nominee_addresses: VecSet<address>,
         voters: Table<address, Table<address, bool>>, // target -> (voter -> upvote)
         version: u64,
+        /// Largest epoch boundary `k * delegate_term_epochs` for which a full panel election has run (`0` = none yet).
+        last_delegate_panel_boundary_epoch: u64,
     }
 
     /// Delegate struct representing a member of the delegate council
@@ -266,12 +283,24 @@ module social_contracts::governance {
         description: Option<String>,
     }
 
-    /// Event emitted when rewards are distributed to voters
-    public struct RewardsDistributedEvent has copy, drop {
+    /// Failed proposal pool sent to a treasury (ecosystem or platform governance) instead of the submitter.
+    public struct ProposalRewardPoolForfeitedToTreasuryEvent has copy, drop {
         proposal_id: ID,
-        total_reward: u64,
-        recipient_count: u64,
-        distribution_time: u64,
+        recipient: address,
+        amount: u64,
+        reason: u8,
+        registry_type: u8,
+        treasury_route: u8,
+        forfeited_time: u64,
+    }
+
+    /// Approved proposal: reward pool sent to the submitter when marked implemented.
+    public struct ProposalImplementationRewardToSubmitterEvent has copy, drop {
+        proposal_id: ID,
+        submitter: address,
+        amount: u64,
+        registry_type: u8,
+        sent_time: u64,
     }
 
     /// Event emitted when vote decryption fails
@@ -319,10 +348,19 @@ module social_contracts::governance {
         updated_at: u64, // Using updated_at to match indexer structure (represents creation time)
     }
 
+    /// Event emitted when a delegate panel refresh applies a completed term boundary
+    /// (`last_delegate_panel_boundary_epoch` on the DAO).
+    public struct DelegatePanelRefreshedEvent has copy, drop {
+        registry_id: ID,
+        boundary_epoch: u64,
+        registry_type: u8,
+        executed_at_epoch: u64,
+    }
+
     /// Bootstrap initialization function - creates the governance registries
     /// This function has the same logic as init() but can be called by bootstrap
-    public(package) fun bootstrap_init(ctx: &mut TxContext) {
-        let current_time = tx_context::epoch_timestamp_ms(ctx);
+    public(package) fun bootstrap_init(clock: &Clock, ctx: &mut TxContext) {
+        let current_time = clock::timestamp_ms(clock);
         let founder = tx_context::sender(ctx);
 
         // Create MySocial Ecosystem Governance Registry
@@ -348,6 +386,7 @@ module social_contracts::governance {
             nominee_addresses: vec_set::empty<address>(),
             voters: table::new<address, Table<address, bool>>(ctx),
             version: upgrade::current_version(),
+            last_delegate_panel_boundary_epoch: 0,
         };
         
         // Initialize ecosystem registry's status tables
@@ -398,6 +437,7 @@ module social_contracts::governance {
             nominee_addresses: vec_set::empty<address>(),
             voters: table::new<address, Table<address, bool>>(ctx),
             version: upgrade::current_version(),
+            last_delegate_panel_boundary_epoch: 0,
         };
         
         // Initialize proof of creativity registry's status tables
@@ -476,6 +516,7 @@ module social_contracts::governance {
         quadratic_base_cost: u64,
         voting_period_ms: u64,
         quorum_votes: u64,
+        clock: &Clock,
         _ctx: &mut TxContext
     ) {
         // Check version compatibility
@@ -510,7 +551,7 @@ module social_contracts::governance {
             quadratic_base_cost,
             voting_period_ms,
             quorum_votes,
-            timestamp: tx_context::epoch_timestamp_ms(_ctx),
+            timestamp: clock::timestamp_ms(clock),
         });
     }
 
@@ -527,6 +568,7 @@ module social_contracts::governance {
         quadratic_base_cost: u64,
         voting_period_ms: u64,
         quorum_votes: u64,
+        clock: &Clock,
         ctx: &mut TxContext
     ) {
         // Verify this is a platform registry
@@ -546,6 +588,7 @@ module social_contracts::governance {
             quadratic_base_cost,
             voting_period_ms,
             quorum_votes,
+            clock,
             ctx
         );
     }
@@ -562,6 +605,7 @@ module social_contracts::governance {
         quadratic_base_cost: u64,
         voting_period_ms: u64,
         quorum_votes: u64,
+        clock: &Clock,
         _ctx: &mut TxContext
     ) {
         // Verify this is NOT a platform registry
@@ -577,6 +621,7 @@ module social_contracts::governance {
             quadratic_base_cost,
             voting_period_ms,
             quorum_votes,
+            clock,
             _ctx
         );
     }
@@ -845,8 +890,8 @@ module social_contracts::governance {
         try_update_delegate_panel_if_due(registry, ctx);
     }
 
-    /// When `ctx.epoch()` is a non-zero multiple of `delegate_term_epochs`, recomputes the delegate
-    /// council from incumbents and nominees. Otherwise returns immediately.
+    /// When `ctx.epoch()` has reached a completed term boundary that has not yet been applied,
+    /// recomputes the delegate council from incumbents and nominees. Otherwise returns immediately.
     fun try_update_delegate_panel_if_due(
         registry: &mut GovernanceDAO,
         ctx: &TxContext
@@ -858,7 +903,16 @@ module social_contracts::governance {
         let delegate_term_epochs = registry.delegate_term_epochs;
         assert!(delegate_term_epochs > 0, EInvalidParameter);
 
-        if (current_epoch == 0 || current_epoch % delegate_term_epochs != 0) {
+        if (current_epoch == 0) {
+            return
+        };
+
+        let latest_completed_boundary =
+            (current_epoch / delegate_term_epochs) * delegate_term_epochs;
+        if (latest_completed_boundary == 0) {
+            return
+        };
+        if (registry.last_delegate_panel_boundary_epoch >= latest_completed_boundary) {
             return
         };
 
@@ -1067,7 +1121,16 @@ module social_contracts::governance {
             });
             m = m + 1;
         };
-        
+
+        registry.last_delegate_panel_boundary_epoch = latest_completed_boundary;
+
+        event::emit(DelegatePanelRefreshedEvent {
+            registry_id: object::id(registry),
+            boundary_epoch: latest_completed_boundary,
+            registry_type: registry.registry_type,
+            executed_at_epoch: current_epoch,
+        });
+
         // Drop helper vectors (still contain sorted candidates / keys after winner pass)
         candidate_addresses.destroy!(|_| {});
         candidate_upvotes.destroy!(|_| {});
@@ -1097,6 +1160,7 @@ module social_contracts::governance {
         reference_id: Option<ID>, // Optional reference
         metadata_json: Option<String>,
         coin: &mut Coin<MYSO>,
+        clock: &Clock,
         ctx: &mut TxContext
     ) {
         // Check version compatibility
@@ -1137,6 +1201,7 @@ module social_contracts::governance {
             actual_reference_id,
             metadata_json,
             coin,
+            clock,
             ctx
         );
     }
@@ -1150,6 +1215,7 @@ module social_contracts::governance {
         reference_id: Option<ID>,
         metadata_json: Option<String>,
         coin: &mut Coin<MYSO>,
+        clock: &Clock,
         ctx: &mut TxContext
     ) {
         submit_proposal(
@@ -1161,6 +1227,7 @@ module social_contracts::governance {
             reference_id,
             metadata_json,
             coin,
+            clock,
             ctx
         );
     }
@@ -1173,6 +1240,7 @@ module social_contracts::governance {
         creative_content_id: ID,
         metadata_json: Option<String>,
         coin: &mut Coin<MYSO>,
+        clock: &Clock,
         ctx: &mut TxContext
     ) {
         submit_proposal(
@@ -1184,6 +1252,7 @@ module social_contracts::governance {
             option::some(creative_content_id), // Reference to creative content
             metadata_json,
             coin,
+            clock,
             ctx
         );
     }
@@ -1197,10 +1266,11 @@ module social_contracts::governance {
         reference_id: Option<ID>,
         metadata_json: Option<String>,
         coin: &mut Coin<MYSO>,
+        clock: &Clock,
         ctx: &mut TxContext
     ) {
         let caller = tx_context::sender(ctx);
-        let current_time = tx_context::epoch_timestamp_ms(ctx);
+        let current_time = clock::timestamp_ms(clock);
         
         // Check stake amount
         assert!(coin::value(coin) >= registry.proposal_submission_cost, EInvalidAmount);
@@ -1236,13 +1306,6 @@ module social_contracts::governance {
         
         let voted_community = vec_set::empty<address>();
         dynamic_field::add(&mut proposal.id, VOTED_COMMUNITY_FIELD, voted_community);
-        
-        // Add "voted for" and "voted against" tracking for easier reward distribution
-        let voted_for = vec_set::empty<address>();
-        dynamic_field::add(&mut proposal.id, VOTED_FOR_FIELD, voted_for);
-        
-        let voted_against = vec_set::empty<address>();
-        dynamic_field::add(&mut proposal.id, VOTED_AGAINST_FIELD, voted_against);
         
         // Share proposal as shared object and register in registry
         let proposal_id_copy = object::id(&proposal);
@@ -1280,13 +1343,14 @@ module social_contracts::governance {
     public entry fun rescind_proposal(
         registry: &mut GovernanceDAO,
         proposal: &mut Proposal,
+        clock: &Clock,
         ctx: &mut TxContext
     ) {
         // Check version compatibility
         assert!(registry.version == upgrade::current_version(), EWrongVersion);
         
         let caller = tx_context::sender(ctx);
-        let current_time = tx_context::epoch_timestamp_ms(ctx);
+        let current_time = clock::timestamp_ms(clock);
         let proposal_id = object::id(proposal);
         
         // Verify proposal exists and is in delegate review phase
@@ -1336,98 +1400,12 @@ module social_contracts::governance {
         vector::push_back(to_status, proposal_id);
     }
 
-    /// Delegate votes on a proposal if it should move to community voting
-    public entry fun delegate_vote_on_proposal(
-        registry: &mut GovernanceDAO,
-        proposal: &mut Proposal,
-        approve: bool,
-        mut reason: Option<String>,
-        ctx: &mut TxContext
-    ) {
-        // Check version compatibility
-        assert!(registry.version == upgrade::current_version(), EWrongVersion);
-        
-        let caller = tx_context::sender(ctx);
-        let current_time = tx_context::epoch_timestamp_ms(ctx);
-        let proposal_id = object::id(proposal);
-        
-        // Verify proposal exists and is in delegate review phase
-        assert!(table::contains(&registry.proposals, proposal_id), EProposalNotFound);
-        
-        // Verify caller is a delegate
-        assert!(table::contains(&registry.delegates, caller), ENotDelegate);
-        
-        assert!(proposal.status == STATUS_DELEGATE_REVIEW, EInvalidProposalStatus);
-        
-        // Check if delegate has already voted
-        let delegate_votes: &mut Table<address, bool> = dynamic_field::borrow_mut(&mut proposal.id, DELEGATE_VOTES_FIELD);
-        assert!(!table::contains(delegate_votes, caller), EAlreadyVoted);
-        
-        // Record vote
-        table::add(delegate_votes, caller, approve);
-        
-        // Store delegate's reason if provided
-        if (option::is_some(&reason)) {
-            // Initialize reason table if it doesn't exist
-            if (!dynamic_field::exists_(&proposal.id, DELEGATE_REASONS_FIELD)) {
-                let reason_table = table::new<address, String>(ctx);
-                dynamic_field::add(&mut proposal.id, DELEGATE_REASONS_FIELD, reason_table);
-            };
-            
-            // Add delegate's reason to the table
-            let reason_table: &mut Table<address, String> = dynamic_field::borrow_mut(&mut proposal.id, DELEGATE_REASONS_FIELD);
-            table::add(reason_table, caller, option::extract(&mut reason));
-        };
-        
-        // Add delegate to the list of voted delegates (for later tracking)
-        if (!dynamic_field::exists_(&proposal.id, VOTED_DELEGATES_LIST_FIELD)) {
-            let delegates_list = vector::empty<address>();
-            dynamic_field::add(&mut proposal.id, VOTED_DELEGATES_LIST_FIELD, delegates_list);
-        };
-        let delegates_list: &mut vector<address> = dynamic_field::borrow_mut(&mut proposal.id, VOTED_DELEGATES_LIST_FIELD);
-        vector::push_back(delegates_list, caller);
-        
-        // Update vote counts - one vote per delegate (no multiplier)
-        if (approve) {
-            proposal.delegate_approval_count = proposal.delegate_approval_count + 1;
-        } else {
-            proposal.delegate_rejection_count = proposal.delegate_rejection_count + 1;
-        };
-        
-        // Update delegate stats
-        let delegate = table::borrow_mut(&mut registry.delegates, caller);
-        delegate.proposals_reviewed = delegate.proposals_reviewed + 1;
-        
-        // Capture vote counts for decision making after event emission
-        let delegate_approval_count = proposal.delegate_approval_count;
-        let delegate_rejection_count = proposal.delegate_rejection_count;
-        let total_delegates = table::length(&registry.delegates);
-        
-        // If more than half of delegates approve, move to community voting
-        if (delegate_approval_count > total_delegates / 2) {
-            move_to_community_voting(registry, proposal, ctx);
-        }
-        // If more than half of delegates reject, reject the proposal
-        else if (delegate_rejection_count > total_delegates / 2) {
-            reject_proposal(registry, proposal, current_time, ctx);
-        };
-
-        // Emit event after potential state transitions so the event reflects a stable outcome path
-        let reason_for_event = reason;
-        event::emit(DelegateVoteEvent {
-            proposal_id,
-            delegate_address: caller,
-            approve,
-            vote_time: current_time,
-            reason: reason_for_event,
-        });
-    }
-
     /// Move a proposal to community voting phase
     fun move_to_community_voting(
         registry: &mut GovernanceDAO,
         proposal: &mut Proposal,
-        ctx: &TxContext
+        clock: &Clock,
+        _ctx: &TxContext
     ) {
         let proposal_id = object::id(proposal);
         
@@ -1435,7 +1413,7 @@ module social_contracts::governance {
         proposal.status = STATUS_COMMUNITY_VOTING;
         
         // Get current timestamp in milliseconds for voting period calculation
-        let current_time_ms = tx_context::epoch_timestamp_ms(ctx);
+        let current_time_ms = clock::timestamp_ms(clock);
         
         // Set voting period based on registry voting period (using milliseconds)
         proposal.voting_start_time = current_time_ms;
@@ -1464,51 +1442,6 @@ module social_contracts::governance {
         });
     }
 
-    /// Reject a proposal
-    fun reject_proposal(
-        registry: &mut GovernanceDAO,
-        proposal: &mut Proposal,
-        current_time: u64,
-        ctx: &mut TxContext
-    ) {
-        let proposal_id = object::id(proposal);
-        
-        // Update status
-        proposal.status = STATUS_REJECTED;
-        
-        // Update proposals by status
-        let from_status = table::borrow_mut(&mut registry.proposals_by_status, STATUS_DELEGATE_REVIEW);
-        let mut index = 0;
-        let len = vector::length(from_status);
-        while (index < len) {
-            if (*vector::borrow(from_status, index) == proposal_id) {
-                vector::remove(from_status, index);
-                break
-            };
-            index = index + 1;
-        };
-        
-        let to_status = table::borrow_mut(&mut registry.proposals_by_status, STATUS_REJECTED);
-        vector::push_back(to_status, proposal_id);
-        
-        // Return funds to submitter
-        let submitter = proposal.submitter;
-        let refund_amount = balance::value(&proposal.reward_pool);
-        
-        if (refund_amount > 0) {
-            let refund_coin = coin::from_balance(balance::withdraw_all(&mut proposal.reward_pool), ctx);
-            transfer::public_transfer(refund_coin, submitter);
-        } else {
-            balance::destroy_zero(balance::withdraw_all(&mut proposal.reward_pool));
-        };
-        
-        // Emit event
-        event::emit(ProposalRejectedEvent {
-            proposal_id,
-            rejection_time: current_time,
-        });
-    }
-
     /// Community vote on a proposal with quadratic voting
     /// Users can cast multiple votes by paying a quadratically increasing cost
     public entry fun community_vote_on_proposal(
@@ -1517,13 +1450,14 @@ module social_contracts::governance {
         vote_count: u64,
         approve: bool,
         coin: &mut Coin<MYSO>,
+        clock: &Clock,
         ctx: &mut TxContext
     ) {
         // Check version compatibility
         assert!(registry.version == upgrade::current_version(), EWrongVersion);
         
         let caller = tx_context::sender(ctx);
-        let current_time_ms = tx_context::epoch_timestamp_ms(ctx);
+        let current_time_ms = clock::timestamp_ms(clock);
         let proposal_id = object::id(proposal);
         
         // Calculate vote cost before borrowing from registry
@@ -1565,14 +1499,8 @@ module social_contracts::governance {
         // Update vote tally
         if (approve) {
             proposal.community_votes_for = proposal.community_votes_for + vote_count;
-            // Add to voted_for set for reward distribution
-            let voted_for: &mut VecSet<address> = dynamic_field::borrow_mut(&mut proposal.id, VOTED_FOR_FIELD);
-            vec_set::insert(voted_for, caller);
         } else {
             proposal.community_votes_against = proposal.community_votes_against + vote_count;
-            // Add to voted_against set for reward distribution
-            let voted_against: &mut VecSet<address> = dynamic_field::borrow_mut(&mut proposal.id, VOTED_AGAINST_FIELD);
-            vec_set::insert(voted_against, caller);
         };
         
         // Emit event (use millisecond timestamp for the event record)
@@ -1591,10 +1519,11 @@ module social_contracts::governance {
         registry: &mut GovernanceDAO,
         proposal: &mut Proposal,
         encrypted_vote: EncryptedObject,
+        clock: &Clock,
         ctx: &mut TxContext
     ) {
         let caller = tx_context::sender(ctx);
-        let current_time_ms = tx_context::epoch_timestamp_ms(ctx);
+        let current_time_ms = clock::timestamp_ms(clock);
         let proposal_id = object::id(proposal);
 
         assert!(table::contains(&registry.proposals, proposal_id), EProposalNotFound);
@@ -1632,29 +1561,295 @@ module social_contracts::governance {
         });
     }
 
-    /// Finalize a proposal after the voting period ends
-    public entry fun finalize_proposal(
-        registry: &mut GovernanceDAO,
+    const DELEGATE_VOTE_STILL_IN_REVIEW: u8 = 0;
+    const DELEGATE_VOTE_TO_COMMUNITY: u8 = 1;
+    const DELEGATE_VOTE_TO_REJECT: u8 = 2;
+
+    const FINALIZE_OUTCOME_APPROVED: u8 = 0;
+    const FINALIZE_OUTCOME_REJECT_COMMUNITY: u8 = 1;
+    const FINALIZE_OUTCOME_REJECT_QUORUM: u8 = 2;
+
+    public fun community_finalize_voting_approved_value(): u8 { FINALIZE_OUTCOME_APPROVED }
+    public fun community_finalize_voting_reject_community_value(): u8 { FINALIZE_OUTCOME_REJECT_COMMUNITY }
+    public fun community_finalize_voting_reject_quorum_value(): u8 { FINALIZE_OUTCOME_REJECT_QUORUM }
+    public fun delegate_vote_outcome_reject_value(): u8 { DELEGATE_VOTE_TO_REJECT }
+
+    public fun forfeit_reason_quorum_not_met_value(): u8 { FORFEIT_REASON_QUORUM_NOT_MET }
+    public fun forfeit_reason_community_rejected_value(): u8 { FORFEIT_REASON_COMMUNITY_REJECTED }
+    public fun forfeit_reason_delegate_rejected_value(): u8 { FORFEIT_REASON_DELEGATE_REJECTED }
+
+    public(package) fun assert_platform_delegate_manual_reject(
+        registry: &GovernanceDAO,
+        proposal: &Proposal,
+        clock: &Clock,
+        ctx: &TxContext
+    ): u64 {
+        assert!(registry.version == upgrade::current_version(), EWrongVersion);
+        assert!(registry.registry_type == PROPOSAL_TYPE_PLATFORM, EWrongRegistryForTreasuryRoute);
+        let caller = tx_context::sender(ctx);
+        assert!(table::contains(&registry.delegates, caller), ENotDelegate);
+        let proposal_id = object::id(proposal);
+        assert!(table::contains(&registry.proposals, proposal_id), EProposalNotFound);
+        assert!(proposal.status == STATUS_DELEGATE_REVIEW, EInvalidProposalStatus);
+        clock::timestamp_ms(clock)
+    }
+
+    fun assert_ecosystem_or_poc_registry(registry: &GovernanceDAO) {
+        assert!(
+            registry.registry_type == PROPOSAL_TYPE_ECOSYSTEM
+                || registry.registry_type == PROPOSAL_TYPE_PROOF_OF_CREATIVITY,
+            EWrongRegistryForTreasuryRoute
+        );
+    }
+
+    fun forfeit_proposal_pool_to_treasury_address(
+        registry: &GovernanceDAO,
         proposal: &mut Proposal,
+        recipient: address,
+        reason: u8,
+        treasury_route: u8,
+        time_ms: u64,
         ctx: &mut TxContext
     ) {
-        // Check version compatibility
-        assert!(registry.version == upgrade::current_version(), EWrongVersion);
-        
-        let current_time_ms = tx_context::epoch_timestamp_ms(ctx);
         let proposal_id = object::id(proposal);
-        
-        // Verify proposal exists and is in community voting phase
+        let reg_type = registry.registry_type;
+        let amount = balance::value(&proposal.reward_pool);
+        if (amount > 0) {
+            let c = coin::from_balance(balance::withdraw_all(&mut proposal.reward_pool), ctx);
+            transfer::public_transfer(c, recipient);
+        } else {
+            balance::destroy_zero(balance::withdraw_all(&mut proposal.reward_pool));
+        };
+        event::emit(ProposalRewardPoolForfeitedToTreasuryEvent {
+            proposal_id,
+            recipient,
+            amount,
+            reason,
+            registry_type: reg_type,
+            treasury_route,
+            forfeited_time: time_ms,
+        });
+    }
+
+    /// Updates status tables only: delegate review to rejected. Caller sends pool + emits [ProposalRejectedEvent].
+    fun transition_proposal_rejected_by_delegate_council(
+        registry: &mut GovernanceDAO,
+        proposal: &mut Proposal
+    ) {
+        let proposal_id = object::id(proposal);
+        proposal.status = STATUS_REJECTED;
+        let from_status = table::borrow_mut(&mut registry.proposals_by_status, STATUS_DELEGATE_REVIEW);
+        let mut index = 0;
+        let len = vector::length(from_status);
+        while (index < len) {
+            if (*vector::borrow(from_status, index) == proposal_id) {
+                vector::remove(from_status, index);
+                break
+            };
+            index = index + 1;
+        };
+        let to_status = table::borrow_mut(&mut registry.proposals_by_status, STATUS_REJECTED);
+        vector::push_back(to_status, proposal_id);
+    }
+
+    fun complete_delegate_reject_to_ecosystem_treasury(
+        registry: &mut GovernanceDAO,
+        proposal: &mut Proposal,
+        current_time: u64,
+        ecosystem_treasury: &EcosystemTreasury,
+        ctx: &mut TxContext
+    ) {
+        let proposal_id = object::id(proposal);
+        transition_proposal_rejected_by_delegate_council(registry, proposal);
+        let dest = profile::get_treasury_address(ecosystem_treasury);
+        forfeit_proposal_pool_to_treasury_address(
+            registry,
+            proposal,
+            dest,
+            FORFEIT_REASON_DELEGATE_REJECTED,
+            TREASURY_ROUTE_ECOSYSTEM,
+            current_time,
+            ctx,
+        );
+        event::emit(ProposalRejectedEvent {
+            proposal_id,
+            rejection_time: current_time,
+        });
+    }
+
+    /// For platform: transition + forfeiture event (platform route) + [ProposalRejectedEvent]; returns pool balance for the caller to join into `Platform.treasury`.
+    public(package) fun complete_delegate_reject_drain_to_platform_governance(
+        registry: &mut GovernanceDAO,
+        proposal: &mut Proposal,
+        platform_treasury_address: address,
+        current_time: u64,
+        _ctx: &mut TxContext
+    ): Balance<MYSO> {
+        assert!(registry.registry_type == PROPOSAL_TYPE_PLATFORM, EWrongRegistryForTreasuryRoute);
+        let proposal_id = object::id(proposal);
+        transition_proposal_rejected_by_delegate_council(registry, proposal);
+        let amount = balance::value(&proposal.reward_pool);
+        event::emit(ProposalRewardPoolForfeitedToTreasuryEvent {
+            proposal_id,
+            recipient: platform_treasury_address,
+            amount,
+            reason: FORFEIT_REASON_DELEGATE_REJECTED,
+            registry_type: registry.registry_type,
+            treasury_route: TREASURY_ROUTE_PLATFORM,
+            forfeited_time: current_time,
+        });
+        event::emit(ProposalRejectedEvent {
+            proposal_id,
+            rejection_time: current_time,
+        });
+        balance::withdraw_all(&mut proposal.reward_pool)
+    }
+
+    /// Run delegate-in-review vote logic; returns 0=still in review, 1=advanced to community, 2=must complete delegate reject (ecosystem or platform) via separate entry.
+    public(package) fun run_delegate_review_vote(
+        registry: &mut GovernanceDAO,
+        proposal: &mut Proposal,
+        approve: bool,
+        mut reason: Option<String>,
+        clock: &Clock,
+        ctx: &mut TxContext
+    ): u8 {
+        assert!(registry.version == upgrade::current_version(), EWrongVersion);
+        try_update_delegate_panel_if_due(registry, ctx);
+        let caller = tx_context::sender(ctx);
+        let proposal_id = object::id(proposal);
+        assert!(table::contains(&registry.proposals, proposal_id), EProposalNotFound);
+        assert!(table::contains(&registry.delegates, caller), ENotDelegate);
+        assert!(proposal.status == STATUS_DELEGATE_REVIEW, EInvalidProposalStatus);
+
+        let delegate_votes: &mut Table<address, bool> = dynamic_field::borrow_mut(&mut proposal.id, DELEGATE_VOTES_FIELD);
+        assert!(!table::contains(delegate_votes, caller), EAlreadyVoted);
+
+        table::add(delegate_votes, caller, approve);
+        if (option::is_some(&reason)) {
+            if (!dynamic_field::exists_(&proposal.id, DELEGATE_REASONS_FIELD)) {
+                let reason_table = table::new<address, String>(ctx);
+                dynamic_field::add(&mut proposal.id, DELEGATE_REASONS_FIELD, reason_table);
+            };
+            let reason_table: &mut Table<address, String> = dynamic_field::borrow_mut(
+                &mut proposal.id,
+                DELEGATE_REASONS_FIELD
+            );
+            table::add(reason_table, caller, option::extract(&mut reason));
+        };
+        if (!dynamic_field::exists_(&proposal.id, VOTED_DELEGATES_LIST_FIELD)) {
+            let delegates_list = vector::empty<address>();
+            dynamic_field::add(&mut proposal.id, VOTED_DELEGATES_LIST_FIELD, delegates_list);
+        };
+        let delegates_list: &mut vector<address> = dynamic_field::borrow_mut(
+            &mut proposal.id,
+            VOTED_DELEGATES_LIST_FIELD
+        );
+        vector::push_back(delegates_list, caller);
+
+        if (approve) {
+            proposal.delegate_approval_count = proposal.delegate_approval_count + 1;
+        } else {
+            proposal.delegate_rejection_count = proposal.delegate_rejection_count + 1;
+        };
+
+        let delegate = table::borrow_mut(&mut registry.delegates, caller);
+        delegate.proposals_reviewed = delegate.proposals_reviewed + 1;
+
+        let delegate_approval_count = proposal.delegate_approval_count;
+        let delegate_rejection_count = proposal.delegate_rejection_count;
+        let total_delegates = table::length(&registry.delegates);
+
+        if (delegate_approval_count > total_delegates / 2) {
+            move_to_community_voting(registry, proposal, clock, ctx);
+            DELEGATE_VOTE_TO_COMMUNITY
+        } else if (delegate_rejection_count > total_delegates / 2) {
+            DELEGATE_VOTE_TO_REJECT
+        } else {
+            DELEGATE_VOTE_STILL_IN_REVIEW
+        }
+    }
+
+    /// Ecosystem and proof-of-creativity only: `ecosystem_treasury` used when the delegate council rejects the proposal.
+    public entry fun delegate_vote_on_proposal(
+        registry: &mut GovernanceDAO,
+        proposal: &mut Proposal,
+        ecosystem_treasury: &EcosystemTreasury,
+        approve: bool,
+        reason: Option<String>,
+        clock: &Clock,
+        ctx: &mut TxContext
+    ) {
+        assert!(registry.version == upgrade::current_version(), EWrongVersion);
+        assert_ecosystem_or_poc_registry(registry);
+        let current_time = clock::timestamp_ms(clock);
+        let proposal_id = object::id(proposal);
+        let out = run_delegate_review_vote(registry, proposal, approve, reason, clock, ctx);
+        let caller = tx_context::sender(ctx);
+        if (out == DELEGATE_VOTE_TO_REJECT) {
+            complete_delegate_reject_to_ecosystem_treasury(
+                registry,
+                proposal,
+                current_time,
+                ecosystem_treasury,
+                ctx
+            );
+        };
+        event::emit(DelegateVoteEvent {
+            proposal_id,
+            delegate_address: caller,
+            approve,
+            vote_time: current_time,
+            reason: option::none(),
+        });
+    }
+
+    public(package) fun emit_delegate_vote_trailing_event(
+        proposal_id: ID,
+        delegate_address: address,
+        approve: bool,
+        vote_time: u64,
+        reason: Option<String>,
+    ) {
+        event::emit(DelegateVoteEvent {
+            proposal_id,
+            delegate_address,
+            approve,
+            vote_time,
+            reason,
+        });
+    }
+
+    public(package) fun emit_implementation_reward_to_submitter_event(
+        proposal_id: ID,
+        submitter: address,
+        amount: u64,
+        registry_type: u8,
+        sent_time: u64,
+    ) {
+        event::emit(ProposalImplementationRewardToSubmitterEvent {
+            proposal_id,
+            submitter,
+            amount,
+            registry_type,
+            sent_time,
+        });
+    }
+
+    public(package) fun finalize_community_voting_internals(
+        registry: &mut GovernanceDAO,
+        proposal: &mut Proposal,
+        clock: &Clock,
+        ctx: &TxContext,
+    ): (u8, u64) {
+        try_update_delegate_panel_if_due(registry, ctx);
+        let current_time_ms = clock::timestamp_ms(clock);
+        let proposal_id = object::id(proposal);
         assert!(table::contains(&registry.proposals, proposal_id), EProposalNotFound);
         assert!(proposal.status == STATUS_COMMUNITY_VOTING, EInvalidProposalStatus);
-        
-        // Verify voting period has ended (using millisecond-based timing)
         assert!(current_time_ms > proposal.voting_end_time, EVotingPeriodNotEnded);
-        
-        // Get total votes
+
         let total_votes = proposal.community_votes_for + proposal.community_votes_against;
-        
-        // Update proposals by status
         let from_status = table::borrow_mut(&mut registry.proposals_by_status, STATUS_COMMUNITY_VOTING);
         let mut index = 0;
         let len = vector::length(from_status);
@@ -1665,145 +1860,165 @@ module social_contracts::governance {
             };
             index = index + 1;
         };
-        
-        // Check if quorum is reached (using registry's quorum_votes)
+
         let quorum_met = total_votes >= registry.quorum_votes;
         let majority_approve = proposal.community_votes_for > proposal.community_votes_against;
-        
         if (quorum_met) {
-            // Update delegate winning/losing votes if they exist in the proposal
             if (dynamic_field::exists_(&proposal.id, VOTED_DELEGATES_LIST_FIELD)) {
-                let delegates_list: &vector<address> = dynamic_field::borrow(&proposal.id, VOTED_DELEGATES_LIST_FIELD);
-                let delegate_votes: &Table<address, bool> = dynamic_field::borrow(&proposal.id, DELEGATE_VOTES_FIELD);
-                
+                let delegates_list: &vector<address> = dynamic_field::borrow(
+                    &proposal.id,
+                    VOTED_DELEGATES_LIST_FIELD
+                );
+                let delegate_votes: &Table<address, bool> = dynamic_field::borrow(
+                    &proposal.id,
+                    DELEGATE_VOTES_FIELD
+                );
                 let mut i = 0;
                 let delegates_count = vector::length(delegates_list);
-                
                 while (i < delegates_count) {
                     let delegate_addr = *vector::borrow(delegates_list, i);
-                    
-                    // Only update if the delegate still exists in the registry
                     if (table::contains(&registry.delegates, delegate_addr)) {
                         let delegate = table::borrow_mut(&mut registry.delegates, delegate_addr);
                         let delegate_approved = *table::borrow(delegate_votes, delegate_addr);
-                        
-                        // Update winning/losing counts based on matching the majority
                         if ((delegate_approved && majority_approve) || (!delegate_approved && !majority_approve)) {
                             delegate.sided_winning_proposals = delegate.sided_winning_proposals + 1;
                         } else {
                             delegate.sided_losing_proposals = delegate.sided_losing_proposals + 1;
                         };
                     };
-                    
                     i = i + 1;
                 };
             };
-            
-            // Determine outcome
             if (majority_approve) {
-                // Proposal approved
                 proposal.status = STATUS_APPROVED;
-                
                 let to_status = table::borrow_mut(&mut registry.proposals_by_status, STATUS_APPROVED);
                 vector::push_back(to_status, proposal_id);
-                
-                // Emit approval event
                 event::emit(ProposalApprovedEvent {
                     proposal_id,
                     approval_time: current_time_ms,
                     votes_for: proposal.community_votes_for,
                     votes_against: proposal.community_votes_against,
                 });
-                
-                // Distribute rewards to winning voters
-                distribute_rewards(proposal, true, ctx);
+                (FINALIZE_OUTCOME_APPROVED, current_time_ms)
             } else {
-                // Proposal rejected
                 proposal.status = STATUS_REJECTED;
-                
                 let to_status = table::borrow_mut(&mut registry.proposals_by_status, STATUS_REJECTED);
                 vector::push_back(to_status, proposal_id);
-                
-                // Emit rejection event
                 event::emit(ProposalRejectedByCommunityEvent {
                     proposal_id,
                     rejection_time: current_time_ms,
                     votes_for: proposal.community_votes_for,
                     votes_against: proposal.community_votes_against,
                 });
-                
-                // Distribute rewards to losing voters
-                distribute_rewards(proposal, false, ctx);
+                (FINALIZE_OUTCOME_REJECT_COMMUNITY, current_time_ms)
             }
         } else {
-            // Quorum not reached, proposal rejected
             proposal.status = STATUS_REJECTED;
-            
             let to_status = table::borrow_mut(&mut registry.proposals_by_status, STATUS_REJECTED);
             vector::push_back(to_status, proposal_id);
-            
-            // Emit rejection event
             event::emit(ProposalRejectedByCommunityEvent {
                 proposal_id,
                 rejection_time: current_time_ms,
                 votes_for: proposal.community_votes_for,
                 votes_against: proposal.community_votes_against,
             });
-            
-            // Return funds to proposer since quorum wasn't reached
-            let submitter = proposal.submitter;
-            let refund_amount = balance::value(&proposal.reward_pool);
-            
-            if (refund_amount > 0) {
-                let refund_coin = coin::from_balance(balance::withdraw_all(&mut proposal.reward_pool), ctx);
-                transfer::public_transfer(refund_coin, submitter);
-            } else {
-                // Empty the balance even if zero, for consistency
-                balance::destroy_zero(balance::withdraw_all(&mut proposal.reward_pool));
-            };
+            (FINALIZE_OUTCOME_REJECT_QUORUM, current_time_ms)
         }
     }
 
-    /// Finalize a proposal with anonymous votes by decrypting them first
-    public fun finalize_proposal_anonymous(
+    /// Ecosystem and proof-of-creativity: finalize after community vote; on failure, reward pool to ecosystem treasury.
+    public entry fun finalize_proposal(
+        registry: &mut GovernanceDAO,
+        proposal: &mut Proposal,
+        ecosystem_treasury: &EcosystemTreasury,
+        clock: &Clock,
+        ctx: &mut TxContext
+    ) {
+        assert!(registry.version == upgrade::current_version(), EWrongVersion);
+        assert_ecosystem_or_poc_registry(registry);
+        let (outcome, time_ms) = finalize_community_voting_internals(registry, proposal, clock, ctx);
+        if (outcome == FINALIZE_OUTCOME_REJECT_COMMUNITY) {
+            let dest = profile::get_treasury_address(ecosystem_treasury);
+            forfeit_proposal_pool_to_treasury_address(
+                registry,
+                proposal,
+                dest,
+                FORFEIT_REASON_COMMUNITY_REJECTED,
+                TREASURY_ROUTE_ECOSYSTEM,
+                time_ms,
+                ctx
+            );
+        } else if (outcome == FINALIZE_OUTCOME_REJECT_QUORUM) {
+            let dest = profile::get_treasury_address(ecosystem_treasury);
+            forfeit_proposal_pool_to_treasury_address(
+                registry,
+                proposal,
+                dest,
+                FORFEIT_REASON_QUORUM_NOT_MET,
+                TREASURY_ROUTE_ECOSYSTEM,
+                time_ms,
+                ctx
+            );
+        };
+    }
+
+    /// After community voting fails for a platform registry: move funds into this platform’s governance (treasury) balance.
+    public(package) fun forfeit_proposal_pool_after_community_reject_to_platform_treasury(
+        registry: &GovernanceDAO,
+        proposal: &mut Proposal,
+        platform_treasury_address: address,
+        reason: u8,
+        time_ms: u64,
+    ): Balance<MYSO> {
+        assert!(registry.registry_type == PROPOSAL_TYPE_PLATFORM, EWrongRegistryForTreasuryRoute);
+        let proposal_id = object::id(proposal);
+        let amount = balance::value(&proposal.reward_pool);
+        event::emit(ProposalRewardPoolForfeitedToTreasuryEvent {
+            proposal_id,
+            recipient: platform_treasury_address,
+            amount,
+            reason,
+            registry_type: registry.registry_type,
+            treasury_route: TREASURY_ROUTE_PLATFORM,
+            forfeited_time: time_ms,
+        });
+        balance::withdraw_all(&mut proposal.reward_pool)
+    }
+
+    /// Decrypt anonymous votes, merge tallies, and resolve community finalization. Callable from [`social_contracts::platform`] for platform registries.
+    public(package) fun anonymous_tally_votes_and_finalize_community_internals(
         registry: &mut GovernanceDAO,
         proposal: &mut Proposal,
         keys: &vector<VerifiedDerivedKey>,
         public_keys: &vector<PublicKey>,
-        ctx: &mut TxContext
-    ) {
-        // Check version compatibility
+        clock: &Clock,
+        ctx: &TxContext,
+    ): (u8, u64) {
         assert!(registry.version == upgrade::current_version(), EWrongVersion);
-        
-        let current_time_ms = tx_context::epoch_timestamp_ms(ctx);
+        let current_time_ms = clock::timestamp_ms(clock);
         let proposal_id = object::id(proposal);
         assert!(table::contains(&registry.proposals, proposal_id), EProposalNotFound);
-
-        // First, collect all the decrypted votes
         let mut votes_for = vector::empty<address>();
         let mut votes_against = vector::empty<address>();
-        let mut invalid_votes = vector::empty<address>(); // Track invalid votes
-
+        let mut invalid_votes = vector::empty<address>();
         {
             assert!(proposal.status == STATUS_COMMUNITY_VOTING, EInvalidProposalStatus);
             assert!(current_time_ms > proposal.voting_end_time, EVotingPeriodNotEnded);
-
             if (dynamic_field::exists_(&proposal.id, ENCRYPTED_VOTES_FIELD)) {
-                let votes_tbl: &Table<address, EncryptedObject> = dynamic_field::borrow(&proposal.id, ENCRYPTED_VOTES_FIELD);
+                let votes_tbl: &Table<address, EncryptedObject> = dynamic_field::borrow(
+                    &proposal.id,
+                    ENCRYPTED_VOTES_FIELD
+                );
                 let anon_set: &VecSet<address> = dynamic_field::borrow(&proposal.id, ANON_VOTERS_FIELD);
                 let voters_vec = vec_set::into_keys(*anon_set);
                 let mut i = 0;
                 let len = vector::length(&voters_vec);
-                
-                // Decrypt all votes and collect results with comprehensive error handling
                 while (i < len) {
                     let addr = *vector::borrow(&voters_vec, i);
                     let enc = table::borrow(votes_tbl, addr);
                     let dec = decrypt(enc, keys, public_keys);
-                    
                     if (option::is_some(&dec)) {
                         let b = option::borrow(&dec);
-                        // Validate vote format: must be exactly 1 byte with value 0 or 1
                         if (vector::length(b) == 1) {
                             let vote_value = *vector::borrow(b, 0);
                             if (vote_value == 1) {
@@ -1811,33 +2026,30 @@ module social_contracts::governance {
                             } else if (vote_value == 0) {
                                 vector::push_back(&mut votes_against, addr);
                             } else {
-                                // Invalid vote value (not 0 or 1) - possible attack
                                 vector::push_back(&mut invalid_votes, addr);
                                 event::emit(VoteDecryptionFailedEvent {
                                     proposal_id,
                                     voter: addr,
                                     failure_reason: string::utf8(b"Invalid vote value - not 0 or 1"),
-                                    timestamp: tx_context::epoch_timestamp_ms(ctx),
+                                    timestamp: current_time_ms,
                                 });
                             }
                         } else {
-                            // Invalid vote format (wrong length) - possible corruption
                             vector::push_back(&mut invalid_votes, addr);
                             event::emit(VoteDecryptionFailedEvent {
                                 proposal_id,
                                 voter: addr,
                                 failure_reason: string::utf8(b"Invalid vote format - wrong byte length"),
-                                timestamp: tx_context::epoch_timestamp_ms(ctx),
+                                timestamp: current_time_ms,
                             });
                         }
                     } else {
-                        // Failed to decrypt - could be malicious, corrupted, or wrong keys
                         vector::push_back(&mut invalid_votes, addr);
                         event::emit(VoteDecryptionFailedEvent {
                             proposal_id,
                             voter: addr,
                             failure_reason: string::utf8(b"Decryption failed - invalid keys or corrupted data"),
-                            timestamp: tx_context::epoch_timestamp_ms(ctx),
+                            timestamp: current_time_ms,
                         });
                     };
                     i = i + 1;
@@ -1845,138 +2057,96 @@ module social_contracts::governance {
                 vector::destroy_empty(voters_vec);
             };
         };
-
-        // Log invalid votes for transparency but don't fail the entire process
-        // In production, you might want to emit events for invalid votes
         vector::destroy_empty(invalid_votes);
-
-        // Now apply all the valid votes
         {
-            // Process votes for with overflow protection
             let mut i = 0;
             let len = vector::length(&votes_for);
             while (i < len) {
-                let addr = *vector::borrow(&votes_for, i);
                 assert!(proposal.community_votes_for <= MAX_U64 - 1, EOverflow);
                 proposal.community_votes_for = proposal.community_votes_for + 1;
-                let voted_for: &mut VecSet<address> = dynamic_field::borrow_mut(&mut proposal.id, VOTED_FOR_FIELD);
-                vec_set::insert(voted_for, addr);
                 i = i + 1;
             };
-            
-            // Process votes against with overflow protection
             let mut i = 0;
             let len = vector::length(&votes_against);
             while (i < len) {
-                let addr = *vector::borrow(&votes_against, i);
                 assert!(proposal.community_votes_against <= MAX_U64 - 1, EOverflow);
                 proposal.community_votes_against = proposal.community_votes_against + 1;
-                let voted_against: &mut VecSet<address> = dynamic_field::borrow_mut(&mut proposal.id, VOTED_AGAINST_FIELD);
-                vec_set::insert(voted_against, addr);
                 i = i + 1;
             };
         };
-
-        // Clean up temporary vectors
         vector::destroy_empty(votes_for);
         vector::destroy_empty(votes_against);
-
-        // All encrypted votes processed
-        finalize_proposal(registry, proposal, ctx);
+        finalize_community_voting_internals(registry, proposal, clock, ctx)
     }
 
-    /// Distribute rewards to winning voters
-    /// Rewards are distributed equally among all voters who voted for the winning side
-    fun distribute_rewards(
+    /// Finalize a proposal with anonymous votes by decrypting them first (ecosystem / proof-of-creativity only).
+    public fun finalize_proposal_anonymous(
+        registry: &mut GovernanceDAO,
         proposal: &mut Proposal,
-        approve_won: bool,
+        keys: &vector<VerifiedDerivedKey>,
+        public_keys: &vector<PublicKey>,
+        ecosystem_treasury: &EcosystemTreasury,
+        clock: &Clock,
         ctx: &mut TxContext
     ) {
-        // Get the total reward amount
-        let total_reward = balance::value(&proposal.reward_pool);
-        
-        if (total_reward == 0) {
-            return // No rewards to distribute
+        assert_ecosystem_or_poc_registry(registry);
+        let (outcome, time_ms) = anonymous_tally_votes_and_finalize_community_internals(
+            registry,
+            proposal,
+            keys,
+            public_keys,
+            clock,
+            ctx,
+        );
+        if (outcome == FINALIZE_OUTCOME_REJECT_COMMUNITY) {
+            let dest = profile::get_treasury_address(ecosystem_treasury);
+            forfeit_proposal_pool_to_treasury_address(
+                registry,
+                proposal,
+                dest,
+                FORFEIT_REASON_COMMUNITY_REJECTED,
+                TREASURY_ROUTE_ECOSYSTEM,
+                time_ms,
+                ctx
+            );
+        } else if (outcome == FINALIZE_OUTCOME_REJECT_QUORUM) {
+            let dest = profile::get_treasury_address(ecosystem_treasury);
+            forfeit_proposal_pool_to_treasury_address(
+                registry,
+                proposal,
+                dest,
+                FORFEIT_REASON_QUORUM_NOT_MET,
+                TREASURY_ROUTE_ECOSYSTEM,
+                time_ms,
+                ctx
+            );
         };
-        
-        // Get the field name based on which side won
-        let field_name = if (approve_won) VOTED_FOR_FIELD else VOTED_AGAINST_FIELD;
-        let winner_voters: &VecSet<address> = dynamic_field::borrow(&proposal.id, field_name);
-        let voters_vec = vec_set::into_keys(*winner_voters);
-        let voter_count = vector::length(&voters_vec);
-        
-        if (voter_count == 0) {
-            // No winners, return funds to proposer
-            let reward_coin = coin::from_balance(balance::withdraw_all(&mut proposal.reward_pool), ctx);
-            transfer::public_transfer(reward_coin, proposal.submitter);
-            vector::destroy_empty(voters_vec);
-            return
-        };
-        
-        // Calculate per voter reward
-        let per_voter_reward = total_reward / voter_count;
-        
-        // There could be dust left due to division
-        let total_distributed = per_voter_reward * voter_count;
-        let dust = if (total_distributed < total_reward) {
-            total_reward - total_distributed
-        } else {
-            0
-        };
-        
-        // Distribute the bulk of the rewards
-        let mut idx = 0;
-        while (idx < voter_count) {
-            let voter = *vector::borrow(&voters_vec, idx);
-            let reward_amount = if (idx == voter_count - 1) { per_voter_reward + dust } else { per_voter_reward };
-            if (reward_amount > 0) {
-                let balance = balance::split(&mut proposal.reward_pool, reward_amount);
-                let reward_coin = coin::from_balance(balance, ctx);
-                transfer::public_transfer(reward_coin, voter);
-            };
-            idx = idx + 1;
-        };
-        
-        // Emit event for reward distribution
-        assert!(balance::value(&proposal.reward_pool) == 0, EInvalidAmount);
-
-        event::emit(RewardsDistributedEvent {
-            proposal_id: object::id(proposal),
-            total_reward,
-            recipient_count: voter_count,
-            distribution_time: tx_context::epoch_timestamp_ms(ctx),
-        });
-        vector::destroy_empty(voters_vec);
     }
 
-    /// Mark a proposal as implemented
-    public entry fun mark_proposal_implemented(
+    /// Shared implementation transition + drains `reward_pool` for routing by the caller.
+    public(package) fun mark_proposal_implemented_take_pool(
         registry: &mut GovernanceDAO,
         proposal: &mut Proposal,
         description: Option<String>,
-        ctx: &mut TxContext
-    ) {
-        // Check version compatibility
+        clock: &Clock,
+        ctx: &TxContext
+    ): Balance<MYSO> {
         assert!(registry.version == upgrade::current_version(), EWrongVersion);
         
         let caller = tx_context::sender(ctx);
-        let current_time = tx_context::epoch_timestamp_ms(ctx);
+        let current_time = clock::timestamp_ms(clock);
         let proposal_id = object::id(proposal);
         
-        // Verify proposal exists and is approved
         assert!(table::contains(&registry.proposals, proposal_id), EProposalNotFound);
         assert!(proposal.status == STATUS_APPROVED, EInvalidProposalStatus);
         
-        // Only the submitter or a delegate can mark as implemented
         assert!(
             proposal.submitter == caller || table::contains(&registry.delegates, caller),
             EUnauthorized
         );
         
-        // Update status
         proposal.status = STATUS_IMPLEMENTED;
         
-        // Update proposals by status
         let from_status = table::borrow_mut(&mut registry.proposals_by_status, STATUS_APPROVED);
         let mut index = 0;
         let len = vector::length(from_status);
@@ -1991,12 +2161,80 @@ module social_contracts::governance {
         let to_status = table::borrow_mut(&mut registry.proposals_by_status, STATUS_IMPLEMENTED);
         vector::push_back(to_status, proposal_id);
         
-        // Emit event
         event::emit(ProposalImplementedEvent {
             proposal_id,
             implementation_time: current_time,
             description,
         });
+        
+        balance::withdraw_all(&mut proposal.reward_pool)
+    }
+
+    /// Mark implemented: reward the submitter with the implementation pool (ecosystem or proof-of-creativity registry).
+    public entry fun mark_proposal_implemented_to_ecosystem_treasury(
+        registry: &mut GovernanceDAO,
+        proposal: &mut Proposal,
+        _ecosystem_treasury: &EcosystemTreasury,
+        description: Option<String>,
+        clock: &Clock,
+        ctx: &mut TxContext
+    ) {
+        assert!(
+            registry.registry_type == PROPOSAL_TYPE_ECOSYSTEM
+                || registry.registry_type == PROPOSAL_TYPE_PROOF_OF_CREATIVITY,
+            EWrongRegistryForTreasuryRoute
+        );
+        let sent_time = clock::timestamp_ms(clock);
+        let submitter = proposal.submitter;
+        let bal = mark_proposal_implemented_take_pool(registry, proposal, description, clock, ctx);
+        let amount = balance::value(&bal);
+        if (amount > 0) {
+            let c = coin::from_balance(bal, ctx);
+            transfer::public_transfer(c, submitter);
+        } else {
+            balance::destroy_zero(bal);
+        };
+        event::emit(ProposalImplementationRewardToSubmitterEvent {
+            proposal_id: object::id(proposal),
+            submitter,
+            amount,
+            registry_type: registry.registry_type,
+            sent_time,
+        });
+    }
+
+    /// Mark implemented: platform registry when the linked [`Platform`] is not in the transaction — still pays the proposer.
+    public entry fun mark_proposal_implemented_platform_to_ecosystem_treasury(
+        registry: &mut GovernanceDAO,
+        proposal: &mut Proposal,
+        _ecosystem_treasury: &EcosystemTreasury,
+        description: Option<String>,
+        clock: &Clock,
+        ctx: &mut TxContext
+    ) {
+        assert!(registry.registry_type == PROPOSAL_TYPE_PLATFORM, EWrongRegistryForTreasuryRoute);
+        let sent_time = clock::timestamp_ms(clock);
+        let submitter = proposal.submitter;
+        let bal = mark_proposal_implemented_take_pool(registry, proposal, description, clock, ctx);
+        let amount = balance::value(&bal);
+        if (amount > 0) {
+            let c = coin::from_balance(bal, ctx);
+            transfer::public_transfer(c, submitter);
+        } else {
+            balance::destroy_zero(bal);
+        };
+        event::emit(ProposalImplementationRewardToSubmitterEvent {
+            proposal_id: object::id(proposal),
+            submitter,
+            amount,
+            registry_type: registry.registry_type,
+            sent_time,
+        });
+    }
+
+    /// Registry type discriminator for platform routing (see [`social_contracts::platform`]).
+    public fun proposal_type_platform_value(): u8 {
+        PROPOSAL_TYPE_PLATFORM
     }
 
     /// Get all proposals of a specific type
@@ -2043,6 +2281,11 @@ module social_contracts::governance {
         table::length(&registry.delegates)
     }
 
+    /// Registry type discriminator (ecosystem, proof of creativity, platform).
+    public fun registry_type(registry: &GovernanceDAO): u8 {
+        registry.registry_type
+    }
+
     /// Get delegate information
     public fun get_delegate_info(
         registry: &GovernanceDAO,
@@ -2081,6 +2324,10 @@ module social_contracts::governance {
             proposal.community_votes_for,
             proposal.community_votes_against
         )
+    }
+
+    public fun proposal_submitter(proposal: &Proposal): address {
+        proposal.submitter
     }
 
     /// Get the current treasury balance
@@ -2135,27 +2382,29 @@ module social_contracts::governance {
         )
     }
 
-    /// If more than half of delegates reject, reject the proposal manually
+    /// If more than half of delegates reject, reject the proposal manually (ecosystem / proof-of-creativity only).
     public entry fun reject_proposal_manually(
         registry: &mut GovernanceDAO,
         proposal: &mut Proposal,
+        ecosystem_treasury: &EcosystemTreasury,
+        clock: &Clock,
         ctx: &mut TxContext
     ) {
-        // Check version compatibility
         assert!(registry.version == upgrade::current_version(), EWrongVersion);
-        
-        // Verify caller is a delegate
+        assert_ecosystem_or_poc_registry(registry);
         let caller = tx_context::sender(ctx);
         assert!(table::contains(&registry.delegates, caller), ENotDelegate);
-        
-        // Verify proposal exists and is in delegate review phase
         let proposal_id = object::id(proposal);
         assert!(table::contains(&registry.proposals, proposal_id), EProposalNotFound);
         assert!(proposal.status == STATUS_DELEGATE_REVIEW, EInvalidProposalStatus);
-        
-        // Reject the proposal
-        let current_time = tx_context::epoch_timestamp_ms(ctx);
-        reject_proposal(registry, proposal, current_time, ctx);
+        let current_time = clock::timestamp_ms(clock);
+        complete_delegate_reject_to_ecosystem_treasury(
+            registry,
+            proposal,
+            current_time,
+            ecosystem_treasury,
+            ctx
+        );
     }
 
     /// Create a platform-specific governance registry when a platform is approved
@@ -2169,9 +2418,10 @@ module social_contracts::governance {
         quadratic_base_cost: u64,
         voting_period_ms: u64,
         quorum_votes: u64,
+        clock: &Clock,
         ctx: &mut TxContext
     ): ID {
-        let current_time = tx_context::epoch_timestamp_ms(ctx);
+        let current_time = clock::timestamp_ms(clock);
         let founding_delegate = tx_context::sender(ctx);
         
         // Create Platform Governance Registry with parameters
@@ -2197,6 +2447,7 @@ module social_contracts::governance {
             nominee_addresses: vec_set::empty<address>(),
             voters: table::new<address, Table<address, bool>>(ctx),
             version: upgrade::current_version(),
+            last_delegate_panel_boundary_epoch: 0,
         };
         
         // Initialize registry tables
@@ -2230,6 +2481,11 @@ module social_contracts::governance {
     /// Get version of GovernanceDAO
     public fun version(registry: &GovernanceDAO): u64 {
         registry.version
+    }
+
+    /// Largest `k * delegate_term_epochs` boundary for which a full delegate panel election has been applied.
+    public fun last_delegate_panel_boundary_epoch(registry: &GovernanceDAO): u64 {
+        registry.last_delegate_panel_boundary_epoch
     }
 
     /// Set version of GovernanceDAO

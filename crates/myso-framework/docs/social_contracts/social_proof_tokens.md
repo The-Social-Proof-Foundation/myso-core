@@ -721,6 +721,16 @@ Event emitted when a token pool is created
 </dt>
 <dd>
 </dd>
+<dt>
+<code>circulating_supply: u64</code>
+</dt>
+<dd>
+</dd>
+<dt>
+<code>total_reserved_at_launch: u64</code>
+</dt>
+<dd>
+</dd>
 </dl>
 
 
@@ -3587,6 +3597,8 @@ This replaces the auction system - only the post/profile owner can call this
     updated_token_info.circulating_supply = distributed_total;
     // Transfer all reserved MYSO to the token pool <b>as</b> initial liquidity
     balance::join(&<b>mut</b> token_pool.myso_balance, balance::withdraw_all(&<b>mut</b> reservation_pool_object.myso_balance));
+    // Snapshot <b>for</b> event (denominator <b>for</b> indexer proportional split) before clearing on-chain state
+    <b>let</b> total_reserved_at_launch = reservation_pool_object.info.total_reserved;
     // Mark reservation pool <b>as</b> converted and clear total reserved
     reservation_pool_object.converted = <b>true</b>;
     reservation_pool_object.info.total_reserved = 0;
@@ -3607,6 +3619,8 @@ This replaces the auction system - only the post/profile owner can call this
         name: token_pool.info.name,
         base_price: token_pool.info.base_price,
         quadratic_coefficient: token_pool.info.quadratic_coefficient,
+        circulating_supply: token_pool.info.circulating_supply,
+        total_reserved_at_launch,
     });
     // Share the token pool
     transfer::share_object(token_pool);

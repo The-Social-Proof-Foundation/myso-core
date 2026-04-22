@@ -5,9 +5,10 @@ use chrono::Utc;
 
 use super::SocialEventRow;
 use myso_indexer_alt_social_schema::models::{
-    GovernanceRegistryUpdate, NewAnonymousVote, NewCommunityVote, NewDelegate, NewDelegateRating,
-    NewDelegateVote, NewGovernanceEvent, NewGovernanceRegistry, NewNominatedDelegate, NewProposal,
-    NewRewardDistribution, NewVoteDecryptionFailure, ProposalUpdateSet,
+    GovernanceRegistryPanelBoundaryUpdate, GovernanceRegistryUpdate, NewAnonymousVote,
+    NewCommunityVote, NewDelegate, NewDelegateRating, NewDelegateVote, NewGovernanceEvent,
+    NewGovernanceRegistry, NewNominatedDelegate, NewProposal, NewRewardDistribution,
+    NewVoteDecryptionFailure, ProposalUpdateSet,
 };
 use myso_indexer_alt_social_schema::{
     GOVERNANCE_STATUS_APPROVED, GOVERNANCE_STATUS_COMMUNITY_VOTING,
@@ -86,12 +87,18 @@ pub fn handle_governance_event(
         ),
         "ProposalApproved" => process_proposal_approved_event(data, event_id, governance_registry_id),
         "ProposalImplemented" => process_proposal_implemented_event(data, event_id),
-        "RewardsDistributed" => process_rewards_distributed_event(data, event_id),
+        "ProposalImplementationRewardToSubmitter" => {
+            process_proposal_implementation_reward_to_submitter_event(data, event_id)
+        },
+        "ProposalRewardPoolForfeitedToTreasury" => {
+            process_proposal_reward_pool_forfeited_to_treasury_event(data, event_id)
+        },
         "AnonymousVote" => process_anonymous_vote_event(data, event_id),
         "VoteDecryptionFailed" => process_vote_decryption_failed_event(data, event_id),
         "GovernanceParametersUpdated" => {
             process_governance_parameters_updated_event(data, event_id, governance_registry_id)
         }
+        "DelegatePanelRefreshed" => process_delegate_panel_refreshed_event(data, event_id),
         _ => None,
     }
 }
@@ -138,7 +145,7 @@ fn process_governance_registry_created_event(
     let registry_id_for_event = ev.registry_id.clone();
     let reg = NewGovernanceRegistry {
         registry_type: ev.registry_type as i16,
-        registry_id: ev.registry_id,
+        registry_id: ev.registry_id.clone(),
         delegate_count: ev.delegate_count as i64,
         delegate_term_epochs: ev.delegate_term_epochs as i64,
         proposal_submission_cost: ev.proposal_submission_cost as i64,
@@ -147,6 +154,7 @@ fn process_governance_registry_created_event(
         quadratic_base_cost: ev.quadratic_base_cost as i64,
         voting_period_ms: ev.voting_period_ms as i64,
         quorum_votes: ev.quorum_votes as i64,
+        last_delegate_panel_boundary_epoch: None,
         updated_at: ev.updated_at as i64,
         transaction_id: event_id.to_string(),
     };
@@ -531,6 +539,7 @@ fn process_community_vote_event(
             proposal_id: ev.proposal_id.clone(),
             votes_for_delta,
             votes_against_delta,
+            reward_pool_delta: ev.vote_cost as i64,
         },
         SocialEventRow::GovernanceEventFromProposal {
             proposal_id: ev.proposal_id,
@@ -690,7 +699,7 @@ fn process_proposal_rejected_by_community_event(
         status: Some(GOVERNANCE_STATUS_REJECTED),
         voting_start_time: None,
         voting_end_time: None,
-        reward_pool: None,
+        reward_pool: Some(0),
         community_votes_for: Some(ev.votes_for as i64),
         community_votes_against: Some(ev.votes_against as i64),
         rescind_time: None,
@@ -778,7 +787,7 @@ fn process_proposal_implemented_event(
         status: Some(GOVERNANCE_STATUS_IMPLEMENTED),
         voting_start_time: None,
         voting_end_time: None,
-        reward_pool: None,
+        reward_pool: Some(0),
         community_votes_for: None,
         community_votes_against: None,
         rescind_time: None,
@@ -798,37 +807,131 @@ fn process_proposal_implemented_event(
     }])
 }
 
-fn process_rewards_distributed_event(
+fn process_proposal_implementation_reward_to_submitter_event(
     data: &serde_json::Value,
     event_id: &str,
 ) -> Option<Vec<SocialEventRow>> {
     #[derive(serde::Deserialize)]
     struct Ev {
         proposal_id: String,
+        submitter: String,
         #[serde(deserialize_with = "de_u64")]
-        total_reward: u64,
+        amount: u64,
+        #[serde(deserialize_with = "de_u8")]
+        registry_type: u8,
         #[serde(deserialize_with = "de_u64")]
-        recipient_count: u64,
-        #[serde(deserialize_with = "de_u64")]
-        distribution_time: u64,
+        sent_time: u64,
     }
     let ev: Ev = serde_json::from_value(data.clone()).ok()?;
+    let proposal_id = ev.proposal_id.clone();
     let dist = NewRewardDistribution {
-        proposal_id: ev.proposal_id.clone(),
-        recipient_address: format!("aggregate_{}", ev.proposal_id),
-        amount: ev.total_reward as i64,
-        distribution_time: ev.distribution_time as i64,
-        distribution_type: Some(format!("aggregate_{}_recipients", ev.recipient_count)),
+        proposal_id: proposal_id.clone(),
+        recipient_address: ev.submitter.clone(),
+        amount: ev.amount as i64,
+        distribution_time: ev.sent_time as i64,
+        distribution_type: Some(format!(
+            "implementation_reward_submitter_registry_{}",
+            ev.registry_type
+        )),
         transaction_id: event_id.to_string(),
+    };
+    let pool_zero = ProposalUpdateSet {
+        status: None,
+        voting_start_time: None,
+        voting_end_time: None,
+        reward_pool: Some(0),
+        community_votes_for: None,
+        community_votes_against: None,
+        rescind_time: None,
+        rejection_time: None,
+        implementation_time: None,
+        implemented_description: None,
     };
     Some(vec![
         SocialEventRow::RewardDistribution(dist),
         SocialEventRow::GovernanceEventFromProposal {
-            proposal_id: ev.proposal_id,
-            event_type: "RewardsDistributedEvent".to_string(),
+            proposal_id: proposal_id.clone(),
+            event_type: "ProposalImplementationRewardToSubmitterEvent".to_string(),
             event_data: data.clone(),
             event_id: event_id.to_string(),
             anonymous_voting_related: None,
+        },
+        SocialEventRow::ProposalUpdate {
+            proposal_id,
+            set: pool_zero,
+            governance_event: None,
+            submitter_filter: None,
+        },
+    ])
+}
+
+fn process_proposal_reward_pool_forfeited_to_treasury_event(
+    data: &serde_json::Value,
+    event_id: &str,
+) -> Option<Vec<SocialEventRow>> {
+    const TREASURY_ROUTE_ECOSYSTEM: u8 = 0;
+    const TREASURY_ROUTE_PLATFORM: u8 = 1;
+
+    #[derive(serde::Deserialize)]
+    struct Ev {
+        proposal_id: String,
+        recipient: String,
+        #[serde(deserialize_with = "de_u64")]
+        amount: u64,
+        #[serde(deserialize_with = "de_u8")]
+        reason: u8,
+        #[serde(deserialize_with = "de_u8")]
+        treasury_route: u8,
+        #[serde(deserialize_with = "de_u64")]
+        forfeited_time: u64,
+    }
+    let ev: Ev = serde_json::from_value(data.clone()).ok()?;
+    let proposal_id = ev.proposal_id.clone();
+    let base: &str = match ev.reason {
+        0 => "quorum_not_met",
+        1 => "community_rejected",
+        2 => "delegate_rejected",
+        _ => "unknown",
+    };
+    let distribution_type = match ev.treasury_route {
+        TREASURY_ROUTE_ECOSYSTEM => format!("forfeit_{}_ecosystem_treasury", base),
+        TREASURY_ROUTE_PLATFORM => format!("forfeit_{}_platform_governance_treasury", base),
+        _ => format!("forfeit_{}_unknown_route", base),
+    };
+    let dist = NewRewardDistribution {
+        proposal_id: proposal_id.clone(),
+        recipient_address: ev.recipient.clone(),
+        amount: ev.amount as i64,
+        distribution_time: ev.forfeited_time as i64,
+        distribution_type: Some(distribution_type),
+        transaction_id: event_id.to_string(),
+    };
+    let pool_zero = ProposalUpdateSet {
+        status: None,
+        voting_start_time: None,
+        voting_end_time: None,
+        reward_pool: Some(0),
+        community_votes_for: None,
+        community_votes_against: None,
+        rescind_time: None,
+        rejection_time: None,
+        implementation_time: None,
+        implemented_description: None,
+    };
+    Some(vec![
+        SocialEventRow::RewardDistribution(dist),
+        SocialEventRow::GovernanceEventFromProposal {
+            proposal_id: proposal_id.clone(),
+            event_type: "ProposalRewardPoolForfeitedToTreasuryEvent".to_string(),
+            event_data: data.clone(),
+            event_id: event_id.to_string(),
+            anonymous_voting_related: None,
+        },
+        SocialEventRow::ProposalUpdate {
+            proposal_id,
+            set: pool_zero,
+            governance_event: None,
+            submitter_filter: None,
         },
     ])
 }
@@ -901,6 +1004,43 @@ fn process_vote_decryption_failed_event(
             event_id: event_id.to_string(),
             anonymous_voting_related: Some(true),
         },
+    ])
+}
+
+fn process_delegate_panel_refreshed_event(
+    data: &serde_json::Value,
+    event_id: &str,
+) -> Option<Vec<SocialEventRow>> {
+    #[derive(serde::Deserialize)]
+    struct Ev {
+        registry_id: String,
+        #[serde(deserialize_with = "de_u64")]
+        boundary_epoch: u64,
+        #[serde(deserialize_with = "de_u8")]
+        registry_type: u8,
+    }
+    let ev: Ev = serde_json::from_value(data.clone()).ok()?;
+    let boundary = ev.boundary_epoch as i64;
+    let now_ms = Utc::now().timestamp_millis();
+    let up = GovernanceRegistryPanelBoundaryUpdate {
+        registry_id: ev.registry_id.clone(),
+        last_delegate_panel_boundary_epoch: boundary,
+        updated_at: now_ms,
+        transaction_id: event_id.to_string(),
+    };
+    let gov_ev = NewGovernanceEvent {
+        event_type: "DelegatePanelRefreshedEvent".to_string(),
+        registry_type: ev.registry_type as i16,
+        event_data: data.clone(),
+        event_id: event_id.to_string(),
+        created_at: Utc::now(),
+        anonymous_voting_related: None,
+        governance_registry_id: Some(ev.registry_id),
+        proposal_id: None,
+    };
+    Some(vec![
+        SocialEventRow::GovernanceRegistryPanelBoundary(up),
+        SocialEventRow::GovernanceEvent(gov_ev),
     ])
 }
 

@@ -306,7 +306,7 @@ Username Registry that stores mappings between usernames and profiles
 Profile object that contains user information
 
 
-<pre><code><b>public</b> <b>struct</b> <a href="../social_contracts/profile.md#social_contracts_profile_Profile">Profile</a> <b>has</b> key, store
+<pre><code><b>public</b> <b>struct</b> <a href="../social_contracts/profile.md#social_contracts_profile_Profile">Profile</a> <b>has</b> key
 </code></pre>
 
 
@@ -2255,7 +2255,7 @@ The username stays with the profile, and the transfer updates registry mappings
         <a href="../social_contracts/profile.md#social_contracts_profile_min_offer_amount">min_offer_amount</a>: <a href="../social_contracts/profile.md#social_contracts_profile">profile</a>.<a href="../social_contracts/profile.md#social_contracts_profile_min_offer_amount">min_offer_amount</a>,
     });
     // Transfer <a href="../social_contracts/profile.md#social_contracts_profile">profile</a> to new <a href="../social_contracts/profile.md#social_contracts_profile_owner">owner</a>
-    transfer::public_transfer(<a href="../social_contracts/profile.md#social_contracts_profile">profile</a>, new_owner);
+    transfer::transfer(<a href="../social_contracts/profile.md#social_contracts_profile">profile</a>, new_owner);
 }
 </code></pre>
 
@@ -2865,7 +2865,7 @@ Transfers tokens to the profile owner and profile ownership to the offeror
         timestamp: now,
     });
     // Transfer the <a href="../social_contracts/profile.md#social_contracts_profile">profile</a> object to the new <a href="../social_contracts/profile.md#social_contracts_profile_owner">owner</a>
-    transfer::public_transfer(<a href="../social_contracts/profile.md#social_contracts_profile">profile</a>, offeror);
+    transfer::transfer(<a href="../social_contracts/profile.md#social_contracts_profile">profile</a>, offeror);
 }
 </code></pre>
 

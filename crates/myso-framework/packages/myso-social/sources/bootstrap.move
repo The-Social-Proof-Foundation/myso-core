@@ -8,6 +8,7 @@
 module social_contracts::bootstrap {
     use myso::{
         tx_context::{Self, TxContext},
+        clock::{Self, Clock},
         transfer,
         bootstrap_key::{Self, BootstrapKey}
     };
@@ -35,6 +36,7 @@ module social_contracts::bootstrap {
     public entry fun claim_all_admin_capabilities(
         registry: &mut ob_registry::Registry,
         bootstrap_key: &mut BootstrapKey,
+        clock: &Clock,
         ctx: &mut TxContext
     ) {
         bootstrap_key::assert_not_used(bootstrap_key);
@@ -46,7 +48,7 @@ module social_contracts::bootstrap {
         social_contracts::profile::bootstrap_init(ctx);
         social_contracts::block_list::bootstrap_init(ctx);
         social_contracts::mydata::bootstrap_init(ctx);
-        social_contracts::governance::bootstrap_init(ctx);
+        social_contracts::governance::bootstrap_init(clock, ctx);
         social_contracts::post::bootstrap_init(ctx);
         social_contracts::social_proof_tokens::bootstrap_init(ctx);
         social_contracts::proof_of_creativity::bootstrap_init(ctx);

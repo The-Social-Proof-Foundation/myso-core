@@ -3,6 +3,7 @@
 
 //! Governance pipeline: indexes governance module events.
 
+use std::collections::BTreeMap;
 use std::sync::Arc;
 
 use anyhow::Result;
@@ -20,9 +21,10 @@ use myso_indexer_alt_framework::types::full_checkpoint_content::{
 };
 use myso_indexer_alt_framework::FieldCount;
 use myso_indexer_alt_social_schema::models::{
-    GovernanceRegistryUpdate, NewAnonymousVote, NewCommunityVote, NewDelegate, NewDelegateRating,
-    NewDelegateVote, NewGovernanceEvent, NewGovernanceRegistry, NewNominatedDelegate, NewProposal,
-    NewRewardDistribution, NewVoteDecryptionFailure, ProposalUpdateSet,
+    GovernanceRegistryPanelBoundaryUpdate, GovernanceRegistryUpdate, NewAnonymousVote,
+    NewCommunityVote, NewDelegate, NewDelegateRating, NewDelegateVote, NewGovernanceEvent,
+    NewGovernanceRegistry, NewNominatedDelegate, NewProposal, NewRewardDistribution,
+    NewVoteDecryptionFailure, ProposalUpdateSet,
 };
 use myso_indexer_alt_social_schema::schema::{
     anonymous_votes, community_votes, delegate_ratings, delegate_votes, delegates,
@@ -31,6 +33,7 @@ use myso_indexer_alt_social_schema::schema::{
 };
 use myso_indexer_alt_social_schema::PROPOSAL_TYPE_PLATFORM;
 use myso_types::effects::TransactionEffectsAPI;
+use myso_types::object::ID_END_INDEX;
 use myso_types::storage::ObjectKey;
 use myso_types::MYSO_SOCIAL_ADDRESS;
 
@@ -66,6 +69,7 @@ async fn load_latest_proposal_governance_meta(
 pub enum GovernanceRow {
     GovernanceRegistry(NewGovernanceRegistry),
     GovernanceRegistryUpdate(GovernanceRegistryUpdate),
+    GovernanceRegistryPanelBoundary(GovernanceRegistryPanelBoundaryUpdate),
     NominatedDelegate(NewNominatedDelegate),
     Delegate(NewDelegate),
     Proposal(NewProposal),
@@ -116,6 +120,7 @@ pub enum GovernanceRow {
         proposal_id: String,
         votes_for_delta: i64,
         votes_against_delta: i64,
+        reward_pool_delta: i64,
     },
     ProposalOutcomeApplyDelegateSidedUpdates {
         proposal_id: String,
@@ -140,6 +145,9 @@ impl GovernanceRow {
             }
             crate::handlers::SocialEventRow::GovernanceRegistryUpdate(up) => {
                 Some(GovernanceRow::GovernanceRegistryUpdate(up))
+            }
+            crate::handlers::SocialEventRow::GovernanceRegistryPanelBoundary(up) => {
+                Some(GovernanceRow::GovernanceRegistryPanelBoundary(up))
             }
             crate::handlers::SocialEventRow::NominatedDelegate(n) => {
                 Some(GovernanceRow::NominatedDelegate(n))
@@ -237,10 +245,12 @@ impl GovernanceRow {
                 proposal_id,
                 votes_for_delta,
                 votes_against_delta,
+                reward_pool_delta,
             } => Some(GovernanceRow::ProposalCommunityVoteUpdate {
                 proposal_id,
                 votes_for_delta,
                 votes_against_delta,
+                reward_pool_delta,
             }),
             crate::handlers::SocialEventRow::ProposalOutcomeApplyDelegateSidedUpdates {
                 proposal_id,
@@ -274,12 +284,35 @@ impl FieldCount for GovernanceRow {
 
 pub struct GovernanceHandler;
 
-/// Identifies the mutated `GovernanceDAO` object for this transaction, if unambiguous.
+/// `registry_type` / `proposal_type` from parsed governance event JSON, when present.
+fn governance_event_registry_type_hint(
+    event_name: &str,
+    data: &serde_json::Value,
+) -> Option<u8> {
+    if event_name == "GovernanceRegistryCreatedEvent" {
+        return None;
+    }
+    if let Some(v) = data.get("registry_type").and_then(serde_json::Value::as_u64) {
+        return u8::try_from(v).ok();
+    }
+    if let Some(v) = data.get("proposal_type").and_then(serde_json::Value::as_u64) {
+        return u8::try_from(v).ok();
+    }
+    None
+}
+
+/// After a Move object's `id: UID` (32 bytes), `GovernanceDAO` stores `registry_type: u8`.
+fn governance_dao_registry_type_from_contents(contents: &[u8]) -> Option<u8> {
+    contents.get(ID_END_INDEX).copied()
+}
+
+/// Identifies the mutated `GovernanceDAO` object for this transaction when possible.
 fn resolve_governance_registry_id_from_tx(
     object_set: &ObjectSet,
     tx: &ExecutedTransaction,
+    event_registry_type: Option<u8>,
 ) -> Option<String> {
-    let mut candidates: Vec<String> = Vec::new();
+    let mut candidates: BTreeMap<String, Option<u8>> = BTreeMap::new();
     for ((oid, version, _), _) in tx.effects.mutated() {
         let Some(obj) = object_set.get(&ObjectKey(oid, version)) else {
             continue;
@@ -291,18 +324,49 @@ fn resolve_governance_registry_id_from_tx(
             continue;
         }
         if t.module() == ident_str!("governance") && t.name() == ident_str!("GovernanceDAO") {
-            candidates.push(oid.to_string());
+            let oid_s = oid.to_string();
+            let reg_ty = obj
+                .as_inner()
+                .data
+                .try_as_move()
+                .and_then(|m| governance_dao_registry_type_from_contents(m.contents()));
+            candidates.insert(oid_s, reg_ty);
         }
     }
     match candidates.len() {
         0 => None,
-        1 => Some(candidates[0].clone()),
+        1 => candidates.into_keys().next(),
         n => {
-            tracing::warn!(
-                count = n,
-                "ambiguous GovernanceDAO mutations in tx; omitting governance_registry_id for nominee rows"
-            );
-            None
+            if let Some(filter) = event_registry_type {
+                let matched: Vec<String> = candidates
+                    .iter()
+                    .filter(|(_, rt)| **rt == Some(filter))
+                    .map(|(id, _)| id.clone())
+                    .collect();
+                if matched.len() == 1 {
+                    return Some(matched[0].clone());
+                }
+                if matched.is_empty() {
+                    tracing::warn!(
+                        count = n,
+                        registry_type = filter,
+                        "GovernanceDAO mutations in tx: none matched event registry_type; omitting governance_registry_id"
+                    );
+                } else {
+                    tracing::warn!(
+                        count = matched.len(),
+                        registry_type = filter,
+                        "GovernanceDAO mutations in tx: multiple matched event registry_type; omitting governance_registry_id"
+                    );
+                }
+                None
+            } else {
+                tracing::warn!(
+                    count = n,
+                    "ambiguous GovernanceDAO mutations in tx; omitting governance_registry_id"
+                );
+                None
+            }
         }
     }
 }
@@ -320,8 +384,6 @@ impl Processor for GovernanceHandler {
             let Some(events) = &tx.events else {
                 continue;
             };
-            let governance_registry_id =
-                resolve_governance_registry_id_from_tx(&checkpoint.object_set, tx);
             for (event_seq, ev) in events.data.iter().enumerate() {
                 if !common::is_social_package_event(&ev.package_id, &ev.type_.address) {
                     continue;
@@ -347,11 +409,17 @@ impl Processor for GovernanceHandler {
                             continue;
                         }
                     };
+                let hint = governance_event_registry_type_hint(event_name, &event_data);
+                let governance_registry_id = resolve_governance_registry_id_from_tx(
+                    &checkpoint.object_set,
+                    tx,
+                    hint,
+                );
                 if let Some(rows) = governance::handle_governance_event(
                     event_name,
                     &event_data,
                     &event_id,
-                    governance_registry_id.clone(),
+                    governance_registry_id,
                 ) {
                     for row in rows {
                         if let Some(r) = GovernanceRow::from_social(row) {
@@ -468,6 +536,18 @@ impl Handler for GovernanceHandler {
                                 .await?;
                         }
                     }
+                }
+                GovernanceRow::GovernanceRegistryPanelBoundary(up) => {
+                    total += diesel::update(governance_registries::table)
+                        .filter(governance_registries::registry_id.eq(&up.registry_id))
+                        .set((
+                            governance_registries::last_delegate_panel_boundary_epoch
+                                .eq(Some(up.last_delegate_panel_boundary_epoch)),
+                            governance_registries::updated_at.eq(up.updated_at),
+                            governance_registries::transaction_id.eq(up.transaction_id.clone()),
+                        ))
+                        .execute(conn)
+                        .await?;
                 }
                 GovernanceRow::NominatedDelegate(n) => {
                     total += diesel::insert_into(nominated_delegates::table)
@@ -694,12 +774,14 @@ impl Handler for GovernanceHandler {
                     proposal_id,
                     votes_for_delta,
                     votes_against_delta,
+                    reward_pool_delta,
                 } => {
                     let upd = diesel::sql_query(
-                        "UPDATE proposals SET community_votes_for = community_votes_for + $1, community_votes_against = community_votes_against + $2 WHERE id = $3 AND time = (SELECT max(time) FROM proposals WHERE id = $3)",
+                        "UPDATE proposals SET community_votes_for = community_votes_for + $1, community_votes_against = community_votes_against + $2, reward_pool = reward_pool + $3 WHERE id = $4 AND time = (SELECT max(time) FROM proposals WHERE id = $4)",
                     )
                     .bind::<BigInt, _>(*votes_for_delta)
                     .bind::<BigInt, _>(*votes_against_delta)
+                    .bind::<BigInt, _>(*reward_pool_delta)
                     .bind::<Text, _>(proposal_id);
                     total += upd.execute(conn).await?;
                 }

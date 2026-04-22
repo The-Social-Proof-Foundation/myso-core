@@ -253,11 +253,23 @@ pub struct BcsProposalImplementedEvent {
 }
 
 #[derive(Debug, Deserialize)]
-pub struct BcsRewardsDistributedEvent {
+pub struct BcsProposalRewardPoolForfeitedToTreasuryEvent {
     proposal_id: AccountAddress,
-    total_reward: u64,
-    recipient_count: u64,
-    distribution_time: u64,
+    recipient: AccountAddress,
+    amount: u64,
+    reason: u8,
+    registry_type: u8,
+    treasury_route: u8,
+    forfeited_time: u64,
+}
+
+#[derive(Debug, Deserialize)]
+pub struct BcsProposalImplementationRewardToSubmitterEvent {
+    proposal_id: AccountAddress,
+    submitter: AccountAddress,
+    amount: u64,
+    registry_type: u8,
+    sent_time: u64,
 }
 
 #[derive(Debug, Deserialize)]
@@ -288,6 +300,14 @@ pub struct BcsGovernanceParametersUpdatedEvent {
     voting_period_ms: u64,
     quorum_votes: u64,
     timestamp: u64,
+}
+
+#[derive(Debug, Deserialize)]
+pub struct BcsDelegatePanelRefreshedEvent {
+    registry_id: AccountAddress,
+    boundary_epoch: u64,
+    registry_type: u8,
+    executed_at_epoch: u64,
 }
 
 #[derive(Debug, Deserialize)]
@@ -1624,14 +1644,28 @@ fn parse_governance_event(
                 "description": ev.description,
             })))
         }
-        "RewardsDistributedEvent" => {
-            let ev = bcs::from_bytes::<BcsRewardsDistributedEvent>(contents)
+        "ProposalRewardPoolForfeitedToTreasuryEvent" => {
+            let ev = bcs::from_bytes::<BcsProposalRewardPoolForfeitedToTreasuryEvent>(contents)
                 .map_err(|e| bcs_parse_err(e, contents))?;
             Ok(Some(serde_json::json!({
                 "proposal_id": addr_to_string(&ev.proposal_id),
-                "total_reward": ev.total_reward,
-                "recipient_count": ev.recipient_count,
-                "distribution_time": ev.distribution_time,
+                "recipient": addr_to_string(&ev.recipient),
+                "amount": ev.amount,
+                "reason": ev.reason,
+                "registry_type": ev.registry_type,
+                "treasury_route": ev.treasury_route,
+                "forfeited_time": ev.forfeited_time,
+            })))
+        }
+        "ProposalImplementationRewardToSubmitterEvent" => {
+            let ev = bcs::from_bytes::<BcsProposalImplementationRewardToSubmitterEvent>(contents)
+                .map_err(|e| bcs_parse_err(e, contents))?;
+            Ok(Some(serde_json::json!({
+                "proposal_id": addr_to_string(&ev.proposal_id),
+                "submitter": addr_to_string(&ev.submitter),
+                "amount": ev.amount,
+                "registry_type": ev.registry_type,
+                "sent_time": ev.sent_time,
             })))
         }
         "VoteDecryptionFailedEvent" => {
@@ -1668,6 +1702,16 @@ fn parse_governance_event(
                 "voting_period_ms": ev.voting_period_ms,
                 "quorum_votes": ev.quorum_votes,
                 "timestamp": ev.timestamp,
+            })))
+        }
+        "DelegatePanelRefreshedEvent" => {
+            let ev = bcs::from_bytes::<BcsDelegatePanelRefreshedEvent>(contents)
+                .map_err(|e| bcs_parse_err(e, contents))?;
+            Ok(Some(serde_json::json!({
+                "registry_id": addr_to_string(&ev.registry_id),
+                "boundary_epoch": ev.boundary_epoch,
+                "registry_type": ev.registry_type,
+                "executed_at_epoch": ev.executed_at_epoch,
             })))
         }
         _ => Ok(None),

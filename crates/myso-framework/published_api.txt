@@ -7600,7 +7600,10 @@ ProposalRejectedByCommunityEvent
 ProposalImplementedEvent
 	public struct
 	0x50c1::governance
-RewardsDistributedEvent
+ProposalRewardPoolForfeitedToTreasuryEvent
+	public struct
+	0x50c1::governance
+ProposalImplementationRewardToSubmitterEvent
 	public struct
 	0x50c1::governance
 VoteDecryptionFailedEvent
@@ -7613,6 +7616,9 @@ GovernanceParametersUpdatedEvent
 	public struct
 	0x50c1::governance
 GovernanceRegistryCreatedEvent
+	public struct
+	0x50c1::governance
+DelegatePanelRefreshedEvent
 	public struct
 	0x50c1::governance
 bootstrap_init
@@ -7642,6 +7648,9 @@ vote_for_delegate
 clear_vote_for_delegate
 	public entry fun
 	0x50c1::governance
+try_update_delegate_panel_if_due
+	fun
+	0x50c1::governance
 update_delegate_panel
 	public entry fun
 	0x50c1::governance
@@ -7660,13 +7669,7 @@ submit_proposal_internal
 rescind_proposal
 	public entry fun
 	0x50c1::governance
-delegate_vote_on_proposal
-	public entry fun
-	0x50c1::governance
 move_to_community_voting
-	fun
-	0x50c1::governance
-reject_proposal
 	fun
 	0x50c1::governance
 community_vote_on_proposal
@@ -7675,17 +7678,83 @@ community_vote_on_proposal
 community_vote_anonymous
 	public fun
 	0x50c1::governance
+community_finalize_voting_approved_value
+	public fun
+	0x50c1::governance
+community_finalize_voting_reject_community_value
+	public fun
+	0x50c1::governance
+community_finalize_voting_reject_quorum_value
+	public fun
+	0x50c1::governance
+delegate_vote_outcome_reject_value
+	public fun
+	0x50c1::governance
+forfeit_reason_quorum_not_met_value
+	public fun
+	0x50c1::governance
+forfeit_reason_community_rejected_value
+	public fun
+	0x50c1::governance
+forfeit_reason_delegate_rejected_value
+	public fun
+	0x50c1::governance
+assert_platform_delegate_manual_reject
+	public(package) fun
+	0x50c1::governance
+assert_ecosystem_or_poc_registry
+	fun
+	0x50c1::governance
+forfeit_proposal_pool_to_treasury_address
+	fun
+	0x50c1::governance
+transition_proposal_rejected_by_delegate_council
+	fun
+	0x50c1::governance
+complete_delegate_reject_to_ecosystem_treasury
+	fun
+	0x50c1::governance
+complete_delegate_reject_drain_to_platform_governance
+	public(package) fun
+	0x50c1::governance
+run_delegate_review_vote
+	public(package) fun
+	0x50c1::governance
+delegate_vote_on_proposal
+	public entry fun
+	0x50c1::governance
+emit_delegate_vote_trailing_event
+	public(package) fun
+	0x50c1::governance
+emit_implementation_reward_to_submitter_event
+	public(package) fun
+	0x50c1::governance
+finalize_community_voting_internals
+	public(package) fun
+	0x50c1::governance
 finalize_proposal
 	public entry fun
+	0x50c1::governance
+forfeit_proposal_pool_after_community_reject_to_platform_treasury
+	public(package) fun
+	0x50c1::governance
+anonymous_tally_votes_and_finalize_community_internals
+	public(package) fun
 	0x50c1::governance
 finalize_proposal_anonymous
 	public fun
 	0x50c1::governance
-distribute_rewards
-	fun
+mark_proposal_implemented_take_pool
+	public(package) fun
 	0x50c1::governance
-mark_proposal_implemented
+mark_proposal_implemented_to_ecosystem_treasury
 	public entry fun
+	0x50c1::governance
+mark_proposal_implemented_platform_to_ecosystem_treasury
+	public entry fun
+	0x50c1::governance
+proposal_type_platform_value
+	public fun
 	0x50c1::governance
 get_proposals_by_type
 	public fun
@@ -7696,10 +7765,16 @@ get_proposals_by_status
 get_delegate_count
 	public fun
 	0x50c1::governance
+registry_type
+	public fun
+	0x50c1::governance
 get_delegate_info
 	public fun
 	0x50c1::governance
 get_proposal_info
+	public fun
+	0x50c1::governance
+proposal_submitter
 	public fun
 	0x50c1::governance
 treasury_balance
@@ -7724,6 +7799,9 @@ create_platform_governance
 	public(package) fun
 	0x50c1::governance
 version
+	public fun
+	0x50c1::governance
+last_delegate_panel_boundary_epoch
 	public fun
 	0x50c1::governance
 set_version
@@ -7800,6 +7878,21 @@ borrow_registry_version_mut
 	0x50c1::platform
 add_to_treasury
 	public(package) fun
+	0x50c1::platform
+mark_platform_governance_proposal_implemented
+	public entry fun
+	0x50c1::platform
+delegate_vote_on_platform_governance_proposal
+	public entry fun
+	0x50c1::platform
+finalize_platform_governance_proposal
+	public entry fun
+	0x50c1::platform
+finalize_platform_governance_proposal_anonymous
+	public fun
+	0x50c1::platform
+reject_platform_governance_proposal_manually
+	public entry fun
 	0x50c1::platform
 add_moderator
 	public fun
