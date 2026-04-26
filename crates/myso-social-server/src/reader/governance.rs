@@ -213,7 +213,7 @@ pub(crate) async fn list_delegates(
     let query = "
         SELECT address, registry_type, governance_registry_id, upvotes, downvotes, proposals_reviewed, proposals_submitted,
                sided_winning_proposals, sided_losing_proposals, term_start, term_end, is_active
-        FROM (SELECT DISTINCT ON (address, registry_type, COALESCE(governance_registry_id, '')) * FROM delegates ORDER BY address, registry_type, COALESCE(governance_registry_id, ''), time DESC) d
+        FROM (SELECT DISTINCT ON (address, registry_type, governance_registry_id) * FROM delegates ORDER BY address, registry_type, governance_registry_id, time DESC) d
         WHERE ($1::smallint IS NULL OR registry_type = $1)
           AND ($2::bool IS NULL OR is_active = $2)
         ORDER BY upvotes DESC
@@ -239,11 +239,11 @@ pub(crate) async fn get_delegate_by_address(
     let query = "
         SELECT address, registry_type, governance_registry_id, upvotes, downvotes, proposals_reviewed, proposals_submitted,
                sided_winning_proposals, sided_losing_proposals, term_start, term_end, is_active
-        FROM (SELECT DISTINCT ON (address, registry_type, COALESCE(governance_registry_id, '')) * FROM delegates ORDER BY address, registry_type, COALESCE(governance_registry_id, ''), time DESC) d
+        FROM (SELECT DISTINCT ON (address, registry_type, governance_registry_id) * FROM delegates ORDER BY address, registry_type, governance_registry_id, time DESC) d
         WHERE address = $1
           AND ($2::smallint IS NULL OR registry_type = $2)
           AND ($3::text IS NULL OR governance_registry_id IS NOT DISTINCT FROM $3)
-        ORDER BY registry_type, governance_registry_id NULLS FIRST
+        ORDER BY registry_type, governance_registry_id
         LIMIT 1
     ";
     let result = diesel::sql_query(query)
@@ -287,11 +287,11 @@ pub(crate) async fn get_delegate_ratings(
     let query = "
         SELECT target_address, voter_address, registry_type, governance_registry_id, is_active_delegate, vote_kind, rated_at
         FROM (
-            SELECT DISTINCT ON (target_address, voter_address, registry_type, COALESCE(governance_registry_id, ''), is_active_delegate)
+            SELECT DISTINCT ON (target_address, voter_address, registry_type, governance_registry_id, is_active_delegate)
                    target_address, voter_address, registry_type, governance_registry_id, is_active_delegate, vote_kind, rated_at
             FROM delegate_ratings
             WHERE target_address = $1
-            ORDER BY target_address, voter_address, registry_type, COALESCE(governance_registry_id, ''), is_active_delegate, time DESC
+            ORDER BY target_address, voter_address, registry_type, governance_registry_id, is_active_delegate, time DESC
         ) latest
         ORDER BY rated_at DESC
     ";
@@ -367,9 +367,9 @@ pub(crate) async fn list_nominees(
         SELECT address, registry_type, governance_registry_id, upvotes, downvotes, scheduled_term_start_epoch,
                nomination_time, status
         FROM (
-            SELECT DISTINCT ON (address, registry_type, COALESCE(governance_registry_id, '')) *
+            SELECT DISTINCT ON (address, registry_type, governance_registry_id) *
             FROM nominated_delegates
-            ORDER BY address, registry_type, COALESCE(governance_registry_id, ''), nomination_time DESC, time DESC
+            ORDER BY address, registry_type, governance_registry_id, nomination_time DESC, time DESC
         ) n
         WHERE registry_type = $1
           AND ($2::smallint IS NULL OR status = $2)
@@ -392,13 +392,12 @@ pub(crate) async fn list_nominees(
         SELECT address, registry_type, governance_registry_id, upvotes, downvotes, scheduled_term_start_epoch,
                nomination_time, status
         FROM (
-            SELECT DISTINCT ON (address, registry_type, COALESCE(governance_registry_id, '')) *
+            SELECT DISTINCT ON (address, registry_type, governance_registry_id) *
             FROM nominated_delegates
-            ORDER BY address, registry_type, COALESCE(governance_registry_id, ''), nomination_time DESC, time DESC
+            ORDER BY address, registry_type, governance_registry_id, nomination_time DESC, time DESC
         ) n
         WHERE ($1::smallint IS NULL OR registry_type = $1)
           AND ($2::smallint IS NULL OR status = $2)
-          AND governance_registry_id IS NULL
           AND ($3::bool = false OR registry_type <> 2)
         ORDER BY upvotes DESC
         LIMIT $4 OFFSET $5
@@ -421,7 +420,7 @@ pub(crate) async fn list_governance_registries(
     let mut conn = db.connect().await?;
     let query = "
         SELECT registry_type, registry_id, delegate_count, delegate_term_epochs,
-               proposal_submission_cost, min_on_chain_age_days, max_votes_per_user,
+               proposal_submission_cost, max_votes_per_user,
                quadratic_base_cost, voting_period_ms, quorum_votes
         FROM governance_registries
     ";
@@ -438,7 +437,7 @@ pub(crate) async fn get_governance_registry_by_type(
     let mut conn = db.connect().await?;
     let query = "
         SELECT registry_type, registry_id, delegate_count, delegate_term_epochs,
-               proposal_submission_cost, min_on_chain_age_days, max_votes_per_user,
+               proposal_submission_cost, max_votes_per_user,
                quadratic_base_cost, voting_period_ms, quorum_votes
         FROM governance_registries
         WHERE registry_type = $1
@@ -479,7 +478,7 @@ pub(crate) async fn get_governance_registry_by_platform_id(
 
     let query = "
         SELECT registry_type, registry_id, delegate_count, delegate_term_epochs,
-               proposal_submission_cost, min_on_chain_age_days, max_votes_per_user,
+               proposal_submission_cost, max_votes_per_user,
                quadratic_base_cost, voting_period_ms, quorum_votes
         FROM governance_registries
         WHERE registry_id = $1

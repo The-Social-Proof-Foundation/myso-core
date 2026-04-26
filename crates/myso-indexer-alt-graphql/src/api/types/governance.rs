@@ -48,7 +48,6 @@ impl From<i16> for DelegateRatingVoteKind {
 pub(crate) struct GovernanceRegistryConfig {
     pub delegate_term_epochs: i64,
     pub proposal_submission_cost: i64,
-    pub min_on_chain_age_days: i64,
     pub max_votes_per_user: i64,
     pub quadratic_base_cost: i64,
     pub voting_period_ms: i64,
@@ -86,9 +85,9 @@ impl Proposal {
         self.inner.proposal_type
     }
 
-    /// On-chain `GovernanceDAO` object id when this proposal is scoped to a platform registry (`registry_type = 2`).
-    async fn governance_registry_id(&self) -> Option<&str> {
-        self.inner.governance_registry_id.as_deref()
+    /// On-chain `GovernanceDAO` object id for this proposal's registry instance.
+    async fn governance_registry_id(&self) -> &str {
+        self.inner.governance_registry_id.as_str()
     }
 
     /// Proposal lifecycle status (0=submitted, 1=delegate_review, 2=community_voting, 3=approved, 4=rejected, 5=implemented, 6=rescinded). New proposals created on chain enter delegate review (1); `0` is not used for newly submitted work.
@@ -471,8 +470,8 @@ impl DelegateRating {
         self.inner.registry_type
     }
 
-    async fn governance_registry_id(&self) -> Option<&str> {
-        self.inner.governance_registry_id.as_deref()
+    async fn governance_registry_id(&self) -> &str {
+        self.inner.governance_registry_id.as_str()
     }
 
     async fn is_active_delegate(&self) -> bool {
@@ -671,9 +670,9 @@ impl Delegate {
         self.inner.registry_type
     }
 
-    /// On-chain governance registry object id when `registry_type` is platform (2); null for ecosystem/PoC.
-    async fn governance_registry_id(&self) -> Option<String> {
-        self.inner.governance_registry_id.clone()
+    /// On-chain `GovernanceDAO` object id for this delegate row's registry instance.
+    async fn governance_registry_id(&self) -> &str {
+        self.inner.governance_registry_id.as_str()
     }
 
     /// Upvotes (delegate ratings).
@@ -819,6 +818,11 @@ impl NominatedDelegate {
         self.inner.registry_type
     }
 
+    /// On-chain `GovernanceDAO` object id for this nominee row's registry instance.
+    async fn governance_registry_id(&self) -> &str {
+        self.inner.governance_registry_id.as_str()
+    }
+
     /// Upvotes (nominee ratings).
     async fn upvotes(&self) -> i64 {
         self.inner.upvotes
@@ -927,7 +931,6 @@ impl GovernanceRegistry {
         GovernanceRegistryConfig {
             delegate_term_epochs: self.inner.delegate_term_epochs,
             proposal_submission_cost: self.inner.proposal_submission_cost,
-            min_on_chain_age_days: self.inner.min_on_chain_age_days,
             max_votes_per_user: self.inner.max_votes_per_user,
             quadratic_base_cost: self.inner.quadratic_base_cost,
             voting_period_ms: self.inner.voting_period_ms,
@@ -1109,11 +1112,6 @@ impl GovernanceRegistryConfig {
     /// Cost to submit a proposal.
     async fn proposal_submission_cost(&self) -> i64 {
         self.proposal_submission_cost
-    }
-
-    /// Minimum on-chain age in days to submit proposals.
-    async fn min_on_chain_age_days(&self) -> i64 {
-        self.min_on_chain_age_days
     }
 
     /// Max votes per user in community voting.

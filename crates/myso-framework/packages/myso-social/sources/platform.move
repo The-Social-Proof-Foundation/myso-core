@@ -150,7 +150,6 @@ module social_contracts::platform {
         delegate_count: Option<u64>,
         delegate_term_epochs: Option<u64>,
         proposal_submission_cost: Option<u64>,
-        min_on_chain_age_days: Option<u64>,
         max_votes_per_user: Option<u64>,
         quadratic_base_cost: Option<u64>,
         voting_period_epochs: Option<u64>,
@@ -195,7 +194,6 @@ module social_contracts::platform {
         delegate_count: Option<u64>,
         delegate_term_epochs: Option<u64>,
         proposal_submission_cost: Option<u64>,
-        min_on_chain_age_days: Option<u64>,
         max_votes_per_user: Option<u64>,
         quadratic_base_cost: Option<u64>,
         voting_period_epochs: Option<u64>,
@@ -318,7 +316,6 @@ module social_contracts::platform {
         delegate_count: Option<u64>,
         delegate_term_epochs: Option<u64>,
         proposal_submission_cost: Option<u64>,
-        min_on_chain_age_days: Option<u64>,
         max_votes_per_user: Option<u64>,
         quadratic_base_cost: Option<u64>,
         voting_period_epochs: Option<u64>,
@@ -363,7 +360,6 @@ module social_contracts::platform {
         let actual_delegate_count = if (wants_dao_governance) delegate_count else option::none();
         let actual_delegate_term_epochs = if (wants_dao_governance) delegate_term_epochs else option::none();
         let actual_proposal_submission_cost = if (wants_dao_governance) proposal_submission_cost else option::none();
-        let actual_min_on_chain_age_days = if (wants_dao_governance) min_on_chain_age_days else option::none();
         let actual_max_votes_per_user = if (wants_dao_governance) max_votes_per_user else option::none();
         let actual_quadratic_base_cost = if (wants_dao_governance) quadratic_base_cost else option::none();
         let actual_voting_period_epochs = if (wants_dao_governance) voting_period_epochs else option::none();
@@ -391,7 +387,6 @@ module social_contracts::platform {
             delegate_count: actual_delegate_count,
             delegate_term_epochs: actual_delegate_term_epochs,
             proposal_submission_cost: actual_proposal_submission_cost,
-            min_on_chain_age_days: actual_min_on_chain_age_days,
             max_votes_per_user: actual_max_votes_per_user,
             quadratic_base_cost: actual_quadratic_base_cost,
             voting_period_epochs: actual_voting_period_epochs,
@@ -509,7 +504,6 @@ module social_contracts::platform {
             delegate_count: platform.delegate_count,
             delegate_term_epochs: platform.delegate_term_epochs,
             proposal_submission_cost: platform.proposal_submission_cost,
-            min_on_chain_age_days: platform.min_on_chain_age_days,
             max_votes_per_user: platform.max_votes_per_user,
             quadratic_base_cost: platform.quadratic_base_cost,
             voting_period_epochs: platform.voting_period_epochs,
@@ -719,15 +713,6 @@ module social_contracts::platform {
                 balance::destroy_zero(bal);
             };
         };
-        let proposal_id = object::id(proposal);
-        let caller = tx_context::sender(ctx);
-        governance::emit_delegate_vote_trailing_event(
-            proposal_id,
-            caller,
-            approve,
-            current_time,
-            option::none(),
-        );
     }
 
     /// After community voting, finalize a platform-governance proposal; on failure, pool to this platform’s treasury.
@@ -1386,12 +1371,11 @@ module social_contracts::platform {
     }
 
     /// Get platform's governance parameters
-    public fun governance_parameters(platform: &Platform): (Option<u64>, Option<u64>, Option<u64>, Option<u64>, Option<u64>, Option<u64>, Option<u64>, Option<u64>) {
+    public fun governance_parameters(platform: &Platform): (Option<u64>, Option<u64>, Option<u64>, Option<u64>, Option<u64>, Option<u64>, Option<u64>) {
         (
             platform.delegate_count,
             platform.delegate_term_epochs,
             platform.proposal_submission_cost,
-            platform.min_on_chain_age_days,
             platform.max_votes_per_user,
             platform.quadratic_base_cost,
             platform.voting_period_epochs,

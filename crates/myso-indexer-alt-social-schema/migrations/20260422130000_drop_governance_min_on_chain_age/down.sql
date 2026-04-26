@@ -1,0 +1,104 @@
+-- Revert NOT NULL and restore prior governance_stats / delegate_ratings_daily definitions
+-- (matches 20260415120000_governance_registry_scoping where applicable).
+
+DROP VIEW IF EXISTS governance_stats CASCADE;
+
+DROP MATERIALIZED VIEW IF EXISTS delegate_ratings_daily CASCADE;
+
+DROP INDEX IF EXISTS idx_ratings_target_voter_registry_regid_time;
+
+ALTER TABLE delegates
+    ALTER COLUMN governance_registry_id DROP NOT NULL;
+
+ALTER TABLE delegate_ratings
+    ALTER COLUMN governance_registry_id DROP NOT NULL;
+
+ALTER TABLE nominated_delegates
+    ALTER COLUMN governance_registry_id DROP NOT NULL;
+
+ALTER TABLE proposals
+    ALTER COLUMN governance_registry_id DROP NOT NULL;
+
+CREATE UNIQUE INDEX IF NOT EXISTS idx_ratings_target_voter_registry_regid_time
+    ON delegate_ratings (target_address, voter_address, registry_type, COALESCE(governance_registry_id, ''), time);
+
+CREATE VIEW governance_stats AS
+SELECT
+    g.registry_id,
+    g.registry_type,
+    COUNT(DISTINCT d.id) AS active_delegates,
+    COUNT(DISTINCT n.id) AS pending_nominees,
+    COUNT(DISTINCT p.id) AS submitted_proposals,
+    COUNT(DISTINCT p.id) FILTER (WHERE p.status = 1) AS in_review_proposals,
+    COUNT(DISTINCT p.id) FILTER (WHERE p.status = 2) AS voting_proposals,
+    COUNT(DISTINCT p.id) FILTER (WHERE p.status IN (3, 5)) AS approved_proposals,
+    COUNT(DISTINCT p.id) FILTER (WHERE p.status = 4) AS rejected_proposals,
+    COUNT(DISTINCT p.id) FILTER (WHERE p.status = 5) AS implemented_proposals,
+    COUNT(DISTINCT p.id) FILTER (WHERE p.status = 6) AS rescinded_proposals
+FROM governance_registries g
+LEFT JOIN delegates d
+    ON g.registry_type = d.registry_type
+    AND d.is_active = true
+    AND (
+        (g.registry_type <> 2 AND d.governance_registry_id IS NULL)
+        OR (g.registry_type = 2 AND d.governance_registry_id = g.registry_id)
+    )
+LEFT JOIN nominated_delegates n
+    ON g.registry_type = n.registry_type
+    AND n.status = 0
+    AND (
+        (g.registry_type <> 2 AND n.governance_registry_id IS NULL)
+        OR (g.registry_type = 2 AND n.governance_registry_id = g.registry_id)
+    )
+LEFT JOIN (
+    SELECT DISTINCT ON (id) *
+    FROM proposals
+    ORDER BY id, time DESC
+) p ON g.registry_type = p.proposal_type
+    AND (
+        (g.registry_type <> 2 AND p.governance_registry_id IS NULL)
+        OR (g.registry_type = 2 AND p.governance_registry_id = g.registry_id)
+    )
+GROUP BY g.registry_id, g.registry_type;
+
+DO $$
+DECLARE
+    view_exists BOOLEAN;
+BEGIN
+    SELECT EXISTS(
+        SELECT 1 FROM timescaledb_information.continuous_aggregates
+        WHERE view_name = 'delegate_ratings_daily'
+    ) INTO view_exists;
+
+    IF NOT view_exists THEN
+        EXECUTE $sql$
+        CREATE MATERIALIZED VIEW delegate_ratings_daily
+        WITH (timescaledb.continuous, timescaledb.materialized_only=false) AS
+        SELECT
+            time_bucket('1 day', time) AS day,
+            registry_type,
+            COALESCE(governance_registry_id, '') AS governance_registry_id_scope,
+            target_address,
+            SUM(CASE WHEN vote_kind = 1 THEN 1 ELSE 0 END) AS upvotes,
+            SUM(CASE WHEN vote_kind = 0 THEN 1 ELSE 0 END) AS downvotes,
+            SUM(CASE WHEN vote_kind = 2 THEN 1 ELSE 0 END) AS clears,
+            COUNT(*) AS total_ratings
+        FROM delegate_ratings
+        GROUP BY day, registry_type, governance_registry_id_scope, target_address
+        WITH NO DATA
+        $sql$;
+
+        PERFORM add_continuous_aggregate_policy('delegate_ratings_daily',
+            start_offset => INTERVAL '30 days',
+            end_offset => INTERVAL '1 hour',
+            schedule_interval => INTERVAL '1 day');
+    END IF;
+END
+$$;
+
+-- Restore min-on-chain-age columns.
+ALTER TABLE governance_registries
+    ADD COLUMN IF NOT EXISTS min_on_chain_age_days BIGINT NOT NULL DEFAULT 0;
+
+ALTER TABLE platforms
+    ADD COLUMN IF NOT EXISTS min_on_chain_age_days BIGINT;

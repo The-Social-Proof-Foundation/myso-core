@@ -8,7 +8,7 @@ use std::sync::Arc;
 
 use anyhow::Result;
 use async_trait::async_trait;
-use diesel::sql_types::{BigInt, Bool, Int2, Nullable, SmallInt, Text};
+use diesel::sql_types::{BigInt, Bool, Int2, SmallInt, Text};
 use diesel::ExpressionMethods;
 use diesel::QueryableByName;
 use diesel_async::RunQueryDsl;
@@ -32,7 +32,6 @@ use myso_indexer_alt_social_schema::schema::{
     reward_distributions, vote_decryption_failures,
 };
 use myso_indexer_alt_social_schema::PROPOSAL_TYPE_PLATFORM;
-use myso_types::effects::TransactionEffectsAPI;
 use myso_types::object::ID_END_INDEX;
 use myso_types::storage::ObjectKey;
 use myso_types::MYSO_SOCIAL_ADDRESS;
@@ -47,8 +46,8 @@ const GOVERNANCE_MODULES: &[&str] = &["governance"];
 struct LatestProposalGovernanceMeta {
     #[diesel(sql_type = SmallInt)]
     proposal_type: i16,
-    #[diesel(sql_type = Nullable<Text>)]
-    governance_registry_id: Option<String>,
+    #[diesel(sql_type = Text)]
+    governance_registry_id: String,
 }
 
 async fn load_latest_proposal_governance_meta(
@@ -97,7 +96,7 @@ pub enum GovernanceRow {
         address: String,
         registry_type: i16,
         status: i16,
-        governance_registry_id: Option<String>,
+        governance_registry_id: String,
     },
     DelegateVoteCountsUpdate {
         target_address: String,
@@ -105,7 +104,7 @@ pub enum GovernanceRow {
         is_active_delegate: bool,
         upvotes: i64,
         downvotes: i64,
-        governance_registry_id: Option<String>,
+        governance_registry_id: String,
     },
     ProposalDelegateVoteIncrement {
         proposal_id: String,
@@ -114,7 +113,6 @@ pub enum GovernanceRow {
     DelegateProposalsReviewedIncrement {
         proposal_id: String,
         delegate_address: String,
-        governance_registry_id: Option<String>,
     },
     ProposalCommunityVoteUpdate {
         proposal_id: String,
@@ -125,12 +123,10 @@ pub enum GovernanceRow {
     ProposalOutcomeApplyDelegateSidedUpdates {
         proposal_id: String,
         approvers_win: bool,
-        governance_registry_id: Option<String>,
     },
     DelegateProposalsSubmittedIncrement {
-        address: String,
-        registry_type: i16,
-        governance_registry_id: Option<String>,
+        proposal_id: String,
+        submitter: String,
     },
     ProposalAnonymousVotersIncrement {
         proposal_id: String,
@@ -235,11 +231,9 @@ impl GovernanceRow {
             crate::handlers::SocialEventRow::DelegateProposalsReviewedIncrement {
                 proposal_id,
                 delegate_address,
-                governance_registry_id,
             } => Some(GovernanceRow::DelegateProposalsReviewedIncrement {
                 proposal_id,
                 delegate_address,
-                governance_registry_id,
             }),
             crate::handlers::SocialEventRow::ProposalCommunityVoteUpdate {
                 proposal_id,
@@ -255,20 +249,16 @@ impl GovernanceRow {
             crate::handlers::SocialEventRow::ProposalOutcomeApplyDelegateSidedUpdates {
                 proposal_id,
                 approvers_win,
-                governance_registry_id,
             } => Some(GovernanceRow::ProposalOutcomeApplyDelegateSidedUpdates {
                 proposal_id,
                 approvers_win,
-                governance_registry_id,
             }),
             crate::handlers::SocialEventRow::DelegateProposalsSubmittedIncrement {
-                address,
-                registry_type,
-                governance_registry_id,
+                proposal_id,
+                submitter,
             } => Some(GovernanceRow::DelegateProposalsSubmittedIncrement {
-                address,
-                registry_type,
-                governance_registry_id,
+                proposal_id,
+                submitter,
             }),
             crate::handlers::SocialEventRow::ProposalAnonymousVotersIncrement { proposal_id } => {
                 Some(GovernanceRow::ProposalAnonymousVotersIncrement { proposal_id })
@@ -306,14 +296,12 @@ fn governance_dao_registry_type_from_contents(contents: &[u8]) -> Option<u8> {
     contents.get(ID_END_INDEX).copied()
 }
 
-/// Identifies the mutated `GovernanceDAO` object for this transaction when possible.
-fn resolve_governance_registry_id_from_tx(
+fn collect_governance_dao_candidates(
     object_set: &ObjectSet,
     tx: &ExecutedTransaction,
-    event_registry_type: Option<u8>,
-) -> Option<String> {
+) -> BTreeMap<String, Option<u8>> {
     let mut candidates: BTreeMap<String, Option<u8>> = BTreeMap::new();
-    for ((oid, version, _), _) in tx.effects.mutated() {
+    for ((oid, version, _), _owner, _write_kind) in tx.effects.all_changed_objects() {
         let Some(obj) = object_set.get(&ObjectKey(oid, version)) else {
             continue;
         };
@@ -333,6 +321,14 @@ fn resolve_governance_registry_id_from_tx(
             candidates.insert(oid_s, reg_ty);
         }
     }
+    candidates
+}
+
+/// Picks the DAO object id when `candidates` maps registry object id -> parsed `registry_type` byte.
+fn pick_governance_registry_id(
+    candidates: BTreeMap<String, Option<u8>>,
+    event_registry_type: Option<u8>,
+) -> Option<String> {
     match candidates.len() {
         0 => None,
         1 => candidates.into_keys().next(),
@@ -350,25 +346,35 @@ fn resolve_governance_registry_id_from_tx(
                     tracing::warn!(
                         count = n,
                         registry_type = filter,
-                        "GovernanceDAO mutations in tx: none matched event registry_type; omitting governance_registry_id"
+                        "GovernanceDAO writes in tx: none matched event registry_type; omitting governance_registry_id"
                     );
                 } else {
                     tracing::warn!(
                         count = matched.len(),
                         registry_type = filter,
-                        "GovernanceDAO mutations in tx: multiple matched event registry_type; omitting governance_registry_id"
+                        "GovernanceDAO writes in tx: multiple matched event registry_type; omitting governance_registry_id"
                     );
                 }
                 None
             } else {
                 tracing::warn!(
                     count = n,
-                    "ambiguous GovernanceDAO mutations in tx; omitting governance_registry_id"
+                    "ambiguous GovernanceDAO writes in tx; omitting governance_registry_id"
                 );
                 None
             }
         }
     }
+}
+
+/// Identifies the `GovernanceDAO` object for this transaction when possible (mutated, created, or unwrapped).
+fn resolve_governance_registry_id_from_tx(
+    object_set: &ObjectSet,
+    tx: &ExecutedTransaction,
+    event_registry_type: Option<u8>,
+) -> Option<String> {
+    let candidates = collect_governance_dao_candidates(object_set, tx);
+    pick_governance_registry_id(candidates, event_registry_type)
 }
 
 #[async_trait]
@@ -451,7 +457,6 @@ impl Handler for GovernanceHandler {
                     let quorum_votes = reg.quorum_votes;
                     let updated_at = reg.updated_at;
                     let transaction_id = reg.transaction_id.clone();
-                    let min_on_chain_age_days = reg.min_on_chain_age_days;
                     total += diesel::insert_into(governance_registries::table)
                         .values(reg.clone())
                         .on_conflict(governance_registries::registry_id)
@@ -462,7 +467,6 @@ impl Handler for GovernanceHandler {
                             governance_registries::delegate_term_epochs.eq(delegate_term_epochs),
                             governance_registries::proposal_submission_cost
                                 .eq(proposal_submission_cost),
-                            governance_registries::min_on_chain_age_days.eq(min_on_chain_age_days),
                             governance_registries::max_votes_per_user.eq(max_votes_per_user),
                             governance_registries::quadratic_base_cost.eq(quadratic_base_cost),
                             governance_registries::voting_period_ms.eq(voting_period_ms),
@@ -598,7 +602,7 @@ impl Handler for GovernanceHandler {
                                 event_id: event_id.clone(),
                                 created_at: chrono::Utc::now(),
                                 anonymous_voting_related: None,
-                                governance_registry_id: meta.governance_registry_id,
+                                governance_registry_id: Some(meta.governance_registry_id),
                                 proposal_id: Some(proposal_id.clone()),
                             };
                             total += diesel::insert_into(governance_events::table)
@@ -661,7 +665,7 @@ impl Handler for GovernanceHandler {
                             event_id: event_id.clone(),
                             created_at: chrono::Utc::now(),
                             anonymous_voting_related: *anonymous_voting_related,
-                            governance_registry_id: meta.governance_registry_id,
+                            governance_registry_id: Some(meta.governance_registry_id),
                             proposal_id: Some(proposal_id.clone()),
                         };
                         total += diesel::insert_into(governance_events::table)
@@ -700,7 +704,7 @@ impl Handler for GovernanceHandler {
                     .bind::<Int2, _>(*status)
                     .bind::<Text, _>(address)
                     .bind::<Int2, _>(*registry_type)
-                    .bind::<Nullable<Text>, _>(governance_registry_id.as_deref());
+                    .bind::<Text, _>(governance_registry_id);
                     total += upd.execute(conn).await?;
                 }
                 GovernanceRow::DelegateVoteCountsUpdate {
@@ -719,7 +723,7 @@ impl Handler for GovernanceHandler {
                         .bind::<BigInt, _>(*downvotes)
                         .bind::<Text, _>(target_address)
                         .bind::<Int2, _>(*registry_type)
-                        .bind::<Nullable<Text>, _>(governance_registry_id.as_deref());
+                        .bind::<Text, _>(governance_registry_id);
                         total += upd.execute(conn).await?;
                     } else {
                         let upd = diesel::sql_query(
@@ -729,7 +733,7 @@ impl Handler for GovernanceHandler {
                         .bind::<BigInt, _>(*downvotes)
                         .bind::<Text, _>(target_address)
                         .bind::<Int2, _>(*registry_type)
-                        .bind::<Nullable<Text>, _>(governance_registry_id.as_deref());
+                        .bind::<Text, _>(governance_registry_id);
                         total += upd.execute(conn).await?;
                     }
                 }
@@ -750,24 +754,20 @@ impl Handler for GovernanceHandler {
                 GovernanceRow::DelegateProposalsReviewedIncrement {
                     proposal_id,
                     delegate_address,
-                    governance_registry_id,
                 } => {
-                    let sql = format!(
+                    let upd = diesel::sql_query(
                         "UPDATE delegates d SET proposals_reviewed = proposals_reviewed + 1 \
                          FROM proposals p \
-                         WHERE p.id = $1 AND d.address = $2 AND d.registry_type = p.proposal_type \
+                         WHERE p.id = $1 AND p.time = (SELECT max(time) FROM proposals pm WHERE pm.id = p.id) \
+                         AND d.address = $2 AND d.registry_type = p.proposal_type \
                          AND d.is_active = true \
-                         AND ((p.proposal_type <> {pt} AND d.governance_registry_id IS NULL) \
-                         OR (p.proposal_type = {pt} AND d.governance_registry_id IS NOT DISTINCT FROM $3)) \
+                         AND d.governance_registry_id IS NOT DISTINCT FROM p.governance_registry_id \
                          AND d.time = (SELECT max(time) FROM delegates d2 \
                          WHERE d2.address = d.address AND d2.registry_type = d.registry_type \
                          AND d2.governance_registry_id IS NOT DISTINCT FROM d.governance_registry_id)",
-                        pt = PROPOSAL_TYPE_PLATFORM
-                    );
-                    let upd = diesel::sql_query(sql)
-                        .bind::<Text, _>(proposal_id)
-                        .bind::<Text, _>(delegate_address)
-                        .bind::<Nullable<Text>, _>(governance_registry_id.as_deref());
+                    )
+                    .bind::<Text, _>(proposal_id)
+                    .bind::<Text, _>(delegate_address);
                     total += upd.execute(conn).await?;
                 }
                 GovernanceRow::ProposalCommunityVoteUpdate {
@@ -788,57 +788,60 @@ impl Handler for GovernanceHandler {
                 GovernanceRow::ProposalOutcomeApplyDelegateSidedUpdates {
                     proposal_id,
                     approvers_win,
-                    governance_registry_id,
                 } => {
-                    let subq = "SELECT DISTINCT ON (dv.delegate_address) dv.delegate_address, dv.approve, p.proposal_type FROM delegate_votes dv INNER JOIN proposals p ON p.id = dv.proposal_id WHERE dv.proposal_id = $1 ORDER BY dv.delegate_address, dv.time DESC";
+                    let subq = "SELECT DISTINCT ON (dv.delegate_address) dv.delegate_address, dv.approve, p.proposal_type, p.governance_registry_id \
+                         FROM delegate_votes dv \
+                         INNER JOIN proposals p ON p.id = dv.proposal_id AND p.time = (SELECT max(time) FROM proposals pm WHERE pm.id = p.id) \
+                         WHERE dv.proposal_id = $1 \
+                         ORDER BY dv.delegate_address, dv.time DESC";
                     let win_sql = format!(
                         "UPDATE delegates d SET sided_winning_proposals = sided_winning_proposals + 1 FROM ({}) x \
                          WHERE d.address = x.delegate_address AND d.registry_type = x.proposal_type AND d.is_active = true \
-                         AND ((x.proposal_type <> {pt} AND d.governance_registry_id IS NULL) \
-                         OR (x.proposal_type = {pt} AND d.governance_registry_id IS NOT DISTINCT FROM $2)) \
+                         AND d.governance_registry_id IS NOT DISTINCT FROM x.governance_registry_id \
                          AND d.time = (SELECT max(time) FROM delegates d2 WHERE d2.address = d.address \
                          AND d2.registry_type = d.registry_type \
                          AND d2.governance_registry_id IS NOT DISTINCT FROM d.governance_registry_id) \
-                         AND x.approve = $3",
+                         AND x.approve = $2",
                         subq,
-                        pt = PROPOSAL_TYPE_PLATFORM
                     );
                     let lose_sql = format!(
                         "UPDATE delegates d SET sided_losing_proposals = sided_losing_proposals + 1 FROM ({}) x \
                          WHERE d.address = x.delegate_address AND d.registry_type = x.proposal_type AND d.is_active = true \
-                         AND ((x.proposal_type <> {pt} AND d.governance_registry_id IS NULL) \
-                         OR (x.proposal_type = {pt} AND d.governance_registry_id IS NOT DISTINCT FROM $2)) \
+                         AND d.governance_registry_id IS NOT DISTINCT FROM x.governance_registry_id \
                          AND d.time = (SELECT max(time) FROM delegates d2 WHERE d2.address = d.address \
                          AND d2.registry_type = d.registry_type \
                          AND d2.governance_registry_id IS NOT DISTINCT FROM d.governance_registry_id) \
-                         AND x.approve = $3",
+                         AND x.approve = $2",
                         subq,
-                        pt = PROPOSAL_TYPE_PLATFORM
                     );
                     total += diesel::sql_query(&win_sql)
                         .bind::<Text, _>(proposal_id)
-                        .bind::<Nullable<Text>, _>(governance_registry_id.as_deref())
                         .bind::<Bool, _>(*approvers_win)
                         .execute(conn)
                         .await?;
                     total += diesel::sql_query(&lose_sql)
                         .bind::<Text, _>(proposal_id)
-                        .bind::<Nullable<Text>, _>(governance_registry_id.as_deref())
                         .bind::<Bool, _>(!*approvers_win)
                         .execute(conn)
                         .await?;
                 }
                 GovernanceRow::DelegateProposalsSubmittedIncrement {
-                    address,
-                    registry_type,
-                    governance_registry_id,
+                    proposal_id,
+                    submitter,
                 } => {
                     let upd = diesel::sql_query(
-                        "UPDATE delegates SET proposals_submitted = proposals_submitted + 1 WHERE address = $1 AND registry_type = $2 AND is_active = true AND governance_registry_id IS NOT DISTINCT FROM $3",
+                        "UPDATE delegates d SET proposals_submitted = proposals_submitted + 1 \
+                         FROM proposals p \
+                         WHERE p.id = $1 AND p.time = (SELECT max(time) FROM proposals pm WHERE pm.id = p.id) \
+                         AND d.address = $2 AND d.registry_type = p.proposal_type \
+                         AND d.is_active = true \
+                         AND d.governance_registry_id IS NOT DISTINCT FROM p.governance_registry_id \
+                         AND d.time = (SELECT max(time) FROM delegates d2 \
+                         WHERE d2.address = d.address AND d2.registry_type = d.registry_type \
+                         AND d2.governance_registry_id IS NOT DISTINCT FROM d.governance_registry_id)",
                     )
-                    .bind::<Text, _>(address)
-                    .bind::<Int2, _>(*registry_type)
-                    .bind::<Nullable<Text>, _>(governance_registry_id.as_deref());
+                    .bind::<Text, _>(proposal_id)
+                    .bind::<Text, _>(submitter);
                     total += upd.execute(conn).await?;
                 }
                 GovernanceRow::ProposalAnonymousVotersIncrement { proposal_id } => {
@@ -851,5 +854,139 @@ impl Handler for GovernanceHandler {
             }
         }
         Ok(total)
+    }
+}
+
+#[cfg(test)]
+mod resolve_governance_registry_tests {
+    use std::collections::BTreeMap;
+
+    use fastcrypto::ed25519::Ed25519KeyPair;
+    use move_core_types::identifier::Identifier;
+    use move_core_types::language_storage::StructTag;
+    use myso_types::base_types::{MoveObjectType, MySoAddress, ObjectID, SequenceNumber};
+    use myso_types::crypto::{AccountKeyPair, get_key_pair_from_rng};
+    use myso_types::digests::{ObjectDigest, TransactionDigest};
+    use myso_types::effects::{TestEffectsBuilder, TransactionEffectsAPI};
+    use myso_types::full_checkpoint_content::{ExecutedTransaction, ObjectSet};
+    use myso_types::object::{MoveObject, Object, Owner};
+    use myso_types::programmable_transaction_builder::ProgrammableTransactionBuilder;
+    use myso_types::transaction::{Transaction, TransactionData};
+    use myso_types::utils::to_sender_signed_transaction;
+    use myso_types::MYSO_SOCIAL_ADDRESS;
+    use rand::rngs::StdRng;
+    use rand::SeedableRng;
+
+    use super::{
+        collect_governance_dao_candidates, pick_governance_registry_id,
+        resolve_governance_registry_id_from_tx, ID_END_INDEX,
+    };
+
+    #[test]
+    fn pick_disambiguates_two_daos_by_event_registry_type() {
+        let mut m = BTreeMap::new();
+        m.insert("0xaaa".to_string(), Some(0u8));
+        m.insert("0xbbb".to_string(), Some(1u8));
+        assert_eq!(
+            pick_governance_registry_id(m.clone(), Some(0)),
+            Some("0xaaa".to_string())
+        );
+        assert_eq!(
+            pick_governance_registry_id(m, Some(1)),
+            Some("0xbbb".to_string())
+        );
+    }
+
+    fn make_test_transaction(
+        sender: MySoAddress,
+        keypair: &AccountKeyPair,
+        gas_object_id: ObjectID,
+    ) -> Transaction {
+        let pt = ProgrammableTransactionBuilder::new();
+        let gas_object = (
+            gas_object_id,
+            SequenceNumber::from(1),
+            ObjectDigest::random(),
+        );
+        let tx_data =
+            TransactionData::new_programmable(sender, vec![gas_object], pt.finish(), 1000, 1);
+        to_sender_signed_transaction(tx_data, keypair)
+    }
+
+    fn fake_governance_dao_object(
+        id: ObjectID,
+        version: SequenceNumber,
+        registry_type: u8,
+    ) -> Object {
+        let mut contents = vec![0u8; 128];
+        contents[0..32].copy_from_slice(id.as_ref());
+        contents[ID_END_INDEX] = registry_type;
+        let tag = StructTag {
+            address: MYSO_SOCIAL_ADDRESS.into(),
+            module: Identifier::new("governance").unwrap(),
+            name: Identifier::new("GovernanceDAO").unwrap(),
+            type_params: vec![],
+        };
+        let mo = unsafe {
+            MoveObject::new_from_execution_with_limit(
+                MoveObjectType::from(tag),
+                false,
+                version,
+                contents,
+                1024,
+            )
+            .unwrap()
+        };
+        Object::new_move(
+            mo,
+            Owner::Shared {
+                initial_shared_version: SequenceNumber::from(1),
+            },
+            TransactionDigest::genesis_marker(),
+        )
+    }
+
+    #[test]
+    fn resolve_finds_two_created_governance_daos_like_bootstrap() {
+        let mut rng = StdRng::from_seed([7u8; 32]);
+        let (sender, keypair): (MySoAddress, AccountKeyPair) =
+            get_key_pair_from_rng::<Ed25519KeyPair, _>(&mut rng);
+        let gas_object_id = ObjectID::random();
+        let tx = make_test_transaction(sender, &keypair, gas_object_id);
+
+        let id_eco = ObjectID::random();
+        let id_poc = ObjectID::random();
+
+        let effects = TestEffectsBuilder::new(tx.data())
+            .with_created_objects(vec![
+                (id_eco, Owner::AddressOwner(sender)),
+                (id_poc, Owner::AddressOwner(sender)),
+            ])
+            .build();
+
+        let lamport = effects.lamport_version();
+        let mut object_set = ObjectSet::default();
+        object_set.insert(fake_governance_dao_object(id_eco, lamport, 0));
+        object_set.insert(fake_governance_dao_object(id_poc, lamport, 1));
+
+        let executed = ExecutedTransaction {
+            transaction: tx.data().intent_message().value.clone(),
+            signatures: tx.data().tx_signatures().to_vec(),
+            effects,
+            events: None,
+            unchanged_loaded_runtime_objects: Vec::new(),
+        };
+
+        let candidates = collect_governance_dao_candidates(&object_set, &executed);
+        assert_eq!(candidates.len(), 2, "expected only GovernanceDAO objects in set");
+
+        assert_eq!(
+            resolve_governance_registry_id_from_tx(&object_set, &executed, Some(0)),
+            Some(id_eco.to_string())
+        );
+        assert_eq!(
+            resolve_governance_registry_id_from_tx(&object_set, &executed, Some(1)),
+            Some(id_poc.to_string())
+        );
     }
 }

@@ -335,11 +335,6 @@ Platform object that contains information about a social media platform
 <dd>
 </dd>
 <dt>
-<code>min_on_chain_age_days: <a href="../std/option.md#std_option_Option">std::option::Option</a>&lt;u64&gt;</code>
-</dt>
-<dd>
-</dd>
-<dt>
 <code>max_votes_per_user: <a href="../std/option.md#std_option_Option">std::option::Option</a>&lt;u64&gt;</code>
 </dt>
 <dd>
@@ -536,11 +531,6 @@ Platform created event
 </dd>
 <dt>
 <code>proposal_submission_cost: <a href="../std/option.md#std_option_Option">std::option::Option</a>&lt;u64&gt;</code>
-</dt>
-<dd>
-</dd>
-<dt>
-<code>min_on_chain_age_days: <a href="../std/option.md#std_option_Option">std::option::Option</a>&lt;u64&gt;</code>
 </dt>
 <dd>
 </dd>
@@ -1574,7 +1564,7 @@ Bootstrap initialization function - creates the platform registry
 Create a new platform and transfer to developer
 
 
-<pre><code><b>public</b> <b>fun</b> <a href="../social_contracts/platform.md#social_contracts_platform_create_platform">create_platform</a>(registry: &<b>mut</b> <a href="../social_contracts/platform.md#social_contracts_platform_PlatformRegistry">social_contracts::platform::PlatformRegistry</a>, <a href="../social_contracts/platform.md#social_contracts_platform_name">name</a>: <a href="../std/string.md#std_string_String">std::string::String</a>, <a href="../social_contracts/platform.md#social_contracts_platform_tagline">tagline</a>: <a href="../std/string.md#std_string_String">std::string::String</a>, <a href="../social_contracts/platform.md#social_contracts_platform_description">description</a>: <a href="../std/string.md#std_string_String">std::string::String</a>, logo_url: <a href="../std/string.md#std_string_String">std::string::String</a>, <a href="../social_contracts/platform.md#social_contracts_platform_terms_of_service">terms_of_service</a>: <a href="../std/string.md#std_string_String">std::string::String</a>, <a href="../social_contracts/platform.md#social_contracts_platform_privacy_policy">privacy_policy</a>: <a href="../std/string.md#std_string_String">std::string::String</a>, platforms: vector&lt;<a href="../std/string.md#std_string_String">std::string::String</a>&gt;, links: vector&lt;<a href="../std/string.md#std_string_String">std::string::String</a>&gt;, <a href="../social_contracts/platform.md#social_contracts_platform_primary_category">primary_category</a>: <a href="../std/string.md#std_string_String">std::string::String</a>, <a href="../social_contracts/platform.md#social_contracts_platform_secondary_category">secondary_category</a>: <a href="../std/option.md#std_option_Option">std::option::Option</a>&lt;<a href="../std/string.md#std_string_String">std::string::String</a>&gt;, <a href="../social_contracts/platform.md#social_contracts_platform_status">status</a>: u8, <a href="../social_contracts/platform.md#social_contracts_platform_release_date">release_date</a>: <a href="../std/string.md#std_string_String">std::string::String</a>, <a href="../social_contracts/platform.md#social_contracts_platform_wants_dao_governance">wants_dao_governance</a>: bool, delegate_count: <a href="../std/option.md#std_option_Option">std::option::Option</a>&lt;u64&gt;, delegate_term_epochs: <a href="../std/option.md#std_option_Option">std::option::Option</a>&lt;u64&gt;, proposal_submission_cost: <a href="../std/option.md#std_option_Option">std::option::Option</a>&lt;u64&gt;, min_on_chain_age_days: <a href="../std/option.md#std_option_Option">std::option::Option</a>&lt;u64&gt;, max_votes_per_user: <a href="../std/option.md#std_option_Option">std::option::Option</a>&lt;u64&gt;, quadratic_base_cost: <a href="../std/option.md#std_option_Option">std::option::Option</a>&lt;u64&gt;, voting_period_epochs: <a href="../std/option.md#std_option_Option">std::option::Option</a>&lt;u64&gt;, quorum_votes: <a href="../std/option.md#std_option_Option">std::option::Option</a>&lt;u64&gt;, clock: &<a href="../myso/clock.md#myso_clock_Clock">myso::clock::Clock</a>, ctx: &<b>mut</b> <a href="../myso/tx_context.md#myso_tx_context_TxContext">myso::tx_context::TxContext</a>)
+<pre><code><b>public</b> <b>fun</b> <a href="../social_contracts/platform.md#social_contracts_platform_create_platform">create_platform</a>(registry: &<b>mut</b> <a href="../social_contracts/platform.md#social_contracts_platform_PlatformRegistry">social_contracts::platform::PlatformRegistry</a>, <a href="../social_contracts/platform.md#social_contracts_platform_name">name</a>: <a href="../std/string.md#std_string_String">std::string::String</a>, <a href="../social_contracts/platform.md#social_contracts_platform_tagline">tagline</a>: <a href="../std/string.md#std_string_String">std::string::String</a>, <a href="../social_contracts/platform.md#social_contracts_platform_description">description</a>: <a href="../std/string.md#std_string_String">std::string::String</a>, logo_url: <a href="../std/string.md#std_string_String">std::string::String</a>, <a href="../social_contracts/platform.md#social_contracts_platform_terms_of_service">terms_of_service</a>: <a href="../std/string.md#std_string_String">std::string::String</a>, <a href="../social_contracts/platform.md#social_contracts_platform_privacy_policy">privacy_policy</a>: <a href="../std/string.md#std_string_String">std::string::String</a>, platforms: vector&lt;<a href="../std/string.md#std_string_String">std::string::String</a>&gt;, links: vector&lt;<a href="../std/string.md#std_string_String">std::string::String</a>&gt;, <a href="../social_contracts/platform.md#social_contracts_platform_primary_category">primary_category</a>: <a href="../std/string.md#std_string_String">std::string::String</a>, <a href="../social_contracts/platform.md#social_contracts_platform_secondary_category">secondary_category</a>: <a href="../std/option.md#std_option_Option">std::option::Option</a>&lt;<a href="../std/string.md#std_string_String">std::string::String</a>&gt;, <a href="../social_contracts/platform.md#social_contracts_platform_status">status</a>: u8, <a href="../social_contracts/platform.md#social_contracts_platform_release_date">release_date</a>: <a href="../std/string.md#std_string_String">std::string::String</a>, <a href="../social_contracts/platform.md#social_contracts_platform_wants_dao_governance">wants_dao_governance</a>: bool, delegate_count: <a href="../std/option.md#std_option_Option">std::option::Option</a>&lt;u64&gt;, delegate_term_epochs: <a href="../std/option.md#std_option_Option">std::option::Option</a>&lt;u64&gt;, proposal_submission_cost: <a href="../std/option.md#std_option_Option">std::option::Option</a>&lt;u64&gt;, max_votes_per_user: <a href="../std/option.md#std_option_Option">std::option::Option</a>&lt;u64&gt;, quadratic_base_cost: <a href="../std/option.md#std_option_Option">std::option::Option</a>&lt;u64&gt;, voting_period_epochs: <a href="../std/option.md#std_option_Option">std::option::Option</a>&lt;u64&gt;, quorum_votes: <a href="../std/option.md#std_option_Option">std::option::Option</a>&lt;u64&gt;, clock: &<a href="../myso/clock.md#myso_clock_Clock">myso::clock::Clock</a>, ctx: &<b>mut</b> <a href="../myso/tx_context.md#myso_tx_context_TxContext">myso::tx_context::TxContext</a>)
 </code></pre>
 
 
@@ -1601,7 +1591,6 @@ Create a new platform and transfer to developer
     delegate_count: Option&lt;u64&gt;,
     delegate_term_epochs: Option&lt;u64&gt;,
     proposal_submission_cost: Option&lt;u64&gt;,
-    min_on_chain_age_days: Option&lt;u64&gt;,
     max_votes_per_user: Option&lt;u64&gt;,
     quadratic_base_cost: Option&lt;u64&gt;,
     voting_period_epochs: Option&lt;u64&gt;,
@@ -1640,7 +1629,6 @@ Create a new platform and transfer to developer
     <b>let</b> actual_delegate_count = <b>if</b> (<a href="../social_contracts/platform.md#social_contracts_platform_wants_dao_governance">wants_dao_governance</a>) delegate_count <b>else</b> option::none();
     <b>let</b> actual_delegate_term_epochs = <b>if</b> (<a href="../social_contracts/platform.md#social_contracts_platform_wants_dao_governance">wants_dao_governance</a>) delegate_term_epochs <b>else</b> option::none();
     <b>let</b> actual_proposal_submission_cost = <b>if</b> (<a href="../social_contracts/platform.md#social_contracts_platform_wants_dao_governance">wants_dao_governance</a>) proposal_submission_cost <b>else</b> option::none();
-    <b>let</b> actual_min_on_chain_age_days = <b>if</b> (<a href="../social_contracts/platform.md#social_contracts_platform_wants_dao_governance">wants_dao_governance</a>) min_on_chain_age_days <b>else</b> option::none();
     <b>let</b> actual_max_votes_per_user = <b>if</b> (<a href="../social_contracts/platform.md#social_contracts_platform_wants_dao_governance">wants_dao_governance</a>) max_votes_per_user <b>else</b> option::none();
     <b>let</b> actual_quadratic_base_cost = <b>if</b> (<a href="../social_contracts/platform.md#social_contracts_platform_wants_dao_governance">wants_dao_governance</a>) quadratic_base_cost <b>else</b> option::none();
     <b>let</b> actual_voting_period_epochs = <b>if</b> (<a href="../social_contracts/platform.md#social_contracts_platform_wants_dao_governance">wants_dao_governance</a>) voting_period_epochs <b>else</b> option::none();
@@ -1667,7 +1655,6 @@ Create a new platform and transfer to developer
         delegate_count: actual_delegate_count,
         delegate_term_epochs: actual_delegate_term_epochs,
         proposal_submission_cost: actual_proposal_submission_cost,
-        min_on_chain_age_days: actual_min_on_chain_age_days,
         max_votes_per_user: actual_max_votes_per_user,
         quadratic_base_cost: actual_quadratic_base_cost,
         voting_period_epochs: actual_voting_period_epochs,
@@ -1768,7 +1755,6 @@ Create a new platform and transfer to developer
         delegate_count: <a href="../social_contracts/platform.md#social_contracts_platform">platform</a>.delegate_count,
         delegate_term_epochs: <a href="../social_contracts/platform.md#social_contracts_platform">platform</a>.delegate_term_epochs,
         proposal_submission_cost: <a href="../social_contracts/platform.md#social_contracts_platform">platform</a>.proposal_submission_cost,
-        min_on_chain_age_days: <a href="../social_contracts/platform.md#social_contracts_platform">platform</a>.min_on_chain_age_days,
         max_votes_per_user: <a href="../social_contracts/platform.md#social_contracts_platform">platform</a>.max_votes_per_user,
         quadratic_base_cost: <a href="../social_contracts/platform.md#social_contracts_platform">platform</a>.quadratic_base_cost,
         voting_period_epochs: <a href="../social_contracts/platform.md#social_contracts_platform">platform</a>.voting_period_epochs,
@@ -3554,7 +3540,7 @@ Get platform's governance registry ID if available
 Get platform's governance parameters
 
 
-<pre><code><b>public</b> <b>fun</b> <a href="../social_contracts/platform.md#social_contracts_platform_governance_parameters">governance_parameters</a>(<a href="../social_contracts/platform.md#social_contracts_platform">platform</a>: &<a href="../social_contracts/platform.md#social_contracts_platform_Platform">social_contracts::platform::Platform</a>): (<a href="../std/option.md#std_option_Option">std::option::Option</a>&lt;u64&gt;, <a href="../std/option.md#std_option_Option">std::option::Option</a>&lt;u64&gt;, <a href="../std/option.md#std_option_Option">std::option::Option</a>&lt;u64&gt;, <a href="../std/option.md#std_option_Option">std::option::Option</a>&lt;u64&gt;, <a href="../std/option.md#std_option_Option">std::option::Option</a>&lt;u64&gt;, <a href="../std/option.md#std_option_Option">std::option::Option</a>&lt;u64&gt;, <a href="../std/option.md#std_option_Option">std::option::Option</a>&lt;u64&gt;, <a href="../std/option.md#std_option_Option">std::option::Option</a>&lt;u64&gt;)
+<pre><code><b>public</b> <b>fun</b> <a href="../social_contracts/platform.md#social_contracts_platform_governance_parameters">governance_parameters</a>(<a href="../social_contracts/platform.md#social_contracts_platform">platform</a>: &<a href="../social_contracts/platform.md#social_contracts_platform_Platform">social_contracts::platform::Platform</a>): (<a href="../std/option.md#std_option_Option">std::option::Option</a>&lt;u64&gt;, <a href="../std/option.md#std_option_Option">std::option::Option</a>&lt;u64&gt;, <a href="../std/option.md#std_option_Option">std::option::Option</a>&lt;u64&gt;, <a href="../std/option.md#std_option_Option">std::option::Option</a>&lt;u64&gt;, <a href="../std/option.md#std_option_Option">std::option::Option</a>&lt;u64&gt;, <a href="../std/option.md#std_option_Option">std::option::Option</a>&lt;u64&gt;, <a href="../std/option.md#std_option_Option">std::option::Option</a>&lt;u64&gt;)
 </code></pre>
 
 
@@ -3563,12 +3549,11 @@ Get platform's governance parameters
 <summary>Implementation</summary>
 
 
-<pre><code><b>public</b> <b>fun</b> <a href="../social_contracts/platform.md#social_contracts_platform_governance_parameters">governance_parameters</a>(<a href="../social_contracts/platform.md#social_contracts_platform">platform</a>: &<a href="../social_contracts/platform.md#social_contracts_platform_Platform">Platform</a>): (Option&lt;u64&gt;, Option&lt;u64&gt;, Option&lt;u64&gt;, Option&lt;u64&gt;, Option&lt;u64&gt;, Option&lt;u64&gt;, Option&lt;u64&gt;, Option&lt;u64&gt;) {
+<pre><code><b>public</b> <b>fun</b> <a href="../social_contracts/platform.md#social_contracts_platform_governance_parameters">governance_parameters</a>(<a href="../social_contracts/platform.md#social_contracts_platform">platform</a>: &<a href="../social_contracts/platform.md#social_contracts_platform_Platform">Platform</a>): (Option&lt;u64&gt;, Option&lt;u64&gt;, Option&lt;u64&gt;, Option&lt;u64&gt;, Option&lt;u64&gt;, Option&lt;u64&gt;, Option&lt;u64&gt;) {
     (
         <a href="../social_contracts/platform.md#social_contracts_platform">platform</a>.delegate_count,
         <a href="../social_contracts/platform.md#social_contracts_platform">platform</a>.delegate_term_epochs,
         <a href="../social_contracts/platform.md#social_contracts_platform">platform</a>.proposal_submission_cost,
-        <a href="../social_contracts/platform.md#social_contracts_platform">platform</a>.min_on_chain_age_days,
         <a href="../social_contracts/platform.md#social_contracts_platform">platform</a>.max_votes_per_user,
         <a href="../social_contracts/platform.md#social_contracts_platform">platform</a>.quadratic_base_cost,
         <a href="../social_contracts/platform.md#social_contracts_platform">platform</a>.voting_period_epochs,

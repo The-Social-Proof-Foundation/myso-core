@@ -1185,4 +1185,43 @@ module social_contracts::governance_tests {
 
         test_scenario::end(scenario);
     }
+
+    /// `governance::bootstrap_init` seeds the transaction sender as founding delegate for ecosystem (0) and PoC (1).
+    #[test]
+    #[allow(unused_mut_ref)]
+    fun test_bootstrap_init_seeds_sender_as_founding_delegate_both_registries() {
+        use social_contracts::governance;
+
+        let mut scenario = test_scenario::begin(ADMIN);
+
+        test_scenario::next_tx(&mut scenario, ADMIN);
+        {
+            let ctx = test_scenario::ctx(&mut scenario);
+            let c = clock::create_for_testing(ctx);
+            clock::share_for_testing(c);
+        };
+
+        test_scenario::next_tx(&mut scenario, ADMIN);
+        {
+            let clock = test_scenario::take_shared<Clock>(&scenario);
+            let ctx = test_scenario::ctx(&mut scenario);
+            governance::bootstrap_init(&clock, ctx);
+            test_scenario::return_shared(clock);
+        };
+
+        test_scenario::next_tx(&mut scenario, ADMIN);
+        {
+            let reg_a = test_scenario::take_shared<governance::GovernanceDAO>(&mut scenario);
+            let reg_b = test_scenario::take_shared<governance::GovernanceDAO>(&mut scenario);
+            let t_a = governance::registry_type(&reg_a);
+            let t_b = governance::registry_type(&reg_b);
+            assert!((t_a == 0 && t_b == 1) || (t_a == 1 && t_b == 0), 0);
+            assert!(governance::is_delegate(&reg_a, ADMIN), 1);
+            assert!(governance::is_delegate(&reg_b, ADMIN), 2);
+            test_scenario::return_shared(reg_a);
+            test_scenario::return_shared(reg_b);
+        };
+
+        test_scenario::end(scenario);
+    }
 }

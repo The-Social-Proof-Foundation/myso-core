@@ -1476,7 +1476,7 @@ impl Query {
     /// **Platform DAO (`registryType` 2) requires `platformId`:** when `registryType` is 2 and `platformId`
     /// is omitted, returns an empty list (no cross-platform aggregation).
     ///
-    /// Without `platformId`, only ecosystem/PoC nominee rows are returned (`governance_registry_id` unset).
+    /// Without `platformId`, nominees are listed for ecosystem/PoC (and other non-platform) registries; each row includes the on-chain DAO id.
     /// Unfiltered lists omit `registryType` 2.
     async fn nominated_delegates(
         &self,

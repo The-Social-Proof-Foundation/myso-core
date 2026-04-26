@@ -32,8 +32,6 @@ pub struct PlatformRow {
     #[serde(skip_serializing_if = "Option::is_none")]
     pub max_votes_per_user: Option<i64>,
     #[serde(skip_serializing_if = "Option::is_none")]
-    pub min_on_chain_age_days: Option<i64>,
-    #[serde(skip_serializing_if = "Option::is_none")]
     pub proposal_submission_cost: Option<i64>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub quadratic_base_cost: Option<i64>,
@@ -64,7 +62,6 @@ impl From<myso_indexer_alt_social_schema::models::Platform> for PlatformRow {
             delegate_count: p.delegate_count,
             delegate_term_epochs: p.delegate_term_epochs,
             max_votes_per_user: p.max_votes_per_user,
-            min_on_chain_age_days: p.min_on_chain_age_days,
             proposal_submission_cost: p.proposal_submission_cost,
             quadratic_base_cost: p.quadratic_base_cost,
             quorum_votes: p.quorum_votes,

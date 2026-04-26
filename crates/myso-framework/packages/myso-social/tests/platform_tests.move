@@ -63,7 +63,6 @@ module social_contracts::platform_tests {
                 option::some(7), // delegate_count
                 option::some(30), // delegate_term_epochs
                 option::some(50_000_000), // proposal_submission_cost
-                option::some(7), // min_on_chain_age_days
                 option::some(5), // max_votes_per_user
                 option::some(5_000_000), // quadratic_base_cost
                 option::some(3), // voting_period_epochs

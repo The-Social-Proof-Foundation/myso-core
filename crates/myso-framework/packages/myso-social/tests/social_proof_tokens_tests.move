@@ -284,7 +284,6 @@ module social_contracts::token_exchange_tests {
                 option::none(),
                 option::none(),
                 option::none(),
-                option::none(),
                 &clock,
                 test_scenario::ctx(&mut scenario)
             );

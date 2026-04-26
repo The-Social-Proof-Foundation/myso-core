@@ -93,7 +93,7 @@ module social_contracts::insurance_tests {
                 string::utf8(b"2024-01-01"),
                 false,
                 option::none(), option::none(), option::none(), option::none(),
-                option::none(), option::none(), option::none(), option::none(),
+                option::none(), option::none(), option::none(),
                 &clock,
                 test_scenario::ctx(&mut scen)
             );

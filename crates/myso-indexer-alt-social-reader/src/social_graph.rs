@@ -861,8 +861,6 @@ pub(crate) async fn get_profile_platform_memberships(
         #[diesel(sql_type = Nullable<BigInt>)]
         max_votes_per_user: Option<i64>,
         #[diesel(sql_type = Nullable<BigInt>)]
-        min_on_chain_age_days: Option<i64>,
-        #[diesel(sql_type = Nullable<BigInt>)]
         proposal_submission_cost: Option<i64>,
         #[diesel(sql_type = Nullable<BigInt>)]
         quadratic_base_cost: Option<i64>,
@@ -912,7 +910,6 @@ pub(crate) async fn get_profile_platform_memberships(
                p.delegate_count,
                p.delegate_term_epochs,
                p.max_votes_per_user,
-               p.min_on_chain_age_days,
                p.proposal_submission_cost,
                p.quadratic_base_cost,
                p.quorum_votes,
@@ -968,7 +965,6 @@ pub(crate) async fn get_profile_platform_memberships(
             delegate_count: r.delegate_count,
             delegate_term_epochs: r.delegate_term_epochs,
             max_votes_per_user: r.max_votes_per_user,
-            min_on_chain_age_days: r.min_on_chain_age_days,
             proposal_submission_cost: r.proposal_submission_cost,
             quadratic_base_cost: r.quadratic_base_cost,
             quorum_votes: r.quorum_votes,

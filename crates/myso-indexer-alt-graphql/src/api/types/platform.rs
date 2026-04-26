@@ -180,11 +180,6 @@ impl Platform {
         self.inner.max_votes_per_user
     }
 
-    /// Min on-chain age in days.
-    async fn min_on_chain_age_days(&self) -> Option<i64> {
-        self.inner.min_on_chain_age_days
-    }
-
     /// Proposal submission cost.
     async fn proposal_submission_cost(&self) -> Option<i64> {
         self.inner.proposal_submission_cost
@@ -468,10 +463,6 @@ impl PlatformMembershipSummary {
 
     async fn max_votes_per_user(&self) -> Option<i64> {
         self.row.max_votes_per_user
-    }
-
-    async fn min_on_chain_age_days(&self) -> Option<i64> {
-        self.row.min_on_chain_age_days
     }
 
     async fn proposal_submission_cost(&self) -> Option<i64> {

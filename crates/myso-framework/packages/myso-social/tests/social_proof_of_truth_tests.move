@@ -86,7 +86,7 @@ module social_contracts::social_proof_of_truth_tests {
                 3,
                 string::utf8(b"2024-01-01"),
                 false,
-                option::none(), option::none(), option::none(), option::none(), option::none(), option::none(), option::none(), option::none(),
+                option::none(), option::none(), option::none(), option::none(), option::none(), option::none(), option::none(),
                 &clock,
                 test_scenario::ctx(&mut scen)
             );

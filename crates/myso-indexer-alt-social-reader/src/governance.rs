@@ -23,7 +23,7 @@ use crate::metrics::DbReaderMetrics;
 pub struct DelegateRatingViewerTarget {
     pub target_address: String,
     pub registry_type: i16,
-    pub governance_registry_id: Option<String>,
+    pub governance_registry_id: String,
     pub is_active_delegate: bool,
 }
 
@@ -33,7 +33,7 @@ pub fn delegate_rating_viewer_lookup_key(t: &DelegateRatingViewerTarget) -> Stri
         "{}|{}|{}|{}",
         t.target_address,
         t.registry_type,
-        t.governance_registry_id.as_deref().unwrap_or(""),
+        t.governance_registry_id,
         t.is_active_delegate as u8
     )
 }
@@ -192,7 +192,7 @@ pub(crate) async fn list_delegates(
     let query = "
         SELECT address, registry_type, governance_registry_id, upvotes, downvotes, proposals_reviewed, proposals_submitted,
                sided_winning_proposals, sided_losing_proposals, term_start, term_end, is_active
-        FROM (SELECT DISTINCT ON (address, registry_type, COALESCE(governance_registry_id, '')) * FROM delegates ORDER BY address, registry_type, COALESCE(governance_registry_id, ''), time DESC) d
+        FROM (SELECT DISTINCT ON (address, registry_type, governance_registry_id) * FROM delegates ORDER BY address, registry_type, governance_registry_id, time DESC) d
         WHERE ($1::smallint IS NULL OR registry_type = $1)
           AND ($2::bool IS NULL OR is_active = $2)
         ORDER BY upvotes DESC
@@ -224,11 +224,11 @@ pub(crate) async fn get_delegate_by_address(
     let query = "
         SELECT address, registry_type, governance_registry_id, upvotes, downvotes, proposals_reviewed, proposals_submitted,
                sided_winning_proposals, sided_losing_proposals, term_start, term_end, is_active
-        FROM (SELECT DISTINCT ON (address, registry_type, COALESCE(governance_registry_id, '')) * FROM delegates ORDER BY address, registry_type, COALESCE(governance_registry_id, ''), time DESC) d
+        FROM (SELECT DISTINCT ON (address, registry_type, governance_registry_id) * FROM delegates ORDER BY address, registry_type, governance_registry_id, time DESC) d
         WHERE address = $1
           AND ($2::smallint IS NULL OR registry_type = $2)
           AND ($3::text IS NULL OR governance_registry_id IS NOT DISTINCT FROM $3)
-        ORDER BY registry_type, governance_registry_id NULLS FIRST
+        ORDER BY registry_type, governance_registry_id
         LIMIT 1
     ";
 
@@ -254,7 +254,7 @@ pub(crate) async fn list_governance_registries(
 
     let query = "
         SELECT registry_type, registry_id, delegate_count, delegate_term_epochs,
-               proposal_submission_cost, min_on_chain_age_days, max_votes_per_user,
+               proposal_submission_cost, max_votes_per_user,
                quadratic_base_cost, voting_period_ms, quorum_votes,
                last_delegate_panel_boundary_epoch
         FROM governance_registries
@@ -280,7 +280,7 @@ pub(crate) async fn get_governance_registry_by_type(
 
     let query = "
         SELECT registry_type, registry_id, delegate_count, delegate_term_epochs,
-               proposal_submission_cost, min_on_chain_age_days, max_votes_per_user,
+               proposal_submission_cost, max_votes_per_user,
                quadratic_base_cost, voting_period_ms, quorum_votes,
                last_delegate_panel_boundary_epoch
         FROM governance_registries
@@ -328,7 +328,7 @@ pub(crate) async fn get_governance_registry_by_platform_id(
 
     let query = "
         SELECT registry_type, registry_id, delegate_count, delegate_term_epochs,
-               proposal_submission_cost, min_on_chain_age_days, max_votes_per_user,
+               proposal_submission_cost, max_votes_per_user,
                quadratic_base_cost, voting_period_ms, quorum_votes,
                last_delegate_panel_boundary_epoch
         FROM governance_registries
@@ -493,11 +493,11 @@ pub(crate) async fn get_delegate_ratings(
     let query = "
         SELECT target_address, voter_address, registry_type, governance_registry_id, is_active_delegate, vote_kind, rated_at
         FROM (
-            SELECT DISTINCT ON (target_address, voter_address, registry_type, COALESCE(governance_registry_id, ''), is_active_delegate)
+            SELECT DISTINCT ON (target_address, voter_address, registry_type, governance_registry_id, is_active_delegate)
                    target_address, voter_address, registry_type, governance_registry_id, is_active_delegate, vote_kind, rated_at
             FROM delegate_ratings
             WHERE target_address = $1
-            ORDER BY target_address, voter_address, registry_type, COALESCE(governance_registry_id, ''), is_active_delegate, time DESC
+            ORDER BY target_address, voter_address, registry_type, governance_registry_id, is_active_delegate, time DESC
         ) latest
         ORDER BY rated_at DESC
     ";
@@ -531,7 +531,7 @@ pub(crate) async fn batch_viewer_latest_delegate_rating_vote_kind(
     let rts: Vec<i16> = targets.iter().map(|t| t.registry_type).collect();
     let gids: Vec<String> = targets
         .iter()
-        .map(|t| t.governance_registry_id.clone().unwrap_or_default())
+        .map(|t| t.governance_registry_id.clone())
         .collect();
     let active_i: Vec<i16> = targets
         .iter()
@@ -560,18 +560,18 @@ pub(crate) async fn batch_viewer_latest_delegate_rating_vote_kind(
                 AS u(target_address, registry_type, governance_registry_id, is_active_i)
         ),
         latest AS (
-            SELECT DISTINCT ON (dr.target_address, dr.registry_type, COALESCE(dr.governance_registry_id, ''), dr.is_active_delegate)
+            SELECT DISTINCT ON (dr.target_address, dr.registry_type, dr.governance_registry_id, dr.is_active_delegate)
                 dr.target_address, dr.registry_type, dr.governance_registry_id, dr.is_active_delegate, dr.vote_kind
             FROM delegate_ratings dr
             WHERE dr.voter_address = ANY($5::text[])
-            ORDER BY dr.target_address, dr.registry_type, COALESCE(dr.governance_registry_id, ''), dr.is_active_delegate, dr.time DESC
+            ORDER BY dr.target_address, dr.registry_type, dr.governance_registry_id, dr.is_active_delegate, dr.time DESC
         )
         SELECT t.target_address, t.registry_type, t.governance_registry_id, t.is_active_delegate, l.vote_kind
         FROM targets t
         JOIN latest l ON l.target_address = t.target_address
             AND l.registry_type = t.registry_type
             AND l.is_active_delegate = t.is_active_delegate
-            AND COALESCE(l.governance_registry_id, '') = COALESCE(NULLIF(t.governance_registry_id, ''), '')
+            AND l.governance_registry_id = t.governance_registry_id
     "#;
 
     let rows: Vec<Row> = diesel::sql_query(query)
@@ -763,9 +763,9 @@ const LIST_NOMINATED_DELEGATES_PLATFORM_SQL: &str = "
         SELECT address, registry_type, governance_registry_id, upvotes, downvotes, scheduled_term_start_epoch,
                nomination_time, status
         FROM (
-            SELECT DISTINCT ON (address, registry_type, COALESCE(governance_registry_id, '')) *
+            SELECT DISTINCT ON (address, registry_type, governance_registry_id) *
             FROM nominated_delegates
-            ORDER BY address, registry_type, COALESCE(governance_registry_id, ''), nomination_time DESC, time DESC
+            ORDER BY address, registry_type, governance_registry_id, nomination_time DESC, time DESC
         ) n
         WHERE registry_type = $1
           AND ($2::smallint IS NULL OR status = $2)
@@ -774,19 +774,18 @@ const LIST_NOMINATED_DELEGATES_PLATFORM_SQL: &str = "
         LIMIT $4 OFFSET $5
     ";
 
-/// Ecosystem / PoC nominees only (`governance_registry_id` NULL). Optional omnibus excludes `registry_type = 2`.
-/// Binds: registry_type ($1), status ($2), omnibus_exclude_type_2 ($3), limit ($4), offset ($5).
+/// Without `platformId`: nominees for ecosystem/PoC registries (and any non-platform type), scoped by DAO id on each row.
+/// Optional omnibus excludes `registry_type = 2`. Binds: registry_type ($1), status ($2), omnibus_exclude_type_2 ($3), limit ($4), offset ($5).
 const LIST_NOMINATED_DELEGATES_LEGACY_SQL: &str = "
         SELECT address, registry_type, governance_registry_id, upvotes, downvotes, scheduled_term_start_epoch,
                nomination_time, status
         FROM (
-            SELECT DISTINCT ON (address, registry_type, COALESCE(governance_registry_id, '')) *
+            SELECT DISTINCT ON (address, registry_type, governance_registry_id) *
             FROM nominated_delegates
-            ORDER BY address, registry_type, COALESCE(governance_registry_id, ''), nomination_time DESC, time DESC
+            ORDER BY address, registry_type, governance_registry_id, nomination_time DESC, time DESC
         ) n
         WHERE ($1::smallint IS NULL OR registry_type = $1)
           AND ($2::smallint IS NULL OR status = $2)
-          AND governance_registry_id IS NULL
           AND ($3::bool = false OR registry_type <> 2)
         ORDER BY upvotes DESC
         LIMIT $4 OFFSET $5
@@ -891,10 +890,14 @@ mod list_proposals_sql_tests {
     }
 
     #[test]
-    fn list_nominated_delegates_legacy_sql_requires_null_governance_registry_id() {
+    fn list_nominated_delegates_legacy_sql_excludes_platform_when_omnibus() {
         assert!(
-            LIST_NOMINATED_DELEGATES_LEGACY_SQL.contains("governance_registry_id IS NULL"),
-            "legacy nominee list must only include ecosystem/PoC rows"
+            LIST_NOMINATED_DELEGATES_LEGACY_SQL.contains("registry_type <> 2"),
+            "unscoped nominee list must exclude platform registry type unless filtered explicitly"
+        );
+        assert!(
+            !LIST_NOMINATED_DELEGATES_LEGACY_SQL.contains("governance_registry_id IS NULL"),
+            "nominee rows are always scoped to a governance DAO id"
         );
     }
 
@@ -906,7 +909,7 @@ mod list_proposals_sql_tests {
         );
         assert!(
             LIST_NOMINATED_DELEGATES_LEGACY_SQL.contains("governance_registry_id, upvotes"),
-            "legacy nominee list must return governance_registry_id column (null for ecosystem/PoC)"
+            "legacy nominee list must return governance_registry_id for viewer rating scope"
         );
     }
 }
@@ -922,13 +925,13 @@ mod delegate_rating_viewer_lookup_tests {
         let d = DelegateRatingViewerTarget {
             target_address: addr.clone(),
             registry_type: 2,
-            governance_registry_id: Some("0xdao".to_string()),
+            governance_registry_id: "0xdao".to_string(),
             is_active_delegate: true,
         };
         let n = DelegateRatingViewerTarget {
             target_address: addr,
             registry_type: 2,
-            governance_registry_id: Some("0xdao".to_string()),
+            governance_registry_id: "0xdao".to_string(),
             is_active_delegate: false,
         };
         assert_ne!(
@@ -942,13 +945,13 @@ mod delegate_rating_viewer_lookup_tests {
         let t1 = DelegateRatingViewerTarget {
             target_address: "0xtarget".to_string(),
             registry_type: 2,
-            governance_registry_id: Some("0xdao1".to_string()),
+            governance_registry_id: "0xdao1".to_string(),
             is_active_delegate: true,
         };
         let t2 = DelegateRatingViewerTarget {
             target_address: "0xtarget".to_string(),
             registry_type: 2,
-            governance_registry_id: Some("0xdao2".to_string()),
+            governance_registry_id: "0xdao2".to_string(),
             is_active_delegate: true,
         };
         assert_ne!(
@@ -958,19 +961,19 @@ mod delegate_rating_viewer_lookup_tests {
     }
 
     #[test]
-    fn lookup_key_null_governance_registry_matches_empty_string_scope() {
+    fn lookup_key_separates_dao_instances_same_registry_type() {
         let a = DelegateRatingViewerTarget {
             target_address: "0xa".to_string(),
             registry_type: 0,
-            governance_registry_id: None,
+            governance_registry_id: "0xdao1".to_string(),
             is_active_delegate: true,
         };
         let b = DelegateRatingViewerTarget {
             target_address: "0xa".to_string(),
             registry_type: 0,
-            governance_registry_id: Some(String::new()),
+            governance_registry_id: "0xdao2".to_string(),
             is_active_delegate: true,
         };
-        assert_eq!(delegate_rating_viewer_lookup_key(&a), delegate_rating_viewer_lookup_key(&b));
+        assert_ne!(delegate_rating_viewer_lookup_key(&a), delegate_rating_viewer_lookup_key(&b));
     }
 }

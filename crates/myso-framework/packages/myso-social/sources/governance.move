@@ -17,7 +17,7 @@
 
 #[allow(duplicate_alias, unused_use, lint(public_entry))]
 module social_contracts::governance {
-    use std::string::{Self, String};
+    use std::{option, string::{Self, String}, vector};
     
     use myso::{
         object::{Self, UID, ID},
@@ -177,6 +177,8 @@ module social_contracts::governance {
         term_start: u64,
         term_end: u64,
         registry_type: u8,
+        upvotes: u64,
+        downvotes: u64,
     }
 
     /// Event emitted when a user is nominated to become a delegate in a future term
@@ -492,6 +494,8 @@ module social_contracts::governance {
             term_start,
             term_end,
             registry_type: registry.registry_type,
+            upvotes: 0,
+            downvotes: 0,
         });
     }
 
@@ -1118,6 +1122,8 @@ module social_contracts::governance {
                 term_start: term_start,
                 term_end: term_end,
                 registry_type: registry.registry_type,
+                upvotes: winner_upvotes,
+                downvotes: winner_downvotes,
             });
             m = m + 1;
         };
@@ -1705,6 +1711,25 @@ module social_contracts::governance {
         balance::withdraw_all(&mut proposal.reward_pool)
     }
 
+    fun clone_bytes(b: &vector<u8>): vector<u8> {
+        let mut out = vector::empty();
+        let len = vector::length(b);
+        let mut i = 0;
+        while (i < len) {
+            vector::push_back(&mut out, *vector::borrow(b, i));
+            i = i + 1;
+        };
+        out
+    }
+
+    fun clone_option_string(opt: &Option<String>): Option<String> {
+        if (option::is_none(opt)) {
+            return option::none()
+        };
+        let s = option::borrow(opt);
+        option::some(string::utf8(clone_bytes(string::as_bytes(s))))
+    }
+
     /// Run delegate-in-review vote logic; returns 0=still in review, 1=advanced to community, 2=must complete delegate reject (ecosystem or platform) via separate entry.
     public(package) fun run_delegate_review_vote(
         registry: &mut GovernanceDAO,
@@ -1716,6 +1741,8 @@ module social_contracts::governance {
     ): u8 {
         assert!(registry.version == upgrade::current_version(), EWrongVersion);
         try_update_delegate_panel_if_due(registry, ctx);
+        let vote_time = clock::timestamp_ms(clock);
+        let reason_for_event = clone_option_string(&reason);
         let caller = tx_context::sender(ctx);
         let proposal_id = object::id(proposal);
         assert!(table::contains(&registry.proposals, proposal_id), EProposalNotFound);
@@ -1760,14 +1787,23 @@ module social_contracts::governance {
         let delegate_rejection_count = proposal.delegate_rejection_count;
         let total_delegates = table::length(&registry.delegates);
 
-        if (delegate_approval_count > total_delegates / 2) {
+        let outcome = if (delegate_approval_count > total_delegates / 2) {
             move_to_community_voting(registry, proposal, clock, ctx);
             DELEGATE_VOTE_TO_COMMUNITY
         } else if (delegate_rejection_count > total_delegates / 2) {
             DELEGATE_VOTE_TO_REJECT
         } else {
             DELEGATE_VOTE_STILL_IN_REVIEW
-        }
+        };
+
+        event::emit(DelegateVoteEvent {
+            proposal_id,
+            delegate_address: caller,
+            approve,
+            vote_time,
+            reason: reason_for_event,
+        });
+        outcome
     }
 
     /// Ecosystem and proof-of-creativity only: `ecosystem_treasury` used when the delegate council rejects the proposal.
@@ -1783,9 +1819,7 @@ module social_contracts::governance {
         assert!(registry.version == upgrade::current_version(), EWrongVersion);
         assert_ecosystem_or_poc_registry(registry);
         let current_time = clock::timestamp_ms(clock);
-        let proposal_id = object::id(proposal);
         let out = run_delegate_review_vote(registry, proposal, approve, reason, clock, ctx);
-        let caller = tx_context::sender(ctx);
         if (out == DELEGATE_VOTE_TO_REJECT) {
             complete_delegate_reject_to_ecosystem_treasury(
                 registry,
@@ -1795,29 +1829,6 @@ module social_contracts::governance {
                 ctx
             );
         };
-        event::emit(DelegateVoteEvent {
-            proposal_id,
-            delegate_address: caller,
-            approve,
-            vote_time: current_time,
-            reason: option::none(),
-        });
-    }
-
-    public(package) fun emit_delegate_vote_trailing_event(
-        proposal_id: ID,
-        delegate_address: address,
-        approve: bool,
-        vote_time: u64,
-        reason: Option<String>,
-    ) {
-        event::emit(DelegateVoteEvent {
-            proposal_id,
-            delegate_address,
-            approve,
-            vote_time,
-            reason,
-        });
     }
 
     public(package) fun emit_implementation_reward_to_submitter_event(

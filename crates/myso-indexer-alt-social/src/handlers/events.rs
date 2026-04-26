@@ -147,12 +147,23 @@ pub struct BcsDelegateNominatedEvent {
     registry_type: u8,
 }
 
+/// Pre-vote-counts on-chain layout (BCS replay compatibility).
+#[derive(Debug, Deserialize)]
+pub struct BcsDelegateElectedEventV0 {
+    delegate_address: AccountAddress,
+    term_start: u64,
+    term_end: u64,
+    registry_type: u8,
+}
+
 #[derive(Debug, Deserialize)]
 pub struct BcsDelegateElectedEvent {
     delegate_address: AccountAddress,
     term_start: u64,
     term_end: u64,
     registry_type: u8,
+    upvotes: u64,
+    downvotes: u64,
 }
 
 #[derive(Debug, Deserialize)]
@@ -1191,7 +1202,6 @@ pub struct BcsPlatformCreatedEvent {
     delegate_count: Option<u64>,
     delegate_term_epochs: Option<u64>,
     proposal_submission_cost: Option<u64>,
-    min_on_chain_age_days: Option<u64>,
     max_votes_per_user: Option<u64>,
     quadratic_base_cost: Option<u64>,
     voting_period_epochs: Option<u64>,
@@ -1516,14 +1526,29 @@ fn parse_governance_event(
             })))
         }
         "DelegateElectedEvent" => {
-            let ev = bcs::from_bytes::<BcsDelegateElectedEvent>(contents)
-                .map_err(|e| bcs_parse_err(e, contents))?;
-            Ok(Some(serde_json::json!({
-                "delegate_address": addr_to_string(&ev.delegate_address),
-                "registry_type": ev.registry_type,
-                "term_start": ev.term_start,
-                "term_end": ev.term_end,
-            })))
+            let json = match bcs::from_bytes::<BcsDelegateElectedEvent>(contents) {
+                Ok(ev) => serde_json::json!({
+                    "delegate_address": addr_to_string(&ev.delegate_address),
+                    "registry_type": ev.registry_type,
+                    "term_start": ev.term_start,
+                    "term_end": ev.term_end,
+                    "upvotes": ev.upvotes,
+                    "downvotes": ev.downvotes,
+                }),
+                Err(_) => {
+                    let ev = bcs::from_bytes::<BcsDelegateElectedEventV0>(contents)
+                        .map_err(|e| bcs_parse_err(e, contents))?;
+                    serde_json::json!({
+                        "delegate_address": addr_to_string(&ev.delegate_address),
+                        "registry_type": ev.registry_type,
+                        "term_start": ev.term_start,
+                        "term_end": ev.term_end,
+                        "upvotes": 0u64,
+                        "downvotes": 0u64,
+                    })
+                }
+            };
+            Ok(Some(json))
         }
         "DelegateVotedEvent" => {
             let ev = bcs::from_bytes::<BcsDelegateVotedEvent>(contents)
@@ -2006,7 +2031,6 @@ fn parse_platform_event(
                 "delegate_count": ev.delegate_count,
                 "delegate_term_epochs": ev.delegate_term_epochs,
                 "proposal_submission_cost": ev.proposal_submission_cost,
-                "min_on_chain_age_days": ev.min_on_chain_age_days,
                 "max_votes_per_user": ev.max_votes_per_user,
                 "quadratic_base_cost": ev.quadratic_base_cost,
                 "voting_period_epochs": ev.voting_period_epochs,
@@ -3110,7 +3134,7 @@ mod tests {
 
     #[test]
     fn test_parse_platform_created_event_json_fallback() {
-        let json = r#"{"platform_id":"0xabc","name":"Test","tagline":"Tag","description":"Desc","developer":"0xdef","logo":"","terms_of_service":"","privacy_policy":"","platforms":[],"links":[],"primary_category":"Social","secondary_category":null,"status":{"status":0},"release_date":"2024-01-01","wants_dao_governance":false,"governance_registry_id":null,"delegate_count":null,"delegate_term_epochs":null,"proposal_submission_cost":null,"min_on_chain_age_days":null,"max_votes_per_user":null,"quadratic_base_cost":null,"voting_period_epochs":null,"quorum_votes":null}"#;
+        let json = r#"{"platform_id":"0xabc","name":"Test","tagline":"Tag","description":"Desc","developer":"0xdef","logo":"","terms_of_service":"","privacy_policy":"","platforms":[],"links":[],"primary_category":"Social","secondary_category":null,"status":{"status":0},"release_date":"2024-01-01","wants_dao_governance":false,"governance_registry_id":null,"delegate_count":null,"delegate_term_epochs":null,"proposal_submission_cost":null,"max_votes_per_user":null,"quadratic_base_cost":null,"voting_period_epochs":null,"quorum_votes":null}"#;
         let result = parse_event_contents("platform", "PlatformCreatedEvent", json.as_bytes());
         assert!(
             result.is_ok(),

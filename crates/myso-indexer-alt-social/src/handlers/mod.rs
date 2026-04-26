@@ -394,7 +394,7 @@ pub enum SocialEventRow {
         address: String,
         registry_type: i16,
         status: i16,
-        governance_registry_id: Option<String>,
+        governance_registry_id: String,
     },
     DelegateVoteCountsUpdate {
         target_address: String,
@@ -402,7 +402,7 @@ pub enum SocialEventRow {
         is_active_delegate: bool,
         upvotes: i64,
         downvotes: i64,
-        governance_registry_id: Option<String>,
+        governance_registry_id: String,
     },
     ProposalDelegateVoteIncrement {
         proposal_id: String,
@@ -411,7 +411,6 @@ pub enum SocialEventRow {
     DelegateProposalsReviewedIncrement {
         proposal_id: String,
         delegate_address: String,
-        governance_registry_id: Option<String>,
     },
     ProposalCommunityVoteUpdate {
         proposal_id: String,
@@ -422,12 +421,10 @@ pub enum SocialEventRow {
     ProposalOutcomeApplyDelegateSidedUpdates {
         proposal_id: String,
         approvers_win: bool,
-        governance_registry_id: Option<String>,
     },
     DelegateProposalsSubmittedIncrement {
-        address: String,
-        registry_type: i16,
-        governance_registry_id: Option<String>,
+        proposal_id: String,
+        submitter: String,
     },
     ProposalAnonymousVotersIncrement {
         proposal_id: String,

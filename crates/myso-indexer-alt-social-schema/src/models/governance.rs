@@ -24,7 +24,6 @@ pub struct GovernanceRegistry {
     pub delegate_count: i64,
     pub delegate_term_epochs: i64,
     pub proposal_submission_cost: i64,
-    pub min_on_chain_age_days: i64,
     pub max_votes_per_user: i64,
     pub quadratic_base_cost: i64,
     pub voting_period_ms: i64,
@@ -44,7 +43,6 @@ pub struct NewGovernanceRegistry {
     pub delegate_count: i64,
     pub delegate_term_epochs: i64,
     pub proposal_submission_cost: i64,
-    pub min_on_chain_age_days: i64,
     pub max_votes_per_user: i64,
     pub quadratic_base_cost: i64,
     pub voting_period_ms: i64,
@@ -60,7 +58,7 @@ pub struct Delegate {
     pub id: i32,
     pub address: String,
     pub registry_type: i16,
-    pub governance_registry_id: Option<String>,
+    pub governance_registry_id: String,
     pub upvotes: i64,
     pub downvotes: i64,
     pub proposals_reviewed: i64,
@@ -81,7 +79,7 @@ pub struct Delegate {
 pub struct NewDelegate {
     pub address: String,
     pub registry_type: i16,
-    pub governance_registry_id: Option<String>,
+    pub governance_registry_id: String,
     pub upvotes: i64,
     pub downvotes: i64,
     pub proposals_reviewed: i64,
@@ -109,7 +107,7 @@ pub struct NominatedDelegate {
     pub status: i16,
     pub time: chrono::DateTime<chrono::Utc>,
     pub transaction_id: String,
-    pub governance_registry_id: Option<String>,
+    pub governance_registry_id: String,
 }
 
 #[derive(Debug, Clone, Insertable, Serialize, Deserialize)]
@@ -123,7 +121,7 @@ pub struct NewNominatedDelegate {
     pub nomination_time: i64,
     pub status: i16,
     pub transaction_id: String,
-    pub governance_registry_id: Option<String>,
+    pub governance_registry_id: String,
 }
 
 #[derive(Debug, Clone, Queryable, Selectable, Serialize, Deserialize)]
@@ -156,7 +154,7 @@ pub struct Proposal {
     pub pending_anonymous_decryption: Option<bool>,
     pub anonymous_decryption_completed_at: Option<i64>,
     pub rejection_time: Option<i64>,
-    pub governance_registry_id: Option<String>,
+    pub governance_registry_id: String,
 }
 
 #[derive(Debug, Clone, Insertable, Serialize, Deserialize)]
@@ -179,7 +177,7 @@ pub struct NewProposal {
     pub voting_end_time: Option<i64>,
     pub reward_pool: i64,
     pub transaction_id: String,
-    pub governance_registry_id: Option<String>,
+    pub governance_registry_id: String,
 }
 
 #[derive(Debug, Clone, Queryable, Selectable, Serialize, Deserialize)]
@@ -195,7 +193,7 @@ pub struct DelegateRating {
     pub rated_at: i64,
     pub time: chrono::DateTime<chrono::Utc>,
     pub transaction_id: String,
-    pub governance_registry_id: Option<String>,
+    pub governance_registry_id: String,
 }
 
 #[derive(Debug, Clone, Insertable, Serialize, Deserialize)]
@@ -204,7 +202,7 @@ pub struct NewDelegateRating {
     pub target_address: String,
     pub voter_address: String,
     pub registry_type: i16,
-    pub governance_registry_id: Option<String>,
+    pub governance_registry_id: String,
     pub is_active_delegate: bool,
     pub vote_kind: i16,
     pub rated_at: i64,
@@ -412,7 +410,6 @@ pub struct GovernanceRegistryPanelBoundaryUpdate {
 pub struct GovernanceRegistryConfig {
     pub delegate_term_epochs: i64,
     pub proposal_submission_cost: i64,
-    pub min_on_chain_age_days: i64,
     pub max_votes_per_user: i64,
     pub quadratic_base_cost: i64,
     pub voting_period_ms: i64,
@@ -464,8 +461,8 @@ pub struct ProposalRow {
     pub rejection_time: Option<i64>,
     #[diesel(sql_type = Nullable<BigInt>)]
     pub anonymous_voters_count: Option<i64>,
-    #[diesel(sql_type = Nullable<Text>)]
-    pub governance_registry_id: Option<String>,
+    #[diesel(sql_type = Text)]
+    pub governance_registry_id: String,
 }
 
 /// Query result for a delegate (for GraphQL/reader).
@@ -475,8 +472,8 @@ pub struct DelegateRow {
     pub address: String,
     #[diesel(sql_type = SmallInt)]
     pub registry_type: i16,
-    #[diesel(sql_type = Nullable<Text>)]
-    pub governance_registry_id: Option<String>,
+    #[diesel(sql_type = Text)]
+    pub governance_registry_id: String,
     #[diesel(sql_type = BigInt)]
     pub upvotes: i64,
     #[diesel(sql_type = BigInt)]
@@ -538,8 +535,6 @@ pub struct GovernanceRegistryRow {
     #[diesel(sql_type = BigInt)]
     pub proposal_submission_cost: i64,
     #[diesel(sql_type = BigInt)]
-    pub min_on_chain_age_days: i64,
-    #[diesel(sql_type = BigInt)]
     pub max_votes_per_user: i64,
     #[diesel(sql_type = BigInt)]
     pub quadratic_base_cost: i64,
@@ -558,8 +553,8 @@ pub struct NominatedDelegateRow {
     pub address: String,
     #[diesel(sql_type = SmallInt)]
     pub registry_type: i16,
-    #[diesel(sql_type = Nullable<Text>)]
-    pub governance_registry_id: Option<String>,
+    #[diesel(sql_type = Text)]
+    pub governance_registry_id: String,
     #[diesel(sql_type = BigInt)]
     pub upvotes: i64,
     #[diesel(sql_type = BigInt)]
@@ -581,8 +576,8 @@ pub struct DelegateRatingRow {
     pub voter_address: String,
     #[diesel(sql_type = SmallInt)]
     pub registry_type: i16,
-    #[diesel(sql_type = Nullable<Text>)]
-    pub governance_registry_id: Option<String>,
+    #[diesel(sql_type = Text)]
+    pub governance_registry_id: String,
     #[diesel(sql_type = Bool)]
     pub is_active_delegate: bool,
     #[diesel(sql_type = SmallInt)]

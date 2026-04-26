@@ -787,7 +787,7 @@ create_platform() {
     fi
     
     print_info "Creating platform..."
-    myso client call --package $PACKAGE_ID --module platform --function create_platform --args "$registry_id" "$name" "$username" "$description" "$logo_url" "$terms_url" "$privacy_url" "vector[]" "vector[]" "\"$primary_category\"" "$secondary_category" "$status" "$launch_date" "$wants_dao" "option::none()" "option::none()" "option::none()" "option::none()" "option::none()" "option::none()" "option::none()" "option::none()" "option::none()" --gas-budget $GAS_BUDGET
+    myso client call --package $PACKAGE_ID --module platform --function create_platform --args "$registry_id" "$name" "$username" "$description" "$logo_url" "$terms_url" "$privacy_url" "vector[]" "vector[]" "\"$primary_category\"" "$secondary_category" "$status" "$launch_date" "$wants_dao" "option::none()" "option::none()" "option::none()" "option::none()" "option::none()" "option::none()" "option::none()" --gas-budget $GAS_BUDGET
     
     print_success "Platform created!"
     

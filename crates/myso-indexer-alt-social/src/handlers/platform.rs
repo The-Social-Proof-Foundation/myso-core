@@ -112,8 +112,6 @@ struct PlatformCreatedEvent {
     #[serde(default, deserialize_with = "de_opt_u64")]
     proposal_submission_cost: Option<u64>,
     #[serde(default, deserialize_with = "de_opt_u64")]
-    min_on_chain_age_days: Option<u64>,
-    #[serde(default, deserialize_with = "de_opt_u64")]
     max_votes_per_user: Option<u64>,
     #[serde(default, deserialize_with = "de_opt_u64")]
     quadratic_base_cost: Option<u64>,
@@ -273,14 +271,12 @@ fn normalize_dao_fields(
     Option<i64>,
     Option<i64>,
     Option<i64>,
-    Option<i64>,
 ) {
     let explicit_dao = ev.wants_dao_governance.unwrap_or(false);
     let has_governance_registry = ev.governance_registry_id.is_some();
     let has_dao_fields = ev.delegate_count.is_some()
         || ev.delegate_term_epochs.is_some()
         || ev.max_votes_per_user.is_some()
-        || ev.min_on_chain_age_days.is_some()
         || ev.proposal_submission_cost.is_some()
         || ev.quadratic_base_cost.is_some()
         || ev.quorum_votes.is_some()
@@ -293,7 +289,6 @@ fn normalize_dao_fields(
         ev.delegate_count.map(|v| v as i64),
         ev.delegate_term_epochs.map(|v| v as i64),
         ev.max_votes_per_user.map(|v| v as i64),
-        ev.min_on_chain_age_days.map(|v| v as i64),
         ev.proposal_submission_cost.map(|v| v as i64),
         ev.quadratic_base_cost.map(|v| v as i64),
         ev.quorum_votes.map(|v| v as i64),
@@ -313,7 +308,6 @@ fn process_platform_created_event(
         delegate_count,
         delegate_term_epochs,
         max_votes_per_user,
-        min_on_chain_age_days,
         proposal_submission_cost,
         quadratic_base_cost,
         quorum_votes,
@@ -353,7 +347,6 @@ fn process_platform_created_event(
         delegate_count,
         delegate_term_epochs,
         max_votes_per_user,
-        min_on_chain_age_days,
         proposal_submission_cost,
         quadratic_base_cost,
         quorum_votes,

@@ -902,6 +902,9 @@ GovernanceRegistry.delegateCount
 GovernanceRegistry.config
   => {}
 
+GovernanceRegistry.lastDelegatePanelBoundaryEpoch
+  => {}
+
 GovernanceRegistry.stats
   => {}
 
@@ -915,9 +918,6 @@ GovernanceRegistryConfig.delegateTermEpochs
   => {}
 
 GovernanceRegistryConfig.proposalSubmissionCost
-  => {}
-
-GovernanceRegistryConfig.minOnChainAgeDays
   => {}
 
 GovernanceRegistryConfig.maxVotesPerUser
@@ -1955,6 +1955,9 @@ NominatedDelegate.address
 NominatedDelegate.registryType
   => {}
 
+NominatedDelegate.governanceRegistryId
+  => {}
+
 NominatedDelegate.upvotes
   => {}
 
@@ -2183,9 +2186,6 @@ Platform.delegateTermEpochs
 Platform.maxVotesPerUser
   => {}
 
-Platform.minOnChainAgeDays
-  => {}
-
 Platform.proposalSubmissionCost
   => {}
 
@@ -2328,9 +2328,6 @@ PlatformMembershipSummary.delegateTermEpochs
   => {}
 
 PlatformMembershipSummary.maxVotesPerUser
-  => {}
-
-PlatformMembershipSummary.minOnChainAgeDays
   => {}
 
 PlatformMembershipSummary.proposalSubmissionCost

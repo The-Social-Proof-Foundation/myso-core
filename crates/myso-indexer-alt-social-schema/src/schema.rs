@@ -125,7 +125,7 @@ diesel::table! {
         rated_at -> Int8,
         time -> Timestamptz,
         transaction_id -> Text,
-        governance_registry_id -> Nullable<Text>,
+        governance_registry_id -> Text,
     }
 }
 
@@ -147,7 +147,7 @@ diesel::table! {
         id -> Int4,
         address -> Text,
         registry_type -> Int2,
-        governance_registry_id -> Nullable<Text>,
+        governance_registry_id -> Text,
         upvotes -> Int8,
         downvotes -> Int8,
         proposals_reviewed -> Int8,
@@ -196,7 +196,6 @@ diesel::table! {
         delegate_count -> Int8,
         delegate_term_epochs -> Int8,
         proposal_submission_cost -> Int8,
-        min_on_chain_age_days -> Int8,
         max_votes_per_user -> Int8,
         quadratic_base_cost -> Int8,
         voting_period_ms -> Int8,
@@ -532,7 +531,7 @@ diesel::table! {
         status -> Int2,
         time -> Timestamptz,
         transaction_id -> Text,
-        governance_registry_id -> Nullable<Text>,
+        governance_registry_id -> Text,
     }
 }
 
@@ -654,7 +653,6 @@ diesel::table! {
         delegate_count -> Nullable<Int8>,
         delegate_term_epochs -> Nullable<Int8>,
         max_votes_per_user -> Nullable<Int8>,
-        min_on_chain_age_days -> Nullable<Int8>,
         proposal_submission_cost -> Nullable<Int8>,
         quadratic_base_cost -> Nullable<Int8>,
         quorum_votes -> Nullable<Int8>,
@@ -1138,7 +1136,7 @@ diesel::table! {
         pending_anonymous_decryption -> Nullable<Bool>,
         anonymous_decryption_completed_at -> Nullable<Int8>,
         rejection_time -> Nullable<Int8>,
-        governance_registry_id -> Nullable<Text>,
+        governance_registry_id -> Text,
     }
 }
 

@@ -990,9 +990,9 @@ type Delegate {
 	"""
 	downvotes: Int!
 	"""
-	On-chain governance registry object id when `registry_type` is platform (2); null for ecosystem/PoC.
+	On-chain `GovernanceDAO` object id for this delegate row's registry instance.
 	"""
-	governanceRegistryId: String
+	governanceRegistryId: String!
 	"""
 	Whether the delegate is currently active.
 	"""
@@ -1051,7 +1051,7 @@ type Delegate {
 }
 
 type DelegateRating {
-	governanceRegistryId: String
+	governanceRegistryId: String!
 	isActiveDelegate: Boolean!
 	ratedAt: Int!
 	registryType: Int!
@@ -1795,10 +1795,6 @@ type GovernanceRegistryConfig {
 	Max votes per user in community voting.
 	"""
 	maxVotesPerUser: Int!
-	"""
-	Minimum on-chain age in days to submit proposals.
-	"""
-	minOnChainAgeDays: Int!
 	"""
 	Cost to submit a proposal.
 	"""
@@ -3632,6 +3628,10 @@ type NominatedDelegate {
 	"""
 	downvotes: Int!
 	"""
+	On-chain `GovernanceDAO` object id for this nominee row's registry instance.
+	"""
+	governanceRegistryId: String!
+	"""
 	Nomination time (epoch ms).
 	"""
 	nominationTime: Int!
@@ -4151,10 +4151,6 @@ type Platform implements Node {
 	"""
 	members(limit: Int, offset: Int): [PlatformMemberSummary!]
 	"""
-	Min on-chain age in days.
-	"""
-	minOnChainAgeDays: Int
-	"""
 	Moderators of this platform (paginated).
 	"""
 	moderators(limit: Int, offset: Int): [PlatformModeratorSummary!]
@@ -4302,7 +4298,6 @@ type PlatformMembershipSummary {
 	`platform_memberships` row id (stable for this wallet+platform join record).
 	"""
 	membershipId: Int!
-	minOnChainAgeDays: Int
 	moderatorCount: Int!
 	name: String!
 	"""
@@ -5367,9 +5362,9 @@ type Proposal {
 	"""
 	description: String!
 	"""
-	On-chain `GovernanceDAO` object id when this proposal is scoped to a platform registry (`registry_type = 2`).
+	On-chain `GovernanceDAO` object id for this proposal's registry instance.
 	"""
-	governanceRegistryId: String
+	governanceRegistryId: String!
 	"""
 	Implementation time (epoch ms).
 	"""
@@ -5755,7 +5750,7 @@ type Query {
 	**Platform DAO (`registryType` 2) requires `platformId`:** when `registryType` is 2 and `platformId`
 	is omitted, returns an empty list (no cross-platform aggregation).
 	
-	Without `platformId`, only ecosystem/PoC nominee rows are returned (`governance_registry_id` unset).
+	Without `platformId`, nominees are listed for ecosystem/PoC (and other non-platform) registries; each row includes the on-chain DAO id.
 	Unfiltered lists omit `registryType` 2.
 	"""
 	nominatedDelegates(platformId: String, registryType: Int, status: Int, viewer: MySoAddress, limit: Int, offset: Int): [NominatedDelegate!]
