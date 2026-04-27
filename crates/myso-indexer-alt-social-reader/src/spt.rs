@@ -11,7 +11,7 @@ use diesel::SelectableHelper;
 use diesel::sql_types::{Array, BigInt, Bool, Integer, Nullable, Text, Timestamptz};
 use diesel_async::RunQueryDsl;
 use myso_indexer_alt_social_schema::models::{
-    SptHoldingRow, SptPoolRow, SptPriceHistory, SptTransaction, SptReservationHoldingRow,
+    SptHoldingRow, SptPoolRow, SptPriceHistory, SptReservationHoldingRow, SptTransaction,
 };
 use myso_indexer_alt_social_schema::schema::{spt_price_history, spt_transactions};
 
@@ -181,7 +181,7 @@ pub(crate) async fn get_spt_holdings_by_holder(
             HAVING SUM(amount) != 0
         ),
         latest_pools AS (
-            SELECT DISTINCT ON (p.pool_id) p.pool_id, p.owner
+            SELECT DISTINCT ON (p.pool_id) p.pool_id, p.owner, p.token_type, p.associated_id
             FROM spt_pools p
             WHERE p.pool_id IN (SELECT pool_id FROM holdings)
             ORDER BY p.pool_id, time DESC
@@ -193,7 +193,7 @@ pub(crate) async fn get_spt_holdings_by_holder(
             WHERE owner_address IN (SELECT owner FROM latest_pools)
             ORDER BY owner_address, updated_at DESC
         )
-        SELECT h.holder_address, h.pool_id, h.balance, p.owner as profile_owner_address,
+        SELECT h.holder_address, h.pool_id, h.balance, p.token_type, p.associated_id, p.owner as profile_owner_address,
                pr.username as profile_username, pr.display_name as profile_display_name,
                pr.profile_photo as profile_photo, pr.bio as profile_bio,
                pr.selected_badge_id as profile_selected_badge_id,
@@ -241,7 +241,7 @@ pub(crate) async fn get_spt_holdings_by_pool(
             HAVING SUM(amount) != 0
         ),
         latest_pools AS (
-            SELECT DISTINCT ON (p.pool_id) p.pool_id, p.owner
+            SELECT DISTINCT ON (p.pool_id) p.pool_id, p.owner, p.token_type, p.associated_id
             FROM spt_pools p
             WHERE p.pool_id IN (SELECT pool_id FROM holdings)
             ORDER BY p.pool_id, time DESC
@@ -253,7 +253,7 @@ pub(crate) async fn get_spt_holdings_by_pool(
             WHERE owner_address IN (SELECT owner FROM latest_pools)
             ORDER BY owner_address, updated_at DESC
         )
-        SELECT h.holder_address, h.pool_id, h.balance, p.owner as profile_owner_address,
+        SELECT h.holder_address, h.pool_id, h.balance, p.token_type, p.associated_id, p.owner as profile_owner_address,
                pr.username as profile_username, pr.display_name as profile_display_name,
                pr.profile_photo as profile_photo, pr.bio as profile_bio,
                pr.selected_badge_id as profile_selected_badge_id,
@@ -326,7 +326,7 @@ pub(crate) async fn get_spt_pool(
 
     let query = r#"
         WITH latest_pool AS (
-            SELECT pool_id, token_type, owner, associated_id, symbol, name, circulating_supply,
+            SELECT pool_id, token_type, owner, associated_id, circulating_supply,
                    base_price, quadratic_coefficient, created_at, time, transaction_id
             FROM spt_pools
             WHERE pool_id = $1
@@ -358,7 +358,7 @@ pub(crate) async fn get_spt_pool(
             FROM spt_revenue
             WHERE pool_id = $1
         )
-        SELECT p.pool_id, p.token_type, p.owner, p.associated_id, p.symbol, p.name,
+        SELECT p.pool_id, p.token_type, p.owner, p.associated_id,
                p.circulating_supply, p.base_price, p.quadratic_coefficient, p.created_at,
                p.time, p.transaction_id, COALESCE(lp.price, 0)::bigint as price,
                ph24.price as price_24h_ago,
@@ -540,20 +540,20 @@ pub(crate) async fn list_spt_pools(
     let query = format!(
         r#"
         WITH latest_pools AS (
-            SELECT DISTINCT ON (pool_id) pool_id, token_type, owner, associated_id, symbol, name,
+            SELECT DISTINCT ON (pool_id) pool_id, token_type, owner, associated_id,
                    circulating_supply, base_price, quadratic_coefficient, created_at, time, transaction_id
             FROM spt_pools
             WHERE 1=1 {}
             ORDER BY pool_id, time DESC
         ),
+        -- `market_cap` uses numeric so `price * circulating_supply` cannot overflow bigint
+        -- when sorting (nano-SPT supplies are large).
         pool_metrics AS (
             SELECT
                 p.pool_id,
                 p.token_type,
                 p.owner,
                 p.associated_id,
-                p.symbol,
-                p.name,
                 p.circulating_supply,
                 p.base_price,
                 p.quadratic_coefficient,
@@ -566,7 +566,7 @@ pub(crate) async fn list_spt_pools(
                 COALESCE(r.creator_earnings, 0)::bigint as creator_earnings,
                 COALESCE(r.platform_earnings, 0)::bigint as platform_earnings,
                 COALESCE(r.ecosystem_earnings, 0)::bigint as ecosystem_earnings,
-                (COALESCE(ph.price, 0) * p.circulating_supply)::bigint as market_cap,
+                (COALESCE(ph.price, 0)::numeric * p.circulating_supply::numeric) as market_cap,
                 CASE WHEN ph24.price IS NOT NULL AND ph24.price > 0
                     THEN ((COALESCE(ph.price, 0) - ph24.price)::float / ph24.price * 100)
                     ELSE NULL
@@ -595,7 +595,7 @@ pub(crate) async fn list_spt_pools(
                 FROM spt_revenue WHERE pool_id = p.pool_id
             ) r ON true
         )
-        SELECT pool_id, token_type, owner, associated_id, symbol, name, circulating_supply,
+        SELECT pool_id, token_type, owner, associated_id, circulating_supply,
                base_price, quadratic_coefficient, created_at, time, transaction_id, price,
                price_24h_ago, volume_24h, creator_earnings, platform_earnings, ecosystem_earnings
         FROM pool_metrics

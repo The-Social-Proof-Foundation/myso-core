@@ -199,6 +199,11 @@ fn process_analysis_submitted_event(
         return None;
     }
     if ev.media_type != 1 && ev.media_type != 2 && ev.media_type != 3 {
+        tracing::warn!(
+            post_id = %ev.post_id,
+            media_type = ev.media_type,
+            "AnalysisSubmittedEvent ignored: media_type must be 1 (image), 2 (video), or 3 (audio)"
+        );
         return None;
     }
     let evidence_urls_json = ev
@@ -244,6 +249,11 @@ fn process_poc_badge_issued_event(
         return None;
     }
     if ev.media_type != 1 && ev.media_type != 2 && ev.media_type != 3 {
+        tracing::warn!(
+            post_id = %ev.post_id,
+            media_type = ev.media_type,
+            "PoCBadgeIssuedEvent ignored: media_type must be 1, 2, or 3"
+        );
         return None;
     }
     let badge = NewPocBadge {

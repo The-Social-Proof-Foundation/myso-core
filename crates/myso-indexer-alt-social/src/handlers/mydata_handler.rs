@@ -7,9 +7,9 @@ use std::sync::Arc;
 
 use anyhow::Result;
 use async_trait::async_trait;
+use diesel::pg::upsert::excluded;
 use diesel::ExpressionMethods;
 use diesel::QueryDsl;
-use diesel::pg::upsert::excluded;
 use diesel_async::RunQueryDsl;
 use myso_indexer_alt_framework::pipeline::Processor;
 use myso_indexer_alt_framework::postgres::handler::Handler;
@@ -20,15 +20,13 @@ use myso_indexer_alt_social_schema::models::{
     NewMyDataAccessLog, NewMyDataConfig, NewMyDataData, NewMyDataPurchase, NewMyDataQueryBroadPool,
     NewMyDataQueryClaim, NewMyDataQueryDistributionRound, NewMyDataQueryListingSubPool,
     NewMyDataQueryMerkleRoot, NewMyDataQuerySnapshotAnchor, NewMyDataQuerySubPool,
-    NewMyDataRegistry, NewMyDataRevenue,
-    NewMyDataSubscription,
+    NewMyDataRegistry, NewMyDataRevenue, NewMyDataSubscription,
 };
 use myso_indexer_alt_social_schema::schema::{
     mydata_access_logs, mydata_config, mydata_data, mydata_purchases, mydata_query_broad_pools,
     mydata_query_claims, mydata_query_distribution_rounds, mydata_query_listing_sub_pools,
     mydata_query_merkle_roots, mydata_query_snapshot_anchors, mydata_query_sub_pools,
-    mydata_registry, mydata_revenue,
-    mydata_subscriptions,
+    mydata_registry, mydata_revenue, mydata_subscriptions,
 };
 
 use super::common;
@@ -318,7 +316,8 @@ impl Handler for MyDataHandler {
                         .on_conflict(mydata_query_broad_pools::pool_id)
                         .do_update()
                         .set((
-                            mydata_query_broad_pools::name.eq(excluded(mydata_query_broad_pools::name)),
+                            mydata_query_broad_pools::name
+                                .eq(excluded(mydata_query_broad_pools::name)),
                             mydata_query_broad_pools::created_at_ms
                                 .eq(excluded(mydata_query_broad_pools::created_at_ms)),
                             mydata_query_broad_pools::event_id
@@ -384,14 +383,12 @@ impl Handler for MyDataHandler {
                             )),
                             mydata_query_distribution_rounds::merkle_root
                                 .eq(excluded(mydata_query_distribution_rounds::merkle_root)),
-                            mydata_query_distribution_rounds::published_at_ms.eq(excluded(
-                                mydata_query_distribution_rounds::published_at_ms,
-                            )),
+                            mydata_query_distribution_rounds::published_at_ms
+                                .eq(excluded(mydata_query_distribution_rounds::published_at_ms)),
                             mydata_query_distribution_rounds::event_id
                                 .eq(excluded(mydata_query_distribution_rounds::event_id)),
-                            mydata_query_distribution_rounds::transaction_id.eq(excluded(
-                                mydata_query_distribution_rounds::transaction_id,
-                            )),
+                            mydata_query_distribution_rounds::transaction_id
+                                .eq(excluded(mydata_query_distribution_rounds::transaction_id)),
                         ))
                         .execute(conn)
                         .await?;
@@ -417,10 +414,7 @@ impl Handler for MyDataHandler {
                 MyDataRow::MyDataQueryClaim(c) => {
                     total += diesel::insert_into(mydata_query_claims::table)
                         .values(c)
-                        .on_conflict((
-                            mydata_query_claims::event_id,
-                            mydata_query_claims::time,
-                        ))
+                        .on_conflict((mydata_query_claims::event_id, mydata_query_claims::time))
                         .do_nothing()
                         .execute(conn)
                         .await?;

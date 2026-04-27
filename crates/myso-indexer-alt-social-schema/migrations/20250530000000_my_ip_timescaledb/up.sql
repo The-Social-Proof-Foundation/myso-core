@@ -231,7 +231,7 @@ SELECT
     l.name,
     l.creator,
     l.license_type,
-    COUNT(p.id) AS post_count,
+    COUNT(*) AS post_count,
     SUM(p.reaction_count) AS total_reactions,
     SUM(p.comment_count) AS total_comments,
     SUM(p.repost_count) AS total_reposts,

@@ -14,11 +14,13 @@ module social_contracts::post_tests {
     use myso::object;
     use myso::transfer;
     use myso::coin;
+    use myso::clock::{Self, Clock};
+    use myso::test_utils;
     
     use social_contracts::post::{Self, Post, Comment, PostConfig, PromotionData};
     use social_contracts::profile::UsernameRegistry;
     use social_contracts::block_list::{Self, BlockListRegistry};
-    use social_contracts::mydata::{Self, MyDataRegistry};
+    use social_contracts::mydata::{Self, MyData, MyDataConfig, MyDataRegistry};
     
     // Test constants
     const TEST_CONTENT: vector<u8> = b"This is a test post";
@@ -923,6 +925,117 @@ module social_contracts::post_tests {
             assert!(promotion_id != @0x0, 2);
         };
         
+        test_scenario::end(scenario);
+    }
+
+    /// Shared setup: MyData system objects and a `Clock` for `create_and_share` tests.
+    fun init_mydata_clock_and_registry(scenario: &mut test_scenario::Scenario) {
+        test_scenario::next_tx(scenario, USER1);
+        {
+            mydata::test_init(test_scenario::ctx(scenario));
+        };
+        test_scenario::next_tx(scenario, USER1);
+        {
+            let _w = test_utils::create_one_time_witness<myso::myso::MYSO>();
+            clock::share_for_testing(clock::create_for_testing(test_scenario::ctx(scenario)));
+        };
+    }
+
+    /// Creates a registered MyData as `USER1` and returns its on-chain id.
+    fun create_registered_mydata_for_user1(scenario: &mut test_scenario::Scenario): address {
+        test_scenario::next_tx(scenario, USER1);
+        {
+            let config = test_scenario::take_shared<MyDataConfig>(scenario);
+            let mut registry = test_scenario::take_shared<MyDataRegistry>(scenario);
+            let clock = test_scenario::take_shared<Clock>(scenario);
+            mydata::create_and_share(
+                &config,
+                &mut registry,
+                string::utf8(b"data"),
+                vector[string::utf8(b"test")],
+                option::none<address>(),
+                1000,
+                option::none<u64>(),
+                b"encrypted_data",
+                b"encryption_id",
+                option::some(100),
+                option::some(50),
+                30,
+                option::none(),
+                option::none(),
+                option::none(),
+                option::none(),
+                false,
+                option::none(),
+                &clock,
+                test_scenario::ctx(scenario)
+            );
+            test_scenario::return_shared(config);
+            test_scenario::return_shared(registry);
+            test_scenario::return_shared(clock);
+        };
+        test_scenario::next_tx(scenario, USER1);
+        {
+            let m = test_scenario::take_shared<MyData>(scenario);
+            let ip_id = mydata::object_address(&m);
+            test_scenario::return_shared(m);
+            ip_id
+        }
+    }
+
+    #[test]
+    fun test_mydata_id_assert_none_ok() {
+        let mut scenario = test_scenario::begin(USER1);
+        init_mydata_clock_and_registry(&mut scenario);
+        test_scenario::next_tx(&mut scenario, USER1);
+        {
+            let reg = test_scenario::take_shared<MyDataRegistry>(&scenario);
+            post::test_assert_mydata_id_allowed_for_owner(USER1, option::none(), &reg);
+            test_scenario::return_shared(reg);
+        };
+        test_scenario::end(scenario);
+    }
+
+    #[test]
+    #[expected_failure(abort_code = 32, location = social_contracts::post)]
+    fun test_mydata_id_not_registered_aborts() {
+        let mut scenario = test_scenario::begin(USER1);
+        init_mydata_clock_and_registry(&mut scenario);
+        test_scenario::next_tx(&mut scenario, USER1);
+        {
+            let reg = test_scenario::take_shared<MyDataRegistry>(&scenario);
+            post::test_assert_mydata_id_allowed_for_owner(USER1, option::some(@0x999), &reg);
+            test_scenario::return_shared(reg);
+        };
+        test_scenario::end(scenario);
+    }
+
+    #[test]
+    fun test_mydata_id_owner_matches_ok() {
+        let mut scenario = test_scenario::begin(USER1);
+        init_mydata_clock_and_registry(&mut scenario);
+        let ip_id = create_registered_mydata_for_user1(&mut scenario);
+        test_scenario::next_tx(&mut scenario, USER1);
+        {
+            let reg = test_scenario::take_shared<MyDataRegistry>(&scenario);
+            post::test_assert_mydata_id_allowed_for_owner(USER1, option::some(ip_id), &reg);
+            test_scenario::return_shared(reg);
+        };
+        test_scenario::end(scenario);
+    }
+
+    #[test]
+    #[expected_failure(abort_code = 33, location = social_contracts::post)]
+    fun test_mydata_id_wrong_owner_aborts() {
+        let mut scenario = test_scenario::begin(USER1);
+        init_mydata_clock_and_registry(&mut scenario);
+        let ip_id = create_registered_mydata_for_user1(&mut scenario);
+        test_scenario::next_tx(&mut scenario, USER2);
+        {
+            let reg = test_scenario::take_shared<MyDataRegistry>(&scenario);
+            post::test_assert_mydata_id_allowed_for_owner(USER2, option::some(ip_id), &reg);
+            test_scenario::return_shared(reg);
+        };
         test_scenario::end(scenario);
     }
 }

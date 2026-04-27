@@ -28,13 +28,14 @@ pub use insurance::{
     InsuranceVaultInfo, InsuranceVaultRow, InsuranceVaultTransactionRow,
 };
 pub use mydata::{
-    AccessAnalytics, AccessLogInfo, DailyRevenue, MyDataBasic, MyDataConfigInfo, MyDataQueryBroadPoolInfo,
-    MyDataQueryClaimInfo, MyDataQueryDistributionRoundInfo, MyDataQueryListingSubPoolInfo,
-    MyDataQueryMerkleRootInfo, MyDataQuerySnapshotAnchorInfo, MyDataQuerySubPoolInfo,
-    MyDataStatsResponse, PurchaseInfo, RevenueInfo, SubscriptionInfo,
+    AccessAnalytics, AccessLogInfo, DailyRevenue, MyDataBasic, MyDataConfigInfo,
+    MyDataQueryBroadPoolInfo, MyDataQueryClaimInfo, MyDataQueryDistributionRoundInfo,
+    MyDataQueryListingSubPoolInfo, MyDataQueryMerkleRootInfo, MyDataQuerySnapshotAnchorInfo,
+    MyDataQuerySubPoolInfo, MyDataStatsResponse, PurchaseInfo, RevenueInfo, SubscriptionInfo,
 };
 pub use myso_indexer_alt_social_schema::models::{
-    PostTransfer, ProfileOffer, ProfilePlatformMembershipRow, ProfileSaleFee,
+    PostDeletionEventRow, PostModerationEventRow, PostReport, PostTransfer, ProfileOffer,
+    ProfilePlatformMembershipRow, ProfileSaleFee,
 };
 pub use platform::{
     PlatformApprovalRow, PlatformBlockedProfileRow, PlatformEventRow, PlatformMemberRow,

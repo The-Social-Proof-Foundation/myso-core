@@ -22,15 +22,15 @@ use myso_indexer_alt_framework::FieldCount;
 use myso_indexer_alt_social_schema::models::{
     NewSocialProofTokensConfig, NewSocialProofTokensEvent, NewSptExchangeConfig, NewSptHolding,
     NewSptPool, NewSptPriceHistory, NewSptReservation, NewSptReservationPool, NewSptRevenue,
-    NewSptTransaction, NewUnifiedRevenue, ProfileUpdateSet, RESERVATION_POOL_STATUS_ACTIVE,
-    RESERVATION_POOL_STATUS_THRESHOLD_MET, REVENUE_TYPE_SPT_CREATOR_FEE,
-    REVENUE_TYPE_SPT_PLATFORM_FEE, REVENUE_TYPE_SPT_TREASURY_FEE, SptExchangeConfigChangeset,
+    NewSptTransaction, NewUnifiedRevenue, ProfileUpdateSet, SptExchangeConfigChangeset,
+    RESERVATION_POOL_STATUS_ACTIVE, RESERVATION_POOL_STATUS_THRESHOLD_MET,
+    REVENUE_TYPE_SPT_CREATOR_FEE, REVENUE_TYPE_SPT_PLATFORM_FEE, REVENUE_TYPE_SPT_TREASURY_FEE,
     TOKEN_TYPE_POST,
 };
 use myso_indexer_alt_social_schema::schema::{
-    ecosystem_treasury, posts, profiles, spt_config, spt_events,
-    spt_exchange_config, spt_holdings, spt_pools, spt_price_history, spt_reservation_pools,
-    spt_reservations, spt_revenue, spt_transactions, unified_revenue,
+    ecosystem_treasury, posts, profiles, spt_config, spt_events, spt_exchange_config, spt_holdings,
+    spt_pools, spt_price_history, spt_reservation_pools, spt_reservations, spt_revenue,
+    spt_transactions, unified_revenue,
 };
 
 use super::common;
@@ -285,14 +285,9 @@ pub(crate) fn proportional_spt_launch_holdings(
     let floored_sum: i128 = amounts.values().sum();
     let delta = supply - floored_sum;
     let owner_entry = amounts.entry(owner.to_string()).or_insert(0);
-    *owner_entry = owner_entry
-        .checked_add(delta)
-        .ok_or_else(|| {
-            anyhow::anyhow!(
-                "spt launch: owner remainder overflow for pool {}",
-                pool_id
-            )
-        })?;
+    *owner_entry = owner_entry.checked_add(delta).ok_or_else(|| {
+        anyhow::anyhow!("spt launch: owner remainder overflow for pool {}", pool_id)
+    })?;
 
     let final_sum: i128 = amounts.values().sum();
     if final_sum != supply {
@@ -476,7 +471,7 @@ impl Handler for SptHandler {
                     transaction_id,
                 } => {
                     if *circulating_supply > 0 {
-                    let canon: Option<SptReservationCanonPoolRow> = diesel::sql_query(
+                        let canon: Option<SptReservationCanonPoolRow> = diesel::sql_query(
                         "SELECT pool_id FROM spt_reservation_pools WHERE associated_id = $1 ORDER BY time DESC LIMIT 1",
                     )
                     .bind::<Text, _>(associated_id)
@@ -484,72 +479,75 @@ impl Handler for SptHandler {
                     .await
                     .optional()?;
 
-                    let reservation_pool_key = canon
-                        .map(|c| c.pool_id)
-                        .unwrap_or_else(|| format!("reservation_pool_{}", associated_id));
-                    let placeholder = format!("reservation_pool_{}", associated_id);
+                        let reservation_pool_key = canon
+                            .map(|c| c.pool_id)
+                            .unwrap_or_else(|| format!("reservation_pool_{}", associated_id));
+                        let placeholder = format!("reservation_pool_{}", associated_id);
 
-                    let aggs: Vec<SptReserverAggRow> = diesel::sql_query(
-                        r#"SELECT reserver_address, SUM(amount)::bigint AS net_myso
+                        let aggs: Vec<SptReserverAggRow> = diesel::sql_query(
+                            r#"SELECT reserver_address, SUM(amount)::bigint AS net_myso
  FROM spt_reservations
                          WHERE pool_id = $1 OR pool_id = $2
                          GROUP BY reserver_address
                          HAVING SUM(amount) > 0"#,
-                    )
-                    .bind::<Text, _>(&reservation_pool_key)
-                    .bind::<Text, _>(&placeholder)
-                    .load(conn)
-                    .await?;
+                        )
+                        .bind::<Text, _>(&reservation_pool_key)
+                        .bind::<Text, _>(&placeholder)
+                        .load(conn)
+                        .await?;
 
-                    if *total_reserved_at_launch > 0 && aggs.is_empty() {
-                        return Err(anyhow::anyhow!(
+                        if *total_reserved_at_launch > 0 && aggs.is_empty() {
+                            return Err(anyhow::anyhow!(
                             "spt launch: expected reservation rows for pool {} (associated {}); index reservations before token pool or replay checkpoint",
                             pool_id,
                             associated_id
                         ));
-                    }
-
-                    let ledger_sum: i128 = aggs.iter().map(|a| a.net_myso as i128).sum();
-                    if ledger_sum != *total_reserved_at_launch as i128 {
-                        tracing::warn!(
-                            target: "social_indexer::spt",
-                            associated_id = %associated_id,
-                            pool_id = %pool_id,
-                            ledger_sum,
-                            total_reserved_at_launch,
-                            "spt launch: reservation ledger sum differs from on-chain total_reserved_at_launch",
-                        );
-                    }
-
-                    let amounts = proportional_spt_launch_holdings(
-                        &aggs,
-                        *total_reserved_at_launch,
-                        *circulating_supply,
-                        owner,
-                        pool_id,
-                        associated_id,
-                    )?;
-
-                    for (holder_address, amt) in amounts {
-                        if amt == 0 {
-                            continue;
                         }
-                        let amt_i64 = i64::try_from(amt).map_err(|_| {
-                            anyhow::anyhow!("spt launch: holding amount overflow for pool {}", pool_id)
-                        })?;
-                        let h = NewSptHolding {
-                            pool_id: pool_id.clone(),
-                            holder_address,
-                            amount: amt_i64,
-                            acquired_at: *created_at,
-                            time: *time,
-                            transaction_id: transaction_id.clone(),
-                        };
-                        total += diesel::insert_into(spt_holdings::table)
-                            .values(h)
-                            .execute(conn)
-                            .await?;
-                    }
+
+                        let ledger_sum: i128 = aggs.iter().map(|a| a.net_myso as i128).sum();
+                        if ledger_sum != *total_reserved_at_launch as i128 {
+                            tracing::warn!(
+                                target: "social_indexer::spt",
+                                associated_id = %associated_id,
+                                pool_id = %pool_id,
+                                ledger_sum,
+                                total_reserved_at_launch,
+                                "spt launch: reservation ledger sum differs from on-chain total_reserved_at_launch",
+                            );
+                        }
+
+                        let amounts = proportional_spt_launch_holdings(
+                            &aggs,
+                            *total_reserved_at_launch,
+                            *circulating_supply,
+                            owner,
+                            pool_id,
+                            associated_id,
+                        )?;
+
+                        for (holder_address, amt) in amounts {
+                            if amt == 0 {
+                                continue;
+                            }
+                            let amt_i64 = i64::try_from(amt).map_err(|_| {
+                                anyhow::anyhow!(
+                                    "spt launch: holding amount overflow for pool {}",
+                                    pool_id
+                                )
+                            })?;
+                            let h = NewSptHolding {
+                                pool_id: pool_id.clone(),
+                                holder_address,
+                                amount: amt_i64,
+                                acquired_at: *created_at,
+                                time: *time,
+                                transaction_id: transaction_id.clone(),
+                            };
+                            total += diesel::insert_into(spt_holdings::table)
+                                .values(h)
+                                .execute(conn)
+                                .await?;
+                        }
                     }
                 }
                 SptRow::SptReservationPool(rp) => {
@@ -1250,15 +1248,8 @@ mod proportional_spt_launch_tests {
                 net_myso: 400,
             },
         ];
-        let m = proportional_spt_launch_holdings(
-            &aggs,
-            1000,
-            10,
-            "0xowner",
-            "0xpool",
-            "0xassoc",
-        )
-        .unwrap();
+        let m = proportional_spt_launch_holdings(&aggs, 1000, 10, "0xowner", "0xpool", "0xassoc")
+            .unwrap();
         assert_eq!(m["0xa"], 6);
         assert_eq!(m["0xb"], 4);
     }

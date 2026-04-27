@@ -856,6 +856,14 @@ type CommentSummary {
 	commentId: String!
 	content: String!
 	createdAt: Int!
+	"""
+	Deletion events for this comment (paginated, newest first).
+	"""
+	deletionEvents(limit: Int, offset: Int): [PostDeletionEvent!]
+	"""
+	Platform moderation actions on this comment (paginated, newest first).
+	"""
+	moderationEvents(limit: Int, offset: Int): [PostModerationEvent!]
 	owner: String!
 	"""
 	Profile of the comment owner (username, display name, photo, etc.).
@@ -865,6 +873,10 @@ type CommentSummary {
 	postId: String!
 	profileId: String!
 	reactionCount: Int!
+	"""
+	User reports filed against this comment (paginated, newest first).
+	"""
+	reports(limit: Int, offset: Int): [PostReport!]
 }
 
 type CommunityVote {
@@ -4598,6 +4610,10 @@ type Post implements Node {
 	"""
 	createdAt: Int!
 	"""
+	Deletion events for this post (paginated, newest first).
+	"""
+	deletionEvents(limit: Int, offset: Int): [PostDeletionEvent!]
+	"""
 	Opt-in for Proof of Creativity analysis.
 	"""
 	enablePoc: Boolean!
@@ -4617,6 +4633,18 @@ type Post implements Node {
 	Mentions (JSON).
 	"""
 	mentions: JSON
+	"""
+	Platform moderation actions on this post (paginated, newest first).
+	"""
+	moderationEvents(limit: Int, offset: Int): [PostModerationEvent!]
+	"""
+	Indexed MyData record when `mydata_id` is set and found in the indexer.
+	"""
+	mydata: MyDataRecord
+	"""
+	Optional linked MyData object id.
+	"""
+	mydataId: String
 	"""
 	The wallet address of the post owner.
 	"""
@@ -4693,6 +4721,10 @@ type Post implements Node {
 	Reactions on this post (paginated).
 	"""
 	reactions(limit: Int, offset: Int): [ReactionSummary!]
+	"""
+	User reports filed against this post (paginated, newest first).
+	"""
+	reports(limit: Int, offset: Int): [PostReport!]
 	"""
 	Number of reposts.
 	"""
@@ -4804,6 +4836,98 @@ type PostConfig {
 	Configuration version.
 	"""
 	version: Int!
+}
+
+type PostDeletionEvent {
+	"""
+	Epoch milliseconds when the chain recorded deletion.
+	"""
+	deletedAt: Int!
+	"""
+	Database id for this deletion row.
+	"""
+	eventId: Int!
+	"""
+	True if the deleted object was a post; false if a comment.
+	"""
+	isPost: Boolean!
+	"""
+	Post or comment id that was deleted.
+	"""
+	objectId: String!
+	owner: MySoAddress!
+	"""
+	Profile of the owner (at deletion time).
+	"""
+	ownerProfile: ProfileSummary
+	"""
+	Parent post id (for comment deletions) or the post id for post deletions, when set.
+	"""
+	postId: String
+	postType: String
+	profileId: String!
+	"""
+	Hypertable timestamp for this row.
+	"""
+	time: DateTime!
+	transactionId: String!
+}
+
+type PostModerationEvent {
+	"""
+	Database id for this moderation row.
+	"""
+	eventId: Int!
+	"""
+	When the action was recorded (epoch milliseconds; set by the indexer when absent on-chain).
+	"""
+	moderatedAt: Int!
+	moderatedBy: MySoAddress!
+	"""
+	Profile of the moderator.
+	"""
+	moderatedByProfile: ProfileSummary
+	"""
+	Post or comment id that was moderated.
+	"""
+	objectId: String!
+	platformId: String!
+	removed: Boolean!
+	"""
+	Hypertable timestamp for this row.
+	"""
+	time: DateTime!
+	transactionId: String!
+}
+
+type PostReport {
+	description: String!
+	"""
+	True if the report targets a comment; false if it targets a post.
+	"""
+	isComment: Boolean!
+	"""
+	Post or comment id that was reported.
+	"""
+	objectId: String!
+	"""
+	On-chain user report reason code.
+	"""
+	reasonCode: Int!
+	"""
+	Database id for this report row.
+	"""
+	reportId: Int!
+	"""
+	When the report was filed (epoch milliseconds, chain timestamp).
+	"""
+	reportedAt: Int!
+	reporter: MySoAddress!
+	"""
+	Profile of the reporter.
+	"""
+	reporterProfile: ProfileSummary
+	transactionId: String!
 }
 
 type PostTransferSummary {
@@ -6326,7 +6450,10 @@ type SimulationResult {
 
 type SocialProofToken {
 	basePrice: Int
-	circulatingSupply: Int
+	"""
+	Circulating supply in nano-SPT (`10^9` units per display token).
+	"""
+	circulatingSupply: BigInt
 	createdAt: Int
 	creatorEarnings: Int
 	currentPrice: Int
@@ -6336,8 +6463,10 @@ type SocialProofToken {
 	"""
 	formerReservationHolders(viewer: MySoAddress, prioritizeFollowed: Boolean, limit: Int, offset: Int): [SptReservationHolding!]
 	isActive: Boolean!
-	marketCap: Int
-	name: String
+	"""
+	Market cap: current price (MYSO smallest units) × circulating supply (nano-SPT).
+	"""
+	marketCap: BigInt
 	owner: MySoAddress
 	platformEarnings: Int
 	poolId: String
@@ -6350,7 +6479,6 @@ type SocialProofToken {
 	reservationPercentage: Float!
 	reservationPoolId: String
 	reservationStatus: String!
-	symbol: String
 	tokenAddress: String
 	tokenType: Int
 	totalReserved: Int!
@@ -6748,9 +6876,13 @@ type SptHolding {
 	"""
 	address: MySoAddress!
 	"""
-	Token balance held.
+	Token balance held (nano-SPT).
 	"""
-	amount: Int!
+	amount: BigInt!
+	"""
+	Profile or post object id this SPT is tied to (subject of the token).
+	"""
+	associatedId: String!
 	"""
 	Holder blocked the viewer.
 	"""
@@ -6760,9 +6892,17 @@ type SptHolding {
 	"""
 	blockedByViewer: Boolean
 	"""
-	Profile whose token this holding represents.
+	Post for this holding when `tokenType` is post; null for profile SPTs or if the post is not indexed.
+	"""
+	post: Post
+	"""
+	Token pool owner / creator (author) profile, not the post content for post SPTs.
 	"""
 	profile: ProfileSummary!
+	"""
+	Token type (`1` = profile, `2` = post).
+	"""
+	tokenType: Int!
 	"""
 	Holder follows the viewer.
 	"""
@@ -6796,13 +6936,9 @@ type SptPool {
 	"""
 	holders(viewer: MySoAddress, prioritizeFollowed: Boolean, limit: Int, offset: Int): [SptHolding!]
 	"""
-	Market cap (price * circulating supply).
+	Market cap (price in MYSO smallest units × circulating supply in nano-SPT).
 	"""
-	marketCap: Int!
-	"""
-	Token name.
-	"""
-	name: String!
+	marketCap: BigInt!
 	"""
 	Pool owner address.
 	"""
@@ -6836,17 +6972,13 @@ type SptPool {
 	"""
 	reservationHolders(viewer: MySoAddress, prioritizeFollowed: Boolean, limit: Int, offset: Int): [SptReservationHolding!]
 	"""
-	Token symbol.
-	"""
-	symbol: String!
-	"""
 	Token type (1=profile, 2=post).
 	"""
 	tokenType: Int!
 	"""
-	Total circulating supply.
+	Total circulating supply (nano-SPT).
 	"""
-	totalSupply: Int!
+	totalSupply: BigInt!
 	"""
 	Recent transactions for this pool.
 	"""
@@ -6859,9 +6991,9 @@ type SptPool {
 
 type SptPriceHistory {
 	"""
-	Circulating supply at this point.
+	Circulating supply at this point (nano-SPT).
 	"""
-	circulatingSupply: Int!
+	circulatingSupply: BigInt!
 	"""
 	Pool ID.
 	"""
@@ -6885,6 +7017,10 @@ type SptReservationHolding {
 	Reserved amount.
 	"""
 	amount: Int!
+	"""
+	Profile or post object id this reservation pool is for (subject of the token).
+	"""
+	associatedId: String!
 	blockedBySubject: Boolean
 	blockedByViewer: Boolean
 	"""
@@ -6896,7 +7032,11 @@ type SptReservationHolding {
 	"""
 	poolStatus: String!
 	"""
-	Profile whose token this reservation is for.
+	Post for this reservation when `tokenType` is post; null for profile SPTs or if the post is not indexed.
+	"""
+	post: Post
+	"""
+	Token pool owner / creator (author) profile, not the post content for post SPTs.
 	"""
 	profile: ProfileSummary!
 	"""
@@ -6919,6 +7059,10 @@ type SptReservationHolding {
 	Whether the reservation pool threshold is met.
 	"""
 	thresholdMet: Boolean!
+	"""
+	Token type (`1` = profile, `2` = post).
+	"""
+	tokenType: Int!
 	"""
 	Total reserved across all reservers in this pool.
 	"""
@@ -6981,9 +7125,9 @@ enum SptSortBy {
 
 type SptTransaction {
 	"""
-	Token amount.
+	Token amount (nano-SPT).
 	"""
-	amount: Int!
+	amount: BigInt!
 	"""
 	Sender blocked the viewer.
 	"""

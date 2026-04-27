@@ -5,14 +5,15 @@ use std::str::FromStr;
 
 use async_graphql::Context;
 use async_graphql::Object;
-use tracing::warn;
 use myso_indexer_alt_social_reader::{
     ProfileBadgeRow, ProfileByAddressResponse, ReservationStatus, SelectedBadgeInfo,
     SocialProofTokenInfo,
 };
 use myso_indexer_alt_social_schema::models::Profile as SchemaProfile;
+use tracing::warn;
 
 use crate::api::resolve_profile::resolve_profile_summary;
+use crate::api::scalars::big_int::BigInt;
 use crate::api::scalars::id::Id;
 use crate::api::scalars::myso_address::MySoAddress;
 use crate::api::types::blocked::{BlockedPlatformSummary, BlockedProfileSummary};
@@ -654,16 +655,9 @@ impl SocialProofToken {
         self.inner.required_threshold
     }
 
-    async fn symbol(&self) -> Option<&str> {
-        self.inner.symbol.as_deref()
-    }
-
-    async fn name(&self) -> Option<&str> {
-        self.inner.name.as_deref()
-    }
-
-    async fn circulating_supply(&self) -> Option<i64> {
-        self.inner.circulating_supply
+    /// Circulating supply in nano-SPT (`10^9` units per display token).
+    async fn circulating_supply(&self) -> Option<BigInt> {
+        self.inner.circulating_supply.map(BigInt::from)
     }
 
     async fn base_price(&self) -> Option<i64> {
@@ -674,8 +668,12 @@ impl SocialProofToken {
         self.inner.current_price
     }
 
-    async fn market_cap(&self) -> Option<i64> {
-        self.inner.market_cap
+    /// Market cap: current price (MYSO smallest units) × circulating supply (nano-SPT).
+    async fn market_cap(&self) -> Option<BigInt> {
+        self.inner
+            .market_cap
+            .as_ref()
+            .and_then(|s| BigInt::from_str(s).ok())
     }
 
     async fn price_change_24h(&self) -> Option<f64> {

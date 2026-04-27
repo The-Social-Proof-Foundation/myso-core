@@ -1,7 +1,7 @@
 // Copyright (c) The Social Proof Foundation, LLC.
 // SPDX-License-Identifier: Apache-2.0
 
-use diesel::sql_types::{BigInt, Double, Nullable, SmallInt, Text};
+use diesel::sql_types::{BigInt, Bool, Double, Nullable, SmallInt, Text};
 use diesel::OptionalExtension;
 use diesel::QueryableByName;
 use diesel_async::RunQueryDsl;
@@ -16,7 +16,7 @@ pub(crate) async fn get_spt_pool(
 ) -> Result<Option<SptPoolRow>, SocialError> {
     let mut conn = db.connect().await?;
     let query = "
-        SELECT pool_id, token_type, owner, associated_id, symbol, name, circulating_supply,
+        SELECT pool_id, token_type, owner, associated_id, circulating_supply,
                base_price, quadratic_coefficient, created_at, time, transaction_id
         FROM spt_pools
         WHERE pool_id = $1
@@ -40,7 +40,7 @@ pub(crate) async fn list_spt_pools(
 ) -> Result<Vec<SptPoolRow>, SocialError> {
     let mut conn = db.connect().await?;
     let query = "
-        SELECT pool_id, token_type, owner, associated_id, symbol, name, circulating_supply,
+        SELECT pool_id, token_type, owner, associated_id, circulating_supply,
                base_price, quadratic_coefficient, created_at, time, transaction_id
         FROM (SELECT DISTINCT ON (pool_id) * FROM spt_pools ORDER BY pool_id, time DESC) p
         WHERE ($1::text IS NULL OR owner = $1)
@@ -406,12 +406,12 @@ pub(crate) async fn get_spt_analytics_top_performers(
             GROUP BY pool_id
         ),
         pool_info AS (
-            SELECT DISTINCT ON (pool_id) pool_id, name, symbol
+            SELECT DISTINCT ON (pool_id) pool_id
             FROM spt_pools
             ORDER BY pool_id, time DESC
         )
         SELECT
-            p.pool_id, p.name, p.symbol,
+            p.pool_id,
             COALESCE(cp.current_price, 0) as current_price,
             COALESCE(pp.previous_price, 0) as previous_price,
             COALESCE(cv.vol, 0) as current_volume,
@@ -434,10 +434,6 @@ pub(crate) async fn get_spt_analytics_top_performers(
     struct Row {
         #[diesel(sql_type = Text)]
         pool_id: String,
-        #[diesel(sql_type = Text)]
-        name: String,
-        #[diesel(sql_type = Text)]
-        symbol: String,
         #[diesel(sql_type = BigInt)]
         current_price: i64,
         #[diesel(sql_type = BigInt)]
@@ -457,8 +453,6 @@ pub(crate) async fn get_spt_analytics_top_performers(
         .map(|r| {
             serde_json::json!({
                 "pool_id": r.pool_id,
-                "name": r.name,
-                "symbol": r.symbol,
                 "current_price": r.current_price,
                 "previous_price": r.previous_price,
                 "current_volume": r.current_volume,
@@ -494,12 +488,12 @@ pub(crate) async fn get_spt_portfolio_performance(
             ORDER BY pool_id, time DESC
         ),
         pool_info AS (
-            SELECT DISTINCT ON (pool_id) pool_id, name, symbol
+            SELECT DISTINCT ON (pool_id) pool_id
             FROM spt_pools
             ORDER BY pool_id, time DESC
         )
         SELECT 
-            h.pool_id, p.name, p.symbol, h.amount,
+            h.pool_id, h.amount,
             h.amount * cp.price as current_value,
             COALESCE(it.price * h.amount, 0) as initial_value,
             CASE WHEN COALESCE(it.price * h.amount, 0) = 0 THEN 0.0
@@ -515,10 +509,6 @@ pub(crate) async fn get_spt_portfolio_performance(
     struct HoldingRow {
         #[diesel(sql_type = Text)]
         pool_id: String,
-        #[diesel(sql_type = Text)]
-        name: String,
-        #[diesel(sql_type = Text)]
-        symbol: String,
         #[diesel(sql_type = BigInt)]
         amount: i64,
         #[diesel(sql_type = BigInt)]
@@ -544,8 +534,6 @@ pub(crate) async fn get_spt_portfolio_performance(
         .map(|h| {
             serde_json::json!({
                 "pool_id": h.pool_id,
-                "name": h.name,
-                "symbol": h.symbol,
                 "amount": h.amount,
                 "current_value": h.current_value,
                 "initial_value": h.initial_value,
@@ -572,7 +560,7 @@ pub(crate) async fn get_spt_creator_revenue_streams(
     let mut conn = db.connect().await?;
     let query = r#"
         WITH token_pools AS (
-            SELECT DISTINCT ON (pool_id) pool_id, name, symbol
+            SELECT DISTINCT ON (pool_id) pool_id
             FROM spt_pools
             WHERE owner = $1
             ORDER BY pool_id, time DESC
@@ -592,7 +580,7 @@ pub(crate) async fn get_spt_creator_revenue_streams(
             GROUP BY pool_id
         )
         SELECT 
-            tp.pool_id, tp.name, tp.symbol,
+            tp.pool_id,
             COALESCE(bt.buy_revenue, 0) as buy_revenue,
             COALESCE(st.sell_revenue, 0) as sell_revenue,
             COALESCE(bt.buy_revenue, 0) + COALESCE(st.sell_revenue, 0) as total_revenue,
@@ -606,10 +594,6 @@ pub(crate) async fn get_spt_creator_revenue_streams(
     struct Row {
         #[diesel(sql_type = Text)]
         pool_id: String,
-        #[diesel(sql_type = Text)]
-        name: String,
-        #[diesel(sql_type = Text)]
-        symbol: String,
         #[diesel(sql_type = BigInt)]
         buy_revenue: i64,
         #[diesel(sql_type = BigInt)]
@@ -631,8 +615,6 @@ pub(crate) async fn get_spt_creator_revenue_streams(
         .map(|r| {
             serde_json::json!({
                 "pool_id": r.pool_id,
-                "name": r.name,
-                "symbol": r.symbol,
                 "total_revenue": r.total_revenue,
                 "buy_revenue": r.buy_revenue,
                 "sell_revenue": r.sell_revenue,
@@ -800,26 +782,21 @@ pub(crate) async fn get_spt_liquidity_profile(
 ) -> Result<serde_json::Value, SocialError> {
     let mut conn = db.connect().await?;
     let pool_query = "
-        SELECT name, symbol
-        FROM spt_pools
-        WHERE pool_id = $1
-        ORDER BY time DESC
-        LIMIT 1
+        SELECT EXISTS(
+            SELECT 1 FROM spt_pools WHERE pool_id = $1
+        ) AS pool_exists
     ";
     #[derive(QueryableByName)]
-    struct PoolRow {
-        #[diesel(sql_type = Text)]
-        name: String,
-        #[diesel(sql_type = Text)]
-        symbol: String,
+    struct PoolExistsRow {
+        #[diesel(sql_type = Bool)]
+        pool_exists: bool,
     }
-    let pool_info: Option<PoolRow> = diesel::sql_query(pool_query)
+    let pool_info: PoolExistsRow = diesel::sql_query(pool_query)
         .bind::<Text, _>(pool_id)
         .get_result(&mut conn)
-        .await
-        .optional()?;
+        .await?;
 
-    if let Some(p) = pool_info {
+    if pool_info.pool_exists {
         let metrics_query = "
             SELECT 
                 COALESCE(SUM(myso_amount), 0) as total_volume,
@@ -862,8 +839,6 @@ pub(crate) async fn get_spt_liquidity_profile(
         };
         return Ok(serde_json::json!({
             "pool_id": pool_id,
-            "name": p.name,
-            "symbol": p.symbol,
             "total_volume_24h": metrics.total_volume,
             "transaction_count_24h": metrics.transaction_count,
             "average_transaction_size": avg_tx,
@@ -936,8 +911,6 @@ pub(crate) async fn get_spt_liquidity_profile(
         };
         return Ok(serde_json::json!({
             "pool_id": pool_id,
-            "name": "Reservation Pool",
-            "symbol": "?",
             "total_volume_24h": metrics.total_volume,
             "transaction_count_24h": metrics.transaction_count,
             "average_transaction_size": avg_tx,
@@ -958,8 +931,6 @@ pub(crate) async fn get_spt_liquidity_profile(
 
     Ok(serde_json::json!({
         "pool_id": pool_id,
-        "name": "Unknown",
-        "symbol": "?",
         "total_volume_24h": 0,
         "transaction_count_24h": 0,
         "average_transaction_size": 0,
@@ -1091,7 +1062,7 @@ pub(crate) async fn get_spt_pool_by_associated_id(
 ) -> Result<Option<SptPoolRow>, SocialError> {
     let mut conn = db.connect().await?;
     let query = "
-        SELECT pool_id, token_type, owner, associated_id, symbol, name,
+        SELECT pool_id, token_type, owner, associated_id,
                circulating_supply, base_price, quadratic_coefficient, created_at, time, transaction_id
         FROM (SELECT DISTINCT ON (pool_id) * FROM spt_pools WHERE associated_id = $1 ORDER BY pool_id, time DESC) p
     ";
@@ -1106,7 +1077,7 @@ pub(crate) async fn get_spt_pool_by_associated_id(
 pub(crate) async fn get_spt_popular(db: &Db, limit: i64) -> Result<Vec<SptPoolRow>, SocialError> {
     let mut conn = db.connect().await?;
     let query = "
-        SELECT pool_id, token_type, owner, associated_id, symbol, name,
+        SELECT pool_id, token_type, owner, associated_id,
                circulating_supply, base_price, quadratic_coefficient, created_at, time, transaction_id
         FROM (SELECT DISTINCT ON (pool_id) * FROM spt_pools ORDER BY pool_id, time DESC) p
         ORDER BY circulating_supply DESC
@@ -1127,6 +1098,10 @@ struct UserHoldingRow {
     amount: i64,
     #[diesel(sql_type = BigInt)]
     acquired_at: i64,
+    #[diesel(sql_type = SmallInt)]
+    token_type: i16,
+    #[diesel(sql_type = Text)]
+    associated_id: String,
 }
 
 pub(crate) async fn get_spt_user_holdings(
@@ -1134,15 +1109,27 @@ pub(crate) async fn get_spt_user_holdings(
     address: &str,
     limit: i64,
     offset: i64,
-) -> Result<Vec<(String, i64, i64)>, SocialError> {
+) -> Result<Vec<crate::reader::SptUserHoldingItem>, SocialError> {
     let mut conn = db.connect().await?;
     let query = r#"
-        SELECT pool_id, SUM(amount)::bigint as amount, MAX(acquired_at)::bigint as acquired_at
-        FROM spt_holdings
-        WHERE holder_address = $1
-        GROUP BY pool_id
-        HAVING SUM(amount) != 0
-        ORDER BY acquired_at DESC NULLS LAST
+        SELECT h.pool_id, h.amount, h.acquired_at,
+               COALESCE(p.token_type, 0::smallint) AS token_type,
+               COALESCE(p.associated_id, ''::text) AS associated_id
+        FROM (
+            SELECT pool_id, SUM(amount)::bigint AS amount, MAX(acquired_at)::bigint AS acquired_at
+            FROM spt_holdings
+            WHERE holder_address = $1
+            GROUP BY pool_id
+            HAVING SUM(amount) != 0
+        ) h
+        LEFT JOIN LATERAL (
+            SELECT token_type, associated_id
+            FROM spt_pools
+            WHERE pool_id = h.pool_id
+            ORDER BY time DESC
+            LIMIT 1
+        ) p ON true
+        ORDER BY h.acquired_at DESC NULLS LAST
         LIMIT $2 OFFSET $3
     "#;
     let rows: Vec<UserHoldingRow> = diesel::sql_query(query)
@@ -1153,7 +1140,14 @@ pub(crate) async fn get_spt_user_holdings(
         .await?;
     Ok(rows
         .into_iter()
-        .map(|r| (r.pool_id, r.amount, r.acquired_at))
+        .map(|r| crate::reader::SptUserHoldingItem {
+            pool_id: r.pool_id,
+            amount: r.amount,
+            acquired_at: r.acquired_at,
+            source: "holding".to_string(),
+            token_type: r.token_type,
+            associated_id: r.associated_id,
+        })
         .collect())
 }
 
@@ -1165,6 +1159,10 @@ struct UserReservationRow {
     amount: i64,
     #[diesel(sql_type = BigInt)]
     reserved_at: i64,
+    #[diesel(sql_type = SmallInt)]
+    token_type: i16,
+    #[diesel(sql_type = Text)]
+    associated_id: String,
 }
 
 pub(crate) async fn get_spt_user_reservations(
@@ -1172,10 +1170,10 @@ pub(crate) async fn get_spt_user_reservations(
     address: &str,
     limit: i64,
     offset: i64,
-) -> Result<Vec<(String, i64, i64)>, SocialError> {
+) -> Result<Vec<crate::reader::SptUserHoldingItem>, SocialError> {
     let mut conn = db.connect().await?;
     let query = r#"
-        SELECT pool_id, amount, reserved_at
+        SELECT pool_id, amount, reserved_at, token_type, associated_id
         FROM spt_reservation_holdings
         WHERE LOWER(TRIM(reserver_address)) = LOWER(TRIM($1::text))
         ORDER BY reserved_at DESC NULLS LAST
@@ -1189,7 +1187,14 @@ pub(crate) async fn get_spt_user_reservations(
         .await?;
     Ok(rows
         .into_iter()
-        .map(|r| (r.pool_id, r.amount, r.reserved_at))
+        .map(|r| crate::reader::SptUserHoldingItem {
+            pool_id: r.pool_id,
+            amount: r.amount,
+            acquired_at: r.reserved_at,
+            source: "reservation".to_string(),
+            token_type: r.token_type,
+            associated_id: r.associated_id,
+        })
         .collect())
 }
 
@@ -1204,26 +1209,7 @@ pub(crate) async fn get_spt_user_holdings_with_reservations(
 
     let mut items: Vec<crate::reader::SptUserHoldingItem> = holdings
         .into_iter()
-        .map(
-            |(pool_id, amount, acquired_at)| crate::reader::SptUserHoldingItem {
-                pool_id,
-                amount,
-                acquired_at,
-                source: "holding".to_string(),
-            },
-        )
-        .chain(
-            reservations
-                .into_iter()
-                .map(
-                    |(pool_id, amount, reserved_at)| crate::reader::SptUserHoldingItem {
-                        pool_id,
-                        amount,
-                        acquired_at: reserved_at,
-                        source: "reservation".to_string(),
-                    },
-                ),
-        )
+        .chain(reservations.into_iter())
         .collect();
 
     items.sort_by(|a, b| b.acquired_at.cmp(&a.acquired_at));

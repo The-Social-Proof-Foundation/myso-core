@@ -12,9 +12,8 @@ use super::revenue::{
     REVENUE_SOURCE_TIPS,
 };
 use crate::schema::{
-    ecosystem_treasury, spt_config, spt_events, spt_holdings,
-    spt_pools, spt_price_history, spt_reservation_pools, spt_reservations, spt_revenue,
-    spt_transactions, unified_revenue,
+    ecosystem_treasury, spt_config, spt_events, spt_holdings, spt_pools, spt_price_history,
+    spt_reservation_pools, spt_reservations, spt_revenue, spt_transactions, unified_revenue,
 };
 
 pub const TOKEN_TYPE_PROFILE: i16 = 1;
@@ -40,6 +39,9 @@ pub const DEFAULT_PROFILE_THRESHOLD: i64 = 10_000_000_000_000;
 pub const DEFAULT_MAX_INDIVIDUAL_RESERVATION_BPS: i64 = 2000;
 pub const DEFAULT_MAX_RESERVERS_PER_POOL: i64 = 1000;
 
+/// On-chain SPT amounts use `10^9` nano-SPT per 1.0 display token (same as MYSO decimals).
+pub const SPT_AMOUNT_NANO_SCALE: i64 = 1_000_000_000;
+
 #[derive(Debug, Clone, Insertable, Serialize, Deserialize)]
 #[diesel(table_name = spt_pools)]
 pub struct NewSptPool {
@@ -47,8 +49,7 @@ pub struct NewSptPool {
     pub token_type: i16,
     pub owner: String,
     pub associated_id: String,
-    pub symbol: String,
-    pub name: String,
+    /// nano-SPT: `10^9` units per 1.0 display token (`spt_pools.circulating_supply`).
     pub circulating_supply: i64,
     pub base_price: i64,
     pub quadratic_coefficient: i64,
@@ -66,6 +67,10 @@ pub struct SptHoldingRow {
     pub pool_id: String,
     #[diesel(sql_type = BigInt)]
     pub balance: i64,
+    #[diesel(sql_type = SmallInt)]
+    pub token_type: i16,
+    #[diesel(sql_type = Text)]
+    pub associated_id: String,
     #[diesel(sql_type = Text)]
     pub profile_owner_address: String,
     #[diesel(sql_type = Nullable<Text>)]
@@ -156,10 +161,6 @@ pub struct SptPoolRow {
     pub owner: String,
     #[diesel(sql_type = Text)]
     pub associated_id: String,
-    #[diesel(sql_type = Text)]
-    pub symbol: String,
-    #[diesel(sql_type = Text)]
-    pub name: String,
     #[diesel(sql_type = BigInt)]
     pub circulating_supply: i64,
     #[diesel(sql_type = BigInt)]
@@ -191,6 +192,7 @@ pub struct SptPoolRow {
 pub struct NewSptHolding {
     pub pool_id: String,
     pub holder_address: String,
+    /// nano-SPT: `10^9` units per 1.0 display token (`spt_holdings.amount`).
     pub amount: i64,
     pub acquired_at: i64,
     pub time: chrono::DateTime<chrono::Utc>,
@@ -816,8 +818,8 @@ mod spt_exchange_config_changeset_tests {
     #[test]
     fn as_changeset_omits_trading_enabled_when_unset() {
         let row = sample_row(None);
-        let q = diesel::update(spt_exchange_config::table)
-            .set(SptExchangeConfigChangeset::from(&row));
+        let q =
+            diesel::update(spt_exchange_config::table).set(SptExchangeConfigChangeset::from(&row));
         let sql = debug_query::<Pg, _>(&q).to_string();
         assert!(
             !sql.to_lowercase().contains("trading_enabled"),
@@ -828,8 +830,8 @@ mod spt_exchange_config_changeset_tests {
     #[test]
     fn as_changeset_sets_trading_enabled_when_some() {
         let row = sample_row(Some(true));
-        let q = diesel::update(spt_exchange_config::table)
-            .set(SptExchangeConfigChangeset::from(&row));
+        let q =
+            diesel::update(spt_exchange_config::table).set(SptExchangeConfigChangeset::from(&row));
         let sql = debug_query::<Pg, _>(&q).to_string();
         assert!(
             sql.to_lowercase().contains("trading_enabled"),

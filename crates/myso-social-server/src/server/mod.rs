@@ -454,6 +454,12 @@ fn make_router(state: Arc<AppState>) -> Router {
             get(get_post_revenue_redirections),
         )
         .route("/posts/:id/transfers", get(get_post_transfers))
+        .route("/posts/:id/reports", get(get_post_reports))
+        .route(
+            "/posts/:id/moderation-events",
+            get(get_post_moderation_events),
+        )
+        .route("/posts/:id/deletion-events", get(get_post_deletion_events))
         .route("/promotions", get(list_promotions))
         .route(
             "/promotions/analytics/top-performing",

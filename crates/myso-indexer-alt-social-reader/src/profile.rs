@@ -29,12 +29,11 @@ pub struct SocialProofTokenInfo {
     pub reservation_status: ReservationStatus,
     pub total_reserved: i64,
     pub required_threshold: i64,
-    pub symbol: Option<String>,
-    pub name: Option<String>,
     pub circulating_supply: Option<i64>,
     pub base_price: Option<i64>,
     pub current_price: Option<i64>,
-    pub market_cap: Option<i64>,
+    /// `current_price * circulating_supply` as decimal string (avoids i64 overflow).
+    pub market_cap: Option<String>,
     pub price_change_24h: Option<f64>,
     pub volume_24h: Option<i64>,
     pub creator_earnings: Option<i64>,
@@ -148,8 +147,6 @@ async fn enrich_users_with_universal_data(
             pb.platform_id as badge_platform_id,
             pb.badge_type,
             spt.pool_id as spt_pool_id,
-            spt.symbol as spt_symbol,
-            spt.name as spt_name,
             spt.circulating_supply as spt_circulating_supply,
             spt.base_price as spt_base_price,
             spt.owner as spt_owner,
@@ -247,10 +244,6 @@ async fn enrich_users_with_universal_data(
         badge_type: Option<i16>,
         #[diesel(sql_type = Nullable<Text>)]
         spt_pool_id: Option<String>,
-        #[diesel(sql_type = Nullable<Text>)]
-        spt_symbol: Option<String>,
-        #[diesel(sql_type = Nullable<Text>)]
-        spt_name: Option<String>,
         #[diesel(sql_type = Nullable<BigInt>)]
         spt_circulating_supply: Option<i64>,
         #[diesel(sql_type = Nullable<BigInt>)]
@@ -335,7 +328,7 @@ async fn enrich_users_with_universal_data(
 
         let (market_cap, price_change_24h) =
             if let (Some(current), Some(circ)) = (row.current_price, row.spt_circulating_supply) {
-                let cap = current.saturating_mul(circ);
+                let cap = ((current as i128) * (circ as i128)).to_string();
                 let change = row.price_24h_ago.and_then(|prev| {
                     if prev > 0 {
                         Some(((current - prev) as f64 / prev as f64) * 100.0)
@@ -361,8 +354,6 @@ async fn enrich_users_with_universal_data(
                 reservation_status: reservation_status.clone(),
                 total_reserved: row.total_reserved.unwrap_or(0),
                 required_threshold: row.required_threshold.unwrap_or(0),
-                symbol: row.spt_symbol,
-                name: row.spt_name,
                 circulating_supply: row.spt_circulating_supply,
                 base_price: row.spt_base_price,
                 current_price: row.current_price,

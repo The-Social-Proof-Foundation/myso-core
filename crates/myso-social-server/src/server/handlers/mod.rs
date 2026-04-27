@@ -55,8 +55,9 @@ pub use poc::{
     list_poc_revenue_redirections,
 };
 pub use posts::{
-    get_post_by_id, get_post_comments, get_post_config, get_post_poc_badges, get_post_promotion,
-    get_post_reactions, get_post_reposts, get_post_revenue_redirections, get_post_transfers,
+    get_post_by_id, get_post_comments, get_post_config, get_post_deletion_events,
+    get_post_moderation_events, get_post_poc_badges, get_post_promotion, get_post_reactions,
+    get_post_reports, get_post_reposts, get_post_revenue_redirections, get_post_transfers,
     get_trending_posts, list_posts,
 };
 pub use profiles::{

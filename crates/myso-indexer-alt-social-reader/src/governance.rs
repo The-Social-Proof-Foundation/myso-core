@@ -31,10 +31,7 @@ pub struct DelegateRatingViewerTarget {
 pub fn delegate_rating_viewer_lookup_key(t: &DelegateRatingViewerTarget) -> String {
     format!(
         "{}|{}|{}|{}",
-        t.target_address,
-        t.registry_type,
-        t.governance_registry_id,
-        t.is_active_delegate as u8
+        t.target_address, t.registry_type, t.governance_registry_id, t.is_active_delegate as u8
     )
 }
 
@@ -46,10 +43,7 @@ fn delegate_rating_key_from_sql_row(
 ) -> String {
     format!(
         "{}|{}|{}|{}",
-        target_address,
-        registry_type,
-        governance_registry_id,
-        is_active_delegate as u8
+        target_address, registry_type, governance_registry_id, is_active_delegate as u8
     )
 }
 
@@ -86,12 +80,11 @@ pub(crate) async fn list_proposals(
     metrics.requests_received.inc();
     let _guard = metrics.latency.start_timer();
 
-    let (effective_proposal_type, platform_registry_scope) =
-        if let Some(pid) = platform_id {
-            resolve_platform_proposal_list_scope(conn, pid).await?
-        } else {
-            (proposal_type, None)
-        };
+    let (effective_proposal_type, platform_registry_scope) = if let Some(pid) = platform_id {
+        resolve_platform_proposal_list_scope(conn, pid).await?
+    } else {
+        (proposal_type, None)
+    };
 
     let results = diesel::sql_query(LIST_PROPOSALS_SQL)
         .bind::<Nullable<SmallInt>, _>(status)
@@ -518,10 +511,7 @@ pub(crate) async fn batch_viewer_latest_delegate_rating_vote_kind(
     targets: &[DelegateRatingViewerTarget],
     metrics: &DbReaderMetrics,
 ) -> anyhow::Result<HashMap<String, i16>> {
-    if targets.is_empty()
-        || viewer_refs.is_empty()
-        || viewer_refs.iter().all(|s| s.is_empty())
-    {
+    if targets.is_empty() || viewer_refs.is_empty() || viewer_refs.iter().all(|s| s.is_empty()) {
         return Ok(HashMap::new());
     }
     metrics.requests_received.inc();
@@ -974,6 +964,9 @@ mod delegate_rating_viewer_lookup_tests {
             governance_registry_id: "0xdao2".to_string(),
             is_active_delegate: true,
         };
-        assert_ne!(delegate_rating_viewer_lookup_key(&a), delegate_rating_viewer_lookup_key(&b));
+        assert_ne!(
+            delegate_rating_viewer_lookup_key(&a),
+            delegate_rating_viewer_lookup_key(&b)
+        );
     }
 }

@@ -1,19 +1,24 @@
 // Copyright (c) The Social Proof Foundation, LLC.
 // SPDX-License-Identifier: Apache-2.0
 
+use diesel::sql_query;
 use diesel::sql_types::{BigInt, Text};
 use diesel::ExpressionMethods;
 use diesel::OptionalExtension;
 use diesel::QueryDsl;
+use diesel::QueryableByName;
 use diesel::SelectableHelper;
 use diesel_async::RunQueryDsl;
 use myso_indexer_alt_social_schema::schema::{
-    comments, post_config, posts, posts_transfers, reactions, reposts,
+    comments, post_config, posts, posts_deletion_events, posts_moderation_events, posts_reports,
+    posts_transfers, reactions,
 };
 
 use crate::error::SocialError;
 use crate::reader::types::{CommentRow, PostBasicRow, PostConfigRow, ReactionRow, RepostRow};
-use myso_indexer_alt_social_schema::models::PostTransfer;
+use myso_indexer_alt_social_schema::models::{
+    PostDeletionEventRow, PostModerationEventRow, PostReport, PostTransfer, POST_TYPE_QUOTE_REPOST,
+};
 use myso_pg_db::Db;
 
 pub(crate) async fn list_posts(
@@ -49,6 +54,7 @@ pub(crate) async fn list_posts(
             posts::comment_count,
             posts::repost_count,
             posts::tips_received,
+            posts::mydata_id,
         ))
         .load::<(
             String,
@@ -62,6 +68,7 @@ pub(crate) async fn list_posts(
             Option<i64>,
             Option<i64>,
             Option<i64>,
+            Option<String>,
         )>(&mut conn)
         .await?;
     Ok(results
@@ -79,6 +86,7 @@ pub(crate) async fn list_posts(
                 comment_count,
                 repost_count,
                 tips_received,
+                mydata_id,
             )| PostBasicRow {
                 post_id,
                 owner,
@@ -91,6 +99,7 @@ pub(crate) async fn list_posts(
                 comment_count: comment_count.unwrap_or(0),
                 repost_count: repost_count.unwrap_or(0),
                 tips_received: tips_received.unwrap_or(0),
+                mydata_id,
             },
         )
         .collect())
@@ -154,7 +163,7 @@ pub(crate) async fn get_trending_posts(
     let mut conn = db.connect().await?;
     let query = "
         SELECT post_id, owner, profile_id, content, post_type, created_at, deleted_at,
-               reaction_count, comment_count, repost_count, tips_received
+               reaction_count, comment_count, repost_count, tips_received, mydata_id
         FROM posts
         WHERE deleted_at IS NULL
         ORDER BY (reaction_count + comment_count + repost_count) DESC, created_at DESC
@@ -175,7 +184,7 @@ pub(crate) async fn get_post_by_id(
     let mut conn = db.connect().await?;
     let query = "
         SELECT post_id, owner, profile_id, content, post_type, created_at, deleted_at,
-               reaction_count, comment_count, repost_count, tips_received
+               reaction_count, comment_count, repost_count, tips_received, mydata_id
         FROM posts
         WHERE (post_id = $1 OR id = $1) AND deleted_at IS NULL
         ORDER BY created_at DESC
@@ -290,32 +299,51 @@ pub(crate) async fn get_post_reposts(
     offset: i64,
 ) -> Result<Vec<RepostRow>, SocialError> {
     let mut conn = db.connect().await?;
-    let results = reposts::table
-        .filter(reposts::original_post_id.eq(post_id))
-        .filter(reposts::is_original_post.eq(true))
-        .order_by(reposts::created_at.desc())
-        .limit(limit)
-        .offset(offset)
-        .select((
-            reposts::repost_id,
-            reposts::original_post_id,
-            reposts::owner,
-            reposts::profile_id,
-            reposts::created_at,
-        ))
-        .load::<(String, String, String, String, i64)>(&mut conn)
+    #[derive(QueryableByName)]
+    struct Row {
+        #[diesel(sql_type = Text)]
+        repost_id: String,
+        #[diesel(sql_type = Text)]
+        original_post_id: String,
+        #[diesel(sql_type = Text)]
+        owner: String,
+        #[diesel(sql_type = Text)]
+        profile_id: String,
+        #[diesel(sql_type = BigInt)]
+        created_at: i64,
+    }
+    let query = format!(
+        "
+        SELECT repost_id, original_post_id, owner, profile_id, created_at
+        FROM (
+            SELECT repost_id, original_post_id, owner, profile_id, created_at
+            FROM reposts
+            WHERE original_post_id = $1 AND is_original_post = true
+            UNION ALL
+            SELECT post_id AS repost_id, parent_post_id AS original_post_id, owner, profile_id, created_at
+            FROM posts
+            WHERE parent_post_id = $1 AND post_type = '{}' AND deleted_at IS NULL
+        ) AS combined
+        ORDER BY created_at DESC
+        LIMIT $2 OFFSET $3
+    ",
+        POST_TYPE_QUOTE_REPOST
+    );
+    let results = sql_query(&query)
+        .bind::<Text, _>(post_id)
+        .bind::<BigInt, _>(limit)
+        .bind::<BigInt, _>(offset)
+        .load::<Row>(&mut conn)
         .await?;
     Ok(results
         .into_iter()
-        .map(
-            |(repost_id, original_post_id, owner, profile_id, created_at)| RepostRow {
-                repost_id,
-                original_post_id,
-                owner,
-                profile_id,
-                created_at,
-            },
-        )
+        .map(|r| RepostRow {
+            repost_id: r.repost_id,
+            original_post_id: r.original_post_id,
+            owner: r.owner,
+            profile_id: r.profile_id,
+            created_at: r.created_at,
+        })
         .collect())
 }
 
@@ -333,6 +361,61 @@ pub(crate) async fn list_post_transfers(
         .offset(offset)
         .select(PostTransfer::as_select())
         .load::<PostTransfer>(&mut conn)
+        .await?;
+    Ok(results)
+}
+
+pub(crate) async fn list_post_reports(
+    db: &Db,
+    post_id: &str,
+    limit: i64,
+    offset: i64,
+) -> Result<Vec<PostReport>, SocialError> {
+    let mut conn = db.connect().await?;
+    let results = posts_reports::table
+        .filter(posts_reports::object_id.eq(post_id))
+        .filter(posts_reports::is_comment.eq(false))
+        .order_by(posts_reports::time.desc())
+        .limit(limit)
+        .offset(offset)
+        .select(PostReport::as_select())
+        .load::<PostReport>(&mut conn)
+        .await?;
+    Ok(results)
+}
+
+pub(crate) async fn list_post_moderation_events(
+    db: &Db,
+    post_id: &str,
+    limit: i64,
+    offset: i64,
+) -> Result<Vec<PostModerationEventRow>, SocialError> {
+    let mut conn = db.connect().await?;
+    let results = posts_moderation_events::table
+        .filter(posts_moderation_events::object_id.eq(post_id))
+        .order_by(posts_moderation_events::time.desc())
+        .limit(limit)
+        .offset(offset)
+        .select(PostModerationEventRow::as_select())
+        .load::<PostModerationEventRow>(&mut conn)
+        .await?;
+    Ok(results)
+}
+
+pub(crate) async fn list_post_deletion_events(
+    db: &Db,
+    post_id: &str,
+    limit: i64,
+    offset: i64,
+) -> Result<Vec<PostDeletionEventRow>, SocialError> {
+    let mut conn = db.connect().await?;
+    let results = posts_deletion_events::table
+        .filter(posts_deletion_events::object_id.eq(post_id))
+        .order_by(posts_deletion_events::time.desc())
+        .limit(limit)
+        .offset(offset)
+        .select(PostDeletionEventRow::as_select())
+        .load::<PostDeletionEventRow>(&mut conn)
         .await?;
     Ok(results)
 }

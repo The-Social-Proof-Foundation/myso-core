@@ -142,3 +142,42 @@ pub async fn get_post_transfers(
     let transfers = state.reader.list_post_transfers(&id, limit, offset).await?;
     Ok(Json(transfers))
 }
+
+pub async fn get_post_reports(
+    State(state): State<Arc<AppState>>,
+    Path(id): Path<String>,
+    Query(params): Query<PageParams>,
+) -> Result<Json<Vec<crate::reader::PostReport>>, SocialError> {
+    let limit = params.limit();
+    let offset = params.offset();
+    let reports = state.reader.list_post_reports(&id, limit, offset).await?;
+    Ok(Json(reports))
+}
+
+pub async fn get_post_moderation_events(
+    State(state): State<Arc<AppState>>,
+    Path(id): Path<String>,
+    Query(params): Query<PageParams>,
+) -> Result<Json<Vec<crate::reader::PostModerationEventRow>>, SocialError> {
+    let limit = params.limit();
+    let offset = params.offset();
+    let events = state
+        .reader
+        .list_post_moderation_events(&id, limit, offset)
+        .await?;
+    Ok(Json(events))
+}
+
+pub async fn get_post_deletion_events(
+    State(state): State<Arc<AppState>>,
+    Path(id): Path<String>,
+    Query(params): Query<PageParams>,
+) -> Result<Json<Vec<crate::reader::PostDeletionEventRow>>, SocialError> {
+    let limit = params.limit();
+    let offset = params.offset();
+    let events = state
+        .reader
+        .list_post_deletion_events(&id, limit, offset)
+        .await?;
+    Ok(Json(events))
+}

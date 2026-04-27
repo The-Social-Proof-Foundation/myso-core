@@ -8,7 +8,7 @@ pub mod metrics;
 
 pub use handlers::{
     BlockingHandler, GovernanceHandler, InsuranceHandler, MyDataHandler, PlatformHandler,
-    PocHandler, PostsHandler, ProfilesHandler, SocialGraphHandler, SpotHandler, SptHandler,
+    PostsHandler, ProfilesHandler, SocialGraphHandler, SpotHandler, SptHandler,
     SubscriptionHandler, UpgradeHandler,
 };
 
@@ -64,7 +64,8 @@ pub async fn setup_social_indexer(
         store.clone(),
     )))?;
 
-    let social_metrics = metrics::SocialMetrics::new(registry).context("SocialMetrics registration")?;
+    let social_metrics =
+        metrics::SocialMetrics::new(registry).context("SocialMetrics registration")?;
     metrics::SocialMetrics::init(social_metrics);
 
     let metrics = MetricsService::new(metrics_args, registry.clone());
@@ -117,10 +118,6 @@ pub async fn setup_social_indexer(
         .await
         .context("Failed to add SptHandler pipeline")?;
     indexer
-        .concurrent_pipeline(PocHandler, Default::default())
-        .await
-        .context("Failed to add PocHandler pipeline")?;
-    indexer
         .concurrent_pipeline(SubscriptionHandler, Default::default())
         .await
         .context("Failed to add SubscriptionHandler pipeline")?;
@@ -135,7 +132,7 @@ pub async fn setup_social_indexer(
 
     tracing::info!(
         "Social indexer pipelines registered — blocking, governance, upgrade, social_graph, \
-         platform, mydata, insurance, spot, spt, poc, subscription, profiles, posts; \
+         platform, mydata, insurance, spot, spt, subscription, profiles, posts (includes PoC); \
          resuming from watermarks or checkpoint 0"
     );
 

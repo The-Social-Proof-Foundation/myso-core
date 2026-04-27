@@ -6,13 +6,16 @@ use std::str::FromStr;
 use async_graphql::Context;
 use async_graphql::Object;
 use myso_indexer_alt_social_reader::{
-    CommentRow, PostRow as DbPost, PostTransferRow, ReactionRow, RepostRow, TipRow,
+    CommentRow, PostDeletionEventRow, PostModerationEventRow, PostReportRow, PostRow as DbPost,
+    PostTransferRow, ReactionRow, RepostRow, TipRow,
 };
 
 use crate::api::resolve_profile::resolve_profile_summary;
+use crate::api::scalars::date_time::DateTime;
 use crate::api::scalars::id::Id;
 use crate::api::scalars::json::Json;
 use crate::api::scalars::myso_address::MySoAddress;
+use crate::api::types::mydata::MyDataRecord;
 use crate::api::types::poc::{PocAnalysisResult, PocBadge, PocDispute, PocRevenueRedirection};
 use crate::api::types::profile_summary::ProfileSummary;
 use crate::api::types::promotion::Promotion;
@@ -111,6 +114,25 @@ impl Post {
             .mentions
             .as_ref()
             .and_then(|v| Json::try_from(v.clone()).ok())
+    }
+
+    /// Optional linked MyData object id.
+    async fn mydata_id(&self) -> Option<&str> {
+        self.inner.mydata_id.as_deref()
+    }
+
+    /// Indexed MyData record when `mydata_id` is set and found in the indexer.
+    async fn mydata(&self, ctx: &Context<'_>) -> Option<MyDataRecord> {
+        let id = self.inner.mydata_id.as_deref()?;
+        let reader_opt = ctx
+            .data_opt::<std::sync::Arc<Option<myso_indexer_alt_social_reader::SocialPgReader>>>()?;
+        let reader = reader_opt.as_ref().as_ref()?;
+        reader
+            .get_mydata_record(id)
+            .await
+            .ok()
+            .flatten()
+            .map(MyDataRecord::from_row)
     }
 
     /// Parent post ID (for quote reposts).
@@ -283,6 +305,67 @@ impl Post {
                 .map(PostTransferSummary::from_row)
                 .collect(),
         )
+    }
+
+    /// User reports filed against this post (paginated, newest first).
+    async fn reports(
+        &self,
+        ctx: &Context<'_>,
+        limit: Option<u64>,
+        offset: Option<u64>,
+    ) -> Option<Vec<PostReport>> {
+        let reader_opt = ctx
+            .data_opt::<std::sync::Arc<Option<myso_indexer_alt_social_reader::SocialPgReader>>>()?;
+        let reader = reader_opt.as_ref().as_ref()?;
+        let limit = limit.unwrap_or(20).min(100) as i64;
+        let offset = offset.unwrap_or(0) as i64;
+        let rows = reader
+            .list_post_reports(&self.inner.post_id, limit, offset)
+            .await
+            .ok()?;
+        Some(rows.into_iter().map(PostReport::from_row).collect())
+    }
+
+    /// Platform moderation actions on this post (paginated, newest first).
+    async fn moderation_events(
+        &self,
+        ctx: &Context<'_>,
+        limit: Option<u64>,
+        offset: Option<u64>,
+    ) -> Option<Vec<PostModerationEvent>> {
+        let reader_opt = ctx
+            .data_opt::<std::sync::Arc<Option<myso_indexer_alt_social_reader::SocialPgReader>>>()?;
+        let reader = reader_opt.as_ref().as_ref()?;
+        let limit = limit.unwrap_or(20).min(100) as i64;
+        let offset = offset.unwrap_or(0) as i64;
+        let rows = reader
+            .list_post_moderation_events(&self.inner.post_id, limit, offset)
+            .await
+            .ok()?;
+        Some(
+            rows.into_iter()
+                .map(PostModerationEvent::from_row)
+                .collect(),
+        )
+    }
+
+    /// Deletion events for this post (paginated, newest first).
+    async fn deletion_events(
+        &self,
+        ctx: &Context<'_>,
+        limit: Option<u64>,
+        offset: Option<u64>,
+    ) -> Option<Vec<PostDeletionEvent>> {
+        let reader_opt = ctx
+            .data_opt::<std::sync::Arc<Option<myso_indexer_alt_social_reader::SocialPgReader>>>()?;
+        let reader = reader_opt.as_ref().as_ref()?;
+        let limit = limit.unwrap_or(20).min(100) as i64;
+        let offset = offset.unwrap_or(0) as i64;
+        let rows = reader
+            .list_post_deletion_events(&self.inner.post_id, limit, offset)
+            .await
+            .ok()?;
+        Some(rows.into_iter().map(PostDeletionEvent::from_row).collect())
     }
 
     /// Spot bets for this post (paginated).
@@ -527,6 +610,67 @@ impl CommentSummary {
     async fn comment_count(&self) -> i64 {
         self.inner.comment_count
     }
+
+    /// User reports filed against this comment (paginated, newest first).
+    async fn reports(
+        &self,
+        ctx: &Context<'_>,
+        limit: Option<u64>,
+        offset: Option<u64>,
+    ) -> Option<Vec<PostReport>> {
+        let reader_opt = ctx
+            .data_opt::<std::sync::Arc<Option<myso_indexer_alt_social_reader::SocialPgReader>>>()?;
+        let reader = reader_opt.as_ref().as_ref()?;
+        let limit = limit.unwrap_or(20).min(100) as i64;
+        let offset = offset.unwrap_or(0) as i64;
+        let rows = reader
+            .list_comment_reports(&self.inner.comment_id, limit, offset)
+            .await
+            .ok()?;
+        Some(rows.into_iter().map(PostReport::from_row).collect())
+    }
+
+    /// Platform moderation actions on this comment (paginated, newest first).
+    async fn moderation_events(
+        &self,
+        ctx: &Context<'_>,
+        limit: Option<u64>,
+        offset: Option<u64>,
+    ) -> Option<Vec<PostModerationEvent>> {
+        let reader_opt = ctx
+            .data_opt::<std::sync::Arc<Option<myso_indexer_alt_social_reader::SocialPgReader>>>()?;
+        let reader = reader_opt.as_ref().as_ref()?;
+        let limit = limit.unwrap_or(20).min(100) as i64;
+        let offset = offset.unwrap_or(0) as i64;
+        let rows = reader
+            .list_comment_moderation_events(&self.inner.comment_id, limit, offset)
+            .await
+            .ok()?;
+        Some(
+            rows.into_iter()
+                .map(PostModerationEvent::from_row)
+                .collect(),
+        )
+    }
+
+    /// Deletion events for this comment (paginated, newest first).
+    async fn deletion_events(
+        &self,
+        ctx: &Context<'_>,
+        limit: Option<u64>,
+        offset: Option<u64>,
+    ) -> Option<Vec<PostDeletionEvent>> {
+        let reader_opt = ctx
+            .data_opt::<std::sync::Arc<Option<myso_indexer_alt_social_reader::SocialPgReader>>>()?;
+        let reader = reader_opt.as_ref().as_ref()?;
+        let limit = limit.unwrap_or(20).min(100) as i64;
+        let offset = offset.unwrap_or(0) as i64;
+        let rows = reader
+            .list_comment_deletion_events(&self.inner.comment_id, limit, offset)
+            .await
+            .ok()?;
+        Some(rows.into_iter().map(PostDeletionEvent::from_row).collect())
+    }
 }
 
 // -----------------------------------------------------------------------------
@@ -694,6 +838,197 @@ impl PostTransferSummary {
 
     async fn transferred_at(&self) -> i64 {
         self.inner.transferred_at
+    }
+
+    async fn transaction_id(&self) -> &str {
+        &self.inner.transaction_id
+    }
+}
+
+// -----------------------------------------------------------------------------
+// PostReport
+// -----------------------------------------------------------------------------
+
+#[derive(Clone)]
+pub(crate) struct PostReport {
+    inner: PostReportRow,
+}
+
+impl PostReport {
+    pub(crate) fn from_row(inner: PostReportRow) -> Self {
+        Self { inner }
+    }
+}
+
+#[Object]
+impl PostReport {
+    /// Database id for this report row.
+    async fn report_id(&self) -> i32 {
+        self.inner.id
+    }
+
+    /// Post or comment id that was reported.
+    async fn object_id(&self) -> &str {
+        &self.inner.object_id
+    }
+
+    /// True if the report targets a comment; false if it targets a post.
+    async fn is_comment(&self) -> bool {
+        self.inner.is_comment
+    }
+
+    async fn reporter(&self) -> MySoAddress {
+        MySoAddress::from_str(&self.inner.reporter)
+            .unwrap_or_else(|_| MySoAddress::from(myso_types::base_types::MySoAddress::ZERO))
+    }
+
+    /// Profile of the reporter.
+    async fn reporter_profile(&self, ctx: &Context<'_>) -> Option<ProfileSummary> {
+        resolve_profile_summary(ctx, &self.inner.reporter).await
+    }
+
+    /// On-chain user report reason code.
+    async fn reason_code(&self) -> i32 {
+        i32::from(self.inner.reason_code)
+    }
+
+    async fn description(&self) -> &str {
+        &self.inner.description
+    }
+
+    /// When the report was filed (epoch milliseconds, chain timestamp).
+    async fn reported_at(&self) -> i64 {
+        self.inner.reported_at
+    }
+
+    async fn transaction_id(&self) -> &str {
+        &self.inner.transaction_id
+    }
+}
+
+// -----------------------------------------------------------------------------
+// PostDeletionEvent
+// -----------------------------------------------------------------------------
+
+#[derive(Clone)]
+pub(crate) struct PostDeletionEvent {
+    inner: PostDeletionEventRow,
+}
+
+impl PostDeletionEvent {
+    pub(crate) fn from_row(inner: PostDeletionEventRow) -> Self {
+        Self { inner }
+    }
+}
+
+#[Object]
+impl PostDeletionEvent {
+    /// Database id for this deletion row.
+    async fn event_id(&self) -> i32 {
+        self.inner.id
+    }
+
+    /// Post or comment id that was deleted.
+    async fn object_id(&self) -> &str {
+        &self.inner.object_id
+    }
+
+    async fn owner(&self) -> MySoAddress {
+        MySoAddress::from_str(&self.inner.owner)
+            .unwrap_or_else(|_| MySoAddress::from(myso_types::base_types::MySoAddress::ZERO))
+    }
+
+    /// Profile of the owner (at deletion time).
+    async fn owner_profile(&self, ctx: &Context<'_>) -> Option<ProfileSummary> {
+        resolve_profile_summary(ctx, &self.inner.owner).await
+    }
+
+    async fn profile_id(&self) -> &str {
+        &self.inner.profile_id
+    }
+
+    /// True if the deleted object was a post; false if a comment.
+    async fn is_post(&self) -> bool {
+        self.inner.is_post
+    }
+
+    async fn post_type(&self) -> Option<&str> {
+        self.inner.post_type.as_deref()
+    }
+
+    /// Parent post id (for comment deletions) or the post id for post deletions, when set.
+    async fn post_id(&self) -> Option<&str> {
+        self.inner.post_id.as_deref()
+    }
+
+    /// Epoch milliseconds when the chain recorded deletion.
+    async fn deleted_at(&self) -> i64 {
+        self.inner.deleted_at
+    }
+
+    /// Hypertable timestamp for this row.
+    async fn time(&self) -> DateTime {
+        DateTime::from_chrono(self.inner.time)
+    }
+
+    async fn transaction_id(&self) -> &str {
+        &self.inner.transaction_id
+    }
+}
+
+// -----------------------------------------------------------------------------
+// PostModerationEvent
+// -----------------------------------------------------------------------------
+
+#[derive(Clone)]
+pub(crate) struct PostModerationEvent {
+    inner: PostModerationEventRow,
+}
+
+impl PostModerationEvent {
+    pub(crate) fn from_row(inner: PostModerationEventRow) -> Self {
+        Self { inner }
+    }
+}
+
+#[Object]
+impl PostModerationEvent {
+    /// Database id for this moderation row.
+    async fn event_id(&self) -> i32 {
+        self.inner.id
+    }
+
+    /// Post or comment id that was moderated.
+    async fn object_id(&self) -> &str {
+        &self.inner.object_id
+    }
+
+    async fn platform_id(&self) -> &str {
+        &self.inner.platform_id
+    }
+
+    async fn removed(&self) -> bool {
+        self.inner.removed
+    }
+
+    async fn moderated_by(&self) -> MySoAddress {
+        MySoAddress::from_str(&self.inner.moderated_by)
+            .unwrap_or_else(|_| MySoAddress::from(myso_types::base_types::MySoAddress::ZERO))
+    }
+
+    /// Profile of the moderator.
+    async fn moderated_by_profile(&self, ctx: &Context<'_>) -> Option<ProfileSummary> {
+        resolve_profile_summary(ctx, &self.inner.moderated_by).await
+    }
+
+    /// When the action was recorded (epoch milliseconds; set by the indexer when absent on-chain).
+    async fn moderated_at(&self) -> i64 {
+        self.inner.moderated_at
+    }
+
+    /// Hypertable timestamp for this row.
+    async fn time(&self) -> DateTime {
+        DateTime::from_chrono(self.inner.time)
     }
 
     async fn transaction_id(&self) -> &str {

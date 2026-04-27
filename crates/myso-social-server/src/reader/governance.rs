@@ -1,9 +1,9 @@
 // Copyright (c) The Social Proof Foundation, LLC.
 // SPDX-License-Identifier: Apache-2.0
 
+use diesel::sql_types::{BigInt, Bool, Nullable, SmallInt, Text};
 use diesel::OptionalExtension;
 use diesel::QueryableByName;
-use diesel::sql_types::{BigInt, Bool, Nullable, SmallInt, Text};
 use diesel_async::RunQueryDsl;
 use myso_pg_db::Db;
 
@@ -21,12 +21,11 @@ pub(crate) async fn list_proposals(
 ) -> Result<Vec<ProposalRow>, SocialError> {
     let mut conn = db.connect().await?;
 
-    let (effective_proposal_type, platform_registry_scope) =
-        if let Some(pid) = platform_id {
-            resolve_platform_proposal_list_scope(&mut conn, pid).await?
-        } else {
-            (proposal_type, None)
-        };
+    let (effective_proposal_type, platform_registry_scope) = if let Some(pid) = platform_id {
+        resolve_platform_proposal_list_scope(&mut conn, pid).await?
+    } else {
+        (proposal_type, None)
+    };
 
     let query = "
         SELECT id, title, description, proposal_type, reference_id, metadata_json, submitter,

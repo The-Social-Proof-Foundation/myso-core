@@ -13,7 +13,9 @@ use fastcrypto::encoding::Encoding;
 use futures::future::try_join_all;
 use myso_indexer_alt_reader::fullnode_client::Error::GrpcExecutionError;
 use myso_indexer_alt_reader::fullnode_client::FullnodeClient;
-use myso_indexer_alt_social_reader::{DelegateRatingViewerTarget, delegate_rating_viewer_lookup_key};
+use myso_indexer_alt_social_reader::{
+    DelegateRatingViewerTarget, delegate_rating_viewer_lookup_key,
+};
 use myso_rpc::proto::myso::rpc::v2 as proto;
 
 use crate::api::mutation::TransactionInputError;
@@ -51,8 +53,8 @@ use crate::api::types::move_type;
 use crate::api::types::move_type::MoveType;
 use crate::api::types::mydata::{
     MyDataPurchase, MyDataQueryBroadPool, MyDataQueryClaim, MyDataQueryDistributionRound,
-    MyDataQueryListingSubPool, MyDataQueryMerkleRoot, MyDataQuerySnapshotAnchor, MyDataQuerySubPool,
-    MyDataRecord,
+    MyDataQueryListingSubPool, MyDataQueryMerkleRoot, MyDataQuerySnapshotAnchor,
+    MyDataQuerySubPool, MyDataRecord,
 };
 use crate::api::types::node::Node;
 use crate::api::types::object;
@@ -1156,7 +1158,11 @@ impl Query {
                 .list_mydata_query_listings_for_sub_pool(&sub_pool_id, limit, offset)
                 .await
                 .map_err(Into::into)
-                .map(|v| v.into_iter().map(MyDataQueryListingSubPool::from_row).collect()),
+                .map(|v| {
+                    v.into_iter()
+                        .map(MyDataQueryListingSubPool::from_row)
+                        .collect()
+                }),
         )
     }
 
@@ -1195,7 +1201,11 @@ impl Query {
                 .list_mydata_query_snapshot_anchors(limit, offset)
                 .await
                 .map_err(Into::into)
-                .map(|v| v.into_iter().map(MyDataQuerySnapshotAnchor::from_row).collect()),
+                .map(|v| {
+                    v.into_iter()
+                        .map(MyDataQuerySnapshotAnchor::from_row)
+                        .collect()
+                }),
         )
     }
 
@@ -1389,12 +1399,13 @@ impl Query {
                     .map(|row| {
                         let c = ctx_map.as_ref().and_then(|m| m.get(&row.address)).copied();
                         let vote = vote_map.as_ref().and_then(|m| {
-                            let key = delegate_rating_viewer_lookup_key(&DelegateRatingViewerTarget {
-                                target_address: row.address.clone(),
-                                registry_type: row.registry_type,
-                                governance_registry_id: row.governance_registry_id.clone(),
-                                is_active_delegate: true,
-                            });
+                            let key =
+                                delegate_rating_viewer_lookup_key(&DelegateRatingViewerTarget {
+                                    target_address: row.address.clone(),
+                                    registry_type: row.registry_type,
+                                    governance_registry_id: row.governance_registry_id.clone(),
+                                    is_active_delegate: true,
+                                });
                             m.get(&key).copied()
                         });
                         Delegate::with_viewer(row, c, vote)
@@ -1548,12 +1559,13 @@ impl Query {
                     .map(|row| {
                         let c = ctx_map.as_ref().and_then(|m| m.get(&row.address)).copied();
                         let vote = vote_map.as_ref().and_then(|m| {
-                            let key = delegate_rating_viewer_lookup_key(&DelegateRatingViewerTarget {
-                                target_address: row.address.clone(),
-                                registry_type: row.registry_type,
-                                governance_registry_id: row.governance_registry_id.clone(),
-                                is_active_delegate: false,
-                            });
+                            let key =
+                                delegate_rating_viewer_lookup_key(&DelegateRatingViewerTarget {
+                                    target_address: row.address.clone(),
+                                    registry_type: row.registry_type,
+                                    governance_registry_id: row.governance_registry_id.clone(),
+                                    is_active_delegate: false,
+                                });
                             m.get(&key).copied()
                         });
                         NominatedDelegate::with_viewer(row, c, vote)

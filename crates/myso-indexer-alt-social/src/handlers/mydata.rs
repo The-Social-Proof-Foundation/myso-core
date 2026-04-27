@@ -274,13 +274,15 @@ fn process_query_broad_pool_created(
     let pool_id = data.get("pool_id")?.as_str()?.to_string();
     let name = data.get("name")?.as_str()?.to_string();
     let created_at_ms = json_to_i64(data.get("created_at")?);
-    Some(vec![SocialEventRow::MyDataQueryBroadPool(NewMyDataQueryBroadPool {
-        pool_id,
-        name,
-        created_at_ms,
-        event_id: event_id.to_string(),
-        transaction_id,
-    })])
+    Some(vec![SocialEventRow::MyDataQueryBroadPool(
+        NewMyDataQueryBroadPool {
+            pool_id,
+            name,
+            created_at_ms,
+            event_id: event_id.to_string(),
+            transaction_id,
+        },
+    )])
 }
 
 fn process_query_sub_pool_created(
@@ -292,14 +294,16 @@ fn process_query_sub_pool_created(
     let broad_pool_id = data.get("broad_pool_id")?.as_str()?.to_string();
     let name = data.get("name")?.as_str()?.to_string();
     let created_at_ms = json_to_i64(data.get("created_at")?);
-    Some(vec![SocialEventRow::MyDataQuerySubPool(NewMyDataQuerySubPool {
-        sub_pool_id,
-        broad_pool_id,
-        name,
-        created_at_ms,
-        event_id: event_id.to_string(),
-        transaction_id,
-    })])
+    Some(vec![SocialEventRow::MyDataQuerySubPool(
+        NewMyDataQuerySubPool {
+            sub_pool_id,
+            broad_pool_id,
+            name,
+            created_at_ms,
+            event_id: event_id.to_string(),
+            transaction_id,
+        },
+    )])
 }
 
 fn process_query_listing_sub_pools_assigned(
@@ -421,12 +425,14 @@ fn process_query_claim_executed(
         .as_i64()
         .or_else(|| amount_raw.as_u64().map(u64_to_db_i64))?;
     let claimed_at_ms = json_to_i64(data.get("claimed_at")?);
-    Some(vec![SocialEventRow::MyDataQueryClaim(NewMyDataQueryClaim {
-        snapshot_id,
-        claimant,
-        amount,
-        claimed_at_ms,
-        event_id: event_id.to_string(),
-        transaction_id,
-    })])
+    Some(vec![SocialEventRow::MyDataQueryClaim(
+        NewMyDataQueryClaim {
+            snapshot_id,
+            claimant,
+            amount,
+            claimed_at_ms,
+            event_id: event_id.to_string(),
+            transaction_id,
+        },
+    )])
 }

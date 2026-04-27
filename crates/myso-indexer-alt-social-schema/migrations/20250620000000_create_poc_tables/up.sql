@@ -562,6 +562,9 @@ END $$;
 -- ============================================================================
 -- 11. ADD REFERENTIAL INTEGRITY TRIGGERS
 -- ============================================================================
+-- Indexer note: `posts` must exist before inserts into `poc_badges`, `poc_analysis_results`, etc.
+-- The social indexer applies post and PoC events from the same checkpoint in transaction order
+-- in the posts pipeline so these triggers are satisfied in one commit.
 
 -- Trigger to validate post references in PoC tables
 CREATE OR REPLACE FUNCTION validate_poc_post_reference()

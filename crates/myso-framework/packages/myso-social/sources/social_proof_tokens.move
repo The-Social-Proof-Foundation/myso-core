@@ -6,6 +6,12 @@
 /// and post tokens using an Automated Market Maker (AMM) with a quadratic pricing curve.
 /// It includes fee distribution mechanisms for transactions, splitting between profile owner,
 /// platform, and ecosystem treasury.
+///
+/// **SPT amounts (nano-SPT):** `SocialToken.amount`, `TokenInfo.circulating_supply`, pool holder
+/// balances, and SPT quantity fields in events are stored in fixed-point **nano-SPT** units:
+/// `10^9` nano-SPT = `1.0` display token (same decimal count as native MYSO). MYSO payments and
+/// prices remain in MYSO smallest units. Buy/sell cost uses a continuous integral of the marginal
+/// price curve over nano-supply to stay well-defined at sub-token precision.
 
 #[allow(unused_field, deprecated_usage, unused_const, duplicate_alias, unused_use, lint(public_entry))]
 module social_contracts::social_proof_tokens {
@@ -115,6 +121,11 @@ module social_contracts::social_proof_tokens {
     // Maximum hold percentage per wallet (5% of supply)
     const MAX_HOLD_PERCENT_BPS: u64 = 500;
 
+    /// Display decimals for SPT (matches native MYSO coin metadata).
+    const SPT_DECIMALS: u8 = 9;
+    /// Nano-SPT per 1.0 whole display token.
+    const SPT_SCALE: u64 = 1_000_000_000;
+
     // Default AMM curve parameters
     const DEFAULT_BASE_PRICE: u64 = 100_000_000; // 0.1 MYSO in smallest units
     const DEFAULT_QUADRATIC_COEFFICIENT: u64 = 100_000; // Coefficient for quadratic curve
@@ -211,7 +222,7 @@ module social_contracts::social_proof_tokens {
         symbol: String,
         /// Token name
         name: String,
-        /// Current supply in circulation
+        /// Circulating supply in **nano-SPT** (`10^9` per 1.0 token).
         circulating_supply: u64,
         /// Base price for this token
         base_price: u64,
@@ -228,7 +239,7 @@ module social_contracts::social_proof_tokens {
         info: TokenInfo,
         /// MYSO balance in the pool
         myso_balance: Balance<MYSO>,
-        /// Mapping of holders' addresses to their token balances
+        /// Holder balances in **nano-SPT**.
         holders: Table<address, u64>,
         /// PoC revenue redirection address (for post tokens only)
         poc_redirect_to: Option<address>,
@@ -245,7 +256,7 @@ module social_contracts::social_proof_tokens {
         pool_id: address,
         /// Token type (1=profile, 2=post)
         token_type: u8,
-        /// Amount of tokens held
+        /// Balance in **nano-SPT** (`10^9` per 1.0 token).
         amount: u64,
     }
 
@@ -278,7 +289,9 @@ module social_contracts::social_proof_tokens {
         name: String,
         base_price: u64,
         quadratic_coefficient: u64,
+        /// Circulating supply in **nano-SPT** (`10^9` per 1.0 token).
         circulating_supply: u64,
+        /// MYSO reserved (smallest units).
         total_reserved_at_launch: u64,
     }
 
@@ -287,6 +300,7 @@ module social_contracts::social_proof_tokens {
     public struct TokenBoughtEvent has copy, drop {
         id: address,
         buyer: address,
+        /// SPT quantity in **nano-SPT**.
         amount: u64,
         myso_amount: u64,
         fee_amount: u64,
@@ -300,6 +314,7 @@ module social_contracts::social_proof_tokens {
     public struct TokenSoldEvent has copy, drop {
         id: address,
         seller: address,
+        /// SPT quantity in **nano-SPT**.
         amount: u64,
         myso_amount: u64,
         fee_amount: u64,
@@ -390,6 +405,7 @@ module social_contracts::social_proof_tokens {
     public struct TokensAddedEvent has copy, drop {
         owner: address, 
         pool_id: address,
+        /// SPT quantity in **nano-SPT**.
         amount: u64,
     }
 
@@ -1801,10 +1817,15 @@ module social_contracts::social_proof_tokens {
             scale_factor * 10
         };
         
-        // Ensure we have at least 1 token
+        // Ensure we have at least 1 whole display token before nano scaling
         if (initial_token_supply == 0) {
             initial_token_supply = 1;
         };
+
+        // Convert human-token supply to nano-SPT (fixed-point smallest units)
+        let supply_nano128 = (initial_token_supply as u128) * (SPT_SCALE as u128);
+        assert!(supply_nano128 <= (MAX_U64 as u128), EOverflow);
+        initial_token_supply = supply_nano128 as u64;
         
         // Create token info
         let token_info = TokenInfo {
@@ -3182,134 +3203,111 @@ module social_contracts::social_proof_tokens {
 
     // === Utility Functions ===
 
-    /// Calculate token price at current supply based on quadratic curve
-    /// Price = base_price + (quadratic_coefficient * supply^2)
+    /// Marginal MYSO price for the next infinitesimal nano-SPT at `supply_nano` (nano-SPT in pool).
+    /// `p(s) = base_price + quadratic_coefficient * (s / SPT_SCALE)^2 / 10000`.
     public fun calculate_token_price(
         base_price: u64,
         quadratic_coefficient: u64,
-        supply: u64
+        supply_nano: u64
     ): u64 {
-        // Overflow protection: check before squaring
-        assert!(supply == 0 || supply <= MAX_U64 / supply, EOverflow);
-        let squared_supply = supply * supply;
-        
-        // Overflow protection: check before multiplying by coefficient
-        assert!(squared_supply == 0 || squared_supply <= MAX_U64 / quadratic_coefficient, EOverflow);
-        let product = quadratic_coefficient * squared_supply / 10000;
-        
-        // Overflow protection: check before adding base_price
-        assert!(product <= MAX_U64 - base_price, EOverflow);
-        base_price + product
+        let base = base_price as u256;
+        let coeff = quadratic_coefficient as u256;
+        let s = supply_nano as u256;
+        let scale = SPT_SCALE as u256;
+        let denom = scale * scale * 10000;
+        assert!(denom > 0, EInvalidCurveParams);
+        let quad = (coeff * s * s) / denom;
+        let total = base + quad;
+        assert!(total <= (MAX_U64 as u256), EOverflow);
+        total as u64
     }
 
-    /// Calculate price to buy a specific amount of tokens using closed-form sum
-    /// Price = base_price + (quadratic_coefficient * supply^2)
-    /// Sum from i=current_supply to current_supply+amount-1 of price(i)
-    /// = amount * base_price + (quadratic_coefficient / 10000) * sum(i^2)
-    /// where sum(i^2) from n to n+k-1 = sum_squares(n+k-1) - sum_squares(n-1)
-    /// Returns (total price, average price per token)
+    /// Total MYSO cost to buy `amount_nano` nano-SPT when current circulating supply is `current_supply_nano`.
+    /// Uses the closed-form integral of the marginal quadratic curve over human supply
+    /// (continuous approximation; `amount` and `supply` are nano-SPT).
+    /// Returns `(total_mysos, avg_mysos_per_nano_unit)`.
     public fun calculate_buy_price(
         base_price: u64,
         quadratic_coefficient: u64,
-        current_supply: u64,
-        amount: u64
+        current_supply_nano: u64,
+        amount_nano: u64
     ): (u64, u64) {
-        if (amount == 0) {
+        if (amount_nano == 0) {
             return (0, 0)
         };
-        
-        // Base price component
-        assert!(amount <= MAX_U64 / base_price, EOverflow);
-        let base_component = amount * base_price;
-        
-        // Sum of squares: sum(i^2) from current_supply to current_supply+amount-1
-        let end_supply = current_supply + amount - 1;
-        let start_supply_minus_one = if (current_supply == 0) { 0 } else { current_supply - 1 };
-        
-        // Calculate sum_squares(end_supply) - sum_squares(start_supply_minus_one)
-        let sum_squares_end = calculate_sum_squares(end_supply);
-        let sum_squares_start = calculate_sum_squares(start_supply_minus_one);
-        
-        // Overflow protection
-        assert!(sum_squares_end >= sum_squares_start, EOverflow);
-        let sum_squares_range = sum_squares_end - sum_squares_start;
-        
-        // Multiply by coefficient and divide by 10000
-        assert!(sum_squares_range <= MAX_U64 / quadratic_coefficient, EOverflow);
-        let quadratic_component = (sum_squares_range * quadratic_coefficient) / 10000;
-        
-        // Total price
-        assert!(base_component <= MAX_U64 - quadratic_component, EOverflow);
-        let total_price = base_component + quadratic_component;
-        
-        let avg_price = total_price / amount;
-        (total_price, avg_price)
+        let base = base_price as u256;
+        let coeff = quadratic_coefficient as u256;
+        let s = current_supply_nano as u256;
+        let a = amount_nano as u256;
+        let scale = SPT_SCALE as u256;
+
+        let base_part = (base * a) / scale;
+
+        let sp = s + a;
+        let s3 = s * s * s;
+        let sp3 = sp * sp * sp;
+        assert!(sp3 >= s3, EOverflow);
+        let cube_diff = sp3 - s3;
+
+        let denom = 30000u256 * scale * scale * scale;
+        assert!(denom > 0, EInvalidCurveParams);
+        let quad_part = (coeff * cube_diff) / denom;
+
+        let total = base_part + quad_part;
+        assert!(total <= (MAX_U64 as u256), EOverflow);
+        let total_u64 = total as u64;
+        let avg = total / a;
+        assert!(avg <= (MAX_U64 as u256), EOverflow);
+        (total_u64, avg as u64)
     }
 
-    /// Helper: Calculate sum of squares from 1 to n: n(n+1)(2n+1)/6
-    fun calculate_sum_squares(n: u64): u64 {
-        if (n == 0) {
-            return 0
-        };
-        
-        // Early guard: prevent n == MAX_U64 case where n + 1 overflows
-        assert!(n < MAX_U64, EOverflow);
-        
-        // Overflow protection for intermediate calculations
-        // n * (n+1) can overflow, so check first
-        assert!(n <= MAX_U64 / (n + 1), EOverflow);
-        let n_times_n_plus_one = n * (n + 1);
-        
-        // (2n+1) can overflow
-        assert!(n <= (MAX_U64 - 1) / 2, EOverflow);
-        let two_n_plus_one = 2 * n + 1;
-        
-        // n(n+1) * (2n+1) can overflow
-        assert!(n_times_n_plus_one <= MAX_U64 / two_n_plus_one, EOverflow);
-        let numerator = n_times_n_plus_one * two_n_plus_one;
-        
-        numerator / 6
-    }
-
-    /// Calculate refund amount when selling tokens using closed-form sum
-    /// Selling reduces supply, so we sum from current_supply-amount to current_supply-1
-    /// Returns (total refund, average price per token)
+    /// MYSO refund for selling `amount_nano` nano-SPT when current circulating supply is `current_supply_nano`.
+    /// Returns `(total_refund_mysos, avg_mysos_per_nano_unit)`.
     public fun calculate_sell_price(
         base_price: u64,
         quadratic_coefficient: u64,
-        current_supply: u64,
-        amount: u64
+        current_supply_nano: u64,
+        amount_nano: u64
     ): (u64, u64) {
-        if (amount == 0) {
+        if (amount_nano == 0) {
             return (0, 0)
         };
-        
-        // Prevent underflow: ensure we have enough supply to sell
-        assert!(current_supply >= amount, EInsufficientLiquidity);
-        
-        // Selling reduces supply, so we sum from current_supply-amount to current_supply-1
-        let start_supply = current_supply - amount;
-        let end_supply = current_supply - 1;
-        
-        // Base price component
-        assert!(amount <= MAX_U64 / base_price, EOverflow);
-        let base_component = amount * base_price;
-        
-        // Sum of squares from start_supply to end_supply
-        let sum_squares_end = calculate_sum_squares(end_supply);
-        let sum_squares_start = if (start_supply == 0) { 0 } else { calculate_sum_squares(start_supply - 1) };
-        
-        assert!(sum_squares_end >= sum_squares_start, EOverflow);
-        let sum_squares_range = sum_squares_end - sum_squares_start;
-        
-        assert!(sum_squares_range <= MAX_U64 / quadratic_coefficient, EOverflow);
-        let quadratic_component = (sum_squares_range * quadratic_coefficient) / 10000;
-        
-        assert!(base_component <= MAX_U64 - quadratic_component, EOverflow);
-        let total_refund = base_component + quadratic_component;
-        
-        let avg_price = total_refund / amount;
-        (total_refund, avg_price)
+        assert!(current_supply_nano >= amount_nano, EInsufficientLiquidity);
+
+        let base = base_price as u256;
+        let coeff = quadratic_coefficient as u256;
+        let s = current_supply_nano as u256;
+        let a = amount_nano as u256;
+        let scale = SPT_SCALE as u256;
+
+        let base_part = (base * a) / scale;
+
+        let sm = s - a;
+        let s3 = s * s * s;
+        let sm3 = sm * sm * sm;
+        assert!(s3 >= sm3, EOverflow);
+        let cube_diff = s3 - sm3;
+
+        let denom = 30000u256 * scale * scale * scale;
+        assert!(denom > 0, EInvalidCurveParams);
+        let quad_part = (coeff * cube_diff) / denom;
+
+        let total = base_part + quad_part;
+        assert!(total <= (MAX_U64 as u256), EOverflow);
+        let total_u64 = total as u64;
+        let avg = total / a;
+        assert!(avg <= (MAX_U64 as u256), EOverflow);
+        (total_u64, avg as u64)
+    }
+
+    /// `10^9` nano-SPT per 1.0 display token (for clients / indexers).
+    public fun spt_amount_scale(): u64 {
+        SPT_SCALE
+    }
+
+    /// Display decimals for SPT quantities (matches native MYSO).
+    public fun spt_amount_decimals(): u8 {
+        SPT_DECIMALS
     }
 
     /// Get token info from registry by associated_id (post/profile ID), not pool ID

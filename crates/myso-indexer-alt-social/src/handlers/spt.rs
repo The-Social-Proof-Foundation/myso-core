@@ -2,6 +2,7 @@
 // SPDX-License-Identifier: Apache-2.0
 
 use super::{ProfileUpdate, SocialEventRow};
+use crate::metrics::SocialMetrics;
 use myso_indexer_alt_social_schema::models::{
     NewSocialProofTokensConfig, NewSocialProofTokensEvent, NewSptExchangeConfig, NewSptHolding,
     NewSptPool, NewSptPriceHistory, NewSptReservation, NewSptReservationPool, NewSptTransaction,
@@ -41,18 +42,60 @@ fn json_to_i64(v: &serde_json::Value) -> i64 {
         .unwrap_or(0)
 }
 
-/// JSON number from chain events (`u64` in Move) clamped to `i64` for BIGINT columns.
-fn json_u64_to_i64_opt(v: Option<&serde_json::Value>) -> i64 {
-    let Some(v) = v else {
-        return 0;
-    };
+/// Parses non-negative chain quantities (`u64` in Move) for PostgreSQL `BIGINT` (`i64`).
+/// Returns `None` when the value exceeds `i64::MAX` (must not clamp silently).
+fn json_chain_u64_as_i64_for_db(v: &serde_json::Value) -> Option<i64> {
     if let Some(i) = v.as_i64() {
-        return i;
+        return (i >= 0).then_some(i);
     }
-    if let Some(u) = v.as_u64() {
-        return u.min(i64::MAX as u64) as i64;
+    let u = v.as_u64()?;
+    i64::try_from(u).ok()
+}
+
+fn json_opt_chain_u64_as_i64_for_db(
+    v: Option<&serde_json::Value>,
+    field: &'static str,
+    event_name: &str,
+) -> Option<i64> {
+    match v {
+        None => Some(0),
+        Some(val) => match json_chain_u64_as_i64_for_db(val) {
+            Some(x) => Some(x),
+            None => {
+                SocialMetrics::record_spt_u64_amount_exceeds_i64(field);
+                tracing::error!(
+                    target: "social_indexer::spt",
+                    event = %event_name,
+                    field = %field,
+                    raw = ?val,
+                    "chain JSON integer exceeds i64::MAX; skipping SPT event batch"
+                );
+                None
+            }
+        },
     }
-    0
+}
+
+fn require_chain_u64_as_i64(
+    v: Option<&serde_json::Value>,
+    field: &'static str,
+    event_name: &str,
+) -> Option<i64> {
+    let val = v?;
+    match json_chain_u64_as_i64_for_db(val) {
+        Some(x) => Some(x),
+        None => {
+            SocialMetrics::record_spt_u64_amount_exceeds_i64(field);
+            tracing::error!(
+                target: "social_indexer::spt",
+                event = %event_name,
+                field = %field,
+                raw = ?val,
+                "chain JSON integer exceeds i64::MAX; skipping SPT event batch"
+            );
+            None
+        }
+    }
 }
 
 fn json_str(v: &serde_json::Value) -> Option<String> {
@@ -128,20 +171,24 @@ fn process_token_pool_created_event(
     let token_type = token_type_from_u8(data.get("token_type")?.as_u64()?)?;
     let owner = json_str(data.get("owner")?)?;
     let associated_id = json_str(data.get("associated_id")?)?;
-    let symbol = json_str(data.get("symbol")?).unwrap_or_default();
-    let name = json_str(data.get("name")?).unwrap_or_default();
     let base_price = json_to_i64(data.get("base_price")?);
     let quadratic_coefficient = json_to_i64(data.get("quadratic_coefficient")?);
-    let circulating_supply = json_u64_to_i64_opt(data.get("circulating_supply"));
-    let total_reserved_at_launch = json_u64_to_i64_opt(data.get("total_reserved_at_launch"));
+    let circulating_supply = json_opt_chain_u64_as_i64_for_db(
+        data.get("circulating_supply"),
+        "circulating_supply",
+        "TokenPoolCreatedEvent",
+    )?;
+    let total_reserved_at_launch = json_opt_chain_u64_as_i64_for_db(
+        data.get("total_reserved_at_launch"),
+        "total_reserved_at_launch",
+        "TokenPoolCreatedEvent",
+    )?;
 
     let pool = NewSptPool {
         pool_id: id.clone(),
         token_type,
         owner: owner.clone(),
         associated_id: associated_id.clone(),
-        symbol,
-        name,
         circulating_supply,
         base_price,
         quadratic_coefficient,
@@ -224,7 +271,7 @@ fn process_token_bought_event(
 ) -> Option<Vec<SocialEventRow>> {
     let id = json_str(data.get("id")?)?;
     let buyer = json_str(data.get("buyer")?)?;
-    let amount = json_to_i64(data.get("amount")?);
+    let amount = require_chain_u64_as_i64(data.get("amount"), "amount", "TokenBoughtEvent")?;
     let myso_amount = json_to_i64(data.get("myso_amount")?);
     let fee_amount = json_to_i64(data.get("fee_amount")?);
     let creator_fee = json_to_i64(data.get("creator_fee")?);
@@ -304,7 +351,7 @@ fn process_token_sold_event(
 ) -> Option<Vec<SocialEventRow>> {
     let id = json_str(data.get("id")?)?;
     let seller = json_str(data.get("seller")?)?;
-    let amount = json_to_i64(data.get("amount")?);
+    let amount = require_chain_u64_as_i64(data.get("amount"), "amount", "TokenSoldEvent")?;
     let myso_amount = json_to_i64(data.get("myso_amount")?);
     let fee_amount = json_to_i64(data.get("fee_amount")?);
     let creator_fee = json_to_i64(data.get("creator_fee")?);
@@ -384,7 +431,7 @@ fn process_tokens_added_event(
 ) -> Option<Vec<SocialEventRow>> {
     let pool_id = json_str(data.get("pool_id")?)?;
     let owner = json_str(data.get("owner")?)?;
-    let amount = json_to_i64(data.get("amount")?);
+    let amount = require_chain_u64_as_i64(data.get("amount"), "amount", "TokensAddedEvent")?;
 
     let holding = NewSptHolding {
         pool_id: pool_id.clone(),
@@ -736,8 +783,6 @@ fn process_social_proof_init_pool_event(
     let token_type = token_type_from_u8(data.get("token_type")?.as_u64()?)?;
     let owner = json_str(data.get("owner")?)?;
     let associated_id = json_str(data.get("associated_id")?)?;
-    let symbol = json_str(data.get("symbol")?).unwrap_or_default();
-    let name = json_str(data.get("name")?).unwrap_or_default();
     let base_price = json_to_i64(data.get("base_price")?);
     let quadratic_coefficient = json_to_i64(data.get("quadratic_coefficient")?);
 
@@ -746,8 +791,6 @@ fn process_social_proof_init_pool_event(
         token_type,
         owner,
         associated_id,
-        symbol,
-        name,
         circulating_supply: 0,
         base_price,
         quadratic_coefficient,
@@ -802,7 +845,7 @@ mod tests {
     use super::handle_spt_event;
     use myso_indexer_alt_social_schema::models::{
         NewSptExchangeConfig, RESERVATION_POOL_STATUS_ACTIVE,
-        RESERVATION_POOL_STATUS_THRESHOLD_MET, TOKEN_TYPE_PROFILE,
+        RESERVATION_POOL_STATUS_THRESHOLD_MET, SPT_AMOUNT_NANO_SCALE, TOKEN_TYPE_PROFILE,
     };
     use serde_json::json;
 
@@ -980,11 +1023,9 @@ mod tests {
             "token_type": 1u64,
             "owner": "0xowner",
             "associated_id": "0xprof",
-            "symbol": "S",
-            "name": "N",
             "base_price": 5i64,
             "quadratic_coefficient": 1i64,
-            "circulating_supply": 100u64,
+            "circulating_supply": 100u64 * SPT_AMOUNT_NANO_SCALE as u64,
             "total_reserved_at_launch": 1000u64,
         });
         let rows = handle_spt_event("TokenPoolCreatedEvent", &data, "tx:0", 0, 5000).expect("rows");
@@ -998,7 +1039,7 @@ mod tests {
                 }
             })
             .expect("SptPool");
-        assert_eq!(pool.circulating_supply, 100);
+        assert_eq!(pool.circulating_supply, 100 * SPT_AMOUNT_NANO_SCALE);
         let ph = rows
             .iter()
             .find_map(|r| {
@@ -1009,26 +1050,28 @@ mod tests {
                 }
             })
             .expect("SptPriceHistory");
-        assert_eq!(ph.circulating_supply, 100);
+        assert_eq!(ph.circulating_supply, 100 * SPT_AMOUNT_NANO_SCALE);
         assert!(
             rows.iter()
                 .any(|r| matches!(r, SocialEventRow::ProfileUpdate(up) if up.social_proof_token_address == Some(Some("0xpool1".to_string())))),
             "profile token sets social_proof_token_address"
         );
-        let launch = rows.iter().find_map(|r| {
-            if let SocialEventRow::SptLaunchHoldingsFromReservations {
-                circulating_supply,
-                total_reserved_at_launch,
-                ..
-            } = r
-            {
-                Some((*circulating_supply, *total_reserved_at_launch))
-            } else {
-                None
-            }
-        })
-        .expect("SptLaunchHoldingsFromReservations");
-        assert_eq!(launch, (100, 1000));
+        let launch = rows
+            .iter()
+            .find_map(|r| {
+                if let SocialEventRow::SptLaunchHoldingsFromReservations {
+                    circulating_supply,
+                    total_reserved_at_launch,
+                    ..
+                } = r
+                {
+                    Some((*circulating_supply, *total_reserved_at_launch))
+                } else {
+                    None
+                }
+            })
+            .expect("SptLaunchHoldingsFromReservations");
+        assert_eq!(launch, (100 * SPT_AMOUNT_NANO_SCALE, 1000));
         assert!(
             rows.iter().any(|r| {
                 matches!(r, SocialEventRow::SocialProofTokensEvent(e) if e.event_type == "TokenPoolCreatedEvent" && e.event_id == "tx:0")
@@ -1044,11 +1087,9 @@ mod tests {
             "token_type": 2u64,
             "owner": "0xowner",
             "associated_id": "0xpost",
-            "symbol": "",
-            "name": "",
             "base_price": 0i64,
             "quadratic_coefficient": 0i64,
-            "circulating_supply": 10u64,
+            "circulating_supply": 10u64 * SPT_AMOUNT_NANO_SCALE as u64,
             "total_reserved_at_launch": 100u64,
         });
         let rows = handle_spt_event("TokenPoolCreatedEvent", &data, "tx:0", 0, 5000).expect("rows");
@@ -1059,8 +1100,7 @@ mod tests {
             "post token must not emit ProfileUpdate"
         );
         assert!(
-            rows
-                .iter()
+            rows.iter()
                 .any(|r| matches!(r, SocialEventRow::SptLaunchHoldingsFromReservations { .. })),
             "launch row when circulating_supply > 0"
         );
@@ -1079,8 +1119,6 @@ mod tests {
             "token_type": 2u64,
             "owner": "0xowner",
             "associated_id": "0xpost",
-            "symbol": "",
-            "name": "",
             "base_price": 0i64,
             "quadratic_coefficient": 0i64,
         });
@@ -1130,8 +1168,7 @@ mod tests {
             "max_individual_reservation_bps": 100i64,
             "max_reservers_per_pool": 100i64,
         });
-        let rows =
-            handle_spt_event("ConfigUpdatedEvent", &data, "tx:0", 0, 1000).expect("rows");
+        let rows = handle_spt_event("ConfigUpdatedEvent", &data, "tx:0", 0, 1000).expect("rows");
         let cfg = rows.iter().find_map(|r| {
             if let SocialEventRow::SptExchangeConfig(c) = r {
                 Some(c)
@@ -1164,5 +1201,43 @@ mod tests {
         let c: &NewSptExchangeConfig = cfg.expect("exchange config");
         assert_eq!(c.trading_enabled, Some(true));
         assert!(c.apply_trading_enabled_only);
+    }
+
+    #[test]
+    fn token_bought_skips_batch_when_amount_exceeds_i64() {
+        let too_large = (i64::MAX as u64).saturating_add(1);
+        let data = json!({
+            "id": "0xp",
+            "buyer": "0xb",
+            "amount": too_large,
+            "myso_amount": 0u64,
+            "fee_amount": 0u64,
+            "creator_fee": 0u64,
+            "platform_fee": 0u64,
+            "treasury_fee": 0u64,
+            "new_price": 0i64,
+        });
+        assert!(
+            handle_spt_event("TokenBoughtEvent", &data, "tx:0", 0, 0).is_none(),
+            "SPT trade amount must fit PostgreSQL BIGINT / Rust i64"
+        );
+    }
+
+    #[test]
+    fn token_pool_created_skips_batch_when_circulating_supply_exceeds_i64() {
+        let too_large = (i64::MAX as u64).saturating_add(1);
+        let data = json!({
+            "id": "0xpool1",
+            "token_type": 1u64,
+            "owner": "0xowner",
+            "associated_id": "0xprof",
+            "base_price": 5i64,
+            "quadratic_coefficient": 1i64,
+            "circulating_supply": too_large,
+        });
+        assert!(
+            handle_spt_event("TokenPoolCreatedEvent", &data, "tx:0", 0, 5000).is_none(),
+            "circulating_supply must fit i64 for BIGINT storage"
+        );
     }
 }

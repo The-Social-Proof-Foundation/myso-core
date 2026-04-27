@@ -20,7 +20,7 @@ BEGIN
 END $$;
 
 -- Drop views that may exist with different column structure (triggers same error as functions)
-DROP VIEW IF EXISTS active_reservation_pools CASCADE;
+DROP VIEW IF EXISTS reservation_pools CASCADE;
 DROP VIEW IF EXISTS spt_reservation_holdings CASCADE;
 
 -- ============================================================================
@@ -217,8 +217,6 @@ SELECT
     p.token_type,
     p.owner,
     p.associated_id,
-    p.symbol,
-    p.name,
     p.circulating_supply,
     COUNT(t.id) AS transaction_count,
     SUM(CASE WHEN t.transaction_type = 'BUY' THEN t.myso_amount ELSE 0 END) AS buy_volume,
@@ -241,14 +239,14 @@ WHERE
         WHERE sub.pool_id = p.pool_id
     )
 GROUP BY 
-    p.pool_id, p.token_type, p.owner, p.associated_id, p.symbol, p.name, 
+    p.pool_id, p.token_type, p.owner, p.associated_id,
     p.circulating_supply, p.base_price, ph.price
 ORDER BY 
     total_volume DESC;
 
--- Create view for active reservation pools with aggregated data
-DROP VIEW IF EXISTS active_reservation_pools CASCADE;
-CREATE VIEW active_reservation_pools AS
+-- Create view for reservation pools with aggregated data
+DROP VIEW IF EXISTS reservation_pools CASCADE;
+CREATE VIEW reservation_pools AS
 SELECT
     sp.pool_id,
     sp.associated_id,

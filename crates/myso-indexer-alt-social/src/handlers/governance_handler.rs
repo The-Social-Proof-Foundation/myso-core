@@ -4,6 +4,7 @@
 //! Governance pipeline: indexes governance module events.
 
 use std::collections::BTreeMap;
+use std::collections::BTreeSet;
 use std::sync::Arc;
 
 use anyhow::Result;
@@ -275,17 +276,20 @@ impl FieldCount for GovernanceRow {
 pub struct GovernanceHandler;
 
 /// `registry_type` / `proposal_type` from parsed governance event JSON, when present.
-fn governance_event_registry_type_hint(
-    event_name: &str,
-    data: &serde_json::Value,
-) -> Option<u8> {
+fn governance_event_registry_type_hint(event_name: &str, data: &serde_json::Value) -> Option<u8> {
     if event_name == "GovernanceRegistryCreatedEvent" {
         return None;
     }
-    if let Some(v) = data.get("registry_type").and_then(serde_json::Value::as_u64) {
+    if let Some(v) = data
+        .get("registry_type")
+        .and_then(serde_json::Value::as_u64)
+    {
         return u8::try_from(v).ok();
     }
-    if let Some(v) = data.get("proposal_type").and_then(serde_json::Value::as_u64) {
+    if let Some(v) = data
+        .get("proposal_type")
+        .and_then(serde_json::Value::as_u64)
+    {
         return u8::try_from(v).ok();
     }
     None
@@ -377,6 +381,72 @@ fn resolve_governance_registry_id_from_tx(
     pick_governance_registry_id(candidates, event_registry_type)
 }
 
+/// Collects `(registry_id, registry_type)` from any governance event in the transaction whose BCS
+/// payload includes `registry_id` (e.g. `DelegatePanelRefreshedEvent` after the elected events).
+/// Used as a fallback when `resolve_governance_registry_id_from_tx` does not see a `GovernanceDAO`
+/// write (or returns ambiguous) but events still carry the DAO object id.
+fn collect_governance_registry_id_hints(tx: &ExecutedTransaction) -> Vec<(String, Option<u8>)> {
+    let Some(events) = &tx.events else {
+        return Vec::new();
+    };
+    let mut hints = Vec::new();
+    for ev in &events.data {
+        if !common::is_social_package_event(&ev.package_id, &ev.type_.address) {
+            continue;
+        }
+        let module = ev.type_.module.as_str();
+        if !GOVERNANCE_MODULES.contains(&module) {
+            continue;
+        }
+        let event_name = ev.type_.name.as_str();
+        let Ok(value) = events::parse_event_contents(module, event_name, &ev.contents) else {
+            continue;
+        };
+        let Some(s) = value.get("registry_id").and_then(serde_json::Value::as_str) else {
+            continue;
+        };
+        let id = s.to_string();
+        let registry_type = value
+            .get("registry_type")
+            .and_then(serde_json::Value::as_u64)
+            .and_then(|n| u8::try_from(n).ok());
+        hints.push((id, registry_type));
+    }
+    hints
+}
+
+/// Picks a single `registry_id` from per-transaction event hints, optionally filtered by
+/// `registry_type` when multiple distinct DAOs appear in the same transaction.
+fn pick_registry_id_from_event_hints(
+    hints: &[(String, Option<u8>)],
+    event_registry_type: Option<u8>,
+) -> Option<String> {
+    if hints.is_empty() {
+        return None;
+    }
+    let distinct_ids: BTreeSet<&str> = hints.iter().map(|(id, _)| id.as_str()).collect();
+    if distinct_ids.len() == 1 {
+        return Some(distinct_ids.iter().next().unwrap().to_string());
+    }
+    let filter = event_registry_type?;
+    let matched: BTreeSet<&str> = hints
+        .iter()
+        .filter(|(_, rt)| *rt == Some(filter))
+        .map(|(id, _)| id.as_str())
+        .collect();
+    (matched.len() == 1).then(|| matched.iter().next().unwrap().to_string())
+}
+
+fn resolve_effective_governance_registry_id(
+    object_set: &ObjectSet,
+    tx: &ExecutedTransaction,
+    event_registry_type: Option<u8>,
+    tx_registry_hints: &[(String, Option<u8>)],
+) -> Option<String> {
+    resolve_governance_registry_id_from_tx(object_set, tx, event_registry_type)
+        .or_else(|| pick_registry_id_from_event_hints(tx_registry_hints, event_registry_type))
+}
+
 #[async_trait]
 impl Processor for GovernanceHandler {
     const NAME: &'static str = "governance";
@@ -390,6 +460,7 @@ impl Processor for GovernanceHandler {
             let Some(events) = &tx.events else {
                 continue;
             };
+            let tx_registry_hints = collect_governance_registry_id_hints(tx);
             for (event_seq, ev) in events.data.iter().enumerate() {
                 if !common::is_social_package_event(&ev.package_id, &ev.type_.address) {
                     continue;
@@ -416,10 +487,11 @@ impl Processor for GovernanceHandler {
                         }
                     };
                 let hint = governance_event_registry_type_hint(event_name, &event_data);
-                let governance_registry_id = resolve_governance_registry_id_from_tx(
+                let governance_registry_id = resolve_effective_governance_registry_id(
                     &checkpoint.object_set,
                     tx,
                     hint,
+                    &tx_registry_hints,
                 );
                 if let Some(rows) = governance::handle_governance_event(
                     event_name,
@@ -560,6 +632,15 @@ impl Handler for GovernanceHandler {
                         .await?;
                 }
                 GovernanceRow::Delegate(d) => {
+                    total += diesel::sql_query(
+                        "UPDATE delegates SET is_active = false \
+                         WHERE address = $1 AND registry_type = $2 AND governance_registry_id = $3",
+                    )
+                    .bind::<Text, _>(&d.address)
+                    .bind::<SmallInt, _>(d.registry_type)
+                    .bind::<Text, _>(&d.governance_registry_id)
+                    .execute(conn)
+                    .await?;
                     total += diesel::insert_into(delegates::table)
                         .values(d)
                         .execute(conn)
@@ -865,7 +946,7 @@ mod resolve_governance_registry_tests {
     use move_core_types::identifier::Identifier;
     use move_core_types::language_storage::StructTag;
     use myso_types::base_types::{MoveObjectType, MySoAddress, ObjectID, SequenceNumber};
-    use myso_types::crypto::{AccountKeyPair, get_key_pair_from_rng};
+    use myso_types::crypto::{get_key_pair_from_rng, AccountKeyPair};
     use myso_types::digests::{ObjectDigest, TransactionDigest};
     use myso_types::effects::{TestEffectsBuilder, TransactionEffectsAPI};
     use myso_types::full_checkpoint_content::{ExecutedTransaction, ObjectSet};
@@ -879,7 +960,7 @@ mod resolve_governance_registry_tests {
 
     use super::{
         collect_governance_dao_candidates, pick_governance_registry_id,
-        resolve_governance_registry_id_from_tx, ID_END_INDEX,
+        pick_registry_id_from_event_hints, resolve_governance_registry_id_from_tx, ID_END_INDEX,
     };
 
     #[test]
@@ -893,6 +974,32 @@ mod resolve_governance_registry_tests {
         );
         assert_eq!(
             pick_governance_registry_id(m, Some(1)),
+            Some("0xbbb".to_string())
+        );
+    }
+
+    #[test]
+    fn event_hints_single_id_without_type() {
+        let hints = vec![("0xreg".to_string(), Some(0u8))];
+        assert_eq!(
+            pick_registry_id_from_event_hints(&hints, None),
+            Some("0xreg".to_string())
+        );
+    }
+
+    #[test]
+    fn event_hints_two_ids_disambiguate_by_type() {
+        let hints = vec![
+            ("0xaaa".to_string(), Some(0u8)),
+            ("0xbbb".to_string(), Some(1u8)),
+        ];
+        assert_eq!(pick_registry_id_from_event_hints(&hints, None), None);
+        assert_eq!(
+            pick_registry_id_from_event_hints(&hints, Some(0u8)),
+            Some("0xaaa".to_string())
+        );
+        assert_eq!(
+            pick_registry_id_from_event_hints(&hints, Some(1u8)),
             Some("0xbbb".to_string())
         );
     }
@@ -978,7 +1085,11 @@ mod resolve_governance_registry_tests {
         };
 
         let candidates = collect_governance_dao_candidates(&object_set, &executed);
-        assert_eq!(candidates.len(), 2, "expected only GovernanceDAO objects in set");
+        assert_eq!(
+            candidates.len(),
+            2,
+            "expected only GovernanceDAO objects in set"
+        );
 
         assert_eq!(
             resolve_governance_registry_id_from_tx(&object_set, &executed, Some(0)),

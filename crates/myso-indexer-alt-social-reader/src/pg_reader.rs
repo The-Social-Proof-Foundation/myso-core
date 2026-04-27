@@ -13,6 +13,8 @@ use url::Url;
 
 use myso_pg_db as db;
 
+use crate::PostDeletionEventRow;
+use crate::PostModerationEventRow;
 use crate::governance::{
     DelegateRatingViewerTarget, batch_viewer_latest_delegate_rating_vote_kind,
     get_anonymous_voting_trends, get_delegate_by_address, get_delegate_proposals,
@@ -32,13 +34,12 @@ use crate::metrics::DbReaderMetrics;
 use crate::mydata::{
     get_mydata_access_analytics, get_mydata_access_logs, get_mydata_config, get_mydata_purchases,
     get_mydata_query_distribution_round, get_mydata_query_merkle_root,
-    get_mydata_query_snapshot_anchor, get_mydata_record,
-    get_mydata_revenue, get_mydata_revenue_timeline, get_mydata_stats, get_mydata_subscriptions,
-    get_popular_mydata, list_mydata, list_mydata_query_broad_pools,
-    list_mydata_query_claims_for_snapshot, list_mydata_query_listings_for_sub_pool,
-    list_mydata_query_distribution_rounds, list_mydata_query_snapshot_anchors,
-    list_mydata_query_sub_pools_for_broad_pool,
-    list_mydata_query_sub_pools_for_listing, list_mydata_purchases_by_buyer,
+    get_mydata_query_snapshot_anchor, get_mydata_record, get_mydata_revenue,
+    get_mydata_revenue_timeline, get_mydata_stats, get_mydata_subscriptions, get_popular_mydata,
+    list_mydata, list_mydata_purchases_by_buyer, list_mydata_query_broad_pools,
+    list_mydata_query_claims_for_snapshot, list_mydata_query_distribution_rounds,
+    list_mydata_query_listings_for_sub_pool, list_mydata_query_snapshot_anchors,
+    list_mydata_query_sub_pools_for_broad_pool, list_mydata_query_sub_pools_for_listing,
     list_mydata_records_by_owner,
 };
 use crate::platform::PlatformRow;
@@ -77,9 +78,9 @@ use crate::spt::{
     SptTransactionsWithViewer, get_former_reservation_holdings_for_pool,
     get_reservation_holdings_for_pool, get_reservation_pool_id_for_associated_id,
     get_spt_exchange_config, get_spt_holdings_by_holder, get_spt_holdings_by_pool, get_spt_pool,
-    get_spt_pool_id_for_profile, get_spt_price_history, get_spt_reservation_volume_history,
+    get_spt_pool_id_for_profile, get_spt_price_history,
     get_spt_reservation_holdings_for_reserver as fetch_spt_reservation_holdings_for_reserver,
-    get_spt_transactions, list_spt_pools,
+    get_spt_reservation_volume_history, get_spt_transactions, list_spt_pools,
 };
 use crate::vesting::{get_vesting_leaderboard, get_vesting_wallet, list_vesting_wallets};
 
@@ -543,6 +544,88 @@ impl SocialPgReader {
         crate::post::get_post_transfers(&mut conn, post_id, limit, offset, &self.metrics).await
     }
 
+    /// User reports for a post (newest first).
+    pub async fn list_post_reports(
+        &self,
+        post_id: &str,
+        limit: i64,
+        offset: i64,
+    ) -> anyhow::Result<Vec<crate::post::PostReportRow>> {
+        let mut conn = self.connect().await?;
+        crate::post::list_post_reports(&mut conn, post_id, limit, offset, &self.metrics).await
+    }
+
+    /// User reports for a comment (newest first).
+    pub async fn list_comment_reports(
+        &self,
+        comment_id: &str,
+        limit: i64,
+        offset: i64,
+    ) -> anyhow::Result<Vec<crate::post::PostReportRow>> {
+        let mut conn = self.connect().await?;
+        crate::post::list_comment_reports(&mut conn, comment_id, limit, offset, &self.metrics).await
+    }
+
+    /// Platform moderation event history for a post (newest first).
+    pub async fn list_post_moderation_events(
+        &self,
+        post_id: &str,
+        limit: i64,
+        offset: i64,
+    ) -> anyhow::Result<Vec<PostModerationEventRow>> {
+        let mut conn = self.connect().await?;
+        crate::post::list_post_moderation_events(&mut conn, post_id, limit, offset, &self.metrics)
+            .await
+    }
+
+    /// Platform moderation event history for a comment (newest first).
+    pub async fn list_comment_moderation_events(
+        &self,
+        comment_id: &str,
+        limit: i64,
+        offset: i64,
+    ) -> anyhow::Result<Vec<PostModerationEventRow>> {
+        let mut conn = self.connect().await?;
+        crate::post::list_comment_moderation_events(
+            &mut conn,
+            comment_id,
+            limit,
+            offset,
+            &self.metrics,
+        )
+        .await
+    }
+
+    /// Post or comment deletion event history for a post object id (newest first).
+    pub async fn list_post_deletion_events(
+        &self,
+        post_id: &str,
+        limit: i64,
+        offset: i64,
+    ) -> anyhow::Result<Vec<PostDeletionEventRow>> {
+        let mut conn = self.connect().await?;
+        crate::post::list_post_deletion_events(&mut conn, post_id, limit, offset, &self.metrics)
+            .await
+    }
+
+    /// Deletion event history for a comment (newest first; `object_id` = comment id).
+    pub async fn list_comment_deletion_events(
+        &self,
+        comment_id: &str,
+        limit: i64,
+        offset: i64,
+    ) -> anyhow::Result<Vec<PostDeletionEventRow>> {
+        let mut conn = self.connect().await?;
+        crate::post::list_comment_deletion_events(
+            &mut conn,
+            comment_id,
+            limit,
+            offset,
+            &self.metrics,
+        )
+        .await
+    }
+
     /// Get a vesting wallet by ID.
     pub async fn get_vesting_wallet(
         &self,
@@ -683,11 +766,16 @@ impl SocialPgReader {
         address: &str,
         limit: i64,
         offset: i64,
-    ) -> anyhow::Result<Vec<myso_indexer_alt_social_schema::models::SptReservationHoldingRow>>
-    {
+    ) -> anyhow::Result<Vec<myso_indexer_alt_social_schema::models::SptReservationHoldingRow>> {
         let mut conn = self.connect().await?;
-        fetch_spt_reservation_holdings_for_reserver(&mut conn, address, limit, offset, &self.metrics)
-            .await
+        fetch_spt_reservation_holdings_for_reserver(
+            &mut conn,
+            address,
+            limit,
+            offset,
+            &self.metrics,
+        )
+        .await
     }
 
     /// Reservation pool id for an SPT `associated_id` (e.g. `profile_0x...`).
@@ -707,8 +795,7 @@ impl SocialPgReader {
         offset: i64,
         viewer: Option<&str>,
         prioritize_followed: bool,
-    ) -> anyhow::Result<Vec<myso_indexer_alt_social_schema::models::SptReservationHoldingRow>>
-    {
+    ) -> anyhow::Result<Vec<myso_indexer_alt_social_schema::models::SptReservationHoldingRow>> {
         let mut conn = self.connect().await?;
         get_reservation_holdings_for_pool(
             &mut conn,
@@ -730,8 +817,7 @@ impl SocialPgReader {
         offset: i64,
         viewer: Option<&str>,
         prioritize_followed: bool,
-    ) -> anyhow::Result<Vec<myso_indexer_alt_social_schema::models::SptReservationHoldingRow>>
-    {
+    ) -> anyhow::Result<Vec<myso_indexer_alt_social_schema::models::SptReservationHoldingRow>> {
         let mut conn = self.connect().await?;
         get_former_reservation_holdings_for_pool(
             &mut conn,
@@ -1191,8 +1277,14 @@ impl SocialPgReader {
     ) -> anyhow::Result<Vec<myso_indexer_alt_social_schema::models::MyDataQueryListingSubPoolRow>>
     {
         let mut conn = self.connect().await?;
-        list_mydata_query_listings_for_sub_pool(&mut conn, sub_pool_id, limit, offset, &self.metrics)
-            .await
+        list_mydata_query_listings_for_sub_pool(
+            &mut conn,
+            sub_pool_id,
+            limit,
+            offset,
+            &self.metrics,
+        )
+        .await
     }
 
     /// Latest snapshot anchor row for a snapshot ID (includes manifest hash and payment reference when present).
@@ -1220,8 +1312,9 @@ impl SocialPgReader {
     pub async fn get_mydata_query_distribution_round(
         &self,
         snapshot_id: &str,
-    ) -> anyhow::Result<Option<myso_indexer_alt_social_schema::models::MyDataQueryDistributionRoundRow>>
-    {
+    ) -> anyhow::Result<
+        Option<myso_indexer_alt_social_schema::models::MyDataQueryDistributionRoundRow>,
+    > {
         let mut conn = self.connect().await?;
         get_mydata_query_distribution_round(&mut conn, snapshot_id, &self.metrics).await
     }

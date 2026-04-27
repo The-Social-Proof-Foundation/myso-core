@@ -44,7 +44,6 @@ pub const ENABLE_SPOT: i32 = 4;
 #[derive(Debug, Clone, Insertable, Serialize, Deserialize)]
 #[diesel(table_name = posts)]
 pub struct NewPost {
-    pub id: String,
     pub post_id: String,
     pub owner: String,
     pub profile_id: String,
@@ -174,6 +173,33 @@ pub struct NewModerationEvent {
     pub transaction_id: String,
 }
 
+#[derive(Debug, Clone, Queryable, Selectable, Serialize, Deserialize)]
+#[diesel(table_name = posts_moderation_events)]
+pub struct PostModerationEventRow {
+    pub id: i32,
+    pub object_id: String,
+    pub platform_id: String,
+    pub removed: bool,
+    pub moderated_by: String,
+    pub moderated_at: i64,
+    pub time: chrono::DateTime<chrono::Utc>,
+    pub transaction_id: String,
+}
+
+#[derive(Debug, Clone, Queryable, Selectable, Serialize, Deserialize)]
+#[diesel(table_name = posts_reports)]
+pub struct PostReport {
+    pub id: i32,
+    pub object_id: String,
+    pub is_comment: bool,
+    pub reporter: String,
+    pub reason_code: i16,
+    pub description: String,
+    pub reported_at: i64,
+    pub time: chrono::DateTime<chrono::Utc>,
+    pub transaction_id: String,
+}
+
 #[derive(Debug, Clone, Insertable, Serialize, Deserialize)]
 #[diesel(table_name = posts_reports)]
 pub struct NewReport {
@@ -190,6 +216,21 @@ pub struct NewReport {
 #[derive(Debug, Clone, Insertable, Serialize, Deserialize)]
 #[diesel(table_name = posts_deletion_events)]
 pub struct NewDeletionEvent {
+    pub object_id: String,
+    pub owner: String,
+    pub profile_id: String,
+    pub is_post: bool,
+    pub post_type: Option<String>,
+    pub post_id: Option<String>,
+    pub deleted_at: i64,
+    pub time: chrono::DateTime<chrono::Utc>,
+    pub transaction_id: String,
+}
+
+#[derive(Debug, Clone, Queryable, Selectable, Serialize, Deserialize)]
+#[diesel(table_name = posts_deletion_events)]
+pub struct PostDeletionEventRow {
+    pub id: i32,
     pub object_id: String,
     pub owner: String,
     pub profile_id: String,

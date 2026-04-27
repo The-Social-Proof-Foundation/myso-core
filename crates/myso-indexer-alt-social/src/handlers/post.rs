@@ -10,7 +10,8 @@ use myso_indexer_alt_social_schema::models::{
     NewReactionCount, NewReport, NewRepost, NewTip, NewUnifiedRevenue,
 };
 use myso_indexer_alt_social_schema::models::{
-    CONTENT_TYPE_COMMENT, CONTENT_TYPE_POST, REVENUE_TYPE_TIPS_COMMENT, REVENUE_TYPE_TIPS_POST,
+    CONTENT_TYPE_COMMENT, CONTENT_TYPE_POST, POST_TYPE_QUOTE_REPOST, REVENUE_TYPE_TIPS_COMMENT,
+    REVENUE_TYPE_TIPS_POST,
 };
 
 fn de_u64<'de, D>(d: D) -> Result<u64, D::Error>
@@ -252,7 +253,7 @@ pub fn handle_post_event(
         "ReactionEvent" | "ReactionAddedEvent" => process_reaction_event(data, event_id),
         "ReactionRemovedEvent" | "RemoveReactionEvent" => process_remove_reaction_event(data),
         "RepostEvent" | "RepostCreatedEvent" => process_repost_event(data, event_id),
-        "TipEvent" | "TipSentEvent" => process_tip_event(data, event_id),
+        "TipEvent" | "TipSentEvent" | "TipCreatedEvent" => process_tip_event(data, event_id),
         "ModerationEvent" | "ContentModerationEvent" | "PostModerationEvent" => {
             process_moderation_event(data, event_id)
         }
@@ -260,7 +261,7 @@ pub fn handle_post_event(
             process_report_event(data, event_id)
         }
         "DeletionEvent" | "ContentDeletedEvent" | "PostDeletedEvent" | "CommentDeletedEvent" => {
-            process_deletion_event(data, event_id)
+            process_deletion_event(data, event_id, event_name)
         }
         "ContentUpdateEvent" | "PostUpdatedEvent" | "CommentUpdatedEvent" => {
             process_content_update_event(data)
@@ -282,12 +283,16 @@ fn process_post_created_event(
     event_id: &str,
 ) -> Option<Vec<SocialEventRow>> {
     let ev: PostCreatedEvent = serde_json::from_value(data.clone()).ok()?;
+    let is_quote_repost = ev.post_type == POST_TYPE_QUOTE_REPOST;
+    let parent_for_repost_count = if is_quote_repost {
+        ev.parent_post_id.clone()
+    } else {
+        None
+    };
     let now = Utc::now();
     let created_at = now.timestamp_millis() as i64;
-    let id = format!("{}:{}", ev.post_id, created_at);
 
     let post = NewPost {
-        id: id.clone(),
         post_id: ev.post_id,
         owner: ev.owner.clone(),
         profile_id: ev.profile_id,
@@ -330,12 +335,19 @@ fn process_post_created_event(
         spot_id: ev.spot_id,
         spt_id: ev.spt_id,
     };
-    Some(vec![
+    let mut out = vec![
         SocialEventRow::Post(post),
         SocialEventRow::ProfilePostCountIncrement {
             owner_address: ev.owner.clone(),
         },
-    ])
+    ];
+    if let Some(parent_id) = parent_for_repost_count {
+        out.push(SocialEventRow::PostRepostCountIncrement {
+            original_id: parent_id,
+            is_original_post: true,
+        });
+    }
+    Some(out)
 }
 
 fn process_comment_created_event(
@@ -448,7 +460,23 @@ fn process_repost_event(data: &serde_json::Value, event_id: &str) -> Option<Vec<
 }
 
 fn process_tip_event(data: &serde_json::Value, event_id: &str) -> Option<Vec<SocialEventRow>> {
-    let ev: TipEvent = serde_json::from_value(data.clone()).ok()?;
+    let ev: TipEvent = match serde_json::from_value(data.clone()) {
+        Ok(v) => v,
+        Err(e) => {
+            crate::metrics::SocialMetrics::record_event_json_deserialize_failed("post", "TipEvent");
+            let keys: Vec<String> = data
+                .as_object()
+                .map(|m| m.keys().cloned().collect())
+                .unwrap_or_default();
+            tracing::warn!(
+                event_id = %event_id,
+                error = %e,
+                json_keys = ?keys,
+                "post tip event JSON did not match TipEvent"
+            );
+            return None;
+        }
+    };
     let now = Utc::now();
     let created_at = if ev.tip_time > 0 {
         ev.tip_time as i64
@@ -486,10 +514,13 @@ fn process_tip_event(data: &serde_json::Value, event_id: &str) -> Option<Vec<Soc
         created_at,
         event_id.to_string(),
     );
+    let object_id = ev.object_id.clone();
+    let recipient = ev.to.clone();
     Some(vec![
         SocialEventRow::Tip(tip),
         SocialEventRow::PostTipsReceivedIncrement {
-            object_id: ev.object_id,
+            object_id,
+            recipient,
             amount: ev.amount as i64,
             is_post: ev.is_post,
         },
@@ -501,7 +532,26 @@ fn process_moderation_event(
     data: &serde_json::Value,
     event_id: &str,
 ) -> Option<Vec<SocialEventRow>> {
-    let ev: ModerationEvent = serde_json::from_value(data.clone()).ok()?;
+    let ev: ModerationEvent = match serde_json::from_value(data.clone()) {
+        Ok(v) => v,
+        Err(e) => {
+            crate::metrics::SocialMetrics::record_event_json_deserialize_failed(
+                "post",
+                "PostModerationEvent",
+            );
+            let keys: Vec<String> = data
+                .as_object()
+                .map(|m| m.keys().cloned().collect())
+                .unwrap_or_default();
+            tracing::warn!(
+                event_id = %event_id,
+                error = %e,
+                json_keys = ?keys,
+                "post moderation event JSON did not match ModerationEvent"
+            );
+            return None;
+        }
+    };
     let now = Utc::now();
     let moderated_at = if ev.moderated_at > 0 {
         ev.moderated_at as i64
@@ -610,8 +660,31 @@ fn process_report_event(data: &serde_json::Value, event_id: &str) -> Option<Vec<
     Some(vec![SocialEventRow::Report(report)])
 }
 
-fn process_deletion_event(data: &serde_json::Value, event_id: &str) -> Option<Vec<SocialEventRow>> {
-    let ev: DeletionEvent = serde_json::from_value(data.clone()).ok()?;
+fn process_deletion_event(
+    data: &serde_json::Value,
+    event_id: &str,
+    event_type_for_metrics: &str,
+) -> Option<Vec<SocialEventRow>> {
+    let ev: DeletionEvent = match serde_json::from_value(data.clone()) {
+        Ok(v) => v,
+        Err(e) => {
+            crate::metrics::SocialMetrics::record_event_json_deserialize_failed(
+                "post",
+                event_type_for_metrics,
+            );
+            let keys: Vec<String> = data
+                .as_object()
+                .map(|m| m.keys().cloned().collect())
+                .unwrap_or_default();
+            tracing::warn!(
+                event_id = %event_id,
+                error = %e,
+                json_keys = ?keys,
+                "post deletion event JSON did not match DeletionEvent"
+            );
+            return None;
+        }
+    };
     let now = Utc::now();
     let deleted_at = ev.deleted_at as i64;
 
@@ -662,7 +735,26 @@ fn process_promoted_post_created_event(
     data: &serde_json::Value,
     event_id: &str,
 ) -> Option<Vec<SocialEventRow>> {
-    let ev: PromotedPostCreatedEvent = serde_json::from_value(data.clone()).ok()?;
+    let ev: PromotedPostCreatedEvent = match serde_json::from_value(data.clone()) {
+        Ok(v) => v,
+        Err(e) => {
+            crate::metrics::SocialMetrics::record_event_json_deserialize_failed(
+                "post",
+                "PromotedPostCreatedEvent",
+            );
+            let keys: Vec<String> = data
+                .as_object()
+                .map(|m| m.keys().cloned().collect())
+                .unwrap_or_default();
+            tracing::warn!(
+                event_id = %event_id,
+                error = %e,
+                json_keys = ?keys,
+                "post PromotedPostCreatedEvent JSON did not match PromotedPostCreatedEvent"
+            );
+            return None;
+        }
+    };
     Some(vec![SocialEventRow::PromotedPost {
         post_id: ev.post_id,
         owner: ev.owner,
@@ -678,7 +770,26 @@ fn process_promoted_post_view_confirmed_event(
     data: &serde_json::Value,
     event_id: &str,
 ) -> Option<Vec<SocialEventRow>> {
-    let ev: PromotedPostViewConfirmedEvent = serde_json::from_value(data.clone()).ok()?;
+    let ev: PromotedPostViewConfirmedEvent = match serde_json::from_value(data.clone()) {
+        Ok(v) => v,
+        Err(e) => {
+            crate::metrics::SocialMetrics::record_event_json_deserialize_failed(
+                "post",
+                "PromotedPostViewConfirmedEvent",
+            );
+            let keys: Vec<String> = data
+                .as_object()
+                .map(|m| m.keys().cloned().collect())
+                .unwrap_or_default();
+            tracing::warn!(
+                event_id = %event_id,
+                error = %e,
+                json_keys = ?keys,
+                "post PromotedPostViewConfirmedEvent JSON did not match struct"
+            );
+            return None;
+        }
+    };
     Some(vec![SocialEventRow::PromotionView {
         promotion_id: ev.promotion_id,
         viewer: ev.viewer,
@@ -694,7 +805,26 @@ fn process_promotion_status_toggled_event(
     data: &serde_json::Value,
     event_id: &str,
 ) -> Option<Vec<SocialEventRow>> {
-    let ev: PromotionStatusToggledEvent = serde_json::from_value(data.clone()).ok()?;
+    let ev: PromotionStatusToggledEvent = match serde_json::from_value(data.clone()) {
+        Ok(v) => v,
+        Err(e) => {
+            crate::metrics::SocialMetrics::record_event_json_deserialize_failed(
+                "post",
+                "PromotionStatusToggledEvent",
+            );
+            let keys: Vec<String> = data
+                .as_object()
+                .map(|m| m.keys().cloned().collect())
+                .unwrap_or_default();
+            tracing::warn!(
+                event_id = %event_id,
+                error = %e,
+                json_keys = ?keys,
+                "post PromotionStatusToggledEvent JSON did not match struct"
+            );
+            return None;
+        }
+    };
     Some(vec![SocialEventRow::PromotionStatusEvent {
         promotion_id: ev.promotion_id,
         toggled_by: ev.toggled_by,
@@ -708,7 +838,26 @@ fn process_promotion_funds_withdrawn_event(
     data: &serde_json::Value,
     event_id: &str,
 ) -> Option<Vec<SocialEventRow>> {
-    let ev: PromotionFundsWithdrawnEvent = serde_json::from_value(data.clone()).ok()?;
+    let ev: PromotionFundsWithdrawnEvent = match serde_json::from_value(data.clone()) {
+        Ok(v) => v,
+        Err(e) => {
+            crate::metrics::SocialMetrics::record_event_json_deserialize_failed(
+                "post",
+                "PromotionFundsWithdrawnEvent",
+            );
+            let keys: Vec<String> = data
+                .as_object()
+                .map(|m| m.keys().cloned().collect())
+                .unwrap_or_default();
+            tracing::warn!(
+                event_id = %event_id,
+                error = %e,
+                json_keys = ?keys,
+                "post PromotionFundsWithdrawnEvent JSON did not match struct"
+            );
+            return None;
+        }
+    };
     Some(vec![SocialEventRow::PromotionBudgetEvent {
         promotion_id: ev.promotion_id,
         owner: ev.owner,
@@ -716,4 +865,314 @@ fn process_promotion_funds_withdrawn_event(
         timestamp: ev.timestamp as i64,
         transaction_id: event_id.to_string(),
     }])
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::handlers::SocialEventRow;
+
+    #[test]
+    fn post_created_quote_repost_increments_parent_repost_count() {
+        let parent = "0xaaaabbbbaaaabbbbaaaabbbbaaaabbbb";
+        let data = serde_json::json!({
+            "post_id": "0xccc",
+            "owner": "0xddd",
+            "profile_id": "0xeee",
+            "content": "quote body",
+            "post_type": POST_TYPE_QUOTE_REPOST,
+            "parent_post_id": parent,
+            "mentions": null,
+            "media_urls": null,
+            "metadata_json": null,
+            "mydata_id": null,
+            "promotion_id": null,
+            "revenue_redirect_to": null,
+            "revenue_redirect_percentage": null,
+            "enable_spt": false,
+            "enable_poc": false,
+            "enable_spot": false,
+            "spot_id": null,
+            "spt_id": null,
+        });
+        let rows = handle_post_event("PostCreatedEvent", &data, "digest:0").expect("rows");
+        assert!(
+            rows.iter().any(|r| matches!(
+                r,
+                SocialEventRow::PostRepostCountIncrement {
+                    original_id,
+                    is_original_post: true,
+                } if original_id == parent
+            )),
+            "expected PostRepostCountIncrement for quote repost parent"
+        );
+    }
+
+    #[test]
+    fn post_created_standard_repost_does_not_duplicate_repost_count_from_quote_path() {
+        let data = serde_json::json!({
+            "post_id": "0xccc",
+            "owner": "0xddd",
+            "profile_id": "0xeee",
+            "content": "",
+            "post_type": "repost",
+            "parent_post_id": "0xparent",
+            "mentions": null,
+            "media_urls": null,
+            "metadata_json": null,
+            "mydata_id": null,
+            "promotion_id": null,
+            "revenue_redirect_to": null,
+            "revenue_redirect_percentage": null,
+            "enable_spt": false,
+            "enable_poc": false,
+            "enable_spot": false,
+            "spot_id": null,
+            "spt_id": null,
+        });
+        let rows = handle_post_event("PostCreatedEvent", &data, "digest:0").expect("rows");
+        assert!(!rows
+            .iter()
+            .any(|r| matches!(r, SocialEventRow::PostRepostCountIncrement { .. })));
+    }
+
+    #[test]
+    fn post_reported_event_yields_report_row() {
+        let data = serde_json::json!({
+            "object_id": "0x9c5f189cdf741b0cf724297a5aee8536a0ef41ad356bed6070cc6703ec949c55",
+            "is_comment": false,
+            "reporter": "0x2458950181e415250823d6ce1d55f2b3427826a111939e0d6d38e9a1397411d8",
+            "reason_code": 6,
+            "description": "Short description of the issue here.",
+            "reported_at": 1714113519157_u64,
+        });
+        let rows = handle_post_event("PostReportedEvent", &data, "digest:7").expect("rows");
+        let SocialEventRow::Report(r) = &rows[0] else {
+            panic!("expected Report row");
+        };
+        assert_eq!(
+            r.object_id,
+            "0x9c5f189cdf741b0cf724297a5aee8536a0ef41ad356bed6070cc6703ec949c55"
+        );
+        assert!(!r.is_comment);
+        assert_eq!(r.reason_code, 6);
+        assert_eq!(r.description, "Short description of the issue here.");
+        assert_eq!(r.reported_at, 1_714_113_519_157);
+        assert_eq!(r.transaction_id, "digest:7");
+    }
+
+    #[test]
+    fn post_moderation_event_yields_moderation_rows() {
+        let data = serde_json::json!({
+            "object_id": "0x9c5f189cdf741b0cf724297a5aee8536a0ef41ad356bed6070cc6703ec949c55",
+            "platform_id": "0x05a761d1fe77ff1006e210727f25a7f3137c6d1e87dc6dab898fd685736cff5a",
+            "removed": true,
+            "moderated_by": "0x2458950181e415250823d6ce1d55f2b3427826a111939e0d6d38e9a1397411d8",
+            "moderated_at": 0u64,
+        });
+        let rows = handle_post_event("PostModerationEvent", &data, "tx:1").expect("rows");
+        assert_eq!(rows.len(), 2);
+        let SocialEventRow::ModerationEvent(m) = &rows[0] else {
+            panic!("expected ModerationEvent");
+        };
+        assert_eq!(
+            m.object_id,
+            "0x9c5f189cdf741b0cf724297a5aee8536a0ef41ad356bed6070cc6703ec949c55"
+        );
+        assert_eq!(
+            m.platform_id,
+            "0x05a761d1fe77ff1006e210727f25a7f3137c6d1e87dc6dab898fd685736cff5a"
+        );
+        assert!(m.removed);
+        assert_eq!(
+            m.moderated_by,
+            "0x2458950181e415250823d6ce1d55f2b3427826a111939e0d6d38e9a1397411d8"
+        );
+        assert_eq!(m.transaction_id, "tx:1");
+        let SocialEventRow::PostModerationUpdate {
+            object_id,
+            removed,
+            moderated_by,
+        } = &rows[1]
+        else {
+            panic!("expected PostModerationUpdate");
+        };
+        assert_eq!(
+            object_id,
+            "0x9c5f189cdf741b0cf724297a5aee8536a0ef41ad356bed6070cc6703ec949c55"
+        );
+        assert!(*removed);
+        assert_eq!(
+            moderated_by,
+            "0x2458950181e415250823d6ce1d55f2b3427826a111939e0d6d38e9a1397411d8"
+        );
+    }
+
+    #[test]
+    fn post_deleted_event_yields_deletion_rows() {
+        let post_oid = "0x9c5f189cdf741b0cf724297a5aee8536a0ef41ad356bed6070cc6703ec949c55";
+        let data = serde_json::json!({
+            "object_id": post_oid,
+            "owner": "0x8a8d7490ab0dee5e6a0092a463ade496a1352d89b5091e96e3d356d4f8577f72",
+            "profile_id": "0x000000000000000000000000000000000000000000000000000000006f199773",
+            "is_post": true,
+            "post_type": "quote_repost",
+            "post_id": post_oid,
+            "deleted_at": 1_717_200_000_000_u64,
+        });
+        let rows = handle_post_event("PostDeletedEvent", &data, "tx:del1").expect("rows");
+        assert_eq!(rows.len(), 3);
+        let SocialEventRow::DeletionEvent(d) = &rows[0] else {
+            panic!("expected DeletionEvent");
+        };
+        assert_eq!(d.object_id, post_oid);
+        assert!(d.is_post);
+        assert_eq!(d.post_type.as_deref(), Some("quote_repost"));
+        assert_eq!(d.deleted_at, 1_717_200_000_000);
+        assert_eq!(d.transaction_id, "tx:del1");
+        assert!(matches!(
+            &rows[1],
+            SocialEventRow::ProfilePostCountDecrement { .. }
+        ));
+        assert!(matches!(
+            &rows[2],
+            SocialEventRow::PostDeletedAtUpdate { .. }
+        ));
+    }
+
+    #[test]
+    fn promoted_post_created_event_yields_row() {
+        let data = serde_json::json!({
+            "post_id": "0x320c97b64e7228da3b9f8a6adc5401b289bf41cf3f4e3a2e159d5ee939b8cdda",
+            "owner": "0x8a8d7490ab0dee5e6a0092a463ade496a1352d89b5091e96e3d356d4f8577f72",
+            "profile_id": "0xccf58c286df1ee89368c9b5dfb4f2bc79ca97ce57611df33cc340556a9a260c3",
+            "payment_per_view": 1000000_u64,
+            "total_budget": 1000000_u64,
+            "created_at": 1_742_000_000_000_u64,
+        });
+        let rows = handle_post_event("PromotedPostCreatedEvent", &data, "tx:promo1").expect("rows");
+        assert_eq!(rows.len(), 1);
+        let SocialEventRow::PromotedPost {
+            post_id,
+            owner,
+            profile_id,
+            payment_per_view,
+            total_budget,
+            transaction_id,
+            ..
+        } = &rows[0]
+        else {
+            panic!("expected PromotedPost");
+        };
+        assert_eq!(
+            post_id,
+            "0x320c97b64e7228da3b9f8a6adc5401b289bf41cf3f4e3a2e159d5ee939b8cdda"
+        );
+        assert_eq!(
+            owner,
+            "0x8a8d7490ab0dee5e6a0092a463ade496a1352d89b5091e96e3d356d4f8577f72"
+        );
+        assert_eq!(
+            profile_id,
+            "0xccf58c286df1ee89368c9b5dfb4f2bc79ca97ce57611df33cc340556a9a260c3"
+        );
+        assert_eq!(*payment_per_view, 1_000_000);
+        assert_eq!(*total_budget, 1_000_000);
+        assert_eq!(transaction_id, "tx:promo1");
+    }
+
+    #[test]
+    fn tip_event_comment_uses_recipient_for_owner_match() {
+        let data = serde_json::json!({
+            "object_id": "0xccc00000000000000000000000000000000000000000000000000000cccc",
+            "from": "0x2458950181e415250823d6ce1d55f2b3427826a111939e0d6d38e9a1397411d8",
+            "to": "0x8a8d7490ab0dee5e6a0092a463ade496a1352d89b5091e96e3d356d4f8577f72",
+            "amount": 800_u64,
+            "is_post": false,
+            "tip_time": 0u64,
+        });
+        let rows = handle_post_event("TipEvent", &data, "tx:tip2").expect("rows");
+        let SocialEventRow::PostTipsReceivedIncrement {
+            recipient, is_post, ..
+        } = &rows[1]
+        else {
+            panic!("expected PostTipsReceivedIncrement");
+        };
+        assert!(!*is_post);
+        assert_eq!(
+            recipient,
+            "0x8a8d7490ab0dee5e6a0092a463ade496a1352d89b5091e96e3d356d4f8577f72"
+        );
+    }
+
+    #[test]
+    fn tip_event_yields_tip_revenue_and_increment() {
+        let data = serde_json::json!({
+            "object_id": "0xa7953fb1af6d0495b3da10d4d25888158e8dc451fa5354a9723dc70676d38f3d",
+            "from": "0x2458950181e415250823d6ce1d55f2b3427826a111939e0d6d38e9a1397411d8",
+            "to": "0x8a8d7490ab0dee5e6a0092a463ade496a1352d89b5091e96e3d356d4f8577f72",
+            "amount": 5000000000_u64,
+            "is_post": true,
+            "tip_time": 0u64,
+        });
+        let rows = handle_post_event("TipEvent", &data, "tx:tip1").expect("rows");
+        assert_eq!(rows.len(), 3);
+        let SocialEventRow::Tip(t) = &rows[0] else {
+            panic!("expected Tip");
+        };
+        assert_eq!(t.amount, 5_000_000_000);
+        assert_eq!(t.tipper, "0x2458950181e415250823d6ce1d55f2b3427826a111939e0d6d38e9a1397411d8");
+        assert_eq!(t.recipient, "0x8a8d7490ab0dee5e6a0092a463ade496a1352d89b5091e96e3d356d4f8577f72");
+        assert_eq!(t.transaction_id, "tx:tip1");
+        let SocialEventRow::PostTipsReceivedIncrement {
+            object_id,
+            recipient,
+            amount,
+            is_post,
+        } = &rows[1]
+        else {
+            panic!("expected PostTipsReceivedIncrement");
+        };
+        assert_eq!(*amount, 5_000_000_000);
+        assert!(*is_post);
+        assert_eq!(
+            recipient,
+            "0x8a8d7490ab0dee5e6a0092a463ade496a1352d89b5091e96e3d356d4f8577f72"
+        );
+        assert_eq!(
+            object_id,
+            "0xa7953fb1af6d0495b3da10d4d25888158e8dc451fa5354a9723dc70676d38f3d"
+        );
+    }
+
+    #[test]
+    fn comment_deleted_event_yields_deletion_rows() {
+        let comment_id = "0xcccc00000000000000000000000000000000000000000000000000000000cccc";
+        let post_id = "0xdddd00000000000000000000000000000000000000000000000000000000dddd";
+        let data = serde_json::json!({
+            "object_id": comment_id,
+            "owner": "0x8a8d7490ab0dee5e6a0092a463ade496a1352d89b5091e96e3d356d4f8577f72",
+            "profile_id": "0x000000000000000000000000000000000000000000000000000000006f199774",
+            "is_post": false,
+            "post_type": null,
+            "post_id": post_id,
+            "deleted_at": 1_717_201_000_000_u64,
+        });
+        let rows = handle_post_event("CommentDeletedEvent", &data, "tx:del2").expect("rows");
+        assert_eq!(rows.len(), 3);
+        let SocialEventRow::DeletionEvent(d) = &rows[0] else {
+            panic!("expected DeletionEvent");
+        };
+        assert_eq!(d.object_id, comment_id);
+        assert!(!d.is_post);
+        assert_eq!(d.transaction_id, "tx:del2");
+        assert!(matches!(
+            &rows[1],
+            SocialEventRow::PostCommentCountIncrement { post_id: pid, delta: -1 } if pid == post_id
+        ));
+        assert!(matches!(
+            &rows[2],
+            SocialEventRow::CommentDeletedAtUpdate { .. }
+        ));
+    }
 }

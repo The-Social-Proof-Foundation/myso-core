@@ -34,12 +34,15 @@ pub use myso_indexer_alt_social_schema::models::{
     PocAnalysisResultRow, PocBadgeRow, PocConfigRow, PocDisputeRow, PocRevenueRedirectionRow,
 };
 pub use myso_indexer_alt_social_schema::models::{
-    SptHoldingRow, SptPoolRow, SptPriceHistory, SptTransaction,
+    PostDeletionEventRow, PostModerationEventRow, SptHoldingRow, SptPoolRow, SptPriceHistory,
+    SptTransaction,
 };
 pub use pg_reader::SocialPgReader;
 pub use platform::{PlatformBlockedProfileRow, PlatformRow, PlatformUserAccessRow};
 pub use pnl::{ProfilePnLWindow, ProfilePnLWindowResult, get_profile_pnl_for_windows};
-pub use post::{CommentRow, PostRow, PostTransferRow, ReactionRow, RepostRow, TipRow};
+pub use post::{
+    CommentRow, PostReportRow, PostRow, PostTransferRow, ReactionRow, RepostRow, TipRow,
+};
 pub use profile::{
     ProfileBadgeRow, ProfileByAddressResponse, ReservationStatus, SelectedBadgeInfo,
     SocialProofTokenInfo, UniversalUserResult,

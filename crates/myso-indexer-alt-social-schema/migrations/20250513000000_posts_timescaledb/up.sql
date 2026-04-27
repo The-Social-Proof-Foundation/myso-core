@@ -17,7 +17,6 @@ $$;
 -- ============================================================================
 -- Posts table - core content storage
 CREATE TABLE IF NOT EXISTS posts (
-    id TEXT NOT NULL,
     post_id TEXT NOT NULL,
     owner TEXT NOT NULL,
     profile_id TEXT NOT NULL,
@@ -70,12 +69,9 @@ BEGIN
         SELECT 1 FROM pg_constraint 
         WHERE conname = 'posts_pkey'
     ) THEN
-        ALTER TABLE posts ADD PRIMARY KEY (id, time);
+        ALTER TABLE posts ADD PRIMARY KEY (post_id, time);
     END IF;
 END $$;
-
--- Make post_id unique but include time column to satisfy TimescaleDB partitioning
-CREATE UNIQUE INDEX IF NOT EXISTS idx_posts_post_id_time ON posts(post_id, time);
 
 -- Add other indexes
 CREATE INDEX IF NOT EXISTS idx_posts_owner ON posts(owner, time);
@@ -1005,7 +1001,6 @@ $$;
 -- Create a view for trending posts with advanced algorithm
 CREATE OR REPLACE VIEW trending_posts AS
 SELECT 
-    p.id,
     p.post_id,
     p.owner,
     p.profile_id,
@@ -1033,7 +1028,6 @@ ORDER BY
 -- Create a view for recent popular posts by reaction count
 CREATE OR REPLACE VIEW popular_posts AS
 SELECT
-    p.id,
     p.post_id,
     p.owner,
     p.profile_id,

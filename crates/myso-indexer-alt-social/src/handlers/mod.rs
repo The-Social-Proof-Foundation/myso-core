@@ -19,7 +19,6 @@ mod mydata_handler;
 mod platform;
 mod platform_handler;
 mod poc;
-mod poc_handler;
 mod post;
 mod posts_handler;
 mod profile;
@@ -38,28 +37,27 @@ mod upgrade_handler;
 use myso_indexer_alt_framework::FieldCount;
 use myso_indexer_alt_social_schema::models::{
     GovernanceRegistryPanelBoundaryUpdate, GovernanceRegistryUpdate, NewAnonymousVote,
-    NewBlockedEvent, NewBlockedProfile, NewComment,
-    NewCommunityVote, NewDelegate, NewDelegateRating, NewDelegateVote, NewDeletionEvent,
-    NewEcosystemTreasury, NewGovernanceEvent, NewGovernanceRegistry, NewInsuranceConfig,
-    NewInsuranceEventLog, NewInsuranceMarketExposure, NewInsurancePolicy, NewInsurancePolicyEvent,
-    NewInsuranceUserExposure, NewInsuranceVault, NewInsuranceVaultTransaction, NewModerationEvent,
-    NewMyDataAccessLog, NewMyDataConfig, NewMyDataData, NewMyDataPurchase, NewMyDataQueryBroadPool,
-    NewMyDataQueryClaim, NewMyDataQueryDistributionRound, NewMyDataQueryListingSubPool,
-    NewMyDataQueryMerkleRoot, NewMyDataQuerySnapshotAnchor, NewMyDataQuerySubPool,
-    NewMyDataRegistry, NewMyDataRevenue,
-    NewMyDataSubscription, NewNominatedDelegate, NewObjectMigratedEvent,
-    NewPlatform, NewPlatformBlockedProfile, NewPlatformEvent, NewPlatformMembership,
-    NewPlatformModerator, NewPlatformTokenAirdrop, NewPocAnalysisResult, NewPocBadge,
-    NewPocConfiguration, NewPocDispute, NewPocDisputeVote, NewPocRevenueRedirection, NewPost,
-    NewPostTransfer, NewProfile, NewProfileBadge, NewProfileEvent, NewProfileOffer,
-    NewProfileSaleFee, NewProfileSubscription, NewProfileSubscriptionService, NewProposal,
-    NewReaction, NewReactionCount, NewReport, NewRepost, NewRewardDistribution,
-    NewSocialGraphEvent, NewSocialGraphRelationship, NewSocialProofTokensConfig,
-    NewSocialProofTokensEvent, NewSpotBet, NewSpotBetWithdrawal, NewSpotConfig, NewSpotEventLog,
-    NewSpotPayout, NewSpotRecord, NewSpotRefund, NewSpotResolution, NewSptExchangeConfig,
-    NewSptHolding, NewSptPool, NewSptPriceHistory, NewSptReservation, NewSptReservationPool,
-    NewSptTransaction, NewSubscriptionEvent, NewTip, NewUnifiedRevenue, NewUpgradeEvent,
-    NewVestingEvent, NewVestingWallet, NewVoteDecryptionFailure, ProposalUpdateSet,
+    NewBlockedEvent, NewBlockedProfile, NewComment, NewCommunityVote, NewDelegate,
+    NewDelegateRating, NewDelegateVote, NewDeletionEvent, NewEcosystemTreasury, NewGovernanceEvent,
+    NewGovernanceRegistry, NewInsuranceConfig, NewInsuranceEventLog, NewInsuranceMarketExposure,
+    NewInsurancePolicy, NewInsurancePolicyEvent, NewInsuranceUserExposure, NewInsuranceVault,
+    NewInsuranceVaultTransaction, NewModerationEvent, NewMyDataAccessLog, NewMyDataConfig,
+    NewMyDataData, NewMyDataPurchase, NewMyDataQueryBroadPool, NewMyDataQueryClaim,
+    NewMyDataQueryDistributionRound, NewMyDataQueryListingSubPool, NewMyDataQueryMerkleRoot,
+    NewMyDataQuerySnapshotAnchor, NewMyDataQuerySubPool, NewMyDataRegistry, NewMyDataRevenue,
+    NewMyDataSubscription, NewNominatedDelegate, NewObjectMigratedEvent, NewPlatform,
+    NewPlatformBlockedProfile, NewPlatformEvent, NewPlatformMembership, NewPlatformModerator,
+    NewPlatformTokenAirdrop, NewPocAnalysisResult, NewPocBadge, NewPocConfiguration, NewPocDispute,
+    NewPocDisputeVote, NewPocRevenueRedirection, NewPost, NewPostTransfer, NewProfile,
+    NewProfileBadge, NewProfileEvent, NewProfileOffer, NewProfileSaleFee, NewProfileSubscription,
+    NewProfileSubscriptionService, NewProposal, NewReaction, NewReactionCount, NewReport,
+    NewRepost, NewRewardDistribution, NewSocialGraphEvent, NewSocialGraphRelationship,
+    NewSocialProofTokensConfig, NewSocialProofTokensEvent, NewSpotBet, NewSpotBetWithdrawal,
+    NewSpotConfig, NewSpotEventLog, NewSpotPayout, NewSpotRecord, NewSpotRefund, NewSpotResolution,
+    NewSptExchangeConfig, NewSptHolding, NewSptPool, NewSptPriceHistory, NewSptReservation,
+    NewSptReservationPool, NewSptTransaction, NewSubscriptionEvent, NewTip, NewUnifiedRevenue,
+    NewUpgradeEvent, NewVestingEvent, NewVestingWallet, NewVoteDecryptionFailure,
+    ProposalUpdateSet,
 };
 
 pub use blocking_handler::BlockingHandler;
@@ -67,7 +65,6 @@ pub use governance_handler::GovernanceHandler;
 pub use insurance_handler::InsuranceHandler;
 pub use mydata_handler::MyDataHandler;
 pub use platform_handler::PlatformHandler;
-pub use poc_handler::PocHandler;
 pub use posts_handler::PostsHandler;
 pub use profiles_handler::ProfilesHandler;
 pub use social_graph_handler::SocialGraphHandler;
@@ -177,6 +174,9 @@ pub enum SocialEventRow {
     },
     PostTipsReceivedIncrement {
         object_id: String,
+        /// Tip recipient; must match `posts.owner` or `comments.owner` for the row
+        /// updated by on-chain `tips_received` (excludes PoC redirect to `original_creator`).
+        recipient: String,
         amount: i64,
         is_post: bool,
     },

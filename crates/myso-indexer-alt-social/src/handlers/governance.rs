@@ -34,6 +34,23 @@ where
     }
 }
 
+/// Like [`de_u64`], but missing fields and `null` default to 0.
+fn de_u64_or_default<'de, D: serde::Deserializer<'de>>(d: D) -> Result<u64, D::Error> {
+    use serde::Deserialize;
+    #[derive(Deserialize)]
+    #[serde(untagged)]
+    enum V {
+        I(u64),
+        S(String),
+    }
+    let opt = Option::<V>::deserialize(d)?;
+    match opt {
+        None => Ok(0),
+        Some(V::I(n)) => Ok(n),
+        Some(V::S(s)) => s.parse().map_err(serde::de::Error::custom),
+    }
+}
+
 fn de_u8<'de, D>(d: D) -> Result<u8, D::Error>
 where
     D: serde::Deserializer<'de>,
@@ -79,19 +96,19 @@ pub fn handle_governance_event(
             process_proposal_rejected_event(data, event_id, governance_registry_id)
         }
         "ProposalRescinded" => process_proposal_rescinded_event(data, event_id),
-        "ProposalRejectedByCommunity" => process_proposal_rejected_by_community_event(
-            data,
-            event_id,
-            governance_registry_id,
-        ),
-        "ProposalApproved" => process_proposal_approved_event(data, event_id, governance_registry_id),
+        "ProposalRejectedByCommunity" => {
+            process_proposal_rejected_by_community_event(data, event_id, governance_registry_id)
+        }
+        "ProposalApproved" => {
+            process_proposal_approved_event(data, event_id, governance_registry_id)
+        }
         "ProposalImplemented" => process_proposal_implemented_event(data, event_id),
         "ProposalImplementationRewardToSubmitter" => {
             process_proposal_implementation_reward_to_submitter_event(data, event_id)
-        },
+        }
         "ProposalRewardPoolForfeitedToTreasury" => {
             process_proposal_reward_pool_forfeited_to_treasury_event(data, event_id)
-        },
+        }
         "AnonymousVote" => process_anonymous_vote_event(data, event_id),
         "VoteDecryptionFailed" => process_vote_decryption_failed_event(data, event_id),
         "GovernanceParametersUpdated" => {
@@ -239,9 +256,9 @@ fn process_delegate_elected_event(
         term_start: u64,
         #[serde(deserialize_with = "de_u64")]
         term_end: u64,
-        #[serde(default)]
+        #[serde(default, deserialize_with = "de_u64_or_default")]
         upvotes: u64,
-        #[serde(default)]
+        #[serde(default, deserialize_with = "de_u64_or_default")]
         downvotes: u64,
     }
     let ev: Ev = serde_json::from_value(data.clone()).ok()?;
@@ -311,7 +328,8 @@ fn process_delegate_voted_event(
     }
     let ev: Ev = serde_json::from_value(data.clone()).ok()?;
     let now = Utc::now().timestamp_millis() as i64;
-    let Some(scoped) = require_registry_id(governance_registry_id, event_id, "DelegateVoted") else {
+    let Some(scoped) = require_registry_id(governance_registry_id, event_id, "DelegateVoted")
+    else {
         return None;
     };
     let vote_counts = SocialEventRow::DelegateVoteCountsUpdate {
@@ -429,9 +447,11 @@ fn process_proposal_submitted_event(
     }
     let ev: Ev = serde_json::from_value(data.clone()).ok()?;
     let metadata_json = ev.metadata_json.and_then(|s| serde_json::from_str(&s).ok());
-    let Some(proposal_scope) =
-        require_registry_id(governance_registry_id.clone(), event_id, "ProposalSubmitted")
-    else {
+    let Some(proposal_scope) = require_registry_id(
+        governance_registry_id.clone(),
+        event_id,
+        "ProposalSubmitted",
+    ) else {
         return None;
     };
     let proposal = NewProposal {
@@ -1084,9 +1104,11 @@ fn process_governance_parameters_updated_event(
     }
     let ev: Ev = serde_json::from_value(data.clone()).ok()?;
     let registry_type_i16 = ev.registry_type as i16;
-    let Some(registry_id) =
-        require_registry_id(governance_registry_id, event_id, "GovernanceParametersUpdated")
-    else {
+    let Some(registry_id) = require_registry_id(
+        governance_registry_id,
+        event_id,
+        "GovernanceParametersUpdated",
+    ) else {
         return None;
     };
     let update = GovernanceRegistryUpdate {

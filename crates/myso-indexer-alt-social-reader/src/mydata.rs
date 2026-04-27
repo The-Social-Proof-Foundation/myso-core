@@ -10,7 +10,8 @@ use myso_indexer_alt_social_schema::models::{
     MyDataAccessAnalyticsRow, MyDataAccessLogRow, MyDataDailyRevenueRow, MyDataPurchaseRow,
     MyDataQueryBroadPoolRow, MyDataQueryClaimRow, MyDataQueryDistributionRoundRow,
     MyDataQueryListingSubPoolRow, MyDataQueryMerkleRootRow, MyDataQuerySnapshotAnchorRow,
-    MyDataQuerySubPoolRow, MyDataRecordRow, MyDataRevenueRow, MyDataStatsRow, MyDataSubscriptionRow,
+    MyDataQuerySubPoolRow, MyDataRecordRow, MyDataRevenueRow, MyDataStatsRow,
+    MyDataSubscriptionRow,
 };
 use myso_pg_db::Connection;
 

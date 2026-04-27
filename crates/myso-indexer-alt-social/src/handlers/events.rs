@@ -148,7 +148,7 @@ pub struct BcsDelegateNominatedEvent {
 }
 
 /// Pre-vote-counts on-chain layout (BCS replay compatibility).
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Deserialize, Serialize)]
 pub struct BcsDelegateElectedEventV0 {
     delegate_address: AccountAddress,
     term_start: u64,
@@ -156,7 +156,10 @@ pub struct BcsDelegateElectedEventV0 {
     registry_type: u8,
 }
 
-#[derive(Debug, Deserialize)]
+/// BCS byte length for [`BcsDelegateElectedEventV0`]: 32 (address) + 8 + 8 + 1.
+const DELEGATE_ELECTED_BCS_V0_LEN: usize = 32 + 8 + 8 + 1;
+
+#[derive(Debug, Deserialize, Serialize)]
 pub struct BcsDelegateElectedEvent {
     delegate_address: AccountAddress,
     term_start: u64,
@@ -469,7 +472,7 @@ pub struct BcsRepostEvent {
     profile_id: AccountAddress,
 }
 
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Deserialize, Serialize)]
 pub struct BcsTipEvent {
     object_id: AccountAddress,
     from: AccountAddress,
@@ -492,7 +495,7 @@ pub struct BcsPostParametersUpdatedEvent {
     repost_tip_percentage: u64,
 }
 
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Deserialize, Serialize)]
 pub struct BcsPostModerationEvent {
     post_id: AccountAddress,
     platform_id: AccountAddress,
@@ -500,7 +503,7 @@ pub struct BcsPostModerationEvent {
     moderated_by: AccountAddress,
 }
 
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Deserialize, Serialize)]
 pub struct BcsPostReportedEvent {
     post_id: AccountAddress,
     reporter: AccountAddress,
@@ -518,7 +521,7 @@ pub struct BcsCommentReportedEvent {
     reported_at: u64,
 }
 
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Deserialize, Serialize)]
 pub struct BcsPostDeletedEvent {
     post_id: AccountAddress,
     owner: AccountAddress,
@@ -527,7 +530,7 @@ pub struct BcsPostDeletedEvent {
     deleted_at: u64,
 }
 
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Deserialize, Serialize)]
 pub struct BcsCommentDeletedEvent {
     comment_id: AccountAddress,
     post_id: AccountAddress,
@@ -537,7 +540,7 @@ pub struct BcsCommentDeletedEvent {
 }
 
 // Promotion event structs - field order matches post.move
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Deserialize, Serialize)]
 pub struct BcsPromotedPostCreatedEvent {
     post_id: AccountAddress,
     owner: AccountAddress,
@@ -1535,17 +1538,26 @@ fn parse_governance_event(
                     "upvotes": ev.upvotes,
                     "downvotes": ev.downvotes,
                 }),
-                Err(_) => {
-                    let ev = bcs::from_bytes::<BcsDelegateElectedEventV0>(contents)
-                        .map_err(|e| bcs_parse_err(e, contents))?;
-                    serde_json::json!({
-                        "delegate_address": addr_to_string(&ev.delegate_address),
-                        "registry_type": ev.registry_type,
-                        "term_start": ev.term_start,
-                        "term_end": ev.term_end,
-                        "upvotes": 0u64,
-                        "downvotes": 0u64,
-                    })
+                Err(e1) => {
+                    if contents.len() == DELEGATE_ELECTED_BCS_V0_LEN {
+                        let ev = bcs::from_bytes::<BcsDelegateElectedEventV0>(contents)
+                            .map_err(|e2| EventParseError {
+                                error: format!(
+                                    "DelegateElectedEvent: v1: {e1}; v0 ({DELEGATE_ELECTED_BCS_V0_LEN} bytes): {e2}"
+                                ),
+                                contents: contents.to_vec(),
+                            })?;
+                        serde_json::json!({
+                            "delegate_address": addr_to_string(&ev.delegate_address),
+                            "registry_type": ev.registry_type,
+                            "term_start": ev.term_start,
+                            "term_end": ev.term_end,
+                            "upvotes": 0u64,
+                            "downvotes": 0u64,
+                        })
+                    } else {
+                        return Err(bcs_parse_err(e1, contents));
+                    }
                 }
             };
             Ok(Some(json))
@@ -1887,6 +1899,7 @@ fn parse_post_event(
                 "platform_id": addr_to_string(&ev.platform_id),
                 "removed": ev.removed,
                 "moderated_by": addr_to_string(&ev.moderated_by),
+                "moderated_at": 0u64,
             })))
         }
         "PostReportedEvent" => {
@@ -2364,11 +2377,7 @@ fn parse_mydata_event(
         "MyDataAssignedToSubPoolEvent" => {
             let ev = bcs::from_bytes::<BcsMyDataAssignedToSubPoolEvent>(contents)
                 .map_err(|e| bcs_parse_err(e, contents))?;
-            let sub_pool_ids: Vec<String> = ev
-                .sub_pool_ids
-                .iter()
-                .map(addr_to_string)
-                .collect();
+            let sub_pool_ids: Vec<String> = ev.sub_pool_ids.iter().map(addr_to_string).collect();
             Ok(Some(serde_json::json!({
                 "ip_id": addr_to_string(&ev.ip_id),
                 "sub_pool_ids": sub_pool_ids,
@@ -2647,38 +2656,36 @@ fn parse_spt_event(
 ) -> Result<Option<serde_json::Value>, EventParseError> {
     let result = match event_name {
         "TokenPoolCreatedEvent" | "PoolCreatedEvent" => {
-            let (circulating_supply, total_reserved_at_launch, ev) =
-                match bcs::from_bytes::<BcsTokenPoolCreatedEvent>(contents) {
-                    Ok(ev) => (
-                        ev.circulating_supply,
-                        ev.total_reserved_at_launch,
-                        ev,
-                    ),
-                    Err(_) => {
-                        let leg = bcs::from_bytes::<BcsTokenPoolCreatedEventLegacy>(contents)
-                            .map_err(|e| bcs_parse_err(e, contents))?;
-                        tracing::warn!(
-                            target: "social_indexer::spt",
-                            pool_id = %addr_to_string(&leg.id),
-                            associated_id = %addr_to_string(&leg.associated_id),
-                            "TokenPoolCreatedEvent: legacy BCS layout; circulating_supply and total_reserved_at_launch forced to 0"
-                        );
-                        crate::metrics::SocialMetrics::record_spt_token_pool_created_legacy_bcs();
-                        let ev = BcsTokenPoolCreatedEvent {
-                            id: leg.id,
-                            token_type: leg.token_type,
-                            owner: leg.owner,
-                            associated_id: leg.associated_id,
-                            symbol: leg.symbol,
-                            name: leg.name,
-                            base_price: leg.base_price,
-                            quadratic_coefficient: leg.quadratic_coefficient,
-                            circulating_supply: 0,
-                            total_reserved_at_launch: 0,
-                        };
-                        (0u64, 0u64, ev)
-                    }
-                };
+            let (circulating_supply, total_reserved_at_launch, ev) = match bcs::from_bytes::<
+                BcsTokenPoolCreatedEvent,
+            >(contents)
+            {
+                Ok(ev) => (ev.circulating_supply, ev.total_reserved_at_launch, ev),
+                Err(_) => {
+                    let leg = bcs::from_bytes::<BcsTokenPoolCreatedEventLegacy>(contents)
+                        .map_err(|e| bcs_parse_err(e, contents))?;
+                    tracing::warn!(
+                        target: "social_indexer::spt",
+                        pool_id = %addr_to_string(&leg.id),
+                        associated_id = %addr_to_string(&leg.associated_id),
+                        "TokenPoolCreatedEvent: legacy BCS layout; circulating_supply and total_reserved_at_launch forced to 0"
+                    );
+                    crate::metrics::SocialMetrics::record_spt_token_pool_created_legacy_bcs();
+                    let ev = BcsTokenPoolCreatedEvent {
+                        id: leg.id,
+                        token_type: leg.token_type,
+                        owner: leg.owner,
+                        associated_id: leg.associated_id,
+                        symbol: leg.symbol,
+                        name: leg.name,
+                        base_price: leg.base_price,
+                        quadratic_coefficient: leg.quadratic_coefficient,
+                        circulating_supply: 0,
+                        total_reserved_at_launch: 0,
+                    };
+                    (0u64, 0u64, ev)
+                }
+            };
             Ok(Some(serde_json::json!({
                 "id": addr_to_string(&ev.id),
                 "token_type": ev.token_type,
@@ -3188,6 +3195,56 @@ mod tests {
     }
 
     #[test]
+    fn test_parse_delegate_elected_event_v1_carries_vote_counts() {
+        use move_core_types::account_address::AccountAddress;
+
+        let a = AccountAddress::from_hex_literal("0xace").unwrap();
+        let ev = BcsDelegateElectedEvent {
+            delegate_address: a,
+            term_start: 10,
+            term_end: 100,
+            registry_type: 1,
+            upvotes: 42,
+            downvotes: 5,
+        };
+        let bytes = bcs::to_bytes(&ev).expect("serialize");
+        let result = parse_event_contents("governance", "DelegateElectedEvent", &bytes);
+        assert!(result.is_ok(), "BCS v1 parse should succeed");
+        let json = result.unwrap();
+        assert_eq!(json["upvotes"], 42);
+        assert_eq!(json["downvotes"], 5);
+        assert_eq!(json["term_start"], 10);
+        assert_eq!(json["term_end"], 100);
+    }
+
+    #[test]
+    fn test_parse_delegate_elected_event_v0_legacy() {
+        use move_core_types::account_address::AccountAddress;
+
+        let a = AccountAddress::from_hex_literal("0xbeef").unwrap();
+        let ev = BcsDelegateElectedEventV0 {
+            delegate_address: a,
+            term_start: 1,
+            term_end: 2,
+            registry_type: 0,
+        };
+        let bytes = bcs::to_bytes(&ev).expect("serialize");
+        assert_eq!(bytes.len(), super::DELEGATE_ELECTED_BCS_V0_LEN);
+        let result = parse_event_contents("governance", "DelegateElectedEvent", &bytes);
+        assert!(result.is_ok(), "BCS v0 parse should succeed");
+        let json = result.unwrap();
+        assert_eq!(json["upvotes"], 0u64);
+        assert_eq!(json["downvotes"], 0u64);
+    }
+
+    #[test]
+    fn test_parse_delegate_elected_event_rejects_malformed_non_v0_len() {
+        let bad = vec![0u8; 50];
+        let result = parse_event_contents("governance", "DelegateElectedEvent", &bad);
+        assert!(result.is_err(), "50-byte payload is neither v1 nor v0");
+    }
+
+    #[test]
     fn test_parse_subscription_events_bcs_round_trip() {
         use move_core_types::account_address::AccountAddress;
 
@@ -3358,5 +3415,207 @@ mod tests {
             .expect("parse")
             .expect("json");
         assert_eq!(json["amount"], 500);
+    }
+
+    #[test]
+    fn post_reported_event_bcs_round_trip() {
+        let post_id = AccountAddress::from_hex_literal(
+            "0x9c5f189cdf741b0cf724297a5aee8536a0ef41ad356bed6070cc6703ec949c55",
+        )
+        .unwrap();
+        let reporter = AccountAddress::from_hex_literal(
+            "0x2458950181e415250823d6ce1d55f2b3427826a111939e0d6d38e9a1397411d8",
+        )
+        .unwrap();
+        let ev = BcsPostReportedEvent {
+            post_id,
+            reporter,
+            reason_code: 6,
+            description: "Short description of the issue here.".to_string(),
+            reported_at: 1_714_113_519_157,
+        };
+        let bytes = bcs::to_bytes(&ev).expect("bcs");
+        let json = parse_event_contents("post", "PostReportedEvent", &bytes).expect("parse");
+        assert_eq!(
+            json["object_id"].as_str().unwrap(),
+            "0x9c5f189cdf741b0cf724297a5aee8536a0ef41ad356bed6070cc6703ec949c55"
+        );
+        assert_eq!(json["is_comment"], false);
+        assert_eq!(json["reason_code"], 6);
+        assert_eq!(
+            json["description"].as_str().unwrap(),
+            "Short description of the issue here."
+        );
+        assert_eq!(json["reported_at"], 1_714_113_519_157i64);
+    }
+
+    #[test]
+    fn promoted_post_created_event_bcs_round_trip() {
+        let post_id = AccountAddress::from_hex_literal(
+            "0x320c97b64e7228da3b9f8a6adc5401b289bf41cf3f4e3a2e159d5ee939b8cdda",
+        )
+        .unwrap();
+        let owner = AccountAddress::from_hex_literal(
+            "0x8a8d7490ab0dee5e6a0092a463ade496a1352d89b5091e96e3d356d4f8577f72",
+        )
+        .unwrap();
+        let profile_id = AccountAddress::from_hex_literal(
+            "0xccf58c286df1ee89368c9b5dfb4f2bc79ca97ce57611df33cc340556a9a260c3",
+        )
+        .unwrap();
+        let ev = BcsPromotedPostCreatedEvent {
+            post_id,
+            owner,
+            profile_id,
+            payment_per_view: 1_000_000,
+            total_budget: 1_000_000,
+            created_at: 1_742_000_000_000,
+        };
+        let bytes = bcs::to_bytes(&ev).expect("bcs");
+        let back: BcsPromotedPostCreatedEvent = bcs::from_bytes(&bytes).expect("bcs from_bytes");
+        assert_eq!(back.payment_per_view, 1_000_000);
+        assert_eq!(back.total_budget, 1_000_000);
+        let json = parse_event_contents("post", "PromotedPostCreatedEvent", &bytes).expect("parse");
+        assert_eq!(json["payment_per_view"], 1_000_000_i64);
+        assert_eq!(json["total_budget"], 1_000_000_i64);
+    }
+
+    #[test]
+    fn tip_event_bcs_round_trip() {
+        let object_id = AccountAddress::from_hex_literal(
+            "0xa7953fb1af6d0495b3da10d4d25888158e8dc451fa5354a9723dc70676d38f3d",
+        )
+        .unwrap();
+        let from = AccountAddress::from_hex_literal(
+            "0x2458950181e415250823d6ce1d55f2b3427826a111939e0d6d38e9a1397411d8",
+        )
+        .unwrap();
+        let to = AccountAddress::from_hex_literal(
+            "0x8a8d7490ab0dee5e6a0092a463ade496a1352d89b5091e96e3d356d4f8577f72",
+        )
+        .unwrap();
+        let ev = BcsTipEvent {
+            object_id,
+            from,
+            to,
+            amount: 5_000_000_000,
+            is_post: true,
+        };
+        let bytes = bcs::to_bytes(&ev).expect("bcs");
+        let back: BcsTipEvent = bcs::from_bytes(&bytes).expect("bcs from_bytes");
+        assert_eq!(back.amount, 5_000_000_000);
+        assert_eq!(back.is_post, true);
+        let json = parse_event_contents("post", "TipEvent", &bytes).expect("parse");
+        assert_eq!(json["amount"], 5_000_000_000_i64);
+        assert_eq!(json["is_post"], true);
+    }
+
+    #[test]
+    fn post_moderation_event_bcs_round_trip() {
+        let post_id = AccountAddress::from_hex_literal(
+            "0x9c5f189cdf741b0cf724297a5aee8536a0ef41ad356bed6070cc6703ec949c55",
+        )
+        .unwrap();
+        let platform_id = AccountAddress::from_hex_literal(
+            "0x05a761d1fe77ff1006e210727f25a7f3137c6d1e87dc6dab898fd685736cff5a",
+        )
+        .unwrap();
+        let moderated_by = AccountAddress::from_hex_literal(
+            "0x2458950181e415250823d6ce1d55f2b3427826a111939e0d6d38e9a1397411d8",
+        )
+        .unwrap();
+        let ev = BcsPostModerationEvent {
+            post_id,
+            platform_id,
+            removed: true,
+            moderated_by,
+        };
+        let bytes = bcs::to_bytes(&ev).expect("bcs");
+        let json = parse_event_contents("post", "PostModerationEvent", &bytes).expect("parse");
+        assert_eq!(
+            json["object_id"].as_str().unwrap(),
+            "0x9c5f189cdf741b0cf724297a5aee8536a0ef41ad356bed6070cc6703ec949c55"
+        );
+        assert_eq!(
+            json["platform_id"].as_str().unwrap(),
+            "0x05a761d1fe77ff1006e210727f25a7f3137c6d1e87dc6dab898fd685736cff5a"
+        );
+        assert_eq!(json["removed"], true);
+        assert_eq!(
+            json["moderated_by"].as_str().unwrap(),
+            "0x2458950181e415250823d6ce1d55f2b3427826a111939e0d6d38e9a1397411d8"
+        );
+        assert_eq!(json["moderated_at"], 0i64);
+    }
+
+    #[test]
+    fn post_deleted_event_bcs_round_trip() {
+        use move_core_types::account_address::AccountAddress;
+
+        let post_id = AccountAddress::from_hex_literal(
+            "0x9c5f189cdf741b0cf724297a5aee8536a0ef41ad356bed6070cc6703ec949c55",
+        )
+        .unwrap();
+        let owner = AccountAddress::from_hex_literal(
+            "0x8a8d7490ab0dee5e6a0092a463ade496a1352d89b5091e96e3d356d4f8577f72",
+        )
+        .unwrap();
+        let profile_id = AccountAddress::from_hex_literal(
+            "0x000000000000000000000000000000000000000000000000000000006f199773",
+        )
+        .unwrap();
+        let ev = BcsPostDeletedEvent {
+            post_id,
+            owner,
+            profile_id,
+            post_type: "quote_repost".to_string(),
+            deleted_at: 1_717_200_000_000,
+        };
+        let bytes = bcs::to_bytes(&ev).expect("bcs");
+        let json = parse_event_contents("post", "PostDeletedEvent", &bytes).expect("parse");
+        assert_eq!(
+            json["object_id"].as_str().unwrap(),
+            "0x9c5f189cdf741b0cf724297a5aee8536a0ef41ad356bed6070cc6703ec949c55"
+        );
+        assert_eq!(json["is_post"], true);
+        assert_eq!(json["post_type"].as_str().unwrap(), "quote_repost");
+        assert_eq!(json["deleted_at"], 1_717_200_000_000u64);
+    }
+
+    #[test]
+    fn comment_deleted_event_bcs_round_trip() {
+        use move_core_types::account_address::AccountAddress;
+
+        let comment_id = AccountAddress::from_hex_literal(
+            "0xcccc00000000000000000000000000000000000000000000000000000000cccc",
+        )
+        .unwrap();
+        let post_id = AccountAddress::from_hex_literal(
+            "0xdddd00000000000000000000000000000000000000000000000000000000dddd",
+        )
+        .unwrap();
+        let owner = AccountAddress::from_hex_literal(
+            "0x8a8d7490ab0dee5e6a0092a463ade496a1352d89b5091e96e3d356d4f8577f72",
+        )
+        .unwrap();
+        let profile_id = AccountAddress::from_hex_literal(
+            "0x000000000000000000000000000000000000000000000000000000006f199773",
+        )
+        .unwrap();
+        let ev = BcsCommentDeletedEvent {
+            comment_id,
+            post_id,
+            owner,
+            profile_id,
+            deleted_at: 1_717_201_000_000,
+        };
+        let bytes = bcs::to_bytes(&ev).expect("bcs");
+        let json = parse_event_contents("post", "CommentDeletedEvent", &bytes).expect("parse");
+        assert_eq!(
+            json["object_id"].as_str().unwrap(),
+            "0xcccc00000000000000000000000000000000000000000000000000000000cccc"
+        );
+        assert_eq!(json["is_post"], false);
+        assert!(json["post_type"].is_null());
     }
 }

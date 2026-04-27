@@ -6,6 +6,7 @@ use axum::Json;
 use std::sync::Arc;
 
 use crate::error::SocialError;
+use crate::reader::SptUserHoldingItem;
 
 use super::super::{
     AppState, PageParams, SptPoolsQuery, SptReservationVolumeQuery, SptUserHoldingsQuery,
@@ -76,7 +77,7 @@ pub async fn get_spt_user_reservations(
     State(state): State<Arc<AppState>>,
     Path(address): Path<String>,
     Query(params): Query<PageParams>,
-) -> Result<Json<Vec<(String, i64, i64)>>, SocialError> {
+) -> Result<Json<Vec<SptUserHoldingItem>>, SocialError> {
     let limit = params.limit();
     let offset = params.offset();
     let reservations = state

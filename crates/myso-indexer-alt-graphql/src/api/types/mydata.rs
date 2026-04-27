@@ -11,7 +11,8 @@ use myso_indexer_alt_social_schema::models::{
     MyDataAccessAnalyticsRow, MyDataAccessLogRow, MyDataDailyRevenueRow, MyDataPurchaseRow,
     MyDataQueryBroadPoolRow, MyDataQueryClaimRow, MyDataQueryDistributionRoundRow,
     MyDataQueryListingSubPoolRow, MyDataQueryMerkleRootRow, MyDataQuerySnapshotAnchorRow,
-    MyDataQuerySubPoolRow, MyDataRecordRow, MyDataRevenueRow, MyDataStatsRow, MyDataSubscriptionRow,
+    MyDataQuerySubPoolRow, MyDataRecordRow, MyDataRevenueRow, MyDataStatsRow,
+    MyDataSubscriptionRow,
 };
 
 use crate::api::resolve_profile::resolve_profile_summary;

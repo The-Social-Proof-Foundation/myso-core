@@ -352,7 +352,7 @@ pub(crate) async fn get_profile_posts(
         .flatten();
     let query = "
         SELECT post_id, owner, profile_id, content, post_type, created_at, deleted_at,
-               reaction_count, comment_count, repost_count, tips_received
+               reaction_count, comment_count, repost_count, tips_received, mydata_id
         FROM posts
         WHERE (owner = $1 OR ($2::text IS NOT NULL AND profile_id = $2))
           AND deleted_at IS NULL

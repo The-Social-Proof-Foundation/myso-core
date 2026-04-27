@@ -104,6 +104,14 @@ Endpoints `/profiles/daily-stats` and `/social-graph/chart-data` read from Times
 | GET | `/posts/:id/promotion` | Get post promotion |
 | GET | `/posts/:id/poc-badges` | Get post POC badges |
 | GET | `/posts/:id/revenue-redirections` | Get post revenue redirections |
+| GET | `/posts/:id/transfers` | Get post ownership transfers |
+| GET | `/posts/:id/reports` | Get user reports against this post |
+| GET | `/posts/:id/moderation-events` | Platform moderation history for this post (newest first) |
+| GET | `/posts/:id/deletion-events` | Deletion history for this post id in `posts_deletion_events` (newest first) |
+
+After `moderate_post` / `moderate_comment` and indexer catch-up, you can confirm rows in `posts_moderation_events` (filter `object_id` = post or comment id), the GraphQL `post { moderationEvents { eventId objectId platformId removed moderatedBy moderatedAt time transactionId } }` field, and the moderation REST route.
+
+After `delete_post` / `delete_comment` and indexer catch-up, confirm rows in `posts_deletion_events` (`object_id` = post or comment id), GraphQL `post { deletionEvents { … } }` and `… comments { … deletionEvents { eventId objectId isPost postType postId deletedAt time transactionId } }`, and `GET /posts/:id/deletion-events`.
 
 ---
 

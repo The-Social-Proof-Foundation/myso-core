@@ -26,6 +26,7 @@ module social_contracts::post {
     use social_contracts::profile::UsernameRegistry;
     use social_contracts::platform;
     use social_contracts::block_list::{Self, BlockListRegistry};
+    use social_contracts::mydata;
     use social_contracts::upgrade::{Self, UpgradeAdminCap};
     use social_contracts::proof_of_creativity;
 
@@ -62,6 +63,8 @@ module social_contracts::post {
     const EPromotionInactive: u64 = 29;
     const EInvalidViewDuration: u64 = 30;
     const EOverflow: u64 = 31;
+    const EMyDataNotRegistered: u64 = 32;
+    const EMyDataOwnerMismatch: u64 = 33;
 
     /// Constants for size limits
     const MAX_CONTENT_LENGTH: u64 = 5000; // 5000 chars max for content
@@ -784,6 +787,21 @@ module social_contracts::post {
         post_id
     }
 
+    /// When `mydata_id` is set, it must be registered in `mydata_registry` and owned by `owner`.
+    fun assert_mydata_id_allowed_for_owner(
+        owner: address,
+        mydata_id: Option<address>,
+        mydata_registry: &mydata::MyDataRegistry,
+    ) {
+        if (option::is_none(&mydata_id)) {
+            return
+        };
+        let id = *option::borrow(&mydata_id);
+        let reg_owner = mydata::registry_get_owner(mydata_registry, id);
+        assert!(option::is_some(&reg_owner), EMyDataNotRegistered);
+        assert!(*option::borrow(&reg_owner) == owner, EMyDataOwnerMismatch);
+    }
+
     /// Create a new post with interaction permissions
     public fun create_post(
         registry: &UsernameRegistry,
@@ -803,6 +821,8 @@ module social_contracts::post {
         enable_spt: Option<bool>,
         enable_poc: Option<bool>,
         enable_spot: Option<bool>,
+        mydata_id: Option<address>,
+        mydata_registry: &mydata::MyDataRegistry,
         ctx: &mut TxContext
     ) {
         let owner = tx_context::sender(ctx);
@@ -811,6 +831,8 @@ module social_contracts::post {
         let mut profile_id_option = social_contracts::profile::lookup_profile_by_owner(registry, owner);
         assert!(option::is_some(&profile_id_option), EUnauthorized);
         let profile_id = option::extract(&mut profile_id_option);
+        
+        assert_mydata_id_allowed_for_owner(owner, mydata_id, mydata_registry);
         
         // Check if platform is approved
         let platform_id = object::uid_to_address(platform::id(platform));
@@ -925,7 +947,7 @@ module social_contracts::post {
             final_allow_tips,
             option::none(), // revenue_redirect_to
             option::none(), // revenue_redirect_percentage
-            option::none(), // mydata_id
+            mydata_id,
             option::none(), // promotion_id
             final_enable_spt,
             final_enable_poc,
@@ -944,7 +966,7 @@ module social_contracts::post {
             mentions,
             media_urls: media_urls_for_event,
             metadata_json,
-            mydata_id: option::none(),
+            mydata_id,
             promotion_id: option::none(),
             revenue_redirect_to: option::none(),
             revenue_redirect_percentage: option::none(),
@@ -2348,6 +2370,15 @@ module social_contracts::post {
         &post.revenue_redirect_percentage
     }
 
+    #[test_only]
+    public fun test_assert_mydata_id_allowed_for_owner(
+        owner: address,
+        mydata_id: Option<address>,
+        mydata_registry: &mydata::MyDataRegistry,
+    ) {
+        assert_mydata_id_allowed_for_owner(owner, mydata_id, mydata_registry);
+    }
+
     /// Test-only initialization function
     #[test_only]
     public fun test_init(ctx: &mut TxContext) {
@@ -2470,13 +2501,15 @@ module social_contracts::post {
         
         let promotion_id = object::uid_to_address(&promotion_data.id);
         
+        let media_option = option::none<vector<Url>>();
+        let media_urls_for_event = convert_urls_to_strings(&media_option);
         // Create the post
         let post_id = create_post_internal(
             owner,
             profile_id,
             platform_id,
             content,
-            option::none(), // No media
+            media_option,
             option::none(), // No mentions
             option::none(), // No metadata
             string::utf8(POST_TYPE_STANDARD),
@@ -2495,6 +2528,27 @@ module social_contracts::post {
             false, // enable_spot - default to opt-out
             ctx
         );
+        
+        event::emit(PostCreatedEvent {
+            post_id,
+            owner,
+            profile_id,
+            content,
+            post_type: string::utf8(POST_TYPE_STANDARD),
+            parent_post_id: option::none(),
+            mentions: option::none(),
+            media_urls: media_urls_for_event,
+            metadata_json: option::none(),
+            mydata_id: option::none(),
+            promotion_id: option::some(promotion_id),
+            revenue_redirect_to: option::none(),
+            revenue_redirect_percentage: option::none(),
+            enable_spt: false,
+            enable_poc: false,
+            enable_spot: false,
+            spot_id: option::none(),
+            spt_id: option::none(),
+        });
         
         // Update promotion data with post ID
         promotion_data.post_id = post_id;
@@ -2771,6 +2825,7 @@ module social_contracts::post {
         enable_spt: Option<bool>,
         enable_poc: Option<bool>,
         enable_spot: Option<bool>,
+        mydata_registry: &mydata::MyDataRegistry,
         ctx: &mut TxContext
     ) {
         let owner = tx_context::sender(ctx);
@@ -2784,6 +2839,8 @@ module social_contracts::post {
         let mut profile_id_option = social_contracts::profile::lookup_profile_by_owner(registry, owner);
         assert!(option::is_some(&profile_id_option), EUnauthorized);
         let profile_id = option::extract(&mut profile_id_option);
+        
+        assert_mydata_id_allowed_for_owner(owner, mydata_id, mydata_registry);
         
         // Check if platform is approved 
         let platform_id = object::uid_to_address(platform::id(platform));
@@ -2860,6 +2917,9 @@ module social_contracts::post {
             false // Default to opt-out (user must explicitly opt-in)
         };
         
+        // Convert media URLs to strings for PostCreatedEvent (before moving media_option)
+        let media_urls_for_event = convert_urls_to_strings(&media_option);
+        
         // Create and share the post
         let post_id = create_post_internal(
             owner,
@@ -2885,6 +2945,28 @@ module social_contracts::post {
             final_enable_spot,
             ctx
         );
+        
+        // Indexers read PostCreatedEvent to upsert `posts` with promotion_id before PromotedPostCreatedEvent
+        event::emit(PostCreatedEvent {
+            post_id,
+            owner,
+            profile_id,
+            content,
+            post_type: string::utf8(POST_TYPE_STANDARD),
+            parent_post_id: option::none(),
+            mentions,
+            media_urls: media_urls_for_event,
+            metadata_json,
+            mydata_id,
+            promotion_id: option::some(promotion_id),
+            revenue_redirect_to: option::none(),
+            revenue_redirect_percentage: option::none(),
+            enable_spt: final_enable_spt,
+            enable_poc: final_enable_poc,
+            enable_spot: final_enable_spot,
+            spot_id: option::none(),
+            spt_id: option::none(),
+        });
         
         // Update promotion data with post ID
         promotion_data.post_id = post_id;

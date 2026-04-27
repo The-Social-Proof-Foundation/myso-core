@@ -1,13 +1,21 @@
 // Copyright (c) The Social Proof Foundation, LLC.
 // SPDX-License-Identifier: Apache-2.0
 
+use diesel::ExpressionMethods;
 use diesel::OptionalExtension;
+use diesel::QueryDsl;
 use diesel::QueryableByName;
-use diesel::sql_types::{BigInt, Nullable, SmallInt, Text};
+use diesel::SelectableHelper;
+use diesel::sql_types::{BigInt, Bool, Int4, Nullable, SmallInt, Text};
 use diesel_async::RunQueryDsl;
 use serde_json::Value as JsonValue;
 
+use myso_indexer_alt_social_schema::models::POST_TYPE_QUOTE_REPOST;
+use myso_indexer_alt_social_schema::models::PostDeletionEventRow;
+use myso_indexer_alt_social_schema::models::PostModerationEventRow;
 pub use myso_indexer_alt_social_schema::models::{CommentRow, ReactionRow, RepostRow, TipRow};
+use myso_indexer_alt_social_schema::schema::posts_deletion_events;
+use myso_indexer_alt_social_schema::schema::posts_moderation_events;
 use myso_pg_db::Connection;
 
 use crate::metrics::DbReaderMetrics;
@@ -68,6 +76,8 @@ pub struct PostRow {
     pub enable_spot: bool,
     #[diesel(sql_type = Nullable<Text>)]
     pub spot_id: Option<String>,
+    #[diesel(sql_type = Nullable<Text>)]
+    pub mydata_id: Option<String>,
 }
 
 #[derive(Debug, Clone)]
@@ -77,6 +87,27 @@ pub struct PostTransferRow {
     pub new_owner: String,
     pub is_post: bool,
     pub transferred_at: i64,
+    pub transaction_id: String,
+}
+
+/// One user report against a post or comment, as stored in `posts_reports`.
+#[derive(Debug, Clone, QueryableByName)]
+pub struct PostReportRow {
+    #[diesel(sql_type = Int4)]
+    pub id: i32,
+    #[diesel(sql_type = Text)]
+    pub object_id: String,
+    #[diesel(sql_type = Bool)]
+    pub is_comment: bool,
+    #[diesel(sql_type = Text)]
+    pub reporter: String,
+    #[diesel(sql_type = SmallInt)]
+    pub reason_code: i16,
+    #[diesel(sql_type = Text)]
+    pub description: String,
+    #[diesel(sql_type = BigInt)]
+    pub reported_at: i64,
+    #[diesel(sql_type = Text)]
     pub transaction_id: String,
 }
 
@@ -119,7 +150,7 @@ pub(crate) async fn get_post_by_id(
                 media_urls, mentions, parent_post_id, updated_at,
                 poc_id, revenue_redirect_to, revenue_redirect_percentage, enable_poc,
                 poc_reasoning, poc_evidence_urls, poc_similarity_score, poc_media_type,
-                poc_oracle_address, poc_analyzed_at, enable_spot, spot_id
+                poc_oracle_address, poc_analyzed_at, enable_spot, spot_id, mydata_id
          FROM posts
          WHERE (post_id = $1 OR id = $1) AND deleted_at IS NULL
          ORDER BY created_at DESC
@@ -204,7 +235,7 @@ pub(crate) async fn list_posts(
                media_urls, mentions, parent_post_id, updated_at,
                poc_id, revenue_redirect_to, revenue_redirect_percentage, enable_poc,
                poc_reasoning, poc_evidence_urls, poc_similarity_score, poc_media_type,
-               poc_oracle_address, poc_analyzed_at, enable_spot, spot_id
+               poc_oracle_address, poc_analyzed_at, enable_spot, spot_id, mydata_id
         FROM posts
         WHERE deleted_at IS NULL
         AND ($1::TEXT IS NULL OR owner = $1)
@@ -242,7 +273,7 @@ pub(crate) async fn list_posts_for_profile(
                media_urls, mentions, parent_post_id, updated_at,
                poc_id, revenue_redirect_to, revenue_redirect_percentage, enable_poc,
                poc_reasoning, poc_evidence_urls, poc_similarity_score, poc_media_type,
-               poc_oracle_address, poc_analyzed_at, enable_spot, spot_id
+               poc_oracle_address, poc_analyzed_at, enable_spot, spot_id, mydata_id
         FROM posts
         WHERE deleted_at IS NULL
         AND (owner = $1 OR ($2::TEXT IS NOT NULL AND profile_id = $2))
@@ -387,14 +418,24 @@ pub(crate) async fn get_post_reposts(
         #[diesel(sql_type = BigInt)]
         created_at: i64,
     }
-    let query = "
+    let query = format!(
+        "
         SELECT repost_id, original_post_id, owner, profile_id, created_at
-        FROM reposts
-        WHERE original_post_id = $1 AND is_original_post = true
+        FROM (
+            SELECT repost_id, original_post_id, owner, profile_id, created_at
+            FROM reposts
+            WHERE original_post_id = $1 AND is_original_post = true
+            UNION ALL
+            SELECT post_id AS repost_id, parent_post_id AS original_post_id, owner, profile_id, created_at
+            FROM posts
+            WHERE parent_post_id = $1 AND post_type = '{}' AND deleted_at IS NULL
+        ) AS combined
         ORDER BY created_at DESC
         LIMIT $2 OFFSET $3
-    ";
-    let rows = diesel::sql_query(query)
+    ",
+        POST_TYPE_QUOTE_REPOST
+    );
+    let rows = diesel::sql_query(&query)
         .bind::<Text, _>(post_id)
         .bind::<BigInt, _>(limit)
         .bind::<BigInt, _>(offset)
@@ -507,6 +548,142 @@ pub(crate) async fn get_post_transfers(
             transaction_id: r.transaction_id,
         })
         .collect())
+}
+
+/// User reports for a post (`is_comment = false`); `object_id` is the post ID.
+pub(crate) async fn list_post_reports(
+    conn: &mut Connection<'_>,
+    post_id: &str,
+    limit: i64,
+    offset: i64,
+    metrics: &DbReaderMetrics,
+) -> anyhow::Result<Vec<PostReportRow>> {
+    list_object_reports(conn, post_id, false, limit, offset, metrics).await
+}
+
+/// User reports for a comment (`is_comment = true`); `object_id` is the comment ID.
+pub(crate) async fn list_comment_reports(
+    conn: &mut Connection<'_>,
+    comment_id: &str,
+    limit: i64,
+    offset: i64,
+    metrics: &DbReaderMetrics,
+) -> anyhow::Result<Vec<PostReportRow>> {
+    list_object_reports(conn, comment_id, true, limit, offset, metrics).await
+}
+
+async fn list_object_reports(
+    conn: &mut Connection<'_>,
+    object_id: &str,
+    is_comment: bool,
+    limit: i64,
+    offset: i64,
+    metrics: &DbReaderMetrics,
+) -> anyhow::Result<Vec<PostReportRow>> {
+    metrics.requests_received.inc();
+    let _guard = metrics.latency.start_timer();
+    let query = "
+        SELECT id, object_id, is_comment, reporter, reason_code, description, reported_at, transaction_id
+        FROM posts_reports
+        WHERE object_id = $1 AND is_comment = $2
+        ORDER BY time DESC
+        LIMIT $3 OFFSET $4
+    ";
+    let results = diesel::sql_query(query)
+        .bind::<Text, _>(object_id)
+        .bind::<Bool, _>(is_comment)
+        .bind::<BigInt, _>(limit)
+        .bind::<BigInt, _>(offset)
+        .load::<PostReportRow>(conn)
+        .await?;
+    metrics.requests_succeeded.inc();
+    Ok(results)
+}
+
+/// Platform moderation events for a post (`posts_moderation_events.object_id` = post id).
+pub(crate) async fn list_post_moderation_events(
+    conn: &mut Connection<'_>,
+    post_id: &str,
+    limit: i64,
+    offset: i64,
+    metrics: &DbReaderMetrics,
+) -> anyhow::Result<Vec<PostModerationEventRow>> {
+    list_moderation_events_by_object_id(conn, post_id, limit, offset, metrics).await
+}
+
+/// Platform moderation events for a comment (same table; `object_id` = comment id).
+pub(crate) async fn list_comment_moderation_events(
+    conn: &mut Connection<'_>,
+    comment_id: &str,
+    limit: i64,
+    offset: i64,
+    metrics: &DbReaderMetrics,
+) -> anyhow::Result<Vec<PostModerationEventRow>> {
+    list_moderation_events_by_object_id(conn, comment_id, limit, offset, metrics).await
+}
+
+async fn list_moderation_events_by_object_id(
+    conn: &mut Connection<'_>,
+    object_id: &str,
+    limit: i64,
+    offset: i64,
+    metrics: &DbReaderMetrics,
+) -> anyhow::Result<Vec<PostModerationEventRow>> {
+    metrics.requests_received.inc();
+    let _guard = metrics.latency.start_timer();
+    let results = posts_moderation_events::table
+        .filter(posts_moderation_events::object_id.eq(object_id))
+        .order_by(posts_moderation_events::time.desc())
+        .limit(limit)
+        .offset(offset)
+        .select(PostModerationEventRow::as_select())
+        .load::<PostModerationEventRow>(conn)
+        .await?;
+    metrics.requests_succeeded.inc();
+    Ok(results)
+}
+
+/// Deletion events for a post (`posts_deletion_events.object_id` = post id).
+pub(crate) async fn list_post_deletion_events(
+    conn: &mut Connection<'_>,
+    post_id: &str,
+    limit: i64,
+    offset: i64,
+    metrics: &DbReaderMetrics,
+) -> anyhow::Result<Vec<PostDeletionEventRow>> {
+    list_deletion_events_by_object_id(conn, post_id, limit, offset, metrics).await
+}
+
+/// Deletion events for a comment (same table; `object_id` = comment id).
+pub(crate) async fn list_comment_deletion_events(
+    conn: &mut Connection<'_>,
+    comment_id: &str,
+    limit: i64,
+    offset: i64,
+    metrics: &DbReaderMetrics,
+) -> anyhow::Result<Vec<PostDeletionEventRow>> {
+    list_deletion_events_by_object_id(conn, comment_id, limit, offset, metrics).await
+}
+
+async fn list_deletion_events_by_object_id(
+    conn: &mut Connection<'_>,
+    object_id: &str,
+    limit: i64,
+    offset: i64,
+    metrics: &DbReaderMetrics,
+) -> anyhow::Result<Vec<PostDeletionEventRow>> {
+    metrics.requests_received.inc();
+    let _guard = metrics.latency.start_timer();
+    let results = posts_deletion_events::table
+        .filter(posts_deletion_events::object_id.eq(object_id))
+        .order_by(posts_deletion_events::time.desc())
+        .limit(limit)
+        .offset(offset)
+        .select(PostDeletionEventRow::as_select())
+        .load::<PostDeletionEventRow>(conn)
+        .await?;
+    metrics.requests_succeeded.inc();
+    Ok(results)
 }
 
 pub(crate) async fn get_post_config(

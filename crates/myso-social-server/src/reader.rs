@@ -123,6 +123,33 @@ impl Reader {
         post::list_post_transfers(&self.db, post_id, limit, offset).await
     }
 
+    pub async fn list_post_reports(
+        &self,
+        post_id: &str,
+        limit: i64,
+        offset: i64,
+    ) -> Result<Vec<PostReport>, crate::error::SocialError> {
+        post::list_post_reports(&self.db, post_id, limit, offset).await
+    }
+
+    pub async fn list_post_moderation_events(
+        &self,
+        post_id: &str,
+        limit: i64,
+        offset: i64,
+    ) -> Result<Vec<PostModerationEventRow>, crate::error::SocialError> {
+        post::list_post_moderation_events(&self.db, post_id, limit, offset).await
+    }
+
+    pub async fn list_post_deletion_events(
+        &self,
+        post_id: &str,
+        limit: i64,
+        offset: i64,
+    ) -> Result<Vec<PostDeletionEventRow>, crate::error::SocialError> {
+        post::list_post_deletion_events(&self.db, post_id, limit, offset).await
+    }
+
     pub async fn get_mydata_by_id(
         &self,
         mydata_id: &str,
@@ -1686,7 +1713,7 @@ impl Reader {
         address: &str,
         limit: i64,
         offset: i64,
-    ) -> Result<Vec<(String, i64, i64)>, crate::error::SocialError> {
+    ) -> Result<Vec<SptUserHoldingItem>, crate::error::SocialError> {
         spt::get_spt_user_holdings(&self.db, address, limit, offset).await
     }
 
@@ -1704,7 +1731,7 @@ impl Reader {
         address: &str,
         limit: i64,
         offset: i64,
-    ) -> Result<Vec<(String, i64, i64)>, crate::error::SocialError> {
+    ) -> Result<Vec<SptUserHoldingItem>, crate::error::SocialError> {
         spt::get_spt_user_reservations(&self.db, address, limit, offset).await
     }
 

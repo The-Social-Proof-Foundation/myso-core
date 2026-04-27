@@ -29,6 +29,8 @@ pub struct PostBasicRow {
     pub repost_count: i64,
     #[diesel(sql_type = BigInt)]
     pub tips_received: i64,
+    #[diesel(sql_type = Nullable<Text>)]
+    pub mydata_id: Option<String>,
 }
 
 #[derive(Debug, Serialize)]

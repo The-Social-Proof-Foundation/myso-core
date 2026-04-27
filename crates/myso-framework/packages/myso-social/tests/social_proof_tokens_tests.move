@@ -1135,7 +1135,7 @@ module social_contracts::token_exchange_tests {
             @0x123456,       // associated post id
             string::utf8(b"PPOST"), // symbol
             string::utf8(b"Post Token"), // name
-            1000,           // circulating supply
+            1000 * social_proof_tokens::spt_amount_scale(), // circulating supply (nano-SPT)
             100_000_000,    // base price (0.1 MYSO)
             100_000,        // quadratic coefficient
             0               // created_at
@@ -1413,5 +1413,46 @@ module social_contracts::token_exchange_tests {
         };
         
         test_scenario::end(scenario);
+    }
+
+    #[test]
+    fun test_spt_amount_scale_is_nine_decimals() {
+        assert!(social_proof_tokens::spt_amount_scale() == 1_000_000_000, 0);
+        assert!(social_proof_tokens::spt_amount_decimals() == 9, 1);
+    }
+
+    #[test]
+    fun test_marginal_price_matches_human_supply_square() {
+        let base = 100_000_000u64;
+        let coeff = 100_000u64;
+        let scale = social_proof_tokens::spt_amount_scale();
+        let supply_nano = 2 * scale;
+        let p = social_proof_tokens::calculate_token_price(base, coeff, supply_nano);
+        let expected = base + (coeff * 4) / 10000;
+        assert!(p == expected, 0);
+    }
+
+    #[test]
+    fun test_buy_price_positive_for_one_display_token() {
+        let base = 100_000_000u64;
+        let coeff = 100_000u64;
+        let scale = social_proof_tokens::spt_amount_scale();
+        let (total, avg) = social_proof_tokens::calculate_buy_price(base, coeff, 0, scale);
+        assert!(total > 0, 0);
+        assert!(avg > 0, 1);
+    }
+
+    #[test]
+    fun test_sell_buy_symmetry_no_fees() {
+        let base = 100_000_000u64;
+        let coeff = 100_000u64;
+        let scale = social_proof_tokens::spt_amount_scale();
+        let supply = 10 * scale;
+        let buy_amt = 2 * scale;
+        let (buy_total, _) = social_proof_tokens::calculate_buy_price(base, coeff, supply, buy_amt);
+        let new_supply = supply + buy_amt;
+        let (sell_total, _) =
+            social_proof_tokens::calculate_sell_price(base, coeff, new_supply, buy_amt);
+        assert!(sell_total == buy_total, 0);
     }
 } 

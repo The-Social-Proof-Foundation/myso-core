@@ -91,8 +91,6 @@ SELECT
     p.token_type,
     p.owner,
     p.associated_id,
-    p.symbol,
-    p.name,
     p.circulating_supply,
     COUNT(t.id) AS transaction_count,
     SUM(CASE WHEN t.transaction_type = 'BUY' THEN t.myso_amount ELSE 0 END) AS buy_volume,
@@ -115,7 +113,7 @@ WHERE
         WHERE sub.pool_id = p.pool_id
     )
 GROUP BY 
-    p.pool_id, p.token_type, p.owner, p.associated_id, p.symbol, p.name, 
+    p.pool_id, p.token_type, p.owner, p.associated_id,
     p.circulating_supply, p.base_price, ph.price
 ORDER BY 
     total_volume DESC;

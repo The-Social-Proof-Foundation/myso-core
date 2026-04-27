@@ -11,10 +11,12 @@ use myso_indexer_alt_social_reader::{
     SptReservationVolumeBucket as SptReservationVolumeBucketRow, SptSortBy as SptSortByReader,
     SptTransaction as SptTransactionRow, ViewerSocialContext,
 };
-use myso_indexer_alt_social_schema::models::SptReservationHoldingRow;
+use myso_indexer_alt_social_schema::models::{SptReservationHoldingRow, TOKEN_TYPE_POST};
 
 use crate::api::resolve_profile::resolve_profile_summary;
+use crate::api::scalars::big_int::BigInt;
 use crate::api::scalars::myso_address::MySoAddress;
+use crate::api::types::post::Post;
 use crate::api::types::profile_summary::ProfileSummary;
 
 fn to_iso8601_utc(dt: chrono::DateTime<chrono::Utc>) -> String {
@@ -94,12 +96,37 @@ impl SptHolding {
             .unwrap_or_else(|_| MySoAddress::from(myso_types::base_types::MySoAddress::ZERO))
     }
 
-    /// Token balance held.
-    async fn amount(&self) -> i64 {
-        self.inner.balance
+    /// Token balance held (nano-SPT).
+    async fn amount(&self) -> BigInt {
+        BigInt::from(self.inner.balance)
     }
 
-    /// Profile whose token this holding represents.
+    /// Token type (`1` = profile, `2` = post).
+    async fn token_type(&self) -> i16 {
+        self.inner.token_type
+    }
+
+    /// Profile or post object id this SPT is tied to (subject of the token).
+    async fn associated_id(&self) -> &str {
+        &self.inner.associated_id
+    }
+
+    /// Post for this holding when `tokenType` is post; null for profile SPTs or if the post is not indexed.
+    async fn post(&self, ctx: &Context<'_>) -> Option<Post> {
+        if self.inner.token_type != TOKEN_TYPE_POST {
+            return None;
+        }
+        let reader_opt = ctx
+            .data_opt::<std::sync::Arc<Option<myso_indexer_alt_social_reader::SocialPgReader>>>()?;
+        let reader = reader_opt.as_ref().as_ref()?;
+        let row = reader
+            .get_post_by_id(&self.inner.associated_id)
+            .await
+            .ok()??;
+        Some(Post::from_db(row))
+    }
+
+    /// Token pool owner / creator (author) profile, not the post content for post SPTs.
     async fn profile(&self) -> ProfileSummary {
         ProfileSummary::from_row(myso_indexer_alt_social_reader::ProfileSummaryRow {
             owner_address: self.inner.profile_owner_address.clone(),
@@ -160,24 +187,14 @@ impl SptPool {
         &self.inner.pool_id
     }
 
-    /// Total circulating supply.
-    async fn total_supply(&self) -> i64 {
-        self.inner.circulating_supply
+    /// Total circulating supply (nano-SPT).
+    async fn total_supply(&self) -> BigInt {
+        BigInt::from(self.inner.circulating_supply)
     }
 
     /// Current price (smallest units).
     async fn price(&self) -> i64 {
         self.inner.price
-    }
-
-    /// Token symbol.
-    async fn symbol(&self) -> &str {
-        &self.inner.symbol
-    }
-
-    /// Token name.
-    async fn name(&self) -> &str {
-        &self.inner.name
     }
 
     /// Pool owner address.
@@ -196,11 +213,11 @@ impl SptPool {
         self.inner.token_type
     }
 
-    /// Market cap (price * circulating supply).
-    async fn market_cap(&self) -> i64 {
-        self.inner
-            .price
-            .saturating_mul(self.inner.circulating_supply)
+    /// Market cap (price in MYSO smallest units × circulating supply in nano-SPT).
+    async fn market_cap(&self) -> BigInt {
+        let p = self.inner.price as i128;
+        let s = self.inner.circulating_supply as i128;
+        BigInt::from(p * s)
     }
 
     /// 24-hour price change (percentage).
@@ -428,9 +445,9 @@ impl SptTransaction {
         &self.inner.transaction_type
     }
 
-    /// Token amount.
-    async fn amount(&self) -> i64 {
-        self.inner.amount
+    /// Token amount (nano-SPT).
+    async fn amount(&self) -> BigInt {
+        BigInt::from(self.inner.amount)
     }
 
     /// Sender address.
@@ -493,9 +510,9 @@ impl SptPriceHistory {
         self.inner.price
     }
 
-    /// Circulating supply at this point.
-    async fn circulating_supply(&self) -> i64 {
-        self.inner.circulating_supply
+    /// Circulating supply at this point (nano-SPT).
+    async fn circulating_supply(&self) -> BigInt {
+        BigInt::from(self.inner.circulating_supply)
     }
 
     /// Timestamp (ISO 8601).
@@ -548,7 +565,32 @@ impl SptReservationHolding {
         self.inner.reserved_at
     }
 
-    /// Profile whose token this reservation is for.
+    /// Token type (`1` = profile, `2` = post).
+    async fn token_type(&self) -> i16 {
+        self.inner.token_type
+    }
+
+    /// Profile or post object id this reservation pool is for (subject of the token).
+    async fn associated_id(&self) -> &str {
+        &self.inner.associated_id
+    }
+
+    /// Post for this reservation when `tokenType` is post; null for profile SPTs or if the post is not indexed.
+    async fn post(&self, ctx: &Context<'_>) -> Option<Post> {
+        if self.inner.token_type != TOKEN_TYPE_POST {
+            return None;
+        }
+        let reader_opt = ctx
+            .data_opt::<std::sync::Arc<Option<myso_indexer_alt_social_reader::SocialPgReader>>>()?;
+        let reader = reader_opt.as_ref().as_ref()?;
+        let row = reader
+            .get_post_by_id(&self.inner.associated_id)
+            .await
+            .ok()??;
+        Some(Post::from_db(row))
+    }
+
+    /// Token pool owner / creator (author) profile, not the post content for post SPTs.
     async fn profile(&self) -> ProfileSummary {
         ProfileSummary::from_row(myso_indexer_alt_social_reader::ProfileSummaryRow {
             owner_address: self.inner.owner.clone(),

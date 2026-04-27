@@ -48,6 +48,20 @@ CREATE INDEX IF NOT EXISTS idx_nominees_governance_registry_list
 CREATE UNIQUE INDEX IF NOT EXISTS idx_ratings_target_voter_registry_regid_time
     ON delegate_ratings (target_address, voter_address, registry_type, governance_registry_id, time);
 
+-- Historical hypertable rows: only the latest row per delegate key should stay active.
+UPDATE delegates d
+SET is_active = false
+WHERE (d.id, d.time) NOT IN (
+    SELECT id, time
+    FROM (
+        SELECT DISTINCT ON (address, registry_type, governance_registry_id)
+            id,
+            time
+        FROM delegates
+        ORDER BY address, registry_type, governance_registry_id, time DESC, id DESC
+    ) latest
+);
+
 CREATE VIEW governance_stats AS
 SELECT
     g.registry_id,
@@ -62,7 +76,12 @@ SELECT
     COUNT(DISTINCT p.id) FILTER (WHERE p.status = 5) AS implemented_proposals,
     COUNT(DISTINCT p.id) FILTER (WHERE p.status = 6) AS rescinded_proposals
 FROM governance_registries g
-LEFT JOIN delegates d
+LEFT JOIN (
+    SELECT DISTINCT ON (address, registry_type, governance_registry_id)
+        *
+    FROM delegates
+    ORDER BY address, registry_type, governance_registry_id, time DESC, id DESC
+) d
     ON g.registry_type = d.registry_type
     AND d.is_active = true
     AND d.governance_registry_id = g.registry_id
@@ -112,3 +131,37 @@ BEGIN
     END IF;
 END
 $$;
+
+DROP VIEW IF EXISTS delegate_performance CASCADE;
+
+CREATE VIEW delegate_performance AS
+SELECT
+    d.address,
+    d.governance_registry_id,
+    d.registry_type,
+    d.upvotes,
+    d.downvotes,
+    d.proposals_reviewed,
+    d.proposals_submitted,
+    d.sided_winning_proposals,
+    d.sided_losing_proposals,
+    d.term_start,
+    d.term_end,
+    d.is_active,
+    CASE
+        WHEN d.proposals_reviewed > 0 THEN
+            d.sided_winning_proposals::FLOAT / NULLIF(d.proposals_reviewed, 0)
+        ELSE NULL
+    END AS winning_rate,
+    COUNT(DISTINCT dv.proposal_id) AS recent_votes,
+    SUM(CASE WHEN dv.approve THEN 1 ELSE 0 END) AS recent_approvals,
+    SUM(CASE WHEN NOT dv.approve THEN 1 ELSE 0 END) AS recent_rejections
+FROM
+    delegates d
+LEFT JOIN
+    delegate_votes dv ON d.address = dv.delegate_address
+                      AND dv.time > NOW() - INTERVAL '30 days'
+GROUP BY
+    d.id, d.address, d.governance_registry_id, d.registry_type, d.upvotes, d.downvotes,
+    d.proposals_reviewed, d.proposals_submitted, d.sided_winning_proposals,
+    d.sided_losing_proposals, d.term_start, d.term_end, d.is_active;

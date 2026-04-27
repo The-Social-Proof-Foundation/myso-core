@@ -12,8 +12,6 @@ CREATE TABLE IF NOT EXISTS social_proof_token_pools (
     token_type SMALLINT NOT NULL,  -- 1: Profile, 2: Post
     owner TEXT NOT NULL,
     associated_id TEXT NOT NULL,
-    symbol TEXT NOT NULL,
-    name TEXT NOT NULL,
     circulating_supply BIGINT NOT NULL,
     base_price BIGINT NOT NULL,
     quadratic_coefficient BIGINT NOT NULL,
@@ -350,8 +348,6 @@ SELECT
     p.token_type,
     p.owner,
     p.associated_id,
-    p.symbol,
-    p.name,
     p.circulating_supply,
     COUNT(t.id) AS transaction_count,
     SUM(CASE WHEN t.transaction_type = 'BUY' THEN t.amount ELSE 0 END) AS buy_volume,
@@ -364,7 +360,7 @@ JOIN
 WHERE 
     t.time > NOW() - INTERVAL '7 days'
 GROUP BY 
-    p.pool_id, p.token_type, p.owner, p.associated_id, p.symbol, p.name, p.circulating_supply
+    p.pool_id, p.token_type, p.owner, p.associated_id, p.circulating_supply
 ORDER BY 
     total_volume DESC;
 

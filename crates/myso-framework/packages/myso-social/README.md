@@ -36,6 +36,7 @@ MySocial is a feature-rich decentralized social platform that combines tradition
 - **Prediction Markets**: Create prediction posts with betting and resolution
 - **Content Moderation**: Platform-level content flagging and removal
 - **Proof of Creativity Integration**: Automatic revenue redirection for derivative content
+- **MyData linking**: `create_post` and `create_promoted_post` accept an optional MyData object id plus a shared `MyDataRegistry` reference. The id must already be registered in that registry and owned by the sender. Pass `none` for the id to create a post without a MyData attachment.
 
 **Advanced Features:**
 - Nested comment threads

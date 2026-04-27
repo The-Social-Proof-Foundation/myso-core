@@ -14,7 +14,7 @@ use myso_pg_db::{Db, DbArgs};
 use prometheus::Registry;
 use social_indexer::{
     BlockingHandler, GovernanceHandler, InsuranceHandler, MyDataHandler, PlatformHandler,
-    PocHandler, PostsHandler, ProfilesHandler, SocialEnv, SocialGraphHandler, SpotHandler,
+    PostsHandler, ProfilesHandler, SocialEnv, SocialGraphHandler, SpotHandler,
     SptHandler, SubscriptionHandler, UpgradeHandler,
 };
 use std::net::SocketAddr;
@@ -143,9 +143,6 @@ async fn main() -> Result<(), anyhow::Error> {
         .await?;
     indexer
         .concurrent_pipeline(SptHandler, Default::default())
-        .await?;
-    indexer
-        .concurrent_pipeline(PocHandler, Default::default())
         .await?;
     indexer
         .concurrent_pipeline(SubscriptionHandler, Default::default())

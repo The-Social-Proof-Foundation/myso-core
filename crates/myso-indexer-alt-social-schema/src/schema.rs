@@ -565,23 +565,6 @@ diesel::table! {
 }
 
 diesel::table! {
-    platform_delivery_config (id) {
-        id -> Int8,
-        platform_id -> Text,
-        apns_bundle_id -> Nullable<Text>,
-        apns_key_id -> Nullable<Text>,
-        apns_team_id -> Nullable<Text>,
-        apns_key_path -> Nullable<Text>,
-        apns_key_content -> Nullable<Text>,
-        fcm_server_key -> Nullable<Text>,
-        resend_api_key -> Nullable<Text>,
-        resend_from_email -> Nullable<Text>,
-        created_at -> Timestamptz,
-        updated_at -> Timestamptz,
-    }
-}
-
-diesel::table! {
     platform_events (id, created_at) {
         id -> Int4,
         event_type -> Text,
@@ -789,8 +772,7 @@ diesel::table! {
 }
 
 diesel::table! {
-    posts (id, time) {
-        id -> Text,
+    posts (post_id, time) {
         post_id -> Text,
         owner -> Text,
         profile_id -> Text,
@@ -1420,8 +1402,6 @@ diesel::table! {
         token_type -> Int2,
         owner -> Text,
         associated_id -> Text,
-        symbol -> Text,
-        name -> Text,
         circulating_supply -> Int8,
         base_price -> Int8,
         quadratic_coefficient -> Int8,
@@ -1740,7 +1720,6 @@ diesel::allow_tables_to_appear_in_same_query!(
     nominated_delegates,
     object_migrated_events,
     platform_blocked_profiles,
-    platform_delivery_config,
     platform_events,
     platform_memberships,
     platform_moderators,

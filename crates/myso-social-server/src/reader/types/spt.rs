@@ -5,6 +5,8 @@ use diesel::sql_types::{BigInt, Bool, Double, Integer, Nullable, SmallInt, Text,
 use diesel::QueryableByName;
 use serde::Serialize;
 
+use crate::json_serde::json_string_i64;
+
 #[derive(Debug, Serialize, QueryableByName)]
 pub struct SptPoolRow {
     #[diesel(sql_type = Text)]
@@ -15,10 +17,8 @@ pub struct SptPoolRow {
     pub owner: String,
     #[diesel(sql_type = Text)]
     pub associated_id: String,
-    #[diesel(sql_type = Text)]
-    pub symbol: String,
-    #[diesel(sql_type = Text)]
-    pub name: String,
+    /// Nano-SPT on-chain units (`10^9` per display token).
+    #[serde(serialize_with = "json_string_i64::serialize")]
     #[diesel(sql_type = BigInt)]
     pub circulating_supply: i64,
     #[diesel(sql_type = BigInt)]
@@ -41,6 +41,7 @@ pub struct SptTransactionRow {
     pub transaction_type: String,
     #[diesel(sql_type = Text)]
     pub sender: String,
+    #[serde(serialize_with = "json_string_i64::serialize")]
     #[diesel(sql_type = BigInt)]
     pub amount: i64,
     #[diesel(sql_type = BigInt)]
@@ -67,6 +68,7 @@ pub struct SptTransactionRow {
 pub struct SptHoldingRow {
     #[diesel(sql_type = Text)]
     pub holder_address: String,
+    #[serde(serialize_with = "json_string_i64::serialize")]
     #[diesel(sql_type = BigInt)]
     pub balance: i64,
 }
@@ -77,6 +79,7 @@ pub struct SptPriceHistoryRow {
     pub pool_id: String,
     #[diesel(sql_type = BigInt)]
     pub price: i64,
+    #[serde(serialize_with = "json_string_i64::serialize")]
     #[diesel(sql_type = BigInt)]
     pub circulating_supply: i64,
     #[diesel(sql_type = Timestamptz)]
@@ -198,9 +201,15 @@ pub struct SptReservationPoolWithDisplayRow {
 #[derive(Debug, Clone, Serialize)]
 pub struct SptUserHoldingItem {
     pub pool_id: String,
+    /// nano-SPT balance (`10^9` per display token); string JSON for JS integer safety.
+    #[serde(serialize_with = "json_string_i64::serialize")]
     pub amount: i64,
     pub acquired_at: i64,
     pub source: String,
+    /// `1` = profile SPT, `2` = post SPT (same as on-chain / indexer).
+    pub token_type: i16,
+    /// Profile or post object id for this pool (subject of the token).
+    pub associated_id: String,
 }
 
 #[derive(Debug, Serialize, QueryableByName)]

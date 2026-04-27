@@ -67,7 +67,7 @@ WHERE created_at >= 1000000000000
 
 -- `last_activity` = max per pool of GREATEST(ingestion time, checkpoint time from created_at when plausible).
 -- Matches MIN_PLAUSIBLE_RESERVATION_UNIX_MS (1e12) in myso-indexer-alt-social handlers/spt.rs.
-CREATE OR REPLACE VIEW active_reservation_pools AS
+CREATE OR REPLACE VIEW reservation_pools AS
 SELECT
     sp.pool_id,
     sp.associated_id,
