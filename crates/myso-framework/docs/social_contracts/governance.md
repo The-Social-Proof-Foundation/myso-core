@@ -76,9 +76,10 @@ strict wall-clock guarantee when governance is idle.
 -  [Function `transition_proposal_rejected_by_delegate_council`](#social_contracts_governance_transition_proposal_rejected_by_delegate_council)
 -  [Function `complete_delegate_reject_to_ecosystem_treasury`](#social_contracts_governance_complete_delegate_reject_to_ecosystem_treasury)
 -  [Function `complete_delegate_reject_drain_to_platform_governance`](#social_contracts_governance_complete_delegate_reject_drain_to_platform_governance)
+-  [Function `clone_bytes`](#social_contracts_governance_clone_bytes)
+-  [Function `clone_option_string`](#social_contracts_governance_clone_option_string)
 -  [Function `run_delegate_review_vote`](#social_contracts_governance_run_delegate_review_vote)
 -  [Function `delegate_vote_on_proposal`](#social_contracts_governance_delegate_vote_on_proposal)
--  [Function `emit_delegate_vote_trailing_event`](#social_contracts_governance_emit_delegate_vote_trailing_event)
 -  [Function `emit_implementation_reward_to_submitter_event`](#social_contracts_governance_emit_implementation_reward_to_submitter_event)
 -  [Function `finalize_community_voting_internals`](#social_contracts_governance_finalize_community_voting_internals)
 -  [Function `finalize_proposal`](#social_contracts_governance_finalize_proposal)
@@ -585,6 +586,16 @@ Event emitted when a new delegate is elected
 </dd>
 <dt>
 <code><a href="../social_contracts/governance.md#social_contracts_governance_registry_type">registry_type</a>: u8</code>
+</dt>
+<dd>
+</dd>
+<dt>
+<code>upvotes: u64</code>
+</dt>
+<dd>
+</dd>
+<dt>
+<code>downvotes: u64</code>
 </dt>
 <dd>
 </dd>
@@ -2114,6 +2125,8 @@ Install the founding delegate without going through nomination (bootstrap / plat
         term_start,
         term_end,
         <a href="../social_contracts/governance.md#social_contracts_governance_registry_type">registry_type</a>: registry.<a href="../social_contracts/governance.md#social_contracts_governance_registry_type">registry_type</a>,
+        upvotes: 0,
+        downvotes: 0,
     });
 }
 </code></pre>
@@ -2826,6 +2839,8 @@ recomputes the delegate council from incumbents and nominees. Otherwise returns 
             term_start: term_start,
             term_end: term_end,
             <a href="../social_contracts/governance.md#social_contracts_governance_registry_type">registry_type</a>: registry.<a href="../social_contracts/governance.md#social_contracts_governance_registry_type">registry_type</a>,
+            upvotes: winner_upvotes,
+            downvotes: winner_downvotes,
         });
         m = m + 1;
     };
@@ -3806,6 +3821,65 @@ For platform: transition + forfeiture event (platform route) + [ProposalRejected
 
 </details>
 
+<a name="social_contracts_governance_clone_bytes"></a>
+
+## Function `clone_bytes`
+
+
+
+<pre><code><b>fun</b> <a href="../social_contracts/governance.md#social_contracts_governance_clone_bytes">clone_bytes</a>(b: &vector&lt;u8&gt;): vector&lt;u8&gt;
+</code></pre>
+
+
+
+<details>
+<summary>Implementation</summary>
+
+
+<pre><code><b>fun</b> <a href="../social_contracts/governance.md#social_contracts_governance_clone_bytes">clone_bytes</a>(b: &vector&lt;u8&gt;): vector&lt;u8&gt; {
+    <b>let</b> <b>mut</b> out = vector::empty();
+    <b>let</b> len = vector::length(b);
+    <b>let</b> <b>mut</b> i = 0;
+    <b>while</b> (i &lt; len) {
+        vector::push_back(&<b>mut</b> out, *vector::borrow(b, i));
+        i = i + 1;
+    };
+    out
+}
+</code></pre>
+
+
+
+</details>
+
+<a name="social_contracts_governance_clone_option_string"></a>
+
+## Function `clone_option_string`
+
+
+
+<pre><code><b>fun</b> <a href="../social_contracts/governance.md#social_contracts_governance_clone_option_string">clone_option_string</a>(opt: &<a href="../std/option.md#std_option_Option">std::option::Option</a>&lt;<a href="../std/string.md#std_string_String">std::string::String</a>&gt;): <a href="../std/option.md#std_option_Option">std::option::Option</a>&lt;<a href="../std/string.md#std_string_String">std::string::String</a>&gt;
+</code></pre>
+
+
+
+<details>
+<summary>Implementation</summary>
+
+
+<pre><code><b>fun</b> <a href="../social_contracts/governance.md#social_contracts_governance_clone_option_string">clone_option_string</a>(opt: &Option&lt;String&gt;): Option&lt;String&gt; {
+    <b>if</b> (option::is_none(opt)) {
+        <b>return</b> option::none()
+    };
+    <b>let</b> s = option::borrow(opt);
+    option::some(string::utf8(<a href="../social_contracts/governance.md#social_contracts_governance_clone_bytes">clone_bytes</a>(string::as_bytes(s))))
+}
+</code></pre>
+
+
+
+</details>
+
 <a name="social_contracts_governance_run_delegate_review_vote"></a>
 
 ## Function `run_delegate_review_vote`
@@ -3832,6 +3906,8 @@ Run delegate-in-review vote logic; returns 0=still in review, 1=advanced to comm
 ): u8 {
     <b>assert</b>!(registry.<a href="../social_contracts/governance.md#social_contracts_governance_version">version</a> == <a href="../social_contracts/upgrade.md#social_contracts_upgrade_current_version">upgrade::current_version</a>(), <a href="../social_contracts/governance.md#social_contracts_governance_EWrongVersion">EWrongVersion</a>);
     <a href="../social_contracts/governance.md#social_contracts_governance_try_update_delegate_panel_if_due">try_update_delegate_panel_if_due</a>(registry, ctx);
+    <b>let</b> vote_time = clock::timestamp_ms(clock);
+    <b>let</b> reason_for_event = <a href="../social_contracts/governance.md#social_contracts_governance_clone_option_string">clone_option_string</a>(&reason);
     <b>let</b> caller = tx_context::sender(ctx);
     <b>let</b> proposal_id = object::id(proposal);
     <b>assert</b>!(table::contains(&registry.proposals, proposal_id), <a href="../social_contracts/governance.md#social_contracts_governance_EProposalNotFound">EProposalNotFound</a>);
@@ -3870,14 +3946,22 @@ Run delegate-in-review vote logic; returns 0=still in review, 1=advanced to comm
     <b>let</b> delegate_approval_count = proposal.delegate_approval_count;
     <b>let</b> delegate_rejection_count = proposal.delegate_rejection_count;
     <b>let</b> total_delegates = table::length(&registry.delegates);
-    <b>if</b> (delegate_approval_count &gt; total_delegates / 2) {
+    <b>let</b> outcome = <b>if</b> (delegate_approval_count &gt; total_delegates / 2) {
         <a href="../social_contracts/governance.md#social_contracts_governance_move_to_community_voting">move_to_community_voting</a>(registry, proposal, clock, ctx);
         <a href="../social_contracts/governance.md#social_contracts_governance_DELEGATE_VOTE_TO_COMMUNITY">DELEGATE_VOTE_TO_COMMUNITY</a>
     } <b>else</b> <b>if</b> (delegate_rejection_count &gt; total_delegates / 2) {
         <a href="../social_contracts/governance.md#social_contracts_governance_DELEGATE_VOTE_TO_REJECT">DELEGATE_VOTE_TO_REJECT</a>
     } <b>else</b> {
         <a href="../social_contracts/governance.md#social_contracts_governance_DELEGATE_VOTE_STILL_IN_REVIEW">DELEGATE_VOTE_STILL_IN_REVIEW</a>
-    }
+    };
+    event::emit(<a href="../social_contracts/governance.md#social_contracts_governance_DelegateVoteEvent">DelegateVoteEvent</a> {
+        proposal_id,
+        delegate_address: caller,
+        approve,
+        vote_time,
+        reason: reason_for_event,
+    });
+    outcome
 }
 </code></pre>
 
@@ -3913,9 +3997,7 @@ Ecosystem and proof-of-creativity only: <code>ecosystem_treasury</code> used whe
     <b>assert</b>!(registry.<a href="../social_contracts/governance.md#social_contracts_governance_version">version</a> == <a href="../social_contracts/upgrade.md#social_contracts_upgrade_current_version">upgrade::current_version</a>(), <a href="../social_contracts/governance.md#social_contracts_governance_EWrongVersion">EWrongVersion</a>);
     <a href="../social_contracts/governance.md#social_contracts_governance_assert_ecosystem_or_poc_registry">assert_ecosystem_or_poc_registry</a>(registry);
     <b>let</b> current_time = clock::timestamp_ms(clock);
-    <b>let</b> proposal_id = object::id(proposal);
     <b>let</b> out = <a href="../social_contracts/governance.md#social_contracts_governance_run_delegate_review_vote">run_delegate_review_vote</a>(registry, proposal, approve, reason, clock, ctx);
-    <b>let</b> caller = tx_context::sender(ctx);
     <b>if</b> (out == <a href="../social_contracts/governance.md#social_contracts_governance_DELEGATE_VOTE_TO_REJECT">DELEGATE_VOTE_TO_REJECT</a>) {
         <a href="../social_contracts/governance.md#social_contracts_governance_complete_delegate_reject_to_ecosystem_treasury">complete_delegate_reject_to_ecosystem_treasury</a>(
             registry,
@@ -3925,49 +4007,6 @@ Ecosystem and proof-of-creativity only: <code>ecosystem_treasury</code> used whe
             ctx
         );
     };
-    event::emit(<a href="../social_contracts/governance.md#social_contracts_governance_DelegateVoteEvent">DelegateVoteEvent</a> {
-        proposal_id,
-        delegate_address: caller,
-        approve,
-        vote_time: current_time,
-        reason: option::none(),
-    });
-}
-</code></pre>
-
-
-
-</details>
-
-<a name="social_contracts_governance_emit_delegate_vote_trailing_event"></a>
-
-## Function `emit_delegate_vote_trailing_event`
-
-
-
-<pre><code><b>public</b>(package) <b>fun</b> <a href="../social_contracts/governance.md#social_contracts_governance_emit_delegate_vote_trailing_event">emit_delegate_vote_trailing_event</a>(proposal_id: <a href="../myso/object.md#myso_object_ID">myso::object::ID</a>, delegate_address: <b>address</b>, approve: bool, vote_time: u64, reason: <a href="../std/option.md#std_option_Option">std::option::Option</a>&lt;<a href="../std/string.md#std_string_String">std::string::String</a>&gt;)
-</code></pre>
-
-
-
-<details>
-<summary>Implementation</summary>
-
-
-<pre><code><b>public</b>(package) <b>fun</b> <a href="../social_contracts/governance.md#social_contracts_governance_emit_delegate_vote_trailing_event">emit_delegate_vote_trailing_event</a>(
-    proposal_id: ID,
-    delegate_address: <b>address</b>,
-    approve: bool,
-    vote_time: u64,
-    reason: Option&lt;String&gt;,
-) {
-    event::emit(<a href="../social_contracts/governance.md#social_contracts_governance_DelegateVoteEvent">DelegateVoteEvent</a> {
-        proposal_id,
-        delegate_address,
-        approve,
-        vote_time,
-        reason,
-    });
 }
 </code></pre>
 

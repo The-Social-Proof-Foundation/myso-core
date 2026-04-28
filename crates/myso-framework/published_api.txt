@@ -7717,14 +7717,17 @@ complete_delegate_reject_to_ecosystem_treasury
 complete_delegate_reject_drain_to_platform_governance
 	public(package) fun
 	0x50c1::governance
+clone_bytes
+	fun
+	0x50c1::governance
+clone_option_string
+	fun
+	0x50c1::governance
 run_delegate_review_vote
 	public(package) fun
 	0x50c1::governance
 delegate_vote_on_proposal
 	public entry fun
-	0x50c1::governance
-emit_delegate_vote_trailing_event
-	public(package) fun
 	0x50c1::governance
 emit_implementation_reward_to_submitter_event
 	public(package) fun
@@ -8035,6 +8038,303 @@ migrate_platform
 migrate_registry
 	public entry fun
 	0x50c1::platform
+MyData
+	public struct
+	0x50c1::mydata
+MyDataAdminCap
+	public struct
+	0x50c1::mydata
+MyDataConfig
+	public struct
+	0x50c1::mydata
+MyDataRegistry
+	public struct
+	0x50c1::mydata
+BroadPool
+	public struct
+	0x50c1::mydata
+SubPool
+	public struct
+	0x50c1::mydata
+MyDataPoolRegistry
+	public struct
+	0x50c1::mydata
+MyDataPoolAdminCap
+	public struct
+	0x50c1::mydata
+BroadPoolCreatedEvent
+	public struct
+	0x50c1::mydata
+SubPoolCreatedEvent
+	public struct
+	0x50c1::mydata
+MyDataAssignedToSubPoolEvent
+	public struct
+	0x50c1::mydata
+QuerySnapshotAnchor
+	public struct
+	0x50c1::mydata
+SnapshotAnchorRegistry
+	public struct
+	0x50c1::mydata
+SnapshotAnchorRecordedEvent
+	public struct
+	0x50c1::mydata
+DistributionRecordedEvent
+	public struct
+	0x50c1::mydata
+MyDataClaimVault
+	public struct
+	0x50c1::mydata
+MerkleRootPublishedEvent
+	public struct
+	0x50c1::mydata
+ClaimExecutedEvent
+	public struct
+	0x50c1::mydata
+DistributionRound
+	public struct
+	0x50c1::mydata
+DistributionRegistry
+	public struct
+	0x50c1::mydata
+MyDataCreatedEvent
+	public struct
+	0x50c1::mydata
+PurchaseEvent
+	public struct
+	0x50c1::mydata
+AccessGrantedEvent
+	public struct
+	0x50c1::mydata
+MyDataRegisteredEvent
+	public struct
+	0x50c1::mydata
+MyDataUnregisteredEvent
+	public struct
+	0x50c1::mydata
+MyDataConfigUpdatedEvent
+	public struct
+	0x50c1::mydata
+create_mydata_admin_cap
+	public(package) fun
+	0x50c1::mydata
+update_mydata_config
+	public entry fun
+	0x50c1::mydata
+share_mydata_system_objects
+	fun
+	0x50c1::mydata
+bootstrap_init
+	public(package) fun
+	0x50c1::mydata
+create_mydata_pool_admin_cap
+	public fun
+	0x50c1::mydata
+gen_pool_id
+	fun
+	0x50c1::mydata
+create_broad_pool
+	public entry fun
+	0x50c1::mydata
+create_sub_pool
+	public entry fun
+	0x50c1::mydata
+assign_mydata_to_sub_pools
+	fun
+	0x50c1::mydata
+remove_mydata_from_sub_pool
+	fun
+	0x50c1::mydata
+gen_snapshot_id
+	fun
+	0x50c1::mydata
+record_snapshot_anchor
+	public entry fun
+	0x50c1::mydata
+get_snapshot_anchor
+	public fun
+	0x50c1::mydata
+publish_merkle_root
+	public entry fun
+	0x50c1::mydata
+claim
+	public entry fun
+	0x50c1::mydata
+deposit
+	public entry fun
+	0x50c1::mydata
+record_distribution
+	public entry fun
+	0x50c1::mydata
+get_broad_pool
+	public fun
+	0x50c1::mydata
+get_sub_pool
+	public fun
+	0x50c1::mydata
+get_mydata_sub_pools
+	public fun
+	0x50c1::mydata
+get_distribution_round
+	public fun
+	0x50c1::mydata
+broad_pool_id
+	public fun
+	0x50c1::mydata
+sub_pool_id
+	public fun
+	0x50c1::mydata
+create
+	public fun
+	0x50c1::mydata
+create_and_share
+	public entry fun
+	0x50c1::mydata
+purchase_one_time
+	public entry fun
+	0x50c1::mydata
+purchase_subscription
+	public entry fun
+	0x50c1::mydata
+update_pricing
+	public entry fun
+	0x50c1::mydata
+update_content
+	public entry fun
+	0x50c1::mydata
+assign_mydata_to_pools
+	public entry fun
+	0x50c1::mydata
+remove_mydata_from_sub_pools
+	public entry fun
+	0x50c1::mydata
+has_access
+	public fun
+	0x50c1::mydata
+encryption_id_matches
+	public fun
+	0x50c1::mydata
+mydata_approve
+	public entry fun
+	0x50c1::mydata
+bytes_equal_u8
+	fun
+	0x50c1::mydata
+grant_access
+	public entry fun
+	0x50c1::mydata
+owner
+	public fun
+	0x50c1::mydata
+object_address
+	public fun
+	0x50c1::mydata
+media_type
+	public fun
+	0x50c1::mydata
+tags
+	public fun
+	0x50c1::mydata
+platform_id
+	public fun
+	0x50c1::mydata
+one_time_price
+	public fun
+	0x50c1::mydata
+subscription_price
+	public fun
+	0x50c1::mydata
+subscription_duration_days
+	public fun
+	0x50c1::mydata
+created_at
+	public fun
+	0x50c1::mydata
+last_updated
+	public fun
+	0x50c1::mydata
+timestamp_start
+	public fun
+	0x50c1::mydata
+timestamp_end
+	public fun
+	0x50c1::mydata
+geographic_region
+	public fun
+	0x50c1::mydata
+data_quality
+	public fun
+	0x50c1::mydata
+sample_size
+	public fun
+	0x50c1::mydata
+collection_method
+	public fun
+	0x50c1::mydata
+is_updating
+	public fun
+	0x50c1::mydata
+update_frequency
+	public fun
+	0x50c1::mydata
+purchaser_count
+	public fun
+	0x50c1::mydata
+subscriber_count
+	public fun
+	0x50c1::mydata
+is_one_time_for_sale
+	public fun
+	0x50c1::mydata
+is_subscription_available
+	public fun
+	0x50c1::mydata
+has_active_subscription
+	public fun
+	0x50c1::mydata
+get_subscription_expiry
+	public fun
+	0x50c1::mydata
+get_revenue_potential
+	public fun
+	0x50c1::mydata
+has_any_sales
+	public fun
+	0x50c1::mydata
+registry_get_owner
+	public fun
+	0x50c1::mydata
+is_registered
+	public fun
+	0x50c1::mydata
+register_in_registry
+	public entry fun
+	0x50c1::mydata
+unregister_from_registry
+	public entry fun
+	0x50c1::mydata
+version
+	public fun
+	0x50c1::mydata
+borrow_version_mut
+	public(package) fun
+	0x50c1::mydata
+registry_version
+	public fun
+	0x50c1::mydata
+borrow_registry_version_mut
+	public(package) fun
+	0x50c1::mydata
+migrate_mydata
+	public entry fun
+	0x50c1::mydata
+migrate_registry
+	public entry fun
+	0x50c1::mydata
+migrate_config
+	public entry fun
+	0x50c1::mydata
 PoCBadge
 	public struct
 	0x50c1::post
@@ -8195,6 +8495,9 @@ convert_urls_to_strings
 	fun
 	0x50c1::post
 create_post_internal
+	fun
+	0x50c1::post
+assert_mydata_id_allowed_for_owner
 	fun
 	0x50c1::post
 create_post
@@ -8542,19 +8845,67 @@ sell_tokens
 sell_tokens_with_platform
 	public fun
 	0x50c1::social_proof_tokens
+unwrap_u256_opt
+	fun
+	0x50c1::social_proof_tokens
+u256_add_with_carry
+	fun
+	0x50c1::social_proof_tokens
+u256_mul_widen
+	fun
+	0x50c1::social_proof_tokens
+u512_bit
+	fun
+	0x50c1::social_proof_tokens
+u512_shl1_or_bit
+	fun
+	0x50c1::social_proof_tokens
+u512_ge_u256
+	fun
+	0x50c1::social_proof_tokens
+u512_sub_u256
+	fun
+	0x50c1::social_proof_tokens
+u512_div_u256_floor
+	fun
+	0x50c1::social_proof_tokens
+quad_poly_buy
+	fun
+	0x50c1::social_proof_tokens
+quad_poly_sell
+	fun
+	0x50c1::social_proof_tokens
+quad_integral_leg_mist
+	fun
+	0x50c1::social_proof_tokens
+mist_amount_u256_to_u64
+	fun
+	0x50c1::social_proof_tokens
 calculate_token_price
 	public fun
 	0x50c1::social_proof_tokens
 calculate_buy_price
 	public fun
 	0x50c1::social_proof_tokens
-calculate_sum_squares
-	fun
-	0x50c1::social_proof_tokens
 calculate_sell_price
 	public fun
 	0x50c1::social_proof_tokens
+spt_amount_scale
+	public fun
+	0x50c1::social_proof_tokens
+spt_amount_decimals
+	public fun
+	0x50c1::social_proof_tokens
+nano_spt_from_whole_tokens
+	public fun
+	0x50c1::social_proof_tokens
+nano_spt_from_whole_and_fraction
+	public fun
+	0x50c1::social_proof_tokens
 get_token_info
+	public fun
+	0x50c1::social_proof_tokens
+token_info_circulating_supply
 	public fun
 	0x50c1::social_proof_tokens
 token_exists
@@ -8857,303 +9208,6 @@ migrate_poc_registry
 create_poc_admin_cap
 	public(package) fun
 	0x50c1::proof_of_creativity
-MyData
-	public struct
-	0x50c1::mydata
-MyDataAdminCap
-	public struct
-	0x50c1::mydata
-MyDataConfig
-	public struct
-	0x50c1::mydata
-MyDataRegistry
-	public struct
-	0x50c1::mydata
-BroadPool
-	public struct
-	0x50c1::mydata
-SubPool
-	public struct
-	0x50c1::mydata
-MyDataPoolRegistry
-	public struct
-	0x50c1::mydata
-MyDataPoolAdminCap
-	public struct
-	0x50c1::mydata
-BroadPoolCreatedEvent
-	public struct
-	0x50c1::mydata
-SubPoolCreatedEvent
-	public struct
-	0x50c1::mydata
-MyDataAssignedToSubPoolEvent
-	public struct
-	0x50c1::mydata
-QuerySnapshotAnchor
-	public struct
-	0x50c1::mydata
-SnapshotAnchorRegistry
-	public struct
-	0x50c1::mydata
-SnapshotAnchorRecordedEvent
-	public struct
-	0x50c1::mydata
-DistributionRecordedEvent
-	public struct
-	0x50c1::mydata
-MyDataClaimVault
-	public struct
-	0x50c1::mydata
-MerkleRootPublishedEvent
-	public struct
-	0x50c1::mydata
-ClaimExecutedEvent
-	public struct
-	0x50c1::mydata
-DistributionRound
-	public struct
-	0x50c1::mydata
-DistributionRegistry
-	public struct
-	0x50c1::mydata
-MyDataCreatedEvent
-	public struct
-	0x50c1::mydata
-PurchaseEvent
-	public struct
-	0x50c1::mydata
-AccessGrantedEvent
-	public struct
-	0x50c1::mydata
-MyDataRegisteredEvent
-	public struct
-	0x50c1::mydata
-MyDataUnregisteredEvent
-	public struct
-	0x50c1::mydata
-MyDataConfigUpdatedEvent
-	public struct
-	0x50c1::mydata
-create_mydata_admin_cap
-	public(package) fun
-	0x50c1::mydata
-update_mydata_config
-	public entry fun
-	0x50c1::mydata
-share_mydata_system_objects
-	fun
-	0x50c1::mydata
-bootstrap_init
-	public(package) fun
-	0x50c1::mydata
-create_mydata_pool_admin_cap
-	public fun
-	0x50c1::mydata
-gen_pool_id
-	fun
-	0x50c1::mydata
-create_broad_pool
-	public entry fun
-	0x50c1::mydata
-create_sub_pool
-	public entry fun
-	0x50c1::mydata
-assign_mydata_to_sub_pools
-	fun
-	0x50c1::mydata
-remove_mydata_from_sub_pool
-	fun
-	0x50c1::mydata
-gen_snapshot_id
-	fun
-	0x50c1::mydata
-record_snapshot_anchor
-	public entry fun
-	0x50c1::mydata
-get_snapshot_anchor
-	public fun
-	0x50c1::mydata
-publish_merkle_root
-	public entry fun
-	0x50c1::mydata
-claim
-	public entry fun
-	0x50c1::mydata
-deposit
-	public entry fun
-	0x50c1::mydata
-record_distribution
-	public entry fun
-	0x50c1::mydata
-get_broad_pool
-	public fun
-	0x50c1::mydata
-get_sub_pool
-	public fun
-	0x50c1::mydata
-get_mydata_sub_pools
-	public fun
-	0x50c1::mydata
-get_distribution_round
-	public fun
-	0x50c1::mydata
-broad_pool_id
-	public fun
-	0x50c1::mydata
-sub_pool_id
-	public fun
-	0x50c1::mydata
-create
-	public fun
-	0x50c1::mydata
-create_and_share
-	public entry fun
-	0x50c1::mydata
-purchase_one_time
-	public entry fun
-	0x50c1::mydata
-purchase_subscription
-	public entry fun
-	0x50c1::mydata
-update_pricing
-	public entry fun
-	0x50c1::mydata
-update_content
-	public entry fun
-	0x50c1::mydata
-assign_mydata_to_pools
-	public entry fun
-	0x50c1::mydata
-remove_mydata_from_sub_pools
-	public entry fun
-	0x50c1::mydata
-has_access
-	public fun
-	0x50c1::mydata
-encryption_id_matches
-	public fun
-	0x50c1::mydata
-mydata_approve
-	public entry fun
-	0x50c1::mydata
-bytes_equal_u8
-	fun
-	0x50c1::mydata
-grant_access
-	public entry fun
-	0x50c1::mydata
-owner
-	public fun
-	0x50c1::mydata
-object_address
-	public fun
-	0x50c1::mydata
-media_type
-	public fun
-	0x50c1::mydata
-tags
-	public fun
-	0x50c1::mydata
-platform_id
-	public fun
-	0x50c1::mydata
-one_time_price
-	public fun
-	0x50c1::mydata
-subscription_price
-	public fun
-	0x50c1::mydata
-subscription_duration_days
-	public fun
-	0x50c1::mydata
-created_at
-	public fun
-	0x50c1::mydata
-last_updated
-	public fun
-	0x50c1::mydata
-timestamp_start
-	public fun
-	0x50c1::mydata
-timestamp_end
-	public fun
-	0x50c1::mydata
-geographic_region
-	public fun
-	0x50c1::mydata
-data_quality
-	public fun
-	0x50c1::mydata
-sample_size
-	public fun
-	0x50c1::mydata
-collection_method
-	public fun
-	0x50c1::mydata
-is_updating
-	public fun
-	0x50c1::mydata
-update_frequency
-	public fun
-	0x50c1::mydata
-purchaser_count
-	public fun
-	0x50c1::mydata
-subscriber_count
-	public fun
-	0x50c1::mydata
-is_one_time_for_sale
-	public fun
-	0x50c1::mydata
-is_subscription_available
-	public fun
-	0x50c1::mydata
-has_active_subscription
-	public fun
-	0x50c1::mydata
-get_subscription_expiry
-	public fun
-	0x50c1::mydata
-get_revenue_potential
-	public fun
-	0x50c1::mydata
-has_any_sales
-	public fun
-	0x50c1::mydata
-registry_get_owner
-	public fun
-	0x50c1::mydata
-is_registered
-	public fun
-	0x50c1::mydata
-register_in_registry
-	public entry fun
-	0x50c1::mydata
-unregister_from_registry
-	public entry fun
-	0x50c1::mydata
-version
-	public fun
-	0x50c1::mydata
-borrow_version_mut
-	public(package) fun
-	0x50c1::mydata
-registry_version
-	public fun
-	0x50c1::mydata
-borrow_registry_version_mut
-	public(package) fun
-	0x50c1::mydata
-migrate_mydata
-	public entry fun
-	0x50c1::mydata
-migrate_registry
-	public entry fun
-	0x50c1::mydata
-migrate_config
-	public entry fun
-	0x50c1::mydata
 Registry
 	public struct
 	0x50c1::message

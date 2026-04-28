@@ -1,7 +1,7 @@
 // Copyright (c) The Social Proof Foundation, LLC.
 // SPDX-License-Identifier: Apache-2.0
 
-/// Social Proof Tokens module for MySocial platform.
+/// Social Proof Tokens module for the MySocial network.
 /// This module provides functionality for creation and trading of both profile tokens
 /// and post tokens using an Automated Market Maker (AMM) with a quadratic pricing curve.
 /// It includes fee distribution mechanisms for transactions, splitting between profile owner,
@@ -12,12 +12,16 @@
 /// `10^9` nano-SPT = `1.0` display token (same decimal count as native MYSO). MYSO payments and
 /// prices remain in MYSO smallest units. Buy/sell cost uses a continuous integral of the marginal
 /// price curve over nano-supply to stay well-defined at sub-token precision.
+///
+/// Use `nano_spt_from_whole_tokens` / `nano_spt_from_whole_and_fraction` to convert display amounts
+/// plus optional sub-token nano remainder into the `u64` nano-SPT values passed to buy/sell entrypoints.
 
 #[allow(unused_field, deprecated_usage, unused_const, duplicate_alias, unused_use, lint(public_entry))]
 module social_contracts::social_proof_tokens {
     use std::string::{Self, String};
     use std::option::{Self, Option};
     use std::vector;
+    use std::u256;
 
     use myso::{
         object::{Self, UID, ID},
@@ -29,7 +33,6 @@ module social_contracts::social_proof_tokens {
         myso::MYSO,
         balance::{Self, Balance},
         clock::{Self, Clock},
-        math,
         package::{Self, Publisher}
     };
     
@@ -58,68 +61,85 @@ module social_contracts::social_proof_tokens {
     const EInvalidID: u64 = 7;
     /// Insufficient token liquidity
     const EInsufficientLiquidity: u64 = 8;
-    /// Self trading not allowed
-    const ESelfTrading: u64 = 9;
     /// Token already initialized in pool
-    const ETokenAlreadyInitialized: u64 = 10;
+    const ETokenAlreadyInitialized: u64 = 9;
     /// Curve parameters must be positive
-    const EInvalidCurveParams: u64 = 11;
+    const EInvalidCurveParams: u64 = 10;
     /// Invalid token type
-    const EInvalidTokenType: u64 = 12;
+    const EInvalidTokenType: u64 = 11;
     /// Viral threshold not met
-    const EViralThresholdNotMet: u64 = 13;
+    const EViralThresholdNotMet: u64 = 12;
     /// Auction already in progress
-    const EAuctionInProgress: u64 = 14;
+    const EAuctionInProgress: u64 = 13;
     /// Invalid auction duration
-    const EInvalidAuctionDuration: u64 = 15;
+    const EInvalidAuctionDuration: u64 = 14;
     /// Auction not active
-    const EAuctionNotActive: u64 = 16;
+    const EAuctionNotActive: u64 = 15;
     /// Auction not ended
-    const EAuctionNotEnded: u64 = 17;
+    const EAuctionNotEnded: u64 = 16;
     /// Auction already finalized
-    const EAuctionAlreadyFinalized: u64 = 18;
+    const EAuctionAlreadyFinalized: u64 = 17;
     /// No contribution to auction
-    const ENoContribution: u64 = 19;
+    const ENoContribution: u64 = 18;
     /// Cannot buy token from a blocked user
-    const EBlockedUser: u64 = 20;
+    const EBlockedUser: u64 = 19;
     /// Trading is halted by emergency kill switch
-    const ETradingHalted: u64 = 21;
+    const ETradingHalted: u64 = 20;
     /// Arithmetic overflow detected
-    const EOverflow: u64 = 22;
+    const EOverflow: u64 = 21;
     /// Wrong version - object version mismatch
-    const EWrongVersion: u64 = 23;
+    const EWrongVersion: u64 = 22;
     /// User has not joined the platform
-    const EUserNotJoinedPlatform: u64 = 24;
+    const EUserNotJoinedPlatform: u64 = 23;
     /// User is blocked by the platform
-    const EUserBlockedByPlatform: u64 = 25;
+    const EUserBlockedByPlatform: u64 = 24;
     /// Reservation pool already converted to token
-    const EReservationPoolConverted: u64 = 27;
+    const EReservationPoolConverted: u64 = 25;
     /// User already owns tokens for this pool
-    const EAlreadyOwnsTokens: u64 = 28;
+    const EAlreadyOwnsTokens: u64 = 26;
     /// Too many reservers for conversion (DoS prevention)
-    const ETooManyReservers: u64 = 29;
+    const ETooManyReservers: u64 = 27;
     /// Cannot split token - amount must be positive and less than token amount
-    const ECannotSplit: u64 = 30;
+    const ECannotSplit: u64 = 28;
     /// Cannot merge tokens - tokens must be from the same pool
-    const ECannotMerge: u64 = 31;
+    const ECannotMerge: u64 = 29;
 
     // === Constants ===
     // Token types
     const TOKEN_TYPE_PROFILE: u8 = 1;
     const TOKEN_TYPE_POST: u8 = 2;
 
-    // Default trading fee percentages (in basis points, 10000 = 100%)
+    // Default trading fee percentages (in basis points; `BPS_DENOM` = 100%)
     const DEFAULT_TRADING_CREATOR_FEE_BPS: u64 = 100; // 1.0% to creator (profile/post owner)
     const DEFAULT_TRADING_PLATFORM_FEE_BPS: u64 = 25; // 0.25% to platform
     const DEFAULT_TRADING_TREASURY_FEE_BPS: u64 = 25; // 0.25% to ecosystem treasury
 
-    // Default reservation fee percentages (in basis points, 10000 = 100%)
+    // Default reservation fee percentages (in basis points; `BPS_DENOM` = 100%)
     const DEFAULT_RESERVATION_CREATOR_FEE_BPS: u64 = 100; // 1.0% to creator (profile/post owner)
     const DEFAULT_RESERVATION_PLATFORM_FEE_BPS: u64 = 25; // 0.25% to platform
     const DEFAULT_RESERVATION_TREASURY_FEE_BPS: u64 = 25; // 0.25% to ecosystem treasury
 
-    // Maximum hold percentage per wallet (5% of supply)
+    // Maximum single-wallet hold of circulating supply after launch (default **5%** = `500` bps of supply; admin may raise up to `MAX_SPT_ADMIN_PERCENT_BPS`).
     const MAX_HOLD_PERCENT_BPS: u64 = 500;
+
+    // --- Widen bounds: on-chain MYSO / nano-SPT amounts are `u64` ---
+    /// **Permyriad / fee scale only:** `10_000` = 100%. Not SPT decimal places (`SPT_DECIMALS` = 9).
+    const BPS_DENOM: u64 = 10000;
+
+    /// Numeric value of `MAX_U64`; max storable on-chain amount as `u128` for safe compares / products.
+    const MAX_ONCHAIN_U64_U128: u128 = 18446744073709551615u128;
+
+    /// Max `threshold * max_individual_reservation_bps` so `(product / BPS_DENOM)` fits `u64` (equals `MAX_U64 * BPS_DENOM`).
+    const MAX_RESERVATION_THRESHOLD_BPS_PRODUCT_U128: u128 =
+        MAX_ONCHAIN_U64_U128 * (BPS_DENOM as u128);
+
+    // Package-enforced ceilings on what the admin may store in `SocialProofTokensConfig` (raise via upgrade).
+    // Actual `max_hold_percent_bps`, `max_individual_reservation_bps`, and `max_reservers_per_pool` are set
+    // via `update_social_proof_tokens_config` with `SocialProofTokensAdminCap`, subject to these caps.
+    // Fresh installs still default to **5%** live hold (`MAX_HOLD_PERCENT_BPS`) and **20%** per-reserver reservation (`DEFAULT_MAX_INDIVIDUAL_RESERVATION_BPS`).
+    const MAX_SPT_ADMIN_PERCENT_BPS: u64 = 1_000_000;
+
+    const MAX_RESERVERS_PER_POOL_CAP: u64 = 10_000_000;
 
     /// Display decimals for SPT (matches native MYSO coin metadata).
     const SPT_DECIMALS: u8 = 9;
@@ -133,7 +153,7 @@ module social_contracts::social_proof_tokens {
     // Reservation threshold constants for social proof token creation
     const DEFAULT_POST_THRESHOLD: u64 = 1_000_000_000_000; // 1,000 MYSO in smallest units (9 decimals)
     const DEFAULT_PROFILE_THRESHOLD: u64 = 10_000_000_000_000; // 10,000 MYSO in smallest units (9 decimals)
-    const DEFAULT_MAX_INDIVIDUAL_RESERVATION_BPS: u64 = 2000; // 20% (1/5 of threshold)
+    const DEFAULT_MAX_INDIVIDUAL_RESERVATION_BPS: u64 = 2000; // default **20%** of pool threshold per reserver (`2000` / `BPS_DENOM`)
     const DEFAULT_MAX_RESERVERS_PER_POOL: u64 = 1000;
 
     // Maximum u64 value for overflow protection
@@ -167,14 +187,14 @@ module social_contracts::social_proof_tokens {
         base_price: u64,
         /// Quadratic coefficient for pricing curve
         quadratic_coefficient: u64,
-        /// Maximum percentage a single wallet can hold of any token
+        /// Max fraction of circulating supply one wallet may hold, in basis points (`10_000` = 100%).
         max_hold_percent_bps: u64,
         /// Reservation thresholds for social proof token creation
         post_threshold: u64,
         profile_threshold: u64,
-        /// Maximum percentage any individual can reserve towards a single post/profile
+        /// Max MYSO reservation per wallet vs pool threshold, in bps (`10_000` = 100% of threshold).
         max_individual_reservation_bps: u64,
-        /// Maximum number of unique reservers allowed per pool (DoS protection)
+        /// Maximum unique reservers per reservation pool (DoS / gas bound).
         max_reservers_per_pool: u64,
         /// Emergency kill switch - when false, all trading is halted
         trading_enabled: bool,
@@ -218,10 +238,6 @@ module social_contracts::social_proof_tokens {
         owner: address,
         /// Associated profile or post ID
         associated_id: address,
-        /// Token symbol
-        symbol: String,
-        /// Token name
-        name: String,
         /// Circulating supply in **nano-SPT** (`10^9` per 1.0 token).
         circulating_supply: u64,
         /// Base price for this token
@@ -249,8 +265,11 @@ module social_contracts::social_proof_tokens {
         version: u64,
     }
 
-    /// Social token that represents a user's owned tokens
-    public struct SocialToken has key, store {
+    /// Social token that represents a user's owned tokens.
+    /// Intentionally has only `key` (no `store`) to prevent free P2P transfer: the pool
+    /// `holders` table is keyed by transaction sender, so transferring this object between
+    /// addresses would permanently desynchronise the on-chain balance state.
+    public struct SocialToken has key {
         id: UID,
         /// Token pool ID
         pool_id: address,
@@ -285,8 +304,6 @@ module social_contracts::social_proof_tokens {
         token_type: u8,
         owner: address,
         associated_id: address,
-        symbol: String,
-        name: String,
         base_price: u64,
         quadratic_coefficient: u64,
         /// Circulating supply in **nano-SPT** (`10^9` per 1.0 token).
@@ -491,7 +508,7 @@ module social_contracts::social_proof_tokens {
         ctx: &mut TxContext
     ) {
         let new_token = split_social_token(token, split_amount, ctx);
-        transfer::public_transfer(new_token, tx_context::sender(ctx));
+        transfer::transfer(new_token, tx_context::sender(ctx));
     }
 
     /// Entry function to merge two SocialTokens
@@ -537,6 +554,21 @@ module social_contracts::social_proof_tokens {
             token_type,
             amount,
         }
+    }
+
+    /// Transfer a SocialToken to an address from within tests.
+    /// Needed because SocialToken has only `key` (no `store`), so external code cannot call
+    /// `transfer::public_transfer` on it; this helper delegates to the module-internal variant.
+    #[test_only]
+    public fun transfer_social_token_for_testing(token: SocialToken, to: address) {
+        transfer::transfer(token, to)
+    }
+
+    /// Destroy a SocialToken in tests without going through a sell transaction.
+    #[test_only]
+    public fun destroy_social_token_for_testing(token: SocialToken) {
+        let SocialToken { id, pool_id: _, token_type: _, amount: _ } = token;
+        object::delete(id)
     }
 
     /// Bootstrap initialization function - creates the social proof tokens configuration and registry
@@ -628,30 +660,43 @@ module social_contracts::social_proof_tokens {
         let reservation_total_fee_bps = reservation_creator_fee_bps + reservation_platform_fee_bps + reservation_treasury_fee_bps;
         
         // Ensure fee totals are valid (prevent division by zero and overflow)
-        assert!(total_fee_bps > 0 && total_fee_bps <= 10000, EInvalidFeeConfig);
-        assert!(reservation_total_fee_bps > 0 && reservation_total_fee_bps <= 10000, EInvalidFeeConfig);
+        assert!(total_fee_bps > 0 && total_fee_bps <= BPS_DENOM, EInvalidFeeConfig);
+        assert!(reservation_total_fee_bps > 0 && reservation_total_fee_bps <= BPS_DENOM, EInvalidFeeConfig);
         
         // Validate individual fee components don't exceed 100%
         
-        // Validate max_hold_percent_bps (should be <= 10000, i.e., <= 100%)
-        assert!(max_hold_percent_bps > 0 && max_hold_percent_bps <= 10000, EInvalidFeeConfig);
+        // Hold cap: bps may exceed 10_000 (100%) so whales can hold >100% of supply if policy allows.
+        assert!(max_hold_percent_bps > 0 && max_hold_percent_bps <= MAX_SPT_ADMIN_PERCENT_BPS, EInvalidFeeConfig);
         
         // Validate thresholds (must be positive)
         assert!(post_threshold > 0, EInvalidFeeConfig);
         assert!(profile_threshold > 0, EInvalidFeeConfig);
         
-        // Validate max_individual_reservation_bps (should be <= 10000, i.e., <= 100%)
-        assert!(max_individual_reservation_bps > 0 && max_individual_reservation_bps <= 10000, EInvalidFeeConfig);
+        assert!(max_individual_reservation_bps > 0 && max_individual_reservation_bps <= MAX_SPT_ADMIN_PERCENT_BPS, EInvalidFeeConfig);
+
+        // `(threshold * bps) / BPS_DENOM` must fit `u64` (reservation cap in MYSO smallest units).
+        assert!(
+            (post_threshold as u128) * (max_individual_reservation_bps as u128)
+                <= MAX_RESERVATION_THRESHOLD_BPS_PRODUCT_U128,
+            EInvalidFeeConfig
+        );
+        assert!(
+            (profile_threshold as u128) * (max_individual_reservation_bps as u128)
+                <= MAX_RESERVATION_THRESHOLD_BPS_PRODUCT_U128,
+            EInvalidFeeConfig
+        );
         
-        // Validate max_reservers_per_pool (DoS protection limit)
-        assert!(max_reservers_per_pool > 0 && max_reservers_per_pool <= 50000, EInvalidFeeConfig);
+        assert!(
+            max_reservers_per_pool > 0 && max_reservers_per_pool <= MAX_RESERVERS_PER_POOL_CAP,
+            EInvalidFeeConfig
+        );
         
-        assert!(trading_creator_fee_bps <= 10000, EInvalidFeeConfig);
-        assert!(trading_platform_fee_bps <= 10000, EInvalidFeeConfig);
-        assert!(trading_treasury_fee_bps <= 10000, EInvalidFeeConfig);
-        assert!(reservation_creator_fee_bps <= 10000, EInvalidFeeConfig);
-        assert!(reservation_platform_fee_bps <= 10000, EInvalidFeeConfig);
-        assert!(reservation_treasury_fee_bps <= 10000, EInvalidFeeConfig);
+        assert!(trading_creator_fee_bps <= BPS_DENOM, EInvalidFeeConfig);
+        assert!(trading_platform_fee_bps <= BPS_DENOM, EInvalidFeeConfig);
+        assert!(trading_treasury_fee_bps <= BPS_DENOM, EInvalidFeeConfig);
+        assert!(reservation_creator_fee_bps <= BPS_DENOM, EInvalidFeeConfig);
+        assert!(reservation_platform_fee_bps <= BPS_DENOM, EInvalidFeeConfig);
+        assert!(reservation_treasury_fee_bps <= BPS_DENOM, EInvalidFeeConfig);
         
         // Update trading fee config
         config.trading_creator_fee_bps = trading_creator_fee_bps;
@@ -741,13 +786,13 @@ module social_contracts::social_proof_tokens {
     /// Validate trading fee config before use
     public(package) fun validate_trading_fees(config: &SocialProofTokensConfig) {
         let total_fee_bps = calculate_total_fee_bps(config);
-        assert!(total_fee_bps > 0 && total_fee_bps <= 10000, EInvalidFeeConfig);
+        assert!(total_fee_bps > 0 && total_fee_bps <= BPS_DENOM, EInvalidFeeConfig);
     }
 
     /// Validate reservation fee config before use
     public(package) fun validate_reservation_fees(config: &SocialProofTokensConfig) {
         let reservation_total_fee_bps = calculate_reservation_total_fee_bps(config);
-        assert!(reservation_total_fee_bps > 0 && reservation_total_fee_bps <= 10000, EInvalidFeeConfig);
+        assert!(reservation_total_fee_bps > 0 && reservation_total_fee_bps <= BPS_DENOM, EInvalidFeeConfig);
     }
 
     /// Calculate fee amount with overflow protection
@@ -758,7 +803,7 @@ module social_contracts::social_proof_tokens {
             return 0
         };
         assert!(amount <= MAX_U64 / fee_bps, EOverflow);
-        (amount * fee_bps) / 10000
+        (amount * fee_bps) / BPS_DENOM
     }
 
     /// Calculate component fee from total fee amount
@@ -842,7 +887,7 @@ module social_contracts::social_proof_tokens {
         );
         
         // Check individual reservation limit (based on net amount)
-        let max_individual_reservation = (config.post_threshold * config.max_individual_reservation_bps) / 10000;
+        let max_individual_reservation = (config.post_threshold * config.max_individual_reservation_bps) / BPS_DENOM;
         let current_reservation = if (table::contains(&reservation_pool_object.reservations, reserver)) {
             *table::borrow(&reservation_pool_object.reservations, reserver)
         } else {
@@ -1006,7 +1051,7 @@ module social_contracts::social_proof_tokens {
         );
         
         // Check individual reservation limit (based on net amount)
-        let max_individual_reservation = (config.post_threshold * config.max_individual_reservation_bps) / 10000;
+        let max_individual_reservation = (config.post_threshold * config.max_individual_reservation_bps) / BPS_DENOM;
         let current_reservation = if (table::contains(&reservation_pool_object.reservations, reserver)) {
             *table::borrow(&reservation_pool_object.reservations, reserver)
         } else {
@@ -1155,7 +1200,7 @@ module social_contracts::social_proof_tokens {
         );
         
         // Check individual reservation limit (based on net amount)
-        let max_individual_reservation = (config.profile_threshold * config.max_individual_reservation_bps) / 10000;
+        let max_individual_reservation = (config.profile_threshold * config.max_individual_reservation_bps) / BPS_DENOM;
         let current_reservation = if (table::contains(&reservation_pool_object.reservations, reserver)) {
             *table::borrow(&reservation_pool_object.reservations, reserver)
         } else {
@@ -1315,7 +1360,7 @@ module social_contracts::social_proof_tokens {
         );
         
         // Check individual reservation limit (based on net amount)
-        let max_individual_reservation = (config.profile_threshold * config.max_individual_reservation_bps) / 10000;
+        let max_individual_reservation = (config.profile_threshold * config.max_individual_reservation_bps) / BPS_DENOM;
         let current_reservation = if (table::contains(&reservation_pool_object.reservations, reserver)) {
             *table::borrow(&reservation_pool_object.reservations, reserver)
         } else {
@@ -1488,7 +1533,12 @@ module social_contracts::social_proof_tokens {
     }
 
     /// Withdraw MYSO reservation from a post or profile
-    /// Platform version: platform fees go to platform treasury
+    /// Platform version: includes platform validation and fee distribution.
+    /// `amount` is the **gross** amount being released from the pool (the portion of
+    /// `reservations[user]` the caller wants to withdraw). Fees (creator + platform + treasury)
+    /// are calculated on this gross amount and sent directly to their recipients.
+    /// The caller receives the net refund (`amount - fees`). `reservations[user]` is reduced by
+    /// the full gross `amount` so the reservation ledger stays consistent.
     #[allow(lint(self_transfer))]
     public fun withdraw_reservation_with_platform(
         registry: &mut TokenRegistry,
@@ -1504,47 +1554,46 @@ module social_contracts::social_proof_tokens {
         let reserver = tx_context::sender(ctx);
         let associated_id = reservation_pool_object.info.associated_id;
         let now = tx_context::epoch_timestamp_ms(ctx);
-        
+
         // Prevent withdrawals after conversion to token
         assert!(!reservation_pool_object.converted, EReservationPoolConverted);
-        
+
         // Validate amount is positive
         assert!(amount > 0, EInsufficientFunds);
-        
+
         // Platform validation
         let platform_id = object::uid_to_address(platform::id(platform));
         assert!(platform::is_approved(platform_registry, platform_id), ENotAuthorized);
         assert!(platform::has_joined_platform(platform, reserver), EUserNotJoinedPlatform);
         assert!(!block_list::is_blocked(block_list_registry, platform_id, reserver), EUserBlockedByPlatform);
-        
+
         // Verify reserver has a reservation
         assert!(table::contains(&reservation_pool_object.reservations, reserver), ENoTokensOwned);
-        
+
         let current_reservation = *table::borrow(&reservation_pool_object.reservations, reserver);
-        
-        // amount is gross withdrawal amount; calculate fees to get net amount
-        // Validate fees and calculate with overflow protection
+
+        // Validate fee config and compute fees on the gross withdrawal amount with overflow protection
         validate_reservation_fees(config);
         let reservation_total_fee_bps = calculate_reservation_total_fee_bps(config);
         let fee_amount = calculate_fee_amount_safe(amount, reservation_total_fee_bps);
         let creator_fee = calculate_component_fee_safe(fee_amount, config.reservation_creator_fee_bps, reservation_total_fee_bps);
         let platform_fee = calculate_component_fee_safe(fee_amount, config.reservation_platform_fee_bps, reservation_total_fee_bps);
         let treasury_fee = fee_amount - creator_fee - platform_fee;
-        
-        // Net amount after fees (this is what we subtract from reservation tracking, since we store net)
-        let net_amount = amount - fee_amount;
-        
-        // Ensure user has enough net reservation balance (we store net amounts)
-        assert!(current_reservation >= net_amount, EInsufficientLiquidity);
-        
-        // Ensure pool has enough liquidity for gross refund + all fees
+
+        // Net refund = gross amount minus fees
+        let net_refund = amount - fee_amount;
+
+        // Ensure user's stored reservation covers the full gross withdrawal amount
+        assert!(current_reservation >= amount, EInsufficientLiquidity);
+
+        // Ensure pool has enough balance to cover gross amount (net refund + all fees)
         assert!(balance::value(&reservation_pool_object.myso_balance) >= amount, EInsufficientLiquidity);
-        
-        // Update reserver's balance (subtract net amount, since reservations store net)
-        if (current_reservation == net_amount) {
-            // Remove reserver completely
+
+        // Reduce reservations by the full gross amount so the ledger stays consistent
+        if (current_reservation == amount) {
+            // Remove reserver completely on full withdrawal
             table::remove(&mut reservation_pool_object.reservations, reserver);
-            
+
             // Remove from reservers list
             let mut i = 0;
             let len = vector::length(&reservation_pool_object.reservers);
@@ -1556,48 +1605,52 @@ module social_contracts::social_proof_tokens {
                 i = i + 1;
             };
         } else {
-            // Reduce reservation amount by net amount (since we store net)
             let reservation_balance = table::borrow_mut(&mut reservation_pool_object.reservations, reserver);
-            *reservation_balance = *reservation_balance - net_amount;
+            *reservation_balance = *reservation_balance - amount;
         };
-        
-        // Update total reserved (subtract net amount, since we track net)
-        reservation_pool_object.info.total_reserved = reservation_pool_object.info.total_reserved - net_amount;
-        
+
+        // Update total reserved by full gross amount
+        reservation_pool_object.info.total_reserved = reservation_pool_object.info.total_reserved - amount;
+
         // Update registry
         if (table::contains(&registry.reservation_pools, associated_id)) {
             let registry_pool = table::borrow_mut(&mut registry.reservation_pools, associated_id);
             registry_pool.total_reserved = reservation_pool_object.info.total_reserved;
         };
-        
-        // Distribute fees from pool balance (no PoC redirection on withdrawals)
+
+        // Distribute fees directly to recipients — nothing goes into any pool
         if (fee_amount > 0) {
-            // Send creator fee directly to owner (no PoC redirection on withdrawals)
+            // Creator fee directly to post/profile owner (no PoC redirection on withdrawals)
             if (creator_fee > 0) {
-                let creator_fee_coin = coin::from_balance(balance::split(&mut reservation_pool_object.myso_balance, creator_fee), ctx);
-                transfer::public_transfer(creator_fee_coin, reservation_pool_object.info.owner);
+                let creator_coin = coin::from_balance(
+                    balance::split(&mut reservation_pool_object.myso_balance, creator_fee), ctx
+                );
+                transfer::public_transfer(creator_coin, reservation_pool_object.info.owner);
             };
-            
-            // Send platform fee to platform treasury
+
+            // Platform fee directly to platform treasury
             if (platform_fee > 0) {
-                let mut platform_fee_coin = coin::from_balance(balance::split(&mut reservation_pool_object.myso_balance, platform_fee), ctx);
+                let mut platform_fee_coin = coin::from_balance(
+                    balance::split(&mut reservation_pool_object.myso_balance, platform_fee), ctx
+                );
                 social_contracts::platform::add_to_treasury(platform, &mut platform_fee_coin, platform_fee, ctx);
                 coin::destroy_zero(platform_fee_coin);
             };
-            
-            // Send treasury fee
+
+            // Ecosystem treasury fee
             if (treasury_fee > 0) {
-                let treasury_fee_coin = coin::from_balance(balance::split(&mut reservation_pool_object.myso_balance, treasury_fee), ctx);
-                transfer::public_transfer(treasury_fee_coin, profile::get_treasury_address(treasury));
+                let treasury_coin = coin::from_balance(
+                    balance::split(&mut reservation_pool_object.myso_balance, treasury_fee), ctx
+                );
+                transfer::public_transfer(treasury_coin, profile::get_treasury_address(treasury));
             };
         };
-        
+
         // Transfer net refund to reserver
-        let refund_balance = balance::split(&mut reservation_pool_object.myso_balance, net_amount);
+        let refund_balance = balance::split(&mut reservation_pool_object.myso_balance, net_refund);
         let refund_coin = coin::from_balance(refund_balance, ctx);
         transfer::public_transfer(refund_coin, reserver);
-        
-        // Emit reservation withdrawn event with actual fee amounts
+
         event::emit(ReservationWithdrawnEvent {
             associated_id,
             token_type: reservation_pool_object.info.token_type,
@@ -1800,32 +1853,11 @@ module social_contracts::social_proof_tokens {
         // Verify token has not already been created
         assert!(!table::contains(&registry.tokens, associated_id), ETokenAlreadyExists);
         
-        // Calculate initial token supply based on total reserved amount
-        // Use the same scaling formula as the old auction system
+        // Initial circulating supply (nano-SPT): 1 nano-SPT per nano-MYSO net reserved (same units as
+        // `coin::value` / pool `total_reserved`). Profile and post use the same rule.
         let total_reserved = reservation_pool_object.info.total_reserved;
-        let sqrt_reserved = math::sqrt(total_reserved);
-        let fourth_root_reserved = math::sqrt(sqrt_reserved); // fourth root: sqrt(sqrt(x)) = x^(1/4)
-        // Use u128 to avoid overflow in sqrt * fourth_root (reserved^0.75)
-        let scale_factor = (((sqrt_reserved as u128) * (fourth_root_reserved as u128)) / 1000) as u64;
-        
-        // Apply different base multipliers for profile vs post tokens
-        let mut initial_token_supply = if (reservation_pool_object.info.token_type == TOKEN_TYPE_PROFILE) {
-            // Profile tokens - lower supply (more valuable per token)
-            scale_factor
-        } else {
-            // Post tokens - higher supply (more collectible)
-            scale_factor * 10
-        };
-        
-        // Ensure we have at least 1 whole display token before nano scaling
-        if (initial_token_supply == 0) {
-            initial_token_supply = 1;
-        };
-
-        // Convert human-token supply to nano-SPT (fixed-point smallest units)
-        let supply_nano128 = (initial_token_supply as u128) * (SPT_SCALE as u128);
-        assert!(supply_nano128 <= (MAX_U64 as u128), EOverflow);
-        initial_token_supply = supply_nano128 as u64;
+        assert!(total_reserved > 0, ENoContribution);
+        let initial_token_supply = total_reserved;
         
         // Create token info
         let token_info = TokenInfo {
@@ -1833,16 +1865,6 @@ module social_contracts::social_proof_tokens {
             token_type: reservation_pool_object.info.token_type,
             owner: reservation_pool_object.info.owner,
             associated_id,
-            symbol: if (reservation_pool_object.info.token_type == TOKEN_TYPE_PROFILE) {
-                string::utf8(b"PUSER")
-            } else {
-                string::utf8(b"PPOST")
-            },
-            name: if (reservation_pool_object.info.token_type == TOKEN_TYPE_PROFILE) {
-                string::utf8(b"Profile Token")
-            } else {
-                string::utf8(b"Post Token")
-            },
             circulating_supply: initial_token_supply,
             base_price: config.base_price,
             quadratic_coefficient: config.quadratic_coefficient,
@@ -1863,8 +1885,6 @@ module social_contracts::social_proof_tokens {
             token_type: updated_token_info.token_type,
             owner: updated_token_info.owner,
             associated_id: updated_token_info.associated_id,
-            symbol: updated_token_info.symbol,
-            name: updated_token_info.name,
             circulating_supply: updated_token_info.circulating_supply,
             base_price: updated_token_info.base_price,
             quadratic_coefficient: updated_token_info.quadratic_coefficient,
@@ -1921,7 +1941,7 @@ module social_contracts::social_proof_tokens {
                 };
                 
                 // Transfer social token to reserver
-                transfer::public_transfer(social_token, reserver);
+                transfer::transfer(social_token, reserver);
             };
             
             i = i + 1;
@@ -1970,8 +1990,6 @@ module social_contracts::social_proof_tokens {
             token_type: token_pool.info.token_type,
             owner: token_pool.info.owner,
             associated_id: token_pool.info.associated_id,
-            symbol: token_pool.info.symbol,
-            name: token_pool.info.name,
             base_price: token_pool.info.base_price,
             quadratic_coefficient: token_pool.info.quadratic_coefficient,
             circulating_supply: token_pool.info.circulating_supply,
@@ -2379,9 +2397,6 @@ module social_contracts::social_proof_tokens {
         let profile_id_option = profile::lookup_profile_by_owner(profile_registry, buyer);
         assert!(option::is_some(&profile_id_option), ENotAuthorized);
         
-        // Prevent self-trading for token owners
-        assert!(buyer != pool.info.owner, ESelfTrading);
-        
         // Check if token owner is blocked by the buyer
         assert!(!block_list::is_blocked(block_list_registry, buyer, pool.info.owner), EBlockedUser);
         
@@ -2445,7 +2460,7 @@ module social_contracts::social_proof_tokens {
         
         // Then check multiplication overflow for max_hold calculation
         assert!(new_supply == 0 || new_supply <= MAX_U64 / config.max_hold_percent_bps, EOverflow);
-        let max_hold = (new_supply * config.max_hold_percent_bps) / 10000;
+        let max_hold = (new_supply * config.max_hold_percent_bps) / BPS_DENOM;
         let current_hold = if (table::contains(&pool.holders, buyer)) {
             *table::borrow(&pool.holders, buyer)
         } else {
@@ -2474,7 +2489,7 @@ module social_contracts::social_proof_tokens {
             token_type: pool.info.token_type,
             amount,
         };
-        transfer::public_transfer(social_token, buyer);
+        transfer::transfer(social_token, buyer);
         
         // Calculate the new price after purchase
         let new_price = calculate_token_price(
@@ -2531,9 +2546,6 @@ module social_contracts::social_proof_tokens {
         assert!(platform::is_approved(platform_registry, platform_id), ENotAuthorized);
         assert!(platform::has_joined_platform(platform, buyer), EUserNotJoinedPlatform);
         assert!(!block_list::is_blocked(block_list_registry, platform_id, buyer), EUserBlockedByPlatform);
-        
-        // Prevent self-trading for token owners
-        assert!(buyer != pool.info.owner, ESelfTrading);
         
         // Check if token owner is blocked by the buyer
         assert!(!block_list::is_blocked(block_list_registry, buyer, pool.info.owner), EBlockedUser);
@@ -2599,7 +2611,7 @@ module social_contracts::social_proof_tokens {
         
         // Then check multiplication overflow for max_hold calculation
         assert!(new_supply == 0 || new_supply <= MAX_U64 / config.max_hold_percent_bps, EOverflow);
-        let max_hold = (new_supply * config.max_hold_percent_bps) / 10000;
+        let max_hold = (new_supply * config.max_hold_percent_bps) / BPS_DENOM;
         let current_hold = if (table::contains(&pool.holders, buyer)) {
             *table::borrow(&pool.holders, buyer)
         } else {
@@ -2627,7 +2639,7 @@ module social_contracts::social_proof_tokens {
             token_type: pool.info.token_type,
             amount,
         };
-        transfer::public_transfer(social_token, buyer);
+        transfer::transfer(social_token, buyer);
         
         // Calculate the new price after purchase
         let new_price = calculate_token_price(
@@ -2678,14 +2690,12 @@ module social_contracts::social_proof_tokens {
         let profile_id_option = profile::lookup_profile_by_owner(profile_registry, buyer);
         assert!(option::is_some(&profile_id_option), ENotAuthorized);
         
-        // Prevent self-trading for token owners
-        assert!(buyer != pool.info.owner, ESelfTrading);
-        
         // Check if token owner is blocked by the buyer
         assert!(!block_list::is_blocked(block_list_registry, buyer, pool.info.owner), EBlockedUser);
         
-        // Verify social token matches the pool
+        // Verify social token matches the pool and is an active position
         assert!(social_token.pool_id == object::uid_to_address(&pool.id), EInvalidID);
+        assert!(social_token.amount > 0, ENoTokensOwned);
         
         // Calculate the price for the tokens based on quadratic curve
         let (price, _) = calculate_buy_price(
@@ -2747,7 +2757,7 @@ module social_contracts::social_proof_tokens {
         
         // Then check multiplication overflow for max_hold calculation
         assert!(new_supply == 0 || new_supply <= MAX_U64 / config.max_hold_percent_bps, EOverflow);
-        let max_hold = (new_supply * config.max_hold_percent_bps) / 10000;
+        let max_hold = (new_supply * config.max_hold_percent_bps) / BPS_DENOM;
         let current_hold = if (table::contains(&pool.holders, buyer)) {
             *table::borrow(&pool.holders, buyer)
         } else {
@@ -2833,14 +2843,12 @@ module social_contracts::social_proof_tokens {
         assert!(platform::has_joined_platform(platform, buyer), EUserNotJoinedPlatform);
         assert!(!block_list::is_blocked(block_list_registry, platform_id, buyer), EUserBlockedByPlatform);
         
-        // Prevent self-trading for token owners
-        assert!(buyer != pool.info.owner, ESelfTrading);
-        
         // Check if token owner is blocked by the buyer
         assert!(!block_list::is_blocked(block_list_registry, buyer, pool.info.owner), EBlockedUser);
         
-        // Verify social token matches the pool
+        // Verify social token matches the pool and is an active position
         assert!(social_token.pool_id == object::uid_to_address(&pool.id), EInvalidID);
+        assert!(social_token.amount > 0, ENoTokensOwned);
         
         // Calculate the price for the tokens based on quadratic curve
         let (price, _) = calculate_buy_price(
@@ -2903,7 +2911,7 @@ module social_contracts::social_proof_tokens {
         
         // Then check multiplication overflow for max_hold calculation
         assert!(new_supply == 0 || new_supply <= MAX_U64 / config.max_hold_percent_bps, EOverflow);
-        let max_hold = (new_supply * config.max_hold_percent_bps) / 10000;
+        let max_hold = (new_supply * config.max_hold_percent_bps) / BPS_DENOM;
         let current_hold = if (table::contains(&pool.holders, buyer)) {
             *table::borrow(&pool.holders, buyer)
         } else {
@@ -2954,6 +2962,8 @@ module social_contracts::social_proof_tokens {
 
     /// Sell tokens back to the pool
     /// Non-platform version: platform fees go to ecosystem treasury
+    /// Consumes the SocialToken by value. On a partial sell a new remainder token is minted and
+    /// transferred back to the seller; on a full sell the object is deleted — no zombie tokens.
     #[allow(lint(self_transfer))]
     public fun sell_tokens(
         _registry: &TokenRegistry,
@@ -2962,27 +2972,27 @@ module social_contracts::social_proof_tokens {
         treasury: &EcosystemTreasury,
         profile_registry: &UsernameRegistry,
         _block_list_registry: &BlockListRegistry,
-        social_token: &mut SocialToken,
+        social_token: SocialToken,
         amount: u64,
         ctx: &mut TxContext
     ) {
         // Check version compatibility
         assert!(pool.version == upgrade::current_version(), EWrongVersion);
-        
+
         // Check if trading is halted
         assert!(config.trading_enabled, ETradingHalted);
-        
+
         let seller = tx_context::sender(ctx);
         let pool_id = object::uid_to_address(&pool.id);
-        
+
         // Look up the seller's profile ID
         let profile_id_option = profile::lookup_profile_by_owner(profile_registry, seller);
         assert!(option::is_some(&profile_id_option), ENotAuthorized);
-        
-        // Verify social token matches the pool
+
+        // Verify social token matches the pool and has sufficient balance
         assert!(social_token.pool_id == pool_id, EInvalidID);
         assert!(social_token.amount >= amount, EInsufficientLiquidity);
-        
+
         // Calculate the sell price based on quadratic curve
         let (refund_amount, _) = calculate_sell_price(
             pool.info.base_price,
@@ -2990,7 +3000,7 @@ module social_contracts::social_proof_tokens {
             pool.info.circulating_supply,
             amount
         );
-        
+
         // Validate fees and calculate with overflow protection
         validate_trading_fees(config);
         let total_fee_bps = calculate_total_fee_bps(config);
@@ -2998,16 +3008,16 @@ module social_contracts::social_proof_tokens {
         let creator_fee = calculate_component_fee_safe(fee_amount, config.trading_creator_fee_bps, total_fee_bps);
         let platform_fee = calculate_component_fee_safe(fee_amount, config.trading_platform_fee_bps, total_fee_bps);
         let treasury_fee = fee_amount - creator_fee - platform_fee;
-        
+
         // Calculate net refund
         let net_refund = refund_amount - fee_amount;
-        
+
         // Ensure pool has enough liquidity for refund + all fees
         assert!(balance::value(&pool.myso_balance) >= refund_amount, EInsufficientLiquidity);
-        
+
         // Verify seller has tokens in the pool
         assert!(table::contains(&pool.holders, seller), ENoTokensOwned);
-        
+
         // Update holder balance
         let holder_balance = table::borrow_mut(&mut pool.holders, seller);
         if (*holder_balance == amount) {
@@ -3017,47 +3027,58 @@ module social_contracts::social_proof_tokens {
             // Reduce balance
             *holder_balance = *holder_balance - amount;
         };
-        
-        // Update user's social token
-        social_token.amount = social_token.amount - amount;
-        
+
+        // Consume the social token: on partial sell mint a remainder token; on full sell delete.
+        let remainder = social_token.amount - amount;
+        let SocialToken { id, pool_id: token_pool_id, token_type, amount: _ } = social_token;
+        object::delete(id);
+        if (remainder > 0) {
+            let remainder_token = SocialToken {
+                id: object::new(ctx),
+                pool_id: token_pool_id,
+                token_type,
+                amount: remainder,
+            };
+            transfer::transfer(remainder_token, seller);
+        };
+
         // Update circulating supply
         pool.info.circulating_supply = pool.info.circulating_supply - amount;
-        
+
         // Extract net refund from pool
         let refund_balance = balance::split(&mut pool.myso_balance, net_refund);
-        
+
         // Process and distribute fees with PoC redirection support
         if (fee_amount > 0) {
             // Send fee to creator with PoC redirection support
             if (creator_fee > 0) {
                 distribute_creator_fee_from_pool(pool, creator_fee, ctx);
             };
-            
+
             // Send platform fee to ecosystem treasury (no platform involved)
             if (platform_fee > 0) {
                 let platform_fee_coin = coin::from_balance(balance::split(&mut pool.myso_balance, platform_fee), ctx);
                 transfer::public_transfer(platform_fee_coin, profile::get_treasury_address(treasury));
             };
-            
+
             // Send fee to treasury
             if (treasury_fee > 0) {
                 let treasury_fee_coin = coin::from_balance(balance::split(&mut pool.myso_balance, treasury_fee), ctx);
                 transfer::public_transfer(treasury_fee_coin, profile::get_treasury_address(treasury));
             };
         };
-        
+
         // Transfer refund to seller
         let refund_coin = coin::from_balance(refund_balance, ctx);
         transfer::public_transfer(refund_coin, seller);
-        
+
         // Calculate the new price after sale
         let new_price = calculate_token_price(
             pool.info.base_price,
             pool.info.quadratic_coefficient,
             pool.info.circulating_supply
         );
-        
+
         // Emit sell event
         event::emit(TokenSoldEvent {
             id: pool_id,
@@ -3073,7 +3094,9 @@ module social_contracts::social_proof_tokens {
     }
 
     /// Sell tokens back to the pool
-    /// Platform version: platform fees go to platform treasury, includes platform validation
+    /// Platform version: platform fees go to platform treasury, includes platform validation.
+    /// Consumes the SocialToken by value. On a partial sell a new remainder token is minted and
+    /// transferred back to the seller; on a full sell the object is deleted — no zombie tokens.
     #[allow(lint(self_transfer))]
     public fun sell_tokens_with_platform(
         _registry: &TokenRegistry,
@@ -3084,33 +3107,33 @@ module social_contracts::social_proof_tokens {
         profile_registry: &UsernameRegistry,
         block_list_registry: &BlockListRegistry,
         platform: &mut social_contracts::platform::Platform,
-        social_token: &mut SocialToken,
+        social_token: SocialToken,
         amount: u64,
         ctx: &mut TxContext
     ) {
         // Check version compatibility
         assert!(pool.version == upgrade::current_version(), EWrongVersion);
-        
+
         // Check if trading is halted
         assert!(config.trading_enabled, ETradingHalted);
-        
+
         let seller = tx_context::sender(ctx);
         let pool_id = object::uid_to_address(&pool.id);
-        
+
         // Look up the seller's profile ID
         let profile_id_option = profile::lookup_profile_by_owner(profile_registry, seller);
         assert!(option::is_some(&profile_id_option), ENotAuthorized);
-        
+
         // Platform validation
         let platform_id = object::uid_to_address(platform::id(platform));
         assert!(platform::is_approved(platform_registry, platform_id), ENotAuthorized);
         assert!(platform::has_joined_platform(platform, seller), EUserNotJoinedPlatform);
         assert!(!block_list::is_blocked(block_list_registry, platform_id, seller), EUserBlockedByPlatform);
-        
-        // Verify social token matches the pool
+
+        // Verify social token matches the pool and has sufficient balance
         assert!(social_token.pool_id == pool_id, EInvalidID);
         assert!(social_token.amount >= amount, EInsufficientLiquidity);
-        
+
         // Calculate the sell price based on quadratic curve
         let (refund_amount, _) = calculate_sell_price(
             pool.info.base_price,
@@ -3118,7 +3141,7 @@ module social_contracts::social_proof_tokens {
             pool.info.circulating_supply,
             amount
         );
-        
+
         // Validate fees and calculate with overflow protection
         validate_trading_fees(config);
         let total_fee_bps = calculate_total_fee_bps(config);
@@ -3126,16 +3149,16 @@ module social_contracts::social_proof_tokens {
         let creator_fee = calculate_component_fee_safe(fee_amount, config.trading_creator_fee_bps, total_fee_bps);
         let platform_fee = calculate_component_fee_safe(fee_amount, config.trading_platform_fee_bps, total_fee_bps);
         let treasury_fee = fee_amount - creator_fee - platform_fee;
-        
+
         // Calculate net refund
         let net_refund = refund_amount - fee_amount;
-        
+
         // Ensure pool has enough liquidity for refund + all fees
         assert!(balance::value(&pool.myso_balance) >= refund_amount, EInsufficientLiquidity);
-        
+
         // Verify seller has tokens in the pool
         assert!(table::contains(&pool.holders, seller), ENoTokensOwned);
-        
+
         // Update holder balance
         let holder_balance = table::borrow_mut(&mut pool.holders, seller);
         if (*holder_balance == amount) {
@@ -3145,48 +3168,59 @@ module social_contracts::social_proof_tokens {
             // Reduce balance
             *holder_balance = *holder_balance - amount;
         };
-        
-        // Update user's social token
-        social_token.amount = social_token.amount - amount;
-        
+
+        // Consume the social token: on partial sell mint a remainder token; on full sell delete.
+        let remainder = social_token.amount - amount;
+        let SocialToken { id, pool_id: token_pool_id, token_type, amount: _ } = social_token;
+        object::delete(id);
+        if (remainder > 0) {
+            let remainder_token = SocialToken {
+                id: object::new(ctx),
+                pool_id: token_pool_id,
+                token_type,
+                amount: remainder,
+            };
+            transfer::transfer(remainder_token, seller);
+        };
+
         // Update circulating supply
         pool.info.circulating_supply = pool.info.circulating_supply - amount;
-        
+
         // Extract net refund from pool
         let refund_balance = balance::split(&mut pool.myso_balance, net_refund);
-        
+
         // Process and distribute fees with PoC redirection support
         if (fee_amount > 0) {
             // Send fee to creator with PoC redirection support
             if (creator_fee > 0) {
                 distribute_creator_fee_from_pool(pool, creator_fee, ctx);
             };
-            
+
             // Send platform fee to platform treasury
             if (platform_fee > 0) {
                 let mut platform_fee_coin = coin::from_balance(balance::split(&mut pool.myso_balance, platform_fee), ctx);
                 social_contracts::platform::add_to_treasury(platform, &mut platform_fee_coin, platform_fee, ctx);
                 coin::destroy_zero(platform_fee_coin);
             };
-            
+
             // Send fee to treasury
             if (treasury_fee > 0) {
                 let treasury_fee_coin = coin::from_balance(balance::split(&mut pool.myso_balance, treasury_fee), ctx);
                 transfer::public_transfer(treasury_fee_coin, profile::get_treasury_address(treasury));
             };
         };
-        
+
         // Transfer refund to seller
         let refund_coin = coin::from_balance(refund_balance, ctx);
         transfer::public_transfer(refund_coin, seller);
-        
+
         // Calculate the new price after sale
         let new_price = calculate_token_price(
             pool.info.base_price,
             pool.info.quadratic_coefficient,
             pool.info.circulating_supply
         );
-        
+
         // Emit sell event
         event::emit(TokenSoldEvent {
             id: pool_id,
@@ -3201,10 +3235,161 @@ module social_contracts::social_proof_tokens {
         });
     }
 
+    // --- Wide `u256` AMM math (`u256::max_value!()` in stdlib); avoids overflowing `coeff * cube_diff` ---
+
+    fun unwrap_u256_opt(o: Option<u256>): u256 {
+        assert!(option::is_some(&o), EOverflow);
+        option::destroy_some(o)
+    }
+
+    /// Returns `(sum mod 2^256, carry)` where carry is `0` or `1`.
+    fun u256_add_with_carry(a: u256, b: u256): (u256, u256) {
+        let s = u256::checked_add(a, b);
+        if (option::is_some(&s)) {
+            (option::destroy_some(s), 0u256)
+        } else {
+            let max = u256::max_value!();
+            let t = unwrap_u256_opt(u256::checked_sub(max, b));
+            let u = unwrap_u256_opt(u256::checked_add(t, 1u256));
+            let low = unwrap_u256_opt(u256::checked_sub(a, u));
+            (low, 1u256)
+        }
+    }
+
+    fun u256_mul_widen(x: u256, y: u256): (u256, u256) {
+        let b128 = 1u256 << 128;
+        let mask = b128 - 1u256;
+        let xl = x & mask;
+        let xh = x >> 128;
+        let yl = y & mask;
+        let yh = y >> 128;
+        let p0 = xl * yl;
+        let p1 = xh * yl;
+        let p2 = xl * yh;
+        let p3 = xh * yh;
+        let p1_lo = p1 & mask;
+        let p1_hi = p1 >> 128;
+        let p2_lo = p2 & mask;
+        let p2_hi = p2 >> 128;
+        let t_lo = p1_lo + p2_lo;
+        let carry_tl = t_lo >> 128;
+        let t_lo_final = t_lo & mask;
+        let t_hi = p1_hi + p2_hi + carry_tl;
+        let shift_part = t_lo_final * b128;
+        let (w0, c0) = u256_add_with_carry(p0, shift_part);
+        let (t_sum, c1) = u256_add_with_carry(p3, t_hi);
+        let (hi_acc, c2) = u256_add_with_carry(t_sum, c0);
+        assert!(c1 == 0u256 && c2 == 0u256, EOverflow);
+        (hi_acc, w0)
+    }
+
+    fun u512_bit(n_hi: u256, n_lo: u256, i: u64): bool {
+        if (i < 256) {
+            ((n_lo >> (i as u8)) & 1u256) != 0u256
+        } else {
+            let j = i - 256;
+            ((n_hi >> (j as u8)) & 1u256) != 0u256
+        }
+    }
+
+    fun u512_shl1_or_bit(r_hi: u256, r_lo: u256, bit: bool): (u256, u256) {
+        let carry = r_lo >> 255;
+        let nl_lo = (r_lo << 1) | (if (bit) { 1u256 } else { 0u256 });
+        let nl_hi = (r_hi << 1) | carry;
+        (nl_hi, nl_lo)
+    }
+
+    fun u512_ge_u256(r_hi: u256, r_lo: u256, d: u256): bool {
+        r_hi > 0u256 || r_lo >= d
+    }
+
+    fun u512_sub_u256(r_hi: u256, r_lo: u256, d: u256): (u256, u256) {
+        let sub_lo = u256::checked_sub(r_lo, d);
+        if (option::is_some(&sub_lo)) {
+            (r_hi, option::destroy_some(sub_lo))
+        } else {
+            let new_hi = unwrap_u256_opt(u256::checked_sub(r_hi, 1u256));
+            let bump = u256::max_value!() - d + 1u256;
+            let new_lo = unwrap_u256_opt(u256::checked_add(r_lo, bump));
+            (new_hi, new_lo)
+        }
+    }
+
+    /// `floor((n_hi*2^256 + n_lo) / d)` for `d > 0`.
+    fun u512_div_u256_floor(n_hi: u256, n_lo: u256, d: u256): u256 {
+        assert!(d > 0u256, EInvalidCurveParams);
+        if (n_hi == 0u256) {
+            return n_lo / d
+        };
+        let mut r_hi = 0u256;
+        let mut r_lo = 0u256;
+        let mut q = 0u256;
+        let mut i = 512u64;
+        while (i > 0) {
+            i = i - 1;
+            let bit = u512_bit(n_hi, n_lo, i);
+            let (nr_hi, nr_lo) = u512_shl1_or_bit(r_hi, r_lo, bit);
+            r_hi = nr_hi;
+            r_lo = nr_lo;
+            if (u512_ge_u256(r_hi, r_lo, d)) {
+                let (sr_hi, sr_lo) = u512_sub_u256(r_hi, r_lo, d);
+                r_hi = sr_hi;
+                r_lo = sr_lo;
+                let inc = 1u256 << (i as u8);
+                q = unwrap_u256_opt(u256::checked_add(q, inc));
+            };
+        };
+        q
+    }
+
+    /// `3*s*s + 3*s*a + a*a` for buy integral `(s+a)^3 - s^3 = a * poly`.
+    fun quad_poly_buy(s: u256, a: u256): u256 {
+        let s2 = unwrap_u256_opt(u256::checked_mul(s, s));
+        let three_s2 = unwrap_u256_opt(u256::checked_mul(3u256, s2));
+        let sa = unwrap_u256_opt(u256::checked_mul(s, a));
+        let three_sa = unwrap_u256_opt(u256::checked_mul(3u256, sa));
+        let a2 = unwrap_u256_opt(u256::checked_mul(a, a));
+        let t = unwrap_u256_opt(u256::checked_add(three_s2, three_sa));
+        unwrap_u256_opt(u256::checked_add(t, a2))
+    }
+
+    /// `3*s*s - 3*s*a + a*a` for sell integral `s^3 - (s-a)^3 = a * poly`.
+    fun quad_poly_sell(s: u256, a: u256): u256 {
+        let s2 = unwrap_u256_opt(u256::checked_mul(s, s));
+        let three_s2 = unwrap_u256_opt(u256::checked_mul(3u256, s2));
+        let sa = unwrap_u256_opt(u256::checked_mul(s, a));
+        let three_sa = unwrap_u256_opt(u256::checked_mul(3u256, sa));
+        let a2 = unwrap_u256_opt(u256::checked_mul(a, a));
+        let t = unwrap_u256_opt(u256::checked_sub(three_s2, three_sa));
+        unwrap_u256_opt(u256::checked_add(t, a2))
+    }
+
+    fun quad_integral_leg_mist(coeff: u256, s: u256, a: u256, scale: u256, is_buy: bool): u256 {
+        let poly = if (is_buy) {
+            quad_poly_buy(s, a)
+        } else {
+            quad_poly_sell(s, a)
+        };
+        let ca = unwrap_u256_opt(u256::checked_mul(coeff, a));
+        let (numer_hi, numer_lo) = u256_mul_widen(ca, poly);
+        let denom = unwrap_u256_opt(u256::checked_mul(
+            30000u256,
+            unwrap_u256_opt(u256::checked_mul(scale, unwrap_u256_opt(u256::checked_mul(scale, scale))))
+        ));
+        u512_div_u256_floor(numer_hi, numer_lo, denom)
+    }
+
+    /// MYSO amounts on-chain are `u64` (smallest units). Abort `EOverflow` if `x` does not fit.
+    fun mist_amount_u256_to_u64(x: u256): u64 {
+        let o = u256::try_as_u64(x);
+        assert!(option::is_some(&o), EOverflow);
+        option::destroy_some(o)
+    }
+
     // === Utility Functions ===
 
     /// Marginal MYSO price for the next infinitesimal nano-SPT at `supply_nano` (nano-SPT in pool).
-    /// `p(s) = base_price + quadratic_coefficient * (s / SPT_SCALE)^2 / 10000`.
+    /// `p(s) = base_price + quadratic_coefficient * (s / SPT_SCALE)^2 / BPS_DENOM` (permyriad).
     public fun calculate_token_price(
         base_price: u64,
         quadratic_coefficient: u64,
@@ -3214,12 +3399,14 @@ module social_contracts::social_proof_tokens {
         let coeff = quadratic_coefficient as u256;
         let s = supply_nano as u256;
         let scale = SPT_SCALE as u256;
-        let denom = scale * scale * 10000;
-        assert!(denom > 0, EInvalidCurveParams);
-        let quad = (coeff * s * s) / denom;
-        let total = base + quad;
-        assert!(total <= (MAX_U64 as u256), EOverflow);
-        total as u64
+        let scale2 = unwrap_u256_opt(u256::checked_mul(scale, scale));
+        let denom = unwrap_u256_opt(u256::checked_mul(scale2, BPS_DENOM as u256));
+        assert!(denom > 0u256, EInvalidCurveParams);
+        let s2 = unwrap_u256_opt(u256::checked_mul(s, s));
+        let coeff_s2 = unwrap_u256_opt(u256::checked_mul(coeff, s2));
+        let quad = coeff_s2 / denom;
+        let total = unwrap_u256_opt(u256::checked_add(base, quad));
+        mist_amount_u256_to_u64(total)
     }
 
     /// Total MYSO cost to buy `amount_nano` nano-SPT when current circulating supply is `current_supply_nano`.
@@ -3241,24 +3428,15 @@ module social_contracts::social_proof_tokens {
         let a = amount_nano as u256;
         let scale = SPT_SCALE as u256;
 
-        let base_part = (base * a) / scale;
+        let base_prod = unwrap_u256_opt(u256::checked_mul(base, a));
+        let base_part = base_prod / scale;
 
-        let sp = s + a;
-        let s3 = s * s * s;
-        let sp3 = sp * sp * sp;
-        assert!(sp3 >= s3, EOverflow);
-        let cube_diff = sp3 - s3;
+        let quad_part = quad_integral_leg_mist(coeff, s, a, scale, true);
 
-        let denom = 30000u256 * scale * scale * scale;
-        assert!(denom > 0, EInvalidCurveParams);
-        let quad_part = (coeff * cube_diff) / denom;
-
-        let total = base_part + quad_part;
-        assert!(total <= (MAX_U64 as u256), EOverflow);
-        let total_u64 = total as u64;
-        let avg = total / a;
-        assert!(avg <= (MAX_U64 as u256), EOverflow);
-        (total_u64, avg as u64)
+        let total = unwrap_u256_opt(u256::checked_add(base_part, quad_part));
+        let total_u64 = mist_amount_u256_to_u64(total);
+        let avg_u64 = mist_amount_u256_to_u64(total / a);
+        (total_u64, avg_u64)
     }
 
     /// MYSO refund for selling `amount_nano` nano-SPT when current circulating supply is `current_supply_nano`.
@@ -3280,24 +3458,15 @@ module social_contracts::social_proof_tokens {
         let a = amount_nano as u256;
         let scale = SPT_SCALE as u256;
 
-        let base_part = (base * a) / scale;
+        let base_prod = unwrap_u256_opt(u256::checked_mul(base, a));
+        let base_part = base_prod / scale;
 
-        let sm = s - a;
-        let s3 = s * s * s;
-        let sm3 = sm * sm * sm;
-        assert!(s3 >= sm3, EOverflow);
-        let cube_diff = s3 - sm3;
+        let quad_part = quad_integral_leg_mist(coeff, s, a, scale, false);
 
-        let denom = 30000u256 * scale * scale * scale;
-        assert!(denom > 0, EInvalidCurveParams);
-        let quad_part = (coeff * cube_diff) / denom;
-
-        let total = base_part + quad_part;
-        assert!(total <= (MAX_U64 as u256), EOverflow);
-        let total_u64 = total as u64;
-        let avg = total / a;
-        assert!(avg <= (MAX_U64 as u256), EOverflow);
-        (total_u64, avg as u64)
+        let total = unwrap_u256_opt(u256::checked_add(base_part, quad_part));
+        let total_u64 = mist_amount_u256_to_u64(total);
+        let avg_u64 = mist_amount_u256_to_u64(total / a);
+        (total_u64, avg_u64)
     }
 
     /// `10^9` nano-SPT per 1.0 display token (for clients / indexers).
@@ -3310,11 +3479,31 @@ module social_contracts::social_proof_tokens {
         SPT_DECIMALS
     }
 
+    /// Whole display tokens → nano-SPT (`whole * SPT_SCALE`). Aborts with `EOverflow` if the product does not fit `u64`.
+    public fun nano_spt_from_whole_tokens(whole: u64): u64 {
+        let p = (whole as u128) * (SPT_SCALE as u128);
+        assert!(p <= MAX_ONCHAIN_U64_U128, EOverflow);
+        p as u64
+    }
+
+    /// `whole` display tokens plus `fraction_nano` nano-SPT remainder (`fraction_nano < SPT_SCALE`).
+    public fun nano_spt_from_whole_and_fraction(whole: u64, fraction_nano: u64): u64 {
+        assert!(fraction_nano < SPT_SCALE, EInvalidCurveParams);
+        let w = nano_spt_from_whole_tokens(whole);
+        assert!(w <= MAX_U64 - fraction_nano, EOverflow);
+        w + fraction_nano
+    }
+
     /// Get token info from registry by associated_id (post/profile ID), not pool ID
     /// Returns a reference since TokenInfo no longer has copy ability
     public fun get_token_info(registry: &TokenRegistry, id: address): &TokenInfo {
         assert!(table::contains(&registry.tokens, id), ETokenNotFound);
         table::borrow(&registry.tokens, id)
+    }
+
+    /// Circulating supply (nano-SPT) from a `TokenInfo` reference.
+    public fun token_info_circulating_supply(info: &TokenInfo): u64 {
+        info.circulating_supply
     }
 
     /// Check if a token exists in the registry
@@ -3481,8 +3670,6 @@ module social_contracts::social_proof_tokens {
         token_type: u8,
         owner: address,
         associated_id: address,
-        symbol: String,
-        name: String,
         circulating_supply: u64,
         base_price: u64,
         quadratic_coefficient: u64,
@@ -3493,8 +3680,6 @@ module social_contracts::social_proof_tokens {
             token_type,
             owner,
             associated_id,
-            symbol,
-            name,
             circulating_supply,
             base_price,
             quadratic_coefficient,

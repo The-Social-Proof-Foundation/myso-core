@@ -15,3 +15,6 @@ myso = "0x2"
 mydata = "0xda7a"
 orderbook = "0x0b0c"
 social_contracts = "0x50c1"
+
+[environments]
+localnet = "0b36660c"

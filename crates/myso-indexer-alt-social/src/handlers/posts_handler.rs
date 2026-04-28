@@ -23,7 +23,8 @@ use myso_indexer_alt_social_schema::models::{
     NewComment, NewDeletionEvent, NewModerationEvent, NewPocAnalysisResult, NewPocBadge,
     NewPocConfiguration, NewPocDispute, NewPocDisputeVote, NewPocRevenueRedirection, NewPost,
     NewPostTransfer, NewPromotedPost, NewPromotionBudgetEvent, NewPromotionStatusEvent,
-    NewPromotionView, NewReaction, NewReactionCount, NewReport, NewRepost, NewTip, NewUnifiedRevenue,
+    NewPromotionView, NewReaction, NewReactionCount, NewReport, NewRepost, NewTip,
+    NewUnifiedRevenue,
 };
 use myso_indexer_alt_social_schema::schema::{
     comments, poc_analysis_results, poc_badges, poc_configuration, poc_dispute_votes, poc_disputes,
@@ -512,14 +513,16 @@ impl Processor for PostsHandler {
                         }
                     };
                 if is_post_module {
-                    if let Some(rows) = post::handle_post_event(event_name, &event_data, &event_id) {
+                    if let Some(rows) = post::handle_post_event(event_name, &event_data, &event_id)
+                    {
                         for row in rows {
                             if let Some(r) = PostRow::from_social(row) {
                                 values.push(r);
                             }
                         }
                     }
-                } else if let Some(rows) = poc::handle_poc_event(event_name, &event_data, &event_id) {
+                } else if let Some(rows) = poc::handle_poc_event(event_name, &event_data, &event_id)
+                {
                     for row in rows {
                         if let Some(r) = PostRow::from_social(row) {
                             values.push(r);

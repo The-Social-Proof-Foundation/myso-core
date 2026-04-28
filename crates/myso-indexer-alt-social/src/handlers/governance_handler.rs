@@ -9,18 +9,19 @@ use std::sync::Arc;
 
 use anyhow::Result;
 use async_trait::async_trait;
-use diesel::sql_types::{BigInt, Bool, Int2, SmallInt, Text};
 use diesel::ExpressionMethods;
 use diesel::QueryableByName;
+use diesel::sql_types::{BigInt, Bool, Int2, SmallInt, Text};
 use diesel_async::RunQueryDsl;
 use move_core_types::ident_str;
+use myso_indexer_alt_framework::FieldCount;
 use myso_indexer_alt_framework::pipeline::Processor;
-use myso_indexer_alt_framework::postgres::handler::Handler;
 use myso_indexer_alt_framework::postgres::Connection;
+use myso_indexer_alt_framework::postgres::handler::Handler;
 use myso_indexer_alt_framework::types::full_checkpoint_content::{
     Checkpoint, ExecutedTransaction, ObjectSet,
 };
-use myso_indexer_alt_framework::FieldCount;
+use myso_indexer_alt_social_schema::PROPOSAL_TYPE_PLATFORM;
 use myso_indexer_alt_social_schema::models::{
     GovernanceRegistryPanelBoundaryUpdate, GovernanceRegistryUpdate, NewAnonymousVote,
     NewCommunityVote, NewDelegate, NewDelegateRating, NewDelegateVote, NewGovernanceEvent,
@@ -32,10 +33,9 @@ use myso_indexer_alt_social_schema::schema::{
     governance_events, governance_registries, nominated_delegates, platforms, proposals,
     reward_distributions, vote_decryption_failures,
 };
-use myso_indexer_alt_social_schema::PROPOSAL_TYPE_PLATFORM;
+use myso_types::MYSO_SOCIAL_ADDRESS;
 use myso_types::object::ID_END_INDEX;
 use myso_types::storage::ObjectKey;
-use myso_types::MYSO_SOCIAL_ADDRESS;
 
 use super::common;
 use super::events;
@@ -63,6 +63,59 @@ async fn load_latest_proposal_governance_meta(
     .get_result::<LatestProposalGovernanceMeta>(conn)
     .await
     .ok()
+}
+
+#[derive(QueryableByName)]
+struct LatestNomineeVotes {
+    #[diesel(sql_type = BigInt)]
+    upvotes: i64,
+    #[diesel(sql_type = BigInt)]
+    downvotes: i64,
+}
+
+/// Latest [`nominated_delegates`] snapshot for this address (max `time`).
+async fn load_latest_nominee_vote_totals(
+    conn: &mut Connection<'_>,
+    address: &str,
+    registry_type: i16,
+    governance_registry_id: &str,
+) -> Option<(i64, i64)> {
+    diesel::sql_query(
+        r#"SELECT upvotes, downvotes FROM nominated_delegates
+           WHERE address = $1 AND registry_type = $2 AND governance_registry_id = $3
+             AND time = (SELECT MAX(time) FROM nominated_delegates
+                         WHERE address = $1 AND registry_type = $2 AND governance_registry_id = $3)"#,
+    )
+    .bind::<Text, _>(address)
+    .bind::<SmallInt, _>(registry_type)
+    .bind::<Text, _>(governance_registry_id)
+    .get_result::<LatestNomineeVotes>(conn)
+    .await
+    .ok()
+    .map(|r| (r.upvotes, r.downvotes))
+}
+
+/// When the election JSON has no vote counts (0/0), use the latest nominee row if it has votes.
+fn apply_nominee_vote_carryover_to_delegate_row(
+    mut delegate: NewDelegate,
+    nominee_upvotes: i64,
+    nominee_downvotes: i64,
+) -> NewDelegate {
+    if delegate.upvotes == 0
+        && delegate.downvotes == 0
+        && (nominee_upvotes != 0 || nominee_downvotes != 0)
+    {
+        tracing::debug!(
+            address = %delegate.address,
+            registry_type = delegate.registry_type,
+            nominee_upvotes,
+            nominee_downvotes,
+            "DelegateElected JSON had 0/0; applied vote counts from latest nominated_delegates row"
+        );
+        delegate.upvotes = nominee_upvotes;
+        delegate.downvotes = nominee_downvotes;
+    }
+    delegate
 }
 
 #[derive(Debug, Clone)]
@@ -631,7 +684,20 @@ impl Handler for GovernanceHandler {
                         .execute(conn)
                         .await?;
                 }
-                GovernanceRow::Delegate(d) => {
+                GovernanceRow::Delegate(d_src) => {
+                    let mut d = d_src.clone();
+                    if d.upvotes == 0 && d.downvotes == 0 {
+                        if let Some((nu, nd)) = load_latest_nominee_vote_totals(
+                            conn,
+                            &d.address,
+                            d.registry_type,
+                            &d.governance_registry_id,
+                        )
+                        .await
+                        {
+                            d = apply_nominee_vote_carryover_to_delegate_row(d, nu, nd);
+                        }
+                    }
                     total += diesel::sql_query(
                         "UPDATE delegates SET is_active = false \
                          WHERE address = $1 AND registry_type = $2 AND governance_registry_id = $3",
@@ -642,7 +708,7 @@ impl Handler for GovernanceHandler {
                     .execute(conn)
                     .await?;
                     total += diesel::insert_into(delegates::table)
-                        .values(d)
+                        .values(&d)
                         .execute(conn)
                         .await?;
                 }
@@ -945,8 +1011,9 @@ mod resolve_governance_registry_tests {
     use fastcrypto::ed25519::Ed25519KeyPair;
     use move_core_types::identifier::Identifier;
     use move_core_types::language_storage::StructTag;
+    use myso_types::MYSO_SOCIAL_ADDRESS;
     use myso_types::base_types::{MoveObjectType, MySoAddress, ObjectID, SequenceNumber};
-    use myso_types::crypto::{get_key_pair_from_rng, AccountKeyPair};
+    use myso_types::crypto::{AccountKeyPair, get_key_pair_from_rng};
     use myso_types::digests::{ObjectDigest, TransactionDigest};
     use myso_types::effects::{TestEffectsBuilder, TransactionEffectsAPI};
     use myso_types::full_checkpoint_content::{ExecutedTransaction, ObjectSet};
@@ -954,13 +1021,12 @@ mod resolve_governance_registry_tests {
     use myso_types::programmable_transaction_builder::ProgrammableTransactionBuilder;
     use myso_types::transaction::{Transaction, TransactionData};
     use myso_types::utils::to_sender_signed_transaction;
-    use myso_types::MYSO_SOCIAL_ADDRESS;
-    use rand::rngs::StdRng;
     use rand::SeedableRng;
+    use rand::rngs::StdRng;
 
     use super::{
-        collect_governance_dao_candidates, pick_governance_registry_id,
-        pick_registry_id_from_event_hints, resolve_governance_registry_id_from_tx, ID_END_INDEX,
+        ID_END_INDEX, collect_governance_dao_candidates, pick_governance_registry_id,
+        pick_registry_id_from_event_hints, resolve_governance_registry_id_from_tx,
     };
 
     #[test]
@@ -1099,5 +1165,56 @@ mod resolve_governance_registry_tests {
             resolve_governance_registry_id_from_tx(&object_set, &executed, Some(1)),
             Some(id_poc.to_string())
         );
+    }
+}
+
+#[cfg(test)]
+mod delegate_vote_carryover_tests {
+    use myso_indexer_alt_social_schema::models::NewDelegate;
+
+    use super::apply_nominee_vote_carryover_to_delegate_row;
+
+    fn sample_delegate(upvotes: i64, downvotes: i64) -> NewDelegate {
+        NewDelegate {
+            address: "0x1".to_string(),
+            registry_type: 0,
+            governance_registry_id: "0xreg".to_string(),
+            upvotes,
+            downvotes,
+            proposals_reviewed: 0,
+            proposals_submitted: 0,
+            sided_winning_proposals: 0,
+            sided_losing_proposals: 0,
+            term_start: 1,
+            term_end: 2,
+            is_active: true,
+            created_at: 0,
+            updated_at: 0,
+            transaction_id: "tx".to_string(),
+        }
+    }
+
+    #[test]
+    fn carryover_fills_zero_zero_from_nominee_snapshot() {
+        let d = sample_delegate(0, 0);
+        let out = apply_nominee_vote_carryover_to_delegate_row(d, 42, 5);
+        assert_eq!(out.upvotes, 42);
+        assert_eq!(out.downvotes, 5);
+    }
+
+    #[test]
+    fn carryover_preserves_nonzero_event_counts() {
+        let d = sample_delegate(10, 1);
+        let out = apply_nominee_vote_carryover_to_delegate_row(d, 99, 99);
+        assert_eq!(out.upvotes, 10);
+        assert_eq!(out.downvotes, 1);
+    }
+
+    #[test]
+    fn carryover_noop_when_nominee_snapshot_also_zero() {
+        let d = sample_delegate(0, 0);
+        let out = apply_nominee_vote_carryover_to_delegate_row(d, 0, 0);
+        assert_eq!(out.upvotes, 0);
+        assert_eq!(out.downvotes, 0);
     }
 }

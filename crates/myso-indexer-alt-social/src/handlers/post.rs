@@ -1121,8 +1121,14 @@ mod tests {
             panic!("expected Tip");
         };
         assert_eq!(t.amount, 5_000_000_000);
-        assert_eq!(t.tipper, "0x2458950181e415250823d6ce1d55f2b3427826a111939e0d6d38e9a1397411d8");
-        assert_eq!(t.recipient, "0x8a8d7490ab0dee5e6a0092a463ade496a1352d89b5091e96e3d356d4f8577f72");
+        assert_eq!(
+            t.tipper,
+            "0x2458950181e415250823d6ce1d55f2b3427826a111939e0d6d38e9a1397411d8"
+        );
+        assert_eq!(
+            t.recipient,
+            "0x8a8d7490ab0dee5e6a0092a463ade496a1352d89b5091e96e3d356d4f8577f72"
+        );
         assert_eq!(t.transaction_id, "tx:tip1");
         let SocialEventRow::PostTipsReceivedIncrement {
             object_id,

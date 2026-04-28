@@ -1032,26 +1032,12 @@ pub struct BcsProfileSubscriptionServiceDeactivatedEvent {
 }
 
 // Social Proof Token (SPT) event structs - field order matches social_proof_tokens.move
-#[derive(Debug, Deserialize)]
-pub struct BcsTokenPoolCreatedEventLegacy {
-    id: AccountAddress,
-    token_type: u8,
-    owner: AccountAddress,
-    associated_id: AccountAddress,
-    symbol: String,
-    name: String,
-    base_price: u64,
-    quadratic_coefficient: u64,
-}
-
 #[derive(Debug, Deserialize, Serialize)]
 pub struct BcsTokenPoolCreatedEvent {
     id: AccountAddress,
     token_type: u8,
     owner: AccountAddress,
     associated_id: AccountAddress,
-    symbol: String,
-    name: String,
     base_price: u64,
     quadratic_coefficient: u64,
     circulating_supply: u64,
@@ -1540,6 +1526,11 @@ fn parse_governance_event(
                 }),
                 Err(e1) => {
                     if contents.len() == DELEGATE_ELECTED_BCS_V0_LEN {
+                        tracing::warn!(
+                            full_format_error = %e1,
+                            payload_len = contents.len(),
+                            "DelegateElectedEvent: legacy BCS layout (no vote fields); JSON will use 0/0 unless governance handler carries counts from nominated_delegates"
+                        );
                         let ev = bcs::from_bytes::<BcsDelegateElectedEventV0>(contents)
                             .map_err(|e2| EventParseError {
                                 error: format!(
@@ -2656,47 +2647,17 @@ fn parse_spt_event(
 ) -> Result<Option<serde_json::Value>, EventParseError> {
     let result = match event_name {
         "TokenPoolCreatedEvent" | "PoolCreatedEvent" => {
-            let (circulating_supply, total_reserved_at_launch, ev) = match bcs::from_bytes::<
-                BcsTokenPoolCreatedEvent,
-            >(contents)
-            {
-                Ok(ev) => (ev.circulating_supply, ev.total_reserved_at_launch, ev),
-                Err(_) => {
-                    let leg = bcs::from_bytes::<BcsTokenPoolCreatedEventLegacy>(contents)
-                        .map_err(|e| bcs_parse_err(e, contents))?;
-                    tracing::warn!(
-                        target: "social_indexer::spt",
-                        pool_id = %addr_to_string(&leg.id),
-                        associated_id = %addr_to_string(&leg.associated_id),
-                        "TokenPoolCreatedEvent: legacy BCS layout; circulating_supply and total_reserved_at_launch forced to 0"
-                    );
-                    crate::metrics::SocialMetrics::record_spt_token_pool_created_legacy_bcs();
-                    let ev = BcsTokenPoolCreatedEvent {
-                        id: leg.id,
-                        token_type: leg.token_type,
-                        owner: leg.owner,
-                        associated_id: leg.associated_id,
-                        symbol: leg.symbol,
-                        name: leg.name,
-                        base_price: leg.base_price,
-                        quadratic_coefficient: leg.quadratic_coefficient,
-                        circulating_supply: 0,
-                        total_reserved_at_launch: 0,
-                    };
-                    (0u64, 0u64, ev)
-                }
-            };
+            let ev = bcs::from_bytes::<BcsTokenPoolCreatedEvent>(contents)
+                .map_err(|e| bcs_parse_err(e, contents))?;
             Ok(Some(serde_json::json!({
                 "id": addr_to_string(&ev.id),
                 "token_type": ev.token_type,
                 "owner": addr_to_string(&ev.owner),
                 "associated_id": addr_to_string(&ev.associated_id),
-                "symbol": ev.symbol,
-                "name": ev.name,
                 "base_price": ev.base_price,
                 "quadratic_coefficient": ev.quadratic_coefficient,
-                "circulating_supply": circulating_supply,
-                "total_reserved_at_launch": total_reserved_at_launch,
+                "circulating_supply": ev.circulating_supply,
+                "total_reserved_at_launch": ev.total_reserved_at_launch,
             })))
         }
         "TokenBoughtEvent" | "BuyEvent" => {
@@ -3025,8 +2986,6 @@ mod tests {
             token_type: 1,
             owner,
             associated_id,
-            symbol: "S".to_string(),
-            name: "N".to_string(),
             base_price: 10,
             quadratic_coefficient: 2,
             circulating_supply: 999,

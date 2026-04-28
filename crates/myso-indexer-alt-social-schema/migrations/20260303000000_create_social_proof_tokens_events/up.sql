@@ -1,6 +1,5 @@
 -- Create spt_events table for SPT event history (kill switch, pool created, config updates, etc.)
 -- The indexer inserts SocialProofTokensEvent rows (e.g. EmergencyKillSwitchEvent, TokenPoolCreatedEvent) into this table.
--- Previously only token_exchange_events existed; this table is what the schema and handler expect.
 
 CREATE TABLE IF NOT EXISTS spt_events (
     id SERIAL PRIMARY KEY,

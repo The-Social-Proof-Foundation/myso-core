@@ -2114,15 +2114,6 @@ Platform-linked registry: delegate vote; on council rejection, the pool is forfe
             balance::destroy_zero(bal);
         };
     };
-    <b>let</b> proposal_id = object::id(proposal);
-    <b>let</b> caller = tx_context::sender(ctx);
-    <a href="../social_contracts/governance.md#social_contracts_governance_emit_delegate_vote_trailing_event">governance::emit_delegate_vote_trailing_event</a>(
-        proposal_id,
-        caller,
-        approve,
-        current_time,
-        option::none(),
-    );
 }
 </code></pre>
 

@@ -34,23 +34,6 @@ where
     }
 }
 
-/// Like [`de_u64`], but missing fields and `null` default to 0.
-fn de_u64_or_default<'de, D: serde::Deserializer<'de>>(d: D) -> Result<u64, D::Error> {
-    use serde::Deserialize;
-    #[derive(Deserialize)]
-    #[serde(untagged)]
-    enum V {
-        I(u64),
-        S(String),
-    }
-    let opt = Option::<V>::deserialize(d)?;
-    match opt {
-        None => Ok(0),
-        Some(V::I(n)) => Ok(n),
-        Some(V::S(s)) => s.parse().map_err(serde::de::Error::custom),
-    }
-}
-
 fn de_u8<'de, D>(d: D) -> Result<u8, D::Error>
 where
     D: serde::Deserializer<'de>,
@@ -256,9 +239,9 @@ fn process_delegate_elected_event(
         term_start: u64,
         #[serde(deserialize_with = "de_u64")]
         term_end: u64,
-        #[serde(default, deserialize_with = "de_u64_or_default")]
+        #[serde(deserialize_with = "de_u64")]
         upvotes: u64,
-        #[serde(default, deserialize_with = "de_u64_or_default")]
+        #[serde(deserialize_with = "de_u64")]
         downvotes: u64,
     }
     let ev: Ev = serde_json::from_value(data.clone()).ok()?;

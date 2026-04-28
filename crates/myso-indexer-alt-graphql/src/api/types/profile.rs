@@ -647,12 +647,12 @@ impl SocialProofToken {
         }
     }
 
-    async fn total_reserved(&self) -> i64 {
-        self.inner.total_reserved
+    async fn total_reserved(&self) -> BigInt {
+        BigInt::from(self.inner.total_reserved)
     }
 
-    async fn required_threshold(&self) -> i64 {
-        self.inner.required_threshold
+    async fn required_threshold(&self) -> BigInt {
+        BigInt::from(self.inner.required_threshold)
     }
 
     /// Circulating supply in nano-SPT (`10^9` units per display token).

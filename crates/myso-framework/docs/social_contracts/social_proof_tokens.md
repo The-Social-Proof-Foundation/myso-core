@@ -2,11 +2,20 @@
 title: Module `social_contracts::social_proof_tokens`
 ---
 
-Social Proof Tokens module for MySocial platform.
+Social Proof Tokens module for the MySocial network.
 This module provides functionality for creation and trading of both profile tokens
 and post tokens using an Automated Market Maker (AMM) with a quadratic pricing curve.
 It includes fee distribution mechanisms for transactions, splitting between profile owner,
 platform, and ecosystem treasury.
+
+**SPT amounts (nano-SPT):** <code><a href="../social_contracts/social_proof_tokens.md#social_contracts_social_proof_tokens_SocialToken">SocialToken</a>.amount</code>, <code><a href="../social_contracts/social_proof_tokens.md#social_contracts_social_proof_tokens_TokenInfo">TokenInfo</a>.circulating_supply</code>, pool holder
+balances, and SPT quantity fields in events are stored in fixed-point **nano-SPT** units:
+<code>10^9</code> nano-SPT = <code>1.0</code> display token (same decimal count as native MYSO). MYSO payments and
+prices remain in MYSO smallest units. Buy/sell cost uses a continuous integral of the marginal
+price curve over nano-supply to stay well-defined at sub-token precision.
+
+Use <code><a href="../social_contracts/social_proof_tokens.md#social_contracts_social_proof_tokens_nano_spt_from_whole_tokens">nano_spt_from_whole_tokens</a></code> / <code><a href="../social_contracts/social_proof_tokens.md#social_contracts_social_proof_tokens_nano_spt_from_whole_and_fraction">nano_spt_from_whole_and_fraction</a></code> to convert display amounts
+plus optional sub-token nano remainder into the <code>u64</code> nano-SPT values passed to buy/sell entrypoints.
 
 
 -  [Struct `SocialProofTokensAdminCap`](#social_contracts_social_proof_tokens_SocialProofTokensAdminCap)
@@ -71,11 +80,27 @@ platform, and ecosystem treasury.
 -  [Function `buy_more_tokens_with_platform`](#social_contracts_social_proof_tokens_buy_more_tokens_with_platform)
 -  [Function `sell_tokens`](#social_contracts_social_proof_tokens_sell_tokens)
 -  [Function `sell_tokens_with_platform`](#social_contracts_social_proof_tokens_sell_tokens_with_platform)
+-  [Function `unwrap_u256_opt`](#social_contracts_social_proof_tokens_unwrap_u256_opt)
+-  [Function `u256_add_with_carry`](#social_contracts_social_proof_tokens_u256_add_with_carry)
+-  [Function `u256_mul_widen`](#social_contracts_social_proof_tokens_u256_mul_widen)
+-  [Function `u512_bit`](#social_contracts_social_proof_tokens_u512_bit)
+-  [Function `u512_shl1_or_bit`](#social_contracts_social_proof_tokens_u512_shl1_or_bit)
+-  [Function `u512_ge_u256`](#social_contracts_social_proof_tokens_u512_ge_u256)
+-  [Function `u512_sub_u256`](#social_contracts_social_proof_tokens_u512_sub_u256)
+-  [Function `u512_div_u256_floor`](#social_contracts_social_proof_tokens_u512_div_u256_floor)
+-  [Function `quad_poly_buy`](#social_contracts_social_proof_tokens_quad_poly_buy)
+-  [Function `quad_poly_sell`](#social_contracts_social_proof_tokens_quad_poly_sell)
+-  [Function `quad_integral_leg_mist`](#social_contracts_social_proof_tokens_quad_integral_leg_mist)
+-  [Function `mist_amount_u256_to_u64`](#social_contracts_social_proof_tokens_mist_amount_u256_to_u64)
 -  [Function `calculate_token_price`](#social_contracts_social_proof_tokens_calculate_token_price)
 -  [Function `calculate_buy_price`](#social_contracts_social_proof_tokens_calculate_buy_price)
--  [Function `calculate_sum_squares`](#social_contracts_social_proof_tokens_calculate_sum_squares)
 -  [Function `calculate_sell_price`](#social_contracts_social_proof_tokens_calculate_sell_price)
+-  [Function `spt_amount_scale`](#social_contracts_social_proof_tokens_spt_amount_scale)
+-  [Function `spt_amount_decimals`](#social_contracts_social_proof_tokens_spt_amount_decimals)
+-  [Function `nano_spt_from_whole_tokens`](#social_contracts_social_proof_tokens_nano_spt_from_whole_tokens)
+-  [Function `nano_spt_from_whole_and_fraction`](#social_contracts_social_proof_tokens_nano_spt_from_whole_and_fraction)
 -  [Function `get_token_info`](#social_contracts_social_proof_tokens_get_token_info)
+-  [Function `token_info_circulating_supply`](#social_contracts_social_proof_tokens_token_info_circulating_supply)
 -  [Function `token_exists`](#social_contracts_social_proof_tokens_token_exists)
 -  [Function `get_token_owner`](#social_contracts_social_proof_tokens_get_token_owner)
 -  [Function `get_pool_price`](#social_contracts_social_proof_tokens_get_pool_price)
@@ -107,6 +132,7 @@ platform, and ecosystem treasury.
 <b>use</b> <a href="../mydata/gf256.md#mydata_gf256">mydata::gf256</a>;
 <b>use</b> <a href="../mydata/hmac256ctr.md#mydata_hmac256ctr">mydata::hmac256ctr</a>;
 <b>use</b> <a href="../mydata/kdf.md#mydata_kdf">mydata::kdf</a>;
+<b>use</b> <a href="../mydata/merkle.md#mydata_merkle">mydata::merkle</a>;
 <b>use</b> <a href="../mydata/polynomial.md#mydata_polynomial">mydata::polynomial</a>;
 <b>use</b> <a href="../myso/accumulator.md#myso_accumulator">myso::accumulator</a>;
 <b>use</b> <a href="../myso/accumulator_settlement.md#myso_accumulator_settlement">myso::accumulator_settlement</a>;
@@ -128,7 +154,6 @@ platform, and ecosystem treasury.
 <b>use</b> <a href="../myso/hash.md#myso_hash">myso::hash</a>;
 <b>use</b> <a href="../myso/hex.md#myso_hex">myso::hex</a>;
 <b>use</b> <a href="../myso/hmac.md#myso_hmac">myso::hmac</a>;
-<b>use</b> <a href="../myso/math.md#myso_math">myso::math</a>;
 <b>use</b> <a href="../myso/myso.md#myso_myso">myso::myso</a>;
 <b>use</b> <a href="../myso/object.md#myso_object">myso::object</a>;
 <b>use</b> <a href="../myso/package.md#myso_package">myso::package</a>;
@@ -143,6 +168,7 @@ platform, and ecosystem treasury.
 <b>use</b> <a href="../myso/vec_set.md#myso_vec_set">myso::vec_set</a>;
 <b>use</b> <a href="../social_contracts/block_list.md#social_contracts_block_list">social_contracts::block_list</a>;
 <b>use</b> <a href="../social_contracts/governance.md#social_contracts_governance">social_contracts::governance</a>;
+<b>use</b> <a href="../social_contracts/mydata.md#social_contracts_mydata">social_contracts::mydata</a>;
 <b>use</b> <a href="../social_contracts/platform.md#social_contracts_platform">social_contracts::platform</a>;
 <b>use</b> <a href="../social_contracts/post.md#social_contracts_post">social_contracts::post</a>;
 <b>use</b> <a href="../social_contracts/profile.md#social_contracts_profile">social_contracts::profile</a>;
@@ -158,7 +184,7 @@ platform, and ecosystem treasury.
 <b>use</b> <a href="../std/string.md#std_string">std::string</a>;
 <b>use</b> <a href="../std/type_name.md#std_type_name">std::type_name</a>;
 <b>use</b> <a href="../std/u128.md#std_u128">std::u128</a>;
-<b>use</b> <a href="../std/u64.md#std_u64">std::u64</a>;
+<b>use</b> <a href="../std/u256.md#std_u256">std::u256</a>;
 <b>use</b> <a href="../std/vector.md#std_vector">std::vector</a>;
 </code></pre>
 
@@ -271,7 +297,7 @@ Global social proof tokens configuration
 <code>max_hold_percent_bps: u64</code>
 </dt>
 <dd>
- Maximum percentage a single wallet can hold of any token
+ Max fraction of circulating supply one wallet may hold, in basis points (<code>10_000</code> = 100%).
 </dd>
 <dt>
 <code>post_threshold: u64</code>
@@ -288,13 +314,13 @@ Global social proof tokens configuration
 <code>max_individual_reservation_bps: u64</code>
 </dt>
 <dd>
- Maximum percentage any individual can reserve towards a single post/profile
+ Max MYSO reservation per wallet vs pool threshold, in bps (<code>10_000</code> = 100% of threshold).
 </dd>
 <dt>
 <code>max_reservers_per_pool: u64</code>
 </dt>
 <dd>
- Maximum number of unique reservers allowed per pool (DoS protection)
+ Maximum unique reservers per reservation pool (DoS / gas bound).
 </dd>
 <dt>
 <code>trading_enabled: bool</code>
@@ -453,22 +479,10 @@ Information about a token
  Associated profile or post ID
 </dd>
 <dt>
-<code>symbol: <a href="../std/string.md#std_string_String">std::string::String</a></code>
-</dt>
-<dd>
- Token symbol
-</dd>
-<dt>
-<code>name: <a href="../std/string.md#std_string_String">std::string::String</a></code>
-</dt>
-<dd>
- Token name
-</dd>
-<dt>
 <code>circulating_supply: u64</code>
 </dt>
 <dd>
- Current supply in circulation
+ Circulating supply in **nano-SPT** (<code>10^9</code> per 1.0 token).
 </dd>
 <dt>
 <code>base_price: u64</code>
@@ -531,7 +545,7 @@ Liquidity pool for a token (key only - not transferable)
 <code>holders: <a href="../myso/table.md#myso_table_Table">myso::table::Table</a>&lt;<b>address</b>, u64&gt;</code>
 </dt>
 <dd>
- Mapping of holders' addresses to their token balances
+ Holder balances in **nano-SPT**.
 </dd>
 <dt>
 <code>poc_redirect_to: <a href="../std/option.md#std_option_Option">std::option::Option</a>&lt;<b>address</b>&gt;</code>
@@ -594,7 +608,7 @@ Social token that represents a user's owned tokens
 <code>amount: u64</code>
 </dt>
 <dd>
- Amount of tokens held
+ Balance in **nano-SPT** (<code>10^9</code> per 1.0 token).
 </dd>
 </dl>
 
@@ -702,16 +716,6 @@ Event emitted when a token pool is created
 <dd>
 </dd>
 <dt>
-<code>symbol: <a href="../std/string.md#std_string_String">std::string::String</a></code>
-</dt>
-<dd>
-</dd>
-<dt>
-<code>name: <a href="../std/string.md#std_string_String">std::string::String</a></code>
-</dt>
-<dd>
-</dd>
-<dt>
 <code>base_price: u64</code>
 </dt>
 <dd>
@@ -725,11 +729,13 @@ Event emitted when a token pool is created
 <code>circulating_supply: u64</code>
 </dt>
 <dd>
+ Circulating supply in **nano-SPT** (<code>10^9</code> per 1.0 token).
 </dd>
 <dt>
 <code>total_reserved_at_launch: u64</code>
 </dt>
 <dd>
+ MYSO reserved (smallest units).
 </dd>
 </dl>
 
@@ -768,6 +774,7 @@ Event emitted when tokens are bought
 <code>amount: u64</code>
 </dt>
 <dd>
+ SPT quantity in **nano-SPT**.
 </dd>
 <dt>
 <code>myso_amount: u64</code>
@@ -835,6 +842,7 @@ Event emitted when tokens are sold
 <code>amount: u64</code>
 </dt>
 <dd>
+ SPT quantity in **nano-SPT**.
 </dd>
 <dt>
 <code>myso_amount: u64</code>
@@ -1269,6 +1277,7 @@ Event emitted when tokens are purchased by someone who already has a social toke
 <code>amount: u64</code>
 </dt>
 <dd>
+ SPT quantity in **nano-SPT**.
 </dd>
 </dl>
 
@@ -1474,22 +1483,12 @@ Insufficient token liquidity
 
 
 
-<a name="social_contracts_social_proof_tokens_ESelfTrading"></a>
-
-Self trading not allowed
-
-
-<pre><code><b>const</b> <a href="../social_contracts/social_proof_tokens.md#social_contracts_social_proof_tokens_ESelfTrading">ESelfTrading</a>: u64 = 9;
-</code></pre>
-
-
-
 <a name="social_contracts_social_proof_tokens_ETokenAlreadyInitialized"></a>
 
 Token already initialized in pool
 
 
-<pre><code><b>const</b> <a href="../social_contracts/social_proof_tokens.md#social_contracts_social_proof_tokens_ETokenAlreadyInitialized">ETokenAlreadyInitialized</a>: u64 = 10;
+<pre><code><b>const</b> <a href="../social_contracts/social_proof_tokens.md#social_contracts_social_proof_tokens_ETokenAlreadyInitialized">ETokenAlreadyInitialized</a>: u64 = 9;
 </code></pre>
 
 
@@ -1499,7 +1498,7 @@ Token already initialized in pool
 Curve parameters must be positive
 
 
-<pre><code><b>const</b> <a href="../social_contracts/social_proof_tokens.md#social_contracts_social_proof_tokens_EInvalidCurveParams">EInvalidCurveParams</a>: u64 = 11;
+<pre><code><b>const</b> <a href="../social_contracts/social_proof_tokens.md#social_contracts_social_proof_tokens_EInvalidCurveParams">EInvalidCurveParams</a>: u64 = 10;
 </code></pre>
 
 
@@ -1509,7 +1508,7 @@ Curve parameters must be positive
 Invalid token type
 
 
-<pre><code><b>const</b> <a href="../social_contracts/social_proof_tokens.md#social_contracts_social_proof_tokens_EInvalidTokenType">EInvalidTokenType</a>: u64 = 12;
+<pre><code><b>const</b> <a href="../social_contracts/social_proof_tokens.md#social_contracts_social_proof_tokens_EInvalidTokenType">EInvalidTokenType</a>: u64 = 11;
 </code></pre>
 
 
@@ -1519,7 +1518,7 @@ Invalid token type
 Viral threshold not met
 
 
-<pre><code><b>const</b> <a href="../social_contracts/social_proof_tokens.md#social_contracts_social_proof_tokens_EViralThresholdNotMet">EViralThresholdNotMet</a>: u64 = 13;
+<pre><code><b>const</b> <a href="../social_contracts/social_proof_tokens.md#social_contracts_social_proof_tokens_EViralThresholdNotMet">EViralThresholdNotMet</a>: u64 = 12;
 </code></pre>
 
 
@@ -1529,7 +1528,7 @@ Viral threshold not met
 Auction already in progress
 
 
-<pre><code><b>const</b> <a href="../social_contracts/social_proof_tokens.md#social_contracts_social_proof_tokens_EAuctionInProgress">EAuctionInProgress</a>: u64 = 14;
+<pre><code><b>const</b> <a href="../social_contracts/social_proof_tokens.md#social_contracts_social_proof_tokens_EAuctionInProgress">EAuctionInProgress</a>: u64 = 13;
 </code></pre>
 
 
@@ -1539,7 +1538,7 @@ Auction already in progress
 Invalid auction duration
 
 
-<pre><code><b>const</b> <a href="../social_contracts/social_proof_tokens.md#social_contracts_social_proof_tokens_EInvalidAuctionDuration">EInvalidAuctionDuration</a>: u64 = 15;
+<pre><code><b>const</b> <a href="../social_contracts/social_proof_tokens.md#social_contracts_social_proof_tokens_EInvalidAuctionDuration">EInvalidAuctionDuration</a>: u64 = 14;
 </code></pre>
 
 
@@ -1549,7 +1548,7 @@ Invalid auction duration
 Auction not active
 
 
-<pre><code><b>const</b> <a href="../social_contracts/social_proof_tokens.md#social_contracts_social_proof_tokens_EAuctionNotActive">EAuctionNotActive</a>: u64 = 16;
+<pre><code><b>const</b> <a href="../social_contracts/social_proof_tokens.md#social_contracts_social_proof_tokens_EAuctionNotActive">EAuctionNotActive</a>: u64 = 15;
 </code></pre>
 
 
@@ -1559,7 +1558,7 @@ Auction not active
 Auction not ended
 
 
-<pre><code><b>const</b> <a href="../social_contracts/social_proof_tokens.md#social_contracts_social_proof_tokens_EAuctionNotEnded">EAuctionNotEnded</a>: u64 = 17;
+<pre><code><b>const</b> <a href="../social_contracts/social_proof_tokens.md#social_contracts_social_proof_tokens_EAuctionNotEnded">EAuctionNotEnded</a>: u64 = 16;
 </code></pre>
 
 
@@ -1569,7 +1568,7 @@ Auction not ended
 Auction already finalized
 
 
-<pre><code><b>const</b> <a href="../social_contracts/social_proof_tokens.md#social_contracts_social_proof_tokens_EAuctionAlreadyFinalized">EAuctionAlreadyFinalized</a>: u64 = 18;
+<pre><code><b>const</b> <a href="../social_contracts/social_proof_tokens.md#social_contracts_social_proof_tokens_EAuctionAlreadyFinalized">EAuctionAlreadyFinalized</a>: u64 = 17;
 </code></pre>
 
 
@@ -1579,7 +1578,7 @@ Auction already finalized
 No contribution to auction
 
 
-<pre><code><b>const</b> <a href="../social_contracts/social_proof_tokens.md#social_contracts_social_proof_tokens_ENoContribution">ENoContribution</a>: u64 = 19;
+<pre><code><b>const</b> <a href="../social_contracts/social_proof_tokens.md#social_contracts_social_proof_tokens_ENoContribution">ENoContribution</a>: u64 = 18;
 </code></pre>
 
 
@@ -1589,7 +1588,7 @@ No contribution to auction
 Cannot buy token from a blocked user
 
 
-<pre><code><b>const</b> <a href="../social_contracts/social_proof_tokens.md#social_contracts_social_proof_tokens_EBlockedUser">EBlockedUser</a>: u64 = 20;
+<pre><code><b>const</b> <a href="../social_contracts/social_proof_tokens.md#social_contracts_social_proof_tokens_EBlockedUser">EBlockedUser</a>: u64 = 19;
 </code></pre>
 
 
@@ -1599,7 +1598,7 @@ Cannot buy token from a blocked user
 Trading is halted by emergency kill switch
 
 
-<pre><code><b>const</b> <a href="../social_contracts/social_proof_tokens.md#social_contracts_social_proof_tokens_ETradingHalted">ETradingHalted</a>: u64 = 21;
+<pre><code><b>const</b> <a href="../social_contracts/social_proof_tokens.md#social_contracts_social_proof_tokens_ETradingHalted">ETradingHalted</a>: u64 = 20;
 </code></pre>
 
 
@@ -1609,7 +1608,7 @@ Trading is halted by emergency kill switch
 Arithmetic overflow detected
 
 
-<pre><code><b>const</b> <a href="../social_contracts/social_proof_tokens.md#social_contracts_social_proof_tokens_EOverflow">EOverflow</a>: u64 = 22;
+<pre><code><b>const</b> <a href="../social_contracts/social_proof_tokens.md#social_contracts_social_proof_tokens_EOverflow">EOverflow</a>: u64 = 21;
 </code></pre>
 
 
@@ -1619,7 +1618,7 @@ Arithmetic overflow detected
 Wrong version - object version mismatch
 
 
-<pre><code><b>const</b> <a href="../social_contracts/social_proof_tokens.md#social_contracts_social_proof_tokens_EWrongVersion">EWrongVersion</a>: u64 = 23;
+<pre><code><b>const</b> <a href="../social_contracts/social_proof_tokens.md#social_contracts_social_proof_tokens_EWrongVersion">EWrongVersion</a>: u64 = 22;
 </code></pre>
 
 
@@ -1629,7 +1628,7 @@ Wrong version - object version mismatch
 User has not joined the platform
 
 
-<pre><code><b>const</b> <a href="../social_contracts/social_proof_tokens.md#social_contracts_social_proof_tokens_EUserNotJoinedPlatform">EUserNotJoinedPlatform</a>: u64 = 24;
+<pre><code><b>const</b> <a href="../social_contracts/social_proof_tokens.md#social_contracts_social_proof_tokens_EUserNotJoinedPlatform">EUserNotJoinedPlatform</a>: u64 = 23;
 </code></pre>
 
 
@@ -1639,7 +1638,7 @@ User has not joined the platform
 User is blocked by the platform
 
 
-<pre><code><b>const</b> <a href="../social_contracts/social_proof_tokens.md#social_contracts_social_proof_tokens_EUserBlockedByPlatform">EUserBlockedByPlatform</a>: u64 = 25;
+<pre><code><b>const</b> <a href="../social_contracts/social_proof_tokens.md#social_contracts_social_proof_tokens_EUserBlockedByPlatform">EUserBlockedByPlatform</a>: u64 = 24;
 </code></pre>
 
 
@@ -1649,7 +1648,7 @@ User is blocked by the platform
 Reservation pool already converted to token
 
 
-<pre><code><b>const</b> <a href="../social_contracts/social_proof_tokens.md#social_contracts_social_proof_tokens_EReservationPoolConverted">EReservationPoolConverted</a>: u64 = 27;
+<pre><code><b>const</b> <a href="../social_contracts/social_proof_tokens.md#social_contracts_social_proof_tokens_EReservationPoolConverted">EReservationPoolConverted</a>: u64 = 25;
 </code></pre>
 
 
@@ -1659,7 +1658,7 @@ Reservation pool already converted to token
 User already owns tokens for this pool
 
 
-<pre><code><b>const</b> <a href="../social_contracts/social_proof_tokens.md#social_contracts_social_proof_tokens_EAlreadyOwnsTokens">EAlreadyOwnsTokens</a>: u64 = 28;
+<pre><code><b>const</b> <a href="../social_contracts/social_proof_tokens.md#social_contracts_social_proof_tokens_EAlreadyOwnsTokens">EAlreadyOwnsTokens</a>: u64 = 26;
 </code></pre>
 
 
@@ -1669,7 +1668,7 @@ User already owns tokens for this pool
 Too many reservers for conversion (DoS prevention)
 
 
-<pre><code><b>const</b> <a href="../social_contracts/social_proof_tokens.md#social_contracts_social_proof_tokens_ETooManyReservers">ETooManyReservers</a>: u64 = 29;
+<pre><code><b>const</b> <a href="../social_contracts/social_proof_tokens.md#social_contracts_social_proof_tokens_ETooManyReservers">ETooManyReservers</a>: u64 = 27;
 </code></pre>
 
 
@@ -1679,7 +1678,7 @@ Too many reservers for conversion (DoS prevention)
 Cannot split token - amount must be positive and less than token amount
 
 
-<pre><code><b>const</b> <a href="../social_contracts/social_proof_tokens.md#social_contracts_social_proof_tokens_ECannotSplit">ECannotSplit</a>: u64 = 30;
+<pre><code><b>const</b> <a href="../social_contracts/social_proof_tokens.md#social_contracts_social_proof_tokens_ECannotSplit">ECannotSplit</a>: u64 = 28;
 </code></pre>
 
 
@@ -1689,7 +1688,7 @@ Cannot split token - amount must be positive and less than token amount
 Cannot merge tokens - tokens must be from the same pool
 
 
-<pre><code><b>const</b> <a href="../social_contracts/social_proof_tokens.md#social_contracts_social_proof_tokens_ECannotMerge">ECannotMerge</a>: u64 = 31;
+<pre><code><b>const</b> <a href="../social_contracts/social_proof_tokens.md#social_contracts_social_proof_tokens_ECannotMerge">ECannotMerge</a>: u64 = 29;
 </code></pre>
 
 
@@ -1771,6 +1770,74 @@ Cannot merge tokens - tokens must be from the same pool
 
 
 <pre><code><b>const</b> <a href="../social_contracts/social_proof_tokens.md#social_contracts_social_proof_tokens_MAX_HOLD_PERCENT_BPS">MAX_HOLD_PERCENT_BPS</a>: u64 = 500;
+</code></pre>
+
+
+
+<a name="social_contracts_social_proof_tokens_BPS_DENOM"></a>
+
+**Permyriad / fee scale only:** <code>10_000</code> = 100%. Not SPT decimal places (<code><a href="../social_contracts/social_proof_tokens.md#social_contracts_social_proof_tokens_SPT_DECIMALS">SPT_DECIMALS</a></code> = 9).
+
+
+<pre><code><b>const</b> <a href="../social_contracts/social_proof_tokens.md#social_contracts_social_proof_tokens_BPS_DENOM">BPS_DENOM</a>: u64 = 10000;
+</code></pre>
+
+
+
+<a name="social_contracts_social_proof_tokens_MAX_ONCHAIN_U64_U128"></a>
+
+Numeric value of <code><a href="../social_contracts/social_proof_tokens.md#social_contracts_social_proof_tokens_MAX_U64">MAX_U64</a></code>; max storable on-chain amount as <code>u128</code> for safe compares / products.
+
+
+<pre><code><b>const</b> <a href="../social_contracts/social_proof_tokens.md#social_contracts_social_proof_tokens_MAX_ONCHAIN_U64_U128">MAX_ONCHAIN_U64_U128</a>: u128 = 18446744073709551615;
+</code></pre>
+
+
+
+<a name="social_contracts_social_proof_tokens_MAX_RESERVATION_THRESHOLD_BPS_PRODUCT_U128"></a>
+
+Max <code>threshold * max_individual_reservation_bps</code> so <code>(product / <a href="../social_contracts/social_proof_tokens.md#social_contracts_social_proof_tokens_BPS_DENOM">BPS_DENOM</a>)</code> fits <code>u64</code> (equals <code><a href="../social_contracts/social_proof_tokens.md#social_contracts_social_proof_tokens_MAX_U64">MAX_U64</a> * <a href="../social_contracts/social_proof_tokens.md#social_contracts_social_proof_tokens_BPS_DENOM">BPS_DENOM</a></code>).
+
+
+<pre><code><b>const</b> <a href="../social_contracts/social_proof_tokens.md#social_contracts_social_proof_tokens_MAX_RESERVATION_THRESHOLD_BPS_PRODUCT_U128">MAX_RESERVATION_THRESHOLD_BPS_PRODUCT_U128</a>: u128 = 184467440737095516150000;
+</code></pre>
+
+
+
+<a name="social_contracts_social_proof_tokens_MAX_SPT_ADMIN_PERCENT_BPS"></a>
+
+
+
+<pre><code><b>const</b> <a href="../social_contracts/social_proof_tokens.md#social_contracts_social_proof_tokens_MAX_SPT_ADMIN_PERCENT_BPS">MAX_SPT_ADMIN_PERCENT_BPS</a>: u64 = 1000000;
+</code></pre>
+
+
+
+<a name="social_contracts_social_proof_tokens_MAX_RESERVERS_PER_POOL_CAP"></a>
+
+
+
+<pre><code><b>const</b> <a href="../social_contracts/social_proof_tokens.md#social_contracts_social_proof_tokens_MAX_RESERVERS_PER_POOL_CAP">MAX_RESERVERS_PER_POOL_CAP</a>: u64 = 10000000;
+</code></pre>
+
+
+
+<a name="social_contracts_social_proof_tokens_SPT_DECIMALS"></a>
+
+Display decimals for SPT (matches native MYSO coin metadata).
+
+
+<pre><code><b>const</b> <a href="../social_contracts/social_proof_tokens.md#social_contracts_social_proof_tokens_SPT_DECIMALS">SPT_DECIMALS</a>: u8 = 9;
+</code></pre>
+
+
+
+<a name="social_contracts_social_proof_tokens_SPT_SCALE"></a>
+
+Nano-SPT per 1.0 whole display token.
+
+
+<pre><code><b>const</b> <a href="../social_contracts/social_proof_tokens.md#social_contracts_social_proof_tokens_SPT_SCALE">SPT_SCALE</a>: u64 = 1000000000;
 </code></pre>
 
 
@@ -2095,24 +2162,36 @@ Update social proof tokens configuration
     <b>let</b> total_fee_bps = trading_creator_fee_bps + trading_platform_fee_bps + trading_treasury_fee_bps;
     <b>let</b> reservation_total_fee_bps = reservation_creator_fee_bps + reservation_platform_fee_bps + reservation_treasury_fee_bps;
     // Ensure fee totals are valid (prevent division by zero and overflow)
-    <b>assert</b>!(total_fee_bps &gt; 0 && total_fee_bps &lt;= 10000, <a href="../social_contracts/social_proof_tokens.md#social_contracts_social_proof_tokens_EInvalidFeeConfig">EInvalidFeeConfig</a>);
-    <b>assert</b>!(reservation_total_fee_bps &gt; 0 && reservation_total_fee_bps &lt;= 10000, <a href="../social_contracts/social_proof_tokens.md#social_contracts_social_proof_tokens_EInvalidFeeConfig">EInvalidFeeConfig</a>);
+    <b>assert</b>!(total_fee_bps &gt; 0 && total_fee_bps &lt;= <a href="../social_contracts/social_proof_tokens.md#social_contracts_social_proof_tokens_BPS_DENOM">BPS_DENOM</a>, <a href="../social_contracts/social_proof_tokens.md#social_contracts_social_proof_tokens_EInvalidFeeConfig">EInvalidFeeConfig</a>);
+    <b>assert</b>!(reservation_total_fee_bps &gt; 0 && reservation_total_fee_bps &lt;= <a href="../social_contracts/social_proof_tokens.md#social_contracts_social_proof_tokens_BPS_DENOM">BPS_DENOM</a>, <a href="../social_contracts/social_proof_tokens.md#social_contracts_social_proof_tokens_EInvalidFeeConfig">EInvalidFeeConfig</a>);
     // Validate individual fee components don't exceed 100%
-    // Validate max_hold_percent_bps (should be &lt;= 10000, i.e., &lt;= 100%)
-    <b>assert</b>!(max_hold_percent_bps &gt; 0 && max_hold_percent_bps &lt;= 10000, <a href="../social_contracts/social_proof_tokens.md#social_contracts_social_proof_tokens_EInvalidFeeConfig">EInvalidFeeConfig</a>);
+    // Hold cap: bps may exceed 10_000 (100%) so whales can hold &gt;100% of supply <b>if</b> policy allows.
+    <b>assert</b>!(max_hold_percent_bps &gt; 0 && max_hold_percent_bps &lt;= <a href="../social_contracts/social_proof_tokens.md#social_contracts_social_proof_tokens_MAX_SPT_ADMIN_PERCENT_BPS">MAX_SPT_ADMIN_PERCENT_BPS</a>, <a href="../social_contracts/social_proof_tokens.md#social_contracts_social_proof_tokens_EInvalidFeeConfig">EInvalidFeeConfig</a>);
     // Validate thresholds (must be positive)
     <b>assert</b>!(post_threshold &gt; 0, <a href="../social_contracts/social_proof_tokens.md#social_contracts_social_proof_tokens_EInvalidFeeConfig">EInvalidFeeConfig</a>);
     <b>assert</b>!(profile_threshold &gt; 0, <a href="../social_contracts/social_proof_tokens.md#social_contracts_social_proof_tokens_EInvalidFeeConfig">EInvalidFeeConfig</a>);
-    // Validate max_individual_reservation_bps (should be &lt;= 10000, i.e., &lt;= 100%)
-    <b>assert</b>!(max_individual_reservation_bps &gt; 0 && max_individual_reservation_bps &lt;= 10000, <a href="../social_contracts/social_proof_tokens.md#social_contracts_social_proof_tokens_EInvalidFeeConfig">EInvalidFeeConfig</a>);
-    // Validate max_reservers_per_pool (DoS protection limit)
-    <b>assert</b>!(max_reservers_per_pool &gt; 0 && max_reservers_per_pool &lt;= 50000, <a href="../social_contracts/social_proof_tokens.md#social_contracts_social_proof_tokens_EInvalidFeeConfig">EInvalidFeeConfig</a>);
-    <b>assert</b>!(trading_creator_fee_bps &lt;= 10000, <a href="../social_contracts/social_proof_tokens.md#social_contracts_social_proof_tokens_EInvalidFeeConfig">EInvalidFeeConfig</a>);
-    <b>assert</b>!(trading_platform_fee_bps &lt;= 10000, <a href="../social_contracts/social_proof_tokens.md#social_contracts_social_proof_tokens_EInvalidFeeConfig">EInvalidFeeConfig</a>);
-    <b>assert</b>!(trading_treasury_fee_bps &lt;= 10000, <a href="../social_contracts/social_proof_tokens.md#social_contracts_social_proof_tokens_EInvalidFeeConfig">EInvalidFeeConfig</a>);
-    <b>assert</b>!(reservation_creator_fee_bps &lt;= 10000, <a href="../social_contracts/social_proof_tokens.md#social_contracts_social_proof_tokens_EInvalidFeeConfig">EInvalidFeeConfig</a>);
-    <b>assert</b>!(reservation_platform_fee_bps &lt;= 10000, <a href="../social_contracts/social_proof_tokens.md#social_contracts_social_proof_tokens_EInvalidFeeConfig">EInvalidFeeConfig</a>);
-    <b>assert</b>!(reservation_treasury_fee_bps &lt;= 10000, <a href="../social_contracts/social_proof_tokens.md#social_contracts_social_proof_tokens_EInvalidFeeConfig">EInvalidFeeConfig</a>);
+    <b>assert</b>!(max_individual_reservation_bps &gt; 0 && max_individual_reservation_bps &lt;= <a href="../social_contracts/social_proof_tokens.md#social_contracts_social_proof_tokens_MAX_SPT_ADMIN_PERCENT_BPS">MAX_SPT_ADMIN_PERCENT_BPS</a>, <a href="../social_contracts/social_proof_tokens.md#social_contracts_social_proof_tokens_EInvalidFeeConfig">EInvalidFeeConfig</a>);
+    // `(threshold * bps) / <a href="../social_contracts/social_proof_tokens.md#social_contracts_social_proof_tokens_BPS_DENOM">BPS_DENOM</a>` must fit `u64` (reservation cap in MYSO smallest units).
+    <b>assert</b>!(
+        (post_threshold <b>as</b> u128) * (max_individual_reservation_bps <b>as</b> u128)
+            &lt;= <a href="../social_contracts/social_proof_tokens.md#social_contracts_social_proof_tokens_MAX_RESERVATION_THRESHOLD_BPS_PRODUCT_U128">MAX_RESERVATION_THRESHOLD_BPS_PRODUCT_U128</a>,
+        <a href="../social_contracts/social_proof_tokens.md#social_contracts_social_proof_tokens_EInvalidFeeConfig">EInvalidFeeConfig</a>
+    );
+    <b>assert</b>!(
+        (profile_threshold <b>as</b> u128) * (max_individual_reservation_bps <b>as</b> u128)
+            &lt;= <a href="../social_contracts/social_proof_tokens.md#social_contracts_social_proof_tokens_MAX_RESERVATION_THRESHOLD_BPS_PRODUCT_U128">MAX_RESERVATION_THRESHOLD_BPS_PRODUCT_U128</a>,
+        <a href="../social_contracts/social_proof_tokens.md#social_contracts_social_proof_tokens_EInvalidFeeConfig">EInvalidFeeConfig</a>
+    );
+    <b>assert</b>!(
+        max_reservers_per_pool &gt; 0 && max_reservers_per_pool &lt;= <a href="../social_contracts/social_proof_tokens.md#social_contracts_social_proof_tokens_MAX_RESERVERS_PER_POOL_CAP">MAX_RESERVERS_PER_POOL_CAP</a>,
+        <a href="../social_contracts/social_proof_tokens.md#social_contracts_social_proof_tokens_EInvalidFeeConfig">EInvalidFeeConfig</a>
+    );
+    <b>assert</b>!(trading_creator_fee_bps &lt;= <a href="../social_contracts/social_proof_tokens.md#social_contracts_social_proof_tokens_BPS_DENOM">BPS_DENOM</a>, <a href="../social_contracts/social_proof_tokens.md#social_contracts_social_proof_tokens_EInvalidFeeConfig">EInvalidFeeConfig</a>);
+    <b>assert</b>!(trading_platform_fee_bps &lt;= <a href="../social_contracts/social_proof_tokens.md#social_contracts_social_proof_tokens_BPS_DENOM">BPS_DENOM</a>, <a href="../social_contracts/social_proof_tokens.md#social_contracts_social_proof_tokens_EInvalidFeeConfig">EInvalidFeeConfig</a>);
+    <b>assert</b>!(trading_treasury_fee_bps &lt;= <a href="../social_contracts/social_proof_tokens.md#social_contracts_social_proof_tokens_BPS_DENOM">BPS_DENOM</a>, <a href="../social_contracts/social_proof_tokens.md#social_contracts_social_proof_tokens_EInvalidFeeConfig">EInvalidFeeConfig</a>);
+    <b>assert</b>!(reservation_creator_fee_bps &lt;= <a href="../social_contracts/social_proof_tokens.md#social_contracts_social_proof_tokens_BPS_DENOM">BPS_DENOM</a>, <a href="../social_contracts/social_proof_tokens.md#social_contracts_social_proof_tokens_EInvalidFeeConfig">EInvalidFeeConfig</a>);
+    <b>assert</b>!(reservation_platform_fee_bps &lt;= <a href="../social_contracts/social_proof_tokens.md#social_contracts_social_proof_tokens_BPS_DENOM">BPS_DENOM</a>, <a href="../social_contracts/social_proof_tokens.md#social_contracts_social_proof_tokens_EInvalidFeeConfig">EInvalidFeeConfig</a>);
+    <b>assert</b>!(reservation_treasury_fee_bps &lt;= <a href="../social_contracts/social_proof_tokens.md#social_contracts_social_proof_tokens_BPS_DENOM">BPS_DENOM</a>, <a href="../social_contracts/social_proof_tokens.md#social_contracts_social_proof_tokens_EInvalidFeeConfig">EInvalidFeeConfig</a>);
     // Update trading fee config
     config.trading_creator_fee_bps = trading_creator_fee_bps;
     config.trading_platform_fee_bps = trading_platform_fee_bps;
@@ -2294,7 +2373,7 @@ Validate trading fee config before use
 
 <pre><code><b>public</b>(package) <b>fun</b> <a href="../social_contracts/social_proof_tokens.md#social_contracts_social_proof_tokens_validate_trading_fees">validate_trading_fees</a>(config: &<a href="../social_contracts/social_proof_tokens.md#social_contracts_social_proof_tokens_SocialProofTokensConfig">SocialProofTokensConfig</a>) {
     <b>let</b> total_fee_bps = <a href="../social_contracts/social_proof_tokens.md#social_contracts_social_proof_tokens_calculate_total_fee_bps">calculate_total_fee_bps</a>(config);
-    <b>assert</b>!(total_fee_bps &gt; 0 && total_fee_bps &lt;= 10000, <a href="../social_contracts/social_proof_tokens.md#social_contracts_social_proof_tokens_EInvalidFeeConfig">EInvalidFeeConfig</a>);
+    <b>assert</b>!(total_fee_bps &gt; 0 && total_fee_bps &lt;= <a href="../social_contracts/social_proof_tokens.md#social_contracts_social_proof_tokens_BPS_DENOM">BPS_DENOM</a>, <a href="../social_contracts/social_proof_tokens.md#social_contracts_social_proof_tokens_EInvalidFeeConfig">EInvalidFeeConfig</a>);
 }
 </code></pre>
 
@@ -2320,7 +2399,7 @@ Validate reservation fee config before use
 
 <pre><code><b>public</b>(package) <b>fun</b> <a href="../social_contracts/social_proof_tokens.md#social_contracts_social_proof_tokens_validate_reservation_fees">validate_reservation_fees</a>(config: &<a href="../social_contracts/social_proof_tokens.md#social_contracts_social_proof_tokens_SocialProofTokensConfig">SocialProofTokensConfig</a>) {
     <b>let</b> reservation_total_fee_bps = <a href="../social_contracts/social_proof_tokens.md#social_contracts_social_proof_tokens_calculate_reservation_total_fee_bps">calculate_reservation_total_fee_bps</a>(config);
-    <b>assert</b>!(reservation_total_fee_bps &gt; 0 && reservation_total_fee_bps &lt;= 10000, <a href="../social_contracts/social_proof_tokens.md#social_contracts_social_proof_tokens_EInvalidFeeConfig">EInvalidFeeConfig</a>);
+    <b>assert</b>!(reservation_total_fee_bps &gt; 0 && reservation_total_fee_bps &lt;= <a href="../social_contracts/social_proof_tokens.md#social_contracts_social_proof_tokens_BPS_DENOM">BPS_DENOM</a>, <a href="../social_contracts/social_proof_tokens.md#social_contracts_social_proof_tokens_EInvalidFeeConfig">EInvalidFeeConfig</a>);
 }
 </code></pre>
 
@@ -2351,7 +2430,7 @@ amount * fee_bps can overflow before division, so check first
         <b>return</b> 0
     };
     <b>assert</b>!(amount &lt;= <a href="../social_contracts/social_proof_tokens.md#social_contracts_social_proof_tokens_MAX_U64">MAX_U64</a> / fee_bps, <a href="../social_contracts/social_proof_tokens.md#social_contracts_social_proof_tokens_EOverflow">EOverflow</a>);
-    (amount * fee_bps) / 10000
+    (amount * fee_bps) / <a href="../social_contracts/social_proof_tokens.md#social_contracts_social_proof_tokens_BPS_DENOM">BPS_DENOM</a>
 }
 </code></pre>
 
@@ -2463,7 +2542,7 @@ Non-platform version: platform fees go to ecosystem treasury
         ctx
     );
     // Check individual reservation limit (based on net amount)
-    <b>let</b> max_individual_reservation = (config.post_threshold * config.max_individual_reservation_bps) / 10000;
+    <b>let</b> max_individual_reservation = (config.post_threshold * config.max_individual_reservation_bps) / <a href="../social_contracts/social_proof_tokens.md#social_contracts_social_proof_tokens_BPS_DENOM">BPS_DENOM</a>;
     <b>let</b> current_reservation = <b>if</b> (table::contains(&reservation_pool_object.reservations, reserver)) {
         *table::borrow(&reservation_pool_object.reservations, reserver)
     } <b>else</b> {
@@ -2626,7 +2705,7 @@ Platform version: platform fees go to platform treasury, includes platform valid
         ctx
     );
     // Check individual reservation limit (based on net amount)
-    <b>let</b> max_individual_reservation = (config.post_threshold * config.max_individual_reservation_bps) / 10000;
+    <b>let</b> max_individual_reservation = (config.post_threshold * config.max_individual_reservation_bps) / <a href="../social_contracts/social_proof_tokens.md#social_contracts_social_proof_tokens_BPS_DENOM">BPS_DENOM</a>;
     <b>let</b> current_reservation = <b>if</b> (table::contains(&reservation_pool_object.reservations, reserver)) {
         *table::borrow(&reservation_pool_object.reservations, reserver)
     } <b>else</b> {
@@ -2777,7 +2856,7 @@ Anyone can call this function - the profile owner is stored in the reservation p
         ctx
     );
     // Check individual reservation limit (based on net amount)
-    <b>let</b> max_individual_reservation = (config.profile_threshold * config.max_individual_reservation_bps) / 10000;
+    <b>let</b> max_individual_reservation = (config.profile_threshold * config.max_individual_reservation_bps) / <a href="../social_contracts/social_proof_tokens.md#social_contracts_social_proof_tokens_BPS_DENOM">BPS_DENOM</a>;
     <b>let</b> current_reservation = <b>if</b> (table::contains(&reservation_pool_object.reservations, reserver)) {
         *table::borrow(&reservation_pool_object.reservations, reserver)
     } <b>else</b> {
@@ -2937,7 +3016,7 @@ Anyone can call this function - the profile owner is stored in the reservation p
         ctx
     );
     // Check individual reservation limit (based on net amount)
-    <b>let</b> max_individual_reservation = (config.profile_threshold * config.max_individual_reservation_bps) / 10000;
+    <b>let</b> max_individual_reservation = (config.profile_threshold * config.max_individual_reservation_bps) / <a href="../social_contracts/social_proof_tokens.md#social_contracts_social_proof_tokens_BPS_DENOM">BPS_DENOM</a>;
     <b>let</b> current_reservation = <b>if</b> (table::contains(&reservation_pool_object.reservations, reserver)) {
         *table::borrow(&reservation_pool_object.reservations, reserver)
     } <b>else</b> {
@@ -3473,41 +3552,17 @@ This replaces the auction system - only the post/profile owner can call this
     <b>assert</b>!(<a href="../social_contracts/social_proof_tokens.md#social_contracts_social_proof_tokens_can_create_auction">can_create_auction</a>(registry, config, associated_id), <a href="../social_contracts/social_proof_tokens.md#social_contracts_social_proof_tokens_EViralThresholdNotMet">EViralThresholdNotMet</a>);
     // Verify token <b>has</b> not already been created
     <b>assert</b>!(!table::contains(&registry.tokens, associated_id), <a href="../social_contracts/social_proof_tokens.md#social_contracts_social_proof_tokens_ETokenAlreadyExists">ETokenAlreadyExists</a>);
-    // Calculate initial token supply based on total reserved amount
-    // Use the same scaling formula <b>as</b> the old auction system
+    // Initial circulating supply (nano-SPT): 1 nano-SPT per nano-MYSO net reserved (same units <b>as</b>
+    // `coin::value` / pool `total_reserved`). Profile and <a href="../social_contracts/post.md#social_contracts_post">post</a> <b>use</b> the same rule.
     <b>let</b> total_reserved = reservation_pool_object.info.total_reserved;
-    <b>let</b> sqrt_reserved = math::sqrt(total_reserved);
-    <b>let</b> fourth_root_reserved = math::sqrt(sqrt_reserved); // fourth root: sqrt(sqrt(x)) = x^(1/4)
-    // Use u128 to avoid overflow in sqrt * fourth_root (reserved^0.75)
-    <b>let</b> scale_factor = (((sqrt_reserved <b>as</b> u128) * (fourth_root_reserved <b>as</b> u128)) / 1000) <b>as</b> u64;
-    // Apply different base multipliers <b>for</b> <a href="../social_contracts/profile.md#social_contracts_profile">profile</a> vs <a href="../social_contracts/post.md#social_contracts_post">post</a> tokens
-    <b>let</b> <b>mut</b> initial_token_supply = <b>if</b> (reservation_pool_object.info.token_type == <a href="../social_contracts/social_proof_tokens.md#social_contracts_social_proof_tokens_TOKEN_TYPE_PROFILE">TOKEN_TYPE_PROFILE</a>) {
-        // Profile tokens - lower supply (more valuable per token)
-        scale_factor
-    } <b>else</b> {
-        // Post tokens - higher supply (more collectible)
-        scale_factor * 10
-    };
-    // Ensure we have at least 1 token
-    <b>if</b> (initial_token_supply == 0) {
-        initial_token_supply = 1;
-    };
+    <b>assert</b>!(total_reserved &gt; 0, <a href="../social_contracts/social_proof_tokens.md#social_contracts_social_proof_tokens_ENoContribution">ENoContribution</a>);
+    <b>let</b> initial_token_supply = total_reserved;
     // Create token info
     <b>let</b> token_info = <a href="../social_contracts/social_proof_tokens.md#social_contracts_social_proof_tokens_TokenInfo">TokenInfo</a> {
         id: @0x0, // Temporary, will be updated
         token_type: reservation_pool_object.info.token_type,
         owner: reservation_pool_object.info.owner,
         associated_id,
-        symbol: <b>if</b> (reservation_pool_object.info.token_type == <a href="../social_contracts/social_proof_tokens.md#social_contracts_social_proof_tokens_TOKEN_TYPE_PROFILE">TOKEN_TYPE_PROFILE</a>) {
-            string::utf8(b"PUSER")
-        } <b>else</b> {
-            string::utf8(b"PPOST")
-        },
-        name: <b>if</b> (reservation_pool_object.info.token_type == <a href="../social_contracts/social_proof_tokens.md#social_contracts_social_proof_tokens_TOKEN_TYPE_PROFILE">TOKEN_TYPE_PROFILE</a>) {
-            string::utf8(b"Profile Token")
-        } <b>else</b> {
-            string::utf8(b"Post Token")
-        },
         circulating_supply: initial_token_supply,
         base_price: config.base_price,
         quadratic_coefficient: config.quadratic_coefficient,
@@ -3525,8 +3580,6 @@ This replaces the auction system - only the post/profile owner can call this
         token_type: updated_token_info.token_type,
         owner: updated_token_info.owner,
         associated_id: updated_token_info.associated_id,
-        symbol: updated_token_info.symbol,
-        name: updated_token_info.name,
         circulating_supply: updated_token_info.circulating_supply,
         base_price: updated_token_info.base_price,
         quadratic_coefficient: updated_token_info.quadratic_coefficient,
@@ -3615,8 +3668,6 @@ This replaces the auction system - only the post/profile owner can call this
         token_type: token_pool.info.token_type,
         owner: token_pool.info.owner,
         associated_id: token_pool.info.associated_id,
-        symbol: token_pool.info.symbol,
-        name: token_pool.info.name,
         base_price: token_pool.info.base_price,
         quadratic_coefficient: token_pool.info.quadratic_coefficient,
         circulating_supply: token_pool.info.circulating_supply,
@@ -4241,8 +4292,6 @@ This function handles buying tokens for first-time buyers of a specific token
     // Look up the buyer's <a href="../social_contracts/profile.md#social_contracts_profile">profile</a> ID
     <b>let</b> profile_id_option = <a href="../social_contracts/profile.md#social_contracts_profile_lookup_profile_by_owner">profile::lookup_profile_by_owner</a>(profile_registry, buyer);
     <b>assert</b>!(option::is_some(&profile_id_option), <a href="../social_contracts/social_proof_tokens.md#social_contracts_social_proof_tokens_ENotAuthorized">ENotAuthorized</a>);
-    // Prevent self-trading <b>for</b> token owners
-    <b>assert</b>!(buyer != pool.info.owner, <a href="../social_contracts/social_proof_tokens.md#social_contracts_social_proof_tokens_ESelfTrading">ESelfTrading</a>);
     // Check <b>if</b> token owner is blocked by the buyer
     <b>assert</b>!(!<a href="../social_contracts/block_list.md#social_contracts_block_list_is_blocked">block_list::is_blocked</a>(block_list_registry, buyer, pool.info.owner), <a href="../social_contracts/social_proof_tokens.md#social_contracts_social_proof_tokens_EBlockedUser">EBlockedUser</a>);
     // Calculate the price <b>for</b> the tokens based on quadratic curve
@@ -4295,7 +4344,7 @@ This function handles buying tokens for first-time buyers of a specific token
     <b>let</b> new_supply = pool.info.circulating_supply + amount;
     // Then check multiplication overflow <b>for</b> max_hold calculation
     <b>assert</b>!(new_supply == 0 || new_supply &lt;= <a href="../social_contracts/social_proof_tokens.md#social_contracts_social_proof_tokens_MAX_U64">MAX_U64</a> / config.max_hold_percent_bps, <a href="../social_contracts/social_proof_tokens.md#social_contracts_social_proof_tokens_EOverflow">EOverflow</a>);
-    <b>let</b> max_hold = (new_supply * config.max_hold_percent_bps) / 10000;
+    <b>let</b> max_hold = (new_supply * config.max_hold_percent_bps) / <a href="../social_contracts/social_proof_tokens.md#social_contracts_social_proof_tokens_BPS_DENOM">BPS_DENOM</a>;
     <b>let</b> current_hold = <b>if</b> (table::contains(&pool.holders, buyer)) {
         *table::borrow(&pool.holders, buyer)
     } <b>else</b> {
@@ -4388,8 +4437,6 @@ This function handles buying tokens for first-time buyers of a specific token
     <b>assert</b>!(<a href="../social_contracts/platform.md#social_contracts_platform_is_approved">platform::is_approved</a>(platform_registry, platform_id), <a href="../social_contracts/social_proof_tokens.md#social_contracts_social_proof_tokens_ENotAuthorized">ENotAuthorized</a>);
     <b>assert</b>!(<a href="../social_contracts/platform.md#social_contracts_platform_has_joined_platform">platform::has_joined_platform</a>(<a href="../social_contracts/platform.md#social_contracts_platform">platform</a>, buyer), <a href="../social_contracts/social_proof_tokens.md#social_contracts_social_proof_tokens_EUserNotJoinedPlatform">EUserNotJoinedPlatform</a>);
     <b>assert</b>!(!<a href="../social_contracts/block_list.md#social_contracts_block_list_is_blocked">block_list::is_blocked</a>(block_list_registry, platform_id, buyer), <a href="../social_contracts/social_proof_tokens.md#social_contracts_social_proof_tokens_EUserBlockedByPlatform">EUserBlockedByPlatform</a>);
-    // Prevent self-trading <b>for</b> token owners
-    <b>assert</b>!(buyer != pool.info.owner, <a href="../social_contracts/social_proof_tokens.md#social_contracts_social_proof_tokens_ESelfTrading">ESelfTrading</a>);
     // Check <b>if</b> token owner is blocked by the buyer
     <b>assert</b>!(!<a href="../social_contracts/block_list.md#social_contracts_block_list_is_blocked">block_list::is_blocked</a>(block_list_registry, buyer, pool.info.owner), <a href="../social_contracts/social_proof_tokens.md#social_contracts_social_proof_tokens_EBlockedUser">EBlockedUser</a>);
     // Calculate the price <b>for</b> the tokens based on quadratic curve
@@ -4443,7 +4490,7 @@ This function handles buying tokens for first-time buyers of a specific token
     <b>let</b> new_supply = pool.info.circulating_supply + amount;
     // Then check multiplication overflow <b>for</b> max_hold calculation
     <b>assert</b>!(new_supply == 0 || new_supply &lt;= <a href="../social_contracts/social_proof_tokens.md#social_contracts_social_proof_tokens_MAX_U64">MAX_U64</a> / config.max_hold_percent_bps, <a href="../social_contracts/social_proof_tokens.md#social_contracts_social_proof_tokens_EOverflow">EOverflow</a>);
-    <b>let</b> max_hold = (new_supply * config.max_hold_percent_bps) / 10000;
+    <b>let</b> max_hold = (new_supply * config.max_hold_percent_bps) / <a href="../social_contracts/social_proof_tokens.md#social_contracts_social_proof_tokens_BPS_DENOM">BPS_DENOM</a>;
     <b>let</b> current_hold = <b>if</b> (table::contains(&pool.holders, buyer)) {
         *table::borrow(&pool.holders, buyer)
     } <b>else</b> {
@@ -4530,8 +4577,6 @@ This function allows users to add to their existing token holdings using MYSO Co
     // Look up the buyer's <a href="../social_contracts/profile.md#social_contracts_profile">profile</a> ID
     <b>let</b> profile_id_option = <a href="../social_contracts/profile.md#social_contracts_profile_lookup_profile_by_owner">profile::lookup_profile_by_owner</a>(profile_registry, buyer);
     <b>assert</b>!(option::is_some(&profile_id_option), <a href="../social_contracts/social_proof_tokens.md#social_contracts_social_proof_tokens_ENotAuthorized">ENotAuthorized</a>);
-    // Prevent self-trading <b>for</b> token owners
-    <b>assert</b>!(buyer != pool.info.owner, <a href="../social_contracts/social_proof_tokens.md#social_contracts_social_proof_tokens_ESelfTrading">ESelfTrading</a>);
     // Check <b>if</b> token owner is blocked by the buyer
     <b>assert</b>!(!<a href="../social_contracts/block_list.md#social_contracts_block_list_is_blocked">block_list::is_blocked</a>(block_list_registry, buyer, pool.info.owner), <a href="../social_contracts/social_proof_tokens.md#social_contracts_social_proof_tokens_EBlockedUser">EBlockedUser</a>);
     // Verify social token matches the pool
@@ -4586,7 +4631,7 @@ This function allows users to add to their existing token holdings using MYSO Co
     <b>let</b> new_supply = pool.info.circulating_supply + amount;
     // Then check multiplication overflow <b>for</b> max_hold calculation
     <b>assert</b>!(new_supply == 0 || new_supply &lt;= <a href="../social_contracts/social_proof_tokens.md#social_contracts_social_proof_tokens_MAX_U64">MAX_U64</a> / config.max_hold_percent_bps, <a href="../social_contracts/social_proof_tokens.md#social_contracts_social_proof_tokens_EOverflow">EOverflow</a>);
-    <b>let</b> max_hold = (new_supply * config.max_hold_percent_bps) / 10000;
+    <b>let</b> max_hold = (new_supply * config.max_hold_percent_bps) / <a href="../social_contracts/social_proof_tokens.md#social_contracts_social_proof_tokens_BPS_DENOM">BPS_DENOM</a>;
     <b>let</b> current_hold = <b>if</b> (table::contains(&pool.holders, buyer)) {
         *table::borrow(&pool.holders, buyer)
     } <b>else</b> {
@@ -4679,8 +4724,6 @@ This function allows users to add to their existing token holdings using MYSO Co
     <b>assert</b>!(<a href="../social_contracts/platform.md#social_contracts_platform_is_approved">platform::is_approved</a>(platform_registry, platform_id), <a href="../social_contracts/social_proof_tokens.md#social_contracts_social_proof_tokens_ENotAuthorized">ENotAuthorized</a>);
     <b>assert</b>!(<a href="../social_contracts/platform.md#social_contracts_platform_has_joined_platform">platform::has_joined_platform</a>(<a href="../social_contracts/platform.md#social_contracts_platform">platform</a>, buyer), <a href="../social_contracts/social_proof_tokens.md#social_contracts_social_proof_tokens_EUserNotJoinedPlatform">EUserNotJoinedPlatform</a>);
     <b>assert</b>!(!<a href="../social_contracts/block_list.md#social_contracts_block_list_is_blocked">block_list::is_blocked</a>(block_list_registry, platform_id, buyer), <a href="../social_contracts/social_proof_tokens.md#social_contracts_social_proof_tokens_EUserBlockedByPlatform">EUserBlockedByPlatform</a>);
-    // Prevent self-trading <b>for</b> token owners
-    <b>assert</b>!(buyer != pool.info.owner, <a href="../social_contracts/social_proof_tokens.md#social_contracts_social_proof_tokens_ESelfTrading">ESelfTrading</a>);
     // Check <b>if</b> token owner is blocked by the buyer
     <b>assert</b>!(!<a href="../social_contracts/block_list.md#social_contracts_block_list_is_blocked">block_list::is_blocked</a>(block_list_registry, buyer, pool.info.owner), <a href="../social_contracts/social_proof_tokens.md#social_contracts_social_proof_tokens_EBlockedUser">EBlockedUser</a>);
     // Verify social token matches the pool
@@ -4736,7 +4779,7 @@ This function allows users to add to their existing token holdings using MYSO Co
     <b>let</b> new_supply = pool.info.circulating_supply + amount;
     // Then check multiplication overflow <b>for</b> max_hold calculation
     <b>assert</b>!(new_supply == 0 || new_supply &lt;= <a href="../social_contracts/social_proof_tokens.md#social_contracts_social_proof_tokens_MAX_U64">MAX_U64</a> / config.max_hold_percent_bps, <a href="../social_contracts/social_proof_tokens.md#social_contracts_social_proof_tokens_EOverflow">EOverflow</a>);
-    <b>let</b> max_hold = (new_supply * config.max_hold_percent_bps) / 10000;
+    <b>let</b> max_hold = (new_supply * config.max_hold_percent_bps) / <a href="../social_contracts/social_proof_tokens.md#social_contracts_social_proof_tokens_BPS_DENOM">BPS_DENOM</a>;
     <b>let</b> current_hold = <b>if</b> (table::contains(&pool.holders, buyer)) {
         *table::borrow(&pool.holders, buyer)
     } <b>else</b> {
@@ -5032,15 +5075,404 @@ Platform version: platform fees go to platform treasury, includes platform valid
 
 </details>
 
+<a name="social_contracts_social_proof_tokens_unwrap_u256_opt"></a>
+
+## Function `unwrap_u256_opt`
+
+
+
+<pre><code><b>fun</b> <a href="../social_contracts/social_proof_tokens.md#social_contracts_social_proof_tokens_unwrap_u256_opt">unwrap_u256_opt</a>(o: <a href="../std/option.md#std_option_Option">std::option::Option</a>&lt;u256&gt;): u256
+</code></pre>
+
+
+
+<details>
+<summary>Implementation</summary>
+
+
+<pre><code><b>fun</b> <a href="../social_contracts/social_proof_tokens.md#social_contracts_social_proof_tokens_unwrap_u256_opt">unwrap_u256_opt</a>(o: Option&lt;u256&gt;): u256 {
+    <b>assert</b>!(option::is_some(&o), <a href="../social_contracts/social_proof_tokens.md#social_contracts_social_proof_tokens_EOverflow">EOverflow</a>);
+    option::destroy_some(o)
+}
+</code></pre>
+
+
+
+</details>
+
+<a name="social_contracts_social_proof_tokens_u256_add_with_carry"></a>
+
+## Function `u256_add_with_carry`
+
+Returns <code>(sum mod 2^256, carry)</code> where carry is <code>0</code> or <code>1</code>.
+
+
+<pre><code><b>fun</b> <a href="../social_contracts/social_proof_tokens.md#social_contracts_social_proof_tokens_u256_add_with_carry">u256_add_with_carry</a>(a: u256, b: u256): (u256, u256)
+</code></pre>
+
+
+
+<details>
+<summary>Implementation</summary>
+
+
+<pre><code><b>fun</b> <a href="../social_contracts/social_proof_tokens.md#social_contracts_social_proof_tokens_u256_add_with_carry">u256_add_with_carry</a>(a: u256, b: u256): (u256, u256) {
+    <b>let</b> s = u256::checked_add(a, b);
+    <b>if</b> (option::is_some(&s)) {
+        (option::destroy_some(s), 0u256)
+    } <b>else</b> {
+        <b>let</b> max = u256::max_value!();
+        <b>let</b> t = <a href="../social_contracts/social_proof_tokens.md#social_contracts_social_proof_tokens_unwrap_u256_opt">unwrap_u256_opt</a>(u256::checked_sub(max, b));
+        <b>let</b> u = <a href="../social_contracts/social_proof_tokens.md#social_contracts_social_proof_tokens_unwrap_u256_opt">unwrap_u256_opt</a>(u256::checked_add(t, 1u256));
+        <b>let</b> low = <a href="../social_contracts/social_proof_tokens.md#social_contracts_social_proof_tokens_unwrap_u256_opt">unwrap_u256_opt</a>(u256::checked_sub(a, u));
+        (low, 1u256)
+    }
+}
+</code></pre>
+
+
+
+</details>
+
+<a name="social_contracts_social_proof_tokens_u256_mul_widen"></a>
+
+## Function `u256_mul_widen`
+
+
+
+<pre><code><b>fun</b> <a href="../social_contracts/social_proof_tokens.md#social_contracts_social_proof_tokens_u256_mul_widen">u256_mul_widen</a>(x: u256, y: u256): (u256, u256)
+</code></pre>
+
+
+
+<details>
+<summary>Implementation</summary>
+
+
+<pre><code><b>fun</b> <a href="../social_contracts/social_proof_tokens.md#social_contracts_social_proof_tokens_u256_mul_widen">u256_mul_widen</a>(x: u256, y: u256): (u256, u256) {
+    <b>let</b> b128 = 1u256 &lt;&lt; 128;
+    <b>let</b> mask = b128 - 1u256;
+    <b>let</b> xl = x & mask;
+    <b>let</b> xh = x &gt;&gt; 128;
+    <b>let</b> yl = y & mask;
+    <b>let</b> yh = y &gt;&gt; 128;
+    <b>let</b> p0 = xl * yl;
+    <b>let</b> p1 = xh * yl;
+    <b>let</b> p2 = xl * yh;
+    <b>let</b> p3 = xh * yh;
+    <b>let</b> p1_lo = p1 & mask;
+    <b>let</b> p1_hi = p1 &gt;&gt; 128;
+    <b>let</b> p2_lo = p2 & mask;
+    <b>let</b> p2_hi = p2 &gt;&gt; 128;
+    <b>let</b> t_lo = p1_lo + p2_lo;
+    <b>let</b> carry_tl = t_lo &gt;&gt; 128;
+    <b>let</b> t_lo_final = t_lo & mask;
+    <b>let</b> t_hi = p1_hi + p2_hi + carry_tl;
+    <b>let</b> shift_part = t_lo_final * b128;
+    <b>let</b> (w0, c0) = <a href="../social_contracts/social_proof_tokens.md#social_contracts_social_proof_tokens_u256_add_with_carry">u256_add_with_carry</a>(p0, shift_part);
+    <b>let</b> (t_sum, c1) = <a href="../social_contracts/social_proof_tokens.md#social_contracts_social_proof_tokens_u256_add_with_carry">u256_add_with_carry</a>(p3, t_hi);
+    <b>let</b> (hi_acc, c2) = <a href="../social_contracts/social_proof_tokens.md#social_contracts_social_proof_tokens_u256_add_with_carry">u256_add_with_carry</a>(t_sum, c0);
+    <b>assert</b>!(c1 == 0u256 && c2 == 0u256, <a href="../social_contracts/social_proof_tokens.md#social_contracts_social_proof_tokens_EOverflow">EOverflow</a>);
+    (hi_acc, w0)
+}
+</code></pre>
+
+
+
+</details>
+
+<a name="social_contracts_social_proof_tokens_u512_bit"></a>
+
+## Function `u512_bit`
+
+
+
+<pre><code><b>fun</b> <a href="../social_contracts/social_proof_tokens.md#social_contracts_social_proof_tokens_u512_bit">u512_bit</a>(n_hi: u256, n_lo: u256, i: u64): bool
+</code></pre>
+
+
+
+<details>
+<summary>Implementation</summary>
+
+
+<pre><code><b>fun</b> <a href="../social_contracts/social_proof_tokens.md#social_contracts_social_proof_tokens_u512_bit">u512_bit</a>(n_hi: u256, n_lo: u256, i: u64): bool {
+    <b>if</b> (i &lt; 256) {
+        ((n_lo &gt;&gt; (i <b>as</b> u8)) & 1u256) != 0u256
+    } <b>else</b> {
+        <b>let</b> j = i - 256;
+        ((n_hi &gt;&gt; (j <b>as</b> u8)) & 1u256) != 0u256
+    }
+}
+</code></pre>
+
+
+
+</details>
+
+<a name="social_contracts_social_proof_tokens_u512_shl1_or_bit"></a>
+
+## Function `u512_shl1_or_bit`
+
+
+
+<pre><code><b>fun</b> <a href="../social_contracts/social_proof_tokens.md#social_contracts_social_proof_tokens_u512_shl1_or_bit">u512_shl1_or_bit</a>(r_hi: u256, r_lo: u256, bit: bool): (u256, u256)
+</code></pre>
+
+
+
+<details>
+<summary>Implementation</summary>
+
+
+<pre><code><b>fun</b> <a href="../social_contracts/social_proof_tokens.md#social_contracts_social_proof_tokens_u512_shl1_or_bit">u512_shl1_or_bit</a>(r_hi: u256, r_lo: u256, bit: bool): (u256, u256) {
+    <b>let</b> carry = r_lo &gt;&gt; 255;
+    <b>let</b> nl_lo = (r_lo &lt;&lt; 1) | (<b>if</b> (bit) { 1u256 } <b>else</b> { 0u256 });
+    <b>let</b> nl_hi = (r_hi &lt;&lt; 1) | carry;
+    (nl_hi, nl_lo)
+}
+</code></pre>
+
+
+
+</details>
+
+<a name="social_contracts_social_proof_tokens_u512_ge_u256"></a>
+
+## Function `u512_ge_u256`
+
+
+
+<pre><code><b>fun</b> <a href="../social_contracts/social_proof_tokens.md#social_contracts_social_proof_tokens_u512_ge_u256">u512_ge_u256</a>(r_hi: u256, r_lo: u256, d: u256): bool
+</code></pre>
+
+
+
+<details>
+<summary>Implementation</summary>
+
+
+<pre><code><b>fun</b> <a href="../social_contracts/social_proof_tokens.md#social_contracts_social_proof_tokens_u512_ge_u256">u512_ge_u256</a>(r_hi: u256, r_lo: u256, d: u256): bool {
+    r_hi &gt; 0u256 || r_lo &gt;= d
+}
+</code></pre>
+
+
+
+</details>
+
+<a name="social_contracts_social_proof_tokens_u512_sub_u256"></a>
+
+## Function `u512_sub_u256`
+
+
+
+<pre><code><b>fun</b> <a href="../social_contracts/social_proof_tokens.md#social_contracts_social_proof_tokens_u512_sub_u256">u512_sub_u256</a>(r_hi: u256, r_lo: u256, d: u256): (u256, u256)
+</code></pre>
+
+
+
+<details>
+<summary>Implementation</summary>
+
+
+<pre><code><b>fun</b> <a href="../social_contracts/social_proof_tokens.md#social_contracts_social_proof_tokens_u512_sub_u256">u512_sub_u256</a>(r_hi: u256, r_lo: u256, d: u256): (u256, u256) {
+    <b>let</b> sub_lo = u256::checked_sub(r_lo, d);
+    <b>if</b> (option::is_some(&sub_lo)) {
+        (r_hi, option::destroy_some(sub_lo))
+    } <b>else</b> {
+        <b>let</b> new_hi = <a href="../social_contracts/social_proof_tokens.md#social_contracts_social_proof_tokens_unwrap_u256_opt">unwrap_u256_opt</a>(u256::checked_sub(r_hi, 1u256));
+        <b>let</b> bump = u256::max_value!() - d + 1u256;
+        <b>let</b> new_lo = <a href="../social_contracts/social_proof_tokens.md#social_contracts_social_proof_tokens_unwrap_u256_opt">unwrap_u256_opt</a>(u256::checked_add(r_lo, bump));
+        (new_hi, new_lo)
+    }
+}
+</code></pre>
+
+
+
+</details>
+
+<a name="social_contracts_social_proof_tokens_u512_div_u256_floor"></a>
+
+## Function `u512_div_u256_floor`
+
+<code>floor((n_hi*2^256 + n_lo) / d)</code> for <code>d &gt; 0</code>.
+
+
+<pre><code><b>fun</b> <a href="../social_contracts/social_proof_tokens.md#social_contracts_social_proof_tokens_u512_div_u256_floor">u512_div_u256_floor</a>(n_hi: u256, n_lo: u256, d: u256): u256
+</code></pre>
+
+
+
+<details>
+<summary>Implementation</summary>
+
+
+<pre><code><b>fun</b> <a href="../social_contracts/social_proof_tokens.md#social_contracts_social_proof_tokens_u512_div_u256_floor">u512_div_u256_floor</a>(n_hi: u256, n_lo: u256, d: u256): u256 {
+    <b>assert</b>!(d &gt; 0u256, <a href="../social_contracts/social_proof_tokens.md#social_contracts_social_proof_tokens_EInvalidCurveParams">EInvalidCurveParams</a>);
+    <b>if</b> (n_hi == 0u256) {
+        <b>return</b> n_lo / d
+    };
+    <b>let</b> <b>mut</b> r_hi = 0u256;
+    <b>let</b> <b>mut</b> r_lo = 0u256;
+    <b>let</b> <b>mut</b> q = 0u256;
+    <b>let</b> <b>mut</b> i = 512u64;
+    <b>while</b> (i &gt; 0) {
+        i = i - 1;
+        <b>let</b> bit = <a href="../social_contracts/social_proof_tokens.md#social_contracts_social_proof_tokens_u512_bit">u512_bit</a>(n_hi, n_lo, i);
+        <b>let</b> (nr_hi, nr_lo) = <a href="../social_contracts/social_proof_tokens.md#social_contracts_social_proof_tokens_u512_shl1_or_bit">u512_shl1_or_bit</a>(r_hi, r_lo, bit);
+        r_hi = nr_hi;
+        r_lo = nr_lo;
+        <b>if</b> (<a href="../social_contracts/social_proof_tokens.md#social_contracts_social_proof_tokens_u512_ge_u256">u512_ge_u256</a>(r_hi, r_lo, d)) {
+            <b>let</b> (sr_hi, sr_lo) = <a href="../social_contracts/social_proof_tokens.md#social_contracts_social_proof_tokens_u512_sub_u256">u512_sub_u256</a>(r_hi, r_lo, d);
+            r_hi = sr_hi;
+            r_lo = sr_lo;
+            <b>let</b> inc = 1u256 &lt;&lt; (i <b>as</b> u8);
+            q = <a href="../social_contracts/social_proof_tokens.md#social_contracts_social_proof_tokens_unwrap_u256_opt">unwrap_u256_opt</a>(u256::checked_add(q, inc));
+        };
+    };
+    q
+}
+</code></pre>
+
+
+
+</details>
+
+<a name="social_contracts_social_proof_tokens_quad_poly_buy"></a>
+
+## Function `quad_poly_buy`
+
+<code>3*s*s + 3*s*a + a*a</code> for buy integral <code>(s+a)^3 - s^3 = a * poly</code>.
+
+
+<pre><code><b>fun</b> <a href="../social_contracts/social_proof_tokens.md#social_contracts_social_proof_tokens_quad_poly_buy">quad_poly_buy</a>(s: u256, a: u256): u256
+</code></pre>
+
+
+
+<details>
+<summary>Implementation</summary>
+
+
+<pre><code><b>fun</b> <a href="../social_contracts/social_proof_tokens.md#social_contracts_social_proof_tokens_quad_poly_buy">quad_poly_buy</a>(s: u256, a: u256): u256 {
+    <b>let</b> s2 = <a href="../social_contracts/social_proof_tokens.md#social_contracts_social_proof_tokens_unwrap_u256_opt">unwrap_u256_opt</a>(u256::checked_mul(s, s));
+    <b>let</b> three_s2 = <a href="../social_contracts/social_proof_tokens.md#social_contracts_social_proof_tokens_unwrap_u256_opt">unwrap_u256_opt</a>(u256::checked_mul(3u256, s2));
+    <b>let</b> sa = <a href="../social_contracts/social_proof_tokens.md#social_contracts_social_proof_tokens_unwrap_u256_opt">unwrap_u256_opt</a>(u256::checked_mul(s, a));
+    <b>let</b> three_sa = <a href="../social_contracts/social_proof_tokens.md#social_contracts_social_proof_tokens_unwrap_u256_opt">unwrap_u256_opt</a>(u256::checked_mul(3u256, sa));
+    <b>let</b> a2 = <a href="../social_contracts/social_proof_tokens.md#social_contracts_social_proof_tokens_unwrap_u256_opt">unwrap_u256_opt</a>(u256::checked_mul(a, a));
+    <b>let</b> t = <a href="../social_contracts/social_proof_tokens.md#social_contracts_social_proof_tokens_unwrap_u256_opt">unwrap_u256_opt</a>(u256::checked_add(three_s2, three_sa));
+    <a href="../social_contracts/social_proof_tokens.md#social_contracts_social_proof_tokens_unwrap_u256_opt">unwrap_u256_opt</a>(u256::checked_add(t, a2))
+}
+</code></pre>
+
+
+
+</details>
+
+<a name="social_contracts_social_proof_tokens_quad_poly_sell"></a>
+
+## Function `quad_poly_sell`
+
+<code>3*s*s - 3*s*a + a*a</code> for sell integral <code>s^3 - (s-a)^3 = a * poly</code>.
+
+
+<pre><code><b>fun</b> <a href="../social_contracts/social_proof_tokens.md#social_contracts_social_proof_tokens_quad_poly_sell">quad_poly_sell</a>(s: u256, a: u256): u256
+</code></pre>
+
+
+
+<details>
+<summary>Implementation</summary>
+
+
+<pre><code><b>fun</b> <a href="../social_contracts/social_proof_tokens.md#social_contracts_social_proof_tokens_quad_poly_sell">quad_poly_sell</a>(s: u256, a: u256): u256 {
+    <b>let</b> s2 = <a href="../social_contracts/social_proof_tokens.md#social_contracts_social_proof_tokens_unwrap_u256_opt">unwrap_u256_opt</a>(u256::checked_mul(s, s));
+    <b>let</b> three_s2 = <a href="../social_contracts/social_proof_tokens.md#social_contracts_social_proof_tokens_unwrap_u256_opt">unwrap_u256_opt</a>(u256::checked_mul(3u256, s2));
+    <b>let</b> sa = <a href="../social_contracts/social_proof_tokens.md#social_contracts_social_proof_tokens_unwrap_u256_opt">unwrap_u256_opt</a>(u256::checked_mul(s, a));
+    <b>let</b> three_sa = <a href="../social_contracts/social_proof_tokens.md#social_contracts_social_proof_tokens_unwrap_u256_opt">unwrap_u256_opt</a>(u256::checked_mul(3u256, sa));
+    <b>let</b> a2 = <a href="../social_contracts/social_proof_tokens.md#social_contracts_social_proof_tokens_unwrap_u256_opt">unwrap_u256_opt</a>(u256::checked_mul(a, a));
+    <b>let</b> t = <a href="../social_contracts/social_proof_tokens.md#social_contracts_social_proof_tokens_unwrap_u256_opt">unwrap_u256_opt</a>(u256::checked_sub(three_s2, three_sa));
+    <a href="../social_contracts/social_proof_tokens.md#social_contracts_social_proof_tokens_unwrap_u256_opt">unwrap_u256_opt</a>(u256::checked_add(t, a2))
+}
+</code></pre>
+
+
+
+</details>
+
+<a name="social_contracts_social_proof_tokens_quad_integral_leg_mist"></a>
+
+## Function `quad_integral_leg_mist`
+
+
+
+<pre><code><b>fun</b> <a href="../social_contracts/social_proof_tokens.md#social_contracts_social_proof_tokens_quad_integral_leg_mist">quad_integral_leg_mist</a>(coeff: u256, s: u256, a: u256, scale: u256, is_buy: bool): u256
+</code></pre>
+
+
+
+<details>
+<summary>Implementation</summary>
+
+
+<pre><code><b>fun</b> <a href="../social_contracts/social_proof_tokens.md#social_contracts_social_proof_tokens_quad_integral_leg_mist">quad_integral_leg_mist</a>(coeff: u256, s: u256, a: u256, scale: u256, is_buy: bool): u256 {
+    <b>let</b> poly = <b>if</b> (is_buy) {
+        <a href="../social_contracts/social_proof_tokens.md#social_contracts_social_proof_tokens_quad_poly_buy">quad_poly_buy</a>(s, a)
+    } <b>else</b> {
+        <a href="../social_contracts/social_proof_tokens.md#social_contracts_social_proof_tokens_quad_poly_sell">quad_poly_sell</a>(s, a)
+    };
+    <b>let</b> ca = <a href="../social_contracts/social_proof_tokens.md#social_contracts_social_proof_tokens_unwrap_u256_opt">unwrap_u256_opt</a>(u256::checked_mul(coeff, a));
+    <b>let</b> (numer_hi, numer_lo) = <a href="../social_contracts/social_proof_tokens.md#social_contracts_social_proof_tokens_u256_mul_widen">u256_mul_widen</a>(ca, poly);
+    <b>let</b> denom = <a href="../social_contracts/social_proof_tokens.md#social_contracts_social_proof_tokens_unwrap_u256_opt">unwrap_u256_opt</a>(u256::checked_mul(
+        30000u256,
+        <a href="../social_contracts/social_proof_tokens.md#social_contracts_social_proof_tokens_unwrap_u256_opt">unwrap_u256_opt</a>(u256::checked_mul(scale, <a href="../social_contracts/social_proof_tokens.md#social_contracts_social_proof_tokens_unwrap_u256_opt">unwrap_u256_opt</a>(u256::checked_mul(scale, scale))))
+    ));
+    <a href="../social_contracts/social_proof_tokens.md#social_contracts_social_proof_tokens_u512_div_u256_floor">u512_div_u256_floor</a>(numer_hi, numer_lo, denom)
+}
+</code></pre>
+
+
+
+</details>
+
+<a name="social_contracts_social_proof_tokens_mist_amount_u256_to_u64"></a>
+
+## Function `mist_amount_u256_to_u64`
+
+MYSO amounts on-chain are <code>u64</code> (smallest units). Abort <code><a href="../social_contracts/social_proof_tokens.md#social_contracts_social_proof_tokens_EOverflow">EOverflow</a></code> if <code>x</code> does not fit.
+
+
+<pre><code><b>fun</b> <a href="../social_contracts/social_proof_tokens.md#social_contracts_social_proof_tokens_mist_amount_u256_to_u64">mist_amount_u256_to_u64</a>(x: u256): u64
+</code></pre>
+
+
+
+<details>
+<summary>Implementation</summary>
+
+
+<pre><code><b>fun</b> <a href="../social_contracts/social_proof_tokens.md#social_contracts_social_proof_tokens_mist_amount_u256_to_u64">mist_amount_u256_to_u64</a>(x: u256): u64 {
+    <b>let</b> o = u256::try_as_u64(x);
+    <b>assert</b>!(option::is_some(&o), <a href="../social_contracts/social_proof_tokens.md#social_contracts_social_proof_tokens_EOverflow">EOverflow</a>);
+    option::destroy_some(o)
+}
+</code></pre>
+
+
+
+</details>
+
 <a name="social_contracts_social_proof_tokens_calculate_token_price"></a>
 
 ## Function `calculate_token_price`
 
-Calculate token price at current supply based on quadratic curve
-Price = base_price + (quadratic_coefficient * supply^2)
+Marginal MYSO price for the next infinitesimal nano-SPT at <code>supply_nano</code> (nano-SPT in pool).
+<code>p(s) = base_price + quadratic_coefficient * (s / <a href="../social_contracts/social_proof_tokens.md#social_contracts_social_proof_tokens_SPT_SCALE">SPT_SCALE</a>)^2 / <a href="../social_contracts/social_proof_tokens.md#social_contracts_social_proof_tokens_BPS_DENOM">BPS_DENOM</a></code> (permyriad).
 
 
-<pre><code><b>public</b> <b>fun</b> <a href="../social_contracts/social_proof_tokens.md#social_contracts_social_proof_tokens_calculate_token_price">calculate_token_price</a>(base_price: u64, quadratic_coefficient: u64, supply: u64): u64
+<pre><code><b>public</b> <b>fun</b> <a href="../social_contracts/social_proof_tokens.md#social_contracts_social_proof_tokens_calculate_token_price">calculate_token_price</a>(base_price: u64, quadratic_coefficient: u64, supply_nano: u64): u64
 </code></pre>
 
 
@@ -5052,17 +5484,20 @@ Price = base_price + (quadratic_coefficient * supply^2)
 <pre><code><b>public</b> <b>fun</b> <a href="../social_contracts/social_proof_tokens.md#social_contracts_social_proof_tokens_calculate_token_price">calculate_token_price</a>(
     base_price: u64,
     quadratic_coefficient: u64,
-    supply: u64
+    supply_nano: u64
 ): u64 {
-    // Overflow protection: check before squaring
-    <b>assert</b>!(supply == 0 || supply &lt;= <a href="../social_contracts/social_proof_tokens.md#social_contracts_social_proof_tokens_MAX_U64">MAX_U64</a> / supply, <a href="../social_contracts/social_proof_tokens.md#social_contracts_social_proof_tokens_EOverflow">EOverflow</a>);
-    <b>let</b> squared_supply = supply * supply;
-    // Overflow protection: check before multiplying by coefficient
-    <b>assert</b>!(squared_supply == 0 || squared_supply &lt;= <a href="../social_contracts/social_proof_tokens.md#social_contracts_social_proof_tokens_MAX_U64">MAX_U64</a> / quadratic_coefficient, <a href="../social_contracts/social_proof_tokens.md#social_contracts_social_proof_tokens_EOverflow">EOverflow</a>);
-    <b>let</b> product = quadratic_coefficient * squared_supply / 10000;
-    // Overflow protection: check before adding base_price
-    <b>assert</b>!(product &lt;= <a href="../social_contracts/social_proof_tokens.md#social_contracts_social_proof_tokens_MAX_U64">MAX_U64</a> - base_price, <a href="../social_contracts/social_proof_tokens.md#social_contracts_social_proof_tokens_EOverflow">EOverflow</a>);
-    base_price + product
+    <b>let</b> base = base_price <b>as</b> u256;
+    <b>let</b> coeff = quadratic_coefficient <b>as</b> u256;
+    <b>let</b> s = supply_nano <b>as</b> u256;
+    <b>let</b> scale = <a href="../social_contracts/social_proof_tokens.md#social_contracts_social_proof_tokens_SPT_SCALE">SPT_SCALE</a> <b>as</b> u256;
+    <b>let</b> scale2 = <a href="../social_contracts/social_proof_tokens.md#social_contracts_social_proof_tokens_unwrap_u256_opt">unwrap_u256_opt</a>(u256::checked_mul(scale, scale));
+    <b>let</b> denom = <a href="../social_contracts/social_proof_tokens.md#social_contracts_social_proof_tokens_unwrap_u256_opt">unwrap_u256_opt</a>(u256::checked_mul(scale2, <a href="../social_contracts/social_proof_tokens.md#social_contracts_social_proof_tokens_BPS_DENOM">BPS_DENOM</a> <b>as</b> u256));
+    <b>assert</b>!(denom &gt; 0u256, <a href="../social_contracts/social_proof_tokens.md#social_contracts_social_proof_tokens_EInvalidCurveParams">EInvalidCurveParams</a>);
+    <b>let</b> s2 = <a href="../social_contracts/social_proof_tokens.md#social_contracts_social_proof_tokens_unwrap_u256_opt">unwrap_u256_opt</a>(u256::checked_mul(s, s));
+    <b>let</b> coeff_s2 = <a href="../social_contracts/social_proof_tokens.md#social_contracts_social_proof_tokens_unwrap_u256_opt">unwrap_u256_opt</a>(u256::checked_mul(coeff, s2));
+    <b>let</b> quad = coeff_s2 / denom;
+    <b>let</b> total = <a href="../social_contracts/social_proof_tokens.md#social_contracts_social_proof_tokens_unwrap_u256_opt">unwrap_u256_opt</a>(u256::checked_add(base, quad));
+    <a href="../social_contracts/social_proof_tokens.md#social_contracts_social_proof_tokens_mist_amount_u256_to_u64">mist_amount_u256_to_u64</a>(total)
 }
 </code></pre>
 
@@ -5074,15 +5509,13 @@ Price = base_price + (quadratic_coefficient * supply^2)
 
 ## Function `calculate_buy_price`
 
-Calculate price to buy a specific amount of tokens using closed-form sum
-Price = base_price + (quadratic_coefficient * supply^2)
-Sum from i=current_supply to current_supply+amount-1 of price(i)
-= amount * base_price + (quadratic_coefficient / 10000) * sum(i^2)
-where sum(i^2) from n to n+k-1 = sum_squares(n+k-1) - sum_squares(n-1)
-Returns (total price, average price per token)
+Total MYSO cost to buy <code>amount_nano</code> nano-SPT when current circulating supply is <code>current_supply_nano</code>.
+Uses the closed-form integral of the marginal quadratic curve over human supply
+(continuous approximation; <code>amount</code> and <code>supply</code> are nano-SPT).
+Returns <code>(total_mysos, avg_mysos_per_nano_unit)</code>.
 
 
-<pre><code><b>public</b> <b>fun</b> <a href="../social_contracts/social_proof_tokens.md#social_contracts_social_proof_tokens_calculate_buy_price">calculate_buy_price</a>(base_price: u64, quadratic_coefficient: u64, current_supply: u64, amount: u64): (u64, u64)
+<pre><code><b>public</b> <b>fun</b> <a href="../social_contracts/social_proof_tokens.md#social_contracts_social_proof_tokens_calculate_buy_price">calculate_buy_price</a>(base_price: u64, quadratic_coefficient: u64, current_supply_nano: u64, amount_nano: u64): (u64, u64)
 </code></pre>
 
 
@@ -5094,72 +5527,24 @@ Returns (total price, average price per token)
 <pre><code><b>public</b> <b>fun</b> <a href="../social_contracts/social_proof_tokens.md#social_contracts_social_proof_tokens_calculate_buy_price">calculate_buy_price</a>(
     base_price: u64,
     quadratic_coefficient: u64,
-    current_supply: u64,
-    amount: u64
+    current_supply_nano: u64,
+    amount_nano: u64
 ): (u64, u64) {
-    <b>if</b> (amount == 0) {
+    <b>if</b> (amount_nano == 0) {
         <b>return</b> (0, 0)
     };
-    // Base price component
-    <b>assert</b>!(amount &lt;= <a href="../social_contracts/social_proof_tokens.md#social_contracts_social_proof_tokens_MAX_U64">MAX_U64</a> / base_price, <a href="../social_contracts/social_proof_tokens.md#social_contracts_social_proof_tokens_EOverflow">EOverflow</a>);
-    <b>let</b> base_component = amount * base_price;
-    // Sum of squares: sum(i^2) from current_supply to current_supply+amount-1
-    <b>let</b> end_supply = current_supply + amount - 1;
-    <b>let</b> start_supply_minus_one = <b>if</b> (current_supply == 0) { 0 } <b>else</b> { current_supply - 1 };
-    // Calculate sum_squares(end_supply) - sum_squares(start_supply_minus_one)
-    <b>let</b> sum_squares_end = <a href="../social_contracts/social_proof_tokens.md#social_contracts_social_proof_tokens_calculate_sum_squares">calculate_sum_squares</a>(end_supply);
-    <b>let</b> sum_squares_start = <a href="../social_contracts/social_proof_tokens.md#social_contracts_social_proof_tokens_calculate_sum_squares">calculate_sum_squares</a>(start_supply_minus_one);
-    // Overflow protection
-    <b>assert</b>!(sum_squares_end &gt;= sum_squares_start, <a href="../social_contracts/social_proof_tokens.md#social_contracts_social_proof_tokens_EOverflow">EOverflow</a>);
-    <b>let</b> sum_squares_range = sum_squares_end - sum_squares_start;
-    // Multiply by coefficient and divide by 10000
-    <b>assert</b>!(sum_squares_range &lt;= <a href="../social_contracts/social_proof_tokens.md#social_contracts_social_proof_tokens_MAX_U64">MAX_U64</a> / quadratic_coefficient, <a href="../social_contracts/social_proof_tokens.md#social_contracts_social_proof_tokens_EOverflow">EOverflow</a>);
-    <b>let</b> quadratic_component = (sum_squares_range * quadratic_coefficient) / 10000;
-    // Total price
-    <b>assert</b>!(base_component &lt;= <a href="../social_contracts/social_proof_tokens.md#social_contracts_social_proof_tokens_MAX_U64">MAX_U64</a> - quadratic_component, <a href="../social_contracts/social_proof_tokens.md#social_contracts_social_proof_tokens_EOverflow">EOverflow</a>);
-    <b>let</b> total_price = base_component + quadratic_component;
-    <b>let</b> avg_price = total_price / amount;
-    (total_price, avg_price)
-}
-</code></pre>
-
-
-
-</details>
-
-<a name="social_contracts_social_proof_tokens_calculate_sum_squares"></a>
-
-## Function `calculate_sum_squares`
-
-Helper: Calculate sum of squares from 1 to n: n(n+1)(2n+1)/6
-
-
-<pre><code><b>fun</b> <a href="../social_contracts/social_proof_tokens.md#social_contracts_social_proof_tokens_calculate_sum_squares">calculate_sum_squares</a>(n: u64): u64
-</code></pre>
-
-
-
-<details>
-<summary>Implementation</summary>
-
-
-<pre><code><b>fun</b> <a href="../social_contracts/social_proof_tokens.md#social_contracts_social_proof_tokens_calculate_sum_squares">calculate_sum_squares</a>(n: u64): u64 {
-    <b>if</b> (n == 0) {
-        <b>return</b> 0
-    };
-    // Early guard: prevent n == <a href="../social_contracts/social_proof_tokens.md#social_contracts_social_proof_tokens_MAX_U64">MAX_U64</a> case where n + 1 overflows
-    <b>assert</b>!(n &lt; <a href="../social_contracts/social_proof_tokens.md#social_contracts_social_proof_tokens_MAX_U64">MAX_U64</a>, <a href="../social_contracts/social_proof_tokens.md#social_contracts_social_proof_tokens_EOverflow">EOverflow</a>);
-    // Overflow protection <b>for</b> intermediate calculations
-    // n * (n+1) can overflow, so check first
-    <b>assert</b>!(n &lt;= <a href="../social_contracts/social_proof_tokens.md#social_contracts_social_proof_tokens_MAX_U64">MAX_U64</a> / (n + 1), <a href="../social_contracts/social_proof_tokens.md#social_contracts_social_proof_tokens_EOverflow">EOverflow</a>);
-    <b>let</b> n_times_n_plus_one = n * (n + 1);
-    // (2n+1) can overflow
-    <b>assert</b>!(n &lt;= (<a href="../social_contracts/social_proof_tokens.md#social_contracts_social_proof_tokens_MAX_U64">MAX_U64</a> - 1) / 2, <a href="../social_contracts/social_proof_tokens.md#social_contracts_social_proof_tokens_EOverflow">EOverflow</a>);
-    <b>let</b> two_n_plus_one = 2 * n + 1;
-    // n(n+1) * (2n+1) can overflow
-    <b>assert</b>!(n_times_n_plus_one &lt;= <a href="../social_contracts/social_proof_tokens.md#social_contracts_social_proof_tokens_MAX_U64">MAX_U64</a> / two_n_plus_one, <a href="../social_contracts/social_proof_tokens.md#social_contracts_social_proof_tokens_EOverflow">EOverflow</a>);
-    <b>let</b> numerator = n_times_n_plus_one * two_n_plus_one;
-    numerator / 6
+    <b>let</b> base = base_price <b>as</b> u256;
+    <b>let</b> coeff = quadratic_coefficient <b>as</b> u256;
+    <b>let</b> s = current_supply_nano <b>as</b> u256;
+    <b>let</b> a = amount_nano <b>as</b> u256;
+    <b>let</b> scale = <a href="../social_contracts/social_proof_tokens.md#social_contracts_social_proof_tokens_SPT_SCALE">SPT_SCALE</a> <b>as</b> u256;
+    <b>let</b> base_prod = <a href="../social_contracts/social_proof_tokens.md#social_contracts_social_proof_tokens_unwrap_u256_opt">unwrap_u256_opt</a>(u256::checked_mul(base, a));
+    <b>let</b> base_part = base_prod / scale;
+    <b>let</b> quad_part = <a href="../social_contracts/social_proof_tokens.md#social_contracts_social_proof_tokens_quad_integral_leg_mist">quad_integral_leg_mist</a>(coeff, s, a, scale, <b>true</b>);
+    <b>let</b> total = <a href="../social_contracts/social_proof_tokens.md#social_contracts_social_proof_tokens_unwrap_u256_opt">unwrap_u256_opt</a>(u256::checked_add(base_part, quad_part));
+    <b>let</b> total_u64 = <a href="../social_contracts/social_proof_tokens.md#social_contracts_social_proof_tokens_mist_amount_u256_to_u64">mist_amount_u256_to_u64</a>(total);
+    <b>let</b> avg_u64 = <a href="../social_contracts/social_proof_tokens.md#social_contracts_social_proof_tokens_mist_amount_u256_to_u64">mist_amount_u256_to_u64</a>(total / a);
+    (total_u64, avg_u64)
 }
 </code></pre>
 
@@ -5171,12 +5556,11 @@ Helper: Calculate sum of squares from 1 to n: n(n+1)(2n+1)/6
 
 ## Function `calculate_sell_price`
 
-Calculate refund amount when selling tokens using closed-form sum
-Selling reduces supply, so we sum from current_supply-amount to current_supply-1
-Returns (total refund, average price per token)
+MYSO refund for selling <code>amount_nano</code> nano-SPT when current circulating supply is <code>current_supply_nano</code>.
+Returns <code>(total_refund_mysos, avg_mysos_per_nano_unit)</code>.
 
 
-<pre><code><b>public</b> <b>fun</b> <a href="../social_contracts/social_proof_tokens.md#social_contracts_social_proof_tokens_calculate_sell_price">calculate_sell_price</a>(base_price: u64, quadratic_coefficient: u64, current_supply: u64, amount: u64): (u64, u64)
+<pre><code><b>public</b> <b>fun</b> <a href="../social_contracts/social_proof_tokens.md#social_contracts_social_proof_tokens_calculate_sell_price">calculate_sell_price</a>(base_price: u64, quadratic_coefficient: u64, current_supply_nano: u64, amount_nano: u64): (u64, u64)
 </code></pre>
 
 
@@ -5188,31 +5572,130 @@ Returns (total refund, average price per token)
 <pre><code><b>public</b> <b>fun</b> <a href="../social_contracts/social_proof_tokens.md#social_contracts_social_proof_tokens_calculate_sell_price">calculate_sell_price</a>(
     base_price: u64,
     quadratic_coefficient: u64,
-    current_supply: u64,
-    amount: u64
+    current_supply_nano: u64,
+    amount_nano: u64
 ): (u64, u64) {
-    <b>if</b> (amount == 0) {
+    <b>if</b> (amount_nano == 0) {
         <b>return</b> (0, 0)
     };
-    // Prevent underflow: ensure we have enough supply to sell
-    <b>assert</b>!(current_supply &gt;= amount, <a href="../social_contracts/social_proof_tokens.md#social_contracts_social_proof_tokens_EInsufficientLiquidity">EInsufficientLiquidity</a>);
-    // Selling reduces supply, so we sum from current_supply-amount to current_supply-1
-    <b>let</b> start_supply = current_supply - amount;
-    <b>let</b> end_supply = current_supply - 1;
-    // Base price component
-    <b>assert</b>!(amount &lt;= <a href="../social_contracts/social_proof_tokens.md#social_contracts_social_proof_tokens_MAX_U64">MAX_U64</a> / base_price, <a href="../social_contracts/social_proof_tokens.md#social_contracts_social_proof_tokens_EOverflow">EOverflow</a>);
-    <b>let</b> base_component = amount * base_price;
-    // Sum of squares from start_supply to end_supply
-    <b>let</b> sum_squares_end = <a href="../social_contracts/social_proof_tokens.md#social_contracts_social_proof_tokens_calculate_sum_squares">calculate_sum_squares</a>(end_supply);
-    <b>let</b> sum_squares_start = <b>if</b> (start_supply == 0) { 0 } <b>else</b> { <a href="../social_contracts/social_proof_tokens.md#social_contracts_social_proof_tokens_calculate_sum_squares">calculate_sum_squares</a>(start_supply - 1) };
-    <b>assert</b>!(sum_squares_end &gt;= sum_squares_start, <a href="../social_contracts/social_proof_tokens.md#social_contracts_social_proof_tokens_EOverflow">EOverflow</a>);
-    <b>let</b> sum_squares_range = sum_squares_end - sum_squares_start;
-    <b>assert</b>!(sum_squares_range &lt;= <a href="../social_contracts/social_proof_tokens.md#social_contracts_social_proof_tokens_MAX_U64">MAX_U64</a> / quadratic_coefficient, <a href="../social_contracts/social_proof_tokens.md#social_contracts_social_proof_tokens_EOverflow">EOverflow</a>);
-    <b>let</b> quadratic_component = (sum_squares_range * quadratic_coefficient) / 10000;
-    <b>assert</b>!(base_component &lt;= <a href="../social_contracts/social_proof_tokens.md#social_contracts_social_proof_tokens_MAX_U64">MAX_U64</a> - quadratic_component, <a href="../social_contracts/social_proof_tokens.md#social_contracts_social_proof_tokens_EOverflow">EOverflow</a>);
-    <b>let</b> total_refund = base_component + quadratic_component;
-    <b>let</b> avg_price = total_refund / amount;
-    (total_refund, avg_price)
+    <b>assert</b>!(current_supply_nano &gt;= amount_nano, <a href="../social_contracts/social_proof_tokens.md#social_contracts_social_proof_tokens_EInsufficientLiquidity">EInsufficientLiquidity</a>);
+    <b>let</b> base = base_price <b>as</b> u256;
+    <b>let</b> coeff = quadratic_coefficient <b>as</b> u256;
+    <b>let</b> s = current_supply_nano <b>as</b> u256;
+    <b>let</b> a = amount_nano <b>as</b> u256;
+    <b>let</b> scale = <a href="../social_contracts/social_proof_tokens.md#social_contracts_social_proof_tokens_SPT_SCALE">SPT_SCALE</a> <b>as</b> u256;
+    <b>let</b> base_prod = <a href="../social_contracts/social_proof_tokens.md#social_contracts_social_proof_tokens_unwrap_u256_opt">unwrap_u256_opt</a>(u256::checked_mul(base, a));
+    <b>let</b> base_part = base_prod / scale;
+    <b>let</b> quad_part = <a href="../social_contracts/social_proof_tokens.md#social_contracts_social_proof_tokens_quad_integral_leg_mist">quad_integral_leg_mist</a>(coeff, s, a, scale, <b>false</b>);
+    <b>let</b> total = <a href="../social_contracts/social_proof_tokens.md#social_contracts_social_proof_tokens_unwrap_u256_opt">unwrap_u256_opt</a>(u256::checked_add(base_part, quad_part));
+    <b>let</b> total_u64 = <a href="../social_contracts/social_proof_tokens.md#social_contracts_social_proof_tokens_mist_amount_u256_to_u64">mist_amount_u256_to_u64</a>(total);
+    <b>let</b> avg_u64 = <a href="../social_contracts/social_proof_tokens.md#social_contracts_social_proof_tokens_mist_amount_u256_to_u64">mist_amount_u256_to_u64</a>(total / a);
+    (total_u64, avg_u64)
+}
+</code></pre>
+
+
+
+</details>
+
+<a name="social_contracts_social_proof_tokens_spt_amount_scale"></a>
+
+## Function `spt_amount_scale`
+
+<code>10^9</code> nano-SPT per 1.0 display token (for clients / indexers).
+
+
+<pre><code><b>public</b> <b>fun</b> <a href="../social_contracts/social_proof_tokens.md#social_contracts_social_proof_tokens_spt_amount_scale">spt_amount_scale</a>(): u64
+</code></pre>
+
+
+
+<details>
+<summary>Implementation</summary>
+
+
+<pre><code><b>public</b> <b>fun</b> <a href="../social_contracts/social_proof_tokens.md#social_contracts_social_proof_tokens_spt_amount_scale">spt_amount_scale</a>(): u64 {
+    <a href="../social_contracts/social_proof_tokens.md#social_contracts_social_proof_tokens_SPT_SCALE">SPT_SCALE</a>
+}
+</code></pre>
+
+
+
+</details>
+
+<a name="social_contracts_social_proof_tokens_spt_amount_decimals"></a>
+
+## Function `spt_amount_decimals`
+
+Display decimals for SPT quantities (matches native MYSO).
+
+
+<pre><code><b>public</b> <b>fun</b> <a href="../social_contracts/social_proof_tokens.md#social_contracts_social_proof_tokens_spt_amount_decimals">spt_amount_decimals</a>(): u8
+</code></pre>
+
+
+
+<details>
+<summary>Implementation</summary>
+
+
+<pre><code><b>public</b> <b>fun</b> <a href="../social_contracts/social_proof_tokens.md#social_contracts_social_proof_tokens_spt_amount_decimals">spt_amount_decimals</a>(): u8 {
+    <a href="../social_contracts/social_proof_tokens.md#social_contracts_social_proof_tokens_SPT_DECIMALS">SPT_DECIMALS</a>
+}
+</code></pre>
+
+
+
+</details>
+
+<a name="social_contracts_social_proof_tokens_nano_spt_from_whole_tokens"></a>
+
+## Function `nano_spt_from_whole_tokens`
+
+Whole display tokens → nano-SPT (<code>whole * <a href="../social_contracts/social_proof_tokens.md#social_contracts_social_proof_tokens_SPT_SCALE">SPT_SCALE</a></code>). Aborts with <code><a href="../social_contracts/social_proof_tokens.md#social_contracts_social_proof_tokens_EOverflow">EOverflow</a></code> if the product does not fit <code>u64</code>.
+
+
+<pre><code><b>public</b> <b>fun</b> <a href="../social_contracts/social_proof_tokens.md#social_contracts_social_proof_tokens_nano_spt_from_whole_tokens">nano_spt_from_whole_tokens</a>(whole: u64): u64
+</code></pre>
+
+
+
+<details>
+<summary>Implementation</summary>
+
+
+<pre><code><b>public</b> <b>fun</b> <a href="../social_contracts/social_proof_tokens.md#social_contracts_social_proof_tokens_nano_spt_from_whole_tokens">nano_spt_from_whole_tokens</a>(whole: u64): u64 {
+    <b>let</b> p = (whole <b>as</b> u128) * (<a href="../social_contracts/social_proof_tokens.md#social_contracts_social_proof_tokens_SPT_SCALE">SPT_SCALE</a> <b>as</b> u128);
+    <b>assert</b>!(p &lt;= <a href="../social_contracts/social_proof_tokens.md#social_contracts_social_proof_tokens_MAX_ONCHAIN_U64_U128">MAX_ONCHAIN_U64_U128</a>, <a href="../social_contracts/social_proof_tokens.md#social_contracts_social_proof_tokens_EOverflow">EOverflow</a>);
+    p <b>as</b> u64
+}
+</code></pre>
+
+
+
+</details>
+
+<a name="social_contracts_social_proof_tokens_nano_spt_from_whole_and_fraction"></a>
+
+## Function `nano_spt_from_whole_and_fraction`
+
+<code>whole</code> display tokens plus <code>fraction_nano</code> nano-SPT remainder (<code>fraction_nano &lt; <a href="../social_contracts/social_proof_tokens.md#social_contracts_social_proof_tokens_SPT_SCALE">SPT_SCALE</a></code>).
+
+
+<pre><code><b>public</b> <b>fun</b> <a href="../social_contracts/social_proof_tokens.md#social_contracts_social_proof_tokens_nano_spt_from_whole_and_fraction">nano_spt_from_whole_and_fraction</a>(whole: u64, fraction_nano: u64): u64
+</code></pre>
+
+
+
+<details>
+<summary>Implementation</summary>
+
+
+<pre><code><b>public</b> <b>fun</b> <a href="../social_contracts/social_proof_tokens.md#social_contracts_social_proof_tokens_nano_spt_from_whole_and_fraction">nano_spt_from_whole_and_fraction</a>(whole: u64, fraction_nano: u64): u64 {
+    <b>assert</b>!(fraction_nano &lt; <a href="../social_contracts/social_proof_tokens.md#social_contracts_social_proof_tokens_SPT_SCALE">SPT_SCALE</a>, <a href="../social_contracts/social_proof_tokens.md#social_contracts_social_proof_tokens_EInvalidCurveParams">EInvalidCurveParams</a>);
+    <b>let</b> w = <a href="../social_contracts/social_proof_tokens.md#social_contracts_social_proof_tokens_nano_spt_from_whole_tokens">nano_spt_from_whole_tokens</a>(whole);
+    <b>assert</b>!(w &lt;= <a href="../social_contracts/social_proof_tokens.md#social_contracts_social_proof_tokens_MAX_U64">MAX_U64</a> - fraction_nano, <a href="../social_contracts/social_proof_tokens.md#social_contracts_social_proof_tokens_EOverflow">EOverflow</a>);
+    w + fraction_nano
 }
 </code></pre>
 
@@ -5240,6 +5723,31 @@ Returns a reference since TokenInfo no longer has copy ability
 <pre><code><b>public</b> <b>fun</b> <a href="../social_contracts/social_proof_tokens.md#social_contracts_social_proof_tokens_get_token_info">get_token_info</a>(registry: &<a href="../social_contracts/social_proof_tokens.md#social_contracts_social_proof_tokens_TokenRegistry">TokenRegistry</a>, id: <b>address</b>): &<a href="../social_contracts/social_proof_tokens.md#social_contracts_social_proof_tokens_TokenInfo">TokenInfo</a> {
     <b>assert</b>!(table::contains(&registry.tokens, id), <a href="../social_contracts/social_proof_tokens.md#social_contracts_social_proof_tokens_ETokenNotFound">ETokenNotFound</a>);
     table::borrow(&registry.tokens, id)
+}
+</code></pre>
+
+
+
+</details>
+
+<a name="social_contracts_social_proof_tokens_token_info_circulating_supply"></a>
+
+## Function `token_info_circulating_supply`
+
+Circulating supply (nano-SPT) from a <code><a href="../social_contracts/social_proof_tokens.md#social_contracts_social_proof_tokens_TokenInfo">TokenInfo</a></code> reference.
+
+
+<pre><code><b>public</b> <b>fun</b> <a href="../social_contracts/social_proof_tokens.md#social_contracts_social_proof_tokens_token_info_circulating_supply">token_info_circulating_supply</a>(info: &<a href="../social_contracts/social_proof_tokens.md#social_contracts_social_proof_tokens_TokenInfo">social_contracts::social_proof_tokens::TokenInfo</a>): u64
+</code></pre>
+
+
+
+<details>
+<summary>Implementation</summary>
+
+
+<pre><code><b>public</b> <b>fun</b> <a href="../social_contracts/social_proof_tokens.md#social_contracts_social_proof_tokens_token_info_circulating_supply">token_info_circulating_supply</a>(info: &<a href="../social_contracts/social_proof_tokens.md#social_contracts_social_proof_tokens_TokenInfo">TokenInfo</a>): u64 {
+    info.circulating_supply
 }
 </code></pre>
 

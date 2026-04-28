@@ -6471,7 +6471,7 @@ type SocialProofToken {
 	platformEarnings: Int
 	poolId: String
 	priceChange24H: Float
-	requiredThreshold: Int!
+	requiredThreshold: BigInt!
 	"""
 	Current reservation holders for this token’s reservation pool.
 	"""
@@ -6481,7 +6481,7 @@ type SocialProofToken {
 	reservationStatus: String!
 	tokenAddress: String
 	tokenType: Int
-	totalReserved: Int!
+	totalReserved: BigInt!
 	volume24H: Int
 }
 
@@ -7016,7 +7016,7 @@ type SptReservationHolding {
 	"""
 	Reserved amount.
 	"""
-	amount: Int!
+	amount: BigInt!
 	"""
 	Profile or post object id this reservation pool is for (subject of the token).
 	"""
@@ -7042,7 +7042,7 @@ type SptReservationHolding {
 	"""
 	Required threshold for the pool.
 	"""
-	requiredThreshold: Int!
+	requiredThreshold: BigInt!
 	"""
 	Epoch timestamp when reserved.
 	"""
@@ -7066,7 +7066,7 @@ type SptReservationHolding {
 	"""
 	Total reserved across all reservers in this pool.
 	"""
-	totalReserved: Int!
+	totalReserved: BigInt!
 	viewerFollowsViewer: Boolean
 	viewerIsFollowing: Boolean
 }
@@ -7087,7 +7087,7 @@ type SptReservationVolumeBucket {
 	"""
 	MYSO volume from reservation deposits (positive `amount` rows) in this bucket.
 	"""
-	depositVolume: Int!
+	depositVolume: BigInt!
 	"""
 	Earliest indexer time in this bucket, Unix epoch seconds (UTC).
 	"""
@@ -7103,7 +7103,7 @@ type SptReservationVolumeBucket {
 	"""
 	MYSO volume from reservation withdrawals (negative `amount` rows) in this bucket.
 	"""
-	withdrawalVolume: Int!
+	withdrawalVolume: BigInt!
 }
 
 enum SptReservationVolumeInterval {

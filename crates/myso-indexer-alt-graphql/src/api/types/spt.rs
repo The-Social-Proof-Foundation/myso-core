@@ -556,8 +556,8 @@ impl SptReservationHolding {
     }
 
     /// Reserved amount.
-    async fn amount(&self) -> i64 {
-        self.inner.amount
+    async fn amount(&self) -> BigInt {
+        BigInt::from(self.inner.amount)
     }
 
     /// Epoch timestamp when reserved.
@@ -639,13 +639,13 @@ impl SptReservationHolding {
     }
 
     /// Total reserved across all reservers in this pool.
-    async fn total_reserved(&self) -> i64 {
-        self.inner.total_reserved
+    async fn total_reserved(&self) -> BigInt {
+        BigInt::from(self.inner.total_reserved)
     }
 
     /// Required threshold for the pool.
-    async fn required_threshold(&self) -> i64 {
-        self.inner.required_threshold
+    async fn required_threshold(&self) -> BigInt {
+        BigInt::from(self.inner.required_threshold)
     }
 }
 
@@ -683,13 +683,13 @@ impl SptReservationVolumeBucket {
     }
 
     /// MYSO volume from reservation deposits (positive `amount` rows) in this bucket.
-    async fn deposit_volume(&self) -> i64 {
-        self.inner.deposit_volume
+    async fn deposit_volume(&self) -> BigInt {
+        BigInt::from(self.inner.deposit_volume)
     }
 
     /// MYSO volume from reservation withdrawals (negative `amount` rows) in this bucket.
-    async fn withdrawal_volume(&self) -> i64 {
-        self.inner.withdrawal_volume
+    async fn withdrawal_volume(&self) -> BigInt {
+        BigInt::from(self.inner.withdrawal_volume)
     }
 
     /// Number of deposit events in the bucket.

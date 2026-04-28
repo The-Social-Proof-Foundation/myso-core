@@ -33,10 +33,10 @@ ALTER COLUMN trading_halted SET DEFAULT false;
 ALTER TABLE spt_exchange_config 
 DROP COLUMN trading_enabled;
 
--- Restore old index
+DROP INDEX IF EXISTS idx_spt_exchange_config_trading_enabled;
 DROP INDEX IF EXISTS idx_token_exchange_config_trading_enabled;
-CREATE INDEX IF NOT EXISTS idx_token_exchange_config_trading_halted 
-ON spt_exchange_config(trading_halted);
+DROP INDEX IF EXISTS idx_token_exchange_config_trading_halted;
+CREATE INDEX IF NOT EXISTS idx_spt_exchange_config_trading_halted ON spt_exchange_config(trading_halted);
 
 -- ============================================================================
 -- 2. REVERT spt_config TABLE

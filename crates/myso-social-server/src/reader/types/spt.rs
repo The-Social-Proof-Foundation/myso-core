@@ -5,7 +5,7 @@ use diesel::sql_types::{BigInt, Bool, Double, Integer, Nullable, SmallInt, Text,
 use diesel::QueryableByName;
 use serde::Serialize;
 
-use crate::json_serde::json_string_i64;
+use crate::json_serde::{json_string_i64, json_string_opt_i64};
 
 #[derive(Debug, Serialize, QueryableByName)]
 pub struct SptPoolRow {
@@ -242,18 +242,24 @@ pub struct SptReservationRow {
     pub pool_id: String,
     #[diesel(sql_type = Text)]
     pub reserver_address: String,
+    /// Nano-MYSO: 10^9 units per display MYSO. Serialised as a JSON string for JS precision safety.
+    #[serde(serialize_with = "json_string_i64::serialize")]
     #[diesel(sql_type = BigInt)]
     pub amount: i64,
     #[diesel(sql_type = BigInt)]
     pub reserved_at: i64,
     #[diesel(sql_type = BigInt)]
     pub created_at: i64,
+    #[serde(serialize_with = "json_string_opt_i64::serialize")]
     #[diesel(sql_type = Nullable<BigInt>)]
     pub fee_amount: Option<i64>,
+    #[serde(serialize_with = "json_string_opt_i64::serialize")]
     #[diesel(sql_type = Nullable<BigInt>)]
     pub creator_fee: Option<i64>,
+    #[serde(serialize_with = "json_string_opt_i64::serialize")]
     #[diesel(sql_type = Nullable<BigInt>)]
     pub platform_fee: Option<i64>,
+    #[serde(serialize_with = "json_string_opt_i64::serialize")]
     #[diesel(sql_type = Nullable<BigInt>)]
     pub treasury_fee: Option<i64>,
     #[diesel(sql_type = Timestamptz)]

@@ -1556,28 +1556,6 @@ diesel::table! {
 }
 
 diesel::table! {
-    token_exchange_config (id) {
-        id -> Int4,
-        trading_halted -> Bool,
-        admin_address -> Text,
-        reason -> Text,
-        timestamp_ms -> Int8,
-        updated_at -> Timestamptz,
-        transaction_id -> Text,
-    }
-}
-
-diesel::table! {
-    token_exchange_events (id) {
-        id -> Int4,
-        event_type -> Text,
-        event_data -> Jsonb,
-        event_id -> Text,
-        created_at -> Timestamptz,
-    }
-}
-
-diesel::table! {
     unified_revenue (revenue_source, time) {
         revenue_source -> Text,
         revenue_type -> Text,
@@ -1779,8 +1757,6 @@ diesel::allow_tables_to_appear_in_same_query!(
     subscription_events,
     subscription_revenue,
     tips,
-    token_exchange_config,
-    token_exchange_events,
     unified_revenue,
     upgrade_events,
     vesting_events,

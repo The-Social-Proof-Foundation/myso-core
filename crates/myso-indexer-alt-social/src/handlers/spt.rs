@@ -1240,4 +1240,48 @@ mod tests {
             "circulating_supply must fit i64 for BIGINT storage"
         );
     }
+
+    #[test]
+    fn token_bought_event_sub_token_nano_amount_preserved_exactly() {
+        // Verifies that a nano-SPT amount that is not a multiple of 10^9 (i.e. a sub-token
+        // quantity) is stored exactly without any rounding or scaling. This guards against
+        // accidental division by SPT_AMOUNT_NANO_SCALE being introduced in the ingest path.
+        const NANO_AMOUNT: i64 = 123_456_789; // 0.123456789 display tokens
+        assert_ne!(
+            NANO_AMOUNT % SPT_AMOUNT_NANO_SCALE,
+            0,
+            "sanity: amount must not be a whole-token multiple"
+        );
+
+        let data = serde_json::json!({
+            "id": "0xpool_nano",
+            "buyer": "0xbuyer",
+            "amount": NANO_AMOUNT as u64,
+            "myso_amount": 1_000u64,
+            "fee_amount": 15u64,
+            "creator_fee": 10u64,
+            "platform_fee": 2u64,
+            "treasury_fee": 3u64,
+            "new_price": 500_000i64,
+        });
+
+        let rows = handle_spt_event("TokenBoughtEvent", &data, "tx_nano:0", 0, 1_700_000_000_000)
+            .expect("TokenBoughtEvent must produce rows for a valid sub-token nano amount");
+
+        let holding = rows
+            .iter()
+            .find_map(|r| {
+                if let SocialEventRow::SptHolding(h) = r {
+                    Some(h)
+                } else {
+                    None
+                }
+            })
+            .expect("SptHolding row must be present");
+
+        assert_eq!(
+            holding.amount, NANO_AMOUNT,
+            "nano-SPT amount must be stored byte-for-byte with no rounding"
+        );
+    }
 }
