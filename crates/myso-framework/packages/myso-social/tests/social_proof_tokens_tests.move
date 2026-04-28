@@ -18,7 +18,14 @@ module social_contracts::token_exchange_tests {
     use myso::myso::MYSO;
     use myso::clock::{Self, Clock};
     
-    use social_contracts::social_proof_tokens::{Self, SocialProofTokensConfig, TokenRegistry, SocialToken, TokenPool};
+    use social_contracts::social_proof_tokens::{
+        Self,
+        SocialProofTokensConfig,
+        TokenRegistry,
+        SocialToken,
+        TokenPool,
+        ReservationPoolObject,
+    };
     use social_contracts::profile::{Self, Profile, UsernameRegistry, EcosystemTreasury};
     use social_contracts::post::{Self, Post};
     use social_contracts::block_list::{Self, BlockListRegistry};
@@ -40,7 +47,14 @@ module social_contracts::token_exchange_tests {
     // Token types from social_proof_tokens module
     const TOKEN_TYPE_PROFILE: u8 = 1;
     const TOKEN_TYPE_POST: u8 = 2;
-    
+
+    /// Matches `setup_test_scenario` reservation fee config (100 + 25 + 25 bps).
+    const RESERVATION_TOTAL_FEE_BPS: u64 = 150;
+    /// Gross under profile per-wallet cap (20% of 10_000 MYSO threshold in `setup_test_scenario`).
+    const WITHDRAW_TEST_GROSS: u64 = 1_000_000_000;
+    /// Post pools cap lower: 20% of 1_000 MYSO `post_threshold` ⇒ 200 MYSO max reserve per wallet.
+    const WITHDRAW_TEST_GROSS_POST: u64 = 100_000_000;
+
     // === Original test functions with improvements ===
     
     #[test]
@@ -724,6 +738,58 @@ module social_contracts::token_exchange_tests {
         
         scenario
     }
+
+    fun fee_on_gross(gross: u64): u64 {
+        (gross * RESERVATION_TOTAL_FEE_BPS) / 10000
+    }
+
+    fun setup_user1_starting_myst_balance(): u64 {
+        1000 * MYSO_SCALING
+    }
+
+    /// Sum all `Coin<MYSO>` owned by the transaction sender (returns coins to inventory).
+    fun sum_sender_myst_coin_value(scenario: &Scenario): u64 {
+        let ids = test_scenario::ids_for_sender<Coin<MYSO>>(scenario);
+        let mut sum = 0u64;
+        let mut i = 0;
+        let len = vector::length(&ids);
+        while (i < len) {
+            let id = *vector::borrow(&ids, i);
+            let c = test_scenario::take_from_sender_by_id<Coin<MYSO>>(scenario, id);
+            sum = sum + coin::value(&c);
+            test_scenario::return_to_sender(scenario, c);
+            i = i + 1;
+        };
+        sum
+    }
+
+    fun init_block_list_for_spt_tests(scenario: &mut Scenario) {
+        test_scenario::next_tx(scenario, ADMIN);
+        {
+            block_list::test_init(test_scenario::ctx(scenario));
+        };
+    }
+
+    fun approve_test_platform(scenario: &mut Scenario) {
+        test_scenario::next_tx(scenario, ADMIN);
+        {
+            let mut platform_obj = test_scenario::take_shared<Platform>(scenario);
+            let mut registry = test_scenario::take_shared<PlatformRegistry>(scenario);
+            let platform_id = object::uid_to_address(platform::id(&platform_obj));
+            platform::test_set_approval(&mut registry, platform_id, true);
+            test_scenario::return_shared(platform_obj);
+            test_scenario::return_shared(registry);
+        };
+    }
+
+    fun join_user_to_test_platform(scenario: &mut Scenario, user: address) {
+        test_scenario::next_tx(scenario, user);
+        {
+            let mut platform_obj = test_scenario::take_shared<Platform>(scenario);
+            platform::test_join_platform(&mut platform_obj, user);
+            test_scenario::return_shared(platform_obj);
+        };
+    }
     
     // Create a profile with sufficient viral metrics for starting an auction
     fun setup_viral_profile(scenario: &mut Scenario): (address, address) {
@@ -1299,45 +1365,1083 @@ module social_contracts::token_exchange_tests {
     }
 
     #[test]
-    fun test_withdraw_reservation_non_platform() {
-        // Test that non-platform version doesn't require platform parameters
+    fun test_withdraw_reservation_profile_non_platform_round_trip() {
         let mut scenario = setup_test_scenario();
-        
-        test_scenario::next_tx(&mut scenario, ADMIN);
+        let gross = WITHDRAW_TEST_GROSS;
+        let fee = fee_on_gross(gross);
+        let expected_final = setup_user1_starting_myst_balance() - fee - fee;
+
+        let _profile_id = {
+            test_scenario::next_tx(&mut scenario, CREATOR);
+            let mut username_registry = test_scenario::take_shared<UsernameRegistry>(&scenario);
+            profile::create_profile(
+                &mut username_registry,
+                string::utf8(b"Wd Prof"),
+                string::utf8(b"wd_prof"),
+                string::utf8(b""),
+                b"",
+                b"",
+                test_scenario::ctx(&mut scenario)
+            );
+            let mut p = profile::lookup_profile_by_owner(&username_registry, CREATOR);
+            let pid = option::extract(&mut p);
+            test_scenario::return_shared(username_registry);
+            pid
+        };
+
+        test_scenario::next_tx(&mut scenario, CREATOR);
         {
-            let registry = test_scenario::take_shared<social_proof_tokens::TokenRegistry>(&scenario);
-            let config = test_scenario::take_shared<social_proof_tokens::SocialProofTokensConfig>(&scenario);
-            
-            // Non-platform version: withdraw_reservation(..., treasury, amount, ctx)
-            // No platform parameters required
-            
+            let mut registry = test_scenario::take_shared<TokenRegistry>(&scenario);
+            let config = test_scenario::take_shared<SocialProofTokensConfig>(&scenario);
+            let profile = test_scenario::take_from_sender<Profile>(&scenario);
+            social_proof_tokens::create_reservation_pool_for_profile(
+                &mut registry,
+                &config,
+                &profile,
+                test_scenario::ctx(&mut scenario)
+            );
             test_scenario::return_shared(registry);
             test_scenario::return_shared(config);
+            test_scenario::return_to_sender(&scenario, profile);
         };
-        
+
+        test_scenario::next_tx(&mut scenario, USER1);
+        {
+            let mut registry = test_scenario::take_shared<TokenRegistry>(&scenario);
+            let config = test_scenario::take_shared<SocialProofTokensConfig>(&scenario);
+            let mut pool = test_scenario::take_shared<ReservationPoolObject>(&scenario);
+            let treasury = test_scenario::take_shared<EcosystemTreasury>(&scenario);
+            let mut coin = test_scenario::take_from_sender<Coin<MYSO>>(&scenario);
+            let pay = coin::split(&mut coin, gross + fee, test_scenario::ctx(&mut scenario));
+            social_proof_tokens::reserve_towards_profile(
+                &mut registry,
+                &config,
+                &mut pool,
+                &treasury,
+                pay,
+                gross,
+                test_scenario::ctx(&mut scenario)
+            );
+            assert!(social_proof_tokens::reservation_pool_total_reserved_for_testing(&pool) == gross, 0);
+            assert!(social_proof_tokens::reservation_pool_myso_balance_value_for_testing(&pool) == gross, 1);
+            test_scenario::return_shared(registry);
+            test_scenario::return_shared(config);
+            test_scenario::return_shared(pool);
+            test_scenario::return_shared(treasury);
+            test_scenario::return_to_sender(&scenario, coin);
+        };
+
+        test_scenario::next_tx(&mut scenario, USER1);
+        {
+            let mut registry = test_scenario::take_shared<TokenRegistry>(&scenario);
+            let config = test_scenario::take_shared<SocialProofTokensConfig>(&scenario);
+            let mut pool = test_scenario::take_shared<ReservationPoolObject>(&scenario);
+            let treasury = test_scenario::take_shared<EcosystemTreasury>(&scenario);
+            social_proof_tokens::withdraw_reservation_for_profile(
+                &mut registry,
+                &config,
+                &mut pool,
+                &treasury,
+                gross,
+                test_scenario::ctx(&mut scenario)
+            );
+            assert!(social_proof_tokens::reservation_pool_total_reserved_for_testing(&pool) == 0, 2);
+            assert!(social_proof_tokens::reservation_pool_myso_balance_value_for_testing(&pool) == 0, 3);
+            test_scenario::return_shared(registry);
+            test_scenario::return_shared(config);
+            test_scenario::return_shared(pool);
+            test_scenario::return_shared(treasury);
+        };
+
+        test_scenario::next_tx(&mut scenario, USER1);
+        {
+            assert!(sum_sender_myst_coin_value(&scenario) == expected_final, 4);
+        };
+
         test_scenario::end(scenario);
     }
 
     #[test]
-    fun test_withdraw_reservation_with_platform() {
-        // Test that platform version requires platform parameters
+    fun test_withdraw_reservation_post_non_platform_round_trip() {
         let mut scenario = setup_test_scenario();
-        
-        test_scenario::next_tx(&mut scenario, ADMIN);
+        let gross = WITHDRAW_TEST_GROSS_POST;
+        let fee = fee_on_gross(gross);
+        let expected_final = setup_user1_starting_myst_balance() - fee - fee;
+
+        let profile_id = {
+            test_scenario::next_tx(&mut scenario, CREATOR);
+            let mut username_registry = test_scenario::take_shared<UsernameRegistry>(&scenario);
+            profile::create_profile(
+                &mut username_registry,
+                string::utf8(b"Wd Post Prof"),
+                string::utf8(b"wd_post_prof"),
+                string::utf8(b""),
+                b"",
+                b"",
+                test_scenario::ctx(&mut scenario)
+            );
+            let mut p = profile::lookup_profile_by_owner(&username_registry, CREATOR);
+            let pid = option::extract(&mut p);
+            test_scenario::return_shared(username_registry);
+            pid
+        };
+
+        let platform_id = {
+            test_scenario::next_tx(&mut scenario, ADMIN);
+            let registry = test_scenario::take_shared<PlatformRegistry>(&scenario);
+            let mut opt = platform::get_platform_by_name(&registry, string::utf8(b"Test Platform"));
+            let pid = option::extract(&mut opt);
+            test_scenario::return_shared(registry);
+            pid
+        };
+
+        let post_id = {
+            test_scenario::next_tx(&mut scenario, CREATOR);
+            post::test_create_post(
+                CREATOR,
+                profile_id,
+                platform_id,
+                string::utf8(b"reserve withdraw post"),
+                test_scenario::ctx(&mut scenario)
+            )
+        };
+
+        test_scenario::next_tx(&mut scenario, CREATOR);
         {
-            let registry = test_scenario::take_shared<social_proof_tokens::TokenRegistry>(&scenario);
-            let config = test_scenario::take_shared<social_proof_tokens::SocialProofTokensConfig>(&scenario);
-            let platform_registry = test_scenario::take_shared<platform::PlatformRegistry>(&scenario);
-            
-            // Platform version: withdraw_reservation_with_platform(..., platform, amount, ctx)
-            let platform_id_option = platform::get_platform_by_name(&platform_registry, string::utf8(b"Test Platform"));
-            assert!(option::is_some(&platform_id_option), 0);
-            
+            let mut registry = test_scenario::take_shared<TokenRegistry>(&scenario);
+            let config = test_scenario::take_shared<SocialProofTokensConfig>(&scenario);
+            let post_obj = test_scenario::take_shared<Post>(&scenario);
+            assert!(post::get_id_address(&post_obj) == post_id, 0);
+            social_proof_tokens::create_reservation_pool_for_post(
+                &mut registry,
+                &config,
+                &post_obj,
+                test_scenario::ctx(&mut scenario)
+            );
             test_scenario::return_shared(registry);
             test_scenario::return_shared(config);
-            test_scenario::return_shared(platform_registry);
+            test_scenario::return_shared(post_obj);
         };
-        
+
+        test_scenario::next_tx(&mut scenario, USER1);
+        {
+            let mut registry = test_scenario::take_shared<TokenRegistry>(&scenario);
+            let config = test_scenario::take_shared<SocialProofTokensConfig>(&scenario);
+            let mut pool = test_scenario::take_shared<ReservationPoolObject>(&scenario);
+            let treasury = test_scenario::take_shared<EcosystemTreasury>(&scenario);
+            let post_obj = test_scenario::take_shared<Post>(&scenario);
+            let mut coin = test_scenario::take_from_sender<Coin<MYSO>>(&scenario);
+            let pay = coin::split(&mut coin, gross + fee, test_scenario::ctx(&mut scenario));
+            social_proof_tokens::reserve_towards_post(
+                &mut registry,
+                &config,
+                &mut pool,
+                &treasury,
+                &post_obj,
+                pay,
+                gross,
+                test_scenario::ctx(&mut scenario)
+            );
+            assert!(social_proof_tokens::reservation_pool_total_reserved_for_testing(&pool) == gross, 10);
+            test_scenario::return_shared(registry);
+            test_scenario::return_shared(config);
+            test_scenario::return_shared(pool);
+            test_scenario::return_shared(treasury);
+            test_scenario::return_shared(post_obj);
+            test_scenario::return_to_sender(&scenario, coin);
+        };
+
+        test_scenario::next_tx(&mut scenario, USER1);
+        {
+            let mut registry = test_scenario::take_shared<TokenRegistry>(&scenario);
+            let config = test_scenario::take_shared<SocialProofTokensConfig>(&scenario);
+            let mut pool = test_scenario::take_shared<ReservationPoolObject>(&scenario);
+            let treasury = test_scenario::take_shared<EcosystemTreasury>(&scenario);
+            let post_obj = test_scenario::take_shared<Post>(&scenario);
+            social_proof_tokens::withdraw_reservation_for_post(
+                &mut registry,
+                &config,
+                &mut pool,
+                &treasury,
+                &post_obj,
+                gross,
+                test_scenario::ctx(&mut scenario)
+            );
+            assert!(social_proof_tokens::reservation_pool_total_reserved_for_testing(&pool) == 0, 11);
+            test_scenario::return_shared(registry);
+            test_scenario::return_shared(config);
+            test_scenario::return_shared(pool);
+            test_scenario::return_shared(treasury);
+            test_scenario::return_shared(post_obj);
+        };
+
+        test_scenario::next_tx(&mut scenario, USER1);
+        {
+            assert!(sum_sender_myst_coin_value(&scenario) == expected_final, 12);
+        };
+
+        test_scenario::end(scenario);
+    }
+
+    #[test]
+    fun test_withdraw_reservation_partial_withdraw_applies_fees_each_leg() {
+        let mut scenario = setup_test_scenario();
+        let gross = WITHDRAW_TEST_GROSS;
+        let double_gross = 2 * gross;
+        let fee_double = fee_on_gross(double_gross);
+        let fee_single = fee_on_gross(gross);
+
+        let _profile_id = {
+            test_scenario::next_tx(&mut scenario, CREATOR);
+            let mut username_registry = test_scenario::take_shared<UsernameRegistry>(&scenario);
+            profile::create_profile(
+                &mut username_registry,
+                string::utf8(b"Partial Wd"),
+                string::utf8(b"partial_wd"),
+                string::utf8(b""),
+                b"",
+                b"",
+                test_scenario::ctx(&mut scenario)
+            );
+            let mut p = profile::lookup_profile_by_owner(&username_registry, CREATOR);
+            let pid = option::extract(&mut p);
+            test_scenario::return_shared(username_registry);
+            pid
+        };
+
+        test_scenario::next_tx(&mut scenario, CREATOR);
+        {
+            let mut registry = test_scenario::take_shared<TokenRegistry>(&scenario);
+            let config = test_scenario::take_shared<SocialProofTokensConfig>(&scenario);
+            let profile = test_scenario::take_from_sender<Profile>(&scenario);
+            social_proof_tokens::create_reservation_pool_for_profile(
+                &mut registry,
+                &config,
+                &profile,
+                test_scenario::ctx(&mut scenario)
+            );
+            test_scenario::return_shared(registry);
+            test_scenario::return_shared(config);
+            test_scenario::return_to_sender(&scenario, profile);
+        };
+
+        test_scenario::next_tx(&mut scenario, USER1);
+        {
+            let mut registry = test_scenario::take_shared<TokenRegistry>(&scenario);
+            let config = test_scenario::take_shared<SocialProofTokensConfig>(&scenario);
+            let mut pool = test_scenario::take_shared<ReservationPoolObject>(&scenario);
+            let treasury = test_scenario::take_shared<EcosystemTreasury>(&scenario);
+            let mut coin = test_scenario::take_from_sender<Coin<MYSO>>(&scenario);
+            let pay = coin::split(&mut coin, double_gross + fee_double, test_scenario::ctx(&mut scenario));
+            social_proof_tokens::reserve_towards_profile(
+                &mut registry,
+                &config,
+                &mut pool,
+                &treasury,
+                pay,
+                double_gross,
+                test_scenario::ctx(&mut scenario)
+            );
+            assert!(social_proof_tokens::reservation_pool_total_reserved_for_testing(&pool) == double_gross, 20);
+            test_scenario::return_shared(registry);
+            test_scenario::return_shared(config);
+            test_scenario::return_shared(pool);
+            test_scenario::return_shared(treasury);
+            test_scenario::return_to_sender(&scenario, coin);
+        };
+
+        test_scenario::next_tx(&mut scenario, USER1);
+        {
+            let mut registry = test_scenario::take_shared<TokenRegistry>(&scenario);
+            let config = test_scenario::take_shared<SocialProofTokensConfig>(&scenario);
+            let mut pool = test_scenario::take_shared<ReservationPoolObject>(&scenario);
+            let treasury = test_scenario::take_shared<EcosystemTreasury>(&scenario);
+            social_proof_tokens::withdraw_reservation_for_profile(
+                &mut registry,
+                &config,
+                &mut pool,
+                &treasury,
+                gross,
+                test_scenario::ctx(&mut scenario)
+            );
+            assert!(social_proof_tokens::reservation_pool_total_reserved_for_testing(&pool) == gross, 21);
+            assert!(social_proof_tokens::reservation_pool_myso_balance_value_for_testing(&pool) == gross, 22);
+            test_scenario::return_shared(registry);
+            test_scenario::return_shared(config);
+            test_scenario::return_shared(pool);
+            test_scenario::return_shared(treasury);
+        };
+
+        test_scenario::next_tx(&mut scenario, USER1);
+        {
+            let mut registry = test_scenario::take_shared<TokenRegistry>(&scenario);
+            let config = test_scenario::take_shared<SocialProofTokensConfig>(&scenario);
+            let mut pool = test_scenario::take_shared<ReservationPoolObject>(&scenario);
+            let treasury = test_scenario::take_shared<EcosystemTreasury>(&scenario);
+            social_proof_tokens::withdraw_reservation_for_profile(
+                &mut registry,
+                &config,
+                &mut pool,
+                &treasury,
+                gross,
+                test_scenario::ctx(&mut scenario)
+            );
+            assert!(social_proof_tokens::reservation_pool_total_reserved_for_testing(&pool) == 0, 23);
+            assert!(social_proof_tokens::reservation_pool_myso_balance_value_for_testing(&pool) == 0, 24);
+            test_scenario::return_shared(registry);
+            test_scenario::return_shared(config);
+            test_scenario::return_shared(pool);
+            test_scenario::return_shared(treasury);
+        };
+
+        let expected_final =
+            setup_user1_starting_myst_balance() - fee_double - fee_single - fee_single;
+        test_scenario::next_tx(&mut scenario, USER1);
+        {
+            assert!(sum_sender_myst_coin_value(&scenario) == expected_final, 25);
+        };
+
+        test_scenario::end(scenario);
+    }
+
+    #[test]
+    #[expected_failure(abort_code = social_proof_tokens::EInvalidID)]
+    fun test_withdraw_reservation_wrong_post_aborts() {
+        let mut scenario = setup_test_scenario();
+        let gross = WITHDRAW_TEST_GROSS_POST;
+        let fee = fee_on_gross(gross);
+
+        let profile_id = {
+            test_scenario::next_tx(&mut scenario, CREATOR);
+            let mut username_registry = test_scenario::take_shared<UsernameRegistry>(&scenario);
+            profile::create_profile(
+                &mut username_registry,
+                string::utf8(b"Two Post Prof"),
+                string::utf8(b"two_post"),
+                string::utf8(b""),
+                b"",
+                b"",
+                test_scenario::ctx(&mut scenario)
+            );
+            let mut p = profile::lookup_profile_by_owner(&username_registry, CREATOR);
+            let pid = option::extract(&mut p);
+            test_scenario::return_shared(username_registry);
+            pid
+        };
+
+        let platform_id = {
+            test_scenario::next_tx(&mut scenario, ADMIN);
+            let registry = test_scenario::take_shared<PlatformRegistry>(&scenario);
+            let mut opt = platform::get_platform_by_name(&registry, string::utf8(b"Test Platform"));
+            let pid = option::extract(&mut opt);
+            test_scenario::return_shared(registry);
+            pid
+        };
+
+        let _post_id_a = {
+            test_scenario::next_tx(&mut scenario, CREATOR);
+            post::test_create_post(
+                CREATOR,
+                profile_id,
+                platform_id,
+                string::utf8(b"post A"),
+                test_scenario::ctx(&mut scenario)
+            )
+        };
+
+        let _post_id_b = {
+            test_scenario::next_tx(&mut scenario, CREATOR);
+            post::test_create_post(
+                CREATOR,
+                profile_id,
+                platform_id,
+                string::utf8(b"post B"),
+                test_scenario::ctx(&mut scenario)
+            )
+        };
+
+        test_scenario::next_tx(&mut scenario, CREATOR);
+        {
+            let mut registry = test_scenario::take_shared<TokenRegistry>(&scenario);
+            let config = test_scenario::take_shared<SocialProofTokensConfig>(&scenario);
+            let post_a =
+                test_scenario::take_shared_by_id<Post>(&scenario, object::id_from_address(_post_id_a));
+            social_proof_tokens::create_reservation_pool_for_post(
+                &mut registry,
+                &config,
+                &post_a,
+                test_scenario::ctx(&mut scenario)
+            );
+            test_scenario::return_shared(registry);
+            test_scenario::return_shared(config);
+            test_scenario::return_shared(post_a);
+        };
+
+        test_scenario::next_tx(&mut scenario, USER1);
+        {
+            let mut registry = test_scenario::take_shared<TokenRegistry>(&scenario);
+            let config = test_scenario::take_shared<SocialProofTokensConfig>(&scenario);
+            let mut pool = test_scenario::take_shared<ReservationPoolObject>(&scenario);
+            let treasury = test_scenario::take_shared<EcosystemTreasury>(&scenario);
+            let post_a =
+                test_scenario::take_shared_by_id<Post>(&scenario, object::id_from_address(_post_id_a));
+            let mut coin = test_scenario::take_from_sender<Coin<MYSO>>(&scenario);
+            let pay = coin::split(&mut coin, gross + fee, test_scenario::ctx(&mut scenario));
+            social_proof_tokens::reserve_towards_post(
+                &mut registry,
+                &config,
+                &mut pool,
+                &treasury,
+                &post_a,
+                pay,
+                gross,
+                test_scenario::ctx(&mut scenario)
+            );
+            test_scenario::return_shared(registry);
+            test_scenario::return_shared(config);
+            test_scenario::return_shared(pool);
+            test_scenario::return_shared(treasury);
+            test_scenario::return_shared(post_a);
+            test_scenario::return_to_sender(&scenario, coin);
+        };
+
+        test_scenario::next_tx(&mut scenario, USER1);
+        {
+            let mut registry = test_scenario::take_shared<TokenRegistry>(&scenario);
+            let config = test_scenario::take_shared<SocialProofTokensConfig>(&scenario);
+            let mut pool = test_scenario::take_shared<ReservationPoolObject>(&scenario);
+            let treasury = test_scenario::take_shared<EcosystemTreasury>(&scenario);
+            let post_b =
+                test_scenario::take_shared_by_id<Post>(&scenario, object::id_from_address(_post_id_b));
+            social_proof_tokens::withdraw_reservation_for_post(
+                &mut registry,
+                &config,
+                &mut pool,
+                &treasury,
+                &post_b,
+                gross,
+                test_scenario::ctx(&mut scenario)
+            );
+            test_scenario::return_shared(registry);
+            test_scenario::return_shared(config);
+            test_scenario::return_shared(pool);
+            test_scenario::return_shared(treasury);
+            test_scenario::return_shared(post_b);
+        };
+
+        test_scenario::end(scenario);
+    }
+
+    #[test]
+    #[expected_failure(abort_code = social_proof_tokens::EInvalidTokenType)]
+    fun test_withdraw_reservation_profile_pool_post_fn_aborts() {
+        let mut scenario = setup_test_scenario();
+        let gross = WITHDRAW_TEST_GROSS;
+        let fee = fee_on_gross(gross);
+
+        let profile_id = {
+            test_scenario::next_tx(&mut scenario, CREATOR);
+            let mut username_registry = test_scenario::take_shared<UsernameRegistry>(&scenario);
+            profile::create_profile(
+                &mut username_registry,
+                string::utf8(b"Prof only"),
+                string::utf8(b"prof_only"),
+                string::utf8(b""),
+                b"",
+                b"",
+                test_scenario::ctx(&mut scenario)
+            );
+            let mut p = profile::lookup_profile_by_owner(&username_registry, CREATOR);
+            let pid = option::extract(&mut p);
+            test_scenario::return_shared(username_registry);
+            pid
+        };
+
+        let platform_id = {
+            test_scenario::next_tx(&mut scenario, ADMIN);
+            let registry = test_scenario::take_shared<PlatformRegistry>(&scenario);
+            let mut opt = platform::get_platform_by_name(&registry, string::utf8(b"Test Platform"));
+            let pid = option::extract(&mut opt);
+            test_scenario::return_shared(registry);
+            pid
+        };
+
+        test_scenario::next_tx(&mut scenario, CREATOR);
+        {
+            let mut registry = test_scenario::take_shared<TokenRegistry>(&scenario);
+            let config = test_scenario::take_shared<SocialProofTokensConfig>(&scenario);
+            let profile = test_scenario::take_from_sender<Profile>(&scenario);
+            social_proof_tokens::create_reservation_pool_for_profile(
+                &mut registry,
+                &config,
+                &profile,
+                test_scenario::ctx(&mut scenario)
+            );
+            test_scenario::return_shared(registry);
+            test_scenario::return_shared(config);
+            test_scenario::return_to_sender(&scenario, profile);
+        };
+
+        let _orphan_post = {
+            test_scenario::next_tx(&mut scenario, CREATOR);
+            post::test_create_post(
+                CREATOR,
+                profile_id,
+                platform_id,
+                string::utf8(b"orphan"),
+                test_scenario::ctx(&mut scenario)
+            )
+        };
+
+        test_scenario::next_tx(&mut scenario, USER1);
+        {
+            let mut registry = test_scenario::take_shared<TokenRegistry>(&scenario);
+            let config = test_scenario::take_shared<SocialProofTokensConfig>(&scenario);
+            let mut pool = test_scenario::take_shared<ReservationPoolObject>(&scenario);
+            let treasury = test_scenario::take_shared<EcosystemTreasury>(&scenario);
+            let post_obj = test_scenario::take_shared<Post>(&scenario);
+            let mut coin = test_scenario::take_from_sender<Coin<MYSO>>(&scenario);
+            let pay = coin::split(&mut coin, gross + fee, test_scenario::ctx(&mut scenario));
+            social_proof_tokens::reserve_towards_profile(
+                &mut registry,
+                &config,
+                &mut pool,
+                &treasury,
+                pay,
+                gross,
+                test_scenario::ctx(&mut scenario)
+            );
+            test_scenario::return_shared(registry);
+            test_scenario::return_shared(config);
+            test_scenario::return_shared(pool);
+            test_scenario::return_shared(treasury);
+            test_scenario::return_shared(post_obj);
+            test_scenario::return_to_sender(&scenario, coin);
+        };
+
+        test_scenario::next_tx(&mut scenario, USER1);
+        {
+            let mut registry = test_scenario::take_shared<TokenRegistry>(&scenario);
+            let config = test_scenario::take_shared<SocialProofTokensConfig>(&scenario);
+            let mut pool = test_scenario::take_shared<ReservationPoolObject>(&scenario);
+            let treasury = test_scenario::take_shared<EcosystemTreasury>(&scenario);
+            let post_obj = test_scenario::take_shared<Post>(&scenario);
+            social_proof_tokens::withdraw_reservation_for_post(
+                &mut registry,
+                &config,
+                &mut pool,
+                &treasury,
+                &post_obj,
+                gross,
+                test_scenario::ctx(&mut scenario)
+            );
+            test_scenario::return_shared(registry);
+            test_scenario::return_shared(config);
+            test_scenario::return_shared(pool);
+            test_scenario::return_shared(treasury);
+            test_scenario::return_shared(post_obj);
+        };
+
+        test_scenario::end(scenario);
+    }
+
+    #[test]
+    #[expected_failure(abort_code = social_proof_tokens::EInvalidTokenType)]
+    fun test_withdraw_reservation_post_pool_profile_fn_aborts() {
+        let mut scenario = setup_test_scenario();
+        let gross = WITHDRAW_TEST_GROSS_POST;
+        let fee = fee_on_gross(gross);
+
+        let profile_id = {
+            test_scenario::next_tx(&mut scenario, CREATOR);
+            let mut username_registry = test_scenario::take_shared<UsernameRegistry>(&scenario);
+            profile::create_profile(
+                &mut username_registry,
+                string::utf8(b"Post pool"),
+                string::utf8(b"post_pool"),
+                string::utf8(b""),
+                b"",
+                b"",
+                test_scenario::ctx(&mut scenario)
+            );
+            let mut p = profile::lookup_profile_by_owner(&username_registry, CREATOR);
+            let pid = option::extract(&mut p);
+            test_scenario::return_shared(username_registry);
+            pid
+        };
+
+        let platform_id = {
+            test_scenario::next_tx(&mut scenario, ADMIN);
+            let registry = test_scenario::take_shared<PlatformRegistry>(&scenario);
+            let mut opt = platform::get_platform_by_name(&registry, string::utf8(b"Test Platform"));
+            let pid = option::extract(&mut opt);
+            test_scenario::return_shared(registry);
+            pid
+        };
+
+        let post_id_only = {
+            test_scenario::next_tx(&mut scenario, CREATOR);
+            post::test_create_post(
+                CREATOR,
+                profile_id,
+                platform_id,
+                string::utf8(b"post only pool"),
+                test_scenario::ctx(&mut scenario)
+            )
+        };
+
+        test_scenario::next_tx(&mut scenario, CREATOR);
+        {
+            let mut registry = test_scenario::take_shared<TokenRegistry>(&scenario);
+            let config = test_scenario::take_shared<SocialProofTokensConfig>(&scenario);
+            let post_obj =
+                test_scenario::take_shared_by_id<Post>(&scenario, object::id_from_address(post_id_only));
+            social_proof_tokens::create_reservation_pool_for_post(
+                &mut registry,
+                &config,
+                &post_obj,
+                test_scenario::ctx(&mut scenario)
+            );
+            test_scenario::return_shared(registry);
+            test_scenario::return_shared(config);
+            test_scenario::return_shared(post_obj);
+        };
+
+        test_scenario::next_tx(&mut scenario, USER1);
+        {
+            let mut registry = test_scenario::take_shared<TokenRegistry>(&scenario);
+            let config = test_scenario::take_shared<SocialProofTokensConfig>(&scenario);
+            let mut pool = test_scenario::take_shared<ReservationPoolObject>(&scenario);
+            let treasury = test_scenario::take_shared<EcosystemTreasury>(&scenario);
+            let post_obj =
+                test_scenario::take_shared_by_id<Post>(&scenario, object::id_from_address(post_id_only));
+            let mut coin = test_scenario::take_from_sender<Coin<MYSO>>(&scenario);
+            let pay = coin::split(&mut coin, gross + fee, test_scenario::ctx(&mut scenario));
+            social_proof_tokens::reserve_towards_post(
+                &mut registry,
+                &config,
+                &mut pool,
+                &treasury,
+                &post_obj,
+                pay,
+                gross,
+                test_scenario::ctx(&mut scenario)
+            );
+            test_scenario::return_shared(registry);
+            test_scenario::return_shared(config);
+            test_scenario::return_shared(pool);
+            test_scenario::return_shared(treasury);
+            test_scenario::return_shared(post_obj);
+            test_scenario::return_to_sender(&scenario, coin);
+        };
+
+        test_scenario::next_tx(&mut scenario, USER1);
+        {
+            let mut registry = test_scenario::take_shared<TokenRegistry>(&scenario);
+            let config = test_scenario::take_shared<SocialProofTokensConfig>(&scenario);
+            let mut pool = test_scenario::take_shared<ReservationPoolObject>(&scenario);
+            let treasury = test_scenario::take_shared<EcosystemTreasury>(&scenario);
+            social_proof_tokens::withdraw_reservation_for_profile(
+                &mut registry,
+                &config,
+                &mut pool,
+                &treasury,
+                gross,
+                test_scenario::ctx(&mut scenario)
+            );
+            test_scenario::return_shared(registry);
+            test_scenario::return_shared(config);
+            test_scenario::return_shared(pool);
+            test_scenario::return_shared(treasury);
+        };
+
+        test_scenario::end(scenario);
+    }
+
+    #[test]
+    fun test_withdraw_reservation_profile_platform_round_trip() {
+        let mut scenario = setup_test_scenario();
+        init_block_list_for_spt_tests(&mut scenario);
+        approve_test_platform(&mut scenario);
+
+        let gross = WITHDRAW_TEST_GROSS;
+        let fee = fee_on_gross(gross);
+        let expected_final = setup_user1_starting_myst_balance() - fee - fee;
+
+        let _profile_id = {
+            test_scenario::next_tx(&mut scenario, CREATOR);
+            let mut username_registry = test_scenario::take_shared<UsernameRegistry>(&scenario);
+            profile::create_profile(
+                &mut username_registry,
+                string::utf8(b"Plat Wd Prof"),
+                string::utf8(b"plat_wd_prof"),
+                string::utf8(b""),
+                b"",
+                b"",
+                test_scenario::ctx(&mut scenario)
+            );
+            let mut p = profile::lookup_profile_by_owner(&username_registry, CREATOR);
+            let pid = option::extract(&mut p);
+            test_scenario::return_shared(username_registry);
+            pid
+        };
+
+        test_scenario::next_tx(&mut scenario, CREATOR);
+        {
+            let mut registry = test_scenario::take_shared<TokenRegistry>(&scenario);
+            let config = test_scenario::take_shared<SocialProofTokensConfig>(&scenario);
+            let profile = test_scenario::take_from_sender<Profile>(&scenario);
+            social_proof_tokens::create_reservation_pool_for_profile(
+                &mut registry,
+                &config,
+                &profile,
+                test_scenario::ctx(&mut scenario)
+            );
+            test_scenario::return_shared(registry);
+            test_scenario::return_shared(config);
+            test_scenario::return_to_sender(&scenario, profile);
+        };
+
+        join_user_to_test_platform(&mut scenario, USER1);
+
+        test_scenario::next_tx(&mut scenario, USER1);
+        {
+            let mut registry = test_scenario::take_shared<TokenRegistry>(&scenario);
+            let config = test_scenario::take_shared<SocialProofTokensConfig>(&scenario);
+            let mut pool = test_scenario::take_shared<ReservationPoolObject>(&scenario);
+            let treasury = test_scenario::take_shared<EcosystemTreasury>(&scenario);
+            let platform_registry = test_scenario::take_shared<PlatformRegistry>(&scenario);
+            let mut platform_obj = test_scenario::take_shared<Platform>(&scenario);
+            let block_list_registry = test_scenario::take_shared<BlockListRegistry>(&scenario);
+            let mut coin = test_scenario::take_from_sender<Coin<MYSO>>(&scenario);
+            let pay = coin::split(&mut coin, gross + fee, test_scenario::ctx(&mut scenario));
+            social_proof_tokens::reserve_towards_profile_with_platform(
+                &mut registry,
+                &config,
+                &mut pool,
+                &treasury,
+                &platform_registry,
+                &mut platform_obj,
+                &block_list_registry,
+                pay,
+                gross,
+                test_scenario::ctx(&mut scenario)
+            );
+            test_scenario::return_shared(registry);
+            test_scenario::return_shared(config);
+            test_scenario::return_shared(pool);
+            test_scenario::return_shared(treasury);
+            test_scenario::return_shared(platform_registry);
+            test_scenario::return_shared(platform_obj);
+            test_scenario::return_shared(block_list_registry);
+            test_scenario::return_to_sender(&scenario, coin);
+        };
+
+        test_scenario::next_tx(&mut scenario, USER1);
+        {
+            let mut registry = test_scenario::take_shared<TokenRegistry>(&scenario);
+            let config = test_scenario::take_shared<SocialProofTokensConfig>(&scenario);
+            let mut pool = test_scenario::take_shared<ReservationPoolObject>(&scenario);
+            let treasury = test_scenario::take_shared<EcosystemTreasury>(&scenario);
+            let platform_registry = test_scenario::take_shared<PlatformRegistry>(&scenario);
+            let mut platform_obj = test_scenario::take_shared<Platform>(&scenario);
+            let block_list_registry = test_scenario::take_shared<BlockListRegistry>(&scenario);
+            social_proof_tokens::withdraw_reservation_with_platform_for_profile(
+                &mut registry,
+                &config,
+                &mut pool,
+                &treasury,
+                &platform_registry,
+                &mut platform_obj,
+                &block_list_registry,
+                gross,
+                test_scenario::ctx(&mut scenario)
+            );
+            assert!(social_proof_tokens::reservation_pool_total_reserved_for_testing(&pool) == 0, 30);
+            test_scenario::return_shared(registry);
+            test_scenario::return_shared(config);
+            test_scenario::return_shared(pool);
+            test_scenario::return_shared(treasury);
+            test_scenario::return_shared(platform_registry);
+            test_scenario::return_shared(platform_obj);
+            test_scenario::return_shared(block_list_registry);
+        };
+
+        test_scenario::next_tx(&mut scenario, USER1);
+        {
+            assert!(sum_sender_myst_coin_value(&scenario) == expected_final, 31);
+        };
+
+        test_scenario::end(scenario);
+    }
+
+    #[test]
+    fun test_withdraw_reservation_post_platform_round_trip() {
+        let mut scenario = setup_test_scenario();
+        init_block_list_for_spt_tests(&mut scenario);
+        approve_test_platform(&mut scenario);
+
+        let gross = WITHDRAW_TEST_GROSS_POST;
+        let fee = fee_on_gross(gross);
+        let expected_final = setup_user1_starting_myst_balance() - fee - fee;
+
+        let profile_id = {
+            test_scenario::next_tx(&mut scenario, CREATOR);
+            let mut username_registry = test_scenario::take_shared<UsernameRegistry>(&scenario);
+            profile::create_profile(
+                &mut username_registry,
+                string::utf8(b"Plat Post Prof"),
+                string::utf8(b"plat_post_prof"),
+                string::utf8(b""),
+                b"",
+                b"",
+                test_scenario::ctx(&mut scenario)
+            );
+            let mut p = profile::lookup_profile_by_owner(&username_registry, CREATOR);
+            let pid = option::extract(&mut p);
+            test_scenario::return_shared(username_registry);
+            pid
+        };
+
+        let platform_id = {
+            test_scenario::next_tx(&mut scenario, ADMIN);
+            let registry = test_scenario::take_shared<PlatformRegistry>(&scenario);
+            let mut opt = platform::get_platform_by_name(&registry, string::utf8(b"Test Platform"));
+            let pid = option::extract(&mut opt);
+            test_scenario::return_shared(registry);
+            pid
+        };
+
+        let post_id = {
+            test_scenario::next_tx(&mut scenario, CREATOR);
+            post::test_create_post(
+                CREATOR,
+                profile_id,
+                platform_id,
+                string::utf8(b"platform post wd"),
+                test_scenario::ctx(&mut scenario)
+            )
+        };
+
+        test_scenario::next_tx(&mut scenario, CREATOR);
+        {
+            let mut registry = test_scenario::take_shared<TokenRegistry>(&scenario);
+            let config = test_scenario::take_shared<SocialProofTokensConfig>(&scenario);
+            let post_obj = test_scenario::take_shared<Post>(&scenario);
+            assert!(post::get_id_address(&post_obj) == post_id, 0);
+            social_proof_tokens::create_reservation_pool_for_post(
+                &mut registry,
+                &config,
+                &post_obj,
+                test_scenario::ctx(&mut scenario)
+            );
+            test_scenario::return_shared(registry);
+            test_scenario::return_shared(config);
+            test_scenario::return_shared(post_obj);
+        };
+
+        join_user_to_test_platform(&mut scenario, USER1);
+
+        test_scenario::next_tx(&mut scenario, USER1);
+        {
+            let mut registry = test_scenario::take_shared<TokenRegistry>(&scenario);
+            let config = test_scenario::take_shared<SocialProofTokensConfig>(&scenario);
+            let mut pool = test_scenario::take_shared<ReservationPoolObject>(&scenario);
+            let treasury = test_scenario::take_shared<EcosystemTreasury>(&scenario);
+            let platform_registry = test_scenario::take_shared<PlatformRegistry>(&scenario);
+            let mut platform_obj = test_scenario::take_shared<Platform>(&scenario);
+            let block_list_registry = test_scenario::take_shared<BlockListRegistry>(&scenario);
+            let post_obj = test_scenario::take_shared<Post>(&scenario);
+            let mut coin = test_scenario::take_from_sender<Coin<MYSO>>(&scenario);
+            let pay = coin::split(&mut coin, gross + fee, test_scenario::ctx(&mut scenario));
+            social_proof_tokens::reserve_towards_post_with_platform(
+                &mut registry,
+                &config,
+                &mut pool,
+                &treasury,
+                &platform_registry,
+                &mut platform_obj,
+                &block_list_registry,
+                &post_obj,
+                pay,
+                gross,
+                test_scenario::ctx(&mut scenario)
+            );
+            test_scenario::return_shared(registry);
+            test_scenario::return_shared(config);
+            test_scenario::return_shared(pool);
+            test_scenario::return_shared(treasury);
+            test_scenario::return_shared(platform_registry);
+            test_scenario::return_shared(platform_obj);
+            test_scenario::return_shared(block_list_registry);
+            test_scenario::return_shared(post_obj);
+            test_scenario::return_to_sender(&scenario, coin);
+        };
+
+        test_scenario::next_tx(&mut scenario, USER1);
+        {
+            let mut registry = test_scenario::take_shared<TokenRegistry>(&scenario);
+            let config = test_scenario::take_shared<SocialProofTokensConfig>(&scenario);
+            let mut pool = test_scenario::take_shared<ReservationPoolObject>(&scenario);
+            let treasury = test_scenario::take_shared<EcosystemTreasury>(&scenario);
+            let platform_registry = test_scenario::take_shared<PlatformRegistry>(&scenario);
+            let mut platform_obj = test_scenario::take_shared<Platform>(&scenario);
+            let block_list_registry = test_scenario::take_shared<BlockListRegistry>(&scenario);
+            let post_obj = test_scenario::take_shared<Post>(&scenario);
+            social_proof_tokens::withdraw_reservation_with_platform_for_post(
+                &mut registry,
+                &config,
+                &mut pool,
+                &treasury,
+                &platform_registry,
+                &mut platform_obj,
+                &block_list_registry,
+                &post_obj,
+                gross,
+                test_scenario::ctx(&mut scenario)
+            );
+            test_scenario::return_shared(registry);
+            test_scenario::return_shared(config);
+            test_scenario::return_shared(pool);
+            test_scenario::return_shared(treasury);
+            test_scenario::return_shared(platform_registry);
+            test_scenario::return_shared(platform_obj);
+            test_scenario::return_shared(block_list_registry);
+            test_scenario::return_shared(post_obj);
+        };
+
+        test_scenario::next_tx(&mut scenario, USER1);
+        {
+            assert!(sum_sender_myst_coin_value(&scenario) == expected_final, 40);
+        };
+
+        test_scenario::end(scenario);
+    }
+
+    #[test]
+    fun test_withdraw_reservation_post_non_platform_poc_redirect_on_withdraw() {
+        let mut scenario = setup_test_scenario();
+        let gross = WITHDRAW_TEST_GROSS_POST;
+        let fee = fee_on_gross(gross);
+
+        let profile_id = {
+            test_scenario::next_tx(&mut scenario, CREATOR);
+            let mut username_registry = test_scenario::take_shared<UsernameRegistry>(&scenario);
+            profile::create_profile(
+                &mut username_registry,
+                string::utf8(b"PoC Prof"),
+                string::utf8(b"poc_prof"),
+                string::utf8(b""),
+                b"",
+                b"",
+                test_scenario::ctx(&mut scenario)
+            );
+            let mut p = profile::lookup_profile_by_owner(&username_registry, CREATOR);
+            let pid = option::extract(&mut p);
+            test_scenario::return_shared(username_registry);
+            pid
+        };
+
+        let platform_id = {
+            test_scenario::next_tx(&mut scenario, ADMIN);
+            let registry = test_scenario::take_shared<PlatformRegistry>(&scenario);
+            let mut opt = platform::get_platform_by_name(&registry, string::utf8(b"Test Platform"));
+            let pid = option::extract(&mut opt);
+            test_scenario::return_shared(registry);
+            pid
+        };
+
+        let post_id = {
+            test_scenario::next_tx(&mut scenario, CREATOR);
+            post::test_create_post_with_revenue_redirect(
+                CREATOR,
+                profile_id,
+                platform_id,
+                string::utf8(b"poc redirect post"),
+                USER3,
+                50,
+                test_scenario::ctx(&mut scenario)
+            )
+        };
+
+        test_scenario::next_tx(&mut scenario, CREATOR);
+        {
+            let mut registry = test_scenario::take_shared<TokenRegistry>(&scenario);
+            let config = test_scenario::take_shared<SocialProofTokensConfig>(&scenario);
+            let post_obj = test_scenario::take_shared<Post>(&scenario);
+            assert!(post::get_id_address(&post_obj) == post_id, 0);
+            social_proof_tokens::create_reservation_pool_for_post(
+                &mut registry,
+                &config,
+                &post_obj,
+                test_scenario::ctx(&mut scenario)
+            );
+            test_scenario::return_shared(registry);
+            test_scenario::return_shared(config);
+            test_scenario::return_shared(post_obj);
+        };
+
+        test_scenario::next_tx(&mut scenario, USER1);
+        {
+            let mut registry = test_scenario::take_shared<TokenRegistry>(&scenario);
+            let config = test_scenario::take_shared<SocialProofTokensConfig>(&scenario);
+            let mut pool = test_scenario::take_shared<ReservationPoolObject>(&scenario);
+            let treasury = test_scenario::take_shared<EcosystemTreasury>(&scenario);
+            let post_obj = test_scenario::take_shared<Post>(&scenario);
+            let mut coin = test_scenario::take_from_sender<Coin<MYSO>>(&scenario);
+            let pay = coin::split(&mut coin, gross + fee, test_scenario::ctx(&mut scenario));
+            social_proof_tokens::reserve_towards_post(
+                &mut registry,
+                &config,
+                &mut pool,
+                &treasury,
+                &post_obj,
+                pay,
+                gross,
+                test_scenario::ctx(&mut scenario)
+            );
+            test_scenario::return_shared(registry);
+            test_scenario::return_shared(config);
+            test_scenario::return_shared(pool);
+            test_scenario::return_shared(treasury);
+            test_scenario::return_shared(post_obj);
+            test_scenario::return_to_sender(&scenario, coin);
+        };
+
+        let user3_before = {
+            test_scenario::next_tx(&mut scenario, USER3);
+            sum_sender_myst_coin_value(&scenario)
+        };
+
+        test_scenario::next_tx(&mut scenario, USER1);
+        {
+            let mut registry = test_scenario::take_shared<TokenRegistry>(&scenario);
+            let config = test_scenario::take_shared<SocialProofTokensConfig>(&scenario);
+            let mut pool = test_scenario::take_shared<ReservationPoolObject>(&scenario);
+            let treasury = test_scenario::take_shared<EcosystemTreasury>(&scenario);
+            let post_obj = test_scenario::take_shared<Post>(&scenario);
+            social_proof_tokens::withdraw_reservation_for_post(
+                &mut registry,
+                &config,
+                &mut pool,
+                &treasury,
+                &post_obj,
+                gross,
+                test_scenario::ctx(&mut scenario)
+            );
+            test_scenario::return_shared(registry);
+            test_scenario::return_shared(config);
+            test_scenario::return_shared(pool);
+            test_scenario::return_shared(treasury);
+            test_scenario::return_shared(post_obj);
+        };
+
+        test_scenario::next_tx(&mut scenario, USER3);
+        {
+            let after = sum_sender_myst_coin_value(&scenario);
+            assert!(after > user3_before, 50);
+        };
+
         test_scenario::end(scenario);
     }
 
@@ -1949,6 +3053,9 @@ module social_contracts::token_exchange_tests {
         // Verify the fee model: fees are calculated on the gross withdrawal amount and sent
         // directly to recipients. The user receives `amount - fees`, NOT `amount`.
         // Also verifies that `reservations[user]` is reduced by the full gross amount.
+        // Live `withdraw_reservation_with_platform_for_*` emits nominal creator/platform/treasury;
+        // non-platform withdraw events aggregate the 50/50 platform-fee split into creator/treasury
+        // fields (platform_fee in the event stays 0), matching reserve semantics.
         let mut scenario = test_scenario::begin(USER1);
 
         // Build a mock token pool and a mock reservation pool object using test-only helpers.

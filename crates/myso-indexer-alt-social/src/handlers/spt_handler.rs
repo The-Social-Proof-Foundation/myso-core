@@ -7,7 +7,7 @@ use std::sync::Arc;
 
 use anyhow::Result;
 use async_trait::async_trait;
-use diesel::sql_types::{BigInt, Nullable, SmallInt, Text};
+use diesel::sql_types::{BigInt, Nullable, SmallInt, Text, Timestamptz};
 use diesel::BoolExpressionMethods;
 use diesel::ExpressionMethods;
 use diesel::OptionalExtension;
@@ -29,7 +29,7 @@ use myso_indexer_alt_social_schema::models::{
 };
 use myso_indexer_alt_social_schema::schema::{
     ecosystem_treasury, posts, profiles, spt_config, spt_events, spt_exchange_config, spt_holdings,
-    spt_pools, spt_price_history, spt_reservation_pools, spt_reservations, spt_revenue,
+    spt_pools, spt_reservation_pools, spt_reservations, spt_revenue,
     spt_transactions, unified_revenue,
 };
 
@@ -41,6 +41,93 @@ use super::ProfileUpdate;
 use crate::metrics::SocialMetrics;
 
 const SPT_MODULES: &[&str] = &["social_proof_tokens", "spt"];
+
+/// Insert into `spt_price_history` with `circulating_supply` synced from the latest `spt_pools` row.
+/// Token buy/sell events omit supply on-chain; the pool row reflects it after [`SptRow::SptPoolSupplyUpdate`].
+const SPT_PRICE_HISTORY_INSERT_SQL: &str = r#"
+INSERT INTO spt_price_history (pool_id, price, circulating_supply, time, transaction_id)
+VALUES (
+    $1,
+    $2,
+    COALESCE(
+        (SELECT circulating_supply FROM spt_pools WHERE pool_id = $1 ORDER BY time DESC LIMIT 1),
+        $3
+    ),
+    $4,
+    $5
+)
+"#;
+
+/// Developer fee recipient (`platforms.developer_address`) or fallback `platform_id`, plus optional
+/// linked platform id for `unified_revenue.platform_scope` (matches reservation fee handling).
+#[derive(Debug, Clone)]
+struct ResolvedSptPlatform {
+    fee_recipient: String,
+    linked_platform_id: Option<String>,
+}
+
+#[derive(QueryableByName)]
+struct CreatorPlatformIdRow {
+    #[diesel(sql_type = Text)]
+    platform_id: String,
+}
+
+#[derive(QueryableByName)]
+struct PlatformDeveloperRow {
+    #[diesel(sql_type = Text)]
+    developer_address: String,
+}
+
+async fn resolve_spt_platform_for_creator<'a>(
+    conn: &mut Connection<'a>,
+    creator_address: &str,
+) -> Result<ResolvedSptPlatform, diesel::result::Error> {
+    if creator_address.trim().is_empty() {
+        return Ok(ResolvedSptPlatform {
+            fee_recipient: String::new(),
+            linked_platform_id: None,
+        });
+    }
+
+    let linked_platform_id: Option<String> = diesel::sql_query(
+        r#"SELECT pb.platform_id AS platform_id
+           FROM profiles p
+           INNER JOIN profile_badges pb ON pb.profile_id = p.profile_id
+               AND pb.badge_id = p.selected_badge_id
+           WHERE LOWER(TRIM(p.owner_address)) = LOWER(TRIM($1))
+             AND p.profile_id IS NOT NULL
+             AND p.selected_badge_id IS NOT NULL
+             AND (pb.revoked IS NULL OR pb.revoked = false)
+           ORDER BY pb.time DESC
+           LIMIT 1"#,
+    )
+    .bind::<Text, _>(creator_address)
+    .get_result::<CreatorPlatformIdRow>(conn)
+    .await
+    .optional()?
+    .map(|row| row.platform_id)
+    .filter(|s| !s.is_empty());
+
+    let fee_recipient: String = if let Some(ref pid) = linked_platform_id {
+        diesel::sql_query(
+            "SELECT developer_address FROM platforms WHERE platform_id = $1 ORDER BY id DESC LIMIT 1",
+        )
+        .bind::<Text, _>(pid.as_str())
+        .get_result::<PlatformDeveloperRow>(conn)
+        .await
+        .optional()?
+        .map(|row| row.developer_address)
+        .filter(|s| !s.is_empty())
+        .unwrap_or_else(|| pid.clone())
+    } else {
+        String::new()
+    };
+
+    Ok(ResolvedSptPlatform {
+        fee_recipient,
+        linked_platform_id,
+    })
+}
 
 #[derive(QueryableByName)]
 struct SptReservationCanonPoolRow {
@@ -455,8 +542,12 @@ impl Handler for SptHandler {
                         .await?;
                 }
                 SptRow::SptPriceHistory(ph) => {
-                    total += diesel::insert_into(spt_price_history::table)
-                        .values(ph)
+                    total += diesel::sql_query(SPT_PRICE_HISTORY_INSERT_SQL)
+                        .bind::<Text, _>(&ph.pool_id)
+                        .bind::<BigInt, _>(ph.price)
+                        .bind::<BigInt, _>(ph.circulating_supply)
+                        .bind::<Timestamptz, _>(ph.time)
+                        .bind::<Text, _>(&ph.transaction_id)
                         .execute(conn)
                         .await?;
                 }
@@ -694,51 +785,11 @@ impl Handler for SptHandler {
                                 .ok()
                                 .unwrap_or_default();
 
-                            #[derive(QueryableByName)]
-                            struct CreatorPlatformIdRow {
-                                #[diesel(sql_type = Text)]
-                                platform_id: String,
-                            }
-                            let linked_platform_id: Option<String> = diesel::sql_query(
-                                r#"SELECT pb.platform_id AS platform_id
-                                   FROM profiles p
-                                   INNER JOIN profile_badges pb ON pb.profile_id = p.profile_id
-                                       AND pb.badge_id = p.selected_badge_id
-                                   WHERE LOWER(TRIM(p.owner_address)) = LOWER(TRIM($1))
-                                     AND p.profile_id IS NOT NULL
-                                     AND p.selected_badge_id IS NOT NULL
-                                     AND (pb.revoked IS NULL OR pb.revoked = false)
-                                   ORDER BY pb.time DESC
-                                   LIMIT 1"#,
-                            )
-                            .bind::<Text, _>(&creator_address)
-                            .get_result::<CreatorPlatformIdRow>(conn)
-                            .await
-                            .optional()?
-                            .map(|row| row.platform_id)
-                            .filter(|s| !s.is_empty());
-
-                            #[derive(QueryableByName)]
-                            struct PlatformDeveloperRow {
-                                #[diesel(sql_type = Text)]
-                                developer_address: String,
-                            }
-                            let platform_fee_recipient: String = if let Some(ref pid) =
-                                linked_platform_id
-                            {
-                                diesel::sql_query(
-                                    "SELECT developer_address FROM platforms WHERE platform_id = $1 ORDER BY id DESC LIMIT 1",
-                                )
-                                .bind::<Text, _>(pid.as_str())
-                                .get_result::<PlatformDeveloperRow>(conn)
-                                .await
-                                .optional()?
-                                .map(|row| row.developer_address)
-                                .filter(|s| !s.is_empty())
-                                .unwrap_or_else(|| pid.clone())
-                            } else {
-                                String::new()
-                            };
+                            let resolved =
+                                resolve_spt_platform_for_creator(conn, creator_address.as_str())
+                                    .await?;
+                            let linked_platform_id = resolved.linked_platform_id.clone();
+                            let platform_fee_recipient = resolved.fee_recipient;
 
                             #[derive(QueryableByName)]
                             struct TradingPoolIdRow {
@@ -1066,24 +1117,28 @@ impl Handler for SptHandler {
                         .await
                         .ok();
 
-                    let (creator_address, platform_address, treasury_address): (
-                        String,
-                        String,
-                        String,
-                    ) = if let Some((owner, _associated_id, _token_type)) = pool_row {
-                        let treasury = ecosystem_treasury::table
-                            .order(ecosystem_treasury::time.desc())
-                            .select(ecosystem_treasury::treasury_address)
-                            .first::<String>(conn)
-                            .await
-                            .ok()
-                            .unwrap_or_default();
-                        (owner, String::new(), treasury)
-                    } else {
-                        (String::new(), String::new(), String::new())
-                    };
+                    let (creator_address, treasury_address): (String, String) =
+                        if let Some((owner, _associated_id, _token_type)) = pool_row {
+                            let treasury = ecosystem_treasury::table
+                                .order(ecosystem_treasury::time.desc())
+                                .select(ecosystem_treasury::treasury_address)
+                                .first::<String>(conn)
+                                .await
+                                .ok()
+                                .unwrap_or_default();
+                            (owner, treasury)
+                        } else {
+                            (String::new(), String::new())
+                        };
 
                     if *creator_fee != 0 || *platform_fee != 0 || *treasury_fee != 0 {
+                        let resolved =
+                            resolve_spt_platform_for_creator(conn, creator_address.as_str())
+                                .await?;
+                        let platform_address = resolved.fee_recipient;
+                        let platform_scope_for_fees: Option<String> =
+                            Some(resolved.linked_platform_id.clone().unwrap_or_default());
+
                         let spt_rev = if transaction_type == "SELL" {
                             NewSptRevenue::from_sell_event(
                                 pool_id.clone(),
@@ -1127,7 +1182,7 @@ impl Handler for SptHandler {
                                 .values(NewUnifiedRevenue::from_spt(
                                     REVENUE_TYPE_SPT_CREATOR_FEE.to_string(),
                                     creator_address.clone(),
-                                    Some(platform_address.clone()),
+                                    None,
                                     *creator_fee,
                                     pool_id.clone(),
                                     trader.clone(),
@@ -1143,7 +1198,7 @@ impl Handler for SptHandler {
                                 .values(NewUnifiedRevenue::from_spt(
                                     REVENUE_TYPE_SPT_PLATFORM_FEE.to_string(),
                                     creator_address.clone(),
-                                    Some(platform_address.clone()),
+                                    platform_scope_for_fees.clone(),
                                     *platform_fee,
                                     pool_id.clone(),
                                     trader.clone(),
@@ -1229,6 +1284,20 @@ impl Handler for SptHandler {
         }
         SptHandler::validate_zero_circ_pools_after_batch(conn, &zero_circ_pools).await?;
         Ok(total)
+    }
+}
+
+#[cfg(test)]
+mod spt_price_history_insert_sql_tests {
+    use super::SPT_PRICE_HISTORY_INSERT_SQL;
+
+    #[test]
+    fn insert_uses_coalesce_from_latest_spt_pools_row() {
+        assert!(SPT_PRICE_HISTORY_INSERT_SQL.contains("COALESCE"));
+        assert!(SPT_PRICE_HISTORY_INSERT_SQL.contains("spt_pools"));
+        assert!(SPT_PRICE_HISTORY_INSERT_SQL.contains(
+            "WHERE pool_id = $1 ORDER BY time DESC LIMIT 1"
+        ));
     }
 }
 

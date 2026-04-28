@@ -2441,6 +2441,43 @@ module social_contracts::post {
         )
     }
 
+    /// Test-only: post with PoC revenue redirect fields set (for fee routing tests).
+    #[test_only]
+    public fun test_create_post_with_revenue_redirect(
+        owner: address,
+        profile_id: address,
+        platform_id: address,
+        content: String,
+        redirect_to: address,
+        redirect_percentage: u64,
+        ctx: &mut TxContext
+    ): address {
+        create_post_internal(
+            owner,
+            profile_id,
+            platform_id,
+            content,
+            option::none(),
+            option::none(),
+            option::none(),
+            string::utf8(POST_TYPE_STANDARD),
+            option::none(),
+            true,
+            true,
+            true,
+            true,
+            true,
+            option::some(redirect_to),
+            option::some(redirect_percentage),
+            option::none(),
+            option::none(),
+            false,
+            false,
+            false,
+            ctx
+        )
+    }
+
     /// Test helper to create a post with SPoT enabled
     #[test_only]
     public fun test_create_post_with_spot(

@@ -1448,45 +1448,18 @@ module social_contracts::social_proof_tokens {
         });
     }
 
-    /// Withdraw MYSO reservation from a post or profile
-    /// Non-platform version: platform fees go to ecosystem treasury
-    #[allow(lint(self_transfer))]
-    public fun withdraw_reservation(
+    /// Deduct gross withdrawal from reservation ledger and registry mirror.
+    fun apply_reservation_withdrawal_ledger(
         registry: &mut TokenRegistry,
-        _config: &SocialProofTokensConfig,
         reservation_pool_object: &mut ReservationPoolObject,
-        _treasury: &EcosystemTreasury,
+        reserver: address,
+        associated_id: address,
         amount: u64,
-        ctx: &mut TxContext
     ) {
-        let reserver = tx_context::sender(ctx);
-        let associated_id = reservation_pool_object.info.associated_id;
-        let now = tx_context::epoch_timestamp_ms(ctx);
-        
-        // Prevent withdrawals after conversion to token
-        assert!(!reservation_pool_object.converted, EReservationPoolConverted);
-        
-        // Validate amount is positive
-        assert!(amount > 0, EInsufficientFunds);
-        
-        // Verify reserver has a reservation
-        assert!(table::contains(&reservation_pool_object.reservations, reserver), ENoTokensOwned);
-        
         let current_reservation = *table::borrow(&reservation_pool_object.reservations, reserver);
-        
-        // Model A: Fee only on deposit, so amount is net withdrawal amount (no fee on withdraw)
-        // Ensure user has enough net reservation balance (we store net amounts)
         assert!(current_reservation >= amount, EInsufficientLiquidity);
-        
-        // Ensure pool has enough liquidity for net refund (pool contains net deposits)
-        assert!(balance::value(&reservation_pool_object.myso_balance) >= amount, EInsufficientLiquidity);
-        
-        // Update reserver's balance (subtract net amount, since reservations store net)
         if (current_reservation == amount) {
-            // Remove reserver completely
             table::remove(&mut reservation_pool_object.reservations, reserver);
-            
-            // Remove from reservers list
             let mut i = 0;
             let len = vector::length(&reservation_pool_object.reservers);
             while (i < len) {
@@ -1497,27 +1470,221 @@ module social_contracts::social_proof_tokens {
                 i = i + 1;
             };
         } else {
-            // Reduce reservation amount by net amount (since we store net)
             let reservation_balance = table::borrow_mut(&mut reservation_pool_object.reservations, reserver);
             *reservation_balance = *reservation_balance - amount;
         };
-        
-        // Update total reserved (subtract net amount, since we track net)
         reservation_pool_object.info.total_reserved = reservation_pool_object.info.total_reserved - amount;
-        
-        // Update registry
         if (table::contains(&registry.reservation_pools, associated_id)) {
             let registry_pool = table::borrow_mut(&mut registry.reservation_pools, associated_id);
             registry_pool.total_reserved = reservation_pool_object.info.total_reserved;
         };
-        
-        // Transfer net amount to reserver (no fees on withdrawal in Model A)
-        let refund_balance = balance::split(&mut reservation_pool_object.myso_balance, amount);
+    }
+
+    fun reservation_withdrawal_fee_split(
+        config: &SocialProofTokensConfig,
+        amount: u64
+    ): (u64, u64, u64, u64, u64) {
+        validate_reservation_fees(config);
+        let reservation_total_fee_bps = calculate_reservation_total_fee_bps(config);
+        let fee_amount = calculate_fee_amount_safe(amount, reservation_total_fee_bps);
+        let creator_fee = calculate_component_fee_safe(
+            fee_amount,
+            config.reservation_creator_fee_bps,
+            reservation_total_fee_bps
+        );
+        let platform_fee = calculate_component_fee_safe(
+            fee_amount,
+            config.reservation_platform_fee_bps,
+            reservation_total_fee_bps
+        );
+        let treasury_fee = fee_amount - creator_fee - platform_fee;
+        let net_refund = amount - fee_amount;
+        (fee_amount, creator_fee, platform_fee, treasury_fee, net_refund)
+    }
+
+    /// Non-platform post withdrawal: split configured platform fee 50/50 between PoC-aware creator
+    /// routing and ecosystem (same convention as `distribute_reservation_fees_with_post`).
+    fun distribute_reservation_withdraw_fees_non_platform_post(
+        pool_owner: address,
+        post: &Post,
+        treasury: &EcosystemTreasury,
+        creator_fee: u64,
+        platform_fee: u64,
+        treasury_fee: u64,
+        pool_balance: &mut Balance<MYSO>,
+        ctx: &mut TxContext
+    ): (u64, u64, u64) {
+        let platform_fee_half_to_creator = platform_fee / 2;
+        let platform_fee_half_to_treasury = platform_fee - platform_fee_half_to_creator;
+        let creator_total = creator_fee + platform_fee_half_to_creator;
+        let treasury_total = treasury_fee + platform_fee_half_to_treasury;
+        if (creator_total > 0) {
+            let mut creator_coin = coin::from_balance(balance::split(pool_balance, creator_total), ctx);
+            distribute_reservation_creator_fee_with_owner(
+                pool_owner,
+                post,
+                creator_total,
+                &mut creator_coin,
+                ctx
+            );
+            coin::destroy_zero(creator_coin);
+        };
+        if (treasury_total > 0) {
+            let treasury_coin = coin::from_balance(balance::split(pool_balance, treasury_total), ctx);
+            transfer::public_transfer(treasury_coin, profile::get_treasury_address(treasury));
+        };
+        (creator_total, 0, treasury_total)
+    }
+
+    /// Non-platform profile withdrawal: same 50/50 platform-fee convention as
+    /// `distribute_reservation_fees_no_poc`.
+    fun distribute_reservation_withdraw_fees_non_platform_profile(
+        pool_owner: address,
+        treasury: &EcosystemTreasury,
+        creator_fee: u64,
+        platform_fee: u64,
+        treasury_fee: u64,
+        pool_balance: &mut Balance<MYSO>,
+        ctx: &mut TxContext
+    ): (u64, u64, u64) {
+        let platform_fee_half_to_creator = platform_fee / 2;
+        let platform_fee_half_to_treasury = platform_fee - platform_fee_half_to_creator;
+        let creator_total = creator_fee + platform_fee_half_to_creator;
+        let treasury_total = treasury_fee + platform_fee_half_to_treasury;
+        if (creator_total > 0) {
+            let mut creator_coin = coin::from_balance(balance::split(pool_balance, creator_total), ctx);
+            distribute_reservation_creator_fee_no_poc_with_owner(
+                pool_owner,
+                creator_total,
+                &mut creator_coin,
+                ctx
+            );
+            coin::destroy_zero(creator_coin);
+        };
+        if (treasury_total > 0) {
+            let treasury_coin = coin::from_balance(balance::split(pool_balance, treasury_total), ctx);
+            transfer::public_transfer(treasury_coin, profile::get_treasury_address(treasury));
+        };
+        (creator_total, 0, treasury_total)
+    }
+
+    fun distribute_reservation_withdraw_fees_platform_post(
+        pool_owner: address,
+        post: &Post,
+        treasury: &EcosystemTreasury,
+        platform: &mut social_contracts::platform::Platform,
+        creator_fee: u64,
+        platform_fee: u64,
+        treasury_fee: u64,
+        pool_balance: &mut Balance<MYSO>,
+        ctx: &mut TxContext
+    ) {
+        if (creator_fee > 0) {
+            let mut creator_coin = coin::from_balance(balance::split(pool_balance, creator_fee), ctx);
+            distribute_reservation_creator_fee_with_owner(
+                pool_owner,
+                post,
+                creator_fee,
+                &mut creator_coin,
+                ctx
+            );
+            coin::destroy_zero(creator_coin);
+        };
+        if (platform_fee > 0) {
+            let mut platform_fee_coin = coin::from_balance(balance::split(pool_balance, platform_fee), ctx);
+            social_contracts::platform::add_to_treasury(platform, &mut platform_fee_coin, platform_fee, ctx);
+            coin::destroy_zero(platform_fee_coin);
+        };
+        if (treasury_fee > 0) {
+            let treasury_coin = coin::from_balance(balance::split(pool_balance, treasury_fee), ctx);
+            transfer::public_transfer(treasury_coin, profile::get_treasury_address(treasury));
+        };
+    }
+
+    fun distribute_reservation_withdraw_fees_platform_profile(
+        pool_owner: address,
+        treasury: &EcosystemTreasury,
+        platform: &mut social_contracts::platform::Platform,
+        creator_fee: u64,
+        platform_fee: u64,
+        treasury_fee: u64,
+        pool_balance: &mut Balance<MYSO>,
+        ctx: &mut TxContext
+    ) {
+        if (creator_fee > 0) {
+            let mut creator_coin = coin::from_balance(balance::split(pool_balance, creator_fee), ctx);
+            distribute_reservation_creator_fee_no_poc_with_owner(
+                pool_owner,
+                creator_fee,
+                &mut creator_coin,
+                ctx
+            );
+            coin::destroy_zero(creator_coin);
+        };
+        if (platform_fee > 0) {
+            let mut platform_fee_coin = coin::from_balance(balance::split(pool_balance, platform_fee), ctx);
+            social_contracts::platform::add_to_treasury(platform, &mut platform_fee_coin, platform_fee, ctx);
+            coin::destroy_zero(platform_fee_coin);
+        };
+        if (treasury_fee > 0) {
+            let treasury_coin = coin::from_balance(balance::split(pool_balance, treasury_fee), ctx);
+            transfer::public_transfer(treasury_coin, profile::get_treasury_address(treasury));
+        };
+    }
+
+    /// Withdraw MYSO reservation for a **post** pool (non-platform).
+    /// `amount` is gross ledger reduction; caller receives `amount - reservation_fees`.
+    /// Matches non-platform reserve fee routing (50/50 platform share; PoC on creator path).
+    #[allow(lint(self_transfer))]
+    public fun withdraw_reservation_for_post(
+        registry: &mut TokenRegistry,
+        config: &SocialProofTokensConfig,
+        reservation_pool_object: &mut ReservationPoolObject,
+        treasury: &EcosystemTreasury,
+        post: &Post,
+        amount: u64,
+        ctx: &mut TxContext
+    ) {
+        let reserver = tx_context::sender(ctx);
+        let associated_id = reservation_pool_object.info.associated_id;
+        let now = tx_context::epoch_timestamp_ms(ctx);
+
+        assert!(!reservation_pool_object.converted, EReservationPoolConverted);
+        assert!(amount > 0, EInsufficientFunds);
+        assert!(reservation_pool_object.info.token_type == TOKEN_TYPE_POST, EInvalidTokenType);
+        assert!(post::get_id_address(post) == associated_id, EInvalidID);
+
+        assert!(table::contains(&reservation_pool_object.reservations, reserver), ENoTokensOwned);
+        let current_reservation = *table::borrow(&reservation_pool_object.reservations, reserver);
+        let pool_owner = reservation_pool_object.info.owner;
+
+        let (fee_amount, creator_fee, platform_fee, treasury_fee, net_refund) =
+            reservation_withdrawal_fee_split(config, amount);
+
+        assert!(current_reservation >= amount, EInsufficientLiquidity);
+        assert!(balance::value(&reservation_pool_object.myso_balance) >= amount, EInsufficientLiquidity);
+
+        apply_reservation_withdrawal_ledger(registry, reservation_pool_object, reserver, associated_id, amount);
+
+        let (ev_creator, ev_platform, ev_treasury) = if (fee_amount > 0) {
+            distribute_reservation_withdraw_fees_non_platform_post(
+                pool_owner,
+                post,
+                treasury,
+                creator_fee,
+                platform_fee,
+                treasury_fee,
+                &mut reservation_pool_object.myso_balance,
+                ctx
+            )
+        } else {
+            (0, 0, 0)
+        };
+
+        let refund_balance = balance::split(&mut reservation_pool_object.myso_balance, net_refund);
         let refund_coin = coin::from_balance(refund_balance, ctx);
         transfer::public_transfer(refund_coin, reserver);
-        
-        // Emit reservation withdrawn event
-        // Model A: No fees on withdrawal, so all fee fields are 0
+
         event::emit(ReservationWithdrawnEvent {
             associated_id,
             token_type: reservation_pool_object.info.token_type,
@@ -1525,22 +1692,150 @@ module social_contracts::social_proof_tokens {
             amount,
             total_reserved: reservation_pool_object.info.total_reserved,
             withdrawn_at: now,
-            fee_amount: 0,
-            creator_fee: 0,
-            platform_fee: 0,
-            treasury_fee: 0,
+            fee_amount,
+            creator_fee: ev_creator,
+            platform_fee: ev_platform,
+            treasury_fee: ev_treasury,
         });
     }
 
-    /// Withdraw MYSO reservation from a post or profile
-    /// Platform version: includes platform validation and fee distribution.
-    /// `amount` is the **gross** amount being released from the pool (the portion of
-    /// `reservations[user]` the caller wants to withdraw). Fees (creator + platform + treasury)
-    /// are calculated on this gross amount and sent directly to their recipients.
-    /// The caller receives the net refund (`amount - fees`). `reservations[user]` is reduced by
-    /// the full gross `amount` so the reservation ledger stays consistent.
+    /// Withdraw MYSO reservation for a **profile** pool (non-platform).
     #[allow(lint(self_transfer))]
-    public fun withdraw_reservation_with_platform(
+    public fun withdraw_reservation_for_profile(
+        registry: &mut TokenRegistry,
+        config: &SocialProofTokensConfig,
+        reservation_pool_object: &mut ReservationPoolObject,
+        treasury: &EcosystemTreasury,
+        amount: u64,
+        ctx: &mut TxContext
+    ) {
+        let reserver = tx_context::sender(ctx);
+        let associated_id = reservation_pool_object.info.associated_id;
+        let now = tx_context::epoch_timestamp_ms(ctx);
+
+        assert!(!reservation_pool_object.converted, EReservationPoolConverted);
+        assert!(amount > 0, EInsufficientFunds);
+        assert!(reservation_pool_object.info.token_type == TOKEN_TYPE_PROFILE, EInvalidTokenType);
+
+        assert!(table::contains(&reservation_pool_object.reservations, reserver), ENoTokensOwned);
+        let current_reservation = *table::borrow(&reservation_pool_object.reservations, reserver);
+        let pool_owner = reservation_pool_object.info.owner;
+
+        let (fee_amount, creator_fee, platform_fee, treasury_fee, net_refund) =
+            reservation_withdrawal_fee_split(config, amount);
+
+        assert!(current_reservation >= amount, EInsufficientLiquidity);
+        assert!(balance::value(&reservation_pool_object.myso_balance) >= amount, EInsufficientLiquidity);
+
+        apply_reservation_withdrawal_ledger(registry, reservation_pool_object, reserver, associated_id, amount);
+
+        let (ev_creator, ev_platform, ev_treasury) = if (fee_amount > 0) {
+            distribute_reservation_withdraw_fees_non_platform_profile(
+                pool_owner,
+                treasury,
+                creator_fee,
+                platform_fee,
+                treasury_fee,
+                &mut reservation_pool_object.myso_balance,
+                ctx
+            )
+        } else {
+            (0, 0, 0)
+        };
+
+        let refund_balance = balance::split(&mut reservation_pool_object.myso_balance, net_refund);
+        let refund_coin = coin::from_balance(refund_balance, ctx);
+        transfer::public_transfer(refund_coin, reserver);
+
+        event::emit(ReservationWithdrawnEvent {
+            associated_id,
+            token_type: reservation_pool_object.info.token_type,
+            reserver,
+            amount,
+            total_reserved: reservation_pool_object.info.total_reserved,
+            withdrawn_at: now,
+            fee_amount,
+            creator_fee: ev_creator,
+            platform_fee: ev_platform,
+            treasury_fee: ev_treasury,
+        });
+    }
+
+    /// Withdraw from a **post** reservation pool via an approved platform (PoC-aware creator fees).
+    #[allow(lint(self_transfer))]
+    public fun withdraw_reservation_with_platform_for_post(
+        registry: &mut TokenRegistry,
+        config: &SocialProofTokensConfig,
+        reservation_pool_object: &mut ReservationPoolObject,
+        treasury: &EcosystemTreasury,
+        platform_registry: &PlatformRegistry,
+        platform: &mut social_contracts::platform::Platform,
+        block_list_registry: &BlockListRegistry,
+        post: &Post,
+        amount: u64,
+        ctx: &mut TxContext
+    ) {
+        let reserver = tx_context::sender(ctx);
+        let associated_id = reservation_pool_object.info.associated_id;
+        let now = tx_context::epoch_timestamp_ms(ctx);
+
+        assert!(!reservation_pool_object.converted, EReservationPoolConverted);
+        assert!(amount > 0, EInsufficientFunds);
+        assert!(reservation_pool_object.info.token_type == TOKEN_TYPE_POST, EInvalidTokenType);
+        assert!(post::get_id_address(post) == associated_id, EInvalidID);
+
+        let platform_id = object::uid_to_address(platform::id(platform));
+        assert!(platform::is_approved(platform_registry, platform_id), ENotAuthorized);
+        assert!(platform::has_joined_platform(platform, reserver), EUserNotJoinedPlatform);
+        assert!(!block_list::is_blocked(block_list_registry, platform_id, reserver), EUserBlockedByPlatform);
+
+        assert!(table::contains(&reservation_pool_object.reservations, reserver), ENoTokensOwned);
+        let current_reservation = *table::borrow(&reservation_pool_object.reservations, reserver);
+        let pool_owner = reservation_pool_object.info.owner;
+
+        let (fee_amount, creator_fee, platform_fee, treasury_fee, net_refund) =
+            reservation_withdrawal_fee_split(config, amount);
+
+        assert!(current_reservation >= amount, EInsufficientLiquidity);
+        assert!(balance::value(&reservation_pool_object.myso_balance) >= amount, EInsufficientLiquidity);
+
+        apply_reservation_withdrawal_ledger(registry, reservation_pool_object, reserver, associated_id, amount);
+
+        if (fee_amount > 0) {
+            distribute_reservation_withdraw_fees_platform_post(
+                pool_owner,
+                post,
+                treasury,
+                platform,
+                creator_fee,
+                platform_fee,
+                treasury_fee,
+                &mut reservation_pool_object.myso_balance,
+                ctx
+            );
+        };
+
+        let refund_balance = balance::split(&mut reservation_pool_object.myso_balance, net_refund);
+        let refund_coin = coin::from_balance(refund_balance, ctx);
+        transfer::public_transfer(refund_coin, reserver);
+
+        event::emit(ReservationWithdrawnEvent {
+            associated_id,
+            token_type: reservation_pool_object.info.token_type,
+            reserver,
+            amount,
+            total_reserved: reservation_pool_object.info.total_reserved,
+            withdrawn_at: now,
+            fee_amount,
+            creator_fee,
+            platform_fee,
+            treasury_fee,
+        });
+    }
+
+    /// Withdraw from a **profile** reservation pool via an approved platform.
+    #[allow(lint(self_transfer))]
+    public fun withdraw_reservation_with_platform_for_profile(
         registry: &mut TokenRegistry,
         config: &SocialProofTokensConfig,
         reservation_pool_object: &mut ReservationPoolObject,
@@ -1555,98 +1850,40 @@ module social_contracts::social_proof_tokens {
         let associated_id = reservation_pool_object.info.associated_id;
         let now = tx_context::epoch_timestamp_ms(ctx);
 
-        // Prevent withdrawals after conversion to token
         assert!(!reservation_pool_object.converted, EReservationPoolConverted);
-
-        // Validate amount is positive
         assert!(amount > 0, EInsufficientFunds);
+        assert!(reservation_pool_object.info.token_type == TOKEN_TYPE_PROFILE, EInvalidTokenType);
 
-        // Platform validation
         let platform_id = object::uid_to_address(platform::id(platform));
         assert!(platform::is_approved(platform_registry, platform_id), ENotAuthorized);
         assert!(platform::has_joined_platform(platform, reserver), EUserNotJoinedPlatform);
         assert!(!block_list::is_blocked(block_list_registry, platform_id, reserver), EUserBlockedByPlatform);
 
-        // Verify reserver has a reservation
         assert!(table::contains(&reservation_pool_object.reservations, reserver), ENoTokensOwned);
-
         let current_reservation = *table::borrow(&reservation_pool_object.reservations, reserver);
+        let pool_owner = reservation_pool_object.info.owner;
 
-        // Validate fee config and compute fees on the gross withdrawal amount with overflow protection
-        validate_reservation_fees(config);
-        let reservation_total_fee_bps = calculate_reservation_total_fee_bps(config);
-        let fee_amount = calculate_fee_amount_safe(amount, reservation_total_fee_bps);
-        let creator_fee = calculate_component_fee_safe(fee_amount, config.reservation_creator_fee_bps, reservation_total_fee_bps);
-        let platform_fee = calculate_component_fee_safe(fee_amount, config.reservation_platform_fee_bps, reservation_total_fee_bps);
-        let treasury_fee = fee_amount - creator_fee - platform_fee;
+        let (fee_amount, creator_fee, platform_fee, treasury_fee, net_refund) =
+            reservation_withdrawal_fee_split(config, amount);
 
-        // Net refund = gross amount minus fees
-        let net_refund = amount - fee_amount;
-
-        // Ensure user's stored reservation covers the full gross withdrawal amount
         assert!(current_reservation >= amount, EInsufficientLiquidity);
-
-        // Ensure pool has enough balance to cover gross amount (net refund + all fees)
         assert!(balance::value(&reservation_pool_object.myso_balance) >= amount, EInsufficientLiquidity);
 
-        // Reduce reservations by the full gross amount so the ledger stays consistent
-        if (current_reservation == amount) {
-            // Remove reserver completely on full withdrawal
-            table::remove(&mut reservation_pool_object.reservations, reserver);
+        apply_reservation_withdrawal_ledger(registry, reservation_pool_object, reserver, associated_id, amount);
 
-            // Remove from reservers list
-            let mut i = 0;
-            let len = vector::length(&reservation_pool_object.reservers);
-            while (i < len) {
-                if (*vector::borrow(&reservation_pool_object.reservers, i) == reserver) {
-                    vector::remove(&mut reservation_pool_object.reservers, i);
-                    break
-                };
-                i = i + 1;
-            };
-        } else {
-            let reservation_balance = table::borrow_mut(&mut reservation_pool_object.reservations, reserver);
-            *reservation_balance = *reservation_balance - amount;
-        };
-
-        // Update total reserved by full gross amount
-        reservation_pool_object.info.total_reserved = reservation_pool_object.info.total_reserved - amount;
-
-        // Update registry
-        if (table::contains(&registry.reservation_pools, associated_id)) {
-            let registry_pool = table::borrow_mut(&mut registry.reservation_pools, associated_id);
-            registry_pool.total_reserved = reservation_pool_object.info.total_reserved;
-        };
-
-        // Distribute fees directly to recipients — nothing goes into any pool
         if (fee_amount > 0) {
-            // Creator fee directly to post/profile owner (no PoC redirection on withdrawals)
-            if (creator_fee > 0) {
-                let creator_coin = coin::from_balance(
-                    balance::split(&mut reservation_pool_object.myso_balance, creator_fee), ctx
-                );
-                transfer::public_transfer(creator_coin, reservation_pool_object.info.owner);
-            };
-
-            // Platform fee directly to platform treasury
-            if (platform_fee > 0) {
-                let mut platform_fee_coin = coin::from_balance(
-                    balance::split(&mut reservation_pool_object.myso_balance, platform_fee), ctx
-                );
-                social_contracts::platform::add_to_treasury(platform, &mut platform_fee_coin, platform_fee, ctx);
-                coin::destroy_zero(platform_fee_coin);
-            };
-
-            // Ecosystem treasury fee
-            if (treasury_fee > 0) {
-                let treasury_coin = coin::from_balance(
-                    balance::split(&mut reservation_pool_object.myso_balance, treasury_fee), ctx
-                );
-                transfer::public_transfer(treasury_coin, profile::get_treasury_address(treasury));
-            };
+            distribute_reservation_withdraw_fees_platform_profile(
+                pool_owner,
+                treasury,
+                platform,
+                creator_fee,
+                platform_fee,
+                treasury_fee,
+                &mut reservation_pool_object.myso_balance,
+                ctx
+            );
         };
 
-        // Transfer net refund to reserver
         let refund_balance = balance::split(&mut reservation_pool_object.myso_balance, net_refund);
         let refund_coin = coin::from_balance(refund_balance, ctx);
         transfer::public_transfer(refund_coin, reserver);
@@ -2157,10 +2394,10 @@ module social_contracts::social_proof_tokens {
         }
     }
 
-    /// Distribute creator fees with PoC redirection from post (reuses existing pattern)
-    /// This follows the same logic as distribute_creator_fee but works with Post instead of TokenPool
-    public(package) fun distribute_reservation_creator_fee(
-        reservation_pool: &ReservationPoolObject,
+    /// PoC-aware post reservation creator fee using an explicit pool owner (avoids borrow conflicts
+    /// when paying from `&mut reservation_pool_object.myso_balance` during withdrawal).
+    fun distribute_reservation_creator_fee_with_owner(
+        pool_owner: address,
         post: &Post,
         creator_fee_amount: u64,
         creator_fee_coin: &mut Coin<MYSO>,
@@ -2172,28 +2409,42 @@ module social_contracts::social_proof_tokens {
 
         let (redirected_amount, _remaining_amount) = apply_post_poc_redirection(post, creator_fee_amount);
         let mut fee_coin = coin::split(creator_fee_coin, creator_fee_amount, ctx);
-        
+
         if (redirected_amount > 0) {
-            // Split the fee: redirected portion goes to original creator, remainder to post owner
             let redirected_fee = coin::split(&mut fee_coin, redirected_amount, ctx);
             let redirect_to = *option::borrow(post::get_revenue_redirect_to(post));
             transfer::public_transfer(redirected_fee, redirect_to);
-            
-            // Send remainder to current post owner
+
             if (coin::value(&fee_coin) > 0) {
-                transfer::public_transfer(fee_coin, reservation_pool.info.owner);
+                transfer::public_transfer(fee_coin, pool_owner);
             } else {
                 coin::destroy_zero(fee_coin);
             };
         } else {
-            // No redirection - send full amount to current post owner
-            transfer::public_transfer(fee_coin, reservation_pool.info.owner);
+            transfer::public_transfer(fee_coin, pool_owner);
         };
     }
 
-    /// Distribute creator fees without PoC (for profile reservations)
-    public(package) fun distribute_reservation_creator_fee_no_poc(
+    /// Distribute creator fees with PoC redirection from post (reuses existing pattern)
+    /// This follows the same logic as distribute_creator_fee but works with Post instead of TokenPool
+    public(package) fun distribute_reservation_creator_fee(
         reservation_pool: &ReservationPoolObject,
+        post: &Post,
+        creator_fee_amount: u64,
+        creator_fee_coin: &mut Coin<MYSO>,
+        ctx: &mut TxContext
+    ) {
+        distribute_reservation_creator_fee_with_owner(
+            reservation_pool.info.owner,
+            post,
+            creator_fee_amount,
+            creator_fee_coin,
+            ctx
+        );
+    }
+
+    fun distribute_reservation_creator_fee_no_poc_with_owner(
+        pool_owner: address,
         creator_fee_amount: u64,
         creator_fee_coin: &mut Coin<MYSO>,
         ctx: &mut TxContext
@@ -2203,7 +2454,22 @@ module social_contracts::social_proof_tokens {
         };
 
         let fee_coin = coin::split(creator_fee_coin, creator_fee_amount, ctx);
-        transfer::public_transfer(fee_coin, reservation_pool.info.owner);
+        transfer::public_transfer(fee_coin, pool_owner);
+    }
+
+    /// Distribute creator fees without PoC (for profile reservations)
+    public(package) fun distribute_reservation_creator_fee_no_poc(
+        reservation_pool: &ReservationPoolObject,
+        creator_fee_amount: u64,
+        creator_fee_coin: &mut Coin<MYSO>,
+        ctx: &mut TxContext
+    ) {
+        distribute_reservation_creator_fee_no_poc_with_owner(
+            reservation_pool.info.owner,
+            creator_fee_amount,
+            creator_fee_coin,
+            ctx
+        );
     }
 
     /// Calculate and distribute all reservation fees (for post reservations with PoC)
@@ -3735,6 +4001,16 @@ module social_contracts::social_proof_tokens {
     /// Get the version of a reservation pool
     public fun reservation_pool_version(pool: &ReservationPoolObject): u64 {
         pool.version
+    }
+
+    #[test_only]
+    public fun reservation_pool_total_reserved_for_testing(pool: &ReservationPoolObject): u64 {
+        pool.info.total_reserved
+    }
+
+    #[test_only]
+    public fun reservation_pool_myso_balance_value_for_testing(pool: &ReservationPoolObject): u64 {
+        balance::value(&pool.myso_balance)
     }
 
     /// Get a mutable reference to the reservation pool version (for upgrade module)
