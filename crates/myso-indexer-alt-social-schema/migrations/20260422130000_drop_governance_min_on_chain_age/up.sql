@@ -1,7 +1,3 @@
--- Drop min-on-chain-age eligibility columns (registry + platform).
-ALTER TABLE governance_registries DROP COLUMN IF EXISTS min_on_chain_age_days;
-ALTER TABLE platforms DROP COLUMN IF EXISTS min_on_chain_age_days;
-
 -- Greenfield-oriented: require GovernanceDAO object id on delegate-scoped rows; fix stats / aggregates.
 
 DROP VIEW IF EXISTS governance_stats CASCADE;

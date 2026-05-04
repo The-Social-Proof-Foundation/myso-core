@@ -1,17 +1,23 @@
 // Copyright (c) The Social Proof Foundation, LLC.
 // SPDX-License-Identifier: Apache-2.0
 
+//! `post.move` event handlers. PoC escrow and oracle flows are in [`super::poc`].
+//!
+//! **Indexed here:** `PostCreatedEvent` (includes `platform_id`, `permissions` when present on-chain),
+//! reactions, reposts, tips, moderation, reports, promotion lifecycle.
+
 use chrono::Utc;
 use serde::Deserialize;
 
+use super::common;
 use super::SocialEventRow;
 use myso_indexer_alt_social_schema::models::{
     NewComment, NewDeletionEvent, NewModerationEvent, NewPost, NewPostTransfer, NewReaction,
     NewReactionCount, NewReport, NewRepost, NewTip, NewUnifiedRevenue,
 };
 use myso_indexer_alt_social_schema::models::{
-    CONTENT_TYPE_COMMENT, CONTENT_TYPE_POST, POST_TYPE_QUOTE_REPOST, REVENUE_TYPE_TIPS_COMMENT,
-    REVENUE_TYPE_TIPS_POST,
+    CONTENT_TYPE_COMMENT, CONTENT_TYPE_POST, CURRENCY_MYSO, POST_TYPE_QUOTE_REPOST,
+    REVENUE_TYPE_TIPS_COMMENT, REVENUE_TYPE_TIPS_POST,
 };
 
 fn de_u64<'de, D>(d: D) -> Result<u64, D::Error>
@@ -31,11 +37,73 @@ where
     }
 }
 
+/// `Option<u64>` where the inner value may be a JSON number or decimal string (e.g. raw JSON fallback).
 fn de_opt_u64<'de, D>(d: D) -> Result<Option<u64>, D::Error>
 where
     D: serde::Deserializer<'de>,
 {
-    Option::deserialize(d)
+    let opt = Option::<serde_json::Value>::deserialize(d)?;
+    match opt {
+        None => Ok(None),
+        Some(v) if v.is_null() => Ok(None),
+        Some(serde_json::Value::Number(n)) => {
+            let u = n
+                .as_u64()
+                .ok_or_else(|| serde::de::Error::custom("invalid u64"))?;
+            Ok(Some(u))
+        }
+        Some(serde_json::Value::String(s)) => {
+            let u = s.parse::<u64>().map_err(serde::de::Error::custom)?;
+            Ok(Some(u))
+        }
+        Some(_) => Err(serde::de::Error::custom(
+            "expected number, string, or null for Option<u64>",
+        )),
+    }
+}
+
+fn de_u8<'de, D>(d: D) -> Result<u8, D::Error>
+where
+    D: serde::Deserializer<'de>,
+{
+    #[derive(Deserialize)]
+    #[serde(untagged)]
+    enum V {
+        U8(u8),
+        U64(u64),
+        S(String),
+    }
+    match V::deserialize(d) {
+        Ok(V::U8(n)) => Ok(n),
+        Ok(V::U64(n)) => u8::try_from(n).map_err(|_| serde::de::Error::custom("u8 out of range")),
+        Ok(V::S(s)) => s.parse().map_err(serde::de::Error::custom),
+        Err(e) => Err(e),
+    }
+}
+
+fn de_opt_u8<'de, D>(d: D) -> Result<Option<u8>, D::Error>
+where
+    D: serde::Deserializer<'de>,
+{
+    let opt = Option::<serde_json::Value>::deserialize(d)?;
+    match opt {
+        None => Ok(None),
+        Some(v) if v.is_null() => Ok(None),
+        Some(serde_json::Value::Number(n)) => {
+            let u = n
+                .as_u64()
+                .and_then(|x| u8::try_from(x).ok())
+                .ok_or_else(|| serde::de::Error::custom("invalid u8"))?;
+            Ok(Some(u))
+        }
+        Some(serde_json::Value::String(s)) => s
+            .parse::<u8>()
+            .map_err(serde::de::Error::custom)
+            .map(Some),
+        Some(_) => Err(serde::de::Error::custom(
+            "expected number, string, or null for Option<u8>",
+        )),
+    }
 }
 
 #[derive(Debug, Deserialize)]
@@ -43,6 +111,10 @@ struct PostCreatedEvent {
     post_id: String,
     owner: String,
     profile_id: String,
+    #[serde(default)]
+    platform_id: Option<String>,
+    #[serde(default, deserialize_with = "de_opt_u8")]
+    permissions: Option<u8>,
     content: String,
     post_type: String,
     parent_post_id: Option<String>,
@@ -62,6 +134,8 @@ struct PostCreatedEvent {
     enable_spot: bool,
     spot_id: Option<String>,
     spt_id: Option<String>,
+    #[serde(default, deserialize_with = "de_u8")]
+    poc_redirection_kind: u8,
 }
 
 #[derive(Debug, Deserialize)]
@@ -113,6 +187,8 @@ struct TipEvent {
     #[serde(deserialize_with = "de_u64")]
     amount: u64,
     is_post: bool,
+    #[serde(default)]
+    coin_type: String,
     #[serde(default, deserialize_with = "de_u64")]
     tip_time: u64,
 }
@@ -251,7 +327,9 @@ pub fn handle_post_event(
         "PostCreatedEvent" => process_post_created_event(data, event_id),
         "CommentCreatedEvent" => process_comment_created_event(data, event_id),
         "ReactionEvent" | "ReactionAddedEvent" => process_reaction_event(data, event_id),
-        "ReactionRemovedEvent" | "RemoveReactionEvent" => process_remove_reaction_event(data),
+        "ReactionRemovedEvent" | "RemoveReactionEvent" => {
+            process_remove_reaction_event(data, event_id)
+        }
         "RepostEvent" | "RepostCreatedEvent" => process_repost_event(data, event_id),
         "TipEvent" | "TipSentEvent" | "TipCreatedEvent" => process_tip_event(data, event_id),
         "ModerationEvent" | "ContentModerationEvent" | "PostModerationEvent" => {
@@ -264,7 +342,7 @@ pub fn handle_post_event(
             process_deletion_event(data, event_id, event_name)
         }
         "ContentUpdateEvent" | "PostUpdatedEvent" | "CommentUpdatedEvent" => {
-            process_content_update_event(data)
+            process_content_update_event(data, event_id)
         }
         "OwnershipTransferEvent" => process_ownership_transfer_event(data, event_id),
         "PostParametersUpdatedEvent" => process_post_parameters_updated_event(data, event_id),
@@ -282,7 +360,13 @@ fn process_post_created_event(
     data: &serde_json::Value,
     event_id: &str,
 ) -> Option<Vec<SocialEventRow>> {
-    let ev: PostCreatedEvent = serde_json::from_value(data.clone()).ok()?;
+    let ev: PostCreatedEvent = common::deserialize_social_event_json(
+        "post",
+        "PostCreatedEvent",
+        event_id,
+        data,
+        "post PostCreatedEvent JSON did not match PostCreatedEvent",
+    )?;
     let is_quote_repost = ev.post_type == POST_TYPE_QUOTE_REPOST;
     let parent_for_repost_count = if is_quote_repost {
         ev.parent_post_id.clone()
@@ -322,6 +406,12 @@ fn process_post_created_event(
         poc_media_type: None,
         poc_oracle_address: None,
         poc_analyzed_at: None,
+        poc_outcome: None,
+        poc_redirection_kind: match ev.poc_redirection_kind {
+            0 => None,
+            k => Some(i16::from(k)),
+        },
+        poc_disputes_submitted: 0,
         revenue_redirect_to: ev.revenue_redirect_to,
         revenue_redirect_percentage: ev.revenue_redirect_percentage.map(|p| p as i64),
         requires_subscription: None,
@@ -334,6 +424,8 @@ fn process_post_created_event(
         enable_spot: ev.enable_spot,
         spot_id: ev.spot_id,
         spt_id: ev.spt_id,
+        platform_id: ev.platform_id,
+        permissions: ev.permissions.map(|p| i16::from(p)),
     };
     let mut out = vec![
         SocialEventRow::Post(post),
@@ -354,7 +446,13 @@ fn process_comment_created_event(
     data: &serde_json::Value,
     event_id: &str,
 ) -> Option<Vec<SocialEventRow>> {
-    let ev: CommentCreatedEvent = serde_json::from_value(data.clone()).ok()?;
+    let ev: CommentCreatedEvent = common::deserialize_social_event_json(
+        "post",
+        "CommentCreatedEvent",
+        event_id,
+        data,
+        "post CommentCreatedEvent JSON did not match CommentCreatedEvent",
+    )?;
     let post_id = ev.post_id.clone();
     let now = Utc::now();
     let created_at = now.timestamp_millis() as i64;
@@ -390,7 +488,13 @@ fn process_comment_created_event(
 }
 
 fn process_reaction_event(data: &serde_json::Value, event_id: &str) -> Option<Vec<SocialEventRow>> {
-    let ev: ReactionEvent = serde_json::from_value(data.clone()).ok()?;
+    let ev: ReactionEvent = common::deserialize_social_event_json(
+        "post",
+        "ReactionEvent",
+        event_id,
+        data,
+        "post reaction event JSON did not match ReactionEvent",
+    )?;
     let now = Utc::now();
     let created_at = if ev.created_at > 0 {
         ev.created_at as i64
@@ -418,8 +522,17 @@ fn process_reaction_event(data: &serde_json::Value, event_id: &str) -> Option<Ve
     ])
 }
 
-fn process_remove_reaction_event(data: &serde_json::Value) -> Option<Vec<SocialEventRow>> {
-    let ev: RemoveReactionEvent = serde_json::from_value(data.clone()).ok()?;
+fn process_remove_reaction_event(
+    data: &serde_json::Value,
+    event_id: &str,
+) -> Option<Vec<SocialEventRow>> {
+    let ev: RemoveReactionEvent = common::deserialize_social_event_json(
+        "post",
+        "RemoveReactionEvent",
+        event_id,
+        data,
+        "post remove-reaction event JSON did not match RemoveReactionEvent",
+    )?;
     Some(vec![SocialEventRow::RemoveReaction {
         object_id: ev.object_id,
         user_address: ev.user_address,
@@ -429,7 +542,13 @@ fn process_remove_reaction_event(data: &serde_json::Value) -> Option<Vec<SocialE
 }
 
 fn process_repost_event(data: &serde_json::Value, event_id: &str) -> Option<Vec<SocialEventRow>> {
-    let ev: RepostEvent = serde_json::from_value(data.clone()).ok()?;
+    let ev: RepostEvent = common::deserialize_social_event_json(
+        "post",
+        "RepostEvent",
+        event_id,
+        data,
+        "post repost event JSON did not match RepostEvent",
+    )?;
     let now = Utc::now();
     let created_at = if ev.created_at > 0 {
         ev.created_at as i64
@@ -460,23 +579,13 @@ fn process_repost_event(data: &serde_json::Value, event_id: &str) -> Option<Vec<
 }
 
 fn process_tip_event(data: &serde_json::Value, event_id: &str) -> Option<Vec<SocialEventRow>> {
-    let ev: TipEvent = match serde_json::from_value(data.clone()) {
-        Ok(v) => v,
-        Err(e) => {
-            crate::metrics::SocialMetrics::record_event_json_deserialize_failed("post", "TipEvent");
-            let keys: Vec<String> = data
-                .as_object()
-                .map(|m| m.keys().cloned().collect())
-                .unwrap_or_default();
-            tracing::warn!(
-                event_id = %event_id,
-                error = %e,
-                json_keys = ?keys,
-                "post tip event JSON did not match TipEvent"
-            );
-            return None;
-        }
-    };
+    let ev: TipEvent = common::deserialize_social_event_json(
+        "post",
+        "TipEvent",
+        event_id,
+        data,
+        "post tip event JSON did not match TipEvent",
+    )?;
     let now = Utc::now();
     let created_at = if ev.tip_time > 0 {
         ev.tip_time as i64
@@ -490,6 +599,11 @@ fn process_tip_event(data: &serde_json::Value, event_id: &str) -> Option<Vec<Soc
         object_id: ev.object_id.clone(),
         amount: ev.amount as i64,
         is_post: ev.is_post,
+        coin_type: if ev.coin_type.is_empty() {
+            CURRENCY_MYSO.to_string()
+        } else {
+            ev.coin_type.clone()
+        },
         created_at,
         time: now,
         transaction_id: event_id.to_string(),
@@ -504,10 +618,16 @@ fn process_tip_event(data: &serde_json::Value, event_id: &str) -> Option<Vec<Soc
     } else {
         CONTENT_TYPE_COMMENT.to_string()
     };
+    let currency = if ev.coin_type.is_empty() {
+        CURRENCY_MYSO.to_string()
+    } else {
+        ev.coin_type.clone()
+    };
     let unified_revenue = NewUnifiedRevenue::from_tip(
         revenue_type,
         ev.to.clone(),
         ev.amount as i64,
+        currency,
         ev.object_id.clone(),
         content_type,
         ev.from.clone(),
@@ -532,26 +652,13 @@ fn process_moderation_event(
     data: &serde_json::Value,
     event_id: &str,
 ) -> Option<Vec<SocialEventRow>> {
-    let ev: ModerationEvent = match serde_json::from_value(data.clone()) {
-        Ok(v) => v,
-        Err(e) => {
-            crate::metrics::SocialMetrics::record_event_json_deserialize_failed(
-                "post",
-                "PostModerationEvent",
-            );
-            let keys: Vec<String> = data
-                .as_object()
-                .map(|m| m.keys().cloned().collect())
-                .unwrap_or_default();
-            tracing::warn!(
-                event_id = %event_id,
-                error = %e,
-                json_keys = ?keys,
-                "post moderation event JSON did not match ModerationEvent"
-            );
-            return None;
-        }
-    };
+    let ev: ModerationEvent = common::deserialize_social_event_json(
+        "post",
+        "PostModerationEvent",
+        event_id,
+        data,
+        "post moderation event JSON did not match ModerationEvent",
+    )?;
     let now = Utc::now();
     let moderated_at = if ev.moderated_at > 0 {
         ev.moderated_at as i64
@@ -578,8 +685,17 @@ fn process_moderation_event(
     ])
 }
 
-fn process_content_update_event(data: &serde_json::Value) -> Option<Vec<SocialEventRow>> {
-    let ev: ContentUpdateEvent = serde_json::from_value(data.clone()).ok()?;
+fn process_content_update_event(
+    data: &serde_json::Value,
+    event_id: &str,
+) -> Option<Vec<SocialEventRow>> {
+    let ev: ContentUpdateEvent = common::deserialize_social_event_json(
+        "post",
+        "ContentUpdateEvent",
+        event_id,
+        data,
+        "post content update event JSON did not match ContentUpdateEvent",
+    )?;
     let media_urls = ev.media_urls.clone();
     let mentions = ev.mentions.clone();
     let metadata_json = ev
@@ -601,7 +717,13 @@ fn process_post_parameters_updated_event(
     data: &serde_json::Value,
     event_id: &str,
 ) -> Option<Vec<SocialEventRow>> {
-    let ev: PostParametersUpdatedEvent = serde_json::from_value(data.clone()).ok()?;
+    let ev: PostParametersUpdatedEvent = common::deserialize_social_event_json(
+        "post",
+        "PostParametersUpdatedEvent",
+        event_id,
+        data,
+        "post PostParametersUpdatedEvent JSON did not match PostParametersUpdatedEvent",
+    )?;
     Some(vec![SocialEventRow::PostConfig {
         updated_by: ev.updated_by,
         max_content_length: ev.max_content_length as i64,
@@ -622,7 +744,13 @@ fn process_ownership_transfer_event(
     data: &serde_json::Value,
     event_id: &str,
 ) -> Option<Vec<SocialEventRow>> {
-    let ev: OwnershipTransferEvent = serde_json::from_value(data.clone()).ok()?;
+    let ev: OwnershipTransferEvent = common::deserialize_social_event_json(
+        "post",
+        "OwnershipTransferEvent",
+        event_id,
+        data,
+        "post OwnershipTransferEvent JSON did not match OwnershipTransferEvent",
+    )?;
     let now = Utc::now();
     let transferred_at = now.timestamp();
     let transfer = NewPostTransfer {
@@ -644,7 +772,13 @@ fn process_ownership_transfer_event(
 }
 
 fn process_report_event(data: &serde_json::Value, event_id: &str) -> Option<Vec<SocialEventRow>> {
-    let ev: ReportEvent = serde_json::from_value(data.clone()).ok()?;
+    let ev: ReportEvent = common::deserialize_social_event_json(
+        "post",
+        "ReportEvent",
+        event_id,
+        data,
+        "post report event JSON did not match ReportEvent",
+    )?;
     let now = Utc::now();
 
     let report = NewReport {
@@ -665,26 +799,13 @@ fn process_deletion_event(
     event_id: &str,
     event_type_for_metrics: &str,
 ) -> Option<Vec<SocialEventRow>> {
-    let ev: DeletionEvent = match serde_json::from_value(data.clone()) {
-        Ok(v) => v,
-        Err(e) => {
-            crate::metrics::SocialMetrics::record_event_json_deserialize_failed(
-                "post",
-                event_type_for_metrics,
-            );
-            let keys: Vec<String> = data
-                .as_object()
-                .map(|m| m.keys().cloned().collect())
-                .unwrap_or_default();
-            tracing::warn!(
-                event_id = %event_id,
-                error = %e,
-                json_keys = ?keys,
-                "post deletion event JSON did not match DeletionEvent"
-            );
-            return None;
-        }
-    };
+    let ev: DeletionEvent = common::deserialize_social_event_json(
+        "post",
+        event_type_for_metrics,
+        event_id,
+        data,
+        "post deletion event JSON did not match DeletionEvent",
+    )?;
     let now = Utc::now();
     let deleted_at = ev.deleted_at as i64;
 
@@ -871,6 +992,7 @@ fn process_promotion_funds_withdrawn_event(
 mod tests {
     use super::*;
     use crate::handlers::SocialEventRow;
+    use myso_indexer_alt_social_schema::models::CURRENCY_MYSO;
 
     #[test]
     fn post_created_quote_repost_increments_parent_repost_count() {
@@ -1092,6 +1214,10 @@ mod tests {
             "tip_time": 0u64,
         });
         let rows = handle_post_event("TipEvent", &data, "tx:tip2").expect("rows");
+        let SocialEventRow::Tip(tip_row) = &rows[0] else {
+            panic!("expected Tip");
+        };
+        assert_eq!(tip_row.coin_type, CURRENCY_MYSO);
         let SocialEventRow::PostTipsReceivedIncrement {
             recipient, is_post, ..
         } = &rows[1]
@@ -1112,6 +1238,7 @@ mod tests {
             "from": "0x2458950181e415250823d6ce1d55f2b3427826a111939e0d6d38e9a1397411d8",
             "to": "0x8a8d7490ab0dee5e6a0092a463ade496a1352d89b5091e96e3d356d4f8577f72",
             "amount": 5000000000_u64,
+            "coin_type": "0x0000000000000000000000000000000000000000000000000000000000000002::myso::MYSO",
             "is_post": true,
             "tip_time": 0u64,
         });
@@ -1130,6 +1257,10 @@ mod tests {
             "0x8a8d7490ab0dee5e6a0092a463ade496a1352d89b5091e96e3d356d4f8577f72"
         );
         assert_eq!(t.transaction_id, "tx:tip1");
+        assert_eq!(
+            t.coin_type,
+            "0x0000000000000000000000000000000000000000000000000000000000000002::myso::MYSO"
+        );
         let SocialEventRow::PostTipsReceivedIncrement {
             object_id,
             recipient,

@@ -95,10 +95,3 @@ BEGIN
     END IF;
 END
 $$;
-
--- Restore min-on-chain-age columns.
-ALTER TABLE governance_registries
-    ADD COLUMN IF NOT EXISTS min_on_chain_age_days BIGINT NOT NULL DEFAULT 0;
-
-ALTER TABLE platforms
-    ADD COLUMN IF NOT EXISTS min_on_chain_age_days BIGINT;

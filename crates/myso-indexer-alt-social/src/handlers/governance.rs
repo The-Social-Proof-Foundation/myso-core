@@ -3,6 +3,7 @@
 
 use chrono::Utc;
 
+use super::common;
 use super::SocialEventRow;
 use myso_indexer_alt_social_schema::models::{
     GovernanceRegistryPanelBoundaryUpdate, GovernanceRegistryUpdate, NewAnonymousVote,
@@ -50,6 +51,20 @@ where
         Ok(V::S(s)) => s.parse().map_err(serde::de::Error::custom),
         Err(e) => Err(e),
     }
+}
+
+fn deserialize_gov_ev<T: serde::de::DeserializeOwned>(
+    event_type: &'static str,
+    event_id: &str,
+    data: &serde_json::Value,
+) -> Option<T> {
+    common::deserialize_social_event_json(
+        "governance",
+        event_type,
+        event_id,
+        data,
+        "governance event JSON did not match handler struct",
+    )
 }
 
 pub fn handle_governance_event(
@@ -146,9 +161,7 @@ fn process_governance_registry_created_event(
         #[serde(deserialize_with = "de_u64")]
         updated_at: u64,
     }
-    let ev: Ev = serde_json::from_value(data.clone()).ok()?;
-    let now = Utc::now();
-    let registry_id_for_event = ev.registry_id.clone();
+    let ev: Ev = deserialize_gov_ev("GovernanceRegistryCreatedEvent", event_id, data)?;
     let reg = NewGovernanceRegistry {
         registry_type: ev.registry_type as i16,
         registry_id: ev.registry_id.clone(),
@@ -168,9 +181,9 @@ fn process_governance_registry_created_event(
         registry_type: ev.registry_type as i16,
         event_data: data.clone(),
         event_id: event_id.to_string(),
-        created_at: now,
+        created_at: Utc::now(),
         anonymous_voting_related: None,
-        governance_registry_id: Some(registry_id_for_event),
+        governance_registry_id: Some(ev.registry_id.clone()),
         proposal_id: None,
     };
     Some(vec![
@@ -192,12 +205,12 @@ fn process_delegate_nominated_event(
         #[serde(deserialize_with = "de_u64")]
         scheduled_term_start_epoch: u64,
     }
-    let ev: Ev = serde_json::from_value(data.clone()).ok()?;
-    let now = Utc::now().timestamp_millis() as i64;
+    let ev: Ev = deserialize_gov_ev("DelegateNominatedEvent", event_id, data)?;
     let Some(reg_id) = require_registry_id(governance_registry_id, event_id, "DelegateNominated")
     else {
         return None;
     };
+    let now = Utc::now().timestamp_millis();
     let nominee = NewNominatedDelegate {
         address: ev.nominee_address,
         registry_type: ev.registry_type as i16,
@@ -244,13 +257,13 @@ fn process_delegate_elected_event(
         #[serde(deserialize_with = "de_u64")]
         downvotes: u64,
     }
-    let ev: Ev = serde_json::from_value(data.clone()).ok()?;
-    let now = Utc::now().timestamp_millis() as i64;
+    let ev: Ev = deserialize_gov_ev("DelegateElectedEvent", event_id, data)?;
     let Some(scoped_registry_id) =
         require_registry_id(governance_registry_id, event_id, "DelegateElected")
     else {
         return None;
     };
+    let now = Utc::now().timestamp_millis();
     let status_update = SocialEventRow::NominatedDelegateStatusUpdate {
         address: ev.delegate_address.clone(),
         registry_type: ev.registry_type as i16,
@@ -309,12 +322,12 @@ fn process_delegate_voted_event(
         #[serde(rename = "new_downvote_count", deserialize_with = "de_u64")]
         new_downvote_count: u64,
     }
-    let ev: Ev = serde_json::from_value(data.clone()).ok()?;
-    let now = Utc::now().timestamp_millis() as i64;
+    let ev: Ev = deserialize_gov_ev("DelegateVotedEvent", event_id, data)?;
     let Some(scoped) = require_registry_id(governance_registry_id, event_id, "DelegateVoted")
     else {
         return None;
     };
+    let now = Utc::now().timestamp_millis();
     let vote_counts = SocialEventRow::DelegateVoteCountsUpdate {
         target_address: ev.target_address.clone(),
         registry_type: ev.registry_type as i16,
@@ -367,12 +380,12 @@ fn process_delegate_vote_cleared_event(
         #[serde(rename = "new_downvote_count", deserialize_with = "de_u64")]
         new_downvote_count: u64,
     }
-    let ev: Ev = serde_json::from_value(data.clone()).ok()?;
-    let now = Utc::now().timestamp_millis() as i64;
+    let ev: Ev = deserialize_gov_ev("DelegateVoteClearedEvent", event_id, data)?;
     let Some(scoped) = require_registry_id(governance_registry_id, event_id, "DelegateVoteCleared")
     else {
         return None;
     };
+    let now = Utc::now().timestamp_millis();
     let vote_counts = SocialEventRow::DelegateVoteCountsUpdate {
         target_address: ev.target_address.clone(),
         registry_type: ev.registry_type as i16,
@@ -428,8 +441,7 @@ fn process_proposal_submitted_event(
         #[serde(deserialize_with = "de_u64")]
         submission_time: u64,
     }
-    let ev: Ev = serde_json::from_value(data.clone()).ok()?;
-    let metadata_json = ev.metadata_json.and_then(|s| serde_json::from_str(&s).ok());
+    let ev: Ev = deserialize_gov_ev("ProposalSubmittedEvent", event_id, data)?;
     let Some(proposal_scope) = require_registry_id(
         governance_registry_id.clone(),
         event_id,
@@ -443,7 +455,9 @@ fn process_proposal_submitted_event(
         description: ev.description,
         proposal_type: ev.proposal_type as i16,
         reference_id: ev.reference_id,
-        metadata_json,
+        metadata_json: ev.metadata_json.map(|raw| {
+            serde_json::from_str(&raw).unwrap_or_else(|_| serde_json::Value::String(raw))
+        }),
         submitter: ev.submitter.clone(),
         submission_time: ev.submission_time as i64,
         delegate_approval_count: 0,
@@ -491,7 +505,7 @@ fn process_delegate_vote_event(
         vote_time: u64,
         reason: Option<String>,
     }
-    let ev: Ev = serde_json::from_value(data.clone()).ok()?;
+    let ev: Ev = deserialize_gov_ev("DelegateVoteEvent", event_id, data)?;
     let vote = NewDelegateVote {
         proposal_id: ev.proposal_id.clone(),
         delegate_address: ev.delegate_address.clone(),
@@ -536,7 +550,7 @@ fn process_community_vote_event(
         #[serde(deserialize_with = "de_u64")]
         vote_cost: u64,
     }
-    let ev: Ev = serde_json::from_value(data.clone()).ok()?;
+    let ev: Ev = deserialize_gov_ev("CommunityVoteEvent", event_id, data)?;
     let (votes_for_delta, votes_against_delta) = if ev.approve {
         (ev.vote_weight as i64, 0)
     } else {
@@ -581,7 +595,7 @@ fn process_proposal_approved_for_voting_event(
         #[serde(deserialize_with = "de_u64")]
         voting_end_time: u64,
     }
-    let ev: Ev = serde_json::from_value(data.clone()).ok()?;
+    let ev: Ev = deserialize_gov_ev("ProposalApprovedForVotingEvent", event_id, data)?;
     let set = ProposalUpdateSet {
         status: Some(GOVERNANCE_STATUS_COMMUNITY_VOTING),
         voting_start_time: Some(ev.voting_start_time as i64),
@@ -617,7 +631,7 @@ fn process_proposal_rejected_event(
         #[serde(deserialize_with = "de_u64")]
         rejection_time: u64,
     }
-    let ev: Ev = serde_json::from_value(data.clone()).ok()?;
+    let ev: Ev = deserialize_gov_ev("ProposalRejectedEvent", event_id, data)?;
     let set = ProposalUpdateSet {
         status: Some(GOVERNANCE_STATUS_REJECTED),
         voting_start_time: None,
@@ -661,7 +675,7 @@ fn process_proposal_rescinded_event(
         #[serde(deserialize_with = "de_u64")]
         refund_amount: u64,
     }
-    let ev: Ev = serde_json::from_value(data.clone()).ok()?;
+    let ev: Ev = deserialize_gov_ev("ProposalRescindedEvent", event_id, data)?;
     let set = ProposalUpdateSet {
         status: Some(GOVERNANCE_STATUS_OWNER_RESCINDED),
         voting_start_time: None,
@@ -711,7 +725,7 @@ fn process_proposal_rejected_by_community_event(
         #[serde(deserialize_with = "de_u64")]
         votes_against: u64,
     }
-    let ev: Ev = serde_json::from_value(data.clone()).ok()?;
+    let ev: Ev = deserialize_gov_ev("ProposalRejectedByCommunityEvent", event_id, data)?;
     let set = ProposalUpdateSet {
         status: Some(GOVERNANCE_STATUS_REJECTED),
         voting_start_time: None,
@@ -755,7 +769,7 @@ fn process_proposal_approved_event(
         #[serde(deserialize_with = "de_u64")]
         votes_against: u64,
     }
-    let ev: Ev = serde_json::from_value(data.clone()).ok()?;
+    let ev: Ev = deserialize_gov_ev("ProposalApprovedEvent", event_id, data)?;
     let set = ProposalUpdateSet {
         status: Some(GOVERNANCE_STATUS_APPROVED),
         voting_start_time: None,
@@ -797,7 +811,7 @@ fn process_proposal_implemented_event(
         implementation_time: u64,
         description: Option<String>,
     }
-    let ev: Ev = serde_json::from_value(data.clone()).ok()?;
+    let ev: Ev = deserialize_gov_ev("ProposalImplementedEvent", event_id, data)?;
     let set = ProposalUpdateSet {
         status: Some(GOVERNANCE_STATUS_IMPLEMENTED),
         voting_start_time: None,
@@ -837,7 +851,11 @@ fn process_proposal_implementation_reward_to_submitter_event(
         #[serde(deserialize_with = "de_u64")]
         sent_time: u64,
     }
-    let ev: Ev = serde_json::from_value(data.clone()).ok()?;
+    let ev: Ev = deserialize_gov_ev(
+        "ProposalImplementationRewardToSubmitterEvent",
+        event_id,
+        data,
+    )?;
     let proposal_id = ev.proposal_id.clone();
     let dist = NewRewardDistribution {
         proposal_id: proposal_id.clone(),
@@ -900,7 +918,7 @@ fn process_proposal_reward_pool_forfeited_to_treasury_event(
         #[serde(deserialize_with = "de_u64")]
         forfeited_time: u64,
     }
-    let ev: Ev = serde_json::from_value(data.clone()).ok()?;
+    let ev: Ev = deserialize_gov_ev("ProposalRewardPoolForfeitedToTreasuryEvent", event_id, data)?;
     let proposal_id = ev.proposal_id.clone();
     let base: &str = match ev.reason {
         0 => "quorum_not_met",
@@ -963,7 +981,7 @@ fn process_anonymous_vote_event(
         vote_time: u64,
         encrypted_vote_data: Vec<u8>,
     }
-    let ev: Ev = serde_json::from_value(data.clone()).ok()?;
+    let ev: Ev = deserialize_gov_ev("AnonymousVoteEvent", event_id, data)?;
     let vote = NewAnonymousVote {
         proposal_id: ev.proposal_id.clone(),
         voter_address: ev.voter,
@@ -1001,7 +1019,7 @@ fn process_vote_decryption_failed_event(
         #[serde(deserialize_with = "de_u64")]
         timestamp: u64,
     }
-    let ev: Ev = serde_json::from_value(data.clone()).ok()?;
+    let ev: Ev = deserialize_gov_ev("VoteDecryptionFailedEvent", event_id, data)?;
     let failure = NewVoteDecryptionFailure {
         proposal_id: ev.proposal_id.clone(),
         voter_address: ev.voter,
@@ -1034,7 +1052,7 @@ fn process_delegate_panel_refreshed_event(
         #[serde(deserialize_with = "de_u8")]
         registry_type: u8,
     }
-    let ev: Ev = serde_json::from_value(data.clone()).ok()?;
+    let ev: Ev = deserialize_gov_ev("DelegatePanelRefreshedEvent", event_id, data)?;
     let boundary = ev.boundary_epoch as i64;
     let now_ms = Utc::now().timestamp_millis();
     let up = GovernanceRegistryPanelBoundaryUpdate {
@@ -1085,7 +1103,7 @@ fn process_governance_parameters_updated_event(
         #[serde(deserialize_with = "de_u64")]
         timestamp: u64,
     }
-    let ev: Ev = serde_json::from_value(data.clone()).ok()?;
+    let ev: Ev = deserialize_gov_ev("GovernanceParametersUpdatedEvent", event_id, data)?;
     let registry_type_i16 = ev.registry_type as i16;
     let Some(registry_id) = require_registry_id(
         governance_registry_id,

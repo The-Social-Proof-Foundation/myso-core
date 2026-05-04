@@ -1,6 +1,11 @@
 -- Migration: Add PoC metadata fields to posts table
 -- Version: 20251230000001
 -- Purpose: Add PoC analysis metadata fields to replace poc_id with detailed analysis information
+--
+-- Ops: If this version already ran before poc_outcome / poc_redirection_kind existed in this file,
+-- migrations will not re-execute. Apply once on that DB:
+--   ALTER TABLE posts ADD COLUMN IF NOT EXISTS poc_outcome SMALLINT NULL;
+--   ALTER TABLE posts ADD COLUMN IF NOT EXISTS poc_redirection_kind SMALLINT NULL;
 
 -- ============================================================================
 -- 1. ADD POC METADATA COLUMNS
@@ -45,6 +50,18 @@ BEGIN
     ) THEN
         ALTER TABLE posts ADD COLUMN poc_analyzed_at BIGINT NULL;
     END IF;
+    IF NOT EXISTS (
+        SELECT 1 FROM information_schema.columns 
+        WHERE table_name = 'posts' AND column_name = 'poc_outcome'
+    ) THEN
+        ALTER TABLE posts ADD COLUMN poc_outcome SMALLINT NULL;
+    END IF;
+    IF NOT EXISTS (
+        SELECT 1 FROM information_schema.columns 
+        WHERE table_name = 'posts' AND column_name = 'poc_redirection_kind'
+    ) THEN
+        ALTER TABLE posts ADD COLUMN poc_redirection_kind SMALLINT NULL;
+    END IF;
 END $$;
 
 -- ============================================================================
@@ -77,3 +94,5 @@ COMMENT ON COLUMN posts.poc_similarity_score IS 'Similarity score from PoC analy
 COMMENT ON COLUMN posts.poc_media_type IS 'Media type analyzed: 1=IMAGE, 2=VIDEO, 3=AUDIO';
 COMMENT ON COLUMN posts.poc_oracle_address IS 'Address of oracle that performed PoC analysis';
 COMMENT ON COLUMN posts.poc_analyzed_at IS 'Timestamp when PoC analysis was performed';
+COMMENT ON COLUMN posts.poc_outcome IS 'PoC result outcome on post (on-chain u8, e.g. none / original / derivative)';
+COMMENT ON COLUMN posts.poc_redirection_kind IS 'How derivative revenue is routed when applicable (on-chain u8)';

@@ -249,14 +249,82 @@ impl PocConfig {
         self.inner.dispute_cost
     }
 
+    /// Minimum aggregate voting stake (`uphold` + `overturn`) required for a full resolution on round 1; `0` disables the quorum gate.
+    async fn dispute_quorum_base_stake(&self) -> i64 {
+        self.inner.dispute_quorum_base_stake
+    }
+
+    /// Fee multiplier (basis points) applied only when opening the second dispute; must be at least `10000`.
+    async fn dispute_second_round_fee_multiplier_bps(&self) -> i64 {
+        self.inner.dispute_second_round_fee_multiplier_bps
+    }
+
+    /// Quorum multiplier (basis points) applied to `dispute_quorum_base_stake` only on round 2.
+    async fn dispute_second_round_quorum_multiplier_bps(&self) -> i64 {
+        self.inner.dispute_second_round_quorum_multiplier_bps
+    }
+
+    /// Minimum stake per vote on a dispute (MYSO base units).
+    async fn min_vote_stake(&self) -> i64 {
+        self.inner.min_vote_stake
+    }
+
+    /// Maximum stake per vote on a dispute (MYSO base units).
+    async fn max_vote_stake(&self) -> i64 {
+        self.inner.max_vote_stake
+    }
+
+    /// Voting period for disputes (milliseconds).
+    async fn voting_duration_ms(&self) -> i64 {
+        self.inner.voting_duration_ms
+    }
+
+    /// Max length of reasoning text allowed in PoC flows.
+    async fn max_reasoning_length(&self) -> i64 {
+        self.inner.max_reasoning_length
+    }
+
+    /// Max evidence URLs per submission.
+    async fn max_evidence_urls(&self) -> i64 {
+        self.inner.max_evidence_urls
+    }
+
+    /// Max votes allowed per dispute.
+    async fn max_votes_per_dispute(&self) -> i64 {
+        self.inner.max_votes_per_dispute
+    }
+
     /// Oracle address used for verification.
     async fn oracle_address(&self) -> Option<&str> {
         self.inner.oracle_address.as_deref()
     }
 
+    async fn claim_treasury_fee_bps(&self) -> i64 {
+        self.inner.claim_treasury_fee_bps
+    }
+
+    async fn max_referral_bps(&self) -> i64 {
+        self.inner.max_referral_bps
+    }
+
+    /// Max redirect ceiling (bps) when only embedded audio matches on a VIDEO post (on-chain delta ramp applies).
+    async fn video_embedded_audio_redirect_bps(&self) -> i64 {
+        self.inner.video_embedded_audio_redirect_bps
+    }
+
+    /// Address that last updated PoC configuration.
+    async fn updated_by(&self) -> &str {
+        &self.inner.updated_by
+    }
+
     /// Last updated timestamp (epoch milliseconds).
     async fn updated_at(&self) -> i64 {
         self.inner.updated_at
+    }
+
+    /// Transaction digest for the indexer row for this PoC configuration update.
+    async fn transaction_id(&self) -> &str {
+        &self.inner.transaction_id
     }
 }
 
@@ -288,14 +356,14 @@ impl SpotConfig {
         self.inner.confidence_threshold_bps
     }
 
-    /// Resolution window in epochs.
-    async fn resolution_window_epochs(&self) -> i64 {
-        self.inner.resolution_window_epochs
+    /// Resolution window duration in milliseconds (global default).
+    async fn resolution_window_ms(&self) -> i64 {
+        self.inner.resolution_window_ms
     }
 
-    /// Max resolution window in epochs.
-    async fn max_resolution_window_epochs(&self) -> i64 {
-        self.inner.max_resolution_window_epochs
+    /// Max resolution window duration in milliseconds.
+    async fn max_resolution_window_ms(&self) -> i64 {
+        self.inner.max_resolution_window_ms
     }
 
     /// Payout delay in milliseconds.

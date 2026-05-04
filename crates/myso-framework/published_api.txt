@@ -7543,6 +7543,51 @@ requires_paid_message
 get_min_message_cost
 	public fun
 	0x50c1::profile
+VaultBalanceKey
+	public struct
+	0x50c1::poc_vault
+PoCVaultDirectory
+	public struct
+	0x50c1::poc_vault
+PoCBeneficiaryVault
+	public struct
+	0x50c1::poc_vault
+PoCBadgeObject
+	public struct
+	0x50c1::poc_vault
+PoCBeneficiaryVaultDepositEvent
+	public struct
+	0x50c1::poc_vault
+PoCBeneficiaryVaultClaimedEvent
+	public struct
+	0x50c1::poc_vault
+media_index_unspecified
+	public fun
+	0x50c1::poc_vault
+bootstrap_init_directory
+	public(package) fun
+	0x50c1::poc_vault
+beneficiary_address
+	public fun
+	0x50c1::poc_vault
+ensure_beneficiary_vault
+	public(package) fun
+	0x50c1::poc_vault
+deposit_coin
+	public(package) fun
+	0x50c1::poc_vault
+claim_vault_balance
+	public(package) fun
+	0x50c1::poc_vault
+new_poc_badge_object
+	public(package) fun
+	0x50c1::poc_vault
+share_po_badge_object
+	public(package) fun
+	0x50c1::poc_vault
+po_badge_object_address
+	public(package) fun
+	0x50c1::poc_vault
 GovernanceAdminCap
 	public struct
 	0x50c1::governance
@@ -8335,7 +8380,7 @@ migrate_registry
 migrate_config
 	public entry fun
 	0x50c1::mydata
-PoCBadge
+PoCBadgeSnapshot
 	public struct
 	0x50c1::post
 Post
@@ -8428,6 +8473,9 @@ set_flag
 clear_flag
 	fun
 	0x50c1::post
+permissions_bitfield
+	fun
+	0x50c1::post
 allow_comments
 	public fun
 	0x50c1::post
@@ -8452,7 +8500,25 @@ is_poc_enabled
 is_spot_enabled
 	public fun
 	0x50c1::post
+poc_outcome
+	public fun
+	0x50c1::post
+poc_redirection_kind
+	public fun
+	0x50c1::post
+poc_disputes_submitted
+	public fun
+	0x50c1::post
+tip_post_requires_beneficiary_vault_for_amount
+	public fun
+	0x50c1::post
+poc_redirection_none
+	public fun
+	0x50c1::post
 get_poc_badge
+	public fun
+	0x50c1::post
+get_poc_badge_object_id
 	public fun
 	0x50c1::post
 has_poc_badge
@@ -8521,13 +8587,28 @@ react_to_post
 tip_post
 	public fun
 	0x50c1::post
-apply_poc_redirection_and_transfer
+tip_post_simple
+	public fun
+	0x50c1::post
+apply_poc_redirection_coin
+	fun
+	0x50c1::post
+apply_poc_redirection_coin_without_beneficiary_vault
 	fun
 	0x50c1::post
 update_poc_result
 	public(package) fun
 	0x50c1::post
+set_poc_badge_object_id
+	public(package) fun
+	0x50c1::post
 clear_poc_data
+	public(package) fun
+	0x50c1::post
+increment_poc_disputes_submitted
+	public(package) fun
+	0x50c1::post
+deposit_coin_to_beneficiary_vault
 	public(package) fun
 	0x50c1::post
 tip_repost
@@ -8773,10 +8854,34 @@ reserve_towards_profile
 reserve_towards_profile_with_platform
 	public fun
 	0x50c1::social_proof_tokens
-withdraw_reservation
+apply_reservation_withdrawal_ledger
+	fun
+	0x50c1::social_proof_tokens
+reservation_withdrawal_fee_split
+	fun
+	0x50c1::social_proof_tokens
+distribute_reservation_withdraw_fees_non_platform_post
+	fun
+	0x50c1::social_proof_tokens
+distribute_reservation_withdraw_fees_non_platform_profile
+	fun
+	0x50c1::social_proof_tokens
+distribute_reservation_withdraw_fees_platform_post
+	fun
+	0x50c1::social_proof_tokens
+distribute_reservation_withdraw_fees_platform_profile
+	fun
+	0x50c1::social_proof_tokens
+withdraw_reservation_for_post
 	public fun
 	0x50c1::social_proof_tokens
-withdraw_reservation_with_platform
+withdraw_reservation_for_profile
+	public fun
+	0x50c1::social_proof_tokens
+withdraw_reservation_with_platform_for_post
+	public fun
+	0x50c1::social_proof_tokens
+withdraw_reservation_with_platform_for_profile
 	public fun
 	0x50c1::social_proof_tokens
 create_reservation_pool_for_post
@@ -8790,6 +8895,9 @@ can_create_auction
 	0x50c1::social_proof_tokens
 create_social_proof_token
 	public entry fun
+	0x50c1::social_proof_tokens
+sync_token_pool_poc_from_post
+	public(package) fun
 	0x50c1::social_proof_tokens
 update_token_poc_data
 	public entry fun
@@ -8809,8 +8917,14 @@ distribute_creator_fee_from_pool
 apply_post_poc_redirection
 	public(package) fun
 	0x50c1::social_proof_tokens
+distribute_reservation_creator_fee_with_owner
+	fun
+	0x50c1::social_proof_tokens
 distribute_reservation_creator_fee
 	public(package) fun
+	0x50c1::social_proof_tokens
+distribute_reservation_creator_fee_no_poc_with_owner
+	fun
 	0x50c1::social_proof_tokens
 distribute_reservation_creator_fee_no_poc
 	public(package) fun
@@ -9055,6 +9169,15 @@ outcome_unapplicable
 get_user_option_amount
 	public fun
 	0x50c1::social_proof_of_truth
+num_betting_options
+	public fun
+	0x50c1::social_proof_of_truth
+total_option_escrow
+	public fun
+	0x50c1::social_proof_of_truth
+assert_valid_option_id
+	public fun
+	0x50c1::social_proof_of_truth
 is_enabled
 	public fun
 	0x50c1::social_proof_of_truth
@@ -9068,6 +9191,12 @@ create_spot_oracle_admin_cap
 	public(package) fun
 	0x50c1::social_proof_of_truth
 update_spot_config
+	public entry fun
+	0x50c1::social_proof_of_truth
+rescale_spot_config_windows_from_epoch_counts
+	public entry fun
+	0x50c1::social_proof_of_truth
+patch_spot_record_times_for_migration
 	public entry fun
 	0x50c1::social_proof_of_truth
 create_spot_record_for_post
@@ -9115,6 +9244,9 @@ PoCDispute
 PoCRegistry
 	public struct
 	0x50c1::proof_of_creativity
+PoCResultAppliedEvent
+	public struct
+	0x50c1::proof_of_creativity
 AnalysisSubmittedEvent
 	public struct
 	0x50c1::proof_of_creativity
@@ -9139,8 +9271,8 @@ VotingRewardClaimedEvent
 PoCConfigUpdatedEvent
 	public struct
 	0x50c1::proof_of_creativity
-TokenPoolSyncNeededEvent
-	public struct
+mul_div_u64_loose
+	fun
 	0x50c1::proof_of_creativity
 bootstrap_init
 	public(package) fun
@@ -9148,11 +9280,20 @@ bootstrap_init
 update_poc_config
 	public entry fun
 	0x50c1::proof_of_creativity
+mint_shared_poc_badge_object
+	fun
+	0x50c1::proof_of_creativity
+run_analyze_and_update_post
+	fun
+	0x50c1::proof_of_creativity
 analyze_and_update_post
 	public entry fun
 	0x50c1::proof_of_creativity
-update_token_pool_if_exists
-	fun
+analyze_and_update_post_sync_token_pool
+	public entry fun
+	0x50c1::proof_of_creativity
+claim_beneficiary_vault_balance
+	public entry fun
 	0x50c1::proof_of_creativity
 submit_poc_dispute
 	public entry fun
@@ -9160,11 +9301,26 @@ submit_poc_dispute
 vote_on_dispute
 	public entry fun
 	0x50c1::proof_of_creativity
+finalize_dispute_voting_resolution
+	fun
+	0x50c1::proof_of_creativity
 resolve_dispute_voting
+	public entry fun
+	0x50c1::proof_of_creativity
+resolve_dispute_voting_sync_token_pool
 	public entry fun
 	0x50c1::proof_of_creativity
 claim_voting_reward
 	public entry fun
+	0x50c1::proof_of_creativity
+assert_embed_audio_derivative_media_type
+	fun
+	0x50c1::proof_of_creativity
+similarity_redirect_percentage
+	fun
+	0x50c1::proof_of_creativity
+bps_to_redirect_percent
+	fun
 	0x50c1::proof_of_creativity
 get_threshold_for_media_type
 	fun
@@ -9418,6 +9574,12 @@ MarketExposure
 CoveragePolicy
 	public struct
 	0x50c1::insurance
+PremiumQuote
+	public struct
+	0x50c1::insurance
+RiskPricingConfigUpdatedEvent
+	public struct
+	0x50c1::insurance
 ConfigInitializedEvent
 	public struct
 	0x50c1::insurance
@@ -9451,6 +9613,9 @@ init_config
 set_config
 	public entry fun
 	0x50c1::insurance
+set_risk_pricing_config
+	public entry fun
+	0x50c1::insurance
 set_enable_flag
 	public entry fun
 	0x50c1::insurance
@@ -9469,7 +9634,31 @@ deposit_capital
 withdraw_capital
 	public entry fun
 	0x50c1::insurance
+premium_quote_premium
+	public fun
+	0x50c1::insurance
+premium_quote_implied_prob_win_bps
+	public fun
+	0x50c1::insurance
+premium_quote_risk_multiplier_bps
+	public fun
+	0x50c1::insurance
+premium_quote_premium_raw
+	public fun
+	0x50c1::insurance
+quote_base_premium
+	fun
+	0x50c1::insurance
 quote_premium
+	public fun
+	0x50c1::insurance
+get_market_option_reserved
+	fun
+	0x50c1::insurance
+compute_spot_risk_quote
+	fun
+	0x50c1::insurance
+quote_premium_with_spot_risk
 	public fun
 	0x50c1::insurance
 buy_coverage

@@ -22,7 +22,6 @@ CREATE TABLE IF NOT EXISTS governance_registries (
     delegate_count BIGINT NOT NULL,
     delegate_term_epochs BIGINT NOT NULL,
     proposal_submission_cost BIGINT NOT NULL,
-    min_on_chain_age_days BIGINT NOT NULL,
     max_votes_per_user BIGINT NOT NULL,
     quadratic_base_cost BIGINT NOT NULL,
     voting_period_epochs BIGINT NOT NULL,

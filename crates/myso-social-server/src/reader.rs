@@ -22,10 +22,9 @@ mod vesting;
 
 pub use types::*;
 
-use diesel::sql_types::{BigInt, Bool, Nullable, SmallInt, Text};
+use diesel::sql_types::{BigInt, Nullable, Text};
 use diesel::ExpressionMethods;
 use diesel::QueryDsl;
-use diesel::QueryableByName;
 use diesel_async::RunQueryDsl;
 use myso_indexer_alt_social_schema::models::Profile;
 use myso_indexer_alt_social_schema::schema::{
@@ -1053,7 +1052,7 @@ impl Reader {
         address: &str,
         limit: i64,
         offset: i64,
-    ) -> Result<Vec<PostBasicRow>, crate::error::SocialError> {
+    ) -> Result<Vec<myso_indexer_alt_social_reader::PostRow>, crate::error::SocialError> {
         social_graph::get_profile_posts(&self.db, address, limit, offset).await
     }
 
@@ -1455,6 +1454,71 @@ impl Reader {
         poc::get_poc_configuration(&self.db).await
     }
 
+    pub async fn get_poc_beneficiary_vault_by_vault_id(
+        &self,
+        vault_id: &str,
+    ) -> Result<Option<PocBeneficiaryVaultRow>, crate::error::SocialError> {
+        let mut conn = self.db.connect().await?;
+        myso_indexer_alt_social_reader::get_poc_beneficiary_vault_by_vault_id_for_conn(
+            &mut conn, vault_id,
+        )
+        .await
+        .map_err(|e| crate::error::SocialError::internal(e.to_string()))
+    }
+
+    pub async fn get_poc_beneficiary_vault_by_beneficiary_address(
+        &self,
+        beneficiary_address: &str,
+    ) -> Result<Option<PocBeneficiaryVaultRow>, crate::error::SocialError> {
+        let mut conn = self.db.connect().await?;
+        myso_indexer_alt_social_reader::get_poc_beneficiary_vault_by_beneficiary_address_for_conn(
+            &mut conn,
+            beneficiary_address,
+        )
+        .await
+        .map_err(|e| crate::error::SocialError::internal(e.to_string()))
+    }
+
+    pub async fn list_poc_beneficiary_vault_coin_balances(
+        &self,
+        vault_id: &str,
+    ) -> Result<Vec<PocVaultCoinBalanceRow>, crate::error::SocialError> {
+        let mut conn = self.db.connect().await?;
+        myso_indexer_alt_social_reader::list_poc_vault_coin_balances_for_vault_for_conn(
+            &mut conn, vault_id,
+        )
+        .await
+        .map_err(|e| crate::error::SocialError::internal(e.to_string()))
+    }
+
+    pub async fn list_poc_vault_deposits_for_vault(
+        &self,
+        vault_id: &str,
+        limit: i64,
+        offset: i64,
+    ) -> Result<Vec<PocVaultDepositRow>, crate::error::SocialError> {
+        let mut conn = self.db.connect().await?;
+        myso_indexer_alt_social_reader::list_poc_vault_deposits_for_vault_for_conn(
+            &mut conn, vault_id, limit, offset,
+        )
+        .await
+        .map_err(|e| crate::error::SocialError::internal(e.to_string()))
+    }
+
+    pub async fn list_poc_vault_claims_for_vault(
+        &self,
+        vault_id: &str,
+        limit: i64,
+        offset: i64,
+    ) -> Result<Vec<PocVaultClaimRow>, crate::error::SocialError> {
+        let mut conn = self.db.connect().await?;
+        myso_indexer_alt_social_reader::list_poc_vault_claims_for_vault_for_conn(
+            &mut conn, vault_id, limit, offset,
+        )
+        .await
+        .map_err(|e| crate::error::SocialError::internal(e.to_string()))
+    }
+
     pub async fn get_post_poc_badges(
         &self,
         post_id: &str,
@@ -1463,49 +1527,26 @@ impl Reader {
     ) -> Result<Vec<PocBadgeRow>, crate::error::SocialError> {
         let mut conn = self.db.connect().await?;
         let query = "
-            SELECT badge_id, post_id, media_type, issued_by, issued_at, revoked
+            SELECT badge_id, post_id, media_type, issued_by, issued_at,
+                   COALESCE(revoked, false) AS revoked,
+                   beneficiary_address, matched_anchor_id, media_index
             FROM (
                 SELECT DISTINCT ON (badge_id) *
                 FROM poc_badges
                 WHERE post_id = $1
                 ORDER BY badge_id, time DESC
             ) sub
-            WHERE revoked = false
+            WHERE COALESCE(revoked, false) = false
             ORDER BY issued_at DESC
             LIMIT $2 OFFSET $3
         ";
-        #[derive(QueryableByName)]
-        struct Row {
-            #[diesel(sql_type = Text)]
-            badge_id: String,
-            #[diesel(sql_type = Text)]
-            post_id: String,
-            #[diesel(sql_type = SmallInt)]
-            media_type: i16,
-            #[diesel(sql_type = Text)]
-            issued_by: String,
-            #[diesel(sql_type = BigInt)]
-            issued_at: i64,
-            #[diesel(sql_type = Bool)]
-            revoked: bool,
-        }
-        let results = diesel::sql_query(query)
-            .bind::<Text, _>(post_id)
-            .bind::<BigInt, _>(limit)
-            .bind::<BigInt, _>(offset)
-            .load::<Row>(&mut conn)
-            .await?;
-        Ok(results
-            .into_iter()
-            .map(|r| PocBadgeRow {
-                badge_id: r.badge_id,
-                post_id: r.post_id,
-                media_type: r.media_type,
-                issued_by: r.issued_by,
-                issued_at: r.issued_at,
-                revoked: r.revoked,
-            })
-            .collect())
+        diesel::sql_query(query)
+            .bind::<diesel::sql_types::Text, _>(post_id)
+            .bind::<diesel::sql_types::BigInt, _>(limit)
+            .bind::<diesel::sql_types::BigInt, _>(offset)
+            .load::<PocBadgeRow>(&mut conn)
+            .await
+            .map_err(|e| crate::error::SocialError::internal(e.to_string()))
     }
 
     pub async fn get_post_revenue_redirections(
@@ -1524,47 +1565,18 @@ impl Reader {
                 WHERE accused_post_id = $1 OR original_post_id = $1
                 ORDER BY redirection_id, time DESC
             ) sub
-            WHERE removed = false
+            WHERE COALESCE(removed, false) = false
             ORDER BY created_at DESC
             LIMIT $2 OFFSET $3
         ";
-        #[derive(QueryableByName)]
-        struct Row {
-            #[diesel(sql_type = Text)]
-            redirection_id: String,
-            #[diesel(sql_type = Text)]
-            accused_post_id: String,
-            #[diesel(sql_type = Text)]
-            original_post_id: String,
-            #[diesel(sql_type = BigInt)]
-            redirect_percentage: i64,
-            #[diesel(sql_type = BigInt)]
-            similarity_score: i64,
-            #[diesel(sql_type = BigInt)]
-            created_at: i64,
-            #[diesel(sql_type = Bool)]
-            removed: bool,
-        }
-        let results = diesel::sql_query(query)
-            .bind::<Text, _>(post_id)
-            .bind::<BigInt, _>(limit)
-            .bind::<BigInt, _>(offset)
-            .load::<Row>(&mut conn)
-            .await?;
-        Ok(results
-            .into_iter()
-            .map(|r| PocRevenueRedirectionRow {
-                redirection_id: r.redirection_id,
-                accused_post_id: r.accused_post_id,
-                original_post_id: r.original_post_id,
-                redirect_percentage: r.redirect_percentage,
-                similarity_score: r.similarity_score,
-                created_at: r.created_at,
-                removed: r.removed,
-            })
-            .collect())
+        diesel::sql_query(query)
+            .bind::<diesel::sql_types::Text, _>(post_id)
+            .bind::<diesel::sql_types::BigInt, _>(limit)
+            .bind::<diesel::sql_types::BigInt, _>(offset)
+            .load::<PocRevenueRedirectionRow>(&mut conn)
+            .await
+            .map_err(|e| crate::error::SocialError::internal(e.to_string()))
     }
-
     pub async fn list_subscriptions(
         &self,
         subscriber: Option<&str>,

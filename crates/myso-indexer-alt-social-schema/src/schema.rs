@@ -235,6 +235,44 @@ diesel::table! {
 }
 
 diesel::table! {
+    insurance_coverage_routes (route_id) {
+        route_id -> Text,
+        insured -> Text,
+        market_id -> Text,
+        option_id -> Int2,
+        coverage_bps -> Int8,
+        duration_ms -> Int8,
+        total_covered -> Int8,
+        total_premium -> Int8,
+        total_reserve -> Int8,
+        total_backstop_sweep -> Int8,
+        expiry_time_ms -> Int8,
+        policy_ids -> Jsonb,
+        vault_ids -> Jsonb,
+        transaction_id -> Text,
+        created_at -> Timestamp,
+    }
+}
+
+diesel::table! {
+    insurance_route_fills (id) {
+        id -> Int8,
+        route_id -> Text,
+        leg_index -> Int2,
+        vault_id -> Text,
+        policy_id -> Text,
+        covered_amount -> Int8,
+        premium_paid -> Int8,
+        reserve_locked -> Int8,
+        backstop_sweep_amount -> Int8,
+        event_id -> Text,
+        transaction_id -> Text,
+        timestamp_ms -> Int8,
+        created_at -> Timestamp,
+    }
+}
+
+diesel::table! {
     insurance_market_exposures (id, time) {
         id -> Int4,
         vault_id -> Text,
@@ -256,10 +294,19 @@ diesel::table! {
         covered_amount -> Int8,
         coverage_bps -> Int8,
         premium_paid -> Int8,
+        premium_raw -> Int8,
+        implied_probability_bps -> Int8,
+        risk_multiplier_bps -> Int8,
+        base_premium -> Int8,
+        market_total_amount -> Int8,
+        option_escrow_amount -> Int8,
         start_time_ms -> Int8,
         expiry_time_ms -> Int8,
         vault_id -> Text,
         status -> Int2,
+        route_id -> Nullable<Text>,
+        route_leg_index -> Nullable<Int2>,
+        backstop_sweep_amount -> Int8,
         created_at -> Timestamp,
         updated_at -> Timestamp,
         transaction_id -> Text,
@@ -278,6 +325,12 @@ diesel::table! {
         coverage_bps -> Int8,
         premium_paid -> Int8,
         reserve_locked -> Int8,
+        premium_raw -> Nullable<Int8>,
+        implied_probability_bps -> Nullable<Int8>,
+        risk_multiplier_bps -> Nullable<Int8>,
+        base_premium -> Nullable<Int8>,
+        market_total_amount -> Nullable<Int8>,
+        option_escrow_amount -> Nullable<Int8>,
         refunded_amount -> Nullable<Int8>,
         fee_paid -> Nullable<Int8>,
         payout -> Nullable<Int8>,
@@ -322,6 +375,9 @@ diesel::table! {
         utilization_multiplier_bps -> Int8,
         max_exposure_per_market -> Int8,
         max_exposure_per_user -> Int8,
+        max_exposure_per_option -> Int8,
+        enabled -> Bool,
+        paused -> Bool,
         version -> Int8,
         created_at -> Timestamp,
         updated_at -> Timestamp,
@@ -675,6 +731,9 @@ diesel::table! {
         revoked_at -> Nullable<Int8>,
         transaction_id -> Text,
         time -> Timestamptz,
+        beneficiary_address -> Nullable<Text>,
+        matched_anchor_id -> Nullable<Text>,
+        media_index -> Nullable<Int2>,
     }
 }
 
@@ -686,10 +745,9 @@ diesel::table! {
         audio_threshold -> Int8,
         revenue_redirect_percentage -> Int8,
         dispute_cost -> Int8,
-        dispute_protocol_fee -> Int8,
         min_vote_stake -> Int8,
         max_vote_stake -> Int8,
-        voting_duration_epochs -> Int8,
+        voting_duration_ms -> Int8,
         updated_by -> Text,
         updated_at -> Int8,
         transaction_id -> Text,
@@ -698,6 +756,63 @@ diesel::table! {
         max_evidence_urls -> Int8,
         max_votes_per_dispute -> Int8,
         oracle_address -> Nullable<Text>,
+        claim_treasury_fee_bps -> Int8,
+        max_referral_bps -> Int8,
+        video_embedded_audio_redirect_bps -> Int8,
+        dispute_quorum_base_stake -> Int8,
+        dispute_second_round_fee_multiplier_bps -> Int8,
+        dispute_second_round_quorum_multiplier_bps -> Int8,
+    }
+}
+
+diesel::table! {
+    poc_beneficiary_vaults (vault_id) {
+        vault_id -> Text,
+        beneficiary_address -> Text,
+        updated_at_ms -> Int8,
+        transaction_id -> Text,
+        time -> Timestamptz,
+    }
+}
+
+diesel::table! {
+    poc_vault_coin_balances (vault_id, coin_type) {
+        vault_id -> Text,
+        coin_type -> Text,
+        balance -> Int8,
+        updated_at_ms -> Int8,
+        transaction_id -> Text,
+        time -> Timestamptz,
+    }
+}
+
+diesel::table! {
+    poc_vault_deposits (id) {
+        id -> Int8,
+        vault_id -> Text,
+        beneficiary_address -> Text,
+        amount -> Int8,
+        coin_type -> Text,
+        source_post_id -> Nullable<Text>,
+        occurred_at_ms -> Int8,
+        transaction_id -> Text,
+        time -> Timestamptz,
+    }
+}
+
+diesel::table! {
+    poc_vault_claims (id) {
+        id -> Int8,
+        vault_id -> Text,
+        beneficiary_address -> Text,
+        coin_type -> Text,
+        referrer_address -> Nullable<Text>,
+        treasury_amount -> Int8,
+        referrer_amount -> Int8,
+        beneficiary_amount -> Int8,
+        occurred_at_ms -> Int8,
+        transaction_id -> Text,
+        time -> Timestamptz,
     }
 }
 
@@ -724,8 +839,8 @@ diesel::table! {
         evidence -> Text,
         status -> Int2,
         stake_amount -> Int8,
-        voting_start_epoch -> Int8,
-        voting_end_epoch -> Int8,
+        voting_start_ms -> Int8,
+        voting_end_ms -> Int8,
         resolution -> Nullable<Int2>,
         winning_side -> Nullable<Int2>,
         total_winning_stake -> Nullable<Int8>,
@@ -734,6 +849,10 @@ diesel::table! {
         resolved_at -> Nullable<Int8>,
         transaction_id -> Text,
         time -> Timestamptz,
+        dispute_round -> Int2,
+        effective_dispute_fee -> Int8,
+        required_total_stake_quorum -> Int8,
+        quorum_met -> Nullable<Bool>,
     }
 }
 
@@ -812,8 +931,13 @@ diesel::table! {
         poc_media_type -> Nullable<Int2>,
         poc_oracle_address -> Nullable<Text>,
         poc_analyzed_at -> Nullable<Int8>,
+        poc_outcome -> Nullable<Int2>,
+        poc_redirection_kind -> Nullable<Int2>,
+        poc_disputes_submitted -> Int2,
         mydata_id -> Nullable<Text>,
         revenue_recipient -> Nullable<Text>,
+        platform_id -> Nullable<Text>,
+        permissions -> Nullable<Int2>,
     }
 }
 
@@ -1245,7 +1369,7 @@ diesel::table! {
         option_id -> Int2,
         amount -> Int8,
         fee_taken -> Int8,
-        timestamp_epoch -> Int8,
+        timestamp_ms -> Int8,
         time -> Timestamptz,
         transaction_id -> Text,
     }
@@ -1258,7 +1382,7 @@ diesel::table! {
         user_address -> Text,
         escrow_amount -> Int8,
         amm_amount -> Int8,
-        timestamp_epoch -> Int8,
+        timestamp_ms -> Int8,
         time -> Timestamptz,
         transaction_id -> Text,
         option_id -> Int2,
@@ -1271,8 +1395,8 @@ diesel::table! {
         updated_by -> Text,
         enable_flag -> Bool,
         confidence_threshold_bps -> Int8,
-        resolution_window_epochs -> Int8,
-        max_resolution_window_epochs -> Int8,
+        resolution_window_ms -> Int8,
+        max_resolution_window_ms -> Int8,
         fee_bps -> Int8,
         fee_split_bps_platform -> Int8,
         oracle_address -> Text,
@@ -1302,7 +1426,7 @@ diesel::table! {
         post_id -> Text,
         user_address -> Text,
         amount -> Int8,
-        timestamp_epoch -> Int8,
+        timestamp_ms -> Int8,
         time -> Timestamptz,
         transaction_id -> Text,
     }
@@ -1315,16 +1439,16 @@ diesel::table! {
         status -> Int2,
         outcome -> Nullable<Int2>,
         amm_split_bps_used -> Int4,
-        created_epoch -> Int8,
-        last_resolution_epoch -> Nullable<Int8>,
+        created_at_ms -> Int8,
+        last_resolution_at_ms -> Nullable<Int8>,
         version -> Int8,
         created_at -> Timestamp,
         updated_at -> Timestamp,
         transaction_id -> Text,
         betting_options -> Jsonb,
         option_escrow -> Jsonb,
-        resolution_window_epochs -> Nullable<Int8>,
-        max_resolution_window_epochs -> Nullable<Int8>,
+        resolution_window_ms -> Nullable<Int8>,
+        max_resolution_window_ms -> Nullable<Int8>,
     }
 }
 
@@ -1334,7 +1458,7 @@ diesel::table! {
         post_id -> Text,
         user_address -> Text,
         amount -> Int8,
-        timestamp_epoch -> Int8,
+        timestamp_ms -> Int8,
         time -> Timestamptz,
         transaction_id -> Text,
     }
@@ -1347,7 +1471,7 @@ diesel::table! {
         outcome -> Int2,
         total_escrow -> Int8,
         fee_taken -> Int8,
-        resolved_epoch -> Int8,
+        resolved_at_ms -> Int8,
         time -> Timestamptz,
         transaction_id -> Text,
         reasoning -> Text,
@@ -1549,6 +1673,7 @@ diesel::table! {
         object_id -> Text,
         amount -> Int8,
         is_post -> Bool,
+        coin_type -> Text,
         created_at -> Int8,
         time -> Timestamptz,
         transaction_id -> Text,
@@ -1674,10 +1799,12 @@ diesel::allow_tables_to_appear_in_same_query!(
     governance_events,
     governance_registries,
     insurance_config,
+    insurance_coverage_routes,
     insurance_events,
     insurance_market_exposures,
     insurance_policies,
     insurance_policy_events,
+    insurance_route_fills,
     insurance_user_exposures,
     insurance_vault_transactions,
     insurance_vaults,
@@ -1705,10 +1832,14 @@ diesel::allow_tables_to_appear_in_same_query!(
     platforms,
     poc_analysis_results,
     poc_badges,
+    poc_beneficiary_vaults,
     poc_configuration,
     poc_dispute_votes,
     poc_disputes,
     poc_revenue_redirections,
+    poc_vault_claims,
+    poc_vault_coin_balances,
+    poc_vault_deposits,
     post_config,
     posts,
     posts_deletion_events,

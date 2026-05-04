@@ -1118,6 +1118,24 @@ InsurancePolicy.coverageBps
 InsurancePolicy.premiumPaid
   => {}
 
+InsurancePolicy.premiumRaw
+  => {}
+
+InsurancePolicy.impliedProbabilityBps
+  => {}
+
+InsurancePolicy.riskMultiplierBps
+  => {}
+
+InsurancePolicy.basePremium
+  => {}
+
+InsurancePolicy.marketTotalAmount
+  => {}
+
+InsurancePolicy.optionEscrowAmount
+  => {}
+
 InsurancePolicy.startTimeMs
   => {}
 
@@ -1137,6 +1155,15 @@ InsurancePolicy.updatedAt
   => {}
 
 InsurancePolicy.transactionId
+  => {}
+
+InsurancePolicy.routeId
+  => {}
+
+InsurancePolicy.routeLegIndex
+  => {}
+
+InsurancePolicy.backstopSweepAmount
   => {}
 
 InsuranceVault.vaultId
@@ -1161,6 +1188,15 @@ InsuranceVault.maxExposurePerMarket
   => {}
 
 InsuranceVault.maxExposurePerUser
+  => {}
+
+InsuranceVault.maxExposurePerOption
+  => {}
+
+InsuranceVault.enabled
+  => {}
+
+InsuranceVault.paused
   => {}
 
 InsuranceVault.version
@@ -2450,6 +2486,12 @@ PocAnalysisResult.oracleAddress
 PocAnalysisResult.originalCreator
   => {}
 
+PocAnalysisResult.reasoning
+  => {}
+
+PocAnalysisResult.evidenceUrls
+  => {}
+
 PocAnalysisResult.analysisTimestamp
   => {}
 
@@ -2471,6 +2513,39 @@ PocBadge.issuedAt
 PocBadge.revoked
   => {}
 
+PocBadge.beneficiaryAddress
+  => {}
+
+PocBadge.matchedAnchorId
+  => {}
+
+PocBadge.mediaIndex
+  => {}
+
+PocBadge.pocBeneficiaryVault
+  => {}
+
+PocBeneficiaryVault.vaultId
+  => {}
+
+PocBeneficiaryVault.beneficiary
+  => {}
+
+PocBeneficiaryVault.updatedAtMs
+  => {}
+
+PocBeneficiaryVault.transactionId
+  => {}
+
+PocBeneficiaryVault.coinBalances
+  => {}
+
+PocBeneficiaryVault.deposits
+  => {}
+
+PocBeneficiaryVault.claims
+  => {}
+
 PocConfig.imageThreshold
   => {}
 
@@ -2486,10 +2561,52 @@ PocConfig.revenueRedirectPercentage
 PocConfig.disputeCost
   => {}
 
+PocConfig.disputeQuorumBaseStake
+  => {}
+
+PocConfig.disputeSecondRoundFeeMultiplierBps
+  => {}
+
+PocConfig.disputeSecondRoundQuorumMultiplierBps
+  => {}
+
+PocConfig.minVoteStake
+  => {}
+
+PocConfig.maxVoteStake
+  => {}
+
+PocConfig.votingDurationMs
+  => {}
+
+PocConfig.maxReasoningLength
+  => {}
+
+PocConfig.maxEvidenceUrls
+  => {}
+
+PocConfig.maxVotesPerDispute
+  => {}
+
 PocConfig.oracleAddress
   => {}
 
+PocConfig.claimTreasuryFeeBps
+  => {}
+
+PocConfig.maxReferralBps
+  => {}
+
+PocConfig.videoEmbeddedAudioRedirectBps
+  => {}
+
+PocConfig.updatedBy
+  => {}
+
 PocConfig.updatedAt
+  => {}
+
+PocConfig.transactionId
   => {}
 
 PocDispute.disputeId
@@ -2507,19 +2624,76 @@ PocDispute.disputerProfile
 PocDispute.disputeType
   => {}
 
+PocDispute.disputeRound
+  => {}
+
 PocDispute.evidence
   => {}
 
 PocDispute.status
   => {}
 
+PocDispute.resolution
+  => {}
+
+PocDispute.winningSide
+  => {}
+
+PocDispute.totalWinningStake
+  => {}
+
+PocDispute.totalLosingStake
+  => {}
+
 PocDispute.stakeAmount
+  => {}
+
+PocDispute.effectiveDisputeFee
+  => {}
+
+PocDispute.requiredTotalStakeQuorum
+  => {}
+
+PocDispute.votingStartMs
+  => {}
+
+PocDispute.votingEndMs
   => {}
 
 PocDispute.submittedAt
   => {}
 
 PocDispute.resolvedAt
+  => {}
+
+PocDispute.quorumMet
+  => {}
+
+PocDispute.votes
+  => {}
+
+PocDisputeVote.disputeId
+  => {}
+
+PocDisputeVote.voter
+  => {}
+
+PocDisputeVote.voterProfile
+  => {}
+
+PocDisputeVote.voteChoice
+  => {}
+
+PocDisputeVote.stakeAmount
+  => {}
+
+PocDisputeVote.votedAt
+  => {}
+
+PocDisputeVote.rewardClaimed
+  => {}
+
+PocDisputeVote.rewardAmount
   => {}
 
 PocRevenueRedirection.redirectionId
@@ -2538,6 +2712,72 @@ PocRevenueRedirection.similarityScore
   => {}
 
 PocRevenueRedirection.createdAt
+  => {}
+
+PocVaultClaim.id
+  => {}
+
+PocVaultClaim.vaultId
+  => {}
+
+PocVaultClaim.beneficiary
+  => {}
+
+PocVaultClaim.coinType
+  => {}
+
+PocVaultClaim.referrer
+  => {}
+
+PocVaultClaim.treasuryAmount
+  => {}
+
+PocVaultClaim.referrerAmount
+  => {}
+
+PocVaultClaim.beneficiaryAmount
+  => {}
+
+PocVaultClaim.occurredAtMs
+  => {}
+
+PocVaultClaim.transactionId
+  => {}
+
+PocVaultCoinBalance.vaultId
+  => {}
+
+PocVaultCoinBalance.coinType
+  => {}
+
+PocVaultCoinBalance.balance
+  => {}
+
+PocVaultCoinBalance.updatedAtMs
+  => {}
+
+PocVaultDeposit.id
+  => {}
+
+PocVaultDeposit.vaultId
+  => {}
+
+PocVaultDeposit.beneficiary
+  => {}
+
+PocVaultDeposit.amount
+  => {}
+
+PocVaultDeposit.coinType
+  => {}
+
+PocVaultDeposit.sourcePostId
+  => {}
+
+PocVaultDeposit.occurredAtMs
+  => {}
+
+PocVaultDeposit.transactionId
   => {}
 
 Post.id
@@ -2606,6 +2846,9 @@ Post.revenueRedirectPercentage
 Post.enablePoc
   => {}
 
+Post.enableSpt
+  => {}
+
 Post.pocReasoning
   => {}
 
@@ -2613,6 +2856,12 @@ Post.pocEvidenceUrls
   => {}
 
 Post.pocSimilarityScore
+  => {}
+
+Post.pocOutcome
+  => {}
+
+Post.pocRedirectionKind
   => {}
 
 Post.pocMediaType
@@ -2628,6 +2877,42 @@ Post.enableSpot
   => {}
 
 Post.spotId
+  => {}
+
+Post.sptId
+  => {}
+
+Post.platformId
+  => {}
+
+Post.permissions
+  => {}
+
+Post.revenueRecipient
+  => {}
+
+Post.requiresSubscription
+  => {}
+
+Post.subscriptionServiceId
+  => {}
+
+Post.subscriptionPrice
+  => {}
+
+Post.encryptedContentHash
+  => {}
+
+Post.removedFromPlatform
+  => {}
+
+Post.removedBy
+  => {}
+
+Post.metadataJson
+  => {}
+
+Post.promotionId
   => {}
 
 Post.comments
@@ -2685,6 +2970,9 @@ Post.pocAnalysis
   => {}
 
 Post.pocDisputes
+  => {}
+
+Post.pocDisputesSubmitted
   => {}
 
 PostConfig.updatedBy
@@ -2778,6 +3066,21 @@ PostModerationEvent.time
   => {}
 
 PostModerationEvent.transactionId
+  => {}
+
+PostPage.items
+  => {}
+
+PostPage.totalCount
+  => {}
+
+PostPage.limit
+  => {}
+
+PostPage.offset
+  => {}
+
+PostPage.totalPages
   => {}
 
 PostReport.reportId
@@ -2961,6 +3264,12 @@ Profile.reservationHoldings
   => {}
 
 Profile.posts
+  => {}
+
+Profile.postsPage
+  => {}
+
+Profile.postsTotalCount
   => {}
 
 Profile.mydataRecords
@@ -3500,6 +3809,12 @@ Query.postConfiguration
 Query.pocConfiguration
   => {}
 
+Query.pocBeneficiaryVaultByVaultId
+  => {}
+
+Query.pocBeneficiaryVaultByBeneficiary
+  => {}
+
 Query.spotConfiguration
   => {}
 
@@ -3947,10 +4262,10 @@ SpotConfig.enableFlag
 SpotConfig.confidenceThresholdBps
   => {}
 
-SpotConfig.resolutionWindowEpochs
+SpotConfig.resolutionWindowMs
   => {}
 
-SpotConfig.maxResolutionWindowEpochs
+SpotConfig.maxResolutionWindowMs
   => {}
 
 SpotConfig.payoutDelayMs
@@ -4019,16 +4334,16 @@ SpotRecord.bettingOptions
 SpotRecord.optionEscrow
   => {}
 
-SpotRecord.createdEpoch
+SpotRecord.createdAtMs
   => {}
 
-SpotRecord.resolutionWindowEpochs
+SpotRecord.resolutionWindowMs
   => {}
 
-SpotRecord.maxResolutionWindowEpochs
+SpotRecord.maxResolutionWindowMs
   => {}
 
-SpotRecord.lastResolutionEpoch
+SpotRecord.lastResolutionAtMs
   => {}
 
 SpotRecord.totalEscrow
@@ -4061,7 +4376,7 @@ SpotResolution.totalEscrow
 SpotResolution.feeTaken
   => {}
 
-SpotResolution.resolvedEpoch
+SpotResolution.resolvedAtMs
   => {}
 
 SpotResolution.transactionId

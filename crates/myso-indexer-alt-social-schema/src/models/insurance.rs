@@ -8,9 +8,9 @@ use diesel::sql_types::{BigInt, SmallInt, Text, Timestamp};
 use serde::{Deserialize, Serialize};
 
 use crate::schema::{
-    insurance_config, insurance_events, insurance_market_exposures, insurance_policies,
-    insurance_policy_events, insurance_user_exposures, insurance_vault_transactions,
-    insurance_vaults,
+    insurance_config, insurance_coverage_routes, insurance_events, insurance_market_exposures,
+    insurance_policies, insurance_policy_events, insurance_route_fills, insurance_user_exposures,
+    insurance_vault_transactions, insurance_vaults,
 };
 
 pub const STATUS_ACTIVE: i16 = 1;
@@ -42,6 +42,18 @@ pub struct InsurancePolicyRow {
     #[diesel(sql_type = BigInt)]
     pub premium_paid: i64,
     #[diesel(sql_type = BigInt)]
+    pub premium_raw: i64,
+    #[diesel(sql_type = BigInt)]
+    pub implied_probability_bps: i64,
+    #[diesel(sql_type = BigInt)]
+    pub risk_multiplier_bps: i64,
+    #[diesel(sql_type = BigInt)]
+    pub base_premium: i64,
+    #[diesel(sql_type = BigInt)]
+    pub market_total_amount: i64,
+    #[diesel(sql_type = BigInt)]
+    pub option_escrow_amount: i64,
+    #[diesel(sql_type = BigInt)]
     pub start_time_ms: i64,
     #[diesel(sql_type = BigInt)]
     pub expiry_time_ms: i64,
@@ -55,6 +67,12 @@ pub struct InsurancePolicyRow {
     pub updated_at: NaiveDateTime,
     #[diesel(sql_type = Text)]
     pub transaction_id: String,
+    #[diesel(sql_type = diesel::sql_types::Nullable<Text>)]
+    pub route_id: Option<String>,
+    #[diesel(sql_type = diesel::sql_types::Nullable<SmallInt>)]
+    pub route_leg_index: Option<i16>,
+    #[diesel(sql_type = BigInt)]
+    pub backstop_sweep_amount: i64,
 }
 
 /// Query result for an insurance vault (for GraphQL/reader).
@@ -84,6 +102,12 @@ pub struct InsuranceVaultRow {
     pub updated_at: NaiveDateTime,
     #[diesel(sql_type = Text)]
     pub transaction_id: String,
+    #[diesel(sql_type = BigInt)]
+    pub max_exposure_per_option: i64,
+    #[diesel(sql_type = diesel::sql_types::Bool)]
+    pub enabled: bool,
+    #[diesel(sql_type = diesel::sql_types::Bool)]
+    pub paused: bool,
 }
 
 #[derive(Debug, Clone, Queryable, Selectable, Serialize, Deserialize)]
@@ -128,6 +152,9 @@ pub struct InsuranceVault {
     pub utilization_multiplier_bps: i64,
     pub max_exposure_per_market: i64,
     pub max_exposure_per_user: i64,
+    pub max_exposure_per_option: i64,
+    pub enabled: bool,
+    pub paused: bool,
     pub version: i64,
     pub created_at: NaiveDateTime,
     pub updated_at: NaiveDateTime,
@@ -145,6 +172,9 @@ pub struct NewInsuranceVault {
     pub utilization_multiplier_bps: i64,
     pub max_exposure_per_market: i64,
     pub max_exposure_per_user: i64,
+    pub max_exposure_per_option: i64,
+    pub enabled: bool,
+    pub paused: bool,
     pub version: i64,
     pub created_at: NaiveDateTime,
     pub updated_at: NaiveDateTime,
@@ -159,6 +189,19 @@ pub struct UpdateInsuranceVault {
     pub updated_at: Option<NaiveDateTime>,
 }
 
+#[derive(Debug, Clone, AsChangeset)]
+#[diesel(table_name = insurance_vaults)]
+pub struct UpdateInsuranceVaultStatus {
+    pub max_exposure_per_option: i64,
+    pub enabled: bool,
+    pub paused: bool,
+    pub max_exposure_per_market: i64,
+    pub max_exposure_per_user: i64,
+    pub base_rate_bps_per_day: i64,
+    pub utilization_multiplier_bps: i64,
+    pub updated_at: NaiveDateTime,
+}
+
 #[derive(Debug, Clone, Queryable, Selectable, Serialize, Deserialize)]
 #[diesel(table_name = insurance_policies)]
 pub struct InsurancePolicy {
@@ -169,10 +212,19 @@ pub struct InsurancePolicy {
     pub covered_amount: i64,
     pub coverage_bps: i64,
     pub premium_paid: i64,
+    pub premium_raw: i64,
+    pub implied_probability_bps: i64,
+    pub risk_multiplier_bps: i64,
+    pub base_premium: i64,
+    pub market_total_amount: i64,
+    pub option_escrow_amount: i64,
     pub start_time_ms: i64,
     pub expiry_time_ms: i64,
     pub vault_id: String,
     pub status: i16,
+    pub route_id: Option<String>,
+    pub route_leg_index: Option<i16>,
+    pub backstop_sweep_amount: i64,
     pub created_at: NaiveDateTime,
     pub updated_at: NaiveDateTime,
     pub transaction_id: String,
@@ -188,10 +240,19 @@ pub struct NewInsurancePolicy {
     pub covered_amount: i64,
     pub coverage_bps: i64,
     pub premium_paid: i64,
+    pub premium_raw: i64,
+    pub implied_probability_bps: i64,
+    pub risk_multiplier_bps: i64,
+    pub base_premium: i64,
+    pub market_total_amount: i64,
+    pub option_escrow_amount: i64,
     pub start_time_ms: i64,
     pub expiry_time_ms: i64,
     pub vault_id: String,
     pub status: i16,
+    pub route_id: Option<String>,
+    pub route_leg_index: Option<i16>,
+    pub backstop_sweep_amount: i64,
     pub created_at: NaiveDateTime,
     pub updated_at: NaiveDateTime,
     pub transaction_id: String,
@@ -237,6 +298,12 @@ pub struct NewInsurancePolicyEvent {
     pub coverage_bps: i64,
     pub premium_paid: i64,
     pub reserve_locked: i64,
+    pub premium_raw: Option<i64>,
+    pub implied_probability_bps: Option<i64>,
+    pub risk_multiplier_bps: Option<i64>,
+    pub base_premium: Option<i64>,
+    pub market_total_amount: Option<i64>,
+    pub option_escrow_amount: Option<i64>,
     pub refunded_amount: Option<i64>,
     pub fee_paid: Option<i64>,
     pub payout: Option<i64>,
@@ -266,4 +333,43 @@ pub struct NewInsuranceUserExposure {
     pub timestamp_ms: i64,
     pub time: chrono::DateTime<chrono::Utc>,
     pub transaction_id: String,
+}
+
+#[derive(Debug, Clone, Insertable, Serialize, Deserialize)]
+#[diesel(table_name = insurance_coverage_routes)]
+pub struct NewInsuranceCoverageRoute {
+    pub route_id: String,
+    pub insured: String,
+    pub market_id: String,
+    pub option_id: i16,
+    pub coverage_bps: i64,
+    pub duration_ms: i64,
+    pub total_covered: i64,
+    pub total_premium: i64,
+    pub total_reserve: i64,
+    pub total_backstop_sweep: i64,
+    pub expiry_time_ms: i64,
+    #[diesel(sql_type = diesel::sql_types::Jsonb)]
+    pub policy_ids: serde_json::Value,
+    #[diesel(sql_type = diesel::sql_types::Jsonb)]
+    pub vault_ids: serde_json::Value,
+    pub transaction_id: String,
+    pub created_at: NaiveDateTime,
+}
+
+#[derive(Debug, Clone, Insertable, Serialize, Deserialize)]
+#[diesel(table_name = insurance_route_fills)]
+pub struct NewInsuranceRouteFill {
+    pub route_id: String,
+    pub leg_index: i16,
+    pub vault_id: String,
+    pub policy_id: String,
+    pub covered_amount: i64,
+    pub premium_paid: i64,
+    pub reserve_locked: i64,
+    pub backstop_sweep_amount: i64,
+    pub event_id: String,
+    pub transaction_id: String,
+    pub timestamp_ms: i64,
+    pub created_at: NaiveDateTime,
 }

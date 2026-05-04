@@ -61,6 +61,36 @@ impl InsurancePolicy {
         self.inner.premium_paid
     }
 
+    /// Raw utilization × risk multiplier before minimum premium floor.
+    async fn premium_raw(&self) -> i64 {
+        self.inner.premium_raw
+    }
+
+    /// Implied probability of insured option winning (`p_win`), basis points out of 10_000.
+    async fn implied_probability_bps(&self) -> i64 {
+        self.inner.implied_probability_bps
+    }
+
+    /// Combined risk multiplier in basis points (post caps; premium ≈ base × this / 10_000 before floor).
+    async fn risk_multiplier_bps(&self) -> i64 {
+        self.inner.risk_multiplier_bps
+    }
+
+    /// Vault utilization curve component before SPoT risk layering.
+    async fn base_premium(&self) -> i64 {
+        self.inner.base_premium
+    }
+
+    /// Total SPoT pool (`total_option_escrow`) at quote time.
+    async fn market_total_amount(&self) -> i64 {
+        self.inner.market_total_amount
+    }
+
+    /// Option-side SPoT escrow (`option_amount`) at quote time.
+    async fn option_escrow_amount(&self) -> i64 {
+        self.inner.option_escrow_amount
+    }
+
     /// Policy start time (epoch milliseconds).
     async fn start_time_ms(&self) -> i64 {
         self.inner.start_time_ms
@@ -94,6 +124,24 @@ impl InsurancePolicy {
     /// Transaction ID of the policy creation.
     async fn transaction_id(&self) -> &str {
         &self.inner.transaction_id
+    }
+
+    /// Aggregated route object id when this policy was bought via `route_buy_coverage_4`.
+    async fn route_id(&self) -> Option<MySoAddress> {
+        self.inner
+            .route_id
+            .as_ref()
+            .and_then(|s| MySoAddress::from_str(s).ok())
+    }
+
+    /// Zero-based leg index within the route (only when `route_id` is set).
+    async fn route_leg_index(&self) -> Option<i16> {
+        self.inner.route_leg_index
+    }
+
+    /// Portion of premium swept to the insurance backstop pool for this leg.
+    async fn backstop_sweep_amount(&self) -> i64 {
+        self.inner.backstop_sweep_amount
     }
 }
 
@@ -149,6 +197,21 @@ impl InsuranceVault {
     /// Maximum exposure per user.
     async fn max_exposure_per_user(&self) -> i64 {
         self.inner.max_exposure_per_user
+    }
+
+    /// Maximum exposure reserved per option (0 = unlimited).
+    async fn max_exposure_per_option(&self) -> i64 {
+        self.inner.max_exposure_per_option
+    }
+
+    /// Whether the vault accepts new coverage.
+    async fn enabled(&self) -> bool {
+        self.inner.enabled
+    }
+
+    /// Whether the vault is admin-paused for new coverage.
+    async fn paused(&self) -> bool {
+        self.inner.paused
     }
 
     /// Vault version.

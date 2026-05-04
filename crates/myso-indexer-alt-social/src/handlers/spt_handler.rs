@@ -29,8 +29,8 @@ use myso_indexer_alt_social_schema::models::{
 };
 use myso_indexer_alt_social_schema::schema::{
     ecosystem_treasury, posts, profiles, spt_config, spt_events, spt_exchange_config, spt_holdings,
-    spt_pools, spt_reservation_pools, spt_reservations, spt_revenue,
-    spt_transactions, unified_revenue,
+    spt_pools, spt_reservation_pools, spt_reservations, spt_revenue, spt_transactions,
+    unified_revenue,
 };
 
 use super::common;
@@ -202,6 +202,7 @@ pub enum SptRow {
         post_id: String,
         revenue_redirect_to: String,
         revenue_redirect_percentage: i64,
+        poc_redirection_kind: i16,
     },
 }
 
@@ -310,10 +311,12 @@ impl SptRow {
                 post_id,
                 revenue_redirect_to,
                 revenue_redirect_percentage,
+                poc_redirection_kind,
             } => Some(SptRow::PostRevenueRedirectUpdate {
                 post_id,
                 revenue_redirect_to,
                 revenue_redirect_percentage,
+                poc_redirection_kind,
             }),
             _ => None,
         }
@@ -329,8 +332,10 @@ impl FieldCount for SptRow {
 /// GraphQL assume this split.
 ///
 /// At launch, initial `spt_holdings` rows are derived in SQL from `spt_reservations` using the same
-/// proportional split and owner remainder as `social_proof_tokens::create_social_proof_token`,
-/// keyed by `TokenPoolCreatedEvent` (`circulating_supply`, `total_reserved_at_launch`).
+/// proportional split and owner remainder as `social_proof_tokens::create_social_proof_token`:
+/// each reserver gets `net_myso * circulating_supply / total_reserved_at_launch` (floored), with the
+/// remainder to the owner. `circulating_supply` is the event’s nano-SPT total (post-threshold mint,
+/// scaled by `base_price` on-chain); `total_reserved_at_launch` is net nano-MYSO reserved.
 pub struct SptHandler;
 
 /// Floored proportional split plus owner remainder; mirrors on-chain launch distribution.
@@ -1269,13 +1274,15 @@ impl Handler for SptHandler {
                     post_id,
                     revenue_redirect_to,
                     revenue_redirect_percentage,
+                    poc_redirection_kind,
                 } => {
                     total += diesel::update(posts::table)
                         .filter(posts::post_id.eq(post_id))
                         .set((
-                            posts::revenue_redirect_to.eq(Some(revenue_redirect_to)),
+                            posts::revenue_redirect_to.eq(Some(revenue_redirect_to.clone())),
                             posts::revenue_redirect_percentage
                                 .eq(Some(*revenue_redirect_percentage)),
+                            posts::poc_redirection_kind.eq(Some(*poc_redirection_kind)),
                         ))
                         .execute(conn)
                         .await?;
@@ -1295,9 +1302,9 @@ mod spt_price_history_insert_sql_tests {
     fn insert_uses_coalesce_from_latest_spt_pools_row() {
         assert!(SPT_PRICE_HISTORY_INSERT_SQL.contains("COALESCE"));
         assert!(SPT_PRICE_HISTORY_INSERT_SQL.contains("spt_pools"));
-        assert!(SPT_PRICE_HISTORY_INSERT_SQL.contains(
-            "WHERE pool_id = $1 ORDER BY time DESC LIMIT 1"
-        ));
+        assert!(
+            SPT_PRICE_HISTORY_INSERT_SQL.contains("WHERE pool_id = $1 ORDER BY time DESC LIMIT 1")
+        );
     }
 }
 
@@ -1307,6 +1314,7 @@ mod proportional_spt_launch_tests {
 
     #[test]
     fn proportional_uses_total_reserved_at_launch_when_set() {
+        // Mirrors on-chain: e.g. circulating_supply = 10 nano-SPT, total_reserved_at_launch = 1000 nano-MYSO.
         let aggs = vec![
             SptReserverAggRow {
                 reserver_address: "0xa".to_string(),

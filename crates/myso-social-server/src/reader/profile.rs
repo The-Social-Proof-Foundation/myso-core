@@ -1,13 +1,13 @@
 // Copyright (c) The Social Proof Foundation, LLC.
 // SPDX-License-Identifier: Apache-2.0
 
-use diesel::sql_query;
-use diesel::sql_types::{BigInt, Date, Text, Timestamp};
 use diesel::ExpressionMethods;
 use diesel::OptionalExtension;
 use diesel::QueryDsl;
 use diesel::QueryableByName;
 use diesel::SelectableHelper;
+use diesel::sql_query;
+use diesel::sql_types::{BigInt, Date, Text, Timestamp};
 use diesel_async::RunQueryDsl;
 use myso_indexer_alt_social_schema::models::Profile;
 use myso_indexer_alt_social_schema::schema::{
@@ -15,12 +15,12 @@ use myso_indexer_alt_social_schema::schema::{
 };
 
 use crate::error::SocialError;
+use crate::reader::WalletOnlyProfile;
 use crate::reader::social_graph::enrich_users_with_universal_data;
 use crate::reader::types::{
     DailyStatsPoint, DateRange, ProfileByAddressResponse, ProfileDailyStatsChartData,
     ProfileDailyStatsSummary, SocialGraphChartQuery, UniversalUserResult,
 };
-use crate::reader::WalletOnlyProfile;
 use myso_indexer_alt_social_schema::models::{ProfileOffer, ProfileSaleFee};
 use myso_pg_db::Db;
 

@@ -42,8 +42,9 @@ pub use platform::{
     PlatformModeratorRow, PlatformRow,
 };
 pub use poc::{
-    PocAnalysisResultRow, PocBadgeRow, PocConfigRow, PocDisputeRow, PocDisputeVoteRow,
-    PocRevenueRedirectionRow,
+    PocAnalysisResultRow, PocBadgeRow, PocBeneficiaryVaultRow, PocConfigRow, PocDisputeRow,
+    PocDisputeVoteRow, PocRevenueRedirectionRow, PocVaultClaimRow, PocVaultCoinBalanceRow,
+    PocVaultDepositRow,
 };
 pub use post::{
     BlockedEventRow, CommentRow, PostBasicRow, PostConfigRow, PromotedPostRow, PromotionHourlyRow,

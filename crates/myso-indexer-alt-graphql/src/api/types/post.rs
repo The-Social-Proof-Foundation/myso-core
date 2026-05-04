@@ -165,6 +165,11 @@ impl Post {
         self.inner.enable_poc
     }
 
+    /// Whether Social Proof Token (SPT) features are enabled for this post.
+    async fn enable_spt(&self) -> bool {
+        self.inner.enable_spt
+    }
+
     /// Oracle reasoning from PoC analysis.
     async fn poc_reasoning(&self) -> Option<&str> {
         self.inner.poc_reasoning.as_deref()
@@ -181,6 +186,16 @@ impl Post {
     /// Highest similarity score from PoC analysis (0-100).
     async fn poc_similarity_score(&self) -> Option<i64> {
         self.inner.poc_similarity_score
+    }
+
+    /// PoC outcome code from chain.
+    async fn poc_outcome(&self) -> Option<i32> {
+        self.inner.poc_outcome.map(i32::from)
+    }
+
+    /// Revenue redirect mode (none, wallet, escrow, treasury).
+    async fn poc_redirection_kind(&self) -> Option<i32> {
+        self.inner.poc_redirection_kind.map(i32::from)
     }
 
     /// Media type analyzed (1=image, 2=video, 3=audio).
@@ -206,6 +221,64 @@ impl Post {
     /// Address of the SpotRecord object (set when a SPoT record is created). Null if no record.
     async fn spot_id(&self) -> Option<&str> {
         self.inner.spot_id.as_deref()
+    }
+
+    /// Linked SPT pool id when set.
+    async fn spt_id(&self) -> Option<&str> {
+        self.inner.spt_id.as_deref()
+    }
+
+    /// Platform id where this post was created (indexed from `PostCreatedEvent`).
+    async fn platform_id(&self) -> Option<&str> {
+        self.inner.platform_id.as_deref()
+    }
+
+    /// Permission bitfield from chain (`post.move` PERMISSION_*).
+    async fn permissions(&self) -> Option<i32> {
+        self.inner.permissions.map(i32::from)
+    }
+
+    /// Optional off-chain / indexed revenue recipient address.
+    async fn revenue_recipient(&self) -> Option<&str> {
+        self.inner.revenue_recipient.as_deref()
+    }
+
+    async fn requires_subscription(&self) -> Option<bool> {
+        self.inner.requires_subscription
+    }
+
+    async fn subscription_service_id(&self) -> Option<&str> {
+        self.inner.subscription_service_id.as_deref()
+    }
+
+    async fn subscription_price(&self) -> Option<i64> {
+        self.inner.subscription_price
+    }
+
+    /// Encrypted content hash when the post is paywalled / encrypted.
+    async fn encrypted_content_hash(&self) -> Option<&str> {
+        self.inner.encrypted_content_hash.as_deref()
+    }
+
+    async fn removed_from_platform(&self) -> Option<bool> {
+        self.inner.removed_from_platform
+    }
+
+    async fn removed_by(&self) -> Option<&str> {
+        self.inner.removed_by.as_deref()
+    }
+
+    /// Optional post metadata JSON.
+    async fn metadata_json(&self) -> Option<Json> {
+        self.inner
+            .metadata_json
+            .as_ref()
+            .and_then(|v| Json::try_from(v.clone()).ok())
+    }
+
+    /// On-chain promotion object id when promoted.
+    async fn promotion_id(&self) -> Option<&str> {
+        self.inner.promotion_id.as_deref()
     }
 
     /// Comments on this post (paginated).
@@ -550,6 +623,62 @@ impl Post {
             .await
             .ok()?;
         Some(rows.into_iter().map(PocDispute::from_row).collect())
+    }
+
+    /// Successful PoC dispute submissions over this post's lifetime (`0`–`2`); not reset when PoC is cleared.
+    async fn poc_disputes_submitted(&self) -> i32 {
+        i32::from(self.inner.poc_disputes_submitted)
+    }
+}
+
+/// Paginated posts for a profile (offset/limit + total count).
+#[derive(Clone)]
+pub(crate) struct PostPage {
+    pub(crate) items: Vec<Post>,
+    pub(crate) total_count: i64,
+    pub(crate) limit: i64,
+    pub(crate) offset: i64,
+    total_pages: i64,
+}
+
+impl PostPage {
+    pub(crate) fn new(items: Vec<Post>, total_count: i64, limit: i64, offset: i64) -> Self {
+        let total_pages = if total_count == 0 {
+            0
+        } else {
+            (total_count + limit - 1) / limit
+        };
+        Self {
+            items,
+            total_count,
+            limit,
+            offset,
+            total_pages,
+        }
+    }
+}
+
+#[Object]
+impl PostPage {
+    async fn items(&self) -> Vec<Post> {
+        self.items.clone()
+    }
+
+    async fn total_count(&self) -> i64 {
+        self.total_count
+    }
+
+    async fn limit(&self) -> i64 {
+        self.limit
+    }
+
+    async fn offset(&self) -> i64 {
+        self.offset
+    }
+
+    /// Total pages for this `limit` (0 when there are no posts).
+    async fn total_pages(&self) -> i64 {
+        self.total_pages
     }
 }
 

@@ -2,6 +2,7 @@
 // SPDX-License-Identifier: Apache-2.0
 
 use std::sync::Arc;
+use std::sync::OnceLock;
 
 use prometheus::Histogram;
 use prometheus::IntCounter;
@@ -50,4 +51,14 @@ impl DbReaderMetrics {
             .unwrap(),
         })
     }
+}
+
+static STANDALONE_READER_METRICS: OnceLock<Arc<DbReaderMetrics>> = OnceLock::new();
+
+/// Prometheus metrics for one-off social DB access (e.g. `myso-social-server` sharing SQL with this crate).
+pub fn standalone_reader_metrics() -> &'static Arc<DbReaderMetrics> {
+    STANDALONE_READER_METRICS.get_or_init(|| {
+        let registry = Registry::new();
+        DbReaderMetrics::new(Some("standalone_social_reader"), &registry)
+    })
 }

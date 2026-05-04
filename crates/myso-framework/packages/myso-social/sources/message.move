@@ -69,7 +69,8 @@ module social_contracts::message {
     // === Paid Messaging Constants ===
     
     const MIN_REPLY_CHARS: u32 = 6; // Minimum characters to claim payment
-    const PAYMENT_EXPIRATION_EPOCHS: u64 = 30; // Payment expires after 30 epochs
+    /// Paid message must be replied to within this wall-clock window (`Clock` ms).
+    const PAYMENT_EXPIRATION_MS: u64 = 30 * 86400000; // ~30 days (legacy was 30 epochs)
     
     // Fee percentages (in basis points, 10000 = 100%)
     const PAID_MSG_PLATFORM_FEE_BPS: u64 = 250; // 2.5% to platform
@@ -145,7 +146,7 @@ module social_contracts::message {
         recipient: address, // Who should receive payment (profile owner)
         amount: u64, // Total payment amount
         escrowed_balance: Balance<MYSO>, // Escrowed funds
-        created_epoch: u64, // When the payment was made
+        created_at_ms: u64, // Wall-clock ms from `Clock` when the payment was made
         claimed: bool, // Whether payment has been claimed
         parent_seq: u64, // The paid message seq number
     }
@@ -273,7 +274,7 @@ module social_contracts::message {
         payer: address,
         recipient: address,
         amount: u64,
-        created_epoch: u64,
+        created_at_ms: u64,
     }
 
     public struct PaidMessageReplied has copy, drop {
@@ -292,7 +293,7 @@ module social_contracts::message {
         platform_fee: u64,
         treasury_fee: u64,
         net_amount: u64,
-        claimed_epoch: u64,
+        claimed_at_ms: u64,
     }
 
     public struct PaymentRefunded has copy, drop {
@@ -300,7 +301,7 @@ module social_contracts::message {
         seq: u64,
         payer: address,
         amount: u64,
-        refunded_epoch: u64,
+        refunded_at_ms: u64,
         reason: u8, // 0=expired, 1=manual
     }
 
@@ -1123,7 +1124,7 @@ module social_contracts::message {
         let escrow_payment = coin::split(&mut payment, required_amount, ctx);
         let escrow_balance = coin::into_balance(escrow_payment);
         
-        let current_epoch = tx_context::epoch(ctx);
+        let created_at_ms = clock::timestamp_ms(clock);
         
         // Create escrow entry
         let escrow = PaidMessageEscrow {
@@ -1131,7 +1132,7 @@ module social_contracts::message {
             recipient,
             amount: required_amount,
             escrowed_balance: escrow_balance,
-            created_epoch: current_epoch,
+            created_at_ms,
             claimed: false,
             parent_seq: seq,
         };
@@ -1171,7 +1172,7 @@ module social_contracts::message {
             payer: sender,
             recipient,
             amount: required_amount,
-            created_epoch: current_epoch,
+            created_at_ms,
         });
 
         // Return excess payment
@@ -1215,12 +1216,12 @@ module social_contracts::message {
         assert!(!escrow.claimed, E_PAYMENT_ALREADY_CLAIMED);
         
         // Verify payment not expired (with underflow protection)
-        let current_epoch = tx_context::epoch(ctx);
-        // Check for clock issues - if created_epoch is in the future, treat as expired
-        if (current_epoch < escrow.created_epoch) {
+        let now_ms = clock::timestamp_ms(clock);
+        // Check for clock issues - if created_at_ms is in the future, treat as expired
+        if (now_ms < escrow.created_at_ms) {
             abort E_PAYMENT_EXPIRED
         };
-        assert!(current_epoch - escrow.created_epoch <= PAYMENT_EXPIRATION_EPOCHS, E_PAYMENT_EXPIRED);
+        assert!(now_ms - escrow.created_at_ms <= PAYMENT_EXPIRATION_MS, E_PAYMENT_EXPIRED);
 
         // Check dedupe
         assert!(!table::contains(&conv.used_dedupe, dedupe_key), E_DEDUPE_USED);
@@ -1276,7 +1277,7 @@ module social_contracts::message {
         });
 
         // Automatically claim the payment
-        claim_payment_internal(conv, platform, treasury, paid_msg_seq, ctx);
+        claim_payment_internal(conv, platform, treasury, paid_msg_seq, clock, ctx);
     }
 
     /// Claim payment from a replied paid message (internal helper)
@@ -1285,6 +1286,7 @@ module social_contracts::message {
         platform: &mut Platform,
         treasury: &EcosystemTreasury,
         paid_msg_seq: u64,
+        clock: &Clock,
         ctx: &mut TxContext
     ) {
         // Get mutable escrow
@@ -1320,7 +1322,7 @@ module social_contracts::message {
         // Mark as claimed
         escrow.claimed = true;
 
-        let current_epoch = tx_context::epoch(ctx);
+        let claimed_at_ms = clock::timestamp_ms(clock);
 
         event::emit(PaymentClaimed {
             conv: object::uid_to_address(&conv.id),
@@ -1330,7 +1332,7 @@ module social_contracts::message {
             platform_fee,
             treasury_fee,
             net_amount,
-            claimed_epoch: current_epoch,
+            claimed_at_ms,
         });
     }
 
@@ -1338,6 +1340,7 @@ module social_contracts::message {
     public entry fun refund_paid_message(
         conv: &mut Conversation,
         paid_msg_seq: u64,
+        clock: &Clock,
         ctx: &mut TxContext
     ) {
         let sender = tx_context::sender(ctx);
@@ -1353,13 +1356,13 @@ module social_contracts::message {
         // Verify not already claimed
         assert!(!escrow.claimed, E_PAYMENT_ALREADY_CLAIMED);
 
-        // Verify payment is expired (>= to include the expiration epoch) with underflow protection
-        let current_epoch = tx_context::epoch(ctx);
-        // Check for clock issues - if created_epoch is in the future, allow refund
-        if (current_epoch < escrow.created_epoch) {
+        // Verify payment is expired with underflow protection
+        let now_ms = clock::timestamp_ms(clock);
+        // Check for clock issues - if created_at_ms is in the future, allow refund
+        if (now_ms < escrow.created_at_ms) {
             // Clock issue - allow refund as a safety measure
         } else {
-            assert!(current_epoch - escrow.created_epoch >= PAYMENT_EXPIRATION_EPOCHS, E_PAYMENT_EXPIRED);
+            assert!(now_ms - escrow.created_at_ms >= PAYMENT_EXPIRATION_MS, E_PAYMENT_EXPIRED);
         };
 
         let refund_amount = escrow.amount;
@@ -1376,7 +1379,7 @@ module social_contracts::message {
             seq: paid_msg_seq,
             payer: escrow.payer,
             amount: refund_amount,
-            refunded_epoch: current_epoch,
+            refunded_at_ms: now_ms,
             reason: 0, // 0 = expired
         });
     }

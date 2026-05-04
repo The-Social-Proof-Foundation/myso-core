@@ -49,8 +49,11 @@ use crate::platform::{
 };
 use crate::pnl::{ProfilePnLWindow, ProfilePnLWindowResult, get_profile_pnl_for_windows};
 use crate::poc::{
-    get_poc_analysis_for_post, get_poc_badges_for_post, get_poc_configuration,
-    get_poc_disputes_for_post, get_post_revenue_redirections,
+    get_poc_analysis_for_post, get_poc_badges_for_post,
+    get_poc_beneficiary_vault_by_beneficiary_address, get_poc_beneficiary_vault_by_vault_id,
+    get_poc_configuration, get_poc_dispute_votes, get_poc_disputes_for_post,
+    get_post_revenue_redirections, list_poc_vault_claims_for_vault,
+    list_poc_vault_coin_balances_for_vault, list_poc_vault_deposits_for_vault,
 };
 use crate::post::PostRow;
 use crate::profile::get_profile_badges;
@@ -228,6 +231,9 @@ impl SocialPgReader {
         owner_address: &str,
         profile_id: Option<&str>,
         post_type: Option<&str>,
+        enable_poc: Option<bool>,
+        poc_outcomes: Option<Vec<i16>>,
+        include_removed: bool,
         limit: i64,
         offset: i64,
     ) -> anyhow::Result<Vec<crate::post::PostRow>> {
@@ -237,8 +243,35 @@ impl SocialPgReader {
             owner_address,
             profile_id,
             post_type,
+            enable_poc,
+            poc_outcomes.as_deref(),
+            include_removed,
             limit,
             offset,
+            &self.metrics,
+        )
+        .await
+    }
+
+    /// Count posts for a profile (same filters as [`Self::list_posts_for_profile`]).
+    pub async fn count_posts_for_profile(
+        &self,
+        owner_address: &str,
+        profile_id: Option<&str>,
+        post_type: Option<&str>,
+        enable_poc: Option<bool>,
+        poc_outcomes: Option<Vec<i16>>,
+        include_removed: bool,
+    ) -> anyhow::Result<i64> {
+        let mut conn = self.connect().await?;
+        crate::post::count_posts_for_profile(
+            &mut conn,
+            owner_address,
+            profile_id,
+            post_type,
+            enable_poc,
+            poc_outcomes.as_deref(),
+            include_removed,
             &self.metrics,
         )
         .await
@@ -895,10 +928,71 @@ impl SocialPgReader {
         get_poc_disputes_for_post(&mut conn, post_id, limit, offset, &self.metrics).await
     }
 
+    /// Votes cast on a PoC dispute (latest row per voter).
+    pub async fn get_poc_dispute_votes(
+        &self,
+        dispute_id: &str,
+        limit: i64,
+        offset: i64,
+    ) -> anyhow::Result<Vec<crate::PocDisputeVoteRow>> {
+        let mut conn = self.connect().await?;
+        get_poc_dispute_votes(&mut conn, dispute_id, limit, offset, &self.metrics).await
+    }
+
     /// Get latest POC configuration.
     pub async fn get_poc_configuration(&self) -> anyhow::Result<Option<crate::PocConfigRow>> {
         let mut conn = self.connect().await?;
         get_poc_configuration(&mut conn, &self.metrics).await
+    }
+
+    /// Non-zero coin balances indexed for a PoC beneficiary vault (`poc_vault_coin_balances`).
+    pub async fn list_poc_beneficiary_vault_coin_balances(
+        &self,
+        vault_id: &str,
+    ) -> anyhow::Result<Vec<crate::PocVaultCoinBalanceRow>> {
+        let mut conn = self.connect().await?;
+        list_poc_vault_coin_balances_for_vault(&mut conn, vault_id, &self.metrics).await
+    }
+
+    pub async fn get_poc_beneficiary_vault_by_vault_id(
+        &self,
+        vault_id: &str,
+    ) -> anyhow::Result<Option<crate::PocBeneficiaryVaultRow>> {
+        let mut conn = self.connect().await?;
+        get_poc_beneficiary_vault_by_vault_id(&mut conn, vault_id, &self.metrics).await
+    }
+
+    pub async fn get_poc_beneficiary_vault_by_beneficiary_address(
+        &self,
+        beneficiary_address: &str,
+    ) -> anyhow::Result<Option<crate::PocBeneficiaryVaultRow>> {
+        let mut conn = self.connect().await?;
+        get_poc_beneficiary_vault_by_beneficiary_address(
+            &mut conn,
+            beneficiary_address,
+            &self.metrics,
+        )
+        .await
+    }
+
+    pub async fn list_poc_vault_deposits_for_vault(
+        &self,
+        vault_id: &str,
+        limit: i64,
+        offset: i64,
+    ) -> anyhow::Result<Vec<crate::PocVaultDepositRow>> {
+        let mut conn = self.connect().await?;
+        list_poc_vault_deposits_for_vault(&mut conn, vault_id, limit, offset, &self.metrics).await
+    }
+
+    pub async fn list_poc_vault_claims_for_vault(
+        &self,
+        vault_id: &str,
+        limit: i64,
+        offset: i64,
+    ) -> anyhow::Result<Vec<crate::PocVaultClaimRow>> {
+        let mut conn = self.connect().await?;
+        list_poc_vault_claims_for_vault(&mut conn, vault_id, limit, offset, &self.metrics).await
     }
 
     /// Get latest SPT exchange configuration.

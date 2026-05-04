@@ -1,9 +1,9 @@
 // Copyright (c) The Social Proof Foundation, LLC.
 // SPDX-License-Identifier: Apache-2.0
 
-use diesel::sql_types::{BigInt, Jsonb, Nullable, SmallInt, Text};
 use diesel::OptionalExtension;
 use diesel::QueryableByName;
+use diesel::sql_types::{BigInt, Jsonb, Nullable, SmallInt, Text};
 use diesel_async::RunQueryDsl;
 use myso_pg_db::Db;
 
@@ -16,8 +16,8 @@ pub(crate) async fn get_spot_record(
 ) -> Result<Option<SpotRecordResponse>, SocialError> {
     let mut conn = db.connect().await?;
     let query = "
-        SELECT post_id, status, outcome, betting_options, option_escrow, resolution_window_epochs,
-               max_resolution_window_epochs, created_epoch, last_resolution_epoch
+        SELECT post_id, status, outcome, betting_options, option_escrow, resolution_window_ms,
+               max_resolution_window_ms, created_at_ms, last_resolution_at_ms
         FROM spot_records
         WHERE post_id = $1
     ";
@@ -34,13 +34,13 @@ pub(crate) async fn get_spot_record(
         #[diesel(sql_type = Nullable<Jsonb>)]
         option_escrow: Option<serde_json::Value>,
         #[diesel(sql_type = Nullable<BigInt>)]
-        resolution_window_epochs: Option<i64>,
+        resolution_window_ms: Option<i64>,
         #[diesel(sql_type = Nullable<BigInt>)]
-        max_resolution_window_epochs: Option<i64>,
+        max_resolution_window_ms: Option<i64>,
         #[diesel(sql_type = BigInt)]
-        created_epoch: i64,
+        created_at_ms: i64,
         #[diesel(sql_type = Nullable<BigInt>)]
-        last_resolution_epoch: Option<i64>,
+        last_resolution_at_ms: Option<i64>,
     }
     let result = diesel::sql_query(query)
         .bind::<Text, _>(post_id)
@@ -62,10 +62,10 @@ pub(crate) async fn get_spot_record(
             outcome: r.outcome,
             betting_options,
             option_escrow,
-            resolution_window_epochs: r.resolution_window_epochs,
-            max_resolution_window_epochs: r.max_resolution_window_epochs,
-            created_epoch: r.created_epoch,
-            last_resolution_epoch: r.last_resolution_epoch,
+            resolution_window_ms: r.resolution_window_ms,
+            max_resolution_window_ms: r.max_resolution_window_ms,
+            created_at_ms: r.created_at_ms,
+            last_resolution_at_ms: r.last_resolution_at_ms,
         }
     }))
 }
@@ -78,7 +78,7 @@ pub(crate) async fn list_spot_bets(
 ) -> Result<Vec<SpotBetRow>, SocialError> {
     let mut conn = db.connect().await?;
     let query = "
-        SELECT post_id, user_address, option_id, escrow_amount, amm_amount, timestamp_epoch
+        SELECT post_id, user_address, option_id, escrow_amount, amm_amount, timestamp_ms
         FROM spot_bets
         WHERE post_id = $1
         ORDER BY time DESC
@@ -101,7 +101,7 @@ pub(crate) async fn list_spot_payouts(
 ) -> Result<Vec<SpotTransferRow>, SocialError> {
     let mut conn = db.connect().await?;
     let query = "
-        SELECT user_address, amount, timestamp_epoch
+        SELECT user_address, amount, timestamp_ms
         FROM spot_payouts
         WHERE post_id = $1
         ORDER BY time DESC
@@ -124,7 +124,7 @@ pub(crate) async fn list_spot_refunds(
 ) -> Result<Vec<SpotTransferRow>, SocialError> {
     let mut conn = db.connect().await?;
     let query = "
-        SELECT user_address, amount, timestamp_epoch
+        SELECT user_address, amount, timestamp_ms
         FROM spot_refunds
         WHERE post_id = $1
         ORDER BY time DESC
@@ -142,8 +142,8 @@ pub(crate) async fn list_spot_refunds(
 pub(crate) async fn get_spot_configuration(db: &Db) -> Result<Option<SpotConfigInfo>, SocialError> {
     let mut conn = db.connect().await?;
     let query = "
-        SELECT updated_by, enable_flag, confidence_threshold_bps, resolution_window_epochs,
-               max_resolution_window_epochs, payout_delay_ms, fee_bps, fee_split_bps_platform,
+        SELECT updated_by, enable_flag, confidence_threshold_bps, resolution_window_ms,
+               max_resolution_window_ms, payout_delay_ms, fee_bps, fee_split_bps_platform,
                oracle_address, max_single_bet, version, timestamp_ms, time, transaction_id
         FROM spot_config
         ORDER BY time DESC

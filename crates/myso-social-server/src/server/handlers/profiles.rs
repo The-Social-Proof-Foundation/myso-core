@@ -74,7 +74,7 @@ pub async fn get_profile_posts(
     State(state): State<Arc<AppState>>,
     Path(address): Path<String>,
     Query(params): Query<PageParams>,
-) -> Result<Json<Vec<crate::reader::PostBasicRow>>, SocialError> {
+) -> Result<Json<Vec<myso_indexer_alt_social_reader::PostRow>>, SocialError> {
     let limit = params.limit();
     let offset = params.offset();
     let posts = state

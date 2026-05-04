@@ -1,12 +1,12 @@
 // Copyright (c) The Social Proof Foundation, LLC.
 // SPDX-License-Identifier: Apache-2.0
 
-use diesel::sql_types::{BigInt, Text};
 use diesel::BoolExpressionMethods;
 use diesel::ExpressionMethods;
 use diesel::PgTextExpressionMethods;
 use diesel::QueryDsl;
 use diesel::SelectableHelper;
+use diesel::sql_types::{BigInt, Text};
 use diesel_async::RunQueryDsl;
 use myso_indexer_alt_social_schema::models::{Platform, Profile};
 use myso_indexer_alt_social_schema::schema::{platforms, profiles};
@@ -101,12 +101,14 @@ async fn search_posts_with_conn(
         WITH ranked AS (
             SELECT post_id, owner, profile_id, content, post_type, created_at, deleted_at,
                    reaction_count, comment_count, repost_count, tips_received, mydata_id,
+                   poc_outcome, poc_redirection_kind, poc_disputes_submitted,
                    ROW_NUMBER() OVER (PARTITION BY post_id ORDER BY time DESC) as rn
             FROM posts
             WHERE deleted_at IS NULL AND content ILIKE $1
         )
         SELECT post_id, owner, profile_id, content, post_type, created_at, deleted_at,
-               reaction_count, comment_count, repost_count, tips_received, mydata_id
+               reaction_count, comment_count, repost_count, tips_received, mydata_id,
+               poc_outcome, poc_redirection_kind, poc_disputes_submitted
         FROM ranked
         WHERE rn = 1
         ORDER BY created_at DESC

@@ -23,9 +23,9 @@ pub struct SpotConfigRow {
     #[diesel(sql_type = BigInt)]
     pub confidence_threshold_bps: i64,
     #[diesel(sql_type = BigInt)]
-    pub resolution_window_epochs: i64,
+    pub resolution_window_ms: i64,
     #[diesel(sql_type = BigInt)]
-    pub max_resolution_window_epochs: i64,
+    pub max_resolution_window_ms: i64,
     #[diesel(sql_type = BigInt)]
     pub payout_delay_ms: i64,
     #[diesel(sql_type = BigInt)]
@@ -56,8 +56,8 @@ pub(crate) async fn get_spot_record(
 
     let query = "
         SELECT id, post_id, status, outcome, betting_options, option_escrow,
-               created_epoch, resolution_window_epochs, max_resolution_window_epochs,
-               last_resolution_epoch, transaction_id
+               created_at_ms, resolution_window_ms, max_resolution_window_ms,
+               last_resolution_at_ms, transaction_id
         FROM spot_records
         WHERE post_id = $1
     ";
@@ -84,7 +84,7 @@ pub(crate) async fn list_spot_bets(
 
     let query = "
         SELECT sb.id, sb.post_id, sb.user_address, sb.option_id, sb.escrow_amount, sb.amm_amount,
-               sb.timestamp_epoch, sb.transaction_id,
+               sb.timestamp_ms, sb.transaction_id,
                CASE WHEN sr.betting_options IS NOT NULL AND jsonb_array_length(sr.betting_options) > sb.option_id
                     THEN jsonb_array_element_text(sr.betting_options, sb.option_id)
                     ELSE NULL
@@ -115,8 +115,8 @@ pub(crate) async fn get_spot_config(
     let _guard = metrics.latency.start_timer();
 
     let query = "
-        SELECT updated_by, enable_flag, confidence_threshold_bps, resolution_window_epochs,
-               max_resolution_window_epochs, payout_delay_ms, fee_bps, fee_split_bps_platform,
+        SELECT updated_by, enable_flag, confidence_threshold_bps, resolution_window_ms,
+               max_resolution_window_ms, payout_delay_ms, fee_bps, fee_split_bps_platform,
                oracle_address, max_single_bet, version, timestamp_ms, time, transaction_id
         FROM spot_config
         ORDER BY time DESC
@@ -143,7 +143,7 @@ pub(crate) async fn list_spot_payouts(
     let _guard = metrics.latency.start_timer();
 
     let query = "
-        SELECT id, post_id, user_address, amount, timestamp_epoch, transaction_id
+        SELECT id, post_id, user_address, amount, timestamp_ms, transaction_id
         FROM spot_payouts
         WHERE post_id = $1
         ORDER BY time DESC
@@ -172,7 +172,7 @@ pub(crate) async fn list_spot_refunds(
     let _guard = metrics.latency.start_timer();
 
     let query = "
-        SELECT id, post_id, user_address, amount, timestamp_epoch, transaction_id
+        SELECT id, post_id, user_address, amount, timestamp_ms, transaction_id
         FROM spot_refunds
         WHERE post_id = $1
         ORDER BY time DESC
@@ -199,7 +199,7 @@ pub(crate) async fn get_spot_resolution(
     let _guard = metrics.latency.start_timer();
 
     let query = "
-        SELECT id, post_id, outcome, total_escrow, fee_taken, resolved_epoch,
+        SELECT id, post_id, outcome, total_escrow, fee_taken, resolved_at_ms,
                transaction_id, reasoning, evidence_urls
         FROM spot_resolutions
         WHERE post_id = $1
@@ -228,7 +228,7 @@ pub(crate) async fn list_spot_bet_withdrawals(
     let _guard = metrics.latency.start_timer();
 
     let query = "
-        SELECT id, post_id, user_address, option_id, amount, fee_taken, timestamp_epoch,
+        SELECT id, post_id, user_address, option_id, amount, fee_taken, timestamp_ms,
                transaction_id
         FROM spot_bet_withdrawals
         WHERE post_id = $1

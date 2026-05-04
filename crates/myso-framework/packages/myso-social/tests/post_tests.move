@@ -13,12 +13,14 @@ module social_contracts::post_tests {
     use myso::table;
     use myso::object;
     use myso::transfer;
-    use myso::coin;
+    use myso::coin::{Self, Coin};
+    use myso::myso::MYSO;
     use myso::clock::{Self, Clock};
     use myso::test_utils;
     
     use social_contracts::post::{Self, Post, Comment, PostConfig, PromotionData};
     use social_contracts::profile::UsernameRegistry;
+    use social_contracts::poc_vault::{Self as poc_vault, PoCBeneficiaryVault};
     use social_contracts::block_list::{Self, BlockListRegistry};
     use social_contracts::mydata::{Self, MyData, MyDataConfig, MyDataRegistry};
     
@@ -1035,6 +1037,183 @@ module social_contracts::post_tests {
             let reg = test_scenario::take_shared<MyDataRegistry>(&scenario);
             post::test_assert_mydata_id_allowed_for_owner(USER2, option::some(ip_id), &reg);
             test_scenario::return_shared(reg);
+        };
+        test_scenario::end(scenario);
+    }
+
+    #[test]
+    fun test_tip_post_simple_no_redirect() {
+        let mut scenario = test_scenario::begin(USER1);
+        test_scenario::next_tx(&mut scenario, USER1);
+        {
+            post::test_init(test_scenario::ctx(&mut scenario));
+        };
+        test_scenario::next_tx(&mut scenario, USER1);
+        {
+            post::test_create_post(
+                USER1,
+                USER1,
+                TEST_PLATFORM_ID,
+                string::utf8(TEST_CONTENT),
+                test_scenario::ctx(&mut scenario)
+            );
+        };
+        test_scenario::next_tx(&mut scenario, USER2);
+        {
+            let mut post_obj = test_scenario::take_shared<Post>(&scenario);
+            let mut tip_coin = coin::mint_for_testing<MYSO>(10_000_000_000, test_scenario::ctx(&mut scenario));
+            assert!(!post::tip_post_requires_beneficiary_vault_for_amount(&post_obj, 5_000_000_000), 0);
+            post::tip_post_simple<MYSO>(
+                &mut post_obj,
+                &mut tip_coin,
+                5_000_000_000,
+                test_scenario::ctx(&mut scenario)
+            );
+            assert!(post::get_tips_received(&post_obj) == 5_000_000_000, 1);
+            test_scenario::return_shared(post_obj);
+            transfer::public_transfer(tip_coin, USER2);
+        };
+        test_scenario::end(scenario);
+    }
+
+    #[test]
+    fun test_tip_post_simple_wallet_redirect() {
+        let mut scenario = test_scenario::begin(USER1);
+        test_scenario::next_tx(&mut scenario, USER1);
+        {
+            post::test_init(test_scenario::ctx(&mut scenario));
+        };
+        test_scenario::next_tx(&mut scenario, USER1);
+        {
+            post::test_create_post_with_revenue_redirect(
+                USER1,
+                USER1,
+                TEST_PLATFORM_ID,
+                string::utf8(TEST_CONTENT),
+                USER3,
+                50,
+                test_scenario::ctx(&mut scenario)
+            );
+        };
+        test_scenario::next_tx(&mut scenario, USER2);
+        {
+            let mut post_obj = test_scenario::take_shared<Post>(&scenario);
+            let mut tip_coin = coin::mint_for_testing<MYSO>(100, test_scenario::ctx(&mut scenario));
+            assert!(!post::tip_post_requires_beneficiary_vault_for_amount(&post_obj, 100), 0);
+            post::tip_post_simple<MYSO>(&mut post_obj, &mut tip_coin, 100, test_scenario::ctx(&mut scenario));
+            assert!(post::get_tips_received(&post_obj) == 50, 1);
+            test_scenario::return_shared(post_obj);
+            transfer::public_transfer(tip_coin, USER2);
+        };
+        test_scenario::next_tx(&mut scenario, USER3);
+        {
+            let c = test_scenario::take_from_sender<Coin<MYSO>>(&scenario);
+            assert!(coin::value(&c) == 50, 2);
+            test_scenario::return_to_sender(&scenario, c);
+        };
+        test_scenario::end(scenario);
+    }
+
+    #[test]
+    #[expected_failure(abort_code = 38, location = social_contracts::post)]
+    fun test_tip_post_simple_escrow_requires_vault() {
+        let mut scenario = test_scenario::begin(USER1);
+        test_scenario::next_tx(&mut scenario, USER1);
+        {
+            post::test_init(test_scenario::ctx(&mut scenario));
+        };
+        test_scenario::next_tx(&mut scenario, USER1);
+        {
+            post::test_create_post_with_escrow_redirect(
+                USER1,
+                USER1,
+                TEST_PLATFORM_ID,
+                string::utf8(TEST_CONTENT),
+                USER3,
+                50,
+                test_scenario::ctx(&mut scenario)
+            );
+        };
+        test_scenario::next_tx(&mut scenario, USER2);
+        {
+            let mut post_obj = test_scenario::take_shared<Post>(&scenario);
+            let mut tip_coin = coin::mint_for_testing<MYSO>(100, test_scenario::ctx(&mut scenario));
+            assert!(post::tip_post_requires_beneficiary_vault_for_amount(&post_obj, 100), 0);
+            post::tip_post_simple<MYSO>(&mut post_obj, &mut tip_coin, 100, test_scenario::ctx(&mut scenario));
+            test_scenario::return_shared(post_obj);
+            transfer::public_transfer(tip_coin, USER2);
+        };
+        test_scenario::end(scenario);
+    }
+
+    #[test]
+    #[expected_failure(abort_code = 37, location = social_contracts::post)]
+    fun test_tip_post_wrong_beneficiary_vault_aborts() {
+        let mut scenario = test_scenario::begin(USER1);
+        test_scenario::next_tx(&mut scenario, USER1);
+        {
+            post::test_init(test_scenario::ctx(&mut scenario));
+        };
+        test_scenario::next_tx(&mut scenario, USER1);
+        {
+            post::test_create_post_with_escrow_redirect(
+                USER1,
+                USER1,
+                TEST_PLATFORM_ID,
+                string::utf8(TEST_CONTENT),
+                USER3,
+                50,
+                test_scenario::ctx(&mut scenario)
+            );
+            poc_vault::create_shared_dummy_vault_for_testing(USER1, test_scenario::ctx(&mut scenario));
+        };
+        test_scenario::next_tx(&mut scenario, USER2);
+        {
+            let mut post_obj = test_scenario::take_shared<Post>(&scenario);
+            let mut wrong_vault = test_scenario::take_shared<PoCBeneficiaryVault>(&scenario);
+            let mut tip_coin = coin::mint_for_testing<MYSO>(100, test_scenario::ctx(&mut scenario));
+            post::tip_post<MYSO>(
+                &mut post_obj,
+                &mut wrong_vault,
+                &mut tip_coin,
+                100,
+                test_scenario::ctx(&mut scenario)
+            );
+            test_scenario::return_shared(post_obj);
+            test_scenario::return_shared(wrong_vault);
+            transfer::public_transfer(tip_coin, USER2);
+        };
+        test_scenario::end(scenario);
+    }
+
+    #[test]
+    fun test_tip_post_escrow_rounded_redirect_uses_simple() {
+        let mut scenario = test_scenario::begin(USER1);
+        test_scenario::next_tx(&mut scenario, USER1);
+        {
+            post::test_init(test_scenario::ctx(&mut scenario));
+        };
+        test_scenario::next_tx(&mut scenario, USER1);
+        {
+            post::test_create_post_with_escrow_redirect(
+                USER1,
+                USER1,
+                TEST_PLATFORM_ID,
+                string::utf8(TEST_CONTENT),
+                USER3,
+                50,
+                test_scenario::ctx(&mut scenario)
+            );
+        };
+        test_scenario::next_tx(&mut scenario, USER2);
+        {
+            let mut post_obj = test_scenario::take_shared<Post>(&scenario);
+            let mut tip_coin = coin::mint_for_testing<MYSO>(100, test_scenario::ctx(&mut scenario));
+            assert!(!post::tip_post_requires_beneficiary_vault_for_amount(&post_obj, 1), 0);
+            post::tip_post_simple<MYSO>(&mut post_obj, &mut tip_coin, 1, test_scenario::ctx(&mut scenario));
+            assert!(post::get_tips_received(&post_obj) == 1, 1);
+            test_scenario::return_shared(post_obj);
+            transfer::public_transfer(tip_coin, USER2);
         };
         test_scenario::end(scenario);
     }

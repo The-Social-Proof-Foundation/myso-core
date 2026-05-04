@@ -443,7 +443,7 @@ module social_contracts::social_graph_tests {
             let admin_cap = test_scenario::take_from_sender<UpgradeAdminCap>(&scenario);
             
             // Just check the initial version
-            assert!(social_graph::version(&social_graph) == 1, 1);
+            assert!(social_graph::version(&social_graph) == upgrade::current_version(), 1);
             
             // Return objects
             test_scenario::return_shared(social_graph);

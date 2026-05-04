@@ -9,6 +9,7 @@
 module social_contracts::post {
     use std::string::{Self, String};
     use std::option::{Self, Option};
+    use std::type_name::{Self as type_name, TypeName};
     
     use myso::{
         object::{Self, UID, ID},
@@ -28,7 +29,8 @@ module social_contracts::post {
     use social_contracts::block_list::{Self, BlockListRegistry};
     use social_contracts::mydata;
     use social_contracts::upgrade::{Self, UpgradeAdminCap};
-    use social_contracts::proof_of_creativity;
+    use social_contracts::profile::{Self, EcosystemTreasury};
+    use social_contracts::poc_vault::{Self as poc_vault, PoCBeneficiaryVault};
 
     /// Error codes
     const EUnauthorized: u64 = 0;
@@ -65,6 +67,12 @@ module social_contracts::post {
     const EOverflow: u64 = 31;
     const EMyDataNotRegistered: u64 = 32;
     const EMyDataOwnerMismatch: u64 = 33;
+    const EInvalidPocOutcomeFields: u64 = 35;
+    const EDisputeCapReached: u64 = 36;
+    /// Escrow/vault redirect slice must use the `PoCBeneficiaryVault` whose beneficiary matches `revenue_redirect_to`.
+    const EWrongBeneficiaryVault: u64 = 37;
+    /// [`tip_post_simple`] cannot deposit into an escrow vault; use [`tip_post`] with the vault for `revenue_redirect_to`.
+    const ETipPostRequiresBeneficiaryVault: u64 = 38;
 
     /// Constants for size limits
     const MAX_CONTENT_LENGTH: u64 = 5000; // 5000 chars max for content
@@ -112,11 +120,21 @@ module social_contracts::post {
     const ENABLE_POC: u8 = 2;                      // bit 1
     const ENABLE_SPOT: u8 = 4;                     // bit 2
 
-    /// PoC badge struct to consolidate PoC-related fields
-    /// Note: Must have 'store' ability because Post has 'store', but we prevent extraction
-    /// by not providing any functions that extract the badge separately from the Post.
-    /// The badge is permanently tied to the post - when a post is transferred, the badge goes with it.
-    public struct PoCBadge has store, copy, drop {
+    /// PoC analysis outcome (stored on Post)
+    const POC_OUTCOME_NONE: u8 = 0;
+    const POC_OUTCOME_ORIGINAL: u8 = 1;
+    const POC_OUTCOME_DERIVATIVE_WALLET: u8 = 2;
+    const POC_OUTCOME_DERIVATIVE_ESCROW: u8 = 3;
+    const POC_OUTCOME_ROYALTY_FREE: u8 = 4;
+
+    /// How PoC derivative redirect routes redirected tips / MYSO creator fees
+    const POC_REDIRECT_NONE: u8 = 0;
+    const POC_REDIRECT_WALLET: u8 = 1;
+    /// Redirected MYSO accumulates in the beneficiary's shared `PoCBeneficiaryVault` (not on-post balance).
+    const POC_REDIRECT_ESCROW: u8 = 2;
+
+    /// Denormalized PoC badge fields cached on `Post` for cheap reads; authoritative record is `PoCBadgeObject`.
+    public struct PoCBadgeSnapshot has store, copy, drop {
         reasoning: Option<String>,
         evidence_urls: Option<vector<String>>,
         similarity_score: Option<u64>,
@@ -168,9 +186,10 @@ module social_contracts::post {
         revenue_redirect_to: Option<address>,
         /// Optional revenue redirection percentage (0-100)
         revenue_redirect_percentage: Option<u64>,
-        /// Optional PoC badge (consolidated from 6 fields)
-        /// Note: PoCBadge has no 'store' ability, so it cannot be extracted or transferred separately
-        poc_badge: Option<PoCBadge>,
+        /// Cached PoC badge snapshot (authoritative object id below).
+        poc_badge_snapshot: Option<PoCBadgeSnapshot>,
+        /// Address of the shared `PoCBadgeObject` when issued (authoritative PoC record).
+        poc_badge_object_id: Option<ID>,
         /// Reference to the MyData for the post
         mydata_id: Option<address>,
         /// Optional promotion data ID for promoted posts
@@ -181,6 +200,12 @@ module social_contracts::post {
         spot_id: Option<address>,
         /// Optional Social Proof Token pool ID (address of TokenPool object)
         spt_id: Option<address>,
+        /// Last applied PoC outcome (`POC_OUTCOME_*`); 0 if never analyzed or cleared
+        poc_outcome: u8,
+        /// Where derivative redirect slices go for this post (`POC_REDIRECT_*`)
+        poc_redirection_kind: u8,
+        /// Successful PoC dispute submissions for this post (max 2 lifetime; not reset when PoC cleared).
+        poc_disputes_submitted: u8,
         /// Version for upgrades
         version: u64,
     }
@@ -200,6 +225,23 @@ module social_contracts::post {
     #[allow(unused_function)]
     fun clear_flag(value: &mut u8, flag: u8) {
         *value = *value & (255 - flag)
+    }
+
+    /// Bitfield for `Post.permissions` / `PostCreatedEvent.permissions` (matches `create_post_internal`).
+    fun permissions_bitfield(
+        allow_comments: bool,
+        allow_reactions: bool,
+        allow_reposts: bool,
+        allow_quotes: bool,
+        allow_tips: bool,
+    ): u8 {
+        let mut p: u8 = 0;
+        if (allow_comments) { p = p | PERMISSION_ALLOW_COMMENTS };
+        if (allow_reactions) { p = p | PERMISSION_ALLOW_REACTIONS };
+        if (allow_reposts) { p = p | PERMISSION_ALLOW_REPOSTS };
+        if (allow_quotes) { p = p | PERMISSION_ALLOW_QUOTES };
+        if (allow_tips) { p = p | PERMISSION_ALLOW_TIPS };
+        p
     }
 
     /// Query: check if comments are allowed
@@ -242,21 +284,69 @@ module social_contracts::post {
         has_flag(post.enable_flags, ENABLE_SPOT)
     }
 
-    /// Get PoC badge (returns reference to Option)
-    /// When a Post is transferred/sold, the badge automatically goes with it.
-    public fun get_poc_badge(post: &Post): &Option<PoCBadge> {
-        &post.poc_badge
+    /// Expose on-post PoC outcome for other modules (e.g. social_proof_tokens).
+    public fun poc_outcome(post: &Post): u8 {
+        post.poc_outcome
     }
 
-    /// Check if post has a PoC badge
+    /// How derivative redirect is routed for this post (`POC_REDIRECT_*`).
+    public fun poc_redirection_kind(post: &Post): u8 {
+        post.poc_redirection_kind
+    }
+
+    /// Lifetime count of successful PoC dispute submissions (capped at 2 on-chain).
+    public fun poc_disputes_submitted(post: &Post): u8 {
+        post.poc_disputes_submitted
+    }
+
+    /// Returns true when [`tip_post`] must receive a [`PoCBeneficiaryVault`] whose beneficiary is `revenue_redirect_to`
+    /// for this tip amount (escrow-mode redirect with a non-zero redirected slice of `tip_amount`).
+    public fun tip_post_requires_beneficiary_vault_for_amount(post: &Post, tip_amount: u64): bool {
+        if (tip_amount == 0) {
+            return false
+        };
+        let has_derivative_redirect = option::is_some(&post.revenue_redirect_percentage) &&
+            post.poc_redirection_kind != POC_REDIRECT_NONE &&
+            (post.poc_redirection_kind == POC_REDIRECT_ESCROW ||
+                option::is_some(&post.revenue_redirect_to));
+        if (!has_derivative_redirect) {
+            return false
+        };
+        let redirect_percentage = *option::borrow(&post.revenue_redirect_percentage);
+        if (redirect_percentage == 0) {
+            return false
+        };
+        let redirected_amount = (tip_amount * redirect_percentage) / 100;
+        if (redirected_amount == 0) {
+            return false
+        };
+        post.poc_redirection_kind == POC_REDIRECT_ESCROW
+    }
+
+    /// Sentinel: no derivative redirect kind (original badge path).
+    public fun poc_redirection_none(): u8 {
+        POC_REDIRECT_NONE
+    }
+
+    /// Get PoC badge snapshot (returns reference to Option).
+    public fun get_poc_badge(post: &Post): &Option<PoCBadgeSnapshot> {
+        &post.poc_badge_snapshot
+    }
+
+    /// Shared `PoCBadgeObject` id when issued.
+    public fun get_poc_badge_object_id(post: &Post): Option<ID> {
+        post.poc_badge_object_id
+    }
+
+    /// Check if post has PoC badge snapshot or linked badge object
     public fun has_poc_badge(post: &Post): bool {
-        option::is_some(&post.poc_badge)
+        option::is_some(&post.poc_badge_snapshot) || option::is_some(&post.poc_badge_object_id)
     }
 
     /// Get PoC reasoning (immutable query function)
     public fun get_poc_reasoning(post: &Post): Option<String> {
-        if (option::is_some(&post.poc_badge)) {
-            let badge_ref = option::borrow(&post.poc_badge);
+        if (option::is_some(&post.poc_badge_snapshot)) {
+            let badge_ref = option::borrow(&post.poc_badge_snapshot);
             badge_ref.reasoning
         } else {
             option::none()
@@ -265,8 +355,8 @@ module social_contracts::post {
 
     /// Get PoC evidence URLs (immutable query function)
     public fun get_poc_evidence_urls(post: &Post): Option<vector<String>> {
-        if (option::is_some(&post.poc_badge)) {
-            let badge_ref = option::borrow(&post.poc_badge);
+        if (option::is_some(&post.poc_badge_snapshot)) {
+            let badge_ref = option::borrow(&post.poc_badge_snapshot);
             badge_ref.evidence_urls
         } else {
             option::none()
@@ -275,8 +365,8 @@ module social_contracts::post {
 
     /// Get PoC similarity score (immutable query function)
     public fun get_poc_similarity_score(post: &Post): Option<u64> {
-        if (option::is_some(&post.poc_badge)) {
-            let badge_ref = option::borrow(&post.poc_badge);
+        if (option::is_some(&post.poc_badge_snapshot)) {
+            let badge_ref = option::borrow(&post.poc_badge_snapshot);
             badge_ref.similarity_score
         } else {
             option::none()
@@ -285,8 +375,8 @@ module social_contracts::post {
 
     /// Get PoC media type (immutable query function)
     public fun get_poc_media_type(post: &Post): Option<u8> {
-        if (option::is_some(&post.poc_badge)) {
-            let badge_ref = option::borrow(&post.poc_badge);
+        if (option::is_some(&post.poc_badge_snapshot)) {
+            let badge_ref = option::borrow(&post.poc_badge_snapshot);
             badge_ref.media_type
         } else {
             option::none()
@@ -295,8 +385,8 @@ module social_contracts::post {
 
     /// Get PoC oracle address (immutable query function)
     public fun get_poc_oracle_address(post: &Post): Option<address> {
-        if (option::is_some(&post.poc_badge)) {
-            let badge_ref = option::borrow(&post.poc_badge);
+        if (option::is_some(&post.poc_badge_snapshot)) {
+            let badge_ref = option::borrow(&post.poc_badge_snapshot);
             badge_ref.oracle_address
         } else {
             option::none()
@@ -305,8 +395,8 @@ module social_contracts::post {
 
     /// Get PoC analysis timestamp (immutable query function)
     public fun get_poc_analyzed_at(post: &Post): Option<u64> {
-        if (option::is_some(&post.poc_badge)) {
-            let badge_ref = option::borrow(&post.poc_badge);
+        if (option::is_some(&post.poc_badge_snapshot)) {
+            let badge_ref = option::borrow(&post.poc_badge_snapshot);
             badge_ref.analyzed_at
         } else {
             option::none()
@@ -472,6 +562,8 @@ module social_contracts::post {
         post_id: address,
         owner: address,
         profile_id: address,
+        platform_id: address,
+        permissions: u8,
         content: String,
         post_type: String,
         parent_post_id: Option<address>,
@@ -487,6 +579,8 @@ module social_contracts::post {
         enable_spot: bool,
         spot_id: Option<address>,
         spt_id: Option<address>,
+        /// Matches `Post.poc_redirection_kind` at creation (`POC_REDIRECT_*`).
+        poc_redirection_kind: u8,
     }
 
     /// Comment created event
@@ -532,6 +626,7 @@ module social_contracts::post {
         from: address,
         to: address,
         amount: u64,
+        coin_type: TypeName,
         is_post: bool,
     }
 
@@ -730,6 +825,7 @@ module social_contracts::post {
         enable_spt: bool,
         enable_poc: bool,
         enable_spot: bool,
+        poc_redirection_kind: u8,
         ctx: &mut TxContext
     ): address {
         // Build permissions bitfield
@@ -768,12 +864,16 @@ module social_contracts::post {
             permissions,
             revenue_redirect_to,
             revenue_redirect_percentage,
-            poc_badge: option::none(),
+            poc_badge_snapshot: option::none(),
+            poc_badge_object_id: option::none(),
             mydata_id,
             promotion_id,
             enable_flags,
             spot_id: option::none(), // Will be set when SPoT record is created
             spt_id: option::none(), // Will be set when SPT pool is created
+            poc_outcome: POC_OUTCOME_NONE,
+            poc_redirection_kind,
+            poc_disputes_submitted: 0,
             version: upgrade::current_version(),
         };
         
@@ -928,6 +1028,8 @@ module social_contracts::post {
         
         // Convert media URLs to strings for event (before moving media_option)
         let media_urls_for_event = convert_urls_to_strings(&media_option);
+
+        let poc_redirection_kind = POC_REDIRECT_NONE;
         
         // Create and share the post
         let post_id = create_post_internal(
@@ -952,14 +1054,24 @@ module social_contracts::post {
             final_enable_spt,
             final_enable_poc,
             final_enable_spot,
+            poc_redirection_kind,
             ctx
         );
         
         // Emit post created event
+        let permissions_for_event = permissions_bitfield(
+            final_allow_comments,
+            final_allow_reactions,
+            final_allow_reposts,
+            final_allow_quotes,
+            final_allow_tips,
+        );
         event::emit(PostCreatedEvent {
             post_id,
             owner,
             profile_id,
+            platform_id,
+            permissions: permissions_for_event,
             content,
             post_type: string::utf8(POST_TYPE_STANDARD),
             parent_post_id: option::none(),
@@ -975,6 +1087,7 @@ module social_contracts::post {
             enable_spot: final_enable_spot,
             spot_id: option::none(),
             spt_id: option::none(),
+            poc_redirection_kind,
         });
     }
 
@@ -1295,6 +1408,8 @@ module social_contracts::post {
         
         // Convert media URLs to strings for event (before moving media_option)
         let media_urls_for_event = convert_urls_to_strings(&media_option);
+
+        let poc_redirection_kind = POC_REDIRECT_NONE;
         
         // Create and share the repost post
         let repost_post_id = create_post_internal(
@@ -1319,14 +1434,24 @@ module social_contracts::post {
             final_enable_spt,
             final_enable_poc,
             final_enable_spot,
+            poc_redirection_kind,
             ctx
         );
         
+        let permissions_for_event = permissions_bitfield(
+            final_allow_comments,
+            final_allow_reactions,
+            final_allow_reposts,
+            final_allow_quotes,
+            final_allow_tips,
+        );
         // Emit post created event for the repost
         event::emit(PostCreatedEvent {
             post_id: repost_post_id,
             owner,
             profile_id,
+            platform_id,
+            permissions: permissions_for_event,
             content: content_string,
             post_type,
             parent_post_id: option::some(original_post_id),
@@ -1342,6 +1467,7 @@ module social_contracts::post {
             enable_spot: final_enable_spot,
             spot_id: option::none(),
             spt_id: option::none(),
+            poc_redirection_kind,
         });
     }
 
@@ -1352,10 +1478,11 @@ module social_contracts::post {
     ) {
         let sender = tx_context::sender(ctx);
         assert!(sender == post.owner, EUnauthorized);
+        let post_id_addr = object::uid_to_address(&post.id);
         
         // Emit event for the post deletion
         event::emit(PostDeletedEvent {
-            post_id: object::uid_to_address(&post.id),
+            post_id: post_id_addr,
             owner: post.owner,
             profile_id: post.profile_id,
             post_type: post.post_type,
@@ -1385,12 +1512,16 @@ module social_contracts::post {
             permissions: _,
             revenue_redirect_to: _,
             revenue_redirect_percentage: _,
-            poc_badge: _,
+            poc_badge_snapshot: _,
+            poc_badge_object_id: _,
             mydata_id: _,
             promotion_id: _,
             enable_flags: _,
             spot_id: _,
             spt_id: _,
+            poc_outcome: _,
+            poc_redirection_kind: _,
+            poc_disputes_submitted: _,
             version: _,
         } = post;
         
@@ -1559,60 +1690,180 @@ module social_contracts::post {
         });
     }
 
-    /// Tip a post creator with any supported coin type (with PoC revenue redirection support)
-    /// Supports MYSO and MYUSD
+    /// Tip a post creator with coin type `T`. When this post uses vault-mode PoC redirect (`POC_REDIRECT_ESCROW`)
+    /// with a non-zero redirected slice for the given `amount`, `beneficiary_vault` must be the shared vault whose
+    /// beneficiary is `post.revenue_redirect_to` (use an indexer query such as `pocBeneficiaryVaultByBeneficiary`, not
+    /// necessarily the post owner’s vault).
     public fun tip_post<T>(
         post: &mut Post,
+        beneficiary_vault: &mut PoCBeneficiaryVault,
         coins: &mut Coin<T>,
         amount: u64,
         ctx: &mut TxContext
     ) {
-        // Basic validation
         assert!(amount > 0, EInvalidTipAmount);
         let tipper = tx_context::sender(ctx);
         assert!(tipper != post.owner, ESelfTipping);
-
-        // Verify this is not a repost or quote repost (those should use tip_repost instead)
         assert!(
-            string::utf8(POST_TYPE_REPOST) != post.post_type && 
+            string::utf8(POST_TYPE_REPOST) != post.post_type &&
             string::utf8(POST_TYPE_QUOTE_REPOST) != post.post_type,
             EInvalidPostType
         );
-
-        // Check if tips are allowed on this post
         assert!(allow_tips(post), ETipsNotAllowed);
-
-        // Apply PoC redirection and transfer
-        let actual_received = apply_poc_redirection_and_transfer<T>(
+        let post_owner_addr = post.owner;
+        let post_oid = object::uid_to_address(&post.id);
+        let actual_received = apply_poc_redirection_coin<T>(
             post,
-            post.owner,
+            beneficiary_vault,
+            post_owner_addr,
             amount,
             coins,
             tipper,
-            object::uid_to_address(&post.id),
+            post_oid,
             true,
             ctx
         );
-        
-        // Record total tips received for this post
         assert!(post.tips_received <= MAX_U64 - actual_received, EOverflow);
         post.tips_received = post.tips_received + actual_received;
-        
-        // Emit tip event for amount actually received by post owner
         if (actual_received > 0) {
             event::emit(TipEvent {
-                object_id: object::uid_to_address(&post.id),
+                object_id: post_oid,
                 from: tipper,
-                to: post.owner,
+                to: post_owner_addr,
                 amount: actual_received,
+                coin_type: type_name::with_defining_ids<T>(),
                 is_post: true,
             });
         };
     }
 
-    /// Helper function to apply PoC revenue redirection and transfer coins
-    /// Returns the amount actually received by the intended recipient
-    fun apply_poc_redirection_and_transfer<T>(
+    /// Like [`tip_post`] but without a `PoCBeneficiaryVault` argument. Only for posts where
+    /// [`tip_post_requires_beneficiary_vault_for_amount`] is false for this `amount` (e.g. no redirect,
+    /// wallet redirect, zero redirect %, or escrow with a zero redirected slice from rounding).
+    /// If an escrow deposit is required, aborts with [`ETipPostRequiresBeneficiaryVault`].
+    public fun tip_post_simple<T>(
+        post: &mut Post,
+        coins: &mut Coin<T>,
+        amount: u64,
+        ctx: &mut TxContext
+    ) {
+        assert!(amount > 0, EInvalidTipAmount);
+        assert!(
+            !tip_post_requires_beneficiary_vault_for_amount(post, amount),
+            ETipPostRequiresBeneficiaryVault
+        );
+        let tipper = tx_context::sender(ctx);
+        assert!(tipper != post.owner, ESelfTipping);
+        assert!(
+            string::utf8(POST_TYPE_REPOST) != post.post_type &&
+            string::utf8(POST_TYPE_QUOTE_REPOST) != post.post_type,
+            EInvalidPostType
+        );
+        assert!(allow_tips(post), ETipsNotAllowed);
+        let post_owner_addr = post.owner;
+        let post_oid = object::uid_to_address(&post.id);
+        let actual_received = apply_poc_redirection_coin_without_beneficiary_vault<T>(
+            post,
+            post_owner_addr,
+            amount,
+            coins,
+            tipper,
+            post_oid,
+            true,
+            ctx
+        );
+        assert!(post.tips_received <= MAX_U64 - actual_received, EOverflow);
+        post.tips_received = post.tips_received + actual_received;
+        if (actual_received > 0) {
+            event::emit(TipEvent {
+                object_id: post_oid,
+                from: tipper,
+                to: post_owner_addr,
+                amount: actual_received,
+                coin_type: type_name::with_defining_ids<T>(),
+                is_post: true,
+            });
+        };
+    }
+
+    /// PoC derivative redirect for tips and fees: escrow deposits into `PoCBeneficiaryVault` or wallet redirect.
+    fun apply_poc_redirection_coin<T>(
+        post: &Post,
+        beneficiary_vault: &mut PoCBeneficiaryVault,
+        intended_recipient: address,
+        amount: u64,
+        coins: &mut Coin<T>,
+        tipper: address,
+        object_id: address,
+        is_post_event: bool,
+        ctx: &mut TxContext
+    ): u64 {
+        if (intended_recipient != post.owner) {
+            let tip_coins = coin::split(coins, amount, ctx);
+            transfer::public_transfer(tip_coins, intended_recipient);
+            return amount
+        };
+
+        let has_derivative_redirect = option::is_some(&post.revenue_redirect_percentage) &&
+            post.poc_redirection_kind != POC_REDIRECT_NONE &&
+            (post.poc_redirection_kind == POC_REDIRECT_ESCROW ||
+                option::is_some(&post.revenue_redirect_to));
+
+        if (!has_derivative_redirect) {
+            let tip_coins = coin::split(coins, amount, ctx);
+            transfer::public_transfer(tip_coins, intended_recipient);
+            return amount
+        };
+
+        let redirect_percentage = *option::borrow(&post.revenue_redirect_percentage);
+        if (redirect_percentage == 0) {
+            let tip_coins = coin::split(coins, amount, ctx);
+            transfer::public_transfer(tip_coins, intended_recipient);
+            return amount
+        };
+
+        let redirected_amount = (amount * redirect_percentage) / 100;
+        let remaining_amount = amount - redirected_amount;
+
+        let coin_type = type_name::with_defining_ids<T>();
+
+        let mut tip_coins = coin::split(coins, amount, ctx);
+        if (redirected_amount > 0) {
+            let redirected_coins = coin::split(&mut tip_coins, redirected_amount, ctx);
+            if (post.poc_redirection_kind == POC_REDIRECT_ESCROW) {
+                let ben = *option::borrow(&post.revenue_redirect_to);
+                assert!(poc_vault::beneficiary_address(beneficiary_vault) == ben, EWrongBeneficiaryVault);
+                poc_vault::deposit_coin<T>(
+                    beneficiary_vault,
+                    ben,
+                    redirected_coins,
+                    option::some(object_id),
+                    ctx
+                );
+            } else {
+                let pay_to = *option::borrow(&post.revenue_redirect_to);
+                transfer::public_transfer(redirected_coins, pay_to);
+                event::emit(TipEvent {
+                    object_id,
+                    from: tipper,
+                    to: pay_to,
+                    amount: redirected_amount,
+                    coin_type,
+                    is_post: is_post_event,
+                });
+            };
+        };
+
+        if (remaining_amount > 0) {
+            transfer::public_transfer(tip_coins, intended_recipient);
+        } else {
+            coin::destroy_zero(tip_coins);
+        };
+        remaining_amount
+    }
+
+    /// Same as [`apply_poc_redirection_coin`] for tip paths that never deposit into an escrow vault for this `amount`.
+    fun apply_poc_redirection_coin_without_beneficiary_vault<T>(
         post: &Post,
         intended_recipient: address,
         amount: u64,
@@ -1622,60 +1873,68 @@ module social_contracts::post {
         is_post_event: bool,
         ctx: &mut TxContext
     ): u64 {
-        // Check if this post has revenue redirection for the intended recipient
-        if (intended_recipient == post.owner && 
-            option::is_some(&post.revenue_redirect_to) && 
-            option::is_some(&post.revenue_redirect_percentage)) {
-            
-            let redirect_percentage = *option::borrow(&post.revenue_redirect_percentage);
-            let original_creator = *option::borrow(&post.revenue_redirect_to);
-            
-            if (redirect_percentage > 0) {
-                // Calculate tip split
-                let redirected_amount = (amount * redirect_percentage) / 100;
-                let remaining_amount = amount - redirected_amount;
-                
-                // Take the tip amount out of the provided coin
-                let mut tip_coins = coin::split(coins, amount, ctx);
-                
-                if (redirected_amount > 0) {
-                    // Split tip for redirection
-                    let redirected_coins = coin::split(&mut tip_coins, redirected_amount, ctx);
-                    
-                    // Transfer redirected amount to original creator
-                    transfer::public_transfer(redirected_coins, original_creator);
-                    
-                    // Emit redirection event
-                    event::emit(TipEvent {
-                        object_id,
-                        from: tipper,
-                        to: original_creator,
-                        amount: redirected_amount,
-                        is_post: is_post_event,
-                    });
-                };
-                
-                if (remaining_amount > 0) {
-                    // Transfer remaining amount to intended recipient
-                    transfer::public_transfer(tip_coins, intended_recipient);
-                } else {
-                    coin::destroy_zero(tip_coins);
-                };
-                
-                return remaining_amount
+        if (intended_recipient != post.owner) {
+            let tip_coins = coin::split(coins, amount, ctx);
+            transfer::public_transfer(tip_coins, intended_recipient);
+            return amount
+        };
+
+        let has_derivative_redirect = option::is_some(&post.revenue_redirect_percentage) &&
+            post.poc_redirection_kind != POC_REDIRECT_NONE &&
+            (post.poc_redirection_kind == POC_REDIRECT_ESCROW ||
+                option::is_some(&post.revenue_redirect_to));
+
+        if (!has_derivative_redirect) {
+            let tip_coins = coin::split(coins, amount, ctx);
+            transfer::public_transfer(tip_coins, intended_recipient);
+            return amount
+        };
+
+        let redirect_percentage = *option::borrow(&post.revenue_redirect_percentage);
+        if (redirect_percentage == 0) {
+            let tip_coins = coin::split(coins, amount, ctx);
+            transfer::public_transfer(tip_coins, intended_recipient);
+            return amount
+        };
+
+        let redirected_amount = (amount * redirect_percentage) / 100;
+        let remaining_amount = amount - redirected_amount;
+
+        let coin_type = type_name::with_defining_ids<T>();
+
+        let mut tip_coins = coin::split(coins, amount, ctx);
+        if (redirected_amount > 0) {
+            let redirected_coins = coin::split(&mut tip_coins, redirected_amount, ctx);
+            if (post.poc_redirection_kind == POC_REDIRECT_ESCROW) {
+                abort ETipPostRequiresBeneficiaryVault
+            } else {
+                let pay_to = *option::borrow(&post.revenue_redirect_to);
+                transfer::public_transfer(redirected_coins, pay_to);
+                event::emit(TipEvent {
+                    object_id,
+                    from: tipper,
+                    to: pay_to,
+                    amount: redirected_amount,
+                    coin_type,
+                    is_post: is_post_event,
+                });
             };
         };
-        
-        // No redirection - normal transfer
-        let tip_coins = coin::split(coins, amount, ctx);
-        transfer::public_transfer(tip_coins, intended_recipient);
-        amount
+
+        if (remaining_amount > 0) {
+            transfer::public_transfer(tip_coins, intended_recipient);
+        } else {
+            coin::destroy_zero(tip_coins);
+        };
+        remaining_amount
     }
 
     /// Internal function to update PoC result (called only from proof_of_creativity module)
     public(package) fun update_poc_result(
         post: &mut Post,
         result_type: u8, // 1 = badge issued, 2 = redirection applied
+        poc_outcome: u8,
+        poc_redirection_kind: u8,
         redirect_to: Option<address>,
         redirect_percentage: Option<u64>,
         reasoning: Option<String>,
@@ -1685,9 +1944,8 @@ module social_contracts::post {
         oracle_address: address,
         analyzed_at: u64
     ) {
-        // Store PoC badge data (same for both badge and redirection)
-        // Note: PoCBadge has no 'store' ability, so it cannot be extracted or transferred
-        let poc_badge = PoCBadge {
+        // Store PoC badge snapshot (same for both badge and redirection)
+        let poc_badge = PoCBadgeSnapshot {
             reasoning,
             evidence_urls,
             similarity_score: option::some(similarity_score),
@@ -1695,14 +1953,16 @@ module social_contracts::post {
             oracle_address: option::some(oracle_address),
             analyzed_at: option::some(analyzed_at),
         };
-        post.poc_badge = option::some(poc_badge);
-        
+        post.poc_badge_snapshot = option::some(poc_badge);
+        post.poc_outcome = poc_outcome;
+        post.poc_redirection_kind = poc_redirection_kind;
+
         if (result_type == 1) {
             // PoC badge issued - content is original
-            // Clear any existing revenue redirection
             post.revenue_redirect_to = option::none();
             post.revenue_redirect_percentage = option::none();
-            // Note: Badge status tracked via PoCBadgeIssuedEvent
+            assert!(poc_outcome == POC_OUTCOME_ORIGINAL, EInvalidPocOutcomeFields);
+            assert!(poc_redirection_kind == POC_REDIRECT_NONE, EInvalidPocOutcomeFields);
         } else if (result_type == 2) {
             // Revenue redirection applied - content is derivative
             post.revenue_redirect_to = redirect_to;
@@ -1710,199 +1970,210 @@ module social_contracts::post {
         };
     }
 
-    /// Internal function to clear PoC data after dispute resolution
+    /// Links the post to the authoritative shared `PoCBadgeObject` (after mint + share).
+    public(package) fun set_poc_badge_object_id(post: &mut Post, badge_object_id: ID) {
+        post.poc_badge_object_id = option::some(badge_object_id);
+    }
+
+    /// Clears PoC redirect + badge pointers on the post after dispute resolution (vault balances are unaffected).
     public(package) fun clear_poc_data(post: &mut Post) {
         post.revenue_redirect_to = option::none();
         post.revenue_redirect_percentage = option::none();
-        post.poc_badge = option::none();
-        // Note: Badge revocation tracked via PoCDisputeResolvedEvent
+        post.poc_badge_snapshot = option::none();
+        post.poc_badge_object_id = option::none();
+        post.poc_outcome = POC_OUTCOME_NONE;
+        post.poc_redirection_kind = POC_REDIRECT_NONE;
     }
-     
-     /// Tip a repost with any supported coin type - applies 50/50 split between repost owner and original post owner
-     /// Supports MYSO and MYUSD
+
+    /// Increment after each successful `submit_poc_dispute` (max 2).
+    public(package) fun increment_poc_disputes_submitted(post: &mut Post) {
+        assert!(post.poc_disputes_submitted < 2, EDisputeCapReached);
+        post.poc_disputes_submitted = post.poc_disputes_submitted + 1;
+    }
+
+    /// Deposit redirected reservation/trading fees into the beneficiary vault when the post uses vault-mode redirect.
+    public(package) fun deposit_coin_to_beneficiary_vault<T>(
+        post: &Post,
+        beneficiary_vault: &mut PoCBeneficiaryVault,
+        fee_coin: Coin<T>,
+        ctx: &TxContext
+    ) {
+        assert!(
+            post.poc_redirection_kind == POC_REDIRECT_ESCROW && option::is_some(&post.revenue_redirect_to),
+            EInvalidPocOutcomeFields
+        );
+        let ben = *option::borrow(&post.revenue_redirect_to);
+        assert!(poc_vault::beneficiary_address(beneficiary_vault) == ben, EWrongBeneficiaryVault);
+        poc_vault::deposit_coin<T>(
+            beneficiary_vault,
+            ben,
+            fee_coin,
+            option::some(get_id_address(post)),
+            ctx
+        );
+    }
+
+    /// Tip a repost or quote repost; splits per `PostConfig` between repost owner and original author.
+    /// Pass the shared `PoCBeneficiaryVault` for each post when that post uses `POC_REDIRECT_ESCROW`.
     public fun tip_repost<T>(
-        post: &mut Post, // The repost
-        original_post: &mut Post, // The original post
+        post: &mut Post,
+        original_post: &mut Post,
         config: &PostConfig,
+        vault_for_post: &mut PoCBeneficiaryVault,
+        vault_for_original: &mut PoCBeneficiaryVault,
         coin: &mut Coin<T>,
         amount: u64,
         ctx: &mut TxContext
     ) {
         let tipper = tx_context::sender(ctx);
-        
-        // Check if amount is valid
         assert!(amount > 0 && coin::value(coin) >= amount, EInvalidTipAmount);
-        
-        // Prevent self-tipping
         assert!(tipper != post.owner, ESelfTipping);
-        
-        // Verify this is a repost or quote repost
         assert!(
-            string::utf8(POST_TYPE_REPOST) == post.post_type || 
+            string::utf8(POST_TYPE_REPOST) == post.post_type ||
             string::utf8(POST_TYPE_QUOTE_REPOST) == post.post_type,
             EInvalidPostType
         );
-        
-        // Verify the post has a parent_post_id
         assert!(option::is_some(&post.parent_post_id), EInvalidParentReference);
-        
-        // Verify the original_post ID matches the parent_post_id
         let parent_id = *option::borrow(&post.parent_post_id);
         assert!(parent_id == object::uid_to_address(&original_post.id), EInvalidParentReference);
-        
-        // Check if tips are allowed on both posts
         assert!(allow_tips(post), ETipsNotAllowed);
         assert!(allow_tips(original_post), ETipsNotAllowed);
-        
-        // Skip split if repost owner and original post owner are the same
+
+        let ct = type_name::with_defining_ids<T>();
+
         if (post.owner == original_post.owner) {
-            // Standard flow - apply PoC redirection for unified owner
-            let actual_received = apply_poc_redirection_and_transfer<T>(
+            let po = post.owner;
+            let poid = object::uid_to_address(&post.id);
+            let actual_received = apply_poc_redirection_coin<T>(
                 post,
-                post.owner,
+                vault_for_post,
+                po,
                 amount,
                 coin,
                 tipper,
-                object::uid_to_address(&post.id),
+                poid,
                 true,
                 ctx
             );
-            
             assert!(post.tips_received <= MAX_U64 - actual_received, EOverflow);
             post.tips_received = post.tips_received + actual_received;
-
-            // Emit tip event for amount actually received
             if (actual_received > 0) {
                 event::emit(TipEvent {
-                    object_id: object::uid_to_address(&post.id),
+                    object_id: poid,
                     from: tipper,
-                    to: post.owner,
+                    to: po,
                     amount: actual_received,
+                    coin_type: ct,
                     is_post: true,
                 });
             };
         } else {
-            // Calculate split using config
             let repost_owner_amount = (amount * config.repost_tip_percentage) / 100;
             let original_owner_amount = amount - repost_owner_amount;
-            
-            // Apply PoC redirection for repost owner's share
-            let repost_actual_received = apply_poc_redirection_and_transfer<T>(
+            let po = post.owner;
+            let poid = object::uid_to_address(&post.id);
+            let opo = original_post.owner;
+            let opoid = object::uid_to_address(&original_post.id);
+            let repost_actual_received = apply_poc_redirection_coin<T>(
                 post,
-                post.owner,
+                vault_for_post,
+                po,
                 repost_owner_amount,
                 coin,
                 tipper,
-                object::uid_to_address(&post.id),
+                poid,
                 true,
                 ctx
             );
-
-            // Apply PoC redirection for original post owner's share
-            let original_actual_received = apply_poc_redirection_and_transfer<T>(
+            let original_actual_received = apply_poc_redirection_coin<T>(
                 original_post,
-                original_post.owner,
+                vault_for_original,
+                opo,
                 original_owner_amount,
                 coin,
                 tipper,
-                object::uid_to_address(&original_post.id),
+                opoid,
                 true,
                 ctx
             );
-            
-            // Update tip counters
             assert!(post.tips_received <= MAX_U64 - repost_actual_received, EOverflow);
             post.tips_received = post.tips_received + repost_actual_received;
             assert!(original_post.tips_received <= MAX_U64 - original_actual_received, EOverflow);
             original_post.tips_received = original_post.tips_received + original_actual_received;
-            
-            // Emit tip events for amounts actually received
             if (repost_actual_received > 0) {
                 event::emit(TipEvent {
-                    object_id: object::uid_to_address(&post.id),
+                    object_id: poid,
                     from: tipper,
-                    to: post.owner,
+                    to: po,
                     amount: repost_actual_received,
+                    coin_type: ct,
                     is_post: true,
                 });
             };
-            
             if (original_actual_received > 0) {
                 event::emit(TipEvent {
-                    object_id: object::uid_to_address(&original_post.id),
-                    from: tipper, 
-                    to: original_post.owner,
+                    object_id: opoid,
+                    from: tipper,
+                    to: opo,
                     amount: original_actual_received,
+                    coin_type: ct,
                     is_post: true,
                 });
             };
         }
     }
 
-    /// Tip a comment with any supported coin type
-    /// Supports MYSO and MYUSD
-    /// Split is 80% to commenter, 20% to post owner (with PoC redirection on post owner's share)
+    /// Tip a comment; split per `PostConfig` with PoC redirection on the post owner's share (vault when escrow).
     public fun tip_comment<T>(
         comment: &mut Comment,
         post: &mut Post,
         config: &PostConfig,
+        beneficiary_vault: &mut PoCBeneficiaryVault,
         coin: &mut Coin<T>,
         amount: u64,
         ctx: &mut TxContext
     ) {
         let tipper = tx_context::sender(ctx);
-        
-        // Check if amount is valid
         assert!(amount > 0 && coin::value(coin) >= amount, EInvalidTipAmount);
-        
-        // Prevent self-tipping
         assert!(tipper != comment.owner, ESelfTipping);
-        
-        // Check if tips are allowed on the post
         assert!(allow_tips(post), ETipsNotAllowed);
-        
-        // Calculate split based on config percentage
         let commenter_amount = (amount * config.commenter_tip_percentage) / 100;
         let post_owner_amount = amount - commenter_amount;
-        
-        // Transfer commenter's share directly (no PoC redirection for commenters)
         let commenter_tip = coin::split(coin, commenter_amount, ctx);
         transfer::public_transfer(commenter_tip, comment.owner);
-        
-        // Apply PoC redirection for post owner's share
-        let post_owner_actual_received = apply_poc_redirection_and_transfer<T>(
+        let po = post.owner;
+        let poid = object::uid_to_address(&post.id);
+        let ct = type_name::with_defining_ids<T>();
+        let post_owner_actual_received = apply_poc_redirection_coin<T>(
             post,
-            post.owner,
+            beneficiary_vault,
+            po,
             post_owner_amount,
             coin,
             tipper,
-            object::uid_to_address(&post.id),
+            poid,
             true,
             ctx
         );
-        
-        // Update tip counters
         assert!(comment.tips_received <= MAX_U64 - commenter_amount, EOverflow);
         comment.tips_received = comment.tips_received + commenter_amount;
         assert!(post.tips_received <= MAX_U64 - post_owner_actual_received, EOverflow);
         post.tips_received = post.tips_received + post_owner_actual_received;
-        
-        // Emit tip event for commenter
         event::emit(TipEvent {
             object_id: object::uid_to_address(&comment.id),
             from: tipper,
             to: comment.owner,
             amount: commenter_amount,
+            coin_type: ct,
             is_post: false,
         });
-        
-        // Emit tip event for post owner (amount actually received)
         if (post_owner_actual_received > 0) {
             event::emit(TipEvent {
-                object_id: object::uid_to_address(&post.id),
+                object_id: poid,
                 from: tipper,
-                to: post.owner,
+                to: po,
                 amount: post_owner_actual_received,
+                coin_type: ct,
                 is_post: true,
             });
         };
@@ -2437,6 +2708,7 @@ module social_contracts::post {
             false, // enable_spt - default to opt-out
             false, // enable_poc - default to opt-out
             false, // enable_spot - default to opt-out
+            POC_REDIRECT_NONE,
             ctx
         )
     }
@@ -2474,6 +2746,44 @@ module social_contracts::post {
             false,
             false,
             false,
+            POC_REDIRECT_WALLET,
+            ctx
+        )
+    }
+
+    #[test_only]
+    public fun test_create_post_with_escrow_redirect(
+        owner: address,
+        profile_id: address,
+        platform_id: address,
+        content: String,
+        redirect_to: address,
+        redirect_percentage: u64,
+        ctx: &mut TxContext
+    ): address {
+        create_post_internal(
+            owner,
+            profile_id,
+            platform_id,
+            content,
+            option::none(),
+            option::none(),
+            option::none(),
+            string::utf8(POST_TYPE_STANDARD),
+            option::none(),
+            true,
+            true,
+            true,
+            true,
+            true,
+            option::some(redirect_to),
+            option::some(redirect_percentage),
+            option::none(),
+            option::none(),
+            false,
+            false,
+            false,
+            POC_REDIRECT_ESCROW,
             ctx
         )
     }
@@ -2509,6 +2819,7 @@ module social_contracts::post {
             false, // enable_spt - default to opt-out
             false, // enable_poc - default to opt-out
             true, // enable_spot - enable SPoT for tests
+            POC_REDIRECT_NONE,
             ctx
         )
     }
@@ -2540,6 +2851,7 @@ module social_contracts::post {
         
         let media_option = option::none<vector<Url>>();
         let media_urls_for_event = convert_urls_to_strings(&media_option);
+        let poc_redirection_kind = POC_REDIRECT_NONE;
         // Create the post
         let post_id = create_post_internal(
             owner,
@@ -2563,6 +2875,7 @@ module social_contracts::post {
             false, // enable_spt - default to opt-out
             false, // enable_poc - default to opt-out
             false, // enable_spot - default to opt-out
+            poc_redirection_kind,
             ctx
         );
         
@@ -2570,6 +2883,8 @@ module social_contracts::post {
             post_id,
             owner,
             profile_id,
+            platform_id,
+            permissions: permissions_bitfield(true, true, true, true, true),
             content,
             post_type: string::utf8(POST_TYPE_STANDARD),
             parent_post_id: option::none(),
@@ -2585,6 +2900,7 @@ module social_contracts::post {
             enable_spot: false,
             spot_id: option::none(),
             spt_id: option::none(),
+            poc_redirection_kind,
         });
         
         // Update promotion data with post ID
@@ -2700,6 +3016,10 @@ module social_contracts::post {
         
         // Remember old version and update to new version
         let old_version = post.version;
+        if (old_version < 2) {
+            post.poc_outcome = POC_OUTCOME_NONE;
+            post.poc_redirection_kind = POC_REDIRECT_NONE;
+        };
         post.version = current_version;
         
         // Initialize platform_id for existing posts (set to @0x0 as sentinel for unknown platform)
@@ -2956,6 +3276,8 @@ module social_contracts::post {
         
         // Convert media URLs to strings for PostCreatedEvent (before moving media_option)
         let media_urls_for_event = convert_urls_to_strings(&media_option);
+
+        let poc_redirection_kind = POC_REDIRECT_NONE;
         
         // Create and share the post
         let post_id = create_post_internal(
@@ -2980,6 +3302,7 @@ module social_contracts::post {
             final_enable_spt,
             final_enable_poc,
             final_enable_spot,
+            poc_redirection_kind,
             ctx
         );
         
@@ -2988,6 +3311,8 @@ module social_contracts::post {
             post_id,
             owner,
             profile_id,
+            platform_id,
+            permissions: permissions_bitfield(true, true, true, true, true),
             content,
             post_type: string::utf8(POST_TYPE_STANDARD),
             parent_post_id: option::none(),
@@ -3003,6 +3328,7 @@ module social_contracts::post {
             enable_spot: final_enable_spot,
             spot_id: option::none(),
             spt_id: option::none(),
+            poc_redirection_kind,
         });
         
         // Update promotion data with post ID

@@ -1639,7 +1639,7 @@ module social_contracts::platform {
             platforms_by_name: table::new(ctx),
             platforms_by_developer: table::new(ctx),
             platform_approvals: table::new(ctx),
-            version: 1, // Set to version 1 for testing
+            version: upgrade::current_version(),
         };
 
         transfer::share_object(registry);

@@ -53,7 +53,7 @@ module social_contracts::bootstrap {
         social_contracts::social_proof_tokens::bootstrap_init(ctx);
         social_contracts::proof_of_creativity::bootstrap_init(ctx);
         social_contracts::message::bootstrap_init(ctx);
-        social_contracts::social_proof_of_truth::bootstrap_init(ctx);
+        social_contracts::social_proof_of_truth::bootstrap_init(clock, ctx);
         social_contracts::insurance::bootstrap_init(ctx);
         
         // Create admin capabilities

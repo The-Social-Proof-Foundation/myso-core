@@ -34,11 +34,16 @@ with the same fee structure as payouts. Time-based resolution windows are option
 -  [Function `outcome_draw`](#social_contracts_social_proof_of_truth_outcome_draw)
 -  [Function `outcome_unapplicable`](#social_contracts_social_proof_of_truth_outcome_unapplicable)
 -  [Function `get_user_option_amount`](#social_contracts_social_proof_of_truth_get_user_option_amount)
+-  [Function `num_betting_options`](#social_contracts_social_proof_of_truth_num_betting_options)
+-  [Function `total_option_escrow`](#social_contracts_social_proof_of_truth_total_option_escrow)
+-  [Function `assert_valid_option_id`](#social_contracts_social_proof_of_truth_assert_valid_option_id)
 -  [Function `is_enabled`](#social_contracts_social_proof_of_truth_is_enabled)
 -  [Function `bootstrap_init`](#social_contracts_social_proof_of_truth_bootstrap_init)
 -  [Function `create_spot_admin_cap`](#social_contracts_social_proof_of_truth_create_spot_admin_cap)
 -  [Function `create_spot_oracle_admin_cap`](#social_contracts_social_proof_of_truth_create_spot_oracle_admin_cap)
 -  [Function `update_spot_config`](#social_contracts_social_proof_of_truth_update_spot_config)
+-  [Function `rescale_spot_config_windows_from_epoch_counts`](#social_contracts_social_proof_of_truth_rescale_spot_config_windows_from_epoch_counts)
+-  [Function `patch_spot_record_times_for_migration`](#social_contracts_social_proof_of_truth_patch_spot_record_times_for_migration)
 -  [Function `create_spot_record_for_post`](#social_contracts_social_proof_of_truth_create_spot_record_for_post)
 -  [Function `withdraw_spot_bet`](#social_contracts_social_proof_of_truth_withdraw_spot_bet)
 -  [Function `place_spot_bet`](#social_contracts_social_proof_of_truth_place_spot_bet)
@@ -93,6 +98,7 @@ with the same fee structure as payouts. Time-based resolution windows are option
 <b>use</b> <a href="../social_contracts/governance.md#social_contracts_governance">social_contracts::governance</a>;
 <b>use</b> <a href="../social_contracts/mydata.md#social_contracts_mydata">social_contracts::mydata</a>;
 <b>use</b> <a href="../social_contracts/platform.md#social_contracts_platform">social_contracts::platform</a>;
+<b>use</b> <a href="../social_contracts/proof_of_creativity.md#social_contracts_poc_vault">social_contracts::poc_vault</a>;
 <b>use</b> <a href="../social_contracts/post.md#social_contracts_post">social_contracts::post</a>;
 <b>use</b> <a href="../social_contracts/profile.md#social_contracts_profile">social_contracts::profile</a>;
 <b>use</b> <a href="../social_contracts/social_graph.md#social_contracts_social_graph">social_contracts::social_graph</a>;
@@ -199,12 +205,12 @@ Global configuration for SPoT
 <dd>
 </dd>
 <dt>
-<code>resolution_window_epochs: u64</code>
+<code>resolution_window_ms: u64</code>
 </dt>
 <dd>
 </dd>
 <dt>
-<code>max_resolution_window_epochs: u64</code>
+<code>max_resolution_window_ms: u64</code>
 </dt>
 <dd>
 </dd>
@@ -281,9 +287,10 @@ A single bet
 <dd>
 </dd>
 <dt>
-<code>timestamp: u64</code>
+<code>timestamp_ms: u64</code>
 </dt>
 <dd>
+ Wall-clock ms from <code>Clock</code> when the bet was placed.
 </dd>
 </dl>
 
@@ -318,7 +325,7 @@ SPoT record per post
 <dd>
 </dd>
 <dt>
-<code>created_epoch: u64</code>
+<code>created_at_ms: u64</code>
 </dt>
 <dd>
 </dd>
@@ -358,17 +365,17 @@ SPoT record per post
 <dd>
 </dd>
 <dt>
-<code>resolution_window_epochs: <a href="../std/option.md#std_option_Option">std::option::Option</a>&lt;u64&gt;</code>
+<code>resolution_window_ms: <a href="../std/option.md#std_option_Option">std::option::Option</a>&lt;u64&gt;</code>
 </dt>
 <dd>
 </dd>
 <dt>
-<code>max_resolution_window_epochs: <a href="../std/option.md#std_option_Option">std::option::Option</a>&lt;u64&gt;</code>
+<code>max_resolution_window_ms: <a href="../std/option.md#std_option_Option">std::option::Option</a>&lt;u64&gt;</code>
 </dt>
 <dd>
 </dd>
 <dt>
-<code>last_resolution_epoch: u64</code>
+<code>last_resolution_at_ms: u64</code>
 </dt>
 <dd>
 </dd>
@@ -426,6 +433,11 @@ Events
 </dd>
 <dt>
 <code>amount: u64</code>
+</dt>
+<dd>
+</dd>
+<dt>
+<code>timestamp_ms: u64</code>
 </dt>
 <dd>
 </dd>
@@ -625,12 +637,12 @@ Events
 <dd>
 </dd>
 <dt>
-<code>resolution_window_epochs: u64</code>
+<code>resolution_window_ms: u64</code>
 </dt>
 <dd>
 </dd>
 <dt>
-<code>max_resolution_window_epochs: u64</code>
+<code>max_resolution_window_ms: u64</code>
 </dt>
 <dd>
 </dd>
@@ -747,7 +759,7 @@ Events
 <dd>
 </dd>
 <dt>
-<code>created_epoch: u64</code>
+<code>created_at_ms: u64</code>
 </dt>
 <dd>
 </dd>
@@ -757,12 +769,12 @@ Events
 <dd>
 </dd>
 <dt>
-<code>resolution_window_epochs: <a href="../std/option.md#std_option_Option">std::option::Option</a>&lt;u64&gt;</code>
+<code>resolution_window_ms: <a href="../std/option.md#std_option_Option">std::option::Option</a>&lt;u64&gt;</code>
 </dt>
 <dd>
 </dd>
 <dt>
-<code>max_resolution_window_epochs: <a href="../std/option.md#std_option_Option">std::option::Option</a>&lt;u64&gt;</code>
+<code>max_resolution_window_ms: <a href="../std/option.md#std_option_Option">std::option::Option</a>&lt;u64&gt;</code>
 </dt>
 <dd>
 </dd>
@@ -988,6 +1000,16 @@ Special outcomes: DRAW = 255, UNAPPLICABLE = 254
 
 
 
+<a name="social_contracts_social_proof_of_truth_MS_PER_DAY"></a>
+
+Milliseconds per nominal day (used to map old default epoch-window counts to wall time).
+
+
+<pre><code><b>const</b> <a href="../social_contracts/social_proof_of_truth.md#social_contracts_social_proof_of_truth_MS_PER_DAY">MS_PER_DAY</a>: u64 = 86400000;
+</code></pre>
+
+
+
 <a name="social_contracts_social_proof_of_truth_DEFAULT_CONFIDENCE_THRESHOLD_BPS"></a>
 
 Config defaults
@@ -1007,20 +1029,21 @@ Config defaults
 
 
 
-<a name="social_contracts_social_proof_of_truth_DEFAULT_RESOLUTION_WINDOW_EPOCHS"></a>
+<a name="social_contracts_social_proof_of_truth_DEFAULT_RESOLUTION_WINDOW_MS"></a>
+
+~72 days if legacy assumed ~1 day per chain epoch; adjust in config as needed.
 
 
-
-<pre><code><b>const</b> <a href="../social_contracts/social_proof_of_truth.md#social_contracts_social_proof_of_truth_DEFAULT_RESOLUTION_WINDOW_EPOCHS">DEFAULT_RESOLUTION_WINDOW_EPOCHS</a>: u64 = 72;
+<pre><code><b>const</b> <a href="../social_contracts/social_proof_of_truth.md#social_contracts_social_proof_of_truth_DEFAULT_RESOLUTION_WINDOW_MS">DEFAULT_RESOLUTION_WINDOW_MS</a>: u64 = 6220800000;
 </code></pre>
 
 
 
-<a name="social_contracts_social_proof_of_truth_DEFAULT_MAX_RESOLUTION_WINDOW_EPOCHS"></a>
+<a name="social_contracts_social_proof_of_truth_DEFAULT_MAX_RESOLUTION_WINDOW_MS"></a>
 
 
 
-<pre><code><b>const</b> <a href="../social_contracts/social_proof_of_truth.md#social_contracts_social_proof_of_truth_DEFAULT_MAX_RESOLUTION_WINDOW_EPOCHS">DEFAULT_MAX_RESOLUTION_WINDOW_EPOCHS</a>: u64 = 144;
+<pre><code><b>const</b> <a href="../social_contracts/social_proof_of_truth.md#social_contracts_social_proof_of_truth_DEFAULT_MAX_RESOLUTION_WINDOW_MS">DEFAULT_MAX_RESOLUTION_WINDOW_MS</a>: u64 = 12441600000;
 </code></pre>
 
 
@@ -1054,6 +1077,7 @@ Config defaults
 
 <a name="social_contracts_social_proof_of_truth_DEFAULT_MAX_BETS_PER_RECORD"></a>
 
+Default cap on <code><a href="../social_contracts/social_proof_of_truth.md#social_contracts_social_proof_of_truth_SpotRecord">SpotRecord</a>.bets</code> length at init; admins may set <code>0</code> for no limit via <code><a href="../social_contracts/social_proof_of_truth.md#social_contracts_social_proof_of_truth_update_spot_config">update_spot_config</a></code>.
 
 
 <pre><code><b>const</b> <a href="../social_contracts/social_proof_of_truth.md#social_contracts_social_proof_of_truth_DEFAULT_MAX_BETS_PER_RECORD">DEFAULT_MAX_BETS_PER_RECORD</a>: u64 = 10000;
@@ -1379,6 +1403,89 @@ Validation constants
 
 </details>
 
+<a name="social_contracts_social_proof_of_truth_num_betting_options"></a>
+
+## Function `num_betting_options`
+
+
+
+<pre><code><b>public</b> <b>fun</b> <a href="../social_contracts/social_proof_of_truth.md#social_contracts_social_proof_of_truth_num_betting_options">num_betting_options</a>(rec: &<a href="../social_contracts/social_proof_of_truth.md#social_contracts_social_proof_of_truth_SpotRecord">social_contracts::social_proof_of_truth::SpotRecord</a>): u64
+</code></pre>
+
+
+
+<details>
+<summary>Implementation</summary>
+
+
+<pre><code><b>public</b> <b>fun</b> <a href="../social_contracts/social_proof_of_truth.md#social_contracts_social_proof_of_truth_num_betting_options">num_betting_options</a>(rec: &<a href="../social_contracts/social_proof_of_truth.md#social_contracts_social_proof_of_truth_SpotRecord">SpotRecord</a>): u64 {
+    vector::length(&rec.betting_options)
+}
+</code></pre>
+
+
+
+</details>
+
+<a name="social_contracts_social_proof_of_truth_total_option_escrow"></a>
+
+## Function `total_option_escrow`
+
+Sum of per-option escrow (same aggregation as resolve).
+
+
+<pre><code><b>public</b> <b>fun</b> <a href="../social_contracts/social_proof_of_truth.md#social_contracts_social_proof_of_truth_total_option_escrow">total_option_escrow</a>(rec: &<a href="../social_contracts/social_proof_of_truth.md#social_contracts_social_proof_of_truth_SpotRecord">social_contracts::social_proof_of_truth::SpotRecord</a>): u64
+</code></pre>
+
+
+
+<details>
+<summary>Implementation</summary>
+
+
+<pre><code><b>public</b> <b>fun</b> <a href="../social_contracts/social_proof_of_truth.md#social_contracts_social_proof_of_truth_total_option_escrow">total_option_escrow</a>(rec: &<a href="../social_contracts/social_proof_of_truth.md#social_contracts_social_proof_of_truth_SpotRecord">SpotRecord</a>): u64 {
+    <b>let</b> <b>mut</b> total = 0;
+    <b>let</b> <b>mut</b> i = 0;
+    <b>let</b> n = vector::length(&rec.betting_options);
+    <b>while</b> (i &lt; n) {
+        <b>let</b> option_id = (i <b>as</b> u8);
+        <b>let</b> amt = <a href="../social_contracts/social_proof_of_truth.md#social_contracts_social_proof_of_truth_get_option_escrow">get_option_escrow</a>(rec, option_id);
+        <b>assert</b>!(total &lt;= <a href="../social_contracts/social_proof_of_truth.md#social_contracts_social_proof_of_truth_MAX_U64">MAX_U64</a> - amt, <a href="../social_contracts/social_proof_of_truth.md#social_contracts_social_proof_of_truth_EOverflow">EOverflow</a>);
+        total = total + amt;
+        i = i + 1;
+    };
+    total
+}
+</code></pre>
+
+
+
+</details>
+
+<a name="social_contracts_social_proof_of_truth_assert_valid_option_id"></a>
+
+## Function `assert_valid_option_id`
+
+
+
+<pre><code><b>public</b> <b>fun</b> <a href="../social_contracts/social_proof_of_truth.md#social_contracts_social_proof_of_truth_assert_valid_option_id">assert_valid_option_id</a>(rec: &<a href="../social_contracts/social_proof_of_truth.md#social_contracts_social_proof_of_truth_SpotRecord">social_contracts::social_proof_of_truth::SpotRecord</a>, option_id: u8)
+</code></pre>
+
+
+
+<details>
+<summary>Implementation</summary>
+
+
+<pre><code><b>public</b> <b>fun</b> <a href="../social_contracts/social_proof_of_truth.md#social_contracts_social_proof_of_truth_assert_valid_option_id">assert_valid_option_id</a>(rec: &<a href="../social_contracts/social_proof_of_truth.md#social_contracts_social_proof_of_truth_SpotRecord">SpotRecord</a>, option_id: u8) {
+    <b>assert</b>!((option_id <b>as</b> u64) &lt; vector::length(&rec.betting_options), <a href="../social_contracts/social_proof_of_truth.md#social_contracts_social_proof_of_truth_EInvalidOptionId">EInvalidOptionId</a>);
+}
+</code></pre>
+
+
+
+</details>
+
 <a name="social_contracts_social_proof_of_truth_is_enabled"></a>
 
 ## Function `is_enabled`
@@ -1407,7 +1514,7 @@ Validation constants
 
 
 
-<pre><code><b>public</b>(package) <b>fun</b> <a href="../social_contracts/social_proof_of_truth.md#social_contracts_social_proof_of_truth_bootstrap_init">bootstrap_init</a>(ctx: &<b>mut</b> <a href="../myso/tx_context.md#myso_tx_context_TxContext">myso::tx_context::TxContext</a>)
+<pre><code><b>public</b>(package) <b>fun</b> <a href="../social_contracts/social_proof_of_truth.md#social_contracts_social_proof_of_truth_bootstrap_init">bootstrap_init</a>(clock: &<a href="../myso/clock.md#myso_clock_Clock">myso::clock::Clock</a>, ctx: &<b>mut</b> <a href="../myso/tx_context.md#myso_tx_context_TxContext">myso::tx_context::TxContext</a>)
 </code></pre>
 
 
@@ -1416,14 +1523,14 @@ Validation constants
 <summary>Implementation</summary>
 
 
-<pre><code><b>public</b>(package) <b>fun</b> <a href="../social_contracts/social_proof_of_truth.md#social_contracts_social_proof_of_truth_bootstrap_init">bootstrap_init</a>(ctx: &<b>mut</b> TxContext) {
+<pre><code><b>public</b>(package) <b>fun</b> <a href="../social_contracts/social_proof_of_truth.md#social_contracts_social_proof_of_truth_bootstrap_init">bootstrap_init</a>(clock: &Clock, ctx: &<b>mut</b> TxContext) {
     <b>let</b> admin = tx_context::sender(ctx);
     <b>let</b> config = <a href="../social_contracts/social_proof_of_truth.md#social_contracts_social_proof_of_truth_SpotConfig">SpotConfig</a> {
         id: object::new(ctx),
         enable_flag: <a href="../social_contracts/social_proof_of_truth.md#social_contracts_social_proof_of_truth_DEFAULT_ENABLE">DEFAULT_ENABLE</a>,
         confidence_threshold_bps: <a href="../social_contracts/social_proof_of_truth.md#social_contracts_social_proof_of_truth_DEFAULT_CONFIDENCE_THRESHOLD_BPS">DEFAULT_CONFIDENCE_THRESHOLD_BPS</a>,
-        resolution_window_epochs: <a href="../social_contracts/social_proof_of_truth.md#social_contracts_social_proof_of_truth_DEFAULT_RESOLUTION_WINDOW_EPOCHS">DEFAULT_RESOLUTION_WINDOW_EPOCHS</a>,
-        max_resolution_window_epochs: <a href="../social_contracts/social_proof_of_truth.md#social_contracts_social_proof_of_truth_DEFAULT_MAX_RESOLUTION_WINDOW_EPOCHS">DEFAULT_MAX_RESOLUTION_WINDOW_EPOCHS</a>,
+        resolution_window_ms: <a href="../social_contracts/social_proof_of_truth.md#social_contracts_social_proof_of_truth_DEFAULT_RESOLUTION_WINDOW_MS">DEFAULT_RESOLUTION_WINDOW_MS</a>,
+        max_resolution_window_ms: <a href="../social_contracts/social_proof_of_truth.md#social_contracts_social_proof_of_truth_DEFAULT_MAX_RESOLUTION_WINDOW_MS">DEFAULT_MAX_RESOLUTION_WINDOW_MS</a>,
         payout_delay_ms: <a href="../social_contracts/social_proof_of_truth.md#social_contracts_social_proof_of_truth_DEFAULT_PAYOUT_DELAY_MS">DEFAULT_PAYOUT_DELAY_MS</a>,
         fee_bps: <a href="../social_contracts/social_proof_of_truth.md#social_contracts_social_proof_of_truth_DEFAULT_FEE_BPS">DEFAULT_FEE_BPS</a>,
         fee_split_bps_platform: <a href="../social_contracts/social_proof_of_truth.md#social_contracts_social_proof_of_truth_DEFAULT_FEE_SPLIT_PLATFORM_BPS">DEFAULT_FEE_SPLIT_PLATFORM_BPS</a>,
@@ -1437,15 +1544,15 @@ Validation constants
         updated_by: admin,
         enable_flag: <a href="../social_contracts/social_proof_of_truth.md#social_contracts_social_proof_of_truth_DEFAULT_ENABLE">DEFAULT_ENABLE</a>,
         confidence_threshold_bps: <a href="../social_contracts/social_proof_of_truth.md#social_contracts_social_proof_of_truth_DEFAULT_CONFIDENCE_THRESHOLD_BPS">DEFAULT_CONFIDENCE_THRESHOLD_BPS</a>,
-        resolution_window_epochs: <a href="../social_contracts/social_proof_of_truth.md#social_contracts_social_proof_of_truth_DEFAULT_RESOLUTION_WINDOW_EPOCHS">DEFAULT_RESOLUTION_WINDOW_EPOCHS</a>,
-        max_resolution_window_epochs: <a href="../social_contracts/social_proof_of_truth.md#social_contracts_social_proof_of_truth_DEFAULT_MAX_RESOLUTION_WINDOW_EPOCHS">DEFAULT_MAX_RESOLUTION_WINDOW_EPOCHS</a>,
+        resolution_window_ms: <a href="../social_contracts/social_proof_of_truth.md#social_contracts_social_proof_of_truth_DEFAULT_RESOLUTION_WINDOW_MS">DEFAULT_RESOLUTION_WINDOW_MS</a>,
+        max_resolution_window_ms: <a href="../social_contracts/social_proof_of_truth.md#social_contracts_social_proof_of_truth_DEFAULT_MAX_RESOLUTION_WINDOW_MS">DEFAULT_MAX_RESOLUTION_WINDOW_MS</a>,
         payout_delay_ms: <a href="../social_contracts/social_proof_of_truth.md#social_contracts_social_proof_of_truth_DEFAULT_PAYOUT_DELAY_MS">DEFAULT_PAYOUT_DELAY_MS</a>,
         fee_bps: <a href="../social_contracts/social_proof_of_truth.md#social_contracts_social_proof_of_truth_DEFAULT_FEE_BPS">DEFAULT_FEE_BPS</a>,
         fee_split_bps_platform: <a href="../social_contracts/social_proof_of_truth.md#social_contracts_social_proof_of_truth_DEFAULT_FEE_SPLIT_PLATFORM_BPS">DEFAULT_FEE_SPLIT_PLATFORM_BPS</a>,
         oracle_address: admin,
         max_single_bet: 0,
         max_bets_per_record: <a href="../social_contracts/social_proof_of_truth.md#social_contracts_social_proof_of_truth_DEFAULT_MAX_BETS_PER_RECORD">DEFAULT_MAX_BETS_PER_RECORD</a>,
-        timestamp: tx_context::epoch_timestamp_ms(ctx),
+        timestamp: clock::timestamp_ms(clock),
     });
     transfer::share_object(config);
 }
@@ -1513,10 +1620,11 @@ Create a SpotOracleAdminCap for bootstrap (package visibility only)
 
 ## Function `update_spot_config`
 
-Update SPoT configuration (admin only)
+Update SPoT configuration (admin only).
+<code>max_single_bet</code> and <code>max_bets_per_record</code> use <code>0</code> for no limit; positive values enforce caps.
 
 
-<pre><code><b>public</b> <b>entry</b> <b>fun</b> <a href="../social_contracts/social_proof_of_truth.md#social_contracts_social_proof_of_truth_update_spot_config">update_spot_config</a>(_: &<a href="../social_contracts/social_proof_of_truth.md#social_contracts_social_proof_of_truth_SpotAdminCap">social_contracts::social_proof_of_truth::SpotAdminCap</a>, config: &<b>mut</b> <a href="../social_contracts/social_proof_of_truth.md#social_contracts_social_proof_of_truth_SpotConfig">social_contracts::social_proof_of_truth::SpotConfig</a>, enable_flag: bool, confidence_threshold_bps: u64, resolution_window_epochs: u64, max_resolution_window_epochs: u64, payout_delay_ms: u64, fee_bps: u64, fee_split_bps_platform: u64, oracle_address: <b>address</b>, max_single_bet: u64, max_bets_per_record: u64, ctx: &<b>mut</b> <a href="../myso/tx_context.md#myso_tx_context_TxContext">myso::tx_context::TxContext</a>)
+<pre><code><b>public</b> <b>entry</b> <b>fun</b> <a href="../social_contracts/social_proof_of_truth.md#social_contracts_social_proof_of_truth_update_spot_config">update_spot_config</a>(_: &<a href="../social_contracts/social_proof_of_truth.md#social_contracts_social_proof_of_truth_SpotAdminCap">social_contracts::social_proof_of_truth::SpotAdminCap</a>, config: &<b>mut</b> <a href="../social_contracts/social_proof_of_truth.md#social_contracts_social_proof_of_truth_SpotConfig">social_contracts::social_proof_of_truth::SpotConfig</a>, enable_flag: bool, confidence_threshold_bps: u64, resolution_window_ms: u64, max_resolution_window_ms: u64, payout_delay_ms: u64, fee_bps: u64, fee_split_bps_platform: u64, oracle_address: <b>address</b>, max_single_bet: u64, max_bets_per_record: u64, clock: &<a href="../myso/clock.md#myso_clock_Clock">myso::clock::Clock</a>, ctx: &<b>mut</b> <a href="../myso/tx_context.md#myso_tx_context_TxContext">myso::tx_context::TxContext</a>)
 </code></pre>
 
 
@@ -1530,14 +1638,15 @@ Update SPoT configuration (admin only)
     config: &<b>mut</b> <a href="../social_contracts/social_proof_of_truth.md#social_contracts_social_proof_of_truth_SpotConfig">SpotConfig</a>,
     enable_flag: bool,
     confidence_threshold_bps: u64,
-    resolution_window_epochs: u64,
-    max_resolution_window_epochs: u64,
+    resolution_window_ms: u64,
+    max_resolution_window_ms: u64,
     payout_delay_ms: u64,
     fee_bps: u64,
     fee_split_bps_platform: u64,
     oracle_address: <b>address</b>,
     max_single_bet: u64,
     max_bets_per_record: u64,
+    clock: &Clock,
     ctx: &<b>mut</b> TxContext
 ) {
     // Basic bounds
@@ -1545,8 +1654,8 @@ Update SPoT configuration (admin only)
     // windows may be zero in tests to resolve immediately
     config.enable_flag = enable_flag;
     config.confidence_threshold_bps = confidence_threshold_bps;
-    config.resolution_window_epochs = resolution_window_epochs;
-    config.max_resolution_window_epochs = max_resolution_window_epochs;
+    config.resolution_window_ms = resolution_window_ms;
+    config.max_resolution_window_ms = max_resolution_window_ms;
     config.payout_delay_ms = payout_delay_ms;
     config.fee_bps = fee_bps;
     config.fee_split_bps_platform = fee_split_bps_platform;
@@ -1558,16 +1667,82 @@ Update SPoT configuration (admin only)
         updated_by: tx_context::sender(ctx),
         enable_flag,
         confidence_threshold_bps,
-        resolution_window_epochs,
-        max_resolution_window_epochs,
+        resolution_window_ms,
+        max_resolution_window_ms,
         payout_delay_ms,
         fee_bps,
         fee_split_bps_platform,
         oracle_address,
         max_single_bet,
         max_bets_per_record,
-        timestamp: tx_context::epoch_timestamp_ms(ctx),
+        timestamp: clock::timestamp_ms(clock),
     });
+}
+</code></pre>
+
+
+
+</details>
+
+<a name="social_contracts_social_proof_of_truth_rescale_spot_config_windows_from_epoch_counts"></a>
+
+## Function `rescale_spot_config_windows_from_epoch_counts`
+
+After upgrading from epoch-count semantics, multiply stored window fields by <code>epoch_duration_ms</code> so they become wall-clock durations.
+
+
+<pre><code><b>public</b> <b>entry</b> <b>fun</b> <a href="../social_contracts/social_proof_of_truth.md#social_contracts_social_proof_of_truth_rescale_spot_config_windows_from_epoch_counts">rescale_spot_config_windows_from_epoch_counts</a>(_: &<a href="../social_contracts/social_proof_of_truth.md#social_contracts_social_proof_of_truth_SpotAdminCap">social_contracts::social_proof_of_truth::SpotAdminCap</a>, config: &<b>mut</b> <a href="../social_contracts/social_proof_of_truth.md#social_contracts_social_proof_of_truth_SpotConfig">social_contracts::social_proof_of_truth::SpotConfig</a>, epoch_duration_ms: u64)
+</code></pre>
+
+
+
+<details>
+<summary>Implementation</summary>
+
+
+<pre><code><b>public</b> <b>entry</b> <b>fun</b> <a href="../social_contracts/social_proof_of_truth.md#social_contracts_social_proof_of_truth_rescale_spot_config_windows_from_epoch_counts">rescale_spot_config_windows_from_epoch_counts</a>(
+    _: &<a href="../social_contracts/social_proof_of_truth.md#social_contracts_social_proof_of_truth_SpotAdminCap">SpotAdminCap</a>,
+    config: &<b>mut</b> <a href="../social_contracts/social_proof_of_truth.md#social_contracts_social_proof_of_truth_SpotConfig">SpotConfig</a>,
+    epoch_duration_ms: u64,
+) {
+    <b>assert</b>!(epoch_duration_ms &gt; 0, <a href="../social_contracts/social_proof_of_truth.md#social_contracts_social_proof_of_truth_EInvalidAmount">EInvalidAmount</a>);
+    config.resolution_window_ms = config.resolution_window_ms * epoch_duration_ms;
+    config.max_resolution_window_ms = config.max_resolution_window_ms * epoch_duration_ms;
+}
+</code></pre>
+
+
+
+</details>
+
+<a name="social_contracts_social_proof_of_truth_patch_spot_record_times_for_migration"></a>
+
+## Function `patch_spot_record_times_for_migration`
+
+Oracle-only: fix record timestamps/window fields after upgrade (off-chain supplies correct <code>created_at_ms</code> and optional windows in ms).
+
+
+<pre><code><b>public</b> <b>entry</b> <b>fun</b> <a href="../social_contracts/social_proof_of_truth.md#social_contracts_social_proof_of_truth_patch_spot_record_times_for_migration">patch_spot_record_times_for_migration</a>(_: &<a href="../social_contracts/social_proof_of_truth.md#social_contracts_social_proof_of_truth_SpotOracleAdminCap">social_contracts::social_proof_of_truth::SpotOracleAdminCap</a>, record: &<b>mut</b> <a href="../social_contracts/social_proof_of_truth.md#social_contracts_social_proof_of_truth_SpotRecord">social_contracts::social_proof_of_truth::SpotRecord</a>, created_at_ms: u64, resolution_window_ms: <a href="../std/option.md#std_option_Option">std::option::Option</a>&lt;u64&gt;, max_resolution_window_ms: <a href="../std/option.md#std_option_Option">std::option::Option</a>&lt;u64&gt;, last_resolution_at_ms: u64)
+</code></pre>
+
+
+
+<details>
+<summary>Implementation</summary>
+
+
+<pre><code><b>public</b> <b>entry</b> <b>fun</b> <a href="../social_contracts/social_proof_of_truth.md#social_contracts_social_proof_of_truth_patch_spot_record_times_for_migration">patch_spot_record_times_for_migration</a>(
+    _: &<a href="../social_contracts/social_proof_of_truth.md#social_contracts_social_proof_of_truth_SpotOracleAdminCap">SpotOracleAdminCap</a>,
+    record: &<b>mut</b> <a href="../social_contracts/social_proof_of_truth.md#social_contracts_social_proof_of_truth_SpotRecord">SpotRecord</a>,
+    created_at_ms: u64,
+    resolution_window_ms: Option&lt;u64&gt;,
+    max_resolution_window_ms: Option&lt;u64&gt;,
+    last_resolution_at_ms: u64,
+) {
+    record.created_at_ms = created_at_ms;
+    record.resolution_window_ms = resolution_window_ms;
+    record.max_resolution_window_ms = max_resolution_window_ms;
+    record.last_resolution_at_ms = last_resolution_at_ms;
 }
 </code></pre>
 
@@ -1581,7 +1756,7 @@ Update SPoT configuration (admin only)
 
 
 
-<pre><code><b>public</b> <b>entry</b> <b>fun</b> <a href="../social_contracts/social_proof_of_truth.md#social_contracts_social_proof_of_truth_create_spot_record_for_post">create_spot_record_for_post</a>(_: &<a href="../social_contracts/social_proof_of_truth.md#social_contracts_social_proof_of_truth_SpotOracleAdminCap">social_contracts::social_proof_of_truth::SpotOracleAdminCap</a>, config: &<a href="../social_contracts/social_proof_of_truth.md#social_contracts_social_proof_of_truth_SpotConfig">social_contracts::social_proof_of_truth::SpotConfig</a>, <a href="../social_contracts/post.md#social_contracts_post">post</a>: &<b>mut</b> <a href="../social_contracts/post.md#social_contracts_post_Post">social_contracts::post::Post</a>, betting_options: vector&lt;<a href="../std/string.md#std_string_String">std::string::String</a>&gt;, resolution_window_epochs: <a href="../std/option.md#std_option_Option">std::option::Option</a>&lt;u64&gt;, max_resolution_window_epochs: <a href="../std/option.md#std_option_Option">std::option::Option</a>&lt;u64&gt;, ctx: &<b>mut</b> <a href="../myso/tx_context.md#myso_tx_context_TxContext">myso::tx_context::TxContext</a>)
+<pre><code><b>public</b> <b>entry</b> <b>fun</b> <a href="../social_contracts/social_proof_of_truth.md#social_contracts_social_proof_of_truth_create_spot_record_for_post">create_spot_record_for_post</a>(_: &<a href="../social_contracts/social_proof_of_truth.md#social_contracts_social_proof_of_truth_SpotOracleAdminCap">social_contracts::social_proof_of_truth::SpotOracleAdminCap</a>, config: &<a href="../social_contracts/social_proof_of_truth.md#social_contracts_social_proof_of_truth_SpotConfig">social_contracts::social_proof_of_truth::SpotConfig</a>, <a href="../social_contracts/post.md#social_contracts_post">post</a>: &<b>mut</b> <a href="../social_contracts/post.md#social_contracts_post_Post">social_contracts::post::Post</a>, betting_options: vector&lt;<a href="../std/string.md#std_string_String">std::string::String</a>&gt;, resolution_window_ms: <a href="../std/option.md#std_option_Option">std::option::Option</a>&lt;u64&gt;, max_resolution_window_ms: <a href="../std/option.md#std_option_Option">std::option::Option</a>&lt;u64&gt;, clock: &<a href="../myso/clock.md#myso_clock_Clock">myso::clock::Clock</a>, ctx: &<b>mut</b> <a href="../myso/tx_context.md#myso_tx_context_TxContext">myso::tx_context::TxContext</a>)
 </code></pre>
 
 
@@ -1595,8 +1770,9 @@ Update SPoT configuration (admin only)
     config: &<a href="../social_contracts/social_proof_of_truth.md#social_contracts_social_proof_of_truth_SpotConfig">SpotConfig</a>,
     <a href="../social_contracts/post.md#social_contracts_post">post</a>: &<b>mut</b> Post,
     betting_options: vector&lt;String&gt;,
-    resolution_window_epochs: Option&lt;u64&gt;,
-    max_resolution_window_epochs: Option&lt;u64&gt;,
+    resolution_window_ms: Option&lt;u64&gt;,
+    max_resolution_window_ms: Option&lt;u64&gt;,
+    clock: &Clock,
     ctx: &<b>mut</b> TxContext
 ) {
     <b>assert</b>!(config.enable_flag, <a href="../social_contracts/social_proof_of_truth.md#social_contracts_social_proof_of_truth_EDisabled">EDisabled</a>);
@@ -1621,7 +1797,7 @@ Update SPoT configuration (admin only)
     <b>let</b> record = <a href="../social_contracts/social_proof_of_truth.md#social_contracts_social_proof_of_truth_SpotRecord">SpotRecord</a> {
         id: object::new(ctx),
         post_id: <a href="../social_contracts/post.md#social_contracts_post_get_id_address">post::get_id_address</a>(<a href="../social_contracts/post.md#social_contracts_post">post</a>),
-        created_epoch: tx_context::epoch(ctx),
+        created_at_ms: clock::timestamp_ms(clock),
         status: <a href="../social_contracts/social_proof_of_truth.md#social_contracts_social_proof_of_truth_STATUS_OPEN">STATUS_OPEN</a>,
         outcome: option::none(),
         escrow: balance::zero(),
@@ -1629,19 +1805,19 @@ Update SPoT configuration (admin only)
         option_escrow: table::new(ctx),
         user_option_amounts: table::new(ctx),
         bets: vector::empty&lt;<a href="../social_contracts/social_proof_of_truth.md#social_contracts_social_proof_of_truth_SpotBet">SpotBet</a>&gt;(),
-        resolution_window_epochs,
-        max_resolution_window_epochs,
-        last_resolution_epoch: 0,
+        resolution_window_ms,
+        max_resolution_window_ms,
+        last_resolution_at_ms: 0,
         resolution_timestamp_ms: 0,
         pending_payouts: table::new(ctx),
         version: <a href="../social_contracts/upgrade.md#social_contracts_upgrade_current_version">upgrade::current_version</a>(),
     };
     <b>let</b> record_id = object::uid_to_address(&record.id);
-    <b>let</b> created_epoch = record.created_epoch;
+    <b>let</b> created_at_ms = record.created_at_ms;
     <b>let</b> post_id = record.post_id;
     <b>let</b> betting_options_copy = record.betting_options;
-    <b>let</b> resolution_window = record.resolution_window_epochs;
-    <b>let</b> max_resolution_window = record.max_resolution_window_epochs;
+    <b>let</b> resolution_window = record.resolution_window_ms;
+    <b>let</b> max_resolution_window = record.max_resolution_window_ms;
     // Store SPoT record ID in <a href="../social_contracts/post.md#social_contracts_post">post</a>
     <a href="../social_contracts/post.md#social_contracts_post_set_spot_id">social_contracts::post::set_spot_id</a>(<a href="../social_contracts/post.md#social_contracts_post">post</a>, record_id);
     transfer::share_object(record);
@@ -1649,10 +1825,10 @@ Update SPoT configuration (admin only)
     event::emit(<a href="../social_contracts/social_proof_of_truth.md#social_contracts_social_proof_of_truth_SpotRecordCreatedEvent">SpotRecordCreatedEvent</a> {
         record_id,
         post_id,
-        created_epoch,
+        created_at_ms,
         betting_options: betting_options_copy,
-        resolution_window_epochs: resolution_window,
-        max_resolution_window_epochs: max_resolution_window,
+        resolution_window_ms: resolution_window,
+        max_resolution_window_ms: max_resolution_window,
     });
 }
 </code></pre>
@@ -1776,7 +1952,7 @@ Only allowed when status is OPEN (not DAO_REQUIRED, not RESOLVED, not REFUNDABLE
 Place bet - all funds go to escrow
 
 
-<pre><code><b>public</b> <b>entry</b> <b>fun</b> <a href="../social_contracts/social_proof_of_truth.md#social_contracts_social_proof_of_truth_place_spot_bet">place_spot_bet</a>(spot_config: &<a href="../social_contracts/social_proof_of_truth.md#social_contracts_social_proof_of_truth_SpotConfig">social_contracts::social_proof_of_truth::SpotConfig</a>, record: &<b>mut</b> <a href="../social_contracts/social_proof_of_truth.md#social_contracts_social_proof_of_truth_SpotRecord">social_contracts::social_proof_of_truth::SpotRecord</a>, <a href="../social_contracts/post.md#social_contracts_post">post</a>: &<a href="../social_contracts/post.md#social_contracts_post_Post">social_contracts::post::Post</a>, payment: <a href="../myso/coin.md#myso_coin_Coin">myso::coin::Coin</a>&lt;<a href="../myso/myso.md#myso_myso_MYSO">myso::myso::MYSO</a>&gt;, option_id: u8, amount: u64, ctx: &<b>mut</b> <a href="../myso/tx_context.md#myso_tx_context_TxContext">myso::tx_context::TxContext</a>)
+<pre><code><b>public</b> <b>entry</b> <b>fun</b> <a href="../social_contracts/social_proof_of_truth.md#social_contracts_social_proof_of_truth_place_spot_bet">place_spot_bet</a>(spot_config: &<a href="../social_contracts/social_proof_of_truth.md#social_contracts_social_proof_of_truth_SpotConfig">social_contracts::social_proof_of_truth::SpotConfig</a>, record: &<b>mut</b> <a href="../social_contracts/social_proof_of_truth.md#social_contracts_social_proof_of_truth_SpotRecord">social_contracts::social_proof_of_truth::SpotRecord</a>, <a href="../social_contracts/post.md#social_contracts_post">post</a>: &<a href="../social_contracts/post.md#social_contracts_post_Post">social_contracts::post::Post</a>, payment: <a href="../myso/coin.md#myso_coin_Coin">myso::coin::Coin</a>&lt;<a href="../myso/myso.md#myso_myso_MYSO">myso::myso::MYSO</a>&gt;, option_id: u8, amount: u64, clock: &<a href="../myso/clock.md#myso_clock_Clock">myso::clock::Clock</a>, ctx: &<b>mut</b> <a href="../myso/tx_context.md#myso_tx_context_TxContext">myso::tx_context::TxContext</a>)
 </code></pre>
 
 
@@ -1792,15 +1968,18 @@ Place bet - all funds go to escrow
     <b>mut</b> payment: Coin&lt;MYSO&gt;,
     option_id: u8,
     amount: u64,
+    clock: &Clock,
     ctx: &<b>mut</b> TxContext
 ) {
     <b>assert</b>!(spot_config.enable_flag, <a href="../social_contracts/social_proof_of_truth.md#social_contracts_social_proof_of_truth_EDisabled">EDisabled</a>);
     <b>assert</b>!(amount &gt; 0, <a href="../social_contracts/social_proof_of_truth.md#social_contracts_social_proof_of_truth_EInvalidAmount">EInvalidAmount</a>);
     <b>if</b> (spot_config.max_single_bet &gt; 0) { <b>assert</b>!(amount &lt;= spot_config.max_single_bet, <a href="../social_contracts/social_proof_of_truth.md#social_contracts_social_proof_of_truth_EInvalidAmount">EInvalidAmount</a>); };
     <b>assert</b>!(coin::value(&payment) &gt;= amount, <a href="../social_contracts/social_proof_of_truth.md#social_contracts_social_proof_of_truth_EInvalidAmount">EInvalidAmount</a>);
-    // Check bet limit
-    <b>let</b> current_bets = vector::length(&record.bets);
-    <b>assert</b>!(current_bets &lt; spot_config.max_bets_per_record, <a href="../social_contracts/social_proof_of_truth.md#social_contracts_social_proof_of_truth_ETooManyBets">ETooManyBets</a>);
+    // Per-record bet count cap; `max_bets_per_record == 0` means unlimited (see <b>module</b> docs).
+    <b>if</b> (spot_config.max_bets_per_record &gt; 0) {
+        <b>let</b> current_bets = vector::length(&record.bets);
+        <b>assert</b>!(current_bets &lt; spot_config.max_bets_per_record, <a href="../social_contracts/social_proof_of_truth.md#social_contracts_social_proof_of_truth_ETooManyBets">ETooManyBets</a>);
+    };
     // Validate option_id exists
     <b>let</b> options_len = vector::length(&record.betting_options);
     <b>assert</b>!((option_id <b>as</b> u64) &lt; options_len, <a href="../social_contracts/social_proof_of_truth.md#social_contracts_social_proof_of_truth_EInvalidOptionId">EInvalidOptionId</a>);
@@ -1826,12 +2005,13 @@ Place bet - all funds go to escrow
     } <b>else</b> {
         coin::destroy_zero(payment);
     };
+    <b>let</b> ts = clock::timestamp_ms(clock);
     // Record bet
     vector::push_back(&<b>mut</b> record.bets, <a href="../social_contracts/social_proof_of_truth.md#social_contracts_social_proof_of_truth_SpotBet">SpotBet</a> {
         user: tx_context::sender(ctx),
         option_id,
         amount,
-        timestamp: tx_context::epoch(ctx),
+        timestamp_ms: ts,
     });
     <b>let</b> user = tx_context::sender(ctx);
     <b>let</b> options_len = vector::length(&record.betting_options);
@@ -1855,6 +2035,7 @@ Place bet - all funds go to escrow
         user: tx_context::sender(ctx),
         option_id,
         amount,
+        timestamp_ms: ts,
     });
 }
 </code></pre>
@@ -1871,7 +2052,7 @@ Oracle resolution (option_id, or too close → DAO_REQUIRED)
 Requires reasoning and at least one evidence URL for transparency and accountability
 
 
-<pre><code><b>public</b> <b>entry</b> <b>fun</b> <a href="../social_contracts/social_proof_of_truth.md#social_contracts_social_proof_of_truth_oracle_resolve">oracle_resolve</a>(_: &<a href="../social_contracts/social_proof_of_truth.md#social_contracts_social_proof_of_truth_SpotOracleAdminCap">social_contracts::social_proof_of_truth::SpotOracleAdminCap</a>, spot_config: &<a href="../social_contracts/social_proof_of_truth.md#social_contracts_social_proof_of_truth_SpotConfig">social_contracts::social_proof_of_truth::SpotConfig</a>, record: &<b>mut</b> <a href="../social_contracts/social_proof_of_truth.md#social_contracts_social_proof_of_truth_SpotRecord">social_contracts::social_proof_of_truth::SpotRecord</a>, <a href="../social_contracts/post.md#social_contracts_post">post</a>: &<a href="../social_contracts/post.md#social_contracts_post_Post">social_contracts::post::Post</a>, <a href="../social_contracts/platform.md#social_contracts_platform">platform</a>: &<b>mut</b> <a href="../social_contracts/platform.md#social_contracts_platform_Platform">social_contracts::platform::Platform</a>, treasury: &<a href="../social_contracts/profile.md#social_contracts_profile_EcosystemTreasury">social_contracts::profile::EcosystemTreasury</a>, outcome_option_id: u8, confidence_bps: u64, reasoning: <a href="../std/string.md#std_string_String">std::string::String</a>, evidence_urls: vector&lt;<a href="../std/string.md#std_string_String">std::string::String</a>&gt;, ctx: &<b>mut</b> <a href="../myso/tx_context.md#myso_tx_context_TxContext">myso::tx_context::TxContext</a>)
+<pre><code><b>public</b> <b>entry</b> <b>fun</b> <a href="../social_contracts/social_proof_of_truth.md#social_contracts_social_proof_of_truth_oracle_resolve">oracle_resolve</a>(_: &<a href="../social_contracts/social_proof_of_truth.md#social_contracts_social_proof_of_truth_SpotOracleAdminCap">social_contracts::social_proof_of_truth::SpotOracleAdminCap</a>, spot_config: &<a href="../social_contracts/social_proof_of_truth.md#social_contracts_social_proof_of_truth_SpotConfig">social_contracts::social_proof_of_truth::SpotConfig</a>, record: &<b>mut</b> <a href="../social_contracts/social_proof_of_truth.md#social_contracts_social_proof_of_truth_SpotRecord">social_contracts::social_proof_of_truth::SpotRecord</a>, <a href="../social_contracts/post.md#social_contracts_post">post</a>: &<a href="../social_contracts/post.md#social_contracts_post_Post">social_contracts::post::Post</a>, <a href="../social_contracts/platform.md#social_contracts_platform">platform</a>: &<b>mut</b> <a href="../social_contracts/platform.md#social_contracts_platform_Platform">social_contracts::platform::Platform</a>, treasury: &<a href="../social_contracts/profile.md#social_contracts_profile_EcosystemTreasury">social_contracts::profile::EcosystemTreasury</a>, outcome_option_id: u8, confidence_bps: u64, reasoning: <a href="../std/string.md#std_string_String">std::string::String</a>, evidence_urls: vector&lt;<a href="../std/string.md#std_string_String">std::string::String</a>&gt;, clock: &<a href="../myso/clock.md#myso_clock_Clock">myso::clock::Clock</a>, ctx: &<b>mut</b> <a href="../myso/tx_context.md#myso_tx_context_TxContext">myso::tx_context::TxContext</a>)
 </code></pre>
 
 
@@ -1891,16 +2072,17 @@ Requires reasoning and at least one evidence URL for transparency and accountabi
     confidence_bps: u64,
     reasoning: String,
     evidence_urls: vector&lt;String&gt;,
+    clock: &Clock,
     ctx: &<b>mut</b> TxContext
 ) {
     // Prevent resolving already resolved or refundable markets
     <b>assert</b>!(record.status == <a href="../social_contracts/social_proof_of_truth.md#social_contracts_social_proof_of_truth_STATUS_OPEN">STATUS_OPEN</a>, <a href="../social_contracts/social_proof_of_truth.md#social_contracts_social_proof_of_truth_EWrongStatus">EWrongStatus</a>);
     <b>assert</b>!(option::is_none(&record.outcome), <a href="../social_contracts/social_proof_of_truth.md#social_contracts_social_proof_of_truth_EAlreadyResolved">EAlreadyResolved</a>);
     // Enforce resolution window <b>if</b> specified
-    <b>let</b> now = tx_context::epoch(ctx);
-    <b>if</b> (option::is_some(&record.resolution_window_epochs)) {
-        <b>let</b> window = *option::borrow(&record.resolution_window_epochs);
-        <b>assert</b>!(now &gt;= record.created_epoch + window, <a href="../social_contracts/social_proof_of_truth.md#social_contracts_social_proof_of_truth_ETooEarly">ETooEarly</a>);
+    <b>let</b> now_ms = clock::timestamp_ms(clock);
+    <b>if</b> (option::is_some(&record.resolution_window_ms)) {
+        <b>let</b> window = *option::borrow(&record.resolution_window_ms);
+        <b>assert</b>!(now_ms &gt;= record.created_at_ms + window, <a href="../social_contracts/social_proof_of_truth.md#social_contracts_social_proof_of_truth_ETooEarly">ETooEarly</a>);
     };
     // Validate outcome_option_id exists
     <b>let</b> options_len = vector::length(&record.betting_options);
@@ -1924,7 +2106,7 @@ Requires reasoning and at least one evidence URL for transparency and accountabi
     };
     // Resolve outcome - outcome_option_id is the winning option
     // Convert required vector to Option <b>for</b> internal function
-    <a href="../social_contracts/social_proof_of_truth.md#social_contracts_social_proof_of_truth_finalize_resolution_and_payout">finalize_resolution_and_payout</a>(spot_config, record, <a href="../social_contracts/post.md#social_contracts_post">post</a>, <a href="../social_contracts/platform.md#social_contracts_platform">platform</a>, treasury, outcome_option_id, reasoning, option::some(evidence_urls), ctx);
+    <a href="../social_contracts/social_proof_of_truth.md#social_contracts_social_proof_of_truth_finalize_resolution_and_payout">finalize_resolution_and_payout</a>(spot_config, record, <a href="../social_contracts/post.md#social_contracts_post">post</a>, <a href="../social_contracts/platform.md#social_contracts_platform">platform</a>, treasury, outcome_option_id, reasoning, option::some(evidence_urls), clock, ctx);
 }
 </code></pre>
 
@@ -1940,7 +2122,7 @@ DAO finalization (YES/NO/DRAW/UNAPPLICABLE)
 Reasoning is optional as it represents culmination of community discussion
 
 
-<pre><code><b>public</b> <b>entry</b> <b>fun</b> <a href="../social_contracts/social_proof_of_truth.md#social_contracts_social_proof_of_truth_finalize_via_dao">finalize_via_dao</a>(spot_config: &<a href="../social_contracts/social_proof_of_truth.md#social_contracts_social_proof_of_truth_SpotConfig">social_contracts::social_proof_of_truth::SpotConfig</a>, record: &<b>mut</b> <a href="../social_contracts/social_proof_of_truth.md#social_contracts_social_proof_of_truth_SpotRecord">social_contracts::social_proof_of_truth::SpotRecord</a>, <a href="../social_contracts/post.md#social_contracts_post">post</a>: &<a href="../social_contracts/post.md#social_contracts_post_Post">social_contracts::post::Post</a>, <a href="../social_contracts/platform.md#social_contracts_platform">platform</a>: &<b>mut</b> <a href="../social_contracts/platform.md#social_contracts_platform_Platform">social_contracts::platform::Platform</a>, treasury: &<a href="../social_contracts/profile.md#social_contracts_profile_EcosystemTreasury">social_contracts::profile::EcosystemTreasury</a>, outcome: u8, reasoning: <a href="../std/option.md#std_option_Option">std::option::Option</a>&lt;<a href="../std/string.md#std_string_String">std::string::String</a>&gt;, evidence_urls: <a href="../std/option.md#std_option_Option">std::option::Option</a>&lt;vector&lt;<a href="../std/string.md#std_string_String">std::string::String</a>&gt;&gt;, ctx: &<b>mut</b> <a href="../myso/tx_context.md#myso_tx_context_TxContext">myso::tx_context::TxContext</a>)
+<pre><code><b>public</b> <b>entry</b> <b>fun</b> <a href="../social_contracts/social_proof_of_truth.md#social_contracts_social_proof_of_truth_finalize_via_dao">finalize_via_dao</a>(spot_config: &<a href="../social_contracts/social_proof_of_truth.md#social_contracts_social_proof_of_truth_SpotConfig">social_contracts::social_proof_of_truth::SpotConfig</a>, record: &<b>mut</b> <a href="../social_contracts/social_proof_of_truth.md#social_contracts_social_proof_of_truth_SpotRecord">social_contracts::social_proof_of_truth::SpotRecord</a>, <a href="../social_contracts/post.md#social_contracts_post">post</a>: &<a href="../social_contracts/post.md#social_contracts_post_Post">social_contracts::post::Post</a>, <a href="../social_contracts/platform.md#social_contracts_platform">platform</a>: &<b>mut</b> <a href="../social_contracts/platform.md#social_contracts_platform_Platform">social_contracts::platform::Platform</a>, treasury: &<a href="../social_contracts/profile.md#social_contracts_profile_EcosystemTreasury">social_contracts::profile::EcosystemTreasury</a>, outcome: u8, reasoning: <a href="../std/option.md#std_option_Option">std::option::Option</a>&lt;<a href="../std/string.md#std_string_String">std::string::String</a>&gt;, evidence_urls: <a href="../std/option.md#std_option_Option">std::option::Option</a>&lt;vector&lt;<a href="../std/string.md#std_string_String">std::string::String</a>&gt;&gt;, clock: &<a href="../myso/clock.md#myso_clock_Clock">myso::clock::Clock</a>, ctx: &<b>mut</b> <a href="../myso/tx_context.md#myso_tx_context_TxContext">myso::tx_context::TxContext</a>)
 </code></pre>
 
 
@@ -1958,6 +2140,7 @@ Reasoning is optional as it represents culmination of community discussion
     outcome: u8,
     <b>mut</b> reasoning: Option&lt;String&gt;,
     evidence_urls: Option&lt;vector&lt;String&gt;&gt;,
+    clock: &Clock,
     ctx: &<b>mut</b> TxContext
 ) {
     // Allow when DAO_REQUIRED or still OPEN (off-chain DAO direct)
@@ -1981,7 +2164,7 @@ Reasoning is optional as it represents culmination of community discussion
     } <b>else</b> {
         string::utf8(b"DAO resolution based on community discussion")
     };
-    <a href="../social_contracts/social_proof_of_truth.md#social_contracts_social_proof_of_truth_finalize_resolution_and_payout">finalize_resolution_and_payout</a>(spot_config, record, <a href="../social_contracts/post.md#social_contracts_post">post</a>, <a href="../social_contracts/platform.md#social_contracts_platform">platform</a>, treasury, outcome, final_reasoning, evidence_urls, ctx);
+    <a href="../social_contracts/social_proof_of_truth.md#social_contracts_social_proof_of_truth_finalize_resolution_and_payout">finalize_resolution_and_payout</a>(spot_config, record, <a href="../social_contracts/post.md#social_contracts_post">post</a>, <a href="../social_contracts/platform.md#social_contracts_platform">platform</a>, treasury, outcome, final_reasoning, evidence_urls, clock, ctx);
 }
 </code></pre>
 
@@ -1995,10 +2178,10 @@ Reasoning is optional as it represents culmination of community discussion
 
 Refund all escrow if unresolved beyond max window
 Requires SpotOracleAdminCap authorization
-If max_resolution_window_epochs is None, this function cannot be called (must be explicitly set)
+If max_resolution_window_ms is None, this function cannot be called (must be explicitly set)
 
 
-<pre><code><b>public</b> <b>entry</b> <b>fun</b> <a href="../social_contracts/social_proof_of_truth.md#social_contracts_social_proof_of_truth_refund_unresolved">refund_unresolved</a>(_: &<a href="../social_contracts/social_proof_of_truth.md#social_contracts_social_proof_of_truth_SpotOracleAdminCap">social_contracts::social_proof_of_truth::SpotOracleAdminCap</a>, spot_config: &<a href="../social_contracts/social_proof_of_truth.md#social_contracts_social_proof_of_truth_SpotConfig">social_contracts::social_proof_of_truth::SpotConfig</a>, record: &<b>mut</b> <a href="../social_contracts/social_proof_of_truth.md#social_contracts_social_proof_of_truth_SpotRecord">social_contracts::social_proof_of_truth::SpotRecord</a>, <a href="../social_contracts/post.md#social_contracts_post">post</a>: &<a href="../social_contracts/post.md#social_contracts_post_Post">social_contracts::post::Post</a>, ctx: &<b>mut</b> <a href="../myso/tx_context.md#myso_tx_context_TxContext">myso::tx_context::TxContext</a>)
+<pre><code><b>public</b> <b>entry</b> <b>fun</b> <a href="../social_contracts/social_proof_of_truth.md#social_contracts_social_proof_of_truth_refund_unresolved">refund_unresolved</a>(_: &<a href="../social_contracts/social_proof_of_truth.md#social_contracts_social_proof_of_truth_SpotOracleAdminCap">social_contracts::social_proof_of_truth::SpotOracleAdminCap</a>, spot_config: &<a href="../social_contracts/social_proof_of_truth.md#social_contracts_social_proof_of_truth_SpotConfig">social_contracts::social_proof_of_truth::SpotConfig</a>, record: &<b>mut</b> <a href="../social_contracts/social_proof_of_truth.md#social_contracts_social_proof_of_truth_SpotRecord">social_contracts::social_proof_of_truth::SpotRecord</a>, <a href="../social_contracts/post.md#social_contracts_post">post</a>: &<a href="../social_contracts/post.md#social_contracts_post_Post">social_contracts::post::Post</a>, clock: &<a href="../myso/clock.md#myso_clock_Clock">myso::clock::Clock</a>, ctx: &<b>mut</b> <a href="../myso/tx_context.md#myso_tx_context_TxContext">myso::tx_context::TxContext</a>)
 </code></pre>
 
 
@@ -2012,13 +2195,14 @@ If max_resolution_window_epochs is None, this function cannot be called (must be
     spot_config: &<a href="../social_contracts/social_proof_of_truth.md#social_contracts_social_proof_of_truth_SpotConfig">SpotConfig</a>,
     record: &<b>mut</b> <a href="../social_contracts/social_proof_of_truth.md#social_contracts_social_proof_of_truth_SpotRecord">SpotRecord</a>,
     <a href="../social_contracts/post.md#social_contracts_post">post</a>: &Post,
+    clock: &Clock,
     ctx: &<b>mut</b> TxContext
 ) {
-    // Require max_resolution_window_epochs to be Some - prevents permissionless abuse
-    <b>assert</b>!(option::is_some(&record.max_resolution_window_epochs), <a href="../social_contracts/social_proof_of_truth.md#social_contracts_social_proof_of_truth_EInvalidAmount">EInvalidAmount</a>);
-    <b>let</b> now = tx_context::epoch(ctx);
-    <b>let</b> max_window = *option::borrow(&record.max_resolution_window_epochs);
-    <b>assert</b>!(now &gt;= record.created_epoch + max_window, <a href="../social_contracts/social_proof_of_truth.md#social_contracts_social_proof_of_truth_ETooEarly">ETooEarly</a>);
+    // Require max_resolution_window_ms to be Some - prevents permissionless abuse
+    <b>assert</b>!(option::is_some(&record.max_resolution_window_ms), <a href="../social_contracts/social_proof_of_truth.md#social_contracts_social_proof_of_truth_EInvalidAmount">EInvalidAmount</a>);
+    <b>let</b> now_ms = clock::timestamp_ms(clock);
+    <b>let</b> max_window = *option::borrow(&record.max_resolution_window_ms);
+    <b>assert</b>!(now_ms &gt;= record.created_at_ms + max_window, <a href="../social_contracts/social_proof_of_truth.md#social_contracts_social_proof_of_truth_ETooEarly">ETooEarly</a>);
     <b>assert</b>!(record.status == <a href="../social_contracts/social_proof_of_truth.md#social_contracts_social_proof_of_truth_STATUS_OPEN">STATUS_OPEN</a> || record.status == <a href="../social_contracts/social_proof_of_truth.md#social_contracts_social_proof_of_truth_STATUS_DAO_REQUIRED">STATUS_DAO_REQUIRED</a>, <a href="../social_contracts/social_proof_of_truth.md#social_contracts_social_proof_of_truth_EWrongStatus">EWrongStatus</a>);
     <b>assert</b>!(vector::length(&record.bets) &gt; 0, <a href="../social_contracts/social_proof_of_truth.md#social_contracts_social_proof_of_truth_ENoBets">ENoBets</a>);
     // Iterate all bets and refund escrow
@@ -2035,7 +2219,7 @@ If max_resolution_window_epochs is None, this function cannot be called (must be
     };
     record.status = <a href="../social_contracts/social_proof_of_truth.md#social_contracts_social_proof_of_truth_STATUS_REFUNDABLE">STATUS_REFUNDABLE</a>;
     record.outcome = option::none();
-    record.last_resolution_epoch = now;
+    record.last_resolution_at_ms = now_ms;
     // Any dust stays in escrow balance <b>if</b> math rounding occurred
 }
 </code></pre>
@@ -2050,7 +2234,7 @@ If max_resolution_window_epochs is None, this function cannot be called (must be
 
 
 
-<pre><code><b>fun</b> <a href="../social_contracts/social_proof_of_truth.md#social_contracts_social_proof_of_truth_finalize_resolution_and_payout">finalize_resolution_and_payout</a>(spot_config: &<a href="../social_contracts/social_proof_of_truth.md#social_contracts_social_proof_of_truth_SpotConfig">social_contracts::social_proof_of_truth::SpotConfig</a>, record: &<b>mut</b> <a href="../social_contracts/social_proof_of_truth.md#social_contracts_social_proof_of_truth_SpotRecord">social_contracts::social_proof_of_truth::SpotRecord</a>, <a href="../social_contracts/post.md#social_contracts_post">post</a>: &<a href="../social_contracts/post.md#social_contracts_post_Post">social_contracts::post::Post</a>, <a href="../social_contracts/platform.md#social_contracts_platform">platform</a>: &<b>mut</b> <a href="../social_contracts/platform.md#social_contracts_platform_Platform">social_contracts::platform::Platform</a>, treasury: &<a href="../social_contracts/profile.md#social_contracts_profile_EcosystemTreasury">social_contracts::profile::EcosystemTreasury</a>, outcome: u8, reasoning: <a href="../std/string.md#std_string_String">std::string::String</a>, evidence_urls: <a href="../std/option.md#std_option_Option">std::option::Option</a>&lt;vector&lt;<a href="../std/string.md#std_string_String">std::string::String</a>&gt;&gt;, ctx: &<b>mut</b> <a href="../myso/tx_context.md#myso_tx_context_TxContext">myso::tx_context::TxContext</a>)
+<pre><code><b>fun</b> <a href="../social_contracts/social_proof_of_truth.md#social_contracts_social_proof_of_truth_finalize_resolution_and_payout">finalize_resolution_and_payout</a>(spot_config: &<a href="../social_contracts/social_proof_of_truth.md#social_contracts_social_proof_of_truth_SpotConfig">social_contracts::social_proof_of_truth::SpotConfig</a>, record: &<b>mut</b> <a href="../social_contracts/social_proof_of_truth.md#social_contracts_social_proof_of_truth_SpotRecord">social_contracts::social_proof_of_truth::SpotRecord</a>, <a href="../social_contracts/post.md#social_contracts_post">post</a>: &<a href="../social_contracts/post.md#social_contracts_post_Post">social_contracts::post::Post</a>, <a href="../social_contracts/platform.md#social_contracts_platform">platform</a>: &<b>mut</b> <a href="../social_contracts/platform.md#social_contracts_platform_Platform">social_contracts::platform::Platform</a>, treasury: &<a href="../social_contracts/profile.md#social_contracts_profile_EcosystemTreasury">social_contracts::profile::EcosystemTreasury</a>, outcome: u8, reasoning: <a href="../std/string.md#std_string_String">std::string::String</a>, evidence_urls: <a href="../std/option.md#std_option_Option">std::option::Option</a>&lt;vector&lt;<a href="../std/string.md#std_string_String">std::string::String</a>&gt;&gt;, clock: &<a href="../myso/clock.md#myso_clock_Clock">myso::clock::Clock</a>, ctx: &<b>mut</b> <a href="../myso/tx_context.md#myso_tx_context_TxContext">myso::tx_context::TxContext</a>)
 </code></pre>
 
 
@@ -2068,6 +2252,7 @@ If max_resolution_window_epochs is None, this function cannot be called (must be
     outcome: u8, // Winning option_id, or <a href="../social_contracts/social_proof_of_truth.md#social_contracts_social_proof_of_truth_OUTCOME_DRAW">OUTCOME_DRAW</a>/<a href="../social_contracts/social_proof_of_truth.md#social_contracts_social_proof_of_truth_OUTCOME_UNAPPLICABLE">OUTCOME_UNAPPLICABLE</a>
     reasoning: String,
     evidence_urls: Option&lt;vector&lt;String&gt;&gt;,
+    clock: &Clock,
     ctx: &<b>mut</b> TxContext
 ) {
     <b>assert</b>!(record.status == <a href="../social_contracts/social_proof_of_truth.md#social_contracts_social_proof_of_truth_STATUS_OPEN">STATUS_OPEN</a> || record.status == <a href="../social_contracts/social_proof_of_truth.md#social_contracts_social_proof_of_truth_STATUS_DAO_REQUIRED">STATUS_DAO_REQUIRED</a>, <a href="../social_contracts/social_proof_of_truth.md#social_contracts_social_proof_of_truth_EWrongStatus">EWrongStatus</a>);
@@ -2083,6 +2268,7 @@ If max_resolution_window_epochs is None, this function cannot be called (must be
         };
         i = i + 1;
     };
+    <b>let</b> now_ms = clock::timestamp_ms(clock);
     // Handle DRAW/UNAPPLICABLE: refund all escrow
     <b>if</b> (outcome == <a href="../social_contracts/social_proof_of_truth.md#social_contracts_social_proof_of_truth_OUTCOME_DRAW">OUTCOME_DRAW</a> || outcome == <a href="../social_contracts/social_proof_of_truth.md#social_contracts_social_proof_of_truth_OUTCOME_UNAPPLICABLE">OUTCOME_UNAPPLICABLE</a>) {
         <b>let</b> <b>mut</b> i = 0; <b>let</b> len = vector::length(&record.bets);
@@ -2097,8 +2283,8 @@ If max_resolution_window_epochs is None, this function cannot be called (must be
         };
         record.status = <a href="../social_contracts/social_proof_of_truth.md#social_contracts_social_proof_of_truth_STATUS_RESOLVED">STATUS_RESOLVED</a>;
         record.outcome = option::some(outcome);
-        record.last_resolution_epoch = tx_context::epoch(ctx);
-        record.resolution_timestamp_ms = tx_context::epoch_timestamp_ms(ctx);
+        record.last_resolution_at_ms = now_ms;
+        record.resolution_timestamp_ms = now_ms;
         // Convert Option to vector <b>for</b> event (<b>use</b> empty vector <b>if</b> None)
         <b>let</b> evidence_urls_vec = <b>if</b> (option::is_some(&evidence_urls)) {
             *option::borrow(&evidence_urls)
@@ -2166,8 +2352,8 @@ If max_resolution_window_epochs is None, this function cannot be called (must be
     };
     record.status = <a href="../social_contracts/social_proof_of_truth.md#social_contracts_social_proof_of_truth_STATUS_RESOLVED">STATUS_RESOLVED</a>;
     record.outcome = option::some(outcome);
-    record.last_resolution_epoch = tx_context::epoch(ctx);
-    record.resolution_timestamp_ms = tx_context::epoch_timestamp_ms(ctx);
+    record.last_resolution_at_ms = now_ms;
+    record.resolution_timestamp_ms = now_ms;
     // Convert Option to vector <b>for</b> event (<b>use</b> empty vector <b>if</b> None)
     <b>let</b> evidence_urls_vec = <b>if</b> (option::is_some(&evidence_urls)) {
         *option::borrow(&evidence_urls)
@@ -2197,7 +2383,7 @@ Claim payout after delay period has passed
 Users can claim their winnings after payout_delay_ms has elapsed since resolution
 
 
-<pre><code><b>public</b> <b>entry</b> <b>fun</b> <a href="../social_contracts/social_proof_of_truth.md#social_contracts_social_proof_of_truth_claim_payout">claim_payout</a>(spot_config: &<a href="../social_contracts/social_proof_of_truth.md#social_contracts_social_proof_of_truth_SpotConfig">social_contracts::social_proof_of_truth::SpotConfig</a>, record: &<b>mut</b> <a href="../social_contracts/social_proof_of_truth.md#social_contracts_social_proof_of_truth_SpotRecord">social_contracts::social_proof_of_truth::SpotRecord</a>, <a href="../social_contracts/post.md#social_contracts_post">post</a>: &<a href="../social_contracts/post.md#social_contracts_post_Post">social_contracts::post::Post</a>, ctx: &<b>mut</b> <a href="../myso/tx_context.md#myso_tx_context_TxContext">myso::tx_context::TxContext</a>)
+<pre><code><b>public</b> <b>entry</b> <b>fun</b> <a href="../social_contracts/social_proof_of_truth.md#social_contracts_social_proof_of_truth_claim_payout">claim_payout</a>(spot_config: &<a href="../social_contracts/social_proof_of_truth.md#social_contracts_social_proof_of_truth_SpotConfig">social_contracts::social_proof_of_truth::SpotConfig</a>, record: &<b>mut</b> <a href="../social_contracts/social_proof_of_truth.md#social_contracts_social_proof_of_truth_SpotRecord">social_contracts::social_proof_of_truth::SpotRecord</a>, <a href="../social_contracts/post.md#social_contracts_post">post</a>: &<a href="../social_contracts/post.md#social_contracts_post_Post">social_contracts::post::Post</a>, clock: &<a href="../myso/clock.md#myso_clock_Clock">myso::clock::Clock</a>, ctx: &<b>mut</b> <a href="../myso/tx_context.md#myso_tx_context_TxContext">myso::tx_context::TxContext</a>)
 </code></pre>
 
 
@@ -2210,6 +2396,7 @@ Users can claim their winnings after payout_delay_ms has elapsed since resolutio
     spot_config: &<a href="../social_contracts/social_proof_of_truth.md#social_contracts_social_proof_of_truth_SpotConfig">SpotConfig</a>,
     record: &<b>mut</b> <a href="../social_contracts/social_proof_of_truth.md#social_contracts_social_proof_of_truth_SpotRecord">SpotRecord</a>,
     <a href="../social_contracts/post.md#social_contracts_post">post</a>: &Post,
+    clock: &Clock,
     ctx: &<b>mut</b> TxContext
 ) {
     <b>assert</b>!(spot_config.enable_flag, <a href="../social_contracts/social_proof_of_truth.md#social_contracts_social_proof_of_truth_EDisabled">EDisabled</a>);
@@ -2220,7 +2407,7 @@ Users can claim their winnings after payout_delay_ms has elapsed since resolutio
     <b>let</b> pending_amount = *table::borrow(&record.pending_payouts, user);
     <b>assert</b>!(pending_amount &gt; 0, <a href="../social_contracts/social_proof_of_truth.md#social_contracts_social_proof_of_truth_EInvalidAmount">EInvalidAmount</a>);
     // Check <b>if</b> delay period <b>has</b> passed
-    <b>let</b> current_time = tx_context::epoch_timestamp_ms(ctx);
+    <b>let</b> current_time = clock::timestamp_ms(clock);
     <b>assert</b>!(record.resolution_timestamp_ms &gt; 0, <a href="../social_contracts/social_proof_of_truth.md#social_contracts_social_proof_of_truth_EInvalidAmount">EInvalidAmount</a>); // Must be resolved
     <b>assert</b>!(current_time &gt;= record.resolution_timestamp_ms + spot_config.payout_delay_ms, <a href="../social_contracts/social_proof_of_truth.md#social_contracts_social_proof_of_truth_ETooEarly">ETooEarly</a>);
     // Transfer payout from escrow

@@ -1,77 +1,14 @@
 // Copyright (c) The Social Proof Foundation, LLC.
 // SPDX-License-Identifier: Apache-2.0
 
-use serde::Serialize;
-
-#[derive(Debug, Serialize)]
-pub struct PocBadgeRow {
-    pub badge_id: String,
-    pub post_id: String,
-    pub media_type: i16,
-    pub issued_by: String,
-    pub issued_at: i64,
-    pub revoked: bool,
-}
-
-#[derive(Debug, Serialize)]
-pub struct PocRevenueRedirectionRow {
-    pub redirection_id: String,
-    pub accused_post_id: String,
-    pub original_post_id: String,
-    pub redirect_percentage: i64,
-    pub similarity_score: i64,
-    pub created_at: i64,
-    pub removed: bool,
-}
-
-#[derive(Debug, Serialize)]
-pub struct PocAnalysisResultRow {
-    pub post_id: String,
-    pub media_type: i16,
-    pub similarity_detected: bool,
-    pub highest_similarity_score: i64,
-    pub oracle_address: String,
-    pub analysis_timestamp: i64,
-}
-
-#[derive(Debug, Serialize)]
-pub struct PocDisputeRow {
-    pub dispute_id: String,
-    pub post_id: String,
-    pub disputer: String,
-    pub dispute_type: i16,
-    pub evidence: String,
-    pub status: i16,
-    pub stake_amount: i64,
-    pub submitted_at: i64,
-    pub resolved_at: Option<i64>,
-}
-
-#[derive(Debug, Serialize)]
-pub struct PocDisputeVoteRow {
-    pub dispute_id: String,
-    pub voter: String,
-    pub vote_choice: i16,
-    pub stake_amount: i64,
-    pub voted_at: i64,
-}
-
-#[derive(Debug, Serialize)]
-pub struct PocConfigRow {
-    pub image_threshold: i64,
-    pub video_threshold: i64,
-    pub audio_threshold: i64,
-    pub revenue_redirect_percentage: i64,
-    pub dispute_cost: i64,
-    pub dispute_protocol_fee: i64,
-    pub min_vote_stake: i64,
-    pub max_vote_stake: i64,
-    pub voting_duration_epochs: i64,
-    pub max_reasoning_length: i64,
-    pub max_evidence_urls: i64,
-    pub max_votes_per_dispute: i64,
-    pub oracle_address: Option<String>,
-    pub updated_by: String,
-    pub updated_at: i64,
-    pub transaction_id: String,
-}
+pub type PocBadgeRow = myso_indexer_alt_social_schema::models::PocBadgeRow;
+pub type PocBeneficiaryVaultRow = myso_indexer_alt_social_schema::models::PocBeneficiaryVaultRow;
+pub type PocVaultCoinBalanceRow = myso_indexer_alt_social_schema::models::PocVaultCoinBalanceRow;
+pub type PocVaultDepositRow = myso_indexer_alt_social_schema::models::PocVaultDepositRow;
+pub type PocVaultClaimRow = myso_indexer_alt_social_schema::models::PocVaultClaimRow;
+pub type PocRevenueRedirectionRow =
+    myso_indexer_alt_social_schema::models::PocRevenueRedirectionRow;
+pub type PocAnalysisResultRow = myso_indexer_alt_social_schema::models::PocAnalysisResultRow;
+pub type PocDisputeRow = myso_indexer_alt_social_schema::models::PocDisputeRow;
+pub type PocDisputeVoteRow = myso_indexer_alt_social_schema::models::PocDisputeVoteRow;
+pub type PocConfigRow = myso_indexer_alt_social_schema::models::PocConfigRow;

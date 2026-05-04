@@ -11,6 +11,8 @@ Sells coverage against losing outcomes and pays out deterministically on SPoT re
 -  [Struct `UnderwriterVault`](#social_contracts_insurance_UnderwriterVault)
 -  [Struct `MarketExposure`](#social_contracts_insurance_MarketExposure)
 -  [Struct `CoveragePolicy`](#social_contracts_insurance_CoveragePolicy)
+-  [Struct `PremiumQuote`](#social_contracts_insurance_PremiumQuote)
+-  [Struct `RiskPricingConfigUpdatedEvent`](#social_contracts_insurance_RiskPricingConfigUpdatedEvent)
 -  [Struct `ConfigInitializedEvent`](#social_contracts_insurance_ConfigInitializedEvent)
 -  [Struct `UnderwriterVaultCreatedEvent`](#social_contracts_insurance_UnderwriterVaultCreatedEvent)
 -  [Struct `UnderwriterVaultDepositedEvent`](#social_contracts_insurance_UnderwriterVaultDepositedEvent)
@@ -23,13 +25,22 @@ Sells coverage against losing outcomes and pays out deterministically on SPoT re
 -  [Constants](#@Constants_0)
 -  [Function `init_config`](#social_contracts_insurance_init_config)
 -  [Function `set_config`](#social_contracts_insurance_set_config)
+-  [Function `set_risk_pricing_config`](#social_contracts_insurance_set_risk_pricing_config)
 -  [Function `set_enable_flag`](#social_contracts_insurance_set_enable_flag)
 -  [Function `create_insurance_admin_cap`](#social_contracts_insurance_create_insurance_admin_cap)
 -  [Function `bootstrap_init`](#social_contracts_insurance_bootstrap_init)
 -  [Function `create_vault`](#social_contracts_insurance_create_vault)
 -  [Function `deposit_capital`](#social_contracts_insurance_deposit_capital)
 -  [Function `withdraw_capital`](#social_contracts_insurance_withdraw_capital)
+-  [Function `premium_quote_premium`](#social_contracts_insurance_premium_quote_premium)
+-  [Function `premium_quote_implied_prob_win_bps`](#social_contracts_insurance_premium_quote_implied_prob_win_bps)
+-  [Function `premium_quote_risk_multiplier_bps`](#social_contracts_insurance_premium_quote_risk_multiplier_bps)
+-  [Function `premium_quote_premium_raw`](#social_contracts_insurance_premium_quote_premium_raw)
+-  [Function `quote_base_premium`](#social_contracts_insurance_quote_base_premium)
 -  [Function `quote_premium`](#social_contracts_insurance_quote_premium)
+-  [Function `get_market_option_reserved`](#social_contracts_insurance_get_market_option_reserved)
+-  [Function `compute_spot_risk_quote`](#social_contracts_insurance_compute_spot_risk_quote)
+-  [Function `quote_premium_with_spot_risk`](#social_contracts_insurance_quote_premium_with_spot_risk)
 -  [Function `buy_coverage`](#social_contracts_insurance_buy_coverage)
 -  [Function `cancel_coverage`](#social_contracts_insurance_cancel_coverage)
 -  [Function `claim`](#social_contracts_insurance_claim)
@@ -89,6 +100,7 @@ Sells coverage against losing outcomes and pays out deterministically on SPoT re
 <b>use</b> <a href="../social_contracts/governance.md#social_contracts_governance">social_contracts::governance</a>;
 <b>use</b> <a href="../social_contracts/mydata.md#social_contracts_mydata">social_contracts::mydata</a>;
 <b>use</b> <a href="../social_contracts/platform.md#social_contracts_platform">social_contracts::platform</a>;
+<b>use</b> <a href="../social_contracts/proof_of_creativity.md#social_contracts_poc_vault">social_contracts::poc_vault</a>;
 <b>use</b> <a href="../social_contracts/post.md#social_contracts_post">social_contracts::post</a>;
 <b>use</b> <a href="../social_contracts/profile.md#social_contracts_profile">social_contracts::profile</a>;
 <b>use</b> <a href="../social_contracts/social_graph.md#social_contracts_social_graph">social_contracts::social_graph</a>;
@@ -178,6 +190,66 @@ Sells coverage against losing outcomes and pays out deterministically on SPoT re
 </dd>
 <dt>
 <code>fee_bps: u64</code>
+</dt>
+<dd>
+</dd>
+<dt>
+<code>min_spot_total_liquidity: u64</code>
+</dt>
+<dd>
+</dd>
+<dt>
+<code>max_coverage_fraction_of_option_bps: u64</code>
+</dt>
+<dd>
+</dd>
+<dt>
+<code>max_risk_multiplier_bps: u64</code>
+</dt>
+<dd>
+</dd>
+<dt>
+<code>min_premium_amount: u64</code>
+</dt>
+<dd>
+</dd>
+<dt>
+<code>spot_smoothing_per_option: u64</code>
+</dt>
+<dd>
+</dd>
+<dt>
+<code>implied_prob_floor_bps: u64</code>
+</dt>
+<dd>
+</dd>
+<dt>
+<code>odds_floor_1x: bool</code>
+</dt>
+<dd>
+</dd>
+<dt>
+<code>odds_cap_bps: u64</code>
+</dt>
+<dd>
+</dd>
+<dt>
+<code>liq_cap_bps: u64</code>
+</dt>
+<dd>
+</dd>
+<dt>
+<code>liq_ref_amount: u64</code>
+</dt>
+<dd>
+</dd>
+<dt>
+<code>exposure_cap_bps: u64</code>
+</dt>
+<dd>
+</dd>
+<dt>
+<code>exposure_k_bps: u64</code>
 </dt>
 <dd>
 </dd>
@@ -379,11 +451,158 @@ Sells coverage against losing outcomes and pays out deterministically on SPoT re
 
 </details>
 
+<a name="social_contracts_insurance_PremiumQuote"></a>
+
+## Struct `PremiumQuote`
+
+
+
+<pre><code><b>public</b> <b>struct</b> <a href="../social_contracts/insurance.md#social_contracts_insurance_PremiumQuote">PremiumQuote</a> <b>has</b> <b>copy</b>, drop
+</code></pre>
+
+
+
+<details>
+<summary>Fields</summary>
+
+
+<dl>
+<dt>
+<code>premium: u64</code>
+</dt>
+<dd>
+</dd>
+<dt>
+<code>premium_raw: u64</code>
+</dt>
+<dd>
+</dd>
+<dt>
+<code>implied_prob_win_bps: u64</code>
+</dt>
+<dd>
+</dd>
+<dt>
+<code>risk_multiplier_bps: u64</code>
+</dt>
+<dd>
+</dd>
+<dt>
+<code>market_total_amount: u64</code>
+</dt>
+<dd>
+</dd>
+<dt>
+<code>option_amount: u64</code>
+</dt>
+<dd>
+</dd>
+<dt>
+<code>base_premium: u64</code>
+</dt>
+<dd>
+</dd>
+</dl>
+
+
+</details>
+
+<a name="social_contracts_insurance_RiskPricingConfigUpdatedEvent"></a>
+
+## Struct `RiskPricingConfigUpdatedEvent`
+
+Events
+
+
+<pre><code><b>public</b> <b>struct</b> <a href="../social_contracts/insurance.md#social_contracts_insurance_RiskPricingConfigUpdatedEvent">RiskPricingConfigUpdatedEvent</a> <b>has</b> <b>copy</b>, drop
+</code></pre>
+
+
+
+<details>
+<summary>Fields</summary>
+
+
+<dl>
+<dt>
+<code>updated_by: <b>address</b></code>
+</dt>
+<dd>
+</dd>
+<dt>
+<code>min_spot_total_liquidity: u64</code>
+</dt>
+<dd>
+</dd>
+<dt>
+<code>max_coverage_fraction_of_option_bps: u64</code>
+</dt>
+<dd>
+</dd>
+<dt>
+<code>max_risk_multiplier_bps: u64</code>
+</dt>
+<dd>
+</dd>
+<dt>
+<code>min_premium_amount: u64</code>
+</dt>
+<dd>
+</dd>
+<dt>
+<code>spot_smoothing_per_option: u64</code>
+</dt>
+<dd>
+</dd>
+<dt>
+<code>implied_prob_floor_bps: u64</code>
+</dt>
+<dd>
+</dd>
+<dt>
+<code>odds_floor_1x: bool</code>
+</dt>
+<dd>
+</dd>
+<dt>
+<code>odds_cap_bps: u64</code>
+</dt>
+<dd>
+</dd>
+<dt>
+<code>liq_cap_bps: u64</code>
+</dt>
+<dd>
+</dd>
+<dt>
+<code>liq_ref_amount: u64</code>
+</dt>
+<dd>
+</dd>
+<dt>
+<code>exposure_cap_bps: u64</code>
+</dt>
+<dd>
+</dd>
+<dt>
+<code>exposure_k_bps: u64</code>
+</dt>
+<dd>
+</dd>
+<dt>
+<code>timestamp: u64</code>
+</dt>
+<dd>
+</dd>
+</dl>
+
+
+</details>
+
 <a name="social_contracts_insurance_ConfigInitializedEvent"></a>
 
 ## Struct `ConfigInitializedEvent`
 
-Events
 
 
 <pre><code><b>public</b> <b>struct</b> <a href="../social_contracts/insurance.md#social_contracts_insurance_ConfigInitializedEvent">ConfigInitializedEvent</a> <b>has</b> <b>copy</b>, drop
@@ -571,6 +790,11 @@ Events
 <dd>
 </dd>
 <dt>
+<code>vault_id: <a href="../myso/object.md#myso_object_ID">myso::object::ID</a></code>
+</dt>
+<dd>
+</dd>
+<dt>
 <code>market_id: <b>address</b></code>
 </dt>
 <dd>
@@ -601,12 +825,42 @@ Events
 <dd>
 </dd>
 <dt>
+<code>premium_raw: u64</code>
+</dt>
+<dd>
+</dd>
+<dt>
 <code>reserve_locked: u64</code>
 </dt>
 <dd>
 </dd>
 <dt>
 <code>expiry_time_ms: u64</code>
+</dt>
+<dd>
+</dd>
+<dt>
+<code>implied_probability_bps: u64</code>
+</dt>
+<dd>
+</dd>
+<dt>
+<code>risk_multiplier_bps: u64</code>
+</dt>
+<dd>
+</dd>
+<dt>
+<code>base_premium: u64</code>
+</dt>
+<dd>
+</dd>
+<dt>
+<code>market_total_amount: u64</code>
+</dt>
+<dd>
+</dd>
+<dt>
+<code>option_amount: u64</code>
 </dt>
 <dd>
 </dd>
@@ -958,6 +1212,33 @@ Errors
 
 
 
+<a name="social_contracts_insurance_EThinMarket"></a>
+
+
+
+<pre><code><b>const</b> <a href="../social_contracts/insurance.md#social_contracts_insurance_EThinMarket">EThinMarket</a>: u64 = 18;
+</code></pre>
+
+
+
+<a name="social_contracts_insurance_ECoverageTooLargeVersusPool"></a>
+
+
+
+<pre><code><b>const</b> <a href="../social_contracts/insurance.md#social_contracts_insurance_ECoverageTooLargeVersusPool">ECoverageTooLargeVersusPool</a>: u64 = 19;
+</code></pre>
+
+
+
+<a name="social_contracts_insurance_ERiskMultiplierTooHigh"></a>
+
+
+
+<pre><code><b>const</b> <a href="../social_contracts/insurance.md#social_contracts_insurance_ERiskMultiplierTooHigh">ERiskMultiplierTooHigh</a>: u64 = 20;
+</code></pre>
+
+
+
 <a name="social_contracts_insurance_STATUS_ACTIVE"></a>
 
 Status
@@ -1068,6 +1349,107 @@ Constants
 
 
 
+<a name="social_contracts_insurance_DEFAULT_MIN_SPOT_TOTAL_LIQUIDITY"></a>
+
+Default SPoT risk pricing (baseline pool size ~1000 MYSO at 10^9 scaling).
+
+
+<pre><code><b>const</b> <a href="../social_contracts/insurance.md#social_contracts_insurance_DEFAULT_MIN_SPOT_TOTAL_LIQUIDITY">DEFAULT_MIN_SPOT_TOTAL_LIQUIDITY</a>: u64 = 1;
+</code></pre>
+
+
+
+<a name="social_contracts_insurance_DEFAULT_MAX_COVERAGE_FRACTION_OF_OPTION_BPS"></a>
+
+
+
+<pre><code><b>const</b> <a href="../social_contracts/insurance.md#social_contracts_insurance_DEFAULT_MAX_COVERAGE_FRACTION_OF_OPTION_BPS">DEFAULT_MAX_COVERAGE_FRACTION_OF_OPTION_BPS</a>: u64 = 10000;
+</code></pre>
+
+
+
+<a name="social_contracts_insurance_DEFAULT_MAX_RISK_MULTIPLIER_BPS"></a>
+
+
+
+<pre><code><b>const</b> <a href="../social_contracts/insurance.md#social_contracts_insurance_DEFAULT_MAX_RISK_MULTIPLIER_BPS">DEFAULT_MAX_RISK_MULTIPLIER_BPS</a>: u64 = 500000;
+</code></pre>
+
+
+
+<a name="social_contracts_insurance_DEFAULT_MIN_PREMIUM_AMOUNT"></a>
+
+
+
+<pre><code><b>const</b> <a href="../social_contracts/insurance.md#social_contracts_insurance_DEFAULT_MIN_PREMIUM_AMOUNT">DEFAULT_MIN_PREMIUM_AMOUNT</a>: u64 = 1;
+</code></pre>
+
+
+
+<a name="social_contracts_insurance_DEFAULT_SPOT_SMOOTHING_PER_OPTION"></a>
+
+
+
+<pre><code><b>const</b> <a href="../social_contracts/insurance.md#social_contracts_insurance_DEFAULT_SPOT_SMOOTHING_PER_OPTION">DEFAULT_SPOT_SMOOTHING_PER_OPTION</a>: u64 = 0;
+</code></pre>
+
+
+
+<a name="social_contracts_insurance_DEFAULT_IMPLIED_PROB_FLOOR_BPS"></a>
+
+
+
+<pre><code><b>const</b> <a href="../social_contracts/insurance.md#social_contracts_insurance_DEFAULT_IMPLIED_PROB_FLOOR_BPS">DEFAULT_IMPLIED_PROB_FLOOR_BPS</a>: u64 = 10;
+</code></pre>
+
+
+
+<a name="social_contracts_insurance_DEFAULT_ODDS_CAP_BPS"></a>
+
+
+
+<pre><code><b>const</b> <a href="../social_contracts/insurance.md#social_contracts_insurance_DEFAULT_ODDS_CAP_BPS">DEFAULT_ODDS_CAP_BPS</a>: u64 = 500000;
+</code></pre>
+
+
+
+<a name="social_contracts_insurance_DEFAULT_LIQ_CAP_BPS"></a>
+
+
+
+<pre><code><b>const</b> <a href="../social_contracts/insurance.md#social_contracts_insurance_DEFAULT_LIQ_CAP_BPS">DEFAULT_LIQ_CAP_BPS</a>: u64 = 500000;
+</code></pre>
+
+
+
+<a name="social_contracts_insurance_DEFAULT_LIQ_REF_AMOUNT"></a>
+
+Target pool size such that liquidity multiplier ≈ 1× when <code>total_option_escrow == liq_ref_amount</code>.
+
+
+<pre><code><b>const</b> <a href="../social_contracts/insurance.md#social_contracts_insurance_DEFAULT_LIQ_REF_AMOUNT">DEFAULT_LIQ_REF_AMOUNT</a>: u64 = 1000000000000;
+</code></pre>
+
+
+
+<a name="social_contracts_insurance_DEFAULT_EXPOSURE_CAP_BPS"></a>
+
+
+
+<pre><code><b>const</b> <a href="../social_contracts/insurance.md#social_contracts_insurance_DEFAULT_EXPOSURE_CAP_BPS">DEFAULT_EXPOSURE_CAP_BPS</a>: u64 = 30000;
+</code></pre>
+
+
+
+<a name="social_contracts_insurance_DEFAULT_EXPOSURE_K_BPS"></a>
+
+
+
+<pre><code><b>const</b> <a href="../social_contracts/insurance.md#social_contracts_insurance_DEFAULT_EXPOSURE_K_BPS">DEFAULT_EXPOSURE_K_BPS</a>: u64 = 5000;
+</code></pre>
+
+
+
 <a name="social_contracts_insurance_init_config"></a>
 
 ## Function `init_config`
@@ -1098,6 +1480,7 @@ Creates InsuranceConfig and transfers InsuranceAdminCap to caller.
     <b>assert</b>!(max_duration_ms &gt; 0, <a href="../social_contracts/insurance.md#social_contracts_insurance_EInvalidDuration">EInvalidDuration</a>);
     <b>assert</b>!(fee_bps &lt;= <a href="../social_contracts/insurance.md#social_contracts_insurance_BPS_DENOM">BPS_DENOM</a>, <a href="../social_contracts/insurance.md#social_contracts_insurance_EInvalidCoverage">EInvalidCoverage</a>);
     <b>let</b> admin = tx_context::sender(ctx);
+    <b>let</b> ts = tx_context::epoch_timestamp_ms(ctx);
     transfer::share_object(<a href="../social_contracts/insurance.md#social_contracts_insurance_InsuranceConfig">InsuranceConfig</a> {
         id: object::new(ctx),
         enable_flag: <b>false</b>,
@@ -1105,6 +1488,18 @@ Creates InsuranceConfig and transfers InsuranceAdminCap to caller.
         max_coverage_bps,
         max_duration_ms,
         fee_bps,
+        min_spot_total_liquidity: <a href="../social_contracts/insurance.md#social_contracts_insurance_DEFAULT_MIN_SPOT_TOTAL_LIQUIDITY">DEFAULT_MIN_SPOT_TOTAL_LIQUIDITY</a>,
+        max_coverage_fraction_of_option_bps: <a href="../social_contracts/insurance.md#social_contracts_insurance_DEFAULT_MAX_COVERAGE_FRACTION_OF_OPTION_BPS">DEFAULT_MAX_COVERAGE_FRACTION_OF_OPTION_BPS</a>,
+        max_risk_multiplier_bps: <a href="../social_contracts/insurance.md#social_contracts_insurance_DEFAULT_MAX_RISK_MULTIPLIER_BPS">DEFAULT_MAX_RISK_MULTIPLIER_BPS</a>,
+        min_premium_amount: <a href="../social_contracts/insurance.md#social_contracts_insurance_DEFAULT_MIN_PREMIUM_AMOUNT">DEFAULT_MIN_PREMIUM_AMOUNT</a>,
+        spot_smoothing_per_option: <a href="../social_contracts/insurance.md#social_contracts_insurance_DEFAULT_SPOT_SMOOTHING_PER_OPTION">DEFAULT_SPOT_SMOOTHING_PER_OPTION</a>,
+        implied_prob_floor_bps: <a href="../social_contracts/insurance.md#social_contracts_insurance_DEFAULT_IMPLIED_PROB_FLOOR_BPS">DEFAULT_IMPLIED_PROB_FLOOR_BPS</a>,
+        odds_floor_1x: <b>true</b>,
+        odds_cap_bps: <a href="../social_contracts/insurance.md#social_contracts_insurance_DEFAULT_ODDS_CAP_BPS">DEFAULT_ODDS_CAP_BPS</a>,
+        liq_cap_bps: <a href="../social_contracts/insurance.md#social_contracts_insurance_DEFAULT_LIQ_CAP_BPS">DEFAULT_LIQ_CAP_BPS</a>,
+        liq_ref_amount: <a href="../social_contracts/insurance.md#social_contracts_insurance_DEFAULT_LIQ_REF_AMOUNT">DEFAULT_LIQ_REF_AMOUNT</a>,
+        exposure_cap_bps: <a href="../social_contracts/insurance.md#social_contracts_insurance_DEFAULT_EXPOSURE_CAP_BPS">DEFAULT_EXPOSURE_CAP_BPS</a>,
+        exposure_k_bps: <a href="../social_contracts/insurance.md#social_contracts_insurance_DEFAULT_EXPOSURE_K_BPS">DEFAULT_EXPOSURE_K_BPS</a>,
         version: <a href="../social_contracts/insurance.md#social_contracts_insurance_DEFAULT_VERSION">DEFAULT_VERSION</a>,
     });
     transfer::public_transfer(<a href="../social_contracts/insurance.md#social_contracts_insurance_InsuranceAdminCap">InsuranceAdminCap</a> { id: object::new(ctx) }, admin);
@@ -1114,6 +1509,22 @@ Creates InsuranceConfig and transfers InsuranceAdminCap to caller.
         max_coverage_bps,
         max_duration_ms,
         fee_bps,
+    });
+    event::emit(<a href="../social_contracts/insurance.md#social_contracts_insurance_RiskPricingConfigUpdatedEvent">RiskPricingConfigUpdatedEvent</a> {
+        updated_by: admin,
+        min_spot_total_liquidity: <a href="../social_contracts/insurance.md#social_contracts_insurance_DEFAULT_MIN_SPOT_TOTAL_LIQUIDITY">DEFAULT_MIN_SPOT_TOTAL_LIQUIDITY</a>,
+        max_coverage_fraction_of_option_bps: <a href="../social_contracts/insurance.md#social_contracts_insurance_DEFAULT_MAX_COVERAGE_FRACTION_OF_OPTION_BPS">DEFAULT_MAX_COVERAGE_FRACTION_OF_OPTION_BPS</a>,
+        max_risk_multiplier_bps: <a href="../social_contracts/insurance.md#social_contracts_insurance_DEFAULT_MAX_RISK_MULTIPLIER_BPS">DEFAULT_MAX_RISK_MULTIPLIER_BPS</a>,
+        min_premium_amount: <a href="../social_contracts/insurance.md#social_contracts_insurance_DEFAULT_MIN_PREMIUM_AMOUNT">DEFAULT_MIN_PREMIUM_AMOUNT</a>,
+        spot_smoothing_per_option: <a href="../social_contracts/insurance.md#social_contracts_insurance_DEFAULT_SPOT_SMOOTHING_PER_OPTION">DEFAULT_SPOT_SMOOTHING_PER_OPTION</a>,
+        implied_prob_floor_bps: <a href="../social_contracts/insurance.md#social_contracts_insurance_DEFAULT_IMPLIED_PROB_FLOOR_BPS">DEFAULT_IMPLIED_PROB_FLOOR_BPS</a>,
+        odds_floor_1x: <b>true</b>,
+        odds_cap_bps: <a href="../social_contracts/insurance.md#social_contracts_insurance_DEFAULT_ODDS_CAP_BPS">DEFAULT_ODDS_CAP_BPS</a>,
+        liq_cap_bps: <a href="../social_contracts/insurance.md#social_contracts_insurance_DEFAULT_LIQ_CAP_BPS">DEFAULT_LIQ_CAP_BPS</a>,
+        liq_ref_amount: <a href="../social_contracts/insurance.md#social_contracts_insurance_DEFAULT_LIQ_REF_AMOUNT">DEFAULT_LIQ_REF_AMOUNT</a>,
+        exposure_cap_bps: <a href="../social_contracts/insurance.md#social_contracts_insurance_DEFAULT_EXPOSURE_CAP_BPS">DEFAULT_EXPOSURE_CAP_BPS</a>,
+        exposure_k_bps: <a href="../social_contracts/insurance.md#social_contracts_insurance_DEFAULT_EXPOSURE_K_BPS">DEFAULT_EXPOSURE_K_BPS</a>,
+        timestamp: ts,
     });
 }
 </code></pre>
@@ -1167,6 +1578,89 @@ Update config (admin only)
         max_duration_ms,
         fee_bps,
         timestamp,
+    });
+}
+</code></pre>
+
+
+
+</details>
+
+<a name="social_contracts_insurance_set_risk_pricing_config"></a>
+
+## Function `set_risk_pricing_config`
+
+Update SPoT-linked risk pricing (admin only).
+
+
+<pre><code><b>public</b> <b>entry</b> <b>fun</b> <a href="../social_contracts/insurance.md#social_contracts_insurance_set_risk_pricing_config">set_risk_pricing_config</a>(_: &<a href="../social_contracts/insurance.md#social_contracts_insurance_InsuranceAdminCap">social_contracts::insurance::InsuranceAdminCap</a>, config: &<b>mut</b> <a href="../social_contracts/insurance.md#social_contracts_insurance_InsuranceConfig">social_contracts::insurance::InsuranceConfig</a>, min_spot_total_liquidity: u64, max_coverage_fraction_of_option_bps: u64, max_risk_multiplier_bps: u64, min_premium_amount: u64, spot_smoothing_per_option: u64, implied_prob_floor_bps: u64, odds_floor_1x: bool, odds_cap_bps: u64, liq_cap_bps: u64, liq_ref_amount: u64, exposure_cap_bps: u64, exposure_k_bps: u64, clock: &<a href="../myso/clock.md#myso_clock_Clock">myso::clock::Clock</a>, ctx: &<b>mut</b> <a href="../myso/tx_context.md#myso_tx_context_TxContext">myso::tx_context::TxContext</a>)
+</code></pre>
+
+
+
+<details>
+<summary>Implementation</summary>
+
+
+<pre><code><b>public</b> <b>entry</b> <b>fun</b> <a href="../social_contracts/insurance.md#social_contracts_insurance_set_risk_pricing_config">set_risk_pricing_config</a>(
+    _: &<a href="../social_contracts/insurance.md#social_contracts_insurance_InsuranceAdminCap">InsuranceAdminCap</a>,
+    config: &<b>mut</b> <a href="../social_contracts/insurance.md#social_contracts_insurance_InsuranceConfig">InsuranceConfig</a>,
+    min_spot_total_liquidity: u64,
+    max_coverage_fraction_of_option_bps: u64,
+    max_risk_multiplier_bps: u64,
+    min_premium_amount: u64,
+    spot_smoothing_per_option: u64,
+    implied_prob_floor_bps: u64,
+    odds_floor_1x: bool,
+    odds_cap_bps: u64,
+    liq_cap_bps: u64,
+    liq_ref_amount: u64,
+    exposure_cap_bps: u64,
+    exposure_k_bps: u64,
+    clock: &Clock,
+    ctx: &<b>mut</b> TxContext,
+) {
+    <b>assert</b>!(
+        max_coverage_fraction_of_option_bps &gt; 0 && max_coverage_fraction_of_option_bps &lt;= <a href="../social_contracts/insurance.md#social_contracts_insurance_BPS_DENOM">BPS_DENOM</a>,
+        <a href="../social_contracts/insurance.md#social_contracts_insurance_EInvalidCoverage">EInvalidCoverage</a>
+    );
+    <b>assert</b>!(
+        exposure_cap_bps &gt;= <a href="../social_contracts/insurance.md#social_contracts_insurance_BPS_DENOM">BPS_DENOM</a> && odds_cap_bps &gt;= <a href="../social_contracts/insurance.md#social_contracts_insurance_BPS_DENOM">BPS_DENOM</a> && liq_cap_bps &gt;= <a href="../social_contracts/insurance.md#social_contracts_insurance_BPS_DENOM">BPS_DENOM</a>,
+        <a href="../social_contracts/insurance.md#social_contracts_insurance_EInvalidCoverage">EInvalidCoverage</a>
+    );
+    <b>assert</b>!(
+        implied_prob_floor_bps &gt; 0 && implied_prob_floor_bps &lt;= <a href="../social_contracts/insurance.md#social_contracts_insurance_BPS_DENOM">BPS_DENOM</a>,
+        <a href="../social_contracts/insurance.md#social_contracts_insurance_EInvalidCoverage">EInvalidCoverage</a>
+    );
+    <b>assert</b>!(max_risk_multiplier_bps &gt;= <a href="../social_contracts/insurance.md#social_contracts_insurance_BPS_DENOM">BPS_DENOM</a>, <a href="../social_contracts/insurance.md#social_contracts_insurance_EInvalidCoverage">EInvalidCoverage</a>);
+    <b>assert</b>!(min_premium_amount &gt; 0, <a href="../social_contracts/insurance.md#social_contracts_insurance_EInvalidAmount">EInvalidAmount</a>);
+    config.min_spot_total_liquidity = min_spot_total_liquidity;
+    config.max_coverage_fraction_of_option_bps = max_coverage_fraction_of_option_bps;
+    config.max_risk_multiplier_bps = max_risk_multiplier_bps;
+    config.min_premium_amount = min_premium_amount;
+    config.spot_smoothing_per_option = spot_smoothing_per_option;
+    config.implied_prob_floor_bps = implied_prob_floor_bps;
+    config.odds_floor_1x = odds_floor_1x;
+    config.odds_cap_bps = odds_cap_bps;
+    config.liq_cap_bps = liq_cap_bps;
+    config.liq_ref_amount = liq_ref_amount;
+    config.exposure_cap_bps = exposure_cap_bps;
+    config.exposure_k_bps = exposure_k_bps;
+    event::emit(<a href="../social_contracts/insurance.md#social_contracts_insurance_RiskPricingConfigUpdatedEvent">RiskPricingConfigUpdatedEvent</a> {
+        updated_by: tx_context::sender(ctx),
+        min_spot_total_liquidity,
+        max_coverage_fraction_of_option_bps,
+        max_risk_multiplier_bps,
+        min_premium_amount,
+        spot_smoothing_per_option,
+        implied_prob_floor_bps,
+        odds_floor_1x,
+        odds_cap_bps,
+        liq_cap_bps,
+        liq_ref_amount,
+        exposure_cap_bps,
+        exposure_k_bps,
+        timestamp: clock::timestamp_ms(clock),
     });
 }
 </code></pre>
@@ -1258,6 +1752,7 @@ Emergency enable/disable toggle (admin only)
 
 <pre><code><b>public</b>(package) <b>fun</b> <a href="../social_contracts/insurance.md#social_contracts_insurance_bootstrap_init">bootstrap_init</a>(ctx: &<b>mut</b> TxContext) {
     <b>let</b> admin = tx_context::sender(ctx);
+    <b>let</b> ts = tx_context::epoch_timestamp_ms(ctx);
     <b>let</b> config = <a href="../social_contracts/insurance.md#social_contracts_insurance_InsuranceConfig">InsuranceConfig</a> {
         id: object::new(ctx),
         enable_flag: <b>false</b>,
@@ -1265,9 +1760,20 @@ Emergency enable/disable toggle (admin only)
         max_coverage_bps: <a href="../social_contracts/insurance.md#social_contracts_insurance_DEFAULT_MAX_COVERAGE_BPS">DEFAULT_MAX_COVERAGE_BPS</a>,
         max_duration_ms: <a href="../social_contracts/insurance.md#social_contracts_insurance_DEFAULT_MAX_DURATION_MS">DEFAULT_MAX_DURATION_MS</a>,
         fee_bps: <a href="../social_contracts/insurance.md#social_contracts_insurance_DEFAULT_FEE_BPS">DEFAULT_FEE_BPS</a>,
+        min_spot_total_liquidity: <a href="../social_contracts/insurance.md#social_contracts_insurance_DEFAULT_MIN_SPOT_TOTAL_LIQUIDITY">DEFAULT_MIN_SPOT_TOTAL_LIQUIDITY</a>,
+        max_coverage_fraction_of_option_bps: <a href="../social_contracts/insurance.md#social_contracts_insurance_DEFAULT_MAX_COVERAGE_FRACTION_OF_OPTION_BPS">DEFAULT_MAX_COVERAGE_FRACTION_OF_OPTION_BPS</a>,
+        max_risk_multiplier_bps: <a href="../social_contracts/insurance.md#social_contracts_insurance_DEFAULT_MAX_RISK_MULTIPLIER_BPS">DEFAULT_MAX_RISK_MULTIPLIER_BPS</a>,
+        min_premium_amount: <a href="../social_contracts/insurance.md#social_contracts_insurance_DEFAULT_MIN_PREMIUM_AMOUNT">DEFAULT_MIN_PREMIUM_AMOUNT</a>,
+        spot_smoothing_per_option: <a href="../social_contracts/insurance.md#social_contracts_insurance_DEFAULT_SPOT_SMOOTHING_PER_OPTION">DEFAULT_SPOT_SMOOTHING_PER_OPTION</a>,
+        implied_prob_floor_bps: <a href="../social_contracts/insurance.md#social_contracts_insurance_DEFAULT_IMPLIED_PROB_FLOOR_BPS">DEFAULT_IMPLIED_PROB_FLOOR_BPS</a>,
+        odds_floor_1x: <b>true</b>,
+        odds_cap_bps: <a href="../social_contracts/insurance.md#social_contracts_insurance_DEFAULT_ODDS_CAP_BPS">DEFAULT_ODDS_CAP_BPS</a>,
+        liq_cap_bps: <a href="../social_contracts/insurance.md#social_contracts_insurance_DEFAULT_LIQ_CAP_BPS">DEFAULT_LIQ_CAP_BPS</a>,
+        liq_ref_amount: <a href="../social_contracts/insurance.md#social_contracts_insurance_DEFAULT_LIQ_REF_AMOUNT">DEFAULT_LIQ_REF_AMOUNT</a>,
+        exposure_cap_bps: <a href="../social_contracts/insurance.md#social_contracts_insurance_DEFAULT_EXPOSURE_CAP_BPS">DEFAULT_EXPOSURE_CAP_BPS</a>,
+        exposure_k_bps: <a href="../social_contracts/insurance.md#social_contracts_insurance_DEFAULT_EXPOSURE_K_BPS">DEFAULT_EXPOSURE_K_BPS</a>,
         version: <a href="../social_contracts/insurance.md#social_contracts_insurance_DEFAULT_VERSION">DEFAULT_VERSION</a>,
     };
-    // Emit event so indexer can populate insurance_config table
     event::emit(<a href="../social_contracts/insurance.md#social_contracts_insurance_ConfigUpdatedEvent">ConfigUpdatedEvent</a> {
         updated_by: admin,
         enable_flag: <b>false</b>,
@@ -1275,10 +1781,24 @@ Emergency enable/disable toggle (admin only)
         max_coverage_bps: <a href="../social_contracts/insurance.md#social_contracts_insurance_DEFAULT_MAX_COVERAGE_BPS">DEFAULT_MAX_COVERAGE_BPS</a>,
         max_duration_ms: <a href="../social_contracts/insurance.md#social_contracts_insurance_DEFAULT_MAX_DURATION_MS">DEFAULT_MAX_DURATION_MS</a>,
         fee_bps: <a href="../social_contracts/insurance.md#social_contracts_insurance_DEFAULT_FEE_BPS">DEFAULT_FEE_BPS</a>,
-        timestamp: tx_context::epoch_timestamp_ms(ctx),
+        timestamp: ts,
     });
-    // Create and share the <a href="../social_contracts/insurance.md#social_contracts_insurance_InsuranceConfig">InsuranceConfig</a> object with default values
-    // Admin cap will be transferred separately in <a href="../social_contracts/bootstrap.md#social_contracts_bootstrap">bootstrap</a>.<b>move</b>
+    event::emit(<a href="../social_contracts/insurance.md#social_contracts_insurance_RiskPricingConfigUpdatedEvent">RiskPricingConfigUpdatedEvent</a> {
+        updated_by: admin,
+        min_spot_total_liquidity: <a href="../social_contracts/insurance.md#social_contracts_insurance_DEFAULT_MIN_SPOT_TOTAL_LIQUIDITY">DEFAULT_MIN_SPOT_TOTAL_LIQUIDITY</a>,
+        max_coverage_fraction_of_option_bps: <a href="../social_contracts/insurance.md#social_contracts_insurance_DEFAULT_MAX_COVERAGE_FRACTION_OF_OPTION_BPS">DEFAULT_MAX_COVERAGE_FRACTION_OF_OPTION_BPS</a>,
+        max_risk_multiplier_bps: <a href="../social_contracts/insurance.md#social_contracts_insurance_DEFAULT_MAX_RISK_MULTIPLIER_BPS">DEFAULT_MAX_RISK_MULTIPLIER_BPS</a>,
+        min_premium_amount: <a href="../social_contracts/insurance.md#social_contracts_insurance_DEFAULT_MIN_PREMIUM_AMOUNT">DEFAULT_MIN_PREMIUM_AMOUNT</a>,
+        spot_smoothing_per_option: <a href="../social_contracts/insurance.md#social_contracts_insurance_DEFAULT_SPOT_SMOOTHING_PER_OPTION">DEFAULT_SPOT_SMOOTHING_PER_OPTION</a>,
+        implied_prob_floor_bps: <a href="../social_contracts/insurance.md#social_contracts_insurance_DEFAULT_IMPLIED_PROB_FLOOR_BPS">DEFAULT_IMPLIED_PROB_FLOOR_BPS</a>,
+        odds_floor_1x: <b>true</b>,
+        odds_cap_bps: <a href="../social_contracts/insurance.md#social_contracts_insurance_DEFAULT_ODDS_CAP_BPS">DEFAULT_ODDS_CAP_BPS</a>,
+        liq_cap_bps: <a href="../social_contracts/insurance.md#social_contracts_insurance_DEFAULT_LIQ_CAP_BPS">DEFAULT_LIQ_CAP_BPS</a>,
+        liq_ref_amount: <a href="../social_contracts/insurance.md#social_contracts_insurance_DEFAULT_LIQ_REF_AMOUNT">DEFAULT_LIQ_REF_AMOUNT</a>,
+        exposure_cap_bps: <a href="../social_contracts/insurance.md#social_contracts_insurance_DEFAULT_EXPOSURE_CAP_BPS">DEFAULT_EXPOSURE_CAP_BPS</a>,
+        exposure_k_bps: <a href="../social_contracts/insurance.md#social_contracts_insurance_DEFAULT_EXPOSURE_K_BPS">DEFAULT_EXPOSURE_K_BPS</a>,
+        timestamp: ts,
+    });
     transfer::share_object(config);
 }
 </code></pre>
@@ -1423,14 +1943,13 @@ Withdraw unreserved capital (underwriter only)
 
 </details>
 
-<a name="social_contracts_insurance_quote_premium"></a>
+<a name="social_contracts_insurance_premium_quote_premium"></a>
 
-## Function `quote_premium`
-
-Quote premium based on vault utilization
+## Function `premium_quote_premium`
 
 
-<pre><code><b>public</b> <b>fun</b> <a href="../social_contracts/insurance.md#social_contracts_insurance_quote_premium">quote_premium</a>(vault: &<a href="../social_contracts/insurance.md#social_contracts_insurance_UnderwriterVault">social_contracts::insurance::UnderwriterVault</a>, covered_amount: u64, coverage_bps: u64, duration_ms: u64): u64
+
+<pre><code><b>public</b> <b>fun</b> <a href="../social_contracts/insurance.md#social_contracts_insurance_premium_quote_premium">premium_quote_premium</a>(q: &<a href="../social_contracts/insurance.md#social_contracts_insurance_PremiumQuote">social_contracts::insurance::PremiumQuote</a>): u64
 </code></pre>
 
 
@@ -1439,7 +1958,103 @@ Quote premium based on vault utilization
 <summary>Implementation</summary>
 
 
-<pre><code><b>public</b> <b>fun</b> <a href="../social_contracts/insurance.md#social_contracts_insurance_quote_premium">quote_premium</a>(
+<pre><code><b>public</b> <b>fun</b> <a href="../social_contracts/insurance.md#social_contracts_insurance_premium_quote_premium">premium_quote_premium</a>(q: &<a href="../social_contracts/insurance.md#social_contracts_insurance_PremiumQuote">PremiumQuote</a>): u64 {
+    q.premium
+}
+</code></pre>
+
+
+
+</details>
+
+<a name="social_contracts_insurance_premium_quote_implied_prob_win_bps"></a>
+
+## Function `premium_quote_implied_prob_win_bps`
+
+
+
+<pre><code><b>public</b> <b>fun</b> <a href="../social_contracts/insurance.md#social_contracts_insurance_premium_quote_implied_prob_win_bps">premium_quote_implied_prob_win_bps</a>(q: &<a href="../social_contracts/insurance.md#social_contracts_insurance_PremiumQuote">social_contracts::insurance::PremiumQuote</a>): u64
+</code></pre>
+
+
+
+<details>
+<summary>Implementation</summary>
+
+
+<pre><code><b>public</b> <b>fun</b> <a href="../social_contracts/insurance.md#social_contracts_insurance_premium_quote_implied_prob_win_bps">premium_quote_implied_prob_win_bps</a>(q: &<a href="../social_contracts/insurance.md#social_contracts_insurance_PremiumQuote">PremiumQuote</a>): u64 {
+    q.implied_prob_win_bps
+}
+</code></pre>
+
+
+
+</details>
+
+<a name="social_contracts_insurance_premium_quote_risk_multiplier_bps"></a>
+
+## Function `premium_quote_risk_multiplier_bps`
+
+
+
+<pre><code><b>public</b> <b>fun</b> <a href="../social_contracts/insurance.md#social_contracts_insurance_premium_quote_risk_multiplier_bps">premium_quote_risk_multiplier_bps</a>(q: &<a href="../social_contracts/insurance.md#social_contracts_insurance_PremiumQuote">social_contracts::insurance::PremiumQuote</a>): u64
+</code></pre>
+
+
+
+<details>
+<summary>Implementation</summary>
+
+
+<pre><code><b>public</b> <b>fun</b> <a href="../social_contracts/insurance.md#social_contracts_insurance_premium_quote_risk_multiplier_bps">premium_quote_risk_multiplier_bps</a>(q: &<a href="../social_contracts/insurance.md#social_contracts_insurance_PremiumQuote">PremiumQuote</a>): u64 {
+    q.risk_multiplier_bps
+}
+</code></pre>
+
+
+
+</details>
+
+<a name="social_contracts_insurance_premium_quote_premium_raw"></a>
+
+## Function `premium_quote_premium_raw`
+
+
+
+<pre><code><b>public</b> <b>fun</b> <a href="../social_contracts/insurance.md#social_contracts_insurance_premium_quote_premium_raw">premium_quote_premium_raw</a>(q: &<a href="../social_contracts/insurance.md#social_contracts_insurance_PremiumQuote">social_contracts::insurance::PremiumQuote</a>): u64
+</code></pre>
+
+
+
+<details>
+<summary>Implementation</summary>
+
+
+<pre><code><b>public</b> <b>fun</b> <a href="../social_contracts/insurance.md#social_contracts_insurance_premium_quote_premium_raw">premium_quote_premium_raw</a>(q: &<a href="../social_contracts/insurance.md#social_contracts_insurance_PremiumQuote">PremiumQuote</a>): u64 {
+    q.premium_raw
+}
+</code></pre>
+
+
+
+</details>
+
+<a name="social_contracts_insurance_quote_base_premium"></a>
+
+## Function `quote_base_premium`
+
+
+
+<pre><code><b>fun</b> <a href="../social_contracts/insurance.md#social_contracts_insurance_quote_base_premium">quote_base_premium</a>(vault: &<a href="../social_contracts/insurance.md#social_contracts_insurance_UnderwriterVault">social_contracts::insurance::UnderwriterVault</a>, covered_amount: u64, coverage_bps: u64, duration_ms: u64): u64
+</code></pre>
+
+
+
+<details>
+<summary>Implementation</summary>
+
+
+<pre><code><b>fun</b> <a href="../social_contracts/insurance.md#social_contracts_insurance_quote_base_premium">quote_base_premium</a>(
     vault: &<a href="../social_contracts/insurance.md#social_contracts_insurance_UnderwriterVault">UnderwriterVault</a>,
     covered_amount: u64,
     coverage_bps: u64,
@@ -1463,6 +2078,230 @@ Quote premium based on vault utilization
     <b>let</b> premium_u128 = numerator / denominator;
     <b>assert</b>!(premium_u128 &lt;= (<a href="../social_contracts/insurance.md#social_contracts_insurance_MAX_U64">MAX_U64</a> <b>as</b> u128), <a href="../social_contracts/insurance.md#social_contracts_insurance_EOverflow">EOverflow</a>);
     premium_u128 <b>as</b> u64
+}
+</code></pre>
+
+
+
+</details>
+
+<a name="social_contracts_insurance_quote_premium"></a>
+
+## Function `quote_premium`
+
+Utilization curve only (<code><a href="../social_contracts/insurance.md#social_contracts_insurance_quote_base_premium">quote_base_premium</a></code>).
+
+
+<pre><code><b>public</b> <b>fun</b> <a href="../social_contracts/insurance.md#social_contracts_insurance_quote_premium">quote_premium</a>(vault: &<a href="../social_contracts/insurance.md#social_contracts_insurance_UnderwriterVault">social_contracts::insurance::UnderwriterVault</a>, covered_amount: u64, coverage_bps: u64, duration_ms: u64): u64
+</code></pre>
+
+
+
+<details>
+<summary>Implementation</summary>
+
+
+<pre><code><b>public</b> <b>fun</b> <a href="../social_contracts/insurance.md#social_contracts_insurance_quote_premium">quote_premium</a>(
+    vault: &<a href="../social_contracts/insurance.md#social_contracts_insurance_UnderwriterVault">UnderwriterVault</a>,
+    covered_amount: u64,
+    coverage_bps: u64,
+    duration_ms: u64
+): u64 {
+    <a href="../social_contracts/insurance.md#social_contracts_insurance_quote_base_premium">quote_base_premium</a>(vault, covered_amount, coverage_bps, duration_ms)
+}
+</code></pre>
+
+
+
+</details>
+
+<a name="social_contracts_insurance_get_market_option_reserved"></a>
+
+## Function `get_market_option_reserved`
+
+
+
+<pre><code><b>fun</b> <a href="../social_contracts/insurance.md#social_contracts_insurance_get_market_option_reserved">get_market_option_reserved</a>(vault: &<a href="../social_contracts/insurance.md#social_contracts_insurance_UnderwriterVault">social_contracts::insurance::UnderwriterVault</a>, market_id: <b>address</b>, option_id: u8): u64
+</code></pre>
+
+
+
+<details>
+<summary>Implementation</summary>
+
+
+<pre><code><b>fun</b> <a href="../social_contracts/insurance.md#social_contracts_insurance_get_market_option_reserved">get_market_option_reserved</a>(vault: &<a href="../social_contracts/insurance.md#social_contracts_insurance_UnderwriterVault">UnderwriterVault</a>, market_id: <b>address</b>, option_id: u8): u64 {
+    <b>if</b> (!table::contains(&vault.market_exposures, market_id)) {
+        0
+    } <b>else</b> {
+        <b>let</b> exposure = table::borrow(&vault.market_exposures, market_id);
+        <a href="../social_contracts/insurance.md#social_contracts_insurance_get_option_reserved">get_option_reserved</a>(exposure, option_id)
+    }
+}
+</code></pre>
+
+
+
+</details>
+
+<a name="social_contracts_insurance_compute_spot_risk_quote"></a>
+
+## Function `compute_spot_risk_quote`
+
+
+
+<pre><code><b>fun</b> <a href="../social_contracts/insurance.md#social_contracts_insurance_compute_spot_risk_quote">compute_spot_risk_quote</a>(config: &<a href="../social_contracts/insurance.md#social_contracts_insurance_InsuranceConfig">social_contracts::insurance::InsuranceConfig</a>, vault: &<a href="../social_contracts/insurance.md#social_contracts_insurance_UnderwriterVault">social_contracts::insurance::UnderwriterVault</a>, record: &<a href="../social_contracts/social_proof_of_truth.md#social_contracts_social_proof_of_truth_SpotRecord">social_contracts::social_proof_of_truth::SpotRecord</a>, vault_market_id: <b>address</b>, option_id: u8, covered_amount: u64, coverage_bps: u64, duration_ms: u64): <a href="../social_contracts/insurance.md#social_contracts_insurance_PremiumQuote">social_contracts::insurance::PremiumQuote</a>
+</code></pre>
+
+
+
+<details>
+<summary>Implementation</summary>
+
+
+<pre><code><b>fun</b> <a href="../social_contracts/insurance.md#social_contracts_insurance_compute_spot_risk_quote">compute_spot_risk_quote</a>(
+    config: &<a href="../social_contracts/insurance.md#social_contracts_insurance_InsuranceConfig">InsuranceConfig</a>,
+    vault: &<a href="../social_contracts/insurance.md#social_contracts_insurance_UnderwriterVault">UnderwriterVault</a>,
+    record: &spot::SpotRecord,
+    vault_market_id: <b>address</b>,
+    option_id: u8,
+    covered_amount: u64,
+    coverage_bps: u64,
+    duration_ms: u64,
+): <a href="../social_contracts/insurance.md#social_contracts_insurance_PremiumQuote">PremiumQuote</a> {
+    spot::assert_valid_option_id(record, option_id);
+    <b>let</b> t_total = spot::total_option_escrow(record);
+    <b>assert</b>!(t_total &gt;= config.min_spot_total_liquidity, <a href="../social_contracts/insurance.md#social_contracts_insurance_EThinMarket">EThinMarket</a>);
+    <b>let</b> a_opt = spot::get_option_escrow(record, option_id);
+    <b>let</b> denom_cov = <b>if</b> (a_opt &gt;= 1) {
+        a_opt
+    } <b>else</b> {
+        1
+    };
+    <b>assert</b>!(
+        (covered_amount <b>as</b> u128) * (<a href="../social_contracts/insurance.md#social_contracts_insurance_BPS_DENOM">BPS_DENOM</a> <b>as</b> u128)
+            &lt;= (config.max_coverage_fraction_of_option_bps <b>as</b> u128) * (denom_cov <b>as</b> u128),
+        <a href="../social_contracts/insurance.md#social_contracts_insurance_ECoverageTooLargeVersusPool">ECoverageTooLargeVersusPool</a>
+    );
+    <b>let</b> n_opts = spot::num_betting_options(record);
+    <b>let</b> w = config.spot_smoothing_per_option;
+    <b>let</b> nw_u128 = (n_opts <b>as</b> u128) * (w <b>as</b> u128);
+    <b>assert</b>!(nw_u128 &lt;= (<a href="../social_contracts/insurance.md#social_contracts_insurance_MAX_U64">MAX_U64</a> <b>as</b> u128), <a href="../social_contracts/insurance.md#social_contracts_insurance_EOverflow">EOverflow</a>);
+    <b>let</b> smoothed_t = (t_total <b>as</b> u128) + nw_u128;
+    <b>assert</b>!(smoothed_t &gt; 0 && smoothed_t &lt;= (<a href="../social_contracts/insurance.md#social_contracts_insurance_MAX_U64">MAX_U64</a> <b>as</b> u128) * 2, <a href="../social_contracts/insurance.md#social_contracts_insurance_EOverflow">EOverflow</a>);
+    <b>let</b> smoothed_a = (a_opt <b>as</b> u128) + (w <b>as</b> u128);
+    <b>let</b> p_win_u128 = (smoothed_a * (<a href="../social_contracts/insurance.md#social_contracts_insurance_BPS_DENOM">BPS_DENOM</a> <b>as</b> u128)) / smoothed_t;
+    <b>assert</b>!(p_win_u128 &lt;= (<a href="../social_contracts/insurance.md#social_contracts_insurance_MAX_U64">MAX_U64</a> <b>as</b> u128), <a href="../social_contracts/insurance.md#social_contracts_insurance_EOverflow">EOverflow</a>);
+    <b>let</b> p_win_bps = p_win_u128 <b>as</b> u64;
+    <b>let</b> reserved_opt = <a href="../social_contracts/insurance.md#social_contracts_insurance_get_market_option_reserved">get_market_option_reserved</a>(vault, vault_market_id, option_id);
+    <b>let</b> p_floor = config.implied_prob_floor_bps;
+    <b>let</b> denom_p = <b>if</b> (p_win_bps &gt; p_floor) { p_win_bps } <b>else</b> { p_floor };
+    <b>let</b> odds_core_u128 = (5000u128) * (<a href="../social_contracts/insurance.md#social_contracts_insurance_BPS_DENOM">BPS_DENOM</a> <b>as</b> u128) / (denom_p <b>as</b> u128);
+    <b>assert</b>!(odds_core_u128 &lt;= (<a href="../social_contracts/insurance.md#social_contracts_insurance_MAX_U64">MAX_U64</a> <b>as</b> u128), <a href="../social_contracts/insurance.md#social_contracts_insurance_EOverflow">EOverflow</a>);
+    <b>let</b> odds_core = odds_core_u128 <b>as</b> u64;
+    <b>let</b> <b>mut</b> odds_mult_bps = <b>if</b> (config.odds_cap_bps &lt; odds_core) {
+        config.odds_cap_bps
+    } <b>else</b> {
+        odds_core
+    };
+    <b>if</b> (config.odds_floor_1x && odds_mult_bps &lt; <a href="../social_contracts/insurance.md#social_contracts_insurance_BPS_DENOM">BPS_DENOM</a>) {
+        odds_mult_bps = <a href="../social_contracts/insurance.md#social_contracts_insurance_BPS_DENOM">BPS_DENOM</a>;
+    };
+    <b>let</b> t_for_liq = <b>if</b> (t_total &gt;= 1) {
+        t_total
+    } <b>else</b> {
+        1
+    };
+    <b>let</b> liq_uncapped_u128 = (config.liq_ref_amount <b>as</b> u128)
+        * (<a href="../social_contracts/insurance.md#social_contracts_insurance_BPS_DENOM">BPS_DENOM</a> <b>as</b> u128) / (t_for_liq <b>as</b> u128);
+    <b>assert</b>!(liq_uncapped_u128 &lt;= (<a href="../social_contracts/insurance.md#social_contracts_insurance_MAX_U64">MAX_U64</a> <b>as</b> u128), <a href="../social_contracts/insurance.md#social_contracts_insurance_EOverflow">EOverflow</a>);
+    <b>let</b> liq_uncapped = liq_uncapped_u128 <b>as</b> u64;
+    <b>let</b> liq_mult_bps = <b>if</b> (config.liq_cap_bps &lt; liq_uncapped) {
+        config.liq_cap_bps
+    } <b>else</b> {
+        liq_uncapped
+    };
+    <b>let</b> extra_num_u128 = (config.exposure_k_bps <b>as</b> u128) * (reserved_opt <b>as</b> u128) / (denom_cov <b>as</b> u128);
+    <b>assert</b>!(extra_num_u128 &lt;= (<a href="../social_contracts/insurance.md#social_contracts_insurance_MAX_U64">MAX_U64</a> <b>as</b> u128), <a href="../social_contracts/insurance.md#social_contracts_insurance_EOverflow">EOverflow</a>);
+    <b>let</b> extra_term = extra_num_u128 <b>as</b> u64;
+    <b>let</b> max_extra_bps = config.exposure_cap_bps - <a href="../social_contracts/insurance.md#social_contracts_insurance_BPS_DENOM">BPS_DENOM</a>;
+    <b>let</b> extra_bounded = <b>if</b> (extra_term &gt; max_extra_bps) {
+        max_extra_bps
+    } <b>else</b> {
+        extra_term
+    };
+    <b>assert</b>!(extra_bounded &lt;= <a href="../social_contracts/insurance.md#social_contracts_insurance_MAX_U64">MAX_U64</a> - <a href="../social_contracts/insurance.md#social_contracts_insurance_BPS_DENOM">BPS_DENOM</a>, <a href="../social_contracts/insurance.md#social_contracts_insurance_EOverflow">EOverflow</a>);
+    <b>let</b> exposure_mult_bps = <a href="../social_contracts/insurance.md#social_contracts_insurance_BPS_DENOM">BPS_DENOM</a> + extra_bounded;
+    <b>let</b> risk_u128 =
+        ((odds_mult_bps <b>as</b> u128) * (liq_mult_bps <b>as</b> u128) * (exposure_mult_bps <b>as</b> u128))
+            / (<a href="../social_contracts/insurance.md#social_contracts_insurance_BPS_DENOM">BPS_DENOM</a> <b>as</b> u128) / (<a href="../social_contracts/insurance.md#social_contracts_insurance_BPS_DENOM">BPS_DENOM</a> <b>as</b> u128);
+    <b>assert</b>!(risk_u128 &lt;= (<a href="../social_contracts/insurance.md#social_contracts_insurance_MAX_U64">MAX_U64</a> <b>as</b> u128), <a href="../social_contracts/insurance.md#social_contracts_insurance_EOverflow">EOverflow</a>);
+    <b>let</b> risk_multiplier_bps = risk_u128 <b>as</b> u64;
+    <b>assert</b>!(risk_multiplier_bps &lt;= config.max_risk_multiplier_bps, <a href="../social_contracts/insurance.md#social_contracts_insurance_ERiskMultiplierTooHigh">ERiskMultiplierTooHigh</a>);
+    <b>let</b> base_premium =
+        <a href="../social_contracts/insurance.md#social_contracts_insurance_quote_base_premium">quote_base_premium</a>(vault, covered_amount, coverage_bps, duration_ms);
+    <b>let</b> premium_raw_u128 = ((base_premium <b>as</b> u128) * (risk_multiplier_bps <b>as</b> u128))
+        / (<a href="../social_contracts/insurance.md#social_contracts_insurance_BPS_DENOM">BPS_DENOM</a> <b>as</b> u128);
+    <b>assert</b>!(premium_raw_u128 &lt;= (<a href="../social_contracts/insurance.md#social_contracts_insurance_MAX_U64">MAX_U64</a> <b>as</b> u128), <a href="../social_contracts/insurance.md#social_contracts_insurance_EOverflow">EOverflow</a>);
+    <b>let</b> premium_raw = premium_raw_u128 <b>as</b> u64;
+    <b>let</b> premium = <b>if</b> (premium_raw &gt;= config.min_premium_amount) {
+        premium_raw
+    } <b>else</b> {
+        config.min_premium_amount
+    };
+    <b>assert</b>!(premium &gt; 0, <a href="../social_contracts/insurance.md#social_contracts_insurance_EInsufficientPremium">EInsufficientPremium</a>);
+    <a href="../social_contracts/insurance.md#social_contracts_insurance_PremiumQuote">PremiumQuote</a> {
+        premium,
+        premium_raw,
+        implied_prob_win_bps: p_win_bps,
+        risk_multiplier_bps,
+        market_total_amount: t_total,
+        option_amount: a_opt,
+        base_premium,
+    }
+}
+</code></pre>
+
+
+
+</details>
+
+<a name="social_contracts_insurance_quote_premium_with_spot_risk"></a>
+
+## Function `quote_premium_with_spot_risk`
+
+Preview premium with SPoT pool odds, liquidity, and vault concentration on this option (<code>reserved</code> excludes a not-yet-open policy).
+
+
+<pre><code><b>public</b> <b>fun</b> <a href="../social_contracts/insurance.md#social_contracts_insurance_quote_premium_with_spot_risk">quote_premium_with_spot_risk</a>(config: &<a href="../social_contracts/insurance.md#social_contracts_insurance_InsuranceConfig">social_contracts::insurance::InsuranceConfig</a>, vault: &<a href="../social_contracts/insurance.md#social_contracts_insurance_UnderwriterVault">social_contracts::insurance::UnderwriterVault</a>, record: &<a href="../social_contracts/social_proof_of_truth.md#social_contracts_social_proof_of_truth_SpotRecord">social_contracts::social_proof_of_truth::SpotRecord</a>, option_id: u8, covered_amount: u64, coverage_bps: u64, duration_ms: u64): <a href="../social_contracts/insurance.md#social_contracts_insurance_PremiumQuote">social_contracts::insurance::PremiumQuote</a>
+</code></pre>
+
+
+
+<details>
+<summary>Implementation</summary>
+
+
+<pre><code><b>public</b> <b>fun</b> <a href="../social_contracts/insurance.md#social_contracts_insurance_quote_premium_with_spot_risk">quote_premium_with_spot_risk</a>(
+    config: &<a href="../social_contracts/insurance.md#social_contracts_insurance_InsuranceConfig">InsuranceConfig</a>,
+    vault: &<a href="../social_contracts/insurance.md#social_contracts_insurance_UnderwriterVault">UnderwriterVault</a>,
+    record: &spot::SpotRecord,
+    option_id: u8,
+    covered_amount: u64,
+    coverage_bps: u64,
+    duration_ms: u64,
+): <a href="../social_contracts/insurance.md#social_contracts_insurance_PremiumQuote">PremiumQuote</a> {
+    <b>let</b> market_id = spot::get_id_address(record);
+    <a href="../social_contracts/insurance.md#social_contracts_insurance_compute_spot_risk_quote">compute_spot_risk_quote</a>(
+        config,
+        vault,
+        record,
+        market_id,
+        option_id,
+        covered_amount,
+        coverage_bps,
+        duration_ms,
+    )
 }
 </code></pre>
 
@@ -1521,9 +2360,18 @@ Buy coverage for a SPoT position
     <b>let</b> free_capital = capital_value - vault.reserved;
     <b>assert</b>!(free_capital &gt;= reserve_amount, <a href="../social_contracts/insurance.md#social_contracts_insurance_EInsufficientCapital">EInsufficientCapital</a>);
     <b>assert</b>!(vault.reserved &lt;= <a href="../social_contracts/insurance.md#social_contracts_insurance_MAX_U64">MAX_U64</a> - reserve_amount, <a href="../social_contracts/insurance.md#social_contracts_insurance_EOverflow">EOverflow</a>);
+    <b>let</b> pq = <a href="../social_contracts/insurance.md#social_contracts_insurance_compute_spot_risk_quote">compute_spot_risk_quote</a>(
+        config,
+        vault,
+        record,
+        market_id,
+        option_id,
+        covered_amount,
+        coverage_bps,
+        duration_ms,
+    );
+    <b>let</b> premium = pq.premium;
     <a href="../social_contracts/insurance.md#social_contracts_insurance_enforce_exposure_limits">enforce_exposure_limits</a>(vault, market_id, insured, option_id, reserve_amount, ctx);
-    <b>let</b> premium = <a href="../social_contracts/insurance.md#social_contracts_insurance_quote_premium">quote_premium</a>(vault, covered_amount, coverage_bps, duration_ms);
-    <b>assert</b>!(premium &gt; 0, <a href="../social_contracts/insurance.md#social_contracts_insurance_EInsufficientPremium">EInsufficientPremium</a>);
     <b>assert</b>!(coin::value(&payment) &gt;= premium, <a href="../social_contracts/insurance.md#social_contracts_insurance_EInsufficientPremium">EInsufficientPremium</a>);
     <b>let</b> premium_coin = coin::split(&<b>mut</b> payment, premium, ctx);
     balance::join(&<b>mut</b> vault.capital, coin::into_balance(premium_coin));
@@ -1537,6 +2385,7 @@ Buy coverage for a SPoT position
     <b>let</b> now = clock::timestamp_ms(clock);
     <b>assert</b>!(now &lt;= <a href="../social_contracts/insurance.md#social_contracts_insurance_MAX_U64">MAX_U64</a> - duration_ms, <a href="../social_contracts/insurance.md#social_contracts_insurance_EOverflow">EOverflow</a>);
     <b>let</b> expiry_time_ms = now + duration_ms;
+    <b>let</b> vault_id_ins = object::id(vault);
     <b>let</b> policy = <a href="../social_contracts/insurance.md#social_contracts_insurance_CoveragePolicy">CoveragePolicy</a> {
         id: object::new(ctx),
         market_id,
@@ -1547,21 +2396,28 @@ Buy coverage for a SPoT position
         premium_paid: premium,
         start_time_ms: now,
         expiry_time_ms,
-        vault_id: object::id(vault),
+        vault_id: vault_id_ins,
         status: <a href="../social_contracts/insurance.md#social_contracts_insurance_STATUS_ACTIVE">STATUS_ACTIVE</a>,
     };
     <b>let</b> policy_id = object::id(&policy);
     transfer::share_object(policy);
     event::emit(<a href="../social_contracts/insurance.md#social_contracts_insurance_CoveragePurchasedEvent">CoveragePurchasedEvent</a> {
         policy_id,
+        vault_id: vault_id_ins,
         market_id,
         insured,
         option_id,
         covered_amount,
         coverage_bps,
         premium_paid: premium,
+        premium_raw: pq.premium_raw,
         reserve_locked: reserve_amount,
         expiry_time_ms,
+        implied_probability_bps: pq.implied_prob_win_bps,
+        risk_multiplier_bps: pq.risk_multiplier_bps,
+        base_premium: pq.base_premium,
+        market_total_amount: pq.market_total_amount,
+        option_amount: pq.option_amount,
     });
 }
 </code></pre>

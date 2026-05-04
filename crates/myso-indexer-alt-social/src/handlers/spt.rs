@@ -830,12 +830,27 @@ fn process_poc_redirection_updated_event(
         .and_then(|v| v.as_str())
         .map(String::from)
         .unwrap_or_default();
-    let revenue_redirect_percentage = json_to_i64(data.get("redirect_percentage")?);
+    let revenue_redirect_percentage = data
+        .get("redirect_percentage")
+        .map(json_to_i64)
+        .unwrap_or(0);
+    let poc_redirection_kind = data
+        .get("poc_redirection_kind")
+        .and_then(|v| v.as_u64())
+        .map(|k| k as i16)
+        .unwrap_or_else(|| {
+            if !revenue_redirect_to.is_empty() && revenue_redirect_percentage > 0 {
+                1
+            } else {
+                0
+            }
+        });
 
     Some(vec![SocialEventRow::PostRevenueRedirectUpdate {
         post_id,
         revenue_redirect_to,
         revenue_redirect_percentage,
+        poc_redirection_kind,
     }])
 }
 
@@ -1018,6 +1033,7 @@ mod tests {
 
     #[test]
     fn token_pool_created_sets_supply_price_profile_and_launch_holdings_marker() {
+        // circulating_supply = nano-SPT; total_reserved_at_launch = nano-MYSO (need not equal; on-chain supply scales by base_price).
         let data = json!({
             "id": "0xpool1",
             "token_type": 1u64,

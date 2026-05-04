@@ -17,4 +17,4 @@ orderbook = "0x0b0c"
 social_contracts = "0x50c1"
 
 [environments]
-localnet = "0b36660c"
+localnet = "d570d894"

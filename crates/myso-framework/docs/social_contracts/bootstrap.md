@@ -58,6 +58,7 @@ Uses the framework's centralized BootstrapKey for one-time initialization.
 <b>use</b> <a href="../social_contracts/message.md#social_contracts_message">social_contracts::message</a>;
 <b>use</b> <a href="../social_contracts/mydata.md#social_contracts_mydata">social_contracts::mydata</a>;
 <b>use</b> <a href="../social_contracts/platform.md#social_contracts_platform">social_contracts::platform</a>;
+<b>use</b> <a href="../social_contracts/proof_of_creativity.md#social_contracts_poc_vault">social_contracts::poc_vault</a>;
 <b>use</b> <a href="../social_contracts/post.md#social_contracts_post">social_contracts::post</a>;
 <b>use</b> <a href="../social_contracts/profile.md#social_contracts_profile">social_contracts::profile</a>;
 <b>use</b> <a href="../social_contracts/proof_of_creativity.md#social_contracts_proof_of_creativity">social_contracts::proof_of_creativity</a>;
@@ -117,7 +118,7 @@ Creates and transfers all admin capabilities to caller, then seals the bootstrap
     <a href="../social_contracts/social_proof_tokens.md#social_contracts_social_proof_tokens_bootstrap_init">social_contracts::social_proof_tokens::bootstrap_init</a>(ctx);
     <a href="../social_contracts/proof_of_creativity.md#social_contracts_proof_of_creativity_bootstrap_init">social_contracts::proof_of_creativity::bootstrap_init</a>(ctx);
     <a href="../social_contracts/message.md#social_contracts_message_bootstrap_init">social_contracts::message::bootstrap_init</a>(ctx);
-    <a href="../social_contracts/social_proof_of_truth.md#social_contracts_social_proof_of_truth_bootstrap_init">social_contracts::social_proof_of_truth::bootstrap_init</a>(ctx);
+    <a href="../social_contracts/social_proof_of_truth.md#social_contracts_social_proof_of_truth_bootstrap_init">social_contracts::social_proof_of_truth::bootstrap_init</a>(clock, ctx);
     <a href="../social_contracts/insurance.md#social_contracts_insurance_bootstrap_init">social_contracts::insurance::bootstrap_init</a>(ctx);
     // Create admin capabilities
     transfer::public_transfer(<a href="../social_contracts/upgrade.md#social_contracts_upgrade_create_upgrade_admin_cap">upgrade::create_upgrade_admin_cap</a>(ctx), admin);

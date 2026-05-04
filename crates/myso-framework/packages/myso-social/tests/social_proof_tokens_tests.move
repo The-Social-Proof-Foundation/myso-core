@@ -30,6 +30,7 @@ module social_contracts::token_exchange_tests {
     use social_contracts::post::{Self, Post};
     use social_contracts::block_list::{Self, BlockListRegistry};
     use social_contracts::platform::{Self, Platform, PlatformRegistry};
+    use social_contracts::poc_vault::{Self as poc_vault, PoCBeneficiaryVault};
     
     // Test addresses
     const ADMIN: address = @0xAD;
@@ -275,13 +276,18 @@ module social_contracts::token_exchange_tests {
         test_scenario::end(scenario);
     }
 
-    /// Launch mint: circulating nano-SPT equals net MYSO reserved (1:1 in smallest units); post and profile use the same rule.
+    /// Launch mint: initial nano-SPT = `total_reserved * 10^9 / base_price` (matches on-chain); split by reservation share.
     const LAUNCH_THRESHOLD_MIST: u64 = 1_000_000_000;
+    const LAUNCH_BASE_PRICE_NANO: u64 = 100_000_000;
+    /// `LAUNCH_THRESHOLD_MIST * 10^9 / LAUNCH_BASE_PRICE_NANO` at configured `base_price`.
+    const LAUNCH_INITIAL_NANO_SPT: u64 = 10_000_000_000;
     const RESERVE_NET_A: u64 = 600_000_000;
     const RESERVE_NET_B: u64 = 400_000_000;
+    const LAUNCH_MINT_NET_A: u64 = 6_000_000_000;
+    const LAUNCH_MINT_NET_B: u64 = 4_000_000_000;
 
     #[test]
-    fun test_create_social_proof_token_launch_supply_one_to_one_profile() {
+    fun test_create_social_proof_token_launch_supply_base_price_scaled_profile() {
         let mut scenario = setup_test_scenario();
 
         test_scenario::next_tx(&mut scenario, ADMIN);
@@ -297,7 +303,7 @@ module social_contracts::token_exchange_tests {
                 100,
                 25,
                 25,
-                100_000_000,
+                LAUNCH_BASE_PRICE_NANO,
                 100_000,
                 500,
                 LAUNCH_THRESHOLD_MIST,
@@ -414,14 +420,14 @@ module social_contracts::token_exchange_tests {
         test_scenario::next_tx(&mut scenario, USER1);
         {
             let t = test_scenario::take_from_sender<SocialToken>(&scenario);
-            assert!(social_proof_tokens::amount(&t) == RESERVE_NET_A, 0);
+            assert!(social_proof_tokens::amount(&t) == LAUNCH_MINT_NET_A, 0);
             assert!(social_proof_tokens::token_type(&t) == TOKEN_TYPE_PROFILE, 1);
             test_scenario::return_to_sender(&scenario, t);
         };
         test_scenario::next_tx(&mut scenario, USER2);
         {
             let t = test_scenario::take_from_sender<SocialToken>(&scenario);
-            assert!(social_proof_tokens::amount(&t) == RESERVE_NET_B, 2);
+            assert!(social_proof_tokens::amount(&t) == LAUNCH_MINT_NET_B, 2);
             assert!(social_proof_tokens::token_type(&t) == TOKEN_TYPE_PROFILE, 3);
             test_scenario::return_to_sender(&scenario, t);
         };
@@ -430,7 +436,7 @@ module social_contracts::token_exchange_tests {
         {
             let registry = test_scenario::take_shared<social_proof_tokens::TokenRegistry>(&scenario);
             let info = social_proof_tokens::get_token_info(&registry, profile_id);
-            assert!(social_proof_tokens::token_info_circulating_supply(info) == LAUNCH_THRESHOLD_MIST, 4);
+            assert!(social_proof_tokens::token_info_circulating_supply(info) == LAUNCH_INITIAL_NANO_SPT, 4);
             test_scenario::return_shared(registry);
         };
 
@@ -438,14 +444,14 @@ module social_contracts::token_exchange_tests {
     }
 
     #[test]
-    fun test_create_social_proof_token_launch_supply_one_to_one_post() {
+    fun test_create_social_proof_token_launch_supply_base_price_scaled_post() {
         let mut scenario = setup_test_scenario();
 
         test_scenario::next_tx(&mut scenario, ADMIN);
         {
             let admin_cap = test_scenario::take_from_sender<social_proof_tokens::SocialProofTokensAdminCap>(&scenario);
             let mut config = test_scenario::take_shared<social_proof_tokens::SocialProofTokensConfig>(&scenario);
-            // Match profile test so post circulating supply equals same threshold for same net reserved.
+            // Match profile test: same threshold, base_price, and expected `LAUNCH_INITIAL_NANO_SPT`.
             social_proof_tokens::update_social_proof_tokens_config(
                 &admin_cap,
                 &mut config,
@@ -455,7 +461,7 @@ module social_contracts::token_exchange_tests {
                 100,
                 25,
                 25,
-                100_000_000,
+                LAUNCH_BASE_PRICE_NANO,
                 100_000,
                 500,
                 LAUNCH_THRESHOLD_MIST,
@@ -523,6 +529,11 @@ module social_contracts::token_exchange_tests {
             test_scenario::return_shared(post_obj);
         };
 
+        test_scenario::next_tx(&mut scenario, CREATOR);
+        {
+            poc_vault::create_shared_dummy_vault_for_testing(@0xBEEF, test_scenario::ctx(&mut scenario));
+        };
+
         test_scenario::next_tx(&mut scenario, USER1);
         {
             let mut registry = test_scenario::take_shared<social_proof_tokens::TokenRegistry>(&scenario);
@@ -531,6 +542,7 @@ module social_contracts::token_exchange_tests {
                 test_scenario::take_shared<social_proof_tokens::ReservationPoolObject>(&scenario);
             let treasury = test_scenario::take_shared<EcosystemTreasury>(&scenario);
             let post_obj = test_scenario::take_shared<Post>(&scenario);
+            let mut poc_vault_obj = test_scenario::take_shared<PoCBeneficiaryVault>(&scenario);
             let mut coin = test_scenario::take_from_sender<Coin<MYSO>>(&scenario);
             let pay = coin::split(&mut coin, 650_000_000, test_scenario::ctx(&mut scenario));
             social_proof_tokens::reserve_towards_post(
@@ -539,6 +551,7 @@ module social_contracts::token_exchange_tests {
                 &mut reservation_pool_object,
                 &treasury,
                 &post_obj,
+                &mut poc_vault_obj,
                 pay,
                 RESERVE_NET_A,
                 test_scenario::ctx(&mut scenario)
@@ -548,6 +561,7 @@ module social_contracts::token_exchange_tests {
             test_scenario::return_shared(reservation_pool_object);
             test_scenario::return_shared(treasury);
             test_scenario::return_shared(post_obj);
+            test_scenario::return_shared(poc_vault_obj);
             test_scenario::return_to_sender(&scenario, coin);
         };
 
@@ -559,6 +573,7 @@ module social_contracts::token_exchange_tests {
                 test_scenario::take_shared<social_proof_tokens::ReservationPoolObject>(&scenario);
             let treasury = test_scenario::take_shared<EcosystemTreasury>(&scenario);
             let post_obj = test_scenario::take_shared<Post>(&scenario);
+            let mut poc_vault_obj = test_scenario::take_shared<PoCBeneficiaryVault>(&scenario);
             let mut coin = test_scenario::take_from_sender<Coin<MYSO>>(&scenario);
             let pay = coin::split(&mut coin, 450_000_000, test_scenario::ctx(&mut scenario));
             social_proof_tokens::reserve_towards_post(
@@ -567,6 +582,7 @@ module social_contracts::token_exchange_tests {
                 &mut reservation_pool_object,
                 &treasury,
                 &post_obj,
+                &mut poc_vault_obj,
                 pay,
                 RESERVE_NET_B,
                 test_scenario::ctx(&mut scenario)
@@ -576,6 +592,7 @@ module social_contracts::token_exchange_tests {
             test_scenario::return_shared(reservation_pool_object);
             test_scenario::return_shared(treasury);
             test_scenario::return_shared(post_obj);
+            test_scenario::return_shared(poc_vault_obj);
             test_scenario::return_to_sender(&scenario, coin);
         };
 
@@ -599,14 +616,14 @@ module social_contracts::token_exchange_tests {
         test_scenario::next_tx(&mut scenario, USER1);
         {
             let t = test_scenario::take_from_sender<SocialToken>(&scenario);
-            assert!(social_proof_tokens::amount(&t) == RESERVE_NET_A, 10);
+            assert!(social_proof_tokens::amount(&t) == LAUNCH_MINT_NET_A, 10);
             assert!(social_proof_tokens::token_type(&t) == TOKEN_TYPE_POST, 11);
             test_scenario::return_to_sender(&scenario, t);
         };
         test_scenario::next_tx(&mut scenario, USER2);
         {
             let t = test_scenario::take_from_sender<SocialToken>(&scenario);
-            assert!(social_proof_tokens::amount(&t) == RESERVE_NET_B, 12);
+            assert!(social_proof_tokens::amount(&t) == LAUNCH_MINT_NET_B, 12);
             assert!(social_proof_tokens::token_type(&t) == TOKEN_TYPE_POST, 13);
             test_scenario::return_to_sender(&scenario, t);
         };
@@ -615,7 +632,7 @@ module social_contracts::token_exchange_tests {
         {
             let registry = test_scenario::take_shared<social_proof_tokens::TokenRegistry>(&scenario);
             let info = social_proof_tokens::get_token_info(&registry, post_id);
-            assert!(social_proof_tokens::token_info_circulating_supply(info) == LAUNCH_THRESHOLD_MIST, 14);
+            assert!(social_proof_tokens::token_info_circulating_supply(info) == LAUNCH_INITIAL_NANO_SPT, 14);
             test_scenario::return_shared(registry);
         };
 
@@ -1107,7 +1124,8 @@ module social_contracts::token_exchange_tests {
             social_proof_tokens::set_poc_redirection(
                 &mut token_pool,
                 option::some(USER3), // Original creator
-                option::some(75)     // 75% redirection
+                option::some(75),     // 75% redirection
+                1,
             );
             
             // Verify PoC redirection is set
@@ -1141,7 +1159,8 @@ module social_contracts::token_exchange_tests {
             social_proof_tokens::set_poc_redirection(
                 &mut token_pool,
                 option::some(USER3),
-                option::some(50)
+                option::some(50),
+                1,
             );
             
             // Verify it's set
@@ -1181,7 +1200,8 @@ module social_contracts::token_exchange_tests {
             social_proof_tokens::set_poc_redirection(
                 &mut token_pool,
                 option::some(USER3), // Original creator
-                option::some(60)     // 60% redirection
+                option::some(60),     // 60% redirection
+                1,
             );
             
             // Simulate a trading fee of 100 MYSO going to creator
@@ -1523,6 +1543,11 @@ module social_contracts::token_exchange_tests {
             test_scenario::return_shared(post_obj);
         };
 
+        test_scenario::next_tx(&mut scenario, CREATOR);
+        {
+            poc_vault::create_shared_dummy_vault_for_testing(@0xBEEF, test_scenario::ctx(&mut scenario));
+        };
+
         test_scenario::next_tx(&mut scenario, USER1);
         {
             let mut registry = test_scenario::take_shared<TokenRegistry>(&scenario);
@@ -1530,6 +1555,7 @@ module social_contracts::token_exchange_tests {
             let mut pool = test_scenario::take_shared<ReservationPoolObject>(&scenario);
             let treasury = test_scenario::take_shared<EcosystemTreasury>(&scenario);
             let post_obj = test_scenario::take_shared<Post>(&scenario);
+            let mut poc_vault_obj = test_scenario::take_shared<PoCBeneficiaryVault>(&scenario);
             let mut coin = test_scenario::take_from_sender<Coin<MYSO>>(&scenario);
             let pay = coin::split(&mut coin, gross + fee, test_scenario::ctx(&mut scenario));
             social_proof_tokens::reserve_towards_post(
@@ -1538,6 +1564,7 @@ module social_contracts::token_exchange_tests {
                 &mut pool,
                 &treasury,
                 &post_obj,
+                &mut poc_vault_obj,
                 pay,
                 gross,
                 test_scenario::ctx(&mut scenario)
@@ -1548,6 +1575,7 @@ module social_contracts::token_exchange_tests {
             test_scenario::return_shared(pool);
             test_scenario::return_shared(treasury);
             test_scenario::return_shared(post_obj);
+            test_scenario::return_shared(poc_vault_obj);
             test_scenario::return_to_sender(&scenario, coin);
         };
 
@@ -1558,12 +1586,14 @@ module social_contracts::token_exchange_tests {
             let mut pool = test_scenario::take_shared<ReservationPoolObject>(&scenario);
             let treasury = test_scenario::take_shared<EcosystemTreasury>(&scenario);
             let post_obj = test_scenario::take_shared<Post>(&scenario);
+            let mut poc_vault_obj = test_scenario::take_shared<PoCBeneficiaryVault>(&scenario);
             social_proof_tokens::withdraw_reservation_for_post(
                 &mut registry,
                 &config,
                 &mut pool,
                 &treasury,
                 &post_obj,
+                &mut poc_vault_obj,
                 gross,
                 test_scenario::ctx(&mut scenario)
             );
@@ -1573,6 +1603,7 @@ module social_contracts::token_exchange_tests {
             test_scenario::return_shared(pool);
             test_scenario::return_shared(treasury);
             test_scenario::return_shared(post_obj);
+            test_scenario::return_shared(poc_vault_obj);
         };
 
         test_scenario::next_tx(&mut scenario, USER1);
@@ -1777,6 +1808,11 @@ module social_contracts::token_exchange_tests {
             test_scenario::return_shared(post_a);
         };
 
+        test_scenario::next_tx(&mut scenario, CREATOR);
+        {
+            poc_vault::create_shared_dummy_vault_for_testing(@0xBEEF, test_scenario::ctx(&mut scenario));
+        };
+
         test_scenario::next_tx(&mut scenario, USER1);
         {
             let mut registry = test_scenario::take_shared<TokenRegistry>(&scenario);
@@ -1785,6 +1821,7 @@ module social_contracts::token_exchange_tests {
             let treasury = test_scenario::take_shared<EcosystemTreasury>(&scenario);
             let post_a =
                 test_scenario::take_shared_by_id<Post>(&scenario, object::id_from_address(_post_id_a));
+            let mut poc_vault_obj = test_scenario::take_shared<PoCBeneficiaryVault>(&scenario);
             let mut coin = test_scenario::take_from_sender<Coin<MYSO>>(&scenario);
             let pay = coin::split(&mut coin, gross + fee, test_scenario::ctx(&mut scenario));
             social_proof_tokens::reserve_towards_post(
@@ -1793,6 +1830,7 @@ module social_contracts::token_exchange_tests {
                 &mut pool,
                 &treasury,
                 &post_a,
+                &mut poc_vault_obj,
                 pay,
                 gross,
                 test_scenario::ctx(&mut scenario)
@@ -1802,6 +1840,7 @@ module social_contracts::token_exchange_tests {
             test_scenario::return_shared(pool);
             test_scenario::return_shared(treasury);
             test_scenario::return_shared(post_a);
+            test_scenario::return_shared(poc_vault_obj);
             test_scenario::return_to_sender(&scenario, coin);
         };
 
@@ -1813,12 +1852,14 @@ module social_contracts::token_exchange_tests {
             let treasury = test_scenario::take_shared<EcosystemTreasury>(&scenario);
             let post_b =
                 test_scenario::take_shared_by_id<Post>(&scenario, object::id_from_address(_post_id_b));
+            let mut poc_vault_obj = test_scenario::take_shared<PoCBeneficiaryVault>(&scenario);
             social_proof_tokens::withdraw_reservation_for_post(
                 &mut registry,
                 &config,
                 &mut pool,
                 &treasury,
                 &post_b,
+                &mut poc_vault_obj,
                 gross,
                 test_scenario::ctx(&mut scenario)
             );
@@ -1827,6 +1868,7 @@ module social_contracts::token_exchange_tests {
             test_scenario::return_shared(pool);
             test_scenario::return_shared(treasury);
             test_scenario::return_shared(post_b);
+            test_scenario::return_shared(poc_vault_obj);
         };
 
         test_scenario::end(scenario);
@@ -1893,6 +1935,11 @@ module social_contracts::token_exchange_tests {
             )
         };
 
+        test_scenario::next_tx(&mut scenario, CREATOR);
+        {
+            poc_vault::create_shared_dummy_vault_for_testing(@0xBEEF, test_scenario::ctx(&mut scenario));
+        };
+
         test_scenario::next_tx(&mut scenario, USER1);
         {
             let mut registry = test_scenario::take_shared<TokenRegistry>(&scenario);
@@ -1926,12 +1973,14 @@ module social_contracts::token_exchange_tests {
             let mut pool = test_scenario::take_shared<ReservationPoolObject>(&scenario);
             let treasury = test_scenario::take_shared<EcosystemTreasury>(&scenario);
             let post_obj = test_scenario::take_shared<Post>(&scenario);
+            let mut poc_vault_obj = test_scenario::take_shared<PoCBeneficiaryVault>(&scenario);
             social_proof_tokens::withdraw_reservation_for_post(
                 &mut registry,
                 &config,
                 &mut pool,
                 &treasury,
                 &post_obj,
+                &mut poc_vault_obj,
                 gross,
                 test_scenario::ctx(&mut scenario)
             );
@@ -1940,6 +1989,7 @@ module social_contracts::token_exchange_tests {
             test_scenario::return_shared(pool);
             test_scenario::return_shared(treasury);
             test_scenario::return_shared(post_obj);
+            test_scenario::return_shared(poc_vault_obj);
         };
 
         test_scenario::end(scenario);
@@ -2007,6 +2057,11 @@ module social_contracts::token_exchange_tests {
             test_scenario::return_shared(post_obj);
         };
 
+        test_scenario::next_tx(&mut scenario, CREATOR);
+        {
+            poc_vault::create_shared_dummy_vault_for_testing(@0xBEEF, test_scenario::ctx(&mut scenario));
+        };
+
         test_scenario::next_tx(&mut scenario, USER1);
         {
             let mut registry = test_scenario::take_shared<TokenRegistry>(&scenario);
@@ -2015,6 +2070,7 @@ module social_contracts::token_exchange_tests {
             let treasury = test_scenario::take_shared<EcosystemTreasury>(&scenario);
             let post_obj =
                 test_scenario::take_shared_by_id<Post>(&scenario, object::id_from_address(post_id_only));
+            let mut poc_vault_obj = test_scenario::take_shared<PoCBeneficiaryVault>(&scenario);
             let mut coin = test_scenario::take_from_sender<Coin<MYSO>>(&scenario);
             let pay = coin::split(&mut coin, gross + fee, test_scenario::ctx(&mut scenario));
             social_proof_tokens::reserve_towards_post(
@@ -2023,6 +2079,7 @@ module social_contracts::token_exchange_tests {
                 &mut pool,
                 &treasury,
                 &post_obj,
+                &mut poc_vault_obj,
                 pay,
                 gross,
                 test_scenario::ctx(&mut scenario)
@@ -2032,6 +2089,7 @@ module social_contracts::token_exchange_tests {
             test_scenario::return_shared(pool);
             test_scenario::return_shared(treasury);
             test_scenario::return_shared(post_obj);
+            test_scenario::return_shared(poc_vault_obj);
             test_scenario::return_to_sender(&scenario, coin);
         };
 
@@ -2242,6 +2300,11 @@ module social_contracts::token_exchange_tests {
 
         join_user_to_test_platform(&mut scenario, USER1);
 
+        test_scenario::next_tx(&mut scenario, CREATOR);
+        {
+            poc_vault::create_shared_dummy_vault_for_testing(@0xBEEF, test_scenario::ctx(&mut scenario));
+        };
+
         test_scenario::next_tx(&mut scenario, USER1);
         {
             let mut registry = test_scenario::take_shared<TokenRegistry>(&scenario);
@@ -2252,6 +2315,7 @@ module social_contracts::token_exchange_tests {
             let mut platform_obj = test_scenario::take_shared<Platform>(&scenario);
             let block_list_registry = test_scenario::take_shared<BlockListRegistry>(&scenario);
             let post_obj = test_scenario::take_shared<Post>(&scenario);
+            let mut poc_vault_obj = test_scenario::take_shared<PoCBeneficiaryVault>(&scenario);
             let mut coin = test_scenario::take_from_sender<Coin<MYSO>>(&scenario);
             let pay = coin::split(&mut coin, gross + fee, test_scenario::ctx(&mut scenario));
             social_proof_tokens::reserve_towards_post_with_platform(
@@ -2263,6 +2327,7 @@ module social_contracts::token_exchange_tests {
                 &mut platform_obj,
                 &block_list_registry,
                 &post_obj,
+                &mut poc_vault_obj,
                 pay,
                 gross,
                 test_scenario::ctx(&mut scenario)
@@ -2275,6 +2340,7 @@ module social_contracts::token_exchange_tests {
             test_scenario::return_shared(platform_obj);
             test_scenario::return_shared(block_list_registry);
             test_scenario::return_shared(post_obj);
+            test_scenario::return_shared(poc_vault_obj);
             test_scenario::return_to_sender(&scenario, coin);
         };
 
@@ -2288,6 +2354,7 @@ module social_contracts::token_exchange_tests {
             let mut platform_obj = test_scenario::take_shared<Platform>(&scenario);
             let block_list_registry = test_scenario::take_shared<BlockListRegistry>(&scenario);
             let post_obj = test_scenario::take_shared<Post>(&scenario);
+            let mut poc_vault_obj = test_scenario::take_shared<PoCBeneficiaryVault>(&scenario);
             social_proof_tokens::withdraw_reservation_with_platform_for_post(
                 &mut registry,
                 &config,
@@ -2297,6 +2364,7 @@ module social_contracts::token_exchange_tests {
                 &mut platform_obj,
                 &block_list_registry,
                 &post_obj,
+                &mut poc_vault_obj,
                 gross,
                 test_scenario::ctx(&mut scenario)
             );
@@ -2308,6 +2376,7 @@ module social_contracts::token_exchange_tests {
             test_scenario::return_shared(platform_obj);
             test_scenario::return_shared(block_list_registry);
             test_scenario::return_shared(post_obj);
+            test_scenario::return_shared(poc_vault_obj);
         };
 
         test_scenario::next_tx(&mut scenario, USER1);
@@ -2381,6 +2450,11 @@ module social_contracts::token_exchange_tests {
             test_scenario::return_shared(post_obj);
         };
 
+        test_scenario::next_tx(&mut scenario, CREATOR);
+        {
+            poc_vault::create_shared_dummy_vault_for_testing(@0xBEEF, test_scenario::ctx(&mut scenario));
+        };
+
         test_scenario::next_tx(&mut scenario, USER1);
         {
             let mut registry = test_scenario::take_shared<TokenRegistry>(&scenario);
@@ -2388,6 +2462,7 @@ module social_contracts::token_exchange_tests {
             let mut pool = test_scenario::take_shared<ReservationPoolObject>(&scenario);
             let treasury = test_scenario::take_shared<EcosystemTreasury>(&scenario);
             let post_obj = test_scenario::take_shared<Post>(&scenario);
+            let mut poc_vault_obj = test_scenario::take_shared<PoCBeneficiaryVault>(&scenario);
             let mut coin = test_scenario::take_from_sender<Coin<MYSO>>(&scenario);
             let pay = coin::split(&mut coin, gross + fee, test_scenario::ctx(&mut scenario));
             social_proof_tokens::reserve_towards_post(
@@ -2396,6 +2471,7 @@ module social_contracts::token_exchange_tests {
                 &mut pool,
                 &treasury,
                 &post_obj,
+                &mut poc_vault_obj,
                 pay,
                 gross,
                 test_scenario::ctx(&mut scenario)
@@ -2405,6 +2481,7 @@ module social_contracts::token_exchange_tests {
             test_scenario::return_shared(pool);
             test_scenario::return_shared(treasury);
             test_scenario::return_shared(post_obj);
+            test_scenario::return_shared(poc_vault_obj);
             test_scenario::return_to_sender(&scenario, coin);
         };
 
@@ -2420,12 +2497,14 @@ module social_contracts::token_exchange_tests {
             let mut pool = test_scenario::take_shared<ReservationPoolObject>(&scenario);
             let treasury = test_scenario::take_shared<EcosystemTreasury>(&scenario);
             let post_obj = test_scenario::take_shared<Post>(&scenario);
+            let mut poc_vault_obj = test_scenario::take_shared<PoCBeneficiaryVault>(&scenario);
             social_proof_tokens::withdraw_reservation_for_post(
                 &mut registry,
                 &config,
                 &mut pool,
                 &treasury,
                 &post_obj,
+                &mut poc_vault_obj,
                 gross,
                 test_scenario::ctx(&mut scenario)
             );
@@ -2434,6 +2513,7 @@ module social_contracts::token_exchange_tests {
             test_scenario::return_shared(pool);
             test_scenario::return_shared(treasury);
             test_scenario::return_shared(post_obj);
+            test_scenario::return_shared(poc_vault_obj);
         };
 
         test_scenario::next_tx(&mut scenario, USER3);
@@ -2608,6 +2688,192 @@ module social_contracts::token_exchange_tests {
             test_scenario::return_shared(platform_registry);
         };
         
+        test_scenario::end(scenario);
+    }
+
+    fun create_mock_post_token_pool_for_post(scenario: &mut Scenario, post_id: address): TokenPool {
+        let mock_token_info = social_proof_tokens::create_mock_token_info(
+            @0x111111,
+            TOKEN_TYPE_POST,
+            CREATOR,
+            post_id,
+            1000 * social_proof_tokens::spt_amount_scale(),
+            100_000_000,
+            100_000,
+            0
+        );
+
+        social_proof_tokens::create_mock_token_pool(
+            mock_token_info,
+            test_scenario::ctx(scenario)
+        )
+    }
+
+    fun profile_and_platform_ids_for_poc_sync(scenario: &mut Scenario): (address, address) {
+        let profile_id = {
+            test_scenario::next_tx(scenario, CREATOR);
+            let mut username_registry = test_scenario::take_shared<UsernameRegistry>(scenario);
+            profile::create_profile(
+                &mut username_registry,
+                string::utf8(b"PoC Sync Owner"),
+                string::utf8(b"poc_sync_owner"),
+                string::utf8(b""),
+                b"",
+                b"",
+                test_scenario::ctx(scenario)
+            );
+            let mut p = profile::lookup_profile_by_owner(&username_registry, CREATOR);
+            let pid = option::extract(&mut p);
+            test_scenario::return_shared(username_registry);
+            pid
+        };
+        let platform_id = {
+            test_scenario::next_tx(scenario, ADMIN);
+            let registry = test_scenario::take_shared<PlatformRegistry>(scenario);
+            let mut opt = platform::get_platform_by_name(&registry, string::utf8(b"Test Platform"));
+            let pid = option::extract(&mut opt);
+            test_scenario::return_shared(registry);
+            pid
+        };
+        (profile_id, platform_id)
+    }
+
+    #[test]
+    fun test_sync_token_pool_copies_wallet_redirect_from_post() {
+        let mut scenario = setup_test_scenario();
+        let (profile_id, platform_id) = profile_and_platform_ids_for_poc_sync(&mut scenario);
+        let post_id = {
+            test_scenario::next_tx(&mut scenario, CREATOR);
+            post::test_create_post_with_revenue_redirect(
+                CREATOR,
+                profile_id,
+                platform_id,
+                string::utf8(b"wallet redirect"),
+                USER3,
+                75,
+                test_scenario::ctx(&mut scenario)
+            )
+        };
+        test_scenario::next_tx(&mut scenario, CREATOR);
+        {
+            let mut registry = test_scenario::take_shared<TokenRegistry>(&scenario);
+            let reg_info = social_proof_tokens::create_mock_token_info(
+                @0x111111,
+                TOKEN_TYPE_POST,
+                CREATOR,
+                post_id,
+                1000 * social_proof_tokens::spt_amount_scale(),
+                100_000_000,
+                100_000,
+                0
+            );
+            social_proof_tokens::register_token_info_for_testing(&mut registry, post_id, reg_info);
+            let mut pool = create_mock_post_token_pool_for_post(&mut scenario, post_id);
+            social_proof_tokens::set_poc_redirection(&mut pool, option::none(), option::none(), 0);
+            let post_obj = test_scenario::take_shared<Post>(&scenario);
+            assert!(post::poc_redirection_kind(&post_obj) == 1, 0);
+            social_proof_tokens::sync_token_pool_poc_from_post(
+                &registry,
+                &mut pool,
+                &post_obj,
+                CREATOR,
+                test_scenario::ctx(&mut scenario)
+            );
+            assert!(social_proof_tokens::has_poc_redirection(&pool), 1);
+            assert!(*option::borrow(social_proof_tokens::get_poc_redirect_to(&pool)) == USER3, 2);
+            assert!(*option::borrow(social_proof_tokens::get_poc_redirect_percentage(&pool)) == 75, 3);
+            assert!(social_proof_tokens::poc_redirection_kind_for_testing(&pool) == 1, 4);
+            test_scenario::return_shared(registry);
+            test_scenario::return_shared(post_obj);
+            social_proof_tokens::share_token_pool_for_testing(pool);
+        };
+        test_scenario::end(scenario);
+    }
+
+    #[test]
+    fun test_sync_token_pool_copies_escrow_redirect_from_post() {
+        let mut scenario = setup_test_scenario();
+        let (profile_id, platform_id) = profile_and_platform_ids_for_poc_sync(&mut scenario);
+        let post_id = {
+            test_scenario::next_tx(&mut scenario, CREATOR);
+            post::test_create_post_with_escrow_redirect(
+                CREATOR,
+                profile_id,
+                platform_id,
+                string::utf8(b"escrow redirect"),
+                USER2,
+                60,
+                test_scenario::ctx(&mut scenario)
+            )
+        };
+        test_scenario::next_tx(&mut scenario, CREATOR);
+        {
+            let mut registry = test_scenario::take_shared<TokenRegistry>(&scenario);
+            let reg_info = social_proof_tokens::create_mock_token_info(
+                @0x111111,
+                TOKEN_TYPE_POST,
+                CREATOR,
+                post_id,
+                1000 * social_proof_tokens::spt_amount_scale(),
+                100_000_000,
+                100_000,
+                0
+            );
+            social_proof_tokens::register_token_info_for_testing(&mut registry, post_id, reg_info);
+            let mut pool = create_mock_post_token_pool_for_post(&mut scenario, post_id);
+            social_proof_tokens::set_poc_redirection(&mut pool, option::none(), option::none(), 0);
+            let post_obj = test_scenario::take_shared<Post>(&scenario);
+            assert!(post::poc_redirection_kind(&post_obj) == 2, 0);
+            social_proof_tokens::sync_token_pool_poc_from_post(
+                &registry,
+                &mut pool,
+                &post_obj,
+                CREATOR,
+                test_scenario::ctx(&mut scenario)
+            );
+            assert!(social_proof_tokens::poc_redirection_kind_for_testing(&pool) == 2, 1);
+            assert!(*option::borrow(social_proof_tokens::get_poc_redirect_to(&pool)) == USER2, 2);
+            assert!(*option::borrow(social_proof_tokens::get_poc_redirect_percentage(&pool)) == 60, 3);
+            test_scenario::return_shared(registry);
+            test_scenario::return_shared(post_obj);
+            social_proof_tokens::share_token_pool_for_testing(pool);
+        };
+        test_scenario::end(scenario);
+    }
+
+    #[test]
+    fun test_set_poc_redirection_escrow_kind_on_pool() {
+        let mut scenario = setup_test_scenario();
+        test_scenario::next_tx(&mut scenario, CREATOR);
+        {
+            let mut token_pool = create_mock_post_token_pool(&mut scenario);
+            social_proof_tokens::set_poc_redirection(
+                &mut token_pool,
+                option::some(USER3),
+                option::some(40),
+                2
+            );
+            assert!(social_proof_tokens::poc_redirection_kind_for_testing(&token_pool) == 2, 0);
+            social_proof_tokens::share_token_pool_for_testing(token_pool);
+        };
+        test_scenario::end(scenario);
+    }
+
+    #[test]
+    #[expected_failure(abort_code = social_proof_tokens::EInvalidFeeConfig, location = social_contracts::social_proof_tokens)]
+    fun test_set_poc_redirection_rejects_nonzero_kind_without_fields() {
+        let mut scenario = setup_test_scenario();
+        test_scenario::next_tx(&mut scenario, CREATOR);
+        {
+            let mut token_pool = create_mock_post_token_pool(&mut scenario);
+            social_proof_tokens::set_poc_redirection(
+                &mut token_pool,
+                option::none(),
+                option::none(),
+                1
+            );
+            social_proof_tokens::share_token_pool_for_testing(token_pool);
+        };
         test_scenario::end(scenario);
     }
 

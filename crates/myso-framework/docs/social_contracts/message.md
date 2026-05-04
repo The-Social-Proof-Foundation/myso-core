@@ -448,7 +448,7 @@ Features: idempotency, message ordering, replay protection, access control, rate
 <dd>
 </dd>
 <dt>
-<code>created_epoch: u64</code>
+<code>created_at_ms: u64</code>
 </dt>
 <dd>
 </dd>
@@ -1204,7 +1204,7 @@ Features: idempotency, message ordering, replay protection, access control, rate
 <dd>
 </dd>
 <dt>
-<code>created_epoch: u64</code>
+<code>created_at_ms: u64</code>
 </dt>
 <dd>
 </dd>
@@ -1311,7 +1311,7 @@ Features: idempotency, message ordering, replay protection, access control, rate
 <dd>
 </dd>
 <dt>
-<code>claimed_epoch: u64</code>
+<code>claimed_at_ms: u64</code>
 </dt>
 <dd>
 </dd>
@@ -1357,7 +1357,7 @@ Features: idempotency, message ordering, replay protection, access control, rate
 <dd>
 </dd>
 <dt>
-<code>refunded_epoch: u64</code>
+<code>refunded_at_ms: u64</code>
 </dt>
 <dd>
 </dd>
@@ -1628,11 +1628,12 @@ Features: idempotency, message ordering, replay protection, access control, rate
 
 
 
-<a name="social_contracts_message_PAYMENT_EXPIRATION_EPOCHS"></a>
+<a name="social_contracts_message_PAYMENT_EXPIRATION_MS"></a>
+
+Paid message must be replied to within this wall-clock window (<code>Clock</code> ms).
 
 
-
-<pre><code><b>const</b> <a href="../social_contracts/message.md#social_contracts_message_PAYMENT_EXPIRATION_EPOCHS">PAYMENT_EXPIRATION_EPOCHS</a>: u64 = 30;
+<pre><code><b>const</b> <a href="../social_contracts/message.md#social_contracts_message_PAYMENT_EXPIRATION_MS">PAYMENT_EXPIRATION_MS</a>: u64 = 2592000000;
 </code></pre>
 
 
@@ -3043,14 +3044,14 @@ Send a paid message to a profile owner
     // Extract payment and hold in escrow
     <b>let</b> escrow_payment = coin::split(&<b>mut</b> payment, required_amount, ctx);
     <b>let</b> escrow_balance = coin::into_balance(escrow_payment);
-    <b>let</b> current_epoch = tx_context::epoch(ctx);
+    <b>let</b> created_at_ms = clock::timestamp_ms(clock);
     // Create escrow <b>entry</b>
     <b>let</b> escrow = <a href="../social_contracts/message.md#social_contracts_message_PaidMessageEscrow">PaidMessageEscrow</a> {
         payer: sender,
         recipient,
         amount: required_amount,
         escrowed_balance: escrow_balance,
-        created_epoch: current_epoch,
+        created_at_ms,
         claimed: <b>false</b>,
         parent_seq: seq,
     };
@@ -3085,7 +3086,7 @@ Send a paid message to a profile owner
         payer: sender,
         recipient,
         amount: required_amount,
-        created_epoch: current_epoch,
+        created_at_ms,
     });
     // Return excess payment
     <b>if</b> (coin::value(&payment) &gt; 0) {
@@ -3144,12 +3145,12 @@ Reply to a paid message and trigger payment release if conditions are met
     // Verify payment not already claimed
     <b>assert</b>!(!escrow.claimed, <a href="../social_contracts/message.md#social_contracts_message_E_PAYMENT_ALREADY_CLAIMED">E_PAYMENT_ALREADY_CLAIMED</a>);
     // Verify payment not expired (with underflow protection)
-    <b>let</b> current_epoch = tx_context::epoch(ctx);
-    // Check <b>for</b> clock issues - <b>if</b> created_epoch is in the future, treat <b>as</b> expired
-    <b>if</b> (current_epoch &lt; escrow.created_epoch) {
+    <b>let</b> now_ms = clock::timestamp_ms(clock);
+    // Check <b>for</b> clock issues - <b>if</b> created_at_ms is in the future, treat <b>as</b> expired
+    <b>if</b> (now_ms &lt; escrow.created_at_ms) {
         <b>abort</b> <a href="../social_contracts/message.md#social_contracts_message_E_PAYMENT_EXPIRED">E_PAYMENT_EXPIRED</a>
     };
-    <b>assert</b>!(current_epoch - escrow.created_epoch &lt;= <a href="../social_contracts/message.md#social_contracts_message_PAYMENT_EXPIRATION_EPOCHS">PAYMENT_EXPIRATION_EPOCHS</a>, <a href="../social_contracts/message.md#social_contracts_message_E_PAYMENT_EXPIRED">E_PAYMENT_EXPIRED</a>);
+    <b>assert</b>!(now_ms - escrow.created_at_ms &lt;= <a href="../social_contracts/message.md#social_contracts_message_PAYMENT_EXPIRATION_MS">PAYMENT_EXPIRATION_MS</a>, <a href="../social_contracts/message.md#social_contracts_message_E_PAYMENT_EXPIRED">E_PAYMENT_EXPIRED</a>);
     // Check dedupe
     <b>assert</b>!(!table::contains(&conv.used_dedupe, dedupe_key), <a href="../social_contracts/message.md#social_contracts_message_E_DEDUPE_USED">E_DEDUPE_USED</a>);
     table::add(&<b>mut</b> conv.used_dedupe, dedupe_key, <b>true</b>);
@@ -3196,7 +3197,7 @@ Reply to a paid message and trigger payment release if conditions are met
         reply_char_count: char_count,
     });
     // Automatically claim the payment
-    <a href="../social_contracts/message.md#social_contracts_message_claim_payment_internal">claim_payment_internal</a>(conv, <a href="../social_contracts/platform.md#social_contracts_platform">platform</a>, treasury, paid_msg_seq, ctx);
+    <a href="../social_contracts/message.md#social_contracts_message_claim_payment_internal">claim_payment_internal</a>(conv, <a href="../social_contracts/platform.md#social_contracts_platform">platform</a>, treasury, paid_msg_seq, clock, ctx);
 }
 </code></pre>
 
@@ -3211,7 +3212,7 @@ Reply to a paid message and trigger payment release if conditions are met
 Claim payment from a replied paid message (internal helper)
 
 
-<pre><code><b>fun</b> <a href="../social_contracts/message.md#social_contracts_message_claim_payment_internal">claim_payment_internal</a>(conv: &<b>mut</b> <a href="../social_contracts/message.md#social_contracts_message_Conversation">social_contracts::message::Conversation</a>, <a href="../social_contracts/platform.md#social_contracts_platform">platform</a>: &<b>mut</b> <a href="../social_contracts/platform.md#social_contracts_platform_Platform">social_contracts::platform::Platform</a>, treasury: &<a href="../social_contracts/profile.md#social_contracts_profile_EcosystemTreasury">social_contracts::profile::EcosystemTreasury</a>, paid_msg_seq: u64, ctx: &<b>mut</b> <a href="../myso/tx_context.md#myso_tx_context_TxContext">myso::tx_context::TxContext</a>)
+<pre><code><b>fun</b> <a href="../social_contracts/message.md#social_contracts_message_claim_payment_internal">claim_payment_internal</a>(conv: &<b>mut</b> <a href="../social_contracts/message.md#social_contracts_message_Conversation">social_contracts::message::Conversation</a>, <a href="../social_contracts/platform.md#social_contracts_platform">platform</a>: &<b>mut</b> <a href="../social_contracts/platform.md#social_contracts_platform_Platform">social_contracts::platform::Platform</a>, treasury: &<a href="../social_contracts/profile.md#social_contracts_profile_EcosystemTreasury">social_contracts::profile::EcosystemTreasury</a>, paid_msg_seq: u64, clock: &<a href="../myso/clock.md#myso_clock_Clock">myso::clock::Clock</a>, ctx: &<b>mut</b> <a href="../myso/tx_context.md#myso_tx_context_TxContext">myso::tx_context::TxContext</a>)
 </code></pre>
 
 
@@ -3225,6 +3226,7 @@ Claim payment from a replied paid message (internal helper)
     <a href="../social_contracts/platform.md#social_contracts_platform">platform</a>: &<b>mut</b> Platform,
     treasury: &EcosystemTreasury,
     paid_msg_seq: u64,
+    clock: &Clock,
     ctx: &<b>mut</b> TxContext
 ) {
     // Get mutable escrow
@@ -3252,7 +3254,7 @@ Claim payment from a replied paid message (internal helper)
     transfer::public_transfer(escrow_coin, escrow.recipient);
     // Mark <b>as</b> claimed
     escrow.claimed = <b>true</b>;
-    <b>let</b> current_epoch = tx_context::epoch(ctx);
+    <b>let</b> claimed_at_ms = clock::timestamp_ms(clock);
     event::emit(<a href="../social_contracts/message.md#social_contracts_message_PaymentClaimed">PaymentClaimed</a> {
         conv: object::uid_to_address(&conv.id),
         seq: paid_msg_seq,
@@ -3261,7 +3263,7 @@ Claim payment from a replied paid message (internal helper)
         platform_fee,
         treasury_fee,
         net_amount,
-        claimed_epoch: current_epoch,
+        claimed_at_ms,
     });
 }
 </code></pre>
@@ -3277,7 +3279,7 @@ Claim payment from a replied paid message (internal helper)
 Refund an expired or unclaimed paid message payment
 
 
-<pre><code><b>public</b> <b>entry</b> <b>fun</b> <a href="../social_contracts/message.md#social_contracts_message_refund_paid_message">refund_paid_message</a>(conv: &<b>mut</b> <a href="../social_contracts/message.md#social_contracts_message_Conversation">social_contracts::message::Conversation</a>, paid_msg_seq: u64, ctx: &<b>mut</b> <a href="../myso/tx_context.md#myso_tx_context_TxContext">myso::tx_context::TxContext</a>)
+<pre><code><b>public</b> <b>entry</b> <b>fun</b> <a href="../social_contracts/message.md#social_contracts_message_refund_paid_message">refund_paid_message</a>(conv: &<b>mut</b> <a href="../social_contracts/message.md#social_contracts_message_Conversation">social_contracts::message::Conversation</a>, paid_msg_seq: u64, clock: &<a href="../myso/clock.md#myso_clock_Clock">myso::clock::Clock</a>, ctx: &<b>mut</b> <a href="../myso/tx_context.md#myso_tx_context_TxContext">myso::tx_context::TxContext</a>)
 </code></pre>
 
 
@@ -3289,6 +3291,7 @@ Refund an expired or unclaimed paid message payment
 <pre><code><b>public</b> <b>entry</b> <b>fun</b> <a href="../social_contracts/message.md#social_contracts_message_refund_paid_message">refund_paid_message</a>(
     conv: &<b>mut</b> <a href="../social_contracts/message.md#social_contracts_message_Conversation">Conversation</a>,
     paid_msg_seq: u64,
+    clock: &Clock,
     ctx: &<b>mut</b> TxContext
 ) {
     <b>let</b> sender = tx_context::sender(ctx);
@@ -3299,13 +3302,13 @@ Refund an expired or unclaimed paid message payment
     <b>assert</b>!(sender == escrow.payer, <a href="../social_contracts/message.md#social_contracts_message_E_FORBIDDEN">E_FORBIDDEN</a>);
     // Verify not already claimed
     <b>assert</b>!(!escrow.claimed, <a href="../social_contracts/message.md#social_contracts_message_E_PAYMENT_ALREADY_CLAIMED">E_PAYMENT_ALREADY_CLAIMED</a>);
-    // Verify payment is expired (&gt;= to include the expiration epoch) with underflow protection
-    <b>let</b> current_epoch = tx_context::epoch(ctx);
-    // Check <b>for</b> clock issues - <b>if</b> created_epoch is in the future, allow refund
-    <b>if</b> (current_epoch &lt; escrow.created_epoch) {
+    // Verify payment is expired with underflow protection
+    <b>let</b> now_ms = clock::timestamp_ms(clock);
+    // Check <b>for</b> clock issues - <b>if</b> created_at_ms is in the future, allow refund
+    <b>if</b> (now_ms &lt; escrow.created_at_ms) {
         // Clock issue - allow refund <b>as</b> a safety measure
     } <b>else</b> {
-        <b>assert</b>!(current_epoch - escrow.created_epoch &gt;= <a href="../social_contracts/message.md#social_contracts_message_PAYMENT_EXPIRATION_EPOCHS">PAYMENT_EXPIRATION_EPOCHS</a>, <a href="../social_contracts/message.md#social_contracts_message_E_PAYMENT_EXPIRED">E_PAYMENT_EXPIRED</a>);
+        <b>assert</b>!(now_ms - escrow.created_at_ms &gt;= <a href="../social_contracts/message.md#social_contracts_message_PAYMENT_EXPIRATION_MS">PAYMENT_EXPIRATION_MS</a>, <a href="../social_contracts/message.md#social_contracts_message_E_PAYMENT_EXPIRED">E_PAYMENT_EXPIRED</a>);
     };
     <b>let</b> refund_amount = escrow.amount;
     // Refund the payment
@@ -3318,7 +3321,7 @@ Refund an expired or unclaimed paid message payment
         seq: paid_msg_seq,
         payer: escrow.payer,
         amount: refund_amount,
-        refunded_epoch: current_epoch,
+        refunded_at_ms: now_ms,
         reason: 0, // 0 = expired
     });
 }

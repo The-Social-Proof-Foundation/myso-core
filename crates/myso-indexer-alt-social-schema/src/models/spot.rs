@@ -41,7 +41,7 @@ pub struct SpotBetRow {
     #[diesel(sql_type = BigInt)]
     pub amm_amount: i64,
     #[diesel(sql_type = BigInt)]
-    pub timestamp_epoch: i64,
+    pub timestamp_ms: i64,
     #[diesel(sql_type = Text)]
     pub transaction_id: String,
     #[diesel(sql_type = Nullable<Text>)]
@@ -64,13 +64,13 @@ pub struct SpotRecordRow {
     #[diesel(sql_type = Jsonb)]
     pub option_escrow: serde_json::Value,
     #[diesel(sql_type = BigInt)]
-    pub created_epoch: i64,
+    pub created_at_ms: i64,
     #[diesel(sql_type = Nullable<BigInt>)]
-    pub resolution_window_epochs: Option<i64>,
+    pub resolution_window_ms: Option<i64>,
     #[diesel(sql_type = Nullable<BigInt>)]
-    pub max_resolution_window_epochs: Option<i64>,
+    pub max_resolution_window_ms: Option<i64>,
     #[diesel(sql_type = Nullable<BigInt>)]
-    pub last_resolution_epoch: Option<i64>,
+    pub last_resolution_at_ms: Option<i64>,
     #[diesel(sql_type = Text)]
     pub transaction_id: String,
 }
@@ -87,7 +87,7 @@ pub struct SpotPayoutRow {
     #[diesel(sql_type = BigInt)]
     pub amount: i64,
     #[diesel(sql_type = BigInt)]
-    pub timestamp_epoch: i64,
+    pub timestamp_ms: i64,
     #[diesel(sql_type = Text)]
     pub transaction_id: String,
 }
@@ -104,7 +104,7 @@ pub struct SpotRefundRow {
     #[diesel(sql_type = BigInt)]
     pub amount: i64,
     #[diesel(sql_type = BigInt)]
-    pub timestamp_epoch: i64,
+    pub timestamp_ms: i64,
     #[diesel(sql_type = Text)]
     pub transaction_id: String,
 }
@@ -123,7 +123,7 @@ pub struct SpotResolutionRow {
     #[diesel(sql_type = BigInt)]
     pub fee_taken: i64,
     #[diesel(sql_type = BigInt)]
-    pub resolved_epoch: i64,
+    pub resolved_at_ms: i64,
     #[diesel(sql_type = Text)]
     pub transaction_id: String,
     #[diesel(sql_type = Text)]
@@ -148,7 +148,7 @@ pub struct SpotBetWithdrawalRow {
     #[diesel(sql_type = BigInt)]
     pub fee_taken: i64,
     #[diesel(sql_type = BigInt)]
-    pub timestamp_epoch: i64,
+    pub timestamp_ms: i64,
     #[diesel(sql_type = Text)]
     pub transaction_id: String,
 }
@@ -162,10 +162,10 @@ pub struct NewSpotRecord {
     pub amm_split_bps_used: i32,
     pub betting_options: Option<serde_json::Value>,
     pub option_escrow: Option<serde_json::Value>,
-    pub resolution_window_epochs: Option<i64>,
-    pub max_resolution_window_epochs: Option<i64>,
-    pub created_epoch: i64,
-    pub last_resolution_epoch: Option<i64>,
+    pub resolution_window_ms: Option<i64>,
+    pub max_resolution_window_ms: Option<i64>,
+    pub created_at_ms: i64,
+    pub last_resolution_at_ms: Option<i64>,
     pub version: i64,
     pub created_at: NaiveDateTime,
     pub updated_at: NaiveDateTime,
@@ -180,7 +180,7 @@ pub struct NewSpotBet {
     pub option_id: i16,
     pub escrow_amount: i64,
     pub amm_amount: i64,
-    pub timestamp_epoch: i64,
+    pub timestamp_ms: i64,
     pub time: chrono::DateTime<chrono::Utc>,
     pub transaction_id: String,
 }
@@ -191,7 +191,7 @@ pub struct NewSpotPayout {
     pub post_id: String,
     pub user_address: String,
     pub amount: i64,
-    pub timestamp_epoch: i64,
+    pub timestamp_ms: i64,
     pub time: chrono::DateTime<chrono::Utc>,
     pub transaction_id: String,
 }
@@ -202,7 +202,7 @@ pub struct NewSpotRefund {
     pub post_id: String,
     pub user_address: String,
     pub amount: i64,
-    pub timestamp_epoch: i64,
+    pub timestamp_ms: i64,
     pub time: chrono::DateTime<chrono::Utc>,
     pub transaction_id: String,
 }
@@ -214,7 +214,7 @@ pub struct NewSpotResolution {
     pub outcome: i16,
     pub total_escrow: i64,
     pub fee_taken: i64,
-    pub resolved_epoch: i64,
+    pub resolved_at_ms: i64,
     pub time: chrono::DateTime<chrono::Utc>,
     pub transaction_id: String,
     pub reasoning: String,
@@ -237,8 +237,8 @@ pub struct NewSpotConfig {
     pub updated_by: String,
     pub enable_flag: bool,
     pub confidence_threshold_bps: i64,
-    pub resolution_window_epochs: i64,
-    pub max_resolution_window_epochs: i64,
+    pub resolution_window_ms: i64,
+    pub max_resolution_window_ms: i64,
     pub payout_delay_ms: i64,
     pub fee_bps: i64,
     pub fee_split_bps_platform: i64,
@@ -258,7 +258,7 @@ pub struct NewSpotBetWithdrawal {
     pub option_id: i16,
     pub amount: i64,
     pub fee_taken: i64,
-    pub timestamp_epoch: i64,
+    pub timestamp_ms: i64,
     pub time: chrono::DateTime<chrono::Utc>,
     pub transaction_id: String,
 }

@@ -3,6 +3,7 @@
 
 use chrono::Utc;
 
+use super::common;
 use super::SocialEventRow;
 use myso_indexer_alt_social_schema::models::{NewBlockedEvent, NewBlockedProfile, NewProfileEvent};
 
@@ -12,8 +13,12 @@ pub fn handle_blocking_event(
     event_id: &str,
 ) -> Option<Vec<SocialEventRow>> {
     match event_name {
-        "UserBlockEvent" | "ProfileBlockEvent" => process_profile_block_event(data, event_id),
-        "UserUnblockEvent" | "ProfileUnblockEvent" => process_profile_unblock_event(data, event_id),
+        "UserBlockEvent" | "ProfileBlockEvent" => {
+            process_profile_block_event(data, event_id, event_name)
+        }
+        "UserUnblockEvent" | "ProfileUnblockEvent" => {
+            process_profile_unblock_event(data, event_id, event_name)
+        }
         _ => None,
     }
 }
@@ -21,13 +26,20 @@ pub fn handle_blocking_event(
 fn process_profile_block_event(
     data: &serde_json::Value,
     event_id: &str,
+    event_type: &str,
 ) -> Option<Vec<SocialEventRow>> {
     #[derive(serde::Deserialize)]
     struct BlockJson {
         blocker: String,
         blocked: String,
     }
-    let ev: BlockJson = serde_json::from_value(data.clone()).ok()?;
+    let ev: BlockJson = common::deserialize_social_event_json(
+        "blocking",
+        event_type,
+        event_id,
+        data,
+        "blocking block event JSON did not match BlockJson",
+    )?;
     if ev.blocker.is_empty() || ev.blocked.is_empty() {
         return None;
     }
@@ -85,13 +97,20 @@ fn process_profile_block_event(
 fn process_profile_unblock_event(
     data: &serde_json::Value,
     event_id: &str,
+    event_type: &str,
 ) -> Option<Vec<SocialEventRow>> {
     #[derive(serde::Deserialize)]
     struct UnblockJson {
         blocker: String,
         unblocked: String,
     }
-    let ev: UnblockJson = serde_json::from_value(data.clone()).ok()?;
+    let ev: UnblockJson = common::deserialize_social_event_json(
+        "blocking",
+        event_type,
+        event_id,
+        data,
+        "blocking unblock event JSON did not match UnblockJson",
+    )?;
     if ev.blocker.is_empty() || ev.unblocked.is_empty() {
         return None;
     }

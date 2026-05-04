@@ -73,6 +73,9 @@ pub struct NewPost {
     pub poc_media_type: Option<i16>,
     pub poc_oracle_address: Option<String>,
     pub poc_analyzed_at: Option<i64>,
+    pub poc_outcome: Option<i16>,
+    pub poc_redirection_kind: Option<i16>,
+    pub poc_disputes_submitted: i16,
     pub revenue_redirect_to: Option<String>,
     pub revenue_redirect_percentage: Option<i64>,
     pub requires_subscription: Option<bool>,
@@ -85,6 +88,8 @@ pub struct NewPost {
     pub enable_spot: bool,
     pub spot_id: Option<String>,
     pub spt_id: Option<String>,
+    pub platform_id: Option<String>,
+    pub permissions: Option<i16>,
 }
 
 #[derive(Debug, Clone, Insertable, Serialize, Deserialize)]
@@ -156,6 +161,7 @@ pub struct NewTip {
     pub object_id: String,
     pub amount: i64,
     pub is_post: bool,
+    pub coin_type: String,
     pub created_at: i64,
     pub time: chrono::DateTime<chrono::Utc>,
     pub transaction_id: String,

@@ -414,11 +414,14 @@ pub struct BcsVestingWalletDeletedEvent {
     deleted_at: u64,
 }
 
+/// Legacy layout before `poc_redirection_kind` was appended (still emitted by older deployments).
 #[derive(Debug, Deserialize)]
-pub struct BcsPostCreatedEvent {
+pub struct BcsPostCreatedEventLegacy {
     post_id: AccountAddress,
     owner: AccountAddress,
     profile_id: AccountAddress,
+    platform_id: AccountAddress,
+    permissions: u8,
     content: String,
     post_type: String,
     parent_post_id: Option<AccountAddress>,
@@ -434,6 +437,76 @@ pub struct BcsPostCreatedEvent {
     enable_spot: bool,
     spot_id: Option<AccountAddress>,
     spt_id: Option<AccountAddress>,
+}
+
+#[derive(Debug, Deserialize)]
+pub struct BcsPostCreatedEvent {
+    post_id: AccountAddress,
+    owner: AccountAddress,
+    profile_id: AccountAddress,
+    platform_id: AccountAddress,
+    permissions: u8,
+    content: String,
+    post_type: String,
+    parent_post_id: Option<AccountAddress>,
+    mentions: Option<Vec<AccountAddress>>,
+    media_urls: Option<Vec<String>>,
+    metadata_json: Option<String>,
+    mydata_id: Option<AccountAddress>,
+    promotion_id: Option<AccountAddress>,
+    revenue_redirect_to: Option<AccountAddress>,
+    revenue_redirect_percentage: Option<u64>,
+    enable_spt: bool,
+    enable_poc: bool,
+    enable_spot: bool,
+    spot_id: Option<AccountAddress>,
+    spt_id: Option<AccountAddress>,
+    /// Matches Move `PostCreatedEvent.poc_redirection_kind` / `Post.poc_redirection_kind`.
+    poc_redirection_kind: u8,
+}
+
+impl From<BcsPostCreatedEventLegacy> for BcsPostCreatedEvent {
+    fn from(l: BcsPostCreatedEventLegacy) -> Self {
+        Self {
+            post_id: l.post_id,
+            owner: l.owner,
+            profile_id: l.profile_id,
+            platform_id: l.platform_id,
+            permissions: l.permissions,
+            content: l.content,
+            post_type: l.post_type,
+            parent_post_id: l.parent_post_id,
+            mentions: l.mentions,
+            media_urls: l.media_urls,
+            metadata_json: l.metadata_json,
+            mydata_id: l.mydata_id,
+            promotion_id: l.promotion_id,
+            revenue_redirect_to: l.revenue_redirect_to,
+            revenue_redirect_percentage: l.revenue_redirect_percentage,
+            enable_spt: l.enable_spt,
+            enable_poc: l.enable_poc,
+            enable_spot: l.enable_spot,
+            spot_id: l.spot_id,
+            spt_id: l.spt_id,
+            poc_redirection_kind: 0,
+        }
+    }
+}
+
+fn bcs_post_created_from_bytes(contents: &[u8]) -> Result<BcsPostCreatedEvent, EventParseError> {
+    match bcs::from_bytes::<BcsPostCreatedEvent>(contents) {
+        Ok(ev) => Ok(ev),
+        Err(e_new) => match bcs::from_bytes::<BcsPostCreatedEventLegacy>(contents) {
+            Ok(legacy) => Ok(BcsPostCreatedEvent::from(legacy)),
+            Err(e_old) => Err(EventParseError {
+                error: format!(
+                    "PostCreatedEvent BCS: new layout: {}; legacy layout: {}",
+                    e_new, e_old
+                ),
+                contents: contents.to_vec(),
+            }),
+        },
+    }
 }
 
 #[derive(Debug, Deserialize)]
@@ -472,12 +545,29 @@ pub struct BcsRepostEvent {
     profile_id: AccountAddress,
 }
 
+/// Move `ascii::String` BCS (`bytes` field).
+#[derive(Debug, Clone, Deserialize, Serialize)]
+pub struct BcsMoveAsciiString {
+    pub bytes: Vec<u8>,
+}
+
+/// Move `std::type_name::TypeName` (fully-qualified type string).
+#[derive(Debug, Clone, Deserialize, Serialize)]
+pub struct BcsMoveTypeName {
+    pub name: BcsMoveAsciiString,
+}
+
+fn bcs_move_type_name_display(tn: &BcsMoveTypeName) -> String {
+    String::from_utf8_lossy(&tn.name.bytes).into_owned()
+}
+
 #[derive(Debug, Deserialize, Serialize)]
 pub struct BcsTipEvent {
     object_id: AccountAddress,
     from: AccountAddress,
     to: AccountAddress,
     amount: u64,
+    pub coin_type: BcsMoveTypeName,
     is_post: bool,
 }
 
@@ -595,6 +685,9 @@ pub struct BcsPocBadgeIssuedEvent {
     post_id: AccountAddress,
     media_type: u8,
     issued_by: AccountAddress,
+    beneficiary_address: Option<AccountAddress>,
+    matched_anchor_id: Option<AccountAddress>,
+    media_index: u8,
     timestamp: u64,
 }
 
@@ -608,15 +701,20 @@ pub struct BcsRevenueRedirectionActivatedEvent {
     timestamp: u64,
 }
 
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Deserialize, Serialize)]
 pub struct BcsPocDisputeSubmittedEvent {
     dispute_id: AccountAddress,
     post_id: AccountAddress,
     disputer: AccountAddress,
     dispute_type: u8,
     stake_amount: u64,
-    voting_start_epoch: u64,
-    voting_end_epoch: u64,
+    dispute_round: u8,
+    effective_fee: u64,
+    required_total_stake_quorum: u64,
+    post_poc_disputes_submitted_after: u8,
+    voting_start_ms: u64,
+    voting_end_ms: u64,
+    evidence: String,
     timestamp: u64,
 }
 
@@ -631,7 +729,7 @@ pub struct BcsDisputeVoteCastEvent {
     timestamp: u64,
 }
 
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Deserialize, Serialize)]
 pub struct BcsPocDisputeResolvedEvent {
     dispute_id: AccountAddress,
     post_id: AccountAddress,
@@ -641,6 +739,8 @@ pub struct BcsPocDisputeResolvedEvent {
     total_losing_stake: u64,
     badge_revoked: bool,
     redirection_removed: bool,
+    quorum_met: bool,
+    post_poc_disputes_submitted: u8,
     timestamp: u64,
 }
 
@@ -663,19 +763,18 @@ pub struct BcsPocConfigUpdatedEvent {
     audio_threshold: u64,
     revenue_redirect_percentage: u64,
     dispute_cost: u64,
-    dispute_protocol_fee: u64,
     min_vote_stake: u64,
     max_vote_stake: u64,
-    voting_duration_epochs: u64,
+    voting_duration_ms: u64,
     max_reasoning_length: u64,
     max_evidence_urls: u64,
     max_votes_per_dispute: u64,
-    timestamp: u64,
-}
-
-#[derive(Debug, Deserialize)]
-pub struct BcsTokenPoolSyncNeededEvent {
-    post_id: AccountAddress,
+    claim_treasury_fee_bps: u64,
+    max_referral_bps: u64,
+    video_embedded_audio_redirect_bps: u64,
+    dispute_quorum_base_stake: u64,
+    dispute_second_round_fee_multiplier_bps: u64,
+    dispute_second_round_quorum_multiplier_bps: u64,
     timestamp: u64,
 }
 
@@ -702,6 +801,24 @@ pub struct BcsConfigUpdatedEvent {
 }
 
 #[derive(Debug, Deserialize)]
+pub struct BcsRiskPricingConfigUpdatedEvent {
+    updated_by: AccountAddress,
+    min_spot_total_liquidity: u64,
+    max_coverage_fraction_of_option_bps: u64,
+    max_risk_multiplier_bps: u64,
+    min_premium_amount: u64,
+    spot_smoothing_per_option: u64,
+    implied_prob_floor_bps: u64,
+    odds_floor_1x: bool,
+    odds_cap_bps: u64,
+    liq_cap_bps: u64,
+    liq_ref_amount: u64,
+    exposure_cap_bps: u64,
+    exposure_k_bps: u64,
+    timestamp: u64,
+}
+
+#[derive(Debug, Deserialize)]
 pub struct BcsUnderwriterVaultCreatedEvent {
     vault_id: AccountAddress,
     underwriter: AccountAddress,
@@ -709,6 +826,9 @@ pub struct BcsUnderwriterVaultCreatedEvent {
     utilization_multiplier_bps: u64,
     max_exposure_per_market: u64,
     max_exposure_per_user: u64,
+    max_exposure_per_option: u64,
+    enabled: bool,
+    paused: bool,
 }
 
 #[derive(Debug, Deserialize)]
@@ -728,14 +848,83 @@ pub struct BcsUnderwriterVaultWithdrawnEvent {
 #[derive(Debug, Deserialize)]
 pub struct BcsCoveragePurchasedEvent {
     policy_id: AccountAddress,
+    vault_id: AccountAddress,
     market_id: AccountAddress,
     insured: AccountAddress,
     option_id: u8,
     covered_amount: u64,
     coverage_bps: u64,
     premium_paid: u64,
+    premium_raw: u64,
     reserve_locked: u64,
     expiry_time_ms: u64,
+    implied_probability_bps: u64,
+    risk_multiplier_bps: u64,
+    base_premium: u64,
+    market_total_amount: u64,
+    option_amount: u64,
+    backstop_sweep_amount: u64,
+    route_id: Option<AccountAddress>,
+    route_leg_index: u8,
+}
+
+#[derive(Debug, Deserialize)]
+pub struct BcsVaultStatusUpdatedEvent {
+    vault_id: AccountAddress,
+    enabled: bool,
+    paused: bool,
+    max_exposure_per_option: u64,
+    max_exposure_per_market: u64,
+    max_exposure_per_user: u64,
+    base_rate_bps_per_day: u64,
+    utilization_multiplier_bps: u64,
+    updated_by: AccountAddress,
+    timestamp_ms: u64,
+}
+
+#[derive(Debug, Deserialize)]
+pub struct BcsCoverageRoutedEvent {
+    route_id: AccountAddress,
+    insured: AccountAddress,
+    market_id: AccountAddress,
+    option_id: u8,
+    coverage_bps: u64,
+    duration_ms: u64,
+    total_covered: u64,
+    total_premium: u64,
+    total_reserve: u64,
+    total_backstop_sweep: u64,
+    expiry_time_ms: u64,
+    policy_ids: Vec<AccountAddress>,
+    vault_ids: Vec<AccountAddress>,
+}
+
+#[derive(Debug, Deserialize)]
+pub struct BcsRouteFillEvent {
+    route_id: AccountAddress,
+    leg_index: u8,
+    vault_id: AccountAddress,
+    policy_id: AccountAddress,
+    covered_amount: u64,
+    premium_paid: u64,
+    reserve_locked: u64,
+    backstop_sweep_amount: u64,
+}
+
+#[derive(Debug, Deserialize)]
+pub struct BcsBackstopUsedEvent {
+    market_id: AccountAddress,
+    recipient: AccountAddress,
+    amount: u64,
+    total_paid_out_after: u64,
+    tail_mode_enabled: bool,
+}
+
+#[derive(Debug, Deserialize)]
+pub struct BcsBackstopTreasuryDepositEvent {
+    depositor: AccountAddress,
+    amount: u64,
+    new_balance: u64,
 }
 
 #[derive(Debug, Deserialize)]
@@ -889,6 +1078,7 @@ pub struct BcsSpotBetPlacedEvent {
     user: AccountAddress,
     option_id: u8,
     amount: u64,
+    timestamp_ms: u64,
 }
 
 #[derive(Debug, Deserialize)]
@@ -927,8 +1117,8 @@ pub struct BcsSpotConfigUpdatedEvent {
     updated_by: AccountAddress,
     enable_flag: bool,
     confidence_threshold_bps: u64,
-    resolution_window_epochs: u64,
-    max_resolution_window_epochs: u64,
+    resolution_window_ms: u64,
+    max_resolution_window_ms: u64,
     payout_delay_ms: u64,
     fee_bps: u64,
     fee_split_bps_platform: u64,
@@ -951,10 +1141,10 @@ pub struct BcsSpotBetWithdrawnEvent {
 pub struct BcsSpotRecordCreatedEvent {
     record_id: AccountAddress,
     post_id: AccountAddress,
-    created_epoch: u64,
+    created_at_ms: u64,
     betting_options: Vec<String>,
-    resolution_window_epochs: Option<u64>,
-    max_resolution_window_epochs: Option<u64>,
+    resolution_window_ms: Option<u64>,
+    max_resolution_window_ms: Option<u64>,
 }
 
 // Upgrade event structs - field order matches upgrade.move
@@ -1040,7 +1230,9 @@ pub struct BcsTokenPoolCreatedEvent {
     associated_id: AccountAddress,
     base_price: u64,
     quadratic_coefficient: u64,
+    /// Initial nano-SPT circulating supply at pool creation (launch mint; on-chain `(total_reserved * SPT_SCALE) / base_price`).
     circulating_supply: u64,
+    /// Net nano-MYSO reserved at launch (denominator for proportional indexer split).
     total_reserved_at_launch: u64,
 }
 
@@ -1148,6 +1340,37 @@ pub struct BcsTokensAddedEvent {
 }
 
 #[derive(Debug, Deserialize)]
+pub struct BcsPoCResultAppliedEvent {
+    post_id: AccountAddress,
+    poc_outcome: u8,
+    poc_redirection_kind: u8,
+    similarity_detected: bool,
+    timestamp: u64,
+}
+
+#[derive(Debug, Deserialize, Serialize)]
+pub struct BcsPoCBeneficiaryVaultDepositEvent {
+    vault_id: AccountAddress,
+    beneficiary: AccountAddress,
+    coin_type: BcsMoveTypeName,
+    amount: u64,
+    source_post_id: Option<AccountAddress>,
+    timestamp: u64,
+}
+
+#[derive(Debug, Deserialize, Serialize)]
+pub struct BcsPoCBeneficiaryVaultClaimedEvent {
+    vault_id: AccountAddress,
+    beneficiary: AccountAddress,
+    coin_type: BcsMoveTypeName,
+    referrer: Option<AccountAddress>,
+    treasury_amount: u64,
+    referrer_amount: u64,
+    beneficiary_amount: u64,
+    timestamp: u64,
+}
+
+#[derive(Debug, Deserialize)]
 pub struct BcsEmergencyKillSwitchEvent {
     admin: AccountAddress,
     trading_enabled: bool,
@@ -1156,11 +1379,22 @@ pub struct BcsEmergencyKillSwitchEvent {
 }
 
 #[derive(Debug, Deserialize)]
+pub struct BcsPocRedirectionUpdatedEventV1 {
+    pool_id: AccountAddress,
+    post_id: AccountAddress,
+    redirect_to: Option<AccountAddress>,
+    redirect_percentage: Option<u64>,
+    updated_by: AccountAddress,
+    timestamp: u64,
+}
+
+#[derive(Debug, Deserialize)]
 pub struct BcsPocRedirectionUpdatedEvent {
     pool_id: AccountAddress,
     post_id: AccountAddress,
     redirect_to: Option<AccountAddress>,
     redirect_percentage: Option<u64>,
+    poc_redirection_kind: u8,
     updated_by: AccountAddress,
     timestamp: u64,
 }
@@ -1315,6 +1549,7 @@ fn parse_event_contents_inner(
         }
         "platform" => parse_platform_event(event_name, contents),
         "poc" | "proof_of_creativity" => parse_poc_event(event_name, contents),
+        "poc_vault" => parse_poc_vault_event(event_name, contents),
         "mydata" | "my_ip" => parse_mydata_event(event_name, contents),
         "insurance" => parse_insurance_event(event_name, contents),
         "social_proof_of_truth" | "spot" => parse_spot_event(event_name, contents),
@@ -1323,6 +1558,14 @@ fn parse_event_contents_inner(
         "upgrade" => parse_upgrade_event(event_name, contents),
         _ => Ok(None),
     };
+
+    if matches!(&result, Ok(None)) {
+        tracing::debug!(
+            %module,
+            %event_name,
+            "module event parser returned Ok(None); attempting raw JSON fallback"
+        );
+    }
 
     if let Ok(Some(v)) = result {
         return Ok(v);
@@ -1802,12 +2045,13 @@ fn parse_post_event(
 ) -> Result<Option<serde_json::Value>, EventParseError> {
     match event_name {
         "PostCreatedEvent" => {
-            let ev = bcs::from_bytes::<BcsPostCreatedEvent>(contents)
-                .map_err(|e| bcs_parse_err(e, contents))?;
+            let ev = bcs_post_created_from_bytes(contents)?;
             Ok(Some(serde_json::json!({
                 "post_id": addr_to_string(&ev.post_id),
                 "owner": addr_to_string(&ev.owner),
                 "profile_id": addr_to_string(&ev.profile_id),
+                "platform_id": addr_to_string(&ev.platform_id),
+                "permissions": ev.permissions,
                 "content": ev.content,
                 "post_type": ev.post_type,
                 "parent_post_id": ev.parent_post_id.as_ref().map(addr_to_string),
@@ -1823,6 +2067,7 @@ fn parse_post_event(
                 "enable_spot": ev.enable_spot,
                 "spot_id": ev.spot_id.as_ref().map(addr_to_string),
                 "spt_id": ev.spt_id.as_ref().map(addr_to_string),
+                "poc_redirection_kind": ev.poc_redirection_kind,
             })))
         }
         "CommentCreatedEvent" => {
@@ -1878,6 +2123,7 @@ fn parse_post_event(
                 "from": addr_to_string(&ev.from),
                 "to": addr_to_string(&ev.to),
                 "amount": ev.amount,
+                "coin_type": bcs_move_type_name_display(&ev.coin_type),
                 "is_post": ev.is_post,
                 "tip_time": 0u64,
             })))
@@ -2151,6 +2397,17 @@ fn parse_poc_event(
     contents: &[u8],
 ) -> Result<Option<serde_json::Value>, EventParseError> {
     let result = match event_name {
+        "PoCResultAppliedEvent" | "PocResultAppliedEvent" => {
+            let ev = bcs::from_bytes::<BcsPoCResultAppliedEvent>(contents)
+                .map_err(|e| bcs_parse_err(e, contents))?;
+            Ok(Some(serde_json::json!({
+                "post_id": addr_to_string(&ev.post_id),
+                "poc_outcome": ev.poc_outcome,
+                "poc_redirection_kind": ev.poc_redirection_kind,
+                "similarity_detected": ev.similarity_detected,
+                "timestamp": ev.timestamp,
+            })))
+        }
         "AnalysisSubmittedEvent" => {
             let ev = bcs::from_bytes::<BcsAnalysisSubmittedEvent>(contents)
                 .map_err(|e| bcs_parse_err(e, contents))?;
@@ -2173,6 +2430,9 @@ fn parse_poc_event(
                 "post_id": addr_to_string(&ev.post_id),
                 "media_type": ev.media_type,
                 "issued_by": addr_to_string(&ev.issued_by),
+                "beneficiary_address": ev.beneficiary_address.as_ref().map(addr_to_string),
+                "matched_anchor_id": ev.matched_anchor_id.as_ref().map(addr_to_string),
+                "media_index": ev.media_index,
                 "timestamp": ev.timestamp,
             })))
         }
@@ -2197,8 +2457,13 @@ fn parse_poc_event(
                 "disputer": addr_to_string(&ev.disputer),
                 "dispute_type": ev.dispute_type,
                 "stake_amount": ev.stake_amount,
-                "voting_start_epoch": ev.voting_start_epoch,
-                "voting_end_epoch": ev.voting_end_epoch,
+                "dispute_round": ev.dispute_round,
+                "effective_fee": ev.effective_fee,
+                "required_total_stake_quorum": ev.required_total_stake_quorum,
+                "post_poc_disputes_submitted_after": ev.post_poc_disputes_submitted_after,
+                "voting_start_ms": ev.voting_start_ms,
+                "voting_end_ms": ev.voting_end_ms,
+                "evidence": ev.evidence,
                 "timestamp": ev.timestamp,
             })))
         }
@@ -2227,6 +2492,8 @@ fn parse_poc_event(
                 "total_losing_stake": ev.total_losing_stake,
                 "badge_revoked": ev.badge_revoked,
                 "redirection_removed": ev.redirection_removed,
+                "quorum_met": ev.quorum_met,
+                "post_poc_disputes_submitted": ev.post_poc_disputes_submitted,
                 "timestamp": ev.timestamp,
             })))
         }
@@ -2253,27 +2520,59 @@ fn parse_poc_event(
                 "audio_threshold": ev.audio_threshold,
                 "revenue_redirect_percentage": ev.revenue_redirect_percentage,
                 "dispute_cost": ev.dispute_cost,
-                "dispute_protocol_fee": ev.dispute_protocol_fee,
                 "min_vote_stake": ev.min_vote_stake,
                 "max_vote_stake": ev.max_vote_stake,
-                "voting_duration_epochs": ev.voting_duration_epochs,
+                "voting_duration_ms": ev.voting_duration_ms,
                 "max_reasoning_length": ev.max_reasoning_length,
                 "max_evidence_urls": ev.max_evidence_urls,
                 "max_votes_per_dispute": ev.max_votes_per_dispute,
-                "timestamp": ev.timestamp,
-            })))
-        }
-        "TokenPoolSyncNeededEvent" => {
-            let ev = bcs::from_bytes::<BcsTokenPoolSyncNeededEvent>(contents)
-                .map_err(|e| bcs_parse_err(e, contents))?;
-            Ok(Some(serde_json::json!({
-                "post_id": addr_to_string(&ev.post_id),
+                "claim_treasury_fee_bps": ev.claim_treasury_fee_bps,
+                "max_referral_bps": ev.max_referral_bps,
+                "video_embedded_audio_redirect_bps": ev.video_embedded_audio_redirect_bps,
+                "dispute_quorum_base_stake": ev.dispute_quorum_base_stake,
+                "dispute_second_round_fee_multiplier_bps": ev.dispute_second_round_fee_multiplier_bps,
+                "dispute_second_round_quorum_multiplier_bps": ev.dispute_second_round_quorum_multiplier_bps,
                 "timestamp": ev.timestamp,
             })))
         }
         _ => Ok(None),
     };
     result
+}
+
+fn parse_poc_vault_event(
+    event_name: &str,
+    contents: &[u8],
+) -> Result<Option<serde_json::Value>, EventParseError> {
+    match event_name {
+        "PoCBeneficiaryVaultDepositEvent" => {
+            let ev = bcs::from_bytes::<BcsPoCBeneficiaryVaultDepositEvent>(contents)
+                .map_err(|e| bcs_parse_err(e, contents))?;
+            Ok(Some(serde_json::json!({
+                "vault_id": addr_to_string(&ev.vault_id),
+                "beneficiary": addr_to_string(&ev.beneficiary),
+                "coin_type": bcs_move_type_name_display(&ev.coin_type),
+                "amount": ev.amount,
+                "source_post_id": ev.source_post_id.as_ref().map(addr_to_string),
+                "timestamp": ev.timestamp,
+            })))
+        }
+        "PoCBeneficiaryVaultClaimedEvent" => {
+            let ev = bcs::from_bytes::<BcsPoCBeneficiaryVaultClaimedEvent>(contents)
+                .map_err(|e| bcs_parse_err(e, contents))?;
+            Ok(Some(serde_json::json!({
+                "vault_id": addr_to_string(&ev.vault_id),
+                "beneficiary": addr_to_string(&ev.beneficiary),
+                "coin_type": bcs_move_type_name_display(&ev.coin_type),
+                "referrer": ev.referrer.as_ref().map(addr_to_string),
+                "treasury_amount": ev.treasury_amount,
+                "referrer_amount": ev.referrer_amount,
+                "beneficiary_amount": ev.beneficiary_amount,
+                "timestamp": ev.timestamp,
+            })))
+        }
+        _ => Ok(None),
+    }
 }
 
 fn parse_mydata_event(
@@ -2460,6 +2759,26 @@ fn parse_insurance_event(
                 "timestamp": ev.timestamp,
             })))
         }
+        "RiskPricingConfigUpdatedEvent" => {
+            let ev = bcs::from_bytes::<BcsRiskPricingConfigUpdatedEvent>(contents)
+                .map_err(|e| bcs_parse_err(e, contents))?;
+            Ok(Some(serde_json::json!({
+                "updated_by": addr_to_string(&ev.updated_by),
+                "min_spot_total_liquidity": ev.min_spot_total_liquidity,
+                "max_coverage_fraction_of_option_bps": ev.max_coverage_fraction_of_option_bps,
+                "max_risk_multiplier_bps": ev.max_risk_multiplier_bps,
+                "min_premium_amount": ev.min_premium_amount,
+                "spot_smoothing_per_option": ev.spot_smoothing_per_option,
+                "implied_prob_floor_bps": ev.implied_prob_floor_bps,
+                "odds_floor_1x": ev.odds_floor_1x,
+                "odds_cap_bps": ev.odds_cap_bps,
+                "liq_cap_bps": ev.liq_cap_bps,
+                "liq_ref_amount": ev.liq_ref_amount,
+                "exposure_cap_bps": ev.exposure_cap_bps,
+                "exposure_k_bps": ev.exposure_k_bps,
+                "timestamp": ev.timestamp,
+            })))
+        }
         "UnderwriterVaultCreatedEvent" => {
             let ev = bcs::from_bytes::<BcsUnderwriterVaultCreatedEvent>(contents)
                 .map_err(|e| bcs_parse_err(e, contents))?;
@@ -2470,6 +2789,9 @@ fn parse_insurance_event(
                 "utilization_multiplier_bps": ev.utilization_multiplier_bps,
                 "max_exposure_per_market": ev.max_exposure_per_market,
                 "max_exposure_per_user": ev.max_exposure_per_user,
+                "max_exposure_per_option": ev.max_exposure_per_option,
+                "enabled": ev.enabled,
+                "paused": ev.paused,
             })))
         }
         "UnderwriterVaultDepositedEvent" => {
@@ -2493,16 +2815,31 @@ fn parse_insurance_event(
         "CoveragePurchasedEvent" => {
             let ev = bcs::from_bytes::<BcsCoveragePurchasedEvent>(contents)
                 .map_err(|e| bcs_parse_err(e, contents))?;
+            let route_id = ev
+                .route_id
+                .as_ref()
+                .map(addr_to_string)
+                .map(serde_json::Value::from);
             Ok(Some(serde_json::json!({
                 "policy_id": addr_to_string(&ev.policy_id),
+                "vault_id": addr_to_string(&ev.vault_id),
                 "market_id": addr_to_string(&ev.market_id),
                 "insured": addr_to_string(&ev.insured),
                 "option_id": ev.option_id,
                 "covered_amount": ev.covered_amount,
                 "coverage_bps": ev.coverage_bps,
                 "premium_paid": ev.premium_paid,
+                "premium_raw": ev.premium_raw,
                 "reserve_locked": ev.reserve_locked,
                 "expiry_time_ms": ev.expiry_time_ms,
+                "implied_probability_bps": ev.implied_probability_bps,
+                "risk_multiplier_bps": ev.risk_multiplier_bps,
+                "base_premium": ev.base_premium,
+                "market_total_amount": ev.market_total_amount,
+                "option_escrow_amount": ev.option_amount,
+                "backstop_sweep_amount": ev.backstop_sweep_amount,
+                "route_id": route_id,
+                "route_leg_index": ev.route_leg_index,
             })))
         }
         "CoverageCancelledEvent" => {
@@ -2536,6 +2873,77 @@ fn parse_insurance_event(
                 "expiry_time_ms": ev.expiry_time_ms,
             })))
         }
+        "VaultStatusUpdatedEvent" => {
+            let ev = bcs::from_bytes::<BcsVaultStatusUpdatedEvent>(contents)
+                .map_err(|e| bcs_parse_err(e, contents))?;
+            Ok(Some(serde_json::json!({
+                "vault_id": addr_to_string(&ev.vault_id),
+                "enabled": ev.enabled,
+                "paused": ev.paused,
+                "max_exposure_per_option": ev.max_exposure_per_option,
+                "max_exposure_per_market": ev.max_exposure_per_market,
+                "max_exposure_per_user": ev.max_exposure_per_user,
+                "base_rate_bps_per_day": ev.base_rate_bps_per_day,
+                "utilization_multiplier_bps": ev.utilization_multiplier_bps,
+                "updated_by": addr_to_string(&ev.updated_by),
+                "timestamp_ms": ev.timestamp_ms,
+            })))
+        }
+        "CoverageRoutedEvent" => {
+            let ev = bcs::from_bytes::<BcsCoverageRoutedEvent>(contents)
+                .map_err(|e| bcs_parse_err(e, contents))?;
+            let policy_ids: Vec<String> = ev.policy_ids.iter().map(addr_to_string).collect();
+            let vault_ids: Vec<String> = ev.vault_ids.iter().map(addr_to_string).collect();
+            Ok(Some(serde_json::json!({
+                "route_id": addr_to_string(&ev.route_id),
+                "insured": addr_to_string(&ev.insured),
+                "market_id": addr_to_string(&ev.market_id),
+                "option_id": ev.option_id,
+                "coverage_bps": ev.coverage_bps,
+                "duration_ms": ev.duration_ms,
+                "total_covered": ev.total_covered,
+                "total_premium": ev.total_premium,
+                "total_reserve": ev.total_reserve,
+                "total_backstop_sweep": ev.total_backstop_sweep,
+                "expiry_time_ms": ev.expiry_time_ms,
+                "policy_ids": policy_ids,
+                "vault_ids": vault_ids,
+            })))
+        }
+        "RouteFillEvent" => {
+            let ev = bcs::from_bytes::<BcsRouteFillEvent>(contents)
+                .map_err(|e| bcs_parse_err(e, contents))?;
+            Ok(Some(serde_json::json!({
+                "route_id": addr_to_string(&ev.route_id),
+                "leg_index": ev.leg_index,
+                "vault_id": addr_to_string(&ev.vault_id),
+                "policy_id": addr_to_string(&ev.policy_id),
+                "covered_amount": ev.covered_amount,
+                "premium_paid": ev.premium_paid,
+                "reserve_locked": ev.reserve_locked,
+                "backstop_sweep_amount": ev.backstop_sweep_amount,
+            })))
+        }
+        "BackstopUsedEvent" => {
+            let ev = bcs::from_bytes::<BcsBackstopUsedEvent>(contents)
+                .map_err(|e| bcs_parse_err(e, contents))?;
+            Ok(Some(serde_json::json!({
+                "market_id": addr_to_string(&ev.market_id),
+                "recipient": addr_to_string(&ev.recipient),
+                "amount": ev.amount,
+                "total_paid_out_after": ev.total_paid_out_after,
+                "tail_mode_enabled": ev.tail_mode_enabled,
+            })))
+        }
+        "BackstopTreasuryDepositEvent" => {
+            let ev = bcs::from_bytes::<BcsBackstopTreasuryDepositEvent>(contents)
+                .map_err(|e| bcs_parse_err(e, contents))?;
+            Ok(Some(serde_json::json!({
+                "depositor": addr_to_string(&ev.depositor),
+                "amount": ev.amount,
+                "new_balance": ev.new_balance,
+            })))
+        }
         _ => Ok(None),
     };
     result
@@ -2554,6 +2962,7 @@ fn parse_spot_event(
                 "user": addr_to_string(&ev.user),
                 "option_id": ev.option_id,
                 "amount": ev.amount,
+                "timestamp_ms": ev.timestamp_ms,
             })))
         }
         "SpotResolvedEvent" | "ResolvedEvent" => {
@@ -2602,8 +3011,8 @@ fn parse_spot_event(
                 "updated_by": addr_to_string(&ev.updated_by),
                 "enable_flag": ev.enable_flag,
                 "confidence_threshold_bps": ev.confidence_threshold_bps,
-                "resolution_window_epochs": ev.resolution_window_epochs,
-                "max_resolution_window_epochs": ev.max_resolution_window_epochs,
+                "resolution_window_ms": ev.resolution_window_ms,
+                "max_resolution_window_ms": ev.max_resolution_window_ms,
                 "payout_delay_ms": ev.payout_delay_ms,
                 "fee_bps": ev.fee_bps,
                 "fee_split_bps_platform": ev.fee_split_bps_platform,
@@ -2630,10 +3039,10 @@ fn parse_spot_event(
             Ok(Some(serde_json::json!({
                 "record_id": addr_to_string(&ev.record_id),
                 "post_id": addr_to_string(&ev.post_id),
-                "created_epoch": ev.created_epoch,
+                "created_at_ms": ev.created_at_ms,
                 "betting_options": ev.betting_options,
-                "resolution_window_epochs": ev.resolution_window_epochs,
-                "max_resolution_window_epochs": ev.max_resolution_window_epochs,
+                "resolution_window_ms": ev.resolution_window_ms,
+                "max_resolution_window_ms": ev.max_resolution_window_ms,
             })))
         }
         _ => Ok(None),
@@ -2790,15 +3199,55 @@ fn parse_spt_event(
             })))
         }
         "PocRedirectionUpdatedEvent" => {
-            let ev = bcs::from_bytes::<BcsPocRedirectionUpdatedEvent>(contents)
-                .map_err(|e| bcs_parse_err(e, contents))?;
+            let (
+                pool_id,
+                post_id,
+                redirect_to,
+                redirect_percentage,
+                poc_redirection_kind,
+                updated_by,
+                timestamp,
+            ) = match bcs::from_bytes::<BcsPocRedirectionUpdatedEvent>(contents) {
+                Ok(ev) => (
+                    ev.pool_id,
+                    ev.post_id,
+                    ev.redirect_to,
+                    ev.redirect_percentage,
+                    ev.poc_redirection_kind,
+                    ev.updated_by,
+                    ev.timestamp,
+                ),
+                Err(e_v2) => {
+                    let ev = bcs::from_bytes::<BcsPocRedirectionUpdatedEventV1>(contents).map_err(
+                        |e_v1| EventParseError {
+                            error: format!("PocRedirection BCS v2: {e_v2}; v1: {e_v1}"),
+                            contents: contents.to_vec(),
+                        },
+                    )?;
+                    let kind = if ev.redirect_to.is_some() && ev.redirect_percentage.is_some() {
+                        1u8
+                    } else {
+                        0u8
+                    };
+                    (
+                        ev.pool_id,
+                        ev.post_id,
+                        ev.redirect_to,
+                        ev.redirect_percentage,
+                        kind,
+                        ev.updated_by,
+                        ev.timestamp,
+                    )
+                }
+            };
             Ok(Some(serde_json::json!({
-                "pool_id": addr_to_string(&ev.pool_id),
-                "post_id": addr_to_string(&ev.post_id),
-                "redirect_to": ev.redirect_to.as_ref().map(addr_to_string),
-                "redirect_percentage": ev.redirect_percentage,
-                "updated_by": addr_to_string(&ev.updated_by),
-                "timestamp": ev.timestamp,
+                "pool_id": addr_to_string(&pool_id),
+                "post_id": addr_to_string(&post_id),
+                "redirect_to": redirect_to.as_ref().map(addr_to_string),
+                "redirect_percentage": redirect_percentage,
+                "poc_redirection_kind": poc_redirection_kind,
+                "updated_by": addr_to_string(&updated_by),
+                "timestamp": timestamp,
             })))
         }
         _ => Ok(None),
@@ -3458,6 +3907,11 @@ mod tests {
             from,
             to,
             amount: 5_000_000_000,
+            coin_type: BcsMoveTypeName {
+                name: BcsMoveAsciiString {
+                    bytes: b"0x2::myso::MYSO".to_vec(),
+                },
+            },
             is_post: true,
         };
         let bytes = bcs::to_bytes(&ev).expect("bcs");
@@ -3467,6 +3921,120 @@ mod tests {
         let json = parse_event_contents("post", "TipEvent", &bytes).expect("parse");
         assert_eq!(json["amount"], 5_000_000_000_i64);
         assert_eq!(json["is_post"], true);
+        assert_eq!(json["coin_type"].as_str().unwrap(), "0x2::myso::MYSO");
+    }
+
+    #[test]
+    fn poc_beneficiary_vault_deposit_bcs_round_trip() {
+        let vault_id = AccountAddress::from_hex_literal("0x1").unwrap();
+        let beneficiary = AccountAddress::from_hex_literal("0x2").unwrap();
+        let source_post_id = AccountAddress::from_hex_literal("0x3").unwrap();
+        let ev = BcsPoCBeneficiaryVaultDepositEvent {
+            vault_id,
+            beneficiary,
+            coin_type: BcsMoveTypeName {
+                name: BcsMoveAsciiString {
+                    bytes: b"0x2::sui::SUI".to_vec(),
+                },
+            },
+            amount: 1_000,
+            source_post_id: Some(source_post_id),
+            timestamp: 42,
+        };
+        let bytes = bcs::to_bytes(&ev).expect("bcs");
+        let back: BcsPoCBeneficiaryVaultDepositEvent = bcs::from_bytes(&bytes).expect("from_bytes");
+        assert_eq!(back.amount, 1_000);
+        let json =
+            parse_event_contents("poc_vault", "PoCBeneficiaryVaultDepositEvent", &bytes).unwrap();
+        assert_eq!(json["amount"], 1_000_i64);
+        assert_eq!(json["timestamp"], 42_i64);
+        assert_eq!(json["coin_type"].as_str().unwrap(), "0x2::sui::SUI");
+        assert_eq!(
+            json["source_post_id"].as_str().unwrap(),
+            "0x0000000000000000000000000000000000000000000000000000000000000003"
+        );
+    }
+
+    #[test]
+    fn poc_beneficiary_vault_claimed_bcs_round_trip() {
+        let vault_id = AccountAddress::from_hex_literal("0x10").unwrap();
+        let beneficiary = AccountAddress::from_hex_literal("0x20").unwrap();
+        let referrer = AccountAddress::from_hex_literal("0x30").unwrap();
+        let ev = BcsPoCBeneficiaryVaultClaimedEvent {
+            vault_id,
+            beneficiary,
+            coin_type: BcsMoveTypeName {
+                name: BcsMoveAsciiString {
+                    bytes: b"0x2::myso::MYSO".to_vec(),
+                },
+            },
+            referrer: Some(referrer),
+            treasury_amount: 100,
+            referrer_amount: 200,
+            beneficiary_amount: 700,
+            timestamp: 99,
+        };
+        let bytes = bcs::to_bytes(&ev).expect("bcs");
+        let json =
+            parse_event_contents("poc_vault", "PoCBeneficiaryVaultClaimedEvent", &bytes).unwrap();
+        assert_eq!(json["treasury_amount"], 100_i64);
+        assert_eq!(json["referrer_amount"], 200_i64);
+        assert_eq!(json["beneficiary_amount"], 700_i64);
+        assert_eq!(json["timestamp"], 99_i64);
+        assert!(json["referrer"].as_str().unwrap().starts_with("0x"));
+    }
+
+    #[test]
+    fn poc_dispute_resolved_bcs_round_trip() {
+        let dispute_id = AccountAddress::from_hex_literal("0xaa").unwrap();
+        let post_id = AccountAddress::from_hex_literal("0xbb").unwrap();
+        let ev = BcsPocDisputeResolvedEvent {
+            dispute_id,
+            post_id,
+            resolution: 1,
+            winning_side: 2,
+            total_winning_stake: 10,
+            total_losing_stake: 3,
+            badge_revoked: true,
+            redirection_removed: false,
+            quorum_met: true,
+            post_poc_disputes_submitted: 4,
+            timestamp: 1234,
+        };
+        let bytes = bcs::to_bytes(&ev).expect("bcs");
+        let json = parse_event_contents("poc", "PoCDisputeResolvedEvent", &bytes).expect("parse");
+        assert_eq!(json["resolution"], 1_i64);
+        assert_eq!(json["winning_side"], 2_i64);
+        assert_eq!(json["badge_revoked"], true);
+        assert_eq!(json["quorum_met"], true);
+        assert_eq!(json["post_poc_disputes_submitted"], 4_i64);
+    }
+
+    #[test]
+    fn poc_dispute_submitted_bcs_round_trip() {
+        let dispute_id = AccountAddress::from_hex_literal("0xaa").unwrap();
+        let post_id = AccountAddress::from_hex_literal("0xbb").unwrap();
+        let disputer = AccountAddress::from_hex_literal("0xcc").unwrap();
+        let ev = BcsPocDisputeSubmittedEvent {
+            dispute_id,
+            post_id,
+            disputer,
+            dispute_type: 1,
+            stake_amount: 100,
+            dispute_round: 1,
+            effective_fee: 100,
+            required_total_stake_quorum: 500,
+            post_poc_disputes_submitted_after: 1,
+            voting_start_ms: 10,
+            voting_end_ms: 10000,
+            evidence: "Derivative claim".to_string(),
+            timestamp: 12345,
+        };
+        let bytes = bcs::to_bytes(&ev).expect("bcs");
+        let json = parse_event_contents("poc", "PoCDisputeSubmittedEvent", &bytes).expect("parse");
+        assert_eq!(json["dispute_round"], 1_i64);
+        assert_eq!(json["evidence"], "Derivative claim");
+        assert_eq!(json["effective_fee"], 100_i64);
     }
 
     #[test]

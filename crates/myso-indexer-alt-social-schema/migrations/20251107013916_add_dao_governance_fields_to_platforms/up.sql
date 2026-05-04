@@ -38,13 +38,6 @@ BEGIN
     
     IF NOT EXISTS (
         SELECT 1 FROM information_schema.columns 
-        WHERE table_name = 'platforms' AND column_name = 'min_on_chain_age_days'
-    ) THEN
-        ALTER TABLE platforms ADD COLUMN min_on_chain_age_days BIGINT;
-    END IF;
-    
-    IF NOT EXISTS (
-        SELECT 1 FROM information_schema.columns 
         WHERE table_name = 'platforms' AND column_name = 'proposal_submission_cost'
     ) THEN
         ALTER TABLE platforms ADD COLUMN proposal_submission_cost BIGINT;

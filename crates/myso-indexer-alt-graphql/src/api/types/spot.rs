@@ -96,9 +96,9 @@ impl SpotBet {
         self.inner.option_label.as_deref()
     }
 
-    /// Epoch timestamp when the bet was placed.
+    /// Unix milliseconds when the bet was placed (`Clock` on-chain when available).
     async fn placed_at(&self) -> i64 {
-        self.inner.timestamp_epoch
+        self.inner.timestamp_ms
     }
 
     /// Escrow amount.
@@ -163,24 +163,24 @@ impl SpotRecord {
             .collect()
     }
 
-    /// Epoch when the record was created.
-    async fn created_epoch(&self) -> i64 {
-        self.inner.created_epoch
+    /// Unix milliseconds when the record was created (`Clock`).
+    async fn created_at_ms(&self) -> i64 {
+        self.inner.created_at_ms
     }
 
-    /// Resolution window in epochs.
-    async fn resolution_window_epochs(&self) -> Option<i64> {
-        self.inner.resolution_window_epochs
+    /// Resolution window duration in milliseconds.
+    async fn resolution_window_ms(&self) -> Option<i64> {
+        self.inner.resolution_window_ms
     }
 
-    /// Max resolution window in epochs.
-    async fn max_resolution_window_epochs(&self) -> Option<i64> {
-        self.inner.max_resolution_window_epochs
+    /// Max resolution window duration in milliseconds.
+    async fn max_resolution_window_ms(&self) -> Option<i64> {
+        self.inner.max_resolution_window_ms
     }
 
-    /// Last resolution epoch.
-    async fn last_resolution_epoch(&self) -> Option<i64> {
-        self.inner.last_resolution_epoch
+    /// Last resolution instant (Unix ms), if resolved.
+    async fn last_resolution_at_ms(&self) -> Option<i64> {
+        self.inner.last_resolution_at_ms
     }
 
     /// Total escrow across all options.
@@ -223,9 +223,9 @@ impl SpotPayout {
         self.inner.amount
     }
 
-    /// Epoch timestamp when the payout was made.
+    /// Unix milliseconds when the payout was recorded (checkpoint / chain time).
     async fn paid_at(&self) -> i64 {
-        self.inner.timestamp_epoch
+        self.inner.timestamp_ms
     }
 
     /// Transaction ID.
@@ -263,9 +263,9 @@ impl SpotRefund {
         self.inner.amount
     }
 
-    /// Epoch timestamp when the refund was made.
+    /// Unix milliseconds when the refund was recorded (checkpoint / chain time).
     async fn refunded_at(&self) -> i64 {
-        self.inner.timestamp_epoch
+        self.inner.timestamp_ms
     }
 
     /// Transaction ID.
@@ -313,9 +313,9 @@ impl SpotResolution {
         self.inner.fee_taken
     }
 
-    /// Epoch when the record was resolved.
-    async fn resolved_epoch(&self) -> i64 {
-        self.inner.resolved_epoch
+    /// Unix milliseconds when the record was resolved (checkpoint / chain time).
+    async fn resolved_at_ms(&self) -> i64 {
+        self.inner.resolved_at_ms
     }
 
     /// Transaction ID.
@@ -373,9 +373,9 @@ impl SpotBetWithdrawal {
         self.inner.fee_taken
     }
 
-    /// Epoch timestamp when the withdrawal was made.
+    /// Unix milliseconds when the withdrawal was recorded (checkpoint / chain time).
     async fn withdrawn_at(&self) -> i64 {
-        self.inner.timestamp_epoch
+        self.inner.timestamp_ms
     }
 
     /// Transaction ID.

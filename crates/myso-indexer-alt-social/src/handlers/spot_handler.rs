@@ -43,7 +43,7 @@ pub enum SpotRow {
         post_id: String,
         status: i16,
         outcome: Option<i16>,
-        last_resolution_epoch: i64,
+        last_resolution_at_ms: i64,
     },
 }
 
@@ -66,12 +66,12 @@ impl SpotRow {
                 post_id,
                 status,
                 outcome,
-                last_resolution_epoch,
+                last_resolution_at_ms,
             } => Some(SpotRow::SpotRecordUpdate {
                 post_id,
                 status,
                 outcome,
-                last_resolution_epoch,
+                last_resolution_at_ms,
             }),
             _ => None,
         }
@@ -182,17 +182,17 @@ impl Handler for SpotHandler {
                         .betting_options
                         .clone()
                         .unwrap_or_else(|| serde_json::json!([]));
-                    let resolution_window_epochs = record.resolution_window_epochs;
-                    let max_resolution_window_epochs = record.max_resolution_window_epochs;
+                    let resolution_window_ms = record.resolution_window_ms;
+                    let max_resolution_window_ms = record.max_resolution_window_ms;
                     total += diesel::insert_into(spot_records::table)
                         .values(record)
                         .on_conflict(spot_records::post_id)
                         .do_update()
                         .set((
                             spot_records::betting_options.eq(betting_options),
-                            spot_records::resolution_window_epochs.eq(resolution_window_epochs),
-                            spot_records::max_resolution_window_epochs
-                                .eq(max_resolution_window_epochs),
+                            spot_records::resolution_window_ms.eq(resolution_window_ms),
+                            spot_records::max_resolution_window_ms
+                                .eq(max_resolution_window_ms),
                             spot_records::updated_at.eq(chrono::Utc::now().naive_utc()),
                         ))
                         .execute(conn)
@@ -202,14 +202,14 @@ impl Handler for SpotHandler {
                     post_id,
                     status,
                     outcome,
-                    last_resolution_epoch,
+                    last_resolution_at_ms,
                 } => {
                     total += diesel::update(spot_records::table)
                         .filter(spot_records::post_id.eq(post_id))
                         .set((
                             spot_records::status.eq(*status),
                             spot_records::outcome.eq(*outcome),
-                            spot_records::last_resolution_epoch.eq(Some(*last_resolution_epoch)),
+                            spot_records::last_resolution_at_ms.eq(Some(*last_resolution_at_ms)),
                             spot_records::updated_at.eq(chrono::Utc::now().naive_utc()),
                         ))
                         .execute(conn)

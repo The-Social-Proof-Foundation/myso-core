@@ -1,8 +1,8 @@
 // Copyright (c) The Social Proof Foundation, LLC.
 // SPDX-License-Identifier: Apache-2.0
 
-use diesel::sql_types::{BigInt, Date, Integer, Nullable, Text};
 use diesel::QueryableByName;
+use diesel::sql_types::{BigInt, Date, Integer, Jsonb, Nullable, SmallInt, Text};
 use serde::Serialize;
 
 #[derive(Debug, Serialize, QueryableByName)]
@@ -31,6 +31,30 @@ pub struct PostBasicRow {
     pub tips_received: i64,
     #[diesel(sql_type = Nullable<Text>)]
     pub mydata_id: Option<String>,
+    #[diesel(sql_type = Nullable<Text>)]
+    pub poc_id: Option<String>,
+    #[diesel(sql_type = Nullable<Text>)]
+    pub revenue_redirect_to: Option<String>,
+    #[diesel(sql_type = Nullable<BigInt>)]
+    pub revenue_redirect_percentage: Option<i64>,
+    #[diesel(sql_type = Nullable<Text>)]
+    pub poc_reasoning: Option<String>,
+    #[diesel(sql_type = Nullable<Jsonb>)]
+    pub poc_evidence_urls: Option<serde_json::Value>,
+    #[diesel(sql_type = Nullable<BigInt>)]
+    pub poc_similarity_score: Option<i64>,
+    #[diesel(sql_type = Nullable<SmallInt>)]
+    pub poc_media_type: Option<i16>,
+    #[diesel(sql_type = Nullable<Text>)]
+    pub poc_oracle_address: Option<String>,
+    #[diesel(sql_type = Nullable<BigInt>)]
+    pub poc_analyzed_at: Option<i64>,
+    #[diesel(sql_type = Nullable<SmallInt>)]
+    pub poc_outcome: Option<i16>,
+    #[diesel(sql_type = Nullable<SmallInt>)]
+    pub poc_redirection_kind: Option<i16>,
+    #[diesel(sql_type = SmallInt)]
+    pub poc_disputes_submitted: i16,
 }
 
 #[derive(Debug, Serialize)]

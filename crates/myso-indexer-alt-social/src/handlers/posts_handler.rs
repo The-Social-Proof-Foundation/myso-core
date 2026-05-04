@@ -21,15 +21,16 @@ use myso_indexer_alt_framework::types::full_checkpoint_content::Checkpoint;
 use myso_indexer_alt_framework::FieldCount;
 use myso_indexer_alt_social_schema::models::{
     NewComment, NewDeletionEvent, NewModerationEvent, NewPocAnalysisResult, NewPocBadge,
-    NewPocConfiguration, NewPocDispute, NewPocDisputeVote, NewPocRevenueRedirection, NewPost,
-    NewPostTransfer, NewPromotedPost, NewPromotionBudgetEvent, NewPromotionStatusEvent,
-    NewPromotionView, NewReaction, NewReactionCount, NewReport, NewRepost, NewTip,
-    NewUnifiedRevenue,
+    NewPocConfiguration, NewPocDispute, NewPocDisputeVote, NewPocRevenueRedirection,
+    NewPocVaultClaim, NewPocVaultDeposit, NewPost, NewPostTransfer, NewPromotedPost,
+    NewPromotionBudgetEvent, NewPromotionStatusEvent, NewPromotionView, NewReaction,
+    NewReactionCount, NewReport, NewRepost, NewTip, NewUnifiedRevenue,
 };
 use myso_indexer_alt_social_schema::schema::{
     comments, poc_analysis_results, poc_badges, poc_configuration, poc_dispute_votes, poc_disputes,
-    poc_revenue_redirections, post_config, posts, promoted_posts, promotion_budget_events,
-    promotion_status_events, promotion_views, reaction_counts, reactions, reposts, tips,
+    poc_revenue_redirections, poc_vault_claims, poc_vault_deposits, post_config, posts,
+    promoted_posts, promotion_budget_events, promotion_status_events, promotion_views,
+    reaction_counts, reactions, reposts, tips,
 };
 use myso_indexer_alt_social_schema::schema::{
     posts_deletion_events, posts_moderation_events, posts_reports, posts_transfers, profiles,
@@ -42,7 +43,7 @@ use super::poc;
 use super::post;
 
 const POST_MODULES: &[&str] = &["post", "comment", "reaction", "repost", "tip"];
-const POC_MODULES: &[&str] = &["poc", "proof_of_creativity"];
+const POC_MODULES: &[&str] = &["poc", "proof_of_creativity", "poc_vault"];
 
 #[derive(Debug, Clone)]
 pub enum PostRow {
@@ -166,6 +167,10 @@ pub enum PostRow {
     PocAnalysisResult(NewPocAnalysisResult),
     PocRevenueRedirection(NewPocRevenueRedirection),
     PocDispute(NewPocDispute),
+    PostPocDisputesSubmitted {
+        post_id: String,
+        poc_disputes_submitted: i16,
+    },
     PocDisputeVote(NewPocDisputeVote),
     PocConfiguration(NewPocConfiguration),
     PostPocUpdate {
@@ -177,10 +182,42 @@ pub enum PostRow {
         poc_oracle_address: Option<String>,
         poc_analyzed_at: Option<i64>,
     },
+    PostPocResultApplied {
+        post_id: String,
+        poc_outcome: i16,
+        poc_redirection_kind: i16,
+        similarity_detected: bool,
+        timestamp_ms: i64,
+    },
+    PostPocBadgePointer {
+        post_id: String,
+        poc_badge_object_id: String,
+    },
+    PocBeneficiaryVaultDeposit {
+        vault_id: String,
+        beneficiary_address: String,
+        coin_type: String,
+        amount: i64,
+        source_post_id: Option<String>,
+        timestamp_ms: i64,
+        transaction_id: String,
+    },
+    PocBeneficiaryVaultClaimed {
+        vault_id: String,
+        beneficiary_address: String,
+        coin_type: String,
+        referrer_address: Option<String>,
+        treasury_amount: i64,
+        referrer_amount: i64,
+        beneficiary_amount: i64,
+        timestamp_ms: i64,
+        transaction_id: String,
+    },
     PostRevenueRedirectUpdate {
         post_id: String,
         revenue_redirect_to: String,
         revenue_redirect_percentage: i64,
+        poc_redirection_kind: i16,
     },
     PocDisputeResolved {
         dispute_id: String,
@@ -192,6 +229,7 @@ pub enum PostRow {
         resolved_at: i64,
         badge_revoked: bool,
         redirection_removed: bool,
+        quorum_met: bool,
     },
     PocVoteRewardClaimed {
         dispute_id: String,
@@ -400,6 +438,13 @@ impl PostRow {
             SocialEventRow::PocAnalysisResult(r) => Some(PostRow::PocAnalysisResult(r)),
             SocialEventRow::PocRevenueRedirection(r) => Some(PostRow::PocRevenueRedirection(r)),
             SocialEventRow::PocDispute(d) => Some(PostRow::PocDispute(d)),
+            SocialEventRow::PostPocDisputesSubmitted {
+                post_id,
+                poc_disputes_submitted,
+            } => Some(PostRow::PostPocDisputesSubmitted {
+                post_id,
+                poc_disputes_submitted,
+            }),
             SocialEventRow::PocDisputeVote(v) => Some(PostRow::PocDisputeVote(v)),
             SocialEventRow::PocConfiguration(c) => Some(PostRow::PocConfiguration(c)),
             SocialEventRow::PostPocUpdate {
@@ -419,14 +464,74 @@ impl PostRow {
                 poc_oracle_address,
                 poc_analyzed_at,
             }),
+            SocialEventRow::PostPocResultApplied {
+                post_id,
+                poc_outcome,
+                poc_redirection_kind,
+                similarity_detected,
+                timestamp_ms,
+            } => Some(PostRow::PostPocResultApplied {
+                post_id,
+                poc_outcome,
+                poc_redirection_kind,
+                similarity_detected,
+                timestamp_ms,
+            }),
+            SocialEventRow::PostPocBadgePointer {
+                post_id,
+                poc_badge_object_id,
+            } => Some(PostRow::PostPocBadgePointer {
+                post_id,
+                poc_badge_object_id,
+            }),
+            SocialEventRow::PocBeneficiaryVaultDeposit {
+                vault_id,
+                beneficiary_address,
+                coin_type,
+                amount,
+                source_post_id,
+                timestamp_ms,
+                transaction_id,
+            } => Some(PostRow::PocBeneficiaryVaultDeposit {
+                vault_id,
+                beneficiary_address,
+                coin_type,
+                amount,
+                source_post_id,
+                timestamp_ms,
+                transaction_id,
+            }),
+            SocialEventRow::PocBeneficiaryVaultClaimed {
+                vault_id,
+                beneficiary_address,
+                coin_type,
+                referrer_address,
+                treasury_amount,
+                referrer_amount,
+                beneficiary_amount,
+                timestamp_ms,
+                transaction_id,
+            } => Some(PostRow::PocBeneficiaryVaultClaimed {
+                vault_id,
+                beneficiary_address,
+                coin_type,
+                referrer_address,
+                treasury_amount,
+                referrer_amount,
+                beneficiary_amount,
+                timestamp_ms,
+                transaction_id,
+            }),
             SocialEventRow::PostRevenueRedirectUpdate {
                 post_id,
                 revenue_redirect_to,
                 revenue_redirect_percentage,
+                poc_redirection_kind,
             } => Some(PostRow::PostRevenueRedirectUpdate {
                 post_id,
                 revenue_redirect_to,
                 revenue_redirect_percentage,
+                poc_redirection_kind,
             }),
             SocialEventRow::PocDisputeResolved {
                 dispute_id,
@@ -438,6 +543,7 @@ impl PostRow {
                 resolved_at,
                 badge_revoked,
                 redirection_removed,
+                quorum_met,
             } => Some(PostRow::PocDisputeResolved {
                 dispute_id,
                 post_id,
@@ -448,6 +554,7 @@ impl PostRow {
                 resolved_at,
                 badge_revoked,
                 redirection_removed,
+                quorum_met,
             }),
             SocialEventRow::PocVoteRewardClaimed {
                 dispute_id,
@@ -464,7 +571,7 @@ impl PostRow {
 }
 
 impl FieldCount for PostRow {
-    const FIELD_COUNT: usize = 85;
+    const FIELD_COUNT: usize = 91;
 }
 
 pub struct PostsHandler;
@@ -528,7 +635,7 @@ impl Processor for PostsHandler {
                             values.push(r);
                         }
                     }
-                } else if event_name != "TokenPoolSyncNeededEvent" {
+                } else {
                     tracing::warn!(
                         tx_digest = %tx_digest,
                         module,
@@ -1091,6 +1198,16 @@ impl Handler for PostsHandler {
                         .execute(conn)
                         .await?;
                 }
+                PostRow::PostPocDisputesSubmitted {
+                    post_id,
+                    poc_disputes_submitted,
+                } => {
+                    total += diesel::update(posts::table)
+                        .filter(posts::post_id.eq(post_id))
+                        .set(posts::poc_disputes_submitted.eq(*poc_disputes_submitted))
+                        .execute(conn)
+                        .await?;
+                }
                 PostRow::PocDisputeVote(v) => {
                     total += diesel::insert_into(poc_dispute_votes::table)
                         .values(v)
@@ -1125,17 +1242,145 @@ impl Handler for PostsHandler {
                         .execute(conn)
                         .await?;
                 }
-                PostRow::PostRevenueRedirectUpdate {
+                PostRow::PostPocResultApplied {
                     post_id,
-                    revenue_redirect_to,
-                    revenue_redirect_percentage,
+                    poc_outcome,
+                    poc_redirection_kind,
+                    ..
                 } => {
                     total += diesel::update(posts::table)
                         .filter(posts::post_id.eq(post_id))
                         .set((
-                            posts::revenue_redirect_to.eq(Some(revenue_redirect_to)),
+                            posts::poc_outcome.eq(Some(*poc_outcome)),
+                            posts::poc_redirection_kind.eq(Some(*poc_redirection_kind)),
+                        ))
+                        .execute(conn)
+                        .await?;
+                }
+                PostRow::PostPocBadgePointer {
+                    post_id,
+                    poc_badge_object_id,
+                } => {
+                    total += diesel::update(posts::table)
+                        .filter(posts::post_id.eq(post_id))
+                        .set(posts::poc_id.eq(Some(poc_badge_object_id.clone())))
+                        .execute(conn)
+                        .await?;
+                }
+                PostRow::PocBeneficiaryVaultDeposit {
+                    vault_id,
+                    beneficiary_address,
+                    coin_type,
+                    amount,
+                    source_post_id,
+                    timestamp_ms,
+                    transaction_id,
+                } => {
+                    let deposit = NewPocVaultDeposit {
+                        vault_id: vault_id.clone(),
+                        beneficiary_address: beneficiary_address.clone(),
+                        amount: *amount,
+                        coin_type: coin_type.clone(),
+                        source_post_id: source_post_id.clone(),
+                        occurred_at_ms: *timestamp_ms,
+                        transaction_id: transaction_id.clone(),
+                    };
+                    total += diesel::insert_into(poc_vault_deposits::table)
+                        .values(&deposit)
+                        .execute(conn)
+                        .await?;
+                    let vault_meta_sql = "INSERT INTO poc_beneficiary_vaults (vault_id, beneficiary_address, updated_at_ms, transaction_id, time) \
+                        VALUES ($1, $2, $3, $4, NOW()) \
+                        ON CONFLICT (vault_id) DO UPDATE SET \
+                        beneficiary_address = EXCLUDED.beneficiary_address, \
+                        updated_at_ms = EXCLUDED.updated_at_ms, \
+                        transaction_id = EXCLUDED.transaction_id, \
+                        time = NOW()";
+                    total += diesel::sql_query(vault_meta_sql)
+                        .bind::<Text, _>(vault_id.clone())
+                        .bind::<Text, _>(beneficiary_address.clone())
+                        .bind::<BigInt, _>(*timestamp_ms)
+                        .bind::<Text, _>(transaction_id.clone())
+                        .execute(conn)
+                        .await?;
+                    let coin_bal_sql = "INSERT INTO poc_vault_coin_balances (vault_id, coin_type, balance, updated_at_ms, transaction_id, time) \
+                        VALUES ($1, $2, $3, $4, $5, NOW()) \
+                        ON CONFLICT (vault_id, coin_type) DO UPDATE SET \
+                        balance = poc_vault_coin_balances.balance + EXCLUDED.balance, \
+                        updated_at_ms = EXCLUDED.updated_at_ms, \
+                        transaction_id = EXCLUDED.transaction_id, \
+                        time = NOW()";
+                    total += diesel::sql_query(coin_bal_sql)
+                        .bind::<Text, _>(vault_id)
+                        .bind::<Text, _>(coin_type.clone())
+                        .bind::<BigInt, _>(*amount)
+                        .bind::<BigInt, _>(*timestamp_ms)
+                        .bind::<Text, _>(transaction_id)
+                        .execute(conn)
+                        .await?;
+                }
+                PostRow::PocBeneficiaryVaultClaimed {
+                    vault_id,
+                    beneficiary_address,
+                    coin_type,
+                    referrer_address,
+                    treasury_amount,
+                    referrer_amount,
+                    beneficiary_amount,
+                    timestamp_ms,
+                    transaction_id,
+                } => {
+                    let gross_i64: i64 = (*treasury_amount as i128
+                        + *referrer_amount as i128
+                        + *beneficiary_amount as i128)
+                        .try_into()
+                        .expect("PoC vault claim gross fits i64");
+                    let row = NewPocVaultClaim {
+                        vault_id: vault_id.clone(),
+                        beneficiary_address: beneficiary_address.clone(),
+                        coin_type: coin_type.clone(),
+                        referrer_address: referrer_address.clone(),
+                        treasury_amount: *treasury_amount,
+                        referrer_amount: *referrer_amount,
+                        beneficiary_amount: *beneficiary_amount,
+                        occurred_at_ms: *timestamp_ms,
+                        transaction_id: transaction_id.clone(),
+                    };
+                    total += diesel::insert_into(poc_vault_claims::table)
+                        .values(&row)
+                        .execute(conn)
+                        .await?;
+                    let deduct_sql = "UPDATE poc_vault_coin_balances SET balance = balance - $3, updated_at_ms = $4, transaction_id = $5, time = NOW() \
+                        WHERE vault_id = $1 AND coin_type = $2";
+                    total += diesel::sql_query(deduct_sql)
+                        .bind::<Text, _>(vault_id.clone())
+                        .bind::<Text, _>(coin_type.clone())
+                        .bind::<BigInt, _>(gross_i64)
+                        .bind::<BigInt, _>(*timestamp_ms)
+                        .bind::<Text, _>(transaction_id)
+                        .execute(conn)
+                        .await?;
+                    let vault_touch_sql = "UPDATE poc_beneficiary_vaults SET updated_at_ms = $2, transaction_id = $3, time = NOW() WHERE vault_id = $1";
+                    total += diesel::sql_query(vault_touch_sql)
+                        .bind::<Text, _>(vault_id)
+                        .bind::<BigInt, _>(*timestamp_ms)
+                        .bind::<Text, _>(&row.transaction_id)
+                        .execute(conn)
+                        .await?;
+                }
+                PostRow::PostRevenueRedirectUpdate {
+                    post_id,
+                    revenue_redirect_to,
+                    revenue_redirect_percentage,
+                    poc_redirection_kind,
+                } => {
+                    total += diesel::update(posts::table)
+                        .filter(posts::post_id.eq(post_id))
+                        .set((
+                            posts::revenue_redirect_to.eq(Some(revenue_redirect_to.clone())),
                             posts::revenue_redirect_percentage
-                                .eq(Some(revenue_redirect_percentage)),
+                                .eq(Some(*revenue_redirect_percentage)),
+                            posts::poc_redirection_kind.eq(Some(*poc_redirection_kind)),
                         ))
                         .execute(conn)
                         .await?;
@@ -1150,16 +1395,18 @@ impl Handler for PostsHandler {
                     resolved_at,
                     badge_revoked,
                     redirection_removed,
+                    quorum_met,
                 } => {
-                    let update_sql = "UPDATE poc_disputes SET status = $1, resolution = $2, winning_side = $3, total_winning_stake = $4, total_losing_stake = $5, resolved_at = $6 \
-                        WHERE dispute_id = $7 AND time = (SELECT time FROM poc_disputes WHERE dispute_id = $7 ORDER BY time DESC LIMIT 1)";
+                    let update_sql = "UPDATE poc_disputes SET status = $1, resolution = $2, winning_side = $3, total_winning_stake = $4, total_losing_stake = $5, resolved_at = $6, quorum_met = $7 \
+                        WHERE dispute_id = $8 AND time = (SELECT time FROM poc_disputes WHERE dispute_id = $8 ORDER BY time DESC LIMIT 1)";
                     total += diesel::sql_query(update_sql)
-                        .bind::<Int2, _>(resolution)
+                        .bind::<Int2, _>(*resolution)
                         .bind::<Nullable<Int2>, _>(Some(*resolution))
                         .bind::<Nullable<Int2>, _>(Some(*winning_side))
                         .bind::<Nullable<BigInt>, _>(Some(*total_winning_stake))
                         .bind::<Nullable<BigInt>, _>(Some(*total_losing_stake))
                         .bind::<Nullable<BigInt>, _>(Some(*resolved_at))
+                        .bind::<Bool, _>(*quorum_met)
                         .bind::<Text, _>(dispute_id)
                         .execute(conn)
                         .await?;
@@ -1172,6 +1419,24 @@ impl Handler for PostsHandler {
                             .bind::<Text, _>(post_id)
                             .execute(conn)
                             .await?;
+
+                        total += diesel::update(posts::table)
+                            .filter(posts::post_id.eq(post_id))
+                            .set((
+                                posts::poc_outcome.eq(None::<i16>),
+                                posts::poc_redirection_kind.eq(None::<i16>),
+                                posts::poc_id.eq(None::<String>),
+                                posts::poc_reasoning.eq(None::<String>),
+                                posts::poc_evidence_urls.eq(None::<serde_json::Value>),
+                                posts::poc_similarity_score.eq(None::<i64>),
+                                posts::poc_media_type.eq(None::<i16>),
+                                posts::poc_oracle_address.eq(None::<String>),
+                                posts::poc_analyzed_at.eq(None::<i64>),
+                                posts::revenue_redirect_to.eq(None::<String>),
+                                posts::revenue_redirect_percentage.eq(None::<i64>),
+                            ))
+                            .execute(conn)
+                            .await?;
                     }
 
                     if *redirection_removed {
@@ -1182,6 +1447,18 @@ impl Handler for PostsHandler {
                             .bind::<Text, _>(post_id)
                             .execute(conn)
                             .await?;
+
+                        if !*badge_revoked {
+                            total += diesel::update(posts::table)
+                                .filter(posts::post_id.eq(post_id))
+                                .set((
+                                    posts::revenue_redirect_to.eq(None::<String>),
+                                    posts::revenue_redirect_percentage.eq(None::<i64>),
+                                    posts::poc_redirection_kind.eq(None::<i16>),
+                                ))
+                                .execute(conn)
+                                .await?;
+                        }
                     }
                 }
                 PostRow::PocVoteRewardClaimed {
@@ -1218,6 +1495,9 @@ mod post_row_poc_mapping_tests {
             post_id: "0x2".to_string(),
             media_type: 1,
             issued_by: "0x3".to_string(),
+            beneficiary_address: None,
+            matched_anchor_id: None,
+            media_index: None,
             issued_at: 0,
             revoked: false,
             revoked_at: None,

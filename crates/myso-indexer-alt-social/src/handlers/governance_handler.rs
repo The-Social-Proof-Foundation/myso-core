@@ -9,19 +9,18 @@ use std::sync::Arc;
 
 use anyhow::Result;
 use async_trait::async_trait;
+use diesel::sql_types::{BigInt, Bool, Int2, SmallInt, Text};
 use diesel::ExpressionMethods;
 use diesel::QueryableByName;
-use diesel::sql_types::{BigInt, Bool, Int2, SmallInt, Text};
 use diesel_async::RunQueryDsl;
 use move_core_types::ident_str;
-use myso_indexer_alt_framework::FieldCount;
 use myso_indexer_alt_framework::pipeline::Processor;
-use myso_indexer_alt_framework::postgres::Connection;
 use myso_indexer_alt_framework::postgres::handler::Handler;
+use myso_indexer_alt_framework::postgres::Connection;
 use myso_indexer_alt_framework::types::full_checkpoint_content::{
     Checkpoint, ExecutedTransaction, ObjectSet,
 };
-use myso_indexer_alt_social_schema::PROPOSAL_TYPE_PLATFORM;
+use myso_indexer_alt_framework::FieldCount;
 use myso_indexer_alt_social_schema::models::{
     GovernanceRegistryPanelBoundaryUpdate, GovernanceRegistryUpdate, NewAnonymousVote,
     NewCommunityVote, NewDelegate, NewDelegateRating, NewDelegateVote, NewGovernanceEvent,
@@ -33,9 +32,10 @@ use myso_indexer_alt_social_schema::schema::{
     governance_events, governance_registries, nominated_delegates, platforms, proposals,
     reward_distributions, vote_decryption_failures,
 };
-use myso_types::MYSO_SOCIAL_ADDRESS;
+use myso_indexer_alt_social_schema::PROPOSAL_TYPE_PLATFORM;
 use myso_types::object::ID_END_INDEX;
 use myso_types::storage::ObjectKey;
+use myso_types::MYSO_SOCIAL_ADDRESS;
 
 use super::common;
 use super::events;
@@ -1011,9 +1011,8 @@ mod resolve_governance_registry_tests {
     use fastcrypto::ed25519::Ed25519KeyPair;
     use move_core_types::identifier::Identifier;
     use move_core_types::language_storage::StructTag;
-    use myso_types::MYSO_SOCIAL_ADDRESS;
     use myso_types::base_types::{MoveObjectType, MySoAddress, ObjectID, SequenceNumber};
-    use myso_types::crypto::{AccountKeyPair, get_key_pair_from_rng};
+    use myso_types::crypto::{get_key_pair_from_rng, AccountKeyPair};
     use myso_types::digests::{ObjectDigest, TransactionDigest};
     use myso_types::effects::{TestEffectsBuilder, TransactionEffectsAPI};
     use myso_types::full_checkpoint_content::{ExecutedTransaction, ObjectSet};
@@ -1021,12 +1020,13 @@ mod resolve_governance_registry_tests {
     use myso_types::programmable_transaction_builder::ProgrammableTransactionBuilder;
     use myso_types::transaction::{Transaction, TransactionData};
     use myso_types::utils::to_sender_signed_transaction;
-    use rand::SeedableRng;
+    use myso_types::MYSO_SOCIAL_ADDRESS;
     use rand::rngs::StdRng;
+    use rand::SeedableRng;
 
     use super::{
-        ID_END_INDEX, collect_governance_dao_candidates, pick_governance_registry_id,
-        pick_registry_id_from_event_hints, resolve_governance_registry_id_from_tx,
+        collect_governance_dao_candidates, pick_governance_registry_id,
+        pick_registry_id_from_event_hints, resolve_governance_registry_id_from_tx, ID_END_INDEX,
     };
 
     #[test]

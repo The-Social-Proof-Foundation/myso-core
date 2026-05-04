@@ -1,13 +1,13 @@
 // Copyright (c) The Social Proof Foundation, LLC.
 // SPDX-License-Identifier: Apache-2.0
 
-use diesel::sql_query;
-use diesel::sql_types::{BigInt, Text};
 use diesel::ExpressionMethods;
 use diesel::OptionalExtension;
 use diesel::QueryDsl;
 use diesel::QueryableByName;
 use diesel::SelectableHelper;
+use diesel::sql_query;
+use diesel::sql_types::{BigInt, Text};
 use diesel_async::RunQueryDsl;
 use myso_indexer_alt_social_schema::schema::{
     comments, post_config, posts, posts_deletion_events, posts_moderation_events, posts_reports,
@@ -17,7 +17,7 @@ use myso_indexer_alt_social_schema::schema::{
 use crate::error::SocialError;
 use crate::reader::types::{CommentRow, PostBasicRow, PostConfigRow, ReactionRow, RepostRow};
 use myso_indexer_alt_social_schema::models::{
-    PostDeletionEventRow, PostModerationEventRow, PostReport, PostTransfer, POST_TYPE_QUOTE_REPOST,
+    POST_TYPE_QUOTE_REPOST, PostDeletionEventRow, PostModerationEventRow, PostReport, PostTransfer,
 };
 use myso_pg_db::Db;
 
@@ -55,6 +55,18 @@ pub(crate) async fn list_posts(
             posts::repost_count,
             posts::tips_received,
             posts::mydata_id,
+            posts::poc_id,
+            posts::revenue_redirect_to,
+            posts::revenue_redirect_percentage,
+            posts::poc_reasoning,
+            posts::poc_evidence_urls,
+            posts::poc_similarity_score,
+            posts::poc_media_type,
+            posts::poc_oracle_address,
+            posts::poc_analyzed_at,
+            posts::poc_outcome,
+            posts::poc_redirection_kind,
+            posts::poc_disputes_submitted,
         ))
         .load::<(
             String,
@@ -69,6 +81,18 @@ pub(crate) async fn list_posts(
             Option<i64>,
             Option<i64>,
             Option<String>,
+            Option<String>,
+            Option<String>,
+            Option<i64>,
+            Option<String>,
+            Option<serde_json::Value>,
+            Option<i64>,
+            Option<i16>,
+            Option<String>,
+            Option<i64>,
+            Option<i16>,
+            Option<i16>,
+            i16,
         )>(&mut conn)
         .await?;
     Ok(results
@@ -87,6 +111,18 @@ pub(crate) async fn list_posts(
                 repost_count,
                 tips_received,
                 mydata_id,
+                poc_id,
+                revenue_redirect_to,
+                revenue_redirect_percentage,
+                poc_reasoning,
+                poc_evidence_urls,
+                poc_similarity_score,
+                poc_media_type,
+                poc_oracle_address,
+                poc_analyzed_at,
+                poc_outcome,
+                poc_redirection_kind,
+                poc_disputes_submitted,
             )| PostBasicRow {
                 post_id,
                 owner,
@@ -100,6 +136,18 @@ pub(crate) async fn list_posts(
                 repost_count: repost_count.unwrap_or(0),
                 tips_received: tips_received.unwrap_or(0),
                 mydata_id,
+                poc_id,
+                revenue_redirect_to,
+                revenue_redirect_percentage,
+                poc_reasoning,
+                poc_evidence_urls,
+                poc_similarity_score,
+                poc_media_type,
+                poc_oracle_address,
+                poc_analyzed_at,
+                poc_outcome,
+                poc_redirection_kind,
+                poc_disputes_submitted,
             },
         )
         .collect())
@@ -163,7 +211,11 @@ pub(crate) async fn get_trending_posts(
     let mut conn = db.connect().await?;
     let query = "
         SELECT post_id, owner, profile_id, content, post_type, created_at, deleted_at,
-               reaction_count, comment_count, repost_count, tips_received, mydata_id
+               reaction_count, comment_count, repost_count, tips_received, mydata_id,
+               poc_id, revenue_redirect_to, revenue_redirect_percentage,
+               poc_reasoning, poc_evidence_urls, poc_similarity_score, poc_media_type,
+               poc_oracle_address, poc_analyzed_at,
+               poc_outcome, poc_redirection_kind, poc_disputes_submitted
         FROM posts
         WHERE deleted_at IS NULL
         ORDER BY (reaction_count + comment_count + repost_count) DESC, created_at DESC
@@ -184,7 +236,11 @@ pub(crate) async fn get_post_by_id(
     let mut conn = db.connect().await?;
     let query = "
         SELECT post_id, owner, profile_id, content, post_type, created_at, deleted_at,
-               reaction_count, comment_count, repost_count, tips_received, mydata_id
+               reaction_count, comment_count, repost_count, tips_received, mydata_id,
+               poc_id, revenue_redirect_to, revenue_redirect_percentage,
+               poc_reasoning, poc_evidence_urls, poc_similarity_score, poc_media_type,
+               poc_oracle_address, poc_analyzed_at,
+               poc_outcome, poc_redirection_kind, poc_disputes_submitted
         FROM posts
         WHERE (post_id = $1 OR id = $1) AND deleted_at IS NULL
         ORDER BY created_at DESC

@@ -1,6 +1,7 @@
 // Copyright (c) The Social Proof Foundation, LLC.
 // SPDX-License-Identifier: Apache-2.0
 
+use super::common;
 use super::SocialEventRow;
 use myso_indexer_alt_social_schema::models::{
     NewProfileSubscription, NewProfileSubscriptionService, NewSubscriptionEvent, THIRTY_DAYS_MS,
@@ -94,8 +95,13 @@ fn process_subscription_service_created_event(
     data: &Value,
     event_id: &str,
 ) -> Option<Vec<SocialEventRow>> {
-    let event: ProfileSubscriptionServiceCreatedEvent =
-        serde_json::from_value(data.clone()).ok()?;
+    let event: ProfileSubscriptionServiceCreatedEvent = common::deserialize_social_event_json(
+        "subscription",
+        "ProfileSubscriptionServiceCreatedEvent",
+        event_id,
+        data,
+        "subscription ProfileSubscriptionServiceCreatedEvent JSON did not match struct",
+    )?;
     let now = chrono::Utc::now();
     let service = NewProfileSubscriptionService {
         service_id: event.service_id.clone(),
@@ -128,7 +134,13 @@ fn process_subscription_service_created_event(
 }
 
 fn process_subscription_created_event(data: &Value, event_id: &str) -> Option<Vec<SocialEventRow>> {
-    let event: ProfileSubscriptionCreatedEvent = serde_json::from_value(data.clone()).ok()?;
+    let event: ProfileSubscriptionCreatedEvent = common::deserialize_social_event_json(
+        "subscription",
+        "ProfileSubscriptionCreatedEvent",
+        event_id,
+        data,
+        "subscription ProfileSubscriptionCreatedEvent JSON did not match struct",
+    )?;
     let now = chrono::Utc::now();
     let subscription_id = generate_subscription_id();
     let payment_time = event.expires_at as i64 - THIRTY_DAYS_MS;
@@ -184,7 +196,13 @@ fn process_subscription_created_event(data: &Value, event_id: &str) -> Option<Ve
 }
 
 fn process_subscription_renewed_event(data: &Value, event_id: &str) -> Option<Vec<SocialEventRow>> {
-    let event: ProfileSubscriptionRenewedEvent = serde_json::from_value(data.clone()).ok()?;
+    let event: ProfileSubscriptionRenewedEvent = common::deserialize_social_event_json(
+        "subscription",
+        "ProfileSubscriptionRenewedEvent",
+        event_id,
+        data,
+        "subscription ProfileSubscriptionRenewedEvent JSON did not match struct",
+    )?;
     let now = chrono::Utc::now();
 
     let sub_event = NewSubscriptionEvent {
@@ -225,7 +243,13 @@ fn process_subscription_cancelled_event(
     data: &Value,
     event_id: &str,
 ) -> Option<Vec<SocialEventRow>> {
-    let event: ProfileSubscriptionCancelledEvent = serde_json::from_value(data.clone()).ok()?;
+    let event: ProfileSubscriptionCancelledEvent = common::deserialize_social_event_json(
+        "subscription",
+        "ProfileSubscriptionCancelledEvent",
+        event_id,
+        data,
+        "subscription ProfileSubscriptionCancelledEvent JSON did not match struct",
+    )?;
     let now = chrono::Utc::now();
 
     let sub_event = NewSubscriptionEvent {
@@ -264,7 +288,13 @@ fn process_subscription_cancelled_event(
 }
 
 fn process_subscription_updated_event(data: &Value, event_id: &str) -> Option<Vec<SocialEventRow>> {
-    let event: ProfileSubscriptionUpdatedEvent = serde_json::from_value(data.clone()).ok()?;
+    let event: ProfileSubscriptionUpdatedEvent = common::deserialize_social_event_json(
+        "subscription",
+        "ProfileSubscriptionUpdatedEvent",
+        event_id,
+        data,
+        "subscription ProfileSubscriptionUpdatedEvent JSON did not match struct",
+    )?;
     let now = chrono::Utc::now();
 
     let sub_event = NewSubscriptionEvent {
@@ -300,7 +330,13 @@ fn process_renewal_balance_funded_event(
     data: &Value,
     event_id: &str,
 ) -> Option<Vec<SocialEventRow>> {
-    let event: RenewalBalanceFundedEvent = serde_json::from_value(data.clone()).ok()?;
+    let event: RenewalBalanceFundedEvent = common::deserialize_social_event_json(
+        "subscription",
+        "RenewalBalanceFundedEvent",
+        event_id,
+        data,
+        "subscription RenewalBalanceFundedEvent JSON did not match struct",
+    )?;
     let now = chrono::Utc::now();
 
     let sub_event = NewSubscriptionEvent {
@@ -335,8 +371,13 @@ fn process_subscription_service_deactivated_event(
     data: &Value,
     event_id: &str,
 ) -> Option<Vec<SocialEventRow>> {
-    let event: ProfileSubscriptionServiceDeactivatedEvent =
-        serde_json::from_value(data.clone()).ok()?;
+    let event: ProfileSubscriptionServiceDeactivatedEvent = common::deserialize_social_event_json(
+        "subscription",
+        "ProfileSubscriptionServiceDeactivatedEvent",
+        event_id,
+        data,
+        "subscription ProfileSubscriptionServiceDeactivatedEvent JSON did not match struct",
+    )?;
     let now = chrono::Utc::now();
 
     let sub_event = NewSubscriptionEvent {

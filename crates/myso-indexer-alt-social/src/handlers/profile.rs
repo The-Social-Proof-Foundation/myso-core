@@ -7,6 +7,7 @@ use chrono::{TimeZone, Utc};
 use serde::{Deserialize, Deserializer};
 use std::str::FromStr;
 
+use super::common;
 use super::{ProfileUpdate, SocialEventRow};
 use myso_indexer_alt_social_schema::models::{
     NewEcosystemTreasury, NewProfile, NewProfileEvent, NewProfileOffer, NewProfileSaleFee,
@@ -257,13 +258,15 @@ pub fn handle_profile_event(
         "ProfileCreatedEvent" => process_profile_created_event(data, event_id),
         "ProfileUpdatedEvent" => process_profile_updated_event(data, event_id),
         "ProfileXUsernameUpdatedEvent" => process_profile_x_username_updated_event(data, event_id),
-        "UsernameRegisteredEvent" => process_username_registered_event(data),
-        "UsernameUpdatedEvent" => process_username_updated_event(data),
+        "UsernameRegisteredEvent" => process_username_registered_event(data, event_id),
+        "UsernameUpdatedEvent" => process_username_updated_event(data, event_id),
         "BadgeAssignedEvent" => process_badge_assigned_event(data, event_id),
         "BadgeRevokedEvent" => process_badge_revoked_event(data, event_id),
         "BadgeRemovedEvent" => process_badge_removed_event(data, event_id),
         "BadgeSelectedEvent" => process_badge_selected_event(data, event_id),
-        "PaidMessagingSettingsUpdatedEvent" => process_paid_messaging_settings_updated_event(data),
+        "PaidMessagingSettingsUpdatedEvent" => {
+            process_paid_messaging_settings_updated_event(data, event_id)
+        }
         "TokensVestedEvent" => process_tokens_vested_event(data, event_id),
         "TokensClaimedEvent" => process_tokens_claimed_event(data, event_id),
         "VestingWalletDeletedEvent" => process_vesting_wallet_deleted_event(data, event_id),
@@ -338,7 +341,13 @@ fn process_profile_updated_event(
     data: &serde_json::Value,
     event_id: &str,
 ) -> Option<Vec<SocialEventRow>> {
-    let ev: ProfileUpdatedEvent = serde_json::from_value(data.clone()).ok()?;
+    let ev: ProfileUpdatedEvent = common::deserialize_social_event_json(
+        "profile",
+        "ProfileUpdatedEvent",
+        event_id,
+        data,
+        "profile ProfileUpdatedEvent JSON did not match ProfileUpdatedEvent",
+    )?;
     let now = Utc::now().naive_utc();
     let profile_id = ev.profile_id.clone();
     let owner_address = ev.owner_address.clone();
@@ -398,7 +407,13 @@ fn process_profile_x_username_updated_event(
     data: &serde_json::Value,
     event_id: &str,
 ) -> Option<Vec<SocialEventRow>> {
-    let ev: ProfileXUsernameUpdatedEvent = serde_json::from_value(data.clone()).ok()?;
+    let ev: ProfileXUsernameUpdatedEvent = common::deserialize_social_event_json(
+        "profile",
+        "ProfileXUsernameUpdatedEvent",
+        event_id,
+        data,
+        "profile ProfileXUsernameUpdatedEvent JSON did not match ProfileXUsernameUpdatedEvent",
+    )?;
     let now = Utc::now().naive_utc();
     let profile_id = ev.profile_id.clone();
     let owner_address = ev.owner_address.clone();
@@ -464,8 +479,17 @@ struct UsernameRegisteredEvent {
     owner_address: String,
 }
 
-fn process_username_registered_event(data: &serde_json::Value) -> Option<Vec<SocialEventRow>> {
-    let ev: UsernameRegisteredEvent = serde_json::from_value(data.clone()).ok()?;
+fn process_username_registered_event(
+    data: &serde_json::Value,
+    event_id: &str,
+) -> Option<Vec<SocialEventRow>> {
+    let ev: UsernameRegisteredEvent = common::deserialize_social_event_json(
+        "profile",
+        "UsernameRegisteredEvent",
+        event_id,
+        data,
+        "profile UsernameRegisteredEvent JSON did not match UsernameRegisteredEvent",
+    )?;
     let up = ProfileUpdate {
         profile_id: ev.profile_id,
         owner_address: ev.owner_address,
@@ -510,8 +534,17 @@ struct UsernameUpdatedEvent {
     owner_address: String,
 }
 
-fn process_username_updated_event(data: &serde_json::Value) -> Option<Vec<SocialEventRow>> {
-    let ev: UsernameUpdatedEvent = serde_json::from_value(data.clone()).ok()?;
+fn process_username_updated_event(
+    data: &serde_json::Value,
+    event_id: &str,
+) -> Option<Vec<SocialEventRow>> {
+    let ev: UsernameUpdatedEvent = common::deserialize_social_event_json(
+        "profile",
+        "UsernameUpdatedEvent",
+        event_id,
+        data,
+        "profile UsernameUpdatedEvent JSON did not match UsernameUpdatedEvent",
+    )?;
     let up = ProfileUpdate {
         profile_id: ev.profile_id,
         owner_address: ev.owner_address,
@@ -593,7 +626,13 @@ fn process_badge_assigned_event(
     data: &serde_json::Value,
     event_id: &str,
 ) -> Option<Vec<SocialEventRow>> {
-    let ev: BadgeAssignedEvent = serde_json::from_value(data.clone()).ok()?;
+    let ev: BadgeAssignedEvent = common::deserialize_social_event_json(
+        "profile",
+        "BadgeAssignedEvent",
+        event_id,
+        data,
+        "profile BadgeAssignedEvent JSON did not match BadgeAssignedEvent",
+    )?;
     let now = chrono::Utc::now();
     let profile_id = ev.profile_id.clone();
     let badge_id = ev.badge_id.clone();
@@ -665,7 +704,13 @@ fn process_badge_revoked_event(
     data: &serde_json::Value,
     event_id: &str,
 ) -> Option<Vec<SocialEventRow>> {
-    let ev: BadgeRevokedEvent = serde_json::from_value(data.clone()).ok()?;
+    let ev: BadgeRevokedEvent = common::deserialize_social_event_json(
+        "profile",
+        "BadgeRevokedEvent",
+        event_id,
+        data,
+        "profile BadgeRevokedEvent JSON did not match BadgeRevokedEvent",
+    )?;
     let event = NewProfileEvent {
         event_type: "BadgeRevoked".to_string(),
         profile_id: ev.profile_id.clone(),
@@ -707,9 +752,15 @@ struct BadgeSelectedEvent {
 
 fn process_badge_selected_event(
     data: &serde_json::Value,
-    _event_id: &str,
+    event_id: &str,
 ) -> Option<Vec<SocialEventRow>> {
-    let ev: BadgeSelectedEvent = serde_json::from_value(data.clone()).ok()?;
+    let ev: BadgeSelectedEvent = common::deserialize_social_event_json(
+        "profile",
+        "BadgeSelectedEvent",
+        event_id,
+        data,
+        "profile BadgeSelectedEvent JSON did not match BadgeSelectedEvent",
+    )?;
     let (selected_badge_id, selected_ecosystem_badge_id) = if ev.badge_id.is_empty() {
         (Some(None), None)
     } else if ev.badge_id.starts_with(ECOSYSTEM_BADGE_PREFIX) {
@@ -770,8 +821,15 @@ struct PaidMessagingSettingsUpdatedEvent {
 
 fn process_paid_messaging_settings_updated_event(
     data: &serde_json::Value,
+    event_id: &str,
 ) -> Option<Vec<SocialEventRow>> {
-    let ev: PaidMessagingSettingsUpdatedEvent = serde_json::from_value(data.clone()).ok()?;
+    let ev: PaidMessagingSettingsUpdatedEvent = common::deserialize_social_event_json(
+        "profile",
+        "PaidMessagingSettingsUpdatedEvent",
+        event_id,
+        data,
+        "profile PaidMessagingSettingsUpdatedEvent JSON did not match PaidMessagingSettingsUpdatedEvent",
+    )?;
     let up = ProfileUpdate {
         profile_id: ev.profile_id.clone(),
         owner_address: ev.owner,
@@ -825,7 +883,13 @@ fn process_badge_removed_event(
     data: &serde_json::Value,
     event_id: &str,
 ) -> Option<Vec<SocialEventRow>> {
-    let ev: BadgeRemovedEvent = serde_json::from_value(data.clone()).ok()?;
+    let ev: BadgeRemovedEvent = common::deserialize_social_event_json(
+        "profile",
+        "BadgeRemovedEvent",
+        event_id,
+        data,
+        "profile BadgeRemovedEvent JSON did not match BadgeRemovedEvent",
+    )?;
     let event = NewProfileEvent {
         event_type: "BadgeRemoved".to_string(),
         profile_id: ev.profile_id.clone(),
@@ -891,7 +955,13 @@ fn process_tokens_vested_event(
     data: &serde_json::Value,
     event_id: &str,
 ) -> Option<Vec<SocialEventRow>> {
-    let ev: TokensVestedEvent = serde_json::from_value(data.clone()).ok()?;
+    let ev: TokensVestedEvent = common::deserialize_social_event_json(
+        "profile",
+        "TokensVestedEvent",
+        event_id,
+        data,
+        "profile TokensVestedEvent JSON did not match TokensVestedEvent",
+    )?;
     let total_amount = ev.total_amount.unwrap_or(0) as i64;
     let start_time = ev.start_time.unwrap_or(0) as i64;
     let duration = ev.duration.unwrap_or(0) as i64;
@@ -959,7 +1029,13 @@ fn process_tokens_claimed_event(
     data: &serde_json::Value,
     event_id: &str,
 ) -> Option<Vec<SocialEventRow>> {
-    let ev: TokensClaimedEvent = serde_json::from_value(data.clone()).ok()?;
+    let ev: TokensClaimedEvent = common::deserialize_social_event_json(
+        "profile",
+        "TokensClaimedEvent",
+        event_id,
+        data,
+        "profile TokensClaimedEvent JSON did not match TokensClaimedEvent",
+    )?;
     let claimed_amount = ev.claimed_amount.unwrap_or(0) as i64;
     let remaining_balance = ev.remaining_balance.unwrap_or(0) as i64;
     let vest_event = NewVestingEvent {
@@ -1083,7 +1159,13 @@ fn process_profile_offer_created_event(
     data: &serde_json::Value,
     event_id: &str,
 ) -> Option<Vec<SocialEventRow>> {
-    let ev: ProfileOfferCreatedEvent = serde_json::from_value(data.clone()).ok()?;
+    let ev: ProfileOfferCreatedEvent = common::deserialize_social_event_json(
+        "profile",
+        "ProfileOfferCreatedEvent",
+        event_id,
+        data,
+        "profile ProfileOfferCreatedEvent JSON did not match ProfileOfferCreatedEvent",
+    )?;
     let created_at = ev.created_at as i64;
     let offer = NewProfileOffer {
         profile_id: ev.profile_id,
@@ -1102,7 +1184,13 @@ fn process_profile_offer_accepted_event(
     data: &serde_json::Value,
     event_id: &str,
 ) -> Option<Vec<SocialEventRow>> {
-    let ev: ProfileOfferAcceptedEvent = serde_json::from_value(data.clone()).ok()?;
+    let ev: ProfileOfferAcceptedEvent = common::deserialize_social_event_json(
+        "profile",
+        "ProfileOfferAcceptedEvent",
+        event_id,
+        data,
+        "profile ProfileOfferAcceptedEvent JSON did not match ProfileOfferAcceptedEvent",
+    )?;
     let accepted_at = ev.accepted_at as i64;
     Some(vec![SocialEventRow::ProfileOfferStatusUpdate {
         profile_id: ev.profile_id,
@@ -1118,7 +1206,13 @@ fn process_profile_offer_rejected_event(
     data: &serde_json::Value,
     event_id: &str,
 ) -> Option<Vec<SocialEventRow>> {
-    let ev: ProfileOfferRejectedEvent = serde_json::from_value(data.clone()).ok()?;
+    let ev: ProfileOfferRejectedEvent = common::deserialize_social_event_json(
+        "profile",
+        "ProfileOfferRejectedEvent",
+        event_id,
+        data,
+        "profile ProfileOfferRejectedEvent JSON did not match ProfileOfferRejectedEvent",
+    )?;
     let rejected_at = ev.rejected_at as i64;
     let status = if ev.is_revoked {
         "revoked".to_string()
@@ -1139,7 +1233,13 @@ fn process_profile_sale_fee_event(
     data: &serde_json::Value,
     event_id: &str,
 ) -> Option<Vec<SocialEventRow>> {
-    let ev: ProfileSaleFeeEvent = serde_json::from_value(data.clone()).ok()?;
+    let ev: ProfileSaleFeeEvent = common::deserialize_social_event_json(
+        "profile",
+        "ProfileSaleFeeEvent",
+        event_id,
+        data,
+        "profile ProfileSaleFeeEvent JSON did not match ProfileSaleFeeEvent",
+    )?;
     let fee = NewProfileSaleFee {
         profile_id: ev.profile_id,
         offeror_address: ev.offeror,
@@ -1157,7 +1257,13 @@ fn process_vesting_wallet_deleted_event(
     data: &serde_json::Value,
     event_id: &str,
 ) -> Option<Vec<SocialEventRow>> {
-    let ev: VestingWalletDeletedEvent = serde_json::from_value(data.clone()).ok()?;
+    let ev: VestingWalletDeletedEvent = common::deserialize_social_event_json(
+        "profile",
+        "VestingWalletDeletedEvent",
+        event_id,
+        data,
+        "profile VestingWalletDeletedEvent JSON did not match VestingWalletDeletedEvent",
+    )?;
     let vest_event = NewVestingEvent {
         wallet_id: ev.wallet_id.clone(),
         event_type: "deleted".to_string(),

@@ -39,9 +39,9 @@ use myso_indexer_alt_social_schema::models::{
     GovernanceRegistryPanelBoundaryUpdate, GovernanceRegistryUpdate, NewAnonymousVote,
     NewBlockedEvent, NewBlockedProfile, NewComment, NewCommunityVote, NewDelegate,
     NewDelegateRating, NewDelegateVote, NewDeletionEvent, NewEcosystemTreasury, NewGovernanceEvent,
-    NewGovernanceRegistry, NewInsuranceConfig, NewInsuranceEventLog, NewInsuranceMarketExposure,
-    NewInsurancePolicy, NewInsurancePolicyEvent, NewInsuranceUserExposure, NewInsuranceVault,
-    NewInsuranceVaultTransaction, NewModerationEvent, NewMyDataAccessLog, NewMyDataConfig,
+    NewGovernanceRegistry, NewInsuranceConfig, NewInsuranceCoverageRoute, NewInsuranceEventLog,
+    NewInsuranceMarketExposure, NewInsurancePolicy, NewInsurancePolicyEvent, NewInsuranceRouteFill,
+    NewInsuranceUserExposure, NewInsuranceVault, NewInsuranceVaultTransaction, NewModerationEvent, NewMyDataAccessLog, NewMyDataConfig,
     NewMyDataData, NewMyDataPurchase, NewMyDataQueryBroadPool, NewMyDataQueryClaim,
     NewMyDataQueryDistributionRound, NewMyDataQueryListingSubPool, NewMyDataQueryMerkleRoot,
     NewMyDataQuerySnapshotAnchor, NewMyDataQuerySubPool, NewMyDataRegistry, NewMyDataRevenue,
@@ -304,6 +304,10 @@ pub enum SocialEventRow {
     PocAnalysisResult(NewPocAnalysisResult),
     PocRevenueRedirection(NewPocRevenueRedirection),
     PocDispute(NewPocDispute),
+    PostPocDisputesSubmitted {
+        post_id: String,
+        poc_disputes_submitted: i16,
+    },
     PocDisputeVote(NewPocDisputeVote),
     PocConfiguration(NewPocConfiguration),
     PostPocUpdate {
@@ -315,10 +319,42 @@ pub enum SocialEventRow {
         poc_oracle_address: Option<String>,
         poc_analyzed_at: Option<i64>,
     },
+    PostPocResultApplied {
+        post_id: String,
+        poc_outcome: i16,
+        poc_redirection_kind: i16,
+        similarity_detected: bool,
+        timestamp_ms: i64,
+    },
+    PostPocBadgePointer {
+        post_id: String,
+        poc_badge_object_id: String,
+    },
+    PocBeneficiaryVaultDeposit {
+        vault_id: String,
+        beneficiary_address: String,
+        coin_type: String,
+        amount: i64,
+        source_post_id: Option<String>,
+        timestamp_ms: i64,
+        transaction_id: String,
+    },
+    PocBeneficiaryVaultClaimed {
+        vault_id: String,
+        beneficiary_address: String,
+        coin_type: String,
+        referrer_address: Option<String>,
+        treasury_amount: i64,
+        referrer_amount: i64,
+        beneficiary_amount: i64,
+        timestamp_ms: i64,
+        transaction_id: String,
+    },
     PostRevenueRedirectUpdate {
         post_id: String,
         revenue_redirect_to: String,
         revenue_redirect_percentage: i64,
+        poc_redirection_kind: i16,
     },
     PocDisputeResolved {
         dispute_id: String,
@@ -330,6 +366,7 @@ pub enum SocialEventRow {
         resolved_at: i64,
         badge_revoked: bool,
         redirection_removed: bool,
+        quorum_met: bool,
     },
     PocVoteRewardClaimed {
         dispute_id: String,
@@ -376,6 +413,18 @@ pub enum SocialEventRow {
     InsuranceMarketExposure(NewInsuranceMarketExposure),
     InsuranceUserExposure(NewInsuranceUserExposure),
     InsuranceEventLog(NewInsuranceEventLog),
+    InsuranceCoverageRoute(NewInsuranceCoverageRoute),
+    InsuranceRouteFill(NewInsuranceRouteFill),
+    InsuranceVaultOperationalUpdate {
+        vault_id: String,
+        max_exposure_per_option: i64,
+        enabled: bool,
+        paused: bool,
+        max_exposure_per_market: i64,
+        max_exposure_per_user: i64,
+        base_rate_bps_per_day: i64,
+        utilization_multiplier_bps: i64,
+    },
     InsurancePolicyStatusUpdate {
         policy_id: String,
         status: i16,
@@ -441,7 +490,7 @@ pub enum SocialEventRow {
         post_id: String,
         status: i16,
         outcome: Option<i16>,
-        last_resolution_epoch: i64,
+        last_resolution_at_ms: i64,
     },
     SptPool(NewSptPool),
     SptTransaction(NewSptTransaction),
@@ -594,7 +643,7 @@ pub struct ProfileUpdate {
 }
 
 impl FieldCount for SocialEventRow {
-    const FIELD_COUNT: usize = 118;
+    const FIELD_COUNT: usize = 121;
 }
 
 // SocialEvents pipeline removed: profile and post events now handled by ProfilesHandler and PostsHandler.

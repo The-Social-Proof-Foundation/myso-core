@@ -20,10 +20,20 @@ use crate::api::types::blocked::{BlockedPlatformSummary, BlockedProfileSummary};
 use crate::api::types::mydata::MyDataRecord;
 use crate::api::types::platform::{PlatformMembershipPage, PlatformMembershipSummary};
 use crate::api::types::pnl::{ProfilePnLWindowGql, ProfilePnLWindowStats};
-use crate::api::types::post::Post;
+use crate::api::types::post::{Post, PostPage};
 use crate::api::types::profile_summary::ProfileSummary;
 use crate::api::types::spt::{SptHolding, SptReservationHolding};
 use crate::api::types::vesting::VestingWallet;
+
+fn normalize_poc_outcomes(poc_outcomes: Option<Vec<i32>>) -> Option<Vec<i16>> {
+    poc_outcomes.and_then(|xs| {
+        let v: Vec<i16> = xs
+            .into_iter()
+            .filter_map(|x| i16::try_from(x).ok())
+            .collect();
+        (!v.is_empty()).then_some(v)
+    })
+}
 
 #[derive(Clone)]
 pub(crate) struct Profile {
@@ -536,6 +546,9 @@ impl Profile {
         &self,
         ctx: &Context<'_>,
         post_type: Option<String>,
+        enable_poc: Option<bool>,
+        poc_outcomes: Option<Vec<i32>>,
+        include_removed: Option<bool>,
         limit: Option<u64>,
         offset: Option<u64>,
     ) -> Option<Vec<Post>> {
@@ -544,17 +557,93 @@ impl Profile {
         let reader = reader_opt.as_ref().as_ref()?;
         let limit = limit.unwrap_or(20).min(100) as i64;
         let offset = offset.unwrap_or(0) as i64;
+        let poc_outcomes_i16 = normalize_poc_outcomes(poc_outcomes);
         let rows = reader
             .list_posts_for_profile(
                 &self.inner.owner_address,
                 self.inner.profile_id.as_deref(),
                 post_type.as_deref(),
+                enable_poc,
+                poc_outcomes_i16,
+                include_removed.unwrap_or(false),
                 limit,
                 offset,
             )
             .await
             .ok()?;
         Some(rows.into_iter().map(Post::from_db).collect())
+    }
+
+    /// Same rows as `posts` with total count and `totalPages` for pagers.
+    async fn posts_page(
+        &self,
+        ctx: &Context<'_>,
+        post_type: Option<String>,
+        enable_poc: Option<bool>,
+        poc_outcomes: Option<Vec<i32>>,
+        include_removed: Option<bool>,
+        limit: Option<u64>,
+        offset: Option<u64>,
+    ) -> Option<PostPage> {
+        let reader_opt = ctx
+            .data_opt::<std::sync::Arc<Option<myso_indexer_alt_social_reader::SocialPgReader>>>()?;
+        let reader = reader_opt.as_ref().as_ref()?;
+        let limit = limit.unwrap_or(20).min(100) as i64;
+        let offset = offset.unwrap_or(0) as i64;
+        let poc_outcomes_i16 = normalize_poc_outcomes(poc_outcomes);
+        let include_removed = include_removed.unwrap_or(false);
+        let total_count = reader
+            .count_posts_for_profile(
+                &self.inner.owner_address,
+                self.inner.profile_id.as_deref(),
+                post_type.as_deref(),
+                enable_poc,
+                poc_outcomes_i16.clone(),
+                include_removed,
+            )
+            .await
+            .ok()?;
+        let rows = reader
+            .list_posts_for_profile(
+                &self.inner.owner_address,
+                self.inner.profile_id.as_deref(),
+                post_type.as_deref(),
+                enable_poc,
+                poc_outcomes_i16,
+                include_removed,
+                limit,
+                offset,
+            )
+            .await
+            .ok()?;
+        let items = rows.into_iter().map(Post::from_db).collect();
+        Some(PostPage::new(items, total_count, limit, offset))
+    }
+
+    /// Total post count for this profile (same filters as `posts` / `postsPage`).
+    async fn posts_total_count(
+        &self,
+        ctx: &Context<'_>,
+        post_type: Option<String>,
+        enable_poc: Option<bool>,
+        poc_outcomes: Option<Vec<i32>>,
+        include_removed: Option<bool>,
+    ) -> Option<i64> {
+        let reader_opt = ctx
+            .data_opt::<std::sync::Arc<Option<myso_indexer_alt_social_reader::SocialPgReader>>>()?;
+        let reader = reader_opt.as_ref().as_ref()?;
+        let poc_outcomes_i16 = normalize_poc_outcomes(poc_outcomes);
+        reader
+            .count_posts_for_profile(
+                &self.inner.owner_address,
+                self.inner.profile_id.as_deref(),
+                post_type.as_deref(),
+                enable_poc,
+                poc_outcomes_i16,
+                include_removed.unwrap_or(false),
+            )
+            .await
+            .ok()
     }
 
     /// MyData records owned by this profile (paginated).
@@ -656,6 +745,8 @@ impl SocialProofToken {
     }
 
     /// Circulating supply in nano-SPT (`10^9` units per display token).
+    /// After launch from a reservation pool, initial supply on-chain is `(total_reserved * 10^9) / base_price`
+    /// (nano-MYSO reserved × scale ÷ pool `base_price` in MYSO smallest units), before further trades.
     async fn circulating_supply(&self) -> Option<BigInt> {
         self.inner.circulating_supply.map(BigInt::from)
     }

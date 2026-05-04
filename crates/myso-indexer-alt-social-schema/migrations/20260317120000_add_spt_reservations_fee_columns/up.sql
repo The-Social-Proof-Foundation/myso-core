@@ -27,6 +27,10 @@ END $$;
 ALTER TABLE posts ADD COLUMN IF NOT EXISTS mydata_id TEXT;
 ALTER TABLE posts ADD COLUMN IF NOT EXISTS revenue_recipient TEXT;
 
+-- PostCreatedEvent: platform address and permission bitfield (indexed by PostsHandler).
+ALTER TABLE posts ADD COLUMN IF NOT EXISTS platform_id TEXT;
+ALTER TABLE posts ADD COLUMN IF NOT EXISTS permissions SMALLINT;
+
 -- Fix indexer bug (ThresholdMetEvent used to INSERT spt_reservation_pools with synthetic pool_id).
 -- Repoint reservations to the on-chain pool object id and drop erroneous synthetic pool rows.
 WITH canonical AS (

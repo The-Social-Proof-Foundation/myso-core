@@ -4,6 +4,7 @@
 use chrono::{TimeZone, Utc};
 use serde::Deserialize;
 
+use super::common;
 use super::SocialEventRow;
 use myso_indexer_alt_social_schema::models::{
     NewPlatform, NewPlatformBlockedProfile, NewPlatformEvent, NewPlatformMembership,
@@ -300,7 +301,13 @@ fn process_platform_created_event(
     data: &serde_json::Value,
     event_id: &str,
 ) -> Option<Vec<SocialEventRow>> {
-    let ev: PlatformCreatedEvent = serde_json::from_value(data.clone()).ok()?;
+    let ev: PlatformCreatedEvent = common::deserialize_social_event_json(
+        "platform",
+        "PlatformCreatedEvent",
+        event_id,
+        data,
+        "platform PlatformCreatedEvent JSON did not match PlatformCreatedEvent",
+    )?;
     let now = Utc::now().naive_utc();
     let (
         wants_dao,
@@ -378,7 +385,13 @@ fn process_platform_updated_event(
     data: &serde_json::Value,
     event_id: &str,
 ) -> Option<Vec<SocialEventRow>> {
-    let ev: PlatformUpdatedEvent = serde_json::from_value(data.clone()).ok()?;
+    let ev: PlatformUpdatedEvent = common::deserialize_social_event_json(
+        "platform",
+        "PlatformUpdatedEvent",
+        event_id,
+        data,
+        "platform PlatformUpdatedEvent JSON did not match PlatformUpdatedEvent",
+    )?;
     let updated_at = ms_to_naive(ev.updated_at);
 
     let now = Utc::now().naive_utc();
@@ -417,7 +430,13 @@ fn process_platform_approval_changed_event(
     data: &serde_json::Value,
     event_id: &str,
 ) -> Option<Vec<SocialEventRow>> {
-    let ev: PlatformApprovalChangedEvent = serde_json::from_value(data.clone()).ok()?;
+    let ev: PlatformApprovalChangedEvent = common::deserialize_social_event_json(
+        "platform",
+        "PlatformApprovalChangedEvent",
+        event_id,
+        data,
+        "platform PlatformApprovalChangedEvent JSON did not match PlatformApprovalChangedEvent",
+    )?;
     let changed_at = ms_to_naive(ev.changed_at);
 
     let now = Utc::now().naive_utc();
@@ -445,7 +464,13 @@ fn process_moderator_added_event(
     data: &serde_json::Value,
     event_id: &str,
 ) -> Option<Vec<SocialEventRow>> {
-    let ev: ModeratorAddedEvent = serde_json::from_value(data.clone()).ok()?;
+    let ev: ModeratorAddedEvent = common::deserialize_social_event_json(
+        "platform",
+        "ModeratorAddedEvent",
+        event_id,
+        data,
+        "platform ModeratorAddedEvent JSON did not match ModeratorAddedEvent",
+    )?;
     let now = Utc::now().naive_utc();
 
     let moderator = NewPlatformModerator {
@@ -474,7 +499,13 @@ fn process_moderator_removed_event(
     data: &serde_json::Value,
     event_id: &str,
 ) -> Option<Vec<SocialEventRow>> {
-    let ev: ModeratorRemovedEvent = serde_json::from_value(data.clone()).ok()?;
+    let ev: ModeratorRemovedEvent = common::deserialize_social_event_json(
+        "platform",
+        "ModeratorRemovedEvent",
+        event_id,
+        data,
+        "platform ModeratorRemovedEvent JSON did not match ModeratorRemovedEvent",
+    )?;
     let now = Utc::now().naive_utc();
     let platform_event = NewPlatformEvent {
         event_type: "ModeratorRemoved".to_string(),
@@ -497,7 +528,13 @@ fn process_platform_blocked_profile_event(
     data: &serde_json::Value,
     event_id: &str,
 ) -> Option<Vec<SocialEventRow>> {
-    let ev: PlatformBlockedProfileEvent = serde_json::from_value(data.clone()).ok()?;
+    let ev: PlatformBlockedProfileEvent = common::deserialize_social_event_json(
+        "platform",
+        "PlatformBlockedProfileEvent",
+        event_id,
+        data,
+        "platform PlatformBlockedProfileEvent JSON did not match PlatformBlockedProfileEvent",
+    )?;
     let now = Utc::now().naive_utc();
 
     let blocked = NewPlatformBlockedProfile {
@@ -526,7 +563,13 @@ fn process_platform_unblocked_profile_event(
     data: &serde_json::Value,
     event_id: &str,
 ) -> Option<Vec<SocialEventRow>> {
-    let ev: PlatformUnblockedProfileEvent = serde_json::from_value(data.clone()).ok()?;
+    let ev: PlatformUnblockedProfileEvent = common::deserialize_social_event_json(
+        "platform",
+        "PlatformUnblockedProfileEvent",
+        event_id,
+        data,
+        "platform PlatformUnblockedProfileEvent JSON did not match PlatformUnblockedProfileEvent",
+    )?;
     let now = Utc::now().naive_utc();
     let platform_event = NewPlatformEvent {
         event_type: "PlatformUnblockedProfile".to_string(),
@@ -549,7 +592,13 @@ fn process_user_joined_platform_event(
     data: &serde_json::Value,
     event_id: &str,
 ) -> Option<Vec<SocialEventRow>> {
-    let ev: UserJoinedPlatformEvent = serde_json::from_value(data.clone()).ok()?;
+    let ev: UserJoinedPlatformEvent = common::deserialize_social_event_json(
+        "platform",
+        "UserJoinedPlatformEvent",
+        event_id,
+        data,
+        "platform UserJoinedPlatformEvent JSON did not match UserJoinedPlatformEvent",
+    )?;
     let joined_at = ms_to_naive(ev.timestamp);
 
     let membership = NewPlatformMembership {
@@ -578,7 +627,13 @@ fn process_user_left_platform_event(
     data: &serde_json::Value,
     event_id: &str,
 ) -> Option<Vec<SocialEventRow>> {
-    let ev: UserLeftPlatformEvent = serde_json::from_value(data.clone()).ok()?;
+    let ev: UserLeftPlatformEvent = common::deserialize_social_event_json(
+        "platform",
+        "UserLeftPlatformEvent",
+        event_id,
+        data,
+        "platform UserLeftPlatformEvent JSON did not match UserLeftPlatformEvent",
+    )?;
     let now = Utc::now().naive_utc();
     let platform_event = NewPlatformEvent {
         event_type: "UserLeftPlatform".to_string(),
@@ -601,7 +656,13 @@ fn process_token_airdrop_event(
     data: &serde_json::Value,
     event_id: &str,
 ) -> Option<Vec<SocialEventRow>> {
-    let ev: TokenAirdropEvent = serde_json::from_value(data.clone()).ok()?;
+    let ev: TokenAirdropEvent = common::deserialize_social_event_json(
+        "platform",
+        "TokenAirdropEvent",
+        event_id,
+        data,
+        "platform TokenAirdropEvent JSON did not match TokenAirdropEvent",
+    )?;
     let now = Utc::now().naive_utc();
 
     let airdrop = NewPlatformTokenAirdrop {
@@ -634,7 +695,13 @@ fn process_platform_deleted_event(
     data: &serde_json::Value,
     event_id: &str,
 ) -> Option<Vec<SocialEventRow>> {
-    let ev: PlatformDeletedEvent = serde_json::from_value(data.clone()).ok()?;
+    let ev: PlatformDeletedEvent = common::deserialize_social_event_json(
+        "platform",
+        "PlatformDeletedEvent",
+        event_id,
+        data,
+        "platform PlatformDeletedEvent JSON did not match PlatformDeletedEvent",
+    )?;
     let deleted_at = ms_to_naive(ev.timestamp);
 
     let now = Utc::now().naive_utc();
@@ -660,7 +727,13 @@ fn process_treasury_funded_event(
     data: &serde_json::Value,
     event_id: &str,
 ) -> Option<Vec<SocialEventRow>> {
-    let ev: TreasuryFundedEvent = serde_json::from_value(data.clone()).ok()?;
+    let ev: TreasuryFundedEvent = common::deserialize_social_event_json(
+        "platform",
+        "TreasuryFundedEvent",
+        event_id,
+        data,
+        "platform TreasuryFundedEvent JSON did not match TreasuryFundedEvent",
+    )?;
     let now = Utc::now().naive_utc();
     let platform_event = NewPlatformEvent {
         event_type: "TreasuryFunded".to_string(),

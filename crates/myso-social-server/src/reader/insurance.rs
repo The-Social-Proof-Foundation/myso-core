@@ -1,8 +1,8 @@
 // Copyright (c) The Social Proof Foundation, LLC.
 // SPDX-License-Identifier: Apache-2.0
 
-use diesel::sql_types::{BigInt, Nullable, SmallInt, Text};
 use diesel::OptionalExtension;
+use diesel::sql_types::{BigInt, Nullable, SmallInt, Text};
 use diesel_async::RunQueryDsl;
 use myso_pg_db::Db;
 
@@ -58,6 +58,7 @@ pub(crate) async fn get_insurance_vault(
     let query = "
         SELECT vault_id, underwriter, capital_balance, reserved, base_rate_bps_per_day,
                utilization_multiplier_bps, max_exposure_per_market, max_exposure_per_user,
+               max_exposure_per_option, enabled, paused,
                version, created_at, updated_at
         FROM insurance_vaults
         WHERE vault_id = $1
@@ -123,7 +124,10 @@ pub(crate) async fn list_insurance_policies(
 ) -> Result<Vec<InsurancePolicyRow>, SocialError> {
     let mut conn = db.connect().await?;
     let query = "
-        SELECT policy_id, market_id, insured, option_id, covered_amount, premium_paid, status
+        SELECT policy_id, market_id, insured, option_id, covered_amount, coverage_bps,
+               premium_paid, premium_raw, implied_probability_bps, risk_multiplier_bps,
+               base_premium, market_total_amount, option_escrow_amount, status,
+               route_id, route_leg_index, backstop_sweep_amount
         FROM insurance_policies
         WHERE ($1::text IS NULL OR insured = $1)
           AND ($2::text IS NULL OR market_id = $2)
@@ -151,7 +155,10 @@ pub(crate) async fn get_insurance_policy(
     let mut conn = db.connect().await?;
     let query = "
         SELECT policy_id, market_id, insured, option_id, covered_amount, coverage_bps,
-               premium_paid, start_time_ms, expiry_time_ms, vault_id, status
+               premium_paid, premium_raw, implied_probability_bps, risk_multiplier_bps,
+               base_premium, market_total_amount, option_escrow_amount,
+               start_time_ms, expiry_time_ms, vault_id, status,
+               route_id, route_leg_index, backstop_sweep_amount
         FROM insurance_policies
         WHERE policy_id = $1
     ";
@@ -171,7 +178,10 @@ pub(crate) async fn list_insurance_market_policies(
 ) -> Result<Vec<InsurancePolicyRow>, SocialError> {
     let mut conn = db.connect().await?;
     let query = "
-        SELECT policy_id, market_id, insured, option_id, covered_amount, premium_paid, status
+        SELECT policy_id, market_id, insured, option_id, covered_amount, coverage_bps,
+               premium_paid, premium_raw, implied_probability_bps, risk_multiplier_bps,
+               base_premium, market_total_amount, option_escrow_amount, status,
+               route_id, route_leg_index, backstop_sweep_amount
         FROM insurance_policies
         WHERE market_id = $1
         ORDER BY created_at DESC

@@ -26,26 +26,26 @@ pub fn handle_spot_event(
     event_name: &str,
     data: &serde_json::Value,
     event_id: &str,
-    epoch: u64,
+    _epoch: u64,
     timestamp_ms: u64,
 ) -> Option<Vec<SocialEventRow>> {
     let transaction_id = transaction_id_from_event_id(event_id);
     let now = chrono::Utc::now();
     match event_name {
         "SpotBetPlacedEvent" | "BetPlacedEvent" => {
-            process_spot_bet_placed_event(data, event_id, epoch, &transaction_id, now)
+            process_spot_bet_placed_event(data, event_id, timestamp_ms, &transaction_id, now)
         }
         "SpotResolvedEvent" | "ResolvedEvent" => {
-            process_spot_resolved_event(data, event_id, epoch, &transaction_id, now)
+            process_spot_resolved_event(data, event_id, timestamp_ms, &transaction_id, now)
         }
         "SpotDaoRequiredEvent" | "DaoRequiredEvent" => {
             process_spot_dao_required_event(data, event_id, &transaction_id, now)
         }
         "SpotPayoutEvent" | "PayoutEvent" => {
-            process_spot_payout_event(data, event_id, epoch, &transaction_id, now)
+            process_spot_payout_event(data, event_id, timestamp_ms, &transaction_id, now)
         }
         "SpotRefundEvent" | "RefundEvent" => {
-            process_spot_refund_event(data, event_id, epoch, &transaction_id, now)
+            process_spot_refund_event(data, event_id, timestamp_ms, &transaction_id, now)
         }
         "SpotConfigUpdatedEvent" | "ConfigUpdatedEvent" => {
             process_spot_config_updated_event(data, event_id, timestamp_ms, &transaction_id, now)
@@ -54,7 +54,7 @@ pub fn handle_spot_event(
             process_spot_record_created_event(data, event_id, &transaction_id, now)
         }
         "SpotBetWithdrawnEvent" | "BetWithdrawnEvent" => {
-            process_spot_bet_withdrawn_event(data, event_id, epoch, &transaction_id, now)
+            process_spot_bet_withdrawn_event(data, event_id, timestamp_ms, &transaction_id, now)
         }
         _ => None,
     }
@@ -79,7 +79,7 @@ fn new_event_log(
 fn process_spot_bet_placed_event(
     data: &serde_json::Value,
     event_id: &str,
-    epoch: u64,
+    checkpoint_timestamp_ms: u64,
     transaction_id: &str,
     now: chrono::DateTime<chrono::Utc>,
 ) -> Option<Vec<SocialEventRow>> {
@@ -87,6 +87,10 @@ fn process_spot_bet_placed_event(
     let user = data.get("user")?.as_str()?.to_string();
     let option_id = data.get("option_id")?.as_u64().unwrap_or(0) as i16;
     let amount = json_to_i64(data.get("amount")?);
+    let ts = data
+        .get("timestamp_ms")
+        .and_then(json_opt_i64)
+        .unwrap_or(checkpoint_timestamp_ms as i64);
 
     let bet = NewSpotBet {
         post_id: post_id.clone(),
@@ -94,7 +98,7 @@ fn process_spot_bet_placed_event(
         option_id,
         escrow_amount: amount,
         amm_amount: 0,
-        timestamp_epoch: epoch as i64,
+        timestamp_ms: ts,
         time: now,
         transaction_id: transaction_id.to_string(),
     };
@@ -110,7 +114,7 @@ fn process_spot_bet_placed_event(
 fn process_spot_resolved_event(
     data: &serde_json::Value,
     event_id: &str,
-    epoch: u64,
+    checkpoint_timestamp_ms: u64,
     transaction_id: &str,
     now: chrono::DateTime<chrono::Utc>,
 ) -> Option<Vec<SocialEventRow>> {
@@ -124,12 +128,14 @@ fn process_spot_resolved_event(
         .and_then(|v| serde_json::from_value(v.clone()).ok())
         .unwrap_or_else(|| serde_json::json!([]));
 
+    let resolved_at_ms = checkpoint_timestamp_ms as i64;
+
     let resolution = NewSpotResolution {
         post_id: post_id.clone(),
         outcome,
         total_escrow,
         fee_taken,
-        resolved_epoch: epoch as i64,
+        resolved_at_ms,
         time: now,
         transaction_id: transaction_id.to_string(),
         reasoning,
@@ -144,7 +150,7 @@ fn process_spot_resolved_event(
             post_id: post_id.clone(),
             status: STATUS_RESOLVED,
             outcome: Some(outcome),
-            last_resolution_epoch: epoch as i64,
+            last_resolution_at_ms: resolved_at_ms,
         },
         SocialEventRow::SpotEventLog(log),
     ])
@@ -164,7 +170,7 @@ fn process_spot_dao_required_event(
 fn process_spot_payout_event(
     data: &serde_json::Value,
     event_id: &str,
-    epoch: u64,
+    checkpoint_timestamp_ms: u64,
     transaction_id: &str,
     now: chrono::DateTime<chrono::Utc>,
 ) -> Option<Vec<SocialEventRow>> {
@@ -176,7 +182,7 @@ fn process_spot_payout_event(
         post_id: post_id.clone(),
         user_address: user,
         amount,
-        timestamp_epoch: epoch as i64,
+        timestamp_ms: checkpoint_timestamp_ms as i64,
         time: now,
         transaction_id: transaction_id.to_string(),
     };
@@ -192,7 +198,7 @@ fn process_spot_payout_event(
 fn process_spot_refund_event(
     data: &serde_json::Value,
     event_id: &str,
-    epoch: u64,
+    checkpoint_timestamp_ms: u64,
     transaction_id: &str,
     now: chrono::DateTime<chrono::Utc>,
 ) -> Option<Vec<SocialEventRow>> {
@@ -204,7 +210,7 @@ fn process_spot_refund_event(
         post_id: post_id.clone(),
         user_address: user,
         amount,
-        timestamp_epoch: epoch as i64,
+        timestamp_ms: checkpoint_timestamp_ms as i64,
         time: now,
         transaction_id: transaction_id.to_string(),
     };
@@ -227,8 +233,8 @@ fn process_spot_config_updated_event(
     let updated_by = data.get("updated_by")?.as_str()?.to_string();
     let enable_flag = data.get("enable_flag")?.as_bool().unwrap_or(false);
     let confidence_threshold_bps = json_to_i64(data.get("confidence_threshold_bps")?);
-    let resolution_window_epochs = json_to_i64(data.get("resolution_window_epochs")?);
-    let max_resolution_window_epochs = json_to_i64(data.get("max_resolution_window_epochs")?);
+    let resolution_window_ms = json_to_i64(data.get("resolution_window_ms")?);
+    let max_resolution_window_ms = json_to_i64(data.get("max_resolution_window_ms")?);
     let payout_delay_ms = json_to_i64(data.get("payout_delay_ms")?);
     let fee_bps = json_to_i64(data.get("fee_bps")?);
     let fee_split_bps_platform = json_to_i64(data.get("fee_split_bps_platform")?);
@@ -251,8 +257,8 @@ fn process_spot_config_updated_event(
         updated_by,
         enable_flag,
         confidence_threshold_bps,
-        resolution_window_epochs,
-        max_resolution_window_epochs,
+        resolution_window_ms,
+        max_resolution_window_ms,
         payout_delay_ms,
         fee_bps,
         fee_split_bps_platform,
@@ -279,17 +285,17 @@ fn process_spot_record_created_event(
     now: chrono::DateTime<chrono::Utc>,
 ) -> Option<Vec<SocialEventRow>> {
     let post_id = data.get("post_id")?.as_str()?.to_string();
-    let created_epoch = json_to_i64(data.get("created_epoch")?);
+    let created_at_ms = json_to_i64(data.get("created_at_ms")?);
     let betting_options = data
         .get("betting_options")
         .and_then(|v| serde_json::from_value(v.clone()).ok())
         .unwrap_or_else(|| serde_json::json!([]));
-    let resolution_window_epochs = data
-        .get("resolution_window_epochs")
-        .and_then(|v| json_opt_i64(v));
-    let max_resolution_window_epochs = data
-        .get("max_resolution_window_epochs")
-        .and_then(|v| json_opt_i64(v));
+    let resolution_window_ms = data
+        .get("resolution_window_ms")
+        .and_then(json_opt_i64);
+    let max_resolution_window_ms = data
+        .get("max_resolution_window_ms")
+        .and_then(json_opt_i64);
 
     let now_naive = now.naive_utc();
     let record = NewSpotRecord {
@@ -299,10 +305,10 @@ fn process_spot_record_created_event(
         amm_split_bps_used: 0,
         betting_options: Some(betting_options),
         option_escrow: Some(serde_json::json!({})),
-        resolution_window_epochs,
-        max_resolution_window_epochs,
-        created_epoch,
-        last_resolution_epoch: None,
+        resolution_window_ms,
+        max_resolution_window_ms,
+        created_at_ms,
+        last_resolution_at_ms: None,
         version: 1,
         created_at: now_naive,
         updated_at: now_naive,
@@ -320,7 +326,7 @@ fn process_spot_record_created_event(
 fn process_spot_bet_withdrawn_event(
     data: &serde_json::Value,
     event_id: &str,
-    epoch: u64,
+    checkpoint_timestamp_ms: u64,
     transaction_id: &str,
     now: chrono::DateTime<chrono::Utc>,
 ) -> Option<Vec<SocialEventRow>> {
@@ -336,7 +342,7 @@ fn process_spot_bet_withdrawn_event(
         option_id,
         amount,
         fee_taken,
-        timestamp_epoch: epoch as i64,
+        timestamp_ms: checkpoint_timestamp_ms as i64,
         time: now,
         transaction_id: transaction_id.to_string(),
     };

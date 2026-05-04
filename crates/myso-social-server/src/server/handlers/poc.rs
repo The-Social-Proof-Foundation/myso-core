@@ -110,3 +110,68 @@ pub async fn get_poc_configuration(
         .ok_or_else(|| SocialError::not_found("PoC configuration".to_string()))?;
     Ok(Json(config))
 }
+
+pub async fn get_poc_beneficiary_vault_by_vault_id(
+    State(state): State<Arc<AppState>>,
+    Path(vault_id): Path<String>,
+) -> Result<Json<crate::reader::PocBeneficiaryVaultRow>, SocialError> {
+    let row = state
+        .reader
+        .get_poc_beneficiary_vault_by_vault_id(&vault_id)
+        .await?
+        .ok_or_else(|| SocialError::not_found(format!("PoC beneficiary vault '{vault_id}'")))?;
+    Ok(Json(row))
+}
+
+pub async fn get_poc_beneficiary_vault_by_beneficiary(
+    State(state): State<Arc<AppState>>,
+    Path(address): Path<String>,
+) -> Result<Json<crate::reader::PocBeneficiaryVaultRow>, SocialError> {
+    let row = state
+        .reader
+        .get_poc_beneficiary_vault_by_beneficiary_address(&address)
+        .await?
+        .ok_or_else(|| {
+            SocialError::not_found(format!("PoC beneficiary vault for beneficiary '{address}'"))
+        })?;
+    Ok(Json(row))
+}
+
+pub async fn list_poc_beneficiary_vault_coin_balances(
+    State(state): State<Arc<AppState>>,
+    Path(vault_id): Path<String>,
+) -> Result<Json<Vec<crate::reader::PocVaultCoinBalanceRow>>, SocialError> {
+    let rows = state
+        .reader
+        .list_poc_beneficiary_vault_coin_balances(&vault_id)
+        .await?;
+    Ok(Json(rows))
+}
+
+pub async fn list_poc_vault_deposits(
+    State(state): State<Arc<AppState>>,
+    Path(vault_id): Path<String>,
+    Query(params): Query<PageParams>,
+) -> Result<Json<Vec<crate::reader::PocVaultDepositRow>>, SocialError> {
+    let limit = params.limit();
+    let offset = params.offset();
+    let rows = state
+        .reader
+        .list_poc_vault_deposits_for_vault(&vault_id, limit, offset)
+        .await?;
+    Ok(Json(rows))
+}
+
+pub async fn list_poc_vault_claims(
+    State(state): State<Arc<AppState>>,
+    Path(vault_id): Path<String>,
+    Query(params): Query<PageParams>,
+) -> Result<Json<Vec<crate::reader::PocVaultClaimRow>>, SocialError> {
+    let limit = params.limit();
+    let offset = params.offset();
+    let rows = state
+        .reader
+        .list_poc_vault_claims_for_vault(&vault_id, limit, offset)
+        .await?;
+    Ok(Json(rows))
+}

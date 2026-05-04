@@ -44,6 +44,22 @@ module social_contracts::insurance {
     const EInsufficientPremium: u64 = 15;
     const EExposureInvariantBroken: u64 = 16;
     const EWrongVersion: u64 = 17;
+    const EThinMarket: u64 = 18;
+    const ECoverageTooLargeVersusPool: u64 = 19;
+    const ERiskMultiplierTooHigh: u64 = 20;
+    const EVaultDisabled: u64 = 21;
+    const EVaultPaused: u64 = 22;
+    const ERouterPaused: u64 = 23;
+    const ERouteDisabled: u64 = 24;
+    const EDeadlinePassed: u64 = 25;
+    const ESlippagePremium: u64 = 26;
+    const ESlippageCovered: u64 = 27;
+    const EDuplicateVaultInRoute: u64 = 28;
+    const EBackstopPaused: u64 = 29;
+    const ETailModeDisabled: u64 = 30;
+    const EBackstopPayoutLimit: u64 = 31;
+    const EInvalidFills: u64 = 32;
+    const EVaultConcentration: u64 = 33;
 
     /// Status
     const STATUS_ACTIVE: u8 = 1;
@@ -61,6 +77,20 @@ module social_contracts::insurance {
     const DEFAULT_MAX_DURATION_MS: u64 = 30 * DAY_MS;
     const DEFAULT_FEE_BPS: u64 = 50;
 
+    /// Default SPoT risk pricing (baseline pool size ~1000 MYSO at 10^9 scaling).
+    const DEFAULT_MIN_SPOT_TOTAL_LIQUIDITY: u64 = 1;
+    const DEFAULT_MAX_COVERAGE_FRACTION_OF_OPTION_BPS: u64 = 10_000;
+    const DEFAULT_MAX_RISK_MULTIPLIER_BPS: u64 = 500_000;
+    const DEFAULT_MIN_PREMIUM_AMOUNT: u64 = 1;
+    const DEFAULT_SPOT_SMOOTHING_PER_OPTION: u64 = 0;
+    const DEFAULT_IMPLIED_PROB_FLOOR_BPS: u64 = 10;
+    const DEFAULT_ODDS_CAP_BPS: u64 = 500_000;
+    const DEFAULT_LIQ_CAP_BPS: u64 = 500_000;
+    /// Target pool size such that liquidity multiplier ≈ 1× when `total_option_escrow == liq_ref_amount`.
+    const DEFAULT_LIQ_REF_AMOUNT: u64 = 1_000_000_000_000;
+    const DEFAULT_EXPOSURE_CAP_BPS: u64 = 30_000;
+    const DEFAULT_EXPOSURE_K_BPS: u64 = 5000;
+
     public struct InsuranceAdminCap has key, store {
         id: UID,
     }
@@ -72,6 +102,63 @@ module social_contracts::insurance {
         max_coverage_bps: u64,
         max_duration_ms: u64,
         fee_bps: u64,
+        min_spot_total_liquidity: u64,
+        max_coverage_fraction_of_option_bps: u64,
+        max_risk_multiplier_bps: u64,
+        min_premium_amount: u64,
+        spot_smoothing_per_option: u64,
+        implied_prob_floor_bps: u64,
+        odds_floor_1x: bool,
+        odds_cap_bps: u64,
+        liq_cap_bps: u64,
+        liq_ref_amount: u64,
+        exposure_cap_bps: u64,
+        exposure_k_bps: u64,
+        version: u64,
+    }
+
+    public struct InsuranceRouterConfig has key {
+        id: UID,
+        router_enabled: bool,
+        router_paused: bool,
+        max_route_reserve_market: u64,
+        max_route_reserve_user: u64,
+        max_route_reserve_option: u64,
+        max_vault_concentration_bps: u64,
+        min_vault_health_factor_bps: u64,
+        market_pause: Table<address, bool>,
+        version: u64,
+    }
+
+    public struct InsuranceBackstopPool has key {
+        id: UID,
+        capital: Balance<MYSO>,
+        total_paid_out: u64,
+        paid_by_market: Table<address, u64>,
+        max_payout_per_market: u64,
+        max_payout_per_event: u64,
+        global_hard_cap: u64,
+        tail_mode_enabled: bool,
+        paused: bool,
+        sweep_premium_bps: u64,
+        tail_pay_partial_on_cap: bool,
+        version: u64,
+    }
+
+    public struct CoverageRoute has key {
+        id: UID,
+        insured: address,
+        market_id: address,
+        option_id: u8,
+        coverage_bps: u64,
+        start_time_ms: u64,
+        expiry_time_ms: u64,
+        policy_ids: vector<ID>,
+        vault_ids: vector<ID>,
+        total_covered: u64,
+        total_premium: u64,
+        total_reserve: u64,
+        total_backstop_sweep: u64,
         version: u64,
     }
 
@@ -84,6 +171,9 @@ module social_contracts::insurance {
         utilization_multiplier_bps: u64,
         max_exposure_per_market: u64,
         max_exposure_per_user: u64,
+        max_exposure_per_option: u64,
+        enabled: bool,
+        paused: bool,
         market_exposures: Table<address, MarketExposure>,
         user_exposures: Table<address, u64>,
         version: u64,
@@ -107,9 +197,63 @@ module social_contracts::insurance {
         expiry_time_ms: u64,
         vault_id: ID,
         status: u8,
+        route_id: Option<ID>,
+        route_leg_index: u8,
     }
 
+    public struct PremiumQuote has copy, drop {
+        premium: u64,
+        premium_raw: u64,
+        implied_prob_win_bps: u64,
+        risk_multiplier_bps: u64,
+        market_total_amount: u64,
+        option_amount: u64,
+        base_premium: u64,
+    }
+
+    public struct VaultCoverageQuote has copy, drop {
+        premium: u64,
+        premium_raw: u64,
+        reserve_required: u64,
+        available_capacity_reserve: u64,
+        risk_multiplier_bps: u64,
+        implied_prob_win_bps: u64,
+        utilization_bps: u64,
+        max_fill_covered_amount: u64,
+        skipped_reason: u8,
+    }
+
+    /// `VaultCoverageQuote.skipped_reason` — 0 = quotable at `max_fill_covered_amount`.
+    const SKIPPED_OK: u8 = 0;
+    const SKIPPED_VAULT_DISABLED: u8 = 1;
+    const SKIPPED_VAULT_PAUSED: u8 = 2;
+    const SKIPPED_ROUTER_PAUSED: u8 = 3;
+    const SKIPPED_MARKET_PAUSED: u8 = 4;
+    const SKIPPED_UNHEALTHY_VAULT: u8 = 5;
+    const SKIPPED_RISK_MULTIPLIER: u8 = 6;
+    const SKIPPED_ZERO_CAPACITY: u8 = 7;
+    const SKIPPED_THIN_OR_POOL: u8 = 8;
+
+    const MAX_ROUTE_LEGS: u64 = 4;
+
     /// Events
+    public struct RiskPricingConfigUpdatedEvent has copy, drop {
+        updated_by: address,
+        min_spot_total_liquidity: u64,
+        max_coverage_fraction_of_option_bps: u64,
+        max_risk_multiplier_bps: u64,
+        min_premium_amount: u64,
+        spot_smoothing_per_option: u64,
+        implied_prob_floor_bps: u64,
+        odds_floor_1x: bool,
+        odds_cap_bps: u64,
+        liq_cap_bps: u64,
+        liq_ref_amount: u64,
+        exposure_cap_bps: u64,
+        exposure_k_bps: u64,
+        timestamp: u64,
+    }
+
     public struct ConfigInitializedEvent has copy, drop {
         admin: address,
         min_coverage_bps: u64,
@@ -125,6 +269,22 @@ module social_contracts::insurance {
         utilization_multiplier_bps: u64,
         max_exposure_per_market: u64,
         max_exposure_per_user: u64,
+        max_exposure_per_option: u64,
+        enabled: bool,
+        paused: bool,
+    }
+
+    public struct VaultStatusUpdatedEvent has copy, drop {
+        vault_id: ID,
+        enabled: bool,
+        paused: bool,
+        max_exposure_per_option: u64,
+        max_exposure_per_market: u64,
+        max_exposure_per_user: u64,
+        base_rate_bps_per_day: u64,
+        utilization_multiplier_bps: u64,
+        updated_by: address,
+        timestamp_ms: u64,
     }
 
     public struct UnderwriterVaultDepositedEvent has copy, drop {
@@ -141,14 +301,65 @@ module social_contracts::insurance {
 
     public struct CoveragePurchasedEvent has copy, drop {
         policy_id: ID,
+        vault_id: ID,
         market_id: address,
         insured: address,
         option_id: u8,
         covered_amount: u64,
         coverage_bps: u64,
         premium_paid: u64,
+        premium_raw: u64,
         reserve_locked: u64,
         expiry_time_ms: u64,
+        implied_probability_bps: u64,
+        risk_multiplier_bps: u64,
+        base_premium: u64,
+        market_total_amount: u64,
+        option_amount: u64,
+        backstop_sweep_amount: u64,
+        route_id: Option<ID>,
+        route_leg_index: u8,
+    }
+
+    public struct CoverageRoutedEvent has copy, drop {
+        route_id: ID,
+        insured: address,
+        market_id: address,
+        option_id: u8,
+        coverage_bps: u64,
+        duration_ms: u64,
+        total_covered: u64,
+        total_premium: u64,
+        total_reserve: u64,
+        total_backstop_sweep: u64,
+        expiry_time_ms: u64,
+        policy_ids: vector<ID>,
+        vault_ids: vector<ID>,
+    }
+
+    public struct RouteFillEvent has copy, drop {
+        route_id: ID,
+        leg_index: u8,
+        vault_id: ID,
+        policy_id: ID,
+        covered_amount: u64,
+        premium_paid: u64,
+        reserve_locked: u64,
+        backstop_sweep_amount: u64,
+    }
+
+    public struct BackstopUsedEvent has copy, drop {
+        market_id: address,
+        recipient: address,
+        amount: u64,
+        total_paid_out_after: u64,
+        tail_mode_enabled: bool,
+    }
+
+    public struct BackstopTreasuryDepositEvent has copy, drop {
+        depositor: address,
+        amount: u64,
+        new_balance: u64,
     }
 
     public struct CoverageCancelledEvent has copy, drop {
@@ -199,6 +410,7 @@ module social_contracts::insurance {
         assert!(fee_bps <= BPS_DENOM, EInvalidCoverage);
 
         let admin = tx_context::sender(ctx);
+        let ts = tx_context::epoch_timestamp_ms(ctx);
         transfer::share_object(InsuranceConfig {
             id: object::new(ctx),
             enable_flag: false,
@@ -206,8 +418,22 @@ module social_contracts::insurance {
             max_coverage_bps,
             max_duration_ms,
             fee_bps,
+            min_spot_total_liquidity: DEFAULT_MIN_SPOT_TOTAL_LIQUIDITY,
+            max_coverage_fraction_of_option_bps: DEFAULT_MAX_COVERAGE_FRACTION_OF_OPTION_BPS,
+            max_risk_multiplier_bps: DEFAULT_MAX_RISK_MULTIPLIER_BPS,
+            min_premium_amount: DEFAULT_MIN_PREMIUM_AMOUNT,
+            spot_smoothing_per_option: DEFAULT_SPOT_SMOOTHING_PER_OPTION,
+            implied_prob_floor_bps: DEFAULT_IMPLIED_PROB_FLOOR_BPS,
+            odds_floor_1x: true,
+            odds_cap_bps: DEFAULT_ODDS_CAP_BPS,
+            liq_cap_bps: DEFAULT_LIQ_CAP_BPS,
+            liq_ref_amount: DEFAULT_LIQ_REF_AMOUNT,
+            exposure_cap_bps: DEFAULT_EXPOSURE_CAP_BPS,
+            exposure_k_bps: DEFAULT_EXPOSURE_K_BPS,
             version: DEFAULT_VERSION,
         });
+        transfer::share_object(new_router_config_defaults(ctx));
+        transfer::share_object(new_backstop_pool_defaults(ctx));
         transfer::public_transfer(InsuranceAdminCap { id: object::new(ctx) }, admin);
 
         event::emit(ConfigInitializedEvent {
@@ -216,6 +442,22 @@ module social_contracts::insurance {
             max_coverage_bps,
             max_duration_ms,
             fee_bps,
+        });
+        event::emit(RiskPricingConfigUpdatedEvent {
+            updated_by: admin,
+            min_spot_total_liquidity: DEFAULT_MIN_SPOT_TOTAL_LIQUIDITY,
+            max_coverage_fraction_of_option_bps: DEFAULT_MAX_COVERAGE_FRACTION_OF_OPTION_BPS,
+            max_risk_multiplier_bps: DEFAULT_MAX_RISK_MULTIPLIER_BPS,
+            min_premium_amount: DEFAULT_MIN_PREMIUM_AMOUNT,
+            spot_smoothing_per_option: DEFAULT_SPOT_SMOOTHING_PER_OPTION,
+            implied_prob_floor_bps: DEFAULT_IMPLIED_PROB_FLOOR_BPS,
+            odds_floor_1x: true,
+            odds_cap_bps: DEFAULT_ODDS_CAP_BPS,
+            liq_cap_bps: DEFAULT_LIQ_CAP_BPS,
+            liq_ref_amount: DEFAULT_LIQ_REF_AMOUNT,
+            exposure_cap_bps: DEFAULT_EXPOSURE_CAP_BPS,
+            exposure_k_bps: DEFAULT_EXPOSURE_K_BPS,
+            timestamp: ts,
         });
     }
 
@@ -254,6 +496,71 @@ module social_contracts::insurance {
         });
     }
 
+    /// Update SPoT-linked risk pricing (admin only).
+    public entry fun set_risk_pricing_config(
+        _: &InsuranceAdminCap,
+        config: &mut InsuranceConfig,
+        min_spot_total_liquidity: u64,
+        max_coverage_fraction_of_option_bps: u64,
+        max_risk_multiplier_bps: u64,
+        min_premium_amount: u64,
+        spot_smoothing_per_option: u64,
+        implied_prob_floor_bps: u64,
+        odds_floor_1x: bool,
+        odds_cap_bps: u64,
+        liq_cap_bps: u64,
+        liq_ref_amount: u64,
+        exposure_cap_bps: u64,
+        exposure_k_bps: u64,
+        clock: &Clock,
+        ctx: &mut TxContext,
+    ) {
+        assert!(
+            max_coverage_fraction_of_option_bps > 0 && max_coverage_fraction_of_option_bps <= BPS_DENOM,
+            EInvalidCoverage
+        );
+        assert!(
+            exposure_cap_bps >= BPS_DENOM && odds_cap_bps >= BPS_DENOM && liq_cap_bps >= BPS_DENOM,
+            EInvalidCoverage
+        );
+        assert!(
+            implied_prob_floor_bps > 0 && implied_prob_floor_bps <= BPS_DENOM,
+            EInvalidCoverage
+        );
+        assert!(max_risk_multiplier_bps >= BPS_DENOM, EInvalidCoverage);
+        assert!(min_premium_amount > 0, EInvalidAmount);
+
+        config.min_spot_total_liquidity = min_spot_total_liquidity;
+        config.max_coverage_fraction_of_option_bps = max_coverage_fraction_of_option_bps;
+        config.max_risk_multiplier_bps = max_risk_multiplier_bps;
+        config.min_premium_amount = min_premium_amount;
+        config.spot_smoothing_per_option = spot_smoothing_per_option;
+        config.implied_prob_floor_bps = implied_prob_floor_bps;
+        config.odds_floor_1x = odds_floor_1x;
+        config.odds_cap_bps = odds_cap_bps;
+        config.liq_cap_bps = liq_cap_bps;
+        config.liq_ref_amount = liq_ref_amount;
+        config.exposure_cap_bps = exposure_cap_bps;
+        config.exposure_k_bps = exposure_k_bps;
+
+        event::emit(RiskPricingConfigUpdatedEvent {
+            updated_by: tx_context::sender(ctx),
+            min_spot_total_liquidity,
+            max_coverage_fraction_of_option_bps,
+            max_risk_multiplier_bps,
+            min_premium_amount,
+            spot_smoothing_per_option,
+            implied_prob_floor_bps,
+            odds_floor_1x,
+            odds_cap_bps,
+            liq_cap_bps,
+            liq_ref_amount,
+            exposure_cap_bps,
+            exposure_k_bps,
+            timestamp: clock::timestamp_ms(clock),
+        });
+    }
+
     /// Emergency enable/disable toggle (admin only)
     public entry fun set_enable_flag(
         _: &InsuranceAdminCap,
@@ -283,6 +590,7 @@ module social_contracts::insurance {
 
     public(package) fun bootstrap_init(ctx: &mut TxContext) {
         let admin = tx_context::sender(ctx);
+        let ts = tx_context::epoch_timestamp_ms(ctx);
         let config = InsuranceConfig {
             id: object::new(ctx),
             enable_flag: false,
@@ -290,10 +598,24 @@ module social_contracts::insurance {
             max_coverage_bps: DEFAULT_MAX_COVERAGE_BPS,
             max_duration_ms: DEFAULT_MAX_DURATION_MS,
             fee_bps: DEFAULT_FEE_BPS,
+            min_spot_total_liquidity: DEFAULT_MIN_SPOT_TOTAL_LIQUIDITY,
+            max_coverage_fraction_of_option_bps: DEFAULT_MAX_COVERAGE_FRACTION_OF_OPTION_BPS,
+            max_risk_multiplier_bps: DEFAULT_MAX_RISK_MULTIPLIER_BPS,
+            min_premium_amount: DEFAULT_MIN_PREMIUM_AMOUNT,
+            spot_smoothing_per_option: DEFAULT_SPOT_SMOOTHING_PER_OPTION,
+            implied_prob_floor_bps: DEFAULT_IMPLIED_PROB_FLOOR_BPS,
+            odds_floor_1x: true,
+            odds_cap_bps: DEFAULT_ODDS_CAP_BPS,
+            liq_cap_bps: DEFAULT_LIQ_CAP_BPS,
+            liq_ref_amount: DEFAULT_LIQ_REF_AMOUNT,
+            exposure_cap_bps: DEFAULT_EXPOSURE_CAP_BPS,
+            exposure_k_bps: DEFAULT_EXPOSURE_K_BPS,
             version: DEFAULT_VERSION,
         };
 
-        // Emit event so indexer can populate insurance_config table
+        transfer::share_object(new_router_config_defaults(ctx));
+        transfer::share_object(new_backstop_pool_defaults(ctx));
+
         event::emit(ConfigUpdatedEvent {
             updated_by: admin,
             enable_flag: false,
@@ -301,11 +623,25 @@ module social_contracts::insurance {
             max_coverage_bps: DEFAULT_MAX_COVERAGE_BPS,
             max_duration_ms: DEFAULT_MAX_DURATION_MS,
             fee_bps: DEFAULT_FEE_BPS,
-            timestamp: tx_context::epoch_timestamp_ms(ctx),
+            timestamp: ts,
+        });
+        event::emit(RiskPricingConfigUpdatedEvent {
+            updated_by: admin,
+            min_spot_total_liquidity: DEFAULT_MIN_SPOT_TOTAL_LIQUIDITY,
+            max_coverage_fraction_of_option_bps: DEFAULT_MAX_COVERAGE_FRACTION_OF_OPTION_BPS,
+            max_risk_multiplier_bps: DEFAULT_MAX_RISK_MULTIPLIER_BPS,
+            min_premium_amount: DEFAULT_MIN_PREMIUM_AMOUNT,
+            spot_smoothing_per_option: DEFAULT_SPOT_SMOOTHING_PER_OPTION,
+            implied_prob_floor_bps: DEFAULT_IMPLIED_PROB_FLOOR_BPS,
+            odds_floor_1x: true,
+            odds_cap_bps: DEFAULT_ODDS_CAP_BPS,
+            liq_cap_bps: DEFAULT_LIQ_CAP_BPS,
+            liq_ref_amount: DEFAULT_LIQ_REF_AMOUNT,
+            exposure_cap_bps: DEFAULT_EXPOSURE_CAP_BPS,
+            exposure_k_bps: DEFAULT_EXPOSURE_K_BPS,
+            timestamp: ts,
         });
 
-        // Create and share the InsuranceConfig object with default values
-        // Admin cap will be transferred separately in bootstrap.move
         transfer::share_object(config);
     }
 
@@ -318,6 +654,9 @@ module social_contracts::insurance {
         ctx: &mut TxContext
     ) {
         let underwriter = tx_context::sender(ctx);
+        let max_exposure_per_option = 0;
+        let enabled = true;
+        let paused = false;
         let vault = UnderwriterVault {
             id: object::new(ctx),
             underwriter,
@@ -327,6 +666,9 @@ module social_contracts::insurance {
             utilization_multiplier_bps,
             max_exposure_per_market,
             max_exposure_per_user,
+            max_exposure_per_option,
+            enabled,
+            paused,
             market_exposures: table::new(ctx),
             user_exposures: table::new(ctx),
             version: DEFAULT_VERSION,
@@ -341,7 +683,285 @@ module social_contracts::insurance {
             utilization_multiplier_bps,
             max_exposure_per_market,
             max_exposure_per_user,
+            max_exposure_per_option,
+            enabled,
+            paused,
         });
+    }
+
+    /// Underwriter updates vault listing parameters (emit for indexer discovery).
+    public entry fun set_vault_status(
+        vault: &mut UnderwriterVault,
+        enabled: bool,
+        paused: bool,
+        max_exposure_per_option: u64,
+        clock: &Clock,
+        ctx: &mut TxContext,
+    ) {
+        assert!(tx_context::sender(ctx) == vault.underwriter, ENotAdmin);
+        vault.enabled = enabled;
+        vault.paused = paused;
+        vault.max_exposure_per_option = max_exposure_per_option;
+
+        event::emit(VaultStatusUpdatedEvent {
+            vault_id: object::id(vault),
+            enabled,
+            paused,
+            max_exposure_per_option,
+            max_exposure_per_market: vault.max_exposure_per_market,
+            max_exposure_per_user: vault.max_exposure_per_user,
+            base_rate_bps_per_day: vault.base_rate_bps_per_day,
+            utilization_multiplier_bps: vault.utilization_multiplier_bps,
+            updated_by: tx_context::sender(ctx),
+            timestamp_ms: clock::timestamp_ms(clock),
+        });
+    }
+
+    public entry fun set_router_flags(
+        _: &InsuranceAdminCap,
+        router_cfg: &mut InsuranceRouterConfig,
+        router_enabled: bool,
+        router_paused: bool,
+        clock: &Clock,
+        ctx: &mut TxContext,
+    ) {
+        router_cfg.router_enabled = router_enabled;
+        router_cfg.router_paused = router_paused;
+        let _ = clock;
+        let _ = ctx;
+    }
+
+    public entry fun set_router_limits(
+        _: &InsuranceAdminCap,
+        router_cfg: &mut InsuranceRouterConfig,
+        max_route_reserve_market: u64,
+        max_route_reserve_user: u64,
+        max_route_reserve_option: u64,
+        max_vault_concentration_bps: u64,
+        min_vault_health_factor_bps: u64,
+        ctx: &mut TxContext,
+    ) {
+        assert!(
+            max_vault_concentration_bps > 0 && max_vault_concentration_bps <= BPS_DENOM,
+            EInvalidCoverage
+        );
+        assert!(min_vault_health_factor_bps > 0, EInvalidAmount);
+        router_cfg.max_route_reserve_market = max_route_reserve_market;
+        router_cfg.max_route_reserve_user = max_route_reserve_user;
+        router_cfg.max_route_reserve_option = max_route_reserve_option;
+        router_cfg.max_vault_concentration_bps = max_vault_concentration_bps;
+        router_cfg.min_vault_health_factor_bps = min_vault_health_factor_bps;
+        let _ = ctx;
+    }
+
+    public entry fun set_market_pause(
+        _: &InsuranceAdminCap,
+        router_cfg: &mut InsuranceRouterConfig,
+        market_id: address,
+        paused: bool,
+        ctx: &mut TxContext,
+    ) {
+        if (table::contains(&router_cfg.market_pause, market_id)) {
+            *table::borrow_mut(&mut router_cfg.market_pause, market_id) = paused;
+        } else {
+            table::add(&mut router_cfg.market_pause, market_id, paused);
+        };
+        let _ = ctx;
+    }
+
+    public entry fun set_backstop_caps(
+        _: &InsuranceAdminCap,
+        pool: &mut InsuranceBackstopPool,
+        max_payout_per_market: u64,
+        max_payout_per_event: u64,
+        global_hard_cap: u64,
+        sweep_premium_bps: u64,
+        tail_pay_partial_on_cap: bool,
+        ctx: &mut TxContext,
+    ) {
+        assert!(sweep_premium_bps <= BPS_DENOM, EInvalidCoverage);
+        pool.max_payout_per_market = max_payout_per_market;
+        pool.max_payout_per_event = max_payout_per_event;
+        pool.global_hard_cap = global_hard_cap;
+        pool.sweep_premium_bps = sweep_premium_bps;
+        pool.tail_pay_partial_on_cap = tail_pay_partial_on_cap;
+        let _ = ctx;
+    }
+
+    public entry fun set_tail_mode(
+        _: &InsuranceAdminCap,
+        pool: &mut InsuranceBackstopPool,
+        tail_mode_enabled: bool,
+        ctx: &mut TxContext,
+    ) {
+        pool.tail_mode_enabled = tail_mode_enabled;
+        let _ = ctx;
+    }
+
+    public entry fun set_backstop_paused(
+        _: &InsuranceAdminCap,
+        pool: &mut InsuranceBackstopPool,
+        paused: bool,
+        ctx: &mut TxContext,
+    ) {
+        pool.paused = paused;
+        let _ = ctx;
+    }
+
+    public entry fun deposit_backstop_treasury(
+        _: &InsuranceAdminCap,
+        pool: &mut InsuranceBackstopPool,
+        payment: Coin<MYSO>,
+        ctx: &mut TxContext,
+    ) {
+        let amt = coin::value(&payment);
+        assert!(amt > 0, EInvalidAmount);
+        let sender = tx_context::sender(ctx);
+        balance::join(&mut pool.capital, coin::into_balance(payment));
+        let new_balance = balance::value(&pool.capital);
+        event::emit(BackstopTreasuryDepositEvent {
+            depositor: sender,
+            amount: amt,
+            new_balance,
+        });
+    }
+
+    /// Tail shortfall payout only (`tail_mode_enabled` + caps). Does not interact with `claim`.
+    public entry fun tail_pay_shortfall(
+        _: &InsuranceAdminCap,
+        pool: &mut InsuranceBackstopPool,
+        config: &InsuranceConfig,
+        recipient: address,
+        market_id: address,
+        amount_requested: u64,
+        clock: &Clock,
+        ctx: &mut TxContext,
+    ) {
+        assert!(config.enable_flag, EDisabled);
+        assert!(pool.tail_mode_enabled, ETailModeDisabled);
+        assert!(!pool.paused, EBackstopPaused);
+        assert!(amount_requested > 0, EInvalidAmount);
+
+        let pool_balance = balance::value(&pool.capital);
+        let mut paid_market = 0;
+        if (table::contains(&pool.paid_by_market, market_id)) {
+            paid_market = *table::borrow(&pool.paid_by_market, market_id);
+        };
+        let remaining_market = min_cap_sub(pool.max_payout_per_market, paid_market);
+        let remaining_global = min_cap_sub(pool.global_hard_cap, pool.total_paid_out);
+        let cap_event = pool.max_payout_per_event;
+        let pay_cap = min_u64(
+            min_u64(min_u64(amount_requested, pool_balance), remaining_market),
+            min_u64(remaining_global, cap_event),
+        );
+        if (pay_cap == 0) {
+            assert!(pool.tail_pay_partial_on_cap, EBackstopPayoutLimit);
+        } else {
+            if (pay_cap < amount_requested) {
+                assert!(pool.tail_pay_partial_on_cap, EBackstopPayoutLimit);
+            };
+
+            let pay_bal = balance::split(&mut pool.capital, pay_cap);
+            let coin_out = coin::from_balance(pay_bal, ctx);
+            transfer::public_transfer(coin_out, recipient);
+
+            pool.total_paid_out = pool.total_paid_out + pay_cap;
+            if (table::contains(&pool.paid_by_market, market_id)) {
+                let e = table::borrow_mut(&mut pool.paid_by_market, market_id);
+                *e = *e + pay_cap;
+            } else {
+                table::add(&mut pool.paid_by_market, market_id, pay_cap);
+            };
+
+            event::emit(BackstopUsedEvent {
+                market_id,
+                recipient,
+                amount: pay_cap,
+                total_paid_out_after: pool.total_paid_out,
+                tail_mode_enabled: pool.tail_mode_enabled,
+            });
+        };
+        let _ = clock;
+        let _ = ctx;
+    }
+
+    fun min_cap_sub(cap: u64, used: u64): u64 {
+        if (cap >= used) {
+            cap - used
+        } else {
+            0
+        }
+    }
+
+    fun min_u64(a: u64, b: u64): u64 {
+        if (a < b) {
+            a
+        } else {
+            b
+        }
+    }
+
+    fun copy_id_vec(src: &vector<ID>): vector<ID> {
+        let mut out = vector::empty();
+        let len = vector::length(src);
+        let mut i = 0;
+        while (i < len) {
+            vector::push_back(&mut out, *vector::borrow(src, i));
+            i = i + 1;
+        };
+        out
+    }
+
+    fun new_router_config_defaults(ctx: &mut TxContext): InsuranceRouterConfig {
+        InsuranceRouterConfig {
+            id: object::new(ctx),
+            router_enabled: true,
+            router_paused: false,
+            max_route_reserve_market: 0,
+            max_route_reserve_user: 0,
+            max_route_reserve_option: 0,
+            max_vault_concentration_bps: BPS_DENOM,
+            min_vault_health_factor_bps: BPS_DENOM,
+            market_pause: table::new(ctx),
+            version: DEFAULT_VERSION,
+        }
+    }
+
+    fun new_backstop_pool_defaults(ctx: &mut TxContext): InsuranceBackstopPool {
+        InsuranceBackstopPool {
+            id: object::new(ctx),
+            capital: balance::zero(),
+            total_paid_out: 0,
+            paid_by_market: table::new(ctx),
+            max_payout_per_market: MAX_U64,
+            max_payout_per_event: MAX_U64,
+            global_hard_cap: MAX_U64,
+            tail_mode_enabled: false,
+            paused: false,
+            sweep_premium_bps: 0,
+            tail_pay_partial_on_cap: true,
+            version: DEFAULT_VERSION,
+        }
+    }
+
+    fun assert_market_router_open(router_cfg: &InsuranceRouterConfig, market_id: address) {
+        if (table::contains(&router_cfg.market_pause, market_id)) {
+            assert!(!*table::borrow(&router_cfg.market_pause, market_id), EMarketClosed);
+        };
+    }
+
+    fun assert_vault_buy_guards(
+        vault: &UnderwriterVault,
+        router_cfg: &InsuranceRouterConfig,
+        check_health: bool,
+    ) {
+        assert!(vault.enabled, EVaultDisabled);
+        assert!(!vault.paused, EVaultPaused);
+        if (check_health) {
+            let cap = balance::value(&vault.capital);
+            let r = vault.reserved;
+            assert!(cap * BPS_DENOM >= r * router_cfg.min_vault_health_factor_bps, EInsufficientCapital);
+        };
     }
 
     /// Deposit capital into vault
@@ -389,8 +1009,23 @@ module social_contracts::insurance {
         });
     }
 
-    /// Quote premium based on vault utilization
-    public fun quote_premium(
+    public fun premium_quote_premium(q: &PremiumQuote): u64 {
+        q.premium
+    }
+
+    public fun premium_quote_implied_prob_win_bps(q: &PremiumQuote): u64 {
+        q.implied_prob_win_bps
+    }
+
+    public fun premium_quote_risk_multiplier_bps(q: &PremiumQuote): u64 {
+        q.risk_multiplier_bps
+    }
+
+    public fun premium_quote_premium_raw(q: &PremiumQuote): u64 {
+        q.premium_raw
+    }
+
+    fun quote_base_premium(
         vault: &UnderwriterVault,
         covered_amount: u64,
         coverage_bps: u64,
@@ -417,9 +1052,509 @@ module social_contracts::insurance {
         premium_u128 as u64
     }
 
+    /// Utilization curve only (`quote_base_premium`).
+    public fun quote_premium(
+        vault: &UnderwriterVault,
+        covered_amount: u64,
+        coverage_bps: u64,
+        duration_ms: u64
+    ): u64 {
+        quote_base_premium(vault, covered_amount, coverage_bps, duration_ms)
+    }
+
+    fun get_market_option_reserved(vault: &UnderwriterVault, market_id: address, option_id: u8): u64 {
+        if (!table::contains(&vault.market_exposures, market_id)) {
+            0
+        } else {
+            let exposure = table::borrow(&vault.market_exposures, market_id);
+            get_option_reserved(exposure, option_id)
+        }
+    }
+
+    fun compute_spot_risk_quote(
+        config: &InsuranceConfig,
+        vault: &UnderwriterVault,
+        record: &spot::SpotRecord,
+        vault_market_id: address,
+        option_id: u8,
+        covered_amount: u64,
+        coverage_bps: u64,
+        duration_ms: u64,
+        enforce_max_risk: bool,
+    ): PremiumQuote {
+        spot::assert_valid_option_id(record, option_id);
+
+        let t_total = spot::total_option_escrow(record);
+        assert!(t_total >= config.min_spot_total_liquidity, EThinMarket);
+
+        let a_opt = spot::get_option_escrow(record, option_id);
+        let denom_cov = if (a_opt >= 1) {
+            a_opt
+        } else {
+            1
+        };
+        assert!(
+            (covered_amount as u128) * (BPS_DENOM as u128)
+                <= (config.max_coverage_fraction_of_option_bps as u128) * (denom_cov as u128),
+            ECoverageTooLargeVersusPool
+        );
+
+        let n_opts = spot::num_betting_options(record);
+        let w = config.spot_smoothing_per_option;
+        let nw_u128 = (n_opts as u128) * (w as u128);
+        assert!(nw_u128 <= (MAX_U64 as u128), EOverflow);
+        let smoothed_t = (t_total as u128) + nw_u128;
+        assert!(smoothed_t > 0 && smoothed_t <= (MAX_U64 as u128) * 2, EOverflow);
+
+        let smoothed_a = (a_opt as u128) + (w as u128);
+        let p_win_u128 = (smoothed_a * (BPS_DENOM as u128)) / smoothed_t;
+        assert!(p_win_u128 <= (MAX_U64 as u128), EOverflow);
+        let p_win_bps = p_win_u128 as u64;
+
+        let reserved_opt = get_market_option_reserved(vault, vault_market_id, option_id);
+
+        let p_floor = config.implied_prob_floor_bps;
+        let denom_p = if (p_win_bps > p_floor) { p_win_bps } else { p_floor };
+
+        let odds_core_u128 = (5000u128) * (BPS_DENOM as u128) / (denom_p as u128);
+        assert!(odds_core_u128 <= (MAX_U64 as u128), EOverflow);
+        let odds_core = odds_core_u128 as u64;
+        let mut odds_mult_bps = if (config.odds_cap_bps < odds_core) {
+            config.odds_cap_bps
+        } else {
+            odds_core
+        };
+        if (config.odds_floor_1x && odds_mult_bps < BPS_DENOM) {
+            odds_mult_bps = BPS_DENOM;
+        };
+
+        let t_for_liq = if (t_total >= 1) {
+            t_total
+        } else {
+            1
+        };
+        let liq_uncapped_u128 = (config.liq_ref_amount as u128)
+            * (BPS_DENOM as u128) / (t_for_liq as u128);
+        assert!(liq_uncapped_u128 <= (MAX_U64 as u128), EOverflow);
+        let liq_uncapped = liq_uncapped_u128 as u64;
+        let liq_mult_bps = if (config.liq_cap_bps < liq_uncapped) {
+            config.liq_cap_bps
+        } else {
+            liq_uncapped
+        };
+
+        let extra_num_u128 = (config.exposure_k_bps as u128) * (reserved_opt as u128) / (denom_cov as u128);
+        assert!(extra_num_u128 <= (MAX_U64 as u128), EOverflow);
+        let extra_term = extra_num_u128 as u64;
+        let max_extra_bps = config.exposure_cap_bps - BPS_DENOM;
+        let extra_bounded = if (extra_term > max_extra_bps) {
+            max_extra_bps
+        } else {
+            extra_term
+        };
+        assert!(extra_bounded <= MAX_U64 - BPS_DENOM, EOverflow);
+        let exposure_mult_bps = BPS_DENOM + extra_bounded;
+
+        let risk_u128 =
+            ((odds_mult_bps as u128) * (liq_mult_bps as u128) * (exposure_mult_bps as u128))
+                / (BPS_DENOM as u128) / (BPS_DENOM as u128);
+        assert!(risk_u128 <= (MAX_U64 as u128), EOverflow);
+        let risk_multiplier_bps = risk_u128 as u64;
+
+        if (enforce_max_risk) {
+            assert!(risk_multiplier_bps <= config.max_risk_multiplier_bps, ERiskMultiplierTooHigh);
+        };
+
+        let base_premium =
+            quote_base_premium(vault, covered_amount, coverage_bps, duration_ms);
+
+        let premium_raw_u128 = ((base_premium as u128) * (risk_multiplier_bps as u128))
+            / (BPS_DENOM as u128);
+        assert!(premium_raw_u128 <= (MAX_U64 as u128), EOverflow);
+        let premium_raw = premium_raw_u128 as u64;
+
+        let premium = if (premium_raw >= config.min_premium_amount) {
+            premium_raw
+        } else {
+            config.min_premium_amount
+        };
+        assert!(premium > 0, EInsufficientPremium);
+
+        PremiumQuote {
+            premium,
+            premium_raw,
+            implied_prob_win_bps: p_win_bps,
+            risk_multiplier_bps,
+            market_total_amount: t_total,
+            option_amount: a_opt,
+            base_premium,
+        }
+    }
+
+    /// Preview premium with SPoT pool odds, liquidity, and vault concentration on this option (`reserved` excludes a not-yet-open policy).
+    public fun quote_premium_with_spot_risk(
+        config: &InsuranceConfig,
+        vault: &UnderwriterVault,
+        record: &spot::SpotRecord,
+        option_id: u8,
+        covered_amount: u64,
+        coverage_bps: u64,
+        duration_ms: u64,
+    ): PremiumQuote {
+        let market_id = spot::get_id_address(record);
+        compute_spot_risk_quote(
+            config,
+            vault,
+            record,
+            market_id,
+            option_id,
+            covered_amount,
+            coverage_bps,
+            duration_ms,
+            true,
+        )
+    }
+
+    fun coverage_quote_skipped(reason: u8): VaultCoverageQuote {
+        VaultCoverageQuote {
+            premium: 0,
+            premium_raw: 0,
+            reserve_required: 0,
+            available_capacity_reserve: 0,
+            risk_multiplier_bps: 0,
+            implied_prob_win_bps: 0,
+            utilization_bps: 0,
+            max_fill_covered_amount: 0,
+            skipped_reason: reason,
+        }
+    }
+
+    fun max_fill_covered_for_vault(
+        config: &InsuranceConfig,
+        vault: &UnderwriterVault,
+        record: &spot::SpotRecord,
+        market_id: address,
+        insured: address,
+        option_id: u8,
+        coverage_bps: u64,
+    ): u64 {
+        let position = spot::get_user_option_amount(record, insured, option_id);
+        let a_opt = spot::get_option_escrow(record, option_id);
+        let denom_cov = if (a_opt >= 1) {
+            a_opt
+        } else {
+            1
+        };
+        let pool_max_u128 =
+            (config.max_coverage_fraction_of_option_bps as u128) * (denom_cov as u128) / (BPS_DENOM as u128);
+        assert!(pool_max_u128 <= (MAX_U64 as u128), EOverflow);
+        let pool_max = pool_max_u128 as u64;
+
+        let capital_value = balance::value(&vault.capital);
+        let free_capital = if (capital_value >= vault.reserved) {
+            capital_value - vault.reserved
+        } else {
+            0
+        };
+        let vault_cov_max = if (coverage_bps > 0) {
+            let v = (free_capital as u128) * (BPS_DENOM as u128) / (coverage_bps as u128);
+            assert!(v <= (MAX_U64 as u128), EOverflow);
+            v as u64
+        } else {
+            MAX_U64
+        };
+
+        let mut market_head_reserve = MAX_U64;
+        if (vault.max_exposure_per_market > 0) {
+            let tr = if (table::contains(&vault.market_exposures, market_id)) {
+                table::borrow(&vault.market_exposures, market_id).total_reserved
+            } else {
+                0
+            };
+            market_head_reserve = min_cap_sub(vault.max_exposure_per_market, tr);
+        };
+        let market_cov_max = reserve_to_covered(market_head_reserve, coverage_bps);
+
+        let mut opt_head_reserve = MAX_U64;
+        if (vault.max_exposure_per_option > 0) {
+            let ors = get_market_option_reserved(vault, market_id, option_id);
+            opt_head_reserve = min_cap_sub(vault.max_exposure_per_option, ors);
+        };
+        let opt_cov_max = reserve_to_covered(opt_head_reserve, coverage_bps);
+
+        let mut user_head_reserve = MAX_U64;
+        if (vault.max_exposure_per_user > 0) {
+            let ue = get_user_exposure(vault, insured);
+            user_head_reserve = min_cap_sub(vault.max_exposure_per_user, ue);
+        };
+        let user_cov_max = reserve_to_covered(user_head_reserve, coverage_bps);
+
+        let mut m = position;
+        if (pool_max < m) {
+            m = pool_max
+        };
+        if (vault_cov_max < m) {
+            m = vault_cov_max
+        };
+        if (market_cov_max < m) {
+            m = market_cov_max
+        };
+        if (opt_cov_max < m) {
+            m = opt_cov_max
+        };
+        if (user_cov_max < m) {
+            m = user_cov_max
+        };
+        m
+    }
+
+    fun reserve_to_covered(head_reserve: u64, coverage_bps: u64): u64 {
+        if (coverage_bps == 0) {
+            MAX_U64
+        } else {
+            let v = (head_reserve as u128) * (BPS_DENOM as u128) / (coverage_bps as u128);
+            if (v > (MAX_U64 as u128)) {
+                MAX_U64
+            } else {
+                v as u64
+            }
+        }
+    }
+
+    public fun quote_vault_for_spot_coverage(
+        config: &InsuranceConfig,
+        router_cfg: &InsuranceRouterConfig,
+        vault: &UnderwriterVault,
+        record: &spot::SpotRecord,
+        insured: address,
+        option_id: u8,
+        requested_coverage_amount: u64,
+        coverage_bps: u64,
+        duration_ms: u64,
+    ): VaultCoverageQuote {
+        if (router_cfg.router_paused) {
+            return coverage_quote_skipped(SKIPPED_ROUTER_PAUSED)
+        };
+        let market_id = spot::get_id_address(record);
+        if (table::contains(&router_cfg.market_pause, market_id)
+            && *table::borrow(&router_cfg.market_pause, market_id)) {
+            return coverage_quote_skipped(SKIPPED_MARKET_PAUSED)
+        };
+        if (!vault.enabled) {
+            return coverage_quote_skipped(SKIPPED_VAULT_DISABLED)
+        };
+        if (vault.paused) {
+            return coverage_quote_skipped(SKIPPED_VAULT_PAUSED)
+        };
+        let cap = balance::value(&vault.capital);
+        let r = vault.reserved;
+        if (cap * BPS_DENOM < r * router_cfg.min_vault_health_factor_bps) {
+            return coverage_quote_skipped(SKIPPED_UNHEALTHY_VAULT)
+        };
+        let t_total = spot::total_option_escrow(record);
+        if (t_total < config.min_spot_total_liquidity) {
+            return coverage_quote_skipped(SKIPPED_THIN_OR_POOL)
+        };
+        if ((option_id as u64) >= spot::num_betting_options(record)) {
+            return coverage_quote_skipped(SKIPPED_THIN_OR_POOL)
+        };
+
+        let max_fill =
+            max_fill_covered_for_vault(config, vault, record, market_id, insured, option_id, coverage_bps);
+        if (max_fill == 0) {
+            return coverage_quote_skipped(SKIPPED_ZERO_CAPACITY)
+        };
+
+        let trade = if (requested_coverage_amount <= max_fill) {
+            requested_coverage_amount
+        } else {
+            max_fill
+        };
+
+        let pq = compute_spot_risk_quote(
+            config,
+            vault,
+            record,
+            market_id,
+            option_id,
+            trade,
+            coverage_bps,
+            duration_ms,
+            false,
+        );
+        if (pq.risk_multiplier_bps > config.max_risk_multiplier_bps) {
+            return VaultCoverageQuote {
+                premium: 0,
+                premium_raw: 0,
+                reserve_required: 0,
+                available_capacity_reserve: compute_reserve(max_fill, coverage_bps),
+                risk_multiplier_bps: pq.risk_multiplier_bps,
+                implied_prob_win_bps: pq.implied_prob_win_bps,
+                utilization_bps: vault_utilization_bps(vault),
+                max_fill_covered_amount: max_fill,
+                skipped_reason: SKIPPED_RISK_MULTIPLIER,
+            }
+        };
+
+        let res_req = compute_reserve(trade, coverage_bps);
+        let avail_res = compute_reserve(max_fill, coverage_bps);
+
+        let util_bps = vault_utilization_bps(vault);
+
+        VaultCoverageQuote {
+            premium: pq.premium,
+            premium_raw: pq.premium_raw,
+            reserve_required: res_req,
+            available_capacity_reserve: avail_res,
+            risk_multiplier_bps: pq.risk_multiplier_bps,
+            implied_prob_win_bps: pq.implied_prob_win_bps,
+            utilization_bps: util_bps,
+            max_fill_covered_amount: max_fill,
+            skipped_reason: SKIPPED_OK,
+        }
+    }
+
+    fun vault_utilization_bps(vault: &UnderwriterVault): u64 {
+        let capital_value = balance::value(&vault.capital);
+        if (capital_value == 0) {
+            BPS_DENOM
+        } else {
+            let utilization_u128 = (vault.reserved as u128) * (BPS_DENOM as u128) / (capital_value as u128);
+            assert!(utilization_u128 <= (MAX_U64 as u128), EOverflow);
+            utilization_u128 as u64
+        }
+    }
+
+    fun buy_coverage_execute(
+        config: &InsuranceConfig,
+        router_cfg: &InsuranceRouterConfig,
+        backstop: &mut InsuranceBackstopPool,
+        spot_config: &spot::SpotConfig,
+        vault: &mut UnderwriterVault,
+        record: &spot::SpotRecord,
+        option_id: u8,
+        covered_amount: u64,
+        coverage_bps: u64,
+        duration_ms: u64,
+        payment: &mut Coin<MYSO>,
+        clock: &Clock,
+        route_id: Option<ID>,
+        route_leg_index: u8,
+        check_market_router: bool,
+        ctx: &mut TxContext,
+    ): (ID, ID, u64, u64, u64, u64, u64) {
+        assert!(config.enable_flag, EDisabled);
+        assert!(spot::is_enabled(spot_config), EMarketClosed);
+        assert!(spot::is_open(record), EMarketClosed);
+        assert!(coverage_bps >= config.min_coverage_bps, EInvalidCoverage);
+        assert!(coverage_bps <= config.max_coverage_bps, EInvalidCoverage);
+        assert!(duration_ms > 0 && duration_ms <= config.max_duration_ms, EInvalidDuration);
+        assert!(covered_amount > 0, EInvalidAmount);
+
+        let insured = tx_context::sender(ctx);
+        let market_id = spot::get_id_address(record);
+        if (check_market_router) {
+            assert_market_router_open(router_cfg, market_id);
+        };
+
+        assert_vault_buy_guards(vault, router_cfg, true);
+
+        let position_amount = spot::get_user_option_amount(record, insured, option_id);
+        assert!(covered_amount <= position_amount, EInvalidAmount);
+
+        let reserve_amount = compute_reserve(covered_amount, coverage_bps);
+        let capital_value = balance::value(&vault.capital);
+        assert!(capital_value >= vault.reserved, EOverflow);
+        let free_capital = capital_value - vault.reserved;
+        assert!(free_capital >= reserve_amount, EInsufficientCapital);
+        assert!(vault.reserved <= MAX_U64 - reserve_amount, EOverflow);
+
+        let pq = compute_spot_risk_quote(
+            config,
+            vault,
+            record,
+            market_id,
+            option_id,
+            covered_amount,
+            coverage_bps,
+            duration_ms,
+            true,
+        );
+        let premium = pq.premium;
+
+        enforce_exposure_limits(vault, market_id, insured, option_id, reserve_amount, ctx);
+
+        assert!(coin::value(payment) >= premium, EInsufficientPremium);
+
+        let sweep_bps = backstop.sweep_premium_bps;
+        if (sweep_bps > 0) {
+            assert!(!backstop.paused, EBackstopPaused);
+        };
+        let sweep_amt = (premium * sweep_bps) / BPS_DENOM;
+        let to_vault_amt = premium - sweep_amt;
+
+        let mut prem_coin = coin::split(payment, premium, ctx);
+        if (sweep_amt > 0) {
+            let sc = coin::split(&mut prem_coin, sweep_amt, ctx);
+            balance::join(&mut backstop.capital, coin::into_balance(sc));
+        };
+        balance::join(&mut vault.capital, coin::into_balance(prem_coin));
+
+        vault.reserved = vault.reserved + reserve_amount;
+        add_exposure(vault, market_id, insured, option_id, reserve_amount, ctx);
+
+        let now = clock::timestamp_ms(clock);
+        assert!(now <= MAX_U64 - duration_ms, EOverflow);
+        let expiry_time_ms = now + duration_ms;
+        let vault_id_ins = object::id(vault);
+        let policy = CoveragePolicy {
+            id: object::new(ctx),
+            market_id,
+            insured,
+            option_id,
+            covered_amount,
+            coverage_bps,
+            premium_paid: premium,
+            start_time_ms: now,
+            expiry_time_ms,
+            vault_id: vault_id_ins,
+            status: STATUS_ACTIVE,
+            route_id,
+            route_leg_index,
+        };
+        let policy_id = object::id(&policy);
+        transfer::share_object(policy);
+
+        event::emit(CoveragePurchasedEvent {
+            policy_id,
+            vault_id: vault_id_ins,
+            market_id,
+            insured,
+            option_id,
+            covered_amount,
+            coverage_bps,
+            premium_paid: premium,
+            premium_raw: pq.premium_raw,
+            reserve_locked: reserve_amount,
+            expiry_time_ms,
+            implied_probability_bps: pq.implied_prob_win_bps,
+            risk_multiplier_bps: pq.risk_multiplier_bps,
+            base_premium: pq.base_premium,
+            market_total_amount: pq.market_total_amount,
+            option_amount: pq.option_amount,
+            backstop_sweep_amount: sweep_amt,
+            route_id,
+            route_leg_index,
+        });
+
+        (policy_id, vault_id_ins, premium, reserve_amount, sweep_amt, covered_amount, expiry_time_ms)
+    }
+
     /// Buy coverage for a SPoT position
     public entry fun buy_coverage(
         config: &InsuranceConfig,
+        router_cfg: &InsuranceRouterConfig,
+        backstop: &mut InsuranceBackstopPool,
         spot_config: &spot::SpotConfig,
         vault: &mut UnderwriterVault,
         record: &spot::SpotRecord,
@@ -440,7 +1575,6 @@ module social_contracts::insurance {
         assert!(requested_coverage_amount > 0, EInvalidAmount);
 
         let insured = tx_context::sender(ctx);
-        let market_id = spot::get_id_address(record);
         let position_amount = spot::get_user_option_amount(record, insured, option_id);
         let covered_amount = if (requested_coverage_amount <= position_amount) {
             requested_coverage_amount
@@ -449,61 +1583,356 @@ module social_contracts::insurance {
         };
         assert!(covered_amount > 0, EInvalidAmount);
 
-        let reserve_amount = compute_reserve(covered_amount, coverage_bps);
-        let capital_value = balance::value(&vault.capital);
-        assert!(capital_value >= vault.reserved, EOverflow);
-        let free_capital = capital_value - vault.reserved;
-        assert!(free_capital >= reserve_amount, EInsufficientCapital);
-        assert!(vault.reserved <= MAX_U64 - reserve_amount, EOverflow);
-
-        enforce_exposure_limits(vault, market_id, insured, option_id, reserve_amount, ctx);
-
-        let premium = quote_premium(vault, covered_amount, coverage_bps, duration_ms);
-        assert!(premium > 0, EInsufficientPremium);
-        assert!(coin::value(&payment) >= premium, EInsufficientPremium);
-
-        let premium_coin = coin::split(&mut payment, premium, ctx);
-        balance::join(&mut vault.capital, coin::into_balance(premium_coin));
+        buy_coverage_execute(
+            config,
+            router_cfg,
+            backstop,
+            spot_config,
+            vault,
+            record,
+            option_id,
+            covered_amount,
+            coverage_bps,
+            duration_ms,
+            &mut payment,
+            clock,
+            option::none(),
+            0,
+            false,
+            ctx,
+        );
 
         if (coin::value(&payment) > 0) {
             transfer::public_transfer(payment, insured);
         } else {
             coin::destroy_zero(payment);
         };
+    }
 
-        vault.reserved = vault.reserved + reserve_amount;
-        add_exposure(vault, market_id, insured, option_id, reserve_amount, ctx);
+    public entry fun route_buy_coverage_4(
+        config: &InsuranceConfig,
+        router_cfg: &InsuranceRouterConfig,
+        backstop: &mut InsuranceBackstopPool,
+        spot_config: &spot::SpotConfig,
+        record: &spot::SpotRecord,
+        v0: &mut UnderwriterVault,
+        v1: &mut UnderwriterVault,
+        v2: &mut UnderwriterVault,
+        v3: &mut UnderwriterVault,
+        option_id: u8,
+        fill_0: u64,
+        fill_1: u64,
+        fill_2: u64,
+        fill_3: u64,
+        coverage_bps: u64,
+        duration_ms: u64,
+        deadline_ms: u64,
+        min_total_covered: u64,
+        max_total_premium: u64,
+        mut payment: Coin<MYSO>,
+        clock: &Clock,
+        ctx: &mut TxContext,
+    ) {
+        assert!(clock::timestamp_ms(clock) <= deadline_ms, EDeadlinePassed);
+        assert!(config.enable_flag, EDisabled);
+        assert!(router_cfg.router_enabled, ERouteDisabled);
+        assert!(!router_cfg.router_paused, ERouterPaused);
+        assert!(spot::is_enabled(spot_config), EMarketClosed);
+        assert!(spot::is_open(record), EMarketClosed);
+        assert!(coverage_bps >= config.min_coverage_bps, EInvalidCoverage);
+        assert!(coverage_bps <= config.max_coverage_bps, EInvalidCoverage);
+        assert!(duration_ms > 0 && duration_ms <= config.max_duration_ms, EInvalidDuration);
+
+        let insured = tx_context::sender(ctx);
+        let market_id = spot::get_id_address(record);
+        assert_market_router_open(router_cfg, market_id);
+        let position_amount = spot::get_user_option_amount(record, insured, option_id);
+
+        let total_covered = fill_0 + fill_1 + fill_2 + fill_3;
+        assert!(total_covered > 0, EInvalidAmount);
+        assert!(total_covered >= min_total_covered, ESlippageCovered);
+        assert!(total_covered <= position_amount, EInvalidAmount);
+
+        if (fill_0 > 0 && fill_1 > 0) {
+            assert!(object::id(v0) != object::id(v1), EDuplicateVaultInRoute);
+        };
+        if (fill_0 > 0 && fill_2 > 0) {
+            assert!(object::id(v0) != object::id(v2), EDuplicateVaultInRoute);
+        };
+        if (fill_0 > 0 && fill_3 > 0) {
+            assert!(object::id(v0) != object::id(v3), EDuplicateVaultInRoute);
+        };
+        if (fill_1 > 0 && fill_2 > 0) {
+            assert!(object::id(v1) != object::id(v2), EDuplicateVaultInRoute);
+        };
+        if (fill_1 > 0 && fill_3 > 0) {
+            assert!(object::id(v1) != object::id(v3), EDuplicateVaultInRoute);
+        };
+        if (fill_2 > 0 && fill_3 > 0) {
+            assert!(object::id(v2) != object::id(v3), EDuplicateVaultInRoute);
+        };
+
+        let r0 = if (fill_0 > 0) {
+            compute_reserve(fill_0, coverage_bps)
+        } else {
+            0
+        };
+        let r1 = if (fill_1 > 0) {
+            compute_reserve(fill_1, coverage_bps)
+        } else {
+            0
+        };
+        let r2 = if (fill_2 > 0) {
+            compute_reserve(fill_2, coverage_bps)
+        } else {
+            0
+        };
+        let r3 = if (fill_3 > 0) {
+            compute_reserve(fill_3, coverage_bps)
+        } else {
+            0
+        };
+        let total_res = r0 + r1 + r2 + r3;
+
+        if (router_cfg.max_route_reserve_market > 0) {
+            assert!(total_res <= router_cfg.max_route_reserve_market, EExposureLimit);
+        };
+        if (router_cfg.max_route_reserve_user > 0) {
+            assert!(total_res <= router_cfg.max_route_reserve_user, EExposureLimit);
+        };
+        if (router_cfg.max_route_reserve_option > 0) {
+            assert!(total_res <= router_cfg.max_route_reserve_option, EExposureLimit);
+        };
+
+        let conc = router_cfg.max_vault_concentration_bps;
+        if (r0 > 0) {
+            assert!(
+                (r0 as u128) * (BPS_DENOM as u128) <= (total_res as u128) * (conc as u128),
+                EVaultConcentration
+            );
+        };
+        if (r1 > 0) {
+            assert!(
+                (r1 as u128) * (BPS_DENOM as u128) <= (total_res as u128) * (conc as u128),
+                EVaultConcentration
+            );
+        };
+        if (r2 > 0) {
+            assert!(
+                (r2 as u128) * (BPS_DENOM as u128) <= (total_res as u128) * (conc as u128),
+                EVaultConcentration
+            );
+        };
+        if (r3 > 0) {
+            assert!(
+                (r3 as u128) * (BPS_DENOM as u128) <= (total_res as u128) * (conc as u128),
+                EVaultConcentration
+            );
+        };
 
         let now = clock::timestamp_ms(clock);
         assert!(now <= MAX_U64 - duration_ms, EOverflow);
         let expiry_time_ms = now + duration_ms;
-        let policy = CoveragePolicy {
+
+        let mut route = CoverageRoute {
             id: object::new(ctx),
-            market_id,
             insured,
+            market_id,
             option_id,
-            covered_amount,
             coverage_bps,
-            premium_paid: premium,
             start_time_ms: now,
             expiry_time_ms,
-            vault_id: object::id(vault),
-            status: STATUS_ACTIVE,
+            policy_ids: vector::empty(),
+            vault_ids: vector::empty(),
+            total_covered: 0,
+            total_premium: 0,
+            total_reserve: 0,
+            total_backstop_sweep: 0,
+            version: DEFAULT_VERSION,
         };
-        let policy_id = object::id(&policy);
-        transfer::share_object(policy);
+        let route_id = object::id(&route);
 
-        event::emit(CoveragePurchasedEvent {
-            policy_id,
-            market_id,
+        let mut leg: u8 = 0;
+        let mut total_premium: u64 = 0;
+
+        if (fill_0 > 0) {
+            let (pid, vid, prem, res, sw, cov, _) = buy_coverage_execute(
+                config,
+                router_cfg,
+                backstop,
+                spot_config,
+                v0,
+                record,
+                option_id,
+                fill_0,
+                coverage_bps,
+                duration_ms,
+                &mut payment,
+                clock,
+                option::some(route_id),
+                leg,
+                true,
+                ctx,
+            );
+            vector::push_back(&mut route.policy_ids, pid);
+            vector::push_back(&mut route.vault_ids, vid);
+            route.total_covered = route.total_covered + cov;
+            route.total_premium = route.total_premium + prem;
+            route.total_reserve = route.total_reserve + res;
+            route.total_backstop_sweep = route.total_backstop_sweep + sw;
+            total_premium = total_premium + prem;
+            event::emit(RouteFillEvent {
+                route_id,
+                leg_index: leg,
+                vault_id: vid,
+                policy_id: pid,
+                covered_amount: cov,
+                premium_paid: prem,
+                reserve_locked: res,
+                backstop_sweep_amount: sw,
+            });
+            leg = leg + 1;
+        };
+        if (fill_1 > 0) {
+            let (pid, vid, prem, res, sw, cov, _) = buy_coverage_execute(
+                config,
+                router_cfg,
+                backstop,
+                spot_config,
+                v1,
+                record,
+                option_id,
+                fill_1,
+                coverage_bps,
+                duration_ms,
+                &mut payment,
+                clock,
+                option::some(route_id),
+                leg,
+                true,
+                ctx,
+            );
+            vector::push_back(&mut route.policy_ids, pid);
+            vector::push_back(&mut route.vault_ids, vid);
+            route.total_covered = route.total_covered + cov;
+            route.total_premium = route.total_premium + prem;
+            route.total_reserve = route.total_reserve + res;
+            route.total_backstop_sweep = route.total_backstop_sweep + sw;
+            total_premium = total_premium + prem;
+            event::emit(RouteFillEvent {
+                route_id,
+                leg_index: leg,
+                vault_id: vid,
+                policy_id: pid,
+                covered_amount: cov,
+                premium_paid: prem,
+                reserve_locked: res,
+                backstop_sweep_amount: sw,
+            });
+            leg = leg + 1;
+        };
+        if (fill_2 > 0) {
+            let (pid, vid, prem, res, sw, cov, _) = buy_coverage_execute(
+                config,
+                router_cfg,
+                backstop,
+                spot_config,
+                v2,
+                record,
+                option_id,
+                fill_2,
+                coverage_bps,
+                duration_ms,
+                &mut payment,
+                clock,
+                option::some(route_id),
+                leg,
+                true,
+                ctx,
+            );
+            vector::push_back(&mut route.policy_ids, pid);
+            vector::push_back(&mut route.vault_ids, vid);
+            route.total_covered = route.total_covered + cov;
+            route.total_premium = route.total_premium + prem;
+            route.total_reserve = route.total_reserve + res;
+            route.total_backstop_sweep = route.total_backstop_sweep + sw;
+            total_premium = total_premium + prem;
+            event::emit(RouteFillEvent {
+                route_id,
+                leg_index: leg,
+                vault_id: vid,
+                policy_id: pid,
+                covered_amount: cov,
+                premium_paid: prem,
+                reserve_locked: res,
+                backstop_sweep_amount: sw,
+            });
+            leg = leg + 1;
+        };
+        if (fill_3 > 0) {
+            let (pid, vid, prem, res, sw, cov, _) = buy_coverage_execute(
+                config,
+                router_cfg,
+                backstop,
+                spot_config,
+                v3,
+                record,
+                option_id,
+                fill_3,
+                coverage_bps,
+                duration_ms,
+                &mut payment,
+                clock,
+                option::some(route_id),
+                leg,
+                true,
+                ctx,
+            );
+            vector::push_back(&mut route.policy_ids, pid);
+            vector::push_back(&mut route.vault_ids, vid);
+            route.total_covered = route.total_covered + cov;
+            route.total_premium = route.total_premium + prem;
+            route.total_reserve = route.total_reserve + res;
+            route.total_backstop_sweep = route.total_backstop_sweep + sw;
+            total_premium = total_premium + prem;
+            event::emit(RouteFillEvent {
+                route_id,
+                leg_index: leg,
+                vault_id: vid,
+                policy_id: pid,
+                covered_amount: cov,
+                premium_paid: prem,
+                reserve_locked: res,
+                backstop_sweep_amount: sw,
+            });
+        };
+
+        assert!(total_premium <= max_total_premium, ESlippagePremium);
+
+        let pids = copy_id_vec(&route.policy_ids);
+        let vids = copy_id_vec(&route.vault_ids);
+        event::emit(CoverageRoutedEvent {
+            route_id,
             insured,
+            market_id,
             option_id,
-            covered_amount,
             coverage_bps,
-            premium_paid: premium,
-            reserve_locked: reserve_amount,
-            expiry_time_ms,
+            duration_ms,
+            total_covered: route.total_covered,
+            total_premium: route.total_premium,
+            total_reserve: route.total_reserve,
+            total_backstop_sweep: route.total_backstop_sweep,
+            expiry_time_ms: route.expiry_time_ms,
+            policy_ids: pids,
+            vault_ids: vids,
         });
+        transfer::share_object(route);
+
+        if (coin::value(&payment) > 0) {
+            transfer::public_transfer(payment, insured);
+        } else {
+            coin::destroy_zero(payment);
+        };
     }
 
     /// Cancel coverage while the market is open
@@ -681,6 +2110,7 @@ module social_contracts::insurance {
         // Read limit values before creating mutable borrows
         let max_exposure_per_market = vault.max_exposure_per_market;
         let max_exposure_per_user = vault.max_exposure_per_user;
+        let max_exposure_per_option = vault.max_exposure_per_option;
         
         // Check user exposure limit first (doesn't require market exposure)
         if (max_exposure_per_user > 0) {
@@ -701,6 +2131,10 @@ module social_contracts::insurance {
 
         let option_reserved = get_option_reserved(exposure, option_id);
         assert!(option_reserved <= MAX_U64 - reserve_amount, EOverflow);
+        let new_opt_reserved = option_reserved + reserve_amount;
+        if (max_exposure_per_option > 0) {
+            assert!(new_opt_reserved <= max_exposure_per_option, EExposureLimit);
+        };
     }
 
     fun add_exposure(

@@ -31,7 +31,9 @@ pub use myso_indexer_alt_social_schema::models::{
     SpotPayoutRow, SpotRecordRow, SpotRefundRow, SpotResolutionRow,
 };
 pub use myso_indexer_alt_social_schema::models::{
-    PocAnalysisResultRow, PocBadgeRow, PocConfigRow, PocDisputeRow, PocRevenueRedirectionRow,
+    PocAnalysisResultRow, PocBadgeRow, PocBeneficiaryVaultRow, PocConfigRow, PocDisputeRow,
+    PocDisputeVoteRow, PocRevenueRedirectionRow, PocVaultClaimRow, PocVaultCoinBalanceRow,
+    PocVaultDepositRow,
 };
 pub use myso_indexer_alt_social_schema::models::{
     PostDeletionEventRow, PostModerationEventRow, SptHoldingRow, SptPoolRow, SptPriceHistory,
@@ -40,6 +42,11 @@ pub use myso_indexer_alt_social_schema::models::{
 pub use pg_reader::SocialPgReader;
 pub use platform::{PlatformBlockedProfileRow, PlatformRow, PlatformUserAccessRow};
 pub use pnl::{ProfilePnLWindow, ProfilePnLWindowResult, get_profile_pnl_for_windows};
+pub use poc::{
+    get_poc_beneficiary_vault_by_beneficiary_address_for_conn,
+    get_poc_beneficiary_vault_by_vault_id_for_conn, list_poc_vault_claims_for_vault_for_conn,
+    list_poc_vault_coin_balances_for_vault_for_conn, list_poc_vault_deposits_for_vault_for_conn,
+};
 pub use post::{
     CommentRow, PostReportRow, PostRow, PostTransferRow, ReactionRow, RepostRow, TipRow,
 };

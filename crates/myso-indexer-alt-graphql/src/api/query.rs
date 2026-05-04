@@ -64,6 +64,7 @@ use crate::api::types::object::VersionFilter;
 use crate::api::types::object_filter::ObjectFilter;
 use crate::api::types::object_filter::ObjectFilterValidator as OFValidator;
 use crate::api::types::platform::{Platform, PlatformUserAccess};
+use crate::api::types::poc::PocBeneficiaryVault;
 use crate::api::types::post::{CommentSummary, Post, ReactionSummary, RepostSummary, TipSummary};
 use crate::api::types::profile::Profile;
 use crate::api::types::promotion::{Promotion, PromotionTimeSeries};
@@ -1814,6 +1815,43 @@ impl Query {
                 .await
                 .map_err(Into::into)
                 .map(|opt| opt.map(PocConfig::from_row)),
+        )
+    }
+
+    /// PoC beneficiary vault by on-chain vault object id. Returns null when social DB not configured or not found.
+    async fn poc_beneficiary_vault_by_vault_id(
+        &self,
+        ctx: &Context<'_>,
+        vault_id: async_graphql::ID,
+    ) -> Option<Result<Option<PocBeneficiaryVault>, RpcError>> {
+        let reader_opt = ctx
+            .data_opt::<std::sync::Arc<Option<myso_indexer_alt_social_reader::SocialPgReader>>>()?;
+        let reader = reader_opt.as_ref().as_ref()?;
+        Some(
+            reader
+                .get_poc_beneficiary_vault_by_vault_id(vault_id.as_str())
+                .await
+                .map_err(Into::into)
+                .map(|opt| opt.map(PocBeneficiaryVault::from_row)),
+        )
+    }
+
+    /// PoC beneficiary vault by beneficiary wallet address. Returns null when social DB not configured or not found.
+    async fn poc_beneficiary_vault_by_beneficiary(
+        &self,
+        ctx: &Context<'_>,
+        beneficiary: MySoAddress,
+    ) -> Option<Result<Option<PocBeneficiaryVault>, RpcError>> {
+        let reader_opt = ctx
+            .data_opt::<std::sync::Arc<Option<myso_indexer_alt_social_reader::SocialPgReader>>>()?;
+        let reader = reader_opt.as_ref().as_ref()?;
+        let addr = beneficiary.to_string();
+        Some(
+            reader
+                .get_poc_beneficiary_vault_by_beneficiary_address(&addr)
+                .await
+                .map_err(Into::into)
+                .map(|opt| opt.map(PocBeneficiaryVault::from_row)),
         )
     }
 

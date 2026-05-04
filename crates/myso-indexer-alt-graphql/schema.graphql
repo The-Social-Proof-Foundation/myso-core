@@ -2093,6 +2093,14 @@ type InsuranceConfig {
 
 type InsurancePolicy {
 	"""
+	Portion of premium swept to the insurance backstop pool for this leg.
+	"""
+	backstopSweepAmount: Int!
+	"""
+	Vault utilization curve component before SPoT risk layering.
+	"""
+	basePremium: Int!
+	"""
 	Coverage in basis points.
 	"""
 	coverageBps: Int!
@@ -2109,6 +2117,10 @@ type InsurancePolicy {
 	"""
 	expiryTimeMs: Int!
 	"""
+	Implied probability of insured option winning (`p_win`), basis points out of 10_000.
+	"""
+	impliedProbabilityBps: Int!
+	"""
 	Insured address.
 	"""
 	insured: MySoAddress!
@@ -2116,6 +2128,14 @@ type InsurancePolicy {
 	Market ID this policy covers.
 	"""
 	marketId: String!
+	"""
+	Total SPoT pool (`total_option_escrow`) at quote time.
+	"""
+	marketTotalAmount: Int!
+	"""
+	Option-side SPoT escrow (`option_amount`) at quote time.
+	"""
+	optionEscrowAmount: Int!
 	"""
 	Option ID (0 or 1 for binary markets).
 	"""
@@ -2128,6 +2148,22 @@ type InsurancePolicy {
 	Premium paid.
 	"""
 	premiumPaid: Int!
+	"""
+	Raw utilization × risk multiplier before minimum premium floor.
+	"""
+	premiumRaw: Int!
+	"""
+	Combined risk multiplier in basis points (post caps; premium ≈ base × this / 10_000 before floor).
+	"""
+	riskMultiplierBps: Int!
+	"""
+	Aggregated route object id when this policy was bought via `route_buy_coverage_4`.
+	"""
+	routeId: MySoAddress
+	"""
+	Zero-based leg index within the route (only when `route_id` is set).
+	"""
+	routeLegIndex: Int
 	"""
 	Policy start time (epoch milliseconds).
 	"""
@@ -2164,6 +2200,10 @@ type InsuranceVault {
 	"""
 	createdAt: Int!
 	"""
+	Whether the vault accepts new coverage.
+	"""
+	enabled: Boolean!
+	"""
 	Vault exposures by market/option. Returns empty when social DB not configured.
 	"""
 	exposures: [InsuranceVaultExposure!]
@@ -2172,9 +2212,17 @@ type InsuranceVault {
 	"""
 	maxExposurePerMarket: Int!
 	"""
+	Maximum exposure reserved per option (0 = unlimited).
+	"""
+	maxExposurePerOption: Int!
+	"""
 	Maximum exposure per user.
 	"""
 	maxExposurePerUser: Int!
+	"""
+	Whether the vault is admin-paused for new coverage.
+	"""
+	paused: Boolean!
 	"""
 	Reserved amount (locked for active policies).
 	"""
@@ -4435,6 +4483,10 @@ type PocAnalysisResult {
 	"""
 	analysisTimestamp: Int!
 	"""
+	Structured evidence URLs from analysis (indexed row — parallels `Post.pocEvidenceUrls`).
+	"""
+	evidenceUrls: JSON
+	"""
 	Highest similarity score from the analysis (0-100).
 	"""
 	highestSimilarityScore: Int!
@@ -4455,6 +4507,10 @@ type PocAnalysisResult {
 	"""
 	postId: String!
 	"""
+	Oracle reasoning captured on submission (indexed row — same provenance as `Post.pocReasoning`).
+	"""
+	reasoning: String
+	"""
 	Whether similarity to existing content was detected.
 	"""
 	similarityDetected: Boolean!
@@ -4465,6 +4521,7 @@ type PocBadge {
 	Badge ID.
 	"""
 	badgeId: String!
+	beneficiaryAddress: String
 	"""
 	When the badge was issued (epoch milliseconds).
 	"""
@@ -4473,10 +4530,16 @@ type PocBadge {
 	Address of the oracle that issued the badge.
 	"""
 	issuedBy: MySoAddress!
+	matchedAnchorId: String
+	mediaIndex: Int
 	"""
 	Media type (1=image, 2=video, 3=audio).
 	"""
 	mediaType: Int!
+	"""
+	Indexed beneficiary vault for this badge's `beneficiary_address`, when present and materialized.
+	"""
+	pocBeneficiaryVault: PocBeneficiaryVault
 	"""
 	Post ID this badge was issued for.
 	"""
@@ -4487,19 +4550,75 @@ type PocBadge {
 	revoked: Boolean!
 }
 
+type PocBeneficiaryVault {
+	"""
+	Beneficiary wallet for this vault.
+	"""
+	beneficiary: MySoAddress!
+	claims(limit: Int, offset: Int): [PocVaultClaim!]
+	"""
+	Non-zero per-coin-type balances (excludes legacy aggregate sentinel).
+	"""
+	coinBalances: [PocVaultCoinBalance!]
+	deposits(limit: Int, offset: Int): [PocVaultDeposit!]
+	transactionId: String!
+	"""
+	Last indexer touch (epoch milliseconds).
+	"""
+	updatedAtMs: Int!
+	"""
+	On-chain vault object address.
+	"""
+	vaultId: String!
+}
+
 type PocConfig {
 	"""
 	Similarity threshold for audio content (0-100).
 	"""
 	audioThreshold: Int!
+	claimTreasuryFeeBps: Int!
 	"""
 	Cost to submit a dispute.
 	"""
 	disputeCost: Int!
 	"""
+	Minimum aggregate voting stake (`uphold` + `overturn`) required for a full resolution on round 1; `0` disables the quorum gate.
+	"""
+	disputeQuorumBaseStake: Int!
+	"""
+	Fee multiplier (basis points) applied only when opening the second dispute; must be at least `10000`.
+	"""
+	disputeSecondRoundFeeMultiplierBps: Int!
+	"""
+	Quorum multiplier (basis points) applied to `dispute_quorum_base_stake` only on round 2.
+	"""
+	disputeSecondRoundQuorumMultiplierBps: Int!
+	"""
 	Similarity threshold for image content (0-100).
 	"""
 	imageThreshold: Int!
+	"""
+	Max evidence URLs per submission.
+	"""
+	maxEvidenceUrls: Int!
+	"""
+	Max length of reasoning text allowed in PoC flows.
+	"""
+	maxReasoningLength: Int!
+	maxReferralBps: Int!
+	"""
+	Maximum stake per vote on a dispute (MYSO base units).
+	"""
+	maxVoteStake: Int!
+	"""
+	Max votes allowed per dispute.
+	"""
+	maxVotesPerDispute: Int!
+	"""
+	Minimum stake per vote on a dispute (MYSO base units).
+	"""
+	minVoteStake: Int!
 	"""
 	Oracle address used for verification.
 	"""
@@ -4509,13 +4628,29 @@ type PocConfig {
 	"""
 	revenueRedirectPercentage: Int!
 	"""
+	Transaction digest for the indexer row for this PoC configuration update.
+	"""
+	transactionId: String!
+	"""
 	Last updated timestamp (epoch milliseconds).
 	"""
 	updatedAt: Int!
 	"""
+	Address that last updated PoC configuration.
+	"""
+	updatedBy: String!
+	"""
+	Max redirect ceiling (bps) when only embedded audio matches on a VIDEO post (on-chain delta ramp applies).
+	"""
+	videoEmbeddedAudioRedirectBps: Int!
+	"""
 	Similarity threshold for video content (0-100).
 	"""
 	videoThreshold: Int!
+	"""
+	Voting period for disputes (milliseconds).
+	"""
+	votingDurationMs: Int!
 }
 
 type PocDispute {
@@ -4523,6 +4658,10 @@ type PocDispute {
 	Dispute ID.
 	"""
 	disputeId: String!
+	"""
+	Round when opened (`1` or `2`).
+	"""
+	disputeRound: Int!
 	"""
 	Dispute type (1=challenge badge, 2=challenge redirection).
 	"""
@@ -4536,6 +4675,10 @@ type PocDispute {
 	"""
 	disputerProfile: ProfileSummary
 	"""
+	Effective dispute fee charged for this round (MYSO base units).
+	"""
+	effectiveDisputeFee: Int!
+	"""
 	Evidence submitted by the disputer.
 	"""
 	evidence: String!
@@ -4544,11 +4687,23 @@ type PocDispute {
 	"""
 	postId: String!
 	"""
+	Whether total vote stake met the quorum threshold when resolved; absent until resolved.
+	"""
+	quorumMet: Boolean
+	"""
+	Minimum total voting stake required for resolution when the dispute opened (MYSO base units).
+	"""
+	requiredTotalStakeQuorum: Int!
+	"""
+	Resolution outcome code when resolved (from `PoCDisputeResolvedEvent`).
+	"""
+	resolution: Int
+	"""
 	When the dispute was resolved (epoch milliseconds), if resolved.
 	"""
 	resolvedAt: Int
 	"""
-	Stake amount required to submit the dispute.
+	Stake amount (dispute fee) paid when opening the dispute.
 	"""
 	stakeAmount: Int!
 	"""
@@ -4559,6 +4714,44 @@ type PocDispute {
 	When the dispute was submitted (epoch milliseconds).
 	"""
 	submittedAt: Int!
+	"""
+	Aggregate stake on the losing side when resolved.
+	"""
+	totalLosingStake: Int
+	"""
+	Aggregate stake on the winning side when resolved.
+	"""
+	totalWinningStake: Int
+	"""
+	Votes cast on this dispute (latest row per voter).
+	"""
+	votes(limit: Int, offset: Int): [PocDisputeVote!]
+	"""
+	Voting window end (milliseconds).
+	"""
+	votingEndMs: Int!
+	"""
+	Voting window start (milliseconds).
+	"""
+	votingStartMs: Int!
+	"""
+	Winning vote side when resolved (`VOTE_UPHOLD` / `VOTE_OVERTURN`).
+	"""
+	winningSide: Int
+}
+
+type PocDisputeVote {
+	disputeId: String!
+	rewardAmount: Int
+	rewardClaimed: Boolean
+	stakeAmount: Int!
+	"""
+	Vote choice (`VOTE_UPHOLD` / `VOTE_OVERTURN`).
+	"""
+	voteChoice: Int!
+	votedAt: Int!
+	voter: MySoAddress!
+	voterProfile: ProfileSummary
 }
 
 type PocRevenueRedirection {
@@ -4586,6 +4779,37 @@ type PocRevenueRedirection {
 	Similarity score from the analysis (0-100).
 	"""
 	similarityScore: Int!
+}
+
+type PocVaultClaim {
+	beneficiary: MySoAddress!
+	beneficiaryAmount: Int!
+	coinType: String!
+	id: Int!
+	occurredAtMs: Int!
+	referrer: MySoAddress
+	referrerAmount: Int!
+	transactionId: String!
+	treasuryAmount: Int!
+	vaultId: String!
+}
+
+type PocVaultCoinBalance {
+	balance: Int!
+	coinType: String!
+	updatedAtMs: Int!
+	vaultId: String!
+}
+
+type PocVaultDeposit {
+	amount: Int!
+	beneficiary: MySoAddress!
+	coinType: String!
+	id: Int!
+	occurredAtMs: Int!
+	sourcePostId: String
+	transactionId: String!
+	vaultId: String!
 }
 
 type Post implements Node {
@@ -4618,6 +4842,14 @@ type Post implements Node {
 	"""
 	enableSpot: Boolean!
 	"""
+	Whether Social Proof Token (SPT) features are enabled for this post.
+	"""
+	enableSpt: Boolean!
+	"""
+	Encrypted content hash when the post is paywalled / encrypted.
+	"""
+	encryptedContentHash: String
+	"""
 	The post's globally unique identifier.
 	"""
 	id: ID!
@@ -4629,6 +4861,10 @@ type Post implements Node {
 	Mentions (JSON).
 	"""
 	mentions: JSON
+	"""
+	Optional post metadata JSON.
+	"""
+	metadataJson: JSON
 	"""
 	Platform moderation actions on this post (paginated, newest first).
 	"""
@@ -4654,6 +4890,14 @@ type Post implements Node {
 	"""
 	parentPostId: String
 	"""
+	Permission bitfield from chain (`post.move` PERMISSION_*).
+	"""
+	permissions: Int
+	"""
+	Platform id where this post was created (indexed from `PostCreatedEvent`).
+	"""
+	platformId: String
+	"""
 	Latest PoC analysis result for this post.
 	"""
 	pocAnalysis: PocAnalysisResult
@@ -4669,6 +4913,10 @@ type Post implements Node {
 	PoC disputes for this post (paginated).
 	"""
 	pocDisputes(limit: Int, offset: Int): [PocDispute!]
+	"""
+	Successful PoC dispute submissions over this post's lifetime (`0`–`2`); not reset when PoC is cleared.
+	"""
+	pocDisputesSubmitted: Int!
 	"""
 	Evidence URLs from PoC analysis.
 	"""
@@ -4686,9 +4934,17 @@ type Post implements Node {
 	"""
 	pocOracleAddress: String
 	"""
+	PoC outcome code from chain.
+	"""
+	pocOutcome: Int
+	"""
 	Oracle reasoning from PoC analysis.
 	"""
 	pocReasoning: String
+	"""
+	Revenue redirect mode (none, wallet, escrow, treasury).
+	"""
+	pocRedirectionKind: Int
 	"""
 	Highest similarity score from PoC analysis (0-100).
 	"""
@@ -4710,6 +4966,10 @@ type Post implements Node {
 	"""
 	promotion: Promotion
 	"""
+	On-chain promotion object id when promoted.
+	"""
+	promotionId: String
+	"""
 	Number of reactions.
 	"""
 	reactionCount: Int!
@@ -4717,6 +4977,8 @@ type Post implements Node {
 	Reactions on this post (paginated).
 	"""
 	reactions(limit: Int, offset: Int): [ReactionSummary!]
+	removedBy: String
+	removedFromPlatform: Boolean
 	"""
 	User reports filed against this post (paginated, newest first).
 	"""
@@ -4729,6 +4991,11 @@ type Post implements Node {
 	Reposts of this post (paginated).
 	"""
 	reposts(limit: Int, offset: Int): [RepostSummary!]
+	requiresSubscription: Boolean
+	"""
+	Optional off-chain / indexed revenue recipient address.
+	"""
+	revenueRecipient: String
 	"""
 	Percentage of revenue redirected to the original creator.
 	"""
@@ -4769,6 +5036,12 @@ type Post implements Node {
 	Spot resolution for this post (1:1, null if not resolved).
 	"""
 	spotResolution: SpotResolution
+	"""
+	Linked SPT pool id when set.
+	"""
+	sptId: String
+	subscriptionPrice: Int
+	subscriptionServiceId: String
 	"""
 	Tips received for this post (paginated).
 	"""
@@ -4894,6 +5167,17 @@ type PostModerationEvent {
 	"""
 	time: DateTime!
 	transactionId: String!
+}
+
+type PostPage {
+	items: [Post!]!
+	limit: Int!
+	offset: Int!
+	totalCount: Int!
+	"""
+	Total pages for this `limit` (0 when there are no posts).
+	"""
+	totalPages: Int!
 }
 
 type PostReport {
@@ -5059,7 +5343,15 @@ type Profile implements Node {
 	Posts by this profile (paginated, newest first). Matches REST `GET /profiles/:address/posts`
 	scope: `posts.owner` is this profile's wallet **or** `posts.profile_id` is this profile's object id.
 	"""
-	posts(postType: String, limit: Int, offset: Int): [Post!]
+	posts(postType: String, enablePoc: Boolean, pocOutcomes: [Int!], includeRemoved: Boolean, limit: Int, offset: Int): [Post!]
+	"""
+	Same rows as `posts` with total count and `totalPages` for pagers.
+	"""
+	postsPage(postType: String, enablePoc: Boolean, pocOutcomes: [Int!], includeRemoved: Boolean, limit: Int, offset: Int): PostPage
+	"""
+	Total post count for this profile (same filters as `posts` / `postsPage`).
+	"""
+	postsTotalCount(postType: String, enablePoc: Boolean, pocOutcomes: [Int!], includeRemoved: Boolean): Int
 	"""
 	Primary language.
 	"""
@@ -5950,6 +6242,14 @@ type Query {
 	"""
 	platforms(approvedOnly: Boolean, limit: Int, offset: Int): [Platform!]
 	"""
+	PoC beneficiary vault by beneficiary wallet address. Returns null when social DB not configured or not found.
+	"""
+	pocBeneficiaryVaultByBeneficiary(beneficiary: MySoAddress!): PocBeneficiaryVault
+	"""
+	PoC beneficiary vault by on-chain vault object id. Returns null when social DB not configured or not found.
+	"""
+	pocBeneficiaryVaultByVaultId(vaultId: ID!): PocBeneficiaryVault
+	"""
 	Proof of Creativity configuration. Returns null when social DB not configured or no config.
 	"""
 	pocConfiguration: PocConfig
@@ -6448,6 +6748,8 @@ type SocialProofToken {
 	basePrice: Int
 	"""
 	Circulating supply in nano-SPT (`10^9` units per display token).
+	After launch from a reservation pool, initial supply on-chain is `(total_reserved * 10^9) / base_price`
+	(nano-MYSO reserved × scale ÷ pool `base_price` in MYSO smallest units), before further trades.
 	"""
 	circulatingSupply: BigInt
 	createdAt: Int
@@ -6525,7 +6827,7 @@ type SpotBet {
 	"""
 	outcome: Int!
 	"""
-	Epoch timestamp when the bet was placed.
+	Unix milliseconds when the bet was placed (`Clock` on-chain when available).
 	"""
 	placedAt: Int!
 	"""
@@ -6568,7 +6870,7 @@ type SpotBetWithdrawal {
 	"""
 	withdrawerProfile: ProfileSummary
 	"""
-	Epoch timestamp when the withdrawal was made.
+	Unix milliseconds when the withdrawal was recorded (checkpoint / chain time).
 	"""
 	withdrawnAt: Int!
 }
@@ -6591,9 +6893,9 @@ type SpotConfig {
 	"""
 	feeSplitBpsPlatform: Int!
 	"""
-	Max resolution window in epochs.
+	Max resolution window duration in milliseconds.
 	"""
-	maxResolutionWindowEpochs: Int!
+	maxResolutionWindowMs: Int!
 	"""
 	Max single bet amount.
 	"""
@@ -6607,9 +6909,9 @@ type SpotConfig {
 	"""
 	payoutDelayMs: Int!
 	"""
-	Resolution window in epochs.
+	Resolution window duration in milliseconds (global default).
 	"""
-	resolutionWindowEpochs: Int!
+	resolutionWindowMs: Int!
 	"""
 	When the configuration was last updated.
 	"""
@@ -6649,7 +6951,7 @@ type SpotPayout {
 	"""
 	amount: Int!
 	"""
-	Epoch timestamp when the payout was made.
+	Unix milliseconds when the payout was recorded (checkpoint / chain time).
 	"""
 	paidAt: Int!
 	"""
@@ -6672,17 +6974,17 @@ type SpotRecord {
 	"""
 	bettingOptions: [String!]!
 	"""
-	Epoch when the record was created.
+	Unix milliseconds when the record was created (`Clock`).
 	"""
-	createdEpoch: Int!
+	createdAtMs: Int!
 	"""
-	Last resolution epoch.
+	Last resolution instant (Unix ms), if resolved.
 	"""
-	lastResolutionEpoch: Int
+	lastResolutionAtMs: Int
 	"""
-	Max resolution window in epochs.
+	Max resolution window duration in milliseconds.
 	"""
-	maxResolutionWindowEpochs: Int
+	maxResolutionWindowMs: Int
 	"""
 	Escrow amount per option (option_id -> amount).
 	"""
@@ -6700,9 +7002,9 @@ type SpotRecord {
 	"""
 	resolution: Int
 	"""
-	Resolution window in epochs.
+	Resolution window duration in milliseconds.
 	"""
-	resolutionWindowEpochs: Int
+	resolutionWindowMs: Int
 	"""
 	Record status (1=open, 2=dao_required, 3=resolved, 4=refundable).
 	"""
@@ -6731,7 +7033,7 @@ type SpotRefund {
 	"""
 	recipientProfile: ProfileSummary
 	"""
-	Epoch timestamp when the refund was made.
+	Unix milliseconds when the refund was recorded (checkpoint / chain time).
 	"""
 	refundedAt: Int!
 	"""
@@ -6758,9 +7060,9 @@ type SpotResolution {
 	"""
 	reasoning: String!
 	"""
-	Epoch when the record was resolved.
+	Unix milliseconds when the record was resolved (checkpoint / chain time).
 	"""
-	resolvedEpoch: Int!
+	resolvedAtMs: Int!
 	"""
 	Total escrow at resolution.
 	"""

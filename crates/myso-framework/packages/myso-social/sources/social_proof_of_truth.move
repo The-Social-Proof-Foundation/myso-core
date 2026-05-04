@@ -21,6 +21,7 @@ module social_contracts::social_proof_of_truth {
         coin::{Self, Coin},
         balance::{Self, Balance},
         table::{Self, Table},
+        clock::{Self, Clock},
     };
     use myso::myso::MYSO;
 
@@ -61,15 +62,20 @@ module social_contracts::social_proof_of_truth {
     const OUTCOME_DRAW: u8 = 255;
     const OUTCOME_UNAPPLICABLE: u8 = 254;
 
+    /// Milliseconds per nominal day (used to map old default epoch-window counts to wall time).
+    const MS_PER_DAY: u64 = 86400000;
+
     /// Config defaults
     const DEFAULT_CONFIDENCE_THRESHOLD_BPS: u64 = 7000; // 70%
     const DEFAULT_ENABLE: bool = false;
-    const DEFAULT_RESOLUTION_WINDOW_EPOCHS: u64 = 72; // depends on epoch length
-    const DEFAULT_MAX_RESOLUTION_WINDOW_EPOCHS: u64 = 144;
+    /// ~72 days if legacy assumed ~1 day per chain epoch; adjust in config as needed.
+    const DEFAULT_RESOLUTION_WINDOW_MS: u64 = 72 * MS_PER_DAY;
+    const DEFAULT_MAX_RESOLUTION_WINDOW_MS: u64 = 144 * MS_PER_DAY;
     const DEFAULT_PAYOUT_DELAY_MS: u64 = 0;
     const DEFAULT_FEE_BPS: u64 = 100; // 1%
     const DEFAULT_FEE_SPLIT_PLATFORM_BPS: u64 = 5000; // 50% of fee to platform
-    const DEFAULT_MAX_BETS_PER_RECORD: u64 = 10000; // Default maximum bets allowed per SPoT record
+    /// Default cap on `SpotRecord.bets` length at init; admins may set `0` for no limit via `update_spot_config`.
+    const DEFAULT_MAX_BETS_PER_RECORD: u64 = 10000;
 
     /// Maximum u64 value for overflow protection
     const MAX_U64: u64 = 18446744073709551615;
@@ -92,8 +98,8 @@ module social_contracts::social_proof_of_truth {
         id: UID,
         enable_flag: bool,
         confidence_threshold_bps: u64,
-        resolution_window_epochs: u64,
-        max_resolution_window_epochs: u64,
+        resolution_window_ms: u64,
+        max_resolution_window_ms: u64,
         payout_delay_ms: u64,
         fee_bps: u64,
         fee_split_bps_platform: u64,
@@ -108,14 +114,15 @@ module social_contracts::social_proof_of_truth {
         user: address,
         option_id: u8,
         amount: u64,
-        timestamp: u64,
+        /// Wall-clock ms from `Clock` when the bet was placed.
+        timestamp_ms: u64,
     }
 
     /// SPoT record per post
     public struct SpotRecord has key {
         id: UID,
         post_id: address,
-        created_epoch: u64,
+        created_at_ms: u64,
         status: u8,
         outcome: Option<u8>,
         escrow: Balance<MYSO>,
@@ -123,9 +130,9 @@ module social_contracts::social_proof_of_truth {
         option_escrow: Table<u8, u64>,
         user_option_amounts: Table<address, vector<u64>>,
         bets: vector<SpotBet>,
-        resolution_window_epochs: Option<u64>,
-        max_resolution_window_epochs: Option<u64>,
-        last_resolution_epoch: u64,
+        resolution_window_ms: Option<u64>,
+        max_resolution_window_ms: Option<u64>,
+        last_resolution_at_ms: u64,
         resolution_timestamp_ms: u64,
         pending_payouts: Table<address, u64>,
         version: u64,
@@ -137,6 +144,7 @@ module social_contracts::social_proof_of_truth {
         user: address,
         option_id: u8,
         amount: u64,
+        timestamp_ms: u64,
     }
 
     public struct SpotResolvedEvent has copy, drop {
@@ -170,8 +178,8 @@ module social_contracts::social_proof_of_truth {
         updated_by: address,
         enable_flag: bool,
         confidence_threshold_bps: u64,
-        resolution_window_epochs: u64,
-        max_resolution_window_epochs: u64,
+        resolution_window_ms: u64,
+        max_resolution_window_ms: u64,
         payout_delay_ms: u64,
         fee_bps: u64,
         fee_split_bps_platform: u64,
@@ -192,10 +200,10 @@ module social_contracts::social_proof_of_truth {
     public struct SpotRecordCreatedEvent has copy, drop {
         record_id: address,
         post_id: address,
-        created_epoch: u64,
+        created_at_ms: u64,
         betting_options: vector<String>,
-        resolution_window_epochs: Option<u64>,
-        max_resolution_window_epochs: Option<u64>,
+        resolution_window_ms: Option<u64>,
+        max_resolution_window_ms: Option<u64>,
     }
 
     // Public getters for testing/inspection
@@ -231,18 +239,41 @@ module social_contracts::social_proof_of_truth {
         }
     }
 
+    public fun num_betting_options(rec: &SpotRecord): u64 {
+        vector::length(&rec.betting_options)
+    }
+
+    /// Sum of per-option escrow (same aggregation as resolve).
+    public fun total_option_escrow(rec: &SpotRecord): u64 {
+        let mut total = 0;
+        let mut i = 0;
+        let n = vector::length(&rec.betting_options);
+        while (i < n) {
+            let option_id = (i as u8);
+            let amt = get_option_escrow(rec, option_id);
+            assert!(total <= MAX_U64 - amt, EOverflow);
+            total = total + amt;
+            i = i + 1;
+        };
+        total
+    }
+
+    public fun assert_valid_option_id(rec: &SpotRecord, option_id: u8) {
+        assert!((option_id as u64) < vector::length(&rec.betting_options), EInvalidOptionId);
+    }
+
     // Public getter for SpotConfig
     public fun is_enabled(config: &SpotConfig): bool { config.enable_flag }
 
     // Bootstrap
-    public(package) fun bootstrap_init(ctx: &mut TxContext) {
+    public(package) fun bootstrap_init(clock: &Clock, ctx: &mut TxContext) {
         let admin = tx_context::sender(ctx);
         let config = SpotConfig {
             id: object::new(ctx),
             enable_flag: DEFAULT_ENABLE,
             confidence_threshold_bps: DEFAULT_CONFIDENCE_THRESHOLD_BPS,
-            resolution_window_epochs: DEFAULT_RESOLUTION_WINDOW_EPOCHS,
-            max_resolution_window_epochs: DEFAULT_MAX_RESOLUTION_WINDOW_EPOCHS,
+            resolution_window_ms: DEFAULT_RESOLUTION_WINDOW_MS,
+            max_resolution_window_ms: DEFAULT_MAX_RESOLUTION_WINDOW_MS,
             payout_delay_ms: DEFAULT_PAYOUT_DELAY_MS,
             fee_bps: DEFAULT_FEE_BPS,
             fee_split_bps_platform: DEFAULT_FEE_SPLIT_PLATFORM_BPS,
@@ -257,15 +288,15 @@ module social_contracts::social_proof_of_truth {
             updated_by: admin,
             enable_flag: DEFAULT_ENABLE,
             confidence_threshold_bps: DEFAULT_CONFIDENCE_THRESHOLD_BPS,
-            resolution_window_epochs: DEFAULT_RESOLUTION_WINDOW_EPOCHS,
-            max_resolution_window_epochs: DEFAULT_MAX_RESOLUTION_WINDOW_EPOCHS,
+            resolution_window_ms: DEFAULT_RESOLUTION_WINDOW_MS,
+            max_resolution_window_ms: DEFAULT_MAX_RESOLUTION_WINDOW_MS,
             payout_delay_ms: DEFAULT_PAYOUT_DELAY_MS,
             fee_bps: DEFAULT_FEE_BPS,
             fee_split_bps_platform: DEFAULT_FEE_SPLIT_PLATFORM_BPS,
             oracle_address: admin,
             max_single_bet: 0,
             max_bets_per_record: DEFAULT_MAX_BETS_PER_RECORD,
-            timestamp: tx_context::epoch_timestamp_ms(ctx),
+            timestamp: clock::timestamp_ms(clock),
         });
 
         transfer::share_object(config);
@@ -287,7 +318,7 @@ module social_contracts::social_proof_of_truth {
 
     #[test_only]
     /// Initialize SPoT for testing - creates admin caps and config
-    public fun test_init(ctx: &mut TxContext) {
+    public fun test_init(clock: &Clock, ctx: &mut TxContext) {
         let sender = tx_context::sender(ctx);
         
         // Create and share config
@@ -295,8 +326,8 @@ module social_contracts::social_proof_of_truth {
             id: object::new(ctx),
             enable_flag: DEFAULT_ENABLE,
             confidence_threshold_bps: DEFAULT_CONFIDENCE_THRESHOLD_BPS,
-            resolution_window_epochs: DEFAULT_RESOLUTION_WINDOW_EPOCHS,
-            max_resolution_window_epochs: DEFAULT_MAX_RESOLUTION_WINDOW_EPOCHS,
+            resolution_window_ms: DEFAULT_RESOLUTION_WINDOW_MS,
+            max_resolution_window_ms: DEFAULT_MAX_RESOLUTION_WINDOW_MS,
             payout_delay_ms: DEFAULT_PAYOUT_DELAY_MS,
             fee_bps: DEFAULT_FEE_BPS,
             fee_split_bps_platform: DEFAULT_FEE_SPLIT_PLATFORM_BPS,
@@ -311,20 +342,22 @@ module social_contracts::social_proof_of_truth {
         transfer::public_transfer(SpotOracleAdminCap { id: object::new(ctx) }, sender);
     }
 
-    /// Update SPoT configuration (admin only)
+    /// Update SPoT configuration (admin only).
+    /// `max_single_bet` and `max_bets_per_record` use `0` for no limit; positive values enforce caps.
     public entry fun update_spot_config(
         _: &SpotAdminCap,
         config: &mut SpotConfig,
         enable_flag: bool,
         confidence_threshold_bps: u64,
-        resolution_window_epochs: u64,
-        max_resolution_window_epochs: u64,
+        resolution_window_ms: u64,
+        max_resolution_window_ms: u64,
         payout_delay_ms: u64,
         fee_bps: u64,
         fee_split_bps_platform: u64,
         oracle_address: address,
         max_single_bet: u64,
         max_bets_per_record: u64,
+        clock: &Clock,
         ctx: &mut TxContext
     ) {
         // Basic bounds
@@ -333,8 +366,8 @@ module social_contracts::social_proof_of_truth {
 
         config.enable_flag = enable_flag;
         config.confidence_threshold_bps = confidence_threshold_bps;
-        config.resolution_window_epochs = resolution_window_epochs;
-        config.max_resolution_window_epochs = max_resolution_window_epochs;
+        config.resolution_window_ms = resolution_window_ms;
+        config.max_resolution_window_ms = max_resolution_window_ms;
         config.payout_delay_ms = payout_delay_ms;
         config.fee_bps = fee_bps;
         config.fee_split_bps_platform = fee_split_bps_platform;
@@ -347,16 +380,42 @@ module social_contracts::social_proof_of_truth {
             updated_by: tx_context::sender(ctx),
             enable_flag,
             confidence_threshold_bps,
-            resolution_window_epochs,
-            max_resolution_window_epochs,
+            resolution_window_ms,
+            max_resolution_window_ms,
             payout_delay_ms,
             fee_bps,
             fee_split_bps_platform,
             oracle_address,
             max_single_bet,
             max_bets_per_record,
-            timestamp: tx_context::epoch_timestamp_ms(ctx),
+            timestamp: clock::timestamp_ms(clock),
         });
+    }
+
+    /// After upgrading from epoch-count semantics, multiply stored window fields by `epoch_duration_ms` so they become wall-clock durations.
+    public entry fun rescale_spot_config_windows_from_epoch_counts(
+        _: &SpotAdminCap,
+        config: &mut SpotConfig,
+        epoch_duration_ms: u64,
+    ) {
+        assert!(epoch_duration_ms > 0, EInvalidAmount);
+        config.resolution_window_ms = config.resolution_window_ms * epoch_duration_ms;
+        config.max_resolution_window_ms = config.max_resolution_window_ms * epoch_duration_ms;
+    }
+
+    /// Oracle-only: fix record timestamps/window fields after upgrade (off-chain supplies correct `created_at_ms` and optional windows in ms).
+    public entry fun patch_spot_record_times_for_migration(
+        _: &SpotOracleAdminCap,
+        record: &mut SpotRecord,
+        created_at_ms: u64,
+        resolution_window_ms: Option<u64>,
+        max_resolution_window_ms: Option<u64>,
+        last_resolution_at_ms: u64,
+    ) {
+        record.created_at_ms = created_at_ms;
+        record.resolution_window_ms = resolution_window_ms;
+        record.max_resolution_window_ms = max_resolution_window_ms;
+        record.last_resolution_at_ms = last_resolution_at_ms;
     }
 
     // Create a SPoT record for a post
@@ -365,8 +424,9 @@ module social_contracts::social_proof_of_truth {
         config: &SpotConfig,
         post: &mut Post,
         betting_options: vector<String>,
-        resolution_window_epochs: Option<u64>,
-        max_resolution_window_epochs: Option<u64>,
+        resolution_window_ms: Option<u64>,
+        max_resolution_window_ms: Option<u64>,
+        clock: &Clock,
         ctx: &mut TxContext
     ) {
         assert!(config.enable_flag, EDisabled);
@@ -395,7 +455,7 @@ module social_contracts::social_proof_of_truth {
         let record = SpotRecord {
             id: object::new(ctx),
             post_id: post::get_id_address(post),
-            created_epoch: tx_context::epoch(ctx),
+            created_at_ms: clock::timestamp_ms(clock),
             status: STATUS_OPEN,
             outcome: option::none(),
             escrow: balance::zero(),
@@ -403,19 +463,19 @@ module social_contracts::social_proof_of_truth {
             option_escrow: table::new(ctx),
             user_option_amounts: table::new(ctx),
             bets: vector::empty<SpotBet>(),
-            resolution_window_epochs,
-            max_resolution_window_epochs,
-            last_resolution_epoch: 0,
+            resolution_window_ms,
+            max_resolution_window_ms,
+            last_resolution_at_ms: 0,
             resolution_timestamp_ms: 0,
             pending_payouts: table::new(ctx),
             version: upgrade::current_version(),
         };
         let record_id = object::uid_to_address(&record.id);
-        let created_epoch = record.created_epoch;
+        let created_at_ms = record.created_at_ms;
         let post_id = record.post_id;
         let betting_options_copy = record.betting_options;
-        let resolution_window = record.resolution_window_epochs;
-        let max_resolution_window = record.max_resolution_window_epochs;
+        let resolution_window = record.resolution_window_ms;
+        let max_resolution_window = record.max_resolution_window_ms;
         
         // Store SPoT record ID in post
         social_contracts::post::set_spot_id(post, record_id);
@@ -426,10 +486,10 @@ module social_contracts::social_proof_of_truth {
         event::emit(SpotRecordCreatedEvent {
             record_id,
             post_id,
-            created_epoch,
+            created_at_ms,
             betting_options: betting_options_copy,
-            resolution_window_epochs: resolution_window,
-            max_resolution_window_epochs: max_resolution_window,
+            resolution_window_ms: resolution_window,
+            max_resolution_window_ms: max_resolution_window,
         });
     }
 
@@ -540,6 +600,7 @@ module social_contracts::social_proof_of_truth {
         mut payment: Coin<MYSO>,
         option_id: u8,
         amount: u64,
+        clock: &Clock,
         ctx: &mut TxContext
     ) {
         assert!(spot_config.enable_flag, EDisabled);
@@ -547,9 +608,11 @@ module social_contracts::social_proof_of_truth {
         if (spot_config.max_single_bet > 0) { assert!(amount <= spot_config.max_single_bet, EInvalidAmount); };
         assert!(coin::value(&payment) >= amount, EInvalidAmount);
         
-        // Check bet limit
-        let current_bets = vector::length(&record.bets);
-        assert!(current_bets < spot_config.max_bets_per_record, ETooManyBets);
+        // Per-record bet count cap; `max_bets_per_record == 0` means unlimited (see module docs).
+        if (spot_config.max_bets_per_record > 0) {
+            let current_bets = vector::length(&record.bets);
+            assert!(current_bets < spot_config.max_bets_per_record, ETooManyBets);
+        };
         
         // Validate option_id exists
         let options_len = vector::length(&record.betting_options);
@@ -580,12 +643,13 @@ module social_contracts::social_proof_of_truth {
             coin::destroy_zero(payment); 
         };
 
+        let ts = clock::timestamp_ms(clock);
         // Record bet
         vector::push_back(&mut record.bets, SpotBet {
             user: tx_context::sender(ctx),
             option_id,
             amount,
-            timestamp: tx_context::epoch(ctx),
+            timestamp_ms: ts,
         });
 
         let user = tx_context::sender(ctx);
@@ -611,6 +675,7 @@ module social_contracts::social_proof_of_truth {
             user: tx_context::sender(ctx),
             option_id,
             amount,
+            timestamp_ms: ts,
         });
     }
 
@@ -627,6 +692,7 @@ module social_contracts::social_proof_of_truth {
         confidence_bps: u64,
         reasoning: String,
         evidence_urls: vector<String>,
+        clock: &Clock,
         ctx: &mut TxContext
     ) {
         // Prevent resolving already resolved or refundable markets
@@ -634,10 +700,10 @@ module social_contracts::social_proof_of_truth {
         assert!(option::is_none(&record.outcome), EAlreadyResolved);
         
         // Enforce resolution window if specified
-        let now = tx_context::epoch(ctx);
-        if (option::is_some(&record.resolution_window_epochs)) {
-            let window = *option::borrow(&record.resolution_window_epochs);
-            assert!(now >= record.created_epoch + window, ETooEarly);
+        let now_ms = clock::timestamp_ms(clock);
+        if (option::is_some(&record.resolution_window_ms)) {
+            let window = *option::borrow(&record.resolution_window_ms);
+            assert!(now_ms >= record.created_at_ms + window, ETooEarly);
         };
         
         // Validate outcome_option_id exists
@@ -666,7 +732,7 @@ module social_contracts::social_proof_of_truth {
 
         // Resolve outcome - outcome_option_id is the winning option
         // Convert required vector to Option for internal function
-        finalize_resolution_and_payout(spot_config, record, post, platform, treasury, outcome_option_id, reasoning, option::some(evidence_urls), ctx);
+        finalize_resolution_and_payout(spot_config, record, post, platform, treasury, outcome_option_id, reasoning, option::some(evidence_urls), clock, ctx);
     }
 
     /// DAO finalization (YES/NO/DRAW/UNAPPLICABLE)
@@ -680,6 +746,7 @@ module social_contracts::social_proof_of_truth {
         outcome: u8,
         mut reasoning: Option<String>,
         evidence_urls: Option<vector<String>>,
+        clock: &Clock,
         ctx: &mut TxContext
     ) {
         // Allow when DAO_REQUIRED or still OPEN (off-chain DAO direct)
@@ -707,25 +774,26 @@ module social_contracts::social_proof_of_truth {
             string::utf8(b"DAO resolution based on community discussion")
         };
         
-        finalize_resolution_and_payout(spot_config, record, post, platform, treasury, outcome, final_reasoning, evidence_urls, ctx);
+        finalize_resolution_and_payout(spot_config, record, post, platform, treasury, outcome, final_reasoning, evidence_urls, clock, ctx);
     }
 
     /// Refund all escrow if unresolved beyond max window
     /// Requires SpotOracleAdminCap authorization
-    /// If max_resolution_window_epochs is None, this function cannot be called (must be explicitly set)
+    /// If max_resolution_window_ms is None, this function cannot be called (must be explicitly set)
     public entry fun refund_unresolved(
         _: &SpotOracleAdminCap,
         spot_config: &SpotConfig,
         record: &mut SpotRecord,
         post: &Post,
+        clock: &Clock,
         ctx: &mut TxContext
     ) {
-        // Require max_resolution_window_epochs to be Some - prevents permissionless abuse
-        assert!(option::is_some(&record.max_resolution_window_epochs), EInvalidAmount);
+        // Require max_resolution_window_ms to be Some - prevents permissionless abuse
+        assert!(option::is_some(&record.max_resolution_window_ms), EInvalidAmount);
         
-        let now = tx_context::epoch(ctx);
-        let max_window = *option::borrow(&record.max_resolution_window_epochs);
-        assert!(now >= record.created_epoch + max_window, ETooEarly);
+        let now_ms = clock::timestamp_ms(clock);
+        let max_window = *option::borrow(&record.max_resolution_window_ms);
+        assert!(now_ms >= record.created_at_ms + max_window, ETooEarly);
         
         assert!(record.status == STATUS_OPEN || record.status == STATUS_DAO_REQUIRED, EWrongStatus);
         assert!(vector::length(&record.bets) > 0, ENoBets);
@@ -744,7 +812,7 @@ module social_contracts::social_proof_of_truth {
         };
         record.status = STATUS_REFUNDABLE;
         record.outcome = option::none();
-        record.last_resolution_epoch = now;
+        record.last_resolution_at_ms = now_ms;
         // Any dust stays in escrow balance if math rounding occurred
     }
 
@@ -758,6 +826,7 @@ module social_contracts::social_proof_of_truth {
         outcome: u8, // Winning option_id, or OUTCOME_DRAW/OUTCOME_UNAPPLICABLE
         reasoning: String,
         evidence_urls: Option<vector<String>>,
+        clock: &Clock,
         ctx: &mut TxContext
     ) {
         assert!(record.status == STATUS_OPEN || record.status == STATUS_DAO_REQUIRED, EWrongStatus);
@@ -775,6 +844,8 @@ module social_contracts::social_proof_of_truth {
             i = i + 1;
         };
 
+        let now_ms = clock::timestamp_ms(clock);
+
         // Handle DRAW/UNAPPLICABLE: refund all escrow
         if (outcome == OUTCOME_DRAW || outcome == OUTCOME_UNAPPLICABLE) {
             let mut i = 0; let len = vector::length(&record.bets);
@@ -789,8 +860,8 @@ module social_contracts::social_proof_of_truth {
             };
             record.status = STATUS_RESOLVED;
             record.outcome = option::some(outcome);
-            record.last_resolution_epoch = tx_context::epoch(ctx);
-            record.resolution_timestamp_ms = tx_context::epoch_timestamp_ms(ctx);
+            record.last_resolution_at_ms = now_ms;
+            record.resolution_timestamp_ms = now_ms;
             // Convert Option to vector for event (use empty vector if None)
             let evidence_urls_vec = if (option::is_some(&evidence_urls)) {
                 *option::borrow(&evidence_urls)
@@ -865,8 +936,8 @@ module social_contracts::social_proof_of_truth {
 
         record.status = STATUS_RESOLVED;
         record.outcome = option::some(outcome);
-        record.last_resolution_epoch = tx_context::epoch(ctx);
-        record.resolution_timestamp_ms = tx_context::epoch_timestamp_ms(ctx);
+        record.last_resolution_at_ms = now_ms;
+        record.resolution_timestamp_ms = now_ms;
         // Convert Option to vector for event (use empty vector if None)
         let evidence_urls_vec = if (option::is_some(&evidence_urls)) {
             *option::borrow(&evidence_urls)
@@ -889,6 +960,7 @@ module social_contracts::social_proof_of_truth {
         spot_config: &SpotConfig,
         record: &mut SpotRecord,
         post: &Post,
+        clock: &Clock,
         ctx: &mut TxContext
     ) {
         assert!(spot_config.enable_flag, EDisabled);
@@ -902,7 +974,7 @@ module social_contracts::social_proof_of_truth {
         assert!(pending_amount > 0, EInvalidAmount);
         
         // Check if delay period has passed
-        let current_time = tx_context::epoch_timestamp_ms(ctx);
+        let current_time = clock::timestamp_ms(clock);
         assert!(record.resolution_timestamp_ms > 0, EInvalidAmount); // Must be resolved
         assert!(current_time >= record.resolution_timestamp_ms + spot_config.payout_delay_ms, ETooEarly);
         
@@ -970,4 +1042,5 @@ module social_contracts::social_proof_of_truth {
             tx_context::sender(ctx)
         );
     }
+
 }

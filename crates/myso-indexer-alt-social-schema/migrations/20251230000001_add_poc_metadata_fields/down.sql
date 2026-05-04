@@ -22,3 +22,5 @@ ALTER TABLE posts DROP COLUMN poc_similarity_score;
 ALTER TABLE posts DROP COLUMN poc_media_type;
 ALTER TABLE posts DROP COLUMN poc_oracle_address;
 ALTER TABLE posts DROP COLUMN poc_analyzed_at;
+ALTER TABLE posts DROP COLUMN poc_outcome;
+ALTER TABLE posts DROP COLUMN poc_redirection_kind;

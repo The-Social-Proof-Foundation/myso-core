@@ -38,6 +38,7 @@ module social_contracts::social_proof_tokens {
     
     use social_contracts::profile::{Self, Profile, UsernameRegistry, EcosystemTreasury};
     use social_contracts::post::{Self, Post};
+    use social_contracts::poc_vault::{Self as poc_vault, PoCBeneficiaryVault};
     use social_contracts::block_list::{Self, BlockListRegistry};
     use social_contracts::platform::{Self, PlatformRegistry};
     use social_contracts::upgrade::{Self, UpgradeAdminCap};
@@ -103,6 +104,8 @@ module social_contracts::social_proof_tokens {
     const ECannotSplit: u64 = 28;
     /// Cannot merge tokens - tokens must be from the same pool
     const ECannotMerge: u64 = 29;
+    /// Post token pools in on-post PoC escrow mode require an entrypoint that supplies `&Post` for PoC-aware fee routing.
+    const EPostPoolEscrowTradingBlocked: u64 = 30;
 
     // === Constants ===
     // Token types
@@ -147,7 +150,7 @@ module social_contracts::social_proof_tokens {
     const SPT_SCALE: u64 = 1_000_000_000;
 
     // Default AMM curve parameters
-    const DEFAULT_BASE_PRICE: u64 = 100_000_000; // 0.1 MYSO in smallest units
+    const DEFAULT_BASE_PRICE: u64 = 1_000_000_000; // 1.0 MYSO in smallest units
     const DEFAULT_QUADRATIC_COEFFICIENT: u64 = 100_000; // Coefficient for quadratic curve
 
     // Reservation threshold constants for social proof token creation
@@ -261,6 +264,8 @@ module social_contracts::social_proof_tokens {
         poc_redirect_to: Option<address>,
         /// PoC revenue redirection percentage (for post tokens only)
         poc_redirect_percentage: Option<u64>,
+        /// Mirrors `post::poc_redirection_kind` for fee routing (`0` = none, `1` wallet, `2` escrow)
+        poc_redirection_kind: u8,
         /// Version for upgrades
         version: u64,
     }
@@ -448,6 +453,8 @@ module social_contracts::social_proof_tokens {
         redirect_to: Option<address>,
         /// Percentage of revenue to redirect (None if cleared)
         redirect_percentage: Option<u64>,
+        /// Mirrors post PoC redirect kind (`0` none, `1` wallet, `2` escrow)
+        poc_redirection_kind: u8,
         /// Who performed the update
         updated_by: address,
         /// Timestamp of the update
@@ -831,6 +838,7 @@ module social_contracts::social_proof_tokens {
         reservation_pool_object: &mut ReservationPoolObject,
         treasury: &EcosystemTreasury,
         post: &Post,
+        beneficiary_vault: &mut PoCBeneficiaryVault,
         payment: Coin<MYSO>,
         amount: u64,
         ctx: &mut TxContext
@@ -880,6 +888,7 @@ module social_contracts::social_proof_tokens {
             config,
             reservation_pool_object,
             post,
+            beneficiary_vault,
             amount,
             payment,
             treasury,
@@ -988,6 +997,7 @@ module social_contracts::social_proof_tokens {
         platform: &mut social_contracts::platform::Platform,
         block_list_registry: &BlockListRegistry,
         post: &Post,
+        beneficiary_vault: &mut PoCBeneficiaryVault,
         payment: Coin<MYSO>,
         amount: u64,
         ctx: &mut TxContext
@@ -1043,6 +1053,7 @@ module social_contracts::social_proof_tokens {
             config,
             reservation_pool_object,
             post,
+            beneficiary_vault,
             amount,
             payment,
             treasury,
@@ -1507,6 +1518,7 @@ module social_contracts::social_proof_tokens {
     fun distribute_reservation_withdraw_fees_non_platform_post(
         pool_owner: address,
         post: &Post,
+        beneficiary_vault: &mut PoCBeneficiaryVault,
         treasury: &EcosystemTreasury,
         creator_fee: u64,
         platform_fee: u64,
@@ -1523,6 +1535,7 @@ module social_contracts::social_proof_tokens {
             distribute_reservation_creator_fee_with_owner(
                 pool_owner,
                 post,
+                beneficiary_vault,
                 creator_total,
                 &mut creator_coin,
                 ctx
@@ -1571,6 +1584,7 @@ module social_contracts::social_proof_tokens {
     fun distribute_reservation_withdraw_fees_platform_post(
         pool_owner: address,
         post: &Post,
+        beneficiary_vault: &mut PoCBeneficiaryVault,
         treasury: &EcosystemTreasury,
         platform: &mut social_contracts::platform::Platform,
         creator_fee: u64,
@@ -1584,6 +1598,7 @@ module social_contracts::social_proof_tokens {
             distribute_reservation_creator_fee_with_owner(
                 pool_owner,
                 post,
+                beneficiary_vault,
                 creator_fee,
                 &mut creator_coin,
                 ctx
@@ -1642,6 +1657,7 @@ module social_contracts::social_proof_tokens {
         reservation_pool_object: &mut ReservationPoolObject,
         treasury: &EcosystemTreasury,
         post: &Post,
+        beneficiary_vault: &mut PoCBeneficiaryVault,
         amount: u64,
         ctx: &mut TxContext
     ) {
@@ -1670,6 +1686,7 @@ module social_contracts::social_proof_tokens {
             distribute_reservation_withdraw_fees_non_platform_post(
                 pool_owner,
                 post,
+                beneficiary_vault,
                 treasury,
                 creator_fee,
                 platform_fee,
@@ -1772,6 +1789,7 @@ module social_contracts::social_proof_tokens {
         platform: &mut social_contracts::platform::Platform,
         block_list_registry: &BlockListRegistry,
         post: &Post,
+        beneficiary_vault: &mut PoCBeneficiaryVault,
         amount: u64,
         ctx: &mut TxContext
     ) {
@@ -1805,6 +1823,7 @@ module social_contracts::social_proof_tokens {
             distribute_reservation_withdraw_fees_platform_post(
                 pool_owner,
                 post,
+                beneficiary_vault,
                 treasury,
                 platform,
                 creator_fee,
@@ -2090,11 +2109,17 @@ module social_contracts::social_proof_tokens {
         // Verify token has not already been created
         assert!(!table::contains(&registry.tokens, associated_id), ETokenAlreadyExists);
         
-        // Initial circulating supply (nano-SPT): 1 nano-SPT per nano-MYSO net reserved (same units as
-        // `coin::value` / pool `total_reserved`). Profile and post use the same rule.
+        // Initial nano-SPT supply: net nano-MYSO reserved × (nano-SPT per whole SPT) / `base_price`,
+        // so implied cost per display SPT at the linear curve leg matches reservation (same `base_price`
+        // stored on the pool). Reservers still split this supply proportionally by reservation_amount.
         let total_reserved = reservation_pool_object.info.total_reserved;
         assert!(total_reserved > 0, ENoContribution);
-        let initial_token_supply = total_reserved;
+        let base_price = config.base_price;
+        let product_u128 = (total_reserved as u128) * (SPT_SCALE as u128);
+        assert!(product_u128 <= MAX_ONCHAIN_U64_U128, EOverflow);
+        let initial_u128 = product_u128 / (base_price as u128);
+        assert!(initial_u128 > 0 && initial_u128 <= MAX_ONCHAIN_U64_U128, EInvalidCurveParams);
+        let initial_token_supply = initial_u128 as u64;
         
         // Create token info
         let token_info = TokenInfo {
@@ -2135,6 +2160,7 @@ module social_contracts::social_proof_tokens {
             holders: table::new(ctx),
             poc_redirect_to: option::none(),
             poc_redirect_percentage: option::none(),
+            poc_redirection_kind: 0,
             version: upgrade::current_version(),
         };
         
@@ -2239,55 +2265,60 @@ module social_contracts::social_proof_tokens {
 
     // === PoC Revenue Redirection Functions ===
 
-    /// Update PoC redirection data for a token pool (called by PoC system)
-    /// This function copies PoC data from a post into the corresponding token pool
-    public entry fun update_token_poc_data(
+    /// Copy PoC redirect fields from `post` into a matching POST `TokenPool` and emit `PocRedirectionUpdatedEvent`.
+    public(package) fun sync_token_pool_poc_from_post(
+        registry: &TokenRegistry,
         pool: &mut TokenPool,
         post: &Post,
-        ctx: &mut TxContext
+        updated_by: address,
+        ctx: &TxContext,
     ) {
-        // Check version compatibility
         assert!(pool.version == upgrade::current_version(), EWrongVersion);
-        
-        // Verify this is a post token pool
         assert!(pool.info.token_type == TOKEN_TYPE_POST, EInvalidTokenType);
-        
-        // Verify the post matches the token pool
         let post_id = post::get_id_address(post);
         assert!(post_id == pool.info.associated_id, EInvalidID);
-        
-        // Verify caller is authorized (post owner)
-        let caller = tx_context::sender(ctx);
-        assert!(caller == post::get_post_owner(post), ENotAuthorized);
-        
-        // Copy PoC data from post to pool
+        assert!(token_exists(registry, post_id), ETokenNotFound);
+
         let redirect_to = if (option::is_some(post::get_revenue_redirect_to(post))) {
             option::some(*option::borrow(post::get_revenue_redirect_to(post)))
         } else {
             option::none()
         };
-        
+
         let redirect_percentage = if (option::is_some(post::get_revenue_redirect_percentage(post))) {
             let percentage = *option::borrow(post::get_revenue_redirect_percentage(post));
-            // Validate PoC redirect percentage is in valid range (0-100 percent)
             assert!(percentage <= 100, EInvalidFeeConfig);
             option::some(percentage)
         } else {
             option::none()
         };
-        
+
         pool.poc_redirect_to = redirect_to;
         pool.poc_redirect_percentage = redirect_percentage;
-        
-        // Emit PoC redirection updated event
+        pool.poc_redirection_kind = post::poc_redirection_kind(post);
+
         event::emit(PocRedirectionUpdatedEvent {
             pool_id: object::uid_to_address(&pool.id),
             post_id,
             redirect_to,
             redirect_percentage,
-            updated_by: caller,
+            poc_redirection_kind: pool.poc_redirection_kind,
+            updated_by,
             timestamp: tx_context::epoch_timestamp_ms(ctx),
         });
+    }
+
+    /// Update PoC redirection data for a token pool (called by PoC system)
+    /// This function copies PoC data from a post into the corresponding token pool
+    public entry fun update_token_poc_data(
+        registry: &TokenRegistry,
+        pool: &mut TokenPool,
+        post: &Post,
+        ctx: &mut TxContext
+    ) {
+        let caller = tx_context::sender(ctx);
+        assert!(caller == post::get_post_owner(post), ENotAuthorized);
+        sync_token_pool_poc_from_post(registry, pool, post, caller, ctx);
     }
 
     /// Calculate PoC revenue split - shared utility for consistent logic
@@ -2325,6 +2356,11 @@ module social_contracts::social_proof_tokens {
             return
         };
 
+        assert!(
+            !(pool.info.token_type == TOKEN_TYPE_POST && pool.poc_redirection_kind == 2),
+            EPostPoolEscrowTradingBlocked
+        );
+
         let (redirected_amount, _remaining_amount) = apply_token_poc_redirection(pool, creator_fee_amount, ctx);
         let mut fee_coin = coin::split(creator_fee_coin, creator_fee_amount, ctx);
         
@@ -2356,6 +2392,11 @@ module social_contracts::social_proof_tokens {
             return
         };
 
+        assert!(
+            !(pool.info.token_type == TOKEN_TYPE_POST && pool.poc_redirection_kind == 2),
+            EPostPoolEscrowTradingBlocked
+        );
+
         let (redirected_amount, _remaining_amount) = apply_token_poc_redirection(pool, creator_fee, ctx);
         let mut fee_coin = coin::from_balance(balance::split(&mut pool.myso_balance, creator_fee), ctx);
         
@@ -2384,9 +2425,12 @@ module social_contracts::social_proof_tokens {
         post: &Post,
         amount: u64
     ): (u64, u64) {
-        if (option::is_some(post::get_revenue_redirect_to(post)) && option::is_some(post::get_revenue_redirect_percentage(post))) {
+        let k = post::poc_redirection_kind(post);
+        let has_split = option::is_some(post::get_revenue_redirect_percentage(post)) &&
+            k != post::poc_redirection_none() &&
+            (k == 2 || option::is_some(post::get_revenue_redirect_to(post)));
+        if (has_split) {
             let redirect_percentage = *option::borrow(post::get_revenue_redirect_percentage(post));
-            // Validate at use-site to prevent underflow (Post may contain invalid data)
             assert!(redirect_percentage <= 100, EInvalidFeeConfig);
             calculate_poc_split(amount, redirect_percentage)
         } else {
@@ -2399,6 +2443,7 @@ module social_contracts::social_proof_tokens {
     fun distribute_reservation_creator_fee_with_owner(
         pool_owner: address,
         post: &Post,
+        beneficiary_vault: &mut PoCBeneficiaryVault,
         creator_fee_amount: u64,
         creator_fee_coin: &mut Coin<MYSO>,
         ctx: &mut TxContext
@@ -2412,8 +2457,13 @@ module social_contracts::social_proof_tokens {
 
         if (redirected_amount > 0) {
             let redirected_fee = coin::split(&mut fee_coin, redirected_amount, ctx);
-            let redirect_to = *option::borrow(post::get_revenue_redirect_to(post));
-            transfer::public_transfer(redirected_fee, redirect_to);
+            let k = post::poc_redirection_kind(post);
+            if (k == 2) {
+                post::deposit_coin_to_beneficiary_vault<MYSO>(post, beneficiary_vault, redirected_fee, ctx);
+            } else {
+                let redirect_to = *option::borrow(post::get_revenue_redirect_to(post));
+                transfer::public_transfer(redirected_fee, redirect_to);
+            };
 
             if (coin::value(&fee_coin) > 0) {
                 transfer::public_transfer(fee_coin, pool_owner);
@@ -2430,6 +2480,7 @@ module social_contracts::social_proof_tokens {
     public(package) fun distribute_reservation_creator_fee(
         reservation_pool: &ReservationPoolObject,
         post: &Post,
+        beneficiary_vault: &mut PoCBeneficiaryVault,
         creator_fee_amount: u64,
         creator_fee_coin: &mut Coin<MYSO>,
         ctx: &mut TxContext
@@ -2437,6 +2488,7 @@ module social_contracts::social_proof_tokens {
         distribute_reservation_creator_fee_with_owner(
             reservation_pool.info.owner,
             post,
+            beneficiary_vault,
             creator_fee_amount,
             creator_fee_coin,
             ctx
@@ -2478,6 +2530,7 @@ module social_contracts::social_proof_tokens {
         config: &SocialProofTokensConfig,
         reservation_pool: &ReservationPoolObject,
         post: &Post,
+        beneficiary_vault: &mut PoCBeneficiaryVault,
         amount: u64,
         mut payment: Coin<MYSO>,
         treasury: &EcosystemTreasury,
@@ -2497,7 +2550,7 @@ module social_contracts::social_proof_tokens {
         if (fee_amount > 0) {
             let creator_total = creator_fee + platform_fee_half_to_creator;
             if (creator_total > 0) {
-                distribute_reservation_creator_fee(reservation_pool, post, creator_total, &mut payment, ctx);
+                distribute_reservation_creator_fee(reservation_pool, post, beneficiary_vault, creator_total, &mut payment, ctx);
             };
             let treasury_total = treasury_fee + platform_fee_half_to_treasury;
             if (treasury_total > 0) {
@@ -2515,6 +2568,7 @@ module social_contracts::social_proof_tokens {
         config: &SocialProofTokensConfig,
         reservation_pool: &ReservationPoolObject,
         post: &Post,
+        beneficiary_vault: &mut PoCBeneficiaryVault,
         amount: u64,
         mut payment: Coin<MYSO>,
         treasury: &EcosystemTreasury,
@@ -2533,7 +2587,7 @@ module social_contracts::social_proof_tokens {
         if (fee_amount > 0) {
             // Send creator fee with PoC redirection support
             if (creator_fee > 0) {
-                distribute_reservation_creator_fee(reservation_pool, post, creator_fee, &mut payment, ctx);
+                distribute_reservation_creator_fee(reservation_pool, post, beneficiary_vault, creator_fee, &mut payment, ctx);
             };
             
             // Send platform fee to platform treasury
@@ -3826,15 +3880,22 @@ module social_contracts::social_proof_tokens {
     public(package) fun set_poc_redirection(
         pool: &mut TokenPool,
         redirect_to: Option<address>,
-        redirect_percentage: Option<u64>
+        redirect_percentage: Option<u64>,
+        poc_redirection_kind: u8,
     ) {
-        // Validate PoC redirect percentage is in valid range (0-100 percent) if provided
-        if (option::is_some(&redirect_percentage)) {
+        assert!(poc_redirection_kind <= 2, EInvalidFeeConfig);
+        if (poc_redirection_kind == 0) {
+            assert!(option::is_none(&redirect_to), EInvalidFeeConfig);
+            assert!(option::is_none(&redirect_percentage), EInvalidFeeConfig);
+        } else {
+            assert!(option::is_some(&redirect_to), EInvalidFeeConfig);
+            assert!(option::is_some(&redirect_percentage), EInvalidFeeConfig);
             let percentage = *option::borrow(&redirect_percentage);
             assert!(percentage <= 100, EInvalidFeeConfig);
         };
         pool.poc_redirect_to = redirect_to;
         pool.poc_redirect_percentage = redirect_percentage;
+        pool.poc_redirection_kind = poc_redirection_kind;
     }
     
     /// Entry function to set PoC redirection (requires pool owner)
@@ -3843,6 +3904,7 @@ module social_contracts::social_proof_tokens {
         pool: &mut TokenPool,
         redirect_to: Option<address>,
         redirect_percentage: Option<u64>,
+        poc_redirection_kind: u8,
         ctx: &mut TxContext
     ) {
         let caller = tx_context::sender(ctx);
@@ -3851,7 +3913,7 @@ module social_contracts::social_proof_tokens {
         // Require caller to be pool owner
         assert!(caller == token_info.owner, ENotAuthorized);
         
-        set_poc_redirection(pool, redirect_to, redirect_percentage);
+        set_poc_redirection(pool, redirect_to, redirect_percentage, poc_redirection_kind);
     }
     
     /// Admin entry function to set PoC redirection (requires admin cap)
@@ -3861,20 +3923,37 @@ module social_contracts::social_proof_tokens {
         _admin_cap: &SocialProofTokensAdminCap,
         redirect_to: Option<address>,
         redirect_percentage: Option<u64>,
+        poc_redirection_kind: u8,
         _ctx: &mut TxContext
     ) {
         // Admin can set redirection for any pool
-        set_poc_redirection(pool, redirect_to, redirect_percentage);
+        set_poc_redirection(pool, redirect_to, redirect_percentage, poc_redirection_kind);
     }
 
     /// Clear PoC redirection data from a token pool (called by PoC system)
     public(package) fun clear_poc_redirection(pool: &mut TokenPool) {
         pool.poc_redirect_to = option::none();
         pool.poc_redirect_percentage = option::none();
+        pool.poc_redirection_kind = 0;
     }
 
 
     // Test-only functions
+    #[test_only]
+    public fun register_token_info_for_testing(
+        registry: &mut TokenRegistry,
+        token_key: address,
+        info: TokenInfo,
+    ) {
+        assert!(!table::contains(&registry.tokens, token_key), ETokenAlreadyExists);
+        table::add(&mut registry.tokens, token_key, info);
+    }
+
+    #[test_only]
+    public fun poc_redirection_kind_for_testing(pool: &TokenPool): u8 {
+        pool.poc_redirection_kind
+    }
+
     #[test_only]
     /// Initialize the social proof tokens system for testing
     /// In testing, we create admin caps directly for convenience
@@ -3966,6 +4045,7 @@ module social_contracts::social_proof_tokens {
             holders: table::new(ctx),
             poc_redirect_to: option::none(),
             poc_redirect_percentage: option::none(),
+            poc_redirection_kind: 0,
             version: upgrade::current_version(),
         }
     }

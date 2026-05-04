@@ -17,14 +17,14 @@ use myso_indexer_alt_framework::postgres::Connection;
 use myso_indexer_alt_framework::types::full_checkpoint_content::Checkpoint;
 use myso_indexer_alt_framework::FieldCount;
 use myso_indexer_alt_social_schema::models::{
-    NewInsuranceConfig, NewInsuranceEventLog, NewInsuranceMarketExposure, NewInsurancePolicy,
-    NewInsurancePolicyEvent, NewInsuranceUserExposure, NewInsuranceVault,
-    NewInsuranceVaultTransaction,
+    NewInsuranceConfig, NewInsuranceCoverageRoute, NewInsuranceEventLog, NewInsuranceMarketExposure,
+    NewInsurancePolicy, NewInsurancePolicyEvent, NewInsuranceRouteFill, NewInsuranceUserExposure,
+    NewInsuranceVault, NewInsuranceVaultTransaction, UpdateInsuranceVaultStatus,
 };
 use myso_indexer_alt_social_schema::schema::{
-    insurance_config, insurance_events, insurance_market_exposures, insurance_policies,
-    insurance_policy_events, insurance_user_exposures, insurance_vault_transactions,
-    insurance_vaults,
+    insurance_config, insurance_coverage_routes, insurance_events, insurance_market_exposures,
+    insurance_policies, insurance_policy_events, insurance_route_fills, insurance_user_exposures,
+    insurance_vault_transactions, insurance_vaults,
 };
 
 use super::common;
@@ -60,6 +60,18 @@ pub enum InsuranceRow {
         reserve_released: Option<i64>,
         timestamp_ms: i64,
         transaction_id: String,
+    },
+    InsuranceCoverageRoute(NewInsuranceCoverageRoute),
+    InsuranceRouteFill(NewInsuranceRouteFill),
+    InsuranceVaultOperationalUpdate {
+        vault_id: String,
+        max_exposure_per_option: i64,
+        enabled: bool,
+        paused: bool,
+        max_exposure_per_market: i64,
+        max_exposure_per_user: i64,
+        base_rate_bps_per_day: i64,
+        utilization_multiplier_bps: i64,
     },
 }
 
@@ -119,13 +131,38 @@ impl InsuranceRow {
                 timestamp_ms,
                 transaction_id,
             }),
+            crate::handlers::SocialEventRow::InsuranceCoverageRoute(r) => {
+                Some(InsuranceRow::InsuranceCoverageRoute(r))
+            }
+            crate::handlers::SocialEventRow::InsuranceRouteFill(r) => {
+                Some(InsuranceRow::InsuranceRouteFill(r))
+            }
+            crate::handlers::SocialEventRow::InsuranceVaultOperationalUpdate {
+                vault_id,
+                max_exposure_per_option,
+                enabled,
+                paused,
+                max_exposure_per_market,
+                max_exposure_per_user,
+                base_rate_bps_per_day,
+                utilization_multiplier_bps,
+            } => Some(InsuranceRow::InsuranceVaultOperationalUpdate {
+                vault_id,
+                max_exposure_per_option,
+                enabled,
+                paused,
+                max_exposure_per_market,
+                max_exposure_per_user,
+                base_rate_bps_per_day,
+                utilization_multiplier_bps,
+            }),
             _ => None,
         }
     }
 }
 
 impl FieldCount for InsuranceRow {
-    const FIELD_COUNT: usize = 30;
+    const FIELD_COUNT: usize = 40;
 }
 
 pub struct InsuranceHandler;
@@ -307,6 +344,12 @@ impl Handler for InsuranceHandler {
                             coverage_bps: row.coverage_bps,
                             premium_paid: row.premium_paid,
                             reserve_locked,
+                            premium_raw: None,
+                            implied_probability_bps: None,
+                            risk_multiplier_bps: None,
+                            base_premium: None,
+                            market_total_amount: None,
+                            option_escrow_amount: None,
                             refunded_amount: *refunded_amount,
                             fee_paid: *fee_paid,
                             payout: *payout,
@@ -319,6 +362,47 @@ impl Handler for InsuranceHandler {
                             .execute(conn)
                             .await?;
                     }
+                }
+                InsuranceRow::InsuranceCoverageRoute(r) => {
+                    total += diesel::insert_into(insurance_coverage_routes::table)
+                        .values(r)
+                        .execute(conn)
+                        .await?;
+                }
+                InsuranceRow::InsuranceRouteFill(r) => {
+                    total += diesel::insert_into(insurance_route_fills::table)
+                        .values(r)
+                        .on_conflict(insurance_route_fills::event_id)
+                        .do_nothing()
+                        .execute(conn)
+                        .await?;
+                }
+                InsuranceRow::InsuranceVaultOperationalUpdate {
+                    vault_id,
+                    max_exposure_per_option,
+                    enabled,
+                    paused,
+                    max_exposure_per_market,
+                    max_exposure_per_user,
+                    base_rate_bps_per_day,
+                    utilization_multiplier_bps,
+                } => {
+                    let now = chrono::Utc::now().naive_utc();
+                    let u = UpdateInsuranceVaultStatus {
+                        max_exposure_per_option: *max_exposure_per_option,
+                        enabled: *enabled,
+                        paused: *paused,
+                        max_exposure_per_market: *max_exposure_per_market,
+                        max_exposure_per_user: *max_exposure_per_user,
+                        base_rate_bps_per_day: *base_rate_bps_per_day,
+                        utilization_multiplier_bps: *utilization_multiplier_bps,
+                        updated_at: now,
+                    };
+                    total += diesel::update(insurance_vaults::table)
+                        .filter(insurance_vaults::vault_id.eq(vault_id))
+                        .set(&u)
+                        .execute(conn)
+                        .await?;
                 }
             }
         }

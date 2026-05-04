@@ -3,15 +3,15 @@
 
 use std::collections::HashMap;
 
-use diesel::sql_types::{
-    Array, BigInt, Bool, Date, Integer, Jsonb, Nullable, SmallInt, Text, Timestamp,
-};
 use diesel::BoolExpressionMethods;
 use diesel::ExpressionMethods;
 use diesel::OptionalExtension;
 use diesel::PgTextExpressionMethods;
 use diesel::QueryDsl;
 use diesel::QueryableByName;
+use diesel::sql_types::{
+    Array, BigInt, Bool, Date, Integer, Jsonb, Nullable, SmallInt, Text, Timestamp,
+};
 use diesel_async::RunQueryDsl;
 use myso_indexer_alt_social_schema::models::ProfilePlatformMembershipRow;
 use myso_indexer_alt_social_schema::schema::{
@@ -21,7 +21,6 @@ use myso_indexer_alt_social_schema::schema::{
 use serde_json::Value as JsonValue;
 
 use crate::error::SocialError;
-use crate::reader::types::PostBasicRow;
 use crate::reader::types::{
     BlockedEventRow, BlockedPlatformRow, BlockedProfileRow, ChartSummary, DailyStatsPoint,
     DateRange, FollowDetail, FollowStatsRow, FollowsQuery, PaginationInfo, ProfileBadgeRow,
@@ -341,7 +340,7 @@ pub(crate) async fn get_profile_posts(
     address: &str,
     limit: i64,
     offset: i64,
-) -> Result<Vec<PostBasicRow>, SocialError> {
+) -> Result<Vec<myso_indexer_alt_social_reader::PostRow>, SocialError> {
     let mut conn = db.connect().await?;
     let profile_id_opt: Option<String> = profiles::table
         .filter(profiles::owner_address.eq(address))
@@ -352,10 +351,23 @@ pub(crate) async fn get_profile_posts(
         .flatten();
     let query = "
         SELECT post_id, owner, profile_id, content, post_type, created_at, deleted_at,
-               reaction_count, comment_count, repost_count, tips_received, mydata_id
-        FROM posts
-        WHERE (owner = $1 OR ($2::text IS NOT NULL AND profile_id = $2))
-          AND deleted_at IS NULL
+               reaction_count, comment_count, repost_count, tips_received,
+               media_urls, mentions, parent_post_id, updated_at,
+               poc_id, revenue_redirect_to, revenue_redirect_percentage, enable_poc,
+               poc_reasoning, poc_evidence_urls, poc_similarity_score, poc_media_type,
+               poc_oracle_address, poc_analyzed_at, poc_outcome, poc_redirection_kind,
+               poc_disputes_submitted,
+               enable_spt, enable_spot, spot_id, spt_id, mydata_id,
+               revenue_recipient, requires_subscription, subscription_service_id, subscription_price,
+               encrypted_content_hash, removed_from_platform, removed_by, metadata_json, promotion_id,
+               platform_id, permissions
+        FROM (
+            SELECT DISTINCT ON (post_id) *
+            FROM posts
+            WHERE (owner = $1 OR ($2::text IS NOT NULL AND profile_id = $2))
+              AND deleted_at IS NULL
+            ORDER BY post_id, time DESC
+        ) sub
         ORDER BY created_at DESC
         LIMIT $3 OFFSET $4
     ";
@@ -364,7 +376,7 @@ pub(crate) async fn get_profile_posts(
         .bind::<Nullable<Text>, _>(profile_id_opt.as_deref())
         .bind::<BigInt, _>(limit)
         .bind::<BigInt, _>(offset)
-        .load::<PostBasicRow>(&mut conn)
+        .load::<myso_indexer_alt_social_reader::PostRow>(&mut conn)
         .await?;
     Ok(results)
 }

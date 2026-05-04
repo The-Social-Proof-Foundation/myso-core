@@ -7,7 +7,7 @@ Handles creation and management of posts and comments
 Implements features like comments, reposts, and quotes
 
 
--  [Struct `PoCBadge`](#social_contracts_post_PoCBadge)
+-  [Struct `PoCBadgeSnapshot`](#social_contracts_post_PoCBadgeSnapshot)
 -  [Struct `Post`](#social_contracts_post_Post)
 -  [Struct `Comment`](#social_contracts_post_Comment)
 -  [Struct `Repost`](#social_contracts_post_Repost)
@@ -39,6 +39,7 @@ Implements features like comments, reposts, and quotes
 -  [Function `has_flag`](#social_contracts_post_has_flag)
 -  [Function `set_flag`](#social_contracts_post_set_flag)
 -  [Function `clear_flag`](#social_contracts_post_clear_flag)
+-  [Function `permissions_bitfield`](#social_contracts_post_permissions_bitfield)
 -  [Function `allow_comments`](#social_contracts_post_allow_comments)
 -  [Function `allow_reactions`](#social_contracts_post_allow_reactions)
 -  [Function `allow_reposts`](#social_contracts_post_allow_reposts)
@@ -47,7 +48,13 @@ Implements features like comments, reposts, and quotes
 -  [Function `is_spt_enabled`](#social_contracts_post_is_spt_enabled)
 -  [Function `is_poc_enabled`](#social_contracts_post_is_poc_enabled)
 -  [Function `is_spot_enabled`](#social_contracts_post_is_spot_enabled)
+-  [Function `poc_outcome`](#social_contracts_post_poc_outcome)
+-  [Function `poc_redirection_kind`](#social_contracts_post_poc_redirection_kind)
+-  [Function `poc_disputes_submitted`](#social_contracts_post_poc_disputes_submitted)
+-  [Function `tip_post_requires_beneficiary_vault_for_amount`](#social_contracts_post_tip_post_requires_beneficiary_vault_for_amount)
+-  [Function `poc_redirection_none`](#social_contracts_post_poc_redirection_none)
 -  [Function `get_poc_badge`](#social_contracts_post_get_poc_badge)
+-  [Function `get_poc_badge_object_id`](#social_contracts_post_get_poc_badge_object_id)
 -  [Function `has_poc_badge`](#social_contracts_post_has_poc_badge)
 -  [Function `get_poc_reasoning`](#social_contracts_post_get_poc_reasoning)
 -  [Function `get_poc_evidence_urls`](#social_contracts_post_get_poc_evidence_urls)
@@ -70,9 +77,14 @@ Implements features like comments, reposts, and quotes
 -  [Function `delete_comment`](#social_contracts_post_delete_comment)
 -  [Function `react_to_post`](#social_contracts_post_react_to_post)
 -  [Function `tip_post`](#social_contracts_post_tip_post)
--  [Function `apply_poc_redirection_and_transfer`](#social_contracts_post_apply_poc_redirection_and_transfer)
+-  [Function `tip_post_simple`](#social_contracts_post_tip_post_simple)
+-  [Function `apply_poc_redirection_coin`](#social_contracts_post_apply_poc_redirection_coin)
+-  [Function `apply_poc_redirection_coin_without_beneficiary_vault`](#social_contracts_post_apply_poc_redirection_coin_without_beneficiary_vault)
 -  [Function `update_poc_result`](#social_contracts_post_update_poc_result)
+-  [Function `set_poc_badge_object_id`](#social_contracts_post_set_poc_badge_object_id)
 -  [Function `clear_poc_data`](#social_contracts_post_clear_poc_data)
+-  [Function `increment_poc_disputes_submitted`](#social_contracts_post_increment_poc_disputes_submitted)
+-  [Function `deposit_coin_to_beneficiary_vault`](#social_contracts_post_deposit_coin_to_beneficiary_vault)
 -  [Function `tip_repost`](#social_contracts_post_tip_repost)
 -  [Function `tip_comment`](#social_contracts_post_tip_comment)
 -  [Function `transfer_post_ownership`](#social_contracts_post_transfer_post_ownership)
@@ -161,6 +173,7 @@ Implements features like comments, reposts, and quotes
 <b>use</b> <a href="../social_contracts/governance.md#social_contracts_governance">social_contracts::governance</a>;
 <b>use</b> <a href="../social_contracts/mydata.md#social_contracts_mydata">social_contracts::mydata</a>;
 <b>use</b> <a href="../social_contracts/platform.md#social_contracts_platform">social_contracts::platform</a>;
+<b>use</b> <a href="../social_contracts/proof_of_creativity.md#social_contracts_poc_vault">social_contracts::poc_vault</a>;
 <b>use</b> <a href="../social_contracts/profile.md#social_contracts_profile">social_contracts::profile</a>;
 <b>use</b> <a href="../social_contracts/social_graph.md#social_contracts_social_graph">social_contracts::social_graph</a>;
 <b>use</b> <a href="../social_contracts/subscription.md#social_contracts_subscription">social_contracts::subscription</a>;
@@ -179,17 +192,14 @@ Implements features like comments, reposts, and quotes
 
 
 
-<a name="social_contracts_post_PoCBadge"></a>
+<a name="social_contracts_post_PoCBadgeSnapshot"></a>
 
-## Struct `PoCBadge`
+## Struct `PoCBadgeSnapshot`
 
-PoC badge struct to consolidate PoC-related fields
-Note: Must have 'store' ability because Post has 'store', but we prevent extraction
-by not providing any functions that extract the badge separately from the Post.
-The badge is permanently tied to the post - when a post is transferred, the badge goes with it.
+Denormalized PoC badge fields cached on <code><a href="../social_contracts/post.md#social_contracts_post_Post">Post</a></code> for cheap reads; authoritative record is <code>PoCBadgeObject</code>.
 
 
-<pre><code><b>public</b> <b>struct</b> <a href="../social_contracts/post.md#social_contracts_post_PoCBadge">PoCBadge</a> <b>has</b> <b>copy</b>, drop, store
+<pre><code><b>public</b> <b>struct</b> <a href="../social_contracts/post.md#social_contracts_post_PoCBadgeSnapshot">PoCBadgeSnapshot</a> <b>has</b> <b>copy</b>, drop, store
 </code></pre>
 
 
@@ -377,11 +387,16 @@ Post object that contains content information
  Optional revenue redirection percentage (0-100)
 </dd>
 <dt>
-<code>poc_badge: <a href="../std/option.md#std_option_Option">std::option::Option</a>&lt;<a href="../social_contracts/post.md#social_contracts_post_PoCBadge">social_contracts::post::PoCBadge</a>&gt;</code>
+<code>poc_badge_snapshot: <a href="../std/option.md#std_option_Option">std::option::Option</a>&lt;<a href="../social_contracts/post.md#social_contracts_post_PoCBadgeSnapshot">social_contracts::post::PoCBadgeSnapshot</a>&gt;</code>
 </dt>
 <dd>
- Optional PoC badge (consolidated from 6 fields)
- Note: PoCBadge has no 'store' ability, so it cannot be extracted or transferred separately
+ Cached PoC badge snapshot (authoritative object id below).
+</dd>
+<dt>
+<code>poc_badge_object_id: <a href="../std/option.md#std_option_Option">std::option::Option</a>&lt;<a href="../myso/object.md#myso_object_ID">myso::object::ID</a>&gt;</code>
+</dt>
+<dd>
+ Address of the shared <code>PoCBadgeObject</code> when issued (authoritative PoC record).
 </dd>
 <dt>
 <code>mydata_id: <a href="../std/option.md#std_option_Option">std::option::Option</a>&lt;<b>address</b>&gt;</code>
@@ -412,6 +427,24 @@ Post object that contains content information
 </dt>
 <dd>
  Optional Social Proof Token pool ID (address of TokenPool object)
+</dd>
+<dt>
+<code><a href="../social_contracts/post.md#social_contracts_post_poc_outcome">poc_outcome</a>: u8</code>
+</dt>
+<dd>
+ Last applied PoC outcome (<code>POC_OUTCOME_*</code>); 0 if never analyzed or cleared
+</dd>
+<dt>
+<code><a href="../social_contracts/post.md#social_contracts_post_poc_redirection_kind">poc_redirection_kind</a>: u8</code>
+</dt>
+<dd>
+ Where derivative redirect slices go for this post (<code>POC_REDIRECT_*</code>)
+</dd>
+<dt>
+<code><a href="../social_contracts/post.md#social_contracts_post_poc_disputes_submitted">poc_disputes_submitted</a>: u8</code>
+</dt>
+<dd>
+ Successful PoC dispute submissions for this post (max 2 lifetime; not reset when PoC cleared).
 </dd>
 <dt>
 <code><a href="../social_contracts/post.md#social_contracts_post_version">version</a>: u64</code>
@@ -949,6 +982,16 @@ Post created event
 <dd>
 </dd>
 <dt>
+<code>platform_id: <b>address</b></code>
+</dt>
+<dd>
+</dd>
+<dt>
+<code>permissions: u8</code>
+</dt>
+<dd>
+</dd>
+<dt>
 <code>content: <a href="../std/string.md#std_string_String">std::string::String</a></code>
 </dt>
 <dd>
@@ -1022,6 +1065,12 @@ Post created event
 <code>spt_id: <a href="../std/option.md#std_option_Option">std::option::Option</a>&lt;<b>address</b>&gt;</code>
 </dt>
 <dd>
+</dd>
+<dt>
+<code><a href="../social_contracts/post.md#social_contracts_post_poc_redirection_kind">poc_redirection_kind</a>: u8</code>
+</dt>
+<dd>
+ Matches <code><a href="../social_contracts/post.md#social_contracts_post_Post">Post</a>.<a href="../social_contracts/post.md#social_contracts_post_poc_redirection_kind">poc_redirection_kind</a></code> at creation (<code>POC_REDIRECT_*</code>).
 </dd>
 </dl>
 
@@ -1250,6 +1299,11 @@ Tip event
 </dd>
 <dt>
 <code>amount: u64</code>
+</dt>
+<dd>
+</dd>
+<dt>
+<code>coin_type: <a href="../std/type_name.md#std_type_name_TypeName">std::type_name::TypeName</a></code>
 </dt>
 <dd>
 </dd>
@@ -2196,6 +2250,44 @@ Error codes
 
 
 
+<a name="social_contracts_post_EInvalidPocOutcomeFields"></a>
+
+
+
+<pre><code><b>const</b> <a href="../social_contracts/post.md#social_contracts_post_EInvalidPocOutcomeFields">EInvalidPocOutcomeFields</a>: u64 = 35;
+</code></pre>
+
+
+
+<a name="social_contracts_post_EDisputeCapReached"></a>
+
+
+
+<pre><code><b>const</b> <a href="../social_contracts/post.md#social_contracts_post_EDisputeCapReached">EDisputeCapReached</a>: u64 = 36;
+</code></pre>
+
+
+
+<a name="social_contracts_post_EWrongBeneficiaryVault"></a>
+
+Escrow/vault redirect slice must use the <code>PoCBeneficiaryVault</code> whose beneficiary matches <code>revenue_redirect_to</code>.
+
+
+<pre><code><b>const</b> <a href="../social_contracts/post.md#social_contracts_post_EWrongBeneficiaryVault">EWrongBeneficiaryVault</a>: u64 = 37;
+</code></pre>
+
+
+
+<a name="social_contracts_post_ETipPostRequiresBeneficiaryVault"></a>
+
+[<code><a href="../social_contracts/post.md#social_contracts_post_tip_post_simple">tip_post_simple</a></code>] cannot deposit into an escrow vault; use [<code><a href="../social_contracts/post.md#social_contracts_post_tip_post">tip_post</a></code>] with the vault for <code>revenue_redirect_to</code>.
+
+
+<pre><code><b>const</b> <a href="../social_contracts/post.md#social_contracts_post_ETipPostRequiresBeneficiaryVault">ETipPostRequiresBeneficiaryVault</a>: u64 = 38;
+</code></pre>
+
+
+
 <a name="social_contracts_post_MAX_CONTENT_LENGTH"></a>
 
 Constants for size limits
@@ -2491,6 +2583,81 @@ Bitfield constants for enable flags (enable_*)
 
 
 
+<a name="social_contracts_post_POC_OUTCOME_NONE"></a>
+
+PoC analysis outcome (stored on Post)
+
+
+<pre><code><b>const</b> <a href="../social_contracts/post.md#social_contracts_post_POC_OUTCOME_NONE">POC_OUTCOME_NONE</a>: u8 = 0;
+</code></pre>
+
+
+
+<a name="social_contracts_post_POC_OUTCOME_ORIGINAL"></a>
+
+
+
+<pre><code><b>const</b> <a href="../social_contracts/post.md#social_contracts_post_POC_OUTCOME_ORIGINAL">POC_OUTCOME_ORIGINAL</a>: u8 = 1;
+</code></pre>
+
+
+
+<a name="social_contracts_post_POC_OUTCOME_DERIVATIVE_WALLET"></a>
+
+
+
+<pre><code><b>const</b> <a href="../social_contracts/post.md#social_contracts_post_POC_OUTCOME_DERIVATIVE_WALLET">POC_OUTCOME_DERIVATIVE_WALLET</a>: u8 = 2;
+</code></pre>
+
+
+
+<a name="social_contracts_post_POC_OUTCOME_DERIVATIVE_ESCROW"></a>
+
+
+
+<pre><code><b>const</b> <a href="../social_contracts/post.md#social_contracts_post_POC_OUTCOME_DERIVATIVE_ESCROW">POC_OUTCOME_DERIVATIVE_ESCROW</a>: u8 = 3;
+</code></pre>
+
+
+
+<a name="social_contracts_post_POC_OUTCOME_ROYALTY_FREE"></a>
+
+
+
+<pre><code><b>const</b> <a href="../social_contracts/post.md#social_contracts_post_POC_OUTCOME_ROYALTY_FREE">POC_OUTCOME_ROYALTY_FREE</a>: u8 = 4;
+</code></pre>
+
+
+
+<a name="social_contracts_post_POC_REDIRECT_NONE"></a>
+
+How PoC derivative redirect routes redirected tips / MYSO creator fees
+
+
+<pre><code><b>const</b> <a href="../social_contracts/post.md#social_contracts_post_POC_REDIRECT_NONE">POC_REDIRECT_NONE</a>: u8 = 0;
+</code></pre>
+
+
+
+<a name="social_contracts_post_POC_REDIRECT_WALLET"></a>
+
+
+
+<pre><code><b>const</b> <a href="../social_contracts/post.md#social_contracts_post_POC_REDIRECT_WALLET">POC_REDIRECT_WALLET</a>: u8 = 1;
+</code></pre>
+
+
+
+<a name="social_contracts_post_POC_REDIRECT_ESCROW"></a>
+
+Redirected MYSO accumulates in the beneficiary's shared <code>PoCBeneficiaryVault</code> (not on-post balance).
+
+
+<pre><code><b>const</b> <a href="../social_contracts/post.md#social_contracts_post_POC_REDIRECT_ESCROW">POC_REDIRECT_ESCROW</a>: u8 = 2;
+</code></pre>
+
+
+
 <a name="social_contracts_post_has_flag"></a>
 
 ## Function `has_flag`
@@ -2559,6 +2726,43 @@ Helper: clear a bit in a bitfield
 
 <pre><code><b>fun</b> <a href="../social_contracts/post.md#social_contracts_post_clear_flag">clear_flag</a>(value: &<b>mut</b> u8, flag: u8) {
     *value = *value & (255 - flag)
+}
+</code></pre>
+
+
+
+</details>
+
+<a name="social_contracts_post_permissions_bitfield"></a>
+
+## Function `permissions_bitfield`
+
+Bitfield for <code><a href="../social_contracts/post.md#social_contracts_post_Post">Post</a>.permissions</code> / <code><a href="../social_contracts/post.md#social_contracts_post_PostCreatedEvent">PostCreatedEvent</a>.permissions</code> (matches <code><a href="../social_contracts/post.md#social_contracts_post_create_post_internal">create_post_internal</a></code>).
+
+
+<pre><code><b>fun</b> <a href="../social_contracts/post.md#social_contracts_post_permissions_bitfield">permissions_bitfield</a>(<a href="../social_contracts/post.md#social_contracts_post_allow_comments">allow_comments</a>: bool, <a href="../social_contracts/post.md#social_contracts_post_allow_reactions">allow_reactions</a>: bool, <a href="../social_contracts/post.md#social_contracts_post_allow_reposts">allow_reposts</a>: bool, <a href="../social_contracts/post.md#social_contracts_post_allow_quotes">allow_quotes</a>: bool, <a href="../social_contracts/post.md#social_contracts_post_allow_tips">allow_tips</a>: bool): u8
+</code></pre>
+
+
+
+<details>
+<summary>Implementation</summary>
+
+
+<pre><code><b>fun</b> <a href="../social_contracts/post.md#social_contracts_post_permissions_bitfield">permissions_bitfield</a>(
+    <a href="../social_contracts/post.md#social_contracts_post_allow_comments">allow_comments</a>: bool,
+    <a href="../social_contracts/post.md#social_contracts_post_allow_reactions">allow_reactions</a>: bool,
+    <a href="../social_contracts/post.md#social_contracts_post_allow_reposts">allow_reposts</a>: bool,
+    <a href="../social_contracts/post.md#social_contracts_post_allow_quotes">allow_quotes</a>: bool,
+    <a href="../social_contracts/post.md#social_contracts_post_allow_tips">allow_tips</a>: bool,
+): u8 {
+    <b>let</b> <b>mut</b> p: u8 = 0;
+    <b>if</b> (<a href="../social_contracts/post.md#social_contracts_post_allow_comments">allow_comments</a>) { p = p | <a href="../social_contracts/post.md#social_contracts_post_PERMISSION_ALLOW_COMMENTS">PERMISSION_ALLOW_COMMENTS</a> };
+    <b>if</b> (<a href="../social_contracts/post.md#social_contracts_post_allow_reactions">allow_reactions</a>) { p = p | <a href="../social_contracts/post.md#social_contracts_post_PERMISSION_ALLOW_REACTIONS">PERMISSION_ALLOW_REACTIONS</a> };
+    <b>if</b> (<a href="../social_contracts/post.md#social_contracts_post_allow_reposts">allow_reposts</a>) { p = p | <a href="../social_contracts/post.md#social_contracts_post_PERMISSION_ALLOW_REPOSTS">PERMISSION_ALLOW_REPOSTS</a> };
+    <b>if</b> (<a href="../social_contracts/post.md#social_contracts_post_allow_quotes">allow_quotes</a>) { p = p | <a href="../social_contracts/post.md#social_contracts_post_PERMISSION_ALLOW_QUOTES">PERMISSION_ALLOW_QUOTES</a> };
+    <b>if</b> (<a href="../social_contracts/post.md#social_contracts_post_allow_tips">allow_tips</a>) { p = p | <a href="../social_contracts/post.md#social_contracts_post_PERMISSION_ALLOW_TIPS">PERMISSION_ALLOW_TIPS</a> };
+    p
 }
 </code></pre>
 
@@ -2766,15 +2970,14 @@ Query: check if SPoT is enabled for this post
 
 </details>
 
-<a name="social_contracts_post_get_poc_badge"></a>
+<a name="social_contracts_post_poc_outcome"></a>
 
-## Function `get_poc_badge`
+## Function `poc_outcome`
 
-Get PoC badge (returns reference to Option)
-When a Post is transferred/sold, the badge automatically goes with it.
+Expose on-post PoC outcome for other modules (e.g. social_proof_tokens).
 
 
-<pre><code><b>public</b> <b>fun</b> <a href="../social_contracts/post.md#social_contracts_post_get_poc_badge">get_poc_badge</a>(<a href="../social_contracts/post.md#social_contracts_post">post</a>: &<a href="../social_contracts/post.md#social_contracts_post_Post">social_contracts::post::Post</a>): &<a href="../std/option.md#std_option_Option">std::option::Option</a>&lt;<a href="../social_contracts/post.md#social_contracts_post_PoCBadge">social_contracts::post::PoCBadge</a>&gt;
+<pre><code><b>public</b> <b>fun</b> <a href="../social_contracts/post.md#social_contracts_post_poc_outcome">poc_outcome</a>(<a href="../social_contracts/post.md#social_contracts_post">post</a>: &<a href="../social_contracts/post.md#social_contracts_post_Post">social_contracts::post::Post</a>): u8
 </code></pre>
 
 
@@ -2783,8 +2986,177 @@ When a Post is transferred/sold, the badge automatically goes with it.
 <summary>Implementation</summary>
 
 
-<pre><code><b>public</b> <b>fun</b> <a href="../social_contracts/post.md#social_contracts_post_get_poc_badge">get_poc_badge</a>(<a href="../social_contracts/post.md#social_contracts_post">post</a>: &<a href="../social_contracts/post.md#social_contracts_post_Post">Post</a>): &Option&lt;<a href="../social_contracts/post.md#social_contracts_post_PoCBadge">PoCBadge</a>&gt; {
-    &<a href="../social_contracts/post.md#social_contracts_post">post</a>.poc_badge
+<pre><code><b>public</b> <b>fun</b> <a href="../social_contracts/post.md#social_contracts_post_poc_outcome">poc_outcome</a>(<a href="../social_contracts/post.md#social_contracts_post">post</a>: &<a href="../social_contracts/post.md#social_contracts_post_Post">Post</a>): u8 {
+    <a href="../social_contracts/post.md#social_contracts_post">post</a>.<a href="../social_contracts/post.md#social_contracts_post_poc_outcome">poc_outcome</a>
+}
+</code></pre>
+
+
+
+</details>
+
+<a name="social_contracts_post_poc_redirection_kind"></a>
+
+## Function `poc_redirection_kind`
+
+How derivative redirect is routed for this post (<code>POC_REDIRECT_*</code>).
+
+
+<pre><code><b>public</b> <b>fun</b> <a href="../social_contracts/post.md#social_contracts_post_poc_redirection_kind">poc_redirection_kind</a>(<a href="../social_contracts/post.md#social_contracts_post">post</a>: &<a href="../social_contracts/post.md#social_contracts_post_Post">social_contracts::post::Post</a>): u8
+</code></pre>
+
+
+
+<details>
+<summary>Implementation</summary>
+
+
+<pre><code><b>public</b> <b>fun</b> <a href="../social_contracts/post.md#social_contracts_post_poc_redirection_kind">poc_redirection_kind</a>(<a href="../social_contracts/post.md#social_contracts_post">post</a>: &<a href="../social_contracts/post.md#social_contracts_post_Post">Post</a>): u8 {
+    <a href="../social_contracts/post.md#social_contracts_post">post</a>.<a href="../social_contracts/post.md#social_contracts_post_poc_redirection_kind">poc_redirection_kind</a>
+}
+</code></pre>
+
+
+
+</details>
+
+<a name="social_contracts_post_poc_disputes_submitted"></a>
+
+## Function `poc_disputes_submitted`
+
+Lifetime count of successful PoC dispute submissions (capped at 2 on-chain).
+
+
+<pre><code><b>public</b> <b>fun</b> <a href="../social_contracts/post.md#social_contracts_post_poc_disputes_submitted">poc_disputes_submitted</a>(<a href="../social_contracts/post.md#social_contracts_post">post</a>: &<a href="../social_contracts/post.md#social_contracts_post_Post">social_contracts::post::Post</a>): u8
+</code></pre>
+
+
+
+<details>
+<summary>Implementation</summary>
+
+
+<pre><code><b>public</b> <b>fun</b> <a href="../social_contracts/post.md#social_contracts_post_poc_disputes_submitted">poc_disputes_submitted</a>(<a href="../social_contracts/post.md#social_contracts_post">post</a>: &<a href="../social_contracts/post.md#social_contracts_post_Post">Post</a>): u8 {
+    <a href="../social_contracts/post.md#social_contracts_post">post</a>.<a href="../social_contracts/post.md#social_contracts_post_poc_disputes_submitted">poc_disputes_submitted</a>
+}
+</code></pre>
+
+
+
+</details>
+
+<a name="social_contracts_post_tip_post_requires_beneficiary_vault_for_amount"></a>
+
+## Function `tip_post_requires_beneficiary_vault_for_amount`
+
+Returns true when [<code><a href="../social_contracts/post.md#social_contracts_post_tip_post">tip_post</a></code>] must receive a [<code>PoCBeneficiaryVault</code>] whose beneficiary is <code>revenue_redirect_to</code>
+for this tip amount (escrow-mode redirect with a non-zero redirected slice of <code>tip_amount</code>).
+
+
+<pre><code><b>public</b> <b>fun</b> <a href="../social_contracts/post.md#social_contracts_post_tip_post_requires_beneficiary_vault_for_amount">tip_post_requires_beneficiary_vault_for_amount</a>(<a href="../social_contracts/post.md#social_contracts_post">post</a>: &<a href="../social_contracts/post.md#social_contracts_post_Post">social_contracts::post::Post</a>, tip_amount: u64): bool
+</code></pre>
+
+
+
+<details>
+<summary>Implementation</summary>
+
+
+<pre><code><b>public</b> <b>fun</b> <a href="../social_contracts/post.md#social_contracts_post_tip_post_requires_beneficiary_vault_for_amount">tip_post_requires_beneficiary_vault_for_amount</a>(<a href="../social_contracts/post.md#social_contracts_post">post</a>: &<a href="../social_contracts/post.md#social_contracts_post_Post">Post</a>, tip_amount: u64): bool {
+    <b>if</b> (tip_amount == 0) {
+        <b>return</b> <b>false</b>
+    };
+    <b>let</b> has_derivative_redirect = option::is_some(&<a href="../social_contracts/post.md#social_contracts_post">post</a>.revenue_redirect_percentage) &&
+        <a href="../social_contracts/post.md#social_contracts_post">post</a>.<a href="../social_contracts/post.md#social_contracts_post_poc_redirection_kind">poc_redirection_kind</a> != <a href="../social_contracts/post.md#social_contracts_post_POC_REDIRECT_NONE">POC_REDIRECT_NONE</a> &&
+        (<a href="../social_contracts/post.md#social_contracts_post">post</a>.<a href="../social_contracts/post.md#social_contracts_post_poc_redirection_kind">poc_redirection_kind</a> == <a href="../social_contracts/post.md#social_contracts_post_POC_REDIRECT_ESCROW">POC_REDIRECT_ESCROW</a> ||
+            option::is_some(&<a href="../social_contracts/post.md#social_contracts_post">post</a>.revenue_redirect_to));
+    <b>if</b> (!has_derivative_redirect) {
+        <b>return</b> <b>false</b>
+    };
+    <b>let</b> redirect_percentage = *option::borrow(&<a href="../social_contracts/post.md#social_contracts_post">post</a>.revenue_redirect_percentage);
+    <b>if</b> (redirect_percentage == 0) {
+        <b>return</b> <b>false</b>
+    };
+    <b>let</b> redirected_amount = (tip_amount * redirect_percentage) / 100;
+    <b>if</b> (redirected_amount == 0) {
+        <b>return</b> <b>false</b>
+    };
+    <a href="../social_contracts/post.md#social_contracts_post">post</a>.<a href="../social_contracts/post.md#social_contracts_post_poc_redirection_kind">poc_redirection_kind</a> == <a href="../social_contracts/post.md#social_contracts_post_POC_REDIRECT_ESCROW">POC_REDIRECT_ESCROW</a>
+}
+</code></pre>
+
+
+
+</details>
+
+<a name="social_contracts_post_poc_redirection_none"></a>
+
+## Function `poc_redirection_none`
+
+Sentinel: no derivative redirect kind (original badge path).
+
+
+<pre><code><b>public</b> <b>fun</b> <a href="../social_contracts/post.md#social_contracts_post_poc_redirection_none">poc_redirection_none</a>(): u8
+</code></pre>
+
+
+
+<details>
+<summary>Implementation</summary>
+
+
+<pre><code><b>public</b> <b>fun</b> <a href="../social_contracts/post.md#social_contracts_post_poc_redirection_none">poc_redirection_none</a>(): u8 {
+    <a href="../social_contracts/post.md#social_contracts_post_POC_REDIRECT_NONE">POC_REDIRECT_NONE</a>
+}
+</code></pre>
+
+
+
+</details>
+
+<a name="social_contracts_post_get_poc_badge"></a>
+
+## Function `get_poc_badge`
+
+Get PoC badge snapshot (returns reference to Option).
+
+
+<pre><code><b>public</b> <b>fun</b> <a href="../social_contracts/post.md#social_contracts_post_get_poc_badge">get_poc_badge</a>(<a href="../social_contracts/post.md#social_contracts_post">post</a>: &<a href="../social_contracts/post.md#social_contracts_post_Post">social_contracts::post::Post</a>): &<a href="../std/option.md#std_option_Option">std::option::Option</a>&lt;<a href="../social_contracts/post.md#social_contracts_post_PoCBadgeSnapshot">social_contracts::post::PoCBadgeSnapshot</a>&gt;
+</code></pre>
+
+
+
+<details>
+<summary>Implementation</summary>
+
+
+<pre><code><b>public</b> <b>fun</b> <a href="../social_contracts/post.md#social_contracts_post_get_poc_badge">get_poc_badge</a>(<a href="../social_contracts/post.md#social_contracts_post">post</a>: &<a href="../social_contracts/post.md#social_contracts_post_Post">Post</a>): &Option&lt;<a href="../social_contracts/post.md#social_contracts_post_PoCBadgeSnapshot">PoCBadgeSnapshot</a>&gt; {
+    &<a href="../social_contracts/post.md#social_contracts_post">post</a>.poc_badge_snapshot
+}
+</code></pre>
+
+
+
+</details>
+
+<a name="social_contracts_post_get_poc_badge_object_id"></a>
+
+## Function `get_poc_badge_object_id`
+
+Shared <code>PoCBadgeObject</code> id when issued.
+
+
+<pre><code><b>public</b> <b>fun</b> <a href="../social_contracts/post.md#social_contracts_post_get_poc_badge_object_id">get_poc_badge_object_id</a>(<a href="../social_contracts/post.md#social_contracts_post">post</a>: &<a href="../social_contracts/post.md#social_contracts_post_Post">social_contracts::post::Post</a>): <a href="../std/option.md#std_option_Option">std::option::Option</a>&lt;<a href="../myso/object.md#myso_object_ID">myso::object::ID</a>&gt;
+</code></pre>
+
+
+
+<details>
+<summary>Implementation</summary>
+
+
+<pre><code><b>public</b> <b>fun</b> <a href="../social_contracts/post.md#social_contracts_post_get_poc_badge_object_id">get_poc_badge_object_id</a>(<a href="../social_contracts/post.md#social_contracts_post">post</a>: &<a href="../social_contracts/post.md#social_contracts_post_Post">Post</a>): Option&lt;ID&gt; {
+    <a href="../social_contracts/post.md#social_contracts_post">post</a>.poc_badge_object_id
 }
 </code></pre>
 
@@ -2796,7 +3168,7 @@ When a Post is transferred/sold, the badge automatically goes with it.
 
 ## Function `has_poc_badge`
 
-Check if post has a PoC badge
+Check if post has PoC badge snapshot or linked badge object
 
 
 <pre><code><b>public</b> <b>fun</b> <a href="../social_contracts/post.md#social_contracts_post_has_poc_badge">has_poc_badge</a>(<a href="../social_contracts/post.md#social_contracts_post">post</a>: &<a href="../social_contracts/post.md#social_contracts_post_Post">social_contracts::post::Post</a>): bool
@@ -2809,7 +3181,7 @@ Check if post has a PoC badge
 
 
 <pre><code><b>public</b> <b>fun</b> <a href="../social_contracts/post.md#social_contracts_post_has_poc_badge">has_poc_badge</a>(<a href="../social_contracts/post.md#social_contracts_post">post</a>: &<a href="../social_contracts/post.md#social_contracts_post_Post">Post</a>): bool {
-    option::is_some(&<a href="../social_contracts/post.md#social_contracts_post">post</a>.poc_badge)
+    option::is_some(&<a href="../social_contracts/post.md#social_contracts_post">post</a>.poc_badge_snapshot) || option::is_some(&<a href="../social_contracts/post.md#social_contracts_post">post</a>.poc_badge_object_id)
 }
 </code></pre>
 
@@ -2834,8 +3206,8 @@ Get PoC reasoning (immutable query function)
 
 
 <pre><code><b>public</b> <b>fun</b> <a href="../social_contracts/post.md#social_contracts_post_get_poc_reasoning">get_poc_reasoning</a>(<a href="../social_contracts/post.md#social_contracts_post">post</a>: &<a href="../social_contracts/post.md#social_contracts_post_Post">Post</a>): Option&lt;String&gt; {
-    <b>if</b> (option::is_some(&<a href="../social_contracts/post.md#social_contracts_post">post</a>.poc_badge)) {
-        <b>let</b> badge_ref = option::borrow(&<a href="../social_contracts/post.md#social_contracts_post">post</a>.poc_badge);
+    <b>if</b> (option::is_some(&<a href="../social_contracts/post.md#social_contracts_post">post</a>.poc_badge_snapshot)) {
+        <b>let</b> badge_ref = option::borrow(&<a href="../social_contracts/post.md#social_contracts_post">post</a>.poc_badge_snapshot);
         badge_ref.reasoning
     } <b>else</b> {
         option::none()
@@ -2864,8 +3236,8 @@ Get PoC evidence URLs (immutable query function)
 
 
 <pre><code><b>public</b> <b>fun</b> <a href="../social_contracts/post.md#social_contracts_post_get_poc_evidence_urls">get_poc_evidence_urls</a>(<a href="../social_contracts/post.md#social_contracts_post">post</a>: &<a href="../social_contracts/post.md#social_contracts_post_Post">Post</a>): Option&lt;vector&lt;String&gt;&gt; {
-    <b>if</b> (option::is_some(&<a href="../social_contracts/post.md#social_contracts_post">post</a>.poc_badge)) {
-        <b>let</b> badge_ref = option::borrow(&<a href="../social_contracts/post.md#social_contracts_post">post</a>.poc_badge);
+    <b>if</b> (option::is_some(&<a href="../social_contracts/post.md#social_contracts_post">post</a>.poc_badge_snapshot)) {
+        <b>let</b> badge_ref = option::borrow(&<a href="../social_contracts/post.md#social_contracts_post">post</a>.poc_badge_snapshot);
         badge_ref.evidence_urls
     } <b>else</b> {
         option::none()
@@ -2894,8 +3266,8 @@ Get PoC similarity score (immutable query function)
 
 
 <pre><code><b>public</b> <b>fun</b> <a href="../social_contracts/post.md#social_contracts_post_get_poc_similarity_score">get_poc_similarity_score</a>(<a href="../social_contracts/post.md#social_contracts_post">post</a>: &<a href="../social_contracts/post.md#social_contracts_post_Post">Post</a>): Option&lt;u64&gt; {
-    <b>if</b> (option::is_some(&<a href="../social_contracts/post.md#social_contracts_post">post</a>.poc_badge)) {
-        <b>let</b> badge_ref = option::borrow(&<a href="../social_contracts/post.md#social_contracts_post">post</a>.poc_badge);
+    <b>if</b> (option::is_some(&<a href="../social_contracts/post.md#social_contracts_post">post</a>.poc_badge_snapshot)) {
+        <b>let</b> badge_ref = option::borrow(&<a href="../social_contracts/post.md#social_contracts_post">post</a>.poc_badge_snapshot);
         badge_ref.similarity_score
     } <b>else</b> {
         option::none()
@@ -2924,8 +3296,8 @@ Get PoC media type (immutable query function)
 
 
 <pre><code><b>public</b> <b>fun</b> <a href="../social_contracts/post.md#social_contracts_post_get_poc_media_type">get_poc_media_type</a>(<a href="../social_contracts/post.md#social_contracts_post">post</a>: &<a href="../social_contracts/post.md#social_contracts_post_Post">Post</a>): Option&lt;u8&gt; {
-    <b>if</b> (option::is_some(&<a href="../social_contracts/post.md#social_contracts_post">post</a>.poc_badge)) {
-        <b>let</b> badge_ref = option::borrow(&<a href="../social_contracts/post.md#social_contracts_post">post</a>.poc_badge);
+    <b>if</b> (option::is_some(&<a href="../social_contracts/post.md#social_contracts_post">post</a>.poc_badge_snapshot)) {
+        <b>let</b> badge_ref = option::borrow(&<a href="../social_contracts/post.md#social_contracts_post">post</a>.poc_badge_snapshot);
         badge_ref.media_type
     } <b>else</b> {
         option::none()
@@ -2954,8 +3326,8 @@ Get PoC oracle address (immutable query function)
 
 
 <pre><code><b>public</b> <b>fun</b> <a href="../social_contracts/post.md#social_contracts_post_get_poc_oracle_address">get_poc_oracle_address</a>(<a href="../social_contracts/post.md#social_contracts_post">post</a>: &<a href="../social_contracts/post.md#social_contracts_post_Post">Post</a>): Option&lt;<b>address</b>&gt; {
-    <b>if</b> (option::is_some(&<a href="../social_contracts/post.md#social_contracts_post">post</a>.poc_badge)) {
-        <b>let</b> badge_ref = option::borrow(&<a href="../social_contracts/post.md#social_contracts_post">post</a>.poc_badge);
+    <b>if</b> (option::is_some(&<a href="../social_contracts/post.md#social_contracts_post">post</a>.poc_badge_snapshot)) {
+        <b>let</b> badge_ref = option::borrow(&<a href="../social_contracts/post.md#social_contracts_post">post</a>.poc_badge_snapshot);
         badge_ref.oracle_address
     } <b>else</b> {
         option::none()
@@ -2984,8 +3356,8 @@ Get PoC analysis timestamp (immutable query function)
 
 
 <pre><code><b>public</b> <b>fun</b> <a href="../social_contracts/post.md#social_contracts_post_get_poc_analyzed_at">get_poc_analyzed_at</a>(<a href="../social_contracts/post.md#social_contracts_post">post</a>: &<a href="../social_contracts/post.md#social_contracts_post_Post">Post</a>): Option&lt;u64&gt; {
-    <b>if</b> (option::is_some(&<a href="../social_contracts/post.md#social_contracts_post">post</a>.poc_badge)) {
-        <b>let</b> badge_ref = option::borrow(&<a href="../social_contracts/post.md#social_contracts_post">post</a>.poc_badge);
+    <b>if</b> (option::is_some(&<a href="../social_contracts/post.md#social_contracts_post">post</a>.poc_badge_snapshot)) {
+        <b>let</b> badge_ref = option::borrow(&<a href="../social_contracts/post.md#social_contracts_post">post</a>.poc_badge_snapshot);
         badge_ref.analyzed_at
     } <b>else</b> {
         option::none()
@@ -3195,7 +3567,7 @@ Convert Option<vector<Url>> to Option<vector<String>> for events
 Internal function to create a post and return its ID
 
 
-<pre><code><b>fun</b> <a href="../social_contracts/post.md#social_contracts_post_create_post_internal">create_post_internal</a>(owner: <b>address</b>, profile_id: <b>address</b>, platform_id: <b>address</b>, content: <a href="../std/string.md#std_string_String">std::string::String</a>, media_option: <a href="../std/option.md#std_option_Option">std::option::Option</a>&lt;vector&lt;<a href="../myso/url.md#myso_url_Url">myso::url::Url</a>&gt;&gt;, mentions: <a href="../std/option.md#std_option_Option">std::option::Option</a>&lt;vector&lt;<b>address</b>&gt;&gt;, metadata_json: <a href="../std/option.md#std_option_Option">std::option::Option</a>&lt;<a href="../std/string.md#std_string_String">std::string::String</a>&gt;, post_type: <a href="../std/string.md#std_string_String">std::string::String</a>, parent_post_id: <a href="../std/option.md#std_option_Option">std::option::Option</a>&lt;<b>address</b>&gt;, <a href="../social_contracts/post.md#social_contracts_post_allow_comments">allow_comments</a>: bool, <a href="../social_contracts/post.md#social_contracts_post_allow_reactions">allow_reactions</a>: bool, <a href="../social_contracts/post.md#social_contracts_post_allow_reposts">allow_reposts</a>: bool, <a href="../social_contracts/post.md#social_contracts_post_allow_quotes">allow_quotes</a>: bool, <a href="../social_contracts/post.md#social_contracts_post_allow_tips">allow_tips</a>: bool, revenue_redirect_to: <a href="../std/option.md#std_option_Option">std::option::Option</a>&lt;<b>address</b>&gt;, revenue_redirect_percentage: <a href="../std/option.md#std_option_Option">std::option::Option</a>&lt;u64&gt;, mydata_id: <a href="../std/option.md#std_option_Option">std::option::Option</a>&lt;<b>address</b>&gt;, promotion_id: <a href="../std/option.md#std_option_Option">std::option::Option</a>&lt;<b>address</b>&gt;, enable_spt: bool, enable_poc: bool, enable_spot: bool, ctx: &<b>mut</b> <a href="../myso/tx_context.md#myso_tx_context_TxContext">myso::tx_context::TxContext</a>): <b>address</b>
+<pre><code><b>fun</b> <a href="../social_contracts/post.md#social_contracts_post_create_post_internal">create_post_internal</a>(owner: <b>address</b>, profile_id: <b>address</b>, platform_id: <b>address</b>, content: <a href="../std/string.md#std_string_String">std::string::String</a>, media_option: <a href="../std/option.md#std_option_Option">std::option::Option</a>&lt;vector&lt;<a href="../myso/url.md#myso_url_Url">myso::url::Url</a>&gt;&gt;, mentions: <a href="../std/option.md#std_option_Option">std::option::Option</a>&lt;vector&lt;<b>address</b>&gt;&gt;, metadata_json: <a href="../std/option.md#std_option_Option">std::option::Option</a>&lt;<a href="../std/string.md#std_string_String">std::string::String</a>&gt;, post_type: <a href="../std/string.md#std_string_String">std::string::String</a>, parent_post_id: <a href="../std/option.md#std_option_Option">std::option::Option</a>&lt;<b>address</b>&gt;, <a href="../social_contracts/post.md#social_contracts_post_allow_comments">allow_comments</a>: bool, <a href="../social_contracts/post.md#social_contracts_post_allow_reactions">allow_reactions</a>: bool, <a href="../social_contracts/post.md#social_contracts_post_allow_reposts">allow_reposts</a>: bool, <a href="../social_contracts/post.md#social_contracts_post_allow_quotes">allow_quotes</a>: bool, <a href="../social_contracts/post.md#social_contracts_post_allow_tips">allow_tips</a>: bool, revenue_redirect_to: <a href="../std/option.md#std_option_Option">std::option::Option</a>&lt;<b>address</b>&gt;, revenue_redirect_percentage: <a href="../std/option.md#std_option_Option">std::option::Option</a>&lt;u64&gt;, mydata_id: <a href="../std/option.md#std_option_Option">std::option::Option</a>&lt;<b>address</b>&gt;, promotion_id: <a href="../std/option.md#std_option_Option">std::option::Option</a>&lt;<b>address</b>&gt;, enable_spt: bool, enable_poc: bool, enable_spot: bool, <a href="../social_contracts/post.md#social_contracts_post_poc_redirection_kind">poc_redirection_kind</a>: u8, ctx: &<b>mut</b> <a href="../myso/tx_context.md#myso_tx_context_TxContext">myso::tx_context::TxContext</a>): <b>address</b>
 </code></pre>
 
 
@@ -3226,6 +3598,7 @@ Internal function to create a post and return its ID
     enable_spt: bool,
     enable_poc: bool,
     enable_spot: bool,
+    <a href="../social_contracts/post.md#social_contracts_post_poc_redirection_kind">poc_redirection_kind</a>: u8,
     ctx: &<b>mut</b> TxContext
 ): <b>address</b> {
     // Build permissions bitfield
@@ -3262,12 +3635,16 @@ Internal function to create a post and return its ID
         permissions,
         revenue_redirect_to,
         revenue_redirect_percentage,
-        poc_badge: option::none(),
+        poc_badge_snapshot: option::none(),
+        poc_badge_object_id: option::none(),
         mydata_id,
         promotion_id,
         enable_flags,
         spot_id: option::none(), // Will be set when SPoT record is created
         spt_id: option::none(), // Will be set when SPT pool is created
+        <a href="../social_contracts/post.md#social_contracts_post_poc_outcome">poc_outcome</a>: <a href="../social_contracts/post.md#social_contracts_post_POC_OUTCOME_NONE">POC_OUTCOME_NONE</a>,
+        <a href="../social_contracts/post.md#social_contracts_post_poc_redirection_kind">poc_redirection_kind</a>,
+        <a href="../social_contracts/post.md#social_contracts_post_poc_disputes_submitted">poc_disputes_submitted</a>: 0,
         <a href="../social_contracts/post.md#social_contracts_post_version">version</a>: <a href="../social_contracts/upgrade.md#social_contracts_upgrade_current_version">upgrade::current_version</a>(),
     };
     // Get <a href="../social_contracts/post.md#social_contracts_post">post</a> ID before sharing
@@ -3445,6 +3822,7 @@ Create a new post with interaction permissions
     };
     // Convert media URLs to strings <b>for</b> event (before moving media_option)
     <b>let</b> media_urls_for_event = <a href="../social_contracts/post.md#social_contracts_post_convert_urls_to_strings">convert_urls_to_strings</a>(&media_option);
+    <b>let</b> <a href="../social_contracts/post.md#social_contracts_post_poc_redirection_kind">poc_redirection_kind</a> = <a href="../social_contracts/post.md#social_contracts_post_POC_REDIRECT_NONE">POC_REDIRECT_NONE</a>;
     // Create and share the <a href="../social_contracts/post.md#social_contracts_post">post</a>
     <b>let</b> post_id = <a href="../social_contracts/post.md#social_contracts_post_create_post_internal">create_post_internal</a>(
         owner,
@@ -3468,13 +3846,23 @@ Create a new post with interaction permissions
         final_enable_spt,
         final_enable_poc,
         final_enable_spot,
+        <a href="../social_contracts/post.md#social_contracts_post_poc_redirection_kind">poc_redirection_kind</a>,
         ctx
     );
     // Emit <a href="../social_contracts/post.md#social_contracts_post">post</a> created event
+    <b>let</b> permissions_for_event = <a href="../social_contracts/post.md#social_contracts_post_permissions_bitfield">permissions_bitfield</a>(
+        final_allow_comments,
+        final_allow_reactions,
+        final_allow_reposts,
+        final_allow_quotes,
+        final_allow_tips,
+    );
     event::emit(<a href="../social_contracts/post.md#social_contracts_post_PostCreatedEvent">PostCreatedEvent</a> {
         post_id,
         owner,
         profile_id,
+        platform_id,
+        permissions: permissions_for_event,
         content,
         post_type: string::utf8(<a href="../social_contracts/post.md#social_contracts_post_POST_TYPE_STANDARD">POST_TYPE_STANDARD</a>),
         parent_post_id: option::none(),
@@ -3490,6 +3878,7 @@ Create a new post with interaction permissions
         enable_spot: final_enable_spot,
         spot_id: option::none(),
         spt_id: option::none(),
+        <a href="../social_contracts/post.md#social_contracts_post_poc_redirection_kind">poc_redirection_kind</a>,
     });
 }
 </code></pre>
@@ -3809,6 +4198,7 @@ If content is empty/none, it's treated as a standard repost
     };
     // Convert media URLs to strings <b>for</b> event (before moving media_option)
     <b>let</b> media_urls_for_event = <a href="../social_contracts/post.md#social_contracts_post_convert_urls_to_strings">convert_urls_to_strings</a>(&media_option);
+    <b>let</b> <a href="../social_contracts/post.md#social_contracts_post_poc_redirection_kind">poc_redirection_kind</a> = <a href="../social_contracts/post.md#social_contracts_post_POC_REDIRECT_NONE">POC_REDIRECT_NONE</a>;
     // Create and share the repost <a href="../social_contracts/post.md#social_contracts_post">post</a>
     <b>let</b> repost_post_id = <a href="../social_contracts/post.md#social_contracts_post_create_post_internal">create_post_internal</a>(
         owner,
@@ -3832,13 +4222,23 @@ If content is empty/none, it's treated as a standard repost
         final_enable_spt,
         final_enable_poc,
         final_enable_spot,
+        <a href="../social_contracts/post.md#social_contracts_post_poc_redirection_kind">poc_redirection_kind</a>,
         ctx
+    );
+    <b>let</b> permissions_for_event = <a href="../social_contracts/post.md#social_contracts_post_permissions_bitfield">permissions_bitfield</a>(
+        final_allow_comments,
+        final_allow_reactions,
+        final_allow_reposts,
+        final_allow_quotes,
+        final_allow_tips,
     );
     // Emit <a href="../social_contracts/post.md#social_contracts_post">post</a> created event <b>for</b> the repost
     event::emit(<a href="../social_contracts/post.md#social_contracts_post_PostCreatedEvent">PostCreatedEvent</a> {
         post_id: repost_post_id,
         owner,
         profile_id,
+        platform_id,
+        permissions: permissions_for_event,
         content: content_string,
         post_type,
         parent_post_id: option::some(original_post_id),
@@ -3854,6 +4254,7 @@ If content is empty/none, it's treated as a standard repost
         enable_spot: final_enable_spot,
         spot_id: option::none(),
         spt_id: option::none(),
+        <a href="../social_contracts/post.md#social_contracts_post_poc_redirection_kind">poc_redirection_kind</a>,
     });
 }
 </code></pre>
@@ -3884,9 +4285,10 @@ Delete a post owned by the caller
 ) {
     <b>let</b> sender = tx_context::sender(ctx);
     <b>assert</b>!(sender == <a href="../social_contracts/post.md#social_contracts_post">post</a>.owner, <a href="../social_contracts/post.md#social_contracts_post_EUnauthorized">EUnauthorized</a>);
+    <b>let</b> post_id_addr = object::uid_to_address(&<a href="../social_contracts/post.md#social_contracts_post">post</a>.id);
     // Emit event <b>for</b> the <a href="../social_contracts/post.md#social_contracts_post">post</a> deletion
     event::emit(<a href="../social_contracts/post.md#social_contracts_post_PostDeletedEvent">PostDeletedEvent</a> {
-        post_id: object::uid_to_address(&<a href="../social_contracts/post.md#social_contracts_post">post</a>.id),
+        post_id: post_id_addr,
         owner: <a href="../social_contracts/post.md#social_contracts_post">post</a>.owner,
         profile_id: <a href="../social_contracts/post.md#social_contracts_post">post</a>.profile_id,
         post_type: <a href="../social_contracts/post.md#social_contracts_post">post</a>.post_type,
@@ -3915,12 +4317,16 @@ Delete a post owned by the caller
         permissions: _,
         revenue_redirect_to: _,
         revenue_redirect_percentage: _,
-        poc_badge: _,
+        poc_badge_snapshot: _,
+        poc_badge_object_id: _,
         mydata_id: _,
         promotion_id: _,
         enable_flags: _,
         spot_id: _,
         spt_id: _,
+        <a href="../social_contracts/post.md#social_contracts_post_poc_outcome">poc_outcome</a>: _,
+        <a href="../social_contracts/post.md#social_contracts_post_poc_redirection_kind">poc_redirection_kind</a>: _,
+        <a href="../social_contracts/post.md#social_contracts_post_poc_disputes_submitted">poc_disputes_submitted</a>: _,
         <a href="../social_contracts/post.md#social_contracts_post_version">version</a>: _,
     } = <a href="../social_contracts/post.md#social_contracts_post">post</a>;
     // Clean up associated data structures
@@ -4114,11 +4520,13 @@ If the user already has the exact same reaction, it will be removed (toggle beha
 
 ## Function `tip_post`
 
-Tip a post creator with any supported coin type (with PoC revenue redirection support)
-Supports MYSO and MYUSD
+Tip a post creator with coin type <code>T</code>. When this post uses vault-mode PoC redirect (<code><a href="../social_contracts/post.md#social_contracts_post_POC_REDIRECT_ESCROW">POC_REDIRECT_ESCROW</a></code>)
+with a non-zero redirected slice for the given <code>amount</code>, <code>beneficiary_vault</code> must be the shared vault whose
+beneficiary is <code><a href="../social_contracts/post.md#social_contracts_post">post</a>.revenue_redirect_to</code> (use an indexer query such as <code>pocBeneficiaryVaultByBeneficiary</code>, not
+necessarily the post owner’s vault).
 
 
-<pre><code><b>public</b> <b>fun</b> <a href="../social_contracts/post.md#social_contracts_post_tip_post">tip_post</a>&lt;T&gt;(<a href="../social_contracts/post.md#social_contracts_post">post</a>: &<b>mut</b> <a href="../social_contracts/post.md#social_contracts_post_Post">social_contracts::post::Post</a>, coins: &<b>mut</b> <a href="../myso/coin.md#myso_coin_Coin">myso::coin::Coin</a>&lt;T&gt;, amount: u64, ctx: &<b>mut</b> <a href="../myso/tx_context.md#myso_tx_context_TxContext">myso::tx_context::TxContext</a>)
+<pre><code><b>public</b> <b>fun</b> <a href="../social_contracts/post.md#social_contracts_post_tip_post">tip_post</a>&lt;T&gt;(<a href="../social_contracts/post.md#social_contracts_post">post</a>: &<b>mut</b> <a href="../social_contracts/post.md#social_contracts_post_Post">social_contracts::post::Post</a>, beneficiary_vault: &<b>mut</b> <a href="../social_contracts/proof_of_creativity.md#social_contracts_poc_vault_PoCBeneficiaryVault">social_contracts::poc_vault::PoCBeneficiaryVault</a>, coins: &<b>mut</b> <a href="../myso/coin.md#myso_coin_Coin">myso::coin::Coin</a>&lt;T&gt;, amount: u64, ctx: &<b>mut</b> <a href="../myso/tx_context.md#myso_tx_context_TxContext">myso::tx_context::TxContext</a>)
 </code></pre>
 
 
@@ -4129,43 +4537,42 @@ Supports MYSO and MYUSD
 
 <pre><code><b>public</b> <b>fun</b> <a href="../social_contracts/post.md#social_contracts_post_tip_post">tip_post</a>&lt;T&gt;(
     <a href="../social_contracts/post.md#social_contracts_post">post</a>: &<b>mut</b> <a href="../social_contracts/post.md#social_contracts_post_Post">Post</a>,
+    beneficiary_vault: &<b>mut</b> PoCBeneficiaryVault,
     coins: &<b>mut</b> Coin&lt;T&gt;,
     amount: u64,
     ctx: &<b>mut</b> TxContext
 ) {
-    // Basic validation
     <b>assert</b>!(amount &gt; 0, <a href="../social_contracts/post.md#social_contracts_post_EInvalidTipAmount">EInvalidTipAmount</a>);
     <b>let</b> tipper = tx_context::sender(ctx);
     <b>assert</b>!(tipper != <a href="../social_contracts/post.md#social_contracts_post">post</a>.owner, <a href="../social_contracts/post.md#social_contracts_post_ESelfTipping">ESelfTipping</a>);
-    // Verify this is not a repost or quote repost (those should <b>use</b> <a href="../social_contracts/post.md#social_contracts_post_tip_repost">tip_repost</a> instead)
     <b>assert</b>!(
         string::utf8(<a href="../social_contracts/post.md#social_contracts_post_POST_TYPE_REPOST">POST_TYPE_REPOST</a>) != <a href="../social_contracts/post.md#social_contracts_post">post</a>.post_type &&
         string::utf8(<a href="../social_contracts/post.md#social_contracts_post_POST_TYPE_QUOTE_REPOST">POST_TYPE_QUOTE_REPOST</a>) != <a href="../social_contracts/post.md#social_contracts_post">post</a>.post_type,
         <a href="../social_contracts/post.md#social_contracts_post_EInvalidPostType">EInvalidPostType</a>
     );
-    // Check <b>if</b> tips are allowed on this <a href="../social_contracts/post.md#social_contracts_post">post</a>
     <b>assert</b>!(<a href="../social_contracts/post.md#social_contracts_post_allow_tips">allow_tips</a>(<a href="../social_contracts/post.md#social_contracts_post">post</a>), <a href="../social_contracts/post.md#social_contracts_post_ETipsNotAllowed">ETipsNotAllowed</a>);
-    // Apply PoC redirection and transfer
-    <b>let</b> actual_received = <a href="../social_contracts/post.md#social_contracts_post_apply_poc_redirection_and_transfer">apply_poc_redirection_and_transfer</a>&lt;T&gt;(
+    <b>let</b> post_owner_addr = <a href="../social_contracts/post.md#social_contracts_post">post</a>.owner;
+    <b>let</b> post_oid = object::uid_to_address(&<a href="../social_contracts/post.md#social_contracts_post">post</a>.id);
+    <b>let</b> actual_received = <a href="../social_contracts/post.md#social_contracts_post_apply_poc_redirection_coin">apply_poc_redirection_coin</a>&lt;T&gt;(
         <a href="../social_contracts/post.md#social_contracts_post">post</a>,
-        <a href="../social_contracts/post.md#social_contracts_post">post</a>.owner,
+        beneficiary_vault,
+        post_owner_addr,
         amount,
         coins,
         tipper,
-        object::uid_to_address(&<a href="../social_contracts/post.md#social_contracts_post">post</a>.id),
+        post_oid,
         <b>true</b>,
         ctx
     );
-    // Record total tips received <b>for</b> this <a href="../social_contracts/post.md#social_contracts_post">post</a>
     <b>assert</b>!(<a href="../social_contracts/post.md#social_contracts_post">post</a>.tips_received &lt;= <a href="../social_contracts/post.md#social_contracts_post_MAX_U64">MAX_U64</a> - actual_received, <a href="../social_contracts/post.md#social_contracts_post_EOverflow">EOverflow</a>);
     <a href="../social_contracts/post.md#social_contracts_post">post</a>.tips_received = <a href="../social_contracts/post.md#social_contracts_post">post</a>.tips_received + actual_received;
-    // Emit tip event <b>for</b> amount actually received by <a href="../social_contracts/post.md#social_contracts_post">post</a> owner
     <b>if</b> (actual_received &gt; 0) {
         event::emit(<a href="../social_contracts/post.md#social_contracts_post_TipEvent">TipEvent</a> {
-            object_id: object::uid_to_address(&<a href="../social_contracts/post.md#social_contracts_post">post</a>.id),
+            object_id: post_oid,
             from: tipper,
-            to: <a href="../social_contracts/post.md#social_contracts_post">post</a>.owner,
+            to: post_owner_addr,
             amount: actual_received,
+            coin_type: type_name::with_defining_ids&lt;T&gt;(),
             is_post: <b>true</b>,
         });
     };
@@ -4176,15 +4583,17 @@ Supports MYSO and MYUSD
 
 </details>
 
-<a name="social_contracts_post_apply_poc_redirection_and_transfer"></a>
+<a name="social_contracts_post_tip_post_simple"></a>
 
-## Function `apply_poc_redirection_and_transfer`
+## Function `tip_post_simple`
 
-Helper function to apply PoC revenue redirection and transfer coins
-Returns the amount actually received by the intended recipient
+Like [<code><a href="../social_contracts/post.md#social_contracts_post_tip_post">tip_post</a></code>] but without a <code>PoCBeneficiaryVault</code> argument. Only for posts where
+[<code><a href="../social_contracts/post.md#social_contracts_post_tip_post_requires_beneficiary_vault_for_amount">tip_post_requires_beneficiary_vault_for_amount</a></code>] is false for this <code>amount</code> (e.g. no redirect,
+wallet redirect, zero redirect %, or escrow with a zero redirected slice from rounding).
+If an escrow deposit is required, aborts with [<code><a href="../social_contracts/post.md#social_contracts_post_ETipPostRequiresBeneficiaryVault">ETipPostRequiresBeneficiaryVault</a></code>].
 
 
-<pre><code><b>fun</b> <a href="../social_contracts/post.md#social_contracts_post_apply_poc_redirection_and_transfer">apply_poc_redirection_and_transfer</a>&lt;T&gt;(<a href="../social_contracts/post.md#social_contracts_post">post</a>: &<a href="../social_contracts/post.md#social_contracts_post_Post">social_contracts::post::Post</a>, intended_recipient: <b>address</b>, amount: u64, coins: &<b>mut</b> <a href="../myso/coin.md#myso_coin_Coin">myso::coin::Coin</a>&lt;T&gt;, tipper: <b>address</b>, object_id: <b>address</b>, is_post_event: bool, ctx: &<b>mut</b> <a href="../myso/tx_context.md#myso_tx_context_TxContext">myso::tx_context::TxContext</a>): u64
+<pre><code><b>public</b> <b>fun</b> <a href="../social_contracts/post.md#social_contracts_post_tip_post_simple">tip_post_simple</a>&lt;T&gt;(<a href="../social_contracts/post.md#social_contracts_post">post</a>: &<b>mut</b> <a href="../social_contracts/post.md#social_contracts_post_Post">social_contracts::post::Post</a>, coins: &<b>mut</b> <a href="../myso/coin.md#myso_coin_Coin">myso::coin::Coin</a>&lt;T&gt;, amount: u64, ctx: &<b>mut</b> <a href="../myso/tx_context.md#myso_tx_context_TxContext">myso::tx_context::TxContext</a>)
 </code></pre>
 
 
@@ -4193,7 +4602,162 @@ Returns the amount actually received by the intended recipient
 <summary>Implementation</summary>
 
 
-<pre><code><b>fun</b> <a href="../social_contracts/post.md#social_contracts_post_apply_poc_redirection_and_transfer">apply_poc_redirection_and_transfer</a>&lt;T&gt;(
+<pre><code><b>public</b> <b>fun</b> <a href="../social_contracts/post.md#social_contracts_post_tip_post_simple">tip_post_simple</a>&lt;T&gt;(
+    <a href="../social_contracts/post.md#social_contracts_post">post</a>: &<b>mut</b> <a href="../social_contracts/post.md#social_contracts_post_Post">Post</a>,
+    coins: &<b>mut</b> Coin&lt;T&gt;,
+    amount: u64,
+    ctx: &<b>mut</b> TxContext
+) {
+    <b>assert</b>!(amount &gt; 0, <a href="../social_contracts/post.md#social_contracts_post_EInvalidTipAmount">EInvalidTipAmount</a>);
+    <b>assert</b>!(
+        !<a href="../social_contracts/post.md#social_contracts_post_tip_post_requires_beneficiary_vault_for_amount">tip_post_requires_beneficiary_vault_for_amount</a>(<a href="../social_contracts/post.md#social_contracts_post">post</a>, amount),
+        <a href="../social_contracts/post.md#social_contracts_post_ETipPostRequiresBeneficiaryVault">ETipPostRequiresBeneficiaryVault</a>
+    );
+    <b>let</b> tipper = tx_context::sender(ctx);
+    <b>assert</b>!(tipper != <a href="../social_contracts/post.md#social_contracts_post">post</a>.owner, <a href="../social_contracts/post.md#social_contracts_post_ESelfTipping">ESelfTipping</a>);
+    <b>assert</b>!(
+        string::utf8(<a href="../social_contracts/post.md#social_contracts_post_POST_TYPE_REPOST">POST_TYPE_REPOST</a>) != <a href="../social_contracts/post.md#social_contracts_post">post</a>.post_type &&
+        string::utf8(<a href="../social_contracts/post.md#social_contracts_post_POST_TYPE_QUOTE_REPOST">POST_TYPE_QUOTE_REPOST</a>) != <a href="../social_contracts/post.md#social_contracts_post">post</a>.post_type,
+        <a href="../social_contracts/post.md#social_contracts_post_EInvalidPostType">EInvalidPostType</a>
+    );
+    <b>assert</b>!(<a href="../social_contracts/post.md#social_contracts_post_allow_tips">allow_tips</a>(<a href="../social_contracts/post.md#social_contracts_post">post</a>), <a href="../social_contracts/post.md#social_contracts_post_ETipsNotAllowed">ETipsNotAllowed</a>);
+    <b>let</b> post_owner_addr = <a href="../social_contracts/post.md#social_contracts_post">post</a>.owner;
+    <b>let</b> post_oid = object::uid_to_address(&<a href="../social_contracts/post.md#social_contracts_post">post</a>.id);
+    <b>let</b> actual_received = <a href="../social_contracts/post.md#social_contracts_post_apply_poc_redirection_coin_without_beneficiary_vault">apply_poc_redirection_coin_without_beneficiary_vault</a>&lt;T&gt;(
+        <a href="../social_contracts/post.md#social_contracts_post">post</a>,
+        post_owner_addr,
+        amount,
+        coins,
+        tipper,
+        post_oid,
+        <b>true</b>,
+        ctx
+    );
+    <b>assert</b>!(<a href="../social_contracts/post.md#social_contracts_post">post</a>.tips_received &lt;= <a href="../social_contracts/post.md#social_contracts_post_MAX_U64">MAX_U64</a> - actual_received, <a href="../social_contracts/post.md#social_contracts_post_EOverflow">EOverflow</a>);
+    <a href="../social_contracts/post.md#social_contracts_post">post</a>.tips_received = <a href="../social_contracts/post.md#social_contracts_post">post</a>.tips_received + actual_received;
+    <b>if</b> (actual_received &gt; 0) {
+        event::emit(<a href="../social_contracts/post.md#social_contracts_post_TipEvent">TipEvent</a> {
+            object_id: post_oid,
+            from: tipper,
+            to: post_owner_addr,
+            amount: actual_received,
+            coin_type: type_name::with_defining_ids&lt;T&gt;(),
+            is_post: <b>true</b>,
+        });
+    };
+}
+</code></pre>
+
+
+
+</details>
+
+<a name="social_contracts_post_apply_poc_redirection_coin"></a>
+
+## Function `apply_poc_redirection_coin`
+
+PoC derivative redirect for tips and fees: escrow deposits into <code>PoCBeneficiaryVault</code> or wallet redirect.
+
+
+<pre><code><b>fun</b> <a href="../social_contracts/post.md#social_contracts_post_apply_poc_redirection_coin">apply_poc_redirection_coin</a>&lt;T&gt;(<a href="../social_contracts/post.md#social_contracts_post">post</a>: &<a href="../social_contracts/post.md#social_contracts_post_Post">social_contracts::post::Post</a>, beneficiary_vault: &<b>mut</b> <a href="../social_contracts/proof_of_creativity.md#social_contracts_poc_vault_PoCBeneficiaryVault">social_contracts::poc_vault::PoCBeneficiaryVault</a>, intended_recipient: <b>address</b>, amount: u64, coins: &<b>mut</b> <a href="../myso/coin.md#myso_coin_Coin">myso::coin::Coin</a>&lt;T&gt;, tipper: <b>address</b>, object_id: <b>address</b>, is_post_event: bool, ctx: &<b>mut</b> <a href="../myso/tx_context.md#myso_tx_context_TxContext">myso::tx_context::TxContext</a>): u64
+</code></pre>
+
+
+
+<details>
+<summary>Implementation</summary>
+
+
+<pre><code><b>fun</b> <a href="../social_contracts/post.md#social_contracts_post_apply_poc_redirection_coin">apply_poc_redirection_coin</a>&lt;T&gt;(
+    <a href="../social_contracts/post.md#social_contracts_post">post</a>: &<a href="../social_contracts/post.md#social_contracts_post_Post">Post</a>,
+    beneficiary_vault: &<b>mut</b> PoCBeneficiaryVault,
+    intended_recipient: <b>address</b>,
+    amount: u64,
+    coins: &<b>mut</b> Coin&lt;T&gt;,
+    tipper: <b>address</b>,
+    object_id: <b>address</b>,
+    is_post_event: bool,
+    ctx: &<b>mut</b> TxContext
+): u64 {
+    <b>if</b> (intended_recipient != <a href="../social_contracts/post.md#social_contracts_post">post</a>.owner) {
+        <b>let</b> tip_coins = coin::split(coins, amount, ctx);
+        transfer::public_transfer(tip_coins, intended_recipient);
+        <b>return</b> amount
+    };
+    <b>let</b> has_derivative_redirect = option::is_some(&<a href="../social_contracts/post.md#social_contracts_post">post</a>.revenue_redirect_percentage) &&
+        <a href="../social_contracts/post.md#social_contracts_post">post</a>.<a href="../social_contracts/post.md#social_contracts_post_poc_redirection_kind">poc_redirection_kind</a> != <a href="../social_contracts/post.md#social_contracts_post_POC_REDIRECT_NONE">POC_REDIRECT_NONE</a> &&
+        (<a href="../social_contracts/post.md#social_contracts_post">post</a>.<a href="../social_contracts/post.md#social_contracts_post_poc_redirection_kind">poc_redirection_kind</a> == <a href="../social_contracts/post.md#social_contracts_post_POC_REDIRECT_ESCROW">POC_REDIRECT_ESCROW</a> ||
+            option::is_some(&<a href="../social_contracts/post.md#social_contracts_post">post</a>.revenue_redirect_to));
+    <b>if</b> (!has_derivative_redirect) {
+        <b>let</b> tip_coins = coin::split(coins, amount, ctx);
+        transfer::public_transfer(tip_coins, intended_recipient);
+        <b>return</b> amount
+    };
+    <b>let</b> redirect_percentage = *option::borrow(&<a href="../social_contracts/post.md#social_contracts_post">post</a>.revenue_redirect_percentage);
+    <b>if</b> (redirect_percentage == 0) {
+        <b>let</b> tip_coins = coin::split(coins, amount, ctx);
+        transfer::public_transfer(tip_coins, intended_recipient);
+        <b>return</b> amount
+    };
+    <b>let</b> redirected_amount = (amount * redirect_percentage) / 100;
+    <b>let</b> remaining_amount = amount - redirected_amount;
+    <b>let</b> coin_type = type_name::with_defining_ids&lt;T&gt;();
+    <b>let</b> <b>mut</b> tip_coins = coin::split(coins, amount, ctx);
+    <b>if</b> (redirected_amount &gt; 0) {
+        <b>let</b> redirected_coins = coin::split(&<b>mut</b> tip_coins, redirected_amount, ctx);
+        <b>if</b> (<a href="../social_contracts/post.md#social_contracts_post">post</a>.<a href="../social_contracts/post.md#social_contracts_post_poc_redirection_kind">poc_redirection_kind</a> == <a href="../social_contracts/post.md#social_contracts_post_POC_REDIRECT_ESCROW">POC_REDIRECT_ESCROW</a>) {
+            <b>let</b> ben = *option::borrow(&<a href="../social_contracts/post.md#social_contracts_post">post</a>.revenue_redirect_to);
+            <b>assert</b>!(<a href="../social_contracts/proof_of_creativity.md#social_contracts_poc_vault_beneficiary_address">poc_vault::beneficiary_address</a>(beneficiary_vault) == ben, <a href="../social_contracts/post.md#social_contracts_post_EWrongBeneficiaryVault">EWrongBeneficiaryVault</a>);
+            <a href="../social_contracts/proof_of_creativity.md#social_contracts_poc_vault_deposit_coin">poc_vault::deposit_coin</a>&lt;T&gt;(
+                beneficiary_vault,
+                ben,
+                redirected_coins,
+                option::some(object_id),
+                ctx
+            );
+        } <b>else</b> {
+            <b>let</b> pay_to = *option::borrow(&<a href="../social_contracts/post.md#social_contracts_post">post</a>.revenue_redirect_to);
+            transfer::public_transfer(redirected_coins, pay_to);
+            event::emit(<a href="../social_contracts/post.md#social_contracts_post_TipEvent">TipEvent</a> {
+                object_id,
+                from: tipper,
+                to: pay_to,
+                amount: redirected_amount,
+                coin_type,
+                is_post: is_post_event,
+            });
+        };
+    };
+    <b>if</b> (remaining_amount &gt; 0) {
+        transfer::public_transfer(tip_coins, intended_recipient);
+    } <b>else</b> {
+        coin::destroy_zero(tip_coins);
+    };
+    remaining_amount
+}
+</code></pre>
+
+
+
+</details>
+
+<a name="social_contracts_post_apply_poc_redirection_coin_without_beneficiary_vault"></a>
+
+## Function `apply_poc_redirection_coin_without_beneficiary_vault`
+
+Same as [<code><a href="../social_contracts/post.md#social_contracts_post_apply_poc_redirection_coin">apply_poc_redirection_coin</a></code>] for tip paths that never deposit into an escrow vault for this <code>amount</code>.
+
+
+<pre><code><b>fun</b> <a href="../social_contracts/post.md#social_contracts_post_apply_poc_redirection_coin_without_beneficiary_vault">apply_poc_redirection_coin_without_beneficiary_vault</a>&lt;T&gt;(<a href="../social_contracts/post.md#social_contracts_post">post</a>: &<a href="../social_contracts/post.md#social_contracts_post_Post">social_contracts::post::Post</a>, intended_recipient: <b>address</b>, amount: u64, coins: &<b>mut</b> <a href="../myso/coin.md#myso_coin_Coin">myso::coin::Coin</a>&lt;T&gt;, tipper: <b>address</b>, object_id: <b>address</b>, is_post_event: bool, ctx: &<b>mut</b> <a href="../myso/tx_context.md#myso_tx_context_TxContext">myso::tx_context::TxContext</a>): u64
+</code></pre>
+
+
+
+<details>
+<summary>Implementation</summary>
+
+
+<pre><code><b>fun</b> <a href="../social_contracts/post.md#social_contracts_post_apply_poc_redirection_coin_without_beneficiary_vault">apply_poc_redirection_coin_without_beneficiary_vault</a>&lt;T&gt;(
     <a href="../social_contracts/post.md#social_contracts_post">post</a>: &<a href="../social_contracts/post.md#social_contracts_post_Post">Post</a>,
     intended_recipient: <b>address</b>,
     amount: u64,
@@ -4203,45 +4767,53 @@ Returns the amount actually received by the intended recipient
     is_post_event: bool,
     ctx: &<b>mut</b> TxContext
 ): u64 {
-    // Check <b>if</b> this <a href="../social_contracts/post.md#social_contracts_post">post</a> <b>has</b> revenue redirection <b>for</b> the intended recipient
-    <b>if</b> (intended_recipient == <a href="../social_contracts/post.md#social_contracts_post">post</a>.owner &&
-        option::is_some(&<a href="../social_contracts/post.md#social_contracts_post">post</a>.revenue_redirect_to) &&
-        option::is_some(&<a href="../social_contracts/post.md#social_contracts_post">post</a>.revenue_redirect_percentage)) {
-        <b>let</b> redirect_percentage = *option::borrow(&<a href="../social_contracts/post.md#social_contracts_post">post</a>.revenue_redirect_percentage);
-        <b>let</b> original_creator = *option::borrow(&<a href="../social_contracts/post.md#social_contracts_post">post</a>.revenue_redirect_to);
-        <b>if</b> (redirect_percentage &gt; 0) {
-            // Calculate tip split
-            <b>let</b> redirected_amount = (amount * redirect_percentage) / 100;
-            <b>let</b> remaining_amount = amount - redirected_amount;
-            // Take the tip amount out of the provided coin
-            <b>let</b> <b>mut</b> tip_coins = coin::split(coins, amount, ctx);
-            <b>if</b> (redirected_amount &gt; 0) {
-                // Split tip <b>for</b> redirection
-                <b>let</b> redirected_coins = coin::split(&<b>mut</b> tip_coins, redirected_amount, ctx);
-                // Transfer redirected amount to original creator
-                transfer::public_transfer(redirected_coins, original_creator);
-                // Emit redirection event
-                event::emit(<a href="../social_contracts/post.md#social_contracts_post_TipEvent">TipEvent</a> {
-                    object_id,
-                    from: tipper,
-                    to: original_creator,
-                    amount: redirected_amount,
-                    is_post: is_post_event,
-                });
-            };
-            <b>if</b> (remaining_amount &gt; 0) {
-                // Transfer remaining amount to intended recipient
-                transfer::public_transfer(tip_coins, intended_recipient);
-            } <b>else</b> {
-                coin::destroy_zero(tip_coins);
-            };
-            <b>return</b> remaining_amount
+    <b>if</b> (intended_recipient != <a href="../social_contracts/post.md#social_contracts_post">post</a>.owner) {
+        <b>let</b> tip_coins = coin::split(coins, amount, ctx);
+        transfer::public_transfer(tip_coins, intended_recipient);
+        <b>return</b> amount
+    };
+    <b>let</b> has_derivative_redirect = option::is_some(&<a href="../social_contracts/post.md#social_contracts_post">post</a>.revenue_redirect_percentage) &&
+        <a href="../social_contracts/post.md#social_contracts_post">post</a>.<a href="../social_contracts/post.md#social_contracts_post_poc_redirection_kind">poc_redirection_kind</a> != <a href="../social_contracts/post.md#social_contracts_post_POC_REDIRECT_NONE">POC_REDIRECT_NONE</a> &&
+        (<a href="../social_contracts/post.md#social_contracts_post">post</a>.<a href="../social_contracts/post.md#social_contracts_post_poc_redirection_kind">poc_redirection_kind</a> == <a href="../social_contracts/post.md#social_contracts_post_POC_REDIRECT_ESCROW">POC_REDIRECT_ESCROW</a> ||
+            option::is_some(&<a href="../social_contracts/post.md#social_contracts_post">post</a>.revenue_redirect_to));
+    <b>if</b> (!has_derivative_redirect) {
+        <b>let</b> tip_coins = coin::split(coins, amount, ctx);
+        transfer::public_transfer(tip_coins, intended_recipient);
+        <b>return</b> amount
+    };
+    <b>let</b> redirect_percentage = *option::borrow(&<a href="../social_contracts/post.md#social_contracts_post">post</a>.revenue_redirect_percentage);
+    <b>if</b> (redirect_percentage == 0) {
+        <b>let</b> tip_coins = coin::split(coins, amount, ctx);
+        transfer::public_transfer(tip_coins, intended_recipient);
+        <b>return</b> amount
+    };
+    <b>let</b> redirected_amount = (amount * redirect_percentage) / 100;
+    <b>let</b> remaining_amount = amount - redirected_amount;
+    <b>let</b> coin_type = type_name::with_defining_ids&lt;T&gt;();
+    <b>let</b> <b>mut</b> tip_coins = coin::split(coins, amount, ctx);
+    <b>if</b> (redirected_amount &gt; 0) {
+        <b>let</b> redirected_coins = coin::split(&<b>mut</b> tip_coins, redirected_amount, ctx);
+        <b>if</b> (<a href="../social_contracts/post.md#social_contracts_post">post</a>.<a href="../social_contracts/post.md#social_contracts_post_poc_redirection_kind">poc_redirection_kind</a> == <a href="../social_contracts/post.md#social_contracts_post_POC_REDIRECT_ESCROW">POC_REDIRECT_ESCROW</a>) {
+            <b>abort</b> <a href="../social_contracts/post.md#social_contracts_post_ETipPostRequiresBeneficiaryVault">ETipPostRequiresBeneficiaryVault</a>
+        } <b>else</b> {
+            <b>let</b> pay_to = *option::borrow(&<a href="../social_contracts/post.md#social_contracts_post">post</a>.revenue_redirect_to);
+            transfer::public_transfer(redirected_coins, pay_to);
+            event::emit(<a href="../social_contracts/post.md#social_contracts_post_TipEvent">TipEvent</a> {
+                object_id,
+                from: tipper,
+                to: pay_to,
+                amount: redirected_amount,
+                coin_type,
+                is_post: is_post_event,
+            });
         };
     };
-    // No redirection - normal transfer
-    <b>let</b> tip_coins = coin::split(coins, amount, ctx);
-    transfer::public_transfer(tip_coins, intended_recipient);
-    amount
+    <b>if</b> (remaining_amount &gt; 0) {
+        transfer::public_transfer(tip_coins, intended_recipient);
+    } <b>else</b> {
+        coin::destroy_zero(tip_coins);
+    };
+    remaining_amount
 }
 </code></pre>
 
@@ -4256,7 +4828,7 @@ Returns the amount actually received by the intended recipient
 Internal function to update PoC result (called only from proof_of_creativity module)
 
 
-<pre><code><b>public</b>(package) <b>fun</b> <a href="../social_contracts/post.md#social_contracts_post_update_poc_result">update_poc_result</a>(<a href="../social_contracts/post.md#social_contracts_post">post</a>: &<b>mut</b> <a href="../social_contracts/post.md#social_contracts_post_Post">social_contracts::post::Post</a>, result_type: u8, redirect_to: <a href="../std/option.md#std_option_Option">std::option::Option</a>&lt;<b>address</b>&gt;, redirect_percentage: <a href="../std/option.md#std_option_Option">std::option::Option</a>&lt;u64&gt;, reasoning: <a href="../std/option.md#std_option_Option">std::option::Option</a>&lt;<a href="../std/string.md#std_string_String">std::string::String</a>&gt;, evidence_urls: <a href="../std/option.md#std_option_Option">std::option::Option</a>&lt;vector&lt;<a href="../std/string.md#std_string_String">std::string::String</a>&gt;&gt;, similarity_score: u64, media_type: u8, oracle_address: <b>address</b>, analyzed_at: u64)
+<pre><code><b>public</b>(package) <b>fun</b> <a href="../social_contracts/post.md#social_contracts_post_update_poc_result">update_poc_result</a>(<a href="../social_contracts/post.md#social_contracts_post">post</a>: &<b>mut</b> <a href="../social_contracts/post.md#social_contracts_post_Post">social_contracts::post::Post</a>, result_type: u8, <a href="../social_contracts/post.md#social_contracts_post_poc_outcome">poc_outcome</a>: u8, <a href="../social_contracts/post.md#social_contracts_post_poc_redirection_kind">poc_redirection_kind</a>: u8, redirect_to: <a href="../std/option.md#std_option_Option">std::option::Option</a>&lt;<b>address</b>&gt;, redirect_percentage: <a href="../std/option.md#std_option_Option">std::option::Option</a>&lt;u64&gt;, reasoning: <a href="../std/option.md#std_option_Option">std::option::Option</a>&lt;<a href="../std/string.md#std_string_String">std::string::String</a>&gt;, evidence_urls: <a href="../std/option.md#std_option_Option">std::option::Option</a>&lt;vector&lt;<a href="../std/string.md#std_string_String">std::string::String</a>&gt;&gt;, similarity_score: u64, media_type: u8, oracle_address: <b>address</b>, analyzed_at: u64)
 </code></pre>
 
 
@@ -4268,6 +4840,8 @@ Internal function to update PoC result (called only from proof_of_creativity mod
 <pre><code><b>public</b>(package) <b>fun</b> <a href="../social_contracts/post.md#social_contracts_post_update_poc_result">update_poc_result</a>(
     <a href="../social_contracts/post.md#social_contracts_post">post</a>: &<b>mut</b> <a href="../social_contracts/post.md#social_contracts_post_Post">Post</a>,
     result_type: u8, // 1 = badge issued, 2 = redirection applied
+    <a href="../social_contracts/post.md#social_contracts_post_poc_outcome">poc_outcome</a>: u8,
+    <a href="../social_contracts/post.md#social_contracts_post_poc_redirection_kind">poc_redirection_kind</a>: u8,
     redirect_to: Option&lt;<b>address</b>&gt;,
     redirect_percentage: Option&lt;u64&gt;,
     reasoning: Option&lt;String&gt;,
@@ -4277,9 +4851,8 @@ Internal function to update PoC result (called only from proof_of_creativity mod
     oracle_address: <b>address</b>,
     analyzed_at: u64
 ) {
-    // Store PoC badge data (same <b>for</b> both badge and redirection)
-    // Note: <a href="../social_contracts/post.md#social_contracts_post_PoCBadge">PoCBadge</a> <b>has</b> no 'store' ability, so it cannot be extracted or transferred
-    <b>let</b> poc_badge = <a href="../social_contracts/post.md#social_contracts_post_PoCBadge">PoCBadge</a> {
+    // Store PoC badge snapshot (same <b>for</b> both badge and redirection)
+    <b>let</b> poc_badge = <a href="../social_contracts/post.md#social_contracts_post_PoCBadgeSnapshot">PoCBadgeSnapshot</a> {
         reasoning,
         evidence_urls,
         similarity_score: option::some(similarity_score),
@@ -4287,13 +4860,15 @@ Internal function to update PoC result (called only from proof_of_creativity mod
         oracle_address: option::some(oracle_address),
         analyzed_at: option::some(analyzed_at),
     };
-    <a href="../social_contracts/post.md#social_contracts_post">post</a>.poc_badge = option::some(poc_badge);
+    <a href="../social_contracts/post.md#social_contracts_post">post</a>.poc_badge_snapshot = option::some(poc_badge);
+    <a href="../social_contracts/post.md#social_contracts_post">post</a>.<a href="../social_contracts/post.md#social_contracts_post_poc_outcome">poc_outcome</a> = <a href="../social_contracts/post.md#social_contracts_post_poc_outcome">poc_outcome</a>;
+    <a href="../social_contracts/post.md#social_contracts_post">post</a>.<a href="../social_contracts/post.md#social_contracts_post_poc_redirection_kind">poc_redirection_kind</a> = <a href="../social_contracts/post.md#social_contracts_post_poc_redirection_kind">poc_redirection_kind</a>;
     <b>if</b> (result_type == 1) {
         // PoC badge issued - content is original
-        // Clear any existing revenue redirection
         <a href="../social_contracts/post.md#social_contracts_post">post</a>.revenue_redirect_to = option::none();
         <a href="../social_contracts/post.md#social_contracts_post">post</a>.revenue_redirect_percentage = option::none();
-        // Note: Badge status tracked via PoCBadgeIssuedEvent
+        <b>assert</b>!(<a href="../social_contracts/post.md#social_contracts_post_poc_outcome">poc_outcome</a> == <a href="../social_contracts/post.md#social_contracts_post_POC_OUTCOME_ORIGINAL">POC_OUTCOME_ORIGINAL</a>, <a href="../social_contracts/post.md#social_contracts_post_EInvalidPocOutcomeFields">EInvalidPocOutcomeFields</a>);
+        <b>assert</b>!(<a href="../social_contracts/post.md#social_contracts_post_poc_redirection_kind">poc_redirection_kind</a> == <a href="../social_contracts/post.md#social_contracts_post_POC_REDIRECT_NONE">POC_REDIRECT_NONE</a>, <a href="../social_contracts/post.md#social_contracts_post_EInvalidPocOutcomeFields">EInvalidPocOutcomeFields</a>);
     } <b>else</b> <b>if</b> (result_type == 2) {
         // Revenue redirection applied - content is derivative
         <a href="../social_contracts/post.md#social_contracts_post">post</a>.revenue_redirect_to = redirect_to;
@@ -4306,11 +4881,36 @@ Internal function to update PoC result (called only from proof_of_creativity mod
 
 </details>
 
+<a name="social_contracts_post_set_poc_badge_object_id"></a>
+
+## Function `set_poc_badge_object_id`
+
+Links the post to the authoritative shared <code>PoCBadgeObject</code> (after mint + share).
+
+
+<pre><code><b>public</b>(package) <b>fun</b> <a href="../social_contracts/post.md#social_contracts_post_set_poc_badge_object_id">set_poc_badge_object_id</a>(<a href="../social_contracts/post.md#social_contracts_post">post</a>: &<b>mut</b> <a href="../social_contracts/post.md#social_contracts_post_Post">social_contracts::post::Post</a>, badge_object_id: <a href="../myso/object.md#myso_object_ID">myso::object::ID</a>)
+</code></pre>
+
+
+
+<details>
+<summary>Implementation</summary>
+
+
+<pre><code><b>public</b>(package) <b>fun</b> <a href="../social_contracts/post.md#social_contracts_post_set_poc_badge_object_id">set_poc_badge_object_id</a>(<a href="../social_contracts/post.md#social_contracts_post">post</a>: &<b>mut</b> <a href="../social_contracts/post.md#social_contracts_post_Post">Post</a>, badge_object_id: ID) {
+    <a href="../social_contracts/post.md#social_contracts_post">post</a>.poc_badge_object_id = option::some(badge_object_id);
+}
+</code></pre>
+
+
+
+</details>
+
 <a name="social_contracts_post_clear_poc_data"></a>
 
 ## Function `clear_poc_data`
 
-Internal function to clear PoC data after dispute resolution
+Clears PoC redirect + badge pointers on the post after dispute resolution (vault balances are unaffected).
 
 
 <pre><code><b>public</b>(package) <b>fun</b> <a href="../social_contracts/post.md#social_contracts_post_clear_poc_data">clear_poc_data</a>(<a href="../social_contracts/post.md#social_contracts_post">post</a>: &<b>mut</b> <a href="../social_contracts/post.md#social_contracts_post_Post">social_contracts::post::Post</a>)
@@ -4325,8 +4925,78 @@ Internal function to clear PoC data after dispute resolution
 <pre><code><b>public</b>(package) <b>fun</b> <a href="../social_contracts/post.md#social_contracts_post_clear_poc_data">clear_poc_data</a>(<a href="../social_contracts/post.md#social_contracts_post">post</a>: &<b>mut</b> <a href="../social_contracts/post.md#social_contracts_post_Post">Post</a>) {
     <a href="../social_contracts/post.md#social_contracts_post">post</a>.revenue_redirect_to = option::none();
     <a href="../social_contracts/post.md#social_contracts_post">post</a>.revenue_redirect_percentage = option::none();
-    <a href="../social_contracts/post.md#social_contracts_post">post</a>.poc_badge = option::none();
-    // Note: Badge revocation tracked via PoCDisputeResolvedEvent
+    <a href="../social_contracts/post.md#social_contracts_post">post</a>.poc_badge_snapshot = option::none();
+    <a href="../social_contracts/post.md#social_contracts_post">post</a>.poc_badge_object_id = option::none();
+    <a href="../social_contracts/post.md#social_contracts_post">post</a>.<a href="../social_contracts/post.md#social_contracts_post_poc_outcome">poc_outcome</a> = <a href="../social_contracts/post.md#social_contracts_post_POC_OUTCOME_NONE">POC_OUTCOME_NONE</a>;
+    <a href="../social_contracts/post.md#social_contracts_post">post</a>.<a href="../social_contracts/post.md#social_contracts_post_poc_redirection_kind">poc_redirection_kind</a> = <a href="../social_contracts/post.md#social_contracts_post_POC_REDIRECT_NONE">POC_REDIRECT_NONE</a>;
+}
+</code></pre>
+
+
+
+</details>
+
+<a name="social_contracts_post_increment_poc_disputes_submitted"></a>
+
+## Function `increment_poc_disputes_submitted`
+
+Increment after each successful <code>submit_poc_dispute</code> (max 2).
+
+
+<pre><code><b>public</b>(package) <b>fun</b> <a href="../social_contracts/post.md#social_contracts_post_increment_poc_disputes_submitted">increment_poc_disputes_submitted</a>(<a href="../social_contracts/post.md#social_contracts_post">post</a>: &<b>mut</b> <a href="../social_contracts/post.md#social_contracts_post_Post">social_contracts::post::Post</a>)
+</code></pre>
+
+
+
+<details>
+<summary>Implementation</summary>
+
+
+<pre><code><b>public</b>(package) <b>fun</b> <a href="../social_contracts/post.md#social_contracts_post_increment_poc_disputes_submitted">increment_poc_disputes_submitted</a>(<a href="../social_contracts/post.md#social_contracts_post">post</a>: &<b>mut</b> <a href="../social_contracts/post.md#social_contracts_post_Post">Post</a>) {
+    <b>assert</b>!(<a href="../social_contracts/post.md#social_contracts_post">post</a>.<a href="../social_contracts/post.md#social_contracts_post_poc_disputes_submitted">poc_disputes_submitted</a> &lt; 2, <a href="../social_contracts/post.md#social_contracts_post_EDisputeCapReached">EDisputeCapReached</a>);
+    <a href="../social_contracts/post.md#social_contracts_post">post</a>.<a href="../social_contracts/post.md#social_contracts_post_poc_disputes_submitted">poc_disputes_submitted</a> = <a href="../social_contracts/post.md#social_contracts_post">post</a>.<a href="../social_contracts/post.md#social_contracts_post_poc_disputes_submitted">poc_disputes_submitted</a> + 1;
+}
+</code></pre>
+
+
+
+</details>
+
+<a name="social_contracts_post_deposit_coin_to_beneficiary_vault"></a>
+
+## Function `deposit_coin_to_beneficiary_vault`
+
+Deposit redirected reservation/trading fees into the beneficiary vault when the post uses vault-mode redirect.
+
+
+<pre><code><b>public</b>(package) <b>fun</b> <a href="../social_contracts/post.md#social_contracts_post_deposit_coin_to_beneficiary_vault">deposit_coin_to_beneficiary_vault</a>&lt;T&gt;(<a href="../social_contracts/post.md#social_contracts_post">post</a>: &<a href="../social_contracts/post.md#social_contracts_post_Post">social_contracts::post::Post</a>, beneficiary_vault: &<b>mut</b> <a href="../social_contracts/proof_of_creativity.md#social_contracts_poc_vault_PoCBeneficiaryVault">social_contracts::poc_vault::PoCBeneficiaryVault</a>, fee_coin: <a href="../myso/coin.md#myso_coin_Coin">myso::coin::Coin</a>&lt;T&gt;, ctx: &<a href="../myso/tx_context.md#myso_tx_context_TxContext">myso::tx_context::TxContext</a>)
+</code></pre>
+
+
+
+<details>
+<summary>Implementation</summary>
+
+
+<pre><code><b>public</b>(package) <b>fun</b> <a href="../social_contracts/post.md#social_contracts_post_deposit_coin_to_beneficiary_vault">deposit_coin_to_beneficiary_vault</a>&lt;T&gt;(
+    <a href="../social_contracts/post.md#social_contracts_post">post</a>: &<a href="../social_contracts/post.md#social_contracts_post_Post">Post</a>,
+    beneficiary_vault: &<b>mut</b> PoCBeneficiaryVault,
+    fee_coin: Coin&lt;T&gt;,
+    ctx: &TxContext
+) {
+    <b>assert</b>!(
+        <a href="../social_contracts/post.md#social_contracts_post">post</a>.<a href="../social_contracts/post.md#social_contracts_post_poc_redirection_kind">poc_redirection_kind</a> == <a href="../social_contracts/post.md#social_contracts_post_POC_REDIRECT_ESCROW">POC_REDIRECT_ESCROW</a> && option::is_some(&<a href="../social_contracts/post.md#social_contracts_post">post</a>.revenue_redirect_to),
+        <a href="../social_contracts/post.md#social_contracts_post_EInvalidPocOutcomeFields">EInvalidPocOutcomeFields</a>
+    );
+    <b>let</b> ben = *option::borrow(&<a href="../social_contracts/post.md#social_contracts_post">post</a>.revenue_redirect_to);
+    <b>assert</b>!(<a href="../social_contracts/proof_of_creativity.md#social_contracts_poc_vault_beneficiary_address">poc_vault::beneficiary_address</a>(beneficiary_vault) == ben, <a href="../social_contracts/post.md#social_contracts_post_EWrongBeneficiaryVault">EWrongBeneficiaryVault</a>);
+    <a href="../social_contracts/proof_of_creativity.md#social_contracts_poc_vault_deposit_coin">poc_vault::deposit_coin</a>&lt;T&gt;(
+        beneficiary_vault,
+        ben,
+        fee_coin,
+        option::some(<a href="../social_contracts/post.md#social_contracts_post_get_id_address">get_id_address</a>(<a href="../social_contracts/post.md#social_contracts_post">post</a>)),
+        ctx
+    );
 }
 </code></pre>
 
@@ -4338,11 +5008,11 @@ Internal function to clear PoC data after dispute resolution
 
 ## Function `tip_repost`
 
-Tip a repost with any supported coin type - applies 50/50 split between repost owner and original post owner
-Supports MYSO and MYUSD
+Tip a repost or quote repost; splits per <code><a href="../social_contracts/post.md#social_contracts_post_PostConfig">PostConfig</a></code> between repost owner and original author.
+Pass the shared <code>PoCBeneficiaryVault</code> for each post when that post uses <code><a href="../social_contracts/post.md#social_contracts_post_POC_REDIRECT_ESCROW">POC_REDIRECT_ESCROW</a></code>.
 
 
-<pre><code><b>public</b> <b>fun</b> <a href="../social_contracts/post.md#social_contracts_post_tip_repost">tip_repost</a>&lt;T&gt;(<a href="../social_contracts/post.md#social_contracts_post">post</a>: &<b>mut</b> <a href="../social_contracts/post.md#social_contracts_post_Post">social_contracts::post::Post</a>, original_post: &<b>mut</b> <a href="../social_contracts/post.md#social_contracts_post_Post">social_contracts::post::Post</a>, config: &<a href="../social_contracts/post.md#social_contracts_post_PostConfig">social_contracts::post::PostConfig</a>, coin: &<b>mut</b> <a href="../myso/coin.md#myso_coin_Coin">myso::coin::Coin</a>&lt;T&gt;, amount: u64, ctx: &<b>mut</b> <a href="../myso/tx_context.md#myso_tx_context_TxContext">myso::tx_context::TxContext</a>)
+<pre><code><b>public</b> <b>fun</b> <a href="../social_contracts/post.md#social_contracts_post_tip_repost">tip_repost</a>&lt;T&gt;(<a href="../social_contracts/post.md#social_contracts_post">post</a>: &<b>mut</b> <a href="../social_contracts/post.md#social_contracts_post_Post">social_contracts::post::Post</a>, original_post: &<b>mut</b> <a href="../social_contracts/post.md#social_contracts_post_Post">social_contracts::post::Post</a>, config: &<a href="../social_contracts/post.md#social_contracts_post_PostConfig">social_contracts::post::PostConfig</a>, vault_for_post: &<b>mut</b> <a href="../social_contracts/proof_of_creativity.md#social_contracts_poc_vault_PoCBeneficiaryVault">social_contracts::poc_vault::PoCBeneficiaryVault</a>, vault_for_original: &<b>mut</b> <a href="../social_contracts/proof_of_creativity.md#social_contracts_poc_vault_PoCBeneficiaryVault">social_contracts::poc_vault::PoCBeneficiaryVault</a>, coin: &<b>mut</b> <a href="../myso/coin.md#myso_coin_Coin">myso::coin::Coin</a>&lt;T&gt;, amount: u64, ctx: &<b>mut</b> <a href="../myso/tx_context.md#myso_tx_context_TxContext">myso::tx_context::TxContext</a>)
 </code></pre>
 
 
@@ -4352,104 +5022,105 @@ Supports MYSO and MYUSD
 
 
 <pre><code><b>public</b> <b>fun</b> <a href="../social_contracts/post.md#social_contracts_post_tip_repost">tip_repost</a>&lt;T&gt;(
-    <a href="../social_contracts/post.md#social_contracts_post">post</a>: &<b>mut</b> <a href="../social_contracts/post.md#social_contracts_post_Post">Post</a>, // The repost
-    original_post: &<b>mut</b> <a href="../social_contracts/post.md#social_contracts_post_Post">Post</a>, // The original <a href="../social_contracts/post.md#social_contracts_post">post</a>
+    <a href="../social_contracts/post.md#social_contracts_post">post</a>: &<b>mut</b> <a href="../social_contracts/post.md#social_contracts_post_Post">Post</a>,
+    original_post: &<b>mut</b> <a href="../social_contracts/post.md#social_contracts_post_Post">Post</a>,
     config: &<a href="../social_contracts/post.md#social_contracts_post_PostConfig">PostConfig</a>,
+    vault_for_post: &<b>mut</b> PoCBeneficiaryVault,
+    vault_for_original: &<b>mut</b> PoCBeneficiaryVault,
     coin: &<b>mut</b> Coin&lt;T&gt;,
     amount: u64,
     ctx: &<b>mut</b> TxContext
 ) {
     <b>let</b> tipper = tx_context::sender(ctx);
-    // Check <b>if</b> amount is valid
     <b>assert</b>!(amount &gt; 0 && coin::value(coin) &gt;= amount, <a href="../social_contracts/post.md#social_contracts_post_EInvalidTipAmount">EInvalidTipAmount</a>);
-    // Prevent self-tipping
     <b>assert</b>!(tipper != <a href="../social_contracts/post.md#social_contracts_post">post</a>.owner, <a href="../social_contracts/post.md#social_contracts_post_ESelfTipping">ESelfTipping</a>);
-    // Verify this is a repost or quote repost
     <b>assert</b>!(
         string::utf8(<a href="../social_contracts/post.md#social_contracts_post_POST_TYPE_REPOST">POST_TYPE_REPOST</a>) == <a href="../social_contracts/post.md#social_contracts_post">post</a>.post_type ||
         string::utf8(<a href="../social_contracts/post.md#social_contracts_post_POST_TYPE_QUOTE_REPOST">POST_TYPE_QUOTE_REPOST</a>) == <a href="../social_contracts/post.md#social_contracts_post">post</a>.post_type,
         <a href="../social_contracts/post.md#social_contracts_post_EInvalidPostType">EInvalidPostType</a>
     );
-    // Verify the <a href="../social_contracts/post.md#social_contracts_post">post</a> <b>has</b> a parent_post_id
     <b>assert</b>!(option::is_some(&<a href="../social_contracts/post.md#social_contracts_post">post</a>.parent_post_id), <a href="../social_contracts/post.md#social_contracts_post_EInvalidParentReference">EInvalidParentReference</a>);
-    // Verify the original_post ID matches the parent_post_id
     <b>let</b> parent_id = *option::borrow(&<a href="../social_contracts/post.md#social_contracts_post">post</a>.parent_post_id);
     <b>assert</b>!(parent_id == object::uid_to_address(&original_post.id), <a href="../social_contracts/post.md#social_contracts_post_EInvalidParentReference">EInvalidParentReference</a>);
-    // Check <b>if</b> tips are allowed on both posts
     <b>assert</b>!(<a href="../social_contracts/post.md#social_contracts_post_allow_tips">allow_tips</a>(<a href="../social_contracts/post.md#social_contracts_post">post</a>), <a href="../social_contracts/post.md#social_contracts_post_ETipsNotAllowed">ETipsNotAllowed</a>);
     <b>assert</b>!(<a href="../social_contracts/post.md#social_contracts_post_allow_tips">allow_tips</a>(original_post), <a href="../social_contracts/post.md#social_contracts_post_ETipsNotAllowed">ETipsNotAllowed</a>);
-    // Skip split <b>if</b> repost owner and original <a href="../social_contracts/post.md#social_contracts_post">post</a> owner are the same
+    <b>let</b> ct = type_name::with_defining_ids&lt;T&gt;();
     <b>if</b> (<a href="../social_contracts/post.md#social_contracts_post">post</a>.owner == original_post.owner) {
-        // Standard flow - apply PoC redirection <b>for</b> unified owner
-        <b>let</b> actual_received = <a href="../social_contracts/post.md#social_contracts_post_apply_poc_redirection_and_transfer">apply_poc_redirection_and_transfer</a>&lt;T&gt;(
+        <b>let</b> po = <a href="../social_contracts/post.md#social_contracts_post">post</a>.owner;
+        <b>let</b> poid = object::uid_to_address(&<a href="../social_contracts/post.md#social_contracts_post">post</a>.id);
+        <b>let</b> actual_received = <a href="../social_contracts/post.md#social_contracts_post_apply_poc_redirection_coin">apply_poc_redirection_coin</a>&lt;T&gt;(
             <a href="../social_contracts/post.md#social_contracts_post">post</a>,
-            <a href="../social_contracts/post.md#social_contracts_post">post</a>.owner,
+            vault_for_post,
+            po,
             amount,
             coin,
             tipper,
-            object::uid_to_address(&<a href="../social_contracts/post.md#social_contracts_post">post</a>.id),
+            poid,
             <b>true</b>,
             ctx
         );
         <b>assert</b>!(<a href="../social_contracts/post.md#social_contracts_post">post</a>.tips_received &lt;= <a href="../social_contracts/post.md#social_contracts_post_MAX_U64">MAX_U64</a> - actual_received, <a href="../social_contracts/post.md#social_contracts_post_EOverflow">EOverflow</a>);
         <a href="../social_contracts/post.md#social_contracts_post">post</a>.tips_received = <a href="../social_contracts/post.md#social_contracts_post">post</a>.tips_received + actual_received;
-        // Emit tip event <b>for</b> amount actually received
         <b>if</b> (actual_received &gt; 0) {
             event::emit(<a href="../social_contracts/post.md#social_contracts_post_TipEvent">TipEvent</a> {
-                object_id: object::uid_to_address(&<a href="../social_contracts/post.md#social_contracts_post">post</a>.id),
+                object_id: poid,
                 from: tipper,
-                to: <a href="../social_contracts/post.md#social_contracts_post">post</a>.owner,
+                to: po,
                 amount: actual_received,
+                coin_type: ct,
                 is_post: <b>true</b>,
             });
         };
     } <b>else</b> {
-        // Calculate split using config
         <b>let</b> repost_owner_amount = (amount * config.repost_tip_percentage) / 100;
         <b>let</b> original_owner_amount = amount - repost_owner_amount;
-        // Apply PoC redirection <b>for</b> repost owner's share
-        <b>let</b> repost_actual_received = <a href="../social_contracts/post.md#social_contracts_post_apply_poc_redirection_and_transfer">apply_poc_redirection_and_transfer</a>&lt;T&gt;(
+        <b>let</b> po = <a href="../social_contracts/post.md#social_contracts_post">post</a>.owner;
+        <b>let</b> poid = object::uid_to_address(&<a href="../social_contracts/post.md#social_contracts_post">post</a>.id);
+        <b>let</b> opo = original_post.owner;
+        <b>let</b> opoid = object::uid_to_address(&original_post.id);
+        <b>let</b> repost_actual_received = <a href="../social_contracts/post.md#social_contracts_post_apply_poc_redirection_coin">apply_poc_redirection_coin</a>&lt;T&gt;(
             <a href="../social_contracts/post.md#social_contracts_post">post</a>,
-            <a href="../social_contracts/post.md#social_contracts_post">post</a>.owner,
+            vault_for_post,
+            po,
             repost_owner_amount,
             coin,
             tipper,
-            object::uid_to_address(&<a href="../social_contracts/post.md#social_contracts_post">post</a>.id),
+            poid,
             <b>true</b>,
             ctx
         );
-        // Apply PoC redirection <b>for</b> original <a href="../social_contracts/post.md#social_contracts_post">post</a> owner's share
-        <b>let</b> original_actual_received = <a href="../social_contracts/post.md#social_contracts_post_apply_poc_redirection_and_transfer">apply_poc_redirection_and_transfer</a>&lt;T&gt;(
+        <b>let</b> original_actual_received = <a href="../social_contracts/post.md#social_contracts_post_apply_poc_redirection_coin">apply_poc_redirection_coin</a>&lt;T&gt;(
             original_post,
-            original_post.owner,
+            vault_for_original,
+            opo,
             original_owner_amount,
             coin,
             tipper,
-            object::uid_to_address(&original_post.id),
+            opoid,
             <b>true</b>,
             ctx
         );
-        // Update tip counters
         <b>assert</b>!(<a href="../social_contracts/post.md#social_contracts_post">post</a>.tips_received &lt;= <a href="../social_contracts/post.md#social_contracts_post_MAX_U64">MAX_U64</a> - repost_actual_received, <a href="../social_contracts/post.md#social_contracts_post_EOverflow">EOverflow</a>);
         <a href="../social_contracts/post.md#social_contracts_post">post</a>.tips_received = <a href="../social_contracts/post.md#social_contracts_post">post</a>.tips_received + repost_actual_received;
         <b>assert</b>!(original_post.tips_received &lt;= <a href="../social_contracts/post.md#social_contracts_post_MAX_U64">MAX_U64</a> - original_actual_received, <a href="../social_contracts/post.md#social_contracts_post_EOverflow">EOverflow</a>);
         original_post.tips_received = original_post.tips_received + original_actual_received;
-        // Emit tip events <b>for</b> amounts actually received
         <b>if</b> (repost_actual_received &gt; 0) {
             event::emit(<a href="../social_contracts/post.md#social_contracts_post_TipEvent">TipEvent</a> {
-                object_id: object::uid_to_address(&<a href="../social_contracts/post.md#social_contracts_post">post</a>.id),
+                object_id: poid,
                 from: tipper,
-                to: <a href="../social_contracts/post.md#social_contracts_post">post</a>.owner,
+                to: po,
                 amount: repost_actual_received,
+                coin_type: ct,
                 is_post: <b>true</b>,
             });
         };
         <b>if</b> (original_actual_received &gt; 0) {
             event::emit(<a href="../social_contracts/post.md#social_contracts_post_TipEvent">TipEvent</a> {
-                object_id: object::uid_to_address(&original_post.id),
+                object_id: opoid,
                 from: tipper,
-                to: original_post.owner,
+                to: opo,
                 amount: original_actual_received,
+                coin_type: ct,
                 is_post: <b>true</b>,
             });
         };
@@ -4465,12 +5136,10 @@ Supports MYSO and MYUSD
 
 ## Function `tip_comment`
 
-Tip a comment with any supported coin type
-Supports MYSO and MYUSD
-Split is 80% to commenter, 20% to post owner (with PoC redirection on post owner's share)
+Tip a comment; split per <code><a href="../social_contracts/post.md#social_contracts_post_PostConfig">PostConfig</a></code> with PoC redirection on the post owner's share (vault when escrow).
 
 
-<pre><code><b>public</b> <b>fun</b> <a href="../social_contracts/post.md#social_contracts_post_tip_comment">tip_comment</a>&lt;T&gt;(comment: &<b>mut</b> <a href="../social_contracts/post.md#social_contracts_post_Comment">social_contracts::post::Comment</a>, <a href="../social_contracts/post.md#social_contracts_post">post</a>: &<b>mut</b> <a href="../social_contracts/post.md#social_contracts_post_Post">social_contracts::post::Post</a>, config: &<a href="../social_contracts/post.md#social_contracts_post_PostConfig">social_contracts::post::PostConfig</a>, coin: &<b>mut</b> <a href="../myso/coin.md#myso_coin_Coin">myso::coin::Coin</a>&lt;T&gt;, amount: u64, ctx: &<b>mut</b> <a href="../myso/tx_context.md#myso_tx_context_TxContext">myso::tx_context::TxContext</a>)
+<pre><code><b>public</b> <b>fun</b> <a href="../social_contracts/post.md#social_contracts_post_tip_comment">tip_comment</a>&lt;T&gt;(comment: &<b>mut</b> <a href="../social_contracts/post.md#social_contracts_post_Comment">social_contracts::post::Comment</a>, <a href="../social_contracts/post.md#social_contracts_post">post</a>: &<b>mut</b> <a href="../social_contracts/post.md#social_contracts_post_Post">social_contracts::post::Post</a>, config: &<a href="../social_contracts/post.md#social_contracts_post_PostConfig">social_contracts::post::PostConfig</a>, beneficiary_vault: &<b>mut</b> <a href="../social_contracts/proof_of_creativity.md#social_contracts_poc_vault_PoCBeneficiaryVault">social_contracts::poc_vault::PoCBeneficiaryVault</a>, coin: &<b>mut</b> <a href="../myso/coin.md#myso_coin_Coin">myso::coin::Coin</a>&lt;T&gt;, amount: u64, ctx: &<b>mut</b> <a href="../myso/tx_context.md#myso_tx_context_TxContext">myso::tx_context::TxContext</a>)
 </code></pre>
 
 
@@ -4483,54 +5152,52 @@ Split is 80% to commenter, 20% to post owner (with PoC redirection on post owner
     comment: &<b>mut</b> <a href="../social_contracts/post.md#social_contracts_post_Comment">Comment</a>,
     <a href="../social_contracts/post.md#social_contracts_post">post</a>: &<b>mut</b> <a href="../social_contracts/post.md#social_contracts_post_Post">Post</a>,
     config: &<a href="../social_contracts/post.md#social_contracts_post_PostConfig">PostConfig</a>,
+    beneficiary_vault: &<b>mut</b> PoCBeneficiaryVault,
     coin: &<b>mut</b> Coin&lt;T&gt;,
     amount: u64,
     ctx: &<b>mut</b> TxContext
 ) {
     <b>let</b> tipper = tx_context::sender(ctx);
-    // Check <b>if</b> amount is valid
     <b>assert</b>!(amount &gt; 0 && coin::value(coin) &gt;= amount, <a href="../social_contracts/post.md#social_contracts_post_EInvalidTipAmount">EInvalidTipAmount</a>);
-    // Prevent self-tipping
     <b>assert</b>!(tipper != comment.owner, <a href="../social_contracts/post.md#social_contracts_post_ESelfTipping">ESelfTipping</a>);
-    // Check <b>if</b> tips are allowed on the <a href="../social_contracts/post.md#social_contracts_post">post</a>
     <b>assert</b>!(<a href="../social_contracts/post.md#social_contracts_post_allow_tips">allow_tips</a>(<a href="../social_contracts/post.md#social_contracts_post">post</a>), <a href="../social_contracts/post.md#social_contracts_post_ETipsNotAllowed">ETipsNotAllowed</a>);
-    // Calculate split based on config percentage
     <b>let</b> commenter_amount = (amount * config.commenter_tip_percentage) / 100;
     <b>let</b> post_owner_amount = amount - commenter_amount;
-    // Transfer commenter's share directly (no PoC redirection <b>for</b> commenters)
     <b>let</b> commenter_tip = coin::split(coin, commenter_amount, ctx);
     transfer::public_transfer(commenter_tip, comment.owner);
-    // Apply PoC redirection <b>for</b> <a href="../social_contracts/post.md#social_contracts_post">post</a> owner's share
-    <b>let</b> post_owner_actual_received = <a href="../social_contracts/post.md#social_contracts_post_apply_poc_redirection_and_transfer">apply_poc_redirection_and_transfer</a>&lt;T&gt;(
+    <b>let</b> po = <a href="../social_contracts/post.md#social_contracts_post">post</a>.owner;
+    <b>let</b> poid = object::uid_to_address(&<a href="../social_contracts/post.md#social_contracts_post">post</a>.id);
+    <b>let</b> ct = type_name::with_defining_ids&lt;T&gt;();
+    <b>let</b> post_owner_actual_received = <a href="../social_contracts/post.md#social_contracts_post_apply_poc_redirection_coin">apply_poc_redirection_coin</a>&lt;T&gt;(
         <a href="../social_contracts/post.md#social_contracts_post">post</a>,
-        <a href="../social_contracts/post.md#social_contracts_post">post</a>.owner,
+        beneficiary_vault,
+        po,
         post_owner_amount,
         coin,
         tipper,
-        object::uid_to_address(&<a href="../social_contracts/post.md#social_contracts_post">post</a>.id),
+        poid,
         <b>true</b>,
         ctx
     );
-    // Update tip counters
     <b>assert</b>!(comment.tips_received &lt;= <a href="../social_contracts/post.md#social_contracts_post_MAX_U64">MAX_U64</a> - commenter_amount, <a href="../social_contracts/post.md#social_contracts_post_EOverflow">EOverflow</a>);
     comment.tips_received = comment.tips_received + commenter_amount;
     <b>assert</b>!(<a href="../social_contracts/post.md#social_contracts_post">post</a>.tips_received &lt;= <a href="../social_contracts/post.md#social_contracts_post_MAX_U64">MAX_U64</a> - post_owner_actual_received, <a href="../social_contracts/post.md#social_contracts_post_EOverflow">EOverflow</a>);
     <a href="../social_contracts/post.md#social_contracts_post">post</a>.tips_received = <a href="../social_contracts/post.md#social_contracts_post">post</a>.tips_received + post_owner_actual_received;
-    // Emit tip event <b>for</b> commenter
     event::emit(<a href="../social_contracts/post.md#social_contracts_post_TipEvent">TipEvent</a> {
         object_id: object::uid_to_address(&comment.id),
         from: tipper,
         to: comment.owner,
         amount: commenter_amount,
+        coin_type: ct,
         is_post: <b>false</b>,
     });
-    // Emit tip event <b>for</b> <a href="../social_contracts/post.md#social_contracts_post">post</a> owner (amount actually received)
     <b>if</b> (post_owner_actual_received &gt; 0) {
         event::emit(<a href="../social_contracts/post.md#social_contracts_post_TipEvent">TipEvent</a> {
-            object_id: object::uid_to_address(&<a href="../social_contracts/post.md#social_contracts_post">post</a>.id),
+            object_id: poid,
             from: tipper,
-            to: <a href="../social_contracts/post.md#social_contracts_post">post</a>.owner,
+            to: po,
             amount: post_owner_actual_received,
+            coin_type: ct,
             is_post: <b>true</b>,
         });
     };
@@ -5549,6 +6216,10 @@ Migration function for Post
     <b>assert</b>!(<a href="../social_contracts/post.md#social_contracts_post">post</a>.<a href="../social_contracts/post.md#social_contracts_post_version">version</a> &lt; current_version, <a href="../social_contracts/post.md#social_contracts_post_EWrongVersion">EWrongVersion</a>);
     // Remember old <a href="../social_contracts/post.md#social_contracts_post_version">version</a> and update to new <a href="../social_contracts/post.md#social_contracts_post_version">version</a>
     <b>let</b> old_version = <a href="../social_contracts/post.md#social_contracts_post">post</a>.<a href="../social_contracts/post.md#social_contracts_post_version">version</a>;
+    <b>if</b> (old_version &lt; 2) {
+        <a href="../social_contracts/post.md#social_contracts_post">post</a>.<a href="../social_contracts/post.md#social_contracts_post_poc_outcome">poc_outcome</a> = <a href="../social_contracts/post.md#social_contracts_post_POC_OUTCOME_NONE">POC_OUTCOME_NONE</a>;
+        <a href="../social_contracts/post.md#social_contracts_post">post</a>.<a href="../social_contracts/post.md#social_contracts_post_poc_redirection_kind">poc_redirection_kind</a> = <a href="../social_contracts/post.md#social_contracts_post_POC_REDIRECT_NONE">POC_REDIRECT_NONE</a>;
+    };
     <a href="../social_contracts/post.md#social_contracts_post">post</a>.<a href="../social_contracts/post.md#social_contracts_post_version">version</a> = current_version;
     // Initialize platform_id <b>for</b> existing posts (set to @0x0 <b>as</b> sentinel <b>for</b> unknown <a href="../social_contracts/platform.md#social_contracts_platform">platform</a>)
     // This field was added in a later <a href="../social_contracts/post.md#social_contracts_post_version">version</a> - existing posts will have @0x0
@@ -5874,6 +6545,7 @@ Create a promoted post with MYSO tokens for viewer payments
     };
     // Convert media URLs to strings <b>for</b> <a href="../social_contracts/post.md#social_contracts_post_PostCreatedEvent">PostCreatedEvent</a> (before moving media_option)
     <b>let</b> media_urls_for_event = <a href="../social_contracts/post.md#social_contracts_post_convert_urls_to_strings">convert_urls_to_strings</a>(&media_option);
+    <b>let</b> <a href="../social_contracts/post.md#social_contracts_post_poc_redirection_kind">poc_redirection_kind</a> = <a href="../social_contracts/post.md#social_contracts_post_POC_REDIRECT_NONE">POC_REDIRECT_NONE</a>;
     // Create and share the <a href="../social_contracts/post.md#social_contracts_post">post</a>
     <b>let</b> post_id = <a href="../social_contracts/post.md#social_contracts_post_create_post_internal">create_post_internal</a>(
         owner,
@@ -5897,6 +6569,7 @@ Create a promoted post with MYSO tokens for viewer payments
         final_enable_spt,
         final_enable_poc,
         final_enable_spot,
+        <a href="../social_contracts/post.md#social_contracts_post_poc_redirection_kind">poc_redirection_kind</a>,
         ctx
     );
     // Indexers read <a href="../social_contracts/post.md#social_contracts_post_PostCreatedEvent">PostCreatedEvent</a> to upsert `posts` with promotion_id before <a href="../social_contracts/post.md#social_contracts_post_PromotedPostCreatedEvent">PromotedPostCreatedEvent</a>
@@ -5904,6 +6577,8 @@ Create a promoted post with MYSO tokens for viewer payments
         post_id,
         owner,
         profile_id,
+        platform_id,
+        permissions: <a href="../social_contracts/post.md#social_contracts_post_permissions_bitfield">permissions_bitfield</a>(<b>true</b>, <b>true</b>, <b>true</b>, <b>true</b>, <b>true</b>),
         content,
         post_type: string::utf8(<a href="../social_contracts/post.md#social_contracts_post_POST_TYPE_STANDARD">POST_TYPE_STANDARD</a>),
         parent_post_id: option::none(),
@@ -5919,6 +6594,7 @@ Create a promoted post with MYSO tokens for viewer payments
         enable_spot: final_enable_spot,
         spot_id: option::none(),
         spt_id: option::none(),
+        <a href="../social_contracts/post.md#social_contracts_post_poc_redirection_kind">poc_redirection_kind</a>,
     });
     // Update promotion data with <a href="../social_contracts/post.md#social_contracts_post">post</a> ID
     promotion_data.post_id = post_id;

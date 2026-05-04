@@ -8,6 +8,7 @@ use diesel::QueryableByName;
 use diesel::SelectableHelper;
 use diesel::sql_types::{BigInt, Bool, Int4, Nullable, SmallInt, Text};
 use diesel_async::RunQueryDsl;
+use serde::Serialize;
 use serde_json::Value as JsonValue;
 
 use myso_indexer_alt_social_schema::models::POST_TYPE_QUOTE_REPOST;
@@ -20,7 +21,7 @@ use myso_pg_db::Connection;
 
 use crate::metrics::DbReaderMetrics;
 
-#[derive(Debug, Clone, QueryableByName)]
+#[derive(Debug, Clone, QueryableByName, Serialize)]
 pub struct PostRow {
     #[diesel(sql_type = Text)]
     pub post_id: String,
@@ -72,12 +73,44 @@ pub struct PostRow {
     pub poc_oracle_address: Option<String>,
     #[diesel(sql_type = Nullable<BigInt>)]
     pub poc_analyzed_at: Option<i64>,
+    #[diesel(sql_type = Nullable<SmallInt>)]
+    pub poc_outcome: Option<i16>,
+    #[diesel(sql_type = Nullable<SmallInt>)]
+    pub poc_redirection_kind: Option<i16>,
+    #[diesel(sql_type = SmallInt)]
+    pub poc_disputes_submitted: i16,
+    #[diesel(sql_type = diesel::sql_types::Bool)]
+    pub enable_spt: bool,
     #[diesel(sql_type = diesel::sql_types::Bool)]
     pub enable_spot: bool,
     #[diesel(sql_type = Nullable<Text>)]
     pub spot_id: Option<String>,
     #[diesel(sql_type = Nullable<Text>)]
+    pub spt_id: Option<String>,
+    #[diesel(sql_type = Nullable<Text>)]
     pub mydata_id: Option<String>,
+    #[diesel(sql_type = Nullable<Text>)]
+    pub revenue_recipient: Option<String>,
+    #[diesel(sql_type = Nullable<Bool>)]
+    pub requires_subscription: Option<bool>,
+    #[diesel(sql_type = Nullable<Text>)]
+    pub subscription_service_id: Option<String>,
+    #[diesel(sql_type = Nullable<BigInt>)]
+    pub subscription_price: Option<i64>,
+    #[diesel(sql_type = Nullable<Text>)]
+    pub encrypted_content_hash: Option<String>,
+    #[diesel(sql_type = Nullable<Bool>)]
+    pub removed_from_platform: Option<bool>,
+    #[diesel(sql_type = Nullable<Text>)]
+    pub removed_by: Option<String>,
+    #[diesel(sql_type = Nullable<diesel::sql_types::Jsonb>)]
+    pub metadata_json: Option<JsonValue>,
+    #[diesel(sql_type = Nullable<Text>)]
+    pub promotion_id: Option<String>,
+    #[diesel(sql_type = Nullable<Text>)]
+    pub platform_id: Option<String>,
+    #[diesel(sql_type = Nullable<SmallInt>)]
+    pub permissions: Option<i16>,
 }
 
 #[derive(Debug, Clone)]
@@ -150,7 +183,12 @@ pub(crate) async fn get_post_by_id(
                 media_urls, mentions, parent_post_id, updated_at,
                 poc_id, revenue_redirect_to, revenue_redirect_percentage, enable_poc,
                 poc_reasoning, poc_evidence_urls, poc_similarity_score, poc_media_type,
-                poc_oracle_address, poc_analyzed_at, enable_spot, spot_id, mydata_id
+                poc_oracle_address, poc_analyzed_at, poc_outcome, poc_redirection_kind,
+                poc_disputes_submitted,
+                enable_spt, enable_spot, spot_id, spt_id, mydata_id,
+                revenue_recipient, requires_subscription, subscription_service_id, subscription_price,
+                encrypted_content_hash, removed_from_platform, removed_by, metadata_json, promotion_id,
+                platform_id, permissions
          FROM posts
          WHERE (post_id = $1 OR id = $1) AND deleted_at IS NULL
          ORDER BY created_at DESC
@@ -235,7 +273,12 @@ pub(crate) async fn list_posts(
                media_urls, mentions, parent_post_id, updated_at,
                poc_id, revenue_redirect_to, revenue_redirect_percentage, enable_poc,
                poc_reasoning, poc_evidence_urls, poc_similarity_score, poc_media_type,
-               poc_oracle_address, poc_analyzed_at, enable_spot, spot_id, mydata_id
+               poc_oracle_address, poc_analyzed_at, poc_outcome, poc_redirection_kind,
+               poc_disputes_submitted,
+               enable_spt, enable_spot, spot_id, spt_id, mydata_id,
+               revenue_recipient, requires_subscription, subscription_service_id, subscription_price,
+               encrypted_content_hash, removed_from_platform, removed_by, metadata_json, promotion_id,
+               platform_id, permissions
         FROM posts
         WHERE deleted_at IS NULL
         AND ($1::TEXT IS NULL OR owner = $1)
@@ -261,26 +304,65 @@ pub(crate) async fn list_posts_for_profile(
     owner_address: &str,
     profile_id: Option<&str>,
     post_type: Option<&str>,
+    enable_poc: Option<bool>,
+    poc_outcomes: Option<&[i16]>,
+    include_removed: bool,
     limit: i64,
     offset: i64,
     metrics: &DbReaderMetrics,
 ) -> anyhow::Result<Vec<PostRow>> {
     metrics.requests_received.inc();
     let _guard = metrics.latency.start_timer();
-    let query = "
+    let deleted_sql = if include_removed {
+        ""
+    } else {
+        "AND deleted_at IS NULL"
+    };
+    let enable_sql = match enable_poc {
+        Some(true) => "AND enable_poc = TRUE",
+        Some(false) => "AND enable_poc = FALSE",
+        None => "",
+    };
+    let outcomes_sql = match poc_outcomes {
+        Some(v) if !v.is_empty() => {
+            let elems: Vec<String> = v.iter().map(i16::to_string).collect();
+            format!(
+                "AND poc_outcome = ANY(ARRAY[{}]::smallint[])",
+                elems.join(",")
+            )
+        }
+        _ => String::new(),
+    };
+    let query = format!(
+        "
         SELECT post_id, owner, profile_id, content, post_type, created_at, deleted_at,
                reaction_count, comment_count, repost_count, tips_received,
                media_urls, mentions, parent_post_id, updated_at,
                poc_id, revenue_redirect_to, revenue_redirect_percentage, enable_poc,
                poc_reasoning, poc_evidence_urls, poc_similarity_score, poc_media_type,
-               poc_oracle_address, poc_analyzed_at, enable_spot, spot_id, mydata_id
-        FROM posts
-        WHERE deleted_at IS NULL
-        AND (owner = $1 OR ($2::TEXT IS NOT NULL AND profile_id = $2))
-        AND ($3::TEXT IS NULL OR post_type = $3)
+               poc_oracle_address, poc_analyzed_at, poc_outcome, poc_redirection_kind,
+               poc_disputes_submitted,
+               enable_spt, enable_spot, spot_id, spt_id, mydata_id,
+               revenue_recipient, requires_subscription, subscription_service_id, subscription_price,
+               encrypted_content_hash, removed_from_platform, removed_by, metadata_json, promotion_id,
+               platform_id, permissions
+        FROM (
+            SELECT DISTINCT ON (post_id) *
+            FROM posts
+            WHERE (owner = $1 OR ($2::TEXT IS NOT NULL AND profile_id = $2))
+            AND ($3::TEXT IS NULL OR post_type = $3)
+            {deleted_sql}
+            {enable_sql}
+            {outcomes_sql}
+            ORDER BY post_id, time DESC
+        ) sub
         ORDER BY created_at DESC
         LIMIT $4 OFFSET $5
-    ";
+        ",
+        deleted_sql = deleted_sql,
+        enable_sql = enable_sql,
+        outcomes_sql = outcomes_sql,
+    );
     let results = diesel::sql_query(query)
         .bind::<Text, _>(owner_address)
         .bind::<Nullable<Text>, _>(profile_id)
@@ -291,6 +373,67 @@ pub(crate) async fn list_posts_for_profile(
         .await?;
     metrics.requests_succeeded.inc();
     Ok(results)
+}
+
+pub(crate) async fn count_posts_for_profile(
+    conn: &mut Connection<'_>,
+    owner_address: &str,
+    profile_id: Option<&str>,
+    post_type: Option<&str>,
+    enable_poc: Option<bool>,
+    poc_outcomes: Option<&[i16]>,
+    include_removed: bool,
+    metrics: &DbReaderMetrics,
+) -> anyhow::Result<i64> {
+    metrics.requests_received.inc();
+    let _guard = metrics.latency.start_timer();
+    let deleted_sql = if include_removed {
+        ""
+    } else {
+        "AND deleted_at IS NULL"
+    };
+    let enable_sql = match enable_poc {
+        Some(true) => "AND enable_poc = TRUE",
+        Some(false) => "AND enable_poc = FALSE",
+        None => "",
+    };
+    let outcomes_sql = match poc_outcomes {
+        Some(v) if !v.is_empty() => {
+            let elems: Vec<String> = v.iter().map(i16::to_string).collect();
+            format!(
+                "AND poc_outcome = ANY(ARRAY[{}]::smallint[])",
+                elems.join(",")
+            )
+        }
+        _ => String::new(),
+    };
+    let query = format!(
+        "
+        SELECT COUNT(DISTINCT post_id)::bigint AS cnt
+        FROM posts
+        WHERE (owner = $1 OR ($2::TEXT IS NOT NULL AND profile_id = $2))
+        AND ($3::TEXT IS NULL OR post_type = $3)
+        {deleted_sql}
+        {enable_sql}
+        {outcomes_sql}
+        ",
+        deleted_sql = deleted_sql,
+        enable_sql = enable_sql,
+        outcomes_sql = outcomes_sql,
+    );
+    #[derive(QueryableByName)]
+    struct Cnt {
+        #[diesel(sql_type = BigInt)]
+        cnt: i64,
+    }
+    let row = diesel::sql_query(query)
+        .bind::<Text, _>(owner_address)
+        .bind::<Nullable<Text>, _>(profile_id)
+        .bind::<Nullable<Text>, _>(post_type)
+        .get_result::<Cnt>(conn)
+        .await?;
+    metrics.requests_succeeded.inc();
+    Ok(row.cnt)
 }
 
 pub(crate) async fn get_post_comments(

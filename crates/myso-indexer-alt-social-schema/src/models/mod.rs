@@ -38,9 +38,10 @@ pub use insurance::{
     BPS_DENOM, DAY_MS, DEFAULT_FEE_BPS as INSURANCE_DEFAULT_FEE_BPS, DEFAULT_MAX_COVERAGE_BPS,
     DEFAULT_MAX_DURATION_MS, DEFAULT_MIN_COVERAGE_BPS, InsuranceConfig, InsurancePolicy,
     InsurancePolicyRow, InsuranceVault, InsuranceVaultRow, NewInsuranceConfig,
-    NewInsuranceEventLog, NewInsuranceMarketExposure, NewInsurancePolicy, NewInsurancePolicyEvent,
-    NewInsuranceUserExposure, NewInsuranceVault, NewInsuranceVaultTransaction, STATUS_ACTIVE,
-    STATUS_CANCELLED, STATUS_CLAIMED, STATUS_EXPIRED, UpdateInsurancePolicy, UpdateInsuranceVault,
+    NewInsuranceCoverageRoute, NewInsuranceEventLog, NewInsuranceMarketExposure, NewInsurancePolicy,
+    NewInsurancePolicyEvent, NewInsuranceRouteFill, NewInsuranceUserExposure, NewInsuranceVault,
+    NewInsuranceVaultTransaction, STATUS_ACTIVE, STATUS_CANCELLED, STATUS_CLAIMED, STATUS_EXPIRED,
+    UpdateInsurancePolicy, UpdateInsuranceVault, UpdateInsuranceVaultStatus,
 };
 pub use mydata::{
     ACCESS_TYPE_CONTENT_UPDATE, ACCESS_TYPE_GRANT, ACCESS_TYPE_ONE_TIME, ACCESS_TYPE_PREVIEW,
@@ -75,8 +76,10 @@ pub use poc::{
     DISPUTE_STATUS_RESOLVED_OVERTURNED, DISPUTE_STATUS_RESOLVED_UPHELD, DISPUTE_STATUS_VOTING,
     MEDIA_TYPE_AUDIO, MEDIA_TYPE_IMAGE, MEDIA_TYPE_VIDEO, NewPocAnalysisResult, NewPocBadge,
     NewPocConfiguration, NewPocDispute, NewPocDisputeVote, NewPocRevenueRedirection,
-    PocAnalysisResultRow, PocBadgeRow, PocConfigRow, PocDisputeRow, PocRevenueRedirectionRow,
-    VOTE_OVERTURN, VOTE_UPHOLD,
+    NewPocVaultClaim, NewPocVaultDeposit, POC_VAULT_LEGACY_AGGREGATE_COIN_TYPE,
+    PocAnalysisResultRow, PocBadgeRow, PocBeneficiaryVaultRow, PocConfigRow, PocDisputeRow,
+    PocDisputeVoteRow, PocRevenueRedirectionRow, PocVaultClaimRow, PocVaultCoinBalanceRow,
+    PocVaultDepositRow, VOTE_OVERTURN, VOTE_UPHOLD,
 };
 pub use post::{
     COMMENTER_TIP_PERCENTAGE, CommentRow, ENABLE_POC, ENABLE_SPOT, ENABLE_SPT, MAX_CONTENT_LENGTH,

@@ -1,9 +1,9 @@
 // Copyright (c) The Social Proof Foundation, LLC.
 // SPDX-License-Identifier: Apache-2.0
 
-use diesel::sql_types::{BigInt, Bool, Nullable, SmallInt, Text};
 use diesel::OptionalExtension;
 use diesel::QueryableByName;
+use diesel::sql_types::{BigInt, Bool, Nullable, SmallInt, Text};
 use diesel_async::RunQueryDsl;
 use myso_pg_db::Db;
 

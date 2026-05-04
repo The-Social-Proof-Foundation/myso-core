@@ -1,8 +1,8 @@
 // Copyright (c) The Social Proof Foundation, LLC.
 // SPDX-License-Identifier: Apache-2.0
 
-use diesel::sql_types::{BigInt, Bool, SmallInt, Text, Timestamp, Timestamptz};
 use diesel::QueryableByName;
+use diesel::sql_types::{BigInt, Bool, Nullable, SmallInt, Text, Timestamp, Timestamptz};
 use serde::Serialize;
 
 #[derive(Debug, Serialize, QueryableByName)]
@@ -47,6 +47,12 @@ pub struct InsuranceVaultInfo {
     pub max_exposure_per_market: i64,
     #[diesel(sql_type = BigInt)]
     pub max_exposure_per_user: i64,
+    #[diesel(sql_type = BigInt)]
+    pub max_exposure_per_option: i64,
+    #[diesel(sql_type = Bool)]
+    pub enabled: bool,
+    #[diesel(sql_type = Bool)]
+    pub paused: bool,
     #[diesel(sql_type = BigInt)]
     pub version: i64,
     #[diesel(sql_type = Timestamp)]
@@ -106,6 +112,18 @@ pub struct InsurancePolicyInfo {
     #[diesel(sql_type = BigInt)]
     pub premium_paid: i64,
     #[diesel(sql_type = BigInt)]
+    pub premium_raw: i64,
+    #[diesel(sql_type = BigInt)]
+    pub implied_probability_bps: i64,
+    #[diesel(sql_type = BigInt)]
+    pub risk_multiplier_bps: i64,
+    #[diesel(sql_type = BigInt)]
+    pub base_premium: i64,
+    #[diesel(sql_type = BigInt)]
+    pub market_total_amount: i64,
+    #[diesel(sql_type = BigInt)]
+    pub option_escrow_amount: i64,
+    #[diesel(sql_type = BigInt)]
     pub start_time_ms: i64,
     #[diesel(sql_type = BigInt)]
     pub expiry_time_ms: i64,
@@ -113,6 +131,12 @@ pub struct InsurancePolicyInfo {
     pub vault_id: String,
     #[diesel(sql_type = SmallInt)]
     pub status: i16,
+    #[diesel(sql_type = Nullable<Text>)]
+    pub route_id: Option<String>,
+    #[diesel(sql_type = Nullable<SmallInt>)]
+    pub route_leg_index: Option<i16>,
+    #[diesel(sql_type = BigInt)]
+    pub backstop_sweep_amount: i64,
 }
 
 #[derive(Debug, Serialize, QueryableByName)]
@@ -128,7 +152,27 @@ pub struct InsurancePolicyRow {
     #[diesel(sql_type = BigInt)]
     pub covered_amount: i64,
     #[diesel(sql_type = BigInt)]
+    pub coverage_bps: i64,
+    #[diesel(sql_type = BigInt)]
     pub premium_paid: i64,
+    #[diesel(sql_type = BigInt)]
+    pub premium_raw: i64,
+    #[diesel(sql_type = BigInt)]
+    pub implied_probability_bps: i64,
+    #[diesel(sql_type = BigInt)]
+    pub risk_multiplier_bps: i64,
+    #[diesel(sql_type = BigInt)]
+    pub base_premium: i64,
+    #[diesel(sql_type = BigInt)]
+    pub market_total_amount: i64,
+    #[diesel(sql_type = BigInt)]
+    pub option_escrow_amount: i64,
     #[diesel(sql_type = SmallInt)]
     pub status: i16,
+    #[diesel(sql_type = Nullable<Text>)]
+    pub route_id: Option<String>,
+    #[diesel(sql_type = Nullable<SmallInt>)]
+    pub route_leg_index: Option<i16>,
+    #[diesel(sql_type = BigInt)]
+    pub backstop_sweep_amount: i64,
 }
