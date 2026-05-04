@@ -15,8 +15,38 @@ cleanup() {
 # Set up the signal handler
 trap cleanup SIGINT
 
-if [ -z "$NUM_CPUS" ]; then
-  NUM_CPUS=$(cat /proc/cpuinfo | grep processor | wc -l) # ubuntu
+# CPU count for parallel stress jobs (seq). Nextest invocations use --test-threads num-cpus so the
+# runner resolves cores portably (Linux/macOS). Detection: getconf, nproc, sysctl (Darwin), /proc/cpuinfo.
+if [ -z "${NUM_CPUS:-}" ]; then
+  NUM_CPUS=""
+  if command -v getconf >/dev/null 2>&1; then
+    _nc=$(getconf _NPROCESSORS_ONLN 2>/dev/null) || true
+    case "${_nc:-}" in
+      '' | *[!0-9]*) ;;
+      *) NUM_CPUS=$_nc ;;
+    esac
+  fi
+  if [ -z "$NUM_CPUS" ] && command -v nproc >/dev/null 2>&1; then
+    NUM_CPUS=$(nproc)
+  fi
+  if [ -z "$NUM_CPUS" ] && [ "$(uname -s)" = "Darwin" ]; then
+    NUM_CPUS=$(sysctl -n hw.ncpu 2>/dev/null) || true
+  fi
+  if [ -z "$NUM_CPUS" ] && [ -r /proc/cpuinfo ]; then
+    NUM_CPUS=$(grep -c '^processor' /proc/cpuinfo 2>/dev/null) || true
+  fi
+  if [ -z "$NUM_CPUS" ]; then
+    NUM_CPUS=4
+  fi
+  unset _nc
+fi
+# Bash 3.2 (macOS /bin/bash) may not normalize leading spaces in $((...)); strip non-digits so
+# padded values (e.g. from `wc -l`) or bad NUM_CPUS exports cannot reach nextest / seq.
+_digits=$(printf '%s' "${NUM_CPUS:-}" | tr -cd '0-9')
+NUM_CPUS=$(( ${_digits:-0} + 0 ))
+unset _digits
+if [ "$NUM_CPUS" -lt 1 ]; then
+  NUM_CPUS=1
 fi
 
 # filter out some tests that give spurious failures.
@@ -50,7 +80,7 @@ MSIM_TEST_NUM=${TEST_NUM} \
 MSIM_WATCHDOG_TIMEOUT_MS=60000 \
 scripts/simtest/cargo-simtest simtest \
   --color always \
-  --test-threads "$NUM_CPUS" \
+  --test-threads num-cpus \
   --package consensus-simtests \
   --package myso-core \
   --package myso-e2e-tests \
@@ -101,7 +131,7 @@ MSIM_WATCHDOG_TIMEOUT_MS=60000 \
 MSIM_TEST_CHECK_DETERMINISM=1 \
 scripts/simtest/cargo-simtest simtest \
   --color always \
-  --test-threads "$NUM_CPUS" \
+  --test-threads num-cpus \
   --package myso-benchmark \
   --profile simtestnightly \
   -E "$TEST_FILTER" 2>&1 | tee "$LOG_FILE"

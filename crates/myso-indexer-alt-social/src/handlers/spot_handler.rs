@@ -191,8 +191,7 @@ impl Handler for SpotHandler {
                         .set((
                             spot_records::betting_options.eq(betting_options),
                             spot_records::resolution_window_ms.eq(resolution_window_ms),
-                            spot_records::max_resolution_window_ms
-                                .eq(max_resolution_window_ms),
+                            spot_records::max_resolution_window_ms.eq(max_resolution_window_ms),
                             spot_records::updated_at.eq(chrono::Utc::now().naive_utc()),
                         ))
                         .execute(conn)

@@ -2095,7 +2095,37 @@ type InsuranceConfig {
 	version: Int!
 }
 
+type InsuranceCoverageRoute {
+	coverageBps: Int!
+	createdAt: Int!
+	durationMs: Int!
+	expiryTimeMs: Int!
+	insured: MySoAddress!
+	marketId: String!
+	optionId: Int!
+	policyIds: JSON!
+	routeId: String!
+	totalBackstopSweep: Int!
+	totalCovered: Int!
+	totalPremium: Int!
+	totalReserve: Int!
+	transactionId: String!
+	vaultIds: JSON!
+}
+
+type InsuranceModuleEvent {
+	createdAt: Int!
+	eventData: JSON!
+	eventId: String!
+	eventType: String!
+	id: Int!
+}
+
 type InsurancePolicy {
+	"""
+	Portion of premium swept to the insurance backstop pool for this leg.
+	"""
+	backstopSweepAmount: Int!
 	"""
 	Vault utilization curve component before SPoT risk layering.
 	"""
@@ -2141,6 +2171,10 @@ type InsurancePolicy {
 	"""
 	optionId: Int!
 	"""
+	Indexed lifecycle rows for this policy (`insurance_policy_events`). Returns null when social DB not configured.
+	"""
+	policyEvents(limit: Int, offset: Int): [InsurancePolicyEvent!]
+	"""
 	Unique policy identifier.
 	"""
 	policyId: String!
@@ -2156,6 +2190,14 @@ type InsurancePolicy {
 	Combined risk multiplier in basis points (post caps; premium ≈ base × this / 10_000 before floor).
 	"""
 	riskMultiplierBps: Int!
+	"""
+	Aggregated route object id when this policy was bought via `route_buy_coverage_4`.
+	"""
+	routeId: MySoAddress
+	"""
+	Zero-based leg index within the route (only when `route_id` is set).
+	"""
+	routeLegIndex: Int
 	"""
 	Policy start time (epoch milliseconds).
 	"""
@@ -2178,6 +2220,47 @@ type InsurancePolicy {
 	vaultId: String!
 }
 
+type InsurancePolicyEvent {
+	basePremium: Int
+	coverageBps: Int!
+	coveredAmount: Int!
+	eventType: String!
+	feePaid: Int
+	id: Int!
+	impliedProbabilityBps: Int
+	insured: MySoAddress!
+	marketId: String!
+	marketTotalAmount: Int
+	optionEscrowAmount: Int
+	optionId: Int!
+	payout: Int
+	policyId: String!
+	premiumPaid: Int!
+	premiumRaw: Int
+	refundedAmount: Int
+	reserveLocked: Int!
+	riskMultiplierBps: Int
+	time: Int!
+	timestampMs: Int!
+	transactionId: String!
+}
+
+type InsuranceRouteFill {
+	backstopSweepAmount: Int!
+	coveredAmount: Int!
+	createdAt: Int!
+	eventId: String!
+	id: Int!
+	legIndex: Int!
+	policyId: String!
+	premiumPaid: Int!
+	reserveLocked: Int!
+	routeId: String!
+	timestampMs: Int!
+	transactionId: String!
+	vaultId: String!
+}
+
 type InsuranceVault {
 	"""
 	Base rate in basis points per day.
@@ -2192,6 +2275,10 @@ type InsuranceVault {
 	"""
 	createdAt: Int!
 	"""
+	Whether the vault accepts new coverage.
+	"""
+	enabled: Boolean!
+	"""
 	Vault exposures by market/option. Returns empty when social DB not configured.
 	"""
 	exposures: [InsuranceVaultExposure!]
@@ -2200,9 +2287,17 @@ type InsuranceVault {
 	"""
 	maxExposurePerMarket: Int!
 	"""
+	Maximum exposure reserved per option (0 = unlimited).
+	"""
+	maxExposurePerOption: Int!
+	"""
 	Maximum exposure per user.
 	"""
 	maxExposurePerUser: Int!
+	"""
+	Whether the vault is admin-paused for new coverage.
+	"""
+	paused: Boolean!
 	"""
 	Reserved amount (locked for active policies).
 	"""
@@ -2223,6 +2318,10 @@ type InsuranceVault {
 	Updated at (epoch milliseconds).
 	"""
 	updatedAt: Int!
+	"""
+	Per-insured reserved totals for this vault (`insurance_user_exposures`). Returns null when social DB not configured.
+	"""
+	userExposureTotals: [InsuranceVaultUserExposure!]
 	"""
 	Utilization multiplier in basis points.
 	"""
@@ -2269,6 +2368,11 @@ type InsuranceVaultTransaction {
 	Transaction type (e.g. deposit, withdraw, reserve, release).
 	"""
 	transactionType: String!
+}
+
+type InsuranceVaultUserExposure {
+	insured: MySoAddress!
+	totalReserved: Int!
 }
 
 
@@ -6011,6 +6115,14 @@ type Query {
 	"""
 	insuranceConfiguration: InsuranceConfig
 	"""
+	Coverage route by route object ID. Returns null when social DB not configured or not found.
+	"""
+	insuranceCoverageRoute(routeId: ID!): InsuranceCoverageRoute
+	"""
+	Module-level insurance audit events (`insurance_events`). Returns empty when social DB not configured.
+	"""
+	insuranceModuleEvents(limit: Int, offset: Int): [InsuranceModuleEvent!]
+	"""
 	Insurance policies with optional filters. Returns empty when social DB not configured.
 	"""
 	insurancePolicies(insured: MySoAddress, marketId: String, vaultId: String, status: Int, limit: Int, offset: Int): [InsurancePolicy!]
@@ -6018,6 +6130,10 @@ type Query {
 	Insurance policy by ID. Returns null when social DB not configured or not found.
 	"""
 	insurancePolicy(id: ID!): InsurancePolicy
+	"""
+	Route fill legs for a coverage route. Returns empty when social DB not configured.
+	"""
+	insuranceRouteFills(routeId: ID!, limit: Int, offset: Int): [InsuranceRouteFill!]
 	"""
 	Insurance vault by ID. Returns null when social DB not configured or not found.
 	"""

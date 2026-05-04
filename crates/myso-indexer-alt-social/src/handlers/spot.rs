@@ -290,12 +290,8 @@ fn process_spot_record_created_event(
         .get("betting_options")
         .and_then(|v| serde_json::from_value(v.clone()).ok())
         .unwrap_or_else(|| serde_json::json!([]));
-    let resolution_window_ms = data
-        .get("resolution_window_ms")
-        .and_then(json_opt_i64);
-    let max_resolution_window_ms = data
-        .get("max_resolution_window_ms")
-        .and_then(json_opt_i64);
+    let resolution_window_ms = data.get("resolution_window_ms").and_then(json_opt_i64);
+    let max_resolution_window_ms = data.get("max_resolution_window_ms").and_then(json_opt_i64);
 
     let now_naive = now.naive_utc();
     let record = NewSpotRecord {

@@ -38,10 +38,11 @@ pub use insurance::{
     BPS_DENOM, DAY_MS, DEFAULT_FEE_BPS as INSURANCE_DEFAULT_FEE_BPS, DEFAULT_MAX_COVERAGE_BPS,
     DEFAULT_MAX_DURATION_MS, DEFAULT_MIN_COVERAGE_BPS, InsuranceConfig, InsurancePolicy,
     InsurancePolicyRow, InsuranceVault, InsuranceVaultRow, NewInsuranceConfig,
-    NewInsuranceCoverageRoute, NewInsuranceEventLog, NewInsuranceMarketExposure, NewInsurancePolicy,
-    NewInsurancePolicyEvent, NewInsuranceRouteFill, NewInsuranceUserExposure, NewInsuranceVault,
-    NewInsuranceVaultTransaction, STATUS_ACTIVE, STATUS_CANCELLED, STATUS_CLAIMED, STATUS_EXPIRED,
-    UpdateInsurancePolicy, UpdateInsuranceVault, UpdateInsuranceVaultStatus,
+    NewInsuranceCoverageRoute, NewInsuranceEventLog, NewInsuranceMarketExposure,
+    NewInsurancePolicy, NewInsurancePolicyEvent, NewInsuranceRouteFill, NewInsuranceUserExposure,
+    NewInsuranceVault, NewInsuranceVaultTransaction, STATUS_ACTIVE, STATUS_CANCELLED,
+    STATUS_CLAIMED, STATUS_EXPIRED, UpdateInsurancePolicy, UpdateInsuranceVault,
+    UpdateInsuranceVaultStatus,
 };
 pub use mydata::{
     ACCESS_TYPE_CONTENT_UPDATE, ACCESS_TYPE_GRANT, ACCESS_TYPE_ONE_TIME, ACCESS_TYPE_PREVIEW,

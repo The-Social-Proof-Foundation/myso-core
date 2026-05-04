@@ -26,9 +26,12 @@ use crate::governance::{
     list_governance_events, list_governance_registries, list_nominated_delegates, list_proposals,
 };
 use crate::insurance::{
-    get_insurance_config, get_insurance_policy, get_insurance_vault, get_insurance_vault_exposures,
-    list_insurance_market_policies, list_insurance_policies, list_insurance_policies_by_insured,
-    list_insurance_vault_transactions, list_insurance_vaults,
+    get_insurance_config, get_insurance_coverage_route, get_insurance_policy, get_insurance_vault,
+    get_insurance_vault_exposures, list_insurance_market_policies, list_insurance_module_events,
+    list_insurance_policies, list_insurance_policies_by_insured,
+    list_insurance_policy_events_for_policy, list_insurance_route_fills_for_route,
+    list_insurance_user_exposure_totals_for_vault, list_insurance_vault_transactions,
+    list_insurance_vaults,
 };
 use crate::metrics::DbReaderMetrics;
 use crate::mydata::{
@@ -1538,6 +1541,58 @@ impl SocialPgReader {
     ) -> anyhow::Result<Vec<crate::InsurancePolicyRow>> {
         let mut conn = self.connect().await?;
         list_insurance_market_policies(&mut conn, market_id, limit, offset, &self.metrics).await
+    }
+
+    /// Insurance module-level events (`insurance_events` audit table).
+    pub async fn list_insurance_module_events(
+        &self,
+        limit: i64,
+        offset: i64,
+    ) -> anyhow::Result<Vec<crate::insurance::InsuranceModuleEventRow>> {
+        let mut conn = self.connect().await?;
+        list_insurance_module_events(&mut conn, limit, offset, &self.metrics).await
+    }
+
+    /// Policy lifecycle rows from `insurance_policy_events`.
+    pub async fn list_insurance_policy_events_for_policy(
+        &self,
+        policy_id: &str,
+        limit: i64,
+        offset: i64,
+    ) -> anyhow::Result<Vec<crate::insurance::InsurancePolicyEventHistoryRow>> {
+        let mut conn = self.connect().await?;
+        list_insurance_policy_events_for_policy(&mut conn, policy_id, limit, offset, &self.metrics)
+            .await
+    }
+
+    /// Aggregated reserved exposure per insured address for a vault.
+    pub async fn list_insurance_user_exposure_totals_for_vault(
+        &self,
+        vault_id: &str,
+    ) -> anyhow::Result<Vec<crate::insurance::InsuranceUserExposureAggRow>> {
+        let mut conn = self.connect().await?;
+        list_insurance_user_exposure_totals_for_vault(&mut conn, vault_id, &self.metrics).await
+    }
+
+    /// Routed coverage bundle by route object id.
+    pub async fn get_insurance_coverage_route(
+        &self,
+        route_id: &str,
+    ) -> anyhow::Result<Option<crate::insurance::InsuranceCoverageRouteRow>> {
+        let mut conn = self.connect().await?;
+        get_insurance_coverage_route(&mut conn, route_id, &self.metrics).await
+    }
+
+    /// Route leg fills for a coverage route.
+    pub async fn list_insurance_route_fills_for_route(
+        &self,
+        route_id: &str,
+        limit: i64,
+        offset: i64,
+    ) -> anyhow::Result<Vec<crate::insurance::InsuranceRouteFillRow>> {
+        let mut conn = self.connect().await?;
+        list_insurance_route_fills_for_route(&mut conn, route_id, limit, offset, &self.metrics)
+            .await
     }
 
     /// List governance proposals (paginated, optionally filtered by platform, status, proposal type, submitter).

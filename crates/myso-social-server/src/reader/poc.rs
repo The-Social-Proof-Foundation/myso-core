@@ -1,8 +1,8 @@
 // Copyright (c) The Social Proof Foundation, LLC.
 // SPDX-License-Identifier: Apache-2.0
 
-use diesel::OptionalExtension;
 use diesel::sql_types::{BigInt, Text};
+use diesel::OptionalExtension;
 use diesel_async::RunQueryDsl;
 
 use crate::error::SocialError;
@@ -192,8 +192,8 @@ pub(crate) async fn get_poc_dispute_votes(
 }
 
 pub(crate) async fn get_poc_analytics(db: &Db) -> Result<serde_json::Value, SocialError> {
-    use diesel::QueryableByName;
     use diesel::sql_types::BigInt as DieselBigInt;
+    use diesel::QueryableByName;
 
     let mut conn = db.connect().await?;
     #[derive(QueryableByName)]

@@ -1,8 +1,8 @@
 // Copyright (c) The Social Proof Foundation, LLC.
 // SPDX-License-Identifier: Apache-2.0
 
-use diesel::QueryableByName;
 use diesel::sql_types::{BigInt, Bool, Nullable, SmallInt, Text, Timestamp, Timestamptz};
+use diesel::QueryableByName;
 use serde::Serialize;
 
 #[derive(Debug, Serialize, QueryableByName)]
@@ -59,6 +59,8 @@ pub struct InsuranceVaultInfo {
     pub created_at: chrono::NaiveDateTime,
     #[diesel(sql_type = Timestamp)]
     pub updated_at: chrono::NaiveDateTime,
+    #[diesel(sql_type = Text)]
+    pub transaction_id: String,
 }
 
 #[derive(Debug, Serialize, QueryableByName)]
@@ -71,6 +73,28 @@ pub struct InsuranceVaultRow {
     pub capital_balance: i64,
     #[diesel(sql_type = BigInt)]
     pub reserved: i64,
+    #[diesel(sql_type = BigInt)]
+    pub base_rate_bps_per_day: i64,
+    #[diesel(sql_type = BigInt)]
+    pub utilization_multiplier_bps: i64,
+    #[diesel(sql_type = BigInt)]
+    pub max_exposure_per_market: i64,
+    #[diesel(sql_type = BigInt)]
+    pub max_exposure_per_user: i64,
+    #[diesel(sql_type = BigInt)]
+    pub max_exposure_per_option: i64,
+    #[diesel(sql_type = Bool)]
+    pub enabled: bool,
+    #[diesel(sql_type = Bool)]
+    pub paused: bool,
+    #[diesel(sql_type = BigInt)]
+    pub version: i64,
+    #[diesel(sql_type = Timestamp)]
+    pub created_at: chrono::NaiveDateTime,
+    #[diesel(sql_type = Timestamp)]
+    pub updated_at: chrono::NaiveDateTime,
+    #[diesel(sql_type = Text)]
+    pub transaction_id: String,
 }
 
 #[derive(Debug, Serialize, QueryableByName)]

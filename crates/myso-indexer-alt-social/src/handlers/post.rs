@@ -96,10 +96,9 @@ where
                 .ok_or_else(|| serde::de::Error::custom("invalid u8"))?;
             Ok(Some(u))
         }
-        Some(serde_json::Value::String(s)) => s
-            .parse::<u8>()
-            .map_err(serde::de::Error::custom)
-            .map(Some),
+        Some(serde_json::Value::String(s)) => {
+            s.parse::<u8>().map_err(serde::de::Error::custom).map(Some)
+        }
         Some(_) => Err(serde::de::Error::custom(
             "expected number, string, or null for Option<u8>",
         )),

@@ -43,7 +43,10 @@ use crate::api::types::governance::{
     AnonymousVotingTrend, Delegate, GovernanceEvent, GovernanceRegistry, NominatedDelegate,
     Proposal,
 };
-use crate::api::types::insurance::{InsurancePolicy, InsuranceVault};
+use crate::api::types::insurance::{
+    InsuranceCoverageRoute, InsuranceModuleEvent, InsurancePolicy, InsuranceRouteFill,
+    InsuranceVault,
+};
 use crate::api::types::move_object::MoveObject;
 use crate::api::types::move_package;
 use crate::api::types::move_package::MovePackage;
@@ -1764,6 +1767,67 @@ impl Query {
                 .await
                 .map_err(Into::into)
                 .map(|v| v.into_iter().map(InsuranceVault::from_row).collect()),
+        )
+    }
+
+    /// Module-level insurance audit events (`insurance_events`). Returns empty when social DB not configured.
+    async fn insurance_module_events(
+        &self,
+        ctx: &Context<'_>,
+        limit: Option<u64>,
+        offset: Option<u64>,
+    ) -> Option<Result<Vec<InsuranceModuleEvent>, RpcError>> {
+        let reader_opt = ctx
+            .data_opt::<std::sync::Arc<Option<myso_indexer_alt_social_reader::SocialPgReader>>>()?;
+        let reader = reader_opt.as_ref().as_ref()?;
+        let limit = limit.unwrap_or(20).min(100) as i64;
+        let offset = offset.unwrap_or(0) as i64;
+        Some(
+            reader
+                .list_insurance_module_events(limit, offset)
+                .await
+                .map_err(Into::into)
+                .map(|v| v.into_iter().map(InsuranceModuleEvent::from_row).collect()),
+        )
+    }
+
+    /// Coverage route by route object ID. Returns null when social DB not configured or not found.
+    async fn insurance_coverage_route(
+        &self,
+        ctx: &Context<'_>,
+        route_id: async_graphql::ID,
+    ) -> Option<Result<Option<InsuranceCoverageRoute>, RpcError>> {
+        let reader_opt = ctx
+            .data_opt::<std::sync::Arc<Option<myso_indexer_alt_social_reader::SocialPgReader>>>()?;
+        let reader = reader_opt.as_ref().as_ref()?;
+        Some(
+            reader
+                .get_insurance_coverage_route(route_id.as_str())
+                .await
+                .map_err(Into::into)
+                .map(|opt| opt.map(InsuranceCoverageRoute::from_row)),
+        )
+    }
+
+    /// Route fill legs for a coverage route. Returns empty when social DB not configured.
+    async fn insurance_route_fills(
+        &self,
+        ctx: &Context<'_>,
+        route_id: async_graphql::ID,
+        limit: Option<u64>,
+        offset: Option<u64>,
+    ) -> Option<Result<Vec<InsuranceRouteFill>, RpcError>> {
+        let reader_opt = ctx
+            .data_opt::<std::sync::Arc<Option<myso_indexer_alt_social_reader::SocialPgReader>>>()?;
+        let reader = reader_opt.as_ref().as_ref()?;
+        let limit = limit.unwrap_or(20).min(100) as i64;
+        let offset = offset.unwrap_or(0) as i64;
+        Some(
+            reader
+                .list_insurance_route_fills_for_route(route_id.as_str(), limit, offset)
+                .await
+                .map_err(Into::into)
+                .map(|v| v.into_iter().map(InsuranceRouteFill::from_row).collect()),
         )
     }
 

@@ -1097,6 +1097,66 @@ InsuranceConfig.time
 InsuranceConfig.transactionId
   => {}
 
+InsuranceCoverageRoute.routeId
+  => {}
+
+InsuranceCoverageRoute.insured
+  => {}
+
+InsuranceCoverageRoute.marketId
+  => {}
+
+InsuranceCoverageRoute.optionId
+  => {}
+
+InsuranceCoverageRoute.coverageBps
+  => {}
+
+InsuranceCoverageRoute.durationMs
+  => {}
+
+InsuranceCoverageRoute.totalCovered
+  => {}
+
+InsuranceCoverageRoute.totalPremium
+  => {}
+
+InsuranceCoverageRoute.totalReserve
+  => {}
+
+InsuranceCoverageRoute.totalBackstopSweep
+  => {}
+
+InsuranceCoverageRoute.expiryTimeMs
+  => {}
+
+InsuranceCoverageRoute.policyIds
+  => {}
+
+InsuranceCoverageRoute.vaultIds
+  => {}
+
+InsuranceCoverageRoute.transactionId
+  => {}
+
+InsuranceCoverageRoute.createdAt
+  => {}
+
+InsuranceModuleEvent.id
+  => {}
+
+InsuranceModuleEvent.eventType
+  => {}
+
+InsuranceModuleEvent.eventData
+  => {}
+
+InsuranceModuleEvent.eventId
+  => {}
+
+InsuranceModuleEvent.createdAt
+  => {}
+
 InsurancePolicy.policyId
   => {}
 
@@ -1166,6 +1226,114 @@ InsurancePolicy.routeLegIndex
 InsurancePolicy.backstopSweepAmount
   => {}
 
+InsurancePolicy.policyEvents
+  => {}
+
+InsurancePolicyEvent.id
+  => {}
+
+InsurancePolicyEvent.policyId
+  => {}
+
+InsurancePolicyEvent.eventType
+  => {}
+
+InsurancePolicyEvent.marketId
+  => {}
+
+InsurancePolicyEvent.insured
+  => {}
+
+InsurancePolicyEvent.optionId
+  => {}
+
+InsurancePolicyEvent.coveredAmount
+  => {}
+
+InsurancePolicyEvent.coverageBps
+  => {}
+
+InsurancePolicyEvent.premiumPaid
+  => {}
+
+InsurancePolicyEvent.reserveLocked
+  => {}
+
+InsurancePolicyEvent.premiumRaw
+  => {}
+
+InsurancePolicyEvent.impliedProbabilityBps
+  => {}
+
+InsurancePolicyEvent.riskMultiplierBps
+  => {}
+
+InsurancePolicyEvent.basePremium
+  => {}
+
+InsurancePolicyEvent.marketTotalAmount
+  => {}
+
+InsurancePolicyEvent.optionEscrowAmount
+  => {}
+
+InsurancePolicyEvent.refundedAmount
+  => {}
+
+InsurancePolicyEvent.feePaid
+  => {}
+
+InsurancePolicyEvent.payout
+  => {}
+
+InsurancePolicyEvent.timestampMs
+  => {}
+
+InsurancePolicyEvent.time
+  => {}
+
+InsurancePolicyEvent.transactionId
+  => {}
+
+InsuranceRouteFill.id
+  => {}
+
+InsuranceRouteFill.routeId
+  => {}
+
+InsuranceRouteFill.legIndex
+  => {}
+
+InsuranceRouteFill.vaultId
+  => {}
+
+InsuranceRouteFill.policyId
+  => {}
+
+InsuranceRouteFill.coveredAmount
+  => {}
+
+InsuranceRouteFill.premiumPaid
+  => {}
+
+InsuranceRouteFill.reserveLocked
+  => {}
+
+InsuranceRouteFill.backstopSweepAmount
+  => {}
+
+InsuranceRouteFill.eventId
+  => {}
+
+InsuranceRouteFill.transactionId
+  => {}
+
+InsuranceRouteFill.timestampMs
+  => {}
+
+InsuranceRouteFill.createdAt
+  => {}
+
 InsuranceVault.vaultId
   => {}
 
@@ -1217,6 +1385,9 @@ InsuranceVault.transactions
 InsuranceVault.exposures
   => {}
 
+InsuranceVault.userExposureTotals
+  => {}
+
 InsuranceVaultExposure.marketId
   => {}
 
@@ -1236,6 +1407,12 @@ InsuranceVaultTransaction.balanceAfter
   => {}
 
 InsuranceVaultTransaction.timestampMs
+  => {}
+
+InsuranceVaultUserExposure.insured
+  => {}
+
+InsuranceVaultUserExposure.totalReserved
   => {}
 
 Linkage.originalId
@@ -3798,6 +3975,15 @@ Query.insuranceVault
   => {}
 
 Query.insuranceVaults
+  => {}
+
+Query.insuranceModuleEvents
+  => {}
+
+Query.insuranceCoverageRoute
+  => {}
+
+Query.insuranceRouteFills
   => {}
 
 Query.sptConfiguration

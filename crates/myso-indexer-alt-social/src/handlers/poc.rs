@@ -20,11 +20,11 @@
 
 use serde::Deserialize;
 
-use super::SocialEventRow;
 use super::common;
+use super::SocialEventRow;
 use myso_indexer_alt_social_schema::models::{
-    DISPUTE_STATUS_VOTING, NewPocAnalysisResult, NewPocBadge, NewPocConfiguration, NewPocDispute,
-    NewPocDisputeVote, NewPocRevenueRedirection,
+    NewPocAnalysisResult, NewPocBadge, NewPocConfiguration, NewPocDispute, NewPocDisputeVote,
+    NewPocRevenueRedirection, DISPUTE_STATUS_VOTING,
 };
 
 fn transaction_id_from_event_id(event_id: &str) -> String {

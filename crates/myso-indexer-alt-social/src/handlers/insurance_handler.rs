@@ -7,6 +7,7 @@ use std::sync::Arc;
 
 use anyhow::Result;
 use async_trait::async_trait;
+use diesel::pg::upsert::excluded;
 use diesel::sql_types::{BigInt, Int2, Text};
 use diesel::ExpressionMethods;
 use diesel::QueryableByName;
@@ -17,9 +18,10 @@ use myso_indexer_alt_framework::postgres::Connection;
 use myso_indexer_alt_framework::types::full_checkpoint_content::Checkpoint;
 use myso_indexer_alt_framework::FieldCount;
 use myso_indexer_alt_social_schema::models::{
-    NewInsuranceConfig, NewInsuranceCoverageRoute, NewInsuranceEventLog, NewInsuranceMarketExposure,
-    NewInsurancePolicy, NewInsurancePolicyEvent, NewInsuranceRouteFill, NewInsuranceUserExposure,
-    NewInsuranceVault, NewInsuranceVaultTransaction, UpdateInsuranceVaultStatus,
+    NewInsuranceConfig, NewInsuranceCoverageRoute, NewInsuranceEventLog,
+    NewInsuranceMarketExposure, NewInsurancePolicy, NewInsurancePolicyEvent, NewInsuranceRouteFill,
+    NewInsuranceUserExposure, NewInsuranceVault, NewInsuranceVaultTransaction,
+    UpdateInsuranceVaultStatus,
 };
 use myso_indexer_alt_social_schema::schema::{
     insurance_config, insurance_coverage_routes, insurance_events, insurance_market_exposures,
@@ -30,6 +32,7 @@ use myso_indexer_alt_social_schema::schema::{
 use super::common;
 use super::events;
 use super::insurance;
+use crate::metrics::SocialMetrics;
 
 const INSURANCE_MODULES: &[&str] = &["insurance"];
 
@@ -194,7 +197,18 @@ impl Processor for InsuranceHandler {
                 let event_data =
                     match events::parse_event_contents(module, event_name, &ev.contents) {
                         Ok(v) => v,
-                        Err(_) => continue,
+                        Err(e) => {
+                            tracing::warn!(
+                                tx_digest = %tx_digest,
+                                module,
+                                event_name,
+                                error = %e,
+                                hex_preview = %e.contents_hex_preview(48),
+                                "insurance pipeline: event contents parse failed; skipping event"
+                            );
+                            SocialMetrics::record_event_bcs_parse_failed(module, event_name);
+                            continue;
+                        }
                     };
                 if let Some(rows) = insurance::handle_insurance_event(
                     event_name,
@@ -230,7 +244,27 @@ impl Handler for InsuranceHandler {
                     total += diesel::insert_into(insurance_vaults::table)
                         .values(v)
                         .on_conflict(insurance_vaults::vault_id)
-                        .do_nothing()
+                        .do_update()
+                        .set((
+                            insurance_vaults::underwriter
+                                .eq(excluded(insurance_vaults::underwriter)),
+                            insurance_vaults::base_rate_bps_per_day
+                                .eq(excluded(insurance_vaults::base_rate_bps_per_day)),
+                            insurance_vaults::utilization_multiplier_bps
+                                .eq(excluded(insurance_vaults::utilization_multiplier_bps)),
+                            insurance_vaults::max_exposure_per_market
+                                .eq(excluded(insurance_vaults::max_exposure_per_market)),
+                            insurance_vaults::max_exposure_per_user
+                                .eq(excluded(insurance_vaults::max_exposure_per_user)),
+                            insurance_vaults::max_exposure_per_option
+                                .eq(excluded(insurance_vaults::max_exposure_per_option)),
+                            insurance_vaults::enabled.eq(excluded(insurance_vaults::enabled)),
+                            insurance_vaults::paused.eq(excluded(insurance_vaults::paused)),
+                            insurance_vaults::version.eq(excluded(insurance_vaults::version)),
+                            insurance_vaults::updated_at.eq(excluded(insurance_vaults::updated_at)),
+                            insurance_vaults::transaction_id
+                                .eq(excluded(insurance_vaults::transaction_id)),
+                        ))
                         .execute(conn)
                         .await?;
                 }

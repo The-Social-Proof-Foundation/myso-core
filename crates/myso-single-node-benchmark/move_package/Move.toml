@@ -4,7 +4,7 @@ version = "0.0.1"
 edition = "2024.beta"
 
 [dependencies]
-MySo = { local = "../../myso-framework/packages/myso-framework" }
+MySo = { local = "../../myso-framework/packages/myso-framework/myso-framework" }
 
 [addresses]
 move_benchmark = "0x0"

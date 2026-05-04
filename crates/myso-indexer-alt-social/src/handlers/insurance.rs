@@ -61,11 +61,7 @@ pub fn handle_insurance_event(
             process_coverage_purchased_event(data, &tx, event_id, timestamp_ms_i64)
         }
         "RiskPricingConfigUpdatedEvent" => Some(vec![SocialEventRow::InsuranceEventLog(
-            new_insurance_event_log(
-                "RiskPricingConfigUpdatedEvent",
-                data,
-                event_id,
-            ),
+            new_insurance_event_log("RiskPricingConfigUpdatedEvent", data, event_id),
         )]),
         "CoverageCancelledEvent" => {
             process_coverage_cancelled_event(data, &tx, event_id, timestamp_ms_i64)
@@ -182,8 +178,7 @@ fn purchase_route_fields(data: &serde_json::Value) -> (Option<String>, Option<i1
         None
     } else {
         Some(
-            data
-                .get("route_leg_index")
+            data.get("route_leg_index")
                 .and_then(|v| v.as_u64())
                 .unwrap_or(0) as i16,
         )
@@ -206,8 +201,14 @@ fn process_vault_created_event(
         .get("max_exposure_per_option")
         .map(json_to_i64)
         .unwrap_or(0);
-    let enabled = data.get("enabled").and_then(|v| v.as_bool()).unwrap_or(true);
-    let paused = data.get("paused").and_then(|v| v.as_bool()).unwrap_or(false);
+    let enabled = data
+        .get("enabled")
+        .and_then(|v| v.as_bool())
+        .unwrap_or(true);
+    let paused = data
+        .get("paused")
+        .and_then(|v| v.as_bool())
+        .unwrap_or(false);
 
     let now = Utc::now().naive_utc();
     let vault = NewInsuranceVault {

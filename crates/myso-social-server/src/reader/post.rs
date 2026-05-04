@@ -1,13 +1,13 @@
 // Copyright (c) The Social Proof Foundation, LLC.
 // SPDX-License-Identifier: Apache-2.0
 
+use diesel::sql_query;
+use diesel::sql_types::{BigInt, Text};
 use diesel::ExpressionMethods;
 use diesel::OptionalExtension;
 use diesel::QueryDsl;
 use diesel::QueryableByName;
 use diesel::SelectableHelper;
-use diesel::sql_query;
-use diesel::sql_types::{BigInt, Text};
 use diesel_async::RunQueryDsl;
 use myso_indexer_alt_social_schema::schema::{
     comments, post_config, posts, posts_deletion_events, posts_moderation_events, posts_reports,
@@ -17,7 +17,7 @@ use myso_indexer_alt_social_schema::schema::{
 use crate::error::SocialError;
 use crate::reader::types::{CommentRow, PostBasicRow, PostConfigRow, ReactionRow, RepostRow};
 use myso_indexer_alt_social_schema::models::{
-    POST_TYPE_QUOTE_REPOST, PostDeletionEventRow, PostModerationEventRow, PostReport, PostTransfer,
+    PostDeletionEventRow, PostModerationEventRow, PostReport, PostTransfer, POST_TYPE_QUOTE_REPOST,
 };
 use myso_pg_db::Db;
 

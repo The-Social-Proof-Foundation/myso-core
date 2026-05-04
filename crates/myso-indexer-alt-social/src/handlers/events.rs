@@ -379,6 +379,13 @@ pub struct BcsBadgeSelectedEvent {
 }
 
 #[derive(Debug, Deserialize)]
+pub struct BcsEcosystemBadgeSelectionClearedEvent {
+    profile_id: AccountAddress,
+    cleared_by: AccountAddress,
+    cleared_at: u64,
+}
+
+#[derive(Debug, Deserialize)]
 pub struct BcsBadgeRemovedEvent {
     profile_id: AccountAddress,
     badge_id: String,
@@ -818,7 +825,7 @@ pub struct BcsRiskPricingConfigUpdatedEvent {
     timestamp: u64,
 }
 
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Deserialize, Serialize)]
 pub struct BcsUnderwriterVaultCreatedEvent {
     vault_id: AccountAddress,
     underwriter: AccountAddress,
@@ -1667,6 +1674,15 @@ fn parse_profile_event(
                 "badge_id": ev.badge_id,
                 "selected_by": addr_to_string(&ev.selected_by),
                 "selected_at": ev.selected_at,
+            })))
+        }
+        "EcosystemBadgeSelectionClearedEvent" => {
+            let ev = bcs::from_bytes::<BcsEcosystemBadgeSelectionClearedEvent>(contents)
+                .map_err(|e| bcs_parse_err(e, contents))?;
+            Ok(Some(serde_json::json!({
+                "profile_id": addr_to_string(&ev.profile_id),
+                "cleared_by": addr_to_string(&ev.cleared_by),
+                "cleared_at": ev.cleared_at,
             })))
         }
         "BadgeRemovedEvent" => {
@@ -3423,6 +3439,57 @@ mod tests {
         assert_eq!(json["bio"], "Web8 developer and crypto enthusiast");
         assert_eq!(json["created_at"], 8);
         assert!(json["owner_address"].as_str().unwrap().starts_with("0x"));
+    }
+
+    /// Layout matches on-chain `UnderwriterVaultCreatedEvent` from `insurance::create_vault`
+    /// (BCS: two addresses + five u64 + two bools).
+    #[test]
+    fn underwriter_vault_created_event_bcs_matches_create_vault_tx_layout() {
+        let vault_id = AccountAddress::from_hex_literal(
+            "0xdabe953127e770c6abb207607652f5b0fdbba3d93f8c3125ba4c7b80a0d5f399",
+        )
+        .unwrap();
+        let underwriter = AccountAddress::from_hex_literal(
+            "0x2458950181e415250823d6ce1d55f2b3427826a111939e0d6d38e9a1397411d8",
+        )
+        .unwrap();
+        let ev = BcsUnderwriterVaultCreatedEvent {
+            vault_id,
+            underwriter,
+            base_rate_bps_per_day: 25,
+            utilization_multiplier_bps: 5000,
+            max_exposure_per_market: 0,
+            max_exposure_per_user: 0,
+            max_exposure_per_option: 0,
+            enabled: true,
+            paused: false,
+        };
+        let contents = bcs::to_bytes(&ev).expect("BCS serialize UnderwriterVaultCreatedEvent");
+        assert_eq!(contents.len(), 106, "expected 32+32+40+2 bytes");
+        let json = parse_event_contents("insurance", "UnderwriterVaultCreatedEvent", &contents)
+            .expect("parse UnderwriterVaultCreatedEvent");
+        assert_eq!(
+            json["vault_id"].as_str().unwrap(),
+            "0xdabe953127e770c6abb207607652f5b0fdbba3d93f8c3125ba4c7b80a0d5f399"
+        );
+        assert_eq!(json["base_rate_bps_per_day"], 25);
+        assert_eq!(json["utilization_multiplier_bps"], 5000);
+        assert_eq!(json["enabled"], true);
+        assert_eq!(json["paused"], false);
+
+        let rows = crate::handlers::insurance::handle_insurance_event(
+            "UnderwriterVaultCreatedEvent",
+            &json,
+            "DBxT2TDCTHGmqhE3HT5wBkGWFwnzJM4aRazBywmX1BgQ:0",
+            0,
+        )
+        .expect("handler must accept parsed JSON");
+        assert!(
+            rows.iter()
+                .any(|r| matches!(r, crate::handlers::SocialEventRow::InsuranceVault(_))),
+            "expected InsuranceVault row: {:?}",
+            rows
+        );
     }
 
     #[test]

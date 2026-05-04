@@ -1,9 +1,0 @@
-[package]
-name = "myso-test-validator"
-version.workspace = true
-authors = ["Brandon Shaw <brandon@mysocial.network>"]
-license = "Apache-2.0"
-publish = false
-edition = "2024"
-
-[dependencies]

@@ -261,6 +261,13 @@ module social_contracts::profile {
         selected_at: u64,
     }
 
+    /// Emitted when only ecosystem badge selection is cleared (see [`clear_selected_ecosystem_badge`]).
+    public struct EcosystemBadgeSelectionClearedEvent has copy, drop {
+        profile_id: address,
+        cleared_by: address,
+        cleared_at: u64,
+    }
+
     /// Event emitted when a profile owner removes their own badge
     public struct BadgeRemovedEvent has copy, drop {
         /// ID of the profile
@@ -1796,8 +1803,8 @@ module social_contracts::profile {
         })
     }
 
-    /// Clear the selected badge (owner only)
-    /// After clearing, the first badge will be displayed by default
+    /// Clear the selected badge (owner only). Clears both platform and ecosystem selection overrides;
+    /// display falls back to first badge per [`get_display_badge`] / [`get_display_ecosystem_badge`].
     public entry fun clear_selected_badge(
         profile: &mut Profile,
         clock: &Clock,
@@ -1808,15 +1815,15 @@ module social_contracts::profile {
         // Verify sender is the profile owner
         assert!(profile.owner == sender, EUnauthorized);
         
-        // Only clear if a badge is currently selected
-        if (option::is_some(&profile.selected_badge_id)) {
-            profile.selected_badge_id = option::none();
-            
-            // Emit badge selected event with empty badge_id to indicate clearing
-            // Note: We'll use an empty string to indicate clearing
+        let had_platform = option::is_some(&profile.selected_badge_id);
+        let had_ecosystem = option::is_some(&profile.selected_ecosystem_badge_id);
+        profile.selected_badge_id = option::none();
+        profile.selected_ecosystem_badge_id = option::none();
+
+        if (had_platform || had_ecosystem) {
             event::emit(BadgeSelectedEvent {
                 profile_id: object::uid_to_address(&profile.id),
-                badge_id: string::utf8(b""), // Empty string indicates clearing
+                badge_id: string::utf8(b""),
                 selected_by: sender,
                 selected_at: clock::timestamp_ms(clock),
             });
@@ -1921,11 +1928,10 @@ module social_contracts::profile {
 
         if (option::is_some(&profile.selected_ecosystem_badge_id)) {
             profile.selected_ecosystem_badge_id = option::none();
-            event::emit(BadgeSelectedEvent {
+            event::emit(EcosystemBadgeSelectionClearedEvent {
                 profile_id: object::uid_to_address(&profile.id),
-                badge_id: string::utf8(b""),
-                selected_by: sender,
-                selected_at: clock::timestamp_ms(clock),
+                cleared_by: sender,
+                cleared_at: clock::timestamp_ms(clock),
             });
         };
     }

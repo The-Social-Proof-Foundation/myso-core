@@ -199,7 +199,6 @@ members = [
   "crates/myso-synthetic-ingestion",
   "crates/myso-telemetry",
   "crates/myso-test-transaction-builder",
-  "crates/myso-test-validator",
   "crates/myso-tls",
   "crates/myso-tool",
   "crates/myso-transaction-builder",
@@ -788,7 +787,6 @@ myso-swarm-config = { path = "crates/myso-swarm-config" }
 myso-synthetic-ingestion = { path = "crates/myso-synthetic-ingestion" }
 myso-telemetry = { path = "crates/myso-telemetry" }
 myso-test-transaction-builder = { path = "crates/myso-test-transaction-builder" }
-myso-test-validator = { path = "crates/myso-test-validator" }
 myso-tls = { path = "crates/myso-tls" }
 myso-rpc-api = { path = "crates/myso-rpc-api" }
 myso-rpc-resolver = { path = "crates/myso-rpc-resolver" }

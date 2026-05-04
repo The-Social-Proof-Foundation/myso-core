@@ -20,7 +20,11 @@ pub mod spot;
 pub mod spt;
 pub mod vesting;
 
-pub use insurance::{InsuranceVaultExposureRow, InsuranceVaultTransactionRow};
+pub use insurance::{
+    InsuranceCoverageRouteRow, InsuranceModuleEventRow, InsurancePolicyEventHistoryRow,
+    InsuranceRouteFillRow, InsuranceUserExposureAggRow, InsuranceVaultExposureRow,
+    InsuranceVaultTransactionRow,
+};
 pub use myso_indexer_alt_social_schema::models::{
     DelegateRow, GovernanceRegistryRow, GovernanceStatsRow, InsurancePolicyRow, InsuranceVaultRow,
     MyDataPurchaseRow, MyDataQueryBroadPoolRow, MyDataQueryClaimRow,

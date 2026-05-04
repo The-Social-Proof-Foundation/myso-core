@@ -3,15 +3,15 @@
 
 use std::collections::HashMap;
 
+use diesel::sql_types::{
+    Array, BigInt, Bool, Date, Integer, Jsonb, Nullable, SmallInt, Text, Timestamp,
+};
 use diesel::BoolExpressionMethods;
 use diesel::ExpressionMethods;
 use diesel::OptionalExtension;
 use diesel::PgTextExpressionMethods;
 use diesel::QueryDsl;
 use diesel::QueryableByName;
-use diesel::sql_types::{
-    Array, BigInt, Bool, Date, Integer, Jsonb, Nullable, SmallInt, Text, Timestamp,
-};
 use diesel_async::RunQueryDsl;
 use myso_indexer_alt_social_schema::models::ProfilePlatformMembershipRow;
 use myso_indexer_alt_social_schema::schema::{

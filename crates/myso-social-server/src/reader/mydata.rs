@@ -1,8 +1,8 @@
 // Copyright (c) The Social Proof Foundation, LLC.
 // SPDX-License-Identifier: Apache-2.0
 
-use diesel::OptionalExtension;
 use diesel::sql_types::{BigInt, Nullable, Text};
+use diesel::OptionalExtension;
 use diesel_async::RunQueryDsl;
 use myso_pg_db::Db;
 

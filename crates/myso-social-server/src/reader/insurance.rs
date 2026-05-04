@@ -1,8 +1,8 @@
 // Copyright (c) The Social Proof Foundation, LLC.
 // SPDX-License-Identifier: Apache-2.0
 
-use diesel::OptionalExtension;
 use diesel::sql_types::{BigInt, Nullable, SmallInt, Text};
+use diesel::OptionalExtension;
 use diesel_async::RunQueryDsl;
 use myso_pg_db::Db;
 
@@ -37,7 +37,10 @@ pub(crate) async fn list_insurance_vaults(
 ) -> Result<Vec<InsuranceVaultRow>, SocialError> {
     let mut conn = db.connect().await?;
     let query = "
-        SELECT vault_id, underwriter, capital_balance, reserved
+        SELECT vault_id, underwriter, capital_balance, reserved, base_rate_bps_per_day,
+               utilization_multiplier_bps, max_exposure_per_market, max_exposure_per_user,
+               max_exposure_per_option, enabled, paused,
+               version, created_at, updated_at, transaction_id
         FROM insurance_vaults
         ORDER BY created_at DESC
         LIMIT $1 OFFSET $2
@@ -59,7 +62,7 @@ pub(crate) async fn get_insurance_vault(
         SELECT vault_id, underwriter, capital_balance, reserved, base_rate_bps_per_day,
                utilization_multiplier_bps, max_exposure_per_market, max_exposure_per_user,
                max_exposure_per_option, enabled, paused,
-               version, created_at, updated_at
+               version, created_at, updated_at, transaction_id
         FROM insurance_vaults
         WHERE vault_id = $1
     ";

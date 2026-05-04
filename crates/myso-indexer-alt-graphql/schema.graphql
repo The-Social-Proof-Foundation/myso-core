@@ -2091,6 +2091,32 @@ type InsuranceConfig {
 	version: Int!
 }
 
+type InsuranceCoverageRoute {
+	coverageBps: Int!
+	createdAt: Int!
+	durationMs: Int!
+	expiryTimeMs: Int!
+	insured: MySoAddress!
+	marketId: String!
+	optionId: Int!
+	policyIds: JSON!
+	routeId: String!
+	totalBackstopSweep: Int!
+	totalCovered: Int!
+	totalPremium: Int!
+	totalReserve: Int!
+	transactionId: String!
+	vaultIds: JSON!
+}
+
+type InsuranceModuleEvent {
+	createdAt: Int!
+	eventData: JSON!
+	eventId: String!
+	eventType: String!
+	id: Int!
+}
+
 type InsurancePolicy {
 	"""
 	Portion of premium swept to the insurance backstop pool for this leg.
@@ -2141,6 +2167,10 @@ type InsurancePolicy {
 	"""
 	optionId: Int!
 	"""
+	Indexed lifecycle rows for this policy (`insurance_policy_events`). Returns null when social DB not configured.
+	"""
+	policyEvents(limit: Int, offset: Int): [InsurancePolicyEvent!]
+	"""
 	Unique policy identifier.
 	"""
 	policyId: String!
@@ -2183,6 +2213,47 @@ type InsurancePolicy {
 	"""
 	Vault ID backing this policy.
 	"""
+	vaultId: String!
+}
+
+type InsurancePolicyEvent {
+	basePremium: Int
+	coverageBps: Int!
+	coveredAmount: Int!
+	eventType: String!
+	feePaid: Int
+	id: Int!
+	impliedProbabilityBps: Int
+	insured: MySoAddress!
+	marketId: String!
+	marketTotalAmount: Int
+	optionEscrowAmount: Int
+	optionId: Int!
+	payout: Int
+	policyId: String!
+	premiumPaid: Int!
+	premiumRaw: Int
+	refundedAmount: Int
+	reserveLocked: Int!
+	riskMultiplierBps: Int
+	time: Int!
+	timestampMs: Int!
+	transactionId: String!
+}
+
+type InsuranceRouteFill {
+	backstopSweepAmount: Int!
+	coveredAmount: Int!
+	createdAt: Int!
+	eventId: String!
+	id: Int!
+	legIndex: Int!
+	policyId: String!
+	premiumPaid: Int!
+	reserveLocked: Int!
+	routeId: String!
+	timestampMs: Int!
+	transactionId: String!
 	vaultId: String!
 }
 
@@ -2244,6 +2315,10 @@ type InsuranceVault {
 	"""
 	updatedAt: Int!
 	"""
+	Per-insured reserved totals for this vault (`insurance_user_exposures`). Returns null when social DB not configured.
+	"""
+	userExposureTotals: [InsuranceVaultUserExposure!]
+	"""
 	Utilization multiplier in basis points.
 	"""
 	utilizationMultiplierBps: Int!
@@ -2289,6 +2364,11 @@ type InsuranceVaultTransaction {
 	Transaction type (e.g. deposit, withdraw, reserve, release).
 	"""
 	transactionType: String!
+}
+
+type InsuranceVaultUserExposure {
+	insured: MySoAddress!
+	totalReserved: Int!
 }
 
 
@@ -6031,6 +6111,14 @@ type Query {
 	"""
 	insuranceConfiguration: InsuranceConfig
 	"""
+	Coverage route by route object ID. Returns null when social DB not configured or not found.
+	"""
+	insuranceCoverageRoute(routeId: ID!): InsuranceCoverageRoute
+	"""
+	Module-level insurance audit events (`insurance_events`). Returns empty when social DB not configured.
+	"""
+	insuranceModuleEvents(limit: Int, offset: Int): [InsuranceModuleEvent!]
+	"""
 	Insurance policies with optional filters. Returns empty when social DB not configured.
 	"""
 	insurancePolicies(insured: MySoAddress, marketId: String, vaultId: String, status: Int, limit: Int, offset: Int): [InsurancePolicy!]
@@ -6038,6 +6126,10 @@ type Query {
 	Insurance policy by ID. Returns null when social DB not configured or not found.
 	"""
 	insurancePolicy(id: ID!): InsurancePolicy
+	"""
+	Route fill legs for a coverage route. Returns empty when social DB not configured.
+	"""
+	insuranceRouteFills(routeId: ID!, limit: Int, offset: Int): [InsuranceRouteFill!]
 	"""
 	Insurance vault by ID. Returns null when social DB not configured or not found.
 	"""

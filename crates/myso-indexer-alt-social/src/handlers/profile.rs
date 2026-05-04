@@ -264,6 +264,9 @@ pub fn handle_profile_event(
         "BadgeRevokedEvent" => process_badge_revoked_event(data, event_id),
         "BadgeRemovedEvent" => process_badge_removed_event(data, event_id),
         "BadgeSelectedEvent" => process_badge_selected_event(data, event_id),
+        "EcosystemBadgeSelectionClearedEvent" => {
+            process_ecosystem_badge_selection_cleared_event(data, event_id)
+        }
         "PaidMessagingSettingsUpdatedEvent" => {
             process_paid_messaging_settings_updated_event(data, event_id)
         }
@@ -750,6 +753,15 @@ struct BadgeSelectedEvent {
     selected_by: String,
 }
 
+#[derive(Debug, Clone, Deserialize)]
+struct EcosystemBadgeSelectionClearedEvent {
+    #[serde(rename = "profile_id", default)]
+    profile_id: String,
+
+    #[serde(rename = "cleared_by", default)]
+    cleared_by: String,
+}
+
 fn process_badge_selected_event(
     data: &serde_json::Value,
     event_id: &str,
@@ -762,7 +774,7 @@ fn process_badge_selected_event(
         "profile BadgeSelectedEvent JSON did not match BadgeSelectedEvent",
     )?;
     let (selected_badge_id, selected_ecosystem_badge_id) = if ev.badge_id.is_empty() {
-        (Some(None), None)
+        (Some(None), Some(None))
     } else if ev.badge_id.starts_with(ECOSYSTEM_BADGE_PREFIX) {
         (None, Some(Some(ev.badge_id)))
     } else {
@@ -791,6 +803,48 @@ fn process_badge_selected_event(
         username: None,
         selected_badge_id,
         selected_ecosystem_badge_id,
+        paid_messaging_enabled: None,
+        paid_messaging_min_cost: None,
+        reservation_pool_address: None,
+        social_proof_token_address: None,
+    };
+    Some(vec![SocialEventRow::ProfileUpdate(up)])
+}
+
+fn process_ecosystem_badge_selection_cleared_event(
+    data: &serde_json::Value,
+    event_id: &str,
+) -> Option<Vec<SocialEventRow>> {
+    let ev: EcosystemBadgeSelectionClearedEvent = common::deserialize_social_event_json(
+        "profile",
+        "EcosystemBadgeSelectionClearedEvent",
+        event_id,
+        data,
+        "profile EcosystemBadgeSelectionClearedEvent JSON did not match",
+    )?;
+    let up = ProfileUpdate {
+        profile_id: ev.profile_id,
+        owner_address: ev.cleared_by,
+        display_name: None,
+        bio: None,
+        profile_photo: None,
+        cover_photo: None,
+        birthdate: None,
+        current_location: None,
+        raised_location: None,
+        phone: None,
+        email: None,
+        gender: None,
+        political_view: None,
+        religion: None,
+        education: None,
+        primary_language: None,
+        relationship_status: None,
+        x_username: None,
+        min_offer_amount: None,
+        username: None,
+        selected_badge_id: None,
+        selected_ecosystem_badge_id: Some(None),
         paid_messaging_enabled: None,
         paid_messaging_min_cost: None,
         reservation_pool_address: None,

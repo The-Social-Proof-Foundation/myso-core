@@ -6,7 +6,6 @@
         "myso-faucet",
         "myso-bridge",
         "myso-bridge-cli",
-        "myso-test-validator",
         "move-analyzer"
     ],
     "internal_binaries": [
