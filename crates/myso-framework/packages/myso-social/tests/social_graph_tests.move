@@ -14,6 +14,7 @@ module social_contracts::social_graph_tests {
     use myso::clock::{Self, Clock};
     
     use social_contracts::profile::{Self, Profile, UsernameRegistry};
+    use social_contracts::memory::MemoryRegistry;
     use social_contracts::social_graph::{Self, SocialGraph};
     use social_contracts::upgrade::{Self, UpgradeAdminCap};
     
@@ -55,15 +56,21 @@ module social_contracts::social_graph_tests {
         test_scenario::next_tx(scenario, USER1);
         {
             let mut registry = test_scenario::take_shared<UsernameRegistry>(scenario);
+            let mut memory_registry = test_scenario::take_shared<MemoryRegistry>(scenario);
+            let clock = test_scenario::take_shared<Clock>(scenario);
             profile::create_profile(
                 &mut registry,
+                &mut memory_registry,
                 string::utf8(b"User One"),
                 string::utf8(b"user1"),
                 string::utf8(b"Profile for User One"),
                 b"https://example.com/user1.png",
                 b"",
+                &clock,
                 test_scenario::ctx(scenario)
             );
+            test_scenario::return_shared(clock);
+            test_scenario::return_shared(memory_registry);
             test_scenario::return_shared(registry);
         };
         
@@ -71,15 +78,21 @@ module social_contracts::social_graph_tests {
         test_scenario::next_tx(scenario, USER2);
         {
             let mut registry = test_scenario::take_shared<UsernameRegistry>(scenario);
+            let mut memory_registry = test_scenario::take_shared<MemoryRegistry>(scenario);
+            let clock = test_scenario::take_shared<Clock>(scenario);
             profile::create_profile(
                 &mut registry,
+                &mut memory_registry,
                 string::utf8(b"User Two"),
                 string::utf8(b"user2"),
                 string::utf8(b"Profile for User Two"),
                 b"https://example.com/user2.png",
                 b"",
+                &clock,
                 test_scenario::ctx(scenario)
             );
+            test_scenario::return_shared(clock);
+            test_scenario::return_shared(memory_registry);
             test_scenario::return_shared(registry);
         };
         
@@ -87,15 +100,21 @@ module social_contracts::social_graph_tests {
         test_scenario::next_tx(scenario, USER3);
         {
             let mut registry = test_scenario::take_shared<UsernameRegistry>(scenario);
+            let mut memory_registry = test_scenario::take_shared<MemoryRegistry>(scenario);
+            let clock = test_scenario::take_shared<Clock>(scenario);
             profile::create_profile(
                 &mut registry,
+                &mut memory_registry,
                 string::utf8(b"User Three"),
                 string::utf8(b"user3"),
                 string::utf8(b"Profile for User Three"),
                 b"https://example.com/user3.png",
                 b"",
+                &clock,
                 test_scenario::ctx(scenario)
             );
+            test_scenario::return_shared(clock);
+            test_scenario::return_shared(memory_registry);
             test_scenario::return_shared(registry);
         };
     }

@@ -12,7 +12,7 @@ Run the following script from the MySo's [root directory](../../) and accept any
 ./scripts/update_all_snapshots.sh
 ```
 
-Please use your best judgment to decide if the changes between old and new versions of the snapshots look "reasonable" (e.g., a minor change in gas costs). When in doubt, please reach out to a member of MySo core team.
+Please use your best judgment to decide if the changes between old and new versions of the snapshots look "reasonable" (e.g., a minor change in gas costs). When in doubt, please reach out to a member on the MySocial core team.
 
 ## Documentation updates
 

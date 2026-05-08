@@ -14,6 +14,7 @@ module social_contracts::platform_tests {
     use myso::clock::{Self, Clock};
     
     use social_contracts::profile::{Self, Profile, UsernameRegistry};
+    use social_contracts::memory::{MemoryRegistry, MemoryAccount};
     use social_contracts::platform::{Self, Platform, PlatformRegistry};
     
     const ADMIN: address = @0xAD;
@@ -110,18 +111,23 @@ module social_contracts::platform_tests {
         test_scenario::next_tx(scenario, owner);
         {
             let mut registry = test_scenario::take_shared<UsernameRegistry>(scenario);
-            
-            // Create profile
+            let mut memory_registry = test_scenario::take_shared<MemoryRegistry>(scenario);
+            let clock = test_scenario::take_shared<Clock>(scenario);
+
             profile::create_profile(
                 &mut registry,
+                &mut memory_registry,
                 string::utf8(b"Test User"),
                 username,
                 string::utf8(b"This is a test profile for badges"),
                 b"https://example.com/avatar.png",
                 b"",
+                &clock,
                 test_scenario::ctx(scenario)
             );
-            
+
+            test_scenario::return_shared(clock);
+            test_scenario::return_shared(memory_registry);
             test_scenario::return_shared(registry);
         };
     }
@@ -517,16 +523,21 @@ module social_contracts::platform_tests {
         test_scenario::next_tx(&mut scenario, PLATFORM_USER);
         {
             let mut registry = test_scenario::take_shared<UsernameRegistry>(&scenario);
+            let mut memory_registry = test_scenario::take_shared<MemoryRegistry>(&scenario);
+            let mut memory_account = test_scenario::take_shared<MemoryAccount>(&scenario);
             let profile = test_scenario::take_from_sender<Profile>(&scenario);
-            
-            // Transfer profile to USER2
-            profile::transfer_profile(
+
+            profile::transfer_profile_with_memory(
                 &mut registry,
+                &mut memory_registry,
+                &mut memory_account,
                 profile,
                 USER2,
                 test_scenario::ctx(&mut scenario)
             );
-            
+
+            test_scenario::return_shared(memory_account);
+            test_scenario::return_shared(memory_registry);
             test_scenario::return_shared(registry);
         };
         

@@ -8,9 +8,10 @@
 module social_contracts::profile {
     use std::string::{Self, String};
     use std::ascii;
+    use std::option::{Self, Option};
     
     use myso::{
-        object::{Self, UID},
+        object::{Self, UID, ID},
         tx_context::{Self, TxContext},
         transfer,
         dynamic_field,
@@ -27,6 +28,7 @@ module social_contracts::profile {
     use social_contracts::subscription::{Self, ProfileSubscriptionService, ProfileSubscription};
     
     use social_contracts::upgrade;
+    use social_contracts::memory as memory;
 
     /// Error codes
     const EProfileAlreadyExists: u64 = 0;
@@ -52,6 +54,10 @@ module social_contracts::profile {
     const EInvalidStartTime: u64 = 15;
     const ENotVestingWalletOwner: u64 = 16;
     const EOverflow: u64 = 17;
+    const EMemoryAlreadyLinked: u64 = 25;
+    const EMemoryAccountMismatch: u64 = 26;
+    const EMustUseLinkedMemoryTransfer: u64 = 27;
+    const ERequiresMemoryLinkedProfile: u64 = 28;
 
     const PROFILE_SALE_FEE_BPS: u64 = 500;
 
@@ -148,6 +154,8 @@ module social_contracts::profile {
         min_message_cost: Option<u64>,
         /// Paid messaging: toggle to enable/disable paid messaging
         paid_messaging_enabled: bool,
+        /// Shared [`memory::MemoryAccount`] object id when linked (`None` until [`profile::ensure_memory_account`] or legacy profiles).
+        memory_account_id: Option<ID>,
         /// Version for upgrades
         version: u64,
     }
@@ -502,6 +510,13 @@ module social_contracts::profile {
         b
     }
 
+    /// Canonical username for [`UsernameRegistry`] keys and [`Profile::username`].
+    /// Folds ASCII `A–Z` to `a–z` only; does not apply Unicode case folding.
+    fun canonical_registry_username(username: &String): String {
+        let lowered = to_lowercase_bytes(string::as_bytes(username));
+        string::utf8(lowered)
+    }
+
     /// Convert an ASCII String to a String
     fun ascii_to_string(ascii_str: ascii::String): String {
         string::utf8(ascii::into_bytes(ascii_str))
@@ -539,15 +554,17 @@ module social_contracts::profile {
     // === Profile Creation and Management ===
 
     /// Create a new profile with a required username
-    /// This is the main entry point for new users, combining profile and username creation
+    /// Main entry: also creates a linked [`memory::MemoryAccount`] shared object.
     public entry fun create_profile(
         registry: &mut UsernameRegistry,
+        memory_registry: &mut memory::MemoryRegistry,
         display_name: String,
         username: String,
         bio: String,
         profile_picture_url: vector<u8>,
         cover_photo_url: vector<u8>,
-        ctx: &mut TxContext
+        clock: &Clock,
+        ctx: &mut TxContext,
     ) {
         // Check version compatibility
         assert!(registry.version == upgrade::current_version(), 1);
@@ -557,6 +574,8 @@ module social_contracts::profile {
 
         // Check that the sender doesn't already have a profile
         assert!(!table::contains(&registry.address_profiles, owner), EProfileAlreadyExists);
+
+        let username = canonical_registry_username(&username);
         
         // Validate the username
         let username_bytes = string::as_bytes(&username);
@@ -590,7 +609,7 @@ module social_contracts::profile {
             option::none()
         };
         
-        let profile = Profile {
+        let mut profile = Profile {
             id: object::new(ctx),
             display_name: display_name_option,
             bio,
@@ -606,11 +625,13 @@ module social_contracts::profile {
             selected_ecosystem_badge_id: option::none(),
             min_message_cost: option::none(),
             paid_messaging_enabled: false,
+            memory_account_id: option::none(),
             version: upgrade::current_version(),
         };
         
-        // Get the profile ID
         let profile_id = object::uid_to_address(&profile.id);
+        let memory_id = memory::create_account_for_profile(memory_registry, profile_id, clock, ctx);
+        profile.memory_account_id = option::some(memory_id);
         
         // Add to registry mappings
         table::add(&mut registry.usernames, username, profile_id);
@@ -656,8 +677,27 @@ module social_contracts::profile {
         transfer::transfer(profile, owner);
     }
 
-    /// Transfer a profile to a new owner
-    /// The username stays with the profile, and the transfer updates registry mappings
+    /// Backfill a Memory account for profiles created before Memory integration, or test-only paths.
+    /// Transfers the same `Profile` back to the caller.
+    public entry fun ensure_memory_account(
+        memory_registry: &mut memory::MemoryRegistry,
+        mut profile: Profile,
+        clock: &Clock,
+        ctx: &mut TxContext,
+    ) {
+        let sender = tx_context::sender(ctx);
+        assert!(profile.owner == sender, EUnauthorized);
+        assert!(profile.version == upgrade::current_version(), 1);
+        assert!(option::is_none(&profile.memory_account_id), EMemoryAlreadyLinked);
+
+        let profile_id = object::uid_to_address(&profile.id);
+        let mem_id = memory::create_account_for_profile(memory_registry, profile_id, clock, ctx);
+        profile.memory_account_id = option::some(mem_id);
+        transfer::transfer(profile, sender);
+    }
+
+    /// Transfer profile when there is **no** linked Memory account (`memory_account_id` is `None`).
+    /// Profiles created via [`create_profile`] have a Memory link — use [`transfer_profile_with_memory`].
     public entry fun transfer_profile(
         registry: &mut UsernameRegistry,
         mut profile: Profile,
@@ -666,6 +706,8 @@ module social_contracts::profile {
     ) {
         // Check version compatibility
         assert!(registry.version == upgrade::current_version(), 1);
+
+        assert!(option::is_none(&profile.memory_account_id), EMustUseLinkedMemoryTransfer);
         
         let sender = tx_context::sender(ctx);
         
@@ -714,6 +756,69 @@ module social_contracts::profile {
         });
         
         // Transfer profile to new owner
+        transfer::transfer(profile, new_owner);
+    }
+
+    /// Same as [`transfer_profile`], but keeps [`memory::MemoryRegistry`] and linked [`memory::MemoryAccount`] in sync.
+    public entry fun transfer_profile_with_memory(
+        registry: &mut UsernameRegistry,
+        memory_registry: &mut memory::MemoryRegistry,
+        linked_account: &mut memory::MemoryAccount,
+        mut profile: Profile,
+        new_owner: address,
+        ctx: &mut TxContext,
+    ) {
+        assert!(registry.version == upgrade::current_version(), 1);
+        assert!(option::is_some(&profile.memory_account_id), ERequiresMemoryLinkedProfile);
+        assert!(
+            *option::borrow(&profile.memory_account_id) == object::id(linked_account),
+            EMemoryAccountMismatch,
+        );
+
+        let sender = tx_context::sender(ctx);
+        assert!(profile.owner == sender, EUnauthorized);
+
+        let profile_id = object::uid_to_address(&profile.id);
+
+        memory::transfer_account_owner_with_profile(
+            memory_registry,
+            linked_account,
+            profile_id,
+            sender,
+            new_owner,
+        );
+
+        table::remove(&mut registry.address_profiles, sender);
+        if (table::contains(&registry.address_profiles, new_owner)) {
+            table::remove(&mut registry.address_profiles, new_owner);
+        };
+        table::add(&mut registry.address_profiles, new_owner, profile_id);
+
+        profile.owner = new_owner;
+
+        event::emit(ProfileUpdatedEvent {
+            profile_id,
+            display_name: profile.display_name,
+            username: profile.username,
+            bio: profile.bio,
+            profile_picture: if (option::is_some(&profile.profile_picture)) {
+                let url = option::borrow(&profile.profile_picture);
+                option::some(ascii_to_string(url::inner_url(url)))
+            } else {
+                option::none()
+            },
+            cover_photo: if (option::is_some(&profile.cover_photo)) {
+                let url = option::borrow(&profile.cover_photo);
+                option::some(ascii_to_string(url::inner_url(url)))
+            } else {
+                option::none()
+            },
+            owner: new_owner,
+            updated_at: tx_context::epoch_timestamp_ms(ctx),
+            x_username: profile.x_username,
+            min_offer_amount: profile.min_offer_amount,
+        });
+
         transfer::transfer(profile, new_owner);
     }
 
@@ -933,8 +1038,7 @@ module social_contracts::profile {
         });
     }
     
-    /// Accept an offer to purchase a profile
-    /// Transfers tokens to the profile owner and profile ownership to the offeror
+    /// Accept an offer when there is **no** linked Memory account. Use [`accept_offer_with_memory`] for profiles created via [`create_profile`].
     public entry fun accept_offer(
         registry: &mut UsernameRegistry,
         mut profile: Profile,
@@ -949,6 +1053,8 @@ module social_contracts::profile {
         
         // Verify sender is the profile owner
         assert!(profile.owner == sender, EUnauthorized);
+
+        assert!(option::is_none(&profile.memory_account_id), EMustUseLinkedMemoryTransfer);
         
         // Check if offers table exists
         assert!(dynamic_field::exists_(&profile.id, OFFERS_FIELD), EOfferDoesNotExist);
@@ -1045,6 +1151,108 @@ module social_contracts::profile {
         });
         
         // Transfer the profile object to the new owner
+        transfer::transfer(profile, offeror);
+    }
+
+    /// Same as [`accept_offer`] but synchronizes Memory ownership with the buyer.
+    public entry fun accept_offer_with_memory(
+        registry: &mut UsernameRegistry,
+        memory_registry: &mut memory::MemoryRegistry,
+        linked_account: &mut memory::MemoryAccount,
+        mut profile: Profile,
+        treasury: &EcosystemTreasury,
+        offeror: address,
+        new_main_profile: Option<address>,
+        ctx: &mut TxContext,
+    ) {
+        let sender = tx_context::sender(ctx);
+        let profile_id = object::uid_to_address(&profile.id);
+        let now = tx_context::epoch_timestamp_ms(ctx);
+
+        assert!(profile.owner == sender, EUnauthorized);
+
+        assert!(option::is_some(&profile.memory_account_id), ERequiresMemoryLinkedProfile);
+        assert!(
+            *option::borrow(&profile.memory_account_id) == object::id(linked_account),
+            EMemoryAccountMismatch,
+        );
+
+        assert!(dynamic_field::exists_(&profile.id, OFFERS_FIELD), EOfferDoesNotExist);
+
+        let offers = dynamic_field::borrow_mut<vector<u8>, Table<address, ProfileOffer>>(&mut profile.id, OFFERS_FIELD);
+        assert!(table::contains(offers, offeror), EOfferDoesNotExist);
+
+        let ProfileOffer { offeror: _, amount, created_at: _, locked_myso } = table::remove(offers, offeror);
+
+        let fee_amount = (amount * PROFILE_SALE_FEE_BPS) / 10000;
+        let mut payment = coin::from_balance(locked_myso, ctx);
+        let fee_payment = coin::split(&mut payment, fee_amount, ctx);
+        transfer::public_transfer(fee_payment, get_treasury_address(treasury));
+        transfer::public_transfer(payment, sender);
+
+        memory::transfer_account_owner_with_profile(
+            memory_registry,
+            linked_account,
+            profile_id,
+            sender,
+            offeror,
+        );
+
+        table::remove(&mut registry.address_profiles, sender);
+        if (table::contains(&registry.address_profiles, offeror)) {
+            table::remove(&mut registry.address_profiles, offeror);
+        };
+        table::add(&mut registry.address_profiles, offeror, profile_id);
+
+        if (option::is_some(&new_main_profile)) {
+            let new_profile_id = *option::borrow(&new_main_profile);
+            table::add(&mut registry.address_profiles, sender, new_profile_id);
+        };
+
+        let previous_owner = profile.owner;
+        profile.owner = offeror;
+
+        event::emit(ProfileOfferAcceptedEvent {
+            profile_id,
+            offeror,
+            previous_owner,
+            amount,
+            accepted_at: now,
+        });
+
+        event::emit(ProfileUpdatedEvent {
+            profile_id,
+            display_name: profile.display_name,
+            username: profile.username,
+            bio: profile.bio,
+            profile_picture: if (option::is_some(&profile.profile_picture)) {
+                let url = option::borrow(&profile.profile_picture);
+                option::some(ascii_to_string(url::inner_url(url)))
+            } else {
+                option::none()
+            },
+            cover_photo: if (option::is_some(&profile.cover_photo)) {
+                let url = option::borrow(&profile.cover_photo);
+                option::some(ascii_to_string(url::inner_url(url)))
+            } else {
+                option::none()
+            },
+            owner: offeror,
+            updated_at: now,
+            x_username: profile.x_username,
+            min_offer_amount: profile.min_offer_amount,
+        });
+
+        event::emit(ProfileSaleFeeEvent {
+            profile_id,
+            offeror,
+            previous_owner,
+            sale_amount: amount,
+            fee_amount,
+            fee_recipient: get_treasury_address(treasury),
+            timestamp: now,
+        });
+
         transfer::transfer(profile, offeror);
     }
     
@@ -1306,12 +1514,15 @@ module social_contracts::profile {
         };
         
         transfer::share_object(registry);
+
+        memory::bootstrap_init(ctx);
     }
 
     #[test_only]
     /// Initialize the profile registry for testing
     public fun init_for_testing(ctx: &mut TxContext) {
-        bootstrap_init(ctx)
+        bootstrap_init(ctx);
+        memory::bootstrap_init(ctx);
     }
 
     #[test_only]
@@ -1323,6 +1534,7 @@ module social_contracts::profile {
         _profile_picture: Option<String>,
         ctx: &mut TxContext
     ) {
+        let username = canonical_registry_username(&username);
         let owner = tx_context::sender(ctx);
         let epoch = tx_context::epoch_timestamp_ms(ctx);
         
@@ -1343,6 +1555,7 @@ module social_contracts::profile {
             selected_ecosystem_badge_id: option::none(),
             min_message_cost: option::none(),
             paid_messaging_enabled: false,
+            memory_account_id: option::none(),
             version: upgrade::current_version(),
         };
         
@@ -1357,6 +1570,11 @@ module social_contracts::profile {
         
         // Share the profile
         transfer::share_object(profile);
+    }
+
+    /// Linked [`social_contracts::memory::MemoryAccount`] object id (`None` for legacy/shared test profiles).
+    public fun linked_memory_account_id(profile: &Profile): &Option<ID> {
+        &profile.memory_account_id
     }
 
     /// Get the minimum offer amount for a profile

@@ -180,7 +180,7 @@ Event emitted when a shared object is migrated to a new version
 
 
 
-<pre><code><b>const</b> <a href="../social_contracts/upgrade.md#social_contracts_upgrade_CURRENT_VERSION">CURRENT_VERSION</a>: u64 = 2;
+<pre><code><b>const</b> <a href="../social_contracts/upgrade.md#social_contracts_upgrade_CURRENT_VERSION">CURRENT_VERSION</a>: u64 = 1;
 </code></pre>
 
 

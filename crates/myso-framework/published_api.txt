@@ -7243,6 +7243,9 @@ BadgeRevokedEvent
 BadgeSelectedEvent
 	public struct
 	0x50c1::profile
+EcosystemBadgeSelectionClearedEvent
+	public struct
+	0x50c1::profile
 BadgeRemovedEvent
 	public struct
 	0x50c1::profile
@@ -9565,6 +9568,15 @@ InsuranceAdminCap
 InsuranceConfig
 	public struct
 	0x50c1::insurance
+InsuranceRouterConfig
+	public struct
+	0x50c1::insurance
+InsuranceBackstopPool
+	public struct
+	0x50c1::insurance
+CoverageRoute
+	public struct
+	0x50c1::insurance
 UnderwriterVault
 	public struct
 	0x50c1::insurance
@@ -9577,6 +9589,9 @@ CoveragePolicy
 PremiumQuote
 	public struct
 	0x50c1::insurance
+VaultCoverageQuote
+	public struct
+	0x50c1::insurance
 RiskPricingConfigUpdatedEvent
 	public struct
 	0x50c1::insurance
@@ -9586,6 +9601,9 @@ ConfigInitializedEvent
 UnderwriterVaultCreatedEvent
 	public struct
 	0x50c1::insurance
+VaultStatusUpdatedEvent
+	public struct
+	0x50c1::insurance
 UnderwriterVaultDepositedEvent
 	public struct
 	0x50c1::insurance
@@ -9593,6 +9611,18 @@ UnderwriterVaultWithdrawnEvent
 	public struct
 	0x50c1::insurance
 CoveragePurchasedEvent
+	public struct
+	0x50c1::insurance
+CoverageRoutedEvent
+	public struct
+	0x50c1::insurance
+RouteFillEvent
+	public struct
+	0x50c1::insurance
+BackstopUsedEvent
+	public struct
+	0x50c1::insurance
+BackstopTreasuryDepositEvent
 	public struct
 	0x50c1::insurance
 CoverageCancelledEvent
@@ -9628,6 +9658,54 @@ bootstrap_init
 create_vault
 	public entry fun
 	0x50c1::insurance
+set_vault_status
+	public entry fun
+	0x50c1::insurance
+set_router_flags
+	public entry fun
+	0x50c1::insurance
+set_router_limits
+	public entry fun
+	0x50c1::insurance
+set_market_pause
+	public entry fun
+	0x50c1::insurance
+set_backstop_caps
+	public entry fun
+	0x50c1::insurance
+set_tail_mode
+	public entry fun
+	0x50c1::insurance
+set_backstop_paused
+	public entry fun
+	0x50c1::insurance
+deposit_backstop_treasury
+	public entry fun
+	0x50c1::insurance
+tail_pay_shortfall
+	public entry fun
+	0x50c1::insurance
+min_cap_sub
+	fun
+	0x50c1::insurance
+min_u64
+	fun
+	0x50c1::insurance
+copy_id_vec
+	fun
+	0x50c1::insurance
+new_router_config_defaults
+	fun
+	0x50c1::insurance
+new_backstop_pool_defaults
+	fun
+	0x50c1::insurance
+assert_market_router_open
+	fun
+	0x50c1::insurance
+assert_vault_buy_guards
+	fun
+	0x50c1::insurance
 deposit_capital
 	public entry fun
 	0x50c1::insurance
@@ -9661,7 +9739,28 @@ compute_spot_risk_quote
 quote_premium_with_spot_risk
 	public fun
 	0x50c1::insurance
+coverage_quote_skipped
+	fun
+	0x50c1::insurance
+max_fill_covered_for_vault
+	fun
+	0x50c1::insurance
+reserve_to_covered
+	fun
+	0x50c1::insurance
+quote_vault_for_spot_coverage
+	public fun
+	0x50c1::insurance
+vault_utilization_bps
+	fun
+	0x50c1::insurance
+buy_coverage_execute
+	fun
+	0x50c1::insurance
 buy_coverage
+	public entry fun
+	0x50c1::insurance
+route_buy_coverage_4
 	public entry fun
 	0x50c1::insurance
 cancel_coverage

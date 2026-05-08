@@ -17,6 +17,7 @@ Handles user identity, profile creation, management, and username registration
 -  [Struct `BadgeAssignedEvent`](#social_contracts_profile_BadgeAssignedEvent)
 -  [Struct `BadgeRevokedEvent`](#social_contracts_profile_BadgeRevokedEvent)
 -  [Struct `BadgeSelectedEvent`](#social_contracts_profile_BadgeSelectedEvent)
+-  [Struct `EcosystemBadgeSelectionClearedEvent`](#social_contracts_profile_EcosystemBadgeSelectionClearedEvent)
 -  [Struct `BadgeRemovedEvent`](#social_contracts_profile_BadgeRemovedEvent)
 -  [Struct `ProfileCreatedEvent`](#social_contracts_profile_ProfileCreatedEvent)
 -  [Struct `ProfileUpdatedEvent`](#social_contracts_profile_ProfileUpdatedEvent)
@@ -807,6 +808,43 @@ Event emitted when a profile owner selects a badge to display
 </dt>
 <dd>
  Timestamp when selected
+</dd>
+</dl>
+
+
+</details>
+
+<a name="social_contracts_profile_EcosystemBadgeSelectionClearedEvent"></a>
+
+## Struct `EcosystemBadgeSelectionClearedEvent`
+
+Emitted when only ecosystem badge selection is cleared (see [<code><a href="../social_contracts/profile.md#social_contracts_profile_clear_selected_ecosystem_badge">clear_selected_ecosystem_badge</a></code>]).
+
+
+<pre><code><b>public</b> <b>struct</b> <a href="../social_contracts/profile.md#social_contracts_profile_EcosystemBadgeSelectionClearedEvent">EcosystemBadgeSelectionClearedEvent</a> <b>has</b> <b>copy</b>, drop
+</code></pre>
+
+
+
+<details>
+<summary>Fields</summary>
+
+
+<dl>
+<dt>
+<code>profile_id: <b>address</b></code>
+</dt>
+<dd>
+</dd>
+<dt>
+<code>cleared_by: <b>address</b></code>
+</dt>
+<dd>
+</dd>
+<dt>
+<code>cleared_at: u64</code>
+</dt>
+<dd>
 </dd>
 </dl>
 
@@ -4286,8 +4324,8 @@ Returns BadgeData for querying badge information
 
 ## Function `clear_selected_badge`
 
-Clear the selected badge (owner only)
-After clearing, the first badge will be displayed by default
+Clear the selected badge (owner only). Clears both platform and ecosystem selection overrides;
+display falls back to first badge per [<code><a href="../social_contracts/profile.md#social_contracts_profile_get_display_badge">get_display_badge</a></code>] / [<code><a href="../social_contracts/profile.md#social_contracts_profile_get_display_ecosystem_badge">get_display_ecosystem_badge</a></code>].
 
 
 <pre><code><b>public</b> <b>entry</b> <b>fun</b> <a href="../social_contracts/profile.md#social_contracts_profile_clear_selected_badge">clear_selected_badge</a>(<a href="../social_contracts/profile.md#social_contracts_profile">profile</a>: &<b>mut</b> <a href="../social_contracts/profile.md#social_contracts_profile_Profile">social_contracts::profile::Profile</a>, clock: &<a href="../myso/clock.md#myso_clock_Clock">myso::clock::Clock</a>, ctx: &<b>mut</b> <a href="../myso/tx_context.md#myso_tx_context_TxContext">myso::tx_context::TxContext</a>)
@@ -4307,14 +4345,14 @@ After clearing, the first badge will be displayed by default
     <b>let</b> sender = tx_context::sender(ctx);
     // Verify sender is the <a href="../social_contracts/profile.md#social_contracts_profile">profile</a> <a href="../social_contracts/profile.md#social_contracts_profile_owner">owner</a>
     <b>assert</b>!(<a href="../social_contracts/profile.md#social_contracts_profile">profile</a>.<a href="../social_contracts/profile.md#social_contracts_profile_owner">owner</a> == sender, <a href="../social_contracts/profile.md#social_contracts_profile_EUnauthorized">EUnauthorized</a>);
-    // Only clear <b>if</b> a badge is currently selected
-    <b>if</b> (option::is_some(&<a href="../social_contracts/profile.md#social_contracts_profile">profile</a>.selected_badge_id)) {
-        <a href="../social_contracts/profile.md#social_contracts_profile">profile</a>.selected_badge_id = option::none();
-        // Emit badge selected event with empty <a href="../social_contracts/profile.md#social_contracts_profile_badge_id">badge_id</a> to indicate clearing
-        // Note: We'll <b>use</b> an empty string to indicate clearing
+    <b>let</b> had_platform = option::is_some(&<a href="../social_contracts/profile.md#social_contracts_profile">profile</a>.selected_badge_id);
+    <b>let</b> had_ecosystem = option::is_some(&<a href="../social_contracts/profile.md#social_contracts_profile">profile</a>.selected_ecosystem_badge_id);
+    <a href="../social_contracts/profile.md#social_contracts_profile">profile</a>.selected_badge_id = option::none();
+    <a href="../social_contracts/profile.md#social_contracts_profile">profile</a>.selected_ecosystem_badge_id = option::none();
+    <b>if</b> (had_platform || had_ecosystem) {
         event::emit(<a href="../social_contracts/profile.md#social_contracts_profile_BadgeSelectedEvent">BadgeSelectedEvent</a> {
             profile_id: object::uid_to_address(&<a href="../social_contracts/profile.md#social_contracts_profile">profile</a>.<a href="../social_contracts/profile.md#social_contracts_profile_id">id</a>),
-            <a href="../social_contracts/profile.md#social_contracts_profile_badge_id">badge_id</a>: string::utf8(b""), // Empty string indicates clearing
+            <a href="../social_contracts/profile.md#social_contracts_profile_badge_id">badge_id</a>: string::utf8(b""),
             selected_by: sender,
             selected_at: clock::timestamp_ms(clock),
         });
@@ -4492,11 +4530,10 @@ Clear the selected ecosystem badge (owner only)
     <b>assert</b>!(<a href="../social_contracts/profile.md#social_contracts_profile">profile</a>.<a href="../social_contracts/profile.md#social_contracts_profile_owner">owner</a> == sender, <a href="../social_contracts/profile.md#social_contracts_profile_EUnauthorized">EUnauthorized</a>);
     <b>if</b> (option::is_some(&<a href="../social_contracts/profile.md#social_contracts_profile">profile</a>.selected_ecosystem_badge_id)) {
         <a href="../social_contracts/profile.md#social_contracts_profile">profile</a>.selected_ecosystem_badge_id = option::none();
-        event::emit(<a href="../social_contracts/profile.md#social_contracts_profile_BadgeSelectedEvent">BadgeSelectedEvent</a> {
+        event::emit(<a href="../social_contracts/profile.md#social_contracts_profile_EcosystemBadgeSelectionClearedEvent">EcosystemBadgeSelectionClearedEvent</a> {
             profile_id: object::uid_to_address(&<a href="../social_contracts/profile.md#social_contracts_profile">profile</a>.<a href="../social_contracts/profile.md#social_contracts_profile_id">id</a>),
-            <a href="../social_contracts/profile.md#social_contracts_profile_badge_id">badge_id</a>: string::utf8(b""),
-            selected_by: sender,
-            selected_at: clock::timestamp_ms(clock),
+            cleared_by: sender,
+            cleared_at: clock::timestamp_ms(clock),
         });
     };
 }

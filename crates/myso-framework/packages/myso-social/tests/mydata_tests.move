@@ -25,6 +25,7 @@ module social_contracts::mydata_tests {
         MyDataClaimVault,
     };
     use social_contracts::profile::{Self, Profile, UsernameRegistry};
+    use social_contracts::memory::MemoryRegistry;
     
     // Test addresses
     const CREATOR: address = @0xA1;
@@ -596,17 +597,23 @@ module social_contracts::mydata_tests {
         test_scenario::next_tx(scenario, CREATOR);
         {
             let mut registry = test_scenario::take_shared<UsernameRegistry>(scenario);
+            let mut memory_registry = test_scenario::take_shared<MemoryRegistry>(scenario);
+            let clock = test_scenario::take_shared<Clock>(scenario);
             
             profile::create_profile(
                 &mut registry,
+                &mut memory_registry,
                 string::utf8(b"Test Creator"),
                 string::utf8(b"creator"),
                 string::utf8(b"Creator profile for testing"),
                 b"https://example.com/creator.jpg",
                 b"",
+                &clock,
                 test_scenario::ctx(scenario)
             );
             
+            test_scenario::return_shared(clock);
+            test_scenario::return_shared(memory_registry);
             test_scenario::return_shared(registry);
         };
     }

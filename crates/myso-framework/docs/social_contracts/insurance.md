@@ -8,16 +8,25 @@ Sells coverage against losing outcomes and pays out deterministically on SPoT re
 
 -  [Struct `InsuranceAdminCap`](#social_contracts_insurance_InsuranceAdminCap)
 -  [Struct `InsuranceConfig`](#social_contracts_insurance_InsuranceConfig)
+-  [Struct `InsuranceRouterConfig`](#social_contracts_insurance_InsuranceRouterConfig)
+-  [Struct `InsuranceBackstopPool`](#social_contracts_insurance_InsuranceBackstopPool)
+-  [Struct `CoverageRoute`](#social_contracts_insurance_CoverageRoute)
 -  [Struct `UnderwriterVault`](#social_contracts_insurance_UnderwriterVault)
 -  [Struct `MarketExposure`](#social_contracts_insurance_MarketExposure)
 -  [Struct `CoveragePolicy`](#social_contracts_insurance_CoveragePolicy)
 -  [Struct `PremiumQuote`](#social_contracts_insurance_PremiumQuote)
+-  [Struct `VaultCoverageQuote`](#social_contracts_insurance_VaultCoverageQuote)
 -  [Struct `RiskPricingConfigUpdatedEvent`](#social_contracts_insurance_RiskPricingConfigUpdatedEvent)
 -  [Struct `ConfigInitializedEvent`](#social_contracts_insurance_ConfigInitializedEvent)
 -  [Struct `UnderwriterVaultCreatedEvent`](#social_contracts_insurance_UnderwriterVaultCreatedEvent)
+-  [Struct `VaultStatusUpdatedEvent`](#social_contracts_insurance_VaultStatusUpdatedEvent)
 -  [Struct `UnderwriterVaultDepositedEvent`](#social_contracts_insurance_UnderwriterVaultDepositedEvent)
 -  [Struct `UnderwriterVaultWithdrawnEvent`](#social_contracts_insurance_UnderwriterVaultWithdrawnEvent)
 -  [Struct `CoveragePurchasedEvent`](#social_contracts_insurance_CoveragePurchasedEvent)
+-  [Struct `CoverageRoutedEvent`](#social_contracts_insurance_CoverageRoutedEvent)
+-  [Struct `RouteFillEvent`](#social_contracts_insurance_RouteFillEvent)
+-  [Struct `BackstopUsedEvent`](#social_contracts_insurance_BackstopUsedEvent)
+-  [Struct `BackstopTreasuryDepositEvent`](#social_contracts_insurance_BackstopTreasuryDepositEvent)
 -  [Struct `CoverageCancelledEvent`](#social_contracts_insurance_CoverageCancelledEvent)
 -  [Struct `CoverageClaimedEvent`](#social_contracts_insurance_CoverageClaimedEvent)
 -  [Struct `ConfigUpdatedEvent`](#social_contracts_insurance_ConfigUpdatedEvent)
@@ -30,6 +39,22 @@ Sells coverage against losing outcomes and pays out deterministically on SPoT re
 -  [Function `create_insurance_admin_cap`](#social_contracts_insurance_create_insurance_admin_cap)
 -  [Function `bootstrap_init`](#social_contracts_insurance_bootstrap_init)
 -  [Function `create_vault`](#social_contracts_insurance_create_vault)
+-  [Function `set_vault_status`](#social_contracts_insurance_set_vault_status)
+-  [Function `set_router_flags`](#social_contracts_insurance_set_router_flags)
+-  [Function `set_router_limits`](#social_contracts_insurance_set_router_limits)
+-  [Function `set_market_pause`](#social_contracts_insurance_set_market_pause)
+-  [Function `set_backstop_caps`](#social_contracts_insurance_set_backstop_caps)
+-  [Function `set_tail_mode`](#social_contracts_insurance_set_tail_mode)
+-  [Function `set_backstop_paused`](#social_contracts_insurance_set_backstop_paused)
+-  [Function `deposit_backstop_treasury`](#social_contracts_insurance_deposit_backstop_treasury)
+-  [Function `tail_pay_shortfall`](#social_contracts_insurance_tail_pay_shortfall)
+-  [Function `min_cap_sub`](#social_contracts_insurance_min_cap_sub)
+-  [Function `min_u64`](#social_contracts_insurance_min_u64)
+-  [Function `copy_id_vec`](#social_contracts_insurance_copy_id_vec)
+-  [Function `new_router_config_defaults`](#social_contracts_insurance_new_router_config_defaults)
+-  [Function `new_backstop_pool_defaults`](#social_contracts_insurance_new_backstop_pool_defaults)
+-  [Function `assert_market_router_open`](#social_contracts_insurance_assert_market_router_open)
+-  [Function `assert_vault_buy_guards`](#social_contracts_insurance_assert_vault_buy_guards)
 -  [Function `deposit_capital`](#social_contracts_insurance_deposit_capital)
 -  [Function `withdraw_capital`](#social_contracts_insurance_withdraw_capital)
 -  [Function `premium_quote_premium`](#social_contracts_insurance_premium_quote_premium)
@@ -41,7 +66,14 @@ Sells coverage against losing outcomes and pays out deterministically on SPoT re
 -  [Function `get_market_option_reserved`](#social_contracts_insurance_get_market_option_reserved)
 -  [Function `compute_spot_risk_quote`](#social_contracts_insurance_compute_spot_risk_quote)
 -  [Function `quote_premium_with_spot_risk`](#social_contracts_insurance_quote_premium_with_spot_risk)
+-  [Function `coverage_quote_skipped`](#social_contracts_insurance_coverage_quote_skipped)
+-  [Function `max_fill_covered_for_vault`](#social_contracts_insurance_max_fill_covered_for_vault)
+-  [Function `reserve_to_covered`](#social_contracts_insurance_reserve_to_covered)
+-  [Function `quote_vault_for_spot_coverage`](#social_contracts_insurance_quote_vault_for_spot_coverage)
+-  [Function `vault_utilization_bps`](#social_contracts_insurance_vault_utilization_bps)
+-  [Function `buy_coverage_execute`](#social_contracts_insurance_buy_coverage_execute)
 -  [Function `buy_coverage`](#social_contracts_insurance_buy_coverage)
+-  [Function `route_buy_coverage_4`](#social_contracts_insurance_route_buy_coverage_4)
 -  [Function `cancel_coverage`](#social_contracts_insurance_cancel_coverage)
 -  [Function `claim`](#social_contracts_insurance_claim)
 -  [Function `expire_policy`](#social_contracts_insurance_expire_policy)
@@ -263,6 +295,249 @@ Sells coverage against losing outcomes and pays out deterministically on SPoT re
 
 </details>
 
+<a name="social_contracts_insurance_InsuranceRouterConfig"></a>
+
+## Struct `InsuranceRouterConfig`
+
+
+
+<pre><code><b>public</b> <b>struct</b> <a href="../social_contracts/insurance.md#social_contracts_insurance_InsuranceRouterConfig">InsuranceRouterConfig</a> <b>has</b> key
+</code></pre>
+
+
+
+<details>
+<summary>Fields</summary>
+
+
+<dl>
+<dt>
+<code>id: <a href="../myso/object.md#myso_object_UID">myso::object::UID</a></code>
+</dt>
+<dd>
+</dd>
+<dt>
+<code>router_enabled: bool</code>
+</dt>
+<dd>
+</dd>
+<dt>
+<code>router_paused: bool</code>
+</dt>
+<dd>
+</dd>
+<dt>
+<code>max_route_reserve_market: u64</code>
+</dt>
+<dd>
+</dd>
+<dt>
+<code>max_route_reserve_user: u64</code>
+</dt>
+<dd>
+</dd>
+<dt>
+<code>max_route_reserve_option: u64</code>
+</dt>
+<dd>
+</dd>
+<dt>
+<code>max_vault_concentration_bps: u64</code>
+</dt>
+<dd>
+</dd>
+<dt>
+<code>min_vault_health_factor_bps: u64</code>
+</dt>
+<dd>
+</dd>
+<dt>
+<code>market_pause: <a href="../myso/table.md#myso_table_Table">myso::table::Table</a>&lt;<b>address</b>, bool&gt;</code>
+</dt>
+<dd>
+</dd>
+<dt>
+<code>version: u64</code>
+</dt>
+<dd>
+</dd>
+</dl>
+
+
+</details>
+
+<a name="social_contracts_insurance_InsuranceBackstopPool"></a>
+
+## Struct `InsuranceBackstopPool`
+
+
+
+<pre><code><b>public</b> <b>struct</b> <a href="../social_contracts/insurance.md#social_contracts_insurance_InsuranceBackstopPool">InsuranceBackstopPool</a> <b>has</b> key
+</code></pre>
+
+
+
+<details>
+<summary>Fields</summary>
+
+
+<dl>
+<dt>
+<code>id: <a href="../myso/object.md#myso_object_UID">myso::object::UID</a></code>
+</dt>
+<dd>
+</dd>
+<dt>
+<code>capital: <a href="../myso/balance.md#myso_balance_Balance">myso::balance::Balance</a>&lt;<a href="../myso/myso.md#myso_myso_MYSO">myso::myso::MYSO</a>&gt;</code>
+</dt>
+<dd>
+</dd>
+<dt>
+<code>total_paid_out: u64</code>
+</dt>
+<dd>
+</dd>
+<dt>
+<code>paid_by_market: <a href="../myso/table.md#myso_table_Table">myso::table::Table</a>&lt;<b>address</b>, u64&gt;</code>
+</dt>
+<dd>
+</dd>
+<dt>
+<code>max_payout_per_market: u64</code>
+</dt>
+<dd>
+</dd>
+<dt>
+<code>max_payout_per_event: u64</code>
+</dt>
+<dd>
+</dd>
+<dt>
+<code>global_hard_cap: u64</code>
+</dt>
+<dd>
+</dd>
+<dt>
+<code>tail_mode_enabled: bool</code>
+</dt>
+<dd>
+</dd>
+<dt>
+<code>paused: bool</code>
+</dt>
+<dd>
+</dd>
+<dt>
+<code>sweep_premium_bps: u64</code>
+</dt>
+<dd>
+</dd>
+<dt>
+<code>tail_pay_partial_on_cap: bool</code>
+</dt>
+<dd>
+</dd>
+<dt>
+<code>version: u64</code>
+</dt>
+<dd>
+</dd>
+</dl>
+
+
+</details>
+
+<a name="social_contracts_insurance_CoverageRoute"></a>
+
+## Struct `CoverageRoute`
+
+
+
+<pre><code><b>public</b> <b>struct</b> <a href="../social_contracts/insurance.md#social_contracts_insurance_CoverageRoute">CoverageRoute</a> <b>has</b> key
+</code></pre>
+
+
+
+<details>
+<summary>Fields</summary>
+
+
+<dl>
+<dt>
+<code>id: <a href="../myso/object.md#myso_object_UID">myso::object::UID</a></code>
+</dt>
+<dd>
+</dd>
+<dt>
+<code>insured: <b>address</b></code>
+</dt>
+<dd>
+</dd>
+<dt>
+<code>market_id: <b>address</b></code>
+</dt>
+<dd>
+</dd>
+<dt>
+<code>option_id: u8</code>
+</dt>
+<dd>
+</dd>
+<dt>
+<code>coverage_bps: u64</code>
+</dt>
+<dd>
+</dd>
+<dt>
+<code>start_time_ms: u64</code>
+</dt>
+<dd>
+</dd>
+<dt>
+<code>expiry_time_ms: u64</code>
+</dt>
+<dd>
+</dd>
+<dt>
+<code>policy_ids: vector&lt;<a href="../myso/object.md#myso_object_ID">myso::object::ID</a>&gt;</code>
+</dt>
+<dd>
+</dd>
+<dt>
+<code>vault_ids: vector&lt;<a href="../myso/object.md#myso_object_ID">myso::object::ID</a>&gt;</code>
+</dt>
+<dd>
+</dd>
+<dt>
+<code>total_covered: u64</code>
+</dt>
+<dd>
+</dd>
+<dt>
+<code>total_premium: u64</code>
+</dt>
+<dd>
+</dd>
+<dt>
+<code>total_reserve: u64</code>
+</dt>
+<dd>
+</dd>
+<dt>
+<code>total_backstop_sweep: u64</code>
+</dt>
+<dd>
+</dd>
+<dt>
+<code>version: u64</code>
+</dt>
+<dd>
+</dd>
+</dl>
+
+
+</details>
+
 <a name="social_contracts_insurance_UnderwriterVault"></a>
 
 ## Struct `UnderwriterVault`
@@ -316,6 +591,21 @@ Sells coverage against losing outcomes and pays out deterministically on SPoT re
 </dd>
 <dt>
 <code>max_exposure_per_user: u64</code>
+</dt>
+<dd>
+</dd>
+<dt>
+<code>max_exposure_per_option: u64</code>
+</dt>
+<dd>
+</dd>
+<dt>
+<code>enabled: bool</code>
+</dt>
+<dd>
+</dd>
+<dt>
+<code>paused: bool</code>
 </dt>
 <dd>
 </dd>
@@ -446,6 +736,16 @@ Sells coverage against losing outcomes and pays out deterministically on SPoT re
 </dt>
 <dd>
 </dd>
+<dt>
+<code>route_id: <a href="../std/option.md#std_option_Option">std::option::Option</a>&lt;<a href="../myso/object.md#myso_object_ID">myso::object::ID</a>&gt;</code>
+</dt>
+<dd>
+</dd>
+<dt>
+<code>route_leg_index: u8</code>
+</dt>
+<dd>
+</dd>
 </dl>
 
 
@@ -499,6 +799,72 @@ Sells coverage against losing outcomes and pays out deterministically on SPoT re
 </dd>
 <dt>
 <code>base_premium: u64</code>
+</dt>
+<dd>
+</dd>
+</dl>
+
+
+</details>
+
+<a name="social_contracts_insurance_VaultCoverageQuote"></a>
+
+## Struct `VaultCoverageQuote`
+
+
+
+<pre><code><b>public</b> <b>struct</b> <a href="../social_contracts/insurance.md#social_contracts_insurance_VaultCoverageQuote">VaultCoverageQuote</a> <b>has</b> <b>copy</b>, drop
+</code></pre>
+
+
+
+<details>
+<summary>Fields</summary>
+
+
+<dl>
+<dt>
+<code>premium: u64</code>
+</dt>
+<dd>
+</dd>
+<dt>
+<code>premium_raw: u64</code>
+</dt>
+<dd>
+</dd>
+<dt>
+<code>reserve_required: u64</code>
+</dt>
+<dd>
+</dd>
+<dt>
+<code>available_capacity_reserve: u64</code>
+</dt>
+<dd>
+</dd>
+<dt>
+<code>risk_multiplier_bps: u64</code>
+</dt>
+<dd>
+</dd>
+<dt>
+<code>implied_prob_win_bps: u64</code>
+</dt>
+<dd>
+</dd>
+<dt>
+<code>utilization_bps: u64</code>
+</dt>
+<dd>
+</dd>
+<dt>
+<code>max_fill_covered_amount: u64</code>
+</dt>
+<dd>
+</dd>
+<dt>
+<code>skipped_reason: u8</code>
 </dt>
 <dd>
 </dd>
@@ -691,6 +1057,92 @@ Events
 </dt>
 <dd>
 </dd>
+<dt>
+<code>max_exposure_per_option: u64</code>
+</dt>
+<dd>
+</dd>
+<dt>
+<code>enabled: bool</code>
+</dt>
+<dd>
+</dd>
+<dt>
+<code>paused: bool</code>
+</dt>
+<dd>
+</dd>
+</dl>
+
+
+</details>
+
+<a name="social_contracts_insurance_VaultStatusUpdatedEvent"></a>
+
+## Struct `VaultStatusUpdatedEvent`
+
+
+
+<pre><code><b>public</b> <b>struct</b> <a href="../social_contracts/insurance.md#social_contracts_insurance_VaultStatusUpdatedEvent">VaultStatusUpdatedEvent</a> <b>has</b> <b>copy</b>, drop
+</code></pre>
+
+
+
+<details>
+<summary>Fields</summary>
+
+
+<dl>
+<dt>
+<code>vault_id: <a href="../myso/object.md#myso_object_ID">myso::object::ID</a></code>
+</dt>
+<dd>
+</dd>
+<dt>
+<code>enabled: bool</code>
+</dt>
+<dd>
+</dd>
+<dt>
+<code>paused: bool</code>
+</dt>
+<dd>
+</dd>
+<dt>
+<code>max_exposure_per_option: u64</code>
+</dt>
+<dd>
+</dd>
+<dt>
+<code>max_exposure_per_market: u64</code>
+</dt>
+<dd>
+</dd>
+<dt>
+<code>max_exposure_per_user: u64</code>
+</dt>
+<dd>
+</dd>
+<dt>
+<code>base_rate_bps_per_day: u64</code>
+</dt>
+<dd>
+</dd>
+<dt>
+<code>utilization_multiplier_bps: u64</code>
+</dt>
+<dd>
+</dd>
+<dt>
+<code>updated_by: <b>address</b></code>
+</dt>
+<dd>
+</dd>
+<dt>
+<code>timestamp_ms: u64</code>
+</dt>
+<dd>
+</dd>
 </dl>
 
 
@@ -861,6 +1313,250 @@ Events
 </dd>
 <dt>
 <code>option_amount: u64</code>
+</dt>
+<dd>
+</dd>
+<dt>
+<code>backstop_sweep_amount: u64</code>
+</dt>
+<dd>
+</dd>
+<dt>
+<code>route_id: <a href="../std/option.md#std_option_Option">std::option::Option</a>&lt;<a href="../myso/object.md#myso_object_ID">myso::object::ID</a>&gt;</code>
+</dt>
+<dd>
+</dd>
+<dt>
+<code>route_leg_index: u8</code>
+</dt>
+<dd>
+</dd>
+</dl>
+
+
+</details>
+
+<a name="social_contracts_insurance_CoverageRoutedEvent"></a>
+
+## Struct `CoverageRoutedEvent`
+
+
+
+<pre><code><b>public</b> <b>struct</b> <a href="../social_contracts/insurance.md#social_contracts_insurance_CoverageRoutedEvent">CoverageRoutedEvent</a> <b>has</b> <b>copy</b>, drop
+</code></pre>
+
+
+
+<details>
+<summary>Fields</summary>
+
+
+<dl>
+<dt>
+<code>route_id: <a href="../myso/object.md#myso_object_ID">myso::object::ID</a></code>
+</dt>
+<dd>
+</dd>
+<dt>
+<code>insured: <b>address</b></code>
+</dt>
+<dd>
+</dd>
+<dt>
+<code>market_id: <b>address</b></code>
+</dt>
+<dd>
+</dd>
+<dt>
+<code>option_id: u8</code>
+</dt>
+<dd>
+</dd>
+<dt>
+<code>coverage_bps: u64</code>
+</dt>
+<dd>
+</dd>
+<dt>
+<code>duration_ms: u64</code>
+</dt>
+<dd>
+</dd>
+<dt>
+<code>total_covered: u64</code>
+</dt>
+<dd>
+</dd>
+<dt>
+<code>total_premium: u64</code>
+</dt>
+<dd>
+</dd>
+<dt>
+<code>total_reserve: u64</code>
+</dt>
+<dd>
+</dd>
+<dt>
+<code>total_backstop_sweep: u64</code>
+</dt>
+<dd>
+</dd>
+<dt>
+<code>expiry_time_ms: u64</code>
+</dt>
+<dd>
+</dd>
+<dt>
+<code>policy_ids: vector&lt;<a href="../myso/object.md#myso_object_ID">myso::object::ID</a>&gt;</code>
+</dt>
+<dd>
+</dd>
+<dt>
+<code>vault_ids: vector&lt;<a href="../myso/object.md#myso_object_ID">myso::object::ID</a>&gt;</code>
+</dt>
+<dd>
+</dd>
+</dl>
+
+
+</details>
+
+<a name="social_contracts_insurance_RouteFillEvent"></a>
+
+## Struct `RouteFillEvent`
+
+
+
+<pre><code><b>public</b> <b>struct</b> <a href="../social_contracts/insurance.md#social_contracts_insurance_RouteFillEvent">RouteFillEvent</a> <b>has</b> <b>copy</b>, drop
+</code></pre>
+
+
+
+<details>
+<summary>Fields</summary>
+
+
+<dl>
+<dt>
+<code>route_id: <a href="../myso/object.md#myso_object_ID">myso::object::ID</a></code>
+</dt>
+<dd>
+</dd>
+<dt>
+<code>leg_index: u8</code>
+</dt>
+<dd>
+</dd>
+<dt>
+<code>vault_id: <a href="../myso/object.md#myso_object_ID">myso::object::ID</a></code>
+</dt>
+<dd>
+</dd>
+<dt>
+<code>policy_id: <a href="../myso/object.md#myso_object_ID">myso::object::ID</a></code>
+</dt>
+<dd>
+</dd>
+<dt>
+<code>covered_amount: u64</code>
+</dt>
+<dd>
+</dd>
+<dt>
+<code>premium_paid: u64</code>
+</dt>
+<dd>
+</dd>
+<dt>
+<code>reserve_locked: u64</code>
+</dt>
+<dd>
+</dd>
+<dt>
+<code>backstop_sweep_amount: u64</code>
+</dt>
+<dd>
+</dd>
+</dl>
+
+
+</details>
+
+<a name="social_contracts_insurance_BackstopUsedEvent"></a>
+
+## Struct `BackstopUsedEvent`
+
+
+
+<pre><code><b>public</b> <b>struct</b> <a href="../social_contracts/insurance.md#social_contracts_insurance_BackstopUsedEvent">BackstopUsedEvent</a> <b>has</b> <b>copy</b>, drop
+</code></pre>
+
+
+
+<details>
+<summary>Fields</summary>
+
+
+<dl>
+<dt>
+<code>market_id: <b>address</b></code>
+</dt>
+<dd>
+</dd>
+<dt>
+<code>recipient: <b>address</b></code>
+</dt>
+<dd>
+</dd>
+<dt>
+<code>amount: u64</code>
+</dt>
+<dd>
+</dd>
+<dt>
+<code>total_paid_out_after: u64</code>
+</dt>
+<dd>
+</dd>
+<dt>
+<code>tail_mode_enabled: bool</code>
+</dt>
+<dd>
+</dd>
+</dl>
+
+
+</details>
+
+<a name="social_contracts_insurance_BackstopTreasuryDepositEvent"></a>
+
+## Struct `BackstopTreasuryDepositEvent`
+
+
+
+<pre><code><b>public</b> <b>struct</b> <a href="../social_contracts/insurance.md#social_contracts_insurance_BackstopTreasuryDepositEvent">BackstopTreasuryDepositEvent</a> <b>has</b> <b>copy</b>, drop
+</code></pre>
+
+
+
+<details>
+<summary>Fields</summary>
+
+
+<dl>
+<dt>
+<code>depositor: <b>address</b></code>
+</dt>
+<dd>
+</dd>
+<dt>
+<code>amount: u64</code>
+</dt>
+<dd>
+</dd>
+<dt>
+<code>new_balance: u64</code>
 </dt>
 <dd>
 </dd>
@@ -1239,6 +1935,123 @@ Errors
 
 
 
+<a name="social_contracts_insurance_EVaultDisabled"></a>
+
+
+
+<pre><code><b>const</b> <a href="../social_contracts/insurance.md#social_contracts_insurance_EVaultDisabled">EVaultDisabled</a>: u64 = 21;
+</code></pre>
+
+
+
+<a name="social_contracts_insurance_EVaultPaused"></a>
+
+
+
+<pre><code><b>const</b> <a href="../social_contracts/insurance.md#social_contracts_insurance_EVaultPaused">EVaultPaused</a>: u64 = 22;
+</code></pre>
+
+
+
+<a name="social_contracts_insurance_ERouterPaused"></a>
+
+
+
+<pre><code><b>const</b> <a href="../social_contracts/insurance.md#social_contracts_insurance_ERouterPaused">ERouterPaused</a>: u64 = 23;
+</code></pre>
+
+
+
+<a name="social_contracts_insurance_ERouteDisabled"></a>
+
+
+
+<pre><code><b>const</b> <a href="../social_contracts/insurance.md#social_contracts_insurance_ERouteDisabled">ERouteDisabled</a>: u64 = 24;
+</code></pre>
+
+
+
+<a name="social_contracts_insurance_EDeadlinePassed"></a>
+
+
+
+<pre><code><b>const</b> <a href="../social_contracts/insurance.md#social_contracts_insurance_EDeadlinePassed">EDeadlinePassed</a>: u64 = 25;
+</code></pre>
+
+
+
+<a name="social_contracts_insurance_ESlippagePremium"></a>
+
+
+
+<pre><code><b>const</b> <a href="../social_contracts/insurance.md#social_contracts_insurance_ESlippagePremium">ESlippagePremium</a>: u64 = 26;
+</code></pre>
+
+
+
+<a name="social_contracts_insurance_ESlippageCovered"></a>
+
+
+
+<pre><code><b>const</b> <a href="../social_contracts/insurance.md#social_contracts_insurance_ESlippageCovered">ESlippageCovered</a>: u64 = 27;
+</code></pre>
+
+
+
+<a name="social_contracts_insurance_EDuplicateVaultInRoute"></a>
+
+
+
+<pre><code><b>const</b> <a href="../social_contracts/insurance.md#social_contracts_insurance_EDuplicateVaultInRoute">EDuplicateVaultInRoute</a>: u64 = 28;
+</code></pre>
+
+
+
+<a name="social_contracts_insurance_EBackstopPaused"></a>
+
+
+
+<pre><code><b>const</b> <a href="../social_contracts/insurance.md#social_contracts_insurance_EBackstopPaused">EBackstopPaused</a>: u64 = 29;
+</code></pre>
+
+
+
+<a name="social_contracts_insurance_ETailModeDisabled"></a>
+
+
+
+<pre><code><b>const</b> <a href="../social_contracts/insurance.md#social_contracts_insurance_ETailModeDisabled">ETailModeDisabled</a>: u64 = 30;
+</code></pre>
+
+
+
+<a name="social_contracts_insurance_EBackstopPayoutLimit"></a>
+
+
+
+<pre><code><b>const</b> <a href="../social_contracts/insurance.md#social_contracts_insurance_EBackstopPayoutLimit">EBackstopPayoutLimit</a>: u64 = 31;
+</code></pre>
+
+
+
+<a name="social_contracts_insurance_EInvalidFills"></a>
+
+
+
+<pre><code><b>const</b> <a href="../social_contracts/insurance.md#social_contracts_insurance_EInvalidFills">EInvalidFills</a>: u64 = 32;
+</code></pre>
+
+
+
+<a name="social_contracts_insurance_EVaultConcentration"></a>
+
+
+
+<pre><code><b>const</b> <a href="../social_contracts/insurance.md#social_contracts_insurance_EVaultConcentration">EVaultConcentration</a>: u64 = 33;
+</code></pre>
+
+
+
 <a name="social_contracts_insurance_STATUS_ACTIVE"></a>
 
 Status
@@ -1450,6 +2263,97 @@ Target pool size such that liquidity multiplier ≈ 1× when <code>total_option_
 
 
 
+<a name="social_contracts_insurance_SKIPPED_OK"></a>
+
+<code><a href="../social_contracts/insurance.md#social_contracts_insurance_VaultCoverageQuote">VaultCoverageQuote</a>.skipped_reason</code> — 0 = quotable at <code>max_fill_covered_amount</code>.
+
+
+<pre><code><b>const</b> <a href="../social_contracts/insurance.md#social_contracts_insurance_SKIPPED_OK">SKIPPED_OK</a>: u8 = 0;
+</code></pre>
+
+
+
+<a name="social_contracts_insurance_SKIPPED_VAULT_DISABLED"></a>
+
+
+
+<pre><code><b>const</b> <a href="../social_contracts/insurance.md#social_contracts_insurance_SKIPPED_VAULT_DISABLED">SKIPPED_VAULT_DISABLED</a>: u8 = 1;
+</code></pre>
+
+
+
+<a name="social_contracts_insurance_SKIPPED_VAULT_PAUSED"></a>
+
+
+
+<pre><code><b>const</b> <a href="../social_contracts/insurance.md#social_contracts_insurance_SKIPPED_VAULT_PAUSED">SKIPPED_VAULT_PAUSED</a>: u8 = 2;
+</code></pre>
+
+
+
+<a name="social_contracts_insurance_SKIPPED_ROUTER_PAUSED"></a>
+
+
+
+<pre><code><b>const</b> <a href="../social_contracts/insurance.md#social_contracts_insurance_SKIPPED_ROUTER_PAUSED">SKIPPED_ROUTER_PAUSED</a>: u8 = 3;
+</code></pre>
+
+
+
+<a name="social_contracts_insurance_SKIPPED_MARKET_PAUSED"></a>
+
+
+
+<pre><code><b>const</b> <a href="../social_contracts/insurance.md#social_contracts_insurance_SKIPPED_MARKET_PAUSED">SKIPPED_MARKET_PAUSED</a>: u8 = 4;
+</code></pre>
+
+
+
+<a name="social_contracts_insurance_SKIPPED_UNHEALTHY_VAULT"></a>
+
+
+
+<pre><code><b>const</b> <a href="../social_contracts/insurance.md#social_contracts_insurance_SKIPPED_UNHEALTHY_VAULT">SKIPPED_UNHEALTHY_VAULT</a>: u8 = 5;
+</code></pre>
+
+
+
+<a name="social_contracts_insurance_SKIPPED_RISK_MULTIPLIER"></a>
+
+
+
+<pre><code><b>const</b> <a href="../social_contracts/insurance.md#social_contracts_insurance_SKIPPED_RISK_MULTIPLIER">SKIPPED_RISK_MULTIPLIER</a>: u8 = 6;
+</code></pre>
+
+
+
+<a name="social_contracts_insurance_SKIPPED_ZERO_CAPACITY"></a>
+
+
+
+<pre><code><b>const</b> <a href="../social_contracts/insurance.md#social_contracts_insurance_SKIPPED_ZERO_CAPACITY">SKIPPED_ZERO_CAPACITY</a>: u8 = 7;
+</code></pre>
+
+
+
+<a name="social_contracts_insurance_SKIPPED_THIN_OR_POOL"></a>
+
+
+
+<pre><code><b>const</b> <a href="../social_contracts/insurance.md#social_contracts_insurance_SKIPPED_THIN_OR_POOL">SKIPPED_THIN_OR_POOL</a>: u8 = 8;
+</code></pre>
+
+
+
+<a name="social_contracts_insurance_MAX_ROUTE_LEGS"></a>
+
+
+
+<pre><code><b>const</b> <a href="../social_contracts/insurance.md#social_contracts_insurance_MAX_ROUTE_LEGS">MAX_ROUTE_LEGS</a>: u64 = 4;
+</code></pre>
+
+
+
 <a name="social_contracts_insurance_init_config"></a>
 
 ## Function `init_config`
@@ -1502,6 +2406,8 @@ Creates InsuranceConfig and transfers InsuranceAdminCap to caller.
         exposure_k_bps: <a href="../social_contracts/insurance.md#social_contracts_insurance_DEFAULT_EXPOSURE_K_BPS">DEFAULT_EXPOSURE_K_BPS</a>,
         version: <a href="../social_contracts/insurance.md#social_contracts_insurance_DEFAULT_VERSION">DEFAULT_VERSION</a>,
     });
+    transfer::share_object(<a href="../social_contracts/insurance.md#social_contracts_insurance_new_router_config_defaults">new_router_config_defaults</a>(ctx));
+    transfer::share_object(<a href="../social_contracts/insurance.md#social_contracts_insurance_new_backstop_pool_defaults">new_backstop_pool_defaults</a>(ctx));
     transfer::public_transfer(<a href="../social_contracts/insurance.md#social_contracts_insurance_InsuranceAdminCap">InsuranceAdminCap</a> { id: object::new(ctx) }, admin);
     event::emit(<a href="../social_contracts/insurance.md#social_contracts_insurance_ConfigInitializedEvent">ConfigInitializedEvent</a> {
         admin,
@@ -1774,6 +2680,8 @@ Emergency enable/disable toggle (admin only)
         exposure_k_bps: <a href="../social_contracts/insurance.md#social_contracts_insurance_DEFAULT_EXPOSURE_K_BPS">DEFAULT_EXPOSURE_K_BPS</a>,
         version: <a href="../social_contracts/insurance.md#social_contracts_insurance_DEFAULT_VERSION">DEFAULT_VERSION</a>,
     };
+    transfer::share_object(<a href="../social_contracts/insurance.md#social_contracts_insurance_new_router_config_defaults">new_router_config_defaults</a>(ctx));
+    transfer::share_object(<a href="../social_contracts/insurance.md#social_contracts_insurance_new_backstop_pool_defaults">new_backstop_pool_defaults</a>(ctx));
     event::emit(<a href="../social_contracts/insurance.md#social_contracts_insurance_ConfigUpdatedEvent">ConfigUpdatedEvent</a> {
         updated_by: admin,
         enable_flag: <b>false</b>,
@@ -1831,6 +2739,9 @@ Create an underwriter vault
     ctx: &<b>mut</b> TxContext
 ) {
     <b>let</b> underwriter = tx_context::sender(ctx);
+    <b>let</b> max_exposure_per_option = 0;
+    <b>let</b> enabled = <b>true</b>;
+    <b>let</b> paused = <b>false</b>;
     <b>let</b> vault = <a href="../social_contracts/insurance.md#social_contracts_insurance_UnderwriterVault">UnderwriterVault</a> {
         id: object::new(ctx),
         underwriter,
@@ -1840,6 +2751,9 @@ Create an underwriter vault
         utilization_multiplier_bps,
         max_exposure_per_market,
         max_exposure_per_user,
+        max_exposure_per_option,
+        enabled,
+        paused,
         market_exposures: table::new(ctx),
         user_exposures: table::new(ctx),
         version: <a href="../social_contracts/insurance.md#social_contracts_insurance_DEFAULT_VERSION">DEFAULT_VERSION</a>,
@@ -1853,7 +2767,600 @@ Create an underwriter vault
         utilization_multiplier_bps,
         max_exposure_per_market,
         max_exposure_per_user,
+        max_exposure_per_option,
+        enabled,
+        paused,
     });
+}
+</code></pre>
+
+
+
+</details>
+
+<a name="social_contracts_insurance_set_vault_status"></a>
+
+## Function `set_vault_status`
+
+Underwriter updates vault listing parameters (emit for indexer discovery).
+
+
+<pre><code><b>public</b> <b>entry</b> <b>fun</b> <a href="../social_contracts/insurance.md#social_contracts_insurance_set_vault_status">set_vault_status</a>(vault: &<b>mut</b> <a href="../social_contracts/insurance.md#social_contracts_insurance_UnderwriterVault">social_contracts::insurance::UnderwriterVault</a>, enabled: bool, paused: bool, max_exposure_per_option: u64, clock: &<a href="../myso/clock.md#myso_clock_Clock">myso::clock::Clock</a>, ctx: &<b>mut</b> <a href="../myso/tx_context.md#myso_tx_context_TxContext">myso::tx_context::TxContext</a>)
+</code></pre>
+
+
+
+<details>
+<summary>Implementation</summary>
+
+
+<pre><code><b>public</b> <b>entry</b> <b>fun</b> <a href="../social_contracts/insurance.md#social_contracts_insurance_set_vault_status">set_vault_status</a>(
+    vault: &<b>mut</b> <a href="../social_contracts/insurance.md#social_contracts_insurance_UnderwriterVault">UnderwriterVault</a>,
+    enabled: bool,
+    paused: bool,
+    max_exposure_per_option: u64,
+    clock: &Clock,
+    ctx: &<b>mut</b> TxContext,
+) {
+    <b>assert</b>!(tx_context::sender(ctx) == vault.underwriter, <a href="../social_contracts/insurance.md#social_contracts_insurance_ENotAdmin">ENotAdmin</a>);
+    vault.enabled = enabled;
+    vault.paused = paused;
+    vault.max_exposure_per_option = max_exposure_per_option;
+    event::emit(<a href="../social_contracts/insurance.md#social_contracts_insurance_VaultStatusUpdatedEvent">VaultStatusUpdatedEvent</a> {
+        vault_id: object::id(vault),
+        enabled,
+        paused,
+        max_exposure_per_option,
+        max_exposure_per_market: vault.max_exposure_per_market,
+        max_exposure_per_user: vault.max_exposure_per_user,
+        base_rate_bps_per_day: vault.base_rate_bps_per_day,
+        utilization_multiplier_bps: vault.utilization_multiplier_bps,
+        updated_by: tx_context::sender(ctx),
+        timestamp_ms: clock::timestamp_ms(clock),
+    });
+}
+</code></pre>
+
+
+
+</details>
+
+<a name="social_contracts_insurance_set_router_flags"></a>
+
+## Function `set_router_flags`
+
+
+
+<pre><code><b>public</b> <b>entry</b> <b>fun</b> <a href="../social_contracts/insurance.md#social_contracts_insurance_set_router_flags">set_router_flags</a>(_: &<a href="../social_contracts/insurance.md#social_contracts_insurance_InsuranceAdminCap">social_contracts::insurance::InsuranceAdminCap</a>, router_cfg: &<b>mut</b> <a href="../social_contracts/insurance.md#social_contracts_insurance_InsuranceRouterConfig">social_contracts::insurance::InsuranceRouterConfig</a>, router_enabled: bool, router_paused: bool, clock: &<a href="../myso/clock.md#myso_clock_Clock">myso::clock::Clock</a>, ctx: &<b>mut</b> <a href="../myso/tx_context.md#myso_tx_context_TxContext">myso::tx_context::TxContext</a>)
+</code></pre>
+
+
+
+<details>
+<summary>Implementation</summary>
+
+
+<pre><code><b>public</b> <b>entry</b> <b>fun</b> <a href="../social_contracts/insurance.md#social_contracts_insurance_set_router_flags">set_router_flags</a>(
+    _: &<a href="../social_contracts/insurance.md#social_contracts_insurance_InsuranceAdminCap">InsuranceAdminCap</a>,
+    router_cfg: &<b>mut</b> <a href="../social_contracts/insurance.md#social_contracts_insurance_InsuranceRouterConfig">InsuranceRouterConfig</a>,
+    router_enabled: bool,
+    router_paused: bool,
+    clock: &Clock,
+    ctx: &<b>mut</b> TxContext,
+) {
+    router_cfg.router_enabled = router_enabled;
+    router_cfg.router_paused = router_paused;
+    <b>let</b> _ = clock;
+    <b>let</b> _ = ctx;
+}
+</code></pre>
+
+
+
+</details>
+
+<a name="social_contracts_insurance_set_router_limits"></a>
+
+## Function `set_router_limits`
+
+
+
+<pre><code><b>public</b> <b>entry</b> <b>fun</b> <a href="../social_contracts/insurance.md#social_contracts_insurance_set_router_limits">set_router_limits</a>(_: &<a href="../social_contracts/insurance.md#social_contracts_insurance_InsuranceAdminCap">social_contracts::insurance::InsuranceAdminCap</a>, router_cfg: &<b>mut</b> <a href="../social_contracts/insurance.md#social_contracts_insurance_InsuranceRouterConfig">social_contracts::insurance::InsuranceRouterConfig</a>, max_route_reserve_market: u64, max_route_reserve_user: u64, max_route_reserve_option: u64, max_vault_concentration_bps: u64, min_vault_health_factor_bps: u64, ctx: &<b>mut</b> <a href="../myso/tx_context.md#myso_tx_context_TxContext">myso::tx_context::TxContext</a>)
+</code></pre>
+
+
+
+<details>
+<summary>Implementation</summary>
+
+
+<pre><code><b>public</b> <b>entry</b> <b>fun</b> <a href="../social_contracts/insurance.md#social_contracts_insurance_set_router_limits">set_router_limits</a>(
+    _: &<a href="../social_contracts/insurance.md#social_contracts_insurance_InsuranceAdminCap">InsuranceAdminCap</a>,
+    router_cfg: &<b>mut</b> <a href="../social_contracts/insurance.md#social_contracts_insurance_InsuranceRouterConfig">InsuranceRouterConfig</a>,
+    max_route_reserve_market: u64,
+    max_route_reserve_user: u64,
+    max_route_reserve_option: u64,
+    max_vault_concentration_bps: u64,
+    min_vault_health_factor_bps: u64,
+    ctx: &<b>mut</b> TxContext,
+) {
+    <b>assert</b>!(
+        max_vault_concentration_bps &gt; 0 && max_vault_concentration_bps &lt;= <a href="../social_contracts/insurance.md#social_contracts_insurance_BPS_DENOM">BPS_DENOM</a>,
+        <a href="../social_contracts/insurance.md#social_contracts_insurance_EInvalidCoverage">EInvalidCoverage</a>
+    );
+    <b>assert</b>!(min_vault_health_factor_bps &gt; 0, <a href="../social_contracts/insurance.md#social_contracts_insurance_EInvalidAmount">EInvalidAmount</a>);
+    router_cfg.max_route_reserve_market = max_route_reserve_market;
+    router_cfg.max_route_reserve_user = max_route_reserve_user;
+    router_cfg.max_route_reserve_option = max_route_reserve_option;
+    router_cfg.max_vault_concentration_bps = max_vault_concentration_bps;
+    router_cfg.min_vault_health_factor_bps = min_vault_health_factor_bps;
+    <b>let</b> _ = ctx;
+}
+</code></pre>
+
+
+
+</details>
+
+<a name="social_contracts_insurance_set_market_pause"></a>
+
+## Function `set_market_pause`
+
+
+
+<pre><code><b>public</b> <b>entry</b> <b>fun</b> <a href="../social_contracts/insurance.md#social_contracts_insurance_set_market_pause">set_market_pause</a>(_: &<a href="../social_contracts/insurance.md#social_contracts_insurance_InsuranceAdminCap">social_contracts::insurance::InsuranceAdminCap</a>, router_cfg: &<b>mut</b> <a href="../social_contracts/insurance.md#social_contracts_insurance_InsuranceRouterConfig">social_contracts::insurance::InsuranceRouterConfig</a>, market_id: <b>address</b>, paused: bool, ctx: &<b>mut</b> <a href="../myso/tx_context.md#myso_tx_context_TxContext">myso::tx_context::TxContext</a>)
+</code></pre>
+
+
+
+<details>
+<summary>Implementation</summary>
+
+
+<pre><code><b>public</b> <b>entry</b> <b>fun</b> <a href="../social_contracts/insurance.md#social_contracts_insurance_set_market_pause">set_market_pause</a>(
+    _: &<a href="../social_contracts/insurance.md#social_contracts_insurance_InsuranceAdminCap">InsuranceAdminCap</a>,
+    router_cfg: &<b>mut</b> <a href="../social_contracts/insurance.md#social_contracts_insurance_InsuranceRouterConfig">InsuranceRouterConfig</a>,
+    market_id: <b>address</b>,
+    paused: bool,
+    ctx: &<b>mut</b> TxContext,
+) {
+    <b>if</b> (table::contains(&router_cfg.market_pause, market_id)) {
+        *table::borrow_mut(&<b>mut</b> router_cfg.market_pause, market_id) = paused;
+    } <b>else</b> {
+        table::add(&<b>mut</b> router_cfg.market_pause, market_id, paused);
+    };
+    <b>let</b> _ = ctx;
+}
+</code></pre>
+
+
+
+</details>
+
+<a name="social_contracts_insurance_set_backstop_caps"></a>
+
+## Function `set_backstop_caps`
+
+
+
+<pre><code><b>public</b> <b>entry</b> <b>fun</b> <a href="../social_contracts/insurance.md#social_contracts_insurance_set_backstop_caps">set_backstop_caps</a>(_: &<a href="../social_contracts/insurance.md#social_contracts_insurance_InsuranceAdminCap">social_contracts::insurance::InsuranceAdminCap</a>, pool: &<b>mut</b> <a href="../social_contracts/insurance.md#social_contracts_insurance_InsuranceBackstopPool">social_contracts::insurance::InsuranceBackstopPool</a>, max_payout_per_market: u64, max_payout_per_event: u64, global_hard_cap: u64, sweep_premium_bps: u64, tail_pay_partial_on_cap: bool, ctx: &<b>mut</b> <a href="../myso/tx_context.md#myso_tx_context_TxContext">myso::tx_context::TxContext</a>)
+</code></pre>
+
+
+
+<details>
+<summary>Implementation</summary>
+
+
+<pre><code><b>public</b> <b>entry</b> <b>fun</b> <a href="../social_contracts/insurance.md#social_contracts_insurance_set_backstop_caps">set_backstop_caps</a>(
+    _: &<a href="../social_contracts/insurance.md#social_contracts_insurance_InsuranceAdminCap">InsuranceAdminCap</a>,
+    pool: &<b>mut</b> <a href="../social_contracts/insurance.md#social_contracts_insurance_InsuranceBackstopPool">InsuranceBackstopPool</a>,
+    max_payout_per_market: u64,
+    max_payout_per_event: u64,
+    global_hard_cap: u64,
+    sweep_premium_bps: u64,
+    tail_pay_partial_on_cap: bool,
+    ctx: &<b>mut</b> TxContext,
+) {
+    <b>assert</b>!(sweep_premium_bps &lt;= <a href="../social_contracts/insurance.md#social_contracts_insurance_BPS_DENOM">BPS_DENOM</a>, <a href="../social_contracts/insurance.md#social_contracts_insurance_EInvalidCoverage">EInvalidCoverage</a>);
+    pool.max_payout_per_market = max_payout_per_market;
+    pool.max_payout_per_event = max_payout_per_event;
+    pool.global_hard_cap = global_hard_cap;
+    pool.sweep_premium_bps = sweep_premium_bps;
+    pool.tail_pay_partial_on_cap = tail_pay_partial_on_cap;
+    <b>let</b> _ = ctx;
+}
+</code></pre>
+
+
+
+</details>
+
+<a name="social_contracts_insurance_set_tail_mode"></a>
+
+## Function `set_tail_mode`
+
+
+
+<pre><code><b>public</b> <b>entry</b> <b>fun</b> <a href="../social_contracts/insurance.md#social_contracts_insurance_set_tail_mode">set_tail_mode</a>(_: &<a href="../social_contracts/insurance.md#social_contracts_insurance_InsuranceAdminCap">social_contracts::insurance::InsuranceAdminCap</a>, pool: &<b>mut</b> <a href="../social_contracts/insurance.md#social_contracts_insurance_InsuranceBackstopPool">social_contracts::insurance::InsuranceBackstopPool</a>, tail_mode_enabled: bool, ctx: &<b>mut</b> <a href="../myso/tx_context.md#myso_tx_context_TxContext">myso::tx_context::TxContext</a>)
+</code></pre>
+
+
+
+<details>
+<summary>Implementation</summary>
+
+
+<pre><code><b>public</b> <b>entry</b> <b>fun</b> <a href="../social_contracts/insurance.md#social_contracts_insurance_set_tail_mode">set_tail_mode</a>(
+    _: &<a href="../social_contracts/insurance.md#social_contracts_insurance_InsuranceAdminCap">InsuranceAdminCap</a>,
+    pool: &<b>mut</b> <a href="../social_contracts/insurance.md#social_contracts_insurance_InsuranceBackstopPool">InsuranceBackstopPool</a>,
+    tail_mode_enabled: bool,
+    ctx: &<b>mut</b> TxContext,
+) {
+    pool.tail_mode_enabled = tail_mode_enabled;
+    <b>let</b> _ = ctx;
+}
+</code></pre>
+
+
+
+</details>
+
+<a name="social_contracts_insurance_set_backstop_paused"></a>
+
+## Function `set_backstop_paused`
+
+
+
+<pre><code><b>public</b> <b>entry</b> <b>fun</b> <a href="../social_contracts/insurance.md#social_contracts_insurance_set_backstop_paused">set_backstop_paused</a>(_: &<a href="../social_contracts/insurance.md#social_contracts_insurance_InsuranceAdminCap">social_contracts::insurance::InsuranceAdminCap</a>, pool: &<b>mut</b> <a href="../social_contracts/insurance.md#social_contracts_insurance_InsuranceBackstopPool">social_contracts::insurance::InsuranceBackstopPool</a>, paused: bool, ctx: &<b>mut</b> <a href="../myso/tx_context.md#myso_tx_context_TxContext">myso::tx_context::TxContext</a>)
+</code></pre>
+
+
+
+<details>
+<summary>Implementation</summary>
+
+
+<pre><code><b>public</b> <b>entry</b> <b>fun</b> <a href="../social_contracts/insurance.md#social_contracts_insurance_set_backstop_paused">set_backstop_paused</a>(
+    _: &<a href="../social_contracts/insurance.md#social_contracts_insurance_InsuranceAdminCap">InsuranceAdminCap</a>,
+    pool: &<b>mut</b> <a href="../social_contracts/insurance.md#social_contracts_insurance_InsuranceBackstopPool">InsuranceBackstopPool</a>,
+    paused: bool,
+    ctx: &<b>mut</b> TxContext,
+) {
+    pool.paused = paused;
+    <b>let</b> _ = ctx;
+}
+</code></pre>
+
+
+
+</details>
+
+<a name="social_contracts_insurance_deposit_backstop_treasury"></a>
+
+## Function `deposit_backstop_treasury`
+
+
+
+<pre><code><b>public</b> <b>entry</b> <b>fun</b> <a href="../social_contracts/insurance.md#social_contracts_insurance_deposit_backstop_treasury">deposit_backstop_treasury</a>(_: &<a href="../social_contracts/insurance.md#social_contracts_insurance_InsuranceAdminCap">social_contracts::insurance::InsuranceAdminCap</a>, pool: &<b>mut</b> <a href="../social_contracts/insurance.md#social_contracts_insurance_InsuranceBackstopPool">social_contracts::insurance::InsuranceBackstopPool</a>, payment: <a href="../myso/coin.md#myso_coin_Coin">myso::coin::Coin</a>&lt;<a href="../myso/myso.md#myso_myso_MYSO">myso::myso::MYSO</a>&gt;, ctx: &<b>mut</b> <a href="../myso/tx_context.md#myso_tx_context_TxContext">myso::tx_context::TxContext</a>)
+</code></pre>
+
+
+
+<details>
+<summary>Implementation</summary>
+
+
+<pre><code><b>public</b> <b>entry</b> <b>fun</b> <a href="../social_contracts/insurance.md#social_contracts_insurance_deposit_backstop_treasury">deposit_backstop_treasury</a>(
+    _: &<a href="../social_contracts/insurance.md#social_contracts_insurance_InsuranceAdminCap">InsuranceAdminCap</a>,
+    pool: &<b>mut</b> <a href="../social_contracts/insurance.md#social_contracts_insurance_InsuranceBackstopPool">InsuranceBackstopPool</a>,
+    payment: Coin&lt;MYSO&gt;,
+    ctx: &<b>mut</b> TxContext,
+) {
+    <b>let</b> amt = coin::value(&payment);
+    <b>assert</b>!(amt &gt; 0, <a href="../social_contracts/insurance.md#social_contracts_insurance_EInvalidAmount">EInvalidAmount</a>);
+    <b>let</b> sender = tx_context::sender(ctx);
+    balance::join(&<b>mut</b> pool.capital, coin::into_balance(payment));
+    <b>let</b> new_balance = balance::value(&pool.capital);
+    event::emit(<a href="../social_contracts/insurance.md#social_contracts_insurance_BackstopTreasuryDepositEvent">BackstopTreasuryDepositEvent</a> {
+        depositor: sender,
+        amount: amt,
+        new_balance,
+    });
+}
+</code></pre>
+
+
+
+</details>
+
+<a name="social_contracts_insurance_tail_pay_shortfall"></a>
+
+## Function `tail_pay_shortfall`
+
+Tail shortfall payout only (<code>tail_mode_enabled</code> + caps). Does not interact with <code><a href="../social_contracts/insurance.md#social_contracts_insurance_claim">claim</a></code>.
+
+
+<pre><code><b>public</b> <b>entry</b> <b>fun</b> <a href="../social_contracts/insurance.md#social_contracts_insurance_tail_pay_shortfall">tail_pay_shortfall</a>(_: &<a href="../social_contracts/insurance.md#social_contracts_insurance_InsuranceAdminCap">social_contracts::insurance::InsuranceAdminCap</a>, pool: &<b>mut</b> <a href="../social_contracts/insurance.md#social_contracts_insurance_InsuranceBackstopPool">social_contracts::insurance::InsuranceBackstopPool</a>, config: &<a href="../social_contracts/insurance.md#social_contracts_insurance_InsuranceConfig">social_contracts::insurance::InsuranceConfig</a>, recipient: <b>address</b>, market_id: <b>address</b>, amount_requested: u64, clock: &<a href="../myso/clock.md#myso_clock_Clock">myso::clock::Clock</a>, ctx: &<b>mut</b> <a href="../myso/tx_context.md#myso_tx_context_TxContext">myso::tx_context::TxContext</a>)
+</code></pre>
+
+
+
+<details>
+<summary>Implementation</summary>
+
+
+<pre><code><b>public</b> <b>entry</b> <b>fun</b> <a href="../social_contracts/insurance.md#social_contracts_insurance_tail_pay_shortfall">tail_pay_shortfall</a>(
+    _: &<a href="../social_contracts/insurance.md#social_contracts_insurance_InsuranceAdminCap">InsuranceAdminCap</a>,
+    pool: &<b>mut</b> <a href="../social_contracts/insurance.md#social_contracts_insurance_InsuranceBackstopPool">InsuranceBackstopPool</a>,
+    config: &<a href="../social_contracts/insurance.md#social_contracts_insurance_InsuranceConfig">InsuranceConfig</a>,
+    recipient: <b>address</b>,
+    market_id: <b>address</b>,
+    amount_requested: u64,
+    clock: &Clock,
+    ctx: &<b>mut</b> TxContext,
+) {
+    <b>assert</b>!(config.enable_flag, <a href="../social_contracts/insurance.md#social_contracts_insurance_EDisabled">EDisabled</a>);
+    <b>assert</b>!(pool.tail_mode_enabled, <a href="../social_contracts/insurance.md#social_contracts_insurance_ETailModeDisabled">ETailModeDisabled</a>);
+    <b>assert</b>!(!pool.paused, <a href="../social_contracts/insurance.md#social_contracts_insurance_EBackstopPaused">EBackstopPaused</a>);
+    <b>assert</b>!(amount_requested &gt; 0, <a href="../social_contracts/insurance.md#social_contracts_insurance_EInvalidAmount">EInvalidAmount</a>);
+    <b>let</b> pool_balance = balance::value(&pool.capital);
+    <b>let</b> <b>mut</b> paid_market = 0;
+    <b>if</b> (table::contains(&pool.paid_by_market, market_id)) {
+        paid_market = *table::borrow(&pool.paid_by_market, market_id);
+    };
+    <b>let</b> remaining_market = <a href="../social_contracts/insurance.md#social_contracts_insurance_min_cap_sub">min_cap_sub</a>(pool.max_payout_per_market, paid_market);
+    <b>let</b> remaining_global = <a href="../social_contracts/insurance.md#social_contracts_insurance_min_cap_sub">min_cap_sub</a>(pool.global_hard_cap, pool.total_paid_out);
+    <b>let</b> cap_event = pool.max_payout_per_event;
+    <b>let</b> pay_cap = <a href="../social_contracts/insurance.md#social_contracts_insurance_min_u64">min_u64</a>(
+        <a href="../social_contracts/insurance.md#social_contracts_insurance_min_u64">min_u64</a>(<a href="../social_contracts/insurance.md#social_contracts_insurance_min_u64">min_u64</a>(amount_requested, pool_balance), remaining_market),
+        <a href="../social_contracts/insurance.md#social_contracts_insurance_min_u64">min_u64</a>(remaining_global, cap_event),
+    );
+    <b>if</b> (pay_cap == 0) {
+        <b>assert</b>!(pool.tail_pay_partial_on_cap, <a href="../social_contracts/insurance.md#social_contracts_insurance_EBackstopPayoutLimit">EBackstopPayoutLimit</a>);
+    } <b>else</b> {
+        <b>if</b> (pay_cap &lt; amount_requested) {
+            <b>assert</b>!(pool.tail_pay_partial_on_cap, <a href="../social_contracts/insurance.md#social_contracts_insurance_EBackstopPayoutLimit">EBackstopPayoutLimit</a>);
+        };
+        <b>let</b> pay_bal = balance::split(&<b>mut</b> pool.capital, pay_cap);
+        <b>let</b> coin_out = coin::from_balance(pay_bal, ctx);
+        transfer::public_transfer(coin_out, recipient);
+        pool.total_paid_out = pool.total_paid_out + pay_cap;
+        <b>if</b> (table::contains(&pool.paid_by_market, market_id)) {
+            <b>let</b> e = table::borrow_mut(&<b>mut</b> pool.paid_by_market, market_id);
+            *e = *e + pay_cap;
+        } <b>else</b> {
+            table::add(&<b>mut</b> pool.paid_by_market, market_id, pay_cap);
+        };
+        event::emit(<a href="../social_contracts/insurance.md#social_contracts_insurance_BackstopUsedEvent">BackstopUsedEvent</a> {
+            market_id,
+            recipient,
+            amount: pay_cap,
+            total_paid_out_after: pool.total_paid_out,
+            tail_mode_enabled: pool.tail_mode_enabled,
+        });
+    };
+    <b>let</b> _ = clock;
+    <b>let</b> _ = ctx;
+}
+</code></pre>
+
+
+
+</details>
+
+<a name="social_contracts_insurance_min_cap_sub"></a>
+
+## Function `min_cap_sub`
+
+
+
+<pre><code><b>fun</b> <a href="../social_contracts/insurance.md#social_contracts_insurance_min_cap_sub">min_cap_sub</a>(cap: u64, used: u64): u64
+</code></pre>
+
+
+
+<details>
+<summary>Implementation</summary>
+
+
+<pre><code><b>fun</b> <a href="../social_contracts/insurance.md#social_contracts_insurance_min_cap_sub">min_cap_sub</a>(cap: u64, used: u64): u64 {
+    <b>if</b> (cap &gt;= used) {
+        cap - used
+    } <b>else</b> {
+        0
+    }
+}
+</code></pre>
+
+
+
+</details>
+
+<a name="social_contracts_insurance_min_u64"></a>
+
+## Function `min_u64`
+
+
+
+<pre><code><b>fun</b> <a href="../social_contracts/insurance.md#social_contracts_insurance_min_u64">min_u64</a>(a: u64, b: u64): u64
+</code></pre>
+
+
+
+<details>
+<summary>Implementation</summary>
+
+
+<pre><code><b>fun</b> <a href="../social_contracts/insurance.md#social_contracts_insurance_min_u64">min_u64</a>(a: u64, b: u64): u64 {
+    <b>if</b> (a &lt; b) {
+        a
+    } <b>else</b> {
+        b
+    }
+}
+</code></pre>
+
+
+
+</details>
+
+<a name="social_contracts_insurance_copy_id_vec"></a>
+
+## Function `copy_id_vec`
+
+
+
+<pre><code><b>fun</b> <a href="../social_contracts/insurance.md#social_contracts_insurance_copy_id_vec">copy_id_vec</a>(src: &vector&lt;<a href="../myso/object.md#myso_object_ID">myso::object::ID</a>&gt;): vector&lt;<a href="../myso/object.md#myso_object_ID">myso::object::ID</a>&gt;
+</code></pre>
+
+
+
+<details>
+<summary>Implementation</summary>
+
+
+<pre><code><b>fun</b> <a href="../social_contracts/insurance.md#social_contracts_insurance_copy_id_vec">copy_id_vec</a>(src: &vector&lt;ID&gt;): vector&lt;ID&gt; {
+    <b>let</b> <b>mut</b> out = vector::empty();
+    <b>let</b> len = vector::length(src);
+    <b>let</b> <b>mut</b> i = 0;
+    <b>while</b> (i &lt; len) {
+        vector::push_back(&<b>mut</b> out, *vector::borrow(src, i));
+        i = i + 1;
+    };
+    out
+}
+</code></pre>
+
+
+
+</details>
+
+<a name="social_contracts_insurance_new_router_config_defaults"></a>
+
+## Function `new_router_config_defaults`
+
+
+
+<pre><code><b>fun</b> <a href="../social_contracts/insurance.md#social_contracts_insurance_new_router_config_defaults">new_router_config_defaults</a>(ctx: &<b>mut</b> <a href="../myso/tx_context.md#myso_tx_context_TxContext">myso::tx_context::TxContext</a>): <a href="../social_contracts/insurance.md#social_contracts_insurance_InsuranceRouterConfig">social_contracts::insurance::InsuranceRouterConfig</a>
+</code></pre>
+
+
+
+<details>
+<summary>Implementation</summary>
+
+
+<pre><code><b>fun</b> <a href="../social_contracts/insurance.md#social_contracts_insurance_new_router_config_defaults">new_router_config_defaults</a>(ctx: &<b>mut</b> TxContext): <a href="../social_contracts/insurance.md#social_contracts_insurance_InsuranceRouterConfig">InsuranceRouterConfig</a> {
+    <a href="../social_contracts/insurance.md#social_contracts_insurance_InsuranceRouterConfig">InsuranceRouterConfig</a> {
+        id: object::new(ctx),
+        router_enabled: <b>true</b>,
+        router_paused: <b>false</b>,
+        max_route_reserve_market: 0,
+        max_route_reserve_user: 0,
+        max_route_reserve_option: 0,
+        max_vault_concentration_bps: <a href="../social_contracts/insurance.md#social_contracts_insurance_BPS_DENOM">BPS_DENOM</a>,
+        min_vault_health_factor_bps: <a href="../social_contracts/insurance.md#social_contracts_insurance_BPS_DENOM">BPS_DENOM</a>,
+        market_pause: table::new(ctx),
+        version: <a href="../social_contracts/insurance.md#social_contracts_insurance_DEFAULT_VERSION">DEFAULT_VERSION</a>,
+    }
+}
+</code></pre>
+
+
+
+</details>
+
+<a name="social_contracts_insurance_new_backstop_pool_defaults"></a>
+
+## Function `new_backstop_pool_defaults`
+
+
+
+<pre><code><b>fun</b> <a href="../social_contracts/insurance.md#social_contracts_insurance_new_backstop_pool_defaults">new_backstop_pool_defaults</a>(ctx: &<b>mut</b> <a href="../myso/tx_context.md#myso_tx_context_TxContext">myso::tx_context::TxContext</a>): <a href="../social_contracts/insurance.md#social_contracts_insurance_InsuranceBackstopPool">social_contracts::insurance::InsuranceBackstopPool</a>
+</code></pre>
+
+
+
+<details>
+<summary>Implementation</summary>
+
+
+<pre><code><b>fun</b> <a href="../social_contracts/insurance.md#social_contracts_insurance_new_backstop_pool_defaults">new_backstop_pool_defaults</a>(ctx: &<b>mut</b> TxContext): <a href="../social_contracts/insurance.md#social_contracts_insurance_InsuranceBackstopPool">InsuranceBackstopPool</a> {
+    <a href="../social_contracts/insurance.md#social_contracts_insurance_InsuranceBackstopPool">InsuranceBackstopPool</a> {
+        id: object::new(ctx),
+        capital: balance::zero(),
+        total_paid_out: 0,
+        paid_by_market: table::new(ctx),
+        max_payout_per_market: <a href="../social_contracts/insurance.md#social_contracts_insurance_MAX_U64">MAX_U64</a>,
+        max_payout_per_event: <a href="../social_contracts/insurance.md#social_contracts_insurance_MAX_U64">MAX_U64</a>,
+        global_hard_cap: <a href="../social_contracts/insurance.md#social_contracts_insurance_MAX_U64">MAX_U64</a>,
+        tail_mode_enabled: <b>false</b>,
+        paused: <b>false</b>,
+        sweep_premium_bps: 0,
+        tail_pay_partial_on_cap: <b>true</b>,
+        version: <a href="../social_contracts/insurance.md#social_contracts_insurance_DEFAULT_VERSION">DEFAULT_VERSION</a>,
+    }
+}
+</code></pre>
+
+
+
+</details>
+
+<a name="social_contracts_insurance_assert_market_router_open"></a>
+
+## Function `assert_market_router_open`
+
+
+
+<pre><code><b>fun</b> <a href="../social_contracts/insurance.md#social_contracts_insurance_assert_market_router_open">assert_market_router_open</a>(router_cfg: &<a href="../social_contracts/insurance.md#social_contracts_insurance_InsuranceRouterConfig">social_contracts::insurance::InsuranceRouterConfig</a>, market_id: <b>address</b>)
+</code></pre>
+
+
+
+<details>
+<summary>Implementation</summary>
+
+
+<pre><code><b>fun</b> <a href="../social_contracts/insurance.md#social_contracts_insurance_assert_market_router_open">assert_market_router_open</a>(router_cfg: &<a href="../social_contracts/insurance.md#social_contracts_insurance_InsuranceRouterConfig">InsuranceRouterConfig</a>, market_id: <b>address</b>) {
+    <b>if</b> (table::contains(&router_cfg.market_pause, market_id)) {
+        <b>assert</b>!(!*table::borrow(&router_cfg.market_pause, market_id), <a href="../social_contracts/insurance.md#social_contracts_insurance_EMarketClosed">EMarketClosed</a>);
+    };
+}
+</code></pre>
+
+
+
+</details>
+
+<a name="social_contracts_insurance_assert_vault_buy_guards"></a>
+
+## Function `assert_vault_buy_guards`
+
+
+
+<pre><code><b>fun</b> <a href="../social_contracts/insurance.md#social_contracts_insurance_assert_vault_buy_guards">assert_vault_buy_guards</a>(vault: &<a href="../social_contracts/insurance.md#social_contracts_insurance_UnderwriterVault">social_contracts::insurance::UnderwriterVault</a>, router_cfg: &<a href="../social_contracts/insurance.md#social_contracts_insurance_InsuranceRouterConfig">social_contracts::insurance::InsuranceRouterConfig</a>, check_health: bool)
+</code></pre>
+
+
+
+<details>
+<summary>Implementation</summary>
+
+
+<pre><code><b>fun</b> <a href="../social_contracts/insurance.md#social_contracts_insurance_assert_vault_buy_guards">assert_vault_buy_guards</a>(
+    vault: &<a href="../social_contracts/insurance.md#social_contracts_insurance_UnderwriterVault">UnderwriterVault</a>,
+    router_cfg: &<a href="../social_contracts/insurance.md#social_contracts_insurance_InsuranceRouterConfig">InsuranceRouterConfig</a>,
+    check_health: bool,
+) {
+    <b>assert</b>!(vault.enabled, <a href="../social_contracts/insurance.md#social_contracts_insurance_EVaultDisabled">EVaultDisabled</a>);
+    <b>assert</b>!(!vault.paused, <a href="../social_contracts/insurance.md#social_contracts_insurance_EVaultPaused">EVaultPaused</a>);
+    <b>if</b> (check_health) {
+        <b>let</b> cap = balance::value(&vault.capital);
+        <b>let</b> r = vault.reserved;
+        <b>assert</b>!(cap * <a href="../social_contracts/insurance.md#social_contracts_insurance_BPS_DENOM">BPS_DENOM</a> &gt;= r * router_cfg.min_vault_health_factor_bps, <a href="../social_contracts/insurance.md#social_contracts_insurance_EInsufficientCapital">EInsufficientCapital</a>);
+    };
 }
 </code></pre>
 
@@ -2150,7 +3657,7 @@ Utilization curve only (<code><a href="../social_contracts/insurance.md#social_c
 
 
 
-<pre><code><b>fun</b> <a href="../social_contracts/insurance.md#social_contracts_insurance_compute_spot_risk_quote">compute_spot_risk_quote</a>(config: &<a href="../social_contracts/insurance.md#social_contracts_insurance_InsuranceConfig">social_contracts::insurance::InsuranceConfig</a>, vault: &<a href="../social_contracts/insurance.md#social_contracts_insurance_UnderwriterVault">social_contracts::insurance::UnderwriterVault</a>, record: &<a href="../social_contracts/social_proof_of_truth.md#social_contracts_social_proof_of_truth_SpotRecord">social_contracts::social_proof_of_truth::SpotRecord</a>, vault_market_id: <b>address</b>, option_id: u8, covered_amount: u64, coverage_bps: u64, duration_ms: u64): <a href="../social_contracts/insurance.md#social_contracts_insurance_PremiumQuote">social_contracts::insurance::PremiumQuote</a>
+<pre><code><b>fun</b> <a href="../social_contracts/insurance.md#social_contracts_insurance_compute_spot_risk_quote">compute_spot_risk_quote</a>(config: &<a href="../social_contracts/insurance.md#social_contracts_insurance_InsuranceConfig">social_contracts::insurance::InsuranceConfig</a>, vault: &<a href="../social_contracts/insurance.md#social_contracts_insurance_UnderwriterVault">social_contracts::insurance::UnderwriterVault</a>, record: &<a href="../social_contracts/social_proof_of_truth.md#social_contracts_social_proof_of_truth_SpotRecord">social_contracts::social_proof_of_truth::SpotRecord</a>, vault_market_id: <b>address</b>, option_id: u8, covered_amount: u64, coverage_bps: u64, duration_ms: u64, enforce_max_risk: bool): <a href="../social_contracts/insurance.md#social_contracts_insurance_PremiumQuote">social_contracts::insurance::PremiumQuote</a>
 </code></pre>
 
 
@@ -2168,6 +3675,7 @@ Utilization curve only (<code><a href="../social_contracts/insurance.md#social_c
     covered_amount: u64,
     coverage_bps: u64,
     duration_ms: u64,
+    enforce_max_risk: bool,
 ): <a href="../social_contracts/insurance.md#social_contracts_insurance_PremiumQuote">PremiumQuote</a> {
     spot::assert_valid_option_id(record, option_id);
     <b>let</b> t_total = spot::total_option_escrow(record);
@@ -2237,7 +3745,9 @@ Utilization curve only (<code><a href="../social_contracts/insurance.md#social_c
             / (<a href="../social_contracts/insurance.md#social_contracts_insurance_BPS_DENOM">BPS_DENOM</a> <b>as</b> u128) / (<a href="../social_contracts/insurance.md#social_contracts_insurance_BPS_DENOM">BPS_DENOM</a> <b>as</b> u128);
     <b>assert</b>!(risk_u128 &lt;= (<a href="../social_contracts/insurance.md#social_contracts_insurance_MAX_U64">MAX_U64</a> <b>as</b> u128), <a href="../social_contracts/insurance.md#social_contracts_insurance_EOverflow">EOverflow</a>);
     <b>let</b> risk_multiplier_bps = risk_u128 <b>as</b> u64;
-    <b>assert</b>!(risk_multiplier_bps &lt;= config.max_risk_multiplier_bps, <a href="../social_contracts/insurance.md#social_contracts_insurance_ERiskMultiplierTooHigh">ERiskMultiplierTooHigh</a>);
+    <b>if</b> (enforce_max_risk) {
+        <b>assert</b>!(risk_multiplier_bps &lt;= config.max_risk_multiplier_bps, <a href="../social_contracts/insurance.md#social_contracts_insurance_ERiskMultiplierTooHigh">ERiskMultiplierTooHigh</a>);
+    };
     <b>let</b> base_premium =
         <a href="../social_contracts/insurance.md#social_contracts_insurance_quote_base_premium">quote_base_premium</a>(vault, covered_amount, coverage_bps, duration_ms);
     <b>let</b> premium_raw_u128 = ((base_premium <b>as</b> u128) * (risk_multiplier_bps <b>as</b> u128))
@@ -2301,6 +3811,7 @@ Preview premium with SPoT pool odds, liquidity, and vault concentration on this 
         covered_amount,
         coverage_bps,
         duration_ms,
+        <b>true</b>,
     )
 }
 </code></pre>
@@ -2309,14 +3820,13 @@ Preview premium with SPoT pool odds, liquidity, and vault concentration on this 
 
 </details>
 
-<a name="social_contracts_insurance_buy_coverage"></a>
+<a name="social_contracts_insurance_coverage_quote_skipped"></a>
 
-## Function `buy_coverage`
-
-Buy coverage for a SPoT position
+## Function `coverage_quote_skipped`
 
 
-<pre><code><b>public</b> <b>entry</b> <b>fun</b> <a href="../social_contracts/insurance.md#social_contracts_insurance_buy_coverage">buy_coverage</a>(config: &<a href="../social_contracts/insurance.md#social_contracts_insurance_InsuranceConfig">social_contracts::insurance::InsuranceConfig</a>, spot_config: &<a href="../social_contracts/social_proof_of_truth.md#social_contracts_social_proof_of_truth_SpotConfig">social_contracts::social_proof_of_truth::SpotConfig</a>, vault: &<b>mut</b> <a href="../social_contracts/insurance.md#social_contracts_insurance_UnderwriterVault">social_contracts::insurance::UnderwriterVault</a>, record: &<a href="../social_contracts/social_proof_of_truth.md#social_contracts_social_proof_of_truth_SpotRecord">social_contracts::social_proof_of_truth::SpotRecord</a>, option_id: u8, requested_coverage_amount: u64, coverage_bps: u64, duration_ms: u64, payment: <a href="../myso/coin.md#myso_coin_Coin">myso::coin::Coin</a>&lt;<a href="../myso/myso.md#myso_myso_MYSO">myso::myso::MYSO</a>&gt;, clock: &<a href="../myso/clock.md#myso_clock_Clock">myso::clock::Clock</a>, ctx: &<b>mut</b> <a href="../myso/tx_context.md#myso_tx_context_TxContext">myso::tx_context::TxContext</a>)
+
+<pre><code><b>fun</b> <a href="../social_contracts/insurance.md#social_contracts_insurance_coverage_quote_skipped">coverage_quote_skipped</a>(reason: u8): <a href="../social_contracts/insurance.md#social_contracts_insurance_VaultCoverageQuote">social_contracts::insurance::VaultCoverageQuote</a>
 </code></pre>
 
 
@@ -2325,35 +3835,338 @@ Buy coverage for a SPoT position
 <summary>Implementation</summary>
 
 
-<pre><code><b>public</b> <b>entry</b> <b>fun</b> <a href="../social_contracts/insurance.md#social_contracts_insurance_buy_coverage">buy_coverage</a>(
+<pre><code><b>fun</b> <a href="../social_contracts/insurance.md#social_contracts_insurance_coverage_quote_skipped">coverage_quote_skipped</a>(reason: u8): <a href="../social_contracts/insurance.md#social_contracts_insurance_VaultCoverageQuote">VaultCoverageQuote</a> {
+    <a href="../social_contracts/insurance.md#social_contracts_insurance_VaultCoverageQuote">VaultCoverageQuote</a> {
+        premium: 0,
+        premium_raw: 0,
+        reserve_required: 0,
+        available_capacity_reserve: 0,
+        risk_multiplier_bps: 0,
+        implied_prob_win_bps: 0,
+        utilization_bps: 0,
+        max_fill_covered_amount: 0,
+        skipped_reason: reason,
+    }
+}
+</code></pre>
+
+
+
+</details>
+
+<a name="social_contracts_insurance_max_fill_covered_for_vault"></a>
+
+## Function `max_fill_covered_for_vault`
+
+
+
+<pre><code><b>fun</b> <a href="../social_contracts/insurance.md#social_contracts_insurance_max_fill_covered_for_vault">max_fill_covered_for_vault</a>(config: &<a href="../social_contracts/insurance.md#social_contracts_insurance_InsuranceConfig">social_contracts::insurance::InsuranceConfig</a>, vault: &<a href="../social_contracts/insurance.md#social_contracts_insurance_UnderwriterVault">social_contracts::insurance::UnderwriterVault</a>, record: &<a href="../social_contracts/social_proof_of_truth.md#social_contracts_social_proof_of_truth_SpotRecord">social_contracts::social_proof_of_truth::SpotRecord</a>, market_id: <b>address</b>, insured: <b>address</b>, option_id: u8, coverage_bps: u64): u64
+</code></pre>
+
+
+
+<details>
+<summary>Implementation</summary>
+
+
+<pre><code><b>fun</b> <a href="../social_contracts/insurance.md#social_contracts_insurance_max_fill_covered_for_vault">max_fill_covered_for_vault</a>(
     config: &<a href="../social_contracts/insurance.md#social_contracts_insurance_InsuranceConfig">InsuranceConfig</a>,
-    spot_config: &spot::SpotConfig,
-    vault: &<b>mut</b> <a href="../social_contracts/insurance.md#social_contracts_insurance_UnderwriterVault">UnderwriterVault</a>,
+    vault: &<a href="../social_contracts/insurance.md#social_contracts_insurance_UnderwriterVault">UnderwriterVault</a>,
     record: &spot::SpotRecord,
+    market_id: <b>address</b>,
+    insured: <b>address</b>,
+    option_id: u8,
+    coverage_bps: u64,
+): u64 {
+    <b>let</b> position = spot::get_user_option_amount(record, insured, option_id);
+    <b>let</b> a_opt = spot::get_option_escrow(record, option_id);
+    <b>let</b> denom_cov = <b>if</b> (a_opt &gt;= 1) {
+        a_opt
+    } <b>else</b> {
+        1
+    };
+    <b>let</b> pool_max_u128 =
+        (config.max_coverage_fraction_of_option_bps <b>as</b> u128) * (denom_cov <b>as</b> u128) / (<a href="../social_contracts/insurance.md#social_contracts_insurance_BPS_DENOM">BPS_DENOM</a> <b>as</b> u128);
+    <b>assert</b>!(pool_max_u128 &lt;= (<a href="../social_contracts/insurance.md#social_contracts_insurance_MAX_U64">MAX_U64</a> <b>as</b> u128), <a href="../social_contracts/insurance.md#social_contracts_insurance_EOverflow">EOverflow</a>);
+    <b>let</b> pool_max = pool_max_u128 <b>as</b> u64;
+    <b>let</b> capital_value = balance::value(&vault.capital);
+    <b>let</b> free_capital = <b>if</b> (capital_value &gt;= vault.reserved) {
+        capital_value - vault.reserved
+    } <b>else</b> {
+        0
+    };
+    <b>let</b> vault_cov_max = <b>if</b> (coverage_bps &gt; 0) {
+        <b>let</b> v = (free_capital <b>as</b> u128) * (<a href="../social_contracts/insurance.md#social_contracts_insurance_BPS_DENOM">BPS_DENOM</a> <b>as</b> u128) / (coverage_bps <b>as</b> u128);
+        <b>assert</b>!(v &lt;= (<a href="../social_contracts/insurance.md#social_contracts_insurance_MAX_U64">MAX_U64</a> <b>as</b> u128), <a href="../social_contracts/insurance.md#social_contracts_insurance_EOverflow">EOverflow</a>);
+        v <b>as</b> u64
+    } <b>else</b> {
+        <a href="../social_contracts/insurance.md#social_contracts_insurance_MAX_U64">MAX_U64</a>
+    };
+    <b>let</b> <b>mut</b> market_head_reserve = <a href="../social_contracts/insurance.md#social_contracts_insurance_MAX_U64">MAX_U64</a>;
+    <b>if</b> (vault.max_exposure_per_market &gt; 0) {
+        <b>let</b> tr = <b>if</b> (table::contains(&vault.market_exposures, market_id)) {
+            table::borrow(&vault.market_exposures, market_id).total_reserved
+        } <b>else</b> {
+            0
+        };
+        market_head_reserve = <a href="../social_contracts/insurance.md#social_contracts_insurance_min_cap_sub">min_cap_sub</a>(vault.max_exposure_per_market, tr);
+    };
+    <b>let</b> market_cov_max = <a href="../social_contracts/insurance.md#social_contracts_insurance_reserve_to_covered">reserve_to_covered</a>(market_head_reserve, coverage_bps);
+    <b>let</b> <b>mut</b> opt_head_reserve = <a href="../social_contracts/insurance.md#social_contracts_insurance_MAX_U64">MAX_U64</a>;
+    <b>if</b> (vault.max_exposure_per_option &gt; 0) {
+        <b>let</b> ors = <a href="../social_contracts/insurance.md#social_contracts_insurance_get_market_option_reserved">get_market_option_reserved</a>(vault, market_id, option_id);
+        opt_head_reserve = <a href="../social_contracts/insurance.md#social_contracts_insurance_min_cap_sub">min_cap_sub</a>(vault.max_exposure_per_option, ors);
+    };
+    <b>let</b> opt_cov_max = <a href="../social_contracts/insurance.md#social_contracts_insurance_reserve_to_covered">reserve_to_covered</a>(opt_head_reserve, coverage_bps);
+    <b>let</b> <b>mut</b> user_head_reserve = <a href="../social_contracts/insurance.md#social_contracts_insurance_MAX_U64">MAX_U64</a>;
+    <b>if</b> (vault.max_exposure_per_user &gt; 0) {
+        <b>let</b> ue = <a href="../social_contracts/insurance.md#social_contracts_insurance_get_user_exposure">get_user_exposure</a>(vault, insured);
+        user_head_reserve = <a href="../social_contracts/insurance.md#social_contracts_insurance_min_cap_sub">min_cap_sub</a>(vault.max_exposure_per_user, ue);
+    };
+    <b>let</b> user_cov_max = <a href="../social_contracts/insurance.md#social_contracts_insurance_reserve_to_covered">reserve_to_covered</a>(user_head_reserve, coverage_bps);
+    <b>let</b> <b>mut</b> m = position;
+    <b>if</b> (pool_max &lt; m) {
+        m = pool_max
+    };
+    <b>if</b> (vault_cov_max &lt; m) {
+        m = vault_cov_max
+    };
+    <b>if</b> (market_cov_max &lt; m) {
+        m = market_cov_max
+    };
+    <b>if</b> (opt_cov_max &lt; m) {
+        m = opt_cov_max
+    };
+    <b>if</b> (user_cov_max &lt; m) {
+        m = user_cov_max
+    };
+    m
+}
+</code></pre>
+
+
+
+</details>
+
+<a name="social_contracts_insurance_reserve_to_covered"></a>
+
+## Function `reserve_to_covered`
+
+
+
+<pre><code><b>fun</b> <a href="../social_contracts/insurance.md#social_contracts_insurance_reserve_to_covered">reserve_to_covered</a>(head_reserve: u64, coverage_bps: u64): u64
+</code></pre>
+
+
+
+<details>
+<summary>Implementation</summary>
+
+
+<pre><code><b>fun</b> <a href="../social_contracts/insurance.md#social_contracts_insurance_reserve_to_covered">reserve_to_covered</a>(head_reserve: u64, coverage_bps: u64): u64 {
+    <b>if</b> (coverage_bps == 0) {
+        <a href="../social_contracts/insurance.md#social_contracts_insurance_MAX_U64">MAX_U64</a>
+    } <b>else</b> {
+        <b>let</b> v = (head_reserve <b>as</b> u128) * (<a href="../social_contracts/insurance.md#social_contracts_insurance_BPS_DENOM">BPS_DENOM</a> <b>as</b> u128) / (coverage_bps <b>as</b> u128);
+        <b>if</b> (v &gt; (<a href="../social_contracts/insurance.md#social_contracts_insurance_MAX_U64">MAX_U64</a> <b>as</b> u128)) {
+            <a href="../social_contracts/insurance.md#social_contracts_insurance_MAX_U64">MAX_U64</a>
+        } <b>else</b> {
+            v <b>as</b> u64
+        }
+    }
+}
+</code></pre>
+
+
+
+</details>
+
+<a name="social_contracts_insurance_quote_vault_for_spot_coverage"></a>
+
+## Function `quote_vault_for_spot_coverage`
+
+
+
+<pre><code><b>public</b> <b>fun</b> <a href="../social_contracts/insurance.md#social_contracts_insurance_quote_vault_for_spot_coverage">quote_vault_for_spot_coverage</a>(config: &<a href="../social_contracts/insurance.md#social_contracts_insurance_InsuranceConfig">social_contracts::insurance::InsuranceConfig</a>, router_cfg: &<a href="../social_contracts/insurance.md#social_contracts_insurance_InsuranceRouterConfig">social_contracts::insurance::InsuranceRouterConfig</a>, vault: &<a href="../social_contracts/insurance.md#social_contracts_insurance_UnderwriterVault">social_contracts::insurance::UnderwriterVault</a>, record: &<a href="../social_contracts/social_proof_of_truth.md#social_contracts_social_proof_of_truth_SpotRecord">social_contracts::social_proof_of_truth::SpotRecord</a>, insured: <b>address</b>, option_id: u8, requested_coverage_amount: u64, coverage_bps: u64, duration_ms: u64): <a href="../social_contracts/insurance.md#social_contracts_insurance_VaultCoverageQuote">social_contracts::insurance::VaultCoverageQuote</a>
+</code></pre>
+
+
+
+<details>
+<summary>Implementation</summary>
+
+
+<pre><code><b>public</b> <b>fun</b> <a href="../social_contracts/insurance.md#social_contracts_insurance_quote_vault_for_spot_coverage">quote_vault_for_spot_coverage</a>(
+    config: &<a href="../social_contracts/insurance.md#social_contracts_insurance_InsuranceConfig">InsuranceConfig</a>,
+    router_cfg: &<a href="../social_contracts/insurance.md#social_contracts_insurance_InsuranceRouterConfig">InsuranceRouterConfig</a>,
+    vault: &<a href="../social_contracts/insurance.md#social_contracts_insurance_UnderwriterVault">UnderwriterVault</a>,
+    record: &spot::SpotRecord,
+    insured: <b>address</b>,
     option_id: u8,
     requested_coverage_amount: u64,
     coverage_bps: u64,
     duration_ms: u64,
-    <b>mut</b> payment: Coin&lt;MYSO&gt;,
+): <a href="../social_contracts/insurance.md#social_contracts_insurance_VaultCoverageQuote">VaultCoverageQuote</a> {
+    <b>if</b> (router_cfg.router_paused) {
+        <b>return</b> <a href="../social_contracts/insurance.md#social_contracts_insurance_coverage_quote_skipped">coverage_quote_skipped</a>(<a href="../social_contracts/insurance.md#social_contracts_insurance_SKIPPED_ROUTER_PAUSED">SKIPPED_ROUTER_PAUSED</a>)
+    };
+    <b>let</b> market_id = spot::get_id_address(record);
+    <b>if</b> (table::contains(&router_cfg.market_pause, market_id)
+        && *table::borrow(&router_cfg.market_pause, market_id)) {
+        <b>return</b> <a href="../social_contracts/insurance.md#social_contracts_insurance_coverage_quote_skipped">coverage_quote_skipped</a>(<a href="../social_contracts/insurance.md#social_contracts_insurance_SKIPPED_MARKET_PAUSED">SKIPPED_MARKET_PAUSED</a>)
+    };
+    <b>if</b> (!vault.enabled) {
+        <b>return</b> <a href="../social_contracts/insurance.md#social_contracts_insurance_coverage_quote_skipped">coverage_quote_skipped</a>(<a href="../social_contracts/insurance.md#social_contracts_insurance_SKIPPED_VAULT_DISABLED">SKIPPED_VAULT_DISABLED</a>)
+    };
+    <b>if</b> (vault.paused) {
+        <b>return</b> <a href="../social_contracts/insurance.md#social_contracts_insurance_coverage_quote_skipped">coverage_quote_skipped</a>(<a href="../social_contracts/insurance.md#social_contracts_insurance_SKIPPED_VAULT_PAUSED">SKIPPED_VAULT_PAUSED</a>)
+    };
+    <b>let</b> cap = balance::value(&vault.capital);
+    <b>let</b> r = vault.reserved;
+    <b>if</b> (cap * <a href="../social_contracts/insurance.md#social_contracts_insurance_BPS_DENOM">BPS_DENOM</a> &lt; r * router_cfg.min_vault_health_factor_bps) {
+        <b>return</b> <a href="../social_contracts/insurance.md#social_contracts_insurance_coverage_quote_skipped">coverage_quote_skipped</a>(<a href="../social_contracts/insurance.md#social_contracts_insurance_SKIPPED_UNHEALTHY_VAULT">SKIPPED_UNHEALTHY_VAULT</a>)
+    };
+    <b>let</b> t_total = spot::total_option_escrow(record);
+    <b>if</b> (t_total &lt; config.min_spot_total_liquidity) {
+        <b>return</b> <a href="../social_contracts/insurance.md#social_contracts_insurance_coverage_quote_skipped">coverage_quote_skipped</a>(<a href="../social_contracts/insurance.md#social_contracts_insurance_SKIPPED_THIN_OR_POOL">SKIPPED_THIN_OR_POOL</a>)
+    };
+    <b>if</b> ((option_id <b>as</b> u64) &gt;= spot::num_betting_options(record)) {
+        <b>return</b> <a href="../social_contracts/insurance.md#social_contracts_insurance_coverage_quote_skipped">coverage_quote_skipped</a>(<a href="../social_contracts/insurance.md#social_contracts_insurance_SKIPPED_THIN_OR_POOL">SKIPPED_THIN_OR_POOL</a>)
+    };
+    <b>let</b> max_fill =
+        <a href="../social_contracts/insurance.md#social_contracts_insurance_max_fill_covered_for_vault">max_fill_covered_for_vault</a>(config, vault, record, market_id, insured, option_id, coverage_bps);
+    <b>if</b> (max_fill == 0) {
+        <b>return</b> <a href="../social_contracts/insurance.md#social_contracts_insurance_coverage_quote_skipped">coverage_quote_skipped</a>(<a href="../social_contracts/insurance.md#social_contracts_insurance_SKIPPED_ZERO_CAPACITY">SKIPPED_ZERO_CAPACITY</a>)
+    };
+    <b>let</b> trade = <b>if</b> (requested_coverage_amount &lt;= max_fill) {
+        requested_coverage_amount
+    } <b>else</b> {
+        max_fill
+    };
+    <b>let</b> pq = <a href="../social_contracts/insurance.md#social_contracts_insurance_compute_spot_risk_quote">compute_spot_risk_quote</a>(
+        config,
+        vault,
+        record,
+        market_id,
+        option_id,
+        trade,
+        coverage_bps,
+        duration_ms,
+        <b>false</b>,
+    );
+    <b>if</b> (pq.risk_multiplier_bps &gt; config.max_risk_multiplier_bps) {
+        <b>return</b> <a href="../social_contracts/insurance.md#social_contracts_insurance_VaultCoverageQuote">VaultCoverageQuote</a> {
+            premium: 0,
+            premium_raw: 0,
+            reserve_required: 0,
+            available_capacity_reserve: <a href="../social_contracts/insurance.md#social_contracts_insurance_compute_reserve">compute_reserve</a>(max_fill, coverage_bps),
+            risk_multiplier_bps: pq.risk_multiplier_bps,
+            implied_prob_win_bps: pq.implied_prob_win_bps,
+            utilization_bps: <a href="../social_contracts/insurance.md#social_contracts_insurance_vault_utilization_bps">vault_utilization_bps</a>(vault),
+            max_fill_covered_amount: max_fill,
+            skipped_reason: <a href="../social_contracts/insurance.md#social_contracts_insurance_SKIPPED_RISK_MULTIPLIER">SKIPPED_RISK_MULTIPLIER</a>,
+        }
+    };
+    <b>let</b> res_req = <a href="../social_contracts/insurance.md#social_contracts_insurance_compute_reserve">compute_reserve</a>(trade, coverage_bps);
+    <b>let</b> avail_res = <a href="../social_contracts/insurance.md#social_contracts_insurance_compute_reserve">compute_reserve</a>(max_fill, coverage_bps);
+    <b>let</b> util_bps = <a href="../social_contracts/insurance.md#social_contracts_insurance_vault_utilization_bps">vault_utilization_bps</a>(vault);
+    <a href="../social_contracts/insurance.md#social_contracts_insurance_VaultCoverageQuote">VaultCoverageQuote</a> {
+        premium: pq.premium,
+        premium_raw: pq.premium_raw,
+        reserve_required: res_req,
+        available_capacity_reserve: avail_res,
+        risk_multiplier_bps: pq.risk_multiplier_bps,
+        implied_prob_win_bps: pq.implied_prob_win_bps,
+        utilization_bps: util_bps,
+        max_fill_covered_amount: max_fill,
+        skipped_reason: <a href="../social_contracts/insurance.md#social_contracts_insurance_SKIPPED_OK">SKIPPED_OK</a>,
+    }
+}
+</code></pre>
+
+
+
+</details>
+
+<a name="social_contracts_insurance_vault_utilization_bps"></a>
+
+## Function `vault_utilization_bps`
+
+
+
+<pre><code><b>fun</b> <a href="../social_contracts/insurance.md#social_contracts_insurance_vault_utilization_bps">vault_utilization_bps</a>(vault: &<a href="../social_contracts/insurance.md#social_contracts_insurance_UnderwriterVault">social_contracts::insurance::UnderwriterVault</a>): u64
+</code></pre>
+
+
+
+<details>
+<summary>Implementation</summary>
+
+
+<pre><code><b>fun</b> <a href="../social_contracts/insurance.md#social_contracts_insurance_vault_utilization_bps">vault_utilization_bps</a>(vault: &<a href="../social_contracts/insurance.md#social_contracts_insurance_UnderwriterVault">UnderwriterVault</a>): u64 {
+    <b>let</b> capital_value = balance::value(&vault.capital);
+    <b>if</b> (capital_value == 0) {
+        <a href="../social_contracts/insurance.md#social_contracts_insurance_BPS_DENOM">BPS_DENOM</a>
+    } <b>else</b> {
+        <b>let</b> utilization_u128 = (vault.reserved <b>as</b> u128) * (<a href="../social_contracts/insurance.md#social_contracts_insurance_BPS_DENOM">BPS_DENOM</a> <b>as</b> u128) / (capital_value <b>as</b> u128);
+        <b>assert</b>!(utilization_u128 &lt;= (<a href="../social_contracts/insurance.md#social_contracts_insurance_MAX_U64">MAX_U64</a> <b>as</b> u128), <a href="../social_contracts/insurance.md#social_contracts_insurance_EOverflow">EOverflow</a>);
+        utilization_u128 <b>as</b> u64
+    }
+}
+</code></pre>
+
+
+
+</details>
+
+<a name="social_contracts_insurance_buy_coverage_execute"></a>
+
+## Function `buy_coverage_execute`
+
+
+
+<pre><code><b>fun</b> <a href="../social_contracts/insurance.md#social_contracts_insurance_buy_coverage_execute">buy_coverage_execute</a>(config: &<a href="../social_contracts/insurance.md#social_contracts_insurance_InsuranceConfig">social_contracts::insurance::InsuranceConfig</a>, router_cfg: &<a href="../social_contracts/insurance.md#social_contracts_insurance_InsuranceRouterConfig">social_contracts::insurance::InsuranceRouterConfig</a>, backstop: &<b>mut</b> <a href="../social_contracts/insurance.md#social_contracts_insurance_InsuranceBackstopPool">social_contracts::insurance::InsuranceBackstopPool</a>, spot_config: &<a href="../social_contracts/social_proof_of_truth.md#social_contracts_social_proof_of_truth_SpotConfig">social_contracts::social_proof_of_truth::SpotConfig</a>, vault: &<b>mut</b> <a href="../social_contracts/insurance.md#social_contracts_insurance_UnderwriterVault">social_contracts::insurance::UnderwriterVault</a>, record: &<a href="../social_contracts/social_proof_of_truth.md#social_contracts_social_proof_of_truth_SpotRecord">social_contracts::social_proof_of_truth::SpotRecord</a>, option_id: u8, covered_amount: u64, coverage_bps: u64, duration_ms: u64, payment: &<b>mut</b> <a href="../myso/coin.md#myso_coin_Coin">myso::coin::Coin</a>&lt;<a href="../myso/myso.md#myso_myso_MYSO">myso::myso::MYSO</a>&gt;, clock: &<a href="../myso/clock.md#myso_clock_Clock">myso::clock::Clock</a>, route_id: <a href="../std/option.md#std_option_Option">std::option::Option</a>&lt;<a href="../myso/object.md#myso_object_ID">myso::object::ID</a>&gt;, route_leg_index: u8, check_market_router: bool, ctx: &<b>mut</b> <a href="../myso/tx_context.md#myso_tx_context_TxContext">myso::tx_context::TxContext</a>): (<a href="../myso/object.md#myso_object_ID">myso::object::ID</a>, <a href="../myso/object.md#myso_object_ID">myso::object::ID</a>, u64, u64, u64, u64, u64)
+</code></pre>
+
+
+
+<details>
+<summary>Implementation</summary>
+
+
+<pre><code><b>fun</b> <a href="../social_contracts/insurance.md#social_contracts_insurance_buy_coverage_execute">buy_coverage_execute</a>(
+    config: &<a href="../social_contracts/insurance.md#social_contracts_insurance_InsuranceConfig">InsuranceConfig</a>,
+    router_cfg: &<a href="../social_contracts/insurance.md#social_contracts_insurance_InsuranceRouterConfig">InsuranceRouterConfig</a>,
+    backstop: &<b>mut</b> <a href="../social_contracts/insurance.md#social_contracts_insurance_InsuranceBackstopPool">InsuranceBackstopPool</a>,
+    spot_config: &spot::SpotConfig,
+    vault: &<b>mut</b> <a href="../social_contracts/insurance.md#social_contracts_insurance_UnderwriterVault">UnderwriterVault</a>,
+    record: &spot::SpotRecord,
+    option_id: u8,
+    covered_amount: u64,
+    coverage_bps: u64,
+    duration_ms: u64,
+    payment: &<b>mut</b> Coin&lt;MYSO&gt;,
     clock: &Clock,
-    ctx: &<b>mut</b> TxContext
-) {
+    route_id: Option&lt;ID&gt;,
+    route_leg_index: u8,
+    check_market_router: bool,
+    ctx: &<b>mut</b> TxContext,
+): (ID, ID, u64, u64, u64, u64, u64) {
     <b>assert</b>!(config.enable_flag, <a href="../social_contracts/insurance.md#social_contracts_insurance_EDisabled">EDisabled</a>);
     <b>assert</b>!(spot::is_enabled(spot_config), <a href="../social_contracts/insurance.md#social_contracts_insurance_EMarketClosed">EMarketClosed</a>);
     <b>assert</b>!(spot::is_open(record), <a href="../social_contracts/insurance.md#social_contracts_insurance_EMarketClosed">EMarketClosed</a>);
     <b>assert</b>!(coverage_bps &gt;= config.min_coverage_bps, <a href="../social_contracts/insurance.md#social_contracts_insurance_EInvalidCoverage">EInvalidCoverage</a>);
     <b>assert</b>!(coverage_bps &lt;= config.max_coverage_bps, <a href="../social_contracts/insurance.md#social_contracts_insurance_EInvalidCoverage">EInvalidCoverage</a>);
     <b>assert</b>!(duration_ms &gt; 0 && duration_ms &lt;= config.max_duration_ms, <a href="../social_contracts/insurance.md#social_contracts_insurance_EInvalidDuration">EInvalidDuration</a>);
-    <b>assert</b>!(requested_coverage_amount &gt; 0, <a href="../social_contracts/insurance.md#social_contracts_insurance_EInvalidAmount">EInvalidAmount</a>);
+    <b>assert</b>!(covered_amount &gt; 0, <a href="../social_contracts/insurance.md#social_contracts_insurance_EInvalidAmount">EInvalidAmount</a>);
     <b>let</b> insured = tx_context::sender(ctx);
     <b>let</b> market_id = spot::get_id_address(record);
-    <b>let</b> position_amount = spot::get_user_option_amount(record, insured, option_id);
-    <b>let</b> covered_amount = <b>if</b> (requested_coverage_amount &lt;= position_amount) {
-        requested_coverage_amount
-    } <b>else</b> {
-        position_amount
+    <b>if</b> (check_market_router) {
+        <a href="../social_contracts/insurance.md#social_contracts_insurance_assert_market_router_open">assert_market_router_open</a>(router_cfg, market_id);
     };
-    <b>assert</b>!(covered_amount &gt; 0, <a href="../social_contracts/insurance.md#social_contracts_insurance_EInvalidAmount">EInvalidAmount</a>);
+    <a href="../social_contracts/insurance.md#social_contracts_insurance_assert_vault_buy_guards">assert_vault_buy_guards</a>(vault, router_cfg, <b>true</b>);
+    <b>let</b> position_amount = spot::get_user_option_amount(record, insured, option_id);
+    <b>assert</b>!(covered_amount &lt;= position_amount, <a href="../social_contracts/insurance.md#social_contracts_insurance_EInvalidAmount">EInvalidAmount</a>);
     <b>let</b> reserve_amount = <a href="../social_contracts/insurance.md#social_contracts_insurance_compute_reserve">compute_reserve</a>(covered_amount, coverage_bps);
     <b>let</b> capital_value = balance::value(&vault.capital);
     <b>assert</b>!(capital_value &gt;= vault.reserved, <a href="../social_contracts/insurance.md#social_contracts_insurance_EOverflow">EOverflow</a>);
@@ -2369,17 +4182,23 @@ Buy coverage for a SPoT position
         covered_amount,
         coverage_bps,
         duration_ms,
+        <b>true</b>,
     );
     <b>let</b> premium = pq.premium;
     <a href="../social_contracts/insurance.md#social_contracts_insurance_enforce_exposure_limits">enforce_exposure_limits</a>(vault, market_id, insured, option_id, reserve_amount, ctx);
-    <b>assert</b>!(coin::value(&payment) &gt;= premium, <a href="../social_contracts/insurance.md#social_contracts_insurance_EInsufficientPremium">EInsufficientPremium</a>);
-    <b>let</b> premium_coin = coin::split(&<b>mut</b> payment, premium, ctx);
-    balance::join(&<b>mut</b> vault.capital, coin::into_balance(premium_coin));
-    <b>if</b> (coin::value(&payment) &gt; 0) {
-        transfer::public_transfer(payment, insured);
-    } <b>else</b> {
-        coin::destroy_zero(payment);
+    <b>assert</b>!(coin::value(payment) &gt;= premium, <a href="../social_contracts/insurance.md#social_contracts_insurance_EInsufficientPremium">EInsufficientPremium</a>);
+    <b>let</b> sweep_bps = backstop.sweep_premium_bps;
+    <b>if</b> (sweep_bps &gt; 0) {
+        <b>assert</b>!(!backstop.paused, <a href="../social_contracts/insurance.md#social_contracts_insurance_EBackstopPaused">EBackstopPaused</a>);
     };
+    <b>let</b> sweep_amt = (premium * sweep_bps) / <a href="../social_contracts/insurance.md#social_contracts_insurance_BPS_DENOM">BPS_DENOM</a>;
+    <b>let</b> to_vault_amt = premium - sweep_amt;
+    <b>let</b> <b>mut</b> prem_coin = coin::split(payment, premium, ctx);
+    <b>if</b> (sweep_amt &gt; 0) {
+        <b>let</b> sc = coin::split(&<b>mut</b> prem_coin, sweep_amt, ctx);
+        balance::join(&<b>mut</b> backstop.capital, coin::into_balance(sc));
+    };
+    balance::join(&<b>mut</b> vault.capital, coin::into_balance(prem_coin));
     vault.reserved = vault.reserved + reserve_amount;
     <a href="../social_contracts/insurance.md#social_contracts_insurance_add_exposure">add_exposure</a>(vault, market_id, insured, option_id, reserve_amount, ctx);
     <b>let</b> now = clock::timestamp_ms(clock);
@@ -2398,6 +4217,8 @@ Buy coverage for a SPoT position
         expiry_time_ms,
         vault_id: vault_id_ins,
         status: <a href="../social_contracts/insurance.md#social_contracts_insurance_STATUS_ACTIVE">STATUS_ACTIVE</a>,
+        route_id,
+        route_leg_index,
     };
     <b>let</b> policy_id = object::id(&policy);
     transfer::share_object(policy);
@@ -2418,7 +4239,420 @@ Buy coverage for a SPoT position
         base_premium: pq.base_premium,
         market_total_amount: pq.market_total_amount,
         option_amount: pq.option_amount,
+        backstop_sweep_amount: sweep_amt,
+        route_id,
+        route_leg_index,
     });
+    (policy_id, vault_id_ins, premium, reserve_amount, sweep_amt, covered_amount, expiry_time_ms)
+}
+</code></pre>
+
+
+
+</details>
+
+<a name="social_contracts_insurance_buy_coverage"></a>
+
+## Function `buy_coverage`
+
+Buy coverage for a SPoT position
+
+
+<pre><code><b>public</b> <b>entry</b> <b>fun</b> <a href="../social_contracts/insurance.md#social_contracts_insurance_buy_coverage">buy_coverage</a>(config: &<a href="../social_contracts/insurance.md#social_contracts_insurance_InsuranceConfig">social_contracts::insurance::InsuranceConfig</a>, router_cfg: &<a href="../social_contracts/insurance.md#social_contracts_insurance_InsuranceRouterConfig">social_contracts::insurance::InsuranceRouterConfig</a>, backstop: &<b>mut</b> <a href="../social_contracts/insurance.md#social_contracts_insurance_InsuranceBackstopPool">social_contracts::insurance::InsuranceBackstopPool</a>, spot_config: &<a href="../social_contracts/social_proof_of_truth.md#social_contracts_social_proof_of_truth_SpotConfig">social_contracts::social_proof_of_truth::SpotConfig</a>, vault: &<b>mut</b> <a href="../social_contracts/insurance.md#social_contracts_insurance_UnderwriterVault">social_contracts::insurance::UnderwriterVault</a>, record: &<a href="../social_contracts/social_proof_of_truth.md#social_contracts_social_proof_of_truth_SpotRecord">social_contracts::social_proof_of_truth::SpotRecord</a>, option_id: u8, requested_coverage_amount: u64, coverage_bps: u64, duration_ms: u64, payment: <a href="../myso/coin.md#myso_coin_Coin">myso::coin::Coin</a>&lt;<a href="../myso/myso.md#myso_myso_MYSO">myso::myso::MYSO</a>&gt;, clock: &<a href="../myso/clock.md#myso_clock_Clock">myso::clock::Clock</a>, ctx: &<b>mut</b> <a href="../myso/tx_context.md#myso_tx_context_TxContext">myso::tx_context::TxContext</a>)
+</code></pre>
+
+
+
+<details>
+<summary>Implementation</summary>
+
+
+<pre><code><b>public</b> <b>entry</b> <b>fun</b> <a href="../social_contracts/insurance.md#social_contracts_insurance_buy_coverage">buy_coverage</a>(
+    config: &<a href="../social_contracts/insurance.md#social_contracts_insurance_InsuranceConfig">InsuranceConfig</a>,
+    router_cfg: &<a href="../social_contracts/insurance.md#social_contracts_insurance_InsuranceRouterConfig">InsuranceRouterConfig</a>,
+    backstop: &<b>mut</b> <a href="../social_contracts/insurance.md#social_contracts_insurance_InsuranceBackstopPool">InsuranceBackstopPool</a>,
+    spot_config: &spot::SpotConfig,
+    vault: &<b>mut</b> <a href="../social_contracts/insurance.md#social_contracts_insurance_UnderwriterVault">UnderwriterVault</a>,
+    record: &spot::SpotRecord,
+    option_id: u8,
+    requested_coverage_amount: u64,
+    coverage_bps: u64,
+    duration_ms: u64,
+    <b>mut</b> payment: Coin&lt;MYSO&gt;,
+    clock: &Clock,
+    ctx: &<b>mut</b> TxContext
+) {
+    <b>assert</b>!(config.enable_flag, <a href="../social_contracts/insurance.md#social_contracts_insurance_EDisabled">EDisabled</a>);
+    <b>assert</b>!(spot::is_enabled(spot_config), <a href="../social_contracts/insurance.md#social_contracts_insurance_EMarketClosed">EMarketClosed</a>);
+    <b>assert</b>!(spot::is_open(record), <a href="../social_contracts/insurance.md#social_contracts_insurance_EMarketClosed">EMarketClosed</a>);
+    <b>assert</b>!(coverage_bps &gt;= config.min_coverage_bps, <a href="../social_contracts/insurance.md#social_contracts_insurance_EInvalidCoverage">EInvalidCoverage</a>);
+    <b>assert</b>!(coverage_bps &lt;= config.max_coverage_bps, <a href="../social_contracts/insurance.md#social_contracts_insurance_EInvalidCoverage">EInvalidCoverage</a>);
+    <b>assert</b>!(duration_ms &gt; 0 && duration_ms &lt;= config.max_duration_ms, <a href="../social_contracts/insurance.md#social_contracts_insurance_EInvalidDuration">EInvalidDuration</a>);
+    <b>assert</b>!(requested_coverage_amount &gt; 0, <a href="../social_contracts/insurance.md#social_contracts_insurance_EInvalidAmount">EInvalidAmount</a>);
+    <b>let</b> insured = tx_context::sender(ctx);
+    <b>let</b> position_amount = spot::get_user_option_amount(record, insured, option_id);
+    <b>let</b> covered_amount = <b>if</b> (requested_coverage_amount &lt;= position_amount) {
+        requested_coverage_amount
+    } <b>else</b> {
+        position_amount
+    };
+    <b>assert</b>!(covered_amount &gt; 0, <a href="../social_contracts/insurance.md#social_contracts_insurance_EInvalidAmount">EInvalidAmount</a>);
+    <a href="../social_contracts/insurance.md#social_contracts_insurance_buy_coverage_execute">buy_coverage_execute</a>(
+        config,
+        router_cfg,
+        backstop,
+        spot_config,
+        vault,
+        record,
+        option_id,
+        covered_amount,
+        coverage_bps,
+        duration_ms,
+        &<b>mut</b> payment,
+        clock,
+        option::none(),
+        0,
+        <b>false</b>,
+        ctx,
+    );
+    <b>if</b> (coin::value(&payment) &gt; 0) {
+        transfer::public_transfer(payment, insured);
+    } <b>else</b> {
+        coin::destroy_zero(payment);
+    };
+}
+</code></pre>
+
+
+
+</details>
+
+<a name="social_contracts_insurance_route_buy_coverage_4"></a>
+
+## Function `route_buy_coverage_4`
+
+
+
+<pre><code><b>public</b> <b>entry</b> <b>fun</b> <a href="../social_contracts/insurance.md#social_contracts_insurance_route_buy_coverage_4">route_buy_coverage_4</a>(config: &<a href="../social_contracts/insurance.md#social_contracts_insurance_InsuranceConfig">social_contracts::insurance::InsuranceConfig</a>, router_cfg: &<a href="../social_contracts/insurance.md#social_contracts_insurance_InsuranceRouterConfig">social_contracts::insurance::InsuranceRouterConfig</a>, backstop: &<b>mut</b> <a href="../social_contracts/insurance.md#social_contracts_insurance_InsuranceBackstopPool">social_contracts::insurance::InsuranceBackstopPool</a>, spot_config: &<a href="../social_contracts/social_proof_of_truth.md#social_contracts_social_proof_of_truth_SpotConfig">social_contracts::social_proof_of_truth::SpotConfig</a>, record: &<a href="../social_contracts/social_proof_of_truth.md#social_contracts_social_proof_of_truth_SpotRecord">social_contracts::social_proof_of_truth::SpotRecord</a>, v0: &<b>mut</b> <a href="../social_contracts/insurance.md#social_contracts_insurance_UnderwriterVault">social_contracts::insurance::UnderwriterVault</a>, v1: &<b>mut</b> <a href="../social_contracts/insurance.md#social_contracts_insurance_UnderwriterVault">social_contracts::insurance::UnderwriterVault</a>, v2: &<b>mut</b> <a href="../social_contracts/insurance.md#social_contracts_insurance_UnderwriterVault">social_contracts::insurance::UnderwriterVault</a>, v3: &<b>mut</b> <a href="../social_contracts/insurance.md#social_contracts_insurance_UnderwriterVault">social_contracts::insurance::UnderwriterVault</a>, option_id: u8, fill_0: u64, fill_1: u64, fill_2: u64, fill_3: u64, coverage_bps: u64, duration_ms: u64, deadline_ms: u64, min_total_covered: u64, max_total_premium: u64, payment: <a href="../myso/coin.md#myso_coin_Coin">myso::coin::Coin</a>&lt;<a href="../myso/myso.md#myso_myso_MYSO">myso::myso::MYSO</a>&gt;, clock: &<a href="../myso/clock.md#myso_clock_Clock">myso::clock::Clock</a>, ctx: &<b>mut</b> <a href="../myso/tx_context.md#myso_tx_context_TxContext">myso::tx_context::TxContext</a>)
+</code></pre>
+
+
+
+<details>
+<summary>Implementation</summary>
+
+
+<pre><code><b>public</b> <b>entry</b> <b>fun</b> <a href="../social_contracts/insurance.md#social_contracts_insurance_route_buy_coverage_4">route_buy_coverage_4</a>(
+    config: &<a href="../social_contracts/insurance.md#social_contracts_insurance_InsuranceConfig">InsuranceConfig</a>,
+    router_cfg: &<a href="../social_contracts/insurance.md#social_contracts_insurance_InsuranceRouterConfig">InsuranceRouterConfig</a>,
+    backstop: &<b>mut</b> <a href="../social_contracts/insurance.md#social_contracts_insurance_InsuranceBackstopPool">InsuranceBackstopPool</a>,
+    spot_config: &spot::SpotConfig,
+    record: &spot::SpotRecord,
+    v0: &<b>mut</b> <a href="../social_contracts/insurance.md#social_contracts_insurance_UnderwriterVault">UnderwriterVault</a>,
+    v1: &<b>mut</b> <a href="../social_contracts/insurance.md#social_contracts_insurance_UnderwriterVault">UnderwriterVault</a>,
+    v2: &<b>mut</b> <a href="../social_contracts/insurance.md#social_contracts_insurance_UnderwriterVault">UnderwriterVault</a>,
+    v3: &<b>mut</b> <a href="../social_contracts/insurance.md#social_contracts_insurance_UnderwriterVault">UnderwriterVault</a>,
+    option_id: u8,
+    fill_0: u64,
+    fill_1: u64,
+    fill_2: u64,
+    fill_3: u64,
+    coverage_bps: u64,
+    duration_ms: u64,
+    deadline_ms: u64,
+    min_total_covered: u64,
+    max_total_premium: u64,
+    <b>mut</b> payment: Coin&lt;MYSO&gt;,
+    clock: &Clock,
+    ctx: &<b>mut</b> TxContext,
+) {
+    <b>assert</b>!(clock::timestamp_ms(clock) &lt;= deadline_ms, <a href="../social_contracts/insurance.md#social_contracts_insurance_EDeadlinePassed">EDeadlinePassed</a>);
+    <b>assert</b>!(config.enable_flag, <a href="../social_contracts/insurance.md#social_contracts_insurance_EDisabled">EDisabled</a>);
+    <b>assert</b>!(router_cfg.router_enabled, <a href="../social_contracts/insurance.md#social_contracts_insurance_ERouteDisabled">ERouteDisabled</a>);
+    <b>assert</b>!(!router_cfg.router_paused, <a href="../social_contracts/insurance.md#social_contracts_insurance_ERouterPaused">ERouterPaused</a>);
+    <b>assert</b>!(spot::is_enabled(spot_config), <a href="../social_contracts/insurance.md#social_contracts_insurance_EMarketClosed">EMarketClosed</a>);
+    <b>assert</b>!(spot::is_open(record), <a href="../social_contracts/insurance.md#social_contracts_insurance_EMarketClosed">EMarketClosed</a>);
+    <b>assert</b>!(coverage_bps &gt;= config.min_coverage_bps, <a href="../social_contracts/insurance.md#social_contracts_insurance_EInvalidCoverage">EInvalidCoverage</a>);
+    <b>assert</b>!(coverage_bps &lt;= config.max_coverage_bps, <a href="../social_contracts/insurance.md#social_contracts_insurance_EInvalidCoverage">EInvalidCoverage</a>);
+    <b>assert</b>!(duration_ms &gt; 0 && duration_ms &lt;= config.max_duration_ms, <a href="../social_contracts/insurance.md#social_contracts_insurance_EInvalidDuration">EInvalidDuration</a>);
+    <b>let</b> insured = tx_context::sender(ctx);
+    <b>let</b> market_id = spot::get_id_address(record);
+    <a href="../social_contracts/insurance.md#social_contracts_insurance_assert_market_router_open">assert_market_router_open</a>(router_cfg, market_id);
+    <b>let</b> position_amount = spot::get_user_option_amount(record, insured, option_id);
+    <b>let</b> total_covered = fill_0 + fill_1 + fill_2 + fill_3;
+    <b>assert</b>!(total_covered &gt; 0, <a href="../social_contracts/insurance.md#social_contracts_insurance_EInvalidAmount">EInvalidAmount</a>);
+    <b>assert</b>!(total_covered &gt;= min_total_covered, <a href="../social_contracts/insurance.md#social_contracts_insurance_ESlippageCovered">ESlippageCovered</a>);
+    <b>assert</b>!(total_covered &lt;= position_amount, <a href="../social_contracts/insurance.md#social_contracts_insurance_EInvalidAmount">EInvalidAmount</a>);
+    <b>if</b> (fill_0 &gt; 0 && fill_1 &gt; 0) {
+        <b>assert</b>!(object::id(v0) != object::id(v1), <a href="../social_contracts/insurance.md#social_contracts_insurance_EDuplicateVaultInRoute">EDuplicateVaultInRoute</a>);
+    };
+    <b>if</b> (fill_0 &gt; 0 && fill_2 &gt; 0) {
+        <b>assert</b>!(object::id(v0) != object::id(v2), <a href="../social_contracts/insurance.md#social_contracts_insurance_EDuplicateVaultInRoute">EDuplicateVaultInRoute</a>);
+    };
+    <b>if</b> (fill_0 &gt; 0 && fill_3 &gt; 0) {
+        <b>assert</b>!(object::id(v0) != object::id(v3), <a href="../social_contracts/insurance.md#social_contracts_insurance_EDuplicateVaultInRoute">EDuplicateVaultInRoute</a>);
+    };
+    <b>if</b> (fill_1 &gt; 0 && fill_2 &gt; 0) {
+        <b>assert</b>!(object::id(v1) != object::id(v2), <a href="../social_contracts/insurance.md#social_contracts_insurance_EDuplicateVaultInRoute">EDuplicateVaultInRoute</a>);
+    };
+    <b>if</b> (fill_1 &gt; 0 && fill_3 &gt; 0) {
+        <b>assert</b>!(object::id(v1) != object::id(v3), <a href="../social_contracts/insurance.md#social_contracts_insurance_EDuplicateVaultInRoute">EDuplicateVaultInRoute</a>);
+    };
+    <b>if</b> (fill_2 &gt; 0 && fill_3 &gt; 0) {
+        <b>assert</b>!(object::id(v2) != object::id(v3), <a href="../social_contracts/insurance.md#social_contracts_insurance_EDuplicateVaultInRoute">EDuplicateVaultInRoute</a>);
+    };
+    <b>let</b> r0 = <b>if</b> (fill_0 &gt; 0) {
+        <a href="../social_contracts/insurance.md#social_contracts_insurance_compute_reserve">compute_reserve</a>(fill_0, coverage_bps)
+    } <b>else</b> {
+        0
+    };
+    <b>let</b> r1 = <b>if</b> (fill_1 &gt; 0) {
+        <a href="../social_contracts/insurance.md#social_contracts_insurance_compute_reserve">compute_reserve</a>(fill_1, coverage_bps)
+    } <b>else</b> {
+        0
+    };
+    <b>let</b> r2 = <b>if</b> (fill_2 &gt; 0) {
+        <a href="../social_contracts/insurance.md#social_contracts_insurance_compute_reserve">compute_reserve</a>(fill_2, coverage_bps)
+    } <b>else</b> {
+        0
+    };
+    <b>let</b> r3 = <b>if</b> (fill_3 &gt; 0) {
+        <a href="../social_contracts/insurance.md#social_contracts_insurance_compute_reserve">compute_reserve</a>(fill_3, coverage_bps)
+    } <b>else</b> {
+        0
+    };
+    <b>let</b> total_res = r0 + r1 + r2 + r3;
+    <b>if</b> (router_cfg.max_route_reserve_market &gt; 0) {
+        <b>assert</b>!(total_res &lt;= router_cfg.max_route_reserve_market, <a href="../social_contracts/insurance.md#social_contracts_insurance_EExposureLimit">EExposureLimit</a>);
+    };
+    <b>if</b> (router_cfg.max_route_reserve_user &gt; 0) {
+        <b>assert</b>!(total_res &lt;= router_cfg.max_route_reserve_user, <a href="../social_contracts/insurance.md#social_contracts_insurance_EExposureLimit">EExposureLimit</a>);
+    };
+    <b>if</b> (router_cfg.max_route_reserve_option &gt; 0) {
+        <b>assert</b>!(total_res &lt;= router_cfg.max_route_reserve_option, <a href="../social_contracts/insurance.md#social_contracts_insurance_EExposureLimit">EExposureLimit</a>);
+    };
+    <b>let</b> conc = router_cfg.max_vault_concentration_bps;
+    <b>if</b> (r0 &gt; 0) {
+        <b>assert</b>!(
+            (r0 <b>as</b> u128) * (<a href="../social_contracts/insurance.md#social_contracts_insurance_BPS_DENOM">BPS_DENOM</a> <b>as</b> u128) &lt;= (total_res <b>as</b> u128) * (conc <b>as</b> u128),
+            <a href="../social_contracts/insurance.md#social_contracts_insurance_EVaultConcentration">EVaultConcentration</a>
+        );
+    };
+    <b>if</b> (r1 &gt; 0) {
+        <b>assert</b>!(
+            (r1 <b>as</b> u128) * (<a href="../social_contracts/insurance.md#social_contracts_insurance_BPS_DENOM">BPS_DENOM</a> <b>as</b> u128) &lt;= (total_res <b>as</b> u128) * (conc <b>as</b> u128),
+            <a href="../social_contracts/insurance.md#social_contracts_insurance_EVaultConcentration">EVaultConcentration</a>
+        );
+    };
+    <b>if</b> (r2 &gt; 0) {
+        <b>assert</b>!(
+            (r2 <b>as</b> u128) * (<a href="../social_contracts/insurance.md#social_contracts_insurance_BPS_DENOM">BPS_DENOM</a> <b>as</b> u128) &lt;= (total_res <b>as</b> u128) * (conc <b>as</b> u128),
+            <a href="../social_contracts/insurance.md#social_contracts_insurance_EVaultConcentration">EVaultConcentration</a>
+        );
+    };
+    <b>if</b> (r3 &gt; 0) {
+        <b>assert</b>!(
+            (r3 <b>as</b> u128) * (<a href="../social_contracts/insurance.md#social_contracts_insurance_BPS_DENOM">BPS_DENOM</a> <b>as</b> u128) &lt;= (total_res <b>as</b> u128) * (conc <b>as</b> u128),
+            <a href="../social_contracts/insurance.md#social_contracts_insurance_EVaultConcentration">EVaultConcentration</a>
+        );
+    };
+    <b>let</b> now = clock::timestamp_ms(clock);
+    <b>assert</b>!(now &lt;= <a href="../social_contracts/insurance.md#social_contracts_insurance_MAX_U64">MAX_U64</a> - duration_ms, <a href="../social_contracts/insurance.md#social_contracts_insurance_EOverflow">EOverflow</a>);
+    <b>let</b> expiry_time_ms = now + duration_ms;
+    <b>let</b> <b>mut</b> route = <a href="../social_contracts/insurance.md#social_contracts_insurance_CoverageRoute">CoverageRoute</a> {
+        id: object::new(ctx),
+        insured,
+        market_id,
+        option_id,
+        coverage_bps,
+        start_time_ms: now,
+        expiry_time_ms,
+        policy_ids: vector::empty(),
+        vault_ids: vector::empty(),
+        total_covered: 0,
+        total_premium: 0,
+        total_reserve: 0,
+        total_backstop_sweep: 0,
+        version: <a href="../social_contracts/insurance.md#social_contracts_insurance_DEFAULT_VERSION">DEFAULT_VERSION</a>,
+    };
+    <b>let</b> route_id = object::id(&route);
+    <b>let</b> <b>mut</b> leg: u8 = 0;
+    <b>let</b> <b>mut</b> total_premium: u64 = 0;
+    <b>if</b> (fill_0 &gt; 0) {
+        <b>let</b> (pid, vid, prem, res, sw, cov, _) = <a href="../social_contracts/insurance.md#social_contracts_insurance_buy_coverage_execute">buy_coverage_execute</a>(
+            config,
+            router_cfg,
+            backstop,
+            spot_config,
+            v0,
+            record,
+            option_id,
+            fill_0,
+            coverage_bps,
+            duration_ms,
+            &<b>mut</b> payment,
+            clock,
+            option::some(route_id),
+            leg,
+            <b>true</b>,
+            ctx,
+        );
+        vector::push_back(&<b>mut</b> route.policy_ids, pid);
+        vector::push_back(&<b>mut</b> route.vault_ids, vid);
+        route.total_covered = route.total_covered + cov;
+        route.total_premium = route.total_premium + prem;
+        route.total_reserve = route.total_reserve + res;
+        route.total_backstop_sweep = route.total_backstop_sweep + sw;
+        total_premium = total_premium + prem;
+        event::emit(<a href="../social_contracts/insurance.md#social_contracts_insurance_RouteFillEvent">RouteFillEvent</a> {
+            route_id,
+            leg_index: leg,
+            vault_id: vid,
+            policy_id: pid,
+            covered_amount: cov,
+            premium_paid: prem,
+            reserve_locked: res,
+            backstop_sweep_amount: sw,
+        });
+        leg = leg + 1;
+    };
+    <b>if</b> (fill_1 &gt; 0) {
+        <b>let</b> (pid, vid, prem, res, sw, cov, _) = <a href="../social_contracts/insurance.md#social_contracts_insurance_buy_coverage_execute">buy_coverage_execute</a>(
+            config,
+            router_cfg,
+            backstop,
+            spot_config,
+            v1,
+            record,
+            option_id,
+            fill_1,
+            coverage_bps,
+            duration_ms,
+            &<b>mut</b> payment,
+            clock,
+            option::some(route_id),
+            leg,
+            <b>true</b>,
+            ctx,
+        );
+        vector::push_back(&<b>mut</b> route.policy_ids, pid);
+        vector::push_back(&<b>mut</b> route.vault_ids, vid);
+        route.total_covered = route.total_covered + cov;
+        route.total_premium = route.total_premium + prem;
+        route.total_reserve = route.total_reserve + res;
+        route.total_backstop_sweep = route.total_backstop_sweep + sw;
+        total_premium = total_premium + prem;
+        event::emit(<a href="../social_contracts/insurance.md#social_contracts_insurance_RouteFillEvent">RouteFillEvent</a> {
+            route_id,
+            leg_index: leg,
+            vault_id: vid,
+            policy_id: pid,
+            covered_amount: cov,
+            premium_paid: prem,
+            reserve_locked: res,
+            backstop_sweep_amount: sw,
+        });
+        leg = leg + 1;
+    };
+    <b>if</b> (fill_2 &gt; 0) {
+        <b>let</b> (pid, vid, prem, res, sw, cov, _) = <a href="../social_contracts/insurance.md#social_contracts_insurance_buy_coverage_execute">buy_coverage_execute</a>(
+            config,
+            router_cfg,
+            backstop,
+            spot_config,
+            v2,
+            record,
+            option_id,
+            fill_2,
+            coverage_bps,
+            duration_ms,
+            &<b>mut</b> payment,
+            clock,
+            option::some(route_id),
+            leg,
+            <b>true</b>,
+            ctx,
+        );
+        vector::push_back(&<b>mut</b> route.policy_ids, pid);
+        vector::push_back(&<b>mut</b> route.vault_ids, vid);
+        route.total_covered = route.total_covered + cov;
+        route.total_premium = route.total_premium + prem;
+        route.total_reserve = route.total_reserve + res;
+        route.total_backstop_sweep = route.total_backstop_sweep + sw;
+        total_premium = total_premium + prem;
+        event::emit(<a href="../social_contracts/insurance.md#social_contracts_insurance_RouteFillEvent">RouteFillEvent</a> {
+            route_id,
+            leg_index: leg,
+            vault_id: vid,
+            policy_id: pid,
+            covered_amount: cov,
+            premium_paid: prem,
+            reserve_locked: res,
+            backstop_sweep_amount: sw,
+        });
+        leg = leg + 1;
+    };
+    <b>if</b> (fill_3 &gt; 0) {
+        <b>let</b> (pid, vid, prem, res, sw, cov, _) = <a href="../social_contracts/insurance.md#social_contracts_insurance_buy_coverage_execute">buy_coverage_execute</a>(
+            config,
+            router_cfg,
+            backstop,
+            spot_config,
+            v3,
+            record,
+            option_id,
+            fill_3,
+            coverage_bps,
+            duration_ms,
+            &<b>mut</b> payment,
+            clock,
+            option::some(route_id),
+            leg,
+            <b>true</b>,
+            ctx,
+        );
+        vector::push_back(&<b>mut</b> route.policy_ids, pid);
+        vector::push_back(&<b>mut</b> route.vault_ids, vid);
+        route.total_covered = route.total_covered + cov;
+        route.total_premium = route.total_premium + prem;
+        route.total_reserve = route.total_reserve + res;
+        route.total_backstop_sweep = route.total_backstop_sweep + sw;
+        total_premium = total_premium + prem;
+        event::emit(<a href="../social_contracts/insurance.md#social_contracts_insurance_RouteFillEvent">RouteFillEvent</a> {
+            route_id,
+            leg_index: leg,
+            vault_id: vid,
+            policy_id: pid,
+            covered_amount: cov,
+            premium_paid: prem,
+            reserve_locked: res,
+            backstop_sweep_amount: sw,
+        });
+    };
+    <b>assert</b>!(total_premium &lt;= max_total_premium, <a href="../social_contracts/insurance.md#social_contracts_insurance_ESlippagePremium">ESlippagePremium</a>);
+    <b>let</b> pids = <a href="../social_contracts/insurance.md#social_contracts_insurance_copy_id_vec">copy_id_vec</a>(&route.policy_ids);
+    <b>let</b> vids = <a href="../social_contracts/insurance.md#social_contracts_insurance_copy_id_vec">copy_id_vec</a>(&route.vault_ids);
+    event::emit(<a href="../social_contracts/insurance.md#social_contracts_insurance_CoverageRoutedEvent">CoverageRoutedEvent</a> {
+        route_id,
+        insured,
+        market_id,
+        option_id,
+        coverage_bps,
+        duration_ms,
+        total_covered: route.total_covered,
+        total_premium: route.total_premium,
+        total_reserve: route.total_reserve,
+        total_backstop_sweep: route.total_backstop_sweep,
+        expiry_time_ms: route.expiry_time_ms,
+        policy_ids: pids,
+        vault_ids: vids,
+    });
+    transfer::share_object(route);
+    <b>if</b> (coin::value(&payment) &gt; 0) {
+        transfer::public_transfer(payment, insured);
+    } <b>else</b> {
+        coin::destroy_zero(payment);
+    };
 }
 </code></pre>
 
@@ -2681,6 +4915,7 @@ Expire policy and release reserves
     // Read limit values before creating mutable borrows
     <b>let</b> max_exposure_per_market = vault.max_exposure_per_market;
     <b>let</b> max_exposure_per_user = vault.max_exposure_per_user;
+    <b>let</b> max_exposure_per_option = vault.max_exposure_per_option;
     // Check user exposure limit first (doesn't require market exposure)
     <b>if</b> (max_exposure_per_user &gt; 0) {
         <b>let</b> current_user = <a href="../social_contracts/insurance.md#social_contracts_insurance_get_user_exposure">get_user_exposure</a>(vault, insured);
@@ -2697,6 +4932,10 @@ Expire policy and release reserves
     };
     <b>let</b> option_reserved = <a href="../social_contracts/insurance.md#social_contracts_insurance_get_option_reserved">get_option_reserved</a>(exposure, option_id);
     <b>assert</b>!(option_reserved &lt;= <a href="../social_contracts/insurance.md#social_contracts_insurance_MAX_U64">MAX_U64</a> - reserve_amount, <a href="../social_contracts/insurance.md#social_contracts_insurance_EOverflow">EOverflow</a>);
+    <b>let</b> new_opt_reserved = option_reserved + reserve_amount;
+    <b>if</b> (max_exposure_per_option &gt; 0) {
+        <b>assert</b>!(new_opt_reserved &lt;= max_exposure_per_option, <a href="../social_contracts/insurance.md#social_contracts_insurance_EExposureLimit">EExposureLimit</a>);
+    };
 }
 </code></pre>
 

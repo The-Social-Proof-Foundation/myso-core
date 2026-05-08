@@ -8,6 +8,7 @@ module social_contracts::profile_tests {
     use std::option;
     
     use myso::test_scenario;
+    use social_contracts::memory::{MemoryRegistry, MemoryAccount};
     use social_contracts::profile::{
         Self,
         Profile,
@@ -47,20 +48,24 @@ module social_contracts::profile_tests {
         test_scenario::next_tx(&mut scenario, USER1);
         {
             let mut registry = test_scenario::take_shared<UsernameRegistry>(&scenario);
+            let mut memory_registry = test_scenario::take_shared<MemoryRegistry>(&scenario);
             let clock = test_scenario::take_shared<Clock>(&scenario);
             
             // Create profile
             profile::create_profile(
                 &mut registry,
+                &mut memory_registry,
                 string::utf8(b"User One"),
                 string::utf8(b"testname"),
                 string::utf8(b"This is my bio"),
                 b"https://example.com/image.png",
                 b"",
+                &clock,
                 test_scenario::ctx(&mut scenario)
             );
             
             test_scenario::return_shared(registry);
+            test_scenario::return_shared(memory_registry);
             test_scenario::return_shared(clock);
         };
         
@@ -79,6 +84,117 @@ module social_contracts::profile_tests {
             test_scenario::return_to_sender(&scenario, profile);
         };
         
+        test_scenario::end(scenario);
+    }
+
+    #[test]
+    fun test_registry_username_stores_ascii_lowercase() {
+        let mut scenario = test_scenario::begin(ADMIN);
+        {
+            profile::init_for_testing(test_scenario::ctx(&mut scenario));
+            let clock = clock::create_for_testing(test_scenario::ctx(&mut scenario));
+            clock::share_for_testing(clock);
+            let coins = coin::mint_for_testing<MYSO>(20_000_000_000, test_scenario::ctx(&mut scenario));
+            transfer::public_transfer(coins, USER1);
+        };
+
+        test_scenario::next_tx(&mut scenario, USER1);
+        {
+            let mut registry = test_scenario::take_shared<UsernameRegistry>(&scenario);
+            let mut memory_registry = test_scenario::take_shared<MemoryRegistry>(&scenario);
+            let clock = test_scenario::take_shared<Clock>(&scenario);
+
+            profile::create_profile(
+                &mut registry,
+                &mut memory_registry,
+                string::utf8(b"Display"),
+                string::utf8(b"MiXeDcAsE"),
+                string::utf8(b"bio"),
+                b"",
+                b"",
+                &clock,
+                test_scenario::ctx(&mut scenario),
+            );
+
+            test_scenario::return_shared(registry);
+            test_scenario::return_shared(memory_registry);
+            test_scenario::return_shared(clock);
+        };
+
+        test_scenario::next_tx(&mut scenario, USER1);
+        {
+            let profile = test_scenario::take_from_sender<Profile>(&scenario);
+            assert!(profile::username(&profile) == string::utf8(b"mixedcase"), 0);
+            test_scenario::return_to_sender(&scenario, profile);
+        };
+
+        test_scenario::next_tx(&mut scenario, USER1);
+        {
+            let registry = test_scenario::take_shared<UsernameRegistry>(&scenario);
+            let opt = profile::lookup_profile_by_username(&registry, string::utf8(b"mixedcase"));
+            assert!(option::is_some(&opt), 0);
+            test_scenario::return_shared(registry);
+        };
+
+        test_scenario::end(scenario);
+    }
+
+    #[test]
+    #[expected_failure(abort_code = profile::EUsernameNotAvailable, location = social_contracts::profile)]
+    fun test_registry_username_duplicate_ascii_case_conflicts() {
+        let mut scenario = test_scenario::begin(ADMIN);
+        {
+            profile::init_for_testing(test_scenario::ctx(&mut scenario));
+            let clock = clock::create_for_testing(test_scenario::ctx(&mut scenario));
+            clock::share_for_testing(clock);
+            let c1 = coin::mint_for_testing<MYSO>(20_000_000_000, test_scenario::ctx(&mut scenario));
+            let c2 = coin::mint_for_testing<MYSO>(20_000_000_000, test_scenario::ctx(&mut scenario));
+            transfer::public_transfer(c1, USER1);
+            transfer::public_transfer(c2, USER2);
+        };
+
+        test_scenario::next_tx(&mut scenario, USER1);
+        {
+            let mut registry = test_scenario::take_shared<UsernameRegistry>(&scenario);
+            let mut memory_registry = test_scenario::take_shared<MemoryRegistry>(&scenario);
+            let clock = test_scenario::take_shared<Clock>(&scenario);
+            profile::create_profile(
+                &mut registry,
+                &mut memory_registry,
+                string::utf8(b"U1"),
+                string::utf8(b"MiXeDcAsE"),
+                string::utf8(b""),
+                b"",
+                b"",
+                &clock,
+                test_scenario::ctx(&mut scenario),
+            );
+            test_scenario::return_shared(registry);
+            test_scenario::return_shared(memory_registry);
+            test_scenario::return_shared(clock);
+        };
+
+        test_scenario::next_tx(&mut scenario, USER2);
+        {
+            let mut registry = test_scenario::take_shared<UsernameRegistry>(&scenario);
+            let mut memory_registry = test_scenario::take_shared<MemoryRegistry>(&scenario);
+            let clock = test_scenario::take_shared<Clock>(&scenario);
+            profile::create_profile(
+                &mut registry,
+                &mut memory_registry,
+                string::utf8(b"U2"),
+                string::utf8(b"MIXEDCASE"),
+                string::utf8(b""),
+                b"",
+                b"",
+                &clock,
+                test_scenario::ctx(&mut scenario),
+            );
+            test_scenario::return_shared(registry);
+            test_scenario::return_shared(memory_registry);
+            test_scenario::return_shared(clock);
+        };
+
         test_scenario::end(scenario);
     }
     
@@ -102,20 +218,24 @@ module social_contracts::profile_tests {
         test_scenario::next_tx(&mut scenario, USER1);
         {
             let mut registry = test_scenario::take_shared<UsernameRegistry>(&scenario);
+            let mut memory_registry = test_scenario::take_shared<MemoryRegistry>(&scenario);
             let clock = test_scenario::take_shared<Clock>(&scenario);
             
             // Create profile
             profile::create_profile(
                 &mut registry,
+                &mut memory_registry,
                 string::utf8(b"Original Name"),
                 string::utf8(b"username"),
                 string::utf8(b"Original bio"),
                 b"https://example.com/image.png",
                 b"",
+                &clock,
                 test_scenario::ctx(&mut scenario)
             );
             
             test_scenario::return_shared(registry);
+            test_scenario::return_shared(memory_registry);
             test_scenario::return_shared(clock);
         };
         
@@ -167,20 +287,24 @@ module social_contracts::profile_tests {
         test_scenario::next_tx(&mut scenario, USER1);
         {
             let mut registry = test_scenario::take_shared<UsernameRegistry>(&scenario);
+            let mut memory_registry = test_scenario::take_shared<MemoryRegistry>(&scenario);
             let clock = test_scenario::take_shared<Clock>(&scenario);
             
             // Create profile
             profile::create_profile(
                 &mut registry,
+                &mut memory_registry,
                 string::utf8(b"User One"),
                 string::utf8(b"myusername"),
                 string::utf8(b"This is my bio"),
                 b"https://example.com/image.png",
                 b"",
+                &clock,
                 test_scenario::ctx(&mut scenario)
             );
             
             test_scenario::return_shared(registry);
+            test_scenario::return_shared(memory_registry);
             test_scenario::return_shared(clock);
         };
         
@@ -222,16 +346,20 @@ module social_contracts::profile_tests {
         test_scenario::next_tx(&mut scenario, USER1);
         {
             let mut registry = test_scenario::take_shared<UsernameRegistry>(&scenario);
+            let mut memory_registry = test_scenario::take_shared<MemoryRegistry>(&scenario);
             let clock = test_scenario::take_shared<Clock>(&scenario);
             profile::create_profile(
                 &mut registry,
+                &mut memory_registry,
                 string::utf8(b"User One"),
                 string::utf8(b"xuser"),
                 string::utf8(b"bio"),
                 b"https://example.com/p.png",
                 b"",
+                &clock,
                 test_scenario::ctx(&mut scenario)
             );
+            test_scenario::return_shared(memory_registry);
             test_scenario::return_shared(registry);
             test_scenario::return_shared(clock);
         };
@@ -278,16 +406,20 @@ module social_contracts::profile_tests {
         test_scenario::next_tx(&mut scenario, USER1);
         {
             let mut registry = test_scenario::take_shared<UsernameRegistry>(&scenario);
+            let mut memory_registry = test_scenario::take_shared<MemoryRegistry>(&scenario);
             let clock = test_scenario::take_shared<Clock>(&scenario);
             profile::create_profile(
                 &mut registry,
+                &mut memory_registry,
                 string::utf8(b"User One"),
                 string::utf8(b"xuser2"),
                 string::utf8(b"bio"),
                 b"",
                 b"",
+                &clock,
                 test_scenario::ctx(&mut scenario)
             );
+            test_scenario::return_shared(memory_registry);
             test_scenario::return_shared(registry);
             test_scenario::return_shared(clock);
         };
@@ -346,16 +478,20 @@ module social_contracts::profile_tests {
         test_scenario::next_tx(&mut scenario, USER1);
         {
             let mut registry = test_scenario::take_shared<UsernameRegistry>(&scenario);
+            let mut memory_registry = test_scenario::take_shared<MemoryRegistry>(&scenario);
             let clock = test_scenario::take_shared<Clock>(&scenario);
             profile::create_profile(
                 &mut registry,
+                &mut memory_registry,
                 string::utf8(b"User One"),
                 string::utf8(b"xuser3"),
                 string::utf8(b"original bio"),
                 b"",
                 b"",
+                &clock,
                 test_scenario::ctx(&mut scenario)
             );
+            test_scenario::return_shared(memory_registry);
             test_scenario::return_shared(registry);
             test_scenario::return_shared(clock);
         };
@@ -421,20 +557,26 @@ module social_contracts::profile_tests {
         test_scenario::next_tx(&mut scenario, USER1);
         {
             let mut registry = test_scenario::take_shared<UsernameRegistry>(&scenario);
-            
+            let mut memory_registry = test_scenario::take_shared<MemoryRegistry>(&scenario);
+            let clock = test_scenario::take_shared<Clock>(&scenario);
+
             profile::create_profile(
                 &mut registry,
+                &mut memory_registry,
                 string::utf8(b"Profile Owner"),
                 string::utf8(b"user1"),
                 string::utf8(b"This is User1's profile"),
                 b"https://example.com/image.png",
                 b"",
+                &clock,
                 test_scenario::ctx(&mut scenario)
             );
             
+            test_scenario::return_shared(memory_registry);
+            test_scenario::return_shared(clock);
             test_scenario::return_shared(registry);
         };
-        
+
         // User2 creates an offer on User1's profile
         test_scenario::next_tx(&mut scenario, USER2);
         {
@@ -488,20 +630,26 @@ module social_contracts::profile_tests {
         test_scenario::next_tx(&mut scenario, USER1);
         {
             let mut registry = test_scenario::take_shared<UsernameRegistry>(&scenario);
-            
+            let mut memory_registry = test_scenario::take_shared<MemoryRegistry>(&scenario);
+            let clock = test_scenario::take_shared<Clock>(&scenario);
+
             profile::create_profile(
                 &mut registry,
+                &mut memory_registry,
                 string::utf8(b"Profile Owner"),
                 string::utf8(b"user1"),
                 string::utf8(b"This is User1's profile"),
                 b"https://example.com/image.png",
                 b"",
+                &clock,
                 test_scenario::ctx(&mut scenario)
             );
             
+            test_scenario::return_shared(memory_registry);
+            test_scenario::return_shared(clock);
             test_scenario::return_shared(registry);
         };
-        
+
         // User2 creates an offer on User1's profile
         test_scenario::next_tx(&mut scenario, USER2);
         {
@@ -532,20 +680,24 @@ module social_contracts::profile_tests {
         test_scenario::next_tx(&mut scenario, USER1);
         {
             let mut registry = test_scenario::take_shared<UsernameRegistry>(&scenario);
+            let mut memory_registry = test_scenario::take_shared<MemoryRegistry>(&scenario);
+            let mut memory_account = test_scenario::take_shared<MemoryAccount>(&scenario);
             let treasury = test_scenario::take_shared<EcosystemTreasury>(&scenario);
             let profile = test_scenario::take_from_sender<Profile>(&scenario);
-            
-            // Accept offer from User2
-            profile::accept_offer(
+
+            profile::accept_offer_with_memory(
                 &mut registry,
+                &mut memory_registry,
+                &mut memory_account,
                 profile,
                 &treasury,
                 USER2,
                 option::none(),
                 test_scenario::ctx(&mut scenario)
             );
-            
-            // Return shared objects
+
+            test_scenario::return_shared(memory_account);
+            test_scenario::return_shared(memory_registry);
             test_scenario::return_shared(registry);
             test_scenario::return_shared(treasury);
         };
@@ -605,20 +757,26 @@ module social_contracts::profile_tests {
         test_scenario::next_tx(&mut scenario, USER1);
         {
             let mut registry = test_scenario::take_shared<UsernameRegistry>(&scenario);
-            
+            let mut memory_registry = test_scenario::take_shared<MemoryRegistry>(&scenario);
+            let clock = test_scenario::take_shared<Clock>(&scenario);
+
             profile::create_profile(
                 &mut registry,
+                &mut memory_registry,
                 string::utf8(b"Profile Owner"),
                 string::utf8(b"user1"),
                 string::utf8(b"This is User1's profile"),
                 b"https://example.com/image.png",
                 b"",
+                &clock,
                 test_scenario::ctx(&mut scenario)
             );
             
+            test_scenario::return_shared(memory_registry);
+            test_scenario::return_shared(clock);
             test_scenario::return_shared(registry);
         };
-        
+
         // User2 creates an offer on User1's profile
         test_scenario::next_tx(&mut scenario, USER2);
         {
@@ -700,20 +858,26 @@ module social_contracts::profile_tests {
         test_scenario::next_tx(&mut scenario, USER1);
         {
             let mut registry = test_scenario::take_shared<UsernameRegistry>(&scenario);
-            
+            let mut memory_registry = test_scenario::take_shared<MemoryRegistry>(&scenario);
+            let clock = test_scenario::take_shared<Clock>(&scenario);
+
             profile::create_profile(
                 &mut registry,
+                &mut memory_registry,
                 string::utf8(b"Profile Owner"),
                 string::utf8(b"user1"),
                 string::utf8(b"This is User1's profile"),
                 b"https://example.com/image.png",
                 b"",
+                &clock,
                 test_scenario::ctx(&mut scenario)
             );
             
+            test_scenario::return_shared(memory_registry);
+            test_scenario::return_shared(clock);
             test_scenario::return_shared(registry);
         };
-        
+
         // User2 creates an offer on User1's profile
         test_scenario::next_tx(&mut scenario, USER2);
         {
@@ -793,17 +957,23 @@ module social_contracts::profile_tests {
         test_scenario::next_tx(&mut scenario, USER1);
         {
             let mut registry = test_scenario::take_shared<UsernameRegistry>(&scenario);
-            
+            let mut memory_registry = test_scenario::take_shared<MemoryRegistry>(&scenario);
+            let clock = test_scenario::take_shared<Clock>(&scenario);
+
             profile::create_profile(
                 &mut registry,
+                &mut memory_registry,
                 string::utf8(b"Profile Owner"),
                 string::utf8(b"user1"),
                 string::utf8(b"This is User1's profile"),
                 b"https://example.com/image.png",
                 b"",
+                &clock,
                 test_scenario::ctx(&mut scenario)
             );
             
+            test_scenario::return_shared(memory_registry);
+            test_scenario::return_shared(clock);
             test_scenario::return_shared(registry);
         };
         
@@ -857,17 +1027,23 @@ module social_contracts::profile_tests {
         test_scenario::next_tx(&mut scenario, USER1);
         {
             let mut registry = test_scenario::take_shared<UsernameRegistry>(&scenario);
-            
+            let mut memory_registry = test_scenario::take_shared<MemoryRegistry>(&scenario);
+            let clock = test_scenario::take_shared<Clock>(&scenario);
+
             profile::create_profile(
                 &mut registry,
+                &mut memory_registry,
                 string::utf8(b"Profile Owner"),
                 string::utf8(b"user1"),
                 string::utf8(b"This is User1's profile"),
                 b"https://example.com/image.png",
                 b"",
+                &clock,
                 test_scenario::ctx(&mut scenario)
             );
             
+            test_scenario::return_shared(memory_registry);
+            test_scenario::return_shared(clock);
             test_scenario::return_shared(registry);
         };
         
@@ -875,12 +1051,15 @@ module social_contracts::profile_tests {
         test_scenario::next_tx(&mut scenario, USER1);
         {
             let mut registry = test_scenario::take_shared<UsernameRegistry>(&scenario);
+            let mut memory_registry = test_scenario::take_shared<MemoryRegistry>(&scenario);
+            let mut memory_account = test_scenario::take_shared<MemoryAccount>(&scenario);
             let treasury = test_scenario::take_shared<EcosystemTreasury>(&scenario);
             let profile = test_scenario::take_from_sender<Profile>(&scenario);
             
-            // Try to accept non-existent offer (should fail)
-            profile::accept_offer(
+            profile::accept_offer_with_memory(
                 &mut registry,
+                &mut memory_registry,
+                &mut memory_account,
                 profile,
                 &treasury,
                 USER2,
@@ -888,7 +1067,8 @@ module social_contracts::profile_tests {
                 test_scenario::ctx(&mut scenario)
             );
             
-            // These won't be reached due to the expected failure
+            test_scenario::return_shared(memory_account);
+            test_scenario::return_shared(memory_registry);
             test_scenario::return_shared(registry);
             test_scenario::return_shared(treasury);
         };
@@ -923,20 +1103,26 @@ module social_contracts::profile_tests {
         test_scenario::next_tx(&mut scenario, USER1);
         {
             let mut registry = test_scenario::take_shared<UsernameRegistry>(&scenario);
-            
+            let mut memory_registry = test_scenario::take_shared<MemoryRegistry>(&scenario);
+            let clock = test_scenario::take_shared<Clock>(&scenario);
+
             profile::create_profile(
                 &mut registry,
+                &mut memory_registry,
                 string::utf8(b"Profile Owner"),
                 string::utf8(b"user1"),
                 string::utf8(b"This is User1's profile"),
                 b"https://example.com/image.png",
                 b"",
+                &clock,
                 test_scenario::ctx(&mut scenario)
             );
             
+            test_scenario::return_shared(memory_registry);
+            test_scenario::return_shared(clock);
             test_scenario::return_shared(registry);
         };
-        
+
         // User2 creates an offer on User1's profile
         test_scenario::next_tx(&mut scenario, USER2);
         {
@@ -1005,20 +1191,26 @@ module social_contracts::profile_tests {
         test_scenario::next_tx(&mut scenario, USER1);
         {
             let mut registry = test_scenario::take_shared<UsernameRegistry>(&scenario);
-            
+            let mut memory_registry = test_scenario::take_shared<MemoryRegistry>(&scenario);
+            let clock = test_scenario::take_shared<Clock>(&scenario);
+
             profile::create_profile(
                 &mut registry,
+                &mut memory_registry,
                 string::utf8(b"Profile Owner"),
                 string::utf8(b"user1"),
                 string::utf8(b"This is User1's profile"),
                 b"https://example.com/image.png",
                 b"",
+                &clock,
                 test_scenario::ctx(&mut scenario)
             );
             
+            test_scenario::return_shared(memory_registry);
+            test_scenario::return_shared(clock);
             test_scenario::return_shared(registry);
         };
-        
+
         // User1 sets minimum offer amount
         test_scenario::next_tx(&mut scenario, USER1);
         {

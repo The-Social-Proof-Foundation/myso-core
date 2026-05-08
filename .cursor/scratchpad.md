@@ -994,3 +994,57 @@ Or add CLI args to the faucet exec line. Defaults will improve latency without c
 The 5 min transaction timeout suggests the fullnode at `http://fullnode.testnet.mysocial.network:8082` may be slow to confirm from Railway's region. User should verify:
 - Fullnode RPC latency from Railway
 - Whether a geographically closer fullnode exists
+
+---
+
+# Proof of Creativity production escrow (Apr 2026)
+
+## Spec (implementation-aligned)
+- **Outcomes / redirect kinds**: Encoded as `u8` on `Post` (`poc_outcome`, `poc_redirection_kind`) and mirrored in index DB; `PoCResultAppliedEvent` for indexers.
+- **Escrow**: MYSO held in `Post.poc_escrow`; tips/reservation fee paths use MYSO-specific redirection or abort for non-MYSO when escrow mode; generic coin tips disallow escrow.
+- **Claim authority**: `claim_poc_escrow` / internal drain with events; dispute overturn refunds emit `PoCEscrowClaimedEvent`; post delete refunds emit same for balance reconciliation.
+- **Replay**: `PoCDispute.voting_rewards_claimed` table records per-voter claims.
+
+## Data stack
+- Migration `20260429120000_add_post_poc_escrow_fields`: `posts.poc_outcome`, `poc_redirection_kind`, `poc_escrow_balance`.
+- Indexer: `PoCResultAppliedEvent`, `PoCEscrowDepositEvent`, `PoCEscrowClaimedEvent`; SPT `PocRedirectionUpdatedEvent` BCS v1/v2 compat; revenue redirection post updates include `poc_redirection_kind`.
+- GraphQL / social-server: `pocOutcome`, `pocRedirectionKind`, `pocEscrowBalance` on `Post`; `PostBasicRow` extended for REST.
+
+## Rollout
+- Publish Move → run DB migration → deploy indexer → GraphQL → social-server; reindex if historical escrow events needed for `poc_escrow_balance`.
+
+## Verification
+- `UPDATE=1 cargo test -p myso-framework --test build-system-packages`
+- `cargo check` on social-schema, indexer, reader, graphql, social-server
+- `cargo insta accept` for GraphQL schema + pipeline snapshots after SDL export test
+
+---
+
+# PoC: Clock-based dispute voting, ms config, single dispute fee (Apr 2026)
+
+## Done
+- **Move** (`proof_of_creativity.move`): `Clock` on submit/vote/resolve; `voting_duration_ms`; `voting_start_ms` / `voting_end_ms`; removed `dispute_protocol_fee`; single `dispute_cost`; `get_dispute_voting_status(..., current_time_ms)`; tests + `interact.sh` updated.
+- **DB**: In-place edits to `20250620000000_create_poc_tables` and dependent PoC migrations; Diesel `schema.rs` / `models/poc.rs`.
+- **Indexer**: `handlers/events.rs`, `handlers/poc.rs` event shapes; `posts_handler` redirect-only clears when `redirection_removed` without `badge_revoked`.
+- **Reader / GraphQL / social-server**: `PocDisputeRow` voting ms; `PocConfig.votingDurationMs`; `PocDispute.votingStartMs` / `votingEndMs`; social-server `PostBasicRow` aligned with denormalized posts PoC columns.
+- **Framework**: Packages rebuild, `published_api.txt`, docs, bytecode snapshot (`cargo run -p myso-framework-snapshot`).
+
+## Verification
+- `cargo insta accept` in `crates/myso-indexer-alt-graphql` for `schema.graphql.snap`
+- `MYSO_SKIP_SIMTESTS=1 cargo nextest run -p myso-indexer-alt-graphql -p myso-indexer-alt-social -p myso-indexer-alt-social-schema -p myso-social-server`: 192 passed
+- `cargo xclippy`: exit 0 (pre-existing warnings in other crates)
+
+---
+
+# Indexer posts `poc_outcome` schema drift (May 2026)
+
+## Fix
+- Extended [`20251230000001_add_poc_metadata_fields/up.sql`](crates/myso-indexer-alt-social-schema/migrations/20251230000001_add_poc_metadata_fields/up.sql) with `posts.poc_outcome` and `posts.poc_redirection_kind` (conditional adds + comments); header comment documents one-time `ALTER TABLE ... IF NOT EXISTS` for DBs that already ran the migration before this edit.
+- Extended [`down.sql`](crates/myso-indexer-alt-social-schema/migrations/20251230000001_add_poc_metadata_fields/down.sql) to drop those columns on rollback.
+
+## Ops
+- Existing databases: run the two `ADD COLUMN IF NOT EXISTS` statements from the migration header (diesel will not re-run `20251230000001`).
+- Then run remaining migrations / deploy indexer as usual.
+
+## Verification
+- `cargo check -p myso-indexer-alt-social-schema -p myso-indexer-alt-social`: passes
