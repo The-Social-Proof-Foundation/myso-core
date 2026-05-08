@@ -5,10 +5,6 @@
 use myso_framework::{SystemPackage, SystemPackageMetadata};
 use myso_protocol_config::ProtocolVersion;
 use myso_types::base_types::ObjectID;
-use myso_types::{
-    BRIDGE_PACKAGE_ID, MOVE_STDLIB_PACKAGE_ID, MYDATA_PACKAGE_ID, MYSO_FRAMEWORK_PACKAGE_ID,
-    MYSO_SOCIAL_PACKAGE_ID, MYSO_SYSTEM_PACKAGE_ID, ORDERBOOK_PACKAGE_ID,
-};
 use serde::{Deserialize, Serialize};
 use std::collections::{BTreeMap, BTreeSet};
 use std::{fs, io::Read, path::PathBuf};
@@ -65,16 +61,6 @@ impl SnapshotPackage {
     }
 }
 
-const SYSTEM_PACKAGE_PUBLISH_ORDER: &[ObjectID] = &[
-    MOVE_STDLIB_PACKAGE_ID,
-    MYSO_FRAMEWORK_PACKAGE_ID,
-    MYSO_SYSTEM_PACKAGE_ID,
-    ORDERBOOK_PACKAGE_ID,
-    BRIDGE_PACKAGE_ID,
-    MYDATA_PACKAGE_ID,
-    MYSO_SOCIAL_PACKAGE_ID,
-];
-
 pub fn load_bytecode_snapshot_manifest() -> SnapshotManifest {
     let Ok(bytes) = fs::read(manifest_path()) else {
         return SnapshotManifest::default();
@@ -105,11 +91,25 @@ pub fn update_bytecode_snapshot_manifest(
 
 pub fn load_bytecode_snapshot(protocol_version: u64) -> anyhow::Result<Vec<SystemPackage>> {
     let snapshot_path = snapshot_path_for_version(protocol_version)?;
+    let snapshot_dir_version: u64 = snapshot_path
+        .file_name()
+        .and_then(|n| n.to_str())
+        .and_then(|n| n.parse().ok())
+        .ok_or_else(|| anyhow::anyhow!("invalid bytecode snapshot directory name"))?;
+
+    let manifest = load_bytecode_snapshot_manifest();
+    let snapshot_entry = manifest.get(&snapshot_dir_version).ok_or_else(|| {
+        anyhow::anyhow!(
+            "manifest.json missing bytecode snapshot metadata for protocol version {}",
+            snapshot_dir_version
+        )
+    })?;
+
     let mut snapshots: BTreeMap<ObjectID, SystemPackage> = fs::read_dir(&snapshot_path)?
         .flatten()
         .map(|entry| {
             let file_name = entry.file_name().to_str().unwrap().to_string();
-            let mut file = fs::File::open(snapshot_path.clone().join(file_name))?;
+            let mut file = fs::File::open(snapshot_path.join(&file_name))?;
             let mut buffer = Vec::new();
             file.read_to_end(&mut buffer)?;
             let package: SystemPackage = bcs::from_bytes(&buffer)?;
@@ -118,12 +118,14 @@ pub fn load_bytecode_snapshot(protocol_version: u64) -> anyhow::Result<Vec<Syste
         .collect::<anyhow::Result<_>>()?;
 
     let mut snapshot_objects = Vec::new();
-    for package_id in SYSTEM_PACKAGE_PUBLISH_ORDER {
-        let Some(object) = snapshots.remove(package_id) else {
+    for pkg in &snapshot_entry.packages {
+        let package_id = pkg.id;
+        let Some(object) = snapshots.remove(&package_id) else {
             anyhow::bail!(
-                "Bytecode snapshot for protocol version {} missing package {}. \
+                "Bytecode snapshot for protocol version {} (dir {}) missing package {}. \
                  Regenerate with: cargo run -p myso-framework-snapshot",
                 protocol_version,
+                snapshot_dir_version,
                 package_id
             );
         };

@@ -38,6 +38,8 @@ impl MySoFlavor {
             ("Orderbook".into(), "orderbook".into()),
             ("MyData".into(), "mydata".into()),
             ("MySoSocial".into(), "myso_social".into()),
+            ("MySoGroups".into(), "myso_groups".into()),
+            ("MySoMessaging".into(), "myso_messaging".into()),
             ("mydata".into(), "mydata".into()),
             ("MySocialContracts".into(), "myso_social".into()),
         ])

@@ -2440,7 +2440,7 @@
     ]
   },
   "111": {
-    "git_revision": "e3b6f8adb7d2d38ef3480811fe4bd9aa6a6a829b-dirty",
+    "git_revision": "e3b6f8adb7d2d38ef3480811fe4bd9aa6a6a829b",
     "packages": [
       {
         "name": "MoveStdlib",
@@ -2471,6 +2471,56 @@
         "name": "MyData",
         "path": "crates/myso-framework/packages/mydata",
         "id": "0x000000000000000000000000000000000000000000000000000000000000da7a"
+      },
+      {
+        "name": "MySoSocial",
+        "path": "crates/myso-framework/packages/myso-social",
+        "id": "0x00000000000000000000000000000000000000000000000000000000000050c1"
+      }
+    ]
+  },
+  "112": {
+    "git_revision": "c3529fd29ec2ee030351bfb368e7be7d806e1757",
+    "packages": [
+      {
+        "name": "MoveStdlib",
+        "path": "crates/myso-framework/packages/move-stdlib",
+        "id": "0x0000000000000000000000000000000000000000000000000000000000000001"
+      },
+      {
+        "name": "MySo",
+        "path": "crates/myso-framework/packages/myso-framework/myso-framework",
+        "id": "0x0000000000000000000000000000000000000000000000000000000000000002"
+      },
+      {
+        "name": "MySoSystem",
+        "path": "crates/myso-framework/packages/myso-system",
+        "id": "0x0000000000000000000000000000000000000000000000000000000000000003"
+      },
+      {
+        "name": "Orderbook",
+        "path": "crates/myso-framework/packages/orderbook",
+        "id": "0x0000000000000000000000000000000000000000000000000000000000000b0c"
+      },
+      {
+        "name": "Bridge",
+        "path": "crates/myso-framework/packages/bridge",
+        "id": "0x000000000000000000000000000000000000000000000000000000000000000b"
+      },
+      {
+        "name": "MyData",
+        "path": "crates/myso-framework/packages/mydata",
+        "id": "0x000000000000000000000000000000000000000000000000000000000000da7a"
+      },
+      {
+        "name": "MySoGroups",
+        "path": "crates/myso-framework/packages/myso-groups",
+        "id": "0x0000000000000000000000000000000000000000000000000000000000000a11"
+      },
+      {
+        "name": "MySoMessaging",
+        "path": "crates/myso-framework/packages/myso-messaging",
+        "id": "0x000000000000000000000000000000000000000000000000000000000000e110"
       },
       {
         "name": "MySoSocial",

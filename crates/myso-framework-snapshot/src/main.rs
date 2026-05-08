@@ -20,7 +20,8 @@ fn main() {
         write_package_to_file(version, &package.compiled);
         files.push(SnapshotPackage::from_system_package_metadata(package));
     }
-    update_bytecode_snapshot_manifest(GIT_FULL_SHA_REVISION, version, files);
+    let revision = GIT_FULL_SHA_REVISION.strip_suffix("-dirty").unwrap_or(GIT_FULL_SHA_REVISION);
+    update_bytecode_snapshot_manifest(revision, version, files);
 }
 
 fn write_package_to_file(version: u64, package: &SystemPackage) {

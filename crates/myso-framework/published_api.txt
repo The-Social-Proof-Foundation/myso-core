@@ -7009,6 +7009,513 @@ leaf_hash
 check_staleness
 	public fun
 	0xda7a::time
+UnpauseCap
+	public struct
+	0xa11::unpause_cap
+new
+	public(package) fun
+	0xa11::unpause_cap
+group_id
+	public(package) fun
+	0xa11::unpause_cap
+delete
+	public(package) fun
+	0xa11::unpause_cap
+burn
+	public fun
+	0xa11::unpause_cap
+PermissionsTable
+	public struct
+	0xa11::permissions_table
+new_derived
+	public(package) fun
+	0xa11::permissions_table
+add_member
+	public(package) fun
+	0xa11::permissions_table
+remove_member
+	public fun
+	0xa11::permissions_table
+add_permission
+	public(package) fun
+	0xa11::permissions_table
+remove_permission
+	public(package) fun
+	0xa11::permissions_table
+has_permission
+	public(package) fun
+	0xa11::permissions_table
+is_member
+	public fun
+	0xa11::permissions_table
+length
+	public(package) fun
+	0xa11::permissions_table
+destroy_empty
+	public fun
+	0xa11::permissions_table
+PermissionsAdmin
+	public struct
+	0xa11::permissioned_group
+ExtensionPermissionsAdmin
+	public struct
+	0xa11::permissioned_group
+ObjectAdmin
+	public struct
+	0xa11::permissioned_group
+GroupDeleter
+	public struct
+	0xa11::permissioned_group
+PermissionedGroup
+	public struct
+	0xa11::permissioned_group
+PausedMarker
+	public struct
+	0xa11::permissioned_group
+GroupCreated
+	public struct
+	0xa11::permissioned_group
+GroupDerived
+	public struct
+	0xa11::permissioned_group
+MemberAdded
+	public struct
+	0xa11::permissioned_group
+MemberRemoved
+	public struct
+	0xa11::permissioned_group
+PermissionsGranted
+	public struct
+	0xa11::permissioned_group
+PermissionsRevoked
+	public struct
+	0xa11::permissioned_group
+GroupDeleted
+	public struct
+	0xa11::permissioned_group
+GroupPaused
+	public struct
+	0xa11::permissioned_group
+GroupUnpaused
+	public struct
+	0xa11::permissioned_group
+new
+	public fun
+	0xa11::permissioned_group
+new_derived
+	public fun
+	0xa11::permissioned_group
+delete
+	public fun
+	0xa11::permissioned_group
+pause
+	public fun
+	0xa11::permissioned_group
+unpause
+	public fun
+	0xa11::permissioned_group
+is_paused
+	public fun
+	0xa11::permissioned_group
+grant_permission
+	public fun
+	0xa11::permissioned_group
+object_grant_permission
+	public fun
+	0xa11::permissioned_group
+remove_member
+	public fun
+	0xa11::permissioned_group
+object_remove_member
+	public fun
+	0xa11::permissioned_group
+revoke_permission
+	public fun
+	0xa11::permissioned_group
+object_revoke_permission
+	public fun
+	0xa11::permissioned_group
+has_permission
+	public fun
+	0xa11::permissioned_group
+is_member
+	public fun
+	0xa11::permissioned_group
+creator
+	public fun
+	0xa11::permissioned_group
+object_uid
+	public fun
+	0xa11::permissioned_group
+object_uid_mut
+	public fun
+	0xa11::permissioned_group
+permissions_admin_count
+	public fun
+	0xa11::permissioned_group
+member_count
+	public fun
+	0xa11::permissioned_group
+is_core_permission
+	fun
+	0xa11::permissioned_group
+safe_decrement_permissions_admin_count
+	fun
+	0xa11::permissioned_group
+internal_grant_permission
+	fun
+	0xa11::permissioned_group
+internal_revoke_permission
+	fun
+	0xa11::permissioned_group
+DISPLAY
+	public struct
+	0xa11::display
+PermissionedGroupPublisher
+	public struct
+	0xa11::display
+init
+	fun
+	0xa11::display
+setup_display
+	public fun
+	0xa11::display
+EncryptionHistoryTag
+	public struct
+	0xe110::encryption_history
+PermissionedGroupTag
+	public struct
+	0xe110::encryption_history
+EncryptionKeyRotator
+	public struct
+	0xe110::encryption_history
+EncryptionHistory
+	public struct
+	0xe110::encryption_history
+EncryptionHistoryCreated
+	public struct
+	0xe110::encryption_history
+EncryptionKeyRotated
+	public struct
+	0xe110::encryption_history
+new
+	public(package) fun
+	0xe110::encryption_history
+rotate_key
+	public(package) fun
+	0xe110::encryption_history
+permissions_group_tag
+	public(package) fun
+	0xe110::encryption_history
+group_id
+	public fun
+	0xe110::encryption_history
+uuid
+	public fun
+	0xe110::encryption_history
+current_key_version
+	public fun
+	0xe110::encryption_history
+encrypted_key
+	public fun
+	0xe110::encryption_history
+current_encrypted_key
+	public fun
+	0xe110::encryption_history
+GroupHandleRegistry
+	public struct
+	0xe110::group_handle_registry
+new
+	public(package) fun
+	0xe110::group_handle_registry
+share
+	public(package) fun
+	0xe110::group_handle_registry
+derivation_key
+	public(package) fun
+	0xe110::group_handle_registry
+to_lowercase_bytes
+	fun
+	0xe110::group_handle_registry
+canonical_handle
+	fun
+	0xe110::group_handle_registry
+duplicate_string
+	fun
+	0xe110::group_handle_registry
+is_valid_handle_chars
+	fun
+	0xe110::group_handle_registry
+is_reserved
+	fun
+	0xe110::group_handle_registry
+is_bytes_eq
+	fun
+	0xe110::group_handle_registry
+validate_handle_string
+	fun
+	0xe110::group_handle_registry
+set_handle
+	public(package) fun
+	0xe110::group_handle_registry
+clear_handle
+	public(package) fun
+	0xe110::group_handle_registry
+lookup_group_by_handle
+	public fun
+	0xe110::group_handle_registry
+GroupLeaver
+	public struct
+	0xe110::group_leaver
+new
+	public(package) fun
+	0xe110::group_leaver
+share
+	public(package) fun
+	0xe110::group_leaver
+derivation_key
+	public(package) fun
+	0xe110::group_leaver
+leave
+	public(package) fun
+	0xe110::group_leaver
+MetadataKey
+	public struct
+	0xe110::metadata
+Metadata
+	public struct
+	0xe110::metadata
+key
+	public fun
+	0xe110::metadata
+new
+	public(package) fun
+	0xe110::metadata
+name
+	public fun
+	0xe110::metadata
+uuid
+	public fun
+	0xe110::metadata
+creator
+	public fun
+	0xe110::metadata
+data
+	public fun
+	0xe110::metadata
+set_name
+	public(package) fun
+	0xe110::metadata
+insert_data
+	public(package) fun
+	0xe110::metadata
+remove_data
+	public(package) fun
+	0xe110::metadata
+GroupManager
+	public struct
+	0xe110::group_manager
+new
+	public(package) fun
+	0xe110::group_manager
+share
+	public(package) fun
+	0xe110::group_manager
+derivation_key
+	public(package) fun
+	0xe110::group_manager
+attach_metadata
+	public(package) fun
+	0xe110::group_manager
+remove_metadata
+	public(package) fun
+	0xe110::group_manager
+borrow_metadata
+	public(package) fun
+	0xe110::group_manager
+borrow_metadata_mut
+	public(package) fun
+	0xe110::group_manager
+EscrowFeeTotals
+	public struct
+	0xe110::paid_escrow_settlement
+total_amount
+	public fun
+	0xe110::paid_escrow_settlement
+platform_fee
+	public fun
+	0xe110::paid_escrow_settlement
+treasury_fee
+	public fun
+	0xe110::paid_escrow_settlement
+net_amount
+	public fun
+	0xe110::paid_escrow_settlement
+distribute_escrow_to_recipients
+	public fun
+	0xe110::paid_escrow_settlement
+MessageLogTag
+	public struct
+	0xe110::message_log
+PaidMessageEscrow
+	public struct
+	0xe110::message_log
+MessageLog
+	public struct
+	0xe110::message_log
+MessageLogCreated
+	public struct
+	0xe110::message_log
+PaidMessageSent
+	public struct
+	0xe110::message_log
+PaidMessageReplied
+	public struct
+	0xe110::message_log
+PaymentClaimed
+	public struct
+	0xe110::message_log
+PaymentClaimedSettled
+	public struct
+	0xe110::message_log
+PaymentRefunded
+	public struct
+	0xe110::message_log
+new
+	public(package) fun
+	0xe110::message_log
+group_id
+	public fun
+	0xe110::message_log
+uuid
+	public fun
+	0xe110::message_log
+next_seq
+	public fun
+	0xe110::message_log
+consume_dedupe_and_nonce
+	fun
+	0xe110::message_log
+send_paid_message
+	public(package) fun
+	0xe110::message_log
+reply_to_paid_message_claim_coin
+	public(package) fun
+	0xe110::message_log
+reply_to_paid_message_claim_settled
+	public(package) fun
+	0xe110::message_log
+refund_paid_message
+	public(package) fun
+	0xe110::message_log
+VERSION
+	public struct
+	0xe110::version
+Version
+	public struct
+	0xe110::version
+init
+	fun
+	0xe110::version
+version
+	public fun
+	0xe110::version
+package_version
+	public fun
+	0xe110::version
+validate_version
+	public(package) fun
+	0xe110::version
+MESSAGING
+	public struct
+	0xe110::messaging
+Messaging
+	public struct
+	0xe110::messaging
+MessagingSender
+	public struct
+	0xe110::messaging
+MessagingReader
+	public struct
+	0xe110::messaging
+MessagingDeleter
+	public struct
+	0xe110::messaging
+MessagingEditor
+	public struct
+	0xe110::messaging
+GroupHandleAdmin
+	public struct
+	0xe110::messaging
+MetadataAdmin
+	public struct
+	0xe110::messaging
+MessagingNamespace
+	public struct
+	0xe110::messaging
+init
+	fun
+	0xe110::messaging
+create_group
+	public fun
+	0xe110::messaging
+create_and_share_group
+	entry fun
+	0xe110::messaging
+rotate_encryption_key
+	public fun
+	0xe110::messaging
+leave
+	public fun
+	0xe110::messaging
+archive_group
+	entry fun
+	0xe110::messaging
+set_group_handle
+	public fun
+	0xe110::messaging
+clear_group_handle
+	public fun
+	0xe110::messaging
+lookup_group_by_handle
+	public fun
+	0xe110::messaging
+set_group_name
+	public fun
+	0xe110::messaging
+insert_group_data
+	public fun
+	0xe110::messaging
+remove_group_data
+	public fun
+	0xe110::messaging
+assert_message_log_matches_group
+	fun
+	0xe110::messaging
+assert_group_not_archived
+	fun
+	0xe110::messaging
+send_paid_message_digest
+	public fun
+	0xe110::messaging
+reply_to_paid_message_claim_coin
+	public fun
+	0xe110::messaging
+reply_to_paid_message_claim_settled
+	public fun
+	0xe110::messaging
+refund_paid_escrow
+	public fun
+	0xe110::messaging
+grant_all_messaging_permissions
+	fun
+	0xe110::messaging
+validate_identity
+	public fun
+	0xe110::mydata_policies
+mydata_approve_reader
+	entry fun
+	0xe110::mydata_policies
 UpgradeAdminCap
 	public struct
 	0x50c1::upgrade
@@ -7210,6 +7717,123 @@ subscription_renewal_balance
 migrate_service
 	public entry fun
 	0x50c1::subscription
+MemoryRegistry
+	public struct
+	0x50c1::memory
+MemoryAccount
+	public struct
+	0x50c1::memory
+MemoryDelegateKey
+	public struct
+	0x50c1::memory
+MemoryAccountCreated
+	public struct
+	0x50c1::memory
+MemoryDelegateKeyAdded
+	public struct
+	0x50c1::memory
+MemoryDelegateKeyRemoved
+	public struct
+	0x50c1::memory
+MemoryAccountDeactivated
+	public struct
+	0x50c1::memory
+MemoryAccountReactivated
+	public struct
+	0x50c1::memory
+MemoryAccountMigrated
+	public struct
+	0x50c1::memory
+MemoryRegistryMigrated
+	public struct
+	0x50c1::memory
+bootstrap_init
+	public(package) fun
+	0x50c1::memory
+create_account_for_profile
+	public(package) fun
+	0x50c1::memory
+transfer_account_owner_with_profile
+	public(package) fun
+	0x50c1::memory
+add_delegate_key
+	public entry fun
+	0x50c1::memory
+remove_delegate_key
+	public entry fun
+	0x50c1::memory
+deactivate_account
+	public entry fun
+	0x50c1::memory
+reactivate_account
+	public entry fun
+	0x50c1::memory
+migrate_account
+	public entry fun
+	0x50c1::memory
+admin_migrate_account
+	public entry fun
+	0x50c1::memory
+migrate_registry
+	public entry fun
+	0x50c1::memory
+profile_id
+	public fun
+	0x50c1::memory
+is_delegate
+	public fun
+	0x50c1::memory
+is_delegate_address
+	public fun
+	0x50c1::memory
+owner
+	public fun
+	0x50c1::memory
+delegate_count
+	public fun
+	0x50c1::memory
+has_account
+	public fun
+	0x50c1::memory
+account_id_for_owner
+	public fun
+	0x50c1::memory
+is_active
+	public fun
+	0x50c1::memory
+account_version
+	public fun
+	0x50c1::memory
+registry_version
+	public fun
+	0x50c1::memory
+current_contract_version
+	public fun
+	0x50c1::memory
+approve_key_policy
+	public entry fun
+	0x50c1::memory
+owner_key_suffix_bytes
+	public fun
+	0x50c1::memory
+get_version
+	fun
+	0x50c1::memory
+set_version
+	fun
+	0x50c1::memory
+bump_version
+	fun
+	0x50c1::memory
+assert_object_version
+	fun
+	0x50c1::memory
+assert_cap_for_this_package
+	fun
+	0x50c1::memory
+has_suffix
+	fun
+	0x50c1::memory
 EcosystemTreasuryAdminCap
 	public struct
 	0x50c1::profile
@@ -7300,6 +7924,9 @@ to_lowercase_bytes
 to_lowercase_byte
 	fun
 	0x50c1::profile
+canonical_registry_username
+	fun
+	0x50c1::profile
 ascii_to_string
 	fun
 	0x50c1::profile
@@ -7312,7 +7939,13 @@ copy_string
 create_profile
 	public entry fun
 	0x50c1::profile
+ensure_memory_account
+	public entry fun
+	0x50c1::profile
 transfer_profile
+	public entry fun
+	0x50c1::profile
+transfer_profile_with_memory
 	public entry fun
 	0x50c1::profile
 update_profile
@@ -7363,6 +7996,9 @@ create_offer
 accept_offer
 	public entry fun
 	0x50c1::profile
+accept_offer_with_memory
+	public entry fun
+	0x50c1::profile
 reject_or_revoke_offer
 	public entry fun
 	0x50c1::profile
@@ -7407,6 +8043,9 @@ borrow_version_mut
 	0x50c1::profile
 migrate_registry
 	public entry fun
+	0x50c1::profile
+linked_memory_account_id
+	public fun
 	0x50c1::profile
 min_offer_amount
 	public fun

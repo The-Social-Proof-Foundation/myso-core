@@ -1,0 +1,17 @@
+[package]
+name = "MySoMessaging"
+version = "0.0.1"
+published-at = "0xe110"
+edition = "2024"
+
+[dependencies]
+MoveStdlib = { local = "../move-stdlib" }
+MySo = { local = "../myso-framework/myso-framework" }
+mydata = { local = "../mydata" }
+MySoGroups = { local = "../myso-groups" }
+
+[addresses]
+myso_groups = "0xa11"
+mydata = "0xda7a"
+myso_messaging = "0xe110"
+myso = "0x2"
