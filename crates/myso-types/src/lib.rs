@@ -132,8 +132,6 @@ built_in_pkgs! {
     BRIDGE_ADDRESS / BRIDGE_PACKAGE_ID = 0xb;
     ORDERBOOK_ADDRESS / ORDERBOOK_PACKAGE_ID = 0x0b0c;
     MYDATA_ADDRESS / MYDATA_PACKAGE_ID = 0xda7a;
-    GROUPS_ADDRESS / GROUPS_PACKAGE_ID = 0xa11;
-    MESSAGING_ADDRESS / MESSAGING_PACKAGE_ID = 0xe110;
     MYSO_SOCIAL_ADDRESS / MYSO_SOCIAL_PACKAGE_ID = 0x50c1;
 }
 
@@ -160,7 +158,7 @@ pub fn myso_framework_address_concat_string(suffix: &str) -> String {
 /// Parses `s` as an address. Valid formats for addresses are:
 ///
 /// - A 256bit number, encoded in decimal, or hexadecimal with a leading "0x" prefix.
-/// - One of a number of pre-defined named addresses: std, myso, myso_system, orderbook, groups, messaging.
+/// - One of a number of pre-defined named addresses: std, myso, myso_system, orderbook.
 ///
 /// Parsing succeeds if and only if `s` matches one of these formats exactly, with no remaining
 /// suffix. This function is intended for use within the authority codebases.
@@ -213,8 +211,6 @@ pub fn resolve_address(addr: &str) -> Option<AccountAddress> {
         "myso" => Some(MYSO_FRAMEWORK_ADDRESS),
         "myso_system" => Some(MYSO_SYSTEM_ADDRESS),
         "bridge" => Some(BRIDGE_ADDRESS),
-        "groups" => Some(GROUPS_ADDRESS),
-        "messaging" => Some(MESSAGING_ADDRESS),
         _ => None,
     }
 }

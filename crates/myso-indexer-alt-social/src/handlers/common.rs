@@ -5,9 +5,7 @@
 
 use move_core_types::account_address::AccountAddress;
 use myso_types::base_types::ObjectID;
-use myso_types::{
-    GROUPS_PACKAGE_ID, MESSAGING_PACKAGE_ID, MYSO_SOCIAL_PACKAGE_ID,
-};
+use myso_types::MYSO_SOCIAL_PACKAGE_ID;
 use serde::de::DeserializeOwned;
 
 /// Deserializes `data` into `T` after Stage A (`events::parse_event_contents`); on failure records
@@ -39,13 +37,8 @@ pub fn deserialize_social_event_json<T: DeserializeOwned>(
     }
 }
 
-/// Returns true if the event belongs to a myso-social stack system package (social, groups, or messaging).
+/// Returns true if the event belongs to the myso-social package.
 pub fn is_social_package_event(package_id: &ObjectID, type_address: &AccountAddress) -> bool {
     use std::ops::Deref;
-    *package_id == MYSO_SOCIAL_PACKAGE_ID
-        || *type_address == *MYSO_SOCIAL_PACKAGE_ID.deref()
-        || *package_id == GROUPS_PACKAGE_ID
-        || *type_address == *GROUPS_PACKAGE_ID.deref()
-        || *package_id == MESSAGING_PACKAGE_ID
-        || *type_address == *MESSAGING_PACKAGE_ID.deref()
+    *package_id == MYSO_SOCIAL_PACKAGE_ID || *type_address == *MYSO_SOCIAL_PACKAGE_ID.deref()
 }

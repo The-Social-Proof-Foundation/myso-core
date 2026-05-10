@@ -16,8 +16,6 @@ fn main() {
         "orderbook",
         "bridge",
         "mydata",
-        "myso-groups",
-        "myso-messaging",
         "myso-social",
     ];
 

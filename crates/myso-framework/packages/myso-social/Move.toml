@@ -9,15 +9,11 @@ MoveStdlib = { local = "../move-stdlib" }
 myso = { local = "../myso-framework/myso-framework" }
 mydata = { local = "../mydata" }
 Orderbook = { local = "../orderbook" }
-MySoGroups = { local = "../myso-groups" }
-MySoMessaging = { local = "../myso-messaging" }
 
 [addresses]
 myso = "0x2"
 mydata = "0xda7a"
 orderbook = "0x0b0c"
-myso_groups = "0xa11"
-myso_messaging = "0xe110"
 social_contracts = "0x50c1"
 
 [environments]

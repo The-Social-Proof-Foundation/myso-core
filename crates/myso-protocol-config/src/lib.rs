@@ -25,7 +25,7 @@ use tracing::{info, warn};
 
 /// The minimum and maximum protocol versions supported by this build.
 const MIN_PROTOCOL_VERSION: u64 = 1;
-const MAX_PROTOCOL_VERSION: u64 = 112;
+const MAX_PROTOCOL_VERSION: u64 = 111;
 
 // Record history of protocol version allocations here:
 //
@@ -296,7 +296,6 @@ const MAX_PROTOCOL_VERSION: u64 = 112;
 //              function on mainnet.
 //              split_checkpoints_in_consensus_handler in devnet
 //              Enable additional validation on zkLogin public identifier.
-// Version 112: Add genesis system packages MySoGroups (0xa11) and MySoMessaging (0xe110).
 
 #[derive(Copy, Clone, Debug, Hash, Serialize, Deserialize, PartialEq, Eq, PartialOrd, Ord)]
 pub struct ProtocolVersion(u64);
@@ -4569,9 +4568,6 @@ impl ProtocolConfig {
                 }
                 111 => {
                     // no changes here
-                }
-                112 => {
-                    // Genesis system packages MySoGroups and MySoMessaging; no config delta vs 111.
                 }
                 // Use this template when making changes:
                 //
