@@ -8,7 +8,7 @@ use super::common;
 use super::SocialEventRow;
 use myso_indexer_alt_social_schema::models::{
     NewPlatform, NewPlatformBlockedProfile, NewPlatformEvent, NewPlatformMembership,
-    NewPlatformModerator, NewPlatformTokenAirdrop,
+    NewPlatformTokenAirdrop,
 };
 
 fn de_u64<'de, D>(d: D) -> Result<u64, D::Error>
@@ -157,17 +157,12 @@ struct PlatformApprovalChangedEvent {
 }
 
 #[derive(Debug, Deserialize)]
-struct ModeratorAddedEvent {
+struct ModeratorPermissionsUpdatedEvent {
     platform_id: String,
     moderator_address: String,
-    added_by: String,
-}
-
-#[derive(Debug, Deserialize)]
-struct ModeratorRemovedEvent {
-    platform_id: String,
-    moderator_address: String,
-    _removed_by: String,
+    granted: Vec<String>,
+    revoked: Vec<String>,
+    updated_by: String,
 }
 
 #[derive(Debug, Deserialize)]
@@ -247,8 +242,9 @@ pub fn handle_platform_event(
         "PlatformApprovalChangedEvent" | "ApprovalChangedEvent" => {
             process_platform_approval_changed_event(data, event_id)
         }
-        "ModeratorAddedEvent" => process_moderator_added_event(data, event_id),
-        "ModeratorRemovedEvent" => process_moderator_removed_event(data, event_id),
+        "ModeratorPermissionsUpdatedEvent" => {
+            process_moderator_permissions_updated_event(data, event_id)
+        }
         "PlatformBlockedProfileEvent" => process_platform_blocked_profile_event(data, event_id),
         "PlatformUnblockedProfileEvent" => process_platform_unblocked_profile_event(data, event_id),
         "UserJoinedPlatformEvent" => process_user_joined_platform_event(data, event_id),
@@ -322,21 +318,13 @@ fn process_platform_created_event(
     ) = normalize_dao_fields(&ev);
     let release_date = normalize_date_format(&ev.release_date);
 
-    let developer = ev.developer;
-    let moderator = NewPlatformModerator {
-        platform_id: ev.platform_id.clone(),
-        moderator_address: developer.clone(),
-        added_by: developer.clone(),
-        created_at: now,
-    };
-
     let platform = NewPlatform {
         platform_id: ev.platform_id.clone(),
         name: ev.name,
         tagline: ev.tagline,
         description: Some(ev.description).filter(|s| !s.is_empty()),
         logo: Some(ev.logo).filter(|s| !s.is_empty()),
-        developer_address: developer,
+        developer_address: ev.developer,
         terms_of_service: Some(ev.terms_of_service),
         privacy_policy: Some(ev.privacy_policy),
         platform_names: Some(serde_json::to_value(&ev.platforms).unwrap_or_default()),
@@ -376,7 +364,6 @@ fn process_platform_created_event(
 
     Some(vec![
         SocialEventRow::Platform(platform),
-        SocialEventRow::PlatformModerator(moderator),
         SocialEventRow::PlatformEvent(platform_event),
     ])
 }
@@ -460,55 +447,20 @@ fn process_platform_approval_changed_event(
     ])
 }
 
-fn process_moderator_added_event(
+fn process_moderator_permissions_updated_event(
     data: &serde_json::Value,
     event_id: &str,
 ) -> Option<Vec<SocialEventRow>> {
-    let ev: ModeratorAddedEvent = common::deserialize_social_event_json(
+    let ev: ModeratorPermissionsUpdatedEvent = common::deserialize_social_event_json(
         "platform",
-        "ModeratorAddedEvent",
+        "ModeratorPermissionsUpdatedEvent",
         event_id,
         data,
-        "platform ModeratorAddedEvent JSON did not match ModeratorAddedEvent",
-    )?;
-    let now = Utc::now().naive_utc();
-
-    let moderator = NewPlatformModerator {
-        platform_id: ev.platform_id.clone(),
-        moderator_address: ev.moderator_address,
-        added_by: ev.added_by,
-        created_at: now,
-    };
-
-    let platform_event = NewPlatformEvent {
-        event_type: "ModeratorAdded".to_string(),
-        platform_id: ev.platform_id,
-        event_data: data.clone(),
-        event_id: Some(event_id.to_string()),
-        created_at: now,
-        reasoning: None,
-    };
-
-    Some(vec![
-        SocialEventRow::PlatformModerator(moderator),
-        SocialEventRow::PlatformEvent(platform_event),
-    ])
-}
-
-fn process_moderator_removed_event(
-    data: &serde_json::Value,
-    event_id: &str,
-) -> Option<Vec<SocialEventRow>> {
-    let ev: ModeratorRemovedEvent = common::deserialize_social_event_json(
-        "platform",
-        "ModeratorRemovedEvent",
-        event_id,
-        data,
-        "platform ModeratorRemovedEvent JSON did not match ModeratorRemovedEvent",
+        "platform ModeratorPermissionsUpdatedEvent JSON did not match expected shape",
     )?;
     let now = Utc::now().naive_utc();
     let platform_event = NewPlatformEvent {
-        event_type: "ModeratorRemoved".to_string(),
+        event_type: "ModeratorPermissionsUpdated".to_string(),
         platform_id: ev.platform_id.clone(),
         event_data: data.clone(),
         event_id: Some(event_id.to_string()),
@@ -516,11 +468,15 @@ fn process_moderator_removed_event(
         reasoning: None,
     };
     Some(vec![
-        SocialEventRow::PlatformEvent(platform_event),
-        SocialEventRow::PlatformModeratorRemove {
+        SocialEventRow::ModeratorPermissionsUpdated {
             platform_id: ev.platform_id,
             moderator_address: ev.moderator_address,
+            granted: ev.granted,
+            revoked: ev.revoked,
+            updated_by: ev.updated_by,
+            changed_at: now,
         },
+        SocialEventRow::PlatformEvent(platform_event),
     ])
 }
 

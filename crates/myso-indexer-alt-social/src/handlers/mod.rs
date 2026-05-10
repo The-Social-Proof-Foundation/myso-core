@@ -47,9 +47,9 @@ use myso_indexer_alt_social_schema::models::{
     NewMyDataQueryMerkleRoot, NewMyDataQuerySnapshotAnchor, NewMyDataQuerySubPool,
     NewMyDataRegistry, NewMyDataRevenue, NewMyDataSubscription, NewNominatedDelegate,
     NewObjectMigratedEvent, NewPlatform, NewPlatformBlockedProfile, NewPlatformEvent,
-    NewPlatformMembership, NewPlatformModerator, NewPlatformTokenAirdrop, NewPocAnalysisResult,
-    NewPocBadge, NewPocConfiguration, NewPocDispute, NewPocDisputeVote, NewPocRevenueRedirection,
-    NewPost, NewPostTransfer, NewProfile, NewProfileBadge, NewProfileEvent, NewProfileOffer,
+    NewPlatformMembership, NewPlatformTokenAirdrop, NewPocAnalysisResult, NewPocBadge,
+    NewPocConfiguration, NewPocDispute, NewPocDisputeVote, NewPocRevenueRedirection, NewPost,
+    NewPostTransfer, NewProfile, NewProfileBadge, NewProfileEvent, NewProfileOffer,
     NewProfileSaleFee, NewProfileSubscription, NewProfileSubscriptionService, NewProposal,
     NewReaction, NewReactionCount, NewReport, NewRepost, NewRewardDistribution,
     NewSocialGraphEvent, NewSocialGraphRelationship, NewSocialProofTokensConfig,
@@ -279,10 +279,13 @@ pub enum SocialEventRow {
         approved_by: String,
         changed_at: chrono::NaiveDateTime,
     },
-    PlatformModerator(NewPlatformModerator),
-    PlatformModeratorRemove {
+    ModeratorPermissionsUpdated {
         platform_id: String,
         moderator_address: String,
+        granted: Vec<String>,
+        revoked: Vec<String>,
+        updated_by: String,
+        changed_at: chrono::NaiveDateTime,
     },
     PlatformBlockedProfile(NewPlatformBlockedProfile),
     PlatformBlockedProfileRemove {

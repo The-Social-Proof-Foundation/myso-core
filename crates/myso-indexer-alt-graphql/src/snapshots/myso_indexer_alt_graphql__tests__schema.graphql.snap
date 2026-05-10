@@ -4497,6 +4497,8 @@ type PlatformModeratorSummary {
 	Profile of the moderator.
 	"""
 	moderatorProfile: ProfileSummary
+	permissions: [String!]!
+	updatedAt: Int
 }
 
 type PlatformRevenueSummary {
@@ -4559,6 +4561,11 @@ type PlatformUserAccess {
 	Whether the wallet is a moderator of this platform.
 	"""
 	isModerator: Boolean!
+	"""
+	Explicit moderation capabilities indexed for this wallet (`platform::PERM_*` strings).
+	Empty when not a moderator; the platform developer may have implicit full access on-chain.
+	"""
+	moderatorPermissions: [String!]!
 }
 
 type PocAnalysisResult {

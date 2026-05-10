@@ -4,7 +4,7 @@
 use chrono::NaiveDateTime;
 use diesel::OptionalExtension;
 use diesel::QueryableByName;
-use diesel::sql_types::{BigInt, Bool, Nullable, SmallInt, Text, Timestamp};
+use diesel::sql_types::{Array, BigInt, Bool, Nullable, SmallInt, Text, Timestamp};
 use diesel_async::RunQueryDsl;
 use serde_json::Value as JsonValue;
 
@@ -13,6 +13,14 @@ use myso_pg_db::Connection;
 
 use crate::metrics::DbReaderMetrics;
 
+/// Canonical capability strings for platform moderation (`platform::PERM_*` on-chain).
+pub const ALL_PLATFORM_MODERATOR_PERMISSIONS: [&str; 4] = [
+    "block_users",
+    "badge_admin",
+    "treasury_distribute",
+    "post_moderate",
+];
+
 #[derive(Debug, Clone)]
 pub struct PlatformBlockedProfileRow {
     pub wallet_address: String,
@@ -20,15 +28,27 @@ pub struct PlatformBlockedProfileRow {
     pub created_at: NaiveDateTime,
 }
 
-/// Membership, block, and moderator flags for a wallet on a platform (one DB round-trip).
-#[derive(Debug, Clone, QueryableByName)]
+/// Membership, block, moderator flags, and explicit moderator capabilities (one DB round-trip).
+#[derive(Debug, Clone)]
 pub struct PlatformUserAccessRow {
-    #[diesel(sql_type = Bool)]
     pub is_member: bool,
-    #[diesel(sql_type = Bool)]
     pub is_blocked: bool,
-    #[diesel(sql_type = Bool)]
     pub is_moderator: bool,
+    pub moderator_permissions: Vec<String>,
+}
+
+#[derive(Debug, Clone, QueryableByName)]
+struct PlatformUserAccessQueryRow {
+    #[diesel(sql_type = Bool)]
+    is_member: bool,
+    #[diesel(sql_type = Bool)]
+    is_blocked: bool,
+    #[diesel(sql_type = Bool)]
+    is_moderator: bool,
+    #[diesel(sql_type = Array<Text>)]
+    moderator_permissions: Vec<String>,
+    #[diesel(sql_type = Nullable<Text>)]
+    developer_address: Option<String>,
 }
 
 #[derive(Debug, Clone, QueryableByName)]
@@ -273,12 +293,33 @@ pub(crate) async fn get_platform_moderators(
         added_by: String,
         #[diesel(sql_type = Timestamp)]
         created_at: NaiveDateTime,
+        #[diesel(sql_type = Nullable<Timestamp>)]
+        updated_at: Option<NaiveDateTime>,
+        #[diesel(sql_type = Array<Text>)]
+        permissions: Vec<String>,
     }
     let query = "
-        SELECT moderator_address, added_by, created_at
-        FROM platform_moderators
-        WHERE platform_id = $1
-        ORDER BY created_at DESC
+        SELECT
+            m.moderator_address,
+            m.added_by,
+            m.created_at,
+            m.updated_at,
+            COALESCE(
+                array_agg(p.permission ORDER BY p.permission)
+                    FILTER (WHERE p.permission IS NOT NULL),
+                ARRAY[]::text[]
+            ) AS permissions
+        FROM platform_moderators m
+        LEFT JOIN platform_moderator_permissions p
+            ON p.platform_id = m.platform_id
+            AND p.moderator_address = m.moderator_address
+        WHERE m.platform_id = $1
+        GROUP BY
+            m.moderator_address,
+            m.added_by,
+            m.created_at,
+            m.updated_at
+        ORDER BY m.created_at DESC
         LIMIT $2 OFFSET $3
     ";
     let rows = diesel::sql_query(query)
@@ -294,6 +335,8 @@ pub(crate) async fn get_platform_moderators(
             moderator_address: r.moderator_address,
             added_by: r.added_by,
             created_at: r.created_at,
+            updated_at: r.updated_at,
+            permissions: r.permissions,
         })
         .collect())
 }
@@ -316,15 +359,49 @@ pub(crate) async fn get_platform_user_access(
                 SELECT 1 FROM platform_blocked_profiles
                 WHERE platform_id = $1 AND wallet_address = $2
             ) AS is_blocked,
-            EXISTS(
-                SELECT 1 FROM platform_moderators
-                WHERE platform_id = $1 AND moderator_address = $2
-            ) AS is_moderator",
+            (
+                EXISTS (
+                    SELECT 1 FROM platform_moderator_permissions
+                    WHERE platform_id = $1 AND moderator_address = $2
+                )
+                OR (
+                    (SELECT developer_address FROM platforms
+                     WHERE platform_id = $1 AND deleted_at IS NULL LIMIT 1) = $2
+                )
+            ) AS is_moderator,
+            COALESCE(
+                (
+                    SELECT array_agg(permission ORDER BY permission)
+                    FROM platform_moderator_permissions
+                    WHERE platform_id = $1 AND moderator_address = $2
+                ),
+                ARRAY[]::text[]
+            ) AS moderator_permissions,
+            (
+                SELECT developer_address FROM platforms
+                WHERE platform_id = $1 AND deleted_at IS NULL LIMIT 1
+            ) AS developer_address",
     )
     .bind::<Text, _>(platform_id)
     .bind::<Text, _>(user_address)
-    .get_result::<PlatformUserAccessRow>(conn)
+    .get_result::<PlatformUserAccessQueryRow>(conn)
     .await?;
     metrics.requests_succeeded.inc();
-    Ok(row)
+    let mut moderator_permissions = row.moderator_permissions;
+    if row.is_moderator
+        && moderator_permissions.is_empty()
+        && row.developer_address.as_deref() == Some(user_address)
+    {
+        moderator_permissions.extend(
+            ALL_PLATFORM_MODERATOR_PERMISSIONS
+                .iter()
+                .map(|s| (*s).to_string()),
+        );
+    }
+    Ok(PlatformUserAccessRow {
+        is_member: row.is_member,
+        is_blocked: row.is_blocked,
+        is_moderator: row.is_moderator,
+        moderator_permissions,
+    })
 }

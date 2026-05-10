@@ -44,7 +44,9 @@ pub use myso_indexer_alt_social_schema::models::{
     SptTransaction,
 };
 pub use pg_reader::SocialPgReader;
-pub use platform::{PlatformBlockedProfileRow, PlatformRow, PlatformUserAccessRow};
+pub use platform::{
+    ALL_PLATFORM_MODERATOR_PERMISSIONS, PlatformBlockedProfileRow, PlatformRow, PlatformUserAccessRow,
+};
 pub use pnl::{ProfilePnLWindow, ProfilePnLWindowResult, get_profile_pnl_for_windows};
 pub use poc::{
     get_poc_beneficiary_vault_by_beneficiary_address_for_conn,

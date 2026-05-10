@@ -642,12 +642,23 @@ diesel::table! {
 }
 
 diesel::table! {
+    platform_moderator_permissions (id) {
+        id -> Int4,
+        platform_id -> Text,
+        moderator_address -> Text,
+        permission -> Text,
+        created_at -> Timestamp,
+    }
+}
+
+diesel::table! {
     platform_moderators (id) {
         id -> Int4,
         platform_id -> Text,
         moderator_address -> Text,
         added_by -> Text,
         created_at -> Timestamp,
+        updated_at -> Nullable<Timestamp>,
     }
 }
 
@@ -1827,6 +1838,7 @@ diesel::allow_tables_to_appear_in_same_query!(
     platform_blocked_profiles,
     platform_events,
     platform_memberships,
+    platform_moderator_permissions,
     platform_moderators,
     platform_token_airdrops,
     platforms,

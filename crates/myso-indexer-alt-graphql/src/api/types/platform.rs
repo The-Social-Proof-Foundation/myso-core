@@ -293,6 +293,7 @@ pub(crate) struct PlatformUserAccess {
     is_member: bool,
     is_blocked: bool,
     is_moderator: bool,
+    moderator_permissions: Vec<String>,
 }
 
 impl PlatformUserAccess {
@@ -301,6 +302,7 @@ impl PlatformUserAccess {
             is_member: row.is_member,
             is_blocked: row.is_blocked,
             is_moderator: row.is_moderator,
+            moderator_permissions: row.moderator_permissions,
         }
     }
 }
@@ -320,6 +322,12 @@ impl PlatformUserAccess {
     /// Whether the wallet is a moderator of this platform.
     async fn is_moderator(&self) -> bool {
         self.is_moderator
+    }
+
+    /// Explicit moderation capabilities indexed for this wallet (`platform::PERM_*` strings).
+    /// Empty when not a moderator; the platform developer may have implicit full access on-chain.
+    async fn moderator_permissions(&self) -> &[String] {
+        &self.moderator_permissions
     }
 }
 
@@ -610,6 +618,8 @@ pub(crate) struct PlatformModeratorSummary {
     pub moderator_address: String,
     pub added_by: String,
     pub created_at: chrono::NaiveDateTime,
+    pub updated_at: Option<chrono::NaiveDateTime>,
+    pub permissions: Vec<String>,
 }
 
 impl PlatformModeratorSummary {
@@ -618,6 +628,8 @@ impl PlatformModeratorSummary {
             moderator_address: row.moderator_address,
             added_by: row.added_by,
             created_at: row.created_at,
+            updated_at: row.updated_at,
+            permissions: row.permissions,
         }
     }
 }
@@ -645,5 +657,13 @@ impl PlatformModeratorSummary {
 
     async fn created_at(&self) -> i64 {
         self.created_at.and_utc().timestamp_millis()
+    }
+
+    async fn updated_at(&self) -> Option<i64> {
+        self.updated_at.map(|t| t.and_utc().timestamp_millis())
+    }
+
+    async fn permissions(&self) -> &[String] {
+        &self.permissions
     }
 }

@@ -1465,17 +1465,12 @@ pub struct BcsPlatformApprovalChangedEvent {
 }
 
 #[derive(Debug, Deserialize)]
-pub struct BcsModeratorAddedEvent {
-    platform_id: AccountAddress,
-    moderator_address: AccountAddress,
-    added_by: AccountAddress,
-}
-
-#[derive(Debug, Deserialize)]
-pub struct BcsModeratorRemovedEvent {
-    platform_id: AccountAddress,
-    moderator_address: AccountAddress,
-    removed_by: AccountAddress,
+pub struct BcsModeratorPermissionsUpdatedEvent {
+    pub platform_id: AccountAddress,
+    pub moderator_address: AccountAddress,
+    pub granted: Vec<String>,
+    pub revoked: Vec<String>,
+    pub updated_by: AccountAddress,
 }
 
 #[derive(Debug, Deserialize)]
@@ -2333,22 +2328,15 @@ fn parse_platform_event(
                 "reasoning": ev.reasoning,
             })))
         }
-        "ModeratorAddedEvent" => {
-            let ev = bcs::from_bytes::<BcsModeratorAddedEvent>(contents)
+        "ModeratorPermissionsUpdatedEvent" => {
+            let ev = bcs::from_bytes::<BcsModeratorPermissionsUpdatedEvent>(contents)
                 .map_err(|e| bcs_parse_err(e, contents))?;
             Ok(Some(serde_json::json!({
                 "platform_id": addr_to_string(&ev.platform_id),
                 "moderator_address": addr_to_string(&ev.moderator_address),
-                "added_by": addr_to_string(&ev.added_by),
-            })))
-        }
-        "ModeratorRemovedEvent" => {
-            let ev = bcs::from_bytes::<BcsModeratorRemovedEvent>(contents)
-                .map_err(|e| bcs_parse_err(e, contents))?;
-            Ok(Some(serde_json::json!({
-                "platform_id": addr_to_string(&ev.platform_id),
-                "moderator_address": addr_to_string(&ev.moderator_address),
-                "removed_by": addr_to_string(&ev.removed_by),
+                "granted": ev.granted,
+                "revoked": ev.revoked,
+                "updated_by": addr_to_string(&ev.updated_by),
             })))
         }
         "PlatformDeletedEvent" => {

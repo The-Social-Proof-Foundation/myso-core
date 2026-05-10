@@ -7,7 +7,9 @@ use std::sync::Arc;
 
 use anyhow::Result;
 use async_trait::async_trait;
+use diesel::dsl::count_star;
 use diesel::ExpressionMethods;
+use diesel::QueryDsl;
 use diesel_async::RunQueryDsl;
 use myso_indexer_alt_framework::pipeline::Processor;
 use myso_indexer_alt_framework::postgres::handler::Handler;
@@ -16,11 +18,11 @@ use myso_indexer_alt_framework::types::full_checkpoint_content::Checkpoint;
 use myso_indexer_alt_framework::FieldCount;
 use myso_indexer_alt_social_schema::models::{
     NewPlatform, NewPlatformBlockedProfile, NewPlatformEvent, NewPlatformMembership,
-    NewPlatformModerator, NewPlatformTokenAirdrop,
+    NewPlatformModerator, NewPlatformModeratorPermission, NewPlatformTokenAirdrop,
 };
 use myso_indexer_alt_social_schema::schema::{
-    platform_blocked_profiles, platform_events, platform_memberships, platform_moderators,
-    platform_token_airdrops, platforms,
+    platform_blocked_profiles, platform_events, platform_memberships,
+    platform_moderator_permissions, platform_moderators, platform_token_airdrops, platforms,
 };
 
 use super::common;
@@ -54,10 +56,13 @@ pub enum PlatformRow {
         approved_by: String,
         changed_at: chrono::NaiveDateTime,
     },
-    PlatformModerator(NewPlatformModerator),
-    PlatformModeratorRemove {
+    ModeratorPermissionsUpdated {
         platform_id: String,
         moderator_address: String,
+        granted: Vec<String>,
+        revoked: Vec<String>,
+        updated_by: String,
+        changed_at: chrono::NaiveDateTime,
     },
     PlatformBlockedProfile(NewPlatformBlockedProfile),
     PlatformBlockedProfileRemove {
@@ -123,15 +128,20 @@ impl PlatformRow {
                 approved_by,
                 changed_at,
             }),
-            crate::handlers::SocialEventRow::PlatformModerator(m) => {
-                Some(PlatformRow::PlatformModerator(m))
-            }
-            crate::handlers::SocialEventRow::PlatformModeratorRemove {
+            crate::handlers::SocialEventRow::ModeratorPermissionsUpdated {
                 platform_id,
                 moderator_address,
-            } => Some(PlatformRow::PlatformModeratorRemove {
+                granted,
+                revoked,
+                updated_by,
+                changed_at,
+            } => Some(PlatformRow::ModeratorPermissionsUpdated {
                 platform_id,
                 moderator_address,
+                granted,
+                revoked,
+                updated_by,
+                changed_at,
             }),
             crate::handlers::SocialEventRow::PlatformBlockedProfile(b) => {
                 Some(PlatformRow::PlatformBlockedProfile(b))
@@ -287,26 +297,73 @@ impl Handler for PlatformHandler {
                         .execute(conn)
                         .await?;
                 }
-                PlatformRow::PlatformModerator(m) => {
-                    total += diesel::insert_into(platform_moderators::table)
-                        .values(m)
-                        .on_conflict((
-                            platform_moderators::platform_id,
-                            platform_moderators::moderator_address,
-                        ))
-                        .do_nothing()
-                        .execute(conn)
-                        .await?;
-                }
-                PlatformRow::PlatformModeratorRemove {
+                PlatformRow::ModeratorPermissionsUpdated {
                     platform_id,
                     moderator_address,
+                    granted,
+                    revoked,
+                    updated_by,
+                    changed_at,
                 } => {
-                    let _ = diesel::delete(platform_moderators::table)
-                        .filter(platform_moderators::platform_id.eq(platform_id))
-                        .filter(platform_moderators::moderator_address.eq(moderator_address))
-                        .execute(conn)
-                        .await;
+                    if !revoked.is_empty() {
+                        total += diesel::delete(platform_moderator_permissions::table)
+                            .filter(platform_moderator_permissions::platform_id.eq(platform_id))
+                            .filter(
+                                platform_moderator_permissions::moderator_address
+                                    .eq(moderator_address),
+                            )
+                            .filter(platform_moderator_permissions::permission.eq_any(revoked))
+                            .execute(conn)
+                            .await?;
+                    }
+                    for perm in granted {
+                        total += diesel::insert_into(platform_moderator_permissions::table)
+                            .values(NewPlatformModeratorPermission {
+                                platform_id: platform_id.clone(),
+                                moderator_address: moderator_address.clone(),
+                                permission: perm.clone(),
+                                created_at: *changed_at,
+                            })
+                            .on_conflict((
+                                platform_moderator_permissions::platform_id,
+                                platform_moderator_permissions::moderator_address,
+                                platform_moderator_permissions::permission,
+                            ))
+                            .do_nothing()
+                            .execute(conn)
+                            .await?;
+                    }
+                    let remaining: i64 = platform_moderator_permissions::table
+                        .filter(platform_moderator_permissions::platform_id.eq(platform_id))
+                        .filter(
+                            platform_moderator_permissions::moderator_address.eq(moderator_address),
+                        )
+                        .select(count_star())
+                        .first(conn)
+                        .await?;
+                    if remaining == 0 {
+                        total += diesel::delete(platform_moderators::table)
+                            .filter(platform_moderators::platform_id.eq(platform_id))
+                            .filter(platform_moderators::moderator_address.eq(moderator_address))
+                            .execute(conn)
+                            .await?;
+                    } else {
+                        total += diesel::insert_into(platform_moderators::table)
+                            .values(NewPlatformModerator {
+                                platform_id: platform_id.clone(),
+                                moderator_address: moderator_address.clone(),
+                                added_by: updated_by.clone(),
+                                created_at: *changed_at,
+                            })
+                            .on_conflict((
+                                platform_moderators::platform_id,
+                                platform_moderators::moderator_address,
+                            ))
+                            .do_update()
+                            .set(platform_moderators::updated_at.eq(Some(*changed_at)))
+                            .execute(conn)
+                            .await?;
+                    }
                 }
                 PlatformRow::PlatformBlockedProfile(b) => {
                     total += diesel::insert_into(platform_blocked_profiles::table)

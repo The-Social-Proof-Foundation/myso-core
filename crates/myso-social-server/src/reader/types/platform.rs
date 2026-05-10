@@ -75,6 +75,10 @@ pub struct PlatformModeratorRow {
     pub moderator_address: String,
     pub added_by: String,
     pub created_at: chrono::NaiveDateTime,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub updated_at: Option<chrono::NaiveDateTime>,
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub permissions: Vec<String>,
 }
 
 #[derive(Debug, Serialize)]

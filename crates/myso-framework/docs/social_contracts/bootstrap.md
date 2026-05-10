@@ -29,6 +29,7 @@ Uses the framework's centralized BootstrapKey for one-time initialization.
 <b>use</b> <a href="../myso/coin.md#myso_coin">myso::coin</a>;
 <b>use</b> <a href="../myso/config.md#myso_config">myso::config</a>;
 <b>use</b> <a href="../myso/deny_list.md#myso_deny_list">myso::deny_list</a>;
+<b>use</b> <a href="../myso/derived_object.md#myso_derived_object">myso::derived_object</a>;
 <b>use</b> <a href="../myso/dynamic_field.md#myso_dynamic_field">myso::dynamic_field</a>;
 <b>use</b> <a href="../myso/dynamic_object_field.md#myso_dynamic_object_field">myso::dynamic_object_field</a>;
 <b>use</b> <a href="../myso/event.md#myso_event">myso::event</a>;
@@ -50,6 +51,9 @@ Uses the framework's centralized BootstrapKey for one-time initialization.
 <b>use</b> <a href="../myso/vec_map.md#myso_vec_map">myso::vec_map</a>;
 <b>use</b> <a href="../myso/vec_set.md#myso_vec_set">myso::vec_set</a>;
 <b>use</b> <a href="../myso/versioned.md#myso_versioned">myso::versioned</a>;
+<b>use</b> <a href="../myso_groups/permissioned_group.md#myso_groups_permissioned_group">myso_groups::permissioned_group</a>;
+<b>use</b> <a href="../myso_groups/permissions_table.md#myso_groups_permissions_table">myso_groups::permissions_table</a>;
+<b>use</b> <a href="../myso_groups/unpause_cap.md#myso_groups_unpause_cap">myso_groups::unpause_cap</a>;
 <b>use</b> <a href="../orderbook/constants.md#orderbook_constants">orderbook::constants</a>;
 <b>use</b> <a href="../orderbook/registry.md#orderbook_registry">orderbook::registry</a>;
 <b>use</b> <a href="../social_contracts/block_list.md#social_contracts_block_list">social_contracts::block_list</a>;

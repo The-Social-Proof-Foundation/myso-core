@@ -8503,6 +8503,21 @@ migrate_registry
 create_governance_admin_cap
 	public(package) fun
 	0x50c1::governance
+PlatformModeration
+	public struct
+	0x50c1::platform
+PlatformBlockUsers
+	public struct
+	0x50c1::platform
+PlatformBadgeAdmin
+	public struct
+	0x50c1::platform
+TreasuryDistributor
+	public struct
+	0x50c1::platform
+PlatformPostModerator
+	public struct
+	0x50c1::platform
 PlatformStatus
 	public struct
 	0x50c1::platform
@@ -8521,10 +8536,7 @@ PlatformCreatedEvent
 PlatformUpdatedEvent
 	public struct
 	0x50c1::platform
-ModeratorAddedEvent
-	public struct
-	0x50c1::platform
-ModeratorRemovedEvent
+ModeratorPermissionsUpdatedEvent
 	public struct
 	0x50c1::platform
 PlatformApprovalChangedEvent
@@ -8544,6 +8556,18 @@ TokenAirdropEvent
 	0x50c1::platform
 TreasuryFundedEvent
 	public struct
+	0x50c1::platform
+all_extension_permission_strings
+	fun
+	0x50c1::platform
+emit_moderator_permissions_updated
+	fun
+	0x50c1::platform
+assert_moderation_group_for_platform
+	public(package) fun
+	0x50c1::platform
+assert_developer_can_manage_moderators
+	fun
 	0x50c1::platform
 bootstrap_init
 	public(package) fun
@@ -8584,10 +8608,31 @@ finalize_platform_governance_proposal_anonymous
 reject_platform_governance_proposal_manually
 	public entry fun
 	0x50c1::platform
-add_moderator
+grant_moderator_block_users
 	public fun
 	0x50c1::platform
-remove_moderator
+grant_moderator_badge_admin
+	public fun
+	0x50c1::platform
+grant_moderator_treasury
+	public fun
+	0x50c1::platform
+grant_moderator_post
+	public fun
+	0x50c1::platform
+revoke_moderator_block_users
+	public fun
+	0x50c1::platform
+revoke_moderator_badge_admin
+	public fun
+	0x50c1::platform
+revoke_moderator_treasury
+	public fun
+	0x50c1::platform
+revoke_moderator_post
+	public fun
+	0x50c1::platform
+revoke_moderator_all_capabilities
 	public fun
 	0x50c1::platform
 block_wallet
@@ -8623,7 +8668,19 @@ is_approved
 has_joined_platform
 	public fun
 	0x50c1::platform
-is_developer_or_moderator
+can_block_users
+	public fun
+	0x50c1::platform
+can_manage_badges
+	public fun
+	0x50c1::platform
+can_airdrop_treasury
+	public fun
+	0x50c1::platform
+can_moderate_posts
+	public fun
+	0x50c1::platform
+is_moderator
 	public fun
 	0x50c1::platform
 name
@@ -8675,12 +8732,6 @@ treasury_balance
 	public fun
 	0x50c1::platform
 id
-	public fun
-	0x50c1::platform
-is_moderator
-	public fun
-	0x50c1::platform
-get_moderators
 	public fun
 	0x50c1::platform
 get_platform_by_name

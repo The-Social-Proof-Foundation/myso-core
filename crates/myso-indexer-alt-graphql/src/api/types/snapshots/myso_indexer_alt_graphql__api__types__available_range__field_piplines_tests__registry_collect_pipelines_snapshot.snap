@@ -2603,6 +2603,12 @@ PlatformModeratorSummary.addedByProfile
 PlatformModeratorSummary.createdAt
   => {}
 
+PlatformModeratorSummary.updatedAt
+  => {}
+
+PlatformModeratorSummary.permissions
+  => {}
+
 PlatformRevenueSummary.platformAddress
   => {}
 
@@ -2643,6 +2649,9 @@ PlatformUserAccess.isBlocked
   => {}
 
 PlatformUserAccess.isModerator
+  => {}
+
+PlatformUserAccess.moderatorPermissions
   => {}
 
 PocAnalysisResult.postId

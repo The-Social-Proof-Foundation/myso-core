@@ -31,6 +31,7 @@ module social_contracts::post {
     use social_contracts::upgrade::{Self, UpgradeAdminCap};
     use social_contracts::profile::{Self, EcosystemTreasury};
     use social_contracts::poc_vault::{Self as poc_vault, PoCBeneficiaryVault};
+    use myso_groups::permissioned_group::PermissionedGroup;
 
     /// Error codes
     const EUnauthorized: u64 = 0;
@@ -2249,6 +2250,7 @@ module social_contracts::post {
     public fun moderate_post(
         post: &mut Post,
         platform: &platform::Platform,
+        moderation_group: &PermissionedGroup<platform::PlatformModeration>,
         platform_registry: &platform::PlatformRegistry,
         remove: bool,
         ctx: &mut TxContext
@@ -2257,9 +2259,9 @@ module social_contracts::post {
         assert!(post.version == upgrade::current_version(), EWrongVersion);
         assert!(platform::platform_version(platform) == upgrade::current_version(), EWrongVersion);
         
-        // Verify caller is platform developer or moderator
+        // Verify caller is platform developer or post moderator
         let caller = tx_context::sender(ctx);
-        assert!(platform::is_developer_or_moderator(platform, caller), EUnauthorized);
+        assert!(platform::can_moderate_posts(platform, moderation_group, caller), EUnauthorized);
         
         // Verify platform is approved
         let platform_id = object::uid_to_address(platform::id(platform));
@@ -2281,6 +2283,7 @@ module social_contracts::post {
     public fun moderate_comment(
         comment: &mut Comment,
         platform: &platform::Platform,
+        moderation_group: &PermissionedGroup<platform::PlatformModeration>,
         platform_registry: &platform::PlatformRegistry,
         remove: bool,
         ctx: &mut TxContext
@@ -2289,9 +2292,9 @@ module social_contracts::post {
         assert!(comment.version == upgrade::current_version(), EWrongVersion);
         assert!(platform::platform_version(platform) == upgrade::current_version(), EWrongVersion);
         
-        // Verify caller is platform developer or moderator
+        // Verify caller is platform developer or post moderator
         let caller = tx_context::sender(ctx);
-        assert!(platform::is_developer_or_moderator(platform, caller), EUnauthorized);
+        assert!(platform::can_moderate_posts(platform, moderation_group, caller), EUnauthorized);
         
         // Verify platform is approved
         let platform_id = object::uid_to_address(platform::id(platform));
@@ -3356,14 +3359,15 @@ module social_contracts::post {
         post: &Post,
         promotion_data: &mut PromotionData,
         platform_obj: &platform::Platform,
+        moderation_group: &PermissionedGroup<platform::PlatformModeration>,
         viewer_address: address,
         view_duration: u64,
         clock: &Clock,
         ctx: &mut TxContext
     ) {
-        // Verify this is a platform call (platform developer or moderator)
+        // Verify this is a platform call (platform developer or post moderator)
         let caller = tx_context::sender(ctx);
-        assert!(platform::is_developer_or_moderator(platform_obj, caller), EUnauthorized);
+        assert!(platform::can_moderate_posts(platform_obj, moderation_group, caller), EUnauthorized);
         
         // Verify the platform object is approved (ensures legitimate platform)
         let platform_id = object::uid_to_address(platform::id(platform_obj));
@@ -3433,6 +3437,7 @@ module social_contracts::post {
         post: &Post,
         promotion_data: &mut PromotionData,
         platform_obj: &platform::Platform,
+        moderation_group: &PermissionedGroup<platform::PlatformModeration>,
         activate: bool,
         ctx: &mut TxContext
     ) {
@@ -3445,10 +3450,11 @@ module social_contracts::post {
         
         if (activate) {
             // Only platform can activate promotions
-            assert!(platform::is_developer_or_moderator(platform_obj, caller), EUnauthorized);
+            assert!(platform::can_moderate_posts(platform_obj, moderation_group, caller), EUnauthorized);
         } else {
             // Both platform and post owner can deactivate
-            let is_platform = platform::is_developer_or_moderator(platform_obj, caller);
+            let is_platform =
+                platform::can_moderate_posts(platform_obj, moderation_group, caller);
             let is_owner = caller == post.owner;
             assert!(is_platform || is_owner, EUnauthorized);
         };
@@ -3525,6 +3531,7 @@ module social_contracts::post {
     public fun set_moderation_status(
         post: &mut Post,
         platform: &platform::Platform,
+        moderation_group: &PermissionedGroup<platform::PlatformModeration>,
         platform_registry: &platform::PlatformRegistry,
         status: u8, // MODERATION_APPROVED or MODERATION_FLAGGED
         reason: Option<String>,
@@ -3534,9 +3541,9 @@ module social_contracts::post {
         assert!(post.version == upgrade::current_version(), EWrongVersion);
         assert!(platform::platform_version(platform) == upgrade::current_version(), EWrongVersion);
         
-        // Verify caller is platform developer or moderator
+        // Verify caller is platform developer or post moderator
         let caller = tx_context::sender(ctx);
-        assert!(platform::is_developer_or_moderator(platform, caller), EUnauthorized);
+        assert!(platform::can_moderate_posts(platform, moderation_group, caller), EUnauthorized);
         
         // Verify platform is approved
         let platform_id = object::uid_to_address(platform::id(platform));

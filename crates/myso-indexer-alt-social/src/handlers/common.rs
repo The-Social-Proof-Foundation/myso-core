@@ -5,9 +5,7 @@
 
 use move_core_types::account_address::AccountAddress;
 use myso_types::base_types::ObjectID;
-use myso_types::{
-    GROUPS_PACKAGE_ID, MESSAGING_PACKAGE_ID, MYSO_SOCIAL_PACKAGE_ID,
-};
+use myso_types::{GROUPS_PACKAGE_ID, MESSAGING_PACKAGE_ID, MYSO_SOCIAL_PACKAGE_ID};
 use serde::de::DeserializeOwned;
 
 /// Deserializes `data` into `T` after Stage A (`events::parse_event_contents`); on failure records

@@ -6,8 +6,8 @@ use diesel::prelude::*;
 use serde::{Deserialize, Serialize};
 
 use crate::schema::{
-    platform_blocked_profiles, platform_events, platform_memberships, platform_moderators,
-    platform_token_airdrops, platforms,
+    platform_blocked_profiles, platform_events, platform_memberships, platform_moderator_permissions,
+    platform_moderators, platform_token_airdrops, platforms,
 };
 
 pub const PLATFORM_STATUS_DEVELOPMENT: i16 = 0;
@@ -217,6 +217,7 @@ pub struct PlatformModerator {
     pub moderator_address: String,
     pub added_by: String,
     pub created_at: NaiveDateTime,
+    pub updated_at: Option<NaiveDateTime>,
 }
 
 #[derive(Debug, Clone, Insertable, Serialize, Deserialize)]
@@ -225,6 +226,25 @@ pub struct NewPlatformModerator {
     pub platform_id: String,
     pub moderator_address: String,
     pub added_by: String,
+    pub created_at: NaiveDateTime,
+}
+
+#[derive(Debug, Clone, Queryable, Selectable, Serialize, Deserialize)]
+#[diesel(table_name = platform_moderator_permissions)]
+pub struct PlatformModeratorPermission {
+    pub id: i32,
+    pub platform_id: String,
+    pub moderator_address: String,
+    pub permission: String,
+    pub created_at: NaiveDateTime,
+}
+
+#[derive(Debug, Clone, Insertable, Serialize, Deserialize)]
+#[diesel(table_name = platform_moderator_permissions)]
+pub struct NewPlatformModeratorPermission {
+    pub platform_id: String,
+    pub moderator_address: String,
+    pub permission: String,
     pub created_at: NaiveDateTime,
 }
 
@@ -325,6 +345,10 @@ pub struct PlatformModeratorRow {
     pub moderator_address: String,
     pub added_by: String,
     pub created_at: NaiveDateTime,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub updated_at: Option<NaiveDateTime>,
+    #[serde(default)]
+    pub permissions: Vec<String>,
 }
 
 /// Row returned when listing platforms a profile has joined (membership + platform columns + counts).

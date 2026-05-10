@@ -15,7 +15,8 @@ module social_contracts::platform_tests {
     
     use social_contracts::profile::{Self, Profile, UsernameRegistry};
     use social_contracts::memory::{MemoryRegistry, MemoryAccount};
-    use social_contracts::platform::{Self, Platform, PlatformRegistry};
+    use social_contracts::platform::{Self, Platform, PlatformRegistry, PlatformModeration};
+    use myso_groups::permissioned_group::PermissionedGroup;
     
     const ADMIN: address = @0xAD;
     const USER1: address = @0x1;
@@ -79,19 +80,23 @@ module social_contracts::platform_tests {
         // Add moderator to platform and set approval
         test_scenario::next_tx(scenario, PLATFORM_ADMIN);
         {
-            let mut platform = test_scenario::take_shared<Platform>(scenario);
+            let platform = test_scenario::take_shared<Platform>(scenario);
             let mut registry = test_scenario::take_shared<PlatformRegistry>(scenario);
+            let mut moderation_group =
+                test_scenario::take_shared<PermissionedGroup<PlatformModeration>>(scenario);
             
-            platform::add_moderator(
-                &mut platform,
+            platform::add_moderator_register(
+                &platform,
+                &mut moderation_group,
                 PLATFORM_MOD,
-                test_scenario::ctx(scenario)
+                test_scenario::ctx(scenario),
             );
             
             // Set platform as approved in registry
             let platform_id = object::uid_to_address(platform::id(&platform));
             platform::test_set_approval(&mut registry, platform_id, true);
             
+            test_scenario::return_shared(moderation_group);
             test_scenario::return_shared(platform);
             test_scenario::return_shared(registry);
         };
@@ -153,6 +158,8 @@ module social_contracts::platform_tests {
         {
             let registry = test_scenario::take_shared<PlatformRegistry>(&scenario);
             let platform = test_scenario::take_shared<Platform>(&scenario);
+            let moderation_group =
+                test_scenario::take_shared<PermissionedGroup<PlatformModeration>>(&scenario);
             let mut user_profile = test_scenario::take_from_address<Profile>(&scenario, PLATFORM_USER);
             
             let badge_name = string::utf8(b"VIP");
@@ -161,6 +168,7 @@ module social_contracts::platform_tests {
             platform::assign_badge(
                 &registry,
                 &platform,
+                &moderation_group,
                 &mut user_profile,
                 badge_name,
                 string::utf8(b"Very Important Person"),
@@ -186,6 +194,7 @@ module social_contracts::platform_tests {
             assert!(option::is_some(&badge_opt), 4);
             
             test_scenario::return_shared(registry);
+            test_scenario::return_shared(moderation_group);
             test_scenario::return_shared(platform);
             test_scenario::return_to_address(PLATFORM_USER, user_profile);
         };
@@ -214,6 +223,8 @@ module social_contracts::platform_tests {
         {
             let registry = test_scenario::take_shared<PlatformRegistry>(&scenario);
             let platform = test_scenario::take_shared<Platform>(&scenario);
+            let moderation_group =
+                test_scenario::take_shared<PermissionedGroup<PlatformModeration>>(&scenario);
             let mut user_profile = test_scenario::take_from_address<Profile>(&scenario, PLATFORM_USER);
             
             let badge_name = string::utf8(b"Contributor");
@@ -222,6 +233,7 @@ module social_contracts::platform_tests {
             platform::assign_badge(
                 &registry,
                 &platform,
+                &moderation_group,
                 &mut user_profile,
                 badge_name,
                 string::utf8(b"Active Contributor"),
@@ -242,6 +254,7 @@ module social_contracts::platform_tests {
             platform::revoke_badge(
                 &registry,
                 &platform,
+                &moderation_group,
                 &mut user_profile,
                 badge_id,
                 test_scenario::ctx(&mut scenario)
@@ -252,6 +265,7 @@ module social_contracts::platform_tests {
             assert!(!profile::has_badge(&user_profile, &badge_id), 4);
             
             test_scenario::return_shared(registry);
+            test_scenario::return_shared(moderation_group);
             test_scenario::return_shared(platform);
             test_scenario::return_to_address(PLATFORM_USER, user_profile);
         };
@@ -280,6 +294,8 @@ module social_contracts::platform_tests {
         {
             let registry = test_scenario::take_shared<PlatformRegistry>(&scenario);
             let platform = test_scenario::take_shared<Platform>(&scenario);
+            let moderation_group =
+                test_scenario::take_shared<PermissionedGroup<PlatformModeration>>(&scenario);
             let mut user_profile = test_scenario::take_from_address<Profile>(&scenario, PLATFORM_USER);
             
             // Create the platform ID for later comparisons
@@ -289,6 +305,7 @@ module social_contracts::platform_tests {
             platform::assign_badge(
                 &registry,
                 &platform,
+                &moderation_group,
                 &mut user_profile,
                 string::utf8(b"VIP"),
                 string::utf8(b"Very Important Person"),
@@ -302,6 +319,7 @@ module social_contracts::platform_tests {
             platform::assign_badge(
                 &registry,
                 &platform,
+                &moderation_group,
                 &mut user_profile,
                 string::utf8(b"Moderator"),
                 string::utf8(b"Community Moderator"),
@@ -319,6 +337,7 @@ module social_contracts::platform_tests {
             assert!(vector::length(&platform_badges) == 2, 2);
             
             test_scenario::return_shared(registry);
+            test_scenario::return_shared(moderation_group);
             test_scenario::return_shared(platform);
             test_scenario::return_to_address(PLATFORM_USER, user_profile);
         };
@@ -348,12 +367,15 @@ module social_contracts::platform_tests {
         {
             let registry = test_scenario::take_shared<PlatformRegistry>(&scenario);
             let platform = test_scenario::take_shared<Platform>(&scenario);
+            let moderation_group =
+                test_scenario::take_shared<PermissionedGroup<PlatformModeration>>(&scenario);
             let mut user_profile = test_scenario::take_from_address<Profile>(&scenario, PLATFORM_USER);
             
             // This should fail with EUnauthorized since USER1 is neither platform admin nor moderator
             platform::assign_badge(
                 &registry,
                 &platform,
+                &moderation_group,
                 &mut user_profile,
                 string::utf8(b"Fake"),
                 string::utf8(b"Fake Badge"),
@@ -364,6 +386,7 @@ module social_contracts::platform_tests {
             );
             
             test_scenario::return_shared(registry);
+            test_scenario::return_shared(moderation_group);
             test_scenario::return_shared(platform);
             test_scenario::return_to_address(PLATFORM_USER, user_profile);
         };
@@ -393,6 +416,8 @@ module social_contracts::platform_tests {
         {
             let registry = test_scenario::take_shared<PlatformRegistry>(&scenario);
             let platform = test_scenario::take_shared<Platform>(&scenario);
+            let moderation_group =
+                test_scenario::take_shared<PermissionedGroup<PlatformModeration>>(&scenario);
             let mut user_profile = test_scenario::take_from_address<Profile>(&scenario, PLATFORM_USER);
             
             let badge_name = string::utf8(b"VIP");
@@ -401,6 +426,7 @@ module social_contracts::platform_tests {
             platform::assign_badge(
                 &registry,
                 &platform,
+                &moderation_group,
                 &mut user_profile,
                 badge_name,
                 string::utf8(b"Very Important Person"),
@@ -414,6 +440,7 @@ module social_contracts::platform_tests {
             platform::assign_badge(
                 &registry,
                 &platform,
+                &moderation_group,
                 &mut user_profile,
                 badge_name,
                 string::utf8(b"Very Important Person"),
@@ -425,6 +452,7 @@ module social_contracts::platform_tests {
             
             // Not reached due to expected failure
             test_scenario::return_shared(registry);
+            test_scenario::return_shared(moderation_group);
             test_scenario::return_shared(platform);
             test_scenario::return_to_address(PLATFORM_USER, user_profile);
         };
@@ -454,6 +482,8 @@ module social_contracts::platform_tests {
         {
             let registry = test_scenario::take_shared<PlatformRegistry>(&scenario);
             let platform = test_scenario::take_shared<Platform>(&scenario);
+            let moderation_group =
+                test_scenario::take_shared<PermissionedGroup<PlatformModeration>>(&scenario);
             let mut user_profile = test_scenario::take_from_address<Profile>(&scenario, PLATFORM_USER);
             
             // Try to revoke a nonexistent badge - should fail
@@ -461,6 +491,7 @@ module social_contracts::platform_tests {
             platform::revoke_badge(
                 &registry,
                 &platform,
+                &moderation_group,
                 &mut user_profile,
                 string::utf8(b"badge_NonexistentBadge"),
                 test_scenario::ctx(&mut scenario)
@@ -468,6 +499,7 @@ module social_contracts::platform_tests {
             
             // Not reached due to expected failure
             test_scenario::return_shared(registry);
+            test_scenario::return_shared(moderation_group);
             test_scenario::return_shared(platform);
             test_scenario::return_to_address(PLATFORM_USER, user_profile);
         };
@@ -496,12 +528,15 @@ module social_contracts::platform_tests {
         {
             let registry = test_scenario::take_shared<PlatformRegistry>(&scenario);
             let platform = test_scenario::take_shared<Platform>(&scenario);
+            let moderation_group =
+                test_scenario::take_shared<PermissionedGroup<PlatformModeration>>(&scenario);
             let mut user_profile = test_scenario::take_from_address<Profile>(&scenario, PLATFORM_USER);
             
             // Assign badge
             platform::assign_badge(
                 &registry,
                 &platform,
+                &moderation_group,
                 &mut user_profile,
                 string::utf8(b"VIP"),
                 string::utf8(b"Very Important Person"),
@@ -515,6 +550,7 @@ module social_contracts::platform_tests {
             assert!(profile::badge_count(&user_profile) == 1, 1);
             
             test_scenario::return_shared(registry);
+            test_scenario::return_shared(moderation_group);
             test_scenario::return_shared(platform);
             test_scenario::return_to_address(PLATFORM_USER, user_profile);
         };

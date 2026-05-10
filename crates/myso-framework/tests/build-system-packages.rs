@@ -268,11 +268,15 @@ async fn build_packages_with_move_config(
     let bridge_members =
         serialize_modules_to_file("bridge", bridge, &compiled_packages_dir.join(bridge_dir))
             .unwrap();
-    let stdlib_members =
-        serialize_modules_to_file("move-stdlib", move_stdlib, &compiled_packages_dir.join(stdlib_dir))
-            .unwrap();
+    let stdlib_members = serialize_modules_to_file(
+        "move-stdlib",
+        move_stdlib,
+        &compiled_packages_dir.join(stdlib_dir),
+    )
+    .unwrap();
     let mydata_members =
-        serialize_modules_to_file("mydata", mydata, &compiled_packages_dir.join(mydata_dir)).unwrap();
+        serialize_modules_to_file("mydata", mydata, &compiled_packages_dir.join(mydata_dir))
+            .unwrap();
     let myso_groups_members = serialize_modules_to_file(
         "myso-groups",
         myso_groups,

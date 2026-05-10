@@ -1,15 +1,17 @@
 // Copyright (c) The Social Proof Foundation, LLC.
 // SPDX-License-Identifier: Apache-2.0
 
+use diesel::sql_query;
+use diesel::sql_types::{Array, BigInt, Nullable, Text, Timestamp};
 use diesel::ExpressionMethods;
 use diesel::OptionalExtension;
 use diesel::QueryDsl;
+use diesel::QueryableByName;
 use diesel::SelectableHelper;
 use diesel_async::RunQueryDsl;
 use myso_indexer_alt_social_schema::models::Platform;
 use myso_indexer_alt_social_schema::schema::{
-    platform_blocked_profiles, platform_events, platform_memberships, platform_moderators,
-    platforms,
+    platform_blocked_profiles, platform_events, platform_memberships, platforms,
 };
 
 use crate::error::SocialError;
@@ -71,28 +73,59 @@ pub(crate) async fn get_platform_moderators(
     limit: i64,
     offset: i64,
 ) -> Result<Vec<PlatformModeratorRow>, SocialError> {
+    #[derive(QueryableByName)]
+    struct Row {
+        #[diesel(sql_type = Text)]
+        moderator_address: String,
+        #[diesel(sql_type = Text)]
+        added_by: String,
+        #[diesel(sql_type = Timestamp)]
+        created_at: chrono::NaiveDateTime,
+        #[diesel(sql_type = Nullable<Timestamp>)]
+        updated_at: Option<chrono::NaiveDateTime>,
+        #[diesel(sql_type = Array<Text>)]
+        permissions: Vec<String>,
+    }
+
     let mut conn = db.connect().await?;
-    let results = platform_moderators::table
-        .filter(platform_moderators::platform_id.eq(platform_id))
-        .order_by(platform_moderators::created_at.desc())
-        .limit(limit)
-        .offset(offset)
-        .select((
-            platform_moderators::moderator_address,
-            platform_moderators::added_by,
-            platform_moderators::created_at,
-        ))
-        .load::<(String, String, chrono::NaiveDateTime)>(&mut conn)
-        .await?;
+    let results = sql_query(
+        "SELECT
+            m.moderator_address,
+            m.added_by,
+            m.created_at,
+            m.updated_at,
+            COALESCE(
+                array_agg(p.permission ORDER BY p.permission)
+                    FILTER (WHERE p.permission IS NOT NULL),
+                ARRAY[]::text[]
+            ) AS permissions
+        FROM platform_moderators m
+        LEFT JOIN platform_moderator_permissions p
+            ON p.platform_id = m.platform_id
+            AND p.moderator_address = m.moderator_address
+        WHERE m.platform_id = $1
+        GROUP BY
+            m.moderator_address,
+            m.added_by,
+            m.created_at,
+            m.updated_at
+        ORDER BY m.created_at DESC
+        LIMIT $2 OFFSET $3",
+    )
+    .bind::<Text, _>(platform_id)
+    .bind::<BigInt, _>(limit)
+    .bind::<BigInt, _>(offset)
+    .load::<Row>(&mut conn)
+    .await?;
     Ok(results
         .into_iter()
-        .map(
-            |(moderator_address, added_by, created_at)| PlatformModeratorRow {
-                moderator_address,
-                added_by,
-                created_at,
-            },
-        )
+        .map(|r| PlatformModeratorRow {
+            moderator_address: r.moderator_address,
+            added_by: r.added_by,
+            created_at: r.created_at,
+            updated_at: r.updated_at,
+            permissions: r.permissions,
+        })
         .collect())
 }
 

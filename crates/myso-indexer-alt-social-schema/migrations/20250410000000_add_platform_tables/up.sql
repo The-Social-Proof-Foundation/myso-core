@@ -37,6 +37,24 @@ CREATE TABLE IF NOT EXISTS platform_moderators (
 -- Create index on platform_id for moderators
 CREATE INDEX IF NOT EXISTS idx_platform_moderators_platform_id ON platform_moderators(platform_id);
 
+CREATE TABLE IF NOT EXISTS platform_moderator_permissions (
+    id SERIAL PRIMARY KEY,
+    platform_id TEXT NOT NULL,
+    moderator_address TEXT NOT NULL,
+    permission TEXT NOT NULL,
+    created_at TIMESTAMP NOT NULL DEFAULT NOW(),
+    UNIQUE(platform_id, moderator_address, permission)
+);
+
+CREATE INDEX IF NOT EXISTS idx_platform_moderator_permissions_platform_id
+    ON platform_moderator_permissions(platform_id);
+
+CREATE INDEX IF NOT EXISTS idx_platform_moderator_permissions_platform_moderator
+    ON platform_moderator_permissions(platform_id, moderator_address);
+
+ALTER TABLE platform_moderators
+    ADD COLUMN IF NOT EXISTS updated_at TIMESTAMP;
+
 -- Create blocked profiles table
 CREATE TABLE IF NOT EXISTS platform_blocked_profiles (
     id SERIAL PRIMARY KEY,

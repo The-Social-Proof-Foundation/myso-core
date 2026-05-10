@@ -65,11 +65,13 @@ pub use mydata::{
 };
 pub use platform::{
     ALLOWED_CATEGORIES, NewPlatform, NewPlatformBlockedProfile, NewPlatformEvent,
-    NewPlatformMembership, NewPlatformModerator, NewPlatformTokenAirdrop, PLATFORM_STATUS_ALPHA,
+    NewPlatformMembership, NewPlatformModerator, NewPlatformModeratorPermission,
+    NewPlatformTokenAirdrop, PLATFORM_STATUS_ALPHA,
     PLATFORM_STATUS_BETA, PLATFORM_STATUS_DEVELOPMENT, PLATFORM_STATUS_LIVE,
     PLATFORM_STATUS_MAINTENANCE, PLATFORM_STATUS_SHUTDOWN, PLATFORM_STATUS_SUNSET, Platform,
     PlatformBlockedProfile, PlatformEvent, PlatformMemberRow, PlatformMembership,
-    PlatformModerator, PlatformModeratorRow, PlatformTokenAirdrop, ProfilePlatformMembershipRow,
+    PlatformModerator, PlatformModeratorPermission, PlatformModeratorRow, PlatformTokenAirdrop,
+    ProfilePlatformMembershipRow,
     UpdatePlatform, milliseconds_to_naive_datetime, platform_status_to_text, validate_categories,
     validate_category,
 };
