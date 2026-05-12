@@ -7210,6 +7210,123 @@ subscription_renewal_balance
 migrate_service
 	public entry fun
 	0x50c1::subscription
+MemoryRegistry
+	public struct
+	0x50c1::memory
+MemoryAccount
+	public struct
+	0x50c1::memory
+MemoryDelegateKey
+	public struct
+	0x50c1::memory
+MemoryAccountCreated
+	public struct
+	0x50c1::memory
+MemoryDelegateKeyAdded
+	public struct
+	0x50c1::memory
+MemoryDelegateKeyRemoved
+	public struct
+	0x50c1::memory
+MemoryAccountDeactivated
+	public struct
+	0x50c1::memory
+MemoryAccountReactivated
+	public struct
+	0x50c1::memory
+MemoryAccountMigrated
+	public struct
+	0x50c1::memory
+MemoryRegistryMigrated
+	public struct
+	0x50c1::memory
+bootstrap_init
+	public(package) fun
+	0x50c1::memory
+create_account_for_profile
+	public(package) fun
+	0x50c1::memory
+transfer_account_owner_with_profile
+	public(package) fun
+	0x50c1::memory
+add_delegate_key
+	public entry fun
+	0x50c1::memory
+remove_delegate_key
+	public entry fun
+	0x50c1::memory
+deactivate_account
+	public entry fun
+	0x50c1::memory
+reactivate_account
+	public entry fun
+	0x50c1::memory
+migrate_account
+	public entry fun
+	0x50c1::memory
+admin_migrate_account
+	public entry fun
+	0x50c1::memory
+migrate_registry
+	public entry fun
+	0x50c1::memory
+profile_id
+	public fun
+	0x50c1::memory
+is_delegate
+	public fun
+	0x50c1::memory
+is_delegate_address
+	public fun
+	0x50c1::memory
+owner
+	public fun
+	0x50c1::memory
+delegate_count
+	public fun
+	0x50c1::memory
+has_account
+	public fun
+	0x50c1::memory
+account_id_for_owner
+	public fun
+	0x50c1::memory
+is_active
+	public fun
+	0x50c1::memory
+account_version
+	public fun
+	0x50c1::memory
+registry_version
+	public fun
+	0x50c1::memory
+current_contract_version
+	public fun
+	0x50c1::memory
+approve_key_policy
+	public entry fun
+	0x50c1::memory
+owner_key_suffix_bytes
+	public fun
+	0x50c1::memory
+get_version
+	fun
+	0x50c1::memory
+set_version
+	fun
+	0x50c1::memory
+bump_version
+	fun
+	0x50c1::memory
+assert_object_version
+	fun
+	0x50c1::memory
+assert_cap_for_this_package
+	fun
+	0x50c1::memory
+has_suffix
+	fun
+	0x50c1::memory
 EcosystemTreasuryAdminCap
 	public struct
 	0x50c1::profile
@@ -7300,6 +7417,9 @@ to_lowercase_bytes
 to_lowercase_byte
 	fun
 	0x50c1::profile
+canonical_registry_username
+	fun
+	0x50c1::profile
 ascii_to_string
 	fun
 	0x50c1::profile
@@ -7312,7 +7432,13 @@ copy_string
 create_profile
 	public entry fun
 	0x50c1::profile
+ensure_memory_account
+	public entry fun
+	0x50c1::profile
 transfer_profile
+	public entry fun
+	0x50c1::profile
+transfer_profile_with_memory
 	public entry fun
 	0x50c1::profile
 update_profile
@@ -7363,6 +7489,9 @@ create_offer
 accept_offer
 	public entry fun
 	0x50c1::profile
+accept_offer_with_memory
+	public entry fun
+	0x50c1::profile
 reject_or_revoke_offer
 	public entry fun
 	0x50c1::profile
@@ -7407,6 +7536,9 @@ borrow_version_mut
 	0x50c1::profile
 migrate_registry
 	public entry fun
+	0x50c1::profile
+linked_memory_account_id
+	public fun
 	0x50c1::profile
 min_offer_amount
 	public fun
@@ -9367,201 +9499,6 @@ migrate_poc_registry
 create_poc_admin_cap
 	public(package) fun
 	0x50c1::proof_of_creativity
-Registry
-	public struct
-	0x50c1::message
-Conversation
-	public struct
-	0x50c1::message
-MessageDigest
-	public struct
-	0x50c1::message
-PaidMessageEscrow
-	public struct
-	0x50c1::message
-ConversationCreated
-	public struct
-	0x50c1::message
-ParticipantsAdded
-	public struct
-	0x50c1::message
-ParticipantsRemoved
-	public struct
-	0x50c1::message
-RoleChanged
-	public struct
-	0x50c1::message
-ConversationMetaSet
-	public struct
-	0x50c1::message
-MessageSent
-	public struct
-	0x50c1::message
-MessageEdited
-	public struct
-	0x50c1::message
-MessageTombstoned
-	public struct
-	0x50c1::message
-DeliveredAck
-	public struct
-	0x50c1::message
-ReadAck
-	public struct
-	0x50c1::message
-Reacted
-	public struct
-	0x50c1::message
-Pinned
-	public struct
-	0x50c1::message
-KeyRotated
-	public struct
-	0x50c1::message
-MemberKeySubmitted
-	public struct
-	0x50c1::message
-Moderation
-	public struct
-	0x50c1::message
-Enabled
-	public struct
-	0x50c1::message
-VersionSet
-	public struct
-	0x50c1::message
-RelayerUpdated
-	public struct
-	0x50c1::message
-AdminTransferred
-	public struct
-	0x50c1::message
-RateLimitsSet
-	public struct
-	0x50c1::message
-PaidMessageSent
-	public struct
-	0x50c1::message
-PaidMessageReplied
-	public struct
-	0x50c1::message
-PaymentClaimed
-	public struct
-	0x50c1::message
-PaymentRefunded
-	public struct
-	0x50c1::message
-bootstrap_init
-	public(package) fun
-	0x50c1::message
-set_relayer
-	public entry fun
-	0x50c1::message
-set_enabled
-	public entry fun
-	0x50c1::message
-set_version
-	public entry fun
-	0x50c1::message
-transfer_admin
-	public entry fun
-	0x50c1::message
-create_conversation
-	public entry fun
-	0x50c1::message
-add_participants
-	public entry fun
-	0x50c1::message
-remove_participants
-	public entry fun
-	0x50c1::message
-leave_conversation
-	public entry fun
-	0x50c1::message
-set_role
-	public entry fun
-	0x50c1::message
-set_conv_meta
-	public entry fun
-	0x50c1::message
-use_nonce
-	public entry fun
-	0x50c1::message
-mark_dedupe
-	public entry fun
-	0x50c1::message
-send_message
-	public entry fun
-	0x50c1::message
-edit_message
-	public entry fun
-	0x50c1::message
-tombstone_message
-	public entry fun
-	0x50c1::message
-ack_delivery
-	public entry fun
-	0x50c1::message
-ack_read
-	public entry fun
-	0x50c1::message
-react
-	public entry fun
-	0x50c1::message
-pin
-	public entry fun
-	0x50c1::message
-unpin
-	public entry fun
-	0x50c1::message
-rotate_conv_key
-	public entry fun
-	0x50c1::message
-submit_member_key
-	public entry fun
-	0x50c1::message
-mod_remove
-	public entry fun
-	0x50c1::message
-set_rate_limits
-	public entry fun
-	0x50c1::message
-export_range
-	public fun
-	0x50c1::message
-is_member
-	public fun
-	0x50c1::message
-next_seq
-	public fun
-	0x50c1::message
-meta_hash
-	public fun
-	0x50c1::message
-get_role
-	public fun
-	0x50c1::message
-assert_role_at_least
-	fun
-	0x50c1::message
-enforce_rate_limits
-	fun
-	0x50c1::message
-send_paid_message
-	public entry fun
-	0x50c1::message
-reply_to_paid_message
-	public entry fun
-	0x50c1::message
-claim_payment_internal
-	fun
-	0x50c1::message
-refund_paid_message
-	public entry fun
-	0x50c1::message
-migrate_registry
-	public entry fun
-	0x50c1::message
 InsuranceAdminCap
 	public struct
 	0x50c1::insurance

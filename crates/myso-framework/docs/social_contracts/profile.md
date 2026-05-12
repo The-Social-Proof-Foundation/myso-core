@@ -37,11 +37,14 @@ Handles user identity, profile creation, management, and username registration
 -  [Function `is_reserved_name`](#social_contracts_profile_is_reserved_name)
 -  [Function `to_lowercase_bytes`](#social_contracts_profile_to_lowercase_bytes)
 -  [Function `to_lowercase_byte`](#social_contracts_profile_to_lowercase_byte)
+-  [Function `canonical_registry_username`](#social_contracts_profile_canonical_registry_username)
 -  [Function `ascii_to_string`](#social_contracts_profile_ascii_to_string)
 -  [Function `is_ecosystem_badge`](#social_contracts_profile_is_ecosystem_badge)
 -  [Function `copy_string`](#social_contracts_profile_copy_string)
 -  [Function `create_profile`](#social_contracts_profile_create_profile)
+-  [Function `ensure_memory_account`](#social_contracts_profile_ensure_memory_account)
 -  [Function `transfer_profile`](#social_contracts_profile_transfer_profile)
+-  [Function `transfer_profile_with_memory`](#social_contracts_profile_transfer_profile_with_memory)
 -  [Function `update_profile`](#social_contracts_profile_update_profile)
 -  [Function `display_name`](#social_contracts_profile_display_name)
 -  [Function `bio`](#social_contracts_profile_bio)
@@ -58,6 +61,7 @@ Handles user identity, profile creation, management, and username registration
 -  [Function `has_valid_subscription`](#social_contracts_profile_has_valid_subscription)
 -  [Function `create_offer`](#social_contracts_profile_create_offer)
 -  [Function `accept_offer`](#social_contracts_profile_accept_offer)
+-  [Function `accept_offer_with_memory`](#social_contracts_profile_accept_offer_with_memory)
 -  [Function `reject_or_revoke_offer`](#social_contracts_profile_reject_or_revoke_offer)
 -  [Function `has_offer_from`](#social_contracts_profile_has_offer_from)
 -  [Function `has_offers`](#social_contracts_profile_has_offers)
@@ -73,6 +77,7 @@ Handles user identity, profile creation, management, and username registration
 -  [Function `version`](#social_contracts_profile_version)
 -  [Function `borrow_version_mut`](#social_contracts_profile_borrow_version_mut)
 -  [Function `migrate_registry`](#social_contracts_profile_migrate_registry)
+-  [Function `linked_memory_account_id`](#social_contracts_profile_linked_memory_account_id)
 -  [Function `min_offer_amount`](#social_contracts_profile_min_offer_amount)
 -  [Function `x_username`](#social_contracts_profile_x_username)
 -  [Function `is_for_sale`](#social_contracts_profile_is_for_sale)
@@ -150,6 +155,7 @@ Handles user identity, profile creation, management, and username registration
 <b>use</b> <a href="../myso/url.md#myso_url">myso::url</a>;
 <b>use</b> <a href="../myso/vec_map.md#myso_vec_map">myso::vec_map</a>;
 <b>use</b> <a href="../myso/vec_set.md#myso_vec_set">myso::vec_set</a>;
+<b>use</b> <a href="../social_contracts/memory.md#social_contracts_memory">social_contracts::memory</a>;
 <b>use</b> <a href="../social_contracts/subscription.md#social_contracts_subscription">social_contracts::subscription</a>;
 <b>use</b> <a href="../social_contracts/upgrade.md#social_contracts_upgrade">social_contracts::upgrade</a>;
 <b>use</b> <a href="../std/address.md#std_address">std::address</a>;
@@ -407,6 +413,12 @@ Profile object that contains user information
 </dt>
 <dd>
  Paid messaging: toggle to enable/disable paid messaging
+</dd>
+<dt>
+<code>memory_account_id: <a href="../std/option.md#std_option_Option">std::option::Option</a>&lt;<a href="../myso/object.md#myso_object_ID">myso::object::ID</a>&gt;</code>
+</dt>
+<dd>
+ Shared [<code><a href="../social_contracts/memory.md#social_contracts_memory_MemoryAccount">memory::MemoryAccount</a></code>] object id when linked (<code>None</code> until [<code><a href="../social_contracts/profile.md#social_contracts_profile_ensure_memory_account">profile::ensure_memory_account</a></code>] or legacy profiles).
 </dd>
 <dt>
 <code><a href="../social_contracts/profile.md#social_contracts_profile_version">version</a>: u64</code>
@@ -1762,6 +1774,42 @@ Error codes
 
 
 
+<a name="social_contracts_profile_EMemoryAlreadyLinked"></a>
+
+
+
+<pre><code><b>const</b> <a href="../social_contracts/profile.md#social_contracts_profile_EMemoryAlreadyLinked">EMemoryAlreadyLinked</a>: u64 = 25;
+</code></pre>
+
+
+
+<a name="social_contracts_profile_EMemoryAccountMismatch"></a>
+
+
+
+<pre><code><b>const</b> <a href="../social_contracts/profile.md#social_contracts_profile_EMemoryAccountMismatch">EMemoryAccountMismatch</a>: u64 = 26;
+</code></pre>
+
+
+
+<a name="social_contracts_profile_EMustUseLinkedMemoryTransfer"></a>
+
+
+
+<pre><code><b>const</b> <a href="../social_contracts/profile.md#social_contracts_profile_EMustUseLinkedMemoryTransfer">EMustUseLinkedMemoryTransfer</a>: u64 = 27;
+</code></pre>
+
+
+
+<a name="social_contracts_profile_ERequiresMemoryLinkedProfile"></a>
+
+
+
+<pre><code><b>const</b> <a href="../social_contracts/profile.md#social_contracts_profile_ERequiresMemoryLinkedProfile">ERequiresMemoryLinkedProfile</a>: u64 = 28;
+</code></pre>
+
+
+
 <a name="social_contracts_profile_PROFILE_SALE_FEE_BPS"></a>
 
 
@@ -2014,6 +2062,33 @@ Convert a single ASCII byte to lowercase
 
 </details>
 
+<a name="social_contracts_profile_canonical_registry_username"></a>
+
+## Function `canonical_registry_username`
+
+Canonical username for [<code><a href="../social_contracts/profile.md#social_contracts_profile_UsernameRegistry">UsernameRegistry</a></code>] keys and [<code>Profile::username</code>].
+Folds ASCII <code>A–Z</code> to <code>a–z</code> only; does not apply Unicode case folding.
+
+
+<pre><code><b>fun</b> <a href="../social_contracts/profile.md#social_contracts_profile_canonical_registry_username">canonical_registry_username</a>(<a href="../social_contracts/profile.md#social_contracts_profile_username">username</a>: &<a href="../std/string.md#std_string_String">std::string::String</a>): <a href="../std/string.md#std_string_String">std::string::String</a>
+</code></pre>
+
+
+
+<details>
+<summary>Implementation</summary>
+
+
+<pre><code><b>fun</b> <a href="../social_contracts/profile.md#social_contracts_profile_canonical_registry_username">canonical_registry_username</a>(<a href="../social_contracts/profile.md#social_contracts_profile_username">username</a>: &String): String {
+    <b>let</b> lowered = <a href="../social_contracts/profile.md#social_contracts_profile_to_lowercase_bytes">to_lowercase_bytes</a>(string::as_bytes(<a href="../social_contracts/profile.md#social_contracts_profile_username">username</a>));
+    string::utf8(lowered)
+}
+</code></pre>
+
+
+
+</details>
+
 <a name="social_contracts_profile_ascii_to_string"></a>
 
 ## Function `ascii_to_string`
@@ -2113,10 +2188,10 @@ Convert an ASCII String to a String
 ## Function `create_profile`
 
 Create a new profile with a required username
-This is the main entry point for new users, combining profile and username creation
+Main entry: also creates a linked [<code><a href="../social_contracts/memory.md#social_contracts_memory_MemoryAccount">memory::MemoryAccount</a></code>] shared object.
 
 
-<pre><code><b>public</b> <b>entry</b> <b>fun</b> <a href="../social_contracts/profile.md#social_contracts_profile_create_profile">create_profile</a>(registry: &<b>mut</b> <a href="../social_contracts/profile.md#social_contracts_profile_UsernameRegistry">social_contracts::profile::UsernameRegistry</a>, <a href="../social_contracts/profile.md#social_contracts_profile_display_name">display_name</a>: <a href="../std/string.md#std_string_String">std::string::String</a>, <a href="../social_contracts/profile.md#social_contracts_profile_username">username</a>: <a href="../std/string.md#std_string_String">std::string::String</a>, <a href="../social_contracts/profile.md#social_contracts_profile_bio">bio</a>: <a href="../std/string.md#std_string_String">std::string::String</a>, profile_picture_url: vector&lt;u8&gt;, cover_photo_url: vector&lt;u8&gt;, ctx: &<b>mut</b> <a href="../myso/tx_context.md#myso_tx_context_TxContext">myso::tx_context::TxContext</a>)
+<pre><code><b>public</b> <b>entry</b> <b>fun</b> <a href="../social_contracts/profile.md#social_contracts_profile_create_profile">create_profile</a>(registry: &<b>mut</b> <a href="../social_contracts/profile.md#social_contracts_profile_UsernameRegistry">social_contracts::profile::UsernameRegistry</a>, memory_registry: &<b>mut</b> <a href="../social_contracts/memory.md#social_contracts_memory_MemoryRegistry">social_contracts::memory::MemoryRegistry</a>, <a href="../social_contracts/profile.md#social_contracts_profile_display_name">display_name</a>: <a href="../std/string.md#std_string_String">std::string::String</a>, <a href="../social_contracts/profile.md#social_contracts_profile_username">username</a>: <a href="../std/string.md#std_string_String">std::string::String</a>, <a href="../social_contracts/profile.md#social_contracts_profile_bio">bio</a>: <a href="../std/string.md#std_string_String">std::string::String</a>, profile_picture_url: vector&lt;u8&gt;, cover_photo_url: vector&lt;u8&gt;, clock: &<a href="../myso/clock.md#myso_clock_Clock">myso::clock::Clock</a>, ctx: &<b>mut</b> <a href="../myso/tx_context.md#myso_tx_context_TxContext">myso::tx_context::TxContext</a>)
 </code></pre>
 
 
@@ -2127,12 +2202,14 @@ This is the main entry point for new users, combining profile and username creat
 
 <pre><code><b>public</b> <b>entry</b> <b>fun</b> <a href="../social_contracts/profile.md#social_contracts_profile_create_profile">create_profile</a>(
     registry: &<b>mut</b> <a href="../social_contracts/profile.md#social_contracts_profile_UsernameRegistry">UsernameRegistry</a>,
+    memory_registry: &<b>mut</b> <a href="../social_contracts/memory.md#social_contracts_memory_MemoryRegistry">memory::MemoryRegistry</a>,
     <a href="../social_contracts/profile.md#social_contracts_profile_display_name">display_name</a>: String,
     <a href="../social_contracts/profile.md#social_contracts_profile_username">username</a>: String,
     <a href="../social_contracts/profile.md#social_contracts_profile_bio">bio</a>: String,
     profile_picture_url: vector&lt;u8&gt;,
     cover_photo_url: vector&lt;u8&gt;,
-    ctx: &<b>mut</b> TxContext
+    clock: &Clock,
+    ctx: &<b>mut</b> TxContext,
 ) {
     // Check <a href="../social_contracts/profile.md#social_contracts_profile_version">version</a> compatibility
     <b>assert</b>!(registry.<a href="../social_contracts/profile.md#social_contracts_profile_version">version</a> == <a href="../social_contracts/upgrade.md#social_contracts_upgrade_current_version">upgrade::current_version</a>(), 1);
@@ -2140,6 +2217,7 @@ This is the main entry point for new users, combining profile and username creat
     <b>let</b> now = tx_context::epoch_timestamp_ms(ctx);
     // Check that the sender doesn't already have a <a href="../social_contracts/profile.md#social_contracts_profile">profile</a>
     <b>assert</b>!(!table::contains(&registry.address_profiles, <a href="../social_contracts/profile.md#social_contracts_profile_owner">owner</a>), <a href="../social_contracts/profile.md#social_contracts_profile_EProfileAlreadyExists">EProfileAlreadyExists</a>);
+    <b>let</b> <a href="../social_contracts/profile.md#social_contracts_profile_username">username</a> = <a href="../social_contracts/profile.md#social_contracts_profile_canonical_registry_username">canonical_registry_username</a>(&<a href="../social_contracts/profile.md#social_contracts_profile_username">username</a>);
     // Validate the <a href="../social_contracts/profile.md#social_contracts_profile_username">username</a>
     <b>let</b> username_bytes = string::as_bytes(&<a href="../social_contracts/profile.md#social_contracts_profile_username">username</a>);
     <b>let</b> username_length = vector::length(username_bytes);
@@ -2165,7 +2243,7 @@ This is the main entry point for new users, combining profile and username creat
     } <b>else</b> {
         option::none()
     };
-    <b>let</b> <a href="../social_contracts/profile.md#social_contracts_profile">profile</a> = <a href="../social_contracts/profile.md#social_contracts_profile_Profile">Profile</a> {
+    <b>let</b> <b>mut</b> <a href="../social_contracts/profile.md#social_contracts_profile">profile</a> = <a href="../social_contracts/profile.md#social_contracts_profile_Profile">Profile</a> {
         <a href="../social_contracts/profile.md#social_contracts_profile_id">id</a>: object::new(ctx),
         <a href="../social_contracts/profile.md#social_contracts_profile_display_name">display_name</a>: display_name_option,
         <a href="../social_contracts/profile.md#social_contracts_profile_bio">bio</a>,
@@ -2181,10 +2259,12 @@ This is the main entry point for new users, combining profile and username creat
         selected_ecosystem_badge_id: option::none(),
         min_message_cost: option::none(),
         paid_messaging_enabled: <b>false</b>,
+        memory_account_id: option::none(),
         <a href="../social_contracts/profile.md#social_contracts_profile_version">version</a>: <a href="../social_contracts/upgrade.md#social_contracts_upgrade_current_version">upgrade::current_version</a>(),
     };
-    // Get the <a href="../social_contracts/profile.md#social_contracts_profile">profile</a> ID
     <b>let</b> profile_id = object::uid_to_address(&<a href="../social_contracts/profile.md#social_contracts_profile">profile</a>.<a href="../social_contracts/profile.md#social_contracts_profile_id">id</a>);
+    <b>let</b> memory_id = <a href="../social_contracts/memory.md#social_contracts_memory_create_account_for_profile">memory::create_account_for_profile</a>(memory_registry, profile_id, clock, ctx);
+    <a href="../social_contracts/profile.md#social_contracts_profile">profile</a>.memory_account_id = option::some(memory_id);
     // Add to registry mappings
     table::add(&<b>mut</b> registry.usernames, <a href="../social_contracts/profile.md#social_contracts_profile_username">username</a>, profile_id);
     table::add(&<b>mut</b> registry.address_profiles, <a href="../social_contracts/profile.md#social_contracts_profile_owner">owner</a>, profile_id);
@@ -2229,12 +2309,50 @@ This is the main entry point for new users, combining profile and username creat
 
 </details>
 
+<a name="social_contracts_profile_ensure_memory_account"></a>
+
+## Function `ensure_memory_account`
+
+Backfill a Memory account for profiles created before Memory integration, or test-only paths.
+Transfers the same <code><a href="../social_contracts/profile.md#social_contracts_profile_Profile">Profile</a></code> back to the caller.
+
+
+<pre><code><b>public</b> <b>entry</b> <b>fun</b> <a href="../social_contracts/profile.md#social_contracts_profile_ensure_memory_account">ensure_memory_account</a>(memory_registry: &<b>mut</b> <a href="../social_contracts/memory.md#social_contracts_memory_MemoryRegistry">social_contracts::memory::MemoryRegistry</a>, <a href="../social_contracts/profile.md#social_contracts_profile">profile</a>: <a href="../social_contracts/profile.md#social_contracts_profile_Profile">social_contracts::profile::Profile</a>, clock: &<a href="../myso/clock.md#myso_clock_Clock">myso::clock::Clock</a>, ctx: &<b>mut</b> <a href="../myso/tx_context.md#myso_tx_context_TxContext">myso::tx_context::TxContext</a>)
+</code></pre>
+
+
+
+<details>
+<summary>Implementation</summary>
+
+
+<pre><code><b>public</b> <b>entry</b> <b>fun</b> <a href="../social_contracts/profile.md#social_contracts_profile_ensure_memory_account">ensure_memory_account</a>(
+    memory_registry: &<b>mut</b> <a href="../social_contracts/memory.md#social_contracts_memory_MemoryRegistry">memory::MemoryRegistry</a>,
+    <b>mut</b> <a href="../social_contracts/profile.md#social_contracts_profile">profile</a>: <a href="../social_contracts/profile.md#social_contracts_profile_Profile">Profile</a>,
+    clock: &Clock,
+    ctx: &<b>mut</b> TxContext,
+) {
+    <b>let</b> sender = tx_context::sender(ctx);
+    <b>assert</b>!(<a href="../social_contracts/profile.md#social_contracts_profile">profile</a>.<a href="../social_contracts/profile.md#social_contracts_profile_owner">owner</a> == sender, <a href="../social_contracts/profile.md#social_contracts_profile_EUnauthorized">EUnauthorized</a>);
+    <b>assert</b>!(<a href="../social_contracts/profile.md#social_contracts_profile">profile</a>.<a href="../social_contracts/profile.md#social_contracts_profile_version">version</a> == <a href="../social_contracts/upgrade.md#social_contracts_upgrade_current_version">upgrade::current_version</a>(), 1);
+    <b>assert</b>!(option::is_none(&<a href="../social_contracts/profile.md#social_contracts_profile">profile</a>.memory_account_id), <a href="../social_contracts/profile.md#social_contracts_profile_EMemoryAlreadyLinked">EMemoryAlreadyLinked</a>);
+    <b>let</b> profile_id = object::uid_to_address(&<a href="../social_contracts/profile.md#social_contracts_profile">profile</a>.<a href="../social_contracts/profile.md#social_contracts_profile_id">id</a>);
+    <b>let</b> mem_id = <a href="../social_contracts/memory.md#social_contracts_memory_create_account_for_profile">memory::create_account_for_profile</a>(memory_registry, profile_id, clock, ctx);
+    <a href="../social_contracts/profile.md#social_contracts_profile">profile</a>.memory_account_id = option::some(mem_id);
+    transfer::transfer(<a href="../social_contracts/profile.md#social_contracts_profile">profile</a>, sender);
+}
+</code></pre>
+
+
+
+</details>
+
 <a name="social_contracts_profile_transfer_profile"></a>
 
 ## Function `transfer_profile`
 
-Transfer a profile to a new owner
-The username stays with the profile, and the transfer updates registry mappings
+Transfer profile when there is **no** linked Memory account (<code>memory_account_id</code> is <code>None</code>).
+Profiles created via [<code><a href="../social_contracts/profile.md#social_contracts_profile_create_profile">create_profile</a></code>] have a Memory link — use [<code><a href="../social_contracts/profile.md#social_contracts_profile_transfer_profile_with_memory">transfer_profile_with_memory</a></code>].
 
 
 <pre><code><b>public</b> <b>entry</b> <b>fun</b> <a href="../social_contracts/profile.md#social_contracts_profile_transfer_profile">transfer_profile</a>(registry: &<b>mut</b> <a href="../social_contracts/profile.md#social_contracts_profile_UsernameRegistry">social_contracts::profile::UsernameRegistry</a>, <a href="../social_contracts/profile.md#social_contracts_profile">profile</a>: <a href="../social_contracts/profile.md#social_contracts_profile_Profile">social_contracts::profile::Profile</a>, new_owner: <b>address</b>, ctx: &<b>mut</b> <a href="../myso/tx_context.md#myso_tx_context_TxContext">myso::tx_context::TxContext</a>)
@@ -2254,6 +2372,7 @@ The username stays with the profile, and the transfer updates registry mappings
 ) {
     // Check <a href="../social_contracts/profile.md#social_contracts_profile_version">version</a> compatibility
     <b>assert</b>!(registry.<a href="../social_contracts/profile.md#social_contracts_profile_version">version</a> == <a href="../social_contracts/upgrade.md#social_contracts_upgrade_current_version">upgrade::current_version</a>(), 1);
+    <b>assert</b>!(option::is_none(&<a href="../social_contracts/profile.md#social_contracts_profile">profile</a>.memory_account_id), <a href="../social_contracts/profile.md#social_contracts_profile_EMustUseLinkedMemoryTransfer">EMustUseLinkedMemoryTransfer</a>);
     <b>let</b> sender = tx_context::sender(ctx);
     // Verify sender is the <a href="../social_contracts/profile.md#social_contracts_profile_owner">owner</a>
     <b>assert</b>!(<a href="../social_contracts/profile.md#social_contracts_profile">profile</a>.<a href="../social_contracts/profile.md#social_contracts_profile_owner">owner</a> == sender, <a href="../social_contracts/profile.md#social_contracts_profile_EUnauthorized">EUnauthorized</a>);
@@ -2293,6 +2412,82 @@ The username stays with the profile, and the transfer updates registry mappings
         <a href="../social_contracts/profile.md#social_contracts_profile_min_offer_amount">min_offer_amount</a>: <a href="../social_contracts/profile.md#social_contracts_profile">profile</a>.<a href="../social_contracts/profile.md#social_contracts_profile_min_offer_amount">min_offer_amount</a>,
     });
     // Transfer <a href="../social_contracts/profile.md#social_contracts_profile">profile</a> to new <a href="../social_contracts/profile.md#social_contracts_profile_owner">owner</a>
+    transfer::transfer(<a href="../social_contracts/profile.md#social_contracts_profile">profile</a>, new_owner);
+}
+</code></pre>
+
+
+
+</details>
+
+<a name="social_contracts_profile_transfer_profile_with_memory"></a>
+
+## Function `transfer_profile_with_memory`
+
+Same as [<code><a href="../social_contracts/profile.md#social_contracts_profile_transfer_profile">transfer_profile</a></code>], but keeps [<code><a href="../social_contracts/memory.md#social_contracts_memory_MemoryRegistry">memory::MemoryRegistry</a></code>] and linked [<code><a href="../social_contracts/memory.md#social_contracts_memory_MemoryAccount">memory::MemoryAccount</a></code>] in sync.
+
+
+<pre><code><b>public</b> <b>entry</b> <b>fun</b> <a href="../social_contracts/profile.md#social_contracts_profile_transfer_profile_with_memory">transfer_profile_with_memory</a>(registry: &<b>mut</b> <a href="../social_contracts/profile.md#social_contracts_profile_UsernameRegistry">social_contracts::profile::UsernameRegistry</a>, memory_registry: &<b>mut</b> <a href="../social_contracts/memory.md#social_contracts_memory_MemoryRegistry">social_contracts::memory::MemoryRegistry</a>, linked_account: &<b>mut</b> <a href="../social_contracts/memory.md#social_contracts_memory_MemoryAccount">social_contracts::memory::MemoryAccount</a>, <a href="../social_contracts/profile.md#social_contracts_profile">profile</a>: <a href="../social_contracts/profile.md#social_contracts_profile_Profile">social_contracts::profile::Profile</a>, new_owner: <b>address</b>, ctx: &<b>mut</b> <a href="../myso/tx_context.md#myso_tx_context_TxContext">myso::tx_context::TxContext</a>)
+</code></pre>
+
+
+
+<details>
+<summary>Implementation</summary>
+
+
+<pre><code><b>public</b> <b>entry</b> <b>fun</b> <a href="../social_contracts/profile.md#social_contracts_profile_transfer_profile_with_memory">transfer_profile_with_memory</a>(
+    registry: &<b>mut</b> <a href="../social_contracts/profile.md#social_contracts_profile_UsernameRegistry">UsernameRegistry</a>,
+    memory_registry: &<b>mut</b> <a href="../social_contracts/memory.md#social_contracts_memory_MemoryRegistry">memory::MemoryRegistry</a>,
+    linked_account: &<b>mut</b> <a href="../social_contracts/memory.md#social_contracts_memory_MemoryAccount">memory::MemoryAccount</a>,
+    <b>mut</b> <a href="../social_contracts/profile.md#social_contracts_profile">profile</a>: <a href="../social_contracts/profile.md#social_contracts_profile_Profile">Profile</a>,
+    new_owner: <b>address</b>,
+    ctx: &<b>mut</b> TxContext,
+) {
+    <b>assert</b>!(registry.<a href="../social_contracts/profile.md#social_contracts_profile_version">version</a> == <a href="../social_contracts/upgrade.md#social_contracts_upgrade_current_version">upgrade::current_version</a>(), 1);
+    <b>assert</b>!(option::is_some(&<a href="../social_contracts/profile.md#social_contracts_profile">profile</a>.memory_account_id), <a href="../social_contracts/profile.md#social_contracts_profile_ERequiresMemoryLinkedProfile">ERequiresMemoryLinkedProfile</a>);
+    <b>assert</b>!(
+        *option::borrow(&<a href="../social_contracts/profile.md#social_contracts_profile">profile</a>.memory_account_id) == object::id(linked_account),
+        <a href="../social_contracts/profile.md#social_contracts_profile_EMemoryAccountMismatch">EMemoryAccountMismatch</a>,
+    );
+    <b>let</b> sender = tx_context::sender(ctx);
+    <b>assert</b>!(<a href="../social_contracts/profile.md#social_contracts_profile">profile</a>.<a href="../social_contracts/profile.md#social_contracts_profile_owner">owner</a> == sender, <a href="../social_contracts/profile.md#social_contracts_profile_EUnauthorized">EUnauthorized</a>);
+    <b>let</b> profile_id = object::uid_to_address(&<a href="../social_contracts/profile.md#social_contracts_profile">profile</a>.<a href="../social_contracts/profile.md#social_contracts_profile_id">id</a>);
+    <a href="../social_contracts/memory.md#social_contracts_memory_transfer_account_owner_with_profile">memory::transfer_account_owner_with_profile</a>(
+        memory_registry,
+        linked_account,
+        profile_id,
+        sender,
+        new_owner,
+    );
+    table::remove(&<b>mut</b> registry.address_profiles, sender);
+    <b>if</b> (table::contains(&registry.address_profiles, new_owner)) {
+        table::remove(&<b>mut</b> registry.address_profiles, new_owner);
+    };
+    table::add(&<b>mut</b> registry.address_profiles, new_owner, profile_id);
+    <a href="../social_contracts/profile.md#social_contracts_profile">profile</a>.<a href="../social_contracts/profile.md#social_contracts_profile_owner">owner</a> = new_owner;
+    event::emit(<a href="../social_contracts/profile.md#social_contracts_profile_ProfileUpdatedEvent">ProfileUpdatedEvent</a> {
+        profile_id,
+        <a href="../social_contracts/profile.md#social_contracts_profile_display_name">display_name</a>: <a href="../social_contracts/profile.md#social_contracts_profile">profile</a>.<a href="../social_contracts/profile.md#social_contracts_profile_display_name">display_name</a>,
+        <a href="../social_contracts/profile.md#social_contracts_profile_username">username</a>: <a href="../social_contracts/profile.md#social_contracts_profile">profile</a>.<a href="../social_contracts/profile.md#social_contracts_profile_username">username</a>,
+        <a href="../social_contracts/profile.md#social_contracts_profile_bio">bio</a>: <a href="../social_contracts/profile.md#social_contracts_profile">profile</a>.<a href="../social_contracts/profile.md#social_contracts_profile_bio">bio</a>,
+        <a href="../social_contracts/profile.md#social_contracts_profile_profile_picture">profile_picture</a>: <b>if</b> (option::is_some(&<a href="../social_contracts/profile.md#social_contracts_profile">profile</a>.<a href="../social_contracts/profile.md#social_contracts_profile_profile_picture">profile_picture</a>)) {
+            <b>let</b> url = option::borrow(&<a href="../social_contracts/profile.md#social_contracts_profile">profile</a>.<a href="../social_contracts/profile.md#social_contracts_profile_profile_picture">profile_picture</a>);
+            option::some(<a href="../social_contracts/profile.md#social_contracts_profile_ascii_to_string">ascii_to_string</a>(url::inner_url(url)))
+        } <b>else</b> {
+            option::none()
+        },
+        <a href="../social_contracts/profile.md#social_contracts_profile_cover_photo">cover_photo</a>: <b>if</b> (option::is_some(&<a href="../social_contracts/profile.md#social_contracts_profile">profile</a>.<a href="../social_contracts/profile.md#social_contracts_profile_cover_photo">cover_photo</a>)) {
+            <b>let</b> url = option::borrow(&<a href="../social_contracts/profile.md#social_contracts_profile">profile</a>.<a href="../social_contracts/profile.md#social_contracts_profile_cover_photo">cover_photo</a>);
+            option::some(<a href="../social_contracts/profile.md#social_contracts_profile_ascii_to_string">ascii_to_string</a>(url::inner_url(url)))
+        } <b>else</b> {
+            option::none()
+        },
+        <a href="../social_contracts/profile.md#social_contracts_profile_owner">owner</a>: new_owner,
+        updated_at: tx_context::epoch_timestamp_ms(ctx),
+        <a href="../social_contracts/profile.md#social_contracts_profile_x_username">x_username</a>: <a href="../social_contracts/profile.md#social_contracts_profile">profile</a>.<a href="../social_contracts/profile.md#social_contracts_profile_x_username">x_username</a>,
+        <a href="../social_contracts/profile.md#social_contracts_profile_min_offer_amount">min_offer_amount</a>: <a href="../social_contracts/profile.md#social_contracts_profile">profile</a>.<a href="../social_contracts/profile.md#social_contracts_profile_min_offer_amount">min_offer_amount</a>,
+    });
     transfer::transfer(<a href="../social_contracts/profile.md#social_contracts_profile">profile</a>, new_owner);
 }
 </code></pre>
@@ -2799,8 +2994,7 @@ Locks MYSO tokens in the offer
 
 ## Function `accept_offer`
 
-Accept an offer to purchase a profile
-Transfers tokens to the profile owner and profile ownership to the offeror
+Accept an offer when there is **no** linked Memory account. Use [<code><a href="../social_contracts/profile.md#social_contracts_profile_accept_offer_with_memory">accept_offer_with_memory</a></code>] for profiles created via [<code><a href="../social_contracts/profile.md#social_contracts_profile_create_profile">create_profile</a></code>].
 
 
 <pre><code><b>public</b> <b>entry</b> <b>fun</b> <a href="../social_contracts/profile.md#social_contracts_profile_accept_offer">accept_offer</a>(registry: &<b>mut</b> <a href="../social_contracts/profile.md#social_contracts_profile_UsernameRegistry">social_contracts::profile::UsernameRegistry</a>, <a href="../social_contracts/profile.md#social_contracts_profile">profile</a>: <a href="../social_contracts/profile.md#social_contracts_profile_Profile">social_contracts::profile::Profile</a>, treasury: &<a href="../social_contracts/profile.md#social_contracts_profile_EcosystemTreasury">social_contracts::profile::EcosystemTreasury</a>, offeror: <b>address</b>, new_main_profile: <a href="../std/option.md#std_option_Option">std::option::Option</a>&lt;<b>address</b>&gt;, ctx: &<b>mut</b> <a href="../myso/tx_context.md#myso_tx_context_TxContext">myso::tx_context::TxContext</a>)
@@ -2825,6 +3019,7 @@ Transfers tokens to the profile owner and profile ownership to the offeror
     <b>let</b> now = tx_context::epoch_timestamp_ms(ctx);
     // Verify sender is the <a href="../social_contracts/profile.md#social_contracts_profile">profile</a> <a href="../social_contracts/profile.md#social_contracts_profile_owner">owner</a>
     <b>assert</b>!(<a href="../social_contracts/profile.md#social_contracts_profile">profile</a>.<a href="../social_contracts/profile.md#social_contracts_profile_owner">owner</a> == sender, <a href="../social_contracts/profile.md#social_contracts_profile_EUnauthorized">EUnauthorized</a>);
+    <b>assert</b>!(option::is_none(&<a href="../social_contracts/profile.md#social_contracts_profile">profile</a>.memory_account_id), <a href="../social_contracts/profile.md#social_contracts_profile_EMustUseLinkedMemoryTransfer">EMustUseLinkedMemoryTransfer</a>);
     // Check <b>if</b> offers table exists
     <b>assert</b>!(dynamic_field::exists_(&<a href="../social_contracts/profile.md#social_contracts_profile">profile</a>.<a href="../social_contracts/profile.md#social_contracts_profile_id">id</a>, <a href="../social_contracts/profile.md#social_contracts_profile_OFFERS_FIELD">OFFERS_FIELD</a>), <a href="../social_contracts/profile.md#social_contracts_profile_EOfferDoesNotExist">EOfferDoesNotExist</a>);
     // Get the offers table
@@ -2903,6 +3098,114 @@ Transfers tokens to the profile owner and profile ownership to the offeror
         timestamp: now,
     });
     // Transfer the <a href="../social_contracts/profile.md#social_contracts_profile">profile</a> object to the new <a href="../social_contracts/profile.md#social_contracts_profile_owner">owner</a>
+    transfer::transfer(<a href="../social_contracts/profile.md#social_contracts_profile">profile</a>, offeror);
+}
+</code></pre>
+
+
+
+</details>
+
+<a name="social_contracts_profile_accept_offer_with_memory"></a>
+
+## Function `accept_offer_with_memory`
+
+Same as [<code><a href="../social_contracts/profile.md#social_contracts_profile_accept_offer">accept_offer</a></code>] but synchronizes Memory ownership with the buyer.
+
+
+<pre><code><b>public</b> <b>entry</b> <b>fun</b> <a href="../social_contracts/profile.md#social_contracts_profile_accept_offer_with_memory">accept_offer_with_memory</a>(registry: &<b>mut</b> <a href="../social_contracts/profile.md#social_contracts_profile_UsernameRegistry">social_contracts::profile::UsernameRegistry</a>, memory_registry: &<b>mut</b> <a href="../social_contracts/memory.md#social_contracts_memory_MemoryRegistry">social_contracts::memory::MemoryRegistry</a>, linked_account: &<b>mut</b> <a href="../social_contracts/memory.md#social_contracts_memory_MemoryAccount">social_contracts::memory::MemoryAccount</a>, <a href="../social_contracts/profile.md#social_contracts_profile">profile</a>: <a href="../social_contracts/profile.md#social_contracts_profile_Profile">social_contracts::profile::Profile</a>, treasury: &<a href="../social_contracts/profile.md#social_contracts_profile_EcosystemTreasury">social_contracts::profile::EcosystemTreasury</a>, offeror: <b>address</b>, new_main_profile: <a href="../std/option.md#std_option_Option">std::option::Option</a>&lt;<b>address</b>&gt;, ctx: &<b>mut</b> <a href="../myso/tx_context.md#myso_tx_context_TxContext">myso::tx_context::TxContext</a>)
+</code></pre>
+
+
+
+<details>
+<summary>Implementation</summary>
+
+
+<pre><code><b>public</b> <b>entry</b> <b>fun</b> <a href="../social_contracts/profile.md#social_contracts_profile_accept_offer_with_memory">accept_offer_with_memory</a>(
+    registry: &<b>mut</b> <a href="../social_contracts/profile.md#social_contracts_profile_UsernameRegistry">UsernameRegistry</a>,
+    memory_registry: &<b>mut</b> <a href="../social_contracts/memory.md#social_contracts_memory_MemoryRegistry">memory::MemoryRegistry</a>,
+    linked_account: &<b>mut</b> <a href="../social_contracts/memory.md#social_contracts_memory_MemoryAccount">memory::MemoryAccount</a>,
+    <b>mut</b> <a href="../social_contracts/profile.md#social_contracts_profile">profile</a>: <a href="../social_contracts/profile.md#social_contracts_profile_Profile">Profile</a>,
+    treasury: &<a href="../social_contracts/profile.md#social_contracts_profile_EcosystemTreasury">EcosystemTreasury</a>,
+    offeror: <b>address</b>,
+    new_main_profile: Option&lt;<b>address</b>&gt;,
+    ctx: &<b>mut</b> TxContext,
+) {
+    <b>let</b> sender = tx_context::sender(ctx);
+    <b>let</b> profile_id = object::uid_to_address(&<a href="../social_contracts/profile.md#social_contracts_profile">profile</a>.<a href="../social_contracts/profile.md#social_contracts_profile_id">id</a>);
+    <b>let</b> now = tx_context::epoch_timestamp_ms(ctx);
+    <b>assert</b>!(<a href="../social_contracts/profile.md#social_contracts_profile">profile</a>.<a href="../social_contracts/profile.md#social_contracts_profile_owner">owner</a> == sender, <a href="../social_contracts/profile.md#social_contracts_profile_EUnauthorized">EUnauthorized</a>);
+    <b>assert</b>!(option::is_some(&<a href="../social_contracts/profile.md#social_contracts_profile">profile</a>.memory_account_id), <a href="../social_contracts/profile.md#social_contracts_profile_ERequiresMemoryLinkedProfile">ERequiresMemoryLinkedProfile</a>);
+    <b>assert</b>!(
+        *option::borrow(&<a href="../social_contracts/profile.md#social_contracts_profile">profile</a>.memory_account_id) == object::id(linked_account),
+        <a href="../social_contracts/profile.md#social_contracts_profile_EMemoryAccountMismatch">EMemoryAccountMismatch</a>,
+    );
+    <b>assert</b>!(dynamic_field::exists_(&<a href="../social_contracts/profile.md#social_contracts_profile">profile</a>.<a href="../social_contracts/profile.md#social_contracts_profile_id">id</a>, <a href="../social_contracts/profile.md#social_contracts_profile_OFFERS_FIELD">OFFERS_FIELD</a>), <a href="../social_contracts/profile.md#social_contracts_profile_EOfferDoesNotExist">EOfferDoesNotExist</a>);
+    <b>let</b> offers = dynamic_field::borrow_mut&lt;vector&lt;u8&gt;, Table&lt;<b>address</b>, <a href="../social_contracts/profile.md#social_contracts_profile_ProfileOffer">ProfileOffer</a>&gt;&gt;(&<b>mut</b> <a href="../social_contracts/profile.md#social_contracts_profile">profile</a>.<a href="../social_contracts/profile.md#social_contracts_profile_id">id</a>, <a href="../social_contracts/profile.md#social_contracts_profile_OFFERS_FIELD">OFFERS_FIELD</a>);
+    <b>assert</b>!(table::contains(offers, offeror), <a href="../social_contracts/profile.md#social_contracts_profile_EOfferDoesNotExist">EOfferDoesNotExist</a>);
+    <b>let</b> <a href="../social_contracts/profile.md#social_contracts_profile_ProfileOffer">ProfileOffer</a> { offeror: _, amount, created_at: _, locked_myso } = table::remove(offers, offeror);
+    <b>let</b> fee_amount = (amount * <a href="../social_contracts/profile.md#social_contracts_profile_PROFILE_SALE_FEE_BPS">PROFILE_SALE_FEE_BPS</a>) / 10000;
+    <b>let</b> <b>mut</b> payment = coin::from_balance(locked_myso, ctx);
+    <b>let</b> fee_payment = coin::split(&<b>mut</b> payment, fee_amount, ctx);
+    transfer::public_transfer(fee_payment, <a href="../social_contracts/profile.md#social_contracts_profile_get_treasury_address">get_treasury_address</a>(treasury));
+    transfer::public_transfer(payment, sender);
+    <a href="../social_contracts/memory.md#social_contracts_memory_transfer_account_owner_with_profile">memory::transfer_account_owner_with_profile</a>(
+        memory_registry,
+        linked_account,
+        profile_id,
+        sender,
+        offeror,
+    );
+    table::remove(&<b>mut</b> registry.address_profiles, sender);
+    <b>if</b> (table::contains(&registry.address_profiles, offeror)) {
+        table::remove(&<b>mut</b> registry.address_profiles, offeror);
+    };
+    table::add(&<b>mut</b> registry.address_profiles, offeror, profile_id);
+    <b>if</b> (option::is_some(&new_main_profile)) {
+        <b>let</b> new_profile_id = *option::borrow(&new_main_profile);
+        table::add(&<b>mut</b> registry.address_profiles, sender, new_profile_id);
+    };
+    <b>let</b> previous_owner = <a href="../social_contracts/profile.md#social_contracts_profile">profile</a>.<a href="../social_contracts/profile.md#social_contracts_profile_owner">owner</a>;
+    <a href="../social_contracts/profile.md#social_contracts_profile">profile</a>.<a href="../social_contracts/profile.md#social_contracts_profile_owner">owner</a> = offeror;
+    event::emit(<a href="../social_contracts/profile.md#social_contracts_profile_ProfileOfferAcceptedEvent">ProfileOfferAcceptedEvent</a> {
+        profile_id,
+        offeror,
+        previous_owner,
+        amount,
+        accepted_at: now,
+    });
+    event::emit(<a href="../social_contracts/profile.md#social_contracts_profile_ProfileUpdatedEvent">ProfileUpdatedEvent</a> {
+        profile_id,
+        <a href="../social_contracts/profile.md#social_contracts_profile_display_name">display_name</a>: <a href="../social_contracts/profile.md#social_contracts_profile">profile</a>.<a href="../social_contracts/profile.md#social_contracts_profile_display_name">display_name</a>,
+        <a href="../social_contracts/profile.md#social_contracts_profile_username">username</a>: <a href="../social_contracts/profile.md#social_contracts_profile">profile</a>.<a href="../social_contracts/profile.md#social_contracts_profile_username">username</a>,
+        <a href="../social_contracts/profile.md#social_contracts_profile_bio">bio</a>: <a href="../social_contracts/profile.md#social_contracts_profile">profile</a>.<a href="../social_contracts/profile.md#social_contracts_profile_bio">bio</a>,
+        <a href="../social_contracts/profile.md#social_contracts_profile_profile_picture">profile_picture</a>: <b>if</b> (option::is_some(&<a href="../social_contracts/profile.md#social_contracts_profile">profile</a>.<a href="../social_contracts/profile.md#social_contracts_profile_profile_picture">profile_picture</a>)) {
+            <b>let</b> url = option::borrow(&<a href="../social_contracts/profile.md#social_contracts_profile">profile</a>.<a href="../social_contracts/profile.md#social_contracts_profile_profile_picture">profile_picture</a>);
+            option::some(<a href="../social_contracts/profile.md#social_contracts_profile_ascii_to_string">ascii_to_string</a>(url::inner_url(url)))
+        } <b>else</b> {
+            option::none()
+        },
+        <a href="../social_contracts/profile.md#social_contracts_profile_cover_photo">cover_photo</a>: <b>if</b> (option::is_some(&<a href="../social_contracts/profile.md#social_contracts_profile">profile</a>.<a href="../social_contracts/profile.md#social_contracts_profile_cover_photo">cover_photo</a>)) {
+            <b>let</b> url = option::borrow(&<a href="../social_contracts/profile.md#social_contracts_profile">profile</a>.<a href="../social_contracts/profile.md#social_contracts_profile_cover_photo">cover_photo</a>);
+            option::some(<a href="../social_contracts/profile.md#social_contracts_profile_ascii_to_string">ascii_to_string</a>(url::inner_url(url)))
+        } <b>else</b> {
+            option::none()
+        },
+        <a href="../social_contracts/profile.md#social_contracts_profile_owner">owner</a>: offeror,
+        updated_at: now,
+        <a href="../social_contracts/profile.md#social_contracts_profile_x_username">x_username</a>: <a href="../social_contracts/profile.md#social_contracts_profile">profile</a>.<a href="../social_contracts/profile.md#social_contracts_profile_x_username">x_username</a>,
+        <a href="../social_contracts/profile.md#social_contracts_profile_min_offer_amount">min_offer_amount</a>: <a href="../social_contracts/profile.md#social_contracts_profile">profile</a>.<a href="../social_contracts/profile.md#social_contracts_profile_min_offer_amount">min_offer_amount</a>,
+    });
+    event::emit(<a href="../social_contracts/profile.md#social_contracts_profile_ProfileSaleFeeEvent">ProfileSaleFeeEvent</a> {
+        profile_id,
+        offeror,
+        previous_owner,
+        sale_amount: amount,
+        fee_amount,
+        fee_recipient: <a href="../social_contracts/profile.md#social_contracts_profile_get_treasury_address">get_treasury_address</a>(treasury),
+        timestamp: now,
+    });
     transfer::transfer(<a href="../social_contracts/profile.md#social_contracts_profile">profile</a>, offeror);
 }
 </code></pre>
@@ -3426,6 +3729,31 @@ Migration function for the registry
         tx_context::sender(ctx)
     );
     // Any migration logic can be added here <b>for</b> future upgrades
+}
+</code></pre>
+
+
+
+</details>
+
+<a name="social_contracts_profile_linked_memory_account_id"></a>
+
+## Function `linked_memory_account_id`
+
+Linked [<code><a href="../social_contracts/memory.md#social_contracts_memory_MemoryAccount">social_contracts::memory::MemoryAccount</a></code>] object id (<code>None</code> for legacy/shared test profiles).
+
+
+<pre><code><b>public</b> <b>fun</b> <a href="../social_contracts/profile.md#social_contracts_profile_linked_memory_account_id">linked_memory_account_id</a>(<a href="../social_contracts/profile.md#social_contracts_profile">profile</a>: &<a href="../social_contracts/profile.md#social_contracts_profile_Profile">social_contracts::profile::Profile</a>): &<a href="../std/option.md#std_option_Option">std::option::Option</a>&lt;<a href="../myso/object.md#myso_object_ID">myso::object::ID</a>&gt;
+</code></pre>
+
+
+
+<details>
+<summary>Implementation</summary>
+
+
+<pre><code><b>public</b> <b>fun</b> <a href="../social_contracts/profile.md#social_contracts_profile_linked_memory_account_id">linked_memory_account_id</a>(<a href="../social_contracts/profile.md#social_contracts_profile">profile</a>: &<a href="../social_contracts/profile.md#social_contracts_profile_Profile">Profile</a>): &Option&lt;ID&gt; {
+    &<a href="../social_contracts/profile.md#social_contracts_profile">profile</a>.memory_account_id
 }
 </code></pre>
 
