@@ -4,15 +4,15 @@
 
 module orderbook::constants;
 
-const CURRENT_VERSION: u64 = 6; // Update version during upgrades
-const POOL_CREATION_FEE: u64 = 500 * 1_000_000_000; // 500 MYSO
+const CURRENT_VERSION: u64 = 1; // Update version during upgrades
+const POOL_CREATION_FEE: u64 = 5 * 1_000_000_000; // 5 MYSO
 const FLOAT_SCALING: u64 = 1_000_000_000;
 const FLOAT_SCALING_U128: u128 = 1_000_000_000;
 const MAX_U64: u64 = ((1u128 << 64) - 1) as u64;
 const MAX_U128: u128 = ((1u256 << 128) - 1) as u128;
 const MIN_PRICE: u64 = 1;
 const MAX_PRICE: u64 = ((1u128 << 63) - 1) as u64;
-const DEFAULT_STAKE_REQUIRED: u64 = 100 * 1_000_000_000; // 100 MYSO
+const DEFAULT_STAKE_REQUIRED: u64 = 5 * 1_000_000_000; // 5 MYSO
 const HALF: u64 = 500_000_000;
 const MYSO_UNIT: u64 = 1_000_000_000;
 const FEE_PENALTY_MULTIPLIER: u64 = 1_250_000_000; // 25% more than normal

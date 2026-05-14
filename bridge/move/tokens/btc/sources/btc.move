@@ -26,7 +26,7 @@ module bridged_btc::btc {
             b"BTC",
             b"Bitcoin",
             b"Bridged Bitcoin token",
-            option::none(),
+            option::some(url::new_unsafe("https://www.mysocial.network/_next/image?url=%2Fbtc-icon.png&w=96&q=75")),
             admin_cap,
             ctx
         );

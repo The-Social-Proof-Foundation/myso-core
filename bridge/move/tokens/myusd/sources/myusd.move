@@ -26,7 +26,7 @@ module bridged_myusd::myusd {
             b"myUSD",
             b"MyUSD",
             b"The official MySocial USD stablecoin.",
-            option::none(),
+            option::some(url::new_unsafe("https://www.mysocial.network/_next/image?url=%2FmyUSD_icon.webp&w=96&q=75")),
             false,
             admin_cap,
             ctx,

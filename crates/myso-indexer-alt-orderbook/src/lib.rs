@@ -1,8 +1,13 @@
+use std::sync::OnceLock;
+
 use url::Url;
 
 pub mod handlers;
 pub(crate) mod models;
+pub mod embedded_indexer;
 pub mod traits;
+
+pub use embedded_indexer::build_orderbook_indexer;
 
 pub const NOT_MAINNET_PACKAGE: &str = "<not on mainnet>";
 
@@ -10,23 +15,32 @@ pub const MAINNET_REMOTE_STORE_URL: &str = "https://checkpoints.mainnet.mysocial
 pub const TESTNET_REMOTE_STORE_URL: &str =
     "https://storage.googleapis.com/mysocial-testnet-checkpoints";
 
-// Package addresses for different environments
-const MAINNET_PACKAGES: &[&str] = &[
-    "0x00000000000000000000000000000000000000000000000000000000000050c1", // Latest
-];
+// System Orderbook Move package (genesis `BuiltInFramework` "Orderbook" blob). Core and margin
+// modules emit events with this package address in the struct tag. Kept in sync with
+// `myso_types::ORDERBOOK_ADDRESS` via `orderbook_system_package_addresses`.
+static ORDERBOOK_SYSTEM_PACKAGE_ADDRESSES: OnceLock<&'static [&'static str]> = OnceLock::new();
 
-// Framework-level address: orderbook is published at the same address as myso-social (0x50c1)
-const TESTNET_PACKAGES: &[&str] = &[
-    "0x00000000000000000000000000000000000000000000000000000000000050c1", // Latest
-];
+fn orderbook_system_package_addresses() -> &'static [&'static str] {
+    ORDERBOOK_SYSTEM_PACKAGE_ADDRESSES.get_or_init(|| {
+        let hex = myso_types::ORDERBOOK_ADDRESS.to_hex_literal();
+        let addr: &'static str = Box::leak(hex.into_boxed_str());
+        Box::leak(Box::new([addr]))
+    })
+}
 
-// Mainnet margin package addresses
-const MAINNET_MARGIN_PACKAGES: &[&str] = &[
-    "0x00000000000000000000000000000000000000000000000000000000000050c1", // Latest
-];
-const TESTNET_MARGIN_PACKAGES: &[&str] = &[
-    "0x00000000000000000000000000000000000000000000000000000000000050c1", // Latest
-];
+#[derive(Debug, Clone, Copy, clap::ValueEnum)]
+pub enum Package {
+    /// Index Orderbook core events (order fills, updates, pools, etc.)
+    Orderbook,
+    /// Index Orderbook margin events (lending, borrowing, liquidations, etc.)
+    OrderbookMargin,
+}
+
+#[derive(Debug, Clone, Copy, clap::ValueEnum)]
+pub enum OrderbookEnv {
+    Mainnet,
+    Testnet,
+}
 
 // Module definitions
 /// Core Orderbook modules that handle trading, orders, and pool management
@@ -126,18 +140,12 @@ pub fn is_valid_margin_packages(packages: &[&str]) -> bool {
 
 /// Check if margin trading is supported in the given environment
 pub fn is_margin_supported(env: OrderbookEnv) -> bool {
-    match env {
-        OrderbookEnv::Mainnet => is_valid_margin_packages(MAINNET_MARGIN_PACKAGES),
-        OrderbookEnv::Testnet => is_valid_margin_packages(TESTNET_MARGIN_PACKAGES),
-    }
+    is_valid_margin_packages(get_margin_package_addresses(env))
 }
 
 /// Get the margin package addresses for the given environment
-pub fn get_margin_package_addresses(env: OrderbookEnv) -> &'static [&'static str] {
-    match env {
-        OrderbookEnv::Mainnet => MAINNET_MARGIN_PACKAGES,
-        OrderbookEnv::Testnet => TESTNET_MARGIN_PACKAGES,
-    }
+pub fn get_margin_package_addresses(_env: OrderbookEnv) -> &'static [&'static str] {
+    orderbook_system_package_addresses()
 }
 
 /// Get the first valid margin package address for the given environment with validation
@@ -159,17 +167,8 @@ pub fn get_margin_package_address(env: OrderbookEnv) -> Result<&'static str, Str
 }
 
 /// Get all core package addresses for the given environment
-pub fn get_core_package_addresses(env: OrderbookEnv) -> &'static [&'static str] {
-    match env {
-        OrderbookEnv::Mainnet => MAINNET_PACKAGES,
-        OrderbookEnv::Testnet => TESTNET_PACKAGES,
-    }
-}
-
-#[derive(Debug, Clone, Copy, clap::ValueEnum)]
-pub enum OrderbookEnv {
-    Mainnet,
-    Testnet,
+pub fn get_core_package_addresses(_env: OrderbookEnv) -> &'static [&'static str] {
+    orderbook_system_package_addresses()
 }
 
 impl OrderbookEnv {
@@ -183,16 +182,10 @@ impl OrderbookEnv {
 
     /// Get all package addresses (Orderbook + Margin) for this environment
     fn get_all_package_strings(&self) -> Vec<&str> {
-        let (packages, margin_packages) = match self {
-            OrderbookEnv::Mainnet => (MAINNET_PACKAGES, MAINNET_MARGIN_PACKAGES),
-            OrderbookEnv::Testnet => (TESTNET_PACKAGES, TESTNET_MARGIN_PACKAGES),
-        };
+        let mut all_packages: Vec<&str> = orderbook_system_package_addresses().to_vec();
 
-        let mut all_packages = packages.to_vec();
-
-        // Add margin packages if they're not invalid
-        for &margin_package in margin_packages {
-            if margin_package != NOT_MAINNET_PACKAGE {
+        for &margin_package in get_margin_package_addresses(*self) {
+            if margin_package != NOT_MAINNET_PACKAGE && !all_packages.contains(&margin_package) {
                 all_packages.push(margin_package);
             }
         }
@@ -219,4 +212,15 @@ impl OrderbookEnv {
             .map(|pkg| AccountAddress::from_str(pkg).unwrap())
             .collect()
     }
+}
+
+/// Object IDs for the orderbook HTTP API when co-locating with a local genesis network (`myso start`).
+/// Uses `myso_types` built-in package IDs. Treasury remains chain-specific if genesis differs from public nets.
+pub fn orderbook_api_config_for_local_myso_start() -> (String, String, String) {
+    use myso_types::{MYSO_FRAMEWORK_PACKAGE_ID, ORDERBOOK_PACKAGE_ID};
+    let orderbook_pkg = ORDERBOOK_PACKAGE_ID.to_string();
+    let token_pkg = MYSO_FRAMEWORK_PACKAGE_ID.to_string();
+    let treasury_id =
+        "0x032abf8948dda67a271bcc18e776dbbcfb0d58c8d288a700ff0d5521e57a1ffe".to_string();
+    (orderbook_pkg, token_pkg, treasury_id)
 }

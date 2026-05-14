@@ -26,7 +26,7 @@ module bridged_eth::eth {
             b"ETH",
             b"Ethereum",
             b"Bridged Ethereum token",
-            option::none(),
+            option::some(url::new_unsafe("https://www.mysocial.network/_next/image?url=%2Feth-icon.png&w=96&q=75")),
             admin_cap,
             ctx
         );

@@ -13,6 +13,7 @@ pub mod fire_drill;
 pub mod genesis_ceremony;
 pub mod genesis_inspector;
 pub mod keytool;
+mod local_mydata;
 pub mod mvr_resolver;
 pub mod myso_commands;
 pub mod trace_analysis_commands;

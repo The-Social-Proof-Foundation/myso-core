@@ -27,7 +27,11 @@ pub struct Writer {
 impl Writer {
     pub async fn new(database_url: Url, db_args: DbArgs) -> Result<Self, anyhow::Error> {
         let db = Db::for_write(database_url, db_args).await?;
-        Ok(Self { db })
+        Ok(Self::new_with_shared_db(db))
+    }
+
+    pub(crate) fn new_with_shared_db(db: Db) -> Self {
+        Self { db }
     }
 
     pub async fn create_pool(&self, req: CreatePoolRequest) -> Result<(), OrderbookError> {

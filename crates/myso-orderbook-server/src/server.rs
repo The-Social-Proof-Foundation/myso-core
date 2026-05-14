@@ -14,13 +14,13 @@ use diesel::dsl::count_star;
 use diesel::dsl::{max, min};
 use diesel::{ExpressionMethods, QueryDsl};
 use governor::{Quota, RateLimiter};
-use myso_pg_db::DbArgs;
+use myso_pg_db::{Db, DbArgs};
 use orderbook_schema::models::{
     AssetSupplied, AssetWithdrawn, CollateralEvent, InterestParamsUpdated, Liquidation,
     LoanBorrowed, LoanRepaid, MaintainerCapUpdated, MaintainerFeesWithdrawn, MarginManagerCreated,
     MarginManagerState, MarginPoolConfigUpdated, MarginPoolCreated, OrderbookPoolConfigUpdated,
     OrderbookPoolRegistered, OrderbookPoolUpdated, OrderbookPoolUpdatedRegistry, PauseCapUpdated,
-    Pools, ProtocolFeesIncreasedEvent, ProtocolFeesWithdrawn, ReferralFeeEvent,
+    PoolCreated, Pools, ProtocolFeesIncreasedEvent, ProtocolFeesWithdrawn, ReferralFeeEvent,
     ReferralFeesClaimedEvent, SupplierCapMinted, SupplyReferralMinted,
 };
 use orderbook_schema::*;
@@ -92,6 +92,7 @@ pub const LOAN_REPAID_PATH: &str = "/loan_repaid";
 pub const LIQUIDATION_PATH: &str = "/liquidation";
 pub const ASSET_SUPPLIED_PATH: &str = "/asset_supplied";
 pub const ASSET_WITHDRAWN_PATH: &str = "/asset_withdrawn";
+pub const POOL_CREATED_PATH: &str = "/pool_created";
 pub const MARGIN_POOL_CREATED_PATH: &str = "/margin_pool_created";
 pub const ORDERBOOK_POOL_UPDATED_PATH: &str = "/orderbook_pool_updated";
 pub const INTEREST_PARAMS_UPDATED_PATH: &str = "/interest_params_updated";
@@ -149,14 +150,9 @@ impl AppState {
         margin_package_id: Option<String>,
     ) -> Result<Self, anyhow::Error> {
         let metrics = RpcMetrics::new(registry);
-        let reader = Reader::new(
-            database_url.clone(),
-            args.clone(),
-            metrics.clone(),
-            registry,
-        )
-        .await?;
-        let writer = Writer::new(database_url, args).await?;
+        let db = Db::for_write(database_url, args).await?;
+        let reader = Reader::new_with_shared_db(db.clone(), metrics.clone(), registry).await?;
+        let writer = Writer::new_with_shared_db(db);
 
         let admin_tokens: Vec<Secret<String>> = admin_tokens
             .map(|s| {
@@ -245,7 +241,8 @@ fn default_max_time_lag_seconds() -> i64 {
     60
 }
 
-pub async fn run_server(
+/// Builds the orderbook REST API and metrics as a [`Service`] for merging with a shared supervisor (e.g. `myso start`).
+pub async fn start_server(
     server_port: u16,
     database_url: Url,
     db_arg: DbArgs,
@@ -257,11 +254,9 @@ pub async fn run_server(
     margin_poll_interval_secs: u64,
     margin_package_id: Option<String>,
     admin_tokens: Option<String>,
-) -> Result<(), anyhow::Error> {
-    let registry = Registry::new_custom(Some("orderbook_api".into()), None)
-        .expect("Failed to create Prometheus registry.");
-
-    let metrics = MetricsService::new(MetricsArgs { metrics_address }, registry);
+    registry: &Registry,
+) -> Result<Service, anyhow::Error> {
+    let metrics = MetricsService::new(MetricsArgs { metrics_address }, registry.clone());
 
     let state = AppState::new(
         database_url.clone(),
@@ -277,10 +272,8 @@ pub async fn run_server(
     .await?;
     let socket_address = SocketAddr::new(IpAddr::V4(Ipv4Addr::new(0, 0, 0, 0)), server_port);
 
-    println!("Server started successfully on port {}", server_port);
+    println!("Orderbook server started successfully on port {}", server_port);
 
-    // Start margin metrics poller if margin_package_id is provided
-    // Must be done before spawning the metrics service since we need access to the registry
     if let Some(margin_pkg_id) = margin_package_id {
         let cancellation_token = tokio_util::sync::CancellationToken::new();
         let margin_metrics = crate::margin_metrics::MarginMetrics::new(metrics.registry());
@@ -309,7 +302,7 @@ pub async fn run_server(
     let listener = TcpListener::bind(socket_address).await?;
     let (stx, srx) = oneshot::channel::<()>();
 
-    Service::new()
+    Ok(Service::new()
         .attach(s_metrics)
         .with_shutdown_signal(async move {
             let _ = stx.send(());
@@ -322,9 +315,42 @@ pub async fn run_server(
                 .await?;
 
             Ok(())
-        })
-        .main()
-        .await?;
+        }))
+}
+
+pub async fn run_server(
+    server_port: u16,
+    database_url: Url,
+    db_arg: DbArgs,
+    rpc_url: Url,
+    metrics_address: SocketAddr,
+    orderbook_package_id: String,
+    myso_token_package_id: String,
+    myso_treasury_id: String,
+    margin_poll_interval_secs: u64,
+    margin_package_id: Option<String>,
+    admin_tokens: Option<String>,
+) -> Result<(), anyhow::Error> {
+    let registry = Registry::new_custom(Some("orderbook_api".into()), None)
+        .expect("Failed to create Prometheus registry.");
+
+    start_server(
+        server_port,
+        database_url,
+        db_arg,
+        rpc_url,
+        metrics_address,
+        orderbook_package_id,
+        myso_token_package_id,
+        myso_treasury_id,
+        margin_poll_interval_secs,
+        margin_package_id,
+        admin_tokens,
+        &registry,
+    )
+    .await?
+    .main()
+    .await?;
 
     Ok(())
 }
@@ -368,6 +394,7 @@ pub(crate) fn make_router(state: Arc<AppState>) -> Router {
         .route(LIQUIDATION_PATH, get(liquidation))
         .route(ASSET_SUPPLIED_PATH, get(asset_supplied))
         .route(ASSET_WITHDRAWN_PATH, get(asset_withdrawn))
+        .route(POOL_CREATED_PATH, get(pool_created))
         .route(MARGIN_POOL_CREATED_PATH, get(margin_pool_created))
         .route(ORDERBOOK_POOL_UPDATED_PATH, get(orderbook_pool_updated))
         .route(INTEREST_PARAMS_UPDATED_PATH, get(interest_params_updated))
@@ -2107,6 +2134,17 @@ async fn asset_withdrawn(
             supplier_filter,
         )
         .await?;
+
+    Ok(Json(results))
+}
+
+async fn pool_created(
+    Query(params): Query<HashMap<String, String>>,
+    State(state): State<Arc<AppState>>,
+) -> Result<Json<Vec<PoolCreated>>, OrderbookError> {
+    let pool_id_filter = params.get("pool_id").cloned().unwrap_or_default();
+
+    let results = state.reader.get_pool_created(pool_id_filter).await?;
 
     Ok(Json(results))
 }

@@ -68,6 +68,8 @@ myso-indexer-alt-reader.workspace = true
 social_indexer = { path = "../myso-indexer-alt-social", package = "myso-indexer-alt-social" }
 myso-indexer-alt-metrics.workspace = true
 myso-social-server = { path = "../myso-social-server" }
+myso-indexer-alt-orderbook = { path = "../myso-indexer-alt-orderbook" }
+myso-orderbook-server = { path = "../myso-orderbook-server" }
 myso-pg-db.workspace = true
 myso-genesis-builder.workspace = true
 myso-types.workspace = true

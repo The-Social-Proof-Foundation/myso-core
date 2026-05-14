@@ -38,7 +38,7 @@ struct Args {
     #[clap(
         env,
         long,
-        default_value = "0xdeeb7a4662eec9f2f3def03fb937a663dddaa2e215b8078a284d026b7946c270"
+        default_value = "0x0b0c"
     )]
     myso_token_package_id: String,
     #[clap(

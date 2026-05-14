@@ -9,7 +9,7 @@ edition = "2021"
 [dependencies]
 tokio.workspace = true
 myso-indexer-alt-framework = { workspace = true, features = ["postgres"] }
-clap = { workspace = true, features = ["env"] }
+clap = { workspace = true, features = ["derive", "env"] }
 diesel = { workspace = true, features = ["postgres", "uuid", "chrono", "serde_json", "numeric"] }
 diesel-async = { workspace = true, features = ["bb8", "postgres"] }
 hex = "0.4"
@@ -23,6 +23,7 @@ anyhow.workspace = true
 url.workspace = true
 
 myso-pg-db.workspace = true
+myso-futures.workspace = true
 prometheus.workspace = true
 myso-indexer-alt-metrics.workspace = true
 myso-types.workspace = true

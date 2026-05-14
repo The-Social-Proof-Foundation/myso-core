@@ -77,6 +77,9 @@ use myso_types::base_types::{MySoAddress, ObjectID};
 use myso_types::crypto::{MySoKeyPair, SignatureScheme, ToFromBytes};
 use myso_types::move_package::MovePackage;
 use mysten_common::tempdir;
+use orderbook_indexer::{
+    OrderbookEnv, Package, build_orderbook_indexer, orderbook_api_config_for_local_myso_start,
+};
 use prometheus::Registry;
 use rand::rngs::OsRng;
 use serde_json::json;
@@ -103,6 +106,20 @@ const DEFAULT_FAUCET_PORT: u16 = 9123;
 const DEFAULT_CONSISTENT_STORE_PORT: u16 = 9124;
 const DEFAULT_GRAPHQL_PORT: u16 = 9125;
 const DEFAULT_SOCIAL_SERVER_PORT: u16 = 9126;
+const DEFAULT_ORDERBOOK_API_PORT: u16 = 9008;
+const DEFAULT_MYDATA_KEY_SERVER_PORT: u16 = 2024;
+
+/// Max connections per embedded Postgres pool when `myso start` runs indexers + APIs on one server.
+/// Typical local `max_connections` is 100; several pools must fit under that. Raise Postgres
+/// `max_connections` or this value if indexing becomes connection-bound.
+const LOCAL_MYSO_START_DB_POOL_SIZE: u32 = 16;
+
+fn local_myso_start_db_args() -> DbArgs {
+    DbArgs {
+        db_connection_pool_size: LOCAL_MYSO_START_DB_POOL_SIZE,
+        ..Default::default()
+    }
+}
 
 #[derive(Args)]
 pub struct RpcArgs {
@@ -174,6 +191,27 @@ pub struct RpcArgs {
         value_name = "SOCIAL_SERVER_HOST_PORT"
     )]
     with_social_server: Option<String>,
+
+    /// Start the orderbook indexer and orderbook REST API. Requires --with-indexer.
+    /// - `--with-orderbook`: Use an `orderbook` database derived from the main indexer URL
+    /// - `--with-orderbook=<URL>`: Use the provided PostgreSQL URL for the orderbook indexer/API
+    #[clap(
+        long,
+        num_args = 0..=1,
+        require_equals = true,
+        value_name = "DATABASE_URL"
+    )]
+    with_orderbook: Option<Option<Url>>,
+
+    /// Orderbook REST API listen address. Defaults to 0.0.0.0:9008 when --with-orderbook is set.
+    #[clap(
+        long,
+        default_missing_value = "0.0.0.0:9008",
+        num_args = 0..=1,
+        require_equals = true,
+        value_name = "ORDERBOOK_API_HOST_PORT"
+    )]
+    with_orderbook_api: Option<String>,
 }
 
 impl RpcArgs {
@@ -184,6 +222,8 @@ impl RpcArgs {
             with_graphql: None,
             with_social_indexer: None,
             with_social_server: None,
+            with_orderbook: None,
+            with_orderbook_api: None,
         }
     }
 }
@@ -266,6 +306,25 @@ pub enum MySoCommand {
             value_name = "FAUCET_HOST_PORT",
         )]
         with_faucet: Option<String>,
+
+        /// Start a local MyData key server (external `myso-mydata` binaries required). Uses default
+        /// bind address 0.0.0.0:2024 when passed without `=<HOST:PORT>`. Build from myso-mydata:
+        /// `cargo build -p key-server -p mydata-cli`. Override repo with `--mydata-repo` or env
+        /// `MYSO_MYDATA_REPO`. Calls `key_server::create_and_transfer_v1` on the genesis MyData
+        /// system package (`MYDATA_PACKAGE_ID`), writes `network.config/mydata/`, and prints secrets once.
+        #[clap(
+            long,
+            default_missing_value = "0.0.0.0:2024",
+            num_args = 0..=1,
+            require_equals = true,
+            value_name = "MYDATA_KEY_SERVER_HOST_PORT",
+        )]
+        with_mydata: Option<String>,
+
+        /// Path to the local `myso-mydata` repository (must contain `target/debug|release/key-server`
+        /// and `mydata-cli`). Defaults to env `MYSO_MYDATA_REPO` or a sibling `myso-mydata` path.
+        #[clap(long, value_name = "PATH")]
+        mydata_repo: Option<PathBuf>,
 
         #[clap(flatten)]
         rpc_args: RpcArgs,
@@ -486,6 +545,8 @@ impl MySoCommand {
                 config_dir,
                 force_regenesis,
                 with_faucet,
+                with_mydata,
+                mydata_repo,
                 rpc_args,
                 fullnode_rpc_port,
                 data_ingestion_dir,
@@ -496,6 +557,8 @@ impl MySoCommand {
                 start(
                     config_dir.clone(),
                     with_faucet,
+                    with_mydata,
+                    mydata_repo,
                     rpc_args,
                     force_regenesis,
                     epoch_duration_ms,
@@ -833,6 +896,8 @@ impl MySoCommand {
 async fn start(
     config: Option<PathBuf>,
     with_faucet: Option<String>,
+    with_mydata: Option<String>,
+    mydata_repo: Option<PathBuf>,
     rpc_args: RpcArgs,
     force_regenesis: bool,
     epoch_duration_ms: Option<u64>,
@@ -854,6 +919,8 @@ async fn start(
         with_graphql,
         with_social_indexer,
         with_social_server,
+        with_orderbook,
+        with_orderbook_api,
     } = rpc_args;
 
     // Automatically enable consistent store if GraphQL is enabled
@@ -880,6 +947,13 @@ async fn start(
         ensure!(
             with_indexer.is_some(),
             "Cannot start the social indexer without --with-indexer."
+        );
+    }
+
+    if with_orderbook.is_some() {
+        ensure!(
+            with_indexer.is_some(),
+            "Cannot start the orderbook indexer without --with-indexer."
         );
     }
 
@@ -1112,7 +1186,7 @@ async fn start(
 
         let indexer = setup_indexer(
             db_url.clone(),
-            DbArgs::default(),
+            local_myso_start_db_args(),
             IndexerArgs::default(),
             client_args,
             IndexerConfig::for_test(),
@@ -1130,6 +1204,10 @@ async fn start(
     } else {
         vec![]
     };
+
+    // Preferred base for embedded indexers' Prometheus listeners (9184 is the default in
+    // `MetricsArgs` for standalone binaries). Scan upward if a port is already in use.
+    let mut auxiliary_metrics_port: u16 = 9185;
 
     let mut social_database_url_for_graphql: Option<Url> = None;
 
@@ -1158,12 +1236,14 @@ async fn start(
             ..Default::default()
         };
 
-        let social_indexer_metrics_addr: SocketAddr = "0.0.0.0:9185".parse().unwrap();
-        let social_server_metrics_addr: SocketAddr = "0.0.0.0:9186".parse().unwrap();
+        let social_indexer_metrics_addr =
+            bind_next_auxiliary_metrics_addr(&mut auxiliary_metrics_port);
+        let social_server_metrics_addr =
+            bind_next_auxiliary_metrics_addr(&mut auxiliary_metrics_port);
 
         let social_indexer_service = social_indexer::setup_social_indexer(
             social_database_url.clone(),
-            DbArgs::default(),
+            local_myso_start_db_args(),
             IndexerArgs::default(),
             client_args,
             myso_indexer_alt_metrics::MetricsArgs {
@@ -1185,7 +1265,7 @@ async fn start(
         let social_server_service = myso_social_server::server::start_server(
             social_server_addr.port(),
             social_database_url,
-            DbArgs::default(),
+            local_myso_start_db_args(),
             social_server_metrics_addr,
             &prometheus_registry,
         )
@@ -1195,8 +1275,92 @@ async fn start(
         rpc_services = rpc_services.merge(social_server_service);
 
         info!(
-            "Social indexer and server started — API on port {}, metrics on 9185/9186",
-            social_server_addr.port()
+            "Social indexer and server started — API on port {}, metrics on {} and {}",
+            social_server_addr.port(),
+            social_indexer_metrics_addr,
+            social_server_metrics_addr
+        );
+    }
+
+    if let (Some(ref db_url), Some(ref orderbook_opt)) =
+        (database_url.as_ref(), with_orderbook.as_ref())
+    {
+        info!("Starting orderbook indexer and REST API");
+
+        let orderbook_database_url = match orderbook_opt.as_ref() {
+            Some(url) => url.clone(),
+            None => ensure_database(db_url, "orderbook")
+                .await
+                .context("Failed to create orderbook database")?,
+        };
+
+        let client_args = ClientArgs {
+            ingestion: IngestionClientArgs {
+                local_ingestion_path: data_ingestion_dir.clone(),
+                ..Default::default()
+            },
+            ..Default::default()
+        };
+
+        let orderbook_indexer_metrics_addr =
+            bind_next_auxiliary_metrics_addr(&mut auxiliary_metrics_port);
+        let orderbook_api_metrics_addr =
+            bind_next_auxiliary_metrics_addr(&mut auxiliary_metrics_port);
+
+        let orderbook_packages = [Package::Orderbook, Package::OrderbookMargin];
+
+        let orderbook_indexer_service = build_orderbook_indexer(
+            orderbook_database_url.clone(),
+            local_myso_start_db_args(),
+            IndexerArgs::default(),
+            client_args,
+            myso_indexer_alt_metrics::MetricsArgs {
+                metrics_address: orderbook_indexer_metrics_addr,
+            },
+            &prometheus_registry,
+            OrderbookEnv::Testnet,
+            &orderbook_packages,
+        )
+        .await
+        .context("Failed to setup orderbook indexer")?;
+
+        rpc_services = rpc_services.merge(orderbook_indexer_service);
+
+        let orderbook_api_addr = match with_orderbook_api.as_ref() {
+            Some(input) => parse_host_port(input.clone(), DEFAULT_ORDERBOOK_API_PORT)
+                .context("Invalid orderbook API host and port")?,
+            None => SocketAddr::from(([0, 0, 0, 0], DEFAULT_ORDERBOOK_API_PORT)),
+        };
+
+        let orderbook_rpc_url = Url::parse(&fullnode_rpc_url)
+            .with_context(|| format!("Invalid fullnode RPC URL: {fullnode_rpc_url}"))?;
+
+        let (orderbook_pkg, token_pkg, treasury_id) = orderbook_api_config_for_local_myso_start();
+
+        let orderbook_api_service = myso_orderbook_server::server::start_server(
+            orderbook_api_addr.port(),
+            orderbook_database_url,
+            local_myso_start_db_args(),
+            orderbook_rpc_url,
+            orderbook_api_metrics_addr,
+            orderbook_pkg,
+            token_pkg,
+            treasury_id,
+            30,
+            None,
+            None,
+            &prometheus_registry,
+        )
+        .await
+        .context("Failed to start orderbook API server")?;
+
+        rpc_services = rpc_services.merge(orderbook_api_service);
+
+        info!(
+            "Orderbook indexer and API started — API on port {}, metrics on {} and {}",
+            orderbook_api_addr.port(),
+            orderbook_indexer_metrics_addr,
+            orderbook_api_metrics_addr
         );
     }
 
@@ -1266,7 +1430,7 @@ async fn start(
                 database_url.clone(),
                 social_database_url_for_graphql.clone(),
                 fullnode_args,
-                DbArgs::default(),
+                local_myso_start_db_args(),
                 GraphQlKvArgs::default(),
                 consistent_reader_args,
                 graphql_args,
@@ -1292,6 +1456,43 @@ async fn start(
 
     if force_regenesis && myso_config_dir()?.join(MYSO_CLIENT_CONFIG).exists() {
         let _ = update_wallet_config_rpc(myso_config_dir()?, fullnode_rpc_url.clone()).await?;
+    }
+
+    if with_mydata.is_some() && !config_dir.join(MYSO_CLIENT_CONFIG).is_file() {
+        if !force_regenesis {
+            bail!(
+                "`--with-mydata` requires a client configuration at {:?}. \
+                 Run `myso genesis` (or use `--force-regenesis`, which creates one for the ephemeral network).",
+                config_dir.join(MYSO_CLIENT_CONFIG)
+            );
+        }
+    }
+
+    if force_regenesis && with_mydata.is_some() {
+        crate::local_mydata::ensure_regenesis_client_config(
+            &swarm,
+            &config_dir,
+            &fullnode_rpc_url,
+        )
+        .await?;
+    }
+
+    let mut mydata_child: Option<tokio::process::Child> = None;
+    if let Some(input) = with_mydata {
+        let listen = parse_host_port(input, DEFAULT_MYDATA_KEY_SERVER_PORT)
+            .map_err(|_| anyhow!("Invalid MyData key server host and port"))?;
+        let repo = crate::local_mydata::resolve_mydata_repo(mydata_repo);
+        let metrics_port = get_available_port();
+        let (secrets, child) = crate::local_mydata::bootstrap_and_spawn_key_server(
+            repo,
+            &config_dir,
+            &fullnode_rpc_url,
+            listen,
+            metrics_port,
+        )
+        .await?;
+        crate::local_mydata::log_mydata_secrets_once(&secrets);
+        mydata_child = Some(child);
     }
 
     if let Some(input) = with_faucet {
@@ -1368,6 +1569,9 @@ async fn start(
         tokio::select! {
             _ = tokio::signal::ctrl_c() => {
                 info!("Received Ctrl+C, shutting down...");
+                if let Some(mut c) = mydata_child.take() {
+                    let _ = c.start_kill();
+                }
                 break;
             }
             _ = interval.tick() => {}
@@ -1381,9 +1585,16 @@ async fn start(
 
             unhealthy += 1;
             if unhealthy > 3 {
+                if let Some(mut c) = mydata_child.take() {
+                    let _ = c.start_kill();
+                }
                 return Err(e.into());
             }
         }
+    }
+
+    if let Some(mut c) = mydata_child {
+        let _ = c.start_kill();
     }
 
     info!("Shutting down RPC services...");
@@ -1860,6 +2071,25 @@ async fn download_package_and_deps_under(
         dependencies: Some(dependencies),
         linkage: Some(linkage),
     })
+}
+
+/// Allocates the next free `:port` on `0.0.0.0`, beginning at `*next_port` (then increments the
+/// cursor). Used so `myso start` does not fail when preferred metrics ports are already taken.
+fn bind_next_auxiliary_metrics_addr(next_port: &mut u16) -> SocketAddr {
+    const IP: Ipv4Addr = Ipv4Addr::UNSPECIFIED;
+    const MAX_ATTEMPTS: u16 = 256;
+    let start = *next_port;
+    for offset in 0..MAX_ATTEMPTS {
+        let port = start.wrapping_add(offset);
+        let addr = SocketAddr::from((IpAddr::V4(IP), port));
+        if std::net::TcpListener::bind(addr).is_ok() {
+            *next_port = port.wrapping_add(1);
+            return addr;
+        }
+    }
+    let port = get_available_port();
+    *next_port = port.wrapping_add(1);
+    SocketAddr::from((IpAddr::V4(IP), port))
 }
 
 /// Parse the input string into a SocketAddr, with a default port if none is provided.

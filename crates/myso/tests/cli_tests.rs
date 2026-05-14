@@ -446,6 +446,8 @@ async fn test_genesis() -> Result<(), anyhow::Error> {
         config_dir: Some(config),
         force_regenesis: false,
         with_faucet: None,
+        with_mydata: None,
+        mydata_repo: None,
         fullnode_rpc_port: 9000,
         epoch_duration_ms: None,
         no_full_node: false,

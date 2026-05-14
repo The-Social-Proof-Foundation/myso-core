@@ -16,7 +16,7 @@ use orderbook_schema::models::{
     LoanBorrowed, LoanRepaid, MaintainerCapUpdated, MaintainerFeesWithdrawn, MarginManagerCreated,
     MarginManagerState, MarginPoolConfigUpdated, MarginPoolCreated, OrderFillSummary, OrderStatus,
     OrderbookPoolConfigUpdated, OrderbookPoolRegistered, OrderbookPoolUpdated,
-    OrderbookPoolUpdatedRegistry, PauseCapUpdated, Pools, ProtocolFeesIncreasedEvent,
+    OrderbookPoolUpdatedRegistry, PauseCapUpdated, Pools, PoolCreated, ProtocolFeesIncreasedEvent,
     ProtocolFeesWithdrawn, ReferralFeeEvent, ReferralFeesClaimedEvent, SupplierCapMinted,
     SupplyReferralMinted,
 };
@@ -36,10 +36,9 @@ fn to_pattern(s: &str) -> String {
 use diesel_async::methods::LoadQuery;
 use diesel_async::{AsyncPgConnection, RunQueryDsl};
 use myso_indexer_alt_metrics::db::DbConnectionStatsCollector;
-use myso_pg_db::{Db, DbArgs};
+use myso_pg_db::Db;
 use prometheus::Registry;
 use std::sync::Arc;
-use url::Url;
 
 #[derive(QueryableByName, Debug)]
 struct OhclvRow {
@@ -64,20 +63,16 @@ pub struct Reader {
 }
 
 impl Reader {
-    pub(crate) async fn new(
-        database_url: Url,
-        db_args: DbArgs,
+    pub(crate) async fn new_with_shared_db(
+        db: Db,
         metrics: Arc<RpcMetrics>,
         registry: &Registry,
     ) -> Result<Self, anyhow::Error> {
-        let db = Db::for_read(database_url, db_args).await?;
         registry.register(Box::new(DbConnectionStatsCollector::new(
             Some("orderbook_api_db"),
             db.clone(),
         )))?;
 
-        // Try to open a read connection to verify we can
-        // connect to the DB on startup.
         let _ = db.connect().await?;
 
         Ok(Self { db, metrics })
@@ -662,6 +657,20 @@ impl Reader {
                     .like(to_pattern(&margin_pool_id_filter)),
             )
             .order_by(schema::margin_pool_created::checkpoint_timestamp_ms.desc());
+
+        Ok(self.results(query).await?)
+    }
+
+    /// On-chain spot pool creation events (indexer `pool_created` table). Distinct from
+    /// [`Self::get_pools`] which reads the configured `pools` catalog.
+    pub async fn get_pool_created(
+        &self,
+        pool_id_filter: String,
+    ) -> Result<Vec<PoolCreated>, OrderbookError> {
+        let query = schema::pool_created::table
+            .select(PoolCreated::as_select())
+            .filter(schema::pool_created::pool_id.like(to_pattern(&pool_id_filter)))
+            .order_by(schema::pool_created::checkpoint_timestamp_ms.desc());
 
         Ok(self.results(query).await?)
     }

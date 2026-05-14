@@ -203,7 +203,14 @@ impl Default for DbArgs {
 pub async fn ensure_database(base_url: &Url, db_name: &str) -> anyhow::Result<Url> {
     let mut connect_url = base_url.clone();
     connect_url.set_path("postgres");
-    let db = Db::for_write(connect_url, DbArgs::default()).await?;
+    let db = Db::for_write(
+        connect_url,
+        DbArgs {
+            db_connection_pool_size: 1,
+            ..Default::default()
+        },
+    )
+    .await?;
     let mut conn = db.connect().await?;
     let quoted = format!("\"{}\"", db_name.replace('\\', "\\\\").replace('"', "\\\""));
     let sql = format!("CREATE DATABASE {quoted}");
