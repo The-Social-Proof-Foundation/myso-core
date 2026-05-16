@@ -1048,3 +1048,18 @@ The 5 min transaction timeout suggests the fullnode at `http://fullnode.testnet.
 
 ## Verification
 - `cargo check -p myso-indexer-alt-social-schema -p myso-indexer-alt-social`: passes
+
+---
+
+# Orderbook indexer localnet: empty event tables (May 2026)
+
+## Done
+- **Regression test** (`myso-types`): `data_ingestion_field_mask_roundtrip_preserves_transaction_events` — data-ingestion field mask + merge → encode/decode → `FullCheckpoint::try_from` preserves `tx.events`; requires `FieldMaskUtil` in scope for `from_paths`.
+- **`OrderbookEnv::Local`**: orderbook crate + standalone `main` requires checkpoint source for Local; `myso start` uses Local.
+- **Stable ingestion dir**: with `--with-indexer`, default `data_ingestion` under config dir (not temp `keep()`).
+- **Diagnostics**: local warning when orderbook tx has `events: None`.
+- **Docs**: `myso-orderbook-server` + `myso-indexer-alt-orderbook` READMEs — `pools` (admin) vs `pool_created` (indexer); local paths and metrics.
+
+## Verification
+- `cargo test -p myso-types --lib data_ingestion_field_mask_roundtrip_preserves_transaction_events`: pass
+- `cargo check -p myso-indexer-alt-orderbook -p myso`: pass

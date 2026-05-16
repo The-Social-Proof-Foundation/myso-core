@@ -1,6 +1,6 @@
 # MySo MultiSig Toolkit
 
-The MySo MultiSig Toolkit is a comprehensive mysote of tools designed to facilitate secure and efficient multi-signature transactions on the MySo blockchain. It provides users with the ability to manage, analyze, and execute multi-signature transactions with ease.
+The MySo MultiSig Toolkit is a comprehensive suite of tools designed to facilitate secure and efficient multi-signature transactions on the MySo blockchain. It provides users with the ability to manage, analyze, and execute multi-signature transactions with ease.
 
 The toolkit is [available online](https://multisig-toolkit.mystenlabs.com/).
 

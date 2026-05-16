@@ -35,11 +35,7 @@ struct Args {
         default_value = "0x2c8d603bc51326b8c13cef9dd07031a408a48dddb541963357661df5d3204809"
     )]
     orderbook_package_id: String,
-    #[clap(
-        env,
-        long,
-        default_value = "0x0b0c"
-    )]
+    #[clap(env, long, default_value = "0x0b0c")]
     myso_token_package_id: String,
     #[clap(
         env,

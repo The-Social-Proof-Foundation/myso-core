@@ -14,8 +14,8 @@ use fastcrypto::encoding::Encoding as _;
 use fastcrypto::encoding::Hex;
 use fastcrypto::traits::KeyPair;
 use myso_config::{Config, MYSO_CLIENT_CONFIG, MYSO_KEYSTORE_FILENAME};
-use myso_keys::keystore::{AccountKeystore, FileBasedKeystore, Keystore};
 use myso_json::MySoJsonValue;
+use myso_keys::keystore::{AccountKeystore, FileBasedKeystore, Keystore};
 use myso_rpc_api::client::ExecutedTransaction;
 use myso_sdk::myso_client_config::{MySoClientConfig, MySoEnv};
 use myso_sdk::wallet_context::WalletContext;
@@ -29,7 +29,9 @@ use myso_types::transaction::TEST_ONLY_GAS_UNIT_FOR_OBJECT_BASICS;
 use serde_json::json;
 use tokio::process::{Child, Command};
 
-use crate::client_commands::{GasDataArgs, MySoClientCommandResult, MySoClientCommands, PaymentArgs, TxProcessingArgs};
+use crate::client_commands::{
+    GasDataArgs, MySoClientCommandResult, MySoClientCommands, PaymentArgs, TxProcessingArgs,
+};
 
 /// Visible secrets and paths after local MyData bootstrap (for console + files).
 pub struct MydataLocalSecrets {
@@ -53,8 +55,11 @@ pub fn resolve_mydata_repo(cli_override: Option<PathBuf>) -> PathBuf {
     }
     let cwd = std::env::current_dir().unwrap_or_else(|_| PathBuf::from("."));
     let manifest_dir = PathBuf::from(env!("CARGO_MANIFEST_DIR"));
-    for base in [cwd, manifest_dir.clone(), manifest_dir.parent().unwrap_or(&manifest_dir).to_path_buf()]
-    {
+    for base in [
+        cwd,
+        manifest_dir.clone(),
+        manifest_dir.parent().unwrap_or(&manifest_dir).to_path_buf(),
+    ] {
         let candidate = base.join("myso-mydata");
         if candidate.join("Cargo.toml").is_file() {
             return candidate;
@@ -135,9 +140,7 @@ pub async fn ensure_regenesis_client_config(
     let keystore_path = config_dir.join(MYSO_KEYSTORE_FILENAME);
     let mut keystore = Keystore::from(FileBasedKeystore::load_or_create(&keystore_path)?);
     let address: MySoAddress = kp.public().into();
-    keystore
-        .import(None, MySoKeyPair::Ed25519(kp))
-        .await?;
+    keystore.import(None, MySoKeyPair::Ed25519(kp)).await?;
     MySoClientConfig {
         keystore,
         external_keys: None,
@@ -217,8 +220,7 @@ metrics_host_port: {metrics}
         metrics = metrics_port,
     );
     if let Some(parent) = path.parent() {
-        std::fs::create_dir_all(parent)
-            .with_context(|| format!("create_dir_all {:?}", parent))?;
+        std::fs::create_dir_all(parent).with_context(|| format!("create_dir_all {:?}", parent))?;
     }
     std::fs::write(path, yaml).with_context(|| format!("write {:?}", path))?;
     Ok(())
@@ -279,10 +281,9 @@ pub async fn bootstrap_and_spawn_key_server(
     let pk_move = public_key_bytes_for_move(&public_hex)?;
 
     let rgp = context.get_reference_gas_price().await?;
-    let (_sender, gas_ref) = context
-        .get_one_gas_object()
-        .await?
-        .ok_or_else(|| anyhow!("no gas coins for active address; use `--with-faucet` or fund the account"))?;
+    let (_sender, gas_ref) = context.get_one_gas_object().await?.ok_or_else(|| {
+        anyhow!("no gas coins for active address; use `--with-faucet` or fund the account")
+    })?;
     let gas_id = gas_ref.0;
 
     let mydata_package_id = ObjectID::from(MYDATA_PACKAGE_ID);

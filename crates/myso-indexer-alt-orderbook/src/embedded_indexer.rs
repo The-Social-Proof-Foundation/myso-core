@@ -14,20 +14,20 @@ use crate::handlers::flash_loan_handler::FlashLoanHandler;
 use crate::handlers::liquidation_handler::LiquidationHandler;
 use crate::handlers::loan_borrowed_handler::LoanBorrowedHandler;
 use crate::handlers::loan_repaid_handler::LoanRepaidHandler;
+use crate::handlers::maintainer_cap_updated_handler::MaintainerCapUpdatedHandler;
+use crate::handlers::maintainer_fees_withdrawn_handler::MaintainerFeesWithdrawnHandler;
 use crate::handlers::margin_manager_created_handler::MarginManagerCreatedHandler;
 use crate::handlers::margin_pool_config_updated_handler::MarginPoolConfigUpdatedHandler;
 use crate::handlers::margin_pool_created_handler::MarginPoolCreatedHandler;
-use crate::handlers::maintainer_cap_updated_handler::MaintainerCapUpdatedHandler;
-use crate::handlers::maintainer_fees_withdrawn_handler::MaintainerFeesWithdrawnHandler;
 use crate::handlers::myso_burned_handler::MysoBurnedHandler;
 use crate::handlers::order_fill_handler::OrderFillHandler;
-use crate::handlers::pool_created_handler::PoolCreatedHandler;
 use crate::handlers::order_update_handler::OrderUpdateHandler;
 use crate::handlers::orderbook_pool_config_updated_handler::OrderbookPoolConfigUpdatedHandler;
 use crate::handlers::orderbook_pool_registered_handler::OrderbookPoolRegisteredHandler;
 use crate::handlers::orderbook_pool_updated_handler::OrderbookPoolUpdatedHandler;
 use crate::handlers::orderbook_pool_updated_registry_handler::OrderbookPoolUpdatedRegistryHandler;
 use crate::handlers::pause_cap_updated_handler::PauseCapUpdatedHandler;
+use crate::handlers::pool_created_handler::PoolCreatedHandler;
 use crate::handlers::pool_price_handler::PoolPriceHandler;
 use crate::handlers::proposals_handler::ProposalsHandler;
 use crate::handlers::protocol_fees_increased_handler::ProtocolFeesIncreasedHandler;
@@ -42,8 +42,7 @@ use crate::handlers::trade_params_update_handler::TradeParamsUpdateHandler;
 use crate::handlers::vote_handler::VotesHandler;
 use crate::handlers::withdraw_collateral_handler::WithdrawCollateralHandler;
 use crate::handlers::{
-    asset_supplied_handler::AssetSuppliedHandler,
-    asset_withdrawn_handler::AssetWithdrawnHandler,
+    asset_supplied_handler::AssetSuppliedHandler, asset_withdrawn_handler::AssetWithdrawnHandler,
     interest_params_updated_handler::InterestParamsUpdatedHandler,
 };
 use crate::{OrderbookEnv, Package};

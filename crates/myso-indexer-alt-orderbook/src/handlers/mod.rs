@@ -6,6 +6,26 @@ use myso_types::effects::TransactionEffectsAPI;
 use myso_types::transaction::{Command, TransactionDataAPI};
 use std::sync::Arc;
 
+/// Warn once per matching transaction when `myso start` + `OrderbookEnv::Local` ingests a
+/// checkpoint where an orderbook-related tx has no decoded events (handlers skip silently).
+pub(crate) fn warn_local_orderbook_tx_missing_events(
+    env: OrderbookEnv,
+    tx: &ExecutedTransaction,
+    object_set: &ObjectSet,
+) {
+    if env != OrderbookEnv::Local {
+        return;
+    }
+    if !is_orderbook_tx(tx, object_set, env) || tx.events.is_some() {
+        return;
+    }
+    tracing::warn!(
+        target: "orderbook_indexer",
+        digest = %tx.transaction.digest(),
+        "orderbook-related transaction has no events in checkpoint; orderbook indexer handlers skip it"
+    );
+}
+
 /// Captures common transaction metadata for event processing.
 /// Used by the `define_handler!` macro to avoid repetitive field extraction.
 pub struct EventMeta {

@@ -1,32 +1,36 @@
 // Copyright (c) The Social Proof Foundation, LLC.
 // SPDX-License-Identifier: Apache-2.0
 
-module bridged_myusd::myusd {
+module myusd::myusd {
     use std::option;
 
-    use myso::coin::{Self, CoinCreationAdminCap, DenyCapV2};
+    use myso::coin::{
+        Self as coin,
+        CoinCreationAdminCap,
+        CoinMetadata,
+        DenyCapV2,
+        TreasuryCap,
+    };
     use myso::deny_list::DenyList;
     use myso::transfer;
     use myso::tx_context::{Self, TxContext};
+    use myso::url;
 
     struct MYUSD has drop {}
 
     const DECIMAL: u8 = 6;
 
-    fun init(_otw: MYUSD, _ctx: &mut TxContext) {
-        // Empty - coin creation moved to init_coin entry function
-    }
-
-    public entry fun init_coin(
+    #[allow(lint(self_transfer))]
+    public fun init_coin(
         admin_cap: &CoinCreationAdminCap,
-        ctx: &mut TxContext
+        ctx: &mut TxContext,
     ) {
-        let (treasury_cap, deny_cap, metadata) = coin::create_regulated_currency_with_admin<MYUSD>(
+        let (treasury_cap, deny_cap, metadata): (TreasuryCap<MYUSD>, DenyCapV2<MYUSD>, CoinMetadata<MYUSD>) = coin::create_regulated_currency_with_admin<MYUSD>(
             DECIMAL,
             b"myUSD",
             b"MyUSD",
             b"The official MySocial USD stablecoin.",
-            option::some(url::new_unsafe("https://www.mysocial.network/_next/image?url=%2FmyUSD_icon.webp&w=96&q=75")),
+            option::some(url::new_unsafe_from_bytes(b"https://www.mysocial.network/_next/image?url=%2FmyUSD_icon.webp&w=96&q=75")),
             false,
             admin_cap,
             ctx,
@@ -37,7 +41,6 @@ module bridged_myusd::myusd {
         transfer::public_transfer(deny_cap, sender);
     }
 
-    //docs::/#regulate}
     public fun add_addr_from_deny_list(
         denylist: &mut DenyList,
         denycap: &mut DenyCapV2<MYUSD>,

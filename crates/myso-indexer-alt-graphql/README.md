@@ -56,7 +56,7 @@ cargo nextest run -p myso-indexer-alt-e2e-tests -- graphql
 
 The first test is GraphQL's own unit tests, the second tests code related to
 database access (this code is shared among RPCs that read from
-`myso-indexer-alt`'s stores), the final test is an end-to-end test mysote that
+`myso-indexer-alt`'s stores), the final test is an end-to-end test suite that
 also tests the indexer.
 
 ### Re-generating the schema

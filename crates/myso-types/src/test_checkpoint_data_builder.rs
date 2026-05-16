@@ -825,10 +825,85 @@ mod tests {
     use std::str::FromStr;
 
     use move_core_types::ident_str;
+    use myso_rpc::field::{FieldMask, FieldMaskUtil};
+    use myso_rpc::merge::Merge;
+    use myso_rpc::proto::myso::rpc::v2;
+    use prost::Message;
 
+    use crate::full_checkpoint_content::Checkpoint as FullCheckpoint;
     use crate::transaction::{Command, ProgrammableMoveCall, TransactionDataAPI};
 
     use super::*;
+    #[test]
+    fn data_ingestion_field_mask_roundtrip_preserves_transaction_events() {
+        let checkpoint = TestCheckpointBuilder::new(1)
+            .start_transaction(0)
+            .with_events(vec![Event::new(
+                &ObjectID::ZERO,
+                ident_str!("test"),
+                TestCheckpointBuilder::derive_address(0),
+                GAS::type_(),
+                vec![],
+            )])
+            .finish_transaction()
+            .build_checkpoint();
+
+        assert_eq!(
+            checkpoint.transactions[0]
+                .events
+                .as_ref()
+                .unwrap()
+                .data
+                .len(),
+            1
+        );
+
+        let mask = FieldMask::from_paths([
+            v2::Checkpoint::path_builder().sequence_number(),
+            v2::Checkpoint::path_builder().summary().bcs().value(),
+            v2::Checkpoint::path_builder().signature().finish(),
+            v2::Checkpoint::path_builder().contents().bcs().value(),
+            v2::Checkpoint::path_builder()
+                .transactions()
+                .transaction()
+                .bcs()
+                .value(),
+            v2::Checkpoint::path_builder()
+                .transactions()
+                .effects()
+                .bcs()
+                .value(),
+            v2::Checkpoint::path_builder()
+                .transactions()
+                .effects()
+                .unchanged_loaded_runtime_objects()
+                .finish(),
+            v2::Checkpoint::path_builder()
+                .transactions()
+                .events()
+                .bcs()
+                .value(),
+            v2::Checkpoint::path_builder()
+                .objects()
+                .objects()
+                .bcs()
+                .value(),
+        ]);
+
+        let proto_checkpoint = v2::Checkpoint::merge_from(&checkpoint, &mask.into());
+        let proto_bytes = proto_checkpoint.encode_to_vec();
+        let decoded = v2::Checkpoint::decode(proto_bytes.as_slice()).expect("decode proto");
+        let roundtrip = FullCheckpoint::try_from(&decoded).expect("try_from proto checkpoint");
+
+        assert_eq!(roundtrip.transactions.len(), 1);
+        let tx = &roundtrip.transactions[0];
+        assert!(
+            tx.events.is_some(),
+            "transaction events were lost in Checkpoint proto merge/try_from round-trip"
+        );
+        assert_eq!(tx.events.as_ref().unwrap().data.len(), 1);
+    }
+
     #[test]
     fn test_basic_checkpoint_builder() {
         // Create a checkpoint with a single transaction that does nothing.

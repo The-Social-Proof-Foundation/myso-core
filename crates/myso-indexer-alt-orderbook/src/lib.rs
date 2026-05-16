@@ -2,9 +2,9 @@ use std::sync::OnceLock;
 
 use url::Url;
 
+pub mod embedded_indexer;
 pub mod handlers;
 pub(crate) mod models;
-pub mod embedded_indexer;
 pub mod traits;
 
 pub use embedded_indexer::build_orderbook_indexer;
@@ -36,8 +36,10 @@ pub enum Package {
     OrderbookMargin,
 }
 
-#[derive(Debug, Clone, Copy, clap::ValueEnum)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, clap::ValueEnum)]
 pub enum OrderbookEnv {
+    /// Local `myso start` network: genesis orderbook package IDs (`myso_types::ORDERBOOK_ADDRESS`).
+    Local,
     Mainnet,
     Testnet,
 }
@@ -175,7 +177,9 @@ impl OrderbookEnv {
     pub fn remote_store_url(&self) -> Url {
         let url = match self {
             OrderbookEnv::Mainnet => MAINNET_REMOTE_STORE_URL,
-            OrderbookEnv::Testnet => TESTNET_REMOTE_STORE_URL,
+            // Local ingestion should use `local_ingestion_path` / gRPC; this URL exists only for
+            // callers that still request a default (same effective bucket as testnet).
+            OrderbookEnv::Local | OrderbookEnv::Testnet => TESTNET_REMOTE_STORE_URL,
         };
         Url::parse(url).unwrap()
     }

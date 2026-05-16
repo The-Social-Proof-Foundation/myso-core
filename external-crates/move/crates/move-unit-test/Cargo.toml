@@ -46,7 +46,7 @@ name = "move-unit-test"
 path = "src/main.rs"
 
 [[test]]
-name = "move_unit_test_testmysote"
+name = "move_unit_test_testsuite"
 harness = false
 
 [features]

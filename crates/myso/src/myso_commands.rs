@@ -107,6 +107,9 @@ const DEFAULT_CONSISTENT_STORE_PORT: u16 = 9124;
 const DEFAULT_GRAPHQL_PORT: u16 = 9125;
 const DEFAULT_SOCIAL_SERVER_PORT: u16 = 9126;
 const DEFAULT_ORDERBOOK_API_PORT: u16 = 9008;
+/// Bearer secret accepted by the embedded orderbook admin API (`myso start --with-orderbook`).
+/// Send `Authorization: Bearer bearer_admin_token`. Local development only — use env/config in production.
+const LOCAL_MYSO_START_ORDERBOOK_ADMIN_TOKEN: &str = "bearer_admin_token";
 const DEFAULT_MYDATA_KEY_SERVER_PORT: u16 = 2024;
 
 /// Max connections per embedded Postgres pool when `myso start` runs indexers + APIs on one server.
@@ -1084,11 +1087,22 @@ async fn start(
         myso_config_path
     };
 
-    // the indexer requires to set the fullnode's data ingestion directory
-    // note that this overrides the default configuration that is set when running the genesis
-    // command, which sets data_ingestion_dir to None.
+    // The indexer requires checkpoint blobs under `data_ingestion_dir`. Persist them under the
+    // network config dir (next to the embedded Postgres data) instead of a fresh temp path each
+    // run so watermarks stay aligned with on-disk checkpoints across restarts.
     if with_indexer.is_some() && data_ingestion_dir.is_none() {
-        data_ingestion_dir = Some(mysten_common::tempdir()?.keep())
+        let ingestion = config_dir.join("data_ingestion");
+        std::fs::create_dir_all(&ingestion).with_context(|| {
+            format!(
+                "Failed to create data ingestion directory {} (required for --with-indexer)",
+                ingestion.display()
+            )
+        })?;
+        info!(
+            "Checkpoint blobs for indexers will be written under {}",
+            ingestion.display()
+        );
+        data_ingestion_dir = Some(ingestion);
     }
 
     if let Some(ref dir) = data_ingestion_dir {
@@ -1318,7 +1332,7 @@ async fn start(
                 metrics_address: orderbook_indexer_metrics_addr,
             },
             &prometheus_registry,
-            OrderbookEnv::Testnet,
+            OrderbookEnv::Local,
             &orderbook_packages,
         )
         .await
@@ -1348,7 +1362,7 @@ async fn start(
             treasury_id,
             30,
             None,
-            None,
+            Some(LOCAL_MYSO_START_ORDERBOOK_ADMIN_TOKEN.to_string()),
             &prometheus_registry,
         )
         .await
@@ -1357,8 +1371,9 @@ async fn start(
         rpc_services = rpc_services.merge(orderbook_api_service);
 
         info!(
-            "Orderbook indexer and API started — API on port {}, metrics on {} and {}",
+            "Orderbook indexer and API started — API on port {} (admin Bearer: {}), metrics on {} and {}",
             orderbook_api_addr.port(),
+            LOCAL_MYSO_START_ORDERBOOK_ADMIN_TOKEN,
             orderbook_indexer_metrics_addr,
             orderbook_api_metrics_addr
         );
@@ -1469,12 +1484,8 @@ async fn start(
     }
 
     if force_regenesis && with_mydata.is_some() {
-        crate::local_mydata::ensure_regenesis_client_config(
-            &swarm,
-            &config_dir,
-            &fullnode_rpc_url,
-        )
-        .await?;
+        crate::local_mydata::ensure_regenesis_client_config(&swarm, &config_dir, &fullnode_rpc_url)
+            .await?;
     }
 
     let mut mydata_child: Option<tokio::process::Child> = None;

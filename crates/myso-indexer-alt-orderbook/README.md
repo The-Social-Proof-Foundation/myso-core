@@ -20,9 +20,27 @@ cargo run -p myso-indexer-alt-orderbook --bin myso-orderbook-indexer -- \
 
 ### Parameters
 
-- `--env` (required) – MySo network:
-  - `testnet` – Development and testing
-  - `mainnet` – Production (margin trading not yet on mainnet)
+- `--env` (required) – logical network for package resolution:
+  - `local` – `myso start` + local checkpoint blobs; uses genesis orderbook addresses from `myso_types` (same as other values; no remote implied).
+  - `testnet` / `mainnet` – public remote checkpoint stores (see below).
+
+- **Mainnet margin**: `--packages orderbook-margin` is not supported on mainnet yet.
+- **Migrations**: Run automatically on startup.
+- **Health**: Metrics service exposes `/health` and `/metrics` on the metrics address.
+
+### Local / `myso start`
+
+When you run `myso start --with-indexer --with-orderbook`, the embedded orderbook indexer uses:
+
+- `OrderbookEnv::Local`
+- Checkpoint blobs under `<myso config dir>/data_ingestion/` (same directory the fullnode writes; persisted across restarts so Postgres watermarks stay aligned with files on disk)
+- A separate Postgres database (often named `orderbook`) — confirm you query the same DB URL the process logs
+
+**Metrics:** `orderbook_indexer_total_ingested_events` should grow when checkpoint transactions include events. If it stays near zero while `orderbook_indexer_total_ingested_checkpoints` grows, check logs at target `orderbook_indexer` for warnings about orderbook transactions missing events.
+
+### Data written vs Orderbook REST `pools` table
+
+The indexer inserts **event** rows (`pool_created`, fills, etc.). The Orderbook REST API’s **`pools` table** is a separate **catalog** filled via the orderbook server **admin API**, not by this indexer. See [orderbook-server README](../myso-orderbook-server/README.md#database-indexer-vs-catalog-important-for-operators).
 
 - `--packages` (optional, default: both) – Event types to index:
   - `orderbook` – Core events (orders, trades, pools, governance)
@@ -64,9 +82,8 @@ cargo run -p myso-indexer-alt-orderbook --bin myso-orderbook-indexer -- \
 
 ### Notes
 
+- **Standalone `myso-orderbook-indexer` with `--env local`:** you must pass **`--local-ingestion-path`** (full node checkpoint dir) or **`--streaming-url`** / **`--remote-store-url`** — the binary will not guess a path.
 - **Mainnet margin**: `--packages orderbook-margin` is not supported on mainnet yet.
-- **Migrations**: Run automatically on startup.
-- **Health**: Metrics service exposes `/health` and `/metrics` on the metrics address.
 
 ### Troubleshooting
 

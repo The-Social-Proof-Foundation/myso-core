@@ -31,5 +31,5 @@ serde.workspace = true
 datatest-stable.workspace = true
 
 [[test]]
-name = "testmysote"
+name = "testsuite"
 harness = false

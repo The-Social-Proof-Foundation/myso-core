@@ -16,7 +16,7 @@ use orderbook_schema::models::{
     LoanBorrowed, LoanRepaid, MaintainerCapUpdated, MaintainerFeesWithdrawn, MarginManagerCreated,
     MarginManagerState, MarginPoolConfigUpdated, MarginPoolCreated, OrderFillSummary, OrderStatus,
     OrderbookPoolConfigUpdated, OrderbookPoolRegistered, OrderbookPoolUpdated,
-    OrderbookPoolUpdatedRegistry, PauseCapUpdated, Pools, PoolCreated, ProtocolFeesIncreasedEvent,
+    OrderbookPoolUpdatedRegistry, PauseCapUpdated, PoolCreated, Pools, ProtocolFeesIncreasedEvent,
     ProtocolFeesWithdrawn, ReferralFeeEvent, ReferralFeesClaimedEvent, SupplierCapMinted,
     SupplyReferralMinted,
 };

@@ -1,4 +1,6 @@
-use crate::handlers::{is_orderbook_tx, try_extract_move_call_package};
+use crate::handlers::{
+    is_orderbook_tx, try_extract_move_call_package, warn_local_orderbook_tx_missing_events,
+};
 use crate::models::myso::myso::MYSO;
 use crate::models::orderbook::pool::PoolCreated as PoolCreatedEvent;
 use crate::traits::MoveStruct;
@@ -34,6 +36,7 @@ impl Processor for PoolCreatedHandler {
         let mut results = vec![];
 
         for tx in &checkpoint.transactions {
+            warn_local_orderbook_tx_missing_events(self.env, tx, &checkpoint.object_set);
             if !is_orderbook_tx(tx, &checkpoint.object_set, self.env) {
                 continue;
             }

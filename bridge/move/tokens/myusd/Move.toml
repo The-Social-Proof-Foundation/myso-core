@@ -1,13 +1,13 @@
 [package]
-name = "BridgedMyUSD"
+name = "MyUSD"
 version = "0.0.1"
 edition = "legacy"
 
 [dependencies]
 
 [addresses]
-bridged_myusd = "0x0"
+myusd = "0x0"
 
 [environments]
-localnet = "f636e881"
+localnet = "6c035227"
 testnet = "56a7099f"

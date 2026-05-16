@@ -694,7 +694,7 @@ impl AccountState {
             };
         }
         // If this panic happens in practice, we could just return a zero balance,
-        // it wouldn't hurt the test mysote overall unles it is happening every time
+        // it wouldn't hurt the test suite overall unles it is happening every time
         debug_fatal!("Failed to get myso balance for address {sender} - return zero balance");
         Self {
             sender,

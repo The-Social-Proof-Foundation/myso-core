@@ -114,7 +114,7 @@ MySo is the first blockchain built for internet scale, enabling fast, scalable, 
 - [BCS Unity](https://github.com/OpenDive/MySo-Unity-SDK/tree/main/Assets/MySo-Unity-SDK/Code/OpenDive.BCS) - BCS with Unity C#.
 - [MySo Client Gen (Kuna Labs)](https://github.com/kunalabs-io/myso-client-gen/tree/master) - A tool for generating TS SDKs for MySo Move smart contracts. Supports code generation both for source code and on-chain packages with no IDLs or ABIs required.
 - [TypeMove (Sentio)](https://github.com/sentioxyz/typemove/blob/main/packages/myso/Readme.md) - Generate TypeScript bindings for MySo contracts.
-- MySo Wallet Standard (Mysten Labs) - A mysote of standard utilities for implementing wallets and libraries based on the [Wallet Standard](https://github.com/wallet-standard/wallet-standard/).
+- MySo Wallet Standard (Mysten Labs) - A suite of standard utilities for implementing wallets and libraries based on the [Wallet Standard](https://github.com/wallet-standard/wallet-standard/).
   - [GitHub](https://github.com/the-social-proof-foundation/myso-core/tree/main/sdk/wallet-standard) - [Documentation](https://docs.mysocial.network/standards/wallet-standard)
 - [CoinMeta (Polymedia)](https://github.com/juzybits/polymedia-coinmeta) - Library for fetching coin metadata for MySo coins.
 - [Dubhe Client BCS Decoding (Dubhe Engine)](https://github.com/0xobelisk/dubhe-docs/blob/main/pages/dubhe/myso/client.mdx#bcs-data-decoding) - Library for supports automatic parsing of BCS types based on contract metadata information and automatic conversion formatting.

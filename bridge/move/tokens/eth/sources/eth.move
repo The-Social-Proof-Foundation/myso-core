@@ -8,6 +8,7 @@ module bridged_eth::eth {
     use myso::coin::{Self, CoinCreationAdminCap};
     use myso::transfer;
     use myso::tx_context::{Self, TxContext};
+    use myso::url;
 
     struct ETH has drop {}
 
@@ -26,7 +27,7 @@ module bridged_eth::eth {
             b"ETH",
             b"Ethereum",
             b"Bridged Ethereum token",
-            option::some(url::new_unsafe("https://www.mysocial.network/_next/image?url=%2Feth-icon.png&w=96&q=75")),
+            option::some(url::new_unsafe_from_bytes(b"https://www.mysocial.network/_next/image?url=%2Feth-icon.png&w=96&q=75")),
             admin_cap,
             ctx
         );

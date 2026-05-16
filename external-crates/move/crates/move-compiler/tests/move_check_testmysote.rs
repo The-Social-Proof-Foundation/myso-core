@@ -204,7 +204,7 @@ fn out_path(path: &Path, test_name: &str, test_kind: &Option<String>) -> PathBuf
     path.with_file_name(file_name).with_extension(OUT_EXT)
 }
 
-// Runs all tests under the test/testmysote directory.
+// Runs all tests under the test/testsuite directory.
 pub fn run_test(path: &Path) -> datatest_stable::Result<()> {
     let (test_kind, test_info, package_config, flags) = test_config(path);
     let suffix = test_kind.snap_suffix();

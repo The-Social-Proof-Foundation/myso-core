@@ -8,6 +8,7 @@ module bridged_btc::btc {
     use myso::coin::{Self, CoinCreationAdminCap};
     use myso::transfer;
     use myso::tx_context::{Self, TxContext};
+    use myso::url;
 
     struct BTC has drop {}
 
@@ -26,7 +27,7 @@ module bridged_btc::btc {
             b"BTC",
             b"Bitcoin",
             b"Bridged Bitcoin token",
-            option::some(url::new_unsafe("https://www.mysocial.network/_next/image?url=%2Fbtc-icon.png&w=96&q=75")),
+            option::some(url::new_unsafe_from_bytes(b"https://www.mysocial.network/_next/image?url=%2Fbtc-icon.png&w=96&q=75")),
             admin_cap,
             ctx
         );

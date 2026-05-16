@@ -80,7 +80,7 @@ cargo nextest run                \
 ```
 
 The first package is the indexer's own unit tests, the second is the indexing
-framework's unit tests, and the third is an end-to-end test mysote that includes
+framework's unit tests, and the third is an end-to-end test suite that includes
 the indexer as well as the RPCs that read from its database.
 
 ## Configuration

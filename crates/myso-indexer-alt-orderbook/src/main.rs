@@ -73,6 +73,11 @@ async fn main() -> Result<(), anyhow::Error> {
         }
     } else {
         match env {
+            OrderbookEnv::Local => anyhow::bail!(
+                "Local indexing requires checkpoint bytes: pass --local-ingestion-path <DIR> \
+                 (the node's data_ingestion directory, same as `myso start` with --with-indexer), \
+                 or use --streaming-url / --remote-store-url."
+            ),
             OrderbookEnv::Testnet => anyhow::bail!(
                 "Testnet requires --streaming-url or --remote-store-url for checkpoint ingestion \
                  (e.g. --streaming-url http://fullnode.testnet.mysocial.network:9000 or \

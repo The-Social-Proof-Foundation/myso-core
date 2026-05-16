@@ -826,7 +826,7 @@ cargo check -p myso-bridge
 cargo nextest run -p myso-bridge --features test-utils --lib
 ```
 
-**Full test mysote including e2e tests:**
+**Full test suite including e2e tests:**
 
 ```bash
 cargo nextest run -p myso-bridge --features test-utils
