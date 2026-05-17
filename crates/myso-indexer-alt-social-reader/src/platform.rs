@@ -69,8 +69,6 @@ pub struct PlatformRow {
     pub release_date: Option<String>,
     #[diesel(sql_type = Nullable<Text>)]
     pub shutdown_date: Option<String>,
-    #[diesel(sql_type = Nullable<BigInt>)]
-    pub treasury: Option<i64>,
     #[diesel(sql_type = Nullable<Bool>)]
     pub wants_dao_governance: Option<bool>,
     #[diesel(sql_type = Nullable<Text>)]
@@ -102,7 +100,7 @@ pub(crate) async fn get_platform_by_id(
         "SELECT p.platform_id, p.name, p.tagline, p.description, p.logo, p.developer_address,
                 p.status, p.is_approved, p.primary_category, p.secondary_category, p.created_at, p.updated_at,
                 p.terms_of_service, p.privacy_policy, p.links, p.platforms AS platform_names, p.release_date, p.shutdown_date,
-                p.treasury, p.wants_dao_governance, p.governance_registry_id, p.delegate_count,
+                p.wants_dao_governance, p.governance_registry_id, p.delegate_count,
                 p.delegate_term_epochs, p.max_votes_per_user,
                 p.proposal_submission_cost, p.quadratic_base_cost, p.quorum_votes, p.voting_period_epochs
          FROM platforms p
@@ -128,7 +126,7 @@ pub(crate) async fn get_platform_by_registry_id(
         "SELECT p.platform_id, p.name, p.tagline, p.description, p.logo, p.developer_address,
                 p.status, p.is_approved, p.primary_category, p.secondary_category, p.created_at, p.updated_at,
                 p.terms_of_service, p.privacy_policy, p.links, p.platforms AS platform_names, p.release_date, p.shutdown_date,
-                p.treasury, p.wants_dao_governance, p.governance_registry_id, p.delegate_count,
+                p.wants_dao_governance, p.governance_registry_id, p.delegate_count,
                 p.delegate_term_epochs, p.max_votes_per_user,
                 p.proposal_submission_cost, p.quadratic_base_cost, p.quorum_votes, p.voting_period_epochs
          FROM platforms p
@@ -156,7 +154,7 @@ pub(crate) async fn list_platforms(
         SELECT p.platform_id, p.name, p.tagline, p.description, p.logo, p.developer_address,
                p.status, p.is_approved, p.primary_category, p.secondary_category, p.created_at, p.updated_at,
                p.terms_of_service, p.privacy_policy, p.links, p.platforms AS platform_names, p.release_date, p.shutdown_date,
-               p.treasury, p.wants_dao_governance, p.governance_registry_id, p.delegate_count,
+               p.wants_dao_governance, p.governance_registry_id, p.delegate_count,
                p.delegate_term_epochs, p.max_votes_per_user,
                p.proposal_submission_cost, p.quadratic_base_cost, p.quorum_votes, p.voting_period_epochs
         FROM platforms p

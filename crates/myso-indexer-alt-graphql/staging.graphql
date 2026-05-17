@@ -4351,10 +4351,6 @@ type Platform implements Node {
 	"""
 	termsOfService: String
 	"""
-	Treasury balance.
-	"""
-	treasury: Int
-	"""
 	When the platform was last updated (epoch milliseconds).
 	"""
 	updatedAt: Int!
@@ -4465,11 +4461,7 @@ type PlatformMembershipSummary {
 	tagline: String!
 	termsOfService: String
 	"""
-	Treasury balance in MYSO base units (nullable when unknown); same semantics as `Platform.treasury`.
-	"""
-	treasury: Int
-	"""
-	On-chain treasury object id is not stored on `platforms`; always null until indexed elsewhere.
+	On-chain MYSO treasury is not mirrored in Postgres; read the platform object via RPC when needed.
 	"""
 	treasuryAddress: String
 	"""

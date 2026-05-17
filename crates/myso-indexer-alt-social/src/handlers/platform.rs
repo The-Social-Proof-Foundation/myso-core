@@ -358,7 +358,6 @@ fn process_platform_created_event(
         quadratic_base_cost,
         quorum_votes,
         voting_period_epochs,
-        treasury: None,
         version: None,
         primary_category: ev.primary_category,
         secondary_category: ev.secondary_category,

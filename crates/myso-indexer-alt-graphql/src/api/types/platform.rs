@@ -150,11 +150,6 @@ impl Platform {
         self.inner.updated_at.and_utc().timestamp_millis()
     }
 
-    /// Treasury balance.
-    async fn treasury(&self) -> Option<i64> {
-        self.inner.treasury
-    }
-
     /// Whether the platform wants DAO governance.
     async fn wants_dao_governance(&self) -> Option<bool> {
         self.inner.wants_dao_governance
@@ -481,12 +476,7 @@ impl PlatformMembershipSummary {
         self.row.voting_period_epochs
     }
 
-    /// Treasury balance in MYSO base units (nullable when unknown); same semantics as `Platform.treasury`.
-    async fn treasury(&self) -> Option<i64> {
-        self.row.treasury
-    }
-
-    /// On-chain treasury object id is not stored on `platforms`; always null until indexed elsewhere.
+    /// On-chain treasury is not mirrored in Postgres; read the platform object via RPC when needed.
     async fn treasury_address(&self) -> Option<String> {
         None
     }

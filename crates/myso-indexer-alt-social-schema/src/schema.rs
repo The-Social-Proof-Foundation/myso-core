@@ -696,7 +696,6 @@ diesel::table! {
         quadratic_base_cost -> Nullable<Int8>,
         quorum_votes -> Nullable<Int8>,
         voting_period_epochs -> Nullable<Int8>,
-        treasury -> Nullable<Int8>,
         version -> Nullable<Int8>,
         primary_category -> Varchar,
         secondary_category -> Nullable<Varchar>,

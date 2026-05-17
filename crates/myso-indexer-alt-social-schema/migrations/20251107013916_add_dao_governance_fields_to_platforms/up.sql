@@ -66,13 +66,6 @@ BEGIN
     
     IF NOT EXISTS (
         SELECT 1 FROM information_schema.columns 
-        WHERE table_name = 'platforms' AND column_name = 'treasury'
-    ) THEN
-        ALTER TABLE platforms ADD COLUMN treasury BIGINT;
-    END IF;
-    
-    IF NOT EXISTS (
-        SELECT 1 FROM information_schema.columns 
         WHERE table_name = 'platforms' AND column_name = 'version'
     ) THEN
         ALTER TABLE platforms ADD COLUMN version BIGINT;

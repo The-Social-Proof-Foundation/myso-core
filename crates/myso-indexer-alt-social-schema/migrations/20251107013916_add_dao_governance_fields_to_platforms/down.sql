@@ -9,6 +9,5 @@ DROP COLUMN IF EXISTS proposal_submission_cost,
 DROP COLUMN IF EXISTS quadratic_base_cost,
 DROP COLUMN IF EXISTS quorum_votes,
 DROP COLUMN IF EXISTS voting_period_epochs,
-DROP COLUMN IF EXISTS treasury,
 DROP COLUMN IF EXISTS version;
 

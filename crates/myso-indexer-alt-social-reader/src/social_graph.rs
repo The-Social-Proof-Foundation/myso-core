@@ -869,8 +869,6 @@ pub(crate) async fn get_profile_platform_memberships(
         #[diesel(sql_type = Nullable<BigInt>)]
         voting_period_epochs: Option<i64>,
         #[diesel(sql_type = Nullable<BigInt>)]
-        treasury: Option<i64>,
-        #[diesel(sql_type = Nullable<BigInt>)]
         version: Option<i64>,
         #[diesel(sql_type = Text)]
         primary_category: String,
@@ -914,7 +912,6 @@ pub(crate) async fn get_profile_platform_memberships(
                p.quadratic_base_cost,
                p.quorum_votes,
                p.voting_period_epochs,
-               p.treasury,
                p.version,
                p.primary_category,
                p.secondary_category,
@@ -969,7 +966,6 @@ pub(crate) async fn get_profile_platform_memberships(
             quadratic_base_cost: r.quadratic_base_cost,
             quorum_votes: r.quorum_votes,
             voting_period_epochs: r.voting_period_epochs,
-            treasury: r.treasury,
             version: r.version,
             primary_category: r.primary_category,
             secondary_category: r.secondary_category,
