@@ -272,7 +272,10 @@ pub async fn start_server(
     .await?;
     let socket_address = SocketAddr::new(IpAddr::V4(Ipv4Addr::new(0, 0, 0, 0)), server_port);
 
-    println!("Orderbook server started successfully on port {}", server_port);
+    println!(
+        "Orderbook server started successfully on port {}",
+        server_port
+    );
 
     if let Some(margin_pkg_id) = margin_package_id {
         let cancellation_token = tokio_util::sync::CancellationToken::new();

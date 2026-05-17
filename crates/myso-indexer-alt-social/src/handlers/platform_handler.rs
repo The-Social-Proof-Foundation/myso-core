@@ -203,7 +203,16 @@ impl Processor for PlatformHandler {
                 let event_data =
                     match events::parse_event_contents(module, event_name, &ev.contents) {
                         Ok(v) => v,
-                        Err(_) => continue,
+                        Err(e) => {
+                            tracing::warn!(
+                                %event_id,
+                                %module,
+                                %event_name,
+                                error = %e,
+                                "platform handler skipped event due to parse failure"
+                            );
+                            continue;
+                        }
                     };
                 if let Some(rows) =
                     platform::handle_platform_event(event_name, &event_data, &event_id)
@@ -366,14 +375,21 @@ impl Handler for PlatformHandler {
                     platform_id,
                     deleted_at,
                 } => {
-                    total += diesel::update(platforms::table)
+                    let affected = diesel::update(platforms::table)
                         .filter(platforms::platform_id.eq(platform_id))
                         .set((
-                            platforms::deleted_at.eq(Some(deleted_at)),
-                            platforms::updated_at.eq(deleted_at),
+                            platforms::deleted_at.eq(Some(*deleted_at)),
+                            platforms::updated_at.eq(*deleted_at),
                         ))
                         .execute(conn)
                         .await?;
+                    if affected == 0 {
+                        tracing::warn!(
+                            platform_id = %platform_id,
+                            "PlatformDeleted indexed but no platforms row matched (missing platform or platform_id mismatch)"
+                        );
+                    }
+                    total += affected;
                 }
             }
         }

@@ -560,7 +560,7 @@ pub(crate) async fn get_profile_platform_memberships(
                    AS blocked_profiles_count
         FROM platform_memberships pm
         INNER JOIN platforms p ON pm.platform_id = p.platform_id
-        WHERE pm.wallet_address = $1
+        WHERE pm.wallet_address = $1 AND p.deleted_at IS NULL
         ORDER BY pm.joined_at DESC
         LIMIT $2 OFFSET $3
     ";
@@ -1496,7 +1496,7 @@ pub(crate) async fn get_blocked_platforms(
         SELECT p.platform_id, p.name, pbp.blocked_by, pbp.created_at
         FROM platform_blocked_profiles pbp
         INNER JOIN platforms p ON pbp.platform_id = p.platform_id
-        WHERE pbp.wallet_address = $1
+        WHERE pbp.wallet_address = $1 AND p.deleted_at IS NULL
         ORDER BY pbp.created_at DESC
         LIMIT $2 OFFSET $3
     ";

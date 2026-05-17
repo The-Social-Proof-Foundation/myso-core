@@ -19,6 +19,23 @@ use crate::reader::types::{
 };
 use myso_pg_db::Db;
 
+async fn require_active_platform(db: &Db, platform_id: &str) -> Result<(), SocialError> {
+    let mut conn = db.connect().await?;
+    let visible: i64 = platforms::table
+        .filter(platforms::platform_id.eq(platform_id))
+        .filter(platforms::deleted_at.is_null())
+        .count()
+        .get_result(&mut conn)
+        .await?;
+    if visible > 0 {
+        return Ok(());
+    }
+    Err(SocialError::not_found(format!(
+        "Platform '{}'",
+        platform_id
+    )))
+}
+
 pub(crate) async fn list_platforms(
     db: &Db,
     approved_only: bool,
@@ -71,6 +88,7 @@ pub(crate) async fn get_platform_moderators(
     limit: i64,
     offset: i64,
 ) -> Result<Vec<PlatformModeratorRow>, SocialError> {
+    require_active_platform(db, platform_id).await?;
     let mut conn = db.connect().await?;
     let results = platform_moderators::table
         .filter(platform_moderators::platform_id.eq(platform_id))
@@ -127,6 +145,7 @@ pub(crate) async fn get_platform_blocked_profiles(
     limit: i64,
     offset: i64,
 ) -> Result<Vec<PlatformBlockedProfileRow>, SocialError> {
+    require_active_platform(db, platform_id).await?;
     let mut conn = db.connect().await?;
     let results = platform_blocked_profiles::table
         .filter(platform_blocked_profiles::platform_id.eq(platform_id))
@@ -158,6 +177,7 @@ pub(crate) async fn get_platform_members(
     limit: i64,
     offset: i64,
 ) -> Result<Vec<PlatformMemberRow>, SocialError> {
+    require_active_platform(db, platform_id).await?;
     let mut conn = db.connect().await?;
     let results = platform_memberships::table
         .filter(platform_memberships::platform_id.eq(platform_id))
@@ -184,6 +204,7 @@ pub(crate) async fn check_platform_membership(
     platform_id: &str,
     profile_address: &str,
 ) -> Result<bool, SocialError> {
+    require_active_platform(db, platform_id).await?;
     let mut conn = db.connect().await?;
     let count: i64 = platform_memberships::table
         .filter(platform_memberships::platform_id.eq(platform_id))
@@ -200,6 +221,7 @@ pub(crate) async fn get_platform_events(
     limit: i64,
     offset: i64,
 ) -> Result<(Vec<PlatformEventRow>, i64), SocialError> {
+    require_active_platform(db, platform_id).await?;
     let mut conn = db.connect().await?;
     let total: i64 = platform_events::table
         .filter(platform_events::platform_id.eq(platform_id))

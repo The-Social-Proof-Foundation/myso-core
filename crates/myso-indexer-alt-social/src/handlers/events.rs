@@ -1478,7 +1478,7 @@ pub struct BcsModeratorRemovedEvent {
     removed_by: AccountAddress,
 }
 
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Deserialize, Serialize)]
 pub struct BcsPlatformDeletedEvent {
     platform_id: AccountAddress,
     name: String,
@@ -3625,6 +3625,65 @@ mod tests {
         let parsed = result.unwrap();
         assert_eq!(parsed["platform_id"], "0xabc");
         assert_eq!(parsed["name"], "Test");
+    }
+
+    /// BCS serialization matches Move `platform::PlatformDeletedEvent`; handlers produce delete + audit rows.
+    #[test]
+    fn platform_deleted_event_bcs_parse_then_handler_row_shape() {
+        use crate::handlers::platform::handle_platform_event;
+        use crate::handlers::SocialEventRow;
+        use chrono::{TimeZone, Utc};
+
+        let pid = AccountAddress::from_hex_literal(
+            "0xabcdef0123456789abcdef0123456789abcdef0123456789abcdef0123456789",
+        )
+        .unwrap();
+        let dev = AccountAddress::from_hex_literal(
+            "0xbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+        )
+        .unwrap();
+        let by = AccountAddress::from_hex_literal(
+            "0xcccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
+        )
+        .unwrap();
+        let timestamp_ms = 987_654_321_000u64;
+        let ev = BcsPlatformDeletedEvent {
+            platform_id: pid,
+            name: "n".into(),
+            developer: dev,
+            deleted_by: by,
+            timestamp: timestamp_ms,
+            reasoning: None,
+        };
+        let bytes = bcs::to_bytes(&ev).expect("serialize PlatformDeletedEvent BCS fixture");
+        let json = parse_event_contents("platform", "PlatformDeletedEvent", &bytes)
+            .expect("parse_event_contents should succeed for PlatformDeletedEvent BCS");
+        let deleted_at_naive = {
+            let secs = (timestamp_ms / 1000) as i64;
+            let nsecs = ((timestamp_ms % 1000) * 1_000_000) as u32;
+            Utc.timestamp_opt(secs, nsecs)
+                .single()
+                .expect("fixture timestamp fits in naive datetime")
+                .naive_utc()
+        };
+        let event_id = "digest:99";
+        let rows = handle_platform_event("PlatformDeletedEvent", &json, event_id)
+            .expect("handler should deserialize JSON from BCS path");
+        assert_eq!(rows.len(), 2);
+        match &rows[0] {
+            SocialEventRow::PlatformDeleted { deleted_at, .. } => {
+                assert_eq!(deleted_at, &deleted_at_naive)
+            }
+            other => panic!("expected PlatformDeleted, got {:?}", other),
+        }
+        match &rows[1] {
+            SocialEventRow::PlatformEvent(row) => {
+                assert_eq!(row.event_type, "PlatformDeleted");
+                assert!(row.reasoning.is_none());
+                assert_eq!(row.event_id.as_deref(), Some(event_id));
+            }
+            other => panic!("expected PlatformEvent, got {:?}", other),
+        }
     }
 
     #[test]

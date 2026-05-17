@@ -215,9 +215,9 @@ struct TokenAirdropEvent {
 #[derive(Debug, Deserialize)]
 struct PlatformDeletedEvent {
     platform_id: String,
-    _name: String,
-    _developer: String,
-    _deleted_by: String,
+    name: String,
+    developer: String,
+    deleted_by: String,
     #[serde(deserialize_with = "de_u64")]
     timestamp: u64,
     #[serde(default)]
@@ -702,21 +702,30 @@ fn process_platform_deleted_event(
         data,
         "platform PlatformDeletedEvent JSON did not match PlatformDeletedEvent",
     )?;
-    let deleted_at = ms_to_naive(ev.timestamp);
+    let PlatformDeletedEvent {
+        platform_id,
+        name,
+        developer,
+        deleted_by,
+        timestamp,
+        reasoning,
+    } = ev;
+    std::mem::drop((name, developer, deleted_by));
+    let deleted_at = ms_to_naive(timestamp);
 
     let now = Utc::now().naive_utc();
     let platform_event = NewPlatformEvent {
         event_type: "PlatformDeleted".to_string(),
-        platform_id: ev.platform_id.clone(),
+        platform_id: platform_id.clone(),
         event_data: data.clone(),
         event_id: Some(event_id.to_string()),
         created_at: now,
-        reasoning: ev.reasoning,
+        reasoning,
     };
 
     Some(vec![
         SocialEventRow::PlatformDeleted {
-            platform_id: ev.platform_id,
+            platform_id,
             deleted_at,
         },
         SocialEventRow::PlatformEvent(platform_event),
@@ -744,4 +753,63 @@ fn process_treasury_funded_event(
         reasoning: None,
     };
     Some(vec![SocialEventRow::PlatformEvent(platform_event)])
+}
+
+#[cfg(test)]
+mod platform_deleted_tests {
+    use chrono::{TimeZone, Utc};
+
+    use super::handle_platform_event;
+    use crate::handlers::SocialEventRow;
+
+    fn naive_from_chain_ms(ms: u64) -> chrono::NaiveDateTime {
+        if ms == 0 {
+            return Utc::now().naive_utc();
+        }
+        let secs = (ms / 1000) as i64;
+        let nsecs = ((ms % 1000) * 1_000_000) as u32;
+        Utc.timestamp_opt(secs, nsecs)
+            .single()
+            .unwrap_or_else(Utc::now)
+            .naive_utc()
+    }
+
+    #[test]
+    fn platform_deleted_event_json_through_handler() {
+        let ts_ms = 1_735_891_200_000u64;
+        let json = serde_json::json!({
+            "platform_id": "0xabcdef0123456789abcdef0123456789abcdef0123456789abcdef0123456789",
+            "name": "Removed",
+            "developer": "0xbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+            "deleted_by": "0xcccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
+            "timestamp": ts_ms,
+            "reasoning": "cleanup",
+        });
+        let event_id = "digest:42";
+        let rows = handle_platform_event("PlatformDeletedEvent", &json, event_id)
+            .expect("handler should recognize PlatformDeletedEvent");
+        assert_eq!(rows.len(), 2);
+
+        let SocialEventRow::PlatformDeleted {
+            platform_id,
+            deleted_at,
+        } = &rows[0]
+        else {
+            panic!("expected PlatformDeleted row first, got {:?}", rows[0]);
+        };
+        assert_eq!(
+            platform_id.as_str(),
+            "0xabcdef0123456789abcdef0123456789abcdef0123456789abcdef0123456789"
+        );
+        assert_eq!(deleted_at, &naive_from_chain_ms(ts_ms));
+
+        let SocialEventRow::PlatformEvent(ev) = &rows[1] else {
+            panic!("expected PlatformEvent row second, got {:?}", rows[1]);
+        };
+        assert_eq!(ev.event_type, "PlatformDeleted");
+        assert_eq!(ev.event_id.as_deref(), Some(event_id));
+        assert_eq!(ev.platform_id.as_str(), platform_id.as_str());
+        assert_eq!(ev.reasoning.as_deref(), Some("cleanup"));
+        assert_eq!(&ev.event_data, &json);
+    }
 }
