@@ -1,5 +1,6 @@
 ---
 source: crates/myso-indexer-alt-graphql/src/lib.rs
+assertion_line: 493
 expression: sdl
 ---
 """
@@ -3559,6 +3560,10 @@ type MyDataRecord {
 	"""
 	accessLogs(limit: Int, offset: Int): [MyDataAccessLog!]
 	"""
+	How the dataset was collected (e.g. "cli", "automated").
+	"""
+	collectionMethod: String
+	"""
 	Epoch timestamp when the record was created.
 	"""
 	createdAt: Int!
@@ -3622,10 +3627,6 @@ type MyDataRecord {
 	Sample size for the dataset.
 	"""
 	sampleSize: Int
-	"""
-	How the dataset was collected (e.g. "cli", "automated").
-	"""
-	collectionMethod: String
 	"""
 	Aggregated stats for this MyData record.
 	"""
@@ -4359,10 +4360,6 @@ type Platform implements Node {
 	"""
 	termsOfService: String
 	"""
-	Treasury balance.
-	"""
-	treasury: Int
-	"""
 	When the platform was last updated (epoch milliseconds).
 	"""
 	updatedAt: Int!
@@ -4473,11 +4470,7 @@ type PlatformMembershipSummary {
 	tagline: String!
 	termsOfService: String
 	"""
-	Treasury balance in MYSO base units (nullable when unknown); same semantics as `Platform.treasury`.
-	"""
-	treasury: Int
-	"""
-	On-chain treasury object id is not stored on `platforms`; always null until indexed elsewhere.
+	On-chain treasury is not mirrored in Postgres; read the platform object via RPC when needed.
 	"""
 	treasuryAddress: String
 	"""

@@ -3951,6 +3951,63 @@ mod tests {
         assert_eq!(json["amount"], 500);
     }
 
+    /// `SubPoolCreatedEvent` BCS matches `social_contracts::mydata` (`mydata.move`).
+    ///
+    /// Fixture addresses mirror a real `create_sub_pool` flow (checkpoint ~77472): dynamic-field
+    /// value object id and a pool-registry parent id from transaction effects. When validating
+    /// against RPC, replace `contents` with raw bytes from `events[].contents` for that tx.
+    #[test]
+    fn test_parse_sub_pool_created_event_from_live_transaction() {
+        use move_core_types::account_address::AccountAddress;
+
+        use crate::handlers::mydata;
+        use crate::handlers::SocialEventRow;
+
+        let sub_pool_id = AccountAddress::from_hex_literal(
+            "0x2147facf6a89c71b6fe2144647a0810f9eaf2e755235f61b94bd18f624f85cb1",
+        )
+        .unwrap();
+        let broad_pool_id = AccountAddress::from_hex_literal(
+            "0x31c6d92c219148254d4d8646f0fab639e812e19371fcb6d256d4ae138788b76d",
+        )
+        .unwrap();
+
+        let ev = BcsSubPoolCreatedEvent {
+            sub_pool_id,
+            broad_pool_id,
+            name: "research".to_string(),
+            created_at: 1_717_171_717_000,
+        };
+        let contents = bcs::to_bytes(&ev).expect("SubPoolCreatedEvent BCS");
+
+        let json = parse_event_contents("mydata", "SubPoolCreatedEvent", &contents)
+            .expect("parse_event_contents full dispatch");
+        assert_eq!(json["name"], "research");
+        assert_eq!(
+            json["sub_pool_id"].as_str().unwrap(),
+            "0x2147facf6a89c71b6fe2144647a0810f9eaf2e755235f61b94bd18f624f85cb1"
+        );
+        assert_eq!(
+            json["broad_pool_id"].as_str().unwrap(),
+            "0x31c6d92c219148254d4d8646f0fab639e812e19371fcb6d256d4ae138788b76d"
+        );
+
+        let rows = mydata::handle_mydata_event("SubPoolCreatedEvent", &json, "digest:7")
+            .expect("handler produces rows");
+        assert_eq!(rows.len(), 1);
+        match &rows[0] {
+            SocialEventRow::MyDataQuerySubPool(sp) => {
+                assert_eq!(sp.sub_pool_id, json["sub_pool_id"].as_str().unwrap());
+                assert_eq!(sp.broad_pool_id, json["broad_pool_id"].as_str().unwrap());
+                assert_eq!(sp.name, "research");
+                assert_eq!(sp.created_at_ms, 1_717_171_717_000);
+                assert_eq!(sp.event_id, "digest:7");
+                assert_eq!(sp.transaction_id, "digest");
+            }
+            _ => panic!("expected MyDataQuerySubPool row"),
+        }
+    }
+
     #[test]
     fn post_reported_event_bcs_round_trip() {
         let post_id = AccountAddress::from_hex_literal(

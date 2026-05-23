@@ -9,19 +9,56 @@ use myso_indexer_alt_social_schema::models::{
     NewMyDataRegistry, NewMyDataRevenue, NewMyDataSubscription,
 };
 
-fn json_to_i64(v: &serde_json::Value) -> i64 {
+pub(crate) fn json_to_i64(v: &serde_json::Value) -> i64 {
     v.as_i64()
         .or_else(|| v.as_u64().and_then(|u| u.try_into().ok()))
         .unwrap_or(0)
 }
 
-fn json_opt_i64(v: &serde_json::Value) -> Option<i64> {
+pub(crate) fn json_opt_i64(v: &serde_json::Value) -> Option<i64> {
     v.as_i64()
         .or_else(|| v.as_u64().and_then(|u| u.try_into().ok()))
 }
 
-fn u64_to_db_i64(n: u64) -> i64 {
+pub(crate) fn json_opt_i64_field(data: &serde_json::Value, key: &str) -> Option<i64> {
+    data.get(key).and_then(json_opt_i64)
+}
+
+pub(crate) fn json_opt_string_field(data: &serde_json::Value, key: &str) -> Option<String> {
+    data.get(key).and_then(|v| v.as_str()).map(String::from)
+}
+
+pub(crate) fn json_tags_field(data: &serde_json::Value) -> serde_json::Value {
+    data.get("tags")
+        .and_then(|v| v.as_array())
+        .map(|arr| {
+            serde_json::json!(
+                arr.iter()
+                    .filter_map(|t| t.as_str().map(String::from))
+                    .collect::<Vec<_>>()
+            )
+        })
+        .unwrap_or_else(|| serde_json::json!([]))
+}
+
+pub(crate) fn u64_to_db_i64(n: u64) -> i64 {
     i64::try_from(n).unwrap_or(i64::MAX)
+}
+
+pub(crate) fn new_mydata_registry_row(
+    ip_id: String,
+    owner: String,
+    registered_at: i64,
+    transaction_id: String,
+) -> NewMyDataRegistry {
+    NewMyDataRegistry {
+        ip_id,
+        owner,
+        registered_at,
+        unregistered_at: None,
+        is_active: true,
+        transaction_id,
+    }
 }
 
 pub fn handle_mydata_event(
@@ -68,16 +105,12 @@ fn process_mydata_registered_event(
     let owner = data.get("owner")?.as_str()?.to_string();
     let registered_at = json_to_i64(data.get("registered_at")?);
 
-    let reg = NewMyDataRegistry {
-        ip_id: ip_id.clone(),
-        owner: owner.clone(),
+    Some(vec![SocialEventRow::MyDataRegistry(new_mydata_registry_row(
+        ip_id,
+        owner,
         registered_at,
-        unregistered_at: None,
-        is_active: true,
-        transaction_id: transaction_id.to_string(),
-    };
-
-    Some(vec![SocialEventRow::MyDataRegistry(reg)])
+        transaction_id.to_string(),
+    ))])
 }
 
 fn process_mydata_unregistered_event(
@@ -103,38 +136,46 @@ fn process_mydata_created_event(
     let ip_id = data.get("ip_id")?.as_str()?.to_string();
     let owner = data.get("owner")?.as_str()?.to_string();
     let media_type = data.get("media_type")?.as_str()?.to_string();
-    let platform_id = data
-        .get("platform_id")
-        .and_then(|v| v.as_str())
-        .map(String::from);
-    let one_time_price = data.get("one_time_price").and_then(json_opt_i64);
-    let subscription_price = data.get("subscription_price").and_then(json_opt_i64);
+    let platform_id = json_opt_string_field(data, "platform_id");
+    let one_time_price = json_opt_i64_field(data, "one_time_price");
+    let subscription_price = json_opt_i64_field(data, "subscription_price");
     let created_at = json_to_i64(data.get("created_at")?);
 
     let new_data = NewMyDataData {
         mydata_id: ip_id.clone(),
         owner: owner.clone(),
         media_type,
-        tags: serde_json::json!([]),
+        tags: json_tags_field(data),
         platform_id,
-        timestamp_start: 0,
-        timestamp_end: None,
+        timestamp_start: json_opt_i64_field(data, "timestamp_start").unwrap_or(0),
+        timestamp_end: json_opt_i64_field(data, "timestamp_end"),
         created_at,
-        last_updated: created_at,
+        last_updated: json_opt_i64_field(data, "last_updated").unwrap_or(created_at),
         one_time_price,
         subscription_price,
-        subscription_duration_days: 30,
-        geographic_region: None,
-        data_quality: None,
-        sample_size: None,
-        collection_method: None,
-        is_updating: false,
-        update_frequency: None,
-        version: 1,
+        subscription_duration_days: json_opt_i64_field(data, "subscription_duration_days")
+            .unwrap_or(30),
+        geographic_region: json_opt_string_field(data, "geographic_region"),
+        data_quality: json_opt_string_field(data, "data_quality"),
+        sample_size: json_opt_i64_field(data, "sample_size"),
+        collection_method: json_opt_string_field(data, "collection_method"),
+        is_updating: data.get("is_updating").and_then(|v| v.as_bool()).unwrap_or(false),
+        update_frequency: json_opt_string_field(data, "update_frequency"),
+        version: json_opt_i64_field(data, "version").unwrap_or(1),
         transaction_id: transaction_id.to_string(),
     };
 
-    Some(vec![SocialEventRow::MyDataData(new_data)])
+    let registry = new_mydata_registry_row(
+        ip_id,
+        owner,
+        created_at,
+        transaction_id.to_string(),
+    );
+
+    Some(vec![
+        SocialEventRow::MyDataData(new_data),
+        SocialEventRow::MyDataRegistry(registry),
+    ])
 }
 
 fn process_mydata_purchase_event(
@@ -435,4 +476,36 @@ fn process_query_claim_executed(
             transaction_id,
         },
     )])
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::handlers::SocialEventRow;
+
+    #[test]
+    fn mydata_created_event_populates_metadata_from_json() {
+        let data = serde_json::json!({
+            "ip_id": "0x0206060712ef2d2a73c0a03a3502ad289907eabe7f7797cb2f4ff9cc01f0932c",
+            "owner": "0x2458950181e415250823d6ce1d55f2b3427826a111939e0d6d38e9a1397411d8",
+            "media_type": "demo:bf-hmac-encrypt-hmac",
+            "tags": ["cli-demo"],
+            "created_at": 1_000,
+            "subscription_duration_days": 45,
+            "geographic_region": "US",
+            "data_quality": "high",
+            "collection_method": "cli",
+        });
+        let rows = process_mydata_created_event(&data, "tx_digest").expect("rows");
+        assert_eq!(rows.len(), 2);
+        let SocialEventRow::MyDataData(d) = &rows[0] else {
+            panic!("expected MyDataData");
+        };
+        assert_eq!(d.tags, serde_json::json!(["cli-demo"]));
+        assert_eq!(d.geographic_region.as_deref(), Some("US"));
+        assert_eq!(d.data_quality.as_deref(), Some("high"));
+        assert_eq!(d.collection_method.as_deref(), Some("cli"));
+        assert_eq!(d.subscription_duration_days, 45);
+        assert!(matches!(&rows[1], SocialEventRow::MyDataRegistry(_)));
+    }
 }

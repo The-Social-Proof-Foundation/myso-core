@@ -3555,6 +3555,10 @@ type MyDataRecord {
 	"""
 	accessLogs(limit: Int, offset: Int): [MyDataAccessLog!]
 	"""
+	How the dataset was collected (e.g. "cli", "automated").
+	"""
+	collectionMethod: String
+	"""
 	Epoch timestamp when the record was created.
 	"""
 	createdAt: Int!
@@ -4461,7 +4465,7 @@ type PlatformMembershipSummary {
 	tagline: String!
 	termsOfService: String
 	"""
-	On-chain MYSO treasury is not mirrored in Postgres; read the platform object via RPC when needed.
+	On-chain treasury is not mirrored in Postgres; read the platform object via RPC when needed.
 	"""
 	treasuryAddress: String
 	"""

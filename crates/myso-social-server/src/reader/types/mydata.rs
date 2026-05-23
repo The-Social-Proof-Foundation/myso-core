@@ -37,6 +37,8 @@ pub struct MyDataBasic {
     pub data_quality: Option<String>,
     #[diesel(sql_type = Nullable<BigInt>)]
     pub sample_size: Option<i64>,
+    #[diesel(sql_type = Nullable<Text>)]
+    pub collection_method: Option<String>,
     #[diesel(sql_type = Bool)]
     pub is_updating: bool,
     #[diesel(sql_type = Nullable<Text>)]

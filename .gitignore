@@ -69,12 +69,20 @@ yarn-error.log*
 # misc
 *.key
 .env
+**/interact_addrs.env
+**/network.config/mydata/marketplace-session.env
 checkpoints_dir/*
 light_client.yaml
 docs/content/references/myso-api/myso-graphql/*
 docs/content/references/framework/**
 docs/subtrees
 lcov.info
+
+crates/mys-indexer
+crates.memwal/*
+crates/sui-stack-messaging-main/*
+examples/rust/clickhouse-myso-indexer/*
+genesis/*
 
 .sparse
 docs/content/documentation.json

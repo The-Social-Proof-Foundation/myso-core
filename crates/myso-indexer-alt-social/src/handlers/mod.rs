@@ -16,6 +16,7 @@ mod insurance;
 mod insurance_handler;
 mod mydata;
 mod mydata_handler;
+mod mydata_object;
 mod platform;
 mod platform_handler;
 mod poc;

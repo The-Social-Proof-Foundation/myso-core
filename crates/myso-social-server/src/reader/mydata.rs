@@ -22,7 +22,7 @@ pub(crate) async fn get_mydata_by_id(
     let query = "
         SELECT mydata_id, owner, media_type, tags, platform_id, timestamp_start, timestamp_end,
                created_at, last_updated, one_time_price, subscription_price, subscription_duration_days,
-               geographic_region, data_quality, sample_size, is_updating, update_frequency
+               geographic_region, data_quality, sample_size, collection_method, is_updating, update_frequency
         FROM mydata_data
         WHERE mydata_id = $1
     ";
@@ -53,7 +53,7 @@ pub(crate) async fn list_mydata(
         "
         SELECT mydata_id, owner, media_type, tags, platform_id, timestamp_start, timestamp_end,
                created_at, last_updated, one_time_price, subscription_price, subscription_duration_days,
-               geographic_region, data_quality, sample_size, is_updating, update_frequency
+               geographic_region, data_quality, sample_size, collection_method, is_updating, update_frequency
         FROM mydata_data
         WHERE ($1::text IS NULL OR owner = $1)
           AND ($2::text IS NULL OR media_type = $2)
@@ -102,7 +102,7 @@ pub(crate) async fn get_popular_mydata(
         SELECT DISTINCT
             d.mydata_id, d.owner, d.media_type, d.tags, d.platform_id, d.timestamp_start, d.timestamp_end,
             d.created_at, d.last_updated, d.one_time_price, d.subscription_price, d.subscription_duration_days,
-            d.geographic_region, d.data_quality, d.sample_size, d.is_updating, d.update_frequency
+            d.geographic_region, d.data_quality, d.sample_size, d.collection_method, d.is_updating, d.update_frequency
         FROM mydata_data d
         LEFT JOIN mydata_purchases p ON d.mydata_id = p.mydata_id
         LEFT JOIN mydata_revenue r ON d.mydata_id = r.mydata_id
@@ -110,7 +110,7 @@ pub(crate) async fn get_popular_mydata(
         WHERE (d.one_time_price IS NOT NULL OR d.subscription_price IS NOT NULL)
         GROUP BY d.mydata_id, d.owner, d.media_type, d.tags, d.platform_id, d.timestamp_start, d.timestamp_end,
                  d.created_at, d.last_updated, d.one_time_price, d.subscription_price, d.subscription_duration_days,
-                 d.geographic_region, d.data_quality, d.sample_size, d.is_updating, d.update_frequency
+                 d.geographic_region, d.data_quality, d.sample_size, d.collection_method, d.is_updating, d.update_frequency
         ORDER BY (COUNT(p.id) + COUNT(r.id) + COUNT(a.id)) DESC, d.created_at DESC
         LIMIT $1 OFFSET $2
     ";
@@ -224,7 +224,7 @@ pub(crate) async fn get_creator_mydata(
     let query = "
         SELECT mydata_id, owner, media_type, tags, platform_id, timestamp_start, timestamp_end,
                created_at, last_updated, one_time_price, subscription_price, subscription_duration_days,
-               geographic_region, data_quality, sample_size, is_updating, update_frequency
+               geographic_region, data_quality, sample_size, collection_method, is_updating, update_frequency
         FROM mydata_data
         WHERE owner = $1
         ORDER BY created_at DESC

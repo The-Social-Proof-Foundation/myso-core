@@ -3,6 +3,7 @@
 
 //! MyData pipeline: indexes `mydata` and `my_ip` module events (social_contracts query marketplace emits from `mydata`).
 
+use std::collections::HashSet;
 use std::sync::Arc;
 
 use anyhow::Result;
@@ -32,6 +33,8 @@ use myso_indexer_alt_social_schema::schema::{
 use super::common;
 use super::events;
 use super::mydata;
+use super::mydata_object;
+use crate::metrics::SocialMetrics;
 
 const MYDATA_MODULES: &[&str] = &["mydata", "my_ip"];
 
@@ -145,7 +148,24 @@ impl Processor for MyDataHandler {
     type Value = MyDataRow;
 
     async fn process(&self, checkpoint: &Arc<Checkpoint>) -> Result<Vec<Self::Value>> {
-        let mut values = Vec::new();
+        let mut values = mydata_object::process_mydata_objects_from_checkpoint(checkpoint);
+
+        let mut object_mydata_ids: HashSet<String> = values
+            .iter()
+            .filter_map(|row| match row {
+                MyDataRow::MyDataData(d) => Some(d.mydata_id.clone()),
+                _ => None,
+            })
+            .collect();
+
+        let mut registry_ip_ids: HashSet<String> = values
+            .iter()
+            .filter_map(|row| match row {
+                MyDataRow::MyDataRegistry(r) => Some(r.ip_id.clone()),
+                _ => None,
+            })
+            .collect();
+
         for tx in &checkpoint.transactions {
             let tx_digest = tx.transaction.digest().to_string();
             let Some(events) = &tx.events else {
@@ -164,12 +184,41 @@ impl Processor for MyDataHandler {
                 let event_data =
                     match events::parse_event_contents(module, event_name, &ev.contents) {
                         Ok(v) => v,
-                        Err(_) => continue,
+                        Err(e) => {
+                            tracing::warn!(
+                                tx_digest = %tx_digest,
+                                module,
+                                event_name,
+                                error = %e,
+                                hex_preview = %e.contents_hex_preview(48),
+                                "mydata pipeline: event contents parse failed; skipping event"
+                            );
+                            SocialMetrics::record_event_bcs_parse_failed(module, event_name);
+                            continue;
+                        }
                     };
                 if let Some(rows) = mydata::handle_mydata_event(event_name, &event_data, &event_id)
                 {
                     for row in rows {
+                        let skip = match &row {
+                            crate::handlers::SocialEventRow::MyDataData(d) => {
+                                object_mydata_ids.contains(&d.mydata_id)
+                            }
+                            crate::handlers::SocialEventRow::MyDataRegistry(r) => {
+                                registry_ip_ids.contains(&r.ip_id)
+                            }
+                            _ => false,
+                        };
+                        if skip {
+                            continue;
+                        }
                         if let Some(r) = MyDataRow::from_social(row) {
+                            if let MyDataRow::MyDataData(d) = &r {
+                                object_mydata_ids.insert(d.mydata_id.clone());
+                            }
+                            if let MyDataRow::MyDataRegistry(r) = &r {
+                                registry_ip_ids.insert(r.ip_id.clone());
+                            }
                             values.push(r);
                         }
                     }
@@ -191,8 +240,19 @@ impl Handler for MyDataHandler {
                     let media_type = d.media_type.clone();
                     let tags = d.tags.clone();
                     let platform_id = d.platform_id.clone();
+                    let timestamp_start = d.timestamp_start;
+                    let timestamp_end = d.timestamp_end;
+                    let created_at = d.created_at;
                     let one_time_price = d.one_time_price;
                     let subscription_price = d.subscription_price;
+                    let subscription_duration_days = d.subscription_duration_days;
+                    let geographic_region = d.geographic_region.clone();
+                    let data_quality = d.data_quality.clone();
+                    let sample_size = d.sample_size;
+                    let collection_method = d.collection_method.clone();
+                    let is_updating = d.is_updating;
+                    let update_frequency = d.update_frequency.clone();
+                    let version = d.version;
                     let last_updated = d.last_updated;
                     let transaction_id = d.transaction_id.clone();
                     total += diesel::insert_into(mydata_data::table)
@@ -204,8 +264,20 @@ impl Handler for MyDataHandler {
                             mydata_data::media_type.eq(media_type),
                             mydata_data::tags.eq(tags),
                             mydata_data::platform_id.eq(platform_id),
+                            mydata_data::timestamp_start.eq(timestamp_start),
+                            mydata_data::timestamp_end.eq(timestamp_end),
+                            mydata_data::created_at.eq(created_at),
                             mydata_data::one_time_price.eq(one_time_price),
                             mydata_data::subscription_price.eq(subscription_price),
+                            mydata_data::subscription_duration_days
+                                .eq(subscription_duration_days),
+                            mydata_data::geographic_region.eq(geographic_region),
+                            mydata_data::data_quality.eq(data_quality),
+                            mydata_data::sample_size.eq(sample_size),
+                            mydata_data::collection_method.eq(collection_method),
+                            mydata_data::is_updating.eq(is_updating),
+                            mydata_data::update_frequency.eq(update_frequency),
+                            mydata_data::version.eq(version),
                             mydata_data::last_updated.eq(last_updated),
                             mydata_data::transaction_id.eq(transaction_id),
                         ))

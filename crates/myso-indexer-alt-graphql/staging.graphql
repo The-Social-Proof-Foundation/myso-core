@@ -3619,6 +3619,10 @@ type MyDataRecord {
 	"""
 	sampleSize: Int
 	"""
+	How the dataset was collected (e.g. "cli", "automated").
+	"""
+	collectionMethod: String
+	"""
 	Aggregated stats for this MyData record.
 	"""
 	stats: MyDataStats

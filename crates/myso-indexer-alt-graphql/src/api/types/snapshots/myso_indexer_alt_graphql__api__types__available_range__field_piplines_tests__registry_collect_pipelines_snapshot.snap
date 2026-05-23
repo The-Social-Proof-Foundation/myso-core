@@ -2078,6 +2078,9 @@ MyDataRecord.dataQuality
 MyDataRecord.sampleSize
   => {}
 
+MyDataRecord.collectionMethod
+  => {}
+
 MyDataRecord.isUpdating
   => {}
 
@@ -2390,9 +2393,6 @@ Platform.createdAt
 Platform.updatedAt
   => {}
 
-Platform.treasury
-  => {}
-
 Platform.wantsDaoGovernance
   => {}
 
@@ -2562,9 +2562,6 @@ PlatformMembershipSummary.quorumVotes
   => {}
 
 PlatformMembershipSummary.votingPeriodEpochs
-  => {}
-
-PlatformMembershipSummary.treasury
   => {}
 
 PlatformMembershipSummary.treasuryAddress

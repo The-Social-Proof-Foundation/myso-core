@@ -125,6 +125,11 @@ impl MyDataRecord {
         self.inner.sample_size
     }
 
+    /// How the dataset was collected (e.g. "cli", "automated").
+    async fn collection_method(&self) -> Option<&str> {
+        self.inner.collection_method.as_deref()
+    }
+
     /// Whether this data updates over time.
     async fn is_updating(&self) -> bool {
         self.inner.is_updating
