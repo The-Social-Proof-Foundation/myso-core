@@ -2072,6 +2072,9 @@ MyDataRecord.subscriptionPrice
 MyDataRecord.platformId
   => {}
 
+MyDataRecord.platform
+  => {}
+
 MyDataRecord.timestampStart
   => {}
 

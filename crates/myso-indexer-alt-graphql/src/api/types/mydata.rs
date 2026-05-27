@@ -18,6 +18,7 @@ use myso_indexer_alt_social_schema::models::{
 use crate::api::resolve_profile::resolve_profile_summary;
 use crate::api::scalars::date_time::DateTime;
 use crate::api::scalars::myso_address::MySoAddress;
+use crate::api::types::platform::{Platform, resolve_platform_by_id};
 use crate::api::types::profile_summary::ProfileSummary;
 
 fn parse_tags(value: &serde_json::Value) -> Vec<String> {
@@ -83,6 +84,12 @@ impl MyDataRecord {
     /// Optional platform identification.
     async fn platform_id(&self) -> Option<&str> {
         self.inner.platform_id.as_deref()
+    }
+
+    /// Platform details when `platform_id` is set and indexed.
+    async fn platform(&self, ctx: &Context<'_>) -> Option<Platform> {
+        let platform_id = self.inner.platform_id.as_deref()?;
+        resolve_platform_by_id(ctx, platform_id).await
     }
 
     /// Start timestamp for time-range data.

@@ -21,7 +21,7 @@ use myso_indexer_alt_social_schema::models::{
 use crate::api::resolve_profile::resolve_profile_summary;
 use crate::api::scalars::json::Json;
 use crate::api::scalars::myso_address::MySoAddress;
-use crate::api::types::platform::Platform;
+use crate::api::types::platform::{Platform, resolve_platform_by_id};
 use crate::api::types::profile_summary::ProfileSummary;
 
 #[derive(Enum, Copy, Clone, Eq, PartialEq)]
@@ -968,18 +968,18 @@ impl GovernanceRegistry {
 
     /// Platform details (when registry_type=2). Resolved by platform_id when from governanceRegistry(platformId), else by registry_id.
     async fn platform(&self, ctx: &Context<'_>) -> Option<Platform> {
+        if let Some(pid) = &self.platform_id {
+            return resolve_platform_by_id(ctx, pid).await;
+        }
+        if self.inner.registry_type != 2 {
+            return None;
+        }
         let reader_opt = ctx.data_opt::<Arc<Option<SocialPgReader>>>()?;
         let reader = reader_opt.as_ref().as_ref()?;
-        let row = if let Some(pid) = &self.platform_id {
-            reader.get_platform_by_id(pid).await.ok()?
-        } else if self.inner.registry_type == 2 {
-            reader
-                .get_platform_by_registry_id(&self.inner.registry_id)
-                .await
-                .ok()?
-        } else {
-            return None;
-        };
+        let row = reader
+            .get_platform_by_registry_id(&self.inner.registry_id)
+            .await
+            .ok()?;
         row.map(Platform::from_db)
     }
 }

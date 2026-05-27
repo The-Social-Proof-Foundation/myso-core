@@ -3608,6 +3608,10 @@ type MyDataRecord {
 	"""
 	ownerProfile: ProfileSummary
 	"""
+	Platform details when `platform_id` is set and indexed.
+	"""
+	platform: Platform
+	"""
 	Optional platform identification.
 	"""
 	platformId: String
