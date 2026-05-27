@@ -14,6 +14,8 @@ mod governance;
 mod governance_handler;
 mod insurance;
 mod insurance_handler;
+mod memory;
+mod memory_handler;
 mod mydata;
 mod mydata_handler;
 mod mydata_object;
@@ -46,7 +48,7 @@ use myso_indexer_alt_social_schema::models::{
     NewMyDataAccessLog, NewMyDataConfig, NewMyDataData, NewMyDataPurchase, NewMyDataQueryBroadPool,
     NewMyDataQueryClaim, NewMyDataQueryDistributionRound, NewMyDataQueryListingSubPool,
     NewMyDataQueryMerkleRoot, NewMyDataQuerySnapshotAnchor, NewMyDataQuerySubPool,
-    NewMyDataRegistry, NewMyDataRevenue, NewMyDataSubscription, NewNominatedDelegate,
+    NewMyDataRegistry, NewMyDataRevenue, NewMyDataSubscription, NewMemoryAccount, NewNominatedDelegate,
     NewObjectMigratedEvent, NewPlatform, NewPlatformBlockedProfile, NewPlatformEvent,
     NewPlatformMembership, NewPlatformModerator, NewPlatformTokenAirdrop, NewPocAnalysisResult,
     NewPocBadge, NewPocConfiguration, NewPocDispute, NewPocDisputeVote, NewPocRevenueRedirection,
@@ -57,13 +59,14 @@ use myso_indexer_alt_social_schema::models::{
     NewSocialProofTokensEvent, NewSpotBet, NewSpotBetWithdrawal, NewSpotConfig, NewSpotEventLog,
     NewSpotPayout, NewSpotRecord, NewSpotRefund, NewSpotResolution, NewSptExchangeConfig,
     NewSptHolding, NewSptPool, NewSptPriceHistory, NewSptReservation, NewSptReservationPool,
-    NewSptTransaction, NewSubscriptionEvent, NewTip, NewUnifiedRevenue, NewUpgradeEvent,
+    NewSptTransaction, NewSubAgent, NewSubAgentEvent, NewSubscriptionEvent, NewTip, NewUnifiedRevenue, NewUpgradeEvent,
     NewVestingEvent, NewVestingWallet, NewVoteDecryptionFailure, ProposalUpdateSet,
 };
 
 pub use blocking_handler::BlockingHandler;
 pub use governance_handler::GovernanceHandler;
 pub use insurance_handler::InsuranceHandler;
+pub use memory_handler::MemoryHandler;
 pub use mydata_handler::MyDataHandler;
 pub use platform_handler::PlatformHandler;
 pub use posts_handler::PostsHandler;
@@ -611,6 +614,38 @@ pub enum SocialEventRow {
         auto_renewed: bool,
         transaction_id: String,
     },
+    MemoryAccount(NewMemoryAccount),
+    SubAgentUpsert(NewSubAgent),
+    SubAgentDeactivate {
+        agent_object_id: String,
+        deactivated_at_ms: i64,
+        event_id: String,
+        transaction_id: String,
+    },
+    SubAgentRevoke {
+        agent_object_id: String,
+        revoked_at_ms: i64,
+        event_id: String,
+        transaction_id: String,
+    },
+    SubAgentBulkClear {
+        account_id: String,
+        new_principal_owner: String,
+        profile_id: String,
+        revoked_at_ms: i64,
+        revoked_count: i64,
+        event_id: String,
+        transaction_id: String,
+    },
+    ProfileMemoryAccountLink {
+        profile_id: String,
+        memory_account_id: String,
+    },
+    MemoryAccountActiveUpdate {
+        account_id: String,
+        active: bool,
+    },
+    SubAgentEvent(NewSubAgentEvent),
 }
 
 #[derive(Debug, Clone)]
@@ -644,7 +679,7 @@ pub struct ProfileUpdate {
 }
 
 impl FieldCount for SocialEventRow {
-    const FIELD_COUNT: usize = 121;
+    const FIELD_COUNT: usize = 130;
 }
 
 // SocialEvents pipeline removed: profile and post events now handled by ProfilesHandler and PostsHandler.

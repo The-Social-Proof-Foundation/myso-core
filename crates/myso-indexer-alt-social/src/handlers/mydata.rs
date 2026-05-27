@@ -32,11 +32,10 @@ pub(crate) fn json_tags_field(data: &serde_json::Value) -> serde_json::Value {
     data.get("tags")
         .and_then(|v| v.as_array())
         .map(|arr| {
-            serde_json::json!(
-                arr.iter()
-                    .filter_map(|t| t.as_str().map(String::from))
-                    .collect::<Vec<_>>()
-            )
+            serde_json::json!(arr
+                .iter()
+                .filter_map(|t| t.as_str().map(String::from))
+                .collect::<Vec<_>>())
         })
         .unwrap_or_else(|| serde_json::json!([]))
 }
@@ -105,12 +104,9 @@ fn process_mydata_registered_event(
     let owner = data.get("owner")?.as_str()?.to_string();
     let registered_at = json_to_i64(data.get("registered_at")?);
 
-    Some(vec![SocialEventRow::MyDataRegistry(new_mydata_registry_row(
-        ip_id,
-        owner,
-        registered_at,
-        transaction_id.to_string(),
-    ))])
+    Some(vec![SocialEventRow::MyDataRegistry(
+        new_mydata_registry_row(ip_id, owner, registered_at, transaction_id.to_string()),
+    )])
 }
 
 fn process_mydata_unregistered_event(
@@ -159,18 +155,16 @@ fn process_mydata_created_event(
         data_quality: json_opt_string_field(data, "data_quality"),
         sample_size: json_opt_i64_field(data, "sample_size"),
         collection_method: json_opt_string_field(data, "collection_method"),
-        is_updating: data.get("is_updating").and_then(|v| v.as_bool()).unwrap_or(false),
+        is_updating: data
+            .get("is_updating")
+            .and_then(|v| v.as_bool())
+            .unwrap_or(false),
         update_frequency: json_opt_string_field(data, "update_frequency"),
         version: json_opt_i64_field(data, "version").unwrap_or(1),
         transaction_id: transaction_id.to_string(),
     };
 
-    let registry = new_mydata_registry_row(
-        ip_id,
-        owner,
-        created_at,
-        transaction_id.to_string(),
-    );
+    let registry = new_mydata_registry_row(ip_id, owner, created_at, transaction_id.to_string());
 
     Some(vec![
         SocialEventRow::MyDataData(new_data),

@@ -295,6 +295,7 @@ impl Query {
         ctx: &Context<'_>,
         owner: Option<String>,
         post_type: Option<String>,
+        sub_agent_id: Option<String>,
         limit: Option<u64>,
         offset: Option<u64>,
     ) -> Option<Result<Vec<Post>, RpcError>> {
@@ -305,10 +306,55 @@ impl Query {
         let offset = offset.unwrap_or(0) as i64;
         Some(
             reader
-                .list_posts(owner.as_deref(), post_type.as_deref(), limit, offset)
+                .list_posts(
+                    owner.as_deref(),
+                    post_type.as_deref(),
+                    sub_agent_id.as_deref(),
+                    limit,
+                    offset,
+                )
                 .await
                 .map_err(Into::into)
                 .map(|v| v.into_iter().map(Post::from_db).collect()),
+        )
+    }
+
+    /// Fetch a sub-agent by derived address.
+    async fn sub_agent(
+        &self,
+        ctx: &Context<'_>,
+        derived_address: MySoAddress,
+    ) -> Option<Result<Option<crate::api::types::memory::SubAgent>, RpcError>> {
+        use crate::api::types::memory::SubAgent;
+        let reader_opt = ctx
+            .data_opt::<std::sync::Arc<Option<myso_indexer_alt_social_reader::SocialPgReader>>>()?;
+        let reader = reader_opt.as_ref().as_ref()?;
+        let addr = derived_address.to_string();
+        Some(
+            reader
+                .get_sub_agent(&addr)
+                .await
+                .map_err(Into::into)
+                .map(|opt| opt.map(SubAgent::from_row)),
+        )
+    }
+
+    /// Fetch a sub-agent by on-chain object id.
+    async fn sub_agent_by_object_id(
+        &self,
+        ctx: &Context<'_>,
+        agent_object_id: String,
+    ) -> Option<Result<Option<crate::api::types::memory::SubAgent>, RpcError>> {
+        use crate::api::types::memory::SubAgent;
+        let reader_opt = ctx
+            .data_opt::<std::sync::Arc<Option<myso_indexer_alt_social_reader::SocialPgReader>>>()?;
+        let reader = reader_opt.as_ref().as_ref()?;
+        Some(
+            reader
+                .get_sub_agent_by_object_id(&agent_object_id)
+                .await
+                .map_err(Into::into)
+                .map(|opt| opt.map(SubAgent::from_row)),
         )
     }
 

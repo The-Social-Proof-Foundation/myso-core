@@ -7,8 +7,8 @@ mod handlers;
 pub mod metrics;
 
 pub use handlers::{
-    BlockingHandler, GovernanceHandler, InsuranceHandler, MyDataHandler, PlatformHandler,
-    PostsHandler, ProfilesHandler, SocialGraphHandler, SpotHandler, SptHandler,
+    BlockingHandler, GovernanceHandler, InsuranceHandler, MemoryHandler, MyDataHandler,
+    PlatformHandler, PostsHandler, ProfilesHandler, SocialGraphHandler, SpotHandler, SptHandler,
     SubscriptionHandler, UpgradeHandler,
 };
 
@@ -122,6 +122,10 @@ pub async fn setup_social_indexer(
         .await
         .context("Failed to add SubscriptionHandler pipeline")?;
     indexer
+        .concurrent_pipeline(MemoryHandler, Default::default())
+        .await
+        .context("Failed to add MemoryHandler pipeline")?;
+    indexer
         .concurrent_pipeline(ProfilesHandler, Default::default())
         .await
         .context("Failed to add ProfilesHandler pipeline")?;
@@ -132,7 +136,7 @@ pub async fn setup_social_indexer(
 
     tracing::info!(
         "Social indexer pipelines registered — blocking, governance, upgrade, social_graph, \
-         platform, mydata, insurance, spot, spt, subscription, profiles, posts (includes PoC); \
+         platform, mydata, insurance, spot, spt, subscription, memory, profiles, posts (includes PoC); \
          resuming from watermarks or checkpoint 0"
     );
 

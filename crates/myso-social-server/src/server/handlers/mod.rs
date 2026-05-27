@@ -4,6 +4,7 @@
 mod governance;
 mod health;
 mod insurance;
+mod memory;
 mod mydata;
 mod platforms;
 mod poc;
@@ -34,6 +35,10 @@ pub use insurance::{
     get_insurance_config, get_insurance_policy, get_insurance_vault, get_insurance_vault_exposures,
     list_insurance_market_policies, list_insurance_policies, list_insurance_vault_transactions,
     list_insurance_vaults,
+};
+pub use memory::{
+    get_profile_memory_account, get_sub_agent, get_sub_agent_by_object_id,
+    list_profile_sub_agents, list_sub_agent_children,
 };
 pub use mydata::{
     get_creator_mydata, get_mydata_access_analytics, get_mydata_access_logs, get_mydata_by_id,

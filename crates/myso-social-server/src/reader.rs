@@ -3,6 +3,7 @@
 
 mod governance;
 mod insurance;
+pub mod memory;
 mod mydata;
 mod platform;
 mod poc;
@@ -26,7 +27,7 @@ use diesel::sql_types::{BigInt, Nullable, Text};
 use diesel::ExpressionMethods;
 use diesel::QueryDsl;
 use diesel_async::RunQueryDsl;
-use myso_indexer_alt_social_schema::models::Profile;
+use myso_indexer_alt_social_schema::models::{MemoryAccountRow, Profile, SubAgentRow};
 use myso_indexer_alt_social_schema::schema::{
     profile_subscription_services, profile_subscriptions, subscription_revenue,
 };
@@ -1278,6 +1279,54 @@ impl Reader {
         offset: i64,
     ) -> Result<Vec<PostBasicRow>, crate::error::SocialError> {
         post::list_posts(&self.db, owner, post_type, limit, offset).await
+    }
+
+    pub async fn get_memory_account_by_owner(
+        &self,
+        owner: &str,
+    ) -> Result<Option<MemoryAccountRow>, crate::error::SocialError> {
+        memory::get_memory_account_by_owner(&self.db, owner).await
+    }
+
+    pub async fn list_sub_agents(
+        &self,
+        principal_owner: &str,
+        active_only: bool,
+        limit: i64,
+        offset: i64,
+    ) -> Result<memory::SubAgentListResponse, crate::error::SocialError> {
+        memory::list_sub_agents(&self.db, principal_owner, active_only, limit, offset).await
+    }
+
+    pub async fn get_sub_agent(
+        &self,
+        derived_address: &str,
+    ) -> Result<Option<SubAgentRow>, crate::error::SocialError> {
+        memory::get_sub_agent(&self.db, derived_address).await
+    }
+
+    pub async fn get_sub_agent_by_object_id(
+        &self,
+        agent_object_id: &str,
+    ) -> Result<Option<SubAgentRow>, crate::error::SocialError> {
+        memory::get_sub_agent_by_object_id(&self.db, agent_object_id).await
+    }
+
+    pub async fn list_sub_agent_children(
+        &self,
+        parent_object_id: &str,
+        active_only: bool,
+        limit: i64,
+        offset: i64,
+    ) -> Result<Vec<SubAgentRow>, crate::error::SocialError> {
+        memory::list_sub_agent_children(
+            &self.db,
+            parent_object_id,
+            active_only,
+            limit,
+            offset,
+        )
+        .await
     }
 
     pub async fn get_post_config(

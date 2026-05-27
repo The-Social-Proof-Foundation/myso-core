@@ -19,7 +19,11 @@ module social_contracts::post_tests {
     use myso::test_utils;
     
     use social_contracts::post::{Self, Post, Comment, PostConfig, PromotionData};
-    use social_contracts::profile::UsernameRegistry;
+    use social_contracts::profile::{Self, UsernameRegistry};
+    use social_contracts::memory::{MemoryRegistry, MemoryAccount, SubAgent, Self as memory};
+    
+    const PLACEHOLDER_AGENT: address = @0xBEEF;
+    const PLACEHOLDER_PUBKEY: vector<u8> = x"0303030303030303030303030303030303030303030303030303030303030303";
     use social_contracts::poc_vault::{Self as poc_vault, PoCBeneficiaryVault};
     use social_contracts::block_list::{Self, BlockListRegistry};
     use social_contracts::mydata::{Self, MyData, MyDataConfig, MyDataRegistry};
@@ -33,6 +37,64 @@ module social_contracts::post_tests {
     const PLATFORM_MODERATOR: address = @0xBEEF;
     const REGULAR_USER: address = @0x5;
     const TEST_PLATFORM_ID: address = @0x1; // Use USER1's address as test platform ID
+
+    fun init_tip_test_profile(scenario: &mut test_scenario::Scenario) {
+        test_scenario::next_tx(scenario, USER1);
+        {
+            profile::init_for_testing(test_scenario::ctx(scenario));
+            let clock = clock::create_for_testing(test_scenario::ctx(scenario));
+            clock::share_for_testing(clock);
+        };
+
+        test_scenario::next_tx(scenario, USER1);
+        {
+            let mut registry = test_scenario::take_shared<UsernameRegistry>(scenario);
+            let mut memory_registry = test_scenario::take_shared<MemoryRegistry>(scenario);
+            let clock = test_scenario::take_shared<Clock>(scenario);
+
+            profile::create_profile(
+                &mut registry,
+                &mut memory_registry,
+                string::utf8(b"User One"),
+                string::utf8(b"userone"),
+                string::utf8(b"bio"),
+                b"",
+                b"",
+                &clock,
+                test_scenario::ctx(scenario),
+            );
+
+            test_scenario::return_shared(clock);
+            test_scenario::return_shared(memory_registry);
+            test_scenario::return_shared(registry);
+        };
+
+        test_scenario::next_tx(scenario, USER1);
+        {
+            let mut memory_account = test_scenario::take_shared<MemoryAccount>(scenario);
+            let clock = test_scenario::take_shared<Clock>(scenario);
+            memory::register_sub_agent(
+                &mut memory_account,
+                PLACEHOLDER_PUBKEY,
+                PLACEHOLDER_AGENT,
+                string::utf8(b"placeholder"),
+                memory::class_delegated_ai(),
+                0,
+                0,
+                0,
+                3,
+                0,
+                option::none(),
+                option::none(),
+                option::none(),
+                &clock,
+                test_scenario::ctx(scenario),
+            );
+            test_scenario::return_shared(memory_account);
+            test_scenario::return_shared(clock);
+        };
+    }
+
     
     /// Test basic string operations for post content
     #[test]
@@ -1048,6 +1110,7 @@ module social_contracts::post_tests {
         {
             post::test_init(test_scenario::ctx(&mut scenario));
         };
+        init_tip_test_profile(&mut scenario);
         test_scenario::next_tx(&mut scenario, USER1);
         {
             post::test_create_post(
@@ -1061,16 +1124,19 @@ module social_contracts::post_tests {
         test_scenario::next_tx(&mut scenario, USER2);
         {
             let mut post_obj = test_scenario::take_shared<Post>(&scenario);
+            let memory_account = test_scenario::take_shared<MemoryAccount>(&scenario);
             let mut tip_coin = coin::mint_for_testing<MYSO>(10_000_000_000, test_scenario::ctx(&mut scenario));
             assert!(!post::tip_post_requires_beneficiary_vault_for_amount(&post_obj, 5_000_000_000), 0);
             post::tip_post_simple<MYSO>(
                 &mut post_obj,
                 &mut tip_coin,
                 5_000_000_000,
+                &memory_account,
                 test_scenario::ctx(&mut scenario)
             );
             assert!(post::get_tips_received(&post_obj) == 5_000_000_000, 1);
             test_scenario::return_shared(post_obj);
+            test_scenario::return_shared(memory_account);
             transfer::public_transfer(tip_coin, USER2);
         };
         test_scenario::end(scenario);
@@ -1083,6 +1149,7 @@ module social_contracts::post_tests {
         {
             post::test_init(test_scenario::ctx(&mut scenario));
         };
+        init_tip_test_profile(&mut scenario);
         test_scenario::next_tx(&mut scenario, USER1);
         {
             post::test_create_post_with_revenue_redirect(
@@ -1098,11 +1165,13 @@ module social_contracts::post_tests {
         test_scenario::next_tx(&mut scenario, USER2);
         {
             let mut post_obj = test_scenario::take_shared<Post>(&scenario);
+            let memory_account = test_scenario::take_shared<MemoryAccount>(&scenario);
             let mut tip_coin = coin::mint_for_testing<MYSO>(100, test_scenario::ctx(&mut scenario));
             assert!(!post::tip_post_requires_beneficiary_vault_for_amount(&post_obj, 100), 0);
-            post::tip_post_simple<MYSO>(&mut post_obj, &mut tip_coin, 100, test_scenario::ctx(&mut scenario));
+            post::tip_post_simple<MYSO>(&mut post_obj, &mut tip_coin, 100, &memory_account, test_scenario::ctx(&mut scenario));
             assert!(post::get_tips_received(&post_obj) == 50, 1);
             test_scenario::return_shared(post_obj);
+            test_scenario::return_shared(memory_account);
             transfer::public_transfer(tip_coin, USER2);
         };
         test_scenario::next_tx(&mut scenario, USER3);
@@ -1122,6 +1191,7 @@ module social_contracts::post_tests {
         {
             post::test_init(test_scenario::ctx(&mut scenario));
         };
+        init_tip_test_profile(&mut scenario);
         test_scenario::next_tx(&mut scenario, USER1);
         {
             post::test_create_post_with_escrow_redirect(
@@ -1137,10 +1207,12 @@ module social_contracts::post_tests {
         test_scenario::next_tx(&mut scenario, USER2);
         {
             let mut post_obj = test_scenario::take_shared<Post>(&scenario);
+            let memory_account = test_scenario::take_shared<MemoryAccount>(&scenario);
             let mut tip_coin = coin::mint_for_testing<MYSO>(100, test_scenario::ctx(&mut scenario));
             assert!(post::tip_post_requires_beneficiary_vault_for_amount(&post_obj, 100), 0);
-            post::tip_post_simple<MYSO>(&mut post_obj, &mut tip_coin, 100, test_scenario::ctx(&mut scenario));
+            post::tip_post_simple<MYSO>(&mut post_obj, &mut tip_coin, 100, &memory_account, test_scenario::ctx(&mut scenario));
             test_scenario::return_shared(post_obj);
+            test_scenario::return_shared(memory_account);
             transfer::public_transfer(tip_coin, USER2);
         };
         test_scenario::end(scenario);
@@ -1154,6 +1226,7 @@ module social_contracts::post_tests {
         {
             post::test_init(test_scenario::ctx(&mut scenario));
         };
+        init_tip_test_profile(&mut scenario);
         test_scenario::next_tx(&mut scenario, USER1);
         {
             post::test_create_post_with_escrow_redirect(
@@ -1170,6 +1243,7 @@ module social_contracts::post_tests {
         test_scenario::next_tx(&mut scenario, USER2);
         {
             let mut post_obj = test_scenario::take_shared<Post>(&scenario);
+            let memory_account = test_scenario::take_shared<MemoryAccount>(&scenario);
             let mut wrong_vault = test_scenario::take_shared<PoCBeneficiaryVault>(&scenario);
             let mut tip_coin = coin::mint_for_testing<MYSO>(100, test_scenario::ctx(&mut scenario));
             post::tip_post<MYSO>(
@@ -1177,9 +1251,11 @@ module social_contracts::post_tests {
                 &mut wrong_vault,
                 &mut tip_coin,
                 100,
+                &memory_account,
                 test_scenario::ctx(&mut scenario)
             );
             test_scenario::return_shared(post_obj);
+            test_scenario::return_shared(memory_account);
             test_scenario::return_shared(wrong_vault);
             transfer::public_transfer(tip_coin, USER2);
         };
@@ -1193,6 +1269,7 @@ module social_contracts::post_tests {
         {
             post::test_init(test_scenario::ctx(&mut scenario));
         };
+        init_tip_test_profile(&mut scenario);
         test_scenario::next_tx(&mut scenario, USER1);
         {
             post::test_create_post_with_escrow_redirect(
@@ -1208,11 +1285,13 @@ module social_contracts::post_tests {
         test_scenario::next_tx(&mut scenario, USER2);
         {
             let mut post_obj = test_scenario::take_shared<Post>(&scenario);
+            let memory_account = test_scenario::take_shared<MemoryAccount>(&scenario);
             let mut tip_coin = coin::mint_for_testing<MYSO>(100, test_scenario::ctx(&mut scenario));
             assert!(!post::tip_post_requires_beneficiary_vault_for_amount(&post_obj, 1), 0);
-            post::tip_post_simple<MYSO>(&mut post_obj, &mut tip_coin, 1, test_scenario::ctx(&mut scenario));
+            post::tip_post_simple<MYSO>(&mut post_obj, &mut tip_coin, 1, &memory_account, test_scenario::ctx(&mut scenario));
             assert!(post::get_tips_received(&post_obj) == 1, 1);
             test_scenario::return_shared(post_obj);
+            test_scenario::return_shared(memory_account);
             transfer::public_transfer(tip_coin, USER2);
         };
         test_scenario::end(scenario);

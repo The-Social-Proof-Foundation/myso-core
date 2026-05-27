@@ -51,7 +51,7 @@ title: Module `orderbook::margin_constants`
 
 
 
-<pre><code><b>const</b> <a href="../orderbook/margin_constants.md#orderbook_margin_constants_MARGIN_VERSION">MARGIN_VERSION</a>: u64 = 3;
+<pre><code><b>const</b> <a href="../orderbook/margin_constants.md#orderbook_margin_constants_MARGIN_VERSION">MARGIN_VERSION</a>: u64 = 1;
 </code></pre>
 
 

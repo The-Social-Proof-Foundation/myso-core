@@ -384,6 +384,14 @@ fn make_router(state: Arc<AppState>) -> Router {
             get(check_username_availability),
         )
         .route("/profiles/:address/posts", get(get_profile_posts))
+        .route("/profiles/:address/sub-agents", get(list_profile_sub_agents))
+        .route("/profiles/:address/memory-account", get(get_profile_memory_account))
+        .route("/sub-agents/:derivedAddress", get(get_sub_agent))
+        .route("/sub-agents/by-object/:agentObjectId", get(get_sub_agent_by_object_id))
+        .route(
+            "/sub-agents/:agentObjectId/children",
+            get(list_sub_agent_children),
+        )
         .route("/profiles/:address/events", get(get_profile_events))
         .route(
             "/profiles/:address/platform-memberships",

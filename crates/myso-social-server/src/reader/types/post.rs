@@ -55,6 +55,12 @@ pub struct PostBasicRow {
     pub poc_redirection_kind: Option<i16>,
     #[diesel(sql_type = SmallInt)]
     pub poc_disputes_submitted: i16,
+    #[diesel(sql_type = Nullable<Text>)]
+    pub actor_address: Option<String>,
+    #[diesel(sql_type = Nullable<Text>)]
+    pub sub_agent_id: Option<String>,
+    #[diesel(sql_type = Nullable<SmallInt>)]
+    pub action_identity_class: Option<i16>,
 }
 
 #[derive(Debug, Serialize)]
@@ -91,6 +97,9 @@ pub struct CommentRow {
     pub created_at: i64,
     pub reaction_count: i64,
     pub comment_count: i64,
+    pub actor_address: Option<String>,
+    pub sub_agent_id: Option<String>,
+    pub action_identity_class: Option<i16>,
 }
 
 #[derive(Debug, Serialize)]
@@ -98,6 +107,10 @@ pub struct ReactionRow {
     pub user_address: String,
     pub reaction_text: String,
     pub created_at: i64,
+    pub principal_owner: Option<String>,
+    pub actor_address: Option<String>,
+    pub sub_agent_id: Option<String>,
+    pub action_identity_class: Option<i16>,
 }
 
 #[derive(Debug, Serialize)]
@@ -107,6 +120,9 @@ pub struct RepostRow {
     pub owner: String,
     pub profile_id: String,
     pub created_at: i64,
+    pub actor_address: Option<String>,
+    pub sub_agent_id: Option<String>,
+    pub action_identity_class: Option<i16>,
 }
 
 #[derive(Debug, Serialize)]

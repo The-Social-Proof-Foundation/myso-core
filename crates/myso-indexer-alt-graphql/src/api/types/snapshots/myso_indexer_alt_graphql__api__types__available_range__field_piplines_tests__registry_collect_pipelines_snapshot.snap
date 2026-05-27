@@ -449,6 +449,9 @@ CommentSummary.reactionCount
 CommentSummary.commentCount
   => {}
 
+CommentSummary.attribution
+  => {}
+
 CommentSummary.reports
   => {}
 
@@ -1428,6 +1431,21 @@ MakeMoveVecCommand.type
   => {}
 
 MakeMoveVecCommand.elements
+  => {}
+
+MemoryAccount.accountId
+  => {}
+
+MemoryAccount.principalOwner
+  => {}
+
+MemoryAccount.profileId
+  => {}
+
+MemoryAccount.active
+  => {}
+
+MemoryAccount.createdAt
   => {}
 
 MergeCoinsCommand.coin
@@ -3062,6 +3080,9 @@ Post.platformId
 Post.permissions
   => {}
 
+Post.attribution
+  => {}
+
 Post.revenueRecipient
   => {}
 
@@ -3446,6 +3467,24 @@ Profile.postsPage
 Profile.postsTotalCount
   => {}
 
+Profile.memoryAccountId
+  => {}
+
+Profile.memoryAccount
+  => {}
+
+Profile.subAgents
+  => {}
+
+Profile.subAgentsTotalCount
+  => {}
+
+Profile.subAgent
+  => {}
+
+Profile.subAgentByObjectId
+  => {}
+
 Profile.mydataRecords
   => {}
 
@@ -3815,6 +3854,12 @@ Query.post
 Query.posts
   => {}
 
+Query.subAgent
+  => {}
+
+Query.subAgentByObjectId
+  => {}
+
 Query.comment
   => {}
 
@@ -4163,6 +4208,21 @@ ReactionSummary.reactionText
 ReactionSummary.createdAt
   => {}
 
+ReactionSummary.actorAddress
+  => {}
+
+ReactionSummary.principalOwner
+  => {}
+
+ReactionSummary.subAgentId
+  => {}
+
+ReactionSummary.actionIdentityClass
+  => {}
+
+ReactionSummary.attribution
+  => {}
+
 ReadConsensusStreamEnded.address
   => {}
 
@@ -4188,6 +4248,9 @@ RepostSummary.profileId
   => {}
 
 RepostSummary.createdAt
+  => {}
+
+RepostSummary.attribution
   => {}
 
 RewardDistribution.proposalId
@@ -4308,6 +4371,18 @@ SimulationResult.outputs
   => {}
 
 SimulationResult.error
+  => {}
+
+SocialAttribution.actorAddress
+  => {}
+
+SocialAttribution.subAgentId
+  => {}
+
+SocialAttribution.actionIdentityClass
+  => {}
+
+SocialAttribution.principalOwner
   => {}
 
 SocialProofToken.poolId
@@ -4866,6 +4941,57 @@ StakeSubsidy.apy
   => {}
 
 StoreExecutionTimeObservationsTransaction._
+  => {}
+
+SubAgent.agentObjectId
+  => {}
+
+SubAgent.derivedAddress
+  => {}
+
+SubAgent.label
+  => {}
+
+SubAgent.identityClass
+  => {}
+
+SubAgent.roleTags
+  => {}
+
+SubAgent.capabilities
+  => {}
+
+SubAgent.delegatableCaps
+  => {}
+
+SubAgent.registerScope
+  => {}
+
+SubAgent.maxActionSpend
+  => {}
+
+SubAgent.platformScope
+  => {}
+
+SubAgent.parentObjectId
+  => {}
+
+SubAgent.depth
+  => {}
+
+SubAgent.registeredBy
+  => {}
+
+SubAgent.active
+  => {}
+
+SubAgent.expiresAt
+  => {}
+
+SubAgent.createdAt
+  => {}
+
+SubAgent.children
   => {}
 
 TipSummary.tipper

@@ -62,7 +62,7 @@ title: Module `orderbook::constants`
 
 
 
-<pre><code><b>const</b> <a href="../orderbook/constants.md#orderbook_constants_CURRENT_VERSION">CURRENT_VERSION</a>: u64 = 6;
+<pre><code><b>const</b> <a href="../orderbook/constants.md#orderbook_constants_CURRENT_VERSION">CURRENT_VERSION</a>: u64 = 1;
 </code></pre>
 
 
@@ -71,7 +71,7 @@ title: Module `orderbook::constants`
 
 
 
-<pre><code><b>const</b> <a href="../orderbook/constants.md#orderbook_constants_POOL_CREATION_FEE">POOL_CREATION_FEE</a>: u64 = 500000000000;
+<pre><code><b>const</b> <a href="../orderbook/constants.md#orderbook_constants_POOL_CREATION_FEE">POOL_CREATION_FEE</a>: u64 = 5000000000;
 </code></pre>
 
 
@@ -134,7 +134,7 @@ title: Module `orderbook::constants`
 
 
 
-<pre><code><b>const</b> <a href="../orderbook/constants.md#orderbook_constants_DEFAULT_STAKE_REQUIRED">DEFAULT_STAKE_REQUIRED</a>: u64 = 100000000000;
+<pre><code><b>const</b> <a href="../orderbook/constants.md#orderbook_constants_DEFAULT_STAKE_REQUIRED">DEFAULT_STAKE_REQUIRED</a>: u64 = 5000000000;
 </code></pre>
 
 

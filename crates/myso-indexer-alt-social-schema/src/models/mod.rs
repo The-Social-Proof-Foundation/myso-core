@@ -5,6 +5,7 @@ mod blocked;
 mod governance;
 mod insurance;
 mod mydata;
+mod memory;
 mod platform;
 mod poc;
 mod post;
@@ -43,6 +44,9 @@ pub use insurance::{
     NewInsuranceVault, NewInsuranceVaultTransaction, STATUS_ACTIVE, STATUS_CANCELLED,
     STATUS_CLAIMED, STATUS_EXPIRED, UpdateInsurancePolicy, UpdateInsuranceVault,
     UpdateInsuranceVaultStatus,
+};
+pub use memory::{
+    MemoryAccountRow, NewMemoryAccount, NewSubAgent, NewSubAgentEvent, SubAgentRow,
 };
 pub use mydata::{
     ACCESS_TYPE_CONTENT_UPDATE, ACCESS_TYPE_GRANT, ACCESS_TYPE_ONE_TIME, ACCESS_TYPE_PREVIEW,

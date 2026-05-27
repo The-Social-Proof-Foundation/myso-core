@@ -533,6 +533,7 @@ module social_contracts::platform_tests {
                 &mut memory_account,
                 profile,
                 USER2,
+                0,
                 test_scenario::ctx(&mut scenario)
             );
 

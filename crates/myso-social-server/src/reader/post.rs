@@ -2,7 +2,7 @@
 // SPDX-License-Identifier: Apache-2.0
 
 use diesel::sql_query;
-use diesel::sql_types::{BigInt, Text};
+use diesel::sql_types::{BigInt, Nullable, SmallInt, Text};
 use diesel::ExpressionMethods;
 use diesel::OptionalExtension;
 use diesel::QueryDsl;
@@ -67,6 +67,9 @@ pub(crate) async fn list_posts(
             posts::poc_outcome,
             posts::poc_redirection_kind,
             posts::poc_disputes_submitted,
+            posts::actor_address,
+            posts::sub_agent_id,
+            posts::action_identity_class,
         ))
         .load::<(
             String,
@@ -93,6 +96,9 @@ pub(crate) async fn list_posts(
             Option<i16>,
             Option<i16>,
             i16,
+            Option<String>,
+            Option<String>,
+            Option<i16>,
         )>(&mut conn)
         .await?;
     Ok(results
@@ -123,6 +129,9 @@ pub(crate) async fn list_posts(
                 poc_outcome,
                 poc_redirection_kind,
                 poc_disputes_submitted,
+                actor_address,
+                sub_agent_id,
+                action_identity_class,
             )| PostBasicRow {
                 post_id,
                 owner,
@@ -148,6 +157,9 @@ pub(crate) async fn list_posts(
                 poc_outcome,
                 poc_redirection_kind,
                 poc_disputes_submitted,
+                actor_address,
+                sub_agent_id,
+                action_identity_class,
             },
         )
         .collect())
@@ -277,6 +289,9 @@ pub(crate) async fn get_post_comments(
             comments::created_at,
             comments::reaction_count,
             comments::comment_count,
+            comments::actor_address,
+            comments::sub_agent_id,
+            comments::action_identity_class,
         ))
         .load::<(
             String,
@@ -288,6 +303,9 @@ pub(crate) async fn get_post_comments(
             i64,
             Option<i64>,
             Option<i64>,
+            Option<String>,
+            Option<String>,
+            Option<i16>,
         )>(&mut conn)
         .await?;
     Ok(results
@@ -303,6 +321,9 @@ pub(crate) async fn get_post_comments(
                 created_at,
                 reaction_count,
                 comment_count,
+                actor_address,
+                sub_agent_id,
+                action_identity_class,
             )| CommentRow {
                 comment_id,
                 post_id,
@@ -313,6 +334,9 @@ pub(crate) async fn get_post_comments(
                 created_at,
                 reaction_count: reaction_count.unwrap_or(0),
                 comment_count: comment_count.unwrap_or(0),
+                actor_address,
+                sub_agent_id,
+                action_identity_class,
             },
         )
         .collect())
@@ -335,16 +359,42 @@ pub(crate) async fn get_post_reactions(
             reactions::user_address,
             reactions::reaction_text,
             reactions::created_at,
+            reactions::principal_owner,
+            reactions::actor_address,
+            reactions::sub_agent_id,
+            reactions::action_identity_class,
         ))
-        .load::<(String, String, i64)>(&mut conn)
+        .load::<(
+            String,
+            String,
+            i64,
+            Option<String>,
+            Option<String>,
+            Option<String>,
+            Option<i16>,
+        )>(&mut conn)
         .await?;
     Ok(results
         .into_iter()
-        .map(|(user_address, reaction_text, created_at)| ReactionRow {
-            user_address,
-            reaction_text,
-            created_at,
-        })
+        .map(
+            |(
+                user_address,
+                reaction_text,
+                created_at,
+                principal_owner,
+                actor_address,
+                sub_agent_id,
+                action_identity_class,
+            )| ReactionRow {
+                user_address,
+                reaction_text,
+                created_at,
+                principal_owner,
+                actor_address,
+                sub_agent_id,
+                action_identity_class,
+            },
+        )
         .collect())
 }
 
@@ -367,16 +417,25 @@ pub(crate) async fn get_post_reposts(
         profile_id: String,
         #[diesel(sql_type = BigInt)]
         created_at: i64,
+        #[diesel(sql_type = Nullable<Text>)]
+        actor_address: Option<String>,
+        #[diesel(sql_type = Nullable<Text>)]
+        sub_agent_id: Option<String>,
+        #[diesel(sql_type = Nullable<SmallInt>)]
+        action_identity_class: Option<i16>,
     }
     let query = format!(
         "
-        SELECT repost_id, original_post_id, owner, profile_id, created_at
+        SELECT repost_id, original_post_id, owner, profile_id, created_at,
+               actor_address, sub_agent_id, action_identity_class
         FROM (
-            SELECT repost_id, original_post_id, owner, profile_id, created_at
+            SELECT repost_id, original_post_id, owner, profile_id, created_at,
+                   actor_address, sub_agent_id, action_identity_class
             FROM reposts
             WHERE original_post_id = $1 AND is_original_post = true
             UNION ALL
-            SELECT post_id AS repost_id, parent_post_id AS original_post_id, owner, profile_id, created_at
+            SELECT post_id AS repost_id, parent_post_id AS original_post_id, owner, profile_id, created_at,
+                   actor_address, sub_agent_id, action_identity_class
             FROM posts
             WHERE parent_post_id = $1 AND post_type = '{}' AND deleted_at IS NULL
         ) AS combined
@@ -399,6 +458,9 @@ pub(crate) async fn get_post_reposts(
             owner: r.owner,
             profile_id: r.profile_id,
             created_at: r.created_at,
+            actor_address: r.actor_address,
+            sub_agent_id: r.sub_agent_id,
+            action_identity_class: r.action_identity_class,
         })
         .collect())
 }

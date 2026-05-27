@@ -89,6 +89,9 @@ diesel::table! {
         removed_by -> Nullable<Text>,
         transaction_id -> Text,
         time -> Timestamptz,
+        actor_address -> Nullable<Text>,
+        sub_agent_id -> Nullable<Text>,
+        action_identity_class -> Nullable<Int2>,
     }
 }
 
@@ -937,6 +940,9 @@ diesel::table! {
         revenue_recipient -> Nullable<Text>,
         platform_id -> Nullable<Text>,
         permissions -> Nullable<Int2>,
+        actor_address -> Nullable<Text>,
+        sub_agent_id -> Nullable<Text>,
+        action_identity_class -> Nullable<Int2>,
     }
 }
 
@@ -1131,6 +1137,82 @@ diesel::table! {
         paid_messaging_min_cost -> Nullable<Int8>,
         selected_ecosystem_badge_id -> Nullable<Varchar>,
         search_text -> Nullable<Text>,
+        memory_account_id -> Nullable<Text>,
+    }
+}
+
+diesel::table! {
+    memory_accounts (account_id) {
+        account_id -> Text,
+        principal_owner -> Text,
+        profile_id -> Text,
+        active -> Bool,
+        created_at_ms -> Int8,
+        event_id -> Text,
+        transaction_id -> Text,
+        time -> Timestamptz,
+    }
+}
+
+diesel::table! {
+    sub_agents (agent_object_id) {
+        agent_object_id -> Text,
+        derived_address -> Text,
+        account_id -> Text,
+        label -> Text,
+        identity_class -> Int2,
+        role_tags -> Int8,
+        capabilities -> Int8,
+        delegatable_caps -> Int8,
+        register_scope -> Int2,
+        approval_required_caps -> Int8,
+        max_action_spend -> Nullable<Int8>,
+        platform_scope -> Nullable<Text>,
+        parent_object_id -> Nullable<Text>,
+        depth -> Int2,
+        registered_by -> Text,
+        expires_at_ms -> Nullable<Int8>,
+        active -> Bool,
+        created_at_ms -> Int8,
+        deactivated_at_ms -> Nullable<Int8>,
+        revoked_at_ms -> Nullable<Int8>,
+        updated_at_ms -> Int8,
+        event_id -> Text,
+        transaction_id -> Text,
+        time -> Timestamptz,
+    }
+}
+
+diesel::table! {
+    sub_agent_events (id, time) {
+        id -> Int4,
+        event_type -> Text,
+        account_id -> Nullable<Text>,
+        principal_owner -> Nullable<Text>,
+        profile_id -> Nullable<Text>,
+        agent_object_id -> Nullable<Text>,
+        derived_address -> Nullable<Text>,
+        label -> Nullable<Text>,
+        identity_class -> Nullable<Int2>,
+        role_tags -> Nullable<Int8>,
+        capabilities -> Nullable<Int8>,
+        delegatable_caps -> Nullable<Int8>,
+        register_scope -> Nullable<Int2>,
+        approval_required_caps -> Nullable<Int8>,
+        max_action_spend -> Nullable<Int8>,
+        platform_scope -> Nullable<Text>,
+        parent_object_id -> Nullable<Text>,
+        depth -> Nullable<Int2>,
+        registered_by -> Nullable<Text>,
+        expires_at_ms -> Nullable<Int8>,
+        active -> Nullable<Bool>,
+        created_at_ms -> Nullable<Int8>,
+        revoked_count -> Nullable<Int8>,
+        previous_owner -> Nullable<Text>,
+        new_owner -> Nullable<Text>,
+        event_id -> Text,
+        transaction_id -> Text,
+        time -> Timestamptz,
     }
 }
 
@@ -1264,6 +1346,10 @@ diesel::table! {
         created_at -> Int8,
         time -> Timestamptz,
         transaction_id -> Text,
+        principal_owner -> Nullable<Text>,
+        actor_address -> Nullable<Text>,
+        sub_agent_id -> Nullable<Text>,
+        action_identity_class -> Nullable<Int2>,
     }
 }
 
@@ -1279,6 +1365,9 @@ diesel::table! {
         created_at -> Int8,
         time -> Timestamptz,
         transaction_id -> Text,
+        actor_address -> Nullable<Text>,
+        sub_agent_id -> Nullable<Text>,
+        action_identity_class -> Nullable<Int2>,
     }
 }
 
@@ -1782,6 +1871,7 @@ diesel::table! {
 }
 
 diesel::joinable!(profile_subscriptions -> profile_subscription_services (service_id));
+diesel::joinable!(sub_agents -> memory_accounts (account_id));
 
 diesel::allow_tables_to_appear_in_same_query!(
     anonymous_votes,
@@ -1807,6 +1897,7 @@ diesel::allow_tables_to_appear_in_same_query!(
     insurance_user_exposures,
     insurance_vault_transactions,
     insurance_vaults,
+    memory_accounts,
     mydata_access_logs,
     mydata_config,
     mydata_data,
@@ -1873,6 +1964,8 @@ diesel::allow_tables_to_appear_in_same_query!(
     spot_records,
     spot_refunds,
     spot_resolutions,
+    sub_agent_events,
+    sub_agents,
     spt_config,
     spt_events,
     spt_exchange_config,

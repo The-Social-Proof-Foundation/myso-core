@@ -766,6 +766,7 @@ module social_contracts::profile {
         linked_account: &mut memory::MemoryAccount,
         mut profile: Profile,
         new_owner: address,
+        revoked_count: u64,
         ctx: &mut TxContext,
     ) {
         assert!(registry.version == upgrade::current_version(), 1);
@@ -779,6 +780,15 @@ module social_contracts::profile {
         assert!(profile.owner == sender, EUnauthorized);
 
         let profile_id = object::uid_to_address(&profile.id);
+
+        if (revoked_count > 0) {
+            memory::emit_sub_agents_cleared_on_transfer(
+                linked_account,
+                sender,
+                new_owner,
+                revoked_count,
+            );
+        };
 
         memory::transfer_account_owner_with_profile(
             memory_registry,

@@ -134,6 +134,7 @@ not row-level dataset membership.
 <b>use</b> <a href="../myso/coin.md#myso_coin">myso::coin</a>;
 <b>use</b> <a href="../myso/config.md#myso_config">myso::config</a>;
 <b>use</b> <a href="../myso/deny_list.md#myso_deny_list">myso::deny_list</a>;
+<b>use</b> <a href="../myso/derived_object.md#myso_derived_object">myso::derived_object</a>;
 <b>use</b> <a href="../myso/dynamic_field.md#myso_dynamic_field">myso::dynamic_field</a>;
 <b>use</b> <a href="../myso/dynamic_object_field.md#myso_dynamic_object_field">myso::dynamic_object_field</a>;
 <b>use</b> <a href="../myso/event.md#myso_event">myso::event</a>;
@@ -152,6 +153,7 @@ not row-level dataset membership.
 <b>use</b> <a href="../myso/url.md#myso_url">myso::url</a>;
 <b>use</b> <a href="../myso/vec_map.md#myso_vec_map">myso::vec_map</a>;
 <b>use</b> <a href="../myso/vec_set.md#myso_vec_set">myso::vec_set</a>;
+<b>use</b> <a href="../social_contracts/memory.md#social_contracts_memory">social_contracts::memory</a>;
 <b>use</b> <a href="../social_contracts/upgrade.md#social_contracts_upgrade">social_contracts::upgrade</a>;
 <b>use</b> <a href="../std/address.md#std_address">std::address</a>;
 <b>use</b> <a href="../std/ascii.md#std_ascii">std::ascii</a>;
@@ -2745,10 +2747,11 @@ Create and share MyData publicly
 
 ## Function `purchase_one_time`
 
-Purchase one-time access to MyData data
+Purchase one-time access to MyData data.
+Sub-agent buyers must satisfy <code>max_action_spend</code> for <code>price</code> on <code>account</code>.
 
 
-<pre><code><b>public</b> <b>entry</b> <b>fun</b> <a href="../social_contracts/mydata.md#social_contracts_mydata_purchase_one_time">purchase_one_time</a>(config: &<a href="../social_contracts/mydata.md#social_contracts_mydata_MyDataConfig">social_contracts::mydata::MyDataConfig</a>, <a href="../social_contracts/mydata.md#social_contracts_mydata">mydata</a>: &<b>mut</b> <a href="../social_contracts/mydata.md#social_contracts_mydata_MyData">social_contracts::mydata::MyData</a>, payment: <a href="../myso/coin.md#myso_coin_Coin">myso::coin::Coin</a>&lt;<a href="../myso/myso.md#myso_myso_MYSO">myso::myso::MYSO</a>&gt;, clock: &<a href="../myso/clock.md#myso_clock_Clock">myso::clock::Clock</a>, ctx: &<b>mut</b> <a href="../myso/tx_context.md#myso_tx_context_TxContext">myso::tx_context::TxContext</a>)
+<pre><code><b>public</b> <b>entry</b> <b>fun</b> <a href="../social_contracts/mydata.md#social_contracts_mydata_purchase_one_time">purchase_one_time</a>(config: &<a href="../social_contracts/mydata.md#social_contracts_mydata_MyDataConfig">social_contracts::mydata::MyDataConfig</a>, <a href="../social_contracts/mydata.md#social_contracts_mydata">mydata</a>: &<b>mut</b> <a href="../social_contracts/mydata.md#social_contracts_mydata_MyData">social_contracts::mydata::MyData</a>, payment: <a href="../myso/coin.md#myso_coin_Coin">myso::coin::Coin</a>&lt;<a href="../myso/myso.md#myso_myso_MYSO">myso::myso::MYSO</a>&gt;, account: &<a href="../social_contracts/memory.md#social_contracts_memory_MemoryAccount">social_contracts::memory::MemoryAccount</a>, clock: &<a href="../myso/clock.md#myso_clock_Clock">myso::clock::Clock</a>, ctx: &<b>mut</b> <a href="../myso/tx_context.md#myso_tx_context_TxContext">myso::tx_context::TxContext</a>)
 </code></pre>
 
 
@@ -2761,6 +2764,7 @@ Purchase one-time access to MyData data
     config: &<a href="../social_contracts/mydata.md#social_contracts_mydata_MyDataConfig">MyDataConfig</a>,
     <a href="../social_contracts/mydata.md#social_contracts_mydata">mydata</a>: &<b>mut</b> <a href="../social_contracts/mydata.md#social_contracts_mydata_MyData">MyData</a>,
     payment: Coin&lt;MYSO&gt;,
+    account: &<a href="../social_contracts/memory.md#social_contracts_memory_MemoryAccount">social_contracts::memory::MemoryAccount</a>,
     clock: &Clock,
     ctx: &<b>mut</b> TxContext,
 ) {
@@ -2771,6 +2775,16 @@ Purchase one-time access to MyData data
     // Check <b>if</b> one-time purchase is available
     <b>assert</b>!(option::is_some(&<a href="../social_contracts/mydata.md#social_contracts_mydata">mydata</a>.<a href="../social_contracts/mydata.md#social_contracts_mydata_one_time_price">one_time_price</a>), <a href="../social_contracts/mydata.md#social_contracts_mydata_ENotForSale">ENotForSale</a>);
     <b>let</b> price = *option::borrow(&<a href="../social_contracts/mydata.md#social_contracts_mydata">mydata</a>.<a href="../social_contracts/mydata.md#social_contracts_mydata_one_time_price">one_time_price</a>);
+    <b>if</b> (<a href="../social_contracts/memory.md#social_contracts_memory_is_registered_agent">social_contracts::memory::is_registered_agent</a>(account, buyer)) {
+        <b>let</b> _acting = <a href="../social_contracts/memory.md#social_contracts_memory_resolve_actor_with_cap">social_contracts::memory::resolve_actor_with_cap</a>(
+            account,
+            0,
+            <a href="../social_contracts/mydata.md#social_contracts_mydata">mydata</a>.<a href="../social_contracts/mydata.md#social_contracts_mydata_platform_id">platform_id</a>,
+            price,
+            clock,
+            ctx,
+        );
+    };
     // Check payment amount
     <b>assert</b>!(coin::value(&payment) &gt;= price, <a href="../social_contracts/mydata.md#social_contracts_mydata_EPriceMismatch">EPriceMismatch</a>);
     // Check <b>if</b> buyer already <b>has</b> access
@@ -2805,10 +2819,11 @@ Purchase one-time access to MyData data
 
 ## Function `purchase_subscription`
 
-Purchase subscription access to MyData data
+Purchase subscription access to MyData data.
+Sub-agent buyers must satisfy <code>max_action_spend</code> for <code>price</code> on <code>account</code>.
 
 
-<pre><code><b>public</b> <b>entry</b> <b>fun</b> <a href="../social_contracts/mydata.md#social_contracts_mydata_purchase_subscription">purchase_subscription</a>(config: &<a href="../social_contracts/mydata.md#social_contracts_mydata_MyDataConfig">social_contracts::mydata::MyDataConfig</a>, <a href="../social_contracts/mydata.md#social_contracts_mydata">mydata</a>: &<b>mut</b> <a href="../social_contracts/mydata.md#social_contracts_mydata_MyData">social_contracts::mydata::MyData</a>, payment: <a href="../myso/coin.md#myso_coin_Coin">myso::coin::Coin</a>&lt;<a href="../myso/myso.md#myso_myso_MYSO">myso::myso::MYSO</a>&gt;, clock: &<a href="../myso/clock.md#myso_clock_Clock">myso::clock::Clock</a>, ctx: &<b>mut</b> <a href="../myso/tx_context.md#myso_tx_context_TxContext">myso::tx_context::TxContext</a>)
+<pre><code><b>public</b> <b>entry</b> <b>fun</b> <a href="../social_contracts/mydata.md#social_contracts_mydata_purchase_subscription">purchase_subscription</a>(config: &<a href="../social_contracts/mydata.md#social_contracts_mydata_MyDataConfig">social_contracts::mydata::MyDataConfig</a>, <a href="../social_contracts/mydata.md#social_contracts_mydata">mydata</a>: &<b>mut</b> <a href="../social_contracts/mydata.md#social_contracts_mydata_MyData">social_contracts::mydata::MyData</a>, payment: <a href="../myso/coin.md#myso_coin_Coin">myso::coin::Coin</a>&lt;<a href="../myso/myso.md#myso_myso_MYSO">myso::myso::MYSO</a>&gt;, account: &<a href="../social_contracts/memory.md#social_contracts_memory_MemoryAccount">social_contracts::memory::MemoryAccount</a>, clock: &<a href="../myso/clock.md#myso_clock_Clock">myso::clock::Clock</a>, ctx: &<b>mut</b> <a href="../myso/tx_context.md#myso_tx_context_TxContext">myso::tx_context::TxContext</a>)
 </code></pre>
 
 
@@ -2821,6 +2836,7 @@ Purchase subscription access to MyData data
     config: &<a href="../social_contracts/mydata.md#social_contracts_mydata_MyDataConfig">MyDataConfig</a>,
     <a href="../social_contracts/mydata.md#social_contracts_mydata">mydata</a>: &<b>mut</b> <a href="../social_contracts/mydata.md#social_contracts_mydata_MyData">MyData</a>,
     payment: Coin&lt;MYSO&gt;,
+    account: &<a href="../social_contracts/memory.md#social_contracts_memory_MemoryAccount">social_contracts::memory::MemoryAccount</a>,
     clock: &Clock,
     ctx: &<b>mut</b> TxContext,
 ) {
@@ -2831,6 +2847,16 @@ Purchase subscription access to MyData data
     // Check <b>if</b> <a href="../social_contracts/subscription.md#social_contracts_subscription">subscription</a> is available
     <b>assert</b>!(option::is_some(&<a href="../social_contracts/mydata.md#social_contracts_mydata">mydata</a>.<a href="../social_contracts/mydata.md#social_contracts_mydata_subscription_price">subscription_price</a>), <a href="../social_contracts/mydata.md#social_contracts_mydata_ENotForSale">ENotForSale</a>);
     <b>let</b> price = *option::borrow(&<a href="../social_contracts/mydata.md#social_contracts_mydata">mydata</a>.<a href="../social_contracts/mydata.md#social_contracts_mydata_subscription_price">subscription_price</a>);
+    <b>if</b> (<a href="../social_contracts/memory.md#social_contracts_memory_is_registered_agent">social_contracts::memory::is_registered_agent</a>(account, buyer)) {
+        <b>let</b> _acting = <a href="../social_contracts/memory.md#social_contracts_memory_resolve_actor_with_cap">social_contracts::memory::resolve_actor_with_cap</a>(
+            account,
+            0,
+            <a href="../social_contracts/mydata.md#social_contracts_mydata">mydata</a>.<a href="../social_contracts/mydata.md#social_contracts_mydata_platform_id">platform_id</a>,
+            price,
+            clock,
+            ctx,
+        );
+    };
     // Check payment amount
     <b>assert</b>!(coin::value(&payment) &gt;= price, <a href="../social_contracts/mydata.md#social_contracts_mydata_EPriceMismatch">EPriceMismatch</a>);
     // Prevent self-purchase
@@ -3119,11 +3145,12 @@ True if <code>candidate</code> matches this listing’s <code>encryption_id</cod
 ## Function `mydata_approve`
 
 Key-server policy hook for <code>fetch_key</code>: <code>id</code> must match <code>encryption_id</code>, and the sender must have
-[<code><a href="../social_contracts/mydata.md#social_contracts_mydata_has_access">has_access</a></code>] (owner, purchaser, or active subscriber). Register this package on the key server when
-using permissioned mode; <code>EncryptedObject.package_id</code> at encrypt time must match this package.
+[<code><a href="../social_contracts/mydata.md#social_contracts_mydata_has_access">has_access</a></code>] (owner, purchaser, or active subscriber), or be a registered sub-agent of the
+owner with <code>CAP_MYDATA_READ</code>. Register this package on the key server when using permissioned
+mode; <code>EncryptedObject.package_id</code> at encrypt time must match this package.
 
 
-<pre><code><b>public</b> <b>entry</b> <b>fun</b> <a href="../social_contracts/mydata.md#social_contracts_mydata_mydata_approve">mydata_approve</a>(id: vector&lt;u8&gt;, <a href="../social_contracts/mydata.md#social_contracts_mydata">mydata</a>: &<a href="../social_contracts/mydata.md#social_contracts_mydata_MyData">social_contracts::mydata::MyData</a>, clock: &<a href="../myso/clock.md#myso_clock_Clock">myso::clock::Clock</a>, ctx: &<a href="../myso/tx_context.md#myso_tx_context_TxContext">myso::tx_context::TxContext</a>)
+<pre><code><b>public</b> <b>entry</b> <b>fun</b> <a href="../social_contracts/mydata.md#social_contracts_mydata_mydata_approve">mydata_approve</a>(id: vector&lt;u8&gt;, <a href="../social_contracts/mydata.md#social_contracts_mydata">mydata</a>: &<a href="../social_contracts/mydata.md#social_contracts_mydata_MyData">social_contracts::mydata::MyData</a>, account: &<a href="../social_contracts/memory.md#social_contracts_memory_MemoryAccount">social_contracts::memory::MemoryAccount</a>, clock: &<a href="../myso/clock.md#myso_clock_Clock">myso::clock::Clock</a>, ctx: &<a href="../myso/tx_context.md#myso_tx_context_TxContext">myso::tx_context::TxContext</a>)
 </code></pre>
 
 
@@ -3135,11 +3162,34 @@ using permissioned mode; <code>EncryptedObject.package_id</code> at encrypt time
 <pre><code><b>public</b> <b>entry</b> <b>fun</b> <a href="../social_contracts/mydata.md#social_contracts_mydata_mydata_approve">mydata_approve</a>(
     id: vector&lt;u8&gt;,
     <a href="../social_contracts/mydata.md#social_contracts_mydata">mydata</a>: &<a href="../social_contracts/mydata.md#social_contracts_mydata_MyData">MyData</a>,
+    account: &<a href="../social_contracts/memory.md#social_contracts_memory_MemoryAccount">social_contracts::memory::MemoryAccount</a>,
     clock: &Clock,
     ctx: &TxContext,
 ) {
     <b>assert</b>!(<a href="../social_contracts/mydata.md#social_contracts_mydata_encryption_id_matches">encryption_id_matches</a>(<a href="../social_contracts/mydata.md#social_contracts_mydata">mydata</a>, &id), <a href="../social_contracts/mydata.md#social_contracts_mydata_EPolicyIdMismatch">EPolicyIdMismatch</a>);
-    <b>assert</b>!(<a href="../social_contracts/mydata.md#social_contracts_mydata_has_access">has_access</a>(<a href="../social_contracts/mydata.md#social_contracts_mydata">mydata</a>, tx_context::sender(ctx), clock), <a href="../social_contracts/mydata.md#social_contracts_mydata_EPolicyNotEntitled">EPolicyNotEntitled</a>);
+    <b>let</b> sender = tx_context::sender(ctx);
+    <b>if</b> (<a href="../social_contracts/mydata.md#social_contracts_mydata_has_access">has_access</a>(<a href="../social_contracts/mydata.md#social_contracts_mydata">mydata</a>, sender, clock)) {
+        <b>return</b>
+    };
+    <b>assert</b>!(
+        <a href="../social_contracts/memory.md#social_contracts_memory_owner">social_contracts::memory::owner</a>(account) == <a href="../social_contracts/mydata.md#social_contracts_mydata">mydata</a>.<a href="../social_contracts/mydata.md#social_contracts_mydata_owner">owner</a>,
+        <a href="../social_contracts/mydata.md#social_contracts_mydata_EPolicyNotEntitled">EPolicyNotEntitled</a>,
+    );
+    <b>if</b> (!<a href="../social_contracts/memory.md#social_contracts_memory_is_registered_agent">social_contracts::memory::is_registered_agent</a>(account, sender)) {
+        <b>abort</b> <a href="../social_contracts/mydata.md#social_contracts_mydata_EPolicyNotEntitled">EPolicyNotEntitled</a>
+    };
+    <b>let</b> acting = <a href="../social_contracts/memory.md#social_contracts_memory_resolve_actor_with_cap">social_contracts::memory::resolve_actor_with_cap</a>(
+        account,
+        <a href="../social_contracts/memory.md#social_contracts_memory_cap_mydata_read">social_contracts::memory::cap_mydata_read</a>(),
+        <a href="../social_contracts/mydata.md#social_contracts_mydata">mydata</a>.<a href="../social_contracts/mydata.md#social_contracts_mydata_platform_id">platform_id</a>,
+        0,
+        clock,
+        ctx,
+    );
+    <b>assert</b>!(
+        <a href="../social_contracts/memory.md#social_contracts_memory_acting_principal_owner">social_contracts::memory::acting_principal_owner</a>(&acting) == <a href="../social_contracts/mydata.md#social_contracts_mydata">mydata</a>.<a href="../social_contracts/mydata.md#social_contracts_mydata_owner">owner</a>,
+        <a href="../social_contracts/mydata.md#social_contracts_mydata_EPolicyNotEntitled">EPolicyNotEntitled</a>,
+    );
 }
 </code></pre>
 

@@ -269,8 +269,7 @@ impl Handler for MyDataHandler {
                             mydata_data::created_at.eq(created_at),
                             mydata_data::one_time_price.eq(one_time_price),
                             mydata_data::subscription_price.eq(subscription_price),
-                            mydata_data::subscription_duration_days
-                                .eq(subscription_duration_days),
+                            mydata_data::subscription_duration_days.eq(subscription_duration_days),
                             mydata_data::geographic_region.eq(geographic_region),
                             mydata_data::data_quality.eq(data_quality),
                             mydata_data::sample_size.eq(sample_size),

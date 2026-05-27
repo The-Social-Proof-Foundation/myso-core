@@ -848,6 +848,7 @@ type CommandResult {
 }
 
 type CommentSummary {
+	attribution: SocialAttribution!
 	commentCount: Int!
 	commentId: String!
 	content: String!
@@ -2407,6 +2408,14 @@ type MakeMoveVecCommand {
 	If the elements are not objects, or the vector is empty, a type must be supplied.
 	"""
 	type: MoveType
+}
+
+type MemoryAccount {
+	accountId: String!
+	active: Boolean!
+	createdAt: Int!
+	principalOwner: MySoAddress!
+	profileId: MySoAddress!
 }
 
 """
@@ -4890,6 +4899,10 @@ type PocVaultDeposit {
 
 type Post implements Node {
 	"""
+	Actor vs principal attribution for delegated sub-agent actions.
+	"""
+	attribution: SocialAttribution!
+	"""
 	Number of comments.
 	"""
 	commentCount: Int!
@@ -5379,6 +5392,14 @@ type Profile implements Node {
 	"""
 	id: ID!
 	"""
+	Memory account row for this profile owner.
+	"""
+	memoryAccount: MemoryAccount
+	"""
+	Linked memory account object id for this profile's sub-agent registry.
+	"""
+	memoryAccountId: String
+	"""
 	Minimum offer amount for profile sales.
 	"""
 	minOfferAmount: Int
@@ -5484,6 +5505,13 @@ type Profile implements Node {
 	SPT holdings for this profile (paginated).
 	"""
 	sptHoldings(limit: Int, offset: Int): [SptHolding!]
+	subAgent(derivedAddress: MySoAddress!): SubAgent
+	subAgentByObjectId(agentObjectId: String!): SubAgent
+	"""
+	Sub-agents registered under this profile's memory account.
+	"""
+	subAgents(activeOnly: Boolean, limit: Int, offset: Int): [SubAgent!]
+	subAgentsTotalCount(activeOnly: Boolean): Int
 	"""
 	When the profile was last updated (epoch milliseconds).
 	"""
@@ -6356,7 +6384,7 @@ type Query {
 	"""
 	List posts with optional filters. Returns empty when social DB not configured.
 	"""
-	posts(owner: String, postType: String, limit: Int, offset: Int): [Post!]
+	posts(owner: String, postType: String, subAgentId: String, limit: Int, offset: Int): [Post!]
 	"""
 	Fetch a social profile by owner address. Returns null if social DB not configured or not found.
 	"""
@@ -6485,6 +6513,14 @@ type Query {
 	"""
 	sptReservationVolumeHistory(poolId: ID!, interval: SptReservationVolumeInterval!, limit: Int, from: String, to: String): [SptReservationVolumeBucket!]
 	"""
+	Fetch a sub-agent by derived address.
+	"""
+	subAgent(derivedAddress: MySoAddress!): SubAgent
+	"""
+	Fetch a sub-agent by on-chain object id.
+	"""
+	subAgentByObjectId(agentObjectId: String!): SubAgent
+	"""
 	Tips received for a post (paginated). Returns empty when social DB not configured.
 	"""
 	tips(postId: ID!, limit: Int, offset: Int): [TipSummary!]
@@ -6574,8 +6610,13 @@ type RandomnessStateUpdateTransaction {
 }
 
 type ReactionSummary {
+	actionIdentityClass: Int!
+	actorAddress: MySoAddress!
+	attribution: SocialAttribution!
 	createdAt: Int!
+	principalOwner: MySoAddress
 	reactionText: String!
+	subAgentId: String
 	userAddress: MySoAddress!
 	"""
 	Profile of the user who reacted.
@@ -6619,6 +6660,7 @@ enum RegulatedState {
 }
 
 type RepostSummary {
+	attribution: SocialAttribution!
 	createdAt: Int!
 	originalPostId: String!
 	owner: MySoAddress!
@@ -6830,6 +6872,13 @@ type SimulationResult {
 	The intermediate outputs for each command of the transaction simulation, including contents of mutated references and return values.
 	"""
 	outputs: [CommandResult!]
+}
+
+type SocialAttribution {
+	actionIdentityClass: Int!
+	actorAddress: MySoAddress!
+	principalOwner: MySoAddress
+	subAgentId: String
 }
 
 type SocialProofToken {
@@ -7600,6 +7649,26 @@ type StoreExecutionTimeObservationsTransaction {
 	_: Boolean
 }
 
+
+type SubAgent {
+	active: Boolean!
+	agentObjectId: String!
+	capabilities: Int!
+	children(activeOnly: Boolean, limit: Int, offset: Int): [SubAgent!]
+	createdAt: Int!
+	delegatableCaps: Int!
+	depth: Int!
+	derivedAddress: MySoAddress!
+	expiresAt: Int
+	identityClass: Int!
+	label: String!
+	maxActionSpend: Int
+	parentObjectId: String
+	platformScope: MySoAddress
+	registerScope: Int!
+	registeredBy: MySoAddress!
+	roleTags: Int!
+}
 
 """
 Future behavior of a currency's supply.

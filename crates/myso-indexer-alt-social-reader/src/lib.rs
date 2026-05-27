@@ -7,6 +7,7 @@ pub use governance::{DelegateRatingViewerTarget, delegate_rating_viewer_lookup_k
 pub mod insurance;
 mod metrics;
 pub mod mydata;
+pub mod memory;
 pub mod pg_reader;
 pub mod platform;
 pub mod pnl;
@@ -42,6 +43,12 @@ pub use myso_indexer_alt_social_schema::models::{
 pub use myso_indexer_alt_social_schema::models::{
     PostDeletionEventRow, PostModerationEventRow, SptHoldingRow, SptPoolRow, SptPriceHistory,
     SptTransaction,
+};
+pub use myso_indexer_alt_social_schema::models::{
+    MemoryAccountRow, SubAgentRow,
+};
+pub use memory::{
+    SocialAttributionRow, SubAgentListResult,
 };
 pub use pg_reader::SocialPgReader;
 pub use platform::{PlatformBlockedProfileRow, PlatformRow, PlatformUserAccessRow};

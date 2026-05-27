@@ -157,6 +157,7 @@ plus optional sub-token nano remainder into the <code>u64</code> nano-SPT values
 <b>use</b> <a href="../myso/coin.md#myso_coin">myso::coin</a>;
 <b>use</b> <a href="../myso/config.md#myso_config">myso::config</a>;
 <b>use</b> <a href="../myso/deny_list.md#myso_deny_list">myso::deny_list</a>;
+<b>use</b> <a href="../myso/derived_object.md#myso_derived_object">myso::derived_object</a>;
 <b>use</b> <a href="../myso/dynamic_field.md#myso_dynamic_field">myso::dynamic_field</a>;
 <b>use</b> <a href="../myso/dynamic_object_field.md#myso_dynamic_object_field">myso::dynamic_object_field</a>;
 <b>use</b> <a href="../myso/event.md#myso_event">myso::event</a>;

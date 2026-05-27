@@ -34,6 +34,8 @@ use crate::insurance::{
     list_insurance_vaults,
 };
 use crate::metrics::DbReaderMetrics;
+use crate::memory::{SubAgentListResult};
+use myso_indexer_alt_social_schema::models::{MemoryAccountRow, SubAgentRow};
 use crate::mydata::{
     get_mydata_access_analytics, get_mydata_access_logs, get_mydata_config, get_mydata_purchases,
     get_mydata_query_distribution_round, get_mydata_query_merkle_root,
@@ -221,11 +223,99 @@ impl SocialPgReader {
         &self,
         owner: Option<&str>,
         post_type: Option<&str>,
+        sub_agent_id: Option<&str>,
         limit: i64,
         offset: i64,
     ) -> anyhow::Result<Vec<PostRow>> {
         let mut conn = self.connect().await?;
-        crate::post::list_posts(&mut conn, owner, post_type, limit, offset, &self.metrics).await
+        crate::post::list_posts(
+            &mut conn,
+            owner,
+            post_type,
+            sub_agent_id,
+            limit,
+            offset,
+            &self.metrics,
+        )
+        .await
+    }
+
+    pub async fn get_memory_account_by_owner(
+        &self,
+        owner: &str,
+    ) -> anyhow::Result<Option<MemoryAccountRow>> {
+        let mut conn = self.connect().await?;
+        crate::memory::get_memory_account_by_owner(&mut conn, owner, &self.metrics).await
+    }
+
+    pub async fn get_memory_account_by_profile_id(
+        &self,
+        profile_id: &str,
+    ) -> anyhow::Result<Option<MemoryAccountRow>> {
+        let mut conn = self.connect().await?;
+        crate::memory::get_memory_account_by_profile_id(&mut conn, profile_id, &self.metrics).await
+    }
+
+    pub async fn list_sub_agents(
+        &self,
+        principal_owner: &str,
+        active_only: bool,
+        limit: i64,
+        offset: i64,
+    ) -> anyhow::Result<SubAgentListResult> {
+        let mut conn = self.connect().await?;
+        crate::memory::list_sub_agents(
+            &mut conn,
+            principal_owner,
+            active_only,
+            limit,
+            offset,
+            &self.metrics,
+        )
+        .await
+    }
+
+    pub async fn get_sub_agent(
+        &self,
+        derived_address: &str,
+    ) -> anyhow::Result<Option<SubAgentRow>> {
+        let mut conn = self.connect().await?;
+        crate::memory::get_sub_agent(&mut conn, derived_address, &self.metrics).await
+    }
+
+    pub async fn get_sub_agent_by_object_id(
+        &self,
+        agent_object_id: &str,
+    ) -> anyhow::Result<Option<SubAgentRow>> {
+        let mut conn = self.connect().await?;
+        crate::memory::get_sub_agent_by_object_id(&mut conn, agent_object_id, &self.metrics).await
+    }
+
+    pub async fn get_profile_memory_account_id(
+        &self,
+        profile_id: &str,
+    ) -> anyhow::Result<Option<String>> {
+        let mut conn = self.connect().await?;
+        crate::memory::get_profile_memory_account_id(&mut conn, profile_id, &self.metrics).await
+    }
+
+    pub async fn list_sub_agent_children(
+        &self,
+        parent_object_id: &str,
+        active_only: bool,
+        limit: i64,
+        offset: i64,
+    ) -> anyhow::Result<Vec<SubAgentRow>> {
+        let mut conn = self.connect().await?;
+        crate::memory::list_sub_agent_children(
+            &mut conn,
+            parent_object_id,
+            active_only,
+            limit,
+            offset,
+            &self.metrics,
+        )
+        .await
     }
 
     /// Posts for a profile (owner or profile_id), same scope as REST profile posts.

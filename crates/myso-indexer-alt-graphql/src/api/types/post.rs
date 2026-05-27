@@ -15,6 +15,7 @@ use crate::api::scalars::date_time::DateTime;
 use crate::api::scalars::id::Id;
 use crate::api::scalars::json::Json;
 use crate::api::scalars::myso_address::MySoAddress;
+use crate::api::types::memory::SocialAttribution;
 use crate::api::types::mydata::MyDataRecord;
 use crate::api::types::poc::{PocAnalysisResult, PocBadge, PocDispute, PocRevenueRedirection};
 use crate::api::types::profile_summary::ProfileSummary;
@@ -236,6 +237,11 @@ impl Post {
     /// Permission bitfield from chain (`post.move` PERMISSION_*).
     async fn permissions(&self) -> Option<i32> {
         self.inner.permissions.map(i32::from)
+    }
+
+    /// Actor vs principal attribution for delegated sub-agent actions.
+    async fn attribution(&self) -> SocialAttribution {
+        SocialAttribution::from_post(&self.inner.owner, &self.inner)
     }
 
     /// Optional off-chain / indexed revenue recipient address.
@@ -740,6 +746,10 @@ impl CommentSummary {
         self.inner.comment_count
     }
 
+    async fn attribution(&self) -> SocialAttribution {
+        SocialAttribution::from_comment(&self.inner)
+    }
+
     /// User reports filed against this comment (paginated, newest first).
     async fn reports(
         &self,
@@ -836,6 +846,36 @@ impl ReactionSummary {
     async fn created_at(&self) -> i64 {
         self.inner.created_at
     }
+
+    async fn actor_address(&self) -> MySoAddress {
+        MySoAddress::from_str(
+            self.inner
+                .actor_address
+                .as_deref()
+                .unwrap_or(&self.inner.user_address),
+        )
+        .unwrap_or_else(|_| MySoAddress::from(myso_types::base_types::MySoAddress::ZERO))
+    }
+
+    async fn principal_owner(&self) -> Option<MySoAddress> {
+        self.inner
+            .principal_owner
+            .as_deref()
+            .and_then(|s| MySoAddress::from_str(s).ok())
+            .map(Into::into)
+    }
+
+    async fn sub_agent_id(&self) -> Option<&str> {
+        self.inner.sub_agent_id.as_deref()
+    }
+
+    async fn action_identity_class(&self) -> i32 {
+        i32::from(self.inner.action_identity_class.unwrap_or(0))
+    }
+
+    async fn attribution(&self) -> SocialAttribution {
+        SocialAttribution::from_reaction(&self.inner)
+    }
 }
 
 // -----------------------------------------------------------------------------
@@ -879,6 +919,10 @@ impl RepostSummary {
 
     async fn created_at(&self) -> i64 {
         self.inner.created_at
+    }
+
+    async fn attribution(&self) -> SocialAttribution {
+        SocialAttribution::from_repost(&self.inner)
     }
 }
 

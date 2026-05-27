@@ -10,6 +10,7 @@ use async_trait::async_trait;
 use diesel::sql_types::{BigInt, Text, Timestamp};
 use diesel::BoolExpressionMethods;
 use diesel::ExpressionMethods;
+use diesel::OptionalExtension;
 use diesel::QueryDsl;
 use diesel_async::RunQueryDsl;
 use myso_indexer_alt_framework::pipeline::Processor;
@@ -22,8 +23,8 @@ use myso_indexer_alt_social_schema::models::{
     NewProfileSaleFee, NewVestingEvent, NewVestingWallet, ProfileUpdateSet,
 };
 use myso_indexer_alt_social_schema::schema::{
-    ecosystem_treasury, profile_badges, profile_events, profile_offers, profile_sale_fees,
-    profiles, vesting_events, vesting_wallets,
+    ecosystem_treasury, memory_accounts, profile_badges, profile_events, profile_offers,
+    profile_sale_fees, profiles, vesting_events, vesting_wallets,
 };
 
 use super::common;
@@ -203,6 +204,24 @@ impl Handler for ProfilesHandler {
                         .do_nothing()
                         .execute(conn)
                         .await?;
+                    if let Some(ref profile_id) = profile.profile_id {
+                        if let Some(account_id) = memory_accounts::table
+                            .filter(memory_accounts::profile_id.eq(profile_id))
+                            .select(memory_accounts::account_id)
+                            .first::<String>(conn)
+                            .await
+                            .optional()?
+                        {
+                            total += diesel::update(
+                                profiles::table
+                                    .filter(profiles::profile_id.eq(profile_id))
+                                    .filter(profiles::memory_account_id.is_null()),
+                            )
+                            .set(profiles::memory_account_id.eq(account_id))
+                            .execute(conn)
+                            .await?;
+                        }
+                    }
                 }
                 ProfileRow::ProfileXUsernameUpdate {
                     profile_id,

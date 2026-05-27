@@ -915,11 +915,13 @@ module social_contracts::mydata {
         transfer::share_object(mydata);
     }
 
-    /// Purchase one-time access to MyData data
+    /// Purchase one-time access to MyData data.
+    /// Sub-agent buyers must satisfy `max_action_spend` for `price` on `account`.
     public entry fun purchase_one_time(
         config: &MyDataConfig,
         mydata: &mut MyData,
         payment: Coin<MYSO>,
+        account: &social_contracts::memory::MemoryAccount,
         clock: &Clock,
         ctx: &mut TxContext,
     ) {
@@ -933,6 +935,17 @@ module social_contracts::mydata {
         // Check if one-time purchase is available
         assert!(option::is_some(&mydata.one_time_price), ENotForSale);
         let price = *option::borrow(&mydata.one_time_price);
+
+        if (social_contracts::memory::is_registered_agent(account, buyer)) {
+            let _acting = social_contracts::memory::resolve_actor_with_cap(
+                account,
+                0,
+                mydata.platform_id,
+                price,
+                clock,
+                ctx,
+            );
+        };
         
         // Check payment amount
         assert!(coin::value(&payment) >= price, EPriceMismatch);
@@ -964,11 +977,13 @@ module social_contracts::mydata {
         });
     }
 
-    /// Purchase subscription access to MyData data
+    /// Purchase subscription access to MyData data.
+    /// Sub-agent buyers must satisfy `max_action_spend` for `price` on `account`.
     public entry fun purchase_subscription(
         config: &MyDataConfig,
         mydata: &mut MyData,
         payment: Coin<MYSO>,
+        account: &social_contracts::memory::MemoryAccount,
         clock: &Clock,
         ctx: &mut TxContext,
     ) {
@@ -982,6 +997,17 @@ module social_contracts::mydata {
         // Check if subscription is available
         assert!(option::is_some(&mydata.subscription_price), ENotForSale);
         let price = *option::borrow(&mydata.subscription_price);
+
+        if (social_contracts::memory::is_registered_agent(account, buyer)) {
+            let _acting = social_contracts::memory::resolve_actor_with_cap(
+                account,
+                0,
+                mydata.platform_id,
+                price,
+                clock,
+                ctx,
+            );
+        };
         
         // Check payment amount
         assert!(coin::value(&payment) >= price, EPriceMismatch);
@@ -1163,16 +1189,44 @@ module social_contracts::mydata {
     }
 
     /// Key-server policy hook for `fetch_key`: `id` must match `encryption_id`, and the sender must have
-    /// [`has_access`] (owner, purchaser, or active subscriber). Register this package on the key server when
-    /// using permissioned mode; `EncryptedObject.package_id` at encrypt time must match this package.
+    /// [`has_access`] (owner, purchaser, or active subscriber), or be a registered sub-agent of the
+    /// owner with `CAP_MYDATA_READ`. Register this package on the key server when using permissioned
+    /// mode; `EncryptedObject.package_id` at encrypt time must match this package.
     public entry fun mydata_approve(
         id: vector<u8>,
         mydata: &MyData,
+        account: &social_contracts::memory::MemoryAccount,
         clock: &Clock,
         ctx: &TxContext,
     ) {
         assert!(encryption_id_matches(mydata, &id), EPolicyIdMismatch);
-        assert!(has_access(mydata, tx_context::sender(ctx), clock), EPolicyNotEntitled);
+
+        let sender = tx_context::sender(ctx);
+        if (has_access(mydata, sender, clock)) {
+            return
+        };
+
+        assert!(
+            social_contracts::memory::owner(account) == mydata.owner,
+            EPolicyNotEntitled,
+        );
+
+        if (!social_contracts::memory::is_registered_agent(account, sender)) {
+            abort EPolicyNotEntitled
+        };
+
+        let acting = social_contracts::memory::resolve_actor_with_cap(
+            account,
+            social_contracts::memory::cap_mydata_read(),
+            mydata.platform_id,
+            0,
+            clock,
+            ctx,
+        );
+        assert!(
+            social_contracts::memory::acting_principal_owner(&acting) == mydata.owner,
+            EPolicyNotEntitled,
+        );
     }
 
     fun bytes_equal_u8(a: &vector<u8>, b: &vector<u8>): bool {
