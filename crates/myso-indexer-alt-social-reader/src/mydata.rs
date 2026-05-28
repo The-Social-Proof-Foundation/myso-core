@@ -200,19 +200,13 @@ pub(crate) async fn get_popular_mydata(
     let _guard = metrics.latency.start_timer();
 
     let query = "
-        SELECT DISTINCT
+        SELECT
             d.mydata_id, d.owner, d.media_type, d.tags, d.platform_id, d.timestamp_start, d.timestamp_end,
             d.created_at, d.last_updated, d.one_time_price, d.subscription_price, d.subscription_duration_days,
             d.geographic_region, d.data_quality, d.sample_size, d.collection_method, d.is_updating, d.update_frequency
-        FROM mydata_data d
-        LEFT JOIN mydata_purchases p ON d.mydata_id = p.mydata_id
-        LEFT JOIN mydata_revenue r ON d.mydata_id = r.mydata_id
-        LEFT JOIN mydata_access_logs a ON d.mydata_id = a.mydata_id
-        WHERE (d.one_time_price IS NOT NULL OR d.subscription_price IS NOT NULL)
-        GROUP BY d.mydata_id, d.owner, d.media_type, d.tags, d.platform_id, d.timestamp_start, d.timestamp_end,
-                 d.created_at, d.last_updated, d.one_time_price, d.subscription_price, d.subscription_duration_days,
-                 d.geographic_region, d.data_quality, d.sample_size, d.collection_method, d.is_updating, d.update_frequency
-        ORDER BY (COUNT(p.id) + COUNT(r.id) + COUNT(a.id)) DESC, d.created_at DESC
+        FROM mydata_popular_30_days p
+        INNER JOIN mydata_data d ON d.mydata_id = p.mydata_id
+        ORDER BY p.unique_purchasers DESC, p.total_revenue DESC NULLS LAST, d.created_at DESC
         LIMIT $1 OFFSET $2
     ";
 
@@ -355,7 +349,7 @@ pub(crate) async fn get_mydata_stats(
             d.mydata_id, d.owner, d.media_type,
             COALESCE((SELECT SUM(amount) FROM mydata_revenue WHERE mydata_id = $1), 0) as total_revenue,
             (SELECT COUNT(*) FROM mydata_purchases WHERE mydata_id = $1) as purchase_count,
-            (SELECT COUNT(*) FROM mydata_subscriptions WHERE mydata_id = $1) as subscription_count,
+            (SELECT COUNT(*) FROM mydata_subscriptions WHERE mydata_id = $1 AND subscription_end >= EXTRACT(EPOCH FROM NOW())) as subscription_count,
             (SELECT COUNT(*) FROM mydata_access_logs WHERE mydata_id = $1) as access_count,
             d.one_time_price, d.subscription_price, d.created_at, d.last_updated
         FROM mydata_data d

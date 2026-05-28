@@ -454,8 +454,8 @@ diesel::table! {
 }
 
 diesel::table! {
-    mydata_registry (ip_id) {
-        ip_id -> Text,
+    mydata_registry (mydata_id) {
+        mydata_id -> Text,
         owner -> Text,
         registered_at -> Int8,
         unregistered_at -> Nullable<Int8>,

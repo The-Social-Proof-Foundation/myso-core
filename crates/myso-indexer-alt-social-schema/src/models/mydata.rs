@@ -363,7 +363,7 @@ pub struct NewMyDataAccessLog {
 #[derive(Debug, Clone, Queryable, Selectable, Serialize, Deserialize)]
 #[diesel(table_name = mydata_registry)]
 pub struct MyDataRegistry {
-    pub ip_id: String,
+    pub mydata_id: String,
     pub owner: String,
     pub registered_at: i64,
     pub unregistered_at: Option<i64>,
@@ -375,7 +375,7 @@ pub struct MyDataRegistry {
 #[derive(Debug, Clone, Insertable, Serialize, Deserialize)]
 #[diesel(table_name = mydata_registry)]
 pub struct NewMyDataRegistry {
-    pub ip_id: String,
+    pub mydata_id: String,
     pub owner: String,
     pub registered_at: i64,
     pub unregistered_at: Option<i64>,

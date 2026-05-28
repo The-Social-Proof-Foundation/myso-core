@@ -384,7 +384,7 @@ pub enum SocialEventRow {
     MyDataAccessLog(NewMyDataAccessLog),
     MyDataRegistry(NewMyDataRegistry),
     MyDataRegistryUpdate {
-        ip_id: String,
+        mydata_id: String,
         owner: String,
         unregistered_at: i64,
         transaction_id: String,

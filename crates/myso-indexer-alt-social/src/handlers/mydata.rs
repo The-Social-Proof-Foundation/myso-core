@@ -45,13 +45,13 @@ pub(crate) fn u64_to_db_i64(n: u64) -> i64 {
 }
 
 pub(crate) fn new_mydata_registry_row(
-    ip_id: String,
+    mydata_id: String,
     owner: String,
     registered_at: i64,
     transaction_id: String,
 ) -> NewMyDataRegistry {
     NewMyDataRegistry {
-        ip_id,
+        mydata_id,
         owner,
         registered_at,
         unregistered_at: None,
@@ -118,7 +118,7 @@ fn process_mydata_unregistered_event(
     let unregistered_at = json_to_i64(data.get("unregistered_at")?);
 
     Some(vec![SocialEventRow::MyDataRegistryUpdate {
-        ip_id,
+        mydata_id: ip_id,
         owner,
         unregistered_at,
         transaction_id: transaction_id.to_string(),

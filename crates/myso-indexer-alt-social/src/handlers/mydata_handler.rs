@@ -47,7 +47,7 @@ pub enum MyDataRow {
     MyDataAccessLog(NewMyDataAccessLog),
     MyDataRegistry(NewMyDataRegistry),
     MyDataRegistryUpdate {
-        ip_id: String,
+        mydata_id: String,
         owner: String,
         unregistered_at: i64,
         transaction_id: String,
@@ -88,12 +88,12 @@ impl MyDataRow {
                 Some(MyDataRow::MyDataRegistry(reg))
             }
             crate::handlers::SocialEventRow::MyDataRegistryUpdate {
-                ip_id,
+                mydata_id,
                 owner,
                 unregistered_at,
                 transaction_id,
             } => Some(MyDataRow::MyDataRegistryUpdate {
-                ip_id,
+                mydata_id,
                 owner,
                 unregistered_at,
                 transaction_id,
@@ -158,10 +158,10 @@ impl Processor for MyDataHandler {
             })
             .collect();
 
-        let mut registry_ip_ids: HashSet<String> = values
+        let mut registry_mydata_ids: HashSet<String> = values
             .iter()
             .filter_map(|row| match row {
-                MyDataRow::MyDataRegistry(r) => Some(r.ip_id.clone()),
+                MyDataRow::MyDataRegistry(r) => Some(r.mydata_id.clone()),
                 _ => None,
             })
             .collect();
@@ -205,7 +205,7 @@ impl Processor for MyDataHandler {
                                 object_mydata_ids.contains(&d.mydata_id)
                             }
                             crate::handlers::SocialEventRow::MyDataRegistry(r) => {
-                                registry_ip_ids.contains(&r.ip_id)
+                                registry_mydata_ids.contains(&r.mydata_id)
                             }
                             _ => false,
                         };
@@ -217,7 +217,7 @@ impl Processor for MyDataHandler {
                                 object_mydata_ids.insert(d.mydata_id.clone());
                             }
                             if let MyDataRow::MyDataRegistry(r) = &r {
-                                registry_ip_ids.insert(r.ip_id.clone());
+                                registry_mydata_ids.insert(r.mydata_id.clone());
                             }
                             values.push(r);
                         }
@@ -331,7 +331,7 @@ impl Handler for MyDataHandler {
                     let transaction_id = reg.transaction_id.clone();
                     total += diesel::insert_into(mydata_registry::table)
                         .values(reg)
-                        .on_conflict(mydata_registry::ip_id)
+                        .on_conflict(mydata_registry::mydata_id)
                         .do_update()
                         .set((
                             mydata_registry::owner.eq(owner),
@@ -344,13 +344,13 @@ impl Handler for MyDataHandler {
                         .await?;
                 }
                 MyDataRow::MyDataRegistryUpdate {
-                    ip_id,
+                    mydata_id,
                     owner,
                     unregistered_at,
                     transaction_id,
                 } => {
                     total += diesel::update(mydata_registry::table)
-                        .filter(mydata_registry::ip_id.eq(ip_id))
+                        .filter(mydata_registry::mydata_id.eq(mydata_id))
                         .filter(mydata_registry::owner.eq(owner))
                         .filter(mydata_registry::is_active.eq(true))
                         .set((
