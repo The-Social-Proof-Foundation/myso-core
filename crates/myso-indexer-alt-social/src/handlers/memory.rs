@@ -4,7 +4,7 @@
 use chrono::Utc;
 
 use super::SocialEventRow;
-use myso_indexer_alt_social_schema::models::{NewMemoryAccount, NewSubAgent, NewSubAgentEvent};
+use myso_indexer_alt_social_schema::models::{NewAgentMemoryVault, NewMemoryAccount, NewSubAgent, NewSubAgentEvent};
 
 pub(crate) fn json_to_i64(v: &serde_json::Value) -> i64 {
     v.as_i64()
@@ -143,6 +143,94 @@ pub fn handle_memory_event(
                 active: true,
             }])
         }
+        "MemoryAccountMigrated" => {
+            let account_id = json_str(data, "account_id")?;
+            let from = json_u64(data, "from");
+            let to = json_u64(data, "to");
+            Some(vec![SocialEventRow::SubAgentEvent(NewSubAgentEvent {
+                event_type: event_name.to_string(),
+                account_id: Some(account_id),
+                principal_owner: None,
+                profile_id: None,
+                agent_object_id: None,
+                derived_address: None,
+                label: None,
+                identity_class: None,
+                role_tags: None,
+                capabilities: None,
+                delegatable_caps: None,
+                register_scope: None,
+                approval_required_caps: None,
+                max_action_spend: None,
+                platform_scope: None,
+                parent_object_id: None,
+                depth: None,
+                registered_by: None,
+                expires_at_ms: None,
+                active: None,
+                created_at_ms: None,
+                revoked_count: None,
+                previous_owner: None,
+                new_owner: None,
+                migration_from_version: Some(from),
+                migration_to_version: Some(to),
+                registry_id: None,
+                event_id: event_id.to_string(),
+                transaction_id,
+                time: now,
+            })])
+        }
+        "MemoryRegistryMigrated" => {
+            let registry_id = json_str(data, "registry_id")?;
+            let from = json_u64(data, "from");
+            let to = json_u64(data, "to");
+            Some(vec![SocialEventRow::SubAgentEvent(NewSubAgentEvent {
+                event_type: event_name.to_string(),
+                account_id: None,
+                principal_owner: None,
+                profile_id: None,
+                agent_object_id: None,
+                derived_address: None,
+                label: None,
+                identity_class: None,
+                role_tags: None,
+                capabilities: None,
+                delegatable_caps: None,
+                register_scope: None,
+                approval_required_caps: None,
+                max_action_spend: None,
+                platform_scope: None,
+                parent_object_id: None,
+                depth: None,
+                registered_by: None,
+                expires_at_ms: None,
+                active: None,
+                created_at_ms: None,
+                revoked_count: None,
+                previous_owner: None,
+                new_owner: None,
+                migration_from_version: Some(from),
+                migration_to_version: Some(to),
+                registry_id: Some(registry_id),
+                event_id: event_id.to_string(),
+                transaction_id,
+                time: now,
+            })])
+        }
+        "AgentMemoryVaultCreated" => {
+            let vault_id = json_str(data, "vault_id")?;
+            let agent_object_id = json_str(data, "agent_object_id")?;
+            let memory_account_id = json_str(data, "memory_account_id")?;
+            Some(vec![SocialEventRow::AgentMemoryVault(NewAgentMemoryVault {
+                vault_id,
+                agent_object_id,
+                memory_account_id,
+                created_at_ms: now.timestamp_millis(),
+                event_id: event_id.to_string(),
+                transaction_id,
+                time: now,
+            })])
+        }
         _ => None,
     }
 }
@@ -222,6 +310,9 @@ fn sub_agent_audit_event(
         revoked_count: data.get("revoked_count").map(|_| json_u64(data, "revoked_count")),
         previous_owner: json_str(data, "previous_owner"),
         new_owner: json_str(data, "new_owner"),
+        migration_from_version: None,
+        migration_to_version: None,
+        registry_id: None,
         event_id: event_id.to_string(),
         transaction_id: transaction_id.to_string(),
         time: now,
@@ -298,5 +389,74 @@ mod tests {
             }
             _ => panic!("expected SubAgentUpsert and SubAgentEvent rows"),
         }
+    }
+
+    #[test]
+    fn memory_account_deactivated_emits_active_update_row() {
+        let data = serde_json::json!({
+            "account_id": "0xaccount",
+            "owner": "0xowner",
+        });
+        let rows = handle_memory_event("MemoryAccountDeactivated", &data, "tx-digest:2")
+            .expect("MemoryAccountDeactivated should produce rows");
+        assert_eq!(rows.len(), 1);
+        let SocialEventRow::MemoryAccountActiveUpdate { account_id, active } = &rows[0] else {
+            panic!("expected MemoryAccountActiveUpdate row");
+        };
+        assert_eq!(account_id, "0xaccount");
+        assert!(!active);
+    }
+
+    #[test]
+    fn memory_account_reactivated_emits_active_update_row() {
+        let data = serde_json::json!({
+            "account_id": "0xaccount",
+            "owner": "0xowner",
+        });
+        let rows = handle_memory_event("MemoryAccountReactivated", &data, "tx-digest:3")
+            .expect("MemoryAccountReactivated should produce rows");
+        assert_eq!(rows.len(), 1);
+        let SocialEventRow::MemoryAccountActiveUpdate { account_id, active } = &rows[0] else {
+            panic!("expected MemoryAccountActiveUpdate row");
+        };
+        assert_eq!(account_id, "0xaccount");
+        assert!(active);
+    }
+
+    #[test]
+    fn memory_account_migrated_emits_audit_row() {
+        let data = serde_json::json!({
+            "account_id": "0xaccount",
+            "from": 1,
+            "to": 2,
+        });
+        let rows = handle_memory_event("MemoryAccountMigrated", &data, "tx-digest:4")
+            .expect("MemoryAccountMigrated should produce rows");
+        assert_eq!(rows.len(), 1);
+        let SocialEventRow::SubAgentEvent(e) = &rows[0] else {
+            panic!("expected SubAgentEvent row");
+        };
+        assert_eq!(e.event_type, "MemoryAccountMigrated");
+        assert_eq!(e.account_id.as_deref(), Some("0xaccount"));
+        assert_eq!(e.migration_from_version, Some(1));
+        assert_eq!(e.migration_to_version, Some(2));
+    }
+
+    #[test]
+    fn agent_memory_vault_created_emits_vault_row() {
+        let data = serde_json::json!({
+            "vault_id": "0xvault",
+            "agent_object_id": "0xagent",
+            "memory_account_id": "0xaccount",
+        });
+        let rows = handle_memory_event("AgentMemoryVaultCreated", &data, "tx-digest:5")
+            .expect("AgentMemoryVaultCreated should produce rows");
+        assert_eq!(rows.len(), 1);
+        let SocialEventRow::AgentMemoryVault(v) = &rows[0] else {
+            panic!("expected AgentMemoryVault row");
+        };
+        assert_eq!(v.vault_id, "0xvault");
+        assert_eq!(v.agent_object_id, "0xagent");
+        assert_eq!(v.memory_account_id, "0xaccount");
     }
 }

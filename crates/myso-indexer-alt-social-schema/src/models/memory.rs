@@ -4,7 +4,7 @@
 use diesel::prelude::*;
 use serde::{Deserialize, Serialize};
 
-use crate::schema::{memory_accounts, sub_agent_events, sub_agents};
+use crate::schema::{agent_memory_vaults, memory_accounts, sub_agent_events, sub_agents};
 
 #[derive(Debug, Clone, Insertable, Serialize, Deserialize)]
 #[diesel(table_name = memory_accounts)]
@@ -75,6 +75,33 @@ pub struct NewSubAgentEvent {
     pub revoked_count: Option<i64>,
     pub previous_owner: Option<String>,
     pub new_owner: Option<String>,
+    pub migration_from_version: Option<i64>,
+    pub migration_to_version: Option<i64>,
+    pub registry_id: Option<String>,
+    pub event_id: String,
+    pub transaction_id: String,
+    pub time: chrono::DateTime<chrono::Utc>,
+}
+
+#[derive(Debug, Clone, Insertable, Serialize, Deserialize)]
+#[diesel(table_name = agent_memory_vaults)]
+pub struct NewAgentMemoryVault {
+    pub vault_id: String,
+    pub agent_object_id: String,
+    pub memory_account_id: String,
+    pub created_at_ms: i64,
+    pub event_id: String,
+    pub transaction_id: String,
+    pub time: chrono::DateTime<chrono::Utc>,
+}
+
+#[derive(Debug, Clone, Queryable, Selectable, Serialize, Deserialize)]
+#[diesel(table_name = agent_memory_vaults)]
+pub struct AgentMemoryVaultRow {
+    pub vault_id: String,
+    pub agent_object_id: String,
+    pub memory_account_id: String,
+    pub created_at_ms: i64,
     pub event_id: String,
     pub transaction_id: String,
     pub time: chrono::DateTime<chrono::Utc>,

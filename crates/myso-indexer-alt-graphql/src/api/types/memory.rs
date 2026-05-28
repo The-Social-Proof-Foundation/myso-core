@@ -35,6 +35,17 @@ impl SubAgent {
         &self.inner.label
     }
 
+    async fn memory_vault_id(&self, ctx: &async_graphql::Context<'_>) -> Option<String> {
+        let reader_opt = ctx
+            .data_opt::<std::sync::Arc<Option<myso_indexer_alt_social_reader::SocialPgReader>>>()?;
+        let reader = reader_opt.as_ref().as_ref()?;
+        reader
+            .get_agent_memory_vault_id(&self.inner.agent_object_id)
+            .await
+            .ok()
+            .flatten()
+    }
+
     async fn identity_class(&self) -> i32 {
         i32::from(self.inner.identity_class)
     }

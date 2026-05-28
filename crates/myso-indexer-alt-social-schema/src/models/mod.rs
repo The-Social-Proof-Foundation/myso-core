@@ -46,7 +46,8 @@ pub use insurance::{
     UpdateInsuranceVaultStatus,
 };
 pub use memory::{
-    MemoryAccountRow, NewMemoryAccount, NewSubAgent, NewSubAgentEvent, SubAgentRow,
+    AgentMemoryVaultRow, MemoryAccountRow, NewAgentMemoryVault, NewMemoryAccount, NewSubAgent,
+    NewSubAgentEvent, SubAgentRow,
 };
 pub use mydata::{
     ACCESS_TYPE_CONTENT_UPDATE, ACCESS_TYPE_GRANT, ACCESS_TYPE_ONE_TIME, ACCESS_TYPE_PREVIEW,

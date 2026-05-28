@@ -46,6 +46,19 @@ CREATE INDEX IF NOT EXISTS idx_sub_agents_account_active ON sub_agents (account_
 CREATE INDEX IF NOT EXISTS idx_sub_agents_parent ON sub_agents (parent_object_id);
 CREATE INDEX IF NOT EXISTS idx_sub_agents_derived_address ON sub_agents (derived_address);
 
+CREATE TABLE IF NOT EXISTS agent_memory_vaults (
+    vault_id TEXT NOT NULL PRIMARY KEY,
+    agent_object_id TEXT NOT NULL UNIQUE,
+    memory_account_id TEXT NOT NULL,
+    created_at_ms BIGINT NOT NULL,
+    event_id TEXT NOT NULL,
+    transaction_id TEXT NOT NULL,
+    time TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
+CREATE INDEX IF NOT EXISTS idx_agent_memory_vaults_account
+    ON agent_memory_vaults (memory_account_id);
+
 CREATE TABLE IF NOT EXISTS sub_agent_events (
     id SERIAL NOT NULL,
     event_type TEXT NOT NULL,
@@ -72,6 +85,9 @@ CREATE TABLE IF NOT EXISTS sub_agent_events (
     revoked_count BIGINT,
     previous_owner TEXT,
     new_owner TEXT,
+    migration_from_version BIGINT,
+    migration_to_version BIGINT,
+    registry_id TEXT,
     event_id TEXT NOT NULL,
     transaction_id TEXT NOT NULL,
     time TIMESTAMPTZ NOT NULL DEFAULT NOW(),
@@ -83,6 +99,8 @@ SELECT create_hypertable('sub_agent_events', 'time', if_not_exists => TRUE);
 CREATE INDEX IF NOT EXISTS idx_sub_agent_events_derived ON sub_agent_events (derived_address, time DESC);
 CREATE INDEX IF NOT EXISTS idx_sub_agent_events_principal ON sub_agent_events (principal_owner, time DESC);
 CREATE INDEX IF NOT EXISTS idx_sub_agent_events_agent_object ON sub_agent_events (agent_object_id, time DESC);
+CREATE INDEX IF NOT EXISTS idx_sub_agent_events_registry
+    ON sub_agent_events (registry_id, time DESC);
 
 ALTER TABLE profiles ADD COLUMN IF NOT EXISTS memory_account_id TEXT;
 CREATE INDEX IF NOT EXISTS idx_profiles_memory_account_id ON profiles (memory_account_id);

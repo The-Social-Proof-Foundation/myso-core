@@ -18,6 +18,7 @@ ALTER TABLE posts DROP COLUMN IF EXISTS actor_address;
 DROP INDEX IF EXISTS idx_profiles_memory_account_id;
 ALTER TABLE profiles DROP COLUMN IF EXISTS memory_account_id;
 
+DROP TABLE IF EXISTS agent_memory_vaults;
 DROP TABLE IF EXISTS sub_agent_events;
 DROP TABLE IF EXISTS sub_agents;
 DROP TABLE IF EXISTS memory_accounts;

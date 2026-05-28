@@ -989,6 +989,39 @@ pub struct BcsSubAgentsClearedOnTransferEvent {
     revoked_count: u64,
 }
 
+#[derive(Debug, Deserialize, Serialize)]
+pub struct BcsMemoryAccountDeactivatedEvent {
+    account_id: AccountAddress,
+    owner: AccountAddress,
+}
+
+#[derive(Debug, Deserialize, Serialize)]
+pub struct BcsMemoryAccountReactivatedEvent {
+    account_id: AccountAddress,
+    owner: AccountAddress,
+}
+
+#[derive(Debug, Deserialize, Serialize)]
+pub struct BcsMemoryAccountMigratedEvent {
+    account_id: AccountAddress,
+    from: u64,
+    to: u64,
+}
+
+#[derive(Debug, Deserialize, Serialize)]
+pub struct BcsMemoryRegistryMigratedEvent {
+    registry_id: AccountAddress,
+    from: u64,
+    to: u64,
+}
+
+#[derive(Debug, Deserialize, Serialize)]
+pub struct BcsAgentMemoryVaultCreatedEvent {
+    vault_id: AccountAddress,
+    agent_object_id: AccountAddress,
+    memory_account_id: AccountAddress,
+}
+
 /// Move `ascii::String` BCS (`bytes` field).
 #[derive(Debug, Clone, Deserialize, Serialize)]
 pub struct BcsMoveAsciiString {
@@ -2822,6 +2855,49 @@ fn parse_memory_event(
                 "previous_owner": addr_to_string(&ev.previous_owner),
                 "new_owner": addr_to_string(&ev.new_owner),
                 "revoked_count": ev.revoked_count,
+            })))
+        }
+        "MemoryAccountDeactivated" => {
+            let ev = bcs::from_bytes::<BcsMemoryAccountDeactivatedEvent>(contents)
+                .map_err(|e| bcs_parse_err(e, contents))?;
+            Ok(Some(serde_json::json!({
+                "account_id": addr_to_string(&ev.account_id),
+                "owner": addr_to_string(&ev.owner),
+            })))
+        }
+        "MemoryAccountReactivated" => {
+            let ev = bcs::from_bytes::<BcsMemoryAccountReactivatedEvent>(contents)
+                .map_err(|e| bcs_parse_err(e, contents))?;
+            Ok(Some(serde_json::json!({
+                "account_id": addr_to_string(&ev.account_id),
+                "owner": addr_to_string(&ev.owner),
+            })))
+        }
+        "MemoryAccountMigrated" => {
+            let ev = bcs::from_bytes::<BcsMemoryAccountMigratedEvent>(contents)
+                .map_err(|e| bcs_parse_err(e, contents))?;
+            Ok(Some(serde_json::json!({
+                "account_id": addr_to_string(&ev.account_id),
+                "from": ev.from,
+                "to": ev.to,
+            })))
+        }
+        "MemoryRegistryMigrated" => {
+            let ev = bcs::from_bytes::<BcsMemoryRegistryMigratedEvent>(contents)
+                .map_err(|e| bcs_parse_err(e, contents))?;
+            Ok(Some(serde_json::json!({
+                "registry_id": addr_to_string(&ev.registry_id),
+                "from": ev.from,
+                "to": ev.to,
+            })))
+        }
+        "AgentMemoryVaultCreated" => {
+            let ev = bcs::from_bytes::<BcsAgentMemoryVaultCreatedEvent>(contents)
+                .map_err(|e| bcs_parse_err(e, contents))?;
+            Ok(Some(serde_json::json!({
+                "vault_id": addr_to_string(&ev.vault_id),
+                "agent_object_id": addr_to_string(&ev.agent_object_id),
+                "memory_account_id": addr_to_string(&ev.memory_account_id),
             })))
         }
         _ => Ok(None),
@@ -4925,6 +5001,74 @@ mod tests {
         let json = parse_event_contents("post", "CommentCreatedEvent", &bytes).expect("parse");
         assert_eq!(json["action_identity_class"], 0_i64);
         assert!(json["sub_agent_id"].is_null());
+    }
+
+    #[test]
+    fn memory_account_deactivated_bcs_round_trip() {
+        let ev = BcsMemoryAccountDeactivatedEvent {
+            account_id: AccountAddress::from_hex_literal("0xaa").unwrap(),
+            owner: AccountAddress::from_hex_literal("0xbb").unwrap(),
+        };
+        let bytes = bcs::to_bytes(&ev).expect("bcs");
+        let json =
+            parse_event_contents("memory", "MemoryAccountDeactivated", &bytes).expect("parse");
+        assert!(json["account_id"].as_str().unwrap().starts_with("0x"));
+        assert!(json["owner"].as_str().unwrap().starts_with("0x"));
+    }
+
+    #[test]
+    fn memory_account_reactivated_bcs_round_trip() {
+        let ev = BcsMemoryAccountReactivatedEvent {
+            account_id: AccountAddress::from_hex_literal("0xaa").unwrap(),
+            owner: AccountAddress::from_hex_literal("0xbb").unwrap(),
+        };
+        let bytes = bcs::to_bytes(&ev).expect("bcs");
+        let json =
+            parse_event_contents("memory", "MemoryAccountReactivated", &bytes).expect("parse");
+        assert!(json["account_id"].as_str().unwrap().starts_with("0x"));
+        assert!(json["owner"].as_str().unwrap().starts_with("0x"));
+    }
+
+    #[test]
+    fn memory_account_migrated_bcs_round_trip() {
+        let ev = BcsMemoryAccountMigratedEvent {
+            account_id: AccountAddress::from_hex_literal("0xaa").unwrap(),
+            from: 1,
+            to: 2,
+        };
+        let bytes = bcs::to_bytes(&ev).expect("bcs");
+        let json = parse_event_contents("memory", "MemoryAccountMigrated", &bytes).expect("parse");
+        assert_eq!(json["from"], 1_i64);
+        assert_eq!(json["to"], 2_i64);
+    }
+
+    #[test]
+    fn memory_registry_migrated_bcs_round_trip() {
+        let ev = BcsMemoryRegistryMigratedEvent {
+            registry_id: AccountAddress::from_hex_literal("0xcc").unwrap(),
+            from: 1,
+            to: 2,
+        };
+        let bytes = bcs::to_bytes(&ev).expect("bcs");
+        let json = parse_event_contents("memory", "MemoryRegistryMigrated", &bytes).expect("parse");
+        assert!(json["registry_id"].as_str().unwrap().starts_with("0x"));
+        assert_eq!(json["from"], 1_i64);
+        assert_eq!(json["to"], 2_i64);
+    }
+
+    #[test]
+    fn agent_memory_vault_created_bcs_round_trip() {
+        let ev = BcsAgentMemoryVaultCreatedEvent {
+            vault_id: AccountAddress::from_hex_literal("0x11").unwrap(),
+            agent_object_id: AccountAddress::from_hex_literal("0x22").unwrap(),
+            memory_account_id: AccountAddress::from_hex_literal("0x33").unwrap(),
+        };
+        let bytes = bcs::to_bytes(&ev).expect("bcs");
+        let json =
+            parse_event_contents("memory", "AgentMemoryVaultCreated", &bytes).expect("parse");
+        assert!(json["vault_id"].as_str().unwrap().starts_with("0x"));
+        assert!(json["agent_object_id"].as_str().unwrap().starts_with("0x"));
+        assert!(json["memory_account_id"].as_str().unwrap().starts_with("0x"));
     }
 
     #[test]

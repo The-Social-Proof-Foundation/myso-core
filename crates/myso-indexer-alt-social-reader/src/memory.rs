@@ -7,7 +7,7 @@ use diesel::QueryDsl;
 use diesel::SelectableHelper;
 use diesel_async::RunQueryDsl;
 use myso_indexer_alt_social_schema::models::{MemoryAccountRow, SubAgentRow};
-use myso_indexer_alt_social_schema::schema::{memory_accounts, profiles, sub_agents};
+use myso_indexer_alt_social_schema::schema::{agent_memory_vaults, memory_accounts, profiles, sub_agents};
 use myso_pg_db::Connection;
 use serde::Serialize;
 
@@ -150,6 +150,23 @@ pub(crate) async fn list_sub_agent_children(
         .await?;
     metrics.requests_succeeded.inc();
     Ok(rows)
+}
+
+pub(crate) async fn get_agent_memory_vault_id(
+    conn: &mut Connection<'_>,
+    agent_object_id: &str,
+    metrics: &DbReaderMetrics,
+) -> anyhow::Result<Option<String>> {
+    metrics.requests_received.inc();
+    let _guard = metrics.latency.start_timer();
+    let vault_id = agent_memory_vaults::table
+        .filter(agent_memory_vaults::agent_object_id.eq(agent_object_id))
+        .select(agent_memory_vaults::vault_id)
+        .first(conn)
+        .await
+        .optional()?;
+    metrics.requests_succeeded.inc();
+    Ok(vault_id)
 }
 
 pub(crate) async fn get_profile_memory_account_id(

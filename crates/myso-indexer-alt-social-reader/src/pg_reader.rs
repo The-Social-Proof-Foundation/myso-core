@@ -291,6 +291,14 @@ impl SocialPgReader {
         crate::memory::get_sub_agent_by_object_id(&mut conn, agent_object_id, &self.metrics).await
     }
 
+    pub async fn get_agent_memory_vault_id(
+        &self,
+        agent_object_id: &str,
+    ) -> anyhow::Result<Option<String>> {
+        let mut conn = self.connect().await?;
+        crate::memory::get_agent_memory_vault_id(&mut conn, agent_object_id, &self.metrics).await
+    }
+
     pub async fn get_profile_memory_account_id(
         &self,
         profile_id: &str,

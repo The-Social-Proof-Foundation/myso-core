@@ -59,7 +59,7 @@ use myso_indexer_alt_social_schema::models::{
     NewSocialProofTokensEvent, NewSpotBet, NewSpotBetWithdrawal, NewSpotConfig, NewSpotEventLog,
     NewSpotPayout, NewSpotRecord, NewSpotRefund, NewSpotResolution, NewSptExchangeConfig,
     NewSptHolding, NewSptPool, NewSptPriceHistory, NewSptReservation, NewSptReservationPool,
-    NewSptTransaction, NewSubAgent, NewSubAgentEvent, NewSubscriptionEvent, NewTip, NewUnifiedRevenue, NewUpgradeEvent,
+    NewSptTransaction, NewSubAgent, NewSubAgentEvent, NewAgentMemoryVault, NewSubscriptionEvent, NewTip, NewUnifiedRevenue, NewUpgradeEvent,
     NewVestingEvent, NewVestingWallet, NewVoteDecryptionFailure, ProposalUpdateSet,
 };
 
@@ -645,6 +645,7 @@ pub enum SocialEventRow {
         account_id: String,
         active: bool,
     },
+    AgentMemoryVault(NewAgentMemoryVault),
     SubAgentEvent(NewSubAgentEvent),
 }
 

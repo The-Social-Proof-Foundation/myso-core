@@ -1838,57 +1838,6 @@ MyDataAccessLog.time
 MyDataAccessLog.transactionId
   => {}
 
-MyDataConfig.updatedBy
-  => {}
-
-MyDataConfig.enableFlag
-  => {}
-
-MyDataConfig.maxTags
-  => {}
-
-MyDataConfig.maxSubscriptionDays
-  => {}
-
-MyDataConfig.maxFreeAccessGrants
-  => {}
-
-MyDataConfig.timestampMs
-  => {}
-
-MyDataDailyRevenue.day
-  => {}
-
-MyDataDailyRevenue.dailyRevenue
-  => {}
-
-MyDataDailyRevenue.dailyTransactions
-  => {}
-
-MyDataPurchase.mydataId
-  => {}
-
-MyDataPurchase.buyer
-  => {}
-
-MyDataPurchase.buyerProfile
-  => {}
-
-MyDataPurchase.price
-  => {}
-
-MyDataPurchase.purchaseType
-  => {}
-
-MyDataPurchase.purchaseTime
-  => {}
-
-MyDataPurchase.time
-  => {}
-
-MyDataPurchase.transactionId
-  => {}
-
 MyDataBroadPool.poolId
   => {}
 
@@ -1932,6 +1881,33 @@ MyDataClaim.transactionId
   => {}
 
 MyDataClaim.time
+  => {}
+
+MyDataConfig.updatedBy
+  => {}
+
+MyDataConfig.enableFlag
+  => {}
+
+MyDataConfig.maxTags
+  => {}
+
+MyDataConfig.maxSubscriptionDays
+  => {}
+
+MyDataConfig.maxFreeAccessGrants
+  => {}
+
+MyDataConfig.timestampMs
+  => {}
+
+MyDataDailyRevenue.day
+  => {}
+
+MyDataDailyRevenue.dailyRevenue
+  => {}
+
+MyDataDailyRevenue.dailyTransactions
   => {}
 
 MyDataDistributionRound.snapshotId
@@ -1994,58 +1970,28 @@ MyDataMerkleRoot.transactionId
 MyDataMerkleRoot.time
   => {}
 
-MyDataSnapshotAnchor.id
+MyDataPurchase.mydataId
   => {}
 
-MyDataSnapshotAnchor.snapshotId
+MyDataPurchase.buyer
   => {}
 
-MyDataSnapshotAnchor.buyer
+MyDataPurchase.buyerProfile
   => {}
 
-MyDataSnapshotAnchor.buyerProfile
+MyDataPurchase.price
   => {}
 
-MyDataSnapshotAnchor.pricePaid
+MyDataPurchase.purchaseType
   => {}
 
-MyDataSnapshotAnchor.createdAtMs
+MyDataPurchase.purchaseTime
   => {}
 
-MyDataSnapshotAnchor.eventId
+MyDataPurchase.time
   => {}
 
-MyDataSnapshotAnchor.transactionId
-  => {}
-
-MyDataSnapshotAnchor.time
-  => {}
-
-MyDataSnapshotAnchor.manifestHash
-  => {}
-
-MyDataSnapshotAnchor.paymentReference
-  => {}
-
-MyDataSubPool.subPoolId
-  => {}
-
-MyDataSubPool.broadPoolId
-  => {}
-
-MyDataSubPool.name
-  => {}
-
-MyDataSubPool.createdAtMs
-  => {}
-
-MyDataSubPool.eventId
-  => {}
-
-MyDataSubPool.transactionId
-  => {}
-
-MyDataSubPool.time
+MyDataPurchase.transactionId
   => {}
 
 MyDataRecord.mydataId
@@ -2153,6 +2099,39 @@ MyDataRevenue.time
 MyDataRevenue.transactionId
   => {}
 
+MyDataSnapshotAnchor.id
+  => {}
+
+MyDataSnapshotAnchor.snapshotId
+  => {}
+
+MyDataSnapshotAnchor.buyer
+  => {}
+
+MyDataSnapshotAnchor.buyerProfile
+  => {}
+
+MyDataSnapshotAnchor.pricePaid
+  => {}
+
+MyDataSnapshotAnchor.createdAtMs
+  => {}
+
+MyDataSnapshotAnchor.eventId
+  => {}
+
+MyDataSnapshotAnchor.transactionId
+  => {}
+
+MyDataSnapshotAnchor.time
+  => {}
+
+MyDataSnapshotAnchor.manifestHash
+  => {}
+
+MyDataSnapshotAnchor.paymentReference
+  => {}
+
 MyDataStats.totalRevenue
   => {}
 
@@ -2169,6 +2148,27 @@ MyDataStats.createdAt
   => {}
 
 MyDataStats.lastUpdated
+  => {}
+
+MyDataSubPool.subPoolId
+  => {}
+
+MyDataSubPool.broadPoolId
+  => {}
+
+MyDataSubPool.name
+  => {}
+
+MyDataSubPool.createdAtMs
+  => {}
+
+MyDataSubPool.eventId
+  => {}
+
+MyDataSubPool.transactionId
+  => {}
+
+MyDataSubPool.time
   => {}
 
 MyDataSubscription.subscriber
@@ -4953,6 +4953,9 @@ SubAgent.derivedAddress
   => {}
 
 SubAgent.label
+  => {}
+
+SubAgent.memoryVaultId
   => {}
 
 SubAgent.identityClass

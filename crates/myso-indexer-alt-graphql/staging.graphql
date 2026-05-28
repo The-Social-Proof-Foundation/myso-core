@@ -7666,6 +7666,7 @@ type SubAgent {
 	expiresAt: Int
 	identityClass: Int!
 	label: String!
+	memoryVaultId: String
 	maxActionSpend: Int
 	parentObjectId: String
 	platformScope: MySoAddress

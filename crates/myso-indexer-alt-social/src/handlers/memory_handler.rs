@@ -19,8 +19,8 @@ use myso_indexer_alt_framework::postgres::handler::Handler;
 use myso_indexer_alt_framework::postgres::Connection;
 use myso_indexer_alt_framework::types::full_checkpoint_content::Checkpoint;
 use myso_indexer_alt_framework::FieldCount;
-use myso_indexer_alt_social_schema::models::{NewMemoryAccount, NewSubAgent, NewSubAgentEvent};
-use myso_indexer_alt_social_schema::schema::{memory_accounts, profiles, sub_agent_events, sub_agents};
+use myso_indexer_alt_social_schema::models::{NewAgentMemoryVault, NewMemoryAccount, NewSubAgent, NewSubAgentEvent};
+use myso_indexer_alt_social_schema::schema::{agent_memory_vaults, memory_accounts, profiles, sub_agent_events, sub_agents};
 
 use super::common;
 use super::events;
@@ -62,6 +62,7 @@ pub enum MemoryRow {
         account_id: String,
         active: bool,
     },
+    AgentMemoryVault(NewAgentMemoryVault),
     SubAgentEvent(NewSubAgentEvent),
 }
 
@@ -119,6 +120,9 @@ impl MemoryRow {
             crate::handlers::SocialEventRow::MemoryAccountActiveUpdate { account_id, active } => {
                 Some(MemoryRow::MemoryAccountActiveUpdate { account_id, active })
             }
+            crate::handlers::SocialEventRow::AgentMemoryVault(v) => {
+                Some(MemoryRow::AgentMemoryVault(v))
+            }
             crate::handlers::SocialEventRow::SubAgentEvent(e) => Some(MemoryRow::SubAgentEvent(e)),
             _ => None,
         }
@@ -126,7 +130,7 @@ impl MemoryRow {
 }
 
 impl FieldCount for MemoryRow {
-    const FIELD_COUNT: usize = 9;
+    const FIELD_COUNT: usize = 10;
 }
 
 pub struct MemoryHandler;
@@ -356,6 +360,28 @@ impl Handler for MemoryHandler {
                     .set(memory_accounts::active.eq(*active))
                     .execute(conn)
                     .await?;
+                }
+                MemoryRow::AgentMemoryVault(v) => {
+                    let agent_object_id = v.agent_object_id.clone();
+                    let memory_account_id = v.memory_account_id.clone();
+                    let created_at_ms = v.created_at_ms;
+                    let event_id = v.event_id.clone();
+                    let transaction_id = v.transaction_id.clone();
+                    let time = v.time;
+                    total += diesel::insert_into(agent_memory_vaults::table)
+                        .values(v)
+                        .on_conflict(agent_memory_vaults::vault_id)
+                        .do_update()
+                        .set((
+                            agent_memory_vaults::agent_object_id.eq(agent_object_id),
+                            agent_memory_vaults::memory_account_id.eq(memory_account_id),
+                            agent_memory_vaults::created_at_ms.eq(created_at_ms),
+                            agent_memory_vaults::event_id.eq(event_id),
+                            agent_memory_vaults::transaction_id.eq(transaction_id),
+                            agent_memory_vaults::time.eq(time),
+                        ))
+                        .execute(conn)
+                        .await?;
                 }
                 MemoryRow::SubAgentEvent(e) => {
                     total += diesel::insert_into(sub_agent_events::table)

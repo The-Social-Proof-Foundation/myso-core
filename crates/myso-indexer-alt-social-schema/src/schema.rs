@@ -1142,6 +1142,18 @@ diesel::table! {
 }
 
 diesel::table! {
+    agent_memory_vaults (vault_id) {
+        vault_id -> Text,
+        agent_object_id -> Text,
+        memory_account_id -> Text,
+        created_at_ms -> Int8,
+        event_id -> Text,
+        transaction_id -> Text,
+        time -> Timestamptz,
+    }
+}
+
+diesel::table! {
     memory_accounts (account_id) {
         account_id -> Text,
         principal_owner -> Text,
@@ -1210,6 +1222,9 @@ diesel::table! {
         revoked_count -> Nullable<Int8>,
         previous_owner -> Nullable<Text>,
         new_owner -> Nullable<Text>,
+        migration_from_version -> Nullable<Int8>,
+        migration_to_version -> Nullable<Int8>,
+        registry_id -> Nullable<Text>,
         event_id -> Text,
         transaction_id -> Text,
         time -> Timestamptz,
@@ -1897,6 +1912,7 @@ diesel::allow_tables_to_appear_in_same_query!(
     insurance_user_exposures,
     insurance_vault_transactions,
     insurance_vaults,
+    agent_memory_vaults,
     memory_accounts,
     mydata_access_logs,
     mydata_config,
