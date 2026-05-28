@@ -8,9 +8,9 @@ use diesel_async::RunQueryDsl;
 
 use myso_indexer_alt_social_schema::models::{
     MyDataAccessAnalyticsRow, MyDataAccessLogRow, MyDataDailyRevenueRow, MyDataPurchaseRow,
-    MyDataQueryBroadPoolRow, MyDataQueryClaimRow, MyDataQueryDistributionRoundRow,
-    MyDataQueryListingSubPoolRow, MyDataQueryMerkleRootRow, MyDataQuerySnapshotAnchorRow,
-    MyDataQuerySubPoolRow, MyDataRecordRow, MyDataRevenueRow, MyDataStatsRow,
+    MyDataBroadPoolRow, MyDataClaimRow, MyDataDistributionRoundRow,
+    MyDataListingSubPoolRow, MyDataMerkleRootRow, MyDataSnapshotAnchorRow,
+    MyDataSubPoolRow, MyDataRecordRow, MyDataRevenueRow, MyDataStatsRow,
     MyDataSubscriptionRow,
 };
 use myso_pg_db::Connection;
@@ -347,9 +347,9 @@ pub(crate) async fn get_mydata_stats(
     let query = "
         SELECT
             d.mydata_id, d.owner, d.media_type,
-            COALESCE((SELECT SUM(amount) FROM mydata_revenue WHERE mydata_id = $1), 0) as total_revenue,
+            COALESCE((SELECT SUM(amount)::bigint FROM mydata_revenue WHERE mydata_id = $1), 0) as total_revenue,
             (SELECT COUNT(*) FROM mydata_purchases WHERE mydata_id = $1) as purchase_count,
-            (SELECT COUNT(*) FROM mydata_subscriptions WHERE mydata_id = $1 AND subscription_end >= EXTRACT(EPOCH FROM NOW())) as subscription_count,
+            (SELECT COUNT(*) FROM mydata_subscriptions WHERE mydata_id = $1 AND subscription_end >= (EXTRACT(EPOCH FROM NOW()) * 1000)::bigint) as subscription_count,
             (SELECT COUNT(*) FROM mydata_access_logs WHERE mydata_id = $1) as access_count,
             d.one_time_price, d.subscription_price, d.created_at, d.last_updated
         FROM mydata_data d
@@ -376,12 +376,12 @@ pub(crate) async fn get_mydata_revenue_timeline(
 
     let query = "
         SELECT
-            time_bucket('1 day', to_timestamp(revenue_time))::date as day,
-            SUM(amount) as daily_revenue,
+            time_bucket('1 day', to_timestamp(revenue_time / 1000.0))::date as day,
+            SUM(amount)::bigint as daily_revenue,
             COUNT(*) as daily_transactions
         FROM mydata_revenue
         WHERE mydata_id = $1
-        GROUP BY time_bucket('1 day', to_timestamp(revenue_time))
+        GROUP BY time_bucket('1 day', to_timestamp(revenue_time / 1000.0))
         ORDER BY day DESC
         LIMIT 30
     ";
@@ -405,13 +405,13 @@ pub(crate) async fn get_mydata_access_analytics(
 
     let query = "
         SELECT
-            time_bucket('1 day', to_timestamp(access_time))::date as day,
+            time_bucket('1 day', to_timestamp(access_time / 1000.0))::date as day,
             access_type,
             COUNT(DISTINCT user_address) as unique_users,
             COUNT(*) as total_accesses
         FROM mydata_access_logs
         WHERE mydata_id = $1
-        GROUP BY time_bucket('1 day', to_timestamp(access_time)), access_type
+        GROUP BY time_bucket('1 day', to_timestamp(access_time / 1000.0)), access_type
         ORDER BY day DESC, access_type
         LIMIT 100
     ";
@@ -425,41 +425,41 @@ pub(crate) async fn get_mydata_access_analytics(
     Ok(results)
 }
 
-pub(crate) async fn list_mydata_query_broad_pools(
+pub(crate) async fn list_mydata_broad_pools(
     conn: &mut Connection<'_>,
     limit: i64,
     offset: i64,
     metrics: &DbReaderMetrics,
-) -> anyhow::Result<Vec<MyDataQueryBroadPoolRow>> {
+) -> anyhow::Result<Vec<MyDataBroadPoolRow>> {
     metrics.requests_received.inc();
     let _guard = metrics.latency.start_timer();
     let query = "
         SELECT pool_id, name, created_at_ms, event_id, transaction_id, time
-        FROM mydata_query_broad_pools
+        FROM mydata_broad_pools
         ORDER BY created_at_ms DESC
         LIMIT $1 OFFSET $2
     ";
     let results = diesel::sql_query(query)
         .bind::<BigInt, _>(limit)
         .bind::<BigInt, _>(offset)
-        .load::<MyDataQueryBroadPoolRow>(conn)
+        .load::<MyDataBroadPoolRow>(conn)
         .await?;
     metrics.requests_succeeded.inc();
     Ok(results)
 }
 
-pub(crate) async fn list_mydata_query_sub_pools_for_broad_pool(
+pub(crate) async fn list_mydata_sub_pools_for_broad_pool(
     conn: &mut Connection<'_>,
     broad_pool_id: &str,
     limit: i64,
     offset: i64,
     metrics: &DbReaderMetrics,
-) -> anyhow::Result<Vec<MyDataQuerySubPoolRow>> {
+) -> anyhow::Result<Vec<MyDataSubPoolRow>> {
     metrics.requests_received.inc();
     let _guard = metrics.latency.start_timer();
     let query = "
         SELECT sub_pool_id, broad_pool_id, name, created_at_ms, event_id, transaction_id, time
-        FROM mydata_query_sub_pools
+        FROM mydata_sub_pools
         WHERE broad_pool_id = $1
         ORDER BY created_at_ms DESC
         LIMIT $2 OFFSET $3
@@ -468,25 +468,25 @@ pub(crate) async fn list_mydata_query_sub_pools_for_broad_pool(
         .bind::<Text, _>(broad_pool_id)
         .bind::<BigInt, _>(limit)
         .bind::<BigInt, _>(offset)
-        .load::<MyDataQuerySubPoolRow>(conn)
+        .load::<MyDataSubPoolRow>(conn)
         .await?;
     metrics.requests_succeeded.inc();
     Ok(results)
 }
 
-pub(crate) async fn list_mydata_query_sub_pools_for_listing(
+pub(crate) async fn list_mydata_sub_pools_for_listing(
     conn: &mut Connection<'_>,
     listing_id: &str,
     limit: i64,
     offset: i64,
     metrics: &DbReaderMetrics,
-) -> anyhow::Result<Vec<MyDataQuerySubPoolRow>> {
+) -> anyhow::Result<Vec<MyDataSubPoolRow>> {
     metrics.requests_received.inc();
     let _guard = metrics.latency.start_timer();
     let query = "
         SELECT s.sub_pool_id, s.broad_pool_id, s.name, s.created_at_ms, j.event_id, j.transaction_id, j.time
-        FROM mydata_query_listing_sub_pools j
-        INNER JOIN mydata_query_sub_pools s ON s.sub_pool_id = j.sub_pool_id
+        FROM mydata_listing_sub_pools j
+        INNER JOIN mydata_sub_pools s ON s.sub_pool_id = j.sub_pool_id
         WHERE j.listing_id = $1
         ORDER BY j.assigned_at_ms DESC
         LIMIT $2 OFFSET $3
@@ -495,24 +495,24 @@ pub(crate) async fn list_mydata_query_sub_pools_for_listing(
         .bind::<Text, _>(listing_id)
         .bind::<BigInt, _>(limit)
         .bind::<BigInt, _>(offset)
-        .load::<MyDataQuerySubPoolRow>(conn)
+        .load::<MyDataSubPoolRow>(conn)
         .await?;
     metrics.requests_succeeded.inc();
     Ok(results)
 }
 
-pub(crate) async fn list_mydata_query_listings_for_sub_pool(
+pub(crate) async fn list_mydata_listings_for_sub_pool(
     conn: &mut Connection<'_>,
     sub_pool_id: &str,
     limit: i64,
     offset: i64,
     metrics: &DbReaderMetrics,
-) -> anyhow::Result<Vec<MyDataQueryListingSubPoolRow>> {
+) -> anyhow::Result<Vec<MyDataListingSubPoolRow>> {
     metrics.requests_received.inc();
     let _guard = metrics.latency.start_timer();
     let query = "
         SELECT listing_id, sub_pool_id, assigned_at_ms, event_id, transaction_id, time
-        FROM mydata_query_listing_sub_pools
+        FROM mydata_listing_sub_pools
         WHERE sub_pool_id = $1
         ORDER BY assigned_at_ms DESC
         LIMIT $2 OFFSET $3
@@ -521,139 +521,139 @@ pub(crate) async fn list_mydata_query_listings_for_sub_pool(
         .bind::<Text, _>(sub_pool_id)
         .bind::<BigInt, _>(limit)
         .bind::<BigInt, _>(offset)
-        .load::<MyDataQueryListingSubPoolRow>(conn)
+        .load::<MyDataListingSubPoolRow>(conn)
         .await?;
     metrics.requests_succeeded.inc();
     Ok(results)
 }
 
-pub(crate) async fn get_mydata_query_snapshot_anchor(
+pub(crate) async fn get_mydata_snapshot_anchor(
     conn: &mut Connection<'_>,
     snapshot_id: &str,
     metrics: &DbReaderMetrics,
-) -> anyhow::Result<Option<MyDataQuerySnapshotAnchorRow>> {
+) -> anyhow::Result<Option<MyDataSnapshotAnchorRow>> {
     metrics.requests_received.inc();
     let _guard = metrics.latency.start_timer();
     let query = "
         SELECT id, snapshot_id, buyer_address, price_paid, created_at_ms, event_id, transaction_id, time,
                manifest_hash, payment_reference
-        FROM mydata_query_snapshot_anchors
+        FROM mydata_snapshot_anchors
         WHERE snapshot_id = $1
         ORDER BY time DESC
         LIMIT 1
     ";
     let result = diesel::sql_query(query)
         .bind::<Text, _>(snapshot_id)
-        .get_result::<MyDataQuerySnapshotAnchorRow>(conn)
+        .get_result::<MyDataSnapshotAnchorRow>(conn)
         .await
         .optional()?;
     metrics.requests_succeeded.inc();
     Ok(result)
 }
 
-pub(crate) async fn list_mydata_query_snapshot_anchors(
+pub(crate) async fn list_mydata_snapshot_anchors(
     conn: &mut Connection<'_>,
     limit: i64,
     offset: i64,
     metrics: &DbReaderMetrics,
-) -> anyhow::Result<Vec<MyDataQuerySnapshotAnchorRow>> {
+) -> anyhow::Result<Vec<MyDataSnapshotAnchorRow>> {
     metrics.requests_received.inc();
     let _guard = metrics.latency.start_timer();
     let query = "
         SELECT id, snapshot_id, buyer_address, price_paid, created_at_ms, event_id, transaction_id, time,
                manifest_hash, payment_reference
-        FROM mydata_query_snapshot_anchors
+        FROM mydata_snapshot_anchors
         ORDER BY time DESC
         LIMIT $1 OFFSET $2
     ";
     let results = diesel::sql_query(query)
         .bind::<BigInt, _>(limit)
         .bind::<BigInt, _>(offset)
-        .load::<MyDataQuerySnapshotAnchorRow>(conn)
+        .load::<MyDataSnapshotAnchorRow>(conn)
         .await?;
     metrics.requests_succeeded.inc();
     Ok(results)
 }
 
-pub(crate) async fn get_mydata_query_distribution_round(
+pub(crate) async fn get_mydata_distribution_round(
     conn: &mut Connection<'_>,
     snapshot_id: &str,
     metrics: &DbReaderMetrics,
-) -> anyhow::Result<Option<MyDataQueryDistributionRoundRow>> {
+) -> anyhow::Result<Option<MyDataDistributionRoundRow>> {
     metrics.requests_received.inc();
     let _guard = metrics.latency.start_timer();
     let query = "
         SELECT snapshot_id, total_amount, contributor_count, merkle_root, published_at_ms,
                event_id, transaction_id, time
-        FROM mydata_query_distribution_rounds
+        FROM mydata_distribution_rounds
         WHERE snapshot_id = $1
     ";
     let result = diesel::sql_query(query)
         .bind::<Text, _>(snapshot_id)
-        .get_result::<MyDataQueryDistributionRoundRow>(conn)
+        .get_result::<MyDataDistributionRoundRow>(conn)
         .await
         .optional()?;
     metrics.requests_succeeded.inc();
     Ok(result)
 }
 
-pub(crate) async fn list_mydata_query_distribution_rounds(
+pub(crate) async fn list_mydata_distribution_rounds(
     conn: &mut Connection<'_>,
     limit: i64,
     offset: i64,
     metrics: &DbReaderMetrics,
-) -> anyhow::Result<Vec<MyDataQueryDistributionRoundRow>> {
+) -> anyhow::Result<Vec<MyDataDistributionRoundRow>> {
     metrics.requests_received.inc();
     let _guard = metrics.latency.start_timer();
     let query = "
         SELECT snapshot_id, total_amount, contributor_count, merkle_root, published_at_ms,
                event_id, transaction_id, time
-        FROM mydata_query_distribution_rounds
+        FROM mydata_distribution_rounds
         ORDER BY time DESC
         LIMIT $1 OFFSET $2
     ";
     let results = diesel::sql_query(query)
         .bind::<BigInt, _>(limit)
         .bind::<BigInt, _>(offset)
-        .load::<MyDataQueryDistributionRoundRow>(conn)
+        .load::<MyDataDistributionRoundRow>(conn)
         .await?;
     metrics.requests_succeeded.inc();
     Ok(results)
 }
 
-pub(crate) async fn get_mydata_query_merkle_root(
+pub(crate) async fn get_mydata_merkle_root(
     conn: &mut Connection<'_>,
     snapshot_id: &str,
     metrics: &DbReaderMetrics,
-) -> anyhow::Result<Option<MyDataQueryMerkleRootRow>> {
+) -> anyhow::Result<Option<MyDataMerkleRootRow>> {
     metrics.requests_received.inc();
     let _guard = metrics.latency.start_timer();
     let query = "
         SELECT snapshot_id, root_hash, published_at_ms, event_id, transaction_id, time
-        FROM mydata_query_merkle_roots
+        FROM mydata_merkle_roots
         WHERE snapshot_id = $1
     ";
     let result = diesel::sql_query(query)
         .bind::<Text, _>(snapshot_id)
-        .get_result::<MyDataQueryMerkleRootRow>(conn)
+        .get_result::<MyDataMerkleRootRow>(conn)
         .await
         .optional()?;
     metrics.requests_succeeded.inc();
     Ok(result)
 }
 
-pub(crate) async fn list_mydata_query_claims_for_snapshot(
+pub(crate) async fn list_mydata_claims_for_snapshot(
     conn: &mut Connection<'_>,
     snapshot_id: &str,
     limit: i64,
     offset: i64,
     metrics: &DbReaderMetrics,
-) -> anyhow::Result<Vec<MyDataQueryClaimRow>> {
+) -> anyhow::Result<Vec<MyDataClaimRow>> {
     metrics.requests_received.inc();
     let _guard = metrics.latency.start_timer();
     let query = "
         SELECT id, snapshot_id, claimant, amount, claimed_at_ms, event_id, transaction_id, time
-        FROM mydata_query_claims
+        FROM mydata_claims
         WHERE snapshot_id = $1
         ORDER BY claimed_at_ms DESC
         LIMIT $2 OFFSET $3
@@ -662,7 +662,7 @@ pub(crate) async fn list_mydata_query_claims_for_snapshot(
         .bind::<Text, _>(snapshot_id)
         .bind::<BigInt, _>(limit)
         .bind::<BigInt, _>(offset)
-        .load::<MyDataQueryClaimRow>(conn)
+        .load::<MyDataClaimRow>(conn)
         .await?;
     metrics.requests_succeeded.inc();
     Ok(results)

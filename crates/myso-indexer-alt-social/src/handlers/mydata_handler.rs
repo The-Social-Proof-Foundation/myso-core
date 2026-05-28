@@ -18,15 +18,15 @@ use myso_indexer_alt_framework::postgres::Connection;
 use myso_indexer_alt_framework::types::full_checkpoint_content::Checkpoint;
 use myso_indexer_alt_framework::FieldCount;
 use myso_indexer_alt_social_schema::models::{
-    NewMyDataAccessLog, NewMyDataConfig, NewMyDataData, NewMyDataPurchase, NewMyDataQueryBroadPool,
-    NewMyDataQueryClaim, NewMyDataQueryDistributionRound, NewMyDataQueryListingSubPool,
-    NewMyDataQueryMerkleRoot, NewMyDataQuerySnapshotAnchor, NewMyDataQuerySubPool,
+    NewMyDataAccessLog, NewMyDataConfig, NewMyDataData, NewMyDataPurchase, NewMyDataBroadPool,
+    NewMyDataClaim, NewMyDataDistributionRound, NewMyDataListingSubPool,
+    NewMyDataMerkleRoot, NewMyDataSnapshotAnchor, NewMyDataSubPool,
     NewMyDataRegistry, NewMyDataRevenue, NewMyDataSubscription,
 };
 use myso_indexer_alt_social_schema::schema::{
-    mydata_access_logs, mydata_config, mydata_data, mydata_purchases, mydata_query_broad_pools,
-    mydata_query_claims, mydata_query_distribution_rounds, mydata_query_listing_sub_pools,
-    mydata_query_merkle_roots, mydata_query_snapshot_anchors, mydata_query_sub_pools,
+    mydata_access_logs, mydata_config, mydata_data, mydata_purchases, mydata_broad_pools,
+    mydata_claims, mydata_distribution_rounds, mydata_listing_sub_pools,
+    mydata_merkle_roots, mydata_snapshot_anchors, mydata_sub_pools,
     mydata_registry, mydata_revenue, mydata_subscriptions,
 };
 
@@ -58,16 +58,16 @@ pub enum MyDataRow {
         last_updated: i64,
         transaction_id: String,
     },
-    MyDataQueryBroadPool(NewMyDataQueryBroadPool),
-    MyDataQuerySubPool(NewMyDataQuerySubPool),
-    MyDataQueryListingSubPoolsReplace {
+    MyDataBroadPool(NewMyDataBroadPool),
+    MyDataSubPool(NewMyDataSubPool),
+    MyDataListingSubPoolsReplace {
         listing_id: String,
-        rows: Vec<NewMyDataQueryListingSubPool>,
+        rows: Vec<NewMyDataListingSubPool>,
     },
-    MyDataQuerySnapshotAnchor(NewMyDataQuerySnapshotAnchor),
-    MyDataQueryDistributionRound(NewMyDataQueryDistributionRound),
-    MyDataQueryMerkleRoot(NewMyDataQueryMerkleRoot),
-    MyDataQueryClaim(NewMyDataQueryClaim),
+    MyDataSnapshotAnchor(NewMyDataSnapshotAnchor),
+    MyDataDistributionRound(NewMyDataDistributionRound),
+    MyDataMerkleRoot(NewMyDataMerkleRoot),
+    MyDataClaim(NewMyDataClaim),
 }
 
 impl MyDataRow {
@@ -108,27 +108,27 @@ impl MyDataRow {
                 last_updated,
                 transaction_id,
             }),
-            crate::handlers::SocialEventRow::MyDataQueryBroadPool(b) => {
-                Some(MyDataRow::MyDataQueryBroadPool(b))
+            crate::handlers::SocialEventRow::MyDataBroadPool(b) => {
+                Some(MyDataRow::MyDataBroadPool(b))
             }
-            crate::handlers::SocialEventRow::MyDataQuerySubPool(s) => {
-                Some(MyDataRow::MyDataQuerySubPool(s))
+            crate::handlers::SocialEventRow::MyDataSubPool(s) => {
+                Some(MyDataRow::MyDataSubPool(s))
             }
-            crate::handlers::SocialEventRow::MyDataQueryListingSubPoolsReplace {
+            crate::handlers::SocialEventRow::MyDataListingSubPoolsReplace {
                 listing_id,
                 rows,
-            } => Some(MyDataRow::MyDataQueryListingSubPoolsReplace { listing_id, rows }),
-            crate::handlers::SocialEventRow::MyDataQuerySnapshotAnchor(a) => {
-                Some(MyDataRow::MyDataQuerySnapshotAnchor(a))
+            } => Some(MyDataRow::MyDataListingSubPoolsReplace { listing_id, rows }),
+            crate::handlers::SocialEventRow::MyDataSnapshotAnchor(a) => {
+                Some(MyDataRow::MyDataSnapshotAnchor(a))
             }
-            crate::handlers::SocialEventRow::MyDataQueryDistributionRound(d) => {
-                Some(MyDataRow::MyDataQueryDistributionRound(d))
+            crate::handlers::SocialEventRow::MyDataDistributionRound(d) => {
+                Some(MyDataRow::MyDataDistributionRound(d))
             }
-            crate::handlers::SocialEventRow::MyDataQueryMerkleRoot(m) => {
-                Some(MyDataRow::MyDataQueryMerkleRoot(m))
+            crate::handlers::SocialEventRow::MyDataMerkleRoot(m) => {
+                Some(MyDataRow::MyDataMerkleRoot(m))
             }
-            crate::handlers::SocialEventRow::MyDataQueryClaim(c) => {
-                Some(MyDataRow::MyDataQueryClaim(c))
+            crate::handlers::SocialEventRow::MyDataClaim(c) => {
+                Some(MyDataRow::MyDataClaim(c))
             }
             _ => None,
         }
@@ -381,111 +381,111 @@ impl Handler for MyDataHandler {
                         .execute(conn)
                         .await?;
                 }
-                MyDataRow::MyDataQueryBroadPool(b) => {
-                    total += diesel::insert_into(mydata_query_broad_pools::table)
+                MyDataRow::MyDataBroadPool(b) => {
+                    total += diesel::insert_into(mydata_broad_pools::table)
                         .values(b)
-                        .on_conflict(mydata_query_broad_pools::pool_id)
+                        .on_conflict(mydata_broad_pools::pool_id)
                         .do_update()
                         .set((
-                            mydata_query_broad_pools::name
-                                .eq(excluded(mydata_query_broad_pools::name)),
-                            mydata_query_broad_pools::created_at_ms
-                                .eq(excluded(mydata_query_broad_pools::created_at_ms)),
-                            mydata_query_broad_pools::event_id
-                                .eq(excluded(mydata_query_broad_pools::event_id)),
-                            mydata_query_broad_pools::transaction_id
-                                .eq(excluded(mydata_query_broad_pools::transaction_id)),
+                            mydata_broad_pools::name
+                                .eq(excluded(mydata_broad_pools::name)),
+                            mydata_broad_pools::created_at_ms
+                                .eq(excluded(mydata_broad_pools::created_at_ms)),
+                            mydata_broad_pools::event_id
+                                .eq(excluded(mydata_broad_pools::event_id)),
+                            mydata_broad_pools::transaction_id
+                                .eq(excluded(mydata_broad_pools::transaction_id)),
                         ))
                         .execute(conn)
                         .await?;
                 }
-                MyDataRow::MyDataQuerySubPool(s) => {
-                    total += diesel::insert_into(mydata_query_sub_pools::table)
+                MyDataRow::MyDataSubPool(s) => {
+                    total += diesel::insert_into(mydata_sub_pools::table)
                         .values(s)
-                        .on_conflict(mydata_query_sub_pools::sub_pool_id)
+                        .on_conflict(mydata_sub_pools::sub_pool_id)
                         .do_update()
                         .set((
-                            mydata_query_sub_pools::broad_pool_id
-                                .eq(excluded(mydata_query_sub_pools::broad_pool_id)),
-                            mydata_query_sub_pools::name.eq(excluded(mydata_query_sub_pools::name)),
-                            mydata_query_sub_pools::created_at_ms
-                                .eq(excluded(mydata_query_sub_pools::created_at_ms)),
-                            mydata_query_sub_pools::event_id
-                                .eq(excluded(mydata_query_sub_pools::event_id)),
-                            mydata_query_sub_pools::transaction_id
-                                .eq(excluded(mydata_query_sub_pools::transaction_id)),
+                            mydata_sub_pools::broad_pool_id
+                                .eq(excluded(mydata_sub_pools::broad_pool_id)),
+                            mydata_sub_pools::name.eq(excluded(mydata_sub_pools::name)),
+                            mydata_sub_pools::created_at_ms
+                                .eq(excluded(mydata_sub_pools::created_at_ms)),
+                            mydata_sub_pools::event_id
+                                .eq(excluded(mydata_sub_pools::event_id)),
+                            mydata_sub_pools::transaction_id
+                                .eq(excluded(mydata_sub_pools::transaction_id)),
                         ))
                         .execute(conn)
                         .await?;
                 }
-                MyDataRow::MyDataQueryListingSubPoolsReplace { listing_id, rows } => {
-                    total += diesel::delete(mydata_query_listing_sub_pools::table)
-                        .filter(mydata_query_listing_sub_pools::listing_id.eq(listing_id))
+                MyDataRow::MyDataListingSubPoolsReplace { listing_id, rows } => {
+                    total += diesel::delete(mydata_listing_sub_pools::table)
+                        .filter(mydata_listing_sub_pools::listing_id.eq(listing_id))
                         .execute(conn)
                         .await?;
                     if !rows.is_empty() {
-                        total += diesel::insert_into(mydata_query_listing_sub_pools::table)
+                        total += diesel::insert_into(mydata_listing_sub_pools::table)
                             .values(rows)
                             .execute(conn)
                             .await?;
                     }
                 }
-                MyDataRow::MyDataQuerySnapshotAnchor(a) => {
-                    total += diesel::insert_into(mydata_query_snapshot_anchors::table)
+                MyDataRow::MyDataSnapshotAnchor(a) => {
+                    total += diesel::insert_into(mydata_snapshot_anchors::table)
                         .values(a)
                         .on_conflict((
-                            mydata_query_snapshot_anchors::event_id,
-                            mydata_query_snapshot_anchors::time,
+                            mydata_snapshot_anchors::event_id,
+                            mydata_snapshot_anchors::time,
                         ))
                         .do_nothing()
                         .execute(conn)
                         .await?;
                 }
-                MyDataRow::MyDataQueryDistributionRound(d) => {
-                    total += diesel::insert_into(mydata_query_distribution_rounds::table)
+                MyDataRow::MyDataDistributionRound(d) => {
+                    total += diesel::insert_into(mydata_distribution_rounds::table)
                         .values(d)
-                        .on_conflict(mydata_query_distribution_rounds::snapshot_id)
+                        .on_conflict(mydata_distribution_rounds::snapshot_id)
                         .do_update()
                         .set((
-                            mydata_query_distribution_rounds::total_amount
-                                .eq(excluded(mydata_query_distribution_rounds::total_amount)),
-                            mydata_query_distribution_rounds::contributor_count.eq(excluded(
-                                mydata_query_distribution_rounds::contributor_count,
+                            mydata_distribution_rounds::total_amount
+                                .eq(excluded(mydata_distribution_rounds::total_amount)),
+                            mydata_distribution_rounds::contributor_count.eq(excluded(
+                                mydata_distribution_rounds::contributor_count,
                             )),
-                            mydata_query_distribution_rounds::merkle_root
-                                .eq(excluded(mydata_query_distribution_rounds::merkle_root)),
-                            mydata_query_distribution_rounds::published_at_ms
-                                .eq(excluded(mydata_query_distribution_rounds::published_at_ms)),
-                            mydata_query_distribution_rounds::event_id
-                                .eq(excluded(mydata_query_distribution_rounds::event_id)),
-                            mydata_query_distribution_rounds::transaction_id
-                                .eq(excluded(mydata_query_distribution_rounds::transaction_id)),
+                            mydata_distribution_rounds::merkle_root
+                                .eq(excluded(mydata_distribution_rounds::merkle_root)),
+                            mydata_distribution_rounds::published_at_ms
+                                .eq(excluded(mydata_distribution_rounds::published_at_ms)),
+                            mydata_distribution_rounds::event_id
+                                .eq(excluded(mydata_distribution_rounds::event_id)),
+                            mydata_distribution_rounds::transaction_id
+                                .eq(excluded(mydata_distribution_rounds::transaction_id)),
                         ))
                         .execute(conn)
                         .await?;
                 }
-                MyDataRow::MyDataQueryMerkleRoot(m) => {
-                    total += diesel::insert_into(mydata_query_merkle_roots::table)
+                MyDataRow::MyDataMerkleRoot(m) => {
+                    total += diesel::insert_into(mydata_merkle_roots::table)
                         .values(m)
-                        .on_conflict(mydata_query_merkle_roots::snapshot_id)
+                        .on_conflict(mydata_merkle_roots::snapshot_id)
                         .do_update()
                         .set((
-                            mydata_query_merkle_roots::root_hash
-                                .eq(excluded(mydata_query_merkle_roots::root_hash)),
-                            mydata_query_merkle_roots::published_at_ms
-                                .eq(excluded(mydata_query_merkle_roots::published_at_ms)),
-                            mydata_query_merkle_roots::event_id
-                                .eq(excluded(mydata_query_merkle_roots::event_id)),
-                            mydata_query_merkle_roots::transaction_id
-                                .eq(excluded(mydata_query_merkle_roots::transaction_id)),
+                            mydata_merkle_roots::root_hash
+                                .eq(excluded(mydata_merkle_roots::root_hash)),
+                            mydata_merkle_roots::published_at_ms
+                                .eq(excluded(mydata_merkle_roots::published_at_ms)),
+                            mydata_merkle_roots::event_id
+                                .eq(excluded(mydata_merkle_roots::event_id)),
+                            mydata_merkle_roots::transaction_id
+                                .eq(excluded(mydata_merkle_roots::transaction_id)),
                         ))
                         .execute(conn)
                         .await?;
                 }
-                MyDataRow::MyDataQueryClaim(c) => {
-                    total += diesel::insert_into(mydata_query_claims::table)
+                MyDataRow::MyDataClaim(c) => {
+                    total += diesel::insert_into(mydata_claims::table)
                         .values(c)
-                        .on_conflict((mydata_query_claims::event_id, mydata_query_claims::time))
+                        .on_conflict((mydata_claims::event_id, mydata_claims::time))
                         .do_nothing()
                         .execute(conn)
                         .await?;

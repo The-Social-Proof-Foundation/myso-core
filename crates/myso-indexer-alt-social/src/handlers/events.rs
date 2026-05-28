@@ -4395,7 +4395,7 @@ mod tests {
     }
 
     #[test]
-    fn test_mydata_query_marketplace_events_bcs_roundtrip_and_parse() {
+    fn test_mydata_marketplace_events_bcs_roundtrip_and_parse() {
         use move_core_types::account_address::AccountAddress;
 
         let pool_id = AccountAddress::from_hex_literal("0x1").unwrap();
@@ -4555,7 +4555,7 @@ mod tests {
             .expect("handler produces rows");
         assert_eq!(rows.len(), 1);
         match &rows[0] {
-            SocialEventRow::MyDataQuerySubPool(sp) => {
+            SocialEventRow::MyDataSubPool(sp) => {
                 assert_eq!(sp.sub_pool_id, json["sub_pool_id"].as_str().unwrap());
                 assert_eq!(sp.broad_pool_id, json["broad_pool_id"].as_str().unwrap());
                 assert_eq!(sp.name, "research");
@@ -4563,7 +4563,7 @@ mod tests {
                 assert_eq!(sp.event_id, "digest:7");
                 assert_eq!(sp.transaction_id, "digest");
             }
-            _ => panic!("expected MyDataQuerySubPool row"),
+            _ => panic!("expected MyDataSubPool row"),
         }
     }
 

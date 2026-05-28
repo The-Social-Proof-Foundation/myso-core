@@ -29,9 +29,9 @@ pub use insurance::{
 };
 pub use mydata::{
     AccessAnalytics, AccessLogInfo, DailyRevenue, MyDataBasic, MyDataConfigInfo,
-    MyDataQueryBroadPoolInfo, MyDataQueryClaimInfo, MyDataQueryDistributionRoundInfo,
-    MyDataQueryListingSubPoolInfo, MyDataQueryMerkleRootInfo, MyDataQuerySnapshotAnchorInfo,
-    MyDataQuerySubPoolInfo, MyDataStatsResponse, PurchaseInfo, RevenueInfo, SubscriptionInfo,
+    MyDataBroadPoolInfo, MyDataClaimInfo, MyDataDistributionRoundInfo,
+    MyDataListingSubPoolInfo, MyDataMerkleRootInfo, MyDataSnapshotAnchorInfo,
+    MyDataSubPoolInfo, MyDataStatsResponse, PurchaseInfo, RevenueInfo, SubscriptionInfo,
 };
 pub use myso_indexer_alt_social_schema::models::{
     PostDeletionEventRow, PostModerationEventRow, PostReport, PostTransfer, ProfileOffer,

@@ -28,9 +28,9 @@ pub use insurance::{
 };
 pub use myso_indexer_alt_social_schema::models::{
     DelegateRow, GovernanceRegistryRow, GovernanceStatsRow, InsurancePolicyRow, InsuranceVaultRow,
-    MyDataPurchaseRow, MyDataQueryBroadPoolRow, MyDataQueryClaimRow,
-    MyDataQueryDistributionRoundRow, MyDataQueryListingSubPoolRow, MyDataQueryMerkleRootRow,
-    MyDataQuerySnapshotAnchorRow, MyDataQuerySubPoolRow, MyDataRecordRow,
+    MyDataPurchaseRow, MyDataBroadPoolRow, MyDataClaimRow,
+    MyDataDistributionRoundRow, MyDataListingSubPoolRow, MyDataMerkleRootRow,
+    MyDataSnapshotAnchorRow, MyDataSubPoolRow, MyDataRecordRow,
     PlatformRevenueSummaryRow, PromotedPostRow, PromotionHourlyRow, PromotionStatsRow,
     PromotionTimeSeriesRow, PromotionViewRow, ProposalRow, SpotBetRow, SpotBetWithdrawalRow,
     SpotPayoutRow, SpotRecordRow, SpotRefundRow, SpotResolutionRow,

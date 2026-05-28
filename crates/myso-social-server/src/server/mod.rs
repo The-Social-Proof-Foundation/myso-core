@@ -586,42 +586,39 @@ fn make_router(state: Arc<AppState>) -> Router {
         .route("/mydata", get(list_mydata))
         .route("/mydata/configuration", get(get_mydata_configuration))
         .route("/mydata/popular", get(get_popular_mydata))
+        .route("/mydata/broad-pools", get(list_mydata_broad_pools))
         .route(
-            "/mydata/query/broad-pools",
-            get(list_mydata_query_broad_pools),
+            "/mydata/broad-pools/:pool_id/sub-pools",
+            get(list_mydata_sub_pools_for_broad_pool),
         )
         .route(
-            "/mydata/query/broad-pools/:pool_id/sub-pools",
-            get(list_mydata_query_sub_pools_for_broad_pool),
+            "/mydata/sub-pools/:sub_pool_id/listings",
+            get(list_mydata_listings_for_sub_pool),
         )
         .route(
-            "/mydata/query/sub-pools/:sub_pool_id/listings",
-            get(list_mydata_query_listings_for_sub_pool),
+            "/mydata/snapshots/:snapshot_id/anchor",
+            get(get_mydata_snapshot_anchor),
         )
         .route(
-            "/mydata/query/snapshots/:snapshot_id/anchor",
-            get(get_mydata_query_snapshot_anchor),
+            "/mydata/snapshots/:snapshot_id/distribution",
+            get(get_mydata_distribution_round),
         )
         .route(
-            "/mydata/query/snapshots/:snapshot_id/distribution",
-            get(get_mydata_query_distribution_round),
+            "/mydata/distribution-rounds",
+            get(list_mydata_distribution_rounds),
         )
         .route(
-            "/mydata/query/distribution-rounds",
-            get(list_mydata_query_distribution_rounds),
+            "/mydata/snapshots/:snapshot_id/merkle-root",
+            get(get_mydata_merkle_root),
         )
         .route(
-            "/mydata/query/snapshots/:snapshot_id/merkle-root",
-            get(get_mydata_query_merkle_root),
-        )
-        .route(
-            "/mydata/query/snapshots/:snapshot_id/claims",
-            get(list_mydata_query_claims_for_snapshot),
+            "/mydata/snapshots/:snapshot_id/claims",
+            get(list_mydata_claims_for_snapshot),
         )
         .route("/mydata/:id", get(get_mydata_by_id))
         .route(
-            "/mydata/:id/query-sub-pools",
-            get(list_mydata_query_sub_pools_for_mydata_listing),
+            "/mydata/:id/sub-pools",
+            get(list_mydata_sub_pools_for_mydata_listing),
         )
         .route("/mydata/:id/purchases", get(get_mydata_purchases))
         .route("/mydata/:id/subscriptions", get(get_mydata_subscriptions))

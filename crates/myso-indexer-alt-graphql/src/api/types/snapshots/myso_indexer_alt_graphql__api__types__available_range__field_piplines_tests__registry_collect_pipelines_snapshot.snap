@@ -1889,163 +1889,163 @@ MyDataPurchase.time
 MyDataPurchase.transactionId
   => {}
 
-MyDataQueryBroadPool.poolId
+MyDataBroadPool.poolId
   => {}
 
-MyDataQueryBroadPool.name
+MyDataBroadPool.name
   => {}
 
-MyDataQueryBroadPool.createdAtMs
+MyDataBroadPool.createdAtMs
   => {}
 
-MyDataQueryBroadPool.eventId
+MyDataBroadPool.eventId
   => {}
 
-MyDataQueryBroadPool.transactionId
+MyDataBroadPool.transactionId
   => {}
 
-MyDataQueryBroadPool.time
+MyDataBroadPool.time
   => {}
 
-MyDataQueryClaim.id
+MyDataClaim.id
   => {}
 
-MyDataQueryClaim.snapshotId
+MyDataClaim.snapshotId
   => {}
 
-MyDataQueryClaim.claimant
+MyDataClaim.claimant
   => {}
 
-MyDataQueryClaim.claimantProfile
+MyDataClaim.claimantProfile
   => {}
 
-MyDataQueryClaim.amount
+MyDataClaim.amount
   => {}
 
-MyDataQueryClaim.claimedAtMs
+MyDataClaim.claimedAtMs
   => {}
 
-MyDataQueryClaim.eventId
+MyDataClaim.eventId
   => {}
 
-MyDataQueryClaim.transactionId
+MyDataClaim.transactionId
   => {}
 
-MyDataQueryClaim.time
+MyDataClaim.time
   => {}
 
-MyDataQueryDistributionRound.snapshotId
+MyDataDistributionRound.snapshotId
   => {}
 
-MyDataQueryDistributionRound.totalAmount
+MyDataDistributionRound.totalAmount
   => {}
 
-MyDataQueryDistributionRound.contributorCount
+MyDataDistributionRound.contributorCount
   => {}
 
-MyDataQueryDistributionRound.merkleRoot
+MyDataDistributionRound.merkleRoot
   => {}
 
-MyDataQueryDistributionRound.publishedAtMs
+MyDataDistributionRound.publishedAtMs
   => {}
 
-MyDataQueryDistributionRound.eventId
+MyDataDistributionRound.eventId
   => {}
 
-MyDataQueryDistributionRound.transactionId
+MyDataDistributionRound.transactionId
   => {}
 
-MyDataQueryDistributionRound.time
+MyDataDistributionRound.time
   => {}
 
-MyDataQueryListingSubPool.listingId
+MyDataListingSubPool.listingId
   => {}
 
-MyDataQueryListingSubPool.subPoolId
+MyDataListingSubPool.subPoolId
   => {}
 
-MyDataQueryListingSubPool.assignedAtMs
+MyDataListingSubPool.assignedAtMs
   => {}
 
-MyDataQueryListingSubPool.eventId
+MyDataListingSubPool.eventId
   => {}
 
-MyDataQueryListingSubPool.transactionId
+MyDataListingSubPool.transactionId
   => {}
 
-MyDataQueryListingSubPool.time
+MyDataListingSubPool.time
   => {}
 
-MyDataQueryMerkleRoot.snapshotId
+MyDataMerkleRoot.snapshotId
   => {}
 
-MyDataQueryMerkleRoot.rootHash
+MyDataMerkleRoot.rootHash
   => {}
 
-MyDataQueryMerkleRoot.publishedAtMs
+MyDataMerkleRoot.publishedAtMs
   => {}
 
-MyDataQueryMerkleRoot.eventId
+MyDataMerkleRoot.eventId
   => {}
 
-MyDataQueryMerkleRoot.transactionId
+MyDataMerkleRoot.transactionId
   => {}
 
-MyDataQueryMerkleRoot.time
+MyDataMerkleRoot.time
   => {}
 
-MyDataQuerySnapshotAnchor.id
+MyDataSnapshotAnchor.id
   => {}
 
-MyDataQuerySnapshotAnchor.snapshotId
+MyDataSnapshotAnchor.snapshotId
   => {}
 
-MyDataQuerySnapshotAnchor.buyer
+MyDataSnapshotAnchor.buyer
   => {}
 
-MyDataQuerySnapshotAnchor.buyerProfile
+MyDataSnapshotAnchor.buyerProfile
   => {}
 
-MyDataQuerySnapshotAnchor.pricePaid
+MyDataSnapshotAnchor.pricePaid
   => {}
 
-MyDataQuerySnapshotAnchor.createdAtMs
+MyDataSnapshotAnchor.createdAtMs
   => {}
 
-MyDataQuerySnapshotAnchor.eventId
+MyDataSnapshotAnchor.eventId
   => {}
 
-MyDataQuerySnapshotAnchor.transactionId
+MyDataSnapshotAnchor.transactionId
   => {}
 
-MyDataQuerySnapshotAnchor.time
+MyDataSnapshotAnchor.time
   => {}
 
-MyDataQuerySnapshotAnchor.manifestHash
+MyDataSnapshotAnchor.manifestHash
   => {}
 
-MyDataQuerySnapshotAnchor.paymentReference
+MyDataSnapshotAnchor.paymentReference
   => {}
 
-MyDataQuerySubPool.subPoolId
+MyDataSubPool.subPoolId
   => {}
 
-MyDataQuerySubPool.broadPoolId
+MyDataSubPool.broadPoolId
   => {}
 
-MyDataQuerySubPool.name
+MyDataSubPool.name
   => {}
 
-MyDataQuerySubPool.createdAtMs
+MyDataSubPool.createdAtMs
   => {}
 
-MyDataQuerySubPool.eventId
+MyDataSubPool.eventId
   => {}
 
-MyDataQuerySubPool.transactionId
+MyDataSubPool.transactionId
   => {}
 
-MyDataQuerySubPool.time
+MyDataSubPool.time
   => {}
 
 MyDataRecord.mydataId
@@ -2129,7 +2129,7 @@ MyDataRecord.revenueTimeline
 MyDataRecord.accessAnalytics
   => {}
 
-MyDataRecord.querySubPools
+MyDataRecord.subPools
   => {}
 
 MyDataRevenue.fromAddress
@@ -3956,31 +3956,31 @@ Query.listMydata
 Query.popularMydata
   => {}
 
-Query.mydataQueryBroadPools
+Query.mydataBroadPools
   => {}
 
-Query.mydataQuerySubPoolsForBroadPool
+Query.mydataSubPoolsForBroadPool
   => {}
 
-Query.mydataQueryListingsForSubPool
+Query.mydataListingsForSubPool
   => {}
 
-Query.mydataQuerySnapshotAnchor
+Query.mydataSnapshotAnchor
   => {}
 
-Query.mydataQuerySnapshotAnchors
+Query.mydataSnapshotAnchors
   => {}
 
-Query.mydataQueryDistributionRound
+Query.mydataDistributionRound
   => {}
 
-Query.mydataQueryDistributionRounds
+Query.mydataDistributionRounds
   => {}
 
-Query.mydataQueryMerkleRoot
+Query.mydataMerkleRoot
   => {}
 
-Query.mydataQueryClaimsForSnapshot
+Query.mydataClaimsForSnapshot
   => {}
 
 Query.proposals

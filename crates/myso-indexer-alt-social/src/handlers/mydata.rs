@@ -3,9 +3,9 @@
 
 use super::SocialEventRow;
 use myso_indexer_alt_social_schema::models::{
-    NewMyDataAccessLog, NewMyDataConfig, NewMyDataData, NewMyDataPurchase, NewMyDataQueryBroadPool,
-    NewMyDataQueryClaim, NewMyDataQueryDistributionRound, NewMyDataQueryListingSubPool,
-    NewMyDataQueryMerkleRoot, NewMyDataQuerySnapshotAnchor, NewMyDataQuerySubPool,
+    NewMyDataAccessLog, NewMyDataConfig, NewMyDataData, NewMyDataPurchase, NewMyDataBroadPool,
+    NewMyDataClaim, NewMyDataDistributionRound, NewMyDataListingSubPool,
+    NewMyDataMerkleRoot, NewMyDataSnapshotAnchor, NewMyDataSubPool,
     NewMyDataRegistry, NewMyDataRevenue, NewMyDataSubscription,
 };
 
@@ -309,8 +309,8 @@ fn process_query_broad_pool_created(
     let pool_id = data.get("pool_id")?.as_str()?.to_string();
     let name = data.get("name")?.as_str()?.to_string();
     let created_at_ms = json_to_i64(data.get("created_at")?);
-    Some(vec![SocialEventRow::MyDataQueryBroadPool(
-        NewMyDataQueryBroadPool {
+    Some(vec![SocialEventRow::MyDataBroadPool(
+        NewMyDataBroadPool {
             pool_id,
             name,
             created_at_ms,
@@ -329,8 +329,8 @@ fn process_query_sub_pool_created(
     let broad_pool_id = data.get("broad_pool_id")?.as_str()?.to_string();
     let name = data.get("name")?.as_str()?.to_string();
     let created_at_ms = json_to_i64(data.get("created_at")?);
-    Some(vec![SocialEventRow::MyDataQuerySubPool(
-        NewMyDataQuerySubPool {
+    Some(vec![SocialEventRow::MyDataSubPool(
+        NewMyDataSubPool {
             sub_pool_id,
             broad_pool_id,
             name,
@@ -352,7 +352,7 @@ fn process_query_listing_sub_pools_assigned(
     let mut rows = Vec::with_capacity(arr.len());
     for v in arr {
         let sub_pool_id = v.as_str()?.to_string();
-        rows.push(NewMyDataQueryListingSubPool {
+        rows.push(NewMyDataListingSubPool {
             listing_id: listing_id.clone(),
             sub_pool_id,
             assigned_at_ms,
@@ -360,7 +360,7 @@ fn process_query_listing_sub_pools_assigned(
             transaction_id: transaction_id.clone(),
         });
     }
-    Some(vec![SocialEventRow::MyDataQueryListingSubPoolsReplace {
+    Some(vec![SocialEventRow::MyDataListingSubPoolsReplace {
         listing_id,
         rows,
     }])
@@ -386,8 +386,8 @@ fn process_query_snapshot_anchor_recorded(
         .get("payment_reference")
         .and_then(|v| v.as_str())
         .map(String::from);
-    Some(vec![SocialEventRow::MyDataQuerySnapshotAnchor(
-        NewMyDataQuerySnapshotAnchor {
+    Some(vec![SocialEventRow::MyDataSnapshotAnchor(
+        NewMyDataSnapshotAnchor {
             snapshot_id,
             buyer_address,
             price_paid,
@@ -416,8 +416,8 @@ fn process_query_distribution_recorded(
         .or_else(|| count_raw.as_u64().map(u64_to_db_i64))?;
     let merkle_root = data.get("merkle_root")?.as_str()?.to_string();
     let published_at_ms = json_to_i64(data.get("published_at")?);
-    Some(vec![SocialEventRow::MyDataQueryDistributionRound(
-        NewMyDataQueryDistributionRound {
+    Some(vec![SocialEventRow::MyDataDistributionRound(
+        NewMyDataDistributionRound {
             snapshot_id,
             total_amount,
             contributor_count,
@@ -437,8 +437,8 @@ fn process_query_merkle_root_published(
     let snapshot_id = data.get("snapshot_id")?.as_str()?.to_string();
     let root_hash = data.get("root_hash")?.as_str()?.to_string();
     let published_at_ms = json_to_i64(data.get("published_at")?);
-    Some(vec![SocialEventRow::MyDataQueryMerkleRoot(
-        NewMyDataQueryMerkleRoot {
+    Some(vec![SocialEventRow::MyDataMerkleRoot(
+        NewMyDataMerkleRoot {
             snapshot_id,
             root_hash,
             published_at_ms,
@@ -460,8 +460,8 @@ fn process_query_claim_executed(
         .as_i64()
         .or_else(|| amount_raw.as_u64().map(u64_to_db_i64))?;
     let claimed_at_ms = json_to_i64(data.get("claimed_at")?);
-    Some(vec![SocialEventRow::MyDataQueryClaim(
-        NewMyDataQueryClaim {
+    Some(vec![SocialEventRow::MyDataClaim(
+        NewMyDataClaim {
             snapshot_id,
             claimant,
             amount,
