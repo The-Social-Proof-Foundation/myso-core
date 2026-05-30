@@ -144,15 +144,10 @@ pub(crate) fn process_mydata_objects_from_tx(
     rows
 }
 
-pub(crate) fn process_mydata_objects_from_checkpoint(
-    checkpoint: &Checkpoint,
-) -> Vec<MyDataRow> {
+pub(crate) fn process_mydata_objects_from_checkpoint(checkpoint: &Checkpoint) -> Vec<MyDataRow> {
     let mut rows = Vec::new();
     for tx in &checkpoint.transactions {
-        rows.extend(process_mydata_objects_from_tx(
-            &checkpoint.object_set,
-            tx,
-        ));
+        rows.extend(process_mydata_objects_from_tx(&checkpoint.object_set, tx));
     }
     rows
 }
@@ -205,11 +200,7 @@ mod tests {
     #[test]
     fn bcs_mydata_maps_to_new_row() {
         let mydata = sample_bcs_mydata();
-        let row = bcs_mydata_to_new_row(
-            &mydata,
-            "0xabc".to_string(),
-            "digest".to_string(),
-        );
+        let row = bcs_mydata_to_new_row(&mydata, "0xabc".to_string(), "digest".to_string());
         assert_eq!(row.mydata_id, "0xabc");
         assert_eq!(row.media_type, "demo:bf-hmac-encrypt-hmac");
         assert_eq!(row.tags, serde_json::json!(["cli-demo"]));

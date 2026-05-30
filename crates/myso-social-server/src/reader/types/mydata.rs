@@ -194,7 +194,7 @@ pub struct AccessAnalytics {
 }
 
 #[derive(Debug, Serialize, QueryableByName)]
-pub struct MyDataQueryBroadPoolInfo {
+pub struct MyDataBroadPoolInfo {
     #[diesel(sql_type = Text)]
     pub pool_id: String,
     #[diesel(sql_type = Text)]
@@ -210,7 +210,7 @@ pub struct MyDataQueryBroadPoolInfo {
 }
 
 #[derive(Debug, Serialize, QueryableByName)]
-pub struct MyDataQuerySubPoolInfo {
+pub struct MyDataSubPoolInfo {
     #[diesel(sql_type = Text)]
     pub sub_pool_id: String,
     #[diesel(sql_type = Text)]
@@ -228,7 +228,7 @@ pub struct MyDataQuerySubPoolInfo {
 }
 
 #[derive(Debug, Serialize, QueryableByName)]
-pub struct MyDataQueryListingSubPoolInfo {
+pub struct MyDataListingSubPoolInfo {
     #[diesel(sql_type = Text)]
     pub listing_id: String,
     #[diesel(sql_type = Text)]
@@ -244,7 +244,7 @@ pub struct MyDataQueryListingSubPoolInfo {
 }
 
 #[derive(Debug, Serialize, QueryableByName)]
-pub struct MyDataQuerySnapshotAnchorInfo {
+pub struct MyDataSnapshotAnchorInfo {
     #[diesel(sql_type = Integer)]
     pub id: i32,
     #[diesel(sql_type = Text)]
@@ -268,7 +268,7 @@ pub struct MyDataQuerySnapshotAnchorInfo {
 }
 
 #[derive(Debug, Serialize, QueryableByName)]
-pub struct MyDataQueryDistributionRoundInfo {
+pub struct MyDataDistributionRoundInfo {
     #[diesel(sql_type = Text)]
     pub snapshot_id: String,
     #[diesel(sql_type = BigInt)]
@@ -288,7 +288,7 @@ pub struct MyDataQueryDistributionRoundInfo {
 }
 
 #[derive(Debug, Serialize, QueryableByName)]
-pub struct MyDataQueryMerkleRootInfo {
+pub struct MyDataMerkleRootInfo {
     #[diesel(sql_type = Text)]
     pub snapshot_id: String,
     #[diesel(sql_type = Text)]
@@ -304,7 +304,7 @@ pub struct MyDataQueryMerkleRootInfo {
 }
 
 #[derive(Debug, Serialize, QueryableByName)]
-pub struct MyDataQueryClaimInfo {
+pub struct MyDataClaimInfo {
     #[diesel(sql_type = Integer)]
     pub id: i32,
     #[diesel(sql_type = Text)]

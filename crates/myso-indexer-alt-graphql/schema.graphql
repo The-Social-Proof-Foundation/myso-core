@@ -848,6 +848,7 @@ type CommandResult {
 }
 
 type CommentSummary {
+	attribution: SocialAttribution!
 	commentCount: Int!
 	commentId: String!
 	content: String!
@@ -2409,6 +2410,14 @@ type MakeMoveVecCommand {
 	type: MoveType
 }
 
+type MemoryAccount {
+	accountId: String!
+	active: Boolean!
+	createdAt: Int!
+	principalOwner: MySoAddress!
+	profileId: MySoAddress!
+}
+
 """
 Merges `coins` into the first `coin` (produces no results).
 """
@@ -3394,6 +3403,27 @@ type MyDataAccessLog {
 	userProfile: ProfileSummary
 }
 
+type MyDataBroadPool {
+	createdAtMs: Int!
+	eventId: String!
+	name: String!
+	poolId: String!
+	time: DateTime!
+	transactionId: String!
+}
+
+type MyDataClaim {
+	amount: Int!
+	claimant: MySoAddress!
+	claimantProfile: ProfileSummary
+	claimedAtMs: Int!
+	eventId: String!
+	id: Int!
+	snapshotId: String!
+	time: DateTime!
+	transactionId: String!
+}
+
 type MyDataConfig {
 	"""
 	Whether MyData marketplace is enabled.
@@ -3436,6 +3466,35 @@ type MyDataDailyRevenue {
 	day: String!
 }
 
+type MyDataDistributionRound {
+	contributorCount: Int!
+	eventId: String!
+	merkleRoot: String!
+	publishedAtMs: Int!
+	snapshotId: String!
+	time: DateTime!
+	totalAmount: Int!
+	transactionId: String!
+}
+
+type MyDataListingSubPool {
+	assignedAtMs: Int!
+	eventId: String!
+	listingId: String!
+	subPoolId: String!
+	time: DateTime!
+	transactionId: String!
+}
+
+type MyDataMerkleRoot {
+	eventId: String!
+	publishedAtMs: Int!
+	rootHash: String!
+	snapshotId: String!
+	time: DateTime!
+	transactionId: String!
+}
+
 type MyDataPurchase {
 	"""
 	Buyer address.
@@ -3468,80 +3527,6 @@ type MyDataPurchase {
 	"""
 	Transaction ID.
 	"""
-	transactionId: String!
-}
-
-type MyDataQueryBroadPool {
-	createdAtMs: Int!
-	eventId: String!
-	name: String!
-	poolId: String!
-	time: DateTime!
-	transactionId: String!
-}
-
-type MyDataQueryClaim {
-	amount: Int!
-	claimant: MySoAddress!
-	claimantProfile: ProfileSummary
-	claimedAtMs: Int!
-	eventId: String!
-	id: Int!
-	snapshotId: String!
-	time: DateTime!
-	transactionId: String!
-}
-
-type MyDataQueryDistributionRound {
-	contributorCount: Int!
-	eventId: String!
-	merkleRoot: String!
-	publishedAtMs: Int!
-	snapshotId: String!
-	time: DateTime!
-	totalAmount: Int!
-	transactionId: String!
-}
-
-type MyDataQueryListingSubPool {
-	assignedAtMs: Int!
-	eventId: String!
-	listingId: String!
-	subPoolId: String!
-	time: DateTime!
-	transactionId: String!
-}
-
-type MyDataQueryMerkleRoot {
-	eventId: String!
-	publishedAtMs: Int!
-	rootHash: String!
-	snapshotId: String!
-	time: DateTime!
-	transactionId: String!
-}
-
-type MyDataQuerySnapshotAnchor {
-	buyer: MySoAddress!
-	buyerProfile: ProfileSummary
-	createdAtMs: Int!
-	eventId: String!
-	id: Int!
-	manifestHash: String
-	paymentReference: String
-	pricePaid: Int!
-	snapshotId: String!
-	time: DateTime!
-	transactionId: String!
-}
-
-type MyDataQuerySubPool {
-	broadPoolId: String!
-	createdAtMs: Int!
-	eventId: String!
-	name: String!
-	subPoolId: String!
-	time: DateTime!
 	transactionId: String!
 }
 
@@ -3599,6 +3584,10 @@ type MyDataRecord {
 	"""
 	ownerProfile: ProfileSummary
 	"""
+	Platform details when `platform_id` is set and indexed.
+	"""
+	platform: Platform
+	"""
 	Optional platform identification.
 	"""
 	platformId: String
@@ -3606,10 +3595,6 @@ type MyDataRecord {
 	Purchases for this MyData record (paginated).
 	"""
 	purchases(limit: Int, offset: Int): [MyDataPurchase!]
-	"""
-	Query-marketplace sub-pools this listing is assigned to (from `MyDataAssignedToSubPoolEvent`).
-	"""
-	querySubPools(limit: Int, offset: Int): [MyDataQuerySubPool!]
 	"""
 	Revenue entries for this MyData record (paginated).
 	"""
@@ -3626,6 +3611,10 @@ type MyDataRecord {
 	Aggregated stats for this MyData record.
 	"""
 	stats: MyDataStats
+	"""
+	Query-marketplace sub-pools this listing is assigned to (from `MyDataAssignedToSubPoolEvent`).
+	"""
+	subPools(limit: Int, offset: Int): [MyDataSubPool!]
 	"""
 	Subscription duration in days.
 	"""
@@ -3687,6 +3676,20 @@ type MyDataRevenue {
 	transactionId: String!
 }
 
+type MyDataSnapshotAnchor {
+	buyer: MySoAddress!
+	buyerProfile: ProfileSummary
+	createdAtMs: Int!
+	eventId: String!
+	id: Int!
+	manifestHash: String
+	paymentReference: String
+	pricePaid: Int!
+	snapshotId: String!
+	time: DateTime!
+	transactionId: String!
+}
+
 type MyDataStats {
 	"""
 	Number of access events.
@@ -3712,6 +3715,16 @@ type MyDataStats {
 	Total revenue for this record.
 	"""
 	totalRevenue: Int!
+}
+
+type MyDataSubPool {
+	broadPoolId: String!
+	createdAtMs: Int!
+	eventId: String!
+	name: String!
+	subPoolId: String!
+	time: DateTime!
+	transactionId: String!
 }
 
 type MyDataSubscription {
@@ -4890,6 +4903,10 @@ type PocVaultDeposit {
 
 type Post implements Node {
 	"""
+	Actor vs principal attribution for delegated sub-agent actions.
+	"""
+	attribution: SocialAttribution!
+	"""
 	Number of comments.
 	"""
 	commentCount: Int!
@@ -5379,6 +5396,14 @@ type Profile implements Node {
 	"""
 	id: ID!
 	"""
+	Memory account row for this profile owner.
+	"""
+	memoryAccount: MemoryAccount
+	"""
+	Linked memory account object id for this profile's sub-agent registry.
+	"""
+	memoryAccountId: String
+	"""
 	Minimum offer amount for profile sales.
 	"""
 	minOfferAmount: Int
@@ -5484,6 +5509,13 @@ type Profile implements Node {
 	SPT holdings for this profile (paginated).
 	"""
 	sptHoldings(limit: Int, offset: Int): [SptHolding!]
+	subAgent(derivedAddress: MySoAddress!): SubAgent
+	subAgentByObjectId(agentObjectId: String!): SubAgent
+	"""
+	Sub-agents registered under this profile's memory account.
+	"""
+	subAgents(activeOnly: Boolean, limit: Int, offset: Int): [SubAgent!]
+	subAgentsTotalCount(activeOnly: Boolean): Int
 	"""
 	When the profile was last updated (epoch milliseconds).
 	"""
@@ -6189,49 +6221,37 @@ type Query {
 	"""
 	multiGetTypes(keys: [String!]!): [MoveType]!
 	"""
+	MyData marketplace broad pools (indexed `BroadPoolCreatedEvent`). Empty when social DB not configured.
+	"""
+	mydataBroadPools(limit: Int, offset: Int): [MyDataBroadPool!]
+	"""
+	Claim events for a snapshot.
+	"""
+	mydataClaimsForSnapshot(snapshotId: String!, limit: Int, offset: Int): [MyDataClaim!]
+	"""
 	MyData configuration. Returns null when social DB not configured or no config.
 	"""
 	mydataConfiguration: MyDataConfig
 	"""
-	MyData purchases by buyer. Returns empty when social DB not configured.
-	"""
-	mydataPurchases(buyer: MySoAddress!, limit: Int, offset: Int): [MyDataPurchase!]
-	"""
-	MyData query marketplace broad pools (indexed `BroadPoolCreatedEvent`). Empty when social DB not configured.
-	"""
-	mydataQueryBroadPools(limit: Int, offset: Int): [MyDataQueryBroadPool!]
-	"""
-	Claim events for a snapshot.
-	"""
-	mydataQueryClaimsForSnapshot(snapshotId: String!, limit: Int, offset: Int): [MyDataQueryClaim!]
-	"""
 	Distribution round for a snapshot (from `DistributionRecordedEvent` when indexed).
 	"""
-	mydataQueryDistributionRound(snapshotId: String!): MyDataQueryDistributionRound
+	mydataDistributionRound(snapshotId: String!): MyDataDistributionRound
 	"""
 	Recent distribution rounds (paginated).
 	"""
-	mydataQueryDistributionRounds(limit: Int, offset: Int): [MyDataQueryDistributionRound!]
+	mydataDistributionRounds(limit: Int, offset: Int): [MyDataDistributionRound!]
 	"""
 	Listings assigned to a sub-pool (junction).
 	"""
-	mydataQueryListingsForSubPool(subPoolId: String!, limit: Int, offset: Int): [MyDataQueryListingSubPool!]
+	mydataListingsForSubPool(subPoolId: String!, limit: Int, offset: Int): [MyDataListingSubPool!]
 	"""
 	Published Merkle root for a snapshot.
 	"""
-	mydataQueryMerkleRoot(snapshotId: String!): MyDataQueryMerkleRoot
+	mydataMerkleRoot(snapshotId: String!): MyDataMerkleRoot
 	"""
-	Latest snapshot anchor for a snapshot ID (includes manifest hash and payment reference when indexed from upgraded packages).
+	MyData purchases by buyer. Returns empty when social DB not configured.
 	"""
-	mydataQuerySnapshotAnchor(snapshotId: String!): MyDataQuerySnapshotAnchor
-	"""
-	Recent snapshot anchors (paginated).
-	"""
-	mydataQuerySnapshotAnchors(limit: Int, offset: Int): [MyDataQuerySnapshotAnchor!]
-	"""
-	Sub-pools under a broad pool.
-	"""
-	mydataQuerySubPoolsForBroadPool(broadPoolId: String!, limit: Int, offset: Int): [MyDataQuerySubPool!]
+	mydataPurchases(buyer: MySoAddress!, limit: Int, offset: Int): [MyDataPurchase!]
 	"""
 	MyData record by ID. Returns null when social DB not configured or not found.
 	"""
@@ -6240,6 +6260,18 @@ type Query {
 	MyData records by owner. Returns empty when social DB not configured.
 	"""
 	mydataRecords(owner: MySoAddress!, limit: Int, offset: Int): [MyDataRecord!]
+	"""
+	Latest snapshot anchor for a snapshot ID (includes manifest hash and payment reference when indexed from upgraded packages).
+	"""
+	mydataSnapshotAnchor(snapshotId: String!): MyDataSnapshotAnchor
+	"""
+	Recent snapshot anchors (paginated).
+	"""
+	mydataSnapshotAnchors(limit: Int, offset: Int): [MyDataSnapshotAnchor!]
+	"""
+	Sub-pools under a broad pool.
+	"""
+	mydataSubPoolsForBroadPool(broadPoolId: String!, limit: Int, offset: Int): [MyDataSubPool!]
 	"""
 	Fetch a `Node` by its globally unique `ID`. Returns `null` if the node cannot be found (e.g., the underlying data was pruned or never existed).
 	"""
@@ -6356,7 +6388,7 @@ type Query {
 	"""
 	List posts with optional filters. Returns empty when social DB not configured.
 	"""
-	posts(owner: String, postType: String, limit: Int, offset: Int): [Post!]
+	posts(owner: String, postType: String, subAgentId: String, limit: Int, offset: Int): [Post!]
 	"""
 	Fetch a social profile by owner address. Returns null if social DB not configured or not found.
 	"""
@@ -6485,6 +6517,14 @@ type Query {
 	"""
 	sptReservationVolumeHistory(poolId: ID!, interval: SptReservationVolumeInterval!, limit: Int, from: String, to: String): [SptReservationVolumeBucket!]
 	"""
+	Fetch a sub-agent by derived address.
+	"""
+	subAgent(derivedAddress: MySoAddress!): SubAgent
+	"""
+	Fetch a sub-agent by on-chain object id.
+	"""
+	subAgentByObjectId(agentObjectId: String!): SubAgent
+	"""
 	Tips received for a post (paginated). Returns empty when social DB not configured.
 	"""
 	tips(postId: ID!, limit: Int, offset: Int): [TipSummary!]
@@ -6574,8 +6614,13 @@ type RandomnessStateUpdateTransaction {
 }
 
 type ReactionSummary {
+	actionIdentityClass: Int!
+	actorAddress: MySoAddress!
+	attribution: SocialAttribution!
 	createdAt: Int!
+	principalOwner: MySoAddress
 	reactionText: String!
+	subAgentId: String
 	userAddress: MySoAddress!
 	"""
 	Profile of the user who reacted.
@@ -6619,6 +6664,7 @@ enum RegulatedState {
 }
 
 type RepostSummary {
+	attribution: SocialAttribution!
 	createdAt: Int!
 	originalPostId: String!
 	owner: MySoAddress!
@@ -6830,6 +6876,13 @@ type SimulationResult {
 	The intermediate outputs for each command of the transaction simulation, including contents of mutated references and return values.
 	"""
 	outputs: [CommandResult!]
+}
+
+type SocialAttribution {
+	actionIdentityClass: Int!
+	actorAddress: MySoAddress!
+	principalOwner: MySoAddress
+	subAgentId: String
 }
 
 type SocialProofToken {
@@ -7600,6 +7653,27 @@ type StoreExecutionTimeObservationsTransaction {
 	_: Boolean
 }
 
+
+type SubAgent {
+	active: Boolean!
+	agentObjectId: String!
+	capabilities: Int!
+	children(activeOnly: Boolean, limit: Int, offset: Int): [SubAgent!]
+	createdAt: Int!
+	delegatableCaps: Int!
+	depth: Int!
+	derivedAddress: MySoAddress!
+	expiresAt: Int
+	identityClass: Int!
+	label: String!
+	maxActionSpend: Int
+	memoryVaultId: String
+	parentObjectId: String
+	platformScope: MySoAddress
+	registerScope: Int!
+	registeredBy: MySoAddress!
+	roleTags: Int!
+}
 
 """
 Future behavior of a currency's supply.

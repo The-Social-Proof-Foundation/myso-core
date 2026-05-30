@@ -2440,7 +2440,7 @@
     ]
   },
   "111": {
-    "git_revision": "81b7c9ba25b2723270f1e5f5b53b13fdc018a08e-dirty",
+    "git_revision": "cf5f1439b3d239f20062fc16ac4ebfef6f32c188-dirty",
     "packages": [
       {
         "name": "MoveStdlib",

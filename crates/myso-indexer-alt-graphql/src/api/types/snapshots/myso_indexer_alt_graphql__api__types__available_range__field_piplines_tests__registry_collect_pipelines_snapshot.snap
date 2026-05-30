@@ -449,6 +449,9 @@ CommentSummary.reactionCount
 CommentSummary.commentCount
   => {}
 
+CommentSummary.attribution
+  => {}
+
 CommentSummary.reports
   => {}
 
@@ -1430,6 +1433,21 @@ MakeMoveVecCommand.type
 MakeMoveVecCommand.elements
   => {}
 
+MemoryAccount.accountId
+  => {}
+
+MemoryAccount.principalOwner
+  => {}
+
+MemoryAccount.profileId
+  => {}
+
+MemoryAccount.active
+  => {}
+
+MemoryAccount.createdAt
+  => {}
+
 MergeCoinsCommand.coin
   => {}
 
@@ -1820,6 +1838,51 @@ MyDataAccessLog.time
 MyDataAccessLog.transactionId
   => {}
 
+MyDataBroadPool.poolId
+  => {}
+
+MyDataBroadPool.name
+  => {}
+
+MyDataBroadPool.createdAtMs
+  => {}
+
+MyDataBroadPool.eventId
+  => {}
+
+MyDataBroadPool.transactionId
+  => {}
+
+MyDataBroadPool.time
+  => {}
+
+MyDataClaim.id
+  => {}
+
+MyDataClaim.snapshotId
+  => {}
+
+MyDataClaim.claimant
+  => {}
+
+MyDataClaim.claimantProfile
+  => {}
+
+MyDataClaim.amount
+  => {}
+
+MyDataClaim.claimedAtMs
+  => {}
+
+MyDataClaim.eventId
+  => {}
+
+MyDataClaim.transactionId
+  => {}
+
+MyDataClaim.time
+  => {}
+
 MyDataConfig.updatedBy
   => {}
 
@@ -1847,6 +1910,66 @@ MyDataDailyRevenue.dailyRevenue
 MyDataDailyRevenue.dailyTransactions
   => {}
 
+MyDataDistributionRound.snapshotId
+  => {}
+
+MyDataDistributionRound.totalAmount
+  => {}
+
+MyDataDistributionRound.contributorCount
+  => {}
+
+MyDataDistributionRound.merkleRoot
+  => {}
+
+MyDataDistributionRound.publishedAtMs
+  => {}
+
+MyDataDistributionRound.eventId
+  => {}
+
+MyDataDistributionRound.transactionId
+  => {}
+
+MyDataDistributionRound.time
+  => {}
+
+MyDataListingSubPool.listingId
+  => {}
+
+MyDataListingSubPool.subPoolId
+  => {}
+
+MyDataListingSubPool.assignedAtMs
+  => {}
+
+MyDataListingSubPool.eventId
+  => {}
+
+MyDataListingSubPool.transactionId
+  => {}
+
+MyDataListingSubPool.time
+  => {}
+
+MyDataMerkleRoot.snapshotId
+  => {}
+
+MyDataMerkleRoot.rootHash
+  => {}
+
+MyDataMerkleRoot.publishedAtMs
+  => {}
+
+MyDataMerkleRoot.eventId
+  => {}
+
+MyDataMerkleRoot.transactionId
+  => {}
+
+MyDataMerkleRoot.time
+  => {}
+
 MyDataPurchase.mydataId
   => {}
 
@@ -1871,165 +1994,6 @@ MyDataPurchase.time
 MyDataPurchase.transactionId
   => {}
 
-MyDataQueryBroadPool.poolId
-  => {}
-
-MyDataQueryBroadPool.name
-  => {}
-
-MyDataQueryBroadPool.createdAtMs
-  => {}
-
-MyDataQueryBroadPool.eventId
-  => {}
-
-MyDataQueryBroadPool.transactionId
-  => {}
-
-MyDataQueryBroadPool.time
-  => {}
-
-MyDataQueryClaim.id
-  => {}
-
-MyDataQueryClaim.snapshotId
-  => {}
-
-MyDataQueryClaim.claimant
-  => {}
-
-MyDataQueryClaim.claimantProfile
-  => {}
-
-MyDataQueryClaim.amount
-  => {}
-
-MyDataQueryClaim.claimedAtMs
-  => {}
-
-MyDataQueryClaim.eventId
-  => {}
-
-MyDataQueryClaim.transactionId
-  => {}
-
-MyDataQueryClaim.time
-  => {}
-
-MyDataQueryDistributionRound.snapshotId
-  => {}
-
-MyDataQueryDistributionRound.totalAmount
-  => {}
-
-MyDataQueryDistributionRound.contributorCount
-  => {}
-
-MyDataQueryDistributionRound.merkleRoot
-  => {}
-
-MyDataQueryDistributionRound.publishedAtMs
-  => {}
-
-MyDataQueryDistributionRound.eventId
-  => {}
-
-MyDataQueryDistributionRound.transactionId
-  => {}
-
-MyDataQueryDistributionRound.time
-  => {}
-
-MyDataQueryListingSubPool.listingId
-  => {}
-
-MyDataQueryListingSubPool.subPoolId
-  => {}
-
-MyDataQueryListingSubPool.assignedAtMs
-  => {}
-
-MyDataQueryListingSubPool.eventId
-  => {}
-
-MyDataQueryListingSubPool.transactionId
-  => {}
-
-MyDataQueryListingSubPool.time
-  => {}
-
-MyDataQueryMerkleRoot.snapshotId
-  => {}
-
-MyDataQueryMerkleRoot.rootHash
-  => {}
-
-MyDataQueryMerkleRoot.publishedAtMs
-  => {}
-
-MyDataQueryMerkleRoot.eventId
-  => {}
-
-MyDataQueryMerkleRoot.transactionId
-  => {}
-
-MyDataQueryMerkleRoot.time
-  => {}
-
-MyDataQuerySnapshotAnchor.id
-  => {}
-
-MyDataQuerySnapshotAnchor.snapshotId
-  => {}
-
-MyDataQuerySnapshotAnchor.buyer
-  => {}
-
-MyDataQuerySnapshotAnchor.buyerProfile
-  => {}
-
-MyDataQuerySnapshotAnchor.pricePaid
-  => {}
-
-MyDataQuerySnapshotAnchor.createdAtMs
-  => {}
-
-MyDataQuerySnapshotAnchor.eventId
-  => {}
-
-MyDataQuerySnapshotAnchor.transactionId
-  => {}
-
-MyDataQuerySnapshotAnchor.time
-  => {}
-
-MyDataQuerySnapshotAnchor.manifestHash
-  => {}
-
-MyDataQuerySnapshotAnchor.paymentReference
-  => {}
-
-MyDataQuerySubPool.subPoolId
-  => {}
-
-MyDataQuerySubPool.broadPoolId
-  => {}
-
-MyDataQuerySubPool.name
-  => {}
-
-MyDataQuerySubPool.createdAtMs
-  => {}
-
-MyDataQuerySubPool.eventId
-  => {}
-
-MyDataQuerySubPool.transactionId
-  => {}
-
-MyDataQuerySubPool.time
-  => {}
-
 MyDataRecord.mydataId
   => {}
 
@@ -2052,6 +2016,9 @@ MyDataRecord.subscriptionPrice
   => {}
 
 MyDataRecord.platformId
+  => {}
+
+MyDataRecord.platform
   => {}
 
 MyDataRecord.timestampStart
@@ -2108,7 +2075,7 @@ MyDataRecord.revenueTimeline
 MyDataRecord.accessAnalytics
   => {}
 
-MyDataRecord.querySubPools
+MyDataRecord.subPools
   => {}
 
 MyDataRevenue.fromAddress
@@ -2132,6 +2099,39 @@ MyDataRevenue.time
 MyDataRevenue.transactionId
   => {}
 
+MyDataSnapshotAnchor.id
+  => {}
+
+MyDataSnapshotAnchor.snapshotId
+  => {}
+
+MyDataSnapshotAnchor.buyer
+  => {}
+
+MyDataSnapshotAnchor.buyerProfile
+  => {}
+
+MyDataSnapshotAnchor.pricePaid
+  => {}
+
+MyDataSnapshotAnchor.createdAtMs
+  => {}
+
+MyDataSnapshotAnchor.eventId
+  => {}
+
+MyDataSnapshotAnchor.transactionId
+  => {}
+
+MyDataSnapshotAnchor.time
+  => {}
+
+MyDataSnapshotAnchor.manifestHash
+  => {}
+
+MyDataSnapshotAnchor.paymentReference
+  => {}
+
 MyDataStats.totalRevenue
   => {}
 
@@ -2148,6 +2148,27 @@ MyDataStats.createdAt
   => {}
 
 MyDataStats.lastUpdated
+  => {}
+
+MyDataSubPool.subPoolId
+  => {}
+
+MyDataSubPool.broadPoolId
+  => {}
+
+MyDataSubPool.name
+  => {}
+
+MyDataSubPool.createdAtMs
+  => {}
+
+MyDataSubPool.eventId
+  => {}
+
+MyDataSubPool.transactionId
+  => {}
+
+MyDataSubPool.time
   => {}
 
 MyDataSubscription.subscriber
@@ -3062,6 +3083,9 @@ Post.platformId
 Post.permissions
   => {}
 
+Post.attribution
+  => {}
+
 Post.revenueRecipient
   => {}
 
@@ -3446,6 +3470,24 @@ Profile.postsPage
 Profile.postsTotalCount
   => {}
 
+Profile.memoryAccountId
+  => {}
+
+Profile.memoryAccount
+  => {}
+
+Profile.subAgents
+  => {}
+
+Profile.subAgentsTotalCount
+  => {}
+
+Profile.subAgent
+  => {}
+
+Profile.subAgentByObjectId
+  => {}
+
 Profile.mydataRecords
   => {}
 
@@ -3815,6 +3857,12 @@ Query.post
 Query.posts
   => {}
 
+Query.subAgent
+  => {}
+
+Query.subAgentByObjectId
+  => {}
+
 Query.comment
   => {}
 
@@ -3908,31 +3956,31 @@ Query.listMydata
 Query.popularMydata
   => {}
 
-Query.mydataQueryBroadPools
+Query.mydataBroadPools
   => {}
 
-Query.mydataQuerySubPoolsForBroadPool
+Query.mydataSubPoolsForBroadPool
   => {}
 
-Query.mydataQueryListingsForSubPool
+Query.mydataListingsForSubPool
   => {}
 
-Query.mydataQuerySnapshotAnchor
+Query.mydataSnapshotAnchor
   => {}
 
-Query.mydataQuerySnapshotAnchors
+Query.mydataSnapshotAnchors
   => {}
 
-Query.mydataQueryDistributionRound
+Query.mydataDistributionRound
   => {}
 
-Query.mydataQueryDistributionRounds
+Query.mydataDistributionRounds
   => {}
 
-Query.mydataQueryMerkleRoot
+Query.mydataMerkleRoot
   => {}
 
-Query.mydataQueryClaimsForSnapshot
+Query.mydataClaimsForSnapshot
   => {}
 
 Query.proposals
@@ -4163,6 +4211,21 @@ ReactionSummary.reactionText
 ReactionSummary.createdAt
   => {}
 
+ReactionSummary.actorAddress
+  => {}
+
+ReactionSummary.principalOwner
+  => {}
+
+ReactionSummary.subAgentId
+  => {}
+
+ReactionSummary.actionIdentityClass
+  => {}
+
+ReactionSummary.attribution
+  => {}
+
 ReadConsensusStreamEnded.address
   => {}
 
@@ -4188,6 +4251,9 @@ RepostSummary.profileId
   => {}
 
 RepostSummary.createdAt
+  => {}
+
+RepostSummary.attribution
   => {}
 
 RewardDistribution.proposalId
@@ -4308,6 +4374,18 @@ SimulationResult.outputs
   => {}
 
 SimulationResult.error
+  => {}
+
+SocialAttribution.actorAddress
+  => {}
+
+SocialAttribution.subAgentId
+  => {}
+
+SocialAttribution.actionIdentityClass
+  => {}
+
+SocialAttribution.principalOwner
   => {}
 
 SocialProofToken.poolId
@@ -4866,6 +4944,60 @@ StakeSubsidy.apy
   => {}
 
 StoreExecutionTimeObservationsTransaction._
+  => {}
+
+SubAgent.agentObjectId
+  => {}
+
+SubAgent.derivedAddress
+  => {}
+
+SubAgent.label
+  => {}
+
+SubAgent.memoryVaultId
+  => {}
+
+SubAgent.identityClass
+  => {}
+
+SubAgent.roleTags
+  => {}
+
+SubAgent.capabilities
+  => {}
+
+SubAgent.delegatableCaps
+  => {}
+
+SubAgent.registerScope
+  => {}
+
+SubAgent.maxActionSpend
+  => {}
+
+SubAgent.platformScope
+  => {}
+
+SubAgent.parentObjectId
+  => {}
+
+SubAgent.depth
+  => {}
+
+SubAgent.registeredBy
+  => {}
+
+SubAgent.active
+  => {}
+
+SubAgent.expiresAt
+  => {}
+
+SubAgent.createdAt
+  => {}
+
+SubAgent.children
   => {}
 
 TipSummary.tipper

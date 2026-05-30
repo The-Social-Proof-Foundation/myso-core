@@ -7,9 +7,9 @@ use diesel::sql_types::{BigInt, Bool, Date, Int4, Jsonb, Nullable, Text, Timesta
 use serde::{Deserialize, Serialize};
 
 use crate::schema::{
-    mydata_access_logs, mydata_config, mydata_data, mydata_purchases, mydata_query_broad_pools,
-    mydata_query_claims, mydata_query_distribution_rounds, mydata_query_listing_sub_pools,
-    mydata_query_merkle_roots, mydata_query_snapshot_anchors, mydata_query_sub_pools,
+    mydata_access_logs, mydata_config, mydata_data, mydata_purchases, mydata_broad_pools,
+    mydata_claims, mydata_distribution_rounds, mydata_listing_sub_pools,
+    mydata_merkle_roots, mydata_snapshot_anchors, mydata_sub_pools,
     mydata_registry, mydata_revenue, mydata_subscriptions,
 };
 
@@ -363,7 +363,7 @@ pub struct NewMyDataAccessLog {
 #[derive(Debug, Clone, Queryable, Selectable, Serialize, Deserialize)]
 #[diesel(table_name = mydata_registry)]
 pub struct MyDataRegistry {
-    pub ip_id: String,
+    pub mydata_id: String,
     pub owner: String,
     pub registered_at: i64,
     pub unregistered_at: Option<i64>,
@@ -375,7 +375,7 @@ pub struct MyDataRegistry {
 #[derive(Debug, Clone, Insertable, Serialize, Deserialize)]
 #[diesel(table_name = mydata_registry)]
 pub struct NewMyDataRegistry {
-    pub ip_id: String,
+    pub mydata_id: String,
     pub owner: String,
     pub registered_at: i64,
     pub unregistered_at: Option<i64>,
@@ -409,11 +409,11 @@ pub struct NewMyDataConfig {
     pub transaction_id: String,
 }
 
-// --- MyData query marketplace (indexed from social_contracts::mydata) ---
+// --- MyData marketplace (indexed from social_contracts::mydata) ---
 
 #[derive(Debug, Clone, Queryable, Selectable, Serialize, Deserialize)]
-#[diesel(table_name = mydata_query_broad_pools)]
-pub struct MyDataQueryBroadPool {
+#[diesel(table_name = mydata_broad_pools)]
+pub struct MyDataBroadPool {
     pub pool_id: String,
     pub name: String,
     pub created_at_ms: i64,
@@ -423,8 +423,8 @@ pub struct MyDataQueryBroadPool {
 }
 
 #[derive(Debug, Clone, Insertable, Serialize, Deserialize)]
-#[diesel(table_name = mydata_query_broad_pools)]
-pub struct NewMyDataQueryBroadPool {
+#[diesel(table_name = mydata_broad_pools)]
+pub struct NewMyDataBroadPool {
     pub pool_id: String,
     pub name: String,
     pub created_at_ms: i64,
@@ -433,8 +433,8 @@ pub struct NewMyDataQueryBroadPool {
 }
 
 #[derive(Debug, Clone, Queryable, Selectable, Serialize, Deserialize)]
-#[diesel(table_name = mydata_query_sub_pools)]
-pub struct MyDataQuerySubPool {
+#[diesel(table_name = mydata_sub_pools)]
+pub struct MyDataSubPool {
     pub sub_pool_id: String,
     pub broad_pool_id: String,
     pub name: String,
@@ -445,8 +445,8 @@ pub struct MyDataQuerySubPool {
 }
 
 #[derive(Debug, Clone, Insertable, Serialize, Deserialize)]
-#[diesel(table_name = mydata_query_sub_pools)]
-pub struct NewMyDataQuerySubPool {
+#[diesel(table_name = mydata_sub_pools)]
+pub struct NewMyDataSubPool {
     pub sub_pool_id: String,
     pub broad_pool_id: String,
     pub name: String,
@@ -456,8 +456,8 @@ pub struct NewMyDataQuerySubPool {
 }
 
 #[derive(Debug, Clone, Queryable, Selectable, Serialize, Deserialize)]
-#[diesel(table_name = mydata_query_listing_sub_pools)]
-pub struct MyDataQueryListingSubPool {
+#[diesel(table_name = mydata_listing_sub_pools)]
+pub struct MyDataListingSubPool {
     pub listing_id: String,
     pub sub_pool_id: String,
     pub assigned_at_ms: i64,
@@ -467,8 +467,8 @@ pub struct MyDataQueryListingSubPool {
 }
 
 #[derive(Debug, Clone, Insertable, Serialize, Deserialize)]
-#[diesel(table_name = mydata_query_listing_sub_pools)]
-pub struct NewMyDataQueryListingSubPool {
+#[diesel(table_name = mydata_listing_sub_pools)]
+pub struct NewMyDataListingSubPool {
     pub listing_id: String,
     pub sub_pool_id: String,
     pub assigned_at_ms: i64,
@@ -477,8 +477,8 @@ pub struct NewMyDataQueryListingSubPool {
 }
 
 #[derive(Debug, Clone, Queryable, Selectable, Serialize, Deserialize)]
-#[diesel(table_name = mydata_query_merkle_roots)]
-pub struct MyDataQueryMerkleRoot {
+#[diesel(table_name = mydata_merkle_roots)]
+pub struct MyDataMerkleRoot {
     pub snapshot_id: String,
     pub root_hash: String,
     pub published_at_ms: i64,
@@ -488,8 +488,8 @@ pub struct MyDataQueryMerkleRoot {
 }
 
 #[derive(Debug, Clone, Insertable, Serialize, Deserialize)]
-#[diesel(table_name = mydata_query_merkle_roots)]
-pub struct NewMyDataQueryMerkleRoot {
+#[diesel(table_name = mydata_merkle_roots)]
+pub struct NewMyDataMerkleRoot {
     pub snapshot_id: String,
     pub root_hash: String,
     pub published_at_ms: i64,
@@ -498,8 +498,8 @@ pub struct NewMyDataQueryMerkleRoot {
 }
 
 #[derive(Debug, Clone, Queryable, Selectable, Serialize, Deserialize)]
-#[diesel(table_name = mydata_query_snapshot_anchors)]
-pub struct MyDataQuerySnapshotAnchor {
+#[diesel(table_name = mydata_snapshot_anchors)]
+pub struct MyDataSnapshotAnchor {
     pub id: i32,
     pub snapshot_id: String,
     pub buyer_address: String,
@@ -513,8 +513,8 @@ pub struct MyDataQuerySnapshotAnchor {
 }
 
 #[derive(Debug, Clone, Insertable, Serialize, Deserialize)]
-#[diesel(table_name = mydata_query_snapshot_anchors)]
-pub struct NewMyDataQuerySnapshotAnchor {
+#[diesel(table_name = mydata_snapshot_anchors)]
+pub struct NewMyDataSnapshotAnchor {
     pub snapshot_id: String,
     pub buyer_address: String,
     pub price_paid: i64,
@@ -526,8 +526,8 @@ pub struct NewMyDataQuerySnapshotAnchor {
 }
 
 #[derive(Debug, Clone, Queryable, Selectable, Serialize, Deserialize)]
-#[diesel(table_name = mydata_query_distribution_rounds)]
-pub struct MyDataQueryDistributionRound {
+#[diesel(table_name = mydata_distribution_rounds)]
+pub struct MyDataDistributionRound {
     pub snapshot_id: String,
     pub total_amount: i64,
     pub contributor_count: i64,
@@ -539,8 +539,8 @@ pub struct MyDataQueryDistributionRound {
 }
 
 #[derive(Debug, Clone, Insertable, Serialize, Deserialize)]
-#[diesel(table_name = mydata_query_distribution_rounds)]
-pub struct NewMyDataQueryDistributionRound {
+#[diesel(table_name = mydata_distribution_rounds)]
+pub struct NewMyDataDistributionRound {
     pub snapshot_id: String,
     pub total_amount: i64,
     pub contributor_count: i64,
@@ -551,8 +551,8 @@ pub struct NewMyDataQueryDistributionRound {
 }
 
 #[derive(Debug, Clone, Queryable, Selectable, Serialize, Deserialize)]
-#[diesel(table_name = mydata_query_claims)]
-pub struct MyDataQueryClaim {
+#[diesel(table_name = mydata_claims)]
+pub struct MyDataClaim {
     pub id: i32,
     pub snapshot_id: String,
     pub claimant: String,
@@ -564,8 +564,8 @@ pub struct MyDataQueryClaim {
 }
 
 #[derive(Debug, Clone, Insertable, Serialize, Deserialize)]
-#[diesel(table_name = mydata_query_claims)]
-pub struct NewMyDataQueryClaim {
+#[diesel(table_name = mydata_claims)]
+pub struct NewMyDataClaim {
     pub snapshot_id: String,
     pub claimant: String,
     pub amount: i64,
@@ -575,7 +575,7 @@ pub struct NewMyDataQueryClaim {
 }
 
 #[derive(Debug, Clone, QueryableByName, Serialize, Deserialize)]
-pub struct MyDataQueryBroadPoolRow {
+pub struct MyDataBroadPoolRow {
     #[diesel(sql_type = Text)]
     pub pool_id: String,
     #[diesel(sql_type = Text)]
@@ -591,7 +591,7 @@ pub struct MyDataQueryBroadPoolRow {
 }
 
 #[derive(Debug, Clone, QueryableByName, Serialize, Deserialize)]
-pub struct MyDataQuerySubPoolRow {
+pub struct MyDataSubPoolRow {
     #[diesel(sql_type = Text)]
     pub sub_pool_id: String,
     #[diesel(sql_type = Text)]
@@ -609,7 +609,7 @@ pub struct MyDataQuerySubPoolRow {
 }
 
 #[derive(Debug, Clone, QueryableByName, Serialize, Deserialize)]
-pub struct MyDataQueryListingSubPoolRow {
+pub struct MyDataListingSubPoolRow {
     #[diesel(sql_type = Text)]
     pub listing_id: String,
     #[diesel(sql_type = Text)]
@@ -625,7 +625,7 @@ pub struct MyDataQueryListingSubPoolRow {
 }
 
 #[derive(Debug, Clone, QueryableByName, Serialize, Deserialize)]
-pub struct MyDataQuerySnapshotAnchorRow {
+pub struct MyDataSnapshotAnchorRow {
     #[diesel(sql_type = Int4)]
     pub id: i32,
     #[diesel(sql_type = Text)]
@@ -649,7 +649,7 @@ pub struct MyDataQuerySnapshotAnchorRow {
 }
 
 #[derive(Debug, Clone, QueryableByName, Serialize, Deserialize)]
-pub struct MyDataQueryDistributionRoundRow {
+pub struct MyDataDistributionRoundRow {
     #[diesel(sql_type = Text)]
     pub snapshot_id: String,
     #[diesel(sql_type = BigInt)]
@@ -669,7 +669,7 @@ pub struct MyDataQueryDistributionRoundRow {
 }
 
 #[derive(Debug, Clone, QueryableByName, Serialize, Deserialize)]
-pub struct MyDataQueryMerkleRootRow {
+pub struct MyDataMerkleRootRow {
     #[diesel(sql_type = Text)]
     pub snapshot_id: String,
     #[diesel(sql_type = Text)]
@@ -685,7 +685,7 @@ pub struct MyDataQueryMerkleRootRow {
 }
 
 #[derive(Debug, Clone, QueryableByName, Serialize, Deserialize)]
-pub struct MyDataQueryClaimRow {
+pub struct MyDataClaimRow {
     #[diesel(sql_type = Int4)]
     pub id: i32,
     #[diesel(sql_type = Text)]

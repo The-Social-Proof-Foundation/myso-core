@@ -89,6 +89,9 @@ diesel::table! {
         removed_by -> Nullable<Text>,
         transaction_id -> Text,
         time -> Timestamptz,
+        actor_address -> Nullable<Text>,
+        sub_agent_id -> Nullable<Text>,
+        action_identity_class -> Nullable<Int2>,
     }
 }
 
@@ -451,8 +454,8 @@ diesel::table! {
 }
 
 diesel::table! {
-    mydata_registry (ip_id) {
-        ip_id -> Text,
+    mydata_registry (mydata_id) {
+        mydata_id -> Text,
         owner -> Text,
         registered_at -> Int8,
         unregistered_at -> Nullable<Int8>,
@@ -490,7 +493,7 @@ diesel::table! {
 }
 
 diesel::table! {
-    mydata_query_broad_pools (pool_id) {
+    mydata_broad_pools (pool_id) {
         pool_id -> Text,
         name -> Text,
         created_at_ms -> Int8,
@@ -501,7 +504,7 @@ diesel::table! {
 }
 
 diesel::table! {
-    mydata_query_sub_pools (sub_pool_id) {
+    mydata_sub_pools (sub_pool_id) {
         sub_pool_id -> Text,
         broad_pool_id -> Text,
         name -> Text,
@@ -513,7 +516,7 @@ diesel::table! {
 }
 
 diesel::table! {
-    mydata_query_listing_sub_pools (listing_id, sub_pool_id) {
+    mydata_listing_sub_pools (listing_id, sub_pool_id) {
         listing_id -> Text,
         sub_pool_id -> Text,
         assigned_at_ms -> Int8,
@@ -524,7 +527,7 @@ diesel::table! {
 }
 
 diesel::table! {
-    mydata_query_merkle_roots (snapshot_id) {
+    mydata_merkle_roots (snapshot_id) {
         snapshot_id -> Text,
         root_hash -> Text,
         published_at_ms -> Int8,
@@ -535,7 +538,7 @@ diesel::table! {
 }
 
 diesel::table! {
-    mydata_query_snapshot_anchors (id, time) {
+    mydata_snapshot_anchors (id, time) {
         id -> Int4,
         snapshot_id -> Text,
         buyer_address -> Text,
@@ -550,7 +553,7 @@ diesel::table! {
 }
 
 diesel::table! {
-    mydata_query_distribution_rounds (snapshot_id) {
+    mydata_distribution_rounds (snapshot_id) {
         snapshot_id -> Text,
         total_amount -> Int8,
         contributor_count -> Int8,
@@ -563,7 +566,7 @@ diesel::table! {
 }
 
 diesel::table! {
-    mydata_query_claims (id, time) {
+    mydata_claims (id, time) {
         id -> Int4,
         snapshot_id -> Text,
         claimant -> Text,
@@ -937,6 +940,9 @@ diesel::table! {
         revenue_recipient -> Nullable<Text>,
         platform_id -> Nullable<Text>,
         permissions -> Nullable<Int2>,
+        actor_address -> Nullable<Text>,
+        sub_agent_id -> Nullable<Text>,
+        action_identity_class -> Nullable<Int2>,
     }
 }
 
@@ -1131,6 +1137,97 @@ diesel::table! {
         paid_messaging_min_cost -> Nullable<Int8>,
         selected_ecosystem_badge_id -> Nullable<Varchar>,
         search_text -> Nullable<Text>,
+        memory_account_id -> Nullable<Text>,
+    }
+}
+
+diesel::table! {
+    agent_memory_vaults (vault_id) {
+        vault_id -> Text,
+        agent_object_id -> Text,
+        memory_account_id -> Text,
+        created_at_ms -> Int8,
+        event_id -> Text,
+        transaction_id -> Text,
+        time -> Timestamptz,
+    }
+}
+
+diesel::table! {
+    memory_accounts (account_id) {
+        account_id -> Text,
+        principal_owner -> Text,
+        profile_id -> Text,
+        active -> Bool,
+        created_at_ms -> Int8,
+        event_id -> Text,
+        transaction_id -> Text,
+        time -> Timestamptz,
+    }
+}
+
+diesel::table! {
+    sub_agents (agent_object_id) {
+        agent_object_id -> Text,
+        derived_address -> Text,
+        account_id -> Text,
+        label -> Text,
+        identity_class -> Int2,
+        role_tags -> Int8,
+        capabilities -> Int8,
+        delegatable_caps -> Int8,
+        register_scope -> Int2,
+        approval_required_caps -> Int8,
+        max_action_spend -> Nullable<Int8>,
+        platform_scope -> Nullable<Text>,
+        parent_object_id -> Nullable<Text>,
+        depth -> Int2,
+        registered_by -> Text,
+        expires_at_ms -> Nullable<Int8>,
+        active -> Bool,
+        created_at_ms -> Int8,
+        deactivated_at_ms -> Nullable<Int8>,
+        revoked_at_ms -> Nullable<Int8>,
+        updated_at_ms -> Int8,
+        event_id -> Text,
+        transaction_id -> Text,
+        time -> Timestamptz,
+    }
+}
+
+diesel::table! {
+    sub_agent_events (id, time) {
+        id -> Int4,
+        event_type -> Text,
+        account_id -> Nullable<Text>,
+        principal_owner -> Nullable<Text>,
+        profile_id -> Nullable<Text>,
+        agent_object_id -> Nullable<Text>,
+        derived_address -> Nullable<Text>,
+        label -> Nullable<Text>,
+        identity_class -> Nullable<Int2>,
+        role_tags -> Nullable<Int8>,
+        capabilities -> Nullable<Int8>,
+        delegatable_caps -> Nullable<Int8>,
+        register_scope -> Nullable<Int2>,
+        approval_required_caps -> Nullable<Int8>,
+        max_action_spend -> Nullable<Int8>,
+        platform_scope -> Nullable<Text>,
+        parent_object_id -> Nullable<Text>,
+        depth -> Nullable<Int2>,
+        registered_by -> Nullable<Text>,
+        expires_at_ms -> Nullable<Int8>,
+        active -> Nullable<Bool>,
+        created_at_ms -> Nullable<Int8>,
+        revoked_count -> Nullable<Int8>,
+        previous_owner -> Nullable<Text>,
+        new_owner -> Nullable<Text>,
+        migration_from_version -> Nullable<Int8>,
+        migration_to_version -> Nullable<Int8>,
+        registry_id -> Nullable<Text>,
+        event_id -> Text,
+        transaction_id -> Text,
+        time -> Timestamptz,
     }
 }
 
@@ -1264,6 +1361,10 @@ diesel::table! {
         created_at -> Int8,
         time -> Timestamptz,
         transaction_id -> Text,
+        principal_owner -> Nullable<Text>,
+        actor_address -> Nullable<Text>,
+        sub_agent_id -> Nullable<Text>,
+        action_identity_class -> Nullable<Int2>,
     }
 }
 
@@ -1279,6 +1380,9 @@ diesel::table! {
         created_at -> Int8,
         time -> Timestamptz,
         transaction_id -> Text,
+        actor_address -> Nullable<Text>,
+        sub_agent_id -> Nullable<Text>,
+        action_identity_class -> Nullable<Int2>,
     }
 }
 
@@ -1782,6 +1886,7 @@ diesel::table! {
 }
 
 diesel::joinable!(profile_subscriptions -> profile_subscription_services (service_id));
+diesel::joinable!(sub_agents -> memory_accounts (account_id));
 
 diesel::allow_tables_to_appear_in_same_query!(
     anonymous_votes,
@@ -1807,17 +1912,19 @@ diesel::allow_tables_to_appear_in_same_query!(
     insurance_user_exposures,
     insurance_vault_transactions,
     insurance_vaults,
+    agent_memory_vaults,
+    memory_accounts,
     mydata_access_logs,
     mydata_config,
     mydata_data,
     mydata_purchases,
-    mydata_query_broad_pools,
-    mydata_query_claims,
-    mydata_query_distribution_rounds,
-    mydata_query_listing_sub_pools,
-    mydata_query_merkle_roots,
-    mydata_query_snapshot_anchors,
-    mydata_query_sub_pools,
+    mydata_broad_pools,
+    mydata_claims,
+    mydata_distribution_rounds,
+    mydata_listing_sub_pools,
+    mydata_merkle_roots,
+    mydata_snapshot_anchors,
+    mydata_sub_pools,
     mydata_registry,
     mydata_revenue,
     mydata_subscriptions,
@@ -1873,6 +1980,8 @@ diesel::allow_tables_to_appear_in_same_query!(
     spot_records,
     spot_refunds,
     spot_resolutions,
+    sub_agent_events,
+    sub_agents,
     spt_config,
     spt_events,
     spt_exchange_config,

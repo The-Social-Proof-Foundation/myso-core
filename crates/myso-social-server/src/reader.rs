@@ -3,6 +3,7 @@
 
 mod governance;
 mod insurance;
+pub mod memory;
 mod mydata;
 mod platform;
 mod poc;
@@ -26,7 +27,7 @@ use diesel::sql_types::{BigInt, Nullable, Text};
 use diesel::ExpressionMethods;
 use diesel::QueryDsl;
 use diesel_async::RunQueryDsl;
-use myso_indexer_alt_social_schema::models::Profile;
+use myso_indexer_alt_social_schema::models::{MemoryAccountRow, Profile, SubAgentRow};
 use myso_indexer_alt_social_schema::schema::{
     profile_subscription_services, profile_subscriptions, subscription_revenue,
 };
@@ -257,78 +258,78 @@ impl Reader {
         mydata::get_mydata_access_analytics(&self.db, mydata_id).await
     }
 
-    pub async fn list_mydata_query_broad_pools(
+    pub async fn list_mydata_broad_pools(
         &self,
         limit: i64,
         offset: i64,
-    ) -> Result<Vec<MyDataQueryBroadPoolInfo>, crate::error::SocialError> {
-        mydata::list_mydata_query_broad_pools(&self.db, limit, offset).await
+    ) -> Result<Vec<MyDataBroadPoolInfo>, crate::error::SocialError> {
+        mydata::list_mydata_broad_pools(&self.db, limit, offset).await
     }
 
-    pub async fn list_mydata_query_sub_pools_for_broad_pool(
+    pub async fn list_mydata_sub_pools_for_broad_pool(
         &self,
         broad_pool_id: &str,
         limit: i64,
         offset: i64,
-    ) -> Result<Vec<MyDataQuerySubPoolInfo>, crate::error::SocialError> {
-        mydata::list_mydata_query_sub_pools_for_broad_pool(&self.db, broad_pool_id, limit, offset)
+    ) -> Result<Vec<MyDataSubPoolInfo>, crate::error::SocialError> {
+        mydata::list_mydata_sub_pools_for_broad_pool(&self.db, broad_pool_id, limit, offset)
             .await
     }
 
-    pub async fn list_mydata_query_sub_pools_for_listing(
+    pub async fn list_mydata_sub_pools_for_listing(
         &self,
         listing_id: &str,
         limit: i64,
         offset: i64,
-    ) -> Result<Vec<MyDataQuerySubPoolInfo>, crate::error::SocialError> {
-        mydata::list_mydata_query_sub_pools_for_listing(&self.db, listing_id, limit, offset).await
+    ) -> Result<Vec<MyDataSubPoolInfo>, crate::error::SocialError> {
+        mydata::list_mydata_sub_pools_for_listing(&self.db, listing_id, limit, offset).await
     }
 
-    pub async fn list_mydata_query_listings_for_sub_pool(
+    pub async fn list_mydata_listings_for_sub_pool(
         &self,
         sub_pool_id: &str,
         limit: i64,
         offset: i64,
-    ) -> Result<Vec<MyDataQueryListingSubPoolInfo>, crate::error::SocialError> {
-        mydata::list_mydata_query_listings_for_sub_pool(&self.db, sub_pool_id, limit, offset).await
+    ) -> Result<Vec<MyDataListingSubPoolInfo>, crate::error::SocialError> {
+        mydata::list_mydata_listings_for_sub_pool(&self.db, sub_pool_id, limit, offset).await
     }
 
-    pub async fn get_mydata_query_snapshot_anchor(
+    pub async fn get_mydata_snapshot_anchor(
         &self,
         snapshot_id: &str,
-    ) -> Result<Option<MyDataQuerySnapshotAnchorInfo>, crate::error::SocialError> {
-        mydata::get_mydata_query_snapshot_anchor(&self.db, snapshot_id).await
+    ) -> Result<Option<MyDataSnapshotAnchorInfo>, crate::error::SocialError> {
+        mydata::get_mydata_snapshot_anchor(&self.db, snapshot_id).await
     }
 
-    pub async fn get_mydata_query_distribution_round(
+    pub async fn get_mydata_distribution_round(
         &self,
         snapshot_id: &str,
-    ) -> Result<Option<MyDataQueryDistributionRoundInfo>, crate::error::SocialError> {
-        mydata::get_mydata_query_distribution_round(&self.db, snapshot_id).await
+    ) -> Result<Option<MyDataDistributionRoundInfo>, crate::error::SocialError> {
+        mydata::get_mydata_distribution_round(&self.db, snapshot_id).await
     }
 
-    pub async fn list_mydata_query_distribution_rounds(
+    pub async fn list_mydata_distribution_rounds(
         &self,
         limit: i64,
         offset: i64,
-    ) -> Result<Vec<MyDataQueryDistributionRoundInfo>, crate::error::SocialError> {
-        mydata::list_mydata_query_distribution_rounds(&self.db, limit, offset).await
+    ) -> Result<Vec<MyDataDistributionRoundInfo>, crate::error::SocialError> {
+        mydata::list_mydata_distribution_rounds(&self.db, limit, offset).await
     }
 
-    pub async fn get_mydata_query_merkle_root(
+    pub async fn get_mydata_merkle_root(
         &self,
         snapshot_id: &str,
-    ) -> Result<Option<MyDataQueryMerkleRootInfo>, crate::error::SocialError> {
-        mydata::get_mydata_query_merkle_root(&self.db, snapshot_id).await
+    ) -> Result<Option<MyDataMerkleRootInfo>, crate::error::SocialError> {
+        mydata::get_mydata_merkle_root(&self.db, snapshot_id).await
     }
 
-    pub async fn list_mydata_query_claims_for_snapshot(
+    pub async fn list_mydata_claims_for_snapshot(
         &self,
         snapshot_id: &str,
         limit: i64,
         offset: i64,
-    ) -> Result<Vec<MyDataQueryClaimInfo>, crate::error::SocialError> {
-        mydata::list_mydata_query_claims_for_snapshot(&self.db, snapshot_id, limit, offset).await
+    ) -> Result<Vec<MyDataClaimInfo>, crate::error::SocialError> {
+        mydata::list_mydata_claims_for_snapshot(&self.db, snapshot_id, limit, offset).await
     }
 
     pub async fn get_insurance_configuration(
@@ -1278,6 +1279,54 @@ impl Reader {
         offset: i64,
     ) -> Result<Vec<PostBasicRow>, crate::error::SocialError> {
         post::list_posts(&self.db, owner, post_type, limit, offset).await
+    }
+
+    pub async fn get_memory_account_by_owner(
+        &self,
+        owner: &str,
+    ) -> Result<Option<MemoryAccountRow>, crate::error::SocialError> {
+        memory::get_memory_account_by_owner(&self.db, owner).await
+    }
+
+    pub async fn list_sub_agents(
+        &self,
+        principal_owner: &str,
+        active_only: bool,
+        limit: i64,
+        offset: i64,
+    ) -> Result<memory::SubAgentListResponse, crate::error::SocialError> {
+        memory::list_sub_agents(&self.db, principal_owner, active_only, limit, offset).await
+    }
+
+    pub async fn get_sub_agent(
+        &self,
+        derived_address: &str,
+    ) -> Result<Option<SubAgentRow>, crate::error::SocialError> {
+        memory::get_sub_agent(&self.db, derived_address).await
+    }
+
+    pub async fn get_sub_agent_by_object_id(
+        &self,
+        agent_object_id: &str,
+    ) -> Result<Option<SubAgentRow>, crate::error::SocialError> {
+        memory::get_sub_agent_by_object_id(&self.db, agent_object_id).await
+    }
+
+    pub async fn list_sub_agent_children(
+        &self,
+        parent_object_id: &str,
+        active_only: bool,
+        limit: i64,
+        offset: i64,
+    ) -> Result<Vec<SubAgentRow>, crate::error::SocialError> {
+        memory::list_sub_agent_children(
+            &self.db,
+            parent_object_id,
+            active_only,
+            limit,
+            offset,
+        )
+        .await
     }
 
     pub async fn get_post_config(

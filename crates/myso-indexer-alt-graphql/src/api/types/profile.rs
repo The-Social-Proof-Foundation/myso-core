@@ -17,6 +17,7 @@ use crate::api::scalars::big_int::BigInt;
 use crate::api::scalars::id::Id;
 use crate::api::scalars::myso_address::MySoAddress;
 use crate::api::types::blocked::{BlockedPlatformSummary, BlockedProfileSummary};
+use crate::api::types::memory::{MemoryAccount, SubAgent};
 use crate::api::types::mydata::MyDataRecord;
 use crate::api::types::platform::{PlatformMembershipPage, PlatformMembershipSummary};
 use crate::api::types::pnl::{ProfilePnLWindowGql, ProfilePnLWindowStats};
@@ -644,6 +645,109 @@ impl Profile {
             )
             .await
             .ok()
+    }
+
+    /// Linked memory account object id for this profile's sub-agent registry.
+    async fn memory_account_id(&self, ctx: &Context<'_>) -> Option<String> {
+        let profile_id = self.inner.profile_id.as_deref()?;
+        let reader_opt = ctx
+            .data_opt::<std::sync::Arc<Option<myso_indexer_alt_social_reader::SocialPgReader>>>()?;
+        let reader = reader_opt.as_ref().as_ref()?;
+        reader
+            .get_profile_memory_account_id(profile_id)
+            .await
+            .ok()
+            .flatten()
+    }
+
+    /// Memory account row for this profile owner.
+    async fn memory_account(&self, ctx: &Context<'_>) -> Option<MemoryAccount> {
+        let reader_opt = ctx
+            .data_opt::<std::sync::Arc<Option<myso_indexer_alt_social_reader::SocialPgReader>>>()?;
+        let reader = reader_opt.as_ref().as_ref()?;
+        reader
+            .get_memory_account_by_owner(&self.inner.owner_address)
+            .await
+            .ok()
+            .flatten()
+            .map(MemoryAccount::from_row)
+    }
+
+    /// Sub-agents registered under this profile's memory account.
+    async fn sub_agents(
+        &self,
+        ctx: &Context<'_>,
+        active_only: Option<bool>,
+        limit: Option<u64>,
+        offset: Option<u64>,
+    ) -> Option<Vec<SubAgent>> {
+        let reader_opt = ctx
+            .data_opt::<std::sync::Arc<Option<myso_indexer_alt_social_reader::SocialPgReader>>>()?;
+        let reader = reader_opt.as_ref().as_ref()?;
+        let limit = limit.unwrap_or(50).min(100) as i64;
+        let offset = offset.unwrap_or(0) as i64;
+        reader
+            .list_sub_agents(
+                &self.inner.owner_address,
+                active_only.unwrap_or(true),
+                limit,
+                offset,
+            )
+            .await
+            .ok()
+            .map(|result| result.sub_agents.into_iter().map(SubAgent::from_row).collect())
+    }
+
+    async fn sub_agents_total_count(
+        &self,
+        ctx: &Context<'_>,
+        active_only: Option<bool>,
+    ) -> Option<i64> {
+        let reader_opt = ctx
+            .data_opt::<std::sync::Arc<Option<myso_indexer_alt_social_reader::SocialPgReader>>>()?;
+        let reader = reader_opt.as_ref().as_ref()?;
+        reader
+            .list_sub_agents(
+                &self.inner.owner_address,
+                active_only.unwrap_or(true),
+                1,
+                0,
+            )
+            .await
+            .ok()
+            .map(|result| result.total_count)
+    }
+
+    async fn sub_agent(
+        &self,
+        ctx: &Context<'_>,
+        derived_address: MySoAddress,
+    ) -> Option<SubAgent> {
+        let reader_opt = ctx
+            .data_opt::<std::sync::Arc<Option<myso_indexer_alt_social_reader::SocialPgReader>>>()?;
+        let reader = reader_opt.as_ref().as_ref()?;
+        reader
+            .get_sub_agent(&derived_address.to_string())
+            .await
+            .ok()
+            .flatten()
+            .map(SubAgent::from_row)
+    }
+
+    async fn sub_agent_by_object_id(
+        &self,
+        ctx: &Context<'_>,
+        agent_object_id: String,
+    ) -> Option<SubAgent> {
+        let reader_opt = ctx
+            .data_opt::<std::sync::Arc<Option<myso_indexer_alt_social_reader::SocialPgReader>>>()?;
+        let reader = reader_opt.as_ref().as_ref()?;
+        reader
+            .get_sub_agent_by_object_id(&agent_object_id)
+            .await
+            .ok()
+            .flatten()
+            .map(SubAgent::from_row)
     }
 
     /// MyData records owned by this profile (paginated).

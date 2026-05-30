@@ -5,6 +5,7 @@ mod blocked;
 mod governance;
 mod insurance;
 mod mydata;
+mod memory;
 mod platform;
 mod poc;
 mod post;
@@ -44,21 +45,25 @@ pub use insurance::{
     STATUS_CLAIMED, STATUS_EXPIRED, UpdateInsurancePolicy, UpdateInsuranceVault,
     UpdateInsuranceVaultStatus,
 };
+pub use memory::{
+    AgentMemoryVaultRow, MemoryAccountRow, NewAgentMemoryVault, NewMemoryAccount, NewSubAgent,
+    NewSubAgentEvent, SubAgentRow,
+};
 pub use mydata::{
     ACCESS_TYPE_CONTENT_UPDATE, ACCESS_TYPE_GRANT, ACCESS_TYPE_ONE_TIME, ACCESS_TYPE_PREVIEW,
     ACCESS_TYPE_PRICING_UPDATE, ACCESS_TYPE_SUBSCRIPTION, DATA_QUALITY_HIGH, DATA_QUALITY_LOW,
     DATA_QUALITY_MEDIUM, MAX_FREE_ACCESS_GRANTS, MAX_SUBSCRIPTION_DAYS, MAX_TAGS,
     MyDataAccessAnalyticsRow, MyDataAccessLog, MyDataAccessLogRow, MyDataConfig,
-    MyDataDailyRevenueRow, MyDataData, MyDataPurchase, MyDataPurchaseRow, MyDataQueryBroadPool,
-    MyDataQueryBroadPoolRow, MyDataQueryClaim, MyDataQueryClaimRow, MyDataQueryDistributionRound,
-    MyDataQueryDistributionRoundRow, MyDataQueryListingSubPool, MyDataQueryListingSubPoolRow,
-    MyDataQueryMerkleRoot, MyDataQueryMerkleRootRow, MyDataQuerySnapshotAnchor,
-    MyDataQuerySnapshotAnchorRow, MyDataQuerySubPool, MyDataQuerySubPoolRow, MyDataRecordRow,
+    MyDataDailyRevenueRow, MyDataData, MyDataPurchase, MyDataPurchaseRow, MyDataBroadPool,
+    MyDataBroadPoolRow, MyDataClaim, MyDataClaimRow, MyDataDistributionRound,
+    MyDataDistributionRoundRow, MyDataListingSubPool, MyDataListingSubPoolRow,
+    MyDataMerkleRoot, MyDataMerkleRootRow, MyDataSnapshotAnchor,
+    MyDataSnapshotAnchorRow, MyDataSubPool, MyDataSubPoolRow, MyDataRecordRow,
     MyDataRegistry, MyDataRevenue, MyDataRevenueRow, MyDataStatsRow, MyDataSubscription,
     MyDataSubscriptionRow, NewMyDataAccessLog, NewMyDataConfig, NewMyDataData, NewMyDataPurchase,
-    NewMyDataQueryBroadPool, NewMyDataQueryClaim, NewMyDataQueryDistributionRound,
-    NewMyDataQueryListingSubPool, NewMyDataQueryMerkleRoot, NewMyDataQuerySnapshotAnchor,
-    NewMyDataQuerySubPool, NewMyDataRegistry, NewMyDataRevenue, NewMyDataSubscription,
+    NewMyDataBroadPool, NewMyDataClaim, NewMyDataDistributionRound,
+    NewMyDataListingSubPool, NewMyDataMerkleRoot, NewMyDataSnapshotAnchor,
+    NewMyDataSubPool, NewMyDataRegistry, NewMyDataRevenue, NewMyDataSubscription,
     PURCHASE_TYPE_ONE_TIME, PURCHASE_TYPE_SUBSCRIPTION, REVENUE_TYPE_GRANT, REVENUE_TYPE_ONE_TIME,
     REVENUE_TYPE_SUBSCRIPTION, UPDATE_FREQUENCY_DAILY, UPDATE_FREQUENCY_HOURLY,
     UPDATE_FREQUENCY_MONTHLY, UPDATE_FREQUENCY_WEEKLY, UPDATE_FREQUENCY_YEARLY,

@@ -44,6 +44,9 @@ pub const DEFAULT_GRPC_CONCURRENCY_LIMIT: usize = 20000000000;
 /// Default gas price of 100 Mist
 pub const DEFAULT_VALIDATOR_GAS_PRICE: u64 = myso_types::transaction::DEFAULT_VALIDATOR_GAS_PRICE;
 
+/// Reference gas price used when generating local `myso start` / `myso genesis` networks.
+pub const LOCAL_REFERENCE_GAS_PRICE: u64 = 1;
+
 /// Default commission rate of 2%
 pub const DEFAULT_COMMISSION_RATE: u64 = 200;
 

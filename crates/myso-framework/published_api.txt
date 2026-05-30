@@ -7213,19 +7213,46 @@ migrate_service
 MemoryRegistry
 	public struct
 	0x50c1::memory
-MemoryAccount
+SubAgentKey
 	public struct
 	0x50c1::memory
-MemoryDelegateKey
+AgentMemoryVaultKey
+	public struct
+	0x50c1::memory
+SubAgentConstraints
+	public struct
+	0x50c1::memory
+AgentRegistryEntry
+	public struct
+	0x50c1::memory
+SubAgent
+	public struct
+	0x50c1::memory
+AgentMemoryVault
+	public struct
+	0x50c1::memory
+ActingContext
+	public struct
+	0x50c1::memory
+MemoryAccount
 	public struct
 	0x50c1::memory
 MemoryAccountCreated
 	public struct
 	0x50c1::memory
-MemoryDelegateKeyAdded
+SubAgentRegistered
 	public struct
 	0x50c1::memory
-MemoryDelegateKeyRemoved
+SubAgentUpdated
+	public struct
+	0x50c1::memory
+SubAgentDeactivated
+	public struct
+	0x50c1::memory
+SubAgentRevoked
+	public struct
+	0x50c1::memory
+SubAgentsClearedOnTransfer
 	public struct
 	0x50c1::memory
 MemoryAccountDeactivated
@@ -7240,6 +7267,69 @@ MemoryAccountMigrated
 MemoryRegistryMigrated
 	public struct
 	0x50c1::memory
+AgentMemoryVaultCreated
+	public struct
+	0x50c1::memory
+class_human
+	public fun
+	0x50c1::memory
+class_delegated_ai
+	public fun
+	0x50c1::memory
+class_organization
+	public fun
+	0x50c1::memory
+cap_memory_read
+	public fun
+	0x50c1::memory
+cap_memory_write
+	public fun
+	0x50c1::memory
+cap_mydata_read
+	public fun
+	0x50c1::memory
+cap_post_publish
+	public fun
+	0x50c1::memory
+cap_comment
+	public fun
+	0x50c1::memory
+cap_react
+	public fun
+	0x50c1::memory
+cap_message_read
+	public fun
+	0x50c1::memory
+cap_message_send
+	public fun
+	0x50c1::memory
+cap_trade_monitor
+	public fun
+	0x50c1::memory
+cap_trade_execute
+	public fun
+	0x50c1::memory
+cap_agent_register
+	public fun
+	0x50c1::memory
+cap_agent_revoke
+	public fun
+	0x50c1::memory
+cap_agent_update
+	public fun
+	0x50c1::memory
+register_child
+	public fun
+	0x50c1::memory
+register_peer
+	public fun
+	0x50c1::memory
+derive_sub_agent_address
+	public fun
+	0x50c1::memory
+agent_object_id
+	public fun
+	0x50c1::memory
 bootstrap_init
 	public(package) fun
 	0x50c1::memory
@@ -7249,10 +7339,28 @@ create_account_for_profile
 transfer_account_owner_with_profile
 	public(package) fun
 	0x50c1::memory
-add_delegate_key
+register_sub_agent
 	public entry fun
 	0x50c1::memory
-remove_delegate_key
+register_sub_agent_delegated
+	public entry fun
+	0x50c1::memory
+update_sub_agent
+	public entry fun
+	0x50c1::memory
+update_sub_agent_label
+	public entry fun
+	0x50c1::memory
+deactivate_sub_agent
+	public entry fun
+	0x50c1::memory
+revoke_sub_agent
+	public entry fun
+	0x50c1::memory
+emit_sub_agents_cleared_on_transfer
+	public(package) fun
+	0x50c1::memory
+ensure_agent_memory_vault
 	public entry fun
 	0x50c1::memory
 deactivate_account
@@ -7270,25 +7378,88 @@ admin_migrate_account
 migrate_registry
 	public entry fun
 	0x50c1::memory
+resolve_human_actor
+	public fun
+	0x50c1::memory
+resolve_actor_from_account
+	public fun
+	0x50c1::memory
+resolve_actor_with_cap
+	public fun
+	0x50c1::memory
+assert_human_actor_with_cap
+	public fun
+	0x50c1::memory
+assert_action_spend_limit
+	public fun
+	0x50c1::memory
+assert_direct_execution_allowed
+	public fun
+	0x50c1::memory
+assert_platform_scope_entry
+	public fun
+	0x50c1::memory
+assert_platform_scope
+	public fun
+	0x50c1::memory
+assert_sub_agent_active
+	public fun
+	0x50c1::memory
 profile_id
-	public fun
-	0x50c1::memory
-is_delegate
-	public fun
-	0x50c1::memory
-is_delegate_address
 	public fun
 	0x50c1::memory
 owner
 	public fun
 	0x50c1::memory
-delegate_count
+sub_agent_derived_address
+	public fun
+	0x50c1::memory
+sub_agent_capabilities
+	public fun
+	0x50c1::memory
+sub_agent_platform_scope
+	public fun
+	0x50c1::memory
+sub_agent_active
+	public fun
+	0x50c1::memory
+sub_agent_depth
+	public fun
+	0x50c1::memory
+sub_agent_parent_object_id
+	public fun
+	0x50c1::memory
+sub_agent_memory_account_id
+	public fun
+	0x50c1::memory
+acting_principal_owner
+	public fun
+	0x50c1::memory
+acting_profile_id
+	public fun
+	0x50c1::memory
+acting_actor_address
+	public fun
+	0x50c1::memory
+acting_sub_agent_id
+	public fun
+	0x50c1::memory
+acting_identity_class
+	public fun
+	0x50c1::memory
+acting_parent_object_id
+	public fun
+	0x50c1::memory
+acting_depth
 	public fun
 	0x50c1::memory
 has_account
 	public fun
 	0x50c1::memory
 account_id_for_owner
+	public fun
+	0x50c1::memory
+is_registered_agent
 	public fun
 	0x50c1::memory
 is_active
@@ -7306,8 +7477,95 @@ current_contract_version
 approve_key_policy
 	public entry fun
 	0x50c1::memory
+approve_key_write_policy
+	public entry fun
+	0x50c1::memory
 owner_key_suffix_bytes
 	public fun
+	0x50c1::memory
+register_sub_agent_internal
+	fun
+	0x50c1::memory
+register_sub_agent_delegated_internal
+	fun
+	0x50c1::memory
+finish_register_sub_agent
+	fun
+	0x50c1::memory
+registry_entry_from_agent
+	fun
+	0x50c1::memory
+insert_registry_entry
+	fun
+	0x50c1::memory
+sync_registry_from_agent
+	fun
+	0x50c1::memory
+sync_registry_active
+	fun
+	0x50c1::memory
+remove_registry_entry
+	fun
+	0x50c1::memory
+assert_registry_entry_active
+	fun
+	0x50c1::memory
+assert_action_spend_limit_from_entry
+	fun
+	0x50c1::memory
+assert_ancestor_chain_active_from_table
+	fun
+	0x50c1::memory
+resolve_delegated_registration_placement
+	fun
+	0x50c1::memory
+assert_may_manage
+	fun
+	0x50c1::memory
+assert_registrar_is_ancestor_from_table
+	fun
+	0x50c1::memory
+assert_update_caps_monotonic
+	fun
+	0x50c1::memory
+assert_agent_belongs_to_account
+	fun
+	0x50c1::memory
+destroy_sub_agent
+	fun
+	0x50c1::memory
+assert_caps_subset
+	fun
+	0x50c1::memory
+assert_scope_allowed_for_delegate
+	fun
+	0x50c1::memory
+assert_valid_register_scope
+	fun
+	0x50c1::memory
+assert_sub_agent_not_expired
+	fun
+	0x50c1::memory
+assert_valid_identity_class
+	fun
+	0x50c1::memory
+has_cap
+	fun
+	0x50c1::memory
+cap_requires_approval
+	fun
+	0x50c1::memory
+emit_sub_agent_registered
+	fun
+	0x50c1::memory
+emit_sub_agent_updated
+	fun
+	0x50c1::memory
+emit_sub_agent_deactivated
+	fun
+	0x50c1::memory
+emit_sub_agent_revoked
+	fun
 	0x50c1::memory
 get_version
 	fun
@@ -8521,6 +8779,12 @@ PoCBadgeSnapshot
 Post
 	public struct
 	0x50c1::post
+PostAttribution
+	public struct
+	0x50c1::post
+CommentAttribution
+	public struct
+	0x50c1::post
 Comment
 	public struct
 	0x50c1::post
@@ -8644,6 +8908,36 @@ poc_redirection_kind
 poc_disputes_submitted
 	public fun
 	0x50c1::post
+actor_address
+	public fun
+	0x50c1::post
+sub_agent_id
+	public fun
+	0x50c1::post
+action_identity_class
+	public fun
+	0x50c1::post
+comment_actor_address
+	public fun
+	0x50c1::post
+comment_sub_agent_id
+	public fun
+	0x50c1::post
+comment_action_identity_class
+	public fun
+	0x50c1::post
+post_attribution
+	fun
+	0x50c1::post
+attach_post_attribution
+	fun
+	0x50c1::post
+comment_attribution
+	fun
+	0x50c1::post
+attach_comment_attribution
+	fun
+	0x50c1::post
 tip_post_requires_beneficiary_vault_for_amount
 	public fun
 	0x50c1::post
@@ -8693,6 +8987,12 @@ bootstrap_init
 	public(package) fun
 	0x50c1::post
 convert_urls_to_strings
+	fun
+	0x50c1::post
+resolve_social_actor
+	fun
+	0x50c1::post
+assert_tip_spend_limit
 	fun
 	0x50c1::post
 create_post_internal

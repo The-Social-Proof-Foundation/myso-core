@@ -13,9 +13,9 @@ use myso_indexer_alt_social_schema::MIGRATIONS;
 use myso_pg_db::{Db, DbArgs};
 use prometheus::Registry;
 use social_indexer::{
-    BlockingHandler, GovernanceHandler, InsuranceHandler, MyDataHandler, PlatformHandler,
-    PostsHandler, ProfilesHandler, SocialEnv, SocialGraphHandler, SpotHandler, SptHandler,
-    SubscriptionHandler, UpgradeHandler,
+    BlockingHandler, GovernanceHandler, InsuranceHandler, MemoryHandler, MyDataHandler,
+    PlatformHandler, PostsHandler, ProfilesHandler, SocialEnv, SocialGraphHandler, SpotHandler,
+    SptHandler, SubscriptionHandler, UpgradeHandler,
 };
 use std::net::SocketAddr;
 use std::path::PathBuf;
@@ -146,6 +146,9 @@ async fn main() -> Result<(), anyhow::Error> {
         .await?;
     indexer
         .concurrent_pipeline(SubscriptionHandler, Default::default())
+        .await?;
+    indexer
+        .concurrent_pipeline(MemoryHandler, Default::default())
         .await?;
     indexer
         .concurrent_pipeline(ProfilesHandler, Default::default())

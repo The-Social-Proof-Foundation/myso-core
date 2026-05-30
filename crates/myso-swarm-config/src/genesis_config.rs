@@ -335,6 +335,7 @@ impl GenesisConfig {
 
         Self {
             accounts,
+            parameters: GenesisCeremonyParameters::for_local_network(),
             ..Default::default()
         }
     }
@@ -353,6 +354,7 @@ impl GenesisConfig {
 
         Self {
             accounts,
+            parameters: GenesisCeremonyParameters::for_local_network(),
             ..Default::default()
         }
     }

@@ -7,8 +7,8 @@
 
 -- Drop views that depend on the tables
 DROP VIEW IF EXISTS active_mydata CASCADE;
-DROP VIEW IF EXISTS popular_mydata_30d CASCADE;
-DROP VIEW IF EXISTS creator_mydata_revenue_summary CASCADE;
+DROP VIEW IF EXISTS mydata_popular_30_days CASCADE;
+DROP VIEW IF EXISTS mydata_creator_revenue_summary CASCADE;
 
 -- Drop continuous aggregates (TimescaleDB materialized views)
 DROP MATERIALIZED VIEW IF EXISTS mydata_daily_revenue CASCADE;

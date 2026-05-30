@@ -449,7 +449,7 @@ SELECT
 FROM mydata_data d;
 
 -- Popular data view (last 30 days)
-CREATE OR REPLACE VIEW popular_mydata_30d AS
+CREATE OR REPLACE VIEW mydata_popular_30_days AS
 SELECT 
     d.mydata_id,
     d.owner,
@@ -466,7 +466,7 @@ GROUP BY d.mydata_id, d.owner, d.media_type, d.tags
 ORDER BY unique_purchasers DESC, total_revenue DESC;
 
 -- Creator revenue summary view
-CREATE OR REPLACE VIEW creator_mydata_revenue_summary AS
+CREATE OR REPLACE VIEW mydata_creator_revenue_summary AS
 SELECT 
     d.owner AS creator,
     COUNT(DISTINCT d.mydata_id) AS data_entries,
@@ -477,6 +477,9 @@ FROM mydata_data d
 LEFT JOIN mydata_revenue r ON d.mydata_id = r.mydata_id
 GROUP BY d.owner
 ORDER BY total_revenue DESC NULLS LAST;
+
+COMMENT ON VIEW mydata_popular_30_days IS 'MyData listings ranked by 30-day purchase activity';
+COMMENT ON VIEW mydata_creator_revenue_summary IS 'Per-creator MyData revenue summary across all listings';
 
 -- ============================================================================
 -- 8. RECREATE HELPER FUNCTIONS

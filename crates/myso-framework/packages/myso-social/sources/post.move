@@ -20,7 +20,8 @@ module social_contracts::post {
         coin::{Self, Coin},
         balance::{Self, Balance},
         url::{Self, Url},
-        clock::{Self, Clock}
+        clock::{Self, Clock},
+        dynamic_field as df,
     };
     use myso::myso::MYSO;
     use social_contracts::subscription::{Self, ProfileSubscriptionService, ProfileSubscription};
@@ -31,6 +32,7 @@ module social_contracts::post {
     use social_contracts::upgrade::{Self, UpgradeAdminCap};
     use social_contracts::profile::{Self, EcosystemTreasury};
     use social_contracts::poc_vault::{Self as poc_vault, PoCBeneficiaryVault};
+    use social_contracts::memory::{Self, MemoryAccount, ActingContext};
 
     /// Error codes
     const EUnauthorized: u64 = 0;
@@ -210,6 +212,22 @@ module social_contracts::post {
         version: u64,
     }
 
+    /// Published-action attribution stored as a dynamic field (Post is at the VM field-count limit).
+    public struct PostAttribution has store, copy, drop {
+        actor_address: address,
+        sub_agent_id: Option<ID>,
+        action_identity_class: u8,
+    }
+
+    public struct CommentAttribution has store, copy, drop {
+        actor_address: address,
+        sub_agent_id: Option<ID>,
+        action_identity_class: u8,
+    }
+
+    const POST_ATTRIBUTION_DF_KEY: vector<u8> = b"post_attribution";
+    const COMMENT_ATTRIBUTION_DF_KEY: vector<u8> = b"comment_attribution";
+
     /// Helper: check if a bit is set in a bitfield
     fun has_flag(value: u8, flag: u8): bool {
         (value & flag) == flag
@@ -297,6 +315,72 @@ module social_contracts::post {
     /// Lifetime count of successful PoC dispute submissions (capped at 2 on-chain).
     public fun poc_disputes_submitted(post: &Post): u8 {
         post.poc_disputes_submitted
+    }
+
+    public fun actor_address(post: &Post): address {
+        post_attribution(post).actor_address
+    }
+
+    public fun sub_agent_id(post: &Post): Option<ID> {
+        post_attribution(post).sub_agent_id
+    }
+
+    public fun action_identity_class(post: &Post): u8 {
+        post_attribution(post).action_identity_class
+    }
+
+    public fun comment_actor_address(comment: &Comment): address {
+        comment_attribution(comment).actor_address
+    }
+
+    public fun comment_sub_agent_id(comment: &Comment): Option<ID> {
+        comment_attribution(comment).sub_agent_id
+    }
+
+    public fun comment_action_identity_class(comment: &Comment): u8 {
+        comment_attribution(comment).action_identity_class
+    }
+
+    fun post_attribution(post: &Post): PostAttribution {
+        *df::borrow<vector<u8>, PostAttribution>(&post.id, POST_ATTRIBUTION_DF_KEY)
+    }
+
+    fun attach_post_attribution(
+        post: &mut Post,
+        actor_address: address,
+        sub_agent_id: Option<ID>,
+        action_identity_class: u8,
+    ) {
+        df::add(
+            &mut post.id,
+            POST_ATTRIBUTION_DF_KEY,
+            PostAttribution {
+                actor_address,
+                sub_agent_id,
+                action_identity_class,
+            },
+        );
+    }
+
+    fun comment_attribution(comment: &Comment): CommentAttribution {
+        *df::borrow<vector<u8>, CommentAttribution>(&comment.id, COMMENT_ATTRIBUTION_DF_KEY)
+    }
+
+    fun attach_comment_attribution(
+        comment: &mut Comment,
+        actor_address: address,
+        sub_agent_id: Option<ID>,
+        action_identity_class: u8,
+    ) {
+        df::add(
+            &mut comment.id,
+            COMMENT_ATTRIBUTION_DF_KEY,
+            CommentAttribution {
+                actor_address,
+                sub_agent_id,
+                action_identity_class,
+            },
+        );
     }
 
     /// Returns true when [`tip_post`] must receive a [`PoCBeneficiaryVault`] whose beneficiary is `revenue_redirect_to`
@@ -581,6 +665,9 @@ module social_contracts::post {
         spt_id: Option<address>,
         /// Matches `Post.poc_redirection_kind` at creation (`POC_REDIRECT_*`).
         poc_redirection_kind: u8,
+        actor_address: address,
+        sub_agent_id: Option<ID>,
+        action_identity_class: u8,
     }
 
     /// Comment created event
@@ -593,6 +680,9 @@ module social_contracts::post {
         profile_id: address,
         content: String,
         mentions: Option<vector<address>>,
+        actor_address: address,
+        sub_agent_id: Option<ID>,
+        action_identity_class: u8,
     }
 
     /// Repost event
@@ -602,6 +692,9 @@ module social_contracts::post {
         is_original_post: bool,
         owner: address,
         profile_id: address,
+        actor_address: address,
+        sub_agent_id: Option<ID>,
+        action_identity_class: u8,
     }
 
     /// Reaction event
@@ -610,6 +703,10 @@ module social_contracts::post {
         user: address,
         reaction: String,
         is_post: bool,
+        principal_owner: address,
+        actor_address: address,
+        sub_agent_id: Option<ID>,
+        action_identity_class: u8,
     }
 
     /// Remove reaction event
@@ -618,6 +715,10 @@ module social_contracts::post {
         user: address,
         reaction: String,
         is_post: bool,
+        principal_owner: address,
+        actor_address: address,
+        sub_agent_id: Option<ID>,
+        action_identity_class: u8,
     }
 
     /// Tip event
@@ -802,6 +903,56 @@ module social_contracts::post {
         }
     }
 
+    /// Resolve social actor: capability, principal platform join, block list, and approval gate.
+    fun resolve_social_actor(
+        registry: &UsernameRegistry,
+        platform: &platform::Platform,
+        block_list_registry: &BlockListRegistry,
+        memory_account: &MemoryAccount,
+        required_cap: u64,
+        spend_amount: u64,
+        clock: &Clock,
+        ctx: &TxContext,
+    ): ActingContext {
+        let platform_id = object::uid_to_address(platform::id(platform));
+        let acting = memory::resolve_actor_with_cap(
+            memory_account,
+            required_cap,
+            option::some(platform_id),
+            spend_amount,
+            clock,
+            ctx,
+        );
+        memory::assert_direct_execution_allowed(memory_account, required_cap, ctx);
+
+        let principal = memory::acting_principal_owner(&acting);
+        assert!(memory::owner(memory_account) == principal, EUnauthorized);
+
+        let profile_id = memory::acting_profile_id(&acting);
+        let profile_id_option = profile::lookup_profile_by_owner(registry, principal);
+        assert!(option::is_some(&profile_id_option), EUnauthorized);
+        assert!(*option::borrow(&profile_id_option) == profile_id, EUnauthorized);
+
+        assert!(platform::has_joined_platform(platform, principal), EUserNotJoinedPlatform);
+        assert!(
+            !block_list::is_blocked(block_list_registry, platform_id, principal),
+            EUserBlockedByPlatform,
+        );
+
+        acting
+    }
+
+    fun assert_tip_spend_limit(
+        memory_account: &MemoryAccount,
+        amount: u64,
+        ctx: &TxContext,
+    ) {
+        let caller = tx_context::sender(ctx);
+        if (memory::is_registered_agent(memory_account, caller)) {
+            memory::assert_action_spend_limit(memory_account, amount, ctx);
+        };
+    }
+
     /// Internal function to create a post and return its ID
     fun create_post_internal(
         owner: address,
@@ -826,6 +977,9 @@ module social_contracts::post {
         enable_poc: bool,
         enable_spot: bool,
         poc_redirection_kind: u8,
+        actor_address: address,
+        sub_agent_id: Option<ID>,
+        action_identity_class: u8,
         ctx: &mut TxContext
     ): address {
         // Build permissions bitfield
@@ -842,7 +996,7 @@ module social_contracts::post {
         if (enable_poc) { enable_flags = enable_flags | ENABLE_POC };
         if (enable_spot) { enable_flags = enable_flags | ENABLE_SPOT };
 
-        let post = Post {
+        let mut post = Post {
             id: object::new(ctx),
             owner,
             profile_id,
@@ -876,6 +1030,13 @@ module social_contracts::post {
             poc_disputes_submitted: 0,
             version: upgrade::current_version(),
         };
+
+        attach_post_attribution(
+            &mut post,
+            actor_address,
+            sub_agent_id,
+            action_identity_class,
+        );
         
         // Get post ID before sharing
         let post_id = object::uid_to_address(&post.id);
@@ -923,27 +1084,31 @@ module social_contracts::post {
         enable_spot: Option<bool>,
         mydata_id: Option<address>,
         mydata_registry: &mydata::MyDataRegistry,
+        memory_account: &MemoryAccount,
+        clock: &Clock,
         ctx: &mut TxContext
     ) {
-        let owner = tx_context::sender(ctx);
-        
-        // Look up the profile ID for the sender (for reference, not ownership)
-        let mut profile_id_option = social_contracts::profile::lookup_profile_by_owner(registry, owner);
-        assert!(option::is_some(&profile_id_option), EUnauthorized);
-        let profile_id = option::extract(&mut profile_id_option);
+        let acting = resolve_social_actor(
+            registry,
+            platform,
+            block_list_registry,
+            memory_account,
+            memory::cap_post_publish(),
+            0,
+            clock,
+            ctx,
+        );
+        let owner = memory::acting_principal_owner(&acting);
+        let profile_id = memory::acting_profile_id(&acting);
+        let actor_address = memory::acting_actor_address(&acting);
+        let sub_agent_id = memory::acting_sub_agent_id(&acting);
+        let action_identity_class = memory::acting_identity_class(&acting);
         
         assert_mydata_id_allowed_for_owner(owner, mydata_id, mydata_registry);
         
         // Check if platform is approved
         let platform_id = object::uid_to_address(platform::id(platform));
         assert!(platform::is_approved(platform_registry, platform_id), EUnauthorized);
-        
-        // Check if user has joined the platform (by wallet address)
-        assert!(platform::has_joined_platform(platform, owner), EUserNotJoinedPlatform);
-        
-        // Check if the user is blocked by the platform
-        let platform_address = object::uid_to_address(platform::id(platform));
-        assert!(!block_list::is_blocked(block_list_registry, platform_address, owner), EUserBlockedByPlatform);
         
         // Validate content length using config
         assert!(string::length(&content) <= config.max_content_length, EContentTooLarge);
@@ -1055,6 +1220,9 @@ module social_contracts::post {
             final_enable_poc,
             final_enable_spot,
             poc_redirection_kind,
+            actor_address,
+            sub_agent_id,
+            action_identity_class,
             ctx
         );
         
@@ -1088,6 +1256,9 @@ module social_contracts::post {
             spot_id: option::none(),
             spt_id: option::none(),
             poc_redirection_kind,
+            actor_address,
+            sub_agent_id,
+            action_identity_class,
         });
     }
 
@@ -1099,34 +1270,38 @@ module social_contracts::post {
         platform: &platform::Platform,
         block_list_registry: &BlockListRegistry,
         config: &PostConfig,
+        memory_account: &MemoryAccount,
         parent_post: &mut Post,
         parent_comment_id: Option<address>,
         content: String,
         mut media_urls: Option<vector<String>>,
         mentions: Option<vector<address>>,
         metadata_json: Option<String>,
+        clock: &Clock,
         ctx: &mut TxContext
     ): address {
-        let owner = tx_context::sender(ctx);
-        
-        // Look up the profile ID for the sender
-        let mut profile_id_option = social_contracts::profile::lookup_profile_by_owner(registry, owner);
-        assert!(option::is_some(&profile_id_option), EUnauthorized);
-        let profile_id = option::extract(&mut profile_id_option);
+        let acting = resolve_social_actor(
+            registry,
+            platform,
+            block_list_registry,
+            memory_account,
+            memory::cap_comment(),
+            0,
+            clock,
+            ctx,
+        );
+        let owner = memory::acting_principal_owner(&acting);
+        let profile_id = memory::acting_profile_id(&acting);
+        let actor_address = memory::acting_actor_address(&acting);
+        let sub_agent_id = memory::acting_sub_agent_id(&acting);
+        let action_identity_class = memory::acting_identity_class(&acting);
         
         // Check if platform is approved
         let platform_id = object::uid_to_address(platform::id(platform));
         assert!(platform::is_approved(platform_registry, platform_id), EUnauthorized);
-        
-        // Check if user has joined the platform (by wallet address)
-        assert!(platform::has_joined_platform(platform, owner), EUserNotJoinedPlatform);
-        
-        // Check if the user is blocked by the platform
-        let platform_address = object::uid_to_address(platform::id(platform));
-        assert!(!block_list::is_blocked(block_list_registry, platform_address, owner), EUserBlockedByPlatform);
-        
-        // Check if the caller is blocked by the post creator
-        assert!(!block_list::is_blocked(block_list_registry, parent_post.owner, owner), EUnauthorized);
+
+        // Check if the actor is blocked by the post creator
+        assert!(!block_list::is_blocked(block_list_registry, parent_post.owner, actor_address), EUnauthorized);
         
         // Check if comments are allowed on the parent post
         assert!(allow_comments(parent_post), ECommentsNotAllowed);
@@ -1172,7 +1347,7 @@ module social_contracts::post {
         let parent_post_id = object::uid_to_address(&parent_post.id);
         
         // Create a proper Comment object instead of reusing post structure
-        let comment = Comment {
+        let mut comment = Comment {
             id: object::new(ctx),
             post_id: parent_post_id,
             parent_comment_id,
@@ -1192,6 +1367,13 @@ module social_contracts::post {
             reaction_counts: table::new(ctx),
             version: upgrade::current_version(),
         };
+
+        attach_comment_attribution(
+            &mut comment,
+            actor_address,
+            sub_agent_id,
+            action_identity_class,
+        );
         
         // Get comment ID before sharing
         let comment_id = object::uid_to_address(&comment.id);
@@ -1212,6 +1394,9 @@ module social_contracts::post {
             profile_id,
             content,
             mentions,
+            actor_address,
+            sub_agent_id,
+            action_identity_class,
         });
         
         // Share the comment object
@@ -1243,25 +1428,29 @@ module social_contracts::post {
         enable_spt: Option<bool>,
         enable_poc: Option<bool>,
         enable_spot: Option<bool>,
+        memory_account: &MemoryAccount,
+        clock: &Clock,
         ctx: &mut TxContext
     ) {
-        let owner = tx_context::sender(ctx);
-        
-        // Look up the profile ID for the sender (for reference, not ownership)
-        let mut profile_id_option = social_contracts::profile::lookup_profile_by_owner(registry, owner);
-        assert!(option::is_some(&profile_id_option), EUnauthorized);
-        let profile_id = option::extract(&mut profile_id_option);
+        let acting = resolve_social_actor(
+            registry,
+            platform,
+            block_list_registry,
+            memory_account,
+            memory::cap_post_publish(),
+            0,
+            clock,
+            ctx,
+        );
+        let owner = memory::acting_principal_owner(&acting);
+        let profile_id = memory::acting_profile_id(&acting);
+        let actor_address = memory::acting_actor_address(&acting);
+        let sub_agent_id = memory::acting_sub_agent_id(&acting);
+        let action_identity_class = memory::acting_identity_class(&acting);
         
         // Check if platform is approved
         let platform_id = object::uid_to_address(platform::id(platform));
         assert!(platform::is_approved(platform_registry, platform_id), EUnauthorized);
-        
-        // Check if user has joined the platform (by wallet address)
-        assert!(platform::has_joined_platform(platform, owner), EUserNotJoinedPlatform);
-        
-        // Check if the user is blocked by the platform
-        let platform_address = object::uid_to_address(platform::id(platform));
-        assert!(!block_list::is_blocked(block_list_registry, platform_address, owner), EUserBlockedByPlatform);
         
         let original_post_id = object::uid_to_address(&original_post.id);
         
@@ -1352,6 +1541,9 @@ module social_contracts::post {
                 is_original_post: true,
                 owner,
                 profile_id,
+                actor_address,
+                sub_agent_id,
+                action_identity_class,
             });
             
             // Share repost object
@@ -1435,6 +1627,9 @@ module social_contracts::post {
             final_enable_poc,
             final_enable_spot,
             poc_redirection_kind,
+            actor_address,
+            sub_agent_id,
+            action_identity_class,
             ctx
         );
         
@@ -1468,6 +1663,9 @@ module social_contracts::post {
             spot_id: option::none(),
             spt_id: option::none(),
             poc_redirection_kind,
+            actor_address,
+            sub_agent_id,
+            action_identity_class,
         });
     }
 
@@ -1592,26 +1790,35 @@ module social_contracts::post {
     /// React to a post with a specific reaction (emoji or text)
     /// If the user already has the exact same reaction, it will be removed (toggle behavior)
     public fun react_to_post(
+        registry: &UsernameRegistry,
         post: &mut Post,
         platform_registry: &platform::PlatformRegistry,
         platform: &platform::Platform,
         block_list_registry: &block_list::BlockListRegistry,
         config: &PostConfig,
+        memory_account: &MemoryAccount,
         reaction: String,
+        clock: &Clock,
         ctx: &mut TxContext
     ) {
-        let user = tx_context::sender(ctx);
+        let acting = resolve_social_actor(
+            registry,
+            platform,
+            block_list_registry,
+            memory_account,
+            memory::cap_react(),
+            0,
+            clock,
+            ctx,
+        );
+        let actor_address = memory::acting_actor_address(&acting);
+        let principal_owner = memory::acting_principal_owner(&acting);
+        let sub_agent_id = memory::acting_sub_agent_id(&acting);
+        let action_identity_class = memory::acting_identity_class(&acting);
         
         // Check if platform is approved
         let platform_id = object::uid_to_address(platform::id(platform));
         assert!(platform::is_approved(platform_registry, platform_id), EUnauthorized);
-        
-        // Check if user has joined the platform (by wallet address)
-        assert!(platform::has_joined_platform(platform, user), EUserNotJoinedPlatform);
-        
-        // Check if the user is blocked by the platform
-        let platform_address = object::uid_to_address(platform::id(platform));
-        assert!(!block_list::is_blocked(block_list_registry, platform_address, user), EUserBlockedByPlatform);
         
         // Validate reaction length using config
         assert!(string::length(&reaction) <= config.max_reaction_length, EReactionContentTooLong);
@@ -1620,14 +1827,14 @@ module social_contracts::post {
         assert!(allow_reactions(post), EReactionsNotAllowed);
         
         // Check if user already reacted to the post
-        if (table::contains(&post.user_reactions, user)) {
+        if (table::contains(&post.user_reactions, actor_address)) {
             // Get the previous reaction
-            let previous_reaction = *table::borrow(&post.user_reactions, user);
+            let previous_reaction = *table::borrow(&post.user_reactions, actor_address);
             
             // If the reaction is the same, remove it (toggle behavior)
             if (reaction == previous_reaction) {
                 // Remove user's reaction
-                table::remove(&mut post.user_reactions, user);
+                table::remove(&mut post.user_reactions, actor_address);
                 
                 // Decrease count for this reaction type
                 let count = *table::borrow(&post.reaction_counts, reaction);
@@ -1644,9 +1851,13 @@ module social_contracts::post {
                 // Emit remove reaction event
                 event::emit(RemoveReactionEvent {
                     object_id: object::uid_to_address(&post.id),
-                    user,
+                    user: actor_address,
                     reaction,
                     is_post: true,
+                    principal_owner,
+                    actor_address,
+                    sub_agent_id,
+                    action_identity_class,
                 });
                 
                 return
@@ -1662,10 +1873,10 @@ module social_contracts::post {
             };
             
             // Update user's reaction
-            *table::borrow_mut(&mut post.user_reactions, user) = reaction;
+            *table::borrow_mut(&mut post.user_reactions, actor_address) = reaction;
         } else {
             // New reaction from this user
-            table::add(&mut post.user_reactions, user, reaction);
+            table::add(&mut post.user_reactions, actor_address, reaction);
 
             // Increment post reaction count
             assert!(post.reaction_count <= MAX_U64 - 1, EOverflow);
@@ -1684,9 +1895,13 @@ module social_contracts::post {
         // Emit reaction event
         event::emit(ReactionEvent {
             object_id: object::uid_to_address(&post.id),
-            user,
+            user: actor_address,
             reaction,
             is_post: true,
+            principal_owner,
+            actor_address,
+            sub_agent_id,
+            action_identity_class,
         });
     }
 
@@ -1699,9 +1914,11 @@ module social_contracts::post {
         beneficiary_vault: &mut PoCBeneficiaryVault,
         coins: &mut Coin<T>,
         amount: u64,
+        memory_account: &MemoryAccount,
         ctx: &mut TxContext
     ) {
         assert!(amount > 0, EInvalidTipAmount);
+        assert_tip_spend_limit(memory_account, amount, ctx);
         let tipper = tx_context::sender(ctx);
         assert!(tipper != post.owner, ESelfTipping);
         assert!(
@@ -1745,6 +1962,7 @@ module social_contracts::post {
         post: &mut Post,
         coins: &mut Coin<T>,
         amount: u64,
+        memory_account: &MemoryAccount,
         ctx: &mut TxContext
     ) {
         assert!(amount > 0, EInvalidTipAmount);
@@ -1752,6 +1970,7 @@ module social_contracts::post {
             !tip_post_requires_beneficiary_vault_for_amount(post, amount),
             ETipPostRequiresBeneficiaryVault
         );
+        assert_tip_spend_limit(memory_account, amount, ctx);
         let tipper = tx_context::sender(ctx);
         assert!(tipper != post.owner, ESelfTipping);
         assert!(
@@ -2131,10 +2350,12 @@ module social_contracts::post {
         beneficiary_vault: &mut PoCBeneficiaryVault,
         coin: &mut Coin<T>,
         amount: u64,
+        memory_account: &MemoryAccount,
         ctx: &mut TxContext
     ) {
         let tipper = tx_context::sender(ctx);
         assert!(amount > 0 && coin::value(coin) >= amount, EInvalidTipAmount);
+        assert_tip_spend_limit(memory_account, amount, ctx);
         assert!(tipper != comment.owner, ESelfTipping);
         assert!(allow_tips(post), ETipsNotAllowed);
         let commenter_amount = (amount * config.commenter_tip_percentage) / 100;
@@ -2486,39 +2707,48 @@ module social_contracts::post {
     /// React to a comment with a specific reaction (emoji or text)
     /// If the user already has the exact same reaction, it will be removed (toggle behavior)
     public fun react_to_comment(
+        registry: &UsernameRegistry,
         comment: &mut Comment,
         platform_registry: &platform::PlatformRegistry,
         platform: &platform::Platform,
         block_list_registry: &block_list::BlockListRegistry,
         config: &PostConfig,
+        memory_account: &MemoryAccount,
         reaction: String,
+        clock: &Clock,
         ctx: &mut TxContext
     ) {
-        let user = tx_context::sender(ctx);
+        let acting = resolve_social_actor(
+            registry,
+            platform,
+            block_list_registry,
+            memory_account,
+            memory::cap_react(),
+            0,
+            clock,
+            ctx,
+        );
+        let actor_address = memory::acting_actor_address(&acting);
+        let principal_owner = memory::acting_principal_owner(&acting);
+        let sub_agent_id = memory::acting_sub_agent_id(&acting);
+        let action_identity_class = memory::acting_identity_class(&acting);
         
         // Check if platform is approved
         let platform_id = object::uid_to_address(platform::id(platform));
         assert!(platform::is_approved(platform_registry, platform_id), EUnauthorized);
         
-        // Check if user has joined the platform (by wallet address)
-        assert!(platform::has_joined_platform(platform, user), EUserNotJoinedPlatform);
-        
-        // Check if the user is blocked by the platform
-        let platform_address = object::uid_to_address(platform::id(platform));
-        assert!(!block_list::is_blocked(block_list_registry, platform_address, user), EUserBlockedByPlatform);
-        
         // Validate reaction length using config
         assert!(string::length(&reaction) <= config.max_reaction_length, EReactionContentTooLong);
         
         // Check if user already reacted to the comment
-        if (table::contains(&comment.user_reactions, user)) {
+        if (table::contains(&comment.user_reactions, actor_address)) {
             // Get the previous reaction
-            let previous_reaction = *table::borrow(&comment.user_reactions, user);
+            let previous_reaction = *table::borrow(&comment.user_reactions, actor_address);
             
             // If the reaction is the same, remove it (toggle behavior)
             if (reaction == previous_reaction) {
                 // Remove user's reaction
-                table::remove(&mut comment.user_reactions, user);
+                table::remove(&mut comment.user_reactions, actor_address);
                 
                 // Decrease count for this reaction type
                 let count = *table::borrow(&comment.reaction_counts, reaction);
@@ -2535,9 +2765,13 @@ module social_contracts::post {
                 // Emit remove reaction event
                 event::emit(RemoveReactionEvent {
                     object_id: object::uid_to_address(&comment.id),
-                    user,
+                    user: actor_address,
                     reaction,
                     is_post: false,
+                    principal_owner,
+                    actor_address,
+                    sub_agent_id,
+                    action_identity_class,
                 });
                 
                 return
@@ -2553,10 +2787,10 @@ module social_contracts::post {
             };
             
             // Update user's reaction
-            *table::borrow_mut(&mut comment.user_reactions, user) = reaction;
+            *table::borrow_mut(&mut comment.user_reactions, actor_address) = reaction;
         } else {
             // New reaction from this user
-            table::add(&mut comment.user_reactions, user, reaction);
+            table::add(&mut comment.user_reactions, actor_address, reaction);
 
             // Increment comment reaction count
             assert!(comment.reaction_count <= MAX_U64 - 1, EOverflow);
@@ -2575,9 +2809,13 @@ module social_contracts::post {
         // Emit reaction event
         event::emit(ReactionEvent {
             object_id: object::uid_to_address(&comment.id),
-            user,
+            user: actor_address,
             reaction,
             is_post: false,
+            principal_owner,
+            actor_address,
+            sub_agent_id,
+            action_identity_class,
         });
     }
 
@@ -2709,6 +2947,9 @@ module social_contracts::post {
             false, // enable_poc - default to opt-out
             false, // enable_spot - default to opt-out
             POC_REDIRECT_NONE,
+            owner,
+            option::none(),
+            memory::class_human(),
             ctx
         )
     }
@@ -2747,6 +2988,9 @@ module social_contracts::post {
             false,
             false,
             POC_REDIRECT_WALLET,
+            owner,
+            option::none(),
+            memory::class_human(),
             ctx
         )
     }
@@ -2784,6 +3028,9 @@ module social_contracts::post {
             false,
             false,
             POC_REDIRECT_ESCROW,
+            owner,
+            option::none(),
+            memory::class_human(),
             ctx
         )
     }
@@ -2820,6 +3067,9 @@ module social_contracts::post {
             false, // enable_poc - default to opt-out
             true, // enable_spot - enable SPoT for tests
             POC_REDIRECT_NONE,
+            owner,
+            option::none(),
+            memory::class_human(),
             ctx
         )
     }
@@ -2876,6 +3126,9 @@ module social_contracts::post {
             false, // enable_poc - default to opt-out
             false, // enable_spot - default to opt-out
             poc_redirection_kind,
+            owner,
+            option::none(),
+            memory::class_human(),
             ctx
         );
         
@@ -2901,6 +3154,9 @@ module social_contracts::post {
             spot_id: option::none(),
             spt_id: option::none(),
             poc_redirection_kind,
+            actor_address: owner,
+            sub_agent_id: option::none(),
+            action_identity_class: memory::class_human(),
         });
         
         // Update promotion data with post ID
@@ -2940,7 +3196,7 @@ module social_contracts::post {
         ctx: &mut TxContext
     ): address {
         // Create a Comment object directly
-        let comment = Comment {
+        let mut comment = Comment {
             id: object::new(ctx),
             post_id,
             parent_comment_id: option::none(),
@@ -2960,6 +3216,13 @@ module social_contracts::post {
             reaction_counts: table::new(ctx),
             version: upgrade::current_version(),
         };
+
+        attach_comment_attribution(
+            &mut comment,
+            owner,
+            option::none(),
+            memory::class_human(),
+        );
         
         // Get comment ID before sharing
         let comment_id = object::uid_to_address(&comment.id);
@@ -3019,6 +3282,17 @@ module social_contracts::post {
         if (old_version < 2) {
             post.poc_outcome = POC_OUTCOME_NONE;
             post.poc_redirection_kind = POC_REDIRECT_NONE;
+        };
+        if (old_version < 3) {
+            if (!df::exists_with_type<vector<u8>, PostAttribution>(&post.id, POST_ATTRIBUTION_DF_KEY)) {
+                let owner = post.owner;
+                attach_post_attribution(
+                    post,
+                    owner,
+                    option::none(),
+                    memory::class_human(),
+                );
+            };
         };
         post.version = current_version;
         
@@ -3183,31 +3457,36 @@ module social_contracts::post {
         enable_poc: Option<bool>,
         enable_spot: Option<bool>,
         mydata_registry: &mydata::MyDataRegistry,
+        memory_account: &MemoryAccount,
+        clock: &Clock,
         ctx: &mut TxContext
     ) {
-        let owner = tx_context::sender(ctx);
+        let acting = resolve_social_actor(
+            registry,
+            platform,
+            block_list_registry,
+            memory_account,
+            memory::cap_post_publish(),
+            0,
+            clock,
+            ctx,
+        );
+        let owner = memory::acting_principal_owner(&acting);
+        let profile_id = memory::acting_profile_id(&acting);
+        let actor_address = memory::acting_actor_address(&acting);
+        let sub_agent_id = memory::acting_sub_agent_id(&acting);
+        let action_identity_class = memory::acting_identity_class(&acting);
         
         // Validate promotion parameters
         assert!(payment_per_view >= MIN_PROMOTION_AMOUNT, EPromotionAmountTooLow);
         assert!(payment_per_view <= MAX_PROMOTION_AMOUNT, EPromotionAmountTooHigh);
         assert!(coin::value(&promotion_budget) >= payment_per_view, EInsufficientPromotionFunds);
         
-        // Look up the profile ID for the sender
-        let mut profile_id_option = social_contracts::profile::lookup_profile_by_owner(registry, owner);
-        assert!(option::is_some(&profile_id_option), EUnauthorized);
-        let profile_id = option::extract(&mut profile_id_option);
-        
         assert_mydata_id_allowed_for_owner(owner, mydata_id, mydata_registry);
         
         // Check if platform is approved 
         let platform_id = object::uid_to_address(platform::id(platform));
         assert!(platform::is_approved(platform_registry, platform_id), EUnauthorized);
-        
-        // Check if user has joined the platform (by wallet address)
-        assert!(platform::has_joined_platform(platform, owner), EUserNotJoinedPlatform);
-        
-        // Check if the user is blocked by the platform
-        assert!(!block_list::is_blocked(block_list_registry, platform_id, owner), EUserBlockedByPlatform);
         
         // Validate content length using config
         assert!(string::length(&content) <= config.max_content_length, EContentTooLarge);
@@ -3303,6 +3582,9 @@ module social_contracts::post {
             final_enable_poc,
             final_enable_spot,
             poc_redirection_kind,
+            actor_address,
+            sub_agent_id,
+            action_identity_class,
             ctx
         );
         
@@ -3329,6 +3611,9 @@ module social_contracts::post {
             spot_id: option::none(),
             spt_id: option::none(),
             poc_redirection_kind,
+            actor_address,
+            sub_agent_id,
+            action_identity_class,
         });
         
         // Update promotion data with post ID

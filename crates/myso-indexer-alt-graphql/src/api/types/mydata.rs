@@ -9,15 +9,16 @@ use async_graphql::Object;
 use myso_indexer_alt_social_reader::SocialPgReader;
 use myso_indexer_alt_social_schema::models::{
     MyDataAccessAnalyticsRow, MyDataAccessLogRow, MyDataDailyRevenueRow, MyDataPurchaseRow,
-    MyDataQueryBroadPoolRow, MyDataQueryClaimRow, MyDataQueryDistributionRoundRow,
-    MyDataQueryListingSubPoolRow, MyDataQueryMerkleRootRow, MyDataQuerySnapshotAnchorRow,
-    MyDataQuerySubPoolRow, MyDataRecordRow, MyDataRevenueRow, MyDataStatsRow,
+    MyDataBroadPoolRow, MyDataClaimRow, MyDataDistributionRoundRow,
+    MyDataListingSubPoolRow, MyDataMerkleRootRow, MyDataSnapshotAnchorRow,
+    MyDataSubPoolRow, MyDataRecordRow, MyDataRevenueRow, MyDataStatsRow,
     MyDataSubscriptionRow,
 };
 
 use crate::api::resolve_profile::resolve_profile_summary;
 use crate::api::scalars::date_time::DateTime;
 use crate::api::scalars::myso_address::MySoAddress;
+use crate::api::types::platform::{Platform, resolve_platform_by_id};
 use crate::api::types::profile_summary::ProfileSummary;
 
 fn parse_tags(value: &serde_json::Value) -> Vec<String> {
@@ -83,6 +84,12 @@ impl MyDataRecord {
     /// Optional platform identification.
     async fn platform_id(&self) -> Option<&str> {
         self.inner.platform_id.as_deref()
+    }
+
+    /// Platform details when `platform_id` is set and indexed.
+    async fn platform(&self, ctx: &Context<'_>) -> Option<Platform> {
+        let platform_id = self.inner.platform_id.as_deref()?;
+        resolve_platform_by_id(ctx, platform_id).await
     }
 
     /// Start timestamp for time-range data.
@@ -250,21 +257,21 @@ impl MyDataRecord {
     }
 
     /// Query-marketplace sub-pools this listing is assigned to (from `MyDataAssignedToSubPoolEvent`).
-    async fn query_sub_pools(
+    async fn sub_pools(
         &self,
         ctx: &Context<'_>,
         limit: Option<u64>,
         offset: Option<u64>,
-    ) -> Option<Vec<MyDataQuerySubPool>> {
+    ) -> Option<Vec<MyDataSubPool>> {
         let reader_opt = ctx.data_opt::<Arc<Option<SocialPgReader>>>()?;
         let reader = reader_opt.as_ref().as_ref()?;
         let limit = limit.unwrap_or(50).min(100) as i64;
         let offset = offset.unwrap_or(0) as i64;
         let rows = reader
-            .list_mydata_query_sub_pools_for_listing(&self.inner.mydata_id, limit, offset)
+            .list_mydata_sub_pools_for_listing(&self.inner.mydata_id, limit, offset)
             .await
             .ok()?;
-        Some(rows.into_iter().map(MyDataQuerySubPool::from_row).collect())
+        Some(rows.into_iter().map(MyDataSubPool::from_row).collect())
     }
 }
 
@@ -577,18 +584,18 @@ impl MyDataAccessAnalytics {
 }
 
 #[derive(Clone)]
-pub(crate) struct MyDataQueryBroadPool {
-    inner: MyDataQueryBroadPoolRow,
+pub(crate) struct MyDataBroadPool {
+    inner: MyDataBroadPoolRow,
 }
 
-impl MyDataQueryBroadPool {
-    pub(crate) fn from_row(inner: MyDataQueryBroadPoolRow) -> Self {
+impl MyDataBroadPool {
+    pub(crate) fn from_row(inner: MyDataBroadPoolRow) -> Self {
         Self { inner }
     }
 }
 
 #[Object]
-impl MyDataQueryBroadPool {
+impl MyDataBroadPool {
     async fn pool_id(&self) -> &str {
         &self.inner.pool_id
     }
@@ -615,18 +622,18 @@ impl MyDataQueryBroadPool {
 }
 
 #[derive(Clone)]
-pub(crate) struct MyDataQuerySubPool {
-    inner: MyDataQuerySubPoolRow,
+pub(crate) struct MyDataSubPool {
+    inner: MyDataSubPoolRow,
 }
 
-impl MyDataQuerySubPool {
-    pub(crate) fn from_row(inner: MyDataQuerySubPoolRow) -> Self {
+impl MyDataSubPool {
+    pub(crate) fn from_row(inner: MyDataSubPoolRow) -> Self {
         Self { inner }
     }
 }
 
 #[Object]
-impl MyDataQuerySubPool {
+impl MyDataSubPool {
     async fn sub_pool_id(&self) -> &str {
         &self.inner.sub_pool_id
     }
@@ -657,18 +664,18 @@ impl MyDataQuerySubPool {
 }
 
 #[derive(Clone)]
-pub(crate) struct MyDataQueryListingSubPool {
-    inner: MyDataQueryListingSubPoolRow,
+pub(crate) struct MyDataListingSubPool {
+    inner: MyDataListingSubPoolRow,
 }
 
-impl MyDataQueryListingSubPool {
-    pub(crate) fn from_row(inner: MyDataQueryListingSubPoolRow) -> Self {
+impl MyDataListingSubPool {
+    pub(crate) fn from_row(inner: MyDataListingSubPoolRow) -> Self {
         Self { inner }
     }
 }
 
 #[Object]
-impl MyDataQueryListingSubPool {
+impl MyDataListingSubPool {
     async fn listing_id(&self) -> &str {
         &self.inner.listing_id
     }
@@ -695,18 +702,18 @@ impl MyDataQueryListingSubPool {
 }
 
 #[derive(Clone)]
-pub(crate) struct MyDataQuerySnapshotAnchor {
-    inner: MyDataQuerySnapshotAnchorRow,
+pub(crate) struct MyDataSnapshotAnchor {
+    inner: MyDataSnapshotAnchorRow,
 }
 
-impl MyDataQuerySnapshotAnchor {
-    pub(crate) fn from_row(inner: MyDataQuerySnapshotAnchorRow) -> Self {
+impl MyDataSnapshotAnchor {
+    pub(crate) fn from_row(inner: MyDataSnapshotAnchorRow) -> Self {
         Self { inner }
     }
 }
 
 #[Object]
-impl MyDataQuerySnapshotAnchor {
+impl MyDataSnapshotAnchor {
     async fn id(&self) -> i32 {
         self.inner.id
     }
@@ -754,18 +761,18 @@ impl MyDataQuerySnapshotAnchor {
 }
 
 #[derive(Clone)]
-pub(crate) struct MyDataQueryDistributionRound {
-    inner: MyDataQueryDistributionRoundRow,
+pub(crate) struct MyDataDistributionRound {
+    inner: MyDataDistributionRoundRow,
 }
 
-impl MyDataQueryDistributionRound {
-    pub(crate) fn from_row(inner: MyDataQueryDistributionRoundRow) -> Self {
+impl MyDataDistributionRound {
+    pub(crate) fn from_row(inner: MyDataDistributionRoundRow) -> Self {
         Self { inner }
     }
 }
 
 #[Object]
-impl MyDataQueryDistributionRound {
+impl MyDataDistributionRound {
     async fn snapshot_id(&self) -> &str {
         &self.inner.snapshot_id
     }
@@ -800,18 +807,18 @@ impl MyDataQueryDistributionRound {
 }
 
 #[derive(Clone)]
-pub(crate) struct MyDataQueryMerkleRoot {
-    inner: MyDataQueryMerkleRootRow,
+pub(crate) struct MyDataMerkleRoot {
+    inner: MyDataMerkleRootRow,
 }
 
-impl MyDataQueryMerkleRoot {
-    pub(crate) fn from_row(inner: MyDataQueryMerkleRootRow) -> Self {
+impl MyDataMerkleRoot {
+    pub(crate) fn from_row(inner: MyDataMerkleRootRow) -> Self {
         Self { inner }
     }
 }
 
 #[Object]
-impl MyDataQueryMerkleRoot {
+impl MyDataMerkleRoot {
     async fn snapshot_id(&self) -> &str {
         &self.inner.snapshot_id
     }
@@ -838,18 +845,18 @@ impl MyDataQueryMerkleRoot {
 }
 
 #[derive(Clone)]
-pub(crate) struct MyDataQueryClaim {
-    inner: MyDataQueryClaimRow,
+pub(crate) struct MyDataClaim {
+    inner: MyDataClaimRow,
 }
 
-impl MyDataQueryClaim {
-    pub(crate) fn from_row(inner: MyDataQueryClaimRow) -> Self {
+impl MyDataClaim {
+    pub(crate) fn from_row(inner: MyDataClaimRow) -> Self {
         Self { inner }
     }
 }
 
 #[Object]
-impl MyDataQueryClaim {
+impl MyDataClaim {
     async fn id(&self) -> i32 {
         self.inner.id
     }

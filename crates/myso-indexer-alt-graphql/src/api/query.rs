@@ -55,9 +55,9 @@ use crate::api::types::move_package::PackageKey;
 use crate::api::types::move_type;
 use crate::api::types::move_type::MoveType;
 use crate::api::types::mydata::{
-    MyDataPurchase, MyDataQueryBroadPool, MyDataQueryClaim, MyDataQueryDistributionRound,
-    MyDataQueryListingSubPool, MyDataQueryMerkleRoot, MyDataQuerySnapshotAnchor,
-    MyDataQuerySubPool, MyDataRecord,
+    MyDataPurchase, MyDataBroadPool, MyDataClaim, MyDataDistributionRound,
+    MyDataListingSubPool, MyDataMerkleRoot, MyDataSnapshotAnchor,
+    MyDataSubPool, MyDataRecord,
 };
 use crate::api::types::node::Node;
 use crate::api::types::object;
@@ -295,6 +295,7 @@ impl Query {
         ctx: &Context<'_>,
         owner: Option<String>,
         post_type: Option<String>,
+        sub_agent_id: Option<String>,
         limit: Option<u64>,
         offset: Option<u64>,
     ) -> Option<Result<Vec<Post>, RpcError>> {
@@ -305,10 +306,55 @@ impl Query {
         let offset = offset.unwrap_or(0) as i64;
         Some(
             reader
-                .list_posts(owner.as_deref(), post_type.as_deref(), limit, offset)
+                .list_posts(
+                    owner.as_deref(),
+                    post_type.as_deref(),
+                    sub_agent_id.as_deref(),
+                    limit,
+                    offset,
+                )
                 .await
                 .map_err(Into::into)
                 .map(|v| v.into_iter().map(Post::from_db).collect()),
+        )
+    }
+
+    /// Fetch a sub-agent by derived address.
+    async fn sub_agent(
+        &self,
+        ctx: &Context<'_>,
+        derived_address: MySoAddress,
+    ) -> Option<Result<Option<crate::api::types::memory::SubAgent>, RpcError>> {
+        use crate::api::types::memory::SubAgent;
+        let reader_opt = ctx
+            .data_opt::<std::sync::Arc<Option<myso_indexer_alt_social_reader::SocialPgReader>>>()?;
+        let reader = reader_opt.as_ref().as_ref()?;
+        let addr = derived_address.to_string();
+        Some(
+            reader
+                .get_sub_agent(&addr)
+                .await
+                .map_err(Into::into)
+                .map(|opt| opt.map(SubAgent::from_row)),
+        )
+    }
+
+    /// Fetch a sub-agent by on-chain object id.
+    async fn sub_agent_by_object_id(
+        &self,
+        ctx: &Context<'_>,
+        agent_object_id: String,
+    ) -> Option<Result<Option<crate::api::types::memory::SubAgent>, RpcError>> {
+        use crate::api::types::memory::SubAgent;
+        let reader_opt = ctx
+            .data_opt::<std::sync::Arc<Option<myso_indexer_alt_social_reader::SocialPgReader>>>()?;
+        let reader = reader_opt.as_ref().as_ref()?;
+        Some(
+            reader
+                .get_sub_agent_by_object_id(&agent_object_id)
+                .await
+                .map_err(Into::into)
+                .map(|opt| opt.map(SubAgent::from_row)),
         )
     }
 
@@ -1101,13 +1147,13 @@ impl Query {
         )
     }
 
-    /// MyData query marketplace broad pools (indexed `BroadPoolCreatedEvent`). Empty when social DB not configured.
-    async fn mydata_query_broad_pools(
+    /// MyData marketplace broad pools (indexed `BroadPoolCreatedEvent`). Empty when social DB not configured.
+    async fn mydata_broad_pools(
         &self,
         ctx: &Context<'_>,
         limit: Option<u64>,
         offset: Option<u64>,
-    ) -> Option<Result<Vec<MyDataQueryBroadPool>, RpcError>> {
+    ) -> Option<Result<Vec<MyDataBroadPool>, RpcError>> {
         let reader_opt = ctx
             .data_opt::<std::sync::Arc<Option<myso_indexer_alt_social_reader::SocialPgReader>>>()?;
         let reader = reader_opt.as_ref().as_ref()?;
@@ -1115,21 +1161,21 @@ impl Query {
         let offset = offset.unwrap_or(0) as i64;
         Some(
             reader
-                .list_mydata_query_broad_pools(limit, offset)
+                .list_mydata_broad_pools(limit, offset)
                 .await
                 .map_err(Into::into)
-                .map(|v| v.into_iter().map(MyDataQueryBroadPool::from_row).collect()),
+                .map(|v| v.into_iter().map(MyDataBroadPool::from_row).collect()),
         )
     }
 
     /// Sub-pools under a broad pool.
-    async fn mydata_query_sub_pools_for_broad_pool(
+    async fn mydata_sub_pools_for_broad_pool(
         &self,
         ctx: &Context<'_>,
         broad_pool_id: String,
         limit: Option<u64>,
         offset: Option<u64>,
-    ) -> Option<Result<Vec<MyDataQuerySubPool>, RpcError>> {
+    ) -> Option<Result<Vec<MyDataSubPool>, RpcError>> {
         let reader_opt = ctx
             .data_opt::<std::sync::Arc<Option<myso_indexer_alt_social_reader::SocialPgReader>>>()?;
         let reader = reader_opt.as_ref().as_ref()?;
@@ -1137,21 +1183,21 @@ impl Query {
         let offset = offset.unwrap_or(0) as i64;
         Some(
             reader
-                .list_mydata_query_sub_pools_for_broad_pool(&broad_pool_id, limit, offset)
+                .list_mydata_sub_pools_for_broad_pool(&broad_pool_id, limit, offset)
                 .await
                 .map_err(Into::into)
-                .map(|v| v.into_iter().map(MyDataQuerySubPool::from_row).collect()),
+                .map(|v| v.into_iter().map(MyDataSubPool::from_row).collect()),
         )
     }
 
     /// Listings assigned to a sub-pool (junction).
-    async fn mydata_query_listings_for_sub_pool(
+    async fn mydata_listings_for_sub_pool(
         &self,
         ctx: &Context<'_>,
         sub_pool_id: String,
         limit: Option<u64>,
         offset: Option<u64>,
-    ) -> Option<Result<Vec<MyDataQueryListingSubPool>, RpcError>> {
+    ) -> Option<Result<Vec<MyDataListingSubPool>, RpcError>> {
         let reader_opt = ctx
             .data_opt::<std::sync::Arc<Option<myso_indexer_alt_social_reader::SocialPgReader>>>()?;
         let reader = reader_opt.as_ref().as_ref()?;
@@ -1159,42 +1205,42 @@ impl Query {
         let offset = offset.unwrap_or(0) as i64;
         Some(
             reader
-                .list_mydata_query_listings_for_sub_pool(&sub_pool_id, limit, offset)
+                .list_mydata_listings_for_sub_pool(&sub_pool_id, limit, offset)
                 .await
                 .map_err(Into::into)
                 .map(|v| {
                     v.into_iter()
-                        .map(MyDataQueryListingSubPool::from_row)
+                        .map(MyDataListingSubPool::from_row)
                         .collect()
                 }),
         )
     }
 
     /// Latest snapshot anchor for a snapshot ID (includes manifest hash and payment reference when indexed from upgraded packages).
-    async fn mydata_query_snapshot_anchor(
+    async fn mydata_snapshot_anchor(
         &self,
         ctx: &Context<'_>,
         snapshot_id: String,
-    ) -> Option<Result<Option<MyDataQuerySnapshotAnchor>, RpcError>> {
+    ) -> Option<Result<Option<MyDataSnapshotAnchor>, RpcError>> {
         let reader_opt = ctx
             .data_opt::<std::sync::Arc<Option<myso_indexer_alt_social_reader::SocialPgReader>>>()?;
         let reader = reader_opt.as_ref().as_ref()?;
         Some(
             reader
-                .get_mydata_query_snapshot_anchor(&snapshot_id)
+                .get_mydata_snapshot_anchor(&snapshot_id)
                 .await
                 .map_err(Into::into)
-                .map(|opt| opt.map(MyDataQuerySnapshotAnchor::from_row)),
+                .map(|opt| opt.map(MyDataSnapshotAnchor::from_row)),
         )
     }
 
     /// Recent snapshot anchors (paginated).
-    async fn mydata_query_snapshot_anchors(
+    async fn mydata_snapshot_anchors(
         &self,
         ctx: &Context<'_>,
         limit: Option<u64>,
         offset: Option<u64>,
-    ) -> Option<Result<Vec<MyDataQuerySnapshotAnchor>, RpcError>> {
+    ) -> Option<Result<Vec<MyDataSnapshotAnchor>, RpcError>> {
         let reader_opt = ctx
             .data_opt::<std::sync::Arc<Option<myso_indexer_alt_social_reader::SocialPgReader>>>()?;
         let reader = reader_opt.as_ref().as_ref()?;
@@ -1202,42 +1248,42 @@ impl Query {
         let offset = offset.unwrap_or(0) as i64;
         Some(
             reader
-                .list_mydata_query_snapshot_anchors(limit, offset)
+                .list_mydata_snapshot_anchors(limit, offset)
                 .await
                 .map_err(Into::into)
                 .map(|v| {
                     v.into_iter()
-                        .map(MyDataQuerySnapshotAnchor::from_row)
+                        .map(MyDataSnapshotAnchor::from_row)
                         .collect()
                 }),
         )
     }
 
     /// Distribution round for a snapshot (from `DistributionRecordedEvent` when indexed).
-    async fn mydata_query_distribution_round(
+    async fn mydata_distribution_round(
         &self,
         ctx: &Context<'_>,
         snapshot_id: String,
-    ) -> Option<Result<Option<MyDataQueryDistributionRound>, RpcError>> {
+    ) -> Option<Result<Option<MyDataDistributionRound>, RpcError>> {
         let reader_opt = ctx
             .data_opt::<std::sync::Arc<Option<myso_indexer_alt_social_reader::SocialPgReader>>>()?;
         let reader = reader_opt.as_ref().as_ref()?;
         Some(
             reader
-                .get_mydata_query_distribution_round(&snapshot_id)
+                .get_mydata_distribution_round(&snapshot_id)
                 .await
                 .map_err(Into::into)
-                .map(|opt| opt.map(MyDataQueryDistributionRound::from_row)),
+                .map(|opt| opt.map(MyDataDistributionRound::from_row)),
         )
     }
 
     /// Recent distribution rounds (paginated).
-    async fn mydata_query_distribution_rounds(
+    async fn mydata_distribution_rounds(
         &self,
         ctx: &Context<'_>,
         limit: Option<u64>,
         offset: Option<u64>,
-    ) -> Option<Result<Vec<MyDataQueryDistributionRound>, RpcError>> {
+    ) -> Option<Result<Vec<MyDataDistributionRound>, RpcError>> {
         let reader_opt = ctx
             .data_opt::<std::sync::Arc<Option<myso_indexer_alt_social_reader::SocialPgReader>>>()?;
         let reader = reader_opt.as_ref().as_ref()?;
@@ -1245,43 +1291,43 @@ impl Query {
         let offset = offset.unwrap_or(0) as i64;
         Some(
             reader
-                .list_mydata_query_distribution_rounds(limit, offset)
+                .list_mydata_distribution_rounds(limit, offset)
                 .await
                 .map_err(Into::into)
                 .map(|v| {
                     v.into_iter()
-                        .map(MyDataQueryDistributionRound::from_row)
+                        .map(MyDataDistributionRound::from_row)
                         .collect()
                 }),
         )
     }
 
     /// Published Merkle root for a snapshot.
-    async fn mydata_query_merkle_root(
+    async fn mydata_merkle_root(
         &self,
         ctx: &Context<'_>,
         snapshot_id: String,
-    ) -> Option<Result<Option<MyDataQueryMerkleRoot>, RpcError>> {
+    ) -> Option<Result<Option<MyDataMerkleRoot>, RpcError>> {
         let reader_opt = ctx
             .data_opt::<std::sync::Arc<Option<myso_indexer_alt_social_reader::SocialPgReader>>>()?;
         let reader = reader_opt.as_ref().as_ref()?;
         Some(
             reader
-                .get_mydata_query_merkle_root(&snapshot_id)
+                .get_mydata_merkle_root(&snapshot_id)
                 .await
                 .map_err(Into::into)
-                .map(|opt| opt.map(MyDataQueryMerkleRoot::from_row)),
+                .map(|opt| opt.map(MyDataMerkleRoot::from_row)),
         )
     }
 
     /// Claim events for a snapshot.
-    async fn mydata_query_claims_for_snapshot(
+    async fn mydata_claims_for_snapshot(
         &self,
         ctx: &Context<'_>,
         snapshot_id: String,
         limit: Option<u64>,
         offset: Option<u64>,
-    ) -> Option<Result<Vec<MyDataQueryClaim>, RpcError>> {
+    ) -> Option<Result<Vec<MyDataClaim>, RpcError>> {
         let reader_opt = ctx
             .data_opt::<std::sync::Arc<Option<myso_indexer_alt_social_reader::SocialPgReader>>>()?;
         let reader = reader_opt.as_ref().as_ref()?;
@@ -1289,10 +1335,10 @@ impl Query {
         let offset = offset.unwrap_or(0) as i64;
         Some(
             reader
-                .list_mydata_query_claims_for_snapshot(&snapshot_id, limit, offset)
+                .list_mydata_claims_for_snapshot(&snapshot_id, limit, offset)
                 .await
                 .map_err(Into::into)
-                .map(|v| v.into_iter().map(MyDataQueryClaim::from_row).collect()),
+                .map(|v| v.into_iter().map(MyDataClaim::from_row).collect()),
         )
     }
 

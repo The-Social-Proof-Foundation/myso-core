@@ -26,6 +26,7 @@ use myso_bridge::metrics::BridgeMetrics;
 use myso_bridge::myso_client::MySoBridgeClient;
 use myso_bridge::myso_transaction_builder::build_committee_register_transaction;
 use myso_config::node::Genesis;
+use myso_config::node::LOCAL_REFERENCE_GAS_PRICE;
 use myso_config::p2p::SeedPeer;
 use myso_config::{
     Config, FULL_NODE_DB_PATH, MYSO_CLIENT_CONFIG, MYSO_FULLNODE_CONFIG, MYSO_NETWORK_CONFIG,
@@ -982,7 +983,9 @@ async fn start(
         let genesis_config = GenesisConfig::custom_genesis(1, 100);
         swarm_builder = swarm_builder.with_genesis_config(genesis_config);
         let epoch_duration_ms = epoch_duration_ms.unwrap_or(DEFAULT_EPOCH_DURATION_MS);
-        swarm_builder = swarm_builder.with_epoch_duration_ms(epoch_duration_ms);
+        swarm_builder = swarm_builder
+            .with_epoch_duration_ms(epoch_duration_ms)
+            .with_reference_gas_price(LOCAL_REFERENCE_GAS_PRICE);
         mysten_common::tempdir()?.keep()
     } else {
         // If the config path looks like a YAML file, it is treated as if it is the network.yaml
@@ -1743,11 +1746,13 @@ async fn genesis(
 
     let mut network_config = if let Some(validators) = validator_info {
         builder
+            .with_reference_gas_price(LOCAL_REFERENCE_GAS_PRICE)
             .with_genesis_config(genesis_conf)
             .with_validators(validators)
             .build()
     } else {
         builder
+            .with_reference_gas_price(LOCAL_REFERENCE_GAS_PRICE)
             .committee_size(committee_size)
             .with_genesis_config(genesis_conf)
             .build()

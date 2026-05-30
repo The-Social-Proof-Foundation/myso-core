@@ -43,6 +43,20 @@ fn addr_to_string(addr: &AccountAddress) -> String {
     format!("0x{}", hex::encode(addr))
 }
 
+/// Move `myso::object::ID` BCS layout (`bytes: address`).
+#[derive(Debug, Clone, Deserialize, Serialize)]
+struct BcsMoveObjectId {
+    bytes: AccountAddress,
+}
+
+fn move_object_id_to_string(id: &BcsMoveObjectId) -> String {
+    addr_to_string(&id.bytes)
+}
+
+fn optional_move_object_id_json(id: &Option<BcsMoveObjectId>) -> Option<String> {
+    id.as_ref().map(move_object_id_to_string)
+}
+
 #[derive(Debug, Deserialize, Serialize)]
 pub struct BcsProfileCreatedEvent {
     profile_id: AccountAddress,
@@ -472,6 +486,146 @@ pub struct BcsPostCreatedEvent {
     poc_redirection_kind: u8,
 }
 
+/// Current layout with sub-agent attribution tail fields.
+#[derive(Debug, Deserialize)]
+pub struct BcsPostCreatedEventWithAttribution {
+    post_id: AccountAddress,
+    owner: AccountAddress,
+    profile_id: AccountAddress,
+    platform_id: AccountAddress,
+    permissions: u8,
+    content: String,
+    post_type: String,
+    parent_post_id: Option<AccountAddress>,
+    mentions: Option<Vec<AccountAddress>>,
+    media_urls: Option<Vec<String>>,
+    metadata_json: Option<String>,
+    mydata_id: Option<AccountAddress>,
+    promotion_id: Option<AccountAddress>,
+    revenue_redirect_to: Option<AccountAddress>,
+    revenue_redirect_percentage: Option<u64>,
+    enable_spt: bool,
+    enable_poc: bool,
+    enable_spot: bool,
+    spot_id: Option<AccountAddress>,
+    spt_id: Option<AccountAddress>,
+    poc_redirection_kind: u8,
+    actor_address: AccountAddress,
+    sub_agent_id: Option<BcsMoveObjectId>,
+    action_identity_class: u8,
+}
+
+struct ParsedPostCreated {
+    post_id: AccountAddress,
+    owner: AccountAddress,
+    profile_id: AccountAddress,
+    platform_id: AccountAddress,
+    permissions: u8,
+    content: String,
+    post_type: String,
+    parent_post_id: Option<AccountAddress>,
+    mentions: Option<Vec<AccountAddress>>,
+    media_urls: Option<Vec<String>>,
+    metadata_json: Option<String>,
+    mydata_id: Option<AccountAddress>,
+    promotion_id: Option<AccountAddress>,
+    revenue_redirect_to: Option<AccountAddress>,
+    revenue_redirect_percentage: Option<u64>,
+    enable_spt: bool,
+    enable_poc: bool,
+    enable_spot: bool,
+    spot_id: Option<AccountAddress>,
+    spt_id: Option<AccountAddress>,
+    poc_redirection_kind: u8,
+    actor_address: AccountAddress,
+    sub_agent_id: Option<String>,
+    action_identity_class: u8,
+}
+
+impl From<BcsPostCreatedEventWithAttribution> for ParsedPostCreated {
+    fn from(ev: BcsPostCreatedEventWithAttribution) -> Self {
+        Self {
+            post_id: ev.post_id,
+            owner: ev.owner,
+            profile_id: ev.profile_id,
+            platform_id: ev.platform_id,
+            permissions: ev.permissions,
+            content: ev.content,
+            post_type: ev.post_type,
+            parent_post_id: ev.parent_post_id,
+            mentions: ev.mentions,
+            media_urls: ev.media_urls,
+            metadata_json: ev.metadata_json,
+            mydata_id: ev.mydata_id,
+            promotion_id: ev.promotion_id,
+            revenue_redirect_to: ev.revenue_redirect_to,
+            revenue_redirect_percentage: ev.revenue_redirect_percentage,
+            enable_spt: ev.enable_spt,
+            enable_poc: ev.enable_poc,
+            enable_spot: ev.enable_spot,
+            spot_id: ev.spot_id,
+            spt_id: ev.spt_id,
+            poc_redirection_kind: ev.poc_redirection_kind,
+            actor_address: ev.actor_address,
+            sub_agent_id: optional_move_object_id_json(&ev.sub_agent_id),
+            action_identity_class: ev.action_identity_class,
+        }
+    }
+}
+
+impl From<BcsPostCreatedEvent> for ParsedPostCreated {
+    fn from(ev: BcsPostCreatedEvent) -> Self {
+        Self {
+            post_id: ev.post_id,
+            owner: ev.owner,
+            profile_id: ev.profile_id,
+            platform_id: ev.platform_id,
+            permissions: ev.permissions,
+            content: ev.content,
+            post_type: ev.post_type,
+            parent_post_id: ev.parent_post_id,
+            mentions: ev.mentions,
+            media_urls: ev.media_urls,
+            metadata_json: ev.metadata_json,
+            mydata_id: ev.mydata_id,
+            promotion_id: ev.promotion_id,
+            revenue_redirect_to: ev.revenue_redirect_to,
+            revenue_redirect_percentage: ev.revenue_redirect_percentage,
+            enable_spt: ev.enable_spt,
+            enable_poc: ev.enable_poc,
+            enable_spot: ev.enable_spot,
+            spot_id: ev.spot_id,
+            spt_id: ev.spt_id,
+            poc_redirection_kind: ev.poc_redirection_kind,
+            actor_address: ev.owner,
+            sub_agent_id: None,
+            action_identity_class: 0,
+        }
+    }
+}
+
+impl From<BcsPostCreatedEventLegacy> for ParsedPostCreated {
+    fn from(l: BcsPostCreatedEventLegacy) -> Self {
+        ParsedPostCreated::from(BcsPostCreatedEvent::from(l))
+    }
+}
+
+fn bcs_post_created_from_bytes(contents: &[u8]) -> Result<ParsedPostCreated, EventParseError> {
+    if let Ok(ev) = bcs::from_bytes::<BcsPostCreatedEventWithAttribution>(contents) {
+        return Ok(ParsedPostCreated::from(ev));
+    }
+    if let Ok(ev) = bcs::from_bytes::<BcsPostCreatedEvent>(contents) {
+        return Ok(ParsedPostCreated::from(ev));
+    }
+    match bcs::from_bytes::<BcsPostCreatedEventLegacy>(contents) {
+        Ok(ev) => Ok(ParsedPostCreated::from(ev)),
+        Err(e) => Err(EventParseError {
+            error: format!("PostCreatedEvent BCS: {}", e),
+            contents: contents.to_vec(),
+        }),
+    }
+}
+
 impl From<BcsPostCreatedEventLegacy> for BcsPostCreatedEvent {
     fn from(l: BcsPostCreatedEventLegacy) -> Self {
         Self {
@@ -500,23 +654,7 @@ impl From<BcsPostCreatedEventLegacy> for BcsPostCreatedEvent {
     }
 }
 
-fn bcs_post_created_from_bytes(contents: &[u8]) -> Result<BcsPostCreatedEvent, EventParseError> {
-    match bcs::from_bytes::<BcsPostCreatedEvent>(contents) {
-        Ok(ev) => Ok(ev),
-        Err(e_new) => match bcs::from_bytes::<BcsPostCreatedEventLegacy>(contents) {
-            Ok(legacy) => Ok(BcsPostCreatedEvent::from(legacy)),
-            Err(e_old) => Err(EventParseError {
-                error: format!(
-                    "PostCreatedEvent BCS: new layout: {}; legacy layout: {}",
-                    e_new, e_old
-                ),
-                contents: contents.to_vec(),
-            }),
-        },
-    }
-}
-
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Deserialize, Serialize)]
 pub struct BcsCommentCreatedEvent {
     comment_id: AccountAddress,
     post_id: AccountAddress,
@@ -525,6 +663,68 @@ pub struct BcsCommentCreatedEvent {
     profile_id: AccountAddress,
     content: String,
     mentions: Option<Vec<AccountAddress>>,
+}
+
+#[derive(Debug, Deserialize, Serialize)]
+pub struct BcsCommentCreatedEventWithAttribution {
+    comment_id: AccountAddress,
+    post_id: AccountAddress,
+    parent_comment_id: Option<AccountAddress>,
+    owner: AccountAddress,
+    profile_id: AccountAddress,
+    content: String,
+    mentions: Option<Vec<AccountAddress>>,
+    actor_address: AccountAddress,
+    sub_agent_id: Option<BcsMoveObjectId>,
+    action_identity_class: u8,
+}
+
+struct ParsedCommentCreated {
+    comment_id: AccountAddress,
+    post_id: AccountAddress,
+    parent_comment_id: Option<AccountAddress>,
+    owner: AccountAddress,
+    profile_id: AccountAddress,
+    content: String,
+    mentions: Option<Vec<AccountAddress>>,
+    actor_address: AccountAddress,
+    sub_agent_id: Option<String>,
+    action_identity_class: u8,
+}
+
+fn bcs_comment_created_from_bytes(contents: &[u8]) -> Result<ParsedCommentCreated, EventParseError> {
+    if let Ok(ev) = bcs::from_bytes::<BcsCommentCreatedEventWithAttribution>(contents) {
+        return Ok(ParsedCommentCreated {
+            comment_id: ev.comment_id,
+            post_id: ev.post_id,
+            parent_comment_id: ev.parent_comment_id,
+            owner: ev.owner,
+            profile_id: ev.profile_id,
+            content: ev.content,
+            mentions: ev.mentions,
+            actor_address: ev.actor_address,
+            sub_agent_id: optional_move_object_id_json(&ev.sub_agent_id),
+            action_identity_class: ev.action_identity_class,
+        });
+    }
+    match bcs::from_bytes::<BcsCommentCreatedEvent>(contents) {
+        Ok(ev) => Ok(ParsedCommentCreated {
+            comment_id: ev.comment_id,
+            post_id: ev.post_id,
+            parent_comment_id: ev.parent_comment_id,
+            owner: ev.owner,
+            profile_id: ev.profile_id,
+            content: ev.content,
+            mentions: ev.mentions,
+            actor_address: ev.owner,
+            sub_agent_id: None,
+            action_identity_class: 0,
+        }),
+        Err(e) => Err(EventParseError {
+            error: format!("CommentCreatedEvent BCS: {}", e),
+            contents: contents.to_vec(),
+        }),
+    }
 }
 
 #[derive(Debug, Deserialize)]
@@ -536,11 +736,95 @@ pub struct BcsReactionEvent {
 }
 
 #[derive(Debug, Deserialize)]
+pub struct BcsReactionEventWithAttribution {
+    object_id: AccountAddress,
+    user: AccountAddress,
+    reaction: String,
+    is_post: bool,
+    principal_owner: AccountAddress,
+    actor_address: AccountAddress,
+    sub_agent_id: Option<BcsMoveObjectId>,
+    action_identity_class: u8,
+}
+
+struct ParsedReactionEvent {
+    object_id: AccountAddress,
+    user: AccountAddress,
+    reaction: String,
+    is_post: bool,
+    principal_owner: AccountAddress,
+    actor_address: AccountAddress,
+    sub_agent_id: Option<String>,
+    action_identity_class: u8,
+}
+
+fn bcs_reaction_from_bytes(contents: &[u8]) -> Result<ParsedReactionEvent, EventParseError> {
+    if let Ok(ev) = bcs::from_bytes::<BcsReactionEventWithAttribution>(contents) {
+        return Ok(ParsedReactionEvent {
+            object_id: ev.object_id,
+            user: ev.user,
+            reaction: ev.reaction,
+            is_post: ev.is_post,
+            principal_owner: ev.principal_owner,
+            actor_address: ev.actor_address,
+            sub_agent_id: optional_move_object_id_json(&ev.sub_agent_id),
+            action_identity_class: ev.action_identity_class,
+        });
+    }
+    match bcs::from_bytes::<BcsReactionEvent>(contents) {
+        Ok(ev) => Ok(ParsedReactionEvent {
+            object_id: ev.object_id,
+            user: ev.user,
+            reaction: ev.reaction,
+            is_post: ev.is_post,
+            principal_owner: ev.user,
+            actor_address: ev.user,
+            sub_agent_id: None,
+            action_identity_class: 0,
+        }),
+        Err(e) => Err(EventParseError {
+            error: format!("ReactionEvent BCS: {}", e),
+            contents: contents.to_vec(),
+        }),
+    }
+}
+
+#[derive(Debug, Deserialize)]
 pub struct BcsRemoveReactionEvent {
     object_id: AccountAddress,
     user: AccountAddress,
     reaction: String,
     is_post: bool,
+}
+
+#[derive(Debug, Deserialize)]
+pub struct BcsRemoveReactionEventWithAttribution {
+    object_id: AccountAddress,
+    user: AccountAddress,
+    reaction: String,
+    is_post: bool,
+    principal_owner: AccountAddress,
+    actor_address: AccountAddress,
+    sub_agent_id: Option<BcsMoveObjectId>,
+    action_identity_class: u8,
+}
+
+fn bcs_remove_reaction_from_bytes(
+    contents: &[u8],
+) -> Result<ParsedReactionEvent, EventParseError> {
+    if let Ok(ev) = bcs::from_bytes::<BcsRemoveReactionEventWithAttribution>(contents) {
+        return Ok(ParsedReactionEvent {
+            object_id: ev.object_id,
+            user: ev.user,
+            reaction: ev.reaction,
+            is_post: ev.is_post,
+            principal_owner: ev.principal_owner,
+            actor_address: ev.actor_address,
+            sub_agent_id: optional_move_object_id_json(&ev.sub_agent_id),
+            action_identity_class: ev.action_identity_class,
+        });
+    }
+    bcs_reaction_from_bytes(contents)
 }
 
 #[derive(Debug, Deserialize)]
@@ -550,6 +834,192 @@ pub struct BcsRepostEvent {
     is_original_post: bool,
     owner: AccountAddress,
     profile_id: AccountAddress,
+}
+
+#[derive(Debug, Deserialize)]
+pub struct BcsRepostEventWithAttribution {
+    repost_id: AccountAddress,
+    original_id: AccountAddress,
+    is_original_post: bool,
+    owner: AccountAddress,
+    profile_id: AccountAddress,
+    actor_address: AccountAddress,
+    sub_agent_id: Option<BcsMoveObjectId>,
+    action_identity_class: u8,
+}
+
+struct ParsedRepostEvent {
+    repost_id: AccountAddress,
+    original_id: AccountAddress,
+    is_original_post: bool,
+    owner: AccountAddress,
+    profile_id: AccountAddress,
+    actor_address: AccountAddress,
+    sub_agent_id: Option<String>,
+    action_identity_class: u8,
+}
+
+fn bcs_repost_from_bytes(contents: &[u8]) -> Result<ParsedRepostEvent, EventParseError> {
+    if let Ok(ev) = bcs::from_bytes::<BcsRepostEventWithAttribution>(contents) {
+        return Ok(ParsedRepostEvent {
+            repost_id: ev.repost_id,
+            original_id: ev.original_id,
+            is_original_post: ev.is_original_post,
+            owner: ev.owner,
+            profile_id: ev.profile_id,
+            actor_address: ev.actor_address,
+            sub_agent_id: optional_move_object_id_json(&ev.sub_agent_id),
+            action_identity_class: ev.action_identity_class,
+        });
+    }
+    match bcs::from_bytes::<BcsRepostEvent>(contents) {
+        Ok(ev) => Ok(ParsedRepostEvent {
+            repost_id: ev.repost_id,
+            original_id: ev.original_id,
+            is_original_post: ev.is_original_post,
+            owner: ev.owner,
+            profile_id: ev.profile_id,
+            actor_address: ev.owner,
+            sub_agent_id: None,
+            action_identity_class: 0,
+        }),
+        Err(e) => Err(EventParseError {
+            error: format!("RepostEvent BCS: {}", e),
+            contents: contents.to_vec(),
+        }),
+    }
+}
+
+fn optional_addr_json(addr: &Option<AccountAddress>) -> Option<String> {
+    addr.as_ref().map(addr_to_string)
+}
+
+fn attribution_json(
+    actor_address: &AccountAddress,
+    sub_agent_id: &Option<BcsMoveObjectId>,
+    action_identity_class: u8,
+) -> serde_json::Value {
+    serde_json::json!({
+        "actor_address": addr_to_string(actor_address),
+        "sub_agent_id": optional_move_object_id_json(sub_agent_id),
+        "action_identity_class": action_identity_class,
+    })
+}
+
+#[derive(Debug, Deserialize)]
+pub struct BcsMemoryAccountCreatedEvent {
+    account_id: AccountAddress,
+    owner: AccountAddress,
+    profile_id: AccountAddress,
+}
+
+#[derive(Debug, Deserialize, Serialize)]
+pub struct BcsSubAgentRegisteredEvent {
+    account_id: AccountAddress,
+    principal_owner: AccountAddress,
+    profile_id: AccountAddress,
+    agent_object_id: AccountAddress,
+    derived_address: AccountAddress,
+    label: String,
+    identity_class: u8,
+    role_tags: u64,
+    capabilities: u64,
+    delegatable_caps: u64,
+    register_scope: u8,
+    approval_required_caps: u64,
+    max_action_spend: Option<u64>,
+    platform_scope: Option<AccountAddress>,
+    parent_object_id: Option<AccountAddress>,
+    depth: u8,
+    registered_by: AccountAddress,
+    expires_at: Option<u64>,
+    active: bool,
+    created_at: u64,
+}
+
+#[derive(Debug, Deserialize)]
+pub struct BcsSubAgentUpdatedEvent {
+    account_id: AccountAddress,
+    principal_owner: AccountAddress,
+    profile_id: AccountAddress,
+    agent_object_id: AccountAddress,
+    derived_address: AccountAddress,
+    label: String,
+    identity_class: u8,
+    role_tags: u64,
+    capabilities: u64,
+    delegatable_caps: u64,
+    register_scope: u8,
+    approval_required_caps: u64,
+    max_action_spend: Option<u64>,
+    platform_scope: Option<AccountAddress>,
+    parent_object_id: Option<AccountAddress>,
+    depth: u8,
+    registered_by: AccountAddress,
+    expires_at: Option<u64>,
+    active: bool,
+    created_at: u64,
+}
+
+#[derive(Debug, Deserialize)]
+pub struct BcsSubAgentDeactivatedEvent {
+    account_id: AccountAddress,
+    principal_owner: AccountAddress,
+    profile_id: AccountAddress,
+    agent_object_id: AccountAddress,
+    derived_address: AccountAddress,
+}
+
+#[derive(Debug, Deserialize)]
+pub struct BcsSubAgentRevokedEvent {
+    account_id: AccountAddress,
+    principal_owner: AccountAddress,
+    profile_id: AccountAddress,
+    agent_object_id: AccountAddress,
+    derived_address: AccountAddress,
+}
+
+#[derive(Debug, Deserialize)]
+pub struct BcsSubAgentsClearedOnTransferEvent {
+    account_id: AccountAddress,
+    principal_owner: AccountAddress,
+    profile_id: AccountAddress,
+    previous_owner: AccountAddress,
+    new_owner: AccountAddress,
+    revoked_count: u64,
+}
+
+#[derive(Debug, Deserialize, Serialize)]
+pub struct BcsMemoryAccountDeactivatedEvent {
+    account_id: AccountAddress,
+    owner: AccountAddress,
+}
+
+#[derive(Debug, Deserialize, Serialize)]
+pub struct BcsMemoryAccountReactivatedEvent {
+    account_id: AccountAddress,
+    owner: AccountAddress,
+}
+
+#[derive(Debug, Deserialize, Serialize)]
+pub struct BcsMemoryAccountMigratedEvent {
+    account_id: AccountAddress,
+    from: u64,
+    to: u64,
+}
+
+#[derive(Debug, Deserialize, Serialize)]
+pub struct BcsMemoryRegistryMigratedEvent {
+    registry_id: AccountAddress,
+    from: u64,
+    to: u64,
+}
+
+#[derive(Debug, Deserialize, Serialize)]
+pub struct BcsAgentMemoryVaultCreatedEvent {
+    vault_id: AccountAddress,
+    agent_object_id: AccountAddress,
+    memory_account_id: AccountAddress,
 }
 
 /// Move `ascii::String` BCS (`bytes` field).
@@ -1563,6 +2033,7 @@ fn parse_event_contents_inner(
         "social_proof_tokens" | "spt" => parse_spt_event(event_name, contents),
         "subscription" | "profile_subscription" => parse_subscription_event(event_name, contents),
         "upgrade" => parse_upgrade_event(event_name, contents),
+        "memory" => parse_memory_event(event_name, contents),
         _ => Ok(None),
     };
 
@@ -2084,11 +2555,13 @@ fn parse_post_event(
                 "spot_id": ev.spot_id.as_ref().map(addr_to_string),
                 "spt_id": ev.spt_id.as_ref().map(addr_to_string),
                 "poc_redirection_kind": ev.poc_redirection_kind,
+                "actor_address": addr_to_string(&ev.actor_address),
+                "sub_agent_id": ev.sub_agent_id,
+                "action_identity_class": ev.action_identity_class,
             })))
         }
         "CommentCreatedEvent" => {
-            let ev = bcs::from_bytes::<BcsCommentCreatedEvent>(contents)
-                .map_err(|e| bcs_parse_err(e, contents))?;
+            let ev = bcs_comment_created_from_bytes(contents)?;
             Ok(Some(serde_json::json!({
                 "comment_id": addr_to_string(&ev.comment_id),
                 "post_id": addr_to_string(&ev.post_id),
@@ -2097,31 +2570,39 @@ fn parse_post_event(
                 "profile_id": addr_to_string(&ev.profile_id),
                 "content": ev.content,
                 "mentions": mentions_to_json(&ev.mentions),
+                "actor_address": addr_to_string(&ev.actor_address),
+                "sub_agent_id": ev.sub_agent_id,
+                "action_identity_class": ev.action_identity_class,
             })))
         }
         "ReactionEvent" | "ReactionAddedEvent" => {
-            let ev = bcs::from_bytes::<BcsReactionEvent>(contents)
-                .map_err(|e| bcs_parse_err(e, contents))?;
+            let ev = bcs_reaction_from_bytes(contents)?;
             Ok(Some(serde_json::json!({
                 "object_id": addr_to_string(&ev.object_id),
-                "user_address": addr_to_string(&ev.user),
+                "user_address": addr_to_string(&ev.actor_address),
                 "reaction_text": ev.reaction,
                 "is_post": ev.is_post,
+                "principal_owner": addr_to_string(&ev.principal_owner),
+                "actor_address": addr_to_string(&ev.actor_address),
+                "sub_agent_id": ev.sub_agent_id,
+                "action_identity_class": ev.action_identity_class,
             })))
         }
         "RemoveReactionEvent" | "ReactionRemovedEvent" => {
-            let ev = bcs::from_bytes::<BcsRemoveReactionEvent>(contents)
-                .map_err(|e| bcs_parse_err(e, contents))?;
+            let ev = bcs_remove_reaction_from_bytes(contents)?;
             Ok(Some(serde_json::json!({
                 "object_id": addr_to_string(&ev.object_id),
-                "user_address": addr_to_string(&ev.user),
+                "user_address": addr_to_string(&ev.actor_address),
                 "reaction_text": ev.reaction,
                 "is_post": ev.is_post,
+                "principal_owner": addr_to_string(&ev.principal_owner),
+                "actor_address": addr_to_string(&ev.actor_address),
+                "sub_agent_id": ev.sub_agent_id,
+                "action_identity_class": ev.action_identity_class,
             })))
         }
         "RepostEvent" | "RepostCreatedEvent" => {
-            let ev = bcs::from_bytes::<BcsRepostEvent>(contents)
-                .map_err(|e| bcs_parse_err(e, contents))?;
+            let ev = bcs_repost_from_bytes(contents)?;
             Ok(Some(serde_json::json!({
                 "repost_id": addr_to_string(&ev.repost_id),
                 "original_id": addr_to_string(&ev.original_id),
@@ -2129,6 +2610,9 @@ fn parse_post_event(
                 "is_original_post": ev.is_original_post,
                 "owner": addr_to_string(&ev.owner),
                 "profile_id": addr_to_string(&ev.profile_id),
+                "actor_address": addr_to_string(&ev.actor_address),
+                "sub_agent_id": ev.sub_agent_id,
+                "action_identity_class": ev.action_identity_class,
             })))
         }
         "TipEvent" | "TipCreatedEvent" => {
@@ -2263,6 +2747,157 @@ fn parse_post_event(
                 "max_reaction_length": ev.max_reaction_length,
                 "commenter_tip_percentage": ev.commenter_tip_percentage,
                 "repost_tip_percentage": ev.repost_tip_percentage,
+            })))
+        }
+        _ => Ok(None),
+    }
+}
+
+fn sub_agent_fields_json(ev: &BcsSubAgentRegisteredEvent) -> serde_json::Value {
+    serde_json::json!({
+        "account_id": addr_to_string(&ev.account_id),
+        "principal_owner": addr_to_string(&ev.principal_owner),
+        "profile_id": addr_to_string(&ev.profile_id),
+        "agent_object_id": addr_to_string(&ev.agent_object_id),
+        "derived_address": addr_to_string(&ev.derived_address),
+        "label": ev.label,
+        "identity_class": ev.identity_class,
+        "role_tags": ev.role_tags,
+        "capabilities": ev.capabilities,
+        "delegatable_caps": ev.delegatable_caps,
+        "register_scope": ev.register_scope,
+        "approval_required_caps": ev.approval_required_caps,
+        "max_action_spend": ev.max_action_spend,
+        "platform_scope": optional_addr_json(&ev.platform_scope),
+        "parent_object_id": optional_addr_json(&ev.parent_object_id),
+        "depth": ev.depth,
+        "registered_by": addr_to_string(&ev.registered_by),
+        "expires_at": ev.expires_at,
+        "active": ev.active,
+        "created_at": ev.created_at,
+    })
+}
+
+fn parse_memory_event(
+    event_name: &str,
+    contents: &[u8],
+) -> Result<Option<serde_json::Value>, EventParseError> {
+    match event_name {
+        "MemoryAccountCreated" => {
+            let ev = bcs::from_bytes::<BcsMemoryAccountCreatedEvent>(contents)
+                .map_err(|e| bcs_parse_err(e, contents))?;
+            Ok(Some(serde_json::json!({
+                "account_id": addr_to_string(&ev.account_id),
+                "owner": addr_to_string(&ev.owner),
+                "profile_id": addr_to_string(&ev.profile_id),
+            })))
+        }
+        "SubAgentRegistered" => {
+            let ev = bcs::from_bytes::<BcsSubAgentRegisteredEvent>(contents)
+                .map_err(|e| bcs_parse_err(e, contents))?;
+            Ok(Some(sub_agent_fields_json(&ev)))
+        }
+        "SubAgentUpdated" => {
+            let ev = bcs::from_bytes::<BcsSubAgentUpdatedEvent>(contents)
+                .map_err(|e| bcs_parse_err(e, contents))?;
+            Ok(Some(sub_agent_fields_json(&BcsSubAgentRegisteredEvent {
+                account_id: ev.account_id,
+                principal_owner: ev.principal_owner,
+                profile_id: ev.profile_id,
+                agent_object_id: ev.agent_object_id,
+                derived_address: ev.derived_address,
+                label: ev.label,
+                identity_class: ev.identity_class,
+                role_tags: ev.role_tags,
+                capabilities: ev.capabilities,
+                delegatable_caps: ev.delegatable_caps,
+                register_scope: ev.register_scope,
+                approval_required_caps: ev.approval_required_caps,
+                max_action_spend: ev.max_action_spend,
+                platform_scope: ev.platform_scope,
+                parent_object_id: ev.parent_object_id,
+                depth: ev.depth,
+                registered_by: ev.registered_by,
+                expires_at: ev.expires_at,
+                active: ev.active,
+                created_at: ev.created_at,
+            })))
+        }
+        "SubAgentDeactivated" => {
+            let ev = bcs::from_bytes::<BcsSubAgentDeactivatedEvent>(contents)
+                .map_err(|e| bcs_parse_err(e, contents))?;
+            Ok(Some(serde_json::json!({
+                "account_id": addr_to_string(&ev.account_id),
+                "principal_owner": addr_to_string(&ev.principal_owner),
+                "profile_id": addr_to_string(&ev.profile_id),
+                "agent_object_id": addr_to_string(&ev.agent_object_id),
+                "derived_address": addr_to_string(&ev.derived_address),
+            })))
+        }
+        "SubAgentRevoked" => {
+            let ev = bcs::from_bytes::<BcsSubAgentRevokedEvent>(contents)
+                .map_err(|e| bcs_parse_err(e, contents))?;
+            Ok(Some(serde_json::json!({
+                "account_id": addr_to_string(&ev.account_id),
+                "principal_owner": addr_to_string(&ev.principal_owner),
+                "profile_id": addr_to_string(&ev.profile_id),
+                "agent_object_id": addr_to_string(&ev.agent_object_id),
+                "derived_address": addr_to_string(&ev.derived_address),
+            })))
+        }
+        "SubAgentsClearedOnTransfer" => {
+            let ev = bcs::from_bytes::<BcsSubAgentsClearedOnTransferEvent>(contents)
+                .map_err(|e| bcs_parse_err(e, contents))?;
+            Ok(Some(serde_json::json!({
+                "account_id": addr_to_string(&ev.account_id),
+                "principal_owner": addr_to_string(&ev.principal_owner),
+                "profile_id": addr_to_string(&ev.profile_id),
+                "previous_owner": addr_to_string(&ev.previous_owner),
+                "new_owner": addr_to_string(&ev.new_owner),
+                "revoked_count": ev.revoked_count,
+            })))
+        }
+        "MemoryAccountDeactivated" => {
+            let ev = bcs::from_bytes::<BcsMemoryAccountDeactivatedEvent>(contents)
+                .map_err(|e| bcs_parse_err(e, contents))?;
+            Ok(Some(serde_json::json!({
+                "account_id": addr_to_string(&ev.account_id),
+                "owner": addr_to_string(&ev.owner),
+            })))
+        }
+        "MemoryAccountReactivated" => {
+            let ev = bcs::from_bytes::<BcsMemoryAccountReactivatedEvent>(contents)
+                .map_err(|e| bcs_parse_err(e, contents))?;
+            Ok(Some(serde_json::json!({
+                "account_id": addr_to_string(&ev.account_id),
+                "owner": addr_to_string(&ev.owner),
+            })))
+        }
+        "MemoryAccountMigrated" => {
+            let ev = bcs::from_bytes::<BcsMemoryAccountMigratedEvent>(contents)
+                .map_err(|e| bcs_parse_err(e, contents))?;
+            Ok(Some(serde_json::json!({
+                "account_id": addr_to_string(&ev.account_id),
+                "from": ev.from,
+                "to": ev.to,
+            })))
+        }
+        "MemoryRegistryMigrated" => {
+            let ev = bcs::from_bytes::<BcsMemoryRegistryMigratedEvent>(contents)
+                .map_err(|e| bcs_parse_err(e, contents))?;
+            Ok(Some(serde_json::json!({
+                "registry_id": addr_to_string(&ev.registry_id),
+                "from": ev.from,
+                "to": ev.to,
+            })))
+        }
+        "AgentMemoryVaultCreated" => {
+            let ev = bcs::from_bytes::<BcsAgentMemoryVaultCreatedEvent>(contents)
+                .map_err(|e| bcs_parse_err(e, contents))?;
+            Ok(Some(serde_json::json!({
+                "vault_id": addr_to_string(&ev.vault_id),
+                "agent_object_id": addr_to_string(&ev.agent_object_id),
+                "memory_account_id": addr_to_string(&ev.memory_account_id),
             })))
         }
         _ => Ok(None),
@@ -3836,7 +4471,7 @@ mod tests {
     }
 
     #[test]
-    fn test_mydata_query_marketplace_events_bcs_roundtrip_and_parse() {
+    fn test_mydata_marketplace_events_bcs_roundtrip_and_parse() {
         use move_core_types::account_address::AccountAddress;
 
         let pool_id = AccountAddress::from_hex_literal("0x1").unwrap();
@@ -3996,7 +4631,7 @@ mod tests {
             .expect("handler produces rows");
         assert_eq!(rows.len(), 1);
         match &rows[0] {
-            SocialEventRow::MyDataQuerySubPool(sp) => {
+            SocialEventRow::MyDataSubPool(sp) => {
                 assert_eq!(sp.sub_pool_id, json["sub_pool_id"].as_str().unwrap());
                 assert_eq!(sp.broad_pool_id, json["broad_pool_id"].as_str().unwrap());
                 assert_eq!(sp.name, "research");
@@ -4004,7 +4639,7 @@ mod tests {
                 assert_eq!(sp.event_id, "digest:7");
                 assert_eq!(sp.transaction_id, "digest");
             }
-            _ => panic!("expected MyDataQuerySubPool row"),
+            _ => panic!("expected MyDataSubPool row"),
         }
     }
 
@@ -4327,5 +4962,143 @@ mod tests {
         );
         assert_eq!(json["is_post"], false);
         assert!(json["post_type"].is_null());
+    }
+
+    #[test]
+    fn comment_created_attribution_bcs_round_trip() {
+        let ev = BcsCommentCreatedEventWithAttribution {
+            comment_id: AccountAddress::from_hex_literal("0x1").unwrap(),
+            post_id: AccountAddress::from_hex_literal("0x2").unwrap(),
+            parent_comment_id: None,
+            owner: AccountAddress::from_hex_literal("0x3").unwrap(),
+            profile_id: AccountAddress::from_hex_literal("0x4").unwrap(),
+            content: "hi".to_string(),
+            mentions: None,
+            actor_address: AccountAddress::from_hex_literal("0x5").unwrap(),
+            sub_agent_id: Some(BcsMoveObjectId {
+                bytes: AccountAddress::from_hex_literal("0x6").unwrap(),
+            }),
+            action_identity_class: 2,
+        };
+        let bytes = bcs::to_bytes(&ev).expect("bcs");
+        let json = parse_event_contents("post", "CommentCreatedEvent", &bytes).expect("parse");
+        assert_eq!(json["action_identity_class"], 2_i64);
+        assert!(json["sub_agent_id"].as_str().is_some());
+    }
+
+    #[test]
+    fn comment_created_legacy_bcs_still_parses() {
+        let ev = BcsCommentCreatedEvent {
+            comment_id: AccountAddress::from_hex_literal("0x1").unwrap(),
+            post_id: AccountAddress::from_hex_literal("0x2").unwrap(),
+            parent_comment_id: None,
+            owner: AccountAddress::from_hex_literal("0x3").unwrap(),
+            profile_id: AccountAddress::from_hex_literal("0x4").unwrap(),
+            content: "legacy".to_string(),
+            mentions: None,
+        };
+        let bytes = bcs::to_bytes(&ev).expect("bcs");
+        let json = parse_event_contents("post", "CommentCreatedEvent", &bytes).expect("parse");
+        assert_eq!(json["action_identity_class"], 0_i64);
+        assert!(json["sub_agent_id"].is_null());
+    }
+
+    #[test]
+    fn memory_account_deactivated_bcs_round_trip() {
+        let ev = BcsMemoryAccountDeactivatedEvent {
+            account_id: AccountAddress::from_hex_literal("0xaa").unwrap(),
+            owner: AccountAddress::from_hex_literal("0xbb").unwrap(),
+        };
+        let bytes = bcs::to_bytes(&ev).expect("bcs");
+        let json =
+            parse_event_contents("memory", "MemoryAccountDeactivated", &bytes).expect("parse");
+        assert!(json["account_id"].as_str().unwrap().starts_with("0x"));
+        assert!(json["owner"].as_str().unwrap().starts_with("0x"));
+    }
+
+    #[test]
+    fn memory_account_reactivated_bcs_round_trip() {
+        let ev = BcsMemoryAccountReactivatedEvent {
+            account_id: AccountAddress::from_hex_literal("0xaa").unwrap(),
+            owner: AccountAddress::from_hex_literal("0xbb").unwrap(),
+        };
+        let bytes = bcs::to_bytes(&ev).expect("bcs");
+        let json =
+            parse_event_contents("memory", "MemoryAccountReactivated", &bytes).expect("parse");
+        assert!(json["account_id"].as_str().unwrap().starts_with("0x"));
+        assert!(json["owner"].as_str().unwrap().starts_with("0x"));
+    }
+
+    #[test]
+    fn memory_account_migrated_bcs_round_trip() {
+        let ev = BcsMemoryAccountMigratedEvent {
+            account_id: AccountAddress::from_hex_literal("0xaa").unwrap(),
+            from: 1,
+            to: 2,
+        };
+        let bytes = bcs::to_bytes(&ev).expect("bcs");
+        let json = parse_event_contents("memory", "MemoryAccountMigrated", &bytes).expect("parse");
+        assert_eq!(json["from"], 1_i64);
+        assert_eq!(json["to"], 2_i64);
+    }
+
+    #[test]
+    fn memory_registry_migrated_bcs_round_trip() {
+        let ev = BcsMemoryRegistryMigratedEvent {
+            registry_id: AccountAddress::from_hex_literal("0xcc").unwrap(),
+            from: 1,
+            to: 2,
+        };
+        let bytes = bcs::to_bytes(&ev).expect("bcs");
+        let json = parse_event_contents("memory", "MemoryRegistryMigrated", &bytes).expect("parse");
+        assert!(json["registry_id"].as_str().unwrap().starts_with("0x"));
+        assert_eq!(json["from"], 1_i64);
+        assert_eq!(json["to"], 2_i64);
+    }
+
+    #[test]
+    fn agent_memory_vault_created_bcs_round_trip() {
+        let ev = BcsAgentMemoryVaultCreatedEvent {
+            vault_id: AccountAddress::from_hex_literal("0x11").unwrap(),
+            agent_object_id: AccountAddress::from_hex_literal("0x22").unwrap(),
+            memory_account_id: AccountAddress::from_hex_literal("0x33").unwrap(),
+        };
+        let bytes = bcs::to_bytes(&ev).expect("bcs");
+        let json =
+            parse_event_contents("memory", "AgentMemoryVaultCreated", &bytes).expect("parse");
+        assert!(json["vault_id"].as_str().unwrap().starts_with("0x"));
+        assert!(json["agent_object_id"].as_str().unwrap().starts_with("0x"));
+        assert!(json["memory_account_id"].as_str().unwrap().starts_with("0x"));
+    }
+
+    #[test]
+    fn sub_agent_registered_memory_bcs_round_trip() {
+        let ev = BcsSubAgentRegisteredEvent {
+            account_id: AccountAddress::from_hex_literal("0xaa").unwrap(),
+            principal_owner: AccountAddress::from_hex_literal("0xbb").unwrap(),
+            profile_id: AccountAddress::from_hex_literal("0xcc").unwrap(),
+            agent_object_id: AccountAddress::from_hex_literal("0xdd").unwrap(),
+            derived_address: AccountAddress::from_hex_literal("0xee").unwrap(),
+            label: "bot".to_string(),
+            identity_class: 1,
+            role_tags: 0,
+            capabilities: 512,
+            delegatable_caps: 0,
+            register_scope: 0,
+            approval_required_caps: 0,
+            max_action_spend: Some(1_000_000_000),
+            platform_scope: None,
+            parent_object_id: None,
+            depth: 1,
+            registered_by: AccountAddress::from_hex_literal("0xbb").unwrap(),
+            expires_at: None,
+            active: true,
+            created_at: 1234,
+        };
+        let bytes = bcs::to_bytes(&ev).expect("bcs");
+        let json = parse_event_contents("memory", "SubAgentRegistered", &bytes).expect("parse");
+        assert_eq!(json["label"], "bot");
+        assert_eq!(json["capabilities"], 512_i64);
+        assert_eq!(json["max_action_spend"], 1_000_000_000_i64);
     }
 }

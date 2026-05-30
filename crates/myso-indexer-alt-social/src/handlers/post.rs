@@ -105,6 +105,29 @@ where
     }
 }
 
+fn attribution_fields(
+    data: &serde_json::Value,
+    default_actor: &str,
+) -> (Option<String>, Option<String>, Option<i16>) {
+    let actor_address = data
+        .get("actor_address")
+        .and_then(|v| v.as_str())
+        .map(String::from)
+        .or_else(|| Some(default_actor.to_string()));
+    let sub_agent_id = data.get("sub_agent_id").and_then(|v| {
+        if v.is_null() {
+            None
+        } else {
+            v.as_str().map(String::from)
+        }
+    });
+    let action_identity_class = data
+        .get("action_identity_class")
+        .and_then(|v| v.as_u64())
+        .and_then(|n| i16::try_from(n).ok());
+    (actor_address, sub_agent_id, action_identity_class)
+}
+
 #[derive(Debug, Deserialize)]
 struct PostCreatedEvent {
     post_id: String,
@@ -135,6 +158,12 @@ struct PostCreatedEvent {
     spt_id: Option<String>,
     #[serde(default, deserialize_with = "de_u8")]
     poc_redirection_kind: u8,
+    #[serde(default)]
+    actor_address: Option<String>,
+    #[serde(default)]
+    sub_agent_id: Option<String>,
+    #[serde(default, deserialize_with = "de_opt_u8")]
+    action_identity_class: Option<u8>,
 }
 
 #[derive(Debug, Deserialize)]
@@ -146,6 +175,12 @@ struct CommentCreatedEvent {
     profile_id: String,
     content: String,
     mentions: Option<serde_json::Value>,
+    #[serde(default)]
+    actor_address: Option<String>,
+    #[serde(default)]
+    sub_agent_id: Option<String>,
+    #[serde(default, deserialize_with = "de_opt_u8")]
+    action_identity_class: Option<u8>,
 }
 
 #[derive(Debug, Deserialize)]
@@ -156,6 +191,14 @@ struct ReactionEvent {
     is_post: bool,
     #[serde(default, deserialize_with = "de_u64")]
     created_at: u64,
+    #[serde(default)]
+    principal_owner: Option<String>,
+    #[serde(default)]
+    actor_address: Option<String>,
+    #[serde(default)]
+    sub_agent_id: Option<String>,
+    #[serde(default, deserialize_with = "de_opt_u8")]
+    action_identity_class: Option<u8>,
 }
 
 #[derive(Debug, Deserialize)]
@@ -164,6 +207,14 @@ struct RemoveReactionEvent {
     user_address: String,
     reaction_text: String,
     is_post: bool,
+    #[serde(default)]
+    principal_owner: Option<String>,
+    #[serde(default)]
+    actor_address: Option<String>,
+    #[serde(default)]
+    sub_agent_id: Option<String>,
+    #[serde(default, deserialize_with = "de_opt_u8")]
+    action_identity_class: Option<u8>,
 }
 
 #[derive(Debug, Deserialize)]
@@ -176,6 +227,12 @@ struct RepostEvent {
     profile_id: String,
     #[serde(default, deserialize_with = "de_u64")]
     created_at: u64,
+    #[serde(default)]
+    actor_address: Option<String>,
+    #[serde(default)]
+    sub_agent_id: Option<String>,
+    #[serde(default, deserialize_with = "de_opt_u8")]
+    action_identity_class: Option<u8>,
 }
 
 #[derive(Debug, Deserialize)]
@@ -374,6 +431,8 @@ fn process_post_created_event(
     };
     let now = Utc::now();
     let created_at = now.timestamp_millis() as i64;
+    let (actor_address, sub_agent_id, action_identity_class) =
+        attribution_fields(data, &ev.owner);
 
     let post = NewPost {
         post_id: ev.post_id,
@@ -425,6 +484,12 @@ fn process_post_created_event(
         spt_id: ev.spt_id,
         platform_id: ev.platform_id,
         permissions: ev.permissions.map(|p| i16::from(p)),
+        actor_address: ev.actor_address.or(actor_address),
+        sub_agent_id: ev.sub_agent_id.or(sub_agent_id),
+        action_identity_class: ev
+            .action_identity_class
+            .map(i16::from)
+            .or(action_identity_class),
     };
     let mut out = vec![
         SocialEventRow::Post(post),
@@ -456,6 +521,8 @@ fn process_comment_created_event(
     let now = Utc::now();
     let created_at = now.timestamp_millis() as i64;
     let id = format!("{}:{}", ev.comment_id, created_at);
+    let (actor_address, sub_agent_id, action_identity_class) =
+        attribution_fields(data, &ev.owner);
 
     let comment = NewComment {
         id,
@@ -479,6 +546,12 @@ fn process_comment_created_event(
         removed_by: None,
         transaction_id: event_id.to_string(),
         time: now,
+        actor_address: ev.actor_address.or(actor_address),
+        sub_agent_id: ev.sub_agent_id.or(sub_agent_id),
+        action_identity_class: ev
+            .action_identity_class
+            .map(i16::from)
+            .or(action_identity_class),
     };
     Some(vec![
         SocialEventRow::Comment(comment),
@@ -503,12 +576,23 @@ fn process_reaction_event(data: &serde_json::Value, event_id: &str) -> Option<Ve
 
     let reaction = NewReaction {
         object_id: ev.object_id.clone(),
-        user_address: ev.user_address,
+        user_address: ev
+            .actor_address
+            .clone()
+            .unwrap_or_else(|| ev.user_address.clone()),
         reaction_text: ev.reaction_text.clone(),
         is_post: ev.is_post,
         created_at,
         time: now,
         transaction_id: event_id.to_string(),
+        principal_owner: ev
+            .principal_owner
+            .or_else(|| Some(ev.user_address.clone())),
+        actor_address: ev
+            .actor_address
+            .or_else(|| Some(ev.user_address.clone())),
+        sub_agent_id: ev.sub_agent_id,
+        action_identity_class: ev.action_identity_class.map(i16::from),
     };
     let count = NewReactionCount {
         object_id: ev.object_id,
@@ -555,6 +639,8 @@ fn process_repost_event(data: &serde_json::Value, event_id: &str) -> Option<Vec<
         now.timestamp_millis() as i64
     };
     let id = format!("{}:{}", ev.repost_id, created_at);
+    let (actor_address, sub_agent_id, action_identity_class) =
+        attribution_fields(data, &ev.owner);
 
     let repost = NewRepost {
         id,
@@ -567,6 +653,12 @@ fn process_repost_event(data: &serde_json::Value, event_id: &str) -> Option<Vec<
         created_at,
         time: now,
         transaction_id: event_id.to_string(),
+        actor_address: ev.actor_address.or(actor_address),
+        sub_agent_id: ev.sub_agent_id.or(sub_agent_id),
+        action_identity_class: ev
+            .action_identity_class
+            .map(i16::from)
+            .or(action_identity_class),
     };
     Some(vec![
         SocialEventRow::Repost(repost),

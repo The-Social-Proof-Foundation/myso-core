@@ -90,6 +90,9 @@ pub struct NewPost {
     pub spt_id: Option<String>,
     pub platform_id: Option<String>,
     pub permissions: Option<i16>,
+    pub actor_address: Option<String>,
+    pub sub_agent_id: Option<String>,
+    pub action_identity_class: Option<i16>,
 }
 
 #[derive(Debug, Clone, Insertable, Serialize, Deserialize)]
@@ -116,6 +119,9 @@ pub struct NewComment {
     pub removed_by: Option<String>,
     pub transaction_id: String,
     pub time: chrono::DateTime<chrono::Utc>,
+    pub actor_address: Option<String>,
+    pub sub_agent_id: Option<String>,
+    pub action_identity_class: Option<i16>,
 }
 
 #[derive(Debug, Clone, Insertable, Serialize, Deserialize)]
@@ -128,6 +134,10 @@ pub struct NewReaction {
     pub created_at: i64,
     pub time: chrono::DateTime<chrono::Utc>,
     pub transaction_id: String,
+    pub principal_owner: Option<String>,
+    pub actor_address: Option<String>,
+    pub sub_agent_id: Option<String>,
+    pub action_identity_class: Option<i16>,
 }
 
 #[derive(Debug, Clone, Insertable, Serialize, Deserialize)]
@@ -151,6 +161,9 @@ pub struct NewRepost {
     pub created_at: i64,
     pub time: chrono::DateTime<chrono::Utc>,
     pub transaction_id: String,
+    pub actor_address: Option<String>,
+    pub sub_agent_id: Option<String>,
+    pub action_identity_class: Option<i16>,
 }
 
 #[derive(Debug, Clone, Insertable, Serialize, Deserialize)]
@@ -283,6 +296,9 @@ pub struct CommentRow {
     pub created_at: i64,
     pub reaction_count: i64,
     pub comment_count: i64,
+    pub actor_address: Option<String>,
+    pub sub_agent_id: Option<String>,
+    pub action_identity_class: Option<i16>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -290,6 +306,10 @@ pub struct ReactionRow {
     pub user_address: String,
     pub reaction_text: String,
     pub created_at: i64,
+    pub principal_owner: Option<String>,
+    pub actor_address: Option<String>,
+    pub sub_agent_id: Option<String>,
+    pub action_identity_class: Option<i16>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -299,6 +319,9 @@ pub struct RepostRow {
     pub owner: String,
     pub profile_id: String,
     pub created_at: i64,
+    pub actor_address: Option<String>,
+    pub sub_agent_id: Option<String>,
+    pub action_identity_class: Option<i16>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]

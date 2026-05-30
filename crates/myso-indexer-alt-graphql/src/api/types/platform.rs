@@ -2,10 +2,12 @@
 // SPDX-License-Identifier: Apache-2.0
 
 use std::str::FromStr;
+use std::sync::Arc;
 
 use async_graphql::Context;
 use async_graphql::Object;
 use myso_indexer_alt_social_reader::PlatformRow as DbPlatform;
+use myso_indexer_alt_social_reader::SocialPgReader;
 use myso_indexer_alt_social_schema::models::{
     PlatformMemberRow, PlatformModeratorRow, ProfilePlatformMembershipRow,
 };
@@ -40,6 +42,17 @@ impl Platform {
     pub(crate) fn from_db(inner: DbPlatform) -> Self {
         Self { inner }
     }
+}
+
+/// Resolve a platform by on-chain platform id. Returns None when social DB is not configured.
+pub(crate) async fn resolve_platform_by_id(
+    ctx: &Context<'_>,
+    platform_id: &str,
+) -> Option<Platform> {
+    let reader_opt = ctx.data_opt::<Arc<Option<SocialPgReader>>>()?;
+    let reader = reader_opt.as_ref().as_ref()?;
+    let row = reader.get_platform_by_id(platform_id).await.ok()??;
+    Some(Platform::from_db(row))
 }
 
 #[Object]

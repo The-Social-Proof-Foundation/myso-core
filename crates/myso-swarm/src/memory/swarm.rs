@@ -44,6 +44,7 @@ pub struct SwarmBuilder<R = OsRng> {
     genesis_config: Option<GenesisConfig>,
     network_config: Option<NetworkConfig>,
     chain_override: Option<Chain>,
+    reference_gas_price: Option<u64>,
     additional_objects: Vec<Object>,
     fullnode_count: usize,
     fullnode_rpc_port: Option<u16>,
@@ -81,6 +82,7 @@ impl SwarmBuilder {
             genesis_config: None,
             network_config: None,
             chain_override: None,
+            reference_gas_price: None,
             additional_objects: vec![],
             fullnode_count: 0,
             fullnode_rpc_port: None,
@@ -118,6 +120,7 @@ impl<R> SwarmBuilder<R> {
             genesis_config: self.genesis_config,
             network_config: self.network_config,
             chain_override: self.chain_override,
+            reference_gas_price: self.reference_gas_price,
             additional_objects: self.additional_objects,
             fullnode_count: self.fullnode_count,
             fullnode_rpc_port: self.fullnode_rpc_port,
@@ -178,6 +181,11 @@ impl<R> SwarmBuilder<R> {
     pub fn with_chain_override(mut self, chain: Chain) -> Self {
         assert!(self.chain_override.is_none());
         self.chain_override = Some(chain);
+        self
+    }
+
+    pub fn with_reference_gas_price(mut self, reference_gas_price: u64) -> Self {
+        self.reference_gas_price = Some(reference_gas_price);
         self
     }
 
@@ -388,6 +396,10 @@ impl<R: rand::RngCore + rand::CryptoRng> SwarmBuilder<R> {
 
             if let Some(chain_override) = self.chain_override {
                 config_builder = config_builder.with_chain_override(chain_override);
+            }
+
+            if let Some(reference_gas_price) = self.reference_gas_price {
+                config_builder = config_builder.with_reference_gas_price(reference_gas_price);
             }
 
             if let Some(num_unpruned_validators) = self.num_unpruned_validators {

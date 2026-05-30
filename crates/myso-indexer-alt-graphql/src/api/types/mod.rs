@@ -30,6 +30,7 @@ pub(crate) mod move_object;
 pub(crate) mod move_package;
 pub(crate) mod move_type;
 pub(crate) mod move_value;
+pub(crate) mod memory;
 pub(crate) mod mydata;
 pub(crate) mod node;
 pub(crate) mod object;

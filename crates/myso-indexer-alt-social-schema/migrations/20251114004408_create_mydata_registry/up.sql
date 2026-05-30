@@ -9,7 +9,7 @@
 -- MyData Registry table - tracks IP ID to owner mappings
 -- This is a regular table (not hypertable) since it's a registry mapping
 CREATE TABLE IF NOT EXISTS mydata_registry (
-    ip_id TEXT NOT NULL PRIMARY KEY,
+    mydata_id TEXT NOT NULL PRIMARY KEY,
     owner TEXT NOT NULL,
     registered_at BIGINT NOT NULL,
     unregistered_at BIGINT,
@@ -29,7 +29,7 @@ CREATE INDEX IF NOT EXISTS idx_mydata_registry_transaction_id ON mydata_registry
 -- ============================================================================
 
 COMMENT ON TABLE mydata_registry IS 'Tracks MyData IP ID to owner mappings. Records registration and unregistration events from the blockchain.';
-COMMENT ON COLUMN mydata_registry.ip_id IS 'The IP ID (address) of the MyData object';
+COMMENT ON COLUMN mydata_registry.mydata_id IS 'The MyData object ID (address)';
 COMMENT ON COLUMN mydata_registry.owner IS 'The owner address of the MyData';
 COMMENT ON COLUMN mydata_registry.registered_at IS 'Unix timestamp in milliseconds when the MyData was registered';
 COMMENT ON COLUMN mydata_registry.unregistered_at IS 'Unix timestamp in milliseconds when the MyData was unregistered (NULL if still active)';

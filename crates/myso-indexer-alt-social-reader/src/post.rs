@@ -111,6 +111,12 @@ pub struct PostRow {
     pub platform_id: Option<String>,
     #[diesel(sql_type = Nullable<SmallInt>)]
     pub permissions: Option<i16>,
+    #[diesel(sql_type = Nullable<Text>)]
+    pub actor_address: Option<String>,
+    #[diesel(sql_type = Nullable<Text>)]
+    pub sub_agent_id: Option<String>,
+    #[diesel(sql_type = Nullable<SmallInt>)]
+    pub action_identity_class: Option<i16>,
 }
 
 #[derive(Debug, Clone)]
@@ -229,10 +235,16 @@ pub(crate) async fn get_comment_by_id(
         reaction_count: Option<i64>,
         #[diesel(sql_type = Nullable<BigInt>)]
         comment_count: Option<i64>,
+        #[diesel(sql_type = Nullable<Text>)]
+        actor_address: Option<String>,
+        #[diesel(sql_type = Nullable<Text>)]
+        sub_agent_id: Option<String>,
+        #[diesel(sql_type = Nullable<SmallInt>)]
+        action_identity_class: Option<i16>,
     }
     let query = "
         SELECT comment_id, post_id, parent_comment_id, owner, profile_id, content, created_at,
-               reaction_count, comment_count
+               reaction_count, comment_count, actor_address, sub_agent_id, action_identity_class
         FROM comments
         WHERE (comment_id = $1 OR id = $1) AND deleted_at IS NULL
         ORDER BY created_at DESC
@@ -254,6 +266,9 @@ pub(crate) async fn get_comment_by_id(
         created_at: r.created_at,
         reaction_count: r.reaction_count.unwrap_or(0),
         comment_count: r.comment_count.unwrap_or(0),
+        actor_address: r.actor_address,
+        sub_agent_id: r.sub_agent_id,
+        action_identity_class: r.action_identity_class,
     }))
 }
 
@@ -261,6 +276,7 @@ pub(crate) async fn list_posts(
     conn: &mut Connection<'_>,
     owner: Option<&str>,
     post_type: Option<&str>,
+    sub_agent_id: Option<&str>,
     limit: i64,
     offset: i64,
     metrics: &DbReaderMetrics,
@@ -278,11 +294,12 @@ pub(crate) async fn list_posts(
                enable_spt, enable_spot, spot_id, spt_id, mydata_id,
                revenue_recipient, requires_subscription, subscription_service_id, subscription_price,
                encrypted_content_hash, removed_from_platform, removed_by, metadata_json, promotion_id,
-               platform_id, permissions
+               platform_id, permissions, actor_address, sub_agent_id, action_identity_class
         FROM posts
         WHERE deleted_at IS NULL
         AND ($1::TEXT IS NULL OR owner = $1)
         AND ($2::TEXT IS NULL OR post_type = $2)
+        AND ($5::TEXT IS NULL OR sub_agent_id = $5)
         ORDER BY created_at DESC
         LIMIT $3 OFFSET $4
     ";
@@ -291,6 +308,7 @@ pub(crate) async fn list_posts(
         .bind::<Nullable<Text>, _>(post_type)
         .bind::<BigInt, _>(limit)
         .bind::<BigInt, _>(offset)
+        .bind::<Nullable<Text>, _>(sub_agent_id)
         .load::<PostRow>(conn)
         .await?;
     metrics.requests_succeeded.inc();
@@ -345,7 +363,7 @@ pub(crate) async fn list_posts_for_profile(
                enable_spt, enable_spot, spot_id, spt_id, mydata_id,
                revenue_recipient, requires_subscription, subscription_service_id, subscription_price,
                encrypted_content_hash, removed_from_platform, removed_by, metadata_json, promotion_id,
-               platform_id, permissions
+               platform_id, permissions, actor_address, sub_agent_id, action_identity_class
         FROM (
             SELECT DISTINCT ON (post_id) *
             FROM posts
@@ -465,10 +483,16 @@ pub(crate) async fn get_post_comments(
         reaction_count: Option<i64>,
         #[diesel(sql_type = Nullable<BigInt>)]
         comment_count: Option<i64>,
+        #[diesel(sql_type = Nullable<Text>)]
+        actor_address: Option<String>,
+        #[diesel(sql_type = Nullable<Text>)]
+        sub_agent_id: Option<String>,
+        #[diesel(sql_type = Nullable<SmallInt>)]
+        action_identity_class: Option<i16>,
     }
     let query = "
         SELECT comment_id, post_id, parent_comment_id, owner, profile_id, content, created_at,
-               reaction_count, comment_count
+               reaction_count, comment_count, actor_address, sub_agent_id, action_identity_class
         FROM comments
         WHERE post_id = $1 AND deleted_at IS NULL
         ORDER BY created_at DESC
@@ -493,6 +517,9 @@ pub(crate) async fn get_post_comments(
             created_at: r.created_at,
             reaction_count: r.reaction_count.unwrap_or(0),
             comment_count: r.comment_count.unwrap_or(0),
+            actor_address: r.actor_address,
+            sub_agent_id: r.sub_agent_id,
+            action_identity_class: r.action_identity_class,
         })
         .collect())
 }
@@ -514,9 +541,18 @@ pub(crate) async fn get_post_reactions(
         reaction_text: String,
         #[diesel(sql_type = BigInt)]
         created_at: i64,
+        #[diesel(sql_type = Nullable<Text>)]
+        principal_owner: Option<String>,
+        #[diesel(sql_type = Nullable<Text>)]
+        actor_address: Option<String>,
+        #[diesel(sql_type = Nullable<Text>)]
+        sub_agent_id: Option<String>,
+        #[diesel(sql_type = Nullable<SmallInt>)]
+        action_identity_class: Option<i16>,
     }
     let query = "
-        SELECT user_address, reaction_text, created_at
+        SELECT user_address, reaction_text, created_at, principal_owner, actor_address,
+               sub_agent_id, action_identity_class
         FROM reactions
         WHERE object_id = $1 AND is_post = true
         ORDER BY created_at DESC
@@ -535,6 +571,10 @@ pub(crate) async fn get_post_reactions(
             user_address: r.user_address,
             reaction_text: r.reaction_text,
             created_at: r.created_at,
+            principal_owner: r.principal_owner,
+            actor_address: r.actor_address,
+            sub_agent_id: r.sub_agent_id,
+            action_identity_class: r.action_identity_class,
         })
         .collect())
 }
@@ -560,16 +600,25 @@ pub(crate) async fn get_post_reposts(
         profile_id: String,
         #[diesel(sql_type = BigInt)]
         created_at: i64,
+        #[diesel(sql_type = Nullable<Text>)]
+        actor_address: Option<String>,
+        #[diesel(sql_type = Nullable<Text>)]
+        sub_agent_id: Option<String>,
+        #[diesel(sql_type = Nullable<SmallInt>)]
+        action_identity_class: Option<i16>,
     }
     let query = format!(
         "
-        SELECT repost_id, original_post_id, owner, profile_id, created_at
+        SELECT repost_id, original_post_id, owner, profile_id, created_at,
+               actor_address, sub_agent_id, action_identity_class
         FROM (
-            SELECT repost_id, original_post_id, owner, profile_id, created_at
+            SELECT repost_id, original_post_id, owner, profile_id, created_at,
+                   actor_address, sub_agent_id, action_identity_class
             FROM reposts
             WHERE original_post_id = $1 AND is_original_post = true
             UNION ALL
-            SELECT post_id AS repost_id, parent_post_id AS original_post_id, owner, profile_id, created_at
+            SELECT post_id AS repost_id, parent_post_id AS original_post_id, owner, profile_id, created_at,
+                   actor_address, sub_agent_id, action_identity_class
             FROM posts
             WHERE parent_post_id = $1 AND post_type = '{}' AND deleted_at IS NULL
         ) AS combined
@@ -593,6 +642,9 @@ pub(crate) async fn get_post_reposts(
             owner: r.owner,
             profile_id: r.profile_id,
             created_at: r.created_at,
+            actor_address: r.actor_address,
+            sub_agent_id: r.sub_agent_id,
+            action_identity_class: r.action_identity_class,
         })
         .collect())
 }

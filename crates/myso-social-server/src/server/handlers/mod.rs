@@ -4,6 +4,7 @@
 mod governance;
 mod health;
 mod insurance;
+mod memory;
 mod mydata;
 mod platforms;
 mod poc;
@@ -35,14 +36,18 @@ pub use insurance::{
     list_insurance_market_policies, list_insurance_policies, list_insurance_vault_transactions,
     list_insurance_vaults,
 };
+pub use memory::{
+    get_profile_memory_account, get_sub_agent, get_sub_agent_by_object_id,
+    list_profile_sub_agents, list_sub_agent_children,
+};
 pub use mydata::{
     get_creator_mydata, get_mydata_access_analytics, get_mydata_access_logs, get_mydata_by_id,
-    get_mydata_configuration, get_mydata_purchases, get_mydata_query_distribution_round,
-    get_mydata_query_merkle_root, get_mydata_query_snapshot_anchor, get_mydata_revenue,
+    get_mydata_configuration, get_mydata_purchases, get_mydata_distribution_round,
+    get_mydata_merkle_root, get_mydata_snapshot_anchor, get_mydata_revenue,
     get_mydata_revenue_timeline, get_mydata_stats, get_mydata_subscriptions, get_popular_mydata,
-    list_mydata, list_mydata_query_broad_pools, list_mydata_query_claims_for_snapshot,
-    list_mydata_query_distribution_rounds, list_mydata_query_listings_for_sub_pool,
-    list_mydata_query_sub_pools_for_broad_pool, list_mydata_query_sub_pools_for_mydata_listing,
+    list_mydata, list_mydata_broad_pools, list_mydata_claims_for_snapshot,
+    list_mydata_distribution_rounds, list_mydata_listings_for_sub_pool,
+    list_mydata_sub_pools_for_broad_pool, list_mydata_sub_pools_for_mydata_listing,
 };
 pub use platforms::{
     check_platform_membership, get_platform_approval, get_platform_blocked, get_platform_by_id,

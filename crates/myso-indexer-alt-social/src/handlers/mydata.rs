@@ -3,9 +3,9 @@
 
 use super::SocialEventRow;
 use myso_indexer_alt_social_schema::models::{
-    NewMyDataAccessLog, NewMyDataConfig, NewMyDataData, NewMyDataPurchase, NewMyDataQueryBroadPool,
-    NewMyDataQueryClaim, NewMyDataQueryDistributionRound, NewMyDataQueryListingSubPool,
-    NewMyDataQueryMerkleRoot, NewMyDataQuerySnapshotAnchor, NewMyDataQuerySubPool,
+    NewMyDataAccessLog, NewMyDataConfig, NewMyDataData, NewMyDataPurchase, NewMyDataBroadPool,
+    NewMyDataClaim, NewMyDataDistributionRound, NewMyDataListingSubPool,
+    NewMyDataMerkleRoot, NewMyDataSnapshotAnchor, NewMyDataSubPool,
     NewMyDataRegistry, NewMyDataRevenue, NewMyDataSubscription,
 };
 
@@ -32,11 +32,10 @@ pub(crate) fn json_tags_field(data: &serde_json::Value) -> serde_json::Value {
     data.get("tags")
         .and_then(|v| v.as_array())
         .map(|arr| {
-            serde_json::json!(
-                arr.iter()
-                    .filter_map(|t| t.as_str().map(String::from))
-                    .collect::<Vec<_>>()
-            )
+            serde_json::json!(arr
+                .iter()
+                .filter_map(|t| t.as_str().map(String::from))
+                .collect::<Vec<_>>())
         })
         .unwrap_or_else(|| serde_json::json!([]))
 }
@@ -46,13 +45,13 @@ pub(crate) fn u64_to_db_i64(n: u64) -> i64 {
 }
 
 pub(crate) fn new_mydata_registry_row(
-    ip_id: String,
+    mydata_id: String,
     owner: String,
     registered_at: i64,
     transaction_id: String,
 ) -> NewMyDataRegistry {
     NewMyDataRegistry {
-        ip_id,
+        mydata_id,
         owner,
         registered_at,
         unregistered_at: None,
@@ -105,12 +104,9 @@ fn process_mydata_registered_event(
     let owner = data.get("owner")?.as_str()?.to_string();
     let registered_at = json_to_i64(data.get("registered_at")?);
 
-    Some(vec![SocialEventRow::MyDataRegistry(new_mydata_registry_row(
-        ip_id,
-        owner,
-        registered_at,
-        transaction_id.to_string(),
-    ))])
+    Some(vec![SocialEventRow::MyDataRegistry(
+        new_mydata_registry_row(ip_id, owner, registered_at, transaction_id.to_string()),
+    )])
 }
 
 fn process_mydata_unregistered_event(
@@ -122,7 +118,7 @@ fn process_mydata_unregistered_event(
     let unregistered_at = json_to_i64(data.get("unregistered_at")?);
 
     Some(vec![SocialEventRow::MyDataRegistryUpdate {
-        ip_id,
+        mydata_id: ip_id,
         owner,
         unregistered_at,
         transaction_id: transaction_id.to_string(),
@@ -159,18 +155,16 @@ fn process_mydata_created_event(
         data_quality: json_opt_string_field(data, "data_quality"),
         sample_size: json_opt_i64_field(data, "sample_size"),
         collection_method: json_opt_string_field(data, "collection_method"),
-        is_updating: data.get("is_updating").and_then(|v| v.as_bool()).unwrap_or(false),
+        is_updating: data
+            .get("is_updating")
+            .and_then(|v| v.as_bool())
+            .unwrap_or(false),
         update_frequency: json_opt_string_field(data, "update_frequency"),
         version: json_opt_i64_field(data, "version").unwrap_or(1),
         transaction_id: transaction_id.to_string(),
     };
 
-    let registry = new_mydata_registry_row(
-        ip_id,
-        owner,
-        created_at,
-        transaction_id.to_string(),
-    );
+    let registry = new_mydata_registry_row(ip_id, owner, created_at, transaction_id.to_string());
 
     Some(vec![
         SocialEventRow::MyDataData(new_data),
@@ -315,8 +309,8 @@ fn process_query_broad_pool_created(
     let pool_id = data.get("pool_id")?.as_str()?.to_string();
     let name = data.get("name")?.as_str()?.to_string();
     let created_at_ms = json_to_i64(data.get("created_at")?);
-    Some(vec![SocialEventRow::MyDataQueryBroadPool(
-        NewMyDataQueryBroadPool {
+    Some(vec![SocialEventRow::MyDataBroadPool(
+        NewMyDataBroadPool {
             pool_id,
             name,
             created_at_ms,
@@ -335,8 +329,8 @@ fn process_query_sub_pool_created(
     let broad_pool_id = data.get("broad_pool_id")?.as_str()?.to_string();
     let name = data.get("name")?.as_str()?.to_string();
     let created_at_ms = json_to_i64(data.get("created_at")?);
-    Some(vec![SocialEventRow::MyDataQuerySubPool(
-        NewMyDataQuerySubPool {
+    Some(vec![SocialEventRow::MyDataSubPool(
+        NewMyDataSubPool {
             sub_pool_id,
             broad_pool_id,
             name,
@@ -358,7 +352,7 @@ fn process_query_listing_sub_pools_assigned(
     let mut rows = Vec::with_capacity(arr.len());
     for v in arr {
         let sub_pool_id = v.as_str()?.to_string();
-        rows.push(NewMyDataQueryListingSubPool {
+        rows.push(NewMyDataListingSubPool {
             listing_id: listing_id.clone(),
             sub_pool_id,
             assigned_at_ms,
@@ -366,7 +360,7 @@ fn process_query_listing_sub_pools_assigned(
             transaction_id: transaction_id.clone(),
         });
     }
-    Some(vec![SocialEventRow::MyDataQueryListingSubPoolsReplace {
+    Some(vec![SocialEventRow::MyDataListingSubPoolsReplace {
         listing_id,
         rows,
     }])
@@ -392,8 +386,8 @@ fn process_query_snapshot_anchor_recorded(
         .get("payment_reference")
         .and_then(|v| v.as_str())
         .map(String::from);
-    Some(vec![SocialEventRow::MyDataQuerySnapshotAnchor(
-        NewMyDataQuerySnapshotAnchor {
+    Some(vec![SocialEventRow::MyDataSnapshotAnchor(
+        NewMyDataSnapshotAnchor {
             snapshot_id,
             buyer_address,
             price_paid,
@@ -422,8 +416,8 @@ fn process_query_distribution_recorded(
         .or_else(|| count_raw.as_u64().map(u64_to_db_i64))?;
     let merkle_root = data.get("merkle_root")?.as_str()?.to_string();
     let published_at_ms = json_to_i64(data.get("published_at")?);
-    Some(vec![SocialEventRow::MyDataQueryDistributionRound(
-        NewMyDataQueryDistributionRound {
+    Some(vec![SocialEventRow::MyDataDistributionRound(
+        NewMyDataDistributionRound {
             snapshot_id,
             total_amount,
             contributor_count,
@@ -443,8 +437,8 @@ fn process_query_merkle_root_published(
     let snapshot_id = data.get("snapshot_id")?.as_str()?.to_string();
     let root_hash = data.get("root_hash")?.as_str()?.to_string();
     let published_at_ms = json_to_i64(data.get("published_at")?);
-    Some(vec![SocialEventRow::MyDataQueryMerkleRoot(
-        NewMyDataQueryMerkleRoot {
+    Some(vec![SocialEventRow::MyDataMerkleRoot(
+        NewMyDataMerkleRoot {
             snapshot_id,
             root_hash,
             published_at_ms,
@@ -466,8 +460,8 @@ fn process_query_claim_executed(
         .as_i64()
         .or_else(|| amount_raw.as_u64().map(u64_to_db_i64))?;
     let claimed_at_ms = json_to_i64(data.get("claimed_at")?);
-    Some(vec![SocialEventRow::MyDataQueryClaim(
-        NewMyDataQueryClaim {
+    Some(vec![SocialEventRow::MyDataClaim(
+        NewMyDataClaim {
             snapshot_id,
             claimant,
             amount,

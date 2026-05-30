@@ -9,6 +9,8 @@ Implements features like comments, reposts, and quotes
 
 -  [Struct `PoCBadgeSnapshot`](#social_contracts_post_PoCBadgeSnapshot)
 -  [Struct `Post`](#social_contracts_post_Post)
+-  [Struct `PostAttribution`](#social_contracts_post_PostAttribution)
+-  [Struct `CommentAttribution`](#social_contracts_post_CommentAttribution)
 -  [Struct `Comment`](#social_contracts_post_Comment)
 -  [Struct `Repost`](#social_contracts_post_Repost)
 -  [Struct `PromotionView`](#social_contracts_post_PromotionView)
@@ -51,6 +53,16 @@ Implements features like comments, reposts, and quotes
 -  [Function `poc_outcome`](#social_contracts_post_poc_outcome)
 -  [Function `poc_redirection_kind`](#social_contracts_post_poc_redirection_kind)
 -  [Function `poc_disputes_submitted`](#social_contracts_post_poc_disputes_submitted)
+-  [Function `actor_address`](#social_contracts_post_actor_address)
+-  [Function `sub_agent_id`](#social_contracts_post_sub_agent_id)
+-  [Function `action_identity_class`](#social_contracts_post_action_identity_class)
+-  [Function `comment_actor_address`](#social_contracts_post_comment_actor_address)
+-  [Function `comment_sub_agent_id`](#social_contracts_post_comment_sub_agent_id)
+-  [Function `comment_action_identity_class`](#social_contracts_post_comment_action_identity_class)
+-  [Function `post_attribution`](#social_contracts_post_post_attribution)
+-  [Function `attach_post_attribution`](#social_contracts_post_attach_post_attribution)
+-  [Function `comment_attribution`](#social_contracts_post_comment_attribution)
+-  [Function `attach_comment_attribution`](#social_contracts_post_attach_comment_attribution)
 -  [Function `tip_post_requires_beneficiary_vault_for_amount`](#social_contracts_post_tip_post_requires_beneficiary_vault_for_amount)
 -  [Function `poc_redirection_none`](#social_contracts_post_poc_redirection_none)
 -  [Function `get_poc_badge`](#social_contracts_post_get_poc_badge)
@@ -68,6 +80,8 @@ Implements features like comments, reposts, and quotes
 -  [Function `set_spt_id`](#social_contracts_post_set_spt_id)
 -  [Function `bootstrap_init`](#social_contracts_post_bootstrap_init)
 -  [Function `convert_urls_to_strings`](#social_contracts_post_convert_urls_to_strings)
+-  [Function `resolve_social_actor`](#social_contracts_post_resolve_social_actor)
+-  [Function `assert_tip_spend_limit`](#social_contracts_post_assert_tip_spend_limit)
 -  [Function `create_post_internal`](#social_contracts_post_create_post_internal)
 -  [Function `assert_mydata_id_allowed_for_owner`](#social_contracts_post_assert_mydata_id_allowed_for_owner)
 -  [Function `create_post`](#social_contracts_post_create_post)
@@ -149,6 +163,7 @@ Implements features like comments, reposts, and quotes
 <b>use</b> <a href="../myso/coin.md#myso_coin">myso::coin</a>;
 <b>use</b> <a href="../myso/config.md#myso_config">myso::config</a>;
 <b>use</b> <a href="../myso/deny_list.md#myso_deny_list">myso::deny_list</a>;
+<b>use</b> <a href="../myso/derived_object.md#myso_derived_object">myso::derived_object</a>;
 <b>use</b> <a href="../myso/dynamic_field.md#myso_dynamic_field">myso::dynamic_field</a>;
 <b>use</b> <a href="../myso/dynamic_object_field.md#myso_dynamic_object_field">myso::dynamic_object_field</a>;
 <b>use</b> <a href="../myso/event.md#myso_event">myso::event</a>;
@@ -452,6 +467,79 @@ Post object that contains content information
 </dt>
 <dd>
  Version for upgrades
+</dd>
+</dl>
+
+
+</details>
+
+<a name="social_contracts_post_PostAttribution"></a>
+
+## Struct `PostAttribution`
+
+Published-action attribution stored as a dynamic field (Post is at the VM field-count limit).
+
+
+<pre><code><b>public</b> <b>struct</b> <a href="../social_contracts/post.md#social_contracts_post_PostAttribution">PostAttribution</a> <b>has</b> <b>copy</b>, drop, store
+</code></pre>
+
+
+
+<details>
+<summary>Fields</summary>
+
+
+<dl>
+<dt>
+<code><a href="../social_contracts/post.md#social_contracts_post_actor_address">actor_address</a>: <b>address</b></code>
+</dt>
+<dd>
+</dd>
+<dt>
+<code><a href="../social_contracts/post.md#social_contracts_post_sub_agent_id">sub_agent_id</a>: <a href="../std/option.md#std_option_Option">std::option::Option</a>&lt;<a href="../myso/object.md#myso_object_ID">myso::object::ID</a>&gt;</code>
+</dt>
+<dd>
+</dd>
+<dt>
+<code><a href="../social_contracts/post.md#social_contracts_post_action_identity_class">action_identity_class</a>: u8</code>
+</dt>
+<dd>
+</dd>
+</dl>
+
+
+</details>
+
+<a name="social_contracts_post_CommentAttribution"></a>
+
+## Struct `CommentAttribution`
+
+
+
+<pre><code><b>public</b> <b>struct</b> <a href="../social_contracts/post.md#social_contracts_post_CommentAttribution">CommentAttribution</a> <b>has</b> <b>copy</b>, drop, store
+</code></pre>
+
+
+
+<details>
+<summary>Fields</summary>
+
+
+<dl>
+<dt>
+<code><a href="../social_contracts/post.md#social_contracts_post_actor_address">actor_address</a>: <b>address</b></code>
+</dt>
+<dd>
+</dd>
+<dt>
+<code><a href="../social_contracts/post.md#social_contracts_post_sub_agent_id">sub_agent_id</a>: <a href="../std/option.md#std_option_Option">std::option::Option</a>&lt;<a href="../myso/object.md#myso_object_ID">myso::object::ID</a>&gt;</code>
+</dt>
+<dd>
+</dd>
+<dt>
+<code><a href="../social_contracts/post.md#social_contracts_post_action_identity_class">action_identity_class</a>: u8</code>
+</dt>
+<dd>
 </dd>
 </dl>
 
@@ -1073,6 +1161,21 @@ Post created event
 <dd>
  Matches <code><a href="../social_contracts/post.md#social_contracts_post_Post">Post</a>.<a href="../social_contracts/post.md#social_contracts_post_poc_redirection_kind">poc_redirection_kind</a></code> at creation (<code>POC_REDIRECT_*</code>).
 </dd>
+<dt>
+<code><a href="../social_contracts/post.md#social_contracts_post_actor_address">actor_address</a>: <b>address</b></code>
+</dt>
+<dd>
+</dd>
+<dt>
+<code><a href="../social_contracts/post.md#social_contracts_post_sub_agent_id">sub_agent_id</a>: <a href="../std/option.md#std_option_Option">std::option::Option</a>&lt;<a href="../myso/object.md#myso_object_ID">myso::object::ID</a>&gt;</code>
+</dt>
+<dd>
+</dd>
+<dt>
+<code><a href="../social_contracts/post.md#social_contracts_post_action_identity_class">action_identity_class</a>: u8</code>
+</dt>
+<dd>
+</dd>
 </dl>
 
 
@@ -1130,6 +1233,21 @@ Comment created event
 </dt>
 <dd>
 </dd>
+<dt>
+<code><a href="../social_contracts/post.md#social_contracts_post_actor_address">actor_address</a>: <b>address</b></code>
+</dt>
+<dd>
+</dd>
+<dt>
+<code><a href="../social_contracts/post.md#social_contracts_post_sub_agent_id">sub_agent_id</a>: <a href="../std/option.md#std_option_Option">std::option::Option</a>&lt;<a href="../myso/object.md#myso_object_ID">myso::object::ID</a>&gt;</code>
+</dt>
+<dd>
+</dd>
+<dt>
+<code><a href="../social_contracts/post.md#social_contracts_post_action_identity_class">action_identity_class</a>: u8</code>
+</dt>
+<dd>
+</dd>
 </dl>
 
 
@@ -1177,6 +1295,21 @@ Repost event
 </dt>
 <dd>
 </dd>
+<dt>
+<code><a href="../social_contracts/post.md#social_contracts_post_actor_address">actor_address</a>: <b>address</b></code>
+</dt>
+<dd>
+</dd>
+<dt>
+<code><a href="../social_contracts/post.md#social_contracts_post_sub_agent_id">sub_agent_id</a>: <a href="../std/option.md#std_option_Option">std::option::Option</a>&lt;<a href="../myso/object.md#myso_object_ID">myso::object::ID</a>&gt;</code>
+</dt>
+<dd>
+</dd>
+<dt>
+<code><a href="../social_contracts/post.md#social_contracts_post_action_identity_class">action_identity_class</a>: u8</code>
+</dt>
+<dd>
+</dd>
 </dl>
 
 
@@ -1219,6 +1352,26 @@ Reaction event
 </dt>
 <dd>
 </dd>
+<dt>
+<code>principal_owner: <b>address</b></code>
+</dt>
+<dd>
+</dd>
+<dt>
+<code><a href="../social_contracts/post.md#social_contracts_post_actor_address">actor_address</a>: <b>address</b></code>
+</dt>
+<dd>
+</dd>
+<dt>
+<code><a href="../social_contracts/post.md#social_contracts_post_sub_agent_id">sub_agent_id</a>: <a href="../std/option.md#std_option_Option">std::option::Option</a>&lt;<a href="../myso/object.md#myso_object_ID">myso::object::ID</a>&gt;</code>
+</dt>
+<dd>
+</dd>
+<dt>
+<code><a href="../social_contracts/post.md#social_contracts_post_action_identity_class">action_identity_class</a>: u8</code>
+</dt>
+<dd>
+</dd>
 </dl>
 
 
@@ -1258,6 +1411,26 @@ Remove reaction event
 </dd>
 <dt>
 <code>is_post: bool</code>
+</dt>
+<dd>
+</dd>
+<dt>
+<code>principal_owner: <b>address</b></code>
+</dt>
+<dd>
+</dd>
+<dt>
+<code><a href="../social_contracts/post.md#social_contracts_post_actor_address">actor_address</a>: <b>address</b></code>
+</dt>
+<dd>
+</dd>
+<dt>
+<code><a href="../social_contracts/post.md#social_contracts_post_sub_agent_id">sub_agent_id</a>: <a href="../std/option.md#std_option_Option">std::option::Option</a>&lt;<a href="../myso/object.md#myso_object_ID">myso::object::ID</a>&gt;</code>
+</dt>
+<dd>
+</dd>
+<dt>
+<code><a href="../social_contracts/post.md#social_contracts_post_action_identity_class">action_identity_class</a>: u8</code>
 </dt>
 <dd>
 </dd>
@@ -2659,6 +2832,24 @@ Redirected MYSO accumulates in the beneficiary's shared <code>PoCBeneficiaryVaul
 
 
 
+<a name="social_contracts_post_POST_ATTRIBUTION_DF_KEY"></a>
+
+
+
+<pre><code><b>const</b> <a href="../social_contracts/post.md#social_contracts_post_POST_ATTRIBUTION_DF_KEY">POST_ATTRIBUTION_DF_KEY</a>: vector&lt;u8&gt; = vector[112, 111, 115, 116, 95, 97, 116, 116, 114, 105, 98, 117, 116, 105, 111, 110];
+</code></pre>
+
+
+
+<a name="social_contracts_post_COMMENT_ATTRIBUTION_DF_KEY"></a>
+
+
+
+<pre><code><b>const</b> <a href="../social_contracts/post.md#social_contracts_post_COMMENT_ATTRIBUTION_DF_KEY">COMMENT_ATTRIBUTION_DF_KEY</a>: vector&lt;u8&gt; = vector[99, 111, 109, 109, 101, 110, 116, 95, 97, 116, 116, 114, 105, 98, 117, 116, 105, 111, 110];
+</code></pre>
+
+
+
 <a name="social_contracts_post_has_flag"></a>
 
 ## Function `has_flag`
@@ -3039,6 +3230,272 @@ Lifetime count of successful PoC dispute submissions (capped at 2 on-chain).
 
 <pre><code><b>public</b> <b>fun</b> <a href="../social_contracts/post.md#social_contracts_post_poc_disputes_submitted">poc_disputes_submitted</a>(<a href="../social_contracts/post.md#social_contracts_post">post</a>: &<a href="../social_contracts/post.md#social_contracts_post_Post">Post</a>): u8 {
     <a href="../social_contracts/post.md#social_contracts_post">post</a>.<a href="../social_contracts/post.md#social_contracts_post_poc_disputes_submitted">poc_disputes_submitted</a>
+}
+</code></pre>
+
+
+
+</details>
+
+<a name="social_contracts_post_actor_address"></a>
+
+## Function `actor_address`
+
+
+
+<pre><code><b>public</b> <b>fun</b> <a href="../social_contracts/post.md#social_contracts_post_actor_address">actor_address</a>(<a href="../social_contracts/post.md#social_contracts_post">post</a>: &<a href="../social_contracts/post.md#social_contracts_post_Post">social_contracts::post::Post</a>): <b>address</b>
+</code></pre>
+
+
+
+<details>
+<summary>Implementation</summary>
+
+
+<pre><code><b>public</b> <b>fun</b> <a href="../social_contracts/post.md#social_contracts_post_actor_address">actor_address</a>(<a href="../social_contracts/post.md#social_contracts_post">post</a>: &<a href="../social_contracts/post.md#social_contracts_post_Post">Post</a>): <b>address</b> {
+    <a href="../social_contracts/post.md#social_contracts_post_post_attribution">post_attribution</a>(<a href="../social_contracts/post.md#social_contracts_post">post</a>).<a href="../social_contracts/post.md#social_contracts_post_actor_address">actor_address</a>
+}
+</code></pre>
+
+
+
+</details>
+
+<a name="social_contracts_post_sub_agent_id"></a>
+
+## Function `sub_agent_id`
+
+
+
+<pre><code><b>public</b> <b>fun</b> <a href="../social_contracts/post.md#social_contracts_post_sub_agent_id">sub_agent_id</a>(<a href="../social_contracts/post.md#social_contracts_post">post</a>: &<a href="../social_contracts/post.md#social_contracts_post_Post">social_contracts::post::Post</a>): <a href="../std/option.md#std_option_Option">std::option::Option</a>&lt;<a href="../myso/object.md#myso_object_ID">myso::object::ID</a>&gt;
+</code></pre>
+
+
+
+<details>
+<summary>Implementation</summary>
+
+
+<pre><code><b>public</b> <b>fun</b> <a href="../social_contracts/post.md#social_contracts_post_sub_agent_id">sub_agent_id</a>(<a href="../social_contracts/post.md#social_contracts_post">post</a>: &<a href="../social_contracts/post.md#social_contracts_post_Post">Post</a>): Option&lt;ID&gt; {
+    <a href="../social_contracts/post.md#social_contracts_post_post_attribution">post_attribution</a>(<a href="../social_contracts/post.md#social_contracts_post">post</a>).<a href="../social_contracts/post.md#social_contracts_post_sub_agent_id">sub_agent_id</a>
+}
+</code></pre>
+
+
+
+</details>
+
+<a name="social_contracts_post_action_identity_class"></a>
+
+## Function `action_identity_class`
+
+
+
+<pre><code><b>public</b> <b>fun</b> <a href="../social_contracts/post.md#social_contracts_post_action_identity_class">action_identity_class</a>(<a href="../social_contracts/post.md#social_contracts_post">post</a>: &<a href="../social_contracts/post.md#social_contracts_post_Post">social_contracts::post::Post</a>): u8
+</code></pre>
+
+
+
+<details>
+<summary>Implementation</summary>
+
+
+<pre><code><b>public</b> <b>fun</b> <a href="../social_contracts/post.md#social_contracts_post_action_identity_class">action_identity_class</a>(<a href="../social_contracts/post.md#social_contracts_post">post</a>: &<a href="../social_contracts/post.md#social_contracts_post_Post">Post</a>): u8 {
+    <a href="../social_contracts/post.md#social_contracts_post_post_attribution">post_attribution</a>(<a href="../social_contracts/post.md#social_contracts_post">post</a>).<a href="../social_contracts/post.md#social_contracts_post_action_identity_class">action_identity_class</a>
+}
+</code></pre>
+
+
+
+</details>
+
+<a name="social_contracts_post_comment_actor_address"></a>
+
+## Function `comment_actor_address`
+
+
+
+<pre><code><b>public</b> <b>fun</b> <a href="../social_contracts/post.md#social_contracts_post_comment_actor_address">comment_actor_address</a>(comment: &<a href="../social_contracts/post.md#social_contracts_post_Comment">social_contracts::post::Comment</a>): <b>address</b>
+</code></pre>
+
+
+
+<details>
+<summary>Implementation</summary>
+
+
+<pre><code><b>public</b> <b>fun</b> <a href="../social_contracts/post.md#social_contracts_post_comment_actor_address">comment_actor_address</a>(comment: &<a href="../social_contracts/post.md#social_contracts_post_Comment">Comment</a>): <b>address</b> {
+    <a href="../social_contracts/post.md#social_contracts_post_comment_attribution">comment_attribution</a>(comment).<a href="../social_contracts/post.md#social_contracts_post_actor_address">actor_address</a>
+}
+</code></pre>
+
+
+
+</details>
+
+<a name="social_contracts_post_comment_sub_agent_id"></a>
+
+## Function `comment_sub_agent_id`
+
+
+
+<pre><code><b>public</b> <b>fun</b> <a href="../social_contracts/post.md#social_contracts_post_comment_sub_agent_id">comment_sub_agent_id</a>(comment: &<a href="../social_contracts/post.md#social_contracts_post_Comment">social_contracts::post::Comment</a>): <a href="../std/option.md#std_option_Option">std::option::Option</a>&lt;<a href="../myso/object.md#myso_object_ID">myso::object::ID</a>&gt;
+</code></pre>
+
+
+
+<details>
+<summary>Implementation</summary>
+
+
+<pre><code><b>public</b> <b>fun</b> <a href="../social_contracts/post.md#social_contracts_post_comment_sub_agent_id">comment_sub_agent_id</a>(comment: &<a href="../social_contracts/post.md#social_contracts_post_Comment">Comment</a>): Option&lt;ID&gt; {
+    <a href="../social_contracts/post.md#social_contracts_post_comment_attribution">comment_attribution</a>(comment).<a href="../social_contracts/post.md#social_contracts_post_sub_agent_id">sub_agent_id</a>
+}
+</code></pre>
+
+
+
+</details>
+
+<a name="social_contracts_post_comment_action_identity_class"></a>
+
+## Function `comment_action_identity_class`
+
+
+
+<pre><code><b>public</b> <b>fun</b> <a href="../social_contracts/post.md#social_contracts_post_comment_action_identity_class">comment_action_identity_class</a>(comment: &<a href="../social_contracts/post.md#social_contracts_post_Comment">social_contracts::post::Comment</a>): u8
+</code></pre>
+
+
+
+<details>
+<summary>Implementation</summary>
+
+
+<pre><code><b>public</b> <b>fun</b> <a href="../social_contracts/post.md#social_contracts_post_comment_action_identity_class">comment_action_identity_class</a>(comment: &<a href="../social_contracts/post.md#social_contracts_post_Comment">Comment</a>): u8 {
+    <a href="../social_contracts/post.md#social_contracts_post_comment_attribution">comment_attribution</a>(comment).<a href="../social_contracts/post.md#social_contracts_post_action_identity_class">action_identity_class</a>
+}
+</code></pre>
+
+
+
+</details>
+
+<a name="social_contracts_post_post_attribution"></a>
+
+## Function `post_attribution`
+
+
+
+<pre><code><b>fun</b> <a href="../social_contracts/post.md#social_contracts_post_post_attribution">post_attribution</a>(<a href="../social_contracts/post.md#social_contracts_post">post</a>: &<a href="../social_contracts/post.md#social_contracts_post_Post">social_contracts::post::Post</a>): <a href="../social_contracts/post.md#social_contracts_post_PostAttribution">social_contracts::post::PostAttribution</a>
+</code></pre>
+
+
+
+<details>
+<summary>Implementation</summary>
+
+
+<pre><code><b>fun</b> <a href="../social_contracts/post.md#social_contracts_post_post_attribution">post_attribution</a>(<a href="../social_contracts/post.md#social_contracts_post">post</a>: &<a href="../social_contracts/post.md#social_contracts_post_Post">Post</a>): <a href="../social_contracts/post.md#social_contracts_post_PostAttribution">PostAttribution</a> {
+    *df::borrow&lt;vector&lt;u8&gt;, <a href="../social_contracts/post.md#social_contracts_post_PostAttribution">PostAttribution</a>&gt;(&<a href="../social_contracts/post.md#social_contracts_post">post</a>.id, <a href="../social_contracts/post.md#social_contracts_post_POST_ATTRIBUTION_DF_KEY">POST_ATTRIBUTION_DF_KEY</a>)
+}
+</code></pre>
+
+
+
+</details>
+
+<a name="social_contracts_post_attach_post_attribution"></a>
+
+## Function `attach_post_attribution`
+
+
+
+<pre><code><b>fun</b> <a href="../social_contracts/post.md#social_contracts_post_attach_post_attribution">attach_post_attribution</a>(<a href="../social_contracts/post.md#social_contracts_post">post</a>: &<b>mut</b> <a href="../social_contracts/post.md#social_contracts_post_Post">social_contracts::post::Post</a>, <a href="../social_contracts/post.md#social_contracts_post_actor_address">actor_address</a>: <b>address</b>, <a href="../social_contracts/post.md#social_contracts_post_sub_agent_id">sub_agent_id</a>: <a href="../std/option.md#std_option_Option">std::option::Option</a>&lt;<a href="../myso/object.md#myso_object_ID">myso::object::ID</a>&gt;, <a href="../social_contracts/post.md#social_contracts_post_action_identity_class">action_identity_class</a>: u8)
+</code></pre>
+
+
+
+<details>
+<summary>Implementation</summary>
+
+
+<pre><code><b>fun</b> <a href="../social_contracts/post.md#social_contracts_post_attach_post_attribution">attach_post_attribution</a>(
+    <a href="../social_contracts/post.md#social_contracts_post">post</a>: &<b>mut</b> <a href="../social_contracts/post.md#social_contracts_post_Post">Post</a>,
+    <a href="../social_contracts/post.md#social_contracts_post_actor_address">actor_address</a>: <b>address</b>,
+    <a href="../social_contracts/post.md#social_contracts_post_sub_agent_id">sub_agent_id</a>: Option&lt;ID&gt;,
+    <a href="../social_contracts/post.md#social_contracts_post_action_identity_class">action_identity_class</a>: u8,
+) {
+    df::add(
+        &<b>mut</b> <a href="../social_contracts/post.md#social_contracts_post">post</a>.id,
+        <a href="../social_contracts/post.md#social_contracts_post_POST_ATTRIBUTION_DF_KEY">POST_ATTRIBUTION_DF_KEY</a>,
+        <a href="../social_contracts/post.md#social_contracts_post_PostAttribution">PostAttribution</a> {
+            <a href="../social_contracts/post.md#social_contracts_post_actor_address">actor_address</a>,
+            <a href="../social_contracts/post.md#social_contracts_post_sub_agent_id">sub_agent_id</a>,
+            <a href="../social_contracts/post.md#social_contracts_post_action_identity_class">action_identity_class</a>,
+        },
+    );
+}
+</code></pre>
+
+
+
+</details>
+
+<a name="social_contracts_post_comment_attribution"></a>
+
+## Function `comment_attribution`
+
+
+
+<pre><code><b>fun</b> <a href="../social_contracts/post.md#social_contracts_post_comment_attribution">comment_attribution</a>(comment: &<a href="../social_contracts/post.md#social_contracts_post_Comment">social_contracts::post::Comment</a>): <a href="../social_contracts/post.md#social_contracts_post_CommentAttribution">social_contracts::post::CommentAttribution</a>
+</code></pre>
+
+
+
+<details>
+<summary>Implementation</summary>
+
+
+<pre><code><b>fun</b> <a href="../social_contracts/post.md#social_contracts_post_comment_attribution">comment_attribution</a>(comment: &<a href="../social_contracts/post.md#social_contracts_post_Comment">Comment</a>): <a href="../social_contracts/post.md#social_contracts_post_CommentAttribution">CommentAttribution</a> {
+    *df::borrow&lt;vector&lt;u8&gt;, <a href="../social_contracts/post.md#social_contracts_post_CommentAttribution">CommentAttribution</a>&gt;(&comment.id, <a href="../social_contracts/post.md#social_contracts_post_COMMENT_ATTRIBUTION_DF_KEY">COMMENT_ATTRIBUTION_DF_KEY</a>)
+}
+</code></pre>
+
+
+
+</details>
+
+<a name="social_contracts_post_attach_comment_attribution"></a>
+
+## Function `attach_comment_attribution`
+
+
+
+<pre><code><b>fun</b> <a href="../social_contracts/post.md#social_contracts_post_attach_comment_attribution">attach_comment_attribution</a>(comment: &<b>mut</b> <a href="../social_contracts/post.md#social_contracts_post_Comment">social_contracts::post::Comment</a>, <a href="../social_contracts/post.md#social_contracts_post_actor_address">actor_address</a>: <b>address</b>, <a href="../social_contracts/post.md#social_contracts_post_sub_agent_id">sub_agent_id</a>: <a href="../std/option.md#std_option_Option">std::option::Option</a>&lt;<a href="../myso/object.md#myso_object_ID">myso::object::ID</a>&gt;, <a href="../social_contracts/post.md#social_contracts_post_action_identity_class">action_identity_class</a>: u8)
+</code></pre>
+
+
+
+<details>
+<summary>Implementation</summary>
+
+
+<pre><code><b>fun</b> <a href="../social_contracts/post.md#social_contracts_post_attach_comment_attribution">attach_comment_attribution</a>(
+    comment: &<b>mut</b> <a href="../social_contracts/post.md#social_contracts_post_Comment">Comment</a>,
+    <a href="../social_contracts/post.md#social_contracts_post_actor_address">actor_address</a>: <b>address</b>,
+    <a href="../social_contracts/post.md#social_contracts_post_sub_agent_id">sub_agent_id</a>: Option&lt;ID&gt;,
+    <a href="../social_contracts/post.md#social_contracts_post_action_identity_class">action_identity_class</a>: u8,
+) {
+    df::add(
+        &<b>mut</b> comment.id,
+        <a href="../social_contracts/post.md#social_contracts_post_COMMENT_ATTRIBUTION_DF_KEY">COMMENT_ATTRIBUTION_DF_KEY</a>,
+        <a href="../social_contracts/post.md#social_contracts_post_CommentAttribution">CommentAttribution</a> {
+            <a href="../social_contracts/post.md#social_contracts_post_actor_address">actor_address</a>,
+            <a href="../social_contracts/post.md#social_contracts_post_sub_agent_id">sub_agent_id</a>,
+            <a href="../social_contracts/post.md#social_contracts_post_action_identity_class">action_identity_class</a>,
+        },
+    );
 }
 </code></pre>
 
@@ -3561,6 +4018,92 @@ Convert Option<vector<Url>> to Option<vector<String>> for events
 
 </details>
 
+<a name="social_contracts_post_resolve_social_actor"></a>
+
+## Function `resolve_social_actor`
+
+Resolve social actor: capability, principal platform join, block list, and approval gate.
+
+
+<pre><code><b>fun</b> <a href="../social_contracts/post.md#social_contracts_post_resolve_social_actor">resolve_social_actor</a>(registry: &<a href="../social_contracts/profile.md#social_contracts_profile_UsernameRegistry">social_contracts::profile::UsernameRegistry</a>, <a href="../social_contracts/platform.md#social_contracts_platform">platform</a>: &<a href="../social_contracts/platform.md#social_contracts_platform_Platform">social_contracts::platform::Platform</a>, block_list_registry: &<a href="../social_contracts/block_list.md#social_contracts_block_list_BlockListRegistry">social_contracts::block_list::BlockListRegistry</a>, memory_account: &<a href="../social_contracts/memory.md#social_contracts_memory_MemoryAccount">social_contracts::memory::MemoryAccount</a>, required_cap: u64, spend_amount: u64, clock: &<a href="../myso/clock.md#myso_clock_Clock">myso::clock::Clock</a>, ctx: &<a href="../myso/tx_context.md#myso_tx_context_TxContext">myso::tx_context::TxContext</a>): <a href="../social_contracts/memory.md#social_contracts_memory_ActingContext">social_contracts::memory::ActingContext</a>
+</code></pre>
+
+
+
+<details>
+<summary>Implementation</summary>
+
+
+<pre><code><b>fun</b> <a href="../social_contracts/post.md#social_contracts_post_resolve_social_actor">resolve_social_actor</a>(
+    registry: &UsernameRegistry,
+    <a href="../social_contracts/platform.md#social_contracts_platform">platform</a>: &<a href="../social_contracts/platform.md#social_contracts_platform_Platform">platform::Platform</a>,
+    block_list_registry: &BlockListRegistry,
+    memory_account: &MemoryAccount,
+    required_cap: u64,
+    spend_amount: u64,
+    clock: &Clock,
+    ctx: &TxContext,
+): ActingContext {
+    <b>let</b> platform_id = object::uid_to_address(<a href="../social_contracts/platform.md#social_contracts_platform_id">platform::id</a>(<a href="../social_contracts/platform.md#social_contracts_platform">platform</a>));
+    <b>let</b> acting = <a href="../social_contracts/memory.md#social_contracts_memory_resolve_actor_with_cap">memory::resolve_actor_with_cap</a>(
+        memory_account,
+        required_cap,
+        option::some(platform_id),
+        spend_amount,
+        clock,
+        ctx,
+    );
+    <a href="../social_contracts/memory.md#social_contracts_memory_assert_direct_execution_allowed">memory::assert_direct_execution_allowed</a>(memory_account, required_cap, ctx);
+    <b>let</b> principal = <a href="../social_contracts/memory.md#social_contracts_memory_acting_principal_owner">memory::acting_principal_owner</a>(&acting);
+    <b>assert</b>!(<a href="../social_contracts/memory.md#social_contracts_memory_owner">memory::owner</a>(memory_account) == principal, <a href="../social_contracts/post.md#social_contracts_post_EUnauthorized">EUnauthorized</a>);
+    <b>let</b> profile_id = <a href="../social_contracts/memory.md#social_contracts_memory_acting_profile_id">memory::acting_profile_id</a>(&acting);
+    <b>let</b> profile_id_option = <a href="../social_contracts/profile.md#social_contracts_profile_lookup_profile_by_owner">profile::lookup_profile_by_owner</a>(registry, principal);
+    <b>assert</b>!(option::is_some(&profile_id_option), <a href="../social_contracts/post.md#social_contracts_post_EUnauthorized">EUnauthorized</a>);
+    <b>assert</b>!(*option::borrow(&profile_id_option) == profile_id, <a href="../social_contracts/post.md#social_contracts_post_EUnauthorized">EUnauthorized</a>);
+    <b>assert</b>!(<a href="../social_contracts/platform.md#social_contracts_platform_has_joined_platform">platform::has_joined_platform</a>(<a href="../social_contracts/platform.md#social_contracts_platform">platform</a>, principal), <a href="../social_contracts/post.md#social_contracts_post_EUserNotJoinedPlatform">EUserNotJoinedPlatform</a>);
+    <b>assert</b>!(
+        !<a href="../social_contracts/block_list.md#social_contracts_block_list_is_blocked">block_list::is_blocked</a>(block_list_registry, platform_id, principal),
+        <a href="../social_contracts/post.md#social_contracts_post_EUserBlockedByPlatform">EUserBlockedByPlatform</a>,
+    );
+    acting
+}
+</code></pre>
+
+
+
+</details>
+
+<a name="social_contracts_post_assert_tip_spend_limit"></a>
+
+## Function `assert_tip_spend_limit`
+
+
+
+<pre><code><b>fun</b> <a href="../social_contracts/post.md#social_contracts_post_assert_tip_spend_limit">assert_tip_spend_limit</a>(memory_account: &<a href="../social_contracts/memory.md#social_contracts_memory_MemoryAccount">social_contracts::memory::MemoryAccount</a>, amount: u64, ctx: &<a href="../myso/tx_context.md#myso_tx_context_TxContext">myso::tx_context::TxContext</a>)
+</code></pre>
+
+
+
+<details>
+<summary>Implementation</summary>
+
+
+<pre><code><b>fun</b> <a href="../social_contracts/post.md#social_contracts_post_assert_tip_spend_limit">assert_tip_spend_limit</a>(
+    memory_account: &MemoryAccount,
+    amount: u64,
+    ctx: &TxContext,
+) {
+    <b>let</b> caller = tx_context::sender(ctx);
+    <b>if</b> (<a href="../social_contracts/memory.md#social_contracts_memory_is_registered_agent">memory::is_registered_agent</a>(memory_account, caller)) {
+        <a href="../social_contracts/memory.md#social_contracts_memory_assert_action_spend_limit">memory::assert_action_spend_limit</a>(memory_account, amount, ctx);
+    };
+}
+</code></pre>
+
+
+
+</details>
+
 <a name="social_contracts_post_create_post_internal"></a>
 
 ## Function `create_post_internal`
@@ -3568,7 +4111,7 @@ Convert Option<vector<Url>> to Option<vector<String>> for events
 Internal function to create a post and return its ID
 
 
-<pre><code><b>fun</b> <a href="../social_contracts/post.md#social_contracts_post_create_post_internal">create_post_internal</a>(owner: <b>address</b>, profile_id: <b>address</b>, platform_id: <b>address</b>, content: <a href="../std/string.md#std_string_String">std::string::String</a>, media_option: <a href="../std/option.md#std_option_Option">std::option::Option</a>&lt;vector&lt;<a href="../myso/url.md#myso_url_Url">myso::url::Url</a>&gt;&gt;, mentions: <a href="../std/option.md#std_option_Option">std::option::Option</a>&lt;vector&lt;<b>address</b>&gt;&gt;, metadata_json: <a href="../std/option.md#std_option_Option">std::option::Option</a>&lt;<a href="../std/string.md#std_string_String">std::string::String</a>&gt;, post_type: <a href="../std/string.md#std_string_String">std::string::String</a>, parent_post_id: <a href="../std/option.md#std_option_Option">std::option::Option</a>&lt;<b>address</b>&gt;, <a href="../social_contracts/post.md#social_contracts_post_allow_comments">allow_comments</a>: bool, <a href="../social_contracts/post.md#social_contracts_post_allow_reactions">allow_reactions</a>: bool, <a href="../social_contracts/post.md#social_contracts_post_allow_reposts">allow_reposts</a>: bool, <a href="../social_contracts/post.md#social_contracts_post_allow_quotes">allow_quotes</a>: bool, <a href="../social_contracts/post.md#social_contracts_post_allow_tips">allow_tips</a>: bool, revenue_redirect_to: <a href="../std/option.md#std_option_Option">std::option::Option</a>&lt;<b>address</b>&gt;, revenue_redirect_percentage: <a href="../std/option.md#std_option_Option">std::option::Option</a>&lt;u64&gt;, mydata_id: <a href="../std/option.md#std_option_Option">std::option::Option</a>&lt;<b>address</b>&gt;, promotion_id: <a href="../std/option.md#std_option_Option">std::option::Option</a>&lt;<b>address</b>&gt;, enable_spt: bool, enable_poc: bool, enable_spot: bool, <a href="../social_contracts/post.md#social_contracts_post_poc_redirection_kind">poc_redirection_kind</a>: u8, ctx: &<b>mut</b> <a href="../myso/tx_context.md#myso_tx_context_TxContext">myso::tx_context::TxContext</a>): <b>address</b>
+<pre><code><b>fun</b> <a href="../social_contracts/post.md#social_contracts_post_create_post_internal">create_post_internal</a>(owner: <b>address</b>, profile_id: <b>address</b>, platform_id: <b>address</b>, content: <a href="../std/string.md#std_string_String">std::string::String</a>, media_option: <a href="../std/option.md#std_option_Option">std::option::Option</a>&lt;vector&lt;<a href="../myso/url.md#myso_url_Url">myso::url::Url</a>&gt;&gt;, mentions: <a href="../std/option.md#std_option_Option">std::option::Option</a>&lt;vector&lt;<b>address</b>&gt;&gt;, metadata_json: <a href="../std/option.md#std_option_Option">std::option::Option</a>&lt;<a href="../std/string.md#std_string_String">std::string::String</a>&gt;, post_type: <a href="../std/string.md#std_string_String">std::string::String</a>, parent_post_id: <a href="../std/option.md#std_option_Option">std::option::Option</a>&lt;<b>address</b>&gt;, <a href="../social_contracts/post.md#social_contracts_post_allow_comments">allow_comments</a>: bool, <a href="../social_contracts/post.md#social_contracts_post_allow_reactions">allow_reactions</a>: bool, <a href="../social_contracts/post.md#social_contracts_post_allow_reposts">allow_reposts</a>: bool, <a href="../social_contracts/post.md#social_contracts_post_allow_quotes">allow_quotes</a>: bool, <a href="../social_contracts/post.md#social_contracts_post_allow_tips">allow_tips</a>: bool, revenue_redirect_to: <a href="../std/option.md#std_option_Option">std::option::Option</a>&lt;<b>address</b>&gt;, revenue_redirect_percentage: <a href="../std/option.md#std_option_Option">std::option::Option</a>&lt;u64&gt;, mydata_id: <a href="../std/option.md#std_option_Option">std::option::Option</a>&lt;<b>address</b>&gt;, promotion_id: <a href="../std/option.md#std_option_Option">std::option::Option</a>&lt;<b>address</b>&gt;, enable_spt: bool, enable_poc: bool, enable_spot: bool, <a href="../social_contracts/post.md#social_contracts_post_poc_redirection_kind">poc_redirection_kind</a>: u8, <a href="../social_contracts/post.md#social_contracts_post_actor_address">actor_address</a>: <b>address</b>, <a href="../social_contracts/post.md#social_contracts_post_sub_agent_id">sub_agent_id</a>: <a href="../std/option.md#std_option_Option">std::option::Option</a>&lt;<a href="../myso/object.md#myso_object_ID">myso::object::ID</a>&gt;, <a href="../social_contracts/post.md#social_contracts_post_action_identity_class">action_identity_class</a>: u8, ctx: &<b>mut</b> <a href="../myso/tx_context.md#myso_tx_context_TxContext">myso::tx_context::TxContext</a>): <b>address</b>
 </code></pre>
 
 
@@ -3600,6 +4143,9 @@ Internal function to create a post and return its ID
     enable_poc: bool,
     enable_spot: bool,
     <a href="../social_contracts/post.md#social_contracts_post_poc_redirection_kind">poc_redirection_kind</a>: u8,
+    <a href="../social_contracts/post.md#social_contracts_post_actor_address">actor_address</a>: <b>address</b>,
+    <a href="../social_contracts/post.md#social_contracts_post_sub_agent_id">sub_agent_id</a>: Option&lt;ID&gt;,
+    <a href="../social_contracts/post.md#social_contracts_post_action_identity_class">action_identity_class</a>: u8,
     ctx: &<b>mut</b> TxContext
 ): <b>address</b> {
     // Build permissions bitfield
@@ -3614,7 +4160,7 @@ Internal function to create a post and return its ID
     <b>if</b> (enable_spt) { enable_flags = enable_flags | <a href="../social_contracts/post.md#social_contracts_post_ENABLE_SPT">ENABLE_SPT</a> };
     <b>if</b> (enable_poc) { enable_flags = enable_flags | <a href="../social_contracts/post.md#social_contracts_post_ENABLE_POC">ENABLE_POC</a> };
     <b>if</b> (enable_spot) { enable_flags = enable_flags | <a href="../social_contracts/post.md#social_contracts_post_ENABLE_SPOT">ENABLE_SPOT</a> };
-    <b>let</b> <a href="../social_contracts/post.md#social_contracts_post">post</a> = <a href="../social_contracts/post.md#social_contracts_post_Post">Post</a> {
+    <b>let</b> <b>mut</b> <a href="../social_contracts/post.md#social_contracts_post">post</a> = <a href="../social_contracts/post.md#social_contracts_post_Post">Post</a> {
         id: object::new(ctx),
         owner,
         profile_id,
@@ -3648,6 +4194,12 @@ Internal function to create a post and return its ID
         <a href="../social_contracts/post.md#social_contracts_post_poc_disputes_submitted">poc_disputes_submitted</a>: 0,
         <a href="../social_contracts/post.md#social_contracts_post_version">version</a>: <a href="../social_contracts/upgrade.md#social_contracts_upgrade_current_version">upgrade::current_version</a>(),
     };
+    <a href="../social_contracts/post.md#social_contracts_post_attach_post_attribution">attach_post_attribution</a>(
+        &<b>mut</b> <a href="../social_contracts/post.md#social_contracts_post">post</a>,
+        <a href="../social_contracts/post.md#social_contracts_post_actor_address">actor_address</a>,
+        <a href="../social_contracts/post.md#social_contracts_post_sub_agent_id">sub_agent_id</a>,
+        <a href="../social_contracts/post.md#social_contracts_post_action_identity_class">action_identity_class</a>,
+    );
     // Get <a href="../social_contracts/post.md#social_contracts_post">post</a> ID before sharing
     <b>let</b> post_id = object::uid_to_address(&<a href="../social_contracts/post.md#social_contracts_post">post</a>.id);
     // Share object
@@ -3703,7 +4255,7 @@ When <code>mydata_id</code> is set, it must be registered in <code>mydata_regist
 Create a new post with interaction permissions
 
 
-<pre><code><b>public</b> <b>fun</b> <a href="../social_contracts/post.md#social_contracts_post_create_post">create_post</a>(registry: &<a href="../social_contracts/profile.md#social_contracts_profile_UsernameRegistry">social_contracts::profile::UsernameRegistry</a>, platform_registry: &<a href="../social_contracts/platform.md#social_contracts_platform_PlatformRegistry">social_contracts::platform::PlatformRegistry</a>, <a href="../social_contracts/platform.md#social_contracts_platform">platform</a>: &<a href="../social_contracts/platform.md#social_contracts_platform_Platform">social_contracts::platform::Platform</a>, block_list_registry: &<a href="../social_contracts/block_list.md#social_contracts_block_list_BlockListRegistry">social_contracts::block_list::BlockListRegistry</a>, config: &<a href="../social_contracts/post.md#social_contracts_post_PostConfig">social_contracts::post::PostConfig</a>, content: <a href="../std/string.md#std_string_String">std::string::String</a>, media_urls: <a href="../std/option.md#std_option_Option">std::option::Option</a>&lt;vector&lt;<a href="../std/string.md#std_string_String">std::string::String</a>&gt;&gt;, mentions: <a href="../std/option.md#std_option_Option">std::option::Option</a>&lt;vector&lt;<b>address</b>&gt;&gt;, metadata_json: <a href="../std/option.md#std_option_Option">std::option::Option</a>&lt;<a href="../std/string.md#std_string_String">std::string::String</a>&gt;, <a href="../social_contracts/post.md#social_contracts_post_allow_comments">allow_comments</a>: <a href="../std/option.md#std_option_Option">std::option::Option</a>&lt;bool&gt;, <a href="../social_contracts/post.md#social_contracts_post_allow_reactions">allow_reactions</a>: <a href="../std/option.md#std_option_Option">std::option::Option</a>&lt;bool&gt;, <a href="../social_contracts/post.md#social_contracts_post_allow_reposts">allow_reposts</a>: <a href="../std/option.md#std_option_Option">std::option::Option</a>&lt;bool&gt;, <a href="../social_contracts/post.md#social_contracts_post_allow_quotes">allow_quotes</a>: <a href="../std/option.md#std_option_Option">std::option::Option</a>&lt;bool&gt;, <a href="../social_contracts/post.md#social_contracts_post_allow_tips">allow_tips</a>: <a href="../std/option.md#std_option_Option">std::option::Option</a>&lt;bool&gt;, enable_spt: <a href="../std/option.md#std_option_Option">std::option::Option</a>&lt;bool&gt;, enable_poc: <a href="../std/option.md#std_option_Option">std::option::Option</a>&lt;bool&gt;, enable_spot: <a href="../std/option.md#std_option_Option">std::option::Option</a>&lt;bool&gt;, mydata_id: <a href="../std/option.md#std_option_Option">std::option::Option</a>&lt;<b>address</b>&gt;, mydata_registry: &<a href="../social_contracts/mydata.md#social_contracts_mydata_MyDataRegistry">social_contracts::mydata::MyDataRegistry</a>, ctx: &<b>mut</b> <a href="../myso/tx_context.md#myso_tx_context_TxContext">myso::tx_context::TxContext</a>)
+<pre><code><b>public</b> <b>fun</b> <a href="../social_contracts/post.md#social_contracts_post_create_post">create_post</a>(registry: &<a href="../social_contracts/profile.md#social_contracts_profile_UsernameRegistry">social_contracts::profile::UsernameRegistry</a>, platform_registry: &<a href="../social_contracts/platform.md#social_contracts_platform_PlatformRegistry">social_contracts::platform::PlatformRegistry</a>, <a href="../social_contracts/platform.md#social_contracts_platform">platform</a>: &<a href="../social_contracts/platform.md#social_contracts_platform_Platform">social_contracts::platform::Platform</a>, block_list_registry: &<a href="../social_contracts/block_list.md#social_contracts_block_list_BlockListRegistry">social_contracts::block_list::BlockListRegistry</a>, config: &<a href="../social_contracts/post.md#social_contracts_post_PostConfig">social_contracts::post::PostConfig</a>, content: <a href="../std/string.md#std_string_String">std::string::String</a>, media_urls: <a href="../std/option.md#std_option_Option">std::option::Option</a>&lt;vector&lt;<a href="../std/string.md#std_string_String">std::string::String</a>&gt;&gt;, mentions: <a href="../std/option.md#std_option_Option">std::option::Option</a>&lt;vector&lt;<b>address</b>&gt;&gt;, metadata_json: <a href="../std/option.md#std_option_Option">std::option::Option</a>&lt;<a href="../std/string.md#std_string_String">std::string::String</a>&gt;, <a href="../social_contracts/post.md#social_contracts_post_allow_comments">allow_comments</a>: <a href="../std/option.md#std_option_Option">std::option::Option</a>&lt;bool&gt;, <a href="../social_contracts/post.md#social_contracts_post_allow_reactions">allow_reactions</a>: <a href="../std/option.md#std_option_Option">std::option::Option</a>&lt;bool&gt;, <a href="../social_contracts/post.md#social_contracts_post_allow_reposts">allow_reposts</a>: <a href="../std/option.md#std_option_Option">std::option::Option</a>&lt;bool&gt;, <a href="../social_contracts/post.md#social_contracts_post_allow_quotes">allow_quotes</a>: <a href="../std/option.md#std_option_Option">std::option::Option</a>&lt;bool&gt;, <a href="../social_contracts/post.md#social_contracts_post_allow_tips">allow_tips</a>: <a href="../std/option.md#std_option_Option">std::option::Option</a>&lt;bool&gt;, enable_spt: <a href="../std/option.md#std_option_Option">std::option::Option</a>&lt;bool&gt;, enable_poc: <a href="../std/option.md#std_option_Option">std::option::Option</a>&lt;bool&gt;, enable_spot: <a href="../std/option.md#std_option_Option">std::option::Option</a>&lt;bool&gt;, mydata_id: <a href="../std/option.md#std_option_Option">std::option::Option</a>&lt;<b>address</b>&gt;, mydata_registry: &<a href="../social_contracts/mydata.md#social_contracts_mydata_MyDataRegistry">social_contracts::mydata::MyDataRegistry</a>, memory_account: &<a href="../social_contracts/memory.md#social_contracts_memory_MemoryAccount">social_contracts::memory::MemoryAccount</a>, clock: &<a href="../myso/clock.md#myso_clock_Clock">myso::clock::Clock</a>, ctx: &<b>mut</b> <a href="../myso/tx_context.md#myso_tx_context_TxContext">myso::tx_context::TxContext</a>)
 </code></pre>
 
 
@@ -3732,22 +4284,29 @@ Create a new post with interaction permissions
     enable_spot: Option&lt;bool&gt;,
     mydata_id: Option&lt;<b>address</b>&gt;,
     mydata_registry: &mydata::MyDataRegistry,
+    memory_account: &MemoryAccount,
+    clock: &Clock,
     ctx: &<b>mut</b> TxContext
 ) {
-    <b>let</b> owner = tx_context::sender(ctx);
-    // Look up the <a href="../social_contracts/profile.md#social_contracts_profile">profile</a> ID <b>for</b> the sender (<b>for</b> reference, not ownership)
-    <b>let</b> <b>mut</b> profile_id_option = <a href="../social_contracts/profile.md#social_contracts_profile_lookup_profile_by_owner">social_contracts::profile::lookup_profile_by_owner</a>(registry, owner);
-    <b>assert</b>!(option::is_some(&profile_id_option), <a href="../social_contracts/post.md#social_contracts_post_EUnauthorized">EUnauthorized</a>);
-    <b>let</b> profile_id = option::extract(&<b>mut</b> profile_id_option);
+    <b>let</b> acting = <a href="../social_contracts/post.md#social_contracts_post_resolve_social_actor">resolve_social_actor</a>(
+        registry,
+        <a href="../social_contracts/platform.md#social_contracts_platform">platform</a>,
+        block_list_registry,
+        memory_account,
+        <a href="../social_contracts/memory.md#social_contracts_memory_cap_post_publish">memory::cap_post_publish</a>(),
+        0,
+        clock,
+        ctx,
+    );
+    <b>let</b> owner = <a href="../social_contracts/memory.md#social_contracts_memory_acting_principal_owner">memory::acting_principal_owner</a>(&acting);
+    <b>let</b> profile_id = <a href="../social_contracts/memory.md#social_contracts_memory_acting_profile_id">memory::acting_profile_id</a>(&acting);
+    <b>let</b> <a href="../social_contracts/post.md#social_contracts_post_actor_address">actor_address</a> = <a href="../social_contracts/memory.md#social_contracts_memory_acting_actor_address">memory::acting_actor_address</a>(&acting);
+    <b>let</b> <a href="../social_contracts/post.md#social_contracts_post_sub_agent_id">sub_agent_id</a> = <a href="../social_contracts/memory.md#social_contracts_memory_acting_sub_agent_id">memory::acting_sub_agent_id</a>(&acting);
+    <b>let</b> <a href="../social_contracts/post.md#social_contracts_post_action_identity_class">action_identity_class</a> = <a href="../social_contracts/memory.md#social_contracts_memory_acting_identity_class">memory::acting_identity_class</a>(&acting);
     <a href="../social_contracts/post.md#social_contracts_post_assert_mydata_id_allowed_for_owner">assert_mydata_id_allowed_for_owner</a>(owner, mydata_id, mydata_registry);
     // Check <b>if</b> <a href="../social_contracts/platform.md#social_contracts_platform">platform</a> is approved
     <b>let</b> platform_id = object::uid_to_address(<a href="../social_contracts/platform.md#social_contracts_platform_id">platform::id</a>(<a href="../social_contracts/platform.md#social_contracts_platform">platform</a>));
     <b>assert</b>!(<a href="../social_contracts/platform.md#social_contracts_platform_is_approved">platform::is_approved</a>(platform_registry, platform_id), <a href="../social_contracts/post.md#social_contracts_post_EUnauthorized">EUnauthorized</a>);
-    // Check <b>if</b> user <b>has</b> joined the <a href="../social_contracts/platform.md#social_contracts_platform">platform</a> (by wallet <b>address</b>)
-    <b>assert</b>!(<a href="../social_contracts/platform.md#social_contracts_platform_has_joined_platform">platform::has_joined_platform</a>(<a href="../social_contracts/platform.md#social_contracts_platform">platform</a>, owner), <a href="../social_contracts/post.md#social_contracts_post_EUserNotJoinedPlatform">EUserNotJoinedPlatform</a>);
-    // Check <b>if</b> the user is blocked by the <a href="../social_contracts/platform.md#social_contracts_platform">platform</a>
-    <b>let</b> platform_address = object::uid_to_address(<a href="../social_contracts/platform.md#social_contracts_platform_id">platform::id</a>(<a href="../social_contracts/platform.md#social_contracts_platform">platform</a>));
-    <b>assert</b>!(!<a href="../social_contracts/block_list.md#social_contracts_block_list_is_blocked">block_list::is_blocked</a>(block_list_registry, platform_address, owner), <a href="../social_contracts/post.md#social_contracts_post_EUserBlockedByPlatform">EUserBlockedByPlatform</a>);
     // Validate content length using config
     <b>assert</b>!(string::length(&content) &lt;= config.max_content_length, <a href="../social_contracts/post.md#social_contracts_post_EContentTooLarge">EContentTooLarge</a>);
     // Validate metadata size <b>if</b> provided
@@ -3848,6 +4407,9 @@ Create a new post with interaction permissions
         final_enable_poc,
         final_enable_spot,
         <a href="../social_contracts/post.md#social_contracts_post_poc_redirection_kind">poc_redirection_kind</a>,
+        <a href="../social_contracts/post.md#social_contracts_post_actor_address">actor_address</a>,
+        <a href="../social_contracts/post.md#social_contracts_post_sub_agent_id">sub_agent_id</a>,
+        <a href="../social_contracts/post.md#social_contracts_post_action_identity_class">action_identity_class</a>,
         ctx
     );
     // Emit <a href="../social_contracts/post.md#social_contracts_post">post</a> created event
@@ -3880,6 +4442,9 @@ Create a new post with interaction permissions
         spot_id: option::none(),
         spt_id: option::none(),
         <a href="../social_contracts/post.md#social_contracts_post_poc_redirection_kind">poc_redirection_kind</a>,
+        <a href="../social_contracts/post.md#social_contracts_post_actor_address">actor_address</a>,
+        <a href="../social_contracts/post.md#social_contracts_post_sub_agent_id">sub_agent_id</a>,
+        <a href="../social_contracts/post.md#social_contracts_post_action_identity_class">action_identity_class</a>,
     });
 }
 </code></pre>
@@ -3896,7 +4461,7 @@ Create a comment on a post or a reply to another comment
 Returns the ID of the created comment
 
 
-<pre><code><b>public</b> <b>fun</b> <a href="../social_contracts/post.md#social_contracts_post_create_comment">create_comment</a>(registry: &<a href="../social_contracts/profile.md#social_contracts_profile_UsernameRegistry">social_contracts::profile::UsernameRegistry</a>, platform_registry: &<a href="../social_contracts/platform.md#social_contracts_platform_PlatformRegistry">social_contracts::platform::PlatformRegistry</a>, <a href="../social_contracts/platform.md#social_contracts_platform">platform</a>: &<a href="../social_contracts/platform.md#social_contracts_platform_Platform">social_contracts::platform::Platform</a>, block_list_registry: &<a href="../social_contracts/block_list.md#social_contracts_block_list_BlockListRegistry">social_contracts::block_list::BlockListRegistry</a>, config: &<a href="../social_contracts/post.md#social_contracts_post_PostConfig">social_contracts::post::PostConfig</a>, parent_post: &<b>mut</b> <a href="../social_contracts/post.md#social_contracts_post_Post">social_contracts::post::Post</a>, parent_comment_id: <a href="../std/option.md#std_option_Option">std::option::Option</a>&lt;<b>address</b>&gt;, content: <a href="../std/string.md#std_string_String">std::string::String</a>, media_urls: <a href="../std/option.md#std_option_Option">std::option::Option</a>&lt;vector&lt;<a href="../std/string.md#std_string_String">std::string::String</a>&gt;&gt;, mentions: <a href="../std/option.md#std_option_Option">std::option::Option</a>&lt;vector&lt;<b>address</b>&gt;&gt;, metadata_json: <a href="../std/option.md#std_option_Option">std::option::Option</a>&lt;<a href="../std/string.md#std_string_String">std::string::String</a>&gt;, ctx: &<b>mut</b> <a href="../myso/tx_context.md#myso_tx_context_TxContext">myso::tx_context::TxContext</a>): <b>address</b>
+<pre><code><b>public</b> <b>fun</b> <a href="../social_contracts/post.md#social_contracts_post_create_comment">create_comment</a>(registry: &<a href="../social_contracts/profile.md#social_contracts_profile_UsernameRegistry">social_contracts::profile::UsernameRegistry</a>, platform_registry: &<a href="../social_contracts/platform.md#social_contracts_platform_PlatformRegistry">social_contracts::platform::PlatformRegistry</a>, <a href="../social_contracts/platform.md#social_contracts_platform">platform</a>: &<a href="../social_contracts/platform.md#social_contracts_platform_Platform">social_contracts::platform::Platform</a>, block_list_registry: &<a href="../social_contracts/block_list.md#social_contracts_block_list_BlockListRegistry">social_contracts::block_list::BlockListRegistry</a>, config: &<a href="../social_contracts/post.md#social_contracts_post_PostConfig">social_contracts::post::PostConfig</a>, memory_account: &<a href="../social_contracts/memory.md#social_contracts_memory_MemoryAccount">social_contracts::memory::MemoryAccount</a>, parent_post: &<b>mut</b> <a href="../social_contracts/post.md#social_contracts_post_Post">social_contracts::post::Post</a>, parent_comment_id: <a href="../std/option.md#std_option_Option">std::option::Option</a>&lt;<b>address</b>&gt;, content: <a href="../std/string.md#std_string_String">std::string::String</a>, media_urls: <a href="../std/option.md#std_option_Option">std::option::Option</a>&lt;vector&lt;<a href="../std/string.md#std_string_String">std::string::String</a>&gt;&gt;, mentions: <a href="../std/option.md#std_option_Option">std::option::Option</a>&lt;vector&lt;<b>address</b>&gt;&gt;, metadata_json: <a href="../std/option.md#std_option_Option">std::option::Option</a>&lt;<a href="../std/string.md#std_string_String">std::string::String</a>&gt;, clock: &<a href="../myso/clock.md#myso_clock_Clock">myso::clock::Clock</a>, ctx: &<b>mut</b> <a href="../myso/tx_context.md#myso_tx_context_TxContext">myso::tx_context::TxContext</a>): <b>address</b>
 </code></pre>
 
 
@@ -3911,29 +4476,36 @@ Returns the ID of the created comment
     <a href="../social_contracts/platform.md#social_contracts_platform">platform</a>: &<a href="../social_contracts/platform.md#social_contracts_platform_Platform">platform::Platform</a>,
     block_list_registry: &BlockListRegistry,
     config: &<a href="../social_contracts/post.md#social_contracts_post_PostConfig">PostConfig</a>,
+    memory_account: &MemoryAccount,
     parent_post: &<b>mut</b> <a href="../social_contracts/post.md#social_contracts_post_Post">Post</a>,
     parent_comment_id: Option&lt;<b>address</b>&gt;,
     content: String,
     <b>mut</b> media_urls: Option&lt;vector&lt;String&gt;&gt;,
     mentions: Option&lt;vector&lt;<b>address</b>&gt;&gt;,
     metadata_json: Option&lt;String&gt;,
+    clock: &Clock,
     ctx: &<b>mut</b> TxContext
 ): <b>address</b> {
-    <b>let</b> owner = tx_context::sender(ctx);
-    // Look up the <a href="../social_contracts/profile.md#social_contracts_profile">profile</a> ID <b>for</b> the sender
-    <b>let</b> <b>mut</b> profile_id_option = <a href="../social_contracts/profile.md#social_contracts_profile_lookup_profile_by_owner">social_contracts::profile::lookup_profile_by_owner</a>(registry, owner);
-    <b>assert</b>!(option::is_some(&profile_id_option), <a href="../social_contracts/post.md#social_contracts_post_EUnauthorized">EUnauthorized</a>);
-    <b>let</b> profile_id = option::extract(&<b>mut</b> profile_id_option);
+    <b>let</b> acting = <a href="../social_contracts/post.md#social_contracts_post_resolve_social_actor">resolve_social_actor</a>(
+        registry,
+        <a href="../social_contracts/platform.md#social_contracts_platform">platform</a>,
+        block_list_registry,
+        memory_account,
+        <a href="../social_contracts/memory.md#social_contracts_memory_cap_comment">memory::cap_comment</a>(),
+        0,
+        clock,
+        ctx,
+    );
+    <b>let</b> owner = <a href="../social_contracts/memory.md#social_contracts_memory_acting_principal_owner">memory::acting_principal_owner</a>(&acting);
+    <b>let</b> profile_id = <a href="../social_contracts/memory.md#social_contracts_memory_acting_profile_id">memory::acting_profile_id</a>(&acting);
+    <b>let</b> <a href="../social_contracts/post.md#social_contracts_post_actor_address">actor_address</a> = <a href="../social_contracts/memory.md#social_contracts_memory_acting_actor_address">memory::acting_actor_address</a>(&acting);
+    <b>let</b> <a href="../social_contracts/post.md#social_contracts_post_sub_agent_id">sub_agent_id</a> = <a href="../social_contracts/memory.md#social_contracts_memory_acting_sub_agent_id">memory::acting_sub_agent_id</a>(&acting);
+    <b>let</b> <a href="../social_contracts/post.md#social_contracts_post_action_identity_class">action_identity_class</a> = <a href="../social_contracts/memory.md#social_contracts_memory_acting_identity_class">memory::acting_identity_class</a>(&acting);
     // Check <b>if</b> <a href="../social_contracts/platform.md#social_contracts_platform">platform</a> is approved
     <b>let</b> platform_id = object::uid_to_address(<a href="../social_contracts/platform.md#social_contracts_platform_id">platform::id</a>(<a href="../social_contracts/platform.md#social_contracts_platform">platform</a>));
     <b>assert</b>!(<a href="../social_contracts/platform.md#social_contracts_platform_is_approved">platform::is_approved</a>(platform_registry, platform_id), <a href="../social_contracts/post.md#social_contracts_post_EUnauthorized">EUnauthorized</a>);
-    // Check <b>if</b> user <b>has</b> joined the <a href="../social_contracts/platform.md#social_contracts_platform">platform</a> (by wallet <b>address</b>)
-    <b>assert</b>!(<a href="../social_contracts/platform.md#social_contracts_platform_has_joined_platform">platform::has_joined_platform</a>(<a href="../social_contracts/platform.md#social_contracts_platform">platform</a>, owner), <a href="../social_contracts/post.md#social_contracts_post_EUserNotJoinedPlatform">EUserNotJoinedPlatform</a>);
-    // Check <b>if</b> the user is blocked by the <a href="../social_contracts/platform.md#social_contracts_platform">platform</a>
-    <b>let</b> platform_address = object::uid_to_address(<a href="../social_contracts/platform.md#social_contracts_platform_id">platform::id</a>(<a href="../social_contracts/platform.md#social_contracts_platform">platform</a>));
-    <b>assert</b>!(!<a href="../social_contracts/block_list.md#social_contracts_block_list_is_blocked">block_list::is_blocked</a>(block_list_registry, platform_address, owner), <a href="../social_contracts/post.md#social_contracts_post_EUserBlockedByPlatform">EUserBlockedByPlatform</a>);
-    // Check <b>if</b> the caller is blocked by the <a href="../social_contracts/post.md#social_contracts_post">post</a> creator
-    <b>assert</b>!(!<a href="../social_contracts/block_list.md#social_contracts_block_list_is_blocked">block_list::is_blocked</a>(block_list_registry, parent_post.owner, owner), <a href="../social_contracts/post.md#social_contracts_post_EUnauthorized">EUnauthorized</a>);
+    // Check <b>if</b> the actor is blocked by the <a href="../social_contracts/post.md#social_contracts_post">post</a> creator
+    <b>assert</b>!(!<a href="../social_contracts/block_list.md#social_contracts_block_list_is_blocked">block_list::is_blocked</a>(block_list_registry, parent_post.owner, <a href="../social_contracts/post.md#social_contracts_post_actor_address">actor_address</a>), <a href="../social_contracts/post.md#social_contracts_post_EUnauthorized">EUnauthorized</a>);
     // Check <b>if</b> comments are allowed on the parent <a href="../social_contracts/post.md#social_contracts_post">post</a>
     <b>assert</b>!(<a href="../social_contracts/post.md#social_contracts_post_allow_comments">allow_comments</a>(parent_post), <a href="../social_contracts/post.md#social_contracts_post_ECommentsNotAllowed">ECommentsNotAllowed</a>);
     // Validate content length using config
@@ -3970,7 +4542,7 @@ Returns the ID of the created comment
     // Get parent <a href="../social_contracts/post.md#social_contracts_post">post</a> ID
     <b>let</b> parent_post_id = object::uid_to_address(&parent_post.id);
     // Create a proper <a href="../social_contracts/post.md#social_contracts_post_Comment">Comment</a> object instead of reusing <a href="../social_contracts/post.md#social_contracts_post">post</a> structure
-    <b>let</b> comment = <a href="../social_contracts/post.md#social_contracts_post_Comment">Comment</a> {
+    <b>let</b> <b>mut</b> comment = <a href="../social_contracts/post.md#social_contracts_post_Comment">Comment</a> {
         id: object::new(ctx),
         post_id: parent_post_id,
         parent_comment_id,
@@ -3990,6 +4562,12 @@ Returns the ID of the created comment
         reaction_counts: table::new(ctx),
         <a href="../social_contracts/post.md#social_contracts_post_version">version</a>: <a href="../social_contracts/upgrade.md#social_contracts_upgrade_current_version">upgrade::current_version</a>(),
     };
+    <a href="../social_contracts/post.md#social_contracts_post_attach_comment_attribution">attach_comment_attribution</a>(
+        &<b>mut</b> comment,
+        <a href="../social_contracts/post.md#social_contracts_post_actor_address">actor_address</a>,
+        <a href="../social_contracts/post.md#social_contracts_post_sub_agent_id">sub_agent_id</a>,
+        <a href="../social_contracts/post.md#social_contracts_post_action_identity_class">action_identity_class</a>,
+    );
     // Get comment ID before sharing
     <b>let</b> comment_id = object::uid_to_address(&comment.id);
     // Increment the parent <a href="../social_contracts/post.md#social_contracts_post">post</a>'s comment count with overflow protection
@@ -4007,6 +4585,9 @@ Returns the ID of the created comment
         profile_id,
         content,
         mentions,
+        <a href="../social_contracts/post.md#social_contracts_post_actor_address">actor_address</a>,
+        <a href="../social_contracts/post.md#social_contracts_post_sub_agent_id">sub_agent_id</a>,
+        <a href="../social_contracts/post.md#social_contracts_post_action_identity_class">action_identity_class</a>,
     });
     // Share the comment object
     transfer::share_object(comment);
@@ -4028,7 +4609,7 @@ If content is provided, it's treated as a quote repost
 If content is empty/none, it's treated as a standard repost
 
 
-<pre><code><b>public</b> <b>fun</b> <a href="../social_contracts/post.md#social_contracts_post_create_repost">create_repost</a>(registry: &<a href="../social_contracts/profile.md#social_contracts_profile_UsernameRegistry">social_contracts::profile::UsernameRegistry</a>, platform_registry: &<a href="../social_contracts/platform.md#social_contracts_platform_PlatformRegistry">social_contracts::platform::PlatformRegistry</a>, <a href="../social_contracts/platform.md#social_contracts_platform">platform</a>: &<a href="../social_contracts/platform.md#social_contracts_platform_Platform">social_contracts::platform::Platform</a>, block_list_registry: &<a href="../social_contracts/block_list.md#social_contracts_block_list_BlockListRegistry">social_contracts::block_list::BlockListRegistry</a>, config: &<a href="../social_contracts/post.md#social_contracts_post_PostConfig">social_contracts::post::PostConfig</a>, original_post: &<b>mut</b> <a href="../social_contracts/post.md#social_contracts_post_Post">social_contracts::post::Post</a>, content: <a href="../std/option.md#std_option_Option">std::option::Option</a>&lt;<a href="../std/string.md#std_string_String">std::string::String</a>&gt;, media_urls: <a href="../std/option.md#std_option_Option">std::option::Option</a>&lt;vector&lt;<a href="../std/string.md#std_string_String">std::string::String</a>&gt;&gt;, mentions: <a href="../std/option.md#std_option_Option">std::option::Option</a>&lt;vector&lt;<b>address</b>&gt;&gt;, metadata_json: <a href="../std/option.md#std_option_Option">std::option::Option</a>&lt;<a href="../std/string.md#std_string_String">std::string::String</a>&gt;, <a href="../social_contracts/post.md#social_contracts_post_allow_comments">allow_comments</a>: <a href="../std/option.md#std_option_Option">std::option::Option</a>&lt;bool&gt;, <a href="../social_contracts/post.md#social_contracts_post_allow_reactions">allow_reactions</a>: <a href="../std/option.md#std_option_Option">std::option::Option</a>&lt;bool&gt;, <a href="../social_contracts/post.md#social_contracts_post_allow_reposts">allow_reposts</a>: <a href="../std/option.md#std_option_Option">std::option::Option</a>&lt;bool&gt;, <a href="../social_contracts/post.md#social_contracts_post_allow_quotes">allow_quotes</a>: <a href="../std/option.md#std_option_Option">std::option::Option</a>&lt;bool&gt;, <a href="../social_contracts/post.md#social_contracts_post_allow_tips">allow_tips</a>: <a href="../std/option.md#std_option_Option">std::option::Option</a>&lt;bool&gt;, enable_spt: <a href="../std/option.md#std_option_Option">std::option::Option</a>&lt;bool&gt;, enable_poc: <a href="../std/option.md#std_option_Option">std::option::Option</a>&lt;bool&gt;, enable_spot: <a href="../std/option.md#std_option_Option">std::option::Option</a>&lt;bool&gt;, ctx: &<b>mut</b> <a href="../myso/tx_context.md#myso_tx_context_TxContext">myso::tx_context::TxContext</a>)
+<pre><code><b>public</b> <b>fun</b> <a href="../social_contracts/post.md#social_contracts_post_create_repost">create_repost</a>(registry: &<a href="../social_contracts/profile.md#social_contracts_profile_UsernameRegistry">social_contracts::profile::UsernameRegistry</a>, platform_registry: &<a href="../social_contracts/platform.md#social_contracts_platform_PlatformRegistry">social_contracts::platform::PlatformRegistry</a>, <a href="../social_contracts/platform.md#social_contracts_platform">platform</a>: &<a href="../social_contracts/platform.md#social_contracts_platform_Platform">social_contracts::platform::Platform</a>, block_list_registry: &<a href="../social_contracts/block_list.md#social_contracts_block_list_BlockListRegistry">social_contracts::block_list::BlockListRegistry</a>, config: &<a href="../social_contracts/post.md#social_contracts_post_PostConfig">social_contracts::post::PostConfig</a>, original_post: &<b>mut</b> <a href="../social_contracts/post.md#social_contracts_post_Post">social_contracts::post::Post</a>, content: <a href="../std/option.md#std_option_Option">std::option::Option</a>&lt;<a href="../std/string.md#std_string_String">std::string::String</a>&gt;, media_urls: <a href="../std/option.md#std_option_Option">std::option::Option</a>&lt;vector&lt;<a href="../std/string.md#std_string_String">std::string::String</a>&gt;&gt;, mentions: <a href="../std/option.md#std_option_Option">std::option::Option</a>&lt;vector&lt;<b>address</b>&gt;&gt;, metadata_json: <a href="../std/option.md#std_option_Option">std::option::Option</a>&lt;<a href="../std/string.md#std_string_String">std::string::String</a>&gt;, <a href="../social_contracts/post.md#social_contracts_post_allow_comments">allow_comments</a>: <a href="../std/option.md#std_option_Option">std::option::Option</a>&lt;bool&gt;, <a href="../social_contracts/post.md#social_contracts_post_allow_reactions">allow_reactions</a>: <a href="../std/option.md#std_option_Option">std::option::Option</a>&lt;bool&gt;, <a href="../social_contracts/post.md#social_contracts_post_allow_reposts">allow_reposts</a>: <a href="../std/option.md#std_option_Option">std::option::Option</a>&lt;bool&gt;, <a href="../social_contracts/post.md#social_contracts_post_allow_quotes">allow_quotes</a>: <a href="../std/option.md#std_option_Option">std::option::Option</a>&lt;bool&gt;, <a href="../social_contracts/post.md#social_contracts_post_allow_tips">allow_tips</a>: <a href="../std/option.md#std_option_Option">std::option::Option</a>&lt;bool&gt;, enable_spt: <a href="../std/option.md#std_option_Option">std::option::Option</a>&lt;bool&gt;, enable_poc: <a href="../std/option.md#std_option_Option">std::option::Option</a>&lt;bool&gt;, enable_spot: <a href="../std/option.md#std_option_Option">std::option::Option</a>&lt;bool&gt;, memory_account: &<a href="../social_contracts/memory.md#social_contracts_memory_MemoryAccount">social_contracts::memory::MemoryAccount</a>, clock: &<a href="../myso/clock.md#myso_clock_Clock">myso::clock::Clock</a>, ctx: &<b>mut</b> <a href="../myso/tx_context.md#myso_tx_context_TxContext">myso::tx_context::TxContext</a>)
 </code></pre>
 
 
@@ -4056,21 +4637,28 @@ If content is empty/none, it's treated as a standard repost
     enable_spt: Option&lt;bool&gt;,
     enable_poc: Option&lt;bool&gt;,
     enable_spot: Option&lt;bool&gt;,
+    memory_account: &MemoryAccount,
+    clock: &Clock,
     ctx: &<b>mut</b> TxContext
 ) {
-    <b>let</b> owner = tx_context::sender(ctx);
-    // Look up the <a href="../social_contracts/profile.md#social_contracts_profile">profile</a> ID <b>for</b> the sender (<b>for</b> reference, not ownership)
-    <b>let</b> <b>mut</b> profile_id_option = <a href="../social_contracts/profile.md#social_contracts_profile_lookup_profile_by_owner">social_contracts::profile::lookup_profile_by_owner</a>(registry, owner);
-    <b>assert</b>!(option::is_some(&profile_id_option), <a href="../social_contracts/post.md#social_contracts_post_EUnauthorized">EUnauthorized</a>);
-    <b>let</b> profile_id = option::extract(&<b>mut</b> profile_id_option);
+    <b>let</b> acting = <a href="../social_contracts/post.md#social_contracts_post_resolve_social_actor">resolve_social_actor</a>(
+        registry,
+        <a href="../social_contracts/platform.md#social_contracts_platform">platform</a>,
+        block_list_registry,
+        memory_account,
+        <a href="../social_contracts/memory.md#social_contracts_memory_cap_post_publish">memory::cap_post_publish</a>(),
+        0,
+        clock,
+        ctx,
+    );
+    <b>let</b> owner = <a href="../social_contracts/memory.md#social_contracts_memory_acting_principal_owner">memory::acting_principal_owner</a>(&acting);
+    <b>let</b> profile_id = <a href="../social_contracts/memory.md#social_contracts_memory_acting_profile_id">memory::acting_profile_id</a>(&acting);
+    <b>let</b> <a href="../social_contracts/post.md#social_contracts_post_actor_address">actor_address</a> = <a href="../social_contracts/memory.md#social_contracts_memory_acting_actor_address">memory::acting_actor_address</a>(&acting);
+    <b>let</b> <a href="../social_contracts/post.md#social_contracts_post_sub_agent_id">sub_agent_id</a> = <a href="../social_contracts/memory.md#social_contracts_memory_acting_sub_agent_id">memory::acting_sub_agent_id</a>(&acting);
+    <b>let</b> <a href="../social_contracts/post.md#social_contracts_post_action_identity_class">action_identity_class</a> = <a href="../social_contracts/memory.md#social_contracts_memory_acting_identity_class">memory::acting_identity_class</a>(&acting);
     // Check <b>if</b> <a href="../social_contracts/platform.md#social_contracts_platform">platform</a> is approved
     <b>let</b> platform_id = object::uid_to_address(<a href="../social_contracts/platform.md#social_contracts_platform_id">platform::id</a>(<a href="../social_contracts/platform.md#social_contracts_platform">platform</a>));
     <b>assert</b>!(<a href="../social_contracts/platform.md#social_contracts_platform_is_approved">platform::is_approved</a>(platform_registry, platform_id), <a href="../social_contracts/post.md#social_contracts_post_EUnauthorized">EUnauthorized</a>);
-    // Check <b>if</b> user <b>has</b> joined the <a href="../social_contracts/platform.md#social_contracts_platform">platform</a> (by wallet <b>address</b>)
-    <b>assert</b>!(<a href="../social_contracts/platform.md#social_contracts_platform_has_joined_platform">platform::has_joined_platform</a>(<a href="../social_contracts/platform.md#social_contracts_platform">platform</a>, owner), <a href="../social_contracts/post.md#social_contracts_post_EUserNotJoinedPlatform">EUserNotJoinedPlatform</a>);
-    // Check <b>if</b> the user is blocked by the <a href="../social_contracts/platform.md#social_contracts_platform">platform</a>
-    <b>let</b> platform_address = object::uid_to_address(<a href="../social_contracts/platform.md#social_contracts_platform_id">platform::id</a>(<a href="../social_contracts/platform.md#social_contracts_platform">platform</a>));
-    <b>assert</b>!(!<a href="../social_contracts/block_list.md#social_contracts_block_list_is_blocked">block_list::is_blocked</a>(block_list_registry, platform_address, owner), <a href="../social_contracts/post.md#social_contracts_post_EUserBlockedByPlatform">EUserBlockedByPlatform</a>);
     <b>let</b> original_post_id = object::uid_to_address(&original_post.id);
     // Determine <b>if</b> this is a quote repost or standard repost
     <b>let</b> is_quote_repost = option::is_some(&content) && string::length(option::borrow(&content)) &gt; 0;
@@ -4148,6 +4736,9 @@ If content is empty/none, it's treated as a standard repost
             is_original_post: <b>true</b>,
             owner,
             profile_id,
+            <a href="../social_contracts/post.md#social_contracts_post_actor_address">actor_address</a>,
+            <a href="../social_contracts/post.md#social_contracts_post_sub_agent_id">sub_agent_id</a>,
+            <a href="../social_contracts/post.md#social_contracts_post_action_identity_class">action_identity_class</a>,
         });
         // Share repost object
         transfer::share_object(repost);
@@ -4224,6 +4815,9 @@ If content is empty/none, it's treated as a standard repost
         final_enable_poc,
         final_enable_spot,
         <a href="../social_contracts/post.md#social_contracts_post_poc_redirection_kind">poc_redirection_kind</a>,
+        <a href="../social_contracts/post.md#social_contracts_post_actor_address">actor_address</a>,
+        <a href="../social_contracts/post.md#social_contracts_post_sub_agent_id">sub_agent_id</a>,
+        <a href="../social_contracts/post.md#social_contracts_post_action_identity_class">action_identity_class</a>,
         ctx
     );
     <b>let</b> permissions_for_event = <a href="../social_contracts/post.md#social_contracts_post_permissions_bitfield">permissions_bitfield</a>(
@@ -4256,6 +4850,9 @@ If content is empty/none, it's treated as a standard repost
         spot_id: option::none(),
         spt_id: option::none(),
         <a href="../social_contracts/post.md#social_contracts_post_poc_redirection_kind">poc_redirection_kind</a>,
+        <a href="../social_contracts/post.md#social_contracts_post_actor_address">actor_address</a>,
+        <a href="../social_contracts/post.md#social_contracts_post_sub_agent_id">sub_agent_id</a>,
+        <a href="../social_contracts/post.md#social_contracts_post_action_identity_class">action_identity_class</a>,
     });
 }
 </code></pre>
@@ -4420,7 +5017,7 @@ React to a post with a specific reaction (emoji or text)
 If the user already has the exact same reaction, it will be removed (toggle behavior)
 
 
-<pre><code><b>public</b> <b>fun</b> <a href="../social_contracts/post.md#social_contracts_post_react_to_post">react_to_post</a>(<a href="../social_contracts/post.md#social_contracts_post">post</a>: &<b>mut</b> <a href="../social_contracts/post.md#social_contracts_post_Post">social_contracts::post::Post</a>, platform_registry: &<a href="../social_contracts/platform.md#social_contracts_platform_PlatformRegistry">social_contracts::platform::PlatformRegistry</a>, <a href="../social_contracts/platform.md#social_contracts_platform">platform</a>: &<a href="../social_contracts/platform.md#social_contracts_platform_Platform">social_contracts::platform::Platform</a>, block_list_registry: &<a href="../social_contracts/block_list.md#social_contracts_block_list_BlockListRegistry">social_contracts::block_list::BlockListRegistry</a>, config: &<a href="../social_contracts/post.md#social_contracts_post_PostConfig">social_contracts::post::PostConfig</a>, reaction: <a href="../std/string.md#std_string_String">std::string::String</a>, ctx: &<b>mut</b> <a href="../myso/tx_context.md#myso_tx_context_TxContext">myso::tx_context::TxContext</a>)
+<pre><code><b>public</b> <b>fun</b> <a href="../social_contracts/post.md#social_contracts_post_react_to_post">react_to_post</a>(registry: &<a href="../social_contracts/profile.md#social_contracts_profile_UsernameRegistry">social_contracts::profile::UsernameRegistry</a>, <a href="../social_contracts/post.md#social_contracts_post">post</a>: &<b>mut</b> <a href="../social_contracts/post.md#social_contracts_post_Post">social_contracts::post::Post</a>, platform_registry: &<a href="../social_contracts/platform.md#social_contracts_platform_PlatformRegistry">social_contracts::platform::PlatformRegistry</a>, <a href="../social_contracts/platform.md#social_contracts_platform">platform</a>: &<a href="../social_contracts/platform.md#social_contracts_platform_Platform">social_contracts::platform::Platform</a>, block_list_registry: &<a href="../social_contracts/block_list.md#social_contracts_block_list_BlockListRegistry">social_contracts::block_list::BlockListRegistry</a>, config: &<a href="../social_contracts/post.md#social_contracts_post_PostConfig">social_contracts::post::PostConfig</a>, memory_account: &<a href="../social_contracts/memory.md#social_contracts_memory_MemoryAccount">social_contracts::memory::MemoryAccount</a>, reaction: <a href="../std/string.md#std_string_String">std::string::String</a>, clock: &<a href="../myso/clock.md#myso_clock_Clock">myso::clock::Clock</a>, ctx: &<b>mut</b> <a href="../myso/tx_context.md#myso_tx_context_TxContext">myso::tx_context::TxContext</a>)
 </code></pre>
 
 
@@ -4430,35 +5027,46 @@ If the user already has the exact same reaction, it will be removed (toggle beha
 
 
 <pre><code><b>public</b> <b>fun</b> <a href="../social_contracts/post.md#social_contracts_post_react_to_post">react_to_post</a>(
+    registry: &UsernameRegistry,
     <a href="../social_contracts/post.md#social_contracts_post">post</a>: &<b>mut</b> <a href="../social_contracts/post.md#social_contracts_post_Post">Post</a>,
     platform_registry: &<a href="../social_contracts/platform.md#social_contracts_platform_PlatformRegistry">platform::PlatformRegistry</a>,
     <a href="../social_contracts/platform.md#social_contracts_platform">platform</a>: &<a href="../social_contracts/platform.md#social_contracts_platform_Platform">platform::Platform</a>,
     block_list_registry: &<a href="../social_contracts/block_list.md#social_contracts_block_list_BlockListRegistry">block_list::BlockListRegistry</a>,
     config: &<a href="../social_contracts/post.md#social_contracts_post_PostConfig">PostConfig</a>,
+    memory_account: &MemoryAccount,
     reaction: String,
+    clock: &Clock,
     ctx: &<b>mut</b> TxContext
 ) {
-    <b>let</b> user = tx_context::sender(ctx);
+    <b>let</b> acting = <a href="../social_contracts/post.md#social_contracts_post_resolve_social_actor">resolve_social_actor</a>(
+        registry,
+        <a href="../social_contracts/platform.md#social_contracts_platform">platform</a>,
+        block_list_registry,
+        memory_account,
+        <a href="../social_contracts/memory.md#social_contracts_memory_cap_react">memory::cap_react</a>(),
+        0,
+        clock,
+        ctx,
+    );
+    <b>let</b> <a href="../social_contracts/post.md#social_contracts_post_actor_address">actor_address</a> = <a href="../social_contracts/memory.md#social_contracts_memory_acting_actor_address">memory::acting_actor_address</a>(&acting);
+    <b>let</b> principal_owner = <a href="../social_contracts/memory.md#social_contracts_memory_acting_principal_owner">memory::acting_principal_owner</a>(&acting);
+    <b>let</b> <a href="../social_contracts/post.md#social_contracts_post_sub_agent_id">sub_agent_id</a> = <a href="../social_contracts/memory.md#social_contracts_memory_acting_sub_agent_id">memory::acting_sub_agent_id</a>(&acting);
+    <b>let</b> <a href="../social_contracts/post.md#social_contracts_post_action_identity_class">action_identity_class</a> = <a href="../social_contracts/memory.md#social_contracts_memory_acting_identity_class">memory::acting_identity_class</a>(&acting);
     // Check <b>if</b> <a href="../social_contracts/platform.md#social_contracts_platform">platform</a> is approved
     <b>let</b> platform_id = object::uid_to_address(<a href="../social_contracts/platform.md#social_contracts_platform_id">platform::id</a>(<a href="../social_contracts/platform.md#social_contracts_platform">platform</a>));
     <b>assert</b>!(<a href="../social_contracts/platform.md#social_contracts_platform_is_approved">platform::is_approved</a>(platform_registry, platform_id), <a href="../social_contracts/post.md#social_contracts_post_EUnauthorized">EUnauthorized</a>);
-    // Check <b>if</b> user <b>has</b> joined the <a href="../social_contracts/platform.md#social_contracts_platform">platform</a> (by wallet <b>address</b>)
-    <b>assert</b>!(<a href="../social_contracts/platform.md#social_contracts_platform_has_joined_platform">platform::has_joined_platform</a>(<a href="../social_contracts/platform.md#social_contracts_platform">platform</a>, user), <a href="../social_contracts/post.md#social_contracts_post_EUserNotJoinedPlatform">EUserNotJoinedPlatform</a>);
-    // Check <b>if</b> the user is blocked by the <a href="../social_contracts/platform.md#social_contracts_platform">platform</a>
-    <b>let</b> platform_address = object::uid_to_address(<a href="../social_contracts/platform.md#social_contracts_platform_id">platform::id</a>(<a href="../social_contracts/platform.md#social_contracts_platform">platform</a>));
-    <b>assert</b>!(!<a href="../social_contracts/block_list.md#social_contracts_block_list_is_blocked">block_list::is_blocked</a>(block_list_registry, platform_address, user), <a href="../social_contracts/post.md#social_contracts_post_EUserBlockedByPlatform">EUserBlockedByPlatform</a>);
     // Validate reaction length using config
     <b>assert</b>!(string::length(&reaction) &lt;= config.max_reaction_length, <a href="../social_contracts/post.md#social_contracts_post_EReactionContentTooLong">EReactionContentTooLong</a>);
     // Check <b>if</b> reactions are allowed on this <a href="../social_contracts/post.md#social_contracts_post">post</a>
     <b>assert</b>!(<a href="../social_contracts/post.md#social_contracts_post_allow_reactions">allow_reactions</a>(<a href="../social_contracts/post.md#social_contracts_post">post</a>), <a href="../social_contracts/post.md#social_contracts_post_EReactionsNotAllowed">EReactionsNotAllowed</a>);
     // Check <b>if</b> user already reacted to the <a href="../social_contracts/post.md#social_contracts_post">post</a>
-    <b>if</b> (table::contains(&<a href="../social_contracts/post.md#social_contracts_post">post</a>.user_reactions, user)) {
+    <b>if</b> (table::contains(&<a href="../social_contracts/post.md#social_contracts_post">post</a>.user_reactions, <a href="../social_contracts/post.md#social_contracts_post_actor_address">actor_address</a>)) {
         // Get the previous reaction
-        <b>let</b> previous_reaction = *table::borrow(&<a href="../social_contracts/post.md#social_contracts_post">post</a>.user_reactions, user);
+        <b>let</b> previous_reaction = *table::borrow(&<a href="../social_contracts/post.md#social_contracts_post">post</a>.user_reactions, <a href="../social_contracts/post.md#social_contracts_post_actor_address">actor_address</a>);
         // If the reaction is the same, remove it (toggle behavior)
         <b>if</b> (reaction == previous_reaction) {
             // Remove user's reaction
-            table::remove(&<b>mut</b> <a href="../social_contracts/post.md#social_contracts_post">post</a>.user_reactions, user);
+            table::remove(&<b>mut</b> <a href="../social_contracts/post.md#social_contracts_post">post</a>.user_reactions, <a href="../social_contracts/post.md#social_contracts_post_actor_address">actor_address</a>);
             // Decrease count <b>for</b> this reaction type
             <b>let</b> count = *table::borrow(&<a href="../social_contracts/post.md#social_contracts_post">post</a>.reaction_counts, reaction);
             <b>if</b> (count &lt;= 1) {
@@ -4472,9 +5080,13 @@ If the user already has the exact same reaction, it will be removed (toggle beha
             // Emit remove reaction event
             event::emit(<a href="../social_contracts/post.md#social_contracts_post_RemoveReactionEvent">RemoveReactionEvent</a> {
                 object_id: object::uid_to_address(&<a href="../social_contracts/post.md#social_contracts_post">post</a>.id),
-                user,
+                user: <a href="../social_contracts/post.md#social_contracts_post_actor_address">actor_address</a>,
                 reaction,
                 is_post: <b>true</b>,
+                principal_owner,
+                <a href="../social_contracts/post.md#social_contracts_post_actor_address">actor_address</a>,
+                <a href="../social_contracts/post.md#social_contracts_post_sub_agent_id">sub_agent_id</a>,
+                <a href="../social_contracts/post.md#social_contracts_post_action_identity_class">action_identity_class</a>,
             });
             <b>return</b>
         };
@@ -4487,10 +5099,10 @@ If the user already has the exact same reaction, it will be removed (toggle beha
             *table::borrow_mut(&<b>mut</b> <a href="../social_contracts/post.md#social_contracts_post">post</a>.reaction_counts, previous_reaction) = previous_count - 1;
         };
         // Update user's reaction
-        *table::borrow_mut(&<b>mut</b> <a href="../social_contracts/post.md#social_contracts_post">post</a>.user_reactions, user) = reaction;
+        *table::borrow_mut(&<b>mut</b> <a href="../social_contracts/post.md#social_contracts_post">post</a>.user_reactions, <a href="../social_contracts/post.md#social_contracts_post_actor_address">actor_address</a>) = reaction;
     } <b>else</b> {
         // New reaction from this user
-        table::add(&<b>mut</b> <a href="../social_contracts/post.md#social_contracts_post">post</a>.user_reactions, user, reaction);
+        table::add(&<b>mut</b> <a href="../social_contracts/post.md#social_contracts_post">post</a>.user_reactions, <a href="../social_contracts/post.md#social_contracts_post_actor_address">actor_address</a>, reaction);
         // Increment <a href="../social_contracts/post.md#social_contracts_post">post</a> reaction count
         <b>assert</b>!(<a href="../social_contracts/post.md#social_contracts_post">post</a>.reaction_count &lt;= <a href="../social_contracts/post.md#social_contracts_post_MAX_U64">MAX_U64</a> - 1, <a href="../social_contracts/post.md#social_contracts_post_EOverflow">EOverflow</a>);
         <a href="../social_contracts/post.md#social_contracts_post">post</a>.reaction_count = <a href="../social_contracts/post.md#social_contracts_post">post</a>.reaction_count + 1;
@@ -4506,9 +5118,13 @@ If the user already has the exact same reaction, it will be removed (toggle beha
     // Emit reaction event
     event::emit(<a href="../social_contracts/post.md#social_contracts_post_ReactionEvent">ReactionEvent</a> {
         object_id: object::uid_to_address(&<a href="../social_contracts/post.md#social_contracts_post">post</a>.id),
-        user,
+        user: <a href="../social_contracts/post.md#social_contracts_post_actor_address">actor_address</a>,
         reaction,
         is_post: <b>true</b>,
+        principal_owner,
+        <a href="../social_contracts/post.md#social_contracts_post_actor_address">actor_address</a>,
+        <a href="../social_contracts/post.md#social_contracts_post_sub_agent_id">sub_agent_id</a>,
+        <a href="../social_contracts/post.md#social_contracts_post_action_identity_class">action_identity_class</a>,
     });
 }
 </code></pre>
@@ -4527,7 +5143,7 @@ beneficiary is <code><a href="../social_contracts/post.md#social_contracts_post"
 necessarily the post owner’s vault).
 
 
-<pre><code><b>public</b> <b>fun</b> <a href="../social_contracts/post.md#social_contracts_post_tip_post">tip_post</a>&lt;T&gt;(<a href="../social_contracts/post.md#social_contracts_post">post</a>: &<b>mut</b> <a href="../social_contracts/post.md#social_contracts_post_Post">social_contracts::post::Post</a>, beneficiary_vault: &<b>mut</b> <a href="../social_contracts/proof_of_creativity.md#social_contracts_poc_vault_PoCBeneficiaryVault">social_contracts::poc_vault::PoCBeneficiaryVault</a>, coins: &<b>mut</b> <a href="../myso/coin.md#myso_coin_Coin">myso::coin::Coin</a>&lt;T&gt;, amount: u64, ctx: &<b>mut</b> <a href="../myso/tx_context.md#myso_tx_context_TxContext">myso::tx_context::TxContext</a>)
+<pre><code><b>public</b> <b>fun</b> <a href="../social_contracts/post.md#social_contracts_post_tip_post">tip_post</a>&lt;T&gt;(<a href="../social_contracts/post.md#social_contracts_post">post</a>: &<b>mut</b> <a href="../social_contracts/post.md#social_contracts_post_Post">social_contracts::post::Post</a>, beneficiary_vault: &<b>mut</b> <a href="../social_contracts/proof_of_creativity.md#social_contracts_poc_vault_PoCBeneficiaryVault">social_contracts::poc_vault::PoCBeneficiaryVault</a>, coins: &<b>mut</b> <a href="../myso/coin.md#myso_coin_Coin">myso::coin::Coin</a>&lt;T&gt;, amount: u64, memory_account: &<a href="../social_contracts/memory.md#social_contracts_memory_MemoryAccount">social_contracts::memory::MemoryAccount</a>, ctx: &<b>mut</b> <a href="../myso/tx_context.md#myso_tx_context_TxContext">myso::tx_context::TxContext</a>)
 </code></pre>
 
 
@@ -4541,9 +5157,11 @@ necessarily the post owner’s vault).
     beneficiary_vault: &<b>mut</b> PoCBeneficiaryVault,
     coins: &<b>mut</b> Coin&lt;T&gt;,
     amount: u64,
+    memory_account: &MemoryAccount,
     ctx: &<b>mut</b> TxContext
 ) {
     <b>assert</b>!(amount &gt; 0, <a href="../social_contracts/post.md#social_contracts_post_EInvalidTipAmount">EInvalidTipAmount</a>);
+    <a href="../social_contracts/post.md#social_contracts_post_assert_tip_spend_limit">assert_tip_spend_limit</a>(memory_account, amount, ctx);
     <b>let</b> tipper = tx_context::sender(ctx);
     <b>assert</b>!(tipper != <a href="../social_contracts/post.md#social_contracts_post">post</a>.owner, <a href="../social_contracts/post.md#social_contracts_post_ESelfTipping">ESelfTipping</a>);
     <b>assert</b>!(
@@ -4594,7 +5212,7 @@ wallet redirect, zero redirect %, or escrow with a zero redirected slice from ro
 If an escrow deposit is required, aborts with [<code><a href="../social_contracts/post.md#social_contracts_post_ETipPostRequiresBeneficiaryVault">ETipPostRequiresBeneficiaryVault</a></code>].
 
 
-<pre><code><b>public</b> <b>fun</b> <a href="../social_contracts/post.md#social_contracts_post_tip_post_simple">tip_post_simple</a>&lt;T&gt;(<a href="../social_contracts/post.md#social_contracts_post">post</a>: &<b>mut</b> <a href="../social_contracts/post.md#social_contracts_post_Post">social_contracts::post::Post</a>, coins: &<b>mut</b> <a href="../myso/coin.md#myso_coin_Coin">myso::coin::Coin</a>&lt;T&gt;, amount: u64, ctx: &<b>mut</b> <a href="../myso/tx_context.md#myso_tx_context_TxContext">myso::tx_context::TxContext</a>)
+<pre><code><b>public</b> <b>fun</b> <a href="../social_contracts/post.md#social_contracts_post_tip_post_simple">tip_post_simple</a>&lt;T&gt;(<a href="../social_contracts/post.md#social_contracts_post">post</a>: &<b>mut</b> <a href="../social_contracts/post.md#social_contracts_post_Post">social_contracts::post::Post</a>, coins: &<b>mut</b> <a href="../myso/coin.md#myso_coin_Coin">myso::coin::Coin</a>&lt;T&gt;, amount: u64, memory_account: &<a href="../social_contracts/memory.md#social_contracts_memory_MemoryAccount">social_contracts::memory::MemoryAccount</a>, ctx: &<b>mut</b> <a href="../myso/tx_context.md#myso_tx_context_TxContext">myso::tx_context::TxContext</a>)
 </code></pre>
 
 
@@ -4607,6 +5225,7 @@ If an escrow deposit is required, aborts with [<code><a href="../social_contract
     <a href="../social_contracts/post.md#social_contracts_post">post</a>: &<b>mut</b> <a href="../social_contracts/post.md#social_contracts_post_Post">Post</a>,
     coins: &<b>mut</b> Coin&lt;T&gt;,
     amount: u64,
+    memory_account: &MemoryAccount,
     ctx: &<b>mut</b> TxContext
 ) {
     <b>assert</b>!(amount &gt; 0, <a href="../social_contracts/post.md#social_contracts_post_EInvalidTipAmount">EInvalidTipAmount</a>);
@@ -4614,6 +5233,7 @@ If an escrow deposit is required, aborts with [<code><a href="../social_contract
         !<a href="../social_contracts/post.md#social_contracts_post_tip_post_requires_beneficiary_vault_for_amount">tip_post_requires_beneficiary_vault_for_amount</a>(<a href="../social_contracts/post.md#social_contracts_post">post</a>, amount),
         <a href="../social_contracts/post.md#social_contracts_post_ETipPostRequiresBeneficiaryVault">ETipPostRequiresBeneficiaryVault</a>
     );
+    <a href="../social_contracts/post.md#social_contracts_post_assert_tip_spend_limit">assert_tip_spend_limit</a>(memory_account, amount, ctx);
     <b>let</b> tipper = tx_context::sender(ctx);
     <b>assert</b>!(tipper != <a href="../social_contracts/post.md#social_contracts_post">post</a>.owner, <a href="../social_contracts/post.md#social_contracts_post_ESelfTipping">ESelfTipping</a>);
     <b>assert</b>!(
@@ -5140,7 +5760,7 @@ Pass the shared <code>PoCBeneficiaryVault</code> for each post when that post us
 Tip a comment; split per <code><a href="../social_contracts/post.md#social_contracts_post_PostConfig">PostConfig</a></code> with PoC redirection on the post owner's share (vault when escrow).
 
 
-<pre><code><b>public</b> <b>fun</b> <a href="../social_contracts/post.md#social_contracts_post_tip_comment">tip_comment</a>&lt;T&gt;(comment: &<b>mut</b> <a href="../social_contracts/post.md#social_contracts_post_Comment">social_contracts::post::Comment</a>, <a href="../social_contracts/post.md#social_contracts_post">post</a>: &<b>mut</b> <a href="../social_contracts/post.md#social_contracts_post_Post">social_contracts::post::Post</a>, config: &<a href="../social_contracts/post.md#social_contracts_post_PostConfig">social_contracts::post::PostConfig</a>, beneficiary_vault: &<b>mut</b> <a href="../social_contracts/proof_of_creativity.md#social_contracts_poc_vault_PoCBeneficiaryVault">social_contracts::poc_vault::PoCBeneficiaryVault</a>, coin: &<b>mut</b> <a href="../myso/coin.md#myso_coin_Coin">myso::coin::Coin</a>&lt;T&gt;, amount: u64, ctx: &<b>mut</b> <a href="../myso/tx_context.md#myso_tx_context_TxContext">myso::tx_context::TxContext</a>)
+<pre><code><b>public</b> <b>fun</b> <a href="../social_contracts/post.md#social_contracts_post_tip_comment">tip_comment</a>&lt;T&gt;(comment: &<b>mut</b> <a href="../social_contracts/post.md#social_contracts_post_Comment">social_contracts::post::Comment</a>, <a href="../social_contracts/post.md#social_contracts_post">post</a>: &<b>mut</b> <a href="../social_contracts/post.md#social_contracts_post_Post">social_contracts::post::Post</a>, config: &<a href="../social_contracts/post.md#social_contracts_post_PostConfig">social_contracts::post::PostConfig</a>, beneficiary_vault: &<b>mut</b> <a href="../social_contracts/proof_of_creativity.md#social_contracts_poc_vault_PoCBeneficiaryVault">social_contracts::poc_vault::PoCBeneficiaryVault</a>, coin: &<b>mut</b> <a href="../myso/coin.md#myso_coin_Coin">myso::coin::Coin</a>&lt;T&gt;, amount: u64, memory_account: &<a href="../social_contracts/memory.md#social_contracts_memory_MemoryAccount">social_contracts::memory::MemoryAccount</a>, ctx: &<b>mut</b> <a href="../myso/tx_context.md#myso_tx_context_TxContext">myso::tx_context::TxContext</a>)
 </code></pre>
 
 
@@ -5156,10 +5776,12 @@ Tip a comment; split per <code><a href="../social_contracts/post.md#social_contr
     beneficiary_vault: &<b>mut</b> PoCBeneficiaryVault,
     coin: &<b>mut</b> Coin&lt;T&gt;,
     amount: u64,
+    memory_account: &MemoryAccount,
     ctx: &<b>mut</b> TxContext
 ) {
     <b>let</b> tipper = tx_context::sender(ctx);
     <b>assert</b>!(amount &gt; 0 && coin::value(coin) &gt;= amount, <a href="../social_contracts/post.md#social_contracts_post_EInvalidTipAmount">EInvalidTipAmount</a>);
+    <a href="../social_contracts/post.md#social_contracts_post_assert_tip_spend_limit">assert_tip_spend_limit</a>(memory_account, amount, ctx);
     <b>assert</b>!(tipper != comment.owner, <a href="../social_contracts/post.md#social_contracts_post_ESelfTipping">ESelfTipping</a>);
     <b>assert</b>!(<a href="../social_contracts/post.md#social_contracts_post_allow_tips">allow_tips</a>(<a href="../social_contracts/post.md#social_contracts_post">post</a>), <a href="../social_contracts/post.md#social_contracts_post_ETipsNotAllowed">ETipsNotAllowed</a>);
     <b>let</b> commenter_amount = (amount * config.commenter_tip_percentage) / 100;
@@ -5646,7 +6268,7 @@ React to a comment with a specific reaction (emoji or text)
 If the user already has the exact same reaction, it will be removed (toggle behavior)
 
 
-<pre><code><b>public</b> <b>fun</b> <a href="../social_contracts/post.md#social_contracts_post_react_to_comment">react_to_comment</a>(comment: &<b>mut</b> <a href="../social_contracts/post.md#social_contracts_post_Comment">social_contracts::post::Comment</a>, platform_registry: &<a href="../social_contracts/platform.md#social_contracts_platform_PlatformRegistry">social_contracts::platform::PlatformRegistry</a>, <a href="../social_contracts/platform.md#social_contracts_platform">platform</a>: &<a href="../social_contracts/platform.md#social_contracts_platform_Platform">social_contracts::platform::Platform</a>, block_list_registry: &<a href="../social_contracts/block_list.md#social_contracts_block_list_BlockListRegistry">social_contracts::block_list::BlockListRegistry</a>, config: &<a href="../social_contracts/post.md#social_contracts_post_PostConfig">social_contracts::post::PostConfig</a>, reaction: <a href="../std/string.md#std_string_String">std::string::String</a>, ctx: &<b>mut</b> <a href="../myso/tx_context.md#myso_tx_context_TxContext">myso::tx_context::TxContext</a>)
+<pre><code><b>public</b> <b>fun</b> <a href="../social_contracts/post.md#social_contracts_post_react_to_comment">react_to_comment</a>(registry: &<a href="../social_contracts/profile.md#social_contracts_profile_UsernameRegistry">social_contracts::profile::UsernameRegistry</a>, comment: &<b>mut</b> <a href="../social_contracts/post.md#social_contracts_post_Comment">social_contracts::post::Comment</a>, platform_registry: &<a href="../social_contracts/platform.md#social_contracts_platform_PlatformRegistry">social_contracts::platform::PlatformRegistry</a>, <a href="../social_contracts/platform.md#social_contracts_platform">platform</a>: &<a href="../social_contracts/platform.md#social_contracts_platform_Platform">social_contracts::platform::Platform</a>, block_list_registry: &<a href="../social_contracts/block_list.md#social_contracts_block_list_BlockListRegistry">social_contracts::block_list::BlockListRegistry</a>, config: &<a href="../social_contracts/post.md#social_contracts_post_PostConfig">social_contracts::post::PostConfig</a>, memory_account: &<a href="../social_contracts/memory.md#social_contracts_memory_MemoryAccount">social_contracts::memory::MemoryAccount</a>, reaction: <a href="../std/string.md#std_string_String">std::string::String</a>, clock: &<a href="../myso/clock.md#myso_clock_Clock">myso::clock::Clock</a>, ctx: &<b>mut</b> <a href="../myso/tx_context.md#myso_tx_context_TxContext">myso::tx_context::TxContext</a>)
 </code></pre>
 
 
@@ -5656,33 +6278,44 @@ If the user already has the exact same reaction, it will be removed (toggle beha
 
 
 <pre><code><b>public</b> <b>fun</b> <a href="../social_contracts/post.md#social_contracts_post_react_to_comment">react_to_comment</a>(
+    registry: &UsernameRegistry,
     comment: &<b>mut</b> <a href="../social_contracts/post.md#social_contracts_post_Comment">Comment</a>,
     platform_registry: &<a href="../social_contracts/platform.md#social_contracts_platform_PlatformRegistry">platform::PlatformRegistry</a>,
     <a href="../social_contracts/platform.md#social_contracts_platform">platform</a>: &<a href="../social_contracts/platform.md#social_contracts_platform_Platform">platform::Platform</a>,
     block_list_registry: &<a href="../social_contracts/block_list.md#social_contracts_block_list_BlockListRegistry">block_list::BlockListRegistry</a>,
     config: &<a href="../social_contracts/post.md#social_contracts_post_PostConfig">PostConfig</a>,
+    memory_account: &MemoryAccount,
     reaction: String,
+    clock: &Clock,
     ctx: &<b>mut</b> TxContext
 ) {
-    <b>let</b> user = tx_context::sender(ctx);
+    <b>let</b> acting = <a href="../social_contracts/post.md#social_contracts_post_resolve_social_actor">resolve_social_actor</a>(
+        registry,
+        <a href="../social_contracts/platform.md#social_contracts_platform">platform</a>,
+        block_list_registry,
+        memory_account,
+        <a href="../social_contracts/memory.md#social_contracts_memory_cap_react">memory::cap_react</a>(),
+        0,
+        clock,
+        ctx,
+    );
+    <b>let</b> <a href="../social_contracts/post.md#social_contracts_post_actor_address">actor_address</a> = <a href="../social_contracts/memory.md#social_contracts_memory_acting_actor_address">memory::acting_actor_address</a>(&acting);
+    <b>let</b> principal_owner = <a href="../social_contracts/memory.md#social_contracts_memory_acting_principal_owner">memory::acting_principal_owner</a>(&acting);
+    <b>let</b> <a href="../social_contracts/post.md#social_contracts_post_sub_agent_id">sub_agent_id</a> = <a href="../social_contracts/memory.md#social_contracts_memory_acting_sub_agent_id">memory::acting_sub_agent_id</a>(&acting);
+    <b>let</b> <a href="../social_contracts/post.md#social_contracts_post_action_identity_class">action_identity_class</a> = <a href="../social_contracts/memory.md#social_contracts_memory_acting_identity_class">memory::acting_identity_class</a>(&acting);
     // Check <b>if</b> <a href="../social_contracts/platform.md#social_contracts_platform">platform</a> is approved
     <b>let</b> platform_id = object::uid_to_address(<a href="../social_contracts/platform.md#social_contracts_platform_id">platform::id</a>(<a href="../social_contracts/platform.md#social_contracts_platform">platform</a>));
     <b>assert</b>!(<a href="../social_contracts/platform.md#social_contracts_platform_is_approved">platform::is_approved</a>(platform_registry, platform_id), <a href="../social_contracts/post.md#social_contracts_post_EUnauthorized">EUnauthorized</a>);
-    // Check <b>if</b> user <b>has</b> joined the <a href="../social_contracts/platform.md#social_contracts_platform">platform</a> (by wallet <b>address</b>)
-    <b>assert</b>!(<a href="../social_contracts/platform.md#social_contracts_platform_has_joined_platform">platform::has_joined_platform</a>(<a href="../social_contracts/platform.md#social_contracts_platform">platform</a>, user), <a href="../social_contracts/post.md#social_contracts_post_EUserNotJoinedPlatform">EUserNotJoinedPlatform</a>);
-    // Check <b>if</b> the user is blocked by the <a href="../social_contracts/platform.md#social_contracts_platform">platform</a>
-    <b>let</b> platform_address = object::uid_to_address(<a href="../social_contracts/platform.md#social_contracts_platform_id">platform::id</a>(<a href="../social_contracts/platform.md#social_contracts_platform">platform</a>));
-    <b>assert</b>!(!<a href="../social_contracts/block_list.md#social_contracts_block_list_is_blocked">block_list::is_blocked</a>(block_list_registry, platform_address, user), <a href="../social_contracts/post.md#social_contracts_post_EUserBlockedByPlatform">EUserBlockedByPlatform</a>);
     // Validate reaction length using config
     <b>assert</b>!(string::length(&reaction) &lt;= config.max_reaction_length, <a href="../social_contracts/post.md#social_contracts_post_EReactionContentTooLong">EReactionContentTooLong</a>);
     // Check <b>if</b> user already reacted to the comment
-    <b>if</b> (table::contains(&comment.user_reactions, user)) {
+    <b>if</b> (table::contains(&comment.user_reactions, <a href="../social_contracts/post.md#social_contracts_post_actor_address">actor_address</a>)) {
         // Get the previous reaction
-        <b>let</b> previous_reaction = *table::borrow(&comment.user_reactions, user);
+        <b>let</b> previous_reaction = *table::borrow(&comment.user_reactions, <a href="../social_contracts/post.md#social_contracts_post_actor_address">actor_address</a>);
         // If the reaction is the same, remove it (toggle behavior)
         <b>if</b> (reaction == previous_reaction) {
             // Remove user's reaction
-            table::remove(&<b>mut</b> comment.user_reactions, user);
+            table::remove(&<b>mut</b> comment.user_reactions, <a href="../social_contracts/post.md#social_contracts_post_actor_address">actor_address</a>);
             // Decrease count <b>for</b> this reaction type
             <b>let</b> count = *table::borrow(&comment.reaction_counts, reaction);
             <b>if</b> (count &lt;= 1) {
@@ -5696,9 +6329,13 @@ If the user already has the exact same reaction, it will be removed (toggle beha
             // Emit remove reaction event
             event::emit(<a href="../social_contracts/post.md#social_contracts_post_RemoveReactionEvent">RemoveReactionEvent</a> {
                 object_id: object::uid_to_address(&comment.id),
-                user,
+                user: <a href="../social_contracts/post.md#social_contracts_post_actor_address">actor_address</a>,
                 reaction,
                 is_post: <b>false</b>,
+                principal_owner,
+                <a href="../social_contracts/post.md#social_contracts_post_actor_address">actor_address</a>,
+                <a href="../social_contracts/post.md#social_contracts_post_sub_agent_id">sub_agent_id</a>,
+                <a href="../social_contracts/post.md#social_contracts_post_action_identity_class">action_identity_class</a>,
             });
             <b>return</b>
         };
@@ -5711,10 +6348,10 @@ If the user already has the exact same reaction, it will be removed (toggle beha
             *table::borrow_mut(&<b>mut</b> comment.reaction_counts, previous_reaction) = previous_count - 1;
         };
         // Update user's reaction
-        *table::borrow_mut(&<b>mut</b> comment.user_reactions, user) = reaction;
+        *table::borrow_mut(&<b>mut</b> comment.user_reactions, <a href="../social_contracts/post.md#social_contracts_post_actor_address">actor_address</a>) = reaction;
     } <b>else</b> {
         // New reaction from this user
-        table::add(&<b>mut</b> comment.user_reactions, user, reaction);
+        table::add(&<b>mut</b> comment.user_reactions, <a href="../social_contracts/post.md#social_contracts_post_actor_address">actor_address</a>, reaction);
         // Increment comment reaction count
         <b>assert</b>!(comment.reaction_count &lt;= <a href="../social_contracts/post.md#social_contracts_post_MAX_U64">MAX_U64</a> - 1, <a href="../social_contracts/post.md#social_contracts_post_EOverflow">EOverflow</a>);
         comment.reaction_count = comment.reaction_count + 1;
@@ -5730,9 +6367,13 @@ If the user already has the exact same reaction, it will be removed (toggle beha
     // Emit reaction event
     event::emit(<a href="../social_contracts/post.md#social_contracts_post_ReactionEvent">ReactionEvent</a> {
         object_id: object::uid_to_address(&comment.id),
-        user,
+        user: <a href="../social_contracts/post.md#social_contracts_post_actor_address">actor_address</a>,
         reaction,
         is_post: <b>false</b>,
+        principal_owner,
+        <a href="../social_contracts/post.md#social_contracts_post_actor_address">actor_address</a>,
+        <a href="../social_contracts/post.md#social_contracts_post_sub_agent_id">sub_agent_id</a>,
+        <a href="../social_contracts/post.md#social_contracts_post_action_identity_class">action_identity_class</a>,
     });
 }
 </code></pre>
@@ -6221,6 +6862,17 @@ Migration function for Post
         <a href="../social_contracts/post.md#social_contracts_post">post</a>.<a href="../social_contracts/post.md#social_contracts_post_poc_outcome">poc_outcome</a> = <a href="../social_contracts/post.md#social_contracts_post_POC_OUTCOME_NONE">POC_OUTCOME_NONE</a>;
         <a href="../social_contracts/post.md#social_contracts_post">post</a>.<a href="../social_contracts/post.md#social_contracts_post_poc_redirection_kind">poc_redirection_kind</a> = <a href="../social_contracts/post.md#social_contracts_post_POC_REDIRECT_NONE">POC_REDIRECT_NONE</a>;
     };
+    <b>if</b> (old_version &lt; 3) {
+        <b>if</b> (!df::exists_with_type&lt;vector&lt;u8&gt;, <a href="../social_contracts/post.md#social_contracts_post_PostAttribution">PostAttribution</a>&gt;(&<a href="../social_contracts/post.md#social_contracts_post">post</a>.id, <a href="../social_contracts/post.md#social_contracts_post_POST_ATTRIBUTION_DF_KEY">POST_ATTRIBUTION_DF_KEY</a>)) {
+            <b>let</b> owner = <a href="../social_contracts/post.md#social_contracts_post">post</a>.owner;
+            <a href="../social_contracts/post.md#social_contracts_post_attach_post_attribution">attach_post_attribution</a>(
+                <a href="../social_contracts/post.md#social_contracts_post">post</a>,
+                owner,
+                option::none(),
+                <a href="../social_contracts/memory.md#social_contracts_memory_class_human">memory::class_human</a>(),
+            );
+        };
+    };
     <a href="../social_contracts/post.md#social_contracts_post">post</a>.<a href="../social_contracts/post.md#social_contracts_post_version">version</a> = current_version;
     // Initialize platform_id <b>for</b> existing posts (set to @0x0 <b>as</b> sentinel <b>for</b> unknown <a href="../social_contracts/platform.md#social_contracts_platform">platform</a>)
     // This field was added in a later <a href="../social_contracts/post.md#social_contracts_post_version">version</a> - existing posts will have @0x0
@@ -6442,7 +7094,7 @@ Update post parameters (admin only)
 Create a promoted post with MYSO tokens for viewer payments
 
 
-<pre><code><b>public</b> <b>fun</b> <a href="../social_contracts/post.md#social_contracts_post_create_promoted_post">create_promoted_post</a>(registry: &<a href="../social_contracts/profile.md#social_contracts_profile_UsernameRegistry">social_contracts::profile::UsernameRegistry</a>, platform_registry: &<a href="../social_contracts/platform.md#social_contracts_platform_PlatformRegistry">social_contracts::platform::PlatformRegistry</a>, <a href="../social_contracts/platform.md#social_contracts_platform">platform</a>: &<a href="../social_contracts/platform.md#social_contracts_platform_Platform">social_contracts::platform::Platform</a>, block_list_registry: &<a href="../social_contracts/block_list.md#social_contracts_block_list_BlockListRegistry">social_contracts::block_list::BlockListRegistry</a>, config: &<a href="../social_contracts/post.md#social_contracts_post_PostConfig">social_contracts::post::PostConfig</a>, content: <a href="../std/string.md#std_string_String">std::string::String</a>, media_urls: <a href="../std/option.md#std_option_Option">std::option::Option</a>&lt;vector&lt;<a href="../std/string.md#std_string_String">std::string::String</a>&gt;&gt;, mentions: <a href="../std/option.md#std_option_Option">std::option::Option</a>&lt;vector&lt;<b>address</b>&gt;&gt;, metadata_json: <a href="../std/option.md#std_option_Option">std::option::Option</a>&lt;<a href="../std/string.md#std_string_String">std::string::String</a>&gt;, mydata_id: <a href="../std/option.md#std_option_Option">std::option::Option</a>&lt;<b>address</b>&gt;, payment_per_view: u64, promotion_budget: <a href="../myso/coin.md#myso_coin_Coin">myso::coin::Coin</a>&lt;<a href="../myso/myso.md#myso_myso_MYSO">myso::myso::MYSO</a>&gt;, enable_spt: <a href="../std/option.md#std_option_Option">std::option::Option</a>&lt;bool&gt;, enable_poc: <a href="../std/option.md#std_option_Option">std::option::Option</a>&lt;bool&gt;, enable_spot: <a href="../std/option.md#std_option_Option">std::option::Option</a>&lt;bool&gt;, mydata_registry: &<a href="../social_contracts/mydata.md#social_contracts_mydata_MyDataRegistry">social_contracts::mydata::MyDataRegistry</a>, ctx: &<b>mut</b> <a href="../myso/tx_context.md#myso_tx_context_TxContext">myso::tx_context::TxContext</a>)
+<pre><code><b>public</b> <b>fun</b> <a href="../social_contracts/post.md#social_contracts_post_create_promoted_post">create_promoted_post</a>(registry: &<a href="../social_contracts/profile.md#social_contracts_profile_UsernameRegistry">social_contracts::profile::UsernameRegistry</a>, platform_registry: &<a href="../social_contracts/platform.md#social_contracts_platform_PlatformRegistry">social_contracts::platform::PlatformRegistry</a>, <a href="../social_contracts/platform.md#social_contracts_platform">platform</a>: &<a href="../social_contracts/platform.md#social_contracts_platform_Platform">social_contracts::platform::Platform</a>, block_list_registry: &<a href="../social_contracts/block_list.md#social_contracts_block_list_BlockListRegistry">social_contracts::block_list::BlockListRegistry</a>, config: &<a href="../social_contracts/post.md#social_contracts_post_PostConfig">social_contracts::post::PostConfig</a>, content: <a href="../std/string.md#std_string_String">std::string::String</a>, media_urls: <a href="../std/option.md#std_option_Option">std::option::Option</a>&lt;vector&lt;<a href="../std/string.md#std_string_String">std::string::String</a>&gt;&gt;, mentions: <a href="../std/option.md#std_option_Option">std::option::Option</a>&lt;vector&lt;<b>address</b>&gt;&gt;, metadata_json: <a href="../std/option.md#std_option_Option">std::option::Option</a>&lt;<a href="../std/string.md#std_string_String">std::string::String</a>&gt;, mydata_id: <a href="../std/option.md#std_option_Option">std::option::Option</a>&lt;<b>address</b>&gt;, payment_per_view: u64, promotion_budget: <a href="../myso/coin.md#myso_coin_Coin">myso::coin::Coin</a>&lt;<a href="../myso/myso.md#myso_myso_MYSO">myso::myso::MYSO</a>&gt;, enable_spt: <a href="../std/option.md#std_option_Option">std::option::Option</a>&lt;bool&gt;, enable_poc: <a href="../std/option.md#std_option_Option">std::option::Option</a>&lt;bool&gt;, enable_spot: <a href="../std/option.md#std_option_Option">std::option::Option</a>&lt;bool&gt;, mydata_registry: &<a href="../social_contracts/mydata.md#social_contracts_mydata_MyDataRegistry">social_contracts::mydata::MyDataRegistry</a>, memory_account: &<a href="../social_contracts/memory.md#social_contracts_memory_MemoryAccount">social_contracts::memory::MemoryAccount</a>, clock: &<a href="../myso/clock.md#myso_clock_Clock">myso::clock::Clock</a>, ctx: &<b>mut</b> <a href="../myso/tx_context.md#myso_tx_context_TxContext">myso::tx_context::TxContext</a>)
 </code></pre>
 
 
@@ -6468,25 +7120,33 @@ Create a promoted post with MYSO tokens for viewer payments
     enable_poc: Option&lt;bool&gt;,
     enable_spot: Option&lt;bool&gt;,
     mydata_registry: &mydata::MyDataRegistry,
+    memory_account: &MemoryAccount,
+    clock: &Clock,
     ctx: &<b>mut</b> TxContext
 ) {
-    <b>let</b> owner = tx_context::sender(ctx);
+    <b>let</b> acting = <a href="../social_contracts/post.md#social_contracts_post_resolve_social_actor">resolve_social_actor</a>(
+        registry,
+        <a href="../social_contracts/platform.md#social_contracts_platform">platform</a>,
+        block_list_registry,
+        memory_account,
+        <a href="../social_contracts/memory.md#social_contracts_memory_cap_post_publish">memory::cap_post_publish</a>(),
+        0,
+        clock,
+        ctx,
+    );
+    <b>let</b> owner = <a href="../social_contracts/memory.md#social_contracts_memory_acting_principal_owner">memory::acting_principal_owner</a>(&acting);
+    <b>let</b> profile_id = <a href="../social_contracts/memory.md#social_contracts_memory_acting_profile_id">memory::acting_profile_id</a>(&acting);
+    <b>let</b> <a href="../social_contracts/post.md#social_contracts_post_actor_address">actor_address</a> = <a href="../social_contracts/memory.md#social_contracts_memory_acting_actor_address">memory::acting_actor_address</a>(&acting);
+    <b>let</b> <a href="../social_contracts/post.md#social_contracts_post_sub_agent_id">sub_agent_id</a> = <a href="../social_contracts/memory.md#social_contracts_memory_acting_sub_agent_id">memory::acting_sub_agent_id</a>(&acting);
+    <b>let</b> <a href="../social_contracts/post.md#social_contracts_post_action_identity_class">action_identity_class</a> = <a href="../social_contracts/memory.md#social_contracts_memory_acting_identity_class">memory::acting_identity_class</a>(&acting);
     // Validate promotion parameters
     <b>assert</b>!(payment_per_view &gt;= <a href="../social_contracts/post.md#social_contracts_post_MIN_PROMOTION_AMOUNT">MIN_PROMOTION_AMOUNT</a>, <a href="../social_contracts/post.md#social_contracts_post_EPromotionAmountTooLow">EPromotionAmountTooLow</a>);
     <b>assert</b>!(payment_per_view &lt;= <a href="../social_contracts/post.md#social_contracts_post_MAX_PROMOTION_AMOUNT">MAX_PROMOTION_AMOUNT</a>, <a href="../social_contracts/post.md#social_contracts_post_EPromotionAmountTooHigh">EPromotionAmountTooHigh</a>);
     <b>assert</b>!(coin::value(&promotion_budget) &gt;= payment_per_view, <a href="../social_contracts/post.md#social_contracts_post_EInsufficientPromotionFunds">EInsufficientPromotionFunds</a>);
-    // Look up the <a href="../social_contracts/profile.md#social_contracts_profile">profile</a> ID <b>for</b> the sender
-    <b>let</b> <b>mut</b> profile_id_option = <a href="../social_contracts/profile.md#social_contracts_profile_lookup_profile_by_owner">social_contracts::profile::lookup_profile_by_owner</a>(registry, owner);
-    <b>assert</b>!(option::is_some(&profile_id_option), <a href="../social_contracts/post.md#social_contracts_post_EUnauthorized">EUnauthorized</a>);
-    <b>let</b> profile_id = option::extract(&<b>mut</b> profile_id_option);
     <a href="../social_contracts/post.md#social_contracts_post_assert_mydata_id_allowed_for_owner">assert_mydata_id_allowed_for_owner</a>(owner, mydata_id, mydata_registry);
     // Check <b>if</b> <a href="../social_contracts/platform.md#social_contracts_platform">platform</a> is approved
     <b>let</b> platform_id = object::uid_to_address(<a href="../social_contracts/platform.md#social_contracts_platform_id">platform::id</a>(<a href="../social_contracts/platform.md#social_contracts_platform">platform</a>));
     <b>assert</b>!(<a href="../social_contracts/platform.md#social_contracts_platform_is_approved">platform::is_approved</a>(platform_registry, platform_id), <a href="../social_contracts/post.md#social_contracts_post_EUnauthorized">EUnauthorized</a>);
-    // Check <b>if</b> user <b>has</b> joined the <a href="../social_contracts/platform.md#social_contracts_platform">platform</a> (by wallet <b>address</b>)
-    <b>assert</b>!(<a href="../social_contracts/platform.md#social_contracts_platform_has_joined_platform">platform::has_joined_platform</a>(<a href="../social_contracts/platform.md#social_contracts_platform">platform</a>, owner), <a href="../social_contracts/post.md#social_contracts_post_EUserNotJoinedPlatform">EUserNotJoinedPlatform</a>);
-    // Check <b>if</b> the user is blocked by the <a href="../social_contracts/platform.md#social_contracts_platform">platform</a>
-    <b>assert</b>!(!<a href="../social_contracts/block_list.md#social_contracts_block_list_is_blocked">block_list::is_blocked</a>(block_list_registry, platform_id, owner), <a href="../social_contracts/post.md#social_contracts_post_EUserBlockedByPlatform">EUserBlockedByPlatform</a>);
     // Validate content length using config
     <b>assert</b>!(string::length(&content) &lt;= config.max_content_length, <a href="../social_contracts/post.md#social_contracts_post_EContentTooLarge">EContentTooLarge</a>);
     // Validate and convert media URLs <b>if</b> provided
@@ -6571,6 +7231,9 @@ Create a promoted post with MYSO tokens for viewer payments
         final_enable_poc,
         final_enable_spot,
         <a href="../social_contracts/post.md#social_contracts_post_poc_redirection_kind">poc_redirection_kind</a>,
+        <a href="../social_contracts/post.md#social_contracts_post_actor_address">actor_address</a>,
+        <a href="../social_contracts/post.md#social_contracts_post_sub_agent_id">sub_agent_id</a>,
+        <a href="../social_contracts/post.md#social_contracts_post_action_identity_class">action_identity_class</a>,
         ctx
     );
     // Indexers read <a href="../social_contracts/post.md#social_contracts_post_PostCreatedEvent">PostCreatedEvent</a> to upsert `posts` with promotion_id before <a href="../social_contracts/post.md#social_contracts_post_PromotedPostCreatedEvent">PromotedPostCreatedEvent</a>
@@ -6596,6 +7259,9 @@ Create a promoted post with MYSO tokens for viewer payments
         spot_id: option::none(),
         spt_id: option::none(),
         <a href="../social_contracts/post.md#social_contracts_post_poc_redirection_kind">poc_redirection_kind</a>,
+        <a href="../social_contracts/post.md#social_contracts_post_actor_address">actor_address</a>,
+        <a href="../social_contracts/post.md#social_contracts_post_sub_agent_id">sub_agent_id</a>,
+        <a href="../social_contracts/post.md#social_contracts_post_action_identity_class">action_identity_class</a>,
     });
     // Update promotion data with <a href="../social_contracts/post.md#social_contracts_post">post</a> ID
     promotion_data.post_id = post_id;
