@@ -2034,7 +2034,10 @@ impl Query {
         )
     }
 
-    /// Friends-of-friends follow recommendations for a profile or wallet-only address.
+    /// Follow suggestions for a viewer browsing a profile (or wallet-only subject).
+    ///
+    /// Candidate pool is the subject's friends-of-friends. Filtering and ranking use the
+    /// viewer's following graph. When `viewer` is omitted, the subject is treated as the viewer.
     async fn social_graph_recommendations(
         &self,
         ctx: &Context<'_>,

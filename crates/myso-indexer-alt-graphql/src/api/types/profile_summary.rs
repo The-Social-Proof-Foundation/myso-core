@@ -104,7 +104,7 @@ impl ProfileSummary {
         self.inner.blocked_by_subject
     }
 
-    /// Friends-of-friends score when returned from a recommendations query.
+    /// On recommendations queries: count of viewer-following accounts that also follow this address.
     async fn mutual_count(&self) -> Option<i32> {
         self.inner.mutual_count
     }

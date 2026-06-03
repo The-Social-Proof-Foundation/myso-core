@@ -5470,7 +5470,11 @@ type Profile implements Node {
 	"""
 	raisedLocation: String
 	"""
-	Friends-of-friends follow recommendations (excludes existing follows and profile blocks).
+	Follow suggestions for the browsing viewer while viewing this profile.
+	
+	Candidates come from this profile's friends-of-friends. Results exclude accounts
+	the viewer (or profile, when `viewer` is omitted) already follows, require overlap
+	through the viewer's following graph, and are ranked by that overlap (`mutualCount`).
 	"""
 	recommendations(viewer: MySoAddress, limit: Int, offset: Int): [ProfileSummary!]
 	"""
@@ -5655,7 +5659,7 @@ type ProfileSummary {
 	"""
 	isFollowing: Boolean
 	"""
-	Friends-of-friends score when returned from a recommendations query.
+	On recommendations queries: count of viewer-following accounts that also follow this address.
 	"""
 	mutualCount: Int
 	"""
@@ -6465,7 +6469,10 @@ type Query {
 	"""
 	socialGraphFollowing(follower: MySoAddress!, following: MySoAddress!): Boolean
 	"""
-	Friends-of-friends follow recommendations for a profile or wallet-only address.
+	Follow suggestions for a viewer browsing a profile (or wallet-only subject).
+	
+	Candidate pool is the subject's friends-of-friends. Filtering and ranking use the
+	viewer's following graph. When `viewer` is omitted, the subject is treated as the viewer.
 	"""
 	socialGraphRecommendations(subject: MySoAddress!, viewer: MySoAddress, limit: Int, offset: Int): [ProfileSummary!]
 	"""

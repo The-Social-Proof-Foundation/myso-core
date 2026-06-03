@@ -674,7 +674,10 @@ pub async fn get_follow_recommendations_standalone(
     .await
 }
 
-/// Friends-of-friends follow recommendations for an address (profile or wallet-only).
+/// Friends-of-friends follow recommendations for a profile (subject) in viewer context.
+///
+/// Candidate pool: 2-hop from the subject (profile being viewed). Filtering and
+/// `mutual_count` use the viewer's following graph (viewer defaults to subject when omitted).
 pub(crate) async fn get_follow_recommendations(
     conn: &mut Connection<'_>,
     address: &str,
@@ -686,13 +689,86 @@ pub(crate) async fn get_follow_recommendations(
     metrics.requests_received.inc();
     let _guard = metrics.latency.start_timer();
 
-    let (profile_id, owner_address) = resolve_profile_address(conn, address).await?;
-    let profile_ref = profile_id.as_deref().unwrap_or(owner_address.as_str());
+    let (subject_profile_id, subject_owner) = resolve_profile_address(conn, address).await?;
+    let subject_profile_ref = subject_profile_id
+        .as_deref()
+        .unwrap_or(subject_owner.as_str());
 
-    if !subject_has_social_graph_activity(conn, &owner_address, profile_ref).await? {
+    if !subject_has_social_graph_activity(conn, &subject_owner, subject_profile_ref).await? {
         metrics.requests_succeeded.inc();
         return Ok((vec![], 0));
     }
+
+    let (viewer_profile_id, viewer_owner) = match viewer_address {
+        Some(v) => resolve_profile_address(conn, v).await?,
+        None => (subject_profile_id.clone(), subject_owner.clone()),
+    };
+    let viewer_profile_ref = viewer_profile_id
+        .as_deref()
+        .unwrap_or(viewer_owner.as_str());
+
+    const CANDIDATES_CTE: &str = r#"
+        subject_refs AS (
+            SELECT $1::text AS owner_ref, $2::text AS profile_ref
+        ),
+        viewer_refs AS (
+            SELECT $3::text AS owner_ref, $4::text AS profile_ref
+        ),
+        subject_following AS (
+            SELECT DISTINCT sgr.following_address AS hop1
+            FROM social_graph_relationships sgr
+            CROSS JOIN subject_refs sr
+            WHERE sgr.follower_address IN (sr.owner_ref, sr.profile_ref)
+        ),
+        subject_fof AS (
+            SELECT DISTINCT sgr2.following_address AS candidate_addr
+            FROM subject_following sf
+            JOIN social_graph_relationships sgr2 ON sgr2.follower_address = sf.hop1
+        ),
+        viewer_following AS (
+            SELECT DISTINCT sgr.following_address AS addr
+            FROM social_graph_relationships sgr
+            CROSS JOIN viewer_refs vr
+            WHERE sgr.follower_address IN (vr.owner_ref, vr.profile_ref)
+        ),
+        candidates AS (
+            SELECT fof.candidate_addr,
+                   COUNT(DISTINCT vf.addr)::int AS mutual_count
+            FROM subject_fof fof
+            CROSS JOIN subject_refs sr
+            CROSS JOIN viewer_refs vr
+            JOIN viewer_following vf ON true
+            JOIN social_graph_relationships sgr_overlap
+                ON sgr_overlap.follower_address = vf.addr
+               AND sgr_overlap.following_address = fof.candidate_addr
+            WHERE fof.candidate_addr NOT IN (sr.owner_ref, sr.profile_ref, vr.owner_ref, vr.profile_ref)
+              AND NOT EXISTS (
+                  SELECT 1 FROM social_graph_relationships already_p
+                  WHERE already_p.follower_address IN (sr.owner_ref, sr.profile_ref)
+                    AND already_p.following_address = fof.candidate_addr
+              )
+              AND NOT EXISTS (
+                  SELECT 1 FROM social_graph_relationships already_v
+                  WHERE already_v.follower_address IN (vr.owner_ref, vr.profile_ref)
+                    AND already_v.following_address = fof.candidate_addr
+              )
+              AND NOT EXISTS (
+                  SELECT 1 FROM blocked_profiles bp
+                  WHERE (bp.blocker_address IN (sr.owner_ref, sr.profile_ref)
+                         AND bp.blocked_address = fof.candidate_addr)
+                     OR (bp.blocker_address = fof.candidate_addr
+                         AND bp.blocked_address IN (sr.owner_ref, sr.profile_ref))
+              )
+              AND NOT EXISTS (
+                  SELECT 1 FROM blocked_profiles bp
+                  WHERE (bp.blocker_address IN (vr.owner_ref, vr.profile_ref)
+                         AND bp.blocked_address = fof.candidate_addr)
+                     OR (bp.blocker_address = fof.candidate_addr
+                         AND bp.blocked_address IN (vr.owner_ref, vr.profile_ref))
+              )
+            GROUP BY fof.candidate_addr
+        )
+    "#;
 
     #[derive(QueryableByName)]
     struct CountRow {
@@ -700,42 +776,15 @@ pub(crate) async fn get_follow_recommendations(
         cnt: i64,
     }
 
-    let count_sql = r#"
-        WITH subject_refs AS (
-            SELECT $1::text AS owner_ref, $2::text AS profile_ref
-        ),
-        my_following AS (
-            SELECT DISTINCT sgr.following_address AS hop1
-            FROM social_graph_relationships sgr
-            CROSS JOIN subject_refs sr
-            WHERE sgr.follower_address IN (sr.owner_ref, sr.profile_ref)
-        ),
-        candidates AS (
-            SELECT sgr2.following_address AS candidate_addr
-            FROM my_following mf
-            JOIN social_graph_relationships sgr2 ON sgr2.follower_address = mf.hop1
-            CROSS JOIN subject_refs sr
-            WHERE sgr2.following_address NOT IN (sr.owner_ref, sr.profile_ref)
-              AND NOT EXISTS (
-                  SELECT 1 FROM social_graph_relationships already
-                  WHERE already.follower_address IN (sr.owner_ref, sr.profile_ref)
-                    AND already.following_address = sgr2.following_address
-              )
-              AND NOT EXISTS (
-                  SELECT 1 FROM blocked_profiles bp
-                  WHERE (bp.blocker_address IN (sr.owner_ref, sr.profile_ref)
-                         AND bp.blocked_address = sgr2.following_address)
-                     OR (bp.blocker_address = sgr2.following_address
-                         AND bp.blocked_address IN (sr.owner_ref, sr.profile_ref))
-              )
-            GROUP BY sgr2.following_address
-        )
-        SELECT COUNT(*)::bigint AS cnt FROM candidates
-    "#;
+    let count_sql = format!(
+        "WITH {CANDIDATES_CTE} SELECT COUNT(*)::bigint AS cnt FROM candidates"
+    );
 
-    let count_row = diesel::sql_query(count_sql)
-        .bind::<Text, _>(&owner_address)
-        .bind::<Text, _>(profile_ref)
+    let count_row = diesel::sql_query(&count_sql)
+        .bind::<Text, _>(&subject_owner)
+        .bind::<Text, _>(subject_profile_ref)
+        .bind::<Text, _>(&viewer_owner)
+        .bind::<Text, _>(viewer_profile_ref)
         .get_result::<CountRow>(conn)
         .await?;
     let total = count_row.cnt;
@@ -775,37 +824,8 @@ pub(crate) async fn get_follow_recommendations(
         blocked_count: Option<i32>,
     }
 
-    let data_sql = r#"
-        WITH subject_refs AS (
-            SELECT $1::text AS owner_ref, $2::text AS profile_ref
-        ),
-        my_following AS (
-            SELECT DISTINCT sgr.following_address AS hop1
-            FROM social_graph_relationships sgr
-            CROSS JOIN subject_refs sr
-            WHERE sgr.follower_address IN (sr.owner_ref, sr.profile_ref)
-        ),
-        candidates AS (
-            SELECT sgr2.following_address AS candidate_addr,
-                   COUNT(DISTINCT mf.hop1)::int AS mutual_count
-            FROM my_following mf
-            JOIN social_graph_relationships sgr2 ON sgr2.follower_address = mf.hop1
-            CROSS JOIN subject_refs sr
-            WHERE sgr2.following_address NOT IN (sr.owner_ref, sr.profile_ref)
-              AND NOT EXISTS (
-                  SELECT 1 FROM social_graph_relationships already
-                  WHERE already.follower_address IN (sr.owner_ref, sr.profile_ref)
-                    AND already.following_address = sgr2.following_address
-              )
-              AND NOT EXISTS (
-                  SELECT 1 FROM blocked_profiles bp
-                  WHERE (bp.blocker_address IN (sr.owner_ref, sr.profile_ref)
-                         AND bp.blocked_address = sgr2.following_address)
-                     OR (bp.blocker_address = sgr2.following_address
-                         AND bp.blocked_address IN (sr.owner_ref, sr.profile_ref))
-              )
-            GROUP BY sgr2.following_address
-        )
+    let data_sql = format!(
+        r#"WITH {CANDIDATES_CTE}
         SELECT c.candidate_addr AS addr, c.mutual_count,
                p.username, p.display_name, p.profile_photo, p.bio,
                p.selected_badge_id, p.social_proof_token_address, p.reservation_pool_address,
@@ -826,24 +846,22 @@ pub(crate) async fn get_follow_recommendations(
         LEFT JOIN wallet_social_graph wsg
             ON wsg.wallet_address = c.candidate_addr AND p.owner_address IS NULL
         ORDER BY c.mutual_count DESC, c.candidate_addr ASC
-        LIMIT $3 OFFSET $4
-    "#;
+        LIMIT $5 OFFSET $6"#
+    );
 
-    let rows = diesel::sql_query(data_sql)
-        .bind::<Text, _>(&owner_address)
-        .bind::<Text, _>(profile_ref)
+    let rows = diesel::sql_query(&data_sql)
+        .bind::<Text, _>(&subject_owner)
+        .bind::<Text, _>(subject_profile_ref)
+        .bind::<Text, _>(&viewer_owner)
+        .bind::<Text, _>(viewer_profile_ref)
         .bind::<BigInt, _>(limit)
         .bind::<BigInt, _>(offset)
         .load::<RecommendationRow>(conn)
         .await?;
 
     let addresses: Vec<String> = rows.iter().map(|r| r.addr.clone()).collect();
-    let viewer_ctx: HashMap<String, ViewerSocialContext> = if let Some(v) = viewer_address {
-        let (v_pid, v_owner) = resolve_profile_address(conn, v).await?;
-        batch_viewer_social_context(conn, &addresses, &v_pid, &v_owner).await?
-    } else {
-        HashMap::new()
-    };
+    let viewer_ctx =
+        batch_viewer_social_context(conn, &addresses, &viewer_profile_id, &viewer_owner).await?;
 
     let result: Vec<ProfileSummaryRow> = rows
         .into_iter()
@@ -862,10 +880,10 @@ pub(crate) async fn get_follow_recommendations(
                 following_count: r.following_count,
                 post_count: r.post_count.map(|v| v as i32),
                 blocked_count: r.blocked_count,
-                is_following: viewer_address.map(|_| ctx.is_following),
-                follows_viewer: viewer_address.map(|_| ctx.follows_viewer),
-                blocked_by_viewer: viewer_address.map(|_| ctx.blocked_by_viewer),
-                blocked_by_subject: viewer_address.map(|_| ctx.blocked_by_subject),
+                is_following: Some(ctx.is_following),
+                follows_viewer: Some(ctx.follows_viewer),
+                blocked_by_viewer: Some(ctx.blocked_by_viewer),
+                blocked_by_subject: Some(ctx.blocked_by_subject),
                 mutual_count: Some(r.mutual_count),
             }
         })

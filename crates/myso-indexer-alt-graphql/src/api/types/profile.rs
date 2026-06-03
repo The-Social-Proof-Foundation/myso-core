@@ -359,7 +359,11 @@ impl Profile {
         Some(rows.into_iter().map(ProfileSummary::from_row).collect())
     }
 
-    /// Friends-of-friends follow recommendations (excludes existing follows and profile blocks).
+    /// Follow suggestions for the browsing viewer while viewing this profile.
+    ///
+    /// Candidates come from this profile's friends-of-friends. Results exclude accounts
+    /// the viewer (or profile, when `viewer` is omitted) already follows, require overlap
+    /// through the viewer's following graph, and are ranked by that overlap (`mutualCount`).
     async fn recommendations(
         &self,
         ctx: &Context<'_>,
