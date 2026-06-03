@@ -145,6 +145,7 @@ impl SptHolding {
             follows_viewer: None,
             blocked_by_viewer: None,
             blocked_by_subject: None,
+            mutual_count: None,
         })
     }
 
@@ -609,6 +610,7 @@ impl SptReservationHolding {
             follows_viewer: None,
             blocked_by_viewer: None,
             blocked_by_subject: None,
+            mutual_count: None,
         })
     }
 

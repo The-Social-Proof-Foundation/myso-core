@@ -74,8 +74,9 @@ use crate::revenue::get_platform_revenue_summary;
 use crate::social_graph::{
     FollowSortBy, ProfileSummaryRow, ViewerSocialContext, batch_viewer_social_context,
     check_following, check_platform_blocked, check_profile_blocked,
-    count_profile_platform_memberships, get_blocked_platforms, get_blocked_profiles, get_followers,
-    get_following, get_profile_platform_memberships, resolve_profile_address,
+    count_profile_platform_memberships, get_blocked_platforms, get_blocked_profiles,
+    get_follow_recommendations, get_followers, get_following, get_profile_platform_memberships,
+    resolve_profile_address,
 };
 use crate::spot::{
     get_spot_config, get_spot_record, get_spot_resolution, list_spot_bet_withdrawals,
@@ -194,6 +195,7 @@ impl SocialPgReader {
             follows_viewer: None,
             blocked_by_viewer: None,
             blocked_by_subject: None,
+            mutual_count: None,
         })
     }
 
@@ -452,6 +454,18 @@ impl SocialPgReader {
     ) -> anyhow::Result<Vec<crate::social_graph::ProfileSummaryRow>> {
         let mut conn = self.connect().await?;
         get_following(&mut conn, address, viewer, limit, offset, &self.metrics).await
+    }
+
+    /// Friends-of-friends follow recommendations for a profile or wallet-only address.
+    pub async fn get_follow_recommendations(
+        &self,
+        address: &str,
+        limit: i64,
+        offset: i64,
+        viewer: Option<&str>,
+    ) -> anyhow::Result<(Vec<ProfileSummaryRow>, i64)> {
+        let mut conn = self.connect().await?;
+        get_follow_recommendations(&mut conn, address, viewer, limit, offset, &self.metrics).await
     }
 
     /// Check if follower follows following.

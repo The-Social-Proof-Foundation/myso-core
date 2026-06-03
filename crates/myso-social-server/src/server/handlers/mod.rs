@@ -72,6 +72,7 @@ pub use profiles::{
     get_profile_blocking_history, get_profile_by_address, get_profile_by_username,
     get_profile_daily_stats_chart, get_profile_events, get_profile_followers,
     get_profile_following, get_profile_offers, get_profile_platform_events,
+    get_profile_recommendations,
     get_profile_platform_memberships, get_profile_pnl, get_profile_posts, get_profile_sale_fees,
     get_profile_social_stats, latest_profiles,
 };

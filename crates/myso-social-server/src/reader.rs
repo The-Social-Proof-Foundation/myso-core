@@ -1132,6 +1132,14 @@ impl Reader {
         social_graph::get_followers(&self.db, address, query).await
     }
 
+    pub async fn get_follow_recommendations(
+        &self,
+        address: &str,
+        query: &FollowsQuery,
+    ) -> Result<(Vec<RecommendationDetail>, PaginationInfo), crate::error::SocialError> {
+        social_graph::get_follow_recommendations(&self.db, address, query).await
+    }
+
     pub async fn get_social_stats(
         &self,
         address: &str,

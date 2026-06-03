@@ -66,6 +66,8 @@ pub struct ProfileSummaryRow {
     pub blocked_by_viewer: Option<bool>,
     /// This subject has blocked the viewer.
     pub blocked_by_subject: Option<bool>,
+    /// Friends-of-friends score (distinct intermediaries). Set only on recommendation queries.
+    pub mutual_count: Option<i32>,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -156,6 +158,7 @@ pub(crate) async fn get_profile_summaries_for_addresses(
                 follows_viewer: None,
                 blocked_by_viewer: None,
                 blocked_by_subject: None,
+                mutual_count: None,
             },
         );
     }
@@ -180,6 +183,7 @@ pub(crate) async fn get_profile_summaries_for_addresses(
                     follows_viewer: None,
                     blocked_by_viewer: None,
                     blocked_by_subject: None,
+                    mutual_count: None,
                 },
             );
         }
@@ -521,6 +525,7 @@ pub(crate) async fn get_followers(
                 follows_viewer: viewer_address.map(|_| ctx.follows_viewer),
                 blocked_by_viewer: viewer_address.map(|_| ctx.blocked_by_viewer),
                 blocked_by_subject: viewer_address.map(|_| ctx.blocked_by_subject),
+                mutual_count: None,
             }
         })
         .collect();
@@ -614,9 +619,260 @@ pub(crate) async fn get_following(
                 follows_viewer: viewer_address.map(|_| ctx.follows_viewer),
                 blocked_by_viewer: viewer_address.map(|_| ctx.blocked_by_viewer),
                 blocked_by_subject: viewer_address.map(|_| ctx.blocked_by_subject),
+                mutual_count: None,
             }
         })
         .collect())
+}
+
+async fn subject_has_social_graph_activity(
+    conn: &mut Connection<'_>,
+    owner_ref: &str,
+    profile_ref: &str,
+) -> anyhow::Result<bool> {
+    #[derive(QueryableByName)]
+    struct ExistsRow {
+        #[diesel(sql_type = Bool)]
+        exists: bool,
+    }
+    let row = diesel::sql_query(
+        r#"
+        SELECT (
+            EXISTS(SELECT 1 FROM profiles WHERE owner_address = $1 OR profile_id = $1)
+            OR EXISTS(SELECT 1 FROM wallet_social_graph WHERE wallet_address = $1)
+            OR EXISTS(
+                SELECT 1 FROM social_graph_relationships sgr
+                WHERE sgr.follower_address IN ($1, $2)
+                   OR sgr.following_address IN ($1, $2)
+            )
+        ) AS exists
+        "#,
+    )
+    .bind::<Text, _>(owner_ref)
+    .bind::<Text, _>(profile_ref)
+    .get_result::<ExistsRow>(conn)
+    .await?;
+    Ok(row.exists)
+}
+
+/// Friends-of-friends follow recommendations using standalone metrics (e.g. social server).
+pub async fn get_follow_recommendations_standalone(
+    conn: &mut Connection<'_>,
+    address: &str,
+    viewer_address: Option<&str>,
+    limit: i64,
+    offset: i64,
+) -> anyhow::Result<(Vec<ProfileSummaryRow>, i64)> {
+    get_follow_recommendations(
+        conn,
+        address,
+        viewer_address,
+        limit,
+        offset,
+        crate::metrics::standalone_reader_metrics(),
+    )
+    .await
+}
+
+/// Friends-of-friends follow recommendations for an address (profile or wallet-only).
+pub(crate) async fn get_follow_recommendations(
+    conn: &mut Connection<'_>,
+    address: &str,
+    viewer_address: Option<&str>,
+    limit: i64,
+    offset: i64,
+    metrics: &DbReaderMetrics,
+) -> anyhow::Result<(Vec<ProfileSummaryRow>, i64)> {
+    metrics.requests_received.inc();
+    let _guard = metrics.latency.start_timer();
+
+    let (profile_id, owner_address) = resolve_profile_address(conn, address).await?;
+    let profile_ref = profile_id.as_deref().unwrap_or(owner_address.as_str());
+
+    if !subject_has_social_graph_activity(conn, &owner_address, profile_ref).await? {
+        metrics.requests_succeeded.inc();
+        return Ok((vec![], 0));
+    }
+
+    #[derive(QueryableByName)]
+    struct CountRow {
+        #[diesel(sql_type = BigInt)]
+        cnt: i64,
+    }
+
+    let count_sql = r#"
+        WITH subject_refs AS (
+            SELECT $1::text AS owner_ref, $2::text AS profile_ref
+        ),
+        my_following AS (
+            SELECT DISTINCT sgr.following_address AS hop1
+            FROM social_graph_relationships sgr
+            CROSS JOIN subject_refs sr
+            WHERE sgr.follower_address IN (sr.owner_ref, sr.profile_ref)
+        ),
+        candidates AS (
+            SELECT sgr2.following_address AS candidate_addr
+            FROM my_following mf
+            JOIN social_graph_relationships sgr2 ON sgr2.follower_address = mf.hop1
+            CROSS JOIN subject_refs sr
+            WHERE sgr2.following_address NOT IN (sr.owner_ref, sr.profile_ref)
+              AND NOT EXISTS (
+                  SELECT 1 FROM social_graph_relationships already
+                  WHERE already.follower_address IN (sr.owner_ref, sr.profile_ref)
+                    AND already.following_address = sgr2.following_address
+              )
+              AND NOT EXISTS (
+                  SELECT 1 FROM blocked_profiles bp
+                  WHERE (bp.blocker_address IN (sr.owner_ref, sr.profile_ref)
+                         AND bp.blocked_address = sgr2.following_address)
+                     OR (bp.blocker_address = sgr2.following_address
+                         AND bp.blocked_address IN (sr.owner_ref, sr.profile_ref))
+              )
+            GROUP BY sgr2.following_address
+        )
+        SELECT COUNT(*)::bigint AS cnt FROM candidates
+    "#;
+
+    let count_row = diesel::sql_query(count_sql)
+        .bind::<Text, _>(&owner_address)
+        .bind::<Text, _>(profile_ref)
+        .get_result::<CountRow>(conn)
+        .await?;
+    let total = count_row.cnt;
+
+    if total == 0 {
+        metrics.requests_succeeded.inc();
+        return Ok((vec![], 0));
+    }
+
+    #[derive(QueryableByName)]
+    struct RecommendationRow {
+        #[diesel(sql_type = Text)]
+        addr: String,
+        #[diesel(sql_type = Integer)]
+        mutual_count: i32,
+        #[diesel(sql_type = Nullable<Text>)]
+        username: Option<String>,
+        #[diesel(sql_type = Nullable<Text>)]
+        display_name: Option<String>,
+        #[diesel(sql_type = Nullable<Text>)]
+        profile_photo: Option<String>,
+        #[diesel(sql_type = Nullable<Text>)]
+        bio: Option<String>,
+        #[diesel(sql_type = Nullable<Text>)]
+        selected_badge_id: Option<String>,
+        #[diesel(sql_type = Nullable<Text>)]
+        social_proof_token_address: Option<String>,
+        #[diesel(sql_type = Nullable<Text>)]
+        reservation_pool_address: Option<String>,
+        #[diesel(sql_type = Nullable<BigInt>)]
+        post_count: Option<i64>,
+        #[diesel(sql_type = Nullable<Integer>)]
+        followers_count: Option<i32>,
+        #[diesel(sql_type = Nullable<Integer>)]
+        following_count: Option<i32>,
+        #[diesel(sql_type = Nullable<Integer>)]
+        blocked_count: Option<i32>,
+    }
+
+    let data_sql = r#"
+        WITH subject_refs AS (
+            SELECT $1::text AS owner_ref, $2::text AS profile_ref
+        ),
+        my_following AS (
+            SELECT DISTINCT sgr.following_address AS hop1
+            FROM social_graph_relationships sgr
+            CROSS JOIN subject_refs sr
+            WHERE sgr.follower_address IN (sr.owner_ref, sr.profile_ref)
+        ),
+        candidates AS (
+            SELECT sgr2.following_address AS candidate_addr,
+                   COUNT(DISTINCT mf.hop1)::int AS mutual_count
+            FROM my_following mf
+            JOIN social_graph_relationships sgr2 ON sgr2.follower_address = mf.hop1
+            CROSS JOIN subject_refs sr
+            WHERE sgr2.following_address NOT IN (sr.owner_ref, sr.profile_ref)
+              AND NOT EXISTS (
+                  SELECT 1 FROM social_graph_relationships already
+                  WHERE already.follower_address IN (sr.owner_ref, sr.profile_ref)
+                    AND already.following_address = sgr2.following_address
+              )
+              AND NOT EXISTS (
+                  SELECT 1 FROM blocked_profiles bp
+                  WHERE (bp.blocker_address IN (sr.owner_ref, sr.profile_ref)
+                         AND bp.blocked_address = sgr2.following_address)
+                     OR (bp.blocker_address = sgr2.following_address
+                         AND bp.blocked_address IN (sr.owner_ref, sr.profile_ref))
+              )
+            GROUP BY sgr2.following_address
+        )
+        SELECT c.candidate_addr AS addr, c.mutual_count,
+               p.username, p.display_name, p.profile_photo, p.bio,
+               p.selected_badge_id, p.social_proof_token_address, p.reservation_pool_address,
+               COALESCE(p.post_count, 0)::bigint AS post_count,
+               COALESCE(p.followers_count, wsg.followers_count) AS followers_count,
+               COALESCE(p.following_count, wsg.following_count) AS following_count,
+               COALESCE(p.blocked_count, wsg.blocked_count) AS blocked_count
+        FROM candidates c
+        LEFT JOIN LATERAL (
+            SELECT owner_address, username, display_name, profile_photo, bio, selected_badge_id,
+                   social_proof_token_address, reservation_pool_address, post_count,
+                   followers_count, following_count, blocked_count
+            FROM profiles
+            WHERE owner_address = c.candidate_addr
+            ORDER BY updated_at DESC
+            LIMIT 1
+        ) p ON true
+        LEFT JOIN wallet_social_graph wsg
+            ON wsg.wallet_address = c.candidate_addr AND p.owner_address IS NULL
+        ORDER BY c.mutual_count DESC, c.candidate_addr ASC
+        LIMIT $3 OFFSET $4
+    "#;
+
+    let rows = diesel::sql_query(data_sql)
+        .bind::<Text, _>(&owner_address)
+        .bind::<Text, _>(profile_ref)
+        .bind::<BigInt, _>(limit)
+        .bind::<BigInt, _>(offset)
+        .load::<RecommendationRow>(conn)
+        .await?;
+
+    let addresses: Vec<String> = rows.iter().map(|r| r.addr.clone()).collect();
+    let viewer_ctx: HashMap<String, ViewerSocialContext> = if let Some(v) = viewer_address {
+        let (v_pid, v_owner) = resolve_profile_address(conn, v).await?;
+        batch_viewer_social_context(conn, &addresses, &v_pid, &v_owner).await?
+    } else {
+        HashMap::new()
+    };
+
+    let result: Vec<ProfileSummaryRow> = rows
+        .into_iter()
+        .map(|r| {
+            let ctx = viewer_ctx.get(&r.addr).copied().unwrap_or_default();
+            ProfileSummaryRow {
+                owner_address: r.addr,
+                username: r.username,
+                display_name: r.display_name,
+                profile_photo: r.profile_photo,
+                bio: r.bio,
+                selected_badge_id: r.selected_badge_id,
+                social_proof_token_address: r.social_proof_token_address,
+                reservation_pool_address: r.reservation_pool_address,
+                followers_count: r.followers_count,
+                following_count: r.following_count,
+                post_count: r.post_count.map(|v| v as i32),
+                blocked_count: r.blocked_count,
+                is_following: viewer_address.map(|_| ctx.is_following),
+                follows_viewer: viewer_address.map(|_| ctx.follows_viewer),
+                blocked_by_viewer: viewer_address.map(|_| ctx.blocked_by_viewer),
+                blocked_by_subject: viewer_address.map(|_| ctx.blocked_by_subject),
+                mutual_count: Some(r.mutual_count),
+            }
+        })
+        .collect();
+
+    metrics.requests_succeeded.inc();
+    Ok((result, total))
 }
 
 pub(crate) async fn check_following(

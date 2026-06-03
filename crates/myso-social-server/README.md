@@ -52,6 +52,7 @@ curl http://localhost:9009/health
 | GET | `/profiles/:address/badges` | Get profile badges |
 | GET | `/profiles/:address/following` | Get profiles this address follows |
 | GET | `/profiles/:address/followers` | Get followers of this address |
+| GET | `/profiles/:address/recommendations` | Friends-of-friends follow suggestions (excludes follows/blocks). Query: `limit`, `offset`, `page`, `viewer_id` |
 | GET | `/profiles/:address/social-stats` | Get profile social stats |
 | GET | `/profiles/:address/blocked` | Get blocked profiles |
 | GET | `/profiles/:address/blocked-platforms` | Get blocked platforms |

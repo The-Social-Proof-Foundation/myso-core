@@ -67,6 +67,7 @@ pub use profile::{
 };
 pub use social_graph::{
     BlockedPlatformRow, BlockedProfileRow, ProfileSummaryRow, ViewerSocialContext,
+    get_follow_recommendations_standalone,
 };
 pub use spt::{
     SptReservationVolumeBucket, SptReservationVolumeInterval, SptSortBy, SptTransactionsWithViewer,

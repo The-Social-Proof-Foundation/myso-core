@@ -409,6 +409,10 @@ fn make_router(state: Arc<AppState>) -> Router {
         .route("/profiles/:address/following", get(get_profile_following))
         .route("/profiles/:address/followers", get(get_profile_followers))
         .route(
+            "/profiles/:address/recommendations",
+            get(get_profile_recommendations),
+        )
+        .route(
             "/profiles/:address/social-stats",
             get(get_profile_social_stats),
         )

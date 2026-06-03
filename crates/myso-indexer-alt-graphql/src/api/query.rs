@@ -2034,6 +2034,35 @@ impl Query {
         )
     }
 
+    /// Friends-of-friends follow recommendations for a profile or wallet-only address.
+    async fn social_graph_recommendations(
+        &self,
+        ctx: &Context<'_>,
+        subject: MySoAddress,
+        viewer: Option<MySoAddress>,
+        limit: Option<u64>,
+        offset: Option<u64>,
+    ) -> Option<Result<Vec<crate::api::types::profile_summary::ProfileSummary>, RpcError>> {
+        let reader_opt = ctx
+            .data_opt::<std::sync::Arc<Option<myso_indexer_alt_social_reader::SocialPgReader>>>()?;
+        let reader = reader_opt.as_ref().as_ref()?;
+        let limit = limit.unwrap_or(50).min(100) as i64;
+        let offset = offset.unwrap_or(0) as i64;
+        let viewer_s = viewer.map(|a| a.to_string());
+        Some(
+            reader
+                .get_follow_recommendations(
+                    &subject.to_string(),
+                    limit,
+                    offset,
+                    viewer_s.as_deref(),
+                )
+                .await
+                .map(|(rows, _)| rows.into_iter().map(crate::api::types::profile_summary::ProfileSummary::from_row).collect())
+                .map_err(Into::into),
+        )
+    }
+
     /// Check if blocker has blocked blocked. Returns null when social DB not configured.
     async fn check_profile_blocked(
         &self,

@@ -24,6 +24,7 @@ use crate::error::SocialError;
 use crate::reader::types::{
     BlockedEventRow, BlockedPlatformRow, BlockedProfileRow, ChartSummary, DailyStatsPoint,
     DateRange, FollowDetail, FollowStatsRow, FollowsQuery, PaginationInfo, ProfileBadgeRow,
+    RecommendationDetail,
     ProfileEventRow, ProfilePlatformEventRow, ReservationPoolInfo, ReservationStatus,
     SelectedBadgeInfo, SocialGraphChartData, SocialGraphChartQuery, SocialProofTokenInfo,
     UniversalUserResult,
@@ -1696,6 +1697,62 @@ pub(crate) async fn list_badges(
         .load::<ProfileBadgeRow>(&mut conn)
         .await?;
     Ok(results)
+}
+
+pub(crate) async fn get_follow_recommendations(
+    db: &Db,
+    address: &str,
+    query: &FollowsQuery,
+) -> Result<(Vec<RecommendationDetail>, PaginationInfo), SocialError> {
+    let mut conn = db.connect().await?;
+    let limit = query.limit();
+    let offset = query.offset();
+    let page = query.page.unwrap_or(1).max(1);
+    let (rows, total) = myso_indexer_alt_social_reader::get_follow_recommendations_standalone(
+        &mut conn,
+        address,
+        query.viewer_id.as_deref(),
+        limit,
+        offset,
+    )
+    .await
+    .map_err(|e| SocialError::internal(e.to_string()))?;
+
+    let total_pages = if total == 0 {
+        0
+    } else {
+        (total as f64 / limit as f64).ceil() as i64
+    };
+
+    let recommendations = rows
+        .into_iter()
+        .map(|r| RecommendationDetail {
+            id: 0,
+            profile_id: None,
+            owner_address: r.owner_address.clone(),
+            username: r
+                .username
+                .unwrap_or_else(|| r.owner_address.clone()),
+            display_name: r.display_name,
+            profile_photo: r.profile_photo,
+            follows_back: r.follows_viewer.unwrap_or(false),
+            is_following: r.is_following.unwrap_or(false),
+            mutual_count: r.mutual_count.unwrap_or(0),
+            blocked_by_viewer: r.blocked_by_viewer,
+            blocked_by_subject: r.blocked_by_subject,
+        })
+        .collect();
+
+    Ok((
+        recommendations,
+        PaginationInfo {
+            total,
+            limit,
+            offset,
+            page,
+            total_pages,
+        },
+    ))
 }
 
 pub(crate) async fn get_badge_by_id(

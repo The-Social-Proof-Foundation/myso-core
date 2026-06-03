@@ -359,6 +359,32 @@ impl Profile {
         Some(rows.into_iter().map(ProfileSummary::from_row).collect())
     }
 
+    /// Friends-of-friends follow recommendations (excludes existing follows and profile blocks).
+    async fn recommendations(
+        &self,
+        ctx: &Context<'_>,
+        viewer: Option<MySoAddress>,
+        limit: Option<u64>,
+        offset: Option<u64>,
+    ) -> Option<Vec<ProfileSummary>> {
+        let reader_opt = ctx
+            .data_opt::<std::sync::Arc<Option<myso_indexer_alt_social_reader::SocialPgReader>>>()?;
+        let reader = reader_opt.as_ref().as_ref()?;
+        let limit = limit.unwrap_or(50).min(100) as i64;
+        let offset = offset.unwrap_or(0) as i64;
+        let viewer_s = viewer.map(|a| a.to_string());
+        let (rows, _) = reader
+            .get_follow_recommendations(
+                &self.inner.owner_address,
+                limit,
+                offset,
+                viewer_s.as_deref(),
+            )
+            .await
+            .ok()?;
+        Some(rows.into_iter().map(ProfileSummary::from_row).collect())
+    }
+
     /// Profiles this user has blocked (paginated).
     async fn blocked_profiles(
         &self,

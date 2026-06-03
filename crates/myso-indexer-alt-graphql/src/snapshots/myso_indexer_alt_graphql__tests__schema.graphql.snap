@@ -5474,6 +5474,10 @@ type Profile implements Node {
 	"""
 	raisedLocation: String
 	"""
+	Friends-of-friends follow recommendations (excludes existing follows and profile blocks).
+	"""
+	recommendations(viewer: MySoAddress, limit: Int, offset: Int): [ProfileSummary!]
+	"""
 	Relationship status.
 	"""
 	relationshipStatus: String
@@ -5654,6 +5658,10 @@ type ProfileSummary {
 	When the parent query passed `viewer`, whether the viewer follows this address.
 	"""
 	isFollowing: Boolean
+	"""
+	Friends-of-friends score when returned from a recommendations query.
+	"""
+	mutualCount: Int
 	"""
 	Number of posts. Present for both profile and wallet-only addresses.
 	"""
@@ -6460,6 +6468,10 @@ type Query {
 	Check if follower follows following. Returns null when social DB not configured.
 	"""
 	socialGraphFollowing(follower: MySoAddress!, following: MySoAddress!): Boolean
+	"""
+	Friends-of-friends follow recommendations for a profile or wallet-only address.
+	"""
+	socialGraphRecommendations(subject: MySoAddress!, viewer: MySoAddress, limit: Int, offset: Int): [ProfileSummary!]
 	"""
 	Spot bet withdrawals for a post. Returns empty when social DB not configured.
 	"""

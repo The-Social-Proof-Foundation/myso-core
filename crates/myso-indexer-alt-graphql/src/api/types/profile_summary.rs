@@ -104,6 +104,11 @@ impl ProfileSummary {
         self.inner.blocked_by_subject
     }
 
+    /// Friends-of-friends score when returned from a recommendations query.
+    async fn mutual_count(&self) -> Option<i32> {
+        self.inner.mutual_count
+    }
+
     /// Selected badge info (when present).
     async fn selected_badge(&self, ctx: &Context<'_>) -> Option<SelectedBadge> {
         if self.inner.selected_badge_id.is_none() {

@@ -57,7 +57,8 @@ pub use profile::{
 pub use revenue::UnifiedRevenue;
 pub use social_graph::{
     BlockedPlatformRow, BlockedProfileRow, DailyStatsPoint, FollowDetail, FollowStatsRow,
-    FollowsQuery, PaginationInfo, ProfileByAddressResponse, ReservationPoolInfo, ReservationStatus,
+    FollowsQuery, PaginationInfo, ProfileByAddressResponse, RecommendationDetail,
+    ReservationPoolInfo, ReservationStatus,
     SelectedBadgeInfo, SocialGraphAddressRow, SocialGraphChartData, SocialGraphChartQuery,
     SocialGraphChartRow, SocialProofTokenInfo, SocialStatsRow, UniversalUserResult,
     WalletOnlyProfile,

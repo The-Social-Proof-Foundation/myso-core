@@ -66,6 +66,22 @@ pub struct ReservationPoolInfo {
     pub pool_id: Option<String>,
 }
 
+/// Friends-of-friends recommendation entry for social graph endpoints.
+#[derive(Debug, Serialize, Deserialize)]
+pub struct RecommendationDetail {
+    pub id: i32,
+    pub profile_id: Option<String>,
+    pub owner_address: String,
+    pub username: String,
+    pub display_name: Option<String>,
+    pub profile_photo: Option<String>,
+    pub follows_back: bool,
+    pub is_following: bool,
+    pub mutual_count: i32,
+    pub blocked_by_viewer: Option<bool>,
+    pub blocked_by_subject: Option<bool>,
+}
+
 /// Follow detail for social graph endpoints. Matches mys-indexer JSON shape exactly.
 #[derive(Debug, Serialize, Deserialize)]
 pub struct FollowDetail {

@@ -181,6 +181,21 @@ pub async fn get_profile_followers(
     })))
 }
 
+pub async fn get_profile_recommendations(
+    State(state): State<Arc<AppState>>,
+    Path(address): Path<String>,
+    Query(query): Query<crate::reader::FollowsQuery>,
+) -> Result<Json<serde_json::Value>, SocialError> {
+    let (recommendations, pagination) = state
+        .reader
+        .get_follow_recommendations(&address, &query)
+        .await?;
+    Ok(Json(serde_json::json!({
+        "recommendations": recommendations,
+        "pagination": pagination
+    })))
+}
+
 pub async fn get_profile_social_stats(
     State(state): State<Arc<AppState>>,
     Path(address): Path<String>,
