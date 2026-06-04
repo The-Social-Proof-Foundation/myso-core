@@ -109,6 +109,20 @@ impl ProfileSummary {
         self.inner.mutual_count
     }
 
+    /// On recommendations queries: viewer-following accounts that also follow this address
+    /// (top N by follower count for avatar stacks; does not cap `mutualCount`).
+    async fn mutual_connections(&self, limit: Option<u64>) -> Vec<ProfileSummary> {
+        let limit = limit.unwrap_or(3).min(10) as usize;
+        match &self.inner.mutual_connections {
+            None => vec![],
+            Some(rows) => rows
+                .iter()
+                .take(limit)
+                .map(|r| ProfileSummary::from_row(r.clone()))
+                .collect(),
+        }
+    }
+
     /// Selected badge info (when present).
     async fn selected_badge(&self, ctx: &Context<'_>) -> Option<SelectedBadge> {
         if self.inner.selected_badge_id.is_none() {

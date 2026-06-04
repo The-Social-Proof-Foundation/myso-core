@@ -5659,6 +5659,11 @@ type ProfileSummary {
 	"""
 	isFollowing: Boolean
 	"""
+	On recommendations queries: viewer-following accounts that also follow this address
+	(top N by follower count for avatar stacks; does not cap `mutualCount`).
+	"""
+	mutualConnections(limit: Int): [ProfileSummary!]!
+	"""
 	On recommendations queries: count of viewer-following accounts that also follow this address.
 	"""
 	mutualCount: Int

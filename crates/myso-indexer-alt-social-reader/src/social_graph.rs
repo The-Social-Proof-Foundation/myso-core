@@ -68,6 +68,21 @@ pub struct ProfileSummaryRow {
     pub blocked_by_subject: Option<bool>,
     /// Friends-of-friends score (distinct intermediaries). Set only on recommendation queries.
     pub mutual_count: Option<i32>,
+    /// Viewer-following accounts that also follow this address (recommendation queries only).
+    pub mutual_connections: Option<Vec<ProfileSummaryRow>>,
+}
+
+/// Default number of mutual-connection profiles returned per recommendation (avatar stack).
+pub const DEFAULT_MUTUAL_CONNECTIONS_LIMIT: i32 = 3;
+/// Maximum `mutual_connections` profiles fetched per recommendation (does not cap `mutual_count`).
+pub const MAX_MUTUAL_CONNECTIONS_LIMIT: i32 = 10;
+
+pub fn clamp_mutual_connections_limit(limit: i32) -> i32 {
+    if limit <= 0 {
+        0
+    } else {
+        limit.min(MAX_MUTUAL_CONNECTIONS_LIMIT)
+    }
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -159,6 +174,7 @@ pub(crate) async fn get_profile_summaries_for_addresses(
                 blocked_by_viewer: None,
                 blocked_by_subject: None,
                 mutual_count: None,
+                mutual_connections: None,
             },
         );
     }
@@ -184,6 +200,7 @@ pub(crate) async fn get_profile_summaries_for_addresses(
                     blocked_by_viewer: None,
                     blocked_by_subject: None,
                     mutual_count: None,
+                    mutual_connections: None,
                 },
             );
         }
@@ -526,6 +543,7 @@ pub(crate) async fn get_followers(
                 blocked_by_viewer: viewer_address.map(|_| ctx.blocked_by_viewer),
                 blocked_by_subject: viewer_address.map(|_| ctx.blocked_by_subject),
                 mutual_count: None,
+                mutual_connections: None,
             }
         })
         .collect();
@@ -620,9 +638,134 @@ pub(crate) async fn get_following(
                 blocked_by_viewer: viewer_address.map(|_| ctx.blocked_by_viewer),
                 blocked_by_subject: viewer_address.map(|_| ctx.blocked_by_subject),
                 mutual_count: None,
+                mutual_connections: None,
             }
         })
         .collect())
+}
+
+async fn load_mutual_connections_for_candidates(
+    conn: &mut Connection<'_>,
+    candidate_addrs: &[String],
+    viewer_owner: &str,
+    viewer_profile_ref: &str,
+    per_candidate_limit: i32,
+    _metrics: &DbReaderMetrics,
+) -> anyhow::Result<HashMap<String, Vec<ProfileSummaryRow>>> {
+    if candidate_addrs.is_empty() || per_candidate_limit <= 0 {
+        return Ok(HashMap::new());
+    }
+
+    #[derive(QueryableByName)]
+    struct MutualRow {
+        #[diesel(sql_type = Text)]
+        candidate_addr: String,
+        #[diesel(sql_type = Text)]
+        connection_addr: String,
+        #[diesel(sql_type = Nullable<Text>)]
+        username: Option<String>,
+        #[diesel(sql_type = Nullable<Text>)]
+        display_name: Option<String>,
+        #[diesel(sql_type = Nullable<Text>)]
+        profile_photo: Option<String>,
+        #[diesel(sql_type = Nullable<Integer>)]
+        followers_count: Option<i32>,
+        #[diesel(sql_type = Nullable<Integer>)]
+        following_count: Option<i32>,
+    }
+
+    let query = r#"
+        WITH viewer_refs AS (
+            SELECT $2::text AS owner_ref, $3::text AS profile_ref
+        ),
+        viewer_following AS (
+            SELECT DISTINCT sgr.following_address AS addr
+            FROM social_graph_relationships sgr
+            CROSS JOIN viewer_refs vr
+            WHERE sgr.follower_address IN (vr.owner_ref, vr.profile_ref)
+        ),
+        candidate_list AS (
+            SELECT unnest($1::text[]) AS candidate_addr
+        ),
+        ranked AS (
+            SELECT cl.candidate_addr,
+                   vf.addr AS connection_addr,
+                   ROW_NUMBER() OVER (
+                       PARTITION BY cl.candidate_addr
+                       ORDER BY COALESCE(p.followers_count, wsg.followers_count, 0) DESC,
+                                vf.addr ASC
+                   ) AS rn
+            FROM candidate_list cl
+            JOIN viewer_following vf ON true
+            JOIN social_graph_relationships sgr
+                ON sgr.follower_address = vf.addr
+               AND sgr.following_address = cl.candidate_addr
+            LEFT JOIN LATERAL (
+                SELECT followers_count, following_count
+                FROM profiles
+                WHERE owner_address = vf.addr
+                ORDER BY updated_at DESC
+                LIMIT 1
+            ) p ON true
+            LEFT JOIN wallet_social_graph wsg
+                ON wsg.wallet_address = vf.addr AND p.followers_count IS NULL
+        )
+        SELECT r.candidate_addr,
+               r.connection_addr,
+               p.username,
+               p.display_name,
+               p.profile_photo,
+               COALESCE(p.followers_count, wsg.followers_count) AS followers_count,
+               COALESCE(p.following_count, wsg.following_count) AS following_count
+        FROM ranked r
+        LEFT JOIN LATERAL (
+            SELECT username, display_name, profile_photo, followers_count, following_count
+            FROM profiles
+            WHERE owner_address = r.connection_addr
+            ORDER BY updated_at DESC
+            LIMIT 1
+        ) p ON true
+        LEFT JOIN wallet_social_graph wsg
+            ON wsg.wallet_address = r.connection_addr AND p.username IS NULL
+        WHERE r.rn <= $4
+        ORDER BY r.candidate_addr, r.rn
+    "#;
+
+    let rows = diesel::sql_query(query)
+        .bind::<Array<Text>, _>(candidate_addrs)
+        .bind::<Text, _>(viewer_owner)
+        .bind::<Text, _>(viewer_profile_ref)
+        .bind::<Integer, _>(per_candidate_limit)
+        .load::<MutualRow>(conn)
+        .await?;
+
+    let mut by_candidate: HashMap<String, Vec<ProfileSummaryRow>> = HashMap::new();
+    for row in rows {
+        by_candidate
+            .entry(row.candidate_addr.clone())
+            .or_default()
+            .push(ProfileSummaryRow {
+                owner_address: row.connection_addr,
+                username: row.username,
+                display_name: row.display_name,
+                profile_photo: row.profile_photo,
+                bio: None,
+                selected_badge_id: None,
+                social_proof_token_address: None,
+                reservation_pool_address: None,
+                followers_count: row.followers_count,
+                following_count: row.following_count,
+                post_count: None,
+                blocked_count: None,
+                is_following: None,
+                follows_viewer: None,
+                blocked_by_viewer: None,
+                blocked_by_subject: None,
+                mutual_count: None,
+                mutual_connections: None,
+            });
+    }
+    Ok(by_candidate)
 }
 
 async fn subject_has_social_graph_activity(
@@ -662,6 +805,7 @@ pub async fn get_follow_recommendations_standalone(
     viewer_address: Option<&str>,
     limit: i64,
     offset: i64,
+    mutual_connections_limit: i32,
 ) -> anyhow::Result<(Vec<ProfileSummaryRow>, i64)> {
     get_follow_recommendations(
         conn,
@@ -669,6 +813,7 @@ pub async fn get_follow_recommendations_standalone(
         viewer_address,
         limit,
         offset,
+        clamp_mutual_connections_limit(mutual_connections_limit),
         crate::metrics::standalone_reader_metrics(),
     )
     .await
@@ -684,6 +829,7 @@ pub(crate) async fn get_follow_recommendations(
     viewer_address: Option<&str>,
     limit: i64,
     offset: i64,
+    mutual_connections_limit: i32,
     metrics: &DbReaderMetrics,
 ) -> anyhow::Result<(Vec<ProfileSummaryRow>, i64)> {
     metrics.requests_received.inc();
@@ -863,10 +1009,30 @@ pub(crate) async fn get_follow_recommendations(
     let viewer_ctx =
         batch_viewer_social_context(conn, &addresses, &viewer_profile_id, &viewer_owner).await?;
 
+    let mutual_by_candidate = load_mutual_connections_for_candidates(
+        conn,
+        &addresses,
+        &viewer_owner,
+        viewer_profile_ref,
+        mutual_connections_limit,
+        metrics,
+    )
+    .await?;
+
     let result: Vec<ProfileSummaryRow> = rows
         .into_iter()
         .map(|r| {
             let ctx = viewer_ctx.get(&r.addr).copied().unwrap_or_default();
+            let mutual_connections = if mutual_connections_limit > 0 {
+                Some(
+                    mutual_by_candidate
+                        .get(&r.addr)
+                        .cloned()
+                        .unwrap_or_default(),
+                )
+            } else {
+                None
+            };
             ProfileSummaryRow {
                 owner_address: r.addr,
                 username: r.username,
@@ -885,6 +1051,7 @@ pub(crate) async fn get_follow_recommendations(
                 blocked_by_viewer: Some(ctx.blocked_by_viewer),
                 blocked_by_subject: Some(ctx.blocked_by_subject),
                 mutual_count: Some(r.mutual_count),
+                mutual_connections,
             }
         })
         .collect();

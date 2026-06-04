@@ -383,6 +383,7 @@ impl Profile {
                 limit,
                 offset,
                 viewer_s.as_deref(),
+                myso_indexer_alt_social_reader::MAX_MUTUAL_CONNECTIONS_LIMIT,
             )
             .await
             .ok()?;

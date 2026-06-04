@@ -52,7 +52,7 @@ curl http://localhost:9009/health
 | GET | `/profiles/:address/badges` | Get profile badges |
 | GET | `/profiles/:address/following` | Get profiles this address follows |
 | GET | `/profiles/:address/followers` | Get followers of this address |
-| GET | `/profiles/:address/recommendations` | Follow suggestions for the browsing user: subject's friends-of-friends filtered/ranked by `viewer_id`'s network (excludes viewer's and subject's existing follows and blocks). Omit `viewer_id` to treat the profile as the viewer. Query: `limit`, `offset`, `page`, `viewer_id` |
+| GET | `/profiles/:address/recommendations` | Follow suggestions for the browsing user: subject's friends-of-friends filtered/ranked by `viewer_id`'s network (excludes viewer's and subject's existing follows and blocks). Omit `viewer_id` to treat the profile as the viewer. Query: `limit`, `offset`, `page`, `viewer_id`, `mutual_connections_limit` (optional, default 3, max 10 — profiles returned in `mutual_connections` for avatar stacks; does not cap `mutual_count`) |
 | GET | `/profiles/:address/social-stats` | Get profile social stats |
 | GET | `/profiles/:address/blocked` | Get blocked profiles |
 | GET | `/profiles/:address/blocked-platforms` | Get blocked platforms |

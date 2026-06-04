@@ -2059,6 +2059,7 @@ impl Query {
                     limit,
                     offset,
                     viewer_s.as_deref(),
+                    myso_indexer_alt_social_reader::MAX_MUTUAL_CONNECTIONS_LIMIT,
                 )
                 .await
                 .map(|(rows, _)| rows.into_iter().map(crate::api::types::profile_summary::ProfileSummary::from_row).collect())

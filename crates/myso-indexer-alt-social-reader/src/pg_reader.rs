@@ -196,6 +196,7 @@ impl SocialPgReader {
             blocked_by_viewer: None,
             blocked_by_subject: None,
             mutual_count: None,
+            mutual_connections: None,
         })
     }
 
@@ -463,9 +464,19 @@ impl SocialPgReader {
         limit: i64,
         offset: i64,
         viewer: Option<&str>,
+        mutual_connections_limit: i32,
     ) -> anyhow::Result<(Vec<ProfileSummaryRow>, i64)> {
         let mut conn = self.connect().await?;
-        get_follow_recommendations(&mut conn, address, viewer, limit, offset, &self.metrics).await
+        get_follow_recommendations(
+            &mut conn,
+            address,
+            viewer,
+            limit,
+            offset,
+            crate::social_graph::clamp_mutual_connections_limit(mutual_connections_limit),
+            &self.metrics,
+        )
+        .await
     }
 
     /// Check if follower follows following.

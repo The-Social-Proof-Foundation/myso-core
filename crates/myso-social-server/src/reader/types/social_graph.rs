@@ -66,6 +66,15 @@ pub struct ReservationPoolInfo {
     pub pool_id: Option<String>,
 }
 
+/// Mutual-connection profile snippet for recommendation cards (avatar stack).
+#[derive(Debug, Serialize, Deserialize)]
+pub struct MutualConnectionSummary {
+    pub owner_address: String,
+    pub username: Option<String>,
+    pub display_name: Option<String>,
+    pub profile_photo: Option<String>,
+}
+
 /// Friends-of-friends recommendation entry for social graph endpoints.
 #[derive(Debug, Serialize, Deserialize)]
 pub struct RecommendationDetail {
@@ -78,6 +87,7 @@ pub struct RecommendationDetail {
     pub follows_back: bool,
     pub is_following: bool,
     pub mutual_count: i32,
+    pub mutual_connections: Vec<MutualConnectionSummary>,
     pub blocked_by_viewer: Option<bool>,
     pub blocked_by_subject: Option<bool>,
 }
@@ -104,6 +114,8 @@ pub struct FollowsQuery {
     pub viewer_id: Option<String>,
     pub sort: Option<String>,
     pub search: Option<String>,
+    /// Max mutual-connection profiles per recommendation (avatar stack; default 3, max 10).
+    pub mutual_connections_limit: Option<i32>,
 }
 
 impl FollowsQuery {
@@ -114,6 +126,12 @@ impl FollowsQuery {
         let page = self.page.unwrap_or(1).max(1);
         let limit = self.limit();
         self.offset.unwrap_or_else(|| (page - 1) * limit)
+    }
+    pub fn mutual_connections_limit(&self) -> i32 {
+        myso_indexer_alt_social_reader::clamp_mutual_connections_limit(
+            self.mutual_connections_limit
+                .unwrap_or(myso_indexer_alt_social_reader::DEFAULT_MUTUAL_CONNECTIONS_LIMIT),
+        )
     }
 }
 

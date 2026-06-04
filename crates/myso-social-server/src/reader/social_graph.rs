@@ -23,8 +23,8 @@ use serde_json::Value as JsonValue;
 use crate::error::SocialError;
 use crate::reader::types::{
     BlockedEventRow, BlockedPlatformRow, BlockedProfileRow, ChartSummary, DailyStatsPoint,
-    DateRange, FollowDetail, FollowStatsRow, FollowsQuery, PaginationInfo, ProfileBadgeRow,
-    RecommendationDetail,
+    DateRange,     FollowDetail, FollowStatsRow, FollowsQuery, MutualConnectionSummary, PaginationInfo,
+    ProfileBadgeRow, RecommendationDetail,
     ProfileEventRow, ProfilePlatformEventRow, ReservationPoolInfo, ReservationStatus,
     SelectedBadgeInfo, SocialGraphChartData, SocialGraphChartQuery, SocialProofTokenInfo,
     UniversalUserResult,
@@ -1714,6 +1714,7 @@ pub(crate) async fn get_follow_recommendations(
         query.viewer_id.as_deref(),
         limit,
         offset,
+        query.mutual_connections_limit(),
     )
     .await
     .map_err(|e| SocialError::internal(e.to_string()))?;
@@ -1726,20 +1727,34 @@ pub(crate) async fn get_follow_recommendations(
 
     let recommendations = rows
         .into_iter()
-        .map(|r| RecommendationDetail {
-            id: 0,
-            profile_id: None,
-            owner_address: r.owner_address.clone(),
-            username: r
-                .username
-                .unwrap_or_else(|| r.owner_address.clone()),
-            display_name: r.display_name,
-            profile_photo: r.profile_photo,
-            follows_back: r.follows_viewer.unwrap_or(false),
-            is_following: r.is_following.unwrap_or(false),
-            mutual_count: r.mutual_count.unwrap_or(0),
-            blocked_by_viewer: r.blocked_by_viewer,
-            blocked_by_subject: r.blocked_by_subject,
+        .map(|r| {
+            let mutual_connections = r
+                .mutual_connections
+                .unwrap_or_default()
+                .into_iter()
+                .map(|m| MutualConnectionSummary {
+                    owner_address: m.owner_address,
+                    username: m.username,
+                    display_name: m.display_name,
+                    profile_photo: m.profile_photo,
+                })
+                .collect();
+            RecommendationDetail {
+                id: 0,
+                profile_id: None,
+                owner_address: r.owner_address.clone(),
+                username: r
+                    .username
+                    .unwrap_or_else(|| r.owner_address.clone()),
+                display_name: r.display_name,
+                profile_photo: r.profile_photo,
+                follows_back: r.follows_viewer.unwrap_or(false),
+                is_following: r.is_following.unwrap_or(false),
+                mutual_count: r.mutual_count.unwrap_or(0),
+                mutual_connections,
+                blocked_by_viewer: r.blocked_by_viewer,
+                blocked_by_subject: r.blocked_by_subject,
+            }
         })
         .collect();
 
