@@ -12,6 +12,57 @@ DROP INDEX IF EXISTS idx_delegates_governance_registry_list;
 DROP INDEX IF EXISTS idx_nominees_address_type_regid_time;
 DROP INDEX IF EXISTS idx_nominees_governance_registry_list;
 
+-- Legacy rows (ecosystem/PoC) used NULL governance_registry_id before per-DAO scoping.
+-- Backfill from the canonical registry row per type, then drop rows we cannot scope.
+UPDATE delegates d
+SET governance_registry_id = sub.registry_id
+FROM (
+    SELECT DISTINCT ON (registry_type) registry_type, registry_id
+    FROM governance_registries
+    ORDER BY registry_type, updated_at DESC
+) sub
+WHERE d.governance_registry_id IS NULL
+  AND d.registry_type = sub.registry_type
+  AND d.registry_type <> 2;
+
+UPDATE nominated_delegates n
+SET governance_registry_id = sub.registry_id
+FROM (
+    SELECT DISTINCT ON (registry_type) registry_type, registry_id
+    FROM governance_registries
+    ORDER BY registry_type, updated_at DESC
+) sub
+WHERE n.governance_registry_id IS NULL
+  AND n.registry_type = sub.registry_type
+  AND n.registry_type <> 2;
+
+UPDATE proposals p
+SET governance_registry_id = sub.registry_id
+FROM (
+    SELECT DISTINCT ON (registry_type) registry_type, registry_id
+    FROM governance_registries
+    ORDER BY registry_type, updated_at DESC
+) sub
+WHERE p.governance_registry_id IS NULL
+  AND p.proposal_type = sub.registry_type
+  AND p.proposal_type <> 2;
+
+UPDATE delegate_ratings r
+SET governance_registry_id = sub.registry_id
+FROM (
+    SELECT DISTINCT ON (registry_type) registry_type, registry_id
+    FROM governance_registries
+    ORDER BY registry_type, updated_at DESC
+) sub
+WHERE r.governance_registry_id IS NULL
+  AND r.registry_type = sub.registry_type
+  AND r.registry_type <> 2;
+
+DELETE FROM delegates WHERE governance_registry_id IS NULL;
+DELETE FROM nominated_delegates WHERE governance_registry_id IS NULL;
+DELETE FROM proposals WHERE governance_registry_id IS NULL;
+DELETE FROM delegate_ratings WHERE governance_registry_id IS NULL;
+
 ALTER TABLE delegates
     ALTER COLUMN governance_registry_id SET NOT NULL;
 
