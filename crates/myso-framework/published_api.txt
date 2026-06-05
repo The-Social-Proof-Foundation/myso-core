@@ -8101,6 +8101,12 @@ submit_ecosystem_proposal
 submit_proof_of_creativity_proposal
 	public entry fun
 	0x50c1::governance
+submit_spot_resolution_proposal
+	public entry fun
+	0x50c1::governance
+submit_spot_proposal_and_return_id
+	public(package) fun
+	0x50c1::governance
 submit_proposal_internal
 	fun
 	0x50c1::governance
@@ -8140,7 +8146,7 @@ forfeit_reason_delegate_rejected_value
 assert_platform_delegate_manual_reject
 	public(package) fun
 	0x50c1::governance
-assert_ecosystem_or_poc_registry
+assert_shared_global_registry
 	fun
 	0x50c1::governance
 forfeit_proposal_pool_to_treasury_address
@@ -8197,6 +8203,21 @@ mark_proposal_implemented_platform_to_ecosystem_treasury
 proposal_type_platform_value
 	public fun
 	0x50c1::governance
+proposal_type_spot_value
+	public fun
+	0x50c1::governance
+proposal_status
+	public fun
+	0x50c1::governance
+proposal_reference_id
+	public fun
+	0x50c1::governance
+status_approved_value
+	public fun
+	0x50c1::governance
+status_rejected_value
+	public fun
+	0x50c1::governance
 get_proposals_by_type
 	public fun
 	0x50c1::governance
@@ -8249,6 +8270,9 @@ set_version
 	public(package) fun
 	0x50c1::governance
 migrate_registry
+	public entry fun
+	0x50c1::governance
+create_spot_governance_registry
 	public entry fun
 	0x50c1::governance
 create_governance_admin_cap
@@ -8359,6 +8383,12 @@ new_status
 status_value
 	public fun
 	0x50c1::platform
+validate_cover_photo
+	fun
+	0x50c1::platform
+validate_media_previews
+	fun
+	0x50c1::platform
 is_valid_category
 	fun
 	0x50c1::platform
@@ -8387,6 +8417,12 @@ description
 	public fun
 	0x50c1::platform
 logo
+	public fun
+	0x50c1::platform
+cover_photo
+	public fun
+	0x50c1::platform
+media_previews
 	public fun
 	0x50c1::platform
 developer
@@ -9556,6 +9592,12 @@ SpotResolvedEvent
 SpotDaoRequiredEvent
 	public struct
 	0x50c1::social_proof_of_truth
+SpotGovernanceProposalLinkedEvent
+	public struct
+	0x50c1::social_proof_of_truth
+SpotGovernanceProposalClearedEvent
+	public struct
+	0x50c1::social_proof_of_truth
 SpotPayoutEvent
 	public struct
 	0x50c1::social_proof_of_truth
@@ -9616,6 +9658,21 @@ assert_valid_option_id
 is_enabled
 	public fun
 	0x50c1::social_proof_of_truth
+spot_governance_registry_id
+	public fun
+	0x50c1::social_proof_of_truth
+active_proposal_id
+	public fun
+	0x50c1::social_proof_of_truth
+proposed_outcome
+	public fun
+	0x50c1::social_proof_of_truth
+oracle_proposed_outcome
+	public fun
+	0x50c1::social_proof_of_truth
+dao_escalated_at_ms
+	public fun
+	0x50c1::social_proof_of_truth
 bootstrap_init
 	public(package) fun
 	0x50c1::social_proof_of_truth
@@ -9646,8 +9703,26 @@ place_spot_bet
 oracle_resolve
 	public entry fun
 	0x50c1::social_proof_of_truth
+submit_spot_resolution_proposal_to_governance
+	public entry fun
+	0x50c1::social_proof_of_truth
+implement_spot_resolution_from_governance
+	public entry fun
+	0x50c1::social_proof_of_truth
+clear_spot_proposal_link_on_reject
+	public entry fun
+	0x50c1::social_proof_of_truth
+finalize_spot_governance_proposal
+	public entry fun
+	0x50c1::social_proof_of_truth
 finalize_via_dao
 	public entry fun
+	0x50c1::social_proof_of_truth
+assert_spot_governance_registry
+	fun
+	0x50c1::social_proof_of_truth
+validate_proposed_outcome
+	fun
 	0x50c1::social_proof_of_truth
 refund_unresolved
 	public entry fun

@@ -1035,7 +1035,7 @@ type Delegate {
 	"""
 	ratings(limit: Int, offset: Int): [DelegateRating!]
 	"""
-	Registry type (0=ecosystem, 1=proof of creativity, 2=platform).
+	Registry type (0=ecosystem, 1=proof of creativity, 2=SPoT, 3=platform).
 	"""
 	registryType: Int!
 	"""
@@ -1782,7 +1782,7 @@ type GovernanceRegistry {
 	"""
 	lastDelegatePanelBoundaryEpoch: Int
 	"""
-	Platform details (when registry_type=2). Resolved by platform_id when from governanceRegistry(platformId), else by registry_id.
+	Platform details (when registry_type=3). Resolved by platform_id when from governanceRegistry(platformId), else by registry_id.
 	"""
 	platform: Platform
 	"""
@@ -1790,7 +1790,7 @@ type GovernanceRegistry {
 	"""
 	registryId: String!
 	"""
-	Registry type (0=ecosystem, 1=proof of creativity, 2=platform).
+	Registry type (0=ecosystem, 1=proof of creativity, 2=SPoT, 3=platform).
 	"""
 	registryType: Int!
 	"""
@@ -1856,7 +1856,7 @@ type GovernanceStats {
 	"""
 	registryId: String!
 	"""
-	Registry type (0=ecosystem, 1=proof of creativity, 2=platform).
+	Registry type (0=ecosystem, 1=proof of creativity, 2=SPoT, 3=platform).
 	"""
 	registryType: Int!
 	"""
@@ -3797,7 +3797,7 @@ type NominatedDelegate {
 	"""
 	nominationTime: Int!
 	"""
-	Registry type (0=ecosystem, 1=proof of creativity, 2=platform).
+	Registry type (0=ecosystem, 1=proof of creativity, 2=SPoT, 3=platform).
 	"""
 	registryType: Int!
 	"""
@@ -4260,6 +4260,10 @@ type Platform implements Node {
 	"""
 	blockedProfiles(limit: Int, offset: Int): [PlatformBlockedProfileSummary!]
 	"""
+	URL to the platform cover photo.
+	"""
+	coverPhoto: String
+	"""
 	When the platform was created (epoch milliseconds).
 	"""
 	createdAt: Int!
@@ -4307,6 +4311,10 @@ type Platform implements Node {
 	Max votes per user.
 	"""
 	maxVotesPerUser: Int
+	"""
+	Screenshot and video preview URLs (JSON array).
+	"""
+	mediaPreviews: JSON
 	"""
 	Members of this platform (paginated).
 	"""
@@ -4423,6 +4431,7 @@ type PlatformMembershipSummary {
 	approvalChangedAt: Int
 	approvedBy: String
 	blockedProfilesCount: Int!
+	coverPhoto: String
 	"""
 	When the platform row was created (epoch ms).
 	"""
@@ -4451,6 +4460,7 @@ type PlatformMembershipSummary {
 	links: JSON
 	logo: String
 	maxVotesPerUser: Int
+	mediaPreviews: JSON
 	"""
 	`platform_memberships` row id (stable for this wallet+platform join record).
 	"""
@@ -5931,7 +5941,7 @@ type Proposal {
 	"""
 	referenceId: String
 	"""
-	Governance registry / proposal bucket (0=ecosystem, 1=proof of creativity, 2=platform). Same numeric space as chain `proposal_type`; not proposal lifecycle status.
+	Governance registry / proposal bucket (0=ecosystem, 1=proof of creativity, 2=SPoT, 3=platform). Same numeric space as chain `proposal_type`; not proposal lifecycle status.
 	"""
 	registryType: Int!
 	"""
@@ -5950,6 +5960,10 @@ type Proposal {
 	MYSO held in the proposal reward pool (submission stake plus quadratic vote fees). Drained on treasury forfeiture, implementation reward to submitter, or owner rescind.
 	"""
 	rewardPool: Int!
+	"""
+	Linked SPoT record for SPoT resolution proposals (registry_type=2).
+	"""
+	spotRecord: SpotRecord
 	"""
 	Proposal lifecycle status (0=submitted, 1=delegate_review, 2=community_voting, 3=approved, 4=rejected, 5=implemented, 6=rescinded). New proposals created on chain enter delegate review (1); `0` is not used for newly submitted work.
 	"""
@@ -6121,6 +6135,10 @@ type Query {
 	Fetch a comment by ID. Returns null if social DB not configured or not found.
 	"""
 	comment(id: ID!): CommentSummary
+	"""
+	Contested SPoT records in DAO_REQUIRED status (paginated).
+	"""
+	contestedSpotRecords(limit: Int, offset: Int): [SpotRecord!]
 	"""
 	Fetch a delegate by address. Returns null when social DB not configured or not found.
 	"""
@@ -6301,7 +6319,7 @@ type Query {
 	List nominated delegates (paginated, optionally filtered by platform, registry type, and status).
 	Returns empty when social DB not configured.
 	
-	`registryType`: 0=ecosystem, 1=proof of creativity, 2=platform DAO.
+	`registryType`: 0=ecosystem, 1=proof of creativity, 2=SPoT, 3=platform DAO.
 	If `platformId` is set, results are scoped to that platform's governance registry (same resolution
 	as `proposals(platformId:)` / `governanceRegistry(platformId:)`), and `registryType` is ignored.
 	**Platform DAO (`registryType` 2) requires `platformId`:** when `registryType` is 2 and `platformId`
@@ -6437,7 +6455,7 @@ type Query {
 	"""
 	List governance proposals (paginated, optionally filtered by platform, registry type, status, submitter). Returns empty when social DB not configured.
 	
-	`registryType` matches `Proposal.registryType` (0=ecosystem, 1=proof of creativity, 2=platform).
+	`registryType` matches `Proposal.registryType` (0=ecosystem, 1=proof of creativity, 2=SPoT, 3=platform).
 	If `platformId` is set, the effective registry type comes from that platform's governance registry and `registryType` is ignored.
 	New on-chain proposals start in delegate review (`status` 1), not submitted (`status` 0).
 	"""
@@ -7139,6 +7157,10 @@ type SpotPayout {
 
 type SpotRecord {
 	"""
+	Active SPoT governance proposal id while debate is open.
+	"""
+	activeProposalId: String
+	"""
 	Betting option labels (e.g. ["Yes", "No"]).
 	"""
 	bettingOptions: [String!]!
@@ -7146,6 +7168,10 @@ type SpotRecord {
 	Unix milliseconds when the record was created (`Clock`).
 	"""
 	createdAtMs: Int!
+	"""
+	Wall-clock ms when oracle escalated to DAO_REQUIRED.
+	"""
+	daoEscalatedAtMs: Int
 	"""
 	Last resolution instant (Unix ms), if resolved.
 	"""
@@ -7159,13 +7185,29 @@ type SpotRecord {
 	"""
 	optionEscrow: [SpotOptionEscrow!]!
 	"""
+	Oracle-suggested outcome when escalated to DAO_REQUIRED.
+	"""
+	oracleProposedOutcome: Int
+	"""
 	Post ID this record is for.
 	"""
 	postId: String!
 	"""
+	Linked governance proposal (when active_proposal_id is set).
+	"""
+	proposal: Proposal
+	"""
+	Outcome under community ratification in the active proposal.
+	"""
+	proposedOutcome: Int
+	"""
 	Unique record identifier.
 	"""
 	recordId: String!
+	"""
+	On-chain SpotRecord object id.
+	"""
+	recordObjectId: String
 	"""
 	Resolved outcome (when resolved).
 	"""

@@ -229,13 +229,29 @@ myso client call --package 0x...d880 \
   --gas-budget 1000000000
 ```
 
-4) If confidence is below threshold, finalize via DAO (YES/NO/DRAW/UNAPPLICABLE)
+4) If confidence is below threshold, the market enters `DAO_REQUIRED`. Submit a SPoT governance proposal (registry_type=2), run delegate + community voting, then implement:
 ```bash
+# Submit binary ratification proposal (one proposed outcome per proposal)
 myso client call --package 0x...d880 \
-  --module social_proof_of_truth --function finalize_via_dao \
-  --args [SPOT_CONFIG_ID] [SPOT_RECORD_ID] [POST_ID] 3 \
+  --module social_proof_of_truth --function submit_spot_resolution_proposal_to_governance \
+  --args [SPOT_CONFIG_ID] [SPOT_GOVERNANCE_REGISTRY_ID] [SPOT_RECORD_ID] [POST_ID] \
+        "Resolve outcome" "Evidence summary" [PROPOSED_OUTCOME] [METADATA_JSON_OPTION] [PAYMENT_COIN] [CLOCK_ID] \
+  --gas-budget 1000000000
+
+# After delegate review and community vote approve the proposal:
+myso client call --package 0x...d880 \
+  --module social_proof_of_truth --function finalize_spot_governance_proposal \
+  --args [SPOT_CONFIG_ID] [SPOT_GOVERNANCE_REGISTRY_ID] [PROPOSAL_ID] [SPOT_RECORD_ID] [POST_ID] \
+        [ECOSYSTEM_TREASURY_ID] [CLOCK_ID] \
+  --gas-budget 1000000000
+
+myso client call --package 0x...d880 \
+  --module social_proof_of_truth --function implement_spot_resolution_from_governance \
+  --args [SPOT_CONFIG_ID] [SPOT_GOVERNANCE_REGISTRY_ID] [PROPOSAL_ID] [SPOT_RECORD_ID] [POST_ID] \
+        [PLATFORM_ID] [ECOSYSTEM_TREASURY_ID] "Final reasoning" [EVIDENCE_URLS_OPTION] [CLOCK_ID] \
   --gas-budget 1000000000
 ```
+Rejected proposals clear `active_proposal_id` on the record so a new outcome can be proposed. Bets are frozen while status is `DAO_REQUIRED`.
 
 Notes:
 - Auto‑init requires `social_proof_tokens` config `allow_auto_pool_init = true` and post not opted‑out.

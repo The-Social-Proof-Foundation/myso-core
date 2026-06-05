@@ -702,6 +702,25 @@ ptb_platform_create() {
     else
         dc_a=none; dt_a=none; psc_a=none; mv_a=none; qb_a=none; vp_a=none; qv_a=none
     fi
+    read -r -p "cover_photo optional URL (empty none): " cp
+    if [ -z "$cp" ]; then CP_ARG="none"
+    else
+        cpl="$(literal_move_string "$cp")"
+        CP_ARG="some(${cpl})"
+    fi
+    read -r -p "media_previews comma-separated URLs (empty none): " mp_in
+    if [ -z "$mp_in" ]; then MP_ARG="none"
+    else
+        IFS=',' read -r -a MA <<<"$mp_in"
+        acc=""
+        s2=""
+        for p in "${MA[@]}"; do
+            p="${p## }"; p="${p%% }"
+            acc="${acc}${s2}$(literal_move_string "$p")"
+            s2=", "
+        done
+        MP_ARG="some(vector[${acc}])"
+    fi
 
     if [ -z "$preg" ]; then
         print_info "PLATFORM_REGISTRY_ID required."
@@ -728,6 +747,7 @@ ptb_platform_create() {
         "${RD}" \
         "${wdao}" \
         "${dc_a}" "${dt_a}" "${psc_a}" "${mv_a}" "${qb_a}" "${vp_a}" "${qv_a}" \
+        "${CP_ARG}" "${MP_ARG}" \
         "@${CLOCK_ID}"
 
     print_success "Submitted."

@@ -58,6 +58,8 @@ strict wall-clock guarantee when governance is idle.
 -  [Function `submit_proposal`](#social_contracts_governance_submit_proposal)
 -  [Function `submit_ecosystem_proposal`](#social_contracts_governance_submit_ecosystem_proposal)
 -  [Function `submit_proof_of_creativity_proposal`](#social_contracts_governance_submit_proof_of_creativity_proposal)
+-  [Function `submit_spot_resolution_proposal`](#social_contracts_governance_submit_spot_resolution_proposal)
+-  [Function `submit_spot_proposal_and_return_id`](#social_contracts_governance_submit_spot_proposal_and_return_id)
 -  [Function `submit_proposal_internal`](#social_contracts_governance_submit_proposal_internal)
 -  [Function `rescind_proposal`](#social_contracts_governance_rescind_proposal)
 -  [Function `move_to_community_voting`](#social_contracts_governance_move_to_community_voting)
@@ -71,7 +73,7 @@ strict wall-clock guarantee when governance is idle.
 -  [Function `forfeit_reason_community_rejected_value`](#social_contracts_governance_forfeit_reason_community_rejected_value)
 -  [Function `forfeit_reason_delegate_rejected_value`](#social_contracts_governance_forfeit_reason_delegate_rejected_value)
 -  [Function `assert_platform_delegate_manual_reject`](#social_contracts_governance_assert_platform_delegate_manual_reject)
--  [Function `assert_ecosystem_or_poc_registry`](#social_contracts_governance_assert_ecosystem_or_poc_registry)
+-  [Function `assert_shared_global_registry`](#social_contracts_governance_assert_shared_global_registry)
 -  [Function `forfeit_proposal_pool_to_treasury_address`](#social_contracts_governance_forfeit_proposal_pool_to_treasury_address)
 -  [Function `transition_proposal_rejected_by_delegate_council`](#social_contracts_governance_transition_proposal_rejected_by_delegate_council)
 -  [Function `complete_delegate_reject_to_ecosystem_treasury`](#social_contracts_governance_complete_delegate_reject_to_ecosystem_treasury)
@@ -90,6 +92,11 @@ strict wall-clock guarantee when governance is idle.
 -  [Function `mark_proposal_implemented_to_ecosystem_treasury`](#social_contracts_governance_mark_proposal_implemented_to_ecosystem_treasury)
 -  [Function `mark_proposal_implemented_platform_to_ecosystem_treasury`](#social_contracts_governance_mark_proposal_implemented_platform_to_ecosystem_treasury)
 -  [Function `proposal_type_platform_value`](#social_contracts_governance_proposal_type_platform_value)
+-  [Function `proposal_type_spot_value`](#social_contracts_governance_proposal_type_spot_value)
+-  [Function `proposal_status`](#social_contracts_governance_proposal_status)
+-  [Function `proposal_reference_id`](#social_contracts_governance_proposal_reference_id)
+-  [Function `status_approved_value`](#social_contracts_governance_status_approved_value)
+-  [Function `status_rejected_value`](#social_contracts_governance_status_rejected_value)
 -  [Function `get_proposals_by_type`](#social_contracts_governance_get_proposals_by_type)
 -  [Function `get_proposals_by_status`](#social_contracts_governance_get_proposals_by_status)
 -  [Function `get_delegate_count`](#social_contracts_governance_get_delegate_count)
@@ -108,6 +115,7 @@ strict wall-clock guarantee when governance is idle.
 -  [Function `last_delegate_panel_boundary_epoch`](#social_contracts_governance_last_delegate_panel_boundary_epoch)
 -  [Function `set_version`](#social_contracts_governance_set_version)
 -  [Function `migrate_registry`](#social_contracts_governance_migrate_registry)
+-  [Function `create_spot_governance_registry`](#social_contracts_governance_create_spot_governance_registry)
 -  [Function `create_governance_admin_cap`](#social_contracts_governance_create_governance_admin_cap)
 
 
@@ -1789,11 +1797,20 @@ Proposal type constants
 
 
 
+<a name="social_contracts_governance_PROPOSAL_TYPE_SPOT"></a>
+
+
+
+<pre><code><b>const</b> <a href="../social_contracts/governance.md#social_contracts_governance_PROPOSAL_TYPE_SPOT">PROPOSAL_TYPE_SPOT</a>: u8 = 2;
+</code></pre>
+
+
+
 <a name="social_contracts_governance_PROPOSAL_TYPE_PLATFORM"></a>
 
 
 
-<pre><code><b>const</b> <a href="../social_contracts/governance.md#social_contracts_governance_PROPOSAL_TYPE_PLATFORM">PROPOSAL_TYPE_PLATFORM</a>: u8 = 2;
+<pre><code><b>const</b> <a href="../social_contracts/governance.md#social_contracts_governance_PROPOSAL_TYPE_PLATFORM">PROPOSAL_TYPE_PLATFORM</a>: u8 = 3;
 </code></pre>
 
 
@@ -1975,11 +1992,11 @@ Field names for dynamic fields
 
 ## Function `bootstrap_init`
 
-Bootstrap initialization function - creates the governance registries
-This function has the same logic as init() but can be called by bootstrap
+Bootstrap initialization function - creates the governance registries.
+Returns the shared SPoT governance registry object ID for wiring into [<code><a href="../social_contracts/social_proof_of_truth.md#social_contracts_social_proof_of_truth">social_contracts::social_proof_of_truth</a></code>].
 
 
-<pre><code><b>public</b>(package) <b>fun</b> <a href="../social_contracts/governance.md#social_contracts_governance_bootstrap_init">bootstrap_init</a>(clock: &<a href="../myso/clock.md#myso_clock_Clock">myso::clock::Clock</a>, ctx: &<b>mut</b> <a href="../myso/tx_context.md#myso_tx_context_TxContext">myso::tx_context::TxContext</a>)
+<pre><code><b>public</b>(package) <b>fun</b> <a href="../social_contracts/governance.md#social_contracts_governance_bootstrap_init">bootstrap_init</a>(clock: &<a href="../myso/clock.md#myso_clock_Clock">myso::clock::Clock</a>, ctx: &<b>mut</b> <a href="../myso/tx_context.md#myso_tx_context_TxContext">myso::tx_context::TxContext</a>): <a href="../myso/object.md#myso_object_ID">myso::object::ID</a>
 </code></pre>
 
 
@@ -1988,7 +2005,7 @@ This function has the same logic as init() but can be called by bootstrap
 <summary>Implementation</summary>
 
 
-<pre><code><b>public</b>(package) <b>fun</b> <a href="../social_contracts/governance.md#social_contracts_governance_bootstrap_init">bootstrap_init</a>(clock: &Clock, ctx: &<b>mut</b> TxContext) {
+<pre><code><b>public</b>(package) <b>fun</b> <a href="../social_contracts/governance.md#social_contracts_governance_bootstrap_init">bootstrap_init</a>(clock: &Clock, ctx: &<b>mut</b> TxContext): ID {
     <b>let</b> current_time = clock::timestamp_ms(clock);
     <b>let</b> founder = tx_context::sender(ctx);
     // Create MySocial Ecosystem Governance Registry
@@ -2081,6 +2098,46 @@ This function has the same logic as init() but can be called by bootstrap
     <a href="../social_contracts/governance.md#social_contracts_governance_seed_founding_delegate">seed_founding_delegate</a>(&<b>mut</b> proof_of_creativity_registry, founder, ctx);
     // Share the proof of creativity registry object
     transfer::share_object(proof_of_creativity_registry);
+    // Create Social Proof of Truth Governance Registry
+    <b>let</b> <b>mut</b> spot_registry = <a href="../social_contracts/governance.md#social_contracts_governance_GovernanceDAO">GovernanceDAO</a> {
+        id: object::new(ctx),
+        <a href="../social_contracts/governance.md#social_contracts_governance_registry_type">registry_type</a>: <a href="../social_contracts/governance.md#social_contracts_governance_PROPOSAL_TYPE_SPOT">PROPOSAL_TYPE_SPOT</a>,
+        delegate_count: 3,
+        delegate_term_epochs: 90,
+        proposal_submission_cost: 10_000_000_000,
+        max_votes_per_user: 5,
+        quadratic_base_cost: 1_000_000_000,
+        voting_period_ms: 3 * 24 * 60 * 60 * 1000,
+        quorum_votes: 10,
+        delegates: table::new&lt;<b>address</b>, <a href="../social_contracts/governance.md#social_contracts_governance_Delegate">Delegate</a>&gt;(ctx),
+        proposals: table::new&lt;ID, bool&gt;(ctx),
+        proposal_types: table::new&lt;ID, u8&gt;(ctx),
+        proposals_by_status: table::new&lt;u8, vector&lt;ID&gt;&gt;(ctx),
+        treasury: balance::zero(),
+        nominated_delegates: table::new&lt;<b>address</b>, <a href="../social_contracts/governance.md#social_contracts_governance_NominatedDelegate">NominatedDelegate</a>&gt;(ctx),
+        delegate_addresses: vec_set::empty&lt;<b>address</b>&gt;(),
+        nominee_addresses: vec_set::empty&lt;<b>address</b>&gt;(),
+        voters: table::new&lt;<b>address</b>, Table&lt;<b>address</b>, bool&gt;&gt;(ctx),
+        <a href="../social_contracts/governance.md#social_contracts_governance_version">version</a>: <a href="../social_contracts/upgrade.md#social_contracts_upgrade_current_version">upgrade::current_version</a>(),
+        <a href="../social_contracts/governance.md#social_contracts_governance_last_delegate_panel_boundary_epoch">last_delegate_panel_boundary_epoch</a>: 0,
+    };
+    <a href="../social_contracts/governance.md#social_contracts_governance_initialize_registry_tables">initialize_registry_tables</a>(&<b>mut</b> spot_registry, ctx);
+    <b>let</b> spot_registry_id = object::id(&spot_registry);
+    event::emit(<a href="../social_contracts/governance.md#social_contracts_governance_GovernanceRegistryCreatedEvent">GovernanceRegistryCreatedEvent</a> {
+        registry_id: spot_registry_id,
+        <a href="../social_contracts/governance.md#social_contracts_governance_registry_type">registry_type</a>: <a href="../social_contracts/governance.md#social_contracts_governance_PROPOSAL_TYPE_SPOT">PROPOSAL_TYPE_SPOT</a>,
+        delegate_count: spot_registry.delegate_count,
+        delegate_term_epochs: spot_registry.delegate_term_epochs,
+        proposal_submission_cost: spot_registry.proposal_submission_cost,
+        max_votes_per_user: spot_registry.max_votes_per_user,
+        quadratic_base_cost: spot_registry.quadratic_base_cost,
+        voting_period_ms: spot_registry.voting_period_ms,
+        quorum_votes: spot_registry.quorum_votes,
+        updated_at: current_time,
+    });
+    <a href="../social_contracts/governance.md#social_contracts_governance_seed_founding_delegate">seed_founding_delegate</a>(&<b>mut</b> spot_registry, founder, ctx);
+    transfer::share_object(spot_registry);
+    spot_registry_id
 }
 </code></pre>
 
@@ -2946,12 +3003,14 @@ Handles proposal types: ecosystem and proof of creativity
             <b>assert</b>!(<b>false</b>, <a href="../social_contracts/governance.md#social_contracts_governance_EInvalidParameter">EInvalidParameter</a>);
             option::none&lt;ID&gt;()
         }
+    } <b>else</b> <b>if</b> (proposal_type == <a href="../social_contracts/governance.md#social_contracts_governance_PROPOSAL_TYPE_SPOT">PROPOSAL_TYPE_SPOT</a>) {
+        <b>assert</b>!(option::is_some(&reference_id), <a href="../social_contracts/governance.md#social_contracts_governance_EInvalidParameter">EInvalidParameter</a>);
+        reference_id
     } <b>else</b> {
         // For other proposal types (like <a href="../social_contracts/platform.md#social_contracts_platform">platform</a>), <b>use</b> reference_id <b>if</b> provided
         reference_id
     };
-    // Submit the proposal using the internal implementation
-    <a href="../social_contracts/governance.md#social_contracts_governance_submit_proposal_internal">submit_proposal_internal</a>(
+    <b>let</b> _proposal_id = <a href="../social_contracts/governance.md#social_contracts_governance_submit_proposal_internal">submit_proposal_internal</a>(
         registry,
         title,
         description,
@@ -3060,6 +3119,95 @@ Submit a proof of creativity proposal
 
 </details>
 
+<a name="social_contracts_governance_submit_spot_resolution_proposal"></a>
+
+## Function `submit_spot_resolution_proposal`
+
+Submit a SPoT resolution proposal (binary ratification of one outcome for a contested market).
+
+
+<pre><code><b>public</b> <b>entry</b> <b>fun</b> <a href="../social_contracts/governance.md#social_contracts_governance_submit_spot_resolution_proposal">submit_spot_resolution_proposal</a>(registry: &<b>mut</b> <a href="../social_contracts/governance.md#social_contracts_governance_GovernanceDAO">social_contracts::governance::GovernanceDAO</a>, title: <a href="../std/string.md#std_string_String">std::string::String</a>, description: <a href="../std/string.md#std_string_String">std::string::String</a>, spot_record_id: <a href="../myso/object.md#myso_object_ID">myso::object::ID</a>, metadata_json: <a href="../std/option.md#std_option_Option">std::option::Option</a>&lt;<a href="../std/string.md#std_string_String">std::string::String</a>&gt;, coin: &<b>mut</b> <a href="../myso/coin.md#myso_coin_Coin">myso::coin::Coin</a>&lt;<a href="../myso/myso.md#myso_myso_MYSO">myso::myso::MYSO</a>&gt;, clock: &<a href="../myso/clock.md#myso_clock_Clock">myso::clock::Clock</a>, ctx: &<b>mut</b> <a href="../myso/tx_context.md#myso_tx_context_TxContext">myso::tx_context::TxContext</a>)
+</code></pre>
+
+
+
+<details>
+<summary>Implementation</summary>
+
+
+<pre><code><b>public</b> <b>entry</b> <b>fun</b> <a href="../social_contracts/governance.md#social_contracts_governance_submit_spot_resolution_proposal">submit_spot_resolution_proposal</a>(
+    registry: &<b>mut</b> <a href="../social_contracts/governance.md#social_contracts_governance_GovernanceDAO">GovernanceDAO</a>,
+    title: String,
+    description: String,
+    spot_record_id: ID,
+    metadata_json: Option&lt;String&gt;,
+    coin: &<b>mut</b> Coin&lt;MYSO&gt;,
+    clock: &Clock,
+    ctx: &<b>mut</b> TxContext
+) {
+    <b>assert</b>!(registry.<a href="../social_contracts/governance.md#social_contracts_governance_registry_type">registry_type</a> == <a href="../social_contracts/governance.md#social_contracts_governance_PROPOSAL_TYPE_SPOT">PROPOSAL_TYPE_SPOT</a>, <a href="../social_contracts/governance.md#social_contracts_governance_EInvalidRegistry">EInvalidRegistry</a>);
+    <b>let</b> _ = <a href="../social_contracts/governance.md#social_contracts_governance_submit_spot_proposal_and_return_id">submit_spot_proposal_and_return_id</a>(
+        registry,
+        title,
+        description,
+        spot_record_id,
+        metadata_json,
+        coin,
+        clock,
+        ctx
+    );
+}
+</code></pre>
+
+
+
+</details>
+
+<a name="social_contracts_governance_submit_spot_proposal_and_return_id"></a>
+
+## Function `submit_spot_proposal_and_return_id`
+
+Package helper: submit a SPoT resolution proposal and return its ID.
+
+
+<pre><code><b>public</b>(package) <b>fun</b> <a href="../social_contracts/governance.md#social_contracts_governance_submit_spot_proposal_and_return_id">submit_spot_proposal_and_return_id</a>(registry: &<b>mut</b> <a href="../social_contracts/governance.md#social_contracts_governance_GovernanceDAO">social_contracts::governance::GovernanceDAO</a>, title: <a href="../std/string.md#std_string_String">std::string::String</a>, description: <a href="../std/string.md#std_string_String">std::string::String</a>, spot_record_id: <a href="../myso/object.md#myso_object_ID">myso::object::ID</a>, metadata_json: <a href="../std/option.md#std_option_Option">std::option::Option</a>&lt;<a href="../std/string.md#std_string_String">std::string::String</a>&gt;, coin: &<b>mut</b> <a href="../myso/coin.md#myso_coin_Coin">myso::coin::Coin</a>&lt;<a href="../myso/myso.md#myso_myso_MYSO">myso::myso::MYSO</a>&gt;, clock: &<a href="../myso/clock.md#myso_clock_Clock">myso::clock::Clock</a>, ctx: &<b>mut</b> <a href="../myso/tx_context.md#myso_tx_context_TxContext">myso::tx_context::TxContext</a>): <a href="../myso/object.md#myso_object_ID">myso::object::ID</a>
+</code></pre>
+
+
+
+<details>
+<summary>Implementation</summary>
+
+
+<pre><code><b>public</b>(package) <b>fun</b> <a href="../social_contracts/governance.md#social_contracts_governance_submit_spot_proposal_and_return_id">submit_spot_proposal_and_return_id</a>(
+    registry: &<b>mut</b> <a href="../social_contracts/governance.md#social_contracts_governance_GovernanceDAO">GovernanceDAO</a>,
+    title: String,
+    description: String,
+    spot_record_id: ID,
+    metadata_json: Option&lt;String&gt;,
+    coin: &<b>mut</b> Coin&lt;MYSO&gt;,
+    clock: &Clock,
+    ctx: &<b>mut</b> TxContext
+): ID {
+    <b>assert</b>!(registry.<a href="../social_contracts/governance.md#social_contracts_governance_registry_type">registry_type</a> == <a href="../social_contracts/governance.md#social_contracts_governance_PROPOSAL_TYPE_SPOT">PROPOSAL_TYPE_SPOT</a>, <a href="../social_contracts/governance.md#social_contracts_governance_EInvalidRegistry">EInvalidRegistry</a>);
+    <a href="../social_contracts/governance.md#social_contracts_governance_submit_proposal_internal">submit_proposal_internal</a>(
+        registry,
+        title,
+        description,
+        <a href="../social_contracts/governance.md#social_contracts_governance_PROPOSAL_TYPE_SPOT">PROPOSAL_TYPE_SPOT</a>,
+        option::some(spot_record_id),
+        metadata_json,
+        coin,
+        clock,
+        ctx
+    )
+}
+</code></pre>
+
+
+
+</details>
+
 <a name="social_contracts_governance_submit_proposal_internal"></a>
 
 ## Function `submit_proposal_internal`
@@ -3067,7 +3215,7 @@ Submit a proof of creativity proposal
 Internal function for submitting proposals
 
 
-<pre><code><b>fun</b> <a href="../social_contracts/governance.md#social_contracts_governance_submit_proposal_internal">submit_proposal_internal</a>(registry: &<b>mut</b> <a href="../social_contracts/governance.md#social_contracts_governance_GovernanceDAO">social_contracts::governance::GovernanceDAO</a>, title: <a href="../std/string.md#std_string_String">std::string::String</a>, description: <a href="../std/string.md#std_string_String">std::string::String</a>, proposal_type: u8, reference_id: <a href="../std/option.md#std_option_Option">std::option::Option</a>&lt;<a href="../myso/object.md#myso_object_ID">myso::object::ID</a>&gt;, metadata_json: <a href="../std/option.md#std_option_Option">std::option::Option</a>&lt;<a href="../std/string.md#std_string_String">std::string::String</a>&gt;, coin: &<b>mut</b> <a href="../myso/coin.md#myso_coin_Coin">myso::coin::Coin</a>&lt;<a href="../myso/myso.md#myso_myso_MYSO">myso::myso::MYSO</a>&gt;, clock: &<a href="../myso/clock.md#myso_clock_Clock">myso::clock::Clock</a>, ctx: &<b>mut</b> <a href="../myso/tx_context.md#myso_tx_context_TxContext">myso::tx_context::TxContext</a>)
+<pre><code><b>fun</b> <a href="../social_contracts/governance.md#social_contracts_governance_submit_proposal_internal">submit_proposal_internal</a>(registry: &<b>mut</b> <a href="../social_contracts/governance.md#social_contracts_governance_GovernanceDAO">social_contracts::governance::GovernanceDAO</a>, title: <a href="../std/string.md#std_string_String">std::string::String</a>, description: <a href="../std/string.md#std_string_String">std::string::String</a>, proposal_type: u8, reference_id: <a href="../std/option.md#std_option_Option">std::option::Option</a>&lt;<a href="../myso/object.md#myso_object_ID">myso::object::ID</a>&gt;, metadata_json: <a href="../std/option.md#std_option_Option">std::option::Option</a>&lt;<a href="../std/string.md#std_string_String">std::string::String</a>&gt;, coin: &<b>mut</b> <a href="../myso/coin.md#myso_coin_Coin">myso::coin::Coin</a>&lt;<a href="../myso/myso.md#myso_myso_MYSO">myso::myso::MYSO</a>&gt;, clock: &<a href="../myso/clock.md#myso_clock_Clock">myso::clock::Clock</a>, ctx: &<b>mut</b> <a href="../myso/tx_context.md#myso_tx_context_TxContext">myso::tx_context::TxContext</a>): <a href="../myso/object.md#myso_object_ID">myso::object::ID</a>
 </code></pre>
 
 
@@ -3086,7 +3234,7 @@ Internal function for submitting proposals
     coin: &<b>mut</b> Coin&lt;MYSO&gt;,
     clock: &Clock,
     ctx: &<b>mut</b> TxContext
-) {
+): ID {
     <b>let</b> caller = tx_context::sender(ctx);
     <b>let</b> current_time = clock::timestamp_ms(clock);
     // Check stake amount
@@ -3145,6 +3293,7 @@ Internal function for submitting proposals
         submission_time: current_time,
     });
     <a href="../social_contracts/governance.md#social_contracts_governance_try_update_delegate_panel_if_due">try_update_delegate_panel_if_due</a>(registry, ctx);
+    proposal_id_copy
 }
 </code></pre>
 
@@ -3612,13 +3761,13 @@ Submit an anonymous encrypted vote on a proposal
 
 </details>
 
-<a name="social_contracts_governance_assert_ecosystem_or_poc_registry"></a>
+<a name="social_contracts_governance_assert_shared_global_registry"></a>
 
-## Function `assert_ecosystem_or_poc_registry`
+## Function `assert_shared_global_registry`
 
 
 
-<pre><code><b>fun</b> <a href="../social_contracts/governance.md#social_contracts_governance_assert_ecosystem_or_poc_registry">assert_ecosystem_or_poc_registry</a>(registry: &<a href="../social_contracts/governance.md#social_contracts_governance_GovernanceDAO">social_contracts::governance::GovernanceDAO</a>)
+<pre><code><b>fun</b> <a href="../social_contracts/governance.md#social_contracts_governance_assert_shared_global_registry">assert_shared_global_registry</a>(registry: &<a href="../social_contracts/governance.md#social_contracts_governance_GovernanceDAO">social_contracts::governance::GovernanceDAO</a>)
 </code></pre>
 
 
@@ -3627,10 +3776,11 @@ Submit an anonymous encrypted vote on a proposal
 <summary>Implementation</summary>
 
 
-<pre><code><b>fun</b> <a href="../social_contracts/governance.md#social_contracts_governance_assert_ecosystem_or_poc_registry">assert_ecosystem_or_poc_registry</a>(registry: &<a href="../social_contracts/governance.md#social_contracts_governance_GovernanceDAO">GovernanceDAO</a>) {
+<pre><code><b>fun</b> <a href="../social_contracts/governance.md#social_contracts_governance_assert_shared_global_registry">assert_shared_global_registry</a>(registry: &<a href="../social_contracts/governance.md#social_contracts_governance_GovernanceDAO">GovernanceDAO</a>) {
     <b>assert</b>!(
         registry.<a href="../social_contracts/governance.md#social_contracts_governance_registry_type">registry_type</a> == <a href="../social_contracts/governance.md#social_contracts_governance_PROPOSAL_TYPE_ECOSYSTEM">PROPOSAL_TYPE_ECOSYSTEM</a>
-            || registry.<a href="../social_contracts/governance.md#social_contracts_governance_registry_type">registry_type</a> == <a href="../social_contracts/governance.md#social_contracts_governance_PROPOSAL_TYPE_PROOF_OF_CREATIVITY">PROPOSAL_TYPE_PROOF_OF_CREATIVITY</a>,
+            || registry.<a href="../social_contracts/governance.md#social_contracts_governance_registry_type">registry_type</a> == <a href="../social_contracts/governance.md#social_contracts_governance_PROPOSAL_TYPE_PROOF_OF_CREATIVITY">PROPOSAL_TYPE_PROOF_OF_CREATIVITY</a>
+            || registry.<a href="../social_contracts/governance.md#social_contracts_governance_registry_type">registry_type</a> == <a href="../social_contracts/governance.md#social_contracts_governance_PROPOSAL_TYPE_SPOT">PROPOSAL_TYPE_SPOT</a>,
         <a href="../social_contracts/governance.md#social_contracts_governance_EWrongRegistryForTreasuryRoute">EWrongRegistryForTreasuryRoute</a>
     );
 }
@@ -3997,7 +4147,7 @@ Ecosystem and proof-of-creativity only: <code>ecosystem_treasury</code> used whe
     ctx: &<b>mut</b> TxContext
 ) {
     <b>assert</b>!(registry.<a href="../social_contracts/governance.md#social_contracts_governance_version">version</a> == <a href="../social_contracts/upgrade.md#social_contracts_upgrade_current_version">upgrade::current_version</a>(), <a href="../social_contracts/governance.md#social_contracts_governance_EWrongVersion">EWrongVersion</a>);
-    <a href="../social_contracts/governance.md#social_contracts_governance_assert_ecosystem_or_poc_registry">assert_ecosystem_or_poc_registry</a>(registry);
+    <a href="../social_contracts/governance.md#social_contracts_governance_assert_shared_global_registry">assert_shared_global_registry</a>(registry);
     <b>let</b> current_time = clock::timestamp_ms(clock);
     <b>let</b> out = <a href="../social_contracts/governance.md#social_contracts_governance_run_delegate_review_vote">run_delegate_review_vote</a>(registry, proposal, approve, reason, clock, ctx);
     <b>if</b> (out == <a href="../social_contracts/governance.md#social_contracts_governance_DELEGATE_VOTE_TO_REJECT">DELEGATE_VOTE_TO_REJECT</a>) {
@@ -4184,7 +4334,7 @@ Ecosystem and proof-of-creativity: finalize after community vote; on failure, re
     ctx: &<b>mut</b> TxContext
 ) {
     <b>assert</b>!(registry.<a href="../social_contracts/governance.md#social_contracts_governance_version">version</a> == <a href="../social_contracts/upgrade.md#social_contracts_upgrade_current_version">upgrade::current_version</a>(), <a href="../social_contracts/governance.md#social_contracts_governance_EWrongVersion">EWrongVersion</a>);
-    <a href="../social_contracts/governance.md#social_contracts_governance_assert_ecosystem_or_poc_registry">assert_ecosystem_or_poc_registry</a>(registry);
+    <a href="../social_contracts/governance.md#social_contracts_governance_assert_shared_global_registry">assert_shared_global_registry</a>(registry);
     <b>let</b> (outcome, time_ms) = <a href="../social_contracts/governance.md#social_contracts_governance_finalize_community_voting_internals">finalize_community_voting_internals</a>(registry, proposal, clock, ctx);
     <b>if</b> (outcome == <a href="../social_contracts/governance.md#social_contracts_governance_FINALIZE_OUTCOME_REJECT_COMMUNITY">FINALIZE_OUTCOME_REJECT_COMMUNITY</a>) {
         <b>let</b> dest = <a href="../social_contracts/profile.md#social_contracts_profile_get_treasury_address">profile::get_treasury_address</a>(ecosystem_treasury);
@@ -4398,7 +4548,7 @@ Finalize a proposal with anonymous votes by decrypting them first (ecosystem / p
     clock: &Clock,
     ctx: &<b>mut</b> TxContext
 ) {
-    <a href="../social_contracts/governance.md#social_contracts_governance_assert_ecosystem_or_poc_registry">assert_ecosystem_or_poc_registry</a>(registry);
+    <a href="../social_contracts/governance.md#social_contracts_governance_assert_shared_global_registry">assert_shared_global_registry</a>(registry);
     <b>let</b> (outcome, time_ms) = <a href="../social_contracts/governance.md#social_contracts_governance_anonymous_tally_votes_and_finalize_community_internals">anonymous_tally_votes_and_finalize_community_internals</a>(
         registry,
         proposal,
@@ -4520,11 +4670,7 @@ Mark implemented: reward the submitter with the implementation pool (ecosystem o
     clock: &Clock,
     ctx: &<b>mut</b> TxContext
 ) {
-    <b>assert</b>!(
-        registry.<a href="../social_contracts/governance.md#social_contracts_governance_registry_type">registry_type</a> == <a href="../social_contracts/governance.md#social_contracts_governance_PROPOSAL_TYPE_ECOSYSTEM">PROPOSAL_TYPE_ECOSYSTEM</a>
-            || registry.<a href="../social_contracts/governance.md#social_contracts_governance_registry_type">registry_type</a> == <a href="../social_contracts/governance.md#social_contracts_governance_PROPOSAL_TYPE_PROOF_OF_CREATIVITY">PROPOSAL_TYPE_PROOF_OF_CREATIVITY</a>,
-        <a href="../social_contracts/governance.md#social_contracts_governance_EWrongRegistryForTreasuryRoute">EWrongRegistryForTreasuryRoute</a>
-    );
+    <a href="../social_contracts/governance.md#social_contracts_governance_assert_shared_global_registry">assert_shared_global_registry</a>(registry);
     <b>let</b> sent_time = clock::timestamp_ms(clock);
     <b>let</b> submitter = proposal.submitter;
     <b>let</b> bal = <a href="../social_contracts/governance.md#social_contracts_governance_mark_proposal_implemented_take_pool">mark_proposal_implemented_take_pool</a>(registry, proposal, description, clock, ctx);
@@ -4616,6 +4762,126 @@ Registry type discriminator for platform routing (see [<code><a href="../social_
 
 <pre><code><b>public</b> <b>fun</b> <a href="../social_contracts/governance.md#social_contracts_governance_proposal_type_platform_value">proposal_type_platform_value</a>(): u8 {
     <a href="../social_contracts/governance.md#social_contracts_governance_PROPOSAL_TYPE_PLATFORM">PROPOSAL_TYPE_PLATFORM</a>
+}
+</code></pre>
+
+
+
+</details>
+
+<a name="social_contracts_governance_proposal_type_spot_value"></a>
+
+## Function `proposal_type_spot_value`
+
+
+
+<pre><code><b>public</b> <b>fun</b> <a href="../social_contracts/governance.md#social_contracts_governance_proposal_type_spot_value">proposal_type_spot_value</a>(): u8
+</code></pre>
+
+
+
+<details>
+<summary>Implementation</summary>
+
+
+<pre><code><b>public</b> <b>fun</b> <a href="../social_contracts/governance.md#social_contracts_governance_proposal_type_spot_value">proposal_type_spot_value</a>(): u8 {
+    <a href="../social_contracts/governance.md#social_contracts_governance_PROPOSAL_TYPE_SPOT">PROPOSAL_TYPE_SPOT</a>
+}
+</code></pre>
+
+
+
+</details>
+
+<a name="social_contracts_governance_proposal_status"></a>
+
+## Function `proposal_status`
+
+
+
+<pre><code><b>public</b> <b>fun</b> <a href="../social_contracts/governance.md#social_contracts_governance_proposal_status">proposal_status</a>(proposal: &<a href="../social_contracts/governance.md#social_contracts_governance_Proposal">social_contracts::governance::Proposal</a>): u8
+</code></pre>
+
+
+
+<details>
+<summary>Implementation</summary>
+
+
+<pre><code><b>public</b> <b>fun</b> <a href="../social_contracts/governance.md#social_contracts_governance_proposal_status">proposal_status</a>(proposal: &<a href="../social_contracts/governance.md#social_contracts_governance_Proposal">Proposal</a>): u8 {
+    proposal.status
+}
+</code></pre>
+
+
+
+</details>
+
+<a name="social_contracts_governance_proposal_reference_id"></a>
+
+## Function `proposal_reference_id`
+
+
+
+<pre><code><b>public</b> <b>fun</b> <a href="../social_contracts/governance.md#social_contracts_governance_proposal_reference_id">proposal_reference_id</a>(proposal: &<a href="../social_contracts/governance.md#social_contracts_governance_Proposal">social_contracts::governance::Proposal</a>): <a href="../std/option.md#std_option_Option">std::option::Option</a>&lt;<a href="../myso/object.md#myso_object_ID">myso::object::ID</a>&gt;
+</code></pre>
+
+
+
+<details>
+<summary>Implementation</summary>
+
+
+<pre><code><b>public</b> <b>fun</b> <a href="../social_contracts/governance.md#social_contracts_governance_proposal_reference_id">proposal_reference_id</a>(proposal: &<a href="../social_contracts/governance.md#social_contracts_governance_Proposal">Proposal</a>): Option&lt;ID&gt; {
+    proposal.reference_id
+}
+</code></pre>
+
+
+
+</details>
+
+<a name="social_contracts_governance_status_approved_value"></a>
+
+## Function `status_approved_value`
+
+
+
+<pre><code><b>public</b> <b>fun</b> <a href="../social_contracts/governance.md#social_contracts_governance_status_approved_value">status_approved_value</a>(): u8
+</code></pre>
+
+
+
+<details>
+<summary>Implementation</summary>
+
+
+<pre><code><b>public</b> <b>fun</b> <a href="../social_contracts/governance.md#social_contracts_governance_status_approved_value">status_approved_value</a>(): u8 {
+    <a href="../social_contracts/governance.md#social_contracts_governance_STATUS_APPROVED">STATUS_APPROVED</a>
+}
+</code></pre>
+
+
+
+</details>
+
+<a name="social_contracts_governance_status_rejected_value"></a>
+
+## Function `status_rejected_value`
+
+
+
+<pre><code><b>public</b> <b>fun</b> <a href="../social_contracts/governance.md#social_contracts_governance_status_rejected_value">status_rejected_value</a>(): u8
+</code></pre>
+
+
+
+<details>
+<summary>Implementation</summary>
+
+
+<pre><code><b>public</b> <b>fun</b> <a href="../social_contracts/governance.md#social_contracts_governance_status_rejected_value">status_rejected_value</a>(): u8 {
+    <a href="../social_contracts/governance.md#social_contracts_governance_STATUS_REJECTED">STATUS_REJECTED</a>
 }
 </code></pre>
 
@@ -5026,7 +5292,7 @@ If more than half of delegates reject, reject the proposal manually (ecosystem /
     ctx: &<b>mut</b> TxContext
 ) {
     <b>assert</b>!(registry.<a href="../social_contracts/governance.md#social_contracts_governance_version">version</a> == <a href="../social_contracts/upgrade.md#social_contracts_upgrade_current_version">upgrade::current_version</a>(), <a href="../social_contracts/governance.md#social_contracts_governance_EWrongVersion">EWrongVersion</a>);
-    <a href="../social_contracts/governance.md#social_contracts_governance_assert_ecosystem_or_poc_registry">assert_ecosystem_or_poc_registry</a>(registry);
+    <a href="../social_contracts/governance.md#social_contracts_governance_assert_shared_global_registry">assert_shared_global_registry</a>(registry);
     <b>let</b> caller = tx_context::sender(ctx);
     <b>assert</b>!(table::contains(&registry.delegates, caller), <a href="../social_contracts/governance.md#social_contracts_governance_ENotDelegate">ENotDelegate</a>);
     <b>let</b> proposal_id = object::id(proposal);
@@ -5229,6 +5495,74 @@ Public entry function that migrates registry to the latest version
     <b>assert</b>!(current_version &lt; latest_version, <a href="../social_contracts/governance.md#social_contracts_governance_EWrongVersion">EWrongVersion</a>);
     // Version-specific migrations would go here when needed
     registry.<a href="../social_contracts/governance.md#social_contracts_governance_version">version</a> = latest_version;
+}
+</code></pre>
+
+
+
+</details>
+
+<a name="social_contracts_governance_create_spot_governance_registry"></a>
+
+## Function `create_spot_governance_registry`
+
+One-time admin path for existing networks that bootstrapped before the SPoT registry existed.
+
+
+<pre><code><b>public</b> <b>entry</b> <b>fun</b> <a href="../social_contracts/governance.md#social_contracts_governance_create_spot_governance_registry">create_spot_governance_registry</a>(_: &<a href="../social_contracts/governance.md#social_contracts_governance_GovernanceAdminCap">social_contracts::governance::GovernanceAdminCap</a>, clock: &<a href="../myso/clock.md#myso_clock_Clock">myso::clock::Clock</a>, ctx: &<b>mut</b> <a href="../myso/tx_context.md#myso_tx_context_TxContext">myso::tx_context::TxContext</a>)
+</code></pre>
+
+
+
+<details>
+<summary>Implementation</summary>
+
+
+<pre><code><b>public</b> <b>entry</b> <b>fun</b> <a href="../social_contracts/governance.md#social_contracts_governance_create_spot_governance_registry">create_spot_governance_registry</a>(
+    _: &<a href="../social_contracts/governance.md#social_contracts_governance_GovernanceAdminCap">GovernanceAdminCap</a>,
+    clock: &Clock,
+    ctx: &<b>mut</b> TxContext
+) {
+    <b>let</b> current_time = clock::timestamp_ms(clock);
+    <b>let</b> founder = tx_context::sender(ctx);
+    <b>let</b> <b>mut</b> spot_registry = <a href="../social_contracts/governance.md#social_contracts_governance_GovernanceDAO">GovernanceDAO</a> {
+        id: object::new(ctx),
+        <a href="../social_contracts/governance.md#social_contracts_governance_registry_type">registry_type</a>: <a href="../social_contracts/governance.md#social_contracts_governance_PROPOSAL_TYPE_SPOT">PROPOSAL_TYPE_SPOT</a>,
+        delegate_count: 3,
+        delegate_term_epochs: 90,
+        proposal_submission_cost: 10_000_000_000,
+        max_votes_per_user: 5,
+        quadratic_base_cost: 1_000_000_000,
+        voting_period_ms: 3 * 24 * 60 * 60 * 1000,
+        quorum_votes: 10,
+        delegates: table::new&lt;<b>address</b>, <a href="../social_contracts/governance.md#social_contracts_governance_Delegate">Delegate</a>&gt;(ctx),
+        proposals: table::new&lt;ID, bool&gt;(ctx),
+        proposal_types: table::new&lt;ID, u8&gt;(ctx),
+        proposals_by_status: table::new&lt;u8, vector&lt;ID&gt;&gt;(ctx),
+        treasury: balance::zero(),
+        nominated_delegates: table::new&lt;<b>address</b>, <a href="../social_contracts/governance.md#social_contracts_governance_NominatedDelegate">NominatedDelegate</a>&gt;(ctx),
+        delegate_addresses: vec_set::empty&lt;<b>address</b>&gt;(),
+        nominee_addresses: vec_set::empty&lt;<b>address</b>&gt;(),
+        voters: table::new&lt;<b>address</b>, Table&lt;<b>address</b>, bool&gt;&gt;(ctx),
+        <a href="../social_contracts/governance.md#social_contracts_governance_version">version</a>: <a href="../social_contracts/upgrade.md#social_contracts_upgrade_current_version">upgrade::current_version</a>(),
+        <a href="../social_contracts/governance.md#social_contracts_governance_last_delegate_panel_boundary_epoch">last_delegate_panel_boundary_epoch</a>: 0,
+    };
+    <a href="../social_contracts/governance.md#social_contracts_governance_initialize_registry_tables">initialize_registry_tables</a>(&<b>mut</b> spot_registry, ctx);
+    <b>let</b> spot_registry_id = object::id(&spot_registry);
+    event::emit(<a href="../social_contracts/governance.md#social_contracts_governance_GovernanceRegistryCreatedEvent">GovernanceRegistryCreatedEvent</a> {
+        registry_id: spot_registry_id,
+        <a href="../social_contracts/governance.md#social_contracts_governance_registry_type">registry_type</a>: <a href="../social_contracts/governance.md#social_contracts_governance_PROPOSAL_TYPE_SPOT">PROPOSAL_TYPE_SPOT</a>,
+        delegate_count: spot_registry.delegate_count,
+        delegate_term_epochs: spot_registry.delegate_term_epochs,
+        proposal_submission_cost: spot_registry.proposal_submission_cost,
+        max_votes_per_user: spot_registry.max_votes_per_user,
+        quadratic_base_cost: spot_registry.quadratic_base_cost,
+        voting_period_ms: spot_registry.voting_period_ms,
+        quorum_votes: spot_registry.quorum_votes,
+        updated_at: current_time,
+    });
+    <a href="../social_contracts/governance.md#social_contracts_governance_seed_founding_delegate">seed_founding_delegate</a>(&<b>mut</b> spot_registry, founder, ctx);
+    transfer::share_object(spot_registry);
 }
 </code></pre>
 

@@ -79,8 +79,9 @@ use crate::social_graph::{
     resolve_profile_address,
 };
 use crate::spot::{
-    get_spot_config, get_spot_record, get_spot_resolution, list_spot_bet_withdrawals,
-    list_spot_bets, list_spot_payouts, list_spot_refunds,
+    get_spot_config, get_spot_record, get_spot_record_by_active_proposal_id,
+    get_spot_record_by_object_id, get_spot_resolution, list_contested_spot_records,
+    list_spot_bet_withdrawals, list_spot_bets, list_spot_payouts, list_spot_refunds,
 };
 use crate::spt::SptReservationVolumeInterval;
 use crate::spt::{
@@ -1164,6 +1165,34 @@ impl SocialPgReader {
     ) -> anyhow::Result<Option<crate::SpotRecordRow>> {
         let mut conn = self.connect().await?;
         get_spot_record(&mut conn, post_id, &self.metrics).await
+    }
+
+    /// Get spot record linked to an active governance proposal.
+    pub async fn get_spot_record_by_active_proposal_id(
+        &self,
+        proposal_id: &str,
+    ) -> anyhow::Result<Option<crate::SpotRecordRow>> {
+        let mut conn = self.connect().await?;
+        get_spot_record_by_active_proposal_id(&mut conn, proposal_id, &self.metrics).await
+    }
+
+    /// Get spot record by on-chain SpotRecord object id.
+    pub async fn get_spot_record_by_object_id(
+        &self,
+        record_object_id: &str,
+    ) -> anyhow::Result<Option<crate::SpotRecordRow>> {
+        let mut conn = self.connect().await?;
+        get_spot_record_by_object_id(&mut conn, record_object_id, &self.metrics).await
+    }
+
+    /// List contested spot records in DAO_REQUIRED status.
+    pub async fn list_contested_spot_records(
+        &self,
+        limit: i64,
+        offset: i64,
+    ) -> anyhow::Result<Vec<crate::SpotRecordRow>> {
+        let mut conn = self.connect().await?;
+        list_contested_spot_records(&mut conn, limit, offset, &self.metrics).await
     }
 
     /// List spot bets for a post (paginated).

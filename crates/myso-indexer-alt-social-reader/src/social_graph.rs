@@ -1265,6 +1265,10 @@ pub(crate) async fn get_profile_platform_memberships(
         description: Option<String>,
         #[diesel(sql_type = Nullable<Text>)]
         logo: Option<String>,
+        #[diesel(sql_type = Nullable<Text>)]
+        cover_photo: Option<String>,
+        #[diesel(sql_type = Nullable<Jsonb>)]
+        media_previews: Option<JsonValue>,
         #[diesel(sql_type = Text)]
         developer_address: String,
         #[diesel(sql_type = Nullable<Text>)]
@@ -1331,6 +1335,8 @@ pub(crate) async fn get_profile_platform_memberships(
                p.tagline,
                p.description,
                p.logo,
+               p.cover_photo,
+               p.media_previews,
                p.developer_address,
                p.terms_of_service,
                p.privacy_policy,
@@ -1385,6 +1391,8 @@ pub(crate) async fn get_profile_platform_memberships(
             tagline: r.tagline,
             description: r.description,
             logo: r.logo,
+            cover_photo: r.cover_photo,
+            media_previews: r.media_previews,
             developer_address: r.developer_address,
             terms_of_service: r.terms_of_service,
             privacy_policy: r.privacy_policy,

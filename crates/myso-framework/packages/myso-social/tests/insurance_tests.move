@@ -16,6 +16,7 @@ module social_contracts::insurance_tests {
 
     use social_contracts::insurance;
     use social_contracts::social_proof_of_truth as spot;
+    use social_contracts::governance;
     use social_contracts::social_proof_tokens as spt;
     use social_contracts::post::{Self, Post};
     use social_contracts::platform::{Self, Platform, PlatformRegistry};
@@ -57,7 +58,8 @@ module social_contracts::insurance_tests {
         test_scenario::next_tx(&mut scen, ADMIN);
         {
             let clock = test_scenario::take_shared<Clock>(&scen);
-            spot::test_init(&clock, test_scenario::ctx(&mut scen));
+            let spot_gov_id = governance::bootstrap_init(&clock, test_scenario::ctx(&mut scen));
+            spot::test_init(&clock, spot_gov_id, test_scenario::ctx(&mut scen));
             test_scenario::return_shared(clock);
         };
 
@@ -65,8 +67,9 @@ module social_contracts::insurance_tests {
         {
             let admin_cap = test_scenario::take_from_sender<spot::SpotAdminCap>(&scen);
             let mut cfg = test_scenario::take_shared<spot::SpotConfig>(&scen);
+            let spot_gov_id = spot::spot_governance_registry_id(&cfg);
             let clock = test_scenario::take_shared<Clock>(&scen);
-            spot::update_spot_config(&admin_cap, &mut cfg, true, 7000, 0, 0, 0, 100, 5000, ADMIN, 0, 10000, &clock, test_scenario::ctx(&mut scen));
+            spot::update_spot_config(&admin_cap, &mut cfg, true, 7000, 0, 0, 0, 100, 5000, ADMIN, 0, 10000, spot_gov_id, &clock, test_scenario::ctx(&mut scen));
             test_scenario::return_to_sender(&scen, admin_cap);
             test_scenario::return_shared(cfg);
             test_scenario::return_shared(clock);
@@ -100,6 +103,7 @@ module social_contracts::insurance_tests {
                 false,
                 option::none(), option::none(), option::none(), option::none(),
                 option::none(), option::none(), option::none(),
+                option::none(), option::none(),
                 &clock,
                 test_scenario::ctx(&mut scen)
             );

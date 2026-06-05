@@ -6,6 +6,8 @@ CREATE TABLE IF NOT EXISTS platforms (
     tagline TEXT NOT NULL,
     description TEXT,
     logo TEXT,
+    cover_photo TEXT,
+    media_previews JSONB,
     developer_address TEXT NOT NULL,
     terms_of_service TEXT,
     privacy_policy TEXT,

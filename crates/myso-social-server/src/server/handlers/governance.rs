@@ -7,6 +7,7 @@ use std::sync::Arc;
 
 use myso_indexer_alt_social_schema::{
     PROPOSAL_TYPE_ECOSYSTEM, PROPOSAL_TYPE_PLATFORM, PROPOSAL_TYPE_PROOF_OF_CREATIVITY,
+    PROPOSAL_TYPE_SPOT,
 };
 
 use crate::error::SocialError;
@@ -19,6 +20,7 @@ use super::super::{
 fn is_valid_proposal_type(t: i16) -> bool {
     t == PROPOSAL_TYPE_ECOSYSTEM
         || t == PROPOSAL_TYPE_PROOF_OF_CREATIVITY
+        || t == PROPOSAL_TYPE_SPOT
         || t == PROPOSAL_TYPE_PLATFORM
 }
 
@@ -29,7 +31,7 @@ pub async fn list_governance_proposals(
     if let Some(pt) = params.proposal_type {
         if !is_valid_proposal_type(pt) {
             return Err(SocialError::bad_request(
-                "Invalid proposal_type: must be 0 (Ecosystem), 1 (Proof of Creativity), or 2 (Platform)",
+                "Invalid proposal_type: must be 0 (Ecosystem), 1 (Proof of Creativity), 2 (SPoT), or 3 (Platform)",
             ));
         }
     }

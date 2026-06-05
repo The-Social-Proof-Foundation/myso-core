@@ -20,6 +20,7 @@ module social_contracts::social_proof_of_truth_tests {
     use social_contracts::platform::{Self, Platform, PlatformRegistry};
     use social_contracts::block_list::{Self, BlockListRegistry};
     use social_contracts::profile::{Self, EcosystemTreasury};
+    use social_contracts::governance::{Self, GovernanceDAO, Proposal, GovernanceAdminCap};
 
     // Test addresses
     const ADMIN: address = @0xA0;
@@ -58,7 +59,10 @@ module social_contracts::social_proof_of_truth_tests {
         test_scenario::next_tx(&mut scen, ADMIN);
         {
             let clock = test_scenario::take_shared<Clock>(&scen);
-            spot::test_init(&clock, test_scenario::ctx(&mut scen));
+            let ctx = test_scenario::ctx(&mut scen);
+            let spot_gov_id = governance::bootstrap_init(&clock, ctx);
+            governance::test_grant_admin_cap(ctx);
+            spot::test_init(&clock, spot_gov_id, ctx);
             test_scenario::return_shared(clock);
         };
 
@@ -91,6 +95,7 @@ module social_contracts::social_proof_of_truth_tests {
                 string::utf8(b"2024-01-01"),
                 false,
                 option::none(), option::none(), option::none(), option::none(), option::none(), option::none(), option::none(),
+                option::none(), option::none(),
                 &clock,
                 test_scenario::ctx(&mut scen)
             );
@@ -112,6 +117,28 @@ module social_contracts::social_proof_of_truth_tests {
         post::test_create_post_with_spot(owner, owner, TEST_PLATFORM_ID, string::utf8(b"truth?"), ctx)
     }
 
+    fun take_spot_governance_registry(scenario: &Scenario): GovernanceDAO {
+        let r0 = test_scenario::take_shared<GovernanceDAO>(scenario);
+        if (governance::registry_type(&r0) == governance::proposal_type_spot_value()) {
+            return r0
+        };
+        let r1 = test_scenario::take_shared<GovernanceDAO>(scenario);
+        if (governance::registry_type(&r1) == governance::proposal_type_spot_value()) {
+            test_scenario::return_shared(r0);
+            return r1
+        };
+        let r2 = test_scenario::take_shared<GovernanceDAO>(scenario);
+        if (governance::registry_type(&r2) == governance::proposal_type_spot_value()) {
+            test_scenario::return_shared(r0);
+            test_scenario::return_shared(r1);
+            return r2
+        };
+        test_scenario::return_shared(r0);
+        test_scenario::return_shared(r1);
+        test_scenario::return_shared(r2);
+        abort 999
+    }
+
     // --- Tests ---
 
     #[test]
@@ -123,6 +150,7 @@ module social_contracts::social_proof_of_truth_tests {
         {
             let admin_cap = test_scenario::take_from_sender<spot::SpotAdminCap>(&scen);
             let mut cfg = test_scenario::take_shared<spot::SpotConfig>(&scen);
+            let spot_gov_id = spot::spot_governance_registry_id(&cfg);
             let clock = test_scenario::take_shared<Clock>(&scen);
             spot::update_spot_config(
                 &admin_cap,
@@ -137,6 +165,7 @@ module social_contracts::social_proof_of_truth_tests {
                 ADMIN, // oracle_address
                 0,    // max_single_bet
                 10000, // max_bets_per_record
+                spot_gov_id,
                 &clock,
                 test_scenario::ctx(&mut scen)
             );
@@ -157,8 +186,9 @@ module social_contracts::social_proof_of_truth_tests {
         {
             let admin_cap = test_scenario::take_from_sender<spot::SpotAdminCap>(&scen);
             let mut cfg = test_scenario::take_shared<spot::SpotConfig>(&scen);
+            let spot_gov_id = spot::spot_governance_registry_id(&cfg);
             let clock = test_scenario::take_shared<Clock>(&scen);
-            spot::update_spot_config(&admin_cap, &mut cfg, true, 0, 0, 0, 0, 5000, 5000, ADMIN, 0, 10000, &clock, test_scenario::ctx(&mut scen));
+            spot::update_spot_config(&admin_cap, &mut cfg, true, 0, 0, 0, 0, 5000, 5000, ADMIN, 0, 10000, spot_gov_id, &clock, test_scenario::ctx(&mut scen));
             test_scenario::return_to_sender(&scen, admin_cap);
             test_scenario::return_shared(cfg);
             test_scenario::return_shared(clock);
@@ -276,11 +306,36 @@ module social_contracts::social_proof_of_truth_tests {
         {
             let admin_cap = test_scenario::take_from_sender<spot::SpotAdminCap>(&scen);
             let mut cfg = test_scenario::take_shared<spot::SpotConfig>(&scen);
+            let spot_gov_id = spot::spot_governance_registry_id(&cfg);
             let clock = test_scenario::take_shared<Clock>(&scen);
-            spot::update_spot_config(&admin_cap, &mut cfg, true, 9000, 0, 0, 0, 5000, 5000, ADMIN, 0, 10000, &clock, test_scenario::ctx(&mut scen));
+            spot::update_spot_config(&admin_cap, &mut cfg, true, 9000, 0, 0, 0, 5000, 5000, ADMIN, 0, 10000, spot_gov_id, &clock, test_scenario::ctx(&mut scen));
             test_scenario::return_to_sender(&scen, admin_cap);
             test_scenario::return_shared(cfg);
             test_scenario::return_shared(clock);
+        };
+
+        // Fast-test SPoT governance parameters (low quorum / short voting window)
+        test_scenario::next_tx(&mut scen, ADMIN);
+        {
+            let gov_admin = test_scenario::take_from_sender<GovernanceAdminCap>(&scen);
+            let mut spot_registry = take_spot_governance_registry(&scen);
+            let clock = test_scenario::take_shared<Clock>(&scen);
+            governance::update_governance_parameters(
+                &mut spot_registry,
+                &gov_admin,
+                3,
+                90,
+                1_000,
+                5,
+                0,
+                1,
+                1,
+                &clock,
+                test_scenario::ctx(&mut scen),
+            );
+            test_scenario::return_shared(clock);
+            test_scenario::return_shared(spot_registry);
+            test_scenario::return_to_sender(&scen, gov_admin);
         };
 
         // Create post and record
@@ -369,34 +424,129 @@ module social_contracts::social_proof_of_truth_tests {
             test_scenario::return_shared(post_ref);
         };
 
-        // DAO finalizes DRAW → everyone refunded
+        // Submit governance proposal to ratify DRAW, then implement after approval
         test_scenario::next_tx(&mut scen, ADMIN);
         {
             let cfg = test_scenario::take_shared<spot::SpotConfig>(&scen);
+            let mut spot_registry = take_spot_governance_registry(&scen);
+            let mut rec = test_scenario::take_shared<spot::SpotRecord>(&scen);
+            let post_ref = test_scenario::take_shared<Post>(&scen);
+            let clock = test_scenario::take_shared<Clock>(&scen);
+            let mut payment = coin::mint_for_testing<MYSO>(10_000 * SCALING, test_scenario::ctx(&mut scen));
+            spot::submit_spot_resolution_proposal_to_governance(
+                &cfg,
+                &mut spot_registry,
+                &mut rec,
+                &post_ref,
+                string::utf8(b"Resolve SPoT as draw"),
+                string::utf8(b"Community consensus: draw outcome"),
+                spot::outcome_draw(),
+                option::none(),
+                &mut payment,
+                &clock,
+                test_scenario::ctx(&mut scen),
+            );
+            if (coin::value(&payment) > 0) {
+                myso::transfer::public_transfer(payment, ADMIN);
+            } else {
+                coin::destroy_zero(payment);
+            };
+            test_scenario::return_shared(clock);
+            test_scenario::return_shared(post_ref);
+            test_scenario::return_shared(rec);
+            test_scenario::return_shared(spot_registry);
+            test_scenario::return_shared(cfg);
+        };
+
+        test_scenario::next_tx(&mut scen, ADMIN);
+        {
+            let mut spot_registry = take_spot_governance_registry(&scen);
+            let mut proposal = test_scenario::take_shared<Proposal>(&scen);
+            let treasury = test_scenario::take_shared<EcosystemTreasury>(&scen);
+            let clock = test_scenario::take_shared<Clock>(&scen);
+            governance::delegate_vote_on_proposal(
+                &mut spot_registry,
+                &mut proposal,
+                &treasury,
+                true,
+                option::some(string::utf8(b"Advance to community")),
+                &clock,
+                test_scenario::ctx(&mut scen),
+            );
+            test_scenario::return_shared(clock);
+            test_scenario::return_shared(treasury);
+            test_scenario::return_shared(proposal);
+            test_scenario::return_shared(spot_registry);
+        };
+
+        test_scenario::next_tx(&mut scen, USER2);
+        {
+            let mut spot_registry = take_spot_governance_registry(&scen);
+            let mut proposal = test_scenario::take_shared<Proposal>(&scen);
+            let clock = test_scenario::take_shared<Clock>(&scen);
+            let mut payment = coin::mint_for_testing<MYSO>(1 * SCALING, test_scenario::ctx(&mut scen));
+            governance::community_vote_on_proposal(
+                &mut spot_registry,
+                &mut proposal,
+                1,
+                true,
+                &mut payment,
+                &clock,
+                test_scenario::ctx(&mut scen),
+            );
+            if (coin::value(&payment) > 0) {
+                myso::transfer::public_transfer(payment, USER2);
+            } else {
+                coin::destroy_zero(payment);
+            };
+            test_scenario::return_shared(clock);
+            test_scenario::return_shared(proposal);
+            test_scenario::return_shared(spot_registry);
+        };
+
+        test_scenario::next_tx(&mut scen, ADMIN);
+        {
+            let cfg = test_scenario::take_shared<spot::SpotConfig>(&scen);
+            let mut spot_registry = take_spot_governance_registry(&scen);
+            let mut proposal = test_scenario::take_shared<Proposal>(&scen);
             let mut rec = test_scenario::take_shared<spot::SpotRecord>(&scen);
             let post_ref = test_scenario::take_shared<Post>(&scen);
             let mut platform = test_scenario::take_shared<Platform>(&scen);
             let treasury = test_scenario::take_shared<EcosystemTreasury>(&scen);
-            let clock = test_scenario::take_shared<Clock>(&scen);
-            spot::finalize_via_dao(
-                &cfg, 
-                &mut rec, 
+            let mut clock = test_scenario::take_shared<Clock>(&scen);
+            clock::increment_for_testing(&mut clock, 2);
+            spot::finalize_spot_governance_proposal(
+                &cfg,
+                &mut spot_registry,
+                &mut proposal,
+                &mut rec,
+                &post_ref,
+                &treasury,
+                &clock,
+                test_scenario::ctx(&mut scen),
+            );
+            spot::implement_spot_resolution_from_governance(
+                &cfg,
+                &mut spot_registry,
+                &mut proposal,
+                &mut rec,
                 &post_ref,
                 &mut platform,
                 &treasury,
-                255, // OUTCOME_DRAW (changed from 3 to 255)
-                option::some(string::utf8(b"DAO consensus: Draw outcome")),
+                string::utf8(b"DAO consensus: Draw outcome after governance approval"),
                 option::none(),
                 &clock,
-                test_scenario::ctx(&mut scen)
+                test_scenario::ctx(&mut scen),
             );
             test_scenario::return_shared(platform);
             test_scenario::return_shared(treasury);
             test_scenario::return_shared(clock);
             assert!(spot::get_status(&rec) == 3, 4); // RESOLVED
-            test_scenario::return_shared(cfg);
-            test_scenario::return_shared(rec);
             test_scenario::return_shared(post_ref);
+            test_scenario::return_shared(rec);
+            test_scenario::return_shared(proposal);
+            test_scenario::return_shared(spot_registry);
+            test_scenario::return_shared(cfg);
         };
 
         test_scenario::end(scen);
@@ -411,8 +561,9 @@ module social_contracts::social_proof_of_truth_tests {
         {
             let admin_cap = test_scenario::take_from_sender<spot::SpotAdminCap>(&scen);
             let mut cfg = test_scenario::take_shared<spot::SpotConfig>(&scen);
+            let spot_gov_id = spot::spot_governance_registry_id(&cfg);
             let clock = test_scenario::take_shared<Clock>(&scen);
-            spot::update_spot_config(&admin_cap, &mut cfg, true, 7000, 0, 0, 0, 5000, 5000, ADMIN, 0, 10000, &clock, test_scenario::ctx(&mut scen));
+            spot::update_spot_config(&admin_cap, &mut cfg, true, 7000, 0, 0, 0, 5000, 5000, ADMIN, 0, 10000, spot_gov_id, &clock, test_scenario::ctx(&mut scen));
             test_scenario::return_to_sender(&scen, admin_cap);
             test_scenario::return_shared(cfg);
             test_scenario::return_shared(clock);
@@ -495,8 +646,9 @@ module social_contracts::social_proof_of_truth_tests {
         {
             let admin_cap = test_scenario::take_from_sender<spot::SpotAdminCap>(&scen);
             let mut cfg = test_scenario::take_shared<spot::SpotConfig>(&scen);
+            let spot_gov_id = spot::spot_governance_registry_id(&cfg);
             let clock = test_scenario::take_shared<Clock>(&scen);
-            spot::update_spot_config(&admin_cap, &mut cfg, true, 7000, 0, 0, 0, 5000, 5000, ADMIN, 0, 10000, &clock, test_scenario::ctx(&mut scen));
+            spot::update_spot_config(&admin_cap, &mut cfg, true, 7000, 0, 0, 0, 5000, 5000, ADMIN, 0, 10000, spot_gov_id, &clock, test_scenario::ctx(&mut scen));
             test_scenario::return_to_sender(&scen, admin_cap);
             test_scenario::return_shared(cfg);
             test_scenario::return_shared(clock);
@@ -545,8 +697,9 @@ module social_contracts::social_proof_of_truth_tests {
         {
             let admin_cap = test_scenario::take_from_sender<spot::SpotAdminCap>(&scen);
             let mut cfg = test_scenario::take_shared<spot::SpotConfig>(&scen);
+            let spot_gov_id = spot::spot_governance_registry_id(&cfg);
             let clock = test_scenario::take_shared<Clock>(&scen);
-            spot::update_spot_config(&admin_cap, &mut cfg, true, 9000, 0, 0, 0, 5000, 5000, ADMIN, 0, 10000, &clock, test_scenario::ctx(&mut scen));
+            spot::update_spot_config(&admin_cap, &mut cfg, true, 9000, 0, 0, 0, 5000, 5000, ADMIN, 0, 10000, spot_gov_id, &clock, test_scenario::ctx(&mut scen));
             test_scenario::return_to_sender(&scen, admin_cap);
             test_scenario::return_shared(cfg);
             test_scenario::return_shared(clock);
@@ -660,6 +813,7 @@ module social_contracts::social_proof_of_truth_tests {
         {
             let admin_cap = test_scenario::take_from_sender<spot::SpotAdminCap>(&scen);
             let mut cfg = test_scenario::take_shared<spot::SpotConfig>(&scen);
+            let spot_gov_id = spot::spot_governance_registry_id(&cfg);
             let clock = test_scenario::take_shared<Clock>(&scen);
             spot::update_spot_config(
                 &admin_cap,
@@ -674,6 +828,7 @@ module social_contracts::social_proof_of_truth_tests {
                 ADMIN,
                 0,
                 0,
+                spot_gov_id,
                 &clock,
                 test_scenario::ctx(&mut scen)
             );
@@ -750,8 +905,9 @@ module social_contracts::social_proof_of_truth_tests {
         {
             let admin_cap = test_scenario::take_from_sender<spot::SpotAdminCap>(&scen);
             let mut cfg = test_scenario::take_shared<spot::SpotConfig>(&scen);
+            let spot_gov_id = spot::spot_governance_registry_id(&cfg);
             let clock = test_scenario::take_shared<Clock>(&scen);
-            spot::update_spot_config(&admin_cap, &mut cfg, true, 7000, 0, 0, 0, 0, 5000, ADMIN, 0, 3, &clock, test_scenario::ctx(&mut scen)); // max_bets_per_record = 3
+            spot::update_spot_config(&admin_cap, &mut cfg, true, 7000, 0, 0, 0, 0, 5000, ADMIN, 0, 3, spot_gov_id, &clock, test_scenario::ctx(&mut scen)); // max_bets_per_record = 3
             test_scenario::return_to_sender(&scen, admin_cap);
             test_scenario::return_shared(cfg);
             test_scenario::return_shared(clock);

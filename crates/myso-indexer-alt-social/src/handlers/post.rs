@@ -13,7 +13,7 @@ use super::common;
 use super::SocialEventRow;
 use myso_indexer_alt_social_schema::models::{
     NewComment, NewDeletionEvent, NewModerationEvent, NewPost, NewPostTransfer, NewReaction,
-    NewReactionCount, NewReport, NewRepost, NewTip, NewUnifiedRevenue,
+    NewReport, NewRepost, NewTip, NewUnifiedRevenue,
 };
 use myso_indexer_alt_social_schema::models::{
     CONTENT_TYPE_COMMENT, CONTENT_TYPE_POST, CURRENCY_MYSO, POST_TYPE_QUOTE_REPOST,
@@ -594,15 +594,7 @@ fn process_reaction_event(data: &serde_json::Value, event_id: &str) -> Option<Ve
         sub_agent_id: ev.sub_agent_id,
         action_identity_class: ev.action_identity_class.map(i16::from),
     };
-    let count = NewReactionCount {
-        object_id: ev.object_id,
-        reaction_text: ev.reaction_text,
-        count: 1,
-    };
-    Some(vec![
-        SocialEventRow::Reaction(reaction),
-        SocialEventRow::ReactionCount(count),
-    ])
+    Some(vec![SocialEventRow::Reaction(reaction)])
 }
 
 fn process_remove_reaction_event(
@@ -616,9 +608,12 @@ fn process_remove_reaction_event(
         data,
         "post remove-reaction event JSON did not match RemoveReactionEvent",
     )?;
+    let user_address = ev
+        .actor_address
+        .unwrap_or(ev.user_address);
     Some(vec![SocialEventRow::RemoveReaction {
         object_id: ev.object_id,
-        user_address: ev.user_address,
+        user_address,
         reaction_text: ev.reaction_text,
         is_post: ev.is_post,
     }])
@@ -1084,6 +1079,57 @@ mod tests {
     use super::*;
     use crate::handlers::SocialEventRow;
     use myso_indexer_alt_social_schema::models::CURRENCY_MYSO;
+
+    #[test]
+    fn reaction_event_produces_single_reaction_row() {
+        let data = serde_json::json!({
+            "object_id": "0xpost123",
+            "user_address": "0xuser456",
+            "reaction_text": "👍",
+            "is_post": true,
+            "principal_owner": "0xowner789",
+            "actor_address": "0xactorabc",
+            "sub_agent_id": null,
+            "action_identity_class": 0,
+        });
+        let rows = handle_post_event("ReactionEvent", &data, "tx:rx1").expect("rows");
+        assert_eq!(rows.len(), 1);
+        assert!(
+            rows.iter().all(|r| matches!(r, SocialEventRow::Reaction(_))),
+            "expected only Reaction row, no ReactionCount"
+        );
+    }
+
+    #[test]
+    fn remove_reaction_event_produces_remove_row() {
+        let data = serde_json::json!({
+            "object_id": "0xpost123",
+            "user_address": "0xuser456",
+            "reaction_text": "👍",
+            "is_post": true,
+            "principal_owner": "0xowner789",
+            "actor_address": "0xactorabc",
+            "sub_agent_id": null,
+            "action_identity_class": 0,
+        });
+        let rows = handle_post_event("RemoveReactionEvent", &data, "tx:rm1").expect("rows");
+        assert_eq!(rows.len(), 1);
+        assert!(
+            rows.iter().any(|r| matches!(
+                r,
+                SocialEventRow::RemoveReaction {
+                    object_id,
+                    user_address,
+                    reaction_text,
+                    is_post,
+                } if object_id == "0xpost123"
+                    && user_address == "0xactorabc"
+                    && reaction_text == "👍"
+                    && *is_post
+            )),
+            "expected RemoveReaction row with actor_address as user_address"
+        );
+    }
 
     #[test]
     fn post_created_quote_repost_increments_parent_repost_count() {

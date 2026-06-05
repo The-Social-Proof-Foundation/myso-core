@@ -12,6 +12,7 @@ use myso_indexer_alt_social_reader::{
     DelegateRow, GovernanceRegistryRow, GovernanceStatsRow, PlatformRevenueSummaryRow, ProposalRow,
     SocialPgReader, ViewerSocialContext,
 };
+use myso_indexer_alt_social_schema::{PROPOSAL_TYPE_PLATFORM, PROPOSAL_TYPE_SPOT};
 use myso_indexer_alt_social_schema::models::{
     AnonymousVoteRow, AnonymousVotingStatsRow, AnonymousVotingTrendRow, CommunityVoteRow,
     DelegateRatingRow, DelegateVoteRow, GovernanceEventRow, NominatedDelegateRow,
@@ -23,6 +24,7 @@ use crate::api::scalars::json::Json;
 use crate::api::scalars::myso_address::MySoAddress;
 use crate::api::types::platform::{Platform, resolve_platform_by_id};
 use crate::api::types::profile_summary::ProfileSummary;
+use crate::api::types::spot::SpotRecord;
 
 #[derive(Enum, Copy, Clone, Eq, PartialEq)]
 #[graphql(rename_items = "SCREAMING_SNAKE_CASE")]
@@ -80,7 +82,7 @@ impl Proposal {
         &self.inner.id
     }
 
-    /// Governance registry / proposal bucket (0=ecosystem, 1=proof of creativity, 2=platform). Same numeric space as chain `proposal_type`; not proposal lifecycle status.
+    /// Governance registry / proposal bucket (0=ecosystem, 1=proof of creativity, 2=SPoT, 3=platform). Same numeric space as chain `proposal_type`; not proposal lifecycle status.
     async fn registry_type(&self) -> i16 {
         self.inner.proposal_type
     }
@@ -149,6 +151,27 @@ impl Proposal {
     /// Reference ID (e.g. linked post or object).
     async fn reference_id(&self) -> Option<&str> {
         self.inner.reference_id.as_deref()
+    }
+
+    /// Linked SPoT record for SPoT resolution proposals (registry_type=2).
+    async fn spot_record(&self, ctx: &Context<'_>) -> Option<SpotRecord> {
+        if self.inner.proposal_type != PROPOSAL_TYPE_SPOT {
+            return None;
+        }
+        let reader_opt = ctx.data_opt::<Arc<Option<SocialPgReader>>>()?;
+        let reader = reader_opt.as_ref().as_ref()?;
+        if let Ok(Some(row)) = reader
+            .get_spot_record_by_active_proposal_id(&self.inner.id)
+            .await
+        {
+            return Some(SpotRecord::from_row(row));
+        }
+        let reference_id = self.inner.reference_id.as_deref()?;
+        reader
+            .get_spot_record_by_object_id(reference_id)
+            .await
+            .ok()?
+            .map(SpotRecord::from_row)
     }
 
     /// Implemented description (when status=implemented).
@@ -665,7 +688,7 @@ impl Delegate {
             .unwrap_or_else(|_| MySoAddress::from(myso_types::base_types::MySoAddress::ZERO))
     }
 
-    /// Registry type (0=ecosystem, 1=proof of creativity, 2=platform).
+    /// Registry type (0=ecosystem, 1=proof of creativity, 2=SPoT, 3=platform).
     async fn registry_type(&self) -> i16 {
         self.inner.registry_type
     }
@@ -813,7 +836,7 @@ impl NominatedDelegate {
             .unwrap_or_else(|_| MySoAddress::from(myso_types::base_types::MySoAddress::ZERO))
     }
 
-    /// Registry type (0=ecosystem, 1=proof of creativity, 2=platform).
+    /// Registry type (0=ecosystem, 1=proof of creativity, 2=SPoT, 3=platform).
     async fn registry_type(&self) -> i16 {
         self.inner.registry_type
     }
@@ -911,7 +934,7 @@ pub(crate) struct PlatformRevenueSummary {
 
 #[Object]
 impl GovernanceRegistry {
-    /// Registry type (0=ecosystem, 1=proof of creativity, 2=platform).
+    /// Registry type (0=ecosystem, 1=proof of creativity, 2=SPoT, 3=platform).
     async fn registry_type(&self) -> i16 {
         self.inner.registry_type
     }
@@ -966,12 +989,12 @@ impl GovernanceRegistry {
         Some(PlatformRevenueSummary { inner: row })
     }
 
-    /// Platform details (when registry_type=2). Resolved by platform_id when from governanceRegistry(platformId), else by registry_id.
+    /// Platform details (when registry_type=3). Resolved by platform_id when from governanceRegistry(platformId), else by registry_id.
     async fn platform(&self, ctx: &Context<'_>) -> Option<Platform> {
         if let Some(pid) = &self.platform_id {
             return resolve_platform_by_id(ctx, pid).await;
         }
-        if self.inner.registry_type != 2 {
+        if self.inner.registry_type != PROPOSAL_TYPE_PLATFORM {
             return None;
         }
         let reader_opt = ctx.data_opt::<Arc<Option<SocialPgReader>>>()?;
@@ -991,7 +1014,7 @@ impl GovernanceStats {
         &self.inner.registry_id
     }
 
-    /// Registry type (0=ecosystem, 1=proof of creativity, 2=platform).
+    /// Registry type (0=ecosystem, 1=proof of creativity, 2=SPoT, 3=platform).
     async fn registry_type(&self) -> i16 {
         self.inner.registry_type
     }

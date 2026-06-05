@@ -649,6 +649,23 @@ impl Processor for PostsHandler {
     }
 }
 
+#[derive(Debug, Clone, PartialEq, Eq)]
+enum ReactionApplyKind {
+    New,
+    Swap { previous: String },
+    Replay,
+}
+
+fn classify_reaction(prior: Option<&str>, new: &str) -> ReactionApplyKind {
+    match prior {
+        None => ReactionApplyKind::New,
+        Some(prev) if prev == new => ReactionApplyKind::Replay,
+        Some(prev) => ReactionApplyKind::Swap {
+            previous: prev.to_string(),
+        },
+    }
+}
+
 #[async_trait]
 impl Handler for PostsHandler {
     async fn commit<'a>(values: &[Self::Value], conn: &mut Connection<'a>) -> Result<usize> {
@@ -674,30 +691,93 @@ impl Handler for PostsHandler {
                         .execute(conn)
                         .await?;
                 }
-                // On-chain, swapping an existing reaction to a different emoji emits only
-                // `ReactionEvent` (not `RemoveReaction`); the total `reaction_count` on-chain
-                // is unchanged, but a naive +1 here would over-count. A future fix is to align
-                // with chain semantics (e.g. emit a remove or include prior reaction in the event).
                 PostRow::Reaction(r) => {
                     let is_post = r.is_post;
                     let object_id = r.object_id.clone();
-                    total += diesel::insert_into(reactions::table)
-                        .values(r)
-                        .on_conflict_do_nothing()
-                        .execute(conn)
-                        .await?;
-                    if is_post {
-                        let _ = diesel::update(posts::table)
-                            .filter(posts::post_id.eq(&object_id))
-                            .set(posts::reaction_count.eq(posts::reaction_count + 1))
-                            .execute(conn)
-                            .await;
-                    } else {
-                        let _ = diesel::update(comments::table)
-                            .filter(comments::comment_id.eq(&object_id))
-                            .set(comments::reaction_count.eq(comments::reaction_count + 1))
-                            .execute(conn)
-                            .await;
+                    let user_address = r.user_address.clone();
+                    let new_reaction_text = r.reaction_text.clone();
+
+                    let prior: Option<String> = reactions::table
+                        .filter(reactions::object_id.eq(&object_id))
+                        .filter(reactions::user_address.eq(&user_address))
+                        .order(reactions::created_at.desc())
+                        .select(reactions::reaction_text)
+                        .first::<String>(conn)
+                        .await
+                        .ok();
+
+                    match classify_reaction(prior.as_deref(), &new_reaction_text) {
+                        ReactionApplyKind::Replay => {
+                            let _ = diesel::insert_into(reactions::table)
+                                .values(r)
+                                .on_conflict_do_nothing()
+                                .execute(conn)
+                                .await;
+                        }
+                        ReactionApplyKind::Swap { previous } => {
+                            let _ = diesel::delete(reactions::table)
+                                .filter(reactions::object_id.eq(&object_id))
+                                .filter(reactions::user_address.eq(&user_address))
+                                .execute(conn)
+                                .await;
+                            let _ = diesel::update(reaction_counts::table)
+                                .filter(reaction_counts::object_id.eq(&object_id))
+                                .filter(reaction_counts::reaction_text.eq(&previous))
+                                .set(reaction_counts::count.eq(reaction_counts::count - 1))
+                                .execute(conn)
+                                .await;
+                            total += diesel::insert_into(reactions::table)
+                                .values(r)
+                                .execute(conn)
+                                .await?;
+                            total += diesel::insert_into(reaction_counts::table)
+                                .values(NewReactionCount {
+                                    object_id: object_id.clone(),
+                                    reaction_text: new_reaction_text,
+                                    count: 1,
+                                })
+                                .on_conflict((
+                                    reaction_counts::object_id,
+                                    reaction_counts::reaction_text,
+                                ))
+                                .do_update()
+                                .set(reaction_counts::count.eq(reaction_counts::count + 1))
+                                .execute(conn)
+                                .await?;
+                        }
+                        ReactionApplyKind::New => {
+                            total += diesel::insert_into(reactions::table)
+                                .values(r)
+                                .execute(conn)
+                                .await?;
+                            total += diesel::insert_into(reaction_counts::table)
+                                .values(NewReactionCount {
+                                    object_id: object_id.clone(),
+                                    reaction_text: new_reaction_text,
+                                    count: 1,
+                                })
+                                .on_conflict((
+                                    reaction_counts::object_id,
+                                    reaction_counts::reaction_text,
+                                ))
+                                .do_update()
+                                .set(reaction_counts::count.eq(reaction_counts::count + 1))
+                                .execute(conn)
+                                .await?;
+                            if is_post {
+                                let _ = diesel::update(posts::table)
+                                    .filter(posts::post_id.eq(&object_id))
+                                    .set(posts::reaction_count.eq(posts::reaction_count + 1))
+                                    .execute(conn)
+                                    .await;
+                            } else {
+                                let _ = diesel::update(comments::table)
+                                    .filter(comments::comment_id.eq(&object_id))
+                                    .set(comments::reaction_count.eq(comments::reaction_count + 1))
+                                    .execute(conn)
+                                    .await;
+                            }
+                        }
                     }
                 }
                 PostRow::ReactionCount(rc) => {
@@ -1484,9 +1564,29 @@ impl Handler for PostsHandler {
 
 #[cfg(test)]
 mod post_row_poc_mapping_tests {
-    use super::PostRow;
+    use super::{classify_reaction, PostRow, ReactionApplyKind};
     use crate::handlers::SocialEventRow;
     use myso_indexer_alt_social_schema::models::NewPocBadge;
+
+    #[test]
+    fn classify_reaction_new_when_no_prior() {
+        assert_eq!(classify_reaction(None, "👍"), ReactionApplyKind::New);
+    }
+
+    #[test]
+    fn classify_reaction_swap_when_different_emoji() {
+        assert_eq!(
+            classify_reaction(Some("👍"), "❤️"),
+            ReactionApplyKind::Swap {
+                previous: "👍".to_string()
+            }
+        );
+    }
+
+    #[test]
+    fn classify_reaction_replay_when_same_emoji() {
+        assert_eq!(classify_reaction(Some("👍"), "👍"), ReactionApplyKind::Replay);
+    }
 
     #[test]
     fn post_row_maps_poc_badge_social_event() {

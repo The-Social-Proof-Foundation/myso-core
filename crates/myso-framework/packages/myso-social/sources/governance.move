@@ -75,7 +75,8 @@ module social_contracts::governance {
     /// Proposal type constants
     const PROPOSAL_TYPE_ECOSYSTEM: u8 = 0;
     const PROPOSAL_TYPE_PROOF_OF_CREATIVITY: u8 = 1;
-    const PROPOSAL_TYPE_PLATFORM: u8 = 2;
+    const PROPOSAL_TYPE_SPOT: u8 = 2;
+    const PROPOSAL_TYPE_PLATFORM: u8 = 3;
 
     /// Proposal status constants
     const STATUS_SUBMITTED: u8 = 0;
@@ -359,9 +360,9 @@ module social_contracts::governance {
         executed_at_epoch: u64,
     }
 
-    /// Bootstrap initialization function - creates the governance registries
-    /// This function has the same logic as init() but can be called by bootstrap
-    public(package) fun bootstrap_init(clock: &Clock, ctx: &mut TxContext) {
+    /// Bootstrap initialization function - creates the governance registries.
+    /// Returns the shared SPoT governance registry object ID for wiring into [`social_contracts::social_proof_of_truth`].
+    public(package) fun bootstrap_init(clock: &Clock, ctx: &mut TxContext): ID {
         let current_time = clock::timestamp_ms(clock);
         let founder = tx_context::sender(ctx);
 
@@ -466,6 +467,52 @@ module social_contracts::governance {
         
         // Share the proof of creativity registry object
         transfer::share_object(proof_of_creativity_registry);
+
+        // Create Social Proof of Truth Governance Registry
+        let mut spot_registry = GovernanceDAO {
+            id: object::new(ctx),
+            registry_type: PROPOSAL_TYPE_SPOT,
+            delegate_count: 3,
+            delegate_term_epochs: 90,
+            proposal_submission_cost: 10_000_000_000,
+            max_votes_per_user: 5,
+            quadratic_base_cost: 1_000_000_000,
+            voting_period_ms: 3 * 24 * 60 * 60 * 1000,
+            quorum_votes: 10,
+            delegates: table::new<address, Delegate>(ctx),
+            proposals: table::new<ID, bool>(ctx),
+            proposal_types: table::new<ID, u8>(ctx),
+            proposals_by_status: table::new<u8, vector<ID>>(ctx),
+            treasury: balance::zero(),
+            nominated_delegates: table::new<address, NominatedDelegate>(ctx),
+            delegate_addresses: vec_set::empty<address>(),
+            nominee_addresses: vec_set::empty<address>(),
+            voters: table::new<address, Table<address, bool>>(ctx),
+            version: upgrade::current_version(),
+            last_delegate_panel_boundary_epoch: 0,
+        };
+
+        initialize_registry_tables(&mut spot_registry, ctx);
+
+        let spot_registry_id = object::id(&spot_registry);
+
+        event::emit(GovernanceRegistryCreatedEvent {
+            registry_id: spot_registry_id,
+            registry_type: PROPOSAL_TYPE_SPOT,
+            delegate_count: spot_registry.delegate_count,
+            delegate_term_epochs: spot_registry.delegate_term_epochs,
+            proposal_submission_cost: spot_registry.proposal_submission_cost,
+            max_votes_per_user: spot_registry.max_votes_per_user,
+            quadratic_base_cost: spot_registry.quadratic_base_cost,
+            voting_period_ms: spot_registry.voting_period_ms,
+            quorum_votes: spot_registry.quorum_votes,
+            updated_at: current_time,
+        });
+
+        seed_founding_delegate(&mut spot_registry, founder, ctx);
+        transfer::share_object(spot_registry);
+
+        spot_registry_id
     }
 
     /// Install the founding delegate without going through nomination (bootstrap / platform creation).
@@ -1193,13 +1240,15 @@ module social_contracts::governance {
                 assert!(false, EInvalidParameter);
                 option::none<ID>()
             }
+        } else if (proposal_type == PROPOSAL_TYPE_SPOT) {
+            assert!(option::is_some(&reference_id), EInvalidParameter);
+            reference_id
         } else {
             // For other proposal types (like platform), use reference_id if provided
             reference_id
         };
         
-        // Submit the proposal using the internal implementation
-        submit_proposal_internal(
+        let _proposal_id = submit_proposal_internal(
             registry,
             title,
             description,
@@ -1263,6 +1312,55 @@ module social_contracts::governance {
         );
     }
 
+    /// Submit a SPoT resolution proposal (binary ratification of one outcome for a contested market).
+    public entry fun submit_spot_resolution_proposal(
+        registry: &mut GovernanceDAO,
+        title: String,
+        description: String,
+        spot_record_id: ID,
+        metadata_json: Option<String>,
+        coin: &mut Coin<MYSO>,
+        clock: &Clock,
+        ctx: &mut TxContext
+    ) {
+        assert!(registry.registry_type == PROPOSAL_TYPE_SPOT, EInvalidRegistry);
+        let _ = submit_spot_proposal_and_return_id(
+            registry,
+            title,
+            description,
+            spot_record_id,
+            metadata_json,
+            coin,
+            clock,
+            ctx
+        );
+    }
+
+    /// Package helper: submit a SPoT resolution proposal and return its ID.
+    public(package) fun submit_spot_proposal_and_return_id(
+        registry: &mut GovernanceDAO,
+        title: String,
+        description: String,
+        spot_record_id: ID,
+        metadata_json: Option<String>,
+        coin: &mut Coin<MYSO>,
+        clock: &Clock,
+        ctx: &mut TxContext
+    ): ID {
+        assert!(registry.registry_type == PROPOSAL_TYPE_SPOT, EInvalidRegistry);
+        submit_proposal_internal(
+            registry,
+            title,
+            description,
+            PROPOSAL_TYPE_SPOT,
+            option::some(spot_record_id),
+            metadata_json,
+            coin,
+            clock,
+            ctx
+        )
+    }
+
     /// Internal function for submitting proposals
     fun submit_proposal_internal(
         registry: &mut GovernanceDAO,
@@ -1274,7 +1372,7 @@ module social_contracts::governance {
         coin: &mut Coin<MYSO>,
         clock: &Clock,
         ctx: &mut TxContext
-    ) {
+    ): ID {
         let caller = tx_context::sender(ctx);
         let current_time = clock::timestamp_ms(clock);
         
@@ -1343,6 +1441,8 @@ module social_contracts::governance {
         });
 
         try_update_delegate_panel_if_due(registry, ctx);
+
+        proposal_id_copy
     }
 
     /// Allow a proposal owner to rescind their proposal if it's still in the delegate review stage
@@ -1600,10 +1700,11 @@ module social_contracts::governance {
         clock::timestamp_ms(clock)
     }
 
-    fun assert_ecosystem_or_poc_registry(registry: &GovernanceDAO) {
+    fun assert_shared_global_registry(registry: &GovernanceDAO) {
         assert!(
             registry.registry_type == PROPOSAL_TYPE_ECOSYSTEM
-                || registry.registry_type == PROPOSAL_TYPE_PROOF_OF_CREATIVITY,
+                || registry.registry_type == PROPOSAL_TYPE_PROOF_OF_CREATIVITY
+                || registry.registry_type == PROPOSAL_TYPE_SPOT,
             EWrongRegistryForTreasuryRoute
         );
     }
@@ -1817,7 +1918,7 @@ module social_contracts::governance {
         ctx: &mut TxContext
     ) {
         assert!(registry.version == upgrade::current_version(), EWrongVersion);
-        assert_ecosystem_or_poc_registry(registry);
+        assert_shared_global_registry(registry);
         let current_time = clock::timestamp_ms(clock);
         let out = run_delegate_review_vote(registry, proposal, approve, reason, clock, ctx);
         if (out == DELEGATE_VOTE_TO_REJECT) {
@@ -1946,7 +2047,7 @@ module social_contracts::governance {
         ctx: &mut TxContext
     ) {
         assert!(registry.version == upgrade::current_version(), EWrongVersion);
-        assert_ecosystem_or_poc_registry(registry);
+        assert_shared_global_registry(registry);
         let (outcome, time_ms) = finalize_community_voting_internals(registry, proposal, clock, ctx);
         if (outcome == FINALIZE_OUTCOME_REJECT_COMMUNITY) {
             let dest = profile::get_treasury_address(ecosystem_treasury);
@@ -2100,7 +2201,7 @@ module social_contracts::governance {
         clock: &Clock,
         ctx: &mut TxContext
     ) {
-        assert_ecosystem_or_poc_registry(registry);
+        assert_shared_global_registry(registry);
         let (outcome, time_ms) = anonymous_tally_votes_and_finalize_community_internals(
             registry,
             proposal,
@@ -2190,11 +2291,7 @@ module social_contracts::governance {
         clock: &Clock,
         ctx: &mut TxContext
     ) {
-        assert!(
-            registry.registry_type == PROPOSAL_TYPE_ECOSYSTEM
-                || registry.registry_type == PROPOSAL_TYPE_PROOF_OF_CREATIVITY,
-            EWrongRegistryForTreasuryRoute
-        );
+        assert_shared_global_registry(registry);
         let sent_time = clock::timestamp_ms(clock);
         let submitter = proposal.submitter;
         let bal = mark_proposal_implemented_take_pool(registry, proposal, description, clock, ctx);
@@ -2246,6 +2343,26 @@ module social_contracts::governance {
     /// Registry type discriminator for platform routing (see [`social_contracts::platform`]).
     public fun proposal_type_platform_value(): u8 {
         PROPOSAL_TYPE_PLATFORM
+    }
+
+    public fun proposal_type_spot_value(): u8 {
+        PROPOSAL_TYPE_SPOT
+    }
+
+    public fun proposal_status(proposal: &Proposal): u8 {
+        proposal.status
+    }
+
+    public fun proposal_reference_id(proposal: &Proposal): Option<ID> {
+        proposal.reference_id
+    }
+
+    public fun status_approved_value(): u8 {
+        STATUS_APPROVED
+    }
+
+    public fun status_rejected_value(): u8 {
+        STATUS_REJECTED
     }
 
     /// Get all proposals of a specific type
@@ -2402,7 +2519,7 @@ module social_contracts::governance {
         ctx: &mut TxContext
     ) {
         assert!(registry.version == upgrade::current_version(), EWrongVersion);
-        assert_ecosystem_or_poc_registry(registry);
+        assert_shared_global_registry(registry);
         let caller = tx_context::sender(ctx);
         assert!(table::contains(&registry.delegates, caller), ENotDelegate);
         let proposal_id = object::id(proposal);
@@ -2516,11 +2633,70 @@ module social_contracts::governance {
         registry.version = latest_version;
     }
 
+    /// One-time admin path for existing networks that bootstrapped before the SPoT registry existed.
+    public entry fun create_spot_governance_registry(
+        _: &GovernanceAdminCap,
+        clock: &Clock,
+        ctx: &mut TxContext
+    ) {
+        let current_time = clock::timestamp_ms(clock);
+        let founder = tx_context::sender(ctx);
+
+        let mut spot_registry = GovernanceDAO {
+            id: object::new(ctx),
+            registry_type: PROPOSAL_TYPE_SPOT,
+            delegate_count: 3,
+            delegate_term_epochs: 90,
+            proposal_submission_cost: 10_000_000_000,
+            max_votes_per_user: 5,
+            quadratic_base_cost: 1_000_000_000,
+            voting_period_ms: 3 * 24 * 60 * 60 * 1000,
+            quorum_votes: 10,
+            delegates: table::new<address, Delegate>(ctx),
+            proposals: table::new<ID, bool>(ctx),
+            proposal_types: table::new<ID, u8>(ctx),
+            proposals_by_status: table::new<u8, vector<ID>>(ctx),
+            treasury: balance::zero(),
+            nominated_delegates: table::new<address, NominatedDelegate>(ctx),
+            delegate_addresses: vec_set::empty<address>(),
+            nominee_addresses: vec_set::empty<address>(),
+            voters: table::new<address, Table<address, bool>>(ctx),
+            version: upgrade::current_version(),
+            last_delegate_panel_boundary_epoch: 0,
+        };
+
+        initialize_registry_tables(&mut spot_registry, ctx);
+        let spot_registry_id = object::id(&spot_registry);
+
+        event::emit(GovernanceRegistryCreatedEvent {
+            registry_id: spot_registry_id,
+            registry_type: PROPOSAL_TYPE_SPOT,
+            delegate_count: spot_registry.delegate_count,
+            delegate_term_epochs: spot_registry.delegate_term_epochs,
+            proposal_submission_cost: spot_registry.proposal_submission_cost,
+            max_votes_per_user: spot_registry.max_votes_per_user,
+            quadratic_base_cost: spot_registry.quadratic_base_cost,
+            voting_period_ms: spot_registry.voting_period_ms,
+            quorum_votes: spot_registry.quorum_votes,
+            updated_at: current_time,
+        });
+
+        seed_founding_delegate(&mut spot_registry, founder, ctx);
+        transfer::share_object(spot_registry);
+    }
+
     /// Create a GovernanceAdminCap for bootstrap (package visibility only)
     /// This function is only callable by other modules in the same package
     public(package) fun create_governance_admin_cap(ctx: &mut TxContext): GovernanceAdminCap {
         GovernanceAdminCap {
             id: object::new(ctx)
         }
+    }
+
+    #[test_only]
+    /// Grant a governance admin cap to the transaction sender (unit tests only).
+    public fun test_grant_admin_cap(ctx: &mut TxContext) {
+        let sender = tx_context::sender(ctx);
+        transfer::public_transfer(create_governance_admin_cap(ctx), sender);
     }
 }

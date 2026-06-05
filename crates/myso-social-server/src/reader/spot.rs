@@ -17,7 +17,8 @@ pub(crate) async fn get_spot_record(
     let mut conn = db.connect().await?;
     let query = "
         SELECT post_id, status, outcome, betting_options, option_escrow, resolution_window_ms,
-               max_resolution_window_ms, created_at_ms, last_resolution_at_ms
+               max_resolution_window_ms, created_at_ms, last_resolution_at_ms, record_object_id,
+               active_proposal_id, oracle_proposed_outcome, proposed_outcome, dao_escalated_at_ms
         FROM spot_records
         WHERE post_id = $1
     ";
@@ -41,6 +42,16 @@ pub(crate) async fn get_spot_record(
         created_at_ms: i64,
         #[diesel(sql_type = Nullable<BigInt>)]
         last_resolution_at_ms: Option<i64>,
+        #[diesel(sql_type = Nullable<Text>)]
+        record_object_id: Option<String>,
+        #[diesel(sql_type = Nullable<Text>)]
+        active_proposal_id: Option<String>,
+        #[diesel(sql_type = Nullable<SmallInt>)]
+        oracle_proposed_outcome: Option<i16>,
+        #[diesel(sql_type = Nullable<SmallInt>)]
+        proposed_outcome: Option<i16>,
+        #[diesel(sql_type = Nullable<BigInt>)]
+        dao_escalated_at_ms: Option<i64>,
     }
     let result = diesel::sql_query(query)
         .bind::<Text, _>(post_id)
@@ -66,8 +77,97 @@ pub(crate) async fn get_spot_record(
             max_resolution_window_ms: r.max_resolution_window_ms,
             created_at_ms: r.created_at_ms,
             last_resolution_at_ms: r.last_resolution_at_ms,
+            record_object_id: r.record_object_id,
+            active_proposal_id: r.active_proposal_id,
+            oracle_proposed_outcome: r.oracle_proposed_outcome,
+            proposed_outcome: r.proposed_outcome,
+            dao_escalated_at_ms: r.dao_escalated_at_ms,
         }
     }))
+}
+
+pub(crate) async fn list_contested_spot_records(
+    db: &Db,
+    limit: i64,
+    offset: i64,
+) -> Result<Vec<SpotRecordResponse>, SocialError> {
+    let mut conn = db.connect().await?;
+    let query = "
+        SELECT post_id, status, outcome, betting_options, option_escrow, resolution_window_ms,
+               max_resolution_window_ms, created_at_ms, last_resolution_at_ms, record_object_id,
+               active_proposal_id, oracle_proposed_outcome, proposed_outcome, dao_escalated_at_ms
+        FROM spot_records
+        WHERE status = 2
+        ORDER BY dao_escalated_at_ms DESC NULLS LAST, updated_at DESC
+        LIMIT $1 OFFSET $2
+    ";
+    #[derive(QueryableByName)]
+    struct Row {
+        #[diesel(sql_type = Text)]
+        post_id: String,
+        #[diesel(sql_type = SmallInt)]
+        status: i16,
+        #[diesel(sql_type = Nullable<SmallInt>)]
+        outcome: Option<i16>,
+        #[diesel(sql_type = Nullable<Jsonb>)]
+        betting_options: Option<serde_json::Value>,
+        #[diesel(sql_type = Nullable<Jsonb>)]
+        option_escrow: Option<serde_json::Value>,
+        #[diesel(sql_type = Nullable<BigInt>)]
+        resolution_window_ms: Option<i64>,
+        #[diesel(sql_type = Nullable<BigInt>)]
+        max_resolution_window_ms: Option<i64>,
+        #[diesel(sql_type = BigInt)]
+        created_at_ms: i64,
+        #[diesel(sql_type = Nullable<BigInt>)]
+        last_resolution_at_ms: Option<i64>,
+        #[diesel(sql_type = Nullable<Text>)]
+        record_object_id: Option<String>,
+        #[diesel(sql_type = Nullable<Text>)]
+        active_proposal_id: Option<String>,
+        #[diesel(sql_type = Nullable<SmallInt>)]
+        oracle_proposed_outcome: Option<i16>,
+        #[diesel(sql_type = Nullable<SmallInt>)]
+        proposed_outcome: Option<i16>,
+        #[diesel(sql_type = Nullable<BigInt>)]
+        dao_escalated_at_ms: Option<i64>,
+    }
+    let rows = diesel::sql_query(query)
+        .bind::<BigInt, _>(limit)
+        .bind::<BigInt, _>(offset)
+        .load::<Row>(&mut conn)
+        .await?;
+    Ok(rows
+        .into_iter()
+        .map(|r| {
+            let betting_options: Vec<String> = r
+                .betting_options
+                .and_then(|v| serde_json::from_value::<Vec<String>>(v).ok())
+                .unwrap_or_default();
+            let option_escrow: std::collections::HashMap<String, i64> = r
+                .option_escrow
+                .and_then(|v| {
+                    serde_json::from_value::<std::collections::HashMap<String, i64>>(v).ok()
+                })
+                .unwrap_or_default();
+            SpotRecordResponse {
+                post_id: r.post_id,
+                status: r.status,
+                outcome: r.outcome,
+                betting_options,
+                option_escrow,
+                resolution_window_ms: r.resolution_window_ms,
+                max_resolution_window_ms: r.max_resolution_window_ms,
+                created_at_ms: r.created_at_ms,
+                last_resolution_at_ms: r.last_resolution_at_ms,
+                record_object_id: r.record_object_id,
+                active_proposal_id: r.active_proposal_id,
+                oracle_proposed_outcome: r.oracle_proposed_outcome,
+                proposed_outcome: r.proposed_outcome,
+                dao_escalated_at_ms: r.dao_escalated_at_ms,
+            }
+        })
+        .collect())
 }
 
 pub(crate) async fn list_spot_bets(

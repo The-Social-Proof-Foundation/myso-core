@@ -14,7 +14,7 @@ module social_contracts::social_proof_of_truth {
     use std::vector;
 
     use myso::{
-        object::{Self, UID},
+        object::{Self, UID, ID},
         tx_context::{Self, TxContext},
         transfer,
         event,
@@ -30,6 +30,7 @@ module social_contracts::social_proof_of_truth {
     use social_contracts::profile::{Self, EcosystemTreasury};
     use social_contracts::block_list::BlockListRegistry;
     use social_contracts::upgrade::{Self, UpgradeAdminCap};
+    use social_contracts::governance::{Self, GovernanceDAO, Proposal};
 
     /// Errors
     const EDisabled: u64 = 1;
@@ -49,6 +50,13 @@ module social_contracts::social_proof_of_truth {
     const EDuplicateOption: u64 = 15;
     const ETooManyBets: u64 = 16;
     const EWrongVersion: u64 = 17;
+    const EActiveProposalExists: u64 = 18;
+    const ENoActiveProposal: u64 = 19;
+    const EWrongProposal: u64 = 20;
+    const ENotDaoRequired: u64 = 21;
+    const EDaoDebateFrozen: u64 = 22;
+    const EInvalidGovernanceRegistry: u64 = 23;
+    const EProposalNotApproved: u64 = 24;
 
     /// Status
     const STATUS_OPEN: u8 = 1;
@@ -106,6 +114,7 @@ module social_contracts::social_proof_of_truth {
         oracle_address: address,
         max_single_bet: u64,
         max_bets_per_record: u64,
+        spot_governance_registry_id: ID,
         version: u64,
     }
 
@@ -135,6 +144,10 @@ module social_contracts::social_proof_of_truth {
         last_resolution_at_ms: u64,
         resolution_timestamp_ms: u64,
         pending_payouts: Table<address, u64>,
+        active_proposal_id: Option<ID>,
+        oracle_proposed_outcome: Option<u8>,
+        proposed_outcome: Option<u8>,
+        dao_escalated_at_ms: u64,
         version: u64,
     }
 
@@ -158,8 +171,24 @@ module social_contracts::social_proof_of_truth {
 
     public struct SpotDaoRequiredEvent has copy, drop {
         post_id: address,
+        spot_record_id: address,
         confidence_bps: u64,
+        oracle_proposed_outcome: u8,
+        dao_escalated_at_ms: u64,
         reasoning: String, // Required reasoning why DAO is needed
+    }
+
+    public struct SpotGovernanceProposalLinkedEvent has copy, drop {
+        post_id: address,
+        spot_record_id: address,
+        proposal_id: ID,
+        proposed_outcome: u8,
+    }
+
+    public struct SpotGovernanceProposalClearedEvent has copy, drop {
+        post_id: address,
+        spot_record_id: address,
+        proposal_id: ID,
     }
 
     public struct SpotPayoutEvent has copy, drop {
@@ -265,8 +294,32 @@ module social_contracts::social_proof_of_truth {
     // Public getter for SpotConfig
     public fun is_enabled(config: &SpotConfig): bool { config.enable_flag }
 
+    public fun spot_governance_registry_id(config: &SpotConfig): ID {
+        config.spot_governance_registry_id
+    }
+
+    public fun active_proposal_id(record: &SpotRecord): &Option<ID> {
+        &record.active_proposal_id
+    }
+
+    public fun proposed_outcome(record: &SpotRecord): &Option<u8> {
+        &record.proposed_outcome
+    }
+
+    public fun oracle_proposed_outcome(record: &SpotRecord): &Option<u8> {
+        &record.oracle_proposed_outcome
+    }
+
+    public fun dao_escalated_at_ms(record: &SpotRecord): u64 {
+        record.dao_escalated_at_ms
+    }
+
     // Bootstrap
-    public(package) fun bootstrap_init(clock: &Clock, ctx: &mut TxContext) {
+    public(package) fun bootstrap_init(
+        clock: &Clock,
+        spot_governance_registry_id: ID,
+        ctx: &mut TxContext
+    ) {
         let admin = tx_context::sender(ctx);
         let config = SpotConfig {
             id: object::new(ctx),
@@ -280,6 +333,7 @@ module social_contracts::social_proof_of_truth {
             oracle_address: admin,
             max_single_bet: 0,
             max_bets_per_record: DEFAULT_MAX_BETS_PER_RECORD,
+            spot_governance_registry_id,
             version: upgrade::current_version(),
         };
 
@@ -318,7 +372,7 @@ module social_contracts::social_proof_of_truth {
 
     #[test_only]
     /// Initialize SPoT for testing - creates admin caps and config
-    public fun test_init(clock: &Clock, ctx: &mut TxContext) {
+    public fun test_init(clock: &Clock, spot_governance_registry_id: ID, ctx: &mut TxContext) {
         let sender = tx_context::sender(ctx);
         
         // Create and share config
@@ -334,6 +388,7 @@ module social_contracts::social_proof_of_truth {
             oracle_address: sender,
             max_single_bet: 0,
             max_bets_per_record: DEFAULT_MAX_BETS_PER_RECORD,
+            spot_governance_registry_id,
             version: upgrade::current_version(),
         });
         
@@ -357,6 +412,7 @@ module social_contracts::social_proof_of_truth {
         oracle_address: address,
         max_single_bet: u64,
         max_bets_per_record: u64,
+        spot_governance_registry_id: ID,
         clock: &Clock,
         ctx: &mut TxContext
     ) {
@@ -374,6 +430,7 @@ module social_contracts::social_proof_of_truth {
         config.oracle_address = oracle_address;
         config.max_single_bet = max_single_bet;
         config.max_bets_per_record = max_bets_per_record;
+        config.spot_governance_registry_id = spot_governance_registry_id;
         
         // Emit config updated event
         event::emit(SpotConfigUpdatedEvent {
@@ -468,6 +525,10 @@ module social_contracts::social_proof_of_truth {
             last_resolution_at_ms: 0,
             resolution_timestamp_ms: 0,
             pending_payouts: table::new(ctx),
+            active_proposal_id: option::none(),
+            oracle_proposed_outcome: option::none(),
+            proposed_outcome: option::none(),
+            dao_escalated_at_ms: 0,
             version: upgrade::current_version(),
         };
         let record_id = object::uid_to_address(&record.id);
@@ -604,6 +665,7 @@ module social_contracts::social_proof_of_truth {
         ctx: &mut TxContext
     ) {
         assert!(spot_config.enable_flag, EDisabled);
+        assert!(record.status == STATUS_OPEN, EDaoDebateFrozen);
         assert!(amount > 0, EInvalidAmount);
         if (spot_config.max_single_bet > 0) { assert!(amount <= spot_config.max_single_bet, EInvalidAmount); };
         assert!(coin::value(&payment) >= amount, EInvalidAmount);
@@ -721,10 +783,16 @@ module social_contracts::social_proof_of_truth {
         assert!(evidence_urls_len <= MAX_EVIDENCE_URLS, EInvalidAmount);
 
         if (confidence_bps < spot_config.confidence_threshold_bps) {
+            assert!(option::is_none(&record.active_proposal_id), EActiveProposalExists);
             record.status = STATUS_DAO_REQUIRED;
-            event::emit(SpotDaoRequiredEvent { 
-                post_id: post::get_id_address(post), 
+            record.oracle_proposed_outcome = option::some(outcome_option_id);
+            record.dao_escalated_at_ms = now_ms;
+            event::emit(SpotDaoRequiredEvent {
+                post_id: post::get_id_address(post),
+                spot_record_id: object::uid_to_address(&record.id),
                 confidence_bps,
+                oracle_proposed_outcome: outcome_option_id,
+                dao_escalated_at_ms: now_ms,
                 reasoning,
             });
             return
@@ -735,46 +803,223 @@ module social_contracts::social_proof_of_truth {
         finalize_resolution_and_payout(spot_config, record, post, platform, treasury, outcome_option_id, reasoning, option::some(evidence_urls), clock, ctx);
     }
 
-    /// DAO finalization (YES/NO/DRAW/UNAPPLICABLE)
-    /// Reasoning is optional as it represents culmination of community discussion
-    public entry fun finalize_via_dao(
+    /// Submit a governance proposal to ratify one outcome for a contested SPoT market.
+    public entry fun submit_spot_resolution_proposal_to_governance(
         spot_config: &SpotConfig,
+        registry: &mut GovernanceDAO,
+        record: &mut SpotRecord,
+        post: &Post,
+        title: String,
+        description: String,
+        proposed_outcome: u8,
+        metadata_json: Option<String>,
+        coin: &mut Coin<MYSO>,
+        clock: &Clock,
+        ctx: &mut TxContext
+    ) {
+        assert_spot_governance_registry(spot_config, registry);
+        assert!(record.status == STATUS_DAO_REQUIRED, ENotDaoRequired);
+        assert!(option::is_none(&record.active_proposal_id), EActiveProposalExists);
+        validate_proposed_outcome(record, proposed_outcome);
+
+        let spot_record_id = object::id(record);
+        let proposal_id = governance::submit_spot_proposal_and_return_id(
+            registry,
+            title,
+            description,
+            spot_record_id,
+            metadata_json,
+            coin,
+            clock,
+            ctx,
+        );
+
+        record.active_proposal_id = option::some(proposal_id);
+        record.proposed_outcome = option::some(proposed_outcome);
+
+        event::emit(SpotGovernanceProposalLinkedEvent {
+            post_id: post::get_id_address(post),
+            spot_record_id: object::uid_to_address(&record.id),
+            proposal_id,
+            proposed_outcome,
+        });
+    }
+
+    /// After community voting approves a linked proposal, resolve the market and pay winners.
+    public entry fun implement_spot_resolution_from_governance(
+        spot_config: &SpotConfig,
+        registry: &mut GovernanceDAO,
+        proposal: &mut Proposal,
         record: &mut SpotRecord,
         post: &Post,
         platform: &mut Platform,
         treasury: &EcosystemTreasury,
-        outcome: u8,
+        reasoning: String,
+        evidence_urls: Option<vector<String>>,
+        clock: &Clock,
+        ctx: &mut TxContext
+    ) {
+        assert_spot_governance_registry(spot_config, registry);
+        assert!(record.status == STATUS_DAO_REQUIRED, ENotDaoRequired);
+        assert!(option::is_some(&record.active_proposal_id), ENoActiveProposal);
+        assert!(option::is_some(&record.proposed_outcome), EWrongProposal);
+        let active_id = *option::borrow(&record.active_proposal_id);
+        assert!(active_id == object::id(proposal), EWrongProposal);
+        assert!(
+            governance::proposal_status(proposal) == governance::status_approved_value(),
+            EProposalNotApproved
+        );
+
+        let outcome = *option::borrow(&record.proposed_outcome);
+        validate_proposed_outcome(record, outcome);
+
+        let reasoning_len = string::length(&reasoning);
+        assert!(reasoning_len >= MIN_REASONING_LENGTH, EInvalidReasoning);
+        assert!(reasoning_len <= MAX_REASONING_LENGTH, EInvalidReasoning);
+        if (option::is_some(&evidence_urls)) {
+            let urls = option::borrow(&evidence_urls);
+            assert!(vector::length(urls) <= MAX_EVIDENCE_URLS, EInvalidAmount);
+        };
+
+        let submitter = governance::proposal_submitter(proposal);
+        let bal = governance::mark_proposal_implemented_take_pool(
+            registry,
+            proposal,
+            option::none(),
+            clock,
+            ctx,
+        );
+        let amount = balance::value(&bal);
+        if (amount > 0) {
+            let c = coin::from_balance(bal, ctx);
+            transfer::public_transfer(c, submitter);
+        } else {
+            balance::destroy_zero(bal);
+        };
+
+        let proposal_id = active_id;
+        record.active_proposal_id = option::none();
+        record.proposed_outcome = option::none();
+
+        finalize_resolution_and_payout(
+            spot_config,
+            record,
+            post,
+            platform,
+            treasury,
+            outcome,
+            reasoning,
+            evidence_urls,
+            clock,
+            ctx,
+        );
+
+        event::emit(SpotGovernanceProposalClearedEvent {
+            post_id: post::get_id_address(post),
+            spot_record_id: object::uid_to_address(&record.id),
+            proposal_id,
+        });
+    }
+
+    /// Clear the active proposal link after a rejected or quorum-failed governance outcome.
+    public entry fun clear_spot_proposal_link_on_reject(
+        spot_config: &SpotConfig,
+        registry: &GovernanceDAO,
+        proposal: &Proposal,
+        record: &mut SpotRecord,
+        post: &Post,
+    ) {
+        assert_spot_governance_registry(spot_config, registry);
+        assert!(record.status == STATUS_DAO_REQUIRED, ENotDaoRequired);
+        assert!(option::is_some(&record.active_proposal_id), ENoActiveProposal);
+        let active_id = *option::borrow(&record.active_proposal_id);
+        assert!(active_id == object::id(proposal), EWrongProposal);
+        let status = governance::proposal_status(proposal);
+        assert!(
+            status == governance::status_rejected_value(),
+            EProposalNotApproved
+        );
+
+        let proposal_id = active_id;
+        record.active_proposal_id = option::none();
+        record.proposed_outcome = option::none();
+
+        event::emit(SpotGovernanceProposalClearedEvent {
+            post_id: post::get_id_address(post),
+            spot_record_id: object::uid_to_address(&record.id),
+            proposal_id,
+        });
+    }
+
+    /// Finalize linked SPoT governance voting; clears the record link when the proposal is rejected.
+    public entry fun finalize_spot_governance_proposal(
+        spot_config: &SpotConfig,
+        registry: &mut GovernanceDAO,
+        proposal: &mut Proposal,
+        record: &mut SpotRecord,
+        post: &Post,
+        ecosystem_treasury: &EcosystemTreasury,
+        clock: &Clock,
+        ctx: &mut TxContext
+    ) {
+        assert_spot_governance_registry(spot_config, registry);
+        governance::finalize_proposal(registry, proposal, ecosystem_treasury, clock, ctx);
+        if (governance::proposal_status(proposal) == governance::status_rejected_value()) {
+            clear_spot_proposal_link_on_reject(spot_config, registry, proposal, record, post);
+        };
+    }
+
+    /// Deprecated direct DAO finalization — requires an approved linked governance proposal.
+    public entry fun finalize_via_dao(
+        spot_config: &SpotConfig,
+        registry: &mut GovernanceDAO,
+        proposal: &mut Proposal,
+        record: &mut SpotRecord,
+        post: &Post,
+        platform: &mut Platform,
+        treasury: &EcosystemTreasury,
         mut reasoning: Option<String>,
         evidence_urls: Option<vector<String>>,
         clock: &Clock,
         ctx: &mut TxContext
     ) {
-        // Allow when DAO_REQUIRED or still OPEN (off-chain DAO direct)
-        assert!(record.status == STATUS_DAO_REQUIRED || record.status == STATUS_OPEN, EWrongStatus);
-        // Prevent resolving already resolved markets
-        assert!(option::is_none(&record.outcome), EAlreadyResolved);
-        
-        // Validate reasoning if provided
-        if (option::is_some(&reasoning)) {
-            let reasoning_val = option::borrow(&reasoning);
-            let reasoning_len = string::length(reasoning_val);
-            assert!(reasoning_len <= MAX_REASONING_LENGTH, EInvalidReasoning);
-        };
-        
-        // Validate evidence URLs if provided
-        if (option::is_some(&evidence_urls)) {
-            let urls = option::borrow(&evidence_urls);
-            assert!(vector::length(urls) <= MAX_EVIDENCE_URLS, EInvalidAmount);
-        };
-        
-        // Use provided reasoning or default message if not provided
         let final_reasoning = if (option::is_some(&reasoning)) {
             option::extract(&mut reasoning)
         } else {
             string::utf8(b"DAO resolution based on community discussion")
         };
-        
-        finalize_resolution_and_payout(spot_config, record, post, platform, treasury, outcome, final_reasoning, evidence_urls, clock, ctx);
+        implement_spot_resolution_from_governance(
+            spot_config,
+            registry,
+            proposal,
+            record,
+            post,
+            platform,
+            treasury,
+            final_reasoning,
+            evidence_urls,
+            clock,
+            ctx,
+        );
+    }
+
+    fun assert_spot_governance_registry(spot_config: &SpotConfig, registry: &GovernanceDAO) {
+        assert!(
+            governance::registry_type(registry) == governance::proposal_type_spot_value(),
+            EInvalidGovernanceRegistry
+        );
+        assert!(
+            object::id(registry) == spot_config.spot_governance_registry_id,
+            EInvalidGovernanceRegistry
+        );
+    }
+
+    fun validate_proposed_outcome(record: &SpotRecord, outcome: u8) {
+        if (outcome == OUTCOME_DRAW || outcome == OUTCOME_UNAPPLICABLE) {
+            return
+        };
+        let options_len = vector::length(&record.betting_options);
+        assert!((outcome as u64) < options_len, EInvalidOptionId);
     }
 
     /// Refund all escrow if unresolved beyond max window
@@ -1006,6 +1251,9 @@ module social_contracts::social_proof_of_truth {
         
         // Remember old version and update to new version
         let old_version = config.version;
+        if (old_version == 0) {
+            config.spot_governance_registry_id = object::id_from_address(@0x0);
+        };
         config.version = current_version;
         
         // Emit event for object migration
@@ -1031,6 +1279,12 @@ module social_contracts::social_proof_of_truth {
         
         // Remember old version and update to new version
         let old_version = record.version;
+        if (old_version == 0) {
+            record.active_proposal_id = option::none();
+            record.oracle_proposed_outcome = option::none();
+            record.proposed_outcome = option::none();
+            record.dao_escalated_at_ms = 0;
+        };
         record.version = current_version;
         
         // Emit event for object migration

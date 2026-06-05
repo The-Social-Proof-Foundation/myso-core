@@ -17,6 +17,8 @@ with the same fee structure as payouts. Time-based resolution windows are option
 -  [Struct `SpotBetPlacedEvent`](#social_contracts_social_proof_of_truth_SpotBetPlacedEvent)
 -  [Struct `SpotResolvedEvent`](#social_contracts_social_proof_of_truth_SpotResolvedEvent)
 -  [Struct `SpotDaoRequiredEvent`](#social_contracts_social_proof_of_truth_SpotDaoRequiredEvent)
+-  [Struct `SpotGovernanceProposalLinkedEvent`](#social_contracts_social_proof_of_truth_SpotGovernanceProposalLinkedEvent)
+-  [Struct `SpotGovernanceProposalClearedEvent`](#social_contracts_social_proof_of_truth_SpotGovernanceProposalClearedEvent)
 -  [Struct `SpotPayoutEvent`](#social_contracts_social_proof_of_truth_SpotPayoutEvent)
 -  [Struct `SpotRefundEvent`](#social_contracts_social_proof_of_truth_SpotRefundEvent)
 -  [Struct `SpotConfigUpdatedEvent`](#social_contracts_social_proof_of_truth_SpotConfigUpdatedEvent)
@@ -38,6 +40,11 @@ with the same fee structure as payouts. Time-based resolution windows are option
 -  [Function `total_option_escrow`](#social_contracts_social_proof_of_truth_total_option_escrow)
 -  [Function `assert_valid_option_id`](#social_contracts_social_proof_of_truth_assert_valid_option_id)
 -  [Function `is_enabled`](#social_contracts_social_proof_of_truth_is_enabled)
+-  [Function `spot_governance_registry_id`](#social_contracts_social_proof_of_truth_spot_governance_registry_id)
+-  [Function `active_proposal_id`](#social_contracts_social_proof_of_truth_active_proposal_id)
+-  [Function `proposed_outcome`](#social_contracts_social_proof_of_truth_proposed_outcome)
+-  [Function `oracle_proposed_outcome`](#social_contracts_social_proof_of_truth_oracle_proposed_outcome)
+-  [Function `dao_escalated_at_ms`](#social_contracts_social_proof_of_truth_dao_escalated_at_ms)
 -  [Function `bootstrap_init`](#social_contracts_social_proof_of_truth_bootstrap_init)
 -  [Function `create_spot_admin_cap`](#social_contracts_social_proof_of_truth_create_spot_admin_cap)
 -  [Function `create_spot_oracle_admin_cap`](#social_contracts_social_proof_of_truth_create_spot_oracle_admin_cap)
@@ -48,7 +55,13 @@ with the same fee structure as payouts. Time-based resolution windows are option
 -  [Function `withdraw_spot_bet`](#social_contracts_social_proof_of_truth_withdraw_spot_bet)
 -  [Function `place_spot_bet`](#social_contracts_social_proof_of_truth_place_spot_bet)
 -  [Function `oracle_resolve`](#social_contracts_social_proof_of_truth_oracle_resolve)
+-  [Function `submit_spot_resolution_proposal_to_governance`](#social_contracts_social_proof_of_truth_submit_spot_resolution_proposal_to_governance)
+-  [Function `implement_spot_resolution_from_governance`](#social_contracts_social_proof_of_truth_implement_spot_resolution_from_governance)
+-  [Function `clear_spot_proposal_link_on_reject`](#social_contracts_social_proof_of_truth_clear_spot_proposal_link_on_reject)
+-  [Function `finalize_spot_governance_proposal`](#social_contracts_social_proof_of_truth_finalize_spot_governance_proposal)
 -  [Function `finalize_via_dao`](#social_contracts_social_proof_of_truth_finalize_via_dao)
+-  [Function `assert_spot_governance_registry`](#social_contracts_social_proof_of_truth_assert_spot_governance_registry)
+-  [Function `validate_proposed_outcome`](#social_contracts_social_proof_of_truth_validate_proposed_outcome)
 -  [Function `refund_unresolved`](#social_contracts_social_proof_of_truth_refund_unresolved)
 -  [Function `finalize_resolution_and_payout`](#social_contracts_social_proof_of_truth_finalize_resolution_and_payout)
 -  [Function `claim_payout`](#social_contracts_social_proof_of_truth_claim_payout)
@@ -247,6 +260,11 @@ Global configuration for SPoT
 <dd>
 </dd>
 <dt>
+<code><a href="../social_contracts/social_proof_of_truth.md#social_contracts_social_proof_of_truth_spot_governance_registry_id">spot_governance_registry_id</a>: <a href="../myso/object.md#myso_object_ID">myso::object::ID</a></code>
+</dt>
+<dd>
+</dd>
+<dt>
 <code>version: u64</code>
 </dt>
 <dd>
@@ -392,6 +410,26 @@ SPoT record per post
 <dd>
 </dd>
 <dt>
+<code><a href="../social_contracts/social_proof_of_truth.md#social_contracts_social_proof_of_truth_active_proposal_id">active_proposal_id</a>: <a href="../std/option.md#std_option_Option">std::option::Option</a>&lt;<a href="../myso/object.md#myso_object_ID">myso::object::ID</a>&gt;</code>
+</dt>
+<dd>
+</dd>
+<dt>
+<code><a href="../social_contracts/social_proof_of_truth.md#social_contracts_social_proof_of_truth_oracle_proposed_outcome">oracle_proposed_outcome</a>: <a href="../std/option.md#std_option_Option">std::option::Option</a>&lt;u8&gt;</code>
+</dt>
+<dd>
+</dd>
+<dt>
+<code><a href="../social_contracts/social_proof_of_truth.md#social_contracts_social_proof_of_truth_proposed_outcome">proposed_outcome</a>: <a href="../std/option.md#std_option_Option">std::option::Option</a>&lt;u8&gt;</code>
+</dt>
+<dd>
+</dd>
+<dt>
+<code><a href="../social_contracts/social_proof_of_truth.md#social_contracts_social_proof_of_truth_dao_escalated_at_ms">dao_escalated_at_ms</a>: u64</code>
+</dt>
+<dd>
+</dd>
+<dt>
 <code>version: u64</code>
 </dt>
 <dd>
@@ -521,12 +559,104 @@ Events
 <dd>
 </dd>
 <dt>
+<code>spot_record_id: <b>address</b></code>
+</dt>
+<dd>
+</dd>
+<dt>
 <code>confidence_bps: u64</code>
 </dt>
 <dd>
 </dd>
 <dt>
+<code><a href="../social_contracts/social_proof_of_truth.md#social_contracts_social_proof_of_truth_oracle_proposed_outcome">oracle_proposed_outcome</a>: u8</code>
+</dt>
+<dd>
+</dd>
+<dt>
+<code><a href="../social_contracts/social_proof_of_truth.md#social_contracts_social_proof_of_truth_dao_escalated_at_ms">dao_escalated_at_ms</a>: u64</code>
+</dt>
+<dd>
+</dd>
+<dt>
 <code>reasoning: <a href="../std/string.md#std_string_String">std::string::String</a></code>
+</dt>
+<dd>
+</dd>
+</dl>
+
+
+</details>
+
+<a name="social_contracts_social_proof_of_truth_SpotGovernanceProposalLinkedEvent"></a>
+
+## Struct `SpotGovernanceProposalLinkedEvent`
+
+
+
+<pre><code><b>public</b> <b>struct</b> <a href="../social_contracts/social_proof_of_truth.md#social_contracts_social_proof_of_truth_SpotGovernanceProposalLinkedEvent">SpotGovernanceProposalLinkedEvent</a> <b>has</b> <b>copy</b>, drop
+</code></pre>
+
+
+
+<details>
+<summary>Fields</summary>
+
+
+<dl>
+<dt>
+<code>post_id: <b>address</b></code>
+</dt>
+<dd>
+</dd>
+<dt>
+<code>spot_record_id: <b>address</b></code>
+</dt>
+<dd>
+</dd>
+<dt>
+<code>proposal_id: <a href="../myso/object.md#myso_object_ID">myso::object::ID</a></code>
+</dt>
+<dd>
+</dd>
+<dt>
+<code><a href="../social_contracts/social_proof_of_truth.md#social_contracts_social_proof_of_truth_proposed_outcome">proposed_outcome</a>: u8</code>
+</dt>
+<dd>
+</dd>
+</dl>
+
+
+</details>
+
+<a name="social_contracts_social_proof_of_truth_SpotGovernanceProposalClearedEvent"></a>
+
+## Struct `SpotGovernanceProposalClearedEvent`
+
+
+
+<pre><code><b>public</b> <b>struct</b> <a href="../social_contracts/social_proof_of_truth.md#social_contracts_social_proof_of_truth_SpotGovernanceProposalClearedEvent">SpotGovernanceProposalClearedEvent</a> <b>has</b> <b>copy</b>, drop
+</code></pre>
+
+
+
+<details>
+<summary>Fields</summary>
+
+
+<dl>
+<dt>
+<code>post_id: <b>address</b></code>
+</dt>
+<dd>
+</dd>
+<dt>
+<code>spot_record_id: <b>address</b></code>
+</dt>
+<dd>
+</dd>
+<dt>
+<code>proposal_id: <a href="../myso/object.md#myso_object_ID">myso::object::ID</a></code>
 </dt>
 <dd>
 </dd>
@@ -940,6 +1070,69 @@ Errors
 
 
 <pre><code><b>const</b> <a href="../social_contracts/social_proof_of_truth.md#social_contracts_social_proof_of_truth_EWrongVersion">EWrongVersion</a>: u64 = 17;
+</code></pre>
+
+
+
+<a name="social_contracts_social_proof_of_truth_EActiveProposalExists"></a>
+
+
+
+<pre><code><b>const</b> <a href="../social_contracts/social_proof_of_truth.md#social_contracts_social_proof_of_truth_EActiveProposalExists">EActiveProposalExists</a>: u64 = 18;
+</code></pre>
+
+
+
+<a name="social_contracts_social_proof_of_truth_ENoActiveProposal"></a>
+
+
+
+<pre><code><b>const</b> <a href="../social_contracts/social_proof_of_truth.md#social_contracts_social_proof_of_truth_ENoActiveProposal">ENoActiveProposal</a>: u64 = 19;
+</code></pre>
+
+
+
+<a name="social_contracts_social_proof_of_truth_EWrongProposal"></a>
+
+
+
+<pre><code><b>const</b> <a href="../social_contracts/social_proof_of_truth.md#social_contracts_social_proof_of_truth_EWrongProposal">EWrongProposal</a>: u64 = 20;
+</code></pre>
+
+
+
+<a name="social_contracts_social_proof_of_truth_ENotDaoRequired"></a>
+
+
+
+<pre><code><b>const</b> <a href="../social_contracts/social_proof_of_truth.md#social_contracts_social_proof_of_truth_ENotDaoRequired">ENotDaoRequired</a>: u64 = 21;
+</code></pre>
+
+
+
+<a name="social_contracts_social_proof_of_truth_EDaoDebateFrozen"></a>
+
+
+
+<pre><code><b>const</b> <a href="../social_contracts/social_proof_of_truth.md#social_contracts_social_proof_of_truth_EDaoDebateFrozen">EDaoDebateFrozen</a>: u64 = 22;
+</code></pre>
+
+
+
+<a name="social_contracts_social_proof_of_truth_EInvalidGovernanceRegistry"></a>
+
+
+
+<pre><code><b>const</b> <a href="../social_contracts/social_proof_of_truth.md#social_contracts_social_proof_of_truth_EInvalidGovernanceRegistry">EInvalidGovernanceRegistry</a>: u64 = 23;
+</code></pre>
+
+
+
+<a name="social_contracts_social_proof_of_truth_EProposalNotApproved"></a>
+
+
+
+<pre><code><b>const</b> <a href="../social_contracts/social_proof_of_truth.md#social_contracts_social_proof_of_truth_EProposalNotApproved">EProposalNotApproved</a>: u64 = 24;
 </code></pre>
 
 
@@ -1510,13 +1703,13 @@ Sum of per-option escrow (same aggregation as resolve).
 
 </details>
 
-<a name="social_contracts_social_proof_of_truth_bootstrap_init"></a>
+<a name="social_contracts_social_proof_of_truth_spot_governance_registry_id"></a>
 
-## Function `bootstrap_init`
+## Function `spot_governance_registry_id`
 
 
 
-<pre><code><b>public</b>(package) <b>fun</b> <a href="../social_contracts/social_proof_of_truth.md#social_contracts_social_proof_of_truth_bootstrap_init">bootstrap_init</a>(clock: &<a href="../myso/clock.md#myso_clock_Clock">myso::clock::Clock</a>, ctx: &<b>mut</b> <a href="../myso/tx_context.md#myso_tx_context_TxContext">myso::tx_context::TxContext</a>)
+<pre><code><b>public</b> <b>fun</b> <a href="../social_contracts/social_proof_of_truth.md#social_contracts_social_proof_of_truth_spot_governance_registry_id">spot_governance_registry_id</a>(config: &<a href="../social_contracts/social_proof_of_truth.md#social_contracts_social_proof_of_truth_SpotConfig">social_contracts::social_proof_of_truth::SpotConfig</a>): <a href="../myso/object.md#myso_object_ID">myso::object::ID</a>
 </code></pre>
 
 
@@ -1525,7 +1718,131 @@ Sum of per-option escrow (same aggregation as resolve).
 <summary>Implementation</summary>
 
 
-<pre><code><b>public</b>(package) <b>fun</b> <a href="../social_contracts/social_proof_of_truth.md#social_contracts_social_proof_of_truth_bootstrap_init">bootstrap_init</a>(clock: &Clock, ctx: &<b>mut</b> TxContext) {
+<pre><code><b>public</b> <b>fun</b> <a href="../social_contracts/social_proof_of_truth.md#social_contracts_social_proof_of_truth_spot_governance_registry_id">spot_governance_registry_id</a>(config: &<a href="../social_contracts/social_proof_of_truth.md#social_contracts_social_proof_of_truth_SpotConfig">SpotConfig</a>): ID {
+    config.<a href="../social_contracts/social_proof_of_truth.md#social_contracts_social_proof_of_truth_spot_governance_registry_id">spot_governance_registry_id</a>
+}
+</code></pre>
+
+
+
+</details>
+
+<a name="social_contracts_social_proof_of_truth_active_proposal_id"></a>
+
+## Function `active_proposal_id`
+
+
+
+<pre><code><b>public</b> <b>fun</b> <a href="../social_contracts/social_proof_of_truth.md#social_contracts_social_proof_of_truth_active_proposal_id">active_proposal_id</a>(record: &<a href="../social_contracts/social_proof_of_truth.md#social_contracts_social_proof_of_truth_SpotRecord">social_contracts::social_proof_of_truth::SpotRecord</a>): &<a href="../std/option.md#std_option_Option">std::option::Option</a>&lt;<a href="../myso/object.md#myso_object_ID">myso::object::ID</a>&gt;
+</code></pre>
+
+
+
+<details>
+<summary>Implementation</summary>
+
+
+<pre><code><b>public</b> <b>fun</b> <a href="../social_contracts/social_proof_of_truth.md#social_contracts_social_proof_of_truth_active_proposal_id">active_proposal_id</a>(record: &<a href="../social_contracts/social_proof_of_truth.md#social_contracts_social_proof_of_truth_SpotRecord">SpotRecord</a>): &Option&lt;ID&gt; {
+    &record.<a href="../social_contracts/social_proof_of_truth.md#social_contracts_social_proof_of_truth_active_proposal_id">active_proposal_id</a>
+}
+</code></pre>
+
+
+
+</details>
+
+<a name="social_contracts_social_proof_of_truth_proposed_outcome"></a>
+
+## Function `proposed_outcome`
+
+
+
+<pre><code><b>public</b> <b>fun</b> <a href="../social_contracts/social_proof_of_truth.md#social_contracts_social_proof_of_truth_proposed_outcome">proposed_outcome</a>(record: &<a href="../social_contracts/social_proof_of_truth.md#social_contracts_social_proof_of_truth_SpotRecord">social_contracts::social_proof_of_truth::SpotRecord</a>): &<a href="../std/option.md#std_option_Option">std::option::Option</a>&lt;u8&gt;
+</code></pre>
+
+
+
+<details>
+<summary>Implementation</summary>
+
+
+<pre><code><b>public</b> <b>fun</b> <a href="../social_contracts/social_proof_of_truth.md#social_contracts_social_proof_of_truth_proposed_outcome">proposed_outcome</a>(record: &<a href="../social_contracts/social_proof_of_truth.md#social_contracts_social_proof_of_truth_SpotRecord">SpotRecord</a>): &Option&lt;u8&gt; {
+    &record.<a href="../social_contracts/social_proof_of_truth.md#social_contracts_social_proof_of_truth_proposed_outcome">proposed_outcome</a>
+}
+</code></pre>
+
+
+
+</details>
+
+<a name="social_contracts_social_proof_of_truth_oracle_proposed_outcome"></a>
+
+## Function `oracle_proposed_outcome`
+
+
+
+<pre><code><b>public</b> <b>fun</b> <a href="../social_contracts/social_proof_of_truth.md#social_contracts_social_proof_of_truth_oracle_proposed_outcome">oracle_proposed_outcome</a>(record: &<a href="../social_contracts/social_proof_of_truth.md#social_contracts_social_proof_of_truth_SpotRecord">social_contracts::social_proof_of_truth::SpotRecord</a>): &<a href="../std/option.md#std_option_Option">std::option::Option</a>&lt;u8&gt;
+</code></pre>
+
+
+
+<details>
+<summary>Implementation</summary>
+
+
+<pre><code><b>public</b> <b>fun</b> <a href="../social_contracts/social_proof_of_truth.md#social_contracts_social_proof_of_truth_oracle_proposed_outcome">oracle_proposed_outcome</a>(record: &<a href="../social_contracts/social_proof_of_truth.md#social_contracts_social_proof_of_truth_SpotRecord">SpotRecord</a>): &Option&lt;u8&gt; {
+    &record.<a href="../social_contracts/social_proof_of_truth.md#social_contracts_social_proof_of_truth_oracle_proposed_outcome">oracle_proposed_outcome</a>
+}
+</code></pre>
+
+
+
+</details>
+
+<a name="social_contracts_social_proof_of_truth_dao_escalated_at_ms"></a>
+
+## Function `dao_escalated_at_ms`
+
+
+
+<pre><code><b>public</b> <b>fun</b> <a href="../social_contracts/social_proof_of_truth.md#social_contracts_social_proof_of_truth_dao_escalated_at_ms">dao_escalated_at_ms</a>(record: &<a href="../social_contracts/social_proof_of_truth.md#social_contracts_social_proof_of_truth_SpotRecord">social_contracts::social_proof_of_truth::SpotRecord</a>): u64
+</code></pre>
+
+
+
+<details>
+<summary>Implementation</summary>
+
+
+<pre><code><b>public</b> <b>fun</b> <a href="../social_contracts/social_proof_of_truth.md#social_contracts_social_proof_of_truth_dao_escalated_at_ms">dao_escalated_at_ms</a>(record: &<a href="../social_contracts/social_proof_of_truth.md#social_contracts_social_proof_of_truth_SpotRecord">SpotRecord</a>): u64 {
+    record.<a href="../social_contracts/social_proof_of_truth.md#social_contracts_social_proof_of_truth_dao_escalated_at_ms">dao_escalated_at_ms</a>
+}
+</code></pre>
+
+
+
+</details>
+
+<a name="social_contracts_social_proof_of_truth_bootstrap_init"></a>
+
+## Function `bootstrap_init`
+
+
+
+<pre><code><b>public</b>(package) <b>fun</b> <a href="../social_contracts/social_proof_of_truth.md#social_contracts_social_proof_of_truth_bootstrap_init">bootstrap_init</a>(clock: &<a href="../myso/clock.md#myso_clock_Clock">myso::clock::Clock</a>, <a href="../social_contracts/social_proof_of_truth.md#social_contracts_social_proof_of_truth_spot_governance_registry_id">spot_governance_registry_id</a>: <a href="../myso/object.md#myso_object_ID">myso::object::ID</a>, ctx: &<b>mut</b> <a href="../myso/tx_context.md#myso_tx_context_TxContext">myso::tx_context::TxContext</a>)
+</code></pre>
+
+
+
+<details>
+<summary>Implementation</summary>
+
+
+<pre><code><b>public</b>(package) <b>fun</b> <a href="../social_contracts/social_proof_of_truth.md#social_contracts_social_proof_of_truth_bootstrap_init">bootstrap_init</a>(
+    clock: &Clock,
+    <a href="../social_contracts/social_proof_of_truth.md#social_contracts_social_proof_of_truth_spot_governance_registry_id">spot_governance_registry_id</a>: ID,
+    ctx: &<b>mut</b> TxContext
+) {
     <b>let</b> admin = tx_context::sender(ctx);
     <b>let</b> config = <a href="../social_contracts/social_proof_of_truth.md#social_contracts_social_proof_of_truth_SpotConfig">SpotConfig</a> {
         id: object::new(ctx),
@@ -1539,6 +1856,7 @@ Sum of per-option escrow (same aggregation as resolve).
         oracle_address: admin,
         max_single_bet: 0,
         max_bets_per_record: <a href="../social_contracts/social_proof_of_truth.md#social_contracts_social_proof_of_truth_DEFAULT_MAX_BETS_PER_RECORD">DEFAULT_MAX_BETS_PER_RECORD</a>,
+        <a href="../social_contracts/social_proof_of_truth.md#social_contracts_social_proof_of_truth_spot_governance_registry_id">spot_governance_registry_id</a>,
         version: <a href="../social_contracts/upgrade.md#social_contracts_upgrade_current_version">upgrade::current_version</a>(),
     };
     // Emit event so indexer can populate spot_config table
@@ -1626,7 +1944,7 @@ Update SPoT configuration (admin only).
 <code>max_single_bet</code> and <code>max_bets_per_record</code> use <code>0</code> for no limit; positive values enforce caps.
 
 
-<pre><code><b>public</b> <b>entry</b> <b>fun</b> <a href="../social_contracts/social_proof_of_truth.md#social_contracts_social_proof_of_truth_update_spot_config">update_spot_config</a>(_: &<a href="../social_contracts/social_proof_of_truth.md#social_contracts_social_proof_of_truth_SpotAdminCap">social_contracts::social_proof_of_truth::SpotAdminCap</a>, config: &<b>mut</b> <a href="../social_contracts/social_proof_of_truth.md#social_contracts_social_proof_of_truth_SpotConfig">social_contracts::social_proof_of_truth::SpotConfig</a>, enable_flag: bool, confidence_threshold_bps: u64, resolution_window_ms: u64, max_resolution_window_ms: u64, payout_delay_ms: u64, fee_bps: u64, fee_split_bps_platform: u64, oracle_address: <b>address</b>, max_single_bet: u64, max_bets_per_record: u64, clock: &<a href="../myso/clock.md#myso_clock_Clock">myso::clock::Clock</a>, ctx: &<b>mut</b> <a href="../myso/tx_context.md#myso_tx_context_TxContext">myso::tx_context::TxContext</a>)
+<pre><code><b>public</b> <b>entry</b> <b>fun</b> <a href="../social_contracts/social_proof_of_truth.md#social_contracts_social_proof_of_truth_update_spot_config">update_spot_config</a>(_: &<a href="../social_contracts/social_proof_of_truth.md#social_contracts_social_proof_of_truth_SpotAdminCap">social_contracts::social_proof_of_truth::SpotAdminCap</a>, config: &<b>mut</b> <a href="../social_contracts/social_proof_of_truth.md#social_contracts_social_proof_of_truth_SpotConfig">social_contracts::social_proof_of_truth::SpotConfig</a>, enable_flag: bool, confidence_threshold_bps: u64, resolution_window_ms: u64, max_resolution_window_ms: u64, payout_delay_ms: u64, fee_bps: u64, fee_split_bps_platform: u64, oracle_address: <b>address</b>, max_single_bet: u64, max_bets_per_record: u64, <a href="../social_contracts/social_proof_of_truth.md#social_contracts_social_proof_of_truth_spot_governance_registry_id">spot_governance_registry_id</a>: <a href="../myso/object.md#myso_object_ID">myso::object::ID</a>, clock: &<a href="../myso/clock.md#myso_clock_Clock">myso::clock::Clock</a>, ctx: &<b>mut</b> <a href="../myso/tx_context.md#myso_tx_context_TxContext">myso::tx_context::TxContext</a>)
 </code></pre>
 
 
@@ -1648,6 +1966,7 @@ Update SPoT configuration (admin only).
     oracle_address: <b>address</b>,
     max_single_bet: u64,
     max_bets_per_record: u64,
+    <a href="../social_contracts/social_proof_of_truth.md#social_contracts_social_proof_of_truth_spot_governance_registry_id">spot_governance_registry_id</a>: ID,
     clock: &Clock,
     ctx: &<b>mut</b> TxContext
 ) {
@@ -1664,6 +1983,7 @@ Update SPoT configuration (admin only).
     config.oracle_address = oracle_address;
     config.max_single_bet = max_single_bet;
     config.max_bets_per_record = max_bets_per_record;
+    config.<a href="../social_contracts/social_proof_of_truth.md#social_contracts_social_proof_of_truth_spot_governance_registry_id">spot_governance_registry_id</a> = <a href="../social_contracts/social_proof_of_truth.md#social_contracts_social_proof_of_truth_spot_governance_registry_id">spot_governance_registry_id</a>;
     // Emit config updated event
     event::emit(<a href="../social_contracts/social_proof_of_truth.md#social_contracts_social_proof_of_truth_SpotConfigUpdatedEvent">SpotConfigUpdatedEvent</a> {
         updated_by: tx_context::sender(ctx),
@@ -1812,6 +2132,10 @@ Oracle-only: fix record timestamps/window fields after upgrade (off-chain suppli
         last_resolution_at_ms: 0,
         resolution_timestamp_ms: 0,
         pending_payouts: table::new(ctx),
+        <a href="../social_contracts/social_proof_of_truth.md#social_contracts_social_proof_of_truth_active_proposal_id">active_proposal_id</a>: option::none(),
+        <a href="../social_contracts/social_proof_of_truth.md#social_contracts_social_proof_of_truth_oracle_proposed_outcome">oracle_proposed_outcome</a>: option::none(),
+        <a href="../social_contracts/social_proof_of_truth.md#social_contracts_social_proof_of_truth_proposed_outcome">proposed_outcome</a>: option::none(),
+        <a href="../social_contracts/social_proof_of_truth.md#social_contracts_social_proof_of_truth_dao_escalated_at_ms">dao_escalated_at_ms</a>: 0,
         version: <a href="../social_contracts/upgrade.md#social_contracts_upgrade_current_version">upgrade::current_version</a>(),
     };
     <b>let</b> record_id = object::uid_to_address(&record.id);
@@ -1974,6 +2298,7 @@ Place bet - all funds go to escrow
     ctx: &<b>mut</b> TxContext
 ) {
     <b>assert</b>!(spot_config.enable_flag, <a href="../social_contracts/social_proof_of_truth.md#social_contracts_social_proof_of_truth_EDisabled">EDisabled</a>);
+    <b>assert</b>!(record.status == <a href="../social_contracts/social_proof_of_truth.md#social_contracts_social_proof_of_truth_STATUS_OPEN">STATUS_OPEN</a>, <a href="../social_contracts/social_proof_of_truth.md#social_contracts_social_proof_of_truth_EDaoDebateFrozen">EDaoDebateFrozen</a>);
     <b>assert</b>!(amount &gt; 0, <a href="../social_contracts/social_proof_of_truth.md#social_contracts_social_proof_of_truth_EInvalidAmount">EInvalidAmount</a>);
     <b>if</b> (spot_config.max_single_bet &gt; 0) { <b>assert</b>!(amount &lt;= spot_config.max_single_bet, <a href="../social_contracts/social_proof_of_truth.md#social_contracts_social_proof_of_truth_EInvalidAmount">EInvalidAmount</a>); };
     <b>assert</b>!(coin::value(&payment) &gt;= amount, <a href="../social_contracts/social_proof_of_truth.md#social_contracts_social_proof_of_truth_EInvalidAmount">EInvalidAmount</a>);
@@ -2098,10 +2423,16 @@ Requires reasoning and at least one evidence URL for transparency and accountabi
     <b>assert</b>!(evidence_urls_len &gt; 0, <a href="../social_contracts/social_proof_of_truth.md#social_contracts_social_proof_of_truth_EInvalidAmount">EInvalidAmount</a>); // At least one evidence URL required
     <b>assert</b>!(evidence_urls_len &lt;= <a href="../social_contracts/social_proof_of_truth.md#social_contracts_social_proof_of_truth_MAX_EVIDENCE_URLS">MAX_EVIDENCE_URLS</a>, <a href="../social_contracts/social_proof_of_truth.md#social_contracts_social_proof_of_truth_EInvalidAmount">EInvalidAmount</a>);
     <b>if</b> (confidence_bps &lt; spot_config.confidence_threshold_bps) {
+        <b>assert</b>!(option::is_none(&record.<a href="../social_contracts/social_proof_of_truth.md#social_contracts_social_proof_of_truth_active_proposal_id">active_proposal_id</a>), <a href="../social_contracts/social_proof_of_truth.md#social_contracts_social_proof_of_truth_EActiveProposalExists">EActiveProposalExists</a>);
         record.status = <a href="../social_contracts/social_proof_of_truth.md#social_contracts_social_proof_of_truth_STATUS_DAO_REQUIRED">STATUS_DAO_REQUIRED</a>;
+        record.<a href="../social_contracts/social_proof_of_truth.md#social_contracts_social_proof_of_truth_oracle_proposed_outcome">oracle_proposed_outcome</a> = option::some(outcome_option_id);
+        record.<a href="../social_contracts/social_proof_of_truth.md#social_contracts_social_proof_of_truth_dao_escalated_at_ms">dao_escalated_at_ms</a> = now_ms;
         event::emit(<a href="../social_contracts/social_proof_of_truth.md#social_contracts_social_proof_of_truth_SpotDaoRequiredEvent">SpotDaoRequiredEvent</a> {
             post_id: <a href="../social_contracts/post.md#social_contracts_post_get_id_address">post::get_id_address</a>(<a href="../social_contracts/post.md#social_contracts_post">post</a>),
+            spot_record_id: object::uid_to_address(&record.id),
             confidence_bps,
+            <a href="../social_contracts/social_proof_of_truth.md#social_contracts_social_proof_of_truth_oracle_proposed_outcome">oracle_proposed_outcome</a>: outcome_option_id,
+            <a href="../social_contracts/social_proof_of_truth.md#social_contracts_social_proof_of_truth_dao_escalated_at_ms">dao_escalated_at_ms</a>: now_ms,
             reasoning,
         });
         <b>return</b>
@@ -2116,15 +2447,249 @@ Requires reasoning and at least one evidence URL for transparency and accountabi
 
 </details>
 
+<a name="social_contracts_social_proof_of_truth_submit_spot_resolution_proposal_to_governance"></a>
+
+## Function `submit_spot_resolution_proposal_to_governance`
+
+Submit a governance proposal to ratify one outcome for a contested SPoT market.
+
+
+<pre><code><b>public</b> <b>entry</b> <b>fun</b> <a href="../social_contracts/social_proof_of_truth.md#social_contracts_social_proof_of_truth_submit_spot_resolution_proposal_to_governance">submit_spot_resolution_proposal_to_governance</a>(spot_config: &<a href="../social_contracts/social_proof_of_truth.md#social_contracts_social_proof_of_truth_SpotConfig">social_contracts::social_proof_of_truth::SpotConfig</a>, registry: &<b>mut</b> <a href="../social_contracts/governance.md#social_contracts_governance_GovernanceDAO">social_contracts::governance::GovernanceDAO</a>, record: &<b>mut</b> <a href="../social_contracts/social_proof_of_truth.md#social_contracts_social_proof_of_truth_SpotRecord">social_contracts::social_proof_of_truth::SpotRecord</a>, <a href="../social_contracts/post.md#social_contracts_post">post</a>: &<a href="../social_contracts/post.md#social_contracts_post_Post">social_contracts::post::Post</a>, title: <a href="../std/string.md#std_string_String">std::string::String</a>, description: <a href="../std/string.md#std_string_String">std::string::String</a>, <a href="../social_contracts/social_proof_of_truth.md#social_contracts_social_proof_of_truth_proposed_outcome">proposed_outcome</a>: u8, metadata_json: <a href="../std/option.md#std_option_Option">std::option::Option</a>&lt;<a href="../std/string.md#std_string_String">std::string::String</a>&gt;, coin: &<b>mut</b> <a href="../myso/coin.md#myso_coin_Coin">myso::coin::Coin</a>&lt;<a href="../myso/myso.md#myso_myso_MYSO">myso::myso::MYSO</a>&gt;, clock: &<a href="../myso/clock.md#myso_clock_Clock">myso::clock::Clock</a>, ctx: &<b>mut</b> <a href="../myso/tx_context.md#myso_tx_context_TxContext">myso::tx_context::TxContext</a>)
+</code></pre>
+
+
+
+<details>
+<summary>Implementation</summary>
+
+
+<pre><code><b>public</b> <b>entry</b> <b>fun</b> <a href="../social_contracts/social_proof_of_truth.md#social_contracts_social_proof_of_truth_submit_spot_resolution_proposal_to_governance">submit_spot_resolution_proposal_to_governance</a>(
+    spot_config: &<a href="../social_contracts/social_proof_of_truth.md#social_contracts_social_proof_of_truth_SpotConfig">SpotConfig</a>,
+    registry: &<b>mut</b> GovernanceDAO,
+    record: &<b>mut</b> <a href="../social_contracts/social_proof_of_truth.md#social_contracts_social_proof_of_truth_SpotRecord">SpotRecord</a>,
+    <a href="../social_contracts/post.md#social_contracts_post">post</a>: &Post,
+    title: String,
+    description: String,
+    <a href="../social_contracts/social_proof_of_truth.md#social_contracts_social_proof_of_truth_proposed_outcome">proposed_outcome</a>: u8,
+    metadata_json: Option&lt;String&gt;,
+    coin: &<b>mut</b> Coin&lt;MYSO&gt;,
+    clock: &Clock,
+    ctx: &<b>mut</b> TxContext
+) {
+    <a href="../social_contracts/social_proof_of_truth.md#social_contracts_social_proof_of_truth_assert_spot_governance_registry">assert_spot_governance_registry</a>(spot_config, registry);
+    <b>assert</b>!(record.status == <a href="../social_contracts/social_proof_of_truth.md#social_contracts_social_proof_of_truth_STATUS_DAO_REQUIRED">STATUS_DAO_REQUIRED</a>, <a href="../social_contracts/social_proof_of_truth.md#social_contracts_social_proof_of_truth_ENotDaoRequired">ENotDaoRequired</a>);
+    <b>assert</b>!(option::is_none(&record.<a href="../social_contracts/social_proof_of_truth.md#social_contracts_social_proof_of_truth_active_proposal_id">active_proposal_id</a>), <a href="../social_contracts/social_proof_of_truth.md#social_contracts_social_proof_of_truth_EActiveProposalExists">EActiveProposalExists</a>);
+    <a href="../social_contracts/social_proof_of_truth.md#social_contracts_social_proof_of_truth_validate_proposed_outcome">validate_proposed_outcome</a>(record, <a href="../social_contracts/social_proof_of_truth.md#social_contracts_social_proof_of_truth_proposed_outcome">proposed_outcome</a>);
+    <b>let</b> spot_record_id = object::id(record);
+    <b>let</b> proposal_id = <a href="../social_contracts/governance.md#social_contracts_governance_submit_spot_proposal_and_return_id">governance::submit_spot_proposal_and_return_id</a>(
+        registry,
+        title,
+        description,
+        spot_record_id,
+        metadata_json,
+        coin,
+        clock,
+        ctx,
+    );
+    record.<a href="../social_contracts/social_proof_of_truth.md#social_contracts_social_proof_of_truth_active_proposal_id">active_proposal_id</a> = option::some(proposal_id);
+    record.<a href="../social_contracts/social_proof_of_truth.md#social_contracts_social_proof_of_truth_proposed_outcome">proposed_outcome</a> = option::some(<a href="../social_contracts/social_proof_of_truth.md#social_contracts_social_proof_of_truth_proposed_outcome">proposed_outcome</a>);
+    event::emit(<a href="../social_contracts/social_proof_of_truth.md#social_contracts_social_proof_of_truth_SpotGovernanceProposalLinkedEvent">SpotGovernanceProposalLinkedEvent</a> {
+        post_id: <a href="../social_contracts/post.md#social_contracts_post_get_id_address">post::get_id_address</a>(<a href="../social_contracts/post.md#social_contracts_post">post</a>),
+        spot_record_id: object::uid_to_address(&record.id),
+        proposal_id,
+        <a href="../social_contracts/social_proof_of_truth.md#social_contracts_social_proof_of_truth_proposed_outcome">proposed_outcome</a>,
+    });
+}
+</code></pre>
+
+
+
+</details>
+
+<a name="social_contracts_social_proof_of_truth_implement_spot_resolution_from_governance"></a>
+
+## Function `implement_spot_resolution_from_governance`
+
+After community voting approves a linked proposal, resolve the market and pay winners.
+
+
+<pre><code><b>public</b> <b>entry</b> <b>fun</b> <a href="../social_contracts/social_proof_of_truth.md#social_contracts_social_proof_of_truth_implement_spot_resolution_from_governance">implement_spot_resolution_from_governance</a>(spot_config: &<a href="../social_contracts/social_proof_of_truth.md#social_contracts_social_proof_of_truth_SpotConfig">social_contracts::social_proof_of_truth::SpotConfig</a>, registry: &<b>mut</b> <a href="../social_contracts/governance.md#social_contracts_governance_GovernanceDAO">social_contracts::governance::GovernanceDAO</a>, proposal: &<b>mut</b> <a href="../social_contracts/governance.md#social_contracts_governance_Proposal">social_contracts::governance::Proposal</a>, record: &<b>mut</b> <a href="../social_contracts/social_proof_of_truth.md#social_contracts_social_proof_of_truth_SpotRecord">social_contracts::social_proof_of_truth::SpotRecord</a>, <a href="../social_contracts/post.md#social_contracts_post">post</a>: &<a href="../social_contracts/post.md#social_contracts_post_Post">social_contracts::post::Post</a>, <a href="../social_contracts/platform.md#social_contracts_platform">platform</a>: &<b>mut</b> <a href="../social_contracts/platform.md#social_contracts_platform_Platform">social_contracts::platform::Platform</a>, treasury: &<a href="../social_contracts/profile.md#social_contracts_profile_EcosystemTreasury">social_contracts::profile::EcosystemTreasury</a>, reasoning: <a href="../std/string.md#std_string_String">std::string::String</a>, evidence_urls: <a href="../std/option.md#std_option_Option">std::option::Option</a>&lt;vector&lt;<a href="../std/string.md#std_string_String">std::string::String</a>&gt;&gt;, clock: &<a href="../myso/clock.md#myso_clock_Clock">myso::clock::Clock</a>, ctx: &<b>mut</b> <a href="../myso/tx_context.md#myso_tx_context_TxContext">myso::tx_context::TxContext</a>)
+</code></pre>
+
+
+
+<details>
+<summary>Implementation</summary>
+
+
+<pre><code><b>public</b> <b>entry</b> <b>fun</b> <a href="../social_contracts/social_proof_of_truth.md#social_contracts_social_proof_of_truth_implement_spot_resolution_from_governance">implement_spot_resolution_from_governance</a>(
+    spot_config: &<a href="../social_contracts/social_proof_of_truth.md#social_contracts_social_proof_of_truth_SpotConfig">SpotConfig</a>,
+    registry: &<b>mut</b> GovernanceDAO,
+    proposal: &<b>mut</b> Proposal,
+    record: &<b>mut</b> <a href="../social_contracts/social_proof_of_truth.md#social_contracts_social_proof_of_truth_SpotRecord">SpotRecord</a>,
+    <a href="../social_contracts/post.md#social_contracts_post">post</a>: &Post,
+    <a href="../social_contracts/platform.md#social_contracts_platform">platform</a>: &<b>mut</b> Platform,
+    treasury: &EcosystemTreasury,
+    reasoning: String,
+    evidence_urls: Option&lt;vector&lt;String&gt;&gt;,
+    clock: &Clock,
+    ctx: &<b>mut</b> TxContext
+) {
+    <a href="../social_contracts/social_proof_of_truth.md#social_contracts_social_proof_of_truth_assert_spot_governance_registry">assert_spot_governance_registry</a>(spot_config, registry);
+    <b>assert</b>!(record.status == <a href="../social_contracts/social_proof_of_truth.md#social_contracts_social_proof_of_truth_STATUS_DAO_REQUIRED">STATUS_DAO_REQUIRED</a>, <a href="../social_contracts/social_proof_of_truth.md#social_contracts_social_proof_of_truth_ENotDaoRequired">ENotDaoRequired</a>);
+    <b>assert</b>!(option::is_some(&record.<a href="../social_contracts/social_proof_of_truth.md#social_contracts_social_proof_of_truth_active_proposal_id">active_proposal_id</a>), <a href="../social_contracts/social_proof_of_truth.md#social_contracts_social_proof_of_truth_ENoActiveProposal">ENoActiveProposal</a>);
+    <b>assert</b>!(option::is_some(&record.<a href="../social_contracts/social_proof_of_truth.md#social_contracts_social_proof_of_truth_proposed_outcome">proposed_outcome</a>), <a href="../social_contracts/social_proof_of_truth.md#social_contracts_social_proof_of_truth_EWrongProposal">EWrongProposal</a>);
+    <b>let</b> active_id = *option::borrow(&record.<a href="../social_contracts/social_proof_of_truth.md#social_contracts_social_proof_of_truth_active_proposal_id">active_proposal_id</a>);
+    <b>assert</b>!(active_id == object::id(proposal), <a href="../social_contracts/social_proof_of_truth.md#social_contracts_social_proof_of_truth_EWrongProposal">EWrongProposal</a>);
+    <b>assert</b>!(
+        <a href="../social_contracts/governance.md#social_contracts_governance_proposal_status">governance::proposal_status</a>(proposal) == <a href="../social_contracts/governance.md#social_contracts_governance_status_approved_value">governance::status_approved_value</a>(),
+        <a href="../social_contracts/social_proof_of_truth.md#social_contracts_social_proof_of_truth_EProposalNotApproved">EProposalNotApproved</a>
+    );
+    <b>let</b> outcome = *option::borrow(&record.<a href="../social_contracts/social_proof_of_truth.md#social_contracts_social_proof_of_truth_proposed_outcome">proposed_outcome</a>);
+    <a href="../social_contracts/social_proof_of_truth.md#social_contracts_social_proof_of_truth_validate_proposed_outcome">validate_proposed_outcome</a>(record, outcome);
+    <b>let</b> reasoning_len = string::length(&reasoning);
+    <b>assert</b>!(reasoning_len &gt;= <a href="../social_contracts/social_proof_of_truth.md#social_contracts_social_proof_of_truth_MIN_REASONING_LENGTH">MIN_REASONING_LENGTH</a>, <a href="../social_contracts/social_proof_of_truth.md#social_contracts_social_proof_of_truth_EInvalidReasoning">EInvalidReasoning</a>);
+    <b>assert</b>!(reasoning_len &lt;= <a href="../social_contracts/social_proof_of_truth.md#social_contracts_social_proof_of_truth_MAX_REASONING_LENGTH">MAX_REASONING_LENGTH</a>, <a href="../social_contracts/social_proof_of_truth.md#social_contracts_social_proof_of_truth_EInvalidReasoning">EInvalidReasoning</a>);
+    <b>if</b> (option::is_some(&evidence_urls)) {
+        <b>let</b> urls = option::borrow(&evidence_urls);
+        <b>assert</b>!(vector::length(urls) &lt;= <a href="../social_contracts/social_proof_of_truth.md#social_contracts_social_proof_of_truth_MAX_EVIDENCE_URLS">MAX_EVIDENCE_URLS</a>, <a href="../social_contracts/social_proof_of_truth.md#social_contracts_social_proof_of_truth_EInvalidAmount">EInvalidAmount</a>);
+    };
+    <b>let</b> submitter = <a href="../social_contracts/governance.md#social_contracts_governance_proposal_submitter">governance::proposal_submitter</a>(proposal);
+    <b>let</b> bal = <a href="../social_contracts/governance.md#social_contracts_governance_mark_proposal_implemented_take_pool">governance::mark_proposal_implemented_take_pool</a>(
+        registry,
+        proposal,
+        option::none(),
+        clock,
+        ctx,
+    );
+    <b>let</b> amount = balance::value(&bal);
+    <b>if</b> (amount &gt; 0) {
+        <b>let</b> c = coin::from_balance(bal, ctx);
+        transfer::public_transfer(c, submitter);
+    } <b>else</b> {
+        balance::destroy_zero(bal);
+    };
+    <b>let</b> proposal_id = active_id;
+    record.<a href="../social_contracts/social_proof_of_truth.md#social_contracts_social_proof_of_truth_active_proposal_id">active_proposal_id</a> = option::none();
+    record.<a href="../social_contracts/social_proof_of_truth.md#social_contracts_social_proof_of_truth_proposed_outcome">proposed_outcome</a> = option::none();
+    <a href="../social_contracts/social_proof_of_truth.md#social_contracts_social_proof_of_truth_finalize_resolution_and_payout">finalize_resolution_and_payout</a>(
+        spot_config,
+        record,
+        <a href="../social_contracts/post.md#social_contracts_post">post</a>,
+        <a href="../social_contracts/platform.md#social_contracts_platform">platform</a>,
+        treasury,
+        outcome,
+        reasoning,
+        evidence_urls,
+        clock,
+        ctx,
+    );
+    event::emit(<a href="../social_contracts/social_proof_of_truth.md#social_contracts_social_proof_of_truth_SpotGovernanceProposalClearedEvent">SpotGovernanceProposalClearedEvent</a> {
+        post_id: <a href="../social_contracts/post.md#social_contracts_post_get_id_address">post::get_id_address</a>(<a href="../social_contracts/post.md#social_contracts_post">post</a>),
+        spot_record_id: object::uid_to_address(&record.id),
+        proposal_id,
+    });
+}
+</code></pre>
+
+
+
+</details>
+
+<a name="social_contracts_social_proof_of_truth_clear_spot_proposal_link_on_reject"></a>
+
+## Function `clear_spot_proposal_link_on_reject`
+
+Clear the active proposal link after a rejected or quorum-failed governance outcome.
+
+
+<pre><code><b>public</b> <b>entry</b> <b>fun</b> <a href="../social_contracts/social_proof_of_truth.md#social_contracts_social_proof_of_truth_clear_spot_proposal_link_on_reject">clear_spot_proposal_link_on_reject</a>(spot_config: &<a href="../social_contracts/social_proof_of_truth.md#social_contracts_social_proof_of_truth_SpotConfig">social_contracts::social_proof_of_truth::SpotConfig</a>, registry: &<a href="../social_contracts/governance.md#social_contracts_governance_GovernanceDAO">social_contracts::governance::GovernanceDAO</a>, proposal: &<a href="../social_contracts/governance.md#social_contracts_governance_Proposal">social_contracts::governance::Proposal</a>, record: &<b>mut</b> <a href="../social_contracts/social_proof_of_truth.md#social_contracts_social_proof_of_truth_SpotRecord">social_contracts::social_proof_of_truth::SpotRecord</a>, <a href="../social_contracts/post.md#social_contracts_post">post</a>: &<a href="../social_contracts/post.md#social_contracts_post_Post">social_contracts::post::Post</a>)
+</code></pre>
+
+
+
+<details>
+<summary>Implementation</summary>
+
+
+<pre><code><b>public</b> <b>entry</b> <b>fun</b> <a href="../social_contracts/social_proof_of_truth.md#social_contracts_social_proof_of_truth_clear_spot_proposal_link_on_reject">clear_spot_proposal_link_on_reject</a>(
+    spot_config: &<a href="../social_contracts/social_proof_of_truth.md#social_contracts_social_proof_of_truth_SpotConfig">SpotConfig</a>,
+    registry: &GovernanceDAO,
+    proposal: &Proposal,
+    record: &<b>mut</b> <a href="../social_contracts/social_proof_of_truth.md#social_contracts_social_proof_of_truth_SpotRecord">SpotRecord</a>,
+    <a href="../social_contracts/post.md#social_contracts_post">post</a>: &Post,
+) {
+    <a href="../social_contracts/social_proof_of_truth.md#social_contracts_social_proof_of_truth_assert_spot_governance_registry">assert_spot_governance_registry</a>(spot_config, registry);
+    <b>assert</b>!(record.status == <a href="../social_contracts/social_proof_of_truth.md#social_contracts_social_proof_of_truth_STATUS_DAO_REQUIRED">STATUS_DAO_REQUIRED</a>, <a href="../social_contracts/social_proof_of_truth.md#social_contracts_social_proof_of_truth_ENotDaoRequired">ENotDaoRequired</a>);
+    <b>assert</b>!(option::is_some(&record.<a href="../social_contracts/social_proof_of_truth.md#social_contracts_social_proof_of_truth_active_proposal_id">active_proposal_id</a>), <a href="../social_contracts/social_proof_of_truth.md#social_contracts_social_proof_of_truth_ENoActiveProposal">ENoActiveProposal</a>);
+    <b>let</b> active_id = *option::borrow(&record.<a href="../social_contracts/social_proof_of_truth.md#social_contracts_social_proof_of_truth_active_proposal_id">active_proposal_id</a>);
+    <b>assert</b>!(active_id == object::id(proposal), <a href="../social_contracts/social_proof_of_truth.md#social_contracts_social_proof_of_truth_EWrongProposal">EWrongProposal</a>);
+    <b>let</b> status = <a href="../social_contracts/governance.md#social_contracts_governance_proposal_status">governance::proposal_status</a>(proposal);
+    <b>assert</b>!(
+        status == <a href="../social_contracts/governance.md#social_contracts_governance_status_rejected_value">governance::status_rejected_value</a>(),
+        <a href="../social_contracts/social_proof_of_truth.md#social_contracts_social_proof_of_truth_EProposalNotApproved">EProposalNotApproved</a>
+    );
+    <b>let</b> proposal_id = active_id;
+    record.<a href="../social_contracts/social_proof_of_truth.md#social_contracts_social_proof_of_truth_active_proposal_id">active_proposal_id</a> = option::none();
+    record.<a href="../social_contracts/social_proof_of_truth.md#social_contracts_social_proof_of_truth_proposed_outcome">proposed_outcome</a> = option::none();
+    event::emit(<a href="../social_contracts/social_proof_of_truth.md#social_contracts_social_proof_of_truth_SpotGovernanceProposalClearedEvent">SpotGovernanceProposalClearedEvent</a> {
+        post_id: <a href="../social_contracts/post.md#social_contracts_post_get_id_address">post::get_id_address</a>(<a href="../social_contracts/post.md#social_contracts_post">post</a>),
+        spot_record_id: object::uid_to_address(&record.id),
+        proposal_id,
+    });
+}
+</code></pre>
+
+
+
+</details>
+
+<a name="social_contracts_social_proof_of_truth_finalize_spot_governance_proposal"></a>
+
+## Function `finalize_spot_governance_proposal`
+
+Finalize linked SPoT governance voting; clears the record link when the proposal is rejected.
+
+
+<pre><code><b>public</b> <b>entry</b> <b>fun</b> <a href="../social_contracts/social_proof_of_truth.md#social_contracts_social_proof_of_truth_finalize_spot_governance_proposal">finalize_spot_governance_proposal</a>(spot_config: &<a href="../social_contracts/social_proof_of_truth.md#social_contracts_social_proof_of_truth_SpotConfig">social_contracts::social_proof_of_truth::SpotConfig</a>, registry: &<b>mut</b> <a href="../social_contracts/governance.md#social_contracts_governance_GovernanceDAO">social_contracts::governance::GovernanceDAO</a>, proposal: &<b>mut</b> <a href="../social_contracts/governance.md#social_contracts_governance_Proposal">social_contracts::governance::Proposal</a>, record: &<b>mut</b> <a href="../social_contracts/social_proof_of_truth.md#social_contracts_social_proof_of_truth_SpotRecord">social_contracts::social_proof_of_truth::SpotRecord</a>, <a href="../social_contracts/post.md#social_contracts_post">post</a>: &<a href="../social_contracts/post.md#social_contracts_post_Post">social_contracts::post::Post</a>, ecosystem_treasury: &<a href="../social_contracts/profile.md#social_contracts_profile_EcosystemTreasury">social_contracts::profile::EcosystemTreasury</a>, clock: &<a href="../myso/clock.md#myso_clock_Clock">myso::clock::Clock</a>, ctx: &<b>mut</b> <a href="../myso/tx_context.md#myso_tx_context_TxContext">myso::tx_context::TxContext</a>)
+</code></pre>
+
+
+
+<details>
+<summary>Implementation</summary>
+
+
+<pre><code><b>public</b> <b>entry</b> <b>fun</b> <a href="../social_contracts/social_proof_of_truth.md#social_contracts_social_proof_of_truth_finalize_spot_governance_proposal">finalize_spot_governance_proposal</a>(
+    spot_config: &<a href="../social_contracts/social_proof_of_truth.md#social_contracts_social_proof_of_truth_SpotConfig">SpotConfig</a>,
+    registry: &<b>mut</b> GovernanceDAO,
+    proposal: &<b>mut</b> Proposal,
+    record: &<b>mut</b> <a href="../social_contracts/social_proof_of_truth.md#social_contracts_social_proof_of_truth_SpotRecord">SpotRecord</a>,
+    <a href="../social_contracts/post.md#social_contracts_post">post</a>: &Post,
+    ecosystem_treasury: &EcosystemTreasury,
+    clock: &Clock,
+    ctx: &<b>mut</b> TxContext
+) {
+    <a href="../social_contracts/social_proof_of_truth.md#social_contracts_social_proof_of_truth_assert_spot_governance_registry">assert_spot_governance_registry</a>(spot_config, registry);
+    <a href="../social_contracts/governance.md#social_contracts_governance_finalize_proposal">governance::finalize_proposal</a>(registry, proposal, ecosystem_treasury, clock, ctx);
+    <b>if</b> (<a href="../social_contracts/governance.md#social_contracts_governance_proposal_status">governance::proposal_status</a>(proposal) == <a href="../social_contracts/governance.md#social_contracts_governance_status_rejected_value">governance::status_rejected_value</a>()) {
+        <a href="../social_contracts/social_proof_of_truth.md#social_contracts_social_proof_of_truth_clear_spot_proposal_link_on_reject">clear_spot_proposal_link_on_reject</a>(spot_config, registry, proposal, record, <a href="../social_contracts/post.md#social_contracts_post">post</a>);
+    };
+}
+</code></pre>
+
+
+
+</details>
+
 <a name="social_contracts_social_proof_of_truth_finalize_via_dao"></a>
 
 ## Function `finalize_via_dao`
 
-DAO finalization (YES/NO/DRAW/UNAPPLICABLE)
-Reasoning is optional as it represents culmination of community discussion
+Deprecated direct DAO finalization — requires an approved linked governance proposal.
 
 
-<pre><code><b>public</b> <b>entry</b> <b>fun</b> <a href="../social_contracts/social_proof_of_truth.md#social_contracts_social_proof_of_truth_finalize_via_dao">finalize_via_dao</a>(spot_config: &<a href="../social_contracts/social_proof_of_truth.md#social_contracts_social_proof_of_truth_SpotConfig">social_contracts::social_proof_of_truth::SpotConfig</a>, record: &<b>mut</b> <a href="../social_contracts/social_proof_of_truth.md#social_contracts_social_proof_of_truth_SpotRecord">social_contracts::social_proof_of_truth::SpotRecord</a>, <a href="../social_contracts/post.md#social_contracts_post">post</a>: &<a href="../social_contracts/post.md#social_contracts_post_Post">social_contracts::post::Post</a>, <a href="../social_contracts/platform.md#social_contracts_platform">platform</a>: &<b>mut</b> <a href="../social_contracts/platform.md#social_contracts_platform_Platform">social_contracts::platform::Platform</a>, treasury: &<a href="../social_contracts/profile.md#social_contracts_profile_EcosystemTreasury">social_contracts::profile::EcosystemTreasury</a>, outcome: u8, reasoning: <a href="../std/option.md#std_option_Option">std::option::Option</a>&lt;<a href="../std/string.md#std_string_String">std::string::String</a>&gt;, evidence_urls: <a href="../std/option.md#std_option_Option">std::option::Option</a>&lt;vector&lt;<a href="../std/string.md#std_string_String">std::string::String</a>&gt;&gt;, clock: &<a href="../myso/clock.md#myso_clock_Clock">myso::clock::Clock</a>, ctx: &<b>mut</b> <a href="../myso/tx_context.md#myso_tx_context_TxContext">myso::tx_context::TxContext</a>)
+<pre><code><b>public</b> <b>entry</b> <b>fun</b> <a href="../social_contracts/social_proof_of_truth.md#social_contracts_social_proof_of_truth_finalize_via_dao">finalize_via_dao</a>(spot_config: &<a href="../social_contracts/social_proof_of_truth.md#social_contracts_social_proof_of_truth_SpotConfig">social_contracts::social_proof_of_truth::SpotConfig</a>, registry: &<b>mut</b> <a href="../social_contracts/governance.md#social_contracts_governance_GovernanceDAO">social_contracts::governance::GovernanceDAO</a>, proposal: &<b>mut</b> <a href="../social_contracts/governance.md#social_contracts_governance_Proposal">social_contracts::governance::Proposal</a>, record: &<b>mut</b> <a href="../social_contracts/social_proof_of_truth.md#social_contracts_social_proof_of_truth_SpotRecord">social_contracts::social_proof_of_truth::SpotRecord</a>, <a href="../social_contracts/post.md#social_contracts_post">post</a>: &<a href="../social_contracts/post.md#social_contracts_post_Post">social_contracts::post::Post</a>, <a href="../social_contracts/platform.md#social_contracts_platform">platform</a>: &<b>mut</b> <a href="../social_contracts/platform.md#social_contracts_platform_Platform">social_contracts::platform::Platform</a>, treasury: &<a href="../social_contracts/profile.md#social_contracts_profile_EcosystemTreasury">social_contracts::profile::EcosystemTreasury</a>, reasoning: <a href="../std/option.md#std_option_Option">std::option::Option</a>&lt;<a href="../std/string.md#std_string_String">std::string::String</a>&gt;, evidence_urls: <a href="../std/option.md#std_option_Option">std::option::Option</a>&lt;vector&lt;<a href="../std/string.md#std_string_String">std::string::String</a>&gt;&gt;, clock: &<a href="../myso/clock.md#myso_clock_Clock">myso::clock::Clock</a>, ctx: &<b>mut</b> <a href="../myso/tx_context.md#myso_tx_context_TxContext">myso::tx_context::TxContext</a>)
 </code></pre>
 
 
@@ -2135,38 +2700,94 @@ Reasoning is optional as it represents culmination of community discussion
 
 <pre><code><b>public</b> <b>entry</b> <b>fun</b> <a href="../social_contracts/social_proof_of_truth.md#social_contracts_social_proof_of_truth_finalize_via_dao">finalize_via_dao</a>(
     spot_config: &<a href="../social_contracts/social_proof_of_truth.md#social_contracts_social_proof_of_truth_SpotConfig">SpotConfig</a>,
+    registry: &<b>mut</b> GovernanceDAO,
+    proposal: &<b>mut</b> Proposal,
     record: &<b>mut</b> <a href="../social_contracts/social_proof_of_truth.md#social_contracts_social_proof_of_truth_SpotRecord">SpotRecord</a>,
     <a href="../social_contracts/post.md#social_contracts_post">post</a>: &Post,
     <a href="../social_contracts/platform.md#social_contracts_platform">platform</a>: &<b>mut</b> Platform,
     treasury: &EcosystemTreasury,
-    outcome: u8,
     <b>mut</b> reasoning: Option&lt;String&gt;,
     evidence_urls: Option&lt;vector&lt;String&gt;&gt;,
     clock: &Clock,
     ctx: &<b>mut</b> TxContext
 ) {
-    // Allow when DAO_REQUIRED or still OPEN (off-chain DAO direct)
-    <b>assert</b>!(record.status == <a href="../social_contracts/social_proof_of_truth.md#social_contracts_social_proof_of_truth_STATUS_DAO_REQUIRED">STATUS_DAO_REQUIRED</a> || record.status == <a href="../social_contracts/social_proof_of_truth.md#social_contracts_social_proof_of_truth_STATUS_OPEN">STATUS_OPEN</a>, <a href="../social_contracts/social_proof_of_truth.md#social_contracts_social_proof_of_truth_EWrongStatus">EWrongStatus</a>);
-    // Prevent resolving already resolved markets
-    <b>assert</b>!(option::is_none(&record.outcome), <a href="../social_contracts/social_proof_of_truth.md#social_contracts_social_proof_of_truth_EAlreadyResolved">EAlreadyResolved</a>);
-    // Validate reasoning <b>if</b> provided
-    <b>if</b> (option::is_some(&reasoning)) {
-        <b>let</b> reasoning_val = option::borrow(&reasoning);
-        <b>let</b> reasoning_len = string::length(reasoning_val);
-        <b>assert</b>!(reasoning_len &lt;= <a href="../social_contracts/social_proof_of_truth.md#social_contracts_social_proof_of_truth_MAX_REASONING_LENGTH">MAX_REASONING_LENGTH</a>, <a href="../social_contracts/social_proof_of_truth.md#social_contracts_social_proof_of_truth_EInvalidReasoning">EInvalidReasoning</a>);
-    };
-    // Validate evidence URLs <b>if</b> provided
-    <b>if</b> (option::is_some(&evidence_urls)) {
-        <b>let</b> urls = option::borrow(&evidence_urls);
-        <b>assert</b>!(vector::length(urls) &lt;= <a href="../social_contracts/social_proof_of_truth.md#social_contracts_social_proof_of_truth_MAX_EVIDENCE_URLS">MAX_EVIDENCE_URLS</a>, <a href="../social_contracts/social_proof_of_truth.md#social_contracts_social_proof_of_truth_EInvalidAmount">EInvalidAmount</a>);
-    };
-    // Use provided reasoning or default message <b>if</b> not provided
     <b>let</b> final_reasoning = <b>if</b> (option::is_some(&reasoning)) {
         option::extract(&<b>mut</b> reasoning)
     } <b>else</b> {
         string::utf8(b"DAO resolution based on community discussion")
     };
-    <a href="../social_contracts/social_proof_of_truth.md#social_contracts_social_proof_of_truth_finalize_resolution_and_payout">finalize_resolution_and_payout</a>(spot_config, record, <a href="../social_contracts/post.md#social_contracts_post">post</a>, <a href="../social_contracts/platform.md#social_contracts_platform">platform</a>, treasury, outcome, final_reasoning, evidence_urls, clock, ctx);
+    <a href="../social_contracts/social_proof_of_truth.md#social_contracts_social_proof_of_truth_implement_spot_resolution_from_governance">implement_spot_resolution_from_governance</a>(
+        spot_config,
+        registry,
+        proposal,
+        record,
+        <a href="../social_contracts/post.md#social_contracts_post">post</a>,
+        <a href="../social_contracts/platform.md#social_contracts_platform">platform</a>,
+        treasury,
+        final_reasoning,
+        evidence_urls,
+        clock,
+        ctx,
+    );
+}
+</code></pre>
+
+
+
+</details>
+
+<a name="social_contracts_social_proof_of_truth_assert_spot_governance_registry"></a>
+
+## Function `assert_spot_governance_registry`
+
+
+
+<pre><code><b>fun</b> <a href="../social_contracts/social_proof_of_truth.md#social_contracts_social_proof_of_truth_assert_spot_governance_registry">assert_spot_governance_registry</a>(spot_config: &<a href="../social_contracts/social_proof_of_truth.md#social_contracts_social_proof_of_truth_SpotConfig">social_contracts::social_proof_of_truth::SpotConfig</a>, registry: &<a href="../social_contracts/governance.md#social_contracts_governance_GovernanceDAO">social_contracts::governance::GovernanceDAO</a>)
+</code></pre>
+
+
+
+<details>
+<summary>Implementation</summary>
+
+
+<pre><code><b>fun</b> <a href="../social_contracts/social_proof_of_truth.md#social_contracts_social_proof_of_truth_assert_spot_governance_registry">assert_spot_governance_registry</a>(spot_config: &<a href="../social_contracts/social_proof_of_truth.md#social_contracts_social_proof_of_truth_SpotConfig">SpotConfig</a>, registry: &GovernanceDAO) {
+    <b>assert</b>!(
+        <a href="../social_contracts/governance.md#social_contracts_governance_registry_type">governance::registry_type</a>(registry) == <a href="../social_contracts/governance.md#social_contracts_governance_proposal_type_spot_value">governance::proposal_type_spot_value</a>(),
+        <a href="../social_contracts/social_proof_of_truth.md#social_contracts_social_proof_of_truth_EInvalidGovernanceRegistry">EInvalidGovernanceRegistry</a>
+    );
+    <b>assert</b>!(
+        object::id(registry) == spot_config.<a href="../social_contracts/social_proof_of_truth.md#social_contracts_social_proof_of_truth_spot_governance_registry_id">spot_governance_registry_id</a>,
+        <a href="../social_contracts/social_proof_of_truth.md#social_contracts_social_proof_of_truth_EInvalidGovernanceRegistry">EInvalidGovernanceRegistry</a>
+    );
+}
+</code></pre>
+
+
+
+</details>
+
+<a name="social_contracts_social_proof_of_truth_validate_proposed_outcome"></a>
+
+## Function `validate_proposed_outcome`
+
+
+
+<pre><code><b>fun</b> <a href="../social_contracts/social_proof_of_truth.md#social_contracts_social_proof_of_truth_validate_proposed_outcome">validate_proposed_outcome</a>(record: &<a href="../social_contracts/social_proof_of_truth.md#social_contracts_social_proof_of_truth_SpotRecord">social_contracts::social_proof_of_truth::SpotRecord</a>, outcome: u8)
+</code></pre>
+
+
+
+<details>
+<summary>Implementation</summary>
+
+
+<pre><code><b>fun</b> <a href="../social_contracts/social_proof_of_truth.md#social_contracts_social_proof_of_truth_validate_proposed_outcome">validate_proposed_outcome</a>(record: &<a href="../social_contracts/social_proof_of_truth.md#social_contracts_social_proof_of_truth_SpotRecord">SpotRecord</a>, outcome: u8) {
+    <b>if</b> (outcome == <a href="../social_contracts/social_proof_of_truth.md#social_contracts_social_proof_of_truth_OUTCOME_DRAW">OUTCOME_DRAW</a> || outcome == <a href="../social_contracts/social_proof_of_truth.md#social_contracts_social_proof_of_truth_OUTCOME_UNAPPLICABLE">OUTCOME_UNAPPLICABLE</a>) {
+        <b>return</b>
+    };
+    <b>let</b> options_len = vector::length(&record.betting_options);
+    <b>assert</b>!((outcome <b>as</b> u64) &lt; options_len, <a href="../social_contracts/social_proof_of_truth.md#social_contracts_social_proof_of_truth_EInvalidOptionId">EInvalidOptionId</a>);
 }
 </code></pre>
 
@@ -2456,6 +3077,9 @@ Migration function for SpotConfig
     <b>assert</b>!(config.version &lt; current_version, <a href="../social_contracts/social_proof_of_truth.md#social_contracts_social_proof_of_truth_EWrongVersion">EWrongVersion</a>);
     // Remember old version and update to new version
     <b>let</b> old_version = config.version;
+    <b>if</b> (old_version == 0) {
+        config.<a href="../social_contracts/social_proof_of_truth.md#social_contracts_social_proof_of_truth_spot_governance_registry_id">spot_governance_registry_id</a> = object::id_from_address(@0x0);
+    };
     config.version = current_version;
     // Emit event <b>for</b> object migration
     <b>let</b> config_id = object::id(config);
@@ -2498,6 +3122,12 @@ Migration function for SpotRecord
     <b>assert</b>!(record.version &lt; current_version, <a href="../social_contracts/social_proof_of_truth.md#social_contracts_social_proof_of_truth_EWrongVersion">EWrongVersion</a>);
     // Remember old version and update to new version
     <b>let</b> old_version = record.version;
+    <b>if</b> (old_version == 0) {
+        record.<a href="../social_contracts/social_proof_of_truth.md#social_contracts_social_proof_of_truth_active_proposal_id">active_proposal_id</a> = option::none();
+        record.<a href="../social_contracts/social_proof_of_truth.md#social_contracts_social_proof_of_truth_oracle_proposed_outcome">oracle_proposed_outcome</a> = option::none();
+        record.<a href="../social_contracts/social_proof_of_truth.md#social_contracts_social_proof_of_truth_proposed_outcome">proposed_outcome</a> = option::none();
+        record.<a href="../social_contracts/social_proof_of_truth.md#social_contracts_social_proof_of_truth_dao_escalated_at_ms">dao_escalated_at_ms</a> = 0;
+    };
     record.version = current_version;
     // Emit event <b>for</b> object migration
     <b>let</b> record_id = object::id(record);

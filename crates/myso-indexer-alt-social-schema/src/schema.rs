@@ -676,6 +676,8 @@ diesel::table! {
         tagline -> Text,
         description -> Nullable<Text>,
         logo -> Nullable<Text>,
+        cover_photo -> Nullable<Text>,
+        media_previews -> Nullable<Jsonb>,
         developer_address -> Text,
         terms_of_service -> Nullable<Text>,
         privacy_policy -> Nullable<Text>,
@@ -1509,6 +1511,7 @@ diesel::table! {
         transaction_id -> Text,
         payout_delay_ms -> Int8,
         version -> Int8,
+        spot_governance_registry_id -> Nullable<Text>,
     }
 }
 
@@ -1552,6 +1555,11 @@ diesel::table! {
         option_escrow -> Jsonb,
         resolution_window_ms -> Nullable<Int8>,
         max_resolution_window_ms -> Nullable<Int8>,
+        record_object_id -> Nullable<Text>,
+        active_proposal_id -> Nullable<Text>,
+        oracle_proposed_outcome -> Nullable<Int2>,
+        proposed_outcome -> Nullable<Int2>,
+        dao_escalated_at_ms -> Nullable<Int8>,
     }
 }
 

@@ -789,7 +789,7 @@ fn bcs_reaction_from_bytes(contents: &[u8]) -> Result<ParsedReactionEvent, Event
     }
 }
 
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Deserialize, Serialize)]
 pub struct BcsRemoveReactionEvent {
     object_id: AccountAddress,
     user: AccountAddress,
@@ -797,7 +797,7 @@ pub struct BcsRemoveReactionEvent {
     is_post: bool,
 }
 
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Deserialize, Serialize)]
 pub struct BcsRemoveReactionEventWithAttribution {
     object_id: AccountAddress,
     user: AccountAddress,
@@ -824,7 +824,22 @@ fn bcs_remove_reaction_from_bytes(
             action_identity_class: ev.action_identity_class,
         });
     }
-    bcs_reaction_from_bytes(contents)
+    match bcs::from_bytes::<BcsRemoveReactionEvent>(contents) {
+        Ok(ev) => Ok(ParsedReactionEvent {
+            object_id: ev.object_id,
+            user: ev.user,
+            reaction: ev.reaction,
+            is_post: ev.is_post,
+            principal_owner: ev.user,
+            actor_address: ev.user,
+            sub_agent_id: None,
+            action_identity_class: 0,
+        }),
+        Err(e) => Err(EventParseError {
+            error: format!("RemoveReactionEvent BCS: {}", e),
+            contents: contents.to_vec(),
+        }),
+    }
 }
 
 #[derive(Debug, Deserialize)]
@@ -1571,7 +1586,10 @@ pub struct BcsSpotResolvedEvent {
 #[derive(Debug, Deserialize)]
 pub struct BcsSpotDaoRequiredEvent {
     post_id: AccountAddress,
+    spot_record_id: AccountAddress,
     confidence_bps: u64,
+    oracle_proposed_outcome: u8,
+    dao_escalated_at_ms: u64,
     reasoning: String,
 }
 
@@ -1622,6 +1640,21 @@ pub struct BcsSpotRecordCreatedEvent {
     betting_options: Vec<String>,
     resolution_window_ms: Option<u64>,
     max_resolution_window_ms: Option<u64>,
+}
+
+#[derive(Debug, Deserialize)]
+pub struct BcsSpotGovernanceProposalLinkedEvent {
+    post_id: AccountAddress,
+    spot_record_id: AccountAddress,
+    proposal_id: AccountAddress,
+    proposed_outcome: u8,
+}
+
+#[derive(Debug, Deserialize)]
+pub struct BcsSpotGovernanceProposalClearedEvent {
+    post_id: AccountAddress,
+    spot_record_id: AccountAddress,
+    proposal_id: AccountAddress,
 }
 
 // Upgrade event structs - field order matches upgrade.move
@@ -1893,6 +1926,8 @@ pub struct BcsPlatformCreatedEvent {
     privacy_policy: String,
     platforms: Vec<String>,
     links: Vec<String>,
+    cover_photo: Option<String>,
+    media_previews: Option<Vec<String>>,
     primary_category: String,
     secondary_category: Option<String>,
     status: BcsPlatformStatus,
@@ -1914,10 +1949,13 @@ pub struct BcsPlatformUpdatedEvent {
     name: String,
     tagline: String,
     description: String,
+    logo: String,
     terms_of_service: String,
     privacy_policy: String,
     platforms: Vec<String>,
     links: Vec<String>,
+    cover_photo: Option<String>,
+    media_previews: Option<Vec<String>>,
     primary_category: String,
     secondary_category: Option<String>,
     status: BcsPlatformStatus,
@@ -2923,6 +2961,8 @@ fn parse_platform_event(
                 "privacy_policy": ev.privacy_policy,
                 "platforms": ev.platforms,
                 "links": ev.links,
+                "cover_photo": ev.cover_photo,
+                "media_previews": ev.media_previews,
                 "primary_category": ev.primary_category,
                 "secondary_category": ev.secondary_category,
                 "status": {"status": ev.status.status},
@@ -2946,10 +2986,13 @@ fn parse_platform_event(
                 "name": ev.name,
                 "tagline": ev.tagline,
                 "description": ev.description,
+                "logo": ev.logo,
                 "terms_of_service": ev.terms_of_service,
                 "privacy_policy": ev.privacy_policy,
                 "platforms": ev.platforms,
                 "links": ev.links,
+                "cover_photo": ev.cover_photo,
+                "media_previews": ev.media_previews,
                 "primary_category": ev.primary_category,
                 "secondary_category": ev.secondary_category,
                 "status": {"status": ev.status.status},
@@ -3633,7 +3676,10 @@ fn parse_spot_event(
                 .map_err(|e| bcs_parse_err(e, contents))?;
             Ok(Some(serde_json::json!({
                 "post_id": addr_to_string(&ev.post_id),
+                "spot_record_id": addr_to_string(&ev.spot_record_id),
                 "confidence_bps": ev.confidence_bps,
+                "oracle_proposed_outcome": ev.oracle_proposed_outcome,
+                "dao_escalated_at_ms": ev.dao_escalated_at_ms,
                 "reasoning": ev.reasoning,
             })))
         }
@@ -3694,6 +3740,25 @@ fn parse_spot_event(
                 "betting_options": ev.betting_options,
                 "resolution_window_ms": ev.resolution_window_ms,
                 "max_resolution_window_ms": ev.max_resolution_window_ms,
+            })))
+        }
+        "SpotGovernanceProposalLinkedEvent" => {
+            let ev = bcs::from_bytes::<BcsSpotGovernanceProposalLinkedEvent>(contents)
+                .map_err(|e| bcs_parse_err(e, contents))?;
+            Ok(Some(serde_json::json!({
+                "post_id": addr_to_string(&ev.post_id),
+                "spot_record_id": addr_to_string(&ev.spot_record_id),
+                "proposal_id": addr_to_string(&ev.proposal_id),
+                "proposed_outcome": ev.proposed_outcome,
+            })))
+        }
+        "SpotGovernanceProposalClearedEvent" => {
+            let ev = bcs::from_bytes::<BcsSpotGovernanceProposalClearedEvent>(contents)
+                .map_err(|e| bcs_parse_err(e, contents))?;
+            Ok(Some(serde_json::json!({
+                "post_id": addr_to_string(&ev.post_id),
+                "spot_record_id": addr_to_string(&ev.spot_record_id),
+                "proposal_id": addr_to_string(&ev.proposal_id),
             })))
         }
         _ => Ok(None),
@@ -4251,7 +4316,7 @@ mod tests {
 
     #[test]
     fn test_parse_platform_created_event_json_fallback() {
-        let json = r#"{"platform_id":"0xabc","name":"Test","tagline":"Tag","description":"Desc","developer":"0xdef","logo":"","terms_of_service":"","privacy_policy":"","platforms":[],"links":[],"primary_category":"Social","secondary_category":null,"status":{"status":0},"release_date":"2024-01-01","wants_dao_governance":false,"governance_registry_id":null,"delegate_count":null,"delegate_term_epochs":null,"proposal_submission_cost":null,"max_votes_per_user":null,"quadratic_base_cost":null,"voting_period_epochs":null,"quorum_votes":null}"#;
+        let json = r#"{"platform_id":"0xabc","name":"Test","tagline":"Tag","description":"Desc","developer":"0xdef","logo":"","terms_of_service":"","privacy_policy":"","platforms":[],"links":[],"cover_photo":null,"media_previews":null,"primary_category":"Social","secondary_category":null,"status":{"status":0},"release_date":"2024-01-01","wants_dao_governance":false,"governance_registry_id":null,"delegate_count":null,"delegate_term_epochs":null,"proposal_submission_cost":null,"max_votes_per_user":null,"quadratic_base_cost":null,"voting_period_epochs":null,"quorum_votes":null}"#;
         let result = parse_event_contents("platform", "PlatformCreatedEvent", json.as_bytes());
         assert!(
             result.is_ok(),
@@ -4999,6 +5064,45 @@ mod tests {
         };
         let bytes = bcs::to_bytes(&ev).expect("bcs");
         let json = parse_event_contents("post", "CommentCreatedEvent", &bytes).expect("parse");
+        assert_eq!(json["action_identity_class"], 0_i64);
+        assert!(json["sub_agent_id"].is_null());
+    }
+
+    #[test]
+    fn remove_reaction_attribution_bcs_round_trip() {
+        let ev = BcsRemoveReactionEventWithAttribution {
+            object_id: AccountAddress::from_hex_literal("0x1").unwrap(),
+            user: AccountAddress::from_hex_literal("0x2").unwrap(),
+            reaction: "👍".to_string(),
+            is_post: true,
+            principal_owner: AccountAddress::from_hex_literal("0x3").unwrap(),
+            actor_address: AccountAddress::from_hex_literal("0x4").unwrap(),
+            sub_agent_id: Some(BcsMoveObjectId {
+                bytes: AccountAddress::from_hex_literal("0x5").unwrap(),
+            }),
+            action_identity_class: 2,
+        };
+        let bytes = bcs::to_bytes(&ev).expect("bcs");
+        let json = parse_event_contents("post", "RemoveReactionEvent", &bytes).expect("parse");
+        assert!(json["object_id"].as_str().unwrap().starts_with("0x"));
+        assert_eq!(json["reaction_text"], "👍");
+        assert_eq!(json["is_post"], true);
+        assert_eq!(json["action_identity_class"], 2_i64);
+        assert!(json["sub_agent_id"].as_str().is_some());
+    }
+
+    #[test]
+    fn remove_reaction_legacy_bcs_still_parses() {
+        let ev = BcsRemoveReactionEvent {
+            object_id: AccountAddress::from_hex_literal("0x1").unwrap(),
+            user: AccountAddress::from_hex_literal("0x2").unwrap(),
+            reaction: "❤️".to_string(),
+            is_post: false,
+        };
+        let bytes = bcs::to_bytes(&ev).expect("bcs");
+        let json = parse_event_contents("post", "RemoveReactionEvent", &bytes).expect("parse");
+        assert_eq!(json["reaction_text"], "❤️");
+        assert_eq!(json["is_post"], false);
         assert_eq!(json["action_identity_class"], 0_i64);
         assert!(json["sub_agent_id"].is_null());
     }

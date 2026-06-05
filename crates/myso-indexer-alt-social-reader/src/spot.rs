@@ -57,7 +57,9 @@ pub(crate) async fn get_spot_record(
     let query = "
         SELECT id, post_id, status, outcome, betting_options, option_escrow,
                created_at_ms, resolution_window_ms, max_resolution_window_ms,
-               last_resolution_at_ms, transaction_id
+               last_resolution_at_ms, transaction_id, record_object_id,
+               active_proposal_id, oracle_proposed_outcome, proposed_outcome,
+               dao_escalated_at_ms
         FROM spot_records
         WHERE post_id = $1
     ";
@@ -241,6 +243,93 @@ pub(crate) async fn list_spot_bet_withdrawals(
         .bind::<BigInt, _>(limit)
         .bind::<BigInt, _>(offset)
         .load::<SpotBetWithdrawalRow>(conn)
+        .await?;
+
+    metrics.requests_succeeded.inc();
+    Ok(results)
+}
+
+pub(crate) async fn get_spot_record_by_active_proposal_id(
+    conn: &mut Connection<'_>,
+    proposal_id: &str,
+    metrics: &DbReaderMetrics,
+) -> anyhow::Result<Option<SpotRecordRow>> {
+    metrics.requests_received.inc();
+    let _guard = metrics.latency.start_timer();
+
+    let query = "
+        SELECT id, post_id, status, outcome, betting_options, option_escrow,
+               created_at_ms, resolution_window_ms, max_resolution_window_ms,
+               last_resolution_at_ms, transaction_id, record_object_id,
+               active_proposal_id, oracle_proposed_outcome, proposed_outcome,
+               dao_escalated_at_ms
+        FROM spot_records
+        WHERE active_proposal_id = $1
+    ";
+
+    let result = diesel::sql_query(query)
+        .bind::<Text, _>(proposal_id)
+        .get_result::<SpotRecordRow>(conn)
+        .await
+        .optional()?;
+
+    metrics.requests_succeeded.inc();
+    Ok(result)
+}
+
+pub(crate) async fn get_spot_record_by_object_id(
+    conn: &mut Connection<'_>,
+    record_object_id: &str,
+    metrics: &DbReaderMetrics,
+) -> anyhow::Result<Option<SpotRecordRow>> {
+    metrics.requests_received.inc();
+    let _guard = metrics.latency.start_timer();
+
+    let query = "
+        SELECT id, post_id, status, outcome, betting_options, option_escrow,
+               created_at_ms, resolution_window_ms, max_resolution_window_ms,
+               last_resolution_at_ms, transaction_id, record_object_id,
+               active_proposal_id, oracle_proposed_outcome, proposed_outcome,
+               dao_escalated_at_ms
+        FROM spot_records
+        WHERE record_object_id = $1
+    ";
+
+    let result = diesel::sql_query(query)
+        .bind::<Text, _>(record_object_id)
+        .get_result::<SpotRecordRow>(conn)
+        .await
+        .optional()?;
+
+    metrics.requests_succeeded.inc();
+    Ok(result)
+}
+
+pub(crate) async fn list_contested_spot_records(
+    conn: &mut Connection<'_>,
+    limit: i64,
+    offset: i64,
+    metrics: &DbReaderMetrics,
+) -> anyhow::Result<Vec<SpotRecordRow>> {
+    metrics.requests_received.inc();
+    let _guard = metrics.latency.start_timer();
+
+    let query = "
+        SELECT id, post_id, status, outcome, betting_options, option_escrow,
+               created_at_ms, resolution_window_ms, max_resolution_window_ms,
+               last_resolution_at_ms, transaction_id, record_object_id,
+               active_proposal_id, oracle_proposed_outcome, proposed_outcome,
+               dao_escalated_at_ms
+        FROM spot_records
+        WHERE status = 2
+        ORDER BY dao_escalated_at_ms DESC NULLS LAST, updated_at DESC
+        LIMIT $1 OFFSET $2
+    ";
+
+    let results = diesel::sql_query(query)
+        .bind::<BigInt, _>(limit)
+        .bind::<BigInt, _>(offset)
+        .load::<SpotRecordRow>(conn)
         .await?;
 
     metrics.requests_succeeded.inc();

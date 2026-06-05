@@ -397,7 +397,7 @@ pub(crate) async fn list_nominees(
         ) n
         WHERE ($1::smallint IS NULL OR registry_type = $1)
           AND ($2::smallint IS NULL OR status = $2)
-          AND ($3::bool = false OR registry_type <> 2)
+          AND ($3::bool = false OR registry_type <> 3)
         ORDER BY upvotes DESC
         LIMIT $4 OFFSET $5
     ";

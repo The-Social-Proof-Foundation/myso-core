@@ -97,6 +97,10 @@ struct PlatformCreatedEvent {
     privacy_policy: String,
     platforms: Vec<String>,
     links: Vec<String>,
+    #[serde(default)]
+    cover_photo: Option<String>,
+    #[serde(default)]
+    media_previews: Option<Vec<String>>,
     primary_category: String,
     #[serde(default)]
     secondary_category: Option<String>,
@@ -128,10 +132,16 @@ struct PlatformUpdatedEvent {
     name: String,
     tagline: String,
     description: String,
+    #[serde(default)]
+    logo: String,
     terms_of_service: String,
     privacy_policy: String,
     platforms: Vec<String>,
     links: Vec<String>,
+    #[serde(default)]
+    cover_photo: Option<String>,
+    #[serde(default)]
+    media_previews: Option<Vec<String>>,
     primary_category: String,
     #[serde(default)]
     secondary_category: Option<String>,
@@ -336,6 +346,10 @@ fn process_platform_created_event(
         tagline: ev.tagline,
         description: Some(ev.description).filter(|s| !s.is_empty()),
         logo: Some(ev.logo).filter(|s| !s.is_empty()),
+        cover_photo: ev.cover_photo.filter(|s| !s.is_empty()),
+        media_previews: ev
+            .media_previews
+            .map(|v| serde_json::to_value(&v).unwrap_or_default()),
         developer_address: developer,
         terms_of_service: Some(ev.terms_of_service),
         privacy_policy: Some(ev.privacy_policy),
@@ -410,10 +424,15 @@ fn process_platform_updated_event(
             name: ev.name,
             tagline: ev.tagline,
             description: Some(ev.description),
+            logo: Some(ev.logo).filter(|s| !s.is_empty()),
             terms_of_service: Some(ev.terms_of_service),
             privacy_policy: Some(ev.privacy_policy),
             platform_names: Some(serde_json::to_value(&ev.platforms).unwrap_or_default()),
             links: Some(serde_json::to_value(&ev.links).unwrap_or_default()),
+            cover_photo: ev.cover_photo.filter(|s| !s.is_empty()),
+            media_previews: ev
+                .media_previews
+                .map(|v| serde_json::to_value(&v).unwrap_or_default()),
             status: ev.status.status as i16,
             release_date: Some(release_date),
             shutdown_date: ev.shutdown_date,

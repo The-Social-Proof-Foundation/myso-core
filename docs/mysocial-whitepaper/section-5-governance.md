@@ -36,7 +36,9 @@ The governance layer operates through three proposal registries, each implemente
 
 **Proof of Creativity registry (`PROPOSAL_TYPE_PROOF_OF_CREATIVITY`).** Covers attribution disputes, creativity outcomes, redirection decisions, and related appeals tied to creative content references.
 
-**Platform registry (`PROPOSAL_TYPE_PLATFORM`).** Covers platform-specific policy, moderation, treasury use, access rules, and application-level decisions for an approved platform community. Platform registries are created through `create_platform_governance` when platform approval occurs. The approving transaction sender is seeded as the founding delegate under the same pattern used at bootstrap.
+**SPoT registry (`PROPOSAL_TYPE_SPOT` = 2).** Shared global registry for contested Social Proof of Truth resolution proposals (binary ratification of oracle-escalated markets).
+
+**Platform registry (`PROPOSAL_TYPE_PLATFORM` = 3).** Covers platform-specific policy, moderation, treasury use, access rules, and application-level decisions for an approved platform community. Platform registries are created through `create_platform_governance` when platform approval occurs. The approving transaction sender is seeded as the founding delegate under the same pattern used at bootstrap.
 
 Proposal type and registry type must match. A participant submits to the registry that owns the decision domain. Applications, indexers, and companion services can derive reputation and source quality from protocol events without collapsing every signal into one universal on-chain reputation object unless a deployed module explicitly implements one.
 

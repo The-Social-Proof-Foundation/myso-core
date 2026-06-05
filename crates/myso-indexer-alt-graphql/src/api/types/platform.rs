@@ -87,6 +87,19 @@ impl Platform {
         self.inner.logo.as_deref()
     }
 
+    /// URL to the platform cover photo.
+    async fn cover_photo(&self) -> Option<&str> {
+        self.inner.cover_photo.as_deref()
+    }
+
+    /// Screenshot and video preview URLs (JSON array).
+    async fn media_previews(&self) -> Option<Json> {
+        self.inner
+            .media_previews
+            .as_ref()
+            .and_then(|v| Json::try_from(v.clone()).ok())
+    }
+
     /// The developer's wallet address.
     async fn developer_address(&self) -> &str {
         &self.inner.developer_address
@@ -372,6 +385,17 @@ impl PlatformMembershipSummary {
 
     async fn logo(&self) -> Option<&str> {
         self.row.logo.as_deref()
+    }
+
+    async fn cover_photo(&self) -> Option<&str> {
+        self.row.cover_photo.as_deref()
+    }
+
+    async fn media_previews(&self) -> Option<Json> {
+        self.row
+            .media_previews
+            .as_ref()
+            .and_then(|v| Json::try_from(v.clone()).ok())
     }
 
     async fn developer_address(&self) -> &str {

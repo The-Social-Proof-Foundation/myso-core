@@ -73,6 +73,16 @@ pub struct SpotRecordRow {
     pub last_resolution_at_ms: Option<i64>,
     #[diesel(sql_type = Text)]
     pub transaction_id: String,
+    #[diesel(sql_type = Nullable<Text>)]
+    pub record_object_id: Option<String>,
+    #[diesel(sql_type = Nullable<Text>)]
+    pub active_proposal_id: Option<String>,
+    #[diesel(sql_type = Nullable<SmallInt>)]
+    pub oracle_proposed_outcome: Option<i16>,
+    #[diesel(sql_type = Nullable<SmallInt>)]
+    pub proposed_outcome: Option<i16>,
+    #[diesel(sql_type = Nullable<BigInt>)]
+    pub dao_escalated_at_ms: Option<i64>,
 }
 
 /// Query result for a spot payout (for GraphQL/reader).
@@ -170,6 +180,11 @@ pub struct NewSpotRecord {
     pub created_at: NaiveDateTime,
     pub updated_at: NaiveDateTime,
     pub transaction_id: String,
+    pub record_object_id: Option<String>,
+    pub active_proposal_id: Option<String>,
+    pub oracle_proposed_outcome: Option<i16>,
+    pub proposed_outcome: Option<i16>,
+    pub dao_escalated_at_ms: Option<i64>,
 }
 
 #[derive(Debug, Clone, Insertable, Serialize, Deserialize)]
@@ -248,6 +263,7 @@ pub struct NewSpotConfig {
     pub timestamp_ms: i64,
     pub time: chrono::DateTime<chrono::Utc>,
     pub transaction_id: String,
+    pub spot_governance_registry_id: Option<String>,
 }
 
 #[derive(Debug, Clone, Insertable, Serialize, Deserialize)]

@@ -68,6 +68,8 @@ module social_contracts::platform_tests {
                 option::some(5_000_000), // quadratic_base_cost
                 option::some(3), // voting_period_epochs
                 option::some(15), // quorum_votes
+                option::none(), // cover_photo
+                option::none(), // media_previews
                 &clock,
                 test_scenario::ctx(scenario)
             );
@@ -558,6 +560,151 @@ module social_contracts::platform_tests {
             test_scenario::return_to_sender(&scenario, profile);
         };
         
+        test_scenario::end(scenario);
+    }
+
+    #[test]
+    fun test_create_platform_with_media_fields() {
+        let mut scenario = test_scenario::begin(ADMIN);
+        create_test_platform(&mut scenario);
+
+        test_scenario::next_tx(&mut scenario, PLATFORM_ADMIN);
+        {
+            let mut registry = test_scenario::take_shared<PlatformRegistry>(&scenario);
+            let clock = test_scenario::take_shared<Clock>(&scenario);
+
+            platform::create_platform(
+                &mut registry,
+                string::utf8(b"Media Platform"),
+                string::utf8(b"Tagline"),
+                string::utf8(b"Description"),
+                string::utf8(b"https://example.com/logo.png"),
+                string::utf8(b"https://example.com/terms"),
+                string::utf8(b"https://example.com/privacy"),
+                vector[string::utf8(b"web")],
+                vector[string::utf8(b"https://example.com")],
+                string::utf8(b"Social Network"),
+                option::none(),
+                3,
+                string::utf8(b"2024-01-01"),
+                false,
+                option::none(), option::none(), option::none(), option::none(),
+                option::none(), option::none(), option::none(),
+                option::some(string::utf8(b"https://example.com/cover.png")),
+                option::some(vector[
+                    string::utf8(b"https://example.com/preview1.png"),
+                    string::utf8(b"https://example.com/preview2.mp4"),
+                ]),
+                &clock,
+                test_scenario::ctx(&mut scenario),
+            );
+
+            test_scenario::return_shared(clock);
+            test_scenario::return_shared(registry);
+        };
+
+        test_scenario::next_tx(&mut scenario, PLATFORM_ADMIN);
+        {
+            let platform = test_scenario::take_shared<Platform>(&scenario);
+            let cover = platform::cover_photo(&platform);
+            assert!(option::is_some(cover), 0);
+            assert!(
+                *option::borrow(cover) == string::utf8(b"https://example.com/cover.png"),
+                1
+            );
+            let previews = platform::media_previews(&platform);
+            assert!(option::is_some(previews), 2);
+            assert!(vector::length(option::borrow(previews)) == 2, 3);
+            test_scenario::return_shared(platform);
+        };
+
+        test_scenario::end(scenario);
+    }
+
+    #[test]
+    fun test_update_platform_media_and_logo() {
+        let mut scenario = test_scenario::begin(ADMIN);
+        create_test_platform(&mut scenario);
+
+        test_scenario::next_tx(&mut scenario, PLATFORM_ADMIN);
+        {
+            let mut platform = test_scenario::take_shared<Platform>(&scenario);
+            platform::update_platform(
+                &mut platform,
+                string::utf8(b"Test Platform"),
+                string::utf8(b"A test platform"),
+                string::utf8(b"This is a test platform for badge testing"),
+                string::utf8(b"https://example.com/new-logo.png"),
+                string::utf8(b"https://example.com/terms"),
+                string::utf8(b"https://example.com/privacy"),
+                vector[string::utf8(b"web"), string::utf8(b"mobile")],
+                vector[string::utf8(b"https://example.com")],
+                string::utf8(b"Social Network"),
+                option::none(),
+                2,
+                string::utf8(b"2023-01-01"),
+                option::none(),
+                option::some(string::utf8(b"https://example.com/new-cover.png")),
+                option::some(vector[string::utf8(b"https://example.com/shot.png")]),
+                test_scenario::ctx(&mut scenario),
+            );
+            assert!(
+                *platform::logo(&platform) == string::utf8(b"https://example.com/new-logo.png"),
+                0
+            );
+            let cover = platform::cover_photo(&platform);
+            assert!(option::is_some(cover), 1);
+            let previews = platform::media_previews(&platform);
+            assert!(option::is_some(previews), 2);
+            test_scenario::return_shared(platform);
+        };
+
+        test_scenario::end(scenario);
+    }
+
+    #[test, expected_failure(abort_code = platform::ETooManyMediaPreviews)]
+    fun test_create_platform_rejects_too_many_media_previews() {
+        let mut scenario = test_scenario::begin(ADMIN);
+        create_test_platform(&mut scenario);
+
+        test_scenario::next_tx(&mut scenario, PLATFORM_ADMIN);
+        {
+            let mut registry = test_scenario::take_shared<PlatformRegistry>(&scenario);
+            let clock = test_scenario::take_shared<Clock>(&scenario);
+            let mut previews = vector::empty<string::String>();
+            let mut i = 0u64;
+            while (i < 11) {
+                vector::push_back(&mut previews, string::utf8(b"https://example.com/p.png"));
+                i = i + 1;
+            };
+
+            platform::create_platform(
+                &mut registry,
+                string::utf8(b"Too Many Previews"),
+                string::utf8(b"Tag"),
+                string::utf8(b"Desc"),
+                string::utf8(b"https://example.com/logo.png"),
+                string::utf8(b"https://example.com/terms"),
+                string::utf8(b"https://example.com/privacy"),
+                vector[string::utf8(b"web")],
+                vector[string::utf8(b"https://example.com")],
+                string::utf8(b"Social Network"),
+                option::none(),
+                3,
+                string::utf8(b"2024-01-01"),
+                false,
+                option::none(), option::none(), option::none(), option::none(),
+                option::none(), option::none(), option::none(),
+                option::none(),
+                option::some(previews),
+                &clock,
+                test_scenario::ctx(&mut scenario),
+            );
+
+            test_scenario::return_shared(clock);
+            test_scenario::return_shared(registry);
+        };
+
         test_scenario::end(scenario);
     }
 } 

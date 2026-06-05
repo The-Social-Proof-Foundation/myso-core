@@ -45,6 +45,15 @@ pub enum SpotRow {
         outcome: Option<i16>,
         last_resolution_at_ms: i64,
     },
+    SpotRecordGovernanceUpdate {
+        spot_record_id: String,
+        post_id: String,
+        active_proposal_id: Option<String>,
+        oracle_proposed_outcome: Option<i16>,
+        proposed_outcome: Option<i16>,
+        dao_escalated_at_ms: Option<i64>,
+        status: Option<i16>,
+    },
 }
 
 impl SpotRow {
@@ -73,13 +82,30 @@ impl SpotRow {
                 outcome,
                 last_resolution_at_ms,
             }),
+            crate::handlers::SocialEventRow::SpotRecordGovernanceUpdate {
+                spot_record_id,
+                post_id,
+                active_proposal_id,
+                oracle_proposed_outcome,
+                proposed_outcome,
+                dao_escalated_at_ms,
+                status,
+            } => Some(SpotRow::SpotRecordGovernanceUpdate {
+                spot_record_id,
+                post_id,
+                active_proposal_id,
+                oracle_proposed_outcome,
+                proposed_outcome,
+                dao_escalated_at_ms,
+                status,
+            }),
             _ => None,
         }
     }
 }
 
 impl FieldCount for SpotRow {
-    const FIELD_COUNT: usize = 9;
+    const FIELD_COUNT: usize = 10;
 }
 
 pub struct SpotHandler;
@@ -184,6 +210,7 @@ impl Handler for SpotHandler {
                         .unwrap_or_else(|| serde_json::json!([]));
                     let resolution_window_ms = record.resolution_window_ms;
                     let max_resolution_window_ms = record.max_resolution_window_ms;
+                    let record_object_id = record.record_object_id.clone();
                     total += diesel::insert_into(spot_records::table)
                         .values(record)
                         .on_conflict(spot_records::post_id)
@@ -192,6 +219,8 @@ impl Handler for SpotHandler {
                             spot_records::betting_options.eq(betting_options),
                             spot_records::resolution_window_ms.eq(resolution_window_ms),
                             spot_records::max_resolution_window_ms.eq(max_resolution_window_ms),
+                            spot_records::record_object_id
+                                .eq(record_object_id),
                             spot_records::updated_at.eq(chrono::Utc::now().naive_utc()),
                         ))
                         .execute(conn)
@@ -213,6 +242,34 @@ impl Handler for SpotHandler {
                         ))
                         .execute(conn)
                         .await?;
+                }
+                SpotRow::SpotRecordGovernanceUpdate {
+                    spot_record_id: _,
+                    post_id,
+                    active_proposal_id,
+                    oracle_proposed_outcome,
+                    proposed_outcome,
+                    dao_escalated_at_ms,
+                    status,
+                } => {
+                    total += diesel::update(spot_records::table)
+                        .filter(spot_records::post_id.eq(post_id))
+                        .set((
+                            spot_records::active_proposal_id.eq(active_proposal_id),
+                            spot_records::oracle_proposed_outcome.eq(oracle_proposed_outcome),
+                            spot_records::proposed_outcome.eq(proposed_outcome),
+                            spot_records::dao_escalated_at_ms.eq(dao_escalated_at_ms),
+                            spot_records::updated_at.eq(chrono::Utc::now().naive_utc()),
+                        ))
+                        .execute(conn)
+                        .await?;
+                    if let Some(s) = status {
+                        total += diesel::update(spot_records::table)
+                            .filter(spot_records::post_id.eq(post_id))
+                            .set(spot_records::status.eq(*s))
+                            .execute(conn)
+                            .await?;
+                    }
                 }
             }
         }

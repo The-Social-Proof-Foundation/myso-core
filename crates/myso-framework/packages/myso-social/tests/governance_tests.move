@@ -1186,10 +1186,10 @@ module social_contracts::governance_tests {
         test_scenario::end(scenario);
     }
 
-    /// `governance::bootstrap_init` seeds the transaction sender as founding delegate for ecosystem (0) and PoC (1).
+    /// `governance::bootstrap_init` seeds the transaction sender as founding delegate for ecosystem (0), PoC (1), and SPoT (2).
     #[test]
     #[allow(unused_mut_ref)]
-    fun test_bootstrap_init_seeds_sender_as_founding_delegate_both_registries() {
+    fun test_bootstrap_init_seeds_sender_as_founding_delegate_all_global_registries() {
         use social_contracts::governance;
 
         let mut scenario = test_scenario::begin(ADMIN);
@@ -1205,7 +1205,8 @@ module social_contracts::governance_tests {
         {
             let clock = test_scenario::take_shared<Clock>(&scenario);
             let ctx = test_scenario::ctx(&mut scenario);
-            governance::bootstrap_init(&clock, ctx);
+            let _spot_id = governance::bootstrap_init(&clock, ctx);
+            governance::test_grant_admin_cap(ctx);
             test_scenario::return_shared(clock);
         };
 
@@ -1213,13 +1214,20 @@ module social_contracts::governance_tests {
         {
             let reg_a = test_scenario::take_shared<governance::GovernanceDAO>(&mut scenario);
             let reg_b = test_scenario::take_shared<governance::GovernanceDAO>(&mut scenario);
+            let reg_c = test_scenario::take_shared<governance::GovernanceDAO>(&mut scenario);
             let t_a = governance::registry_type(&reg_a);
             let t_b = governance::registry_type(&reg_b);
-            assert!((t_a == 0 && t_b == 1) || (t_a == 1 && t_b == 0), 0);
+            let t_c = governance::registry_type(&reg_c);
+            let has_ecosystem = t_a == 0 || t_b == 0 || t_c == 0;
+            let has_poc = t_a == 1 || t_b == 1 || t_c == 1;
+            let has_spot = t_a == 2 || t_b == 2 || t_c == 2;
+            assert!(has_ecosystem && has_poc && has_spot, 0);
             assert!(governance::is_delegate(&reg_a, ADMIN), 1);
             assert!(governance::is_delegate(&reg_b, ADMIN), 2);
+            assert!(governance::is_delegate(&reg_c, ADMIN), 3);
             test_scenario::return_shared(reg_a);
             test_scenario::return_shared(reg_b);
+            test_scenario::return_shared(reg_c);
         };
 
         test_scenario::end(scenario);

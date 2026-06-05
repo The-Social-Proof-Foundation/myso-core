@@ -655,6 +655,7 @@ fn make_router(state: Arc<AppState>) -> Router {
             "/insurance/markets/:market_id/policies",
             get(list_insurance_market_policies),
         )
+        .route("/spot/contested-records", get(list_contested_spot_records))
         .route("/spot/records/:post_id", get(get_spot_record))
         .route("/spot/records/:post_id/bets", get(list_spot_bets))
         .route("/spot/records/:post_id/payouts", get(list_spot_payouts))

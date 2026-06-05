@@ -765,7 +765,7 @@ const LIST_NOMINATED_DELEGATES_PLATFORM_SQL: &str = "
     ";
 
 /// Without `platformId`: nominees for ecosystem/PoC registries (and any non-platform type), scoped by DAO id on each row.
-/// Optional omnibus excludes `registry_type = 2`. Binds: registry_type ($1), status ($2), omnibus_exclude_type_2 ($3), limit ($4), offset ($5).
+/// Optional omnibus excludes `registry_type = 3` (platform). Binds: registry_type ($1), status ($2), omnibus_exclude_platform ($3), limit ($4), offset ($5).
 const LIST_NOMINATED_DELEGATES_LEGACY_SQL: &str = "
         SELECT address, registry_type, governance_registry_id, upvotes, downvotes, scheduled_term_start_epoch,
                nomination_time, status
@@ -776,7 +776,7 @@ const LIST_NOMINATED_DELEGATES_LEGACY_SQL: &str = "
         ) n
         WHERE ($1::smallint IS NULL OR registry_type = $1)
           AND ($2::smallint IS NULL OR status = $2)
-          AND ($3::bool = false OR registry_type <> 2)
+          AND ($3::bool = false OR registry_type <> 3)
         ORDER BY upvotes DESC
         LIMIT $4 OFFSET $5
     ";
@@ -882,7 +882,7 @@ mod list_proposals_sql_tests {
     #[test]
     fn list_nominated_delegates_legacy_sql_excludes_platform_when_omnibus() {
         assert!(
-            LIST_NOMINATED_DELEGATES_LEGACY_SQL.contains("registry_type <> 2"),
+            LIST_NOMINATED_DELEGATES_LEGACY_SQL.contains("registry_type <> 3"),
             "unscoped nominee list must exclude platform registry type unless filtered explicitly"
         );
         assert!(

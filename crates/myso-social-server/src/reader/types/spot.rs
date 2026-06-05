@@ -16,6 +16,11 @@ pub struct SpotRecordResponse {
     pub max_resolution_window_ms: Option<i64>,
     pub created_at_ms: i64,
     pub last_resolution_at_ms: Option<i64>,
+    pub record_object_id: Option<String>,
+    pub active_proposal_id: Option<String>,
+    pub oracle_proposed_outcome: Option<i16>,
+    pub proposed_outcome: Option<i16>,
+    pub dao_escalated_at_ms: Option<i64>,
 }
 
 #[derive(Debug, Serialize, QueryableByName)]

@@ -2,16 +2,18 @@
 // SPDX-License-Identifier: Apache-2.0
 
 use std::str::FromStr;
+use std::sync::Arc;
 
 use async_graphql::Context;
 use async_graphql::Object;
 use myso_indexer_alt_social_reader::{
-    SpotBetRow, SpotBetWithdrawalRow, SpotPayoutRow, SpotRecordRow, SpotRefundRow,
+    SocialPgReader, SpotBetRow, SpotBetWithdrawalRow, SpotPayoutRow, SpotRecordRow, SpotRefundRow,
     SpotResolutionRow,
 };
 
 use crate::api::resolve_profile::resolve_profile_summary;
 use crate::api::scalars::myso_address::MySoAddress;
+use crate::api::types::governance::Proposal;
 use crate::api::types::profile_summary::ProfileSummary;
 
 fn parse_betting_options(value: &serde_json::Value) -> Vec<String> {
@@ -191,6 +193,43 @@ impl SpotRecord {
     /// Transaction ID of the record creation/update.
     async fn transaction_id(&self) -> &str {
         &self.inner.transaction_id
+    }
+
+    /// On-chain SpotRecord object id.
+    async fn record_object_id(&self) -> Option<&str> {
+        self.inner.record_object_id.as_deref()
+    }
+
+    /// Active SPoT governance proposal id while debate is open.
+    async fn active_proposal_id(&self) -> Option<&str> {
+        self.inner.active_proposal_id.as_deref()
+    }
+
+    /// Oracle-suggested outcome when escalated to DAO_REQUIRED.
+    async fn oracle_proposed_outcome(&self) -> Option<i16> {
+        self.inner.oracle_proposed_outcome
+    }
+
+    /// Outcome under community ratification in the active proposal.
+    async fn proposed_outcome(&self) -> Option<i16> {
+        self.inner.proposed_outcome
+    }
+
+    /// Wall-clock ms when oracle escalated to DAO_REQUIRED.
+    async fn dao_escalated_at_ms(&self) -> Option<i64> {
+        self.inner.dao_escalated_at_ms
+    }
+
+    /// Linked governance proposal (when active_proposal_id is set).
+    async fn proposal(&self, ctx: &Context<'_>) -> Option<Proposal> {
+        let proposal_id = self.inner.active_proposal_id.as_deref()?;
+        let reader_opt = ctx.data_opt::<Arc<Option<SocialPgReader>>>()?;
+        let reader = reader_opt.as_ref().as_ref()?;
+        reader
+            .get_proposal_by_id(proposal_id)
+            .await
+            .ok()?
+            .map(Proposal::from_row)
     }
 }
 

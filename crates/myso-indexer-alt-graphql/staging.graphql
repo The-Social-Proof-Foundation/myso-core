@@ -1031,7 +1031,7 @@ type Delegate {
 	"""
 	ratings(limit: Int, offset: Int): [DelegateRating!]
 	"""
-	Registry type (0=ecosystem, 1=proof of creativity, 2=platform).
+	Registry type (0=ecosystem, 1=proof of creativity, 2=SPoT, 3=platform).
 	"""
 	registryType: Int!
 	"""
@@ -1778,7 +1778,7 @@ type GovernanceRegistry {
 	"""
 	lastDelegatePanelBoundaryEpoch: Int
 	"""
-	Platform details (when registry_type=2). Resolved by platform_id when from governanceRegistry(platformId), else by registry_id.
+	Platform details (when registry_type=3). Resolved by platform_id when from governanceRegistry(platformId), else by registry_id.
 	"""
 	platform: Platform
 	"""
@@ -1786,7 +1786,7 @@ type GovernanceRegistry {
 	"""
 	registryId: String!
 	"""
-	Registry type (0=ecosystem, 1=proof of creativity, 2=platform).
+	Registry type (0=ecosystem, 1=proof of creativity, 2=SPoT, 3=platform).
 	"""
 	registryType: Int!
 	"""
@@ -1852,7 +1852,7 @@ type GovernanceStats {
 	"""
 	registryId: String!
 	"""
-	Registry type (0=ecosystem, 1=proof of creativity, 2=platform).
+	Registry type (0=ecosystem, 1=proof of creativity, 2=SPoT, 3=platform).
 	"""
 	registryType: Int!
 	"""
@@ -3793,7 +3793,7 @@ type NominatedDelegate {
 	"""
 	nominationTime: Int!
 	"""
-	Registry type (0=ecosystem, 1=proof of creativity, 2=platform).
+	Registry type (0=ecosystem, 1=proof of creativity, 2=SPoT, 3=platform).
 	"""
 	registryType: Int!
 	"""
@@ -5927,7 +5927,7 @@ type Proposal {
 	"""
 	referenceId: String
 	"""
-	Governance registry / proposal bucket (0=ecosystem, 1=proof of creativity, 2=platform). Same numeric space as chain `proposal_type`; not proposal lifecycle status.
+	Governance registry / proposal bucket (0=ecosystem, 1=proof of creativity, 2=SPoT, 3=platform). Same numeric space as chain `proposal_type`; not proposal lifecycle status.
 	"""
 	registryType: Int!
 	"""
@@ -6297,7 +6297,7 @@ type Query {
 	List nominated delegates (paginated, optionally filtered by platform, registry type, and status).
 	Returns empty when social DB not configured.
 	
-	`registryType`: 0=ecosystem, 1=proof of creativity, 2=platform DAO.
+	`registryType`: 0=ecosystem, 1=proof of creativity, 2=SPoT, 3=platform DAO.
 	If `platformId` is set, results are scoped to that platform's governance registry (same resolution
 	as `proposals(platformId:)` / `governanceRegistry(platformId:)`), and `registryType` is ignored.
 	**Platform DAO (`registryType` 2) requires `platformId`:** when `registryType` is 2 and `platformId`
@@ -6433,7 +6433,7 @@ type Query {
 	"""
 	List governance proposals (paginated, optionally filtered by platform, registry type, status, submitter). Returns empty when social DB not configured.
 	
-	`registryType` matches `Proposal.registryType` (0=ecosystem, 1=proof of creativity, 2=platform).
+	`registryType` matches `Proposal.registryType` (0=ecosystem, 1=proof of creativity, 2=SPoT, 3=platform).
 	If `platformId` is set, the effective registry type comes from that platform's governance registry and `registryType` is ignored.
 	New on-chain proposals start in delegate review (`status` 1), not submitted (`status` 0).
 	"""

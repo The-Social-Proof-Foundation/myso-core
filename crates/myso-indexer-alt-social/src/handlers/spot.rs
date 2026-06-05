@@ -4,7 +4,7 @@
 use super::SocialEventRow;
 use myso_indexer_alt_social_schema::models::{
     NewSpotBet, NewSpotBetWithdrawal, NewSpotConfig, NewSpotEventLog, NewSpotPayout, NewSpotRecord,
-    NewSpotRefund, NewSpotResolution, STATUS_OPEN, STATUS_RESOLVED,
+    NewSpotRefund, NewSpotResolution, STATUS_DAO_REQUIRED, STATUS_OPEN, STATUS_RESOLVED,
 };
 
 fn transaction_id_from_event_id(event_id: &str) -> String {
@@ -55,6 +55,12 @@ pub fn handle_spot_event(
         }
         "SpotBetWithdrawnEvent" | "BetWithdrawnEvent" => {
             process_spot_bet_withdrawn_event(data, event_id, timestamp_ms, &transaction_id, now)
+        }
+        "SpotGovernanceProposalLinkedEvent" => {
+            process_spot_governance_proposal_linked_event(data, event_id, &transaction_id, now)
+        }
+        "SpotGovernanceProposalClearedEvent" => {
+            process_spot_governance_proposal_cleared_event(data, event_id, &transaction_id, now)
         }
         _ => None,
     }
@@ -164,7 +170,85 @@ fn process_spot_dao_required_event(
 ) -> Option<Vec<SocialEventRow>> {
     let post_id = data.get("post_id")?.as_str()?.to_string();
     let log = new_event_log("SpotDaoRequiredEvent", &post_id, data, event_id, now);
-    Some(vec![SocialEventRow::SpotEventLog(log)])
+    Some(vec![
+        SocialEventRow::SpotRecordGovernanceUpdate {
+            spot_record_id: data
+                .get("spot_record_id")
+                .and_then(|v| v.as_str())
+                .unwrap_or("")
+                .to_string(),
+            post_id: post_id.clone(),
+            active_proposal_id: None,
+            oracle_proposed_outcome: data
+                .get("oracle_proposed_outcome")
+                .and_then(|v| v.as_u64())
+                .map(|v| v as i16),
+            proposed_outcome: None,
+            dao_escalated_at_ms: data.get("dao_escalated_at_ms").and_then(json_opt_i64),
+            status: Some(STATUS_DAO_REQUIRED),
+        },
+        SocialEventRow::SpotEventLog(log),
+    ])
+}
+
+fn process_spot_governance_proposal_linked_event(
+    data: &serde_json::Value,
+    event_id: &str,
+    _transaction_id: &str,
+    now: chrono::DateTime<chrono::Utc>,
+) -> Option<Vec<SocialEventRow>> {
+    let post_id = data.get("post_id")?.as_str()?.to_string();
+    let spot_record_id = data.get("spot_record_id")?.as_str()?.to_string();
+    let proposal_id = data.get("proposal_id")?.as_str()?.to_string();
+    let proposed_outcome = data.get("proposed_outcome")?.as_u64().map(|v| v as i16);
+    let log = new_event_log(
+        "SpotGovernanceProposalLinkedEvent",
+        &post_id,
+        data,
+        event_id,
+        now,
+    );
+    Some(vec![
+        SocialEventRow::SpotRecordGovernanceUpdate {
+            spot_record_id,
+            post_id: post_id.clone(),
+            active_proposal_id: Some(proposal_id),
+            oracle_proposed_outcome: None,
+            proposed_outcome,
+            dao_escalated_at_ms: None,
+            status: Some(STATUS_DAO_REQUIRED),
+        },
+        SocialEventRow::SpotEventLog(log),
+    ])
+}
+
+fn process_spot_governance_proposal_cleared_event(
+    data: &serde_json::Value,
+    event_id: &str,
+    _transaction_id: &str,
+    now: chrono::DateTime<chrono::Utc>,
+) -> Option<Vec<SocialEventRow>> {
+    let post_id = data.get("post_id")?.as_str()?.to_string();
+    let spot_record_id = data.get("spot_record_id")?.as_str()?.to_string();
+    let log = new_event_log(
+        "SpotGovernanceProposalClearedEvent",
+        &post_id,
+        data,
+        event_id,
+        now,
+    );
+    Some(vec![
+        SocialEventRow::SpotRecordGovernanceUpdate {
+            spot_record_id,
+            post_id: post_id.clone(),
+            active_proposal_id: None,
+            oracle_proposed_outcome: None,
+            proposed_outcome: None,
+            dao_escalated_at_ms: None,
+            status: None,
+        },
+        SocialEventRow::SpotEventLog(log),
+    ])
 }
 
 fn process_spot_payout_event(
@@ -268,6 +352,10 @@ fn process_spot_config_updated_event(
         timestamp_ms: event_timestamp_ms,
         time: now,
         transaction_id: transaction_id.to_string(),
+        spot_governance_registry_id: data
+            .get("spot_governance_registry_id")
+            .and_then(|v| v.as_str())
+            .map(String::from),
     };
 
     let log = new_event_log("SpotConfigUpdatedEvent", "", data, event_id, now);
@@ -285,6 +373,10 @@ fn process_spot_record_created_event(
     now: chrono::DateTime<chrono::Utc>,
 ) -> Option<Vec<SocialEventRow>> {
     let post_id = data.get("post_id")?.as_str()?.to_string();
+    let record_object_id = data
+        .get("record_id")
+        .and_then(|v| v.as_str())
+        .map(String::from);
     let created_at_ms = json_to_i64(data.get("created_at_ms")?);
     let betting_options = data
         .get("betting_options")
@@ -309,6 +401,11 @@ fn process_spot_record_created_event(
         created_at: now_naive,
         updated_at: now_naive,
         transaction_id: transaction_id.to_string(),
+        record_object_id,
+        active_proposal_id: None,
+        oracle_proposed_outcome: None,
+        proposed_outcome: None,
+        dao_escalated_at_ms: None,
     };
 
     let log = new_event_log("SpotRecordCreatedEvent", &post_id, data, event_id, now);

@@ -47,12 +47,18 @@ module social_contracts::platform {
     const EInvalidCategory: u64 = 14;
     const ECategoriesSame: u64 = 15;
     const EPlatformApproved: u64 = 16;
+    const EInvalidCoverPhotoUrl: u64 = 17;
+    const ETooManyMediaPreviews: u64 = 18;
+    const EInvalidMediaPreviewUrl: u64 = 19;
 
     /// Maximum lengths for badge fields
     const MAX_BADGE_NAME_LENGTH: u64 = 100;
     const MAX_BADGE_DESCRIPTION_LENGTH: u64 = 500;
     const MAX_BADGE_MEDIA_URL_LENGTH: u64 = 2048;
     const MAX_BADGE_ICON_URL_LENGTH: u64 = 2048;
+    const MAX_COVER_PHOTO_URL_LENGTH: u64 = 2048;
+    const MAX_MEDIA_PREVIEWS: u64 = 10;
+    const MAX_MEDIA_PREVIEW_URL_LENGTH: u64 = 2048;
     
     /// Maximum length for approval reasoning
     const MAX_REASONING_LENGTH: u64 = 2000; // Max characters for approval reasoning
@@ -120,6 +126,10 @@ module social_contracts::platform {
         description: String,
         /// Platform logo URL
         logo: String,
+        /// Optional cover photo URL
+        cover_photo: Option<String>,
+        /// Optional screenshot/video preview URLs
+        media_previews: Option<vector<String>>,
         /// Platform developer address
         developer: address,
         /// Platform terms of service URL
@@ -185,6 +195,8 @@ module social_contracts::platform {
         privacy_policy: String,
         platforms: vector<String>,
         links: vector<String>,
+        cover_photo: Option<String>,
+        media_previews: Option<vector<String>>,
         primary_category: String,
         secondary_category: Option<String>,
         status: PlatformStatus,
@@ -206,10 +218,13 @@ module social_contracts::platform {
         name: String,
         tagline: String,
         description: String,
+        logo: String,
         terms_of_service: String,
         privacy_policy: String,
         platforms: vector<String>,
         links: vector<String>,
+        cover_photo: Option<String>,
+        media_previews: Option<vector<String>>,
         primary_category: String,
         secondary_category: Option<String>,
         status: PlatformStatus,
@@ -217,7 +232,6 @@ module social_contracts::platform {
         shutdown_date: Option<String>,
         updated_at: u64,
     }
-
 
     /// Moderator added event
     public struct ModeratorAddedEvent has copy, drop {
@@ -320,6 +334,8 @@ module social_contracts::platform {
         quadratic_base_cost: Option<u64>,
         voting_period_epochs: Option<u64>,
         quorum_votes: Option<u64>,
+        cover_photo: Option<String>,
+        media_previews: Option<vector<String>>,
         clock: &Clock,
         ctx: &mut TxContext
     ) {
@@ -329,6 +345,9 @@ module social_contracts::platform {
         let platform_id = object::new(ctx);
         let developer = tx_context::sender(ctx);
         let now = clock::timestamp_ms(clock);
+
+        validate_cover_photo(&cover_photo);
+        validate_media_previews(&media_previews);
 
         // Check if platform name is already taken
         assert!(!table::contains(&registry.platforms_by_name, name), EPlatformAlreadyExists);
@@ -371,6 +390,8 @@ module social_contracts::platform {
             tagline,
             description,
             logo: logo_url,
+            cover_photo,
+            media_previews,
             developer,
             terms_of_service,
             privacy_policy,
@@ -495,6 +516,8 @@ module social_contracts::platform {
             privacy_policy: platform.privacy_policy,
             platforms: platform.platforms,
             links: platform.links,
+            cover_photo: platform.cover_photo,
+            media_previews: platform.media_previews,
             primary_category: platform.primary_category,
             secondary_category: platform.secondary_category,
             status: platform.status,
@@ -530,12 +553,17 @@ module social_contracts::platform {
         new_status: u8,
         new_release_date: String,
         new_shutdown_date: Option<String>,
+        new_cover_photo: Option<String>,
+        new_media_previews: Option<vector<String>>,
         ctx: &mut TxContext
     ) {
         // Check version compatibility
         assert!(platform.version == upgrade::current_version(), EWrongVersion);
         
         let now = tx_context::epoch_timestamp_ms(ctx);
+
+        validate_cover_photo(&new_cover_photo);
+        validate_media_previews(&new_media_previews);
 
         // Verify caller is platform developer
         assert!(platform.developer == tx_context::sender(ctx), EUnauthorized);
@@ -565,6 +593,8 @@ module social_contracts::platform {
         platform.status = new_status(new_status);
         platform.release_date = new_release_date;
         platform.shutdown_date = new_shutdown_date;
+        platform.cover_photo = new_cover_photo;
+        platform.media_previews = new_media_previews;
 
         // Emit platform updated event
         event::emit(PlatformUpdatedEvent {
@@ -572,10 +602,13 @@ module social_contracts::platform {
             name: platform.name,
             tagline: platform.tagline,
             description: platform.description,
+            logo: platform.logo,
             terms_of_service: platform.terms_of_service,
             privacy_policy: platform.privacy_policy,
             platforms: platform.platforms,
             links: platform.links,
+            cover_photo: platform.cover_photo,
+            media_previews: platform.media_previews,
             primary_category: platform.primary_category,
             secondary_category: platform.secondary_category,
             status: platform.status,
@@ -1106,6 +1139,33 @@ module social_contracts::platform {
         status.status
     }
 
+    fun validate_cover_photo(cover_photo: &Option<String>) {
+        if (option::is_some(cover_photo)) {
+            let url = option::borrow(cover_photo);
+            assert!(
+                string::length(url) > 0 && string::length(url) <= MAX_COVER_PHOTO_URL_LENGTH,
+                EInvalidCoverPhotoUrl
+            );
+        };
+    }
+
+    fun validate_media_previews(media_previews: &Option<vector<String>>) {
+        if (option::is_some(media_previews)) {
+            let previews = option::borrow(media_previews);
+            assert!(vector::length(previews) <= MAX_MEDIA_PREVIEWS, ETooManyMediaPreviews);
+            let mut i = 0;
+            let len = vector::length(previews);
+            while (i < len) {
+                let url = vector::borrow(previews, i);
+                assert!(
+                    string::length(url) > 0 && string::length(url) <= MAX_MEDIA_PREVIEW_URL_LENGTH,
+                    EInvalidMediaPreviewUrl
+                );
+                i = i + 1;
+            };
+        };
+    }
+
     /// Validate that a category string matches one of the allowed categories
     #[allow(implicit_const_copy)]
     fun is_valid_category(category: &String): bool {
@@ -1262,6 +1322,16 @@ module social_contracts::platform {
     /// Get platform logo URL
     public fun logo(platform: &Platform): &String {
         &platform.logo
+    }
+
+    /// Get platform cover photo URL
+    public fun cover_photo(platform: &Platform): &Option<String> {
+        &platform.cover_photo
+    }
+
+    /// Get platform media preview URLs
+    public fun media_previews(platform: &Platform): &Option<vector<String>> {
+        &platform.media_previews
     }
 
     /// Get platform developer
@@ -1685,6 +1755,8 @@ module social_contracts::platform {
         
         // Remember old version and update to new version
         let old_version = platform.version;
+        platform.cover_photo = option::none();
+        platform.media_previews = option::none();
         platform.version = current_version;
         
         // Emit event for object migration

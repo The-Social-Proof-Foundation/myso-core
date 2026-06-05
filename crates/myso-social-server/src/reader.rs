@@ -440,6 +440,14 @@ impl Reader {
         spot::get_spot_configuration(&self.db).await
     }
 
+    pub async fn list_contested_spot_records(
+        &self,
+        limit: i64,
+        offset: i64,
+    ) -> Result<Vec<SpotRecordResponse>, crate::error::SocialError> {
+        spot::list_contested_spot_records(&self.db, limit, offset).await
+    }
+
     pub async fn list_proposals(
         &self,
         limit: i64,

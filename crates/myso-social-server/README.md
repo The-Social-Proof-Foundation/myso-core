@@ -249,6 +249,7 @@ After `delete_post` / `delete_comment` and indexer catch-up, confirm rows in `po
 
 | Method | Endpoint | Description |
 |--------|----------|-------------|
+| GET | `/spot/contested-records` | List contested spot records (`DAO_REQUIRED`) |
 | GET | `/spot/records/:post_id` | Get spot record |
 | GET | `/spot/records/:post_id/bets` | List spot bets |
 | GET | `/spot/records/:post_id/payouts` | List spot payouts |

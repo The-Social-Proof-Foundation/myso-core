@@ -947,6 +947,27 @@ impl Query {
         )
     }
 
+    /// Contested SPoT records in DAO_REQUIRED status (paginated).
+    async fn contested_spot_records(
+        &self,
+        ctx: &Context<'_>,
+        limit: Option<u64>,
+        offset: Option<u64>,
+    ) -> Option<Result<Vec<SpotRecord>, RpcError>> {
+        let reader_opt = ctx
+            .data_opt::<std::sync::Arc<Option<myso_indexer_alt_social_reader::SocialPgReader>>>()?;
+        let reader = reader_opt.as_ref().as_ref()?;
+        let limit = limit.unwrap_or(20).min(100) as i64;
+        let offset = offset.unwrap_or(0) as i64;
+        Some(
+            reader
+                .list_contested_spot_records(limit, offset)
+                .await
+                .map_err(Into::into)
+                .map(|rows| rows.into_iter().map(SpotRecord::from_row).collect()),
+        )
+    }
+
     /// Spot payouts for a post. Returns empty when social DB not configured.
     async fn spot_payouts(
         &self,
@@ -1344,7 +1365,7 @@ impl Query {
 
     /// List governance proposals (paginated, optionally filtered by platform, registry type, status, submitter). Returns empty when social DB not configured.
     ///
-    /// `registryType` matches `Proposal.registryType` (0=ecosystem, 1=proof of creativity, 2=platform).
+    /// `registryType` matches `Proposal.registryType` (0=ecosystem, 1=proof of creativity, 2=SPoT, 3=platform).
     /// If `platformId` is set, the effective registry type comes from that platform's governance registry and `registryType` is ignored.
     /// New on-chain proposals start in delegate review (`status` 1), not submitted (`status` 0).
     async fn proposals(
@@ -1531,7 +1552,7 @@ impl Query {
     /// List nominated delegates (paginated, optionally filtered by platform, registry type, and status).
     /// Returns empty when social DB not configured.
     ///
-    /// `registryType`: 0=ecosystem, 1=proof of creativity, 2=platform DAO.
+    /// `registryType`: 0=ecosystem, 1=proof of creativity, 2=SPoT, 3=platform DAO.
     /// If `platformId` is set, results are scoped to that platform's governance registry (same resolution
     /// as `proposals(platformId:)` / `governanceRegistry(platformId:)`), and `registryType` is ignored.
     /// **Platform DAO (`registryType` 2) requires `platformId`:** when `registryType` is 2 and `platformId`

@@ -60,6 +60,19 @@ pub async fn list_spot_refunds(
     Ok(Json(data))
 }
 
+pub async fn list_contested_spot_records(
+    State(state): State<Arc<AppState>>,
+    Query(params): Query<PageParams>,
+) -> Result<Json<Vec<crate::reader::SpotRecordResponse>>, SocialError> {
+    let limit = params.limit();
+    let offset = params.offset();
+    let data = state
+        .reader
+        .list_contested_spot_records(limit, offset)
+        .await?;
+    Ok(Json(data))
+}
+
 pub async fn get_spot_configuration(
     State(state): State<Arc<AppState>>,
 ) -> Result<Json<crate::reader::SpotConfigInfo>, SocialError> {

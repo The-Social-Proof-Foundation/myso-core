@@ -43,6 +43,10 @@ pub struct PlatformRow {
     pub description: Option<String>,
     #[diesel(sql_type = Nullable<Text>)]
     pub logo: Option<String>,
+    #[diesel(sql_type = Nullable<Text>)]
+    pub cover_photo: Option<String>,
+    #[diesel(sql_type = Nullable<diesel::sql_types::Jsonb>)]
+    pub media_previews: Option<JsonValue>,
     #[diesel(sql_type = Text)]
     pub developer_address: String,
     #[diesel(sql_type = SmallInt)]
@@ -97,7 +101,8 @@ pub(crate) async fn get_platform_by_id(
     metrics.requests_received.inc();
     let _guard = metrics.latency.start_timer();
     let result = diesel::sql_query(
-        "SELECT p.platform_id, p.name, p.tagline, p.description, p.logo, p.developer_address,
+        "SELECT p.platform_id, p.name, p.tagline, p.description, p.logo, p.cover_photo, p.media_previews,
+                p.developer_address,
                 p.status, p.is_approved, p.primary_category, p.secondary_category, p.created_at, p.updated_at,
                 p.terms_of_service, p.privacy_policy, p.links, p.platforms AS platform_names, p.release_date, p.shutdown_date,
                 p.wants_dao_governance, p.governance_registry_id, p.delegate_count,
@@ -123,7 +128,8 @@ pub(crate) async fn get_platform_by_registry_id(
     metrics.requests_received.inc();
     let _guard = metrics.latency.start_timer();
     let result = diesel::sql_query(
-        "SELECT p.platform_id, p.name, p.tagline, p.description, p.logo, p.developer_address,
+        "SELECT p.platform_id, p.name, p.tagline, p.description, p.logo, p.cover_photo, p.media_previews,
+                p.developer_address,
                 p.status, p.is_approved, p.primary_category, p.secondary_category, p.created_at, p.updated_at,
                 p.terms_of_service, p.privacy_policy, p.links, p.platforms AS platform_names, p.release_date, p.shutdown_date,
                 p.wants_dao_governance, p.governance_registry_id, p.delegate_count,
@@ -151,7 +157,8 @@ pub(crate) async fn list_platforms(
     metrics.requests_received.inc();
     let _guard = metrics.latency.start_timer();
     let query = "
-        SELECT p.platform_id, p.name, p.tagline, p.description, p.logo, p.developer_address,
+        SELECT p.platform_id, p.name, p.tagline, p.description, p.logo, p.cover_photo, p.media_previews,
+               p.developer_address,
                p.status, p.is_approved, p.primary_category, p.secondary_category, p.created_at, p.updated_at,
                p.terms_of_service, p.privacy_policy, p.links, p.platforms AS platform_names, p.release_date, p.shutdown_date,
                p.wants_dao_governance, p.governance_registry_id, p.delegate_count,
