@@ -27,7 +27,25 @@ ALTER TABLE insurance_config DROP COLUMN IF EXISTS paused;
 ALTER TABLE insurance_config DROP COLUMN IF EXISTS treasury;
 
 -- ============================================================================
--- 3. ADD COMMENTS
+-- 3. ADD SPOT RISK PRICING COLUMNS (merged from RiskPricingConfigUpdatedEvent)
+-- ============================================================================
+
+ALTER TABLE insurance_config
+ADD COLUMN IF NOT EXISTS min_spot_total_liquidity BIGINT NOT NULL DEFAULT 1,
+ADD COLUMN IF NOT EXISTS max_coverage_fraction_of_option_bps BIGINT NOT NULL DEFAULT 10000,
+ADD COLUMN IF NOT EXISTS max_risk_multiplier_bps BIGINT NOT NULL DEFAULT 500000,
+ADD COLUMN IF NOT EXISTS min_premium_amount BIGINT NOT NULL DEFAULT 1,
+ADD COLUMN IF NOT EXISTS spot_smoothing_per_option BIGINT NOT NULL DEFAULT 0,
+ADD COLUMN IF NOT EXISTS implied_prob_floor_bps BIGINT NOT NULL DEFAULT 10,
+ADD COLUMN IF NOT EXISTS odds_floor_1x BOOLEAN NOT NULL DEFAULT TRUE,
+ADD COLUMN IF NOT EXISTS odds_cap_bps BIGINT NOT NULL DEFAULT 500000,
+ADD COLUMN IF NOT EXISTS liq_cap_bps BIGINT NOT NULL DEFAULT 500000,
+ADD COLUMN IF NOT EXISTS liq_ref_amount BIGINT NOT NULL DEFAULT 1000000000000,
+ADD COLUMN IF NOT EXISTS exposure_cap_bps BIGINT NOT NULL DEFAULT 30000,
+ADD COLUMN IF NOT EXISTS exposure_k_bps BIGINT NOT NULL DEFAULT 5000;
+
+-- ============================================================================
+-- 4. ADD COMMENTS
 -- ============================================================================
 
 COMMENT ON COLUMN insurance_config.enable_flag IS 'Flag indicating if insurance is enabled (replaces paused field with inverted semantics)';

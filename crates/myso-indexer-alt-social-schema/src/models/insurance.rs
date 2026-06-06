@@ -23,6 +23,17 @@ pub const DEFAULT_MIN_COVERAGE_BPS: i64 = 1000;
 pub const DEFAULT_MAX_COVERAGE_BPS: i64 = 9000;
 pub const DEFAULT_MAX_DURATION_MS: i64 = 2_592_000_000;
 pub const DEFAULT_FEE_BPS: i64 = 50;
+pub const DEFAULT_MIN_SPOT_TOTAL_LIQUIDITY: i64 = 1;
+pub const DEFAULT_MAX_COVERAGE_FRACTION_OF_OPTION_BPS: i64 = 10_000;
+pub const DEFAULT_MAX_RISK_MULTIPLIER_BPS: i64 = 500_000;
+pub const DEFAULT_MIN_PREMIUM_AMOUNT: i64 = 1;
+pub const DEFAULT_SPOT_SMOOTHING_PER_OPTION: i64 = 0;
+pub const DEFAULT_IMPLIED_PROB_FLOOR_BPS: i64 = 10;
+pub const DEFAULT_ODDS_CAP_BPS: i64 = 500_000;
+pub const DEFAULT_LIQ_CAP_BPS: i64 = 500_000;
+pub const DEFAULT_LIQ_REF_AMOUNT: i64 = 1_000_000_000_000;
+pub const DEFAULT_EXPOSURE_CAP_BPS: i64 = 30_000;
+pub const DEFAULT_EXPOSURE_K_BPS: i64 = 5000;
 
 /// Query result for an insurance policy (for GraphQL/reader).
 #[derive(Debug, Clone, QueryableByName, Serialize, Deserialize)]
@@ -124,6 +135,18 @@ pub struct InsuranceConfig {
     pub time: chrono::DateTime<chrono::Utc>,
     pub transaction_id: String,
     pub enable_flag: bool,
+    pub min_spot_total_liquidity: i64,
+    pub max_coverage_fraction_of_option_bps: i64,
+    pub max_risk_multiplier_bps: i64,
+    pub min_premium_amount: i64,
+    pub spot_smoothing_per_option: i64,
+    pub implied_prob_floor_bps: i64,
+    pub odds_floor_1x: bool,
+    pub odds_cap_bps: i64,
+    pub liq_cap_bps: i64,
+    pub liq_ref_amount: i64,
+    pub exposure_cap_bps: i64,
+    pub exposure_k_bps: i64,
 }
 
 #[derive(Debug, Clone, Insertable, Serialize, Deserialize)]
@@ -139,6 +162,18 @@ pub struct NewInsuranceConfig {
     pub timestamp_ms: i64,
     pub time: chrono::DateTime<chrono::Utc>,
     pub transaction_id: String,
+    pub min_spot_total_liquidity: i64,
+    pub max_coverage_fraction_of_option_bps: i64,
+    pub max_risk_multiplier_bps: i64,
+    pub min_premium_amount: i64,
+    pub spot_smoothing_per_option: i64,
+    pub implied_prob_floor_bps: i64,
+    pub odds_floor_1x: bool,
+    pub odds_cap_bps: i64,
+    pub liq_cap_bps: i64,
+    pub liq_ref_amount: i64,
+    pub exposure_cap_bps: i64,
+    pub exposure_k_bps: i64,
 }
 
 #[derive(Debug, Clone, Queryable, Selectable, Serialize, Deserialize)]

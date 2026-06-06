@@ -42,7 +42,7 @@ use myso_indexer_alt_social_schema::models::{
     GovernanceRegistryPanelBoundaryUpdate, GovernanceRegistryUpdate, NewAnonymousVote,
     NewBlockedEvent, NewBlockedProfile, NewComment, NewCommunityVote, NewDelegate,
     NewDelegateRating, NewDelegateVote, NewDeletionEvent, NewEcosystemTreasury, NewGovernanceEvent,
-    NewGovernanceRegistry, NewInsuranceConfig, NewInsuranceCoverageRoute, NewInsuranceEventLog,
+    NewGovernanceRegistry, NewInsuranceCoverageRoute, NewInsuranceEventLog,
     NewInsuranceMarketExposure, NewInsurancePolicy, NewInsurancePolicyEvent, NewInsuranceRouteFill,
     NewInsuranceUserExposure, NewInsuranceVault, NewInsuranceVaultTransaction, NewModerationEvent,
     NewMyDataAccessLog, NewMyDataConfig, NewMyDataData, NewMyDataPurchase, NewMyDataBroadPool,
@@ -408,7 +408,7 @@ pub enum SocialEventRow {
     MyDataDistributionRound(NewMyDataDistributionRound),
     MyDataMerkleRoot(NewMyDataMerkleRoot),
     MyDataClaim(NewMyDataClaim),
-    InsuranceConfig(NewInsuranceConfig),
+    InsuranceConfig(insurance::InsuranceConfigSnapshot),
     InsuranceVault(NewInsuranceVault),
     InsuranceVaultTransaction(NewInsuranceVaultTransaction),
     InsuranceVaultBalanceUpdate {

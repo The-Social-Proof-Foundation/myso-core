@@ -18,7 +18,11 @@ pub(crate) async fn get_insurance_configuration(
     let mut conn = db.connect().await?;
     let query = "
         SELECT updated_by, enable_flag, min_coverage_bps, max_coverage_bps, max_duration_ms,
-               fee_bps, version, timestamp_ms, time, transaction_id
+               fee_bps, version, timestamp_ms, time, transaction_id,
+               min_spot_total_liquidity, max_coverage_fraction_of_option_bps,
+               max_risk_multiplier_bps, min_premium_amount, spot_smoothing_per_option,
+               implied_prob_floor_bps, odds_floor_1x, odds_cap_bps, liq_cap_bps, liq_ref_amount,
+               exposure_cap_bps, exposure_k_bps
         FROM insurance_config
         ORDER BY time DESC
         LIMIT 1

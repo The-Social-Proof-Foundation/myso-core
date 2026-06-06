@@ -1100,6 +1100,42 @@ InsuranceConfig.time
 InsuranceConfig.transactionId
   => {}
 
+InsuranceConfig.minSpotTotalLiquidity
+  => {}
+
+InsuranceConfig.maxCoverageFractionOfOptionBps
+  => {}
+
+InsuranceConfig.maxRiskMultiplierBps
+  => {}
+
+InsuranceConfig.minPremiumAmount
+  => {}
+
+InsuranceConfig.spotSmoothingPerOption
+  => {}
+
+InsuranceConfig.impliedProbFloorBps
+  => {}
+
+InsuranceConfig.oddsFloor1X
+  => {}
+
+InsuranceConfig.oddsCapBps
+  => {}
+
+InsuranceConfig.liqCapBps
+  => {}
+
+InsuranceConfig.liqRefAmount
+  => {}
+
+InsuranceConfig.exposureCapBps
+  => {}
+
+InsuranceConfig.exposureKBps
+  => {}
+
 InsuranceCoverageRoute.routeId
   => {}
 
@@ -2372,6 +2408,12 @@ Platform.description
 Platform.logo
   => {}
 
+Platform.coverPhoto
+  => {}
+
+Platform.mediaPreviews
+  => {}
+
 Platform.developerAddress
   => {}
 
@@ -2508,6 +2550,12 @@ PlatformMembershipSummary.description
   => {}
 
 PlatformMembershipSummary.logo
+  => {}
+
+PlatformMembershipSummary.coverPhoto
+  => {}
+
+PlatformMembershipSummary.mediaPreviews
   => {}
 
 PlatformMembershipSummary.developerAddress
@@ -3437,6 +3485,9 @@ Profile.followers
 Profile.following
   => {}
 
+Profile.recommendations
+  => {}
+
 Profile.blockedProfiles
   => {}
 
@@ -3605,6 +3656,12 @@ ProfileSummary.blockedByViewer
 ProfileSummary.blockedBySubject
   => {}
 
+ProfileSummary.mutualCount
+  => {}
+
+ProfileSummary.mutualConnections
+  => {}
+
 ProfileSummary.selectedBadge
   => {}
 
@@ -3759,6 +3816,9 @@ Proposal.rewardPool
   => {}
 
 Proposal.referenceId
+  => {}
+
+Proposal.spotRecord
   => {}
 
 Proposal.implementedDescription
@@ -3929,6 +3989,9 @@ Query.spotBets
 Query.spotRecord
   => {}
 
+Query.contestedSpotRecords
+  => {}
+
 Query.spotPayouts
   => {}
 
@@ -4056,6 +4119,9 @@ Query.insuranceConfiguration
   => {}
 
 Query.socialGraphFollowing
+  => {}
+
+Query.socialGraphRecommendations
   => {}
 
 Query.checkProfileBlocked
@@ -4611,6 +4677,24 @@ SpotRecord.totalEscrow
   => {}
 
 SpotRecord.transactionId
+  => {}
+
+SpotRecord.recordObjectId
+  => {}
+
+SpotRecord.activeProposalId
+  => {}
+
+SpotRecord.oracleProposedOutcome
+  => {}
+
+SpotRecord.proposedOutcome
+  => {}
+
+SpotRecord.daoEscalatedAtMs
+  => {}
+
+SpotRecord.proposal
   => {}
 
 SpotRefund.recipient

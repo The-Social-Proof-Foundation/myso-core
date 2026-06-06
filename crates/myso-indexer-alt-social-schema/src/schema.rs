@@ -224,6 +224,18 @@ diesel::table! {
         time -> Timestamptz,
         transaction_id -> Text,
         enable_flag -> Bool,
+        min_spot_total_liquidity -> Int8,
+        max_coverage_fraction_of_option_bps -> Int8,
+        max_risk_multiplier_bps -> Int8,
+        min_premium_amount -> Int8,
+        spot_smoothing_per_option -> Int8,
+        implied_prob_floor_bps -> Int8,
+        odds_floor_1x -> Bool,
+        odds_cap_bps -> Int8,
+        liq_cap_bps -> Int8,
+        liq_ref_amount -> Int8,
+        exposure_cap_bps -> Int8,
+        exposure_k_bps -> Int8,
     }
 }
 

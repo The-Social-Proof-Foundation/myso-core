@@ -2059,21 +2059,69 @@ type InsuranceConfig {
 	"""
 	enableFlag: Boolean!
 	"""
+	Exposure multiplier cap, in basis points.
+	"""
+	exposureCapBps: Int!
+	"""
+	Exposure curve parameter K, in basis points.
+	"""
+	exposureKBps: Int!
+	"""
 	Fee in basis points.
 	"""
 	feeBps: Int!
+	"""
+	Implied probability floor, in basis points.
+	"""
+	impliedProbFloorBps: Int!
+	"""
+	Liquidity multiplier cap, in basis points.
+	"""
+	liqCapBps: Int!
+	"""
+	Reference pool size for the liquidity multiplier.
+	"""
+	liqRefAmount: Int!
 	"""
 	Maximum coverage in basis points.
 	"""
 	maxCoverageBps: Int!
 	"""
+	Maximum coverage as a fraction of the insured option, in basis points.
+	"""
+	maxCoverageFractionOfOptionBps: Int!
+	"""
 	Maximum policy duration in milliseconds.
 	"""
 	maxDurationMs: Int!
 	"""
+	Maximum combined risk multiplier cap, in basis points.
+	"""
+	maxRiskMultiplierBps: Int!
+	"""
 	Minimum coverage in basis points.
 	"""
 	minCoverageBps: Int!
+	"""
+	Minimum premium amount charged per policy.
+	"""
+	minPremiumAmount: Int!
+	"""
+	Minimum SPoT pool total liquidity required for pricing.
+	"""
+	minSpotTotalLiquidity: Int!
+	"""
+	Odds multiplier cap, in basis points.
+	"""
+	oddsCapBps: Int!
+	"""
+	Whether to enforce a 1x odds floor.
+	"""
+	oddsFloor1X: Boolean!
+	"""
+	SPoT smoothing applied per option for implied probability.
+	"""
+	spotSmoothingPerOption: Int!
 	"""
 	When the configuration was last updated.
 	"""

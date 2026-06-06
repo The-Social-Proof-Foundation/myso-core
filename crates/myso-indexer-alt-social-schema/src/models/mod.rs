@@ -36,8 +36,13 @@ pub use governance::{
     RewardDistribution, RewardDistributionRow, VoteDecryptionFailure, VoteDecryptionFailureRow,
 };
 pub use insurance::{
-    BPS_DENOM, DAY_MS, DEFAULT_FEE_BPS as INSURANCE_DEFAULT_FEE_BPS, DEFAULT_MAX_COVERAGE_BPS,
-    DEFAULT_MAX_DURATION_MS, DEFAULT_MIN_COVERAGE_BPS, InsuranceConfig, InsurancePolicy,
+    BPS_DENOM, DAY_MS, DEFAULT_EXPOSURE_CAP_BPS, DEFAULT_EXPOSURE_K_BPS,
+    DEFAULT_FEE_BPS as INSURANCE_DEFAULT_FEE_BPS, DEFAULT_IMPLIED_PROB_FLOOR_BPS,
+    DEFAULT_LIQ_CAP_BPS, DEFAULT_LIQ_REF_AMOUNT, DEFAULT_MAX_COVERAGE_BPS,
+    DEFAULT_MAX_COVERAGE_FRACTION_OF_OPTION_BPS, DEFAULT_MAX_DURATION_MS,
+    DEFAULT_MAX_RISK_MULTIPLIER_BPS, DEFAULT_MIN_COVERAGE_BPS, DEFAULT_MIN_PREMIUM_AMOUNT,
+    DEFAULT_MIN_SPOT_TOTAL_LIQUIDITY, DEFAULT_ODDS_CAP_BPS, DEFAULT_SPOT_SMOOTHING_PER_OPTION,
+    InsuranceConfig, InsurancePolicy,
     InsurancePolicyRow, InsuranceVault, InsuranceVaultRow, NewInsuranceConfig,
     NewInsuranceCoverageRoute, NewInsuranceEventLog, NewInsuranceMarketExposure,
     NewInsurancePolicy, NewInsurancePolicyEvent, NewInsuranceRouteFill, NewInsuranceUserExposure,

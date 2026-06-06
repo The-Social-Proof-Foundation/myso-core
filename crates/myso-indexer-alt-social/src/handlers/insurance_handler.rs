@@ -8,7 +8,8 @@ use std::sync::Arc;
 use anyhow::Result;
 use async_trait::async_trait;
 use diesel::pg::upsert::excluded;
-use diesel::sql_types::{BigInt, Int2, Text};
+use diesel::prelude::OptionalExtension;
+use diesel::sql_types::{BigInt, Bool, Int2, Text, Timestamptz};
 use diesel::ExpressionMethods;
 use diesel::QueryableByName;
 use diesel_async::RunQueryDsl;
@@ -31,14 +32,14 @@ use myso_indexer_alt_social_schema::schema::{
 
 use super::common;
 use super::events;
-use super::insurance;
+use super::insurance::{self, InsuranceConfigSnapshot};
 use crate::metrics::SocialMetrics;
 
 const INSURANCE_MODULES: &[&str] = &["insurance"];
 
 #[derive(Debug, Clone)]
 pub enum InsuranceRow {
-    InsuranceConfig(NewInsuranceConfig),
+    InsuranceConfig(InsuranceConfigSnapshot),
     InsuranceVault(NewInsuranceVault),
     InsuranceVaultTransaction(NewInsuranceVaultTransaction),
     InsuranceVaultBalanceUpdate {
@@ -81,8 +82,8 @@ pub enum InsuranceRow {
 impl InsuranceRow {
     fn from_social(row: crate::handlers::SocialEventRow) -> Option<Self> {
         match row {
-            crate::handlers::SocialEventRow::InsuranceConfig(c) => {
-                Some(InsuranceRow::InsuranceConfig(c))
+            crate::handlers::SocialEventRow::InsuranceConfig(snapshot) => {
+                Some(InsuranceRow::InsuranceConfig(snapshot))
             }
             crate::handlers::SocialEventRow::InsuranceVault(v) => {
                 Some(InsuranceRow::InsuranceVault(v))
@@ -228,17 +229,176 @@ impl Processor for InsuranceHandler {
     }
 }
 
+#[derive(QueryableByName)]
+struct LatestInsuranceConfigRow {
+    #[diesel(sql_type = Text)]
+    updated_by: String,
+    #[diesel(sql_type = Bool)]
+    enable_flag: bool,
+    #[diesel(sql_type = BigInt)]
+    min_coverage_bps: i64,
+    #[diesel(sql_type = BigInt)]
+    max_coverage_bps: i64,
+    #[diesel(sql_type = BigInt)]
+    max_duration_ms: i64,
+    #[diesel(sql_type = BigInt)]
+    fee_bps: i64,
+    #[diesel(sql_type = BigInt)]
+    version: i64,
+    #[diesel(sql_type = BigInt)]
+    timestamp_ms: i64,
+    #[diesel(sql_type = Timestamptz)]
+    time: chrono::DateTime<chrono::Utc>,
+    #[diesel(sql_type = Text)]
+    transaction_id: String,
+    #[diesel(sql_type = BigInt)]
+    min_spot_total_liquidity: i64,
+    #[diesel(sql_type = BigInt)]
+    max_coverage_fraction_of_option_bps: i64,
+    #[diesel(sql_type = BigInt)]
+    max_risk_multiplier_bps: i64,
+    #[diesel(sql_type = BigInt)]
+    min_premium_amount: i64,
+    #[diesel(sql_type = BigInt)]
+    spot_smoothing_per_option: i64,
+    #[diesel(sql_type = BigInt)]
+    implied_prob_floor_bps: i64,
+    #[diesel(sql_type = Bool)]
+    odds_floor_1x: bool,
+    #[diesel(sql_type = BigInt)]
+    odds_cap_bps: i64,
+    #[diesel(sql_type = BigInt)]
+    liq_cap_bps: i64,
+    #[diesel(sql_type = BigInt)]
+    liq_ref_amount: i64,
+    #[diesel(sql_type = BigInt)]
+    exposure_cap_bps: i64,
+    #[diesel(sql_type = BigInt)]
+    exposure_k_bps: i64,
+}
+
+fn latest_row_to_new(row: LatestInsuranceConfigRow) -> NewInsuranceConfig {
+    NewInsuranceConfig {
+        updated_by: row.updated_by,
+        enable_flag: row.enable_flag,
+        min_coverage_bps: row.min_coverage_bps,
+        max_coverage_bps: row.max_coverage_bps,
+        max_duration_ms: row.max_duration_ms,
+        fee_bps: row.fee_bps,
+        version: row.version,
+        timestamp_ms: row.timestamp_ms,
+        time: row.time,
+        transaction_id: row.transaction_id,
+        min_spot_total_liquidity: row.min_spot_total_liquidity,
+        max_coverage_fraction_of_option_bps: row.max_coverage_fraction_of_option_bps,
+        max_risk_multiplier_bps: row.max_risk_multiplier_bps,
+        min_premium_amount: row.min_premium_amount,
+        spot_smoothing_per_option: row.spot_smoothing_per_option,
+        implied_prob_floor_bps: row.implied_prob_floor_bps,
+        odds_floor_1x: row.odds_floor_1x,
+        odds_cap_bps: row.odds_cap_bps,
+        liq_cap_bps: row.liq_cap_bps,
+        liq_ref_amount: row.liq_ref_amount,
+        exposure_cap_bps: row.exposure_cap_bps,
+        exposure_k_bps: row.exposure_k_bps,
+    }
+}
+
+async fn load_latest_insurance_config(
+    conn: &mut Connection<'_>,
+) -> Result<Option<NewInsuranceConfig>> {
+    let query = "
+        SELECT updated_by, enable_flag, min_coverage_bps, max_coverage_bps, max_duration_ms,
+               fee_bps, version, timestamp_ms, time, transaction_id,
+               min_spot_total_liquidity, max_coverage_fraction_of_option_bps,
+               max_risk_multiplier_bps, min_premium_amount, spot_smoothing_per_option,
+               implied_prob_floor_bps, odds_floor_1x, odds_cap_bps, liq_cap_bps, liq_ref_amount,
+               exposure_cap_bps, exposure_k_bps
+        FROM insurance_config
+        ORDER BY time DESC
+        LIMIT 1
+    ";
+    let result = diesel::sql_query(query)
+        .get_result::<LatestInsuranceConfigRow>(conn)
+        .await
+        .optional()?;
+    Ok(result.map(latest_row_to_new))
+}
+
+fn finalize_insurance_config(
+    prev: &NewInsuranceConfig,
+    snapshot: &InsuranceConfigSnapshot,
+) -> NewInsuranceConfig {
+    match snapshot {
+        InsuranceConfigSnapshot::Initialized(config) => config.clone(),
+        InsuranceConfigSnapshot::Updated(update) => NewInsuranceConfig {
+            updated_by: update.updated_by.clone(),
+            enable_flag: update.enable_flag,
+            min_coverage_bps: update.min_coverage_bps,
+            max_coverage_bps: update.max_coverage_bps,
+            max_duration_ms: update.max_duration_ms,
+            fee_bps: update.fee_bps,
+            version: update.version,
+            timestamp_ms: update.timestamp_ms,
+            time: update.time,
+            transaction_id: update.transaction_id.clone(),
+            min_spot_total_liquidity: prev.min_spot_total_liquidity,
+            max_coverage_fraction_of_option_bps: prev.max_coverage_fraction_of_option_bps,
+            max_risk_multiplier_bps: prev.max_risk_multiplier_bps,
+            min_premium_amount: prev.min_premium_amount,
+            spot_smoothing_per_option: prev.spot_smoothing_per_option,
+            implied_prob_floor_bps: prev.implied_prob_floor_bps,
+            odds_floor_1x: prev.odds_floor_1x,
+            odds_cap_bps: prev.odds_cap_bps,
+            liq_cap_bps: prev.liq_cap_bps,
+            liq_ref_amount: prev.liq_ref_amount,
+            exposure_cap_bps: prev.exposure_cap_bps,
+            exposure_k_bps: prev.exposure_k_bps,
+        },
+        InsuranceConfigSnapshot::RiskPricingUpdated(update) => NewInsuranceConfig {
+            updated_by: update.updated_by.clone(),
+            enable_flag: prev.enable_flag,
+            min_coverage_bps: prev.min_coverage_bps,
+            max_coverage_bps: prev.max_coverage_bps,
+            max_duration_ms: prev.max_duration_ms,
+            fee_bps: prev.fee_bps,
+            version: prev.version,
+            timestamp_ms: update.timestamp_ms,
+            time: update.time,
+            transaction_id: update.transaction_id.clone(),
+            min_spot_total_liquidity: update.min_spot_total_liquidity,
+            max_coverage_fraction_of_option_bps: update.max_coverage_fraction_of_option_bps,
+            max_risk_multiplier_bps: update.max_risk_multiplier_bps,
+            min_premium_amount: update.min_premium_amount,
+            spot_smoothing_per_option: update.spot_smoothing_per_option,
+            implied_prob_floor_bps: update.implied_prob_floor_bps,
+            odds_floor_1x: update.odds_floor_1x,
+            odds_cap_bps: update.odds_cap_bps,
+            liq_cap_bps: update.liq_cap_bps,
+            liq_ref_amount: update.liq_ref_amount,
+            exposure_cap_bps: update.exposure_cap_bps,
+            exposure_k_bps: update.exposure_k_bps,
+        },
+    }
+}
+
 #[async_trait]
 impl Handler for InsuranceHandler {
     async fn commit<'a>(values: &[Self::Value], conn: &mut Connection<'a>) -> Result<usize> {
         let mut total = 0;
+        let mut running_latest = load_latest_insurance_config(conn)
+            .await?
+            .unwrap_or_else(insurance::new_insurance_config_with_defaults);
+
         for row in values {
             match row {
-                InsuranceRow::InsuranceConfig(c) => {
+                InsuranceRow::InsuranceConfig(snapshot) => {
+                    let merged = finalize_insurance_config(&running_latest, snapshot);
                     total += diesel::insert_into(insurance_config::table)
-                        .values(c)
+                        .values(&merged)
                         .execute(conn)
                         .await?;
+                    running_latest = merged;
                 }
                 InsuranceRow::InsuranceVault(v) => {
                     total += diesel::insert_into(insurance_vaults::table)

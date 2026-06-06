@@ -27,6 +27,30 @@ pub struct InsuranceConfigInfo {
     pub time: chrono::DateTime<chrono::Utc>,
     #[diesel(sql_type = Text)]
     pub transaction_id: String,
+    #[diesel(sql_type = BigInt)]
+    pub min_spot_total_liquidity: i64,
+    #[diesel(sql_type = BigInt)]
+    pub max_coverage_fraction_of_option_bps: i64,
+    #[diesel(sql_type = BigInt)]
+    pub max_risk_multiplier_bps: i64,
+    #[diesel(sql_type = BigInt)]
+    pub min_premium_amount: i64,
+    #[diesel(sql_type = BigInt)]
+    pub spot_smoothing_per_option: i64,
+    #[diesel(sql_type = BigInt)]
+    pub implied_prob_floor_bps: i64,
+    #[diesel(sql_type = Bool)]
+    pub odds_floor_1x: bool,
+    #[diesel(sql_type = BigInt)]
+    pub odds_cap_bps: i64,
+    #[diesel(sql_type = BigInt)]
+    pub liq_cap_bps: i64,
+    #[diesel(sql_type = BigInt)]
+    pub liq_ref_amount: i64,
+    #[diesel(sql_type = BigInt)]
+    pub exposure_cap_bps: i64,
+    #[diesel(sql_type = BigInt)]
+    pub exposure_k_bps: i64,
 }
 
 #[derive(Debug, Serialize, QueryableByName)]

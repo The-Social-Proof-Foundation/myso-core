@@ -7,8 +7,47 @@ use myso_indexer_alt_social_schema::models::{
     NewInsuranceConfig, NewInsuranceCoverageRoute, NewInsuranceEventLog,
     NewInsuranceMarketExposure, NewInsurancePolicy, NewInsurancePolicyEvent, NewInsuranceRouteFill,
     NewInsuranceUserExposure, NewInsuranceVault, NewInsuranceVaultTransaction, STATUS_ACTIVE,
-    STATUS_CANCELLED, STATUS_CLAIMED, STATUS_EXPIRED,
+    STATUS_CANCELLED, STATUS_CLAIMED, STATUS_EXPIRED, DEFAULT_EXPOSURE_CAP_BPS,
+    DEFAULT_EXPOSURE_K_BPS, INSURANCE_DEFAULT_FEE_BPS, DEFAULT_IMPLIED_PROB_FLOOR_BPS,
+    DEFAULT_LIQ_CAP_BPS, DEFAULT_LIQ_REF_AMOUNT, DEFAULT_MAX_COVERAGE_BPS,
+    DEFAULT_MAX_COVERAGE_FRACTION_OF_OPTION_BPS, DEFAULT_MAX_DURATION_MS,
+    DEFAULT_MAX_RISK_MULTIPLIER_BPS, DEFAULT_MIN_COVERAGE_BPS, DEFAULT_MIN_PREMIUM_AMOUNT,
+    DEFAULT_MIN_SPOT_TOTAL_LIQUIDITY, DEFAULT_ODDS_CAP_BPS, DEFAULT_SPOT_SMOOTHING_PER_OPTION,
 };
+
+#[derive(Debug, Clone)]
+pub enum InsuranceConfigSnapshot {
+    Initialized(NewInsuranceConfig),
+    Updated(NewInsuranceConfig),
+    RiskPricingUpdated(NewInsuranceConfig),
+}
+
+pub(crate) fn new_insurance_config_with_defaults() -> NewInsuranceConfig {
+    NewInsuranceConfig {
+        updated_by: String::new(),
+        enable_flag: false,
+        min_coverage_bps: DEFAULT_MIN_COVERAGE_BPS,
+        max_coverage_bps: DEFAULT_MAX_COVERAGE_BPS,
+        max_duration_ms: DEFAULT_MAX_DURATION_MS,
+        fee_bps: INSURANCE_DEFAULT_FEE_BPS,
+        version: 1,
+        timestamp_ms: 0,
+        time: Utc::now(),
+        transaction_id: String::new(),
+        min_spot_total_liquidity: DEFAULT_MIN_SPOT_TOTAL_LIQUIDITY,
+        max_coverage_fraction_of_option_bps: DEFAULT_MAX_COVERAGE_FRACTION_OF_OPTION_BPS,
+        max_risk_multiplier_bps: DEFAULT_MAX_RISK_MULTIPLIER_BPS,
+        min_premium_amount: DEFAULT_MIN_PREMIUM_AMOUNT,
+        spot_smoothing_per_option: DEFAULT_SPOT_SMOOTHING_PER_OPTION,
+        implied_prob_floor_bps: DEFAULT_IMPLIED_PROB_FLOOR_BPS,
+        odds_floor_1x: true,
+        odds_cap_bps: DEFAULT_ODDS_CAP_BPS,
+        liq_cap_bps: DEFAULT_LIQ_CAP_BPS,
+        liq_ref_amount: DEFAULT_LIQ_REF_AMOUNT,
+        exposure_cap_bps: DEFAULT_EXPOSURE_CAP_BPS,
+        exposure_k_bps: DEFAULT_EXPOSURE_K_BPS,
+    }
+}
 
 fn transaction_id_from_event_id(event_id: &str) -> String {
     event_id.split(':').next().unwrap_or(event_id).to_string()
@@ -60,9 +99,9 @@ pub fn handle_insurance_event(
         "CoveragePurchasedEvent" => {
             process_coverage_purchased_event(data, &tx, event_id, timestamp_ms_i64)
         }
-        "RiskPricingConfigUpdatedEvent" => Some(vec![SocialEventRow::InsuranceEventLog(
-            new_insurance_event_log("RiskPricingConfigUpdatedEvent", data, event_id),
-        )]),
+        "RiskPricingConfigUpdatedEvent" => {
+            process_risk_pricing_config_updated_event(data, &tx, event_id, timestamp_ms_i64)
+        }
         "CoverageCancelledEvent" => {
             process_coverage_cancelled_event(data, &tx, event_id, timestamp_ms_i64)
         }
@@ -97,21 +136,20 @@ fn process_config_initialized_event(
     let max_duration_ms = json_to_i64(data.get("max_duration_ms")?);
     let fee_bps = json_to_i64(data.get("fee_bps")?);
 
-    let config = NewInsuranceConfig {
-        updated_by: admin,
-        enable_flag: false,
-        min_coverage_bps,
-        max_coverage_bps,
-        max_duration_ms,
-        fee_bps,
-        version: 1,
-        timestamp_ms,
-        time: Utc::now(),
-        transaction_id: tx.to_string(),
-    };
+    let mut config = new_insurance_config_with_defaults();
+    config.updated_by = admin;
+    config.enable_flag = false;
+    config.min_coverage_bps = min_coverage_bps;
+    config.max_coverage_bps = max_coverage_bps;
+    config.max_duration_ms = max_duration_ms;
+    config.fee_bps = fee_bps;
+    config.version = 1;
+    config.timestamp_ms = timestamp_ms;
+    config.time = Utc::now();
+    config.transaction_id = tx.to_string();
 
     Some(vec![
-        SocialEventRow::InsuranceConfig(config),
+        SocialEventRow::InsuranceConfig(InsuranceConfigSnapshot::Initialized(config)),
         SocialEventRow::InsuranceEventLog(new_insurance_event_log(
             "ConfigInitializedEvent",
             data,
@@ -138,23 +176,64 @@ fn process_config_updated_event(
         .filter(|t| *t > 0)
         .unwrap_or(default_timestamp_ms);
 
-    let config = NewInsuranceConfig {
-        updated_by,
-        enable_flag,
-        min_coverage_bps,
-        max_coverage_bps,
-        max_duration_ms,
-        fee_bps,
-        version: 1,
-        timestamp_ms,
-        time: Utc::now(),
-        transaction_id: tx.to_string(),
-    };
+    let mut config = new_insurance_config_with_defaults();
+    config.updated_by = updated_by;
+    config.enable_flag = enable_flag;
+    config.min_coverage_bps = min_coverage_bps;
+    config.max_coverage_bps = max_coverage_bps;
+    config.max_duration_ms = max_duration_ms;
+    config.fee_bps = fee_bps;
+    config.version = 1;
+    config.timestamp_ms = timestamp_ms;
+    config.time = Utc::now();
+    config.transaction_id = tx.to_string();
 
     Some(vec![
-        SocialEventRow::InsuranceConfig(config),
+        SocialEventRow::InsuranceConfig(InsuranceConfigSnapshot::Updated(config)),
         SocialEventRow::InsuranceEventLog(new_insurance_event_log(
             "ConfigUpdatedEvent",
+            data,
+            event_id,
+        )),
+    ])
+}
+
+fn process_risk_pricing_config_updated_event(
+    data: &serde_json::Value,
+    tx: &str,
+    event_id: &str,
+    default_timestamp_ms: i64,
+) -> Option<Vec<SocialEventRow>> {
+    let updated_by = json_str(data.get("updated_by")?);
+    let timestamp_ms = data
+        .get("timestamp")
+        .map(json_to_i64)
+        .filter(|t| *t > 0)
+        .unwrap_or(default_timestamp_ms);
+
+    let mut config = new_insurance_config_with_defaults();
+    config.updated_by = updated_by;
+    config.timestamp_ms = timestamp_ms;
+    config.time = Utc::now();
+    config.transaction_id = tx.to_string();
+    config.min_spot_total_liquidity = json_to_i64(data.get("min_spot_total_liquidity")?);
+    config.max_coverage_fraction_of_option_bps =
+        json_to_i64(data.get("max_coverage_fraction_of_option_bps")?);
+    config.max_risk_multiplier_bps = json_to_i64(data.get("max_risk_multiplier_bps")?);
+    config.min_premium_amount = json_to_i64(data.get("min_premium_amount")?);
+    config.spot_smoothing_per_option = json_to_i64(data.get("spot_smoothing_per_option")?);
+    config.implied_prob_floor_bps = json_to_i64(data.get("implied_prob_floor_bps")?);
+    config.odds_floor_1x = data.get("odds_floor_1x")?.as_bool().unwrap_or(true);
+    config.odds_cap_bps = json_to_i64(data.get("odds_cap_bps")?);
+    config.liq_cap_bps = json_to_i64(data.get("liq_cap_bps")?);
+    config.liq_ref_amount = json_to_i64(data.get("liq_ref_amount")?);
+    config.exposure_cap_bps = json_to_i64(data.get("exposure_cap_bps")?);
+    config.exposure_k_bps = json_to_i64(data.get("exposure_k_bps")?);
+
+    Some(vec![
+        SocialEventRow::InsuranceConfig(InsuranceConfigSnapshot::RiskPricingUpdated(config)),
+        SocialEventRow::InsuranceEventLog(new_insurance_event_log(
+            "RiskPricingConfigUpdatedEvent",
             data,
             event_id,
         )),

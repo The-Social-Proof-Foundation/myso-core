@@ -35,6 +35,30 @@ pub struct InsuranceConfigRow {
     pub time: chrono::DateTime<chrono::Utc>,
     #[diesel(sql_type = Text)]
     pub transaction_id: String,
+    #[diesel(sql_type = BigInt)]
+    pub min_spot_total_liquidity: i64,
+    #[diesel(sql_type = BigInt)]
+    pub max_coverage_fraction_of_option_bps: i64,
+    #[diesel(sql_type = BigInt)]
+    pub max_risk_multiplier_bps: i64,
+    #[diesel(sql_type = BigInt)]
+    pub min_premium_amount: i64,
+    #[diesel(sql_type = BigInt)]
+    pub spot_smoothing_per_option: i64,
+    #[diesel(sql_type = BigInt)]
+    pub implied_prob_floor_bps: i64,
+    #[diesel(sql_type = Bool)]
+    pub odds_floor_1x: bool,
+    #[diesel(sql_type = BigInt)]
+    pub odds_cap_bps: i64,
+    #[diesel(sql_type = BigInt)]
+    pub liq_cap_bps: i64,
+    #[diesel(sql_type = BigInt)]
+    pub liq_ref_amount: i64,
+    #[diesel(sql_type = BigInt)]
+    pub exposure_cap_bps: i64,
+    #[diesel(sql_type = BigInt)]
+    pub exposure_k_bps: i64,
 }
 
 #[derive(Debug, Clone, QueryableByName)]
@@ -318,7 +342,11 @@ pub(crate) async fn get_insurance_config(
 
     let query = "
         SELECT updated_by, enable_flag, min_coverage_bps, max_coverage_bps, max_duration_ms,
-               fee_bps, version, timestamp_ms, time, transaction_id
+               fee_bps, version, timestamp_ms, time, transaction_id,
+               min_spot_total_liquidity, max_coverage_fraction_of_option_bps,
+               max_risk_multiplier_bps, min_premium_amount, spot_smoothing_per_option,
+               implied_prob_floor_bps, odds_floor_1x, odds_cap_bps, liq_cap_bps, liq_ref_amount,
+               exposure_cap_bps, exposure_k_bps
         FROM insurance_config
         ORDER BY time DESC
         LIMIT 1

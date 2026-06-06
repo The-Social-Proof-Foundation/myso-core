@@ -2059,21 +2059,69 @@ type InsuranceConfig {
 	"""
 	enableFlag: Boolean!
 	"""
+	Exposure multiplier cap, in basis points.
+	"""
+	exposureCapBps: Int!
+	"""
+	Exposure curve parameter K, in basis points.
+	"""
+	exposureKBps: Int!
+	"""
 	Fee in basis points.
 	"""
 	feeBps: Int!
+	"""
+	Implied probability floor, in basis points.
+	"""
+	impliedProbFloorBps: Int!
+	"""
+	Liquidity multiplier cap, in basis points.
+	"""
+	liqCapBps: Int!
+	"""
+	Reference pool size for the liquidity multiplier.
+	"""
+	liqRefAmount: Int!
 	"""
 	Maximum coverage in basis points.
 	"""
 	maxCoverageBps: Int!
 	"""
+	Maximum coverage as a fraction of the insured option, in basis points.
+	"""
+	maxCoverageFractionOfOptionBps: Int!
+	"""
 	Maximum policy duration in milliseconds.
 	"""
 	maxDurationMs: Int!
 	"""
+	Maximum combined risk multiplier cap, in basis points.
+	"""
+	maxRiskMultiplierBps: Int!
+	"""
 	Minimum coverage in basis points.
 	"""
 	minCoverageBps: Int!
+	"""
+	Minimum premium amount charged per policy.
+	"""
+	minPremiumAmount: Int!
+	"""
+	Minimum SPoT pool total liquidity required for pricing.
+	"""
+	minSpotTotalLiquidity: Int!
+	"""
+	Odds multiplier cap, in basis points.
+	"""
+	oddsCapBps: Int!
+	"""
+	Whether to enforce a 1x odds floor.
+	"""
+	oddsFloor1X: Boolean!
+	"""
+	SPoT smoothing applied per option for implied probability.
+	"""
+	spotSmoothingPerOption: Int!
 	"""
 	When the configuration was last updated.
 	"""
@@ -4260,6 +4308,10 @@ type Platform implements Node {
 	"""
 	blockedProfiles(limit: Int, offset: Int): [PlatformBlockedProfileSummary!]
 	"""
+	URL to the platform cover photo.
+	"""
+	coverPhoto: String
+	"""
 	When the platform was created (epoch milliseconds).
 	"""
 	createdAt: Int!
@@ -4307,6 +4359,10 @@ type Platform implements Node {
 	Max votes per user.
 	"""
 	maxVotesPerUser: Int
+	"""
+	Screenshot and video preview URLs (JSON array).
+	"""
+	mediaPreviews: JSON
 	"""
 	Members of this platform (paginated).
 	"""
@@ -4423,6 +4479,7 @@ type PlatformMembershipSummary {
 	approvalChangedAt: Int
 	approvedBy: String
 	blockedProfilesCount: Int!
+	coverPhoto: String
 	"""
 	When the platform row was created (epoch ms).
 	"""
@@ -4451,6 +4508,7 @@ type PlatformMembershipSummary {
 	links: JSON
 	logo: String
 	maxVotesPerUser: Int
+	mediaPreviews: JSON
 	"""
 	`platform_memberships` row id (stable for this wallet+platform join record).
 	"""
@@ -5951,6 +6009,10 @@ type Proposal {
 	"""
 	rewardPool: Int!
 	"""
+	Linked SPoT record for SPoT resolution proposals (registry_type=2).
+	"""
+	spotRecord: SpotRecord
+	"""
 	Proposal lifecycle status (0=submitted, 1=delegate_review, 2=community_voting, 3=approved, 4=rejected, 5=implemented, 6=rescinded). New proposals created on chain enter delegate review (1); `0` is not used for newly submitted work.
 	"""
 	status: Int!
@@ -6121,6 +6183,10 @@ type Query {
 	Fetch a comment by ID. Returns null if social DB not configured or not found.
 	"""
 	comment(id: ID!): CommentSummary
+	"""
+	Contested SPoT records in DAO_REQUIRED status (paginated).
+	"""
+	contestedSpotRecords(limit: Int, offset: Int): [SpotRecord!]
 	"""
 	Fetch a delegate by address. Returns null when social DB not configured or not found.
 	"""
@@ -7139,6 +7205,10 @@ type SpotPayout {
 
 type SpotRecord {
 	"""
+	Active SPoT governance proposal id while debate is open.
+	"""
+	activeProposalId: String
+	"""
 	Betting option labels (e.g. ["Yes", "No"]).
 	"""
 	bettingOptions: [String!]!
@@ -7146,6 +7216,10 @@ type SpotRecord {
 	Unix milliseconds when the record was created (`Clock`).
 	"""
 	createdAtMs: Int!
+	"""
+	Wall-clock ms when oracle escalated to DAO_REQUIRED.
+	"""
+	daoEscalatedAtMs: Int
 	"""
 	Last resolution instant (Unix ms), if resolved.
 	"""
@@ -7159,13 +7233,29 @@ type SpotRecord {
 	"""
 	optionEscrow: [SpotOptionEscrow!]!
 	"""
+	Oracle-suggested outcome when escalated to DAO_REQUIRED.
+	"""
+	oracleProposedOutcome: Int
+	"""
 	Post ID this record is for.
 	"""
 	postId: String!
 	"""
+	Linked governance proposal (when active_proposal_id is set).
+	"""
+	proposal: Proposal
+	"""
+	Outcome under community ratification in the active proposal.
+	"""
+	proposedOutcome: Int
+	"""
 	Unique record identifier.
 	"""
 	recordId: String!
+	"""
+	On-chain SpotRecord object id.
+	"""
+	recordObjectId: String
 	"""
 	Resolved outcome (when resolved).
 	"""

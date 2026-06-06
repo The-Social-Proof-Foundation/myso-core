@@ -518,4 +518,64 @@ impl InsuranceConfig {
     async fn transaction_id(&self) -> &str {
         &self.inner.transaction_id
     }
+
+    /// Minimum SPoT pool total liquidity required for pricing.
+    async fn min_spot_total_liquidity(&self) -> i64 {
+        self.inner.min_spot_total_liquidity
+    }
+
+    /// Maximum coverage as a fraction of the insured option, in basis points.
+    async fn max_coverage_fraction_of_option_bps(&self) -> i64 {
+        self.inner.max_coverage_fraction_of_option_bps
+    }
+
+    /// Maximum combined risk multiplier cap, in basis points.
+    async fn max_risk_multiplier_bps(&self) -> i64 {
+        self.inner.max_risk_multiplier_bps
+    }
+
+    /// Minimum premium amount charged per policy.
+    async fn min_premium_amount(&self) -> i64 {
+        self.inner.min_premium_amount
+    }
+
+    /// SPoT smoothing applied per option for implied probability.
+    async fn spot_smoothing_per_option(&self) -> i64 {
+        self.inner.spot_smoothing_per_option
+    }
+
+    /// Implied probability floor, in basis points.
+    async fn implied_prob_floor_bps(&self) -> i64 {
+        self.inner.implied_prob_floor_bps
+    }
+
+    /// Whether to enforce a 1x odds floor.
+    async fn odds_floor_1x(&self) -> bool {
+        self.inner.odds_floor_1x
+    }
+
+    /// Odds multiplier cap, in basis points.
+    async fn odds_cap_bps(&self) -> i64 {
+        self.inner.odds_cap_bps
+    }
+
+    /// Liquidity multiplier cap, in basis points.
+    async fn liq_cap_bps(&self) -> i64 {
+        self.inner.liq_cap_bps
+    }
+
+    /// Reference pool size for the liquidity multiplier.
+    async fn liq_ref_amount(&self) -> i64 {
+        self.inner.liq_ref_amount
+    }
+
+    /// Exposure multiplier cap, in basis points.
+    async fn exposure_cap_bps(&self) -> i64 {
+        self.inner.exposure_cap_bps
+    }
+
+    /// Exposure curve parameter K, in basis points.
+    async fn exposure_k_bps(&self) -> i64 {
+        self.inner.exposure_k_bps
+    }
 }
