@@ -1092,6 +1092,24 @@ impl Query {
         )
     }
 
+    /// Check whether a user has active MyData access (indexer mirror; key servers use on-chain policy).
+    async fn has_mydata_access(
+        &self,
+        ctx: &Context<'_>,
+        mydata_id: async_graphql::ID,
+        user: MySoAddress,
+    ) -> Option<Result<bool, RpcError>> {
+        let reader_opt = ctx
+            .data_opt::<std::sync::Arc<Option<myso_indexer_alt_social_reader::SocialPgReader>>>()?;
+        let reader = reader_opt.as_ref().as_ref()?;
+        Some(
+            reader
+                .check_mydata_has_access(mydata_id.as_str(), &user.to_string(), None)
+                .await
+                .map_err(Into::into),
+        )
+    }
+
     /// MyData purchases by buyer. Returns empty when social DB not configured.
     async fn mydata_purchases(
         &self,

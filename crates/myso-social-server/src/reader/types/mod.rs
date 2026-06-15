@@ -31,7 +31,8 @@ pub use mydata::{
     AccessAnalytics, AccessLogInfo, DailyRevenue, MyDataBasic, MyDataConfigInfo,
     MyDataBroadPoolInfo, MyDataClaimInfo, MyDataDistributionRoundInfo,
     MyDataListingSubPoolInfo, MyDataMerkleRootInfo, MyDataSnapshotAnchorInfo,
-    MyDataSubPoolInfo, MyDataStatsResponse, PurchaseInfo, RevenueInfo, SubscriptionInfo,
+    MyDataHasAccessResponse, MyDataSubPoolInfo, MyDataStatsResponse, PurchaseInfo, RevenueInfo,
+    SubscriptionInfo,
 };
 pub use myso_indexer_alt_social_schema::models::{
     PostDeletionEventRow, PostModerationEventRow, PostReport, PostTransfer, ProfileOffer,
@@ -58,6 +59,7 @@ pub use revenue::UnifiedRevenue;
 pub use social_graph::{
     BlockedPlatformRow, BlockedProfileRow, DailyStatsPoint, FollowDetail, FollowStatsRow,
     FollowsQuery, MutualConnectionSummary, PaginationInfo, ProfileByAddressResponse,
+    WalletMessagingPolicyResponse,
     RecommendationDetail,
     ReservationPoolInfo, ReservationStatus,
     SelectedBadgeInfo, SocialGraphAddressRow, SocialGraphChartData, SocialGraphChartQuery,

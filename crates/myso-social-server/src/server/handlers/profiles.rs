@@ -9,7 +9,7 @@ use serde::Deserialize;
 use std::sync::Arc;
 
 use crate::error::SocialError;
-use crate::reader::ProfileByAddressResponse;
+use crate::reader::{ProfileByAddressResponse, WalletMessagingPolicyResponse};
 
 use super::super::{AppState, PageParams, ProfileQuery};
 
@@ -202,6 +202,23 @@ pub async fn get_profile_social_stats(
 ) -> Result<Json<crate::reader::FollowStatsRow>, SocialError> {
     let stats = state.reader.get_social_stats(&address).await?;
     Ok(Json(stats))
+}
+
+pub async fn get_wallet_messaging_policy(
+    State(state): State<Arc<AppState>>,
+    Path(address): Path<String>,
+) -> Result<Json<WalletMessagingPolicyResponse>, SocialError> {
+    let policy = state
+        .reader
+        .get_wallet_messaging_policy(&address)
+        .await?
+        .ok_or_else(|| {
+            SocialError::not_found(format!(
+                "No messaging policy for wallet '{}'",
+                address
+            ))
+        })?;
+    Ok(Json(policy))
 }
 
 pub async fn get_profile_blocked(

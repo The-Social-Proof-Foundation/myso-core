@@ -49,8 +49,6 @@ pub struct Profile {
     pub reservation_pool_address: Option<String>,
     pub selected_badge_id: Option<String>,
     pub selected_ecosystem_badge_id: Option<String>,
-    pub paid_messaging_enabled: bool,
-    pub paid_messaging_min_cost: Option<i64>,
 }
 
 #[derive(Debug, Clone, Insertable, Serialize, Deserialize)]
@@ -87,8 +85,6 @@ pub struct NewProfile {
     pub reservation_pool_address: Option<String>,
     pub selected_badge_id: Option<String>,
     pub selected_ecosystem_badge_id: Option<String>,
-    pub paid_messaging_enabled: bool,
-    pub paid_messaging_min_cost: Option<i64>,
 }
 
 #[derive(Debug, Clone, Insertable, Serialize, Deserialize)]
@@ -146,8 +142,6 @@ pub struct ProfileUpdateSet {
     pub username: Option<String>,
     pub selected_badge_id: Option<Option<String>>,
     pub selected_ecosystem_badge_id: Option<Option<String>>,
-    pub paid_messaging_enabled: Option<bool>,
-    pub paid_messaging_min_cost: Option<Option<i64>>,
     pub reservation_pool_address: Option<Option<String>>,
     pub social_proof_token_address: Option<Option<String>>,
 }

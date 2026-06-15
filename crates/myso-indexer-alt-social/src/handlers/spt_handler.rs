@@ -1256,8 +1256,6 @@ impl Handler for SptHandler {
                         username: up.username.clone(),
                         selected_badge_id: up.selected_badge_id.clone(),
                         selected_ecosystem_badge_id: up.selected_ecosystem_badge_id.clone(),
-                        paid_messaging_enabled: up.paid_messaging_enabled,
-                        paid_messaging_min_cost: up.paid_messaging_min_cost.map(Some),
                         reservation_pool_address: up.reservation_pool_address.clone(),
                         social_proof_token_address: up.social_proof_token_address.clone(),
                     };

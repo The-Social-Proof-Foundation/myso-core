@@ -240,8 +240,6 @@ fn process_token_pool_created_event(
             username: None,
             selected_badge_id: None,
             selected_ecosystem_badge_id: None,
-            paid_messaging_enabled: None,
-            paid_messaging_min_cost: None,
             reservation_pool_address: None,
             social_proof_token_address: Some(Some(id.clone())),
         }));
@@ -502,8 +500,6 @@ fn process_reservation_pool_created_event(
             username: None,
             selected_badge_id: None,
             selected_ecosystem_badge_id: None,
-            paid_messaging_enabled: None,
-            paid_messaging_min_cost: None,
             reservation_pool_address: Some(Some(pool_object_id)),
             social_proof_token_address: None,
         };

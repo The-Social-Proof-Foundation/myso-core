@@ -14,6 +14,10 @@
 /// AES-GCM (or other app-managed schemes), ciphertext does not parse as `EncryptedObject`; encode the
 /// scheme in `media_type` (e.g. prefix `aes_gcm:`) or app metadata so indexers pick the right decrypt path.
 ///
+/// **Revocation:** Owners may call [`revoke_access`] to remove a buyer from `purchasers` / `subscribers`.
+/// Permissioned key servers re-check [`mydata_approve`] on every `fetch_key`, so revoked buyers cannot
+/// obtain new derived keys. Already-fetched keys may still decrypt offline client-side.
+///
 /// **Query marketplace:** Broad pools, snapshot anchors, claim vault, and Merkle settlement live in this
 /// module. Manifest hash and payout trees are operator-defined; the chain records price paid and anchors,
 /// not row-level dataset membership.
@@ -60,6 +64,7 @@ module social_contracts::mydata {
     const EDisabled: u64 = 11;
     const EPolicyIdMismatch: u64 = 12;
     const EPolicyNotEntitled: u64 = 13;
+    const ENoAccessToRevoke: u64 = 14;
 
     // === Constants ===
     const MAX_TAGS: u64 = 10;
@@ -294,6 +299,14 @@ module social_contracts::mydata {
         user: address,
         access_type: String,
         granted_by: address,
+        timestamp: u64,
+    }
+
+    public struct AccessRevokedEvent has copy, drop {
+        ip_id: address,
+        user: address,
+        access_type: String,
+        revoked_by: address,
         timestamp: u64,
     }
 
@@ -1304,10 +1317,64 @@ module social_contracts::mydata {
         });
     }
 
+    /// Revoke a buyer's access (owner only). Removes the user from `purchasers` and/or `subscribers`.
+    /// `access_type`: 0 = one-time, 1 = subscription, 2 = both.
+    public entry fun revoke_access(
+        mydata: &mut MyData,
+        user: address,
+        access_type: u8,
+        clock: &Clock,
+        ctx: &mut TxContext,
+    ) {
+        assert!(mydata.version == upgrade::current_version(), EInvalidInput);
+        assert!(tx_context::sender(ctx) == mydata.owner, EUnauthorized);
+        assert!(user != mydata.owner, EInvalidInput);
+        assert!(access_type <= 2, EInvalidInput);
+
+        let mut revoked_one_time = false;
+        let mut revoked_subscription = false;
+
+        if (access_type == 0 || access_type == 2) {
+            if (table::contains(&mydata.purchasers, user)) {
+                table::remove(&mut mydata.purchasers, user);
+                revoked_one_time = true;
+            };
+        };
+
+        if (access_type == 1 || access_type == 2) {
+            if (table::contains(&mydata.subscribers, user)) {
+                table::remove(&mut mydata.subscribers, user);
+                revoked_subscription = true;
+            };
+        };
+
+        assert!(revoked_one_time || revoked_subscription, ENoAccessToRevoke);
+
+        let access_type_str = if (revoked_one_time && revoked_subscription) {
+            string::utf8(b"all")
+        } else if (revoked_one_time) {
+            string::utf8(b"one_time")
+        } else {
+            string::utf8(b"subscription")
+        };
+
+        event::emit(AccessRevokedEvent {
+            ip_id: object::uid_to_address(&mydata.id),
+            user,
+            access_type: access_type_str,
+            revoked_by: tx_context::sender(ctx),
+            timestamp: clock::timestamp_ms(clock),
+        });
+    }
+
     // === Getter Functions ===
     
     public fun owner(mydata: &MyData): address { mydata.owner }
     public fun object_address(mydata: &MyData): address { object::uid_to_address(&mydata.id) }
+    /// Listing object address for PTB binding in `fetch_key` policy transactions.
+    public fun listing_id(mydata: &MyData): address { object::uid_to_address(&mydata.id) }
+    /// Encryption identity bytes; must match `EncryptedObject.id` and the `id` arg to `mydata_approve`.
+    public fun encryption_identity(mydata: &MyData): vector<u8> { mydata.encryption_id }
     public fun media_type(mydata: &MyData): String { mydata.media_type }
     public fun tags(mydata: &MyData): vector<String> { mydata.tags }
     public fun platform_id(mydata: &MyData): Option<address> { mydata.platform_id }

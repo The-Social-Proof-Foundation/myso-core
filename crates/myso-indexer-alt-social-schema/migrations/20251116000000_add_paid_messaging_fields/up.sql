@@ -1,8 +1,7 @@
--- Add paid messaging fields to profiles table
-ALTER TABLE profiles
-ADD COLUMN IF NOT EXISTS paid_messaging_enabled BOOLEAN NOT NULL DEFAULT FALSE,
-ADD COLUMN IF NOT EXISTS paid_messaging_min_cost BIGINT;
-
--- Create index on paid_messaging_enabled for quick lookups
-CREATE INDEX IF NOT EXISTS idx_profiles_paid_messaging_enabled ON profiles(paid_messaging_enabled);
-
+CREATE TABLE wallet_messaging_policies (
+  wallet_address TEXT PRIMARY KEY,
+  enabled BOOLEAN NOT NULL DEFAULT FALSE,
+  min_cost BIGINT,
+  updated_at BIGINT NOT NULL
+);
+CREATE INDEX idx_wallet_messaging_policies_enabled ON wallet_messaging_policies(enabled);

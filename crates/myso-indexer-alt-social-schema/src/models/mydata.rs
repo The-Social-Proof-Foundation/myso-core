@@ -25,6 +25,7 @@ pub const ACCESS_TYPE_GRANT: &str = "grant";
 pub const ACCESS_TYPE_PREVIEW: &str = "preview";
 pub const ACCESS_TYPE_PRICING_UPDATE: &str = "pricing_update";
 pub const ACCESS_TYPE_CONTENT_UPDATE: &str = "content_update";
+pub const ACCESS_TYPE_REVOKED: &str = "revoked";
 pub const DATA_QUALITY_HIGH: &str = "high";
 pub const DATA_QUALITY_MEDIUM: &str = "medium";
 pub const DATA_QUALITY_LOW: &str = "low";
@@ -97,6 +98,12 @@ pub struct MyDataSubscriptionRow {
     pub time: chrono::DateTime<chrono::Utc>,
     #[diesel(sql_type = Text)]
     pub transaction_id: String,
+    #[diesel(sql_type = Bool)]
+    pub revoked: bool,
+    #[diesel(sql_type = Nullable<BigInt>)]
+    pub revoked_at: Option<i64>,
+    #[diesel(sql_type = Nullable<Text>)]
+    pub revoked_by: Option<String>,
 }
 
 /// Query result for a mydata revenue entry (for GraphQL/reader).
@@ -211,6 +218,12 @@ pub struct MyDataPurchaseRow {
     pub time: chrono::DateTime<chrono::Utc>,
     #[diesel(sql_type = Text)]
     pub transaction_id: String,
+    #[diesel(sql_type = Bool)]
+    pub revoked: bool,
+    #[diesel(sql_type = Nullable<BigInt>)]
+    pub revoked_at: Option<i64>,
+    #[diesel(sql_type = Nullable<Text>)]
+    pub revoked_by: Option<String>,
 }
 
 #[derive(Debug, Clone, Queryable, Selectable, Serialize, Deserialize)]
@@ -275,6 +288,9 @@ pub struct MyDataPurchase {
     pub purchase_time: i64,
     pub time: chrono::DateTime<chrono::Utc>,
     pub transaction_id: String,
+    pub revoked: bool,
+    pub revoked_at: Option<i64>,
+    pub revoked_by: Option<String>,
 }
 
 #[derive(Debug, Clone, Insertable, Serialize, Deserialize)]
@@ -299,6 +315,9 @@ pub struct MyDataSubscription {
     pub price: i64,
     pub time: chrono::DateTime<chrono::Utc>,
     pub transaction_id: String,
+    pub revoked: bool,
+    pub revoked_at: Option<i64>,
+    pub revoked_by: Option<String>,
 }
 
 #[derive(Debug, Clone, Insertable, Serialize, Deserialize)]

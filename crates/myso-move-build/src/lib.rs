@@ -37,7 +37,7 @@ use myso_package_alt::{MySoFlavor, testnet_environment};
 use myso_protocol_config::{Chain, ProtocolConfig, ProtocolVersion};
 use myso_types::{
     BRIDGE_ADDRESS, MOVE_STDLIB_ADDRESS, MYDATA_ADDRESS, MYSO_FRAMEWORK_ADDRESS,
-    MYSO_SOCIAL_ADDRESS, MYSO_SYSTEM_ADDRESS, ORDERBOOK_ADDRESS, TypeTag,
+    MYSO_MESSAGING_ADDRESS, MYSO_SOCIAL_ADDRESS, MYSO_SYSTEM_ADDRESS, ORDERBOOK_ADDRESS, TypeTag,
     base_types::ObjectID,
     error::{MySoError, MySoErrorKind, MySoResult},
     is_system_package,
@@ -436,6 +436,12 @@ impl CompiledPackage {
     pub fn get_myso_social_modules(&self) -> impl Iterator<Item = &CompiledModule> {
         self.get_modules_and_deps()
             .filter(|m| *m.self_id().address() == MYSO_SOCIAL_ADDRESS)
+    }
+
+    /// Get bytecode modules from MySo Messaging that are used by this package
+    pub fn get_myso_messaging_modules(&self) -> impl Iterator<Item = &CompiledModule> {
+        self.get_modules_and_deps()
+            .filter(|m| *m.self_id().address() == MYSO_MESSAGING_ADDRESS)
     }
 
     /// Generate layout schemas for all types declared by this package, as well as

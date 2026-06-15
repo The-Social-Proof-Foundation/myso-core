@@ -101,7 +101,8 @@ pub(crate) async fn list_mydata_purchases_by_buyer(
     let _guard = metrics.latency.start_timer();
 
     let query = "
-        SELECT id, mydata_id, buyer, price, purchase_type, purchase_time, time, transaction_id
+        SELECT id, mydata_id, buyer, price, purchase_type, purchase_time, time, transaction_id,
+               revoked, revoked_at, revoked_by
         FROM mydata_purchases
         WHERE buyer = $1
         ORDER BY purchase_time DESC
@@ -231,7 +232,8 @@ pub(crate) async fn get_mydata_purchases(
     let _guard = metrics.latency.start_timer();
 
     let query = "
-        SELECT id, mydata_id, buyer, price, purchase_type, purchase_time, time, transaction_id
+        SELECT id, mydata_id, buyer, price, purchase_type, purchase_time, time, transaction_id,
+               revoked, revoked_at, revoked_by
         FROM mydata_purchases
         WHERE mydata_id = $1
         ORDER BY purchase_time DESC
@@ -260,7 +262,8 @@ pub(crate) async fn get_mydata_subscriptions(
     let _guard = metrics.latency.start_timer();
 
     let query = "
-        SELECT id, mydata_id, subscriber, subscription_start, subscription_end, price, time, transaction_id
+        SELECT id, mydata_id, subscriber, subscription_start, subscription_end, price, time, transaction_id,
+               revoked, revoked_at, revoked_by
         FROM mydata_subscriptions
         WHERE mydata_id = $1
         ORDER BY subscription_start DESC
@@ -348,8 +351,8 @@ pub(crate) async fn get_mydata_stats(
         SELECT
             d.mydata_id, d.owner, d.media_type,
             COALESCE((SELECT SUM(amount)::bigint FROM mydata_revenue WHERE mydata_id = $1), 0) as total_revenue,
-            (SELECT COUNT(*) FROM mydata_purchases WHERE mydata_id = $1) as purchase_count,
-            (SELECT COUNT(*) FROM mydata_subscriptions WHERE mydata_id = $1 AND subscription_end >= (EXTRACT(EPOCH FROM NOW()) * 1000)::bigint) as subscription_count,
+            (SELECT COUNT(*) FROM mydata_purchases WHERE mydata_id = $1 AND revoked = FALSE) as purchase_count,
+            (SELECT COUNT(*) FROM mydata_subscriptions WHERE mydata_id = $1 AND revoked = FALSE AND subscription_end >= (EXTRACT(EPOCH FROM NOW()) * 1000)::bigint) as subscription_count,
             (SELECT COUNT(*) FROM mydata_access_logs WHERE mydata_id = $1) as access_count,
             d.one_time_price, d.subscription_price, d.created_at, d.last_updated
         FROM mydata_data d
@@ -666,4 +669,39 @@ pub(crate) async fn list_mydata_claims_for_snapshot(
         .await?;
     metrics.requests_succeeded.inc();
     Ok(results)
+}
+
+#[derive(Debug, Clone, QueryableByName)]
+pub struct MyDataHasAccessRow {
+    #[diesel(sql_type = Bool)]
+    pub has_access: bool,
+}
+
+pub(crate) async fn check_mydata_has_access(
+    conn: &mut Connection<'_>,
+    mydata_id: &str,
+    user_address: &str,
+    at_ms: Option<i64>,
+    metrics: &DbReaderMetrics,
+) -> anyhow::Result<bool> {
+    metrics.requests_received.inc();
+    let _guard = metrics.latency.start_timer();
+
+    let at_ms = at_ms.unwrap_or_else(|| {
+        std::time::SystemTime::now()
+            .duration_since(std::time::UNIX_EPOCH)
+            .map(|d| d.as_millis() as i64)
+            .unwrap_or(0)
+    });
+
+    let query = "SELECT user_has_access($1, $2, $3) AS has_access";
+    let result = diesel::sql_query(query)
+        .bind::<Text, _>(mydata_id)
+        .bind::<Text, _>(user_address)
+        .bind::<BigInt, _>(at_ms)
+        .get_result::<MyDataHasAccessRow>(conn)
+        .await?;
+
+    metrics.requests_succeeded.inc();
+    Ok(result.has_access)
 }

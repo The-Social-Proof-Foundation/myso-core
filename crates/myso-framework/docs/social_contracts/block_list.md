@@ -15,6 +15,8 @@ Manages user blocking between wallet addresses
 -  [Function `block_wallet`](#social_contracts_block_list_block_wallet)
 -  [Function `unblock_wallet_internal`](#social_contracts_block_list_unblock_wallet_internal)
 -  [Function `unblock_wallet`](#social_contracts_block_list_unblock_wallet)
+-  [Function `either_blocked`](#social_contracts_block_list_either_blocked)
+-  [Function `assert_not_blocked`](#social_contracts_block_list_assert_not_blocked)
 -  [Function `is_blocked`](#social_contracts_block_list_is_blocked)
 -  [Function `blocked_count`](#social_contracts_block_list_blocked_count)
 -  [Function `get_blocked_wallets`](#social_contracts_block_list_get_blocked_wallets)
@@ -201,6 +203,15 @@ Error codes
 
 
 <pre><code><b>const</b> <a href="../social_contracts/block_list.md#social_contracts_block_list_EWrongVersion">EWrongVersion</a>: u64 = 4;
+</code></pre>
+
+
+
+<a name="social_contracts_block_list_EBlocked"></a>
+
+
+
+<pre><code><b>const</b> <a href="../social_contracts/block_list.md#social_contracts_block_list_EBlocked">EBlocked</a>: u64 = 5;
 </code></pre>
 
 
@@ -398,6 +409,56 @@ Uses the caller's wallet address as the blocker
 ) {
     <b>let</b> sender = tx_context::sender(ctx);
     <a href="../social_contracts/block_list.md#social_contracts_block_list_unblock_wallet_internal">unblock_wallet_internal</a>(registry, sender, blocked_wallet_address);
+}
+</code></pre>
+
+
+
+</details>
+
+<a name="social_contracts_block_list_either_blocked"></a>
+
+## Function `either_blocked`
+
+True if either wallet has blocked the other.
+
+
+<pre><code><b>public</b> <b>fun</b> <a href="../social_contracts/block_list.md#social_contracts_block_list_either_blocked">either_blocked</a>(registry: &<a href="../social_contracts/block_list.md#social_contracts_block_list_BlockListRegistry">social_contracts::block_list::BlockListRegistry</a>, a: <b>address</b>, b: <b>address</b>): bool
+</code></pre>
+
+
+
+<details>
+<summary>Implementation</summary>
+
+
+<pre><code><b>public</b> <b>fun</b> <a href="../social_contracts/block_list.md#social_contracts_block_list_either_blocked">either_blocked</a>(registry: &<a href="../social_contracts/block_list.md#social_contracts_block_list_BlockListRegistry">BlockListRegistry</a>, a: <b>address</b>, b: <b>address</b>): bool {
+    <a href="../social_contracts/block_list.md#social_contracts_block_list_is_blocked">is_blocked</a>(registry, a, b) || <a href="../social_contracts/block_list.md#social_contracts_block_list_is_blocked">is_blocked</a>(registry, b, a)
+}
+</code></pre>
+
+
+
+</details>
+
+<a name="social_contracts_block_list_assert_not_blocked"></a>
+
+## Function `assert_not_blocked`
+
+Aborts with [<code><a href="../social_contracts/block_list.md#social_contracts_block_list_EBlocked">EBlocked</a></code>] if either wallet has blocked the other.
+
+
+<pre><code><b>public</b> <b>fun</b> <a href="../social_contracts/block_list.md#social_contracts_block_list_assert_not_blocked">assert_not_blocked</a>(registry: &<a href="../social_contracts/block_list.md#social_contracts_block_list_BlockListRegistry">social_contracts::block_list::BlockListRegistry</a>, a: <b>address</b>, b: <b>address</b>)
+</code></pre>
+
+
+
+<details>
+<summary>Implementation</summary>
+
+
+<pre><code><b>public</b> <b>fun</b> <a href="../social_contracts/block_list.md#social_contracts_block_list_assert_not_blocked">assert_not_blocked</a>(registry: &<a href="../social_contracts/block_list.md#social_contracts_block_list_BlockListRegistry">BlockListRegistry</a>, a: <b>address</b>, b: <b>address</b>) {
+    <b>assert</b>!(!<a href="../social_contracts/block_list.md#social_contracts_block_list_either_blocked">either_blocked</a>(registry, a, b), <a href="../social_contracts/block_list.md#social_contracts_block_list_EBlocked">EBlocked</a>);
 }
 </code></pre>
 

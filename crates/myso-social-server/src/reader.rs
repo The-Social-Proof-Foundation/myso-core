@@ -4,6 +4,7 @@
 mod governance;
 mod insurance;
 pub mod memory;
+mod messaging;
 mod mydata;
 mod platform;
 mod poc;
@@ -80,6 +81,13 @@ impl Reader {
         address: &str,
     ) -> Result<ProfileByAddressResponse, crate::error::SocialError> {
         profile::get_profile_or_wallet_by_address(&self.db, address).await
+    }
+
+    pub async fn get_wallet_messaging_policy(
+        &self,
+        address: &str,
+    ) -> Result<Option<WalletMessagingPolicyResponse>, crate::error::SocialError> {
+        messaging::get_wallet_messaging_policy(&self.db, address).await
     }
 
     pub async fn get_profile_by_username(
@@ -226,6 +234,14 @@ impl Reader {
         offset: i64,
     ) -> Result<Vec<AccessLogInfo>, crate::error::SocialError> {
         mydata::get_mydata_access_logs(&self.db, mydata_id, limit, offset).await
+    }
+
+    pub async fn check_mydata_has_access(
+        &self,
+        mydata_id: &str,
+        user_address: &str,
+    ) -> Result<crate::reader::MyDataHasAccessResponse, crate::error::SocialError> {
+        mydata::check_mydata_has_access(&self.db, mydata_id, user_address).await
     }
 
     pub async fn get_creator_mydata(

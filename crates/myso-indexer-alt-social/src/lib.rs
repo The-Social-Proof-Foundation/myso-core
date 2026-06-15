@@ -8,8 +8,8 @@ pub mod metrics;
 
 pub use handlers::{
     BlockingHandler, GovernanceHandler, InsuranceHandler, MemoryHandler, MyDataHandler,
-    PlatformHandler, PostsHandler, ProfilesHandler, SocialGraphHandler, SpotHandler, SptHandler,
-    SubscriptionHandler, UpgradeHandler,
+    PaidMessagingPolicyHandler, PlatformHandler, PostsHandler, ProfilesHandler, SocialGraphHandler,
+    SpotHandler, SptHandler, SubscriptionHandler, UpgradeHandler,
 };
 
 pub const MAINNET_REMOTE_STORE_URL: &str = "https://checkpoints.mainnet.mysocial.network";
@@ -86,6 +86,10 @@ pub async fn setup_social_indexer(
         .await
         .context("Failed to add BlockingHandler pipeline")?;
     indexer
+        .concurrent_pipeline(PaidMessagingPolicyHandler, Default::default())
+        .await
+        .context("Failed to add PaidMessagingPolicyHandler pipeline")?;
+    indexer
         .concurrent_pipeline(GovernanceHandler, Default::default())
         .await
         .context("Failed to add GovernanceHandler pipeline")?;
@@ -135,7 +139,7 @@ pub async fn setup_social_indexer(
         .context("Failed to add PostsHandler pipeline")?;
 
     tracing::info!(
-        "Social indexer pipelines registered — blocking, governance, upgrade, social_graph, \
+        "Social indexer pipelines registered — blocking, paid_messaging_policy, governance, upgrade, social_graph, \
          platform, mydata, insurance, spot, spt, subscription, memory, profiles, posts (includes PoC); \
          resuming from watermarks or checkpoint 0"
     );

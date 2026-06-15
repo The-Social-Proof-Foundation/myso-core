@@ -378,6 +378,10 @@ fn make_router(state: Arc<AppState>) -> Router {
         .route("/profiles", get(latest_profiles))
         .route("/profiles/daily-stats", get(get_profile_daily_stats_chart))
         .route("/profiles/address/:address", get(get_profile_by_address))
+        .route(
+            "/wallets/:address/messaging-policy",
+            get(get_wallet_messaging_policy),
+        )
         .route("/profiles/username/:username", get(get_profile_by_username))
         .route(
             "/profiles/username/:username/availability",
@@ -623,6 +627,10 @@ fn make_router(state: Arc<AppState>) -> Router {
         .route(
             "/mydata/:id/sub-pools",
             get(list_mydata_sub_pools_for_mydata_listing),
+        )
+        .route(
+            "/mydata/:id/has-access/:address",
+            get(get_mydata_has_access),
         )
         .route("/mydata/:id/purchases", get(get_mydata_purchases))
         .route("/mydata/:id/subscriptions", get(get_mydata_subscriptions))

@@ -83,6 +83,12 @@ pub struct PurchaseInfo {
     pub time: chrono::DateTime<chrono::Utc>,
     #[diesel(sql_type = Text)]
     pub transaction_id: String,
+    #[diesel(sql_type = Bool)]
+    pub revoked: bool,
+    #[diesel(sql_type = Nullable<BigInt>)]
+    pub revoked_at: Option<i64>,
+    #[diesel(sql_type = Nullable<Text>)]
+    pub revoked_by: Option<String>,
 }
 
 #[derive(Debug, Serialize, QueryableByName)]
@@ -103,6 +109,19 @@ pub struct SubscriptionInfo {
     pub time: chrono::DateTime<chrono::Utc>,
     #[diesel(sql_type = Text)]
     pub transaction_id: String,
+    #[diesel(sql_type = Bool)]
+    pub revoked: bool,
+    #[diesel(sql_type = Nullable<BigInt>)]
+    pub revoked_at: Option<i64>,
+    #[diesel(sql_type = Nullable<Text>)]
+    pub revoked_by: Option<String>,
+}
+
+#[derive(Debug, Serialize)]
+pub struct MyDataHasAccessResponse {
+    pub mydata_id: String,
+    pub user_address: String,
+    pub has_access: bool,
 }
 
 #[derive(Debug, Serialize, QueryableByName)]

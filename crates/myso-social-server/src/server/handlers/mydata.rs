@@ -62,6 +62,14 @@ pub async fn get_mydata_by_id(
     Ok(Json(data))
 }
 
+pub async fn get_mydata_has_access(
+    State(state): State<Arc<AppState>>,
+    Path((id, address)): Path<(String, String)>,
+) -> Result<Json<crate::reader::MyDataHasAccessResponse>, SocialError> {
+    let result = state.reader.check_mydata_has_access(&id, &address).await?;
+    Ok(Json(result))
+}
+
 pub async fn get_mydata_purchases(
     State(state): State<Arc<AppState>>,
     Path(id): Path<String>,

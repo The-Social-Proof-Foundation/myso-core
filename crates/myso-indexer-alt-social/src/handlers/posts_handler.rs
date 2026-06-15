@@ -50,7 +50,6 @@ pub enum PostRow {
     Post(NewPost),
     Comment(NewComment),
     Reaction(NewReaction),
-    ReactionCount(NewReactionCount),
     RemoveReaction {
         object_id: String,
         user_address: String,
@@ -245,7 +244,6 @@ impl PostRow {
             SocialEventRow::Post(p) => Some(PostRow::Post(p)),
             SocialEventRow::Comment(c) => Some(PostRow::Comment(c)),
             SocialEventRow::Reaction(r) => Some(PostRow::Reaction(r)),
-            SocialEventRow::ReactionCount(rc) => Some(PostRow::ReactionCount(rc)),
             SocialEventRow::RemoveReaction {
                 object_id,
                 user_address,
@@ -779,15 +777,6 @@ impl Handler for PostsHandler {
                             }
                         }
                     }
-                }
-                PostRow::ReactionCount(rc) => {
-                    total += diesel::insert_into(reaction_counts::table)
-                        .values(rc)
-                        .on_conflict((reaction_counts::object_id, reaction_counts::reaction_text))
-                        .do_update()
-                        .set(reaction_counts::count.eq(reaction_counts::count + 1))
-                        .execute(conn)
-                        .await?;
                 }
                 PostRow::RemoveReaction {
                     object_id,

@@ -29,13 +29,16 @@ use move_core_types::{ident_str, vm_status::StatusCode};
 use myso_types::bridge::BRIDGE_MODULE_NAME;
 use myso_types::deny_list_v1::{DENY_LIST_CREATE_FUNC, DENY_LIST_MODULE};
 use myso_types::{
-    BRIDGE_ADDRESS, MYSO_FRAMEWORK_ADDRESS, MYSO_SYSTEM_ADDRESS,
+    BRIDGE_ADDRESS, MYSO_FRAMEWORK_ADDRESS, MYSO_SYSTEM_ADDRESS, ORDERBOOK_ADDRESS,
     accumulator_event::ACCUMULATOR_MODULE_NAME,
     authenticator_state::AUTHENTICATOR_STATE_MODULE_NAME,
     clock::CLOCK_MODULE_NAME,
     error::{ExecutionError, VMMVerifierErrorSubStatusCode},
     id::OBJECT_MODULE_NAME,
     myso_system_state::MYSO_SYSTEM_MODULE_NAME,
+    orderbook::{
+        ORDERBOOK_REGISTRY_CREATE_FUNCTION_NAME, ORDERBOOK_REGISTRY_MODULE_NAME,
+    },
     randomness_state::RANDOMNESS_MODULE_NAME,
 };
 use std::{collections::BTreeMap, error::Error, num::NonZeroU64};
@@ -102,6 +105,11 @@ const MYSO_DENY_LIST_CREATE: FunctionIdent = (
 
 const MYSO_BRIDGE_CREATE: FunctionIdent =
     (BRIDGE_ADDRESS, BRIDGE_MODULE_NAME, ident_str!("create"));
+const MYSO_ORDERBOOK_REGISTRY_CREATE: FunctionIdent = (
+    ORDERBOOK_ADDRESS,
+    ORDERBOOK_REGISTRY_MODULE_NAME,
+    ORDERBOOK_REGISTRY_CREATE_FUNCTION_NAME,
+);
 const MYSO_ACCUMULATOR_CREATE: FunctionIdent = (
     MYSO_FRAMEWORK_ADDRESS,
     ACCUMULATOR_MODULE_NAME,
@@ -130,6 +138,7 @@ const FUNCTIONS_TO_SKIP: &[FunctionIdent] = &[
     MYSO_RANDOMNESS_STATE_CREATE,
     MYSO_DENY_LIST_CREATE,
     MYSO_BRIDGE_CREATE,
+    MYSO_ORDERBOOK_REGISTRY_CREATE,
     MYSO_ACCUMULATOR_CREATE,
     MYSO_COIN_REGISTRY_CREATE,
     MYSO_ALIAS_CREATE,

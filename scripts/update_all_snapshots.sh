@@ -42,6 +42,7 @@ if [ -z "$INSTA_UPDATE" ]; then
 fi
 
 UPDATE=1 cargo test -p myso-framework --test build-system-packages
+cargo run -p myso-framework-snapshot
 cd "$ROOT/crates/myso-protocol-config" && cargo insta test
 cd "$ROOT/crates/myso-swarm-config" && cargo insta test
 cd "$ROOT/crates/myso-open-rpc" && cargo insta test

@@ -21,6 +21,8 @@ MySo object identifiers
 -  [Function `myso_accumulator_root_address`](#myso_object_myso_accumulator_root_address)
 -  [Function `myso_coin_registry_object_id`](#myso_object_myso_coin_registry_object_id)
 -  [Function `myso_coin_registry_address`](#myso_object_myso_coin_registry_address)
+-  [Function `myso_orderbook_registry_object_id`](#myso_object_myso_orderbook_registry_object_id)
+-  [Function `myso_orderbook_registry_address`](#myso_object_myso_orderbook_registry_address)
 -  [Function `bridge`](#myso_object_bridge)
 -  [Function `address_alias_state`](#myso_object_address_alias_state)
 -  [Function `uid_as_inner`](#myso_object_uid_as_inner)
@@ -196,6 +198,16 @@ The hardcoded ID for the Coin Registry Object.
 
 
 <pre><code><b>const</b> <a href="../myso/object.md#myso_object_MYSO_COIN_REGISTRY_OBJECT_ID">MYSO_COIN_REGISTRY_OBJECT_ID</a>: <b>address</b> = 0xc;
+</code></pre>
+
+
+
+<a name="myso_object_MYSO_ORDERBOOK_REGISTRY_OBJECT_ID"></a>
+
+The hardcoded ID for the Orderbook Registry Object.
+
+
+<pre><code><b>const</b> <a href="../myso/object.md#myso_object_MYSO_ORDERBOOK_REGISTRY_OBJECT_ID">MYSO_ORDERBOOK_REGISTRY_OBJECT_ID</a>: <b>address</b> = 0x10;
 </code></pre>
 
 
@@ -556,6 +568,58 @@ This should only be called once from <code><a href="../myso/coin_registry.md#mys
 
 <pre><code><b>public</b>(<a href="../myso/package.md#myso_package">package</a>) <b>fun</b> <a href="../myso/object.md#myso_object_myso_coin_registry_address">myso_coin_registry_address</a>(): <b>address</b> {
     <a href="../myso/object.md#myso_object_MYSO_COIN_REGISTRY_OBJECT_ID">MYSO_COIN_REGISTRY_OBJECT_ID</a>
+}
+</code></pre>
+
+
+
+</details>
+
+<a name="myso_object_myso_orderbook_registry_object_id"></a>
+
+## Function `myso_orderbook_registry_object_id`
+
+Create the <code><a href="../myso/object.md#myso_object_UID">UID</a></code> for the singleton orderbook <code>Registry</code> object.
+This should only be called once from <code>orderbook::registry</code>.
+
+
+<pre><code><b>public</b> <b>fun</b> <a href="../myso/object.md#myso_object_myso_orderbook_registry_object_id">myso_orderbook_registry_object_id</a>(): <a href="../myso/object.md#myso_object_UID">myso::object::UID</a>
+</code></pre>
+
+
+
+<details>
+<summary>Implementation</summary>
+
+
+<pre><code><b>public</b> <b>fun</b> <a href="../myso/object.md#myso_object_myso_orderbook_registry_object_id">myso_orderbook_registry_object_id</a>(): <a href="../myso/object.md#myso_object_UID">UID</a> {
+    <a href="../myso/object.md#myso_object_UID">UID</a> {
+        <a href="../myso/object.md#myso_object_id">id</a>: <a href="../myso/object.md#myso_object_ID">ID</a> { bytes: <a href="../myso/object.md#myso_object_MYSO_ORDERBOOK_REGISTRY_OBJECT_ID">MYSO_ORDERBOOK_REGISTRY_OBJECT_ID</a> },
+    }
+}
+</code></pre>
+
+
+
+</details>
+
+<a name="myso_object_myso_orderbook_registry_address"></a>
+
+## Function `myso_orderbook_registry_address`
+
+
+
+<pre><code><b>public</b> <b>fun</b> <a href="../myso/object.md#myso_object_myso_orderbook_registry_address">myso_orderbook_registry_address</a>(): <b>address</b>
+</code></pre>
+
+
+
+<details>
+<summary>Implementation</summary>
+
+
+<pre><code><b>public</b> <b>fun</b> <a href="../myso/object.md#myso_object_myso_orderbook_registry_address">myso_orderbook_registry_address</a>(): <b>address</b> {
+    <a href="../myso/object.md#myso_object_MYSO_ORDERBOOK_REGISTRY_OBJECT_ID">MYSO_ORDERBOOK_REGISTRY_OBJECT_ID</a>
 }
 </code></pre>
 

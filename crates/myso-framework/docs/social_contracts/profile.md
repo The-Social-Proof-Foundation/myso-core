@@ -30,7 +30,6 @@ Handles user identity, profile creation, management, and username registration
 -  [Struct `TokensVestedEvent`](#social_contracts_profile_TokensVestedEvent)
 -  [Struct `TokensClaimedEvent`](#social_contracts_profile_TokensClaimedEvent)
 -  [Struct `VestingWalletDeletedEvent`](#social_contracts_profile_VestingWalletDeletedEvent)
--  [Struct `PaidMessagingSettingsUpdatedEvent`](#social_contracts_profile_PaidMessagingSettingsUpdatedEvent)
 -  [Struct `EcosystemTreasuryUpdatedEvent`](#social_contracts_profile_EcosystemTreasuryUpdatedEvent)
 -  [Constants](#@Constants_0)
 -  [Function `bootstrap_init`](#social_contracts_profile_bootstrap_init)
@@ -120,10 +119,6 @@ Handles user identity, profile creation, management, and username registration
 -  [Function `vesting_total_amount`](#social_contracts_profile_vesting_total_amount)
 -  [Function `vesting_claimed_amount`](#social_contracts_profile_vesting_claimed_amount)
 -  [Function `vesting_curve_factor`](#social_contracts_profile_vesting_curve_factor)
--  [Function `set_paid_messaging_settings`](#social_contracts_profile_set_paid_messaging_settings)
--  [Function `get_paid_messaging_settings`](#social_contracts_profile_get_paid_messaging_settings)
--  [Function `requires_paid_message`](#social_contracts_profile_requires_paid_message)
--  [Function `get_min_message_cost`](#social_contracts_profile_get_min_message_cost)
 
 
 <pre><code><b>use</b> <a href="../myso/accumulator.md#myso_accumulator">myso::accumulator</a>;
@@ -402,18 +397,6 @@ Profile object that contains user information
 <dd>
  Badge ID of the selected ecosystem badge to display (optional)
  If None, the first ecosystem badge in the badges vector should be displayed
-</dd>
-<dt>
-<code>min_message_cost: <a href="../std/option.md#std_option_Option">std::option::Option</a>&lt;u64&gt;</code>
-</dt>
-<dd>
- Paid messaging: minimum cost to send a message to this profile (optional)
-</dd>
-<dt>
-<code>paid_messaging_enabled: bool</code>
-</dt>
-<dd>
- Paid messaging: toggle to enable/disable paid messaging
 </dd>
 <dt>
 <code>memory_account_id: <a href="../std/option.md#std_option_Option">std::option::Option</a>&lt;<a href="../myso/object.md#myso_object_ID">myso::object::ID</a>&gt;</code>
@@ -1478,53 +1461,6 @@ Event emitted when a vesting wallet is deleted
 
 </details>
 
-<a name="social_contracts_profile_PaidMessagingSettingsUpdatedEvent"></a>
-
-## Struct `PaidMessagingSettingsUpdatedEvent`
-
-Event emitted when paid messaging settings are updated
-
-
-<pre><code><b>public</b> <b>struct</b> <a href="../social_contracts/profile.md#social_contracts_profile_PaidMessagingSettingsUpdatedEvent">PaidMessagingSettingsUpdatedEvent</a> <b>has</b> <b>copy</b>, drop
-</code></pre>
-
-
-
-<details>
-<summary>Fields</summary>
-
-
-<dl>
-<dt>
-<code>profile_id: <b>address</b></code>
-</dt>
-<dd>
-</dd>
-<dt>
-<code><a href="../social_contracts/profile.md#social_contracts_profile_owner">owner</a>: <b>address</b></code>
-</dt>
-<dd>
-</dd>
-<dt>
-<code>enabled: bool</code>
-</dt>
-<dd>
-</dd>
-<dt>
-<code>min_cost: <a href="../std/option.md#std_option_Option">std::option::Option</a>&lt;u64&gt;</code>
-</dt>
-<dd>
-</dd>
-<dt>
-<code>updated_at: u64</code>
-</dt>
-<dd>
-</dd>
-</dl>
-
-
-</details>
-
 <a name="social_contracts_profile_EcosystemTreasuryUpdatedEvent"></a>
 
 ## Struct `EcosystemTreasuryUpdatedEvent`
@@ -2258,8 +2194,6 @@ Main entry: also creates a linked [<code><a href="../social_contracts/memory.md#
         badges: vector::empty&lt;<a href="../social_contracts/profile.md#social_contracts_profile_ProfileBadge">ProfileBadge</a>&gt;(),
         selected_badge_id: option::none(),
         selected_ecosystem_badge_id: option::none(),
-        min_message_cost: option::none(),
-        paid_messaging_enabled: <b>false</b>,
         memory_account_id: option::none(),
         <a href="../social_contracts/profile.md#social_contracts_profile_version">version</a>: <a href="../social_contracts/upgrade.md#social_contracts_upgrade_current_version">upgrade::current_version</a>(),
     };
@@ -5374,123 +5308,6 @@ Get the curve factor of a vesting wallet
 
 <pre><code><b>public</b> <b>fun</b> <a href="../social_contracts/profile.md#social_contracts_profile_vesting_curve_factor">vesting_curve_factor</a>(wallet: &<a href="../social_contracts/profile.md#social_contracts_profile_VestingWallet">VestingWallet</a>): u64 {
     wallet.curve_factor
-}
-</code></pre>
-
-
-
-</details>
-
-<a name="social_contracts_profile_set_paid_messaging_settings"></a>
-
-## Function `set_paid_messaging_settings`
-
-Set paid messaging settings for a profile (owner only)
-
-
-<pre><code><b>public</b> <b>entry</b> <b>fun</b> <a href="../social_contracts/profile.md#social_contracts_profile_set_paid_messaging_settings">set_paid_messaging_settings</a>(<a href="../social_contracts/profile.md#social_contracts_profile">profile</a>: &<b>mut</b> <a href="../social_contracts/profile.md#social_contracts_profile_Profile">social_contracts::profile::Profile</a>, enabled: bool, min_cost: <a href="../std/option.md#std_option_Option">std::option::Option</a>&lt;u64&gt;, clock: &<a href="../myso/clock.md#myso_clock_Clock">myso::clock::Clock</a>, ctx: &<b>mut</b> <a href="../myso/tx_context.md#myso_tx_context_TxContext">myso::tx_context::TxContext</a>)
-</code></pre>
-
-
-
-<details>
-<summary>Implementation</summary>
-
-
-<pre><code><b>public</b> <b>entry</b> <b>fun</b> <a href="../social_contracts/profile.md#social_contracts_profile_set_paid_messaging_settings">set_paid_messaging_settings</a>(
-    <a href="../social_contracts/profile.md#social_contracts_profile">profile</a>: &<b>mut</b> <a href="../social_contracts/profile.md#social_contracts_profile_Profile">Profile</a>,
-    enabled: bool,
-    min_cost: Option&lt;u64&gt;,
-    clock: &Clock,
-    ctx: &<b>mut</b> TxContext
-) {
-    <b>let</b> sender = tx_context::sender(ctx);
-    <b>assert</b>!(<a href="../social_contracts/profile.md#social_contracts_profile">profile</a>.<a href="../social_contracts/profile.md#social_contracts_profile_owner">owner</a> == sender, <a href="../social_contracts/profile.md#social_contracts_profile_EUnauthorized">EUnauthorized</a>);
-    <a href="../social_contracts/profile.md#social_contracts_profile">profile</a>.paid_messaging_enabled = enabled;
-    <a href="../social_contracts/profile.md#social_contracts_profile">profile</a>.min_message_cost = min_cost;
-    // Emit paid messaging settings updated event
-    event::emit(<a href="../social_contracts/profile.md#social_contracts_profile_PaidMessagingSettingsUpdatedEvent">PaidMessagingSettingsUpdatedEvent</a> {
-        profile_id: object::uid_to_address(&<a href="../social_contracts/profile.md#social_contracts_profile">profile</a>.<a href="../social_contracts/profile.md#social_contracts_profile_id">id</a>),
-        <a href="../social_contracts/profile.md#social_contracts_profile_owner">owner</a>: sender,
-        enabled,
-        min_cost,
-        updated_at: clock::timestamp_ms(clock),
-    });
-}
-</code></pre>
-
-
-
-</details>
-
-<a name="social_contracts_profile_get_paid_messaging_settings"></a>
-
-## Function `get_paid_messaging_settings`
-
-Get paid messaging settings for a profile
-
-
-<pre><code><b>public</b> <b>fun</b> <a href="../social_contracts/profile.md#social_contracts_profile_get_paid_messaging_settings">get_paid_messaging_settings</a>(<a href="../social_contracts/profile.md#social_contracts_profile">profile</a>: &<a href="../social_contracts/profile.md#social_contracts_profile_Profile">social_contracts::profile::Profile</a>): (bool, <a href="../std/option.md#std_option_Option">std::option::Option</a>&lt;u64&gt;)
-</code></pre>
-
-
-
-<details>
-<summary>Implementation</summary>
-
-
-<pre><code><b>public</b> <b>fun</b> <a href="../social_contracts/profile.md#social_contracts_profile_get_paid_messaging_settings">get_paid_messaging_settings</a>(<a href="../social_contracts/profile.md#social_contracts_profile">profile</a>: &<a href="../social_contracts/profile.md#social_contracts_profile_Profile">Profile</a>): (bool, Option&lt;u64&gt;) {
-    (<a href="../social_contracts/profile.md#social_contracts_profile">profile</a>.paid_messaging_enabled, <a href="../social_contracts/profile.md#social_contracts_profile">profile</a>.min_message_cost)
-}
-</code></pre>
-
-
-
-</details>
-
-<a name="social_contracts_profile_requires_paid_message"></a>
-
-## Function `requires_paid_message`
-
-Check if a profile requires paid messages
-
-
-<pre><code><b>public</b> <b>fun</b> <a href="../social_contracts/profile.md#social_contracts_profile_requires_paid_message">requires_paid_message</a>(<a href="../social_contracts/profile.md#social_contracts_profile">profile</a>: &<a href="../social_contracts/profile.md#social_contracts_profile_Profile">social_contracts::profile::Profile</a>): bool
-</code></pre>
-
-
-
-<details>
-<summary>Implementation</summary>
-
-
-<pre><code><b>public</b> <b>fun</b> <a href="../social_contracts/profile.md#social_contracts_profile_requires_paid_message">requires_paid_message</a>(<a href="../social_contracts/profile.md#social_contracts_profile">profile</a>: &<a href="../social_contracts/profile.md#social_contracts_profile_Profile">Profile</a>): bool {
-    <a href="../social_contracts/profile.md#social_contracts_profile">profile</a>.paid_messaging_enabled && option::is_some(&<a href="../social_contracts/profile.md#social_contracts_profile">profile</a>.min_message_cost)
-}
-</code></pre>
-
-
-
-</details>
-
-<a name="social_contracts_profile_get_min_message_cost"></a>
-
-## Function `get_min_message_cost`
-
-Get minimum message cost for a profile
-
-
-<pre><code><b>public</b> <b>fun</b> <a href="../social_contracts/profile.md#social_contracts_profile_get_min_message_cost">get_min_message_cost</a>(<a href="../social_contracts/profile.md#social_contracts_profile">profile</a>: &<a href="../social_contracts/profile.md#social_contracts_profile_Profile">social_contracts::profile::Profile</a>): <a href="../std/option.md#std_option_Option">std::option::Option</a>&lt;u64&gt;
-</code></pre>
-
-
-
-<details>
-<summary>Implementation</summary>
-
-
-<pre><code><b>public</b> <b>fun</b> <a href="../social_contracts/profile.md#social_contracts_profile_get_min_message_cost">get_min_message_cost</a>(<a href="../social_contracts/profile.md#social_contracts_profile">profile</a>: &<a href="../social_contracts/profile.md#social_contracts_profile_Profile">Profile</a>): Option&lt;u64&gt; {
-    <a href="../social_contracts/profile.md#social_contracts_profile">profile</a>.min_message_cost
 }
 </code></pre>
 

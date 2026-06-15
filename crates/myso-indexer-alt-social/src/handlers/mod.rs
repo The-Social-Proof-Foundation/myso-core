@@ -19,6 +19,7 @@ mod memory_handler;
 mod mydata;
 mod mydata_handler;
 mod mydata_object;
+mod paid_messaging_policy_handler;
 mod platform;
 mod platform_handler;
 mod poc;
@@ -54,7 +55,7 @@ use myso_indexer_alt_social_schema::models::{
     NewPocBadge, NewPocConfiguration, NewPocDispute, NewPocDisputeVote, NewPocRevenueRedirection,
     NewPost, NewPostTransfer, NewProfile, NewProfileBadge, NewProfileEvent, NewProfileOffer,
     NewProfileSaleFee, NewProfileSubscription, NewProfileSubscriptionService, NewProposal,
-    NewReaction, NewReactionCount, NewReport, NewRepost, NewRewardDistribution,
+    NewReaction, NewReport, NewRepost, NewRewardDistribution,
     NewSocialGraphEvent, NewSocialGraphRelationship, NewSocialProofTokensConfig,
     NewSocialProofTokensEvent, NewSpotBet, NewSpotBetWithdrawal, NewSpotConfig, NewSpotEventLog,
     NewSpotPayout, NewSpotRecord, NewSpotRefund, NewSpotResolution, NewSptExchangeConfig,
@@ -68,6 +69,7 @@ pub use governance_handler::GovernanceHandler;
 pub use insurance_handler::InsuranceHandler;
 pub use memory_handler::MemoryHandler;
 pub use mydata_handler::MyDataHandler;
+pub use paid_messaging_policy_handler::PaidMessagingPolicyHandler;
 pub use platform_handler::PlatformHandler;
 pub use posts_handler::PostsHandler;
 pub use profiles_handler::ProfilesHandler;
@@ -146,7 +148,6 @@ pub enum SocialEventRow {
     Post(NewPost),
     Comment(NewComment),
     Reaction(NewReaction),
-    ReactionCount(NewReactionCount),
     RemoveReaction {
         object_id: String,
         user_address: String,
@@ -396,6 +397,14 @@ pub enum SocialEventRow {
     MyDataContentUpdate {
         mydata_id: String,
         last_updated: i64,
+        transaction_id: String,
+    },
+    MyDataAccessRevoke {
+        mydata_id: String,
+        user: String,
+        access_type: String,
+        revoked_at: i64,
+        revoked_by: String,
         transaction_id: String,
     },
     MyDataBroadPool(NewMyDataBroadPool),
@@ -685,8 +694,6 @@ pub struct ProfileUpdate {
     pub username: Option<String>,
     pub selected_badge_id: Option<Option<String>>,
     pub selected_ecosystem_badge_id: Option<Option<String>>,
-    pub paid_messaging_enabled: Option<bool>,
-    pub paid_messaging_min_cost: Option<i64>,
     pub reservation_pool_address: Option<Option<String>>,
     pub social_proof_token_address: Option<Option<String>>,
 }

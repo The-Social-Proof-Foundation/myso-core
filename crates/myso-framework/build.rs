@@ -17,6 +17,7 @@ fn main() {
         "bridge",
         "mydata",
         "myso-social",
+        "messaging",
     ];
 
     let mut missing = Vec::new();

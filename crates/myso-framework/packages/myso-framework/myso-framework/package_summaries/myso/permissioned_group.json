@@ -1,0 +1,2212 @@
+{
+  "id": {
+    "address": "myso",
+    "name": "permissioned_group"
+  },
+  "doc": " Module: permissioned_group\n\n Generic permission system for group management.\n\n ## Permissions\n\n Core permissions (defined in this package):\n - `PermissionsAdmin`: Manages core permissions. Can grant/revoke PermissionsAdmin,\n   ExtensionPermissionsAdmin, ObjectAdmin, Destroyer. Can remove members.\n - `ExtensionPermissionsAdmin`: Manages extension permissions defined in third-party packages.\n - `ObjectAdmin`: Admin-tier permission granting raw `&mut UID` access to the group object.\n   Use cases include attaching dynamic fields or integrating with external protocols\n   (e.g. MySoNS reverse lookup). Only accessible via the actor-object pattern\n   (`object_uid` / `object_uid_mut`), which forces extending contracts to explicitly\n   reason about the implications of mutating the group object.\n - `GroupDeleter`: Permission that allows destroying the group via `delete()`.\n\n ## Permission Scoping\n\n - `PermissionsAdmin` can ONLY manage core permissions (from this package):\n   PermissionsAdmin, ExtensionPermissionsAdmin, ObjectAdmin, Destroyer\n - `ExtensionPermissionsAdmin` can ONLY manage extension permissions (from other packages)\n\n ## Key Concepts\n\n - **Membership is defined by permissions**: A member exists if and only if they have at least\n one permission\n - **Granting implicitly adds**: `grant_permission()` will automatically add a member if they\n don't exist\n - **Revoking may remove**: Revoking the last permission automatically removes the member from\n the group\n\n ## Invariants\n\n - At least one `PermissionsAdmin` must always exist (best-effort: the count includes\n   actor-object addresses and cannot distinguish them from human admins)\n - Members always have at least one permission (empty permission sets are not allowed)",
+  "immediate_dependencies": [
+    {
+      "address": "myso",
+      "name": "derived_object"
+    },
+    {
+      "address": "myso",
+      "name": "dynamic_field"
+    },
+    {
+      "address": "myso",
+      "name": "event"
+    },
+    {
+      "address": "myso",
+      "name": "object"
+    },
+    {
+      "address": "myso",
+      "name": "permissions_table"
+    },
+    {
+      "address": "myso",
+      "name": "tx_context"
+    },
+    {
+      "address": "myso",
+      "name": "unpause_cap"
+    },
+    {
+      "address": "myso",
+      "name": "vec_set"
+    },
+    {
+      "address": "std",
+      "name": "string"
+    },
+    {
+      "address": "std",
+      "name": "type_name"
+    }
+  ],
+  "attributes": [],
+  "functions": {
+    "new": {
+      "source_index": 0,
+      "index": 0,
+      "doc": " Creates a new PermissionedGroup with the sender as initial admin.\n Grants `PermissionsAdmin`, `ExtensionPermissionsAdmin`, and `Destroyer` to creator.\n\n # Type Parameters\n - `T`: Package witness type to scope permissions\n\n # Parameters\n - `_witness`: Instance of witness type `T` (proves caller owns the type)\n - `ctx`: Transaction context\n\n # Returns\n A new `PermissionedGroup<T>` with sender having `PermissionsAdmin` and\n `ExtensionPermissionsAdmin`.",
+      "attributes": [],
+      "visibility": "Public",
+      "entry": false,
+      "type_parameters": [
+        {
+          "name": "T",
+          "constraints": [
+            "Drop"
+          ]
+        }
+      ],
+      "parameters": [
+        {
+          "name": "_witness",
+          "type_": {
+            "NamedTypeParameter": "T"
+          }
+        },
+        {
+          "name": "ctx",
+          "type_": {
+            "Reference": [
+              true,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "myso",
+                    "name": "tx_context"
+                  },
+                  "name": "TxContext",
+                  "type_arguments": []
+                }
+              }
+            ]
+          }
+        }
+      ],
+      "return_": [
+        {
+          "Datatype": {
+            "module": {
+              "address": "myso",
+              "name": "permissioned_group"
+            },
+            "name": "PermissionedGroup",
+            "type_arguments": [
+              {
+                "phantom": true,
+                "argument": {
+                  "NamedTypeParameter": "T"
+                }
+              }
+            ]
+          }
+        }
+      ]
+    },
+    "new_derived": {
+      "source_index": 1,
+      "index": 1,
+      "doc": " Creates a new derived PermissionedGroup with deterministic address.\n Grants `PermissionsAdmin`, `ExtensionPermissionsAdmin`, and `Destroyer` to creator.\n\n # Type Parameters\n - `T`: Package witness type to scope permissions\n - `DerivationKey`: Key type for address derivation\n\n # Parameters\n - `_witness`: Instance of witness type `T` (proves caller owns the type)\n - `derivation_uid`: Mutable reference to the parent UID for derivation\n - `derivation_key`: Key used for deterministic address derivation\n - `ctx`: Transaction context\n\n # Returns\n A new `PermissionedGroup<T>` with derived address.\n\n # Aborts\n - `EPermissionedGroupAlreadyExists`: if derived address is already claimed",
+      "attributes": [],
+      "visibility": "Public",
+      "entry": false,
+      "type_parameters": [
+        {
+          "name": "T",
+          "constraints": [
+            "Drop"
+          ]
+        },
+        {
+          "name": "DerivationKey",
+          "constraints": [
+            "Copy",
+            "Drop",
+            "Store"
+          ]
+        }
+      ],
+      "parameters": [
+        {
+          "name": "_witness",
+          "type_": {
+            "NamedTypeParameter": "T"
+          }
+        },
+        {
+          "name": "derivation_uid",
+          "type_": {
+            "Reference": [
+              true,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "myso",
+                    "name": "object"
+                  },
+                  "name": "UID",
+                  "type_arguments": []
+                }
+              }
+            ]
+          }
+        },
+        {
+          "name": "derivation_key",
+          "type_": {
+            "NamedTypeParameter": "DerivationKey"
+          }
+        },
+        {
+          "name": "ctx",
+          "type_": {
+            "Reference": [
+              true,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "myso",
+                    "name": "tx_context"
+                  },
+                  "name": "TxContext",
+                  "type_arguments": []
+                }
+              }
+            ]
+          }
+        }
+      ],
+      "return_": [
+        {
+          "Datatype": {
+            "module": {
+              "address": "myso",
+              "name": "permissioned_group"
+            },
+            "name": "PermissionedGroup",
+            "type_arguments": [
+              {
+                "phantom": true,
+                "argument": {
+                  "NamedTypeParameter": "T"
+                }
+              }
+            ]
+          }
+        }
+      ]
+    },
+    "delete": {
+      "source_index": 2,
+      "index": 2,
+      "doc": " Deletes a PermissionedGroup, returning its components.\n Checks that `ctx.sender()` has `GroupDeleter` permission.\n Caller must extract any dynamic fields BEFORE calling this (the UID is deleted).\n\n # Type Parameters\n - `T`: Package witness type\n\n # Parameters\n - `self`: The PermissionedGroup to delete (by value)\n - `ctx`: Transaction context\n\n # Returns\n Tuple of (PermissionsTable, permissions_admin_count, creator)\n\n # Aborts\n - `ENotPermitted`: if caller doesn't have `GroupDeleter` permission",
+      "attributes": [],
+      "visibility": "Public",
+      "entry": false,
+      "type_parameters": [
+        {
+          "name": "T",
+          "constraints": [
+            "Drop"
+          ]
+        }
+      ],
+      "parameters": [
+        {
+          "name": "self",
+          "type_": {
+            "Datatype": {
+              "module": {
+                "address": "myso",
+                "name": "permissioned_group"
+              },
+              "name": "PermissionedGroup",
+              "type_arguments": [
+                {
+                  "phantom": true,
+                  "argument": {
+                    "NamedTypeParameter": "T"
+                  }
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "ctx",
+          "type_": {
+            "Reference": [
+              false,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "myso",
+                    "name": "tx_context"
+                  },
+                  "name": "TxContext",
+                  "type_arguments": []
+                }
+              }
+            ]
+          }
+        }
+      ],
+      "return_": [
+        {
+          "Datatype": {
+            "module": {
+              "address": "myso",
+              "name": "permissions_table"
+            },
+            "name": "PermissionsTable",
+            "type_arguments": []
+          }
+        },
+        "u64",
+        "address"
+      ]
+    },
+    "pause": {
+      "source_index": 3,
+      "index": 3,
+      "doc": " Pauses the group, preventing all mutations.\n Returns an `UnpauseCap<T>` that is required to unpause.\n\n To use as an emergency fix: pause → fix state in a PTB → unpause.\n To archive (messaging layer): pause → store the returned cap as a DOF.\n\n # Aborts\n - `ENotPermitted`: if caller doesn't have `PermissionsAdmin`\n - `EAlreadyPaused`: if the group is already paused",
+      "attributes": [],
+      "visibility": "Public",
+      "entry": false,
+      "type_parameters": [
+        {
+          "name": "T",
+          "constraints": [
+            "Drop"
+          ]
+        }
+      ],
+      "parameters": [
+        {
+          "name": "self",
+          "type_": {
+            "Reference": [
+              true,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "myso",
+                    "name": "permissioned_group"
+                  },
+                  "name": "PermissionedGroup",
+                  "type_arguments": [
+                    {
+                      "phantom": true,
+                      "argument": {
+                        "NamedTypeParameter": "T"
+                      }
+                    }
+                  ]
+                }
+              }
+            ]
+          }
+        },
+        {
+          "name": "ctx",
+          "type_": {
+            "Reference": [
+              true,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "myso",
+                    "name": "tx_context"
+                  },
+                  "name": "TxContext",
+                  "type_arguments": []
+                }
+              }
+            ]
+          }
+        }
+      ],
+      "return_": [
+        {
+          "Datatype": {
+            "module": {
+              "address": "myso",
+              "name": "unpause_cap"
+            },
+            "name": "UnpauseCap",
+            "type_arguments": [
+              {
+                "phantom": true,
+                "argument": {
+                  "NamedTypeParameter": "T"
+                }
+              }
+            ]
+          }
+        }
+      ]
+    },
+    "unpause": {
+      "source_index": 4,
+      "index": 4,
+      "doc": " Unpauses the group. Consumes and destroys the `UnpauseCap`.\n\n # Aborts\n - `EGroupIdMismatch`: if the cap belongs to a different group",
+      "attributes": [],
+      "visibility": "Public",
+      "entry": false,
+      "type_parameters": [
+        {
+          "name": "T",
+          "constraints": [
+            "Drop"
+          ]
+        }
+      ],
+      "parameters": [
+        {
+          "name": "self",
+          "type_": {
+            "Reference": [
+              true,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "myso",
+                    "name": "permissioned_group"
+                  },
+                  "name": "PermissionedGroup",
+                  "type_arguments": [
+                    {
+                      "phantom": true,
+                      "argument": {
+                        "NamedTypeParameter": "T"
+                      }
+                    }
+                  ]
+                }
+              }
+            ]
+          }
+        },
+        {
+          "name": "cap",
+          "type_": {
+            "Datatype": {
+              "module": {
+                "address": "myso",
+                "name": "unpause_cap"
+              },
+              "name": "UnpauseCap",
+              "type_arguments": [
+                {
+                  "phantom": true,
+                  "argument": {
+                    "NamedTypeParameter": "T"
+                  }
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "ctx",
+          "type_": {
+            "Reference": [
+              false,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "myso",
+                    "name": "tx_context"
+                  },
+                  "name": "TxContext",
+                  "type_arguments": []
+                }
+              }
+            ]
+          }
+        }
+      ],
+      "return_": []
+    },
+    "is_paused": {
+      "source_index": 5,
+      "index": 5,
+      "doc": " Returns whether the group is currently paused.",
+      "attributes": [],
+      "visibility": "Public",
+      "entry": false,
+      "type_parameters": [
+        {
+          "name": "T",
+          "constraints": [
+            "Drop"
+          ]
+        }
+      ],
+      "parameters": [
+        {
+          "name": "self",
+          "type_": {
+            "Reference": [
+              false,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "myso",
+                    "name": "permissioned_group"
+                  },
+                  "name": "PermissionedGroup",
+                  "type_arguments": [
+                    {
+                      "phantom": true,
+                      "argument": {
+                        "NamedTypeParameter": "T"
+                      }
+                    }
+                  ]
+                }
+              }
+            ]
+          }
+        }
+      ],
+      "return_": [
+        "bool"
+      ]
+    },
+    "grant_permission": {
+      "source_index": 6,
+      "index": 6,
+      "doc": " Grants a permission to a member.\n If the member doesn't exist, they are automatically added to the group.\n Emits both `MemberAdded` (if new) and `PermissionsGranted` events.\n\n Permission requirements:\n - Core permissions: caller must have `PermissionsAdmin`\n - Extension permissions: caller must have `ExtensionPermissionsAdmin`\n\n # Type Parameters\n - `T`: Package witness type\n - `NewPermission`: Permission type to grant\n\n # Parameters\n - `self`: Mutable reference to the PermissionedGroup\n - `member`: Address of the member to grant permission to\n - `ctx`: Transaction context\n\n # Aborts\n - `ENotPermitted`: if caller doesn't have appropriate manager permission",
+      "attributes": [],
+      "visibility": "Public",
+      "entry": false,
+      "type_parameters": [
+        {
+          "name": "T",
+          "constraints": [
+            "Drop"
+          ]
+        },
+        {
+          "name": "NewPermission",
+          "constraints": [
+            "Drop"
+          ]
+        }
+      ],
+      "parameters": [
+        {
+          "name": "self",
+          "type_": {
+            "Reference": [
+              true,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "myso",
+                    "name": "permissioned_group"
+                  },
+                  "name": "PermissionedGroup",
+                  "type_arguments": [
+                    {
+                      "phantom": true,
+                      "argument": {
+                        "NamedTypeParameter": "T"
+                      }
+                    }
+                  ]
+                }
+              }
+            ]
+          }
+        },
+        {
+          "name": "member",
+          "type_": "address"
+        },
+        {
+          "name": "ctx",
+          "type_": {
+            "Reference": [
+              false,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "myso",
+                    "name": "tx_context"
+                  },
+                  "name": "TxContext",
+                  "type_arguments": []
+                }
+              }
+            ]
+          }
+        }
+      ],
+      "return_": []
+    },
+    "object_grant_permission": {
+      "source_index": 7,
+      "index": 7,
+      "doc": " Grants a permission to a recipient via an actor object.\n Enables third-party contracts to grant permissions with custom logic.\n If the recipient is not already a member, they are automatically added.\n\n Permission requirements:\n - Core permissions: actor must have `PermissionsAdmin`\n - Extension permissions: actor must have `ExtensionPermissionsAdmin`\n\n # Type Parameters\n - `T`: Package witness type\n - `NewPermission`: Permission type to grant\n\n # Parameters\n - `self`: Mutable reference to the PermissionedGroup\n - `actor_object`: UID of the actor object with appropriate manager permission\n - `recipient`: Address of the member to receive the permission\n\n # Aborts\n - `ENotPermitted`: if actor_object doesn't have appropriate manager permission",
+      "attributes": [],
+      "visibility": "Public",
+      "entry": false,
+      "type_parameters": [
+        {
+          "name": "T",
+          "constraints": [
+            "Drop"
+          ]
+        },
+        {
+          "name": "NewPermission",
+          "constraints": [
+            "Drop"
+          ]
+        }
+      ],
+      "parameters": [
+        {
+          "name": "self",
+          "type_": {
+            "Reference": [
+              true,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "myso",
+                    "name": "permissioned_group"
+                  },
+                  "name": "PermissionedGroup",
+                  "type_arguments": [
+                    {
+                      "phantom": true,
+                      "argument": {
+                        "NamedTypeParameter": "T"
+                      }
+                    }
+                  ]
+                }
+              }
+            ]
+          }
+        },
+        {
+          "name": "actor_object",
+          "type_": {
+            "Reference": [
+              false,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "myso",
+                    "name": "object"
+                  },
+                  "name": "UID",
+                  "type_arguments": []
+                }
+              }
+            ]
+          }
+        },
+        {
+          "name": "recipient",
+          "type_": "address"
+        }
+      ],
+      "return_": []
+    },
+    "remove_member": {
+      "source_index": 8,
+      "index": 8,
+      "doc": " Removes a member from the PermissionedGroup.\n Requires `PermissionsAdmin` permission as this is a powerful admin operation.\n\n # Parameters\n - `self`: Mutable reference to the PermissionedGroup\n - `member`: Address of the member to remove\n - `ctx`: Transaction context\n\n # Aborts\n - `ENotPermitted`: if caller doesn't have `PermissionsAdmin` permission\n - `EMemberNotFound`: if member doesn't exist\n - `ELastPermissionsAdmin`: if removing would leave no PermissionsAdmins",
+      "attributes": [],
+      "visibility": "Public",
+      "entry": false,
+      "type_parameters": [
+        {
+          "name": "T",
+          "constraints": [
+            "Drop"
+          ]
+        }
+      ],
+      "parameters": [
+        {
+          "name": "self",
+          "type_": {
+            "Reference": [
+              true,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "myso",
+                    "name": "permissioned_group"
+                  },
+                  "name": "PermissionedGroup",
+                  "type_arguments": [
+                    {
+                      "phantom": true,
+                      "argument": {
+                        "NamedTypeParameter": "T"
+                      }
+                    }
+                  ]
+                }
+              }
+            ]
+          }
+        },
+        {
+          "name": "member",
+          "type_": "address"
+        },
+        {
+          "name": "ctx",
+          "type_": {
+            "Reference": [
+              false,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "myso",
+                    "name": "tx_context"
+                  },
+                  "name": "TxContext",
+                  "type_arguments": []
+                }
+              }
+            ]
+          }
+        }
+      ],
+      "return_": []
+    },
+    "object_remove_member": {
+      "source_index": 9,
+      "index": 9,
+      "doc": " Removes a member from the group via an actor object.\n Enables third-party contracts to implement custom leave logic.\n The actor object must have `PermissionsAdmin` permission on the group.\n\n # Parameters\n - `self`: Mutable reference to the PermissionedGroup\n - `actor_object`: UID of the actor object with `PermissionsAdmin` permission\n - `member`: Address of the member to remove\n\n # Aborts\n - `ENotPermitted`: if actor_object doesn't have `PermissionsAdmin` permission\n - `EMemberNotFound`: if member is not a member\n - `ELastPermissionsAdmin`: if removing would leave no PermissionsAdmins",
+      "attributes": [],
+      "visibility": "Public",
+      "entry": false,
+      "type_parameters": [
+        {
+          "name": "T",
+          "constraints": [
+            "Drop"
+          ]
+        }
+      ],
+      "parameters": [
+        {
+          "name": "self",
+          "type_": {
+            "Reference": [
+              true,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "myso",
+                    "name": "permissioned_group"
+                  },
+                  "name": "PermissionedGroup",
+                  "type_arguments": [
+                    {
+                      "phantom": true,
+                      "argument": {
+                        "NamedTypeParameter": "T"
+                      }
+                    }
+                  ]
+                }
+              }
+            ]
+          }
+        },
+        {
+          "name": "actor_object",
+          "type_": {
+            "Reference": [
+              false,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "myso",
+                    "name": "object"
+                  },
+                  "name": "UID",
+                  "type_arguments": []
+                }
+              }
+            ]
+          }
+        },
+        {
+          "name": "member",
+          "type_": "address"
+        }
+      ],
+      "return_": []
+    },
+    "revoke_permission": {
+      "source_index": 10,
+      "index": 10,
+      "doc": " Revokes a permission from a member.\n If this is the member's last permission, they are automatically removed from the group.\n Emits `PermissionsRevoked` and potentially `MemberRemoved` events.\n\n Permission requirements:\n - Core permissions: caller must have `PermissionsAdmin`\n - Extension permissions: caller must have `ExtensionPermissionsAdmin`\n\n # Type Parameters\n - `T`: Package witness type\n - `ExistingPermission`: Permission type to revoke\n\n # Parameters\n - `self`: Mutable reference to the PermissionedGroup\n - `member`: Address of the member to revoke permission from\n - `ctx`: Transaction context\n\n # Aborts\n - `ENotPermitted`: if caller doesn't have appropriate manager permission\n - `EMemberNotFound`: if member doesn't exist\n - `ELastPermissionsAdmin`: if revoking `PermissionsAdmin` would leave no admins",
+      "attributes": [],
+      "visibility": "Public",
+      "entry": false,
+      "type_parameters": [
+        {
+          "name": "T",
+          "constraints": [
+            "Drop"
+          ]
+        },
+        {
+          "name": "ExistingPermission",
+          "constraints": [
+            "Drop"
+          ]
+        }
+      ],
+      "parameters": [
+        {
+          "name": "self",
+          "type_": {
+            "Reference": [
+              true,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "myso",
+                    "name": "permissioned_group"
+                  },
+                  "name": "PermissionedGroup",
+                  "type_arguments": [
+                    {
+                      "phantom": true,
+                      "argument": {
+                        "NamedTypeParameter": "T"
+                      }
+                    }
+                  ]
+                }
+              }
+            ]
+          }
+        },
+        {
+          "name": "member",
+          "type_": "address"
+        },
+        {
+          "name": "ctx",
+          "type_": {
+            "Reference": [
+              false,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "myso",
+                    "name": "tx_context"
+                  },
+                  "name": "TxContext",
+                  "type_arguments": []
+                }
+              }
+            ]
+          }
+        }
+      ],
+      "return_": []
+    },
+    "object_revoke_permission": {
+      "source_index": 11,
+      "index": 11,
+      "doc": " Revokes a permission from a member via an actor object.\n Enables third-party contracts to revoke permissions with custom logic.\n If this is the member's last permission, they are automatically removed from the group.\n\n Permission requirements:\n - Core permissions: actor must have `PermissionsAdmin`\n - Extension permissions: actor must have `ExtensionPermissionsAdmin`\n\n # Type Parameters\n - `T`: Package witness type\n - `ExistingPermission`: Permission type to revoke\n\n # Parameters\n - `self`: Mutable reference to the PermissionedGroup\n - `actor_object`: UID of the actor object with appropriate manager permission\n - `member`: Address of the member to revoke permission from\n\n # Aborts\n - `ENotPermitted`: if actor_object doesn't have appropriate manager permission\n - `EMemberNotFound`: if member is not a member\n - `ELastPermissionsAdmin`: if revoking `PermissionsAdmin` would leave no admins",
+      "attributes": [],
+      "visibility": "Public",
+      "entry": false,
+      "type_parameters": [
+        {
+          "name": "T",
+          "constraints": [
+            "Drop"
+          ]
+        },
+        {
+          "name": "ExistingPermission",
+          "constraints": [
+            "Drop"
+          ]
+        }
+      ],
+      "parameters": [
+        {
+          "name": "self",
+          "type_": {
+            "Reference": [
+              true,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "myso",
+                    "name": "permissioned_group"
+                  },
+                  "name": "PermissionedGroup",
+                  "type_arguments": [
+                    {
+                      "phantom": true,
+                      "argument": {
+                        "NamedTypeParameter": "T"
+                      }
+                    }
+                  ]
+                }
+              }
+            ]
+          }
+        },
+        {
+          "name": "actor_object",
+          "type_": {
+            "Reference": [
+              false,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "myso",
+                    "name": "object"
+                  },
+                  "name": "UID",
+                  "type_arguments": []
+                }
+              }
+            ]
+          }
+        },
+        {
+          "name": "member",
+          "type_": "address"
+        }
+      ],
+      "return_": []
+    },
+    "has_permission": {
+      "source_index": 12,
+      "index": 12,
+      "doc": " Checks if the given address has the specified permission.\n\n # Type Parameters\n - `T`: Package witness type\n - `Permission`: Permission type to check\n\n # Parameters\n - `self`: Reference to the PermissionedGroup\n - `member`: Address to check\n\n # Returns\n `true` if the address has the permission, `false` otherwise.",
+      "attributes": [],
+      "visibility": "Public",
+      "entry": false,
+      "type_parameters": [
+        {
+          "name": "T",
+          "constraints": [
+            "Drop"
+          ]
+        },
+        {
+          "name": "Permission",
+          "constraints": [
+            "Drop"
+          ]
+        }
+      ],
+      "parameters": [
+        {
+          "name": "self",
+          "type_": {
+            "Reference": [
+              false,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "myso",
+                    "name": "permissioned_group"
+                  },
+                  "name": "PermissionedGroup",
+                  "type_arguments": [
+                    {
+                      "phantom": true,
+                      "argument": {
+                        "NamedTypeParameter": "T"
+                      }
+                    }
+                  ]
+                }
+              }
+            ]
+          }
+        },
+        {
+          "name": "member",
+          "type_": "address"
+        }
+      ],
+      "return_": [
+        "bool"
+      ]
+    },
+    "is_member": {
+      "source_index": 13,
+      "index": 13,
+      "doc": " Checks if the given address is a member of the group.\n\n # Type Parameters\n - `T`: Package witness type\n\n # Parameters\n - `self`: Reference to the PermissionedGroup\n - `member`: Address to check\n\n # Returns\n `true` if the address is a member, `false` otherwise.",
+      "attributes": [],
+      "visibility": "Public",
+      "entry": false,
+      "type_parameters": [
+        {
+          "name": "T",
+          "constraints": [
+            "Drop"
+          ]
+        }
+      ],
+      "parameters": [
+        {
+          "name": "self",
+          "type_": {
+            "Reference": [
+              false,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "myso",
+                    "name": "permissioned_group"
+                  },
+                  "name": "PermissionedGroup",
+                  "type_arguments": [
+                    {
+                      "phantom": true,
+                      "argument": {
+                        "NamedTypeParameter": "T"
+                      }
+                    }
+                  ]
+                }
+              }
+            ]
+          }
+        },
+        {
+          "name": "member",
+          "type_": "address"
+        }
+      ],
+      "return_": [
+        "bool"
+      ]
+    },
+    "creator": {
+      "source_index": 14,
+      "index": 14,
+      "doc": " Returns the creator's address of the PermissionedGroup.\n\n # Parameters\n - `self`: Reference to the PermissionedGroup\n\n # Returns\n The address of the creator.",
+      "attributes": [],
+      "visibility": "Public",
+      "entry": false,
+      "type_parameters": [
+        {
+          "name": "T",
+          "constraints": [
+            "Drop"
+          ]
+        }
+      ],
+      "parameters": [
+        {
+          "name": "self",
+          "type_": {
+            "Reference": [
+              false,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "myso",
+                    "name": "permissioned_group"
+                  },
+                  "name": "PermissionedGroup",
+                  "type_arguments": [
+                    {
+                      "phantom": true,
+                      "argument": {
+                        "NamedTypeParameter": "T"
+                      }
+                    }
+                  ]
+                }
+              }
+            ]
+          }
+        }
+      ],
+      "return_": [
+        "address"
+      ]
+    },
+    "object_uid": {
+      "source_index": 15,
+      "index": 15,
+      "doc": " Returns a reference to the group's UID via an actor object.\n The actor object must have `ObjectAdmin` permission on the group.\n Only accessible via the actor-object pattern — use this to build wrapper modules\n that explicitly reason about the implications of accessing the group UID.\n\n # Aborts\n - `ENotPermitted`: if actor_object doesn't have `ObjectAdmin` permission",
+      "attributes": [],
+      "visibility": "Public",
+      "entry": false,
+      "type_parameters": [
+        {
+          "name": "T",
+          "constraints": [
+            "Drop"
+          ]
+        }
+      ],
+      "parameters": [
+        {
+          "name": "self",
+          "type_": {
+            "Reference": [
+              false,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "myso",
+                    "name": "permissioned_group"
+                  },
+                  "name": "PermissionedGroup",
+                  "type_arguments": [
+                    {
+                      "phantom": true,
+                      "argument": {
+                        "NamedTypeParameter": "T"
+                      }
+                    }
+                  ]
+                }
+              }
+            ]
+          }
+        },
+        {
+          "name": "actor_object",
+          "type_": {
+            "Reference": [
+              false,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "myso",
+                    "name": "object"
+                  },
+                  "name": "UID",
+                  "type_arguments": []
+                }
+              }
+            ]
+          }
+        }
+      ],
+      "return_": [
+        {
+          "Reference": [
+            false,
+            {
+              "Datatype": {
+                "module": {
+                  "address": "myso",
+                  "name": "object"
+                },
+                "name": "UID",
+                "type_arguments": []
+              }
+            }
+          ]
+        }
+      ]
+    },
+    "object_uid_mut": {
+      "source_index": 16,
+      "index": 16,
+      "doc": " Returns a mutable reference to the group's UID via an actor object.\n The actor object must have `ObjectAdmin` permission on the group.\n Only accessible via the actor-object pattern — use this to build wrapper modules\n that explicitly reason about the implications of mutating the group UID.\n\n # Aborts\n - `ENotPermitted`: if actor_object doesn't have `ObjectAdmin` permission",
+      "attributes": [],
+      "visibility": "Public",
+      "entry": false,
+      "type_parameters": [
+        {
+          "name": "T",
+          "constraints": [
+            "Drop"
+          ]
+        }
+      ],
+      "parameters": [
+        {
+          "name": "self",
+          "type_": {
+            "Reference": [
+              true,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "myso",
+                    "name": "permissioned_group"
+                  },
+                  "name": "PermissionedGroup",
+                  "type_arguments": [
+                    {
+                      "phantom": true,
+                      "argument": {
+                        "NamedTypeParameter": "T"
+                      }
+                    }
+                  ]
+                }
+              }
+            ]
+          }
+        },
+        {
+          "name": "actor_object",
+          "type_": {
+            "Reference": [
+              false,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "myso",
+                    "name": "object"
+                  },
+                  "name": "UID",
+                  "type_arguments": []
+                }
+              }
+            ]
+          }
+        }
+      ],
+      "return_": [
+        {
+          "Reference": [
+            true,
+            {
+              "Datatype": {
+                "module": {
+                  "address": "myso",
+                  "name": "object"
+                },
+                "name": "UID",
+                "type_arguments": []
+              }
+            }
+          ]
+        }
+      ]
+    },
+    "permissions_admin_count": {
+      "source_index": 17,
+      "index": 17,
+      "doc": " Returns the number of `PermissionsAdmin`s in the PermissionedGroup.\n\n # Parameters\n - `self`: Reference to the PermissionedGroup\n\n # Returns\n The count of `PermissionsAdmin`s.",
+      "attributes": [],
+      "visibility": "Public",
+      "entry": false,
+      "type_parameters": [
+        {
+          "name": "T",
+          "constraints": [
+            "Drop"
+          ]
+        }
+      ],
+      "parameters": [
+        {
+          "name": "self",
+          "type_": {
+            "Reference": [
+              false,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "myso",
+                    "name": "permissioned_group"
+                  },
+                  "name": "PermissionedGroup",
+                  "type_arguments": [
+                    {
+                      "phantom": true,
+                      "argument": {
+                        "NamedTypeParameter": "T"
+                      }
+                    }
+                  ]
+                }
+              }
+            ]
+          }
+        }
+      ],
+      "return_": [
+        "u64"
+      ]
+    },
+    "member_count": {
+      "source_index": 18,
+      "index": 18,
+      "doc": " Returns the total number of members in the PermissionedGroup.\n\n # Parameters\n - `self`: Reference to the PermissionedGroup\n\n # Returns\n The total number of members.",
+      "attributes": [],
+      "visibility": "Public",
+      "entry": false,
+      "type_parameters": [
+        {
+          "name": "T",
+          "constraints": [
+            "Drop"
+          ]
+        }
+      ],
+      "parameters": [
+        {
+          "name": "self",
+          "type_": {
+            "Reference": [
+              false,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "myso",
+                    "name": "permissioned_group"
+                  },
+                  "name": "PermissionedGroup",
+                  "type_arguments": [
+                    {
+                      "phantom": true,
+                      "argument": {
+                        "NamedTypeParameter": "T"
+                      }
+                    }
+                  ]
+                }
+              }
+            ]
+          }
+        }
+      ],
+      "return_": [
+        "u64"
+      ]
+    },
+    "is_core_permission": {
+      "source_index": 20,
+      "index": 19,
+      "doc": " Returns true if Permission is one of the four designated core permissions.\n\n Uses an explicit whitelist of the four core permission types rather than a package-level\n check. The alternative package-level approach would be:\n\n     type_name::original_id<Permission>() == type_name::original_id<PermissionsAdmin>()\n\n That approach is safe for an immutable published package (no new types can be added\n post-publish), but it is imprecise: it would treat *any* type from this package as core,\n not just the four intended permissions. The whitelist makes the intent explicit.",
+      "attributes": [],
+      "visibility": "Private",
+      "entry": false,
+      "type_parameters": [
+        {
+          "name": "Permission",
+          "constraints": [
+            "Drop"
+          ]
+        }
+      ],
+      "parameters": [],
+      "return_": [
+        "bool"
+      ]
+    },
+    "safe_decrement_permissions_admin_count": {
+      "source_index": 22,
+      "index": 20,
+      "doc": " Decrements permissions_admin_count if member has `PermissionsAdmin`.\n Used when revoking `PermissionsAdmin` permission or removing a member.\n Aborts if this would leave no PermissionsAdmins.\n\n NOTE: `permissions_admin_count` tracks all holders of `PermissionsAdmin`, including\n actor-object addresses. This is a best-effort invariant: it prevents the count from\n reaching zero, but cannot distinguish human admins from actor-object admins. If actor\n objects hold `PermissionsAdmin`, a group may end up with no human admins without this\n guard triggering. Downstream packages using the actor-object pattern should be aware\n of this limitation.",
+      "attributes": [],
+      "visibility": "Private",
+      "entry": false,
+      "type_parameters": [
+        {
+          "name": "T",
+          "constraints": [
+            "Drop"
+          ]
+        }
+      ],
+      "parameters": [
+        {
+          "name": "self",
+          "type_": {
+            "Reference": [
+              true,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "myso",
+                    "name": "permissioned_group"
+                  },
+                  "name": "PermissionedGroup",
+                  "type_arguments": [
+                    {
+                      "phantom": true,
+                      "argument": {
+                        "NamedTypeParameter": "T"
+                      }
+                    }
+                  ]
+                }
+              }
+            ]
+          }
+        },
+        {
+          "name": "member",
+          "type_": "address"
+        }
+      ],
+      "return_": []
+    },
+    "internal_grant_permission": {
+      "source_index": 23,
+      "index": 21,
+      "doc": " Internal helper to grant a permission to a member.\n Adds the member if they don't exist, then grants the permission.\n Increments permissions_admin_count if granting `PermissionsAdmin`.\n Emits `MemberAdded` event if member is new.",
+      "attributes": [],
+      "visibility": "Private",
+      "entry": false,
+      "type_parameters": [
+        {
+          "name": "T",
+          "constraints": [
+            "Drop"
+          ]
+        },
+        {
+          "name": "NewPermission",
+          "constraints": [
+            "Drop"
+          ]
+        }
+      ],
+      "parameters": [
+        {
+          "name": "self",
+          "type_": {
+            "Reference": [
+              true,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "myso",
+                    "name": "permissioned_group"
+                  },
+                  "name": "PermissionedGroup",
+                  "type_arguments": [
+                    {
+                      "phantom": true,
+                      "argument": {
+                        "NamedTypeParameter": "T"
+                      }
+                    }
+                  ]
+                }
+              }
+            ]
+          }
+        },
+        {
+          "name": "member",
+          "type_": "address"
+        }
+      ],
+      "return_": []
+    },
+    "internal_revoke_permission": {
+      "source_index": 24,
+      "index": 22,
+      "doc": " Internal helper to revoke a permission from a PermissionedGroup member.\n If this is the member's last permission, they are removed from the group.",
+      "attributes": [],
+      "visibility": "Private",
+      "entry": false,
+      "type_parameters": [
+        {
+          "name": "T",
+          "constraints": [
+            "Drop"
+          ]
+        },
+        {
+          "name": "ExistingPermission",
+          "constraints": [
+            "Drop"
+          ]
+        }
+      ],
+      "parameters": [
+        {
+          "name": "self",
+          "type_": {
+            "Reference": [
+              true,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "myso",
+                    "name": "permissioned_group"
+                  },
+                  "name": "PermissionedGroup",
+                  "type_arguments": [
+                    {
+                      "phantom": true,
+                      "argument": {
+                        "NamedTypeParameter": "T"
+                      }
+                    }
+                  ]
+                }
+              }
+            ]
+          }
+        },
+        {
+          "name": "member",
+          "type_": "address"
+        }
+      ],
+      "return_": []
+    },
+    "assert_can_manage_permission": {
+      "source_index": 21,
+      "index": 18446744073709551615,
+      "doc": " Asserts that the manager has permission to manage (grant/revoke) the specified permission type.\n - Core permissions (from this package): manager must have `PermissionsAdmin`\n - Extension permissions (from other packages): manager must have `ExtensionPermissionsAdmin`",
+      "attributes": [],
+      "visibility": "Private",
+      "entry": false,
+      "macro_": true,
+      "type_parameters": [
+        {
+          "name": "$T",
+          "constraints": [
+            "Drop"
+          ]
+        },
+        {
+          "name": "$Permission",
+          "constraints": [
+            "Drop"
+          ]
+        }
+      ],
+      "parameters": [
+        {
+          "name": "$self",
+          "type_": {
+            "Reference": [
+              false,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "myso",
+                    "name": "permissioned_group"
+                  },
+                  "name": "PermissionedGroup",
+                  "type_arguments": [
+                    {
+                      "phantom": true,
+                      "argument": {
+                        "NamedTypeParameter": "$T"
+                      }
+                    }
+                  ]
+                }
+              }
+            ]
+          }
+        },
+        {
+          "name": "$manager",
+          "type_": "address"
+        }
+      ],
+      "return_": []
+    },
+    "assert_not_paused": {
+      "source_index": 19,
+      "index": 18446744073709551615,
+      "doc": " Asserts that the group is not paused.",
+      "attributes": [],
+      "visibility": "Private",
+      "entry": false,
+      "macro_": true,
+      "type_parameters": [
+        {
+          "name": "$T",
+          "constraints": [
+            "Drop"
+          ]
+        }
+      ],
+      "parameters": [
+        {
+          "name": "$self",
+          "type_": {
+            "Reference": [
+              false,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "myso",
+                    "name": "permissioned_group"
+                  },
+                  "name": "PermissionedGroup",
+                  "type_arguments": [
+                    {
+                      "phantom": true,
+                      "argument": {
+                        "NamedTypeParameter": "$T"
+                      }
+                    }
+                  ]
+                }
+              }
+            ]
+          }
+        }
+      ],
+      "return_": []
+    },
+    "internal_new": {
+      "source_index": 25,
+      "index": 18446744073709551615,
+      "doc": " Shared initialization logic for `new` and `new_derived`.\n Creates a `PermissionsTable`, adds the creator with `PermissionsAdmin`,\n `ExtensionPermissionsAdmin`",
+      "attributes": [],
+      "visibility": "Private",
+      "entry": false,
+      "macro_": true,
+      "type_parameters": [
+        {
+          "name": "$T",
+          "constraints": [
+            "Drop"
+          ]
+        }
+      ],
+      "parameters": [
+        {
+          "name": "$group_uid",
+          "type_": {
+            "Datatype": {
+              "module": {
+                "address": "myso",
+                "name": "object"
+              },
+              "name": "UID",
+              "type_arguments": []
+            }
+          }
+        },
+        {
+          "name": "$creator",
+          "type_": "address"
+        }
+      ],
+      "return_": [
+        {
+          "Datatype": {
+            "module": {
+              "address": "myso",
+              "name": "permissioned_group"
+            },
+            "name": "PermissionedGroup",
+            "type_arguments": [
+              {
+                "phantom": true,
+                "argument": {
+                  "NamedTypeParameter": "$T"
+                }
+              }
+            ]
+          }
+        }
+      ]
+    }
+  },
+  "structs": {
+    "PermissionsAdmin": {
+      "index": 0,
+      "doc": " Permission to manage core permissions defined in the permissioned_groups package.\n Can manage: PermissionsAdmin, ExtensionPermissionsAdmin, ObjectAdmin.\n Cannot manage extension permissions (those from other packages).\n TODO: only give PermissionsAdmin to creator, maybe ExtensionPermissionAdmin as well",
+      "attributes": [],
+      "abilities": [
+        "Drop"
+      ],
+      "type_parameters": [],
+      "fields": {
+        "positional_fields": true,
+        "fields": {
+          "dummy_field": {
+            "index": 0,
+            "type_": "bool"
+          }
+        }
+      }
+    },
+    "ExtensionPermissionsAdmin": {
+      "index": 1,
+      "doc": " Permission to manage extension permissions defined in third-party packages.\n Can manage permissions from OTHER packages (e.g., MessagingSender, FundsManager).\n Cannot manage core permissions (PermissionsAdmin, ExtensionPermissionsAdmin, etc.).",
+      "attributes": [],
+      "abilities": [
+        "Drop"
+      ],
+      "type_parameters": [],
+      "fields": {
+        "positional_fields": true,
+        "fields": {
+          "dummy_field": {
+            "index": 0,
+            "type_": "bool"
+          }
+        }
+      }
+    },
+    "ObjectAdmin": {
+      "index": 2,
+      "doc": " Admin-tier permission granting access to the group's UID (&UID and &mut UID).\n Only accessible via the actor-object pattern; see `object_uid` / `object_uid_mut`.",
+      "attributes": [],
+      "abilities": [
+        "Drop"
+      ],
+      "type_parameters": [],
+      "fields": {
+        "positional_fields": true,
+        "fields": {
+          "dummy_field": {
+            "index": 0,
+            "type_": "bool"
+          }
+        }
+      }
+    },
+    "GroupDeleter": {
+      "index": 3,
+      "doc": " Permission that allows deleting the group via `delete()`.\n Core permission — managed by `PermissionsAdmin`.",
+      "attributes": [],
+      "abilities": [
+        "Drop"
+      ],
+      "type_parameters": [],
+      "fields": {
+        "positional_fields": true,
+        "fields": {
+          "dummy_field": {
+            "index": 0,
+            "type_": "bool"
+          }
+        }
+      }
+    },
+    "PermissionedGroup": {
+      "index": 4,
+      "doc": " Group state mapping addresses to their granted permissions.\n Parameterized by `T` to scope permissions to a specific package.",
+      "attributes": [],
+      "abilities": [
+        "Key",
+        "Store"
+      ],
+      "type_parameters": [
+        {
+          "phantom": true,
+          "name": "T",
+          "constraints": [
+            "Drop"
+          ]
+        }
+      ],
+      "fields": {
+        "positional_fields": false,
+        "fields": {
+          "id": {
+            "index": 0,
+            "doc": null,
+            "type_": {
+              "Datatype": {
+                "module": {
+                  "address": "myso",
+                  "name": "object"
+                },
+                "name": "UID",
+                "type_arguments": []
+              }
+            }
+          },
+          "permissions": {
+            "index": 1,
+            "doc": " Maps member addresses (user or object) to their permission set.\n Object addresses enable `object_*` functions for third-party \"actor\" contracts.",
+            "type_": {
+              "Datatype": {
+                "module": {
+                  "address": "myso",
+                  "name": "permissions_table"
+                },
+                "name": "PermissionsTable",
+                "type_arguments": []
+              }
+            }
+          },
+          "permissions_admin_count": {
+            "index": 2,
+            "doc": " Tracks `PermissionsAdmin` count to enforce at-least-one invariant.",
+            "type_": "u64"
+          },
+          "creator": {
+            "index": 3,
+            "doc": " Original creator's address",
+            "type_": "address"
+          }
+        }
+      }
+    },
+    "PausedMarker": {
+      "index": 5,
+      "doc": " Dynamic field key; presence means the group is paused.\n Added by `pause()`, removed by `unpause()`.",
+      "attributes": [],
+      "abilities": [
+        "Copy",
+        "Drop",
+        "Store"
+      ],
+      "type_parameters": [],
+      "fields": {
+        "positional_fields": true,
+        "fields": {
+          "dummy_field": {
+            "index": 0,
+            "type_": "bool"
+          }
+        }
+      }
+    },
+    "GroupCreated": {
+      "index": 6,
+      "doc": " Emitted when a new PermissionedGroup is created via `new`.",
+      "attributes": [],
+      "abilities": [
+        "Copy",
+        "Drop"
+      ],
+      "type_parameters": [
+        {
+          "phantom": true,
+          "name": "T",
+          "constraints": []
+        }
+      ],
+      "fields": {
+        "positional_fields": false,
+        "fields": {
+          "group_id": {
+            "index": 0,
+            "doc": " ID of the created group.",
+            "type_": {
+              "Datatype": {
+                "module": {
+                  "address": "myso",
+                  "name": "object"
+                },
+                "name": "ID",
+                "type_arguments": []
+              }
+            }
+          },
+          "creator": {
+            "index": 1,
+            "doc": " Address of the group creator.",
+            "type_": "address"
+          }
+        }
+      }
+    },
+    "GroupDerived": {
+      "index": 7,
+      "doc": " Emitted when a new PermissionedGroup is created via `new_derived`.",
+      "attributes": [],
+      "abilities": [
+        "Copy",
+        "Drop"
+      ],
+      "type_parameters": [
+        {
+          "phantom": true,
+          "name": "T",
+          "constraints": []
+        },
+        {
+          "phantom": false,
+          "name": "DerivationKey",
+          "constraints": [
+            "Copy",
+            "Drop"
+          ]
+        }
+      ],
+      "fields": {
+        "positional_fields": false,
+        "fields": {
+          "group_id": {
+            "index": 0,
+            "doc": " ID of the created group.",
+            "type_": {
+              "Datatype": {
+                "module": {
+                  "address": "myso",
+                  "name": "object"
+                },
+                "name": "ID",
+                "type_arguments": []
+              }
+            }
+          },
+          "creator": {
+            "index": 1,
+            "doc": " Address of the group creator.",
+            "type_": "address"
+          },
+          "parent_id": {
+            "index": 2,
+            "doc": " ID of the parent object from which the group was derived.",
+            "type_": {
+              "Datatype": {
+                "module": {
+                  "address": "myso",
+                  "name": "object"
+                },
+                "name": "ID",
+                "type_arguments": []
+              }
+            }
+          },
+          "derivation_key": {
+            "index": 3,
+            "doc": " derivation key used.",
+            "type_": {
+              "NamedTypeParameter": "DerivationKey"
+            }
+          }
+        }
+      }
+    },
+    "MemberAdded": {
+      "index": 8,
+      "doc": " Emitted when a new member is added to a group via grant_permission.",
+      "attributes": [],
+      "abilities": [
+        "Copy",
+        "Drop"
+      ],
+      "type_parameters": [
+        {
+          "phantom": true,
+          "name": "T",
+          "constraints": []
+        }
+      ],
+      "fields": {
+        "positional_fields": false,
+        "fields": {
+          "group_id": {
+            "index": 0,
+            "doc": " ID of the group.",
+            "type_": {
+              "Datatype": {
+                "module": {
+                  "address": "myso",
+                  "name": "object"
+                },
+                "name": "ID",
+                "type_arguments": []
+              }
+            }
+          },
+          "member": {
+            "index": 1,
+            "doc": " Address of the new member.",
+            "type_": "address"
+          }
+        }
+      }
+    },
+    "MemberRemoved": {
+      "index": 9,
+      "doc": " Emitted when a member is removed from a group.",
+      "attributes": [],
+      "abilities": [
+        "Copy",
+        "Drop"
+      ],
+      "type_parameters": [
+        {
+          "phantom": true,
+          "name": "T",
+          "constraints": []
+        }
+      ],
+      "fields": {
+        "positional_fields": false,
+        "fields": {
+          "group_id": {
+            "index": 0,
+            "doc": " ID of the group.",
+            "type_": {
+              "Datatype": {
+                "module": {
+                  "address": "myso",
+                  "name": "object"
+                },
+                "name": "ID",
+                "type_arguments": []
+              }
+            }
+          },
+          "member": {
+            "index": 1,
+            "doc": " Address of the removed member.",
+            "type_": "address"
+          }
+        }
+      }
+    },
+    "PermissionsGranted": {
+      "index": 10,
+      "doc": " Emitted when permissions are granted to a member.",
+      "attributes": [],
+      "abilities": [
+        "Copy",
+        "Drop"
+      ],
+      "type_parameters": [
+        {
+          "phantom": true,
+          "name": "T",
+          "constraints": []
+        }
+      ],
+      "fields": {
+        "positional_fields": false,
+        "fields": {
+          "group_id": {
+            "index": 0,
+            "doc": " ID of the group.",
+            "type_": {
+              "Datatype": {
+                "module": {
+                  "address": "myso",
+                  "name": "object"
+                },
+                "name": "ID",
+                "type_arguments": []
+              }
+            }
+          },
+          "member": {
+            "index": 1,
+            "doc": " Address of the member receiving the permissions.",
+            "type_": "address"
+          },
+          "permissions": {
+            "index": 2,
+            "doc": " Type names of the granted permissions.",
+            "type_": {
+              "vector": {
+                "Datatype": {
+                  "module": {
+                    "address": "std",
+                    "name": "type_name"
+                  },
+                  "name": "TypeName",
+                  "type_arguments": []
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "PermissionsRevoked": {
+      "index": 11,
+      "doc": " Emitted when permissions are revoked from a member.",
+      "attributes": [],
+      "abilities": [
+        "Copy",
+        "Drop"
+      ],
+      "type_parameters": [
+        {
+          "phantom": true,
+          "name": "T",
+          "constraints": []
+        }
+      ],
+      "fields": {
+        "positional_fields": false,
+        "fields": {
+          "group_id": {
+            "index": 0,
+            "doc": " ID of the group.",
+            "type_": {
+              "Datatype": {
+                "module": {
+                  "address": "myso",
+                  "name": "object"
+                },
+                "name": "ID",
+                "type_arguments": []
+              }
+            }
+          },
+          "member": {
+            "index": 1,
+            "doc": " Address of the member losing the permissions.",
+            "type_": "address"
+          },
+          "permissions": {
+            "index": 2,
+            "doc": " Type names of the revoked permissions.",
+            "type_": {
+              "vector": {
+                "Datatype": {
+                  "module": {
+                    "address": "std",
+                    "name": "type_name"
+                  },
+                  "name": "TypeName",
+                  "type_arguments": []
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "GroupDeleted": {
+      "index": 12,
+      "doc": " Emitted when a PermissionedGroup is deleted via `delete`.",
+      "attributes": [],
+      "abilities": [
+        "Copy",
+        "Drop"
+      ],
+      "type_parameters": [
+        {
+          "phantom": true,
+          "name": "T",
+          "constraints": []
+        }
+      ],
+      "fields": {
+        "positional_fields": false,
+        "fields": {
+          "group_id": {
+            "index": 0,
+            "doc": " ID of the deleted group.",
+            "type_": {
+              "Datatype": {
+                "module": {
+                  "address": "myso",
+                  "name": "object"
+                },
+                "name": "ID",
+                "type_arguments": []
+              }
+            }
+          },
+          "deleter": {
+            "index": 1,
+            "doc": " Address of the caller who deleted the group.",
+            "type_": "address"
+          }
+        }
+      }
+    },
+    "GroupPaused": {
+      "index": 13,
+      "doc": " Emitted when a PermissionedGroup is paused via `pause`.",
+      "attributes": [],
+      "abilities": [
+        "Copy",
+        "Drop"
+      ],
+      "type_parameters": [
+        {
+          "phantom": true,
+          "name": "T",
+          "constraints": []
+        }
+      ],
+      "fields": {
+        "positional_fields": false,
+        "fields": {
+          "group_id": {
+            "index": 0,
+            "doc": null,
+            "type_": {
+              "Datatype": {
+                "module": {
+                  "address": "myso",
+                  "name": "object"
+                },
+                "name": "ID",
+                "type_arguments": []
+              }
+            }
+          },
+          "paused_by": {
+            "index": 1,
+            "doc": null,
+            "type_": "address"
+          }
+        }
+      }
+    },
+    "GroupUnpaused": {
+      "index": 14,
+      "doc": " Emitted when a PermissionedGroup is unpaused via `unpause`.",
+      "attributes": [],
+      "abilities": [
+        "Copy",
+        "Drop"
+      ],
+      "type_parameters": [
+        {
+          "phantom": true,
+          "name": "T",
+          "constraints": []
+        }
+      ],
+      "fields": {
+        "positional_fields": false,
+        "fields": {
+          "group_id": {
+            "index": 0,
+            "doc": null,
+            "type_": {
+              "Datatype": {
+                "module": {
+                  "address": "myso",
+                  "name": "object"
+                },
+                "name": "ID",
+                "type_arguments": []
+              }
+            }
+          },
+          "unpaused_by": {
+            "index": 1,
+            "doc": null,
+            "type_": "address"
+          }
+        }
+      }
+    }
+  },
+  "enums": {}
+}

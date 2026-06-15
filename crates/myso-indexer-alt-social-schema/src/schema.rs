@@ -462,6 +462,9 @@ diesel::table! {
         purchase_time -> Int8,
         time -> Timestamptz,
         transaction_id -> Text,
+        revoked -> Bool,
+        revoked_at -> Nullable<Int8>,
+        revoked_by -> Nullable<Text>,
     }
 }
 
@@ -501,6 +504,9 @@ diesel::table! {
         price -> Int8,
         time -> Timestamptz,
         transaction_id -> Text,
+        revoked -> Bool,
+        revoked_at -> Nullable<Int8>,
+        revoked_by -> Nullable<Text>,
     }
 }
 
@@ -1147,11 +1153,18 @@ diesel::table! {
         social_proof_token_address -> Nullable<Varchar>,
         selected_badge_id -> Nullable<Varchar>,
         reservation_pool_address -> Nullable<Varchar>,
-        paid_messaging_enabled -> Bool,
-        paid_messaging_min_cost -> Nullable<Int8>,
         selected_ecosystem_badge_id -> Nullable<Varchar>,
         search_text -> Nullable<Text>,
         memory_account_id -> Nullable<Text>,
+    }
+}
+
+diesel::table! {
+    wallet_messaging_policies (wallet_address) {
+        wallet_address -> Text,
+        enabled -> Bool,
+        min_cost -> Nullable<Int8>,
+        updated_at -> Int8,
     }
 }
 
@@ -2021,6 +2034,7 @@ diesel::allow_tables_to_appear_in_same_query!(
     vesting_events,
     vesting_wallets,
     vote_decryption_failures,
+    wallet_messaging_policies,
     wallet_social_graph,
     watermarks,
 );

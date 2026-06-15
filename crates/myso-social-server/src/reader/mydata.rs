@@ -1,7 +1,8 @@
 // Copyright (c) The Social Proof Foundation, LLC.
 // SPDX-License-Identifier: Apache-2.0
 
-use diesel::sql_types::{BigInt, Nullable, Text};
+use diesel::sql_types::{BigInt, Bool, Nullable, Text};
+use diesel::QueryableByName;
 use diesel::OptionalExtension;
 use diesel_async::RunQueryDsl;
 use myso_pg_db::Db;
@@ -11,7 +12,8 @@ use crate::reader::types::{
     AccessAnalytics, AccessLogInfo, DailyRevenue, MyDataBasic, MyDataConfigInfo,
     MyDataBroadPoolInfo, MyDataClaimInfo, MyDataDistributionRoundInfo,
     MyDataListingSubPoolInfo, MyDataMerkleRootInfo, MyDataSnapshotAnchorInfo,
-    MyDataSubPoolInfo, MyDataStatsResponse, PurchaseInfo, RevenueInfo, SubscriptionInfo,
+    MyDataHasAccessResponse, MyDataSubPoolInfo, MyDataStatsResponse, PurchaseInfo, RevenueInfo,
+    SubscriptionInfo,
 };
 
 pub(crate) async fn get_mydata_by_id(
@@ -124,7 +126,8 @@ pub(crate) async fn get_mydata_purchases(
 ) -> Result<Vec<PurchaseInfo>, SocialError> {
     let mut conn = db.connect().await?;
     let query = "
-        SELECT id, mydata_id, buyer, price, purchase_type, purchase_time, time, transaction_id
+        SELECT id, mydata_id, buyer, price, purchase_type, purchase_time, time, transaction_id,
+               revoked, revoked_at, revoked_by
         FROM mydata_purchases
         WHERE mydata_id = $1
         ORDER BY purchase_time DESC
@@ -147,7 +150,8 @@ pub(crate) async fn get_mydata_subscriptions(
 ) -> Result<Vec<SubscriptionInfo>, SocialError> {
     let mut conn = db.connect().await?;
     let query = "
-        SELECT id, mydata_id, subscriber, subscription_start, subscription_end, price, time, transaction_id
+        SELECT id, mydata_id, subscriber, subscription_start, subscription_end, price, time, transaction_id,
+               revoked, revoked_at, revoked_by
         FROM mydata_subscriptions
         WHERE mydata_id = $1
         ORDER BY subscription_start DESC
@@ -242,8 +246,8 @@ pub(crate) async fn get_mydata_stats(
         SELECT
             d.mydata_id, d.owner, d.media_type,
             COALESCE((SELECT SUM(amount)::bigint FROM mydata_revenue WHERE mydata_id = $1), 0) as total_revenue,
-            (SELECT COUNT(*) FROM mydata_purchases WHERE mydata_id = $1) as purchase_count,
-            (SELECT COUNT(*) FROM mydata_subscriptions WHERE mydata_id = $1 AND subscription_end >= (EXTRACT(EPOCH FROM NOW()) * 1000)::bigint) as subscription_count,
+            (SELECT COUNT(*) FROM mydata_purchases WHERE mydata_id = $1 AND revoked = FALSE) as purchase_count,
+            (SELECT COUNT(*) FROM mydata_subscriptions WHERE mydata_id = $1 AND revoked = FALSE AND subscription_end >= (EXTRACT(EPOCH FROM NOW()) * 1000)::bigint) as subscription_count,
             (SELECT COUNT(*) FROM mydata_access_logs WHERE mydata_id = $1) as access_count,
             d.one_time_price, d.subscription_price, d.created_at, d.last_updated
         FROM mydata_data d
@@ -494,4 +498,34 @@ pub(crate) async fn list_mydata_claims_for_snapshot(
         .load::<MyDataClaimInfo>(&mut conn)
         .await?;
     Ok(results)
+}
+
+#[derive(Debug, QueryableByName)]
+struct HasAccessRow {
+    #[diesel(sql_type = Bool)]
+    has_access: bool,
+}
+
+pub(crate) async fn check_mydata_has_access(
+    db: &Db,
+    mydata_id: &str,
+    user_address: &str,
+) -> Result<MyDataHasAccessResponse, SocialError> {
+    let mut conn = db.connect().await?;
+    let at_ms = std::time::SystemTime::now()
+        .duration_since(std::time::UNIX_EPOCH)
+        .map(|d| d.as_millis() as i64)
+        .unwrap_or(0);
+    let query = "SELECT user_has_access($1, $2, $3) AS has_access";
+    let row = diesel::sql_query(query)
+        .bind::<Text, _>(mydata_id)
+        .bind::<Text, _>(user_address)
+        .bind::<BigInt, _>(at_ms)
+        .get_result::<HasAccessRow>(&mut conn)
+        .await?;
+    Ok(MyDataHasAccessResponse {
+        mydata_id: mydata_id.to_string(),
+        user_address: user_address.to_string(),
+        has_access: row.has_access,
+    })
 }

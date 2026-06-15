@@ -133,6 +133,19 @@ impl BcsUserUnblockEvent {
     }
 }
 
+#[derive(Debug, Deserialize, Serialize)]
+pub struct BcsPaidMessagingPolicyUpdated {
+    pub wallet: AccountAddress,
+    pub enabled: bool,
+    pub min_cost: Option<u64>,
+}
+
+impl BcsPaidMessagingPolicyUpdated {
+    pub fn wallet(&self) -> String {
+        addr_to_string(&self.wallet)
+    }
+}
+
 #[derive(Debug, Deserialize)]
 pub struct BcsEcosystemTreasuryUpdatedEvent {
     updated_by: AccountAddress,
@@ -733,14 +746,6 @@ pub struct BcsReactionEvent {
     user: AccountAddress,
     reaction: String,
     is_post: bool,
-}
-
-#[derive(Debug, Deserialize)]
-pub struct BcsReactionEventWithAttribution {
-    object_id: AccountAddress,
-    user: AccountAddress,
-    reaction: String,
-    is_post: bool,
     principal_owner: AccountAddress,
     actor_address: AccountAddress,
     sub_agent_id: Option<BcsMoveObjectId>,
@@ -749,7 +754,6 @@ pub struct BcsReactionEventWithAttribution {
 
 struct ParsedReactionEvent {
     object_id: AccountAddress,
-    user: AccountAddress,
     reaction: String,
     is_post: bool,
     principal_owner: AccountAddress,
@@ -759,28 +763,15 @@ struct ParsedReactionEvent {
 }
 
 fn bcs_reaction_from_bytes(contents: &[u8]) -> Result<ParsedReactionEvent, EventParseError> {
-    if let Ok(ev) = bcs::from_bytes::<BcsReactionEventWithAttribution>(contents) {
-        return Ok(ParsedReactionEvent {
+    match bcs::from_bytes::<BcsReactionEvent>(contents) {
+        Ok(ev) => Ok(ParsedReactionEvent {
             object_id: ev.object_id,
-            user: ev.user,
             reaction: ev.reaction,
             is_post: ev.is_post,
             principal_owner: ev.principal_owner,
             actor_address: ev.actor_address,
             sub_agent_id: optional_move_object_id_json(&ev.sub_agent_id),
             action_identity_class: ev.action_identity_class,
-        });
-    }
-    match bcs::from_bytes::<BcsReactionEvent>(contents) {
-        Ok(ev) => Ok(ParsedReactionEvent {
-            object_id: ev.object_id,
-            user: ev.user,
-            reaction: ev.reaction,
-            is_post: ev.is_post,
-            principal_owner: ev.user,
-            actor_address: ev.user,
-            sub_agent_id: None,
-            action_identity_class: 0,
         }),
         Err(e) => Err(EventParseError {
             error: format!("ReactionEvent BCS: {}", e),
@@ -795,14 +786,6 @@ pub struct BcsRemoveReactionEvent {
     user: AccountAddress,
     reaction: String,
     is_post: bool,
-}
-
-#[derive(Debug, Deserialize, Serialize)]
-pub struct BcsRemoveReactionEventWithAttribution {
-    object_id: AccountAddress,
-    user: AccountAddress,
-    reaction: String,
-    is_post: bool,
     principal_owner: AccountAddress,
     actor_address: AccountAddress,
     sub_agent_id: Option<BcsMoveObjectId>,
@@ -812,28 +795,15 @@ pub struct BcsRemoveReactionEventWithAttribution {
 fn bcs_remove_reaction_from_bytes(
     contents: &[u8],
 ) -> Result<ParsedReactionEvent, EventParseError> {
-    if let Ok(ev) = bcs::from_bytes::<BcsRemoveReactionEventWithAttribution>(contents) {
-        return Ok(ParsedReactionEvent {
+    match bcs::from_bytes::<BcsRemoveReactionEvent>(contents) {
+        Ok(ev) => Ok(ParsedReactionEvent {
             object_id: ev.object_id,
-            user: ev.user,
             reaction: ev.reaction,
             is_post: ev.is_post,
             principal_owner: ev.principal_owner,
             actor_address: ev.actor_address,
             sub_agent_id: optional_move_object_id_json(&ev.sub_agent_id),
             action_identity_class: ev.action_identity_class,
-        });
-    }
-    match bcs::from_bytes::<BcsRemoveReactionEvent>(contents) {
-        Ok(ev) => Ok(ParsedReactionEvent {
-            object_id: ev.object_id,
-            user: ev.user,
-            reaction: ev.reaction,
-            is_post: ev.is_post,
-            principal_owner: ev.user,
-            actor_address: ev.user,
-            sub_agent_id: None,
-            action_identity_class: 0,
         }),
         Err(e) => Err(EventParseError {
             error: format!("RemoveReactionEvent BCS: {}", e),
@@ -907,18 +877,6 @@ fn bcs_repost_from_bytes(contents: &[u8]) -> Result<ParsedRepostEvent, EventPars
 
 fn optional_addr_json(addr: &Option<AccountAddress>) -> Option<String> {
     addr.as_ref().map(addr_to_string)
-}
-
-fn attribution_json(
-    actor_address: &AccountAddress,
-    sub_agent_id: &Option<BcsMoveObjectId>,
-    action_identity_class: u8,
-) -> serde_json::Value {
-    serde_json::json!({
-        "actor_address": addr_to_string(actor_address),
-        "sub_agent_id": optional_move_object_id_json(sub_agent_id),
-        "action_identity_class": action_identity_class,
-    })
 }
 
 #[derive(Debug, Deserialize)]
@@ -1471,6 +1429,15 @@ pub struct BcsAccessGrantedEvent {
     user: AccountAddress,
     access_type: String,
     granted_by: AccountAddress,
+    timestamp: u64,
+}
+
+#[derive(Debug, Deserialize)]
+pub struct BcsAccessRevokedEvent {
+    ip_id: AccountAddress,
+    user: AccountAddress,
+    access_type: String,
+    revoked_by: AccountAddress,
     timestamp: u64,
 }
 
@@ -2072,6 +2039,7 @@ fn parse_event_contents_inner(
         "subscription" | "profile_subscription" => parse_subscription_event(event_name, contents),
         "upgrade" => parse_upgrade_event(event_name, contents),
         "memory" => parse_memory_event(event_name, contents),
+        "paid_messaging_policy" => parse_paid_messaging_policy_event(event_name, contents),
         _ => Ok(None),
     };
 
@@ -2247,7 +2215,25 @@ fn parse_profile_event(
                 "timestamp": ev.timestamp,
             })))
         }
-        // PaidMessagingSettingsUpdatedEvent and other profile events fall through to JSON
+        // PaidMessagingSettingsUpdatedEvent removed from profile module; policy lives in messaging.
+        _ => Ok(None),
+    }
+}
+
+fn parse_paid_messaging_policy_event(
+    event_name: &str,
+    contents: &[u8],
+) -> Result<Option<serde_json::Value>, EventParseError> {
+    match event_name {
+        "PaidMessagingPolicyUpdated" => {
+            let ev = bcs::from_bytes::<BcsPaidMessagingPolicyUpdated>(contents)
+                .map_err(|e| bcs_parse_err(e, contents))?;
+            Ok(Some(serde_json::json!({
+                "wallet": ev.wallet(),
+                "enabled": ev.enabled,
+                "min_cost": ev.min_cost,
+            })))
+        }
         _ => Ok(None),
     }
 }
@@ -3306,6 +3292,17 @@ fn parse_mydata_event(
                 "user": addr_to_string(&ev.user),
                 "access_type": ev.access_type,
                 "granted_by": addr_to_string(&ev.granted_by),
+                "timestamp": ev.timestamp,
+            })))
+        }
+        "AccessRevokedEvent" | "DataAccessRevokedEvent" => {
+            let ev = bcs::from_bytes::<BcsAccessRevokedEvent>(contents)
+                .map_err(|e| bcs_parse_err(e, contents))?;
+            Ok(Some(serde_json::json!({
+                "ip_id": addr_to_string(&ev.ip_id),
+                "user": addr_to_string(&ev.user),
+                "access_type": ev.access_type,
+                "revoked_by": addr_to_string(&ev.revoked_by),
                 "timestamp": ev.timestamp,
             })))
         }
@@ -5070,7 +5067,7 @@ mod tests {
 
     #[test]
     fn remove_reaction_attribution_bcs_round_trip() {
-        let ev = BcsRemoveReactionEventWithAttribution {
+        let ev = BcsRemoveReactionEvent {
             object_id: AccountAddress::from_hex_literal("0x1").unwrap(),
             user: AccountAddress::from_hex_literal("0x2").unwrap(),
             reaction: "👍".to_string(),
@@ -5089,22 +5086,6 @@ mod tests {
         assert_eq!(json["is_post"], true);
         assert_eq!(json["action_identity_class"], 2_i64);
         assert!(json["sub_agent_id"].as_str().is_some());
-    }
-
-    #[test]
-    fn remove_reaction_legacy_bcs_still_parses() {
-        let ev = BcsRemoveReactionEvent {
-            object_id: AccountAddress::from_hex_literal("0x1").unwrap(),
-            user: AccountAddress::from_hex_literal("0x2").unwrap(),
-            reaction: "❤️".to_string(),
-            is_post: false,
-        };
-        let bytes = bcs::to_bytes(&ev).expect("bcs");
-        let json = parse_event_contents("post", "RemoveReactionEvent", &bytes).expect("parse");
-        assert_eq!(json["reaction_text"], "❤️");
-        assert_eq!(json["is_post"], false);
-        assert_eq!(json["action_identity_class"], 0_i64);
-        assert!(json["sub_agent_id"].is_null());
     }
 
     #[test]

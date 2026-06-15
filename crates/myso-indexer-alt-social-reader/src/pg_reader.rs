@@ -37,7 +37,8 @@ use crate::metrics::DbReaderMetrics;
 use crate::memory::{SubAgentListResult};
 use myso_indexer_alt_social_schema::models::{MemoryAccountRow, SubAgentRow};
 use crate::mydata::{
-    get_mydata_access_analytics, get_mydata_access_logs, get_mydata_config, get_mydata_purchases,
+    check_mydata_has_access, get_mydata_access_analytics, get_mydata_access_logs, get_mydata_config,
+    get_mydata_purchases,
     get_mydata_distribution_round, get_mydata_merkle_root,
     get_mydata_snapshot_anchor, get_mydata_record, get_mydata_revenue,
     get_mydata_revenue_timeline, get_mydata_stats, get_mydata_subscriptions, get_popular_mydata,
@@ -1415,6 +1416,17 @@ impl SocialPgReader {
     ) -> anyhow::Result<Vec<crate::MyDataPurchaseRow>> {
         let mut conn = self.connect().await?;
         get_mydata_purchases(&mut conn, mydata_id, limit, offset, &self.metrics).await
+    }
+
+    /// Check whether a user has active MyData access (indexer mirror of on-chain `has_access`).
+    pub async fn check_mydata_has_access(
+        &self,
+        mydata_id: &str,
+        user_address: &str,
+        at_ms: Option<i64>,
+    ) -> anyhow::Result<bool> {
+        let mut conn = self.connect().await?;
+        check_mydata_has_access(&mut conn, mydata_id, user_address, at_ms, &self.metrics).await
     }
 
     /// List mydata subscriptions for a record (paginated).

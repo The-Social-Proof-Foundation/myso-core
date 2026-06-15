@@ -37,6 +37,7 @@ use super::mydata_object;
 use crate::metrics::SocialMetrics;
 
 const MYDATA_MODULES: &[&str] = &["mydata", "my_ip"];
+const MILLISECONDS_PER_DAY: i64 = 86_400_000;
 
 #[derive(Debug, Clone)]
 pub enum MyDataRow {
@@ -56,6 +57,14 @@ pub enum MyDataRow {
     MyDataContentUpdate {
         mydata_id: String,
         last_updated: i64,
+        transaction_id: String,
+    },
+    MyDataAccessRevoke {
+        mydata_id: String,
+        user: String,
+        access_type: String,
+        revoked_at: i64,
+        revoked_by: String,
         transaction_id: String,
     },
     MyDataBroadPool(NewMyDataBroadPool),
@@ -106,6 +115,21 @@ impl MyDataRow {
             } => Some(MyDataRow::MyDataContentUpdate {
                 mydata_id,
                 last_updated,
+                transaction_id,
+            }),
+            crate::handlers::SocialEventRow::MyDataAccessRevoke {
+                mydata_id,
+                user,
+                access_type,
+                revoked_at,
+                revoked_by,
+                transaction_id,
+            } => Some(MyDataRow::MyDataAccessRevoke {
+                mydata_id,
+                user,
+                access_type,
+                revoked_at,
+                revoked_by,
                 transaction_id,
             }),
             crate::handlers::SocialEventRow::MyDataBroadPool(b) => {
@@ -290,8 +314,23 @@ impl Handler for MyDataHandler {
                         .await?;
                 }
                 MyDataRow::MyDataSubscription(s) => {
+                    let duration_days = mydata_data::table
+                        .filter(mydata_data::mydata_id.eq(&s.mydata_id))
+                        .select(mydata_data::subscription_duration_days)
+                        .first::<i64>(conn)
+                        .await
+                        .unwrap_or(30);
+                    let subscription_end = if s.subscription_end > 0 {
+                        s.subscription_end
+                    } else {
+                        s.subscription_start + duration_days * MILLISECONDS_PER_DAY
+                    };
+                    let row = NewMyDataSubscription {
+                        subscription_end,
+                        ..s.clone()
+                    };
                     total += diesel::insert_into(mydata_subscriptions::table)
-                        .values(s)
+                        .values(&row)
                         .execute(conn)
                         .await?;
                 }
@@ -380,6 +419,42 @@ impl Handler for MyDataHandler {
                         ))
                         .execute(conn)
                         .await?;
+                }
+                MyDataRow::MyDataAccessRevoke {
+                    mydata_id,
+                    user,
+                    access_type,
+                    revoked_at,
+                    revoked_by,
+                    transaction_id: _,
+                } => {
+                    if access_type == "one_time" || access_type == "all" {
+                        total += diesel::update(mydata_purchases::table)
+                            .filter(mydata_purchases::mydata_id.eq(mydata_id))
+                            .filter(mydata_purchases::buyer.eq(user))
+                            .filter(mydata_purchases::purchase_type.eq("one_time"))
+                            .filter(mydata_purchases::revoked.eq(false))
+                            .set((
+                                mydata_purchases::revoked.eq(true),
+                                mydata_purchases::revoked_at.eq(Some(*revoked_at)),
+                                mydata_purchases::revoked_by.eq(Some(revoked_by.clone())),
+                            ))
+                            .execute(conn)
+                            .await?;
+                    }
+                    if access_type == "subscription" || access_type == "all" {
+                        total += diesel::update(mydata_subscriptions::table)
+                            .filter(mydata_subscriptions::mydata_id.eq(mydata_id))
+                            .filter(mydata_subscriptions::subscriber.eq(user))
+                            .filter(mydata_subscriptions::revoked.eq(false))
+                            .set((
+                                mydata_subscriptions::revoked.eq(true),
+                                mydata_subscriptions::revoked_at.eq(Some(*revoked_at)),
+                                mydata_subscriptions::revoked_by.eq(Some(revoked_by.clone())),
+                            ))
+                            .execute(conn)
+                            .await?;
+                    }
                 }
                 MyDataRow::MyDataBroadPool(b) => {
                     total += diesel::insert_into(mydata_broad_pools::table)

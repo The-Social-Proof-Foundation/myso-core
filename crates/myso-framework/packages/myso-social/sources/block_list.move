@@ -24,6 +24,7 @@ module social_contracts::block_list {
     const ENotBlocked: u64 = 2;
     const ECannotBlockSelf: u64 = 3;
     const EWrongVersion: u64 = 4;
+    const EBlocked: u64 = 5;
     
     /// Registry to track all block lists
     /// Uses unified table architecture (like SocialGraph) for wallet-level blocking
@@ -173,6 +174,16 @@ module social_contracts::block_list {
     }
 
     // === PUBLIC API ===
+
+    /// True if either wallet has blocked the other.
+    public fun either_blocked(registry: &BlockListRegistry, a: address, b: address): bool {
+        is_blocked(registry, a, b) || is_blocked(registry, b, a)
+    }
+
+    /// Aborts with [`EBlocked`] if either wallet has blocked the other.
+    public fun assert_not_blocked(registry: &BlockListRegistry, a: address, b: address) {
+        assert!(!either_blocked(registry, a, b), EBlocked);
+    }
 
     /// Check if a wallet address is blocked by a blocker
     public fun is_blocked(registry: &BlockListRegistry, blocker: address, blocked: address): bool {

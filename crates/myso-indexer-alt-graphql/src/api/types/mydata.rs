@@ -328,6 +328,25 @@ impl MyDataPurchase {
     async fn transaction_id(&self) -> &str {
         &self.inner.transaction_id
     }
+
+    /// Whether this purchase access has been revoked by the owner.
+    async fn revoked(&self) -> bool {
+        self.inner.revoked
+    }
+
+    /// Epoch ms when access was revoked, if applicable.
+    async fn revoked_at(&self) -> Option<i64> {
+        self.inner.revoked_at
+    }
+
+    /// Address that revoked access, if applicable.
+    async fn revoked_by(&self) -> Option<MySoAddress> {
+        self.inner.revoked_by.as_ref().and_then(|a| {
+            MySoAddress::from_str(a)
+                .ok()
+                .map(|addr| addr.into())
+        })
+    }
 }
 
 #[derive(Clone)]
@@ -377,6 +396,25 @@ impl MyDataSubscription {
     /// Transaction ID.
     async fn transaction_id(&self) -> &str {
         &self.inner.transaction_id
+    }
+
+    /// Whether this subscription access has been revoked by the owner.
+    async fn revoked(&self) -> bool {
+        self.inner.revoked
+    }
+
+    /// Epoch ms when access was revoked, if applicable.
+    async fn revoked_at(&self) -> Option<i64> {
+        self.inner.revoked_at
+    }
+
+    /// Address that revoked access, if applicable.
+    async fn revoked_by(&self) -> Option<MySoAddress> {
+        self.inner.revoked_by.as_ref().and_then(|a| {
+            MySoAddress::from_str(a)
+                .ok()
+                .map(|addr| addr.into())
+        })
     }
 }
 

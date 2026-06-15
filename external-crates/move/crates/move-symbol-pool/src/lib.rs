@@ -101,6 +101,7 @@ static_symbols!(
     "derived_object",
     "claim",
     "coin_registry",
+    "registry",
     "new_currency",
     "test",
     "utf8",

@@ -150,10 +150,6 @@ module social_contracts::profile {
         /// Badge ID of the selected ecosystem badge to display (optional)
         /// If None, the first ecosystem badge in the badges vector should be displayed
         selected_ecosystem_badge_id: Option<String>,
-        /// Paid messaging: minimum cost to send a message to this profile (optional)
-        min_message_cost: Option<u64>,
-        /// Paid messaging: toggle to enable/disable paid messaging
-        paid_messaging_enabled: bool,
         /// Shared [`memory::MemoryAccount`] object id when linked (`None` until [`profile::ensure_memory_account`] or legacy profiles).
         memory_account_id: Option<ID>,
         /// Version for upgrades
@@ -398,15 +394,6 @@ module social_contracts::profile {
         deleted_at: u64,
     }
 
-    /// Event emitted when paid messaging settings are updated
-    public struct PaidMessagingSettingsUpdatedEvent has copy, drop {
-        profile_id: address,
-        owner: address,
-        enabled: bool,
-        min_cost: Option<u64>,
-        updated_at: u64,
-    }
-
     /// Event emitted when Ecosystem Treasury address is updated
     public struct EcosystemTreasuryUpdatedEvent has copy, drop {
         updated_by: address,
@@ -623,8 +610,6 @@ module social_contracts::profile {
             badges: vector::empty<ProfileBadge>(),
             selected_badge_id: option::none(),
             selected_ecosystem_badge_id: option::none(),
-            min_message_cost: option::none(),
-            paid_messaging_enabled: false,
             memory_account_id: option::none(),
             version: upgrade::current_version(),
         };
@@ -1563,8 +1548,6 @@ module social_contracts::profile {
             badges: vector::empty<ProfileBadge>(),
             selected_badge_id: option::none(),
             selected_ecosystem_badge_id: option::none(),
-            min_message_cost: option::none(),
-            paid_messaging_enabled: false,
             memory_account_id: option::none(),
             version: upgrade::current_version(),
         };
@@ -2439,47 +2422,6 @@ module social_contracts::profile {
     /// Get the curve factor of a vesting wallet
     public fun vesting_curve_factor(wallet: &VestingWallet): u64 {
         wallet.curve_factor
-    }
-
-    // === Paid Messaging Functions ===
-
-    /// Set paid messaging settings for a profile (owner only)
-    public entry fun set_paid_messaging_settings(
-        profile: &mut Profile,
-        enabled: bool,
-        min_cost: Option<u64>,
-        clock: &Clock,
-        ctx: &mut TxContext
-    ) {
-        let sender = tx_context::sender(ctx);
-        assert!(profile.owner == sender, EUnauthorized);
-
-        profile.paid_messaging_enabled = enabled;
-        profile.min_message_cost = min_cost;
-        
-        // Emit paid messaging settings updated event
-        event::emit(PaidMessagingSettingsUpdatedEvent {
-            profile_id: object::uid_to_address(&profile.id),
-            owner: sender,
-            enabled,
-            min_cost,
-            updated_at: clock::timestamp_ms(clock),
-        });
-    }
-
-    /// Get paid messaging settings for a profile
-    public fun get_paid_messaging_settings(profile: &Profile): (bool, Option<u64>) {
-        (profile.paid_messaging_enabled, profile.min_message_cost)
-    }
-
-    /// Check if a profile requires paid messages
-    public fun requires_paid_message(profile: &Profile): bool {
-        profile.paid_messaging_enabled && option::is_some(&profile.min_message_cost)
-    }
-
-    /// Get minimum message cost for a profile
-    public fun get_min_message_cost(profile: &Profile): Option<u64> {
-        profile.min_message_cost
     }
 
 }

@@ -3569,6 +3569,18 @@ type MyDataPurchase {
 	"""
 	purchaseType: String!
 	"""
+	Whether this purchase access has been revoked by the owner.
+	"""
+	revoked: Boolean!
+	"""
+	Epoch ms when access was revoked, if applicable.
+	"""
+	revokedAt: Int
+	"""
+	Address that revoked access, if applicable.
+	"""
+	revokedBy: MySoAddress
+	"""
 	Indexer timestamp when the purchase was recorded.
 	"""
 	time: DateTime!
@@ -3780,6 +3792,18 @@ type MyDataSubscription {
 	Price paid.
 	"""
 	price: Int!
+	"""
+	Whether this subscription access has been revoked by the owner.
+	"""
+	revoked: Boolean!
+	"""
+	Epoch ms when access was revoked, if applicable.
+	"""
+	revokedAt: Int
+	"""
+	Address that revoked access, if applicable.
+	"""
+	revokedBy: MySoAddress
 	"""
 	Subscriber address.
 	"""
@@ -6217,6 +6241,10 @@ type Query {
 	Fetch governance registry for a platform (by platform ID). Returns null when social DB not configured or platform has no registry.
 	"""
 	governanceRegistry(platformId: String!): GovernanceRegistry
+	"""
+	Check whether a user has active MyData access (indexer mirror; key servers use on-chain policy).
+	"""
+	hasMydataAccess(mydataId: ID!, user: MySoAddress!): Boolean
 	"""
 	Insurance configuration. Returns null when social DB not configured or no config.
 	"""

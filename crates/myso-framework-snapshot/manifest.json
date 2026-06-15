@@ -2440,7 +2440,7 @@
     ]
   },
   "111": {
-    "git_revision": "7f091481159df959551f8a1d001d1b0b20cbbaf0-dirty",
+    "git_revision": "7f091481159df959551f8a1d001d1b0b20cbbaf0",
     "packages": [
       {
         "name": "MoveStdlib",
@@ -2476,6 +2476,51 @@
         "name": "MySoSocial",
         "path": "crates/myso-framework/packages/myso-social",
         "id": "0x00000000000000000000000000000000000000000000000000000000000050c1"
+      }
+    ]
+  },
+  "112": {
+    "git_revision": "b2a2317fdbf626b866b4021be38a265d977ad827-dirty",
+    "packages": [
+      {
+        "name": "MoveStdlib",
+        "path": "crates/myso-framework/packages/move-stdlib",
+        "id": "0x0000000000000000000000000000000000000000000000000000000000000001"
+      },
+      {
+        "name": "MySo",
+        "path": "crates/myso-framework/packages/myso-framework/myso-framework",
+        "id": "0x0000000000000000000000000000000000000000000000000000000000000002"
+      },
+      {
+        "name": "MySoSystem",
+        "path": "crates/myso-framework/packages/myso-system",
+        "id": "0x0000000000000000000000000000000000000000000000000000000000000003"
+      },
+      {
+        "name": "Orderbook",
+        "path": "crates/myso-framework/packages/orderbook",
+        "id": "0x0000000000000000000000000000000000000000000000000000000000000b0c"
+      },
+      {
+        "name": "Bridge",
+        "path": "crates/myso-framework/packages/bridge",
+        "id": "0x000000000000000000000000000000000000000000000000000000000000000b"
+      },
+      {
+        "name": "MyData",
+        "path": "crates/myso-framework/packages/mydata",
+        "id": "0x000000000000000000000000000000000000000000000000000000000000da7a"
+      },
+      {
+        "name": "MySoSocial",
+        "path": "crates/myso-framework/packages/myso-social",
+        "id": "0x00000000000000000000000000000000000000000000000000000000000050c1"
+      },
+      {
+        "name": "Messaging",
+        "path": "crates/myso-framework/packages/messaging",
+        "id": "0x000000000000000000000000000000000000000000000000000000000000e110"
       }
     ]
   }

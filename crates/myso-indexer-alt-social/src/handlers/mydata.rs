@@ -6,7 +6,7 @@ use myso_indexer_alt_social_schema::models::{
     NewMyDataAccessLog, NewMyDataConfig, NewMyDataData, NewMyDataPurchase, NewMyDataBroadPool,
     NewMyDataClaim, NewMyDataDistributionRound, NewMyDataListingSubPool,
     NewMyDataMerkleRoot, NewMyDataSnapshotAnchor, NewMyDataSubPool,
-    NewMyDataRegistry, NewMyDataRevenue, NewMyDataSubscription,
+    NewMyDataRegistry, NewMyDataRevenue, NewMyDataSubscription, ACCESS_TYPE_REVOKED,
 };
 
 pub(crate) fn json_to_i64(v: &serde_json::Value) -> i64 {
@@ -81,6 +81,9 @@ pub fn handle_mydata_event(
         }
         "AccessGrantedEvent" | "DataAccessGrantedEvent" => {
             process_mydata_access_granted_event(data, &transaction_id)
+        }
+        "AccessRevokedEvent" | "DataAccessRevokedEvent" => {
+            process_mydata_access_revoked_event(data, &transaction_id)
         }
         "MyDataConfigUpdatedEvent" | "ConfigUpdatedEvent" => {
             process_mydata_config_updated_event(data, &transaction_id)
@@ -195,12 +198,12 @@ fn process_mydata_purchase_event(
     rows.push(SocialEventRow::MyDataPurchase(purchase));
 
     if purchase_type == "subscription" {
-        let subscription_end = timestamp + (30 * 24 * 60 * 60);
         let subscription = NewMyDataSubscription {
             mydata_id: ip_id.clone(),
             subscriber: buyer.clone(),
             subscription_start: timestamp,
-            subscription_end,
+            // subscription_end computed at commit from mydata_data.subscription_duration_days
+            subscription_end: 0,
             price,
             transaction_id: transaction_id.to_string(),
         };
@@ -262,12 +265,12 @@ fn process_mydata_access_granted_event(
             transaction_id: transaction_id.to_string(),
         });
     } else if access_type == "subscription" {
-        let subscription_end = timestamp + (30 * 24 * 60 * 60);
         let subscription = NewMyDataSubscription {
             mydata_id: ip_id,
             subscriber: user,
             subscription_start: timestamp,
-            subscription_end,
+            // subscription_end computed at commit from mydata_data.subscription_duration_days
+            subscription_end: 0,
             price: 0,
             transaction_id: transaction_id.to_string(),
         };
@@ -275,6 +278,37 @@ fn process_mydata_access_granted_event(
     }
 
     Some(rows)
+}
+
+fn process_mydata_access_revoked_event(
+    data: &serde_json::Value,
+    transaction_id: &str,
+) -> Option<Vec<SocialEventRow>> {
+    let ip_id = data.get("ip_id")?.as_str()?.to_string();
+    let user = data.get("user")?.as_str()?.to_string();
+    let access_type = data.get("access_type")?.as_str()?.to_string();
+    let revoked_by = data.get("revoked_by")?.as_str()?.to_string();
+    let timestamp = json_to_i64(data.get("timestamp")?);
+
+    let access_log = NewMyDataAccessLog {
+        mydata_id: ip_id.clone(),
+        user_address: user.clone(),
+        access_type: ACCESS_TYPE_REVOKED.to_string(),
+        access_time: timestamp,
+        transaction_id: transaction_id.to_string(),
+    };
+
+    Some(vec![
+        SocialEventRow::MyDataAccessLog(access_log),
+        SocialEventRow::MyDataAccessRevoke {
+            mydata_id: ip_id,
+            user,
+            access_type,
+            revoked_at: timestamp,
+            revoked_by,
+            transaction_id: transaction_id.to_string(),
+        },
+    ])
 }
 
 fn process_mydata_config_updated_event(

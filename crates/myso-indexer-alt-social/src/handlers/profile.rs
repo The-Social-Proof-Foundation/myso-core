@@ -243,8 +243,6 @@ impl ProfileCreatedEvent {
             reservation_pool_address: None,
             selected_badge_id: None,
             selected_ecosystem_badge_id: None,
-            paid_messaging_enabled: false,
-            paid_messaging_min_cost: None,
         }
     }
 }
@@ -266,9 +264,6 @@ pub fn handle_profile_event(
         "BadgeSelectedEvent" => process_badge_selected_event(data, event_id),
         "EcosystemBadgeSelectionClearedEvent" => {
             process_ecosystem_badge_selection_cleared_event(data, event_id)
-        }
-        "PaidMessagingSettingsUpdatedEvent" => {
-            process_paid_messaging_settings_updated_event(data, event_id)
         }
         "TokensVestedEvent" => process_tokens_vested_event(data, event_id),
         "TokensClaimedEvent" => process_tokens_claimed_event(data, event_id),
@@ -395,8 +390,6 @@ fn process_profile_updated_event(
         username: Some(ev.username),
         selected_badge_id: None,
         selected_ecosystem_badge_id: None,
-        paid_messaging_enabled: None,
-        paid_messaging_min_cost: None,
         reservation_pool_address: None,
         social_proof_token_address: None,
     };
@@ -516,8 +509,6 @@ fn process_username_registered_event(
         username: Some(ev.username),
         selected_badge_id: None,
         selected_ecosystem_badge_id: None,
-        paid_messaging_enabled: None,
-        paid_messaging_min_cost: None,
         reservation_pool_address: None,
         social_proof_token_address: None,
     };
@@ -571,8 +562,6 @@ fn process_username_updated_event(
         username: Some(ev.new_username),
         selected_badge_id: None,
         selected_ecosystem_badge_id: None,
-        paid_messaging_enabled: None,
-        paid_messaging_min_cost: None,
         reservation_pool_address: None,
         social_proof_token_address: None,
     };
@@ -803,8 +792,6 @@ fn process_badge_selected_event(
         username: None,
         selected_badge_id,
         selected_ecosystem_badge_id,
-        paid_messaging_enabled: None,
-        paid_messaging_min_cost: None,
         reservation_pool_address: None,
         social_proof_token_address: None,
     };
@@ -845,70 +832,6 @@ fn process_ecosystem_badge_selection_cleared_event(
         username: None,
         selected_badge_id: None,
         selected_ecosystem_badge_id: Some(None),
-        paid_messaging_enabled: None,
-        paid_messaging_min_cost: None,
-        reservation_pool_address: None,
-        social_proof_token_address: None,
-    };
-    Some(vec![SocialEventRow::ProfileUpdate(up)])
-}
-
-/// Event emitted when paid messaging settings are updated. Ported from mys-indexer.
-#[derive(Debug, Clone, Deserialize)]
-struct PaidMessagingSettingsUpdatedEvent {
-    #[serde(rename = "profile_id", default)]
-    profile_id: String,
-
-    #[serde(rename = "owner", default)]
-    owner: String,
-
-    #[serde(default)]
-    enabled: bool,
-
-    #[serde(
-        rename = "min_cost",
-        default,
-        deserialize_with = "deserialize_optional_number_from_string"
-    )]
-    min_cost: Option<u64>,
-}
-
-fn process_paid_messaging_settings_updated_event(
-    data: &serde_json::Value,
-    event_id: &str,
-) -> Option<Vec<SocialEventRow>> {
-    let ev: PaidMessagingSettingsUpdatedEvent = common::deserialize_social_event_json(
-        "profile",
-        "PaidMessagingSettingsUpdatedEvent",
-        event_id,
-        data,
-        "profile PaidMessagingSettingsUpdatedEvent JSON did not match PaidMessagingSettingsUpdatedEvent",
-    )?;
-    let up = ProfileUpdate {
-        profile_id: ev.profile_id.clone(),
-        owner_address: ev.owner,
-        display_name: None,
-        bio: None,
-        profile_photo: None,
-        cover_photo: None,
-        birthdate: None,
-        current_location: None,
-        raised_location: None,
-        phone: None,
-        email: None,
-        gender: None,
-        political_view: None,
-        religion: None,
-        education: None,
-        primary_language: None,
-        relationship_status: None,
-        x_username: None,
-        min_offer_amount: None,
-        username: None,
-        selected_badge_id: None,
-        selected_ecosystem_badge_id: None,
-        paid_messaging_enabled: Some(ev.enabled),
-        paid_messaging_min_cost: ev.min_cost.map(|v| v as i64),
         reservation_pool_address: None,
         social_proof_token_address: None,
     };

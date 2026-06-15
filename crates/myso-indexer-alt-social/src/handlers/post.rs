@@ -208,13 +208,7 @@ struct RemoveReactionEvent {
     reaction_text: String,
     is_post: bool,
     #[serde(default)]
-    principal_owner: Option<String>,
-    #[serde(default)]
     actor_address: Option<String>,
-    #[serde(default)]
-    sub_agent_id: Option<String>,
-    #[serde(default, deserialize_with = "de_opt_u8")]
-    action_identity_class: Option<u8>,
 }
 
 #[derive(Debug, Deserialize)]

@@ -5,7 +5,6 @@ title: Module `orderbook::registry`
 Registry holds all created pools.
 
 
--  [Struct `REGISTRY`](#orderbook_registry_REGISTRY)
 -  [Struct `OrderbookAdminCap`](#orderbook_registry_OrderbookAdminCap)
 -  [Struct `Registry`](#orderbook_registry_Registry)
 -  [Struct `RegistryInner`](#orderbook_registry_RegistryInner)
@@ -18,7 +17,7 @@ Registry holds all created pools.
 -  [Function `deauthorize_app`](#orderbook_registry_deauthorize_app)
 -  [Function `assert_app_is_authorized`](#orderbook_registry_assert_app_is_authorized)
 -  [Function `create_orderbook_admin_cap_for_bootstrap`](#orderbook_registry_create_orderbook_admin_cap_for_bootstrap)
--  [Function `init`](#orderbook_registry_init)
+-  [Function `create`](#orderbook_registry_create)
 -  [Function `set_treasury_address`](#orderbook_registry_set_treasury_address)
 -  [Function `enable_version`](#orderbook_registry_enable_version)
 -  [Function `disable_version`](#orderbook_registry_disable_version)
@@ -61,27 +60,6 @@ Registry holds all created pools.
 </code></pre>
 
 
-
-<a name="orderbook_registry_REGISTRY"></a>
-
-## Struct `REGISTRY`
-
-
-
-<pre><code><b>public</b> <b>struct</b> <a href="../orderbook/registry.md#orderbook_registry_REGISTRY">REGISTRY</a> <b>has</b> drop
-</code></pre>
-
-
-
-<details>
-<summary>Fields</summary>
-
-
-<dl>
-</dl>
-
-
-</details>
 
 <a name="orderbook_registry_OrderbookAdminCap"></a>
 
@@ -377,6 +355,15 @@ The <code>App</code> type parameter is a witness which should be defined in the 
 
 
 
+<a name="orderbook_registry_ENotSystemAddress"></a>
+
+
+
+<pre><code><b>const</b> <a href="../orderbook/registry.md#orderbook_registry_ENotSystemAddress">ENotSystemAddress</a>: u64 = 12;
+</code></pre>
+
+
+
 <a name="orderbook_registry_authorize_app"></a>
 
 ## Function `authorize_app`
@@ -483,13 +470,13 @@ Requires BootstrapKey parameter for security; bootstrap entry asserts single use
 
 </details>
 
-<a name="orderbook_registry_init"></a>
+<a name="orderbook_registry_create"></a>
 
-## Function `init`
+## Function `create`
 
 
 
-<pre><code><b>fun</b> <a href="../orderbook/registry.md#orderbook_registry_init">init</a>(_: <a href="../orderbook/registry.md#orderbook_registry_REGISTRY">orderbook::registry::REGISTRY</a>, ctx: &<b>mut</b> <a href="../myso/tx_context.md#myso_tx_context_TxContext">myso::tx_context::TxContext</a>)
+<pre><code><b>fun</b> <a href="../orderbook/registry.md#orderbook_registry_create">create</a>(id: <a href="../myso/object.md#myso_object_UID">myso::object::UID</a>, ctx: &<b>mut</b> <a href="../myso/tx_context.md#myso_tx_context_TxContext">myso::tx_context::TxContext</a>)
 </code></pre>
 
 
@@ -498,14 +485,15 @@ Requires BootstrapKey parameter for security; bootstrap entry asserts single use
 <summary>Implementation</summary>
 
 
-<pre><code><b>fun</b> <a href="../orderbook/registry.md#orderbook_registry_init">init</a>(_: <a href="../orderbook/registry.md#orderbook_registry_REGISTRY">REGISTRY</a>, ctx: &<b>mut</b> TxContext) {
+<pre><code><b>fun</b> <a href="../orderbook/registry.md#orderbook_registry_create">create</a>(id: UID, ctx: &<b>mut</b> TxContext) {
+    <b>assert</b>!(ctx.sender() == @0x0, <a href="../orderbook/registry.md#orderbook_registry_ENotSystemAddress">ENotSystemAddress</a>);
     <b>let</b> registry_inner = <a href="../orderbook/registry.md#orderbook_registry_RegistryInner">RegistryInner</a> {
         <a href="../orderbook/registry.md#orderbook_registry_allowed_versions">allowed_versions</a>: vec_set::singleton(<a href="../orderbook/constants.md#orderbook_constants_current_version">constants::current_version</a>()),
         pools: bag::new(ctx),
         <a href="../orderbook/registry.md#orderbook_registry_treasury_address">treasury_address</a>: @0x0,
     };
     <b>let</b> <a href="../orderbook/registry.md#orderbook_registry">registry</a> = <a href="../orderbook/registry.md#orderbook_registry_Registry">Registry</a> {
-        id: object::new(ctx),
+        id,
         inner: versioned::create(
             <a href="../orderbook/constants.md#orderbook_constants_current_version">constants::current_version</a>(),
             registry_inner,

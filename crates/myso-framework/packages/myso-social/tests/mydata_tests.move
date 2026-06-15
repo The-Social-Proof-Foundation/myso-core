@@ -510,6 +510,188 @@ module social_contracts::mydata_tests {
     }
 
     #[test]
+    fun test_revoke_one_time_buyer_loses_access() {
+        let mut scenario = test_scenario::begin(CREATOR);
+        init_test_environment(&mut scenario);
+        create_test_mydata(&mut scenario);
+
+        test_scenario::next_tx(&mut scenario, CREATOR);
+        {
+            let coin = coin::mint_for_testing<myso::myso::MYSO>(200, test_scenario::ctx(&mut scenario));
+            transfer::public_transfer(coin, BUYER);
+        };
+
+        test_scenario::next_tx(&mut scenario, BUYER);
+        {
+            let config = test_scenario::take_shared<MyDataConfig>(&scenario);
+            let mut mydata = test_scenario::take_shared<MyData>(&scenario);
+            let payment = test_scenario::take_from_sender<Coin<myso::myso::MYSO>>(&scenario);
+            let memory_account = test_scenario::take_shared<MemoryAccount>(&scenario);
+            let clock = test_scenario::take_shared<Clock>(&scenario);
+            mydata::purchase_one_time(
+                &config,
+                &mut mydata,
+                payment,
+                &memory_account,
+                &clock,
+                test_scenario::ctx(&mut scenario)
+            );
+            assert!(mydata::has_access(&mydata, BUYER, &clock), 0);
+
+            test_scenario::return_shared(config);
+            test_scenario::return_shared(mydata);
+            test_scenario::return_shared(memory_account);
+            test_scenario::return_shared(clock);
+        };
+
+        test_scenario::next_tx(&mut scenario, CREATOR);
+        {
+            let mut mydata = test_scenario::take_shared<MyData>(&scenario);
+            let clock = test_scenario::take_shared<Clock>(&scenario);
+            mydata::revoke_access(&mut mydata, BUYER, 0, &clock, test_scenario::ctx(&mut scenario));
+            assert!(!mydata::has_access(&mydata, BUYER, &clock), 1);
+
+            test_scenario::return_shared(mydata);
+            test_scenario::return_shared(clock);
+        };
+
+        test_scenario::end(scenario);
+    }
+
+    #[test]
+    fun test_revoke_subscription_buyer_loses_access() {
+        let mut scenario = test_scenario::begin(CREATOR);
+        init_test_environment(&mut scenario);
+        create_test_mydata(&mut scenario);
+
+        test_scenario::next_tx(&mut scenario, CREATOR);
+        {
+            let coin = coin::mint_for_testing<myso::myso::MYSO>(200, test_scenario::ctx(&mut scenario));
+            transfer::public_transfer(coin, BUYER);
+        };
+
+        test_scenario::next_tx(&mut scenario, BUYER);
+        {
+            let config = test_scenario::take_shared<MyDataConfig>(&scenario);
+            let mut mydata = test_scenario::take_shared<MyData>(&scenario);
+            let payment = test_scenario::take_from_sender<Coin<myso::myso::MYSO>>(&scenario);
+            let memory_account = test_scenario::take_shared<MemoryAccount>(&scenario);
+            let clock = test_scenario::take_shared<Clock>(&scenario);
+            mydata::purchase_subscription(
+                &config,
+                &mut mydata,
+                payment,
+                &memory_account,
+                &clock,
+                test_scenario::ctx(&mut scenario)
+            );
+            assert!(mydata::has_access(&mydata, BUYER, &clock), 0);
+
+            test_scenario::return_shared(config);
+            test_scenario::return_shared(mydata);
+            test_scenario::return_shared(memory_account);
+            test_scenario::return_shared(clock);
+        };
+
+        test_scenario::next_tx(&mut scenario, CREATOR);
+        {
+            let mut mydata = test_scenario::take_shared<MyData>(&scenario);
+            let clock = test_scenario::take_shared<Clock>(&scenario);
+            mydata::revoke_access(&mut mydata, BUYER, 1, &clock, test_scenario::ctx(&mut scenario));
+            assert!(!mydata::has_access(&mydata, BUYER, &clock), 1);
+
+            test_scenario::return_shared(mydata);
+            test_scenario::return_shared(clock);
+        };
+
+        test_scenario::end(scenario);
+    }
+
+    #[test]
+    #[expected_failure(abort_code = 13, location = social_contracts::mydata)]
+    fun test_mydata_approve_after_revoke_aborts() {
+        let mut scenario = test_scenario::begin(CREATOR);
+        init_test_environment(&mut scenario);
+        create_test_mydata(&mut scenario);
+
+        test_scenario::next_tx(&mut scenario, CREATOR);
+        {
+            let coin = coin::mint_for_testing<myso::myso::MYSO>(200, test_scenario::ctx(&mut scenario));
+            transfer::public_transfer(coin, BUYER);
+        };
+
+        test_scenario::next_tx(&mut scenario, BUYER);
+        {
+            let config = test_scenario::take_shared<MyDataConfig>(&scenario);
+            let mut mydata = test_scenario::take_shared<MyData>(&scenario);
+            let payment = test_scenario::take_from_sender<Coin<myso::myso::MYSO>>(&scenario);
+            let memory_account = test_scenario::take_shared<MemoryAccount>(&scenario);
+            let clock = test_scenario::take_shared<Clock>(&scenario);
+            mydata::purchase_one_time(
+                &config,
+                &mut mydata,
+                payment,
+                &memory_account,
+                &clock,
+                test_scenario::ctx(&mut scenario)
+            );
+
+            test_scenario::return_shared(config);
+            test_scenario::return_shared(mydata);
+            test_scenario::return_shared(memory_account);
+            test_scenario::return_shared(clock);
+        };
+
+        test_scenario::next_tx(&mut scenario, CREATOR);
+        {
+            let mut mydata = test_scenario::take_shared<MyData>(&scenario);
+            let clock = test_scenario::take_shared<Clock>(&scenario);
+            mydata::revoke_access(&mut mydata, BUYER, 0, &clock, test_scenario::ctx(&mut scenario));
+            test_scenario::return_shared(mydata);
+            test_scenario::return_shared(clock);
+        };
+
+        test_scenario::next_tx(&mut scenario, BUYER);
+        {
+            let mydata = test_scenario::take_shared<MyData>(&scenario);
+            let memory_account = test_scenario::take_shared<MemoryAccount>(&scenario);
+            let clock = test_scenario::take_shared<Clock>(&scenario);
+            mydata::mydata_approve(
+                b"encryption_id",
+                &mydata,
+                &memory_account,
+                &clock,
+                test_scenario::ctx(&mut scenario)
+            );
+
+            test_scenario::return_shared(mydata);
+            test_scenario::return_shared(memory_account);
+            test_scenario::return_shared(clock);
+        };
+
+        test_scenario::end(scenario);
+    }
+
+    #[test]
+    #[expected_failure(abort_code = 14, location = social_contracts::mydata)]
+    fun test_revoke_non_buyer_aborts() {
+        let mut scenario = test_scenario::begin(CREATOR);
+        init_test_environment(&mut scenario);
+        create_test_mydata(&mut scenario);
+
+        test_scenario::next_tx(&mut scenario, CREATOR);
+        {
+            let mut mydata = test_scenario::take_shared<MyData>(&scenario);
+            let clock = test_scenario::take_shared<Clock>(&scenario);
+            mydata::revoke_access(&mut mydata, BUYER, 0, &clock, test_scenario::ctx(&mut scenario));
+            test_scenario::return_shared(mydata);
+            test_scenario::return_shared(clock);
+        };
+
+        test_scenario::end(scenario);
+    }
+
+    #[test]
     fun test_create_broad_pool() {
         let mut scenario = test_scenario::begin(CREATOR);
         init_test_environment(&mut scenario);

@@ -86,6 +86,10 @@ name = "programmable_transactions_api"
 path = "examples/programmable_transactions_api.rs"
 
 [[example]]
+name = "messaging_paid_dm"
+path = "examples/messaging_paid_dm.rs"
+
+[[example]]
 name = "myso_client"
 path = "examples/myso_client.rs"
 

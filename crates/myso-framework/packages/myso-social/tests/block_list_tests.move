@@ -316,4 +316,54 @@ module social_contracts::block_list_tests {
         
         test_scenario::end(scenario);
     }
+
+    #[test]
+    fun test_either_blocked_bidirectional() {
+        let mut scenario = test_scenario::begin(ADMIN);
+        init_block_list_registry(&mut scenario);
+
+        test_scenario::next_tx(&mut scenario, USER1);
+        {
+            let mut registry = test_scenario::take_shared<block_list::BlockListRegistry>(&mut scenario);
+            let mut social_graph = test_scenario::take_shared<social_graph::SocialGraph>(&mut scenario);
+            block_list::block_wallet(&mut registry, &mut social_graph, USER2, test_scenario::ctx(&mut scenario));
+            test_scenario::return_shared(registry);
+            test_scenario::return_shared(social_graph);
+        };
+
+        test_scenario::next_tx(&mut scenario, USER1);
+        {
+            let registry = test_scenario::take_shared<block_list::BlockListRegistry>(&mut scenario);
+            assert!(block_list::either_blocked(&registry, USER1, USER2), 0);
+            assert!(block_list::either_blocked(&registry, USER2, USER1), 1);
+            assert!(!block_list::either_blocked(&registry, USER1, USER3), 2);
+            test_scenario::return_shared(registry);
+        };
+
+        test_scenario::end(scenario);
+    }
+
+    #[test, expected_failure(abort_code = block_list::EBlocked)]
+    fun test_assert_not_blocked_aborts() {
+        let mut scenario = test_scenario::begin(ADMIN);
+        init_block_list_registry(&mut scenario);
+
+        test_scenario::next_tx(&mut scenario, USER1);
+        {
+            let mut registry = test_scenario::take_shared<block_list::BlockListRegistry>(&mut scenario);
+            let mut social_graph = test_scenario::take_shared<social_graph::SocialGraph>(&mut scenario);
+            block_list::block_wallet(&mut registry, &mut social_graph, USER2, test_scenario::ctx(&mut scenario));
+            test_scenario::return_shared(registry);
+            test_scenario::return_shared(social_graph);
+        };
+
+        test_scenario::next_tx(&mut scenario, USER2);
+        {
+            let registry = test_scenario::take_shared<block_list::BlockListRegistry>(&mut scenario);
+            block_list::assert_not_blocked(&registry, USER2, USER1);
+            test_scenario::return_shared(registry);
+        };
+
+        abort
+    }
 } 

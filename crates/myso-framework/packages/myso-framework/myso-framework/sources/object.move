@@ -50,6 +50,9 @@ const MYSO_BRIDGE_ID: address = @0x9;
 /// The hardcoded ID for the Coin Registry Object.
 const MYSO_COIN_REGISTRY_OBJECT_ID: address = @0xc;
 
+/// The hardcoded ID for the Orderbook Registry Object.
+const MYSO_ORDERBOOK_REGISTRY_OBJECT_ID: address = @0x10;
+
 /// The hardcoded ID for the AddressAliasState Object.
 const MYSO_ADDRESS_ALIAS_STATE_ID: address = @0xa;
 
@@ -166,6 +169,18 @@ public(package) fun myso_coin_registry_object_id(): UID {
 
 public(package) fun myso_coin_registry_address(): address {
     MYSO_COIN_REGISTRY_OBJECT_ID
+}
+
+/// Create the `UID` for the singleton orderbook `Registry` object.
+/// This should only be called once from `orderbook::registry`.
+public fun myso_orderbook_registry_object_id(): UID {
+    UID {
+        id: ID { bytes: MYSO_ORDERBOOK_REGISTRY_OBJECT_ID },
+    }
+}
+
+public fun myso_orderbook_registry_address(): address {
+    MYSO_ORDERBOOK_REGISTRY_OBJECT_ID
 }
 
 #[allow(unused_function)]

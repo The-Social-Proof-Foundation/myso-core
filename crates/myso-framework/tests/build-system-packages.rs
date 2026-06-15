@@ -8,6 +8,7 @@ use move_compiler::editions::{Edition, Flavor};
 use move_package_alt_compilation::{
     build_config::BuildConfig as MoveBuildConfig, lint_flag::LintFlag,
 };
+use fs_extra::dir::CopyOptions;
 use myso_move_build::BuildConfig;
 use myso_package_alt::mainnet_environment;
 use std::{collections::BTreeMap, env, fs, path::Path};
@@ -34,6 +35,57 @@ async fn build_system_packages() {
     std::fs::create_dir_all(out_dir.join(DOCS_DIR)).unwrap();
 
     let packages_path = Path::new(CRATE_ROOT).join("packages");
+    let indir = tempfile::tempdir().unwrap();
+    fs_extra::dir::copy(
+        packages_path,
+        indir.path(),
+        &CopyOptions::new().content_only(true),
+    )
+    .unwrap();
+    let packages_path = indir.path();
+
+    // Fix Move.toml dependency paths for nested package structure (temp copy layout).
+    // Use exact dependency lines so already-correct paths (e.g. ../../move-stdlib) are not double-prefixed.
+    let framework_move_toml = packages_path
+        .join("myso-framework")
+        .join("myso-framework")
+        .join("Move.toml");
+    if framework_move_toml.exists() {
+        let content = fs::read_to_string(&framework_move_toml).unwrap();
+        let fixed = content.replace(
+            r#"MoveStdlib = { local = "../move-stdlib" }"#,
+            r#"MoveStdlib = { local = "../../move-stdlib" }"#,
+        );
+        if fixed != content {
+            fs::write(&framework_move_toml, fixed).unwrap();
+        }
+    }
+
+    let system_move_toml = packages_path.join("myso-system").join("Move.toml");
+    if system_move_toml.exists() {
+        let content = fs::read_to_string(&system_move_toml).unwrap();
+        let fixed = content.replace(
+            r#"MySo = { local = "../myso-framework" }"#,
+            r#"MySo = { local = "../myso-framework/myso-framework" }"#,
+        );
+        if fixed != content {
+            fs::write(&system_move_toml, fixed).unwrap();
+        }
+    }
+
+    for pkg_name in ["bridge", "orderbook", "mydata", "myso-social", "messaging"] {
+        let move_toml = packages_path.join(pkg_name).join("Move.toml");
+        if move_toml.exists() {
+            let content = fs::read_to_string(&move_toml).unwrap();
+            let fixed = content.replace(
+                r#"MySo = { local = "../myso-framework" }"#,
+                r#"MySo = { local = "../myso-framework/myso-framework" }"#,
+            );
+            if fixed != content {
+                fs::write(&move_toml, fixed).unwrap();
+            }
+        }
+    }
 
     let bridge_path = packages_path.join("bridge");
     let orderbook_path = packages_path.join("orderbook");
@@ -42,6 +94,7 @@ async fn build_system_packages() {
     let move_stdlib_path = packages_path.join("move-stdlib");
     let mydata_path = packages_path.join("mydata");
     let myso_social_path = packages_path.join("myso-social");
+    let messaging_path = packages_path.join("messaging");
 
     build_packages(
         &bridge_path,
@@ -51,6 +104,7 @@ async fn build_system_packages() {
         &move_stdlib_path,
         &mydata_path,
         &myso_social_path,
+        &messaging_path,
         out_dir,
     )
     .await;
@@ -88,6 +142,7 @@ async fn build_packages(
     stdlib_path: &Path,
     mydata_path: &Path,
     myso_social_path: &Path,
+    messaging_path: &Path,
     out_dir: &Path,
 ) {
     let config = MoveBuildConfig {
@@ -108,6 +163,7 @@ async fn build_packages(
         stdlib_path,
         mydata_path,
         myso_social_path,
+        messaging_path,
         out_dir,
         "bridge",
         "orderbook",
@@ -116,6 +172,7 @@ async fn build_packages(
         "move-stdlib",
         "mydata",
         "myso-social",
+        "messaging",
         config,
     )
     .await;
@@ -129,6 +186,7 @@ async fn build_packages_with_move_config(
     stdlib_path: &Path,
     mydata_path: &Path,
     myso_social_path: &Path,
+    messaging_path: &Path,
     out_dir: &Path,
     bridge_dir: &str,
     orderbook_dir: &str,
@@ -137,6 +195,7 @@ async fn build_packages_with_move_config(
     stdlib_dir: &str,
     mydata_dir: &str,
     myso_social_dir: &str,
+    messaging_dir: &str,
     config: MoveBuildConfig,
 ) {
     let stdlib_pkg = BuildConfig {
@@ -194,12 +253,21 @@ async fn build_packages_with_move_config(
     .await
     .unwrap();
     let myso_social_pkg = BuildConfig {
-        config,
+        config: config.clone(),
         run_bytecode_verifier: true,
         print_diags_to_stderr: false,
         environment: mainnet_environment(),
     }
     .build_async(myso_social_path)
+    .await
+    .unwrap();
+    let messaging_pkg = BuildConfig {
+        config,
+        run_bytecode_verifier: true,
+        print_diags_to_stderr: false,
+        environment: mainnet_environment(),
+    }
+    .build_async(messaging_path)
     .await
     .unwrap();
 
@@ -210,6 +278,7 @@ async fn build_packages_with_move_config(
     let bridge = bridge_pkg.get_bridge_modules();
     let mydata = mydata_pkg.get_mydata_modules();
     let myso_social = myso_social_pkg.get_myso_social_modules();
+    let messaging = messaging_pkg.get_myso_messaging_modules();
 
     let compiled_packages_dir = out_dir.join(COMPILED_PACKAGES_DIR);
 
@@ -229,6 +298,11 @@ async fn build_packages_with_move_config(
     let myso_social_members =
         serialize_modules_to_file(myso_social, &compiled_packages_dir.join(myso_social_dir))
             .unwrap();
+    let messaging_members = serialize_modules_to_file(
+        messaging,
+        &compiled_packages_dir.join(messaging_dir),
+    )
+    .unwrap();
 
     // write out generated docs
     let docs_dir = out_dir.join(DOCS_DIR);
@@ -261,6 +335,10 @@ async fn build_packages_with_move_config(
         &myso_social_pkg.package.compiled_docs.unwrap(),
         &mut files_to_write,
     );
+    relocate_docs(
+        &messaging_pkg.package.compiled_docs.unwrap(),
+        &mut files_to_write,
+    );
     for (fname, doc) in files_to_write {
         let dst_path = docs_dir.join(fname);
         fs::create_dir_all(dst_path.parent().unwrap()).unwrap();
@@ -275,6 +353,7 @@ async fn build_packages_with_move_config(
         stdlib_members.join("\n"),
         mydata_members.join("\n"),
         myso_social_members.join("\n"),
+        messaging_members.join("\n"),
     ]
     .join("\n");
 

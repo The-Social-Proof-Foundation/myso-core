@@ -350,8 +350,6 @@ pub struct WalletOnlyProfile {
     pub social_proof_token_address: Option<String>,
     pub reservation_pool_address: Option<String>,
     pub selected_badge_id: Option<String>,
-    pub paid_messaging_enabled: bool,
-    pub paid_messaging_min_cost: Option<i64>,
     pub reservation_pool: Option<String>,
 }
 
@@ -396,9 +394,29 @@ impl WalletOnlyProfile {
             social_proof_token_address: None,
             reservation_pool_address: None,
             selected_badge_id: None,
-            paid_messaging_enabled: false,
-            paid_messaging_min_cost: None,
             reservation_pool: None,
+        }
+    }
+}
+
+/// Wallet-keyed paid DM policy from `wallet_messaging_policies` (indexed from messaging @ 0xe110).
+#[derive(Debug, Clone, Serialize)]
+pub struct WalletMessagingPolicyResponse {
+    pub wallet_address: String,
+    pub enabled: bool,
+    pub min_cost: Option<i64>,
+    pub updated_at: i64,
+}
+
+impl From<myso_indexer_alt_social_schema::models::WalletMessagingPolicy>
+    for WalletMessagingPolicyResponse
+{
+    fn from(p: myso_indexer_alt_social_schema::models::WalletMessagingPolicy) -> Self {
+        Self {
+            wallet_address: p.wallet_address,
+            enabled: p.enabled,
+            min_cost: p.min_cost,
+            updated_at: p.updated_at,
         }
     }
 }

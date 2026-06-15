@@ -42,7 +42,8 @@ pub use memory::{
 };
 pub use mydata::{
     get_creator_mydata, get_mydata_access_analytics, get_mydata_access_logs, get_mydata_by_id,
-    get_mydata_configuration, get_mydata_purchases, get_mydata_distribution_round,
+    get_mydata_configuration, get_mydata_has_access, get_mydata_purchases,
+    get_mydata_distribution_round,
     get_mydata_merkle_root, get_mydata_snapshot_anchor, get_mydata_revenue,
     get_mydata_revenue_timeline, get_mydata_stats, get_mydata_subscriptions, get_popular_mydata,
     list_mydata, list_mydata_broad_pools, list_mydata_claims_for_snapshot,
@@ -74,7 +75,7 @@ pub use profiles::{
     get_profile_following, get_profile_offers, get_profile_platform_events,
     get_profile_recommendations,
     get_profile_platform_memberships, get_profile_pnl, get_profile_posts, get_profile_sale_fees,
-    get_profile_social_stats, latest_profiles,
+    get_profile_social_stats, get_wallet_messaging_policy, latest_profiles,
 };
 pub use promotions::{
     get_promotion_hourly, get_promotion_stats, get_promotion_time_series, get_promotion_views,

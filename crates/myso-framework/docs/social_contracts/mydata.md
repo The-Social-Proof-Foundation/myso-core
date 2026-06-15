@@ -15,6 +15,10 @@ must be the same <code>id</code> bytes used when encrypting so policy and client
 AES-GCM (or other app-managed schemes), ciphertext does not parse as <code>EncryptedObject</code>; encode the
 scheme in <code><a href="../social_contracts/mydata.md#social_contracts_mydata_media_type">media_type</a></code> (e.g. prefix <code>aes_gcm:</code>) or app metadata so indexers pick the right decrypt path.
 
+**Revocation:** Owners may call [<code><a href="../social_contracts/mydata.md#social_contracts_mydata_revoke_access">revoke_access</a></code>] to remove a buyer from <code>purchasers</code> / <code>subscribers</code>.
+Permissioned key servers re-check [<code><a href="../social_contracts/mydata.md#social_contracts_mydata_mydata_approve">mydata_approve</a></code>] on every <code>fetch_key</code>, so revoked buyers cannot
+obtain new derived keys. Already-fetched keys may still decrypt offline client-side.
+
 **Query marketplace:** Broad pools, snapshot anchors, claim vault, and Merkle settlement live in this
 module. Manifest hash and payout trees are operator-defined; the chain records price paid and anchors,
 not row-level dataset membership.
@@ -43,6 +47,7 @@ not row-level dataset membership.
 -  [Struct `MyDataCreatedEvent`](#social_contracts_mydata_MyDataCreatedEvent)
 -  [Struct `PurchaseEvent`](#social_contracts_mydata_PurchaseEvent)
 -  [Struct `AccessGrantedEvent`](#social_contracts_mydata_AccessGrantedEvent)
+-  [Struct `AccessRevokedEvent`](#social_contracts_mydata_AccessRevokedEvent)
 -  [Struct `MyDataRegisteredEvent`](#social_contracts_mydata_MyDataRegisteredEvent)
 -  [Struct `MyDataUnregisteredEvent`](#social_contracts_mydata_MyDataUnregisteredEvent)
 -  [Struct `MyDataConfigUpdatedEvent`](#social_contracts_mydata_MyDataConfigUpdatedEvent)
@@ -83,8 +88,11 @@ not row-level dataset membership.
 -  [Function `mydata_approve`](#social_contracts_mydata_mydata_approve)
 -  [Function `bytes_equal_u8`](#social_contracts_mydata_bytes_equal_u8)
 -  [Function `grant_access`](#social_contracts_mydata_grant_access)
+-  [Function `revoke_access`](#social_contracts_mydata_revoke_access)
 -  [Function `owner`](#social_contracts_mydata_owner)
 -  [Function `object_address`](#social_contracts_mydata_object_address)
+-  [Function `listing_id`](#social_contracts_mydata_listing_id)
+-  [Function `encryption_identity`](#social_contracts_mydata_encryption_identity)
 -  [Function `media_type`](#social_contracts_mydata_media_type)
 -  [Function `tags`](#social_contracts_mydata_tags)
 -  [Function `platform_id`](#social_contracts_mydata_platform_id)
@@ -1298,6 +1306,52 @@ Registry for tracking MyData ownership
 
 </details>
 
+<a name="social_contracts_mydata_AccessRevokedEvent"></a>
+
+## Struct `AccessRevokedEvent`
+
+
+
+<pre><code><b>public</b> <b>struct</b> <a href="../social_contracts/mydata.md#social_contracts_mydata_AccessRevokedEvent">AccessRevokedEvent</a> <b>has</b> <b>copy</b>, drop
+</code></pre>
+
+
+
+<details>
+<summary>Fields</summary>
+
+
+<dl>
+<dt>
+<code>ip_id: <b>address</b></code>
+</dt>
+<dd>
+</dd>
+<dt>
+<code>user: <b>address</b></code>
+</dt>
+<dd>
+</dd>
+<dt>
+<code>access_type: <a href="../std/string.md#std_string_String">std::string::String</a></code>
+</dt>
+<dd>
+</dd>
+<dt>
+<code>revoked_by: <b>address</b></code>
+</dt>
+<dd>
+</dd>
+<dt>
+<code>timestamp: u64</code>
+</dt>
+<dd>
+</dd>
+</dl>
+
+
+</details>
+
 <a name="social_contracts_mydata_MyDataRegisteredEvent"></a>
 
 ## Struct `MyDataRegisteredEvent`
@@ -1548,6 +1602,15 @@ Registry for tracking MyData ownership
 
 
 <pre><code><b>const</b> <a href="../social_contracts/mydata.md#social_contracts_mydata_EPolicyNotEntitled">EPolicyNotEntitled</a>: u64 = 13;
+</code></pre>
+
+
+
+<a name="social_contracts_mydata_ENoAccessToRevoke"></a>
+
+
+
+<pre><code><b>const</b> <a href="../social_contracts/mydata.md#social_contracts_mydata_ENoAccessToRevoke">ENoAccessToRevoke</a>: u64 = 14;
 </code></pre>
 
 
@@ -3304,6 +3367,70 @@ Grant free access (owner only) - useful for samples or promotions
 
 </details>
 
+<a name="social_contracts_mydata_revoke_access"></a>
+
+## Function `revoke_access`
+
+Revoke a buyer's access (owner only). Removes the user from <code>purchasers</code> and/or <code>subscribers</code>.
+<code>access_type</code>: 0 = one-time, 1 = subscription, 2 = both.
+
+
+<pre><code><b>public</b> <b>entry</b> <b>fun</b> <a href="../social_contracts/mydata.md#social_contracts_mydata_revoke_access">revoke_access</a>(<a href="../social_contracts/mydata.md#social_contracts_mydata">mydata</a>: &<b>mut</b> <a href="../social_contracts/mydata.md#social_contracts_mydata_MyData">social_contracts::mydata::MyData</a>, user: <b>address</b>, access_type: u8, clock: &<a href="../myso/clock.md#myso_clock_Clock">myso::clock::Clock</a>, ctx: &<b>mut</b> <a href="../myso/tx_context.md#myso_tx_context_TxContext">myso::tx_context::TxContext</a>)
+</code></pre>
+
+
+
+<details>
+<summary>Implementation</summary>
+
+
+<pre><code><b>public</b> <b>entry</b> <b>fun</b> <a href="../social_contracts/mydata.md#social_contracts_mydata_revoke_access">revoke_access</a>(
+    <a href="../social_contracts/mydata.md#social_contracts_mydata">mydata</a>: &<b>mut</b> <a href="../social_contracts/mydata.md#social_contracts_mydata_MyData">MyData</a>,
+    user: <b>address</b>,
+    access_type: u8,
+    clock: &Clock,
+    ctx: &<b>mut</b> TxContext,
+) {
+    <b>assert</b>!(<a href="../social_contracts/mydata.md#social_contracts_mydata">mydata</a>.<a href="../social_contracts/mydata.md#social_contracts_mydata_version">version</a> == <a href="../social_contracts/upgrade.md#social_contracts_upgrade_current_version">upgrade::current_version</a>(), <a href="../social_contracts/mydata.md#social_contracts_mydata_EInvalidInput">EInvalidInput</a>);
+    <b>assert</b>!(tx_context::sender(ctx) == <a href="../social_contracts/mydata.md#social_contracts_mydata">mydata</a>.<a href="../social_contracts/mydata.md#social_contracts_mydata_owner">owner</a>, <a href="../social_contracts/mydata.md#social_contracts_mydata_EUnauthorized">EUnauthorized</a>);
+    <b>assert</b>!(user != <a href="../social_contracts/mydata.md#social_contracts_mydata">mydata</a>.<a href="../social_contracts/mydata.md#social_contracts_mydata_owner">owner</a>, <a href="../social_contracts/mydata.md#social_contracts_mydata_EInvalidInput">EInvalidInput</a>);
+    <b>assert</b>!(access_type &lt;= 2, <a href="../social_contracts/mydata.md#social_contracts_mydata_EInvalidInput">EInvalidInput</a>);
+    <b>let</b> <b>mut</b> revoked_one_time = <b>false</b>;
+    <b>let</b> <b>mut</b> revoked_subscription = <b>false</b>;
+    <b>if</b> (access_type == 0 || access_type == 2) {
+        <b>if</b> (table::contains(&<a href="../social_contracts/mydata.md#social_contracts_mydata">mydata</a>.purchasers, user)) {
+            table::remove(&<b>mut</b> <a href="../social_contracts/mydata.md#social_contracts_mydata">mydata</a>.purchasers, user);
+            revoked_one_time = <b>true</b>;
+        };
+    };
+    <b>if</b> (access_type == 1 || access_type == 2) {
+        <b>if</b> (table::contains(&<a href="../social_contracts/mydata.md#social_contracts_mydata">mydata</a>.subscribers, user)) {
+            table::remove(&<b>mut</b> <a href="../social_contracts/mydata.md#social_contracts_mydata">mydata</a>.subscribers, user);
+            revoked_subscription = <b>true</b>;
+        };
+    };
+    <b>assert</b>!(revoked_one_time || revoked_subscription, <a href="../social_contracts/mydata.md#social_contracts_mydata_ENoAccessToRevoke">ENoAccessToRevoke</a>);
+    <b>let</b> access_type_str = <b>if</b> (revoked_one_time && revoked_subscription) {
+        string::utf8(b"all")
+    } <b>else</b> <b>if</b> (revoked_one_time) {
+        string::utf8(b"one_time")
+    } <b>else</b> {
+        string::utf8(b"<a href="../social_contracts/subscription.md#social_contracts_subscription">subscription</a>")
+    };
+    event::emit(<a href="../social_contracts/mydata.md#social_contracts_mydata_AccessRevokedEvent">AccessRevokedEvent</a> {
+        ip_id: object::uid_to_address(&<a href="../social_contracts/mydata.md#social_contracts_mydata">mydata</a>.id),
+        user,
+        access_type: access_type_str,
+        revoked_by: tx_context::sender(ctx),
+        timestamp: clock::timestamp_ms(clock),
+    });
+}
+</code></pre>
+
+
+
+</details>
+
 <a name="social_contracts_mydata_owner"></a>
 
 ## Function `owner`
@@ -3342,6 +3469,52 @@ Grant free access (owner only) - useful for samples or promotions
 
 
 <pre><code><b>public</b> <b>fun</b> <a href="../social_contracts/mydata.md#social_contracts_mydata_object_address">object_address</a>(<a href="../social_contracts/mydata.md#social_contracts_mydata">mydata</a>: &<a href="../social_contracts/mydata.md#social_contracts_mydata_MyData">MyData</a>): <b>address</b> { object::uid_to_address(&<a href="../social_contracts/mydata.md#social_contracts_mydata">mydata</a>.id) }
+</code></pre>
+
+
+
+</details>
+
+<a name="social_contracts_mydata_listing_id"></a>
+
+## Function `listing_id`
+
+Listing object address for PTB binding in <code>fetch_key</code> policy transactions.
+
+
+<pre><code><b>public</b> <b>fun</b> <a href="../social_contracts/mydata.md#social_contracts_mydata_listing_id">listing_id</a>(<a href="../social_contracts/mydata.md#social_contracts_mydata">mydata</a>: &<a href="../social_contracts/mydata.md#social_contracts_mydata_MyData">social_contracts::mydata::MyData</a>): <b>address</b>
+</code></pre>
+
+
+
+<details>
+<summary>Implementation</summary>
+
+
+<pre><code><b>public</b> <b>fun</b> <a href="../social_contracts/mydata.md#social_contracts_mydata_listing_id">listing_id</a>(<a href="../social_contracts/mydata.md#social_contracts_mydata">mydata</a>: &<a href="../social_contracts/mydata.md#social_contracts_mydata_MyData">MyData</a>): <b>address</b> { object::uid_to_address(&<a href="../social_contracts/mydata.md#social_contracts_mydata">mydata</a>.id) }
+</code></pre>
+
+
+
+</details>
+
+<a name="social_contracts_mydata_encryption_identity"></a>
+
+## Function `encryption_identity`
+
+Encryption identity bytes; must match <code>EncryptedObject.id</code> and the <code>id</code> arg to <code><a href="../social_contracts/mydata.md#social_contracts_mydata_mydata_approve">mydata_approve</a></code>.
+
+
+<pre><code><b>public</b> <b>fun</b> <a href="../social_contracts/mydata.md#social_contracts_mydata_encryption_identity">encryption_identity</a>(<a href="../social_contracts/mydata.md#social_contracts_mydata">mydata</a>: &<a href="../social_contracts/mydata.md#social_contracts_mydata_MyData">social_contracts::mydata::MyData</a>): vector&lt;u8&gt;
+</code></pre>
+
+
+
+<details>
+<summary>Implementation</summary>
+
+
+<pre><code><b>public</b> <b>fun</b> <a href="../social_contracts/mydata.md#social_contracts_mydata_encryption_identity">encryption_identity</a>(<a href="../social_contracts/mydata.md#social_contracts_mydata">mydata</a>: &<a href="../social_contracts/mydata.md#social_contracts_mydata_MyData">MyData</a>): vector&lt;u8&gt; { <a href="../social_contracts/mydata.md#social_contracts_mydata">mydata</a>.encryption_id }
 </code></pre>
 
 

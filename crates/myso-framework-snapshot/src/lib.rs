@@ -7,7 +7,7 @@ use myso_protocol_config::ProtocolVersion;
 use myso_types::base_types::ObjectID;
 use myso_types::{
     BRIDGE_PACKAGE_ID, MOVE_STDLIB_PACKAGE_ID, MYDATA_PACKAGE_ID, MYSO_FRAMEWORK_PACKAGE_ID,
-    MYSO_SOCIAL_PACKAGE_ID, MYSO_SYSTEM_PACKAGE_ID, ORDERBOOK_PACKAGE_ID,
+    MYSO_MESSAGING_PACKAGE_ID, MYSO_SOCIAL_PACKAGE_ID, MYSO_SYSTEM_PACKAGE_ID, ORDERBOOK_PACKAGE_ID,
 };
 use serde::{Deserialize, Serialize};
 use std::collections::{BTreeMap, BTreeSet};
@@ -73,6 +73,7 @@ const SYSTEM_PACKAGE_PUBLISH_ORDER: &[ObjectID] = &[
     BRIDGE_PACKAGE_ID,
     MYDATA_PACKAGE_ID,
     MYSO_SOCIAL_PACKAGE_ID,
+    MYSO_MESSAGING_PACKAGE_ID,
 ];
 
 pub fn load_bytecode_snapshot_manifest() -> SnapshotManifest {
@@ -120,12 +121,9 @@ pub fn load_bytecode_snapshot(protocol_version: u64) -> anyhow::Result<Vec<Syste
     let mut snapshot_objects = Vec::new();
     for package_id in SYSTEM_PACKAGE_PUBLISH_ORDER {
         let Some(object) = snapshots.remove(package_id) else {
-            anyhow::bail!(
-                "Bytecode snapshot for protocol version {} missing package {}. \
-                 Regenerate with: cargo run -p myso-framework-snapshot",
-                protocol_version,
-                package_id
-            );
+            // System packages are introduced across protocol versions; older snapshots
+            // may not contain every package in the current publish order.
+            continue;
         };
         if object.bytes.is_empty() {
             anyhow::bail!(
@@ -136,6 +134,13 @@ pub fn load_bytecode_snapshot(protocol_version: u64) -> anyhow::Result<Vec<Syste
             );
         }
         snapshot_objects.push(object);
+    }
+    if snapshot_objects.is_empty() {
+        anyhow::bail!(
+            "Bytecode snapshot for protocol version {} contains no system packages. \
+             Regenerate with: cargo run -p myso-framework-snapshot",
+            protocol_version
+        );
     }
     Ok(snapshot_objects)
 }

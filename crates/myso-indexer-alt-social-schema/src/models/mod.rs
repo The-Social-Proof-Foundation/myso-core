@@ -18,6 +18,7 @@ mod spt;
 mod subscription;
 mod upgrade;
 mod vesting;
+mod wallet_messaging_policy;
 mod wallet_social_graph;
 
 pub use blocked::{
@@ -56,7 +57,8 @@ pub use memory::{
 };
 pub use mydata::{
     ACCESS_TYPE_CONTENT_UPDATE, ACCESS_TYPE_GRANT, ACCESS_TYPE_ONE_TIME, ACCESS_TYPE_PREVIEW,
-    ACCESS_TYPE_PRICING_UPDATE, ACCESS_TYPE_SUBSCRIPTION, DATA_QUALITY_HIGH, DATA_QUALITY_LOW,
+    ACCESS_TYPE_PRICING_UPDATE, ACCESS_TYPE_REVOKED, ACCESS_TYPE_SUBSCRIPTION, DATA_QUALITY_HIGH,
+    DATA_QUALITY_LOW,
     DATA_QUALITY_MEDIUM, MAX_FREE_ACCESS_GRANTS, MAX_SUBSCRIPTION_DAYS, MAX_TAGS,
     MyDataAccessAnalyticsRow, MyDataAccessLog, MyDataAccessLogRow, MyDataConfig,
     MyDataDailyRevenueRow, MyDataData, MyDataPurchase, MyDataPurchaseRow, MyDataBroadPool,
@@ -170,4 +172,5 @@ pub use vesting::{
     UpdateVestingWallet, VESTING_EVENT_TYPE_CLAIMED, VESTING_EVENT_TYPE_VESTED, VestingEvent,
     VestingWallet,
 };
+pub use wallet_messaging_policy::{NewWalletMessagingPolicy, WalletMessagingPolicy};
 pub use wallet_social_graph::{NewWalletSocialGraph, WalletSocialGraph};

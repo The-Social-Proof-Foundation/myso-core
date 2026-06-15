@@ -22,8 +22,11 @@ use myso_types::crypto::{
     AuthorityKeyPair, AuthorityPublicKeyBytes, AuthoritySignInfo, AuthoritySignInfoTrait,
     AuthoritySignature, DefaultHash, MySoAuthoritySignature,
 };
-use myso_types::deny_list_v1::{DENY_LIST_CREATE_FUNC, DENY_LIST_MODULE};
+use myso_types::orderbook::{
+    ORDERBOOK_REGISTRY_CREATE_FUNCTION_NAME, ORDERBOOK_REGISTRY_MODULE_NAME,
+};
 use myso_types::digests::ChainIdentifier;
+use myso_types::deny_list_v1::{DENY_LIST_CREATE_FUNC, DENY_LIST_MODULE};
 use myso_types::effects::{TransactionEffects, TransactionEffectsAPI, TransactionEvents};
 use myso_types::epoch_data::EpochData;
 use myso_types::execution_params::ExecutionOrEarlyError;
@@ -47,7 +50,8 @@ use myso_types::transaction::{
     CallArg, CheckedInputObjects, Command, InputObjectKind, ObjectReadResult, Transaction,
 };
 use myso_types::{
-    BRIDGE_ADDRESS, MYSO_BRIDGE_OBJECT_ID, MYSO_FRAMEWORK_ADDRESS, MYSO_SYSTEM_ADDRESS,
+    BRIDGE_ADDRESS, MYSO_BRIDGE_OBJECT_ID, MYSO_FRAMEWORK_ADDRESS, MYSO_ORDERBOOK_REGISTRY_OBJECT_ID,
+    MYSO_SYSTEM_ADDRESS, ORDERBOOK_ADDRESS,
 };
 use shared_crypto::intent::{Intent, IntentMessage, IntentScope};
 use std::collections::BTreeMap;
@@ -996,6 +1000,7 @@ fn create_genesis_objects(
         .expect("Creating an executor should not fail here");
 
     for system_package in system_packages.into_iter() {
+        let package_id = system_package.id;
         process_package(
             &mut store,
             executor.as_ref(),
@@ -1006,7 +1011,7 @@ fn create_genesis_objects(
             &protocol_config,
             metrics.clone(),
         )
-        .unwrap();
+        .unwrap_or_else(|e| panic!("Genesis publish failed for system package {package_id}: {e:?}"));
     }
 
     {
@@ -1187,6 +1192,21 @@ pub fn generate_genesis_system_object(
             )?;
         }
 
+        {
+            let registry_uid = builder
+                .input(CallArg::Pure(
+                    UID::new(MYSO_ORDERBOOK_REGISTRY_OBJECT_ID).to_bcs_bytes(),
+                ))
+                .unwrap();
+            builder.programmable_move_call(
+                ORDERBOOK_ADDRESS.into(),
+                ORDERBOOK_REGISTRY_MODULE_NAME.to_owned(),
+                ORDERBOOK_REGISTRY_CREATE_FUNCTION_NAME.to_owned(),
+                vec![],
+                vec![registry_uid],
+            );
+        }
+
         if protocol_config.enable_coin_deny_list_v1() {
             builder.move_call(
                 MYSO_FRAMEWORK_ADDRESS.into(),
@@ -1199,9 +1219,7 @@ pub fn generate_genesis_system_object(
 
         if protocol_config.enable_bridge() {
             let bridge_uid = builder
-                .input(CallArg::Pure(
-                    UID::new(MYSO_BRIDGE_OBJECT_ID).to_bcs_bytes(),
-                ))
+                .input(CallArg::Pure(UID::new(MYSO_BRIDGE_OBJECT_ID).to_bcs_bytes()))
                 .unwrap();
             // TODO(bridge): this needs to be passed in as a parameter for next testnet regenesis
             // Hardcoding chain id to MySoCustom
@@ -1292,7 +1310,9 @@ mod test {
     use myso_config::local_ip_utils;
     use myso_config::node::DEFAULT_COMMISSION_RATE;
     use myso_config::node::DEFAULT_VALIDATOR_GAS_PRICE;
-    use myso_types::base_types::MySoAddress;
+    use myso_types::MYSO_ORDERBOOK_REGISTRY_OBJECT_ID;
+    use myso_types::ORDERBOOK_ADDRESS;
+    use myso_types::base_types::{MySoAddress, ObjectID};
     use myso_types::crypto::{
         AccountKeyPair, AuthorityKeyPair, NetworkKeyPair, generate_proof_of_possession,
         get_key_pair_from_rng,
@@ -1344,9 +1364,26 @@ mod test {
         let mut builder = Builder::new().add_validator(validator, pop);
 
         let genesis = builder.build_unsigned_genesis_checkpoint();
-        for object in genesis.objects() {
-            println!("ObjectID: {} Type: {:?}", object.id(), object.type_());
-        }
+        let registry_objects: Vec<_> = genesis
+            .objects()
+            .iter()
+            .filter(|o| {
+                o.struct_tag().is_some_and(|tag| {
+                    tag.address == ORDERBOOK_ADDRESS
+                        && tag.module.as_str() == "registry"
+                        && tag.name.as_str() == "Registry"
+                })
+            })
+            .collect();
+        assert_eq!(
+            registry_objects.len(),
+            1,
+            "expected exactly one shared orderbook Registry"
+        );
+        assert_eq!(
+            registry_objects[0].id(),
+            ObjectID::from(MYSO_ORDERBOOK_REGISTRY_OBJECT_ID),
+        );
         builder.save(dir.path()).unwrap();
         Builder::load(dir.path()).unwrap();
     }

@@ -83,6 +83,7 @@ mod compatibility_tests {
         match manifest_name {
             "MyData" => "mydata",
             "MySoSocial" => "MySocialContracts",
+            "Messaging" => "messaging",
             _ => manifest_name,
         }
     }

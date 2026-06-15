@@ -32,8 +32,7 @@ const ECoinNotWhitelisted: u64 = 8;
 const EMaxBalanceManagersReached: u64 = 9;
 const EAppNotAuthorized: u64 = 10;
 const EInvalidTreasuryAddress: u64 = 11;
-
-public struct REGISTRY has drop {}
+const ENotSystemAddress: u64 = 12;
 
 // === Structs ===
 /// OrderbookAdminCap is used to call admin functions.
@@ -92,14 +91,16 @@ public fun create_orderbook_admin_cap_for_bootstrap(
     }
 }
 
-fun init(_: REGISTRY, ctx: &mut TxContext) {
+#[allow(unused_function)]
+fun create(id: UID, ctx: &mut TxContext) {
+    assert!(ctx.sender() == @0x0, ENotSystemAddress);
     let registry_inner = RegistryInner {
         allowed_versions: vec_set::singleton(constants::current_version()),
         pools: bag::new(ctx),
         treasury_address: @0x0,
     };
     let registry = Registry {
-        id: object::new(ctx),
+        id,
         inner: versioned::create(
             constants::current_version(),
             registry_inner,
