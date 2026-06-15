@@ -112,7 +112,7 @@ Creates the shared BootstrapKey on module publication
 <pre><code><b>public</b> <b>fun</b> <a href="../myso/bootstrap_key.md#myso_bootstrap_key_bootstrap_init">bootstrap_init</a>(ctx: &<b>mut</b> TxContext) {
     <b>assert</b>!(ctx.sender() == @0x0, <a href="../myso/bootstrap_key.md#myso_bootstrap_key_ENotSystemAddress">ENotSystemAddress</a>);
     <a href="../myso/transfer.md#myso_transfer_share_object">transfer::share_object</a>(<a href="../myso/bootstrap_key.md#myso_bootstrap_key_BootstrapKey">BootstrapKey</a> {
-        id: <a href="../myso/object.md#myso_object_new">object::new</a>(ctx),
+        id: <a href="../myso/object.md#myso_object_bootstrap_key">object::bootstrap_key</a>(),
         used: <b>false</b>,
         <a href="../myso/bootstrap_key.md#myso_bootstrap_key_version">version</a>: 1,
     });

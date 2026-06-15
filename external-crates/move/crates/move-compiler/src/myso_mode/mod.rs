@@ -86,6 +86,13 @@ pub const DISPLAY_REGISTRY_MODULE_NAME: Symbol = symbol!("display_registry");
 pub const ADDRESS_ALIAS_MODULE_NAME: Symbol = symbol!("address_alias");
 pub const ADDRESS_ALIAS_CREATE: Symbol = symbol!("create");
 
+pub const BOOTSTRAP_KEY_MODULE_NAME: Symbol = symbol!("bootstrap_key");
+pub const BOOTSTRAP_KEY_INIT: Symbol = symbol!("bootstrap_init");
+
+pub const MYSO_SOCIAL_ADDR_VALUE: AccountAddress = AccountAddress::from_suffix(0x50c1);
+pub const MYSO_SOCIAL_BOOTSTRAP_MODULE_NAME: Symbol = symbol!("bootstrap");
+pub const MYSO_SOCIAL_BOOTSTRAP_INIT_AT_GENESIS: Symbol = symbol!("init_at_genesis");
+
 pub const TRANSFER_MODULE_NAME: Symbol = symbol!("transfer");
 pub const TRANSFER_FUNCTION_NAME: Symbol = symbol!("transfer");
 pub const FREEZE_FUNCTION_NAME: Symbol = symbol!("freeze_object");

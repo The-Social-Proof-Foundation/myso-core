@@ -2,13 +2,12 @@
 title: Module `social_contracts::bootstrap`
 ---
 
-Bootstrap service for MySocial - claims all admin capabilities in one call.
-Uses the framework's centralized BootstrapKey for one-time initialization.
+Genesis bootstrap for MySocial — initializes shared objects and distributes admin caps once.
 
 
--  [Function `claim_all_admin_capabilities`](#social_contracts_bootstrap_claim_all_admin_capabilities)
--  [Function `is_bootstrap_used`](#social_contracts_bootstrap_is_bootstrap_used)
--  [Function `bootstrap_version`](#social_contracts_bootstrap_bootstrap_version)
+-  [Constants](#@Constants_0)
+-  [Function `init_social_platform`](#social_contracts_bootstrap_init_social_platform)
+-  [Function `init_at_genesis`](#social_contracts_bootstrap_init_at_genesis)
 
 
 <pre><code><b>use</b> <a href="../mydata/bf_hmac_encryption.md#mydata_bf_hmac_encryption">mydata::bf_hmac_encryption</a>;
@@ -83,15 +82,37 @@ Uses the framework's centralized BootstrapKey for one-time initialization.
 
 
 
-<a name="social_contracts_bootstrap_claim_all_admin_capabilities"></a>
+<a name="@Constants_0"></a>
 
-## Function `claim_all_admin_capabilities`
-
-Claim all admin capabilities (one-time only)
-Creates and transfers all admin capabilities to caller, then seals the bootstrap key.
+## Constants
 
 
-<pre><code><b>public</b> <b>entry</b> <b>fun</b> <a href="../social_contracts/bootstrap.md#social_contracts_bootstrap_claim_all_admin_capabilities">claim_all_admin_capabilities</a>(registry: &<b>mut</b> <a href="../orderbook/registry.md#orderbook_registry_Registry">orderbook::registry::Registry</a>, bootstrap_key: &<b>mut</b> <a href="../myso/bootstrap_key.md#myso_bootstrap_key_BootstrapKey">myso::bootstrap_key::BootstrapKey</a>, clock: &<a href="../myso/clock.md#myso_clock_Clock">myso::clock::Clock</a>, ctx: &<b>mut</b> <a href="../myso/tx_context.md#myso_tx_context_TxContext">myso::tx_context::TxContext</a>)
+<a name="social_contracts_bootstrap_ENotSystemAddress"></a>
+
+
+
+<pre><code><b>const</b> <a href="../social_contracts/bootstrap.md#social_contracts_bootstrap_ENotSystemAddress">ENotSystemAddress</a>: u64 = 0;
+</code></pre>
+
+
+
+<a name="social_contracts_bootstrap_ENotGenesis"></a>
+
+
+
+<pre><code><b>const</b> <a href="../social_contracts/bootstrap.md#social_contracts_bootstrap_ENotGenesis">ENotGenesis</a>: u64 = 1;
+</code></pre>
+
+
+
+<a name="social_contracts_bootstrap_init_social_platform"></a>
+
+## Function `init_social_platform`
+
+Initialize MySocial shared objects, mint admin caps for <code>admin</code>, and seal the bootstrap key.
+
+
+<pre><code><b>public</b>(package) <b>fun</b> <a href="../social_contracts/bootstrap.md#social_contracts_bootstrap_init_social_platform">init_social_platform</a>(registry: &<b>mut</b> <a href="../orderbook/registry.md#orderbook_registry_Registry">orderbook::registry::Registry</a>, bootstrap_key: &<b>mut</b> <a href="../myso/bootstrap_key.md#myso_bootstrap_key_BootstrapKey">myso::bootstrap_key::BootstrapKey</a>, clock: &<a href="../myso/clock.md#myso_clock_Clock">myso::clock::Clock</a>, admin: <b>address</b>, ctx: &<b>mut</b> <a href="../myso/tx_context.md#myso_tx_context_TxContext">myso::tx_context::TxContext</a>)
 </code></pre>
 
 
@@ -100,30 +121,36 @@ Creates and transfers all admin capabilities to caller, then seals the bootstrap
 <summary>Implementation</summary>
 
 
-<pre><code><b>public</b> <b>entry</b> <b>fun</b> <a href="../social_contracts/bootstrap.md#social_contracts_bootstrap_claim_all_admin_capabilities">claim_all_admin_capabilities</a>(
+<pre><code><b>public</b>(package) <b>fun</b> <a href="../social_contracts/bootstrap.md#social_contracts_bootstrap_init_social_platform">init_social_platform</a>(
     registry: &<b>mut</b> ob_registry::Registry,
     bootstrap_key: &<b>mut</b> BootstrapKey,
     clock: &Clock,
-    ctx: &<b>mut</b> TxContext
+    admin: <b>address</b>,
+    ctx: &<b>mut</b> TxContext,
 ) {
     bootstrap_key::assert_not_used(bootstrap_key);
-    <b>let</b> admin = tx_context::sender(ctx);
-    // Initialize shared objects
     <a href="../social_contracts/platform.md#social_contracts_platform_bootstrap_init">social_contracts::platform::bootstrap_init</a>(ctx);
     <a href="../social_contracts/social_graph.md#social_contracts_social_graph_bootstrap_init">social_contracts::social_graph::bootstrap_init</a>(ctx);
     <a href="../social_contracts/profile.md#social_contracts_profile_bootstrap_init">social_contracts::profile::bootstrap_init</a>(ctx);
     <a href="../social_contracts/block_list.md#social_contracts_block_list_bootstrap_init">social_contracts::block_list::bootstrap_init</a>(ctx);
     <a href="../social_contracts/mydata.md#social_contracts_mydata_bootstrap_init">social_contracts::mydata::bootstrap_init</a>(ctx);
     <a href="../social_contracts/memory.md#social_contracts_memory_bootstrap_init">social_contracts::memory::bootstrap_init</a>(ctx);
-    <b>let</b> spot_governance_registry_id = <a href="../social_contracts/governance.md#social_contracts_governance_bootstrap_init">social_contracts::governance::bootstrap_init</a>(clock, ctx);
+    <b>let</b> spot_governance_registry_id =
+        <a href="../social_contracts/governance.md#social_contracts_governance_bootstrap_init">social_contracts::governance::bootstrap_init</a>(clock, admin, ctx);
     <a href="../social_contracts/post.md#social_contracts_post_bootstrap_init">social_contracts::post::bootstrap_init</a>(ctx);
     <a href="../social_contracts/social_proof_tokens.md#social_contracts_social_proof_tokens_bootstrap_init">social_contracts::social_proof_tokens::bootstrap_init</a>(ctx);
     <a href="../social_contracts/proof_of_creativity.md#social_contracts_proof_of_creativity_bootstrap_init">social_contracts::proof_of_creativity::bootstrap_init</a>(ctx);
-    <a href="../social_contracts/social_proof_of_truth.md#social_contracts_social_proof_of_truth_bootstrap_init">social_contracts::social_proof_of_truth::bootstrap_init</a>(clock, spot_governance_registry_id, ctx);
+    <a href="../social_contracts/social_proof_of_truth.md#social_contracts_social_proof_of_truth_bootstrap_init">social_contracts::social_proof_of_truth::bootstrap_init</a>(
+        clock,
+        spot_governance_registry_id,
+        ctx,
+    );
     <a href="../social_contracts/insurance.md#social_contracts_insurance_bootstrap_init">social_contracts::insurance::bootstrap_init</a>(ctx);
-    // Create admin capabilities
     transfer::public_transfer(<a href="../social_contracts/upgrade.md#social_contracts_upgrade_create_upgrade_admin_cap">upgrade::create_upgrade_admin_cap</a>(ctx), admin);
-    transfer::public_transfer(<a href="../social_contracts/social_proof_tokens.md#social_contracts_social_proof_tokens_create_social_proof_tokens_admin_cap">social_proof_tokens::create_social_proof_tokens_admin_cap</a>(ctx), admin);
+    transfer::public_transfer(
+        <a href="../social_contracts/social_proof_tokens.md#social_contracts_social_proof_tokens_create_social_proof_tokens_admin_cap">social_proof_tokens::create_social_proof_tokens_admin_cap</a>(ctx),
+        admin,
+    );
     transfer::public_transfer(<a href="../social_contracts/post.md#social_contracts_post_create_post_admin_cap">post::create_post_admin_cap</a>(ctx), admin);
     transfer::public_transfer(<a href="../social_contracts/proof_of_creativity.md#social_contracts_proof_of_creativity_create_poc_admin_cap">proof_of_creativity::create_poc_admin_cap</a>(ctx), admin);
     transfer::public_transfer(<a href="../social_contracts/platform.md#social_contracts_platform_create_platform_admin_cap">platform::create_platform_admin_cap</a>(ctx), admin);
@@ -131,17 +158,25 @@ Creates and transfers all admin capabilities to caller, then seals the bootstrap
     transfer::public_transfer(mydata::create_mydata_admin_cap(ctx), admin);
     transfer::public_transfer(mydata::create_mydata_pool_admin_cap(ctx), admin);
     transfer::public_transfer(<a href="../social_contracts/social_proof_of_truth.md#social_contracts_social_proof_of_truth_create_spot_admin_cap">social_proof_of_truth::create_spot_admin_cap</a>(ctx), admin);
-    transfer::public_transfer(<a href="../social_contracts/social_proof_of_truth.md#social_contracts_social_proof_of_truth_create_spot_oracle_admin_cap">social_proof_of_truth::create_spot_oracle_admin_cap</a>(ctx), admin);
+    transfer::public_transfer(
+        <a href="../social_contracts/social_proof_of_truth.md#social_contracts_social_proof_of_truth_create_spot_oracle_admin_cap">social_proof_of_truth::create_spot_oracle_admin_cap</a>(ctx),
+        admin,
+    );
     transfer::public_transfer(<a href="../social_contracts/profile.md#social_contracts_profile_create_ecosystem_treasury_admin_cap">profile::create_ecosystem_treasury_admin_cap</a>(ctx), admin);
     transfer::public_transfer(<a href="../social_contracts/profile.md#social_contracts_profile_create_ecosystem_badge_admin_cap">profile::create_ecosystem_badge_admin_cap</a>(ctx), admin);
     transfer::public_transfer(<a href="../social_contracts/insurance.md#social_contracts_insurance_create_insurance_admin_cap">insurance::create_insurance_admin_cap</a>(ctx), admin);
-    transfer::public_transfer(coin::create_coin_creation_admin_cap_for_bootstrap(bootstrap_key, ctx), admin);
-    transfer::public_transfer(package::create_package_publishing_admin_cap_for_bootstrap(bootstrap_key, ctx), admin);
+    transfer::public_transfer(
+        coin::create_coin_creation_admin_cap_for_bootstrap(bootstrap_key, ctx),
+        admin,
+    );
+    transfer::public_transfer(
+        package::create_package_publishing_admin_cap_for_bootstrap(bootstrap_key, ctx),
+        admin,
+    );
     <b>let</b> orderbook_admin_cap =
         ob_registry::create_orderbook_admin_cap_for_bootstrap(bootstrap_key, ctx);
     ob_registry::set_treasury_address(registry, admin, &orderbook_admin_cap);
     transfer::public_transfer(orderbook_admin_cap, admin);
-    // Seal the <a href="../social_contracts/bootstrap.md#social_contracts_bootstrap">bootstrap</a> key permanently (prevents any future <a href="../social_contracts/bootstrap.md#social_contracts_bootstrap">bootstrap</a> attempts)
     bootstrap_key::finalize_bootstrap(bootstrap_key);
 }
 </code></pre>
@@ -150,13 +185,14 @@ Creates and transfers all admin capabilities to caller, then seals the bootstrap
 
 </details>
 
-<a name="social_contracts_bootstrap_is_bootstrap_used"></a>
+<a name="social_contracts_bootstrap_init_at_genesis"></a>
 
-## Function `is_bootstrap_used`
+## Function `init_at_genesis`
+
+Called exactly once during genesis by the genesis builder.
 
 
-
-<pre><code><b>public</b> <b>fun</b> <a href="../social_contracts/bootstrap.md#social_contracts_bootstrap_is_bootstrap_used">is_bootstrap_used</a>(key: &<a href="../myso/bootstrap_key.md#myso_bootstrap_key_BootstrapKey">myso::bootstrap_key::BootstrapKey</a>): bool
+<pre><code><b>fun</b> <a href="../social_contracts/bootstrap.md#social_contracts_bootstrap_init_at_genesis">init_at_genesis</a>(registry: &<b>mut</b> <a href="../orderbook/registry.md#orderbook_registry_Registry">orderbook::registry::Registry</a>, bootstrap_key: &<b>mut</b> <a href="../myso/bootstrap_key.md#myso_bootstrap_key_BootstrapKey">myso::bootstrap_key::BootstrapKey</a>, clock: &<a href="../myso/clock.md#myso_clock_Clock">myso::clock::Clock</a>, admin: <b>address</b>, ctx: &<b>mut</b> <a href="../myso/tx_context.md#myso_tx_context_TxContext">myso::tx_context::TxContext</a>)
 </code></pre>
 
 
@@ -165,32 +201,16 @@ Creates and transfers all admin capabilities to caller, then seals the bootstrap
 <summary>Implementation</summary>
 
 
-<pre><code><b>public</b> <b>fun</b> <a href="../social_contracts/bootstrap.md#social_contracts_bootstrap_is_bootstrap_used">is_bootstrap_used</a>(key: &BootstrapKey): bool {
-    bootstrap_key::is_used(key)
-}
-</code></pre>
-
-
-
-</details>
-
-<a name="social_contracts_bootstrap_bootstrap_version"></a>
-
-## Function `bootstrap_version`
-
-
-
-<pre><code><b>public</b> <b>fun</b> <a href="../social_contracts/bootstrap.md#social_contracts_bootstrap_bootstrap_version">bootstrap_version</a>(key: &<a href="../myso/bootstrap_key.md#myso_bootstrap_key_BootstrapKey">myso::bootstrap_key::BootstrapKey</a>): u64
-</code></pre>
-
-
-
-<details>
-<summary>Implementation</summary>
-
-
-<pre><code><b>public</b> <b>fun</b> <a href="../social_contracts/bootstrap.md#social_contracts_bootstrap_bootstrap_version">bootstrap_version</a>(key: &BootstrapKey): u64 {
-    bootstrap_key::version(key)
+<pre><code><b>fun</b> <a href="../social_contracts/bootstrap.md#social_contracts_bootstrap_init_at_genesis">init_at_genesis</a>(
+    registry: &<b>mut</b> ob_registry::Registry,
+    bootstrap_key: &<b>mut</b> BootstrapKey,
+    clock: &Clock,
+    admin: <b>address</b>,
+    ctx: &<b>mut</b> TxContext,
+) {
+    <b>assert</b>!(ctx.sender() == @0x0, <a href="../social_contracts/bootstrap.md#social_contracts_bootstrap_ENotSystemAddress">ENotSystemAddress</a>);
+    <b>assert</b>!(ctx.epoch() == 0, <a href="../social_contracts/bootstrap.md#social_contracts_bootstrap_ENotGenesis">ENotGenesis</a>);
+    <a href="../social_contracts/bootstrap.md#social_contracts_bootstrap_init_social_platform">init_social_platform</a>(registry, bootstrap_key, clock, admin, ctx);
 }
 </code></pre>
 

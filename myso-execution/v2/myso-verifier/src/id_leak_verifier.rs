@@ -37,7 +37,7 @@ use myso_types::{
     id::OBJECT_MODULE_NAME,
     myso_system_state::MYSO_SYSTEM_MODULE_NAME,
     randomness_state::RANDOMNESS_MODULE_NAME,
-    BRIDGE_ADDRESS, MYSO_FRAMEWORK_ADDRESS, MYSO_SYSTEM_ADDRESS,
+    BRIDGE_ADDRESS, MYSO_FRAMEWORK_ADDRESS, MYSO_SOCIAL_ADDRESS, MYSO_SYSTEM_ADDRESS,
 };
 use std::{collections::BTreeMap, error::Error, num::NonZeroU64};
 
@@ -99,6 +99,16 @@ const MYSO_DENY_LIST_CREATE: FunctionIdent = (
 
 const MYSO_BRIDGE_CREATE: FunctionIdent =
     (&BRIDGE_ADDRESS, BRIDGE_MODULE_NAME, ident_str!("create"));
+const MYSO_BOOTSTRAP_KEY_INIT: FunctionIdent = (
+    &MYSO_FRAMEWORK_ADDRESS,
+    ident_str!("bootstrap_key"),
+    ident_str!("bootstrap_init"),
+);
+const MYSO_SOCIAL_BOOTSTRAP_INIT_AT_GENESIS: FunctionIdent = (
+    &MYSO_SOCIAL_ADDRESS,
+    ident_str!("bootstrap"),
+    ident_str!("init_at_genesis"),
+);
 const FRESH_ID_FUNCTIONS: &[FunctionIdent] = &[OBJECT_NEW, OBJECT_NEW_UID_FROM_HASH, TS_NEW_OBJECT];
 const FUNCTIONS_TO_SKIP: &[FunctionIdent] = &[
     MYSO_SYSTEM_CREATE,
@@ -107,6 +117,8 @@ const FUNCTIONS_TO_SKIP: &[FunctionIdent] = &[
     MYSO_RANDOMNESS_STATE_CREATE,
     MYSO_DENY_LIST_CREATE,
     MYSO_BRIDGE_CREATE,
+    MYSO_BOOTSTRAP_KEY_INIT,
+    MYSO_SOCIAL_BOOTSTRAP_INIT_AT_GENESIS,
 ];
 
 impl AbstractValue {

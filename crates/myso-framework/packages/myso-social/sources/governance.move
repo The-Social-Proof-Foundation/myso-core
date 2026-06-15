@@ -362,9 +362,9 @@ module social_contracts::governance {
 
     /// Bootstrap initialization function - creates the governance registries.
     /// Returns the shared SPoT governance registry object ID for wiring into [`social_contracts::social_proof_of_truth`].
-    public(package) fun bootstrap_init(clock: &Clock, ctx: &mut TxContext): ID {
+    public(package) fun bootstrap_init(clock: &Clock, founding_delegate: address, ctx: &mut TxContext): ID {
         let current_time = clock::timestamp_ms(clock);
-        let founder = tx_context::sender(ctx);
+        let founder = founding_delegate;
 
         // Create MySocial Ecosystem Governance Registry
         let mut ecosystem_registry = GovernanceDAO {

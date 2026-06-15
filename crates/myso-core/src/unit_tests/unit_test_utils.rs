@@ -51,7 +51,9 @@ async fn init_genesis(
     let pkg_id = pkg.id();
     genesis_objects.push(pkg);
 
-    let mut builder = myso_genesis_builder::Builder::new().add_objects(genesis_objects);
+    let mut builder = myso_genesis_builder::Builder::new()
+        .with_parameters(myso_config::genesis::GenesisCeremonyParameters::for_local_network())
+        .add_objects(genesis_objects);
     let mut key_pairs = Vec::new();
     for i in 0..committee_size {
         let key_pair: AuthorityKeyPair = get_key_pair().1;

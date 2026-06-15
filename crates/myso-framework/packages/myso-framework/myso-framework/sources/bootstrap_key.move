@@ -24,7 +24,7 @@ public fun bootstrap_init(ctx: &mut TxContext) {
     assert!(ctx.sender() == @0x0, ENotSystemAddress);
 
     transfer::share_object(BootstrapKey {
-        id: object::new(ctx),
+        id: object::bootstrap_key(),
         used: false,
         version: 1,
     });

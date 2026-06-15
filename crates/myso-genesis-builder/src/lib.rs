@@ -15,7 +15,7 @@ use myso_config::genesis::{
 use myso_execution::{self, Executor};
 use myso_framework::{BuiltInFramework, SystemPackage};
 use myso_protocol_config::{Chain, ProtocolConfig, ProtocolVersion};
-use myso_types::base_types::{ExecutionDigests, ObjectID, SequenceNumber, TransactionDigest};
+use myso_types::base_types::{ExecutionDigests, MySoAddress, ObjectID, SequenceNumber, TransactionDigest};
 use myso_types::bridge::{BRIDGE_CREATE_FUNCTION_NAME, BRIDGE_MODULE_NAME, BridgeChainId};
 use myso_types::committee::Committee;
 use myso_types::crypto::{
@@ -47,10 +47,13 @@ use myso_types::myso_system_state::{MySoSystemState, MySoSystemStateTrait, get_m
 use myso_types::object::{Object, Owner};
 use myso_types::programmable_transaction_builder::ProgrammableTransactionBuilder;
 use myso_types::transaction::{
-    CallArg, CheckedInputObjects, Command, InputObjectKind, ObjectReadResult, Transaction,
+    CallArg, CheckedInputObjects, Command, InputObjectKind, ObjectArg, ObjectReadResult,
+    SharedObjectMutability, Transaction,
 };
 use myso_types::{
-    BRIDGE_ADDRESS, MYSO_BRIDGE_OBJECT_ID, MYSO_FRAMEWORK_ADDRESS, MYSO_ORDERBOOK_REGISTRY_OBJECT_ID,
+    BRIDGE_ADDRESS, MYSO_BOOTSTRAP_KEY_OBJECT_ID, MYSO_BOOTSTRAP_KEY_OBJECT_SHARED_VERSION,
+    MYSO_BRIDGE_OBJECT_ID, MYSO_CLOCK_OBJECT_ID, MYSO_CLOCK_OBJECT_SHARED_VERSION,
+    MYSO_FRAMEWORK_ADDRESS, MYSO_ORDERBOOK_REGISTRY_OBJECT_ID, MYSO_SOCIAL_PACKAGE_ID,
     MYSO_SYSTEM_ADDRESS, ORDERBOOK_ADDRESS,
 };
 use shared_crypto::intent::{Intent, IntentMessage, IntentScope};
@@ -99,6 +102,11 @@ impl Builder {
 
     pub fn with_parameters(mut self, parameters: GenesisCeremonyParameters) -> Self {
         self.parameters = parameters;
+        self
+    }
+
+    pub fn set_bootstrap_admin_address(mut self, address: MySoAddress) -> Self {
+        self.parameters.bootstrap_admin_address = Some(address);
         self
     }
 
@@ -283,6 +291,8 @@ impl Builder {
                 self.validators.values().map(|v| v.info.myso_address()),
             );
         }
+
+        self.parameters.require_bootstrap_admin_address()?;
 
         Ok(())
     }
@@ -785,12 +795,15 @@ fn build_unsigned_genesis_data(
     let registry = prometheus::Registry::new();
     let metrics = Arc::new(LimitsMetrics::new(&registry));
 
-    let objects = create_genesis_objects(
+    let (objects, system_object_events) = create_genesis_objects(
         &epoch_data,
         &genesis_digest,
         objects,
         &genesis_validators,
         &genesis_chain_parameters,
+        parameters
+            .require_bootstrap_admin_address()
+            .expect("bootstrap_admin_address validated before build"),
         token_distribution_schedule,
         system_packages,
         metrics.clone(),
@@ -798,8 +811,9 @@ fn build_unsigned_genesis_data(
 
     let protocol_config = get_genesis_protocol_config(parameters.protocol_version);
 
-    let (genesis_transaction, genesis_effects, genesis_events, objects) =
+    let (genesis_transaction, genesis_effects, mut genesis_events, objects) =
         create_genesis_transaction(objects, &protocol_config, metrics, &epoch_data);
+    genesis_events.data.extend(system_object_events.data);
     let (checkpoint, checkpoint_contents) = create_genesis_checkpoint(
         &protocol_config,
         parameters,
@@ -982,11 +996,13 @@ fn create_genesis_objects(
     input_objects: &[Object],
     validators: &[GenesisValidatorMetadata],
     parameters: &GenesisChainParameters,
+    bootstrap_admin_address: MySoAddress,
     token_distribution_schedule: &TokenDistributionSchedule,
     system_packages: Vec<SystemPackage>,
     metrics: Arc<LimitsMetrics>,
-) -> Vec<Object> {
+) -> (Vec<Object>, TransactionEvents) {
     let mut store = InMemoryStorage::new(Vec::new());
+    let mut events = TransactionEvents::default();
     // We don't know the chain ID here since we haven't yet created the genesis checkpoint.
     // However since we know there are no chain specific protool config options in genesis,
     // we use Chain::Unknown here.
@@ -1001,7 +1017,7 @@ fn create_genesis_objects(
 
     for system_package in system_packages.into_iter() {
         let package_id = system_package.id;
-        process_package(
+        let package_events = process_package(
             &mut store,
             executor.as_ref(),
             epoch_data,
@@ -1012,6 +1028,7 @@ fn create_genesis_objects(
             metrics.clone(),
         )
         .unwrap_or_else(|e| panic!("Genesis publish failed for system package {package_id}: {e:?}"));
+        events.data.extend(package_events.data);
     }
 
     {
@@ -1020,19 +1037,21 @@ fn create_genesis_objects(
         }
     }
 
-    generate_genesis_system_object(
+    let bootstrap_events = generate_genesis_system_object(
         &mut store,
         executor.as_ref(),
         validators,
         epoch_data,
         genesis_digest,
         parameters,
+        bootstrap_admin_address,
         token_distribution_schedule,
         metrics,
     )
-    .unwrap();
+    .expect("genesis system object creation failed");
+    events.data.extend(bootstrap_events.data);
 
-    store.into_inner().into_values().collect()
+    (store.into_inner().into_values().collect(), events)
 }
 
 fn process_package(
@@ -1044,7 +1063,7 @@ fn process_package(
     dependencies: Vec<ObjectID>,
     protocol_config: &ProtocolConfig,
     metrics: Arc<LimitsMetrics>,
-) -> anyhow::Result<()> {
+) -> anyhow::Result<TransactionEvents> {
     let dependency_objects = store.get_objects(&dependencies);
     // When publishing genesis packages, since the std framework packages all have
     // non-zero addresses, [`Transaction::input_objects_in_compiled_modules`] will consider
@@ -1091,7 +1110,11 @@ fn process_package(
         builder.command(Command::Publish(module_bytes, dependencies));
         builder.finish()
     };
-    let InnerTemporaryStore { written, .. } = executor.update_genesis_state(
+    let InnerTemporaryStore {
+        written,
+        events,
+        ..
+    } = executor.update_genesis_state(
         &*store,
         protocol_config,
         metrics,
@@ -1104,7 +1127,34 @@ fn process_package(
 
     store.finish(written);
 
-    Ok(())
+    Ok(events)
+}
+
+fn shared_genesis_input(
+    store: &InMemoryStorage,
+    id: ObjectID,
+    mutability: SharedObjectMutability,
+) -> ObjectReadResult {
+    use myso_types::transaction::ObjectReadResultKind;
+
+    let obj = store
+        .get_object(&id)
+        .cloned()
+        .unwrap_or_else(|| panic!("shared genesis input object {id} must exist"));
+    let Owner::Shared {
+        initial_shared_version,
+    } = obj.owner
+    else {
+        panic!("shared genesis input object {id} must be shared");
+    };
+    ObjectReadResult::new(
+        InputObjectKind::SharedMoveObject {
+            id,
+            initial_shared_version,
+            mutability,
+        },
+        ObjectReadResultKind::Object(obj),
+    )
 }
 
 pub fn generate_genesis_system_object(
@@ -1114,24 +1164,21 @@ pub fn generate_genesis_system_object(
     epoch_data: &EpochData,
     genesis_digest: &TransactionDigest,
     genesis_chain_parameters: &GenesisChainParameters,
+    bootstrap_admin_address: MySoAddress,
     token_distribution_schedule: &TokenDistributionSchedule,
     metrics: Arc<LimitsMetrics>,
-) -> anyhow::Result<()> {
+) -> anyhow::Result<TransactionEvents> {
     let protocol_config = ProtocolConfig::get_for_version(
         ProtocolVersion::new(genesis_chain_parameters.protocol_version),
         ChainIdentifier::default().chain(),
     );
+    let mut events = TransactionEvents::default();
 
-    let pt = {
+    // PT v2 loads transaction inputs before executing commands, so shared objects created
+    // earlier in the same PT are not visible. Create foundational system objects first,
+    // then run MySocial bootstrap in a follow-up genesis PT that reads them from the store.
+    let pt_system_objects = {
         let mut builder = ProgrammableTransactionBuilder::new();
-        // Step 1: Create the MySoSystemState UID
-        let myso_system_state_uid = builder.programmable_move_call(
-            MYSO_FRAMEWORK_ADDRESS.into(),
-            ident_str!("object").to_owned(),
-            ident_str!("myso_system_state").to_owned(),
-            vec![],
-            vec![],
-        );
 
         // Step 2: Create and share the Clock.
         builder.move_call(
@@ -1243,6 +1290,89 @@ pub fn generate_genesis_system_object(
             )?;
         }
 
+        builder.finish()
+    };
+
+    let InnerTemporaryStore {
+        written: system_written,
+        events: system_events,
+        ..
+    } = executor.update_genesis_state(
+        &*store,
+        &protocol_config,
+        metrics.clone(),
+        epoch_data.epoch_id(),
+        epoch_data.epoch_start_timestamp(),
+        genesis_digest,
+        CheckedInputObjects::new_for_genesis(vec![]),
+        pt_system_objects,
+    )?;
+    events.data.extend(system_events.data);
+    store.finish(system_written);
+
+    let bootstrap_inputs = vec![
+        shared_genesis_input(
+            store,
+            MYSO_ORDERBOOK_REGISTRY_OBJECT_ID.into(),
+            SharedObjectMutability::Mutable,
+        ),
+        shared_genesis_input(
+            store,
+            MYSO_BOOTSTRAP_KEY_OBJECT_ID.into(),
+            SharedObjectMutability::Mutable,
+        ),
+        shared_genesis_input(
+            store,
+            MYSO_CLOCK_OBJECT_ID.into(),
+            SharedObjectMutability::Immutable,
+        ),
+    ];
+
+    let pt_bootstrap_and_genesis = {
+        let mut builder = ProgrammableTransactionBuilder::new();
+        // Step 1: Create the MySoSystemState UID
+        let myso_system_state_uid = builder.programmable_move_call(
+            MYSO_FRAMEWORK_ADDRESS.into(),
+            ident_str!("object").to_owned(),
+            ident_str!("myso_system_state").to_owned(),
+            vec![],
+            vec![],
+        );
+
+        // Step 3.5: Initialize MySocial platform (shared objects + admin caps).
+        {
+            let orderbook_registry_arg = builder.obj(ObjectArg::SharedObject {
+                id: MYSO_ORDERBOOK_REGISTRY_OBJECT_ID.into(),
+                initial_shared_version: MYSO_CLOCK_OBJECT_SHARED_VERSION,
+                mutability: SharedObjectMutability::Mutable,
+            })?;
+            let bootstrap_key_arg = builder.obj(ObjectArg::SharedObject {
+                id: MYSO_BOOTSTRAP_KEY_OBJECT_ID.into(),
+                initial_shared_version: MYSO_BOOTSTRAP_KEY_OBJECT_SHARED_VERSION,
+                mutability: SharedObjectMutability::Mutable,
+            })?;
+            let clock_arg = builder.obj(ObjectArg::SharedObject {
+                id: MYSO_CLOCK_OBJECT_ID.into(),
+                initial_shared_version: MYSO_CLOCK_OBJECT_SHARED_VERSION,
+                mutability: SharedObjectMutability::Immutable,
+            })?;
+            let admin_address_arg = builder
+                .input(CallArg::Pure(bcs::to_bytes(&bootstrap_admin_address).unwrap()))
+                .unwrap();
+            builder.programmable_move_call(
+                MYSO_SOCIAL_PACKAGE_ID.into(),
+                ident_str!("bootstrap").to_owned(),
+                ident_str!("init_at_genesis").to_owned(),
+                vec![],
+                vec![
+                    orderbook_registry_arg,
+                    bootstrap_key_arg,
+                    clock_arg,
+                    admin_address_arg,
+                ],
+            );
+        }
+
         // Step 4: Mint the supply of MYSO.
         let myso_supply = builder.programmable_move_call(
             MYSO_FRAMEWORK_ADDRESS.into(),
@@ -1254,7 +1384,7 @@ pub fn generate_genesis_system_object(
 
         // Step 5: Run genesis.
         // The first argument is the system state uid we got from step 1 and the second one is the MYSO supply we
-        // got from step 3.
+        // got from step 4.
         let mut arguments = vec![myso_system_state_uid, myso_supply];
         let mut call_arg_arguments = vec![
             CallArg::Pure(bcs::to_bytes(&genesis_chain_parameters).unwrap()),
@@ -1275,30 +1405,39 @@ pub fn generate_genesis_system_object(
         builder.finish()
     };
 
-    let InnerTemporaryStore { mut written, .. } = executor.update_genesis_state(
+    let InnerTemporaryStore {
+        written,
+        events: bootstrap_events,
+        ..
+    } = executor.update_genesis_state(
         &*store,
         &protocol_config,
         metrics,
         epoch_data.epoch_id(),
         epoch_data.epoch_start_timestamp(),
         genesis_digest,
-        CheckedInputObjects::new_for_genesis(vec![]),
-        pt,
+        CheckedInputObjects::new_for_genesis(bootstrap_inputs),
+        pt_bootstrap_and_genesis,
     )?;
+    events.data.extend(bootstrap_events.data);
 
     // update the value of the clock to match the chain start time
     {
-        let object = written.get_mut(&myso_types::MYSO_CLOCK_OBJECT_ID).unwrap();
-        object
+        let mut clock = store
+            .get_object(&myso_types::MYSO_CLOCK_OBJECT_ID)
+            .expect("clock object must exist after genesis system-object PTs")
+            .clone();
+        clock
             .data
             .try_as_move_mut()
             .unwrap()
             .set_clock_timestamp_ms_unsafe(genesis_chain_parameters.chain_start_timestamp_ms);
+        store.insert_object(clock);
     }
 
     store.finish(written);
 
-    Ok(())
+    Ok(events)
 }
 
 #[cfg(test)]
@@ -1361,9 +1500,12 @@ mod test {
             project_url: String::new(),
         };
         let pop = generate_proof_of_possession(&key, account_key.public().into());
-        let mut builder = Builder::new().add_validator(validator, pop);
+        let mut builder = Builder::new()
+            .with_parameters(GenesisCeremonyParameters::for_local_network())
+            .add_validator(validator, pop);
 
         let genesis = builder.build_unsigned_genesis_checkpoint();
+        let bootstrap_admin = GenesisCeremonyParameters::local_network_bootstrap_admin_address();
         let registry_objects: Vec<_> = genesis
             .objects()
             .iter()
@@ -1384,6 +1526,63 @@ mod test {
             registry_objects[0].id(),
             ObjectID::from(MYSO_ORDERBOOK_REGISTRY_OBJECT_ID),
         );
+
+        use myso_types::{MYSO_BOOTSTRAP_KEY_OBJECT_ID, MYSO_SOCIAL_ADDRESS};
+
+        let block_list_count = genesis
+            .objects()
+            .iter()
+            .filter(|o| {
+                o.struct_tag().is_some_and(|tag| {
+                    tag.address == MYSO_SOCIAL_ADDRESS
+                        && tag.module.as_str() == "block_list"
+                        && tag.name.as_str() == "BlockListRegistry"
+                })
+            })
+            .count();
+        assert_eq!(block_list_count, 1, "expected BlockListRegistry shared object");
+
+        let social_graph_count = genesis
+            .objects()
+            .iter()
+            .filter(|o| {
+                o.struct_tag().is_some_and(|tag| {
+                    tag.address == MYSO_SOCIAL_ADDRESS
+                        && tag.module.as_str() == "social_graph"
+                        && tag.name.as_str() == "SocialGraph"
+                })
+            })
+            .count();
+        assert_eq!(social_graph_count, 1, "expected SocialGraph shared object");
+
+        assert!(
+            genesis
+                .objects()
+                .iter()
+                .any(|o| o.id() == ObjectID::from(MYSO_BOOTSTRAP_KEY_OBJECT_ID)),
+            "expected BootstrapKey shared object"
+        );
+
+        assert!(
+            !genesis.events().data.is_empty(),
+            "expected genesis bootstrap events for social indexer backfill"
+        );
+
+        let admin_cap_count = genesis
+            .objects()
+            .iter()
+            .filter(|o| {
+                o.owner
+                    .get_address_owner_address()
+                    .ok()
+                    .is_some_and(|owner| owner == bootstrap_admin)
+            })
+            .count();
+        assert!(
+            admin_cap_count > 0,
+            "expected admin caps transferred to bootstrap admin"
+        );
+
         builder.save(dir.path()).unwrap();
         Builder::load(dir.path()).unwrap();
     }

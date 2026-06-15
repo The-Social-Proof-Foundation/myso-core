@@ -29,7 +29,8 @@ use move_core_types::{ident_str, vm_status::StatusCode};
 use myso_types::bridge::BRIDGE_MODULE_NAME;
 use myso_types::deny_list_v1::{DENY_LIST_CREATE_FUNC, DENY_LIST_MODULE};
 use myso_types::{
-    BRIDGE_ADDRESS, MYSO_FRAMEWORK_ADDRESS, MYSO_SYSTEM_ADDRESS, ORDERBOOK_ADDRESS,
+    BRIDGE_ADDRESS, MYSO_FRAMEWORK_ADDRESS, MYSO_SOCIAL_ADDRESS, MYSO_SYSTEM_ADDRESS,
+    ORDERBOOK_ADDRESS,
     accumulator_event::ACCUMULATOR_MODULE_NAME,
     authenticator_state::AUTHENTICATOR_STATE_MODULE_NAME,
     clock::CLOCK_MODULE_NAME,
@@ -125,6 +126,16 @@ const MYSO_ALIAS_CREATE: FunctionIdent = (
     ident_str!("address_alias"),
     ident_str!("create"),
 );
+const MYSO_BOOTSTRAP_KEY_INIT: FunctionIdent = (
+    MYSO_FRAMEWORK_ADDRESS,
+    ident_str!("bootstrap_key"),
+    ident_str!("bootstrap_init"),
+);
+const MYSO_SOCIAL_BOOTSTRAP_INIT_AT_GENESIS: FunctionIdent = (
+    MYSO_SOCIAL_ADDRESS,
+    ident_str!("bootstrap"),
+    ident_str!("init_at_genesis"),
+);
 const FRESH_ID_FUNCTIONS: &[FunctionIdent] = &[
     OBJECT_NEW,
     OBJECT_NEW_UID_FROM_HASH,
@@ -142,6 +153,8 @@ const FUNCTIONS_TO_SKIP: &[FunctionIdent] = &[
     MYSO_ACCUMULATOR_CREATE,
     MYSO_COIN_REGISTRY_CREATE,
     MYSO_ALIAS_CREATE,
+    MYSO_BOOTSTRAP_KEY_INIT,
+    MYSO_SOCIAL_BOOTSTRAP_INIT_AT_GENESIS,
 ];
 
 impl AbstractValue {

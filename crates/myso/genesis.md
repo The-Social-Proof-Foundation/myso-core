@@ -31,13 +31,36 @@ The MC (Master of Ceremony) will create a new git repository and initialize the 
 
 ```
 $ git init genesis && cd genesis
-$ myso genesis-ceremony 
+$ myso genesis-ceremony init
 $ git add .
 $ git commit -m "init genesis"
 $ git push
 ```
 
-2. Contribute Validator information
+2. Set MySocial bootstrap admin
+
+Before adding validators, the MC must designate the address that receives MySocial admin
+capabilities and the founding governance delegate at genesis. This address is **not** `@0x0`
+(the genesis sender); use a foundation or operations wallet controlled by the network operators.
+
+Either set it during `init`:
+
+```
+$ myso genesis-ceremony init --bootstrap-admin-address <MySoAddress>
+```
+
+Or update an existing ceremony workspace:
+
+```
+$ myso genesis-ceremony set-bootstrap-admin --address <MySoAddress>
+$ git add .
+$ git commit -m "set bootstrap admin"
+$ git push
+```
+
+`build-unsigned-checkpoint` fails if `bootstrap_admin_address` is unset or `@0x0`.
+
+3. Contribute Validator information
 
 Once the shared workspace has been initialized, each validator can contribute their information:
 
@@ -58,7 +81,7 @@ $ git commit -m "add validator <name>'s information"
 $ git push # either to the shared workspace or another branch followed by a PR
 ```
 
-3. Add Initial Gas Objects
+4. Add Initial Gas Objects
 
 Add configuration for any initial gas objects that should be created at genesis.
 
@@ -72,7 +95,7 @@ $ git commit -m "add gas object"
 $ git push
 ```
 
-4. Build Genesis
+5. Build Genesis
 
 Once all validators and gas objects have been added, the MC can build the genesis object:
 
@@ -83,7 +106,7 @@ $ git commit -m "build genesis"
 $ git push
 ```
 
-5. Verify and Sign Genesis
+6. Verify and Sign Genesis
 
 Once genesis is built each validator will need to verify and sign genesis:
 
@@ -95,7 +118,7 @@ $ git commit -m "sign genesis"
 $ git push
 ```
 
-6. Finalize Genesis
+7. Finalize Genesis
 
 Once all validators have successfully verified and signed genesis, the MC can finalize the ceremony
 and then the genesis state can be distributed:

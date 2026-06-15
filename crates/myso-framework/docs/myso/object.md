@@ -14,6 +14,7 @@ MySo object identifiers
 -  [Function `id_from_address`](#myso_object_id_from_address)
 -  [Function `myso_system_state`](#myso_object_myso_system_state)
 -  [Function `clock`](#myso_object_clock)
+-  [Function `bootstrap_key`](#myso_object_bootstrap_key)
 -  [Function `authenticator_state`](#myso_object_authenticator_state)
 -  [Function `randomness_state`](#myso_object_randomness_state)
 -  [Function `myso_deny_list_object_id`](#myso_object_myso_deny_list_object_id)
@@ -212,6 +213,16 @@ The hardcoded ID for the Orderbook Registry Object.
 
 
 
+<a name="myso_object_MYSO_BOOTSTRAP_KEY_OBJECT_ID"></a>
+
+The hardcoded ID for the singleton BootstrapKey Object.
+
+
+<pre><code><b>const</b> <a href="../myso/object.md#myso_object_MYSO_BOOTSTRAP_KEY_OBJECT_ID">MYSO_BOOTSTRAP_KEY_OBJECT_ID</a>: <b>address</b> = 0x11;
+</code></pre>
+
+
+
 <a name="myso_object_MYSO_ADDRESS_ALIAS_STATE_ID"></a>
 
 The hardcoded ID for the AddressAliasState Object.
@@ -381,6 +392,34 @@ This should only be called once from <code><a href="../myso/clock.md#myso_clock"
 <pre><code><b>public</b>(<a href="../myso/package.md#myso_package">package</a>) <b>fun</b> <a href="../myso/clock.md#myso_clock">clock</a>(): <a href="../myso/object.md#myso_object_UID">UID</a> {
     <a href="../myso/object.md#myso_object_UID">UID</a> {
         <a href="../myso/object.md#myso_object_id">id</a>: <a href="../myso/object.md#myso_object_ID">ID</a> { bytes: <a href="../myso/object.md#myso_object_MYSO_CLOCK_OBJECT_ID">MYSO_CLOCK_OBJECT_ID</a> },
+    }
+}
+</code></pre>
+
+
+
+</details>
+
+<a name="myso_object_bootstrap_key"></a>
+
+## Function `bootstrap_key`
+
+Create the <code><a href="../myso/object.md#myso_object_UID">UID</a></code> for the singleton <code>BootstrapKey</code> object.
+This should only be called once from <code><a href="../myso/bootstrap_key.md#myso_bootstrap_key">bootstrap_key</a></code>.
+
+
+<pre><code><b>public</b>(<a href="../myso/package.md#myso_package">package</a>) <b>fun</b> <a href="../myso/bootstrap_key.md#myso_bootstrap_key">bootstrap_key</a>(): <a href="../myso/object.md#myso_object_UID">myso::object::UID</a>
+</code></pre>
+
+
+
+<details>
+<summary>Implementation</summary>
+
+
+<pre><code><b>public</b>(<a href="../myso/package.md#myso_package">package</a>) <b>fun</b> <a href="../myso/bootstrap_key.md#myso_bootstrap_key">bootstrap_key</a>(): <a href="../myso/object.md#myso_object_UID">UID</a> {
+    <a href="../myso/object.md#myso_object_UID">UID</a> {
+        <a href="../myso/object.md#myso_object_id">id</a>: <a href="../myso/object.md#myso_object_ID">ID</a> { bytes: <a href="../myso/object.md#myso_object_MYSO_BOOTSTRAP_KEY_OBJECT_ID">MYSO_BOOTSTRAP_KEY_OBJECT_ID</a> },
     }
 }
 </code></pre>

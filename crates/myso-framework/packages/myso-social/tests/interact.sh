@@ -19,8 +19,8 @@ ORDERBOOK_PACKAGE_ID="${ORDERBOOK_PACKAGE_ID:-}"
 GAS_BUDGET="${GAS_BUDGET:-1000000000}"
 CLOCK_ID="${CLOCK_ID:-0x6}"
 
-# Optional: set in interact_addrs.env after bootstrap or from explorer
-BOOTSTRAP_KEY_ID="${BOOTSTRAP_KEY_ID:-}"
+# Optional: set in interact_addrs.env or from explorer (MySocial bootstrap runs at genesis)
+BOOTSTRAP_KEY_ID="${BOOTSTRAP_KEY_ID:-0x11}"
 ORDERBOOK_REGISTRY_ID="${ORDERBOOK_REGISTRY_ID:-}"
 USERNAME_REGISTRY_ID="${USERNAME_REGISTRY_ID:-}"
 ECOSYSTEM_TREASURY_ID="${ECOSYSTEM_TREASURY_ID:-}"
@@ -99,7 +99,7 @@ show_menu() {
     echo "8. Social proof tokens"
     echo "9. View Object Details"
     echo "10. Upgrade Management"
-    echo "11. Bootstrap & saved addresses"
+    echo "11. Saved addresses"
     echo "0. Exit"
     echo ""
     read -r -p "Select an option [0-11]: " choice
@@ -115,7 +115,7 @@ show_menu() {
         8) token_exchange_menu ;;
         9) view_object ;;
         10) upgrade_menu ;;
-        11) bootstrap_menu ;;
+        11) saved_addresses_menu ;;
         0) exit 0 ;;
         *) echo "Invalid option" && show_menu ;;
     esac
@@ -1058,73 +1058,39 @@ view_object() {
     show_menu
 }
 
-# ---- Bootstrap ----
+# ---- Saved addresses ----
 
-bootstrap_menu() {
-    print_header "Bootstrap & Saved Addresses"
-    echo "1. Run bootstrap (claim_all_admin_capabilities)"
-    echo "2. View saved addresses (interact_addrs.env)"
-    echo "3. Record or update saved addresses interactively"
-    echo "4. Write example interact_addrs.env template (asks before overwrite)"
-    echo "5. Back to Main Menu"
+saved_addresses_menu() {
+    print_header "Saved Addresses"
+    echo "1. View saved addresses (interact_addrs.env)"
+    echo "2. Record or update saved addresses interactively"
+    echo "3. Write example interact_addrs.env template (asks before overwrite)"
+    echo "4. Back to Main Menu"
     echo ""
-    read -r -p "Select an option [1-5]: " choice
+    read -r -p "Select an option [1-4]: " choice
 
     case $choice in
-        1) run_bootstrap ;;
-        2) view_saved_addresses ;;
-        3) record_saved_addresses ;;
-        4) write_addrs_template_confirm ;;
-        5) show_menu ;;
-        *) echo "Invalid option" && bootstrap_menu ;;
+        1) view_saved_addresses ;;
+        2) record_saved_addresses ;;
+        3) write_addrs_template_confirm ;;
+        4) show_menu ;;
+        *) echo "Invalid option" && saved_addresses_menu ;;
     esac
-}
-
-run_bootstrap() {
-    print_header "Bootstrap: claim_all_admin_capabilities"
-    print_info "Calls social_contracts::bootstrap::claim_all_admin_capabilities with:"
-    print_info "  - Orderbook Registry (mutable shared object)"
-    print_info "  - BootstrapKey (mutable shared object)"
-    print_info "  - Clock (${CLOCK_ID})"
-    if [ -n "${ORDERBOOK_PACKAGE_ID}" ]; then
-        print_info "ORDERBOOK_PACKAGE_ID is set (${ORDERBOOK_PACKAGE_ID}); object IDs normally resolve types without it."
-    fi
-
-    read -r -p "Orderbook Registry object ID [${ORDERBOOK_REGISTRY_ID:-}]: " ob_reg
-    ob_reg="${ob_reg:-$ORDERBOOK_REGISTRY_ID}"
-    read -r -p "BootstrapKey object ID [${BOOTSTRAP_KEY_ID:-}]: " bsk
-    bsk="${bsk:-$BOOTSTRAP_KEY_ID}"
-
-    if [ -z "$ob_reg" ] || [ -z "$bsk" ]; then
-        print_info "Missing Orderbook registry or BootstrapKey id."
-        press_enter
-        bootstrap_menu
-        return
-    fi
-
-    print_info "Submitting bootstrap transaction..."
-    myso client call --package "$PACKAGE_ID" --module bootstrap --function claim_all_admin_capabilities \
-        --args "$ob_reg" "$bsk" "$CLOCK_ID" --gas-budget "$GAS_BUDGET"
-
-    print_success "Bootstrap transaction executed. Inspect effects for shared object IDs."
-    print_info "Use menu option 3 to save addresses into ${INTERACT_ADDRS_FILE}"
-    press_enter
-    bootstrap_menu
 }
 
 view_saved_addresses() {
     print_header "Saved addresses (${INTERACT_ADDRS_FILE})"
     if [ ! -f "${INTERACT_ADDRS_FILE}" ]; then
-        print_info "No saved addresses file found. Use option 3 or 4 in the Bootstrap menu to create one."
+        print_info "No saved addresses file found. Use option 2 or 3 in the Saved addresses menu to create one."
         press_enter
-        bootstrap_menu
+        saved_addresses_menu
         return
     fi
     print_info "--- begin ${INTERACT_ADDRS_FILE} ---"
     cat "${INTERACT_ADDRS_FILE}"
     print_info "--- end ---"
     press_enter
-    bootstrap_menu
+    saved_addresses_menu
 }
 
 record_saved_addresses() {
@@ -1143,7 +1109,7 @@ record_saved_addresses() {
     outfile="$(mktemp)"
     {
         echo "# interact_addrs.env — sourced by interact.sh"
-        echo "# Generated interactively via interact.sh Bootstrap menu."
+        echo "# Generated interactively via interact.sh Saved addresses menu."
         echo ""
         read_one "PACKAGE_ID" "social_contracts package"
         read_one "ORDERBOOK_PACKAGE_ID" "optional published orderbook package"
@@ -1172,7 +1138,7 @@ record_saved_addresses() {
 
     print_success "Saved to ${INTERACT_ADDRS_FILE}. Re-run the script or re-source this file manually to load variables."
     press_enter
-    bootstrap_menu
+    saved_addresses_menu
 }
 
 write_addrs_template_confirm() {
@@ -1180,12 +1146,12 @@ write_addrs_template_confirm() {
     if [ -f "${INTERACT_ADDRS_FILE}" ]; then
         read -r -p "File exists. Overwrite? [y/N]: " ok
         if [ "${ok}" != "y" ] && [ "${ok}" != "Y" ]; then
-            bootstrap_menu
+            saved_addresses_menu
             return
         fi
     fi
     cat >"${INTERACT_ADDRS_FILE}" <<'EOF'
-# Copy and fill IDs from chain explorer / genesis after publish and bootstrap.
+# Copy and fill IDs from chain explorer / genesis (MySocial bootstrap runs at genesis).
 # Lines are shell assignments; omit or comment keys you do not use.
 
 PACKAGE_ID=
@@ -1211,7 +1177,7 @@ INSURANCE_CONFIG_ID=
 EOF
     print_success "Wrote template to ${INTERACT_ADDRS_FILE}"
     press_enter
-    bootstrap_menu
+    saved_addresses_menu
 }
 
 # ---- Upgrade migrations (entry-verified names) ----

@@ -58,7 +58,7 @@ module social_contracts::insurance_tests {
         test_scenario::next_tx(&mut scen, ADMIN);
         {
             let clock = test_scenario::take_shared<Clock>(&scen);
-            let spot_gov_id = governance::bootstrap_init(&clock, test_scenario::ctx(&mut scen));
+            let spot_gov_id = governance::bootstrap_init(&clock, ADMIN, test_scenario::ctx(&mut scen));
             spot::test_init(&clock, spot_gov_id, test_scenario::ctx(&mut scen));
             test_scenario::return_shared(clock);
         };

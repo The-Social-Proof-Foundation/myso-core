@@ -1348,6 +1348,9 @@ myso_system_state
 clock
 	public(package) fun
 	0x2::object
+bootstrap_key
+	public(package) fun
+	0x2::object
 authenticator_state
 	public(package) fun
 	0x2::object
@@ -10294,14 +10297,11 @@ migrate_config
 migrate_vault
 	public entry fun
 	0x50c1::insurance
-claim_all_admin_capabilities
-	public entry fun
+init_social_platform
+	public(package) fun
 	0x50c1::bootstrap
-is_bootstrap_used
-	public fun
-	0x50c1::bootstrap
-bootstrap_version
-	public fun
+init_at_genesis
+	fun
 	0x50c1::bootstrap
 Pcrs
 	public struct

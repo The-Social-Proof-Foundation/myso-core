@@ -109,6 +109,10 @@ static_symbols!(
     "internal",
     "permit",
     "address_alias",
+    "bootstrap_key",
+    "bootstrap_init",
+    "bootstrap",
+    "init_at_genesis",
     "00000000000000000000000000000000",
 );
 

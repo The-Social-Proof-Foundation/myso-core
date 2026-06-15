@@ -1186,7 +1186,7 @@ module social_contracts::governance_tests {
         test_scenario::end(scenario);
     }
 
-    /// `governance::bootstrap_init` seeds the transaction sender as founding delegate for ecosystem (0), PoC (1), and SPoT (2).
+    /// `governance::bootstrap_init` seeds `founding_delegate` for ecosystem (0), PoC (1), and SPoT (2).
     #[test]
     #[allow(unused_mut_ref)]
     fun test_bootstrap_init_seeds_sender_as_founding_delegate_all_global_registries() {
@@ -1205,7 +1205,7 @@ module social_contracts::governance_tests {
         {
             let clock = test_scenario::take_shared<Clock>(&scenario);
             let ctx = test_scenario::ctx(&mut scenario);
-            let _spot_id = governance::bootstrap_init(&clock, ctx);
+            let _spot_id = governance::bootstrap_init(&clock, ADMIN, ctx);
             governance::test_grant_admin_cap(ctx);
             test_scenario::return_shared(clock);
         };

@@ -53,6 +53,9 @@ const MYSO_COIN_REGISTRY_OBJECT_ID: address = @0xc;
 /// The hardcoded ID for the Orderbook Registry Object.
 const MYSO_ORDERBOOK_REGISTRY_OBJECT_ID: address = @0x10;
 
+/// The hardcoded ID for the singleton BootstrapKey Object.
+const MYSO_BOOTSTRAP_KEY_OBJECT_ID: address = @0x11;
+
 /// The hardcoded ID for the AddressAliasState Object.
 const MYSO_ADDRESS_ALIAS_STATE_ID: address = @0xa;
 
@@ -122,6 +125,14 @@ fun myso_system_state(ctx: &TxContext): UID {
 public(package) fun clock(): UID {
     UID {
         id: ID { bytes: MYSO_CLOCK_OBJECT_ID },
+    }
+}
+
+/// Create the `UID` for the singleton `BootstrapKey` object.
+/// This should only be called once from `bootstrap_key`.
+public(package) fun bootstrap_key(): UID {
+    UID {
+        id: ID { bytes: MYSO_BOOTSTRAP_KEY_OBJECT_ID },
     }
 }
 

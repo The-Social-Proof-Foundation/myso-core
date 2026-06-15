@@ -6,7 +6,7 @@ use anyhow::Result;
 use camino::Utf8PathBuf;
 use clap::Parser;
 use fastcrypto::encoding::{Encoding, Hex};
-use myso_config::{MYSO_GENESIS_FILENAME, genesis::UnsignedGenesis};
+use myso_config::{MYSO_GENESIS_FILENAME, genesis::GenesisCeremonyParameters, genesis::UnsignedGenesis};
 use myso_genesis_builder::Builder;
 use myso_types::multiaddr::Multiaddr;
 use myso_types::{
@@ -32,6 +32,10 @@ pub struct Ceremony {
 
     #[clap(long)]
     protocol_version: Option<u64>,
+
+    /// Address that receives MySocial admin caps and founding governance delegate at genesis.
+    #[clap(long)]
+    bootstrap_admin_address: Option<MySoAddress>,
 
     #[clap(subcommand)]
     command: CeremonyCommand,
@@ -88,6 +92,11 @@ pub enum CeremonyCommand {
     },
 
     Finalize,
+
+    SetBootstrapAdmin {
+        #[clap(long)]
+        address: MySoAddress,
+    },
 }
 
 pub fn run(cmd: Ceremony) -> Result<()> {
@@ -105,7 +114,13 @@ pub fn run(cmd: Ceremony) -> Result<()> {
 
     match cmd.command {
         CeremonyCommand::Init => {
-            let builder = Builder::new().with_protocol_version(protocol_version);
+            let mut parameters = GenesisCeremonyParameters::new();
+            if let Some(addr) = cmd.bootstrap_admin_address {
+                parameters.bootstrap_admin_address = Some(addr);
+            }
+            let builder = Builder::new()
+                .with_protocol_version(protocol_version)
+                .with_parameters(parameters);
             builder.save(dir)?;
         }
 
@@ -242,6 +257,11 @@ pub fn run(cmd: Ceremony) -> Result<()> {
                 Hex::encode(genesis.hash())
             );
         }
+
+        CeremonyCommand::SetBootstrapAdmin { address } => {
+            let builder = Builder::load(&dir)?.set_bootstrap_admin_address(address);
+            builder.save(dir)?;
+        }
     }
 
     Ok(())
@@ -328,10 +348,13 @@ mod test {
             })
             .collect::<Vec<_>>();
 
-        // Initialize
+        // Initialize with bootstrap admin (required before build)
         let command = Ceremony {
             path: Some(dir.path().into()),
             protocol_version: None,
+            bootstrap_admin_address: Some(
+                GenesisCeremonyParameters::local_network_bootstrap_admin_address(),
+            ),
             command: CeremonyCommand::Init,
         };
         command.run()?;
@@ -343,6 +366,7 @@ mod test {
             let command = Ceremony {
                 path: Some(dir.path().into()),
                 protocol_version: None,
+                bootstrap_admin_address: None,
                 command: CeremonyCommand::AddValidator {
                     name: validator.name().to_owned(),
                     validator_key_file: key_file.into(),
@@ -363,6 +387,7 @@ mod test {
             Ceremony {
                 path: Some(dir.path().into()),
                 protocol_version: None,
+                bootstrap_admin_address: None,
                 command: CeremonyCommand::ValidateState,
             }
             .run()?;
@@ -372,6 +397,7 @@ mod test {
         let command = Ceremony {
             path: Some(dir.path().into()),
             protocol_version: None,
+            bootstrap_admin_address: None,
             command: CeremonyCommand::BuildUnsignedCheckpoint,
         };
         command.run()?;
@@ -381,6 +407,7 @@ mod test {
             let command = Ceremony {
                 path: Some(dir.path().into()),
                 protocol_version: None,
+                bootstrap_admin_address: None,
                 command: CeremonyCommand::VerifyAndSign {
                     key_file: key.into(),
                 },
@@ -390,6 +417,7 @@ mod test {
             Ceremony {
                 path: Some(dir.path().into()),
                 protocol_version: None,
+                bootstrap_admin_address: None,
                 command: CeremonyCommand::ValidateState,
             }
             .run()?;
@@ -399,6 +427,7 @@ mod test {
         let command = Ceremony {
             path: Some(dir.path().into()),
             protocol_version: None,
+            bootstrap_admin_address: None,
             command: CeremonyCommand::Finalize,
         };
         command.run()?;

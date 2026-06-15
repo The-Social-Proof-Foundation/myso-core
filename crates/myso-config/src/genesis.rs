@@ -2,7 +2,7 @@
 // Copyright (c) The Social Proof Foundation, LLC.
 // SPDX-License-Identifier: Apache-2.0
 
-use anyhow::{Context, Result};
+use anyhow::{Context, Result, bail};
 use fastcrypto::encoding::{Base64, Encoding};
 use fastcrypto::hash::HashFunction;
 use myso_types::authenticator_state::{AuthenticatorStateInner, get_authenticator_state};
@@ -28,6 +28,7 @@ use myso_types::{
     object::Object,
 };
 use serde::{Deserialize, Deserializer, Serialize, Serializer};
+use std::str::FromStr;
 use std::{fs, path::Path};
 use tracing::trace;
 
@@ -409,6 +410,10 @@ pub struct GenesisCeremonyParameters {
     /// Target duration for subsidy pool in years (e.g., 10).
     #[serde(default = "GenesisCeremonyParameters::default_stake_subsidy_intended_duration_years")]
     pub stake_subsidy_intended_duration_years: u64,
+
+    /// Receives all MySocial admin caps and is seeded as founding governance delegate at genesis.
+    #[serde(default)]
+    pub bootstrap_admin_address: Option<MySoAddress>,
     // Most other parameters (e.g. initial gas schedule) should be derived from protocol_version.
 }
 
@@ -427,7 +432,27 @@ impl GenesisCeremonyParameters {
             stake_subsidy_min_apy_bps: Self::default_stake_subsidy_min_apy_bps(),
             stake_subsidy_intended_duration_years:
                 Self::default_stake_subsidy_intended_duration_years(),
+            bootstrap_admin_address: None,
         }
+    }
+
+    /// Deterministic bootstrap admin for local `myso start` networks.
+    pub fn local_network_bootstrap_admin_address() -> MySoAddress {
+        MySoAddress::from_str(
+            "0x000000000000000000000000000000000000000000000000000000000000bada",
+        )
+        .expect("valid local network bootstrap admin address")
+    }
+
+    /// Returns the configured bootstrap admin or errors if unset / @0x0.
+    pub fn require_bootstrap_admin_address(&self) -> Result<MySoAddress> {
+        let Some(addr) = self.bootstrap_admin_address else {
+            bail!("bootstrap_admin_address must be set in genesis ceremony parameters");
+        };
+        if addr == MySoAddress::ZERO {
+            bail!("bootstrap_admin_address cannot be @0x0");
+        }
+        Ok(addr)
     }
 
     /// Parameters for local `myso start` / `myso genesis` networks.
@@ -438,6 +463,7 @@ impl GenesisCeremonyParameters {
             stake_subsidy_min_apy_bps: 100,
             stake_subsidy_period_length: 12,
             stake_subsidy_decrease_rate: 40,
+            bootstrap_admin_address: Some(Self::local_network_bootstrap_admin_address()),
             ..Self::new()
         }
     }
