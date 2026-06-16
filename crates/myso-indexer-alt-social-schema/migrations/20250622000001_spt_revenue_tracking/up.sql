@@ -9,7 +9,7 @@
 -- SPT Revenue Table (TimescaleDB hypertable for high-volume swap fee tracking)
 CREATE TABLE IF NOT EXISTS spt_revenue (
     pool_id TEXT NOT NULL,
-    transaction_type TEXT NOT NULL CHECK (transaction_type IN ('buy', 'sell')), 
+    transaction_type TEXT NOT NULL CHECK (transaction_type IN ('BUY', 'SELL', 'RESERVATION', 'RESERVATION_WITHDRAW')), 
     trader TEXT NOT NULL,
     creator_address TEXT NOT NULL,
     platform_address TEXT NOT NULL,

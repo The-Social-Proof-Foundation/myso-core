@@ -190,13 +190,6 @@ async fn enrich_users_with_universal_data(
             WHERE pool_id = spt.pool_id AND time >= NOW() - INTERVAL '24 hours'
         ) vol24 ON spt.pool_id IS NOT NULL
         LEFT JOIN LATERAL (
-            SELECT
-                SUM(creator_fee)::bigint as creator_earnings,
-                SUM(platform_fee)::bigint as platform_earnings,
-                SUM(treasury_fee)::bigint as ecosystem_earnings
-            FROM spt_revenue WHERE pool_id = spt.pool_id
-        ) rev ON spt.pool_id IS NOT NULL
-        LEFT JOIN LATERAL (
             SELECT * FROM spt_reservation_pools sr
             WHERE (p.reservation_pool_address IS NOT NULL
                    AND LOWER(TRIM(sr.pool_id)) = LOWER(TRIM(p.reservation_pool_address)))
@@ -208,6 +201,15 @@ async fn enrich_users_with_universal_data(
                 sr.time DESC
             LIMIT 1
         ) rp ON true
+        LEFT JOIN LATERAL (
+            SELECT
+                COALESCE(SUM(creator_fee), 0)::bigint AS creator_earnings,
+                COALESCE(SUM(platform_fee), 0)::bigint AS platform_earnings,
+                COALESCE(SUM(treasury_fee), 0)::bigint AS ecosystem_earnings
+            FROM spt_revenue sr
+            WHERE (spt.pool_id IS NOT NULL AND sr.pool_id = spt.pool_id)
+               OR (rp.pool_id IS NOT NULL AND sr.pool_id = rp.pool_id)
+        ) rev ON spt.pool_id IS NOT NULL OR rp.pool_id IS NOT NULL
         LEFT JOIN LATERAL (
             SELECT COALESCE(SUM(amount), 0)::bigint as vol FROM spt_reservations
             WHERE pool_id = rp.pool_id AND time >= NOW() - INTERVAL '24 hours'

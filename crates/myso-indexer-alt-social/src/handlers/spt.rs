@@ -933,6 +933,38 @@ mod tests {
     }
 
     #[test]
+    fn reservation_created_event_parses_fee_fields() {
+        const CK_MS: u64 = 1_700_000_000_000;
+        let data = json!({
+            "associated_id": "0xprof",
+            "token_type": TOKEN_TYPE_PROFILE,
+            "reserver": "0xr",
+            "amount": 4_925_000_000i64,
+            "total_reserved": 4_925_000_000i64,
+            "threshold_met": false,
+            "reserved_at": 126000i64,
+            "fee_amount": 75_000_000i64,
+            "creator_fee": 56_250_000i64,
+            "platform_fee": 0i64,
+            "treasury_fee": 18_750_000i64,
+        });
+        let rows =
+            handle_spt_event("ReservationCreatedEvent", &data, "tx:fees", 0, CK_MS).expect("rows");
+        let reservation = rows.iter().find_map(|r| {
+            if let SocialEventRow::SptReservation { reservation, .. } = r {
+                Some(reservation)
+            } else {
+                None
+            }
+        });
+        let res = reservation.expect("reservation row");
+        assert_eq!(res.fee_amount, Some(75_000_000));
+        assert_eq!(res.creator_fee, Some(56_250_000));
+        assert_eq!(res.platform_fee, Some(0));
+        assert_eq!(res.treasury_fee, Some(18_750_000));
+    }
+
+    #[test]
     fn reservation_pool_created_uses_object_id_threshold_met_does_not_add_second_pool() {
         let pool_object_id = "0xpoolobjectdeadbeef";
         let created = json!({

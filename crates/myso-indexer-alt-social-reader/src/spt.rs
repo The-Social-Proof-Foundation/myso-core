@@ -27,6 +27,21 @@ const SPT_HOLDING_VIEWER_NULLS: &str = ", NULL::boolean AS viewer_is_following, 
 
 const SPT_RESERVATION_VIEWER_NULLS: &str = SPT_HOLDING_VIEWER_NULLS;
 
+/// SQL fragment: aggregate creator/platform/ecosystem earnings for a trading pool and its
+/// linked reservation pool(s). Each fee event is stored under exactly one pool_id at index time.
+pub(crate) const SPT_EARNINGS_BY_ASSOCIATED_ID_LATERAL: &str = r#"
+    SELECT
+        COALESCE(SUM(creator_fee), 0)::bigint AS creator_earnings,
+        COALESCE(SUM(platform_fee), 0)::bigint AS platform_earnings,
+        COALESCE(SUM(treasury_fee), 0)::bigint AS ecosystem_earnings
+    FROM spt_revenue
+    WHERE pool_id = p.pool_id
+       OR pool_id IN (
+           SELECT pool_id FROM spt_reservation_pools
+           WHERE associated_id = p.associated_id
+       )
+"#;
+
 /// SPT transactions for a pool with optional batched per-sender [`ViewerSocialContext`].
 #[derive(Debug, Clone)]
 pub struct SptTransactionsWithViewer {
@@ -352,11 +367,15 @@ pub(crate) async fn get_spt_pool(
         ),
         rev AS (
             SELECT
-                COALESCE(SUM(creator_fee), 0)::bigint as creator_earnings,
-                COALESCE(SUM(platform_fee), 0)::bigint as platform_earnings,
-                COALESCE(SUM(treasury_fee), 0)::bigint as ecosystem_earnings
-            FROM spt_revenue
-            WHERE pool_id = $1
+                COALESCE(SUM(sr.creator_fee), 0)::bigint as creator_earnings,
+                COALESCE(SUM(sr.platform_fee), 0)::bigint as platform_earnings,
+                COALESCE(SUM(sr.treasury_fee), 0)::bigint as ecosystem_earnings
+            FROM spt_revenue sr
+            WHERE sr.pool_id = $1
+               OR sr.pool_id IN (
+                   SELECT pool_id FROM spt_reservation_pools rp
+                   WHERE rp.associated_id = (SELECT associated_id FROM latest_pool LIMIT 1)
+               )
         )
         SELECT p.pool_id, p.token_type, p.owner, p.associated_id,
                p.circulating_supply, p.base_price, p.quadratic_coefficient, p.created_at,
@@ -543,7 +562,7 @@ pub(crate) async fn list_spt_pools(
             SELECT DISTINCT ON (pool_id) pool_id, token_type, owner, associated_id,
                    circulating_supply, base_price, quadratic_coefficient, created_at, time, transaction_id
             FROM spt_pools
-            WHERE 1=1 {}
+            WHERE 1=1 {token_filter}
             ORDER BY pool_id, time DESC
         ),
         -- `market_cap` uses numeric so `price * circulating_supply` cannot overflow bigint
@@ -588,21 +607,19 @@ pub(crate) async fn list_spt_pools(
                 WHERE pool_id = p.pool_id AND time >= NOW() - INTERVAL '24 hours'
             ) v ON true
             LEFT JOIN LATERAL (
-                SELECT
-                    COALESCE(SUM(creator_fee), 0)::bigint as creator_earnings,
-                    COALESCE(SUM(platform_fee), 0)::bigint as platform_earnings,
-                    COALESCE(SUM(treasury_fee), 0)::bigint as ecosystem_earnings
-                FROM spt_revenue WHERE pool_id = p.pool_id
+                {earnings_sql}
             ) r ON true
         )
         SELECT pool_id, token_type, owner, associated_id, circulating_supply,
                base_price, quadratic_coefficient, created_at, time, transaction_id, price,
                price_24h_ago, volume_24h, creator_earnings, platform_earnings, ecosystem_earnings
         FROM pool_metrics
-        ORDER BY {}
+        ORDER BY {order_clause}
         LIMIT $1 OFFSET $2
         "#,
-        token_filter, order_clause
+        token_filter = token_filter,
+        order_clause = order_clause,
+        earnings_sql = SPT_EARNINGS_BY_ASSOCIATED_ID_LATERAL,
     );
 
     let results = diesel::sql_query(&query)
@@ -1041,4 +1058,19 @@ pub(crate) async fn get_spt_reservation_volume_history(
 
     metrics.requests_succeeded.inc();
     Ok(results)
+}
+
+#[cfg(test)]
+mod earnings_sql_tests {
+    use super::SPT_EARNINGS_BY_ASSOCIATED_ID_LATERAL;
+
+    #[test]
+    fn earnings_lateral_sums_trading_and_reservation_pool_revenue() {
+        assert!(SPT_EARNINGS_BY_ASSOCIATED_ID_LATERAL.contains("pool_id = p.pool_id"));
+        assert!(SPT_EARNINGS_BY_ASSOCIATED_ID_LATERAL.contains("spt_reservation_pools"));
+        assert!(SPT_EARNINGS_BY_ASSOCIATED_ID_LATERAL.contains("associated_id = p.associated_id"));
+        assert!(SPT_EARNINGS_BY_ASSOCIATED_ID_LATERAL.contains("creator_earnings"));
+        assert!(SPT_EARNINGS_BY_ASSOCIATED_ID_LATERAL.contains("platform_earnings"));
+        assert!(SPT_EARNINGS_BY_ASSOCIATED_ID_LATERAL.contains("ecosystem_earnings"));
+    }
 }
