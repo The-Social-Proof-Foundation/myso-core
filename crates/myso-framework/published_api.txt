@@ -8449,6 +8449,27 @@ PlatformStatus
 PlatformAdminCap
 	public struct
 	0x50c1::platform
+PlatformPackage
+	public struct
+	0x50c1::platform
+ModeratorsGroupTag
+	public struct
+	0x50c1::platform
+PlatformBlockAdmin
+	public struct
+	0x50c1::platform
+PlatformBadgeAdmin
+	public struct
+	0x50c1::platform
+PlatformTreasuryAdmin
+	public struct
+	0x50c1::platform
+PlatformContentModerator
+	public struct
+	0x50c1::platform
+PlatformPromotionAdmin
+	public struct
+	0x50c1::platform
 Platform
 	public struct
 	0x50c1::platform
@@ -8461,7 +8482,10 @@ PlatformCreatedEvent
 PlatformUpdatedEvent
 	public struct
 	0x50c1::platform
-ModeratorAddedEvent
+ModeratorPermissionsGrantedEvent
+	public struct
+	0x50c1::platform
+ModeratorPermissionsRevokedEvent
 	public struct
 	0x50c1::platform
 ModeratorRemovedEvent
@@ -8524,6 +8548,15 @@ finalize_platform_governance_proposal_anonymous
 reject_platform_governance_proposal_manually
 	public entry fun
 	0x50c1::platform
+grant_moderator_permission
+	public fun
+	0x50c1::platform
+grant_all_moderator_permissions
+	public fun
+	0x50c1::platform
+revoke_moderator_permission
+	public fun
+	0x50c1::platform
 add_moderator
 	public fun
 	0x50c1::platform
@@ -8569,8 +8602,44 @@ is_approved
 has_joined_platform
 	public fun
 	0x50c1::platform
+is_developer
+	public fun
+	0x50c1::platform
+has_moderator_permission
+	public fun
+	0x50c1::platform
+is_moderator
+	public fun
+	0x50c1::platform
 is_developer_or_moderator
 	public fun
+	0x50c1::platform
+moderators_group_id
+	public fun
+	0x50c1::platform
+assert_moderator_permission
+	fun
+	0x50c1::platform
+grant_all_extension_permissions
+	fun
+	0x50c1::platform
+all_extension_permission_names
+	fun
+	0x50c1::platform
+permission_name
+	fun
+	0x50c1::platform
+has_any_extension_permission
+	fun
+	0x50c1::platform
+emit_permissions_granted
+	fun
+	0x50c1::platform
+emit_permissions_revoked
+	fun
+	0x50c1::platform
+maybe_emit_moderator_removed
+	fun
 	0x50c1::platform
 name
 	public fun
@@ -8627,12 +8696,6 @@ treasury_balance
 	public fun
 	0x50c1::platform
 id
-	public fun
-	0x50c1::platform
-is_moderator
-	public fun
-	0x50c1::platform
-get_moderators
 	public fun
 	0x50c1::platform
 get_platform_by_name

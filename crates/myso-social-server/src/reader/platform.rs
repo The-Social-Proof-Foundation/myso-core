@@ -1,25 +1,23 @@
 // Copyright (c) The Social Proof Foundation, LLC.
 // SPDX-License-Identifier: Apache-2.0
 
-use diesel::ExpressionMethods;
-use diesel::OptionalExtension;
-use diesel::QueryDsl;
-use diesel::SelectableHelper;
 use diesel_async::RunQueryDsl;
 use myso_indexer_alt_social_schema::models::Platform;
 use myso_indexer_alt_social_schema::schema::{
-    platform_blocked_profiles, platform_events, platform_memberships, platform_moderators,
-    platforms,
+    platform_blocked_profiles, platform_events, platform_memberships, platforms,
 };
+use serde_json::Value as JsonValue;
 
 use crate::error::SocialError;
 use crate::reader::types::{
     PlatformApprovalRow, PlatformBlockedProfileRow, PlatformEventRow, PlatformMemberRow,
-    PlatformModeratorRow, PlatformRow,
+    PlatformModeratorRow, PlatformRow, PlatformUserAccessRow,
 };
 use myso_pg_db::Db;
 
 async fn require_active_platform(db: &Db, platform_id: &str) -> Result<(), SocialError> {
+    use diesel::ExpressionMethods;
+    use diesel::QueryDsl;
     let mut conn = db.connect().await?;
     let visible: i64 = platforms::table
         .filter(platforms::platform_id.eq(platform_id))
@@ -43,6 +41,9 @@ pub(crate) async fn list_platforms(
     limit: i64,
     offset: i64,
 ) -> Result<Vec<PlatformRow>, SocialError> {
+    use diesel::ExpressionMethods;
+    use diesel::QueryDsl;
+    use diesel::SelectableHelper;
     let mut conn = db.connect().await?;
     let mut query = platforms::table
         .filter(platforms::deleted_at.is_null())
@@ -71,6 +72,10 @@ pub(crate) async fn get_platform_by_id(
     db: &Db,
     platform_id: &str,
 ) -> Result<Option<PlatformRow>, SocialError> {
+    use diesel::ExpressionMethods;
+    use diesel::OptionalExtension;
+    use diesel::QueryDsl;
+    use diesel::SelectableHelper;
     let mut conn = db.connect().await?;
     let result: Option<Platform> = platforms::table
         .filter(platforms::platform_id.eq(platform_id))
@@ -85,41 +90,168 @@ pub(crate) async fn get_platform_by_id(
 pub(crate) async fn get_platform_moderators(
     db: &Db,
     platform_id: &str,
+    permission_filter: Option<&str>,
     limit: i64,
     offset: i64,
 ) -> Result<Vec<PlatformModeratorRow>, SocialError> {
+    if let Some(filter) = permission_filter {
+        if !myso_indexer_alt_social_schema::platform_permissions::is_valid_moderator_permission(filter)
+        {
+            return Err(SocialError::bad_request(format!(
+                "invalid platform moderator permission filter: {filter}"
+            )));
+        }
+    }
     require_active_platform(db, platform_id).await?;
     let mut conn = db.connect().await?;
-    let results = platform_moderators::table
-        .filter(platform_moderators::platform_id.eq(platform_id))
-        .order_by(platform_moderators::created_at.desc())
-        .limit(limit)
-        .offset(offset)
-        .select((
-            platform_moderators::moderator_address,
-            platform_moderators::added_by,
-            platform_moderators::created_at,
-        ))
-        .load::<(String, String, chrono::NaiveDateTime)>(&mut conn)
-        .await?;
-    Ok(results
+    #[derive(diesel::QueryableByName)]
+    struct Row {
+        #[diesel(sql_type = diesel::sql_types::Text)]
+        moderator_address: String,
+        #[diesel(sql_type = diesel::sql_types::Text)]
+        added_by: String,
+        #[diesel(sql_type = diesel::sql_types::Timestamp)]
+        created_at: chrono::NaiveDateTime,
+        #[diesel(sql_type = diesel::sql_types::Jsonb)]
+        permissions: JsonValue,
+    }
+    let query = if permission_filter.is_some() {
+        "
+        SELECT
+            m.moderator_address,
+            m.added_by,
+            m.created_at,
+            COALESCE(
+                json_agg(p.permission_type ORDER BY p.permission_type)
+                    FILTER (WHERE p.revoked_at IS NULL),
+                '[]'::json
+            ) AS permissions
+        FROM platform_moderators m
+        INNER JOIN platform_moderator_permissions p
+            ON p.platform_id = m.platform_id
+           AND p.moderator_address = m.moderator_address
+           AND p.revoked_at IS NULL
+           AND p.permission_type = $4
+        WHERE m.platform_id = $1
+        GROUP BY m.moderator_address, m.added_by, m.created_at
+        ORDER BY m.created_at DESC
+        LIMIT $2 OFFSET $3
+    "
+    } else {
+        "
+        SELECT
+            m.moderator_address,
+            m.added_by,
+            m.created_at,
+            COALESCE(
+                json_agg(p.permission_type ORDER BY p.permission_type)
+                    FILTER (WHERE p.revoked_at IS NULL),
+                '[]'::json
+            ) AS permissions
+        FROM platform_moderators m
+        LEFT JOIN platform_moderator_permissions p
+            ON p.platform_id = m.platform_id
+           AND p.moderator_address = m.moderator_address
+        WHERE m.platform_id = $1
+        GROUP BY m.moderator_address, m.added_by, m.created_at
+        ORDER BY m.created_at DESC
+        LIMIT $2 OFFSET $3
+    "
+    };
+    let rows = if let Some(filter) = permission_filter {
+        diesel::sql_query(query)
+            .bind::<diesel::sql_types::Text, _>(platform_id)
+            .bind::<diesel::sql_types::BigInt, _>(limit)
+            .bind::<diesel::sql_types::BigInt, _>(offset)
+            .bind::<diesel::sql_types::Text, _>(filter)
+            .load::<Row>(&mut conn)
+            .await?
+    } else {
+        diesel::sql_query(query)
+            .bind::<diesel::sql_types::Text, _>(platform_id)
+            .bind::<diesel::sql_types::BigInt, _>(limit)
+            .bind::<diesel::sql_types::BigInt, _>(offset)
+            .load::<Row>(&mut conn)
+            .await?
+    };
+    Ok(rows
         .into_iter()
-        .map(
-            |(moderator_address, added_by, created_at)| PlatformModeratorRow {
-                moderator_address,
-                added_by,
-                created_at,
-            },
-        )
+        .map(|r| PlatformModeratorRow {
+            moderator_address: r.moderator_address,
+            added_by: r.added_by,
+            created_at: r.created_at,
+            permissions: serde_json::from_value(r.permissions).unwrap_or_default(),
+        })
         .collect())
+}
+
+pub(crate) async fn get_platform_user_access(
+    db: &Db,
+    platform_id: &str,
+    user_address: &str,
+) -> Result<PlatformUserAccessRow, SocialError> {
+    require_active_platform(db, platform_id).await?;
+    let mut conn = db.connect().await?;
+    #[derive(diesel::QueryableByName)]
+    struct Row {
+        #[diesel(sql_type = diesel::sql_types::Bool)]
+        is_member: bool,
+        #[diesel(sql_type = diesel::sql_types::Bool)]
+        is_blocked: bool,
+        #[diesel(sql_type = diesel::sql_types::Bool)]
+        is_moderator: bool,
+        #[diesel(sql_type = diesel::sql_types::Jsonb)]
+        moderator_permissions: JsonValue,
+    }
+    let row = diesel::sql_query(
+        "SELECT
+            EXISTS(
+                SELECT 1 FROM platform_memberships
+                WHERE platform_id = $1 AND wallet_address = $2
+            ) AS is_member,
+            EXISTS(
+                SELECT 1 FROM platform_blocked_profiles
+                WHERE platform_id = $1 AND wallet_address = $2
+            ) AS is_blocked,
+            (
+                EXISTS(
+                    SELECT 1 FROM platform_moderators
+                    WHERE platform_id = $1 AND moderator_address = $2
+                )
+                OR EXISTS(
+                    SELECT 1 FROM platforms
+                    WHERE platform_id = $1 AND developer_address = $2
+                )
+            ) AS is_moderator,
+            COALESCE((
+                SELECT json_agg(DISTINCT p.permission_type ORDER BY p.permission_type)
+                FROM platform_moderator_permissions p
+                WHERE p.platform_id = $1
+                  AND p.moderator_address = $2
+                  AND p.revoked_at IS NULL
+            ), '[]'::json) AS moderator_permissions",
+    )
+    .bind::<diesel::sql_types::Text, _>(platform_id)
+    .bind::<diesel::sql_types::Text, _>(user_address)
+    .get_result::<Row>(&mut conn)
+    .await?;
+    Ok(PlatformUserAccessRow::from_db(
+        row.is_member,
+        row.is_blocked,
+        row.is_moderator,
+        row.moderator_permissions,
+    ))
 }
 
 pub(crate) async fn get_platform_approval(
     db: &Db,
     platform_id: &str,
 ) -> Result<Option<PlatformApprovalRow>, SocialError> {
+    use diesel::ExpressionMethods;
+    use diesel::OptionalExtension;
+    use diesel::QueryDsl;
     let mut conn = db.connect().await?;
-    let result = platforms::table
+    let row = platforms::table
         .filter(platforms::platform_id.eq(platform_id))
         .filter(platforms::deleted_at.is_null())
         .select((
@@ -130,7 +262,7 @@ pub(crate) async fn get_platform_approval(
         .first::<(bool, Option<chrono::NaiveDateTime>, Option<String>)>(&mut conn)
         .await
         .optional()?;
-    Ok(result.map(
+    Ok(row.map(
         |(is_approved, approval_changed_at, approved_by)| PlatformApprovalRow {
             is_approved,
             approval_changed_at,
@@ -145,6 +277,8 @@ pub(crate) async fn get_platform_blocked_profiles(
     limit: i64,
     offset: i64,
 ) -> Result<Vec<PlatformBlockedProfileRow>, SocialError> {
+    use diesel::ExpressionMethods;
+    use diesel::QueryDsl;
     require_active_platform(db, platform_id).await?;
     let mut conn = db.connect().await?;
     let results = platform_blocked_profiles::table
@@ -177,6 +311,8 @@ pub(crate) async fn get_platform_members(
     limit: i64,
     offset: i64,
 ) -> Result<Vec<PlatformMemberRow>, SocialError> {
+    use diesel::ExpressionMethods;
+    use diesel::QueryDsl;
     require_active_platform(db, platform_id).await?;
     let mut conn = db.connect().await?;
     let results = platform_memberships::table
@@ -204,6 +340,8 @@ pub(crate) async fn check_platform_membership(
     platform_id: &str,
     profile_address: &str,
 ) -> Result<bool, SocialError> {
+    use diesel::ExpressionMethods;
+    use diesel::QueryDsl;
     require_active_platform(db, platform_id).await?;
     let mut conn = db.connect().await?;
     let count: i64 = platform_memberships::table
@@ -221,6 +359,8 @@ pub(crate) async fn get_platform_events(
     limit: i64,
     offset: i64,
 ) -> Result<(Vec<PlatformEventRow>, i64), SocialError> {
+    use diesel::ExpressionMethods;
+    use diesel::QueryDsl;
     require_active_platform(db, platform_id).await?;
     let mut conn = db.connect().await?;
     let total: i64 = platform_events::table
@@ -244,7 +384,7 @@ pub(crate) async fn get_platform_events(
         .load::<(
             String,
             String,
-            serde_json::Value,
+            JsonValue,
             Option<String>,
             chrono::NaiveDateTime,
             Option<String>,

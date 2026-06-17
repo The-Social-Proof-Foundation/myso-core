@@ -8,8 +8,30 @@ use super::common;
 use super::SocialEventRow;
 use myso_indexer_alt_social_schema::models::{
     NewPlatform, NewPlatformBlockedProfile, NewPlatformEvent, NewPlatformMembership,
-    NewPlatformModerator, NewPlatformTokenAirdrop,
+    NewPlatformModerator, NewPlatformModeratorPermission, NewPlatformTokenAirdrop,
 };
+use myso_indexer_alt_social_schema::platform_permissions::ALL_MODERATOR_EXTENSION_PERMISSIONS;
+
+fn normalize_platform_permission(name: &str) -> Option<&'static str> {
+    myso_indexer_alt_social_schema::platform_permissions::normalize_platform_permission(name)
+}
+
+fn permission_grant_row(
+    platform_id: &str,
+    moderator_address: &str,
+    permission_type: &str,
+    granted_by: &str,
+    granted_at: chrono::NaiveDateTime,
+) -> NewPlatformModeratorPermission {
+    NewPlatformModeratorPermission {
+        platform_id: platform_id.to_string(),
+        moderator_address: moderator_address.to_string(),
+        permission_type: permission_type.to_string(),
+        granted_by: granted_by.to_string(),
+        granted_at,
+        revoked_at: None,
+    }
+}
 
 fn de_u64<'de, D>(d: D) -> Result<u64, D::Error>
 where
@@ -124,6 +146,8 @@ struct PlatformCreatedEvent {
     voting_period_epochs: Option<u64>,
     #[serde(default, deserialize_with = "de_opt_u64")]
     quorum_votes: Option<u64>,
+    #[serde(default)]
+    moderators_group_id: Option<String>,
 }
 
 #[derive(Debug, Deserialize)]
@@ -167,16 +191,31 @@ struct PlatformApprovalChangedEvent {
 }
 
 #[derive(Debug, Deserialize)]
-struct ModeratorAddedEvent {
+struct ModeratorPermissionsGrantedEvent {
     platform_id: String,
-    moderator_address: String,
-    added_by: String,
+    #[serde(default, rename = "moderators_group_id")]
+    _moderators_group_id: Option<String>,
+    member: String,
+    permissions: Vec<String>,
+    granted_by: String,
+}
+
+#[derive(Debug, Deserialize)]
+struct ModeratorPermissionsRevokedEvent {
+    platform_id: String,
+    #[serde(default, rename = "moderators_group_id")]
+    _moderators_group_id: Option<String>,
+    member: String,
+    permissions: Vec<String>,
+    _revoked_by: String,
 }
 
 #[derive(Debug, Deserialize)]
 struct ModeratorRemovedEvent {
     platform_id: String,
-    moderator_address: String,
+    #[serde(default, rename = "moderators_group_id")]
+    _moderators_group_id: Option<String>,
+    member: String,
     _removed_by: String,
 }
 
@@ -257,7 +296,12 @@ pub fn handle_platform_event(
         "PlatformApprovalChangedEvent" | "ApprovalChangedEvent" => {
             process_platform_approval_changed_event(data, event_id)
         }
-        "ModeratorAddedEvent" => process_moderator_added_event(data, event_id),
+        "ModeratorPermissionsGrantedEvent" => {
+            process_moderator_permissions_granted_event(data, event_id)
+        }
+        "ModeratorPermissionsRevokedEvent" => {
+            process_moderator_permissions_revoked_event(data, event_id)
+        }
         "ModeratorRemovedEvent" => process_moderator_removed_event(data, event_id),
         "PlatformBlockedProfileEvent" => process_platform_blocked_profile_event(data, event_id),
         "PlatformUnblockedProfileEvent" => process_platform_unblocked_profile_event(data, event_id),
@@ -350,7 +394,8 @@ fn process_platform_created_event(
         media_previews: ev
             .media_previews
             .map(|v| serde_json::to_value(&v).unwrap_or_default()),
-        developer_address: developer,
+        developer_address: developer.clone(),
+        moderators_group_id: ev.moderators_group_id.clone(),
         terms_of_service: Some(ev.terms_of_service),
         privacy_policy: Some(ev.privacy_policy),
         platform_names: Some(serde_json::to_value(&ev.platforms).unwrap_or_default()),
@@ -380,18 +425,30 @@ fn process_platform_created_event(
 
     let platform_event = NewPlatformEvent {
         event_type: "PlatformCreated".to_string(),
-        platform_id: ev.platform_id,
+        platform_id: ev.platform_id.clone(),
         event_data: data.clone(),
         event_id: Some(event_id.to_string()),
         created_at: now,
         reasoning: None,
     };
 
-    Some(vec![
+    let mut rows = vec![
         SocialEventRow::Platform(platform),
         SocialEventRow::PlatformModerator(moderator),
-        SocialEventRow::PlatformEvent(platform_event),
-    ])
+    ];
+    for permission_type in ALL_MODERATOR_EXTENSION_PERMISSIONS {
+        rows.push(SocialEventRow::PlatformModeratorPermissionGrant(
+            permission_grant_row(
+                &ev.platform_id,
+                &developer,
+                permission_type,
+                &developer,
+                now,
+            ),
+        ));
+    }
+    rows.push(SocialEventRow::PlatformEvent(platform_event));
+    Some(rows)
 }
 
 fn process_platform_updated_event(
@@ -478,39 +535,98 @@ fn process_platform_approval_changed_event(
     ])
 }
 
-fn process_moderator_added_event(
+fn process_moderator_permissions_granted_event(
     data: &serde_json::Value,
     event_id: &str,
 ) -> Option<Vec<SocialEventRow>> {
-    let ev: ModeratorAddedEvent = common::deserialize_social_event_json(
+    let ev: ModeratorPermissionsGrantedEvent = common::deserialize_social_event_json(
         "platform",
-        "ModeratorAddedEvent",
+        "ModeratorPermissionsGrantedEvent",
         event_id,
         data,
-        "platform ModeratorAddedEvent JSON did not match ModeratorAddedEvent",
+        "platform ModeratorPermissionsGrantedEvent JSON did not match ModeratorPermissionsGrantedEvent",
     )?;
     let now = Utc::now().naive_utc();
-
-    let moderator = NewPlatformModerator {
+    let mut rows = vec![SocialEventRow::PlatformModerator(NewPlatformModerator {
         platform_id: ev.platform_id.clone(),
-        moderator_address: ev.moderator_address,
-        added_by: ev.added_by,
+        moderator_address: ev.member.clone(),
+        added_by: ev.granted_by.clone(),
         created_at: now,
-    };
+    })];
+    let mut valid_permissions = Vec::new();
+    for permission in &ev.permissions {
+        if let Some(permission_type) = normalize_platform_permission(permission) {
+            valid_permissions.push(permission_type.to_string());
+            rows.push(SocialEventRow::PlatformModeratorPermissionGrant(
+                permission_grant_row(
+                    &ev.platform_id,
+                    &ev.member,
+                    permission_type,
+                    &ev.granted_by,
+                    now,
+                ),
+            ));
+        } else {
+            tracing::warn!(
+                event_id,
+                permission,
+                "skipping unknown platform moderator permission"
+            );
+        }
+    }
+    if !valid_permissions.is_empty() {
+        rows.push(SocialEventRow::PlatformEvent(NewPlatformEvent {
+            event_type: "ModeratorPermissionsGranted".to_string(),
+            platform_id: ev.platform_id,
+            event_data: data.clone(),
+            event_id: Some(event_id.to_string()),
+            created_at: now,
+            reasoning: None,
+        }));
+    }
+    Some(rows)
+}
 
-    let platform_event = NewPlatformEvent {
-        event_type: "ModeratorAdded".to_string(),
-        platform_id: ev.platform_id,
-        event_data: data.clone(),
-        event_id: Some(event_id.to_string()),
-        created_at: now,
-        reasoning: None,
-    };
-
-    Some(vec![
-        SocialEventRow::PlatformModerator(moderator),
-        SocialEventRow::PlatformEvent(platform_event),
-    ])
+fn process_moderator_permissions_revoked_event(
+    data: &serde_json::Value,
+    event_id: &str,
+) -> Option<Vec<SocialEventRow>> {
+    let ev: ModeratorPermissionsRevokedEvent = common::deserialize_social_event_json(
+        "platform",
+        "ModeratorPermissionsRevokedEvent",
+        event_id,
+        data,
+        "platform ModeratorPermissionsRevokedEvent JSON did not match ModeratorPermissionsRevokedEvent",
+    )?;
+    let now = Utc::now().naive_utc();
+    let mut rows = Vec::new();
+    for permission in &ev.permissions {
+        if let Some(permission_type) = normalize_platform_permission(permission) {
+            rows.push(SocialEventRow::PlatformModeratorPermissionRevoke {
+                platform_id: ev.platform_id.clone(),
+                moderator_address: ev.member.clone(),
+                permission_type: permission_type.to_string(),
+                revoked_at: now,
+            });
+        } else {
+            tracing::warn!(
+                event_id,
+                permission,
+                "skipping unknown platform moderator permission revoke"
+            );
+        }
+    }
+    if !rows.is_empty() {
+        rows.push(SocialEventRow::PlatformEvent(NewPlatformEvent {
+            event_type: "ModeratorPermissionsRevoked".to_string(),
+            platform_id: ev.platform_id,
+            event_data: data.clone(),
+            event_id: Some(event_id.to_string()),
+            created_at: now,
+            reasoning: None,
+        }));
+    }
+    Some(rows)
 }
 
 fn process_moderator_removed_event(
@@ -534,11 +650,16 @@ fn process_moderator_removed_event(
         reasoning: None,
     };
     Some(vec![
-        SocialEventRow::PlatformEvent(platform_event),
+        SocialEventRow::PlatformModeratorPermissionRevokeAll {
+            platform_id: ev.platform_id.clone(),
+            moderator_address: ev.member.clone(),
+            revoked_at: now,
+        },
         SocialEventRow::PlatformModeratorRemove {
             platform_id: ev.platform_id,
-            moderator_address: ev.moderator_address,
+            moderator_address: ev.member,
         },
+        SocialEventRow::PlatformEvent(platform_event),
     ])
 }
 

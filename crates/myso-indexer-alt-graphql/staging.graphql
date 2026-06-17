@@ -4328,6 +4328,10 @@ type Platform implements Node {
 	"""
 	developerAddress: String!
 	"""
+	Derived PermissionedGroup object id for platform moderators.
+	"""
+	moderatorsGroupId: String
+	"""
 	Profile of the platform developer.
 	"""
 	developerProfile: ProfileSummary
@@ -4366,7 +4370,7 @@ type Platform implements Node {
 	"""
 	Moderators of this platform (paginated).
 	"""
-	moderators(limit: Int, offset: Int): [PlatformModeratorSummary!]
+	moderators(permission: String, limit: Int, offset: Int): [PlatformModeratorSummary!]
 	"""
 	The platform name.
 	"""
@@ -4489,6 +4493,10 @@ type PlatformMembershipSummary {
 	description: String
 	developerAddress: String!
 	"""
+	Derived PermissionedGroup object id for platform moderators.
+	"""
+	moderatorsGroupId: String
+	"""
 	Profile of the platform developer (optional; loads via social reader when selected).
 	"""
 	developerProfile: ProfileSummary
@@ -4560,6 +4568,10 @@ type PlatformModeratorSummary {
 	Profile of the moderator.
 	"""
 	moderatorProfile: ProfileSummary
+	"""
+	Active granular moderator permissions.
+	"""
+	permissions: [String!]!
 }
 
 type PlatformRevenueSummary {
@@ -4622,6 +4634,15 @@ type PlatformUserAccess {
 	Whether the wallet is a moderator of this platform.
 	"""
 	isModerator: Boolean!
+	"""
+	Active granular moderator permissions for this wallet.
+	"""
+	moderatorPermissions: [String!]!
+	canBlockUsers: Boolean!
+	canModerateContent: Boolean!
+	canManageBadges: Boolean!
+	canAirdropTreasury: Boolean!
+	canManagePromotions: Boolean!
 }
 
 type PocAnalysisResult {

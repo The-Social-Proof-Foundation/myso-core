@@ -20,7 +20,7 @@ pub struct PlatformBlockedProfileRow {
     pub created_at: NaiveDateTime,
 }
 
-/// Membership, block, and moderator flags for a wallet on a platform (one DB round-trip).
+/// Membership, block, moderator flags, and active permission list for a wallet on a platform.
 #[derive(Debug, Clone, QueryableByName)]
 pub struct PlatformUserAccessRow {
     #[diesel(sql_type = Bool)]
@@ -29,6 +29,44 @@ pub struct PlatformUserAccessRow {
     pub is_blocked: bool,
     #[diesel(sql_type = Bool)]
     pub is_moderator: bool,
+    #[diesel(sql_type = diesel::sql_types::Jsonb)]
+    pub moderator_permissions: JsonValue,
+}
+
+impl PlatformUserAccessRow {
+    pub fn permissions(&self) -> Vec<String> {
+        serde_json::from_value(self.moderator_permissions.clone()).unwrap_or_default()
+    }
+
+    pub fn can_block_users(&self) -> bool {
+        self.permissions()
+            .iter()
+            .any(|p| p == myso_indexer_alt_social_schema::platform_permissions::PLATFORM_BLOCK_ADMIN)
+    }
+
+    pub fn can_moderate_content(&self) -> bool {
+        self.permissions().iter().any(|p| {
+            p == myso_indexer_alt_social_schema::platform_permissions::PLATFORM_CONTENT_MODERATOR
+        })
+    }
+
+    pub fn can_manage_badges(&self) -> bool {
+        self.permissions()
+            .iter()
+            .any(|p| p == myso_indexer_alt_social_schema::platform_permissions::PLATFORM_BADGE_ADMIN)
+    }
+
+    pub fn can_airdrop_treasury(&self) -> bool {
+        self.permissions().iter().any(|p| {
+            p == myso_indexer_alt_social_schema::platform_permissions::PLATFORM_TREASURY_ADMIN
+        })
+    }
+
+    pub fn can_manage_promotions(&self) -> bool {
+        self.permissions().iter().any(|p| {
+            p == myso_indexer_alt_social_schema::platform_permissions::PLATFORM_PROMOTION_ADMIN
+        })
+    }
 }
 
 #[derive(Debug, Clone, QueryableByName)]
@@ -49,6 +87,8 @@ pub struct PlatformRow {
     pub media_previews: Option<JsonValue>,
     #[diesel(sql_type = Text)]
     pub developer_address: String,
+    #[diesel(sql_type = Nullable<Text>)]
+    pub moderators_group_id: Option<String>,
     #[diesel(sql_type = SmallInt)]
     pub status: i16,
     #[diesel(sql_type = Bool)]
@@ -102,7 +142,7 @@ pub(crate) async fn get_platform_by_id(
     let _guard = metrics.latency.start_timer();
     let result = diesel::sql_query(
         "SELECT p.platform_id, p.name, p.tagline, p.description, p.logo, p.cover_photo, p.media_previews,
-                p.developer_address,
+                p.developer_address, p.moderators_group_id,
                 p.status, p.is_approved, p.primary_category, p.secondary_category, p.created_at, p.updated_at,
                 p.terms_of_service, p.privacy_policy, p.links, p.platforms AS platform_names, p.release_date, p.shutdown_date,
                 p.wants_dao_governance, p.governance_registry_id, p.delegate_count,
@@ -129,7 +169,7 @@ pub(crate) async fn get_platform_by_registry_id(
     let _guard = metrics.latency.start_timer();
     let result = diesel::sql_query(
         "SELECT p.platform_id, p.name, p.tagline, p.description, p.logo, p.cover_photo, p.media_previews,
-                p.developer_address,
+                p.developer_address, p.moderators_group_id,
                 p.status, p.is_approved, p.primary_category, p.secondary_category, p.created_at, p.updated_at,
                 p.terms_of_service, p.privacy_policy, p.links, p.platforms AS platform_names, p.release_date, p.shutdown_date,
                 p.wants_dao_governance, p.governance_registry_id, p.delegate_count,
@@ -158,7 +198,7 @@ pub(crate) async fn list_platforms(
     let _guard = metrics.latency.start_timer();
     let query = "
         SELECT p.platform_id, p.name, p.tagline, p.description, p.logo, p.cover_photo, p.media_previews,
-               p.developer_address,
+               p.developer_address, p.moderators_group_id,
                p.status, p.is_approved, p.primary_category, p.secondary_category, p.created_at, p.updated_at,
                p.terms_of_service, p.privacy_policy, p.links, p.platforms AS platform_names, p.release_date, p.shutdown_date,
                p.wants_dao_governance, p.governance_registry_id, p.delegate_count,
@@ -264,10 +304,17 @@ pub(crate) async fn get_platform_members(
 pub(crate) async fn get_platform_moderators(
     conn: &mut Connection<'_>,
     platform_id: &str,
+    permission_filter: Option<&str>,
     limit: i64,
     offset: i64,
     metrics: &DbReaderMetrics,
 ) -> anyhow::Result<Vec<PlatformModeratorRow>> {
+    if let Some(filter) = permission_filter {
+        if !myso_indexer_alt_social_schema::platform_permissions::is_valid_moderator_permission(filter)
+        {
+            anyhow::bail!("invalid platform moderator permission filter: {filter}");
+        }
+    }
     metrics.requests_received.inc();
     let _guard = metrics.latency.start_timer();
     #[derive(QueryableByName)]
@@ -278,20 +325,68 @@ pub(crate) async fn get_platform_moderators(
         added_by: String,
         #[diesel(sql_type = Timestamp)]
         created_at: NaiveDateTime,
+        #[diesel(sql_type = diesel::sql_types::Jsonb)]
+        permissions: JsonValue,
     }
-    let query = "
-        SELECT moderator_address, added_by, created_at
-        FROM platform_moderators
-        WHERE platform_id = $1
-        ORDER BY created_at DESC
+    let query = if permission_filter.is_some() {
+        "
+        SELECT
+            m.moderator_address,
+            m.added_by,
+            m.created_at,
+            COALESCE(
+                json_agg(p.permission_type ORDER BY p.permission_type)
+                    FILTER (WHERE p.revoked_at IS NULL),
+                '[]'::json
+            ) AS permissions
+        FROM platform_moderators m
+        INNER JOIN platform_moderator_permissions p
+            ON p.platform_id = m.platform_id
+           AND p.moderator_address = m.moderator_address
+           AND p.revoked_at IS NULL
+           AND p.permission_type = $4
+        WHERE m.platform_id = $1
+        GROUP BY m.moderator_address, m.added_by, m.created_at
+        ORDER BY m.created_at DESC
         LIMIT $2 OFFSET $3
-    ";
-    let rows = diesel::sql_query(query)
-        .bind::<Text, _>(platform_id)
-        .bind::<BigInt, _>(limit)
-        .bind::<BigInt, _>(offset)
-        .load::<Row>(conn)
-        .await?;
+    "
+    } else {
+        "
+        SELECT
+            m.moderator_address,
+            m.added_by,
+            m.created_at,
+            COALESCE(
+                json_agg(p.permission_type ORDER BY p.permission_type)
+                    FILTER (WHERE p.revoked_at IS NULL),
+                '[]'::json
+            ) AS permissions
+        FROM platform_moderators m
+        LEFT JOIN platform_moderator_permissions p
+            ON p.platform_id = m.platform_id
+           AND p.moderator_address = m.moderator_address
+        WHERE m.platform_id = $1
+        GROUP BY m.moderator_address, m.added_by, m.created_at
+        ORDER BY m.created_at DESC
+        LIMIT $2 OFFSET $3
+    "
+    };
+    let rows = if let Some(filter) = permission_filter {
+        diesel::sql_query(query)
+            .bind::<Text, _>(platform_id)
+            .bind::<BigInt, _>(limit)
+            .bind::<BigInt, _>(offset)
+            .bind::<Text, _>(filter)
+            .load::<Row>(conn)
+            .await?
+    } else {
+        diesel::sql_query(query)
+            .bind::<Text, _>(platform_id)
+            .bind::<BigInt, _>(limit)
+            .bind::<BigInt, _>(offset)
+            .load::<Row>(conn)
+            .await?
+    };
     metrics.requests_succeeded.inc();
     Ok(rows
         .into_iter()
@@ -299,6 +394,7 @@ pub(crate) async fn get_platform_moderators(
             moderator_address: r.moderator_address,
             added_by: r.added_by,
             created_at: r.created_at,
+            permissions: serde_json::from_value(r.permissions).unwrap_or_default(),
         })
         .collect())
 }
@@ -321,10 +417,23 @@ pub(crate) async fn get_platform_user_access(
                 SELECT 1 FROM platform_blocked_profiles
                 WHERE platform_id = $1 AND wallet_address = $2
             ) AS is_blocked,
-            EXISTS(
-                SELECT 1 FROM platform_moderators
-                WHERE platform_id = $1 AND moderator_address = $2
-            ) AS is_moderator",
+            (
+                EXISTS(
+                    SELECT 1 FROM platform_moderators
+                    WHERE platform_id = $1 AND moderator_address = $2
+                )
+                OR EXISTS(
+                    SELECT 1 FROM platforms
+                    WHERE platform_id = $1 AND developer_address = $2
+                )
+            ) AS is_moderator,
+            COALESCE((
+                SELECT json_agg(DISTINCT p.permission_type ORDER BY p.permission_type)
+                FROM platform_moderator_permissions p
+                WHERE p.platform_id = $1
+                  AND p.moderator_address = $2
+                  AND p.revoked_at IS NULL
+            ), '[]'::json) AS moderator_permissions",
     )
     .bind::<Text, _>(platform_id)
     .bind::<Text, _>(user_address)

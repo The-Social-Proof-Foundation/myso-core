@@ -205,6 +205,25 @@ pub struct PlatformsQuery {
 }
 
 #[derive(Debug, Deserialize)]
+pub struct ModeratorsQuery {
+    pub permission: Option<String>,
+    pub limit: Option<i64>,
+    pub offset: Option<i64>,
+    pub page: Option<i64>,
+}
+
+impl ModeratorsQuery {
+    pub fn limit(&self) -> i64 {
+        self.limit.unwrap_or(20).min(100)
+    }
+
+    pub fn offset(&self) -> i64 {
+        self.offset
+            .unwrap_or_else(|| (self.page.unwrap_or(1).max(1) - 1) * self.limit())
+    }
+}
+
+#[derive(Debug, Deserialize)]
 pub struct PostsQuery {
     pub owner: Option<String>,
     pub post_type: Option<String>,
@@ -448,6 +467,10 @@ fn make_router(state: Arc<AppState>) -> Router {
         .route("/platforms/approved", get(list_platforms_approved))
         .route("/platforms/:id", get(get_platform_by_id))
         .route("/platforms/:id/moderators", get(get_platform_moderators))
+        .route(
+            "/platforms/:id/user-access/:user_address",
+            get(get_platform_user_access),
+        )
         .route("/platforms/:id/approval", get(get_platform_approval))
         .route("/platforms/:id/blocked", get(get_platform_blocked))
         .route("/platforms/:id/members", get(get_platform_members))

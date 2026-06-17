@@ -1908,6 +1908,33 @@ pub struct BcsPlatformCreatedEvent {
     quadratic_base_cost: Option<u64>,
     voting_period_epochs: Option<u64>,
     quorum_votes: Option<u64>,
+    moderators_group_id: BcsMoveObjectId,
+}
+
+#[derive(Debug, Deserialize)]
+pub struct BcsModeratorPermissionsGrantedEvent {
+    platform_id: AccountAddress,
+    moderators_group_id: BcsMoveObjectId,
+    member: AccountAddress,
+    permissions: Vec<String>,
+    granted_by: AccountAddress,
+}
+
+#[derive(Debug, Deserialize)]
+pub struct BcsModeratorPermissionsRevokedEvent {
+    platform_id: AccountAddress,
+    moderators_group_id: BcsMoveObjectId,
+    member: AccountAddress,
+    permissions: Vec<String>,
+    revoked_by: AccountAddress,
+}
+
+#[derive(Debug, Deserialize)]
+pub struct BcsModeratorRemovedEvent {
+    platform_id: AccountAddress,
+    moderators_group_id: BcsMoveObjectId,
+    member: AccountAddress,
+    removed_by: AccountAddress,
 }
 
 #[derive(Debug, Deserialize)]
@@ -1937,20 +1964,6 @@ pub struct BcsPlatformApprovalChangedEvent {
     approved: bool,
     changed_by: AccountAddress,
     reasoning: Option<String>,
-}
-
-#[derive(Debug, Deserialize)]
-pub struct BcsModeratorAddedEvent {
-    platform_id: AccountAddress,
-    moderator_address: AccountAddress,
-    added_by: AccountAddress,
-}
-
-#[derive(Debug, Deserialize)]
-pub struct BcsModeratorRemovedEvent {
-    platform_id: AccountAddress,
-    moderator_address: AccountAddress,
-    removed_by: AccountAddress,
 }
 
 #[derive(Debug, Deserialize, Serialize)]
@@ -2962,6 +2975,7 @@ fn parse_platform_event(
                 "quadratic_base_cost": ev.quadratic_base_cost,
                 "voting_period_epochs": ev.voting_period_epochs,
                 "quorum_votes": ev.quorum_votes,
+                "moderators_group_id": move_object_id_to_string(&ev.moderators_group_id),
             })))
         }
         "PlatformUpdatedEvent" => {
@@ -2997,13 +3011,26 @@ fn parse_platform_event(
                 "reasoning": ev.reasoning,
             })))
         }
-        "ModeratorAddedEvent" => {
-            let ev = bcs::from_bytes::<BcsModeratorAddedEvent>(contents)
+        "ModeratorPermissionsGrantedEvent" => {
+            let ev = bcs::from_bytes::<BcsModeratorPermissionsGrantedEvent>(contents)
                 .map_err(|e| bcs_parse_err(e, contents))?;
             Ok(Some(serde_json::json!({
                 "platform_id": addr_to_string(&ev.platform_id),
-                "moderator_address": addr_to_string(&ev.moderator_address),
-                "added_by": addr_to_string(&ev.added_by),
+                "moderators_group_id": move_object_id_to_string(&ev.moderators_group_id),
+                "member": addr_to_string(&ev.member),
+                "permissions": ev.permissions,
+                "granted_by": addr_to_string(&ev.granted_by),
+            })))
+        }
+        "ModeratorPermissionsRevokedEvent" => {
+            let ev = bcs::from_bytes::<BcsModeratorPermissionsRevokedEvent>(contents)
+                .map_err(|e| bcs_parse_err(e, contents))?;
+            Ok(Some(serde_json::json!({
+                "platform_id": addr_to_string(&ev.platform_id),
+                "moderators_group_id": move_object_id_to_string(&ev.moderators_group_id),
+                "member": addr_to_string(&ev.member),
+                "permissions": ev.permissions,
+                "revoked_by": addr_to_string(&ev.revoked_by),
             })))
         }
         "ModeratorRemovedEvent" => {
@@ -3011,7 +3038,8 @@ fn parse_platform_event(
                 .map_err(|e| bcs_parse_err(e, contents))?;
             Ok(Some(serde_json::json!({
                 "platform_id": addr_to_string(&ev.platform_id),
-                "moderator_address": addr_to_string(&ev.moderator_address),
+                "moderators_group_id": move_object_id_to_string(&ev.moderators_group_id),
+                "member": addr_to_string(&ev.member),
                 "removed_by": addr_to_string(&ev.removed_by),
             })))
         }

@@ -16,11 +16,11 @@ use myso_indexer_alt_framework::types::full_checkpoint_content::Checkpoint;
 use myso_indexer_alt_framework::FieldCount;
 use myso_indexer_alt_social_schema::models::{
     NewPlatform, NewPlatformBlockedProfile, NewPlatformEvent, NewPlatformMembership,
-    NewPlatformModerator, NewPlatformTokenAirdrop,
+    NewPlatformModerator, NewPlatformModeratorPermission, NewPlatformTokenAirdrop,
 };
 use myso_indexer_alt_social_schema::schema::{
-    platform_blocked_profiles, platform_events, platform_memberships, platform_moderators,
-    platform_token_airdrops, platforms,
+    platform_blocked_profiles, platform_events, platform_memberships, platform_moderator_permissions,
+    platform_moderators, platform_token_airdrops, platforms,
 };
 
 use super::common;
@@ -61,6 +61,18 @@ pub enum PlatformRow {
     PlatformModeratorRemove {
         platform_id: String,
         moderator_address: String,
+    },
+    PlatformModeratorPermissionGrant(NewPlatformModeratorPermission),
+    PlatformModeratorPermissionRevoke {
+        platform_id: String,
+        moderator_address: String,
+        permission_type: String,
+        revoked_at: chrono::NaiveDateTime,
+    },
+    PlatformModeratorPermissionRevokeAll {
+        platform_id: String,
+        moderator_address: String,
+        revoked_at: chrono::NaiveDateTime,
     },
     PlatformBlockedProfile(NewPlatformBlockedProfile),
     PlatformBlockedProfileRemove {
@@ -142,6 +154,29 @@ impl PlatformRow {
                 platform_id,
                 moderator_address,
             }),
+            crate::handlers::SocialEventRow::PlatformModeratorPermissionGrant(p) => {
+                Some(PlatformRow::PlatformModeratorPermissionGrant(p))
+            }
+            crate::handlers::SocialEventRow::PlatformModeratorPermissionRevoke {
+                platform_id,
+                moderator_address,
+                permission_type,
+                revoked_at,
+            } => Some(PlatformRow::PlatformModeratorPermissionRevoke {
+                platform_id,
+                moderator_address,
+                permission_type,
+                revoked_at,
+            }),
+            crate::handlers::SocialEventRow::PlatformModeratorPermissionRevokeAll {
+                platform_id,
+                moderator_address,
+                revoked_at,
+            } => Some(PlatformRow::PlatformModeratorPermissionRevokeAll {
+                platform_id,
+                moderator_address,
+                revoked_at,
+            }),
             crate::handlers::SocialEventRow::PlatformBlockedProfile(b) => {
                 Some(PlatformRow::PlatformBlockedProfile(b))
             }
@@ -181,7 +216,7 @@ impl PlatformRow {
 }
 
 impl FieldCount for PlatformRow {
-    const FIELD_COUNT: usize = 25;
+    const FIELD_COUNT: usize = 28;
 }
 
 pub struct PlatformHandler;
@@ -329,6 +364,63 @@ impl Handler for PlatformHandler {
                     let _ = diesel::delete(platform_moderators::table)
                         .filter(platform_moderators::platform_id.eq(platform_id))
                         .filter(platform_moderators::moderator_address.eq(moderator_address))
+                        .execute(conn)
+                        .await;
+                }
+                PlatformRow::PlatformModeratorPermissionGrant(p) => {
+                    total += diesel::insert_into(platform_moderator_permissions::table)
+                        .values(p)
+                        .on_conflict((
+                            platform_moderator_permissions::platform_id,
+                            platform_moderator_permissions::moderator_address,
+                            platform_moderator_permissions::permission_type,
+                        ))
+                        .do_update()
+                        .set((
+                            platform_moderator_permissions::revoked_at.eq(None::<chrono::NaiveDateTime>),
+                            platform_moderator_permissions::granted_by
+                                .eq(diesel::upsert::excluded(
+                                    platform_moderator_permissions::granted_by,
+                                )),
+                            platform_moderator_permissions::granted_at
+                                .eq(diesel::upsert::excluded(
+                                    platform_moderator_permissions::granted_at,
+                                )),
+                        ))
+                        .execute(conn)
+                        .await?;
+                }
+                PlatformRow::PlatformModeratorPermissionRevoke {
+                    platform_id,
+                    moderator_address,
+                    permission_type,
+                    revoked_at,
+                } => {
+                    let _ = diesel::update(platform_moderator_permissions::table)
+                        .filter(platform_moderator_permissions::platform_id.eq(platform_id))
+                        .filter(
+                            platform_moderator_permissions::moderator_address.eq(moderator_address),
+                        )
+                        .filter(
+                            platform_moderator_permissions::permission_type.eq(permission_type),
+                        )
+                        .filter(platform_moderator_permissions::revoked_at.is_null())
+                        .set(platform_moderator_permissions::revoked_at.eq(revoked_at))
+                        .execute(conn)
+                        .await;
+                }
+                PlatformRow::PlatformModeratorPermissionRevokeAll {
+                    platform_id,
+                    moderator_address,
+                    revoked_at,
+                } => {
+                    let _ = diesel::update(platform_moderator_permissions::table)
+                        .filter(platform_moderator_permissions::platform_id.eq(platform_id))
+                        .filter(
+                            platform_moderator_permissions::moderator_address.eq(moderator_address),
+                        )
+                        .filter(platform_moderator_permissions::revoked_at.is_null())
+                        .set(platform_moderator_permissions::revoked_at.eq(revoked_at))
                         .execute(conn)
                         .await;
                 }

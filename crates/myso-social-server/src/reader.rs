@@ -1255,10 +1255,26 @@ impl Reader {
     pub async fn get_platform_moderators(
         &self,
         platform_id: &str,
+        permission_filter: Option<&str>,
         limit: i64,
         offset: i64,
     ) -> Result<Vec<PlatformModeratorRow>, crate::error::SocialError> {
-        platform::get_platform_moderators(&self.db, platform_id, limit, offset).await
+        platform::get_platform_moderators(
+            &self.db,
+            platform_id,
+            permission_filter,
+            limit,
+            offset,
+        )
+        .await
+    }
+
+    pub async fn get_platform_user_access(
+        &self,
+        platform_id: &str,
+        user_address: &str,
+    ) -> Result<PlatformUserAccessRow, crate::error::SocialError> {
+        platform::get_platform_user_access(&self.db, platform_id, user_address).await
     }
 
     pub async fn get_platform_approval(

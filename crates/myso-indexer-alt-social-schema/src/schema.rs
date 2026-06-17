@@ -663,6 +663,18 @@ diesel::table! {
 }
 
 diesel::table! {
+    platform_moderator_permissions (id) {
+        id -> Int4,
+        platform_id -> Text,
+        moderator_address -> Text,
+        permission_type -> Text,
+        granted_by -> Text,
+        granted_at -> Timestamp,
+        revoked_at -> Nullable<Timestamp>,
+    }
+}
+
+diesel::table! {
     platform_moderators (id) {
         id -> Int4,
         platform_id -> Text,
@@ -697,6 +709,7 @@ diesel::table! {
         cover_photo -> Nullable<Text>,
         media_previews -> Nullable<Jsonb>,
         developer_address -> Text,
+        moderators_group_id -> Nullable<Text>,
         terms_of_service -> Nullable<Text>,
         privacy_policy -> Nullable<Text>,
         #[sql_name = "platforms"]
@@ -1966,6 +1979,7 @@ diesel::allow_tables_to_appear_in_same_query!(
     platform_blocked_profiles,
     platform_events,
     platform_memberships,
+    platform_moderator_permissions,
     platform_moderators,
     platform_token_airdrops,
     platforms,

@@ -176,11 +176,14 @@ Implements features like comments, reposts, and quotes
 <b>use</b> <a href="../myso/object.md#myso_object">myso::object</a>;
 <b>use</b> <a href="../myso/package.md#myso_package">myso::package</a>;
 <b>use</b> <a href="../myso/party.md#myso_party">myso::party</a>;
+<b>use</b> <a href="../myso/permissioned_group.md#myso_permissioned_group">myso::permissioned_group</a>;
+<b>use</b> <a href="../myso/permissions_table.md#myso_permissions_table">myso::permissions_table</a>;
 <b>use</b> <a href="../myso/protocol_config.md#myso_protocol_config">myso::protocol_config</a>;
 <b>use</b> <a href="../myso/table.md#myso_table">myso::table</a>;
 <b>use</b> <a href="../myso/transfer.md#myso_transfer">myso::transfer</a>;
 <b>use</b> <a href="../myso/tx_context.md#myso_tx_context">myso::tx_context</a>;
 <b>use</b> <a href="../myso/types.md#myso_types">myso::types</a>;
+<b>use</b> <a href="../myso/unpause_cap.md#myso_unpause_cap">myso::unpause_cap</a>;
 <b>use</b> <a href="../myso/url.md#myso_url">myso::url</a>;
 <b>use</b> <a href="../myso/vec_map.md#myso_vec_map">myso::vec_map</a>;
 <b>use</b> <a href="../myso/vec_set.md#myso_vec_set">myso::vec_set</a>;
@@ -5935,7 +5938,7 @@ Admin function to transfer post ownership (requires PostAdminCap)
 Moderate a post (remove/restore from platform)
 
 
-<pre><code><b>public</b> <b>fun</b> <a href="../social_contracts/post.md#social_contracts_post_moderate_post">moderate_post</a>(<a href="../social_contracts/post.md#social_contracts_post">post</a>: &<b>mut</b> <a href="../social_contracts/post.md#social_contracts_post_Post">social_contracts::post::Post</a>, <a href="../social_contracts/platform.md#social_contracts_platform">platform</a>: &<a href="../social_contracts/platform.md#social_contracts_platform_Platform">social_contracts::platform::Platform</a>, platform_registry: &<a href="../social_contracts/platform.md#social_contracts_platform_PlatformRegistry">social_contracts::platform::PlatformRegistry</a>, remove: bool, ctx: &<b>mut</b> <a href="../myso/tx_context.md#myso_tx_context_TxContext">myso::tx_context::TxContext</a>)
+<pre><code><b>public</b> <b>fun</b> <a href="../social_contracts/post.md#social_contracts_post_moderate_post">moderate_post</a>(<a href="../social_contracts/post.md#social_contracts_post">post</a>: &<b>mut</b> <a href="../social_contracts/post.md#social_contracts_post_Post">social_contracts::post::Post</a>, <a href="../social_contracts/platform.md#social_contracts_platform">platform</a>: &<a href="../social_contracts/platform.md#social_contracts_platform_Platform">social_contracts::platform::Platform</a>, group: &<a href="../myso/permissioned_group.md#myso_permissioned_group_PermissionedGroup">myso::permissioned_group::PermissionedGroup</a>&lt;<a href="../social_contracts/platform.md#social_contracts_platform_PlatformPackage">social_contracts::platform::PlatformPackage</a>&gt;, platform_registry: &<a href="../social_contracts/platform.md#social_contracts_platform_PlatformRegistry">social_contracts::platform::PlatformRegistry</a>, remove: bool, ctx: &<b>mut</b> <a href="../myso/tx_context.md#myso_tx_context_TxContext">myso::tx_context::TxContext</a>)
 </code></pre>
 
 
@@ -5947,6 +5950,7 @@ Moderate a post (remove/restore from platform)
 <pre><code><b>public</b> <b>fun</b> <a href="../social_contracts/post.md#social_contracts_post_moderate_post">moderate_post</a>(
     <a href="../social_contracts/post.md#social_contracts_post">post</a>: &<b>mut</b> <a href="../social_contracts/post.md#social_contracts_post_Post">Post</a>,
     <a href="../social_contracts/platform.md#social_contracts_platform">platform</a>: &<a href="../social_contracts/platform.md#social_contracts_platform_Platform">platform::Platform</a>,
+    group: &PermissionedGroup&lt;<a href="../social_contracts/platform.md#social_contracts_platform_PlatformPackage">platform::PlatformPackage</a>&gt;,
     platform_registry: &<a href="../social_contracts/platform.md#social_contracts_platform_PlatformRegistry">platform::PlatformRegistry</a>,
     remove: bool,
     ctx: &<b>mut</b> TxContext
@@ -5954,9 +5958,11 @@ Moderate a post (remove/restore from platform)
     // Check <a href="../social_contracts/post.md#social_contracts_post_version">version</a> compatibility
     <b>assert</b>!(<a href="../social_contracts/post.md#social_contracts_post">post</a>.<a href="../social_contracts/post.md#social_contracts_post_version">version</a> == <a href="../social_contracts/upgrade.md#social_contracts_upgrade_current_version">upgrade::current_version</a>(), <a href="../social_contracts/post.md#social_contracts_post_EWrongVersion">EWrongVersion</a>);
     <b>assert</b>!(<a href="../social_contracts/platform.md#social_contracts_platform_platform_version">platform::platform_version</a>(<a href="../social_contracts/platform.md#social_contracts_platform">platform</a>) == <a href="../social_contracts/upgrade.md#social_contracts_upgrade_current_version">upgrade::current_version</a>(), <a href="../social_contracts/post.md#social_contracts_post_EWrongVersion">EWrongVersion</a>);
-    // Verify caller is <a href="../social_contracts/platform.md#social_contracts_platform">platform</a> developer or moderator
     <b>let</b> caller = tx_context::sender(ctx);
-    <b>assert</b>!(<a href="../social_contracts/platform.md#social_contracts_platform_is_developer_or_moderator">platform::is_developer_or_moderator</a>(<a href="../social_contracts/platform.md#social_contracts_platform">platform</a>, caller), <a href="../social_contracts/post.md#social_contracts_post_EUnauthorized">EUnauthorized</a>);
+    <b>assert</b>!(
+        <a href="../social_contracts/platform.md#social_contracts_platform_has_moderator_permission">platform::has_moderator_permission</a>&lt;<a href="../social_contracts/platform.md#social_contracts_platform_PlatformContentModerator">platform::PlatformContentModerator</a>&gt;(group, <a href="../social_contracts/platform.md#social_contracts_platform">platform</a>, caller),
+        <a href="../social_contracts/post.md#social_contracts_post_EUnauthorized">EUnauthorized</a>,
+    );
     // Verify <a href="../social_contracts/platform.md#social_contracts_platform">platform</a> is approved
     <b>let</b> platform_id = object::uid_to_address(<a href="../social_contracts/platform.md#social_contracts_platform_id">platform::id</a>(<a href="../social_contracts/platform.md#social_contracts_platform">platform</a>));
     <b>assert</b>!(<a href="../social_contracts/platform.md#social_contracts_platform_is_approved">platform::is_approved</a>(platform_registry, platform_id), <a href="../social_contracts/post.md#social_contracts_post_EUnauthorized">EUnauthorized</a>);
@@ -5983,7 +5989,7 @@ Moderate a post (remove/restore from platform)
 Moderate a comment (remove/restore from platform)
 
 
-<pre><code><b>public</b> <b>fun</b> <a href="../social_contracts/post.md#social_contracts_post_moderate_comment">moderate_comment</a>(comment: &<b>mut</b> <a href="../social_contracts/post.md#social_contracts_post_Comment">social_contracts::post::Comment</a>, <a href="../social_contracts/platform.md#social_contracts_platform">platform</a>: &<a href="../social_contracts/platform.md#social_contracts_platform_Platform">social_contracts::platform::Platform</a>, platform_registry: &<a href="../social_contracts/platform.md#social_contracts_platform_PlatformRegistry">social_contracts::platform::PlatformRegistry</a>, remove: bool, ctx: &<b>mut</b> <a href="../myso/tx_context.md#myso_tx_context_TxContext">myso::tx_context::TxContext</a>)
+<pre><code><b>public</b> <b>fun</b> <a href="../social_contracts/post.md#social_contracts_post_moderate_comment">moderate_comment</a>(comment: &<b>mut</b> <a href="../social_contracts/post.md#social_contracts_post_Comment">social_contracts::post::Comment</a>, <a href="../social_contracts/platform.md#social_contracts_platform">platform</a>: &<a href="../social_contracts/platform.md#social_contracts_platform_Platform">social_contracts::platform::Platform</a>, group: &<a href="../myso/permissioned_group.md#myso_permissioned_group_PermissionedGroup">myso::permissioned_group::PermissionedGroup</a>&lt;<a href="../social_contracts/platform.md#social_contracts_platform_PlatformPackage">social_contracts::platform::PlatformPackage</a>&gt;, platform_registry: &<a href="../social_contracts/platform.md#social_contracts_platform_PlatformRegistry">social_contracts::platform::PlatformRegistry</a>, remove: bool, ctx: &<b>mut</b> <a href="../myso/tx_context.md#myso_tx_context_TxContext">myso::tx_context::TxContext</a>)
 </code></pre>
 
 
@@ -5995,6 +6001,7 @@ Moderate a comment (remove/restore from platform)
 <pre><code><b>public</b> <b>fun</b> <a href="../social_contracts/post.md#social_contracts_post_moderate_comment">moderate_comment</a>(
     comment: &<b>mut</b> <a href="../social_contracts/post.md#social_contracts_post_Comment">Comment</a>,
     <a href="../social_contracts/platform.md#social_contracts_platform">platform</a>: &<a href="../social_contracts/platform.md#social_contracts_platform_Platform">platform::Platform</a>,
+    group: &PermissionedGroup&lt;<a href="../social_contracts/platform.md#social_contracts_platform_PlatformPackage">platform::PlatformPackage</a>&gt;,
     platform_registry: &<a href="../social_contracts/platform.md#social_contracts_platform_PlatformRegistry">platform::PlatformRegistry</a>,
     remove: bool,
     ctx: &<b>mut</b> TxContext
@@ -6002,9 +6009,11 @@ Moderate a comment (remove/restore from platform)
     // Check <a href="../social_contracts/post.md#social_contracts_post_version">version</a> compatibility
     <b>assert</b>!(comment.<a href="../social_contracts/post.md#social_contracts_post_version">version</a> == <a href="../social_contracts/upgrade.md#social_contracts_upgrade_current_version">upgrade::current_version</a>(), <a href="../social_contracts/post.md#social_contracts_post_EWrongVersion">EWrongVersion</a>);
     <b>assert</b>!(<a href="../social_contracts/platform.md#social_contracts_platform_platform_version">platform::platform_version</a>(<a href="../social_contracts/platform.md#social_contracts_platform">platform</a>) == <a href="../social_contracts/upgrade.md#social_contracts_upgrade_current_version">upgrade::current_version</a>(), <a href="../social_contracts/post.md#social_contracts_post_EWrongVersion">EWrongVersion</a>);
-    // Verify caller is <a href="../social_contracts/platform.md#social_contracts_platform">platform</a> developer or moderator
     <b>let</b> caller = tx_context::sender(ctx);
-    <b>assert</b>!(<a href="../social_contracts/platform.md#social_contracts_platform_is_developer_or_moderator">platform::is_developer_or_moderator</a>(<a href="../social_contracts/platform.md#social_contracts_platform">platform</a>, caller), <a href="../social_contracts/post.md#social_contracts_post_EUnauthorized">EUnauthorized</a>);
+    <b>assert</b>!(
+        <a href="../social_contracts/platform.md#social_contracts_platform_has_moderator_permission">platform::has_moderator_permission</a>&lt;<a href="../social_contracts/platform.md#social_contracts_platform_PlatformContentModerator">platform::PlatformContentModerator</a>&gt;(group, <a href="../social_contracts/platform.md#social_contracts_platform">platform</a>, caller),
+        <a href="../social_contracts/post.md#social_contracts_post_EUnauthorized">EUnauthorized</a>,
+    );
     // Verify <a href="../social_contracts/platform.md#social_contracts_platform">platform</a> is approved
     <b>let</b> platform_id = object::uid_to_address(<a href="../social_contracts/platform.md#social_contracts_platform_id">platform::id</a>(<a href="../social_contracts/platform.md#social_contracts_platform">platform</a>));
     <b>assert</b>!(<a href="../social_contracts/platform.md#social_contracts_platform_is_approved">platform::is_approved</a>(platform_registry, platform_id), <a href="../social_contracts/post.md#social_contracts_post_EUnauthorized">EUnauthorized</a>);
@@ -7292,7 +7301,7 @@ Create a promoted post with MYSO tokens for viewer payments
 Confirm a user has viewed a promoted post and pay them (platform only)
 
 
-<pre><code><b>public</b> <b>fun</b> <a href="../social_contracts/post.md#social_contracts_post_confirm_promoted_post_view">confirm_promoted_post_view</a>(<a href="../social_contracts/post.md#social_contracts_post">post</a>: &<a href="../social_contracts/post.md#social_contracts_post_Post">social_contracts::post::Post</a>, promotion_data: &<b>mut</b> <a href="../social_contracts/post.md#social_contracts_post_PromotionData">social_contracts::post::PromotionData</a>, platform_obj: &<a href="../social_contracts/platform.md#social_contracts_platform_Platform">social_contracts::platform::Platform</a>, viewer_address: <b>address</b>, view_duration: u64, clock: &<a href="../myso/clock.md#myso_clock_Clock">myso::clock::Clock</a>, ctx: &<b>mut</b> <a href="../myso/tx_context.md#myso_tx_context_TxContext">myso::tx_context::TxContext</a>)
+<pre><code><b>public</b> <b>fun</b> <a href="../social_contracts/post.md#social_contracts_post_confirm_promoted_post_view">confirm_promoted_post_view</a>(<a href="../social_contracts/post.md#social_contracts_post">post</a>: &<a href="../social_contracts/post.md#social_contracts_post_Post">social_contracts::post::Post</a>, promotion_data: &<b>mut</b> <a href="../social_contracts/post.md#social_contracts_post_PromotionData">social_contracts::post::PromotionData</a>, platform_obj: &<a href="../social_contracts/platform.md#social_contracts_platform_Platform">social_contracts::platform::Platform</a>, group: &<a href="../myso/permissioned_group.md#myso_permissioned_group_PermissionedGroup">myso::permissioned_group::PermissionedGroup</a>&lt;<a href="../social_contracts/platform.md#social_contracts_platform_PlatformPackage">social_contracts::platform::PlatformPackage</a>&gt;, viewer_address: <b>address</b>, view_duration: u64, clock: &<a href="../myso/clock.md#myso_clock_Clock">myso::clock::Clock</a>, ctx: &<b>mut</b> <a href="../myso/tx_context.md#myso_tx_context_TxContext">myso::tx_context::TxContext</a>)
 </code></pre>
 
 
@@ -7305,14 +7314,17 @@ Confirm a user has viewed a promoted post and pay them (platform only)
     <a href="../social_contracts/post.md#social_contracts_post">post</a>: &<a href="../social_contracts/post.md#social_contracts_post_Post">Post</a>,
     promotion_data: &<b>mut</b> <a href="../social_contracts/post.md#social_contracts_post_PromotionData">PromotionData</a>,
     platform_obj: &<a href="../social_contracts/platform.md#social_contracts_platform_Platform">platform::Platform</a>,
+    group: &PermissionedGroup&lt;<a href="../social_contracts/platform.md#social_contracts_platform_PlatformPackage">platform::PlatformPackage</a>&gt;,
     viewer_address: <b>address</b>,
     view_duration: u64,
     clock: &Clock,
     ctx: &<b>mut</b> TxContext
 ) {
-    // Verify this is a <a href="../social_contracts/platform.md#social_contracts_platform">platform</a> call (<a href="../social_contracts/platform.md#social_contracts_platform">platform</a> developer or moderator)
     <b>let</b> caller = tx_context::sender(ctx);
-    <b>assert</b>!(<a href="../social_contracts/platform.md#social_contracts_platform_is_developer_or_moderator">platform::is_developer_or_moderator</a>(platform_obj, caller), <a href="../social_contracts/post.md#social_contracts_post_EUnauthorized">EUnauthorized</a>);
+    <b>assert</b>!(
+        <a href="../social_contracts/platform.md#social_contracts_platform_has_moderator_permission">platform::has_moderator_permission</a>&lt;<a href="../social_contracts/platform.md#social_contracts_platform_PlatformPromotionAdmin">platform::PlatformPromotionAdmin</a>&gt;(group, platform_obj, caller),
+        <a href="../social_contracts/post.md#social_contracts_post_EUnauthorized">EUnauthorized</a>,
+    );
     // Verify the <a href="../social_contracts/platform.md#social_contracts_platform">platform</a> object is approved (ensures legitimate <a href="../social_contracts/platform.md#social_contracts_platform">platform</a>)
     <b>let</b> platform_id = object::uid_to_address(<a href="../social_contracts/platform.md#social_contracts_platform_id">platform::id</a>(platform_obj));
     // Note: Cannot verify this matches <a href="../social_contracts/post.md#social_contracts_post">post</a>'s original <a href="../social_contracts/platform.md#social_contracts_platform">platform</a> without storing platform_id in <a href="../social_contracts/post.md#social_contracts_post_Post">Post</a>
@@ -7375,7 +7387,7 @@ Toggle promotion status (platform can activate, both platform and owner can deac
 Use with activate: false to deactivate promotions
 
 
-<pre><code><b>public</b> <b>fun</b> <a href="../social_contracts/post.md#social_contracts_post_toggle_promotion_status">toggle_promotion_status</a>(<a href="../social_contracts/post.md#social_contracts_post">post</a>: &<a href="../social_contracts/post.md#social_contracts_post_Post">social_contracts::post::Post</a>, promotion_data: &<b>mut</b> <a href="../social_contracts/post.md#social_contracts_post_PromotionData">social_contracts::post::PromotionData</a>, platform_obj: &<a href="../social_contracts/platform.md#social_contracts_platform_Platform">social_contracts::platform::Platform</a>, activate: bool, ctx: &<b>mut</b> <a href="../myso/tx_context.md#myso_tx_context_TxContext">myso::tx_context::TxContext</a>)
+<pre><code><b>public</b> <b>fun</b> <a href="../social_contracts/post.md#social_contracts_post_toggle_promotion_status">toggle_promotion_status</a>(<a href="../social_contracts/post.md#social_contracts_post">post</a>: &<a href="../social_contracts/post.md#social_contracts_post_Post">social_contracts::post::Post</a>, promotion_data: &<b>mut</b> <a href="../social_contracts/post.md#social_contracts_post_PromotionData">social_contracts::post::PromotionData</a>, platform_obj: &<a href="../social_contracts/platform.md#social_contracts_platform_Platform">social_contracts::platform::Platform</a>, group: &<a href="../myso/permissioned_group.md#myso_permissioned_group_PermissionedGroup">myso::permissioned_group::PermissionedGroup</a>&lt;<a href="../social_contracts/platform.md#social_contracts_platform_PlatformPackage">social_contracts::platform::PlatformPackage</a>&gt;, activate: bool, ctx: &<b>mut</b> <a href="../myso/tx_context.md#myso_tx_context_TxContext">myso::tx_context::TxContext</a>)
 </code></pre>
 
 
@@ -7388,6 +7400,7 @@ Use with activate: false to deactivate promotions
     <a href="../social_contracts/post.md#social_contracts_post">post</a>: &<a href="../social_contracts/post.md#social_contracts_post_Post">Post</a>,
     promotion_data: &<b>mut</b> <a href="../social_contracts/post.md#social_contracts_post_PromotionData">PromotionData</a>,
     platform_obj: &<a href="../social_contracts/platform.md#social_contracts_platform_Platform">platform::Platform</a>,
+    group: &PermissionedGroup&lt;<a href="../social_contracts/platform.md#social_contracts_platform_PlatformPackage">platform::PlatformPackage</a>&gt;,
     activate: bool,
     ctx: &<b>mut</b> TxContext
 ) {
@@ -7397,11 +7410,12 @@ Use with activate: false to deactivate promotions
     <b>let</b> post_promotion_id = *option::borrow(&<a href="../social_contracts/post.md#social_contracts_post">post</a>.promotion_id);
     <b>assert</b>!(post_promotion_id == object::uid_to_address(&promotion_data.id), <a href="../social_contracts/post.md#social_contracts_post_ENotPromotedPost">ENotPromotedPost</a>);
     <b>if</b> (activate) {
-        // Only <a href="../social_contracts/platform.md#social_contracts_platform">platform</a> can activate promotions
-        <b>assert</b>!(<a href="../social_contracts/platform.md#social_contracts_platform_is_developer_or_moderator">platform::is_developer_or_moderator</a>(platform_obj, caller), <a href="../social_contracts/post.md#social_contracts_post_EUnauthorized">EUnauthorized</a>);
+        <b>assert</b>!(
+            <a href="../social_contracts/platform.md#social_contracts_platform_has_moderator_permission">platform::has_moderator_permission</a>&lt;<a href="../social_contracts/platform.md#social_contracts_platform_PlatformPromotionAdmin">platform::PlatformPromotionAdmin</a>&gt;(group, platform_obj, caller),
+            <a href="../social_contracts/post.md#social_contracts_post_EUnauthorized">EUnauthorized</a>,
+        );
     } <b>else</b> {
-        // Both <a href="../social_contracts/platform.md#social_contracts_platform">platform</a> and <a href="../social_contracts/post.md#social_contracts_post">post</a> owner can deactivate
-        <b>let</b> is_platform = <a href="../social_contracts/platform.md#social_contracts_platform_is_developer_or_moderator">platform::is_developer_or_moderator</a>(platform_obj, caller);
+        <b>let</b> is_platform = <a href="../social_contracts/platform.md#social_contracts_platform_is_moderator">platform::is_moderator</a>(group, platform_obj, caller);
         <b>let</b> is_owner = caller == <a href="../social_contracts/post.md#social_contracts_post">post</a>.owner;
         <b>assert</b>!(is_platform || is_owner, <a href="../social_contracts/post.md#social_contracts_post_EUnauthorized">EUnauthorized</a>);
     };
@@ -7557,7 +7571,7 @@ Get the promotion ID from a post
 Set moderation status for a post (platform devs/mods only)
 
 
-<pre><code><b>public</b> <b>fun</b> <a href="../social_contracts/post.md#social_contracts_post_set_moderation_status">set_moderation_status</a>(<a href="../social_contracts/post.md#social_contracts_post">post</a>: &<b>mut</b> <a href="../social_contracts/post.md#social_contracts_post_Post">social_contracts::post::Post</a>, <a href="../social_contracts/platform.md#social_contracts_platform">platform</a>: &<a href="../social_contracts/platform.md#social_contracts_platform_Platform">social_contracts::platform::Platform</a>, platform_registry: &<a href="../social_contracts/platform.md#social_contracts_platform_PlatformRegistry">social_contracts::platform::PlatformRegistry</a>, status: u8, reason: <a href="../std/option.md#std_option_Option">std::option::Option</a>&lt;<a href="../std/string.md#std_string_String">std::string::String</a>&gt;, ctx: &<b>mut</b> <a href="../myso/tx_context.md#myso_tx_context_TxContext">myso::tx_context::TxContext</a>)
+<pre><code><b>public</b> <b>fun</b> <a href="../social_contracts/post.md#social_contracts_post_set_moderation_status">set_moderation_status</a>(<a href="../social_contracts/post.md#social_contracts_post">post</a>: &<b>mut</b> <a href="../social_contracts/post.md#social_contracts_post_Post">social_contracts::post::Post</a>, <a href="../social_contracts/platform.md#social_contracts_platform">platform</a>: &<a href="../social_contracts/platform.md#social_contracts_platform_Platform">social_contracts::platform::Platform</a>, group: &<a href="../myso/permissioned_group.md#myso_permissioned_group_PermissionedGroup">myso::permissioned_group::PermissionedGroup</a>&lt;<a href="../social_contracts/platform.md#social_contracts_platform_PlatformPackage">social_contracts::platform::PlatformPackage</a>&gt;, platform_registry: &<a href="../social_contracts/platform.md#social_contracts_platform_PlatformRegistry">social_contracts::platform::PlatformRegistry</a>, status: u8, reason: <a href="../std/option.md#std_option_Option">std::option::Option</a>&lt;<a href="../std/string.md#std_string_String">std::string::String</a>&gt;, ctx: &<b>mut</b> <a href="../myso/tx_context.md#myso_tx_context_TxContext">myso::tx_context::TxContext</a>)
 </code></pre>
 
 
@@ -7569,6 +7583,7 @@ Set moderation status for a post (platform devs/mods only)
 <pre><code><b>public</b> <b>fun</b> <a href="../social_contracts/post.md#social_contracts_post_set_moderation_status">set_moderation_status</a>(
     <a href="../social_contracts/post.md#social_contracts_post">post</a>: &<b>mut</b> <a href="../social_contracts/post.md#social_contracts_post_Post">Post</a>,
     <a href="../social_contracts/platform.md#social_contracts_platform">platform</a>: &<a href="../social_contracts/platform.md#social_contracts_platform_Platform">platform::Platform</a>,
+    group: &PermissionedGroup&lt;<a href="../social_contracts/platform.md#social_contracts_platform_PlatformPackage">platform::PlatformPackage</a>&gt;,
     platform_registry: &<a href="../social_contracts/platform.md#social_contracts_platform_PlatformRegistry">platform::PlatformRegistry</a>,
     status: u8, // <a href="../social_contracts/post.md#social_contracts_post_MODERATION_APPROVED">MODERATION_APPROVED</a> or <a href="../social_contracts/post.md#social_contracts_post_MODERATION_FLAGGED">MODERATION_FLAGGED</a>
     reason: Option&lt;String&gt;,
@@ -7577,9 +7592,11 @@ Set moderation status for a post (platform devs/mods only)
     // Check <a href="../social_contracts/post.md#social_contracts_post_version">version</a> compatibility
     <b>assert</b>!(<a href="../social_contracts/post.md#social_contracts_post">post</a>.<a href="../social_contracts/post.md#social_contracts_post_version">version</a> == <a href="../social_contracts/upgrade.md#social_contracts_upgrade_current_version">upgrade::current_version</a>(), <a href="../social_contracts/post.md#social_contracts_post_EWrongVersion">EWrongVersion</a>);
     <b>assert</b>!(<a href="../social_contracts/platform.md#social_contracts_platform_platform_version">platform::platform_version</a>(<a href="../social_contracts/platform.md#social_contracts_platform">platform</a>) == <a href="../social_contracts/upgrade.md#social_contracts_upgrade_current_version">upgrade::current_version</a>(), <a href="../social_contracts/post.md#social_contracts_post_EWrongVersion">EWrongVersion</a>);
-    // Verify caller is <a href="../social_contracts/platform.md#social_contracts_platform">platform</a> developer or moderator
     <b>let</b> caller = tx_context::sender(ctx);
-    <b>assert</b>!(<a href="../social_contracts/platform.md#social_contracts_platform_is_developer_or_moderator">platform::is_developer_or_moderator</a>(<a href="../social_contracts/platform.md#social_contracts_platform">platform</a>, caller), <a href="../social_contracts/post.md#social_contracts_post_EUnauthorized">EUnauthorized</a>);
+    <b>assert</b>!(
+        <a href="../social_contracts/platform.md#social_contracts_platform_has_moderator_permission">platform::has_moderator_permission</a>&lt;<a href="../social_contracts/platform.md#social_contracts_platform_PlatformContentModerator">platform::PlatformContentModerator</a>&gt;(group, <a href="../social_contracts/platform.md#social_contracts_platform">platform</a>, caller),
+        <a href="../social_contracts/post.md#social_contracts_post_EUnauthorized">EUnauthorized</a>,
+    );
     // Verify <a href="../social_contracts/platform.md#social_contracts_platform">platform</a> is approved
     <b>let</b> platform_id = object::uid_to_address(<a href="../social_contracts/platform.md#social_contracts_platform_id">platform::id</a>(<a href="../social_contracts/platform.md#social_contracts_platform">platform</a>));
     <b>assert</b>!(<a href="../social_contracts/platform.md#social_contracts_platform_is_approved">platform::is_approved</a>(platform_registry, platform_id), <a href="../social_contracts/post.md#social_contracts_post_EUnauthorized">EUnauthorized</a>);

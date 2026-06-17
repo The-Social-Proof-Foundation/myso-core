@@ -6,7 +6,7 @@
 
 #[allow(duplicate_alias, unused_use, lint(public_entry))]
 module social_contracts::platform {
-    use std::{string::{Self, String}, option, vector};
+    use std::{string::{Self, String}, option, vector, type_name};
     
     use myso::{
         object::{Self, UID, ID},
@@ -19,7 +19,9 @@ module social_contracts::platform {
         coin::{Self, Coin},
         balance::{Self, Balance},
         myso::MYSO,
-        event
+        event,
+        derived_object,
+        permissioned_group::{Self, PermissionedGroup, ExtensionPermissionsAdmin},
     };
     use mydata::bf_hmac_encryption::{PublicKey, VerifiedDerivedKey};
     
@@ -93,8 +95,14 @@ module social_contracts::platform {
     const CATEGORY_RESEARCH: vector<u8> = b"Research";
 
     /// Field names for dynamic fields
-    const MODERATORS_FIELD: vector<u8> = b"moderators";
     const JOINED_WALLETS_FIELD: vector<u8> = b"joined_wallets";
+
+    /// Stable permission names indexed off-chain (must match indexer constants)
+    const PERM_BLOCK_ADMIN: vector<u8> = b"PlatformBlockAdmin";
+    const PERM_BADGE_ADMIN: vector<u8> = b"PlatformBadgeAdmin";
+    const PERM_TREASURY_ADMIN: vector<u8> = b"PlatformTreasuryAdmin";
+    const PERM_CONTENT_MODERATOR: vector<u8> = b"PlatformContentModerator";
+    const PERM_PROMOTION_ADMIN: vector<u8> = b"PlatformPromotionAdmin";
 
     /// Platform status constants
     const STATUS_DEVELOPMENT: u8 = 0;
@@ -114,6 +122,27 @@ module social_contracts::platform {
     public struct PlatformAdminCap has key, store {
         id: UID,
     }
+
+    /// Package witness for `PermissionedGroup<PlatformPackage>`
+    public struct PlatformPackage() has drop;
+
+    /// Derivation key for the per-platform moderators permission group
+    public struct ModeratorsGroupTag() has copy, drop, store;
+
+    /// Permission to block/unblock wallets on behalf of the platform
+    public struct PlatformBlockAdmin() has drop;
+
+    /// Permission to assign/revoke platform badges
+    public struct PlatformBadgeAdmin() has drop;
+
+    /// Permission to airdrop from the platform treasury
+    public struct PlatformTreasuryAdmin() has drop;
+
+    /// Permission to moderate posts and comments on the platform
+    public struct PlatformContentModerator() has drop;
+
+    /// Permission to manage promoted posts and view payouts
+    public struct PlatformPromotionAdmin() has drop;
 
     /// Platform object that contains information about a social media platform
     public struct Platform has key {
@@ -210,6 +239,7 @@ module social_contracts::platform {
         quadratic_base_cost: Option<u64>,
         voting_period_epochs: Option<u64>,
         quorum_votes: Option<u64>,
+        moderators_group_id: ID,
     }
 
     /// Platform updated event
@@ -233,17 +263,29 @@ module social_contracts::platform {
         updated_at: u64,
     }
 
-    /// Moderator added event
-    public struct ModeratorAddedEvent has copy, drop {
+    /// Emitted when one or more moderator permissions are granted
+    public struct ModeratorPermissionsGrantedEvent has copy, drop {
         platform_id: address,
-        moderator_address: address,
-        added_by: address,
+        moderators_group_id: ID,
+        member: address,
+        permissions: vector<String>,
+        granted_by: address,
     }
 
-    /// Moderator removed event
+    /// Emitted when one or more moderator permissions are revoked
+    public struct ModeratorPermissionsRevokedEvent has copy, drop {
+        platform_id: address,
+        moderators_group_id: ID,
+        member: address,
+        permissions: vector<String>,
+        revoked_by: address,
+    }
+
+    /// Emitted when a member is fully removed from the moderators group
     public struct ModeratorRemovedEvent has copy, drop {
         platform_id: address,
-        moderator_address: address,
+        moderators_group_id: ID,
+        member: address,
         removed_by: address,
     }
 
@@ -415,16 +457,26 @@ module social_contracts::platform {
             governance_registry_id: option::none(),
             version: upgrade::current_version(),
         };
-        
-        // Create empty moderators set
-        let mut moderators = vec_set::empty<address>();
-        
-        // Add developer as a moderator
-        vec_set::insert(&mut moderators, developer);
-        
-        // Add moderators as a dynamic field
-        dynamic_field::add(&mut platform.id, MODERATORS_FIELD, moderators);
-        
+
+        let mut moderators_group = permissioned_group::new_derived<PlatformPackage, ModeratorsGroupTag>(
+            PlatformPackage(),
+            &mut platform.id,
+            ModeratorsGroupTag(),
+            ctx,
+        );
+        let moderators_group_id = object::id(&moderators_group);
+
+        grant_all_extension_permissions(&mut moderators_group, developer, ctx);
+        emit_permissions_granted(
+            &platform,
+            moderators_group_id,
+            developer,
+            all_extension_permission_names(),
+            developer,
+        );
+
+        transfer::public_share_object(moderators_group);
+
         // Register platform in registry
         let platform_id = object::uid_to_address(&platform.id);
         
@@ -531,6 +583,7 @@ module social_contracts::platform {
             quadratic_base_cost: platform.quadratic_base_cost,
             voting_period_epochs: platform.voting_period_epochs,
             quorum_votes: platform.quorum_votes,
+            moderators_group_id,
         });
         
         // Share platform as a shared object (publicly accessible)
@@ -897,65 +950,112 @@ module social_contracts::platform {
         };
     }
 
-    /// Add a moderator to a platform
-    public fun add_moderator(
-        platform: &mut Platform,
-        moderator_address: address,
-        ctx: &mut TxContext
+    /// Grant a single extension permission to a platform moderator
+    public fun grant_moderator_permission<P: drop>(
+        platform: &Platform,
+        group: &mut PermissionedGroup<PlatformPackage>,
+        member: address,
+        ctx: &TxContext,
     ) {
-        // Check version compatibility
         assert!(platform.version == upgrade::current_version(), EWrongVersion);
-        
-        // Verify caller is platform developer
         let caller = tx_context::sender(ctx);
-        assert!(platform.developer == caller, EUnauthorized);
-        
-        // Get moderators set
-        let moderators = dynamic_field::borrow_mut<vector<u8>, VecSet<address>>(&mut platform.id, MODERATORS_FIELD);
-        
-        // Add moderator if not already a moderator
-        if (!vec_set::contains(moderators, &moderator_address)) {
-            vec_set::insert(moderators, moderator_address);
-            
-            // Emit moderator added event
-            event::emit(ModeratorAddedEvent {
-                platform_id: object::uid_to_address(&platform.id),
-                moderator_address,
-                added_by: caller,
-            });
-        };
+        assert!(
+            group.has_permission<PlatformPackage, ExtensionPermissionsAdmin>(caller),
+            EUnauthorized,
+        );
+
+        permissioned_group::grant_permission<PlatformPackage, P>(group, member, ctx);
+
+        emit_permissions_granted(
+            platform,
+            object::id(group),
+            member,
+            vector[permission_name<P>()],
+            caller,
+        );
     }
 
-    /// Remove a moderator from a platform
-    public fun remove_moderator(
-        platform: &mut Platform,
-        moderator_address: address,
-        ctx: &mut TxContext
+    /// Grant all extension permissions to a member (full platform moderator)
+    public fun grant_all_moderator_permissions(
+        platform: &Platform,
+        group: &mut PermissionedGroup<PlatformPackage>,
+        member: address,
+        ctx: &TxContext,
     ) {
-        // Check version compatibility
         assert!(platform.version == upgrade::current_version(), EWrongVersion);
-        
-        // Verify caller is platform developer
+        let caller = tx_context::sender(ctx);
+        assert!(
+            group.has_permission<PlatformPackage, ExtensionPermissionsAdmin>(caller),
+            EUnauthorized,
+        );
+
+        grant_all_extension_permissions(group, member, ctx);
+        emit_permissions_granted(
+            platform,
+            object::id(group),
+            member,
+            all_extension_permission_names(),
+            caller,
+        );
+    }
+
+    /// Revoke a single extension permission from a platform moderator
+    public fun revoke_moderator_permission<P: drop>(
+        platform: &Platform,
+        group: &mut PermissionedGroup<PlatformPackage>,
+        member: address,
+        ctx: &TxContext,
+    ) {
+        assert!(platform.version == upgrade::current_version(), EWrongVersion);
+        let caller = tx_context::sender(ctx);
+        assert!(
+            group.has_permission<PlatformPackage, ExtensionPermissionsAdmin>(caller),
+            EUnauthorized,
+        );
+        assert!(member != platform.developer, EUnauthorized);
+
+        permissioned_group::revoke_permission<PlatformPackage, P>(group, member, ctx);
+        emit_permissions_revoked(
+            platform,
+            object::id(group),
+            member,
+            vector[permission_name<P>()],
+            caller,
+        );
+        maybe_emit_moderator_removed(platform, group, member, caller);
+    }
+
+    /// Add a moderator with all extension permissions (developer-only convenience wrapper)
+    public fun add_moderator(
+        platform: &Platform,
+        group: &mut PermissionedGroup<PlatformPackage>,
+        moderator_address: address,
+        ctx: &TxContext,
+    ) {
+        assert!(platform.developer == tx_context::sender(ctx), EUnauthorized);
+        grant_all_moderator_permissions(platform, group, moderator_address, ctx);
+    }
+
+    /// Remove a moderator entirely from the platform moderators group
+    public fun remove_moderator(
+        platform: &Platform,
+        group: &mut PermissionedGroup<PlatformPackage>,
+        moderator_address: address,
+        ctx: &TxContext,
+    ) {
+        assert!(platform.version == upgrade::current_version(), EWrongVersion);
         let caller = tx_context::sender(ctx);
         assert!(platform.developer == caller, EUnauthorized);
-        
-        // Cannot remove developer as moderator
         assert!(moderator_address != platform.developer, EUnauthorized);
-        
-        // Get moderators set
-        let moderators = dynamic_field::borrow_mut<vector<u8>, VecSet<address>>(&mut platform.id, MODERATORS_FIELD);
-        
-        // Remove moderator if they are a moderator
-        if (vec_set::contains(moderators, &moderator_address)) {
-            vec_set::remove(moderators, &moderator_address);
-            
-            // Emit moderator removed event
-            event::emit(ModeratorRemovedEvent {
-                platform_id: object::uid_to_address(&platform.id),
-                moderator_address,
-                removed_by: caller,
-            });
-        };
+        assert!(group.is_member<PlatformPackage>(moderator_address), EUnauthorized);
+
+        permissioned_group::remove_member<PlatformPackage>(group, moderator_address, ctx);
+        event::emit(ModeratorRemovedEvent {
+            platform_id: object::uid_to_address(&platform.id),
+            moderators_group_id: object::id(group),
+            member: moderator_address,
+            removed_by: caller,
+        });
     }
 
 
@@ -966,15 +1066,15 @@ module social_contracts::platform {
         block_list_registry: &mut block_list::BlockListRegistry,
         social_graph: &mut social_graph::SocialGraph,
         platform: &mut Platform,
+        group: &PermissionedGroup<PlatformPackage>,
         blocked_wallet_address: address,
         ctx: &mut TxContext
     ) {
         // Check version compatibility
         assert!(platform.version == upgrade::current_version(), EWrongVersion);
         
-        // Verify caller is platform developer or moderator
         let caller = tx_context::sender(ctx);
-        assert!(is_developer_or_moderator(platform, caller), EUnauthorized);
+        assert_moderator_permission<PlatformBlockAdmin>(platform, group, caller);
         
         // Get the platform address (this will be the blocker address)
         let platform_address = object::uid_to_address(&platform.id);
@@ -993,15 +1093,15 @@ module social_contracts::platform {
     public fun unblock_wallet(
         block_list_registry: &mut block_list::BlockListRegistry,
         platform: &mut Platform,
+        group: &PermissionedGroup<PlatformPackage>,
         blocked_wallet_address: address,
         ctx: &mut TxContext
     ) {
         // Check version compatibility
         assert!(platform.version == upgrade::current_version(), EWrongVersion);
         
-        // Verify caller is platform developer or moderator
         let caller = tx_context::sender(ctx);
-        assert!(is_developer_or_moderator(platform, caller), EUnauthorized);
+        assert_moderator_permission<PlatformBlockAdmin>(platform, group, caller);
         
         // Get the platform address (this is the blocker address)
         let platform_address = object::uid_to_address(&platform.id);
@@ -1292,14 +1392,146 @@ module social_contracts::platform {
 
     // === Helper functions ===
 
-    /// Check if an address is the platform developer or a moderator
-    public fun is_developer_or_moderator(platform: &Platform, addr: address): bool {
-        if (platform.developer == addr) {
+    public fun is_developer(platform: &Platform, addr: address): bool {
+        platform.developer == addr
+    }
+
+    public fun has_moderator_permission<P: drop>(
+        group: &PermissionedGroup<PlatformPackage>,
+        platform: &Platform,
+        addr: address,
+    ): bool {
+        is_developer(platform, addr) ||
+            group.has_permission<PlatformPackage, P>(addr)
+    }
+
+    public fun is_moderator(
+        group: &PermissionedGroup<PlatformPackage>,
+        platform: &Platform,
+        addr: address,
+    ): bool {
+        if (is_developer(platform, addr)) {
             return true
         };
-        
-        let moderators = dynamic_field::borrow<vector<u8>, VecSet<address>>(&platform.id, MODERATORS_FIELD);
-        vec_set::contains(moderators, &addr)
+        has_any_extension_permission(group, addr)
+    }
+
+    /// Backward-compatible helper: true if developer or has any extension permission
+    public fun is_developer_or_moderator(
+        platform: &Platform,
+        group: &PermissionedGroup<PlatformPackage>,
+        addr: address,
+    ): bool {
+        is_moderator(group, platform, addr)
+    }
+
+    public fun moderators_group_id(platform: &Platform): ID {
+        derived_object::derive_address(object::id(platform), ModeratorsGroupTag()).to_id()
+    }
+
+    fun assert_moderator_permission<P: drop>(
+        platform: &Platform,
+        group: &PermissionedGroup<PlatformPackage>,
+        addr: address,
+    ) {
+        assert!(has_moderator_permission<P>(group, platform, addr), EUnauthorized);
+    }
+
+    fun grant_all_extension_permissions(
+        group: &mut PermissionedGroup<PlatformPackage>,
+        member: address,
+        ctx: &TxContext,
+    ) {
+        permissioned_group::grant_permission<PlatformPackage, PlatformBlockAdmin>(group, member, ctx);
+        permissioned_group::grant_permission<PlatformPackage, PlatformBadgeAdmin>(group, member, ctx);
+        permissioned_group::grant_permission<PlatformPackage, PlatformTreasuryAdmin>(group, member, ctx);
+        permissioned_group::grant_permission<PlatformPackage, PlatformContentModerator>(group, member, ctx);
+        permissioned_group::grant_permission<PlatformPackage, PlatformPromotionAdmin>(group, member, ctx);
+    }
+
+    fun all_extension_permission_names(): vector<String> {
+        vector[
+            string::utf8(PERM_BLOCK_ADMIN),
+            string::utf8(PERM_BADGE_ADMIN),
+            string::utf8(PERM_TREASURY_ADMIN),
+            string::utf8(PERM_CONTENT_MODERATOR),
+            string::utf8(PERM_PROMOTION_ADMIN),
+        ]
+    }
+
+    fun permission_name<P: drop>(): String {
+        if (type_name::with_original_ids<P>() == type_name::with_original_ids<PlatformBlockAdmin>()) {
+            string::utf8(PERM_BLOCK_ADMIN)
+        } else if (type_name::with_original_ids<P>() == type_name::with_original_ids<PlatformBadgeAdmin>()) {
+            string::utf8(PERM_BADGE_ADMIN)
+        } else if (type_name::with_original_ids<P>() == type_name::with_original_ids<PlatformTreasuryAdmin>()) {
+            string::utf8(PERM_TREASURY_ADMIN)
+        } else if (type_name::with_original_ids<P>() == type_name::with_original_ids<PlatformContentModerator>()) {
+            string::utf8(PERM_CONTENT_MODERATOR)
+        } else if (type_name::with_original_ids<P>() == type_name::with_original_ids<PlatformPromotionAdmin>()) {
+            string::utf8(PERM_PROMOTION_ADMIN)
+        } else {
+            abort EUnauthorized
+        }
+    }
+
+    fun has_any_extension_permission(
+        group: &PermissionedGroup<PlatformPackage>,
+        addr: address,
+    ): bool {
+        group.has_permission<PlatformPackage, PlatformBlockAdmin>(addr) ||
+            group.has_permission<PlatformPackage, PlatformBadgeAdmin>(addr) ||
+            group.has_permission<PlatformPackage, PlatformTreasuryAdmin>(addr) ||
+            group.has_permission<PlatformPackage, PlatformContentModerator>(addr) ||
+            group.has_permission<PlatformPackage, PlatformPromotionAdmin>(addr)
+    }
+
+    fun emit_permissions_granted(
+        platform: &Platform,
+        moderators_group_id: ID,
+        member: address,
+        permissions: vector<String>,
+        granted_by: address,
+    ) {
+        event::emit(ModeratorPermissionsGrantedEvent {
+            platform_id: object::uid_to_address(&platform.id),
+            moderators_group_id,
+            member,
+            permissions,
+            granted_by,
+        });
+    }
+
+    fun emit_permissions_revoked(
+        platform: &Platform,
+        moderators_group_id: ID,
+        member: address,
+        permissions: vector<String>,
+        revoked_by: address,
+    ) {
+        event::emit(ModeratorPermissionsRevokedEvent {
+            platform_id: object::uid_to_address(&platform.id),
+            moderators_group_id,
+            member,
+            permissions,
+            revoked_by,
+        });
+    }
+
+    fun maybe_emit_moderator_removed(
+        platform: &Platform,
+        group: &PermissionedGroup<PlatformPackage>,
+        member: address,
+        removed_by: address,
+    ) {
+        if (!group.is_member<PlatformPackage>(member)) {
+            event::emit(ModeratorRemovedEvent {
+                platform_id: object::uid_to_address(&platform.id),
+                moderators_group_id: object::id(group),
+                member,
+                removed_by,
+            });
+        };
     }
 
     // === Getters ===
@@ -1399,18 +1631,6 @@ module social_contracts::platform {
         &platform.id
     }
 
-    /// Check if an address is a moderator
-    public fun is_moderator(platform: &Platform, addr: address): bool {
-        let moderators = dynamic_field::borrow<vector<u8>, VecSet<address>>(&platform.id, MODERATORS_FIELD);
-        vec_set::contains(moderators, &addr)
-    }
-
-    /// Get the list of moderators for a platform
-    public fun get_moderators(platform: &Platform): vector<address> {
-        let moderators = dynamic_field::borrow<vector<u8>, VecSet<address>>(&platform.id, MODERATORS_FIELD);
-        vec_set::into_keys(*moderators)
-    }
-
     /// Get platform by name from registry
     public fun get_platform_by_name(registry: &PlatformRegistry, name: String): Option<address> {
         if (!table::contains(&registry.platforms_by_name, name)) {
@@ -1497,9 +1717,10 @@ module social_contracts::platform {
     }
 
     /// Airdrop tokens to multiple recipients from the platform treasury
-    /// Can only be called by platform developer or moderator
+    /// Can only be called by platform developer or moderator with treasury permission
     public fun airdrop_from_treasury(
         platform: &mut Platform,
+        group: &PermissionedGroup<PlatformPackage>,
         recipients: vector<address>,
         amount_per_recipient: u64,
         reason_code: u8,
@@ -1507,8 +1728,7 @@ module social_contracts::platform {
     ) {
         let caller = tx_context::sender(ctx);
         
-        // Verify caller is platform developer or moderator
-        assert!(is_developer_or_moderator(platform, caller), EUnauthorized);
+        assert_moderator_permission<PlatformTreasuryAdmin>(platform, group, caller);
         
         // Check that recipients list is not empty
         let recipients_count = vector::length(&recipients);
@@ -1557,6 +1777,7 @@ module social_contracts::platform {
     public fun assign_badge(
         platform_registry: &PlatformRegistry,
         platform: &Platform,
+        group: &PermissionedGroup<PlatformPackage>,
         profile: &mut profile::Profile,
         badge_name: String,
         badge_description: String,
@@ -1568,9 +1789,8 @@ module social_contracts::platform {
         // Check version compatibility
         assert!(platform.version == upgrade::current_version(), EWrongVersion);
         
-        // Verify caller is platform admin or moderator
         let caller = tx_context::sender(ctx);
-        assert!(is_developer_or_moderator(platform, caller), EUnauthorized);
+        assert_moderator_permission<PlatformBadgeAdmin>(platform, group, caller);
         
         // Verify platform is approved
         let platform_id = object::uid_to_address(&platform.id);
@@ -1616,6 +1836,7 @@ module social_contracts::platform {
     public fun revoke_badge(
         platform_registry: &PlatformRegistry,
         platform: &Platform,
+        group: &PermissionedGroup<PlatformPackage>,
         profile: &mut profile::Profile,
         badge_id: String,
         ctx: &mut TxContext
@@ -1623,9 +1844,8 @@ module social_contracts::platform {
         // Check version compatibility
         assert!(platform.version == upgrade::current_version(), EWrongVersion);
         
-        // Verify caller is platform admin or moderator
         let caller = tx_context::sender(ctx);
-        assert!(is_developer_or_moderator(platform, caller), EUnauthorized);
+        assert_moderator_permission<PlatformBadgeAdmin>(platform, group, caller);
         
         // Verify platform is approved
         let platform_id = object::uid_to_address(&platform.id);
@@ -1646,59 +1866,23 @@ module social_contracts::platform {
 
     /// When adding a moderator to a platform, register them with the profile module
     public(package) fun add_moderator_register(
-        platform: &mut Platform,
+        platform: &Platform,
+        group: &mut PermissionedGroup<PlatformPackage>,
         moderator_address: address,
         ctx: &TxContext
     ) {
-        // Verify caller is platform developer
-        let caller = tx_context::sender(ctx);
-        assert!(platform.developer == caller, EUnauthorized);
-        
-        // Get moderators set
-        let moderators = dynamic_field::borrow_mut<vector<u8>, VecSet<address>>(&mut platform.id, MODERATORS_FIELD);
-        
-        // Add moderator if not already a moderator
-        if (!vec_set::contains(moderators, &moderator_address)) {
-            vec_set::insert(moderators, moderator_address);
-            
-            // Emit moderator added event
-            let platform_id = object::uid_to_address(&platform.id);
-            event::emit(ModeratorAddedEvent {
-                platform_id,
-                moderator_address,
-                added_by: caller,
-            });
-        };
+        assert!(platform.developer == tx_context::sender(ctx), EUnauthorized);
+        grant_all_moderator_permissions(platform, group, moderator_address, ctx);
     }
     
     /// When removing a moderator from a platform
     public(package) fun remove_moderator_unregister(
-        platform: &mut Platform,
+        platform: &Platform,
+        group: &mut PermissionedGroup<PlatformPackage>,
         moderator_address: address,
         ctx: &TxContext
     ) {
-        // Verify caller is platform developer
-        let caller = tx_context::sender(ctx);
-        assert!(platform.developer == caller, EUnauthorized);
-        
-        // Cannot remove developer as moderator
-        assert!(moderator_address != platform.developer, EUnauthorized);
-        
-        // Get moderators set
-        let moderators = dynamic_field::borrow_mut<vector<u8>, VecSet<address>>(&mut platform.id, MODERATORS_FIELD);
-        
-        // Remove moderator if they are a moderator
-        if (vec_set::contains(moderators, &moderator_address)) {
-            vec_set::remove(moderators, &moderator_address);
-            
-            // Emit moderator removed event
-            let platform_id = object::uid_to_address(&platform.id);
-            event::emit(ModeratorRemovedEvent {
-                platform_id,
-                moderator_address,
-                removed_by: caller,
-            });
-        };
+        remove_moderator(platform, group, moderator_address, ctx);
     }
 
     #[test_only]

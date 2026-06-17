@@ -5,6 +5,7 @@ use diesel_migrations::EmbeddedMigrations;
 use diesel_migrations::embed_migrations;
 
 pub mod models;
+pub mod platform_permissions;
 
 pub const GOVERNANCE_STATUS_SUBMITTED: i16 = 0;
 pub const GOVERNANCE_STATUS_DELEGATE_REVIEW: i16 = 1;

@@ -2,6 +2,7 @@
 // SPDX-License-Identifier: Apache-2.0
 
 use serde::Serialize;
+use serde_json::Value as JsonValue;
 
 // API-layer type: subset of Platform for list/detail responses.
 // DB-table type: myso_indexer_alt_social_schema::models::Platform.
@@ -16,6 +17,8 @@ pub struct PlatformRow {
     pub cover_photo: Option<String>,
     pub media_previews: Option<serde_json::Value>,
     pub developer_address: String,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub moderators_group_id: Option<String>,
     pub status: i16,
     pub is_approved: bool,
     pub primary_category: String,
@@ -54,6 +57,7 @@ impl From<myso_indexer_alt_social_schema::models::Platform> for PlatformRow {
             cover_photo: p.cover_photo,
             media_previews: p.media_previews,
             developer_address: p.developer_address,
+            moderators_group_id: p.moderators_group_id,
             status: p.status,
             is_approved: p.is_approved,
             primary_category: p.primary_category,
@@ -79,6 +83,7 @@ pub struct PlatformModeratorRow {
     pub moderator_address: String,
     pub added_by: String,
     pub created_at: chrono::NaiveDateTime,
+    pub permissions: Vec<String>,
 }
 
 #[derive(Debug, Serialize)]
@@ -99,6 +104,80 @@ pub struct PlatformApprovalRow {
 pub struct PlatformMemberRow {
     pub wallet_address: String,
     pub joined_at: chrono::NaiveDateTime,
+}
+
+#[derive(Debug, Serialize)]
+pub struct PlatformUserAccessRow {
+    pub is_member: bool,
+    pub is_blocked: bool,
+    pub is_moderator: bool,
+    pub moderator_permissions: Vec<String>,
+    pub can_block_users: bool,
+    pub can_moderate_content: bool,
+    pub can_manage_badges: bool,
+    pub can_airdrop_treasury: bool,
+    pub can_manage_promotions: bool,
+}
+
+impl PlatformUserAccessRow {
+    pub(crate) fn from_db(
+        is_member: bool,
+        is_blocked: bool,
+        is_moderator: bool,
+        moderator_permissions: JsonValue,
+    ) -> Self {
+        let permissions: Vec<String> =
+            serde_json::from_value(moderator_permissions).unwrap_or_default();
+        let can_block_users = permissions.iter().any(|p| {
+            p == myso_indexer_alt_social_schema::platform_permissions::PLATFORM_BLOCK_ADMIN
+        });
+        let can_moderate_content = permissions.iter().any(|p| {
+            p == myso_indexer_alt_social_schema::platform_permissions::PLATFORM_CONTENT_MODERATOR
+        });
+        let can_manage_badges = permissions.iter().any(|p| {
+            p == myso_indexer_alt_social_schema::platform_permissions::PLATFORM_BADGE_ADMIN
+        });
+        let can_airdrop_treasury = permissions.iter().any(|p| {
+            p == myso_indexer_alt_social_schema::platform_permissions::PLATFORM_TREASURY_ADMIN
+        });
+        let can_manage_promotions = permissions.iter().any(|p| {
+            p == myso_indexer_alt_social_schema::platform_permissions::PLATFORM_PROMOTION_ADMIN
+        });
+        Self {
+            is_member,
+            is_blocked,
+            is_moderator,
+            moderator_permissions: permissions,
+            can_block_users,
+            can_moderate_content,
+            can_manage_badges,
+            can_airdrop_treasury,
+            can_manage_promotions,
+        }
+    }
+}
+
+#[derive(diesel::QueryableByName)]
+pub struct PlatformUserAccessDbRow {
+    #[diesel(sql_type = diesel::sql_types::Bool)]
+    is_member: bool,
+    #[diesel(sql_type = diesel::sql_types::Bool)]
+    is_blocked: bool,
+    #[diesel(sql_type = diesel::sql_types::Bool)]
+    is_moderator: bool,
+    #[diesel(sql_type = diesel::sql_types::Jsonb)]
+    moderator_permissions: JsonValue,
+}
+
+impl From<PlatformUserAccessDbRow> for PlatformUserAccessRow {
+    fn from(row: PlatformUserAccessDbRow) -> Self {
+        Self::from_db(
+            row.is_member,
+            row.is_blocked,
+            row.is_moderator,
+            row.moderator_permissions,
+        )
+    }
 }
 
 #[derive(Debug, Serialize)]

@@ -600,15 +600,24 @@ impl SocialPgReader {
         get_platform_members(&mut conn, platform_id, limit, offset, &self.metrics).await
     }
 
-    /// Get moderators of a platform (paginated).
+    /// Get moderators of a platform (paginated), optionally filtered by active permission type.
     pub async fn get_platform_moderators(
         &self,
         platform_id: &str,
+        permission_filter: Option<&str>,
         limit: i64,
         offset: i64,
     ) -> anyhow::Result<Vec<myso_indexer_alt_social_schema::models::PlatformModeratorRow>> {
         let mut conn = self.connect().await?;
-        get_platform_moderators(&mut conn, platform_id, limit, offset, &self.metrics).await
+        get_platform_moderators(
+            &mut conn,
+            platform_id,
+            permission_filter,
+            limit,
+            offset,
+            &self.metrics,
+        )
+        .await
     }
 
     /// Check if blocker has blocked blocked.

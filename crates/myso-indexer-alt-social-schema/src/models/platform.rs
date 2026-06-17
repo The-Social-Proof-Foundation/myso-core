@@ -6,8 +6,8 @@ use diesel::prelude::*;
 use serde::{Deserialize, Serialize};
 
 use crate::schema::{
-    platform_blocked_profiles, platform_events, platform_memberships, platform_moderators,
-    platform_token_airdrops, platforms,
+    platform_blocked_profiles, platform_events, platform_memberships, platform_moderator_permissions,
+    platform_moderators, platform_token_airdrops, platforms,
 };
 
 pub const PLATFORM_STATUS_DEVELOPMENT: i16 = 0;
@@ -112,6 +112,7 @@ pub struct Platform {
     pub cover_photo: Option<String>,
     pub media_previews: Option<serde_json::Value>,
     pub developer_address: String,
+    pub moderators_group_id: Option<String>,
     pub terms_of_service: Option<String>,
     pub privacy_policy: Option<String>,
     pub platform_names: Option<serde_json::Value>,
@@ -150,6 +151,7 @@ pub struct NewPlatform {
     pub cover_photo: Option<String>,
     pub media_previews: Option<serde_json::Value>,
     pub developer_address: String,
+    pub moderators_group_id: Option<String>,
     pub terms_of_service: Option<String>,
     pub privacy_policy: Option<String>,
     pub platform_names: Option<serde_json::Value>,
@@ -323,11 +325,35 @@ pub struct PlatformMemberRow {
     pub joined_at: NaiveDateTime,
 }
 
+#[derive(Debug, Clone, Queryable, Selectable, Serialize, Deserialize)]
+#[diesel(table_name = platform_moderator_permissions)]
+pub struct PlatformModeratorPermission {
+    pub id: i32,
+    pub platform_id: String,
+    pub moderator_address: String,
+    pub permission_type: String,
+    pub granted_by: String,
+    pub granted_at: NaiveDateTime,
+    pub revoked_at: Option<NaiveDateTime>,
+}
+
+#[derive(Debug, Clone, Insertable, Serialize, Deserialize)]
+#[diesel(table_name = platform_moderator_permissions)]
+pub struct NewPlatformModeratorPermission {
+    pub platform_id: String,
+    pub moderator_address: String,
+    pub permission_type: String,
+    pub granted_by: String,
+    pub granted_at: NaiveDateTime,
+    pub revoked_at: Option<NaiveDateTime>,
+}
+
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct PlatformModeratorRow {
     pub moderator_address: String,
     pub added_by: String,
     pub created_at: NaiveDateTime,
+    pub permissions: Vec<String>,
 }
 
 /// Row returned when listing platforms a profile has joined (membership + platform columns + counts).
@@ -344,6 +370,7 @@ pub struct ProfilePlatformMembershipRow {
     pub cover_photo: Option<String>,
     pub media_previews: Option<serde_json::Value>,
     pub developer_address: String,
+    pub moderators_group_id: Option<String>,
     pub terms_of_service: Option<String>,
     pub privacy_policy: Option<String>,
     pub platform_names: Option<serde_json::Value>,

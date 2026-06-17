@@ -7,7 +7,7 @@ use std::sync::Arc;
 
 use anyhow::Result;
 use async_trait::async_trait;
-use diesel::sql_types::{BigInt, Nullable, SmallInt, Text, Timestamptz};
+use diesel::sql_types::{BigInt, Nullable, Text, Timestamptz};
 use diesel::BoolExpressionMethods;
 use diesel::ExpressionMethods;
 use diesel::OptionalExtension;

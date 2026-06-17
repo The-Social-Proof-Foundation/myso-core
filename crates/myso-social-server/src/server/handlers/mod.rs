@@ -52,7 +52,8 @@ pub use mydata::{
 };
 pub use platforms::{
     check_platform_membership, get_platform_approval, get_platform_blocked, get_platform_by_id,
-    get_platform_events, get_platform_members, get_platform_moderators, list_platforms,
+    get_platform_events, get_platform_members, get_platform_moderators, get_platform_user_access,
+    list_platforms,
     list_platforms_approved,
 };
 pub use poc::{

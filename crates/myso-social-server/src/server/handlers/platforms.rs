@@ -7,7 +7,7 @@ use std::sync::Arc;
 
 use crate::error::SocialError;
 
-use super::super::{AppState, PageParams, PlatformsQuery};
+use super::super::{AppState, ModeratorsQuery, PageParams, PlatformsQuery};
 
 pub async fn list_platforms(
     State(state): State<Arc<AppState>>,
@@ -53,15 +53,29 @@ pub async fn get_platform_by_id(
 pub async fn get_platform_moderators(
     State(state): State<Arc<AppState>>,
     Path(id): Path<String>,
-    Query(params): Query<PageParams>,
+    Query(params): Query<ModeratorsQuery>,
 ) -> Result<Json<Vec<crate::reader::PlatformModeratorRow>>, SocialError> {
-    let limit = params.limit();
-    let offset = params.offset();
     let moderators = state
         .reader
-        .get_platform_moderators(&id, limit, offset)
+        .get_platform_moderators(
+            &id,
+            params.permission.as_deref(),
+            params.limit(),
+            params.offset(),
+        )
         .await?;
     Ok(Json(moderators))
+}
+
+pub async fn get_platform_user_access(
+    State(state): State<Arc<AppState>>,
+    Path((id, user_address)): Path<(String, String)>,
+) -> Result<Json<crate::reader::PlatformUserAccessRow>, SocialError> {
+    let access = state
+        .reader
+        .get_platform_user_access(&id, &user_address)
+        .await?;
+    Ok(Json(access))
 }
 
 pub async fn get_platform_approval(

@@ -8,11 +8,19 @@ Manages social media platforms and their timelines
 
 -  [Struct `PlatformStatus`](#social_contracts_platform_PlatformStatus)
 -  [Struct `PlatformAdminCap`](#social_contracts_platform_PlatformAdminCap)
+-  [Struct `PlatformPackage`](#social_contracts_platform_PlatformPackage)
+-  [Struct `ModeratorsGroupTag`](#social_contracts_platform_ModeratorsGroupTag)
+-  [Struct `PlatformBlockAdmin`](#social_contracts_platform_PlatformBlockAdmin)
+-  [Struct `PlatformBadgeAdmin`](#social_contracts_platform_PlatformBadgeAdmin)
+-  [Struct `PlatformTreasuryAdmin`](#social_contracts_platform_PlatformTreasuryAdmin)
+-  [Struct `PlatformContentModerator`](#social_contracts_platform_PlatformContentModerator)
+-  [Struct `PlatformPromotionAdmin`](#social_contracts_platform_PlatformPromotionAdmin)
 -  [Struct `Platform`](#social_contracts_platform_Platform)
 -  [Struct `PlatformRegistry`](#social_contracts_platform_PlatformRegistry)
 -  [Struct `PlatformCreatedEvent`](#social_contracts_platform_PlatformCreatedEvent)
 -  [Struct `PlatformUpdatedEvent`](#social_contracts_platform_PlatformUpdatedEvent)
--  [Struct `ModeratorAddedEvent`](#social_contracts_platform_ModeratorAddedEvent)
+-  [Struct `ModeratorPermissionsGrantedEvent`](#social_contracts_platform_ModeratorPermissionsGrantedEvent)
+-  [Struct `ModeratorPermissionsRevokedEvent`](#social_contracts_platform_ModeratorPermissionsRevokedEvent)
 -  [Struct `ModeratorRemovedEvent`](#social_contracts_platform_ModeratorRemovedEvent)
 -  [Struct `PlatformApprovalChangedEvent`](#social_contracts_platform_PlatformApprovalChangedEvent)
 -  [Struct `PlatformDeletedEvent`](#social_contracts_platform_PlatformDeletedEvent)
@@ -34,6 +42,9 @@ Manages social media platforms and their timelines
 -  [Function `finalize_platform_governance_proposal`](#social_contracts_platform_finalize_platform_governance_proposal)
 -  [Function `finalize_platform_governance_proposal_anonymous`](#social_contracts_platform_finalize_platform_governance_proposal_anonymous)
 -  [Function `reject_platform_governance_proposal_manually`](#social_contracts_platform_reject_platform_governance_proposal_manually)
+-  [Function `grant_moderator_permission`](#social_contracts_platform_grant_moderator_permission)
+-  [Function `grant_all_moderator_permissions`](#social_contracts_platform_grant_all_moderator_permissions)
+-  [Function `revoke_moderator_permission`](#social_contracts_platform_revoke_moderator_permission)
 -  [Function `add_moderator`](#social_contracts_platform_add_moderator)
 -  [Function `remove_moderator`](#social_contracts_platform_remove_moderator)
 -  [Function `block_wallet`](#social_contracts_platform_block_wallet)
@@ -49,7 +60,19 @@ Manages social media platforms and their timelines
 -  [Function `leave_platform`](#social_contracts_platform_leave_platform)
 -  [Function `is_approved`](#social_contracts_platform_is_approved)
 -  [Function `has_joined_platform`](#social_contracts_platform_has_joined_platform)
+-  [Function `is_developer`](#social_contracts_platform_is_developer)
+-  [Function `has_moderator_permission`](#social_contracts_platform_has_moderator_permission)
+-  [Function `is_moderator`](#social_contracts_platform_is_moderator)
 -  [Function `is_developer_or_moderator`](#social_contracts_platform_is_developer_or_moderator)
+-  [Function `moderators_group_id`](#social_contracts_platform_moderators_group_id)
+-  [Function `assert_moderator_permission`](#social_contracts_platform_assert_moderator_permission)
+-  [Function `grant_all_extension_permissions`](#social_contracts_platform_grant_all_extension_permissions)
+-  [Function `all_extension_permission_names`](#social_contracts_platform_all_extension_permission_names)
+-  [Function `permission_name`](#social_contracts_platform_permission_name)
+-  [Function `has_any_extension_permission`](#social_contracts_platform_has_any_extension_permission)
+-  [Function `emit_permissions_granted`](#social_contracts_platform_emit_permissions_granted)
+-  [Function `emit_permissions_revoked`](#social_contracts_platform_emit_permissions_revoked)
+-  [Function `maybe_emit_moderator_removed`](#social_contracts_platform_maybe_emit_moderator_removed)
 -  [Function `name`](#social_contracts_platform_name)
 -  [Function `tagline`](#social_contracts_platform_tagline)
 -  [Function `description`](#social_contracts_platform_description)
@@ -69,8 +92,6 @@ Manages social media platforms and their timelines
 -  [Function `created_at`](#social_contracts_platform_created_at)
 -  [Function `treasury_balance`](#social_contracts_platform_treasury_balance)
 -  [Function `id`](#social_contracts_platform_id)
--  [Function `is_moderator`](#social_contracts_platform_is_moderator)
--  [Function `get_moderators`](#social_contracts_platform_get_moderators)
 -  [Function `get_platform_by_name`](#social_contracts_platform_get_platform_by_name)
 -  [Function `get_platforms_by_developer`](#social_contracts_platform_get_platforms_by_developer)
 -  [Function `wants_dao_governance`](#social_contracts_platform_wants_dao_governance)
@@ -117,11 +138,14 @@ Manages social media platforms and their timelines
 <b>use</b> <a href="../myso/object.md#myso_object">myso::object</a>;
 <b>use</b> <a href="../myso/package.md#myso_package">myso::package</a>;
 <b>use</b> <a href="../myso/party.md#myso_party">myso::party</a>;
+<b>use</b> <a href="../myso/permissioned_group.md#myso_permissioned_group">myso::permissioned_group</a>;
+<b>use</b> <a href="../myso/permissions_table.md#myso_permissions_table">myso::permissions_table</a>;
 <b>use</b> <a href="../myso/protocol_config.md#myso_protocol_config">myso::protocol_config</a>;
 <b>use</b> <a href="../myso/table.md#myso_table">myso::table</a>;
 <b>use</b> <a href="../myso/transfer.md#myso_transfer">myso::transfer</a>;
 <b>use</b> <a href="../myso/tx_context.md#myso_tx_context">myso::tx_context</a>;
 <b>use</b> <a href="../myso/types.md#myso_types">myso::types</a>;
+<b>use</b> <a href="../myso/unpause_cap.md#myso_unpause_cap">myso::unpause_cap</a>;
 <b>use</b> <a href="../myso/url.md#myso_url">myso::url</a>;
 <b>use</b> <a href="../myso/vec_map.md#myso_vec_map">myso::vec_map</a>;
 <b>use</b> <a href="../myso/vec_set.md#myso_vec_set">myso::vec_set</a>;
@@ -195,6 +219,160 @@ Admin capability for Platform system management
 </dt>
 <dd>
 </dd>
+</dl>
+
+
+</details>
+
+<a name="social_contracts_platform_PlatformPackage"></a>
+
+## Struct `PlatformPackage`
+
+Package witness for <code>PermissionedGroup&lt;<a href="../social_contracts/platform.md#social_contracts_platform_PlatformPackage">PlatformPackage</a>&gt;</code>
+
+
+<pre><code><b>public</b> <b>struct</b> <a href="../social_contracts/platform.md#social_contracts_platform_PlatformPackage">PlatformPackage</a> <b>has</b> drop
+</code></pre>
+
+
+
+<details>
+<summary>Fields</summary>
+
+
+<dl>
+</dl>
+
+
+</details>
+
+<a name="social_contracts_platform_ModeratorsGroupTag"></a>
+
+## Struct `ModeratorsGroupTag`
+
+Derivation key for the per-platform moderators permission group
+
+
+<pre><code><b>public</b> <b>struct</b> <a href="../social_contracts/platform.md#social_contracts_platform_ModeratorsGroupTag">ModeratorsGroupTag</a> <b>has</b> <b>copy</b>, drop, store
+</code></pre>
+
+
+
+<details>
+<summary>Fields</summary>
+
+
+<dl>
+</dl>
+
+
+</details>
+
+<a name="social_contracts_platform_PlatformBlockAdmin"></a>
+
+## Struct `PlatformBlockAdmin`
+
+Permission to block/unblock wallets on behalf of the platform
+
+
+<pre><code><b>public</b> <b>struct</b> <a href="../social_contracts/platform.md#social_contracts_platform_PlatformBlockAdmin">PlatformBlockAdmin</a> <b>has</b> drop
+</code></pre>
+
+
+
+<details>
+<summary>Fields</summary>
+
+
+<dl>
+</dl>
+
+
+</details>
+
+<a name="social_contracts_platform_PlatformBadgeAdmin"></a>
+
+## Struct `PlatformBadgeAdmin`
+
+Permission to assign/revoke platform badges
+
+
+<pre><code><b>public</b> <b>struct</b> <a href="../social_contracts/platform.md#social_contracts_platform_PlatformBadgeAdmin">PlatformBadgeAdmin</a> <b>has</b> drop
+</code></pre>
+
+
+
+<details>
+<summary>Fields</summary>
+
+
+<dl>
+</dl>
+
+
+</details>
+
+<a name="social_contracts_platform_PlatformTreasuryAdmin"></a>
+
+## Struct `PlatformTreasuryAdmin`
+
+Permission to airdrop from the platform treasury
+
+
+<pre><code><b>public</b> <b>struct</b> <a href="../social_contracts/platform.md#social_contracts_platform_PlatformTreasuryAdmin">PlatformTreasuryAdmin</a> <b>has</b> drop
+</code></pre>
+
+
+
+<details>
+<summary>Fields</summary>
+
+
+<dl>
+</dl>
+
+
+</details>
+
+<a name="social_contracts_platform_PlatformContentModerator"></a>
+
+## Struct `PlatformContentModerator`
+
+Permission to moderate posts and comments on the platform
+
+
+<pre><code><b>public</b> <b>struct</b> <a href="../social_contracts/platform.md#social_contracts_platform_PlatformContentModerator">PlatformContentModerator</a> <b>has</b> drop
+</code></pre>
+
+
+
+<details>
+<summary>Fields</summary>
+
+
+<dl>
+</dl>
+
+
+</details>
+
+<a name="social_contracts_platform_PlatformPromotionAdmin"></a>
+
+## Struct `PlatformPromotionAdmin`
+
+Permission to manage promoted posts and view payouts
+
+
+<pre><code><b>public</b> <b>struct</b> <a href="../social_contracts/platform.md#social_contracts_platform_PlatformPromotionAdmin">PlatformPromotionAdmin</a> <b>has</b> drop
+</code></pre>
+
+
+
+<details>
+<summary>Fields</summary>
+
+
+<dl>
 </dl>
 
 
@@ -582,6 +760,11 @@ Platform created event
 </dt>
 <dd>
 </dd>
+<dt>
+<code><a href="../social_contracts/platform.md#social_contracts_platform_moderators_group_id">moderators_group_id</a>: <a href="../myso/object.md#myso_object_ID">myso::object::ID</a></code>
+</dt>
+<dd>
+</dd>
 </dl>
 
 
@@ -694,14 +877,14 @@ Platform updated event
 
 </details>
 
-<a name="social_contracts_platform_ModeratorAddedEvent"></a>
+<a name="social_contracts_platform_ModeratorPermissionsGrantedEvent"></a>
 
-## Struct `ModeratorAddedEvent`
+## Struct `ModeratorPermissionsGrantedEvent`
 
-Moderator added event
+Emitted when one or more moderator permissions are granted
 
 
-<pre><code><b>public</b> <b>struct</b> <a href="../social_contracts/platform.md#social_contracts_platform_ModeratorAddedEvent">ModeratorAddedEvent</a> <b>has</b> <b>copy</b>, drop
+<pre><code><b>public</b> <b>struct</b> <a href="../social_contracts/platform.md#social_contracts_platform_ModeratorPermissionsGrantedEvent">ModeratorPermissionsGrantedEvent</a> <b>has</b> <b>copy</b>, drop
 </code></pre>
 
 
@@ -717,12 +900,69 @@ Moderator added event
 <dd>
 </dd>
 <dt>
-<code>moderator_address: <b>address</b></code>
+<code><a href="../social_contracts/platform.md#social_contracts_platform_moderators_group_id">moderators_group_id</a>: <a href="../myso/object.md#myso_object_ID">myso::object::ID</a></code>
 </dt>
 <dd>
 </dd>
 <dt>
-<code>added_by: <b>address</b></code>
+<code>member: <b>address</b></code>
+</dt>
+<dd>
+</dd>
+<dt>
+<code>permissions: vector&lt;<a href="../std/string.md#std_string_String">std::string::String</a>&gt;</code>
+</dt>
+<dd>
+</dd>
+<dt>
+<code>granted_by: <b>address</b></code>
+</dt>
+<dd>
+</dd>
+</dl>
+
+
+</details>
+
+<a name="social_contracts_platform_ModeratorPermissionsRevokedEvent"></a>
+
+## Struct `ModeratorPermissionsRevokedEvent`
+
+Emitted when one or more moderator permissions are revoked
+
+
+<pre><code><b>public</b> <b>struct</b> <a href="../social_contracts/platform.md#social_contracts_platform_ModeratorPermissionsRevokedEvent">ModeratorPermissionsRevokedEvent</a> <b>has</b> <b>copy</b>, drop
+</code></pre>
+
+
+
+<details>
+<summary>Fields</summary>
+
+
+<dl>
+<dt>
+<code>platform_id: <b>address</b></code>
+</dt>
+<dd>
+</dd>
+<dt>
+<code><a href="../social_contracts/platform.md#social_contracts_platform_moderators_group_id">moderators_group_id</a>: <a href="../myso/object.md#myso_object_ID">myso::object::ID</a></code>
+</dt>
+<dd>
+</dd>
+<dt>
+<code>member: <b>address</b></code>
+</dt>
+<dd>
+</dd>
+<dt>
+<code>permissions: vector&lt;<a href="../std/string.md#std_string_String">std::string::String</a>&gt;</code>
+</dt>
+<dd>
+</dd>
+<dt>
+<code>revoked_by: <b>address</b></code>
 </dt>
 <dd>
 </dd>
@@ -735,7 +975,7 @@ Moderator added event
 
 ## Struct `ModeratorRemovedEvent`
 
-Moderator removed event
+Emitted when a member is fully removed from the moderators group
 
 
 <pre><code><b>public</b> <b>struct</b> <a href="../social_contracts/platform.md#social_contracts_platform_ModeratorRemovedEvent">ModeratorRemovedEvent</a> <b>has</b> <b>copy</b>, drop
@@ -754,7 +994,12 @@ Moderator removed event
 <dd>
 </dd>
 <dt>
-<code>moderator_address: <b>address</b></code>
+<code><a href="../social_contracts/platform.md#social_contracts_platform_moderators_group_id">moderators_group_id</a>: <a href="../myso/object.md#myso_object_ID">myso::object::ID</a></code>
+</dt>
+<dd>
+</dd>
+<dt>
+<code>member: <b>address</b></code>
 </dt>
 <dd>
 </dd>
@@ -1539,21 +1784,58 @@ Platform category constants
 
 
 
-<a name="social_contracts_platform_MODERATORS_FIELD"></a>
+<a name="social_contracts_platform_JOINED_WALLETS_FIELD"></a>
 
 Field names for dynamic fields
 
 
-<pre><code><b>const</b> <a href="../social_contracts/platform.md#social_contracts_platform_MODERATORS_FIELD">MODERATORS_FIELD</a>: vector&lt;u8&gt; = vector[109, 111, 100, 101, 114, 97, 116, 111, 114, 115];
+<pre><code><b>const</b> <a href="../social_contracts/platform.md#social_contracts_platform_JOINED_WALLETS_FIELD">JOINED_WALLETS_FIELD</a>: vector&lt;u8&gt; = vector[106, 111, 105, 110, 101, 100, 95, 119, 97, 108, 108, 101, 116, 115];
 </code></pre>
 
 
 
-<a name="social_contracts_platform_JOINED_WALLETS_FIELD"></a>
+<a name="social_contracts_platform_PERM_BLOCK_ADMIN"></a>
+
+Stable permission names indexed off-chain (must match indexer constants)
+
+
+<pre><code><b>const</b> <a href="../social_contracts/platform.md#social_contracts_platform_PERM_BLOCK_ADMIN">PERM_BLOCK_ADMIN</a>: vector&lt;u8&gt; = vector[80, 108, 97, 116, 102, 111, 114, 109, 66, 108, 111, 99, 107, 65, 100, 109, 105, 110];
+</code></pre>
 
 
 
-<pre><code><b>const</b> <a href="../social_contracts/platform.md#social_contracts_platform_JOINED_WALLETS_FIELD">JOINED_WALLETS_FIELD</a>: vector&lt;u8&gt; = vector[106, 111, 105, 110, 101, 100, 95, 119, 97, 108, 108, 101, 116, 115];
+<a name="social_contracts_platform_PERM_BADGE_ADMIN"></a>
+
+
+
+<pre><code><b>const</b> <a href="../social_contracts/platform.md#social_contracts_platform_PERM_BADGE_ADMIN">PERM_BADGE_ADMIN</a>: vector&lt;u8&gt; = vector[80, 108, 97, 116, 102, 111, 114, 109, 66, 97, 100, 103, 101, 65, 100, 109, 105, 110];
+</code></pre>
+
+
+
+<a name="social_contracts_platform_PERM_TREASURY_ADMIN"></a>
+
+
+
+<pre><code><b>const</b> <a href="../social_contracts/platform.md#social_contracts_platform_PERM_TREASURY_ADMIN">PERM_TREASURY_ADMIN</a>: vector&lt;u8&gt; = vector[80, 108, 97, 116, 102, 111, 114, 109, 84, 114, 101, 97, 115, 117, 114, 121, 65, 100, 109, 105, 110];
+</code></pre>
+
+
+
+<a name="social_contracts_platform_PERM_CONTENT_MODERATOR"></a>
+
+
+
+<pre><code><b>const</b> <a href="../social_contracts/platform.md#social_contracts_platform_PERM_CONTENT_MODERATOR">PERM_CONTENT_MODERATOR</a>: vector&lt;u8&gt; = vector[80, 108, 97, 116, 102, 111, 114, 109, 67, 111, 110, 116, 101, 110, 116, 77, 111, 100, 101, 114, 97, 116, 111, 114];
+</code></pre>
+
+
+
+<a name="social_contracts_platform_PERM_PROMOTION_ADMIN"></a>
+
+
+
+<pre><code><b>const</b> <a href="../social_contracts/platform.md#social_contracts_platform_PERM_PROMOTION_ADMIN">PERM_PROMOTION_ADMIN</a>: vector&lt;u8&gt; = vector[80, 108, 97, 116, 102, 111, 114, 109, 80, 114, 111, 109, 111, 116, 105, 111, 110, 65, 100, 109, 105, 110];
 </code></pre>
 
 
@@ -1765,12 +2047,22 @@ Create a new platform and transfer to developer
         <a href="../social_contracts/platform.md#social_contracts_platform_governance_registry_id">governance_registry_id</a>: option::none(),
         version: <a href="../social_contracts/upgrade.md#social_contracts_upgrade_current_version">upgrade::current_version</a>(),
     };
-    // Create empty moderators set
-    <b>let</b> <b>mut</b> moderators = vec_set::empty&lt;<b>address</b>&gt;();
-    // Add <a href="../social_contracts/platform.md#social_contracts_platform_developer">developer</a> <b>as</b> a moderator
-    vec_set::insert(&<b>mut</b> moderators, <a href="../social_contracts/platform.md#social_contracts_platform_developer">developer</a>);
-    // Add moderators <b>as</b> a dynamic field
-    dynamic_field::add(&<b>mut</b> <a href="../social_contracts/platform.md#social_contracts_platform">platform</a>.<a href="../social_contracts/platform.md#social_contracts_platform_id">id</a>, <a href="../social_contracts/platform.md#social_contracts_platform_MODERATORS_FIELD">MODERATORS_FIELD</a>, moderators);
+    <b>let</b> <b>mut</b> moderators_group = permissioned_group::new_derived&lt;<a href="../social_contracts/platform.md#social_contracts_platform_PlatformPackage">PlatformPackage</a>, <a href="../social_contracts/platform.md#social_contracts_platform_ModeratorsGroupTag">ModeratorsGroupTag</a>&gt;(
+        <a href="../social_contracts/platform.md#social_contracts_platform_PlatformPackage">PlatformPackage</a>(),
+        &<b>mut</b> <a href="../social_contracts/platform.md#social_contracts_platform">platform</a>.<a href="../social_contracts/platform.md#social_contracts_platform_id">id</a>,
+        <a href="../social_contracts/platform.md#social_contracts_platform_ModeratorsGroupTag">ModeratorsGroupTag</a>(),
+        ctx,
+    );
+    <b>let</b> <a href="../social_contracts/platform.md#social_contracts_platform_moderators_group_id">moderators_group_id</a> = object::id(&moderators_group);
+    <a href="../social_contracts/platform.md#social_contracts_platform_grant_all_extension_permissions">grant_all_extension_permissions</a>(&<b>mut</b> moderators_group, <a href="../social_contracts/platform.md#social_contracts_platform_developer">developer</a>, ctx);
+    <a href="../social_contracts/platform.md#social_contracts_platform_emit_permissions_granted">emit_permissions_granted</a>(
+        &<a href="../social_contracts/platform.md#social_contracts_platform">platform</a>,
+        <a href="../social_contracts/platform.md#social_contracts_platform_moderators_group_id">moderators_group_id</a>,
+        <a href="../social_contracts/platform.md#social_contracts_platform_developer">developer</a>,
+        <a href="../social_contracts/platform.md#social_contracts_platform_all_extension_permission_names">all_extension_permission_names</a>(),
+        <a href="../social_contracts/platform.md#social_contracts_platform_developer">developer</a>,
+    );
+    transfer::public_share_object(moderators_group);
     // Register <a href="../social_contracts/platform.md#social_contracts_platform">platform</a> in registry
     <b>let</b> platform_id = object::uid_to_address(&<a href="../social_contracts/platform.md#social_contracts_platform">platform</a>.<a href="../social_contracts/platform.md#social_contracts_platform_id">id</a>);
     // Add to platforms by <a href="../social_contracts/platform.md#social_contracts_platform_name">name</a>
@@ -1864,6 +2156,7 @@ Create a new platform and transfer to developer
         quadratic_base_cost: <a href="../social_contracts/platform.md#social_contracts_platform">platform</a>.quadratic_base_cost,
         voting_period_epochs: <a href="../social_contracts/platform.md#social_contracts_platform">platform</a>.voting_period_epochs,
         quorum_votes: <a href="../social_contracts/platform.md#social_contracts_platform">platform</a>.quorum_votes,
+        <a href="../social_contracts/platform.md#social_contracts_platform_moderators_group_id">moderators_group_id</a>,
     });
     // Share <a href="../social_contracts/platform.md#social_contracts_platform">platform</a> <b>as</b> a shared object (publicly accessible)
     transfer::share_object(<a href="../social_contracts/platform.md#social_contracts_platform">platform</a>);
@@ -2444,14 +2737,145 @@ Same constraints as [<code><a href="../social_contracts/governance.md#social_con
 
 </details>
 
+<a name="social_contracts_platform_grant_moderator_permission"></a>
+
+## Function `grant_moderator_permission`
+
+Grant a single extension permission to a platform moderator
+
+
+<pre><code><b>public</b> <b>fun</b> <a href="../social_contracts/platform.md#social_contracts_platform_grant_moderator_permission">grant_moderator_permission</a>&lt;P: drop&gt;(<a href="../social_contracts/platform.md#social_contracts_platform">platform</a>: &<a href="../social_contracts/platform.md#social_contracts_platform_Platform">social_contracts::platform::Platform</a>, group: &<b>mut</b> <a href="../myso/permissioned_group.md#myso_permissioned_group_PermissionedGroup">myso::permissioned_group::PermissionedGroup</a>&lt;<a href="../social_contracts/platform.md#social_contracts_platform_PlatformPackage">social_contracts::platform::PlatformPackage</a>&gt;, member: <b>address</b>, ctx: &<a href="../myso/tx_context.md#myso_tx_context_TxContext">myso::tx_context::TxContext</a>)
+</code></pre>
+
+
+
+<details>
+<summary>Implementation</summary>
+
+
+<pre><code><b>public</b> <b>fun</b> <a href="../social_contracts/platform.md#social_contracts_platform_grant_moderator_permission">grant_moderator_permission</a>&lt;P: drop&gt;(
+    <a href="../social_contracts/platform.md#social_contracts_platform">platform</a>: &<a href="../social_contracts/platform.md#social_contracts_platform_Platform">Platform</a>,
+    group: &<b>mut</b> PermissionedGroup&lt;<a href="../social_contracts/platform.md#social_contracts_platform_PlatformPackage">PlatformPackage</a>&gt;,
+    member: <b>address</b>,
+    ctx: &TxContext,
+) {
+    <b>assert</b>!(<a href="../social_contracts/platform.md#social_contracts_platform">platform</a>.version == <a href="../social_contracts/upgrade.md#social_contracts_upgrade_current_version">upgrade::current_version</a>(), <a href="../social_contracts/platform.md#social_contracts_platform_EWrongVersion">EWrongVersion</a>);
+    <b>let</b> caller = tx_context::sender(ctx);
+    <b>assert</b>!(
+        group.has_permission&lt;<a href="../social_contracts/platform.md#social_contracts_platform_PlatformPackage">PlatformPackage</a>, ExtensionPermissionsAdmin&gt;(caller),
+        <a href="../social_contracts/platform.md#social_contracts_platform_EUnauthorized">EUnauthorized</a>,
+    );
+    permissioned_group::grant_permission&lt;<a href="../social_contracts/platform.md#social_contracts_platform_PlatformPackage">PlatformPackage</a>, P&gt;(group, member, ctx);
+    <a href="../social_contracts/platform.md#social_contracts_platform_emit_permissions_granted">emit_permissions_granted</a>(
+        <a href="../social_contracts/platform.md#social_contracts_platform">platform</a>,
+        object::id(group),
+        member,
+        vector[<a href="../social_contracts/platform.md#social_contracts_platform_permission_name">permission_name</a>&lt;P&gt;()],
+        caller,
+    );
+}
+</code></pre>
+
+
+
+</details>
+
+<a name="social_contracts_platform_grant_all_moderator_permissions"></a>
+
+## Function `grant_all_moderator_permissions`
+
+Grant all extension permissions to a member (full platform moderator)
+
+
+<pre><code><b>public</b> <b>fun</b> <a href="../social_contracts/platform.md#social_contracts_platform_grant_all_moderator_permissions">grant_all_moderator_permissions</a>(<a href="../social_contracts/platform.md#social_contracts_platform">platform</a>: &<a href="../social_contracts/platform.md#social_contracts_platform_Platform">social_contracts::platform::Platform</a>, group: &<b>mut</b> <a href="../myso/permissioned_group.md#myso_permissioned_group_PermissionedGroup">myso::permissioned_group::PermissionedGroup</a>&lt;<a href="../social_contracts/platform.md#social_contracts_platform_PlatformPackage">social_contracts::platform::PlatformPackage</a>&gt;, member: <b>address</b>, ctx: &<a href="../myso/tx_context.md#myso_tx_context_TxContext">myso::tx_context::TxContext</a>)
+</code></pre>
+
+
+
+<details>
+<summary>Implementation</summary>
+
+
+<pre><code><b>public</b> <b>fun</b> <a href="../social_contracts/platform.md#social_contracts_platform_grant_all_moderator_permissions">grant_all_moderator_permissions</a>(
+    <a href="../social_contracts/platform.md#social_contracts_platform">platform</a>: &<a href="../social_contracts/platform.md#social_contracts_platform_Platform">Platform</a>,
+    group: &<b>mut</b> PermissionedGroup&lt;<a href="../social_contracts/platform.md#social_contracts_platform_PlatformPackage">PlatformPackage</a>&gt;,
+    member: <b>address</b>,
+    ctx: &TxContext,
+) {
+    <b>assert</b>!(<a href="../social_contracts/platform.md#social_contracts_platform">platform</a>.version == <a href="../social_contracts/upgrade.md#social_contracts_upgrade_current_version">upgrade::current_version</a>(), <a href="../social_contracts/platform.md#social_contracts_platform_EWrongVersion">EWrongVersion</a>);
+    <b>let</b> caller = tx_context::sender(ctx);
+    <b>assert</b>!(
+        group.has_permission&lt;<a href="../social_contracts/platform.md#social_contracts_platform_PlatformPackage">PlatformPackage</a>, ExtensionPermissionsAdmin&gt;(caller),
+        <a href="../social_contracts/platform.md#social_contracts_platform_EUnauthorized">EUnauthorized</a>,
+    );
+    <a href="../social_contracts/platform.md#social_contracts_platform_grant_all_extension_permissions">grant_all_extension_permissions</a>(group, member, ctx);
+    <a href="../social_contracts/platform.md#social_contracts_platform_emit_permissions_granted">emit_permissions_granted</a>(
+        <a href="../social_contracts/platform.md#social_contracts_platform">platform</a>,
+        object::id(group),
+        member,
+        <a href="../social_contracts/platform.md#social_contracts_platform_all_extension_permission_names">all_extension_permission_names</a>(),
+        caller,
+    );
+}
+</code></pre>
+
+
+
+</details>
+
+<a name="social_contracts_platform_revoke_moderator_permission"></a>
+
+## Function `revoke_moderator_permission`
+
+Revoke a single extension permission from a platform moderator
+
+
+<pre><code><b>public</b> <b>fun</b> <a href="../social_contracts/platform.md#social_contracts_platform_revoke_moderator_permission">revoke_moderator_permission</a>&lt;P: drop&gt;(<a href="../social_contracts/platform.md#social_contracts_platform">platform</a>: &<a href="../social_contracts/platform.md#social_contracts_platform_Platform">social_contracts::platform::Platform</a>, group: &<b>mut</b> <a href="../myso/permissioned_group.md#myso_permissioned_group_PermissionedGroup">myso::permissioned_group::PermissionedGroup</a>&lt;<a href="../social_contracts/platform.md#social_contracts_platform_PlatformPackage">social_contracts::platform::PlatformPackage</a>&gt;, member: <b>address</b>, ctx: &<a href="../myso/tx_context.md#myso_tx_context_TxContext">myso::tx_context::TxContext</a>)
+</code></pre>
+
+
+
+<details>
+<summary>Implementation</summary>
+
+
+<pre><code><b>public</b> <b>fun</b> <a href="../social_contracts/platform.md#social_contracts_platform_revoke_moderator_permission">revoke_moderator_permission</a>&lt;P: drop&gt;(
+    <a href="../social_contracts/platform.md#social_contracts_platform">platform</a>: &<a href="../social_contracts/platform.md#social_contracts_platform_Platform">Platform</a>,
+    group: &<b>mut</b> PermissionedGroup&lt;<a href="../social_contracts/platform.md#social_contracts_platform_PlatformPackage">PlatformPackage</a>&gt;,
+    member: <b>address</b>,
+    ctx: &TxContext,
+) {
+    <b>assert</b>!(<a href="../social_contracts/platform.md#social_contracts_platform">platform</a>.version == <a href="../social_contracts/upgrade.md#social_contracts_upgrade_current_version">upgrade::current_version</a>(), <a href="../social_contracts/platform.md#social_contracts_platform_EWrongVersion">EWrongVersion</a>);
+    <b>let</b> caller = tx_context::sender(ctx);
+    <b>assert</b>!(
+        group.has_permission&lt;<a href="../social_contracts/platform.md#social_contracts_platform_PlatformPackage">PlatformPackage</a>, ExtensionPermissionsAdmin&gt;(caller),
+        <a href="../social_contracts/platform.md#social_contracts_platform_EUnauthorized">EUnauthorized</a>,
+    );
+    <b>assert</b>!(member != <a href="../social_contracts/platform.md#social_contracts_platform">platform</a>.<a href="../social_contracts/platform.md#social_contracts_platform_developer">developer</a>, <a href="../social_contracts/platform.md#social_contracts_platform_EUnauthorized">EUnauthorized</a>);
+    permissioned_group::revoke_permission&lt;<a href="../social_contracts/platform.md#social_contracts_platform_PlatformPackage">PlatformPackage</a>, P&gt;(group, member, ctx);
+    <a href="../social_contracts/platform.md#social_contracts_platform_emit_permissions_revoked">emit_permissions_revoked</a>(
+        <a href="../social_contracts/platform.md#social_contracts_platform">platform</a>,
+        object::id(group),
+        member,
+        vector[<a href="../social_contracts/platform.md#social_contracts_platform_permission_name">permission_name</a>&lt;P&gt;()],
+        caller,
+    );
+    <a href="../social_contracts/platform.md#social_contracts_platform_maybe_emit_moderator_removed">maybe_emit_moderator_removed</a>(<a href="../social_contracts/platform.md#social_contracts_platform">platform</a>, group, member, caller);
+}
+</code></pre>
+
+
+
+</details>
+
 <a name="social_contracts_platform_add_moderator"></a>
 
 ## Function `add_moderator`
 
-Add a moderator to a platform
+Add a moderator with all extension permissions (developer-only convenience wrapper)
 
 
-<pre><code><b>public</b> <b>fun</b> <a href="../social_contracts/platform.md#social_contracts_platform_add_moderator">add_moderator</a>(<a href="../social_contracts/platform.md#social_contracts_platform">platform</a>: &<b>mut</b> <a href="../social_contracts/platform.md#social_contracts_platform_Platform">social_contracts::platform::Platform</a>, moderator_address: <b>address</b>, ctx: &<b>mut</b> <a href="../myso/tx_context.md#myso_tx_context_TxContext">myso::tx_context::TxContext</a>)
+<pre><code><b>public</b> <b>fun</b> <a href="../social_contracts/platform.md#social_contracts_platform_add_moderator">add_moderator</a>(<a href="../social_contracts/platform.md#social_contracts_platform">platform</a>: &<a href="../social_contracts/platform.md#social_contracts_platform_Platform">social_contracts::platform::Platform</a>, group: &<b>mut</b> <a href="../myso/permissioned_group.md#myso_permissioned_group_PermissionedGroup">myso::permissioned_group::PermissionedGroup</a>&lt;<a href="../social_contracts/platform.md#social_contracts_platform_PlatformPackage">social_contracts::platform::PlatformPackage</a>&gt;, moderator_address: <b>address</b>, ctx: &<a href="../myso/tx_context.md#myso_tx_context_TxContext">myso::tx_context::TxContext</a>)
 </code></pre>
 
 
@@ -2461,27 +2885,13 @@ Add a moderator to a platform
 
 
 <pre><code><b>public</b> <b>fun</b> <a href="../social_contracts/platform.md#social_contracts_platform_add_moderator">add_moderator</a>(
-    <a href="../social_contracts/platform.md#social_contracts_platform">platform</a>: &<b>mut</b> <a href="../social_contracts/platform.md#social_contracts_platform_Platform">Platform</a>,
+    <a href="../social_contracts/platform.md#social_contracts_platform">platform</a>: &<a href="../social_contracts/platform.md#social_contracts_platform_Platform">Platform</a>,
+    group: &<b>mut</b> PermissionedGroup&lt;<a href="../social_contracts/platform.md#social_contracts_platform_PlatformPackage">PlatformPackage</a>&gt;,
     moderator_address: <b>address</b>,
-    ctx: &<b>mut</b> TxContext
+    ctx: &TxContext,
 ) {
-    // Check version compatibility
-    <b>assert</b>!(<a href="../social_contracts/platform.md#social_contracts_platform">platform</a>.version == <a href="../social_contracts/upgrade.md#social_contracts_upgrade_current_version">upgrade::current_version</a>(), <a href="../social_contracts/platform.md#social_contracts_platform_EWrongVersion">EWrongVersion</a>);
-    // Verify caller is <a href="../social_contracts/platform.md#social_contracts_platform">platform</a> <a href="../social_contracts/platform.md#social_contracts_platform_developer">developer</a>
-    <b>let</b> caller = tx_context::sender(ctx);
-    <b>assert</b>!(<a href="../social_contracts/platform.md#social_contracts_platform">platform</a>.<a href="../social_contracts/platform.md#social_contracts_platform_developer">developer</a> == caller, <a href="../social_contracts/platform.md#social_contracts_platform_EUnauthorized">EUnauthorized</a>);
-    // Get moderators set
-    <b>let</b> moderators = dynamic_field::borrow_mut&lt;vector&lt;u8&gt;, VecSet&lt;<b>address</b>&gt;&gt;(&<b>mut</b> <a href="../social_contracts/platform.md#social_contracts_platform">platform</a>.<a href="../social_contracts/platform.md#social_contracts_platform_id">id</a>, <a href="../social_contracts/platform.md#social_contracts_platform_MODERATORS_FIELD">MODERATORS_FIELD</a>);
-    // Add moderator <b>if</b> not already a moderator
-    <b>if</b> (!vec_set::contains(moderators, &moderator_address)) {
-        vec_set::insert(moderators, moderator_address);
-        // Emit moderator added event
-        event::emit(<a href="../social_contracts/platform.md#social_contracts_platform_ModeratorAddedEvent">ModeratorAddedEvent</a> {
-            platform_id: object::uid_to_address(&<a href="../social_contracts/platform.md#social_contracts_platform">platform</a>.<a href="../social_contracts/platform.md#social_contracts_platform_id">id</a>),
-            moderator_address,
-            added_by: caller,
-        });
-    };
+    <b>assert</b>!(<a href="../social_contracts/platform.md#social_contracts_platform">platform</a>.<a href="../social_contracts/platform.md#social_contracts_platform_developer">developer</a> == tx_context::sender(ctx), <a href="../social_contracts/platform.md#social_contracts_platform_EUnauthorized">EUnauthorized</a>);
+    <a href="../social_contracts/platform.md#social_contracts_platform_grant_all_moderator_permissions">grant_all_moderator_permissions</a>(<a href="../social_contracts/platform.md#social_contracts_platform">platform</a>, group, moderator_address, ctx);
 }
 </code></pre>
 
@@ -2493,10 +2903,10 @@ Add a moderator to a platform
 
 ## Function `remove_moderator`
 
-Remove a moderator from a platform
+Remove a moderator entirely from the platform moderators group
 
 
-<pre><code><b>public</b> <b>fun</b> <a href="../social_contracts/platform.md#social_contracts_platform_remove_moderator">remove_moderator</a>(<a href="../social_contracts/platform.md#social_contracts_platform">platform</a>: &<b>mut</b> <a href="../social_contracts/platform.md#social_contracts_platform_Platform">social_contracts::platform::Platform</a>, moderator_address: <b>address</b>, ctx: &<b>mut</b> <a href="../myso/tx_context.md#myso_tx_context_TxContext">myso::tx_context::TxContext</a>)
+<pre><code><b>public</b> <b>fun</b> <a href="../social_contracts/platform.md#social_contracts_platform_remove_moderator">remove_moderator</a>(<a href="../social_contracts/platform.md#social_contracts_platform">platform</a>: &<a href="../social_contracts/platform.md#social_contracts_platform_Platform">social_contracts::platform::Platform</a>, group: &<b>mut</b> <a href="../myso/permissioned_group.md#myso_permissioned_group_PermissionedGroup">myso::permissioned_group::PermissionedGroup</a>&lt;<a href="../social_contracts/platform.md#social_contracts_platform_PlatformPackage">social_contracts::platform::PlatformPackage</a>&gt;, moderator_address: <b>address</b>, ctx: &<a href="../myso/tx_context.md#myso_tx_context_TxContext">myso::tx_context::TxContext</a>)
 </code></pre>
 
 
@@ -2506,29 +2916,23 @@ Remove a moderator from a platform
 
 
 <pre><code><b>public</b> <b>fun</b> <a href="../social_contracts/platform.md#social_contracts_platform_remove_moderator">remove_moderator</a>(
-    <a href="../social_contracts/platform.md#social_contracts_platform">platform</a>: &<b>mut</b> <a href="../social_contracts/platform.md#social_contracts_platform_Platform">Platform</a>,
+    <a href="../social_contracts/platform.md#social_contracts_platform">platform</a>: &<a href="../social_contracts/platform.md#social_contracts_platform_Platform">Platform</a>,
+    group: &<b>mut</b> PermissionedGroup&lt;<a href="../social_contracts/platform.md#social_contracts_platform_PlatformPackage">PlatformPackage</a>&gt;,
     moderator_address: <b>address</b>,
-    ctx: &<b>mut</b> TxContext
+    ctx: &TxContext,
 ) {
-    // Check version compatibility
     <b>assert</b>!(<a href="../social_contracts/platform.md#social_contracts_platform">platform</a>.version == <a href="../social_contracts/upgrade.md#social_contracts_upgrade_current_version">upgrade::current_version</a>(), <a href="../social_contracts/platform.md#social_contracts_platform_EWrongVersion">EWrongVersion</a>);
-    // Verify caller is <a href="../social_contracts/platform.md#social_contracts_platform">platform</a> <a href="../social_contracts/platform.md#social_contracts_platform_developer">developer</a>
     <b>let</b> caller = tx_context::sender(ctx);
     <b>assert</b>!(<a href="../social_contracts/platform.md#social_contracts_platform">platform</a>.<a href="../social_contracts/platform.md#social_contracts_platform_developer">developer</a> == caller, <a href="../social_contracts/platform.md#social_contracts_platform_EUnauthorized">EUnauthorized</a>);
-    // Cannot remove <a href="../social_contracts/platform.md#social_contracts_platform_developer">developer</a> <b>as</b> moderator
     <b>assert</b>!(moderator_address != <a href="../social_contracts/platform.md#social_contracts_platform">platform</a>.<a href="../social_contracts/platform.md#social_contracts_platform_developer">developer</a>, <a href="../social_contracts/platform.md#social_contracts_platform_EUnauthorized">EUnauthorized</a>);
-    // Get moderators set
-    <b>let</b> moderators = dynamic_field::borrow_mut&lt;vector&lt;u8&gt;, VecSet&lt;<b>address</b>&gt;&gt;(&<b>mut</b> <a href="../social_contracts/platform.md#social_contracts_platform">platform</a>.<a href="../social_contracts/platform.md#social_contracts_platform_id">id</a>, <a href="../social_contracts/platform.md#social_contracts_platform_MODERATORS_FIELD">MODERATORS_FIELD</a>);
-    // Remove moderator <b>if</b> they are a moderator
-    <b>if</b> (vec_set::contains(moderators, &moderator_address)) {
-        vec_set::remove(moderators, &moderator_address);
-        // Emit moderator removed event
-        event::emit(<a href="../social_contracts/platform.md#social_contracts_platform_ModeratorRemovedEvent">ModeratorRemovedEvent</a> {
-            platform_id: object::uid_to_address(&<a href="../social_contracts/platform.md#social_contracts_platform">platform</a>.<a href="../social_contracts/platform.md#social_contracts_platform_id">id</a>),
-            moderator_address,
-            removed_by: caller,
-        });
-    };
+    <b>assert</b>!(group.is_member&lt;<a href="../social_contracts/platform.md#social_contracts_platform_PlatformPackage">PlatformPackage</a>&gt;(moderator_address), <a href="../social_contracts/platform.md#social_contracts_platform_EUnauthorized">EUnauthorized</a>);
+    permissioned_group::remove_member&lt;<a href="../social_contracts/platform.md#social_contracts_platform_PlatformPackage">PlatformPackage</a>&gt;(group, moderator_address, ctx);
+    event::emit(<a href="../social_contracts/platform.md#social_contracts_platform_ModeratorRemovedEvent">ModeratorRemovedEvent</a> {
+        platform_id: object::uid_to_address(&<a href="../social_contracts/platform.md#social_contracts_platform">platform</a>.<a href="../social_contracts/platform.md#social_contracts_platform_id">id</a>),
+        <a href="../social_contracts/platform.md#social_contracts_platform_moderators_group_id">moderators_group_id</a>: object::id(group),
+        member: moderator_address,
+        removed_by: caller,
+    });
 }
 </code></pre>
 
@@ -2545,7 +2949,7 @@ Allows platform developers/moderators to block wallets using the platform addres
 This enables platforms (shared objects) to block user wallets
 
 
-<pre><code><b>public</b> <b>fun</b> <a href="../social_contracts/platform.md#social_contracts_platform_block_wallet">block_wallet</a>(block_list_registry: &<b>mut</b> <a href="../social_contracts/block_list.md#social_contracts_block_list_BlockListRegistry">social_contracts::block_list::BlockListRegistry</a>, <a href="../social_contracts/social_graph.md#social_contracts_social_graph">social_graph</a>: &<b>mut</b> <a href="../social_contracts/social_graph.md#social_contracts_social_graph_SocialGraph">social_contracts::social_graph::SocialGraph</a>, <a href="../social_contracts/platform.md#social_contracts_platform">platform</a>: &<b>mut</b> <a href="../social_contracts/platform.md#social_contracts_platform_Platform">social_contracts::platform::Platform</a>, blocked_wallet_address: <b>address</b>, ctx: &<b>mut</b> <a href="../myso/tx_context.md#myso_tx_context_TxContext">myso::tx_context::TxContext</a>)
+<pre><code><b>public</b> <b>fun</b> <a href="../social_contracts/platform.md#social_contracts_platform_block_wallet">block_wallet</a>(block_list_registry: &<b>mut</b> <a href="../social_contracts/block_list.md#social_contracts_block_list_BlockListRegistry">social_contracts::block_list::BlockListRegistry</a>, <a href="../social_contracts/social_graph.md#social_contracts_social_graph">social_graph</a>: &<b>mut</b> <a href="../social_contracts/social_graph.md#social_contracts_social_graph_SocialGraph">social_contracts::social_graph::SocialGraph</a>, <a href="../social_contracts/platform.md#social_contracts_platform">platform</a>: &<b>mut</b> <a href="../social_contracts/platform.md#social_contracts_platform_Platform">social_contracts::platform::Platform</a>, group: &<a href="../myso/permissioned_group.md#myso_permissioned_group_PermissionedGroup">myso::permissioned_group::PermissionedGroup</a>&lt;<a href="../social_contracts/platform.md#social_contracts_platform_PlatformPackage">social_contracts::platform::PlatformPackage</a>&gt;, blocked_wallet_address: <b>address</b>, ctx: &<b>mut</b> <a href="../myso/tx_context.md#myso_tx_context_TxContext">myso::tx_context::TxContext</a>)
 </code></pre>
 
 
@@ -2558,14 +2962,14 @@ This enables platforms (shared objects) to block user wallets
     block_list_registry: &<b>mut</b> <a href="../social_contracts/block_list.md#social_contracts_block_list_BlockListRegistry">block_list::BlockListRegistry</a>,
     <a href="../social_contracts/social_graph.md#social_contracts_social_graph">social_graph</a>: &<b>mut</b> <a href="../social_contracts/social_graph.md#social_contracts_social_graph_SocialGraph">social_graph::SocialGraph</a>,
     <a href="../social_contracts/platform.md#social_contracts_platform">platform</a>: &<b>mut</b> <a href="../social_contracts/platform.md#social_contracts_platform_Platform">Platform</a>,
+    group: &PermissionedGroup&lt;<a href="../social_contracts/platform.md#social_contracts_platform_PlatformPackage">PlatformPackage</a>&gt;,
     blocked_wallet_address: <b>address</b>,
     ctx: &<b>mut</b> TxContext
 ) {
     // Check version compatibility
     <b>assert</b>!(<a href="../social_contracts/platform.md#social_contracts_platform">platform</a>.version == <a href="../social_contracts/upgrade.md#social_contracts_upgrade_current_version">upgrade::current_version</a>(), <a href="../social_contracts/platform.md#social_contracts_platform_EWrongVersion">EWrongVersion</a>);
-    // Verify caller is <a href="../social_contracts/platform.md#social_contracts_platform">platform</a> <a href="../social_contracts/platform.md#social_contracts_platform_developer">developer</a> or moderator
     <b>let</b> caller = tx_context::sender(ctx);
-    <b>assert</b>!(<a href="../social_contracts/platform.md#social_contracts_platform_is_developer_or_moderator">is_developer_or_moderator</a>(<a href="../social_contracts/platform.md#social_contracts_platform">platform</a>, caller), <a href="../social_contracts/platform.md#social_contracts_platform_EUnauthorized">EUnauthorized</a>);
+    <a href="../social_contracts/platform.md#social_contracts_platform_assert_moderator_permission">assert_moderator_permission</a>&lt;<a href="../social_contracts/platform.md#social_contracts_platform_PlatformBlockAdmin">PlatformBlockAdmin</a>&gt;(<a href="../social_contracts/platform.md#social_contracts_platform">platform</a>, group, caller);
     // Get the <a href="../social_contracts/platform.md#social_contracts_platform">platform</a> <b>address</b> (this will be the blocker <b>address</b>)
     <b>let</b> platform_address = object::uid_to_address(&<a href="../social_contracts/platform.md#social_contracts_platform">platform</a>.<a href="../social_contracts/platform.md#social_contracts_platform_id">id</a>);
     // Call <a href="../social_contracts/block_list.md#social_contracts_block_list">block_list</a>'s internal helper function with <a href="../social_contracts/platform.md#social_contracts_platform">platform</a> <b>address</b> <b>as</b> blocker
@@ -2590,7 +2994,7 @@ Unblock a wallet address from the platform
 Allows platform developers/moderators to unblock wallets using the platform address as the blocker
 
 
-<pre><code><b>public</b> <b>fun</b> <a href="../social_contracts/platform.md#social_contracts_platform_unblock_wallet">unblock_wallet</a>(block_list_registry: &<b>mut</b> <a href="../social_contracts/block_list.md#social_contracts_block_list_BlockListRegistry">social_contracts::block_list::BlockListRegistry</a>, <a href="../social_contracts/platform.md#social_contracts_platform">platform</a>: &<b>mut</b> <a href="../social_contracts/platform.md#social_contracts_platform_Platform">social_contracts::platform::Platform</a>, blocked_wallet_address: <b>address</b>, ctx: &<b>mut</b> <a href="../myso/tx_context.md#myso_tx_context_TxContext">myso::tx_context::TxContext</a>)
+<pre><code><b>public</b> <b>fun</b> <a href="../social_contracts/platform.md#social_contracts_platform_unblock_wallet">unblock_wallet</a>(block_list_registry: &<b>mut</b> <a href="../social_contracts/block_list.md#social_contracts_block_list_BlockListRegistry">social_contracts::block_list::BlockListRegistry</a>, <a href="../social_contracts/platform.md#social_contracts_platform">platform</a>: &<b>mut</b> <a href="../social_contracts/platform.md#social_contracts_platform_Platform">social_contracts::platform::Platform</a>, group: &<a href="../myso/permissioned_group.md#myso_permissioned_group_PermissionedGroup">myso::permissioned_group::PermissionedGroup</a>&lt;<a href="../social_contracts/platform.md#social_contracts_platform_PlatformPackage">social_contracts::platform::PlatformPackage</a>&gt;, blocked_wallet_address: <b>address</b>, ctx: &<b>mut</b> <a href="../myso/tx_context.md#myso_tx_context_TxContext">myso::tx_context::TxContext</a>)
 </code></pre>
 
 
@@ -2602,14 +3006,14 @@ Allows platform developers/moderators to unblock wallets using the platform addr
 <pre><code><b>public</b> <b>fun</b> <a href="../social_contracts/platform.md#social_contracts_platform_unblock_wallet">unblock_wallet</a>(
     block_list_registry: &<b>mut</b> <a href="../social_contracts/block_list.md#social_contracts_block_list_BlockListRegistry">block_list::BlockListRegistry</a>,
     <a href="../social_contracts/platform.md#social_contracts_platform">platform</a>: &<b>mut</b> <a href="../social_contracts/platform.md#social_contracts_platform_Platform">Platform</a>,
+    group: &PermissionedGroup&lt;<a href="../social_contracts/platform.md#social_contracts_platform_PlatformPackage">PlatformPackage</a>&gt;,
     blocked_wallet_address: <b>address</b>,
     ctx: &<b>mut</b> TxContext
 ) {
     // Check version compatibility
     <b>assert</b>!(<a href="../social_contracts/platform.md#social_contracts_platform">platform</a>.version == <a href="../social_contracts/upgrade.md#social_contracts_upgrade_current_version">upgrade::current_version</a>(), <a href="../social_contracts/platform.md#social_contracts_platform_EWrongVersion">EWrongVersion</a>);
-    // Verify caller is <a href="../social_contracts/platform.md#social_contracts_platform">platform</a> <a href="../social_contracts/platform.md#social_contracts_platform_developer">developer</a> or moderator
     <b>let</b> caller = tx_context::sender(ctx);
-    <b>assert</b>!(<a href="../social_contracts/platform.md#social_contracts_platform_is_developer_or_moderator">is_developer_or_moderator</a>(<a href="../social_contracts/platform.md#social_contracts_platform">platform</a>, caller), <a href="../social_contracts/platform.md#social_contracts_platform_EUnauthorized">EUnauthorized</a>);
+    <a href="../social_contracts/platform.md#social_contracts_platform_assert_moderator_permission">assert_moderator_permission</a>&lt;<a href="../social_contracts/platform.md#social_contracts_platform_PlatformBlockAdmin">PlatformBlockAdmin</a>&gt;(<a href="../social_contracts/platform.md#social_contracts_platform">platform</a>, group, caller);
     // Get the <a href="../social_contracts/platform.md#social_contracts_platform">platform</a> <b>address</b> (this is the blocker <b>address</b>)
     <b>let</b> platform_address = object::uid_to_address(&<a href="../social_contracts/platform.md#social_contracts_platform">platform</a>.<a href="../social_contracts/platform.md#social_contracts_platform_id">id</a>);
     // Call <a href="../social_contracts/block_list.md#social_contracts_block_list">block_list</a>'s internal helper function with <a href="../social_contracts/platform.md#social_contracts_platform">platform</a> <b>address</b> <b>as</b> blocker
@@ -3093,14 +3497,13 @@ Check if a wallet address has joined a platform
 
 </details>
 
-<a name="social_contracts_platform_is_developer_or_moderator"></a>
+<a name="social_contracts_platform_is_developer"></a>
 
-## Function `is_developer_or_moderator`
-
-Check if an address is the platform developer or a moderator
+## Function `is_developer`
 
 
-<pre><code><b>public</b> <b>fun</b> <a href="../social_contracts/platform.md#social_contracts_platform_is_developer_or_moderator">is_developer_or_moderator</a>(<a href="../social_contracts/platform.md#social_contracts_platform">platform</a>: &<a href="../social_contracts/platform.md#social_contracts_platform_Platform">social_contracts::platform::Platform</a>, addr: <b>address</b>): bool
+
+<pre><code><b>public</b> <b>fun</b> <a href="../social_contracts/platform.md#social_contracts_platform_is_developer">is_developer</a>(<a href="../social_contracts/platform.md#social_contracts_platform">platform</a>: &<a href="../social_contracts/platform.md#social_contracts_platform_Platform">social_contracts::platform::Platform</a>, addr: <b>address</b>): bool
 </code></pre>
 
 
@@ -3109,12 +3512,386 @@ Check if an address is the platform developer or a moderator
 <summary>Implementation</summary>
 
 
-<pre><code><b>public</b> <b>fun</b> <a href="../social_contracts/platform.md#social_contracts_platform_is_developer_or_moderator">is_developer_or_moderator</a>(<a href="../social_contracts/platform.md#social_contracts_platform">platform</a>: &<a href="../social_contracts/platform.md#social_contracts_platform_Platform">Platform</a>, addr: <b>address</b>): bool {
-    <b>if</b> (<a href="../social_contracts/platform.md#social_contracts_platform">platform</a>.<a href="../social_contracts/platform.md#social_contracts_platform_developer">developer</a> == addr) {
+<pre><code><b>public</b> <b>fun</b> <a href="../social_contracts/platform.md#social_contracts_platform_is_developer">is_developer</a>(<a href="../social_contracts/platform.md#social_contracts_platform">platform</a>: &<a href="../social_contracts/platform.md#social_contracts_platform_Platform">Platform</a>, addr: <b>address</b>): bool {
+    <a href="../social_contracts/platform.md#social_contracts_platform">platform</a>.<a href="../social_contracts/platform.md#social_contracts_platform_developer">developer</a> == addr
+}
+</code></pre>
+
+
+
+</details>
+
+<a name="social_contracts_platform_has_moderator_permission"></a>
+
+## Function `has_moderator_permission`
+
+
+
+<pre><code><b>public</b> <b>fun</b> <a href="../social_contracts/platform.md#social_contracts_platform_has_moderator_permission">has_moderator_permission</a>&lt;P: drop&gt;(group: &<a href="../myso/permissioned_group.md#myso_permissioned_group_PermissionedGroup">myso::permissioned_group::PermissionedGroup</a>&lt;<a href="../social_contracts/platform.md#social_contracts_platform_PlatformPackage">social_contracts::platform::PlatformPackage</a>&gt;, <a href="../social_contracts/platform.md#social_contracts_platform">platform</a>: &<a href="../social_contracts/platform.md#social_contracts_platform_Platform">social_contracts::platform::Platform</a>, addr: <b>address</b>): bool
+</code></pre>
+
+
+
+<details>
+<summary>Implementation</summary>
+
+
+<pre><code><b>public</b> <b>fun</b> <a href="../social_contracts/platform.md#social_contracts_platform_has_moderator_permission">has_moderator_permission</a>&lt;P: drop&gt;(
+    group: &PermissionedGroup&lt;<a href="../social_contracts/platform.md#social_contracts_platform_PlatformPackage">PlatformPackage</a>&gt;,
+    <a href="../social_contracts/platform.md#social_contracts_platform">platform</a>: &<a href="../social_contracts/platform.md#social_contracts_platform_Platform">Platform</a>,
+    addr: <b>address</b>,
+): bool {
+    <a href="../social_contracts/platform.md#social_contracts_platform_is_developer">is_developer</a>(<a href="../social_contracts/platform.md#social_contracts_platform">platform</a>, addr) ||
+        group.has_permission&lt;<a href="../social_contracts/platform.md#social_contracts_platform_PlatformPackage">PlatformPackage</a>, P&gt;(addr)
+}
+</code></pre>
+
+
+
+</details>
+
+<a name="social_contracts_platform_is_moderator"></a>
+
+## Function `is_moderator`
+
+
+
+<pre><code><b>public</b> <b>fun</b> <a href="../social_contracts/platform.md#social_contracts_platform_is_moderator">is_moderator</a>(group: &<a href="../myso/permissioned_group.md#myso_permissioned_group_PermissionedGroup">myso::permissioned_group::PermissionedGroup</a>&lt;<a href="../social_contracts/platform.md#social_contracts_platform_PlatformPackage">social_contracts::platform::PlatformPackage</a>&gt;, <a href="../social_contracts/platform.md#social_contracts_platform">platform</a>: &<a href="../social_contracts/platform.md#social_contracts_platform_Platform">social_contracts::platform::Platform</a>, addr: <b>address</b>): bool
+</code></pre>
+
+
+
+<details>
+<summary>Implementation</summary>
+
+
+<pre><code><b>public</b> <b>fun</b> <a href="../social_contracts/platform.md#social_contracts_platform_is_moderator">is_moderator</a>(
+    group: &PermissionedGroup&lt;<a href="../social_contracts/platform.md#social_contracts_platform_PlatformPackage">PlatformPackage</a>&gt;,
+    <a href="../social_contracts/platform.md#social_contracts_platform">platform</a>: &<a href="../social_contracts/platform.md#social_contracts_platform_Platform">Platform</a>,
+    addr: <b>address</b>,
+): bool {
+    <b>if</b> (<a href="../social_contracts/platform.md#social_contracts_platform_is_developer">is_developer</a>(<a href="../social_contracts/platform.md#social_contracts_platform">platform</a>, addr)) {
         <b>return</b> <b>true</b>
     };
-    <b>let</b> moderators = dynamic_field::borrow&lt;vector&lt;u8&gt;, VecSet&lt;<b>address</b>&gt;&gt;(&<a href="../social_contracts/platform.md#social_contracts_platform">platform</a>.<a href="../social_contracts/platform.md#social_contracts_platform_id">id</a>, <a href="../social_contracts/platform.md#social_contracts_platform_MODERATORS_FIELD">MODERATORS_FIELD</a>);
-    vec_set::contains(moderators, &addr)
+    <a href="../social_contracts/platform.md#social_contracts_platform_has_any_extension_permission">has_any_extension_permission</a>(group, addr)
+}
+</code></pre>
+
+
+
+</details>
+
+<a name="social_contracts_platform_is_developer_or_moderator"></a>
+
+## Function `is_developer_or_moderator`
+
+Backward-compatible helper: true if developer or has any extension permission
+
+
+<pre><code><b>public</b> <b>fun</b> <a href="../social_contracts/platform.md#social_contracts_platform_is_developer_or_moderator">is_developer_or_moderator</a>(<a href="../social_contracts/platform.md#social_contracts_platform">platform</a>: &<a href="../social_contracts/platform.md#social_contracts_platform_Platform">social_contracts::platform::Platform</a>, group: &<a href="../myso/permissioned_group.md#myso_permissioned_group_PermissionedGroup">myso::permissioned_group::PermissionedGroup</a>&lt;<a href="../social_contracts/platform.md#social_contracts_platform_PlatformPackage">social_contracts::platform::PlatformPackage</a>&gt;, addr: <b>address</b>): bool
+</code></pre>
+
+
+
+<details>
+<summary>Implementation</summary>
+
+
+<pre><code><b>public</b> <b>fun</b> <a href="../social_contracts/platform.md#social_contracts_platform_is_developer_or_moderator">is_developer_or_moderator</a>(
+    <a href="../social_contracts/platform.md#social_contracts_platform">platform</a>: &<a href="../social_contracts/platform.md#social_contracts_platform_Platform">Platform</a>,
+    group: &PermissionedGroup&lt;<a href="../social_contracts/platform.md#social_contracts_platform_PlatformPackage">PlatformPackage</a>&gt;,
+    addr: <b>address</b>,
+): bool {
+    <a href="../social_contracts/platform.md#social_contracts_platform_is_moderator">is_moderator</a>(group, <a href="../social_contracts/platform.md#social_contracts_platform">platform</a>, addr)
+}
+</code></pre>
+
+
+
+</details>
+
+<a name="social_contracts_platform_moderators_group_id"></a>
+
+## Function `moderators_group_id`
+
+
+
+<pre><code><b>public</b> <b>fun</b> <a href="../social_contracts/platform.md#social_contracts_platform_moderators_group_id">moderators_group_id</a>(<a href="../social_contracts/platform.md#social_contracts_platform">platform</a>: &<a href="../social_contracts/platform.md#social_contracts_platform_Platform">social_contracts::platform::Platform</a>): <a href="../myso/object.md#myso_object_ID">myso::object::ID</a>
+</code></pre>
+
+
+
+<details>
+<summary>Implementation</summary>
+
+
+<pre><code><b>public</b> <b>fun</b> <a href="../social_contracts/platform.md#social_contracts_platform_moderators_group_id">moderators_group_id</a>(<a href="../social_contracts/platform.md#social_contracts_platform">platform</a>: &<a href="../social_contracts/platform.md#social_contracts_platform_Platform">Platform</a>): ID {
+    derived_object::derive_address(object::id(<a href="../social_contracts/platform.md#social_contracts_platform">platform</a>), <a href="../social_contracts/platform.md#social_contracts_platform_ModeratorsGroupTag">ModeratorsGroupTag</a>()).to_id()
+}
+</code></pre>
+
+
+
+</details>
+
+<a name="social_contracts_platform_assert_moderator_permission"></a>
+
+## Function `assert_moderator_permission`
+
+
+
+<pre><code><b>fun</b> <a href="../social_contracts/platform.md#social_contracts_platform_assert_moderator_permission">assert_moderator_permission</a>&lt;P: drop&gt;(<a href="../social_contracts/platform.md#social_contracts_platform">platform</a>: &<a href="../social_contracts/platform.md#social_contracts_platform_Platform">social_contracts::platform::Platform</a>, group: &<a href="../myso/permissioned_group.md#myso_permissioned_group_PermissionedGroup">myso::permissioned_group::PermissionedGroup</a>&lt;<a href="../social_contracts/platform.md#social_contracts_platform_PlatformPackage">social_contracts::platform::PlatformPackage</a>&gt;, addr: <b>address</b>)
+</code></pre>
+
+
+
+<details>
+<summary>Implementation</summary>
+
+
+<pre><code><b>fun</b> <a href="../social_contracts/platform.md#social_contracts_platform_assert_moderator_permission">assert_moderator_permission</a>&lt;P: drop&gt;(
+    <a href="../social_contracts/platform.md#social_contracts_platform">platform</a>: &<a href="../social_contracts/platform.md#social_contracts_platform_Platform">Platform</a>,
+    group: &PermissionedGroup&lt;<a href="../social_contracts/platform.md#social_contracts_platform_PlatformPackage">PlatformPackage</a>&gt;,
+    addr: <b>address</b>,
+) {
+    <b>assert</b>!(<a href="../social_contracts/platform.md#social_contracts_platform_has_moderator_permission">has_moderator_permission</a>&lt;P&gt;(group, <a href="../social_contracts/platform.md#social_contracts_platform">platform</a>, addr), <a href="../social_contracts/platform.md#social_contracts_platform_EUnauthorized">EUnauthorized</a>);
+}
+</code></pre>
+
+
+
+</details>
+
+<a name="social_contracts_platform_grant_all_extension_permissions"></a>
+
+## Function `grant_all_extension_permissions`
+
+
+
+<pre><code><b>fun</b> <a href="../social_contracts/platform.md#social_contracts_platform_grant_all_extension_permissions">grant_all_extension_permissions</a>(group: &<b>mut</b> <a href="../myso/permissioned_group.md#myso_permissioned_group_PermissionedGroup">myso::permissioned_group::PermissionedGroup</a>&lt;<a href="../social_contracts/platform.md#social_contracts_platform_PlatformPackage">social_contracts::platform::PlatformPackage</a>&gt;, member: <b>address</b>, ctx: &<a href="../myso/tx_context.md#myso_tx_context_TxContext">myso::tx_context::TxContext</a>)
+</code></pre>
+
+
+
+<details>
+<summary>Implementation</summary>
+
+
+<pre><code><b>fun</b> <a href="../social_contracts/platform.md#social_contracts_platform_grant_all_extension_permissions">grant_all_extension_permissions</a>(
+    group: &<b>mut</b> PermissionedGroup&lt;<a href="../social_contracts/platform.md#social_contracts_platform_PlatformPackage">PlatformPackage</a>&gt;,
+    member: <b>address</b>,
+    ctx: &TxContext,
+) {
+    permissioned_group::grant_permission&lt;<a href="../social_contracts/platform.md#social_contracts_platform_PlatformPackage">PlatformPackage</a>, <a href="../social_contracts/platform.md#social_contracts_platform_PlatformBlockAdmin">PlatformBlockAdmin</a>&gt;(group, member, ctx);
+    permissioned_group::grant_permission&lt;<a href="../social_contracts/platform.md#social_contracts_platform_PlatformPackage">PlatformPackage</a>, <a href="../social_contracts/platform.md#social_contracts_platform_PlatformBadgeAdmin">PlatformBadgeAdmin</a>&gt;(group, member, ctx);
+    permissioned_group::grant_permission&lt;<a href="../social_contracts/platform.md#social_contracts_platform_PlatformPackage">PlatformPackage</a>, <a href="../social_contracts/platform.md#social_contracts_platform_PlatformTreasuryAdmin">PlatformTreasuryAdmin</a>&gt;(group, member, ctx);
+    permissioned_group::grant_permission&lt;<a href="../social_contracts/platform.md#social_contracts_platform_PlatformPackage">PlatformPackage</a>, <a href="../social_contracts/platform.md#social_contracts_platform_PlatformContentModerator">PlatformContentModerator</a>&gt;(group, member, ctx);
+    permissioned_group::grant_permission&lt;<a href="../social_contracts/platform.md#social_contracts_platform_PlatformPackage">PlatformPackage</a>, <a href="../social_contracts/platform.md#social_contracts_platform_PlatformPromotionAdmin">PlatformPromotionAdmin</a>&gt;(group, member, ctx);
+}
+</code></pre>
+
+
+
+</details>
+
+<a name="social_contracts_platform_all_extension_permission_names"></a>
+
+## Function `all_extension_permission_names`
+
+
+
+<pre><code><b>fun</b> <a href="../social_contracts/platform.md#social_contracts_platform_all_extension_permission_names">all_extension_permission_names</a>(): vector&lt;<a href="../std/string.md#std_string_String">std::string::String</a>&gt;
+</code></pre>
+
+
+
+<details>
+<summary>Implementation</summary>
+
+
+<pre><code><b>fun</b> <a href="../social_contracts/platform.md#social_contracts_platform_all_extension_permission_names">all_extension_permission_names</a>(): vector&lt;String&gt; {
+    vector[
+        string::utf8(<a href="../social_contracts/platform.md#social_contracts_platform_PERM_BLOCK_ADMIN">PERM_BLOCK_ADMIN</a>),
+        string::utf8(<a href="../social_contracts/platform.md#social_contracts_platform_PERM_BADGE_ADMIN">PERM_BADGE_ADMIN</a>),
+        string::utf8(<a href="../social_contracts/platform.md#social_contracts_platform_PERM_TREASURY_ADMIN">PERM_TREASURY_ADMIN</a>),
+        string::utf8(<a href="../social_contracts/platform.md#social_contracts_platform_PERM_CONTENT_MODERATOR">PERM_CONTENT_MODERATOR</a>),
+        string::utf8(<a href="../social_contracts/platform.md#social_contracts_platform_PERM_PROMOTION_ADMIN">PERM_PROMOTION_ADMIN</a>),
+    ]
+}
+</code></pre>
+
+
+
+</details>
+
+<a name="social_contracts_platform_permission_name"></a>
+
+## Function `permission_name`
+
+
+
+<pre><code><b>fun</b> <a href="../social_contracts/platform.md#social_contracts_platform_permission_name">permission_name</a>&lt;P: drop&gt;(): <a href="../std/string.md#std_string_String">std::string::String</a>
+</code></pre>
+
+
+
+<details>
+<summary>Implementation</summary>
+
+
+<pre><code><b>fun</b> <a href="../social_contracts/platform.md#social_contracts_platform_permission_name">permission_name</a>&lt;P: drop&gt;(): String {
+    <b>if</b> (type_name::with_original_ids&lt;P&gt;() == type_name::with_original_ids&lt;<a href="../social_contracts/platform.md#social_contracts_platform_PlatformBlockAdmin">PlatformBlockAdmin</a>&gt;()) {
+        string::utf8(<a href="../social_contracts/platform.md#social_contracts_platform_PERM_BLOCK_ADMIN">PERM_BLOCK_ADMIN</a>)
+    } <b>else</b> <b>if</b> (type_name::with_original_ids&lt;P&gt;() == type_name::with_original_ids&lt;<a href="../social_contracts/platform.md#social_contracts_platform_PlatformBadgeAdmin">PlatformBadgeAdmin</a>&gt;()) {
+        string::utf8(<a href="../social_contracts/platform.md#social_contracts_platform_PERM_BADGE_ADMIN">PERM_BADGE_ADMIN</a>)
+    } <b>else</b> <b>if</b> (type_name::with_original_ids&lt;P&gt;() == type_name::with_original_ids&lt;<a href="../social_contracts/platform.md#social_contracts_platform_PlatformTreasuryAdmin">PlatformTreasuryAdmin</a>&gt;()) {
+        string::utf8(<a href="../social_contracts/platform.md#social_contracts_platform_PERM_TREASURY_ADMIN">PERM_TREASURY_ADMIN</a>)
+    } <b>else</b> <b>if</b> (type_name::with_original_ids&lt;P&gt;() == type_name::with_original_ids&lt;<a href="../social_contracts/platform.md#social_contracts_platform_PlatformContentModerator">PlatformContentModerator</a>&gt;()) {
+        string::utf8(<a href="../social_contracts/platform.md#social_contracts_platform_PERM_CONTENT_MODERATOR">PERM_CONTENT_MODERATOR</a>)
+    } <b>else</b> <b>if</b> (type_name::with_original_ids&lt;P&gt;() == type_name::with_original_ids&lt;<a href="../social_contracts/platform.md#social_contracts_platform_PlatformPromotionAdmin">PlatformPromotionAdmin</a>&gt;()) {
+        string::utf8(<a href="../social_contracts/platform.md#social_contracts_platform_PERM_PROMOTION_ADMIN">PERM_PROMOTION_ADMIN</a>)
+    } <b>else</b> {
+        <b>abort</b> <a href="../social_contracts/platform.md#social_contracts_platform_EUnauthorized">EUnauthorized</a>
+    }
+}
+</code></pre>
+
+
+
+</details>
+
+<a name="social_contracts_platform_has_any_extension_permission"></a>
+
+## Function `has_any_extension_permission`
+
+
+
+<pre><code><b>fun</b> <a href="../social_contracts/platform.md#social_contracts_platform_has_any_extension_permission">has_any_extension_permission</a>(group: &<a href="../myso/permissioned_group.md#myso_permissioned_group_PermissionedGroup">myso::permissioned_group::PermissionedGroup</a>&lt;<a href="../social_contracts/platform.md#social_contracts_platform_PlatformPackage">social_contracts::platform::PlatformPackage</a>&gt;, addr: <b>address</b>): bool
+</code></pre>
+
+
+
+<details>
+<summary>Implementation</summary>
+
+
+<pre><code><b>fun</b> <a href="../social_contracts/platform.md#social_contracts_platform_has_any_extension_permission">has_any_extension_permission</a>(
+    group: &PermissionedGroup&lt;<a href="../social_contracts/platform.md#social_contracts_platform_PlatformPackage">PlatformPackage</a>&gt;,
+    addr: <b>address</b>,
+): bool {
+    group.has_permission&lt;<a href="../social_contracts/platform.md#social_contracts_platform_PlatformPackage">PlatformPackage</a>, <a href="../social_contracts/platform.md#social_contracts_platform_PlatformBlockAdmin">PlatformBlockAdmin</a>&gt;(addr) ||
+        group.has_permission&lt;<a href="../social_contracts/platform.md#social_contracts_platform_PlatformPackage">PlatformPackage</a>, <a href="../social_contracts/platform.md#social_contracts_platform_PlatformBadgeAdmin">PlatformBadgeAdmin</a>&gt;(addr) ||
+        group.has_permission&lt;<a href="../social_contracts/platform.md#social_contracts_platform_PlatformPackage">PlatformPackage</a>, <a href="../social_contracts/platform.md#social_contracts_platform_PlatformTreasuryAdmin">PlatformTreasuryAdmin</a>&gt;(addr) ||
+        group.has_permission&lt;<a href="../social_contracts/platform.md#social_contracts_platform_PlatformPackage">PlatformPackage</a>, <a href="../social_contracts/platform.md#social_contracts_platform_PlatformContentModerator">PlatformContentModerator</a>&gt;(addr) ||
+        group.has_permission&lt;<a href="../social_contracts/platform.md#social_contracts_platform_PlatformPackage">PlatformPackage</a>, <a href="../social_contracts/platform.md#social_contracts_platform_PlatformPromotionAdmin">PlatformPromotionAdmin</a>&gt;(addr)
+}
+</code></pre>
+
+
+
+</details>
+
+<a name="social_contracts_platform_emit_permissions_granted"></a>
+
+## Function `emit_permissions_granted`
+
+
+
+<pre><code><b>fun</b> <a href="../social_contracts/platform.md#social_contracts_platform_emit_permissions_granted">emit_permissions_granted</a>(<a href="../social_contracts/platform.md#social_contracts_platform">platform</a>: &<a href="../social_contracts/platform.md#social_contracts_platform_Platform">social_contracts::platform::Platform</a>, <a href="../social_contracts/platform.md#social_contracts_platform_moderators_group_id">moderators_group_id</a>: <a href="../myso/object.md#myso_object_ID">myso::object::ID</a>, member: <b>address</b>, permissions: vector&lt;<a href="../std/string.md#std_string_String">std::string::String</a>&gt;, granted_by: <b>address</b>)
+</code></pre>
+
+
+
+<details>
+<summary>Implementation</summary>
+
+
+<pre><code><b>fun</b> <a href="../social_contracts/platform.md#social_contracts_platform_emit_permissions_granted">emit_permissions_granted</a>(
+    <a href="../social_contracts/platform.md#social_contracts_platform">platform</a>: &<a href="../social_contracts/platform.md#social_contracts_platform_Platform">Platform</a>,
+    <a href="../social_contracts/platform.md#social_contracts_platform_moderators_group_id">moderators_group_id</a>: ID,
+    member: <b>address</b>,
+    permissions: vector&lt;String&gt;,
+    granted_by: <b>address</b>,
+) {
+    event::emit(<a href="../social_contracts/platform.md#social_contracts_platform_ModeratorPermissionsGrantedEvent">ModeratorPermissionsGrantedEvent</a> {
+        platform_id: object::uid_to_address(&<a href="../social_contracts/platform.md#social_contracts_platform">platform</a>.<a href="../social_contracts/platform.md#social_contracts_platform_id">id</a>),
+        <a href="../social_contracts/platform.md#social_contracts_platform_moderators_group_id">moderators_group_id</a>,
+        member,
+        permissions,
+        granted_by,
+    });
+}
+</code></pre>
+
+
+
+</details>
+
+<a name="social_contracts_platform_emit_permissions_revoked"></a>
+
+## Function `emit_permissions_revoked`
+
+
+
+<pre><code><b>fun</b> <a href="../social_contracts/platform.md#social_contracts_platform_emit_permissions_revoked">emit_permissions_revoked</a>(<a href="../social_contracts/platform.md#social_contracts_platform">platform</a>: &<a href="../social_contracts/platform.md#social_contracts_platform_Platform">social_contracts::platform::Platform</a>, <a href="../social_contracts/platform.md#social_contracts_platform_moderators_group_id">moderators_group_id</a>: <a href="../myso/object.md#myso_object_ID">myso::object::ID</a>, member: <b>address</b>, permissions: vector&lt;<a href="../std/string.md#std_string_String">std::string::String</a>&gt;, revoked_by: <b>address</b>)
+</code></pre>
+
+
+
+<details>
+<summary>Implementation</summary>
+
+
+<pre><code><b>fun</b> <a href="../social_contracts/platform.md#social_contracts_platform_emit_permissions_revoked">emit_permissions_revoked</a>(
+    <a href="../social_contracts/platform.md#social_contracts_platform">platform</a>: &<a href="../social_contracts/platform.md#social_contracts_platform_Platform">Platform</a>,
+    <a href="../social_contracts/platform.md#social_contracts_platform_moderators_group_id">moderators_group_id</a>: ID,
+    member: <b>address</b>,
+    permissions: vector&lt;String&gt;,
+    revoked_by: <b>address</b>,
+) {
+    event::emit(<a href="../social_contracts/platform.md#social_contracts_platform_ModeratorPermissionsRevokedEvent">ModeratorPermissionsRevokedEvent</a> {
+        platform_id: object::uid_to_address(&<a href="../social_contracts/platform.md#social_contracts_platform">platform</a>.<a href="../social_contracts/platform.md#social_contracts_platform_id">id</a>),
+        <a href="../social_contracts/platform.md#social_contracts_platform_moderators_group_id">moderators_group_id</a>,
+        member,
+        permissions,
+        revoked_by,
+    });
+}
+</code></pre>
+
+
+
+</details>
+
+<a name="social_contracts_platform_maybe_emit_moderator_removed"></a>
+
+## Function `maybe_emit_moderator_removed`
+
+
+
+<pre><code><b>fun</b> <a href="../social_contracts/platform.md#social_contracts_platform_maybe_emit_moderator_removed">maybe_emit_moderator_removed</a>(<a href="../social_contracts/platform.md#social_contracts_platform">platform</a>: &<a href="../social_contracts/platform.md#social_contracts_platform_Platform">social_contracts::platform::Platform</a>, group: &<a href="../myso/permissioned_group.md#myso_permissioned_group_PermissionedGroup">myso::permissioned_group::PermissionedGroup</a>&lt;<a href="../social_contracts/platform.md#social_contracts_platform_PlatformPackage">social_contracts::platform::PlatformPackage</a>&gt;, member: <b>address</b>, removed_by: <b>address</b>)
+</code></pre>
+
+
+
+<details>
+<summary>Implementation</summary>
+
+
+<pre><code><b>fun</b> <a href="../social_contracts/platform.md#social_contracts_platform_maybe_emit_moderator_removed">maybe_emit_moderator_removed</a>(
+    <a href="../social_contracts/platform.md#social_contracts_platform">platform</a>: &<a href="../social_contracts/platform.md#social_contracts_platform_Platform">Platform</a>,
+    group: &PermissionedGroup&lt;<a href="../social_contracts/platform.md#social_contracts_platform_PlatformPackage">PlatformPackage</a>&gt;,
+    member: <b>address</b>,
+    removed_by: <b>address</b>,
+) {
+    <b>if</b> (!group.is_member&lt;<a href="../social_contracts/platform.md#social_contracts_platform_PlatformPackage">PlatformPackage</a>&gt;(member)) {
+        event::emit(<a href="../social_contracts/platform.md#social_contracts_platform_ModeratorRemovedEvent">ModeratorRemovedEvent</a> {
+            platform_id: object::uid_to_address(&<a href="../social_contracts/platform.md#social_contracts_platform">platform</a>.<a href="../social_contracts/platform.md#social_contracts_platform_id">id</a>),
+            <a href="../social_contracts/platform.md#social_contracts_platform_moderators_group_id">moderators_group_id</a>: object::id(group),
+            member,
+            removed_by,
+        });
+    };
 }
 </code></pre>
 
@@ -3597,58 +4374,6 @@ Get platform ID
 
 </details>
 
-<a name="social_contracts_platform_is_moderator"></a>
-
-## Function `is_moderator`
-
-Check if an address is a moderator
-
-
-<pre><code><b>public</b> <b>fun</b> <a href="../social_contracts/platform.md#social_contracts_platform_is_moderator">is_moderator</a>(<a href="../social_contracts/platform.md#social_contracts_platform">platform</a>: &<a href="../social_contracts/platform.md#social_contracts_platform_Platform">social_contracts::platform::Platform</a>, addr: <b>address</b>): bool
-</code></pre>
-
-
-
-<details>
-<summary>Implementation</summary>
-
-
-<pre><code><b>public</b> <b>fun</b> <a href="../social_contracts/platform.md#social_contracts_platform_is_moderator">is_moderator</a>(<a href="../social_contracts/platform.md#social_contracts_platform">platform</a>: &<a href="../social_contracts/platform.md#social_contracts_platform_Platform">Platform</a>, addr: <b>address</b>): bool {
-    <b>let</b> moderators = dynamic_field::borrow&lt;vector&lt;u8&gt;, VecSet&lt;<b>address</b>&gt;&gt;(&<a href="../social_contracts/platform.md#social_contracts_platform">platform</a>.<a href="../social_contracts/platform.md#social_contracts_platform_id">id</a>, <a href="../social_contracts/platform.md#social_contracts_platform_MODERATORS_FIELD">MODERATORS_FIELD</a>);
-    vec_set::contains(moderators, &addr)
-}
-</code></pre>
-
-
-
-</details>
-
-<a name="social_contracts_platform_get_moderators"></a>
-
-## Function `get_moderators`
-
-Get the list of moderators for a platform
-
-
-<pre><code><b>public</b> <b>fun</b> <a href="../social_contracts/platform.md#social_contracts_platform_get_moderators">get_moderators</a>(<a href="../social_contracts/platform.md#social_contracts_platform">platform</a>: &<a href="../social_contracts/platform.md#social_contracts_platform_Platform">social_contracts::platform::Platform</a>): vector&lt;<b>address</b>&gt;
-</code></pre>
-
-
-
-<details>
-<summary>Implementation</summary>
-
-
-<pre><code><b>public</b> <b>fun</b> <a href="../social_contracts/platform.md#social_contracts_platform_get_moderators">get_moderators</a>(<a href="../social_contracts/platform.md#social_contracts_platform">platform</a>: &<a href="../social_contracts/platform.md#social_contracts_platform_Platform">Platform</a>): vector&lt;<b>address</b>&gt; {
-    <b>let</b> moderators = dynamic_field::borrow&lt;vector&lt;u8&gt;, VecSet&lt;<b>address</b>&gt;&gt;(&<a href="../social_contracts/platform.md#social_contracts_platform">platform</a>.<a href="../social_contracts/platform.md#social_contracts_platform_id">id</a>, <a href="../social_contracts/platform.md#social_contracts_platform_MODERATORS_FIELD">MODERATORS_FIELD</a>);
-    vec_set::into_keys(*moderators)
-}
-</code></pre>
-
-
-
-</details>
-
 <a name="social_contracts_platform_get_platform_by_name"></a>
 
 ## Function `get_platform_by_name`
@@ -3854,10 +4579,10 @@ Can only be called by the platform developer
 ## Function `airdrop_from_treasury`
 
 Airdrop tokens to multiple recipients from the platform treasury
-Can only be called by platform developer or moderator
+Can only be called by platform developer or moderator with treasury permission
 
 
-<pre><code><b>public</b> <b>fun</b> <a href="../social_contracts/platform.md#social_contracts_platform_airdrop_from_treasury">airdrop_from_treasury</a>(<a href="../social_contracts/platform.md#social_contracts_platform">platform</a>: &<b>mut</b> <a href="../social_contracts/platform.md#social_contracts_platform_Platform">social_contracts::platform::Platform</a>, recipients: vector&lt;<b>address</b>&gt;, amount_per_recipient: u64, reason_code: u8, ctx: &<b>mut</b> <a href="../myso/tx_context.md#myso_tx_context_TxContext">myso::tx_context::TxContext</a>)
+<pre><code><b>public</b> <b>fun</b> <a href="../social_contracts/platform.md#social_contracts_platform_airdrop_from_treasury">airdrop_from_treasury</a>(<a href="../social_contracts/platform.md#social_contracts_platform">platform</a>: &<b>mut</b> <a href="../social_contracts/platform.md#social_contracts_platform_Platform">social_contracts::platform::Platform</a>, group: &<a href="../myso/permissioned_group.md#myso_permissioned_group_PermissionedGroup">myso::permissioned_group::PermissionedGroup</a>&lt;<a href="../social_contracts/platform.md#social_contracts_platform_PlatformPackage">social_contracts::platform::PlatformPackage</a>&gt;, recipients: vector&lt;<b>address</b>&gt;, amount_per_recipient: u64, reason_code: u8, ctx: &<b>mut</b> <a href="../myso/tx_context.md#myso_tx_context_TxContext">myso::tx_context::TxContext</a>)
 </code></pre>
 
 
@@ -3868,14 +4593,14 @@ Can only be called by platform developer or moderator
 
 <pre><code><b>public</b> <b>fun</b> <a href="../social_contracts/platform.md#social_contracts_platform_airdrop_from_treasury">airdrop_from_treasury</a>(
     <a href="../social_contracts/platform.md#social_contracts_platform">platform</a>: &<b>mut</b> <a href="../social_contracts/platform.md#social_contracts_platform_Platform">Platform</a>,
+    group: &PermissionedGroup&lt;<a href="../social_contracts/platform.md#social_contracts_platform_PlatformPackage">PlatformPackage</a>&gt;,
     recipients: vector&lt;<b>address</b>&gt;,
     amount_per_recipient: u64,
     reason_code: u8,
     ctx: &<b>mut</b> TxContext
 ) {
     <b>let</b> caller = tx_context::sender(ctx);
-    // Verify caller is <a href="../social_contracts/platform.md#social_contracts_platform">platform</a> <a href="../social_contracts/platform.md#social_contracts_platform_developer">developer</a> or moderator
-    <b>assert</b>!(<a href="../social_contracts/platform.md#social_contracts_platform_is_developer_or_moderator">is_developer_or_moderator</a>(<a href="../social_contracts/platform.md#social_contracts_platform">platform</a>, caller), <a href="../social_contracts/platform.md#social_contracts_platform_EUnauthorized">EUnauthorized</a>);
+    <a href="../social_contracts/platform.md#social_contracts_platform_assert_moderator_permission">assert_moderator_permission</a>&lt;<a href="../social_contracts/platform.md#social_contracts_platform_PlatformTreasuryAdmin">PlatformTreasuryAdmin</a>&gt;(<a href="../social_contracts/platform.md#social_contracts_platform">platform</a>, group, caller);
     // Check that recipients list is not empty
     <b>let</b> recipients_count = vector::length(&recipients);
     <b>assert</b>!(recipients_count &gt; 0, <a href="../social_contracts/platform.md#social_contracts_platform_EEmptyRecipientsList">EEmptyRecipientsList</a>);
@@ -3923,7 +4648,7 @@ Assign a badge to a profile - can only be called by platform admin/moderator
 This is the primary entry point for badge assignment
 
 
-<pre><code><b>public</b> <b>fun</b> <a href="../social_contracts/platform.md#social_contracts_platform_assign_badge">assign_badge</a>(platform_registry: &<a href="../social_contracts/platform.md#social_contracts_platform_PlatformRegistry">social_contracts::platform::PlatformRegistry</a>, <a href="../social_contracts/platform.md#social_contracts_platform">platform</a>: &<a href="../social_contracts/platform.md#social_contracts_platform_Platform">social_contracts::platform::Platform</a>, <a href="../social_contracts/profile.md#social_contracts_profile">profile</a>: &<b>mut</b> <a href="../social_contracts/profile.md#social_contracts_profile_Profile">social_contracts::profile::Profile</a>, badge_name: <a href="../std/string.md#std_string_String">std::string::String</a>, badge_description: <a href="../std/string.md#std_string_String">std::string::String</a>, badge_media_url: <a href="../std/string.md#std_string_String">std::string::String</a>, badge_icon_url: <a href="../std/string.md#std_string_String">std::string::String</a>, badge_type: u8, ctx: &<b>mut</b> <a href="../myso/tx_context.md#myso_tx_context_TxContext">myso::tx_context::TxContext</a>)
+<pre><code><b>public</b> <b>fun</b> <a href="../social_contracts/platform.md#social_contracts_platform_assign_badge">assign_badge</a>(platform_registry: &<a href="../social_contracts/platform.md#social_contracts_platform_PlatformRegistry">social_contracts::platform::PlatformRegistry</a>, <a href="../social_contracts/platform.md#social_contracts_platform">platform</a>: &<a href="../social_contracts/platform.md#social_contracts_platform_Platform">social_contracts::platform::Platform</a>, group: &<a href="../myso/permissioned_group.md#myso_permissioned_group_PermissionedGroup">myso::permissioned_group::PermissionedGroup</a>&lt;<a href="../social_contracts/platform.md#social_contracts_platform_PlatformPackage">social_contracts::platform::PlatformPackage</a>&gt;, <a href="../social_contracts/profile.md#social_contracts_profile">profile</a>: &<b>mut</b> <a href="../social_contracts/profile.md#social_contracts_profile_Profile">social_contracts::profile::Profile</a>, badge_name: <a href="../std/string.md#std_string_String">std::string::String</a>, badge_description: <a href="../std/string.md#std_string_String">std::string::String</a>, badge_media_url: <a href="../std/string.md#std_string_String">std::string::String</a>, badge_icon_url: <a href="../std/string.md#std_string_String">std::string::String</a>, badge_type: u8, ctx: &<b>mut</b> <a href="../myso/tx_context.md#myso_tx_context_TxContext">myso::tx_context::TxContext</a>)
 </code></pre>
 
 
@@ -3935,6 +4660,7 @@ This is the primary entry point for badge assignment
 <pre><code><b>public</b> <b>fun</b> <a href="../social_contracts/platform.md#social_contracts_platform_assign_badge">assign_badge</a>(
     platform_registry: &<a href="../social_contracts/platform.md#social_contracts_platform_PlatformRegistry">PlatformRegistry</a>,
     <a href="../social_contracts/platform.md#social_contracts_platform">platform</a>: &<a href="../social_contracts/platform.md#social_contracts_platform_Platform">Platform</a>,
+    group: &PermissionedGroup&lt;<a href="../social_contracts/platform.md#social_contracts_platform_PlatformPackage">PlatformPackage</a>&gt;,
     <a href="../social_contracts/profile.md#social_contracts_profile">profile</a>: &<b>mut</b> <a href="../social_contracts/profile.md#social_contracts_profile_Profile">profile::Profile</a>,
     badge_name: String,
     badge_description: String,
@@ -3945,9 +4671,8 @@ This is the primary entry point for badge assignment
 ) {
     // Check version compatibility
     <b>assert</b>!(<a href="../social_contracts/platform.md#social_contracts_platform">platform</a>.version == <a href="../social_contracts/upgrade.md#social_contracts_upgrade_current_version">upgrade::current_version</a>(), <a href="../social_contracts/platform.md#social_contracts_platform_EWrongVersion">EWrongVersion</a>);
-    // Verify caller is <a href="../social_contracts/platform.md#social_contracts_platform">platform</a> admin or moderator
     <b>let</b> caller = tx_context::sender(ctx);
-    <b>assert</b>!(<a href="../social_contracts/platform.md#social_contracts_platform_is_developer_or_moderator">is_developer_or_moderator</a>(<a href="../social_contracts/platform.md#social_contracts_platform">platform</a>, caller), <a href="../social_contracts/platform.md#social_contracts_platform_EUnauthorized">EUnauthorized</a>);
+    <a href="../social_contracts/platform.md#social_contracts_platform_assert_moderator_permission">assert_moderator_permission</a>&lt;<a href="../social_contracts/platform.md#social_contracts_platform_PlatformBadgeAdmin">PlatformBadgeAdmin</a>&gt;(<a href="../social_contracts/platform.md#social_contracts_platform">platform</a>, group, caller);
     // Verify <a href="../social_contracts/platform.md#social_contracts_platform">platform</a> is approved
     <b>let</b> platform_id = object::uid_to_address(&<a href="../social_contracts/platform.md#social_contracts_platform">platform</a>.<a href="../social_contracts/platform.md#social_contracts_platform_id">id</a>);
     <b>assert</b>!(<a href="../social_contracts/platform.md#social_contracts_platform_is_approved">is_approved</a>(platform_registry, platform_id), <a href="../social_contracts/platform.md#social_contracts_platform_EUnauthorized">EUnauthorized</a>);
@@ -3995,7 +4720,7 @@ Revoke a badge from a profile - can only be called by platform admin/moderator
 This is the primary entry point for badge revocation
 
 
-<pre><code><b>public</b> <b>fun</b> <a href="../social_contracts/platform.md#social_contracts_platform_revoke_badge">revoke_badge</a>(platform_registry: &<a href="../social_contracts/platform.md#social_contracts_platform_PlatformRegistry">social_contracts::platform::PlatformRegistry</a>, <a href="../social_contracts/platform.md#social_contracts_platform">platform</a>: &<a href="../social_contracts/platform.md#social_contracts_platform_Platform">social_contracts::platform::Platform</a>, <a href="../social_contracts/profile.md#social_contracts_profile">profile</a>: &<b>mut</b> <a href="../social_contracts/profile.md#social_contracts_profile_Profile">social_contracts::profile::Profile</a>, badge_id: <a href="../std/string.md#std_string_String">std::string::String</a>, ctx: &<b>mut</b> <a href="../myso/tx_context.md#myso_tx_context_TxContext">myso::tx_context::TxContext</a>)
+<pre><code><b>public</b> <b>fun</b> <a href="../social_contracts/platform.md#social_contracts_platform_revoke_badge">revoke_badge</a>(platform_registry: &<a href="../social_contracts/platform.md#social_contracts_platform_PlatformRegistry">social_contracts::platform::PlatformRegistry</a>, <a href="../social_contracts/platform.md#social_contracts_platform">platform</a>: &<a href="../social_contracts/platform.md#social_contracts_platform_Platform">social_contracts::platform::Platform</a>, group: &<a href="../myso/permissioned_group.md#myso_permissioned_group_PermissionedGroup">myso::permissioned_group::PermissionedGroup</a>&lt;<a href="../social_contracts/platform.md#social_contracts_platform_PlatformPackage">social_contracts::platform::PlatformPackage</a>&gt;, <a href="../social_contracts/profile.md#social_contracts_profile">profile</a>: &<b>mut</b> <a href="../social_contracts/profile.md#social_contracts_profile_Profile">social_contracts::profile::Profile</a>, badge_id: <a href="../std/string.md#std_string_String">std::string::String</a>, ctx: &<b>mut</b> <a href="../myso/tx_context.md#myso_tx_context_TxContext">myso::tx_context::TxContext</a>)
 </code></pre>
 
 
@@ -4007,15 +4732,15 @@ This is the primary entry point for badge revocation
 <pre><code><b>public</b> <b>fun</b> <a href="../social_contracts/platform.md#social_contracts_platform_revoke_badge">revoke_badge</a>(
     platform_registry: &<a href="../social_contracts/platform.md#social_contracts_platform_PlatformRegistry">PlatformRegistry</a>,
     <a href="../social_contracts/platform.md#social_contracts_platform">platform</a>: &<a href="../social_contracts/platform.md#social_contracts_platform_Platform">Platform</a>,
+    group: &PermissionedGroup&lt;<a href="../social_contracts/platform.md#social_contracts_platform_PlatformPackage">PlatformPackage</a>&gt;,
     <a href="../social_contracts/profile.md#social_contracts_profile">profile</a>: &<b>mut</b> <a href="../social_contracts/profile.md#social_contracts_profile_Profile">profile::Profile</a>,
     badge_id: String,
     ctx: &<b>mut</b> TxContext
 ) {
     // Check version compatibility
     <b>assert</b>!(<a href="../social_contracts/platform.md#social_contracts_platform">platform</a>.version == <a href="../social_contracts/upgrade.md#social_contracts_upgrade_current_version">upgrade::current_version</a>(), <a href="../social_contracts/platform.md#social_contracts_platform_EWrongVersion">EWrongVersion</a>);
-    // Verify caller is <a href="../social_contracts/platform.md#social_contracts_platform">platform</a> admin or moderator
     <b>let</b> caller = tx_context::sender(ctx);
-    <b>assert</b>!(<a href="../social_contracts/platform.md#social_contracts_platform_is_developer_or_moderator">is_developer_or_moderator</a>(<a href="../social_contracts/platform.md#social_contracts_platform">platform</a>, caller), <a href="../social_contracts/platform.md#social_contracts_platform_EUnauthorized">EUnauthorized</a>);
+    <a href="../social_contracts/platform.md#social_contracts_platform_assert_moderator_permission">assert_moderator_permission</a>&lt;<a href="../social_contracts/platform.md#social_contracts_platform_PlatformBadgeAdmin">PlatformBadgeAdmin</a>&gt;(<a href="../social_contracts/platform.md#social_contracts_platform">platform</a>, group, caller);
     // Verify <a href="../social_contracts/platform.md#social_contracts_platform">platform</a> is approved
     <b>let</b> platform_id = object::uid_to_address(&<a href="../social_contracts/platform.md#social_contracts_platform">platform</a>.<a href="../social_contracts/platform.md#social_contracts_platform_id">id</a>);
     <b>assert</b>!(<a href="../social_contracts/platform.md#social_contracts_platform_is_approved">is_approved</a>(platform_registry, platform_id), <a href="../social_contracts/platform.md#social_contracts_platform_EUnauthorized">EUnauthorized</a>);
@@ -4043,7 +4768,7 @@ This is the primary entry point for badge revocation
 When adding a moderator to a platform, register them with the profile module
 
 
-<pre><code><b>public</b>(package) <b>fun</b> <a href="../social_contracts/platform.md#social_contracts_platform_add_moderator_register">add_moderator_register</a>(<a href="../social_contracts/platform.md#social_contracts_platform">platform</a>: &<b>mut</b> <a href="../social_contracts/platform.md#social_contracts_platform_Platform">social_contracts::platform::Platform</a>, moderator_address: <b>address</b>, ctx: &<a href="../myso/tx_context.md#myso_tx_context_TxContext">myso::tx_context::TxContext</a>)
+<pre><code><b>public</b>(package) <b>fun</b> <a href="../social_contracts/platform.md#social_contracts_platform_add_moderator_register">add_moderator_register</a>(<a href="../social_contracts/platform.md#social_contracts_platform">platform</a>: &<a href="../social_contracts/platform.md#social_contracts_platform_Platform">social_contracts::platform::Platform</a>, group: &<b>mut</b> <a href="../myso/permissioned_group.md#myso_permissioned_group_PermissionedGroup">myso::permissioned_group::PermissionedGroup</a>&lt;<a href="../social_contracts/platform.md#social_contracts_platform_PlatformPackage">social_contracts::platform::PlatformPackage</a>&gt;, moderator_address: <b>address</b>, ctx: &<a href="../myso/tx_context.md#myso_tx_context_TxContext">myso::tx_context::TxContext</a>)
 </code></pre>
 
 
@@ -4053,26 +4778,13 @@ When adding a moderator to a platform, register them with the profile module
 
 
 <pre><code><b>public</b>(package) <b>fun</b> <a href="../social_contracts/platform.md#social_contracts_platform_add_moderator_register">add_moderator_register</a>(
-    <a href="../social_contracts/platform.md#social_contracts_platform">platform</a>: &<b>mut</b> <a href="../social_contracts/platform.md#social_contracts_platform_Platform">Platform</a>,
+    <a href="../social_contracts/platform.md#social_contracts_platform">platform</a>: &<a href="../social_contracts/platform.md#social_contracts_platform_Platform">Platform</a>,
+    group: &<b>mut</b> PermissionedGroup&lt;<a href="../social_contracts/platform.md#social_contracts_platform_PlatformPackage">PlatformPackage</a>&gt;,
     moderator_address: <b>address</b>,
     ctx: &TxContext
 ) {
-    // Verify caller is <a href="../social_contracts/platform.md#social_contracts_platform">platform</a> <a href="../social_contracts/platform.md#social_contracts_platform_developer">developer</a>
-    <b>let</b> caller = tx_context::sender(ctx);
-    <b>assert</b>!(<a href="../social_contracts/platform.md#social_contracts_platform">platform</a>.<a href="../social_contracts/platform.md#social_contracts_platform_developer">developer</a> == caller, <a href="../social_contracts/platform.md#social_contracts_platform_EUnauthorized">EUnauthorized</a>);
-    // Get moderators set
-    <b>let</b> moderators = dynamic_field::borrow_mut&lt;vector&lt;u8&gt;, VecSet&lt;<b>address</b>&gt;&gt;(&<b>mut</b> <a href="../social_contracts/platform.md#social_contracts_platform">platform</a>.<a href="../social_contracts/platform.md#social_contracts_platform_id">id</a>, <a href="../social_contracts/platform.md#social_contracts_platform_MODERATORS_FIELD">MODERATORS_FIELD</a>);
-    // Add moderator <b>if</b> not already a moderator
-    <b>if</b> (!vec_set::contains(moderators, &moderator_address)) {
-        vec_set::insert(moderators, moderator_address);
-        // Emit moderator added event
-        <b>let</b> platform_id = object::uid_to_address(&<a href="../social_contracts/platform.md#social_contracts_platform">platform</a>.<a href="../social_contracts/platform.md#social_contracts_platform_id">id</a>);
-        event::emit(<a href="../social_contracts/platform.md#social_contracts_platform_ModeratorAddedEvent">ModeratorAddedEvent</a> {
-            platform_id,
-            moderator_address,
-            added_by: caller,
-        });
-    };
+    <b>assert</b>!(<a href="../social_contracts/platform.md#social_contracts_platform">platform</a>.<a href="../social_contracts/platform.md#social_contracts_platform_developer">developer</a> == tx_context::sender(ctx), <a href="../social_contracts/platform.md#social_contracts_platform_EUnauthorized">EUnauthorized</a>);
+    <a href="../social_contracts/platform.md#social_contracts_platform_grant_all_moderator_permissions">grant_all_moderator_permissions</a>(<a href="../social_contracts/platform.md#social_contracts_platform">platform</a>, group, moderator_address, ctx);
 }
 </code></pre>
 
@@ -4087,7 +4799,7 @@ When adding a moderator to a platform, register them with the profile module
 When removing a moderator from a platform
 
 
-<pre><code><b>public</b>(package) <b>fun</b> <a href="../social_contracts/platform.md#social_contracts_platform_remove_moderator_unregister">remove_moderator_unregister</a>(<a href="../social_contracts/platform.md#social_contracts_platform">platform</a>: &<b>mut</b> <a href="../social_contracts/platform.md#social_contracts_platform_Platform">social_contracts::platform::Platform</a>, moderator_address: <b>address</b>, ctx: &<a href="../myso/tx_context.md#myso_tx_context_TxContext">myso::tx_context::TxContext</a>)
+<pre><code><b>public</b>(package) <b>fun</b> <a href="../social_contracts/platform.md#social_contracts_platform_remove_moderator_unregister">remove_moderator_unregister</a>(<a href="../social_contracts/platform.md#social_contracts_platform">platform</a>: &<a href="../social_contracts/platform.md#social_contracts_platform_Platform">social_contracts::platform::Platform</a>, group: &<b>mut</b> <a href="../myso/permissioned_group.md#myso_permissioned_group_PermissionedGroup">myso::permissioned_group::PermissionedGroup</a>&lt;<a href="../social_contracts/platform.md#social_contracts_platform_PlatformPackage">social_contracts::platform::PlatformPackage</a>&gt;, moderator_address: <b>address</b>, ctx: &<a href="../myso/tx_context.md#myso_tx_context_TxContext">myso::tx_context::TxContext</a>)
 </code></pre>
 
 
@@ -4097,28 +4809,12 @@ When removing a moderator from a platform
 
 
 <pre><code><b>public</b>(package) <b>fun</b> <a href="../social_contracts/platform.md#social_contracts_platform_remove_moderator_unregister">remove_moderator_unregister</a>(
-    <a href="../social_contracts/platform.md#social_contracts_platform">platform</a>: &<b>mut</b> <a href="../social_contracts/platform.md#social_contracts_platform_Platform">Platform</a>,
+    <a href="../social_contracts/platform.md#social_contracts_platform">platform</a>: &<a href="../social_contracts/platform.md#social_contracts_platform_Platform">Platform</a>,
+    group: &<b>mut</b> PermissionedGroup&lt;<a href="../social_contracts/platform.md#social_contracts_platform_PlatformPackage">PlatformPackage</a>&gt;,
     moderator_address: <b>address</b>,
     ctx: &TxContext
 ) {
-    // Verify caller is <a href="../social_contracts/platform.md#social_contracts_platform">platform</a> <a href="../social_contracts/platform.md#social_contracts_platform_developer">developer</a>
-    <b>let</b> caller = tx_context::sender(ctx);
-    <b>assert</b>!(<a href="../social_contracts/platform.md#social_contracts_platform">platform</a>.<a href="../social_contracts/platform.md#social_contracts_platform_developer">developer</a> == caller, <a href="../social_contracts/platform.md#social_contracts_platform_EUnauthorized">EUnauthorized</a>);
-    // Cannot remove <a href="../social_contracts/platform.md#social_contracts_platform_developer">developer</a> <b>as</b> moderator
-    <b>assert</b>!(moderator_address != <a href="../social_contracts/platform.md#social_contracts_platform">platform</a>.<a href="../social_contracts/platform.md#social_contracts_platform_developer">developer</a>, <a href="../social_contracts/platform.md#social_contracts_platform_EUnauthorized">EUnauthorized</a>);
-    // Get moderators set
-    <b>let</b> moderators = dynamic_field::borrow_mut&lt;vector&lt;u8&gt;, VecSet&lt;<b>address</b>&gt;&gt;(&<b>mut</b> <a href="../social_contracts/platform.md#social_contracts_platform">platform</a>.<a href="../social_contracts/platform.md#social_contracts_platform_id">id</a>, <a href="../social_contracts/platform.md#social_contracts_platform_MODERATORS_FIELD">MODERATORS_FIELD</a>);
-    // Remove moderator <b>if</b> they are a moderator
-    <b>if</b> (vec_set::contains(moderators, &moderator_address)) {
-        vec_set::remove(moderators, &moderator_address);
-        // Emit moderator removed event
-        <b>let</b> platform_id = object::uid_to_address(&<a href="../social_contracts/platform.md#social_contracts_platform">platform</a>.<a href="../social_contracts/platform.md#social_contracts_platform_id">id</a>);
-        event::emit(<a href="../social_contracts/platform.md#social_contracts_platform_ModeratorRemovedEvent">ModeratorRemovedEvent</a> {
-            platform_id,
-            moderator_address,
-            removed_by: caller,
-        });
-    };
+    <a href="../social_contracts/platform.md#social_contracts_platform_remove_moderator">remove_moderator</a>(<a href="../social_contracts/platform.md#social_contracts_platform">platform</a>, group, moderator_address, ctx);
 }
 </code></pre>
 

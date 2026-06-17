@@ -51,7 +51,8 @@ use myso_indexer_alt_social_schema::models::{
     NewMyDataMerkleRoot, NewMyDataSnapshotAnchor, NewMyDataSubPool,
     NewMyDataRegistry, NewMyDataRevenue, NewMyDataSubscription, NewMemoryAccount, NewNominatedDelegate,
     NewObjectMigratedEvent, NewPlatform, NewPlatformBlockedProfile, NewPlatformEvent,
-    NewPlatformMembership, NewPlatformModerator, NewPlatformTokenAirdrop, NewPocAnalysisResult,
+    NewPlatformMembership, NewPlatformModerator, NewPlatformModeratorPermission,
+    NewPlatformTokenAirdrop, NewPocAnalysisResult,
     NewPocBadge, NewPocConfiguration, NewPocDispute, NewPocDisputeVote, NewPocRevenueRedirection,
     NewPost, NewPostTransfer, NewProfile, NewProfileBadge, NewProfileEvent, NewProfileOffer,
     NewProfileSaleFee, NewProfileSubscription, NewProfileSubscriptionService, NewProposal,
@@ -291,6 +292,18 @@ pub enum SocialEventRow {
     PlatformModeratorRemove {
         platform_id: String,
         moderator_address: String,
+    },
+    PlatformModeratorPermissionGrant(NewPlatformModeratorPermission),
+    PlatformModeratorPermissionRevoke {
+        platform_id: String,
+        moderator_address: String,
+        permission_type: String,
+        revoked_at: chrono::NaiveDateTime,
+    },
+    PlatformModeratorPermissionRevokeAll {
+        platform_id: String,
+        moderator_address: String,
+        revoked_at: chrono::NaiveDateTime,
     },
     PlatformBlockedProfile(NewPlatformBlockedProfile),
     PlatformBlockedProfileRemove {

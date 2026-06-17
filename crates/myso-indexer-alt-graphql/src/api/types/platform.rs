@@ -105,6 +105,11 @@ impl Platform {
         &self.inner.developer_address
     }
 
+    /// Derived PermissionedGroup object id for platform moderators.
+    async fn moderators_group_id(&self) -> Option<&str> {
+        self.inner.moderators_group_id.as_deref()
+    }
+
     /// Profile of the platform developer.
     async fn developer_profile(&self, ctx: &Context<'_>) -> Option<ProfileSummary> {
         resolve_profile_summary(ctx, &self.inner.developer_address).await
@@ -271,6 +276,7 @@ impl Platform {
     async fn moderators(
         &self,
         ctx: &Context<'_>,
+        permission: Option<String>,
         limit: Option<u64>,
         offset: Option<u64>,
     ) -> Option<Vec<PlatformModeratorSummary>> {
@@ -280,7 +286,12 @@ impl Platform {
         let limit = limit.unwrap_or(20).min(100) as i64;
         let offset = offset.unwrap_or(0) as i64;
         let rows = reader
-            .get_platform_moderators(&self.inner.platform_id, limit, offset)
+            .get_platform_moderators(
+                &self.inner.platform_id,
+                permission.as_deref(),
+                limit,
+                offset,
+            )
             .await
             .ok()?;
         Some(
@@ -314,6 +325,12 @@ pub(crate) struct PlatformUserAccess {
     is_member: bool,
     is_blocked: bool,
     is_moderator: bool,
+    moderator_permissions: Vec<String>,
+    can_block_users: bool,
+    can_moderate_content: bool,
+    can_manage_badges: bool,
+    can_airdrop_treasury: bool,
+    can_manage_promotions: bool,
 }
 
 impl PlatformUserAccess {
@@ -322,6 +339,12 @@ impl PlatformUserAccess {
             is_member: row.is_member,
             is_blocked: row.is_blocked,
             is_moderator: row.is_moderator,
+            moderator_permissions: row.permissions(),
+            can_block_users: row.can_block_users(),
+            can_moderate_content: row.can_moderate_content(),
+            can_manage_badges: row.can_manage_badges(),
+            can_airdrop_treasury: row.can_airdrop_treasury(),
+            can_manage_promotions: row.can_manage_promotions(),
         }
     }
 }
@@ -341,6 +364,31 @@ impl PlatformUserAccess {
     /// Whether the wallet is a moderator of this platform.
     async fn is_moderator(&self) -> bool {
         self.is_moderator
+    }
+
+    /// Active granular moderator permissions for this wallet.
+    async fn moderator_permissions(&self) -> &[String] {
+        &self.moderator_permissions
+    }
+
+    async fn can_block_users(&self) -> bool {
+        self.can_block_users
+    }
+
+    async fn can_moderate_content(&self) -> bool {
+        self.can_moderate_content
+    }
+
+    async fn can_manage_badges(&self) -> bool {
+        self.can_manage_badges
+    }
+
+    async fn can_airdrop_treasury(&self) -> bool {
+        self.can_airdrop_treasury
+    }
+
+    async fn can_manage_promotions(&self) -> bool {
+        self.can_manage_promotions
     }
 }
 
@@ -637,6 +685,7 @@ pub(crate) struct PlatformModeratorSummary {
     pub moderator_address: String,
     pub added_by: String,
     pub created_at: chrono::NaiveDateTime,
+    pub permissions: Vec<String>,
 }
 
 impl PlatformModeratorSummary {
@@ -645,6 +694,7 @@ impl PlatformModeratorSummary {
             moderator_address: row.moderator_address,
             added_by: row.added_by,
             created_at: row.created_at,
+            permissions: row.permissions,
         }
     }
 }
@@ -672,5 +722,9 @@ impl PlatformModeratorSummary {
 
     async fn created_at(&self) -> i64 {
         self.created_at.and_utc().timestamp_millis()
+    }
+
+    async fn permissions(&self) -> &[String] {
+        &self.permissions
     }
 }

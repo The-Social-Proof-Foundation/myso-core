@@ -467,6 +467,8 @@ pub(crate) async fn get_profile_platform_memberships(
         #[diesel(sql_type = Text)]
         developer_address: String,
         #[diesel(sql_type = Nullable<Text>)]
+        moderators_group_id: Option<String>,
+        #[diesel(sql_type = Nullable<Text>)]
         terms_of_service: Option<String>,
         #[diesel(sql_type = Nullable<Text>)]
         privacy_policy: Option<String>,
@@ -533,6 +535,7 @@ pub(crate) async fn get_profile_platform_memberships(
                p.cover_photo,
                p.media_previews,
                p.developer_address,
+               p.moderators_group_id,
                p.terms_of_service,
                p.privacy_policy,
                p.platforms AS platform_names,
@@ -588,6 +591,7 @@ pub(crate) async fn get_profile_platform_memberships(
             cover_photo: r.cover_photo,
             media_previews: r.media_previews,
             developer_address: r.developer_address,
+            moderators_group_id: r.moderators_group_id,
             terms_of_service: r.terms_of_service,
             privacy_policy: r.privacy_policy,
             platform_names: r.platform_names,

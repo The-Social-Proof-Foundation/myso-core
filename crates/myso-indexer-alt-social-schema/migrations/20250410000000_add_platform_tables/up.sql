@@ -9,6 +9,7 @@ CREATE TABLE IF NOT EXISTS platforms (
     cover_photo TEXT,
     media_previews JSONB,
     developer_address TEXT NOT NULL,
+    moderators_group_id TEXT,         -- derived PermissionedGroup<PlatformPackage> object id
     terms_of_service TEXT,
     privacy_policy TEXT,
     platforms JSONB,                  -- Array of platform names (Twitter, Instagram, etc.)
@@ -38,6 +39,23 @@ CREATE TABLE IF NOT EXISTS platform_moderators (
 
 -- Create index on platform_id for moderators
 CREATE INDEX IF NOT EXISTS idx_platform_moderators_platform_id ON platform_moderators(platform_id);
+
+-- Granular moderator permissions (one row per granted permission type)
+CREATE TABLE IF NOT EXISTS platform_moderator_permissions (
+    id SERIAL PRIMARY KEY,
+    platform_id TEXT NOT NULL,
+    moderator_address TEXT NOT NULL,
+    permission_type TEXT NOT NULL,
+    granted_by TEXT NOT NULL,
+    granted_at TIMESTAMP NOT NULL DEFAULT NOW(),
+    revoked_at TIMESTAMP,
+    UNIQUE(platform_id, moderator_address, permission_type)
+);
+
+CREATE INDEX IF NOT EXISTS idx_platform_mod_perms_platform_id
+    ON platform_moderator_permissions(platform_id);
+CREATE INDEX IF NOT EXISTS idx_platform_mod_perms_moderator_address
+    ON platform_moderator_permissions(moderator_address);
 
 -- Create blocked profiles table
 CREATE TABLE IF NOT EXISTS platform_blocked_profiles (

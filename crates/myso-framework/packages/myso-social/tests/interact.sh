@@ -393,6 +393,8 @@ ptb_moderate_post() {
     read -r -p "Post mutable object ID (shared Post): " post_id
     read -r -p "Platform shared object [${PLATFORM_OBJECT_ID:-}]: " plat
     plat="${plat:-$PLATFORM_OBJECT_ID}"
+    read -r -p "Moderators group shared object ID [${MODERATORS_GROUP_ID:-}]: " group_id
+    group_id="${group_id:-$MODERATORS_GROUP_ID}"
     read -r -p "PlatformRegistry [${PLATFORM_REGISTRY_ID:-}]: " preg
     preg="${preg:-$PLATFORM_REGISTRY_ID}"
     read -r -p "Status — 1=MODERATION_APPROVED, 2=MODERATION_FLAGGED (remove): " st
@@ -404,7 +406,7 @@ ptb_moderate_post() {
         R_ARG="some(${rl})"
     fi
     invoke_ptb --move-call "${PACKAGE_ID}::post::set_moderation_status" \
-        "@${post_id}" "@${plat}" "@${preg}" "${st}" "${R_ARG}"
+        "@${post_id}" "@${plat}" "@${group_id}" "@${preg}" "${st}" "${R_ARG}"
     print_success "Submitted."
     press_enter
     content_menu
