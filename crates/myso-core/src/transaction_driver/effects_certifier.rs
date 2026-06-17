@@ -537,7 +537,7 @@ impl EffectsCertifier {
 
                             self.metrics
                                 .transaction_fastpath_acked
-                                .with_label_values(&[&display_name, ping_label])
+                                .with_label_values(&[display_name.as_str(), ping_label])
                                 .inc();
                         }
 

@@ -48,7 +48,7 @@ impl MetricsPushClient {
 
         let mut metric_families = registry.gather_all();
         for mf in metric_families.iter_mut() {
-            for m in mf.mut_metric() {
+            for m in &mut mf.metric {
                 m.set_timestamp_ms(now);
             }
         }

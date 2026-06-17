@@ -480,7 +480,7 @@ pprof = { version = "0.14.0", features = ["cpp", "frame-pointer"] }
 pretty_assertions = "1.3.0"
 prettytable-rs = "0.10.0"
 proc-macro2 = "1.0.47"
-prometheus = "0.13.3"
+prometheus = { version = "0.14", features = ["protobuf"] }
 prometheus-http-query = { version = "0.8", default-features = false, features = [
   "rustls-tls",
 ] }

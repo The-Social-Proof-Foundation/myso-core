@@ -213,17 +213,17 @@ impl<A: Clone> ValidatorClientMonitor<A> {
             Ok(latency) => {
                 self.metrics
                     .observed_latency
-                    .with_label_values(&[&feedback.display_name, operation_str, ping_label])
+                    .with_label_values(&[feedback.display_name.as_str(), operation_str, ping_label])
                     .observe(latency.as_secs_f64());
                 self.metrics
                     .operation_success
-                    .with_label_values(&[&feedback.display_name, operation_str, ping_label])
+                    .with_label_values(&[feedback.display_name.as_str(), operation_str, ping_label])
                     .inc();
             }
             Err(()) => {
                 self.metrics
                     .operation_failure
-                    .with_label_values(&[&feedback.display_name, operation_str, ping_label])
+                    .with_label_values(&[feedback.display_name.as_str(), operation_str, ping_label])
                     .inc();
             }
         }

@@ -266,7 +266,7 @@ impl AncestorStateManager {
             .node_metrics
             .ancestor_state_change_by_authority
             .with_label_values(&[
-                block_hostname,
+                block_hostname.as_str(),
                 match new_state {
                     AncestorState::Include => "include",
                     AncestorState::Exclude(_) => "exclude",

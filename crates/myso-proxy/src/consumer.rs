@@ -132,8 +132,8 @@ pub fn populate_labels(
     let mut data = data;
     // add our extra labels to our incoming metric data
     for mf in data.iter_mut() {
-        for m in mf.mut_metric() {
-            m.mut_label().extend(labels.clone());
+        for m in &mut mf.metric {
+            m.label.extend(labels.clone());
         }
     }
     timer.observe_duration();
