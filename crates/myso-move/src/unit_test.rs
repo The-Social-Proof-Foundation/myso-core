@@ -19,12 +19,13 @@ use myso_move_natives::{
     NativesCostTable, object_runtime::ObjectRuntime, test_scenario::InMemoryTestStore,
     transaction_context::TransactionContext,
 };
+use move_package_alt::schema::Environment;
 use myso_package_alt::find_environment;
-use myso_protocol_config::ProtocolConfig;
+use myso_protocol_config::{Chain, ProtocolConfig, ProtocolVersion};
 use myso_sdk::wallet_context::WalletContext;
 use myso_types::{
     base_types::{MySoAddress, TxContext},
-    digests::TransactionDigest,
+    digests::{ChainIdentifier, TransactionDigest},
     gas::{MySoGasStatus, MySoGasStatusAPI},
     gas_model::{tables::GasStatus, units_types::Gas},
     in_memory_storage::InMemoryStorage,
@@ -41,11 +42,10 @@ use std::{
 };
 
 // Move unit tests will halt after executing this many steps. This is a protection to avoid divergence
+const TEST_GAS_PRICE: u64 = 500;
+
 pub static MAX_UNIT_TEST_INSTRUCTIONS: LazyLock<u64> =
     LazyLock::new(|| ProtocolConfig::get_for_max_version_UNSAFE().max_tx_gas());
-
-/// Gas price used for the meter during Move unit tests.
-const TEST_GAS_PRICE: u64 = 500;
 
 #[derive(Parser)]
 #[group(id = "myso-move-test")]
@@ -84,12 +84,13 @@ impl Test {
         // should be ok.
         let environment =
             find_environment(&rerooted_path, build_config.environment, wallet).await?;
-        build_config.environment = Some(environment.name);
+        build_config.environment = Some(environment.name.clone());
 
         run_move_unit_tests(
             &rerooted_path,
             build_config,
             Some(unit_test_config),
+            &environment,
             compute_coverage,
             save_disassembly,
         )
@@ -97,9 +98,19 @@ impl Test {
     }
 }
 
+fn chain_for_environment(environment: &Environment) -> Chain {
+    ChainIdentifier::from_chain_short_id(&environment.id)
+        .map(|id| id.chain())
+        .unwrap_or(Chain::Unknown)
+}
+
 // Create a separate test store per-thread.
 thread_local! {
     static TEST_STORE_INNER: RefCell<InMemoryStorage> = RefCell::new(InMemoryStorage::default());
+}
+
+thread_local! {
+    static TEST_PROTOCOL_CONFIG: RefCell<Option<ProtocolConfig>> = RefCell::new(None);
 }
 
 static TEST_STORE: Lazy<InMemoryTestStore> = Lazy::new(|| InMemoryTestStore(&TEST_STORE_INNER));
@@ -113,15 +124,26 @@ pub async fn run_move_unit_tests(
     path: &Path,
     build_config: BuildConfig,
     config: Option<UnitTestingConfig>,
+    environment: &Environment,
     compute_coverage: bool,
     save_disassembly: bool,
 ) -> anyhow::Result<UnitTestResult> {
     // bind the extension hook if it has not yet been done
     Lazy::force(&SET_EXTENSION_HOOK);
 
-    let config = config.unwrap_or_else(|| {
-        UnitTestingConfig::default_with_bound(Some(*MAX_UNIT_TEST_INSTRUCTIONS))
+    let vm_test_setup = MySoVMTestSetup::for_environment(environment);
+    TEST_PROTOCOL_CONFIG.with(|cell| {
+        *cell.borrow_mut() = Some(vm_test_setup.protocol_config().clone());
     });
+
+    let mut config = config.unwrap_or_else(|| {
+        UnitTestingConfig::default_with_bound(Some(vm_test_setup.max_gas_budget()))
+    });
+    // CLI passes `gas_limit: None` when unset; move-unit-test then falls back to 1M gas, which
+    // is too low for crypto-heavy packages (e.g. contra bulletproof verification).
+    if config.gas_limit.is_none() {
+        config.gas_limit = Some(vm_test_setup.max_gas_budget());
+    }
 
     let result = move_cli::base::test::run_move_unit_tests::<myso_package_alt::MySoFlavor, _, _>(
         path,
@@ -130,7 +152,7 @@ pub async fn run_move_unit_tests(
             report_stacktrace_on_abort: true,
             ..config
         },
-        MySoVMTestSetup::new(),
+        vm_test_setup,
         compute_coverage,
         save_disassembly,
         &mut std::io::stdout(),
@@ -152,13 +174,19 @@ fn new_testing_object_and_natives_cost_runtime(ext: &mut NativeContextExtensions
     let registry = prometheus::Registry::new();
     let metrics = Arc::new(LimitsMetrics::new(&registry));
     let store = Lazy::force(&TEST_STORE);
-    let protocol_config = ProtocolConfig::get_for_max_version_UNSAFE();
+    let protocol_config = TEST_PROTOCOL_CONFIG.with(|cell| {
+        cell
+            .borrow()
+            .clone()
+            .unwrap_or_else(ProtocolConfig::get_for_max_version_UNSAFE)
+    });
+    let protocol_config_leak: &'static ProtocolConfig = Box::leak(Box::new(protocol_config.clone()));
 
     ext.add(ObjectRuntime::new(
         store,
         BTreeMap::new(),
         false,
-        Box::leak(Box::new(ProtocolConfig::get_for_max_version_UNSAFE())), // leak for testing
+        protocol_config_leak,
         metrics,
         0, // epoch id
     ));
@@ -195,7 +223,15 @@ impl Default for MySoVMTestSetup {
 
 impl MySoVMTestSetup {
     pub fn new() -> Self {
-        let protocol_config = ProtocolConfig::get_for_max_version_UNSAFE();
+        Self::for_chain(Chain::Unknown)
+    }
+
+    pub fn for_environment(environment: &Environment) -> Self {
+        Self::for_chain(chain_for_environment(environment))
+    }
+
+    fn for_chain(chain: Chain) -> Self {
+        let protocol_config = ProtocolConfig::get_for_version(ProtocolVersion::MAX, chain);
         let native_function_table =
             myso_move_natives::all_natives(/* silent */ false, &protocol_config);
         Self {
@@ -208,6 +244,10 @@ impl MySoVMTestSetup {
 
     pub fn max_gas_budget(&self) -> u64 {
         self.protocol_config.max_tx_gas()
+    }
+
+    pub fn protocol_config(&self) -> &ProtocolConfig {
+        &self.protocol_config
     }
 }
 

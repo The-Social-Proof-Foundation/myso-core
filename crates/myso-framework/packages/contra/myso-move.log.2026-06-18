@@ -1,0 +1,4 @@
+2026-06-18T10:00:50.753858Z ERROR telemetry_subscribers: panicked at /Users/brandonshaw/Offline-Projects/ProjectYZ/myso-core/external-crates/move/crates/move-unit-test/src/lib.rs:285:10:
+called `Result::unwrap()` on an `Err` value: Tracing is enabled but the binary was not compiled with the `tracing` feature flag set. Rebuild binary with `--features tracing` panic.file="/Users/brandonshaw/Offline-Projects/ProjectYZ/myso-core/external-crates/move/crates/move-unit-test/src/lib.rs" panic.line=285 panic.column=10
+2026-06-18T19:36:37.724473Z ERROR telemetry_subscribers: panicked at /Users/brandonshaw/Offline-Projects/ProjectYZ/myso-core/external-crates/move/crates/move-unit-test/src/test_runner.rs:212:10:
+called `Result::unwrap()` on an `Err` value: Os { code: 32, kind: BrokenPipe, message: "Broken pipe" } panic.file="/Users/brandonshaw/Offline-Projects/ProjectYZ/myso-core/external-crates/move/crates/move-unit-test/src/test_runner.rs" panic.line=212 panic.column=10

@@ -6,8 +6,11 @@ use crate::{NativesCostTable, get_extension};
 use fastcrypto::error::{FastCryptoError, FastCryptoResult};
 use fastcrypto::groups::{
     FromTrustedByteArray, GroupElement, HashToGroupElement, MultiScalarMul, Pairing,
-    bls12381 as bls,
+    bls12381 as bls, ristretto255 as ristretto,
 };
+
+const RISTRETTO_SCALAR_BYTE_LENGTH: usize = 32;
+const RISTRETTO_POINT_BYTE_LENGTH: usize = 32;
 use fastcrypto::serde_helpers::ToFromByteArray;
 use move_binary_format::errors::{PartialVMError, PartialVMResult};
 use move_core_types::gas_algebra::InternalGas;
@@ -43,6 +46,12 @@ fn is_uncompressed_g1_supported(context: &NativeContext) -> PartialVMResult<bool
     Ok(get_extension!(context, ObjectRuntime)?
         .protocol_config
         .uncompressed_g1_group_elements())
+}
+
+fn is_ristretto_supported(context: &NativeContext) -> PartialVMResult<bool> {
+    Ok(get_extension!(context, ObjectRuntime)?
+        .protocol_config
+        .enable_ristretto255_group_ops())
 }
 
 fn v2_native_charge(context: &NativeContext, cost: InternalGas) -> PartialVMResult<InternalGas> {
@@ -128,6 +137,16 @@ pub struct GroupOpsCostParams {
     pub bls12381_uncompressed_g1_sum_cost_per_term: Option<InternalGas>,
     // limit the number of terms in a sum
     pub bls12381_uncompressed_g1_sum_max_terms: Option<u64>,
+    pub ristretto_decode_scalar_cost: Option<InternalGas>,
+    pub ristretto_decode_point_cost: Option<InternalGas>,
+    pub ristretto_scalar_add_cost: Option<InternalGas>,
+    pub ristretto_point_add_cost: Option<InternalGas>,
+    pub ristretto_scalar_sub_cost: Option<InternalGas>,
+    pub ristretto_point_sub_cost: Option<InternalGas>,
+    pub ristretto_scalar_mul_cost: Option<InternalGas>,
+    pub ristretto_point_mul_cost: Option<InternalGas>,
+    pub ristretto_scalar_div_cost: Option<InternalGas>,
+    pub ristretto_point_div_cost: Option<InternalGas>,
 }
 
 macro_rules! native_charge_gas_early_exit_option {
@@ -152,6 +171,8 @@ enum Groups {
     BLS12381G2 = 2,
     BLS12381GT = 3,
     BLS12381UncompressedG1 = 4,
+    RistrettoScalar = 5,
+    RistrettoPoint = 6,
 }
 
 impl Groups {
@@ -162,6 +183,8 @@ impl Groups {
             2 => Some(Groups::BLS12381G2),
             3 => Some(Groups::BLS12381GT),
             4 => Some(Groups::BLS12381UncompressedG1),
+            5 => Some(Groups::RistrettoScalar),
+            6 => Some(Groups::RistrettoPoint),
             _ => None,
         }
     }
@@ -203,6 +226,18 @@ fn binary_op<G: ToFromByteArray<S> + FromTrustedByteArray<S>, const S: usize>(
     a2: &[u8],
 ) -> FastCryptoResult<Vec<u8>> {
     binary_op_diff::<G, G, S, S>(op, a1, a2)
+}
+
+fn parse_ristretto_scalar_bytes(e: &[u8]) -> FastCryptoResult<ristretto::RistrettoScalar> {
+    let bytes: [u8; RISTRETTO_SCALAR_BYTE_LENGTH] =
+        e.try_into().map_err(|_| FastCryptoError::InvalidInput)?;
+    ristretto::RistrettoScalar::from_byte_array(&bytes)
+}
+
+fn parse_ristretto_point_bytes(e: &[u8]) -> FastCryptoResult<ristretto::RistrettoPoint> {
+    let bytes: [u8; RISTRETTO_POINT_BYTE_LENGTH] =
+        e.try_into().map_err(|_| FastCryptoError::InvalidInput)?;
+    ristretto::RistrettoPoint::from_byte_array(&bytes)
 }
 
 // TODO: Since in many cases more than one group operation will be performed in a single
@@ -248,6 +283,20 @@ pub fn internal_validate(
         Some(Groups::BLS12381G2) => {
             native_charge_gas_early_exit_option!(context, cost_params.bls12381_decode_g2_cost);
             parse_untrusted::<bls::G2Element, { bls::G2Element::BYTE_LENGTH }>(&bytes).is_ok()
+        }
+        Some(Groups::RistrettoScalar) => {
+            if !is_ristretto_supported(context)? {
+                return Ok(NativeResult::err(cost, NOT_SUPPORTED_ERROR));
+            }
+            native_charge_gas_early_exit_option!(context, cost_params.ristretto_decode_scalar_cost);
+            parse_ristretto_scalar_bytes(&bytes).is_ok()
+        }
+        Some(Groups::RistrettoPoint) => {
+            if !is_ristretto_supported(context)? {
+                return Ok(NativeResult::err(cost, NOT_SUPPORTED_ERROR));
+            }
+            native_charge_gas_early_exit_option!(context, cost_params.ristretto_decode_point_cost);
+            parse_ristretto_point_bytes(&bytes).is_ok()
         }
         _ => false,
     };
@@ -303,6 +352,28 @@ pub fn internal_add(
             native_charge_gas_early_exit_option!(context, cost_params.bls12381_gt_add_cost);
             binary_op::<bls::GTElement, { bls::GTElement::BYTE_LENGTH }>(|a, b| Ok(a + b), &e1, &e2)
         }
+        Some(Groups::RistrettoScalar) => {
+            if !is_ristretto_supported(context)? {
+                return Ok(NativeResult::err(cost, NOT_SUPPORTED_ERROR));
+            }
+            native_charge_gas_early_exit_option!(context, cost_params.ristretto_scalar_add_cost);
+            (|| {
+                let e1 = parse_ristretto_scalar_bytes(&e1)?;
+                let e2 = parse_ristretto_scalar_bytes(&e2)?;
+                Ok((e1 + e2).to_byte_array().to_vec())
+            })()
+        }
+        Some(Groups::RistrettoPoint) => {
+            if !is_ristretto_supported(context)? {
+                return Ok(NativeResult::err(cost, NOT_SUPPORTED_ERROR));
+            }
+            native_charge_gas_early_exit_option!(context, cost_params.ristretto_point_add_cost);
+            (|| {
+                let e1 = parse_ristretto_point_bytes(&e1)?;
+                let e2 = parse_ristretto_point_bytes(&e2)?;
+                Ok((e1 + e2).to_byte_array().to_vec())
+            })()
+        }
         _ => Err(FastCryptoError::InvalidInput),
     };
 
@@ -353,6 +424,28 @@ pub fn internal_sub(
         Some(Groups::BLS12381GT) => {
             native_charge_gas_early_exit_option!(context, cost_params.bls12381_gt_sub_cost);
             binary_op::<bls::GTElement, { bls::GTElement::BYTE_LENGTH }>(|a, b| Ok(a - b), &e1, &e2)
+        }
+        Some(Groups::RistrettoScalar) => {
+            if !is_ristretto_supported(context)? {
+                return Ok(NativeResult::err(cost, NOT_SUPPORTED_ERROR));
+            }
+            native_charge_gas_early_exit_option!(context, cost_params.ristretto_scalar_sub_cost);
+            (|| {
+                let e1 = parse_ristretto_scalar_bytes(&e1)?;
+                let e2 = parse_ristretto_scalar_bytes(&e2)?;
+                Ok((e1 - e2).to_byte_array().to_vec())
+            })()
+        }
+        Some(Groups::RistrettoPoint) => {
+            if !is_ristretto_supported(context)? {
+                return Ok(NativeResult::err(cost, NOT_SUPPORTED_ERROR));
+            }
+            native_charge_gas_early_exit_option!(context, cost_params.ristretto_point_sub_cost);
+            (|| {
+                let e1 = parse_ristretto_point_bytes(&e1)?;
+                let e2 = parse_ristretto_point_bytes(&e2)?;
+                Ok((e1 - e2).to_byte_array().to_vec())
+            })()
         }
         _ => Err(FastCryptoError::InvalidInput),
     };
@@ -420,6 +513,28 @@ pub fn internal_mul(
                 { bls::GTElement::BYTE_LENGTH },
             >(|a, b| Ok(b * a), &e1, &e2)
         }
+        Some(Groups::RistrettoScalar) => {
+            if !is_ristretto_supported(context)? {
+                return Ok(NativeResult::err(cost, NOT_SUPPORTED_ERROR));
+            }
+            native_charge_gas_early_exit_option!(context, cost_params.ristretto_scalar_mul_cost);
+            (|| {
+                let e1 = parse_ristretto_scalar_bytes(&e1)?;
+                let e2 = parse_ristretto_scalar_bytes(&e2)?;
+                Ok((e2 * e1).to_byte_array().to_vec())
+            })()
+        }
+        Some(Groups::RistrettoPoint) => {
+            if !is_ristretto_supported(context)? {
+                return Ok(NativeResult::err(cost, NOT_SUPPORTED_ERROR));
+            }
+            native_charge_gas_early_exit_option!(context, cost_params.ristretto_point_mul_cost);
+            (|| {
+                let e1 = parse_ristretto_scalar_bytes(&e1)?;
+                let e2 = parse_ristretto_point_bytes(&e2)?;
+                Ok((e2 * e1).to_byte_array().to_vec())
+            })()
+        }
         _ => Err(FastCryptoError::InvalidInput),
     };
 
@@ -485,6 +600,28 @@ pub fn internal_div(
                 { bls::Scalar::BYTE_LENGTH },
                 { bls::GTElement::BYTE_LENGTH },
             >(|a, b| b / a, &e1, &e2)
+        }
+        Some(Groups::RistrettoScalar) => {
+            if !is_ristretto_supported(context)? {
+                return Ok(NativeResult::err(cost, NOT_SUPPORTED_ERROR));
+            }
+            native_charge_gas_early_exit_option!(context, cost_params.ristretto_scalar_div_cost);
+            (|| {
+                let e1 = parse_ristretto_scalar_bytes(&e1)?;
+                let e2 = parse_ristretto_scalar_bytes(&e2)?;
+                Ok((e2 / e1)?.to_byte_array().to_vec())
+            })()
+        }
+        Some(Groups::RistrettoPoint) => {
+            if !is_ristretto_supported(context)? {
+                return Ok(NativeResult::err(cost, NOT_SUPPORTED_ERROR));
+            }
+            native_charge_gas_early_exit_option!(context, cost_params.ristretto_point_div_cost);
+            (|| {
+                let e1 = parse_ristretto_scalar_bytes(&e1)?;
+                let e2 = parse_ristretto_point_bytes(&e2)?;
+                Ok((e2 / e1)?.to_byte_array().to_vec())
+            })()
         }
         _ => Err(FastCryptoError::InvalidInput),
     };

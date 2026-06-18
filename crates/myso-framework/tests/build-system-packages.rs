@@ -73,7 +73,7 @@ async fn build_system_packages() {
         }
     }
 
-    for pkg_name in ["bridge", "orderbook", "mydata", "myso-social", "messaging"] {
+    for pkg_name in ["bridge", "orderbook", "mydata", "myso-social", "messaging", "contra"] {
         let move_toml = packages_path.join(pkg_name).join("Move.toml");
         if move_toml.exists() {
             let content = fs::read_to_string(&move_toml).unwrap();
@@ -95,6 +95,7 @@ async fn build_system_packages() {
     let mydata_path = packages_path.join("mydata");
     let myso_social_path = packages_path.join("myso-social");
     let messaging_path = packages_path.join("messaging");
+    let contra_path = packages_path.join("contra");
 
     build_packages(
         &bridge_path,
@@ -105,6 +106,7 @@ async fn build_system_packages() {
         &mydata_path,
         &myso_social_path,
         &messaging_path,
+        &contra_path,
         out_dir,
     )
     .await;
@@ -143,6 +145,7 @@ async fn build_packages(
     mydata_path: &Path,
     myso_social_path: &Path,
     messaging_path: &Path,
+    contra_path: &Path,
     out_dir: &Path,
 ) {
     let config = MoveBuildConfig {
@@ -164,6 +167,7 @@ async fn build_packages(
         mydata_path,
         myso_social_path,
         messaging_path,
+        contra_path,
         out_dir,
         "bridge",
         "orderbook",
@@ -173,6 +177,7 @@ async fn build_packages(
         "mydata",
         "myso-social",
         "messaging",
+        "contra",
         config,
     )
     .await;
@@ -187,6 +192,7 @@ async fn build_packages_with_move_config(
     mydata_path: &Path,
     myso_social_path: &Path,
     messaging_path: &Path,
+    contra_path: &Path,
     out_dir: &Path,
     bridge_dir: &str,
     orderbook_dir: &str,
@@ -196,6 +202,7 @@ async fn build_packages_with_move_config(
     mydata_dir: &str,
     myso_social_dir: &str,
     messaging_dir: &str,
+    contra_dir: &str,
     config: MoveBuildConfig,
 ) {
     let stdlib_pkg = BuildConfig {
@@ -262,12 +269,21 @@ async fn build_packages_with_move_config(
     .await
     .unwrap();
     let messaging_pkg = BuildConfig {
-        config,
+        config: config.clone(),
         run_bytecode_verifier: true,
         print_diags_to_stderr: false,
         environment: mainnet_environment(),
     }
     .build_async(messaging_path)
+    .await
+    .unwrap();
+    let contra_pkg = BuildConfig {
+        config,
+        run_bytecode_verifier: true,
+        print_diags_to_stderr: false,
+        environment: mainnet_environment(),
+    }
+    .build_async(contra_path)
     .await
     .unwrap();
 
@@ -279,6 +295,7 @@ async fn build_packages_with_move_config(
     let mydata = mydata_pkg.get_mydata_modules();
     let myso_social = myso_social_pkg.get_myso_social_modules();
     let messaging = messaging_pkg.get_myso_messaging_modules();
+    let contra = contra_pkg.get_contra_modules();
 
     let compiled_packages_dir = out_dir.join(COMPILED_PACKAGES_DIR);
 
@@ -303,6 +320,8 @@ async fn build_packages_with_move_config(
         &compiled_packages_dir.join(messaging_dir),
     )
     .unwrap();
+    let contra_members =
+        serialize_modules_to_file(contra, &compiled_packages_dir.join(contra_dir)).unwrap();
 
     // write out generated docs
     let docs_dir = out_dir.join(DOCS_DIR);
@@ -339,6 +358,10 @@ async fn build_packages_with_move_config(
         &messaging_pkg.package.compiled_docs.unwrap(),
         &mut files_to_write,
     );
+    relocate_docs(
+        &contra_pkg.package.compiled_docs.unwrap(),
+        &mut files_to_write,
+    );
     for (fname, doc) in files_to_write {
         let dst_path = docs_dir.join(fname);
         fs::create_dir_all(dst_path.parent().unwrap()).unwrap();
@@ -354,6 +377,7 @@ async fn build_packages_with_move_config(
         mydata_members.join("\n"),
         myso_social_members.join("\n"),
         messaging_members.join("\n"),
+        contra_members.join("\n"),
     ]
     .join("\n");
 

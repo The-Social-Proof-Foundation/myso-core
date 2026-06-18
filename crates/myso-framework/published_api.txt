@@ -3559,6 +3559,75 @@ generate_u8_in_range
 shuffle
 	public fun
 	0x2::random
+Scalar
+	public struct
+	0x2::ristretto255
+G
+	public struct
+	0x2::ristretto255
+scalar_from_bytes
+	public fun
+	0x2::ristretto255
+scalar_from_u64
+	public fun
+	0x2::ristretto255
+scalar_zero
+	public fun
+	0x2::ristretto255
+scalar_one
+	public fun
+	0x2::ristretto255
+scalar_add
+	public fun
+	0x2::ristretto255
+scalar_sub
+	public fun
+	0x2::ristretto255
+scalar_mul
+	public fun
+	0x2::ristretto255
+scalar_div
+	public fun
+	0x2::ristretto255
+scalar_neg
+	public fun
+	0x2::ristretto255
+scalar_inv
+	public fun
+	0x2::ristretto255
+g_from_bytes
+	public fun
+	0x2::ristretto255
+g_identity
+	public fun
+	0x2::ristretto255
+g_generator
+	public fun
+	0x2::ristretto255
+g_add
+	public fun
+	0x2::ristretto255
+g_sub
+	public fun
+	0x2::ristretto255
+g_mul
+	public fun
+	0x2::ristretto255
+g_div
+	public fun
+	0x2::ristretto255
+g_neg
+	public fun
+	0x2::ristretto255
+verify_bulletproofs_with_dst_ristretto255
+	public fun
+	0x2::rangeproofs
+verify_bulletproofs_ristretto255
+	public fun
+	0x2::rangeproofs
+verify_bulletproofs_with_dst_ristretto255_internal
+	fun
+	0x2::rangeproofs
 TableVec
 	public struct
 	0x2::table_vec
@@ -10807,3 +10876,660 @@ validate_identity
 mydata_approve_reader
 	entry fun
 	0xe110::mydata_policies
+Encryption
+	public struct
+	0xc1fe::twisted_elgamal
+MultiRecipientEncryption
+	public struct
+	0xc1fe::twisted_elgamal
+new
+	public fun
+	0xc1fe::twisted_elgamal
+g
+	public(package) fun
+	0xc1fe::twisted_elgamal
+h
+	public(package) fun
+	0xc1fe::twisted_elgamal
+ciphertext
+	public(package) fun
+	0xc1fe::twisted_elgamal
+decryption_handle
+	public(package) fun
+	0xc1fe::twisted_elgamal
+add
+	public(package) fun
+	0xc1fe::twisted_elgamal
+sub
+	public(package) fun
+	0xc1fe::twisted_elgamal
+add_assign
+	public(package) fun
+	0xc1fe::twisted_elgamal
+sub_assign
+	public(package) fun
+	0xc1fe::twisted_elgamal
+add_assign_u64
+	public(package) fun
+	0xc1fe::twisted_elgamal
+sub_assign_u64
+	public(package) fun
+	0xc1fe::twisted_elgamal
+shift_left
+	public(package) fun
+	0xc1fe::twisted_elgamal
+encrypt_zero
+	public(package) fun
+	0xc1fe::twisted_elgamal
+encrypt_trivial
+	public(package) fun
+	0xc1fe::twisted_elgamal
+new_multi_recipient_encryption
+	public fun
+	0xc1fe::twisted_elgamal
+multi_recipient_ciphertext
+	public fun
+	0xc1fe::twisted_elgamal
+multi_recipient_decryption_handles
+	public fun
+	0xc1fe::twisted_elgamal
+DdhProof
+	public struct
+	0xc1fe::nizk
+ElGamalProof
+	public struct
+	0xc1fe::nizk
+KeyConsistencyProof
+	public struct
+	0xc1fe::nizk
+new_ddh_proof
+	public fun
+	0xc1fe::nizk
+new_elgamal_proof
+	public fun
+	0xc1fe::nizk
+new_key_consistency_proof
+	public fun
+	0xc1fe::nizk
+verify_ddh
+	public(package) fun
+	0xc1fe::nizk
+verify_elgamal
+	public(package) fun
+	0xc1fe::nizk
+verify_key_consistency
+	public(package) fun
+	0xc1fe::nizk
+challenge_ddh
+	fun
+	0xc1fe::nizk
+challenge_elgamal
+	fun
+	0xc1fe::nizk
+challenge_key_consistency
+	fun
+	0xc1fe::nizk
+fiat_shamir_challenge
+	fun
+	0xc1fe::nizk
+is_valid_relation
+	fun
+	0xc1fe::nizk
+Auditors
+	public struct
+	0xc1fe::auditors
+VerifiedKeyEncryption
+	public struct
+	0xc1fe::auditors
+KeyEncryption
+	public struct
+	0xc1fe::auditors
+new
+	public(package) fun
+	0xc1fe::auditors
+update
+	public(package) fun
+	0xc1fe::auditors
+assert_no_identity_pk
+	fun
+	0xc1fe::auditors
+pks
+	public(package) fun
+	0xc1fe::auditors
+is_empty
+	public(package) fun
+	0xc1fe::auditors
+version
+	public(package) fun
+	0xc1fe::auditors
+recommended_min_version
+	public(package) fun
+	0xc1fe::auditors
+ciphertext
+	public(package) fun
+	0xc1fe::auditors
+key_version
+	public(package) fun
+	0xc1fe::auditors
+is_set
+	public(package) fun
+	0xc1fe::auditors
+new_key_encryption
+	public fun
+	0xc1fe::auditors
+new_empty_verified_key_encryption
+	fun
+	0xc1fe::auditors
+verify_key_encryption
+	public(package) fun
+	0xc1fe::auditors
+EncryptedAmount
+	public struct
+	0xc1fe::encrypted_amount
+WellFormedEncryptedAmount
+	public struct
+	0xc1fe::encrypted_amount
+ConsistencyProof
+	public struct
+	0xc1fe::encrypted_amount
+WellFormedProof
+	public struct
+	0xc1fe::encrypted_amount
+new_encrypted_amount
+	public fun
+	0xc1fe::encrypted_amount
+new_consistency_proof
+	public fun
+	0xc1fe::encrypted_amount
+new_well_formed_proof
+	public fun
+	0xc1fe::encrypted_amount
+verify
+	public(package) fun
+	0xc1fe::encrypted_amount
+into_well_formed
+	public(package) fun
+	0xc1fe::encrypted_amount
+batch_into_well_formed
+	public(package) fun
+	0xc1fe::encrypted_amount
+amount
+	public(package) fun
+	0xc1fe::encrypted_amount
+pk
+	public(package) fun
+	0xc1fe::encrypted_amount
+limb
+	public(package) fun
+	0xc1fe::encrypted_amount
+collapse
+	public(package) fun
+	0xc1fe::encrypted_amount
+collapse_sum
+	public(package) fun
+	0xc1fe::encrypted_amount
+verify_equal
+	public(package) fun
+	0xc1fe::encrypted_amount
+sum_commitments
+	public(package) fun
+	0xc1fe::encrypted_amount
+collapse_limbs
+	public(package) fun
+	0xc1fe::encrypted_amount
+from_value
+	public(package) fun
+	0xc1fe::encrypted_amount
+zero
+	public(package) fun
+	0xc1fe::encrypted_amount
+add_assign
+	public(package) fun
+	0xc1fe::encrypted_amount
+verify_well_formed_range_proofs
+	fun
+	0xc1fe::encrypted_amount
+batch_sizes
+	fun
+	0xc1fe::encrypted_amount
+verify_well_formed_knowledge
+	fun
+	0xc1fe::encrypted_amount
+EncryptedBalance
+	public struct
+	0xc1fe::balance
+PublicCoin
+	public struct
+	0xc1fe::balance
+EncryptedCoin
+	public struct
+	0xc1fe::balance
+zero
+	public(package) fun
+	0xc1fe::balance
+wrap
+	public(package) fun
+	0xc1fe::balance
+unwrap
+	public(package) fun
+	0xc1fe::balance
+join
+	public(package) fun
+	0xc1fe::balance
+take
+	public(package) fun
+	0xc1fe::balance
+value
+	public(package) fun
+	0xc1fe::balance
+amount
+	public(package) fun
+	0xc1fe::balance
+new
+	public(package) fun
+	0xc1fe::balance
+empty
+	public(package) fun
+	0xc1fe::balance
+upper_bound
+	public(package) fun
+	0xc1fe::balance
+max_upper_bound
+	public(package) fun
+	0xc1fe::balance
+max_upper_bound_minus_1
+	public(package) fun
+	0xc1fe::balance
+is_empty
+	public(package) fun
+	0xc1fe::balance
+collapse
+	public(package) fun
+	0xc1fe::balance
+merge_into
+	public(package) fun
+	0xc1fe::balance
+merge_encrypted
+	public(package) fun
+	0xc1fe::balance
+merge_public
+	public(package) fun
+	0xc1fe::balance
+try_split_to_public
+	public(package) fun
+	0xc1fe::balance
+try_split_batch
+	public(package) fun
+	0xc1fe::balance
+try_update
+	public(package) fun
+	0xc1fe::balance
+try_set_public_key
+	public(package) fun
+	0xc1fe::balance
+overwrite_unchecked
+	public(package) fun
+	0xc1fe::balance
+clear_unchecked
+	public(package) fun
+	0xc1fe::balance
+set_zero_unchecked
+	public(package) fun
+	0xc1fe::balance
+overwrite
+	fun
+	0xc1fe::balance
+set_empty
+	fun
+	0xc1fe::balance
+Policy
+	public struct
+	0xc1fe::policy
+Auth
+	public struct
+	0xc1fe::policy
+new
+	fun
+	0xc1fe::policy
+permissionless
+	public(package) fun
+	0xc1fe::policy
+set
+	public(package) fun
+	0xc1fe::policy
+as_sender
+	public(package) fun
+	0xc1fe::policy
+as_object
+	public(package) fun
+	0xc1fe::policy
+with_witness
+	public(package) fun
+	0xc1fe::policy
+is_allowed
+	public(package) fun
+	0xc1fe::policy
+is_authenticated
+	public(package) fun
+	0xc1fe::policy
+is_unique
+	fun
+	0xc1fe::policy
+create_bitmap
+	fun
+	0xc1fe::policy
+permissionless_bitmap
+	fun
+	0xc1fe::policy
+NewConfidentialTokenEvent
+	public struct
+	0xc1fe::events
+PolicyUpdateEvent
+	public struct
+	0xc1fe::events
+NewRegistrationEvent
+	public struct
+	0xc1fe::events
+UpdatedPublicKeyEvent
+	public struct
+	0xc1fe::events
+WrapEvent
+	public struct
+	0xc1fe::events
+TransferEvent
+	public struct
+	0xc1fe::events
+MergeDepositsEvent
+	public struct
+	0xc1fe::events
+TryTransferFailedEvent
+	public struct
+	0xc1fe::events
+TryUnwrapFailedEvent
+	public struct
+	0xc1fe::events
+TrySetPublicKeyFailedEvent
+	public struct
+	0xc1fe::events
+UnwrapEvent
+	public struct
+	0xc1fe::events
+UpdateBalanceEvent
+	public struct
+	0xc1fe::events
+SetBalanceByIssuerEvent
+	public struct
+	0xc1fe::events
+GlobalFreezeEvent
+	public struct
+	0xc1fe::events
+GlobalUnfreezeEvent
+	public struct
+	0xc1fe::events
+AccountFreezeEvent
+	public struct
+	0xc1fe::events
+AccountUnfreezeEvent
+	public struct
+	0xc1fe::events
+UpdateAuditorsEvent
+	public struct
+	0xc1fe::events
+emit_new_confidential_token
+	public(package) fun
+	0xc1fe::events
+emit_policy_update
+	public(package) fun
+	0xc1fe::events
+emit_new_registration
+	public(package) fun
+	0xc1fe::events
+emit_updated_public_key
+	public(package) fun
+	0xc1fe::events
+emit_wrap
+	public(package) fun
+	0xc1fe::events
+emit_transfer
+	public(package) fun
+	0xc1fe::events
+emit_merge_deposits
+	public(package) fun
+	0xc1fe::events
+emit_try_transfer_failed
+	public(package) fun
+	0xc1fe::events
+emit_try_unwrap_failed
+	public(package) fun
+	0xc1fe::events
+emit_try_set_public_key_failed
+	public(package) fun
+	0xc1fe::events
+emit_unwrap
+	public(package) fun
+	0xc1fe::events
+emit_update_balance
+	public(package) fun
+	0xc1fe::events
+emit_set_balance_by_issuer
+	public(package) fun
+	0xc1fe::events
+emit_global_freeze
+	public(package) fun
+	0xc1fe::events
+emit_global_unfreeze
+	public(package) fun
+	0xc1fe::events
+emit_account_freeze
+	public(package) fun
+	0xc1fe::events
+emit_account_unfreeze
+	public(package) fun
+	0xc1fe::events
+emit_update_auditors
+	public(package) fun
+	0xc1fe::events
+is_receiver_denied
+	public(package) fun
+	0xc1fe::deny_list
+is_frozen
+	public(package) fun
+	0xc1fe::deny_list
+is_sender_denied
+	public(package) fun
+	0xc1fe::deny_list
+TokenRegistry
+	public struct
+	0xc1fe::contra
+AccountRegistry
+	public struct
+	0xc1fe::contra
+ConfidentialToken
+	public struct
+	0xc1fe::contra
+Pool
+	public struct
+	0xc1fe::contra
+Account
+	public struct
+	0xc1fe::contra
+TokenAccount
+	public struct
+	0xc1fe::contra
+TokenKey
+	public struct
+	0xc1fe::contra
+PoolKey
+	public struct
+	0xc1fe::contra
+TokenAccountKey
+	public struct
+	0xc1fe::contra
+AccountKey
+	public struct
+	0xc1fe::contra
+ManagementCap
+	public struct
+	0xc1fe::contra
+TransferBatch
+	public enum
+	0xc1fe::contra
+init
+	fun
+	0xc1fe::contra
+authorize_as_sender
+	public fun
+	0xc1fe::contra
+authorize_with_witness
+	public fun
+	0xc1fe::contra
+authorize_as_object
+	public fun
+	0xc1fe::contra
+new_confidential_token
+	public fun
+	0xc1fe::contra
+share_confidential_token
+	public fun
+	0xc1fe::contra
+new_account
+	public fun
+	0xc1fe::contra
+share_account
+	public fun
+	0xc1fe::contra
+register
+	public fun
+	0xc1fe::contra
+register_internal
+	public(package) fun
+	0xc1fe::contra
+set_accepts_encrypted_deposits
+	public fun
+	0xc1fe::contra
+set_public_key
+	public fun
+	0xc1fe::contra
+try_set_public_key_and_unpause
+	public fun
+	0xc1fe::contra
+set_public_key_internal
+	public(package) fun
+	0xc1fe::contra
+wrap
+	public fun
+	0xc1fe::contra
+batched_transfer
+	public fun
+	0xc1fe::contra
+add_to_batch
+	public fun
+	0xc1fe::contra
+try_finalize
+	public fun
+	0xc1fe::contra
+finalize
+	public fun
+	0xc1fe::contra
+merge
+	public fun
+	0xc1fe::contra
+update_active_balance
+	public fun
+	0xc1fe::contra
+try_update_active
+	fun
+	0xc1fe::contra
+unwrap
+	public fun
+	0xc1fe::contra
+try_unwrap
+	public fun
+	0xc1fe::contra
+try_unwrap_internal
+	fun
+	0xc1fe::contra
+owner
+	public fun
+	0xc1fe::contra
+set_balance_by_issuer
+	public fun
+	0xc1fe::contra
+issue_freeze_cap
+	public fun
+	0xc1fe::contra
+revoke_freeze_cap
+	public fun
+	0xc1fe::contra
+global_freeze
+	public fun
+	0xc1fe::contra
+global_unfreeze
+	public fun
+	0xc1fe::contra
+account_freeze
+	public fun
+	0xc1fe::contra
+account_unfreeze
+	public fun
+	0xc1fe::contra
+set_policy
+	public fun
+	0xc1fe::contra
+update_auditors
+	public fun
+	0xc1fe::contra
+has_token
+	fun
+	0xc1fe::contra
+has_deposit_slot
+	fun
+	0xc1fe::contra
+session_id
+	public(package) fun
+	0xc1fe::contra
+dst
+	public(package) fun
+	0xc1fe::contra
+borrow
+	fun
+	0xc1fe::contra
+borrow_mut
+	fun
+	0xc1fe::contra
+g_vector
+	public fun
+	0xc1fe::decode
+encryption
+	public fun
+	0xc1fe::decode
+encrypted_amount
+	public fun
+	0xc1fe::decode
+multi_recipient_encryption
+	public fun
+	0xc1fe::decode
+ddh_proof
+	public fun
+	0xc1fe::decode
+elgamal_proof
+	public fun
+	0xc1fe::decode
+consistency_proof
+	public fun
+	0xc1fe::decode
+key_consistency_proof
+	public fun
+	0xc1fe::decode
+encryption_at
+	fun
+	0xc1fe::decode
+elgamal_proof_at
+	fun
+	0xc1fe::decode
+g_range
+	fun
+	0xc1fe::decode
+scalar_range
+	fun
+	0xc1fe::decode

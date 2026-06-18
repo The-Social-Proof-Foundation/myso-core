@@ -566,6 +566,14 @@ struct FeatureFlags {
     #[serde(skip_serializing_if = "is_false")]
     enable_group_ops_native_function_msm: bool,
 
+    // Enable Ristretto255 group operations (types 5 and 6 in group_ops).
+    #[serde(skip_serializing_if = "is_false")]
+    enable_ristretto255_group_ops: bool,
+
+    // Enable bulletproofs range proof verification over Ristretto255.
+    #[serde(skip_serializing_if = "is_false")]
+    enable_verify_bulletproofs_ristretto255: bool,
+
     // Enable nitro attestation.
     #[serde(skip_serializing_if = "is_false")]
     enable_nitro_attestation: bool,
@@ -1639,6 +1647,20 @@ pub struct ProtocolConfig {
     group_ops_bls12381_uncompressed_g1_sum_cost_per_term: Option<u64>,
     group_ops_bls12381_uncompressed_g1_sum_max_terms: Option<u64>,
 
+    group_ops_ristretto_decode_scalar_cost: Option<u64>,
+    group_ops_ristretto_decode_point_cost: Option<u64>,
+    group_ops_ristretto_scalar_add_cost: Option<u64>,
+    group_ops_ristretto_point_add_cost: Option<u64>,
+    group_ops_ristretto_scalar_sub_cost: Option<u64>,
+    group_ops_ristretto_point_sub_cost: Option<u64>,
+    group_ops_ristretto_scalar_mul_cost: Option<u64>,
+    group_ops_ristretto_point_mul_cost: Option<u64>,
+    group_ops_ristretto_scalar_div_cost: Option<u64>,
+    group_ops_ristretto_point_div_cost: Option<u64>,
+
+    verify_bulletproofs_ristretto255_base_cost: Option<u64>,
+    verify_bulletproofs_ristretto255_cost_per_bit_and_commitment: Option<u64>,
+
     // hmac::hmac_sha3_256
     hmac_hmac_sha3_256_cost_base: Option<u64>,
     hmac_hmac_sha3_256_input_cost_per_byte: Option<u64>,
@@ -2157,6 +2179,14 @@ impl ProtocolConfig {
 
     pub fn enable_group_ops_native_function_msm(&self) -> bool {
         self.feature_flags.enable_group_ops_native_function_msm
+    }
+
+    pub fn enable_ristretto255_group_ops(&self) -> bool {
+        self.feature_flags.enable_ristretto255_group_ops
+    }
+
+    pub fn enable_verify_bulletproofs_ristretto255(&self) -> bool {
+        self.feature_flags.enable_verify_bulletproofs_ristretto255
     }
 
     pub fn reject_mutable_random_on_entry_functions(&self) -> bool {
@@ -3017,6 +3047,20 @@ impl ProtocolConfig {
             group_ops_bls12381_uncompressed_g1_sum_base_cost: None,
             group_ops_bls12381_uncompressed_g1_sum_cost_per_term: None,
             group_ops_bls12381_uncompressed_g1_sum_max_terms: None,
+
+            group_ops_ristretto_decode_scalar_cost: None,
+            group_ops_ristretto_decode_point_cost: None,
+            group_ops_ristretto_scalar_add_cost: None,
+            group_ops_ristretto_point_add_cost: None,
+            group_ops_ristretto_scalar_sub_cost: None,
+            group_ops_ristretto_point_sub_cost: None,
+            group_ops_ristretto_scalar_mul_cost: None,
+            group_ops_ristretto_point_mul_cost: None,
+            group_ops_ristretto_scalar_div_cost: None,
+            group_ops_ristretto_point_div_cost: None,
+
+            verify_bulletproofs_ristretto255_base_cost: None,
+            verify_bulletproofs_ristretto255_cost_per_bit_and_commitment: None,
 
             // zklogin::check_zklogin_id
             check_zklogin_id_cost_base: None,
@@ -4561,16 +4605,29 @@ impl ProtocolConfig {
                         cfg.storage_gas_price = Some(price / 10);
                     }
 
-                    // Computation costs - 100x reduction
-                    if let Some(bucket) = cfg.max_gas_computation_bucket {
-                        cfg.max_gas_computation_bucket = Some(bucket / 100);
-                    }
+                    // Keep computation bucket at 5_000_000 (other v110 costs are still reduced).
+                    cfg.max_gas_computation_bucket = Some(5_000_000);
                 }
                 111 => {
                     // no changes here
                 }
                 112 => {
-                    // no changes here
+                    cfg.group_ops_ristretto_decode_scalar_cost = Some(7);
+                    cfg.group_ops_ristretto_decode_point_cost = Some(200);
+                    cfg.group_ops_ristretto_scalar_add_cost = Some(10);
+                    cfg.group_ops_ristretto_point_add_cost = Some(500);
+                    cfg.group_ops_ristretto_scalar_sub_cost = Some(10);
+                    cfg.group_ops_ristretto_point_sub_cost = Some(500);
+                    cfg.group_ops_ristretto_scalar_mul_cost = Some(11);
+                    cfg.group_ops_ristretto_point_mul_cost = Some(1200);
+                    cfg.group_ops_ristretto_scalar_div_cost = Some(151);
+                    cfg.group_ops_ristretto_point_div_cost = Some(2500);
+
+                    cfg.verify_bulletproofs_ristretto255_base_cost = Some(30000);
+                    cfg.verify_bulletproofs_ristretto255_cost_per_bit_and_commitment = Some(6500);
+
+                    cfg.feature_flags.enable_ristretto255_group_ops = true;
+                    cfg.feature_flags.enable_verify_bulletproofs_ristretto255 = true;
                 }
                 // Use this template when making changes:
                 //

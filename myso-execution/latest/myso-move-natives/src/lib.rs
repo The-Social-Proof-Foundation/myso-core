@@ -5,7 +5,7 @@
 use self::{
     address::{AddressFromBytesCostParams, AddressFromU256CostParams, AddressToU256CostParams},
     config::ConfigReadSettingImplCostParams,
-    crypto::{bls12381, ecdsa_k1, ecdsa_r1, ecvrf, ed25519, groth16, hash, hmac},
+    crypto::{bls12381, ecdsa_k1, ecdsa_r1, ecvrf, ed25519, groth16, hash, hmac, rangeproofs},
     crypto::{
         bls12381::{Bls12381Bls12381MinPkVerifyCostParams, Bls12381Bls12381MinSigVerifyCostParams},
         ecdsa_k1::{
@@ -43,6 +43,7 @@ use self::{
 };
 use crate::crypto::group_ops::GroupOpsCostParams;
 use crate::crypto::poseidon::PoseidonBN254CostParams;
+use crate::crypto::rangeproofs::BulletproofsCostParams;
 use crate::crypto::zklogin;
 use crate::crypto::zklogin::{CheckZkloginIdCostParams, CheckZkloginIssuerCostParams};
 use crate::{crypto::group_ops, transfer::PartyTransferInternalCostParams};
@@ -185,6 +186,9 @@ pub struct NativesCostTable {
 
     // group ops
     pub group_ops_cost_params: GroupOpsCostParams,
+
+    // rangeproofs
+    pub bulletproofs_cost_params: BulletproofsCostParams,
 
     // vdf
     pub vdf_cost_params: VDFCostParams,
@@ -752,6 +756,44 @@ impl NativesCostTable {
                     .map(Into::into),
                 bls12381_uncompressed_g1_sum_max_terms: protocol_config
                     .group_ops_bls12381_uncompressed_g1_sum_max_terms_as_option(),
+                ristretto_decode_scalar_cost: protocol_config
+                    .group_ops_ristretto_decode_scalar_cost_as_option()
+                    .map(Into::into),
+                ristretto_decode_point_cost: protocol_config
+                    .group_ops_ristretto_decode_point_cost_as_option()
+                    .map(Into::into),
+                ristretto_scalar_add_cost: protocol_config
+                    .group_ops_ristretto_scalar_add_cost_as_option()
+                    .map(Into::into),
+                ristretto_point_add_cost: protocol_config
+                    .group_ops_ristretto_point_add_cost_as_option()
+                    .map(Into::into),
+                ristretto_scalar_sub_cost: protocol_config
+                    .group_ops_ristretto_scalar_sub_cost_as_option()
+                    .map(Into::into),
+                ristretto_point_sub_cost: protocol_config
+                    .group_ops_ristretto_point_sub_cost_as_option()
+                    .map(Into::into),
+                ristretto_scalar_mul_cost: protocol_config
+                    .group_ops_ristretto_scalar_mul_cost_as_option()
+                    .map(Into::into),
+                ristretto_point_mul_cost: protocol_config
+                    .group_ops_ristretto_point_mul_cost_as_option()
+                    .map(Into::into),
+                ristretto_scalar_div_cost: protocol_config
+                    .group_ops_ristretto_scalar_div_cost_as_option()
+                    .map(Into::into),
+                ristretto_point_div_cost: protocol_config
+                    .group_ops_ristretto_point_div_cost_as_option()
+                    .map(Into::into),
+            },
+            bulletproofs_cost_params: BulletproofsCostParams {
+                verify_bulletproofs_ristretto255_base_cost: protocol_config
+                    .verify_bulletproofs_ristretto255_base_cost_as_option()
+                    .map(Into::into),
+                verify_bulletproofs_ristretto255_cost_per_bit_and_commitment: protocol_config
+                    .verify_bulletproofs_ristretto255_cost_per_bit_and_commitment_as_option()
+                    .map(Into::into),
             },
             vdf_cost_params: VDFCostParams {
                 vdf_verify_cost: protocol_config
@@ -1019,6 +1061,11 @@ pub fn all_natives(silent: bool, protocol_config: &ProtocolConfig) -> NativeFunc
             "groth16",
             "prepare_verifying_key_internal",
             make_native!(groth16::prepare_verifying_key_internal),
+        ),
+        (
+            "rangeproofs",
+            "verify_bulletproofs_with_dst_ristretto255_internal",
+            make_native!(rangeproofs::verify_bulletproofs_with_dst_ristretto255_internal),
         ),
         ("hmac", "hmac_sha3_256", make_native!(hmac::hmac_sha3_256)),
         ("hash", "keccak256", make_native!(hash::keccak256)),

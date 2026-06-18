@@ -4183,6 +4183,18 @@ dependencies = [
 ]
 
 [[package]]
+name = "contra-crypto-fixtures"
+version = "0.1.0"
+dependencies = [
+ "bcs",
+ "bulletproofs",
+ "curve25519-dalek",
+ "fastcrypto",
+ "merlin",
+ "rand 0.8.5",
+]
+
+[[package]]
 name = "convert_case"
 version = "0.4.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -12468,10 +12480,13 @@ version = "0.0.1"
 dependencies = [
  "bcs",
  "better_any",
+ "bulletproofs",
+ "curve25519-dalek",
  "fastcrypto",
  "fastcrypto-vdf",
  "fastcrypto-zkp",
  "indexmap 2.13.1",
+ "merlin",
  "move-binary-format",
  "move-core-types",
  "move-stdlib-natives",

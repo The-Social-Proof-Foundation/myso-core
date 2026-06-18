@@ -9,7 +9,7 @@ use move_binary_format::{
 use move_core_types::gas_algebra::InternalGas;
 use myso_types::base_types::ObjectRef;
 use myso_types::storage::ObjectStore;
-use myso_types::{BRIDGE_PACKAGE_ID, ORDERBOOK_PACKAGE_ID};
+use myso_types::{BRIDGE_PACKAGE_ID, CONTRA_PACKAGE_ID, ORDERBOOK_PACKAGE_ID};
 use myso_types::{
     MOVE_STDLIB_PACKAGE_ID, MYDATA_PACKAGE_ID, MYSO_FRAMEWORK_PACKAGE_ID,
     MYSO_MESSAGING_PACKAGE_ID, MYSO_SOCIAL_PACKAGE_ID, MYSO_SYSTEM_PACKAGE_ID,
@@ -207,6 +207,12 @@ impl BuiltInFramework {
                     ORDERBOOK_PACKAGE_ID,
                     MYSO_SOCIAL_PACKAGE_ID,
                 ]
+            ),
+            (
+                CONTRA_PACKAGE_ID,
+                "Contra",
+                "contra",
+                [MOVE_STDLIB_PACKAGE_ID, MYSO_FRAMEWORK_PACKAGE_ID]
             )
         ])
         .iter()

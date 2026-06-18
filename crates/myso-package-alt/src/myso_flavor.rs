@@ -39,6 +39,7 @@ impl MySoFlavor {
             ("MyData".into(), "mydata".into()),
             ("MySoSocial".into(), "myso_social".into()),
             ("Messaging".into(), "messaging".into()),
+            ("Contra".into(), "contra".into()),
             ("mydata".into(), "mydata".into()),
             ("MySocialContracts".into(), "myso_social".into()),
         ])

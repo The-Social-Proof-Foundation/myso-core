@@ -10,6 +10,7 @@ use move_unit_test::UnitTestingConfig;
 use myso_framework_tests::setup_examples;
 use myso_move::unit_test::{MAX_UNIT_TEST_INSTRUCTIONS, run_move_unit_tests};
 use myso_move_build::BuildConfig;
+use myso_package_alt::testnet_environment;
 
 pub(crate) const EXAMPLES: &str = "../../examples";
 pub(crate) const FRAMEWORK: &str = "../myso-framework/packages";
@@ -81,10 +82,18 @@ pub(crate) async fn tests(path: &Path) -> datatest_stable::Result<()> {
         UnitTestingConfig::default_with_bound(Some(*MAX_UNIT_TEST_INSTRUCTIONS));
     testing_config.filter = std::env::var("FILTER").ok().map(|s| s.to_string());
 
+    let environment = testnet_environment();
     assert_eq!(
-        run_move_unit_tests(path, move_config, Some(testing_config), false, false)
-            .await
-            .unwrap(),
+        run_move_unit_tests(
+            path,
+            move_config,
+            Some(testing_config),
+            &environment,
+            false,
+            false
+        )
+        .await
+        .unwrap(),
         UnitTestResult::Success
     );
 

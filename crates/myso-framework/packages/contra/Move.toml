@@ -1,0 +1,14 @@
+[package]
+name = "contra"
+edition = "2024"
+published-at = "0xc1fe"
+
+[dependencies]
+MoveStdlib = { local = "../move-stdlib" }
+MySo = { local = "../myso-framework/myso-framework" }
+
+[addresses]
+contra = "0xc1fe"
+
+[environments]
+devnet = "4fe43958"

@@ -135,6 +135,7 @@ built_in_pkgs! {
     MYDATA_ADDRESS / MYDATA_PACKAGE_ID = 0xda7a;
     MYSO_SOCIAL_ADDRESS / MYSO_SOCIAL_PACKAGE_ID = 0x50c1;
     MYSO_MESSAGING_ADDRESS / MYSO_MESSAGING_PACKAGE_ID = 0xe110;
+    CONTRA_ADDRESS / CONTRA_PACKAGE_ID = 0xc1fe;
 }
 
 built_in_ids! {
@@ -214,6 +215,7 @@ pub fn resolve_address(addr: &str) -> Option<AccountAddress> {
         "myso" => Some(MYSO_FRAMEWORK_ADDRESS),
         "myso_system" => Some(MYSO_SYSTEM_ADDRESS),
         "bridge" => Some(BRIDGE_ADDRESS),
+        "contra" => Some(CONTRA_ADDRESS),
         _ => None,
     }
 }

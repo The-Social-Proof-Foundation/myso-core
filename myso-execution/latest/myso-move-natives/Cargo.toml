@@ -20,6 +20,9 @@ rand = { workspace = true, features = ["small_rng"] }
 fastcrypto-zkp.workspace = true
 fastcrypto-vdf.workspace = true
 fastcrypto.workspace = true
+bulletproofs = "5.0.0"
+curve25519-dalek = "4.1"
+merlin = "3.0.0"
 move-binary-format.workspace = true
 move-core-types.workspace = true
 

@@ -94,6 +94,7 @@ members = [
   "crates/prometheus-closure-metric",
   "crates/shared-crypto",
   "crates/simulacrum",
+  "crates/contra-crypto-fixtures",
   "crates/myso",
   "crates/myso-adapter-transactional-tests",
   "crates/myso-analytics-indexer",
