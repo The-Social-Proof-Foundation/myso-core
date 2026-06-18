@@ -67,6 +67,33 @@ curl http://localhost:9009/health
 |--------|----------|-------------|
 | GET | `/social-graph/check/:follower/:following` | Check if follower follows following |
 | GET | `/social-graph/chart-data` | Get social graph chart data (Timescale `social_graph_daily_stats`). Query: `bucket` (optional, same as `/profiles/daily-stats`) |
+| GET | `/blocklist/check/profile/:blocker/:blocked` | Check if `blocker` blocked `blocked` (directional) |
+| GET | `/blocklist/check/either/:a/:b` | Check if **either** wallet blocked the other (bidirectional). Path order does not matter. Used by the messaging relayer for DM send gating. |
+| GET | `/blocklist/check/platform/:profile/:platform` | Check if platform is blocked for profile |
+
+### Blocklist response formats
+
+**Directional** (`/blocklist/check/profile/:blocker/:blocked`):
+
+```json
+{ "is_blocked": true }
+```
+
+**Bidirectional** (`/blocklist/check/either/:a/:b`):
+
+```json
+{ "blocked": true }
+```
+
+Returns `blocked: true` when `a` blocked `b`, `b` blocked `a`, or both. Mirrors on-chain `either_blocked(a, b)` in the MySo social framework.
+
+```bash
+# Either direction blocked
+curl http://localhost:9009/blocklist/check/either/0xabc.../0xdef...
+
+# Directional check (blocker must be first)
+curl http://localhost:9009/blocklist/check/profile/0xabc.../0xdef...
+```
 
 ### Charts and Timescale continuous aggregates
 
@@ -77,8 +104,6 @@ Endpoints `/profiles/daily-stats` and `/social-graph/chart-data` read from Times
   `CALL refresh_continuous_aggregate('social_graph_daily_stats', NULL, NULL);`  
   (On large datasets, prefer a bounded time window instead of `NULL` bounds; decompress compressed chunks first if refresh errors.)
 - If charts stay flat, confirm the indexer is running and writing rows, then check raw counts: `SELECT count(*) FROM profile_events;` and `SELECT count(*) FROM social_graph_events;`.
-| GET | `/blocklist/check/profile/:blocker/:blocked` | Check if profile is blocked |
-| GET | `/blocklist/check/platform/:profile/:platform` | Check if platform is blocked for profile |
 
 ---
 

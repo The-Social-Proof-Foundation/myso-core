@@ -1212,6 +1212,14 @@ impl Reader {
         social_graph::check_profile_blocked(&self.db, blocker, blocked).await
     }
 
+    pub async fn check_either_profile_blocked(
+        &self,
+        a: &str,
+        b: &str,
+    ) -> Result<bool, crate::error::SocialError> {
+        social_graph::check_either_profile_blocked(&self.db, a, b).await
+    }
+
     pub async fn check_platform_blocked(
         &self,
         profile_address: &str,

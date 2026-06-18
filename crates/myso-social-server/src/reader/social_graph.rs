@@ -1674,6 +1674,28 @@ pub(crate) async fn check_profile_blocked(
     Ok(count > 0)
 }
 
+/// Returns true if either wallet blocked the other (bidirectional).
+pub(crate) async fn check_either_profile_blocked(
+    db: &Db,
+    a: &str,
+    b: &str,
+) -> Result<bool, SocialError> {
+    let mut conn = db.connect().await?;
+    let count: i64 = blocked_profiles::table
+        .filter(
+            blocked_profiles::blocker_address
+                .eq(a)
+                .and(blocked_profiles::blocked_address.eq(b))
+                .or(blocked_profiles::blocker_address
+                    .eq(b)
+                    .and(blocked_profiles::blocked_address.eq(a))),
+        )
+        .count()
+        .get_result(&mut conn)
+        .await?;
+    Ok(count > 0)
+}
+
 pub(crate) async fn check_platform_blocked(
     db: &Db,
     profile_address: &str,

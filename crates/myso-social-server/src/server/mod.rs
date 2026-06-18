@@ -458,6 +458,10 @@ fn make_router(state: Arc<AppState>) -> Router {
             get(check_profile_blocked),
         )
         .route(
+            "/blocklist/check/either/:a/:b",
+            get(check_either_profile_blocked),
+        )
+        .route(
             "/blocklist/check/platform/:profile/:platform",
             get(check_platform_blocked),
         )

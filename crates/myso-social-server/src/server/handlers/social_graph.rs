@@ -40,6 +40,14 @@ pub async fn check_profile_blocked(
     Ok(Json(serde_json::json!({ "is_blocked": is_blocked })))
 }
 
+pub async fn check_either_profile_blocked(
+    State(state): State<Arc<AppState>>,
+    Path((a, b)): Path<(String, String)>,
+) -> Result<Json<serde_json::Value>, SocialError> {
+    let blocked = state.reader.check_either_profile_blocked(&a, &b).await?;
+    Ok(Json(serde_json::json!({ "blocked": blocked })))
+}
+
 pub async fn check_platform_blocked(
     State(state): State<Arc<AppState>>,
     Path((profile, platform)): Path<(String, String)>,
