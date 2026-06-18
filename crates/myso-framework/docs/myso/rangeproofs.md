@@ -111,7 +111,7 @@ The number of commitments times <code>bits</code> can be at most 512.
 The <code>dst</code> is a domain separation tag that is bound into the proof transcript. Provers and
 verifiers must agree on the same <code>dst</code> for verification to succeed. It can be at most 64 bytes.
 
-Enabled only on devnet.
+Available when protocol version enables <code>enable_verify_bulletproofs_ristretto255</code> (v112+ on all networks).
 
 
 <pre><code><b>public</b> <b>fun</b> <a href="../myso/rangeproofs.md#myso_rangeproofs_verify_bulletproofs_with_dst_ristretto255">verify_bulletproofs_with_dst_ristretto255</a>(proof: &vector&lt;u8&gt;, bits: u8, commitments: &vector&lt;<a href="../myso/group_ops.md#myso_group_ops_Element">myso::group_ops::Element</a>&lt;<a href="../myso/ristretto255.md#myso_ristretto255_G">myso::ristretto255::G</a>&gt;&gt;, dst: &vector&lt;u8&gt;, version: u8): bool
