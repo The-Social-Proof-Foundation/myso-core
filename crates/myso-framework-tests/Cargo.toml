@@ -21,6 +21,7 @@ prometheus.workspace = true
 myso-framework.workspace = true
 myso-move.workspace = true
 myso-move-build.workspace = true
+myso-package-alt.workspace = true
 myso-protocol-config.workspace = true
 myso-types.workspace = true
 

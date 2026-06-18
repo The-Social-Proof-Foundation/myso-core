@@ -11406,6 +11406,7 @@ dependencies = [
  "myso-framework",
  "myso-move",
  "myso-move-build",
+ "myso-package-alt",
  "myso-protocol-config",
  "myso-types",
  "myso-verifier-latest",
