@@ -1,7 +1,6 @@
 [build]
 builder = "dockerfile"
 dockerfilePath = "crates/myso-indexer-alt-graphql/Dockerfile"
-buildCommand = "cargo build --release --bin myso-indexer-alt-graphql"
 
 [deploy]
 # Uses Dockerfile ENTRYPOINT which expands DATABASE_URL and RPC_URL from env
@@ -15,11 +14,6 @@ DATABASE_URL = { sync = false }
 RPC_URL = { sync = false }
 CONSISTENT_STORE_URL = { sync = false }
 SOCIAL_DATABASE_URL = { sync = false }
-
-# Explicitly tell Railway this is a Rust project
-[build.env]
-NIXPACKS_LANGUAGE = "rust"
-NIXPACKS_BUILD_CMD = "cargo build --release --bin myso-indexer-alt-graphql"
 
 [variables]
 # Logging configuration  

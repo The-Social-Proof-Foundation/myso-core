@@ -2,11 +2,16 @@
 #
 # Copy in all crates, Cargo.toml and Cargo.lock unmodified,
 # and build the application.
-FROM rust:1.81-bullseye AS builder
+FROM rust:1.92-bullseye AS builder
 ARG PROFILE=release
 ARG GIT_REVISION
 ENV GIT_REVISION=$GIT_REVISION
 WORKDIR /app
+
+# librocksdb-sys can produce a malformed static archive when C/C++ builds run with
+# high parallelism on memory-constrained builders (e.g. Railway).
+ENV CARGO_BUILD_JOBS=1
+ENV CMAKE_BUILD_PARALLEL_LEVEL=1
 
 # Install dependencies
 RUN apt-get update && apt-get install -y \
@@ -15,18 +20,20 @@ RUN apt-get update && apt-get install -y \
     libpq5 \
     ca-certificates \
     libpq-dev \
-    postgresql
+    postgresql \
+    pkg-config \
+    libssl-dev \
+    && rm -rf /var/lib/apt/lists/*
 
-# Copy workspace files (build context must be repo root)
-COPY Cargo.toml Cargo.lock ./
-COPY rust-toolchain.toml ./
-COPY .cargo .cargo
-COPY consensus consensus
-COPY crates crates
-COPY myso-execution myso-execution
-COPY external-crates external-crates
+# Copy workspace (build context must be repo root)
+COPY . .
 
-# Build
+# Build librocksdb-sys first so its static archive is created before other crates
+# compile in parallel.
+RUN cargo build --release -p librocksdb-sys
+
+# Rust crates can compile with more parallelism once rocksdb is built.
+ENV CARGO_BUILD_JOBS=4
 RUN cargo build --release --bin myso-indexer-alt-graphql
 
 # Production Image
@@ -40,7 +47,8 @@ RUN apt-get update && apt-get install -y \
     libpq5 \
     libpq-dev \
     postgresql \
-    gettext-base
+    gettext-base \
+    && rm -rf /var/lib/apt/lists/*
 
 # Use jemalloc as memory allocator
 ENV LD_PRELOAD=/usr/lib/x86_64-linux-gnu/libjemalloc.so
@@ -100,4 +108,4 @@ LABEL build-date=$BUILD_DATE
 LABEL git-revision=$GIT_REVISION
 
 # Use the entrypoint script
-ENTRYPOINT /usr/local/bin/entrypoint.sh 
+ENTRYPOINT /usr/local/bin/entrypoint.sh
