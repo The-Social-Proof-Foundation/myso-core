@@ -1,0 +1,141 @@
+{
+  "id": {
+    "address": "contra",
+    "name": "deny_list"
+  },
+  "doc": null,
+  "immediate_dependencies": [
+    {
+      "address": "myso",
+      "name": "coin"
+    },
+    {
+      "address": "myso",
+      "name": "deny_list"
+    }
+  ],
+  "attributes": [],
+  "functions": {
+    "is_receiver_denied": {
+      "source_index": 0,
+      "index": 0,
+      "doc": " Check if the given address is on the deny list for token type `T`.",
+      "attributes": [],
+      "visibility": "Package",
+      "entry": false,
+      "type_parameters": [
+        {
+          "name": "T",
+          "constraints": []
+        }
+      ],
+      "parameters": [
+        {
+          "name": "deny_list",
+          "type_": {
+            "Reference": [
+              false,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "myso",
+                    "name": "deny_list"
+                  },
+                  "name": "DenyList",
+                  "type_arguments": []
+                }
+              }
+            ]
+          }
+        },
+        {
+          "name": "receiver",
+          "type_": "address"
+        }
+      ],
+      "return_": [
+        "bool"
+      ]
+    },
+    "is_frozen": {
+      "source_index": 1,
+      "index": 1,
+      "doc": " Check if all transfers for token type `T` are globally paused.",
+      "attributes": [],
+      "visibility": "Package",
+      "entry": false,
+      "type_parameters": [
+        {
+          "name": "T",
+          "constraints": []
+        }
+      ],
+      "parameters": [
+        {
+          "name": "deny_list",
+          "type_": {
+            "Reference": [
+              false,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "myso",
+                    "name": "deny_list"
+                  },
+                  "name": "DenyList",
+                  "type_arguments": []
+                }
+              }
+            ]
+          }
+        }
+      ],
+      "return_": [
+        "bool"
+      ]
+    },
+    "is_sender_denied": {
+      "source_index": 2,
+      "index": 2,
+      "doc": " Check if the given sender address is on the deny list for token type `T`.",
+      "attributes": [],
+      "visibility": "Package",
+      "entry": false,
+      "type_parameters": [
+        {
+          "name": "T",
+          "constraints": []
+        }
+      ],
+      "parameters": [
+        {
+          "name": "deny_list",
+          "type_": {
+            "Reference": [
+              false,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "myso",
+                    "name": "deny_list"
+                  },
+                  "name": "DenyList",
+                  "type_arguments": []
+                }
+              }
+            ]
+          }
+        },
+        {
+          "name": "sender",
+          "type_": "address"
+        }
+      ],
+      "return_": [
+        "bool"
+      ]
+    }
+  },
+  "structs": {},
+  "enums": {}
+}

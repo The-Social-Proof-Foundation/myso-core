@@ -1,0 +1,1959 @@
+{
+  "id": {
+    "address": "contra",
+    "name": "balance"
+  },
+  "doc": " Confidential value: `EncryptedBalance<T>` (a single encrypted amount with a count of merged\n u16-bounded values that bounds limb growth), plus the linear coin types `PublicCoin<T>` and\n `EncryptedCoin<T>` that move value in and out.",
+  "immediate_dependencies": [
+    {
+      "address": "contra",
+      "name": "encrypted_amount"
+    },
+    {
+      "address": "contra",
+      "name": "nizk"
+    },
+    {
+      "address": "contra",
+      "name": "twisted_elgamal"
+    },
+    {
+      "address": "myso",
+      "name": "balance"
+    },
+    {
+      "address": "myso",
+      "name": "coin"
+    },
+    {
+      "address": "myso",
+      "name": "funds_accumulator"
+    },
+    {
+      "address": "myso",
+      "name": "group_ops"
+    },
+    {
+      "address": "myso",
+      "name": "object"
+    },
+    {
+      "address": "myso",
+      "name": "ristretto255"
+    },
+    {
+      "address": "myso",
+      "name": "tx_context"
+    },
+    {
+      "address": "std",
+      "name": "option"
+    },
+    {
+      "address": "std",
+      "name": "vector"
+    }
+  ],
+  "attributes": [],
+  "functions": {
+    "zero": {
+      "source_index": 0,
+      "index": 0,
+      "doc": " A `PublicCoin` of zero value.",
+      "attributes": [],
+      "visibility": "Package",
+      "entry": false,
+      "type_parameters": [
+        {
+          "name": "T",
+          "constraints": []
+        }
+      ],
+      "parameters": [],
+      "return_": [
+        {
+          "Datatype": {
+            "module": {
+              "address": "contra",
+              "name": "balance"
+            },
+            "name": "PublicCoin",
+            "type_arguments": [
+              {
+                "phantom": true,
+                "argument": {
+                  "NamedTypeParameter": "T"
+                }
+              }
+            ]
+          }
+        }
+      ]
+    },
+    "wrap": {
+      "source_index": 1,
+      "index": 1,
+      "doc": " Wrap a `Coin<T>` into a `PublicCoin<T>`, sending the coin's funds to `pool`.",
+      "attributes": [],
+      "visibility": "Package",
+      "entry": false,
+      "type_parameters": [
+        {
+          "name": "T",
+          "constraints": []
+        }
+      ],
+      "parameters": [
+        {
+          "name": "coin",
+          "type_": {
+            "Datatype": {
+              "module": {
+                "address": "myso",
+                "name": "coin"
+              },
+              "name": "Coin",
+              "type_arguments": [
+                {
+                  "phantom": true,
+                  "argument": {
+                    "NamedTypeParameter": "T"
+                  }
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "pool",
+          "type_": {
+            "Reference": [
+              false,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "myso",
+                    "name": "object"
+                  },
+                  "name": "UID",
+                  "type_arguments": []
+                }
+              }
+            ]
+          }
+        }
+      ],
+      "return_": [
+        {
+          "Datatype": {
+            "module": {
+              "address": "contra",
+              "name": "balance"
+            },
+            "name": "PublicCoin",
+            "type_arguments": [
+              {
+                "phantom": true,
+                "argument": {
+                  "NamedTypeParameter": "T"
+                }
+              }
+            ]
+          }
+        }
+      ]
+    },
+    "unwrap": {
+      "source_index": 2,
+      "index": 2,
+      "doc": " Unwrap a `PublicCoin<T>` back into a `Coin<T>`, withdrawing matching funds from `pool`.",
+      "attributes": [],
+      "visibility": "Package",
+      "entry": false,
+      "type_parameters": [
+        {
+          "name": "T",
+          "constraints": []
+        }
+      ],
+      "parameters": [
+        {
+          "name": "coin",
+          "type_": {
+            "Datatype": {
+              "module": {
+                "address": "contra",
+                "name": "balance"
+              },
+              "name": "PublicCoin",
+              "type_arguments": [
+                {
+                  "phantom": true,
+                  "argument": {
+                    "NamedTypeParameter": "T"
+                  }
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "pool",
+          "type_": {
+            "Reference": [
+              true,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "myso",
+                    "name": "object"
+                  },
+                  "name": "UID",
+                  "type_arguments": []
+                }
+              }
+            ]
+          }
+        },
+        {
+          "name": "ctx",
+          "type_": {
+            "Reference": [
+              true,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "myso",
+                    "name": "tx_context"
+                  },
+                  "name": "TxContext",
+                  "type_arguments": []
+                }
+              }
+            ]
+          }
+        }
+      ],
+      "return_": [
+        {
+          "Datatype": {
+            "module": {
+              "address": "myso",
+              "name": "coin"
+            },
+            "name": "Coin",
+            "type_arguments": [
+              {
+                "phantom": true,
+                "argument": {
+                  "NamedTypeParameter": "T"
+                }
+              }
+            ]
+          }
+        }
+      ]
+    },
+    "join": {
+      "source_index": 3,
+      "index": 3,
+      "doc": " Merge `other` into `self`.",
+      "attributes": [],
+      "visibility": "Package",
+      "entry": false,
+      "type_parameters": [
+        {
+          "name": "T",
+          "constraints": []
+        }
+      ],
+      "parameters": [
+        {
+          "name": "self",
+          "type_": {
+            "Reference": [
+              true,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "contra",
+                    "name": "balance"
+                  },
+                  "name": "PublicCoin",
+                  "type_arguments": [
+                    {
+                      "phantom": true,
+                      "argument": {
+                        "NamedTypeParameter": "T"
+                      }
+                    }
+                  ]
+                }
+              }
+            ]
+          }
+        },
+        {
+          "name": "other",
+          "type_": {
+            "Datatype": {
+              "module": {
+                "address": "contra",
+                "name": "balance"
+              },
+              "name": "PublicCoin",
+              "type_arguments": [
+                {
+                  "phantom": true,
+                  "argument": {
+                    "NamedTypeParameter": "T"
+                  }
+                }
+              ]
+            }
+          }
+        }
+      ],
+      "return_": []
+    },
+    "take": {
+      "source_index": 4,
+      "index": 4,
+      "doc": " Move the value out of `self`, leaving it at zero.",
+      "attributes": [],
+      "visibility": "Package",
+      "entry": false,
+      "type_parameters": [
+        {
+          "name": "T",
+          "constraints": []
+        }
+      ],
+      "parameters": [
+        {
+          "name": "self",
+          "type_": {
+            "Reference": [
+              true,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "contra",
+                    "name": "balance"
+                  },
+                  "name": "PublicCoin",
+                  "type_arguments": [
+                    {
+                      "phantom": true,
+                      "argument": {
+                        "NamedTypeParameter": "T"
+                      }
+                    }
+                  ]
+                }
+              }
+            ]
+          }
+        }
+      ],
+      "return_": [
+        {
+          "Datatype": {
+            "module": {
+              "address": "contra",
+              "name": "balance"
+            },
+            "name": "PublicCoin",
+            "type_arguments": [
+              {
+                "phantom": true,
+                "argument": {
+                  "NamedTypeParameter": "T"
+                }
+              }
+            ]
+          }
+        }
+      ]
+    },
+    "value": {
+      "source_index": 5,
+      "index": 5,
+      "doc": " The public value carried by `self`.",
+      "attributes": [],
+      "visibility": "Package",
+      "entry": false,
+      "type_parameters": [
+        {
+          "name": "T",
+          "constraints": []
+        }
+      ],
+      "parameters": [
+        {
+          "name": "self",
+          "type_": {
+            "Reference": [
+              false,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "contra",
+                    "name": "balance"
+                  },
+                  "name": "PublicCoin",
+                  "type_arguments": [
+                    {
+                      "phantom": true,
+                      "argument": {
+                        "NamedTypeParameter": "T"
+                      }
+                    }
+                  ]
+                }
+              }
+            ]
+          }
+        }
+      ],
+      "return_": [
+        "u64"
+      ]
+    },
+    "amount": {
+      "source_index": 6,
+      "index": 6,
+      "doc": " The verified encrypted amount carried by `coin`.",
+      "attributes": [],
+      "visibility": "Package",
+      "entry": false,
+      "type_parameters": [
+        {
+          "name": "T",
+          "constraints": []
+        }
+      ],
+      "parameters": [
+        {
+          "name": "coin",
+          "type_": {
+            "Reference": [
+              false,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "contra",
+                    "name": "balance"
+                  },
+                  "name": "EncryptedCoin",
+                  "type_arguments": [
+                    {
+                      "phantom": true,
+                      "argument": {
+                        "NamedTypeParameter": "T"
+                      }
+                    }
+                  ]
+                }
+              }
+            ]
+          }
+        }
+      ],
+      "return_": [
+        {
+          "Reference": [
+            false,
+            {
+              "Datatype": {
+                "module": {
+                  "address": "contra",
+                  "name": "encrypted_amount"
+                },
+                "name": "WellFormedEncryptedAmount",
+                "type_arguments": []
+              }
+            }
+          ]
+        }
+      ]
+    },
+    "new": {
+      "source_index": 7,
+      "index": 7,
+      "doc": " An `EncryptedBalance` encrypting zero with `upper_bound = 1`.",
+      "attributes": [],
+      "visibility": "Package",
+      "entry": false,
+      "type_parameters": [
+        {
+          "name": "T",
+          "constraints": []
+        }
+      ],
+      "parameters": [],
+      "return_": [
+        {
+          "Datatype": {
+            "module": {
+              "address": "contra",
+              "name": "balance"
+            },
+            "name": "EncryptedBalance",
+            "type_arguments": [
+              {
+                "phantom": true,
+                "argument": {
+                  "NamedTypeParameter": "T"
+                }
+              }
+            ]
+          }
+        }
+      ]
+    },
+    "empty": {
+      "source_index": 8,
+      "index": 8,
+      "doc": " An `EncryptedBalance` encrypting zero with `upper_bound = 0`.",
+      "attributes": [],
+      "visibility": "Package",
+      "entry": false,
+      "type_parameters": [
+        {
+          "name": "T",
+          "constraints": []
+        }
+      ],
+      "parameters": [],
+      "return_": [
+        {
+          "Datatype": {
+            "module": {
+              "address": "contra",
+              "name": "balance"
+            },
+            "name": "EncryptedBalance",
+            "type_arguments": [
+              {
+                "phantom": true,
+                "argument": {
+                  "NamedTypeParameter": "T"
+                }
+              }
+            ]
+          }
+        }
+      ]
+    },
+    "upper_bound": {
+      "source_index": 9,
+      "index": 9,
+      "doc": " The number of u16-bounded values folded into `self`.",
+      "attributes": [],
+      "visibility": "Package",
+      "entry": false,
+      "type_parameters": [
+        {
+          "name": "T",
+          "constraints": []
+        }
+      ],
+      "parameters": [
+        {
+          "name": "self",
+          "type_": {
+            "Reference": [
+              false,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "contra",
+                    "name": "balance"
+                  },
+                  "name": "EncryptedBalance",
+                  "type_arguments": [
+                    {
+                      "phantom": true,
+                      "argument": {
+                        "NamedTypeParameter": "T"
+                      }
+                    }
+                  ]
+                }
+              }
+            ]
+          }
+        }
+      ],
+      "return_": [
+        "u16"
+      ]
+    },
+    "max_upper_bound": {
+      "source_index": 10,
+      "index": 10,
+      "doc": " The largest `upper_bound` that keeps a limb within the decryption window: each limb is\n then bounded by `0xFFFF * 0xFFFF < 2^32`.",
+      "attributes": [],
+      "visibility": "Package",
+      "entry": false,
+      "type_parameters": [],
+      "parameters": [],
+      "return_": [
+        "u16"
+      ]
+    },
+    "max_upper_bound_minus_1": {
+      "source_index": 11,
+      "index": 11,
+      "doc": " `max_upper_bound() - 1`.",
+      "attributes": [],
+      "visibility": "Package",
+      "entry": false,
+      "type_parameters": [],
+      "parameters": [],
+      "return_": [
+        "u16"
+      ]
+    },
+    "is_empty": {
+      "source_index": 12,
+      "index": 12,
+      "doc": " Whether `self` is in its post-construction state (nothing merged in).",
+      "attributes": [],
+      "visibility": "Package",
+      "entry": false,
+      "type_parameters": [
+        {
+          "name": "T",
+          "constraints": []
+        }
+      ],
+      "parameters": [
+        {
+          "name": "self",
+          "type_": {
+            "Reference": [
+              false,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "contra",
+                    "name": "balance"
+                  },
+                  "name": "EncryptedBalance",
+                  "type_arguments": [
+                    {
+                      "phantom": true,
+                      "argument": {
+                        "NamedTypeParameter": "T"
+                      }
+                    }
+                  ]
+                }
+              }
+            ]
+          }
+        }
+      ],
+      "return_": [
+        "bool"
+      ]
+    },
+    "collapse": {
+      "source_index": 13,
+      "index": 13,
+      "doc": " Collapsed (single-`Encryption`) view of `self`.",
+      "attributes": [],
+      "visibility": "Package",
+      "entry": false,
+      "type_parameters": [
+        {
+          "name": "T",
+          "constraints": []
+        }
+      ],
+      "parameters": [
+        {
+          "name": "self",
+          "type_": {
+            "Reference": [
+              false,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "contra",
+                    "name": "balance"
+                  },
+                  "name": "EncryptedBalance",
+                  "type_arguments": [
+                    {
+                      "phantom": true,
+                      "argument": {
+                        "NamedTypeParameter": "T"
+                      }
+                    }
+                  ]
+                }
+              }
+            ]
+          }
+        }
+      ],
+      "return_": [
+        {
+          "Datatype": {
+            "module": {
+              "address": "contra",
+              "name": "twisted_elgamal"
+            },
+            "name": "Encryption",
+            "type_arguments": []
+          }
+        }
+      ]
+    },
+    "merge_into": {
+      "source_index": 14,
+      "index": 14,
+      "doc": " Fold `other` into `self`, leaving `other` at zero. Caller is responsible for ensuring both\n sides are encrypted under the same key, and for any protocol-level cap on `upper_bound`.",
+      "attributes": [],
+      "visibility": "Package",
+      "entry": false,
+      "type_parameters": [
+        {
+          "name": "T",
+          "constraints": []
+        }
+      ],
+      "parameters": [
+        {
+          "name": "self",
+          "type_": {
+            "Reference": [
+              true,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "contra",
+                    "name": "balance"
+                  },
+                  "name": "EncryptedBalance",
+                  "type_arguments": [
+                    {
+                      "phantom": true,
+                      "argument": {
+                        "NamedTypeParameter": "T"
+                      }
+                    }
+                  ]
+                }
+              }
+            ]
+          }
+        },
+        {
+          "name": "other",
+          "type_": {
+            "Reference": [
+              true,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "contra",
+                    "name": "balance"
+                  },
+                  "name": "EncryptedBalance",
+                  "type_arguments": [
+                    {
+                      "phantom": true,
+                      "argument": {
+                        "NamedTypeParameter": "T"
+                      }
+                    }
+                  ]
+                }
+              }
+            ]
+          }
+        }
+      ],
+      "return_": []
+    },
+    "merge_encrypted": {
+      "source_index": 15,
+      "index": 15,
+      "doc": " Fold an `EncryptedCoin` into `self`. Aborts if the coin's pk doesn't match the caller-supplied\n `pk`.",
+      "attributes": [],
+      "visibility": "Package",
+      "entry": false,
+      "type_parameters": [
+        {
+          "name": "T",
+          "constraints": []
+        }
+      ],
+      "parameters": [
+        {
+          "name": "self",
+          "type_": {
+            "Reference": [
+              true,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "contra",
+                    "name": "balance"
+                  },
+                  "name": "EncryptedBalance",
+                  "type_arguments": [
+                    {
+                      "phantom": true,
+                      "argument": {
+                        "NamedTypeParameter": "T"
+                      }
+                    }
+                  ]
+                }
+              }
+            ]
+          }
+        },
+        {
+          "name": "pk",
+          "type_": {
+            "Reference": [
+              false,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "myso",
+                    "name": "group_ops"
+                  },
+                  "name": "Element",
+                  "type_arguments": [
+                    {
+                      "phantom": true,
+                      "argument": {
+                        "Datatype": {
+                          "module": {
+                            "address": "myso",
+                            "name": "ristretto255"
+                          },
+                          "name": "G",
+                          "type_arguments": []
+                        }
+                      }
+                    }
+                  ]
+                }
+              }
+            ]
+          }
+        },
+        {
+          "name": "coin",
+          "type_": {
+            "Datatype": {
+              "module": {
+                "address": "contra",
+                "name": "balance"
+              },
+              "name": "EncryptedCoin",
+              "type_arguments": [
+                {
+                  "phantom": true,
+                  "argument": {
+                    "NamedTypeParameter": "T"
+                  }
+                }
+              ]
+            }
+          }
+        }
+      ],
+      "return_": []
+    },
+    "merge_public": {
+      "source_index": 16,
+      "index": 16,
+      "doc": " Fold a `PublicCoin` into `self`. Zero-valued coins are no-ops (no slot consumed).",
+      "attributes": [],
+      "visibility": "Package",
+      "entry": false,
+      "type_parameters": [
+        {
+          "name": "T",
+          "constraints": []
+        }
+      ],
+      "parameters": [
+        {
+          "name": "self",
+          "type_": {
+            "Reference": [
+              true,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "contra",
+                    "name": "balance"
+                  },
+                  "name": "EncryptedBalance",
+                  "type_arguments": [
+                    {
+                      "phantom": true,
+                      "argument": {
+                        "NamedTypeParameter": "T"
+                      }
+                    }
+                  ]
+                }
+              }
+            ]
+          }
+        },
+        {
+          "name": "coin",
+          "type_": {
+            "Datatype": {
+              "module": {
+                "address": "contra",
+                "name": "balance"
+              },
+              "name": "PublicCoin",
+              "type_arguments": [
+                {
+                  "phantom": true,
+                  "argument": {
+                    "NamedTypeParameter": "T"
+                  }
+                }
+              ]
+            }
+          }
+        }
+      ],
+      "return_": []
+    },
+    "try_split_to_public": {
+      "source_index": 17,
+      "index": 17,
+      "doc": " On a verifying `proof` that `self == new_balance + value`, lower `self` to `new_balance` and\n return `value` as a `PublicCoin`; else return `none`. Aborts if `new_balance.pk() != sender_pk`.",
+      "attributes": [],
+      "visibility": "Package",
+      "entry": false,
+      "type_parameters": [
+        {
+          "name": "T",
+          "constraints": []
+        }
+      ],
+      "parameters": [
+        {
+          "name": "self",
+          "type_": {
+            "Reference": [
+              true,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "contra",
+                    "name": "balance"
+                  },
+                  "name": "EncryptedBalance",
+                  "type_arguments": [
+                    {
+                      "phantom": true,
+                      "argument": {
+                        "NamedTypeParameter": "T"
+                      }
+                    }
+                  ]
+                }
+              }
+            ]
+          }
+        },
+        {
+          "name": "sender_pk",
+          "type_": {
+            "Reference": [
+              false,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "myso",
+                    "name": "group_ops"
+                  },
+                  "name": "Element",
+                  "type_arguments": [
+                    {
+                      "phantom": true,
+                      "argument": {
+                        "Datatype": {
+                          "module": {
+                            "address": "myso",
+                            "name": "ristretto255"
+                          },
+                          "name": "G",
+                          "type_arguments": []
+                        }
+                      }
+                    }
+                  ]
+                }
+              }
+            ]
+          }
+        },
+        {
+          "name": "new_balance",
+          "type_": {
+            "Datatype": {
+              "module": {
+                "address": "contra",
+                "name": "encrypted_amount"
+              },
+              "name": "WellFormedEncryptedAmount",
+              "type_arguments": []
+            }
+          }
+        },
+        {
+          "name": "value",
+          "type_": "u64"
+        },
+        {
+          "name": "proof",
+          "type_": {
+            "Reference": [
+              false,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "contra",
+                    "name": "nizk"
+                  },
+                  "name": "DdhProof",
+                  "type_arguments": []
+                }
+              }
+            ]
+          }
+        },
+        {
+          "name": "dst",
+          "type_": {
+            "vector": "u8"
+          }
+        }
+      ],
+      "return_": [
+        {
+          "Datatype": {
+            "module": {
+              "address": "std",
+              "name": "option"
+            },
+            "name": "Option",
+            "type_arguments": [
+              {
+                "phantom": false,
+                "argument": {
+                  "Datatype": {
+                    "module": {
+                      "address": "contra",
+                      "name": "balance"
+                    },
+                    "name": "PublicCoin",
+                    "type_arguments": [
+                      {
+                        "phantom": true,
+                        "argument": {
+                          "NamedTypeParameter": "T"
+                        }
+                      }
+                    ]
+                  }
+                }
+              }
+            ]
+          }
+        }
+      ]
+    },
+    "try_split_batch": {
+      "source_index": 18,
+      "index": 18,
+      "doc": " Split receiver-keyed coins off `self` for a batched transfer. Returns `some(coins)` on a\n verifying balance proof, else `none`. Aborts if `new_balance.pk() != sender_pk`, the\n sender/receiver vectors have different length, the sender total doesn't match the receiver\n total, or the consistency proof fails.",
+      "attributes": [],
+      "visibility": "Package",
+      "entry": false,
+      "type_parameters": [
+        {
+          "name": "T",
+          "constraints": []
+        }
+      ],
+      "parameters": [
+        {
+          "name": "self",
+          "type_": {
+            "Reference": [
+              true,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "contra",
+                    "name": "balance"
+                  },
+                  "name": "EncryptedBalance",
+                  "type_arguments": [
+                    {
+                      "phantom": true,
+                      "argument": {
+                        "NamedTypeParameter": "T"
+                      }
+                    }
+                  ]
+                }
+              }
+            ]
+          }
+        },
+        {
+          "name": "sender_pk",
+          "type_": {
+            "Reference": [
+              false,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "myso",
+                    "name": "group_ops"
+                  },
+                  "name": "Element",
+                  "type_arguments": [
+                    {
+                      "phantom": true,
+                      "argument": {
+                        "Datatype": {
+                          "module": {
+                            "address": "myso",
+                            "name": "ristretto255"
+                          },
+                          "name": "G",
+                          "type_arguments": []
+                        }
+                      }
+                    }
+                  ]
+                }
+              }
+            ]
+          }
+        },
+        {
+          "name": "new_balance",
+          "type_": {
+            "Datatype": {
+              "module": {
+                "address": "contra",
+                "name": "encrypted_amount"
+              },
+              "name": "WellFormedEncryptedAmount",
+              "type_arguments": []
+            }
+          }
+        },
+        {
+          "name": "receiver_amounts",
+          "type_": {
+            "vector": {
+              "Datatype": {
+                "module": {
+                  "address": "contra",
+                  "name": "encrypted_amount"
+                },
+                "name": "WellFormedEncryptedAmount",
+                "type_arguments": []
+              }
+            }
+          }
+        },
+        {
+          "name": "sender_amounts",
+          "type_": {
+            "Reference": [
+              false,
+              {
+                "vector": {
+                  "Datatype": {
+                    "module": {
+                      "address": "contra",
+                      "name": "encrypted_amount"
+                    },
+                    "name": "EncryptedAmount",
+                    "type_arguments": []
+                  }
+                }
+              }
+            ]
+          }
+        },
+        {
+          "name": "consistency_proof",
+          "type_": {
+            "Datatype": {
+              "module": {
+                "address": "contra",
+                "name": "nizk"
+              },
+              "name": "ElGamalProof",
+              "type_arguments": []
+            }
+          }
+        },
+        {
+          "name": "consistency_dst",
+          "type_": {
+            "vector": "u8"
+          }
+        },
+        {
+          "name": "balance_proof",
+          "type_": {
+            "Reference": [
+              false,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "contra",
+                    "name": "nizk"
+                  },
+                  "name": "DdhProof",
+                  "type_arguments": []
+                }
+              }
+            ]
+          }
+        },
+        {
+          "name": "balance_dst",
+          "type_": {
+            "vector": "u8"
+          }
+        }
+      ],
+      "return_": [
+        {
+          "Datatype": {
+            "module": {
+              "address": "std",
+              "name": "option"
+            },
+            "name": "Option",
+            "type_arguments": [
+              {
+                "phantom": false,
+                "argument": {
+                  "vector": {
+                    "Datatype": {
+                      "module": {
+                        "address": "contra",
+                        "name": "balance"
+                      },
+                      "name": "EncryptedCoin",
+                      "type_arguments": [
+                        {
+                          "phantom": true,
+                          "argument": {
+                            "NamedTypeParameter": "T"
+                          }
+                        }
+                      ]
+                    }
+                  }
+                }
+              }
+            ]
+          }
+        }
+      ]
+    },
+    "try_update": {
+      "source_index": 19,
+      "index": 19,
+      "doc": " Re-state `self` as a verified re-encryption of the same value. Returns whether the proof\n verified. Aborts if `new_balance.pk() != sender_pk`.",
+      "attributes": [],
+      "visibility": "Package",
+      "entry": false,
+      "type_parameters": [
+        {
+          "name": "T",
+          "constraints": []
+        }
+      ],
+      "parameters": [
+        {
+          "name": "self",
+          "type_": {
+            "Reference": [
+              true,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "contra",
+                    "name": "balance"
+                  },
+                  "name": "EncryptedBalance",
+                  "type_arguments": [
+                    {
+                      "phantom": true,
+                      "argument": {
+                        "NamedTypeParameter": "T"
+                      }
+                    }
+                  ]
+                }
+              }
+            ]
+          }
+        },
+        {
+          "name": "sender_pk",
+          "type_": {
+            "Reference": [
+              false,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "myso",
+                    "name": "group_ops"
+                  },
+                  "name": "Element",
+                  "type_arguments": [
+                    {
+                      "phantom": true,
+                      "argument": {
+                        "Datatype": {
+                          "module": {
+                            "address": "myso",
+                            "name": "ristretto255"
+                          },
+                          "name": "G",
+                          "type_arguments": []
+                        }
+                      }
+                    }
+                  ]
+                }
+              }
+            ]
+          }
+        },
+        {
+          "name": "new_balance",
+          "type_": {
+            "Datatype": {
+              "module": {
+                "address": "contra",
+                "name": "encrypted_amount"
+              },
+              "name": "WellFormedEncryptedAmount",
+              "type_arguments": []
+            }
+          }
+        },
+        {
+          "name": "proof",
+          "type_": {
+            "Reference": [
+              false,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "contra",
+                    "name": "nizk"
+                  },
+                  "name": "DdhProof",
+                  "type_arguments": []
+                }
+              }
+            ]
+          }
+        },
+        {
+          "name": "dst",
+          "type_": {
+            "vector": "u8"
+          }
+        }
+      ],
+      "return_": [
+        "bool"
+      ]
+    },
+    "try_set_public_key": {
+      "source_index": 20,
+      "index": 20,
+      "doc": " On a verifying `eq_proof` that `self` (under `old_pk`) and `new_balance` (under `new_pk`)\n encrypt the same plaintext+blinding, overwrite `self` with `new_balance`. Returns whether the\n proof verified. Aborts if `new_balance.pk() != new_pk`. The caller is responsible for updating\n its own record of the active key.",
+      "attributes": [],
+      "visibility": "Package",
+      "entry": false,
+      "type_parameters": [
+        {
+          "name": "T",
+          "constraints": []
+        }
+      ],
+      "parameters": [
+        {
+          "name": "self",
+          "type_": {
+            "Reference": [
+              true,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "contra",
+                    "name": "balance"
+                  },
+                  "name": "EncryptedBalance",
+                  "type_arguments": [
+                    {
+                      "phantom": true,
+                      "argument": {
+                        "NamedTypeParameter": "T"
+                      }
+                    }
+                  ]
+                }
+              }
+            ]
+          }
+        },
+        {
+          "name": "old_pk",
+          "type_": {
+            "Reference": [
+              false,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "myso",
+                    "name": "group_ops"
+                  },
+                  "name": "Element",
+                  "type_arguments": [
+                    {
+                      "phantom": true,
+                      "argument": {
+                        "Datatype": {
+                          "module": {
+                            "address": "myso",
+                            "name": "ristretto255"
+                          },
+                          "name": "G",
+                          "type_arguments": []
+                        }
+                      }
+                    }
+                  ]
+                }
+              }
+            ]
+          }
+        },
+        {
+          "name": "new_pk",
+          "type_": {
+            "Reference": [
+              false,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "myso",
+                    "name": "group_ops"
+                  },
+                  "name": "Element",
+                  "type_arguments": [
+                    {
+                      "phantom": true,
+                      "argument": {
+                        "Datatype": {
+                          "module": {
+                            "address": "myso",
+                            "name": "ristretto255"
+                          },
+                          "name": "G",
+                          "type_arguments": []
+                        }
+                      }
+                    }
+                  ]
+                }
+              }
+            ]
+          }
+        },
+        {
+          "name": "new_balance",
+          "type_": {
+            "Reference": [
+              false,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "contra",
+                    "name": "encrypted_amount"
+                  },
+                  "name": "WellFormedEncryptedAmount",
+                  "type_arguments": []
+                }
+              }
+            ]
+          }
+        },
+        {
+          "name": "eq_proof",
+          "type_": {
+            "Datatype": {
+              "module": {
+                "address": "contra",
+                "name": "nizk"
+              },
+              "name": "DdhProof",
+              "type_arguments": []
+            }
+          }
+        },
+        {
+          "name": "dst",
+          "type_": {
+            "vector": "u8"
+          }
+        }
+      ],
+      "return_": [
+        "bool"
+      ]
+    },
+    "overwrite_unchecked": {
+      "source_index": 21,
+      "index": 21,
+      "doc": " Overwrite `self` with a raw `EncryptedAmount`. `new` is not range-checked; `upper_bound` is\n set to 1.",
+      "attributes": [],
+      "visibility": "Package",
+      "entry": false,
+      "type_parameters": [
+        {
+          "name": "T",
+          "constraints": []
+        }
+      ],
+      "parameters": [
+        {
+          "name": "self",
+          "type_": {
+            "Reference": [
+              true,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "contra",
+                    "name": "balance"
+                  },
+                  "name": "EncryptedBalance",
+                  "type_arguments": [
+                    {
+                      "phantom": true,
+                      "argument": {
+                        "NamedTypeParameter": "T"
+                      }
+                    }
+                  ]
+                }
+              }
+            ]
+          }
+        },
+        {
+          "name": "_t",
+          "type_": {
+            "Reference": [
+              true,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "myso",
+                    "name": "coin"
+                  },
+                  "name": "TreasuryCap",
+                  "type_arguments": [
+                    {
+                      "phantom": true,
+                      "argument": {
+                        "NamedTypeParameter": "T"
+                      }
+                    }
+                  ]
+                }
+              }
+            ]
+          }
+        },
+        {
+          "name": "new",
+          "type_": {
+            "Datatype": {
+              "module": {
+                "address": "contra",
+                "name": "encrypted_amount"
+              },
+              "name": "EncryptedAmount",
+              "type_arguments": []
+            }
+          }
+        }
+      ],
+      "return_": []
+    },
+    "clear_unchecked": {
+      "source_index": 22,
+      "index": 22,
+      "doc": " Reset `self` to zero without proof.",
+      "attributes": [],
+      "visibility": "Package",
+      "entry": false,
+      "type_parameters": [
+        {
+          "name": "T",
+          "constraints": []
+        }
+      ],
+      "parameters": [
+        {
+          "name": "self",
+          "type_": {
+            "Reference": [
+              true,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "contra",
+                    "name": "balance"
+                  },
+                  "name": "EncryptedBalance",
+                  "type_arguments": [
+                    {
+                      "phantom": true,
+                      "argument": {
+                        "NamedTypeParameter": "T"
+                      }
+                    }
+                  ]
+                }
+              }
+            ]
+          }
+        },
+        {
+          "name": "_t",
+          "type_": {
+            "Reference": [
+              true,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "myso",
+                    "name": "coin"
+                  },
+                  "name": "TreasuryCap",
+                  "type_arguments": [
+                    {
+                      "phantom": true,
+                      "argument": {
+                        "NamedTypeParameter": "T"
+                      }
+                    }
+                  ]
+                }
+              }
+            ]
+          }
+        }
+      ],
+      "return_": []
+    },
+    "set_zero_unchecked": {
+      "source_index": 23,
+      "index": 23,
+      "doc": " Reset a `PublicCoin` to zero without proof.",
+      "attributes": [],
+      "visibility": "Package",
+      "entry": false,
+      "type_parameters": [
+        {
+          "name": "T",
+          "constraints": []
+        }
+      ],
+      "parameters": [
+        {
+          "name": "self",
+          "type_": {
+            "Reference": [
+              true,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "contra",
+                    "name": "balance"
+                  },
+                  "name": "PublicCoin",
+                  "type_arguments": [
+                    {
+                      "phantom": true,
+                      "argument": {
+                        "NamedTypeParameter": "T"
+                      }
+                    }
+                  ]
+                }
+              }
+            ]
+          }
+        },
+        {
+          "name": "_t",
+          "type_": {
+            "Reference": [
+              true,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "myso",
+                    "name": "coin"
+                  },
+                  "name": "TreasuryCap",
+                  "type_arguments": [
+                    {
+                      "phantom": true,
+                      "argument": {
+                        "NamedTypeParameter": "T"
+                      }
+                    }
+                  ]
+                }
+              }
+            ]
+          }
+        }
+      ],
+      "return_": []
+    },
+    "overwrite": {
+      "source_index": 24,
+      "index": 24,
+      "doc": " Overwrite `self` with the verified amount `new`.",
+      "attributes": [],
+      "visibility": "Private",
+      "entry": false,
+      "type_parameters": [
+        {
+          "name": "T",
+          "constraints": []
+        }
+      ],
+      "parameters": [
+        {
+          "name": "self",
+          "type_": {
+            "Reference": [
+              true,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "contra",
+                    "name": "balance"
+                  },
+                  "name": "EncryptedBalance",
+                  "type_arguments": [
+                    {
+                      "phantom": true,
+                      "argument": {
+                        "NamedTypeParameter": "T"
+                      }
+                    }
+                  ]
+                }
+              }
+            ]
+          }
+        },
+        {
+          "name": "new",
+          "type_": {
+            "Reference": [
+              false,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "contra",
+                    "name": "encrypted_amount"
+                  },
+                  "name": "WellFormedEncryptedAmount",
+                  "type_arguments": []
+                }
+              }
+            ]
+          }
+        }
+      ],
+      "return_": []
+    },
+    "set_empty": {
+      "source_index": 25,
+      "index": 25,
+      "doc": " Reset `self` to the same state `empty()` returns.",
+      "attributes": [],
+      "visibility": "Private",
+      "entry": false,
+      "type_parameters": [
+        {
+          "name": "T",
+          "constraints": []
+        }
+      ],
+      "parameters": [
+        {
+          "name": "self",
+          "type_": {
+            "Reference": [
+              true,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "contra",
+                    "name": "balance"
+                  },
+                  "name": "EncryptedBalance",
+                  "type_arguments": [
+                    {
+                      "phantom": true,
+                      "argument": {
+                        "NamedTypeParameter": "T"
+                      }
+                    }
+                  ]
+                }
+              }
+            ]
+          }
+        }
+      ],
+      "return_": []
+    }
+  },
+  "structs": {
+    "EncryptedBalance": {
+      "index": 0,
+      "doc": " A single confidential amount: an `EncryptedAmount` plus the count of u16-bounded values that\n have been folded into it.",
+      "attributes": [],
+      "abilities": [
+        "Store"
+      ],
+      "type_parameters": [
+        {
+          "phantom": true,
+          "name": "T",
+          "constraints": []
+        }
+      ],
+      "fields": {
+        "positional_fields": false,
+        "fields": {
+          "amount": {
+            "index": 0,
+            "doc": null,
+            "type_": {
+              "Datatype": {
+                "module": {
+                  "address": "contra",
+                  "name": "encrypted_amount"
+                },
+                "name": "EncryptedAmount",
+                "type_arguments": []
+              }
+            }
+          },
+          "upper_bound": {
+            "index": 1,
+            "doc": null,
+            "type_": "u16"
+          }
+        }
+      }
+    },
+    "PublicCoin": {
+      "index": 1,
+      "doc": " Linear wrapper around a publicly-known `u64`.",
+      "attributes": [],
+      "abilities": [
+        "Store"
+      ],
+      "type_parameters": [
+        {
+          "phantom": true,
+          "name": "T",
+          "constraints": []
+        }
+      ],
+      "fields": {
+        "positional_fields": false,
+        "fields": {
+          "value": {
+            "index": 0,
+            "doc": null,
+            "type_": "u64"
+          }
+        }
+      }
+    },
+    "EncryptedCoin": {
+      "index": 2,
+      "doc": " Linear wrapper around a verified encrypted amount.",
+      "attributes": [],
+      "abilities": [],
+      "type_parameters": [
+        {
+          "phantom": true,
+          "name": "T",
+          "constraints": []
+        }
+      ],
+      "fields": {
+        "positional_fields": false,
+        "fields": {
+          "amount": {
+            "index": 0,
+            "doc": null,
+            "type_": {
+              "Datatype": {
+                "module": {
+                  "address": "contra",
+                  "name": "encrypted_amount"
+                },
+                "name": "WellFormedEncryptedAmount",
+                "type_arguments": []
+              }
+            }
+          }
+        }
+      }
+    }
+  },
+  "enums": {}
+}

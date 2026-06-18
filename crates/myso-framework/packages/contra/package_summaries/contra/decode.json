@@ -1,0 +1,510 @@
+{
+  "id": {
+    "address": "contra",
+    "name": "decode"
+  },
+  "doc": " Simple deserialization functions that build the composite crypto types from their\n byte-encoded elements in a single Move call.",
+  "immediate_dependencies": [
+    {
+      "address": "contra",
+      "name": "encrypted_amount"
+    },
+    {
+      "address": "contra",
+      "name": "nizk"
+    },
+    {
+      "address": "contra",
+      "name": "twisted_elgamal"
+    },
+    {
+      "address": "myso",
+      "name": "group_ops"
+    },
+    {
+      "address": "myso",
+      "name": "ristretto255"
+    },
+    {
+      "address": "std",
+      "name": "vector"
+    }
+  ],
+  "attributes": [],
+  "functions": {
+    "g_vector": {
+      "source_index": 0,
+      "index": 0,
+      "doc": null,
+      "attributes": [],
+      "visibility": "Public",
+      "entry": false,
+      "type_parameters": [],
+      "parameters": [
+        {
+          "name": "parts",
+          "type_": {
+            "vector": {
+              "vector": "u8"
+            }
+          }
+        }
+      ],
+      "return_": [
+        {
+          "vector": {
+            "Datatype": {
+              "module": {
+                "address": "myso",
+                "name": "group_ops"
+              },
+              "name": "Element",
+              "type_arguments": [
+                {
+                  "phantom": true,
+                  "argument": {
+                    "Datatype": {
+                      "module": {
+                        "address": "myso",
+                        "name": "ristretto255"
+                      },
+                      "name": "G",
+                      "type_arguments": []
+                    }
+                  }
+                }
+              ]
+            }
+          }
+        }
+      ]
+    },
+    "encryption": {
+      "source_index": 1,
+      "index": 1,
+      "doc": null,
+      "attributes": [],
+      "visibility": "Public",
+      "entry": false,
+      "type_parameters": [],
+      "parameters": [
+        {
+          "name": "parts",
+          "type_": {
+            "vector": {
+              "vector": "u8"
+            }
+          }
+        }
+      ],
+      "return_": [
+        {
+          "Datatype": {
+            "module": {
+              "address": "contra",
+              "name": "twisted_elgamal"
+            },
+            "name": "Encryption",
+            "type_arguments": []
+          }
+        }
+      ]
+    },
+    "encrypted_amount": {
+      "source_index": 2,
+      "index": 2,
+      "doc": null,
+      "attributes": [],
+      "visibility": "Public",
+      "entry": false,
+      "type_parameters": [],
+      "parameters": [
+        {
+          "name": "parts",
+          "type_": {
+            "vector": {
+              "vector": "u8"
+            }
+          }
+        }
+      ],
+      "return_": [
+        {
+          "Datatype": {
+            "module": {
+              "address": "contra",
+              "name": "encrypted_amount"
+            },
+            "name": "EncryptedAmount",
+            "type_arguments": []
+          }
+        }
+      ]
+    },
+    "multi_recipient_encryption": {
+      "source_index": 3,
+      "index": 3,
+      "doc": null,
+      "attributes": [],
+      "visibility": "Public",
+      "entry": false,
+      "type_parameters": [],
+      "parameters": [
+        {
+          "name": "parts",
+          "type_": {
+            "vector": {
+              "vector": "u8"
+            }
+          }
+        },
+        {
+          "name": "m",
+          "type_": "u64"
+        }
+      ],
+      "return_": [
+        {
+          "Datatype": {
+            "module": {
+              "address": "contra",
+              "name": "twisted_elgamal"
+            },
+            "name": "MultiRecipientEncryption",
+            "type_arguments": []
+          }
+        }
+      ]
+    },
+    "ddh_proof": {
+      "source_index": 4,
+      "index": 4,
+      "doc": null,
+      "attributes": [],
+      "visibility": "Public",
+      "entry": false,
+      "type_parameters": [],
+      "parameters": [
+        {
+          "name": "parts",
+          "type_": {
+            "vector": {
+              "vector": "u8"
+            }
+          }
+        }
+      ],
+      "return_": [
+        {
+          "Datatype": {
+            "module": {
+              "address": "contra",
+              "name": "nizk"
+            },
+            "name": "DdhProof",
+            "type_arguments": []
+          }
+        }
+      ]
+    },
+    "elgamal_proof": {
+      "source_index": 5,
+      "index": 5,
+      "doc": null,
+      "attributes": [],
+      "visibility": "Public",
+      "entry": false,
+      "type_parameters": [],
+      "parameters": [
+        {
+          "name": "parts",
+          "type_": {
+            "vector": {
+              "vector": "u8"
+            }
+          }
+        }
+      ],
+      "return_": [
+        {
+          "Datatype": {
+            "module": {
+              "address": "contra",
+              "name": "nizk"
+            },
+            "name": "ElGamalProof",
+            "type_arguments": []
+          }
+        }
+      ]
+    },
+    "consistency_proof": {
+      "source_index": 6,
+      "index": 6,
+      "doc": null,
+      "attributes": [],
+      "visibility": "Public",
+      "entry": false,
+      "type_parameters": [],
+      "parameters": [
+        {
+          "name": "parts",
+          "type_": {
+            "vector": {
+              "vector": "u8"
+            }
+          }
+        }
+      ],
+      "return_": [
+        {
+          "Datatype": {
+            "module": {
+              "address": "contra",
+              "name": "encrypted_amount"
+            },
+            "name": "ConsistencyProof",
+            "type_arguments": []
+          }
+        }
+      ]
+    },
+    "key_consistency_proof": {
+      "source_index": 7,
+      "index": 7,
+      "doc": null,
+      "attributes": [],
+      "visibility": "Public",
+      "entry": false,
+      "type_parameters": [],
+      "parameters": [
+        {
+          "name": "parts",
+          "type_": {
+            "vector": {
+              "vector": "u8"
+            }
+          }
+        },
+        {
+          "name": "m",
+          "type_": "u64"
+        }
+      ],
+      "return_": [
+        {
+          "Datatype": {
+            "module": {
+              "address": "contra",
+              "name": "nizk"
+            },
+            "name": "KeyConsistencyProof",
+            "type_arguments": []
+          }
+        }
+      ]
+    },
+    "encryption_at": {
+      "source_index": 8,
+      "index": 8,
+      "doc": null,
+      "attributes": [],
+      "visibility": "Private",
+      "entry": false,
+      "type_parameters": [],
+      "parameters": [
+        {
+          "name": "parts",
+          "type_": {
+            "Reference": [
+              false,
+              {
+                "vector": {
+                  "vector": "u8"
+                }
+              }
+            ]
+          }
+        },
+        {
+          "name": "off",
+          "type_": "u64"
+        }
+      ],
+      "return_": [
+        {
+          "Datatype": {
+            "module": {
+              "address": "contra",
+              "name": "twisted_elgamal"
+            },
+            "name": "Encryption",
+            "type_arguments": []
+          }
+        }
+      ]
+    },
+    "elgamal_proof_at": {
+      "source_index": 9,
+      "index": 9,
+      "doc": null,
+      "attributes": [],
+      "visibility": "Private",
+      "entry": false,
+      "type_parameters": [],
+      "parameters": [
+        {
+          "name": "parts",
+          "type_": {
+            "Reference": [
+              false,
+              {
+                "vector": {
+                  "vector": "u8"
+                }
+              }
+            ]
+          }
+        },
+        {
+          "name": "off",
+          "type_": "u64"
+        }
+      ],
+      "return_": [
+        {
+          "Datatype": {
+            "module": {
+              "address": "contra",
+              "name": "nizk"
+            },
+            "name": "ElGamalProof",
+            "type_arguments": []
+          }
+        }
+      ]
+    },
+    "g_range": {
+      "source_index": 10,
+      "index": 10,
+      "doc": null,
+      "attributes": [],
+      "visibility": "Private",
+      "entry": false,
+      "type_parameters": [],
+      "parameters": [
+        {
+          "name": "parts",
+          "type_": {
+            "Reference": [
+              false,
+              {
+                "vector": {
+                  "vector": "u8"
+                }
+              }
+            ]
+          }
+        },
+        {
+          "name": "start",
+          "type_": "u64"
+        },
+        {
+          "name": "count",
+          "type_": "u64"
+        }
+      ],
+      "return_": [
+        {
+          "vector": {
+            "Datatype": {
+              "module": {
+                "address": "myso",
+                "name": "group_ops"
+              },
+              "name": "Element",
+              "type_arguments": [
+                {
+                  "phantom": true,
+                  "argument": {
+                    "Datatype": {
+                      "module": {
+                        "address": "myso",
+                        "name": "ristretto255"
+                      },
+                      "name": "G",
+                      "type_arguments": []
+                    }
+                  }
+                }
+              ]
+            }
+          }
+        }
+      ]
+    },
+    "scalar_range": {
+      "source_index": 11,
+      "index": 11,
+      "doc": null,
+      "attributes": [],
+      "visibility": "Private",
+      "entry": false,
+      "type_parameters": [],
+      "parameters": [
+        {
+          "name": "parts",
+          "type_": {
+            "Reference": [
+              false,
+              {
+                "vector": {
+                  "vector": "u8"
+                }
+              }
+            ]
+          }
+        },
+        {
+          "name": "start",
+          "type_": "u64"
+        },
+        {
+          "name": "count",
+          "type_": "u64"
+        }
+      ],
+      "return_": [
+        {
+          "vector": {
+            "Datatype": {
+              "module": {
+                "address": "myso",
+                "name": "group_ops"
+              },
+              "name": "Element",
+              "type_arguments": [
+                {
+                  "phantom": true,
+                  "argument": {
+                    "Datatype": {
+                      "module": {
+                        "address": "myso",
+                        "name": "ristretto255"
+                      },
+                      "name": "Scalar",
+                      "type_arguments": []
+                    }
+                  }
+                }
+              ]
+            }
+          }
+        }
+      ]
+    }
+  },
+  "structs": {},
+  "enums": {}
+}

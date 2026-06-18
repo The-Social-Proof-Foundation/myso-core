@@ -1,0 +1,4524 @@
+{
+  "id": {
+    "address": "contra",
+    "name": "contra"
+  },
+  "doc": " Confidential transfers on MySo.\n\n Enables token transfers where amounts are encrypted using twisted ElGamal\n encryption while remaining verifiable through zero-knowledge proofs.\n\n ## Key Flows for the Token Issuer of public token type `T`:\n 1. Create a new confidential token for a token type `T` (using the TreasuryCap), optionally\n    with an initial set of auditor public keys. Creation returns a `ManagementCap<T>`.\n 2. Set the freeze admins who can freeze the token globally or specific accounts (via the\n    ManagementCap). Those admins may monitor the confidential token and freeze it or\n    individual accounts if necessary.\n 3. Unfreeze the token globally or a specific account (using the TreasuryCap).\n 4. Set the balance of an account directly, to emulate burn/seize (using the TreasuryCap).\n 5. Freeze specific accounts via the token's deny list, using\n    `myso::coin::deny_list_v2_add` / `myso::coin::deny_list_v2_remove`. The deny list affects\n    both the public and the private coin; to freeze only the private coin, see items 2 and 3.\n 6. Rotate or disable the auditor key set via `update_auditors` (using the ManagementCap).\n    Setting `bump_recommended_min` raises the auditors' `recommended_min_version` to the new\n    version, signalling to wallets that every user should refresh their key.\n    Passing an empty `public_keys` vector disables the auditor flow.\n 7. [Advanced] Set the policy for the confidential token (using the TreasuryCap). Policies define\n    which operations are permissioned. Currently supported permissioned operations are:\n    - `register`: Register a token account for a token type `T`. E.g., caller ensures the user is\n      KYCed before registering an account. When set, also setting the public key for an account\n      is permissioned.\n    - `wrap`: Wrap a public coin into a private balance. E.g., caller ensures the funds passed\n      screening before wrapping.\n    - `unwrap`: Unwrap a private balance into a public coin. E.g., caller enforces rate limit on\n      exiting the system.\n    Additional permissioned operations may be added in the future.\n    Permissioned operations are customized flows that should be implemented by the issuer's\n    contract, and may not be supported by all clients/wallets.\n    The default policy is fully permissionless.\n\n ## Key Flows for Users:\n 1. Create an account for an address (needed once for all token types).\n 2. Register a token account for a token type `T` with a public key `pk`. If the token has\n    auditors configured, the user must additionally provide the user's key encrypted to every\n    auditor public key in the current set, and a proof that the ciphertext encrypts its\n    secret key.\n 3. Update the public key for a token account.\n 4. Wrap a public coin into a confidential token, adding to the pending encrypted balance of an\n    account.\n 5. Transfer an encrypted amount to two or more token accounts.\n 6. Unwrap an encrypted amount from a token account and convert it to public coins.\n\n ## Authentication:\n Some functions require authorization via an `&Auth<T>` argument. Under the default\n permissionless policy any `Auth<T>` is accepted; permissioning narrows which constructors\n produce a valid `Auth<T>`. The caller constructs the `Auth<T>` via one of three constructors:\n - `authorize_as_sender`: authenticates `ctx.sender()`. The standard path for end-user wallets\n   and permissionless operations.\n - `authorize_as_object`: authenticates the address derived from a given object's `UID`. Use this\n   when access is controlled by a Move object (the holder of `&mut UID` proves ownership).\n - `authorize_with_witness`: authenticates `owner` under a witness `W` required by the policy. Use\n   this to implement custom permissioned operations: the issuer's contract holds `W`, performs\n   its own checks (e.g. KYC, screening, rate limiting), and creates an `Auth<T>` for the\n   requested operation.\n",
+  "immediate_dependencies": [
+    {
+      "address": "contra",
+      "name": "auditors"
+    },
+    {
+      "address": "contra",
+      "name": "balance"
+    },
+    {
+      "address": "contra",
+      "name": "deny_list"
+    },
+    {
+      "address": "contra",
+      "name": "encrypted_amount"
+    },
+    {
+      "address": "contra",
+      "name": "events"
+    },
+    {
+      "address": "contra",
+      "name": "nizk"
+    },
+    {
+      "address": "contra",
+      "name": "policy"
+    },
+    {
+      "address": "myso",
+      "name": "address"
+    },
+    {
+      "address": "myso",
+      "name": "coin"
+    },
+    {
+      "address": "myso",
+      "name": "deny_list"
+    },
+    {
+      "address": "myso",
+      "name": "derived_object"
+    },
+    {
+      "address": "myso",
+      "name": "dynamic_field"
+    },
+    {
+      "address": "myso",
+      "name": "group_ops"
+    },
+    {
+      "address": "myso",
+      "name": "object"
+    },
+    {
+      "address": "myso",
+      "name": "ristretto255"
+    },
+    {
+      "address": "myso",
+      "name": "transfer"
+    },
+    {
+      "address": "myso",
+      "name": "tx_context"
+    },
+    {
+      "address": "myso",
+      "name": "vec_set"
+    },
+    {
+      "address": "std",
+      "name": "option"
+    },
+    {
+      "address": "std",
+      "name": "vector"
+    }
+  ],
+  "attributes": [],
+  "functions": {
+    "init": {
+      "source_index": 0,
+      "index": 0,
+      "doc": " On initialization, we create and share the `AccountRegistry` and `TokenRegistry` objects.",
+      "attributes": [],
+      "visibility": "Private",
+      "entry": false,
+      "type_parameters": [],
+      "parameters": [
+        {
+          "name": "ctx",
+          "type_": {
+            "Reference": [
+              true,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "myso",
+                    "name": "tx_context"
+                  },
+                  "name": "TxContext",
+                  "type_arguments": []
+                }
+              }
+            ]
+          }
+        }
+      ],
+      "return_": []
+    },
+    "authorize_as_sender": {
+      "source_index": 1,
+      "index": 1,
+      "doc": " Create an `Auth<T>` for `ctx.sender()` covering every operation the policy on `ct` leaves\n permissionless.",
+      "attributes": [],
+      "visibility": "Public",
+      "entry": false,
+      "type_parameters": [
+        {
+          "name": "T",
+          "constraints": []
+        }
+      ],
+      "parameters": [
+        {
+          "name": "ct",
+          "type_": {
+            "Reference": [
+              false,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "contra",
+                    "name": "contra"
+                  },
+                  "name": "ConfidentialToken",
+                  "type_arguments": [
+                    {
+                      "phantom": true,
+                      "argument": {
+                        "NamedTypeParameter": "T"
+                      }
+                    }
+                  ]
+                }
+              }
+            ]
+          }
+        },
+        {
+          "name": "ctx",
+          "type_": {
+            "Reference": [
+              false,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "myso",
+                    "name": "tx_context"
+                  },
+                  "name": "TxContext",
+                  "type_arguments": []
+                }
+              }
+            ]
+          }
+        }
+      ],
+      "return_": [
+        {
+          "Datatype": {
+            "module": {
+              "address": "contra",
+              "name": "policy"
+            },
+            "name": "Auth",
+            "type_arguments": [
+              {
+                "phantom": true,
+                "argument": {
+                  "NamedTypeParameter": "T"
+                }
+              }
+            ]
+          }
+        }
+      ]
+    },
+    "authorize_with_witness": {
+      "source_index": 2,
+      "index": 2,
+      "doc": " Create an `Auth<T>` on behalf of `owner` covering the requested `operation`, authorized by\n witness `W`. Aborts unless the policy on `ct` is set, its witness type is `W`, and `operation`\n is permissioned. The witness-holding contract is fully responsible for authenticating `owner`.",
+      "attributes": [],
+      "visibility": "Public",
+      "entry": false,
+      "type_parameters": [
+        {
+          "name": "T",
+          "constraints": []
+        },
+        {
+          "name": "W",
+          "constraints": [
+            "Drop"
+          ]
+        }
+      ],
+      "parameters": [
+        {
+          "name": "ct",
+          "type_": {
+            "Reference": [
+              false,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "contra",
+                    "name": "contra"
+                  },
+                  "name": "ConfidentialToken",
+                  "type_arguments": [
+                    {
+                      "phantom": true,
+                      "argument": {
+                        "NamedTypeParameter": "T"
+                      }
+                    }
+                  ]
+                }
+              }
+            ]
+          }
+        },
+        {
+          "name": "operation",
+          "type_": "u8"
+        },
+        {
+          "name": "owner",
+          "type_": "address"
+        },
+        {
+          "name": "witness",
+          "type_": {
+            "NamedTypeParameter": "W"
+          }
+        }
+      ],
+      "return_": [
+        {
+          "Datatype": {
+            "module": {
+              "address": "contra",
+              "name": "policy"
+            },
+            "name": "Auth",
+            "type_arguments": [
+              {
+                "phantom": true,
+                "argument": {
+                  "NamedTypeParameter": "T"
+                }
+              }
+            ]
+          }
+        }
+      ]
+    },
+    "authorize_as_object": {
+      "source_index": 3,
+      "index": 3,
+      "doc": " Create an `Auth<T>` on behalf of an object identified by `uid`, covering every operation the\n policy on `ct` leaves permissionless. Holding `&mut UID` proves custody of the object, so the\n object self-authenticates as its own `owner` (the address derived from the UID).",
+      "attributes": [],
+      "visibility": "Public",
+      "entry": false,
+      "type_parameters": [
+        {
+          "name": "T",
+          "constraints": []
+        }
+      ],
+      "parameters": [
+        {
+          "name": "ct",
+          "type_": {
+            "Reference": [
+              false,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "contra",
+                    "name": "contra"
+                  },
+                  "name": "ConfidentialToken",
+                  "type_arguments": [
+                    {
+                      "phantom": true,
+                      "argument": {
+                        "NamedTypeParameter": "T"
+                      }
+                    }
+                  ]
+                }
+              }
+            ]
+          }
+        },
+        {
+          "name": "uid",
+          "type_": {
+            "Reference": [
+              true,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "myso",
+                    "name": "object"
+                  },
+                  "name": "UID",
+                  "type_arguments": []
+                }
+              }
+            ]
+          }
+        }
+      ],
+      "return_": [
+        {
+          "Datatype": {
+            "module": {
+              "address": "contra",
+              "name": "policy"
+            },
+            "name": "Auth",
+            "type_arguments": [
+              {
+                "phantom": true,
+                "argument": {
+                  "NamedTypeParameter": "T"
+                }
+              }
+            ]
+          }
+        }
+      ]
+    },
+    "new_confidential_token": {
+      "source_index": 4,
+      "index": 4,
+      "doc": " Create a new confidential token for the given token type. Can only happen\n once per token type, and the token object is immediately shared.\n\n Requires a `&mut TreasuryCap` for authorization, this is to prevent frozen\n TreasuryCaps from being used.\n\n Creates an `Auditors` object for the confidential token using the provided public keys.\n The auditor public keys can be empty initially and updated later by the issuer.\n\n Returns the created `ConfidentialToken` and a `ManagementCap` that can be used to perform\n administrative operations for this token.",
+      "attributes": [],
+      "visibility": "Public",
+      "entry": false,
+      "type_parameters": [
+        {
+          "name": "T",
+          "constraints": []
+        }
+      ],
+      "parameters": [
+        {
+          "name": "registry",
+          "type_": {
+            "Reference": [
+              true,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "contra",
+                    "name": "contra"
+                  },
+                  "name": "TokenRegistry",
+                  "type_arguments": []
+                }
+              }
+            ]
+          }
+        },
+        {
+          "name": "_t",
+          "type_": {
+            "Reference": [
+              true,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "myso",
+                    "name": "coin"
+                  },
+                  "name": "TreasuryCap",
+                  "type_arguments": [
+                    {
+                      "phantom": true,
+                      "argument": {
+                        "NamedTypeParameter": "T"
+                      }
+                    }
+                  ]
+                }
+              }
+            ]
+          }
+        },
+        {
+          "name": "auditor_public_keys",
+          "type_": {
+            "vector": {
+              "Datatype": {
+                "module": {
+                  "address": "myso",
+                  "name": "group_ops"
+                },
+                "name": "Element",
+                "type_arguments": [
+                  {
+                    "phantom": true,
+                    "argument": {
+                      "Datatype": {
+                        "module": {
+                          "address": "myso",
+                          "name": "ristretto255"
+                        },
+                        "name": "G",
+                        "type_arguments": []
+                      }
+                    }
+                  }
+                ]
+              }
+            }
+          }
+        },
+        {
+          "name": "ctx",
+          "type_": {
+            "Reference": [
+              true,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "myso",
+                    "name": "tx_context"
+                  },
+                  "name": "TxContext",
+                  "type_arguments": []
+                }
+              }
+            ]
+          }
+        }
+      ],
+      "return_": [
+        {
+          "Datatype": {
+            "module": {
+              "address": "contra",
+              "name": "contra"
+            },
+            "name": "ConfidentialToken",
+            "type_arguments": [
+              {
+                "phantom": true,
+                "argument": {
+                  "NamedTypeParameter": "T"
+                }
+              }
+            ]
+          }
+        },
+        {
+          "Datatype": {
+            "module": {
+              "address": "contra",
+              "name": "contra"
+            },
+            "name": "ManagementCap",
+            "type_arguments": [
+              {
+                "phantom": true,
+                "argument": {
+                  "NamedTypeParameter": "T"
+                }
+              }
+            ]
+          }
+        }
+      ]
+    },
+    "share_confidential_token": {
+      "source_index": 5,
+      "index": 5,
+      "doc": " Share the confidential token object.\n This is needed to allow the issuer to interact with the confidential token, e.g.,\n to set permissions, in the same PTB.",
+      "attributes": [],
+      "visibility": "Public",
+      "entry": false,
+      "type_parameters": [
+        {
+          "name": "T",
+          "constraints": []
+        }
+      ],
+      "parameters": [
+        {
+          "name": "ct",
+          "type_": {
+            "Datatype": {
+              "module": {
+                "address": "contra",
+                "name": "contra"
+              },
+              "name": "ConfidentialToken",
+              "type_arguments": [
+                {
+                  "phantom": true,
+                  "argument": {
+                    "NamedTypeParameter": "T"
+                  }
+                }
+              ]
+            }
+          }
+        }
+      ],
+      "return_": []
+    },
+    "new_account": {
+      "source_index": 6,
+      "index": 6,
+      "doc": " Create a new account for the given address. Can only happen once per address.\n\n Note: the `owner` argument is not tied to `ctx.sender()` — anyone can create an\n `Account` on behalf of any address. Since `Account` has `key` only (no `store`),\n the only way to dispose of it outside this module is via `share_account`, and\n all authenticated operations still gate on `account.owner == ctx.sender()`.",
+      "attributes": [],
+      "visibility": "Public",
+      "entry": false,
+      "type_parameters": [],
+      "parameters": [
+        {
+          "name": "registry",
+          "type_": {
+            "Reference": [
+              true,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "contra",
+                    "name": "contra"
+                  },
+                  "name": "AccountRegistry",
+                  "type_arguments": []
+                }
+              }
+            ]
+          }
+        },
+        {
+          "name": "owner",
+          "type_": "address"
+        }
+      ],
+      "return_": [
+        {
+          "Datatype": {
+            "module": {
+              "address": "contra",
+              "name": "contra"
+            },
+            "name": "Account",
+            "type_arguments": []
+          }
+        }
+      ]
+    },
+    "share_account": {
+      "source_index": 7,
+      "index": 7,
+      "doc": " Share the account object.\n This has do be done after `new_account`, but it allows the user to create token\n accounts for confidential tokens immediately.",
+      "attributes": [],
+      "visibility": "Public",
+      "entry": false,
+      "type_parameters": [],
+      "parameters": [
+        {
+          "name": "account",
+          "type_": {
+            "Datatype": {
+              "module": {
+                "address": "contra",
+                "name": "contra"
+              },
+              "name": "Account",
+              "type_arguments": []
+            }
+          }
+        }
+      ],
+      "return_": []
+    },
+    "register": {
+      "source_index": 8,
+      "index": 8,
+      "doc": " Create a `TokenAccount` for token `T` with the given `pk`. Authorized by `auth`, which must\n be for the `PERMISSIONED_REGISTER` operation and for `account.owner`.\n If `ConfidentialToken<T>` has auditors enabled, a `KeyEncryption` must be provided.",
+      "attributes": [],
+      "visibility": "Public",
+      "entry": false,
+      "type_parameters": [
+        {
+          "name": "T",
+          "constraints": []
+        }
+      ],
+      "parameters": [
+        {
+          "name": "account",
+          "type_": {
+            "Reference": [
+              true,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "contra",
+                    "name": "contra"
+                  },
+                  "name": "Account",
+                  "type_arguments": []
+                }
+              }
+            ]
+          }
+        },
+        {
+          "name": "auth",
+          "type_": {
+            "Reference": [
+              false,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "contra",
+                    "name": "policy"
+                  },
+                  "name": "Auth",
+                  "type_arguments": [
+                    {
+                      "phantom": true,
+                      "argument": {
+                        "NamedTypeParameter": "T"
+                      }
+                    }
+                  ]
+                }
+              }
+            ]
+          }
+        },
+        {
+          "name": "ct",
+          "type_": {
+            "Reference": [
+              false,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "contra",
+                    "name": "contra"
+                  },
+                  "name": "ConfidentialToken",
+                  "type_arguments": [
+                    {
+                      "phantom": true,
+                      "argument": {
+                        "NamedTypeParameter": "T"
+                      }
+                    }
+                  ]
+                }
+              }
+            ]
+          }
+        },
+        {
+          "name": "pk",
+          "type_": {
+            "Datatype": {
+              "module": {
+                "address": "myso",
+                "name": "group_ops"
+              },
+              "name": "Element",
+              "type_arguments": [
+                {
+                  "phantom": true,
+                  "argument": {
+                    "Datatype": {
+                      "module": {
+                        "address": "myso",
+                        "name": "ristretto255"
+                      },
+                      "name": "G",
+                      "type_arguments": []
+                    }
+                  }
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "key_encryption",
+          "type_": {
+            "Datatype": {
+              "module": {
+                "address": "std",
+                "name": "option"
+              },
+              "name": "Option",
+              "type_arguments": [
+                {
+                  "phantom": false,
+                  "argument": {
+                    "Datatype": {
+                      "module": {
+                        "address": "contra",
+                        "name": "auditors"
+                      },
+                      "name": "KeyEncryption",
+                      "type_arguments": []
+                    }
+                  }
+                }
+              ]
+            }
+          }
+        }
+      ],
+      "return_": []
+    },
+    "register_internal": {
+      "source_index": 9,
+      "index": 9,
+      "doc": null,
+      "attributes": [],
+      "visibility": "Package",
+      "entry": false,
+      "type_parameters": [
+        {
+          "name": "T",
+          "constraints": []
+        }
+      ],
+      "parameters": [
+        {
+          "name": "account",
+          "type_": {
+            "Reference": [
+              true,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "contra",
+                    "name": "contra"
+                  },
+                  "name": "Account",
+                  "type_arguments": []
+                }
+              }
+            ]
+          }
+        },
+        {
+          "name": "auth",
+          "type_": {
+            "Reference": [
+              false,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "contra",
+                    "name": "policy"
+                  },
+                  "name": "Auth",
+                  "type_arguments": [
+                    {
+                      "phantom": true,
+                      "argument": {
+                        "NamedTypeParameter": "T"
+                      }
+                    }
+                  ]
+                }
+              }
+            ]
+          }
+        },
+        {
+          "name": "pk",
+          "type_": {
+            "Datatype": {
+              "module": {
+                "address": "myso",
+                "name": "group_ops"
+              },
+              "name": "Element",
+              "type_arguments": [
+                {
+                  "phantom": true,
+                  "argument": {
+                    "Datatype": {
+                      "module": {
+                        "address": "myso",
+                        "name": "ristretto255"
+                      },
+                      "name": "G",
+                      "type_arguments": []
+                    }
+                  }
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "verified_key_encryption",
+          "type_": {
+            "Datatype": {
+              "module": {
+                "address": "contra",
+                "name": "auditors"
+              },
+              "name": "VerifiedKeyEncryption",
+              "type_arguments": []
+            }
+          }
+        },
+        {
+          "name": "session_id",
+          "type_": {
+            "vector": "u8"
+          }
+        }
+      ],
+      "return_": []
+    },
+    "set_accepts_encrypted_deposits": {
+      "source_index": 10,
+      "index": 10,
+      "doc": " Set whether this account for token `T` accepts new encrypted deposits.\n This is used to prevent receiving new encrypted deposits during token account key rotation.\n Authorized by `auth`, which must be for `account.owner`. Any `Auth<T>` is accepted regardless\n of which operation it covers.",
+      "attributes": [],
+      "visibility": "Public",
+      "entry": false,
+      "type_parameters": [
+        {
+          "name": "T",
+          "constraints": []
+        }
+      ],
+      "parameters": [
+        {
+          "name": "account",
+          "type_": {
+            "Reference": [
+              true,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "contra",
+                    "name": "contra"
+                  },
+                  "name": "Account",
+                  "type_arguments": []
+                }
+              }
+            ]
+          }
+        },
+        {
+          "name": "auth",
+          "type_": {
+            "Reference": [
+              false,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "contra",
+                    "name": "policy"
+                  },
+                  "name": "Auth",
+                  "type_arguments": [
+                    {
+                      "phantom": true,
+                      "argument": {
+                        "NamedTypeParameter": "T"
+                      }
+                    }
+                  ]
+                }
+              }
+            ]
+          }
+        },
+        {
+          "name": "accepts_encrypted_deposits",
+          "type_": "bool"
+        }
+      ],
+      "return_": []
+    },
+    "set_public_key": {
+      "source_index": 11,
+      "index": 11,
+      "doc": " Update the public key for the account of token `T`. Authorized by `auth`, which must be for\n the `PERMISSIONED_REGISTER` operation and for `account.owner` -- key rotation reuses the registration\n authorization since the same flow gates account onboarding.\n This aborts if there are pending deposits that need to be merged, so the caller should:\n - Call `merge` to merge pending deposits and `set_accepts_encrypted_deposits` to false to\n   prevent new encrypted deposits.\n - Call `set_public_key` to update the public key and `set_accepts_encrypted_deposits` to true\n   to allow new encrypted deposits again.",
+      "attributes": [],
+      "visibility": "Public",
+      "entry": false,
+      "type_parameters": [
+        {
+          "name": "T",
+          "constraints": []
+        }
+      ],
+      "parameters": [
+        {
+          "name": "account",
+          "type_": {
+            "Reference": [
+              true,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "contra",
+                    "name": "contra"
+                  },
+                  "name": "Account",
+                  "type_arguments": []
+                }
+              }
+            ]
+          }
+        },
+        {
+          "name": "auth",
+          "type_": {
+            "Reference": [
+              false,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "contra",
+                    "name": "policy"
+                  },
+                  "name": "Auth",
+                  "type_arguments": [
+                    {
+                      "phantom": true,
+                      "argument": {
+                        "NamedTypeParameter": "T"
+                      }
+                    }
+                  ]
+                }
+              }
+            ]
+          }
+        },
+        {
+          "name": "ct",
+          "type_": {
+            "Reference": [
+              false,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "contra",
+                    "name": "contra"
+                  },
+                  "name": "ConfidentialToken",
+                  "type_arguments": [
+                    {
+                      "phantom": true,
+                      "argument": {
+                        "NamedTypeParameter": "T"
+                      }
+                    }
+                  ]
+                }
+              }
+            ]
+          }
+        },
+        {
+          "name": "new_pk",
+          "type_": {
+            "Datatype": {
+              "module": {
+                "address": "myso",
+                "name": "group_ops"
+              },
+              "name": "Element",
+              "type_arguments": [
+                {
+                  "phantom": true,
+                  "argument": {
+                    "Datatype": {
+                      "module": {
+                        "address": "myso",
+                        "name": "ristretto255"
+                      },
+                      "name": "G",
+                      "type_arguments": []
+                    }
+                  }
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "new_balance",
+          "type_": {
+            "Datatype": {
+              "module": {
+                "address": "contra",
+                "name": "encrypted_amount"
+              },
+              "name": "EncryptedAmount",
+              "type_arguments": []
+            }
+          }
+        },
+        {
+          "name": "new_balance_proof",
+          "type_": {
+            "Datatype": {
+              "module": {
+                "address": "contra",
+                "name": "encrypted_amount"
+              },
+              "name": "WellFormedProof",
+              "type_arguments": []
+            }
+          }
+        },
+        {
+          "name": "handle_eq_proof",
+          "type_": {
+            "Datatype": {
+              "module": {
+                "address": "contra",
+                "name": "nizk"
+              },
+              "name": "DdhProof",
+              "type_arguments": []
+            }
+          }
+        },
+        {
+          "name": "key_encryption",
+          "type_": {
+            "Datatype": {
+              "module": {
+                "address": "std",
+                "name": "option"
+              },
+              "name": "Option",
+              "type_arguments": [
+                {
+                  "phantom": false,
+                  "argument": {
+                    "Datatype": {
+                      "module": {
+                        "address": "contra",
+                        "name": "auditors"
+                      },
+                      "name": "KeyEncryption",
+                      "type_arguments": []
+                    }
+                  }
+                }
+              ]
+            }
+          }
+        }
+      ],
+      "return_": []
+    },
+    "try_set_public_key_and_unpause": {
+      "source_index": 12,
+      "index": 12,
+      "doc": " Optimistic key rotation: re-state the balance under a fresh blinding, re-key it to `new_pk`, and\n unpause. If the restate's `balance_proof` fails (e.g. a deposit raced the caller's read), emits\n `TrySetPublicKeyFailedEvent` and leaves the account paused for a retry. The caller must `merge`\n (and pause) first.",
+      "attributes": [],
+      "visibility": "Public",
+      "entry": false,
+      "type_parameters": [
+        {
+          "name": "T",
+          "constraints": []
+        }
+      ],
+      "parameters": [
+        {
+          "name": "account",
+          "type_": {
+            "Reference": [
+              true,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "contra",
+                    "name": "contra"
+                  },
+                  "name": "Account",
+                  "type_arguments": []
+                }
+              }
+            ]
+          }
+        },
+        {
+          "name": "auth",
+          "type_": {
+            "Reference": [
+              false,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "contra",
+                    "name": "policy"
+                  },
+                  "name": "Auth",
+                  "type_arguments": [
+                    {
+                      "phantom": true,
+                      "argument": {
+                        "NamedTypeParameter": "T"
+                      }
+                    }
+                  ]
+                }
+              }
+            ]
+          }
+        },
+        {
+          "name": "ct",
+          "type_": {
+            "Reference": [
+              false,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "contra",
+                    "name": "contra"
+                  },
+                  "name": "ConfidentialToken",
+                  "type_arguments": [
+                    {
+                      "phantom": true,
+                      "argument": {
+                        "NamedTypeParameter": "T"
+                      }
+                    }
+                  ]
+                }
+              }
+            ]
+          }
+        },
+        {
+          "name": "new_pk",
+          "type_": {
+            "Datatype": {
+              "module": {
+                "address": "myso",
+                "name": "group_ops"
+              },
+              "name": "Element",
+              "type_arguments": [
+                {
+                  "phantom": true,
+                  "argument": {
+                    "Datatype": {
+                      "module": {
+                        "address": "myso",
+                        "name": "ristretto255"
+                      },
+                      "name": "G",
+                      "type_arguments": []
+                    }
+                  }
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "restated_balance",
+          "type_": {
+            "Datatype": {
+              "module": {
+                "address": "contra",
+                "name": "encrypted_amount"
+              },
+              "name": "EncryptedAmount",
+              "type_arguments": []
+            }
+          }
+        },
+        {
+          "name": "restated_balance_proof",
+          "type_": {
+            "Datatype": {
+              "module": {
+                "address": "contra",
+                "name": "encrypted_amount"
+              },
+              "name": "WellFormedProof",
+              "type_arguments": []
+            }
+          }
+        },
+        {
+          "name": "balance_proof",
+          "type_": {
+            "Datatype": {
+              "module": {
+                "address": "contra",
+                "name": "nizk"
+              },
+              "name": "DdhProof",
+              "type_arguments": []
+            }
+          }
+        },
+        {
+          "name": "new_balance",
+          "type_": {
+            "Datatype": {
+              "module": {
+                "address": "contra",
+                "name": "encrypted_amount"
+              },
+              "name": "EncryptedAmount",
+              "type_arguments": []
+            }
+          }
+        },
+        {
+          "name": "new_balance_proof",
+          "type_": {
+            "Datatype": {
+              "module": {
+                "address": "contra",
+                "name": "encrypted_amount"
+              },
+              "name": "WellFormedProof",
+              "type_arguments": []
+            }
+          }
+        },
+        {
+          "name": "handle_eq_proof",
+          "type_": {
+            "Datatype": {
+              "module": {
+                "address": "contra",
+                "name": "nizk"
+              },
+              "name": "DdhProof",
+              "type_arguments": []
+            }
+          }
+        },
+        {
+          "name": "key_encryption",
+          "type_": {
+            "Datatype": {
+              "module": {
+                "address": "std",
+                "name": "option"
+              },
+              "name": "Option",
+              "type_arguments": [
+                {
+                  "phantom": false,
+                  "argument": {
+                    "Datatype": {
+                      "module": {
+                        "address": "contra",
+                        "name": "auditors"
+                      },
+                      "name": "KeyEncryption",
+                      "type_arguments": []
+                    }
+                  }
+                }
+              ]
+            }
+          }
+        }
+      ],
+      "return_": []
+    },
+    "set_public_key_internal": {
+      "source_index": 13,
+      "index": 13,
+      "doc": " Re-key the active balance to `new_pk`, aborting if any proof or precondition fails.",
+      "attributes": [],
+      "visibility": "Package",
+      "entry": false,
+      "type_parameters": [
+        {
+          "name": "T",
+          "constraints": []
+        }
+      ],
+      "parameters": [
+        {
+          "name": "account",
+          "type_": {
+            "Reference": [
+              true,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "contra",
+                    "name": "contra"
+                  },
+                  "name": "Account",
+                  "type_arguments": []
+                }
+              }
+            ]
+          }
+        },
+        {
+          "name": "auth",
+          "type_": {
+            "Reference": [
+              false,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "contra",
+                    "name": "policy"
+                  },
+                  "name": "Auth",
+                  "type_arguments": [
+                    {
+                      "phantom": true,
+                      "argument": {
+                        "NamedTypeParameter": "T"
+                      }
+                    }
+                  ]
+                }
+              }
+            ]
+          }
+        },
+        {
+          "name": "new_pk",
+          "type_": {
+            "Datatype": {
+              "module": {
+                "address": "myso",
+                "name": "group_ops"
+              },
+              "name": "Element",
+              "type_arguments": [
+                {
+                  "phantom": true,
+                  "argument": {
+                    "Datatype": {
+                      "module": {
+                        "address": "myso",
+                        "name": "ristretto255"
+                      },
+                      "name": "G",
+                      "type_arguments": []
+                    }
+                  }
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "new_balance",
+          "type_": {
+            "Datatype": {
+              "module": {
+                "address": "contra",
+                "name": "encrypted_amount"
+              },
+              "name": "EncryptedAmount",
+              "type_arguments": []
+            }
+          }
+        },
+        {
+          "name": "new_balance_proof",
+          "type_": {
+            "Datatype": {
+              "module": {
+                "address": "contra",
+                "name": "encrypted_amount"
+              },
+              "name": "WellFormedProof",
+              "type_arguments": []
+            }
+          }
+        },
+        {
+          "name": "handle_eq_proof",
+          "type_": {
+            "Datatype": {
+              "module": {
+                "address": "contra",
+                "name": "nizk"
+              },
+              "name": "DdhProof",
+              "type_arguments": []
+            }
+          }
+        },
+        {
+          "name": "new_verified_key_encryption",
+          "type_": {
+            "Datatype": {
+              "module": {
+                "address": "contra",
+                "name": "auditors"
+              },
+              "name": "VerifiedKeyEncryption",
+              "type_arguments": []
+            }
+          }
+        },
+        {
+          "name": "dst",
+          "type_": {
+            "vector": "u8"
+          }
+        }
+      ],
+      "return_": []
+    },
+    "wrap": {
+      "source_index": 14,
+      "index": 14,
+      "doc": " Convert public coin to private tokens and add them to the public pending balance of `receiver`.\n Authorized by `auth`, which must be for the `PERMISSIONED_WRAP` operation; `auth` may be for any owner.",
+      "attributes": [],
+      "visibility": "Public",
+      "entry": false,
+      "type_parameters": [
+        {
+          "name": "T",
+          "constraints": []
+        }
+      ],
+      "parameters": [
+        {
+          "name": "receiver",
+          "type_": {
+            "Reference": [
+              true,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "contra",
+                    "name": "contra"
+                  },
+                  "name": "Account",
+                  "type_arguments": []
+                }
+              }
+            ]
+          }
+        },
+        {
+          "name": "auth",
+          "type_": {
+            "Reference": [
+              false,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "contra",
+                    "name": "policy"
+                  },
+                  "name": "Auth",
+                  "type_arguments": [
+                    {
+                      "phantom": true,
+                      "argument": {
+                        "NamedTypeParameter": "T"
+                      }
+                    }
+                  ]
+                }
+              }
+            ]
+          }
+        },
+        {
+          "name": "ct",
+          "type_": {
+            "Reference": [
+              false,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "contra",
+                    "name": "contra"
+                  },
+                  "name": "ConfidentialToken",
+                  "type_arguments": [
+                    {
+                      "phantom": true,
+                      "argument": {
+                        "NamedTypeParameter": "T"
+                      }
+                    }
+                  ]
+                }
+              }
+            ]
+          }
+        },
+        {
+          "name": "deny_list",
+          "type_": {
+            "Reference": [
+              false,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "myso",
+                    "name": "deny_list"
+                  },
+                  "name": "DenyList",
+                  "type_arguments": []
+                }
+              }
+            ]
+          }
+        },
+        {
+          "name": "pool",
+          "type_": {
+            "Reference": [
+              false,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "contra",
+                    "name": "contra"
+                  },
+                  "name": "Pool",
+                  "type_arguments": [
+                    {
+                      "phantom": true,
+                      "argument": {
+                        "NamedTypeParameter": "T"
+                      }
+                    }
+                  ]
+                }
+              }
+            ]
+          }
+        },
+        {
+          "name": "coin",
+          "type_": {
+            "Datatype": {
+              "module": {
+                "address": "myso",
+                "name": "coin"
+              },
+              "name": "Coin",
+              "type_arguments": [
+                {
+                  "phantom": true,
+                  "argument": {
+                    "NamedTypeParameter": "T"
+                  }
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "memo",
+          "type_": {
+            "vector": "u8"
+          }
+        }
+      ],
+      "return_": []
+    },
+    "batched_transfer": {
+      "source_index": 15,
+      "index": 15,
+      "doc": " Start a batched transfer from `sender`. `receiver_amounts[i]` is the transferred value\n re-encrypted under `receiver_pks[i]`; `sender_amounts[i]` is the same value under the\n sender's key, forwarded to the events and otherwise only checked as a sum.\n `well_formed_proofs` is a single batched `WellFormedProof` covering\n `receiver_amounts ++ [new_balance]` under `receiver_pks ++ [sender_pk]` — one aggregate\n Bulletproof for the whole transfer. `consistency_proof` and `balance_proof` together prove\n the sender's balance drops by exactly the transfer total (see `balance::try_split_batch`).\n\n Returns `TransferBatch::Ok` when `balance_proof` verifies, else `BalanceProofFailed`. Aborts\n if `well_formed_proofs` does not verify, the sender amounts don't sum to the receivers, or\n `consistency_proof` fails. Call `add` once per receiver, in `receiver_amounts` order, then\n `finalize`. Authorized by any `Auth<T>` for `sender.owner`.",
+      "attributes": [],
+      "visibility": "Public",
+      "entry": false,
+      "type_parameters": [
+        {
+          "name": "T",
+          "constraints": []
+        }
+      ],
+      "parameters": [
+        {
+          "name": "sender",
+          "type_": {
+            "Reference": [
+              true,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "contra",
+                    "name": "contra"
+                  },
+                  "name": "Account",
+                  "type_arguments": []
+                }
+              }
+            ]
+          }
+        },
+        {
+          "name": "auth",
+          "type_": {
+            "Reference": [
+              false,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "contra",
+                    "name": "policy"
+                  },
+                  "name": "Auth",
+                  "type_arguments": [
+                    {
+                      "phantom": true,
+                      "argument": {
+                        "NamedTypeParameter": "T"
+                      }
+                    }
+                  ]
+                }
+              }
+            ]
+          }
+        },
+        {
+          "name": "ct",
+          "type_": {
+            "Reference": [
+              false,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "contra",
+                    "name": "contra"
+                  },
+                  "name": "ConfidentialToken",
+                  "type_arguments": [
+                    {
+                      "phantom": true,
+                      "argument": {
+                        "NamedTypeParameter": "T"
+                      }
+                    }
+                  ]
+                }
+              }
+            ]
+          }
+        },
+        {
+          "name": "deny_list",
+          "type_": {
+            "Reference": [
+              false,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "myso",
+                    "name": "deny_list"
+                  },
+                  "name": "DenyList",
+                  "type_arguments": []
+                }
+              }
+            ]
+          }
+        },
+        {
+          "name": "receiver_pks",
+          "type_": {
+            "vector": {
+              "Datatype": {
+                "module": {
+                  "address": "myso",
+                  "name": "group_ops"
+                },
+                "name": "Element",
+                "type_arguments": [
+                  {
+                    "phantom": true,
+                    "argument": {
+                      "Datatype": {
+                        "module": {
+                          "address": "myso",
+                          "name": "ristretto255"
+                        },
+                        "name": "G",
+                        "type_arguments": []
+                      }
+                    }
+                  }
+                ]
+              }
+            }
+          }
+        },
+        {
+          "name": "receiver_amounts",
+          "type_": {
+            "vector": {
+              "Datatype": {
+                "module": {
+                  "address": "contra",
+                  "name": "encrypted_amount"
+                },
+                "name": "EncryptedAmount",
+                "type_arguments": []
+              }
+            }
+          }
+        },
+        {
+          "name": "well_formed_proofs",
+          "type_": {
+            "Datatype": {
+              "module": {
+                "address": "contra",
+                "name": "encrypted_amount"
+              },
+              "name": "WellFormedProof",
+              "type_arguments": []
+            }
+          }
+        },
+        {
+          "name": "sender_amounts",
+          "type_": {
+            "vector": {
+              "Datatype": {
+                "module": {
+                  "address": "contra",
+                  "name": "encrypted_amount"
+                },
+                "name": "EncryptedAmount",
+                "type_arguments": []
+              }
+            }
+          }
+        },
+        {
+          "name": "consistency_proof",
+          "type_": {
+            "Datatype": {
+              "module": {
+                "address": "contra",
+                "name": "nizk"
+              },
+              "name": "ElGamalProof",
+              "type_arguments": []
+            }
+          }
+        },
+        {
+          "name": "new_balance",
+          "type_": {
+            "Datatype": {
+              "module": {
+                "address": "contra",
+                "name": "encrypted_amount"
+              },
+              "name": "EncryptedAmount",
+              "type_arguments": []
+            }
+          }
+        },
+        {
+          "name": "balance_proof",
+          "type_": {
+            "Datatype": {
+              "module": {
+                "address": "contra",
+                "name": "nizk"
+              },
+              "name": "DdhProof",
+              "type_arguments": []
+            }
+          }
+        }
+      ],
+      "return_": [
+        {
+          "Datatype": {
+            "module": {
+              "address": "contra",
+              "name": "contra"
+            },
+            "name": "TransferBatch",
+            "type_arguments": [
+              {
+                "phantom": true,
+                "argument": {
+                  "NamedTypeParameter": "T"
+                }
+              }
+            ]
+          }
+        }
+      ]
+    },
+    "add_to_batch": {
+      "source_index": 16,
+      "index": 16,
+      "doc": " Add a receiver to a batched transfer: pop the next receiver-keyed `EncryptedCoin` and credit it\n to the receiver's pending deposits. Aborts if:\n  * the receiver is not registered, frozen, or on the deny list,\n  * `add_to_batch` is called more times than there were `receiver_amounts` in `batched_transfer`,\n  * the coin is not encrypted under the receiver's registered public key.",
+      "attributes": [],
+      "visibility": "Public",
+      "entry": false,
+      "type_parameters": [
+        {
+          "name": "T",
+          "constraints": []
+        }
+      ],
+      "parameters": [
+        {
+          "name": "batch",
+          "type_": {
+            "Datatype": {
+              "module": {
+                "address": "contra",
+                "name": "contra"
+              },
+              "name": "TransferBatch",
+              "type_arguments": [
+                {
+                  "phantom": true,
+                  "argument": {
+                    "NamedTypeParameter": "T"
+                  }
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "receiver",
+          "type_": {
+            "Reference": [
+              true,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "contra",
+                    "name": "contra"
+                  },
+                  "name": "Account",
+                  "type_arguments": []
+                }
+              }
+            ]
+          }
+        },
+        {
+          "name": "memo",
+          "type_": {
+            "vector": "u8"
+          }
+        },
+        {
+          "name": "deny_list",
+          "type_": {
+            "Reference": [
+              false,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "myso",
+                    "name": "deny_list"
+                  },
+                  "name": "DenyList",
+                  "type_arguments": []
+                }
+              }
+            ]
+          }
+        }
+      ],
+      "return_": [
+        {
+          "Datatype": {
+            "module": {
+              "address": "contra",
+              "name": "contra"
+            },
+            "name": "TransferBatch",
+            "type_arguments": [
+              {
+                "phantom": true,
+                "argument": {
+                  "NamedTypeParameter": "T"
+                }
+              }
+            ]
+          }
+        }
+      ]
+    },
+    "try_finalize": {
+      "source_index": 17,
+      "index": 17,
+      "doc": " Consume the `TransferBatch` to complete the transfer batch and return `true` if the transfer\n succeeded and `false` if the balance proof failed.",
+      "attributes": [],
+      "visibility": "Public",
+      "entry": false,
+      "type_parameters": [
+        {
+          "name": "T",
+          "constraints": []
+        }
+      ],
+      "parameters": [
+        {
+          "name": "batch",
+          "type_": {
+            "Datatype": {
+              "module": {
+                "address": "contra",
+                "name": "contra"
+              },
+              "name": "TransferBatch",
+              "type_arguments": [
+                {
+                  "phantom": true,
+                  "argument": {
+                    "NamedTypeParameter": "T"
+                  }
+                }
+              ]
+            }
+          }
+        }
+      ],
+      "return_": [
+        "bool"
+      ]
+    },
+    "finalize": {
+      "source_index": 18,
+      "index": 18,
+      "doc": " Consume the `TransferBatch` to complete the transfer batch. Aborts if any check, including the\n balance proof, failed.",
+      "attributes": [],
+      "visibility": "Public",
+      "entry": false,
+      "type_parameters": [
+        {
+          "name": "T",
+          "constraints": []
+        }
+      ],
+      "parameters": [
+        {
+          "name": "batch",
+          "type_": {
+            "Datatype": {
+              "module": {
+                "address": "contra",
+                "name": "contra"
+              },
+              "name": "TransferBatch",
+              "type_arguments": [
+                {
+                  "phantom": true,
+                  "argument": {
+                    "NamedTypeParameter": "T"
+                  }
+                }
+              ]
+            }
+          }
+        }
+      ],
+      "return_": []
+    },
+    "merge": {
+      "source_index": 19,
+      "index": 19,
+      "doc": " Merge all pending deposits into the active balance.\n This must be done before pending encrypted and public deposits can be used in a transfer.\n To prevent overflows, the number of additions done with the active balance is limited,\n including the number of additions done with the pending deposits.\n Authorized by `auth`, which must be for `account.owner`. Any `Auth<T>` is accepted regardless\n of which operation it covers.",
+      "attributes": [],
+      "visibility": "Public",
+      "entry": false,
+      "type_parameters": [
+        {
+          "name": "T",
+          "constraints": []
+        }
+      ],
+      "parameters": [
+        {
+          "name": "account",
+          "type_": {
+            "Reference": [
+              true,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "contra",
+                    "name": "contra"
+                  },
+                  "name": "Account",
+                  "type_arguments": []
+                }
+              }
+            ]
+          }
+        },
+        {
+          "name": "auth",
+          "type_": {
+            "Reference": [
+              false,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "contra",
+                    "name": "policy"
+                  },
+                  "name": "Auth",
+                  "type_arguments": [
+                    {
+                      "phantom": true,
+                      "argument": {
+                        "NamedTypeParameter": "T"
+                      }
+                    }
+                  ]
+                }
+              }
+            ]
+          }
+        }
+      ],
+      "return_": []
+    },
+    "update_active_balance": {
+      "source_index": 20,
+      "index": 20,
+      "doc": " This may be used to update the balance after merging many pending deposits before\n merging new deposits.\n Authorized by `auth`, which must be for `account.owner`. Any `Auth<T>` is accepted regardless\n of which operation it covers.",
+      "attributes": [],
+      "visibility": "Public",
+      "entry": false,
+      "type_parameters": [
+        {
+          "name": "T",
+          "constraints": []
+        }
+      ],
+      "parameters": [
+        {
+          "name": "account",
+          "type_": {
+            "Reference": [
+              true,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "contra",
+                    "name": "contra"
+                  },
+                  "name": "Account",
+                  "type_arguments": []
+                }
+              }
+            ]
+          }
+        },
+        {
+          "name": "auth",
+          "type_": {
+            "Reference": [
+              false,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "contra",
+                    "name": "policy"
+                  },
+                  "name": "Auth",
+                  "type_arguments": [
+                    {
+                      "phantom": true,
+                      "argument": {
+                        "NamedTypeParameter": "T"
+                      }
+                    }
+                  ]
+                }
+              }
+            ]
+          }
+        },
+        {
+          "name": "new_balance",
+          "type_": {
+            "Datatype": {
+              "module": {
+                "address": "contra",
+                "name": "encrypted_amount"
+              },
+              "name": "EncryptedAmount",
+              "type_arguments": []
+            }
+          }
+        },
+        {
+          "name": "new_balance_proof",
+          "type_": {
+            "Datatype": {
+              "module": {
+                "address": "contra",
+                "name": "encrypted_amount"
+              },
+              "name": "WellFormedProof",
+              "type_arguments": []
+            }
+          }
+        },
+        {
+          "name": "balance_proof",
+          "type_": {
+            "Reference": [
+              false,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "contra",
+                    "name": "nizk"
+                  },
+                  "name": "DdhProof",
+                  "type_arguments": []
+                }
+              }
+            ]
+          }
+        }
+      ],
+      "return_": []
+    },
+    "try_update_active": {
+      "source_index": 21,
+      "index": 21,
+      "doc": " Re-state `self.active` as the well-formed `new_balance` (same key), proven equal in value by\n `balance_proof`. Returns whether the proof verified; adds no authorization or event. Shared by\n `update_active_balance` and the restate step of `try_set_public_key_and_unpause`.",
+      "attributes": [],
+      "visibility": "Private",
+      "entry": false,
+      "type_parameters": [
+        {
+          "name": "T",
+          "constraints": []
+        }
+      ],
+      "parameters": [
+        {
+          "name": "self",
+          "type_": {
+            "Reference": [
+              true,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "contra",
+                    "name": "contra"
+                  },
+                  "name": "TokenAccount",
+                  "type_arguments": [
+                    {
+                      "phantom": true,
+                      "argument": {
+                        "NamedTypeParameter": "T"
+                      }
+                    }
+                  ]
+                }
+              }
+            ]
+          }
+        },
+        {
+          "name": "new_balance",
+          "type_": {
+            "Datatype": {
+              "module": {
+                "address": "contra",
+                "name": "encrypted_amount"
+              },
+              "name": "EncryptedAmount",
+              "type_arguments": []
+            }
+          }
+        },
+        {
+          "name": "new_balance_proof",
+          "type_": {
+            "Datatype": {
+              "module": {
+                "address": "contra",
+                "name": "encrypted_amount"
+              },
+              "name": "WellFormedProof",
+              "type_arguments": []
+            }
+          }
+        },
+        {
+          "name": "balance_proof",
+          "type_": {
+            "Reference": [
+              false,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "contra",
+                    "name": "nizk"
+                  },
+                  "name": "DdhProof",
+                  "type_arguments": []
+                }
+              }
+            ]
+          }
+        },
+        {
+          "name": "sid",
+          "type_": {
+            "vector": "u8"
+          }
+        }
+      ],
+      "return_": [
+        "bool"
+      ]
+    },
+    "unwrap": {
+      "source_index": 22,
+      "index": 22,
+      "doc": " Take an amount of `Coin<T>` from the encrypted balance of `account`. Authorized by `auth`,\n which must be for the `PERMISSIONED_UNWRAP` operation and for `account.owner`.\n The caller needs to provide a proof that the new balance is correct after taking the amount:\n - `new_balance` is the new encrypted balance of the account after taking the amount,\n - `amount` is the amount of coins taken from the balance,\n - `balance_proof` is a proof that `account.balance = new_balance + amount`.",
+      "attributes": [],
+      "visibility": "Public",
+      "entry": false,
+      "type_parameters": [
+        {
+          "name": "T",
+          "constraints": []
+        }
+      ],
+      "parameters": [
+        {
+          "name": "account",
+          "type_": {
+            "Reference": [
+              true,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "contra",
+                    "name": "contra"
+                  },
+                  "name": "Account",
+                  "type_arguments": []
+                }
+              }
+            ]
+          }
+        },
+        {
+          "name": "auth",
+          "type_": {
+            "Reference": [
+              false,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "contra",
+                    "name": "policy"
+                  },
+                  "name": "Auth",
+                  "type_arguments": [
+                    {
+                      "phantom": true,
+                      "argument": {
+                        "NamedTypeParameter": "T"
+                      }
+                    }
+                  ]
+                }
+              }
+            ]
+          }
+        },
+        {
+          "name": "ct",
+          "type_": {
+            "Reference": [
+              false,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "contra",
+                    "name": "contra"
+                  },
+                  "name": "ConfidentialToken",
+                  "type_arguments": [
+                    {
+                      "phantom": true,
+                      "argument": {
+                        "NamedTypeParameter": "T"
+                      }
+                    }
+                  ]
+                }
+              }
+            ]
+          }
+        },
+        {
+          "name": "deny_list",
+          "type_": {
+            "Reference": [
+              false,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "myso",
+                    "name": "deny_list"
+                  },
+                  "name": "DenyList",
+                  "type_arguments": []
+                }
+              }
+            ]
+          }
+        },
+        {
+          "name": "pool",
+          "type_": {
+            "Reference": [
+              true,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "contra",
+                    "name": "contra"
+                  },
+                  "name": "Pool",
+                  "type_arguments": [
+                    {
+                      "phantom": true,
+                      "argument": {
+                        "NamedTypeParameter": "T"
+                      }
+                    }
+                  ]
+                }
+              }
+            ]
+          }
+        },
+        {
+          "name": "new_balance",
+          "type_": {
+            "Datatype": {
+              "module": {
+                "address": "contra",
+                "name": "encrypted_amount"
+              },
+              "name": "EncryptedAmount",
+              "type_arguments": []
+            }
+          }
+        },
+        {
+          "name": "new_balance_proof",
+          "type_": {
+            "Datatype": {
+              "module": {
+                "address": "contra",
+                "name": "encrypted_amount"
+              },
+              "name": "WellFormedProof",
+              "type_arguments": []
+            }
+          }
+        },
+        {
+          "name": "amount",
+          "type_": "u64"
+        },
+        {
+          "name": "balance_proof",
+          "type_": {
+            "Reference": [
+              false,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "contra",
+                    "name": "nizk"
+                  },
+                  "name": "DdhProof",
+                  "type_arguments": []
+                }
+              }
+            ]
+          }
+        },
+        {
+          "name": "ctx",
+          "type_": {
+            "Reference": [
+              true,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "myso",
+                    "name": "tx_context"
+                  },
+                  "name": "TxContext",
+                  "type_arguments": []
+                }
+              }
+            ]
+          }
+        }
+      ],
+      "return_": [
+        {
+          "Datatype": {
+            "module": {
+              "address": "myso",
+              "name": "coin"
+            },
+            "name": "Coin",
+            "type_arguments": [
+              {
+                "phantom": true,
+                "argument": {
+                  "NamedTypeParameter": "T"
+                }
+              }
+            ]
+          }
+        }
+      ]
+    },
+    "try_unwrap": {
+      "source_index": 23,
+      "index": 23,
+      "doc": " Same as `unwrap` but does not abort if the balance proof fails. Instead, it emits a\n `TryUnwrapFailedEvent` and returns a zero-value coin.",
+      "attributes": [],
+      "visibility": "Public",
+      "entry": false,
+      "type_parameters": [
+        {
+          "name": "T",
+          "constraints": []
+        }
+      ],
+      "parameters": [
+        {
+          "name": "account",
+          "type_": {
+            "Reference": [
+              true,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "contra",
+                    "name": "contra"
+                  },
+                  "name": "Account",
+                  "type_arguments": []
+                }
+              }
+            ]
+          }
+        },
+        {
+          "name": "auth",
+          "type_": {
+            "Reference": [
+              false,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "contra",
+                    "name": "policy"
+                  },
+                  "name": "Auth",
+                  "type_arguments": [
+                    {
+                      "phantom": true,
+                      "argument": {
+                        "NamedTypeParameter": "T"
+                      }
+                    }
+                  ]
+                }
+              }
+            ]
+          }
+        },
+        {
+          "name": "ct",
+          "type_": {
+            "Reference": [
+              false,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "contra",
+                    "name": "contra"
+                  },
+                  "name": "ConfidentialToken",
+                  "type_arguments": [
+                    {
+                      "phantom": true,
+                      "argument": {
+                        "NamedTypeParameter": "T"
+                      }
+                    }
+                  ]
+                }
+              }
+            ]
+          }
+        },
+        {
+          "name": "deny_list",
+          "type_": {
+            "Reference": [
+              false,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "myso",
+                    "name": "deny_list"
+                  },
+                  "name": "DenyList",
+                  "type_arguments": []
+                }
+              }
+            ]
+          }
+        },
+        {
+          "name": "pool",
+          "type_": {
+            "Reference": [
+              true,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "contra",
+                    "name": "contra"
+                  },
+                  "name": "Pool",
+                  "type_arguments": [
+                    {
+                      "phantom": true,
+                      "argument": {
+                        "NamedTypeParameter": "T"
+                      }
+                    }
+                  ]
+                }
+              }
+            ]
+          }
+        },
+        {
+          "name": "new_balance",
+          "type_": {
+            "Datatype": {
+              "module": {
+                "address": "contra",
+                "name": "encrypted_amount"
+              },
+              "name": "EncryptedAmount",
+              "type_arguments": []
+            }
+          }
+        },
+        {
+          "name": "new_balance_proof",
+          "type_": {
+            "Datatype": {
+              "module": {
+                "address": "contra",
+                "name": "encrypted_amount"
+              },
+              "name": "WellFormedProof",
+              "type_arguments": []
+            }
+          }
+        },
+        {
+          "name": "amount",
+          "type_": "u64"
+        },
+        {
+          "name": "balance_proof",
+          "type_": {
+            "Reference": [
+              false,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "contra",
+                    "name": "nizk"
+                  },
+                  "name": "DdhProof",
+                  "type_arguments": []
+                }
+              }
+            ]
+          }
+        },
+        {
+          "name": "ctx",
+          "type_": {
+            "Reference": [
+              true,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "myso",
+                    "name": "tx_context"
+                  },
+                  "name": "TxContext",
+                  "type_arguments": []
+                }
+              }
+            ]
+          }
+        }
+      ],
+      "return_": [
+        {
+          "Datatype": {
+            "module": {
+              "address": "myso",
+              "name": "coin"
+            },
+            "name": "Coin",
+            "type_arguments": [
+              {
+                "phantom": true,
+                "argument": {
+                  "NamedTypeParameter": "T"
+                }
+              }
+            ]
+          }
+        }
+      ]
+    },
+    "try_unwrap_internal": {
+      "source_index": 24,
+      "index": 24,
+      "doc": " Common unwrap logic shared by `unwrap` and `try_unwrap`.\n Returns `(true, coin)` if the balance proof succeeds, or `(false, zero_coin)` if it fails.",
+      "attributes": [],
+      "visibility": "Private",
+      "entry": false,
+      "type_parameters": [
+        {
+          "name": "T",
+          "constraints": []
+        }
+      ],
+      "parameters": [
+        {
+          "name": "account",
+          "type_": {
+            "Reference": [
+              true,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "contra",
+                    "name": "contra"
+                  },
+                  "name": "Account",
+                  "type_arguments": []
+                }
+              }
+            ]
+          }
+        },
+        {
+          "name": "auth",
+          "type_": {
+            "Reference": [
+              false,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "contra",
+                    "name": "policy"
+                  },
+                  "name": "Auth",
+                  "type_arguments": [
+                    {
+                      "phantom": true,
+                      "argument": {
+                        "NamedTypeParameter": "T"
+                      }
+                    }
+                  ]
+                }
+              }
+            ]
+          }
+        },
+        {
+          "name": "ct",
+          "type_": {
+            "Reference": [
+              false,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "contra",
+                    "name": "contra"
+                  },
+                  "name": "ConfidentialToken",
+                  "type_arguments": [
+                    {
+                      "phantom": true,
+                      "argument": {
+                        "NamedTypeParameter": "T"
+                      }
+                    }
+                  ]
+                }
+              }
+            ]
+          }
+        },
+        {
+          "name": "deny_list",
+          "type_": {
+            "Reference": [
+              false,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "myso",
+                    "name": "deny_list"
+                  },
+                  "name": "DenyList",
+                  "type_arguments": []
+                }
+              }
+            ]
+          }
+        },
+        {
+          "name": "pool",
+          "type_": {
+            "Reference": [
+              true,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "contra",
+                    "name": "contra"
+                  },
+                  "name": "Pool",
+                  "type_arguments": [
+                    {
+                      "phantom": true,
+                      "argument": {
+                        "NamedTypeParameter": "T"
+                      }
+                    }
+                  ]
+                }
+              }
+            ]
+          }
+        },
+        {
+          "name": "new_balance",
+          "type_": {
+            "Datatype": {
+              "module": {
+                "address": "contra",
+                "name": "encrypted_amount"
+              },
+              "name": "EncryptedAmount",
+              "type_arguments": []
+            }
+          }
+        },
+        {
+          "name": "new_balance_proof",
+          "type_": {
+            "Datatype": {
+              "module": {
+                "address": "contra",
+                "name": "encrypted_amount"
+              },
+              "name": "WellFormedProof",
+              "type_arguments": []
+            }
+          }
+        },
+        {
+          "name": "amount",
+          "type_": "u64"
+        },
+        {
+          "name": "balance_proof",
+          "type_": {
+            "Reference": [
+              false,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "contra",
+                    "name": "nizk"
+                  },
+                  "name": "DdhProof",
+                  "type_arguments": []
+                }
+              }
+            ]
+          }
+        },
+        {
+          "name": "ctx",
+          "type_": {
+            "Reference": [
+              true,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "myso",
+                    "name": "tx_context"
+                  },
+                  "name": "TxContext",
+                  "type_arguments": []
+                }
+              }
+            ]
+          }
+        }
+      ],
+      "return_": [
+        "bool",
+        {
+          "Datatype": {
+            "module": {
+              "address": "myso",
+              "name": "coin"
+            },
+            "name": "Coin",
+            "type_arguments": [
+              {
+                "phantom": true,
+                "argument": {
+                  "NamedTypeParameter": "T"
+                }
+              }
+            ]
+          }
+        }
+      ]
+    },
+    "owner": {
+      "source_index": 25,
+      "index": 25,
+      "doc": null,
+      "attributes": [],
+      "visibility": "Public",
+      "entry": false,
+      "type_parameters": [],
+      "parameters": [
+        {
+          "name": "account",
+          "type_": {
+            "Reference": [
+              false,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "contra",
+                    "name": "contra"
+                  },
+                  "name": "Account",
+                  "type_arguments": []
+                }
+              }
+            ]
+          }
+        }
+      ],
+      "return_": [
+        "address"
+      ]
+    },
+    "set_balance_by_issuer": {
+      "source_index": 26,
+      "index": 26,
+      "doc": " A function for the issuer to set the balance of an account directly.\n This is used in cases where the issuer needs to intervene.\n\n WARNING: This may break the consistency of the balance such that the number of confidential\n tokens in circulation does not match the amount of coins in the pool. It is the responsibility\n of the caller to ensure consistency is maintained when using this function.\n The `upper_bound` is set to 1, so the caller is responsible for ensuring that the\n `EncryptedAmount` is well-formed.",
+      "attributes": [],
+      "visibility": "Public",
+      "entry": false,
+      "type_parameters": [
+        {
+          "name": "T",
+          "constraints": []
+        }
+      ],
+      "parameters": [
+        {
+          "name": "t",
+          "type_": {
+            "Reference": [
+              true,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "myso",
+                    "name": "coin"
+                  },
+                  "name": "TreasuryCap",
+                  "type_arguments": [
+                    {
+                      "phantom": true,
+                      "argument": {
+                        "NamedTypeParameter": "T"
+                      }
+                    }
+                  ]
+                }
+              }
+            ]
+          }
+        },
+        {
+          "name": "account",
+          "type_": {
+            "Reference": [
+              true,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "contra",
+                    "name": "contra"
+                  },
+                  "name": "Account",
+                  "type_arguments": []
+                }
+              }
+            ]
+          }
+        },
+        {
+          "name": "new_balance",
+          "type_": {
+            "Datatype": {
+              "module": {
+                "address": "contra",
+                "name": "encrypted_amount"
+              },
+              "name": "EncryptedAmount",
+              "type_arguments": []
+            }
+          }
+        }
+      ],
+      "return_": []
+    },
+    "issue_freeze_cap": {
+      "source_index": 27,
+      "index": 27,
+      "doc": " Allow the given address to freeze the token globally or freeze individual accounts\n (via the ManagementCap). Only the issuer can unfreeze (globally or per-account).\n Aborts if the address already has the freeze capability.",
+      "attributes": [],
+      "visibility": "Public",
+      "entry": false,
+      "type_parameters": [
+        {
+          "name": "T",
+          "constraints": []
+        }
+      ],
+      "parameters": [
+        {
+          "name": "ct",
+          "type_": {
+            "Reference": [
+              true,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "contra",
+                    "name": "contra"
+                  },
+                  "name": "ConfidentialToken",
+                  "type_arguments": [
+                    {
+                      "phantom": true,
+                      "argument": {
+                        "NamedTypeParameter": "T"
+                      }
+                    }
+                  ]
+                }
+              }
+            ]
+          }
+        },
+        {
+          "name": "_t",
+          "type_": {
+            "Reference": [
+              false,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "contra",
+                    "name": "contra"
+                  },
+                  "name": "ManagementCap",
+                  "type_arguments": [
+                    {
+                      "phantom": true,
+                      "argument": {
+                        "NamedTypeParameter": "T"
+                      }
+                    }
+                  ]
+                }
+              }
+            ]
+          }
+        },
+        {
+          "name": "addr",
+          "type_": "address"
+        }
+      ],
+      "return_": []
+    },
+    "revoke_freeze_cap": {
+      "source_index": 28,
+      "index": 28,
+      "doc": " Revoke the freeze capability from the given address.\n Aborts if the address does not have the freeze capability.",
+      "attributes": [],
+      "visibility": "Public",
+      "entry": false,
+      "type_parameters": [
+        {
+          "name": "T",
+          "constraints": []
+        }
+      ],
+      "parameters": [
+        {
+          "name": "ct",
+          "type_": {
+            "Reference": [
+              true,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "contra",
+                    "name": "contra"
+                  },
+                  "name": "ConfidentialToken",
+                  "type_arguments": [
+                    {
+                      "phantom": true,
+                      "argument": {
+                        "NamedTypeParameter": "T"
+                      }
+                    }
+                  ]
+                }
+              }
+            ]
+          }
+        },
+        {
+          "name": "_t",
+          "type_": {
+            "Reference": [
+              false,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "contra",
+                    "name": "contra"
+                  },
+                  "name": "ManagementCap",
+                  "type_arguments": [
+                    {
+                      "phantom": true,
+                      "argument": {
+                        "NamedTypeParameter": "T"
+                      }
+                    }
+                  ]
+                }
+              }
+            ]
+          }
+        },
+        {
+          "name": "addr",
+          "type_": "address"
+        }
+      ],
+      "return_": []
+    },
+    "global_freeze": {
+      "source_index": 29,
+      "index": 29,
+      "doc": " Freeze the token globally. This prevents any transfers from happening until the token is\n unfrozen again.",
+      "attributes": [],
+      "visibility": "Public",
+      "entry": false,
+      "type_parameters": [
+        {
+          "name": "T",
+          "constraints": []
+        }
+      ],
+      "parameters": [
+        {
+          "name": "ct",
+          "type_": {
+            "Reference": [
+              true,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "contra",
+                    "name": "contra"
+                  },
+                  "name": "ConfidentialToken",
+                  "type_arguments": [
+                    {
+                      "phantom": true,
+                      "argument": {
+                        "NamedTypeParameter": "T"
+                      }
+                    }
+                  ]
+                }
+              }
+            ]
+          }
+        },
+        {
+          "name": "ctx",
+          "type_": {
+            "Reference": [
+              true,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "myso",
+                    "name": "tx_context"
+                  },
+                  "name": "TxContext",
+                  "type_arguments": []
+                }
+              }
+            ]
+          }
+        }
+      ],
+      "return_": []
+    },
+    "global_unfreeze": {
+      "source_index": 30,
+      "index": 30,
+      "doc": " Unfreeze the token globally. This allows transfers to happen again and can only be done by the\n token issuer.",
+      "attributes": [],
+      "visibility": "Public",
+      "entry": false,
+      "type_parameters": [
+        {
+          "name": "T",
+          "constraints": []
+        }
+      ],
+      "parameters": [
+        {
+          "name": "ct",
+          "type_": {
+            "Reference": [
+              true,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "contra",
+                    "name": "contra"
+                  },
+                  "name": "ConfidentialToken",
+                  "type_arguments": [
+                    {
+                      "phantom": true,
+                      "argument": {
+                        "NamedTypeParameter": "T"
+                      }
+                    }
+                  ]
+                }
+              }
+            ]
+          }
+        },
+        {
+          "name": "_cap",
+          "type_": {
+            "Reference": [
+              false,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "myso",
+                    "name": "coin"
+                  },
+                  "name": "TreasuryCap",
+                  "type_arguments": [
+                    {
+                      "phantom": true,
+                      "argument": {
+                        "NamedTypeParameter": "T"
+                      }
+                    }
+                  ]
+                }
+              }
+            ]
+          }
+        }
+      ],
+      "return_": []
+    },
+    "account_freeze": {
+      "source_index": 31,
+      "index": 31,
+      "doc": " Freeze the given account for token `T`. A frozen account cannot transfer, receive, wrap,\n or unwrap until unfrozen. Only addresses in `ct.freeze_admins` may call this.",
+      "attributes": [],
+      "visibility": "Public",
+      "entry": false,
+      "type_parameters": [
+        {
+          "name": "T",
+          "constraints": []
+        }
+      ],
+      "parameters": [
+        {
+          "name": "ct",
+          "type_": {
+            "Reference": [
+              false,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "contra",
+                    "name": "contra"
+                  },
+                  "name": "ConfidentialToken",
+                  "type_arguments": [
+                    {
+                      "phantom": true,
+                      "argument": {
+                        "NamedTypeParameter": "T"
+                      }
+                    }
+                  ]
+                }
+              }
+            ]
+          }
+        },
+        {
+          "name": "account",
+          "type_": {
+            "Reference": [
+              true,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "contra",
+                    "name": "contra"
+                  },
+                  "name": "Account",
+                  "type_arguments": []
+                }
+              }
+            ]
+          }
+        },
+        {
+          "name": "ctx",
+          "type_": {
+            "Reference": [
+              false,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "myso",
+                    "name": "tx_context"
+                  },
+                  "name": "TxContext",
+                  "type_arguments": []
+                }
+              }
+            ]
+          }
+        }
+      ],
+      "return_": []
+    },
+    "account_unfreeze": {
+      "source_index": 32,
+      "index": 32,
+      "doc": " Unfreeze the given account for token `T`. Only the token issuer (holder of `&TreasuryCap<T>`)\n may call this. The asymmetry — admins freeze, only the issuer unfreezes — mirrors\n `global_freeze` / `global_unfreeze`.",
+      "attributes": [],
+      "visibility": "Public",
+      "entry": false,
+      "type_parameters": [
+        {
+          "name": "T",
+          "constraints": []
+        }
+      ],
+      "parameters": [
+        {
+          "name": "_cap",
+          "type_": {
+            "Reference": [
+              false,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "myso",
+                    "name": "coin"
+                  },
+                  "name": "TreasuryCap",
+                  "type_arguments": [
+                    {
+                      "phantom": true,
+                      "argument": {
+                        "NamedTypeParameter": "T"
+                      }
+                    }
+                  ]
+                }
+              }
+            ]
+          }
+        },
+        {
+          "name": "account",
+          "type_": {
+            "Reference": [
+              true,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "contra",
+                    "name": "contra"
+                  },
+                  "name": "Account",
+                  "type_arguments": []
+                }
+              }
+            ]
+          }
+        }
+      ],
+      "return_": []
+    },
+    "set_policy": {
+      "source_index": 33,
+      "index": 33,
+      "doc": " Set a policy for the confidential token.\n This allows implementing permissioned operations, but only the witness type is stored here - the\n logic must be handled in the corresponding flows.\n See `register_permissioned` for an example of how this can be implemented.\n Changing the witness type will break all in-flight permissioned calls using the old witness,\n and thus highly discouraged.",
+      "attributes": [],
+      "visibility": "Public",
+      "entry": false,
+      "type_parameters": [
+        {
+          "name": "T",
+          "constraints": []
+        },
+        {
+          "name": "W",
+          "constraints": []
+        }
+      ],
+      "parameters": [
+        {
+          "name": "ct",
+          "type_": {
+            "Reference": [
+              true,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "contra",
+                    "name": "contra"
+                  },
+                  "name": "ConfidentialToken",
+                  "type_arguments": [
+                    {
+                      "phantom": true,
+                      "argument": {
+                        "NamedTypeParameter": "T"
+                      }
+                    }
+                  ]
+                }
+              }
+            ]
+          }
+        },
+        {
+          "name": "_t",
+          "type_": {
+            "Reference": [
+              true,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "myso",
+                    "name": "coin"
+                  },
+                  "name": "TreasuryCap",
+                  "type_arguments": [
+                    {
+                      "phantom": true,
+                      "argument": {
+                        "NamedTypeParameter": "T"
+                      }
+                    }
+                  ]
+                }
+              }
+            ]
+          }
+        },
+        {
+          "name": "permissioned_operations",
+          "type_": {
+            "vector": "u8"
+          }
+        }
+      ],
+      "return_": []
+    },
+    "update_auditors": {
+      "source_index": 34,
+      "index": 34,
+      "doc": " Update the auditors for this confidential token by setting their new public keys in the\n corresponding `auditors` struct. If `bump_recommended_min` is true, the auditors'\n `recommended_min_version` is raised to the new version, signalling that all users should\n call `set_public_key` with a valid viewing key encrypted towards the new auditor keys.\n The floor is advisory; the chain does not enforce it on transfer.\n The auditor flow can be disabled by inputting an empty `public_keys` vector.",
+      "attributes": [],
+      "visibility": "Public",
+      "entry": false,
+      "type_parameters": [
+        {
+          "name": "T",
+          "constraints": []
+        }
+      ],
+      "parameters": [
+        {
+          "name": "ct",
+          "type_": {
+            "Reference": [
+              true,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "contra",
+                    "name": "contra"
+                  },
+                  "name": "ConfidentialToken",
+                  "type_arguments": [
+                    {
+                      "phantom": true,
+                      "argument": {
+                        "NamedTypeParameter": "T"
+                      }
+                    }
+                  ]
+                }
+              }
+            ]
+          }
+        },
+        {
+          "name": "_cap",
+          "type_": {
+            "Reference": [
+              false,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "contra",
+                    "name": "contra"
+                  },
+                  "name": "ManagementCap",
+                  "type_arguments": [
+                    {
+                      "phantom": true,
+                      "argument": {
+                        "NamedTypeParameter": "T"
+                      }
+                    }
+                  ]
+                }
+              }
+            ]
+          }
+        },
+        {
+          "name": "public_keys",
+          "type_": {
+            "vector": {
+              "Datatype": {
+                "module": {
+                  "address": "myso",
+                  "name": "group_ops"
+                },
+                "name": "Element",
+                "type_arguments": [
+                  {
+                    "phantom": true,
+                    "argument": {
+                      "Datatype": {
+                        "module": {
+                          "address": "myso",
+                          "name": "ristretto255"
+                        },
+                        "name": "G",
+                        "type_arguments": []
+                      }
+                    }
+                  }
+                ]
+              }
+            }
+          }
+        },
+        {
+          "name": "bump_recommended_min",
+          "type_": "bool"
+        }
+      ],
+      "return_": []
+    },
+    "has_token": {
+      "source_index": 35,
+      "index": 35,
+      "doc": " Return whether the given account has registered for the given token type.",
+      "attributes": [],
+      "visibility": "Private",
+      "entry": false,
+      "type_parameters": [
+        {
+          "name": "T",
+          "constraints": []
+        }
+      ],
+      "parameters": [
+        {
+          "name": "account",
+          "type_": {
+            "Reference": [
+              false,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "contra",
+                    "name": "contra"
+                  },
+                  "name": "Account",
+                  "type_arguments": []
+                }
+              }
+            ]
+          }
+        }
+      ],
+      "return_": [
+        "bool"
+      ]
+    },
+    "has_deposit_slot": {
+      "source_index": 36,
+      "index": 36,
+      "doc": " Slots available for new pending deposits. Always reserves one slot for a possible future\n `merge_public` bump, so the cap compared against is `max_upper_bound() - 1` rather than\n `max_upper_bound()`.",
+      "attributes": [],
+      "visibility": "Private",
+      "entry": false,
+      "type_parameters": [
+        {
+          "name": "T",
+          "constraints": []
+        }
+      ],
+      "parameters": [
+        {
+          "name": "self",
+          "type_": {
+            "Reference": [
+              false,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "contra",
+                    "name": "contra"
+                  },
+                  "name": "TokenAccount",
+                  "type_arguments": [
+                    {
+                      "phantom": true,
+                      "argument": {
+                        "NamedTypeParameter": "T"
+                      }
+                    }
+                  ]
+                }
+              }
+            ]
+          }
+        }
+      ],
+      "return_": [
+        "bool"
+      ]
+    },
+    "session_id": {
+      "source_index": 37,
+      "index": 37,
+      "doc": " 20-byte session_id for `account`'s `TokenAccount<T>`.",
+      "attributes": [],
+      "visibility": "Package",
+      "entry": false,
+      "type_parameters": [
+        {
+          "name": "T",
+          "constraints": []
+        }
+      ],
+      "parameters": [
+        {
+          "name": "account",
+          "type_": {
+            "Reference": [
+              false,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "contra",
+                    "name": "contra"
+                  },
+                  "name": "Account",
+                  "type_arguments": []
+                }
+              }
+            ]
+          }
+        }
+      ],
+      "return_": [
+        {
+          "vector": "u8"
+        }
+      ]
+    },
+    "dst": {
+      "source_index": 38,
+      "index": 38,
+      "doc": " 21-byte Fiat-Shamir DST `session_id || protocol_id`.",
+      "attributes": [],
+      "visibility": "Package",
+      "entry": false,
+      "type_parameters": [],
+      "parameters": [
+        {
+          "name": "session_id",
+          "type_": {
+            "vector": "u8"
+          }
+        },
+        {
+          "name": "protocol_id",
+          "type_": "u8"
+        }
+      ],
+      "return_": [
+        {
+          "vector": "u8"
+        }
+      ]
+    },
+    "borrow": {
+      "source_index": 39,
+      "index": 39,
+      "doc": null,
+      "attributes": [
+        {
+          "Parameterized": [
+            "syntax",
+            [
+              {
+                "Name": "index"
+              }
+            ]
+          ]
+        }
+      ],
+      "visibility": "Private",
+      "entry": false,
+      "type_parameters": [
+        {
+          "name": "T",
+          "constraints": []
+        }
+      ],
+      "parameters": [
+        {
+          "name": "acc",
+          "type_": {
+            "Reference": [
+              false,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "contra",
+                    "name": "contra"
+                  },
+                  "name": "Account",
+                  "type_arguments": []
+                }
+              }
+            ]
+          }
+        },
+        {
+          "name": "key",
+          "type_": {
+            "Datatype": {
+              "module": {
+                "address": "contra",
+                "name": "contra"
+              },
+              "name": "TokenAccountKey",
+              "type_arguments": [
+                {
+                  "phantom": true,
+                  "argument": {
+                    "NamedTypeParameter": "T"
+                  }
+                }
+              ]
+            }
+          }
+        }
+      ],
+      "return_": [
+        {
+          "Reference": [
+            false,
+            {
+              "Datatype": {
+                "module": {
+                  "address": "contra",
+                  "name": "contra"
+                },
+                "name": "TokenAccount",
+                "type_arguments": [
+                  {
+                    "phantom": true,
+                    "argument": {
+                      "NamedTypeParameter": "T"
+                    }
+                  }
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    "borrow_mut": {
+      "source_index": 40,
+      "index": 40,
+      "doc": null,
+      "attributes": [
+        {
+          "Parameterized": [
+            "syntax",
+            [
+              {
+                "Name": "index"
+              }
+            ]
+          ]
+        }
+      ],
+      "visibility": "Private",
+      "entry": false,
+      "type_parameters": [
+        {
+          "name": "T",
+          "constraints": []
+        }
+      ],
+      "parameters": [
+        {
+          "name": "acc",
+          "type_": {
+            "Reference": [
+              true,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "contra",
+                    "name": "contra"
+                  },
+                  "name": "Account",
+                  "type_arguments": []
+                }
+              }
+            ]
+          }
+        },
+        {
+          "name": "key",
+          "type_": {
+            "Datatype": {
+              "module": {
+                "address": "contra",
+                "name": "contra"
+              },
+              "name": "TokenAccountKey",
+              "type_arguments": [
+                {
+                  "phantom": true,
+                  "argument": {
+                    "NamedTypeParameter": "T"
+                  }
+                }
+              ]
+            }
+          }
+        }
+      ],
+      "return_": [
+        {
+          "Reference": [
+            true,
+            {
+              "Datatype": {
+                "module": {
+                  "address": "contra",
+                  "name": "contra"
+                },
+                "name": "TokenAccount",
+                "type_arguments": [
+                  {
+                    "phantom": true,
+                    "argument": {
+                      "NamedTypeParameter": "T"
+                    }
+                  }
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    }
+  },
+  "structs": {
+    "TokenRegistry": {
+      "index": 0,
+      "doc": " Registry of tokens for confidential transactions. Each `ConfidentialToken`'s\n UID is derived from this registry.",
+      "attributes": [],
+      "abilities": [
+        "Key"
+      ],
+      "type_parameters": [],
+      "fields": {
+        "positional_fields": false,
+        "fields": {
+          "id": {
+            "index": 0,
+            "doc": null,
+            "type_": {
+              "Datatype": {
+                "module": {
+                  "address": "myso",
+                  "name": "object"
+                },
+                "name": "UID",
+                "type_arguments": []
+              }
+            }
+          }
+        }
+      }
+    },
+    "AccountRegistry": {
+      "index": 1,
+      "doc": " Registry of accounts for confidential transactions. Each `Account`'s UID is\n derived from this registry.",
+      "attributes": [],
+      "abilities": [
+        "Key"
+      ],
+      "type_parameters": [],
+      "fields": {
+        "positional_fields": false,
+        "fields": {
+          "id": {
+            "index": 0,
+            "doc": null,
+            "type_": {
+              "Datatype": {
+                "module": {
+                  "address": "myso",
+                  "name": "object"
+                },
+                "name": "UID",
+                "type_arguments": []
+              }
+            }
+          }
+        }
+      }
+    },
+    "ConfidentialToken": {
+      "index": 2,
+      "doc": " The representation of a confidential token. Each `ConfidentialToken` corresponds to a public\n token type `T`.",
+      "attributes": [],
+      "abilities": [
+        "Key"
+      ],
+      "type_parameters": [
+        {
+          "phantom": true,
+          "name": "T",
+          "constraints": []
+        }
+      ],
+      "fields": {
+        "positional_fields": false,
+        "fields": {
+          "id": {
+            "index": 0,
+            "doc": null,
+            "type_": {
+              "Datatype": {
+                "module": {
+                  "address": "myso",
+                  "name": "object"
+                },
+                "name": "UID",
+                "type_arguments": []
+              }
+            }
+          },
+          "is_active": {
+            "index": 1,
+            "doc": null,
+            "type_": "bool"
+          },
+          "freeze_admins": {
+            "index": 2,
+            "doc": null,
+            "type_": {
+              "Datatype": {
+                "module": {
+                  "address": "myso",
+                  "name": "vec_set"
+                },
+                "name": "VecSet",
+                "type_arguments": [
+                  {
+                    "phantom": false,
+                    "argument": "address"
+                  }
+                ]
+              }
+            }
+          },
+          "policy": {
+            "index": 3,
+            "doc": null,
+            "type_": {
+              "Datatype": {
+                "module": {
+                  "address": "std",
+                  "name": "option"
+                },
+                "name": "Option",
+                "type_arguments": [
+                  {
+                    "phantom": false,
+                    "argument": {
+                      "Datatype": {
+                        "module": {
+                          "address": "contra",
+                          "name": "policy"
+                        },
+                        "name": "Policy",
+                        "type_arguments": []
+                      }
+                    }
+                  }
+                ]
+              }
+            }
+          },
+          "auditors": {
+            "index": 4,
+            "doc": null,
+            "type_": {
+              "Datatype": {
+                "module": {
+                  "address": "contra",
+                  "name": "auditors"
+                },
+                "name": "Auditors",
+                "type_arguments": []
+              }
+            }
+          }
+        }
+      }
+    },
+    "Pool": {
+      "index": 3,
+      "doc": " The representation of the pool of tokens of type `T` in circulation as confidential tokens.\n Stored as a derived object of `ConfidentialToken<T>` to reduce contention on non-unwrap\n operations.\n Tokens are held at this object's address via MySo address balance to reduce contention on wrap\n operations.",
+      "attributes": [],
+      "abilities": [
+        "Key"
+      ],
+      "type_parameters": [
+        {
+          "phantom": true,
+          "name": "T",
+          "constraints": []
+        }
+      ],
+      "fields": {
+        "positional_fields": false,
+        "fields": {
+          "id": {
+            "index": 0,
+            "doc": null,
+            "type_": {
+              "Datatype": {
+                "module": {
+                  "address": "myso",
+                  "name": "object"
+                },
+                "name": "UID",
+                "type_arguments": []
+              }
+            }
+          }
+        }
+      }
+    },
+    "Account": {
+      "index": 4,
+      "doc": " Base account that stores token accounts as dynamic fields.",
+      "attributes": [],
+      "abilities": [
+        "Key"
+      ],
+      "type_parameters": [],
+      "fields": {
+        "positional_fields": false,
+        "fields": {
+          "id": {
+            "index": 0,
+            "doc": null,
+            "type_": {
+              "Datatype": {
+                "module": {
+                  "address": "myso",
+                  "name": "object"
+                },
+                "name": "UID",
+                "type_arguments": []
+              }
+            }
+          },
+          "owner": {
+            "index": 1,
+            "doc": null,
+            "type_": "address"
+          }
+        }
+      }
+    },
+    "TokenAccount": {
+      "index": 5,
+      "doc": " A user's account for one confidential token.",
+      "attributes": [],
+      "abilities": [
+        "Store"
+      ],
+      "type_parameters": [
+        {
+          "phantom": true,
+          "name": "T",
+          "constraints": []
+        }
+      ],
+      "fields": {
+        "positional_fields": false,
+        "fields": {
+          "pk": {
+            "index": 0,
+            "doc": null,
+            "type_": {
+              "Datatype": {
+                "module": {
+                  "address": "myso",
+                  "name": "group_ops"
+                },
+                "name": "Element",
+                "type_arguments": [
+                  {
+                    "phantom": true,
+                    "argument": {
+                      "Datatype": {
+                        "module": {
+                          "address": "myso",
+                          "name": "ristretto255"
+                        },
+                        "name": "G",
+                        "type_arguments": []
+                      }
+                    }
+                  }
+                ]
+              }
+            }
+          },
+          "verified_key_encryption": {
+            "index": 1,
+            "doc": null,
+            "type_": {
+              "Datatype": {
+                "module": {
+                  "address": "contra",
+                  "name": "auditors"
+                },
+                "name": "VerifiedKeyEncryption",
+                "type_arguments": []
+              }
+            }
+          },
+          "session_id": {
+            "index": 2,
+            "doc": null,
+            "type_": {
+              "vector": "u8"
+            }
+          },
+          "is_frozen": {
+            "index": 3,
+            "doc": null,
+            "type_": "bool"
+          },
+          "accepts_deposits": {
+            "index": 4,
+            "doc": null,
+            "type_": "bool"
+          },
+          "active": {
+            "index": 5,
+            "doc": null,
+            "type_": {
+              "Datatype": {
+                "module": {
+                  "address": "contra",
+                  "name": "balance"
+                },
+                "name": "EncryptedBalance",
+                "type_arguments": [
+                  {
+                    "phantom": true,
+                    "argument": {
+                      "NamedTypeParameter": "T"
+                    }
+                  }
+                ]
+              }
+            }
+          },
+          "pending": {
+            "index": 6,
+            "doc": null,
+            "type_": {
+              "Datatype": {
+                "module": {
+                  "address": "contra",
+                  "name": "balance"
+                },
+                "name": "EncryptedBalance",
+                "type_arguments": [
+                  {
+                    "phantom": true,
+                    "argument": {
+                      "NamedTypeParameter": "T"
+                    }
+                  }
+                ]
+              }
+            }
+          },
+          "public_balance": {
+            "index": 7,
+            "doc": null,
+            "type_": {
+              "Datatype": {
+                "module": {
+                  "address": "contra",
+                  "name": "balance"
+                },
+                "name": "PublicCoin",
+                "type_arguments": [
+                  {
+                    "phantom": true,
+                    "argument": {
+                      "NamedTypeParameter": "T"
+                    }
+                  }
+                ]
+              }
+            }
+          }
+        }
+      }
+    },
+    "TokenKey": {
+      "index": 6,
+      "doc": " Key used for `ConfidentialToken` UID derivation.",
+      "attributes": [],
+      "abilities": [
+        "Copy",
+        "Drop",
+        "Store"
+      ],
+      "type_parameters": [
+        {
+          "phantom": true,
+          "name": "T",
+          "constraints": []
+        }
+      ],
+      "fields": {
+        "positional_fields": true,
+        "fields": {
+          "dummy_field": {
+            "index": 0,
+            "type_": "bool"
+          }
+        }
+      }
+    },
+    "PoolKey": {
+      "index": 7,
+      "doc": " Key used for `Pool` UID derivation from `ConfidentialToken`.\n There is only one pool per token, so no parameter is needed.",
+      "attributes": [],
+      "abilities": [
+        "Copy",
+        "Drop",
+        "Store"
+      ],
+      "type_parameters": [],
+      "fields": {
+        "positional_fields": true,
+        "fields": {
+          "dummy_field": {
+            "index": 0,
+            "type_": "bool"
+          }
+        }
+      }
+    },
+    "TokenAccountKey": {
+      "index": 8,
+      "doc": " Dynamic field key used for storing `TokenAccount`s in `Account`.",
+      "attributes": [],
+      "abilities": [
+        "Copy",
+        "Drop",
+        "Store"
+      ],
+      "type_parameters": [
+        {
+          "phantom": true,
+          "name": "T",
+          "constraints": []
+        }
+      ],
+      "fields": {
+        "positional_fields": true,
+        "fields": {
+          "dummy_field": {
+            "index": 0,
+            "type_": "bool"
+          }
+        }
+      }
+    },
+    "AccountKey": {
+      "index": 9,
+      "doc": " Key used for `Account` UID derivation.",
+      "attributes": [],
+      "abilities": [
+        "Copy",
+        "Drop",
+        "Store"
+      ],
+      "type_parameters": [],
+      "fields": {
+        "positional_fields": true,
+        "fields": {
+          "pos0": {
+            "index": 0,
+            "doc": null,
+            "type_": "address"
+          }
+        }
+      }
+    },
+    "ManagementCap": {
+      "index": 10,
+      "doc": " Capability granting management of the freeze admins and auditor keys.",
+      "attributes": [],
+      "abilities": [
+        "Key",
+        "Store"
+      ],
+      "type_parameters": [
+        {
+          "phantom": true,
+          "name": "T",
+          "constraints": []
+        }
+      ],
+      "fields": {
+        "positional_fields": false,
+        "fields": {
+          "id": {
+            "index": 0,
+            "doc": null,
+            "type_": {
+              "Datatype": {
+                "module": {
+                  "address": "myso",
+                  "name": "object"
+                },
+                "name": "UID",
+                "type_arguments": []
+              }
+            }
+          }
+        }
+      }
+    }
+  },
+  "enums": {
+    "TransferBatch": {
+      "index": 0,
+      "doc": " State machine for batched transfers from a single sender to multiple receivers.\n Created by `batched_transfer`, consumed by calling `add` for each receiver then `finalize`.",
+      "attributes": [],
+      "abilities": [],
+      "type_parameters": [
+        {
+          "phantom": true,
+          "name": "T",
+          "constraints": []
+        }
+      ],
+      "variants": {
+        "BalanceProofFailed": {
+          "index": 0,
+          "doc": " The sender's balance proof failed. Subsequent `add` calls are no-ops; `try_finalize`\n returns `false` and `finalize` aborts.",
+          "fields": {
+            "positional_fields": false,
+            "fields": {}
+          }
+        },
+        "Ok": {
+          "index": 1,
+          "doc": " The balance proof succeeded. Holds the receiver-keyed `EncryptedCoin`s split off the\n sender's balance, one per transfer. `add_to_batch` pops one per receiver and credits it to\n their pending deposits. `sender_amounts` is the parallel vector of sender-keyed encryptions\n of the same *total* (individual values aren't constrained — see the `TransferEvent` doc),\n carried only so each `add_to_batch` can emit one in the `TransferEvent`. `sender_pk` is\n likewise carried only for the event.",
+          "fields": {
+            "positional_fields": false,
+            "fields": {
+              "sender": {
+                "index": 0,
+                "doc": null,
+                "type_": "address"
+              },
+              "sender_pk": {
+                "index": 1,
+                "doc": null,
+                "type_": {
+                  "Datatype": {
+                    "module": {
+                      "address": "myso",
+                      "name": "group_ops"
+                    },
+                    "name": "Element",
+                    "type_arguments": [
+                      {
+                        "phantom": true,
+                        "argument": {
+                          "Datatype": {
+                            "module": {
+                              "address": "myso",
+                              "name": "ristretto255"
+                            },
+                            "name": "G",
+                            "type_arguments": []
+                          }
+                        }
+                      }
+                    ]
+                  }
+                }
+              },
+              "coins": {
+                "index": 2,
+                "doc": null,
+                "type_": {
+                  "vector": {
+                    "Datatype": {
+                      "module": {
+                        "address": "contra",
+                        "name": "balance"
+                      },
+                      "name": "EncryptedCoin",
+                      "type_arguments": [
+                        {
+                          "phantom": true,
+                          "argument": {
+                            "NamedTypeParameter": "T"
+                          }
+                        }
+                      ]
+                    }
+                  }
+                }
+              },
+              "sender_amounts": {
+                "index": 3,
+                "doc": null,
+                "type_": {
+                  "vector": {
+                    "Datatype": {
+                      "module": {
+                        "address": "contra",
+                        "name": "encrypted_amount"
+                      },
+                      "name": "EncryptedAmount",
+                      "type_arguments": []
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+}

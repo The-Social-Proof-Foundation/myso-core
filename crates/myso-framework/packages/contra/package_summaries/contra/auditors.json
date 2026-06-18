@@ -1,0 +1,820 @@
+{
+  "id": {
+    "address": "contra",
+    "name": "auditors"
+  },
+  "doc": null,
+  "immediate_dependencies": [
+    {
+      "address": "contra",
+      "name": "nizk"
+    },
+    {
+      "address": "contra",
+      "name": "twisted_elgamal"
+    },
+    {
+      "address": "myso",
+      "name": "group_ops"
+    },
+    {
+      "address": "myso",
+      "name": "rangeproofs"
+    },
+    {
+      "address": "myso",
+      "name": "ristretto255"
+    },
+    {
+      "address": "std",
+      "name": "option"
+    },
+    {
+      "address": "std",
+      "name": "vector"
+    }
+  ],
+  "attributes": [],
+  "functions": {
+    "new": {
+      "source_index": 0,
+      "index": 0,
+      "doc": null,
+      "attributes": [],
+      "visibility": "Package",
+      "entry": false,
+      "type_parameters": [],
+      "parameters": [
+        {
+          "name": "pks",
+          "type_": {
+            "vector": {
+              "Datatype": {
+                "module": {
+                  "address": "myso",
+                  "name": "group_ops"
+                },
+                "name": "Element",
+                "type_arguments": [
+                  {
+                    "phantom": true,
+                    "argument": {
+                      "Datatype": {
+                        "module": {
+                          "address": "myso",
+                          "name": "ristretto255"
+                        },
+                        "name": "G",
+                        "type_arguments": []
+                      }
+                    }
+                  }
+                ]
+              }
+            }
+          }
+        }
+      ],
+      "return_": [
+        {
+          "Datatype": {
+            "module": {
+              "address": "contra",
+              "name": "auditors"
+            },
+            "name": "Auditors",
+            "type_arguments": []
+          }
+        }
+      ]
+    },
+    "update": {
+      "source_index": 1,
+      "index": 1,
+      "doc": " Rotate the auditor key set. The `version` is bumped on every call. When\n `bump_recommended_min` is true, `recommended_min_version` is raised to the new `version`,\n signalling that the issuer would like every user to refresh keys.",
+      "attributes": [],
+      "visibility": "Package",
+      "entry": false,
+      "type_parameters": [],
+      "parameters": [
+        {
+          "name": "auditors",
+          "type_": {
+            "Reference": [
+              true,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "contra",
+                    "name": "auditors"
+                  },
+                  "name": "Auditors",
+                  "type_arguments": []
+                }
+              }
+            ]
+          }
+        },
+        {
+          "name": "new_pks",
+          "type_": {
+            "vector": {
+              "Datatype": {
+                "module": {
+                  "address": "myso",
+                  "name": "group_ops"
+                },
+                "name": "Element",
+                "type_arguments": [
+                  {
+                    "phantom": true,
+                    "argument": {
+                      "Datatype": {
+                        "module": {
+                          "address": "myso",
+                          "name": "ristretto255"
+                        },
+                        "name": "G",
+                        "type_arguments": []
+                      }
+                    }
+                  }
+                ]
+              }
+            }
+          }
+        },
+        {
+          "name": "bump_recommended_min",
+          "type_": "bool"
+        }
+      ],
+      "return_": []
+    },
+    "assert_no_identity_pk": {
+      "source_index": 2,
+      "index": 2,
+      "doc": " Abort with `EIdentityAuditorPublicKey` if any entry of `pks` is the group identity.",
+      "attributes": [],
+      "visibility": "Private",
+      "entry": false,
+      "type_parameters": [],
+      "parameters": [
+        {
+          "name": "pks",
+          "type_": {
+            "Reference": [
+              false,
+              {
+                "vector": {
+                  "Datatype": {
+                    "module": {
+                      "address": "myso",
+                      "name": "group_ops"
+                    },
+                    "name": "Element",
+                    "type_arguments": [
+                      {
+                        "phantom": true,
+                        "argument": {
+                          "Datatype": {
+                            "module": {
+                              "address": "myso",
+                              "name": "ristretto255"
+                            },
+                            "name": "G",
+                            "type_arguments": []
+                          }
+                        }
+                      }
+                    ]
+                  }
+                }
+              }
+            ]
+          }
+        }
+      ],
+      "return_": []
+    },
+    "pks": {
+      "source_index": 3,
+      "index": 3,
+      "doc": null,
+      "attributes": [],
+      "visibility": "Package",
+      "entry": false,
+      "type_parameters": [],
+      "parameters": [
+        {
+          "name": "auditors",
+          "type_": {
+            "Reference": [
+              false,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "contra",
+                    "name": "auditors"
+                  },
+                  "name": "Auditors",
+                  "type_arguments": []
+                }
+              }
+            ]
+          }
+        }
+      ],
+      "return_": [
+        {
+          "Reference": [
+            false,
+            {
+              "vector": {
+                "Datatype": {
+                  "module": {
+                    "address": "myso",
+                    "name": "group_ops"
+                  },
+                  "name": "Element",
+                  "type_arguments": [
+                    {
+                      "phantom": true,
+                      "argument": {
+                        "Datatype": {
+                          "module": {
+                            "address": "myso",
+                            "name": "ristretto255"
+                          },
+                          "name": "G",
+                          "type_arguments": []
+                        }
+                      }
+                    }
+                  ]
+                }
+              }
+            }
+          ]
+        }
+      ]
+    },
+    "is_empty": {
+      "source_index": 4,
+      "index": 4,
+      "doc": null,
+      "attributes": [],
+      "visibility": "Package",
+      "entry": false,
+      "type_parameters": [],
+      "parameters": [
+        {
+          "name": "auditors",
+          "type_": {
+            "Reference": [
+              false,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "contra",
+                    "name": "auditors"
+                  },
+                  "name": "Auditors",
+                  "type_arguments": []
+                }
+              }
+            ]
+          }
+        }
+      ],
+      "return_": [
+        "bool"
+      ]
+    },
+    "version": {
+      "source_index": 5,
+      "index": 5,
+      "doc": null,
+      "attributes": [],
+      "visibility": "Package",
+      "entry": false,
+      "type_parameters": [],
+      "parameters": [
+        {
+          "name": "auditors",
+          "type_": {
+            "Reference": [
+              false,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "contra",
+                    "name": "auditors"
+                  },
+                  "name": "Auditors",
+                  "type_arguments": []
+                }
+              }
+            ]
+          }
+        }
+      ],
+      "return_": [
+        "u32"
+      ]
+    },
+    "recommended_min_version": {
+      "source_index": 6,
+      "index": 6,
+      "doc": null,
+      "attributes": [],
+      "visibility": "Package",
+      "entry": false,
+      "type_parameters": [],
+      "parameters": [
+        {
+          "name": "auditors",
+          "type_": {
+            "Reference": [
+              false,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "contra",
+                    "name": "auditors"
+                  },
+                  "name": "Auditors",
+                  "type_arguments": []
+                }
+              }
+            ]
+          }
+        }
+      ],
+      "return_": [
+        "u32"
+      ]
+    },
+    "ciphertext": {
+      "source_index": 7,
+      "index": 7,
+      "doc": null,
+      "attributes": [],
+      "visibility": "Package",
+      "entry": false,
+      "type_parameters": [],
+      "parameters": [
+        {
+          "name": "verified_key_encryption",
+          "type_": {
+            "Reference": [
+              false,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "contra",
+                    "name": "auditors"
+                  },
+                  "name": "VerifiedKeyEncryption",
+                  "type_arguments": []
+                }
+              }
+            ]
+          }
+        }
+      ],
+      "return_": [
+        {
+          "Reference": [
+            false,
+            {
+              "vector": {
+                "Datatype": {
+                  "module": {
+                    "address": "contra",
+                    "name": "twisted_elgamal"
+                  },
+                  "name": "MultiRecipientEncryption",
+                  "type_arguments": []
+                }
+              }
+            }
+          ]
+        }
+      ]
+    },
+    "key_version": {
+      "source_index": 8,
+      "index": 8,
+      "doc": null,
+      "attributes": [],
+      "visibility": "Package",
+      "entry": false,
+      "type_parameters": [],
+      "parameters": [
+        {
+          "name": "verified_key_encryption",
+          "type_": {
+            "Reference": [
+              false,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "contra",
+                    "name": "auditors"
+                  },
+                  "name": "VerifiedKeyEncryption",
+                  "type_arguments": []
+                }
+              }
+            ]
+          }
+        }
+      ],
+      "return_": [
+        "u32"
+      ]
+    },
+    "is_set": {
+      "source_index": 9,
+      "index": 9,
+      "doc": " True iff this `VerifiedKeyEncryption` was produced from a non-empty `Auditors` set.",
+      "attributes": [],
+      "visibility": "Package",
+      "entry": false,
+      "type_parameters": [],
+      "parameters": [
+        {
+          "name": "verified_key_encryption",
+          "type_": {
+            "Reference": [
+              false,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "contra",
+                    "name": "auditors"
+                  },
+                  "name": "VerifiedKeyEncryption",
+                  "type_arguments": []
+                }
+              }
+            ]
+          }
+        }
+      ],
+      "return_": [
+        "bool"
+      ]
+    },
+    "new_key_encryption": {
+      "source_index": 10,
+      "index": 10,
+      "doc": null,
+      "attributes": [],
+      "visibility": "Public",
+      "entry": false,
+      "type_parameters": [],
+      "parameters": [
+        {
+          "name": "ciphertext",
+          "type_": {
+            "vector": {
+              "Datatype": {
+                "module": {
+                  "address": "contra",
+                  "name": "twisted_elgamal"
+                },
+                "name": "MultiRecipientEncryption",
+                "type_arguments": []
+              }
+            }
+          }
+        },
+        {
+          "name": "proof",
+          "type_": {
+            "Datatype": {
+              "module": {
+                "address": "contra",
+                "name": "nizk"
+              },
+              "name": "KeyConsistencyProof",
+              "type_arguments": []
+            }
+          }
+        },
+        {
+          "name": "range_proof",
+          "type_": {
+            "vector": "u8"
+          }
+        }
+      ],
+      "return_": [
+        {
+          "Datatype": {
+            "module": {
+              "address": "contra",
+              "name": "auditors"
+            },
+            "name": "KeyEncryption",
+            "type_arguments": []
+          }
+        }
+      ]
+    },
+    "new_empty_verified_key_encryption": {
+      "source_index": 11,
+      "index": 11,
+      "doc": " Placeholder `VerifiedKeyEncryption` for accounts registered while the token has no\n auditors configured. The `ciphertext` is empty.",
+      "attributes": [],
+      "visibility": "Private",
+      "entry": false,
+      "type_parameters": [],
+      "parameters": [
+        {
+          "name": "auditors",
+          "type_": {
+            "Reference": [
+              false,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "contra",
+                    "name": "auditors"
+                  },
+                  "name": "Auditors",
+                  "type_arguments": []
+                }
+              }
+            ]
+          }
+        }
+      ],
+      "return_": [
+        {
+          "Datatype": {
+            "module": {
+              "address": "contra",
+              "name": "auditors"
+            },
+            "name": "VerifiedKeyEncryption",
+            "type_arguments": []
+          }
+        }
+      ]
+    },
+    "verify_key_encryption": {
+      "source_index": 12,
+      "index": 12,
+      "doc": " Resolve an `Option<KeyEncryption>` against the configured `auditors` and produce a\n `VerifiedKeyEncryption`. When auditors are set, a `KeyEncryption` must be provided; the\n sigma proof and the aggregate Bulletproof over the limb commitments are both checked\n before returning. When auditors are not set, no `KeyEncryption` may be provided and an\n empty placeholder is returned. Aborts with `EMissingEncryptedViewingKeyArguments` /\n `ETooManyEncryptedViewingKeyArguments` on mismatch.",
+      "attributes": [],
+      "visibility": "Package",
+      "entry": false,
+      "type_parameters": [],
+      "parameters": [
+        {
+          "name": "auditors",
+          "type_": {
+            "Reference": [
+              false,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "contra",
+                    "name": "auditors"
+                  },
+                  "name": "Auditors",
+                  "type_arguments": []
+                }
+              }
+            ]
+          }
+        },
+        {
+          "name": "sender_public_key",
+          "type_": {
+            "Reference": [
+              false,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "myso",
+                    "name": "group_ops"
+                  },
+                  "name": "Element",
+                  "type_arguments": [
+                    {
+                      "phantom": true,
+                      "argument": {
+                        "Datatype": {
+                          "module": {
+                            "address": "myso",
+                            "name": "ristretto255"
+                          },
+                          "name": "G",
+                          "type_arguments": []
+                        }
+                      }
+                    }
+                  ]
+                }
+              }
+            ]
+          }
+        },
+        {
+          "name": "key_encryption",
+          "type_": {
+            "Datatype": {
+              "module": {
+                "address": "std",
+                "name": "option"
+              },
+              "name": "Option",
+              "type_arguments": [
+                {
+                  "phantom": false,
+                  "argument": {
+                    "Datatype": {
+                      "module": {
+                        "address": "contra",
+                        "name": "auditors"
+                      },
+                      "name": "KeyEncryption",
+                      "type_arguments": []
+                    }
+                  }
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "dst",
+          "type_": {
+            "vector": "u8"
+          }
+        }
+      ],
+      "return_": [
+        {
+          "Datatype": {
+            "module": {
+              "address": "contra",
+              "name": "auditors"
+            },
+            "name": "VerifiedKeyEncryption",
+            "type_arguments": []
+          }
+        }
+      ]
+    }
+  },
+  "structs": {
+    "Auditors": {
+      "index": 0,
+      "doc": " Holds the set of auditor `public_keys` registered for a token. Auditors can decrypt the\n viewing-key ciphertexts attached to each transfer, giving them read access to transaction\n amounts without being able to move funds.\n\n The `version` number is incremented on every `update` so that `VerifiedKeyEncryption` values\n stored on user accounts can be checked for staleness. `recommended_min_version` is the issuer's\n advertised minimum `VerifiedKeyEncryption.version`; it is not enforced on chain. Wallets and\n other clients should treat any account whose `VerifiedKeyEncryption.version` is below it as\n stale and prompt the user to rotate before transferring.",
+      "attributes": [],
+      "abilities": [
+        "Store"
+      ],
+      "type_parameters": [],
+      "fields": {
+        "positional_fields": false,
+        "fields": {
+          "pks": {
+            "index": 0,
+            "doc": null,
+            "type_": {
+              "vector": {
+                "Datatype": {
+                  "module": {
+                    "address": "myso",
+                    "name": "group_ops"
+                  },
+                  "name": "Element",
+                  "type_arguments": [
+                    {
+                      "phantom": true,
+                      "argument": {
+                        "Datatype": {
+                          "module": {
+                            "address": "myso",
+                            "name": "ristretto255"
+                          },
+                          "name": "G",
+                          "type_arguments": []
+                        }
+                      }
+                    }
+                  ]
+                }
+              }
+            }
+          },
+          "version": {
+            "index": 1,
+            "doc": null,
+            "type_": "u32"
+          },
+          "recommended_min_version": {
+            "index": 2,
+            "doc": null,
+            "type_": "u32"
+          }
+        }
+      }
+    },
+    "VerifiedKeyEncryption": {
+      "index": 1,
+      "doc": " A user's viewing key encrypted to each auditor's public key, stored on their account after\n passing a `KeyConsistencyProof` check. The `version` records which auditor key set it was\n produced against, so callers can compare it against `Auditors.recommended_min_version` to\n detect encryptions that the issuer considers stale.\n\n An empty `ciphertext` means the user's account was registered while the token had no\n auditors set.",
+      "attributes": [],
+      "abilities": [
+        "Copy",
+        "Drop",
+        "Store"
+      ],
+      "type_parameters": [],
+      "fields": {
+        "positional_fields": false,
+        "fields": {
+          "ciphertext": {
+            "index": 0,
+            "doc": null,
+            "type_": {
+              "vector": {
+                "Datatype": {
+                  "module": {
+                    "address": "contra",
+                    "name": "twisted_elgamal"
+                  },
+                  "name": "MultiRecipientEncryption",
+                  "type_arguments": []
+                }
+              }
+            }
+          },
+          "version": {
+            "index": 1,
+            "doc": null,
+            "type_": "u32"
+          }
+        }
+      }
+    },
+    "KeyEncryption": {
+      "index": 2,
+      "doc": " A user's viewing key encrypted to each auditor's public key, bundled with the\n proofs needed to register it on-chain:\n - `proof` is the `KeyConsistencyProof` showing each limb of `ciphertext` correctly\n   encrypts the matching 32-bit limb of the user's private key under every auditor's\n   public key, and that the limbs sum to `sender_public_key`'s discrete log.\n - `range_proof` is an aggregate Bulletproof showing every limb's plaintext lies\n   in `[0, 2^32)` so that auditors can recover each limb via baby-step giant-step.",
+      "attributes": [],
+      "abilities": [
+        "Drop"
+      ],
+      "type_parameters": [],
+      "fields": {
+        "positional_fields": false,
+        "fields": {
+          "ciphertext": {
+            "index": 0,
+            "doc": null,
+            "type_": {
+              "vector": {
+                "Datatype": {
+                  "module": {
+                    "address": "contra",
+                    "name": "twisted_elgamal"
+                  },
+                  "name": "MultiRecipientEncryption",
+                  "type_arguments": []
+                }
+              }
+            }
+          },
+          "proof": {
+            "index": 1,
+            "doc": null,
+            "type_": {
+              "Datatype": {
+                "module": {
+                  "address": "contra",
+                  "name": "nizk"
+                },
+                "name": "KeyConsistencyProof",
+                "type_arguments": []
+              }
+            }
+          },
+          "range_proof": {
+            "index": 2,
+            "doc": null,
+            "type_": {
+              "vector": "u8"
+            }
+          }
+        }
+      }
+    }
+  },
+  "enums": {}
+}

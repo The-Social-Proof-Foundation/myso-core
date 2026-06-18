@@ -1,0 +1,302 @@
+{
+  "id": {
+    "address": "myso",
+    "name": "permissioned_group_display"
+  },
+  "doc": " Module: permissioned_group_display\n\n Display support for `PermissionedGroup<T>` types.\n\n Since `PermissionedGroup<T>` is defined in `permissioned_group`, extending\n packages cannot directly create `Display<PermissionedGroup<T>>`.\n\n This module provides a shared `PermissionedGroupPublisher` that holds the\n framework Publisher. Extending packages can call `setup_display<T>`\n with their own Publisher to create `Display<PermissionedGroup<T>>`.",
+  "immediate_dependencies": [
+    {
+      "address": "myso",
+      "name": "display"
+    },
+    {
+      "address": "myso",
+      "name": "object"
+    },
+    {
+      "address": "myso",
+      "name": "package"
+    },
+    {
+      "address": "myso",
+      "name": "permissioned_group"
+    },
+    {
+      "address": "myso",
+      "name": "transfer"
+    },
+    {
+      "address": "myso",
+      "name": "tx_context"
+    },
+    {
+      "address": "std",
+      "name": "string"
+    }
+  ],
+  "attributes": [],
+  "functions": {
+    "init": {
+      "source_index": 0,
+      "index": 0,
+      "doc": null,
+      "attributes": [],
+      "visibility": "Private",
+      "entry": false,
+      "type_parameters": [],
+      "parameters": [
+        {
+          "name": "otw",
+          "type_": {
+            "Datatype": {
+              "module": {
+                "address": "myso",
+                "name": "permissioned_group_display"
+              },
+              "name": "PERMISSIONED_GROUP_DISPLAY",
+              "type_arguments": []
+            }
+          }
+        },
+        {
+          "name": "ctx",
+          "type_": {
+            "Reference": [
+              true,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "myso",
+                    "name": "tx_context"
+                  },
+                  "name": "TxContext",
+                  "type_arguments": []
+                }
+              }
+            ]
+          }
+        }
+      ],
+      "return_": []
+    },
+    "setup_display": {
+      "source_index": 1,
+      "index": 1,
+      "doc": " Creates a `Display<PermissionedGroup<T>>` using the shared publisher.\n The caller must provide their own Publisher to prove they own the module\n that defines type T. The Display is transferred to the transaction sender.",
+      "attributes": [
+        {
+          "Parameterized": [
+            "allow",
+            [
+              {
+                "Parameterized": [
+                  "lint",
+                  [
+                    {
+                      "Name": "self_transfer"
+                    }
+                  ]
+                ]
+              }
+            ]
+          ]
+        }
+      ],
+      "visibility": "Public",
+      "entry": false,
+      "type_parameters": [
+        {
+          "name": "T",
+          "constraints": [
+            "Drop"
+          ]
+        }
+      ],
+      "parameters": [
+        {
+          "name": "pg_publisher",
+          "type_": {
+            "Reference": [
+              false,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "myso",
+                    "name": "permissioned_group_display"
+                  },
+                  "name": "PermissionedGroupPublisher",
+                  "type_arguments": []
+                }
+              }
+            ]
+          }
+        },
+        {
+          "name": "publisher",
+          "type_": {
+            "Reference": [
+              false,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "myso",
+                    "name": "package"
+                  },
+                  "name": "Publisher",
+                  "type_arguments": []
+                }
+              }
+            ]
+          }
+        },
+        {
+          "name": "name",
+          "type_": {
+            "Datatype": {
+              "module": {
+                "address": "std",
+                "name": "string"
+              },
+              "name": "String",
+              "type_arguments": []
+            }
+          }
+        },
+        {
+          "name": "description",
+          "type_": {
+            "Datatype": {
+              "module": {
+                "address": "std",
+                "name": "string"
+              },
+              "name": "String",
+              "type_arguments": []
+            }
+          }
+        },
+        {
+          "name": "image_url",
+          "type_": {
+            "Datatype": {
+              "module": {
+                "address": "std",
+                "name": "string"
+              },
+              "name": "String",
+              "type_arguments": []
+            }
+          }
+        },
+        {
+          "name": "project_url",
+          "type_": {
+            "Datatype": {
+              "module": {
+                "address": "std",
+                "name": "string"
+              },
+              "name": "String",
+              "type_arguments": []
+            }
+          }
+        },
+        {
+          "name": "link",
+          "type_": {
+            "Datatype": {
+              "module": {
+                "address": "std",
+                "name": "string"
+              },
+              "name": "String",
+              "type_arguments": []
+            }
+          }
+        },
+        {
+          "name": "ctx",
+          "type_": {
+            "Reference": [
+              true,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "myso",
+                    "name": "tx_context"
+                  },
+                  "name": "TxContext",
+                  "type_arguments": []
+                }
+              }
+            ]
+          }
+        }
+      ],
+      "return_": []
+    }
+  },
+  "structs": {
+    "PERMISSIONED_GROUP_DISPLAY": {
+      "index": 0,
+      "doc": " OTW for claiming Publisher and initializing PermissionedGroupPublisher.",
+      "attributes": [],
+      "abilities": [
+        "Drop"
+      ],
+      "type_parameters": [],
+      "fields": {
+        "positional_fields": true,
+        "fields": {
+          "dummy_field": {
+            "index": 0,
+            "type_": "bool"
+          }
+        }
+      }
+    },
+    "PermissionedGroupPublisher": {
+      "index": 1,
+      "doc": " Shared object holding the framework Publisher for permissioned groups.\n Used by extending packages to create `Display<PermissionedGroup<T>>`.",
+      "attributes": [],
+      "abilities": [
+        "Key"
+      ],
+      "type_parameters": [],
+      "fields": {
+        "positional_fields": false,
+        "fields": {
+          "id": {
+            "index": 0,
+            "doc": null,
+            "type_": {
+              "Datatype": {
+                "module": {
+                  "address": "myso",
+                  "name": "object"
+                },
+                "name": "UID",
+                "type_arguments": []
+              }
+            }
+          },
+          "publisher": {
+            "index": 1,
+            "doc": null,
+            "type_": {
+              "Datatype": {
+                "module": {
+                  "address": "myso",
+                  "name": "package"
+                },
+                "name": "Publisher",
+                "type_arguments": []
+              }
+            }
+          }
+        }
+      }
+    }
+  },
+  "enums": {}
+}

@@ -1,0 +1,1015 @@
+{
+  "id": {
+    "address": "contra",
+    "name": "twisted_elgamal"
+  },
+  "doc": null,
+  "immediate_dependencies": [
+    {
+      "address": "myso",
+      "name": "group_ops"
+    },
+    {
+      "address": "myso",
+      "name": "ristretto255"
+    }
+  ],
+  "attributes": [],
+  "functions": {
+    "new": {
+      "source_index": 0,
+      "index": 0,
+      "doc": " Create a new Twisted ElGamal encryption from a given `ciphertext` and `decryption_handle`.",
+      "attributes": [],
+      "visibility": "Public",
+      "entry": false,
+      "type_parameters": [],
+      "parameters": [
+        {
+          "name": "ciphertext",
+          "type_": {
+            "Datatype": {
+              "module": {
+                "address": "myso",
+                "name": "group_ops"
+              },
+              "name": "Element",
+              "type_arguments": [
+                {
+                  "phantom": true,
+                  "argument": {
+                    "Datatype": {
+                      "module": {
+                        "address": "myso",
+                        "name": "ristretto255"
+                      },
+                      "name": "G",
+                      "type_arguments": []
+                    }
+                  }
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "decryption_handle",
+          "type_": {
+            "Datatype": {
+              "module": {
+                "address": "myso",
+                "name": "group_ops"
+              },
+              "name": "Element",
+              "type_arguments": [
+                {
+                  "phantom": true,
+                  "argument": {
+                    "Datatype": {
+                      "module": {
+                        "address": "myso",
+                        "name": "ristretto255"
+                      },
+                      "name": "G",
+                      "type_arguments": []
+                    }
+                  }
+                }
+              ]
+            }
+          }
+        }
+      ],
+      "return_": [
+        {
+          "Datatype": {
+            "module": {
+              "address": "contra",
+              "name": "twisted_elgamal"
+            },
+            "name": "Encryption",
+            "type_arguments": []
+          }
+        }
+      ]
+    },
+    "g": {
+      "source_index": 1,
+      "index": 1,
+      "doc": " The standard Ristretto255 generator `g`, used for randomness blinding in ciphertexts.",
+      "attributes": [],
+      "visibility": "Package",
+      "entry": false,
+      "type_parameters": [],
+      "parameters": [],
+      "return_": [
+        {
+          "Datatype": {
+            "module": {
+              "address": "myso",
+              "name": "group_ops"
+            },
+            "name": "Element",
+            "type_arguments": [
+              {
+                "phantom": true,
+                "argument": {
+                  "Datatype": {
+                    "module": {
+                      "address": "myso",
+                      "name": "ristretto255"
+                    },
+                    "name": "G",
+                    "type_arguments": []
+                  }
+                }
+              }
+            ]
+          }
+        }
+      ]
+    },
+    "h": {
+      "source_index": 2,
+      "index": 2,
+      "doc": " The blinding generator `h`, derived via `hash_to_curve(\"fastcrypto-blinding-gen-01\")`.\n The discrete log relationship between `g` and `h` is unknown.",
+      "attributes": [],
+      "visibility": "Package",
+      "entry": false,
+      "type_parameters": [],
+      "parameters": [],
+      "return_": [
+        {
+          "Datatype": {
+            "module": {
+              "address": "myso",
+              "name": "group_ops"
+            },
+            "name": "Element",
+            "type_arguments": [
+              {
+                "phantom": true,
+                "argument": {
+                  "Datatype": {
+                    "module": {
+                      "address": "myso",
+                      "name": "ristretto255"
+                    },
+                    "name": "G",
+                    "type_arguments": []
+                  }
+                }
+              }
+            ]
+          }
+        }
+      ]
+    },
+    "ciphertext": {
+      "source_index": 3,
+      "index": 3,
+      "doc": " Returns the ciphertext of a Twisted ElGamal encryption `c = r * g + m * h`.",
+      "attributes": [],
+      "visibility": "Package",
+      "entry": false,
+      "type_parameters": [],
+      "parameters": [
+        {
+          "name": "e",
+          "type_": {
+            "Reference": [
+              false,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "contra",
+                    "name": "twisted_elgamal"
+                  },
+                  "name": "Encryption",
+                  "type_arguments": []
+                }
+              }
+            ]
+          }
+        }
+      ],
+      "return_": [
+        {
+          "Reference": [
+            false,
+            {
+              "Datatype": {
+                "module": {
+                  "address": "myso",
+                  "name": "group_ops"
+                },
+                "name": "Element",
+                "type_arguments": [
+                  {
+                    "phantom": true,
+                    "argument": {
+                      "Datatype": {
+                        "module": {
+                          "address": "myso",
+                          "name": "ristretto255"
+                        },
+                        "name": "G",
+                        "type_arguments": []
+                      }
+                    }
+                  }
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    "decryption_handle": {
+      "source_index": 4,
+      "index": 4,
+      "doc": " Returns the decryption handle of a Twisted ElGamal encryption `d = r * pk`.",
+      "attributes": [],
+      "visibility": "Package",
+      "entry": false,
+      "type_parameters": [],
+      "parameters": [
+        {
+          "name": "e",
+          "type_": {
+            "Reference": [
+              false,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "contra",
+                    "name": "twisted_elgamal"
+                  },
+                  "name": "Encryption",
+                  "type_arguments": []
+                }
+              }
+            ]
+          }
+        }
+      ],
+      "return_": [
+        {
+          "Reference": [
+            false,
+            {
+              "Datatype": {
+                "module": {
+                  "address": "myso",
+                  "name": "group_ops"
+                },
+                "name": "Element",
+                "type_arguments": [
+                  {
+                    "phantom": true,
+                    "argument": {
+                      "Datatype": {
+                        "module": {
+                          "address": "myso",
+                          "name": "ristretto255"
+                        },
+                        "name": "G",
+                        "type_arguments": []
+                      }
+                    }
+                  }
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    "add": {
+      "source_index": 5,
+      "index": 5,
+      "doc": " Homomorphically add two Twisted ElGamal encryptions. The result is an encryption of the sum of the plaintexts\n in the scalar field.",
+      "attributes": [],
+      "visibility": "Package",
+      "entry": false,
+      "type_parameters": [],
+      "parameters": [
+        {
+          "name": "e1",
+          "type_": {
+            "Reference": [
+              false,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "contra",
+                    "name": "twisted_elgamal"
+                  },
+                  "name": "Encryption",
+                  "type_arguments": []
+                }
+              }
+            ]
+          }
+        },
+        {
+          "name": "e2",
+          "type_": {
+            "Reference": [
+              false,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "contra",
+                    "name": "twisted_elgamal"
+                  },
+                  "name": "Encryption",
+                  "type_arguments": []
+                }
+              }
+            ]
+          }
+        }
+      ],
+      "return_": [
+        {
+          "Datatype": {
+            "module": {
+              "address": "contra",
+              "name": "twisted_elgamal"
+            },
+            "name": "Encryption",
+            "type_arguments": []
+          }
+        }
+      ]
+    },
+    "sub": {
+      "source_index": 6,
+      "index": 6,
+      "doc": " Homomorphically subtract two Twisted ElGamal encryptions. The result is an encryption of the difference of the\n plaintexts in the scalar field.",
+      "attributes": [],
+      "visibility": "Package",
+      "entry": false,
+      "type_parameters": [],
+      "parameters": [
+        {
+          "name": "e1",
+          "type_": {
+            "Reference": [
+              false,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "contra",
+                    "name": "twisted_elgamal"
+                  },
+                  "name": "Encryption",
+                  "type_arguments": []
+                }
+              }
+            ]
+          }
+        },
+        {
+          "name": "e2",
+          "type_": {
+            "Reference": [
+              false,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "contra",
+                    "name": "twisted_elgamal"
+                  },
+                  "name": "Encryption",
+                  "type_arguments": []
+                }
+              }
+            ]
+          }
+        }
+      ],
+      "return_": [
+        {
+          "Datatype": {
+            "module": {
+              "address": "contra",
+              "name": "twisted_elgamal"
+            },
+            "name": "Encryption",
+            "type_arguments": []
+          }
+        }
+      ]
+    },
+    "add_assign": {
+      "source_index": 7,
+      "index": 7,
+      "doc": " In-place version of `add`: `e1` becomes the homomorphic sum `e1 + e2`.",
+      "attributes": [],
+      "visibility": "Package",
+      "entry": false,
+      "type_parameters": [],
+      "parameters": [
+        {
+          "name": "e1",
+          "type_": {
+            "Reference": [
+              true,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "contra",
+                    "name": "twisted_elgamal"
+                  },
+                  "name": "Encryption",
+                  "type_arguments": []
+                }
+              }
+            ]
+          }
+        },
+        {
+          "name": "e2",
+          "type_": {
+            "Reference": [
+              false,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "contra",
+                    "name": "twisted_elgamal"
+                  },
+                  "name": "Encryption",
+                  "type_arguments": []
+                }
+              }
+            ]
+          }
+        }
+      ],
+      "return_": []
+    },
+    "sub_assign": {
+      "source_index": 8,
+      "index": 8,
+      "doc": " In-place version of `sub`: `e1` becomes the homomorphic difference `e1 - e2`.\n Beware of plaintext-side overflow in the scalar field.",
+      "attributes": [],
+      "visibility": "Package",
+      "entry": false,
+      "type_parameters": [],
+      "parameters": [
+        {
+          "name": "e1",
+          "type_": {
+            "Reference": [
+              true,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "contra",
+                    "name": "twisted_elgamal"
+                  },
+                  "name": "Encryption",
+                  "type_arguments": []
+                }
+              }
+            ]
+          }
+        },
+        {
+          "name": "e2",
+          "type_": {
+            "Reference": [
+              false,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "contra",
+                    "name": "twisted_elgamal"
+                  },
+                  "name": "Encryption",
+                  "type_arguments": []
+                }
+              }
+            ]
+          }
+        }
+      ],
+      "return_": []
+    },
+    "add_assign_u64": {
+      "source_index": 9,
+      "index": 9,
+      "doc": " Add a known public `amount` to the ciphertext.",
+      "attributes": [],
+      "visibility": "Package",
+      "entry": false,
+      "type_parameters": [],
+      "parameters": [
+        {
+          "name": "e",
+          "type_": {
+            "Reference": [
+              true,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "contra",
+                    "name": "twisted_elgamal"
+                  },
+                  "name": "Encryption",
+                  "type_arguments": []
+                }
+              }
+            ]
+          }
+        },
+        {
+          "name": "amount",
+          "type_": "u64"
+        }
+      ],
+      "return_": []
+    },
+    "sub_assign_u64": {
+      "source_index": 10,
+      "index": 10,
+      "doc": " Subtract a known public `amount` from the ciphertext.",
+      "attributes": [],
+      "visibility": "Package",
+      "entry": false,
+      "type_parameters": [],
+      "parameters": [
+        {
+          "name": "e",
+          "type_": {
+            "Reference": [
+              true,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "contra",
+                    "name": "twisted_elgamal"
+                  },
+                  "name": "Encryption",
+                  "type_arguments": []
+                }
+              }
+            ]
+          }
+        },
+        {
+          "name": "amount",
+          "type_": "u64"
+        }
+      ],
+      "return_": []
+    },
+    "shift_left": {
+      "source_index": 11,
+      "index": 11,
+      "doc": " Return an encryption of the same plaintext as the input but where the plaintext is multiplied by 2^bits.\n The result is an encryption of the plaintext in the scalar field.",
+      "attributes": [],
+      "visibility": "Package",
+      "entry": false,
+      "type_parameters": [],
+      "parameters": [
+        {
+          "name": "e",
+          "type_": {
+            "Reference": [
+              false,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "contra",
+                    "name": "twisted_elgamal"
+                  },
+                  "name": "Encryption",
+                  "type_arguments": []
+                }
+              }
+            ]
+          }
+        },
+        {
+          "name": "bits",
+          "type_": "u8"
+        }
+      ],
+      "return_": [
+        {
+          "Datatype": {
+            "module": {
+              "address": "contra",
+              "name": "twisted_elgamal"
+            },
+            "name": "Encryption",
+            "type_arguments": []
+          }
+        }
+      ]
+    },
+    "encrypt_zero": {
+      "source_index": 12,
+      "index": 12,
+      "doc": " Trivial encryption of zero without randomness.",
+      "attributes": [],
+      "visibility": "Package",
+      "entry": false,
+      "type_parameters": [],
+      "parameters": [],
+      "return_": [
+        {
+          "Datatype": {
+            "module": {
+              "address": "contra",
+              "name": "twisted_elgamal"
+            },
+            "name": "Encryption",
+            "type_arguments": []
+          }
+        }
+      ]
+    },
+    "encrypt_trivial": {
+      "source_index": 13,
+      "index": 13,
+      "doc": " Trivial encryption without randomness.",
+      "attributes": [],
+      "visibility": "Package",
+      "entry": false,
+      "type_parameters": [],
+      "parameters": [
+        {
+          "name": "amount",
+          "type_": "u64"
+        }
+      ],
+      "return_": [
+        {
+          "Datatype": {
+            "module": {
+              "address": "contra",
+              "name": "twisted_elgamal"
+            },
+            "name": "Encryption",
+            "type_arguments": []
+          }
+        }
+      ]
+    },
+    "new_multi_recipient_encryption": {
+      "source_index": 14,
+      "index": 14,
+      "doc": " Construct a Twisted ElGamal `MultiRecipientEncryption` consisting of a shared ciphertext `c = r * g + m * h` and\n one decryption handle `d_i = r * pk_i` per recipient identified by their public key `pk_i`.",
+      "attributes": [],
+      "visibility": "Public",
+      "entry": false,
+      "type_parameters": [],
+      "parameters": [
+        {
+          "name": "ciphertext",
+          "type_": {
+            "Datatype": {
+              "module": {
+                "address": "myso",
+                "name": "group_ops"
+              },
+              "name": "Element",
+              "type_arguments": [
+                {
+                  "phantom": true,
+                  "argument": {
+                    "Datatype": {
+                      "module": {
+                        "address": "myso",
+                        "name": "ristretto255"
+                      },
+                      "name": "G",
+                      "type_arguments": []
+                    }
+                  }
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "decryption_handles",
+          "type_": {
+            "vector": {
+              "Datatype": {
+                "module": {
+                  "address": "myso",
+                  "name": "group_ops"
+                },
+                "name": "Element",
+                "type_arguments": [
+                  {
+                    "phantom": true,
+                    "argument": {
+                      "Datatype": {
+                        "module": {
+                          "address": "myso",
+                          "name": "ristretto255"
+                        },
+                        "name": "G",
+                        "type_arguments": []
+                      }
+                    }
+                  }
+                ]
+              }
+            }
+          }
+        }
+      ],
+      "return_": [
+        {
+          "Datatype": {
+            "module": {
+              "address": "contra",
+              "name": "twisted_elgamal"
+            },
+            "name": "MultiRecipientEncryption",
+            "type_arguments": []
+          }
+        }
+      ]
+    },
+    "multi_recipient_ciphertext": {
+      "source_index": 15,
+      "index": 15,
+      "doc": " Returns the shared ciphertext component `c = r * g + m * h` of a Twisted ElGamal `MultiRecipientEncryption`.",
+      "attributes": [],
+      "visibility": "Public",
+      "entry": false,
+      "type_parameters": [],
+      "parameters": [
+        {
+          "name": "e",
+          "type_": {
+            "Reference": [
+              false,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "contra",
+                    "name": "twisted_elgamal"
+                  },
+                  "name": "MultiRecipientEncryption",
+                  "type_arguments": []
+                }
+              }
+            ]
+          }
+        }
+      ],
+      "return_": [
+        {
+          "Reference": [
+            false,
+            {
+              "Datatype": {
+                "module": {
+                  "address": "myso",
+                  "name": "group_ops"
+                },
+                "name": "Element",
+                "type_arguments": [
+                  {
+                    "phantom": true,
+                    "argument": {
+                      "Datatype": {
+                        "module": {
+                          "address": "myso",
+                          "name": "ristretto255"
+                        },
+                        "name": "G",
+                        "type_arguments": []
+                      }
+                    }
+                  }
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    "multi_recipient_decryption_handles": {
+      "source_index": 16,
+      "index": 16,
+      "doc": " Returns the per-recipient decryption handles `d_i = r * pk_i` for recipient public key `pk_i` of a\n Twisted ElGamal `MultiRecipientEncryption`.",
+      "attributes": [],
+      "visibility": "Public",
+      "entry": false,
+      "type_parameters": [],
+      "parameters": [
+        {
+          "name": "e",
+          "type_": {
+            "Reference": [
+              false,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "contra",
+                    "name": "twisted_elgamal"
+                  },
+                  "name": "MultiRecipientEncryption",
+                  "type_arguments": []
+                }
+              }
+            ]
+          }
+        }
+      ],
+      "return_": [
+        {
+          "Reference": [
+            false,
+            {
+              "vector": {
+                "Datatype": {
+                  "module": {
+                    "address": "myso",
+                    "name": "group_ops"
+                  },
+                  "name": "Element",
+                  "type_arguments": [
+                    {
+                      "phantom": true,
+                      "argument": {
+                        "Datatype": {
+                          "module": {
+                            "address": "myso",
+                            "name": "ristretto255"
+                          },
+                          "name": "G",
+                          "type_arguments": []
+                        }
+                      }
+                    }
+                  ]
+                }
+              }
+            }
+          ]
+        }
+      ]
+    }
+  },
+  "structs": {
+    "Encryption": {
+      "index": 0,
+      "doc": " Twisted ElGamal encryption with message in the exponent, over Ristretto255.\n\n Uses two generators with unknown discrete log relationship:\n - `g`: the standard Ristretto255 generator\n - `h`: derived via `hash_to_curve(\"fastcrypto-blinding-gen-01\")`, ensuring no one knows `log_g(h)`\n\n Encryption of message `m` with public key `pk = x * g` and randomness `r`:\n   - ciphertext:        `c = r * g + m * h`\n   - decryption handle: `d = r * pk`\n\n Decryption with secret key `x`:\n   - Compute `c - d/x = c - r*g = m * h`\n   - Solve the discrete log `m = log_h(m * h)` via brute force\n\n Homomorphic properties: Encryptions can be added and subtracted component-wise,\n yielding an encryption of the sum or difference of the plaintexts.\n\n Values up to at least ~2^32 can be decrypted.",
+      "attributes": [],
+      "abilities": [
+        "Copy",
+        "Drop",
+        "Store"
+      ],
+      "type_parameters": [],
+      "fields": {
+        "positional_fields": false,
+        "fields": {
+          "ciphertext": {
+            "index": 0,
+            "doc": null,
+            "type_": {
+              "Datatype": {
+                "module": {
+                  "address": "myso",
+                  "name": "group_ops"
+                },
+                "name": "Element",
+                "type_arguments": [
+                  {
+                    "phantom": true,
+                    "argument": {
+                      "Datatype": {
+                        "module": {
+                          "address": "myso",
+                          "name": "ristretto255"
+                        },
+                        "name": "G",
+                        "type_arguments": []
+                      }
+                    }
+                  }
+                ]
+              }
+            }
+          },
+          "decryption_handle": {
+            "index": 1,
+            "doc": null,
+            "type_": {
+              "Datatype": {
+                "module": {
+                  "address": "myso",
+                  "name": "group_ops"
+                },
+                "name": "Element",
+                "type_arguments": [
+                  {
+                    "phantom": true,
+                    "argument": {
+                      "Datatype": {
+                        "module": {
+                          "address": "myso",
+                          "name": "ristretto255"
+                        },
+                        "name": "G",
+                        "type_arguments": []
+                      }
+                    }
+                  }
+                ]
+              }
+            }
+          }
+        }
+      }
+    },
+    "MultiRecipientEncryption": {
+      "index": 1,
+      "doc": " A single-ciphertext encryption readable by multiple recipients. Shares one `ciphertext`\n component across all recipients, with a separate `decryption_handle` per recipient public key.",
+      "attributes": [],
+      "abilities": [
+        "Copy",
+        "Drop",
+        "Store"
+      ],
+      "type_parameters": [],
+      "fields": {
+        "positional_fields": false,
+        "fields": {
+          "ciphertext": {
+            "index": 0,
+            "doc": null,
+            "type_": {
+              "Datatype": {
+                "module": {
+                  "address": "myso",
+                  "name": "group_ops"
+                },
+                "name": "Element",
+                "type_arguments": [
+                  {
+                    "phantom": true,
+                    "argument": {
+                      "Datatype": {
+                        "module": {
+                          "address": "myso",
+                          "name": "ristretto255"
+                        },
+                        "name": "G",
+                        "type_arguments": []
+                      }
+                    }
+                  }
+                ]
+              }
+            }
+          },
+          "decryption_handles": {
+            "index": 1,
+            "doc": null,
+            "type_": {
+              "vector": {
+                "Datatype": {
+                  "module": {
+                    "address": "myso",
+                    "name": "group_ops"
+                  },
+                  "name": "Element",
+                  "type_arguments": [
+                    {
+                      "phantom": true,
+                      "argument": {
+                        "Datatype": {
+                          "module": {
+                            "address": "myso",
+                            "name": "ristretto255"
+                          },
+                          "name": "G",
+                          "type_arguments": []
+                        }
+                      }
+                    }
+                  ]
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  },
+  "enums": {}
+}

@@ -1,0 +1,689 @@
+{
+  "id": {
+    "address": "contra",
+    "name": "policy"
+  },
+  "doc": " Access policies for `ConfidentialToken<T>`. A `Policy` records the set of operations that\n require a witness of a specific type, used to gate permissioned versions of those operations.",
+  "immediate_dependencies": [
+    {
+      "address": "myso",
+      "name": "object"
+    },
+    {
+      "address": "myso",
+      "name": "tx_context"
+    },
+    {
+      "address": "std",
+      "name": "option"
+    },
+    {
+      "address": "std",
+      "name": "type_name"
+    },
+    {
+      "address": "std",
+      "name": "vector"
+    }
+  ],
+  "attributes": [],
+  "functions": {
+    "new": {
+      "source_index": 0,
+      "index": 0,
+      "doc": " Create a new `Policy` for witness type `W` covering the given operations. Aborts if any\n operation index exceeds `MAX_OPERATION_INDEX` or if `permissioned_operations` contains\n duplicates.",
+      "attributes": [],
+      "visibility": "Private",
+      "entry": false,
+      "type_parameters": [
+        {
+          "name": "W",
+          "constraints": []
+        }
+      ],
+      "parameters": [
+        {
+          "name": "permissioned_operations",
+          "type_": {
+            "vector": "u8"
+          }
+        }
+      ],
+      "return_": [
+        {
+          "Datatype": {
+            "module": {
+              "address": "contra",
+              "name": "policy"
+            },
+            "name": "Policy",
+            "type_arguments": []
+          }
+        }
+      ]
+    },
+    "permissionless": {
+      "source_index": 1,
+      "index": 1,
+      "doc": " A fully permissionless policy slot: every operation is allowed without a witness.",
+      "attributes": [],
+      "visibility": "Package",
+      "entry": false,
+      "type_parameters": [],
+      "parameters": [],
+      "return_": [
+        {
+          "Datatype": {
+            "module": {
+              "address": "std",
+              "name": "option"
+            },
+            "name": "Option",
+            "type_arguments": [
+              {
+                "phantom": false,
+                "argument": {
+                  "Datatype": {
+                    "module": {
+                      "address": "contra",
+                      "name": "policy"
+                    },
+                    "name": "Policy",
+                    "type_arguments": []
+                  }
+                }
+              }
+            ]
+          }
+        }
+      ]
+    },
+    "set": {
+      "source_index": 2,
+      "index": 2,
+      "doc": " Update `policy` to gate `permissioned_operations` behind witness `W`. An empty\n `permissioned_operations` clears the policy entirely (every operation becomes permissionless\n again). Aborts if any operation index exceeds `MAX_OPERATION_INDEX` or if\n `permissioned_operations` contains duplicates.",
+      "attributes": [],
+      "visibility": "Package",
+      "entry": false,
+      "type_parameters": [
+        {
+          "name": "W",
+          "constraints": []
+        }
+      ],
+      "parameters": [
+        {
+          "name": "policy",
+          "type_": {
+            "Reference": [
+              true,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "std",
+                    "name": "option"
+                  },
+                  "name": "Option",
+                  "type_arguments": [
+                    {
+                      "phantom": false,
+                      "argument": {
+                        "Datatype": {
+                          "module": {
+                            "address": "contra",
+                            "name": "policy"
+                          },
+                          "name": "Policy",
+                          "type_arguments": []
+                        }
+                      }
+                    }
+                  ]
+                }
+              }
+            ]
+          }
+        },
+        {
+          "name": "permissioned_operations",
+          "type_": {
+            "vector": "u8"
+          }
+        }
+      ],
+      "return_": []
+    },
+    "as_sender": {
+      "source_index": 3,
+      "index": 3,
+      "doc": " Create an `Auth<T>` for `ctx.sender()` covering every operation the policy leaves\n permissionless (i.e. every operation NOT listed in the policy's permissioned bitmap). When\n `policy` is empty, all operations are permissionless.",
+      "attributes": [],
+      "visibility": "Package",
+      "entry": false,
+      "type_parameters": [
+        {
+          "name": "T",
+          "constraints": []
+        }
+      ],
+      "parameters": [
+        {
+          "name": "policy",
+          "type_": {
+            "Reference": [
+              false,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "std",
+                    "name": "option"
+                  },
+                  "name": "Option",
+                  "type_arguments": [
+                    {
+                      "phantom": false,
+                      "argument": {
+                        "Datatype": {
+                          "module": {
+                            "address": "contra",
+                            "name": "policy"
+                          },
+                          "name": "Policy",
+                          "type_arguments": []
+                        }
+                      }
+                    }
+                  ]
+                }
+              }
+            ]
+          }
+        },
+        {
+          "name": "ctx",
+          "type_": {
+            "Reference": [
+              false,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "myso",
+                    "name": "tx_context"
+                  },
+                  "name": "TxContext",
+                  "type_arguments": []
+                }
+              }
+            ]
+          }
+        }
+      ],
+      "return_": [
+        {
+          "Datatype": {
+            "module": {
+              "address": "contra",
+              "name": "policy"
+            },
+            "name": "Auth",
+            "type_arguments": [
+              {
+                "phantom": true,
+                "argument": {
+                  "NamedTypeParameter": "T"
+                }
+              }
+            ]
+          }
+        }
+      ]
+    },
+    "as_object": {
+      "source_index": 4,
+      "index": 4,
+      "doc": " Create an `Auth<T>` on behalf of the object identified by `uid` covering every operation the\n policy leaves permissionless. Holding `&mut UID` proves custody of the object, so the object\n self-authenticates as its own `owner`. Owner address is the inner value of the `UID`.",
+      "attributes": [
+        {
+          "Parameterized": [
+            "allow",
+            [
+              {
+                "Name": "unused_mut_parameter"
+              }
+            ]
+          ]
+        }
+      ],
+      "visibility": "Package",
+      "entry": false,
+      "type_parameters": [
+        {
+          "name": "T",
+          "constraints": []
+        }
+      ],
+      "parameters": [
+        {
+          "name": "policy",
+          "type_": {
+            "Reference": [
+              false,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "std",
+                    "name": "option"
+                  },
+                  "name": "Option",
+                  "type_arguments": [
+                    {
+                      "phantom": false,
+                      "argument": {
+                        "Datatype": {
+                          "module": {
+                            "address": "contra",
+                            "name": "policy"
+                          },
+                          "name": "Policy",
+                          "type_arguments": []
+                        }
+                      }
+                    }
+                  ]
+                }
+              }
+            ]
+          }
+        },
+        {
+          "name": "uid",
+          "type_": {
+            "Reference": [
+              true,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "myso",
+                    "name": "object"
+                  },
+                  "name": "UID",
+                  "type_arguments": []
+                }
+              }
+            ]
+          }
+        }
+      ],
+      "return_": [
+        {
+          "Datatype": {
+            "module": {
+              "address": "contra",
+              "name": "policy"
+            },
+            "name": "Auth",
+            "type_arguments": [
+              {
+                "phantom": true,
+                "argument": {
+                  "NamedTypeParameter": "T"
+                }
+              }
+            ]
+          }
+        }
+      ]
+    },
+    "with_witness": {
+      "source_index": 5,
+      "index": 5,
+      "doc": " Create an `Auth<T>` on behalf of `owner` covering the requested `operation`, authorized by\n witness `W`. Aborts unless `policy` is set, its witness type is `W`, and `operation` is\n permissioned in `policy`. The witness-holding contract is fully responsible for authenticating\n `owner`.",
+      "attributes": [],
+      "visibility": "Package",
+      "entry": false,
+      "type_parameters": [
+        {
+          "name": "T",
+          "constraints": []
+        },
+        {
+          "name": "W",
+          "constraints": [
+            "Drop"
+          ]
+        }
+      ],
+      "parameters": [
+        {
+          "name": "policy",
+          "type_": {
+            "Reference": [
+              false,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "std",
+                    "name": "option"
+                  },
+                  "name": "Option",
+                  "type_arguments": [
+                    {
+                      "phantom": false,
+                      "argument": {
+                        "Datatype": {
+                          "module": {
+                            "address": "contra",
+                            "name": "policy"
+                          },
+                          "name": "Policy",
+                          "type_arguments": []
+                        }
+                      }
+                    }
+                  ]
+                }
+              }
+            ]
+          }
+        },
+        {
+          "name": "operation",
+          "type_": "u8"
+        },
+        {
+          "name": "owner",
+          "type_": "address"
+        },
+        {
+          "name": "_witness",
+          "type_": {
+            "NamedTypeParameter": "W"
+          }
+        }
+      ],
+      "return_": [
+        {
+          "Datatype": {
+            "module": {
+              "address": "contra",
+              "name": "policy"
+            },
+            "name": "Auth",
+            "type_arguments": [
+              {
+                "phantom": true,
+                "argument": {
+                  "NamedTypeParameter": "T"
+                }
+              }
+            ]
+          }
+        }
+      ]
+    },
+    "is_allowed": {
+      "source_index": 6,
+      "index": 6,
+      "doc": " True if `auth` authorizes `operation`. Aborts if `operation > MAX_OPERATION_INDEX`.",
+      "attributes": [],
+      "visibility": "Package",
+      "entry": false,
+      "type_parameters": [
+        {
+          "name": "T",
+          "constraints": []
+        }
+      ],
+      "parameters": [
+        {
+          "name": "auth",
+          "type_": {
+            "Reference": [
+              false,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "contra",
+                    "name": "policy"
+                  },
+                  "name": "Auth",
+                  "type_arguments": [
+                    {
+                      "phantom": true,
+                      "argument": {
+                        "NamedTypeParameter": "T"
+                      }
+                    }
+                  ]
+                }
+              }
+            ]
+          }
+        },
+        {
+          "name": "operation",
+          "type_": "u8"
+        }
+      ],
+      "return_": [
+        "bool"
+      ]
+    },
+    "is_authenticated": {
+      "source_index": 7,
+      "index": 7,
+      "doc": " True if `auth` authenticates `owner`.",
+      "attributes": [],
+      "visibility": "Package",
+      "entry": false,
+      "type_parameters": [
+        {
+          "name": "T",
+          "constraints": []
+        }
+      ],
+      "parameters": [
+        {
+          "name": "auth",
+          "type_": {
+            "Reference": [
+              false,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "contra",
+                    "name": "policy"
+                  },
+                  "name": "Auth",
+                  "type_arguments": [
+                    {
+                      "phantom": true,
+                      "argument": {
+                        "NamedTypeParameter": "T"
+                      }
+                    }
+                  ]
+                }
+              }
+            ]
+          }
+        },
+        {
+          "name": "owner",
+          "type_": "address"
+        }
+      ],
+      "return_": [
+        "bool"
+      ]
+    },
+    "is_unique": {
+      "source_index": 8,
+      "index": 8,
+      "doc": " Return `true` iff `v` contains no duplicates.",
+      "attributes": [],
+      "visibility": "Private",
+      "entry": false,
+      "type_parameters": [
+        {
+          "name": "T",
+          "constraints": [
+            "Copy",
+            "Drop"
+          ]
+        }
+      ],
+      "parameters": [
+        {
+          "name": "v",
+          "type_": {
+            "Reference": [
+              false,
+              {
+                "vector": {
+                  "NamedTypeParameter": "T"
+                }
+              }
+            ]
+          }
+        }
+      ],
+      "return_": [
+        "bool"
+      ]
+    },
+    "create_bitmap": {
+      "source_index": 9,
+      "index": 9,
+      "doc": " Build a `u32` bitmap with bit `o` set for each `o` in `operations`. Caller must ensure each\n `o <= MAX_OPERATION_INDEX`.",
+      "attributes": [],
+      "visibility": "Private",
+      "entry": false,
+      "type_parameters": [],
+      "parameters": [
+        {
+          "name": "operations",
+          "type_": {
+            "vector": "u8"
+          }
+        }
+      ],
+      "return_": [
+        "u32"
+      ]
+    },
+    "permissionless_bitmap": {
+      "source_index": 10,
+      "index": 10,
+      "doc": " The bitmap of operations that `policy` leaves permissionless. When `policy` is `None`, every\n operation is permissionless (`u32::MAX`); otherwise it's the bitwise complement of the\n policy's permissioned bitmap.",
+      "attributes": [],
+      "visibility": "Private",
+      "entry": false,
+      "type_parameters": [],
+      "parameters": [
+        {
+          "name": "policy",
+          "type_": {
+            "Reference": [
+              false,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "std",
+                    "name": "option"
+                  },
+                  "name": "Option",
+                  "type_arguments": [
+                    {
+                      "phantom": false,
+                      "argument": {
+                        "Datatype": {
+                          "module": {
+                            "address": "contra",
+                            "name": "policy"
+                          },
+                          "name": "Policy",
+                          "type_arguments": []
+                        }
+                      }
+                    }
+                  ]
+                }
+              }
+            ]
+          }
+        }
+      ],
+      "return_": [
+        "u32"
+      ]
+    }
+  },
+  "structs": {
+    "Policy": {
+      "index": 0,
+      "doc": " Access policies for a confidential token.\n If set, some operations, as defined in the policy, must be called using their permissioned\n version with a witness.",
+      "attributes": [],
+      "abilities": [
+        "Drop",
+        "Store"
+      ],
+      "type_parameters": [],
+      "fields": {
+        "positional_fields": false,
+        "fields": {
+          "witness_type": {
+            "index": 0,
+            "doc": null,
+            "type_": {
+              "Datatype": {
+                "module": {
+                  "address": "std",
+                  "name": "type_name"
+                },
+                "name": "TypeName",
+                "type_arguments": []
+              }
+            }
+          },
+          "permissioned_operations_bitmap": {
+            "index": 1,
+            "doc": null,
+            "type_": "u32"
+          }
+        }
+      }
+    },
+    "Auth": {
+      "index": 1,
+      "doc": " A capability authorizing a set of operations on behalf of `owner`. The phantom `T` tags the\n auth with the consuming domain so an auth minted for one context cannot be used in another.",
+      "attributes": [],
+      "abilities": [
+        "Drop"
+      ],
+      "type_parameters": [
+        {
+          "phantom": true,
+          "name": "T",
+          "constraints": []
+        }
+      ],
+      "fields": {
+        "positional_fields": false,
+        "fields": {
+          "operations": {
+            "index": 0,
+            "doc": " Bitmap with bit `o` set iff operation `o` is allowed.",
+            "type_": "u32"
+          },
+          "owner": {
+            "index": 1,
+            "doc": null,
+            "type_": "address"
+          }
+        }
+      }
+    }
+  },
+  "enums": {}
+}

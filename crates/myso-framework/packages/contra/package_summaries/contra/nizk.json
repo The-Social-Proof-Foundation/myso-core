@@ -1,0 +1,2214 @@
+{
+  "id": {
+    "address": "contra",
+    "name": "nizk"
+  },
+  "doc": null,
+  "immediate_dependencies": [
+    {
+      "address": "contra",
+      "name": "twisted_elgamal"
+    },
+    {
+      "address": "myso",
+      "name": "group_ops"
+    },
+    {
+      "address": "myso",
+      "name": "hash"
+    },
+    {
+      "address": "myso",
+      "name": "ristretto255"
+    },
+    {
+      "address": "std",
+      "name": "bcs"
+    }
+  ],
+  "attributes": [],
+  "functions": {
+    "new_ddh_proof": {
+      "source_index": 0,
+      "index": 0,
+      "doc": null,
+      "attributes": [],
+      "visibility": "Public",
+      "entry": false,
+      "type_parameters": [],
+      "parameters": [
+        {
+          "name": "a",
+          "type_": {
+            "Datatype": {
+              "module": {
+                "address": "myso",
+                "name": "group_ops"
+              },
+              "name": "Element",
+              "type_arguments": [
+                {
+                  "phantom": true,
+                  "argument": {
+                    "Datatype": {
+                      "module": {
+                        "address": "myso",
+                        "name": "ristretto255"
+                      },
+                      "name": "G",
+                      "type_arguments": []
+                    }
+                  }
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "b",
+          "type_": {
+            "Datatype": {
+              "module": {
+                "address": "myso",
+                "name": "group_ops"
+              },
+              "name": "Element",
+              "type_arguments": [
+                {
+                  "phantom": true,
+                  "argument": {
+                    "Datatype": {
+                      "module": {
+                        "address": "myso",
+                        "name": "ristretto255"
+                      },
+                      "name": "G",
+                      "type_arguments": []
+                    }
+                  }
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "z",
+          "type_": {
+            "Datatype": {
+              "module": {
+                "address": "myso",
+                "name": "group_ops"
+              },
+              "name": "Element",
+              "type_arguments": [
+                {
+                  "phantom": true,
+                  "argument": {
+                    "Datatype": {
+                      "module": {
+                        "address": "myso",
+                        "name": "ristretto255"
+                      },
+                      "name": "Scalar",
+                      "type_arguments": []
+                    }
+                  }
+                }
+              ]
+            }
+          }
+        }
+      ],
+      "return_": [
+        {
+          "Datatype": {
+            "module": {
+              "address": "contra",
+              "name": "nizk"
+            },
+            "name": "DdhProof",
+            "type_arguments": []
+          }
+        }
+      ]
+    },
+    "new_elgamal_proof": {
+      "source_index": 1,
+      "index": 1,
+      "doc": null,
+      "attributes": [],
+      "visibility": "Public",
+      "entry": false,
+      "type_parameters": [],
+      "parameters": [
+        {
+          "name": "a",
+          "type_": {
+            "Datatype": {
+              "module": {
+                "address": "myso",
+                "name": "group_ops"
+              },
+              "name": "Element",
+              "type_arguments": [
+                {
+                  "phantom": true,
+                  "argument": {
+                    "Datatype": {
+                      "module": {
+                        "address": "myso",
+                        "name": "ristretto255"
+                      },
+                      "name": "G",
+                      "type_arguments": []
+                    }
+                  }
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "b",
+          "type_": {
+            "Datatype": {
+              "module": {
+                "address": "myso",
+                "name": "group_ops"
+              },
+              "name": "Element",
+              "type_arguments": [
+                {
+                  "phantom": true,
+                  "argument": {
+                    "Datatype": {
+                      "module": {
+                        "address": "myso",
+                        "name": "ristretto255"
+                      },
+                      "name": "G",
+                      "type_arguments": []
+                    }
+                  }
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "z1",
+          "type_": {
+            "Datatype": {
+              "module": {
+                "address": "myso",
+                "name": "group_ops"
+              },
+              "name": "Element",
+              "type_arguments": [
+                {
+                  "phantom": true,
+                  "argument": {
+                    "Datatype": {
+                      "module": {
+                        "address": "myso",
+                        "name": "ristretto255"
+                      },
+                      "name": "Scalar",
+                      "type_arguments": []
+                    }
+                  }
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "z2",
+          "type_": {
+            "Datatype": {
+              "module": {
+                "address": "myso",
+                "name": "group_ops"
+              },
+              "name": "Element",
+              "type_arguments": [
+                {
+                  "phantom": true,
+                  "argument": {
+                    "Datatype": {
+                      "module": {
+                        "address": "myso",
+                        "name": "ristretto255"
+                      },
+                      "name": "Scalar",
+                      "type_arguments": []
+                    }
+                  }
+                }
+              ]
+            }
+          }
+        }
+      ],
+      "return_": [
+        {
+          "Datatype": {
+            "module": {
+              "address": "contra",
+              "name": "nizk"
+            },
+            "name": "ElGamalProof",
+            "type_arguments": []
+          }
+        }
+      ]
+    },
+    "new_key_consistency_proof": {
+      "source_index": 2,
+      "index": 2,
+      "doc": null,
+      "attributes": [],
+      "visibility": "Public",
+      "entry": false,
+      "type_parameters": [],
+      "parameters": [
+        {
+          "name": "a1",
+          "type_": {
+            "vector": {
+              "Datatype": {
+                "module": {
+                  "address": "myso",
+                  "name": "group_ops"
+                },
+                "name": "Element",
+                "type_arguments": [
+                  {
+                    "phantom": true,
+                    "argument": {
+                      "Datatype": {
+                        "module": {
+                          "address": "myso",
+                          "name": "ristretto255"
+                        },
+                        "name": "G",
+                        "type_arguments": []
+                      }
+                    }
+                  }
+                ]
+              }
+            }
+          }
+        },
+        {
+          "name": "a2",
+          "type_": {
+            "vector": {
+              "Datatype": {
+                "module": {
+                  "address": "myso",
+                  "name": "group_ops"
+                },
+                "name": "Element",
+                "type_arguments": [
+                  {
+                    "phantom": true,
+                    "argument": {
+                      "Datatype": {
+                        "module": {
+                          "address": "myso",
+                          "name": "ristretto255"
+                        },
+                        "name": "G",
+                        "type_arguments": []
+                      }
+                    }
+                  }
+                ]
+              }
+            }
+          }
+        },
+        {
+          "name": "a3",
+          "type_": {
+            "Datatype": {
+              "module": {
+                "address": "myso",
+                "name": "group_ops"
+              },
+              "name": "Element",
+              "type_arguments": [
+                {
+                  "phantom": true,
+                  "argument": {
+                    "Datatype": {
+                      "module": {
+                        "address": "myso",
+                        "name": "ristretto255"
+                      },
+                      "name": "G",
+                      "type_arguments": []
+                    }
+                  }
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "z1",
+          "type_": {
+            "vector": {
+              "Datatype": {
+                "module": {
+                  "address": "myso",
+                  "name": "group_ops"
+                },
+                "name": "Element",
+                "type_arguments": [
+                  {
+                    "phantom": true,
+                    "argument": {
+                      "Datatype": {
+                        "module": {
+                          "address": "myso",
+                          "name": "ristretto255"
+                        },
+                        "name": "Scalar",
+                        "type_arguments": []
+                      }
+                    }
+                  }
+                ]
+              }
+            }
+          }
+        },
+        {
+          "name": "z2",
+          "type_": {
+            "vector": {
+              "Datatype": {
+                "module": {
+                  "address": "myso",
+                  "name": "group_ops"
+                },
+                "name": "Element",
+                "type_arguments": [
+                  {
+                    "phantom": true,
+                    "argument": {
+                      "Datatype": {
+                        "module": {
+                          "address": "myso",
+                          "name": "ristretto255"
+                        },
+                        "name": "Scalar",
+                        "type_arguments": []
+                      }
+                    }
+                  }
+                ]
+              }
+            }
+          }
+        }
+      ],
+      "return_": [
+        {
+          "Datatype": {
+            "module": {
+              "address": "contra",
+              "name": "nizk"
+            },
+            "name": "KeyConsistencyProof",
+            "type_arguments": []
+          }
+        }
+      ]
+    },
+    "verify_ddh": {
+      "source_index": 3,
+      "index": 3,
+      "doc": " Verify a DDH proof that the prover knows `x` such that `x_g = x * g` and `x_h = x * h`.",
+      "attributes": [],
+      "visibility": "Package",
+      "entry": false,
+      "type_parameters": [],
+      "parameters": [
+        {
+          "name": "proof",
+          "type_": {
+            "Reference": [
+              false,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "contra",
+                    "name": "nizk"
+                  },
+                  "name": "DdhProof",
+                  "type_arguments": []
+                }
+              }
+            ]
+          }
+        },
+        {
+          "name": "dst",
+          "type_": {
+            "vector": "u8"
+          }
+        },
+        {
+          "name": "g",
+          "type_": {
+            "Reference": [
+              false,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "myso",
+                    "name": "group_ops"
+                  },
+                  "name": "Element",
+                  "type_arguments": [
+                    {
+                      "phantom": true,
+                      "argument": {
+                        "Datatype": {
+                          "module": {
+                            "address": "myso",
+                            "name": "ristretto255"
+                          },
+                          "name": "G",
+                          "type_arguments": []
+                        }
+                      }
+                    }
+                  ]
+                }
+              }
+            ]
+          }
+        },
+        {
+          "name": "h",
+          "type_": {
+            "Reference": [
+              false,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "myso",
+                    "name": "group_ops"
+                  },
+                  "name": "Element",
+                  "type_arguments": [
+                    {
+                      "phantom": true,
+                      "argument": {
+                        "Datatype": {
+                          "module": {
+                            "address": "myso",
+                            "name": "ristretto255"
+                          },
+                          "name": "G",
+                          "type_arguments": []
+                        }
+                      }
+                    }
+                  ]
+                }
+              }
+            ]
+          }
+        },
+        {
+          "name": "x_g",
+          "type_": {
+            "Reference": [
+              false,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "myso",
+                    "name": "group_ops"
+                  },
+                  "name": "Element",
+                  "type_arguments": [
+                    {
+                      "phantom": true,
+                      "argument": {
+                        "Datatype": {
+                          "module": {
+                            "address": "myso",
+                            "name": "ristretto255"
+                          },
+                          "name": "G",
+                          "type_arguments": []
+                        }
+                      }
+                    }
+                  ]
+                }
+              }
+            ]
+          }
+        },
+        {
+          "name": "x_h",
+          "type_": {
+            "Reference": [
+              false,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "myso",
+                    "name": "group_ops"
+                  },
+                  "name": "Element",
+                  "type_arguments": [
+                    {
+                      "phantom": true,
+                      "argument": {
+                        "Datatype": {
+                          "module": {
+                            "address": "myso",
+                            "name": "ristretto255"
+                          },
+                          "name": "G",
+                          "type_arguments": []
+                        }
+                      }
+                    }
+                  ]
+                }
+              }
+            ]
+          }
+        }
+      ],
+      "return_": [
+        "bool"
+      ]
+    },
+    "verify_elgamal": {
+      "source_index": 4,
+      "index": 4,
+      "doc": " Verify that the prover knows the message `m` and randomness `r` in a twisted ElGamal\n encryption `(e1 = r*g + m*h, e2 = r*pk)`.",
+      "attributes": [],
+      "visibility": "Package",
+      "entry": false,
+      "type_parameters": [],
+      "parameters": [
+        {
+          "name": "proof",
+          "type_": {
+            "Reference": [
+              false,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "contra",
+                    "name": "nizk"
+                  },
+                  "name": "ElGamalProof",
+                  "type_arguments": []
+                }
+              }
+            ]
+          }
+        },
+        {
+          "name": "dst",
+          "type_": {
+            "vector": "u8"
+          }
+        },
+        {
+          "name": "pk",
+          "type_": {
+            "Reference": [
+              false,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "myso",
+                    "name": "group_ops"
+                  },
+                  "name": "Element",
+                  "type_arguments": [
+                    {
+                      "phantom": true,
+                      "argument": {
+                        "Datatype": {
+                          "module": {
+                            "address": "myso",
+                            "name": "ristretto255"
+                          },
+                          "name": "G",
+                          "type_arguments": []
+                        }
+                      }
+                    }
+                  ]
+                }
+              }
+            ]
+          }
+        },
+        {
+          "name": "e",
+          "type_": {
+            "Reference": [
+              false,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "contra",
+                    "name": "twisted_elgamal"
+                  },
+                  "name": "Encryption",
+                  "type_arguments": []
+                }
+              }
+            ]
+          }
+        }
+      ],
+      "return_": [
+        "bool"
+      ]
+    },
+    "verify_key_consistency": {
+      "source_index": 5,
+      "index": 5,
+      "doc": " Verify a `KeyConsistencyProof` against the recipient public keys and `encryptions[i]`, the\n i-th-limb `MultiRecipientEncryption` (one shared `ciphertext` + one `decryption_handle` per\n recipient).",
+      "attributes": [],
+      "visibility": "Package",
+      "entry": false,
+      "type_parameters": [],
+      "parameters": [
+        {
+          "name": "proof",
+          "type_": {
+            "Reference": [
+              false,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "contra",
+                    "name": "nizk"
+                  },
+                  "name": "KeyConsistencyProof",
+                  "type_arguments": []
+                }
+              }
+            ]
+          }
+        },
+        {
+          "name": "dst",
+          "type_": {
+            "vector": "u8"
+          }
+        },
+        {
+          "name": "sender_public_key",
+          "type_": {
+            "Reference": [
+              false,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "myso",
+                    "name": "group_ops"
+                  },
+                  "name": "Element",
+                  "type_arguments": [
+                    {
+                      "phantom": true,
+                      "argument": {
+                        "Datatype": {
+                          "module": {
+                            "address": "myso",
+                            "name": "ristretto255"
+                          },
+                          "name": "G",
+                          "type_arguments": []
+                        }
+                      }
+                    }
+                  ]
+                }
+              }
+            ]
+          }
+        },
+        {
+          "name": "recipient_encryption_keys",
+          "type_": {
+            "Reference": [
+              false,
+              {
+                "vector": {
+                  "Datatype": {
+                    "module": {
+                      "address": "myso",
+                      "name": "group_ops"
+                    },
+                    "name": "Element",
+                    "type_arguments": [
+                      {
+                        "phantom": true,
+                        "argument": {
+                          "Datatype": {
+                            "module": {
+                              "address": "myso",
+                              "name": "ristretto255"
+                            },
+                            "name": "G",
+                            "type_arguments": []
+                          }
+                        }
+                      }
+                    ]
+                  }
+                }
+              }
+            ]
+          }
+        },
+        {
+          "name": "encryptions",
+          "type_": {
+            "Reference": [
+              false,
+              {
+                "vector": {
+                  "Datatype": {
+                    "module": {
+                      "address": "contra",
+                      "name": "twisted_elgamal"
+                    },
+                    "name": "MultiRecipientEncryption",
+                    "type_arguments": []
+                  }
+                }
+              }
+            ]
+          }
+        }
+      ],
+      "return_": [
+        "bool"
+      ]
+    },
+    "challenge_ddh": {
+      "source_index": 6,
+      "index": 6,
+      "doc": null,
+      "attributes": [],
+      "visibility": "Private",
+      "entry": false,
+      "type_parameters": [],
+      "parameters": [
+        {
+          "name": "dst",
+          "type_": {
+            "vector": "u8"
+          }
+        },
+        {
+          "name": "g",
+          "type_": {
+            "Reference": [
+              false,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "myso",
+                    "name": "group_ops"
+                  },
+                  "name": "Element",
+                  "type_arguments": [
+                    {
+                      "phantom": true,
+                      "argument": {
+                        "Datatype": {
+                          "module": {
+                            "address": "myso",
+                            "name": "ristretto255"
+                          },
+                          "name": "G",
+                          "type_arguments": []
+                        }
+                      }
+                    }
+                  ]
+                }
+              }
+            ]
+          }
+        },
+        {
+          "name": "h",
+          "type_": {
+            "Reference": [
+              false,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "myso",
+                    "name": "group_ops"
+                  },
+                  "name": "Element",
+                  "type_arguments": [
+                    {
+                      "phantom": true,
+                      "argument": {
+                        "Datatype": {
+                          "module": {
+                            "address": "myso",
+                            "name": "ristretto255"
+                          },
+                          "name": "G",
+                          "type_arguments": []
+                        }
+                      }
+                    }
+                  ]
+                }
+              }
+            ]
+          }
+        },
+        {
+          "name": "x_g",
+          "type_": {
+            "Reference": [
+              false,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "myso",
+                    "name": "group_ops"
+                  },
+                  "name": "Element",
+                  "type_arguments": [
+                    {
+                      "phantom": true,
+                      "argument": {
+                        "Datatype": {
+                          "module": {
+                            "address": "myso",
+                            "name": "ristretto255"
+                          },
+                          "name": "G",
+                          "type_arguments": []
+                        }
+                      }
+                    }
+                  ]
+                }
+              }
+            ]
+          }
+        },
+        {
+          "name": "x_h",
+          "type_": {
+            "Reference": [
+              false,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "myso",
+                    "name": "group_ops"
+                  },
+                  "name": "Element",
+                  "type_arguments": [
+                    {
+                      "phantom": true,
+                      "argument": {
+                        "Datatype": {
+                          "module": {
+                            "address": "myso",
+                            "name": "ristretto255"
+                          },
+                          "name": "G",
+                          "type_arguments": []
+                        }
+                      }
+                    }
+                  ]
+                }
+              }
+            ]
+          }
+        },
+        {
+          "name": "a",
+          "type_": {
+            "Reference": [
+              false,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "myso",
+                    "name": "group_ops"
+                  },
+                  "name": "Element",
+                  "type_arguments": [
+                    {
+                      "phantom": true,
+                      "argument": {
+                        "Datatype": {
+                          "module": {
+                            "address": "myso",
+                            "name": "ristretto255"
+                          },
+                          "name": "G",
+                          "type_arguments": []
+                        }
+                      }
+                    }
+                  ]
+                }
+              }
+            ]
+          }
+        },
+        {
+          "name": "b",
+          "type_": {
+            "Reference": [
+              false,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "myso",
+                    "name": "group_ops"
+                  },
+                  "name": "Element",
+                  "type_arguments": [
+                    {
+                      "phantom": true,
+                      "argument": {
+                        "Datatype": {
+                          "module": {
+                            "address": "myso",
+                            "name": "ristretto255"
+                          },
+                          "name": "G",
+                          "type_arguments": []
+                        }
+                      }
+                    }
+                  ]
+                }
+              }
+            ]
+          }
+        }
+      ],
+      "return_": [
+        {
+          "Datatype": {
+            "module": {
+              "address": "myso",
+              "name": "group_ops"
+            },
+            "name": "Element",
+            "type_arguments": [
+              {
+                "phantom": true,
+                "argument": {
+                  "Datatype": {
+                    "module": {
+                      "address": "myso",
+                      "name": "ristretto255"
+                    },
+                    "name": "Scalar",
+                    "type_arguments": []
+                  }
+                }
+              }
+            ]
+          }
+        }
+      ]
+    },
+    "challenge_elgamal": {
+      "source_index": 7,
+      "index": 7,
+      "doc": null,
+      "attributes": [],
+      "visibility": "Private",
+      "entry": false,
+      "type_parameters": [],
+      "parameters": [
+        {
+          "name": "dst",
+          "type_": {
+            "vector": "u8"
+          }
+        },
+        {
+          "name": "g",
+          "type_": {
+            "Reference": [
+              false,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "myso",
+                    "name": "group_ops"
+                  },
+                  "name": "Element",
+                  "type_arguments": [
+                    {
+                      "phantom": true,
+                      "argument": {
+                        "Datatype": {
+                          "module": {
+                            "address": "myso",
+                            "name": "ristretto255"
+                          },
+                          "name": "G",
+                          "type_arguments": []
+                        }
+                      }
+                    }
+                  ]
+                }
+              }
+            ]
+          }
+        },
+        {
+          "name": "h",
+          "type_": {
+            "Reference": [
+              false,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "myso",
+                    "name": "group_ops"
+                  },
+                  "name": "Element",
+                  "type_arguments": [
+                    {
+                      "phantom": true,
+                      "argument": {
+                        "Datatype": {
+                          "module": {
+                            "address": "myso",
+                            "name": "ristretto255"
+                          },
+                          "name": "G",
+                          "type_arguments": []
+                        }
+                      }
+                    }
+                  ]
+                }
+              }
+            ]
+          }
+        },
+        {
+          "name": "pk",
+          "type_": {
+            "Reference": [
+              false,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "myso",
+                    "name": "group_ops"
+                  },
+                  "name": "Element",
+                  "type_arguments": [
+                    {
+                      "phantom": true,
+                      "argument": {
+                        "Datatype": {
+                          "module": {
+                            "address": "myso",
+                            "name": "ristretto255"
+                          },
+                          "name": "G",
+                          "type_arguments": []
+                        }
+                      }
+                    }
+                  ]
+                }
+              }
+            ]
+          }
+        },
+        {
+          "name": "e1",
+          "type_": {
+            "Reference": [
+              false,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "myso",
+                    "name": "group_ops"
+                  },
+                  "name": "Element",
+                  "type_arguments": [
+                    {
+                      "phantom": true,
+                      "argument": {
+                        "Datatype": {
+                          "module": {
+                            "address": "myso",
+                            "name": "ristretto255"
+                          },
+                          "name": "G",
+                          "type_arguments": []
+                        }
+                      }
+                    }
+                  ]
+                }
+              }
+            ]
+          }
+        },
+        {
+          "name": "e2",
+          "type_": {
+            "Reference": [
+              false,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "myso",
+                    "name": "group_ops"
+                  },
+                  "name": "Element",
+                  "type_arguments": [
+                    {
+                      "phantom": true,
+                      "argument": {
+                        "Datatype": {
+                          "module": {
+                            "address": "myso",
+                            "name": "ristretto255"
+                          },
+                          "name": "G",
+                          "type_arguments": []
+                        }
+                      }
+                    }
+                  ]
+                }
+              }
+            ]
+          }
+        },
+        {
+          "name": "a",
+          "type_": {
+            "Reference": [
+              false,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "myso",
+                    "name": "group_ops"
+                  },
+                  "name": "Element",
+                  "type_arguments": [
+                    {
+                      "phantom": true,
+                      "argument": {
+                        "Datatype": {
+                          "module": {
+                            "address": "myso",
+                            "name": "ristretto255"
+                          },
+                          "name": "G",
+                          "type_arguments": []
+                        }
+                      }
+                    }
+                  ]
+                }
+              }
+            ]
+          }
+        },
+        {
+          "name": "b",
+          "type_": {
+            "Reference": [
+              false,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "myso",
+                    "name": "group_ops"
+                  },
+                  "name": "Element",
+                  "type_arguments": [
+                    {
+                      "phantom": true,
+                      "argument": {
+                        "Datatype": {
+                          "module": {
+                            "address": "myso",
+                            "name": "ristretto255"
+                          },
+                          "name": "G",
+                          "type_arguments": []
+                        }
+                      }
+                    }
+                  ]
+                }
+              }
+            ]
+          }
+        }
+      ],
+      "return_": [
+        {
+          "Datatype": {
+            "module": {
+              "address": "myso",
+              "name": "group_ops"
+            },
+            "name": "Element",
+            "type_arguments": [
+              {
+                "phantom": true,
+                "argument": {
+                  "Datatype": {
+                    "module": {
+                      "address": "myso",
+                      "name": "ristretto255"
+                    },
+                    "name": "Scalar",
+                    "type_arguments": []
+                  }
+                }
+              }
+            ]
+          }
+        }
+      ]
+    },
+    "challenge_key_consistency": {
+      "source_index": 8,
+      "index": 8,
+      "doc": " Compute the Fiat-Shamir challenge for a `KeyConsistencyProof`. The transcript binds the bases\n `g, h`, the sender public key, the recipient public keys, every per-limb ciphertext with its\n decryption handles, and finally the prover commitments `(a1, a2, a3)`.",
+      "attributes": [],
+      "visibility": "Private",
+      "entry": false,
+      "type_parameters": [],
+      "parameters": [
+        {
+          "name": "dst",
+          "type_": {
+            "vector": "u8"
+          }
+        },
+        {
+          "name": "g",
+          "type_": {
+            "Reference": [
+              false,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "myso",
+                    "name": "group_ops"
+                  },
+                  "name": "Element",
+                  "type_arguments": [
+                    {
+                      "phantom": true,
+                      "argument": {
+                        "Datatype": {
+                          "module": {
+                            "address": "myso",
+                            "name": "ristretto255"
+                          },
+                          "name": "G",
+                          "type_arguments": []
+                        }
+                      }
+                    }
+                  ]
+                }
+              }
+            ]
+          }
+        },
+        {
+          "name": "h",
+          "type_": {
+            "Reference": [
+              false,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "myso",
+                    "name": "group_ops"
+                  },
+                  "name": "Element",
+                  "type_arguments": [
+                    {
+                      "phantom": true,
+                      "argument": {
+                        "Datatype": {
+                          "module": {
+                            "address": "myso",
+                            "name": "ristretto255"
+                          },
+                          "name": "G",
+                          "type_arguments": []
+                        }
+                      }
+                    }
+                  ]
+                }
+              }
+            ]
+          }
+        },
+        {
+          "name": "sender_public_key",
+          "type_": {
+            "Reference": [
+              false,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "myso",
+                    "name": "group_ops"
+                  },
+                  "name": "Element",
+                  "type_arguments": [
+                    {
+                      "phantom": true,
+                      "argument": {
+                        "Datatype": {
+                          "module": {
+                            "address": "myso",
+                            "name": "ristretto255"
+                          },
+                          "name": "G",
+                          "type_arguments": []
+                        }
+                      }
+                    }
+                  ]
+                }
+              }
+            ]
+          }
+        },
+        {
+          "name": "recipient_encryption_keys",
+          "type_": {
+            "Reference": [
+              false,
+              {
+                "vector": {
+                  "Datatype": {
+                    "module": {
+                      "address": "myso",
+                      "name": "group_ops"
+                    },
+                    "name": "Element",
+                    "type_arguments": [
+                      {
+                        "phantom": true,
+                        "argument": {
+                          "Datatype": {
+                            "module": {
+                              "address": "myso",
+                              "name": "ristretto255"
+                            },
+                            "name": "G",
+                            "type_arguments": []
+                          }
+                        }
+                      }
+                    ]
+                  }
+                }
+              }
+            ]
+          }
+        },
+        {
+          "name": "encryptions",
+          "type_": {
+            "Reference": [
+              false,
+              {
+                "vector": {
+                  "Datatype": {
+                    "module": {
+                      "address": "contra",
+                      "name": "twisted_elgamal"
+                    },
+                    "name": "MultiRecipientEncryption",
+                    "type_arguments": []
+                  }
+                }
+              }
+            ]
+          }
+        },
+        {
+          "name": "a1",
+          "type_": {
+            "Reference": [
+              false,
+              {
+                "vector": {
+                  "Datatype": {
+                    "module": {
+                      "address": "myso",
+                      "name": "group_ops"
+                    },
+                    "name": "Element",
+                    "type_arguments": [
+                      {
+                        "phantom": true,
+                        "argument": {
+                          "Datatype": {
+                            "module": {
+                              "address": "myso",
+                              "name": "ristretto255"
+                            },
+                            "name": "G",
+                            "type_arguments": []
+                          }
+                        }
+                      }
+                    ]
+                  }
+                }
+              }
+            ]
+          }
+        },
+        {
+          "name": "a2",
+          "type_": {
+            "Reference": [
+              false,
+              {
+                "vector": {
+                  "Datatype": {
+                    "module": {
+                      "address": "myso",
+                      "name": "group_ops"
+                    },
+                    "name": "Element",
+                    "type_arguments": [
+                      {
+                        "phantom": true,
+                        "argument": {
+                          "Datatype": {
+                            "module": {
+                              "address": "myso",
+                              "name": "ristretto255"
+                            },
+                            "name": "G",
+                            "type_arguments": []
+                          }
+                        }
+                      }
+                    ]
+                  }
+                }
+              }
+            ]
+          }
+        },
+        {
+          "name": "a3",
+          "type_": {
+            "Reference": [
+              false,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "myso",
+                    "name": "group_ops"
+                  },
+                  "name": "Element",
+                  "type_arguments": [
+                    {
+                      "phantom": true,
+                      "argument": {
+                        "Datatype": {
+                          "module": {
+                            "address": "myso",
+                            "name": "ristretto255"
+                          },
+                          "name": "G",
+                          "type_arguments": []
+                        }
+                      }
+                    }
+                  ]
+                }
+              }
+            ]
+          }
+        }
+      ],
+      "return_": [
+        {
+          "Datatype": {
+            "module": {
+              "address": "myso",
+              "name": "group_ops"
+            },
+            "name": "Element",
+            "type_arguments": [
+              {
+                "phantom": true,
+                "argument": {
+                  "Datatype": {
+                    "module": {
+                      "address": "myso",
+                      "name": "ristretto255"
+                    },
+                    "name": "Scalar",
+                    "type_arguments": []
+                  }
+                }
+              }
+            ]
+          }
+        }
+      ]
+    },
+    "fiat_shamir_challenge": {
+      "source_index": 9,
+      "index": 9,
+      "doc": null,
+      "attributes": [],
+      "visibility": "Private",
+      "entry": false,
+      "type_parameters": [],
+      "parameters": [
+        {
+          "name": "random_oracle_inputs",
+          "type_": {
+            "vector": {
+              "vector": "u8"
+            }
+          }
+        }
+      ],
+      "return_": [
+        {
+          "Datatype": {
+            "module": {
+              "address": "myso",
+              "name": "group_ops"
+            },
+            "name": "Element",
+            "type_arguments": [
+              {
+                "phantom": true,
+                "argument": {
+                  "Datatype": {
+                    "module": {
+                      "address": "myso",
+                      "name": "ristretto255"
+                    },
+                    "name": "Scalar",
+                    "type_arguments": []
+                  }
+                }
+              }
+            ]
+          }
+        }
+      ]
+    },
+    "is_valid_relation": {
+      "source_index": 10,
+      "index": 10,
+      "doc": " Checks the linear relation: `e1 + c * e2 == z * e3`.",
+      "attributes": [],
+      "visibility": "Private",
+      "entry": false,
+      "type_parameters": [],
+      "parameters": [
+        {
+          "name": "e1",
+          "type_": {
+            "Reference": [
+              false,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "myso",
+                    "name": "group_ops"
+                  },
+                  "name": "Element",
+                  "type_arguments": [
+                    {
+                      "phantom": true,
+                      "argument": {
+                        "Datatype": {
+                          "module": {
+                            "address": "myso",
+                            "name": "ristretto255"
+                          },
+                          "name": "G",
+                          "type_arguments": []
+                        }
+                      }
+                    }
+                  ]
+                }
+              }
+            ]
+          }
+        },
+        {
+          "name": "e2",
+          "type_": {
+            "Reference": [
+              false,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "myso",
+                    "name": "group_ops"
+                  },
+                  "name": "Element",
+                  "type_arguments": [
+                    {
+                      "phantom": true,
+                      "argument": {
+                        "Datatype": {
+                          "module": {
+                            "address": "myso",
+                            "name": "ristretto255"
+                          },
+                          "name": "G",
+                          "type_arguments": []
+                        }
+                      }
+                    }
+                  ]
+                }
+              }
+            ]
+          }
+        },
+        {
+          "name": "e3",
+          "type_": {
+            "Reference": [
+              false,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "myso",
+                    "name": "group_ops"
+                  },
+                  "name": "Element",
+                  "type_arguments": [
+                    {
+                      "phantom": true,
+                      "argument": {
+                        "Datatype": {
+                          "module": {
+                            "address": "myso",
+                            "name": "ristretto255"
+                          },
+                          "name": "G",
+                          "type_arguments": []
+                        }
+                      }
+                    }
+                  ]
+                }
+              }
+            ]
+          }
+        },
+        {
+          "name": "z",
+          "type_": {
+            "Reference": [
+              false,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "myso",
+                    "name": "group_ops"
+                  },
+                  "name": "Element",
+                  "type_arguments": [
+                    {
+                      "phantom": true,
+                      "argument": {
+                        "Datatype": {
+                          "module": {
+                            "address": "myso",
+                            "name": "ristretto255"
+                          },
+                          "name": "Scalar",
+                          "type_arguments": []
+                        }
+                      }
+                    }
+                  ]
+                }
+              }
+            ]
+          }
+        },
+        {
+          "name": "c",
+          "type_": {
+            "Reference": [
+              false,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "myso",
+                    "name": "group_ops"
+                  },
+                  "name": "Element",
+                  "type_arguments": [
+                    {
+                      "phantom": true,
+                      "argument": {
+                        "Datatype": {
+                          "module": {
+                            "address": "myso",
+                            "name": "ristretto255"
+                          },
+                          "name": "Scalar",
+                          "type_arguments": []
+                        }
+                      }
+                    }
+                  ]
+                }
+              }
+            ]
+          }
+        }
+      ],
+      "return_": [
+        "bool"
+      ]
+    }
+  },
+  "structs": {
+    "DdhProof": {
+      "index": 0,
+      "doc": " A non-interactive zero knowledge proof of the following relation:\n Prover knows `x` such that `x_g = x * g` and `x_h = x * h`, where `g` and `h` are generators of the group.",
+      "attributes": [],
+      "abilities": [
+        "Drop"
+      ],
+      "type_parameters": [],
+      "fields": {
+        "positional_fields": false,
+        "fields": {
+          "a": {
+            "index": 0,
+            "doc": null,
+            "type_": {
+              "Datatype": {
+                "module": {
+                  "address": "myso",
+                  "name": "group_ops"
+                },
+                "name": "Element",
+                "type_arguments": [
+                  {
+                    "phantom": true,
+                    "argument": {
+                      "Datatype": {
+                        "module": {
+                          "address": "myso",
+                          "name": "ristretto255"
+                        },
+                        "name": "G",
+                        "type_arguments": []
+                      }
+                    }
+                  }
+                ]
+              }
+            }
+          },
+          "b": {
+            "index": 1,
+            "doc": null,
+            "type_": {
+              "Datatype": {
+                "module": {
+                  "address": "myso",
+                  "name": "group_ops"
+                },
+                "name": "Element",
+                "type_arguments": [
+                  {
+                    "phantom": true,
+                    "argument": {
+                      "Datatype": {
+                        "module": {
+                          "address": "myso",
+                          "name": "ristretto255"
+                        },
+                        "name": "G",
+                        "type_arguments": []
+                      }
+                    }
+                  }
+                ]
+              }
+            }
+          },
+          "z": {
+            "index": 2,
+            "doc": null,
+            "type_": {
+              "Datatype": {
+                "module": {
+                  "address": "myso",
+                  "name": "group_ops"
+                },
+                "name": "Element",
+                "type_arguments": [
+                  {
+                    "phantom": true,
+                    "argument": {
+                      "Datatype": {
+                        "module": {
+                          "address": "myso",
+                          "name": "ristretto255"
+                        },
+                        "name": "Scalar",
+                        "type_arguments": []
+                      }
+                    }
+                  }
+                ]
+              }
+            }
+          }
+        }
+      }
+    },
+    "ElGamalProof": {
+      "index": 1,
+      "doc": " A non-interactive zero knowledge proof of the following relation:\n Prover knows `r` and `m` such that `c = r * g + m * h` and `d = r * pk` where `(c, d)` is a twisted ElGamal ciphertext,\n `pk` is a public key, and `g` and `h` are generators of the group.",
+      "attributes": [],
+      "abilities": [
+        "Drop"
+      ],
+      "type_parameters": [],
+      "fields": {
+        "positional_fields": false,
+        "fields": {
+          "a": {
+            "index": 0,
+            "doc": null,
+            "type_": {
+              "Datatype": {
+                "module": {
+                  "address": "myso",
+                  "name": "group_ops"
+                },
+                "name": "Element",
+                "type_arguments": [
+                  {
+                    "phantom": true,
+                    "argument": {
+                      "Datatype": {
+                        "module": {
+                          "address": "myso",
+                          "name": "ristretto255"
+                        },
+                        "name": "G",
+                        "type_arguments": []
+                      }
+                    }
+                  }
+                ]
+              }
+            }
+          },
+          "b": {
+            "index": 1,
+            "doc": null,
+            "type_": {
+              "Datatype": {
+                "module": {
+                  "address": "myso",
+                  "name": "group_ops"
+                },
+                "name": "Element",
+                "type_arguments": [
+                  {
+                    "phantom": true,
+                    "argument": {
+                      "Datatype": {
+                        "module": {
+                          "address": "myso",
+                          "name": "ristretto255"
+                        },
+                        "name": "G",
+                        "type_arguments": []
+                      }
+                    }
+                  }
+                ]
+              }
+            }
+          },
+          "z1": {
+            "index": 2,
+            "doc": null,
+            "type_": {
+              "Datatype": {
+                "module": {
+                  "address": "myso",
+                  "name": "group_ops"
+                },
+                "name": "Element",
+                "type_arguments": [
+                  {
+                    "phantom": true,
+                    "argument": {
+                      "Datatype": {
+                        "module": {
+                          "address": "myso",
+                          "name": "ristretto255"
+                        },
+                        "name": "Scalar",
+                        "type_arguments": []
+                      }
+                    }
+                  }
+                ]
+              }
+            }
+          },
+          "z2": {
+            "index": 3,
+            "doc": null,
+            "type_": {
+              "Datatype": {
+                "module": {
+                  "address": "myso",
+                  "name": "group_ops"
+                },
+                "name": "Element",
+                "type_arguments": [
+                  {
+                    "phantom": true,
+                    "argument": {
+                      "Datatype": {
+                        "module": {
+                          "address": "myso",
+                          "name": "ristretto255"
+                        },
+                        "name": "Scalar",
+                        "type_arguments": []
+                      }
+                    }
+                  }
+                ]
+              }
+            }
+          }
+        }
+      }
+    },
+    "KeyConsistencyProof": {
+      "index": 2,
+      "doc": " A non-interactive zero knowledge proof of knowledge showing that the eight 32-bit limbs of a\n 256-bit private key are correctly encrypted to a list of m recipient public keys `pk_j` using\n Twisted ElGamal. The proof shows that the prover knows randomness `(r_1, ..., r_8)` and key\n limbs `(u_1, ..., u_8)` such that:\n - `D_ij = r_i * pk_j` for all i and j, where `D_ij` is the decryption handle for the i-th limb\n   and j-th recipient.\n - `C_i = r_i * g + u_i * h` for all i, where `C_i` is the ciphertext for the i-th limb.\n - `(\\sum_i u_i * 2^{32i}) * g == sender_public_key`.",
+      "attributes": [],
+      "abilities": [
+        "Drop"
+      ],
+      "type_parameters": [],
+      "fields": {
+        "positional_fields": false,
+        "fields": {
+          "a1": {
+            "index": 0,
+            "doc": null,
+            "type_": {
+              "vector": {
+                "Datatype": {
+                  "module": {
+                    "address": "myso",
+                    "name": "group_ops"
+                  },
+                  "name": "Element",
+                  "type_arguments": [
+                    {
+                      "phantom": true,
+                      "argument": {
+                        "Datatype": {
+                          "module": {
+                            "address": "myso",
+                            "name": "ristretto255"
+                          },
+                          "name": "G",
+                          "type_arguments": []
+                        }
+                      }
+                    }
+                  ]
+                }
+              }
+            }
+          },
+          "a2": {
+            "index": 1,
+            "doc": null,
+            "type_": {
+              "vector": {
+                "Datatype": {
+                  "module": {
+                    "address": "myso",
+                    "name": "group_ops"
+                  },
+                  "name": "Element",
+                  "type_arguments": [
+                    {
+                      "phantom": true,
+                      "argument": {
+                        "Datatype": {
+                          "module": {
+                            "address": "myso",
+                            "name": "ristretto255"
+                          },
+                          "name": "G",
+                          "type_arguments": []
+                        }
+                      }
+                    }
+                  ]
+                }
+              }
+            }
+          },
+          "a3": {
+            "index": 2,
+            "doc": null,
+            "type_": {
+              "Datatype": {
+                "module": {
+                  "address": "myso",
+                  "name": "group_ops"
+                },
+                "name": "Element",
+                "type_arguments": [
+                  {
+                    "phantom": true,
+                    "argument": {
+                      "Datatype": {
+                        "module": {
+                          "address": "myso",
+                          "name": "ristretto255"
+                        },
+                        "name": "G",
+                        "type_arguments": []
+                      }
+                    }
+                  }
+                ]
+              }
+            }
+          },
+          "z1": {
+            "index": 3,
+            "doc": null,
+            "type_": {
+              "vector": {
+                "Datatype": {
+                  "module": {
+                    "address": "myso",
+                    "name": "group_ops"
+                  },
+                  "name": "Element",
+                  "type_arguments": [
+                    {
+                      "phantom": true,
+                      "argument": {
+                        "Datatype": {
+                          "module": {
+                            "address": "myso",
+                            "name": "ristretto255"
+                          },
+                          "name": "Scalar",
+                          "type_arguments": []
+                        }
+                      }
+                    }
+                  ]
+                }
+              }
+            }
+          },
+          "z2": {
+            "index": 4,
+            "doc": null,
+            "type_": {
+              "vector": {
+                "Datatype": {
+                  "module": {
+                    "address": "myso",
+                    "name": "group_ops"
+                  },
+                  "name": "Element",
+                  "type_arguments": [
+                    {
+                      "phantom": true,
+                      "argument": {
+                        "Datatype": {
+                          "module": {
+                            "address": "myso",
+                            "name": "ristretto255"
+                          },
+                          "name": "Scalar",
+                          "type_arguments": []
+                        }
+                      }
+                    }
+                  ]
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  },
+  "enums": {}
+}
