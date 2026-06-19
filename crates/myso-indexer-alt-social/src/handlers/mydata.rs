@@ -164,6 +164,7 @@ fn process_mydata_created_event(
             .unwrap_or(false),
         update_frequency: json_opt_string_field(data, "update_frequency"),
         version: json_opt_i64_field(data, "version").unwrap_or(1),
+        encrypted_content_hash: None,
         transaction_id: transaction_id.to_string(),
     };
 

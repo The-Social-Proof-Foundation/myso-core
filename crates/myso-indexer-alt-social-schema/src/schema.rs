@@ -447,6 +447,7 @@ diesel::table! {
         is_updating -> Bool,
         update_frequency -> Nullable<Text>,
         version -> Int8,
+        encrypted_content_hash -> Nullable<Text>,
         time -> Timestamptz,
         transaction_id -> Text,
     }
@@ -1775,7 +1776,6 @@ diesel::table! {
         content_type -> Text,
         content_id -> Text,
         access_time -> Int8,
-        seal_id -> Nullable<Text>,
         time -> Timestamptz,
         transaction_id -> Text,
         processing_success -> Bool,

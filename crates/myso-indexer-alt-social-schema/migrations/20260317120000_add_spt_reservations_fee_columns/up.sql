@@ -27,6 +27,22 @@ END $$;
 ALTER TABLE posts ADD COLUMN IF NOT EXISTS mydata_id TEXT;
 ALTER TABLE posts ADD COLUMN IF NOT EXISTS revenue_recipient TEXT;
 
+-- Persist blake2b256 hash of MyData ciphertext for post paywall indexing.
+ALTER TABLE mydata_data ADD COLUMN IF NOT EXISTS encrypted_content_hash TEXT;
+
+COMMENT ON COLUMN mydata_data.encrypted_content_hash IS
+    'blake2b256 hex digest (0x-prefixed) of on-chain encrypted_data; not the ciphertext itself';
+
+-- Backfill post paywall columns from linked mydata_data rows.
+UPDATE posts p
+SET
+    requires_subscription = (d.subscription_price IS NOT NULL),
+    subscription_price = d.subscription_price,
+    encrypted_content_hash = COALESCE(p.encrypted_content_hash, d.encrypted_content_hash)
+FROM mydata_data d
+WHERE p.mydata_id = d.mydata_id
+  AND p.mydata_id IS NOT NULL;
+
 -- PostCreatedEvent: platform address and permission bitfield (indexed by PostsHandler).
 ALTER TABLE posts ADD COLUMN IF NOT EXISTS platform_id TEXT;
 ALTER TABLE posts ADD COLUMN IF NOT EXISTS permissions SMALLINT;

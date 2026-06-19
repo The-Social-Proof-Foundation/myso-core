@@ -17,6 +17,7 @@ use myso_types::MYSO_SOCIAL_ADDRESS;
 use serde::{Deserialize, Serialize};
 
 use super::mydata::{new_mydata_registry_row, u64_to_db_i64};
+use super::post_mydata::compute_encrypted_content_hash;
 use crate::handlers::mydata_handler::MyDataRow;
 use crate::metrics::SocialMetrics;
 
@@ -32,10 +33,10 @@ pub(crate) struct BcsMyData {
     timestamp_end: Option<u64>,
     created_at: u64,
     last_updated: u64,
-    _encrypted_data: Vec<u8>,
+    pub(crate) encrypted_data: Vec<u8>,
     _encryption_id: Vec<u8>,
-    one_time_price: Option<u64>,
-    subscription_price: Option<u64>,
+    pub(crate) one_time_price: Option<u64>,
+    pub(crate) subscription_price: Option<u64>,
     subscription_duration_days: u64,
     _purchasers: Table,
     _subscribers: Table,
@@ -81,6 +82,7 @@ pub(crate) fn bcs_mydata_to_new_row(
         is_updating: mydata.is_updating,
         update_frequency: mydata.update_frequency.clone(),
         version: u64_to_db_i64(mydata.version),
+        encrypted_content_hash: compute_encrypted_content_hash(&mydata.encrypted_data),
         transaction_id,
     }
 }
@@ -167,7 +169,7 @@ mod tests {
             timestamp_end: Some(1_779_186_444),
             created_at: 1_000,
             last_updated: 1_000,
-            _encrypted_data: vec![1, 2, 3],
+            encrypted_data: vec![1, 2, 3],
             _encryption_id: vec![4, 5, 6],
             one_time_price: Some(1_000_000_000),
             subscription_price: Some(5_000_000_000),
@@ -211,5 +213,11 @@ mod tests {
         assert_eq!(row.timestamp_start, 1_779_182_444);
         assert_eq!(row.timestamp_end, Some(1_779_186_444));
         assert!(!row.is_updating);
+        assert!(row.encrypted_content_hash.is_some());
+        assert!(row
+            .encrypted_content_hash
+            .as_deref()
+            .unwrap()
+            .starts_with("0x"));
     }
 }

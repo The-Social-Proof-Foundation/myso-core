@@ -248,6 +248,7 @@ pub struct MyDataData {
     pub is_updating: bool,
     pub update_frequency: Option<String>,
     pub version: i64,
+    pub encrypted_content_hash: Option<String>,
     pub time: chrono::DateTime<chrono::Utc>,
     pub transaction_id: String,
 }
@@ -274,6 +275,7 @@ pub struct NewMyDataData {
     pub is_updating: bool,
     pub update_frequency: Option<String>,
     pub version: i64,
+    pub encrypted_content_hash: Option<String>,
     pub transaction_id: String,
 }
 

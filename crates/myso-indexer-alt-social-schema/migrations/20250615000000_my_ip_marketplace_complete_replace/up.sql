@@ -78,6 +78,7 @@ CREATE TABLE IF NOT EXISTS mydata_data (
     is_updating BOOLEAN NOT NULL DEFAULT false,
     update_frequency TEXT CHECK (update_frequency IN ('hourly', 'daily', 'weekly', 'monthly', 'yearly')),
     version BIGINT NOT NULL DEFAULT 1,
+    encrypted_content_hash TEXT,
     time TIMESTAMPTZ NOT NULL DEFAULT NOW(),
     transaction_id TEXT NOT NULL
 );

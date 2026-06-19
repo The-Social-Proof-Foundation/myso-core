@@ -32,7 +32,6 @@ telemetry-subscribers.workspace = true
 
 myso-indexer-alt-social-schema = { path = "../myso-indexer-alt-social-schema" }
 
-[dev-dependencies]
 fastcrypto = { workspace = true }
 rand = { workspace = true }
 

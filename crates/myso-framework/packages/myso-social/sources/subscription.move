@@ -409,16 +409,6 @@ module social_contracts::subscription {
         subscription.expires_at > now
     }
 
-    /// MyData integration for encrypted content access
-    public entry fun seal_approve(
-        _id: vector<u8>,
-        subscription: &ProfileSubscription,
-        service: &ProfileSubscriptionService,
-        clock: &Clock,
-    ) {
-        assert!(is_subscription_valid(subscription, service, clock), ENoAccess);
-    }
-
     /// Update service fee (profile owner only)
     /// Now emits event when fee changes
     public entry fun update_service_fee(

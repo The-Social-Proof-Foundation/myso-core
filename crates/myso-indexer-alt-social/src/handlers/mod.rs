@@ -24,6 +24,7 @@ mod platform;
 mod platform_handler;
 mod poc;
 mod post;
+mod post_mydata;
 mod posts_handler;
 mod profile;
 mod profiles_handler;

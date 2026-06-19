@@ -7429,9 +7429,6 @@ fund_renewal_balance
 is_subscription_valid
 	public fun
 	0x50c1::subscription
-seal_approve
-	public entry fun
-	0x50c1::subscription
 update_service_fee
 	public entry fun
 	0x50c1::subscription

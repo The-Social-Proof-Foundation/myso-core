@@ -139,7 +139,6 @@ CREATE TABLE IF NOT EXISTS subscription_access_logs (
     content_type TEXT NOT NULL, -- 'profile', 'post'
     content_id TEXT NOT NULL,
     access_time BIGINT NOT NULL,
-    seal_id TEXT, -- For encrypted content access
     time TIMESTAMPTZ NOT NULL DEFAULT NOW(),
     transaction_id TEXT NOT NULL,
     processing_success BOOLEAN NOT NULL DEFAULT true,

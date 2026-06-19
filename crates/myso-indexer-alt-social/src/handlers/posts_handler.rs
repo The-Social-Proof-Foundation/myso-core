@@ -41,6 +41,7 @@ use super::common;
 use super::events;
 use super::poc;
 use super::post;
+use super::post_mydata;
 
 const POST_MODULES: &[&str] = &["post", "comment", "reaction", "repost", "tip"];
 const POC_MODULES: &[&str] = &["poc", "proof_of_creativity", "poc_vault"];
@@ -581,6 +582,7 @@ impl Processor for PostsHandler {
     type Value = PostRow;
 
     async fn process(&self, checkpoint: &Arc<Checkpoint>) -> Result<Vec<Self::Value>> {
+        let mydata_snapshots = post_mydata::build_checkpoint_mydata_snapshots(checkpoint);
         let mut values = Vec::new();
         for tx in &checkpoint.transactions {
             let tx_digest = tx.transaction.digest().to_string();
@@ -618,7 +620,8 @@ impl Processor for PostsHandler {
                         }
                     };
                 if is_post_module {
-                    if let Some(rows) = post::handle_post_event(event_name, &event_data, &event_id)
+                    if let Some(rows) =
+                        post::handle_post_event(event_name, &event_data, &event_id, &mydata_snapshots)
                     {
                         for row in rows {
                             if let Some(r) = PostRow::from_social(row) {
@@ -674,8 +677,10 @@ impl Handler for PostsHandler {
         for row in values {
             match row {
                 PostRow::Post(p) => {
+                    let mut post = p.clone();
+                    post_mydata::enrich_post_paywall_from_db(&mut post, conn).await?;
                     total += diesel::insert_into(posts::table)
-                        .values(p)
+                        .values(&post)
                         .on_conflict((posts::post_id, posts::time))
                         .do_nothing()
                         .execute(conn)

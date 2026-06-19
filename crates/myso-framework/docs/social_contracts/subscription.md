@@ -24,7 +24,6 @@ Handles subscription services for profiles & MyData
 -  [Function `can_auto_renew`](#social_contracts_subscription_can_auto_renew)
 -  [Function `fund_renewal_balance`](#social_contracts_subscription_fund_renewal_balance)
 -  [Function `is_subscription_valid`](#social_contracts_subscription_is_subscription_valid)
--  [Function `seal_approve`](#social_contracts_subscription_seal_approve)
 -  [Function `update_service_fee`](#social_contracts_subscription_update_service_fee)
 -  [Function `deactivate_service`](#social_contracts_subscription_deactivate_service)
 -  [Function `cancel_subscription`](#social_contracts_subscription_cancel_subscription)
@@ -1008,36 +1007,6 @@ Check if a subscription is valid for access
     };
     <b>let</b> now = clock::timestamp_ms(clock);
     <a href="../social_contracts/subscription.md#social_contracts_subscription">subscription</a>.expires_at &gt; now
-}
-</code></pre>
-
-
-
-</details>
-
-<a name="social_contracts_subscription_seal_approve"></a>
-
-## Function `seal_approve`
-
-MyData integration for encrypted content access
-
-
-<pre><code><b>public</b> <b>entry</b> <b>fun</b> <a href="../social_contracts/subscription.md#social_contracts_subscription_seal_approve">seal_approve</a>(_id: vector&lt;u8&gt;, <a href="../social_contracts/subscription.md#social_contracts_subscription">subscription</a>: &<a href="../social_contracts/subscription.md#social_contracts_subscription_ProfileSubscription">social_contracts::subscription::ProfileSubscription</a>, service: &<a href="../social_contracts/subscription.md#social_contracts_subscription_ProfileSubscriptionService">social_contracts::subscription::ProfileSubscriptionService</a>, clock: &<a href="../myso/clock.md#myso_clock_Clock">myso::clock::Clock</a>)
-</code></pre>
-
-
-
-<details>
-<summary>Implementation</summary>
-
-
-<pre><code><b>public</b> <b>entry</b> <b>fun</b> <a href="../social_contracts/subscription.md#social_contracts_subscription_seal_approve">seal_approve</a>(
-    _id: vector&lt;u8&gt;,
-    <a href="../social_contracts/subscription.md#social_contracts_subscription">subscription</a>: &<a href="../social_contracts/subscription.md#social_contracts_subscription_ProfileSubscription">ProfileSubscription</a>,
-    service: &<a href="../social_contracts/subscription.md#social_contracts_subscription_ProfileSubscriptionService">ProfileSubscriptionService</a>,
-    clock: &Clock,
-) {
-    <b>assert</b>!(<a href="../social_contracts/subscription.md#social_contracts_subscription_is_subscription_valid">is_subscription_valid</a>(<a href="../social_contracts/subscription.md#social_contracts_subscription">subscription</a>, service, clock), <a href="../social_contracts/subscription.md#social_contracts_subscription_ENoAccess">ENoAccess</a>);
 }
 </code></pre>
 

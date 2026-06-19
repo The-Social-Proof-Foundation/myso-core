@@ -34,6 +34,7 @@ use super::common;
 use super::events;
 use super::mydata;
 use super::mydata_object;
+use super::post_mydata::{self, paywall_from_mydata};
 use crate::metrics::SocialMetrics;
 
 const MYDATA_MODULES: &[&str] = &["mydata", "my_ip"];
@@ -278,7 +279,9 @@ impl Handler for MyDataHandler {
                     let update_frequency = d.update_frequency.clone();
                     let version = d.version;
                     let last_updated = d.last_updated;
+                    let encrypted_content_hash = d.encrypted_content_hash.clone();
                     let transaction_id = d.transaction_id.clone();
+                    let mydata_id = d.mydata_id.clone();
                     total += diesel::insert_into(mydata_data::table)
                         .values(d)
                         .on_conflict(mydata_data::mydata_id)
@@ -302,9 +305,13 @@ impl Handler for MyDataHandler {
                             mydata_data::update_frequency.eq(update_frequency),
                             mydata_data::version.eq(version),
                             mydata_data::last_updated.eq(last_updated),
+                            mydata_data::encrypted_content_hash.eq(encrypted_content_hash.clone()),
                             mydata_data::transaction_id.eq(transaction_id),
                         ))
                         .execute(conn)
+                        .await?;
+                    let paywall = paywall_from_mydata(subscription_price, encrypted_content_hash);
+                    total += post_mydata::sync_posts_for_mydata(conn, &mydata_id, &paywall)
                         .await?;
                 }
                 MyDataRow::MyDataPurchase(p) => {

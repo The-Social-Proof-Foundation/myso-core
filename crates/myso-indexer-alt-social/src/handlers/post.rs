@@ -8,8 +8,10 @@
 
 use chrono::Utc;
 use serde::Deserialize;
+use std::collections::HashMap;
 
 use super::common;
+use super::post_mydata::{self, MyDataPaywallSnapshot};
 use super::SocialEventRow;
 use myso_indexer_alt_social_schema::models::{
     NewComment, NewDeletionEvent, NewModerationEvent, NewPost, NewPostTransfer, NewReaction,
@@ -372,9 +374,10 @@ pub fn handle_post_event(
     event_name: &str,
     data: &serde_json::Value,
     event_id: &str,
+    mydata_snapshots: &HashMap<String, MyDataPaywallSnapshot>,
 ) -> Option<Vec<SocialEventRow>> {
     match event_name {
-        "PostCreatedEvent" => process_post_created_event(data, event_id),
+        "PostCreatedEvent" => process_post_created_event(data, event_id, mydata_snapshots),
         "CommentCreatedEvent" => process_comment_created_event(data, event_id),
         "ReactionEvent" | "ReactionAddedEvent" => process_reaction_event(data, event_id),
         "ReactionRemovedEvent" | "RemoveReactionEvent" => {
@@ -409,6 +412,7 @@ pub fn handle_post_event(
 fn process_post_created_event(
     data: &serde_json::Value,
     event_id: &str,
+    mydata_snapshots: &HashMap<String, MyDataPaywallSnapshot>,
 ) -> Option<Vec<SocialEventRow>> {
     let ev: PostCreatedEvent = common::deserialize_social_event_json(
         "post",
@@ -428,7 +432,7 @@ fn process_post_created_event(
     let (actor_address, sub_agent_id, action_identity_class) =
         attribution_fields(data, &ev.owner);
 
-    let post = NewPost {
+    let mut post = NewPost {
         post_id: ev.post_id,
         owner: ev.owner.clone(),
         profile_id: ev.profile_id,
@@ -485,6 +489,9 @@ fn process_post_created_event(
             .map(i16::from)
             .or(action_identity_class),
     };
+    if let Some(mydata_id) = post.mydata_id.clone() {
+        post_mydata::enrich_post_from_mydata_id(&mut post, &mydata_id, mydata_snapshots);
+    }
     let mut out = vec![
         SocialEventRow::Post(post),
         SocialEventRow::ProfilePostCountIncrement {
@@ -1086,7 +1093,7 @@ mod tests {
             "sub_agent_id": null,
             "action_identity_class": 0,
         });
-        let rows = handle_post_event("ReactionEvent", &data, "tx:rx1").expect("rows");
+        let rows = handle_post_event("ReactionEvent", &data, "tx:rx1", &HashMap::new()).expect("rows");
         assert_eq!(rows.len(), 1);
         assert!(
             rows.iter().all(|r| matches!(r, SocialEventRow::Reaction(_))),
@@ -1106,7 +1113,7 @@ mod tests {
             "sub_agent_id": null,
             "action_identity_class": 0,
         });
-        let rows = handle_post_event("RemoveReactionEvent", &data, "tx:rm1").expect("rows");
+        let rows = handle_post_event("RemoveReactionEvent", &data, "tx:rm1", &HashMap::new()).expect("rows");
         assert_eq!(rows.len(), 1);
         assert!(
             rows.iter().any(|r| matches!(
@@ -1148,7 +1155,7 @@ mod tests {
             "spot_id": null,
             "spt_id": null,
         });
-        let rows = handle_post_event("PostCreatedEvent", &data, "digest:0").expect("rows");
+        let rows = handle_post_event("PostCreatedEvent", &data, "digest:0", &HashMap::new()).expect("rows");
         assert!(
             rows.iter().any(|r| matches!(
                 r,
@@ -1159,6 +1166,62 @@ mod tests {
             )),
             "expected PostRepostCountIncrement for quote repost parent"
         );
+    }
+
+    #[test]
+    fn post_created_with_mydata_snapshot_sets_paywall_fields() {
+        use super::post_mydata::{self, MyDataPaywallSnapshot};
+
+        let mydata_id = "0xmydata123";
+        let mut snapshots = HashMap::new();
+        snapshots.insert(
+            mydata_id.to_string(),
+            MyDataPaywallSnapshot {
+                subscription_price: Some(5_000_000_000),
+                encrypted_content_hash: Some("0xdeadbeef".to_string()),
+            },
+        );
+
+        let data = serde_json::json!({
+            "post_id": "0xpostmydata",
+            "owner": "0xddd",
+            "profile_id": "0xeee",
+            "content": "paid post",
+            "post_type": "post",
+            "parent_post_id": null,
+            "mentions": null,
+            "media_urls": null,
+            "metadata_json": null,
+            "mydata_id": mydata_id,
+            "promotion_id": null,
+            "revenue_redirect_to": null,
+            "revenue_redirect_percentage": null,
+            "enable_spt": false,
+            "enable_poc": false,
+            "enable_spot": false,
+            "spot_id": null,
+            "spt_id": null,
+        });
+
+        let rows =
+            handle_post_event("PostCreatedEvent", &data, "digest:mydata", &snapshots).expect("rows");
+        let post = rows
+            .iter()
+            .find_map(|r| match r {
+                SocialEventRow::Post(p) => Some(p),
+                _ => None,
+            })
+            .expect("post row");
+        assert_eq!(post.mydata_id.as_deref(), Some(mydata_id));
+        assert_eq!(post.requires_subscription, Some(true));
+        assert_eq!(post.subscription_price, Some(5_000_000_000));
+        assert_eq!(
+            post.encrypted_content_hash.as_deref(),
+            Some("0xdeadbeef")
+        );
+
+        let fields = post_mydata::paywall_from_mydata(None, Some("0xabc".to_string()));
+        assert_eq!(fields.requires_subscription, Some(false));
     }
 
     #[test]
@@ -1183,7 +1246,7 @@ mod tests {
             "spot_id": null,
             "spt_id": null,
         });
-        let rows = handle_post_event("PostCreatedEvent", &data, "digest:0").expect("rows");
+        let rows = handle_post_event("PostCreatedEvent", &data, "digest:0", &HashMap::new()).expect("rows");
         assert!(!rows
             .iter()
             .any(|r| matches!(r, SocialEventRow::PostRepostCountIncrement { .. })));
@@ -1199,7 +1262,7 @@ mod tests {
             "description": "Short description of the issue here.",
             "reported_at": 1714113519157_u64,
         });
-        let rows = handle_post_event("PostReportedEvent", &data, "digest:7").expect("rows");
+        let rows = handle_post_event("PostReportedEvent", &data, "digest:7", &HashMap::new()).expect("rows");
         let SocialEventRow::Report(r) = &rows[0] else {
             panic!("expected Report row");
         };
@@ -1223,7 +1286,7 @@ mod tests {
             "moderated_by": "0x2458950181e415250823d6ce1d55f2b3427826a111939e0d6d38e9a1397411d8",
             "moderated_at": 0u64,
         });
-        let rows = handle_post_event("PostModerationEvent", &data, "tx:1").expect("rows");
+        let rows = handle_post_event("PostModerationEvent", &data, "tx:1", &HashMap::new()).expect("rows");
         assert_eq!(rows.len(), 2);
         let SocialEventRow::ModerationEvent(m) = &rows[0] else {
             panic!("expected ModerationEvent");
@@ -1273,7 +1336,7 @@ mod tests {
             "post_id": post_oid,
             "deleted_at": 1_717_200_000_000_u64,
         });
-        let rows = handle_post_event("PostDeletedEvent", &data, "tx:del1").expect("rows");
+        let rows = handle_post_event("PostDeletedEvent", &data, "tx:del1", &HashMap::new()).expect("rows");
         assert_eq!(rows.len(), 3);
         let SocialEventRow::DeletionEvent(d) = &rows[0] else {
             panic!("expected DeletionEvent");
@@ -1303,7 +1366,7 @@ mod tests {
             "total_budget": 1000000_u64,
             "created_at": 1_742_000_000_000_u64,
         });
-        let rows = handle_post_event("PromotedPostCreatedEvent", &data, "tx:promo1").expect("rows");
+        let rows = handle_post_event("PromotedPostCreatedEvent", &data, "tx:promo1", &HashMap::new()).expect("rows");
         assert_eq!(rows.len(), 1);
         let SocialEventRow::PromotedPost {
             post_id,
@@ -1344,7 +1407,7 @@ mod tests {
             "is_post": false,
             "tip_time": 0u64,
         });
-        let rows = handle_post_event("TipEvent", &data, "tx:tip2").expect("rows");
+        let rows = handle_post_event("TipEvent", &data, "tx:tip2", &HashMap::new()).expect("rows");
         let SocialEventRow::Tip(tip_row) = &rows[0] else {
             panic!("expected Tip");
         };
@@ -1373,7 +1436,7 @@ mod tests {
             "is_post": true,
             "tip_time": 0u64,
         });
-        let rows = handle_post_event("TipEvent", &data, "tx:tip1").expect("rows");
+        let rows = handle_post_event("TipEvent", &data, "tx:tip1", &HashMap::new()).expect("rows");
         assert_eq!(rows.len(), 3);
         let SocialEventRow::Tip(t) = &rows[0] else {
             panic!("expected Tip");
@@ -1426,7 +1489,7 @@ mod tests {
             "post_id": post_id,
             "deleted_at": 1_717_201_000_000_u64,
         });
-        let rows = handle_post_event("CommentDeletedEvent", &data, "tx:del2").expect("rows");
+        let rows = handle_post_event("CommentDeletedEvent", &data, "tx:del2", &HashMap::new()).expect("rows");
         assert_eq!(rows.len(), 3);
         let SocialEventRow::DeletionEvent(d) = &rows[0] else {
             panic!("expected DeletionEvent");

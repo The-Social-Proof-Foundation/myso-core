@@ -12,3 +12,5 @@ ALTER TABLE posts DROP COLUMN IF EXISTS permissions;
 ALTER TABLE posts DROP COLUMN IF EXISTS platform_id;
 ALTER TABLE posts DROP COLUMN IF EXISTS mydata_id;
 ALTER TABLE posts DROP COLUMN IF EXISTS revenue_recipient;
+
+ALTER TABLE mydata_data DROP COLUMN IF EXISTS encrypted_content_hash;
