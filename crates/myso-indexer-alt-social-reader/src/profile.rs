@@ -609,6 +609,59 @@ pub(crate) async fn get_profiles(
     Ok(results)
 }
 
+pub(crate) async fn get_profiles_by_x_usernames(
+    conn: &mut Connection<'_>,
+    usernames: &[String],
+    metrics: &DbReaderMetrics,
+) -> anyhow::Result<Vec<Profile>> {
+    if usernames.is_empty() {
+        return Ok(vec![]);
+    }
+    metrics.requests_received.inc();
+    let _guard = metrics.latency.start_timer();
+
+    let lowered: Vec<String> = usernames
+        .iter()
+        .filter_map(|u| sanitize_x_username(u))
+        .collect();
+    if lowered.is_empty() {
+        return Ok(vec![]);
+    }
+
+    let in_list = lowered
+        .iter()
+        .map(|u| format!("'{u}'"))
+        .collect::<Vec<_>>()
+        .join(", ");
+
+    let results = profiles::table
+        .filter(profiles::x_username.is_not_null())
+        .filter(diesel::dsl::sql::<diesel::sql_types::Bool>(&format!(
+            "LOWER(x_username) IN ({in_list})"
+        )))
+        .select(Profile::as_select())
+        .load::<Profile>(conn)
+        .await?;
+
+    metrics.requests_succeeded.inc();
+    Ok(results)
+}
+
+fn sanitize_x_username(username: &str) -> Option<String> {
+    let lower = username.trim().to_lowercase();
+    if lower.is_empty() {
+        return None;
+    }
+    if lower
+        .chars()
+        .all(|c| c.is_ascii_alphanumeric() || c == '_')
+    {
+        Some(lower)
+    } else {
+        None
+    }
+}
+
 #[derive(Debug, Clone, QueryableByName)]
 pub struct ProfileBadgeRow {
     #[diesel(sql_type = Text)]

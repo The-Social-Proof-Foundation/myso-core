@@ -271,6 +271,24 @@ impl Query {
         )
     }
 
+    /// Batch lookup profiles by X/Twitter usernames. Returns empty when social DB not configured.
+    async fn profiles_by_x_usernames(
+        &self,
+        ctx: &Context<'_>,
+        usernames: Vec<String>,
+    ) -> Option<Result<Vec<Profile>, RpcError>> {
+        let reader_opt = ctx
+            .data_opt::<std::sync::Arc<Option<myso_indexer_alt_social_reader::SocialPgReader>>>()?;
+        let reader = reader_opt.as_ref().as_ref()?;
+        Some(
+            reader
+                .get_profiles_by_x_usernames(&usernames)
+                .await
+                .map_err(Into::into)
+                .map(|v| v.into_iter().map(Profile::from_db).collect()),
+        )
+    }
+
     /// Fetch a post by ID. Returns null if social DB not configured or not found.
     async fn post(
         &self,

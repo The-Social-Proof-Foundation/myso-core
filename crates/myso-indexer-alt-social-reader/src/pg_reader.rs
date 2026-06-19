@@ -217,6 +217,15 @@ impl SocialPgReader {
         get_profiles(&mut conn, limit, offset, &self.metrics).await
     }
 
+    /// Batch lookup profiles by X usernames (case-insensitive).
+    pub async fn get_profiles_by_x_usernames(
+        &self,
+        usernames: &[String],
+    ) -> anyhow::Result<Vec<Profile>> {
+        let mut conn = self.connect().await?;
+        crate::profile::get_profiles_by_x_usernames(&mut conn, usernames, &self.metrics).await
+    }
+
     /// Get a post by ID.
     pub async fn get_post_by_id(&self, post_id: &str) -> anyhow::Result<Option<PostRow>> {
         let mut conn = self.connect().await?;

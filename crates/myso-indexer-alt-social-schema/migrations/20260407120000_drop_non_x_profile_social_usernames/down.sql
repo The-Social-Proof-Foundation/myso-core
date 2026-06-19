@@ -5,3 +5,5 @@ ALTER TABLE profiles ADD COLUMN IF NOT EXISTS github_username TEXT;
 ALTER TABLE profiles ADD COLUMN IF NOT EXISTS linkedin_username TEXT;
 ALTER TABLE profiles ADD COLUMN IF NOT EXISTS reddit_username TEXT;
 ALTER TABLE profiles ADD COLUMN IF NOT EXISTS twitch_username TEXT;
+
+DROP INDEX IF EXISTS idx_profiles_x_username_lower;

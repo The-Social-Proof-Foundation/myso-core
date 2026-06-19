@@ -6,3 +6,8 @@ ALTER TABLE profiles
   DROP COLUMN IF EXISTS linkedin_username,
   DROP COLUMN IF EXISTS reddit_username,
   DROP COLUMN IF EXISTS twitch_username;
+
+-- Identity verification: fast lookup for X username matching and uniqueness checks.
+CREATE INDEX IF NOT EXISTS idx_profiles_x_username_lower
+    ON profiles (LOWER(x_username))
+    WHERE x_username IS NOT NULL;
