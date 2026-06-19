@@ -8338,6 +8338,33 @@ type VestingLeaderboardResponse {
 	total: Int!
 }
 
+type VestingPiece {
+	"""
+	Piece kind: CLIFF_LUMP or CONTINUOUS_VEST.
+	"""
+	kind: String!
+	"""
+	Milliseconds from vesting start when this piece activates.
+	"""
+	timeOffset: Int!
+	"""
+	Vest window length for continuous pieces (0 for cliff lumps).
+	"""
+	duration: Int!
+	"""
+	Share of total amount in basis points.
+	"""
+	amountBps: Int!
+	"""
+	Curve factor for continuous pieces (1000 = linear).
+	"""
+	curveFactor: Int!
+	"""
+	Computed token amount for this piece.
+	"""
+	pieceAmount: Int!
+}
+
 type VestingWallet {
 	"""
 	Amount already claimed.
@@ -8348,17 +8375,13 @@ type VestingWallet {
 	"""
 	claimedPercentage: Float!
 	"""
+	Currently claimable amount (after 0.1% threshold during active vesting).
+	"""
+	claimableAmount: Int!
+	"""
 	When the wallet was created (epoch milliseconds).
 	"""
 	createdAt: Int!
-	"""
-	Curve factor (1000 = linear).
-	"""
-	curveFactor: Int!
-	"""
-	Vesting duration (ms).
-	"""
-	duration: Int!
 	"""
 	End time (ms since epoch).
 	"""
@@ -8372,6 +8395,10 @@ type VestingWallet {
 	"""
 	hasStarted: Boolean!
 	"""
+	Nearest future cliff lump piece, if any.
+	"""
+	nextCliff: VestingPiece
+	"""
 	Owner address.
 	"""
 	ownerAddress: MySoAddress!
@@ -8380,9 +8407,17 @@ type VestingWallet {
 	"""
 	ownerProfile: ProfileSummary
 	"""
+	Schedule pieces defining cliffs and continuous vesting segments.
+	"""
+	pieces: [VestingPiece!]!
+	"""
 	Remaining balance.
 	"""
 	remainingBalance: Int!
+	"""
+	Absolute schedule end time (ms since epoch).
+	"""
+	scheduleEnd: Int!
 	"""
 	Vesting start time (ms since epoch).
 	"""

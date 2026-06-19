@@ -169,9 +169,12 @@ pub use subscription::{
 };
 pub use upgrade::{NewObjectMigratedEvent, NewUpgradeEvent};
 pub use vesting::{
-    CURVE_FACTOR_LINEAR, CURVE_FACTOR_MAX, CURVE_FACTOR_MIN, NewVestingEvent, NewVestingWallet,
-    UpdateVestingWallet, VESTING_EVENT_TYPE_CLAIMED, VESTING_EVENT_TYPE_VESTED, VestingEvent,
-    VestingWallet,
+    BPS_DENOMINATOR, CURVE_FACTOR_LINEAR, CURVE_FACTOR_MAX, CURVE_FACTOR_MIN,
+    MIN_CLAIM_THRESHOLD_DIVISOR, NewVestingEvent, NewVestingWallet, PIECE_KIND_CLIFF,
+    PIECE_KIND_CONTINUOUS, UpdateVestingWallet, VESTING_EVENT_TYPE_CLAIMED,
+    VESTING_EVENT_TYPE_VESTED, VestingEvent, VestingPiece, VestingWallet, apply_curve,
+    calculate_total_vested, calculate_vesting_claimable, finalize_claimable, parse_pieces,
+    vested_amount_for_piece,
 };
 pub use wallet_messaging_policy::{NewWalletMessagingPolicy, WalletMessagingPolicy};
 pub use wallet_social_graph::{NewWalletSocialGraph, WalletSocialGraph};

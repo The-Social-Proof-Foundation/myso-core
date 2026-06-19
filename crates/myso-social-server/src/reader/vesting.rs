@@ -7,6 +7,7 @@ use diesel::OptionalExtension;
 use diesel::QueryDsl;
 use diesel::QueryableByName;
 use diesel_async::RunQueryDsl;
+use myso_indexer_alt_social_schema::models::parse_pieces;
 use myso_indexer_alt_social_schema::schema::{vesting_events, vesting_wallets};
 
 use crate::error::SocialError;
@@ -23,8 +24,8 @@ fn vesting_wallet_row_from_tuple(
     owner_address: String,
     total_amount: i64,
     start_time: i64,
-    duration: i64,
-    curve_factor: i64,
+    schedule_end: i64,
+    pieces_json: serde_json::Value,
     claimed_amount: i64,
     remaining_balance: i64,
     created_at: chrono::NaiveDateTime,
@@ -36,8 +37,8 @@ fn vesting_wallet_row_from_tuple(
         owner_address,
         total_amount,
         start_time,
-        duration,
-        curve_factor,
+        schedule_end,
+        pieces: parse_pieces(&pieces_json),
         claimed_amount,
         remaining_balance,
         created_at,
@@ -69,18 +70,18 @@ pub(crate) async fn list_vesting_wallets(
                 (
                     "SELECT COUNT(*)::bigint as count FROM vesting_wallets \
                      WHERE owner_address = $1 AND start_time <= $2 AND remaining_balance > 0 \
-                     AND (start_time + duration) > $2",
-                    "SELECT wallet_id, owner_address, total_amount, start_time, duration, curve_factor, \
+                     AND schedule_end > $2",
+                    "SELECT wallet_id, owner_address, total_amount, start_time, schedule_end, pieces, \
                      claimed_amount, remaining_balance, created_at, updated_at, transaction_id \
                      FROM vesting_wallets \
                      WHERE owner_address = $1 AND start_time <= $2 AND remaining_balance > 0 \
-                     AND (start_time + duration) > $2 \
+                     AND schedule_end > $2 \
                      ORDER BY created_at DESC LIMIT $3 OFFSET $4",
                 )
             } else {
                 (
                     "SELECT COUNT(*)::bigint as count FROM vesting_wallets WHERE owner_address = $1",
-                    "SELECT wallet_id, owner_address, total_amount, start_time, duration, curve_factor, \
+                    "SELECT wallet_id, owner_address, total_amount, start_time, schedule_end, pieces, \
                      claimed_amount, remaining_balance, created_at, updated_at, transaction_id \
                      FROM vesting_wallets WHERE owner_address = $1 \
                      ORDER BY created_at DESC LIMIT $2 OFFSET $3",
@@ -89,11 +90,11 @@ pub(crate) async fn list_vesting_wallets(
         } else {
             (
                 "SELECT COUNT(*)::bigint as count FROM vesting_wallets \
-                 WHERE start_time <= $1 AND remaining_balance > 0 AND (start_time + duration) > $1",
-                "SELECT wallet_id, owner_address, total_amount, start_time, duration, curve_factor, \
+                 WHERE start_time <= $1 AND remaining_balance > 0 AND schedule_end > $1",
+                "SELECT wallet_id, owner_address, total_amount, start_time, schedule_end, pieces, \
                  claimed_amount, remaining_balance, created_at, updated_at, transaction_id \
                  FROM vesting_wallets \
-                 WHERE start_time <= $1 AND remaining_balance > 0 AND (start_time + duration) > $1 \
+                 WHERE start_time <= $1 AND remaining_balance > 0 AND schedule_end > $1 \
                  ORDER BY created_at DESC LIMIT $2 OFFSET $3",
             )
         };
@@ -130,9 +131,9 @@ pub(crate) async fn list_vesting_wallets(
             #[diesel(sql_type = BigInt)]
             start_time: i64,
             #[diesel(sql_type = BigInt)]
-            duration: i64,
-            #[diesel(sql_type = BigInt)]
-            curve_factor: i64,
+            schedule_end: i64,
+            #[diesel(sql_type = diesel::sql_types::Jsonb)]
+            pieces: serde_json::Value,
             #[diesel(sql_type = BigInt)]
             claimed_amount: i64,
             #[diesel(sql_type = BigInt)]
@@ -178,8 +179,8 @@ pub(crate) async fn list_vesting_wallets(
                     r.owner_address,
                     r.total_amount,
                     r.start_time,
-                    r.duration,
-                    r.curve_factor,
+                    r.schedule_end,
+                    r.pieces,
                     r.claimed_amount,
                     r.remaining_balance,
                     r.created_at,
@@ -203,8 +204,8 @@ pub(crate) async fn list_vesting_wallets(
                 vesting_wallets::owner_address,
                 vesting_wallets::total_amount,
                 vesting_wallets::start_time,
-                vesting_wallets::duration,
-                vesting_wallets::curve_factor,
+                vesting_wallets::schedule_end,
+                vesting_wallets::pieces,
                 vesting_wallets::claimed_amount,
                 vesting_wallets::remaining_balance,
                 vesting_wallets::created_at,
@@ -217,7 +218,7 @@ pub(crate) async fn list_vesting_wallets(
                 i64,
                 i64,
                 i64,
-                i64,
+                serde_json::Value,
                 i64,
                 i64,
                 chrono::NaiveDateTime,
@@ -233,8 +234,8 @@ pub(crate) async fn list_vesting_wallets(
                     owner_address,
                     total_amount,
                     start_time,
-                    duration,
-                    curve_factor,
+                    schedule_end,
+                    pieces,
                     claimed_amount,
                     remaining_balance,
                     created_at,
@@ -246,8 +247,8 @@ pub(crate) async fn list_vesting_wallets(
                         owner_address,
                         total_amount,
                         start_time,
-                        duration,
-                        curve_factor,
+                        schedule_end,
+                        pieces,
                         claimed_amount,
                         remaining_balance,
                         created_at,
@@ -260,12 +261,10 @@ pub(crate) async fn list_vesting_wallets(
         (total, results)
     };
 
-    let wallets = results;
-
-    let owner_addresses: Vec<String> = wallets.iter().map(|w| w.owner_address.clone()).collect();
+    let owner_addresses: Vec<String> = results.iter().map(|w| w.owner_address.clone()).collect();
     let user_map = enrich_users_with_universal_data(&mut conn, owner_addresses).await?;
 
-    let wallets_with_profile: Vec<VestingWalletWithProfile> = wallets
+    let wallets_with_profile: Vec<VestingWalletWithProfile> = results
         .into_iter()
         .map(|w| {
             let with_status =
@@ -320,8 +319,8 @@ pub(crate) async fn get_vesting_wallet_by_id(
             vesting_wallets::owner_address,
             vesting_wallets::total_amount,
             vesting_wallets::start_time,
-            vesting_wallets::duration,
-            vesting_wallets::curve_factor,
+            vesting_wallets::schedule_end,
+            vesting_wallets::pieces,
             vesting_wallets::claimed_amount,
             vesting_wallets::remaining_balance,
             vesting_wallets::created_at,
@@ -334,7 +333,7 @@ pub(crate) async fn get_vesting_wallet_by_id(
             i64,
             i64,
             i64,
-            i64,
+            serde_json::Value,
             i64,
             i64,
             chrono::NaiveDateTime,
@@ -380,8 +379,8 @@ pub(crate) async fn get_vesting_wallet_events(
             vesting_events::amount,
             vesting_events::remaining_balance,
             vesting_events::start_time,
-            vesting_events::duration,
-            vesting_events::curve_factor,
+            vesting_events::schedule_end,
+            vesting_events::pieces,
             vesting_events::event_time,
             vesting_events::time,
             vesting_events::transaction_id,
@@ -395,7 +394,7 @@ pub(crate) async fn get_vesting_wallet_events(
             Option<i64>,
             Option<i64>,
             Option<i64>,
-            Option<i64>,
+            Option<serde_json::Value>,
             i64,
             chrono::DateTime<chrono::Utc>,
             String,
@@ -413,8 +412,8 @@ pub(crate) async fn get_vesting_wallet_events(
                 amount,
                 remaining_balance,
                 start_time,
-                duration,
-                curve_factor,
+                schedule_end,
+                pieces,
                 event_time,
                 time,
                 transaction_id,
@@ -426,8 +425,8 @@ pub(crate) async fn get_vesting_wallet_events(
                 amount,
                 remaining_balance,
                 start_time,
-                duration,
-                curve_factor,
+                schedule_end,
+                pieces,
                 event_time,
                 time,
                 transaction_id,
@@ -465,10 +464,10 @@ pub(crate) async fn get_vesting_claimable(
         SELECT
             wallet_id,
             start_time,
-            duration,
+            schedule_end,
             calculate_vesting_claimable(
-                total_amount, start_time, duration, curve_factor,
-                claimed_amount, $2::bigint
+                total_amount, start_time, schedule_end, pieces,
+                claimed_amount, $2::bigint, remaining_balance
             )::bigint as claimable
         FROM vesting_wallets
         WHERE wallet_id = $1
@@ -481,7 +480,7 @@ pub(crate) async fn get_vesting_claimable(
         #[diesel(sql_type = BigInt)]
         start_time: i64,
         #[diesel(sql_type = BigInt)]
-        duration: i64,
+        schedule_end: i64,
         #[diesel(sql_type = BigInt)]
         claimable: i64,
     }
@@ -497,7 +496,7 @@ pub(crate) async fn get_vesting_claimable(
         return Ok(None);
     };
 
-    let end_time = row.start_time + row.duration;
+    let end_time = row.schedule_end;
     let has_started = row.start_time <= current_time_ms;
     let has_ended = current_time_ms >= end_time;
     let vesting_progress = if current_time_ms <= row.start_time {
@@ -506,7 +505,12 @@ pub(crate) async fn get_vesting_claimable(
         1.0
     } else {
         let elapsed = current_time_ms - row.start_time;
-        elapsed as f64 / row.duration as f64
+        let total_duration = end_time - row.start_time;
+        if total_duration <= 0 {
+            1.0
+        } else {
+            elapsed as f64 / total_duration as f64
+        }
     };
     let vesting_status = if !has_started {
         "not_started"
@@ -567,8 +571,8 @@ pub(crate) async fn list_vesting_events(
             vesting_events::amount,
             vesting_events::remaining_balance,
             vesting_events::start_time,
-            vesting_events::duration,
-            vesting_events::curve_factor,
+            vesting_events::schedule_end,
+            vesting_events::pieces,
             vesting_events::event_time,
             vesting_events::time,
             vesting_events::transaction_id,
@@ -582,7 +586,7 @@ pub(crate) async fn list_vesting_events(
             Option<i64>,
             Option<i64>,
             Option<i64>,
-            Option<i64>,
+            Option<serde_json::Value>,
             i64,
             chrono::DateTime<chrono::Utc>,
             String,
@@ -600,8 +604,8 @@ pub(crate) async fn list_vesting_events(
                 amount,
                 remaining_balance,
                 start_time,
-                duration,
-                curve_factor,
+                schedule_end,
+                pieces,
                 event_time,
                 time,
                 transaction_id,
@@ -613,8 +617,8 @@ pub(crate) async fn list_vesting_events(
                 amount,
                 remaining_balance,
                 start_time,
-                duration,
-                curve_factor,
+                schedule_end,
+                pieces,
                 event_time,
                 time,
                 transaction_id,
@@ -662,11 +666,6 @@ pub(crate) async fn get_vesting_analytics(
         #[diesel(sql_type = diesel::sql_types::Double)]
         avg: f64,
     }
-    #[derive(QueryableByName)]
-    struct ModeRow {
-        #[diesel(sql_type = BigInt)]
-        mode: i64,
-    }
 
     let total_wallets: i64 =
         diesel::sql_query("SELECT COUNT(*)::bigint as count FROM vesting_wallets")
@@ -695,7 +694,7 @@ pub(crate) async fn get_vesting_analytics(
         SELECT COUNT(*)::bigint as count FROM vesting_wallets
         WHERE start_time <= $1
           AND remaining_balance > 0
-          AND (start_time + duration) > $1
+          AND schedule_end > $1
         "#,
     )
     .bind::<BigInt, _>(current_time_ms)
@@ -706,7 +705,7 @@ pub(crate) async fn get_vesting_analytics(
     let completed_count: i64 = diesel::sql_query(
         r#"
         SELECT COUNT(*)::bigint as count FROM vesting_wallets
-        WHERE (start_time + duration) <= $1
+        WHERE schedule_end <= $1
         "#,
     )
     .bind::<BigInt, _>(current_time_ms)
@@ -714,26 +713,13 @@ pub(crate) async fn get_vesting_analytics(
     .await
     .map(|r| r.count)?;
 
-    let average_vesting_duration: f64 = diesel::sql_query(
-        "SELECT COALESCE(AVG(duration)::double precision / 86400.0, 0) as avg FROM vesting_wallets",
+    let average_schedule_duration: f64 = diesel::sql_query(
+        "SELECT COALESCE(AVG(schedule_end - start_time)::double precision / 86400000.0, 0) as avg FROM vesting_wallets",
     )
     .get_result::<AvgRow>(&mut conn)
     .await
     .map(|r| r.avg)
     .unwrap_or(0.0);
-
-    let most_common_curve_factor: i64 = diesel::sql_query(
-        r#"
-        SELECT curve_factor::bigint as mode FROM vesting_wallets
-        GROUP BY curve_factor
-        ORDER BY COUNT(*) DESC
-        LIMIT 1
-        "#,
-    )
-    .get_result::<ModeRow>(&mut conn)
-    .await
-    .map(|r| r.mode)
-    .unwrap_or(1000);
 
     Ok(VestingAnalyticsResponse {
         total_wallets,
@@ -742,8 +728,7 @@ pub(crate) async fn get_vesting_analytics(
         total_remaining_amount,
         active_wallets: active_count,
         completed_wallets: completed_count,
-        average_vesting_duration,
-        most_common_curve_factor,
+        average_schedule_duration,
     })
 }
 
@@ -770,26 +755,25 @@ pub(crate) async fn get_vesting_leaderboard(
         completed_wallets: i64,
     }
 
-    let total_query = r#"
-        SELECT COUNT(DISTINCT owner_address)::bigint as count FROM vesting_wallets
-    "#;
     #[derive(QueryableByName)]
     struct TotalRow {
         #[diesel(sql_type = BigInt)]
         count: i64,
     }
-    let total = diesel::sql_query(total_query)
-        .get_result::<TotalRow>(&mut conn)
-        .await
-        .map(|r| r.count)?;
+    let total = diesel::sql_query(
+        "SELECT COUNT(DISTINCT owner_address)::bigint as count FROM vesting_wallets",
+    )
+    .get_result::<TotalRow>(&mut conn)
+    .await
+    .map(|r| r.count)?;
 
     let query = r#"
         SELECT
             owner_address,
             SUM(total_amount)::bigint as total_vested,
             SUM(claimed_amount)::bigint as total_claimed,
-            SUM(CASE WHEN start_time <= $1 AND remaining_balance > 0 AND (start_time + duration) > $1 THEN 1 ELSE 0 END)::bigint as active_wallets,
-            SUM(CASE WHEN (start_time + duration) <= $1 THEN 1 ELSE 0 END)::bigint as completed_wallets
+            SUM(CASE WHEN start_time <= $1 AND remaining_balance > 0 AND schedule_end > $1 THEN 1 ELSE 0 END)::bigint as active_wallets,
+            SUM(CASE WHEN schedule_end <= $1 THEN 1 ELSE 0 END)::bigint as completed_wallets
         FROM vesting_wallets
         GROUP BY owner_address
         ORDER BY total_vested DESC

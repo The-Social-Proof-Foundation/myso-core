@@ -7855,6 +7855,9 @@ ProfileBadge
 BadgeData
 	public struct
 	0x50c1::profile
+VestingPiece
+	public struct
+	0x50c1::profile
 VestingWallet
 	public struct
 	0x50c1::profile
@@ -7895,6 +7898,9 @@ ProfileOffer
 	public struct
 	0x50c1::profile
 ProfileSaleFeeEvent
+	public struct
+	0x50c1::profile
+VestingPieceEvent
 	public struct
 	0x50c1::profile
 TokensVestedEvent
@@ -8131,8 +8137,44 @@ get_display_ecosystem_badge
 clear_selected_ecosystem_badge
 	public fun
 	0x50c1::profile
+normalize_curve_factor
+	fun
+	0x50c1::profile
+piece_amount
+	fun
+	0x50c1::profile
+validate_piece
+	fun
+	0x50c1::profile
+validate_schedule
+	fun
+	0x50c1::profile
+apply_curve
+	fun
+	0x50c1::profile
+vested_amount_for_piece
+	fun
+	0x50c1::profile
+calculate_total_vested
+	fun
+	0x50c1::profile
+finalize_claimable
+	fun
+	0x50c1::profile
+continuous_vesting_piece
+	public fun
+	0x50c1::profile
+cliff_lump_piece
+	public fun
+	0x50c1::profile
+pieces_from_vectors
+	fun
+	0x50c1::profile
 vest_myso
 	public entry fun
+	0x50c1::profile
+vest_myso_internal
+	fun
 	0x50c1::profile
 claim_vested_tokens
 	public entry fun
@@ -8144,6 +8186,9 @@ calculate_claimable
 	fun
 	0x50c1::profile
 sqrt_approximation
+	fun
+	0x50c1::profile
+destroy_vesting_pieces
 	fun
 	0x50c1::profile
 delete_vesting_wallet
@@ -8158,7 +8203,7 @@ vesting_owner
 vesting_start_time
 	public fun
 	0x50c1::profile
-vesting_duration
+vesting_schedule_end
 	public fun
 	0x50c1::profile
 vesting_total_amount
@@ -8167,7 +8212,10 @@ vesting_total_amount
 vesting_claimed_amount
 	public fun
 	0x50c1::profile
-vesting_curve_factor
+vesting_piece_count
+	public fun
+	0x50c1::profile
+vesting_pieces
 	public fun
 	0x50c1::profile
 VaultBalanceKey

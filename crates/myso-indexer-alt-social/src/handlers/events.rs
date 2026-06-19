@@ -422,13 +422,22 @@ pub struct BcsBadgeRemovedEvent {
 }
 
 #[derive(Debug, Deserialize)]
+pub struct BcsVestingPieceEvent {
+    kind: u8,
+    time_offset: u64,
+    duration: u64,
+    amount_bps: u64,
+    curve_factor: u64,
+}
+
+#[derive(Debug, Deserialize)]
 pub struct BcsTokensVestedEvent {
     wallet_id: AccountAddress,
     owner: AccountAddress,
     total_amount: u64,
     start_time: u64,
-    duration: u64,
-    curve_factor: u64,
+    schedule_end: u64,
+    pieces: Vec<BcsVestingPieceEvent>,
     vested_at: u64,
 }
 
@@ -2194,8 +2203,14 @@ fn parse_profile_event(
                 "owner": addr_to_string(&ev.owner),
                 "total_amount": ev.total_amount,
                 "start_time": ev.start_time,
-                "duration": ev.duration,
-                "curve_factor": ev.curve_factor,
+                "schedule_end": ev.schedule_end,
+                "pieces": ev.pieces.iter().map(|p| serde_json::json!({
+                    "kind": p.kind,
+                    "time_offset": p.time_offset,
+                    "duration": p.duration,
+                    "amount_bps": p.amount_bps,
+                    "curve_factor": p.curve_factor,
+                })).collect::<Vec<_>>(),
                 "vested_at": ev.vested_at,
             })))
         }

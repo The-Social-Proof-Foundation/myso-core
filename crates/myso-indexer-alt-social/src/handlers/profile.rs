@@ -891,6 +891,20 @@ fn process_badge_removed_event(
 }
 
 #[derive(Debug, Clone, Deserialize)]
+struct VestingPieceEvent {
+    #[serde(default, deserialize_with = "deserialize_optional_number_from_string")]
+    kind: Option<u64>,
+    #[serde(default, deserialize_with = "deserialize_optional_number_from_string")]
+    time_offset: Option<u64>,
+    #[serde(default, deserialize_with = "deserialize_optional_number_from_string")]
+    duration: Option<u64>,
+    #[serde(default, deserialize_with = "deserialize_optional_number_from_string")]
+    amount_bps: Option<u64>,
+    #[serde(default, deserialize_with = "deserialize_optional_number_from_string")]
+    curve_factor: Option<u64>,
+}
+
+#[derive(Debug, Clone, Deserialize)]
 struct TokensVestedEvent {
     #[serde(rename = "wallet_id", default)]
     wallet_id: String,
@@ -909,23 +923,35 @@ struct TokensVestedEvent {
     )]
     start_time: Option<u64>,
     #[serde(
-        rename = "duration",
+        rename = "schedule_end",
         default,
         deserialize_with = "deserialize_optional_number_from_string"
     )]
-    duration: Option<u64>,
-    #[serde(
-        rename = "curve_factor",
-        default,
-        deserialize_with = "deserialize_optional_number_from_string"
-    )]
-    curve_factor: Option<u64>,
+    schedule_end: Option<u64>,
+    #[serde(default)]
+    pieces: Vec<VestingPieceEvent>,
     #[serde(
         rename = "vested_at",
         default,
         deserialize_with = "deserialize_optional_number_from_string"
     )]
     vested_at: Option<u64>,
+}
+
+fn pieces_to_json(pieces: &[VestingPieceEvent]) -> serde_json::Value {
+    let json_pieces: Vec<serde_json::Value> = pieces
+        .iter()
+        .map(|p| {
+            serde_json::json!({
+                "kind": p.kind.unwrap_or(0),
+                "time_offset": p.time_offset.unwrap_or(0),
+                "duration": p.duration.unwrap_or(0),
+                "amount_bps": p.amount_bps.unwrap_or(0),
+                "curve_factor": p.curve_factor.unwrap_or(0),
+            })
+        })
+        .collect();
+    serde_json::Value::Array(json_pieces)
 }
 
 fn process_tokens_vested_event(
@@ -941,16 +967,16 @@ fn process_tokens_vested_event(
     )?;
     let total_amount = ev.total_amount.unwrap_or(0) as i64;
     let start_time = ev.start_time.unwrap_or(0) as i64;
-    let duration = ev.duration.unwrap_or(0) as i64;
-    let curve_factor = ev.curve_factor.unwrap_or(1000) as i64;
+    let schedule_end = ev.schedule_end.unwrap_or(0) as i64;
+    let pieces_json = pieces_to_json(&ev.pieces);
     let now = Utc::now().naive_utc();
     let wallet = NewVestingWallet {
         wallet_id: ev.wallet_id.clone(),
         owner_address: ev.owner.clone(),
         total_amount,
         start_time,
-        duration,
-        curve_factor,
+        schedule_end,
+        pieces: pieces_json.clone(),
         claimed_amount: 0,
         remaining_balance: total_amount,
         created_at: now,
@@ -964,8 +990,8 @@ fn process_tokens_vested_event(
         amount: total_amount,
         remaining_balance: Some(total_amount),
         start_time: Some(start_time),
-        duration: Some(duration),
-        curve_factor: Some(curve_factor),
+        schedule_end: Some(schedule_end),
+        pieces: Some(pieces_json),
         event_time: ev.vested_at.unwrap_or(0) as i64,
         time: Utc::now(),
         transaction_id: event_id.to_string(),
@@ -1022,8 +1048,8 @@ fn process_tokens_claimed_event(
         amount: claimed_amount,
         remaining_balance: Some(remaining_balance),
         start_time: None,
-        duration: None,
-        curve_factor: None,
+        schedule_end: None,
+        pieces: None,
         event_time: ev.claimed_at.unwrap_or(0) as i64,
         time: Utc::now(),
         transaction_id: event_id.to_string(),
@@ -1248,8 +1274,8 @@ fn process_vesting_wallet_deleted_event(
         amount: 0,
         remaining_balance: None,
         start_time: None,
-        duration: None,
-        curve_factor: None,
+        schedule_end: None,
+        pieces: None,
         event_time: ev.deleted_at.unwrap_or(0) as i64,
         time: Utc::now(),
         transaction_id: event_id.to_string(),

@@ -3,6 +3,8 @@
 
 use serde::Serialize;
 
+use myso_indexer_alt_social_schema::models::VestingPiece;
+
 use super::social_graph::{PaginationInfo, UniversalUserResult};
 
 #[derive(Debug, Clone, Serialize)]
@@ -11,8 +13,8 @@ pub struct VestingWalletRow {
     pub owner_address: String,
     pub total_amount: i64,
     pub start_time: i64,
-    pub duration: i64,
-    pub curve_factor: i64,
+    pub schedule_end: i64,
+    pub pieces: Vec<VestingPiece>,
     pub claimed_amount: i64,
     pub remaining_balance: i64,
     pub created_at: chrono::NaiveDateTime,
@@ -28,6 +30,7 @@ pub struct VestingWalletWithStatus {
     pub has_ended: bool,
     pub vesting_progress: f64,
     pub end_time: i64,
+    pub claimable_amount: i64,
     #[serde(flatten)]
     pub wallet: VestingWalletRow,
 }
@@ -39,7 +42,7 @@ impl VestingWalletWithStatus {
         } else {
             (wallet.claimed_amount as f64 / wallet.total_amount as f64) * 100.0
         };
-        let end_time = wallet.start_time + wallet.duration;
+        let end_time = wallet.schedule_end;
         let has_started = wallet.start_time <= (current_time_ms as i64);
         let has_ended = (current_time_ms as i64) >= end_time;
         let vesting_progress = {
@@ -50,9 +53,23 @@ impl VestingWalletWithStatus {
                 1.0
             } else {
                 let elapsed = current_time - wallet.start_time;
-                elapsed as f64 / wallet.duration as f64
+                let total_duration = end_time - wallet.start_time;
+                if total_duration <= 0 {
+                    1.0
+                } else {
+                    elapsed as f64 / total_duration as f64
+                }
             }
         };
+        let claimable_amount = myso_indexer_alt_social_schema::models::calculate_vesting_claimable(
+            wallet.total_amount,
+            wallet.start_time,
+            wallet.schedule_end,
+            &wallet.pieces,
+            wallet.claimed_amount,
+            current_time_ms as i64,
+            wallet.remaining_balance,
+        );
         Self {
             claimed_percentage,
             is_fully_claimed: wallet.remaining_balance == 0,
@@ -60,6 +77,7 @@ impl VestingWalletWithStatus {
             has_ended,
             vesting_progress,
             end_time,
+            claimable_amount,
             wallet,
         }
     }
@@ -82,8 +100,8 @@ pub struct VestingEventRow {
     pub amount: i64,
     pub remaining_balance: Option<i64>,
     pub start_time: Option<i64>,
-    pub duration: Option<i64>,
-    pub curve_factor: Option<i64>,
+    pub schedule_end: Option<i64>,
+    pub pieces: Option<serde_json::Value>,
     pub event_time: i64,
     pub time: chrono::DateTime<chrono::Utc>,
     pub transaction_id: String,
@@ -120,8 +138,7 @@ pub struct VestingAnalyticsResponse {
     pub total_remaining_amount: i64,
     pub active_wallets: i64,
     pub completed_wallets: i64,
-    pub average_vesting_duration: f64,
-    pub most_common_curve_factor: i64,
+    pub average_schedule_duration: f64,
 }
 
 #[derive(Debug, Serialize)]

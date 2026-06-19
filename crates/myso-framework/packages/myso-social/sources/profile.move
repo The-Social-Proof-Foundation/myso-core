@@ -58,11 +58,26 @@ module social_contracts::profile {
     const EMemoryAccountMismatch: u64 = 26;
     const EMustUseLinkedMemoryTransfer: u64 = 27;
     const ERequiresMemoryLinkedProfile: u64 = 28;
+    const ETooManyPieces: u64 = 29;
+    const EInvalidSchedule: u64 = 30;
+    const EInvalidPieceKind: u64 = 31;
+    const EInvalidPieceDuration: u64 = 32;
+    const EScheduleOverflow: u64 = 33;
 
     const PROFILE_SALE_FEE_BPS: u64 = 500;
 
     // Fixed-point precision for curve calculations (1000 = 1.0)
     const CURVE_PRECISION: u64 = 1000;
+    const CURVE_FACTOR_MIN: u64 = 100;
+    const CURVE_FACTOR_MAX: u64 = 10000;
+
+    const MAX_VESTING_PIECES: u64 = 10;
+    const BPS_DENOMINATOR: u64 = 10_000;
+    const PIECE_KIND_CLIFF: u8 = 0;
+    const PIECE_KIND_CONTINUOUS: u8 = 1;
+
+    // 0.1% of total_amount; claims below this are suppressed during active vesting
+    const MIN_CLAIM_THRESHOLD_DIVISOR: u64 = 1000;
 
     // Maximum u64 value for overflow protection
     const MAX_U64: u64 = 18446744073709551615;
@@ -194,23 +209,30 @@ module social_contracts::profile {
         badge_type: u8,
     }
 
-    /// Vesting Wallet contains MYSO coins that are available for claiming over time
+    /// One schedule piece: lump cliff unlock or continuous curved vesting.
+    public struct VestingPiece has copy, drop, store {
+        /// 0 = CliffLump (instant unlock), 1 = ContinuousVest
+        kind: u8,
+        /// Milliseconds from `start_time` when this piece activates
+        time_offset: u64,
+        /// 0 for cliff lumps; vest window length for continuous pieces
+        duration: u64,
+        /// Share of total_amount in basis points; all pieces sum to 10_000
+        amount_bps: u64,
+        /// Curve factor for continuous pieces (1000 = linear)
+        curve_factor: u64,
+    }
+
+    /// Vesting Wallet contains MYSO coins released over a piecewise schedule.
     public struct VestingWallet has key, store {
         id: UID,
-        /// Balance of MYSO coins remaining in the wallet
         balance: Balance<MYSO>,
-        /// Address of the wallet owner who can claim the tokens
         owner: address,
-        /// Time when the vesting started (in milliseconds)
         start_time: u64,
-        /// Amount of coins that have been claimed
         claimed_amount: u64,
-        /// Total duration of the vesting schedule (in milliseconds)
-        duration: u64,
-        /// Total amount originally vested
         total_amount: u64,
-        /// Curve factor (1000 = linear, >1000 = more at end, <1000 = more at start)
-        curve_factor: u64,
+        schedule_end: u64,
+        pieces: vector<VestingPiece>,
     }
 
     // === Events ===
@@ -367,14 +389,23 @@ module social_contracts::profile {
         timestamp: u64,
     }
 
+    /// Copyable piece snapshot for vesting events
+    public struct VestingPieceEvent has copy, drop {
+        kind: u8,
+        time_offset: u64,
+        duration: u64,
+        amount_bps: u64,
+        curve_factor: u64,
+    }
+
     /// Event emitted when MYSO tokens are vested
     public struct TokensVestedEvent has copy, drop {
         wallet_id: address,
         owner: address,
         total_amount: u64,
         start_time: u64,
-        duration: u64,
-        curve_factor: u64,
+        schedule_end: u64,
+        pieces: vector<VestingPieceEvent>,
         vested_at: u64,
     }
 
@@ -2149,109 +2180,337 @@ module social_contracts::profile {
 
     // === Vesting Functions ===
 
-    /// Create a new vesting wallet with MYSO tokens that vest over time with configurable curve
-    /// The start time must be in the future and duration must be greater than 0
-    /// curve_factor: 0 or 1000 = linear, >1000 = more tokens at end, <1000 = more tokens at start
-    /// 
-    /// Example Curves:
-    /// Exponential (curve_factor = 2000):
-    /// 25% time → ~6% tokens
-    /// 50% time → ~25% tokens
-    /// 75% time → ~56% tokens
-    /// 100% time → 100% tokens
-    /// Logarithmic (curve_factor = 500):
-    /// 25% time → ~44% tokens
-    /// 50% time → ~75% tokens
-    /// 75% time → ~94% tokens
-    /// 100% time → 100% tokens
+    fun normalize_curve_factor(curve_factor: u64): u64 {
+        if (curve_factor == 0) {
+            CURVE_PRECISION
+        } else {
+            assert!(curve_factor >= CURVE_FACTOR_MIN && curve_factor <= CURVE_FACTOR_MAX, EInvalidSchedule);
+            curve_factor
+        }
+    }
 
+    fun piece_amount(total_amount: u64, amount_bps: u64): u64 {
+        ((total_amount as u128) * (amount_bps as u128) / (BPS_DENOMINATOR as u128)) as u64
+    }
+
+    fun validate_piece(piece: &VestingPiece, total_amount: u64) {
+        if (piece.kind == PIECE_KIND_CLIFF) {
+            assert!(piece.duration == 0, EInvalidPieceDuration);
+        } else if (piece.kind == PIECE_KIND_CONTINUOUS) {
+            assert!(piece.duration > 0, EInvalidPieceDuration);
+            let _ = normalize_curve_factor(piece.curve_factor);
+        } else {
+            abort EInvalidPieceKind
+        };
+        assert!(piece.amount_bps > 0, EInvalidSchedule);
+        assert!(piece_amount(total_amount, piece.amount_bps) >= 1, EInvalidSchedule);
+    }
+
+    /// Validate schedule pieces and return `schedule_end` (absolute ms timestamp).
+    fun validate_schedule(
+        start_time: u64,
+        total_amount: u64,
+        pieces: &vector<VestingPiece>,
+    ): u64 {
+        let num_pieces = vector::length(pieces);
+        assert!(num_pieces >= 1 && num_pieces <= MAX_VESTING_PIECES, ETooManyPieces);
+
+        let mut total_bps = 0u64;
+        let mut schedule_end = start_time;
+        let mut prev_offset = 0u64;
+        let mut i = 0;
+        while (i < num_pieces) {
+            let piece = vector::borrow(pieces, i);
+            validate_piece(piece, total_amount);
+
+            assert!(piece.time_offset >= prev_offset, EInvalidSchedule);
+            prev_offset = piece.time_offset;
+
+            total_bps = total_bps + piece.amount_bps;
+
+            let piece_end_offset = if (piece.kind == PIECE_KIND_CLIFF) {
+                piece.time_offset
+            } else {
+                assert!(piece.time_offset <= MAX_U64 - piece.duration, EScheduleOverflow);
+                piece.time_offset + piece.duration
+            };
+
+            if (piece_end_offset > schedule_end - start_time) {
+                assert!(start_time <= MAX_U64 - piece_end_offset, EScheduleOverflow);
+                schedule_end = start_time + piece_end_offset;
+            };
+
+            i = i + 1;
+        };
+
+        assert!(total_bps == BPS_DENOMINATOR, EInvalidSchedule);
+        schedule_end
+    }
+
+    fun apply_curve(progress: u128, curve_factor: u64): u128 {
+        if (curve_factor == CURVE_PRECISION) {
+            progress
+        } else if (curve_factor > CURVE_PRECISION) {
+            let steepness = (curve_factor - CURVE_PRECISION) as u128;
+            let quadratic = (progress * progress) / (CURVE_PRECISION as u128);
+            let linear_part = progress;
+            (linear_part * ((CURVE_PRECISION as u128) - steepness) + quadratic * steepness)
+                / (CURVE_PRECISION as u128)
+        } else {
+            let steepness = (CURVE_PRECISION - curve_factor) as u128;
+            let sqrt_approx = sqrt_approximation(progress * (CURVE_PRECISION as u128));
+            let linear_part = progress;
+            (sqrt_approx * steepness + linear_part * ((CURVE_PRECISION as u128) - steepness))
+                / (CURVE_PRECISION as u128)
+        }
+    }
+
+    fun vested_amount_for_piece(
+        total_amount: u64,
+        start_time: u64,
+        current_time: u64,
+        piece: &VestingPiece,
+    ): u64 {
+        if (current_time < start_time) {
+            return 0
+        };
+
+        let activation_time = start_time + piece.time_offset;
+        if (current_time < activation_time) {
+            return 0
+        };
+
+        let alloc = piece_amount(total_amount, piece.amount_bps);
+
+        if (piece.kind == PIECE_KIND_CLIFF) {
+            return alloc
+        };
+
+        let end_time = activation_time + piece.duration;
+        if (current_time >= end_time) {
+            return alloc
+        };
+
+        let elapsed = current_time - activation_time;
+        let progress = ((elapsed as u128) * (CURVE_PRECISION as u128)) / (piece.duration as u128);
+        let curved = apply_curve(progress, piece.curve_factor);
+        ((alloc as u128) * curved / (CURVE_PRECISION as u128)) as u64
+    }
+
+    fun calculate_total_vested(wallet: &VestingWallet, current_time: u64): u64 {
+        if (current_time < wallet.start_time) {
+            return 0
+        };
+
+        let mut total_released = 0u64;
+        let num_pieces = vector::length(&wallet.pieces);
+        let mut i = 0;
+        while (i < num_pieces) {
+            let piece = vector::borrow(&wallet.pieces, i);
+            let piece_vested = vested_amount_for_piece(
+                wallet.total_amount,
+                wallet.start_time,
+                current_time,
+                piece,
+            );
+            assert!(total_released <= MAX_U64 - piece_vested, EOverflow);
+            total_released = total_released + piece_vested;
+            i = i + 1;
+        };
+
+        if (total_released > wallet.total_amount) {
+            wallet.total_amount
+        } else {
+            total_released
+        }
+    }
+
+    fun finalize_claimable(
+        capped: u64,
+        remaining_balance: u64,
+        total_amount: u64,
+        current_time: u64,
+        schedule_end: u64,
+    ): u64 {
+        if (current_time >= schedule_end) {
+            return remaining_balance
+        };
+
+        if (capped == 0) {
+            return 0
+        };
+
+        let mut threshold = total_amount / MIN_CLAIM_THRESHOLD_DIVISOR;
+        if (threshold == 0) {
+            threshold = 1
+        };
+
+        if (capped < threshold && capped < remaining_balance) {
+            0
+        } else {
+            capped
+        }
+    }
+
+    /// Build a continuous vesting piece (linear when curve_factor is 0 or 1000).
+    public fun continuous_vesting_piece(
+        time_offset: u64,
+        duration: u64,
+        amount_bps: u64,
+        curve_factor: u64,
+    ): VestingPiece {
+        VestingPiece {
+            kind: PIECE_KIND_CONTINUOUS,
+            time_offset,
+            duration,
+            amount_bps,
+            curve_factor,
+        }
+    }
+
+    /// Build a cliff lump unlock piece.
+    public fun cliff_lump_piece(time_offset: u64, amount_bps: u64): VestingPiece {
+        VestingPiece {
+            kind: PIECE_KIND_CLIFF,
+            time_offset,
+            duration: 0,
+            amount_bps,
+            curve_factor: 0,
+        }
+    }
+
+    fun pieces_from_vectors(
+        kinds: vector<u8>,
+        time_offsets: vector<u64>,
+        durations: vector<u64>,
+        amount_bps_list: vector<u64>,
+        curve_factors: vector<u64>,
+    ): vector<VestingPiece> {
+        let len = vector::length(&kinds);
+        assert!(len == vector::length(&time_offsets), EInvalidSchedule);
+        assert!(len == vector::length(&durations), EInvalidSchedule);
+        assert!(len == vector::length(&amount_bps_list), EInvalidSchedule);
+        assert!(len == vector::length(&curve_factors), EInvalidSchedule);
+
+        let mut pieces = vector::empty<VestingPiece>();
+        let mut i = 0;
+        while (i < len) {
+            vector::push_back(&mut pieces, VestingPiece {
+                kind: *vector::borrow(&kinds, i),
+                time_offset: *vector::borrow(&time_offsets, i),
+                duration: *vector::borrow(&durations, i),
+                amount_bps: *vector::borrow(&amount_bps_list, i),
+                curve_factor: *vector::borrow(&curve_factors, i),
+            });
+            i = i + 1;
+        };
+        pieces
+    }
+
+    /// Create a vesting wallet from parallel piece vectors (entry-compatible).
+    /// Cliff lumps unlock instantly at `time_offset`; continuous pieces vest over `duration`.
     public entry fun vest_myso(
         coin: Coin<MYSO>,
         recipient: address,
         start_time: u64,
-        duration: u64,
-        curve_factor: u64,
+        kinds: vector<u8>,
+        time_offsets: vector<u64>,
+        durations: vector<u64>,
+        amount_bps_list: vector<u64>,
+        curve_factors: vector<u64>,
         clock: &Clock,
         ctx: &mut TxContext
     ) {
-        // Validate that start time is in the future
+        let pieces = pieces_from_vectors(
+            kinds,
+            time_offsets,
+            durations,
+            amount_bps_list,
+            curve_factors,
+        );
+        vest_myso_internal(coin, recipient, start_time, pieces, clock, ctx);
+    }
+
+    fun vest_myso_internal(
+        coin: Coin<MYSO>,
+        recipient: address,
+        start_time: u64,
+        pieces: vector<VestingPiece>,
+        clock: &Clock,
+        ctx: &mut TxContext
+    ) {
         let current_time = clock::timestamp_ms(clock);
         assert!(start_time > current_time, EInvalidStartTime);
-
-        // Validate that duration is greater than 0
-        assert!(duration > 0, EInvalidStartTime);
 
         let total_amount = coin::value(&coin);
         assert!(total_amount > 0, EInsufficientTokens);
 
-        // Default to linear if curve_factor is 0
-        let final_curve_factor = if (curve_factor == 0) {
-            CURVE_PRECISION // 1000 = linear
-        } else {
-            // Validate curve factor is reasonable (between 100 and 10000, i.e., 0.1x to 10x)
-            assert!(curve_factor >= 100 && curve_factor <= 10000, EInvalidStartTime);
-            curve_factor
-        };
+        let schedule_end = validate_schedule(start_time, total_amount, &pieces);
 
-        // Create the vesting wallet
         let wallet = VestingWallet {
             id: object::new(ctx),
             balance: coin::into_balance(coin),
             owner: recipient,
             start_time,
             claimed_amount: 0,
-            duration,
             total_amount,
-            curve_factor: final_curve_factor,
+            schedule_end,
+            pieces,
         };
 
         let wallet_id = object::uid_to_address(&wallet.id);
 
-        // Emit vesting event
+        let mut piece_events = vector::empty<VestingPieceEvent>();
+        let num_pieces = vector::length(&wallet.pieces);
+        let mut j = 0;
+        while (j < num_pieces) {
+            let p = vector::borrow(&wallet.pieces, j);
+            vector::push_back(&mut piece_events, VestingPieceEvent {
+                kind: p.kind,
+                time_offset: p.time_offset,
+                duration: p.duration,
+                amount_bps: p.amount_bps,
+                curve_factor: p.curve_factor,
+            });
+            j = j + 1;
+        };
+
         event::emit(TokensVestedEvent {
             wallet_id,
             owner: recipient,
             total_amount,
             start_time,
-            duration,
-            curve_factor: final_curve_factor,
+            schedule_end,
+            pieces: piece_events,
             vested_at: current_time,
         });
 
-        // Transfer the vesting wallet to the recipient
         transfer::public_transfer(wallet, recipient);
     }
 
-    /// Claim vested tokens from a vesting wallet
-    /// Only the wallet owner can claim tokens, and only claimable amounts
+    /// Claim vested tokens. Sub-threshold amounts during active vesting are no-ops.
     public entry fun claim_vested_tokens(
         wallet: &mut VestingWallet,
         clock: &Clock,
         ctx: &mut TxContext
     ) {
         let sender = tx_context::sender(ctx);
-        
-        // Verify sender is the wallet owner
         assert!(wallet.owner == sender, ENotVestingWalletOwner);
 
         let claimable_amount = calculate_claimable(wallet, clock);
-        
-        // Only proceed if there are tokens to claim
+
         if (claimable_amount > 0) {
-            // Update claimed amount
             assert!(wallet.claimed_amount <= MAX_U64 - claimable_amount, EOverflow);
             wallet.claimed_amount = wallet.claimed_amount + claimable_amount;
-            
-            // Create coin from the claimable balance and transfer to owner
+
             let claimed_coin = coin::from_balance<MYSO>(
                 balance::split(&mut wallet.balance, claimable_amount),
                 ctx
             );
-            
+
             let wallet_id = object::uid_to_address(&wallet.id);
             let remaining_balance = balance::value(&wallet.balance);
-            
-            // Emit claim event
+
             event::emit(TokensClaimedEvent {
                 wallet_id,
                 owner: sender,
@@ -2259,169 +2518,144 @@ module social_contracts::profile {
                 remaining_balance,
                 claimed_at: clock::timestamp_ms(clock),
             });
-            
-            // Transfer claimed tokens to the owner
+
             transfer::public_transfer(claimed_coin, sender);
         };
     }
 
-    /// Calculate how many tokens can be claimed from a vesting wallet at the current time
     public fun claimable(wallet: &VestingWallet, clock: &Clock): u64 {
         calculate_claimable(wallet, clock)
     }
 
-    /// Internal function to calculate claimable amount
     fun calculate_claimable(wallet: &VestingWallet, clock: &Clock): u64 {
         let current_time = clock::timestamp_ms(clock);
-        
-        // If vesting hasn't started yet, nothing is claimable
+        let remaining_balance = balance::value(&wallet.balance);
+
         if (current_time < wallet.start_time) {
             return 0
         };
-        
-        // If vesting period is complete, all remaining balance is claimable
-        if (current_time >= wallet.start_time + wallet.duration) {
-            return balance::value(&wallet.balance)
+
+        if (current_time >= wallet.schedule_end) {
+            return remaining_balance
         };
-        
-        // Calculate progress as a percentage (0 to CURVE_PRECISION)
-        let elapsed_time = current_time - wallet.start_time;
-        let progress = ((elapsed_time as u128) * (CURVE_PRECISION as u128)) / (wallet.duration as u128);
-        
-        // Apply curve based on curve_factor
-        let curved_progress = if (wallet.curve_factor == CURVE_PRECISION) {
-            // Linear vesting (curve_factor = 1000)
-            progress
-        } else if (wallet.curve_factor > CURVE_PRECISION) {
-            // Exponential curve - more tokens at the end
-            // Use simplified exponential: progress^2 scaled by curve_factor
-            let steepness = wallet.curve_factor - CURVE_PRECISION; // How much above linear
-            let quadratic = (progress * progress) / (CURVE_PRECISION as u128);
-            let linear_part = (progress * (CURVE_PRECISION as u128)) / (CURVE_PRECISION as u128);
-            
-            // Blend between linear and quadratic based on steepness
-            (linear_part * (CURVE_PRECISION as u128) + quadratic * (steepness as u128)) / (CURVE_PRECISION as u128)
-        } else {
-            // Logarithmic curve - more tokens at the start
-            // Use simplified square root approximation for early release
-            let steepness = CURVE_PRECISION - wallet.curve_factor; // How much below linear
-            let sqrt_approx = sqrt_approximation(progress * (CURVE_PRECISION as u128)) * (CURVE_PRECISION as u128) / (CURVE_PRECISION as u128);
-            let linear_part = progress;
-            
-            // Blend between square root and linear based on steepness
-            (sqrt_approx * (steepness as u128) + linear_part * (CURVE_PRECISION as u128)) / (CURVE_PRECISION as u128)
-        };
-        
-        // Convert back to total claimable amount
-        let total_claimable = ((wallet.total_amount as u128) * curved_progress) / (CURVE_PRECISION as u128);
-        
-        // Subtract already claimed amount to get newly claimable amount
-        let total_claimable_u64 = total_claimable as u64;
-        let newly_claimable = if (total_claimable_u64 >= wallet.claimed_amount) {
-            total_claimable_u64 - wallet.claimed_amount
+
+        let total_vested = calculate_total_vested(wallet, current_time);
+        let newly_claimable = if (total_vested >= wallet.claimed_amount) {
+            total_vested - wallet.claimed_amount
         } else {
             0
         };
-        
-        // Ensure we don't exceed the remaining balance
-        let remaining_balance = balance::value(&wallet.balance);
-        if (newly_claimable > remaining_balance) {
+
+        let capped = if (newly_claimable > remaining_balance) {
             remaining_balance
         } else {
             newly_claimable
-        }
+        };
+
+        finalize_claimable(
+            capped,
+            remaining_balance,
+            wallet.total_amount,
+            current_time,
+            wallet.schedule_end,
+        )
     }
 
     /// Simple square root approximation using Newton's method
     fun sqrt_approximation(n: u128): u128 {
         if (n == 0) return 0;
         if (n == 1) return 1;
-        
+
         let mut x = n;
         let mut y = (x + 1) / 2;
-        
-        // Newton's method with limited iterations
+
         let mut i = 0;
         while (y < x && i < 10u64) {
             x = y;
             y = (x + n / x) / 2;
             i = i + 1;
         };
-        
+
         x
     }
 
+    fun destroy_vesting_pieces(mut pieces: vector<VestingPiece>) {
+        while (!vector::is_empty(&pieces)) {
+            vector::pop_back(&mut pieces);
+        };
+        vector::destroy_empty(pieces);
+    }
+
     /// Delete an empty vesting wallet
-    /// Can only be called when the wallet balance is zero
     public entry fun delete_vesting_wallet(wallet: VestingWallet, clock: &Clock, ctx: &mut TxContext) {
         let sender = tx_context::sender(ctx);
-        
-        // Verify sender is the wallet owner
         assert!(wallet.owner == sender, ENotVestingWalletOwner);
-        
+
         let wallet_id = object::uid_to_address(&wallet.id);
         let owner = wallet.owner;
-        
-        let VestingWallet { 
-            id, 
-            balance, 
-            owner: _, 
-            start_time: _, 
-            claimed_amount: _, 
-            duration: _, 
+
+        let VestingWallet {
+            id,
+            balance,
+            owner: _,
+            start_time: _,
+            claimed_amount: _,
             total_amount: _,
-            curve_factor: _
+            schedule_end: _,
+            pieces,
         } = wallet;
-        
-        // Emit wallet deleted event before deletion
+
+        destroy_vesting_pieces(pieces);
+
         event::emit(VestingWalletDeletedEvent {
             wallet_id,
             owner,
             deleted_at: clock::timestamp_ms(clock),
         });
-        
-        // Delete the wallet ID
+
         object::delete(id);
-        
-        // Destroy the empty balance
         balance::destroy_zero(balance);
     }
 
     // === Vesting Wallet Accessors ===
 
-    /// Get the remaining balance in a vesting wallet
     public fun vesting_balance(wallet: &VestingWallet): u64 {
         balance::value(&wallet.balance)
     }
 
-    /// Get the owner of a vesting wallet
     public fun vesting_owner(wallet: &VestingWallet): address {
         wallet.owner
     }
 
-    /// Get the start time of a vesting schedule
     public fun vesting_start_time(wallet: &VestingWallet): u64 {
         wallet.start_time
     }
 
-    /// Get the duration of a vesting schedule
-    public fun vesting_duration(wallet: &VestingWallet): u64 {
-        wallet.duration
+    public fun vesting_schedule_end(wallet: &VestingWallet): u64 {
+        wallet.schedule_end
     }
 
-    /// Get the total amount originally vested
     public fun vesting_total_amount(wallet: &VestingWallet): u64 {
         wallet.total_amount
     }
 
-    /// Get the amount already claimed from a vesting wallet
     public fun vesting_claimed_amount(wallet: &VestingWallet): u64 {
         wallet.claimed_amount
     }
 
-    /// Get the curve factor of a vesting wallet
-    public fun vesting_curve_factor(wallet: &VestingWallet): u64 {
-        wallet.curve_factor
+    public fun vesting_piece_count(wallet: &VestingWallet): u64 {
+        vector::length(&wallet.pieces)
+    }
+
+    public fun vesting_pieces(wallet: &VestingWallet): vector<VestingPiece> {
+        let mut out = vector::empty<VestingPiece>();
+        let len = vector::length(&wallet.pieces);
+        let mut i = 0;
+        while (i < len) {
+            vector::push_back(&mut out, *vector::borrow(&wallet.pieces, i));
+            i = i + 1;
+        };
+        out
     }
 
 }

@@ -8,10 +8,48 @@ use async_graphql::Object;
 use myso_indexer_alt_social_reader::{
     VestingLeaderboardEntry as LeaderboardEntryRow, VestingWalletWithStatus as VestingWalletRow,
 };
+use myso_indexer_alt_social_schema::models::{PIECE_KIND_CLIFF, VestingPiece};
 
 use crate::api::resolve_profile::resolve_profile_summary;
 use crate::api::scalars::myso_address::MySoAddress;
 use crate::api::types::profile_summary::ProfileSummary;
+
+#[derive(Clone)]
+pub(crate) struct GraphVestingPiece {
+    inner: VestingPiece,
+    total_amount: i64,
+}
+
+#[Object]
+impl GraphVestingPiece {
+    async fn kind(&self) -> &str {
+        if self.inner.kind == PIECE_KIND_CLIFF {
+            "CLIFF_LUMP"
+        } else {
+            "CONTINUOUS_VEST"
+        }
+    }
+
+    async fn time_offset(&self) -> i64 {
+        self.inner.time_offset
+    }
+
+    async fn duration(&self) -> i64 {
+        self.inner.duration
+    }
+
+    async fn amount_bps(&self) -> i64 {
+        self.inner.amount_bps
+    }
+
+    async fn curve_factor(&self) -> i64 {
+        self.inner.curve_factor
+    }
+
+    async fn piece_amount(&self) -> i64 {
+        self.inner.piece_amount(self.total_amount)
+    }
+}
 
 #[derive(Clone)]
 pub(crate) struct VestingWallet {
@@ -26,83 +64,94 @@ impl VestingWallet {
 
 #[Object]
 impl VestingWallet {
-    /// Vesting wallet ID (object address).
     async fn wallet_id(&self) -> &str {
         &self.inner.wallet.wallet_id
     }
 
-    /// Owner address.
     async fn owner_address(&self) -> MySoAddress {
         MySoAddress::from_str(&self.inner.wallet.owner_address)
             .unwrap_or_else(|_| MySoAddress::from(myso_types::base_types::MySoAddress::ZERO))
     }
 
-    /// Profile of the vesting wallet owner.
     async fn owner_profile(&self, ctx: &Context<'_>) -> Option<ProfileSummary> {
         resolve_profile_summary(ctx, &self.inner.wallet.owner_address).await
     }
 
-    /// Total amount vested.
     async fn total_amount(&self) -> i64 {
         self.inner.wallet.total_amount
     }
 
-    /// Vesting start time (ms since epoch).
     async fn start_time(&self) -> i64 {
         self.inner.wallet.start_time
     }
 
-    /// Vesting duration (ms).
-    async fn duration(&self) -> i64 {
-        self.inner.wallet.duration
+    async fn schedule_end(&self) -> i64 {
+        self.inner.wallet.schedule_end
     }
 
-    /// Curve factor (1000 = linear).
-    async fn curve_factor(&self) -> i64 {
-        self.inner.wallet.curve_factor
+    async fn pieces(&self) -> Vec<GraphVestingPiece> {
+        self.inner
+            .wallet
+            .pieces
+            .iter()
+            .map(|p| GraphVestingPiece {
+                inner: *p,
+                total_amount: self.inner.wallet.total_amount,
+            })
+            .collect()
     }
 
-    /// Amount already claimed.
+    async fn next_cliff(&self) -> Option<GraphVestingPiece> {
+        let now = chrono::Utc::now().timestamp_millis();
+        self.inner
+            .wallet
+            .pieces
+            .iter()
+            .filter(|p| p.kind == PIECE_KIND_CLIFF)
+            .filter(|p| self.inner.wallet.start_time + p.time_offset > now)
+            .min_by_key(|p| p.time_offset)
+            .map(|p| GraphVestingPiece {
+                inner: *p,
+                total_amount: self.inner.wallet.total_amount,
+            })
+    }
+
+    async fn claimable_amount(&self) -> i64 {
+        self.inner.claimable_amount
+    }
+
     async fn claimed_amount(&self) -> i64 {
         self.inner.wallet.claimed_amount
     }
 
-    /// Remaining balance.
     async fn remaining_balance(&self) -> i64 {
         self.inner.wallet.remaining_balance
     }
 
-    /// Claimed percentage (0-100).
     async fn claimed_percentage(&self) -> f64 {
         self.inner.claimed_percentage
     }
 
-    /// Vesting progress (0.0-1.0).
     async fn vesting_progress(&self) -> f64 {
         self.inner.vesting_progress
     }
 
-    /// Whether vesting has started.
     async fn has_started(&self) -> bool {
         self.inner.has_started
     }
 
-    /// Whether vesting has ended.
     async fn has_ended(&self) -> bool {
         self.inner.has_ended
     }
 
-    /// End time (ms since epoch).
     async fn end_time(&self) -> i64 {
         self.inner.end_time
     }
 
-    /// When the wallet was created (epoch milliseconds).
     async fn created_at(&self) -> i64 {
         self.inner.wallet.created_at.and_utc().timestamp_millis()
     }
 
-    /// Transaction ID that created the wallet.
     async fn transaction_id(&self) -> &str {
         &self.inner.wallet.transaction_id
     }
@@ -121,33 +170,27 @@ impl VestingLeaderboardEntry {
 
 #[Object]
 impl VestingLeaderboardEntry {
-    /// Owner address.
     async fn owner_address(&self) -> MySoAddress {
         MySoAddress::from_str(&self.inner.owner_address)
             .unwrap_or_else(|_| MySoAddress::from(myso_types::base_types::MySoAddress::ZERO))
     }
 
-    /// Total amount vested across all wallets.
     async fn total_vested(&self) -> i64 {
         self.inner.total_vested
     }
 
-    /// Total amount claimed across all wallets.
     async fn total_claimed(&self) -> i64 {
         self.inner.total_claimed
     }
 
-    /// Number of active vesting wallets.
     async fn active_wallets(&self) -> i64 {
         self.inner.active_wallets
     }
 
-    /// Number of completed vesting wallets.
     async fn completed_wallets(&self) -> i64 {
         self.inner.completed_wallets
     }
 
-    /// User profile summary.
     async fn user(&self) -> ProfileSummary {
         ProfileSummary::from_row(self.inner.user.clone())
     }
@@ -161,12 +204,10 @@ pub(crate) struct VestingLeaderboardResponse {
 
 #[Object]
 impl VestingLeaderboardResponse {
-    /// Leaderboard entries.
     async fn entries(&self) -> &[VestingLeaderboardEntry] {
         &self.entries
     }
 
-    /// Total number of unique owners.
     async fn total(&self) -> i64 {
         self.total
     }

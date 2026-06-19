@@ -13,6 +13,7 @@ Handles user identity, profile creation, management, and username registration
 -  [Struct `Profile`](#social_contracts_profile_Profile)
 -  [Struct `ProfileBadge`](#social_contracts_profile_ProfileBadge)
 -  [Struct `BadgeData`](#social_contracts_profile_BadgeData)
+-  [Struct `VestingPiece`](#social_contracts_profile_VestingPiece)
 -  [Struct `VestingWallet`](#social_contracts_profile_VestingWallet)
 -  [Struct `BadgeAssignedEvent`](#social_contracts_profile_BadgeAssignedEvent)
 -  [Struct `BadgeRevokedEvent`](#social_contracts_profile_BadgeRevokedEvent)
@@ -27,6 +28,7 @@ Handles user identity, profile creation, management, and username registration
 -  [Struct `ProfileOfferRejectedEvent`](#social_contracts_profile_ProfileOfferRejectedEvent)
 -  [Struct `ProfileOffer`](#social_contracts_profile_ProfileOffer)
 -  [Struct `ProfileSaleFeeEvent`](#social_contracts_profile_ProfileSaleFeeEvent)
+-  [Struct `VestingPieceEvent`](#social_contracts_profile_VestingPieceEvent)
 -  [Struct `TokensVestedEvent`](#social_contracts_profile_TokensVestedEvent)
 -  [Struct `TokensClaimedEvent`](#social_contracts_profile_TokensClaimedEvent)
 -  [Struct `VestingWalletDeletedEvent`](#social_contracts_profile_VestingWalletDeletedEvent)
@@ -106,19 +108,33 @@ Handles user identity, profile creation, management, and username registration
 -  [Function `get_selected_ecosystem_badge_id`](#social_contracts_profile_get_selected_ecosystem_badge_id)
 -  [Function `get_display_ecosystem_badge`](#social_contracts_profile_get_display_ecosystem_badge)
 -  [Function `clear_selected_ecosystem_badge`](#social_contracts_profile_clear_selected_ecosystem_badge)
+-  [Function `normalize_curve_factor`](#social_contracts_profile_normalize_curve_factor)
+-  [Function `piece_amount`](#social_contracts_profile_piece_amount)
+-  [Function `validate_piece`](#social_contracts_profile_validate_piece)
+-  [Function `validate_schedule`](#social_contracts_profile_validate_schedule)
+-  [Function `apply_curve`](#social_contracts_profile_apply_curve)
+-  [Function `vested_amount_for_piece`](#social_contracts_profile_vested_amount_for_piece)
+-  [Function `calculate_total_vested`](#social_contracts_profile_calculate_total_vested)
+-  [Function `finalize_claimable`](#social_contracts_profile_finalize_claimable)
+-  [Function `continuous_vesting_piece`](#social_contracts_profile_continuous_vesting_piece)
+-  [Function `cliff_lump_piece`](#social_contracts_profile_cliff_lump_piece)
+-  [Function `pieces_from_vectors`](#social_contracts_profile_pieces_from_vectors)
 -  [Function `vest_myso`](#social_contracts_profile_vest_myso)
+-  [Function `vest_myso_internal`](#social_contracts_profile_vest_myso_internal)
 -  [Function `claim_vested_tokens`](#social_contracts_profile_claim_vested_tokens)
 -  [Function `claimable`](#social_contracts_profile_claimable)
 -  [Function `calculate_claimable`](#social_contracts_profile_calculate_claimable)
 -  [Function `sqrt_approximation`](#social_contracts_profile_sqrt_approximation)
+-  [Function `destroy_vesting_pieces`](#social_contracts_profile_destroy_vesting_pieces)
 -  [Function `delete_vesting_wallet`](#social_contracts_profile_delete_vesting_wallet)
 -  [Function `vesting_balance`](#social_contracts_profile_vesting_balance)
 -  [Function `vesting_owner`](#social_contracts_profile_vesting_owner)
 -  [Function `vesting_start_time`](#social_contracts_profile_vesting_start_time)
--  [Function `vesting_duration`](#social_contracts_profile_vesting_duration)
+-  [Function `vesting_schedule_end`](#social_contracts_profile_vesting_schedule_end)
 -  [Function `vesting_total_amount`](#social_contracts_profile_vesting_total_amount)
 -  [Function `vesting_claimed_amount`](#social_contracts_profile_vesting_claimed_amount)
--  [Function `vesting_curve_factor`](#social_contracts_profile_vesting_curve_factor)
+-  [Function `vesting_piece_count`](#social_contracts_profile_vesting_piece_count)
+-  [Function `vesting_pieces`](#social_contracts_profile_vesting_pieces)
 
 
 <pre><code><b>use</b> <a href="../myso/accumulator.md#myso_accumulator">myso::accumulator</a>;
@@ -561,11 +577,63 @@ but the actual ProfileBadge cannot be copied or transferred
 
 </details>
 
+<a name="social_contracts_profile_VestingPiece"></a>
+
+## Struct `VestingPiece`
+
+One schedule piece: lump cliff unlock or continuous curved vesting.
+
+
+<pre><code><b>public</b> <b>struct</b> <a href="../social_contracts/profile.md#social_contracts_profile_VestingPiece">VestingPiece</a> <b>has</b> <b>copy</b>, drop, store
+</code></pre>
+
+
+
+<details>
+<summary>Fields</summary>
+
+
+<dl>
+<dt>
+<code>kind: u8</code>
+</dt>
+<dd>
+ 0 = CliffLump (instant unlock), 1 = ContinuousVest
+</dd>
+<dt>
+<code>time_offset: u64</code>
+</dt>
+<dd>
+ Milliseconds from <code>start_time</code> when this piece activates
+</dd>
+<dt>
+<code>duration: u64</code>
+</dt>
+<dd>
+ 0 for cliff lumps; vest window length for continuous pieces
+</dd>
+<dt>
+<code>amount_bps: u64</code>
+</dt>
+<dd>
+ Share of total_amount in basis points; all pieces sum to 10_000
+</dd>
+<dt>
+<code>curve_factor: u64</code>
+</dt>
+<dd>
+ Curve factor for continuous pieces (1000 = linear)
+</dd>
+</dl>
+
+
+</details>
+
 <a name="social_contracts_profile_VestingWallet"></a>
 
 ## Struct `VestingWallet`
 
-Vesting Wallet contains MYSO coins that are available for claiming over time
+Vesting Wallet contains MYSO coins released over a piecewise schedule.
 
 
 <pre><code><b>public</b> <b>struct</b> <a href="../social_contracts/profile.md#social_contracts_profile_VestingWallet">VestingWallet</a> <b>has</b> key, store
@@ -587,43 +655,36 @@ Vesting Wallet contains MYSO coins that are available for claiming over time
 <code>balance: <a href="../myso/balance.md#myso_balance_Balance">myso::balance::Balance</a>&lt;<a href="../myso/myso.md#myso_myso_MYSO">myso::myso::MYSO</a>&gt;</code>
 </dt>
 <dd>
- Balance of MYSO coins remaining in the wallet
 </dd>
 <dt>
 <code><a href="../social_contracts/profile.md#social_contracts_profile_owner">owner</a>: <b>address</b></code>
 </dt>
 <dd>
- Address of the wallet owner who can claim the tokens
 </dd>
 <dt>
 <code>start_time: u64</code>
 </dt>
 <dd>
- Time when the vesting started (in milliseconds)
 </dd>
 <dt>
 <code>claimed_amount: u64</code>
 </dt>
 <dd>
- Amount of coins that have been claimed
-</dd>
-<dt>
-<code>duration: u64</code>
-</dt>
-<dd>
- Total duration of the vesting schedule (in milliseconds)
 </dd>
 <dt>
 <code>total_amount: u64</code>
 </dt>
 <dd>
- Total amount originally vested
 </dd>
 <dt>
-<code>curve_factor: u64</code>
+<code>schedule_end: u64</code>
 </dt>
 <dd>
- Curve factor (1000 = linear, >1000 = more at end, <1000 = more at start)
+</dd>
+<dt>
+<code>pieces: vector&lt;<a href="../social_contracts/profile.md#social_contracts_profile_VestingPiece">social_contracts::profile::VestingPiece</a>&gt;</code>
+</dt>
+<dd>
 </dd>
 </dl>
 
@@ -1320,6 +1381,53 @@ Event emitted when a fee is collected from a profile sale
 
 </details>
 
+<a name="social_contracts_profile_VestingPieceEvent"></a>
+
+## Struct `VestingPieceEvent`
+
+Copyable piece snapshot for vesting events
+
+
+<pre><code><b>public</b> <b>struct</b> <a href="../social_contracts/profile.md#social_contracts_profile_VestingPieceEvent">VestingPieceEvent</a> <b>has</b> <b>copy</b>, drop
+</code></pre>
+
+
+
+<details>
+<summary>Fields</summary>
+
+
+<dl>
+<dt>
+<code>kind: u8</code>
+</dt>
+<dd>
+</dd>
+<dt>
+<code>time_offset: u64</code>
+</dt>
+<dd>
+</dd>
+<dt>
+<code>duration: u64</code>
+</dt>
+<dd>
+</dd>
+<dt>
+<code>amount_bps: u64</code>
+</dt>
+<dd>
+</dd>
+<dt>
+<code>curve_factor: u64</code>
+</dt>
+<dd>
+</dd>
+</dl>
+
+
+</details>
+
 <a name="social_contracts_profile_TokensVestedEvent"></a>
 
 ## Struct `TokensVestedEvent`
@@ -1358,12 +1466,12 @@ Event emitted when MYSO tokens are vested
 <dd>
 </dd>
 <dt>
-<code>duration: u64</code>
+<code>schedule_end: u64</code>
 </dt>
 <dd>
 </dd>
 <dt>
-<code>curve_factor: u64</code>
+<code>pieces: vector&lt;<a href="../social_contracts/profile.md#social_contracts_profile_VestingPieceEvent">social_contracts::profile::VestingPieceEvent</a>&gt;</code>
 </dt>
 <dd>
 </dd>
@@ -1747,6 +1855,51 @@ Error codes
 
 
 
+<a name="social_contracts_profile_ETooManyPieces"></a>
+
+
+
+<pre><code><b>const</b> <a href="../social_contracts/profile.md#social_contracts_profile_ETooManyPieces">ETooManyPieces</a>: u64 = 29;
+</code></pre>
+
+
+
+<a name="social_contracts_profile_EInvalidSchedule"></a>
+
+
+
+<pre><code><b>const</b> <a href="../social_contracts/profile.md#social_contracts_profile_EInvalidSchedule">EInvalidSchedule</a>: u64 = 30;
+</code></pre>
+
+
+
+<a name="social_contracts_profile_EInvalidPieceKind"></a>
+
+
+
+<pre><code><b>const</b> <a href="../social_contracts/profile.md#social_contracts_profile_EInvalidPieceKind">EInvalidPieceKind</a>: u64 = 31;
+</code></pre>
+
+
+
+<a name="social_contracts_profile_EInvalidPieceDuration"></a>
+
+
+
+<pre><code><b>const</b> <a href="../social_contracts/profile.md#social_contracts_profile_EInvalidPieceDuration">EInvalidPieceDuration</a>: u64 = 32;
+</code></pre>
+
+
+
+<a name="social_contracts_profile_EScheduleOverflow"></a>
+
+
+
+<pre><code><b>const</b> <a href="../social_contracts/profile.md#social_contracts_profile_EScheduleOverflow">EScheduleOverflow</a>: u64 = 33;
+</code></pre>
+
+
+
 <a name="social_contracts_profile_PROFILE_SALE_FEE_BPS"></a>
 
 
@@ -1761,6 +1914,69 @@ Error codes
 
 
 <pre><code><b>const</b> <a href="../social_contracts/profile.md#social_contracts_profile_CURVE_PRECISION">CURVE_PRECISION</a>: u64 = 1000;
+</code></pre>
+
+
+
+<a name="social_contracts_profile_CURVE_FACTOR_MIN"></a>
+
+
+
+<pre><code><b>const</b> <a href="../social_contracts/profile.md#social_contracts_profile_CURVE_FACTOR_MIN">CURVE_FACTOR_MIN</a>: u64 = 100;
+</code></pre>
+
+
+
+<a name="social_contracts_profile_CURVE_FACTOR_MAX"></a>
+
+
+
+<pre><code><b>const</b> <a href="../social_contracts/profile.md#social_contracts_profile_CURVE_FACTOR_MAX">CURVE_FACTOR_MAX</a>: u64 = 10000;
+</code></pre>
+
+
+
+<a name="social_contracts_profile_MAX_VESTING_PIECES"></a>
+
+
+
+<pre><code><b>const</b> <a href="../social_contracts/profile.md#social_contracts_profile_MAX_VESTING_PIECES">MAX_VESTING_PIECES</a>: u64 = 10;
+</code></pre>
+
+
+
+<a name="social_contracts_profile_BPS_DENOMINATOR"></a>
+
+
+
+<pre><code><b>const</b> <a href="../social_contracts/profile.md#social_contracts_profile_BPS_DENOMINATOR">BPS_DENOMINATOR</a>: u64 = 10000;
+</code></pre>
+
+
+
+<a name="social_contracts_profile_PIECE_KIND_CLIFF"></a>
+
+
+
+<pre><code><b>const</b> <a href="../social_contracts/profile.md#social_contracts_profile_PIECE_KIND_CLIFF">PIECE_KIND_CLIFF</a>: u8 = 0;
+</code></pre>
+
+
+
+<a name="social_contracts_profile_PIECE_KIND_CONTINUOUS"></a>
+
+
+
+<pre><code><b>const</b> <a href="../social_contracts/profile.md#social_contracts_profile_PIECE_KIND_CONTINUOUS">PIECE_KIND_CONTINUOUS</a>: u8 = 1;
+</code></pre>
+
+
+
+<a name="social_contracts_profile_MIN_CLAIM_THRESHOLD_DIVISOR"></a>
+
+
+
+<pre><code><b>const</b> <a href="../social_contracts/profile.md#social_contracts_profile_MIN_CLAIM_THRESHOLD_DIVISOR">MIN_CLAIM_THRESHOLD_DIVISOR</a>: u64 = 1000;
 </code></pre>
 
 
@@ -4815,28 +5031,444 @@ Clear the selected ecosystem badge (owner only)
 
 </details>
 
+<a name="social_contracts_profile_normalize_curve_factor"></a>
+
+## Function `normalize_curve_factor`
+
+
+
+<pre><code><b>fun</b> <a href="../social_contracts/profile.md#social_contracts_profile_normalize_curve_factor">normalize_curve_factor</a>(curve_factor: u64): u64
+</code></pre>
+
+
+
+<details>
+<summary>Implementation</summary>
+
+
+<pre><code><b>fun</b> <a href="../social_contracts/profile.md#social_contracts_profile_normalize_curve_factor">normalize_curve_factor</a>(curve_factor: u64): u64 {
+    <b>if</b> (curve_factor == 0) {
+        <a href="../social_contracts/profile.md#social_contracts_profile_CURVE_PRECISION">CURVE_PRECISION</a>
+    } <b>else</b> {
+        <b>assert</b>!(curve_factor &gt;= <a href="../social_contracts/profile.md#social_contracts_profile_CURVE_FACTOR_MIN">CURVE_FACTOR_MIN</a> && curve_factor &lt;= <a href="../social_contracts/profile.md#social_contracts_profile_CURVE_FACTOR_MAX">CURVE_FACTOR_MAX</a>, <a href="../social_contracts/profile.md#social_contracts_profile_EInvalidSchedule">EInvalidSchedule</a>);
+        curve_factor
+    }
+}
+</code></pre>
+
+
+
+</details>
+
+<a name="social_contracts_profile_piece_amount"></a>
+
+## Function `piece_amount`
+
+
+
+<pre><code><b>fun</b> <a href="../social_contracts/profile.md#social_contracts_profile_piece_amount">piece_amount</a>(total_amount: u64, amount_bps: u64): u64
+</code></pre>
+
+
+
+<details>
+<summary>Implementation</summary>
+
+
+<pre><code><b>fun</b> <a href="../social_contracts/profile.md#social_contracts_profile_piece_amount">piece_amount</a>(total_amount: u64, amount_bps: u64): u64 {
+    ((total_amount <b>as</b> u128) * (amount_bps <b>as</b> u128) / (<a href="../social_contracts/profile.md#social_contracts_profile_BPS_DENOMINATOR">BPS_DENOMINATOR</a> <b>as</b> u128)) <b>as</b> u64
+}
+</code></pre>
+
+
+
+</details>
+
+<a name="social_contracts_profile_validate_piece"></a>
+
+## Function `validate_piece`
+
+
+
+<pre><code><b>fun</b> <a href="../social_contracts/profile.md#social_contracts_profile_validate_piece">validate_piece</a>(piece: &<a href="../social_contracts/profile.md#social_contracts_profile_VestingPiece">social_contracts::profile::VestingPiece</a>, total_amount: u64)
+</code></pre>
+
+
+
+<details>
+<summary>Implementation</summary>
+
+
+<pre><code><b>fun</b> <a href="../social_contracts/profile.md#social_contracts_profile_validate_piece">validate_piece</a>(piece: &<a href="../social_contracts/profile.md#social_contracts_profile_VestingPiece">VestingPiece</a>, total_amount: u64) {
+    <b>if</b> (piece.kind == <a href="../social_contracts/profile.md#social_contracts_profile_PIECE_KIND_CLIFF">PIECE_KIND_CLIFF</a>) {
+        <b>assert</b>!(piece.duration == 0, <a href="../social_contracts/profile.md#social_contracts_profile_EInvalidPieceDuration">EInvalidPieceDuration</a>);
+    } <b>else</b> <b>if</b> (piece.kind == <a href="../social_contracts/profile.md#social_contracts_profile_PIECE_KIND_CONTINUOUS">PIECE_KIND_CONTINUOUS</a>) {
+        <b>assert</b>!(piece.duration &gt; 0, <a href="../social_contracts/profile.md#social_contracts_profile_EInvalidPieceDuration">EInvalidPieceDuration</a>);
+        <b>let</b> _ = <a href="../social_contracts/profile.md#social_contracts_profile_normalize_curve_factor">normalize_curve_factor</a>(piece.curve_factor);
+    } <b>else</b> {
+        <b>abort</b> <a href="../social_contracts/profile.md#social_contracts_profile_EInvalidPieceKind">EInvalidPieceKind</a>
+    };
+    <b>assert</b>!(piece.amount_bps &gt; 0, <a href="../social_contracts/profile.md#social_contracts_profile_EInvalidSchedule">EInvalidSchedule</a>);
+    <b>assert</b>!(<a href="../social_contracts/profile.md#social_contracts_profile_piece_amount">piece_amount</a>(total_amount, piece.amount_bps) &gt;= 1, <a href="../social_contracts/profile.md#social_contracts_profile_EInvalidSchedule">EInvalidSchedule</a>);
+}
+</code></pre>
+
+
+
+</details>
+
+<a name="social_contracts_profile_validate_schedule"></a>
+
+## Function `validate_schedule`
+
+Validate schedule pieces and return <code>schedule_end</code> (absolute ms timestamp).
+
+
+<pre><code><b>fun</b> <a href="../social_contracts/profile.md#social_contracts_profile_validate_schedule">validate_schedule</a>(start_time: u64, total_amount: u64, pieces: &vector&lt;<a href="../social_contracts/profile.md#social_contracts_profile_VestingPiece">social_contracts::profile::VestingPiece</a>&gt;): u64
+</code></pre>
+
+
+
+<details>
+<summary>Implementation</summary>
+
+
+<pre><code><b>fun</b> <a href="../social_contracts/profile.md#social_contracts_profile_validate_schedule">validate_schedule</a>(
+    start_time: u64,
+    total_amount: u64,
+    pieces: &vector&lt;<a href="../social_contracts/profile.md#social_contracts_profile_VestingPiece">VestingPiece</a>&gt;,
+): u64 {
+    <b>let</b> num_pieces = vector::length(pieces);
+    <b>assert</b>!(num_pieces &gt;= 1 && num_pieces &lt;= <a href="../social_contracts/profile.md#social_contracts_profile_MAX_VESTING_PIECES">MAX_VESTING_PIECES</a>, <a href="../social_contracts/profile.md#social_contracts_profile_ETooManyPieces">ETooManyPieces</a>);
+    <b>let</b> <b>mut</b> total_bps = 0u64;
+    <b>let</b> <b>mut</b> schedule_end = start_time;
+    <b>let</b> <b>mut</b> prev_offset = 0u64;
+    <b>let</b> <b>mut</b> i = 0;
+    <b>while</b> (i &lt; num_pieces) {
+        <b>let</b> piece = vector::borrow(pieces, i);
+        <a href="../social_contracts/profile.md#social_contracts_profile_validate_piece">validate_piece</a>(piece, total_amount);
+        <b>assert</b>!(piece.time_offset &gt;= prev_offset, <a href="../social_contracts/profile.md#social_contracts_profile_EInvalidSchedule">EInvalidSchedule</a>);
+        prev_offset = piece.time_offset;
+        total_bps = total_bps + piece.amount_bps;
+        <b>let</b> piece_end_offset = <b>if</b> (piece.kind == <a href="../social_contracts/profile.md#social_contracts_profile_PIECE_KIND_CLIFF">PIECE_KIND_CLIFF</a>) {
+            piece.time_offset
+        } <b>else</b> {
+            <b>assert</b>!(piece.time_offset &lt;= <a href="../social_contracts/profile.md#social_contracts_profile_MAX_U64">MAX_U64</a> - piece.duration, <a href="../social_contracts/profile.md#social_contracts_profile_EScheduleOverflow">EScheduleOverflow</a>);
+            piece.time_offset + piece.duration
+        };
+        <b>if</b> (piece_end_offset &gt; schedule_end - start_time) {
+            <b>assert</b>!(start_time &lt;= <a href="../social_contracts/profile.md#social_contracts_profile_MAX_U64">MAX_U64</a> - piece_end_offset, <a href="../social_contracts/profile.md#social_contracts_profile_EScheduleOverflow">EScheduleOverflow</a>);
+            schedule_end = start_time + piece_end_offset;
+        };
+        i = i + 1;
+    };
+    <b>assert</b>!(total_bps == <a href="../social_contracts/profile.md#social_contracts_profile_BPS_DENOMINATOR">BPS_DENOMINATOR</a>, <a href="../social_contracts/profile.md#social_contracts_profile_EInvalidSchedule">EInvalidSchedule</a>);
+    schedule_end
+}
+</code></pre>
+
+
+
+</details>
+
+<a name="social_contracts_profile_apply_curve"></a>
+
+## Function `apply_curve`
+
+
+
+<pre><code><b>fun</b> <a href="../social_contracts/profile.md#social_contracts_profile_apply_curve">apply_curve</a>(progress: u128, curve_factor: u64): u128
+</code></pre>
+
+
+
+<details>
+<summary>Implementation</summary>
+
+
+<pre><code><b>fun</b> <a href="../social_contracts/profile.md#social_contracts_profile_apply_curve">apply_curve</a>(progress: u128, curve_factor: u64): u128 {
+    <b>if</b> (curve_factor == <a href="../social_contracts/profile.md#social_contracts_profile_CURVE_PRECISION">CURVE_PRECISION</a>) {
+        progress
+    } <b>else</b> <b>if</b> (curve_factor &gt; <a href="../social_contracts/profile.md#social_contracts_profile_CURVE_PRECISION">CURVE_PRECISION</a>) {
+        <b>let</b> steepness = (curve_factor - <a href="../social_contracts/profile.md#social_contracts_profile_CURVE_PRECISION">CURVE_PRECISION</a>) <b>as</b> u128;
+        <b>let</b> quadratic = (progress * progress) / (<a href="../social_contracts/profile.md#social_contracts_profile_CURVE_PRECISION">CURVE_PRECISION</a> <b>as</b> u128);
+        <b>let</b> linear_part = progress;
+        (linear_part * ((<a href="../social_contracts/profile.md#social_contracts_profile_CURVE_PRECISION">CURVE_PRECISION</a> <b>as</b> u128) - steepness) + quadratic * steepness)
+            / (<a href="../social_contracts/profile.md#social_contracts_profile_CURVE_PRECISION">CURVE_PRECISION</a> <b>as</b> u128)
+    } <b>else</b> {
+        <b>let</b> steepness = (<a href="../social_contracts/profile.md#social_contracts_profile_CURVE_PRECISION">CURVE_PRECISION</a> - curve_factor) <b>as</b> u128;
+        <b>let</b> sqrt_approx = <a href="../social_contracts/profile.md#social_contracts_profile_sqrt_approximation">sqrt_approximation</a>(progress * (<a href="../social_contracts/profile.md#social_contracts_profile_CURVE_PRECISION">CURVE_PRECISION</a> <b>as</b> u128));
+        <b>let</b> linear_part = progress;
+        (sqrt_approx * steepness + linear_part * ((<a href="../social_contracts/profile.md#social_contracts_profile_CURVE_PRECISION">CURVE_PRECISION</a> <b>as</b> u128) - steepness))
+            / (<a href="../social_contracts/profile.md#social_contracts_profile_CURVE_PRECISION">CURVE_PRECISION</a> <b>as</b> u128)
+    }
+}
+</code></pre>
+
+
+
+</details>
+
+<a name="social_contracts_profile_vested_amount_for_piece"></a>
+
+## Function `vested_amount_for_piece`
+
+
+
+<pre><code><b>fun</b> <a href="../social_contracts/profile.md#social_contracts_profile_vested_amount_for_piece">vested_amount_for_piece</a>(total_amount: u64, start_time: u64, current_time: u64, piece: &<a href="../social_contracts/profile.md#social_contracts_profile_VestingPiece">social_contracts::profile::VestingPiece</a>): u64
+</code></pre>
+
+
+
+<details>
+<summary>Implementation</summary>
+
+
+<pre><code><b>fun</b> <a href="../social_contracts/profile.md#social_contracts_profile_vested_amount_for_piece">vested_amount_for_piece</a>(
+    total_amount: u64,
+    start_time: u64,
+    current_time: u64,
+    piece: &<a href="../social_contracts/profile.md#social_contracts_profile_VestingPiece">VestingPiece</a>,
+): u64 {
+    <b>if</b> (current_time &lt; start_time) {
+        <b>return</b> 0
+    };
+    <b>let</b> activation_time = start_time + piece.time_offset;
+    <b>if</b> (current_time &lt; activation_time) {
+        <b>return</b> 0
+    };
+    <b>let</b> alloc = <a href="../social_contracts/profile.md#social_contracts_profile_piece_amount">piece_amount</a>(total_amount, piece.amount_bps);
+    <b>if</b> (piece.kind == <a href="../social_contracts/profile.md#social_contracts_profile_PIECE_KIND_CLIFF">PIECE_KIND_CLIFF</a>) {
+        <b>return</b> alloc
+    };
+    <b>let</b> end_time = activation_time + piece.duration;
+    <b>if</b> (current_time &gt;= end_time) {
+        <b>return</b> alloc
+    };
+    <b>let</b> elapsed = current_time - activation_time;
+    <b>let</b> progress = ((elapsed <b>as</b> u128) * (<a href="../social_contracts/profile.md#social_contracts_profile_CURVE_PRECISION">CURVE_PRECISION</a> <b>as</b> u128)) / (piece.duration <b>as</b> u128);
+    <b>let</b> curved = <a href="../social_contracts/profile.md#social_contracts_profile_apply_curve">apply_curve</a>(progress, piece.curve_factor);
+    ((alloc <b>as</b> u128) * curved / (<a href="../social_contracts/profile.md#social_contracts_profile_CURVE_PRECISION">CURVE_PRECISION</a> <b>as</b> u128)) <b>as</b> u64
+}
+</code></pre>
+
+
+
+</details>
+
+<a name="social_contracts_profile_calculate_total_vested"></a>
+
+## Function `calculate_total_vested`
+
+
+
+<pre><code><b>fun</b> <a href="../social_contracts/profile.md#social_contracts_profile_calculate_total_vested">calculate_total_vested</a>(wallet: &<a href="../social_contracts/profile.md#social_contracts_profile_VestingWallet">social_contracts::profile::VestingWallet</a>, current_time: u64): u64
+</code></pre>
+
+
+
+<details>
+<summary>Implementation</summary>
+
+
+<pre><code><b>fun</b> <a href="../social_contracts/profile.md#social_contracts_profile_calculate_total_vested">calculate_total_vested</a>(wallet: &<a href="../social_contracts/profile.md#social_contracts_profile_VestingWallet">VestingWallet</a>, current_time: u64): u64 {
+    <b>if</b> (current_time &lt; wallet.start_time) {
+        <b>return</b> 0
+    };
+    <b>let</b> <b>mut</b> total_released = 0u64;
+    <b>let</b> num_pieces = vector::length(&wallet.pieces);
+    <b>let</b> <b>mut</b> i = 0;
+    <b>while</b> (i &lt; num_pieces) {
+        <b>let</b> piece = vector::borrow(&wallet.pieces, i);
+        <b>let</b> piece_vested = <a href="../social_contracts/profile.md#social_contracts_profile_vested_amount_for_piece">vested_amount_for_piece</a>(
+            wallet.total_amount,
+            wallet.start_time,
+            current_time,
+            piece,
+        );
+        <b>assert</b>!(total_released &lt;= <a href="../social_contracts/profile.md#social_contracts_profile_MAX_U64">MAX_U64</a> - piece_vested, <a href="../social_contracts/profile.md#social_contracts_profile_EOverflow">EOverflow</a>);
+        total_released = total_released + piece_vested;
+        i = i + 1;
+    };
+    <b>if</b> (total_released &gt; wallet.total_amount) {
+        wallet.total_amount
+    } <b>else</b> {
+        total_released
+    }
+}
+</code></pre>
+
+
+
+</details>
+
+<a name="social_contracts_profile_finalize_claimable"></a>
+
+## Function `finalize_claimable`
+
+
+
+<pre><code><b>fun</b> <a href="../social_contracts/profile.md#social_contracts_profile_finalize_claimable">finalize_claimable</a>(capped: u64, remaining_balance: u64, total_amount: u64, current_time: u64, schedule_end: u64): u64
+</code></pre>
+
+
+
+<details>
+<summary>Implementation</summary>
+
+
+<pre><code><b>fun</b> <a href="../social_contracts/profile.md#social_contracts_profile_finalize_claimable">finalize_claimable</a>(
+    capped: u64,
+    remaining_balance: u64,
+    total_amount: u64,
+    current_time: u64,
+    schedule_end: u64,
+): u64 {
+    <b>if</b> (current_time &gt;= schedule_end) {
+        <b>return</b> remaining_balance
+    };
+    <b>if</b> (capped == 0) {
+        <b>return</b> 0
+    };
+    <b>let</b> <b>mut</b> threshold = total_amount / <a href="../social_contracts/profile.md#social_contracts_profile_MIN_CLAIM_THRESHOLD_DIVISOR">MIN_CLAIM_THRESHOLD_DIVISOR</a>;
+    <b>if</b> (threshold == 0) {
+        threshold = 1
+    };
+    <b>if</b> (capped &lt; threshold && capped &lt; remaining_balance) {
+        0
+    } <b>else</b> {
+        capped
+    }
+}
+</code></pre>
+
+
+
+</details>
+
+<a name="social_contracts_profile_continuous_vesting_piece"></a>
+
+## Function `continuous_vesting_piece`
+
+Build a continuous vesting piece (linear when curve_factor is 0 or 1000).
+
+
+<pre><code><b>public</b> <b>fun</b> <a href="../social_contracts/profile.md#social_contracts_profile_continuous_vesting_piece">continuous_vesting_piece</a>(time_offset: u64, duration: u64, amount_bps: u64, curve_factor: u64): <a href="../social_contracts/profile.md#social_contracts_profile_VestingPiece">social_contracts::profile::VestingPiece</a>
+</code></pre>
+
+
+
+<details>
+<summary>Implementation</summary>
+
+
+<pre><code><b>public</b> <b>fun</b> <a href="../social_contracts/profile.md#social_contracts_profile_continuous_vesting_piece">continuous_vesting_piece</a>(
+    time_offset: u64,
+    duration: u64,
+    amount_bps: u64,
+    curve_factor: u64,
+): <a href="../social_contracts/profile.md#social_contracts_profile_VestingPiece">VestingPiece</a> {
+    <a href="../social_contracts/profile.md#social_contracts_profile_VestingPiece">VestingPiece</a> {
+        kind: <a href="../social_contracts/profile.md#social_contracts_profile_PIECE_KIND_CONTINUOUS">PIECE_KIND_CONTINUOUS</a>,
+        time_offset,
+        duration,
+        amount_bps,
+        curve_factor,
+    }
+}
+</code></pre>
+
+
+
+</details>
+
+<a name="social_contracts_profile_cliff_lump_piece"></a>
+
+## Function `cliff_lump_piece`
+
+Build a cliff lump unlock piece.
+
+
+<pre><code><b>public</b> <b>fun</b> <a href="../social_contracts/profile.md#social_contracts_profile_cliff_lump_piece">cliff_lump_piece</a>(time_offset: u64, amount_bps: u64): <a href="../social_contracts/profile.md#social_contracts_profile_VestingPiece">social_contracts::profile::VestingPiece</a>
+</code></pre>
+
+
+
+<details>
+<summary>Implementation</summary>
+
+
+<pre><code><b>public</b> <b>fun</b> <a href="../social_contracts/profile.md#social_contracts_profile_cliff_lump_piece">cliff_lump_piece</a>(time_offset: u64, amount_bps: u64): <a href="../social_contracts/profile.md#social_contracts_profile_VestingPiece">VestingPiece</a> {
+    <a href="../social_contracts/profile.md#social_contracts_profile_VestingPiece">VestingPiece</a> {
+        kind: <a href="../social_contracts/profile.md#social_contracts_profile_PIECE_KIND_CLIFF">PIECE_KIND_CLIFF</a>,
+        time_offset,
+        duration: 0,
+        amount_bps,
+        curve_factor: 0,
+    }
+}
+</code></pre>
+
+
+
+</details>
+
+<a name="social_contracts_profile_pieces_from_vectors"></a>
+
+## Function `pieces_from_vectors`
+
+
+
+<pre><code><b>fun</b> <a href="../social_contracts/profile.md#social_contracts_profile_pieces_from_vectors">pieces_from_vectors</a>(kinds: vector&lt;u8&gt;, time_offsets: vector&lt;u64&gt;, durations: vector&lt;u64&gt;, amount_bps_list: vector&lt;u64&gt;, curve_factors: vector&lt;u64&gt;): vector&lt;<a href="../social_contracts/profile.md#social_contracts_profile_VestingPiece">social_contracts::profile::VestingPiece</a>&gt;
+</code></pre>
+
+
+
+<details>
+<summary>Implementation</summary>
+
+
+<pre><code><b>fun</b> <a href="../social_contracts/profile.md#social_contracts_profile_pieces_from_vectors">pieces_from_vectors</a>(
+    kinds: vector&lt;u8&gt;,
+    time_offsets: vector&lt;u64&gt;,
+    durations: vector&lt;u64&gt;,
+    amount_bps_list: vector&lt;u64&gt;,
+    curve_factors: vector&lt;u64&gt;,
+): vector&lt;<a href="../social_contracts/profile.md#social_contracts_profile_VestingPiece">VestingPiece</a>&gt; {
+    <b>let</b> len = vector::length(&kinds);
+    <b>assert</b>!(len == vector::length(&time_offsets), <a href="../social_contracts/profile.md#social_contracts_profile_EInvalidSchedule">EInvalidSchedule</a>);
+    <b>assert</b>!(len == vector::length(&durations), <a href="../social_contracts/profile.md#social_contracts_profile_EInvalidSchedule">EInvalidSchedule</a>);
+    <b>assert</b>!(len == vector::length(&amount_bps_list), <a href="../social_contracts/profile.md#social_contracts_profile_EInvalidSchedule">EInvalidSchedule</a>);
+    <b>assert</b>!(len == vector::length(&curve_factors), <a href="../social_contracts/profile.md#social_contracts_profile_EInvalidSchedule">EInvalidSchedule</a>);
+    <b>let</b> <b>mut</b> pieces = vector::empty&lt;<a href="../social_contracts/profile.md#social_contracts_profile_VestingPiece">VestingPiece</a>&gt;();
+    <b>let</b> <b>mut</b> i = 0;
+    <b>while</b> (i &lt; len) {
+        vector::push_back(&<b>mut</b> pieces, <a href="../social_contracts/profile.md#social_contracts_profile_VestingPiece">VestingPiece</a> {
+            kind: *vector::borrow(&kinds, i),
+            time_offset: *vector::borrow(&time_offsets, i),
+            duration: *vector::borrow(&durations, i),
+            amount_bps: *vector::borrow(&amount_bps_list, i),
+            curve_factor: *vector::borrow(&curve_factors, i),
+        });
+        i = i + 1;
+    };
+    pieces
+}
+</code></pre>
+
+
+
+</details>
+
 <a name="social_contracts_profile_vest_myso"></a>
 
 ## Function `vest_myso`
 
-Create a new vesting wallet with MYSO tokens that vest over time with configurable curve
-The start time must be in the future and duration must be greater than 0
-curve_factor: 0 or 1000 = linear, >1000 = more tokens at end, <1000 = more tokens at start
-
-Example Curves:
-Exponential (curve_factor = 2000):
-25% time → ~6% tokens
-50% time → ~25% tokens
-75% time → ~56% tokens
-100% time → 100% tokens
-Logarithmic (curve_factor = 500):
-25% time → ~44% tokens
-50% time → ~75% tokens
-75% time → ~94% tokens
-100% time → 100% tokens
+Create a vesting wallet from parallel piece vectors (entry-compatible).
+Cliff lumps unlock instantly at <code>time_offset</code>; continuous pieces vest over <code>duration</code>.
 
 
-<pre><code><b>public</b> <b>entry</b> <b>fun</b> <a href="../social_contracts/profile.md#social_contracts_profile_vest_myso">vest_myso</a>(coin: <a href="../myso/coin.md#myso_coin_Coin">myso::coin::Coin</a>&lt;<a href="../myso/myso.md#myso_myso_MYSO">myso::myso::MYSO</a>&gt;, recipient: <b>address</b>, start_time: u64, duration: u64, curve_factor: u64, clock: &<a href="../myso/clock.md#myso_clock_Clock">myso::clock::Clock</a>, ctx: &<b>mut</b> <a href="../myso/tx_context.md#myso_tx_context_TxContext">myso::tx_context::TxContext</a>)
+<pre><code><b>public</b> <b>entry</b> <b>fun</b> <a href="../social_contracts/profile.md#social_contracts_profile_vest_myso">vest_myso</a>(coin: <a href="../myso/coin.md#myso_coin_Coin">myso::coin::Coin</a>&lt;<a href="../myso/myso.md#myso_myso_MYSO">myso::myso::MYSO</a>&gt;, recipient: <b>address</b>, start_time: u64, kinds: vector&lt;u8&gt;, time_offsets: vector&lt;u64&gt;, durations: vector&lt;u64&gt;, amount_bps_list: vector&lt;u64&gt;, curve_factors: vector&lt;u64&gt;, clock: &<a href="../myso/clock.md#myso_clock_Clock">myso::clock::Clock</a>, ctx: &<b>mut</b> <a href="../myso/tx_context.md#myso_tx_context_TxContext">myso::tx_context::TxContext</a>)
 </code></pre>
 
 
@@ -4849,49 +5481,91 @@ Logarithmic (curve_factor = 500):
     coin: Coin&lt;MYSO&gt;,
     recipient: <b>address</b>,
     start_time: u64,
-    duration: u64,
-    curve_factor: u64,
+    kinds: vector&lt;u8&gt;,
+    time_offsets: vector&lt;u64&gt;,
+    durations: vector&lt;u64&gt;,
+    amount_bps_list: vector&lt;u64&gt;,
+    curve_factors: vector&lt;u64&gt;,
     clock: &Clock,
     ctx: &<b>mut</b> TxContext
 ) {
-    // Validate that start time is in the future
+    <b>let</b> pieces = <a href="../social_contracts/profile.md#social_contracts_profile_pieces_from_vectors">pieces_from_vectors</a>(
+        kinds,
+        time_offsets,
+        durations,
+        amount_bps_list,
+        curve_factors,
+    );
+    <a href="../social_contracts/profile.md#social_contracts_profile_vest_myso_internal">vest_myso_internal</a>(coin, recipient, start_time, pieces, clock, ctx);
+}
+</code></pre>
+
+
+
+</details>
+
+<a name="social_contracts_profile_vest_myso_internal"></a>
+
+## Function `vest_myso_internal`
+
+
+
+<pre><code><b>fun</b> <a href="../social_contracts/profile.md#social_contracts_profile_vest_myso_internal">vest_myso_internal</a>(coin: <a href="../myso/coin.md#myso_coin_Coin">myso::coin::Coin</a>&lt;<a href="../myso/myso.md#myso_myso_MYSO">myso::myso::MYSO</a>&gt;, recipient: <b>address</b>, start_time: u64, pieces: vector&lt;<a href="../social_contracts/profile.md#social_contracts_profile_VestingPiece">social_contracts::profile::VestingPiece</a>&gt;, clock: &<a href="../myso/clock.md#myso_clock_Clock">myso::clock::Clock</a>, ctx: &<b>mut</b> <a href="../myso/tx_context.md#myso_tx_context_TxContext">myso::tx_context::TxContext</a>)
+</code></pre>
+
+
+
+<details>
+<summary>Implementation</summary>
+
+
+<pre><code><b>fun</b> <a href="../social_contracts/profile.md#social_contracts_profile_vest_myso_internal">vest_myso_internal</a>(
+    coin: Coin&lt;MYSO&gt;,
+    recipient: <b>address</b>,
+    start_time: u64,
+    pieces: vector&lt;<a href="../social_contracts/profile.md#social_contracts_profile_VestingPiece">VestingPiece</a>&gt;,
+    clock: &Clock,
+    ctx: &<b>mut</b> TxContext
+) {
     <b>let</b> current_time = clock::timestamp_ms(clock);
     <b>assert</b>!(start_time &gt; current_time, <a href="../social_contracts/profile.md#social_contracts_profile_EInvalidStartTime">EInvalidStartTime</a>);
-    // Validate that duration is greater than 0
-    <b>assert</b>!(duration &gt; 0, <a href="../social_contracts/profile.md#social_contracts_profile_EInvalidStartTime">EInvalidStartTime</a>);
     <b>let</b> total_amount = coin::value(&coin);
     <b>assert</b>!(total_amount &gt; 0, <a href="../social_contracts/profile.md#social_contracts_profile_EInsufficientTokens">EInsufficientTokens</a>);
-    // Default to linear <b>if</b> curve_factor is 0
-    <b>let</b> final_curve_factor = <b>if</b> (curve_factor == 0) {
-        <a href="../social_contracts/profile.md#social_contracts_profile_CURVE_PRECISION">CURVE_PRECISION</a> // 1000 = linear
-    } <b>else</b> {
-        // Validate curve factor is reasonable (between 100 and 10000, i.e., 0.1x to 10x)
-        <b>assert</b>!(curve_factor &gt;= 100 && curve_factor &lt;= 10000, <a href="../social_contracts/profile.md#social_contracts_profile_EInvalidStartTime">EInvalidStartTime</a>);
-        curve_factor
-    };
-    // Create the vesting wallet
+    <b>let</b> schedule_end = <a href="../social_contracts/profile.md#social_contracts_profile_validate_schedule">validate_schedule</a>(start_time, total_amount, &pieces);
     <b>let</b> wallet = <a href="../social_contracts/profile.md#social_contracts_profile_VestingWallet">VestingWallet</a> {
         <a href="../social_contracts/profile.md#social_contracts_profile_id">id</a>: object::new(ctx),
         balance: coin::into_balance(coin),
         <a href="../social_contracts/profile.md#social_contracts_profile_owner">owner</a>: recipient,
         start_time,
         claimed_amount: 0,
-        duration,
         total_amount,
-        curve_factor: final_curve_factor,
+        schedule_end,
+        pieces,
     };
     <b>let</b> wallet_id = object::uid_to_address(&wallet.<a href="../social_contracts/profile.md#social_contracts_profile_id">id</a>);
-    // Emit vesting event
+    <b>let</b> <b>mut</b> piece_events = vector::empty&lt;<a href="../social_contracts/profile.md#social_contracts_profile_VestingPieceEvent">VestingPieceEvent</a>&gt;();
+    <b>let</b> num_pieces = vector::length(&wallet.pieces);
+    <b>let</b> <b>mut</b> j = 0;
+    <b>while</b> (j &lt; num_pieces) {
+        <b>let</b> p = vector::borrow(&wallet.pieces, j);
+        vector::push_back(&<b>mut</b> piece_events, <a href="../social_contracts/profile.md#social_contracts_profile_VestingPieceEvent">VestingPieceEvent</a> {
+            kind: p.kind,
+            time_offset: p.time_offset,
+            duration: p.duration,
+            amount_bps: p.amount_bps,
+            curve_factor: p.curve_factor,
+        });
+        j = j + 1;
+    };
     event::emit(<a href="../social_contracts/profile.md#social_contracts_profile_TokensVestedEvent">TokensVestedEvent</a> {
         wallet_id,
         <a href="../social_contracts/profile.md#social_contracts_profile_owner">owner</a>: recipient,
         total_amount,
         start_time,
-        duration,
-        curve_factor: final_curve_factor,
+        schedule_end,
+        pieces: piece_events,
         vested_at: current_time,
     });
-    // Transfer the vesting wallet to the recipient
     transfer::public_transfer(wallet, recipient);
 }
 </code></pre>
@@ -4904,8 +5578,7 @@ Logarithmic (curve_factor = 500):
 
 ## Function `claim_vested_tokens`
 
-Claim vested tokens from a vesting wallet
-Only the wallet owner can claim tokens, and only claimable amounts
+Claim vested tokens. Sub-threshold amounts during active vesting are no-ops.
 
 
 <pre><code><b>public</b> <b>entry</b> <b>fun</b> <a href="../social_contracts/profile.md#social_contracts_profile_claim_vested_tokens">claim_vested_tokens</a>(wallet: &<b>mut</b> <a href="../social_contracts/profile.md#social_contracts_profile_VestingWallet">social_contracts::profile::VestingWallet</a>, clock: &<a href="../myso/clock.md#myso_clock_Clock">myso::clock::Clock</a>, ctx: &<b>mut</b> <a href="../myso/tx_context.md#myso_tx_context_TxContext">myso::tx_context::TxContext</a>)
@@ -4923,22 +5596,17 @@ Only the wallet owner can claim tokens, and only claimable amounts
     ctx: &<b>mut</b> TxContext
 ) {
     <b>let</b> sender = tx_context::sender(ctx);
-    // Verify sender is the wallet <a href="../social_contracts/profile.md#social_contracts_profile_owner">owner</a>
     <b>assert</b>!(wallet.<a href="../social_contracts/profile.md#social_contracts_profile_owner">owner</a> == sender, <a href="../social_contracts/profile.md#social_contracts_profile_ENotVestingWalletOwner">ENotVestingWalletOwner</a>);
     <b>let</b> claimable_amount = <a href="../social_contracts/profile.md#social_contracts_profile_calculate_claimable">calculate_claimable</a>(wallet, clock);
-    // Only proceed <b>if</b> there are tokens to claim
     <b>if</b> (claimable_amount &gt; 0) {
-        // Update claimed amount
         <b>assert</b>!(wallet.claimed_amount &lt;= <a href="../social_contracts/profile.md#social_contracts_profile_MAX_U64">MAX_U64</a> - claimable_amount, <a href="../social_contracts/profile.md#social_contracts_profile_EOverflow">EOverflow</a>);
         wallet.claimed_amount = wallet.claimed_amount + claimable_amount;
-        // Create coin from the <a href="../social_contracts/profile.md#social_contracts_profile_claimable">claimable</a> balance and transfer to <a href="../social_contracts/profile.md#social_contracts_profile_owner">owner</a>
         <b>let</b> claimed_coin = coin::from_balance&lt;MYSO&gt;(
             balance::split(&<b>mut</b> wallet.balance, claimable_amount),
             ctx
         );
         <b>let</b> wallet_id = object::uid_to_address(&wallet.<a href="../social_contracts/profile.md#social_contracts_profile_id">id</a>);
         <b>let</b> remaining_balance = balance::value(&wallet.balance);
-        // Emit claim event
         event::emit(<a href="../social_contracts/profile.md#social_contracts_profile_TokensClaimedEvent">TokensClaimedEvent</a> {
             wallet_id,
             <a href="../social_contracts/profile.md#social_contracts_profile_owner">owner</a>: sender,
@@ -4946,7 +5614,6 @@ Only the wallet owner can claim tokens, and only claimable amounts
             remaining_balance,
             claimed_at: clock::timestamp_ms(clock),
         });
-        // Transfer claimed tokens to the <a href="../social_contracts/profile.md#social_contracts_profile_owner">owner</a>
         transfer::public_transfer(claimed_coin, sender);
     };
 }
@@ -4960,7 +5627,6 @@ Only the wallet owner can claim tokens, and only claimable amounts
 
 ## Function `claimable`
 
-Calculate how many tokens can be claimed from a vesting wallet at the current time
 
 
 <pre><code><b>public</b> <b>fun</b> <a href="../social_contracts/profile.md#social_contracts_profile_claimable">claimable</a>(wallet: &<a href="../social_contracts/profile.md#social_contracts_profile_VestingWallet">social_contracts::profile::VestingWallet</a>, clock: &<a href="../myso/clock.md#myso_clock_Clock">myso::clock::Clock</a>): u64
@@ -4985,7 +5651,6 @@ Calculate how many tokens can be claimed from a vesting wallet at the current ti
 
 ## Function `calculate_claimable`
 
-Internal function to calculate claimable amount
 
 
 <pre><code><b>fun</b> <a href="../social_contracts/profile.md#social_contracts_profile_calculate_claimable">calculate_claimable</a>(wallet: &<a href="../social_contracts/profile.md#social_contracts_profile_VestingWallet">social_contracts::profile::VestingWallet</a>, clock: &<a href="../myso/clock.md#myso_clock_Clock">myso::clock::Clock</a>): u64
@@ -4999,54 +5664,31 @@ Internal function to calculate claimable amount
 
 <pre><code><b>fun</b> <a href="../social_contracts/profile.md#social_contracts_profile_calculate_claimable">calculate_claimable</a>(wallet: &<a href="../social_contracts/profile.md#social_contracts_profile_VestingWallet">VestingWallet</a>, clock: &Clock): u64 {
     <b>let</b> current_time = clock::timestamp_ms(clock);
-    // If vesting hasn't started yet, nothing is <a href="../social_contracts/profile.md#social_contracts_profile_claimable">claimable</a>
+    <b>let</b> remaining_balance = balance::value(&wallet.balance);
     <b>if</b> (current_time &lt; wallet.start_time) {
         <b>return</b> 0
     };
-    // If vesting period is complete, all remaining balance is <a href="../social_contracts/profile.md#social_contracts_profile_claimable">claimable</a>
-    <b>if</b> (current_time &gt;= wallet.start_time + wallet.duration) {
-        <b>return</b> balance::value(&wallet.balance)
+    <b>if</b> (current_time &gt;= wallet.schedule_end) {
+        <b>return</b> remaining_balance
     };
-    // Calculate progress <b>as</b> a percentage (0 to <a href="../social_contracts/profile.md#social_contracts_profile_CURVE_PRECISION">CURVE_PRECISION</a>)
-    <b>let</b> elapsed_time = current_time - wallet.start_time;
-    <b>let</b> progress = ((elapsed_time <b>as</b> u128) * (<a href="../social_contracts/profile.md#social_contracts_profile_CURVE_PRECISION">CURVE_PRECISION</a> <b>as</b> u128)) / (wallet.duration <b>as</b> u128);
-    // Apply curve based on curve_factor
-    <b>let</b> curved_progress = <b>if</b> (wallet.curve_factor == <a href="../social_contracts/profile.md#social_contracts_profile_CURVE_PRECISION">CURVE_PRECISION</a>) {
-        // Linear vesting (curve_factor = 1000)
-        progress
-    } <b>else</b> <b>if</b> (wallet.curve_factor &gt; <a href="../social_contracts/profile.md#social_contracts_profile_CURVE_PRECISION">CURVE_PRECISION</a>) {
-        // Exponential curve - more tokens at the end
-        // Use simplified exponential: progress^2 scaled by curve_factor
-        <b>let</b> steepness = wallet.curve_factor - <a href="../social_contracts/profile.md#social_contracts_profile_CURVE_PRECISION">CURVE_PRECISION</a>; // How much above linear
-        <b>let</b> quadratic = (progress * progress) / (<a href="../social_contracts/profile.md#social_contracts_profile_CURVE_PRECISION">CURVE_PRECISION</a> <b>as</b> u128);
-        <b>let</b> linear_part = (progress * (<a href="../social_contracts/profile.md#social_contracts_profile_CURVE_PRECISION">CURVE_PRECISION</a> <b>as</b> u128)) / (<a href="../social_contracts/profile.md#social_contracts_profile_CURVE_PRECISION">CURVE_PRECISION</a> <b>as</b> u128);
-        // Blend between linear and quadratic based on steepness
-        (linear_part * (<a href="../social_contracts/profile.md#social_contracts_profile_CURVE_PRECISION">CURVE_PRECISION</a> <b>as</b> u128) + quadratic * (steepness <b>as</b> u128)) / (<a href="../social_contracts/profile.md#social_contracts_profile_CURVE_PRECISION">CURVE_PRECISION</a> <b>as</b> u128)
-    } <b>else</b> {
-        // Logarithmic curve - more tokens at the start
-        // Use simplified square root approximation <b>for</b> early release
-        <b>let</b> steepness = <a href="../social_contracts/profile.md#social_contracts_profile_CURVE_PRECISION">CURVE_PRECISION</a> - wallet.curve_factor; // How much below linear
-        <b>let</b> sqrt_approx = <a href="../social_contracts/profile.md#social_contracts_profile_sqrt_approximation">sqrt_approximation</a>(progress * (<a href="../social_contracts/profile.md#social_contracts_profile_CURVE_PRECISION">CURVE_PRECISION</a> <b>as</b> u128)) * (<a href="../social_contracts/profile.md#social_contracts_profile_CURVE_PRECISION">CURVE_PRECISION</a> <b>as</b> u128) / (<a href="../social_contracts/profile.md#social_contracts_profile_CURVE_PRECISION">CURVE_PRECISION</a> <b>as</b> u128);
-        <b>let</b> linear_part = progress;
-        // Blend between square root and linear based on steepness
-        (sqrt_approx * (steepness <b>as</b> u128) + linear_part * (<a href="../social_contracts/profile.md#social_contracts_profile_CURVE_PRECISION">CURVE_PRECISION</a> <b>as</b> u128)) / (<a href="../social_contracts/profile.md#social_contracts_profile_CURVE_PRECISION">CURVE_PRECISION</a> <b>as</b> u128)
-    };
-    // Convert back to total <a href="../social_contracts/profile.md#social_contracts_profile_claimable">claimable</a> amount
-    <b>let</b> total_claimable = ((wallet.total_amount <b>as</b> u128) * curved_progress) / (<a href="../social_contracts/profile.md#social_contracts_profile_CURVE_PRECISION">CURVE_PRECISION</a> <b>as</b> u128);
-    // Subtract already claimed amount to get newly <a href="../social_contracts/profile.md#social_contracts_profile_claimable">claimable</a> amount
-    <b>let</b> total_claimable_u64 = total_claimable <b>as</b> u64;
-    <b>let</b> newly_claimable = <b>if</b> (total_claimable_u64 &gt;= wallet.claimed_amount) {
-        total_claimable_u64 - wallet.claimed_amount
+    <b>let</b> total_vested = <a href="../social_contracts/profile.md#social_contracts_profile_calculate_total_vested">calculate_total_vested</a>(wallet, current_time);
+    <b>let</b> newly_claimable = <b>if</b> (total_vested &gt;= wallet.claimed_amount) {
+        total_vested - wallet.claimed_amount
     } <b>else</b> {
         0
     };
-    // Ensure we don't exceed the remaining balance
-    <b>let</b> remaining_balance = balance::value(&wallet.balance);
-    <b>if</b> (newly_claimable &gt; remaining_balance) {
+    <b>let</b> capped = <b>if</b> (newly_claimable &gt; remaining_balance) {
         remaining_balance
     } <b>else</b> {
         newly_claimable
-    }
+    };
+    <a href="../social_contracts/profile.md#social_contracts_profile_finalize_claimable">finalize_claimable</a>(
+        capped,
+        remaining_balance,
+        wallet.total_amount,
+        current_time,
+        wallet.schedule_end,
+    )
 }
 </code></pre>
 
@@ -5075,7 +5717,6 @@ Simple square root approximation using Newton's method
     <b>if</b> (n == 1) <b>return</b> 1;
     <b>let</b> <b>mut</b> x = n;
     <b>let</b> <b>mut</b> y = (x + 1) / 2;
-    // Newton's method with limited iterations
     <b>let</b> <b>mut</b> i = 0;
     <b>while</b> (y &lt; x && i &lt; 10u64) {
         x = y;
@@ -5090,12 +5731,38 @@ Simple square root approximation using Newton's method
 
 </details>
 
+<a name="social_contracts_profile_destroy_vesting_pieces"></a>
+
+## Function `destroy_vesting_pieces`
+
+
+
+<pre><code><b>fun</b> <a href="../social_contracts/profile.md#social_contracts_profile_destroy_vesting_pieces">destroy_vesting_pieces</a>(pieces: vector&lt;<a href="../social_contracts/profile.md#social_contracts_profile_VestingPiece">social_contracts::profile::VestingPiece</a>&gt;)
+</code></pre>
+
+
+
+<details>
+<summary>Implementation</summary>
+
+
+<pre><code><b>fun</b> <a href="../social_contracts/profile.md#social_contracts_profile_destroy_vesting_pieces">destroy_vesting_pieces</a>(<b>mut</b> pieces: vector&lt;<a href="../social_contracts/profile.md#social_contracts_profile_VestingPiece">VestingPiece</a>&gt;) {
+    <b>while</b> (!vector::is_empty(&pieces)) {
+        vector::pop_back(&<b>mut</b> pieces);
+    };
+    vector::destroy_empty(pieces);
+}
+</code></pre>
+
+
+
+</details>
+
 <a name="social_contracts_profile_delete_vesting_wallet"></a>
 
 ## Function `delete_vesting_wallet`
 
 Delete an empty vesting wallet
-Can only be called when the wallet balance is zero
 
 
 <pre><code><b>public</b> <b>entry</b> <b>fun</b> <a href="../social_contracts/profile.md#social_contracts_profile_delete_vesting_wallet">delete_vesting_wallet</a>(wallet: <a href="../social_contracts/profile.md#social_contracts_profile_VestingWallet">social_contracts::profile::VestingWallet</a>, clock: &<a href="../myso/clock.md#myso_clock_Clock">myso::clock::Clock</a>, ctx: &<b>mut</b> <a href="../myso/tx_context.md#myso_tx_context_TxContext">myso::tx_context::TxContext</a>)
@@ -5109,7 +5776,6 @@ Can only be called when the wallet balance is zero
 
 <pre><code><b>public</b> <b>entry</b> <b>fun</b> <a href="../social_contracts/profile.md#social_contracts_profile_delete_vesting_wallet">delete_vesting_wallet</a>(wallet: <a href="../social_contracts/profile.md#social_contracts_profile_VestingWallet">VestingWallet</a>, clock: &Clock, ctx: &<b>mut</b> TxContext) {
     <b>let</b> sender = tx_context::sender(ctx);
-    // Verify sender is the wallet <a href="../social_contracts/profile.md#social_contracts_profile_owner">owner</a>
     <b>assert</b>!(wallet.<a href="../social_contracts/profile.md#social_contracts_profile_owner">owner</a> == sender, <a href="../social_contracts/profile.md#social_contracts_profile_ENotVestingWalletOwner">ENotVestingWalletOwner</a>);
     <b>let</b> wallet_id = object::uid_to_address(&wallet.<a href="../social_contracts/profile.md#social_contracts_profile_id">id</a>);
     <b>let</b> <a href="../social_contracts/profile.md#social_contracts_profile_owner">owner</a> = wallet.<a href="../social_contracts/profile.md#social_contracts_profile_owner">owner</a>;
@@ -5119,19 +5785,17 @@ Can only be called when the wallet balance is zero
         <a href="../social_contracts/profile.md#social_contracts_profile_owner">owner</a>: _,
         start_time: _,
         claimed_amount: _,
-        duration: _,
         total_amount: _,
-        curve_factor: _
+        schedule_end: _,
+        pieces,
     } = wallet;
-    // Emit wallet deleted event before deletion
+    <a href="../social_contracts/profile.md#social_contracts_profile_destroy_vesting_pieces">destroy_vesting_pieces</a>(pieces);
     event::emit(<a href="../social_contracts/profile.md#social_contracts_profile_VestingWalletDeletedEvent">VestingWalletDeletedEvent</a> {
         wallet_id,
         <a href="../social_contracts/profile.md#social_contracts_profile_owner">owner</a>,
         deleted_at: clock::timestamp_ms(clock),
     });
-    // Delete the wallet ID
     object::delete(<a href="../social_contracts/profile.md#social_contracts_profile_id">id</a>);
-    // Destroy the empty balance
     balance::destroy_zero(balance);
 }
 </code></pre>
@@ -5144,7 +5808,6 @@ Can only be called when the wallet balance is zero
 
 ## Function `vesting_balance`
 
-Get the remaining balance in a vesting wallet
 
 
 <pre><code><b>public</b> <b>fun</b> <a href="../social_contracts/profile.md#social_contracts_profile_vesting_balance">vesting_balance</a>(wallet: &<a href="../social_contracts/profile.md#social_contracts_profile_VestingWallet">social_contracts::profile::VestingWallet</a>): u64
@@ -5169,7 +5832,6 @@ Get the remaining balance in a vesting wallet
 
 ## Function `vesting_owner`
 
-Get the owner of a vesting wallet
 
 
 <pre><code><b>public</b> <b>fun</b> <a href="../social_contracts/profile.md#social_contracts_profile_vesting_owner">vesting_owner</a>(wallet: &<a href="../social_contracts/profile.md#social_contracts_profile_VestingWallet">social_contracts::profile::VestingWallet</a>): <b>address</b>
@@ -5194,7 +5856,6 @@ Get the owner of a vesting wallet
 
 ## Function `vesting_start_time`
 
-Get the start time of a vesting schedule
 
 
 <pre><code><b>public</b> <b>fun</b> <a href="../social_contracts/profile.md#social_contracts_profile_vesting_start_time">vesting_start_time</a>(wallet: &<a href="../social_contracts/profile.md#social_contracts_profile_VestingWallet">social_contracts::profile::VestingWallet</a>): u64
@@ -5215,14 +5876,13 @@ Get the start time of a vesting schedule
 
 </details>
 
-<a name="social_contracts_profile_vesting_duration"></a>
+<a name="social_contracts_profile_vesting_schedule_end"></a>
 
-## Function `vesting_duration`
-
-Get the duration of a vesting schedule
+## Function `vesting_schedule_end`
 
 
-<pre><code><b>public</b> <b>fun</b> <a href="../social_contracts/profile.md#social_contracts_profile_vesting_duration">vesting_duration</a>(wallet: &<a href="../social_contracts/profile.md#social_contracts_profile_VestingWallet">social_contracts::profile::VestingWallet</a>): u64
+
+<pre><code><b>public</b> <b>fun</b> <a href="../social_contracts/profile.md#social_contracts_profile_vesting_schedule_end">vesting_schedule_end</a>(wallet: &<a href="../social_contracts/profile.md#social_contracts_profile_VestingWallet">social_contracts::profile::VestingWallet</a>): u64
 </code></pre>
 
 
@@ -5231,8 +5891,8 @@ Get the duration of a vesting schedule
 <summary>Implementation</summary>
 
 
-<pre><code><b>public</b> <b>fun</b> <a href="../social_contracts/profile.md#social_contracts_profile_vesting_duration">vesting_duration</a>(wallet: &<a href="../social_contracts/profile.md#social_contracts_profile_VestingWallet">VestingWallet</a>): u64 {
-    wallet.duration
+<pre><code><b>public</b> <b>fun</b> <a href="../social_contracts/profile.md#social_contracts_profile_vesting_schedule_end">vesting_schedule_end</a>(wallet: &<a href="../social_contracts/profile.md#social_contracts_profile_VestingWallet">VestingWallet</a>): u64 {
+    wallet.schedule_end
 }
 </code></pre>
 
@@ -5244,7 +5904,6 @@ Get the duration of a vesting schedule
 
 ## Function `vesting_total_amount`
 
-Get the total amount originally vested
 
 
 <pre><code><b>public</b> <b>fun</b> <a href="../social_contracts/profile.md#social_contracts_profile_vesting_total_amount">vesting_total_amount</a>(wallet: &<a href="../social_contracts/profile.md#social_contracts_profile_VestingWallet">social_contracts::profile::VestingWallet</a>): u64
@@ -5269,7 +5928,6 @@ Get the total amount originally vested
 
 ## Function `vesting_claimed_amount`
 
-Get the amount already claimed from a vesting wallet
 
 
 <pre><code><b>public</b> <b>fun</b> <a href="../social_contracts/profile.md#social_contracts_profile_vesting_claimed_amount">vesting_claimed_amount</a>(wallet: &<a href="../social_contracts/profile.md#social_contracts_profile_VestingWallet">social_contracts::profile::VestingWallet</a>): u64
@@ -5290,14 +5948,13 @@ Get the amount already claimed from a vesting wallet
 
 </details>
 
-<a name="social_contracts_profile_vesting_curve_factor"></a>
+<a name="social_contracts_profile_vesting_piece_count"></a>
 
-## Function `vesting_curve_factor`
-
-Get the curve factor of a vesting wallet
+## Function `vesting_piece_count`
 
 
-<pre><code><b>public</b> <b>fun</b> <a href="../social_contracts/profile.md#social_contracts_profile_vesting_curve_factor">vesting_curve_factor</a>(wallet: &<a href="../social_contracts/profile.md#social_contracts_profile_VestingWallet">social_contracts::profile::VestingWallet</a>): u64
+
+<pre><code><b>public</b> <b>fun</b> <a href="../social_contracts/profile.md#social_contracts_profile_vesting_piece_count">vesting_piece_count</a>(wallet: &<a href="../social_contracts/profile.md#social_contracts_profile_VestingWallet">social_contracts::profile::VestingWallet</a>): u64
 </code></pre>
 
 
@@ -5306,8 +5963,39 @@ Get the curve factor of a vesting wallet
 <summary>Implementation</summary>
 
 
-<pre><code><b>public</b> <b>fun</b> <a href="../social_contracts/profile.md#social_contracts_profile_vesting_curve_factor">vesting_curve_factor</a>(wallet: &<a href="../social_contracts/profile.md#social_contracts_profile_VestingWallet">VestingWallet</a>): u64 {
-    wallet.curve_factor
+<pre><code><b>public</b> <b>fun</b> <a href="../social_contracts/profile.md#social_contracts_profile_vesting_piece_count">vesting_piece_count</a>(wallet: &<a href="../social_contracts/profile.md#social_contracts_profile_VestingWallet">VestingWallet</a>): u64 {
+    vector::length(&wallet.pieces)
+}
+</code></pre>
+
+
+
+</details>
+
+<a name="social_contracts_profile_vesting_pieces"></a>
+
+## Function `vesting_pieces`
+
+
+
+<pre><code><b>public</b> <b>fun</b> <a href="../social_contracts/profile.md#social_contracts_profile_vesting_pieces">vesting_pieces</a>(wallet: &<a href="../social_contracts/profile.md#social_contracts_profile_VestingWallet">social_contracts::profile::VestingWallet</a>): vector&lt;<a href="../social_contracts/profile.md#social_contracts_profile_VestingPiece">social_contracts::profile::VestingPiece</a>&gt;
+</code></pre>
+
+
+
+<details>
+<summary>Implementation</summary>
+
+
+<pre><code><b>public</b> <b>fun</b> <a href="../social_contracts/profile.md#social_contracts_profile_vesting_pieces">vesting_pieces</a>(wallet: &<a href="../social_contracts/profile.md#social_contracts_profile_VestingWallet">VestingWallet</a>): vector&lt;<a href="../social_contracts/profile.md#social_contracts_profile_VestingPiece">VestingPiece</a>&gt; {
+    <b>let</b> <b>mut</b> out = vector::empty&lt;<a href="../social_contracts/profile.md#social_contracts_profile_VestingPiece">VestingPiece</a>&gt;();
+    <b>let</b> len = vector::length(&wallet.pieces);
+    <b>let</b> <b>mut</b> i = 0;
+    <b>while</b> (i &lt; len) {
+        vector::push_back(&<b>mut</b> out, *vector::borrow(&wallet.pieces, i));
+        i = i + 1;
+    };
+    out
 }
 </code></pre>
 

@@ -8,6 +8,7 @@ use diesel::QueryDsl;
 use diesel::QueryableByName;
 use diesel::sql_types::{BigInt, Text};
 use diesel_async::RunQueryDsl;
+use myso_indexer_alt_social_schema::models::{parse_pieces, VestingPiece};
 use myso_indexer_alt_social_schema::schema::vesting_wallets;
 
 use myso_pg_db::Connection;
@@ -21,8 +22,8 @@ pub struct VestingWalletRow {
     pub owner_address: String,
     pub total_amount: i64,
     pub start_time: i64,
-    pub duration: i64,
-    pub curve_factor: i64,
+    pub schedule_end: i64,
+    pub pieces: Vec<VestingPiece>,
     pub claimed_amount: i64,
     pub remaining_balance: i64,
     pub created_at: NaiveDateTime,
@@ -38,6 +39,7 @@ pub struct VestingWalletWithStatus {
     pub has_ended: bool,
     pub vesting_progress: f64,
     pub end_time: i64,
+    pub claimable_amount: i64,
     pub wallet: VestingWalletRow,
 }
 
@@ -48,7 +50,7 @@ impl VestingWalletWithStatus {
         } else {
             (wallet.claimed_amount as f64 / wallet.total_amount as f64) * 100.0
         };
-        let end_time = wallet.start_time + wallet.duration;
+        let end_time = wallet.schedule_end;
         let has_started = wallet.start_time <= (current_time_ms as i64);
         let has_ended = (current_time_ms as i64) >= end_time;
         let vesting_progress = {
@@ -59,9 +61,23 @@ impl VestingWalletWithStatus {
                 1.0
             } else {
                 let elapsed = current_time - wallet.start_time;
-                elapsed as f64 / wallet.duration as f64
+                let total_duration = end_time - wallet.start_time;
+                if total_duration <= 0 {
+                    1.0
+                } else {
+                    elapsed as f64 / total_duration as f64
+                }
             }
         };
+        let claimable_amount = myso_indexer_alt_social_schema::models::calculate_vesting_claimable(
+            wallet.total_amount,
+            wallet.start_time,
+            wallet.schedule_end,
+            &wallet.pieces,
+            wallet.claimed_amount,
+            current_time_ms as i64,
+            wallet.remaining_balance,
+        );
         Self {
             claimed_percentage,
             is_fully_claimed: wallet.remaining_balance == 0,
@@ -69,6 +85,7 @@ impl VestingWalletWithStatus {
             has_ended,
             vesting_progress,
             end_time,
+            claimable_amount,
             wallet,
         }
     }
@@ -95,8 +112,8 @@ fn vesting_wallet_row_from_tuple(
     owner_address: String,
     total_amount: i64,
     start_time: i64,
-    duration: i64,
-    curve_factor: i64,
+    schedule_end: i64,
+    pieces_json: serde_json::Value,
     claimed_amount: i64,
     remaining_balance: i64,
     created_at: NaiveDateTime,
@@ -108,8 +125,8 @@ fn vesting_wallet_row_from_tuple(
         owner_address,
         total_amount,
         start_time,
-        duration,
-        curve_factor,
+        schedule_end,
+        pieces: parse_pieces(&pieces_json),
         claimed_amount,
         remaining_balance,
         created_at,
@@ -132,8 +149,8 @@ pub(crate) async fn get_vesting_wallet(
             vesting_wallets::owner_address,
             vesting_wallets::total_amount,
             vesting_wallets::start_time,
-            vesting_wallets::duration,
-            vesting_wallets::curve_factor,
+            vesting_wallets::schedule_end,
+            vesting_wallets::pieces,
             vesting_wallets::claimed_amount,
             vesting_wallets::remaining_balance,
             vesting_wallets::created_at,
@@ -146,7 +163,7 @@ pub(crate) async fn get_vesting_wallet(
             i64,
             i64,
             i64,
-            i64,
+            serde_json::Value,
             i64,
             i64,
             NaiveDateTime,
@@ -188,9 +205,9 @@ pub(crate) async fn list_vesting_wallets(
         #[diesel(sql_type = BigInt)]
         start_time: i64,
         #[diesel(sql_type = BigInt)]
-        duration: i64,
-        #[diesel(sql_type = BigInt)]
-        curve_factor: i64,
+        schedule_end: i64,
+        #[diesel(sql_type = diesel::sql_types::Jsonb)]
+        pieces: serde_json::Value,
         #[diesel(sql_type = BigInt)]
         claimed_amount: i64,
         #[diesel(sql_type = BigInt)]
@@ -207,17 +224,17 @@ pub(crate) async fn list_vesting_wallets(
         let (data_sql, bind_owner) = if owner.is_some() {
             if active_only {
                 (
-                    "SELECT wallet_id, owner_address, total_amount, start_time, duration, curve_factor, \
+                    "SELECT wallet_id, owner_address, total_amount, start_time, schedule_end, pieces, \
                      claimed_amount, remaining_balance, created_at, updated_at, transaction_id \
                      FROM vesting_wallets \
                      WHERE owner_address = $1 AND start_time <= $2 AND remaining_balance > 0 \
-                     AND (start_time + duration) > $2 \
+                     AND schedule_end > $2 \
                      ORDER BY created_at DESC LIMIT $3 OFFSET $4",
                     true,
                 )
             } else {
                 (
-                    "SELECT wallet_id, owner_address, total_amount, start_time, duration, curve_factor, \
+                    "SELECT wallet_id, owner_address, total_amount, start_time, schedule_end, pieces, \
                      claimed_amount, remaining_balance, created_at, updated_at, transaction_id \
                      FROM vesting_wallets WHERE owner_address = $1 \
                      ORDER BY created_at DESC LIMIT $2 OFFSET $3",
@@ -226,10 +243,10 @@ pub(crate) async fn list_vesting_wallets(
             }
         } else {
             (
-                "SELECT wallet_id, owner_address, total_amount, start_time, duration, curve_factor, \
+                "SELECT wallet_id, owner_address, total_amount, start_time, schedule_end, pieces, \
                  claimed_amount, remaining_balance, created_at, updated_at, transaction_id \
                  FROM vesting_wallets \
-                 WHERE start_time <= $1 AND remaining_balance > 0 AND (start_time + duration) > $1 \
+                 WHERE start_time <= $1 AND remaining_balance > 0 AND schedule_end > $1 \
                  ORDER BY created_at DESC LIMIT $2 OFFSET $3",
                 false,
             )
@@ -269,8 +286,8 @@ pub(crate) async fn list_vesting_wallets(
                     r.owner_address,
                     r.total_amount,
                     r.start_time,
-                    r.duration,
-                    r.curve_factor,
+                    r.schedule_end,
+                    r.pieces,
                     r.claimed_amount,
                     r.remaining_balance,
                     r.created_at,
@@ -289,8 +306,8 @@ pub(crate) async fn list_vesting_wallets(
                 vesting_wallets::owner_address,
                 vesting_wallets::total_amount,
                 vesting_wallets::start_time,
-                vesting_wallets::duration,
-                vesting_wallets::curve_factor,
+                vesting_wallets::schedule_end,
+                vesting_wallets::pieces,
                 vesting_wallets::claimed_amount,
                 vesting_wallets::remaining_balance,
                 vesting_wallets::created_at,
@@ -303,7 +320,7 @@ pub(crate) async fn list_vesting_wallets(
                 i64,
                 i64,
                 i64,
-                i64,
+                serde_json::Value,
                 i64,
                 i64,
                 NaiveDateTime,
@@ -318,8 +335,8 @@ pub(crate) async fn list_vesting_wallets(
                     owner_address,
                     total_amount,
                     start_time,
-                    duration,
-                    curve_factor,
+                    schedule_end,
+                    pieces,
                     claimed_amount,
                     remaining_balance,
                     created_at,
@@ -331,8 +348,8 @@ pub(crate) async fn list_vesting_wallets(
                         owner_address,
                         total_amount,
                         start_time,
-                        duration,
-                        curve_factor,
+                        schedule_end,
+                        pieces,
                         claimed_amount,
                         remaining_balance,
                         created_at,
@@ -395,8 +412,8 @@ pub(crate) async fn get_vesting_leaderboard(
             owner_address,
             SUM(total_amount)::bigint as total_vested,
             SUM(claimed_amount)::bigint as total_claimed,
-            SUM(CASE WHEN start_time <= $1 AND remaining_balance > 0 AND (start_time + duration) > $1 THEN 1 ELSE 0 END)::bigint as active_wallets,
-            SUM(CASE WHEN (start_time + duration) <= $1 THEN 1 ELSE 0 END)::bigint as completed_wallets
+            SUM(CASE WHEN start_time <= $1 AND remaining_balance > 0 AND schedule_end > $1 THEN 1 ELSE 0 END)::bigint as active_wallets,
+            SUM(CASE WHEN schedule_end <= $1 THEN 1 ELSE 0 END)::bigint as completed_wallets
         FROM vesting_wallets
         GROUP BY owner_address
         ORDER BY total_vested DESC
