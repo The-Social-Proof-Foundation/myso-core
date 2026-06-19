@@ -19,4 +19,4 @@ Dart Client SDK for MySo blockchain
 - ⚠️ GraphQL is not supported yet.
 - [MySo BCS types are supported](https://github.com/mofalabs/myso/tree/main/lib/bcs)
 - [zkLogin SDK](https://github.com/mofalabs/zklogin)
-- ⚠️ [Deepbook SDK](https://github.com/mofalabs/deepbook) (not actively maintained)
+- ⚠️ [Orderbook SDK](https://github.com/mofalabs/orderbook) (not actively maintained)

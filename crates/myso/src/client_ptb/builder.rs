@@ -1225,7 +1225,7 @@ pub fn into_type_tag(
 }
 
 /// Try to resolve a parsed address by using the already known mvr data and the keystore (addresses
-/// ) or the known package names (e.g., myso, deepbook, etc) by calling `resolve_address`.
+/// ) or the known package names (e.g., myso, orderbook, etc) by calling `resolve_address`.
 fn try_resolve_parsed_address(
     addresses: &BTreeMap<String, AddressData>,
     address: &Spanned<ParsedAddress>,

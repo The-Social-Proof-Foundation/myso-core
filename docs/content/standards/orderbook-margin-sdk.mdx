@@ -1,35 +1,35 @@
 ---
-title: DeepBook Margin SDK
-description: Use the DeepBook TypeScript SDK to interact directly with the DeepBook Margin package.
+title: Orderbook Margin SDK
+description: Use the Orderbook TypeScript SDK to interact directly with the Orderbook Margin package.
 keywords:
   [
-    deepbook margin,
+    orderbook margin,
     margin trading,
     typescript,
     typescript SDK,
-    mysten/deepbook,
-    deepbook margin SDK,
+    mysten/orderbook,
+    orderbook margin SDK,
     margin manager,
     margin pool,
   ]
 ---
 
-The DeepBook Margin TypeScript SDK abstracts away the transaction calls, allowing for direct interactions with the `DeepBook Margin` package for leveraged trading.
+The Orderbook Margin TypeScript SDK abstracts away the transaction calls, allowing for direct interactions with the `Orderbook Margin` package for leveraged trading.
 
-- [SDK repository](https://github.com/MystenLabs/ts-sdks/tree/main/packages/deepbook-v3)
-- [NPM version](https://www.npmjs.com/package/@mysten/deepbook-v3)
+- [SDK repository](https://github.com/MystenLabs/ts-sdks/tree/main/packages/orderbook-v3)
+- [NPM version](https://www.npmjs.com/package/@mysten/orderbook-v3)
 
 ## Install
 
-To use the SDK in your projects, install the `@mysten/deepbook-v3` package, which includes the margin trading functionality.
+To use the SDK in your projects, install the `@mysten/orderbook-v3` package, which includes the margin trading functionality.
 
 ```sh npm2yarn
-npm install @mysten/deepbook-v3
+npm install @mysten/orderbook-v3
 ```
 
 ## Constants
 
-The DeepBook SDK includes a constants file (`/utils/constants.ts`) that maintains the latest deployed addresses for DeepBook Margin, as well as margin pools and configurations.
+The Orderbook SDK includes a constants file (`/utils/constants.ts`) that maintains the latest deployed addresses for Orderbook Margin, as well as margin pools and configurations.
 
 <details>
 <summary>
@@ -37,24 +37,24 @@ The DeepBook SDK includes a constants file (`/utils/constants.ts`) that maintain
 </summary>
 
 ```ts reference
-https://github.com/MystenLabs/ts-sdks/blob/main/packages/deepbook-v3/src/utils/constants.ts
+https://github.com/MystenLabs/ts-sdks/blob/main/packages/orderbook-v3/src/utils/constants.ts
 ```
 
 </details>
 
-## DeepBookClient
+## OrderbookClient
 
-To work with DeepBook Margin, use the client extension to add DeepBook functionality to a MySo client. The [MySo TypeScript SDK](https://sdk.mystenlabs.com/typescript) provides the `MySoGrpcClient` and key functionality necessary to process transactions. The following example imports those libraries, as well.
+To work with Orderbook Margin, use the client extension to add Orderbook functionality to a MySo client. The [MySo TypeScript SDK](https://sdk.mystenlabs.com/typescript) provides the `MySoGrpcClient` and key functionality necessary to process transactions. The following example imports those libraries, as well.
 
 ```tsx
-import { deepbook, type DeepBookClient } from '@mysten/deepbook-v3';
+import { orderbook, type OrderbookClient } from '@mysten/orderbook-v3';
 import type { ClientWithExtensions } from '@socialproof/myso/client';
 import { decodeMySoPrivateKey } from '@socialproof/myso/cryptography';
 import { MySoGrpcClient } from '@socialproof/myso/grpc';
 import { Ed25519Keypair } from '@socialproof/myso/keypairs/ed25519';
 
-class DeepBookMarginTrader {
-	client: ClientWithExtensions<{ deepbook: DeepBookClient }>;
+class OrderbookMarginTrader {
+	client: ClientWithExtensions<{ orderbook: OrderbookClient }>;
 	keypair: Ed25519Keypair;
 
 	constructor(privateKey: string, env: 'testnet' | 'mainnet') {
@@ -66,7 +66,7 @@ class DeepBookMarginTrader {
 					? 'https://fullnode.mainnet.mysocial.network:443'
 					: 'https://fullnode.testnet.mysocial.network:443',
 		}).$extend(
-			deepbook({
+			orderbook({
 				address: this.getActiveAddress(),
 			}),
 		);
@@ -91,13 +91,13 @@ Functions that require the input of a coin, pool, or a margin manager require th
 
 ### Margin manager
 
-Before placing any margin trade, you must supply a margin manager address to the client. The manager key points to an object defined by the `MarginManager` interface in the client. [MarginManager docs](./deepbook-margin/contract-information/margin-manager.mdx). Initialize the margin manager with the client. If you don't create a margin manager, you can rely on the client to create one, but then the user must reinitialize the client.
+Before placing any margin trade, you must supply a margin manager address to the client. The manager key points to an object defined by the `MarginManager` interface in the client. [MarginManager docs](./orderbook-margin/contract-information/margin-manager.mdx). Initialize the margin manager with the client. If you don't create a margin manager, you can rely on the client to create one, but then the user must reinitialize the client.
 
 Example using an existing margin manager:
 
 ```tsx
-import { deepbook, type DeepBookClient } from '@mysten/deepbook-v3';
-import type { MarginManager } from '@mysten/deepbook-v3';
+import { orderbook, type OrderbookClient } from '@mysten/orderbook-v3';
+import type { MarginManager } from '@mysten/orderbook-v3';
 import type { ClientWithExtensions } from '@socialproof/myso/client';
 import { decodeMySoPrivateKey } from '@socialproof/myso/cryptography';
 import { MySoGrpcClient } from '@socialproof/myso/grpc';
@@ -108,8 +108,8 @@ config();
 
 const MARGIN_MANAGER_KEY = 'MARGIN_MANAGER_1';
 
-class DeepBookMarginTrader {
-	client: ClientWithExtensions<{ deepbook: DeepBookClient }>;
+class OrderbookMarginTrader {
+	client: ClientWithExtensions<{ orderbook: OrderbookClient }>;
 	keypair: Ed25519Keypair;
 
 	constructor(privateKey: string, env: 'testnet' | 'mainnet') {
@@ -121,7 +121,7 @@ class DeepBookMarginTrader {
 					? 'https://fullnode.mainnet.mysocial.network:443'
 					: 'https://fullnode.testnet.mysocial.network:443',
 		}).$extend(
-			deepbook({
+			orderbook({
 				address: this.getActiveAddress(),
 				marginManagers: this.getMarginManagers(),
 			}),
@@ -158,8 +158,8 @@ class DeepBookMarginTrader {
 Example creating a margin manager:
 
 ```tsx
-import { deepbook, type DeepBookClient } from '@mysten/deepbook-v3';
-import type { MarginManager } from '@mysten/deepbook-v3';
+import { orderbook, type OrderbookClient } from '@mysten/orderbook-v3';
+import type { MarginManager } from '@mysten/orderbook-v3';
 import type { ClientWithExtensions } from '@socialproof/myso/client';
 import { decodeMySoPrivateKey } from '@socialproof/myso/cryptography';
 import { MySoGrpcClient } from '@socialproof/myso/grpc';
@@ -168,8 +168,8 @@ import { Transaction } from '@socialproof/myso/transactions';
 
 const MARGIN_MANAGER_KEY = 'MARGIN_MANAGER_1';
 
-class DeepBookMarginTrader {
-	client: ClientWithExtensions<{ deepbook: DeepBookClient }>;
+class OrderbookMarginTrader {
+	client: ClientWithExtensions<{ orderbook: OrderbookClient }>;
 	keypair: Ed25519Keypair;
 	env: 'testnet' | 'mainnet';
 
@@ -187,7 +187,7 @@ class DeepBookMarginTrader {
 					? 'https://fullnode.mainnet.mysocial.network:443'
 					: 'https://fullnode.testnet.mysocial.network:443',
 		}).$extend(
-			deepbook({
+			orderbook({
 				address: this.getActiveAddress(),
 				marginManagers,
 			}),
@@ -208,7 +208,7 @@ class DeepBookMarginTrader {
 	async createMarginManagerAndReinitialize() {
 		let tx = new Transaction();
 		const poolKey = 'MYSO_DBUSDC';
-		tx.add(this.client.deepbook.marginManager.newMarginManager(poolKey));
+		tx.add(this.client.orderbook.marginManager.newMarginManager(poolKey));
 
 		const result = await this.client.core.signAndExecuteTransaction({
 			transaction: tx,
@@ -268,8 +268,8 @@ You can also initialize the SDK with custom coins to interact with margin pools 
 Similar to coins, the SDK comes with default pools. You can provide a `PoolMap` during construction to override this behavior.
 
 ```tsx
-import { deepbook, type DeepBookClient } from '@mysten/deepbook-v3';
-import type { MarginManager } from '@mysten/deepbook-v3';
+import { orderbook, type OrderbookClient } from '@mysten/orderbook-v3';
+import type { MarginManager } from '@mysten/orderbook-v3';
 import type { ClientWithExtensions } from '@socialproof/myso/client';
 import { decodeMySoPrivateKey } from '@socialproof/myso/cryptography';
 import type { Keypair } from '@socialproof/myso/cryptography';
@@ -277,9 +277,9 @@ import { MySoGrpcClient } from '@socialproof/myso/grpc';
 import { Ed25519Keypair } from '@socialproof/myso/keypairs/ed25519';
 import type { Transaction } from '@socialproof/myso/transactions';
 
-export class DeepBookMarginTrader {
+export class OrderbookMarginTrader {
 	keypair: Keypair;
-	client: ClientWithExtensions<{ deepbook: DeepBookClient }>;
+	client: ClientWithExtensions<{ orderbook: OrderbookClient }>;
 
 	constructor(
 		keypair: string | Keypair,
@@ -288,7 +288,7 @@ export class DeepBookMarginTrader {
 		maintainerCap?: string,
 	) {
 		if (typeof keypair === 'string') {
-			this.keypair = DeepBookMarginTrader.#getSignerFromPK(keypair);
+			this.keypair = OrderbookMarginTrader.#getSignerFromPK(keypair);
 		} else {
 			this.keypair = keypair;
 		}
@@ -300,7 +300,7 @@ export class DeepBookMarginTrader {
 					? 'https://fullnode.mainnet.mysocial.network:443'
 					: 'https://fullnode.testnet.mysocial.network:443',
 		}).$extend(
-			deepbook({
+			orderbook({
 				address: this.getActiveAddress(),
 				marginManagers,
 				marginMaintainerCap: maintainerCap,
@@ -340,7 +340,7 @@ The following example uses the default pools and coins provided, and demonstrate
 ```tsx
 import { Transaction } from '@socialproof/myso/transactions';
 
-import { DeepBookMarginTrader } from './deepbookMarginTrader.js';
+import { OrderbookMarginTrader } from './orderbookMarginTrader.js';
 
 (async () => {
 	const privateKey = ''; // Can encapsulate this in a .env file
@@ -352,16 +352,16 @@ import { DeepBookMarginTrader } from './deepbookMarginTrader.js';
 			poolKey: 'MYSO_DBUSDC',
 		},
 	};
-	const traderClient = new DeepBookMarginTrader(privateKey, 'testnet', marginManagers);
+	const traderClient = new OrderbookMarginTrader(privateKey, 'testnet', marginManagers);
 
 	const tx = new Transaction();
 
 	// Margin manager contract calls
-	traderClient.client.deepbook.marginManager.deposit('MARGIN_MANAGER_1', 'DBUSDC', 10000)(tx);
-	traderClient.client.deepbook.marginManager.borrowBase('MARGIN_MANAGER_1', 'MYSO_DBUSDC', 100)(tx);
+	traderClient.client.orderbook.marginManager.deposit('MARGIN_MANAGER_1', 'DBUSDC', 10000)(tx);
+	traderClient.client.orderbook.marginManager.borrowBase('MARGIN_MANAGER_1', 'MYSO_DBUSDC', 100)(tx);
 
 	// Place leveraged orders
-	traderClient.client.deepbook.poolProxy.placeLimitOrder({
+	traderClient.client.orderbook.poolProxy.placeLimitOrder({
 		poolKey: 'MYSO_DBUSDC',
 		marginManagerKey: 'MARGIN_MANAGER_1',
 		clientOrderId: '12345',
@@ -372,8 +372,8 @@ import { DeepBookMarginTrader } from './deepbookMarginTrader.js';
 	})(tx);
 
 	// Margin pool operations
-	const supplierCap = tx.add(traderClient.client.deepbook.marginPool.mintSupplierCap());
-	traderClient.client.deepbook.marginPool.supplyToMarginPool('DBUSDC', supplierCap, 5000)(tx);
+	const supplierCap = tx.add(traderClient.client.orderbook.marginPool.mintSupplierCap());
+	traderClient.client.orderbook.marginPool.supplyToMarginPool('DBUSDC', supplierCap, 5000)(tx);
 
 	let res = await traderClient.signAndExecute(tx);
 
@@ -383,18 +383,18 @@ import { DeepBookMarginTrader } from './deepbookMarginTrader.js';
 
 ## Margin manager referral functions
 
-The SDK provides functions for managing referrals with margin managers. Referrals are pool-specific and must first be minted using the core DeepBook SDK before they can be associated with a margin manager.
+The SDK provides functions for managing referrals with margin managers. Referrals are pool-specific and must first be minted using the core Orderbook SDK before they can be associated with a margin manager.
 
 ```tsx
 // Set a referral for a margin manager (pool-specific)
-// The referral must be a DeepBookPoolReferral minted for the pool the margin manager is associated with
-traderClient.client.deepbook.marginManager.setMarginManagerReferral(
+// The referral must be a OrderbookPoolReferral minted for the pool the margin manager is associated with
+traderClient.client.orderbook.marginManager.setMarginManagerReferral(
 	'MARGIN_MANAGER_1',
 	referralId,
 )(tx);
 
 // Unset the referral for a margin manager for a specific pool
-traderClient.client.deepbook.marginManager.unsetMarginManagerReferral(
+traderClient.client.orderbook.marginManager.unsetMarginManagerReferral(
 	'MARGIN_MANAGER_1',
 	'MYSO_DBUSDC',
 )(tx);
@@ -402,19 +402,19 @@ traderClient.client.deepbook.marginManager.unsetMarginManagerReferral(
 
 :::info
 
-To mint a referral, use the core DeepBook SDK's `mintReferral` function. See the [DeepBookV3 SDK documentation](./deepbookv3-sdk.mdx#referral-functions) for more details on minting and managing referrals.
+To mint a referral, use the core Orderbook SDK's `mintReferral` function. See the [OrderbookV3 SDK documentation](./orderbookv3-sdk.mdx#referral-functions) for more details on minting and managing referrals.
 
 :::
 
 ## Related links
 
 <RelatedLink
-	href="https://www.npmjs.com/package/@mysten/deepbook-v3"
-	label="DeepBookV3 SDK node package"
-	desc="The DeepBookV3 SDK node package on NPM."
+	href="https://www.npmjs.com/package/@mysten/orderbook-v3"
+	label="OrderbookV3 SDK node package"
+	desc="The OrderbookV3 SDK node package on NPM."
 />
 <RelatedLink
-	href="https://github.com/MystenLabs/deepbookv3"
-	label="DeepBook Margin package"
-	desc="The DeepBook Margin package on GitHub."
+	href="https://github.com/MystenLabs/orderbookv3"
+	label="Orderbook Margin package"
+	desc="The Orderbook Margin package on GitHub."
 />

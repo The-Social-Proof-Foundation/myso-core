@@ -30,8 +30,8 @@
     "definition": "A token that can be used only for a specific service or authorized account."
   },
   {
-    "id": "deepbook",
-    "label": "DeepBook",
+    "id": "orderbook",
+    "label": "Orderbook",
     "definition": "A decentralized central limit order book (CLOB) built on MySo."
   },
   {

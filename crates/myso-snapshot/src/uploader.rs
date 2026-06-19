@@ -140,7 +140,7 @@ impl StateSnapshotUploader {
                 )
                 .await?;
                 let db = Arc::new(AuthorityPerpetualTables::open(
-                    &path_to_filesystem(self.db_checkpoint_path.clone(), &db_path.child("store"))?,
+                    &path_to_filesystem(self.db_checkpoint_path.clone(), &db_path.clone().join("store"))?,
                     None,
                     None,
                 ));
@@ -163,11 +163,11 @@ impl StateSnapshotUploader {
                 info!("State snapshot creation successful for epoch: {}", *epoch);
                 // Drop marker in the output directory that upload completed successfully
                 let bytes = Bytes::from_static(b"success");
-                let success_marker = db_path.child(SUCCESS_MARKER);
+                let success_marker = db_path.clone().join(SUCCESS_MARKER);
                 put(&self.snapshot_store, &success_marker, bytes.clone()).await?;
                 let bytes = Bytes::from_static(b"success");
                 let state_snapshot_completed_marker =
-                    db_path.child(STATE_SNAPSHOT_COMPLETED_MARKER);
+                    db_path.clone().join(STATE_SNAPSHOT_COMPLETED_MARKER);
                 put(
                     &self.db_checkpoint_store.clone(),
                     &state_snapshot_completed_marker,
@@ -186,7 +186,7 @@ impl StateSnapshotUploader {
             } else {
                 let bytes = Bytes::from_static(b"success");
                 let state_snapshot_completed_marker =
-                    db_path.child(STATE_SNAPSHOT_COMPLETED_MARKER);
+                    db_path.clone().join(STATE_SNAPSHOT_COMPLETED_MARKER);
                 put(
                     &self.db_checkpoint_store.clone(),
                     &state_snapshot_completed_marker,

@@ -1096,8 +1096,15 @@ mod tests {
         let rows = handle_post_event("ReactionEvent", &data, "tx:rx1", &HashMap::new()).expect("rows");
         assert_eq!(rows.len(), 1);
         assert!(
-            rows.iter().all(|r| matches!(r, SocialEventRow::Reaction(_))),
-            "expected only Reaction row, no ReactionCount"
+            rows.iter().any(|r| matches!(
+                r,
+                SocialEventRow::Reaction(reaction)
+                    if reaction.object_id == "0xpost123"
+                        && reaction.user_address == "0xactorabc"
+                        && reaction.reaction_text == "👍"
+                        && reaction.is_post
+            )),
+            "expected Reaction row with actor_address as user_address"
         );
     }
 

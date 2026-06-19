@@ -94,18 +94,13 @@ impl MoveFlavor for MySoFlavor {
 
     fn system_deps(_: &EnvironmentID) -> BTreeMap<SystemDepName, LockfileDependencyInfo> {
         let mut deps = BTreeMap::new();
-        let deps_to_skip = ["DeepBook".into()];
 
         // TODO DVX-1814: we need to use packages for protocol version instead of latest
         let packages = latest_system_packages();
         let sha = &packages.git_revision;
         // Strip "-dirty" suffix if present (git_version adds this when there are uncommitted changes)
         let sha_clean = sha.strip_suffix("-dirty").unwrap_or(sha);
-        // filter out the packages that we want to skip
-        let pkgs = packages
-            .packages
-            .iter()
-            .filter(|package| !deps_to_skip.contains(&package.package_name));
+        let pkgs = packages.packages.iter();
 
         let names = Self::system_deps_by_name();
         for package in pkgs {

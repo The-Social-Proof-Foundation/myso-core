@@ -313,7 +313,7 @@ watermark-interval-ms = 500
 
 ## When to build a custom indexer
 
-This document focuses on the general-purpose Indexer that powers GraphQL. If you want to build your own pipelines for application-specific data (such as Deepbook order books, Walrus blob metadata, Seal access events, and so on), refer to the [Build Your First Custom Indexer](/guides/developer/accessing-data/custom-indexer/build.mdx).
+This document focuses on the general-purpose Indexer that powers GraphQL. If you want to build your own pipelines for application-specific data (such as Orderbook order books, Walrus blob metadata, Seal access events, and so on), refer to the [Build Your First Custom Indexer](/guides/developer/accessing-data/custom-indexer/build.mdx).
 
 You can run custom indexers separately to populate an app-specific database. You can then build your own lightweight RPC server with your choice of query mechanism (GraphQL, gRPC, or JSON-RPC) to serve app-specific data from that database.
 
@@ -411,5 +411,5 @@ To improve performance and reliability, also consider these operational best pra
 <RelatedLink to="/guides/developer/accessing-data/custom-indexing-framework" />
 <RelatedLink href="https://github.com/the-social-proof-foundation/myso-core/tree/main/crates/myso-indexer-alt" label="MySo Indexer Alt" desc="The `myso-indexer-alt` crate in the MySo repo." />
 <RelatedLink href="https://github.com/MystenLabs/mvr/tree/main/crates/mvr-indexer" label="Move Registry" desc="The indexer that the Move Registry (MVR) implements." />
-<RelatedLink href="https://github.com/MystenLabs/deepbookv3/tree/main/crates/indexer" label="DeepBook Indexer" desc="The indexer that DeepBook implements." />
+<RelatedLink href="https://github.com/MystenLabs/orderbookv3/tree/main/crates/indexer" label="Orderbook Indexer" desc="The indexer that Orderbook implements." />
 <RelatedLink href="/references/myso-api/myso-graphql/beta/reference" label="GraphQL Beta schema" desc="Schema documentation for GraphQL Beta" />

@@ -1,6 +1,6 @@
-# DeepBook Indexer Test Suite
+# Orderbook Indexer Test Suite
 
-This directory contains the test suite for the DeepBook indexer, including snapshot tests and checkpoint data for margin events.
+This directory contains the test suite for the Orderbook indexer, including snapshot tests and checkpoint data for margin events.
 
 ## Overview
 
@@ -16,7 +16,7 @@ tests/
 │   ├── margin_manager_created/         # MarginManagerEvent checkpoints
 │   ├── asset_supplied/                 # AssetSupplied event checkpoints
 │   ├── margin_pool_created/            # MarginPoolCreated event checkpoints
-│   ├── deepbook_pool_registered/       # DeepbookPoolRegistered event checkpoints
+│   ├── orderbook_pool_registered/       # OrderbookPoolRegistered event checkpoints
 │   └── [other_event_types]/            # Other event type directories
 └── snapshots/                          # Generated snapshot files
     ├── snapshot_tests__margin_manager_created__margin_manager_created.snap
@@ -36,7 +36,7 @@ MySo testnet provides a GraphQL API at `https://graphql.testnet.mysocial.network
 curl -X POST https://graphql.testnet.mysocial.network/graphql \
      -H "Content-Type: application/json" \
      -d '{
-          "query": "query { events(filter: { type: \"0x442d21fd044b90274934614c3c41416c83582f42eaa8feb4fecea301aa6bdd54::margin_registry::DeepbookPoolRegistered\" }) { nodes { transaction { effects { checkpoint { sequenceNumber } } } sender { address } timestamp } } }"
+          "query": "query { events(filter: { type: \"0x442d21fd044b90274934614c3c41416c83582f42eaa8feb4fecea301aa6bdd54::margin_registry::OrderbookPoolRegistered\" }) { nodes { transaction { effects { checkpoint { sequenceNumber } } } sender { address } timestamp } } }"
      }'
 ```
 
@@ -62,14 +62,14 @@ cd <project_root>/crates/indexer/tests/checkpoints/[event_type]
 curl -o [checkpoint_number].chk "https://storage.googleapis.com/mysocial-testnet-checkpoints/[checkpoint_number].chk"
 ```
 
-#### Example: Downloading DeepbookPoolRegistered Event
+#### Example: Downloading OrderbookPoolRegistered Event
 
 ```bash
 # Create directory if it doesn't exist
-mkdir -p <project_root>/crates/indexer/tests/checkpoints/deepbook_pool_registered
+mkdir -p <project_root>/crates/indexer/tests/checkpoints/orderbook_pool_registered
 
 # Download checkpoint 248053954
-cd <project_root>/crates/indexer/tests/checkpoints/deepbook_pool_registered
+cd <project_root>/crates/indexer/tests/checkpoints/orderbook_pool_registered
 curl -o 248053954.chk "https://storage.googleapis.com/mysocial-testnet-checkpoints/248053954.chk"
 ```
 
@@ -88,7 +88,7 @@ Expected response should include:
 
 ## Event Types and Package Information
 
-### DeepBook Margin Package
+### Orderbook Margin Package
 
 - **Package ID (Testnet):** `0x442d21fd044b90274934614c3c41416c83582f42eaa8feb4fecea301aa6bdd54`
 - **Network:** MySo Testnet
@@ -147,7 +147,7 @@ Remove the `#[ignore]` attribute from the test in `snapshot_tests.rs`:
 #[tokio::test]
 // #[ignore] // TODO: Add checkpoint test data  <-- Remove this line
 async fn [event_type]_test() -> Result<(), anyhow::Error> {
-    let handler = [EventHandler]::new(DeepbookEnv::Testnet);
+    let handler = [EventHandler]::new(OrderbookEnv::Testnet);
     data_test("[event_type]", handler, ["[event_type]"]).await?;
     Ok(())
 }
@@ -157,7 +157,7 @@ async fn [event_type]_test() -> Result<(), anyhow::Error> {
 
 ```bash
 cd <project_root>
-PATH="/usr/lib/postgresql/16/bin:$PATH" cargo test [event_type]_test --package deepbook-indexer
+PATH="/usr/lib/postgresql/16/bin:$PATH" cargo test [event_type]_test --package orderbook-indexer
 ```
 
 ### 5. Review and Accept Snapshot
@@ -210,7 +210,7 @@ ls -la <project_root>/crates/indexer/tests/checkpoints/*/
 #### Check Test Compilation
 ```bash
 cd <project_root>
-cargo check --package deepbook-indexer
+cargo check --package orderbook-indexer
 ```
 
 ## References

@@ -1,19 +1,19 @@
 ---
-title: DeepBook Margin Indexer
+title: Orderbook Margin Indexer
 sidebar_label: Indexer
-description: DeepBook Margin Indexer provides access to margin trading events including loans, liquidations, and margin pool operations.
-keywords: [DeepBook Margin Indexer, margin manager, margin pool, liquidation, loan, borrow, repay, supply, withdraw, collateral]
+description: Orderbook Margin Indexer provides access to margin trading events including loans, liquidations, and margin pool operations.
+keywords: [Orderbook Margin Indexer, margin manager, margin pool, liquidation, loan, borrow, repay, supply, withdraw, collateral]
 ---
 
-The DeepBook Margin Indexer extends the DeepBookV3 Indexer with endpoints for margin trading data. These endpoints provide access to margin manager events, margin pool operations, and liquidation monitoring.
+The Orderbook Margin Indexer extends the OrderbookV3 Indexer with endpoints for margin trading data. These endpoints provide access to margin manager events, margin pool operations, and liquidation monitoring.
 
 ## Public endpoints
 
-The margin endpoints are available through the same public indexer as DeepBookV3.
+The margin endpoints are available through the same public indexer as OrderbookV3.
 
-- **Mainnet**: `https://deepbook-indexer.mainnet.mystenlabs.com/`
+- **Mainnet**: `https://orderbook-indexer.mainnet.mystenlabs.com/`
 
-- **Testnet**: `https://deepbook-indexer.testnet.mystenlabs.com/`
+- **Testnet**: `https://orderbook-indexer.testnet.mystenlabs.com/`
 
 ## Common query parameters
 
@@ -47,7 +47,7 @@ Returns events for when margin managers are created.
         "package": "0x2222...",
         "margin_manager_id": "0x1234...",
         "balance_manager_id": "0x5678...",
-        "deepbook_pool_id": "0x9abc...",
+        "orderbook_pool_id": "0x9abc...",
         "owner": "0xabcd...",
         "onchain_timestamp": 1738000000000
     }
@@ -174,7 +174,7 @@ Returns an aggregate view of all margin managers with their associated pool and 
 [
     {
         "margin_manager_id": "0x1234...",
-        "deepbook_pool_id": "0x5678...",
+        "orderbook_pool_id": "0x5678...",
         "base_asset_id": "0xabcd...",
         "base_asset_symbol": "MYSO",
         "quote_asset_id": "0xefgh...",
@@ -191,13 +191,13 @@ Returns an aggregate view of all margin managers with their associated pool and 
 <summary>Get margin manager states</summary>
 
 ```http
-/margin_manager_states?max_risk_ratio=<FLOAT>&deepbook_pool_id=<ID>
+/margin_manager_states?max_risk_ratio=<FLOAT>&orderbook_pool_id=<ID>
 ```
 
 Returns the current state of margin managers. This endpoint is useful for monitoring positions that may be at risk of liquidation.
 
 - `max_risk_ratio`: Filter to return only margin managers with a risk ratio below this threshold; useful for finding liquidation opportunities
-- `deepbook_pool_id`: Filter by specific DeepBook pool
+- `orderbook_pool_id`: Filter by specific Orderbook pool
 
 #### Response
 
@@ -206,7 +206,7 @@ Returns the current state of margin managers. This endpoint is useful for monito
     {
         "id": 1,
         "margin_manager_id": "0x1234...",
-        "deepbook_pool_id": "0x5678...",
+        "orderbook_pool_id": "0x5678...",
         "base_margin_pool_id": "0x1111...",
         "quote_margin_pool_id": "0x2222...",
         "base_asset_id": "0xabcd...",
@@ -344,13 +344,13 @@ Returns events for when margin pools are created.
 </details>
 
 <details>
-<summary>Get DeepBook pool updated events</summary>
+<summary>Get Orderbook pool updated events</summary>
 
 ```http
-/deepbook_pool_updated?margin_pool_id=<ID>&deepbook_pool_id=<ID>
+/orderbook_pool_updated?margin_pool_id=<ID>&orderbook_pool_id=<ID>
 ```
 
-Returns events for when DeepBook pools are enabled or disabled for a margin pool.
+Returns events for when Orderbook pools are enabled or disabled for a margin pool.
 
 #### Response
 
@@ -364,7 +364,7 @@ Returns events for when DeepBook pools are enabled or disabled for a margin pool
         "checkpoint_timestamp_ms": 1738000000000,
         "package": "0x2222...",
         "margin_pool_id": "0x1234...",
-        "deepbook_pool_id": "0x5678...",
+        "orderbook_pool_id": "0x5678...",
         "pool_cap_id": "0x9abc...",
         "enabled": true,
         "onchain_timestamp": 1738000000000
@@ -730,13 +730,13 @@ Returns events for when pause capabilities are updated.
 </details>
 
 <details>
-<summary>Get DeepBook pool registered events</summary>
+<summary>Get Orderbook pool registered events</summary>
 
 ```http
-/deepbook_pool_registered?pool_id=<ID>
+/orderbook_pool_registered?pool_id=<ID>
 ```
 
-Returns events for when DeepBook pools are registered in the margin registry.
+Returns events for when Orderbook pools are registered in the margin registry.
 
 #### Response
 
@@ -771,13 +771,13 @@ Returns events for when DeepBook pools are registered in the margin registry.
 </details>
 
 <details>
-<summary>Get DeepBook pool registry updated events</summary>
+<summary>Get Orderbook pool registry updated events</summary>
 
 ```http
-/deepbook_pool_updated_registry?pool_id=<ID>
+/orderbook_pool_updated_registry?pool_id=<ID>
 ```
 
-Returns events for when DeepBook pool registry entries are updated.
+Returns events for when Orderbook pool registry entries are updated.
 
 #### Response
 
@@ -800,13 +800,13 @@ Returns events for when DeepBook pool registry entries are updated.
 </details>
 
 <details>
-<summary>Get DeepBook pool config updated events</summary>
+<summary>Get Orderbook pool config updated events</summary>
 
 ```http
-/deepbook_pool_config_updated?pool_id=<ID>
+/orderbook_pool_config_updated?pool_id=<ID>
 ```
 
-Returns events for when DeepBook pool configurations are updated.
+Returns events for when Orderbook pool configurations are updated.
 
 #### Response
 
@@ -843,7 +843,7 @@ Returns events for when DeepBook pool configurations are updated.
 ## Related links
 
 <RelatedLink
-	href="https://github.com/MystenLabs/deepbookv3"
-	label="DeepBookV3 repository"
-	desc="The DeepBookV3 repository on GitHub."
+	href="https://github.com/MystenLabs/orderbookv3"
+	label="OrderbookV3 repository"
+	desc="The OrderbookV3 repository on GitHub."
 />

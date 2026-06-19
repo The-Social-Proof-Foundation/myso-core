@@ -749,7 +749,13 @@ fn bcs_comment_created_from_bytes(contents: &[u8]) -> Result<ParsedCommentCreate
     }
 }
 
-#[derive(Debug, Deserialize)]
+/// On-chain Move sets `user` to `actor_address`; prefer `actor_address` for sub-agent attribution.
+fn canonical_reaction_user(user: AccountAddress, actor_address: AccountAddress) -> AccountAddress {
+    let _legacy_user = user;
+    actor_address
+}
+
+#[derive(Debug, Deserialize, Serialize)]
 pub struct BcsReactionEvent {
     object_id: AccountAddress,
     user: AccountAddress,
@@ -773,15 +779,18 @@ struct ParsedReactionEvent {
 
 fn bcs_reaction_from_bytes(contents: &[u8]) -> Result<ParsedReactionEvent, EventParseError> {
     match bcs::from_bytes::<BcsReactionEvent>(contents) {
-        Ok(ev) => Ok(ParsedReactionEvent {
-            object_id: ev.object_id,
-            reaction: ev.reaction,
-            is_post: ev.is_post,
-            principal_owner: ev.principal_owner,
-            actor_address: ev.actor_address,
-            sub_agent_id: optional_move_object_id_json(&ev.sub_agent_id),
-            action_identity_class: ev.action_identity_class,
-        }),
+        Ok(ev) => {
+            let actor_address = canonical_reaction_user(ev.user, ev.actor_address);
+            Ok(ParsedReactionEvent {
+                object_id: ev.object_id,
+                reaction: ev.reaction,
+                is_post: ev.is_post,
+                principal_owner: ev.principal_owner,
+                actor_address,
+                sub_agent_id: optional_move_object_id_json(&ev.sub_agent_id),
+                action_identity_class: ev.action_identity_class,
+            })
+        }
         Err(e) => Err(EventParseError {
             error: format!("ReactionEvent BCS: {}", e),
             contents: contents.to_vec(),
@@ -805,15 +814,18 @@ fn bcs_remove_reaction_from_bytes(
     contents: &[u8],
 ) -> Result<ParsedReactionEvent, EventParseError> {
     match bcs::from_bytes::<BcsRemoveReactionEvent>(contents) {
-        Ok(ev) => Ok(ParsedReactionEvent {
-            object_id: ev.object_id,
-            reaction: ev.reaction,
-            is_post: ev.is_post,
-            principal_owner: ev.principal_owner,
-            actor_address: ev.actor_address,
-            sub_agent_id: optional_move_object_id_json(&ev.sub_agent_id),
-            action_identity_class: ev.action_identity_class,
-        }),
+        Ok(ev) => {
+            let actor_address = canonical_reaction_user(ev.user, ev.actor_address);
+            Ok(ParsedReactionEvent {
+                object_id: ev.object_id,
+                reaction: ev.reaction,
+                is_post: ev.is_post,
+                principal_owner: ev.principal_owner,
+                actor_address,
+                sub_agent_id: optional_move_object_id_json(&ev.sub_agent_id),
+                action_identity_class: ev.action_identity_class,
+            })
+        }
         Err(e) => Err(EventParseError {
             error: format!("RemoveReactionEvent BCS: {}", e),
             contents: contents.to_vec(),
@@ -5109,14 +5121,52 @@ mod tests {
     }
 
     #[test]
+    fn reaction_attribution_bcs_round_trip() {
+        let actor_address = AccountAddress::from_hex_literal("0x4").unwrap();
+        let ev = BcsReactionEvent {
+            object_id: AccountAddress::from_hex_literal("0x1").unwrap(),
+            user: AccountAddress::from_hex_literal("0x2").unwrap(),
+            reaction: "👍".to_string(),
+            is_post: true,
+            principal_owner: AccountAddress::from_hex_literal("0x3").unwrap(),
+            actor_address,
+            sub_agent_id: Some(BcsMoveObjectId {
+                bytes: AccountAddress::from_hex_literal("0x5").unwrap(),
+            }),
+            action_identity_class: 2,
+        };
+        let bytes = bcs::to_bytes(&ev).expect("bcs");
+        let json = parse_event_contents("post", "ReactionEvent", &bytes).expect("parse");
+        assert!(json["object_id"].as_str().unwrap().starts_with("0x"));
+        assert_eq!(json["reaction_text"], "👍");
+        assert_eq!(json["is_post"], true);
+        assert_eq!(
+            json["user_address"],
+            addr_to_string(&actor_address),
+            "user_address must come from actor_address, not legacy user field"
+        );
+        assert_eq!(
+            json["actor_address"],
+            addr_to_string(&actor_address)
+        );
+        assert_eq!(
+            json["principal_owner"],
+            addr_to_string(&AccountAddress::from_hex_literal("0x3").unwrap())
+        );
+        assert_eq!(json["action_identity_class"], 2_i64);
+        assert!(json["sub_agent_id"].as_str().is_some());
+    }
+
+    #[test]
     fn remove_reaction_attribution_bcs_round_trip() {
+        let actor_address = AccountAddress::from_hex_literal("0x4").unwrap();
         let ev = BcsRemoveReactionEvent {
             object_id: AccountAddress::from_hex_literal("0x1").unwrap(),
             user: AccountAddress::from_hex_literal("0x2").unwrap(),
             reaction: "👍".to_string(),
             is_post: true,
             principal_owner: AccountAddress::from_hex_literal("0x3").unwrap(),
-            actor_address: AccountAddress::from_hex_literal("0x4").unwrap(),
+            actor_address,
             sub_agent_id: Some(BcsMoveObjectId {
                 bytes: AccountAddress::from_hex_literal("0x5").unwrap(),
             }),
@@ -5127,6 +5177,11 @@ mod tests {
         assert!(json["object_id"].as_str().unwrap().starts_with("0x"));
         assert_eq!(json["reaction_text"], "👍");
         assert_eq!(json["is_post"], true);
+        assert_eq!(
+            json["user_address"],
+            addr_to_string(&actor_address),
+            "user_address must come from actor_address, not legacy user field"
+        );
         assert_eq!(json["action_identity_class"], 2_i64);
         assert!(json["sub_agent_id"].as_str().is_some());
     }

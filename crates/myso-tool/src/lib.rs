@@ -1211,7 +1211,7 @@ pub async fn download_db_snapshot(
     let epoch_path = format!("epoch_{}", epoch);
     let epoch_dir = get_path(&epoch_path);
 
-    let manifest_file = epoch_dir.child(MANIFEST_FILENAME);
+    let manifest_file = epoch_dir.join(MANIFEST_FILENAME);
     let epoch_manifest_contents =
         String::from_utf8(remote_store.get_bytes(&manifest_file).await?.to_vec())
             .map_err(|err| anyhow!("Error parsing {}/MANIFEST from bytes: {}", epoch_path, err))?;

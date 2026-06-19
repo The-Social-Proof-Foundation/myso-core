@@ -396,7 +396,7 @@ impl CompiledPackage {
             .collect()
     }
 
-    /// Get bytecode modules from OrderBook that are used by this package
+    /// Get bytecode modules from Orderbook that are used by this package
     pub fn get_orderbook_modules(&self) -> impl Iterator<Item = &CompiledModule> {
         self.get_modules_and_deps()
             .filter(|m| *m.self_id().address() == ORDERBOOK_ADDRESS)

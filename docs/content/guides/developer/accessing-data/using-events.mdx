@@ -62,7 +62,7 @@ When you process events, each event object contains the following attributes:
 
 ### Querying events with RPC
 
-The MySo RPC provides a [`queryEvents`](/myso-api-ref#suix_queryEvents) method to query on-chain packages and return available events. As an example, the following `curl` command queries the DeepBookV3 package on Mainnet for a specific type of event:
+The MySo RPC provides a [`queryEvents`](/myso-api-ref#suix_queryEvents) method to query on-chain packages and return available events. As an example, the following `curl` command queries the OrderbookV3 package on Mainnet for a specific type of event:
 
 ```sh
 $ curl -X POST https://fullnode.mainnet.mysocial.network:443 \
@@ -75,7 +75,7 @@ $ curl -X POST https://fullnode.mainnet.mysocial.network:443 \
     {
       "MoveModule": {
         "package": "0x158f2027f60c89bb91526d9bf08831d27f5a0fcb0f74e6698b9f0e1fb2be5d05",
-        "module": "deepbook_utils",
+        "module": "orderbook_utils",
         "type": "0x0b0c::clob_v2::DepositAsset<0x5d4b302506645c37ff133b98c4b50a5ae14841659738d6d733d59d0d217a93bf::coin::COIN>"
       }
     },
@@ -104,7 +104,7 @@ Successful response
 					"eventSeq": "0"
 				},
 				"packageId": "0x158f2027f60c89bb91526d9bf08831d27f5a0fcb0f74e6698b9f0e1fb2be5d05",
-				"transactionModule": "deepbook_utils",
+				"transactionModule": "orderbook_utils",
 				"sender": "0x8b35e67a519fffa11a9c74f169228ff1aa085f3a3d57710af08baab8c02211b9",
 				"type": "0x0b0c::clob_v2::WithdrawAsset<0x5d4b302506645c37ff133b98c4b50a5ae14841659738d6d733d59d0d217a93bf::coin::COIN>",
 				"parsedJson": {
@@ -121,7 +121,7 @@ Successful response
 					"eventSeq": "1"
 				},
 				"packageId": "0x158f2027f60c89bb91526d9bf08831d27f5a0fcb0f74e6698b9f0e1fb2be5d05",
-				"transactionModule": "deepbook_utils",
+				"transactionModule": "orderbook_utils",
 				"sender": "0x8b35e67a519fffa11a9c74f169228ff1aa085f3a3d57710af08baab8c02211b9",
 				"type": "0x0b0c::clob_v2::OrderFilled<0x2::myso::MYSO, 0x5d4b302506645c37ff133b98c4b50a5ae14841659738d6d733d59d0d217a93bf::coin::COIN>",
 				"parsedJson": {
@@ -148,7 +148,7 @@ Successful response
 					"eventSeq": "0"
 				},
 				"packageId": "0x158f2027f60c89bb91526d9bf08831d27f5a0fcb0f74e6698b9f0e1fb2be5d05",
-				"transactionModule": "deepbook_utils",
+				"transactionModule": "orderbook_utils",
 				"sender": "0x8b35e67a519fffa11a9c74f169228ff1aa085f3a3d57710af08baab8c02211b9",
 				"type": "0x0b0c::clob_v2::OrderFilled<0x2::myso::MYSO, 0x5d4b302506645c37ff133b98c4b50a5ae14841659738d6d733d59d0d217a93bf::coin::COIN>",
 				"parsedJson": {

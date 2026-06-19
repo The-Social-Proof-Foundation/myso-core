@@ -7,5 +7,5 @@ implicit-dependencies = false
 myso = { local = "../../system-packages/myso-framework" }
 std = { local = "../../system-packages/move-stdlib" }
 bridge = { local = "../../system-packages/bridge" }
-deepbook = { local = "../../system-packages/deepbook" }
+orderbook = { local = "../../system-packages/orderbook" }
 myso_system = { local = "../../system-packages/myso-system" }

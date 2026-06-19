@@ -22,9 +22,9 @@ const STDLIB_PATH = path.join(
   __dirname,
   "../../../../../crates/myso-framework/docs/std",
 );
-// const DEEPBOOK_PATH = path.join(
+// const ORDERBOOK_PATH = path.join(
 //   __dirname,
-//   "../../../../../crates/myso-framework/docs/deepbook",
+//   "../../../../../crates/myso-framework/docs/orderbook",
 // );
 const MYSOSYS_PATH = path.join(
   __dirname,
@@ -261,14 +261,14 @@ const frameworkPlugin = (_context, _options) => {
       const bridgeFiles = recurseFiles(BRIDGE_PATH);
       const frameworkFiles = recurseFiles(FRAMEWORK_PATH);
       const stdlibFiles = recurseFiles(STDLIB_PATH);
-      // const deepbookFiles = recurseFiles(DEEPBOOK_PATH);
+      // const orderbookFiles = recurseFiles(ORDERBOOK_PATH);
       const mysosysFiles = recurseFiles(MYSOSYS_PATH);
 
       const allFiles = [
         bridgeFiles, 
         frameworkFiles,        
         stdlibFiles, 
-        // deepbookFiles,
+        // orderbookFiles,
         mysosysFiles,
       ];
 

@@ -116,12 +116,12 @@ System dependencies do not exist in the old system, and implicit dependencies wo
 
 :::
 
-Several packages are built into MySo. The `system` dependency type can be used to depend on these packages. The available system packages are `std`, `myso`, `myso_system`, `bridge`, and `deepbook`.
+Several packages are built into MySo. The `system` dependency type can be used to depend on these packages. The available system packages are `std`, `myso`, `myso_system`, `bridge`, and `orderbook`.
 
 However:
 
  - The `std` and `myso` packages are implicitly included unless you write `implicit-dependencies = false` in your `[package]` section. You do not need to explicitly include them.
- - The `deepbook` system package is for the deprecated DeepBook version 2. New applications should use DeepBook version 3 by adding `deepbook = { mvr = "@deepbook/core" }`.
+ - The `orderbook` system package is for the deprecated Orderbook version 2. New applications should use Orderbook version 3 by adding `orderbook = { mvr = "@orderbook/core" }`.
 
 To include a system dependency, write `{ system = "<name>" }`. For example, to use `myso_system`, add `myso_system = { system = "myso_system" }` to your `[dependencies]` section.
 

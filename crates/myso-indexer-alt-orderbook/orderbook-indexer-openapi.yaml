@@ -71,7 +71,7 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/IndexerStatus"
-      x-docs: "https://docs.mysocial.network/standards/deepbookv3-indexer"
+      x-docs: "https://docs.mysocial.network/standards/orderbookv3-indexer"
 
   /get_pools:
     get:
@@ -88,7 +88,7 @@ paths:
                 type: array
                 items:
                   $ref: "#/components/schemas/Pool"
-      x-docs: "https://docs.mysocial.network/standards/deepbookv3-indexer" # reference
+      x-docs: "https://docs.mysocial.network/standards/orderbookv3-indexer" # reference
 
   /historical_volume/{pool_names}:
     get:
@@ -123,7 +123,7 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/PoolVolumes"
-      x-docs: "https://docs.mysocial.network/standards/deepbookv3-indexer" # reference
+      x-docs: "https://docs.mysocial.network/standards/orderbookv3-indexer" # reference
 
   /all_historical_volume:
     get:
@@ -147,7 +147,7 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/PoolVolumes"
-      x-docs: "https://docs.mysocial.network/standards/deepbookv3-indexer"
+      x-docs: "https://docs.mysocial.network/standards/orderbookv3-indexer"
 
   /historical_volume_by_balance_manager_id/{pool_names}/{balance_manager_id}:
     get:
@@ -180,7 +180,7 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/PoolMakerTakerVolumes"
-      x-docs: "https://docs.mysocial.network/standards/deepbookv3-indexer"
+      x-docs: "https://docs.mysocial.network/standards/orderbookv3-indexer"
 
   /historical_volume_by_balance_manager_id_with_interval/{pool_names}/{balance_manager_id}:
     get:
@@ -218,7 +218,7 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/IntervalMakerTakerVolumes"
-      x-docs: "https://docs.mysocial.network/standards/deepbookv3-indexer"
+      x-docs: "https://docs.mysocial.network/standards/orderbookv3-indexer"
 
   /summary:
     get:
@@ -234,7 +234,7 @@ paths:
                 type: array
                 items:
                   $ref: "#/components/schemas/SummaryItem"
-      x-docs: "https://docs.mysocial.network/standards/deepbookv3-indexer"
+      x-docs: "https://docs.mysocial.network/standards/orderbookv3-indexer"
 
   /ticker:
     get:
@@ -248,7 +248,7 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/TickerMap"
-      x-docs: "https://docs.mysocial.network/standards/deepbookv3-indexer"
+      x-docs: "https://docs.mysocial.network/standards/orderbookv3-indexer"
 
   /trades/{pool_name}:
     get:
@@ -287,7 +287,7 @@ paths:
                 type: array
                 items:
                   $ref: "#/components/schemas/Trade"
-      x-docs: "https://docs.mysocial.network/standards/deepbookv3-indexer"
+      x-docs: "https://docs.mysocial.network/standards/orderbookv3-indexer"
 
   /order_updates/{pool_name}:
     get:
@@ -325,7 +325,7 @@ paths:
                 type: array
                 items:
                   $ref: "#/components/schemas/OrderUpdate"
-      x-docs: "https://docs.mysocial.network/standards/deepbookv3-indexer"
+      x-docs: "https://docs.mysocial.network/standards/orderbookv3-indexer"
 
   /orderbook/{pool_name}:
     get:
@@ -356,7 +356,7 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/Orderbook"
-      x-docs: "https://docs.mysocial.network/standards/deepbookv3-indexer"
+      x-docs: "https://docs.mysocial.network/standards/orderbookv3-indexer"
 
   /assets:
     get:
@@ -370,7 +370,7 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/AssetsMap"
-      x-docs: "https://docs.mysocial.network/standards/deepbookv3-indexer"
+      x-docs: "https://docs.mysocial.network/standards/orderbookv3-indexer"
 
 components:
   schemas:
@@ -569,7 +569,7 @@ components:
       properties:
         pipeline:
           type: string
-          description: "Pipeline name (e.g., 'deepbook_indexer')"
+          description: "Pipeline name (e.g., 'orderbook_indexer')"
         indexed_checkpoint:
           type: integer
           format: int64

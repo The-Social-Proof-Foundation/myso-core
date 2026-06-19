@@ -104,7 +104,7 @@ const descriptionPlugin = (context, options) => {
         "/myso-api/myso-graphql/",
         "/content/snippets/",
         "/references/framework/",
-        "/standards/deepbook-ref/",
+        "/standards/orderbook-ref/",
         "/submodules/",
         "/app-examples/ts-sdk-ref/",
       ].map((s) => s.replace(/\\/g, "/"));

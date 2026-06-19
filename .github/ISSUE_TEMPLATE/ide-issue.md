@@ -73,33 +73,33 @@ inlay type hints enabled: false
 inlay param hints enabled: false
 starting symbolicator runner loop
 text document notification
-scheduling run for "~/deepbookv3/packages/deepbook/sources/balance_manager.move"
+scheduling run for "~/orderbookv3/packages/orderbook/sources/balance_manager.move"
 scheduled run
 text document notification handled
 symbolication started
-symbolicating "~/deepbookv3/packages/deepbook"
+symbolicating "~/orderbookv3/packages/orderbook"
 [note] Dependencies on Bridge, MoveStdlib, MySo, and MySoSystem are automatically added, but this feature is disabled for your package because you have explicitly included dependencies on MySo. Consider removing these dependencies from Move.toml.
-on_document_symbol_request: "~/deepbookv3/packages/deepbook/sources/balance_manager.move"
-no cached deps for "~/deepbookv3/packages/deepbook"
+on_document_symbol_request: "~/orderbookv3/packages/orderbook/sources/balance_manager.move"
+no cached deps for "~/orderbookv3/packages/orderbook"
 pre-compiling dep MoveStdlib
 inserting new dep into cache for "~/.move/https___github_com_MystenLabs_myso_git_framework__mainnet/crates/myso-framework/packages/move-stdlib"
 pre-compiling dep MySo
 inserting new dep into cache for "~/.move/https___github_com_MystenLabs_myso_git_framework__mainnet/crates/myso-framework/packages/myso-framework"
 pre-compiling dep token
-inserting new dep into cache for "~/deepbookv3/packages/deepbook/../token"
+inserting new dep into cache for "~/orderbookv3/packages/orderbook/../token"
 compiled to parsed AST
-on_document_symbol_request: "~/deepbookv3/packages/deepbook/sources/balance_manager.move"
+on_document_symbol_request: "~/orderbookv3/packages/orderbook/sources/balance_manager.move"
 compiled to typed AST
 compiling to CFGIR
 compiled to CFGIR
 compilation complete in: 4.177246625s
 analysis complete in 832.949458ms
 get_symbols load complete
-Retrying compilation for "~/deepbookv3/packages/deepbook"
-symbolicating "~/deepbookv3/packages/deepbook"
+Retrying compilation for "~/orderbookv3/packages/orderbook"
+symbolicating "~/orderbookv3/packages/orderbook"
 Force-reading from lock file
-found cached deps for "~/deepbookv3/packages/deepbook"
-on_document_symbol_request: "~/deepbookv3/packages/deepbook/sources/balance_manager.move"
+found cached deps for "~/orderbookv3/packages/orderbook"
+on_document_symbol_request: "~/orderbookv3/packages/orderbook/sources/balance_manager.move"
 compilation complete in: 404.352625ms
 analysis complete in 978.329291ms
 get_symbols load complete

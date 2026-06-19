@@ -522,7 +522,7 @@ for each environment.
 
 TODO: maybe this isn't necessary; we can just disable local deps in the monorepo and put them in explicitly:
 > The default system deps for MySo would be `myso` and `std`. The available system deps are `std`,
-> `myso`, `system`, `deepbook-v2`, `bridge`, `monorepo-myso`, `monorepo-std`. The `monorepo` deps are
+> `myso`, `system`, `orderbook-v2`, `bridge`, `monorepo-myso`, `monorepo-std`. The `monorepo` deps are
 > converted to local dependencies are are used for our internal tests (they would expand to `myso = {
 > local = "path_to_monorepo/crates/myso-framework/packages/myso" }` and would fail if they are used
 > outside the monorepo.

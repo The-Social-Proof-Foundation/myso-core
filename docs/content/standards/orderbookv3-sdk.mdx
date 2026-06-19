@@ -1,25 +1,25 @@
 ---
-title: DeepBookV3 SDK
-description: Use the DeepBook TypeScript SDK to interact directly with the DeepBook package. 
-keywords: [ deepbook, deep book, deepbook v3, typescript, typescript SDK, mysten/deepbook, deepbookV3 SDK, Coin, Pool, Manager ] 
+title: OrderbookV3 SDK
+description: Use the Orderbook TypeScript SDK to interact directly with the Orderbook package. 
+keywords: [ orderbook, deep book, orderbook v3, typescript, typescript SDK, mysten/orderbook, orderbookV3 SDK, Coin, Pool, Manager ] 
 ---
 
-The DeepBookV3 TypeScript SDK abstracts away the transaction calls, allowing for direct interactions with the `DeepBook` package.
+The OrderbookV3 TypeScript SDK abstracts away the transaction calls, allowing for direct interactions with the `Orderbook` package.
 
-- [SDK repository](https://github.com/MystenLabs/ts-sdks/tree/main/packages/deepbook-v3)
-- [NPM version](https://www.npmjs.com/package/@mysten/deepbook-v3)
+- [SDK repository](https://github.com/MystenLabs/ts-sdks/tree/main/packages/orderbook-v3)
+- [NPM version](https://www.npmjs.com/package/@mysten/orderbook-v3)
 
 ## Install
 
-To use the SDK in your projects, install the `@mysten/deepbook` package.
+To use the SDK in your projects, install the `@mysten/orderbook` package.
 
 ```sh npm2yarn
-npm install @mysten/deepbook-v3
+npm install @mysten/orderbook-v3
 ```
 
 ## Constants
 
-The DeepBookV3 SDK includes a constants file (`/utils/constants.ts`) that maintains the latest deployed addresses for DeepBookV3, as well as a few staple coins and pools.
+The OrderbookV3 SDK includes a constants file (`/utils/constants.ts`) that maintains the latest deployed addresses for OrderbookV3, as well as a few staple coins and pools.
 
 <details>
 <summary>
@@ -27,24 +27,24 @@ The DeepBookV3 SDK includes a constants file (`/utils/constants.ts`) that mainta
 </summary>
 
 ```ts reference
-https://github.com/MystenLabs/ts-sdks/blob/main/packages/deepbook-v3/src/utils/constants.ts
+https://github.com/MystenLabs/ts-sdks/blob/main/packages/orderbook-v3/src/utils/constants.ts
 ```
 
 </details>
 
-## DeepBookClient
+## OrderbookClient
 
-To work with DeepBookV3, use the client extension to add DeepBook functionality to a MySo client. The [MySo TypeScript SDK](https://sdk.mystenlabs.com/typescript) provides the `MySoGrpcClient` and key functionality necessary to process transactions. The following example imports those libraries, as well.
+To work with OrderbookV3, use the client extension to add Orderbook functionality to a MySo client. The [MySo TypeScript SDK](https://sdk.mystenlabs.com/typescript) provides the `MySoGrpcClient` and key functionality necessary to process transactions. The following example imports those libraries, as well.
 
 ```tsx
-import { deepbook, type DeepBookClient } from '@mysten/deepbook-v3';
+import { orderbook, type OrderbookClient } from '@mysten/orderbook-v3';
 import type { ClientWithExtensions } from '@socialproof/myso/client';
 import { MySoGrpcClient } from '@socialproof/myso/grpc';
 import { decodeMySoPrivateKey } from '@socialproof/myso/cryptography';
 import { Ed25519Keypair } from '@socialproof/myso/keypairs/ed25519';
 
-class DeepBookMarketMaker {
-	client: ClientWithExtensions<{ deepbook: DeepBookClient }>;
+class OrderbookMarketMaker {
+	client: ClientWithExtensions<{ orderbook: OrderbookClient }>;
 	keypair: Ed25519Keypair;
 
 	constructor(privateKey: string, env: 'testnet' | 'mainnet') {
@@ -56,7 +56,7 @@ class DeepBookMarketMaker {
 					? 'https://fullnode.mainnet.mysocial.network:443'
 					: 'https://fullnode.testnet.mysocial.network:443',
 		}).$extend(
-			deepbook({
+			orderbook({
 				address: this.getActiveAddress(),
 			}),
 		);
@@ -81,14 +81,14 @@ Functions that require the input of a coin, pool, or a manager require the key o
 
 ### Balance manager
 
-Before placing any trade, you must supply a balance manager address to the client. The manager key points to an object defined by the `BalanceManager` interface in the client. [BalanceManager docs](./deepbookv3/contract-information/balance-manager.mdx). Initialize the balance manager with the client. If you don't create a balance manager, you can rely on the client to create one, but then the user must reinitialize the client.
+Before placing any trade, you must supply a balance manager address to the client. The manager key points to an object defined by the `BalanceManager` interface in the client. [BalanceManager docs](./orderbookv3/contract-information/balance-manager.mdx). Initialize the balance manager with the client. If you don't create a balance manager, you can rely on the client to create one, but then the user must reinitialize the client.
 
 Example using an existing balance manager:
 
 ```tsx
-import { deepbook, type DeepBookClient } from '@mysten/deepbook-v3';
+import { orderbook, type OrderbookClient } from '@mysten/orderbook-v3';
 import type { ClientWithExtensions } from '@socialproof/myso/client';
-import type { BalanceManager } from '@mysten/deepbook-v3';
+import type { BalanceManager } from '@mysten/orderbook-v3';
 import { MySoGrpcClient } from '@socialproof/myso/grpc';
 import { decodeMySoPrivateKey } from '@socialproof/myso/cryptography';
 import { Ed25519Keypair } from '@socialproof/myso/keypairs/ed25519';
@@ -98,8 +98,8 @@ config();
 
 const BALANCE_MANAGER_KEY = 'MANAGER_1';
 
-class DeepBookMarketMaker {
-	client: ClientWithExtensions<{ deepbook: DeepBookClient }>;
+class OrderbookMarketMaker {
+	client: ClientWithExtensions<{ orderbook: OrderbookClient }>;
 	keypair: Ed25519Keypair;
 
 	constructor(privateKey: string, env: 'testnet' | 'mainnet') {
@@ -111,7 +111,7 @@ class DeepBookMarketMaker {
 					? 'https://fullnode.mainnet.mysocial.network:443'
 					: 'https://fullnode.testnet.mysocial.network:443',
 		}).$extend(
-			deepbook({
+			orderbook({
 				address: this.getActiveAddress(),
 				balanceManagers: this.getBalanceManagers(),
 			}),
@@ -148,9 +148,9 @@ class DeepBookMarketMaker {
 Example creating a balance manager:
 
 ```tsx
-import { deepbook, type DeepBookClient } from '@mysten/deepbook-v3';
+import { orderbook, type OrderbookClient } from '@mysten/orderbook-v3';
 import type { ClientWithExtensions } from '@socialproof/myso/client';
-import type { BalanceManager } from '@mysten/deepbook-v3';
+import type { BalanceManager } from '@mysten/orderbook-v3';
 import { MySoGrpcClient } from '@socialproof/myso/grpc';
 import { decodeMySoPrivateKey } from '@socialproof/myso/cryptography';
 import { Ed25519Keypair } from '@socialproof/myso/keypairs/ed25519';
@@ -158,8 +158,8 @@ import { Transaction } from '@socialproof/myso/transactions';
 
 const BALANCE_MANAGER_KEY = 'MANAGER_1';
 
-class DeepBookMarketMaker {
-	client: ClientWithExtensions<{ deepbook: DeepBookClient }>;
+class OrderbookMarketMaker {
+	client: ClientWithExtensions<{ orderbook: OrderbookClient }>;
 	keypair: Ed25519Keypair;
 	env: 'testnet' | 'mainnet';
 
@@ -177,7 +177,7 @@ class DeepBookMarketMaker {
 					? 'https://fullnode.mainnet.mysocial.network:443'
 					: 'https://fullnode.testnet.mysocial.network:443',
 		}).$extend(
-			deepbook({
+			orderbook({
 				address: this.getActiveAddress(),
 				balanceManagers,
 			}),
@@ -197,7 +197,7 @@ class DeepBookMarketMaker {
 
 	async createBalanceManagerAndReinitialize() {
 		let tx = new Transaction();
-		tx.add(this.client.deepbook.balanceManager.createAndShareBalanceManager());
+		tx.add(this.client.orderbook.balanceManager.createAndShareBalanceManager());
 
 		const result = await this.client.core.signAndExecuteTransaction({
 			transaction: tx,
@@ -256,18 +256,18 @@ You can also initialize the SDK with custom coins to interact with pools that ar
 Similar to coins, the SDK comes with default pools. You can provide a `PoolMap` during construction to override this behavior.
 
 ```tsx
-import { deepbook, type DeepBookClient } from '@mysten/deepbook-v3';
+import { orderbook, type OrderbookClient } from '@mysten/orderbook-v3';
 import type { ClientWithExtensions } from '@socialproof/myso/client';
-import type { BalanceManager } from '@mysten/deepbook-v3';
+import type { BalanceManager } from '@mysten/orderbook-v3';
 import { MySoGrpcClient } from '@socialproof/myso/grpc';
 import { decodeMySoPrivateKey } from '@socialproof/myso/cryptography';
 import type { Keypair } from '@socialproof/myso/cryptography';
 import { Ed25519Keypair } from '@socialproof/myso/keypairs/ed25519';
 import type { Transaction } from '@socialproof/myso/transactions';
 
-export class DeepBookMarketMaker {
+export class OrderbookMarketMaker {
 	keypair: Keypair;
-	client: ClientWithExtensions<{ deepbook: DeepBookClient }>;
+	client: ClientWithExtensions<{ orderbook: OrderbookClient }>;
 
 	constructor(
 		keypair: string | Keypair,
@@ -276,7 +276,7 @@ export class DeepBookMarketMaker {
 		adminCap?: string,
 	) {
 		if (typeof keypair === 'string') {
-			this.keypair = DeepBookMarketMaker.#getSignerFromPK(keypair);
+			this.keypair = OrderbookMarketMaker.#getSignerFromPK(keypair);
 		} else {
 			this.keypair = keypair;
 		}
@@ -288,7 +288,7 @@ export class DeepBookMarketMaker {
 					? 'https://fullnode.mainnet.mysocial.network:443'
 					: 'https://fullnode.testnet.mysocial.network:443',
 		}).$extend(
-			deepbook({
+			orderbook({
 				address: this.getActiveAddress(),
 				balanceManagers,
 				adminCap,
@@ -328,7 +328,7 @@ The following example uses the default pools and coins provided.
 ```tsx
 import { Transaction } from '@socialproof/myso/transactions';
 
-import { DeepBookMarketMaker } from './deepbookMarketMaker.js';
+import { OrderbookMarketMaker } from './orderbookMarketMaker.js';
 
 (async () => {
 	const privateKey = ''; // Can encapsulate this in a .env file
@@ -340,17 +340,17 @@ import { DeepBookMarketMaker } from './deepbookMarketMaker.js';
 			tradeCap: '',
 		},
 	};
-	const mmClient = new DeepBookMarketMaker(privateKey, 'testnet', balanceManagers);
+	const mmClient = new OrderbookMarketMaker(privateKey, 'testnet', balanceManagers);
 
 	const tx = new Transaction();
 
 	// Read only call
-	console.log(await mmClient.client.deepbook.checkManagerBalance('MANAGER_1', 'MYSO'));
-	console.log(await mmClient.client.deepbook.getLevel2Range('MYSO_DBUSDC', 0.1, 100, true));
+	console.log(await mmClient.client.orderbook.checkManagerBalance('MANAGER_1', 'MYSO'));
+	console.log(await mmClient.client.orderbook.getLevel2Range('MYSO_DBUSDC', 0.1, 100, true));
 
 	// Balance manager contract call
-	mmClient.client.deepbook.balanceManager.depositIntoManager('MANAGER_1', 'DBUSDT', 10000)(tx);
-	mmClient.client.deepbook.balanceManager.withdrawAllFromManager(
+	mmClient.client.orderbook.balanceManager.depositIntoManager('MANAGER_1', 'DBUSDT', 10000)(tx);
+	mmClient.client.orderbook.balanceManager.withdrawAllFromManager(
 		'MANAGER_1',
 		'DBUSDT',
 		mmClient.getActiveAddress(),
@@ -368,7 +368,7 @@ The SDK provides functions for managing pool-specific referrals. Referrals allow
 
 ### Pool referral functions
 
-These functions are available on the `deepbook` contract for managing referrals at the pool level.
+These functions are available on the `orderbook` contract for managing referrals at the pool level.
 
 :::info Multiplier constraints
 
@@ -380,21 +380,21 @@ The referral multiplier must be a multiple of 0.1 (e.g., 0.1, 0.2, 0.3, ...) and
 // Mint a new referral for a specific pool
 // multiplier determines the portion of fees allocated to the referrer
 // Valid values: 0.1, 0.2, 0.3, ... up to 2.0
-client.deepbook.mintReferral('MYSO_DBUSDC', 0.1)(tx);
+client.orderbook.mintReferral('MYSO_DBUSDC', 0.1)(tx);
 
 // Update the multiplier for an existing referral
-client.deepbook.updatePoolReferralMultiplier('MYSO_DBUSDC', referralId, 0.2)(tx);
+client.orderbook.updatePoolReferralMultiplier('MYSO_DBUSDC', referralId, 0.2)(tx);
 
 // Claim accumulated referral rewards (returns base, quote, and DEEP coins)
 const { baseRewards, quoteRewards, deepRewards } = tx.add(
-	client.deepbook.claimPoolReferralRewards('MYSO_DBUSDC', referralId)
+	client.orderbook.claimPoolReferralRewards('MYSO_DBUSDC', referralId)
 );
 
 // Get the current balances for a referral
-client.deepbook.getPoolReferralBalances('MYSO_DBUSDC', referralId)(tx);
+client.orderbook.getPoolReferralBalances('MYSO_DBUSDC', referralId)(tx);
 
 // Get the multiplier for a referral
-client.deepbook.poolReferralMultiplier('MYSO_DBUSDC', referralId)(tx);
+client.orderbook.poolReferralMultiplier('MYSO_DBUSDC', referralId)(tx);
 ```
 
 ### Balance manager referral functions
@@ -403,27 +403,27 @@ These functions are available on the `balanceManager` contract for associating r
 
 ```tsx
 // Generate a trade cap first (needed for setting referrals)
-const tradeCap = tx.add(client.deepbook.balanceManager.mintTradeCap('MANAGER_1'));
+const tradeCap = tx.add(client.orderbook.balanceManager.mintTradeCap('MANAGER_1'));
 
 // Set a referral for a balance manager (pool-specific)
 // Each balance manager can have different referrals for different pools
-client.deepbook.balanceManager.setBalanceManagerReferral('MANAGER_1', referralId, tradeCap)(tx);
+client.orderbook.balanceManager.setBalanceManagerReferral('MANAGER_1', referralId, tradeCap)(tx);
 
 // Unset the referral for a specific pool
-client.deepbook.balanceManager.unsetBalanceManagerReferral('MANAGER_1', 'MYSO_DBUSDC', tradeCap)(tx);
+client.orderbook.balanceManager.unsetBalanceManagerReferral('MANAGER_1', 'MYSO_DBUSDC', tradeCap)(tx);
 
 // Get the referral ID associated with a balance manager for a specific pool
-client.deepbook.balanceManager.getBalanceManagerReferralId('MANAGER_1', 'MYSO_DBUSDC')(tx);
+client.orderbook.balanceManager.getBalanceManagerReferralId('MANAGER_1', 'MYSO_DBUSDC')(tx);
 
 // Get the owner of a referral
-client.deepbook.balanceManager.balanceManagerReferralOwner(referralId)(tx);
+client.orderbook.balanceManager.balanceManagerReferralOwner(referralId)(tx);
 
 // Get the pool ID associated with a referral
-client.deepbook.balanceManager.balanceManagerReferralPoolId(referralId)(tx);
+client.orderbook.balanceManager.balanceManagerReferralPoolId(referralId)(tx);
 ```
 
 ## Related links
 
-<RelatedLink href="https://github.com/MystenLabs/ts-sdks/tree/main/packages/deepbook-v3" label="DeepBookV3 Indexer repository" desc="The DeepBookV3 SDK repository on GitHub." />
-<RelatedLink href="https://www.npmjs.com/package/@mysten/deepbook-v3" label="DeepBookV3 SDK node package" desc="The DeepBookV3 SDK node package on NPM." />
-<RelatedLink href="https://github.com/MystenLabs/deepbookv3" label="DeepBookV3 repository" desc="The DeepBookV3 repository on GitHub." />
+<RelatedLink href="https://github.com/MystenLabs/ts-sdks/tree/main/packages/orderbook-v3" label="OrderbookV3 Indexer repository" desc="The OrderbookV3 SDK repository on GitHub." />
+<RelatedLink href="https://www.npmjs.com/package/@mysten/orderbook-v3" label="OrderbookV3 SDK node package" desc="The OrderbookV3 SDK node package on NPM." />
+<RelatedLink href="https://github.com/MystenLabs/orderbookv3" label="OrderbookV3 repository" desc="The OrderbookV3 repository on GitHub." />

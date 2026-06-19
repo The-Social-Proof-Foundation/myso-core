@@ -146,7 +146,7 @@ const config = {
           editUrl: "https://github.com/the-social-proof-foundation/myso-core/tree/main/docs/docs",
           exclude: [
             "**/snippets/**",
-            "**/standards/deepbook-ref/**",
+            "**/standards/orderbook-ref/**",
             "**/app-examples/ts-sdk-ref/**",
           ],
           admonitions: {

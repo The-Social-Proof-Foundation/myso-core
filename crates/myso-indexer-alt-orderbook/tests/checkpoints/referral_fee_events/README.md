@@ -18,7 +18,7 @@ that has an associated referral ID set via `set_balance_manager_referral()`.
 
 Event fields:
 - `pool_id`: The trading pool where the order executed
-- `referral_id`: The DeepBookPoolReferral object linked to the balance manager
+- `referral_id`: The OrderbookPoolReferral object linked to the balance manager
 - `base_fee`: Fee amount in base token (e.g., MYSO)
 - `quote_fee`: Fee amount in quote token (e.g., USDC)
 - `myso_fee`: Fee amount in MYSO token

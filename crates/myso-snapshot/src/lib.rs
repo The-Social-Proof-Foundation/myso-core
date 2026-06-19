@@ -159,10 +159,10 @@ impl FileMetadata {
     pub fn file_path(&self, dir_path: &Path) -> Path {
         match self.file_type {
             FileType::Object => {
-                dir_path.child(&*format!("{}_{}.obj", self.bucket_num, self.part_num))
+                dir_path.clone().join(&*format!("{}_{}.obj", self.bucket_num, self.part_num))
             }
             FileType::Reference => {
-                dir_path.child(&*format!("{}_{}.ref", self.bucket_num, self.part_num))
+                dir_path.clone().join(&*format!("{}_{}.ref", self.bucket_num, self.part_num))
             }
         }
     }

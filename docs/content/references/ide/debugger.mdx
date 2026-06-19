@@ -235,7 +235,7 @@ You should try to enable source-level debugging uniformly for all packages used 
 
 Start debugging the transaction to collect some more information about Move code executed in the transaction.
 
-![Deepbook PTB](./images/deepbook_ptb.png)
+![Orderbook PTB](./images/orderbook_ptb.png)
 
 The PTB summary reveals that this transaction consists of only one Move call to the function `add_deep_price_point`, in module `pool`, in user package `0xb29d83c26cdd2a64959263abbcfc4a6937f0c9fccaf98580ca56faded65be244`. Ideally, you want to be able to locate the buildable source code for this package and the correct version of the source code. Then, build debugging metadata for this package, which will automatically include information for all dependent packages, enabling uniform source-level debugging. Barring that, you might want to find the correct version of the source code for system packages to at least enable source-level debugging for MySo framework code.
 
@@ -246,33 +246,33 @@ To locate the correct version of the source code for a user package, utilize a M
 Search for the package in a MySo explorer.
 
 <div class="image-scale-50">
-![Package search](./images/deepbook_search.png)
+![Package search](./images/orderbook_search.png)
 </div>
 
-You can see that the the package in question is `deepbook/core`. Look at the detailed information about this package available in the explorer.
+You can see that the the package in question is `orderbook/core`. Look at the detailed information about this package available in the explorer.
 
 <div class="image-scale-70">
-![Package explorer](./images/deepbook_explorer.png)
+![Package explorer](./images/orderbook_explorer.png)
 </div>
 
 You can see that the package description in the explorer includes an MVR link. When you follow that link, you get to the MVR page containing a different kind of description for this package. The MVR description includes a link to the package's source code repository and information that the ID represents the 3rd version of this package.
 
-![Deepbook MVR](./images/deepbook_mvr.png)
+![Orderbook MVR](./images/orderbook_mvr.png)
 
-While the source code repository for `deepbook/core` contains three different packages, the `pool` module in the PTB is only defined in the `deepbook` package.
+While the source code repository for `orderbook/core` contains three different packages, the `pool` module in the PTB is only defined in the `orderbook` package.
 
 Proceed to building a correct version of this package to generate debugging metadata that must accompany the package source code. Assume that all commands are executed in `$ROOT_DIR` unless stated otherwise.
 
 - Clone the repository.
 
     ```bash
-    git clone https://github.com/MystenLabs/deepbookv3.git
+    git clone https://github.com/MystenLabs/orderbookv3.git
     ```
 
-- Go to the `deepbook` package directory.
+- Go to the `orderbook` package directory.
 
     ```bash
-    cd deepbookv3/packages/deepbook
+    cd orderbookv3/packages/orderbook
     ```
 
 - Check the version tags.
@@ -303,11 +303,11 @@ Proceed to building a correct version of this package to generate debugging meta
     myso move build
     ```
 
-    This creates a `build` directory with a `deepbook` subdirectory in it containing all the relevant metadata, which you now copy to the right directory.
+    This creates a `build` directory with a `orderbook` subdirectory in it containing all the relevant metadata, which you now copy to the right directory.
 
 
     ```bash
-    cp -r ~/deepbookv3/packages/deepbook/build/deepbook ~/.replay/0xb29d83c26cdd2a64959263abbcfc4a6937f0c9fccaf98580ca56faded65be244/source
+    cp -r ~/orderbookv3/packages/orderbook/build/orderbook ~/.replay/0xb29d83c26cdd2a64959263abbcfc4a6937f0c9fccaf98580ca56faded65be244/source
     ```
 
 
