@@ -19,5 +19,13 @@ Please use your best judgment to decide if the changes between old and new versi
 Do not make updates to the documentation directly in the .md files. You must update the relevant code comment and then build the framework, which updates the relevant documentation file during the process. To build, run the following command in the `crates/myso-framework` directory:
 
 ```bash
-UPDATE=1 cargo nextest run build_system_packages
+UPDATE=1 cargo test -p myso-framework --test build-system-packages build_system_packages
 ```
+
+If `packages_compiled` was deleted by a failed `UPDATE=1` run, restore from git first:
+
+```bash
+git checkout HEAD -- crates/myso-framework/packages_compiled
+```
+
+Then re-run the command above. The test now builds to a temp directory and only replaces checked-in artifacts after a successful compile.

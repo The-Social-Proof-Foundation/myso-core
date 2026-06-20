@@ -8,6 +8,7 @@ title: Module `messaging::version`
 -  [Struct `Version`](#messaging_version_Version)
 -  [Constants](#@Constants_0)
 -  [Function `init`](#messaging_version_init)
+-  [Function `share_initial`](#messaging_version_share_initial)
 -  [Function `version`](#messaging_version_version)
 -  [Function `package_version`](#messaging_version_package_version)
 -  [Function `validate_version`](#messaging_version_validate_version)
@@ -128,6 +129,31 @@ Current version of the package, starting from version 1
 
 <pre><code><b>fun</b> <a href="../messaging/version.md#messaging_version_init">init</a>(otw: <a href="../messaging/version.md#messaging_version_VERSION">VERSION</a>, ctx: &<b>mut</b> TxContext) {
     package::claim_and_keep(otw, ctx);
+}
+</code></pre>
+
+
+
+</details>
+
+<a name="messaging_version_share_initial"></a>
+
+## Function `share_initial`
+
+Shares the genesis <code><a href="../messaging/version.md#messaging_version_Version">Version</a></code> singleton. Called from <code>messaging::init</code> so Version
+is always created alongside <code>MessagingNamespace</code>.
+
+
+<pre><code><b>public</b>(package) <b>fun</b> <a href="../messaging/version.md#messaging_version_share_initial">share_initial</a>(ctx: &<b>mut</b> <a href="../myso/tx_context.md#myso_tx_context_TxContext">myso::tx_context::TxContext</a>)
+</code></pre>
+
+
+
+<details>
+<summary>Implementation</summary>
+
+
+<pre><code><b>public</b>(package) <b>fun</b> <a href="../messaging/version.md#messaging_version_share_initial">share_initial</a>(ctx: &<b>mut</b> TxContext) {
     transfer::share_object(<a href="../messaging/version.md#messaging_version_Version">Version</a> {
         id: object::new(ctx),
         <a href="../messaging/version.md#messaging_version">version</a>: <a href="../messaging/version.md#messaging_version_PACKAGE_VERSION">PACKAGE_VERSION</a>,

@@ -32,11 +32,21 @@ fn main() {
     }
 
     if !missing.is_empty() {
-        panic!(
-            "myso-framework packages_compiled is missing or has empty files: {:?}.\n\n\
-             Generate them by running:\n  UPDATE=1 cargo test -p myso-framework --test build-system-packages",
-            missing
-        );
+        if env::var_os("MYFRAMEWORK_SKIP_PACKAGES_CHECK").is_some() {
+            eprintln!(
+                "warning: skipping packages_compiled check (MYFRAMEWORK_SKIP_PACKAGES_CHECK); \
+                 missing: {:?}",
+                missing
+            );
+        } else {
+            panic!(
+                "myso-framework packages_compiled is missing or has empty files: {:?}.\n\n\
+                 Restore from git (crates/myso-framework/packages_compiled) or bootstrap with:\n\
+                   MYFRAMEWORK_SKIP_PACKAGES_CHECK=1 UPDATE=1 cargo test -p myso-framework \
+                   --test build-system-packages build_system_packages",
+                missing
+            );
+        }
     }
 
     println!("cargo:rerun-if-changed=packages_compiled");

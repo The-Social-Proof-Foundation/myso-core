@@ -10642,6 +10642,12 @@ derivation_key
 leave
 	public(package) fun
 	0xe110::group_leaver
+revoke_permissions_admin
+	public(package) fun
+	0xe110::group_leaver
+revoke_extension_permissions_admin
+	public(package) fun
+	0xe110::group_leaver
 MetadataKey
 	public struct
 	0xe110::metadata
@@ -10786,6 +10792,9 @@ Version
 init
 	fun
 	0xe110::version
+share_initial
+	public(package) fun
+	0xe110::version
 version
 	public fun
 	0xe110::version
@@ -10852,6 +10861,12 @@ create_group
 create_and_share_group
 	entry fun
 	0xe110::messaging
+create_agent_group
+	public fun
+	0xe110::messaging
+create_agent_and_share_group
+	entry fun
+	0xe110::messaging
 rotate_encryption_key
 	public fun
 	0xe110::messaging
@@ -10888,6 +10903,9 @@ assert_group_not_archived
 send_paid_message_digest
 	public fun
 	0xe110::messaging
+send_agent_paid_message_digest
+	public fun
+	0xe110::messaging
 reply_to_paid_message_claim_coin
 	public fun
 	0xe110::messaging
@@ -10898,6 +10916,36 @@ refund_paid_escrow
 	public fun
 	0xe110::messaging
 grant_all_messaging_permissions
+	fun
+	0xe110::messaging
+grant_agent_messaging_permissions
+	fun
+	0xe110::messaging
+grant_principal_oversight
+	fun
+	0xe110::messaging
+grant_human_peer_permissions
+	fun
+	0xe110::messaging
+resolve_messaging_actor
+	fun
+	0xe110::messaging
+attach_agent_creator_metadata
+	fun
+	0xe110::messaging
+grant_agent_initial_members
+	fun
+	0xe110::messaging
+assert_agent_peers_not_blocked
+	fun
+	0xe110::messaging
+address_to_metadata_string
+	fun
+	0xe110::messaging
+id_to_metadata_string
+	fun
+	0xe110::messaging
+u64_to_metadata_string
 	fun
 	0xe110::messaging
 assert_peers_not_blocked
@@ -10920,6 +10968,9 @@ validate_identity
 	0xe110::mydata_policies
 mydata_approve_reader
 	entry fun
+	0xe110::mydata_policies
+mydata_approve_reader_with_oversight
+	public fun
 	0xe110::mydata_policies
 Encryption
 	public struct

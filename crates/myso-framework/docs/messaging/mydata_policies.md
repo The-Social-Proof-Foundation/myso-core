@@ -39,6 +39,7 @@ Apps can implement custom <code>mydata_approve</code> with different logic:
 -  [Function `mydata_approve_reader`](#messaging_mydata_policies_mydata_approve_reader)
     -  [Parameters](#@Parameters_5)
     -  [Aborts](#@Aborts_6)
+-  [Function `mydata_approve_reader_with_oversight`](#messaging_mydata_policies_mydata_approve_reader_with_oversight)
 
 
 <pre><code><b>use</b> <a href="../messaging/encryption_history.md#messaging_encryption_history">messaging::encryption_history</a>;
@@ -51,12 +52,18 @@ Apps can implement custom <code>mydata_approve</code> with different logic:
 <b>use</b> <a href="../messaging/paid_escrow_settlement.md#messaging_paid_escrow_settlement">messaging::paid_escrow_settlement</a>;
 <b>use</b> <a href="../messaging/paid_messaging_policy.md#messaging_paid_messaging_policy">messaging::paid_messaging_policy</a>;
 <b>use</b> <a href="../messaging/version.md#messaging_version">messaging::version</a>;
+<b>use</b> <a href="../mydata/bf_hmac_encryption.md#mydata_bf_hmac_encryption">mydata::bf_hmac_encryption</a>;
+<b>use</b> <a href="../mydata/gf256.md#mydata_gf256">mydata::gf256</a>;
+<b>use</b> <a href="../mydata/hmac256ctr.md#mydata_hmac256ctr">mydata::hmac256ctr</a>;
+<b>use</b> <a href="../mydata/kdf.md#mydata_kdf">mydata::kdf</a>;
+<b>use</b> <a href="../mydata/polynomial.md#mydata_polynomial">mydata::polynomial</a>;
 <b>use</b> <a href="../myso/accumulator.md#myso_accumulator">myso::accumulator</a>;
 <b>use</b> <a href="../myso/accumulator_settlement.md#myso_accumulator_settlement">myso::accumulator_settlement</a>;
 <b>use</b> <a href="../myso/address.md#myso_address">myso::address</a>;
 <b>use</b> <a href="../myso/bag.md#myso_bag">myso::bag</a>;
 <b>use</b> <a href="../myso/balance.md#myso_balance">myso::balance</a>;
 <b>use</b> <a href="../myso/bcs.md#myso_bcs">myso::bcs</a>;
+<b>use</b> <a href="../myso/bls12381.md#myso_bls12381">myso::bls12381</a>;
 <b>use</b> <a href="../myso/bootstrap_key.md#myso_bootstrap_key">myso::bootstrap_key</a>;
 <b>use</b> <a href="../myso/clock.md#myso_clock">myso::clock</a>;
 <b>use</b> <a href="../myso/coin.md#myso_coin">myso::coin</a>;
@@ -67,8 +74,10 @@ Apps can implement custom <code>mydata_approve</code> with different logic:
 <b>use</b> <a href="../myso/dynamic_object_field.md#myso_dynamic_object_field">myso::dynamic_object_field</a>;
 <b>use</b> <a href="../myso/event.md#myso_event">myso::event</a>;
 <b>use</b> <a href="../myso/funds_accumulator.md#myso_funds_accumulator">myso::funds_accumulator</a>;
+<b>use</b> <a href="../myso/group_ops.md#myso_group_ops">myso::group_ops</a>;
 <b>use</b> <a href="../myso/hash.md#myso_hash">myso::hash</a>;
 <b>use</b> <a href="../myso/hex.md#myso_hex">myso::hex</a>;
+<b>use</b> <a href="../myso/hmac.md#myso_hmac">myso::hmac</a>;
 <b>use</b> <a href="../myso/myso.md#myso_myso">myso::myso</a>;
 <b>use</b> <a href="../myso/object.md#myso_object">myso::object</a>;
 <b>use</b> <a href="../myso/package.md#myso_package">myso::package</a>;
@@ -86,16 +95,23 @@ Apps can implement custom <code>mydata_approve</code> with different logic:
 <b>use</b> <a href="../myso/vec_map.md#myso_vec_map">myso::vec_map</a>;
 <b>use</b> <a href="../myso/vec_set.md#myso_vec_set">myso::vec_set</a>;
 <b>use</b> <a href="../social_contracts/block_list.md#social_contracts_block_list">social_contracts::block_list</a>;
+<b>use</b> <a href="../social_contracts/governance.md#social_contracts_governance">social_contracts::governance</a>;
+<b>use</b> <a href="../social_contracts/memory.md#social_contracts_memory">social_contracts::memory</a>;
+<b>use</b> <a href="../social_contracts/platform.md#social_contracts_platform">social_contracts::platform</a>;
+<b>use</b> <a href="../social_contracts/profile.md#social_contracts_profile">social_contracts::profile</a>;
 <b>use</b> <a href="../social_contracts/social_graph.md#social_contracts_social_graph">social_contracts::social_graph</a>;
+<b>use</b> <a href="../social_contracts/subscription.md#social_contracts_subscription">social_contracts::subscription</a>;
 <b>use</b> <a href="../social_contracts/upgrade.md#social_contracts_upgrade">social_contracts::upgrade</a>;
 <b>use</b> <a href="../std/address.md#std_address">std::address</a>;
 <b>use</b> <a href="../std/ascii.md#std_ascii">std::ascii</a>;
 <b>use</b> <a href="../std/bcs.md#std_bcs">std::bcs</a>;
+<b>use</b> <a href="../std/hash.md#std_hash">std::hash</a>;
 <b>use</b> <a href="../std/internal.md#std_internal">std::internal</a>;
 <b>use</b> <a href="../std/option.md#std_option">std::option</a>;
 <b>use</b> <a href="../std/string.md#std_string">std::string</a>;
 <b>use</b> <a href="../std/type_name.md#std_type_name">std::type_name</a>;
 <b>use</b> <a href="../std/u128.md#std_u128">std::u128</a>;
+<b>use</b> <a href="../std/u64.md#std_u64">std::u64</a>;
 <b>use</b> <a href="../std/vector.md#std_vector">std::vector</a>;
 </code></pre>
 
@@ -267,6 +283,52 @@ Default mydata_approve that checks <code>MessagingReader</code> permission.
     <a href="../messaging/version.md#messaging_version">version</a>.validate_version();
     <a href="../messaging/mydata_policies.md#messaging_mydata_policies_validate_identity">validate_identity</a>(group, <a href="../messaging/encryption_history.md#messaging_encryption_history">encryption_history</a>, id);
     <b>assert</b>!(group.has_permission&lt;Messaging, MessagingReader&gt;(ctx.sender()), <a href="../messaging/mydata_policies.md#messaging_mydata_policies_ENotPermitted">ENotPermitted</a>);
+}
+</code></pre>
+
+
+
+</details>
+
+<a name="messaging_mydata_policies_mydata_approve_reader_with_oversight"></a>
+
+## Function `mydata_approve_reader_with_oversight`
+
+Principal oversight fallback: allows the human owner to decrypt when they hold
+no direct <code>MessagingReader</code> but a registered sub-agent on the same
+[<code>MemoryAccount</code>] does.
+
+
+<pre><code><b>public</b> <b>fun</b> <a href="../messaging/mydata_policies.md#messaging_mydata_policies_mydata_approve_reader_with_oversight">mydata_approve_reader_with_oversight</a>(id: vector&lt;u8&gt;, <a href="../messaging/version.md#messaging_version">version</a>: &<a href="../messaging/version.md#messaging_version_Version">messaging::version::Version</a>, group: &<a href="../myso/permissioned_group.md#myso_permissioned_group_PermissionedGroup">myso::permissioned_group::PermissionedGroup</a>&lt;<a href="../messaging/messaging.md#messaging_messaging_Messaging">messaging::messaging::Messaging</a>&gt;, <a href="../messaging/encryption_history.md#messaging_encryption_history">encryption_history</a>: &<a href="../messaging/encryption_history.md#messaging_encryption_history_EncryptionHistory">messaging::encryption_history::EncryptionHistory</a>, memory_account: &<a href="../social_contracts/memory.md#social_contracts_memory_MemoryAccount">social_contracts::memory::MemoryAccount</a>, agent_derived_address: <b>address</b>, ctx: &<a href="../myso/tx_context.md#myso_tx_context_TxContext">myso::tx_context::TxContext</a>)
+</code></pre>
+
+
+
+<details>
+<summary>Implementation</summary>
+
+
+<pre><code><b>public</b> <b>fun</b> <a href="../messaging/mydata_policies.md#messaging_mydata_policies_mydata_approve_reader_with_oversight">mydata_approve_reader_with_oversight</a>(
+    id: vector&lt;u8&gt;,
+    <a href="../messaging/version.md#messaging_version">version</a>: &Version,
+    group: &PermissionedGroup&lt;Messaging&gt;,
+    <a href="../messaging/encryption_history.md#messaging_encryption_history">encryption_history</a>: &EncryptionHistory,
+    memory_account: &MemoryAccount,
+    agent_derived_address: <b>address</b>,
+    ctx: &TxContext,
+) {
+    <a href="../messaging/version.md#messaging_version">version</a>.validate_version();
+    <a href="../messaging/mydata_policies.md#messaging_mydata_policies_validate_identity">validate_identity</a>(group, <a href="../messaging/encryption_history.md#messaging_encryption_history">encryption_history</a>, id);
+    <b>let</b> sender = ctx.sender();
+    <b>if</b> (group.has_permission&lt;Messaging, MessagingReader&gt;(sender)) {
+        <b>return</b>
+    };
+    <b>assert</b>!(memory::owner(memory_account) == sender, <a href="../messaging/mydata_policies.md#messaging_mydata_policies_ENotPermitted">ENotPermitted</a>);
+    <b>assert</b>!(memory::is_registered_agent(memory_account, agent_derived_address), <a href="../messaging/mydata_policies.md#messaging_mydata_policies_ENotPermitted">ENotPermitted</a>);
+    <b>assert</b>!(
+        group.has_permission&lt;Messaging, MessagingReader&gt;(agent_derived_address),
+        <a href="../messaging/mydata_policies.md#messaging_mydata_policies_ENotPermitted">ENotPermitted</a>,
+    );
 }
 </code></pre>
 

@@ -20,16 +20,10 @@ const PUBLISHED_API_FILE: &str = "published_api.txt";
 
 #[tokio::test]
 async fn build_system_packages() {
-    let tempdir = tempfile::tempdir().unwrap();
-    let out_dir = if std::env::var_os("UPDATE").is_some() {
-        let crate_root = Path::new(CRATE_ROOT);
-        let _ = std::fs::remove_dir_all(crate_root.join(COMPILED_PACKAGES_DIR));
-        let _ = std::fs::remove_dir_all(crate_root.join(DOCS_DIR));
-        let _ = std::fs::remove_file(crate_root.join(PUBLISHED_API_FILE));
-        crate_root
-    } else {
-        tempdir.path()
-    };
+    let updating = std::env::var_os("UPDATE").is_some();
+    let crate_root = Path::new(CRATE_ROOT);
+    let build_dir = tempfile::tempdir().unwrap();
+    let out_dir = build_dir.path();
 
     std::fs::create_dir_all(out_dir.join(COMPILED_PACKAGES_DIR)).unwrap();
     std::fs::create_dir_all(out_dir.join(DOCS_DIR)).unwrap();
@@ -110,7 +104,36 @@ async fn build_system_packages() {
         out_dir,
     )
     .await;
-    check_diff(Path::new(CRATE_ROOT), out_dir)
+
+    if updating {
+        replace_checked_in_artifacts(crate_root, out_dir);
+    } else {
+        check_diff(crate_root, out_dir);
+    }
+}
+
+fn replace_checked_in_artifacts(crate_root: &Path, built: &Path) {
+    let _ = fs::remove_dir_all(crate_root.join(COMPILED_PACKAGES_DIR));
+    let _ = fs::remove_dir_all(crate_root.join(DOCS_DIR));
+    let _ = fs::remove_file(crate_root.join(PUBLISHED_API_FILE));
+
+    fs_extra::dir::copy(
+        built.join(COMPILED_PACKAGES_DIR),
+        crate_root.join(COMPILED_PACKAGES_DIR),
+        &CopyOptions::new().content_only(true),
+    )
+    .unwrap();
+    fs_extra::dir::copy(
+        built.join(DOCS_DIR),
+        crate_root.join(DOCS_DIR),
+        &CopyOptions::new().content_only(true),
+    )
+    .unwrap();
+    fs::copy(
+        built.join(PUBLISHED_API_FILE),
+        crate_root.join(PUBLISHED_API_FILE),
+    )
+    .unwrap();
 }
 
 // Verify that checked-in values are the same as the generated ones
@@ -125,7 +148,8 @@ fn check_diff(checked_in: &Path, built: &Path) {
         if !output.status.success() {
             let header = "Generated and checked-in myso-framework packages and/or docs do not match.\n\
                  Re-run with `UPDATE=1` to update checked-in packages and docs. e.g.\n\n\
-                 UPDATE=1 cargo test -p myso-framework --test build-system-packages";
+                 MYFRAMEWORK_SKIP_PACKAGES_CHECK=1 UPDATE=1 cargo test -p myso-framework \
+                 --test build-system-packages build_system_packages";
 
             panic!(
                 "{header}\n\n{}\n\n{}",

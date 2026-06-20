@@ -23,6 +23,7 @@ use myso::permissioned_group::PermissionedGroup;
 use messaging::messaging::{MessagingReader, Messaging};
 use messaging::encryption_history::EncryptionHistory;
 use messaging::version::Version;
+use social_contracts::memory::{Self, MemoryAccount};
 use myso::bcs;
 
 // === Error Codes ===
@@ -111,4 +112,30 @@ entry fun mydata_approve_reader(
     version.validate_version();
     validate_identity(group, encryption_history, id);
     assert!(group.has_permission<Messaging, MessagingReader>(ctx.sender()), ENotPermitted);
+}
+
+/// Principal oversight fallback: allows the human owner to decrypt when they hold
+/// no direct `MessagingReader` but a registered sub-agent on the same
+/// [`MemoryAccount`] does.
+public fun mydata_approve_reader_with_oversight(
+    id: vector<u8>,
+    version: &Version,
+    group: &PermissionedGroup<Messaging>,
+    encryption_history: &EncryptionHistory,
+    memory_account: &MemoryAccount,
+    agent_derived_address: address,
+    ctx: &TxContext,
+) {
+    version.validate_version();
+    validate_identity(group, encryption_history, id);
+    let sender = ctx.sender();
+    if (group.has_permission<Messaging, MessagingReader>(sender)) {
+        return
+    };
+    assert!(memory::owner(memory_account) == sender, ENotPermitted);
+    assert!(memory::is_registered_agent(memory_account, agent_derived_address), ENotPermitted);
+    assert!(
+        group.has_permission<Messaging, MessagingReader>(agent_derived_address),
+        ENotPermitted,
+    );
 }
