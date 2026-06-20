@@ -3,6 +3,7 @@
 
 mod governance;
 mod insurance;
+pub mod ai_credit;
 pub mod memory;
 mod messaging;
 mod mydata;
@@ -1366,6 +1367,40 @@ impl Reader {
         agent_object_id: &str,
     ) -> Result<Option<SubAgentRow>, crate::error::SocialError> {
         memory::get_sub_agent_by_object_id(&self.db, agent_object_id).await
+    }
+
+    pub async fn get_ai_credit_balance_by_owner(
+        &self,
+        owner: &str,
+    ) -> Result<
+        Option<myso_indexer_alt_social_schema::models::AiCreditBalanceRow>,
+        crate::error::SocialError,
+    > {
+        ai_credit::get_ai_credit_balance_by_owner(&self.db, owner).await
+    }
+
+    pub async fn list_ai_credit_agent_budgets(
+        &self,
+        balance_id: &str,
+    ) -> Result<Vec<myso_indexer_alt_social_schema::models::AiCreditAgentBudgetRow>, crate::error::SocialError>
+    {
+        ai_credit::list_agent_budgets(&self.db, balance_id).await
+    }
+
+    pub async fn list_ai_credit_usage_lines(
+        &self,
+        balance_id: &str,
+        limit: i64,
+    ) -> Result<Vec<myso_indexer_alt_social_schema::models::AiCreditUsageLineRow>, crate::error::SocialError>
+    {
+        ai_credit::list_usage_lines(&self.db, balance_id, limit).await
+    }
+
+    pub async fn ingest_ai_credit_usage_line(
+        &self,
+        req: ai_credit::IngestUsageLineRequest,
+    ) -> Result<(), crate::error::SocialError> {
+        ai_credit::ingest_usage_line(&self.db, req).await
     }
 
     pub async fn list_sub_agent_children(

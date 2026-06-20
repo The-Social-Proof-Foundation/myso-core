@@ -4,7 +4,7 @@
 mod handlers;
 
 use axum::http::Method;
-use axum::routing::get;
+use axum::routing::{get, post};
 use axum::Router;
 use myso_indexer_alt_metrics::{MetricsArgs, MetricsService};
 use myso_pg_db::DbArgs;
@@ -409,11 +409,20 @@ fn make_router(state: Arc<AppState>) -> Router {
         .route("/profiles/:address/posts", get(get_profile_posts))
         .route("/profiles/:address/sub-agents", get(list_profile_sub_agents))
         .route("/profiles/:address/memory-account", get(get_profile_memory_account))
+        .route("/profiles/:address/ai-credit", get(get_profile_ai_credit_balance))
         .route("/sub-agents/:derivedAddress", get(get_sub_agent))
         .route("/sub-agents/by-object/:agentObjectId", get(get_sub_agent_by_object_id))
         .route(
             "/sub-agents/:agentObjectId/children",
             get(list_sub_agent_children),
+        )
+        .route(
+            "/internal/ai-credit/usage-lines",
+            post(ingest_usage_line_internal),
+        )
+        .route(
+            "/ai-credit/:balance_id/usage-history",
+            get(list_ai_credit_usage_history),
         )
         .route("/profiles/:address/events", get(get_profile_events))
         .route(

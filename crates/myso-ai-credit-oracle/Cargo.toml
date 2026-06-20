@@ -1,0 +1,34 @@
+[package]
+name = "myso-ai-credit-oracle"
+version = "0.1.0"
+authors = ["The Social Proof Foundation <brandon@mysocial.network>"]
+license = "Apache-2.0"
+publish = false
+edition = "2021"
+
+[dependencies]
+anyhow.workspace = true
+axum = { version = "0.7", features = ["json"] }
+bcs.workspace = true
+chrono = { workspace = true, features = ["serde"] }
+clap = { workspace = true, features = ["env"] }
+ed25519-dalek = { version = "2", features = ["rand_core"] }
+hex = "0.4"
+myso-types.workspace = true
+myso-sdk.workspace = true
+myso-json-rpc-types.workspace = true
+shared-crypto.workspace = true
+fastcrypto.workspace = true
+rand = "0.8"
+serde = { workspace = true, features = ["derive"] }
+serde_json.workspace = true
+tokio.workspace = true
+toml = "0.8"
+reqwest = { version = "0.12", default-features = false, features = ["json", "rustls-tls"] }
+tracing.workspace = true
+tracing-subscriber.workspace = true
+uuid = { version = "1", features = ["v4"] }
+
+[[bin]]
+name = "myso-ai-credit-oracle"
+path = "src/main.rs"

@@ -17,6 +17,7 @@ use crate::api::scalars::big_int::BigInt;
 use crate::api::scalars::id::Id;
 use crate::api::scalars::myso_address::MySoAddress;
 use crate::api::types::blocked::{BlockedPlatformSummary, BlockedProfileSummary};
+use crate::api::types::ai_credit::AiCreditBalance;
 use crate::api::types::memory::{MemoryAccount, SubAgent};
 use crate::api::types::mydata::MyDataRecord;
 use crate::api::types::platform::{PlatformMembershipPage, PlatformMembershipSummary};
@@ -702,6 +703,19 @@ impl Profile {
             .ok()
             .flatten()
             .map(MemoryAccount::from_row)
+    }
+
+    /// AI credit balance for this profile owner (1 MYSO = 1 credit).
+    async fn ai_credit_balance(&self, ctx: &Context<'_>) -> Option<AiCreditBalance> {
+        let reader_opt = ctx
+            .data_opt::<std::sync::Arc<Option<myso_indexer_alt_social_reader::SocialPgReader>>>()?;
+        let reader = reader_opt.as_ref().as_ref()?;
+        reader
+            .get_ai_credit_balance_by_owner(&self.inner.owner_address)
+            .await
+            .ok()
+            .flatten()
+            .map(AiCreditBalance::from_row)
     }
 
     /// Sub-agents registered under this profile's memory account.

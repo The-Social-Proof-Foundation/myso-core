@@ -1016,6 +1016,69 @@ pub struct BcsAgentMemoryVaultCreatedEvent {
     memory_account_id: AccountAddress,
 }
 
+#[derive(Debug, Deserialize)]
+struct BcsAiCreditBalanceCreatedEvent {
+    balance_id: AccountAddress,
+    memory_account_id: AccountAddress,
+    principal_owner: AccountAddress,
+    profile_id: AccountAddress,
+}
+
+#[derive(Debug, Deserialize)]
+struct BcsAiCreditDepositedEvent {
+    balance_id: AccountAddress,
+    amount_mist: u64,
+    new_balance_mist: u64,
+    credits: u64,
+}
+
+#[derive(Debug, Deserialize)]
+struct BcsAiCreditWithdrawnEvent {
+    balance_id: AccountAddress,
+    amount_mist: u64,
+    new_balance_mist: u64,
+}
+
+#[derive(Debug, Deserialize)]
+struct BcsAiCreditAccountCapsUpdatedEvent {
+    balance_id: AccountAddress,
+    daily_cap_mist: Option<u64>,
+    monthly_cap_mist: Option<u64>,
+}
+
+#[derive(Debug, Deserialize)]
+struct BcsAiCreditAgentBudgetUpdatedEvent {
+    balance_id: AccountAddress,
+    agent_object_id: AccountAddress,
+    budget_mist: Option<u64>,
+    daily_cap_mist: Option<u64>,
+    monthly_cap_mist: Option<u64>,
+    require_approval_above_mist: Option<u64>,
+}
+
+#[derive(Debug, Deserialize)]
+struct BcsAiCreditAgentBudgetDisabledEvent {
+    balance_id: AccountAddress,
+    agent_object_id: AccountAddress,
+}
+
+#[derive(Debug, Deserialize)]
+struct BcsAiCreditUsageSettledEvent {
+    balance_id: AccountAddress,
+    agent_object_id: AccountAddress,
+    receipt_id: u128,
+    amount_mist: u64,
+    usage_kind: u8,
+    settlement_nonce: u64,
+    remaining_mist: u64,
+    credits_remaining: u64,
+}
+
+#[derive(Debug, Deserialize)]
+struct BcsAiCreditBalanceIdEvent {
+    balance_id: AccountAddress,
+}
+
 /// Move `ascii::String` BCS (`bytes` field).
 #[derive(Debug, Clone, Deserialize, Serialize)]
 pub struct BcsMoveAsciiString {
@@ -2073,6 +2136,7 @@ fn parse_event_contents_inner(
         "subscription" | "profile_subscription" => parse_subscription_event(event_name, contents),
         "upgrade" => parse_upgrade_event(event_name, contents),
         "memory" => parse_memory_event(event_name, contents),
+        "ai_credit" => parse_ai_credit_event(event_name, contents),
         "paid_messaging_policy" => parse_paid_messaging_policy_event(event_name, contents),
         _ => Ok(None),
     };
@@ -2962,6 +3026,94 @@ fn parse_memory_event(
                 "vault_id": addr_to_string(&ev.vault_id),
                 "agent_object_id": addr_to_string(&ev.agent_object_id),
                 "memory_account_id": addr_to_string(&ev.memory_account_id),
+            })))
+        }
+        _ => Ok(None),
+    }
+}
+
+fn parse_ai_credit_event(
+    event_name: &str,
+    contents: &[u8],
+) -> Result<Option<serde_json::Value>, EventParseError> {
+    match event_name {
+        "AiCreditBalanceCreated" => {
+            let ev = bcs::from_bytes::<BcsAiCreditBalanceCreatedEvent>(contents)
+                .map_err(|e| bcs_parse_err(e, contents))?;
+            Ok(Some(serde_json::json!({
+                "balance_id": addr_to_string(&ev.balance_id),
+                "memory_account_id": addr_to_string(&ev.memory_account_id),
+                "principal_owner": addr_to_string(&ev.principal_owner),
+                "profile_id": addr_to_string(&ev.profile_id),
+            })))
+        }
+        "AiCreditDeposited" => {
+            let ev = bcs::from_bytes::<BcsAiCreditDepositedEvent>(contents)
+                .map_err(|e| bcs_parse_err(e, contents))?;
+            Ok(Some(serde_json::json!({
+                "balance_id": addr_to_string(&ev.balance_id),
+                "amount_mist": ev.amount_mist,
+                "new_balance_mist": ev.new_balance_mist,
+                "credits": ev.credits,
+            })))
+        }
+        "AiCreditWithdrawn" => {
+            let ev = bcs::from_bytes::<BcsAiCreditWithdrawnEvent>(contents)
+                .map_err(|e| bcs_parse_err(e, contents))?;
+            Ok(Some(serde_json::json!({
+                "balance_id": addr_to_string(&ev.balance_id),
+                "amount_mist": ev.amount_mist,
+                "new_balance_mist": ev.new_balance_mist,
+            })))
+        }
+        "AiCreditAccountCapsUpdated" => {
+            let ev = bcs::from_bytes::<BcsAiCreditAccountCapsUpdatedEvent>(contents)
+                .map_err(|e| bcs_parse_err(e, contents))?;
+            Ok(Some(serde_json::json!({
+                "balance_id": addr_to_string(&ev.balance_id),
+                "daily_cap_mist": ev.daily_cap_mist,
+                "monthly_cap_mist": ev.monthly_cap_mist,
+            })))
+        }
+        "AiCreditAgentBudgetUpdated" => {
+            let ev = bcs::from_bytes::<BcsAiCreditAgentBudgetUpdatedEvent>(contents)
+                .map_err(|e| bcs_parse_err(e, contents))?;
+            Ok(Some(serde_json::json!({
+                "balance_id": addr_to_string(&ev.balance_id),
+                "agent_object_id": addr_to_string(&ev.agent_object_id),
+                "budget_mist": ev.budget_mist,
+                "daily_cap_mist": ev.daily_cap_mist,
+                "monthly_cap_mist": ev.monthly_cap_mist,
+                "require_approval_above_mist": ev.require_approval_above_mist,
+            })))
+        }
+        "AiCreditAgentBudgetDisabled" => {
+            let ev = bcs::from_bytes::<BcsAiCreditAgentBudgetDisabledEvent>(contents)
+                .map_err(|e| bcs_parse_err(e, contents))?;
+            Ok(Some(serde_json::json!({
+                "balance_id": addr_to_string(&ev.balance_id),
+                "agent_object_id": addr_to_string(&ev.agent_object_id),
+            })))
+        }
+        "AiCreditUsageSettled" => {
+            let ev = bcs::from_bytes::<BcsAiCreditUsageSettledEvent>(contents)
+                .map_err(|e| bcs_parse_err(e, contents))?;
+            Ok(Some(serde_json::json!({
+                "balance_id": addr_to_string(&ev.balance_id),
+                "agent_object_id": addr_to_string(&ev.agent_object_id),
+                "receipt_id": ev.receipt_id,
+                "amount_mist": ev.amount_mist,
+                "usage_kind": ev.usage_kind,
+                "settlement_nonce": ev.settlement_nonce,
+                "remaining_mist": ev.remaining_mist,
+                "credits_remaining": ev.credits_remaining,
+            })))
+        }
+        "AiCreditBalanceDepleted" | "AiCreditBalancePaused" | "AiCreditBalanceReactivated" => {
+            let ev = bcs::from_bytes::<BcsAiCreditBalanceIdEvent>(contents)
+                .map_err(|e| bcs_parse_err(e, contents))?;
+            Ok(Some(serde_json::json!({
+                "balance_id": addr_to_string(&ev.balance_id),
             })))
         }
         _ => Ok(None),

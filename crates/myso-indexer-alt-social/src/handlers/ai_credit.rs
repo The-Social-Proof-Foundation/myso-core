@@ -1,0 +1,426 @@
+// Copyright (c) The Social Proof Foundation, LLC.
+// SPDX-License-Identifier: Apache-2.0
+
+use chrono::Utc;
+
+use super::SocialEventRow;
+use myso_indexer_alt_social_schema::models::{
+    NewAiCreditAgentBudget, NewAiCreditBalance, NewAiCreditEvent,
+};
+
+pub(crate) fn json_to_i64(v: &serde_json::Value) -> i64 {
+    v.as_i64()
+        .or_else(|| v.as_u64().and_then(|u| u.try_into().ok()))
+        .unwrap_or(0)
+}
+
+fn json_opt_i64(v: &serde_json::Value) -> Option<i64> {
+    v.as_i64()
+        .or_else(|| v.as_u64().and_then(|u| u.try_into().ok()))
+}
+
+fn json_str(data: &serde_json::Value, key: &str) -> Option<String> {
+    data.get(key).and_then(|v| v.as_str()).map(String::from)
+}
+
+fn json_opt_addr(data: &serde_json::Value, key: &str) -> Option<String> {
+    data.get(key).and_then(|v| {
+        if v.is_null() {
+            None
+        } else {
+            v.as_str().map(String::from)
+        }
+    })
+}
+
+pub fn handle_ai_credit_event(
+    event_name: &str,
+    data: &serde_json::Value,
+    event_id: &str,
+) -> Option<Vec<SocialEventRow>> {
+    let transaction_id = event_id.split(':').next().unwrap_or(event_id).to_string();
+    let now = Utc::now();
+    match event_name {
+        "AiCreditBalanceCreated" => {
+            let balance_id = json_str(data, "balance_id")?;
+            let memory_account_id = json_str(data, "memory_account_id")?;
+            let principal_owner = json_str(data, "principal_owner")?;
+            let profile_id = json_str(data, "profile_id")?;
+            Some(vec![
+                SocialEventRow::AiCreditBalanceUpsert(NewAiCreditBalance {
+                    balance_id: balance_id.clone(),
+                    memory_account_id: memory_account_id.clone(),
+                    principal_owner: principal_owner.clone(),
+                    profile_id: profile_id.clone(),
+                    balance_mist: 0,
+                    reserved_mist: 0,
+                    spent_total_mist: 0,
+                    daily_cap_mist: None,
+                    monthly_cap_mist: None,
+                    spent_day_mist: 0,
+                    spent_month_mist: 0,
+                    settlement_nonce: 0,
+                    active: true,
+                    updated_at_ms: now.timestamp_millis(),
+                    event_id: event_id.to_string(),
+                    transaction_id: transaction_id.clone(),
+                    time: now,
+                }),
+                SocialEventRow::AiCreditEvent(NewAiCreditEvent {
+                    event_type: event_name.to_string(),
+                    balance_id: Some(balance_id),
+                    memory_account_id: Some(memory_account_id),
+                    principal_owner: Some(principal_owner),
+                    profile_id: Some(profile_id),
+                    agent_object_id: None,
+                    amount_mist: None,
+                    new_balance_mist: Some(0),
+                    credits: Some(0),
+                    receipt_id: None,
+                    usage_kind: None,
+                    settlement_nonce: None,
+                    remaining_mist: None,
+                    credits_remaining: Some(0),
+                    daily_cap_mist: None,
+                    monthly_cap_mist: None,
+                    budget_mist: None,
+                    require_approval_above_mist: None,
+                    event_id: event_id.to_string(),
+                    transaction_id,
+                    time: now,
+                }),
+            ])
+        }
+        "AiCreditDeposited" => {
+            let balance_id = json_str(data, "balance_id")?;
+            let amount_mist = json_to_i64(data.get("amount_mist").unwrap_or(&serde_json::Value::Null));
+            let new_balance_mist =
+                json_to_i64(data.get("new_balance_mist").unwrap_or(&serde_json::Value::Null));
+            let credits = json_to_i64(data.get("credits").unwrap_or(&serde_json::Value::Null));
+            Some(vec![
+                SocialEventRow::AiCreditBalanceBalanceUpdate {
+                    balance_id: balance_id.clone(),
+                    balance_mist: new_balance_mist,
+                    updated_at_ms: now.timestamp_millis(),
+                    event_id: event_id.to_string(),
+                    transaction_id: transaction_id.clone(),
+                },
+                SocialEventRow::AiCreditEvent(NewAiCreditEvent {
+                    event_type: event_name.to_string(),
+                    balance_id: Some(balance_id),
+                    memory_account_id: None,
+                    principal_owner: None,
+                    profile_id: None,
+                    agent_object_id: None,
+                    amount_mist: Some(amount_mist),
+                    new_balance_mist: Some(new_balance_mist),
+                    credits: Some(credits),
+                    receipt_id: None,
+                    usage_kind: None,
+                    settlement_nonce: None,
+                    remaining_mist: Some(new_balance_mist),
+                    credits_remaining: Some(credits),
+                    daily_cap_mist: None,
+                    monthly_cap_mist: None,
+                    budget_mist: None,
+                    require_approval_above_mist: None,
+                    event_id: event_id.to_string(),
+                    transaction_id,
+                    time: now,
+                }),
+            ])
+        }
+        "AiCreditWithdrawn" => {
+            let balance_id = json_str(data, "balance_id")?;
+            let amount_mist = json_to_i64(data.get("amount_mist").unwrap_or(&serde_json::Value::Null));
+            let new_balance_mist =
+                json_to_i64(data.get("new_balance_mist").unwrap_or(&serde_json::Value::Null));
+            Some(vec![
+                SocialEventRow::AiCreditBalanceBalanceUpdate {
+                    balance_id: balance_id.clone(),
+                    balance_mist: new_balance_mist,
+                    updated_at_ms: now.timestamp_millis(),
+                    event_id: event_id.to_string(),
+                    transaction_id: transaction_id.clone(),
+                },
+                SocialEventRow::AiCreditEvent(NewAiCreditEvent {
+                    event_type: event_name.to_string(),
+                    balance_id: Some(balance_id),
+                    memory_account_id: None,
+                    principal_owner: None,
+                    profile_id: None,
+                    agent_object_id: None,
+                    amount_mist: Some(amount_mist),
+                    new_balance_mist: Some(new_balance_mist),
+                    credits: None,
+                    receipt_id: None,
+                    usage_kind: None,
+                    settlement_nonce: None,
+                    remaining_mist: Some(new_balance_mist),
+                    credits_remaining: None,
+                    daily_cap_mist: None,
+                    monthly_cap_mist: None,
+                    budget_mist: None,
+                    require_approval_above_mist: None,
+                    event_id: event_id.to_string(),
+                    transaction_id,
+                    time: now,
+                }),
+            ])
+        }
+        "AiCreditAccountCapsUpdated" => {
+            let balance_id = json_str(data, "balance_id")?;
+            let daily_cap_mist = json_opt_i64(data.get("daily_cap_mist").unwrap_or(&serde_json::Value::Null));
+            let monthly_cap_mist =
+                json_opt_i64(data.get("monthly_cap_mist").unwrap_or(&serde_json::Value::Null));
+            Some(vec![
+                SocialEventRow::AiCreditBalanceCapsUpdate {
+                    balance_id: balance_id.clone(),
+                    daily_cap_mist,
+                    monthly_cap_mist,
+                    updated_at_ms: now.timestamp_millis(),
+                    event_id: event_id.to_string(),
+                    transaction_id: transaction_id.clone(),
+                },
+                SocialEventRow::AiCreditEvent(NewAiCreditEvent {
+                    event_type: event_name.to_string(),
+                    balance_id: Some(balance_id),
+                    memory_account_id: None,
+                    principal_owner: None,
+                    profile_id: None,
+                    agent_object_id: None,
+                    amount_mist: None,
+                    new_balance_mist: None,
+                    credits: None,
+                    receipt_id: None,
+                    usage_kind: None,
+                    settlement_nonce: None,
+                    remaining_mist: None,
+                    credits_remaining: None,
+                    daily_cap_mist,
+                    monthly_cap_mist,
+                    budget_mist: None,
+                    require_approval_above_mist: None,
+                    event_id: event_id.to_string(),
+                    transaction_id,
+                    time: now,
+                }),
+            ])
+        }
+        "AiCreditAgentBudgetUpdated" => {
+            let balance_id = json_str(data, "balance_id")?;
+            let agent_object_id = json_str(data, "agent_object_id")?;
+            let budget_mist = json_opt_i64(data.get("budget_mist").unwrap_or(&serde_json::Value::Null));
+            let daily_cap_mist = json_opt_i64(data.get("daily_cap_mist").unwrap_or(&serde_json::Value::Null));
+            let monthly_cap_mist =
+                json_opt_i64(data.get("monthly_cap_mist").unwrap_or(&serde_json::Value::Null));
+            let require_approval_above_mist =
+                json_opt_i64(data.get("require_approval_above_mist").unwrap_or(&serde_json::Value::Null));
+            Some(vec![
+                SocialEventRow::AiCreditAgentBudgetUpsert(NewAiCreditAgentBudget {
+                    balance_id: balance_id.clone(),
+                    agent_object_id: agent_object_id.clone(),
+                    budget_mist,
+                    spent_mist: 0,
+                    daily_cap_mist,
+                    monthly_cap_mist,
+                    require_approval_above_mist,
+                    enabled: true,
+                    updated_at_ms: now.timestamp_millis(),
+                    event_id: event_id.to_string(),
+                    transaction_id: transaction_id.clone(),
+                    time: now,
+                }),
+                SocialEventRow::AiCreditEvent(NewAiCreditEvent {
+                    event_type: event_name.to_string(),
+                    balance_id: Some(balance_id),
+                    memory_account_id: None,
+                    principal_owner: None,
+                    profile_id: None,
+                    agent_object_id: Some(agent_object_id),
+                    amount_mist: None,
+                    new_balance_mist: None,
+                    credits: None,
+                    receipt_id: None,
+                    usage_kind: None,
+                    settlement_nonce: None,
+                    remaining_mist: None,
+                    credits_remaining: None,
+                    daily_cap_mist,
+                    monthly_cap_mist,
+                    budget_mist,
+                    require_approval_above_mist,
+                    event_id: event_id.to_string(),
+                    transaction_id,
+                    time: now,
+                }),
+            ])
+        }
+        "AiCreditAgentBudgetDisabled" => {
+            let balance_id = json_str(data, "balance_id")?;
+            let agent_object_id = json_str(data, "agent_object_id")?;
+            Some(vec![
+                SocialEventRow::AiCreditAgentBudgetDisable {
+                    balance_id: balance_id.clone(),
+                    agent_object_id: agent_object_id.clone(),
+                    updated_at_ms: now.timestamp_millis(),
+                    event_id: event_id.to_string(),
+                    transaction_id: transaction_id.clone(),
+                },
+                SocialEventRow::AiCreditEvent(NewAiCreditEvent {
+                    event_type: event_name.to_string(),
+                    balance_id: Some(balance_id),
+                    memory_account_id: None,
+                    principal_owner: None,
+                    profile_id: None,
+                    agent_object_id: Some(agent_object_id),
+                    amount_mist: None,
+                    new_balance_mist: None,
+                    credits: None,
+                    receipt_id: None,
+                    usage_kind: None,
+                    settlement_nonce: None,
+                    remaining_mist: None,
+                    credits_remaining: None,
+                    daily_cap_mist: None,
+                    monthly_cap_mist: None,
+                    budget_mist: None,
+                    require_approval_above_mist: None,
+                    event_id: event_id.to_string(),
+                    transaction_id,
+                    time: now,
+                }),
+            ])
+        }
+        "AiCreditUsageSettled" => {
+            let balance_id = json_str(data, "balance_id")?;
+            let agent_object_id = json_str(data, "agent_object_id")?;
+            let amount_mist =
+                json_to_i64(data.get("amount_mist").unwrap_or(&serde_json::Value::Null));
+            let remaining_mist =
+                json_to_i64(data.get("remaining_mist").unwrap_or(&serde_json::Value::Null));
+            let credits_remaining =
+                json_to_i64(data.get("credits_remaining").unwrap_or(&serde_json::Value::Null));
+            let settlement_nonce =
+                json_to_i64(data.get("settlement_nonce").unwrap_or(&serde_json::Value::Null));
+            let usage_kind = data
+                .get("usage_kind")
+                .and_then(|v| v.as_u64())
+                .and_then(|n| i16::try_from(n).ok());
+            let receipt_id = data.get("receipt_id").and_then(|v| {
+                v.as_u64().map(|n| n.to_string())
+            });
+            Some(vec![
+                SocialEventRow::AiCreditBalanceBalanceUpdate {
+                    balance_id: balance_id.clone(),
+                    balance_mist: remaining_mist,
+                    updated_at_ms: now.timestamp_millis(),
+                    event_id: event_id.to_string(),
+                    transaction_id: transaction_id.clone(),
+                },
+                SocialEventRow::AiCreditBalanceSettlementUpdate {
+                    balance_id: balance_id.clone(),
+                    settlement_nonce,
+                    spent_increment_mist: amount_mist,
+                    updated_at_ms: now.timestamp_millis(),
+                    event_id: event_id.to_string(),
+                    transaction_id: transaction_id.clone(),
+                },
+                SocialEventRow::AiCreditAgentBudgetSpendUpdate {
+                    balance_id: balance_id.clone(),
+                    agent_object_id: agent_object_id.clone(),
+                    spent_increment_mist: amount_mist,
+                    updated_at_ms: now.timestamp_millis(),
+                    event_id: event_id.to_string(),
+                    transaction_id: transaction_id.clone(),
+                },
+                SocialEventRow::AiCreditEvent(NewAiCreditEvent {
+                    event_type: event_name.to_string(),
+                    balance_id: Some(balance_id),
+                    memory_account_id: None,
+                    principal_owner: None,
+                    profile_id: None,
+                    agent_object_id: Some(agent_object_id),
+                    amount_mist: Some(amount_mist),
+                    new_balance_mist: None,
+                    credits: None,
+                    receipt_id,
+                    usage_kind,
+                    settlement_nonce: Some(settlement_nonce),
+                    remaining_mist: Some(remaining_mist),
+                    credits_remaining: Some(credits_remaining),
+                    daily_cap_mist: None,
+                    monthly_cap_mist: None,
+                    budget_mist: None,
+                    require_approval_above_mist: None,
+                    event_id: event_id.to_string(),
+                    transaction_id,
+                    time: now,
+                }),
+            ])
+        }
+        "AiCreditBalancePaused" | "AiCreditBalanceReactivated" => {
+            let balance_id = json_str(data, "balance_id")?;
+            let active = event_name == "AiCreditBalanceReactivated";
+            Some(vec![
+                SocialEventRow::AiCreditBalanceActiveUpdate {
+                    balance_id: balance_id.clone(),
+                    active,
+                    updated_at_ms: now.timestamp_millis(),
+                    event_id: event_id.to_string(),
+                    transaction_id: transaction_id.clone(),
+                },
+                SocialEventRow::AiCreditEvent(NewAiCreditEvent {
+                    event_type: event_name.to_string(),
+                    balance_id: Some(balance_id),
+                    memory_account_id: None,
+                    principal_owner: None,
+                    profile_id: None,
+                    agent_object_id: None,
+                    amount_mist: None,
+                    new_balance_mist: None,
+                    credits: None,
+                    receipt_id: None,
+                    usage_kind: None,
+                    settlement_nonce: None,
+                    remaining_mist: None,
+                    credits_remaining: None,
+                    daily_cap_mist: None,
+                    monthly_cap_mist: None,
+                    budget_mist: None,
+                    require_approval_above_mist: None,
+                    event_id: event_id.to_string(),
+                    transaction_id,
+                    time: now,
+                }),
+            ])
+        }
+        "AiCreditBalanceDepleted" => {
+            let balance_id = json_str(data, "balance_id")?;
+            Some(vec![SocialEventRow::AiCreditEvent(NewAiCreditEvent {
+                event_type: event_name.to_string(),
+                balance_id: Some(balance_id),
+                memory_account_id: None,
+                principal_owner: None,
+                profile_id: None,
+                agent_object_id: None,
+                amount_mist: None,
+                new_balance_mist: Some(0),
+                credits: Some(0),
+                receipt_id: None,
+                usage_kind: None,
+                settlement_nonce: None,
+                remaining_mist: Some(0),
+                credits_remaining: Some(0),
+                daily_cap_mist: None,
+                monthly_cap_mist: None,
+                budget_mist: None,
+                require_approval_above_mist: None,
+                event_id: event_id.to_string(),
+                transaction_id,
+                time: now,
+            })])
+        }
+        _ => None,
+    }
+}

@@ -7,6 +7,7 @@ pub use governance::{DelegateRatingViewerTarget, delegate_rating_viewer_lookup_k
 pub mod insurance;
 mod metrics;
 pub mod mydata;
+pub mod ai_credit;
 pub mod memory;
 pub mod pg_reader;
 pub mod platform;

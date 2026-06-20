@@ -86,6 +86,7 @@ module social_contracts::memory {
     const CAP_AGENT_REVOKE: u64 = 2048;
     const CAP_AGENT_UPDATE: u64 = 4096;
     const CAP_AGENT_REGISTER: u64 = 8192;
+    const CAP_AI_SPEND: u64 = 16384;
 
     // Role tag bits (policy hooks / indexer display)
     const ROLE_EDITOR: u64 = 1;
@@ -356,6 +357,11 @@ module social_contracts::memory {
     public fun cap_agent_register(): u64 { CAP_AGENT_REGISTER }
     public fun cap_agent_revoke(): u64 { CAP_AGENT_REVOKE }
     public fun cap_agent_update(): u64 { CAP_AGENT_UPDATE }
+    public fun cap_ai_spend(): u64 { CAP_AI_SPEND }
+
+    public fun has_cap(capabilities: u64, required_cap: u64): bool {
+        (capabilities & required_cap) == required_cap
+    }
 
     public fun register_child(): u8 { REGISTER_CHILD }
     public fun register_peer(): u8 { REGISTER_PEER }
@@ -1379,10 +1385,6 @@ module social_contracts::memory {
                 || identity_class == CLASS_ORGANIZATION,
             EInvalidIdentityClass,
         );
-    }
-
-    fun has_cap(capabilities: u64, required_cap: u64): bool {
-        (capabilities & required_cap) == required_cap
     }
 
     fun cap_requires_approval(constraints: &SubAgentConstraints, cap: u64): bool {

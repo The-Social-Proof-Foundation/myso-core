@@ -1195,6 +1195,89 @@ diesel::table! {
 }
 
 diesel::table! {
+    ai_credit_balances (balance_id) {
+        balance_id -> Text,
+        memory_account_id -> Text,
+        principal_owner -> Text,
+        profile_id -> Text,
+        balance_mist -> Int8,
+        reserved_mist -> Int8,
+        spent_total_mist -> Int8,
+        daily_cap_mist -> Nullable<Int8>,
+        monthly_cap_mist -> Nullable<Int8>,
+        spent_day_mist -> Int8,
+        spent_month_mist -> Int8,
+        settlement_nonce -> Int8,
+        active -> Bool,
+        updated_at_ms -> Int8,
+        event_id -> Text,
+        transaction_id -> Text,
+        time -> Timestamptz,
+    }
+}
+
+diesel::table! {
+    ai_credit_agent_budgets (balance_id, agent_object_id) {
+        balance_id -> Text,
+        agent_object_id -> Text,
+        budget_mist -> Nullable<Int8>,
+        spent_mist -> Int8,
+        daily_cap_mist -> Nullable<Int8>,
+        monthly_cap_mist -> Nullable<Int8>,
+        require_approval_above_mist -> Nullable<Int8>,
+        enabled -> Bool,
+        updated_at_ms -> Int8,
+        event_id -> Text,
+        transaction_id -> Text,
+        time -> Timestamptz,
+    }
+}
+
+diesel::table! {
+    ai_credit_events (id, time) {
+        id -> Int4,
+        event_type -> Text,
+        balance_id -> Nullable<Text>,
+        memory_account_id -> Nullable<Text>,
+        principal_owner -> Nullable<Text>,
+        profile_id -> Nullable<Text>,
+        agent_object_id -> Nullable<Text>,
+        amount_mist -> Nullable<Int8>,
+        new_balance_mist -> Nullable<Int8>,
+        credits -> Nullable<Int8>,
+        receipt_id -> Nullable<Text>,
+        usage_kind -> Nullable<Int2>,
+        settlement_nonce -> Nullable<Int8>,
+        remaining_mist -> Nullable<Int8>,
+        credits_remaining -> Nullable<Int8>,
+        daily_cap_mist -> Nullable<Int8>,
+        monthly_cap_mist -> Nullable<Int8>,
+        budget_mist -> Nullable<Int8>,
+        require_approval_above_mist -> Nullable<Int8>,
+        event_id -> Text,
+        transaction_id -> Text,
+        time -> Timestamptz,
+    }
+}
+
+diesel::table! {
+    ai_credit_usage_lines (id) {
+        id -> Int8,
+        receipt_id -> Text,
+        balance_id -> Text,
+        agent_object_id -> Text,
+        usage_kind -> Int2,
+        amount_mist -> Int8,
+        model_id -> Nullable<Text>,
+        tool_id -> Nullable<Text>,
+        metadata -> Nullable<Jsonb>,
+        settled -> Bool,
+        settlement_tx -> Nullable<Text>,
+        created_at -> Timestamptz,
+    }
+}
+
+diesel::table! {
     memory_accounts (account_id) {
         account_id -> Text,
         principal_owner -> Text,
@@ -1932,6 +2015,8 @@ diesel::table! {
 }
 
 diesel::joinable!(profile_subscriptions -> profile_subscription_services (service_id));
+diesel::joinable!(ai_credit_agent_budgets -> ai_credit_balances (balance_id));
+diesel::joinable!(ai_credit_balances -> memory_accounts (memory_account_id));
 diesel::joinable!(sub_agents -> memory_accounts (account_id));
 
 diesel::allow_tables_to_appear_in_same_query!(
@@ -1959,6 +2044,10 @@ diesel::allow_tables_to_appear_in_same_query!(
     insurance_vault_transactions,
     insurance_vaults,
     agent_memory_vaults,
+    ai_credit_agent_budgets,
+    ai_credit_balances,
+    ai_credit_events,
+    ai_credit_usage_lines,
     memory_accounts,
     mydata_access_logs,
     mydata_config,

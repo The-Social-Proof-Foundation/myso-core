@@ -1063,3 +1063,26 @@ The 5 min transaction timeout suggests the fullnode at `http://fullnode.testnet.
 ## Verification
 - `cargo test -p myso-types --lib data_ingestion_field_mask_roundtrip_preserves_transaction_events`: pass
 - `cargo check -p myso-indexer-alt-orderbook -p myso`: pass
+
+---
+
+# AI Credit Production Hardening (Jun 2026)
+
+## Summary
+Multi-trigger settlement, event-driven settle after usage, catalog API, chatbot inference billing, model_id passthrough on memory-server.
+
+## Completed
+- Oracle: settlement config (10 MYSO threshold, age/count triggers), `settlement_policy.rs`, `SettlementCoordinator`, balance-scoped `run_settlement_cycle`, atomic receipt store writes, `GET /v1/ai-credit/catalog`
+- memory-server: `resolve_llm_model`, `POST /api/ai-credit/record-inference`, ask/analyze model_id passthrough
+- SDK: `Memory.recordInferenceUsage()`
+- Chatbot: post-`streamText` usage metering via signed record-inference
+- Docs: `ai-credit-integration.mdx` — triggers, catalog, prod checklist, billing coverage table
+
+## Verification
+- `cargo check -p myso-ai-credit-oracle`: pass
+- `cargo test -p myso-ai-credit-oracle --lib`: 5 tests pass
+- `cargo check` memory-server: pass
+
+## Future (not in scope)
+- Postgres/Redis receipt store for multi-instance oracle HA
+- Bill title/artifact models and Playground client-side LLM
