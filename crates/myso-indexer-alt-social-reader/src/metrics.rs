@@ -16,7 +16,7 @@ const LATENCY_SEC_BUCKETS: &[f64] = &[
 ];
 
 #[derive(Clone)]
-pub(crate) struct DbReaderMetrics {
+pub struct DbReaderMetrics {
     pub latency: Histogram,
     pub requests_received: IntCounter,
     pub requests_succeeded: IntCounter,

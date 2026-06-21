@@ -37,6 +37,7 @@ pub(crate) mod object;
 pub(crate) mod object_change;
 pub(crate) mod object_filter;
 pub(crate) mod open_move_type;
+pub(crate) mod organization;
 pub(crate) mod owner;
 pub(crate) mod platform;
 pub(crate) mod pnl;

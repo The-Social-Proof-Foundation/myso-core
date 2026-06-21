@@ -217,12 +217,14 @@ module social_contracts::post {
     public struct PostAttribution has store, copy, drop {
         actor_address: address,
         sub_agent_id: Option<ID>,
+        organization_id: Option<ID>,
         action_identity_class: u8,
     }
 
     public struct CommentAttribution has store, copy, drop {
         actor_address: address,
         sub_agent_id: Option<ID>,
+        organization_id: Option<ID>,
         action_identity_class: u8,
     }
 
@@ -350,6 +352,7 @@ module social_contracts::post {
         post: &mut Post,
         actor_address: address,
         sub_agent_id: Option<ID>,
+        organization_id: Option<ID>,
         action_identity_class: u8,
     ) {
         df::add(
@@ -358,6 +361,7 @@ module social_contracts::post {
             PostAttribution {
                 actor_address,
                 sub_agent_id,
+                organization_id,
                 action_identity_class,
             },
         );
@@ -371,6 +375,7 @@ module social_contracts::post {
         comment: &mut Comment,
         actor_address: address,
         sub_agent_id: Option<ID>,
+        organization_id: Option<ID>,
         action_identity_class: u8,
     ) {
         df::add(
@@ -379,6 +384,7 @@ module social_contracts::post {
             CommentAttribution {
                 actor_address,
                 sub_agent_id,
+                organization_id,
                 action_identity_class,
             },
         );
@@ -668,6 +674,7 @@ module social_contracts::post {
         poc_redirection_kind: u8,
         actor_address: address,
         sub_agent_id: Option<ID>,
+        organization_id: Option<ID>,
         action_identity_class: u8,
     }
 
@@ -683,6 +690,7 @@ module social_contracts::post {
         mentions: Option<vector<address>>,
         actor_address: address,
         sub_agent_id: Option<ID>,
+        organization_id: Option<ID>,
         action_identity_class: u8,
     }
 
@@ -695,6 +703,7 @@ module social_contracts::post {
         profile_id: address,
         actor_address: address,
         sub_agent_id: Option<ID>,
+        organization_id: Option<ID>,
         action_identity_class: u8,
     }
 
@@ -707,6 +716,7 @@ module social_contracts::post {
         principal_owner: address,
         actor_address: address,
         sub_agent_id: Option<ID>,
+        organization_id: Option<ID>,
         action_identity_class: u8,
     }
 
@@ -719,6 +729,7 @@ module social_contracts::post {
         principal_owner: address,
         actor_address: address,
         sub_agent_id: Option<ID>,
+        organization_id: Option<ID>,
         action_identity_class: u8,
     }
 
@@ -980,6 +991,7 @@ module social_contracts::post {
         poc_redirection_kind: u8,
         actor_address: address,
         sub_agent_id: Option<ID>,
+        organization_id: Option<ID>,
         action_identity_class: u8,
         ctx: &mut TxContext
     ): address {
@@ -1036,6 +1048,7 @@ module social_contracts::post {
             &mut post,
             actor_address,
             sub_agent_id,
+            organization_id,
             action_identity_class,
         );
         
@@ -1103,6 +1116,7 @@ module social_contracts::post {
         let profile_id = memory::acting_profile_id(&acting);
         let actor_address = memory::acting_actor_address(&acting);
         let sub_agent_id = memory::acting_sub_agent_id(&acting);
+        let organization_id = memory::acting_organization_id(&acting);
         let action_identity_class = memory::acting_identity_class(&acting);
         
         assert_mydata_id_allowed_for_owner(owner, mydata_id, mydata_registry);
@@ -1223,6 +1237,7 @@ module social_contracts::post {
             poc_redirection_kind,
             actor_address,
             sub_agent_id,
+            organization_id,
             action_identity_class,
             ctx
         );
@@ -1259,6 +1274,7 @@ module social_contracts::post {
             poc_redirection_kind,
             actor_address,
             sub_agent_id,
+            organization_id,
             action_identity_class,
         });
     }
@@ -1295,6 +1311,7 @@ module social_contracts::post {
         let profile_id = memory::acting_profile_id(&acting);
         let actor_address = memory::acting_actor_address(&acting);
         let sub_agent_id = memory::acting_sub_agent_id(&acting);
+        let organization_id = memory::acting_organization_id(&acting);
         let action_identity_class = memory::acting_identity_class(&acting);
         
         // Check if platform is approved
@@ -1373,6 +1390,7 @@ module social_contracts::post {
             &mut comment,
             actor_address,
             sub_agent_id,
+            organization_id,
             action_identity_class,
         );
         
@@ -1397,6 +1415,7 @@ module social_contracts::post {
             mentions,
             actor_address,
             sub_agent_id,
+            organization_id,
             action_identity_class,
         });
         
@@ -1447,6 +1466,7 @@ module social_contracts::post {
         let profile_id = memory::acting_profile_id(&acting);
         let actor_address = memory::acting_actor_address(&acting);
         let sub_agent_id = memory::acting_sub_agent_id(&acting);
+        let organization_id = memory::acting_organization_id(&acting);
         let action_identity_class = memory::acting_identity_class(&acting);
         
         // Check if platform is approved
@@ -1630,6 +1650,7 @@ module social_contracts::post {
             poc_redirection_kind,
             actor_address,
             sub_agent_id,
+            organization_id,
             action_identity_class,
             ctx
         );
@@ -1666,6 +1687,7 @@ module social_contracts::post {
             poc_redirection_kind,
             actor_address,
             sub_agent_id,
+            organization_id,
             action_identity_class,
         });
     }
@@ -1815,6 +1837,7 @@ module social_contracts::post {
         let actor_address = memory::acting_actor_address(&acting);
         let principal_owner = memory::acting_principal_owner(&acting);
         let sub_agent_id = memory::acting_sub_agent_id(&acting);
+        let organization_id = memory::acting_organization_id(&acting);
         let action_identity_class = memory::acting_identity_class(&acting);
         
         // Check if platform is approved
@@ -1902,6 +1925,7 @@ module social_contracts::post {
             principal_owner,
             actor_address,
             sub_agent_id,
+            organization_id,
             action_identity_class,
         });
     }
@@ -2738,6 +2762,7 @@ module social_contracts::post {
         let actor_address = memory::acting_actor_address(&acting);
         let principal_owner = memory::acting_principal_owner(&acting);
         let sub_agent_id = memory::acting_sub_agent_id(&acting);
+        let organization_id = memory::acting_organization_id(&acting);
         let action_identity_class = memory::acting_identity_class(&acting);
         
         // Check if platform is approved
@@ -2822,6 +2847,7 @@ module social_contracts::post {
             principal_owner,
             actor_address,
             sub_agent_id,
+            organization_id,
             action_identity_class,
         });
     }
@@ -2956,6 +2982,7 @@ module social_contracts::post {
             POC_REDIRECT_NONE,
             owner,
             option::none(),
+            option::none(),
             memory::class_human(),
             ctx
         )
@@ -2997,6 +3024,7 @@ module social_contracts::post {
             POC_REDIRECT_WALLET,
             owner,
             option::none(),
+            option::none(),
             memory::class_human(),
             ctx
         )
@@ -3037,6 +3065,7 @@ module social_contracts::post {
             POC_REDIRECT_ESCROW,
             owner,
             option::none(),
+            option::none(),
             memory::class_human(),
             ctx
         )
@@ -3075,6 +3104,7 @@ module social_contracts::post {
             true, // enable_spot - enable SPoT for tests
             POC_REDIRECT_NONE,
             owner,
+            option::none(),
             option::none(),
             memory::class_human(),
             ctx
@@ -3134,6 +3164,7 @@ module social_contracts::post {
             false, // enable_spot - default to opt-out
             poc_redirection_kind,
             owner,
+            option::none(),
             option::none(),
             memory::class_human(),
             ctx
@@ -3228,6 +3259,7 @@ module social_contracts::post {
             &mut comment,
             owner,
             option::none(),
+            option::none(),
             memory::class_human(),
         );
         
@@ -3296,6 +3328,7 @@ module social_contracts::post {
                 attach_post_attribution(
                     post,
                     owner,
+                    option::none(),
                     option::none(),
                     memory::class_human(),
                 );
@@ -3482,6 +3515,7 @@ module social_contracts::post {
         let profile_id = memory::acting_profile_id(&acting);
         let actor_address = memory::acting_actor_address(&acting);
         let sub_agent_id = memory::acting_sub_agent_id(&acting);
+        let organization_id = memory::acting_organization_id(&acting);
         let action_identity_class = memory::acting_identity_class(&acting);
         
         // Validate promotion parameters
@@ -3591,6 +3625,7 @@ module social_contracts::post {
             poc_redirection_kind,
             actor_address,
             sub_agent_id,
+            organization_id,
             action_identity_class,
             ctx
         );
@@ -3620,6 +3655,7 @@ module social_contracts::post {
             poc_redirection_kind,
             actor_address,
             sub_agent_id,
+            organization_id,
             action_identity_class,
         });
         

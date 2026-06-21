@@ -198,6 +198,7 @@ pub struct NewSpotBet {
     pub timestamp_ms: i64,
     pub time: chrono::DateTime<chrono::Utc>,
     pub transaction_id: String,
+    pub organization_id: Option<String>,
 }
 
 #[derive(Debug, Clone, Insertable, Serialize, Deserialize)]

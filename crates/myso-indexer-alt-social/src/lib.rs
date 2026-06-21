@@ -70,6 +70,7 @@ pub async fn setup_social_indexer(
 
     let metrics = MetricsService::new(metrics_args, registry.clone());
 
+    let rollup_store = store.clone();
     let mut indexer = Indexer::new(
         store,
         indexer_args,
@@ -149,8 +150,10 @@ pub async fn setup_social_indexer(
         .await
         .context("Failed to start social indexer")?;
     let s_metrics = metrics.run().await?;
+    let s_rollup =
+        handlers::organization_stats_rollup::spawn_default_rollup_service(rollup_store);
 
-    Ok(s_indexer.attach(s_metrics))
+    Ok(s_indexer.attach(s_metrics).attach(s_rollup))
 }
 
 /// Threshold: values below this are likely epoch seconds (e.g. year 2001+ in seconds).

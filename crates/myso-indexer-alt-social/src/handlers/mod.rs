@@ -16,6 +16,8 @@ mod insurance;
 mod insurance_handler;
 mod memory;
 mod memory_handler;
+mod organization_stats;
+pub mod organization_stats_rollup;
 mod mydata;
 mod mydata_handler;
 mod mydata_object;
@@ -62,7 +64,8 @@ use myso_indexer_alt_social_schema::models::{
     NewSocialProofTokensEvent, NewSpotBet, NewSpotBetWithdrawal, NewSpotConfig, NewSpotEventLog,
     NewSpotPayout, NewSpotRecord, NewSpotRefund, NewSpotResolution, NewSptExchangeConfig,
     NewSptHolding, NewSptPool, NewSptPriceHistory, NewSptReservation, NewSptReservationPool,
-    NewSptTransaction, NewSubAgent, NewSubAgentEvent, NewAgentMemoryVault, NewSubscriptionEvent, NewTip, NewUnifiedRevenue, NewUpgradeEvent,
+    NewSptTransaction, NewSubAgent, NewSubAgentEvent, NewAgentMemoryVault, NewAgenticOrganization,
+    NewOrganizationEvent, NewSubscriptionEvent, NewTip, NewUnifiedRevenue, NewUpgradeEvent,
     NewVestingEvent, NewVestingWallet, NewVoteDecryptionFailure, ProposalUpdateSet,
 };
 
@@ -682,6 +685,40 @@ pub enum SocialEventRow {
     },
     AgentMemoryVault(NewAgentMemoryVault),
     SubAgentEvent(NewSubAgentEvent),
+    AgenticOrganizationUpsert(NewAgenticOrganization),
+    AgenticOrganizationMetadataUpdate {
+        organization_id: String,
+        name: Option<String>,
+        description: Option<String>,
+    },
+    AgenticOrganizationCategoryUpdate {
+        organization_id: String,
+        org_type: i16,
+        previous_org_type: i16,
+        updated_at_ms: i64,
+    },
+    AgenticOrganizationDeactivate {
+        organization_id: String,
+        deactivated_at_ms: i64,
+    },
+    OrganizationEvent(NewOrganizationEvent),
+    OrganizationStatsInit {
+        organization_id: String,
+        activity_at_ms: i64,
+    },
+    OrganizationAgentRegistered {
+        organization_id: String,
+        active: bool,
+        depth: i16,
+        parent_object_id: Option<String>,
+        agent_object_id: String,
+        activity_at_ms: i64,
+    },
+    OrganizationAgentActiveDelta {
+        agent_object_id: String,
+        active_delta: i32,
+        activity_at_ms: i64,
+    },
 }
 
 #[derive(Debug, Clone)]
@@ -713,7 +750,7 @@ pub struct ProfileUpdate {
 }
 
 impl FieldCount for SocialEventRow {
-    const FIELD_COUNT: usize = 130;
+    const FIELD_COUNT: usize = 140;
 }
 
 // SocialEvents pipeline removed: profile and post events now handled by ProfilesHandler and PostsHandler.

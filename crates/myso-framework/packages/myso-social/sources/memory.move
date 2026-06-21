@@ -93,6 +93,29 @@ module social_contracts::memory {
     const ROLE_ORG_ADMIN: u64 = 4;
 
     // ============================================================
+    // Agentic organization categories (exactly 14)
+    // ============================================================
+
+    const ORG_TYPE_COMPANY: u8 = 0;
+    const ORG_TYPE_STARTUP: u8 = 1;
+    const ORG_TYPE_INVESTMENT_FUND: u8 = 2;
+    const ORG_TYPE_NONPROFIT: u8 = 3;
+    const ORG_TYPE_RESEARCH: u8 = 4;
+    const ORG_TYPE_GOVERNMENT: u8 = 5;
+    const ORG_TYPE_MEDIA: u8 = 6;
+    const ORG_TYPE_STEWARDSHIP: u8 = 7;
+    const ORG_TYPE_BRAND: u8 = 8;
+    const ORG_TYPE_COMMUNITY: u8 = 9;
+    const ORG_TYPE_SPORTS: u8 = 10;
+    const ORG_TYPE_EDUCATION: u8 = 11;
+    const ORG_TYPE_HEALTHCARE: u8 = 12;
+    const ORG_TYPE_OTHER: u8 = 13;
+    const ORG_TYPE_COUNT: u8 = 14;
+
+    const MAX_ORGANIZATIONS_PER_USER: u8 = 8;
+    const ORG_CATEGORY_UPDATE_COOLDOWN_MS: u64 = 7 * 24 * 60 * 60 * 1000;
+
+    // ============================================================
     // Error codes
     // ============================================================
 
@@ -129,13 +152,26 @@ module social_contracts::memory {
     const ESubAgentWrongSigner: u64 = 32;
     const EInvalidAncestorChain: u64 = 33;
     const ECapEscalation: u64 = 34;
+    const EOrganizationLimitExceeded: u64 = 35;
+    const EInvalidOrgType: u64 = 36;
+    const EOrganizationNotFound: u64 = 37;
+    const EOrganizationNotActive: u64 = 38;
+    const EOrganizationAccountMismatch: u64 = 39;
+    const EOrganizationHasRoot: u64 = 40;
+    const EOrganizationMissingRoot: u64 = 41;
+    const EOrganizationOrgMismatch: u64 = 42;
+    const EOrgCategoryUpdateCooldown: u64 = 43;
+    const ENameTooLong: u64 = 44;
+    const EDescriptionTooLong: u64 = 45;
     const ENoAccess: u64 = 100;
 
     const ED25519_PUBLIC_KEY_LENGTH: u64 = 32;
     const MAX_LABEL_LENGTH: u64 = 64;
+    const MAX_ORG_NAME_LENGTH: u64 = 100;
+    const MAX_ORG_DESCRIPTION_LENGTH: u64 = 1200;
     const MAX_AGENT_DEPTH: u8 = 8;
 
-    const VERSION: u64 = 2;
+    const VERSION: u64 = 4;
     const VERSION_DF_KEY: vector<u8> = b"memory_version";
 
     // ============================================================
@@ -158,9 +194,30 @@ module social_contracts::memory {
         max_action_spend: Option<u64>,
     }
 
+    public struct OrgRegistryEntry has store, copy, drop {
+        active: bool,
+    }
+
+    /// Competitive agentic organization wrapper (one root-agent tree per org).
+    public struct AgenticOrganization has key, store {
+        id: UID,
+        memory_account_id: ID,
+        principal_owner: address,
+        profile_id: address,
+        name: Option<String>,
+        description: Option<String>,
+        org_type: u8,
+        root_agent_id: Option<ID>,
+        active: bool,
+        created_at: u64,
+        deactivated_at: Option<u64>,
+        category_updated_at: Option<u64>,
+    }
+
     /// Auth mirror for on-chain ancestor walks without PTB ancestor inputs.
     public struct AgentRegistryEntry has store, copy, drop {
         agent_object_id: ID,
+        organization_id: ID,
         parent_object_id: Option<ID>,
         depth: u8,
         active: bool,
@@ -177,6 +234,7 @@ module social_contracts::memory {
     public struct SubAgent has key, store {
         id: UID,
         memory_account_id: ID,
+        organization_id: ID,
         principal_owner: address,
         profile_id: address,
         derived_address: address,
@@ -210,6 +268,7 @@ module social_contracts::memory {
         principal_profile_id: address,
         actor_address: address,
         sub_agent_id: Option<ID>,
+        organization_id: Option<ID>,
         identity_class: u8,
         parent_object_id: Option<ID>,
         depth: u8,
@@ -224,6 +283,8 @@ module social_contracts::memory {
         active: bool,
         agents: Table<address, AgentRegistryEntry>,
         agent_ids: Table<ID, address>,
+        organizations: Table<ID, OrgRegistryEntry>,
+        org_count: u8,
     }
 
     // ============================================================
@@ -240,6 +301,7 @@ module social_contracts::memory {
         account_id: ID,
         principal_owner: address,
         profile_id: address,
+        organization_id: ID,
         agent_object_id: ID,
         derived_address: address,
         label: String,
@@ -263,6 +325,7 @@ module social_contracts::memory {
         account_id: ID,
         principal_owner: address,
         profile_id: address,
+        organization_id: ID,
         agent_object_id: ID,
         derived_address: address,
         label: String,
@@ -335,6 +398,35 @@ module social_contracts::memory {
         memory_account_id: ID,
     }
 
+    public struct AgenticOrganizationCreated has copy, drop {
+        organization_id: ID,
+        account_id: ID,
+        principal_owner: address,
+        profile_id: address,
+        name: Option<String>,
+        description: Option<String>,
+        org_type: u8,
+        created_at: u64,
+    }
+
+    public struct AgenticOrganizationUpdated has copy, drop {
+        organization_id: ID,
+        name: Option<String>,
+        description: Option<String>,
+    }
+
+    public struct AgenticOrganizationCategoryUpdated has copy, drop {
+        organization_id: ID,
+        org_type: u8,
+        previous_org_type: u8,
+        updated_at: u64,
+    }
+
+    public struct AgenticOrganizationDeactivated has copy, drop {
+        organization_id: ID,
+        deactivated_at: u64,
+    }
+
     // ============================================================
     // Public accessors
     // ============================================================
@@ -342,6 +434,23 @@ module social_contracts::memory {
     public fun class_human(): u8 { CLASS_HUMAN }
     public fun class_delegated_ai(): u8 { CLASS_DELEGATED_AI }
     public fun class_organization(): u8 { CLASS_ORGANIZATION }
+
+    public fun org_type_company(): u8 { ORG_TYPE_COMPANY }
+    public fun org_type_startup(): u8 { ORG_TYPE_STARTUP }
+    public fun org_type_investment_fund(): u8 { ORG_TYPE_INVESTMENT_FUND }
+    public fun org_type_nonprofit(): u8 { ORG_TYPE_NONPROFIT }
+    public fun org_type_research(): u8 { ORG_TYPE_RESEARCH }
+    public fun org_type_government(): u8 { ORG_TYPE_GOVERNMENT }
+    public fun org_type_media(): u8 { ORG_TYPE_MEDIA }
+    public fun org_type_stewardship(): u8 { ORG_TYPE_STEWARDSHIP }
+    public fun org_type_brand(): u8 { ORG_TYPE_BRAND }
+    public fun org_type_community(): u8 { ORG_TYPE_COMMUNITY }
+    public fun org_type_sports(): u8 { ORG_TYPE_SPORTS }
+    public fun org_type_education(): u8 { ORG_TYPE_EDUCATION }
+    public fun org_type_healthcare(): u8 { ORG_TYPE_HEALTHCARE }
+    public fun org_type_other(): u8 { ORG_TYPE_OTHER }
+    public fun org_type_count(): u8 { ORG_TYPE_COUNT }
+    public fun max_organizations_per_user(): u8 { MAX_ORGANIZATIONS_PER_USER }
 
     public fun cap_memory_read(): u64 { CAP_MEMORY_READ }
     public fun cap_memory_write(): u64 { CAP_MEMORY_WRITE }
@@ -366,6 +475,30 @@ module social_contracts::memory {
 
     public fun agent_object_id(agent: &SubAgent): ID {
         object::id(agent)
+    }
+
+    public fun organization_id(org: &AgenticOrganization): ID {
+        object::id(org)
+    }
+
+    public fun sub_agent_organization_id(agent: &SubAgent): ID {
+        agent.organization_id
+    }
+
+    public fun organization_org_type(org: &AgenticOrganization): u8 {
+        org.org_type
+    }
+
+    public fun organization_root_agent_id(org: &AgenticOrganization): Option<ID> {
+        org.root_agent_id
+    }
+
+    public fun organization_name(org: &AgenticOrganization): &Option<String> {
+        &org.name
+    }
+
+    public fun organization_description(org: &AgenticOrganization): &Option<String> {
+        &org.description
     }
 
     // ============================================================
@@ -400,6 +533,8 @@ module social_contracts::memory {
             active: true,
             agents: table::new(ctx),
             agent_ids: table::new(ctx),
+            organizations: table::new(ctx),
+            org_count: 0,
         };
         set_version(&mut account.id, VERSION);
 
@@ -439,12 +574,159 @@ module social_contracts::memory {
     }
 
     // ============================================================
+    // Agentic organization lifecycle
+    // ============================================================
+
+    /// Human owner creates a competitive agentic organization (max 8 per account).
+    public entry fun create_agentic_organization(
+        account: &mut MemoryAccount,
+        org_type: u8,
+        name: Option<String>,
+        description: Option<String>,
+        clock: &Clock,
+        ctx: &mut TxContext,
+    ) {
+        assert!(tx_context::sender(ctx) == account.owner, ENotOwner);
+        let _ = create_agentic_organization_internal(account, org_type, name, description, clock, ctx);
+    }
+
+    public(package) fun create_agentic_organization_internal(
+        account: &mut MemoryAccount,
+        org_type: u8,
+        name: Option<String>,
+        description: Option<String>,
+        clock: &Clock,
+        ctx: &mut TxContext,
+    ): ID {
+        assert_object_version(&account.id);
+        assert!(account.active, EAccountDeactivated);
+        assert_valid_org_type(org_type);
+        assert_org_name_within_limit(&name);
+        assert_org_description_within_limit(&description);
+        assert!(account.org_count < MAX_ORGANIZATIONS_PER_USER, EOrganizationLimitExceeded);
+
+        let org = AgenticOrganization {
+            id: object::new(ctx),
+            memory_account_id: object::id(account),
+            principal_owner: account.owner,
+            profile_id: account.profile_id,
+            name,
+            description,
+            org_type,
+            root_agent_id: option::none(),
+            active: true,
+            created_at: clock::timestamp_ms(clock),
+            deactivated_at: option::none(),
+            category_updated_at: option::none(),
+        };
+        let organization_id = object::id(&org);
+        table::add(
+            &mut account.organizations,
+            organization_id,
+            OrgRegistryEntry { active: true },
+        );
+        account.org_count = account.org_count + 1;
+
+        event::emit(AgenticOrganizationCreated {
+            organization_id,
+            account_id: object::id(account),
+            principal_owner: account.owner,
+            profile_id: account.profile_id,
+            name: org.name,
+            description: org.description,
+            org_type: org.org_type,
+            created_at: org.created_at,
+        });
+
+        transfer::share_object(org);
+        organization_id
+    }
+
+    public entry fun update_agentic_organization_metadata(
+        account: &MemoryAccount,
+        org: &mut AgenticOrganization,
+        name: Option<String>,
+        description: Option<String>,
+        ctx: &TxContext,
+    ) {
+        assert_object_version(&account.id);
+        assert!(tx_context::sender(ctx) == account.owner, ENotOwner);
+        assert_organization_belongs_to_account(account, org);
+        assert!(org.active, EOrganizationNotActive);
+        assert_org_name_within_limit(&name);
+        assert_org_description_within_limit(&description);
+        org.name = name;
+        org.description = description;
+        event::emit(AgenticOrganizationUpdated {
+            organization_id: object::id(org),
+            name: org.name,
+            description: org.description,
+        });
+    }
+
+    public entry fun update_agentic_organization_category(
+        account: &MemoryAccount,
+        org: &mut AgenticOrganization,
+        org_type: u8,
+        clock: &Clock,
+        ctx: &TxContext,
+    ) {
+        assert_object_version(&account.id);
+        assert!(tx_context::sender(ctx) == account.owner, ENotOwner);
+        assert_organization_belongs_to_account(account, org);
+        assert!(org.active, EOrganizationNotActive);
+        assert_valid_org_type(org_type);
+        if (option::is_some(&org.category_updated_at)) {
+            let last = *option::borrow(&org.category_updated_at);
+            assert!(
+                clock::timestamp_ms(clock) >= last + ORG_CATEGORY_UPDATE_COOLDOWN_MS,
+                EOrgCategoryUpdateCooldown,
+            );
+        };
+        let previous_org_type = org.org_type;
+        org.org_type = org_type;
+        org.category_updated_at = option::some(clock::timestamp_ms(clock));
+        event::emit(AgenticOrganizationCategoryUpdated {
+            organization_id: object::id(org),
+            org_type,
+            previous_org_type,
+            updated_at: clock::timestamp_ms(clock),
+        });
+    }
+
+    public entry fun deactivate_agentic_organization(
+        account: &mut MemoryAccount,
+        org: &mut AgenticOrganization,
+        clock: &Clock,
+        ctx: &TxContext,
+    ) {
+        assert_object_version(&account.id);
+        assert!(tx_context::sender(ctx) == account.owner, ENotOwner);
+        assert_organization_belongs_to_account(account, org);
+        if (!org.active) {
+            return
+        };
+        org.active = false;
+        org.deactivated_at = option::some(clock::timestamp_ms(clock));
+        let organization_id = object::id(org);
+        if (table::contains(&account.organizations, organization_id)) {
+            let entry = table::borrow_mut(&mut account.organizations, organization_id);
+            entry.active = false;
+        };
+        event::emit(AgenticOrganizationDeactivated {
+            organization_id,
+            deactivated_at: clock::timestamp_ms(clock),
+        });
+    }
+
+    // ============================================================
     // Sub-agent lifecycle
     // ============================================================
 
-    /// Human owner registers a root-level sub-agent.
+    /// Human owner registers a root-level sub-agent bound to an organization.
     public entry fun register_sub_agent(
         account: &mut MemoryAccount,
+        organization: &mut AgenticOrganization,
         public_key: vector<u8>,
         derived_address: address,
         label: String,
@@ -461,8 +743,10 @@ module social_contracts::memory {
         ctx: &mut TxContext,
     ) {
         assert!(tx_context::sender(ctx) == account.owner, ENotOwner);
+        assert_organization_ready_for_root(account, organization);
         register_sub_agent_internal(
             account,
+            organization,
             public_key,
             derived_address,
             label,
@@ -745,6 +1029,7 @@ module social_contracts::memory {
             principal_profile_id: root.profile_id,
             actor_address: root.owner,
             sub_agent_id: option::none(),
+            organization_id: option::none(),
             identity_class: CLASS_HUMAN,
             parent_object_id: option::none(),
             depth: 0,
@@ -770,6 +1055,7 @@ module social_contracts::memory {
             principal_profile_id: root.profile_id,
             actor_address: sender,
             sub_agent_id: option::some(entry.agent_object_id),
+            organization_id: option::some(entry.organization_id),
             identity_class: entry.identity_class,
             parent_object_id: entry.parent_object_id,
             depth: entry.depth,
@@ -881,6 +1167,8 @@ module social_contracts::memory {
     public fun acting_parent_object_id(acting: &ActingContext): Option<ID> { acting.parent_object_id }
     public fun acting_depth(acting: &ActingContext): u8 { acting.depth }
 
+    public fun acting_organization_id(acting: &ActingContext): Option<ID> { acting.organization_id }
+
     public fun has_account(registry: &MemoryRegistry, addr: address): bool {
         table::contains(&registry.accounts, addr)
     }
@@ -979,6 +1267,7 @@ module social_contracts::memory {
 
     fun register_sub_agent_internal(
         account: &mut MemoryAccount,
+        organization: &mut AgenticOrganization,
         public_key: vector<u8>,
         derived_address: address,
         label: String,
@@ -994,8 +1283,10 @@ module social_contracts::memory {
         clock: &Clock,
         ctx: &TxContext,
     ) {
-        finish_register_sub_agent(
+        let organization_id = object::id(organization);
+        let agent_id = finish_register_sub_agent(
             account,
+            organization_id,
             public_key,
             derived_address,
             label,
@@ -1013,6 +1304,7 @@ module social_contracts::memory {
             tx_context::sender(ctx),
             clock,
         );
+        bind_root_agent_to_organization(account, organization, agent_id);
     }
 
     fun register_sub_agent_delegated_internal(
@@ -1044,6 +1336,7 @@ module social_contracts::memory {
         );
         finish_register_sub_agent(
             account,
+            parent_agent.organization_id,
             public_key,
             derived_address,
             label,
@@ -1065,6 +1358,7 @@ module social_contracts::memory {
 
     fun finish_register_sub_agent(
         account: &mut MemoryAccount,
+        organization_id: ID,
         public_key: vector<u8>,
         derived_address: address,
         label: String,
@@ -1081,11 +1375,12 @@ module social_contracts::memory {
         parent_object_id: Option<ID>,
         registered_by: address,
         clock: &Clock,
-    ) {
+    ): ID {
         assert_object_version(&account.id);
         assert!(account.active, EAccountDeactivated);
         assert_valid_identity_class(identity_class);
         assert_valid_register_scope(register_scope);
+        assert!(table::contains(&account.organizations, organization_id), EOrganizationNotFound);
         assert!(vector::length(&public_key) == ED25519_PUBLIC_KEY_LENGTH, EInvalidPublicKeyLength);
         assert!(string::length(&label) <= MAX_LABEL_LENGTH, ELabelTooLong);
         assert_scope_allowed_for_delegate(option::none(), platform_scope);
@@ -1102,6 +1397,7 @@ module social_contracts::memory {
         let agent = SubAgent {
             id: agent_uid,
             memory_account_id: object::id(account),
+            organization_id,
             principal_owner: account.owner,
             profile_id: account.profile_id,
             derived_address,
@@ -1124,12 +1420,26 @@ module social_contracts::memory {
 
         emit_sub_agent_registered(account, &agent);
         insert_registry_entry(account, &agent);
+        let agent_id = object::id(&agent);
         transfer::share_object(agent);
+        agent_id
+    }
+
+    fun bind_root_agent_to_organization(
+        account: &MemoryAccount,
+        org: &mut AgenticOrganization,
+        agent_id: ID,
+    ) {
+        assert_organization_belongs_to_account(account, org);
+        assert!(org.active, EOrganizationNotActive);
+        assert!(option::is_none(&org.root_agent_id), EOrganizationHasRoot);
+        org.root_agent_id = option::some(agent_id);
     }
 
     fun registry_entry_from_agent(agent: &SubAgent): AgentRegistryEntry {
         AgentRegistryEntry {
             agent_object_id: object::id(agent),
+            organization_id: agent.organization_id,
             parent_object_id: agent.parent_object_id,
             depth: agent.depth,
             active: agent.active,
@@ -1381,6 +1691,50 @@ module social_contracts::memory {
         );
     }
 
+    fun assert_org_name_within_limit(name: &Option<String>) {
+        if (option::is_some(name)) {
+            assert!(
+                string::length(option::borrow(name)) <= MAX_ORG_NAME_LENGTH,
+                ENameTooLong,
+            );
+        };
+    }
+
+    fun assert_org_description_within_limit(description: &Option<String>) {
+        if (option::is_some(description)) {
+            assert!(
+                string::length(option::borrow(description)) <= MAX_ORG_DESCRIPTION_LENGTH,
+                EDescriptionTooLong,
+            );
+        };
+    }
+
+    fun assert_valid_org_type(org_type: u8) {
+        assert!(org_type < ORG_TYPE_COUNT, EInvalidOrgType);
+    }
+
+    fun assert_organization_belongs_to_account(
+        account: &MemoryAccount,
+        org: &AgenticOrganization,
+    ) {
+        assert!(org.memory_account_id == object::id(account), EOrganizationAccountMismatch);
+        assert!(org.principal_owner == account.owner, EOrganizationAccountMismatch);
+        assert!(org.profile_id == account.profile_id, EOrganizationAccountMismatch);
+        assert!(
+            table::contains(&account.organizations, object::id(org)),
+            EOrganizationNotFound,
+        );
+    }
+
+    fun assert_organization_ready_for_root(
+        account: &MemoryAccount,
+        org: &AgenticOrganization,
+    ) {
+        assert_organization_belongs_to_account(account, org);
+        assert!(org.active, EOrganizationNotActive);
+        assert!(option::is_none(&org.root_agent_id), EOrganizationHasRoot);
+    }
+
     fun has_cap(capabilities: u64, required_cap: u64): bool {
         (capabilities & required_cap) == required_cap
     }
@@ -1394,6 +1748,7 @@ module social_contracts::memory {
             account_id: object::id(account),
             principal_owner: account.owner,
             profile_id: account.profile_id,
+            organization_id: agent.organization_id,
             agent_object_id: object::id(agent),
             derived_address: agent.derived_address,
             label: agent.label,
@@ -1419,6 +1774,7 @@ module social_contracts::memory {
             account_id: object::id(account),
             principal_owner: account.owner,
             profile_id: account.profile_id,
+            organization_id: agent.organization_id,
             agent_object_id: object::id(agent),
             derived_address: agent.derived_address,
             label: agent.label,
@@ -1505,6 +1861,36 @@ module social_contracts::memory {
     // ============================================================
     // Test helpers
     // ============================================================
+
+    #[test_only]
+    public fun test_create_agentic_organization(
+        account: &mut MemoryAccount,
+        org_type: u8,
+        name: Option<String>,
+        description: Option<String>,
+        clock: &Clock,
+        ctx: &mut TxContext,
+    ): ID {
+        create_agentic_organization_internal(account, org_type, name, description, clock, ctx)
+    }
+
+    #[test_only]
+    public fun error_name_too_long(): u64 { ENameTooLong }
+
+    #[test_only]
+    public fun error_description_too_long(): u64 { EDescriptionTooLong }
+
+    #[test_only]
+    public fun max_org_description_length(): u64 { MAX_ORG_DESCRIPTION_LENGTH }
+
+    #[test_only]
+    public fun error_organization_limit_exceeded(): u64 { EOrganizationLimitExceeded }
+
+    #[test_only]
+    public fun error_organization_has_root(): u64 { EOrganizationHasRoot }
+
+    #[test_only]
+    public fun error_invalid_org_type(): u64 { EInvalidOrgType }
 
     #[test_only]
     public fun test_bootstrap_init(ctx: &mut TxContext) {

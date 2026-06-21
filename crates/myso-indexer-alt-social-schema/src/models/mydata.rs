@@ -304,6 +304,7 @@ pub struct NewMyDataPurchase {
     pub purchase_type: String,
     pub purchase_time: i64,
     pub transaction_id: String,
+    pub organization_id: Option<String>,
 }
 
 #[derive(Debug, Clone, Queryable, Selectable, Serialize, Deserialize)]

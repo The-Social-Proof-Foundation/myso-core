@@ -234,6 +234,7 @@ pub struct NewSptTransaction {
     pub created_at: i64,
     pub time: chrono::DateTime<chrono::Utc>,
     pub transaction_id: String,
+    pub organization_id: Option<String>,
 }
 
 #[derive(Debug, Clone, Insertable, Serialize, Deserialize)]
@@ -265,6 +266,7 @@ pub struct NewSptReservation {
     pub treasury_fee: Option<i64>,
     pub time: chrono::DateTime<chrono::Utc>,
     pub transaction_id: String,
+    pub organization_id: Option<String>,
 }
 
 #[derive(Debug, Clone, Queryable, Selectable, Serialize, Deserialize)]
@@ -571,6 +573,7 @@ pub struct UnifiedRevenue {
     pub revenue_time: i64,
     pub time: chrono::DateTime<chrono::Utc>,
     pub transaction_id: String,
+    pub organization_id: Option<String>,
 }
 
 #[derive(Debug, Clone, Insertable, Serialize, Deserialize)]
@@ -589,6 +592,7 @@ pub struct NewUnifiedRevenue {
     pub revenue_time: i64,
     pub time: chrono::DateTime<chrono::Utc>,
     pub transaction_id: String,
+    pub organization_id: Option<String>,
 }
 
 impl NewUnifiedRevenue {
@@ -617,6 +621,7 @@ impl NewUnifiedRevenue {
             revenue_time,
             time: chrono::Utc::now(),
             transaction_id,
+            organization_id: None,
         }
     }
 
@@ -645,6 +650,7 @@ impl NewUnifiedRevenue {
             revenue_time,
             time: chrono::Utc::now(),
             transaction_id,
+            organization_id: None,
         }
     }
 
@@ -674,6 +680,7 @@ impl NewUnifiedRevenue {
             revenue_time,
             time,
             transaction_id,
+            organization_id: None,
         }
     }
 
@@ -702,6 +709,7 @@ impl NewUnifiedRevenue {
             revenue_time,
             time: chrono::Utc::now(),
             transaction_id,
+            organization_id: None,
         }
     }
 
@@ -729,6 +737,7 @@ impl NewUnifiedRevenue {
             revenue_time,
             time: chrono::Utc::now(),
             transaction_id,
+            organization_id: None,
         }
     }
 
@@ -757,6 +766,7 @@ impl NewUnifiedRevenue {
             revenue_time,
             time: chrono::Utc::now(),
             transaction_id,
+            organization_id: None,
         }
     }
 }

@@ -20,7 +20,8 @@ module social_contracts::post_tests {
     
     use social_contracts::post::{Self, Post, Comment, PostConfig, PromotionData};
     use social_contracts::profile::{Self, UsernameRegistry};
-    use social_contracts::memory::{MemoryRegistry, MemoryAccount, SubAgent, Self as memory};
+    use social_contracts::memory::{MemoryRegistry, MemoryAccount, SubAgent, Self as memory, AgenticOrganization};
+    use social_contracts::memory_test_helpers;
     
     const PLACEHOLDER_AGENT: address = @0xBEEF;
     const PLACEHOLDER_PUBKEY: vector<u8> = x"0303030303030303030303030303030303030303030303030303030303030303";
@@ -71,10 +72,17 @@ module social_contracts::post_tests {
 
         test_scenario::next_tx(scenario, USER1);
         {
+            memory_test_helpers::create_default_org_in_tx(scenario);
+        };
+
+        test_scenario::next_tx(scenario, USER1);
+        {
+            let mut org = memory_test_helpers::take_created_org(scenario);
             let mut memory_account = test_scenario::take_shared<MemoryAccount>(scenario);
             let clock = test_scenario::take_shared<Clock>(scenario);
             memory::register_sub_agent(
                 &mut memory_account,
+                &mut org,
                 PLACEHOLDER_PUBKEY,
                 PLACEHOLDER_AGENT,
                 string::utf8(b"placeholder"),
@@ -90,6 +98,7 @@ module social_contracts::post_tests {
                 &clock,
                 test_scenario::ctx(scenario),
             );
+            test_scenario::return_shared(org);
             test_scenario::return_shared(memory_account);
             test_scenario::return_shared(clock);
         };

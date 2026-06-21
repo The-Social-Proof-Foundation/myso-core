@@ -92,6 +92,10 @@ use crate::api::types::transaction_effects::TransactionEffects;
 use crate::api::types::vesting::{
     VestingLeaderboardEntry, VestingLeaderboardResponse, VestingWallet,
 };
+use crate::api::types::organization::{
+    AgenticOrganization, AgenticOrganizationLeaderboardResponse, OrganizationCategory,
+    OrganizationLeaderboardSortGql, OrganizationStatsWindowGql, OrganizationType,
+};
 use crate::api::types::zklogin;
 use crate::api::types::zklogin::ZkLoginIntentScope;
 use crate::api::types::zklogin::ZkLoginVerifyResult;
@@ -687,6 +691,72 @@ impl Query {
                         .collect(),
                     total: r.total,
                 }),
+        )
+    }
+
+    /// Agentic organization by object id. Returns null when social DB not configured or not found.
+    async fn agentic_organization(
+        &self,
+        ctx: &Context<'_>,
+        organization_id: String,
+    ) -> Option<Result<Option<AgenticOrganization>, RpcError>> {
+        let reader_opt = ctx
+            .data_opt::<std::sync::Arc<Option<myso_indexer_alt_social_reader::SocialPgReader>>>()?;
+        let reader = reader_opt.as_ref().as_ref()?;
+        Some(
+            reader
+                .get_agentic_organization(&organization_id)
+                .await
+                .map_err(Into::into)
+                .map(|opt| opt.map(AgenticOrganization::from_row)),
+        )
+    }
+
+    /// Category-scoped agentic organization leaderboard. Returns empty when social DB not configured.
+    async fn agentic_organizations_leaderboard(
+        &self,
+        ctx: &Context<'_>,
+        sort: OrganizationLeaderboardSortGql,
+        category: OrganizationType,
+        window: Option<OrganizationStatsWindowGql>,
+        limit: Option<u64>,
+        offset: Option<u64>,
+    ) -> Option<Result<AgenticOrganizationLeaderboardResponse, RpcError>> {
+        let reader_opt = ctx
+            .data_opt::<std::sync::Arc<Option<myso_indexer_alt_social_reader::SocialPgReader>>>()?;
+        let reader = reader_opt.as_ref().as_ref()?;
+        let limit = limit.unwrap_or(20).min(100) as i64;
+        let offset = offset.unwrap_or(0) as i64;
+        let window = window.unwrap_or_default().into();
+        Some(
+            reader
+                .get_agentic_organizations_leaderboard(
+                    sort.into(),
+                    category.to_i16(),
+                    window,
+                    limit,
+                    offset,
+                )
+                .await
+                .map_err(Into::into)
+                .map(AgenticOrganizationLeaderboardResponse::from_result),
+        )
+    }
+
+    /// Allowed organization category labels (14 values).
+    async fn organization_categories(
+        &self,
+        ctx: &Context<'_>,
+    ) -> Option<Vec<OrganizationCategory>> {
+        let reader_opt = ctx
+            .data_opt::<std::sync::Arc<Option<myso_indexer_alt_social_reader::SocialPgReader>>>()?;
+        let reader = reader_opt.as_ref().as_ref()?;
+        Some(
+            reader
+                .organization_categories()
+                .into_iter()
+                .map(OrganizationCategory::from)
+                .collect(),
         )
     }
 

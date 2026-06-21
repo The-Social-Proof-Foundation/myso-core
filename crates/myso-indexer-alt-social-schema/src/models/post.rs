@@ -93,6 +93,7 @@ pub struct NewPost {
     pub actor_address: Option<String>,
     pub sub_agent_id: Option<String>,
     pub action_identity_class: Option<i16>,
+    pub organization_id: Option<String>,
 }
 
 #[derive(Debug, Clone, Insertable, Serialize, Deserialize)]
@@ -122,6 +123,7 @@ pub struct NewComment {
     pub actor_address: Option<String>,
     pub sub_agent_id: Option<String>,
     pub action_identity_class: Option<i16>,
+    pub organization_id: Option<String>,
 }
 
 #[derive(Debug, Clone, Insertable, Serialize, Deserialize)]
@@ -138,6 +140,7 @@ pub struct NewReaction {
     pub actor_address: Option<String>,
     pub sub_agent_id: Option<String>,
     pub action_identity_class: Option<i16>,
+    pub organization_id: Option<String>,
 }
 
 #[derive(Debug, Clone, Insertable, Serialize, Deserialize)]
@@ -164,6 +167,7 @@ pub struct NewRepost {
     pub actor_address: Option<String>,
     pub sub_agent_id: Option<String>,
     pub action_identity_class: Option<i16>,
+    pub organization_id: Option<String>,
 }
 
 #[derive(Debug, Clone, Insertable, Serialize, Deserialize)]

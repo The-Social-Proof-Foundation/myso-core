@@ -292,6 +292,8 @@ module social_contracts::mydata {
         price: u64,
         purchase_type: String, // "one_time" or "subscription"
         timestamp: u64,
+        sub_agent_id: Option<ID>,
+        organization_id: Option<ID>,
     }
 
     public struct AccessGrantedEvent has copy, drop {
@@ -949,8 +951,10 @@ module social_contracts::mydata {
         assert!(option::is_some(&mydata.one_time_price), ENotForSale);
         let price = *option::borrow(&mydata.one_time_price);
 
+        let mut sub_agent_id = option::none();
+        let mut organization_id = option::none();
         if (social_contracts::memory::is_registered_agent(account, buyer)) {
-            let _acting = social_contracts::memory::resolve_actor_with_cap(
+            let acting = social_contracts::memory::resolve_actor_with_cap(
                 account,
                 0,
                 mydata.platform_id,
@@ -958,6 +962,8 @@ module social_contracts::mydata {
                 clock,
                 ctx,
             );
+            sub_agent_id = social_contracts::memory::acting_sub_agent_id(&acting);
+            organization_id = social_contracts::memory::acting_organization_id(&acting);
         };
         
         // Check payment amount
@@ -987,6 +993,8 @@ module social_contracts::mydata {
             price,
             purchase_type: string::utf8(b"one_time"),
             timestamp: clock::timestamp_ms(clock),
+            sub_agent_id,
+            organization_id,
         });
     }
 
@@ -1011,8 +1019,10 @@ module social_contracts::mydata {
         assert!(option::is_some(&mydata.subscription_price), ENotForSale);
         let price = *option::borrow(&mydata.subscription_price);
 
+        let mut sub_agent_id = option::none();
+        let mut organization_id = option::none();
         if (social_contracts::memory::is_registered_agent(account, buyer)) {
-            let _acting = social_contracts::memory::resolve_actor_with_cap(
+            let acting = social_contracts::memory::resolve_actor_with_cap(
                 account,
                 0,
                 mydata.platform_id,
@@ -1020,6 +1030,8 @@ module social_contracts::mydata {
                 clock,
                 ctx,
             );
+            sub_agent_id = social_contracts::memory::acting_sub_agent_id(&acting);
+            organization_id = social_contracts::memory::acting_organization_id(&acting);
         };
         
         // Check payment amount
@@ -1074,6 +1086,8 @@ module social_contracts::mydata {
             price,
             purchase_type: string::utf8(b"subscription"),
             timestamp: clock::timestamp_ms(clock),
+            sub_agent_id,
+            organization_id,
         });
     }
 

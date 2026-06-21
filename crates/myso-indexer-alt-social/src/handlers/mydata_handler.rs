@@ -33,6 +33,9 @@ use myso_indexer_alt_social_schema::schema::{
 use super::common;
 use super::events;
 use super::mydata;
+use super::organization_stats::{
+    apply_org_outbound_spend, resolve_organization_id_for_derived_address,
+};
 use super::mydata_object;
 use super::post_mydata::{self, paywall_from_mydata};
 use crate::metrics::SocialMetrics;
@@ -315,10 +318,24 @@ impl Handler for MyDataHandler {
                         .await?;
                 }
                 MyDataRow::MyDataPurchase(p) => {
+                    let mut purchase = p.clone();
+                    if purchase.organization_id.is_none() {
+                        purchase.organization_id =
+                            resolve_organization_id_for_derived_address(conn, &purchase.buyer)
+                                .await?;
+                    }
                     total += diesel::insert_into(mydata_purchases::table)
-                        .values(p)
+                        .values(&purchase)
                         .execute(conn)
                         .await?;
+                    apply_org_outbound_spend(
+                        conn,
+                        purchase.organization_id.as_deref(),
+                        purchase.price,
+                        None,
+                        purchase.purchase_time,
+                    )
+                    .await?;
                 }
                 MyDataRow::MyDataSubscription(s) => {
                     let duration_days = mydata_data::table

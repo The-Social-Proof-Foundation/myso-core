@@ -39,6 +39,11 @@ use myso_indexer_alt_social_schema::schema::{
 
 use super::common;
 use super::events;
+use super::organization_stats::{
+    apply_org_outbound_spend, apply_org_revenue, resolve_organization_id_for_derived_address,
+    resolve_organization_id_for_post, resolve_organization_id_for_sub_agent,
+    stamp_and_count_social_action, OrgStatColumn,
+};
 use super::poc;
 use super::post;
 use super::post_mydata;
@@ -667,6 +672,19 @@ fn classify_reaction(prior: Option<&str>, new: &str) -> ReactionApplyKind {
     }
 }
 
+async fn resolve_attribution_organization_id(
+    conn: &mut Connection<'_>,
+    organization_id: &mut Option<String>,
+    sub_agent_id: &Option<String>,
+) -> Result<()> {
+    if organization_id.is_none() {
+        if let Some(sub_agent_id) = sub_agent_id {
+            *organization_id = resolve_organization_id_for_sub_agent(conn, sub_agent_id).await?;
+        }
+    }
+    Ok(())
+}
+
 #[async_trait]
 impl Handler for PostsHandler {
     async fn commit<'a>(values: &[Self::Value], conn: &mut Connection<'a>) -> Result<usize> {
@@ -678,6 +696,12 @@ impl Handler for PostsHandler {
             match row {
                 PostRow::Post(p) => {
                     let mut post = p.clone();
+                    resolve_attribution_organization_id(
+                        conn,
+                        &mut post.organization_id,
+                        &post.sub_agent_id,
+                    )
+                    .await?;
                     post_mydata::enrich_post_paywall_from_db(&mut post, conn).await?;
                     total += diesel::insert_into(posts::table)
                         .values(&post)
@@ -685,20 +709,51 @@ impl Handler for PostsHandler {
                         .do_nothing()
                         .execute(conn)
                         .await?;
+                    stamp_and_count_social_action(
+                        conn,
+                        post.organization_id.as_deref(),
+                        OrgStatColumn::TotalPosts,
+                        post.created_at,
+                        None,
+                    )
+                    .await?;
                 }
                 PostRow::Comment(c) => {
+                    let mut comment = c.clone();
+                    resolve_attribution_organization_id(
+                        conn,
+                        &mut comment.organization_id,
+                        &comment.sub_agent_id,
+                    )
+                    .await?;
                     total += diesel::insert_into(comments::table)
-                        .values(c)
+                        .values(&comment)
                         .on_conflict((comments::id, comments::time))
                         .do_nothing()
                         .execute(conn)
                         .await?;
+                    stamp_and_count_social_action(
+                        conn,
+                        comment.organization_id.as_deref(),
+                        OrgStatColumn::TotalComments,
+                        comment.created_at,
+                        None,
+                    )
+                    .await?;
                 }
                 PostRow::Reaction(r) => {
-                    let is_post = r.is_post;
-                    let object_id = r.object_id.clone();
-                    let user_address = r.user_address.clone();
-                    let new_reaction_text = r.reaction_text.clone();
+                    let mut reaction = r.clone();
+                    resolve_attribution_organization_id(
+                        conn,
+                        &mut reaction.organization_id,
+                        &reaction.sub_agent_id,
+                    )
+                    .await?;
+                    let is_post = reaction.is_post;
+                    let object_id = reaction.object_id.clone();
+                    let user_address = reaction.user_address.clone();
+                    let new_reaction_text = reaction.reaction_text.clone();
+                    let created_at = reaction.created_at;
 
                     let prior: Option<String> = reactions::table
                         .filter(reactions::object_id.eq(&object_id))
@@ -712,7 +767,7 @@ impl Handler for PostsHandler {
                     match classify_reaction(prior.as_deref(), &new_reaction_text) {
                         ReactionApplyKind::Replay => {
                             let _ = diesel::insert_into(reactions::table)
-                                .values(r)
+                                .values(&reaction)
                                 .on_conflict_do_nothing()
                                 .execute(conn)
                                 .await;
@@ -730,7 +785,7 @@ impl Handler for PostsHandler {
                                 .execute(conn)
                                 .await;
                             total += diesel::insert_into(reactions::table)
-                                .values(r)
+                                .values(&reaction)
                                 .execute(conn)
                                 .await?;
                             total += diesel::insert_into(reaction_counts::table)
@@ -750,7 +805,7 @@ impl Handler for PostsHandler {
                         }
                         ReactionApplyKind::New => {
                             total += diesel::insert_into(reactions::table)
-                                .values(r)
+                                .values(&reaction)
                                 .execute(conn)
                                 .await?;
                             total += diesel::insert_into(reaction_counts::table)
@@ -767,6 +822,14 @@ impl Handler for PostsHandler {
                                 .set(reaction_counts::count.eq(reaction_counts::count + 1))
                                 .execute(conn)
                                 .await?;
+                            stamp_and_count_social_action(
+                                conn,
+                                reaction.organization_id.as_deref(),
+                                OrgStatColumn::TotalReactions,
+                                created_at,
+                                None,
+                            )
+                            .await?;
                             if is_post {
                                 let _ = diesel::update(posts::table)
                                     .filter(posts::post_id.eq(&object_id))
@@ -816,18 +879,56 @@ impl Handler for PostsHandler {
                     }
                 }
                 PostRow::Repost(r) => {
+                    let mut repost = r.clone();
+                    resolve_attribution_organization_id(
+                        conn,
+                        &mut repost.organization_id,
+                        &repost.sub_agent_id,
+                    )
+                    .await?;
                     total += diesel::insert_into(reposts::table)
-                        .values(r)
+                        .values(&repost)
                         .on_conflict((reposts::repost_id, reposts::time))
                         .do_nothing()
                         .execute(conn)
                         .await?;
+                    stamp_and_count_social_action(
+                        conn,
+                        repost.organization_id.as_deref(),
+                        OrgStatColumn::TotalReposts,
+                        repost.created_at,
+                        None,
+                    )
+                    .await?;
                 }
                 PostRow::Tip(t) => {
                     total += diesel::insert_into(tips::table)
                         .values(t)
                         .execute(conn)
                         .await?;
+                    let tipper_org =
+                        resolve_organization_id_for_derived_address(conn, &t.tipper).await?;
+                    let recipient_org = if t.is_post {
+                        resolve_organization_id_for_post(conn, &t.object_id).await?
+                    } else {
+                        None
+                    };
+                    apply_org_outbound_spend(
+                        conn,
+                        tipper_org.as_deref(),
+                        t.amount,
+                        Some(&t.recipient),
+                        t.created_at,
+                    )
+                    .await?;
+                    apply_org_revenue(
+                        conn,
+                        recipient_org.as_deref(),
+                        t.amount,
+                        Some(&t.tipper),
+                        t.created_at,
+                    )
+                    .await?;
                 }
                 PostRow::ModerationEvent(m) => {
                     total += diesel::insert_into(posts_moderation_events::table)
@@ -1243,10 +1344,24 @@ impl Handler for PostsHandler {
                     }
                 }
                 PostRow::UnifiedRevenue(r) => {
+                    let mut revenue = r.clone();
+                    if revenue.organization_id.is_none() {
+                        revenue.organization_id =
+                            resolve_organization_id_for_derived_address(conn, &revenue.payer_address)
+                                .await?;
+                    }
                     total += diesel::insert_into(unified_revenue::table)
-                        .values(r)
+                        .values(&revenue)
                         .execute(conn)
                         .await?;
+                    apply_org_revenue(
+                        conn,
+                        revenue.organization_id.as_deref(),
+                        revenue.amount,
+                        Some(&revenue.payer_address),
+                        revenue.revenue_time,
+                    )
+                    .await?;
                 }
                 PostRow::PocBadge(badge) => {
                     total += diesel::insert_into(poc_badges::table)

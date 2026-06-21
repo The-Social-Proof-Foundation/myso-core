@@ -912,6 +912,7 @@ pub struct BcsSubAgentRegisteredEvent {
     account_id: AccountAddress,
     principal_owner: AccountAddress,
     profile_id: AccountAddress,
+    organization_id: AccountAddress,
     agent_object_id: AccountAddress,
     derived_address: AccountAddress,
     label: String,
@@ -936,6 +937,7 @@ pub struct BcsSubAgentUpdatedEvent {
     account_id: AccountAddress,
     principal_owner: AccountAddress,
     profile_id: AccountAddress,
+    organization_id: AccountAddress,
     agent_object_id: AccountAddress,
     derived_address: AccountAddress,
     label: String,
@@ -1014,6 +1016,39 @@ pub struct BcsAgentMemoryVaultCreatedEvent {
     vault_id: AccountAddress,
     agent_object_id: AccountAddress,
     memory_account_id: AccountAddress,
+}
+
+#[derive(Debug, Deserialize, Serialize)]
+pub struct BcsAgenticOrganizationCreatedEvent {
+    organization_id: AccountAddress,
+    account_id: AccountAddress,
+    principal_owner: AccountAddress,
+    profile_id: AccountAddress,
+    name: Option<String>,
+    description: Option<String>,
+    org_type: u8,
+    created_at: u64,
+}
+
+#[derive(Debug, Deserialize, Serialize)]
+pub struct BcsAgenticOrganizationUpdatedEvent {
+    organization_id: AccountAddress,
+    name: Option<String>,
+    description: Option<String>,
+}
+
+#[derive(Debug, Deserialize, Serialize)]
+pub struct BcsAgenticOrganizationCategoryUpdatedEvent {
+    organization_id: AccountAddress,
+    org_type: u8,
+    previous_org_type: u8,
+    updated_at: u64,
+}
+
+#[derive(Debug, Deserialize, Serialize)]
+pub struct BcsAgenticOrganizationDeactivatedEvent {
+    organization_id: AccountAddress,
+    deactivated_at: u64,
 }
 
 /// Move `ascii::String` BCS (`bytes` field).
@@ -1442,6 +1477,8 @@ pub struct BcsPurchaseEvent {
     price: u64,
     purchase_type: String,
     timestamp: u64,
+    sub_agent_id: Option<AccountAddress>,
+    organization_id: Option<AccountAddress>,
 }
 
 #[derive(Debug, Deserialize)]
@@ -2822,6 +2859,7 @@ fn sub_agent_fields_json(ev: &BcsSubAgentRegisteredEvent) -> serde_json::Value {
         "account_id": addr_to_string(&ev.account_id),
         "principal_owner": addr_to_string(&ev.principal_owner),
         "profile_id": addr_to_string(&ev.profile_id),
+        "organization_id": addr_to_string(&ev.organization_id),
         "agent_object_id": addr_to_string(&ev.agent_object_id),
         "derived_address": addr_to_string(&ev.derived_address),
         "label": ev.label,
@@ -2868,6 +2906,7 @@ fn parse_memory_event(
                 account_id: ev.account_id,
                 principal_owner: ev.principal_owner,
                 profile_id: ev.profile_id,
+                organization_id: ev.organization_id,
                 agent_object_id: ev.agent_object_id,
                 derived_address: ev.derived_address,
                 label: ev.label,
@@ -2962,6 +3001,47 @@ fn parse_memory_event(
                 "vault_id": addr_to_string(&ev.vault_id),
                 "agent_object_id": addr_to_string(&ev.agent_object_id),
                 "memory_account_id": addr_to_string(&ev.memory_account_id),
+            })))
+        }
+        "AgenticOrganizationCreated" => {
+            let ev = bcs::from_bytes::<BcsAgenticOrganizationCreatedEvent>(contents)
+                .map_err(|e| bcs_parse_err(e, contents))?;
+            Ok(Some(serde_json::json!({
+                "organization_id": addr_to_string(&ev.organization_id),
+                "account_id": addr_to_string(&ev.account_id),
+                "principal_owner": addr_to_string(&ev.principal_owner),
+                "profile_id": addr_to_string(&ev.profile_id),
+                "name": ev.name,
+                "description": ev.description,
+                "org_type": ev.org_type,
+                "created_at": ev.created_at,
+            })))
+        }
+        "AgenticOrganizationUpdated" => {
+            let ev = bcs::from_bytes::<BcsAgenticOrganizationUpdatedEvent>(contents)
+                .map_err(|e| bcs_parse_err(e, contents))?;
+            Ok(Some(serde_json::json!({
+                "organization_id": addr_to_string(&ev.organization_id),
+                "name": ev.name,
+                "description": ev.description,
+            })))
+        }
+        "AgenticOrganizationCategoryUpdated" => {
+            let ev = bcs::from_bytes::<BcsAgenticOrganizationCategoryUpdatedEvent>(contents)
+                .map_err(|e| bcs_parse_err(e, contents))?;
+            Ok(Some(serde_json::json!({
+                "organization_id": addr_to_string(&ev.organization_id),
+                "org_type": ev.org_type,
+                "previous_org_type": ev.previous_org_type,
+                "updated_at": ev.updated_at,
+            })))
+        }
+        "AgenticOrganizationDeactivated" => {
+            let ev = bcs::from_bytes::<BcsAgenticOrganizationDeactivatedEvent>(contents)
+                .map_err(|e| bcs_parse_err(e, contents))?;
+            Ok(Some(serde_json::json!({
+                "organization_id": addr_to_string(&ev.organization_id),
+                "deactivated_at": ev.deactivated_at,
             })))
         }
         _ => Ok(None),
@@ -3337,6 +3417,8 @@ fn parse_mydata_event(
                 "price": ev.price,
                 "purchase_type": ev.purchase_type,
                 "timestamp": ev.timestamp,
+                "sub_agent_id": optional_addr_json(&ev.sub_agent_id),
+                "organization_id": optional_addr_json(&ev.organization_id),
             })))
         }
         "AccessGrantedEvent" | "DataAccessGrantedEvent" => {
@@ -5260,6 +5342,7 @@ mod tests {
             account_id: AccountAddress::from_hex_literal("0xaa").unwrap(),
             principal_owner: AccountAddress::from_hex_literal("0xbb").unwrap(),
             profile_id: AccountAddress::from_hex_literal("0xcc").unwrap(),
+            organization_id: AccountAddress::from_hex_literal("0x11").unwrap(),
             agent_object_id: AccountAddress::from_hex_literal("0xdd").unwrap(),
             derived_address: AccountAddress::from_hex_literal("0xee").unwrap(),
             label: "bot".to_string(),

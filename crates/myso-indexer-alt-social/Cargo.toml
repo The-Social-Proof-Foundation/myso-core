@@ -24,6 +24,7 @@ chrono.workspace = true
 uuid.workspace = true
 
 myso-pg-db.workspace = true
+myso-futures.workspace = true
 prometheus.workspace = true
 myso-indexer-alt-metrics.workspace = true
 myso-types.workspace = true

@@ -188,6 +188,11 @@ fn process_mydata_purchase_event(
 
     let mut rows = Vec::new();
 
+    let organization_id = data
+        .get("organization_id")
+        .and_then(|v| v.as_str())
+        .map(str::to_string);
+
     let purchase = NewMyDataPurchase {
         mydata_id: ip_id.clone(),
         buyer: buyer.clone(),
@@ -195,6 +200,7 @@ fn process_mydata_purchase_event(
         purchase_type: purchase_type.clone(),
         purchase_time: timestamp,
         transaction_id: transaction_id.to_string(),
+        organization_id,
     };
     rows.push(SocialEventRow::MyDataPurchase(purchase));
 

@@ -110,7 +110,7 @@ where
 fn attribution_fields(
     data: &serde_json::Value,
     default_actor: &str,
-) -> (Option<String>, Option<String>, Option<i16>) {
+) -> (Option<String>, Option<String>, Option<String>, Option<i16>) {
     let actor_address = data
         .get("actor_address")
         .and_then(|v| v.as_str())
@@ -123,11 +123,23 @@ fn attribution_fields(
             v.as_str().map(String::from)
         }
     });
+    let organization_id = data.get("organization_id").and_then(|v| {
+        if v.is_null() {
+            None
+        } else {
+            v.as_str().map(String::from)
+        }
+    });
     let action_identity_class = data
         .get("action_identity_class")
         .and_then(|v| v.as_u64())
         .and_then(|n| i16::try_from(n).ok());
-    (actor_address, sub_agent_id, action_identity_class)
+    (
+        actor_address,
+        sub_agent_id,
+        organization_id,
+        action_identity_class,
+    )
 }
 
 #[derive(Debug, Deserialize)]
@@ -429,7 +441,7 @@ fn process_post_created_event(
     };
     let now = Utc::now();
     let created_at = now.timestamp_millis() as i64;
-    let (actor_address, sub_agent_id, action_identity_class) =
+    let (actor_address, sub_agent_id, organization_id, action_identity_class) =
         attribution_fields(data, &ev.owner);
 
     let mut post = NewPost {
@@ -488,6 +500,7 @@ fn process_post_created_event(
             .action_identity_class
             .map(i16::from)
             .or(action_identity_class),
+        organization_id,
     };
     if let Some(mydata_id) = post.mydata_id.clone() {
         post_mydata::enrich_post_from_mydata_id(&mut post, &mydata_id, mydata_snapshots);
@@ -522,7 +535,7 @@ fn process_comment_created_event(
     let now = Utc::now();
     let created_at = now.timestamp_millis() as i64;
     let id = format!("{}:{}", ev.comment_id, created_at);
-    let (actor_address, sub_agent_id, action_identity_class) =
+    let (actor_address, sub_agent_id, organization_id, action_identity_class) =
         attribution_fields(data, &ev.owner);
 
     let comment = NewComment {
@@ -553,6 +566,7 @@ fn process_comment_created_event(
             .action_identity_class
             .map(i16::from)
             .or(action_identity_class),
+        organization_id,
     };
     Some(vec![
         SocialEventRow::Comment(comment),
@@ -575,6 +589,9 @@ fn process_reaction_event(data: &serde_json::Value, event_id: &str) -> Option<Ve
         now.timestamp_millis() as i64
     };
 
+    let (actor_address, sub_agent_id, organization_id, action_identity_class) =
+        attribution_fields(data, &ev.user_address);
+
     let reaction = NewReaction {
         object_id: ev.object_id.clone(),
         user_address: ev
@@ -591,9 +608,14 @@ fn process_reaction_event(data: &serde_json::Value, event_id: &str) -> Option<Ve
             .or_else(|| Some(ev.user_address.clone())),
         actor_address: ev
             .actor_address
+            .or(actor_address)
             .or_else(|| Some(ev.user_address.clone())),
-        sub_agent_id: ev.sub_agent_id,
-        action_identity_class: ev.action_identity_class.map(i16::from),
+        sub_agent_id: ev.sub_agent_id.or(sub_agent_id),
+        action_identity_class: ev
+            .action_identity_class
+            .map(i16::from)
+            .or(action_identity_class),
+        organization_id,
     };
     Some(vec![SocialEventRow::Reaction(reaction)])
 }
@@ -635,7 +657,7 @@ fn process_repost_event(data: &serde_json::Value, event_id: &str) -> Option<Vec<
         now.timestamp_millis() as i64
     };
     let id = format!("{}:{}", ev.repost_id, created_at);
-    let (actor_address, sub_agent_id, action_identity_class) =
+    let (actor_address, sub_agent_id, organization_id, action_identity_class) =
         attribution_fields(data, &ev.owner);
 
     let repost = NewRepost {
@@ -655,6 +677,7 @@ fn process_repost_event(data: &serde_json::Value, event_id: &str) -> Option<Vec<
             .action_identity_class
             .map(i16::from)
             .or(action_identity_class),
+        organization_id,
     };
     Some(vec![
         SocialEventRow::Repost(repost),

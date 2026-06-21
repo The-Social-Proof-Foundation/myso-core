@@ -35,7 +35,13 @@ use crate::insurance::{
 };
 use crate::metrics::DbReaderMetrics;
 use crate::memory::{SubAgentListResult};
-use myso_indexer_alt_social_schema::models::{MemoryAccountRow, SubAgentRow};
+use myso_indexer_alt_social_schema::models::{AgenticOrganizationRow, MemoryAccountRow, SubAgentRow};
+use crate::org_leaderboard::{
+    OrganizationLeaderboardResult, OrganizationLeaderboardSort, organization_categories,
+    org_type_from_slug, OrganizationCategoryInfo,
+};
+use crate::org_stats::{OrganizationStatistics, OrganizationStatsWindow};
+use crate::organization::AgenticOrganizationListResult;
 use crate::mydata::{
     check_mydata_has_access, get_mydata_access_analytics, get_mydata_access_logs, get_mydata_config,
     get_mydata_purchases,
@@ -338,6 +344,90 @@ impl SocialPgReader {
             &self.metrics,
         )
         .await
+    }
+
+    pub async fn get_agentic_organization(
+        &self,
+        organization_id: &str,
+    ) -> anyhow::Result<Option<AgenticOrganizationRow>> {
+        let mut conn = self.connect().await?;
+        crate::organization::get_agentic_organization(
+            &mut conn,
+            organization_id,
+            &self.metrics,
+        )
+        .await
+    }
+
+    pub async fn list_agentic_organizations_by_owner(
+        &self,
+        principal_owner: &str,
+        org_type: Option<i16>,
+        active_only: bool,
+        limit: i64,
+        offset: i64,
+    ) -> anyhow::Result<AgenticOrganizationListResult> {
+        let mut conn = self.connect().await?;
+        crate::organization::list_agentic_organizations_by_owner(
+            &mut conn,
+            principal_owner,
+            org_type,
+            active_only,
+            limit,
+            offset,
+            &self.metrics,
+        )
+        .await
+    }
+
+    pub async fn get_organization_statistics(
+        &self,
+        organization_id: &str,
+        window: OrganizationStatsWindow,
+    ) -> anyhow::Result<Option<OrganizationStatistics>> {
+        let mut conn = self.connect().await?;
+        let org = crate::organization::get_agentic_organization(
+            &mut conn,
+            organization_id,
+            &self.metrics,
+        )
+        .await?;
+        let Some(org) = org else {
+            return Ok(None);
+        };
+        crate::org_stats::get_organization_statistics(&mut conn, &org, window, &self.metrics)
+            .await
+            .map(Some)
+    }
+
+    pub async fn get_agentic_organizations_leaderboard(
+        &self,
+        sort: OrganizationLeaderboardSort,
+        org_type: i16,
+        window: OrganizationStatsWindow,
+        limit: i64,
+        offset: i64,
+    ) -> anyhow::Result<OrganizationLeaderboardResult> {
+        let mut conn = self.connect().await?;
+        crate::org_leaderboard::get_organization_leaderboard(
+            &mut conn,
+            sort,
+            org_type,
+            window,
+            limit,
+            offset,
+            &self.metrics,
+        )
+        .await
+    }
+
+    pub fn organization_categories(&self) -> Vec<OrganizationCategoryInfo> {
+        organization_categories()
+    }
+
+    /// Parse organization category slug (e.g. `investment_fund`) to org_type value.
+    pub fn org_type_from_slug(slug: &str) -> Option<i16> {
+        org_type_from_slug(slug)
     }
 
     /// Posts for a profile (owner or profile_id), same scope as REST profile posts.

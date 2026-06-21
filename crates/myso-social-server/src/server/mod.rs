@@ -415,6 +415,14 @@ fn make_router(state: Arc<AppState>) -> Router {
             "/sub-agents/:agentObjectId/children",
             get(list_sub_agent_children),
         )
+        .route("/organizations/categories", get(list_organization_categories))
+        .route("/organizations/leaderboard", get(get_organization_leaderboard))
+        .route("/organizations/:id", get(get_agentic_organization))
+        .route("/organizations/:id/statistics", get(get_organization_statistics))
+        .route(
+            "/profiles/:address/organizations",
+            get(list_profile_organizations),
+        )
         .route("/profiles/:address/events", get(get_profile_events))
         .route(
             "/profiles/:address/platform-memberships",

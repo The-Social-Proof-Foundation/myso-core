@@ -15,7 +15,8 @@ module social_contracts::memory_tests {
     use myso::coin::{Self, Coin};
     use myso::myso::MYSO;
 
-    use social_contracts::memory::{Self, MemoryRegistry, MemoryAccount, SubAgent};
+    use social_contracts::memory::{Self, MemoryRegistry, MemoryAccount, SubAgent, AgenticOrganization};
+    use social_contracts::memory_test_helpers;
     use social_contracts::profile::{Self, Profile, UsernameRegistry};
 
     const ADMIN: address = @0xAD;
@@ -80,17 +81,19 @@ module social_contracts::memory_tests {
     }
 
     fun register_test_agent(
-        memory_account: &mut MemoryAccount,
+        scenario: &mut test_scenario::Scenario,
         derived: address,
         pubkey: vector<u8>,
         capabilities: u64,
         approval_required_caps: u64,
         platform_scope: Option<address>,
-        clock: &Clock,
-        ctx: &mut myso::tx_context::TxContext,
     ) {
+        let mut org = memory_test_helpers::take_created_org(scenario);
+        let mut memory_account = test_scenario::take_shared<MemoryAccount>(scenario);
+        let clock = test_scenario::take_shared<Clock>(scenario);
         memory::register_sub_agent(
-            memory_account,
+            &mut memory_account,
+            &mut org,
             pubkey,
             derived,
             string::utf8(b"agent"),
@@ -103,9 +106,45 @@ module social_contracts::memory_tests {
             option::none(),
             platform_scope,
             option::none(),
-            clock,
-            ctx,
+            &clock,
+            test_scenario::ctx(scenario),
         );
+        test_scenario::return_shared(org);
+        test_scenario::return_shared(memory_account);
+        test_scenario::return_shared(clock);
+    }
+
+    fun register_test_agent_with_spend(
+        scenario: &mut test_scenario::Scenario,
+        derived: address,
+        pubkey: vector<u8>,
+        capabilities: u64,
+        max_action_spend: Option<u64>,
+    ) {
+        let mut org = memory_test_helpers::take_created_org(scenario);
+        let mut memory_account = test_scenario::take_shared<MemoryAccount>(scenario);
+        let clock = test_scenario::take_shared<Clock>(scenario);
+        memory::register_sub_agent(
+            &mut memory_account,
+            &mut org,
+            pubkey,
+            derived,
+            string::utf8(b"spend-agent"),
+            memory::class_delegated_ai(),
+            0,
+            capabilities,
+            capabilities,
+            3,
+            0,
+            max_action_spend,
+            option::none(),
+            option::none(),
+            &clock,
+            test_scenario::ctx(scenario),
+        );
+        test_scenario::return_shared(org);
+        test_scenario::return_shared(memory_account);
+        test_scenario::return_shared(clock);
     }
 
     #[test]
@@ -115,32 +154,36 @@ module social_contracts::memory_tests {
 
         test_scenario::next_tx(&mut scenario, USER1);
         {
-            let mut memory_account = test_scenario::take_shared<MemoryAccount>(&scenario);
-            let clock = test_scenario::take_shared<Clock>(&scenario);
+            memory_test_helpers::create_default_org_in_tx(&mut scenario);
+        };
 
+        test_scenario::next_tx(&mut scenario, USER1);
+        {
             register_test_agent(
-                &mut memory_account,
+                &mut scenario,
                 AGENT_ADDR,
                 AGENT_PUBKEY,
                 memory::cap_memory_read(),
                 0,
                 option::none(),
-                &clock,
-                test_scenario::ctx(&mut scenario),
             );
+        };
+
+        test_scenario::next_tx(&mut scenario, USER1);
+        {
+            memory_test_helpers::create_default_org_in_tx(&mut scenario);
+        };
+
+        test_scenario::next_tx(&mut scenario, USER1);
+        {
             register_test_agent(
-                &mut memory_account,
+                &mut scenario,
                 AGENT2_ADDR,
                 AGENT2_PUBKEY,
                 0,
                 0,
                 option::none(),
-                &clock,
-                test_scenario::ctx(&mut scenario),
             );
-
-            test_scenario::return_shared(memory_account);
-            test_scenario::return_shared(clock);
         };
 
         test_scenario::next_tx(&mut scenario, USER1);
@@ -198,31 +241,70 @@ module social_contracts::memory_tests {
 
         test_scenario::next_tx(&mut scenario, USER1);
         {
+            memory_test_helpers::create_default_org_in_tx(&mut scenario);
+        };
+
+        test_scenario::next_tx(&mut scenario, USER1);
+        {
+            let mut org = memory_test_helpers::take_created_org(&mut scenario);
             let mut memory_account = test_scenario::take_shared<MemoryAccount>(&scenario);
             let clock = test_scenario::take_shared<Clock>(&scenario);
 
-            register_test_agent(
+            memory::register_sub_agent(
                 &mut memory_account,
-                AGENT_ADDR,
+                &mut org,
                 AGENT_PUBKEY,
-                memory::cap_memory_read(),
-                0,
-                option::none(),
-                &clock,
-                test_scenario::ctx(&mut scenario),
-            );
-
-            register_test_agent(
-                &mut memory_account,
                 AGENT_ADDR,
-                AGENT2_PUBKEY,
-                memory::cap_memory_read(),
+                string::utf8(b"agent"),
+                memory::class_delegated_ai(),
                 0,
+                memory::cap_memory_read(),
+                memory::cap_memory_read(),
+                3,
+                0,
+                option::none(),
+                option::none(),
                 option::none(),
                 &clock,
                 test_scenario::ctx(&mut scenario),
             );
 
+            test_scenario::return_shared(org);
+            test_scenario::return_shared(memory_account);
+            test_scenario::return_shared(clock);
+        };
+
+        test_scenario::next_tx(&mut scenario, USER1);
+        {
+            memory_test_helpers::create_default_org_in_tx(&mut scenario);
+        };
+
+        test_scenario::next_tx(&mut scenario, USER1);
+        {
+            let mut org = memory_test_helpers::take_created_org(&mut scenario);
+            let mut memory_account = test_scenario::take_shared<MemoryAccount>(&scenario);
+            let clock = test_scenario::take_shared<Clock>(&scenario);
+
+            memory::register_sub_agent(
+                &mut memory_account,
+                &mut org,
+                AGENT2_PUBKEY,
+                AGENT_ADDR,
+                string::utf8(b"agent2"),
+                memory::class_delegated_ai(),
+                0,
+                memory::cap_memory_read(),
+                memory::cap_memory_read(),
+                3,
+                0,
+                option::none(),
+                option::none(),
+                option::none(),
+                &clock,
+                test_scenario::ctx(&mut scenario),
+            );
+
+            test_scenario::return_shared(org);
             test_scenario::return_shared(memory_account);
             test_scenario::return_shared(clock);
         };
@@ -237,32 +319,36 @@ module social_contracts::memory_tests {
 
         test_scenario::next_tx(&mut scenario, USER1);
         {
-            let mut memory_account = test_scenario::take_shared<MemoryAccount>(&scenario);
-            let clock = test_scenario::take_shared<Clock>(&scenario);
+            memory_test_helpers::create_default_org_in_tx(&mut scenario);
+        };
 
+        test_scenario::next_tx(&mut scenario, USER1);
+        {
             register_test_agent(
-                &mut memory_account,
+                &mut scenario,
                 AGENT_ADDR,
                 AGENT_PUBKEY,
                 memory::cap_memory_read(),
                 0,
                 option::none(),
-                &clock,
-                test_scenario::ctx(&mut scenario),
             );
+        };
+
+        test_scenario::next_tx(&mut scenario, USER1);
+        {
+            memory_test_helpers::create_default_org_in_tx(&mut scenario);
+        };
+
+        test_scenario::next_tx(&mut scenario, USER1);
+        {
             register_test_agent(
-                &mut memory_account,
+                &mut scenario,
                 AGENT2_ADDR,
                 AGENT2_PUBKEY,
                 0,
                 0,
                 option::none(),
-                &clock,
-                test_scenario::ctx(&mut scenario),
             );
-
-            test_scenario::return_shared(memory_account);
-            test_scenario::return_shared(clock);
         };
 
         test_scenario::next_tx(&mut scenario, USER1);
@@ -316,22 +402,19 @@ module social_contracts::memory_tests {
 
         test_scenario::next_tx(&mut scenario, USER1);
         {
-            let mut memory_account = test_scenario::take_shared<MemoryAccount>(&scenario);
-            let clock = test_scenario::take_shared<Clock>(&scenario);
+            memory_test_helpers::create_default_org_in_tx(&mut scenario);
+        };
 
+        test_scenario::next_tx(&mut scenario, USER1);
+        {
             register_test_agent(
-                &mut memory_account,
+                &mut scenario,
                 AGENT_ADDR,
                 AGENT_PUBKEY,
                 memory::cap_memory_read(),
                 0,
                 option::none(),
-                &clock,
-                test_scenario::ctx(&mut scenario),
             );
-
-            test_scenario::return_shared(memory_account);
-            test_scenario::return_shared(clock);
         };
 
         test_scenario::next_tx(&mut scenario, USER1);
@@ -381,22 +464,19 @@ module social_contracts::memory_tests {
 
         test_scenario::next_tx(&mut scenario, USER1);
         {
-            let mut memory_account = test_scenario::take_shared<MemoryAccount>(&scenario);
-            let clock = test_scenario::take_shared<Clock>(&scenario);
+            memory_test_helpers::create_default_org_in_tx(&mut scenario);
+        };
 
+        test_scenario::next_tx(&mut scenario, USER1);
+        {
             register_test_agent(
-                &mut memory_account,
+                &mut scenario,
                 AGENT_ADDR,
                 AGENT_PUBKEY,
                 memory::cap_memory_read(),
                 0,
                 option::some(WRONG_PLATFORM),
-                &clock,
-                test_scenario::ctx(&mut scenario),
             );
-
-            test_scenario::return_shared(memory_account);
-            test_scenario::return_shared(clock);
         };
 
         test_scenario::next_tx(&mut scenario, AGENT_ADDR);
@@ -428,22 +508,19 @@ module social_contracts::memory_tests {
 
         test_scenario::next_tx(&mut scenario, USER1);
         {
-            let mut memory_account = test_scenario::take_shared<MemoryAccount>(&scenario);
-            let clock = test_scenario::take_shared<Clock>(&scenario);
+            memory_test_helpers::create_default_org_in_tx(&mut scenario);
+        };
 
+        test_scenario::next_tx(&mut scenario, USER1);
+        {
             register_test_agent(
-                &mut memory_account,
+                &mut scenario,
                 AGENT_ADDR,
                 AGENT_PUBKEY,
                 memory::cap_post_publish(),
                 memory::cap_post_publish(),
                 option::none(),
-                &clock,
-                test_scenario::ctx(&mut scenario),
             );
-
-            test_scenario::return_shared(memory_account);
-            test_scenario::return_shared(clock);
         };
 
         test_scenario::next_tx(&mut scenario, AGENT_ADDR);
@@ -468,29 +545,18 @@ module social_contracts::memory_tests {
 
         test_scenario::next_tx(&mut scenario, USER1);
         {
-            let mut memory_account = test_scenario::take_shared<MemoryAccount>(&scenario);
-            let clock = test_scenario::take_shared<Clock>(&scenario);
+            memory_test_helpers::create_default_org_in_tx(&mut scenario);
+        };
 
-            memory::register_sub_agent(
-                &mut memory_account,
-                AGENT_PUBKEY,
+        test_scenario::next_tx(&mut scenario, USER1);
+        {
+            register_test_agent_with_spend(
+                &mut scenario,
                 AGENT_ADDR,
-                string::utf8(b"spend-agent"),
-                memory::class_delegated_ai(),
-                0,
+                AGENT_PUBKEY,
                 memory::cap_post_publish(),
-                memory::cap_post_publish(),
-                3,
-                0,
                 option::some(1_000),
-                option::none(),
-                option::none(),
-                &clock,
-                test_scenario::ctx(&mut scenario),
             );
-
-            test_scenario::return_shared(memory_account);
-            test_scenario::return_shared(clock);
         };
 
         test_scenario::next_tx(&mut scenario, AGENT_ADDR);
@@ -516,29 +582,18 @@ module social_contracts::memory_tests {
 
         test_scenario::next_tx(&mut scenario, USER1);
         {
-            let mut memory_account = test_scenario::take_shared<MemoryAccount>(&scenario);
-            let clock = test_scenario::take_shared<Clock>(&scenario);
+            memory_test_helpers::create_default_org_in_tx(&mut scenario);
+        };
 
-            memory::register_sub_agent(
-                &mut memory_account,
-                AGENT_PUBKEY,
+        test_scenario::next_tx(&mut scenario, USER1);
+        {
+            register_test_agent_with_spend(
+                &mut scenario,
                 AGENT_ADDR,
-                string::utf8(b"spend-agent"),
-                memory::class_delegated_ai(),
-                0,
+                AGENT_PUBKEY,
                 memory::cap_post_publish(),
-                memory::cap_post_publish(),
-                3,
-                0,
                 option::some(100),
-                option::none(),
-                option::none(),
-                &clock,
-                test_scenario::ctx(&mut scenario),
             );
-
-            test_scenario::return_shared(memory_account);
-            test_scenario::return_shared(clock);
         };
 
         test_scenario::next_tx(&mut scenario, AGENT_ADDR);

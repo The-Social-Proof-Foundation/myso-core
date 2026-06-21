@@ -6,6 +6,7 @@ mod health;
 mod insurance;
 mod memory;
 mod mydata;
+mod organization;
 mod platforms;
 mod poc;
 mod posts;
@@ -39,6 +40,10 @@ pub use insurance::{
 pub use memory::{
     get_profile_memory_account, get_sub_agent, get_sub_agent_by_object_id,
     list_profile_sub_agents, list_sub_agent_children,
+};
+pub use organization::{
+    get_agentic_organization, get_organization_leaderboard, get_organization_statistics,
+    list_organization_categories, list_profile_organizations,
 };
 pub use mydata::{
     get_creator_mydata, get_mydata_access_analytics, get_mydata_access_logs, get_mydata_by_id,

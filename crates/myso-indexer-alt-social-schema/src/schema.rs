@@ -92,6 +92,7 @@ diesel::table! {
         actor_address -> Nullable<Text>,
         sub_agent_id -> Nullable<Text>,
         action_identity_class -> Nullable<Int2>,
+        organization_id -> Nullable<Text>,
     }
 }
 
@@ -466,6 +467,7 @@ diesel::table! {
         revoked -> Bool,
         revoked_at -> Nullable<Int8>,
         revoked_by -> Nullable<Text>,
+        organization_id -> Nullable<Text>,
     }
 }
 
@@ -977,6 +979,7 @@ diesel::table! {
         actor_address -> Nullable<Text>,
         sub_agent_id -> Nullable<Text>,
         action_identity_class -> Nullable<Int2>,
+        organization_id -> Nullable<Text>,
     }
 }
 
@@ -1195,6 +1198,111 @@ diesel::table! {
 }
 
 diesel::table! {
+    sub_agent_organizations (organization_id) {
+        organization_id -> Text,
+        account_id -> Text,
+        principal_owner -> Text,
+        profile_id -> Text,
+        name -> Nullable<Text>,
+        description -> Nullable<Text>,
+        org_type -> Int2,
+        root_agent_id -> Nullable<Text>,
+        active -> Bool,
+        created_at_ms -> Int8,
+        deactivated_at_ms -> Nullable<Int8>,
+        event_id -> Text,
+        transaction_id -> Text,
+        time -> Timestamptz,
+    }
+}
+
+diesel::table! {
+    sub_agent_organization_counterparties (organization_id, counterparty_address) {
+        organization_id -> Text,
+        counterparty_address -> Text,
+        first_interaction_at_ms -> Int8,
+        last_interaction_at_ms -> Int8,
+        interaction_count -> Int8,
+    }
+}
+
+diesel::table! {
+    sub_agent_organization_events (id, time) {
+        id -> Int4,
+        event_type -> Text,
+        organization_id -> Nullable<Text>,
+        account_id -> Nullable<Text>,
+        principal_owner -> Nullable<Text>,
+        profile_id -> Nullable<Text>,
+        name -> Nullable<Text>,
+        description -> Nullable<Text>,
+        org_type -> Nullable<Int2>,
+        previous_org_type -> Nullable<Int2>,
+        root_agent_id -> Nullable<Text>,
+        agent_object_id -> Nullable<Text>,
+        active -> Nullable<Bool>,
+        created_at_ms -> Nullable<Int8>,
+        deactivated_at_ms -> Nullable<Int8>,
+        updated_at_ms -> Nullable<Int8>,
+        event_id -> Text,
+        transaction_id -> Text,
+        time -> Timestamptz,
+    }
+}
+
+diesel::table! {
+    sub_agent_organization_stats (organization_id) {
+        organization_id -> Text,
+        total_agents -> Int4,
+        active_agents -> Int4,
+        max_tree_depth -> Int2,
+        total_posts -> Int8,
+        total_comments -> Int8,
+        total_reactions -> Int8,
+        total_reposts -> Int8,
+        total_engagement -> Int8,
+        total_revenue_myso -> Int8,
+        total_outbound_spend_myso -> Int8,
+        net_cash_flow_myso -> Int8,
+        estimated_assets_under_management_myso -> Int8,
+        attribution_coverage_bps -> Int4,
+        total_spot_participation -> Int8,
+        spot_bets_placed -> Int8,
+        spot_bets_resolved -> Int8,
+        spot_bets_correct -> Int8,
+        spot_accuracy_bps -> Nullable<Int4>,
+        originality_posts_analyzed -> Int8,
+        originality_score_average_bps -> Nullable<Int4>,
+        total_counterparties -> Int8,
+        total_actions_executed -> Int8,
+        total_transactions -> Int8,
+        last_activity_at_ms -> Nullable<Int8>,
+        stats_rollup_at -> Nullable<Timestamptz>,
+        updated_at -> Timestamptz,
+    }
+}
+
+diesel::table! {
+    sub_agent_organization_stats_daily (organization_id, snapshot_date, time) {
+        organization_id -> Text,
+        org_type -> Int2,
+        snapshot_date -> Date,
+        total_revenue_myso -> Int8,
+        net_cash_flow_myso -> Int8,
+        total_outbound_spend_myso -> Int8,
+        total_counterparties -> Int8,
+        active_agents -> Int4,
+        total_engagement -> Int8,
+        estimated_aum_myso -> Int8,
+        total_actions_executed -> Int8,
+        growth_score -> Int8,
+        spot_accuracy_bps -> Nullable<Int4>,
+        attribution_coverage_bps -> Int4,
+        time -> Timestamptz,
+    }
+}
+
+diesel::table! {
     memory_accounts (account_id) {
         account_id -> Text,
         principal_owner -> Text,
@@ -1230,6 +1338,7 @@ diesel::table! {
         deactivated_at_ms -> Nullable<Int8>,
         revoked_at_ms -> Nullable<Int8>,
         updated_at_ms -> Int8,
+        organization_id -> Nullable<Text>,
         event_id -> Text,
         transaction_id -> Text,
         time -> Timestamptz,
@@ -1266,6 +1375,7 @@ diesel::table! {
         migration_from_version -> Nullable<Int8>,
         migration_to_version -> Nullable<Int8>,
         registry_id -> Nullable<Text>,
+        organization_id -> Nullable<Text>,
         event_id -> Text,
         transaction_id -> Text,
         time -> Timestamptz,
@@ -1406,6 +1516,7 @@ diesel::table! {
         actor_address -> Nullable<Text>,
         sub_agent_id -> Nullable<Text>,
         action_identity_class -> Nullable<Int2>,
+        organization_id -> Nullable<Text>,
     }
 }
 
@@ -1424,6 +1535,7 @@ diesel::table! {
         actor_address -> Nullable<Text>,
         sub_agent_id -> Nullable<Text>,
         action_identity_class -> Nullable<Int2>,
+        organization_id -> Nullable<Text>,
     }
 }
 
@@ -1530,6 +1642,7 @@ diesel::table! {
         time -> Timestamptz,
         transaction_id -> Text,
         option_id -> Int2,
+        organization_id -> Nullable<Text>,
     }
 }
 
@@ -1726,6 +1839,7 @@ diesel::table! {
         platform_fee -> Nullable<Int8>,
         creator_fee -> Nullable<Int8>,
         fee_amount -> Nullable<Int8>,
+        organization_id -> Nullable<Text>,
     }
 }
 
@@ -1766,6 +1880,7 @@ diesel::table! {
         created_at -> Int8,
         time -> Timestamptz,
         transaction_id -> Text,
+        organization_id -> Nullable<Text>,
     }
 }
 
@@ -1844,6 +1959,7 @@ diesel::table! {
         revenue_time -> Int8,
         time -> Timestamptz,
         transaction_id -> Text,
+        organization_id -> Nullable<Text>,
     }
 }
 
@@ -1959,7 +2075,12 @@ diesel::allow_tables_to_appear_in_same_query!(
     insurance_vault_transactions,
     insurance_vaults,
     agent_memory_vaults,
+    sub_agent_organizations,
     memory_accounts,
+    sub_agent_organization_counterparties,
+    sub_agent_organization_events,
+    sub_agent_organization_stats,
+    sub_agent_organization_stats_daily,
     mydata_access_logs,
     mydata_config,
     mydata_data,

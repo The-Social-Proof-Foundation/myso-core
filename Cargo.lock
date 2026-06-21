@@ -11987,6 +11987,7 @@ dependencies = [
  "fastcrypto",
  "hex",
  "move-core-types",
+ "myso-futures",
  "myso-indexer-alt-framework",
  "myso-indexer-alt-metrics",
  "myso-indexer-alt-social-schema",

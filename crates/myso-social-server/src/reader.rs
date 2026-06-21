@@ -6,6 +6,7 @@ mod insurance;
 pub mod memory;
 mod messaging;
 mod mydata;
+pub mod organization;
 mod platform;
 mod poc;
 mod post;
@@ -1383,6 +1384,65 @@ impl Reader {
             offset,
         )
         .await
+    }
+
+    pub async fn get_agentic_organization(
+        &self,
+        organization_id: &str,
+    ) -> Result<Option<myso_indexer_alt_social_schema::models::AgenticOrganizationRow>, crate::error::SocialError>
+    {
+        organization::get_agentic_organization(&self.db, organization_id).await
+    }
+
+    pub async fn list_agentic_organizations_by_owner(
+        &self,
+        principal_owner: &str,
+        org_type: Option<i16>,
+        active_only: bool,
+        limit: i64,
+        offset: i64,
+    ) -> Result<organization::AgenticOrganizationListResponse, crate::error::SocialError> {
+        organization::list_agentic_organizations_by_owner(
+            &self.db,
+            principal_owner,
+            org_type,
+            active_only,
+            limit,
+            offset,
+        )
+        .await
+    }
+
+    pub async fn get_organization_statistics(
+        &self,
+        organization_id: &str,
+        window: myso_indexer_alt_social_reader::OrganizationStatsWindow,
+    ) -> Result<Option<myso_indexer_alt_social_reader::OrganizationStatistics>, crate::error::SocialError>
+    {
+        organization::get_organization_statistics(&self.db, organization_id, window).await
+    }
+
+    pub async fn get_organization_leaderboard(
+        &self,
+        sort: myso_indexer_alt_social_reader::OrganizationLeaderboardSort,
+        org_type: i16,
+        window: myso_indexer_alt_social_reader::OrganizationStatsWindow,
+        limit: i64,
+        offset: i64,
+    ) -> Result<
+        myso_indexer_alt_social_reader::OrganizationLeaderboardResult,
+        crate::error::SocialError,
+    > {
+        organization::get_organization_leaderboard(
+            &self.db, sort, org_type, window, limit, offset,
+        )
+        .await
+    }
+
+    pub fn organization_categories(
+        &self,
+    ) -> Vec<myso_indexer_alt_social_reader::OrganizationCategoryInfo> {
+        organization::list_organization_categories()
     }
 
     pub async fn get_post_config(

@@ -86,7 +86,7 @@ use rand::rngs::OsRng;
 use serde_json::json;
 use std::collections::BTreeMap;
 use tokio::time::interval;
-use tracing::info;
+use tracing::{info, warn};
 use url::Url;
 
 use crate::client_commands::{
@@ -1112,6 +1112,7 @@ async fn start(
         swarm_builder = swarm_builder.with_data_ingestion_dir(dir.clone());
     }
 
+    let fullnode_rpc_port = ensure_bindable_port(fullnode_rpc_port, "fullnode JSON-RPC");
     let mut fullnode_rpc_address = myso_config::node::default_json_rpc_address();
     fullnode_rpc_address.set_port(fullnode_rpc_port);
 
@@ -1273,11 +1274,14 @@ async fn start(
 
         rpc_services = rpc_services.merge(social_indexer_service);
 
-        let social_server_addr = match with_social_server.as_ref() {
-            Some(input) => parse_host_port(input.clone(), DEFAULT_SOCIAL_SERVER_PORT)
-                .context("Invalid social server host and port")?,
-            None => SocketAddr::from(([0, 0, 0, 0], DEFAULT_SOCIAL_SERVER_PORT)),
-        };
+        let social_server_addr = ensure_bindable_socket_addr(
+            match with_social_server.as_ref() {
+                Some(input) => parse_host_port(input.clone(), DEFAULT_SOCIAL_SERVER_PORT)
+                    .context("Invalid social server host and port")?,
+                None => SocketAddr::from(([0, 0, 0, 0], DEFAULT_SOCIAL_SERVER_PORT)),
+            },
+            "social server",
+        );
 
         let social_server_service = myso_social_server::server::start_server(
             social_server_addr.port(),
@@ -1343,11 +1347,14 @@ async fn start(
 
         rpc_services = rpc_services.merge(orderbook_indexer_service);
 
-        let orderbook_api_addr = match with_orderbook_api.as_ref() {
-            Some(input) => parse_host_port(input.clone(), DEFAULT_ORDERBOOK_API_PORT)
-                .context("Invalid orderbook API host and port")?,
-            None => SocketAddr::from(([0, 0, 0, 0], DEFAULT_ORDERBOOK_API_PORT)),
-        };
+        let orderbook_api_addr = ensure_bindable_socket_addr(
+            match with_orderbook_api.as_ref() {
+                Some(input) => parse_host_port(input.clone(), DEFAULT_ORDERBOOK_API_PORT)
+                    .context("Invalid orderbook API host and port")?,
+                None => SocketAddr::from(([0, 0, 0, 0], DEFAULT_ORDERBOOK_API_PORT)),
+            },
+            "orderbook API",
+        );
 
         let orderbook_rpc_url = Url::parse(&fullnode_rpc_url)
             .with_context(|| format!("Invalid fullnode RPC URL: {fullnode_rpc_url}"))?;
@@ -1383,8 +1390,11 @@ async fn start(
     }
 
     let consistent_store_url = if let Some(input) = with_consistent_store {
-        let address = parse_host_port(input, DEFAULT_CONSISTENT_STORE_PORT)
-            .context("Invalid consistent store host and port")?;
+        let address = ensure_bindable_socket_addr(
+            parse_host_port(input, DEFAULT_CONSISTENT_STORE_PORT)
+                .context("Invalid consistent store host and port")?,
+            "consistent store",
+        );
 
         let client_args = ClientArgs {
             ingestion: IngestionClientArgs {
@@ -1420,8 +1430,10 @@ async fn start(
     };
 
     if let Some(input) = with_graphql {
-        let address = parse_host_port(input, DEFAULT_GRAPHQL_PORT)
-            .context("Invalid graphql host and port")?;
+        let address = ensure_bindable_socket_addr(
+            parse_host_port(input, DEFAULT_GRAPHQL_PORT).context("Invalid graphql host and port")?,
+            "GraphQL",
+        );
 
         info!("Starting the GraphQL service at {address}");
 
@@ -1493,8 +1505,11 @@ async fn start(
 
     let mut mydata_child: Option<tokio::process::Child> = None;
     if let Some(input) = with_mydata {
-        let listen = parse_host_port(input, DEFAULT_MYDATA_KEY_SERVER_PORT)
-            .map_err(|_| anyhow!("Invalid MyData key server host and port"))?;
+        let listen = ensure_bindable_socket_addr(
+            parse_host_port(input, DEFAULT_MYDATA_KEY_SERVER_PORT)
+                .map_err(|_| anyhow!("Invalid MyData key server host and port"))?,
+            "MyData key server",
+        );
         let repo = crate::local_mydata::resolve_mydata_repo(mydata_repo);
         let metrics_port = get_available_port();
         let (secrets, child) = crate::local_mydata::bootstrap_and_spawn_key_server(
@@ -1510,8 +1525,11 @@ async fn start(
     }
 
     if let Some(input) = with_faucet {
-        let faucet_address = parse_host_port(input, DEFAULT_FAUCET_PORT)
-            .map_err(|_| anyhow!("Invalid faucet host and port"))?;
+        let faucet_address = ensure_bindable_socket_addr(
+            parse_host_port(input, DEFAULT_FAUCET_PORT)
+                .map_err(|_| anyhow!("Invalid faucet host and port"))?,
+            "faucet",
+        );
 
         info!("Starting the faucet service at {faucet_address}");
 
@@ -2087,6 +2105,40 @@ async fn download_package_and_deps_under(
         dependencies: Some(dependencies),
         linkage: Some(linkage),
     })
+}
+
+/// If `preferred` is already in use, scan upward for the next bindable port and log a warning.
+fn ensure_bindable_port(preferred: u16, service: &str) -> u16 {
+    const IP: Ipv4Addr = Ipv4Addr::UNSPECIFIED;
+    const MAX_ATTEMPTS: u16 = 256;
+    for offset in 0..MAX_ATTEMPTS {
+        let port = preferred.wrapping_add(offset);
+        let addr = SocketAddr::from((IpAddr::V4(IP), port));
+        if std::net::TcpListener::bind(addr).is_ok() {
+            if offset > 0 {
+                warn!(
+                    preferred,
+                    port,
+                    service,
+                    "Port {preferred} for {service} is already in use; using {port} instead"
+                );
+            }
+            return port;
+        }
+    }
+    let port = get_available_port();
+    warn!(
+        preferred,
+        port,
+        service,
+        "Could not find a free port near {preferred} for {service}; using {port} instead"
+    );
+    port
+}
+
+fn ensure_bindable_socket_addr(mut addr: SocketAddr, service: &str) -> SocketAddr {
+    addr.set_port(ensure_bindable_port(addr.port(), service));
+    addr
 }
 
 /// Allocates the next free `:port` on `0.0.0.0`, beginning at `*next_port` (then increments the

@@ -25,6 +25,10 @@ use myso_indexer_alt_social_schema::schema::{
 
 use super::common;
 use super::events;
+use super::organization_stats::{
+    apply_spot_bet_stats, resolve_organization_id_for_derived_address,
+    resolve_organization_id_for_post,
+};
 use super::spot;
 
 const SPOT_MODULES: &[&str] = &["social_proof_of_truth", "spot"];
@@ -162,10 +166,26 @@ impl Handler for SpotHandler {
         for row in values {
             match row {
                 SpotRow::SpotBet(bet) => {
+                    let mut bet = bet.clone();
+                    if bet.organization_id.is_none() {
+                        bet.organization_id =
+                            resolve_organization_id_for_derived_address(conn, &bet.user_address)
+                                .await?;
+                    }
                     total += diesel::insert_into(spot_bets::table)
-                        .values(bet)
+                        .values(&bet)
                         .execute(conn)
                         .await?;
+                    let post_org = resolve_organization_id_for_post(conn, &bet.post_id).await?;
+                    apply_spot_bet_stats(
+                        conn,
+                        bet.organization_id.as_deref(),
+                        post_org.as_deref(),
+                        bet.escrow_amount,
+                        &bet.user_address,
+                        bet.timestamp_ms,
+                    )
+                    .await?;
                 }
                 SpotRow::SpotResolution(r) => {
                     total += diesel::insert_into(spot_resolutions::table)

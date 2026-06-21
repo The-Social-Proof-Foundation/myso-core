@@ -8,6 +8,9 @@ pub mod insurance;
 mod metrics;
 pub mod mydata;
 pub mod memory;
+pub mod org_leaderboard;
+pub mod org_stats;
+pub mod organization;
 pub mod pg_reader;
 pub mod platform;
 pub mod pnl;
@@ -45,12 +48,19 @@ pub use myso_indexer_alt_social_schema::models::{
     SptTransaction,
 };
 pub use myso_indexer_alt_social_schema::models::{
-    MemoryAccountRow, SubAgentRow,
+    AgenticOrganizationRow, MemoryAccountRow, SubAgentRow,
 };
 pub use memory::{
     SocialAttributionRow, SubAgentListResult,
 };
+pub use org_leaderboard::{
+    OrganizationCategoryInfo, OrganizationLeaderboardEntry, OrganizationLeaderboardResult,
+    OrganizationLeaderboardSort, organization_categories, org_type_from_slug,
+};
+pub use org_stats::{OrganizationStatistics, OrganizationStatsWindow};
+pub use organization::{AgenticOrganizationListResult};
 pub use pg_reader::SocialPgReader;
+pub use metrics::standalone_reader_metrics;
 pub use platform::{PlatformBlockedProfileRow, PlatformRow, PlatformUserAccessRow};
 pub use pnl::{ProfilePnLWindow, ProfilePnLWindowResult, get_profile_pnl_for_windows};
 pub use poc::{
@@ -76,3 +86,74 @@ pub use spt::{
 pub use vesting::{
     VestingLeaderboardEntry, VestingLeaderboardResponse, VestingWalletRow, VestingWalletWithStatus,
 };
+
+/// Standalone DB access for services that share this crate's SQL (e.g. `myso-social-server`).
+pub async fn get_agentic_organization_for_db(
+    db: &myso_pg_db::Db,
+    organization_id: &str,
+) -> anyhow::Result<Option<AgenticOrganizationRow>> {
+    let mut conn = db.connect().await?;
+    organization::get_agentic_organization(&mut conn, organization_id, standalone_reader_metrics()).await
+}
+
+pub async fn list_agentic_organizations_by_owner_for_db(
+    db: &myso_pg_db::Db,
+    principal_owner: &str,
+    org_type: Option<i16>,
+    active_only: bool,
+    limit: i64,
+    offset: i64,
+) -> anyhow::Result<AgenticOrganizationListResult> {
+    let mut conn = db.connect().await?;
+    organization::list_agentic_organizations_by_owner(
+        &mut conn,
+        principal_owner,
+        org_type,
+        active_only,
+        limit,
+        offset,
+        standalone_reader_metrics(),
+    )
+    .await
+}
+
+pub async fn get_organization_statistics_for_db(
+    db: &myso_pg_db::Db,
+    organization_id: &str,
+    window: OrganizationStatsWindow,
+) -> anyhow::Result<Option<OrganizationStatistics>> {
+    let mut conn = db.connect().await?;
+    let org = organization::get_agentic_organization(
+        &mut conn,
+        organization_id,
+        standalone_reader_metrics(),
+    )
+    .await?;
+    let Some(org) = org else {
+        return Ok(None);
+    };
+    org_stats::get_organization_statistics(&mut conn, &org, window, standalone_reader_metrics())
+        .await
+        .map(Some)
+}
+
+pub async fn get_organization_leaderboard_for_db(
+    db: &myso_pg_db::Db,
+    sort: OrganizationLeaderboardSort,
+    org_type: i16,
+    window: OrganizationStatsWindow,
+    limit: i64,
+    offset: i64,
+) -> anyhow::Result<OrganizationLeaderboardResult> {
+    let mut conn = db.connect().await?;
+    org_leaderboard::get_organization_leaderboard(
+        &mut conn,
+        sort,
+        org_type,
+        window,
+        limit,
+        offset,
+        standalone_reader_metrics(),
+    )
+    .await
+}

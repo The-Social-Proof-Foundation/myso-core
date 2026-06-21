@@ -14,7 +14,8 @@ module social_contracts::memory_hierarchy_tests {
     use myso::coin::{Self, Coin};
     use myso::myso::MYSO;
 
-    use social_contracts::memory::{Self, MemoryRegistry, MemoryAccount, SubAgent};
+    use social_contracts::memory::{Self, MemoryRegistry, MemoryAccount, SubAgent, AgenticOrganization};
+    use social_contracts::memory_test_helpers;
     use social_contracts::profile::{Self, Profile, UsernameRegistry};
 
     const ADMIN: address = @0xAD;
@@ -80,11 +81,13 @@ module social_contracts::memory_hierarchy_tests {
 
     fun register_root_agent(
         memory_account: &mut MemoryAccount,
+        org: &mut AgenticOrganization,
         clock: &Clock,
         ctx: &mut myso::tx_context::TxContext,
     ) {
         memory::register_sub_agent(
             memory_account,
+            org,
             PARENT_PUBKEY,
             PARENT_AGENT,
             string::utf8(b"parent"),
@@ -156,6 +159,23 @@ module social_contracts::memory_hierarchy_tests {
         );
     }
 
+    fun register_root_from_created_org(
+        scenario: &mut test_scenario::Scenario,
+    ) {
+        let mut org = memory_test_helpers::take_created_org(scenario);
+        let mut memory_account = test_scenario::take_shared<MemoryAccount>(scenario);
+        let clock = test_scenario::take_shared<Clock>(scenario);
+        register_root_agent(
+            &mut memory_account,
+            &mut org,
+            &clock,
+            test_scenario::ctx(scenario),
+        );
+        test_scenario::return_shared(org);
+        test_scenario::return_shared(memory_account);
+        test_scenario::return_shared(clock);
+    }
+
     #[test]
     fun test_child_and_peer_registration() {
         let mut scenario = test_scenario::begin(ADMIN);
@@ -163,11 +183,15 @@ module social_contracts::memory_hierarchy_tests {
 
         test_scenario::next_tx(&mut scenario, USER1);
         {
-            let mut memory_account = test_scenario::take_shared<MemoryAccount>(&scenario);
-            let clock = test_scenario::take_shared<Clock>(&scenario);
-            register_root_agent(&mut memory_account, &clock, test_scenario::ctx(&mut scenario));
-            test_scenario::return_shared(memory_account);
-            test_scenario::return_shared(clock);
+            memory_test_helpers::create_org_in_tx(
+                &mut scenario,
+                memory::org_type_company(),
+            );
+        };
+
+        test_scenario::next_tx(&mut scenario, USER1);
+        {
+            register_root_from_created_org(&mut scenario);
         };
 
         test_scenario::next_tx(&mut scenario, PARENT_AGENT);
@@ -208,11 +232,15 @@ module social_contracts::memory_hierarchy_tests {
 
         test_scenario::next_tx(&mut scenario, USER1);
         {
-            let mut memory_account = test_scenario::take_shared<MemoryAccount>(&scenario);
-            let clock = test_scenario::take_shared<Clock>(&scenario);
-            register_root_agent(&mut memory_account, &clock, test_scenario::ctx(&mut scenario));
-            test_scenario::return_shared(memory_account);
-            test_scenario::return_shared(clock);
+            memory_test_helpers::create_org_in_tx(
+                &mut scenario,
+                memory::org_type_company(),
+            );
+        };
+
+        test_scenario::next_tx(&mut scenario, USER1);
+        {
+            register_root_from_created_org(&mut scenario);
         };
 
         test_scenario::next_tx(&mut scenario, PARENT_AGENT);
@@ -256,11 +284,15 @@ module social_contracts::memory_hierarchy_tests {
 
         test_scenario::next_tx(&mut scenario, USER1);
         {
-            let mut memory_account = test_scenario::take_shared<MemoryAccount>(&scenario);
-            let clock = test_scenario::take_shared<Clock>(&scenario);
-            register_root_agent(&mut memory_account, &clock, test_scenario::ctx(&mut scenario));
-            test_scenario::return_shared(memory_account);
-            test_scenario::return_shared(clock);
+            memory_test_helpers::create_org_in_tx(
+                &mut scenario,
+                memory::org_type_company(),
+            );
+        };
+
+        test_scenario::next_tx(&mut scenario, USER1);
+        {
+            register_root_from_created_org(&mut scenario);
         };
 
         test_scenario::next_tx(&mut scenario, PARENT_AGENT);
@@ -304,11 +336,15 @@ module social_contracts::memory_hierarchy_tests {
 
         test_scenario::next_tx(&mut scenario, USER1);
         {
-            let mut memory_account = test_scenario::take_shared<MemoryAccount>(&scenario);
-            let clock = test_scenario::take_shared<Clock>(&scenario);
-            register_root_agent(&mut memory_account, &clock, test_scenario::ctx(&mut scenario));
-            test_scenario::return_shared(memory_account);
-            test_scenario::return_shared(clock);
+            memory_test_helpers::create_org_in_tx(
+                &mut scenario,
+                memory::org_type_company(),
+            );
+        };
+
+        test_scenario::next_tx(&mut scenario, USER1);
+        {
+            register_root_from_created_org(&mut scenario);
         };
 
         test_scenario::next_tx(&mut scenario, PARENT_AGENT);
@@ -354,11 +390,15 @@ module social_contracts::memory_hierarchy_tests {
 
         test_scenario::next_tx(&mut scenario, USER1);
         {
-            let mut memory_account = test_scenario::take_shared<MemoryAccount>(&scenario);
-            let clock = test_scenario::take_shared<Clock>(&scenario);
-            register_root_agent(&mut memory_account, &clock, test_scenario::ctx(&mut scenario));
-            test_scenario::return_shared(memory_account);
-            test_scenario::return_shared(clock);
+            memory_test_helpers::create_org_in_tx(
+                &mut scenario,
+                memory::org_type_company(),
+            );
+        };
+
+        test_scenario::next_tx(&mut scenario, USER1);
+        {
+            register_root_from_created_org(&mut scenario);
         };
 
         test_scenario::next_tx(&mut scenario, PARENT_AGENT);

@@ -19,6 +19,7 @@ use crate::api::scalars::myso_address::MySoAddress;
 use crate::api::types::blocked::{BlockedPlatformSummary, BlockedProfileSummary};
 use crate::api::types::memory::{MemoryAccount, SubAgent};
 use crate::api::types::mydata::MyDataRecord;
+use crate::api::types::organization::AgenticOrganization;
 use crate::api::types::platform::{PlatformMembershipPage, PlatformMembershipSummary};
 use crate::api::types::pnl::{ProfilePnLWindowGql, ProfilePnLWindowStats};
 use crate::api::types::post::{Post, PostPage};
@@ -747,6 +748,40 @@ impl Profile {
             .await
             .ok()
             .map(|result| result.total_count)
+    }
+
+    /// Agentic organizations owned by this profile (max 8 per user on-chain).
+    async fn agentic_organizations(
+        &self,
+        ctx: &Context<'_>,
+        org_type: Option<i32>,
+        active_only: Option<bool>,
+        limit: Option<u64>,
+        offset: Option<u64>,
+    ) -> Option<Vec<AgenticOrganization>> {
+        let reader_opt = ctx
+            .data_opt::<std::sync::Arc<Option<myso_indexer_alt_social_reader::SocialPgReader>>>()?;
+        let reader = reader_opt.as_ref().as_ref()?;
+        let limit = limit.unwrap_or(8).min(8) as i64;
+        let offset = offset.unwrap_or(0) as i64;
+        let org_type = org_type.and_then(|v| i16::try_from(v).ok());
+        reader
+            .list_agentic_organizations_by_owner(
+                &self.inner.owner_address,
+                org_type,
+                active_only.unwrap_or(true),
+                limit,
+                offset,
+            )
+            .await
+            .ok()
+            .map(|result| {
+                result
+                    .organizations
+                    .into_iter()
+                    .map(AgenticOrganization::from_row)
+                    .collect()
+            })
     }
 
     async fn sub_agent(

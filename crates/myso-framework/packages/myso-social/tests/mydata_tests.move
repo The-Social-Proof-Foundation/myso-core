@@ -25,7 +25,8 @@ module social_contracts::mydata_tests {
         MyDataClaimVault,
     };
     use social_contracts::profile::{Self, Profile, UsernameRegistry};
-    use social_contracts::memory::{Self, MemoryRegistry, MemoryAccount, SubAgent};
+    use social_contracts::memory::{Self, MemoryRegistry, MemoryAccount, SubAgent, AgenticOrganization};
+    use social_contracts::memory_test_helpers;
     
     // Test addresses
     const CREATOR: address = @0xA1;
@@ -48,12 +49,14 @@ module social_contracts::mydata_tests {
     }
 
     fun register_placeholder_agent(
-        memory_account: &mut MemoryAccount,
-        clock: &Clock,
-        ctx: &mut myso::tx_context::TxContext,
+        scenario: &mut test_scenario::Scenario,
     ) {
+        let mut org = memory_test_helpers::take_created_org(scenario);
+        let mut memory_account = test_scenario::take_shared<MemoryAccount>(scenario);
+        let clock = test_scenario::take_shared<Clock>(scenario);
         memory::register_sub_agent(
-            memory_account,
+            &mut memory_account,
+            &mut org,
             PLACEHOLDER_PUBKEY,
             PLACEHOLDER_AGENT,
             string::utf8(b"placeholder"),
@@ -66,9 +69,45 @@ module social_contracts::mydata_tests {
             option::none(),
             option::none(),
             option::none(),
-            clock,
-            ctx,
+            &clock,
+            test_scenario::ctx(scenario),
         );
+        test_scenario::return_shared(org);
+        test_scenario::return_shared(memory_account);
+        test_scenario::return_shared(clock);
+    }
+
+    fun register_mydata_agent(
+        scenario: &mut test_scenario::Scenario,
+        derived: address,
+        label: vector<u8>,
+        capabilities: u64,
+        max_action_spend: Option<u64>,
+    ) {
+        let mut org = memory_test_helpers::take_created_org(scenario);
+        let mut memory_account = test_scenario::take_shared<MemoryAccount>(scenario);
+        let clock = test_scenario::take_shared<Clock>(scenario);
+        memory::register_sub_agent(
+            &mut memory_account,
+            &mut org,
+            AGENT_PUBKEY,
+            derived,
+            string::utf8(label),
+            memory::class_delegated_ai(),
+            0,
+            capabilities,
+            capabilities,
+            3,
+            0,
+            max_action_spend,
+            option::none(),
+            option::none(),
+            &clock,
+            test_scenario::ctx(scenario),
+        );
+        test_scenario::return_shared(org);
+        test_scenario::return_shared(memory_account);
+        test_scenario::return_shared(clock);
     }
     
     #[test]
@@ -824,29 +863,18 @@ module social_contracts::mydata_tests {
 
         test_scenario::next_tx(&mut scenario, CREATOR);
         {
-            let mut memory_account = test_scenario::take_shared<MemoryAccount>(&scenario);
-            let clock = test_scenario::take_shared<Clock>(&scenario);
+            memory_test_helpers::create_default_org_in_tx(&mut scenario);
+        };
 
-            social_contracts::memory::register_sub_agent(
-                &mut memory_account,
-                AGENT_PUBKEY,
+        test_scenario::next_tx(&mut scenario, CREATOR);
+        {
+            register_mydata_agent(
+                &mut scenario,
                 AGENT_ADDR,
-                std::string::utf8(b"mydata-agent"),
-                social_contracts::memory::class_delegated_ai(),
-                0,
+                b"mydata-agent",
                 social_contracts::memory::cap_mydata_read(),
-                social_contracts::memory::cap_mydata_read(),
-                3,
-                0,
                 option::none(),
-                option::none(),
-                option::none(),
-                &clock,
-                test_scenario::ctx(&mut scenario),
             );
-
-            test_scenario::return_shared(memory_account);
-            test_scenario::return_shared(clock);
         };
 
         test_scenario::next_tx(&mut scenario, AGENT_ADDR);
@@ -879,29 +907,18 @@ module social_contracts::mydata_tests {
 
         test_scenario::next_tx(&mut scenario, CREATOR);
         {
-            let mut memory_account = test_scenario::take_shared<MemoryAccount>(&scenario);
-            let clock = test_scenario::take_shared<Clock>(&scenario);
+            memory_test_helpers::create_default_org_in_tx(&mut scenario);
+        };
 
-            social_contracts::memory::register_sub_agent(
-                &mut memory_account,
-                AGENT_PUBKEY,
+        test_scenario::next_tx(&mut scenario, CREATOR);
+        {
+            register_mydata_agent(
+                &mut scenario,
                 AGENT_ADDR,
-                std::string::utf8(b"no-cap"),
-                social_contracts::memory::class_delegated_ai(),
-                0,
-                0,
-                0,
-                3,
+                b"no-cap",
                 0,
                 option::none(),
-                option::none(),
-                option::none(),
-                &clock,
-                test_scenario::ctx(&mut scenario),
             );
-
-            test_scenario::return_shared(memory_account);
-            test_scenario::return_shared(clock);
         };
 
         test_scenario::next_tx(&mut scenario, AGENT_ADDR);
@@ -934,29 +951,18 @@ module social_contracts::mydata_tests {
 
         test_scenario::next_tx(&mut scenario, CREATOR);
         {
-            let mut memory_account = test_scenario::take_shared<MemoryAccount>(&scenario);
-            let clock = test_scenario::take_shared<Clock>(&scenario);
+            memory_test_helpers::create_default_org_in_tx(&mut scenario);
+        };
 
-            memory::register_sub_agent(
-                &mut memory_account,
-                AGENT_PUBKEY,
+        test_scenario::next_tx(&mut scenario, CREATOR);
+        {
+            register_mydata_agent(
+                &mut scenario,
                 AGENT_ADDR,
-                string::utf8(b"buyer-agent"),
-                memory::class_delegated_ai(),
-                0,
-                0,
-                0,
-                3,
+                b"buyer-agent",
                 0,
                 option::some(50),
-                option::none(),
-                option::none(),
-                &clock,
-                test_scenario::ctx(&mut scenario),
             );
-
-            test_scenario::return_shared(memory_account);
-            test_scenario::return_shared(clock);
         };
 
         test_scenario::next_tx(&mut scenario, CREATOR);
@@ -1028,11 +1034,12 @@ module social_contracts::mydata_tests {
 
         test_scenario::next_tx(scenario, CREATOR);
         {
-            let mut memory_account = test_scenario::take_shared<MemoryAccount>(scenario);
-            let clock = test_scenario::take_shared<Clock>(scenario);
-            register_placeholder_agent(&mut memory_account, &clock, test_scenario::ctx(scenario));
-            test_scenario::return_shared(memory_account);
-            test_scenario::return_shared(clock);
+            memory_test_helpers::create_default_org_in_tx(scenario);
+        };
+
+        test_scenario::next_tx(scenario, CREATOR);
+        {
+            register_placeholder_agent(scenario);
         };
     }
     

@@ -6,6 +6,7 @@ mod governance;
 mod insurance;
 mod mydata;
 mod memory;
+mod organization;
 mod platform;
 mod poc;
 mod post;
@@ -54,6 +55,19 @@ pub use insurance::{
 pub use memory::{
     AgentMemoryVaultRow, MemoryAccountRow, NewAgentMemoryVault, NewMemoryAccount, NewSubAgent,
     NewSubAgentEvent, SubAgentRow,
+};
+pub use organization::{
+    AgenticOrganizationRow, AUM_LEADERBOARD_MIN_ATTRIBUTION_COVERAGE_BPS, EVENT_TYPE_ORG_CATEGORY_UPDATED,
+    EVENT_TYPE_ORG_CREATED, EVENT_TYPE_ORG_DEACTIVATED, EVENT_TYPE_ORG_ROOT_AGENT_SET,
+    EVENT_TYPE_ORG_UPDATED, MAX_ORG_DESCRIPTION_LENGTH, MAX_ORG_NAME_LENGTH,
+    MAX_ORGANIZATIONS_PER_USER, NewAgenticOrganization,
+    NewOrganizationCounterparty, NewOrganizationEvent, NewOrganizationStats,
+    NewOrganizationStatsDaily, ORG_TYPE_BRAND, ORG_TYPE_COMMUNITY, ORG_TYPE_COMPANY,
+    ORG_TYPE_COUNT, ORG_TYPE_EDUCATION, ORG_TYPE_GOVERNMENT, ORG_TYPE_HEALTHCARE,
+    ORG_TYPE_INVESTMENT_FUND, ORG_TYPE_MEDIA, ORG_TYPE_NONPROFIT, ORG_TYPE_OTHER,
+    ORG_TYPE_RESEARCH, ORG_TYPE_SPORTS, ORG_TYPE_STARTUP, ORG_TYPE_STEWARDSHIP,
+    OrganizationCounterpartyRow, OrganizationStatsDailyRow, OrganizationStatsRow,
+    SPOT_ACCURACY_DISPLAY_MIN_RESOLVED, SPOT_ACCURACY_LEADERBOARD_MIN_RESOLVED,
 };
 pub use mydata::{
     ACCESS_TYPE_CONTENT_UPDATE, ACCESS_TYPE_GRANT, ACCESS_TYPE_ONE_TIME, ACCESS_TYPE_PREVIEW,

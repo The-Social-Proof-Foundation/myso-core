@@ -4,7 +4,11 @@
 use chrono::Utc;
 
 use super::SocialEventRow;
-use myso_indexer_alt_social_schema::models::{NewAgentMemoryVault, NewMemoryAccount, NewSubAgent, NewSubAgentEvent};
+use myso_indexer_alt_social_schema::models::{
+    NewAgentMemoryVault, NewAgenticOrganization, NewMemoryAccount, NewOrganizationEvent,
+    NewSubAgent, NewSubAgentEvent, EVENT_TYPE_ORG_CATEGORY_UPDATED, EVENT_TYPE_ORG_CREATED,
+    EVENT_TYPE_ORG_DEACTIVATED, EVENT_TYPE_ORG_UPDATED,
+};
 
 pub(crate) fn json_to_i64(v: &serde_json::Value) -> i64 {
     v.as_i64()
@@ -19,6 +23,16 @@ pub(crate) fn json_opt_i64(v: &serde_json::Value) -> Option<i64> {
 
 fn json_str(data: &serde_json::Value, key: &str) -> Option<String> {
     data.get(key).and_then(|v| v.as_str()).map(String::from)
+}
+
+fn json_opt_string(data: &serde_json::Value, key: &str) -> Option<String> {
+    data.get(key).and_then(|v| {
+        if v.is_null() {
+            None
+        } else {
+            v.as_str().map(String::from)
+        }
+    })
 }
 
 fn json_opt_addr(data: &serde_json::Value, key: &str) -> Option<String> {
@@ -77,24 +91,47 @@ pub fn handle_memory_event(
             ])
         }
         "SubAgentRegistered" | "SubAgentUpdated" => {
+            let is_register = event_name == "SubAgentRegistered";
             let row = sub_agent_from_event(data, event_id, &transaction_id, now)?;
             let audit = sub_agent_audit_event(event_name, data, event_id, &transaction_id, now);
-            Some(vec![
+            let mut rows = vec![
                 SocialEventRow::SubAgentUpsert(row),
                 SocialEventRow::SubAgentEvent(audit),
-            ])
+            ];
+            if is_register {
+                if let Some(organization_id) = json_str(data, "organization_id") {
+                    rows.push(SocialEventRow::OrganizationAgentRegistered {
+                        organization_id,
+                        active: json_bool(data, "active"),
+                        depth: json_u8(data, "depth").max(1),
+                        parent_object_id: json_opt_addr(data, "parent_object_id"),
+                        agent_object_id: json_str(data, "agent_object_id").unwrap_or_default(),
+                        activity_at_ms: data
+                            .get("created_at")
+                            .and_then(json_opt_i64)
+                            .filter(|v| *v > 0)
+                            .unwrap_or_else(|| now.timestamp_millis()),
+                    });
+                }
+            }
+            Some(rows)
         }
         "SubAgentDeactivated" => {
             let agent_object_id = json_str(data, "agent_object_id")?;
             let audit = sub_agent_audit_event(event_name, data, event_id, &transaction_id, now);
             Some(vec![
                 SocialEventRow::SubAgentDeactivate {
-                    agent_object_id,
+                    agent_object_id: agent_object_id.clone(),
                     deactivated_at_ms: now.timestamp_millis(),
                     event_id: event_id.to_string(),
                     transaction_id,
                 },
                 SocialEventRow::SubAgentEvent(audit),
+                SocialEventRow::OrganizationAgentActiveDelta {
+                    agent_object_id,
+                    active_delta: -1,
+                    activity_at_ms: now.timestamp_millis(),
+                },
             ])
         }
         "SubAgentRevoked" => {
@@ -102,12 +139,17 @@ pub fn handle_memory_event(
             let audit = sub_agent_audit_event(event_name, data, event_id, &transaction_id, now);
             Some(vec![
                 SocialEventRow::SubAgentRevoke {
-                    agent_object_id,
+                    agent_object_id: agent_object_id.clone(),
                     revoked_at_ms: now.timestamp_millis(),
                     event_id: event_id.to_string(),
                     transaction_id,
                 },
                 SocialEventRow::SubAgentEvent(audit),
+                SocialEventRow::OrganizationAgentActiveDelta {
+                    agent_object_id,
+                    active_delta: -1,
+                    activity_at_ms: now.timestamp_millis(),
+                },
             ])
         }
         "SubAgentsClearedOnTransfer" => {
@@ -175,6 +217,7 @@ pub fn handle_memory_event(
                 migration_from_version: Some(from),
                 migration_to_version: Some(to),
                 registry_id: None,
+                organization_id: None,
                 event_id: event_id.to_string(),
                 transaction_id,
                 time: now,
@@ -212,6 +255,7 @@ pub fn handle_memory_event(
                 migration_from_version: Some(from),
                 migration_to_version: Some(to),
                 registry_id: Some(registry_id),
+                organization_id: None,
                 event_id: event_id.to_string(),
                 transaction_id,
                 time: now,
@@ -230,6 +274,167 @@ pub fn handle_memory_event(
                 transaction_id,
                 time: now,
             })])
+        }
+        "AgenticOrganizationCreated" => {
+            let organization_id = json_str(data, "organization_id")?;
+            let account_id = json_str(data, "account_id")?;
+            let principal_owner = json_str(data, "principal_owner")?;
+            let profile_id = json_str(data, "profile_id")?;
+            let name = json_opt_string(data, "name");
+            let description = json_opt_string(data, "description");
+            let org_type = json_u8(data, "org_type");
+            let created_at_ms = data
+                .get("created_at")
+                .and_then(json_opt_i64)
+                .filter(|v| *v > 0)
+                .unwrap_or_else(|| now.timestamp_millis());
+            let org = NewAgenticOrganization {
+                organization_id: organization_id.clone(),
+                account_id: account_id.clone(),
+                principal_owner: principal_owner.clone(),
+                profile_id: profile_id.clone(),
+                name: name.clone(),
+                description: description.clone(),
+                org_type,
+                root_agent_id: None,
+                active: true,
+                created_at_ms,
+                deactivated_at_ms: None,
+                event_id: event_id.to_string(),
+                transaction_id: transaction_id.clone(),
+                time: now,
+            };
+            Some(vec![
+                SocialEventRow::AgenticOrganizationUpsert(org),
+                SocialEventRow::OrganizationStatsInit {
+                    organization_id: organization_id.clone(),
+                    activity_at_ms: created_at_ms,
+                },
+                SocialEventRow::OrganizationEvent(NewOrganizationEvent {
+                    event_type: EVENT_TYPE_ORG_CREATED.to_string(),
+                    organization_id: Some(organization_id),
+                    account_id: Some(account_id),
+                    principal_owner: Some(principal_owner),
+                    profile_id: Some(profile_id),
+                    name,
+                    description,
+                    org_type: Some(org_type),
+                    previous_org_type: None,
+                    root_agent_id: None,
+                    agent_object_id: None,
+                    active: Some(true),
+                    created_at_ms: Some(created_at_ms),
+                    deactivated_at_ms: None,
+                    updated_at_ms: None,
+                    event_id: event_id.to_string(),
+                    transaction_id,
+                    time: now,
+                }),
+            ])
+        }
+        "AgenticOrganizationUpdated" => {
+            let organization_id = json_str(data, "organization_id")?;
+            let name = json_opt_string(data, "name");
+            let description = json_opt_string(data, "description");
+            Some(vec![
+                SocialEventRow::AgenticOrganizationMetadataUpdate {
+                    organization_id: organization_id.clone(),
+                    name: name.clone(),
+                    description: description.clone(),
+                },
+                SocialEventRow::OrganizationEvent(NewOrganizationEvent {
+                    event_type: EVENT_TYPE_ORG_UPDATED.to_string(),
+                    organization_id: Some(organization_id),
+                    account_id: None,
+                    principal_owner: None,
+                    profile_id: None,
+                    name,
+                    description,
+                    org_type: None,
+                    previous_org_type: None,
+                    root_agent_id: None,
+                    agent_object_id: None,
+                    active: None,
+                    created_at_ms: None,
+                    deactivated_at_ms: None,
+                    updated_at_ms: None,
+                    event_id: event_id.to_string(),
+                    transaction_id,
+                    time: now,
+                }),
+            ])
+        }
+        "AgenticOrganizationCategoryUpdated" => {
+            let organization_id = json_str(data, "organization_id")?;
+            let org_type = json_u8(data, "org_type");
+            let previous_org_type = json_u8(data, "previous_org_type");
+            let updated_at_ms = data
+                .get("updated_at")
+                .and_then(json_opt_i64)
+                .filter(|v| *v > 0)
+                .unwrap_or_else(|| now.timestamp_millis());
+            Some(vec![
+                SocialEventRow::AgenticOrganizationCategoryUpdate {
+                    organization_id: organization_id.clone(),
+                    org_type,
+                    previous_org_type,
+                    updated_at_ms,
+                },
+                SocialEventRow::OrganizationEvent(NewOrganizationEvent {
+                    event_type: EVENT_TYPE_ORG_CATEGORY_UPDATED.to_string(),
+                    organization_id: Some(organization_id),
+                    account_id: None,
+                    principal_owner: None,
+                    profile_id: None,
+                    name: None,
+                    description: None,
+                    org_type: Some(org_type),
+                    previous_org_type: Some(previous_org_type),
+                    root_agent_id: None,
+                    agent_object_id: None,
+                    active: None,
+                    created_at_ms: None,
+                    deactivated_at_ms: None,
+                    updated_at_ms: Some(updated_at_ms),
+                    event_id: event_id.to_string(),
+                    transaction_id,
+                    time: now,
+                }),
+            ])
+        }
+        "AgenticOrganizationDeactivated" => {
+            let organization_id = json_str(data, "organization_id")?;
+            let deactivated_at_ms = data
+                .get("deactivated_at")
+                .and_then(json_opt_i64)
+                .filter(|v| *v > 0)
+                .unwrap_or_else(|| now.timestamp_millis());
+            Some(vec![
+                SocialEventRow::AgenticOrganizationDeactivate {
+                    organization_id: organization_id.clone(),
+                    deactivated_at_ms,
+                },
+                SocialEventRow::OrganizationEvent(NewOrganizationEvent {
+                    event_type: EVENT_TYPE_ORG_DEACTIVATED.to_string(),
+                    organization_id: Some(organization_id),
+                    account_id: None,
+                    principal_owner: None,
+                    profile_id: None,
+                    name: None,
+                    description: None,
+                    org_type: None,
+                    previous_org_type: None,
+                    root_agent_id: None,
+                    agent_object_id: None,
+                    active: Some(false),
+                    created_at_ms: None,
+                    deactivated_at_ms: Some(deactivated_at_ms),
+                    updated_at_ms: None,
+                    event_id: event_id.to_string(),
+                    transaction_id,
+                    time: now,
+                }),
+            ])
         }
         _ => None,
     }
@@ -250,6 +455,7 @@ fn sub_agent_from_event(
         agent_object_id: json_str(data, "agent_object_id")?,
         derived_address: json_str(data, "derived_address")?,
         account_id: json_str(data, "account_id")?,
+        organization_id: json_opt_addr(data, "organization_id"),
         label: json_str(data, "label").unwrap_or_default(),
         identity_class: json_u8(data, "identity_class"),
         role_tags: json_u64(data, "role_tags"),
@@ -286,6 +492,7 @@ fn sub_agent_audit_event(
         account_id: json_str(data, "account_id"),
         principal_owner: json_str(data, "principal_owner").or_else(|| json_str(data, "owner")),
         profile_id: json_str(data, "profile_id"),
+        organization_id: json_str(data, "organization_id"),
         agent_object_id: json_str(data, "agent_object_id"),
         derived_address: json_str(data, "derived_address"),
         label: json_str(data, "label"),

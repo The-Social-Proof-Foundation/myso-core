@@ -25,7 +25,7 @@ use myso_indexer_alt_social_schema::models::{
     NewSptTransaction, NewUnifiedRevenue, ProfileUpdateSet, SptExchangeConfigChangeset,
     RESERVATION_POOL_STATUS_ACTIVE, RESERVATION_POOL_STATUS_THRESHOLD_MET,
     REVENUE_TYPE_SPT_CREATOR_FEE, REVENUE_TYPE_SPT_PLATFORM_FEE, REVENUE_TYPE_SPT_TREASURY_FEE,
-    TOKEN_TYPE_POST, TOKEN_TYPE_PROFILE,
+    TOKEN_TYPE_POST, TOKEN_TYPE_PROFILE, TRANSACTION_TYPE_BUY,
 };
 use myso_indexer_alt_social_schema::schema::{
     ecosystem_treasury, posts, profiles, spt_config, spt_events, spt_exchange_config, spt_holdings,
@@ -35,6 +35,9 @@ use myso_indexer_alt_social_schema::schema::{
 
 use super::common;
 use super::events;
+use super::organization_stats::{
+    apply_org_outbound_spend, apply_org_revenue, resolve_organization_id_for_derived_address,
+};
 use super::spt;
 use super::ProfileUpdate;
 
@@ -619,10 +622,34 @@ impl Handler for SptHandler {
                         .await?;
                 }
                 SptRow::SptTransaction(t) => {
+                    let mut tx = t.clone();
+                    if tx.organization_id.is_none() {
+                        tx.organization_id =
+                            resolve_organization_id_for_derived_address(conn, &tx.sender).await?;
+                    }
                     total += diesel::insert_into(spt_transactions::table)
-                        .values(t)
+                        .values(&tx)
                         .execute(conn)
                         .await?;
+                    if tx.transaction_type == TRANSACTION_TYPE_BUY && tx.myso_amount > 0 {
+                        apply_org_outbound_spend(
+                            conn,
+                            tx.organization_id.as_deref(),
+                            tx.myso_amount,
+                            None,
+                            tx.created_at,
+                        )
+                        .await?;
+                    } else if tx.myso_amount < 0 {
+                        apply_org_revenue(
+                            conn,
+                            tx.organization_id.as_deref(),
+                            tx.myso_amount.saturating_neg(),
+                            None,
+                            tx.created_at,
+                        )
+                        .await?;
+                    }
                 }
                 SptRow::SptHolding(h) => {
                     total += diesel::insert_into(spt_holdings::table)
@@ -823,7 +850,17 @@ impl Handler for SptHandler {
                         synthetic_pool_id
                     };
                     let mut r = reservation.clone();
+                    if r.organization_id.is_none() {
+                        r.organization_id = resolve_organization_id_for_derived_address(
+                            conn,
+                            &r.reserver_address,
+                        )
+                        .await?;
+                    }
                     r.pool_id = pool_id.clone();
+                    let reserver_org = r.organization_id.clone();
+                    let reserver_amount = r.amount;
+                    let reserver_at = r.reserved_at;
                     let reservation_inserted = diesel::insert_into(spt_reservations::table)
                         .values(r)
                         .on_conflict((spt_reservations::transaction_id, spt_reservations::time))
@@ -839,6 +876,25 @@ impl Handler for SptHandler {
                             amount = %reservation.amount,
                             "SptReservation inserted"
                         );
+                        if reserver_amount > 0 {
+                            apply_org_outbound_spend(
+                                conn,
+                                reserver_org.as_deref(),
+                                reserver_amount,
+                                None,
+                                reserver_at,
+                            )
+                            .await?;
+                        } else if reserver_amount < 0 {
+                            apply_org_revenue(
+                                conn,
+                                reserver_org.as_deref(),
+                                reserver_amount.unsigned_abs() as i64,
+                                None,
+                                reserver_at,
+                            )
+                            .await?;
+                        }
                     } else {
                         tracing::debug!(
                             associated_id = %associated_id,

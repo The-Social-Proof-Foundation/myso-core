@@ -107,6 +107,7 @@ fn process_spot_bet_placed_event(
         timestamp_ms: ts,
         time: now,
         transaction_id: transaction_id.to_string(),
+        organization_id: None,
     };
 
     let log = new_event_log("SpotBetPlacedEvent", &post_id, data, event_id, now);

@@ -291,6 +291,7 @@ fn process_token_bought_event(
         created_at: ts,
         time: now,
         transaction_id: transaction_id.to_string(),
+        organization_id: None,
     };
 
     let holding = NewSptHolding {
@@ -371,6 +372,7 @@ fn process_token_sold_event(
         created_at: ts,
         time: now,
         transaction_id: transaction_id.to_string(),
+        organization_id: None,
     };
 
     let holding = NewSptHolding {
@@ -553,6 +555,7 @@ fn process_reservation_created_event(
         treasury_fee,
         time: row_time,
         transaction_id: event_id.to_string(),
+        organization_id: None,
     };
 
     Some(vec![
@@ -615,6 +618,7 @@ fn process_reservation_withdrawn_event(
         treasury_fee,
         time: row_time,
         transaction_id: event_id.to_string(),
+        organization_id: None,
     };
 
     Some(vec![
