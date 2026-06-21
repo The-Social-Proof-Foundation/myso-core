@@ -1,3 +1,6 @@
+ALTER INDEX IF EXISTS idx_sub_agent_memory_vaults_account RENAME TO idx_agent_memory_vaults_account;
+ALTER TABLE IF EXISTS sub_agent_memory_vaults RENAME TO agent_memory_vaults;
+
 DROP INDEX IF EXISTS idx_unified_revenue_organization;
 ALTER TABLE unified_revenue DROP COLUMN IF EXISTS organization_id;
 

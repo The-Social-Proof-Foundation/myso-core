@@ -4,7 +4,7 @@
 use diesel::prelude::*;
 use serde::{Deserialize, Serialize};
 
-use crate::schema::{agent_memory_vaults, memory_accounts, sub_agent_events, sub_agents};
+use crate::schema::{memory_accounts, sub_agent_events, sub_agent_memory_vaults, sub_agents};
 
 #[derive(Debug, Clone, Insertable, Serialize, Deserialize)]
 #[diesel(table_name = memory_accounts)]
@@ -86,7 +86,7 @@ pub struct NewSubAgentEvent {
 }
 
 #[derive(Debug, Clone, Insertable, Serialize, Deserialize)]
-#[diesel(table_name = agent_memory_vaults)]
+#[diesel(table_name = sub_agent_memory_vaults)]
 pub struct NewAgentMemoryVault {
     pub vault_id: String,
     pub agent_object_id: String,
@@ -98,7 +98,7 @@ pub struct NewAgentMemoryVault {
 }
 
 #[derive(Debug, Clone, Queryable, Selectable, Serialize, Deserialize)]
-#[diesel(table_name = agent_memory_vaults)]
+#[diesel(table_name = sub_agent_memory_vaults)]
 pub struct AgentMemoryVaultRow {
     pub vault_id: String,
     pub agent_object_id: String,

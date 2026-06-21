@@ -1186,7 +1186,7 @@ diesel::table! {
 }
 
 diesel::table! {
-    agent_memory_vaults (vault_id) {
+    sub_agent_memory_vaults (vault_id) {
         vault_id -> Text,
         agent_object_id -> Text,
         memory_account_id -> Text,
@@ -2074,7 +2074,7 @@ diesel::allow_tables_to_appear_in_same_query!(
     insurance_user_exposures,
     insurance_vault_transactions,
     insurance_vaults,
-    agent_memory_vaults,
+    sub_agent_memory_vaults,
     sub_agent_organizations,
     memory_accounts,
     sub_agent_organization_counterparties,

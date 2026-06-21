@@ -24,7 +24,7 @@ use myso_indexer_alt_social_schema::models::{
     NewSubAgent, NewSubAgentEvent,
 };
 use myso_indexer_alt_social_schema::schema::{
-    agent_memory_vaults, memory_accounts, profiles, sub_agent_organization_events,
+    memory_accounts, profiles, sub_sub_agent_memory_vaults, sub_agent_organization_events,
     sub_agent_organizations,
     sub_agent_events, sub_agents,
 };
@@ -480,17 +480,17 @@ impl Handler for MemoryHandler {
                     let event_id = v.event_id.clone();
                     let transaction_id = v.transaction_id.clone();
                     let time = v.time;
-                    total += diesel::insert_into(agent_memory_vaults::table)
+                    total += diesel::insert_into(sub_agent_memory_vaults::table)
                         .values(v)
-                        .on_conflict(agent_memory_vaults::vault_id)
+                        .on_conflict(sub_agent_memory_vaults::vault_id)
                         .do_update()
                         .set((
-                            agent_memory_vaults::agent_object_id.eq(agent_object_id),
-                            agent_memory_vaults::memory_account_id.eq(memory_account_id),
-                            agent_memory_vaults::created_at_ms.eq(created_at_ms),
-                            agent_memory_vaults::event_id.eq(event_id),
-                            agent_memory_vaults::transaction_id.eq(transaction_id),
-                            agent_memory_vaults::time.eq(time),
+                            sub_agent_memory_vaults::agent_object_id.eq(agent_object_id),
+                            sub_agent_memory_vaults::memory_account_id.eq(memory_account_id),
+                            sub_agent_memory_vaults::created_at_ms.eq(created_at_ms),
+                            sub_agent_memory_vaults::event_id.eq(event_id),
+                            sub_agent_memory_vaults::transaction_id.eq(transaction_id),
+                            sub_agent_memory_vaults::time.eq(time),
                         ))
                         .execute(conn)
                         .await?;

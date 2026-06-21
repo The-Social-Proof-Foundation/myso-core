@@ -1,6 +1,9 @@
 -- Sub-agent organizations: org registry, audit events, stats rollups, and attribution spine.
 -- org_type: 0=Company .. 13=Other (ORG_TYPE_OTHER).
 
+ALTER TABLE agent_memory_vaults RENAME TO sub_agent_memory_vaults;
+ALTER INDEX idx_agent_memory_vaults_account RENAME TO idx_sub_agent_memory_vaults_account;
+
 CREATE TABLE IF NOT EXISTS sub_agent_organizations (
     organization_id TEXT NOT NULL PRIMARY KEY,
     account_id TEXT NOT NULL,
