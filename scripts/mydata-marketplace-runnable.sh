@@ -5,30 +5,71 @@
 #
 # Interactive helper for social_contracts::mydata Move calls via `myso client call`.
 #
+# Hybrid memory auth (purchase / approve):
+#   - purchase_one_time, purchase_subscription, and mydata_approve take a MemoryAccount object id;
+#     they do NOT take SubAgent object ids or ancestor chains in the PTB.
+#   - Human buyer/principal: sign as your principal address; MemoryAccount is still a required Move arg.
+#   - Agent buyer/approver: sign as the agent derived_address; on-chain registry on the passed
+#     MemoryAccount resolves auth (spend limits for purchase, CAP_MYDATA_READ for approve).
+#   - MEMORY_ACCOUNT_ID (menu 0 / session): listing owner's MemoryAccount for approve; for purchase,
+#     owner's MemoryAccount when the buyer is a registered agent there, or buyer's own account otherwise.
+#
 # Prerequisites:
-#   - MySocial bootstrap has run (social_contracts::bootstrap claim_all_admin_capabilities).
+#   - MySocial shared objects exist (bootstrap runs automatically at genesis).
 #   - Shared MyData objects exist (mydata::bootstrap_init). Resolve IDs from GraphQL / explorer
 #     (e.g. types ...::mydata::MyDataConfig, MyDataRegistry, MyDataPoolRegistry, ...).
 #   - For listings: MyDataConfig.enable_flag must be true (menu 1).
+#   - Hybrid MemoryAccount (VERSION 2) with on-chain agent index for agent purchase/approve flows.
 #
 # Production-like encryption (menu 2):
-#   - Requires `mydata-cli` from the myso-mydata repo (same as myso start --with-mydata).
-#   - Runs `mydata-cli encrypt-hmac` per crates/myso-framework/.../bf_hmac_encryption.move comments.
-#   - Default key server http://127.0.0.1:2024: probes /service (HTTP 4xx still counts as reachable).
+#   - Requires `mydata` from the myso-mydata repo (cargo build -p mydata-cli; same as myso start --with-mydata).
+#   - Runs `mydata encrypt-hmac` per crates/myso-framework/.../bf_hmac_encryption.move comments.
+#   - Default key server http://127.0.0.1:2024 (same URL `myso start --with-mydata` writes after mapping
+#     bind 0.0.0.0:2024 to localhost): probes /service (HTTP 4xx still counts as reachable).
 #   - Loads PUBLIC_KEY and KEY_SERVER_OBJECT_ID from network.config/mydata/local-mydata-secrets.env
-#     (written by myso start --with-mydata) or prompts.
+#     (NOT key-server-config.yaml — that is key-server runtime config only).
 #   - --package-id for encrypt is the MySoSocial package (0x50c1); ciphertext must match create_and_share
 #     EncryptedObject.package_id for permissioned key-server flows.
+#   - Permissioned key servers re-check mydata_approve on every fetch_key; menu 18 revoke_access blocks
+#     revoked buyers from obtaining new derived keys (already-fetched keys may still decrypt offline).
+#
+# Session reuse (menus 1–17):
+#   - Saved values from menu 0 / marketplace-session.env are used automatically with [session] log lines.
+#   - Prompt only when a required field is missing (or MYDATA_FORCE_PROMPT=1).
+#
+# Query marketplace E2E (pool flow; separate from single-listing buy/decrypt menus 2–7):
+#   1) Admin: 11 create_broad_pool → 12 create_sub_pool (copy sub-pool id into SUB_POOL_ID in menu 0)
+#   2) Owner: 2 create_and_share → 13 assign_mydata_to_pools (sign as listing owner)
+#   3) Buyer: 15 record_snapshot_anchor (pay MYSO; off-chain query server validates amount + runs query)
+#   4) Admin: 16 publish_merkle_root (Merkle tree built off-chain)
+#   5) Contributors: 17 claim (help only; needs Merkle proof offline or via SDK)
+#   Menus 13–14 require `myso client active-address` = listing owner. Assignment is on-chain metadata
+#   for pool membership (get_mydata_sub_pools); record_snapshot_anchor does not enforce membership.
 #
 # Environment:
 #   MYSO              Path to myso binary (optional)
-#   MYDATA_REPO / MYSO_MYDATA_REPO   Path to myso-mydata for mydata-cli
+#   MYDATA            Path to mydata binary (optional; package mydata-cli, binary name mydata)
+#   MYDATA_REPO / MYSO_MYDATA_REPO   Path to myso-mydata repo
 #   DRY_RUN=1         Pass --dry-run to myso client
 #   MYDATA_MARKETPLACE_SESSION   Path to saved session env file (optional).
 #                                   Default save: <repo>/network.config/mydata/marketplace-session.env
 #                                   Load tries: this var, then ./network.config/.../ then repo path.
+#   MYDATA_FORCE_PROMPT=1        Re-prompt for session-backed fields even when already set.
+#   Menu [0]: client.yaml path, PKG_SOCIAL, CLOCK_ID, and COIN_TYPE are not prompted; set them in the
+#     session env or exported env if you need non-defaults. Blank CLIENT_CONFIG defaults to <cwd>/network.config/client.yaml
+#   MEMORY_ACCOUNT_ID is required for menus 3, 4, and 7 (saved after those menus). Resolve from GraphQL
+#     profile.memoryAccountId or REST /profiles/:address/memory-account.
+#   Menus 3/4 always prompt for LISTING_ID and PAY_COIN_ID (Enter keeps session/default).
+#   Menus 3/4/15 must NOT pass --type-args: Move entry functions use hardcoded Coin<MYSO> (not generic).
+#     Passing COIN_TYPE as --type-args causes Move Bytecode Verification Error.
+#   Gas payment is never passed as --gas; the CLI auto-selects a Coin<MYSO> (excluding tx inputs).
+#   GAS_BUDGET (default 1000000000 MIST = 1 MYSO) is passed as --gas-budget on every call. Without it,
+#     the CLI dry-runs with max_tx_gas and fails when the gas coin balance is lower.
+#   PAY_COIN_ID must be owned by `myso client active-address` (checked before purchase).
+#   Legacy marketplace-session.env files may contain GAS_COIN_ID; it is ignored on load.
+#   Agent flows: no SubAgent args in the PTB; configure client.yaml active address as derived_address.
 #   MYDATA_MARKETPLACE_NO_SAVE=1 Skip writing session file after menu 0 / encrypt flow.
-#   ASSUME_YES=1 / -y          Non-interactive yes for confirm_run and enable_flag prompt.
+#   ASSUME_YES=1 / -y          Non-interactive yes for confirm_run, enable_flag, and operation defaults.
 #
 # Usage: ./scripts/mydata-marketplace-runnable.sh   [-y] [--help] [--no-session]
 # Rename/link as runnable.sh if you prefer.
@@ -42,7 +83,9 @@ readonly DEFAULT_PKG_SOCIAL='0x0000000000000000000000000000000000000000000000000
 readonly DEFAULT_CLOCK='0x0000000000000000000000000000000000000000000000000000000000000006'
 readonly DEFAULT_COIN_TYPE='0x2::myso::MYSO'
 readonly DEFAULT_KEY_SERVER_URL='http://127.0.0.1:2024'
+readonly DEFAULT_GAS_BUDGET='1000000000'
 readonly DEFAULT_SECRETS_REL='network.config/mydata/local-mydata-secrets.env'
+readonly G2_PUBLIC_KEY_HEX_LEN=192
 
 CLIENT_CONFIG=''
 PKG_SOCIAL="$DEFAULT_PKG_SOCIAL"
@@ -58,9 +101,12 @@ CLAIM_VAULT_ID=''
 DIST_REGISTRY_ID=''
 MYDATA_ADMIN_CAP_ID=''
 POOL_ADMIN_CAP_ID=''
-GAS_COIN_ID=''
+GAS_BUDGET=''
 LISTING_ID=''
+SUB_POOL_ID=''
 PAY_COIN_ID=''
+MEMORY_ACCOUNT_ID=''
+REVOKE_BUYER_ID=''
 MYDATA_SECRETS_FILE=''
 PUBLIC_KEY=''
 KEY_SERVER_OBJECT_ID=''
@@ -81,6 +127,17 @@ apply_session_defaults() {
     [[ -n "${CLOCK_ID:-}" ]] || CLOCK_ID="$DEFAULT_CLOCK"
     [[ -n "${COIN_TYPE:-}" ]] || COIN_TYPE="$DEFAULT_COIN_TYPE"
     [[ -n "${KEY_SERVER_URL:-}" ]] || KEY_SERVER_URL="$DEFAULT_KEY_SERVER_URL"
+    [[ -n "${GAS_BUDGET:-}" ]] || GAS_BUDGET="$DEFAULT_GAS_BUDGET"
+}
+
+session_field_count() {
+    local key count=0
+    for key in CLIENT_CONFIG MYDATA_CONFIG_ID MYDATA_REGISTRY_ID POOL_REGISTRY_ID ANCHOR_REGISTRY_ID \
+        CLAIM_VAULT_ID DIST_REGISTRY_ID MYDATA_ADMIN_CAP_ID POOL_ADMIN_CAP_ID GAS_BUDGET \
+        LISTING_ID SUB_POOL_ID PAY_COIN_ID MEMORY_ACCOUNT_ID MYDATA_SECRETS_FILE PUBLIC_KEY KEY_SERVER_OBJECT_ID; do
+        session_value_set "$key" && count=$((count + 1))
+    done
+    printf '%s' "$count"
 }
 
 load_session_state() {
@@ -94,20 +151,14 @@ load_session_state() {
         [[ -n "$p" && -f "$p" ]] || continue
         # shellcheck disable=SC1090
         source "$p"
-        echo "Loaded MyData marketplace session from: $p" >&2
         loaded=1
         break
     done
+    unset GAS_COIN_ID
     apply_session_defaults
-    _secrets_merge=''
-    if [[ -f "$PWD/$DEFAULT_SECRETS_REL" ]]; then
-        _secrets_merge="$PWD/$DEFAULT_SECRETS_REL"
-    elif [[ -f "$REPO_ROOT/$DEFAULT_SECRETS_REL" ]]; then
-        _secrets_merge="$REPO_ROOT/$DEFAULT_SECRETS_REL"
-    fi
-    if [[ -n "$_secrets_merge" ]]; then
-        _u="$(parse_env_file_value "$_secrets_merge" KEY_SERVER_URL 2>/dev/null || true)"
-        [[ -n "${_u:-}" ]] && KEY_SERVER_URL="$_u"
+    hydrate_encrypt_from_secrets
+    if [[ "$loaded" == 1 ]]; then
+        echo "Loaded MyData marketplace session ($(( $(session_field_count) )) fields set) from: $p" >&2
     fi
 }
 
@@ -123,7 +174,7 @@ save_session_state() {
     {
         echo "# Local session for scripts/mydata-marketplace-runnable.sh — paths/ids only; do not commit if sensitive."
         local key
-        for key in CLIENT_CONFIG PKG_SOCIAL CLOCK_ID COIN_TYPE KEY_SERVER_URL MYDATA_CONFIG_ID MYDATA_REGISTRY_ID POOL_REGISTRY_ID ANCHOR_REGISTRY_ID CLAIM_VAULT_ID DIST_REGISTRY_ID MYDATA_ADMIN_CAP_ID POOL_ADMIN_CAP_ID GAS_COIN_ID LISTING_ID PAY_COIN_ID MYDATA_SECRETS_FILE PUBLIC_KEY KEY_SERVER_OBJECT_ID; do
+        for key in CLIENT_CONFIG PKG_SOCIAL CLOCK_ID COIN_TYPE KEY_SERVER_URL MYDATA_CONFIG_ID MYDATA_REGISTRY_ID POOL_REGISTRY_ID ANCHOR_REGISTRY_ID CLAIM_VAULT_ID DIST_REGISTRY_ID MYDATA_ADMIN_CAP_ID POOL_ADMIN_CAP_ID GAS_BUDGET LISTING_ID SUB_POOL_ID PAY_COIN_ID MEMORY_ACCOUNT_ID REVOKE_BUYER_ID MYDATA_SECRETS_FILE PUBLIC_KEY KEY_SERVER_OBJECT_ID; do
             printf '%s=%q\n' "$key" "${!key-}"
         done
     } > "${f}.tmp"
@@ -133,7 +184,7 @@ save_session_state() {
 }
 
 usage() {
-    sed -n '2,40p' "$0" | sed 's/^# \?//'
+    sed -n '2,75p' "$0" | sed 's/^# \?//'
 }
 
 strip_0x() {
@@ -142,6 +193,46 @@ strip_0x() {
     x="${x#0X}"
     printf '%s' "$x"
 }
+
+# Comma- or space-separated object IDs -> [0x..., 0x...] for myso client vector<ID> args.
+format_sub_pool_ids_vector() {
+    local input="$1"
+    local normalized vec="" first=1 p
+
+    input="${input//,/ }"
+    for p in $input; do
+        p="${p//[[:space:]]/}"
+        [[ -n "$p" ]] || continue
+        normalized="$(strip_0x "$p")"
+        if [[ ${#normalized} -ne 64 ]]; then
+            echo "Invalid sub-pool id: $p (expected 32-byte hex object id)" >&2
+            return 1
+        fi
+        if [[ $first -eq 1 ]]; then
+            vec="[0x${normalized}"
+            first=0
+        else
+            vec+=", 0x${normalized}"
+        fi
+    done
+    if [[ $first -eq 1 ]]; then
+        echo "sub_pool_ids must be non-empty (one ID or comma-separated list)." >&2
+        return 1
+    fi
+    vec+="]"
+    printf '%s' "$vec"
+}
+
+resolve_sub_pool_id() {
+    local label="${1:-sub_pool_id}"
+    if [[ -n "${SUB_POOL_ID:-}" && "${MYDATA_FORCE_PROMPT:-}" != 1 ]]; then
+        log_session_use "$label" "$SUB_POOL_ID"
+        printf '%s' "$SUB_POOL_ID"
+    else
+        prompt_with_default "$label" "${SUB_POOL_ID:-}"
+    fi
+}
+
 
 prompt_with_default() {
     local label="$1"
@@ -156,6 +247,273 @@ prompt_with_default() {
     fi
 }
 
+session_value_set() {
+    local var_name="$1"
+    [[ -n "${!var_name:-}" ]]
+}
+
+log_session_use() {
+    local label="$1"
+    local value="$2"
+    echo "  [session] ${label}=${value}" >&2
+}
+
+resolve_session_or_prompt() {
+    local var_name="$1"
+    local label="$2"
+    local default="${3:-}"
+    local current="${!var_name:-}"
+    if [[ -n "$current" && "${MYDATA_FORCE_PROMPT:-}" != 1 ]]; then
+        log_session_use "$label" "$current"
+        printf '%s' "$current"
+        return 0
+    fi
+    prompt_with_default "$label" "${current:-$default}"
+}
+
+prompt_or_default() {
+    local label="$1"
+    local default="$2"
+    if [[ "${ASSUME_YES:-}" == 1 ]]; then
+        printf '%s' "$default"
+        return 0
+    fi
+    prompt_with_default "$label" "$default"
+}
+
+require_session_fields() {
+    local name missing=()
+    for name in "$@"; do
+        session_value_set "$name" || missing+=("$name")
+    done
+    if [[ ${#missing[@]} -gt 0 ]]; then
+        echo "Missing session field(s): ${missing[*]}. Run menu [0] to set them." >&2
+        return 1
+    fi
+    return 0
+}
+
+# Purchase PTBs pass PAY_COIN_ID as a Move arg; auto gas selection may reuse that coin and fail dry-run.
+resolve_purchase_listing_id() {
+    local listing current="${LISTING_ID:-}"
+    if [[ -n "$current" ]]; then
+        log_session_use "MyData listing object id" "$current"
+    else
+        echo "  [session] MyData listing object id=<unset>" >&2
+    fi
+    listing="$(prompt_or_default "MyData listing object id (empty = use saved)" "$current")"
+    [[ -n "$listing" ]] || listing="$current"
+    [[ -n "$listing" ]] || { echo "MyData listing object id is required (set in menu 0 or enter here)." >&2; return 1; }
+    LISTING_ID="$listing"
+    printf '%s' "$listing"
+}
+
+list_active_address_gas_coins() {
+    local myso json id
+    myso="$(resolve_myso)"
+    [[ -n "$myso" && -n "${CLIENT_CONFIG:-}" && -f "$CLIENT_CONFIG" ]] || return 0
+    json="$("$myso" client --client.config "$CLIENT_CONFIG" gas --json 2>/dev/null)" || return 0
+    [[ -n "$json" && "$json" != "[]" ]] || return 0
+    echo "  Coin<MYSO> owned by active-address (from \`myso client gas\`):" >&2
+    while IFS= read -r id; do
+        [[ -n "$id" ]] && echo "    $id" >&2
+    done < <(printf '%s' "$json" | grep -Eo '"gasCoinId"[[:space:]]*:[[:space:]]*"0x[0-9a-fA-F]+"' \
+        | grep -Eo '0x[0-9a-fA-F]+')
+}
+
+resolve_purchase_pay_coin() {
+    local pay current="${PAY_COIN_ID:-}"
+    list_active_address_gas_coins
+    if [[ -n "$current" ]]; then
+        log_session_use "Payment Coin<MYSO> object id" "$current"
+    else
+        echo "  [session] Payment Coin<MYSO> object id=<unset>" >&2
+    fi
+    pay="$(prompt_or_default "Payment Coin<MYSO> object id (CLI auto-selects gas; use a separate coin when possible)" "$current")"
+    [[ -n "$pay" ]] || { echo "Payment coin object id is required." >&2; return 1; }
+    PAY_COIN_ID="$pay"
+    printf '%s' "$pay"
+}
+
+resolve_myso_active_address() {
+    local myso
+    myso="$(resolve_myso)"
+    [[ -n "$myso" && -n "${CLIENT_CONFIG:-}" && -f "$CLIENT_CONFIG" ]] || return 1
+    "$myso" client --client.config "$CLIENT_CONFIG" active-address 2>/dev/null
+}
+
+object_address_owner() {
+    local myso object_id json
+    myso="$(resolve_myso)"
+    object_id="$1"
+    [[ -n "$myso" && -n "${CLIENT_CONFIG:-}" && -f "$CLIENT_CONFIG" ]] || return 1
+    json="$("$myso" client --client.config "$CLIENT_CONFIG" object "$object_id" --json 2>/dev/null)" || return 1
+    printf '%s' "$json" | grep -Eo '"AddressOwner"[[:space:]]*:[[:space:]]*"0x[0-9a-fA-F]+"' | head -n1 \
+        | grep -Eo '0x[0-9a-fA-F]+' | head -n1
+}
+
+validate_purchase_coin_ownership() {
+    local pay_coin="$1"
+    local active pay_owner
+    active="$(resolve_myso_active_address)" || {
+        echo "Warning: could not read active-address from client config; skipping coin ownership check." >&2
+        return 0
+    }
+    log_session_use "Client active-address" "$active"
+    pay_owner="$(object_address_owner "$pay_coin")" || {
+        echo "Warning: could not fetch owner for payment coin $pay_coin." >&2
+        return 0
+    }
+    if [[ "$pay_owner" != "$active" ]]; then
+        echo "Error: payment coin $pay_coin is owned by $pay_owner, not active-address $active." >&2
+        echo "  Use a payment coin owned by the active address, or run: myso client switch --address <owner>" >&2
+        return 1
+    fi
+    return 0
+}
+
+validate_g2_public_key_hex() {
+    local pk="${1:-}"
+    local naked len
+    naked="$(strip_0x "$pk")"
+    len="${#naked}"
+    if [[ "$len" -ne "$G2_PUBLIC_KEY_HEX_LEN" ]]; then
+        echo "PUBLIC_KEY invalid: ${len} hex chars after 0x strip; encrypt-hmac requires ${G2_PUBLIC_KEY_HEX_LEN} hex chars (compressed BLS12-381 G2)." >&2
+        return 1
+    fi
+    if [[ ! "$naked" =~ ^[0-9a-fA-F]+$ ]]; then
+        echo "PUBLIC_KEY invalid: non-hex characters after 0x strip." >&2
+        return 1
+    fi
+    return 0
+}
+
+public_key_status_line() {
+    local pk="${PUBLIC_KEY:-}"
+    if [[ -z "$pk" ]]; then
+        echo "<unset>"
+        return 0
+    fi
+    if validate_g2_public_key_hex "$pk" 2>/dev/null; then
+        echo "valid (${G2_PUBLIC_KEY_HEX_LEN} hex)"
+    else
+        local naked len
+        naked="$(strip_0x "$pk")"
+        len="${#naked}"
+        echo "INVALID (${len} hex, need ${G2_PUBLIC_KEY_HEX_LEN})"
+    fi
+}
+
+default_secrets_env_path() {
+    if [[ -f "$PWD/$DEFAULT_SECRETS_REL" ]]; then
+        printf '%s' "$PWD/$DEFAULT_SECRETS_REL"
+    elif [[ -f "$REPO_ROOT/$DEFAULT_SECRETS_REL" ]]; then
+        printf '%s' "$REPO_ROOT/$DEFAULT_SECRETS_REL"
+    else
+        printf '%s' "$PWD/$DEFAULT_SECRETS_REL"
+    fi
+}
+
+resolve_secrets_env_path() {
+    local path="${1:-}"
+    local dir sibling
+    if [[ -z "$path" ]]; then
+        default_secrets_env_path
+        return 0
+    fi
+    if [[ "$path" == *.yaml || "$path" == *.yml ]]; then
+        dir="$(dirname "$path")"
+        sibling="${dir}/local-mydata-secrets.env"
+        if [[ -f "$sibling" ]]; then
+            echo "Note: MYDATA_SECRETS_FILE points at yaml; using sibling ${sibling}" >&2
+            printf '%s' "$sibling"
+            return 0
+        fi
+        echo "Warning: ${path} is yaml (no PUBLIC_KEY); expected local-mydata-secrets.env beside it." >&2
+    fi
+    printf '%s' "$path"
+}
+
+hydrate_encrypt_from_secrets_file() {
+    local sec_file="$1"
+    local overwrite_pk="${2:-0}"
+    [[ -f "$sec_file" ]] || return 0
+    local pk_from_file ks_from_file u_from_file
+    pk_from_file="$(parse_env_file_value "$sec_file" PUBLIC_KEY 2>/dev/null || true)"
+    ks_from_file="$(parse_env_file_value "$sec_file" KEY_SERVER_OBJECT_ID 2>/dev/null || true)"
+    u_from_file="$(parse_env_file_value "$sec_file" KEY_SERVER_URL 2>/dev/null || true)"
+    if [[ "$overwrite_pk" == 1 ]] || [[ -z "${PUBLIC_KEY:-}" ]] || ! validate_g2_public_key_hex "${PUBLIC_KEY:-}" 2>/dev/null; then
+        if [[ -n "${pk_from_file:-}" ]] && validate_g2_public_key_hex "$pk_from_file" 2>/dev/null; then
+            PUBLIC_KEY="$pk_from_file"
+        fi
+    fi
+    if [[ -z "${KEY_SERVER_OBJECT_ID:-}" && -n "${ks_from_file:-}" ]]; then
+        KEY_SERVER_OBJECT_ID="$ks_from_file"
+    fi
+    if [[ -n "${u_from_file:-}" ]]; then
+        KEY_SERVER_URL="$u_from_file"
+    fi
+}
+
+hydrate_encrypt_from_secrets() {
+    local sec_path resolved
+    if [[ -n "${MYDATA_SECRETS_FILE:-}" ]]; then
+        sec_path="$(resolve_secrets_env_path "$MYDATA_SECRETS_FILE")"
+    else
+        sec_path="$(default_secrets_env_path)"
+    fi
+    resolved="$(resolve_secrets_env_path "$sec_path")"
+    if [[ -f "$resolved" ]]; then
+        MYDATA_SECRETS_FILE="$resolved"
+        local overwrite=0
+        if [[ -n "${PUBLIC_KEY:-}" ]] && ! validate_g2_public_key_hex "${PUBLIC_KEY:-}" 2>/dev/null; then
+            overwrite=1
+        fi
+        hydrate_encrypt_from_secrets_file "$resolved" "$overwrite"
+    fi
+}
+
+resolve_mydata_repo_root() {
+    local root="${MYDATA_REPO:-}"
+    if [[ -z "$root" ]]; then
+        if [[ -n "${MYSO_MYDATA_REPO:-}" ]]; then
+            root="$MYSO_MYDATA_REPO"
+        elif [[ -d "$REPO_ROOT/../myso-mydata" && -f "$REPO_ROOT/../myso-mydata/Cargo.toml" ]]; then
+            root="$(cd "$REPO_ROOT/../myso-mydata" && pwd)"
+        fi
+    fi
+    printf '%s' "${root:-}"
+}
+
+resolve_mydata() {
+    if [[ -n "${MYDATA:-}" && -x "${MYDATA}" ]]; then
+        echo "$MYDATA"
+        return 0
+    fi
+    if command -v mydata &>/dev/null; then
+        command -v mydata
+        return 0
+    fi
+    local root cand
+    root="$(resolve_mydata_repo_root)"
+    if [[ -n "$root" ]]; then
+        for cand in "$root/target/release/mydata" "$root/target/debug/mydata"; do
+            if [[ -x "$cand" ]]; then
+                echo "$cand"
+                return 0
+            fi
+        done
+        for cand in "$root/target/release/mydata-cli" "$root/target/debug/mydata-cli"; do
+            if [[ -x "$cand" ]]; then
+                echo "Note: using legacy binary name mydata-cli (prefer mydata)" >&2
+                echo "$cand"
+                return 0
+            fi
+        done
+    fi
+    echo ""
+}
+
 confirm_run() {
     if [[ "${ASSUME_YES:-}" == 1 ]]; then
         return 0
@@ -164,10 +522,9 @@ confirm_run() {
     [[ "${ans:-}" == [yY] || "${ans:-}" == [yY][eE][sS] ]]
 }
 
-extra_gas() {
-    if [[ -n "${GAS_COIN_ID:-}" ]]; then
-        printf '%s\n' '--gas' "$GAS_COIN_ID"
-    fi
+extra_gas_budget() {
+    local budget="${GAS_BUDGET:-$DEFAULT_GAS_BUDGET}"
+    printf '%s\n' '--gas-budget' "$budget"
 }
 
 extra_dry() {
@@ -186,28 +543,6 @@ resolve_myso() {
         return
     fi
     for cand in "$REPO_ROOT/target/debug/myso" "$REPO_ROOT/target/release/myso"; do
-        if [[ -x "$cand" ]]; then
-            echo "$cand"
-            return
-        fi
-    done
-    echo ""
-}
-
-resolve_mydata_cli() {
-    local root="${MYDATA_REPO:-}"
-    if [[ -z "$root" ]]; then
-        if [[ -n "${MYSO_MYDATA_REPO:-}" ]]; then
-            root="$MYSO_MYDATA_REPO"
-        elif [[ -d "$REPO_ROOT/../myso-mydata" && -f "$REPO_ROOT/../myso-mydata/Cargo.toml" ]]; then
-            root="$(cd "$REPO_ROOT/../myso-mydata" && pwd)"
-        fi
-    fi
-    if [[ -z "${root:-}" ]]; then
-        echo ""
-        return
-    fi
-    for cand in "$root/target/release/mydata-cli" "$root/target/debug/mydata-cli"; do
         if [[ -x "$cand" ]]; then
             echo "$cand"
             return
@@ -273,7 +608,7 @@ run_encrypt_hmac_cli() {
     ec=$?
     set -e
     if [[ $ec -ne 0 ]]; then
-        echo "mydata-cli encrypt-hmac failed:" >&2
+        echo "mydata encrypt-hmac failed:" >&2
         echo "$out" >&2
         return "$ec"
     fi
@@ -317,28 +652,104 @@ show_context() {
     echo "  DIST_REGISTRY_ID:    ${DIST_REGISTRY_ID:-<unset>}"
     echo "  MYDATA_ADMIN_CAP_ID: ${MYDATA_ADMIN_CAP_ID:-<unset>}"
     echo "  POOL_ADMIN_CAP_ID:   ${POOL_ADMIN_CAP_ID:-<unset>}"
-    echo "  GAS_COIN_ID:         ${GAS_COIN_ID:-<auto>}"
+    echo "  Gas payment:         CLI auto-select"
+    echo "  GAS_BUDGET:          ${GAS_BUDGET:-$DEFAULT_GAS_BUDGET} (MIST)"
     echo "  LISTING_ID:          ${LISTING_ID:-<unset>}"
+    echo "  SUB_POOL_ID:         ${SUB_POOL_ID:-<unset>}"
     echo "  PAY_COIN_ID:         ${PAY_COIN_ID:-<unset>}"
+    echo "  MEMORY_ACCOUNT_ID:   ${MEMORY_ACCOUNT_ID:-<unset>}"
+    echo "  REVOKE_BUYER_ID:     ${REVOKE_BUYER_ID:-<unset>}"
     echo "  MYDATA_SECRETS_FILE: ${MYDATA_SECRETS_FILE:-<unset>}"
-    if [[ -n "${PUBLIC_KEY:-}" ]]; then
-        echo "  PUBLIC_KEY:          <set, ${#PUBLIC_KEY} chars>"
-    else
-        echo "  PUBLIC_KEY:          <unset>"
-    fi
+    echo "  PUBLIC_KEY:          $(public_key_status_line)"
     echo "  KEY_SERVER_OBJECT_ID: ${KEY_SERVER_OBJECT_ID:-<unset>}"
     echo "  MYSO:               $(resolve_myso || true)"
-    echo "  MYDATA_CLI:         $(resolve_mydata_cli || true)"
+    echo "  MYDATA:             $(resolve_mydata || true)"
     echo "======================="
+}
+
+# Sets globals: pk ks MYDATA_SECRETS_FILE KEY_SERVER_URL. Returns 1 on unrecoverable credential errors.
+resolve_encrypt_credentials() {
+    local sec_path default_sec pk ks
+    if [[ -n "${MYDATA_SECRETS_FILE:-}" ]]; then
+        default_sec="$(resolve_secrets_env_path "$MYDATA_SECRETS_FILE")"
+    else
+        default_sec="$(default_secrets_env_path)"
+    fi
+
+    if session_value_set PUBLIC_KEY && session_value_set KEY_SERVER_OBJECT_ID && \
+        validate_g2_public_key_hex "${PUBLIC_KEY:-}" 2>/dev/null; then
+        sec_path="${MYDATA_SECRETS_FILE:-$default_sec}"
+        if [[ -f "$sec_path" ]]; then
+            log_session_use "secrets env" "$sec_path"
+            MYDATA_SECRETS_FILE="$sec_path"
+        fi
+        pk="${PUBLIC_KEY}"
+        ks="${KEY_SERVER_OBJECT_ID}"
+        log_session_use "PUBLIC_KEY" "valid (${G2_PUBLIC_KEY_HEX_LEN} hex)"
+        log_session_use "KEY_SERVER_OBJECT_ID" "$ks"
+    else
+        if session_value_set MYDATA_SECRETS_FILE; then
+            sec_path="$(resolve_secrets_env_path "$MYDATA_SECRETS_FILE")"
+        else
+            sec_path="$default_sec"
+        fi
+        if [[ -f "$sec_path" ]]; then
+            hydrate_encrypt_from_secrets_file "$sec_path" 1
+            MYDATA_SECRETS_FILE="$sec_path"
+            log_session_use "secrets env" "$sec_path"
+        elif ! session_value_set MYDATA_SECRETS_FILE; then
+            sec_path="$(resolve_session_or_prompt MYDATA_SECRETS_FILE "local-mydata-secrets.env path (NOT key-server-config.yaml)" "$default_sec")"
+            sec_path="$(resolve_secrets_env_path "$sec_path")"
+            MYDATA_SECRETS_FILE="$sec_path"
+            if [[ -f "$sec_path" ]]; then
+                hydrate_encrypt_from_secrets_file "$sec_path" 1
+            fi
+        fi
+        pk="${PUBLIC_KEY:-}"
+        ks="${KEY_SERVER_OBJECT_ID:-}"
+        if [[ -n "${pk:-}" ]] && validate_g2_public_key_hex "$pk" 2>/dev/null; then
+            log_session_use "PUBLIC_KEY" "valid (${G2_PUBLIC_KEY_HEX_LEN} hex)"
+        elif [[ -z "${pk:-}" ]]; then
+            pk="$(prompt_with_default "PUBLIC_KEY (0x..., IBE G2 from genkey / key server; ${G2_PUBLIC_KEY_HEX_LEN} hex chars)" "")"
+        fi
+        if [[ -z "${ks:-}" ]]; then
+            ks="$(prompt_with_default "KEY_SERVER_OBJECT_ID (on-chain KeyServer)" "")"
+        elif session_value_set KEY_SERVER_OBJECT_ID; then
+            log_session_use "KEY_SERVER_OBJECT_ID" "$ks"
+        fi
+    fi
+
+    [[ -n "${ks:-}" ]] || { echo "KEY_SERVER_OBJECT_ID is required." >&2; return 1; }
+
+    if ! validate_g2_public_key_hex "${pk:-}"; then
+        echo "  Correct source: local-mydata-secrets.env from \`myso start --with-mydata\` (PUBLIC_KEY=…)." >&2
+        echo "  Re-run menu [0] or delete PUBLIC_KEY from marketplace-session.env to auto-load from secrets file." >&2
+        return 1
+    fi
+
+    if session_value_set KEY_SERVER_URL; then
+        log_session_use "KEY_SERVER_URL" "$KEY_SERVER_URL"
+    else
+        KEY_SERVER_URL="$(prompt_with_default "Key server URL (probe before encrypt)" "$KEY_SERVER_URL")"
+    fi
+
+    PUBLIC_KEY="$pk"
+    KEY_SERVER_OBJECT_ID="$ks"
+    return 0
 }
 
 set_context_interactive() {
     echo "Set session values (Enter keeps default in brackets)."
     echo "Values are written to $(session_state_save_path) when you finish (override with MYDATA_MARKETPLACE_SESSION)."
-    CLIENT_CONFIG="$(prompt_with_default "Path to client.yaml" "${CLIENT_CONFIG:-$PWD/network.config/client.yaml}")"
-    PKG_SOCIAL="$(prompt_with_default "Social package id (MySoSocial)" "$PKG_SOCIAL")"
-    CLOCK_ID="$(prompt_with_default "Clock object id" "$CLOCK_ID")"
-    COIN_TYPE="$(prompt_with_default "MYSO coin type tag" "$COIN_TYPE")"
+    apply_session_defaults
+    if [[ -z "${CLIENT_CONFIG:-}" ]]; then
+        CLIENT_CONFIG="$PWD/network.config/client.yaml"
+    fi
+    echo "Using fixed defaults (set CLIENT_CONFIG / PKG_SOCIAL / CLOCK_ID / COIN_TYPE in the session file or env to override):"
+    echo "  client.yaml path:           $CLIENT_CONFIG"
+    echo "  Social package (MySoSocial): $PKG_SOCIAL"
+    echo "  Clock object id:             $CLOCK_ID"
+    echo "  MYSO coin type tag:          $COIN_TYPE"
     KEY_SERVER_URL="$(prompt_with_default "Key server base URL" "$KEY_SERVER_URL")"
     MYDATA_CONFIG_ID="$(prompt_with_default "MyDataConfig object id" "${MYDATA_CONFIG_ID:-}")"
     MYDATA_REGISTRY_ID="$(prompt_with_default "MyDataRegistry object id" "${MYDATA_REGISTRY_ID:-}")"
@@ -348,12 +759,22 @@ set_context_interactive() {
     DIST_REGISTRY_ID="$(prompt_with_default "DistributionRegistry object id" "${DIST_REGISTRY_ID:-}")"
     MYDATA_ADMIN_CAP_ID="$(prompt_with_default "MyDataAdminCap object id" "${MYDATA_ADMIN_CAP_ID:-}")"
     POOL_ADMIN_CAP_ID="$(prompt_with_default "MyDataPoolAdminCap object id" "${POOL_ADMIN_CAP_ID:-}")"
-    GAS_COIN_ID="$(prompt_with_default "Gas coin object id (empty = auto)" "${GAS_COIN_ID:-}")"
+    GAS_BUDGET="$(prompt_with_default "Gas budget in MIST (default 1 MYSO)" "${GAS_BUDGET:-$DEFAULT_GAS_BUDGET}")"
     LISTING_ID="$(prompt_with_default "Default listing (MyData) object id" "${LISTING_ID:-}")"
+    SUB_POOL_ID="$(prompt_with_default "Default sub-pool id (menus 13–15; from menu 12 tx effects)" "${SUB_POOL_ID:-}")"
     PAY_COIN_ID="$(prompt_with_default "Default payment Coin<MYSO> id" "${PAY_COIN_ID:-}")"
-    MYDATA_SECRETS_FILE="$(prompt_with_default "local-mydata-secrets.env path (optional)" "${MYDATA_SECRETS_FILE:-}")"
+    echo "  MemoryAccount id (GraphQL profile.memoryAccountId or REST /profiles/:address/memory-account):"
+    MEMORY_ACCOUNT_ID="$(prompt_with_default "Default MemoryAccount object id (purchase/approve)" "${MEMORY_ACCOUNT_ID:-}")"
+    MYDATA_SECRETS_FILE="$(prompt_with_default "local-mydata-secrets.env path (NOT key-server-config.yaml)" "${MYDATA_SECRETS_FILE:-}")"
+    if [[ -n "${MYDATA_SECRETS_FILE:-}" ]]; then
+        MYDATA_SECRETS_FILE="$(resolve_secrets_env_path "$MYDATA_SECRETS_FILE")"
+    fi
     PUBLIC_KEY="$(prompt_with_default "PUBLIC_KEY for encrypt (optional; can use secrets file)" "${PUBLIC_KEY:-}")"
     KEY_SERVER_OBJECT_ID="$(prompt_with_default "KEY_SERVER_OBJECT_ID (optional)" "${KEY_SERVER_OBJECT_ID:-}")"
+    if [[ -n "${PUBLIC_KEY:-}" ]] && ! validate_g2_public_key_hex "${PUBLIC_KEY:-}"; then
+        echo "Warning: PUBLIC_KEY will not be saved — fix length or leave empty to load from secrets file." >&2
+        PUBLIC_KEY=''
+    fi
     show_context
     apply_session_defaults
     save_session_state
@@ -370,7 +791,7 @@ run_myso_call() {
     local -a cmd
     cmd=("$myso" client --client.config "$CLIENT_CONFIG" call --package "$PKG_SOCIAL" --module mydata --function "$func")
     local g
-    while IFS= read -r g; do [[ -n "$g" ]] && cmd+=("$g"); done < <(extra_gas)
+    while IFS= read -r g; do [[ -n "$g" ]] && cmd+=("$g"); done < <(extra_gas_budget)
     while IFS= read -r g; do [[ -n "$g" ]] && cmd+=("$g"); done < <(extra_dry)
     cmd+=("$@")
 
@@ -387,13 +808,12 @@ run_myso_call() {
 }
 
 menu_update_config() {
-    [[ -n "${MYDATA_ADMIN_CAP_ID:-}" ]] || { echo "Set MYDATA_ADMIN_CAP_ID (menu 0)." >&2; return 1; }
-    [[ -n "${MYDATA_CONFIG_ID:-}" ]] || { echo "Set MYDATA_CONFIG_ID (menu 0)." >&2; return 1; }
+    require_session_fields MYDATA_ADMIN_CAP_ID MYDATA_CONFIG_ID || return 1
     local en max_tags max_sub max_grants
-    en="$(prompt_with_default "enable_flag (true/false)" "true")"
-    max_tags="$(prompt_with_default "max_tags" "10")"
-    max_sub="$(prompt_with_default "max_subscription_days" "365")"
-    max_grants="$(prompt_with_default "max_free_access_grants" "100000")"
+    en="$(prompt_or_default "enable_flag (true/false)" "true")"
+    max_tags="$(prompt_or_default "max_tags" "10")"
+    max_sub="$(prompt_or_default "max_subscription_days" "365")"
+    max_grants="$(prompt_or_default "max_free_access_grants" "100000")"
     run_myso_call update_mydata_config \
         --args "$MYDATA_ADMIN_CAP_ID" "$MYDATA_CONFIG_ID" "$en" "$max_tags" "$max_sub" "$max_grants"
 }
@@ -431,54 +851,25 @@ ensure_mydata_enabled_for_listing() {
 }
 
 menu_create_and_share() {
-    [[ -n "${MYDATA_CONFIG_ID:-}" && -n "${MYDATA_REGISTRY_ID:-}" ]] || {
-        echo "Set MYDATA_CONFIG_ID and MYDATA_REGISTRY_ID (menu 0)." >&2
-        return 1
-    }
+    require_session_fields MYDATA_CONFIG_ID MYDATA_REGISTRY_ID || return 1
 
     ensure_mydata_enabled_for_listing
 
-    local mydata_cli sec_file pk ks plaintext aad_opt
-    mydata_cli="$(resolve_mydata_cli)"
-    [[ -n "$mydata_cli" ]] || {
-        echo "mydata-cli not found. Build myso-mydata (cargo build -p mydata-cli); set MYDATA_REPO or use sibling ../myso-mydata." >&2
+    local mydata_bin sec_file pk ks plaintext aad_opt
+    mydata_bin="$(resolve_mydata)"
+    [[ -n "$mydata_bin" ]] || {
+        echo "mydata not found. Build myso-mydata (cargo build -p mydata-cli); set MYDATA, MYDATA_REPO, or use sibling ../myso-mydata." >&2
         return 1
     }
 
-    local default_sec="${MYDATA_SECRETS_FILE:-}"
-    if [[ -z "$default_sec" ]]; then
-        if [[ -f "$PWD/$DEFAULT_SECRETS_REL" ]]; then
-            default_sec="$PWD/$DEFAULT_SECRETS_REL"
-        elif [[ -f "$REPO_ROOT/$DEFAULT_SECRETS_REL" ]]; then
-            default_sec="$REPO_ROOT/$DEFAULT_SECRETS_REL"
-        else
-            default_sec="$PWD/$DEFAULT_SECRETS_REL"
-        fi
-    fi
-    sec_file="$(prompt_with_default "Path to local-mydata-secrets.env" "$default_sec")"
-    pk="${PUBLIC_KEY:-}"
-    ks="${KEY_SERVER_OBJECT_ID:-}"
-    if [[ -f "$sec_file" ]]; then
-        MYDATA_SECRETS_FILE="$sec_file"
-        [[ -z "${pk:-}" ]] && pk="$(parse_env_file_value "$sec_file" PUBLIC_KEY || true)"
-        [[ -z "${ks:-}" ]] && ks="$(parse_env_file_value "$sec_file" KEY_SERVER_OBJECT_ID || true)"
-        local u
-        u="$(parse_env_file_value "$sec_file" KEY_SERVER_URL || true)"
-        [[ -n "$u" ]] && KEY_SERVER_URL="$u"
-    fi
-    if [[ -z "${pk:-}" ]]; then
-        pk="$(prompt_with_default "PUBLIC_KEY (0x..., IBE G2 from genkey / key server)" "")"
-    fi
-    if [[ -z "${ks:-}" ]]; then
-        ks="$(prompt_with_default "KEY_SERVER_OBJECT_ID (on-chain KeyServer)" "")"
-    fi
-    [[ -n "$pk" && -n "$ks" ]] || { echo "PUBLIC_KEY and KEY_SERVER_OBJECT_ID are required." >&2; return 1; }
+    resolve_encrypt_credentials || return 1
+    pk="${PUBLIC_KEY}"
+    ks="${KEY_SERVER_OBJECT_ID}"
 
-    KEY_SERVER_URL="$(prompt_with_default "Key server URL (probe before encrypt)" "$KEY_SERVER_URL")"
     probe_key_server "$KEY_SERVER_URL" || return 1
 
-    plaintext="$(prompt_with_default "Plaintext to encrypt" "Hello from MyData marketplace demo")"
-    aad_opt="$(prompt_with_default "Optional encrypt-hmac --aad as hex (empty to skip)" "")"
+    plaintext="$(prompt_or_default "Plaintext to encrypt" "Hello from MyData marketplace demo")"
+    aad_opt="$(prompt_or_default "Optional encrypt-hmac --aad as hex (empty to skip)" "")"
 
     local msg_hex enc_id
     msg_hex="$(printf '%s' "$plaintext" | xxd -p -c 65536 | tr -d '\n')"
@@ -486,16 +877,15 @@ menu_create_and_share() {
 
     local pk_naked
     pk_naked="$(strip_0x "$pk")"
-    [[ ${#pk_naked} -ge 64 ]] || { echo "PUBLIC_KEY hex too short after stripping 0x." >&2; return 1; }
 
     echo ""
-    echo "Running mydata-cli encrypt-hmac (threshold=1, package-id=$PKG_SOCIAL, key server object=$ks)"
+    echo "Running mydata encrypt-hmac (threshold=1, package-id=$PKG_SOCIAL, key server object=$ks)"
     ENCRYPT_OUT_HEX=''
     ENCRYPT_ID_HEX=''
     if [[ -n "$aad_opt" ]]; then
-        run_encrypt_hmac_cli "$mydata_cli" "$msg_hex" "$PKG_SOCIAL" "$enc_id" 1 "$pk_naked" "$ks" "$(strip_0x "$aad_opt")"
+        run_encrypt_hmac_cli "$mydata_bin" "$msg_hex" "$PKG_SOCIAL" "$enc_id" 1 "$pk_naked" "$ks" "$(strip_0x "$aad_opt")"
     else
-        run_encrypt_hmac_cli "$mydata_cli" "$msg_hex" "$PKG_SOCIAL" "$enc_id" 1 "$pk_naked" "$ks"
+        run_encrypt_hmac_cli "$mydata_bin" "$msg_hex" "$PKG_SOCIAL" "$enc_id" 1 "$pk_naked" "$ks"
     fi
 
     local enc_arg id_arg
@@ -503,83 +893,117 @@ menu_create_and_share() {
     id_arg="\"0x${ENCRYPT_ID_HEX}\""
 
     local media tags_json tstart tend otp sp subdur_raw geo dq sample coll upd freq
-    media="$(prompt_with_default "media_type" "demo:bf-hmac-encrypt-hmac")"
-    tags_json="$(prompt_with_default 'tags (JSON array of strings)' '["cli-demo"]')"
-    tstart="$(prompt_with_default "timestamp_start (u64)" "0")"
-    tend="$(prompt_with_default 'timestamp_end Option — [] or ["123"]' '[]')"
-    otp="$(prompt_with_default 'one_time_price Option — [] or ["1000000000"]' '["1000000000"]')"
-    sp="$(prompt_with_default 'subscription_price Option — [] or ["500000000"]' '["500000000"]')"
-    subdur_raw="$(prompt_with_default "subscription_duration_days" "30")"
-    geo="$(prompt_with_default "geographic_region Option<String> — [] or [\"US-CA\"]" '[]')"
-    dq="$(prompt_with_default "data_quality Option<String> — [] or [\"high\"] (not a number)" '[]')"
-    sample="$(prompt_with_default "sample_size Option<u64> — [] or [1000]" '[]')"
-    coll="$(prompt_with_default "collection_method Option<String> — [] or [\"cli\"]" '[]')"
-    upd="$(prompt_with_default "is_updating (true/false)" "false")"
-    freq="$(prompt_with_default "update_frequency Option" '[]')"
+    media="$(prompt_or_default "media_type" "demo:bf-hmac-encrypt-hmac")"
+    tags_json="$(prompt_or_default 'tags (JSON array of strings)' '["cli-demo"]')"
+    tstart="$(prompt_or_default "timestamp_start (u64)" "0")"
+    tend="$(prompt_or_default 'timestamp_end Option — [] or ["123"]' '[]')"
+    otp="$(prompt_or_default 'one_time_price Option — [] or ["1000000000"]' '["1000000000"]')"
+    sp="$(prompt_or_default 'subscription_price Option — [] or ["500000000"]' '["500000000"]')"
+    subdur_raw="$(prompt_or_default "subscription_duration_days" "30")"
+    geo="$(prompt_or_default "geographic_region Option<String> — [] or [\"US-CA\"]" '[]')"
+    dq="$(prompt_or_default "data_quality Option<String> — [] or [\"high\"] (not a number)" '[]')"
+    sample="$(prompt_or_default "sample_size Option<u64> — [] or [1000]" '[]')"
+    coll="$(prompt_or_default "collection_method Option<String> — [] or [\"cli\"]" '[]')"
+    upd="$(prompt_or_default "is_updating (true/false)" "false")"
+    freq="$(prompt_or_default "update_frequency Option" '[]')"
 
     run_myso_call create_and_share \
         --args "$MYDATA_CONFIG_ID" "$MYDATA_REGISTRY_ID" "\"$media\"" "$tags_json" [] "$tstart" "$tend" \
         "$enc_arg" "$id_arg" "$otp" "$sp" "$subdur_raw" "$geo" "$dq" "$sample" "$coll" "$upd" "$freq" "$CLOCK_ID"
 
-    PUBLIC_KEY="$pk"
-    KEY_SERVER_OBJECT_ID="$ks"
     apply_session_defaults
     save_session_state
 }
 
 menu_purchase_one_time() {
-    local listing pay
-    listing="$(prompt_with_default "MyData listing object id" "${LISTING_ID:-}")"
-    pay="$(prompt_with_default "Payment Coin<MYSO> object id" "${PAY_COIN_ID:-}")"
-    run_myso_call purchase_one_time --type-args "$COIN_TYPE" --args "$MYDATA_CONFIG_ID" "$listing" "$pay" "$CLOCK_ID"
+    require_session_fields MYDATA_CONFIG_ID || return 1
+    local listing pay account
+    listing="$(resolve_purchase_listing_id)" || return 1
+    pay="$(resolve_purchase_pay_coin)" || return 1
+    account="$(resolve_session_or_prompt MEMORY_ACCOUNT_ID "Listing owner's MemoryAccount (or buyer's if agent lives there)")"
+    validate_purchase_coin_ownership "$pay" || return 1
+    LISTING_ID="$listing"
+    PAY_COIN_ID="$pay"
+    MEMORY_ACCOUNT_ID="$account"
+    save_session_state
+    run_myso_call purchase_one_time --args "$MYDATA_CONFIG_ID" "$listing" "$pay" "$account" "$CLOCK_ID"
 }
 
 menu_purchase_sub() {
-    local listing pay
-    listing="$(prompt_with_default "MyData listing object id" "${LISTING_ID:-}")"
-    pay="$(prompt_with_default "Payment Coin<MYSO> object id" "${PAY_COIN_ID:-}")"
-    run_myso_call purchase_subscription --type-args "$COIN_TYPE" --args "$MYDATA_CONFIG_ID" "$listing" "$pay" "$CLOCK_ID"
+    require_session_fields MYDATA_CONFIG_ID || return 1
+    local listing pay account
+    listing="$(resolve_purchase_listing_id)" || return 1
+    pay="$(resolve_purchase_pay_coin)" || return 1
+    account="$(resolve_session_or_prompt MEMORY_ACCOUNT_ID "Listing owner's MemoryAccount (or buyer's if agent lives there)")"
+    validate_purchase_coin_ownership "$pay" || return 1
+    LISTING_ID="$listing"
+    PAY_COIN_ID="$pay"
+    MEMORY_ACCOUNT_ID="$account"
+    save_session_state
+    run_myso_call purchase_subscription --args "$MYDATA_CONFIG_ID" "$listing" "$pay" "$account" "$CLOCK_ID"
 }
 
 menu_update_pricing() {
     local listing
-    listing="$(prompt_with_default "MyData listing id" "${LISTING_ID:-}")"
+    listing="$(resolve_session_or_prompt LISTING_ID "MyData listing id")"
+    LISTING_ID="$listing"
     local o sp dur
-    o="$(prompt_with_default 'new_one_time_price Option' '["1500000000"]')"
-    sp="$(prompt_with_default 'new_subscription_price Option' '["750000000"]')"
-    dur="$(prompt_with_default 'new_subscription_duration_days Option' '["45"]')"
+    o="$(prompt_or_default 'new_one_time_price Option' '["1500000000"]')"
+    sp="$(prompt_or_default 'new_subscription_price Option' '["750000000"]')"
+    dur="$(prompt_or_default 'new_subscription_duration_days Option' '["45"]')"
     run_myso_call update_pricing --args "$listing" "$o" "$sp" "$dur" "$CLOCK_ID"
 }
 
 menu_update_content() {
     local listing ed tags
-    listing="$(prompt_with_default "MyData listing id" "${LISTING_ID:-}")"
-    ed="$(prompt_with_default 'new_encrypted_data Option — [] or "0x..."' '[]')"
-    tags="$(prompt_with_default 'new_tags Option' '[]')"
+    listing="$(resolve_session_or_prompt LISTING_ID "MyData listing id")"
+    LISTING_ID="$listing"
+    ed="$(prompt_or_default 'new_encrypted_data Option — [] or "0x..."' '[]')"
+    tags="$(prompt_or_default 'new_tags Option' '[]')"
     run_myso_call update_content --args "$listing" "$ed" "$tags" "$CLOCK_ID"
 }
 
 menu_mydata_approve() {
-    local listing idv
-    listing="$(prompt_with_default "MyData listing id" "${LISTING_ID:-}")"
+    local listing idv account
+    listing="$(resolve_session_or_prompt LISTING_ID "MyData listing id")"
+    LISTING_ID="$listing"
     idv="$(prompt_with_default "encryption_id (0x hex, matches listing)" "")"
     [[ -n "$idv" ]] || { echo "encryption id required." >&2; return 1; }
     idv="0x$(strip_0x "$idv")"
-    run_myso_call mydata_approve --args "\"$idv\"" "$listing" "$CLOCK_ID"
+    account="$(resolve_session_or_prompt MEMORY_ACCOUNT_ID "Listing owner's MemoryAccount (purchaser with access or owner's agent with CAP_MYDATA_READ)")"
+    MEMORY_ACCOUNT_ID="$account"
+    save_session_state
+    run_myso_call mydata_approve --args "\"$idv\"" "$listing" "$account" "$CLOCK_ID"
 }
 
 menu_grant_access() {
+    require_session_fields MYDATA_CONFIG_ID || return 1
     local listing user at sd
-    listing="$(prompt_with_default "MyData listing id" "${LISTING_ID:-}")"
+    listing="$(resolve_session_or_prompt LISTING_ID "MyData listing id")"
+    LISTING_ID="$listing"
     user="$(prompt_with_default "beneficiary address" "")"
-    at="$(prompt_with_default "access_type (0=one_time, 1=subscription)" "0")"
-    sd="$(prompt_with_default "subscription_days Option" '[]')"
+    at="$(prompt_or_default "access_type (0=one_time, 1=subscription)" "0")"
+    sd="$(prompt_or_default "subscription_days Option" '[]')"
     run_myso_call grant_access --args "$MYDATA_CONFIG_ID" "$listing" "$user" "$at" "$sd" "$CLOCK_ID"
 }
 
+menu_revoke_access() {
+    local listing user at
+    listing="$(resolve_session_or_prompt LISTING_ID "MyData listing id")"
+    LISTING_ID="$listing"
+    user="$(resolve_session_or_prompt REVOKE_BUYER_ID "Buyer address to revoke")"
+    REVOKE_BUYER_ID="$user"
+    at="$(prompt_or_default "access_type (0=one_time, 1=subscription, 2=both)" "0")"
+    echo "Sign as listing owner. Revoked buyers cannot pass mydata_approve; fetch_key returns NoAccess." >&2
+    run_myso_call revoke_access --args "$listing" "$user" "$at" "$CLOCK_ID"
+    save_session_state
+}
+
 menu_register() {
+    require_session_fields MYDATA_REGISTRY_ID || return 1
     local listing
-    listing="$(prompt_with_default "MyData listing id" "${LISTING_ID:-}")"
+    listing="$(resolve_session_or_prompt LISTING_ID "MyData listing id")"
+    LISTING_ID="$listing"
     run_myso_call register_in_registry --args "$MYDATA_REGISTRY_ID" "$listing" "$CLOCK_ID"
 }
 
@@ -590,32 +1014,67 @@ menu_unregister() {
 }
 
 menu_create_broad_pool() {
+    require_session_fields POOL_ADMIN_CAP_ID POOL_REGISTRY_ID || return 1
     local n d
-    n="$(prompt_with_default "pool name" "demo-pool")"
-    d="$(prompt_with_default "description" "CLI demo")"
+    n="$(prompt_or_default "pool name" "demo-pool")"
+    d="$(prompt_or_default "description" "CLI demo")"
     run_myso_call create_broad_pool --args "$POOL_ADMIN_CAP_ID" "$POOL_REGISTRY_ID" "\"$n\"" "\"$d\"" "$CLOCK_ID"
 }
 
 menu_create_sub_pool() {
+    require_session_fields POOL_ADMIN_CAP_ID POOL_REGISTRY_ID || return 1
     local bid n d
     bid="$(prompt_with_default "broad_pool_id (ID value)" "")"
-    n="$(prompt_with_default "sub pool name" "demo-sub")"
-    d="$(prompt_with_default "description" "CLI demo sub")"
+    n="$(prompt_or_default "sub pool name" "demo-sub")"
+    d="$(prompt_or_default "description" "CLI demo sub")"
     run_myso_call create_sub_pool --args "$POOL_ADMIN_CAP_ID" "$POOL_REGISTRY_ID" "$bid" "\"$n\"" "\"$d\"" [] "$CLOCK_ID"
+    echo "After tx succeeds, copy the sub-pool id from effects and save as SUB_POOL_ID (menu 0)." >&2
+}
+
+menu_assign_to_pools() {
+    require_session_fields POOL_REGISTRY_ID || return 1
+    local listing sub_raw sub_ids_vec
+    listing="$(resolve_session_or_prompt LISTING_ID "MyData listing id")"
+    LISTING_ID="$listing"
+    sub_raw="$(resolve_sub_pool_id "sub_pool_id(s), comma-separated")"
+    [[ -n "$sub_raw" ]] || { echo "sub_pool_id is required." >&2; return 1; }
+    SUB_POOL_ID="$sub_raw"
+    sub_ids_vec="$(format_sub_pool_ids_vector "$sub_raw")" || return 1
+    echo "Sign as listing owner (assign_mydata_to_pools checks mydata.owner)." >&2
+    run_myso_call assign_mydata_to_pools \
+        --args "$listing" "$POOL_REGISTRY_ID" "$sub_ids_vec" "$CLOCK_ID"
+    echo "Pool membership recorded on-chain (get_mydata_sub_pools / MyDataAssignedToSubPoolEvent)." >&2
+}
+
+menu_remove_from_pool() {
+    require_session_fields POOL_REGISTRY_ID || return 1
+    local listing sub_id
+    listing="$(resolve_session_or_prompt LISTING_ID "MyData listing id")"
+    LISTING_ID="$listing"
+    sub_id="$(resolve_sub_pool_id "sub_pool_id to remove")"
+    [[ -n "$sub_id" ]] || { echo "sub_pool_id is required." >&2; return 1; }
+    SUB_POOL_ID="$sub_id"
+    echo "Sign as listing owner (remove_mydata_from_sub_pools checks mydata.owner)." >&2
+    run_myso_call remove_mydata_from_sub_pools \
+        --args "$listing" "$POOL_REGISTRY_ID" "$sub_id" "$CLOCK_ID"
 }
 
 menu_record_anchor() {
+    require_session_fields ANCHOR_REGISTRY_ID CLAIM_VAULT_ID POOL_REGISTRY_ID || return 1
     local b_sub pay mf pr pc
-    b_sub="$(prompt_with_default "source_pool_id" "")"
-    pay="$(prompt_with_default "source_sub_pool_id" "")"
-    mf="$(prompt_with_default "manifest_hash (JSON string bytes)" "\"01020304\"")"
-    pr="$(prompt_with_default "payment_reference (JSON string bytes)" "\"05060708\"")"
+    b_sub="$(prompt_with_default "source_pool_id (broad pool)" "")"
+    pay="$(resolve_sub_pool_id "source_sub_pool_id")"
+    [[ -n "$pay" ]] || { echo "source_sub_pool_id is required." >&2; return 1; }
+    SUB_POOL_ID="$pay"
+    mf="$(prompt_or_default "manifest_hash (JSON string bytes)" "\"01020304\"")"
+    pr="$(prompt_or_default "payment_reference (JSON string bytes)" "\"05060708\"")"
     pc="$(prompt_with_default "Coin<MYSO> object id" "")"
-    run_myso_call record_snapshot_anchor --type-args "$COIN_TYPE" \
+    run_myso_call record_snapshot_anchor \
         --args "$ANCHOR_REGISTRY_ID" "$CLAIM_VAULT_ID" "$POOL_REGISTRY_ID" "$b_sub" "$pay" "$mf" "$pr" "$pc" "$CLOCK_ID"
 }
 
 menu_publish_merkle() {
+    require_session_fields POOL_ADMIN_CAP_ID ANCHOR_REGISTRY_ID CLAIM_VAULT_ID || return 1
     local sid root
     sid="$(prompt_with_default "snapshot_id" "")"
     root="$(prompt_with_default "root_hash (32 bytes hex, with or without 0x)" "")"
@@ -644,9 +1103,12 @@ main_menu() {
         echo "10) unregister_from_registry"
         echo "11) create_broad_pool"
         echo "12) create_sub_pool"
-        echo "13) record_snapshot_anchor"
-        echo "14) publish_merkle_root"
-        echo "15) claim (help only)"
+        echo "13) assign_mydata_to_pools (owner)"
+        echo "14) remove_mydata_from_sub_pools (owner)"
+        echo "15) record_snapshot_anchor"
+        echo "16) publish_merkle_root"
+        echo "17) claim (help only)"
+        echo "18) revoke_access (owner; blocks future fetch_key for buyer)"
         echo " q) Quit"
         local c
         read -r -p "Choice: " c || break
@@ -664,9 +1126,12 @@ main_menu() {
             10) menu_unregister ;;
             11) menu_create_broad_pool ;;
             12) menu_create_sub_pool ;;
-            13) menu_record_anchor ;;
-            14) menu_publish_merkle ;;
-            15) menu_claim_hint ;;
+            13) menu_assign_to_pools ;;
+            14) menu_remove_from_pool ;;
+            15) menu_record_anchor ;;
+            16) menu_publish_merkle ;;
+            17) menu_claim_hint ;;
+            18) menu_revoke_access ;;
             q|Q) break ;;
             *) echo "Unknown choice." ;;
         esac
