@@ -58,11 +58,13 @@ module social_contracts::profile {
     const EMemoryAccountMismatch: u64 = 26;
     const EMustUseLinkedMemoryTransfer: u64 = 27;
     const ERequiresMemoryLinkedProfile: u64 = 28;
-    const ETooManyPieces: u64 = 29;
+    const EUsernameNotFound: u64 = 29;
+    const EUsernameProfileMismatch: u64 = 31;
     const EInvalidSchedule: u64 = 30;
-    const EInvalidPieceKind: u64 = 31;
     const EInvalidPieceDuration: u64 = 32;
-    const EScheduleOverflow: u64 = 33;
+    const EInvalidPieceKind: u64 = 33;
+    const ETooManyPieces: u64 = 34;
+    const EScheduleOverflow: u64 = 35;
 
     const PROFILE_SALE_FEE_BPS: u64 = 500;
 
@@ -116,6 +118,11 @@ module social_contracts::profile {
         id: UID,
     }
 
+    /// Admin capability for username registry management (reserve, revoke, reassign)
+    public struct UsernameAdminCap has key, store {
+        id: UID,
+    }
+
     /// Social Ecosystem Treasury that receives fees from profile sales
     public struct EcosystemTreasury has key {
         id: UID,
@@ -125,14 +132,13 @@ module social_contracts::profile {
         version: u64,
     }
 
-    /// Username Registry that stores mappings between usernames and profiles
+    /// Username Registry — sole on-chain store for username ownership
     public struct UsernameRegistry has key {
         id: UID,
-        // Maps username string to profile ID
+        /// Canonical username → profile_id
         usernames: Table<String, address>,
-        // Maps addresses (owners) to their profile IDs
+        /// Owner wallet → profile_id
         address_profiles: Table<address, address>,
-        // Version of the registry, allows for controlled upgrades
         version: u64,
     }
     
@@ -151,8 +157,6 @@ module social_contracts::profile {
         created_at: u64,
         /// Profile owner address
         owner: address,
-        /// Username for the profile (required, immutable after creation)
-        username: String,
         /// X/Twitter username as encrypted string (optional)
         x_username: Option<String>,
         /// Minimum offer amount in MYSO tokens the owner is willing to accept (optional)
@@ -308,11 +312,10 @@ module social_contracts::profile {
         removed_at: u64,
     }
 
-    /// Profile created event
+    /// Profile created event (username is emitted via [`UsernameClaimedEvent`])
     public struct ProfileCreatedEvent has copy, drop {
         profile_id: address,
         display_name: String,
-        username: String,
         bio: String,
         profile_picture: Option<String>,
         cover_photo: Option<String>,
@@ -320,11 +323,10 @@ module social_contracts::profile {
         created_at: u64,
     }
 
-    /// Profile updated event with all profile details
+    /// Profile updated event with all profile details (username lives in registry)
     public struct ProfileUpdatedEvent has copy, drop {
         profile_id: address,
         display_name: Option<String>,
-        username: String,
         bio: String,
         profile_picture: Option<String>,
         cover_photo: Option<String>,
@@ -332,6 +334,29 @@ module social_contracts::profile {
         updated_at: u64,
         x_username: Option<String>,
         min_offer_amount: Option<u64>,
+    }
+
+    /// Emitted when a username is claimed at profile creation
+    public struct UsernameClaimedEvent has copy, drop {
+        username: String,
+        profile_id: address,
+    }
+
+    /// Emitted when an admin revokes a username from a profile
+    public struct UsernameRevokedEvent has copy, drop {
+        username: String,
+        profile_id: address,
+        revoked_by: address,
+        reason_code: u8,
+    }
+
+    /// Emitted when an admin reassigns a username to a different profile
+    public struct UsernameReassignedEvent has copy, drop {
+        username: String,
+        old_profile_id: address,
+        new_profile_id: address,
+        admin: address,
+        reason_code: u8,
     }
 
     /// X username set or cleared by an EcosystemBadgeAdminCap holder (audit trail).
@@ -528,7 +553,7 @@ module social_contracts::profile {
         b
     }
 
-    /// Canonical username for [`UsernameRegistry`] keys and [`Profile::username`].
+    /// Canonical username for [`UsernameRegistry`] keys.
     /// Folds ASCII `A–Z` to `a–z` only; does not apply Unicode case folding.
     fun canonical_registry_username(username: &String): String {
         let lowered = to_lowercase_bytes(string::as_bytes(username));
@@ -567,6 +592,60 @@ module social_contracts::profile {
             i = i + 1;
         };
         string::utf8(result)
+    }
+
+    fun claim_username(registry: &mut UsernameRegistry, username: String, profile_id: address) {
+        assert!(!table::contains(&registry.usernames, username), EUsernameNotAvailable);
+        table::add(&mut registry.usernames, username, profile_id);
+    }
+
+    fun revoke_username(registry: &mut UsernameRegistry, username: String): address {
+        assert!(table::contains(&registry.usernames, username), EUsernameNotFound);
+        table::remove(&mut registry.usernames, username)
+    }
+
+    fun move_username(
+        registry: &mut UsernameRegistry,
+        username: String,
+        to_profile_id: address,
+    ): address {
+        assert!(table::contains(&registry.usernames, username), EUsernameNotFound);
+        let from_profile_id = *table::borrow(&registry.usernames, username);
+        assert!(from_profile_id != to_profile_id, EUsernameProfileMismatch);
+        *table::borrow_mut(&mut registry.usernames, username) = to_profile_id;
+        from_profile_id
+    }
+
+    fun profile_picture_event_string(profile: &Profile): Option<String> {
+        if (option::is_some(&profile.profile_picture)) {
+            let url = option::borrow(&profile.profile_picture);
+            option::some(ascii_to_string(url::inner_url(url)))
+        } else {
+            option::none()
+        }
+    }
+
+    fun cover_photo_event_string(profile: &Profile): Option<String> {
+        if (option::is_some(&profile.cover_photo)) {
+            let url = option::borrow(&profile.cover_photo);
+            option::some(ascii_to_string(url::inner_url(url)))
+        } else {
+            option::none()
+        }
+    }
+
+    fun emit_profile_updated_event(profile: &Profile, ctx: &TxContext) {
+        event::emit(ProfileUpdatedEvent {
+            profile_id: object::uid_to_address(&profile.id),
+            display_name: profile.display_name,
+            bio: profile.bio,
+            profile_picture: profile_picture_event_string(profile),
+            cover_photo: cover_photo_event_string(profile),
+            owner: profile.owner,
+            updated_at: tx_context::epoch_timestamp_ms(ctx),
+            x_username: profile.x_username,
+            min_offer_amount: profile.min_offer_amount,
+        });
     }
 
     // === Profile Creation and Management ===
@@ -635,7 +714,6 @@ module social_contracts::profile {
             cover_photo,
             created_at: now,
             owner,
-            username,
             x_username: option::none(),
             min_offer_amount: option::none(),
             badges: vector::empty<ProfileBadge>(),
@@ -649,8 +727,7 @@ module social_contracts::profile {
         let memory_id = memory::create_account_for_profile(memory_registry, profile_id, clock, ctx);
         profile.memory_account_id = option::some(memory_id);
         
-        // Add to registry mappings
-        table::add(&mut registry.usernames, username, profile_id);
+        claim_username(registry, username, profile_id);
         table::add(&mut registry.address_profiles, owner, profile_id);
         
         // Extract display name value for the event (if available)
@@ -661,32 +738,20 @@ module social_contracts::profile {
             string::utf8(b"")
         };
         
-        // Convert URL to String for events
-        let profile_picture_string = if (option::is_some(&profile.profile_picture)) {
-            let url = option::borrow(&profile.profile_picture);
-            option::some(ascii_to_string(url::inner_url(url)))
-        } else {
-            option::none()
-        };
-        
-        // Convert URL to String for events
-        let cover_photo_string = if (option::is_some(&profile.cover_photo)) {
-            let url = option::borrow(&profile.cover_photo);
-            option::some(ascii_to_string(url::inner_url(url)))
-        } else {
-            option::none()
-        };
-        
         // Emit profile creation event
         event::emit(ProfileCreatedEvent {
             profile_id,
             display_name: display_name_value,
-            username: profile.username,
             bio: profile.bio,
-            profile_picture: profile_picture_string,
-            cover_photo: cover_photo_string,
+            profile_picture: profile_picture_event_string(&profile),
+            cover_photo: cover_photo_event_string(&profile),
             owner,
             created_at: tx_context::epoch_timestamp_ms(ctx),
+        });
+
+        event::emit(UsernameClaimedEvent {
+            username,
+            profile_id,
         });
 
         // Transfer profile to owner
@@ -747,29 +812,7 @@ module social_contracts::profile {
         // Update the profile owner
         profile.owner = new_owner;
         
-        // Emit a comprehensive profile updated event to indicate ownership change
-        event::emit(ProfileUpdatedEvent {
-            profile_id,
-            display_name: profile.display_name,
-            username: profile.username,
-            bio: profile.bio,
-            profile_picture: if (option::is_some(&profile.profile_picture)) {
-                let url = option::borrow(&profile.profile_picture);
-                option::some(ascii_to_string(url::inner_url(url)))
-            } else {
-                option::none()
-            },
-            cover_photo: if (option::is_some(&profile.cover_photo)) {
-                let url = option::borrow(&profile.cover_photo);
-                option::some(ascii_to_string(url::inner_url(url)))
-            } else {
-                option::none()
-            },
-            owner: new_owner,
-            updated_at: tx_context::epoch_timestamp_ms(ctx),
-            x_username: profile.x_username,
-            min_offer_amount: profile.min_offer_amount,
-        });
+        emit_profile_updated_event(&profile, ctx);
         
         // Transfer profile to new owner
         transfer::transfer(profile, new_owner);
@@ -822,28 +865,7 @@ module social_contracts::profile {
 
         profile.owner = new_owner;
 
-        event::emit(ProfileUpdatedEvent {
-            profile_id,
-            display_name: profile.display_name,
-            username: profile.username,
-            bio: profile.bio,
-            profile_picture: if (option::is_some(&profile.profile_picture)) {
-                let url = option::borrow(&profile.profile_picture);
-                option::some(ascii_to_string(url::inner_url(url)))
-            } else {
-                option::none()
-            },
-            cover_photo: if (option::is_some(&profile.cover_photo)) {
-                let url = option::borrow(&profile.cover_photo);
-                option::some(ascii_to_string(url::inner_url(url)))
-            } else {
-                option::none()
-            },
-            owner: new_owner,
-            updated_at: tx_context::epoch_timestamp_ms(ctx),
-            x_username: profile.x_username,
-            min_offer_amount: profile.min_offer_amount,
-        });
+        emit_profile_updated_event(&profile, ctx);
 
         transfer::transfer(profile, new_owner);
     }
@@ -861,9 +883,6 @@ module social_contracts::profile {
     ) {
         // Verify sender is the owner
         assert!(profile.owner == tx_context::sender(ctx), EUnauthorized);
-        
-        // Get current timestamp
-        let now = tx_context::epoch_timestamp_ms(ctx);
 
         // Update basic profile information
         // Set display name if provided, otherwise keep existing
@@ -885,35 +904,7 @@ module social_contracts::profile {
             profile.min_offer_amount = min_offer_amount;
         };
 
-        // Convert URL to String for events
-        let profile_picture_string = if (option::is_some(&profile.profile_picture)) {
-            let url = option::borrow(&profile.profile_picture);
-            option::some(ascii_to_string(url::inner_url(url)))
-        } else {
-            option::none()
-        };
-        
-        // Convert URL to String for events
-        let cover_photo_string = if (option::is_some(&profile.cover_photo)) {
-            let url = option::borrow(&profile.cover_photo);
-            option::some(ascii_to_string(url::inner_url(url)))
-        } else {
-            option::none()
-        };
-
-        // Emit comprehensive profile update event with all fields
-        event::emit(ProfileUpdatedEvent {
-            profile_id: object::uid_to_address(&profile.id),
-            display_name: profile.display_name,
-            username: profile.username,
-            bio: profile.bio,
-            profile_picture: profile_picture_string,
-            cover_photo: cover_photo_string,
-            owner: profile.owner,
-            updated_at: now,
-            x_username: profile.x_username,
-            min_offer_amount: profile.min_offer_amount,
-        });
+        emit_profile_updated_event(profile, ctx);
     }
     
     // === Accessor functions ===
@@ -948,18 +939,20 @@ module social_contracts::profile {
         &profile.id
     }
 
-    /// Get the username string for a profile
-    public fun username(profile: &Profile): String {
-        profile.username
-    }
-    
     /// Lookup profile ID by username in the registry
     public fun lookup_profile_by_username(registry: &UsernameRegistry, username: String): Option<address> {
+        let username = canonical_registry_username(&username);
         if (table::contains(&registry.usernames, username)) {
             option::some(*table::borrow(&registry.usernames, username))
         } else {
             option::none()
         }
+    }
+
+    /// True when the canonical username is not currently claimed
+    public fun is_username_available(registry: &UsernameRegistry, username: String): bool {
+        let username = canonical_registry_username(&username);
+        !table::contains(&registry.usernames, username)
     }
     
     /// Lookup profile ID by owner address
@@ -1142,28 +1135,7 @@ module social_contracts::profile {
         });
         
         // Emit a comprehensive profile updated event to indicate ownership change
-        event::emit(ProfileUpdatedEvent {
-            profile_id,
-            display_name: profile.display_name,
-            username: profile.username,
-            bio: profile.bio,
-            profile_picture: if (option::is_some(&profile.profile_picture)) {
-                let url = option::borrow(&profile.profile_picture);
-                option::some(ascii_to_string(url::inner_url(url)))
-            } else {
-                option::none()
-            },
-            cover_photo: if (option::is_some(&profile.cover_photo)) {
-                let url = option::borrow(&profile.cover_photo);
-                option::some(ascii_to_string(url::inner_url(url)))
-            } else {
-                option::none()
-            },
-            owner: offeror,
-            updated_at: now,
-            x_username: profile.x_username,
-            min_offer_amount: profile.min_offer_amount,
-        });
+        emit_profile_updated_event(&profile, ctx);
         
         // Emit a fee event
         event::emit(ProfileSaleFeeEvent {
@@ -1246,28 +1218,7 @@ module social_contracts::profile {
             accepted_at: now,
         });
 
-        event::emit(ProfileUpdatedEvent {
-            profile_id,
-            display_name: profile.display_name,
-            username: profile.username,
-            bio: profile.bio,
-            profile_picture: if (option::is_some(&profile.profile_picture)) {
-                let url = option::borrow(&profile.profile_picture);
-                option::some(ascii_to_string(url::inner_url(url)))
-            } else {
-                option::none()
-            },
-            cover_photo: if (option::is_some(&profile.cover_photo)) {
-                let url = option::borrow(&profile.cover_photo);
-                option::some(ascii_to_string(url::inner_url(url)))
-            } else {
-                option::none()
-            },
-            owner: offeror,
-            updated_at: now,
-            x_username: profile.x_username,
-            min_offer_amount: profile.min_offer_amount,
-        });
+        emit_profile_updated_event(&profile, ctx);
 
         event::emit(ProfileSaleFeeEvent {
             profile_id,
@@ -1415,6 +1366,13 @@ module social_contracts::profile {
         }
     }
 
+    /// Create a UsernameAdminCap for bootstrap (package visibility only)
+    public(package) fun create_username_admin_cap(ctx: &mut TxContext): UsernameAdminCap {
+        UsernameAdminCap {
+            id: object::new(ctx)
+        }
+    }
+
     /// Assign an ecosystem badge to a profile - called by EcosystemBadgeAdminCap holder
     public entry fun assign_ecosystem_badge(
         _: &EcosystemBadgeAdminCap,
@@ -1490,6 +1448,50 @@ module social_contracts::profile {
         let revoker = tx_context::sender(ctx);
         let now = tx_context::epoch_timestamp_ms(ctx);
         remove_badge_from_profile(profile, &badge_id, revoker, revoker, now);
+    }
+
+    // === Username Admin (registry-only; no Profile object required) ===
+
+    /// Revoke a username — removes claim; username becomes available immediately.
+    public entry fun admin_revoke_username(
+        _: &UsernameAdminCap,
+        registry: &mut UsernameRegistry,
+        username: String,
+        reason_code: u8,
+        ctx: &mut TxContext,
+    ) {
+        assert!(registry.version == upgrade::current_version(), 1);
+        let canonical = canonical_registry_username(&username);
+        let profile_id = revoke_username(registry, canonical);
+        let admin = tx_context::sender(ctx);
+        event::emit(UsernameRevokedEvent {
+            username: canonical,
+            profile_id,
+            revoked_by: admin,
+            reason_code,
+        });
+    }
+
+    /// Reassign an existing username to a different profile.
+    public entry fun admin_reassign_username(
+        _: &UsernameAdminCap,
+        registry: &mut UsernameRegistry,
+        username: String,
+        to_profile_id: address,
+        reason_code: u8,
+        ctx: &mut TxContext,
+    ) {
+        assert!(registry.version == upgrade::current_version(), 1);
+        let canonical = canonical_registry_username(&username);
+        let admin = tx_context::sender(ctx);
+        let old_profile_id = move_username(registry, canonical, to_profile_id);
+        event::emit(UsernameReassignedEvent {
+            username: canonical,
+            old_profile_id,
+            new_profile_id: to_profile_id,
+            admin,
+            reason_code,
+        });
     }
 
     // Accessor for version field
@@ -1573,7 +1575,6 @@ module social_contracts::profile {
             cover_photo: option::none(),
             created_at: epoch,
             owner,
-            username,
             x_username: option::none(),
             min_offer_amount: option::none(),
             badges: vector::empty<ProfileBadge>(),
@@ -1585,11 +1586,8 @@ module social_contracts::profile {
         
         // Get the profile ID and use it for registration
         let profile_id = object::uid_to_address(&profile.id);
-        
-        // Register the username
-        table::add(&mut registry.usernames, username, profile_id);
-        
-        // Map owner to profile
+
+        claim_username(registry, username, profile_id);
         table::add(&mut registry.address_profiles, owner, profile_id);
         
         // Share the profile

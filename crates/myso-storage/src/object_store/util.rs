@@ -364,8 +364,8 @@ pub async fn find_missing_epochs_dirs(
             candidate_epoch += 1;
             continue;
         }
-        let marker_path = path.clone().join(success_marker);
-        let get_result = store.get(&marker_path).await;
+        let success_marker = path.clone().join(success_marker);
+        let get_result = store.get(&success_marker).await;
         match get_result {
             Err(Error::NotFound { .. }) => {
                 error!("No success marker found in db checkpoint for epoch: {epoch_num}");

@@ -18,13 +18,15 @@ use myso_indexer_alt_framework::postgres::handler::Handler;
 use myso_indexer_alt_framework::postgres::Connection;
 use myso_indexer_alt_framework::types::full_checkpoint_content::Checkpoint;
 use myso_indexer_alt_framework::FieldCount;
+use diesel::upsert::excluded;
 use myso_indexer_alt_social_schema::models::{
     NewEcosystemTreasury, NewProfile, NewProfileBadge, NewProfileEvent, NewProfileOffer,
-    NewProfileSaleFee, NewVestingEvent, NewVestingWallet, ProfileUpdateSet,
+    NewProfileSaleFee, NewUsernameRegistry, NewVestingEvent, NewVestingWallet,
+    ProfileUpdateSet,
 };
 use myso_indexer_alt_social_schema::schema::{
     ecosystem_treasury, memory_accounts, profile_badges, profile_events, profile_offers,
-    profile_sale_fees, profiles, vesting_events, vesting_wallets,
+    profile_sale_fees, profiles, username_registry, vesting_events, vesting_wallets,
 };
 
 use super::common;
@@ -42,6 +44,22 @@ pub enum ProfileRow {
         profile_id: String,
         owner_address: String,
         x_username: Option<String>,
+    },
+    UsernameRegistryUpsert(NewUsernameRegistry),
+    UsernameRegistryDelete {
+        username: String,
+    },
+    UsernameRegistryReassign {
+        username: String,
+        new_profile_id: String,
+        transaction_id: String,
+    },
+    ProfileUsernameSet {
+        profile_id: String,
+        username: String,
+    },
+    ProfileUsernameClear {
+        profile_id: String,
     },
     ProfileEvent(NewProfileEvent),
     ProfileOffer(NewProfileOffer),
@@ -88,6 +106,31 @@ impl ProfileRow {
                 owner_address,
                 x_username,
             }),
+            crate::handlers::SocialEventRow::UsernameRegistryUpsert(row) => {
+                Some(ProfileRow::UsernameRegistryUpsert(row))
+            }
+            crate::handlers::SocialEventRow::UsernameRegistryDelete { username } => {
+                Some(ProfileRow::UsernameRegistryDelete { username })
+            }
+            crate::handlers::SocialEventRow::UsernameRegistryReassign {
+                username,
+                new_profile_id,
+                transaction_id,
+            } => Some(ProfileRow::UsernameRegistryReassign {
+                username,
+                new_profile_id,
+                transaction_id,
+            }),
+            crate::handlers::SocialEventRow::ProfileUsernameSet {
+                profile_id,
+                username,
+            } => Some(ProfileRow::ProfileUsernameSet {
+                profile_id,
+                username,
+            }),
+            crate::handlers::SocialEventRow::ProfileUsernameClear { profile_id } => {
+                Some(ProfileRow::ProfileUsernameClear { profile_id })
+            }
             crate::handlers::SocialEventRow::ProfileEvent(e) => Some(ProfileRow::ProfileEvent(e)),
             crate::handlers::SocialEventRow::ProfileOffer(o) => Some(ProfileRow::ProfileOffer(o)),
             crate::handlers::SocialEventRow::ProfileOfferStatusUpdate {
@@ -236,6 +279,64 @@ impl Handler for ProfilesHandler {
                         .filter(filter)
                         .set((
                             profiles::x_username.eq(x_username),
+                            profiles::updated_at.eq(now),
+                        ))
+                        .execute(conn)
+                        .await?;
+                }
+                ProfileRow::UsernameRegistryUpsert(row) => {
+                    total += diesel::insert_into(username_registry::table)
+                        .values(row)
+                        .on_conflict(username_registry::username)
+                        .do_update()
+                        .set((
+                            username_registry::profile_id.eq(excluded(username_registry::profile_id)),
+                            username_registry::transaction_id
+                                .eq(excluded(username_registry::transaction_id)),
+                        ))
+                        .execute(conn)
+                        .await?;
+                }
+                ProfileRow::UsernameRegistryDelete { username } => {
+                    total += diesel::delete(username_registry::table)
+                        .filter(username_registry::username.eq(username))
+                        .execute(conn)
+                        .await?;
+                }
+                ProfileRow::UsernameRegistryReassign {
+                    username,
+                    new_profile_id,
+                    transaction_id,
+                } => {
+                    total += diesel::update(username_registry::table)
+                        .filter(username_registry::username.eq(username))
+                        .set((
+                            username_registry::profile_id.eq(new_profile_id),
+                            username_registry::transaction_id.eq(transaction_id),
+                        ))
+                        .execute(conn)
+                        .await?;
+                }
+                ProfileRow::ProfileUsernameSet {
+                    profile_id,
+                    username,
+                } => {
+                    let now = chrono::Utc::now().naive_utc();
+                    total += diesel::update(profiles::table)
+                        .filter(profiles::profile_id.eq(profile_id))
+                        .set((
+                            profiles::username.eq(username),
+                            profiles::updated_at.eq(now),
+                        ))
+                        .execute(conn)
+                        .await?;
+                }
+                ProfileRow::ProfileUsernameClear { profile_id } => {
+                    let now = chrono::Utc::now().naive_utc();
+                    total += diesel::update(profiles::table)
+                        .filter(profiles::profile_id.eq(profile_id))
+                        .set((
+                            profiles::username.eq(""),
                             profiles::updated_at.eq(now),
                         ))
                         .execute(conn)

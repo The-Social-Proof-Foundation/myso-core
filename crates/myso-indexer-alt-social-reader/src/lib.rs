@@ -22,6 +22,7 @@ pub mod revenue;
 pub mod social_graph;
 pub mod spot;
 pub mod spt;
+pub mod username;
 pub mod vesting;
 
 pub use insurance::{
@@ -83,6 +84,7 @@ pub use social_graph::{
 pub use spt::{
     SptReservationVolumeBucket, SptReservationVolumeInterval, SptSortBy, SptTransactionsWithViewer,
 };
+pub use username::UsernameRegistryEntry;
 pub use vesting::{
     VestingLeaderboardEntry, VestingLeaderboardResponse, VestingWalletRow, VestingWalletWithStatus,
 };

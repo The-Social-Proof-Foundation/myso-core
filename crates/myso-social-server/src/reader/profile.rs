@@ -11,7 +11,7 @@ use diesel::SelectableHelper;
 use diesel_async::RunQueryDsl;
 use myso_indexer_alt_social_schema::models::Profile;
 use myso_indexer_alt_social_schema::schema::{
-    profile_offers, profile_sale_fees, profiles, wallet_social_graph,
+    profile_offers, profile_sale_fees, profiles, username_registry, wallet_social_graph,
 };
 
 use crate::error::SocialError;
@@ -138,8 +138,17 @@ pub(crate) async fn get_profile_by_username(
     username: &str,
 ) -> Result<Option<Profile>, SocialError> {
     let mut conn = db.connect().await?;
+    let profile_id: Option<String> = username_registry::table
+        .filter(username_registry::username.eq(username))
+        .select(username_registry::profile_id)
+        .first(&mut conn)
+        .await
+        .optional()?;
+    let Some(profile_id) = profile_id else {
+        return Ok(None);
+    };
     let result = profiles::table
-        .filter(profiles::username.eq(username))
+        .filter(profiles::profile_id.eq(profile_id))
         .select(Profile::as_select())
         .first::<Profile>(&mut conn)
         .await

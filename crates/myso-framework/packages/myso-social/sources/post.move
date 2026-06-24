@@ -1564,6 +1564,7 @@ module social_contracts::post {
                 profile_id,
                 actor_address,
                 sub_agent_id,
+                organization_id,
                 action_identity_class,
             });
             
@@ -1881,6 +1882,7 @@ module social_contracts::post {
                     principal_owner,
                     actor_address,
                     sub_agent_id,
+                    organization_id,
                     action_identity_class,
                 });
                 
@@ -2803,6 +2805,7 @@ module social_contracts::post {
                     principal_owner,
                     actor_address,
                     sub_agent_id,
+                    organization_id,
                     action_identity_class,
                 });
                 
@@ -3194,6 +3197,7 @@ module social_contracts::post {
             poc_redirection_kind,
             actor_address: owner,
             sub_agent_id: option::none(),
+            organization_id: option::none(),
             action_identity_class: memory::class_human(),
         });
         

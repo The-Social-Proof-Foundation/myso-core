@@ -6679,6 +6679,14 @@ type Query {
 	"""
 	type(type: String!): MoveType
 	"""
+	Check whether a username is available for registration.
+	"""
+	usernameAvailability(username: String!): UsernameAvailability
+	"""
+	Look up a username in the on-chain registry mirror. Returns null when not found.
+	"""
+	usernameRegistryEntry(username: String!): UsernameRegistry
+	"""
 	Verify a zkLogin signature os from the given `author`.
 	
 	Returns a `ZkLoginVerifyResult` where `success` is `true` and `error` is empty if the signature is valid. If the signature is invalid, `success` is `false` and `error` contains the relevant error message.
@@ -8218,6 +8226,17 @@ type UserSignature {
 	For complex signatures: flag || bcs_serialized_struct
 	"""
 	signatureBytes: Base64
+}
+
+type UsernameAvailability {
+	available: Boolean!
+	username: String!
+}
+
+type UsernameRegistry {
+	profileId: String!
+	transactionId: String!
+	username: String!
 }
 
 type Validator {

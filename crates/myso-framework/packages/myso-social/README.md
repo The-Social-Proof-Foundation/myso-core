@@ -17,7 +17,7 @@ MySocial is a feature-rich decentralized social platform that combines tradition
 
 ### 1. **Profile Management** (`profile.move`)
 - **User Identity**: Create and manage user profiles with display names, bios, profile pictures
-- **Username System**: Register unique usernames as NFTs with pricing tiers
+- **Username System**: Register unique usernames
 - **Social Connections**: Link social media accounts (Twitter, GitHub, Instagram, etc.)
 - **Profile Trading**: Buy/sell profiles with offers and automated fee distribution
 - **Badge System**: Platform-issued verification and achievement badges

@@ -18,6 +18,7 @@ mod spot;
 mod spt;
 mod subscription;
 mod upgrade;
+mod username;
 mod vesting;
 mod wallet_messaging_policy;
 mod wallet_social_graph;
@@ -180,6 +181,9 @@ pub use subscription::{
     ProfileSubscriptionService, REVENUE_TYPE_AUTO_RENEWAL, REVENUE_TYPE_REFUND,
     REVENUE_TYPE_RENEWAL, SubscriptionAccessLog, SubscriptionEvent, SubscriptionRevenue,
     THIRTY_DAYS_MS, UpdateProfileSubscription, UpdateProfileSubscriptionService,
+};
+pub use username::{
+    NewUsernameRegistry, UsernameRegistryRow,
 };
 pub use upgrade::{NewObjectMigratedEvent, NewUpgradeEvent};
 pub use vesting::{

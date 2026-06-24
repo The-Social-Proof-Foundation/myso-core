@@ -71,6 +71,7 @@ use crate::api::types::poc::PocBeneficiaryVault;
 use crate::api::types::post::{CommentSummary, Post, ReactionSummary, RepostSummary, TipSummary};
 use crate::api::types::profile::Profile;
 use crate::api::types::promotion::{Promotion, PromotionTimeSeries};
+use crate::api::types::username::{UsernameAvailability, UsernameRegistry};
 use crate::api::types::protocol_configs::ProtocolConfigs;
 use crate::api::types::service_config::ServiceConfig;
 use crate::api::types::simulation_result::SimulationResult;
@@ -275,21 +276,39 @@ impl Query {
         )
     }
 
-    /// Batch lookup profiles by X/Twitter usernames. Returns empty when social DB not configured.
-    async fn profiles_by_x_usernames(
+    /// Look up a username in the on-chain registry mirror. Returns null when not found.
+    async fn username_registry_entry(
         &self,
         ctx: &Context<'_>,
-        usernames: Vec<String>,
-    ) -> Option<Result<Vec<Profile>, RpcError>> {
+        username: String,
+    ) -> Option<Result<Option<UsernameRegistry>, RpcError>> {
         let reader_opt = ctx
             .data_opt::<std::sync::Arc<Option<myso_indexer_alt_social_reader::SocialPgReader>>>()?;
         let reader = reader_opt.as_ref().as_ref()?;
         Some(
             reader
-                .get_profiles_by_x_usernames(&usernames)
+                .get_username_registry_entry(&username)
                 .await
                 .map_err(Into::into)
-                .map(|v| v.into_iter().map(Profile::from_db).collect()),
+                .map(|entry| entry.map(UsernameRegistry::new)),
+        )
+    }
+
+    /// Check whether a username is available for registration.
+    async fn username_availability(
+        &self,
+        ctx: &Context<'_>,
+        username: String,
+    ) -> Option<Result<UsernameAvailability, RpcError>> {
+        let reader_opt = ctx
+            .data_opt::<std::sync::Arc<Option<myso_indexer_alt_social_reader::SocialPgReader>>>()?;
+        let reader = reader_opt.as_ref().as_ref()?;
+        Some(
+            reader
+                .is_username_available(&username)
+                .await
+                .map_err(Into::into)
+                .map(|available| UsernameAvailability::new(username, available)),
         )
     }
 

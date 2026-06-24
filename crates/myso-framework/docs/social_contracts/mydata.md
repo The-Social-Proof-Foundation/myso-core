@@ -1255,6 +1255,16 @@ Registry for tracking MyData ownership
 </dt>
 <dd>
 </dd>
+<dt>
+<code>sub_agent_id: <a href="../std/option.md#std_option_Option">std::option::Option</a>&lt;<a href="../myso/object.md#myso_object_ID">myso::object::ID</a>&gt;</code>
+</dt>
+<dd>
+</dd>
+<dt>
+<code>organization_id: <a href="../std/option.md#std_option_Option">std::option::Option</a>&lt;<a href="../myso/object.md#myso_object_ID">myso::object::ID</a>&gt;</code>
+</dt>
+<dd>
+</dd>
 </dl>
 
 
@@ -2838,8 +2848,10 @@ Sub-agent buyers must satisfy <code>max_action_spend</code> for <code>price</cod
     // Check <b>if</b> one-time purchase is available
     <b>assert</b>!(option::is_some(&<a href="../social_contracts/mydata.md#social_contracts_mydata">mydata</a>.<a href="../social_contracts/mydata.md#social_contracts_mydata_one_time_price">one_time_price</a>), <a href="../social_contracts/mydata.md#social_contracts_mydata_ENotForSale">ENotForSale</a>);
     <b>let</b> price = *option::borrow(&<a href="../social_contracts/mydata.md#social_contracts_mydata">mydata</a>.<a href="../social_contracts/mydata.md#social_contracts_mydata_one_time_price">one_time_price</a>);
+    <b>let</b> <b>mut</b> sub_agent_id = option::none();
+    <b>let</b> <b>mut</b> organization_id = option::none();
     <b>if</b> (<a href="../social_contracts/memory.md#social_contracts_memory_is_registered_agent">social_contracts::memory::is_registered_agent</a>(account, buyer)) {
-        <b>let</b> _acting = <a href="../social_contracts/memory.md#social_contracts_memory_resolve_actor_with_cap">social_contracts::memory::resolve_actor_with_cap</a>(
+        <b>let</b> acting = <a href="../social_contracts/memory.md#social_contracts_memory_resolve_actor_with_cap">social_contracts::memory::resolve_actor_with_cap</a>(
             account,
             0,
             <a href="../social_contracts/mydata.md#social_contracts_mydata">mydata</a>.<a href="../social_contracts/mydata.md#social_contracts_mydata_platform_id">platform_id</a>,
@@ -2847,6 +2859,8 @@ Sub-agent buyers must satisfy <code>max_action_spend</code> for <code>price</cod
             clock,
             ctx,
         );
+        sub_agent_id = <a href="../social_contracts/memory.md#social_contracts_memory_acting_sub_agent_id">social_contracts::memory::acting_sub_agent_id</a>(&acting);
+        organization_id = <a href="../social_contracts/memory.md#social_contracts_memory_acting_organization_id">social_contracts::memory::acting_organization_id</a>(&acting);
     };
     // Check payment amount
     <b>assert</b>!(coin::value(&payment) &gt;= price, <a href="../social_contracts/mydata.md#social_contracts_mydata_EPriceMismatch">EPriceMismatch</a>);
@@ -2870,6 +2884,8 @@ Sub-agent buyers must satisfy <code>max_action_spend</code> for <code>price</cod
         price,
         purchase_type: string::utf8(b"one_time"),
         timestamp: clock::timestamp_ms(clock),
+        sub_agent_id,
+        organization_id,
     });
 }
 </code></pre>
@@ -2910,8 +2926,10 @@ Sub-agent buyers must satisfy <code>max_action_spend</code> for <code>price</cod
     // Check <b>if</b> <a href="../social_contracts/subscription.md#social_contracts_subscription">subscription</a> is available
     <b>assert</b>!(option::is_some(&<a href="../social_contracts/mydata.md#social_contracts_mydata">mydata</a>.<a href="../social_contracts/mydata.md#social_contracts_mydata_subscription_price">subscription_price</a>), <a href="../social_contracts/mydata.md#social_contracts_mydata_ENotForSale">ENotForSale</a>);
     <b>let</b> price = *option::borrow(&<a href="../social_contracts/mydata.md#social_contracts_mydata">mydata</a>.<a href="../social_contracts/mydata.md#social_contracts_mydata_subscription_price">subscription_price</a>);
+    <b>let</b> <b>mut</b> sub_agent_id = option::none();
+    <b>let</b> <b>mut</b> organization_id = option::none();
     <b>if</b> (<a href="../social_contracts/memory.md#social_contracts_memory_is_registered_agent">social_contracts::memory::is_registered_agent</a>(account, buyer)) {
-        <b>let</b> _acting = <a href="../social_contracts/memory.md#social_contracts_memory_resolve_actor_with_cap">social_contracts::memory::resolve_actor_with_cap</a>(
+        <b>let</b> acting = <a href="../social_contracts/memory.md#social_contracts_memory_resolve_actor_with_cap">social_contracts::memory::resolve_actor_with_cap</a>(
             account,
             0,
             <a href="../social_contracts/mydata.md#social_contracts_mydata">mydata</a>.<a href="../social_contracts/mydata.md#social_contracts_mydata_platform_id">platform_id</a>,
@@ -2919,6 +2937,8 @@ Sub-agent buyers must satisfy <code>max_action_spend</code> for <code>price</cod
             clock,
             ctx,
         );
+        sub_agent_id = <a href="../social_contracts/memory.md#social_contracts_memory_acting_sub_agent_id">social_contracts::memory::acting_sub_agent_id</a>(&acting);
+        organization_id = <a href="../social_contracts/memory.md#social_contracts_memory_acting_organization_id">social_contracts::memory::acting_organization_id</a>(&acting);
     };
     // Check payment amount
     <b>assert</b>!(coin::value(&payment) &gt;= price, <a href="../social_contracts/mydata.md#social_contracts_mydata_EPriceMismatch">EPriceMismatch</a>);
@@ -2965,6 +2985,8 @@ Sub-agent buyers must satisfy <code>max_action_spend</code> for <code>price</cod
         price,
         purchase_type: string::utf8(b"<a href="../social_contracts/subscription.md#social_contracts_subscription">subscription</a>"),
         timestamp: clock::timestamp_ms(clock),
+        sub_agent_id,
+        organization_id,
     });
 }
 </code></pre>

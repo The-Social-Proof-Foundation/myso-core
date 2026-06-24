@@ -61,7 +61,6 @@ fn optional_move_object_id_json(id: &Option<BcsMoveObjectId>) -> Option<String> 
 pub struct BcsProfileCreatedEvent {
     profile_id: AccountAddress,
     display_name: String,
-    username: String,
     bio: String,
     profile_picture: Option<String>,
     cover_photo: Option<String>,
@@ -355,7 +354,6 @@ pub struct BcsDelegatePanelRefreshedEvent {
 pub struct BcsProfileUpdatedEvent {
     profile_id: AccountAddress,
     display_name: Option<String>,
-    username: String,
     bio: String,
     profile_picture: Option<String>,
     cover_photo: Option<String>,
@@ -363,6 +361,29 @@ pub struct BcsProfileUpdatedEvent {
     updated_at: u64,
     x_username: Option<String>,
     min_offer_amount: Option<u64>,
+}
+
+#[derive(Debug, Deserialize)]
+pub struct BcsUsernameClaimedEvent {
+    username: String,
+    profile_id: AccountAddress,
+}
+
+#[derive(Debug, Deserialize)]
+pub struct BcsUsernameRevokedEvent {
+    username: String,
+    profile_id: AccountAddress,
+    revoked_by: AccountAddress,
+    reason_code: u8,
+}
+
+#[derive(Debug, Deserialize)]
+pub struct BcsUsernameReassignedEvent {
+    username: String,
+    old_profile_id: AccountAddress,
+    new_profile_id: AccountAddress,
+    admin: AccountAddress,
+    reason_code: u8,
 }
 
 #[derive(Debug, Deserialize, Serialize)]
@@ -758,7 +779,7 @@ fn canonical_reaction_user(user: AccountAddress, actor_address: AccountAddress) 
 #[derive(Debug, Deserialize, Serialize)]
 pub struct BcsReactionEvent {
     object_id: AccountAddress,
-    user: AccountAddress,
+    _user: AccountAddress,
     reaction: String,
     is_post: bool,
     principal_owner: AccountAddress,
@@ -780,7 +801,7 @@ struct ParsedReactionEvent {
 fn bcs_reaction_from_bytes(contents: &[u8]) -> Result<ParsedReactionEvent, EventParseError> {
     match bcs::from_bytes::<BcsReactionEvent>(contents) {
         Ok(ev) => {
-            let actor_address = canonical_reaction_user(ev.user, ev.actor_address);
+            let actor_address = canonical_reaction_user(ev._user, ev.actor_address);
             Ok(ParsedReactionEvent {
                 object_id: ev.object_id,
                 reaction: ev.reaction,
@@ -2152,7 +2173,6 @@ fn parse_profile_event(
             Ok(Some(serde_json::json!({
                 "profile_id": addr_to_string(&ev.profile_id),
                 "display_name": ev.display_name,
-                "username": ev.username,
                 "bio": ev.bio,
                 "profile_picture": ev.profile_picture,
                 "cover_photo": ev.cover_photo,
@@ -2167,13 +2187,41 @@ fn parse_profile_event(
                 "profile_id": addr_to_string(&ev.profile_id),
                 "owner_address": addr_to_string(&ev.owner),
                 "display_name": ev.display_name,
-                "username": ev.username,
                 "bio": ev.bio,
                 "profile_picture": ev.profile_picture,
                 "cover_photo": ev.cover_photo,
                 "updated_at": ev.updated_at,
                 "x_username": ev.x_username,
                 "min_offer_amount": ev.min_offer_amount,
+            })))
+        }
+        "UsernameClaimedEvent" => {
+            let ev = bcs::from_bytes::<BcsUsernameClaimedEvent>(contents)
+                .map_err(|e| bcs_parse_err(e, contents))?;
+            Ok(Some(serde_json::json!({
+                "username": ev.username,
+                "profile_id": addr_to_string(&ev.profile_id),
+            })))
+        }
+        "UsernameRevokedEvent" => {
+            let ev = bcs::from_bytes::<BcsUsernameRevokedEvent>(contents)
+                .map_err(|e| bcs_parse_err(e, contents))?;
+            Ok(Some(serde_json::json!({
+                "username": ev.username,
+                "profile_id": addr_to_string(&ev.profile_id),
+                "revoked_by": addr_to_string(&ev.revoked_by),
+                "reason_code": ev.reason_code,
+            })))
+        }
+        "UsernameReassignedEvent" => {
+            let ev = bcs::from_bytes::<BcsUsernameReassignedEvent>(contents)
+                .map_err(|e| bcs_parse_err(e, contents))?;
+            Ok(Some(serde_json::json!({
+                "username": ev.username,
+                "old_profile_id": addr_to_string(&ev.old_profile_id),
+                "new_profile_id": addr_to_string(&ev.new_profile_id),
+                "admin": addr_to_string(&ev.admin),
+                "reason_code": ev.reason_code,
             })))
         }
         "ProfileXUsernameUpdatedEvent" => {
@@ -4218,22 +4266,32 @@ fn parse_upgrade_event(
 #[cfg(test)]
 mod tests {
     use super::*;
+    use move_core_types::account_address::AccountAddress;
+
+    pub(crate) fn brandon_profile_created_bcs(created_at: u64) -> Vec<u8> {
+        let profile_id = AccountAddress::from_hex_literal(
+            "0xd988a8c1f1262d0aa7ab581a78b957fa97cbf53db4d27af2ee7006247a",
+        )
+        .unwrap();
+        let owner = AccountAddress::from_hex_literal(
+            "0x9cc886f94db2b2a41b1f8d7c20c7fc0960e1f9eb34ce2c0c7f309",
+        )
+        .unwrap();
+        bcs::to_bytes(&BcsProfileCreatedEvent {
+            profile_id,
+            display_name: "Brandon Shaw".to_string(),
+            bio: "Web8 developer and crypto enthusiast".to_string(),
+            profile_picture: Some("https://example.com/profile.jpg".to_string()),
+            cover_photo: Some("https://example.com/cover.png".to_string()),
+            owner,
+            created_at,
+        })
+        .expect("serialize ProfileCreatedEvent")
+    }
 
     #[test]
     fn test_parse_profile_created_event() {
-        let contents: Vec<u8> = vec![
-            217, 0, 116, 168, 192, 241, 38, 98, 208, 170, 122, 181, 129, 167, 139, 149, 123, 82,
-            250, 151, 203, 248, 61, 180, 210, 122, 244, 238, 112, 6, 36, 122, 12, 66, 114, 97, 110,
-            100, 111, 110, 32, 83, 104, 97, 119, 7, 98, 114, 97, 110, 100, 111, 110, 36, 87, 101,
-            98, 56, 32, 100, 101, 118, 101, 108, 111, 112, 101, 114, 32, 97, 110, 100, 32, 99, 114,
-            121, 112, 116, 111, 32, 101, 110, 116, 104, 117, 115, 105, 97, 115, 116, 1, 31, 104,
-            116, 116, 112, 115, 58, 47, 47, 101, 120, 97, 109, 112, 108, 101, 46, 99, 111, 109, 47,
-            112, 114, 111, 102, 105, 108, 101, 46, 106, 112, 103, 1, 29, 104, 116, 116, 112, 115,
-            58, 47, 47, 101, 120, 97, 109, 112, 108, 101, 46, 99, 111, 109, 47, 99, 111, 118, 101,
-            114, 46, 112, 110, 103, 156, 200, 104, 135, 157, 106, 255, 74, 171, 250, 160, 27, 141,
-            86, 246, 73, 253, 178, 164, 32, 199, 252, 9, 96, 225, 249, 235, 52, 206, 192, 0, 124,
-            5, 0, 0, 0, 0, 0, 0, 0,
-        ];
+        let contents = brandon_profile_created_bcs(5);
         let result = parse_event_contents("profile", "ProfileCreatedEvent", &contents);
         assert!(
             result.is_ok(),
@@ -4241,7 +4299,7 @@ mod tests {
         );
         let json = result.unwrap();
         assert_eq!(json["display_name"], "Brandon Shaw");
-        assert_eq!(json["username"], "brandon");
+        assert!(json.get("username").is_none());
         assert_eq!(json["bio"], "Web8 developer and crypto enthusiast");
         assert_eq!(json["created_at"], 5);
         assert!(json["owner_address"].as_str().unwrap().starts_with("0x"));
@@ -4249,19 +4307,7 @@ mod tests {
 
     #[test]
     fn test_parse_profile_created_event_user_bytes() {
-        let contents: Vec<u8> = vec![
-            106, 84, 17, 200, 209, 12, 198, 212, 190, 149, 151, 187, 181, 214, 161, 0, 95, 58, 225,
-            214, 6, 214, 120, 6, 10, 193, 238, 125, 190, 143, 172, 168, 12, 66, 114, 97, 110, 100,
-            111, 110, 32, 83, 104, 97, 119, 7, 98, 114, 97, 110, 100, 111, 110, 36, 87, 101, 98,
-            56, 32, 100, 101, 118, 101, 108, 111, 112, 101, 114, 32, 97, 110, 100, 32, 99, 114,
-            121, 112, 116, 111, 32, 101, 110, 116, 104, 117, 115, 105, 97, 115, 116, 1, 31, 104,
-            116, 116, 112, 115, 58, 47, 47, 101, 120, 97, 109, 112, 108, 101, 46, 99, 111, 109, 47,
-            112, 114, 111, 102, 105, 108, 101, 46, 106, 112, 103, 1, 29, 104, 116, 116, 112, 115,
-            58, 47, 47, 101, 120, 97, 109, 112, 108, 101, 46, 99, 111, 109, 47, 99, 111, 118, 101,
-            114, 46, 112, 110, 103, 156, 200, 104, 135, 157, 106, 255, 74, 171, 250, 160, 27, 141,
-            86, 246, 73, 253, 178, 164, 32, 199, 252, 9, 96, 225, 249, 235, 52, 206, 192, 0, 124,
-            8, 0, 0, 0, 0, 0, 0, 0,
-        ];
+        let contents = brandon_profile_created_bcs(8);
         let result = parse_event_contents("profile", "ProfileCreatedEvent", &contents);
         assert!(
             result.is_ok(),
@@ -4269,7 +4315,7 @@ mod tests {
         );
         let json = result.unwrap();
         assert_eq!(json["display_name"], "Brandon Shaw");
-        assert_eq!(json["username"], "brandon");
+        assert!(json.get("username").is_none());
         assert_eq!(json["bio"], "Web8 developer and crypto enthusiast");
         assert_eq!(json["created_at"], 8);
         assert!(json["owner_address"].as_str().unwrap().starts_with("0x"));
@@ -4356,7 +4402,6 @@ mod tests {
         let ev = BcsProfileCreatedEvent {
             profile_id: addr,
             display_name: "Test".to_string(),
-            username: "test".to_string(),
             bio: "".to_string(),
             profile_picture: None,
             cover_photo: None,
@@ -4381,19 +4426,7 @@ mod tests {
 
     #[test]
     fn test_parse_profile_created_event_from_live_transaction() {
-        let contents: Vec<u8> = vec![
-            139, 177, 144, 228, 18, 55, 143, 78, 24, 197, 72, 170, 170, 104, 23, 44, 125, 207, 190,
-            22, 208, 90, 199, 66, 59, 154, 162, 74, 201, 44, 94, 231, 12, 66, 114, 97, 110, 100,
-            111, 110, 32, 83, 104, 97, 119, 7, 98, 114, 97, 110, 100, 111, 110, 36, 87, 101, 98,
-            56, 32, 100, 101, 118, 101, 108, 111, 112, 101, 114, 32, 97, 110, 100, 32, 99, 114,
-            121, 112, 116, 111, 32, 101, 110, 116, 104, 117, 115, 105, 97, 115, 116, 1, 31, 104,
-            116, 116, 112, 115, 58, 47, 47, 101, 120, 97, 109, 112, 108, 101, 46, 99, 111, 109, 47,
-            112, 114, 111, 102, 105, 108, 101, 46, 106, 112, 103, 1, 29, 104, 116, 116, 112, 115,
-            58, 47, 47, 101, 120, 97, 109, 112, 108, 101, 46, 99, 111, 109, 47, 99, 111, 118, 101,
-            114, 46, 112, 110, 103, 156, 200, 104, 135, 157, 106, 255, 74, 171, 250, 160, 27, 141,
-            86, 246, 73, 253, 178, 164, 32, 199, 252, 9, 96, 225, 249, 235, 52, 206, 192, 0, 124,
-            1, 0, 0, 0, 0, 0, 0, 0,
-        ];
+        let contents = brandon_profile_created_bcs(1);
         let result = parse_event_contents("profile", "ProfileCreatedEvent", &contents);
         assert!(
             result.is_ok(),
@@ -4401,7 +4434,7 @@ mod tests {
         );
         let json = result.unwrap();
         assert_eq!(json["display_name"], "Brandon Shaw");
-        assert_eq!(json["username"], "brandon");
+        assert!(json.get("username").is_none());
         assert_eq!(json["bio"], "Web8 developer and crypto enthusiast");
         assert_eq!(json["profile_picture"], "https://example.com/profile.jpg");
         assert_eq!(json["cover_photo"], "https://example.com/cover.png");
@@ -4409,19 +4442,7 @@ mod tests {
 
     #[test]
     fn test_bcs_profile_created_event_round_trip() {
-        let contents: Vec<u8> = vec![
-            217, 0, 116, 168, 192, 241, 38, 98, 208, 170, 122, 181, 129, 167, 139, 149, 123, 82,
-            250, 151, 203, 248, 61, 180, 210, 122, 244, 238, 112, 6, 36, 122, 12, 66, 114, 97, 110,
-            100, 111, 110, 32, 83, 104, 97, 119, 7, 98, 114, 97, 110, 100, 111, 110, 36, 87, 101,
-            98, 56, 32, 100, 101, 118, 101, 108, 111, 112, 101, 114, 32, 97, 110, 100, 32, 99, 114,
-            121, 112, 116, 111, 32, 101, 110, 116, 104, 117, 115, 105, 97, 115, 116, 1, 31, 104,
-            116, 116, 112, 115, 58, 47, 47, 101, 120, 97, 109, 112, 108, 101, 46, 99, 111, 109, 47,
-            112, 114, 111, 102, 105, 108, 101, 46, 106, 112, 103, 1, 29, 104, 116, 116, 112, 115,
-            58, 47, 47, 101, 120, 97, 109, 112, 108, 101, 46, 99, 111, 109, 47, 99, 111, 118, 101,
-            114, 46, 112, 110, 103, 156, 200, 104, 135, 157, 106, 255, 74, 171, 250, 160, 27, 141,
-            86, 246, 73, 253, 178, 164, 32, 199, 252, 9, 96, 225, 249, 235, 52, 206, 192, 0, 124,
-            5, 0, 0, 0, 0, 0, 0, 0,
-        ];
+        let contents = brandon_profile_created_bcs(5);
         let ev: BcsProfileCreatedEvent =
             bcs::from_bytes(&contents).expect("fixture bytes should deserialize");
         let serialized = bcs::to_bytes(&ev).expect("BcsProfileCreatedEvent should serialize");
@@ -4429,7 +4450,6 @@ mod tests {
             bcs::from_bytes(&serialized).expect("round-trip bytes should deserialize");
         assert_eq!(ev.created_at, ev_round_trip.created_at);
         assert_eq!(ev.display_name, ev_round_trip.display_name);
-        assert_eq!(ev.username, ev_round_trip.username);
         assert_eq!(ev.bio, ev_round_trip.bio);
         assert_eq!(ev.profile_picture, ev_round_trip.profile_picture);
         assert_eq!(ev.cover_photo, ev_round_trip.cover_photo);
@@ -5207,7 +5227,7 @@ mod tests {
         let actor_address = AccountAddress::from_hex_literal("0x4").unwrap();
         let ev = BcsReactionEvent {
             object_id: AccountAddress::from_hex_literal("0x1").unwrap(),
-            user: AccountAddress::from_hex_literal("0x2").unwrap(),
+            _user: AccountAddress::from_hex_literal("0x2").unwrap(),
             reaction: "👍".to_string(),
             is_post: true,
             principal_owner: AccountAddress::from_hex_literal("0x3").unwrap(),

@@ -223,13 +223,19 @@ impl SocialPgReader {
         get_profiles(&mut conn, limit, offset, &self.metrics).await
     }
 
-    /// Batch lookup profiles by X usernames (case-insensitive).
-    pub async fn get_profiles_by_x_usernames(
+    /// Look up a username in the on-chain registry mirror.
+    pub async fn get_username_registry_entry(
         &self,
-        usernames: &[String],
-    ) -> anyhow::Result<Vec<Profile>> {
+        username: &str,
+    ) -> anyhow::Result<Option<crate::username::UsernameRegistryEntry>> {
         let mut conn = self.connect().await?;
-        crate::profile::get_profiles_by_x_usernames(&mut conn, usernames, &self.metrics).await
+        crate::username::get_username_registry_entry(&mut conn, username, &self.metrics).await
+    }
+
+    /// Returns true when no row exists in `username_registry` for the given username.
+    pub async fn is_username_available(&self, username: &str) -> anyhow::Result<bool> {
+        let mut conn = self.connect().await?;
+        crate::username::is_username_available(&mut conn, username, &self.metrics).await
     }
 
     /// Get a post by ID.

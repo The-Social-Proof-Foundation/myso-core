@@ -66,7 +66,7 @@ use myso_indexer_alt_social_schema::models::{
     NewSptHolding, NewSptPool, NewSptPriceHistory, NewSptReservation, NewSptReservationPool,
     NewSptTransaction, NewSubAgent, NewSubAgentEvent, NewAgentMemoryVault, NewAgenticOrganization,
     NewOrganizationEvent, NewSubscriptionEvent, NewTip, NewUnifiedRevenue, NewUpgradeEvent,
-    NewVestingEvent, NewVestingWallet, NewVoteDecryptionFailure, ProposalUpdateSet,
+    NewUsernameRegistry, NewVestingEvent, NewVestingWallet, NewVoteDecryptionFailure, ProposalUpdateSet,
 };
 
 pub use blocking_handler::BlockingHandler;
@@ -92,6 +92,22 @@ pub enum SocialEventRow {
         profile_id: String,
         owner_address: String,
         x_username: Option<String>,
+    },
+    UsernameRegistryUpsert(NewUsernameRegistry),
+    UsernameRegistryDelete {
+        username: String,
+    },
+    UsernameRegistryReassign {
+        username: String,
+        new_profile_id: String,
+        transaction_id: String,
+    },
+    ProfileUsernameSet {
+        profile_id: String,
+        username: String,
+    },
+    ProfileUsernameClear {
+        profile_id: String,
     },
     EcosystemTreasury(NewEcosystemTreasury),
     SocialGraphRelationship(NewSocialGraphRelationship),

@@ -7468,6 +7468,12 @@ AgentMemoryVaultKey
 SubAgentConstraints
 	public struct
 	0x50c1::memory
+OrgRegistryEntry
+	public struct
+	0x50c1::memory
+AgenticOrganization
+	public struct
+	0x50c1::memory
 AgentRegistryEntry
 	public struct
 	0x50c1::memory
@@ -7516,6 +7522,18 @@ MemoryRegistryMigrated
 AgentMemoryVaultCreated
 	public struct
 	0x50c1::memory
+AgenticOrganizationCreated
+	public struct
+	0x50c1::memory
+AgenticOrganizationUpdated
+	public struct
+	0x50c1::memory
+AgenticOrganizationCategoryUpdated
+	public struct
+	0x50c1::memory
+AgenticOrganizationDeactivated
+	public struct
+	0x50c1::memory
 class_human
 	public fun
 	0x50c1::memory
@@ -7523,6 +7541,54 @@ class_delegated_ai
 	public fun
 	0x50c1::memory
 class_organization
+	public fun
+	0x50c1::memory
+org_type_company
+	public fun
+	0x50c1::memory
+org_type_startup
+	public fun
+	0x50c1::memory
+org_type_investment_fund
+	public fun
+	0x50c1::memory
+org_type_nonprofit
+	public fun
+	0x50c1::memory
+org_type_research
+	public fun
+	0x50c1::memory
+org_type_government
+	public fun
+	0x50c1::memory
+org_type_media
+	public fun
+	0x50c1::memory
+org_type_stewardship
+	public fun
+	0x50c1::memory
+org_type_brand
+	public fun
+	0x50c1::memory
+org_type_community
+	public fun
+	0x50c1::memory
+org_type_sports
+	public fun
+	0x50c1::memory
+org_type_education
+	public fun
+	0x50c1::memory
+org_type_healthcare
+	public fun
+	0x50c1::memory
+org_type_other
+	public fun
+	0x50c1::memory
+org_type_count
+	public fun
+	0x50c1::memory
+max_organizations_per_user
 	public fun
 	0x50c1::memory
 cap_memory_read
@@ -7576,6 +7642,24 @@ derive_sub_agent_address
 agent_object_id
 	public fun
 	0x50c1::memory
+organization_id
+	public fun
+	0x50c1::memory
+sub_agent_organization_id
+	public fun
+	0x50c1::memory
+organization_org_type
+	public fun
+	0x50c1::memory
+organization_root_agent_id
+	public fun
+	0x50c1::memory
+organization_name
+	public fun
+	0x50c1::memory
+organization_description
+	public fun
+	0x50c1::memory
 bootstrap_init
 	public(package) fun
 	0x50c1::memory
@@ -7584,6 +7668,21 @@ create_account_for_profile
 	0x50c1::memory
 transfer_account_owner_with_profile
 	public(package) fun
+	0x50c1::memory
+create_agentic_organization
+	public entry fun
+	0x50c1::memory
+create_agentic_organization_internal
+	public(package) fun
+	0x50c1::memory
+update_agentic_organization_metadata
+	public entry fun
+	0x50c1::memory
+update_agentic_organization_category
+	public entry fun
+	0x50c1::memory
+deactivate_agentic_organization
+	public entry fun
 	0x50c1::memory
 register_sub_agent
 	public entry fun
@@ -7699,6 +7798,9 @@ acting_parent_object_id
 acting_depth
 	public fun
 	0x50c1::memory
+acting_organization_id
+	public fun
+	0x50c1::memory
 has_account
 	public fun
 	0x50c1::memory
@@ -7736,6 +7838,9 @@ register_sub_agent_delegated_internal
 	fun
 	0x50c1::memory
 finish_register_sub_agent
+	fun
+	0x50c1::memory
+bind_root_agent_to_organization
 	fun
 	0x50c1::memory
 registry_entry_from_agent
@@ -7795,6 +7900,21 @@ assert_sub_agent_not_expired
 assert_valid_identity_class
 	fun
 	0x50c1::memory
+assert_org_name_within_limit
+	fun
+	0x50c1::memory
+assert_org_description_within_limit
+	fun
+	0x50c1::memory
+assert_valid_org_type
+	fun
+	0x50c1::memory
+assert_organization_belongs_to_account
+	fun
+	0x50c1::memory
+assert_organization_ready_for_root
+	fun
+	0x50c1::memory
 has_cap
 	fun
 	0x50c1::memory
@@ -7837,6 +7957,9 @@ EcosystemTreasuryAdminCap
 EcosystemBadgeAdminCap
 	public struct
 	0x50c1::profile
+UsernameAdminCap
+	public struct
+	0x50c1::profile
 EcosystemTreasury
 	public struct
 	0x50c1::profile
@@ -7877,6 +8000,15 @@ ProfileCreatedEvent
 	public struct
 	0x50c1::profile
 ProfileUpdatedEvent
+	public struct
+	0x50c1::profile
+UsernameClaimedEvent
+	public struct
+	0x50c1::profile
+UsernameRevokedEvent
+	public struct
+	0x50c1::profile
+UsernameReassignedEvent
 	public struct
 	0x50c1::profile
 ProfileXUsernameUpdatedEvent
@@ -7936,6 +8068,24 @@ is_ecosystem_badge
 copy_string
 	fun
 	0x50c1::profile
+claim_username
+	fun
+	0x50c1::profile
+revoke_username
+	fun
+	0x50c1::profile
+move_username
+	fun
+	0x50c1::profile
+profile_picture_event_string
+	fun
+	0x50c1::profile
+cover_photo_event_string
+	fun
+	0x50c1::profile
+emit_profile_updated_event
+	fun
+	0x50c1::profile
 create_profile
 	public entry fun
 	0x50c1::profile
@@ -7969,10 +8119,10 @@ owner
 id
 	public fun
 	0x50c1::profile
-username
+lookup_profile_by_username
 	public fun
 	0x50c1::profile
-lookup_profile_by_username
+is_username_available
 	public fun
 	0x50c1::profile
 lookup_profile_by_owner
@@ -8026,6 +8176,9 @@ create_ecosystem_treasury_admin_cap
 create_ecosystem_badge_admin_cap
 	public(package) fun
 	0x50c1::profile
+create_username_admin_cap
+	public(package) fun
+	0x50c1::profile
 assign_ecosystem_badge
 	public entry fun
 	0x50c1::profile
@@ -8033,6 +8186,12 @@ admin_set_profile_x_username
 	public entry fun
 	0x50c1::profile
 revoke_ecosystem_badge
+	public entry fun
+	0x50c1::profile
+admin_revoke_username
+	public entry fun
+	0x50c1::profile
+admin_reassign_username
 	public entry fun
 	0x50c1::profile
 version

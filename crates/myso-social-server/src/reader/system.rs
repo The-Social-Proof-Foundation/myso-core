@@ -1,12 +1,14 @@
 // Copyright (c) The Social Proof Foundation, LLC.
 // SPDX-License-Identifier: Apache-2.0
 
+use diesel::JoinOnDsl;
+use diesel::NullableExpressionMethods;
 use diesel::sql_types::BigInt;
 use diesel::ExpressionMethods;
 use diesel::QueryDsl;
 use diesel::QueryableByName;
 use diesel_async::RunQueryDsl;
-use myso_indexer_alt_social_schema::schema::{platforms, profiles, social_graph_relationships};
+use myso_indexer_alt_social_schema::schema::{platforms, profiles, social_graph_relationships, username_registry};
 
 use crate::error::SocialError;
 use crate::reader::types::SystemStatsResponse;
@@ -58,22 +60,18 @@ pub(crate) async fn check_username_availability(
     exclude_address: Option<&str>,
 ) -> Result<bool, SocialError> {
     let mut conn = db.connect().await?;
+    let base = username_registry::table
+        .inner_join(
+            profiles::table.on(profiles::profile_id.eq(username_registry::profile_id.nullable())),
+        )
+        .filter(username_registry::username.eq(username));
     let count: i64 = match exclude_address {
-        Some(addr) => {
-            profiles::table
-                .filter(profiles::username.eq(username))
-                .filter(profiles::owner_address.ne(addr))
-                .count()
-                .get_result(&mut conn)
-                .await?
-        }
-        None => {
-            profiles::table
-                .filter(profiles::username.eq(username))
-                .count()
-                .get_result(&mut conn)
-                .await?
-        }
+        Some(addr) => base
+            .filter(profiles::owner_address.ne(addr))
+            .count()
+            .get_result(&mut conn)
+            .await?,
+        None => base.count().get_result(&mut conn).await?,
     };
     Ok(count == 0)
 }

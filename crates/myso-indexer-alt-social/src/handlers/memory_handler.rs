@@ -24,7 +24,7 @@ use myso_indexer_alt_social_schema::models::{
     NewSubAgent, NewSubAgentEvent,
 };
 use myso_indexer_alt_social_schema::schema::{
-    memory_accounts, profiles, sub_sub_agent_memory_vaults, sub_agent_organization_events,
+    memory_accounts, profiles, sub_agent_memory_vaults, sub_agent_organization_events,
     sub_agent_organizations,
     sub_agent_events, sub_agents,
 };

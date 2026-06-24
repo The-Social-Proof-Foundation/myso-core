@@ -8,6 +8,7 @@ module social_contracts::profile_tests {
     use std::option;
     
     use myso::test_scenario;
+    use myso::object;
     use social_contracts::memory::{MemoryRegistry, MemoryAccount};
     use social_contracts::profile::{
         Self,
@@ -16,6 +17,7 @@ module social_contracts::profile_tests {
         EcosystemTreasury,
         VestingWallet,
         EcosystemBadgeAdminCap,
+        UsernameAdminCap,
     };
     use myso::url;
     use myso::coin::{Self, Coin};
@@ -124,7 +126,12 @@ module social_contracts::profile_tests {
         test_scenario::next_tx(&mut scenario, USER1);
         {
             let profile = test_scenario::take_from_sender<Profile>(&scenario);
-            assert!(profile::username(&profile) == string::utf8(b"mixedcase"), 0);
+            let profile_id = object::uid_to_address(profile::id(&profile));
+            let registry = test_scenario::take_shared<UsernameRegistry>(&scenario);
+            let opt = profile::lookup_profile_by_username(&registry, string::utf8(b"mixedcase"));
+            assert!(option::is_some(&opt), 0);
+            assert!(*option::borrow(&opt) == profile_id, 0);
+            test_scenario::return_shared(registry);
             test_scenario::return_to_sender(&scenario, profile);
         };
 
@@ -134,6 +141,198 @@ module social_contracts::profile_tests {
             let opt = profile::lookup_profile_by_username(&registry, string::utf8(b"mixedcase"));
             assert!(option::is_some(&opt), 0);
             test_scenario::return_shared(registry);
+        };
+
+        test_scenario::end(scenario);
+    }
+
+    #[test]
+    fun test_admin_revoke_username() {
+        let mut scenario = test_scenario::begin(ADMIN);
+        {
+            profile::init_for_testing(test_scenario::ctx(&mut scenario));
+            let cap = profile::create_username_admin_cap(test_scenario::ctx(&mut scenario));
+            transfer::public_transfer(cap, ADMIN);
+            let clock = clock::create_for_testing(test_scenario::ctx(&mut scenario));
+            clock::share_for_testing(clock);
+            let coins = coin::mint_for_testing<MYSO>(20_000_000_000, test_scenario::ctx(&mut scenario));
+            transfer::public_transfer(coins, USER1);
+        };
+
+        test_scenario::next_tx(&mut scenario, USER1);
+        {
+            let mut registry = test_scenario::take_shared<UsernameRegistry>(&scenario);
+            let mut memory_registry = test_scenario::take_shared<MemoryRegistry>(&scenario);
+            let clock = test_scenario::take_shared<Clock>(&scenario);
+            profile::create_profile(
+                &mut registry,
+                &mut memory_registry,
+                string::utf8(b"User One"),
+                string::utf8(b"revokeme"),
+                string::utf8(b"bio"),
+                b"",
+                b"",
+                &clock,
+                test_scenario::ctx(&mut scenario),
+            );
+            test_scenario::return_shared(registry);
+            test_scenario::return_shared(memory_registry);
+            test_scenario::return_shared(clock);
+        };
+
+        test_scenario::next_tx(&mut scenario, ADMIN);
+        {
+            let cap = test_scenario::take_from_sender<UsernameAdminCap>(&scenario);
+            let mut registry = test_scenario::take_shared<UsernameRegistry>(&scenario);
+            profile::admin_revoke_username(
+                &cap,
+                &mut registry,
+                string::utf8(b"revokeme"),
+                1,
+                test_scenario::ctx(&mut scenario),
+            );
+            assert!(profile::is_username_available(&registry, string::utf8(b"revokeme")), 0);
+            test_scenario::return_shared(registry);
+            test_scenario::return_to_sender(&scenario, cap);
+        };
+
+        test_scenario::end(scenario);
+    }
+
+    #[test]
+    fun test_admin_reassign_username() {
+        let mut scenario = test_scenario::begin(ADMIN);
+        {
+            profile::init_for_testing(test_scenario::ctx(&mut scenario));
+            let cap = profile::create_username_admin_cap(test_scenario::ctx(&mut scenario));
+            transfer::public_transfer(cap, ADMIN);
+            let clock = clock::create_for_testing(test_scenario::ctx(&mut scenario));
+            clock::share_for_testing(clock);
+            let c1 = coin::mint_for_testing<MYSO>(20_000_000_000, test_scenario::ctx(&mut scenario));
+            let c2 = coin::mint_for_testing<MYSO>(20_000_000_000, test_scenario::ctx(&mut scenario));
+            transfer::public_transfer(c1, USER1);
+            transfer::public_transfer(c2, USER2);
+        };
+
+        test_scenario::next_tx(&mut scenario, USER1);
+        {
+            let mut registry = test_scenario::take_shared<UsernameRegistry>(&scenario);
+            let mut memory_registry = test_scenario::take_shared<MemoryRegistry>(&scenario);
+            let clock = test_scenario::take_shared<Clock>(&scenario);
+            profile::create_profile(
+                &mut registry,
+                &mut memory_registry,
+                string::utf8(b"User One"),
+                string::utf8(b"handoff"),
+                string::utf8(b"bio1"),
+                b"",
+                b"",
+                &clock,
+                test_scenario::ctx(&mut scenario),
+            );
+            test_scenario::return_shared(registry);
+            test_scenario::return_shared(memory_registry);
+            test_scenario::return_shared(clock);
+        };
+
+        test_scenario::next_tx(&mut scenario, USER2);
+        {
+            let mut registry = test_scenario::take_shared<UsernameRegistry>(&scenario);
+            let mut memory_registry = test_scenario::take_shared<MemoryRegistry>(&scenario);
+            let clock = test_scenario::take_shared<Clock>(&scenario);
+            profile::create_profile(
+                &mut registry,
+                &mut memory_registry,
+                string::utf8(b"User Two"),
+                string::utf8(b"user2"),
+                string::utf8(b"bio2"),
+                b"",
+                b"",
+                &clock,
+                test_scenario::ctx(&mut scenario),
+            );
+            test_scenario::return_shared(registry);
+            test_scenario::return_shared(memory_registry);
+            test_scenario::return_shared(clock);
+        };
+
+        test_scenario::next_tx(&mut scenario, ADMIN);
+        {
+            let cap = test_scenario::take_from_sender<UsernameAdminCap>(&scenario);
+            let mut registry = test_scenario::take_shared<UsernameRegistry>(&scenario);
+            let profile2 = test_scenario::take_from_address<Profile>(&scenario, USER2);
+            let profile2_id = object::uid_to_address(profile::id(&profile2));
+            profile::admin_reassign_username(
+                &cap,
+                &mut registry,
+                string::utf8(b"handoff"),
+                profile2_id,
+                2,
+                test_scenario::ctx(&mut scenario),
+            );
+            let opt = profile::lookup_profile_by_username(&registry, string::utf8(b"handoff"));
+            assert!(option::is_some(&opt), 0);
+            assert!(*option::borrow(&opt) == profile2_id, 1);
+            test_scenario::return_to_address(USER2, profile2);
+            test_scenario::return_shared(registry);
+            test_scenario::return_to_sender(&scenario, cap);
+        };
+
+        test_scenario::end(scenario);
+    }
+
+    #[test]
+    #[expected_failure(abort_code = profile::EUsernameProfileMismatch, location = social_contracts::profile)]
+    fun test_admin_reassign_same_profile_aborts() {
+        let mut scenario = test_scenario::begin(ADMIN);
+        {
+            profile::init_for_testing(test_scenario::ctx(&mut scenario));
+            let cap = profile::create_username_admin_cap(test_scenario::ctx(&mut scenario));
+            transfer::public_transfer(cap, ADMIN);
+            let clock = clock::create_for_testing(test_scenario::ctx(&mut scenario));
+            clock::share_for_testing(clock);
+            let coins = coin::mint_for_testing<MYSO>(20_000_000_000, test_scenario::ctx(&mut scenario));
+            transfer::public_transfer(coins, USER1);
+        };
+
+        test_scenario::next_tx(&mut scenario, USER1);
+        {
+            let mut registry = test_scenario::take_shared<UsernameRegistry>(&scenario);
+            let mut memory_registry = test_scenario::take_shared<MemoryRegistry>(&scenario);
+            let clock = test_scenario::take_shared<Clock>(&scenario);
+            profile::create_profile(
+                &mut registry,
+                &mut memory_registry,
+                string::utf8(b"User One"),
+                string::utf8(b"samename"),
+                string::utf8(b"bio"),
+                b"",
+                b"",
+                &clock,
+                test_scenario::ctx(&mut scenario),
+            );
+            test_scenario::return_shared(registry);
+            test_scenario::return_shared(memory_registry);
+            test_scenario::return_shared(clock);
+        };
+
+        test_scenario::next_tx(&mut scenario, ADMIN);
+        {
+            let cap = test_scenario::take_from_sender<UsernameAdminCap>(&scenario);
+            let mut registry = test_scenario::take_shared<UsernameRegistry>(&scenario);
+            let profile1 = test_scenario::take_from_address<Profile>(&scenario, USER1);
+            let profile1_id = object::uid_to_address(profile::id(&profile1));
+            profile::admin_reassign_username(
+                &cap,
+                &mut registry,
+                string::utf8(b"samename"),
+                profile1_id,
+                0,
+                test_scenario::ctx(&mut scenario),
+            );
+            test_scenario::return_to_address(USER1, profile1);
+            test_scenario::return_shared(registry);
+            test_scenario::return_to_sender(&scenario, cap);
         };
 
         test_scenario::end(scenario);

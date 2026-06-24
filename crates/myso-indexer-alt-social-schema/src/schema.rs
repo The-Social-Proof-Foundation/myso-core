@@ -1177,6 +1177,14 @@ diesel::table! {
 }
 
 diesel::table! {
+    username_registry (username) {
+        username -> Text,
+        profile_id -> Text,
+        transaction_id -> Text,
+    }
+}
+
+diesel::table! {
     wallet_messaging_policies (wallet_address) {
         wallet_address -> Text,
         enabled -> Bool,
@@ -2166,6 +2174,7 @@ diesel::allow_tables_to_appear_in_same_query!(
     tips,
     unified_revenue,
     upgrade_events,
+    username_registry,
     vesting_events,
     vesting_wallets,
     vote_decryption_failures,

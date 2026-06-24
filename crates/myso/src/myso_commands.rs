@@ -1112,7 +1112,7 @@ async fn start(
         swarm_builder = swarm_builder.with_data_ingestion_dir(dir.clone());
     }
 
-    let fullnode_rpc_port = ensure_bindable_port(fullnode_rpc_port, "fullnode JSON-RPC");
+    let fullnode_rpc_port = resolve_listening_port(fullnode_rpc_port, "fullnode RPC");
     let mut fullnode_rpc_address = myso_config::node::default_json_rpc_address();
     fullnode_rpc_address.set_port(fullnode_rpc_port);
 
@@ -2107,8 +2107,9 @@ async fn download_package_and_deps_under(
     })
 }
 
-/// If `preferred` is already in use, scan upward for the next bindable port and log a warning.
-fn ensure_bindable_port(preferred: u16, service: &str) -> u16 {
+/// Allocates the next free `:port` on `0.0.0.0`, beginning at `preferred` (then scans forward).
+/// Used so `myso start` does not fail when default service ports are already taken (e.g. Docker on 9000).
+fn resolve_listening_port(preferred: u16, label: &str) -> u16 {
     const IP: Ipv4Addr = Ipv4Addr::UNSPECIFIED;
     const MAX_ATTEMPTS: u16 = 256;
     for offset in 0..MAX_ATTEMPTS {
@@ -2116,28 +2117,18 @@ fn ensure_bindable_port(preferred: u16, service: &str) -> u16 {
         let addr = SocketAddr::from((IpAddr::V4(IP), port));
         if std::net::TcpListener::bind(addr).is_ok() {
             if offset > 0 {
-                warn!(
-                    preferred,
-                    port,
-                    service,
-                    "Port {preferred} for {service} is already in use; using {port} instead"
-                );
+                warn!("{label} port {preferred} is already in use; using {port} instead");
             }
             return port;
         }
     }
     let port = get_available_port();
-    warn!(
-        preferred,
-        port,
-        service,
-        "Could not find a free port near {preferred} for {service}; using {port} instead"
-    );
+    warn!("Could not bind {label} in port range starting at {preferred}; using {port}");
     port
 }
 
-fn ensure_bindable_socket_addr(mut addr: SocketAddr, service: &str) -> SocketAddr {
-    addr.set_port(ensure_bindable_port(addr.port(), service));
+fn ensure_bindable_socket_addr(mut addr: SocketAddr, label: &str) -> SocketAddr {
+    addr.set_port(resolve_listening_port(addr.port(), label));
     addr
 }
 

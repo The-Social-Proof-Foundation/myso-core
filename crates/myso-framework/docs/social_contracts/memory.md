@@ -42,6 +42,8 @@ computed off-chain (indexer/server).
 -  [Struct `SubAgentKey`](#social_contracts_memory_SubAgentKey)
 -  [Struct `AgentMemoryVaultKey`](#social_contracts_memory_AgentMemoryVaultKey)
 -  [Struct `SubAgentConstraints`](#social_contracts_memory_SubAgentConstraints)
+-  [Struct `OrgRegistryEntry`](#social_contracts_memory_OrgRegistryEntry)
+-  [Struct `AgenticOrganization`](#social_contracts_memory_AgenticOrganization)
 -  [Struct `AgentRegistryEntry`](#social_contracts_memory_AgentRegistryEntry)
 -  [Struct `SubAgent`](#social_contracts_memory_SubAgent)
 -  [Struct `AgentMemoryVault`](#social_contracts_memory_AgentMemoryVault)
@@ -58,10 +60,30 @@ computed off-chain (indexer/server).
 -  [Struct `MemoryAccountMigrated`](#social_contracts_memory_MemoryAccountMigrated)
 -  [Struct `MemoryRegistryMigrated`](#social_contracts_memory_MemoryRegistryMigrated)
 -  [Struct `AgentMemoryVaultCreated`](#social_contracts_memory_AgentMemoryVaultCreated)
+-  [Struct `AgenticOrganizationCreated`](#social_contracts_memory_AgenticOrganizationCreated)
+-  [Struct `AgenticOrganizationUpdated`](#social_contracts_memory_AgenticOrganizationUpdated)
+-  [Struct `AgenticOrganizationCategoryUpdated`](#social_contracts_memory_AgenticOrganizationCategoryUpdated)
+-  [Struct `AgenticOrganizationDeactivated`](#social_contracts_memory_AgenticOrganizationDeactivated)
 -  [Constants](#@Constants_1)
 -  [Function `class_human`](#social_contracts_memory_class_human)
 -  [Function `class_delegated_ai`](#social_contracts_memory_class_delegated_ai)
 -  [Function `class_organization`](#social_contracts_memory_class_organization)
+-  [Function `org_type_company`](#social_contracts_memory_org_type_company)
+-  [Function `org_type_startup`](#social_contracts_memory_org_type_startup)
+-  [Function `org_type_investment_fund`](#social_contracts_memory_org_type_investment_fund)
+-  [Function `org_type_nonprofit`](#social_contracts_memory_org_type_nonprofit)
+-  [Function `org_type_research`](#social_contracts_memory_org_type_research)
+-  [Function `org_type_government`](#social_contracts_memory_org_type_government)
+-  [Function `org_type_media`](#social_contracts_memory_org_type_media)
+-  [Function `org_type_stewardship`](#social_contracts_memory_org_type_stewardship)
+-  [Function `org_type_brand`](#social_contracts_memory_org_type_brand)
+-  [Function `org_type_community`](#social_contracts_memory_org_type_community)
+-  [Function `org_type_sports`](#social_contracts_memory_org_type_sports)
+-  [Function `org_type_education`](#social_contracts_memory_org_type_education)
+-  [Function `org_type_healthcare`](#social_contracts_memory_org_type_healthcare)
+-  [Function `org_type_other`](#social_contracts_memory_org_type_other)
+-  [Function `org_type_count`](#social_contracts_memory_org_type_count)
+-  [Function `max_organizations_per_user`](#social_contracts_memory_max_organizations_per_user)
 -  [Function `cap_memory_read`](#social_contracts_memory_cap_memory_read)
 -  [Function `cap_memory_write`](#social_contracts_memory_cap_memory_write)
 -  [Function `cap_mydata_read`](#social_contracts_memory_cap_mydata_read)
@@ -79,9 +101,20 @@ computed off-chain (indexer/server).
 -  [Function `register_peer`](#social_contracts_memory_register_peer)
 -  [Function `derive_sub_agent_address`](#social_contracts_memory_derive_sub_agent_address)
 -  [Function `agent_object_id`](#social_contracts_memory_agent_object_id)
+-  [Function `organization_id`](#social_contracts_memory_organization_id)
+-  [Function `sub_agent_organization_id`](#social_contracts_memory_sub_agent_organization_id)
+-  [Function `organization_org_type`](#social_contracts_memory_organization_org_type)
+-  [Function `organization_root_agent_id`](#social_contracts_memory_organization_root_agent_id)
+-  [Function `organization_name`](#social_contracts_memory_organization_name)
+-  [Function `organization_description`](#social_contracts_memory_organization_description)
 -  [Function `bootstrap_init`](#social_contracts_memory_bootstrap_init)
 -  [Function `create_account_for_profile`](#social_contracts_memory_create_account_for_profile)
 -  [Function `transfer_account_owner_with_profile`](#social_contracts_memory_transfer_account_owner_with_profile)
+-  [Function `create_agentic_organization`](#social_contracts_memory_create_agentic_organization)
+-  [Function `create_agentic_organization_internal`](#social_contracts_memory_create_agentic_organization_internal)
+-  [Function `update_agentic_organization_metadata`](#social_contracts_memory_update_agentic_organization_metadata)
+-  [Function `update_agentic_organization_category`](#social_contracts_memory_update_agentic_organization_category)
+-  [Function `deactivate_agentic_organization`](#social_contracts_memory_deactivate_agentic_organization)
 -  [Function `register_sub_agent`](#social_contracts_memory_register_sub_agent)
 -  [Function `register_sub_agent_delegated`](#social_contracts_memory_register_sub_agent_delegated)
 -  [Function `update_sub_agent`](#social_contracts_memory_update_sub_agent)
@@ -120,6 +153,7 @@ computed off-chain (indexer/server).
 -  [Function `acting_identity_class`](#social_contracts_memory_acting_identity_class)
 -  [Function `acting_parent_object_id`](#social_contracts_memory_acting_parent_object_id)
 -  [Function `acting_depth`](#social_contracts_memory_acting_depth)
+-  [Function `acting_organization_id`](#social_contracts_memory_acting_organization_id)
 -  [Function `has_account`](#social_contracts_memory_has_account)
 -  [Function `account_id_for_owner`](#social_contracts_memory_account_id_for_owner)
 -  [Function `is_registered_agent`](#social_contracts_memory_is_registered_agent)
@@ -133,6 +167,7 @@ computed off-chain (indexer/server).
 -  [Function `register_sub_agent_internal`](#social_contracts_memory_register_sub_agent_internal)
 -  [Function `register_sub_agent_delegated_internal`](#social_contracts_memory_register_sub_agent_delegated_internal)
 -  [Function `finish_register_sub_agent`](#social_contracts_memory_finish_register_sub_agent)
+-  [Function `bind_root_agent_to_organization`](#social_contracts_memory_bind_root_agent_to_organization)
 -  [Function `registry_entry_from_agent`](#social_contracts_memory_registry_entry_from_agent)
 -  [Function `insert_registry_entry`](#social_contracts_memory_insert_registry_entry)
 -  [Function `sync_registry_from_agent`](#social_contracts_memory_sync_registry_from_agent)
@@ -152,6 +187,11 @@ computed off-chain (indexer/server).
 -  [Function `assert_valid_register_scope`](#social_contracts_memory_assert_valid_register_scope)
 -  [Function `assert_sub_agent_not_expired`](#social_contracts_memory_assert_sub_agent_not_expired)
 -  [Function `assert_valid_identity_class`](#social_contracts_memory_assert_valid_identity_class)
+-  [Function `assert_org_name_within_limit`](#social_contracts_memory_assert_org_name_within_limit)
+-  [Function `assert_org_description_within_limit`](#social_contracts_memory_assert_org_description_within_limit)
+-  [Function `assert_valid_org_type`](#social_contracts_memory_assert_valid_org_type)
+-  [Function `assert_organization_belongs_to_account`](#social_contracts_memory_assert_organization_belongs_to_account)
+-  [Function `assert_organization_ready_for_root`](#social_contracts_memory_assert_organization_ready_for_root)
 -  [Function `has_cap`](#social_contracts_memory_has_cap)
 -  [Function `cap_requires_approval`](#social_contracts_memory_cap_requires_approval)
 -  [Function `emit_sub_agent_registered`](#social_contracts_memory_emit_sub_agent_registered)
@@ -305,6 +345,114 @@ computed off-chain (indexer/server).
 
 </details>
 
+<a name="social_contracts_memory_OrgRegistryEntry"></a>
+
+## Struct `OrgRegistryEntry`
+
+
+
+<pre><code><b>public</b> <b>struct</b> <a href="../social_contracts/memory.md#social_contracts_memory_OrgRegistryEntry">OrgRegistryEntry</a> <b>has</b> <b>copy</b>, drop, store
+</code></pre>
+
+
+
+<details>
+<summary>Fields</summary>
+
+
+<dl>
+<dt>
+<code>active: bool</code>
+</dt>
+<dd>
+</dd>
+</dl>
+
+
+</details>
+
+<a name="social_contracts_memory_AgenticOrganization"></a>
+
+## Struct `AgenticOrganization`
+
+Competitive agentic organization wrapper (one root-agent tree per org).
+
+
+<pre><code><b>public</b> <b>struct</b> <a href="../social_contracts/memory.md#social_contracts_memory_AgenticOrganization">AgenticOrganization</a> <b>has</b> key, store
+</code></pre>
+
+
+
+<details>
+<summary>Fields</summary>
+
+
+<dl>
+<dt>
+<code>id: <a href="../myso/object.md#myso_object_UID">myso::object::UID</a></code>
+</dt>
+<dd>
+</dd>
+<dt>
+<code>memory_account_id: <a href="../myso/object.md#myso_object_ID">myso::object::ID</a></code>
+</dt>
+<dd>
+</dd>
+<dt>
+<code>principal_owner: <b>address</b></code>
+</dt>
+<dd>
+</dd>
+<dt>
+<code><a href="../social_contracts/memory.md#social_contracts_memory_profile_id">profile_id</a>: <b>address</b></code>
+</dt>
+<dd>
+</dd>
+<dt>
+<code>name: <a href="../std/option.md#std_option_Option">std::option::Option</a>&lt;<a href="../std/string.md#std_string_String">std::string::String</a>&gt;</code>
+</dt>
+<dd>
+</dd>
+<dt>
+<code>description: <a href="../std/option.md#std_option_Option">std::option::Option</a>&lt;<a href="../std/string.md#std_string_String">std::string::String</a>&gt;</code>
+</dt>
+<dd>
+</dd>
+<dt>
+<code>org_type: u8</code>
+</dt>
+<dd>
+</dd>
+<dt>
+<code>root_agent_id: <a href="../std/option.md#std_option_Option">std::option::Option</a>&lt;<a href="../myso/object.md#myso_object_ID">myso::object::ID</a>&gt;</code>
+</dt>
+<dd>
+</dd>
+<dt>
+<code>active: bool</code>
+</dt>
+<dd>
+</dd>
+<dt>
+<code>created_at: u64</code>
+</dt>
+<dd>
+</dd>
+<dt>
+<code>deactivated_at: <a href="../std/option.md#std_option_Option">std::option::Option</a>&lt;u64&gt;</code>
+</dt>
+<dd>
+</dd>
+<dt>
+<code>category_updated_at: <a href="../std/option.md#std_option_Option">std::option::Option</a>&lt;u64&gt;</code>
+</dt>
+<dd>
+</dd>
+</dl>
+
+
+</details>
+
 <a name="social_contracts_memory_AgentRegistryEntry"></a>
 
 ## Struct `AgentRegistryEntry`
@@ -324,6 +472,11 @@ Auth mirror for on-chain ancestor walks without PTB ancestor inputs.
 <dl>
 <dt>
 <code><a href="../social_contracts/memory.md#social_contracts_memory_agent_object_id">agent_object_id</a>: <a href="../myso/object.md#myso_object_ID">myso::object::ID</a></code>
+</dt>
+<dd>
+</dd>
+<dt>
+<code><a href="../social_contracts/memory.md#social_contracts_memory_organization_id">organization_id</a>: <a href="../myso/object.md#myso_object_ID">myso::object::ID</a></code>
 </dt>
 <dd>
 </dd>
@@ -406,6 +559,11 @@ Shared derived sub-agent object (one per agent).
 </dd>
 <dt>
 <code>memory_account_id: <a href="../myso/object.md#myso_object_ID">myso::object::ID</a></code>
+</dt>
+<dd>
+</dd>
+<dt>
+<code><a href="../social_contracts/memory.md#social_contracts_memory_organization_id">organization_id</a>: <a href="../myso/object.md#myso_object_ID">myso::object::ID</a></code>
 </dt>
 <dd>
 </dd>
@@ -583,6 +741,11 @@ Lazy per-agent memory blob anchor (derived from [<code><a href="../social_contra
 <dd>
 </dd>
 <dt>
+<code><a href="../social_contracts/memory.md#social_contracts_memory_organization_id">organization_id</a>: <a href="../std/option.md#std_option_Option">std::option::Option</a>&lt;<a href="../myso/object.md#myso_object_ID">myso::object::ID</a>&gt;</code>
+</dt>
+<dd>
+</dd>
+<dt>
 <code>identity_class: u8</code>
 </dt>
 <dd>
@@ -651,6 +814,16 @@ Human root plus on-chain agent auth index (shared [<code><a href="../social_cont
 </dd>
 <dt>
 <code>agent_ids: <a href="../myso/table.md#myso_table_Table">myso::table::Table</a>&lt;<a href="../myso/object.md#myso_object_ID">myso::object::ID</a>, <b>address</b>&gt;</code>
+</dt>
+<dd>
+</dd>
+<dt>
+<code>organizations: <a href="../myso/table.md#myso_table_Table">myso::table::Table</a>&lt;<a href="../myso/object.md#myso_object_ID">myso::object::ID</a>, <a href="../social_contracts/memory.md#social_contracts_memory_OrgRegistryEntry">social_contracts::memory::OrgRegistryEntry</a>&gt;</code>
+</dt>
+<dd>
+</dd>
+<dt>
+<code>org_count: u8</code>
 </dt>
 <dd>
 </dd>
@@ -723,6 +896,11 @@ Human root plus on-chain agent auth index (shared [<code><a href="../social_cont
 </dd>
 <dt>
 <code><a href="../social_contracts/memory.md#social_contracts_memory_profile_id">profile_id</a>: <b>address</b></code>
+</dt>
+<dd>
+</dd>
+<dt>
+<code><a href="../social_contracts/memory.md#social_contracts_memory_organization_id">organization_id</a>: <a href="../myso/object.md#myso_object_ID">myso::object::ID</a></code>
 </dt>
 <dd>
 </dd>
@@ -844,6 +1022,11 @@ Human root plus on-chain agent auth index (shared [<code><a href="../social_cont
 </dd>
 <dt>
 <code><a href="../social_contracts/memory.md#social_contracts_memory_profile_id">profile_id</a>: <b>address</b></code>
+</dt>
+<dd>
+</dd>
+<dt>
+<code><a href="../social_contracts/memory.md#social_contracts_memory_organization_id">organization_id</a>: <a href="../myso/object.md#myso_object_ID">myso::object::ID</a></code>
 </dt>
 <dd>
 </dd>
@@ -1250,6 +1433,175 @@ Human root plus on-chain agent auth index (shared [<code><a href="../social_cont
 
 </details>
 
+<a name="social_contracts_memory_AgenticOrganizationCreated"></a>
+
+## Struct `AgenticOrganizationCreated`
+
+
+
+<pre><code><b>public</b> <b>struct</b> <a href="../social_contracts/memory.md#social_contracts_memory_AgenticOrganizationCreated">AgenticOrganizationCreated</a> <b>has</b> <b>copy</b>, drop
+</code></pre>
+
+
+
+<details>
+<summary>Fields</summary>
+
+
+<dl>
+<dt>
+<code><a href="../social_contracts/memory.md#social_contracts_memory_organization_id">organization_id</a>: <a href="../myso/object.md#myso_object_ID">myso::object::ID</a></code>
+</dt>
+<dd>
+</dd>
+<dt>
+<code>account_id: <a href="../myso/object.md#myso_object_ID">myso::object::ID</a></code>
+</dt>
+<dd>
+</dd>
+<dt>
+<code>principal_owner: <b>address</b></code>
+</dt>
+<dd>
+</dd>
+<dt>
+<code><a href="../social_contracts/memory.md#social_contracts_memory_profile_id">profile_id</a>: <b>address</b></code>
+</dt>
+<dd>
+</dd>
+<dt>
+<code>name: <a href="../std/option.md#std_option_Option">std::option::Option</a>&lt;<a href="../std/string.md#std_string_String">std::string::String</a>&gt;</code>
+</dt>
+<dd>
+</dd>
+<dt>
+<code>description: <a href="../std/option.md#std_option_Option">std::option::Option</a>&lt;<a href="../std/string.md#std_string_String">std::string::String</a>&gt;</code>
+</dt>
+<dd>
+</dd>
+<dt>
+<code>org_type: u8</code>
+</dt>
+<dd>
+</dd>
+<dt>
+<code>created_at: u64</code>
+</dt>
+<dd>
+</dd>
+</dl>
+
+
+</details>
+
+<a name="social_contracts_memory_AgenticOrganizationUpdated"></a>
+
+## Struct `AgenticOrganizationUpdated`
+
+
+
+<pre><code><b>public</b> <b>struct</b> <a href="../social_contracts/memory.md#social_contracts_memory_AgenticOrganizationUpdated">AgenticOrganizationUpdated</a> <b>has</b> <b>copy</b>, drop
+</code></pre>
+
+
+
+<details>
+<summary>Fields</summary>
+
+
+<dl>
+<dt>
+<code><a href="../social_contracts/memory.md#social_contracts_memory_organization_id">organization_id</a>: <a href="../myso/object.md#myso_object_ID">myso::object::ID</a></code>
+</dt>
+<dd>
+</dd>
+<dt>
+<code>name: <a href="../std/option.md#std_option_Option">std::option::Option</a>&lt;<a href="../std/string.md#std_string_String">std::string::String</a>&gt;</code>
+</dt>
+<dd>
+</dd>
+<dt>
+<code>description: <a href="../std/option.md#std_option_Option">std::option::Option</a>&lt;<a href="../std/string.md#std_string_String">std::string::String</a>&gt;</code>
+</dt>
+<dd>
+</dd>
+</dl>
+
+
+</details>
+
+<a name="social_contracts_memory_AgenticOrganizationCategoryUpdated"></a>
+
+## Struct `AgenticOrganizationCategoryUpdated`
+
+
+
+<pre><code><b>public</b> <b>struct</b> <a href="../social_contracts/memory.md#social_contracts_memory_AgenticOrganizationCategoryUpdated">AgenticOrganizationCategoryUpdated</a> <b>has</b> <b>copy</b>, drop
+</code></pre>
+
+
+
+<details>
+<summary>Fields</summary>
+
+
+<dl>
+<dt>
+<code><a href="../social_contracts/memory.md#social_contracts_memory_organization_id">organization_id</a>: <a href="../myso/object.md#myso_object_ID">myso::object::ID</a></code>
+</dt>
+<dd>
+</dd>
+<dt>
+<code>org_type: u8</code>
+</dt>
+<dd>
+</dd>
+<dt>
+<code>previous_org_type: u8</code>
+</dt>
+<dd>
+</dd>
+<dt>
+<code>updated_at: u64</code>
+</dt>
+<dd>
+</dd>
+</dl>
+
+
+</details>
+
+<a name="social_contracts_memory_AgenticOrganizationDeactivated"></a>
+
+## Struct `AgenticOrganizationDeactivated`
+
+
+
+<pre><code><b>public</b> <b>struct</b> <a href="../social_contracts/memory.md#social_contracts_memory_AgenticOrganizationDeactivated">AgenticOrganizationDeactivated</a> <b>has</b> <b>copy</b>, drop
+</code></pre>
+
+
+
+<details>
+<summary>Fields</summary>
+
+
+<dl>
+<dt>
+<code><a href="../social_contracts/memory.md#social_contracts_memory_organization_id">organization_id</a>: <a href="../myso/object.md#myso_object_ID">myso::object::ID</a></code>
+</dt>
+<dd>
+</dd>
+<dt>
+<code>deactivated_at: u64</code>
+</dt>
+<dd>
+</dd>
+</dl>
+
+
+</details>
+
 <a name="@Constants_1"></a>
 
 ## Constants
@@ -1467,6 +1819,159 @@ Human root plus on-chain agent auth index (shared [<code><a href="../social_cont
 
 
 <pre><code><b>const</b> <a href="../social_contracts/memory.md#social_contracts_memory_ROLE_ORG_ADMIN">ROLE_ORG_ADMIN</a>: u64 = 4;
+</code></pre>
+
+
+
+<a name="social_contracts_memory_ORG_TYPE_COMPANY"></a>
+
+
+
+<pre><code><b>const</b> <a href="../social_contracts/memory.md#social_contracts_memory_ORG_TYPE_COMPANY">ORG_TYPE_COMPANY</a>: u8 = 0;
+</code></pre>
+
+
+
+<a name="social_contracts_memory_ORG_TYPE_STARTUP"></a>
+
+
+
+<pre><code><b>const</b> <a href="../social_contracts/memory.md#social_contracts_memory_ORG_TYPE_STARTUP">ORG_TYPE_STARTUP</a>: u8 = 1;
+</code></pre>
+
+
+
+<a name="social_contracts_memory_ORG_TYPE_INVESTMENT_FUND"></a>
+
+
+
+<pre><code><b>const</b> <a href="../social_contracts/memory.md#social_contracts_memory_ORG_TYPE_INVESTMENT_FUND">ORG_TYPE_INVESTMENT_FUND</a>: u8 = 2;
+</code></pre>
+
+
+
+<a name="social_contracts_memory_ORG_TYPE_NONPROFIT"></a>
+
+
+
+<pre><code><b>const</b> <a href="../social_contracts/memory.md#social_contracts_memory_ORG_TYPE_NONPROFIT">ORG_TYPE_NONPROFIT</a>: u8 = 3;
+</code></pre>
+
+
+
+<a name="social_contracts_memory_ORG_TYPE_RESEARCH"></a>
+
+
+
+<pre><code><b>const</b> <a href="../social_contracts/memory.md#social_contracts_memory_ORG_TYPE_RESEARCH">ORG_TYPE_RESEARCH</a>: u8 = 4;
+</code></pre>
+
+
+
+<a name="social_contracts_memory_ORG_TYPE_GOVERNMENT"></a>
+
+
+
+<pre><code><b>const</b> <a href="../social_contracts/memory.md#social_contracts_memory_ORG_TYPE_GOVERNMENT">ORG_TYPE_GOVERNMENT</a>: u8 = 5;
+</code></pre>
+
+
+
+<a name="social_contracts_memory_ORG_TYPE_MEDIA"></a>
+
+
+
+<pre><code><b>const</b> <a href="../social_contracts/memory.md#social_contracts_memory_ORG_TYPE_MEDIA">ORG_TYPE_MEDIA</a>: u8 = 6;
+</code></pre>
+
+
+
+<a name="social_contracts_memory_ORG_TYPE_STEWARDSHIP"></a>
+
+
+
+<pre><code><b>const</b> <a href="../social_contracts/memory.md#social_contracts_memory_ORG_TYPE_STEWARDSHIP">ORG_TYPE_STEWARDSHIP</a>: u8 = 7;
+</code></pre>
+
+
+
+<a name="social_contracts_memory_ORG_TYPE_BRAND"></a>
+
+
+
+<pre><code><b>const</b> <a href="../social_contracts/memory.md#social_contracts_memory_ORG_TYPE_BRAND">ORG_TYPE_BRAND</a>: u8 = 8;
+</code></pre>
+
+
+
+<a name="social_contracts_memory_ORG_TYPE_COMMUNITY"></a>
+
+
+
+<pre><code><b>const</b> <a href="../social_contracts/memory.md#social_contracts_memory_ORG_TYPE_COMMUNITY">ORG_TYPE_COMMUNITY</a>: u8 = 9;
+</code></pre>
+
+
+
+<a name="social_contracts_memory_ORG_TYPE_SPORTS"></a>
+
+
+
+<pre><code><b>const</b> <a href="../social_contracts/memory.md#social_contracts_memory_ORG_TYPE_SPORTS">ORG_TYPE_SPORTS</a>: u8 = 10;
+</code></pre>
+
+
+
+<a name="social_contracts_memory_ORG_TYPE_EDUCATION"></a>
+
+
+
+<pre><code><b>const</b> <a href="../social_contracts/memory.md#social_contracts_memory_ORG_TYPE_EDUCATION">ORG_TYPE_EDUCATION</a>: u8 = 11;
+</code></pre>
+
+
+
+<a name="social_contracts_memory_ORG_TYPE_HEALTHCARE"></a>
+
+
+
+<pre><code><b>const</b> <a href="../social_contracts/memory.md#social_contracts_memory_ORG_TYPE_HEALTHCARE">ORG_TYPE_HEALTHCARE</a>: u8 = 12;
+</code></pre>
+
+
+
+<a name="social_contracts_memory_ORG_TYPE_OTHER"></a>
+
+
+
+<pre><code><b>const</b> <a href="../social_contracts/memory.md#social_contracts_memory_ORG_TYPE_OTHER">ORG_TYPE_OTHER</a>: u8 = 13;
+</code></pre>
+
+
+
+<a name="social_contracts_memory_ORG_TYPE_COUNT"></a>
+
+
+
+<pre><code><b>const</b> <a href="../social_contracts/memory.md#social_contracts_memory_ORG_TYPE_COUNT">ORG_TYPE_COUNT</a>: u8 = 14;
+</code></pre>
+
+
+
+<a name="social_contracts_memory_MAX_ORGANIZATIONS_PER_USER"></a>
+
+
+
+<pre><code><b>const</b> <a href="../social_contracts/memory.md#social_contracts_memory_MAX_ORGANIZATIONS_PER_USER">MAX_ORGANIZATIONS_PER_USER</a>: u8 = 8;
+</code></pre>
+
+
+
+<a name="social_contracts_memory_ORG_CATEGORY_UPDATE_COOLDOWN_MS"></a>
+
+
+
+<pre><code><b>const</b> <a href="../social_contracts/memory.md#social_contracts_memory_ORG_CATEGORY_UPDATE_COOLDOWN_MS">ORG_CATEGORY_UPDATE_COOLDOWN_MS</a>: u64 = 604800000;
 </code></pre>
 
 
@@ -1768,6 +2273,105 @@ Human root plus on-chain agent auth index (shared [<code><a href="../social_cont
 
 
 
+<a name="social_contracts_memory_EOrganizationLimitExceeded"></a>
+
+
+
+<pre><code><b>const</b> <a href="../social_contracts/memory.md#social_contracts_memory_EOrganizationLimitExceeded">EOrganizationLimitExceeded</a>: u64 = 35;
+</code></pre>
+
+
+
+<a name="social_contracts_memory_EInvalidOrgType"></a>
+
+
+
+<pre><code><b>const</b> <a href="../social_contracts/memory.md#social_contracts_memory_EInvalidOrgType">EInvalidOrgType</a>: u64 = 36;
+</code></pre>
+
+
+
+<a name="social_contracts_memory_EOrganizationNotFound"></a>
+
+
+
+<pre><code><b>const</b> <a href="../social_contracts/memory.md#social_contracts_memory_EOrganizationNotFound">EOrganizationNotFound</a>: u64 = 37;
+</code></pre>
+
+
+
+<a name="social_contracts_memory_EOrganizationNotActive"></a>
+
+
+
+<pre><code><b>const</b> <a href="../social_contracts/memory.md#social_contracts_memory_EOrganizationNotActive">EOrganizationNotActive</a>: u64 = 38;
+</code></pre>
+
+
+
+<a name="social_contracts_memory_EOrganizationAccountMismatch"></a>
+
+
+
+<pre><code><b>const</b> <a href="../social_contracts/memory.md#social_contracts_memory_EOrganizationAccountMismatch">EOrganizationAccountMismatch</a>: u64 = 39;
+</code></pre>
+
+
+
+<a name="social_contracts_memory_EOrganizationHasRoot"></a>
+
+
+
+<pre><code><b>const</b> <a href="../social_contracts/memory.md#social_contracts_memory_EOrganizationHasRoot">EOrganizationHasRoot</a>: u64 = 40;
+</code></pre>
+
+
+
+<a name="social_contracts_memory_EOrganizationMissingRoot"></a>
+
+
+
+<pre><code><b>const</b> <a href="../social_contracts/memory.md#social_contracts_memory_EOrganizationMissingRoot">EOrganizationMissingRoot</a>: u64 = 41;
+</code></pre>
+
+
+
+<a name="social_contracts_memory_EOrganizationOrgMismatch"></a>
+
+
+
+<pre><code><b>const</b> <a href="../social_contracts/memory.md#social_contracts_memory_EOrganizationOrgMismatch">EOrganizationOrgMismatch</a>: u64 = 42;
+</code></pre>
+
+
+
+<a name="social_contracts_memory_EOrgCategoryUpdateCooldown"></a>
+
+
+
+<pre><code><b>const</b> <a href="../social_contracts/memory.md#social_contracts_memory_EOrgCategoryUpdateCooldown">EOrgCategoryUpdateCooldown</a>: u64 = 43;
+</code></pre>
+
+
+
+<a name="social_contracts_memory_ENameTooLong"></a>
+
+
+
+<pre><code><b>const</b> <a href="../social_contracts/memory.md#social_contracts_memory_ENameTooLong">ENameTooLong</a>: u64 = 44;
+</code></pre>
+
+
+
+<a name="social_contracts_memory_EDescriptionTooLong"></a>
+
+
+
+<pre><code><b>const</b> <a href="../social_contracts/memory.md#social_contracts_memory_EDescriptionTooLong">EDescriptionTooLong</a>: u64 = 45;
+</code></pre>
+
+
+
 <a name="social_contracts_memory_ENoAccess"></a>
 
 
@@ -1795,6 +2399,24 @@ Human root plus on-chain agent auth index (shared [<code><a href="../social_cont
 
 
 
+<a name="social_contracts_memory_MAX_ORG_NAME_LENGTH"></a>
+
+
+
+<pre><code><b>const</b> <a href="../social_contracts/memory.md#social_contracts_memory_MAX_ORG_NAME_LENGTH">MAX_ORG_NAME_LENGTH</a>: u64 = 100;
+</code></pre>
+
+
+
+<a name="social_contracts_memory_MAX_ORG_DESCRIPTION_LENGTH"></a>
+
+
+
+<pre><code><b>const</b> <a href="../social_contracts/memory.md#social_contracts_memory_MAX_ORG_DESCRIPTION_LENGTH">MAX_ORG_DESCRIPTION_LENGTH</a>: u64 = 1200;
+</code></pre>
+
+
+
 <a name="social_contracts_memory_MAX_AGENT_DEPTH"></a>
 
 
@@ -1808,7 +2430,7 @@ Human root plus on-chain agent auth index (shared [<code><a href="../social_cont
 
 
 
-<pre><code><b>const</b> <a href="../social_contracts/memory.md#social_contracts_memory_VERSION">VERSION</a>: u64 = 2;
+<pre><code><b>const</b> <a href="../social_contracts/memory.md#social_contracts_memory_VERSION">VERSION</a>: u64 = 4;
 </code></pre>
 
 
@@ -1882,6 +2504,358 @@ Human root plus on-chain agent auth index (shared [<code><a href="../social_cont
 
 
 <pre><code><b>public</b> <b>fun</b> <a href="../social_contracts/memory.md#social_contracts_memory_class_organization">class_organization</a>(): u8 { <a href="../social_contracts/memory.md#social_contracts_memory_CLASS_ORGANIZATION">CLASS_ORGANIZATION</a> }
+</code></pre>
+
+
+
+</details>
+
+<a name="social_contracts_memory_org_type_company"></a>
+
+## Function `org_type_company`
+
+
+
+<pre><code><b>public</b> <b>fun</b> <a href="../social_contracts/memory.md#social_contracts_memory_org_type_company">org_type_company</a>(): u8
+</code></pre>
+
+
+
+<details>
+<summary>Implementation</summary>
+
+
+<pre><code><b>public</b> <b>fun</b> <a href="../social_contracts/memory.md#social_contracts_memory_org_type_company">org_type_company</a>(): u8 { <a href="../social_contracts/memory.md#social_contracts_memory_ORG_TYPE_COMPANY">ORG_TYPE_COMPANY</a> }
+</code></pre>
+
+
+
+</details>
+
+<a name="social_contracts_memory_org_type_startup"></a>
+
+## Function `org_type_startup`
+
+
+
+<pre><code><b>public</b> <b>fun</b> <a href="../social_contracts/memory.md#social_contracts_memory_org_type_startup">org_type_startup</a>(): u8
+</code></pre>
+
+
+
+<details>
+<summary>Implementation</summary>
+
+
+<pre><code><b>public</b> <b>fun</b> <a href="../social_contracts/memory.md#social_contracts_memory_org_type_startup">org_type_startup</a>(): u8 { <a href="../social_contracts/memory.md#social_contracts_memory_ORG_TYPE_STARTUP">ORG_TYPE_STARTUP</a> }
+</code></pre>
+
+
+
+</details>
+
+<a name="social_contracts_memory_org_type_investment_fund"></a>
+
+## Function `org_type_investment_fund`
+
+
+
+<pre><code><b>public</b> <b>fun</b> <a href="../social_contracts/memory.md#social_contracts_memory_org_type_investment_fund">org_type_investment_fund</a>(): u8
+</code></pre>
+
+
+
+<details>
+<summary>Implementation</summary>
+
+
+<pre><code><b>public</b> <b>fun</b> <a href="../social_contracts/memory.md#social_contracts_memory_org_type_investment_fund">org_type_investment_fund</a>(): u8 { <a href="../social_contracts/memory.md#social_contracts_memory_ORG_TYPE_INVESTMENT_FUND">ORG_TYPE_INVESTMENT_FUND</a> }
+</code></pre>
+
+
+
+</details>
+
+<a name="social_contracts_memory_org_type_nonprofit"></a>
+
+## Function `org_type_nonprofit`
+
+
+
+<pre><code><b>public</b> <b>fun</b> <a href="../social_contracts/memory.md#social_contracts_memory_org_type_nonprofit">org_type_nonprofit</a>(): u8
+</code></pre>
+
+
+
+<details>
+<summary>Implementation</summary>
+
+
+<pre><code><b>public</b> <b>fun</b> <a href="../social_contracts/memory.md#social_contracts_memory_org_type_nonprofit">org_type_nonprofit</a>(): u8 { <a href="../social_contracts/memory.md#social_contracts_memory_ORG_TYPE_NONPROFIT">ORG_TYPE_NONPROFIT</a> }
+</code></pre>
+
+
+
+</details>
+
+<a name="social_contracts_memory_org_type_research"></a>
+
+## Function `org_type_research`
+
+
+
+<pre><code><b>public</b> <b>fun</b> <a href="../social_contracts/memory.md#social_contracts_memory_org_type_research">org_type_research</a>(): u8
+</code></pre>
+
+
+
+<details>
+<summary>Implementation</summary>
+
+
+<pre><code><b>public</b> <b>fun</b> <a href="../social_contracts/memory.md#social_contracts_memory_org_type_research">org_type_research</a>(): u8 { <a href="../social_contracts/memory.md#social_contracts_memory_ORG_TYPE_RESEARCH">ORG_TYPE_RESEARCH</a> }
+</code></pre>
+
+
+
+</details>
+
+<a name="social_contracts_memory_org_type_government"></a>
+
+## Function `org_type_government`
+
+
+
+<pre><code><b>public</b> <b>fun</b> <a href="../social_contracts/memory.md#social_contracts_memory_org_type_government">org_type_government</a>(): u8
+</code></pre>
+
+
+
+<details>
+<summary>Implementation</summary>
+
+
+<pre><code><b>public</b> <b>fun</b> <a href="../social_contracts/memory.md#social_contracts_memory_org_type_government">org_type_government</a>(): u8 { <a href="../social_contracts/memory.md#social_contracts_memory_ORG_TYPE_GOVERNMENT">ORG_TYPE_GOVERNMENT</a> }
+</code></pre>
+
+
+
+</details>
+
+<a name="social_contracts_memory_org_type_media"></a>
+
+## Function `org_type_media`
+
+
+
+<pre><code><b>public</b> <b>fun</b> <a href="../social_contracts/memory.md#social_contracts_memory_org_type_media">org_type_media</a>(): u8
+</code></pre>
+
+
+
+<details>
+<summary>Implementation</summary>
+
+
+<pre><code><b>public</b> <b>fun</b> <a href="../social_contracts/memory.md#social_contracts_memory_org_type_media">org_type_media</a>(): u8 { <a href="../social_contracts/memory.md#social_contracts_memory_ORG_TYPE_MEDIA">ORG_TYPE_MEDIA</a> }
+</code></pre>
+
+
+
+</details>
+
+<a name="social_contracts_memory_org_type_stewardship"></a>
+
+## Function `org_type_stewardship`
+
+
+
+<pre><code><b>public</b> <b>fun</b> <a href="../social_contracts/memory.md#social_contracts_memory_org_type_stewardship">org_type_stewardship</a>(): u8
+</code></pre>
+
+
+
+<details>
+<summary>Implementation</summary>
+
+
+<pre><code><b>public</b> <b>fun</b> <a href="../social_contracts/memory.md#social_contracts_memory_org_type_stewardship">org_type_stewardship</a>(): u8 { <a href="../social_contracts/memory.md#social_contracts_memory_ORG_TYPE_STEWARDSHIP">ORG_TYPE_STEWARDSHIP</a> }
+</code></pre>
+
+
+
+</details>
+
+<a name="social_contracts_memory_org_type_brand"></a>
+
+## Function `org_type_brand`
+
+
+
+<pre><code><b>public</b> <b>fun</b> <a href="../social_contracts/memory.md#social_contracts_memory_org_type_brand">org_type_brand</a>(): u8
+</code></pre>
+
+
+
+<details>
+<summary>Implementation</summary>
+
+
+<pre><code><b>public</b> <b>fun</b> <a href="../social_contracts/memory.md#social_contracts_memory_org_type_brand">org_type_brand</a>(): u8 { <a href="../social_contracts/memory.md#social_contracts_memory_ORG_TYPE_BRAND">ORG_TYPE_BRAND</a> }
+</code></pre>
+
+
+
+</details>
+
+<a name="social_contracts_memory_org_type_community"></a>
+
+## Function `org_type_community`
+
+
+
+<pre><code><b>public</b> <b>fun</b> <a href="../social_contracts/memory.md#social_contracts_memory_org_type_community">org_type_community</a>(): u8
+</code></pre>
+
+
+
+<details>
+<summary>Implementation</summary>
+
+
+<pre><code><b>public</b> <b>fun</b> <a href="../social_contracts/memory.md#social_contracts_memory_org_type_community">org_type_community</a>(): u8 { <a href="../social_contracts/memory.md#social_contracts_memory_ORG_TYPE_COMMUNITY">ORG_TYPE_COMMUNITY</a> }
+</code></pre>
+
+
+
+</details>
+
+<a name="social_contracts_memory_org_type_sports"></a>
+
+## Function `org_type_sports`
+
+
+
+<pre><code><b>public</b> <b>fun</b> <a href="../social_contracts/memory.md#social_contracts_memory_org_type_sports">org_type_sports</a>(): u8
+</code></pre>
+
+
+
+<details>
+<summary>Implementation</summary>
+
+
+<pre><code><b>public</b> <b>fun</b> <a href="../social_contracts/memory.md#social_contracts_memory_org_type_sports">org_type_sports</a>(): u8 { <a href="../social_contracts/memory.md#social_contracts_memory_ORG_TYPE_SPORTS">ORG_TYPE_SPORTS</a> }
+</code></pre>
+
+
+
+</details>
+
+<a name="social_contracts_memory_org_type_education"></a>
+
+## Function `org_type_education`
+
+
+
+<pre><code><b>public</b> <b>fun</b> <a href="../social_contracts/memory.md#social_contracts_memory_org_type_education">org_type_education</a>(): u8
+</code></pre>
+
+
+
+<details>
+<summary>Implementation</summary>
+
+
+<pre><code><b>public</b> <b>fun</b> <a href="../social_contracts/memory.md#social_contracts_memory_org_type_education">org_type_education</a>(): u8 { <a href="../social_contracts/memory.md#social_contracts_memory_ORG_TYPE_EDUCATION">ORG_TYPE_EDUCATION</a> }
+</code></pre>
+
+
+
+</details>
+
+<a name="social_contracts_memory_org_type_healthcare"></a>
+
+## Function `org_type_healthcare`
+
+
+
+<pre><code><b>public</b> <b>fun</b> <a href="../social_contracts/memory.md#social_contracts_memory_org_type_healthcare">org_type_healthcare</a>(): u8
+</code></pre>
+
+
+
+<details>
+<summary>Implementation</summary>
+
+
+<pre><code><b>public</b> <b>fun</b> <a href="../social_contracts/memory.md#social_contracts_memory_org_type_healthcare">org_type_healthcare</a>(): u8 { <a href="../social_contracts/memory.md#social_contracts_memory_ORG_TYPE_HEALTHCARE">ORG_TYPE_HEALTHCARE</a> }
+</code></pre>
+
+
+
+</details>
+
+<a name="social_contracts_memory_org_type_other"></a>
+
+## Function `org_type_other`
+
+
+
+<pre><code><b>public</b> <b>fun</b> <a href="../social_contracts/memory.md#social_contracts_memory_org_type_other">org_type_other</a>(): u8
+</code></pre>
+
+
+
+<details>
+<summary>Implementation</summary>
+
+
+<pre><code><b>public</b> <b>fun</b> <a href="../social_contracts/memory.md#social_contracts_memory_org_type_other">org_type_other</a>(): u8 { <a href="../social_contracts/memory.md#social_contracts_memory_ORG_TYPE_OTHER">ORG_TYPE_OTHER</a> }
+</code></pre>
+
+
+
+</details>
+
+<a name="social_contracts_memory_org_type_count"></a>
+
+## Function `org_type_count`
+
+
+
+<pre><code><b>public</b> <b>fun</b> <a href="../social_contracts/memory.md#social_contracts_memory_org_type_count">org_type_count</a>(): u8
+</code></pre>
+
+
+
+<details>
+<summary>Implementation</summary>
+
+
+<pre><code><b>public</b> <b>fun</b> <a href="../social_contracts/memory.md#social_contracts_memory_org_type_count">org_type_count</a>(): u8 { <a href="../social_contracts/memory.md#social_contracts_memory_ORG_TYPE_COUNT">ORG_TYPE_COUNT</a> }
+</code></pre>
+
+
+
+</details>
+
+<a name="social_contracts_memory_max_organizations_per_user"></a>
+
+## Function `max_organizations_per_user`
+
+
+
+<pre><code><b>public</b> <b>fun</b> <a href="../social_contracts/memory.md#social_contracts_memory_max_organizations_per_user">max_organizations_per_user</a>(): u8
+</code></pre>
+
+
+
+<details>
+<summary>Implementation</summary>
+
+
+<pre><code><b>public</b> <b>fun</b> <a href="../social_contracts/memory.md#social_contracts_memory_max_organizations_per_user">max_organizations_per_user</a>(): u8 { <a href="../social_contracts/memory.md#social_contracts_memory_MAX_ORGANIZATIONS_PER_USER">MAX_ORGANIZATIONS_PER_USER</a> }
 </code></pre>
 
 
@@ -2266,6 +3240,150 @@ Human root plus on-chain agent auth index (shared [<code><a href="../social_cont
 
 </details>
 
+<a name="social_contracts_memory_organization_id"></a>
+
+## Function `organization_id`
+
+
+
+<pre><code><b>public</b> <b>fun</b> <a href="../social_contracts/memory.md#social_contracts_memory_organization_id">organization_id</a>(org: &<a href="../social_contracts/memory.md#social_contracts_memory_AgenticOrganization">social_contracts::memory::AgenticOrganization</a>): <a href="../myso/object.md#myso_object_ID">myso::object::ID</a>
+</code></pre>
+
+
+
+<details>
+<summary>Implementation</summary>
+
+
+<pre><code><b>public</b> <b>fun</b> <a href="../social_contracts/memory.md#social_contracts_memory_organization_id">organization_id</a>(org: &<a href="../social_contracts/memory.md#social_contracts_memory_AgenticOrganization">AgenticOrganization</a>): ID {
+    object::id(org)
+}
+</code></pre>
+
+
+
+</details>
+
+<a name="social_contracts_memory_sub_agent_organization_id"></a>
+
+## Function `sub_agent_organization_id`
+
+
+
+<pre><code><b>public</b> <b>fun</b> <a href="../social_contracts/memory.md#social_contracts_memory_sub_agent_organization_id">sub_agent_organization_id</a>(agent: &<a href="../social_contracts/memory.md#social_contracts_memory_SubAgent">social_contracts::memory::SubAgent</a>): <a href="../myso/object.md#myso_object_ID">myso::object::ID</a>
+</code></pre>
+
+
+
+<details>
+<summary>Implementation</summary>
+
+
+<pre><code><b>public</b> <b>fun</b> <a href="../social_contracts/memory.md#social_contracts_memory_sub_agent_organization_id">sub_agent_organization_id</a>(agent: &<a href="../social_contracts/memory.md#social_contracts_memory_SubAgent">SubAgent</a>): ID {
+    agent.<a href="../social_contracts/memory.md#social_contracts_memory_organization_id">organization_id</a>
+}
+</code></pre>
+
+
+
+</details>
+
+<a name="social_contracts_memory_organization_org_type"></a>
+
+## Function `organization_org_type`
+
+
+
+<pre><code><b>public</b> <b>fun</b> <a href="../social_contracts/memory.md#social_contracts_memory_organization_org_type">organization_org_type</a>(org: &<a href="../social_contracts/memory.md#social_contracts_memory_AgenticOrganization">social_contracts::memory::AgenticOrganization</a>): u8
+</code></pre>
+
+
+
+<details>
+<summary>Implementation</summary>
+
+
+<pre><code><b>public</b> <b>fun</b> <a href="../social_contracts/memory.md#social_contracts_memory_organization_org_type">organization_org_type</a>(org: &<a href="../social_contracts/memory.md#social_contracts_memory_AgenticOrganization">AgenticOrganization</a>): u8 {
+    org.org_type
+}
+</code></pre>
+
+
+
+</details>
+
+<a name="social_contracts_memory_organization_root_agent_id"></a>
+
+## Function `organization_root_agent_id`
+
+
+
+<pre><code><b>public</b> <b>fun</b> <a href="../social_contracts/memory.md#social_contracts_memory_organization_root_agent_id">organization_root_agent_id</a>(org: &<a href="../social_contracts/memory.md#social_contracts_memory_AgenticOrganization">social_contracts::memory::AgenticOrganization</a>): <a href="../std/option.md#std_option_Option">std::option::Option</a>&lt;<a href="../myso/object.md#myso_object_ID">myso::object::ID</a>&gt;
+</code></pre>
+
+
+
+<details>
+<summary>Implementation</summary>
+
+
+<pre><code><b>public</b> <b>fun</b> <a href="../social_contracts/memory.md#social_contracts_memory_organization_root_agent_id">organization_root_agent_id</a>(org: &<a href="../social_contracts/memory.md#social_contracts_memory_AgenticOrganization">AgenticOrganization</a>): Option&lt;ID&gt; {
+    org.root_agent_id
+}
+</code></pre>
+
+
+
+</details>
+
+<a name="social_contracts_memory_organization_name"></a>
+
+## Function `organization_name`
+
+
+
+<pre><code><b>public</b> <b>fun</b> <a href="../social_contracts/memory.md#social_contracts_memory_organization_name">organization_name</a>(org: &<a href="../social_contracts/memory.md#social_contracts_memory_AgenticOrganization">social_contracts::memory::AgenticOrganization</a>): &<a href="../std/option.md#std_option_Option">std::option::Option</a>&lt;<a href="../std/string.md#std_string_String">std::string::String</a>&gt;
+</code></pre>
+
+
+
+<details>
+<summary>Implementation</summary>
+
+
+<pre><code><b>public</b> <b>fun</b> <a href="../social_contracts/memory.md#social_contracts_memory_organization_name">organization_name</a>(org: &<a href="../social_contracts/memory.md#social_contracts_memory_AgenticOrganization">AgenticOrganization</a>): &Option&lt;String&gt; {
+    &org.name
+}
+</code></pre>
+
+
+
+</details>
+
+<a name="social_contracts_memory_organization_description"></a>
+
+## Function `organization_description`
+
+
+
+<pre><code><b>public</b> <b>fun</b> <a href="../social_contracts/memory.md#social_contracts_memory_organization_description">organization_description</a>(org: &<a href="../social_contracts/memory.md#social_contracts_memory_AgenticOrganization">social_contracts::memory::AgenticOrganization</a>): &<a href="../std/option.md#std_option_Option">std::option::Option</a>&lt;<a href="../std/string.md#std_string_String">std::string::String</a>&gt;
+</code></pre>
+
+
+
+<details>
+<summary>Implementation</summary>
+
+
+<pre><code><b>public</b> <b>fun</b> <a href="../social_contracts/memory.md#social_contracts_memory_organization_description">organization_description</a>(org: &<a href="../social_contracts/memory.md#social_contracts_memory_AgenticOrganization">AgenticOrganization</a>): &Option&lt;String&gt; {
+    &org.description
+}
+</code></pre>
+
+
+
+</details>
+
 <a name="social_contracts_memory_bootstrap_init"></a>
 
 ## Function `bootstrap_init`
@@ -2327,6 +3445,8 @@ Human root plus on-chain agent auth index (shared [<code><a href="../social_cont
         active: <b>true</b>,
         agents: table::new(ctx),
         agent_ids: table::new(ctx),
+        organizations: table::new(ctx),
+        org_count: 0,
     };
     <a href="../social_contracts/memory.md#social_contracts_memory_set_version">set_version</a>(&<b>mut</b> account.id, <a href="../social_contracts/memory.md#social_contracts_memory_VERSION">VERSION</a>);
     <b>let</b> account_id = object::id(&account);
@@ -2386,14 +3506,253 @@ before calling [<code><a href="../social_contracts/profile.md#social_contracts_p
 
 </details>
 
+<a name="social_contracts_memory_create_agentic_organization"></a>
+
+## Function `create_agentic_organization`
+
+Human owner creates a competitive agentic organization (max 8 per account).
+
+
+<pre><code><b>public</b> <b>entry</b> <b>fun</b> <a href="../social_contracts/memory.md#social_contracts_memory_create_agentic_organization">create_agentic_organization</a>(account: &<b>mut</b> <a href="../social_contracts/memory.md#social_contracts_memory_MemoryAccount">social_contracts::memory::MemoryAccount</a>, org_type: u8, name: <a href="../std/option.md#std_option_Option">std::option::Option</a>&lt;<a href="../std/string.md#std_string_String">std::string::String</a>&gt;, description: <a href="../std/option.md#std_option_Option">std::option::Option</a>&lt;<a href="../std/string.md#std_string_String">std::string::String</a>&gt;, clock: &<a href="../myso/clock.md#myso_clock_Clock">myso::clock::Clock</a>, ctx: &<b>mut</b> <a href="../myso/tx_context.md#myso_tx_context_TxContext">myso::tx_context::TxContext</a>)
+</code></pre>
+
+
+
+<details>
+<summary>Implementation</summary>
+
+
+<pre><code><b>public</b> <b>entry</b> <b>fun</b> <a href="../social_contracts/memory.md#social_contracts_memory_create_agentic_organization">create_agentic_organization</a>(
+    account: &<b>mut</b> <a href="../social_contracts/memory.md#social_contracts_memory_MemoryAccount">MemoryAccount</a>,
+    org_type: u8,
+    name: Option&lt;String&gt;,
+    description: Option&lt;String&gt;,
+    clock: &Clock,
+    ctx: &<b>mut</b> TxContext,
+) {
+    <b>assert</b>!(tx_context::sender(ctx) == account.<a href="../social_contracts/memory.md#social_contracts_memory_owner">owner</a>, <a href="../social_contracts/memory.md#social_contracts_memory_ENotOwner">ENotOwner</a>);
+    <b>let</b> _ = <a href="../social_contracts/memory.md#social_contracts_memory_create_agentic_organization_internal">create_agentic_organization_internal</a>(account, org_type, name, description, clock, ctx);
+}
+</code></pre>
+
+
+
+</details>
+
+<a name="social_contracts_memory_create_agentic_organization_internal"></a>
+
+## Function `create_agentic_organization_internal`
+
+
+
+<pre><code><b>public</b>(package) <b>fun</b> <a href="../social_contracts/memory.md#social_contracts_memory_create_agentic_organization_internal">create_agentic_organization_internal</a>(account: &<b>mut</b> <a href="../social_contracts/memory.md#social_contracts_memory_MemoryAccount">social_contracts::memory::MemoryAccount</a>, org_type: u8, name: <a href="../std/option.md#std_option_Option">std::option::Option</a>&lt;<a href="../std/string.md#std_string_String">std::string::String</a>&gt;, description: <a href="../std/option.md#std_option_Option">std::option::Option</a>&lt;<a href="../std/string.md#std_string_String">std::string::String</a>&gt;, clock: &<a href="../myso/clock.md#myso_clock_Clock">myso::clock::Clock</a>, ctx: &<b>mut</b> <a href="../myso/tx_context.md#myso_tx_context_TxContext">myso::tx_context::TxContext</a>): <a href="../myso/object.md#myso_object_ID">myso::object::ID</a>
+</code></pre>
+
+
+
+<details>
+<summary>Implementation</summary>
+
+
+<pre><code><b>public</b>(package) <b>fun</b> <a href="../social_contracts/memory.md#social_contracts_memory_create_agentic_organization_internal">create_agentic_organization_internal</a>(
+    account: &<b>mut</b> <a href="../social_contracts/memory.md#social_contracts_memory_MemoryAccount">MemoryAccount</a>,
+    org_type: u8,
+    name: Option&lt;String&gt;,
+    description: Option&lt;String&gt;,
+    clock: &Clock,
+    ctx: &<b>mut</b> TxContext,
+): ID {
+    <a href="../social_contracts/memory.md#social_contracts_memory_assert_object_version">assert_object_version</a>(&account.id);
+    <b>assert</b>!(account.active, <a href="../social_contracts/memory.md#social_contracts_memory_EAccountDeactivated">EAccountDeactivated</a>);
+    <a href="../social_contracts/memory.md#social_contracts_memory_assert_valid_org_type">assert_valid_org_type</a>(org_type);
+    <a href="../social_contracts/memory.md#social_contracts_memory_assert_org_name_within_limit">assert_org_name_within_limit</a>(&name);
+    <a href="../social_contracts/memory.md#social_contracts_memory_assert_org_description_within_limit">assert_org_description_within_limit</a>(&description);
+    <b>assert</b>!(account.org_count &lt; <a href="../social_contracts/memory.md#social_contracts_memory_MAX_ORGANIZATIONS_PER_USER">MAX_ORGANIZATIONS_PER_USER</a>, <a href="../social_contracts/memory.md#social_contracts_memory_EOrganizationLimitExceeded">EOrganizationLimitExceeded</a>);
+    <b>let</b> org = <a href="../social_contracts/memory.md#social_contracts_memory_AgenticOrganization">AgenticOrganization</a> {
+        id: object::new(ctx),
+        memory_account_id: object::id(account),
+        principal_owner: account.<a href="../social_contracts/memory.md#social_contracts_memory_owner">owner</a>,
+        <a href="../social_contracts/memory.md#social_contracts_memory_profile_id">profile_id</a>: account.<a href="../social_contracts/memory.md#social_contracts_memory_profile_id">profile_id</a>,
+        name,
+        description,
+        org_type,
+        root_agent_id: option::none(),
+        active: <b>true</b>,
+        created_at: clock::timestamp_ms(clock),
+        deactivated_at: option::none(),
+        category_updated_at: option::none(),
+    };
+    <b>let</b> <a href="../social_contracts/memory.md#social_contracts_memory_organization_id">organization_id</a> = object::id(&org);
+    table::add(
+        &<b>mut</b> account.organizations,
+        <a href="../social_contracts/memory.md#social_contracts_memory_organization_id">organization_id</a>,
+        <a href="../social_contracts/memory.md#social_contracts_memory_OrgRegistryEntry">OrgRegistryEntry</a> { active: <b>true</b> },
+    );
+    account.org_count = account.org_count + 1;
+    event::emit(<a href="../social_contracts/memory.md#social_contracts_memory_AgenticOrganizationCreated">AgenticOrganizationCreated</a> {
+        <a href="../social_contracts/memory.md#social_contracts_memory_organization_id">organization_id</a>,
+        account_id: object::id(account),
+        principal_owner: account.<a href="../social_contracts/memory.md#social_contracts_memory_owner">owner</a>,
+        <a href="../social_contracts/memory.md#social_contracts_memory_profile_id">profile_id</a>: account.<a href="../social_contracts/memory.md#social_contracts_memory_profile_id">profile_id</a>,
+        name: org.name,
+        description: org.description,
+        org_type: org.org_type,
+        created_at: org.created_at,
+    });
+    transfer::share_object(org);
+    <a href="../social_contracts/memory.md#social_contracts_memory_organization_id">organization_id</a>
+}
+</code></pre>
+
+
+
+</details>
+
+<a name="social_contracts_memory_update_agentic_organization_metadata"></a>
+
+## Function `update_agentic_organization_metadata`
+
+
+
+<pre><code><b>public</b> <b>entry</b> <b>fun</b> <a href="../social_contracts/memory.md#social_contracts_memory_update_agentic_organization_metadata">update_agentic_organization_metadata</a>(account: &<a href="../social_contracts/memory.md#social_contracts_memory_MemoryAccount">social_contracts::memory::MemoryAccount</a>, org: &<b>mut</b> <a href="../social_contracts/memory.md#social_contracts_memory_AgenticOrganization">social_contracts::memory::AgenticOrganization</a>, name: <a href="../std/option.md#std_option_Option">std::option::Option</a>&lt;<a href="../std/string.md#std_string_String">std::string::String</a>&gt;, description: <a href="../std/option.md#std_option_Option">std::option::Option</a>&lt;<a href="../std/string.md#std_string_String">std::string::String</a>&gt;, ctx: &<a href="../myso/tx_context.md#myso_tx_context_TxContext">myso::tx_context::TxContext</a>)
+</code></pre>
+
+
+
+<details>
+<summary>Implementation</summary>
+
+
+<pre><code><b>public</b> <b>entry</b> <b>fun</b> <a href="../social_contracts/memory.md#social_contracts_memory_update_agentic_organization_metadata">update_agentic_organization_metadata</a>(
+    account: &<a href="../social_contracts/memory.md#social_contracts_memory_MemoryAccount">MemoryAccount</a>,
+    org: &<b>mut</b> <a href="../social_contracts/memory.md#social_contracts_memory_AgenticOrganization">AgenticOrganization</a>,
+    name: Option&lt;String&gt;,
+    description: Option&lt;String&gt;,
+    ctx: &TxContext,
+) {
+    <a href="../social_contracts/memory.md#social_contracts_memory_assert_object_version">assert_object_version</a>(&account.id);
+    <b>assert</b>!(tx_context::sender(ctx) == account.<a href="../social_contracts/memory.md#social_contracts_memory_owner">owner</a>, <a href="../social_contracts/memory.md#social_contracts_memory_ENotOwner">ENotOwner</a>);
+    <a href="../social_contracts/memory.md#social_contracts_memory_assert_organization_belongs_to_account">assert_organization_belongs_to_account</a>(account, org);
+    <b>assert</b>!(org.active, <a href="../social_contracts/memory.md#social_contracts_memory_EOrganizationNotActive">EOrganizationNotActive</a>);
+    <a href="../social_contracts/memory.md#social_contracts_memory_assert_org_name_within_limit">assert_org_name_within_limit</a>(&name);
+    <a href="../social_contracts/memory.md#social_contracts_memory_assert_org_description_within_limit">assert_org_description_within_limit</a>(&description);
+    org.name = name;
+    org.description = description;
+    event::emit(<a href="../social_contracts/memory.md#social_contracts_memory_AgenticOrganizationUpdated">AgenticOrganizationUpdated</a> {
+        <a href="../social_contracts/memory.md#social_contracts_memory_organization_id">organization_id</a>: object::id(org),
+        name: org.name,
+        description: org.description,
+    });
+}
+</code></pre>
+
+
+
+</details>
+
+<a name="social_contracts_memory_update_agentic_organization_category"></a>
+
+## Function `update_agentic_organization_category`
+
+
+
+<pre><code><b>public</b> <b>entry</b> <b>fun</b> <a href="../social_contracts/memory.md#social_contracts_memory_update_agentic_organization_category">update_agentic_organization_category</a>(account: &<a href="../social_contracts/memory.md#social_contracts_memory_MemoryAccount">social_contracts::memory::MemoryAccount</a>, org: &<b>mut</b> <a href="../social_contracts/memory.md#social_contracts_memory_AgenticOrganization">social_contracts::memory::AgenticOrganization</a>, org_type: u8, clock: &<a href="../myso/clock.md#myso_clock_Clock">myso::clock::Clock</a>, ctx: &<a href="../myso/tx_context.md#myso_tx_context_TxContext">myso::tx_context::TxContext</a>)
+</code></pre>
+
+
+
+<details>
+<summary>Implementation</summary>
+
+
+<pre><code><b>public</b> <b>entry</b> <b>fun</b> <a href="../social_contracts/memory.md#social_contracts_memory_update_agentic_organization_category">update_agentic_organization_category</a>(
+    account: &<a href="../social_contracts/memory.md#social_contracts_memory_MemoryAccount">MemoryAccount</a>,
+    org: &<b>mut</b> <a href="../social_contracts/memory.md#social_contracts_memory_AgenticOrganization">AgenticOrganization</a>,
+    org_type: u8,
+    clock: &Clock,
+    ctx: &TxContext,
+) {
+    <a href="../social_contracts/memory.md#social_contracts_memory_assert_object_version">assert_object_version</a>(&account.id);
+    <b>assert</b>!(tx_context::sender(ctx) == account.<a href="../social_contracts/memory.md#social_contracts_memory_owner">owner</a>, <a href="../social_contracts/memory.md#social_contracts_memory_ENotOwner">ENotOwner</a>);
+    <a href="../social_contracts/memory.md#social_contracts_memory_assert_organization_belongs_to_account">assert_organization_belongs_to_account</a>(account, org);
+    <b>assert</b>!(org.active, <a href="../social_contracts/memory.md#social_contracts_memory_EOrganizationNotActive">EOrganizationNotActive</a>);
+    <a href="../social_contracts/memory.md#social_contracts_memory_assert_valid_org_type">assert_valid_org_type</a>(org_type);
+    <b>if</b> (option::is_some(&org.category_updated_at)) {
+        <b>let</b> last = *option::borrow(&org.category_updated_at);
+        <b>assert</b>!(
+            clock::timestamp_ms(clock) &gt;= last + <a href="../social_contracts/memory.md#social_contracts_memory_ORG_CATEGORY_UPDATE_COOLDOWN_MS">ORG_CATEGORY_UPDATE_COOLDOWN_MS</a>,
+            <a href="../social_contracts/memory.md#social_contracts_memory_EOrgCategoryUpdateCooldown">EOrgCategoryUpdateCooldown</a>,
+        );
+    };
+    <b>let</b> previous_org_type = org.org_type;
+    org.org_type = org_type;
+    org.category_updated_at = option::some(clock::timestamp_ms(clock));
+    event::emit(<a href="../social_contracts/memory.md#social_contracts_memory_AgenticOrganizationCategoryUpdated">AgenticOrganizationCategoryUpdated</a> {
+        <a href="../social_contracts/memory.md#social_contracts_memory_organization_id">organization_id</a>: object::id(org),
+        org_type,
+        previous_org_type,
+        updated_at: clock::timestamp_ms(clock),
+    });
+}
+</code></pre>
+
+
+
+</details>
+
+<a name="social_contracts_memory_deactivate_agentic_organization"></a>
+
+## Function `deactivate_agentic_organization`
+
+
+
+<pre><code><b>public</b> <b>entry</b> <b>fun</b> <a href="../social_contracts/memory.md#social_contracts_memory_deactivate_agentic_organization">deactivate_agentic_organization</a>(account: &<b>mut</b> <a href="../social_contracts/memory.md#social_contracts_memory_MemoryAccount">social_contracts::memory::MemoryAccount</a>, org: &<b>mut</b> <a href="../social_contracts/memory.md#social_contracts_memory_AgenticOrganization">social_contracts::memory::AgenticOrganization</a>, clock: &<a href="../myso/clock.md#myso_clock_Clock">myso::clock::Clock</a>, ctx: &<a href="../myso/tx_context.md#myso_tx_context_TxContext">myso::tx_context::TxContext</a>)
+</code></pre>
+
+
+
+<details>
+<summary>Implementation</summary>
+
+
+<pre><code><b>public</b> <b>entry</b> <b>fun</b> <a href="../social_contracts/memory.md#social_contracts_memory_deactivate_agentic_organization">deactivate_agentic_organization</a>(
+    account: &<b>mut</b> <a href="../social_contracts/memory.md#social_contracts_memory_MemoryAccount">MemoryAccount</a>,
+    org: &<b>mut</b> <a href="../social_contracts/memory.md#social_contracts_memory_AgenticOrganization">AgenticOrganization</a>,
+    clock: &Clock,
+    ctx: &TxContext,
+) {
+    <a href="../social_contracts/memory.md#social_contracts_memory_assert_object_version">assert_object_version</a>(&account.id);
+    <b>assert</b>!(tx_context::sender(ctx) == account.<a href="../social_contracts/memory.md#social_contracts_memory_owner">owner</a>, <a href="../social_contracts/memory.md#social_contracts_memory_ENotOwner">ENotOwner</a>);
+    <a href="../social_contracts/memory.md#social_contracts_memory_assert_organization_belongs_to_account">assert_organization_belongs_to_account</a>(account, org);
+    <b>if</b> (!org.active) {
+        <b>return</b>
+    };
+    org.active = <b>false</b>;
+    org.deactivated_at = option::some(clock::timestamp_ms(clock));
+    <b>let</b> <a href="../social_contracts/memory.md#social_contracts_memory_organization_id">organization_id</a> = object::id(org);
+    <b>if</b> (table::contains(&account.organizations, <a href="../social_contracts/memory.md#social_contracts_memory_organization_id">organization_id</a>)) {
+        <b>let</b> <b>entry</b> = table::borrow_mut(&<b>mut</b> account.organizations, <a href="../social_contracts/memory.md#social_contracts_memory_organization_id">organization_id</a>);
+        <b>entry</b>.active = <b>false</b>;
+    };
+    event::emit(<a href="../social_contracts/memory.md#social_contracts_memory_AgenticOrganizationDeactivated">AgenticOrganizationDeactivated</a> {
+        <a href="../social_contracts/memory.md#social_contracts_memory_organization_id">organization_id</a>,
+        deactivated_at: clock::timestamp_ms(clock),
+    });
+}
+</code></pre>
+
+
+
+</details>
+
 <a name="social_contracts_memory_register_sub_agent"></a>
 
 ## Function `register_sub_agent`
 
-Human owner registers a root-level sub-agent.
+Human owner registers a root-level sub-agent bound to an organization.
 
 
-<pre><code><b>public</b> <b>entry</b> <b>fun</b> <a href="../social_contracts/memory.md#social_contracts_memory_register_sub_agent">register_sub_agent</a>(account: &<b>mut</b> <a href="../social_contracts/memory.md#social_contracts_memory_MemoryAccount">social_contracts::memory::MemoryAccount</a>, public_key: vector&lt;u8&gt;, derived_address: <b>address</b>, label: <a href="../std/string.md#std_string_String">std::string::String</a>, identity_class: u8, role_tags: u64, capabilities: u64, delegatable_caps: u64, register_scope: u8, approval_required_caps: u64, max_action_spend: <a href="../std/option.md#std_option_Option">std::option::Option</a>&lt;u64&gt;, platform_scope: <a href="../std/option.md#std_option_Option">std::option::Option</a>&lt;<b>address</b>&gt;, expires_at: <a href="../std/option.md#std_option_Option">std::option::Option</a>&lt;u64&gt;, clock: &<a href="../myso/clock.md#myso_clock_Clock">myso::clock::Clock</a>, ctx: &<b>mut</b> <a href="../myso/tx_context.md#myso_tx_context_TxContext">myso::tx_context::TxContext</a>)
+<pre><code><b>public</b> <b>entry</b> <b>fun</b> <a href="../social_contracts/memory.md#social_contracts_memory_register_sub_agent">register_sub_agent</a>(account: &<b>mut</b> <a href="../social_contracts/memory.md#social_contracts_memory_MemoryAccount">social_contracts::memory::MemoryAccount</a>, organization: &<b>mut</b> <a href="../social_contracts/memory.md#social_contracts_memory_AgenticOrganization">social_contracts::memory::AgenticOrganization</a>, public_key: vector&lt;u8&gt;, derived_address: <b>address</b>, label: <a href="../std/string.md#std_string_String">std::string::String</a>, identity_class: u8, role_tags: u64, capabilities: u64, delegatable_caps: u64, register_scope: u8, approval_required_caps: u64, max_action_spend: <a href="../std/option.md#std_option_Option">std::option::Option</a>&lt;u64&gt;, platform_scope: <a href="../std/option.md#std_option_Option">std::option::Option</a>&lt;<b>address</b>&gt;, expires_at: <a href="../std/option.md#std_option_Option">std::option::Option</a>&lt;u64&gt;, clock: &<a href="../myso/clock.md#myso_clock_Clock">myso::clock::Clock</a>, ctx: &<b>mut</b> <a href="../myso/tx_context.md#myso_tx_context_TxContext">myso::tx_context::TxContext</a>)
 </code></pre>
 
 
@@ -2404,6 +3763,7 @@ Human owner registers a root-level sub-agent.
 
 <pre><code><b>public</b> <b>entry</b> <b>fun</b> <a href="../social_contracts/memory.md#social_contracts_memory_register_sub_agent">register_sub_agent</a>(
     account: &<b>mut</b> <a href="../social_contracts/memory.md#social_contracts_memory_MemoryAccount">MemoryAccount</a>,
+    organization: &<b>mut</b> <a href="../social_contracts/memory.md#social_contracts_memory_AgenticOrganization">AgenticOrganization</a>,
     public_key: vector&lt;u8&gt;,
     derived_address: <b>address</b>,
     label: String,
@@ -2420,8 +3780,10 @@ Human owner registers a root-level sub-agent.
     ctx: &<b>mut</b> TxContext,
 ) {
     <b>assert</b>!(tx_context::sender(ctx) == account.<a href="../social_contracts/memory.md#social_contracts_memory_owner">owner</a>, <a href="../social_contracts/memory.md#social_contracts_memory_ENotOwner">ENotOwner</a>);
+    <a href="../social_contracts/memory.md#social_contracts_memory_assert_organization_ready_for_root">assert_organization_ready_for_root</a>(account, organization);
     <a href="../social_contracts/memory.md#social_contracts_memory_register_sub_agent_internal">register_sub_agent_internal</a>(
         account,
+        organization,
         public_key,
         derived_address,
         label,
@@ -2943,6 +4305,7 @@ Lazy-create per-agent memory vault derived from the sub-agent object.
         principal_profile_id: root.<a href="../social_contracts/memory.md#social_contracts_memory_profile_id">profile_id</a>,
         actor_address: root.<a href="../social_contracts/memory.md#social_contracts_memory_owner">owner</a>,
         sub_agent_id: option::none(),
+        <a href="../social_contracts/memory.md#social_contracts_memory_organization_id">organization_id</a>: option::none(),
         identity_class: <a href="../social_contracts/memory.md#social_contracts_memory_CLASS_HUMAN">CLASS_HUMAN</a>,
         parent_object_id: option::none(),
         depth: 0,
@@ -2988,6 +4351,7 @@ Lazy-create per-agent memory vault derived from the sub-agent object.
         principal_profile_id: root.<a href="../social_contracts/memory.md#social_contracts_memory_profile_id">profile_id</a>,
         actor_address: sender,
         sub_agent_id: option::some(<b>entry</b>.<a href="../social_contracts/memory.md#social_contracts_memory_agent_object_id">agent_object_id</a>),
+        <a href="../social_contracts/memory.md#social_contracts_memory_organization_id">organization_id</a>: option::some(<b>entry</b>.<a href="../social_contracts/memory.md#social_contracts_memory_organization_id">organization_id</a>),
         identity_class: <b>entry</b>.identity_class,
         parent_object_id: <b>entry</b>.parent_object_id,
         depth: <b>entry</b>.depth,
@@ -3573,6 +4937,28 @@ Per-transaction MYSO (MIST) spend ceiling for sub-agents. Principal owner is exe
 
 </details>
 
+<a name="social_contracts_memory_acting_organization_id"></a>
+
+## Function `acting_organization_id`
+
+
+
+<pre><code><b>public</b> <b>fun</b> <a href="../social_contracts/memory.md#social_contracts_memory_acting_organization_id">acting_organization_id</a>(acting: &<a href="../social_contracts/memory.md#social_contracts_memory_ActingContext">social_contracts::memory::ActingContext</a>): <a href="../std/option.md#std_option_Option">std::option::Option</a>&lt;<a href="../myso/object.md#myso_object_ID">myso::object::ID</a>&gt;
+</code></pre>
+
+
+
+<details>
+<summary>Implementation</summary>
+
+
+<pre><code><b>public</b> <b>fun</b> <a href="../social_contracts/memory.md#social_contracts_memory_acting_organization_id">acting_organization_id</a>(acting: &<a href="../social_contracts/memory.md#social_contracts_memory_ActingContext">ActingContext</a>): Option&lt;ID&gt; { acting.<a href="../social_contracts/memory.md#social_contracts_memory_organization_id">organization_id</a> }
+</code></pre>
+
+
+
+</details>
+
 <a name="social_contracts_memory_has_account"></a>
 
 ## Function `has_account`
@@ -3863,7 +5249,7 @@ Per-transaction MYSO (MIST) spend ceiling for sub-agents. Principal owner is exe
 
 
 
-<pre><code><b>fun</b> <a href="../social_contracts/memory.md#social_contracts_memory_register_sub_agent_internal">register_sub_agent_internal</a>(account: &<b>mut</b> <a href="../social_contracts/memory.md#social_contracts_memory_MemoryAccount">social_contracts::memory::MemoryAccount</a>, public_key: vector&lt;u8&gt;, derived_address: <b>address</b>, label: <a href="../std/string.md#std_string_String">std::string::String</a>, identity_class: u8, role_tags: u64, capabilities: u64, delegatable_caps: u64, register_scope: u8, approval_required_caps: u64, max_action_spend: <a href="../std/option.md#std_option_Option">std::option::Option</a>&lt;u64&gt;, platform_scope: <a href="../std/option.md#std_option_Option">std::option::Option</a>&lt;<b>address</b>&gt;, expires_at: <a href="../std/option.md#std_option_Option">std::option::Option</a>&lt;u64&gt;, clock: &<a href="../myso/clock.md#myso_clock_Clock">myso::clock::Clock</a>, ctx: &<a href="../myso/tx_context.md#myso_tx_context_TxContext">myso::tx_context::TxContext</a>)
+<pre><code><b>fun</b> <a href="../social_contracts/memory.md#social_contracts_memory_register_sub_agent_internal">register_sub_agent_internal</a>(account: &<b>mut</b> <a href="../social_contracts/memory.md#social_contracts_memory_MemoryAccount">social_contracts::memory::MemoryAccount</a>, organization: &<b>mut</b> <a href="../social_contracts/memory.md#social_contracts_memory_AgenticOrganization">social_contracts::memory::AgenticOrganization</a>, public_key: vector&lt;u8&gt;, derived_address: <b>address</b>, label: <a href="../std/string.md#std_string_String">std::string::String</a>, identity_class: u8, role_tags: u64, capabilities: u64, delegatable_caps: u64, register_scope: u8, approval_required_caps: u64, max_action_spend: <a href="../std/option.md#std_option_Option">std::option::Option</a>&lt;u64&gt;, platform_scope: <a href="../std/option.md#std_option_Option">std::option::Option</a>&lt;<b>address</b>&gt;, expires_at: <a href="../std/option.md#std_option_Option">std::option::Option</a>&lt;u64&gt;, clock: &<a href="../myso/clock.md#myso_clock_Clock">myso::clock::Clock</a>, ctx: &<a href="../myso/tx_context.md#myso_tx_context_TxContext">myso::tx_context::TxContext</a>)
 </code></pre>
 
 
@@ -3874,6 +5260,7 @@ Per-transaction MYSO (MIST) spend ceiling for sub-agents. Principal owner is exe
 
 <pre><code><b>fun</b> <a href="../social_contracts/memory.md#social_contracts_memory_register_sub_agent_internal">register_sub_agent_internal</a>(
     account: &<b>mut</b> <a href="../social_contracts/memory.md#social_contracts_memory_MemoryAccount">MemoryAccount</a>,
+    organization: &<b>mut</b> <a href="../social_contracts/memory.md#social_contracts_memory_AgenticOrganization">AgenticOrganization</a>,
     public_key: vector&lt;u8&gt;,
     derived_address: <b>address</b>,
     label: String,
@@ -3889,8 +5276,10 @@ Per-transaction MYSO (MIST) spend ceiling for sub-agents. Principal owner is exe
     clock: &Clock,
     ctx: &TxContext,
 ) {
-    <a href="../social_contracts/memory.md#social_contracts_memory_finish_register_sub_agent">finish_register_sub_agent</a>(
+    <b>let</b> <a href="../social_contracts/memory.md#social_contracts_memory_organization_id">organization_id</a> = object::id(organization);
+    <b>let</b> agent_id = <a href="../social_contracts/memory.md#social_contracts_memory_finish_register_sub_agent">finish_register_sub_agent</a>(
         account,
+        <a href="../social_contracts/memory.md#social_contracts_memory_organization_id">organization_id</a>,
         public_key,
         derived_address,
         label,
@@ -3908,6 +5297,7 @@ Per-transaction MYSO (MIST) spend ceiling for sub-agents. Principal owner is exe
         tx_context::sender(ctx),
         clock,
     );
+    <a href="../social_contracts/memory.md#social_contracts_memory_bind_root_agent_to_organization">bind_root_agent_to_organization</a>(account, organization, agent_id);
 }
 </code></pre>
 
@@ -3959,6 +5349,7 @@ Per-transaction MYSO (MIST) spend ceiling for sub-agents. Principal owner is exe
     );
     <a href="../social_contracts/memory.md#social_contracts_memory_finish_register_sub_agent">finish_register_sub_agent</a>(
         account,
+        parent_agent.<a href="../social_contracts/memory.md#social_contracts_memory_organization_id">organization_id</a>,
         public_key,
         derived_address,
         label,
@@ -3989,7 +5380,7 @@ Per-transaction MYSO (MIST) spend ceiling for sub-agents. Principal owner is exe
 
 
 
-<pre><code><b>fun</b> <a href="../social_contracts/memory.md#social_contracts_memory_finish_register_sub_agent">finish_register_sub_agent</a>(account: &<b>mut</b> <a href="../social_contracts/memory.md#social_contracts_memory_MemoryAccount">social_contracts::memory::MemoryAccount</a>, public_key: vector&lt;u8&gt;, derived_address: <b>address</b>, label: <a href="../std/string.md#std_string_String">std::string::String</a>, identity_class: u8, role_tags: u64, capabilities: u64, delegatable_caps: u64, register_scope: u8, approval_required_caps: u64, max_action_spend: <a href="../std/option.md#std_option_Option">std::option::Option</a>&lt;u64&gt;, platform_scope: <a href="../std/option.md#std_option_Option">std::option::Option</a>&lt;<b>address</b>&gt;, expires_at: <a href="../std/option.md#std_option_Option">std::option::Option</a>&lt;u64&gt;, depth: u8, parent_object_id: <a href="../std/option.md#std_option_Option">std::option::Option</a>&lt;<a href="../myso/object.md#myso_object_ID">myso::object::ID</a>&gt;, registered_by: <b>address</b>, clock: &<a href="../myso/clock.md#myso_clock_Clock">myso::clock::Clock</a>)
+<pre><code><b>fun</b> <a href="../social_contracts/memory.md#social_contracts_memory_finish_register_sub_agent">finish_register_sub_agent</a>(account: &<b>mut</b> <a href="../social_contracts/memory.md#social_contracts_memory_MemoryAccount">social_contracts::memory::MemoryAccount</a>, <a href="../social_contracts/memory.md#social_contracts_memory_organization_id">organization_id</a>: <a href="../myso/object.md#myso_object_ID">myso::object::ID</a>, public_key: vector&lt;u8&gt;, derived_address: <b>address</b>, label: <a href="../std/string.md#std_string_String">std::string::String</a>, identity_class: u8, role_tags: u64, capabilities: u64, delegatable_caps: u64, register_scope: u8, approval_required_caps: u64, max_action_spend: <a href="../std/option.md#std_option_Option">std::option::Option</a>&lt;u64&gt;, platform_scope: <a href="../std/option.md#std_option_Option">std::option::Option</a>&lt;<b>address</b>&gt;, expires_at: <a href="../std/option.md#std_option_Option">std::option::Option</a>&lt;u64&gt;, depth: u8, parent_object_id: <a href="../std/option.md#std_option_Option">std::option::Option</a>&lt;<a href="../myso/object.md#myso_object_ID">myso::object::ID</a>&gt;, registered_by: <b>address</b>, clock: &<a href="../myso/clock.md#myso_clock_Clock">myso::clock::Clock</a>): <a href="../myso/object.md#myso_object_ID">myso::object::ID</a>
 </code></pre>
 
 
@@ -4000,6 +5391,7 @@ Per-transaction MYSO (MIST) spend ceiling for sub-agents. Principal owner is exe
 
 <pre><code><b>fun</b> <a href="../social_contracts/memory.md#social_contracts_memory_finish_register_sub_agent">finish_register_sub_agent</a>(
     account: &<b>mut</b> <a href="../social_contracts/memory.md#social_contracts_memory_MemoryAccount">MemoryAccount</a>,
+    <a href="../social_contracts/memory.md#social_contracts_memory_organization_id">organization_id</a>: ID,
     public_key: vector&lt;u8&gt;,
     derived_address: <b>address</b>,
     label: String,
@@ -4016,11 +5408,12 @@ Per-transaction MYSO (MIST) spend ceiling for sub-agents. Principal owner is exe
     parent_object_id: Option&lt;ID&gt;,
     registered_by: <b>address</b>,
     clock: &Clock,
-) {
+): ID {
     <a href="../social_contracts/memory.md#social_contracts_memory_assert_object_version">assert_object_version</a>(&account.id);
     <b>assert</b>!(account.active, <a href="../social_contracts/memory.md#social_contracts_memory_EAccountDeactivated">EAccountDeactivated</a>);
     <a href="../social_contracts/memory.md#social_contracts_memory_assert_valid_identity_class">assert_valid_identity_class</a>(identity_class);
     <a href="../social_contracts/memory.md#social_contracts_memory_assert_valid_register_scope">assert_valid_register_scope</a>(register_scope);
+    <b>assert</b>!(table::contains(&account.organizations, <a href="../social_contracts/memory.md#social_contracts_memory_organization_id">organization_id</a>), <a href="../social_contracts/memory.md#social_contracts_memory_EOrganizationNotFound">EOrganizationNotFound</a>);
     <b>assert</b>!(vector::length(&public_key) == <a href="../social_contracts/memory.md#social_contracts_memory_ED25519_PUBLIC_KEY_LENGTH">ED25519_PUBLIC_KEY_LENGTH</a>, <a href="../social_contracts/memory.md#social_contracts_memory_EInvalidPublicKeyLength">EInvalidPublicKeyLength</a>);
     <b>assert</b>!(string::length(&label) &lt;= <a href="../social_contracts/memory.md#social_contracts_memory_MAX_LABEL_LENGTH">MAX_LABEL_LENGTH</a>, <a href="../social_contracts/memory.md#social_contracts_memory_ELabelTooLong">ELabelTooLong</a>);
     <a href="../social_contracts/memory.md#social_contracts_memory_assert_scope_allowed_for_delegate">assert_scope_allowed_for_delegate</a>(option::none(), platform_scope);
@@ -4034,6 +5427,7 @@ Per-transaction MYSO (MIST) spend ceiling for sub-agents. Principal owner is exe
     <b>let</b> agent = <a href="../social_contracts/memory.md#social_contracts_memory_SubAgent">SubAgent</a> {
         id: agent_uid,
         memory_account_id: object::id(account),
+        <a href="../social_contracts/memory.md#social_contracts_memory_organization_id">organization_id</a>,
         principal_owner: account.<a href="../social_contracts/memory.md#social_contracts_memory_owner">owner</a>,
         <a href="../social_contracts/memory.md#social_contracts_memory_profile_id">profile_id</a>: account.<a href="../social_contracts/memory.md#social_contracts_memory_profile_id">profile_id</a>,
         derived_address,
@@ -4055,7 +5449,40 @@ Per-transaction MYSO (MIST) spend ceiling for sub-agents. Principal owner is exe
     };
     <a href="../social_contracts/memory.md#social_contracts_memory_emit_sub_agent_registered">emit_sub_agent_registered</a>(account, &agent);
     <a href="../social_contracts/memory.md#social_contracts_memory_insert_registry_entry">insert_registry_entry</a>(account, &agent);
+    <b>let</b> agent_id = object::id(&agent);
     transfer::share_object(agent);
+    agent_id
+}
+</code></pre>
+
+
+
+</details>
+
+<a name="social_contracts_memory_bind_root_agent_to_organization"></a>
+
+## Function `bind_root_agent_to_organization`
+
+
+
+<pre><code><b>fun</b> <a href="../social_contracts/memory.md#social_contracts_memory_bind_root_agent_to_organization">bind_root_agent_to_organization</a>(account: &<a href="../social_contracts/memory.md#social_contracts_memory_MemoryAccount">social_contracts::memory::MemoryAccount</a>, org: &<b>mut</b> <a href="../social_contracts/memory.md#social_contracts_memory_AgenticOrganization">social_contracts::memory::AgenticOrganization</a>, agent_id: <a href="../myso/object.md#myso_object_ID">myso::object::ID</a>)
+</code></pre>
+
+
+
+<details>
+<summary>Implementation</summary>
+
+
+<pre><code><b>fun</b> <a href="../social_contracts/memory.md#social_contracts_memory_bind_root_agent_to_organization">bind_root_agent_to_organization</a>(
+    account: &<a href="../social_contracts/memory.md#social_contracts_memory_MemoryAccount">MemoryAccount</a>,
+    org: &<b>mut</b> <a href="../social_contracts/memory.md#social_contracts_memory_AgenticOrganization">AgenticOrganization</a>,
+    agent_id: ID,
+) {
+    <a href="../social_contracts/memory.md#social_contracts_memory_assert_organization_belongs_to_account">assert_organization_belongs_to_account</a>(account, org);
+    <b>assert</b>!(org.active, <a href="../social_contracts/memory.md#social_contracts_memory_EOrganizationNotActive">EOrganizationNotActive</a>);
+    <b>assert</b>!(option::is_none(&org.root_agent_id), <a href="../social_contracts/memory.md#social_contracts_memory_EOrganizationHasRoot">EOrganizationHasRoot</a>);
+    org.root_agent_id = option::some(agent_id);
 }
 </code></pre>
 
@@ -4081,6 +5508,7 @@ Per-transaction MYSO (MIST) spend ceiling for sub-agents. Principal owner is exe
 <pre><code><b>fun</b> <a href="../social_contracts/memory.md#social_contracts_memory_registry_entry_from_agent">registry_entry_from_agent</a>(agent: &<a href="../social_contracts/memory.md#social_contracts_memory_SubAgent">SubAgent</a>): <a href="../social_contracts/memory.md#social_contracts_memory_AgentRegistryEntry">AgentRegistryEntry</a> {
     <a href="../social_contracts/memory.md#social_contracts_memory_AgentRegistryEntry">AgentRegistryEntry</a> {
         <a href="../social_contracts/memory.md#social_contracts_memory_agent_object_id">agent_object_id</a>: object::id(agent),
+        <a href="../social_contracts/memory.md#social_contracts_memory_organization_id">organization_id</a>: agent.<a href="../social_contracts/memory.md#social_contracts_memory_organization_id">organization_id</a>,
         parent_object_id: agent.parent_object_id,
         depth: agent.depth,
         active: agent.active,
@@ -4695,6 +6123,150 @@ Per-transaction MYSO (MIST) spend ceiling for sub-agents. Principal owner is exe
 
 </details>
 
+<a name="social_contracts_memory_assert_org_name_within_limit"></a>
+
+## Function `assert_org_name_within_limit`
+
+
+
+<pre><code><b>fun</b> <a href="../social_contracts/memory.md#social_contracts_memory_assert_org_name_within_limit">assert_org_name_within_limit</a>(name: &<a href="../std/option.md#std_option_Option">std::option::Option</a>&lt;<a href="../std/string.md#std_string_String">std::string::String</a>&gt;)
+</code></pre>
+
+
+
+<details>
+<summary>Implementation</summary>
+
+
+<pre><code><b>fun</b> <a href="../social_contracts/memory.md#social_contracts_memory_assert_org_name_within_limit">assert_org_name_within_limit</a>(name: &Option&lt;String&gt;) {
+    <b>if</b> (option::is_some(name)) {
+        <b>assert</b>!(
+            string::length(option::borrow(name)) &lt;= <a href="../social_contracts/memory.md#social_contracts_memory_MAX_ORG_NAME_LENGTH">MAX_ORG_NAME_LENGTH</a>,
+            <a href="../social_contracts/memory.md#social_contracts_memory_ENameTooLong">ENameTooLong</a>,
+        );
+    };
+}
+</code></pre>
+
+
+
+</details>
+
+<a name="social_contracts_memory_assert_org_description_within_limit"></a>
+
+## Function `assert_org_description_within_limit`
+
+
+
+<pre><code><b>fun</b> <a href="../social_contracts/memory.md#social_contracts_memory_assert_org_description_within_limit">assert_org_description_within_limit</a>(description: &<a href="../std/option.md#std_option_Option">std::option::Option</a>&lt;<a href="../std/string.md#std_string_String">std::string::String</a>&gt;)
+</code></pre>
+
+
+
+<details>
+<summary>Implementation</summary>
+
+
+<pre><code><b>fun</b> <a href="../social_contracts/memory.md#social_contracts_memory_assert_org_description_within_limit">assert_org_description_within_limit</a>(description: &Option&lt;String&gt;) {
+    <b>if</b> (option::is_some(description)) {
+        <b>assert</b>!(
+            string::length(option::borrow(description)) &lt;= <a href="../social_contracts/memory.md#social_contracts_memory_MAX_ORG_DESCRIPTION_LENGTH">MAX_ORG_DESCRIPTION_LENGTH</a>,
+            <a href="../social_contracts/memory.md#social_contracts_memory_EDescriptionTooLong">EDescriptionTooLong</a>,
+        );
+    };
+}
+</code></pre>
+
+
+
+</details>
+
+<a name="social_contracts_memory_assert_valid_org_type"></a>
+
+## Function `assert_valid_org_type`
+
+
+
+<pre><code><b>fun</b> <a href="../social_contracts/memory.md#social_contracts_memory_assert_valid_org_type">assert_valid_org_type</a>(org_type: u8)
+</code></pre>
+
+
+
+<details>
+<summary>Implementation</summary>
+
+
+<pre><code><b>fun</b> <a href="../social_contracts/memory.md#social_contracts_memory_assert_valid_org_type">assert_valid_org_type</a>(org_type: u8) {
+    <b>assert</b>!(org_type &lt; <a href="../social_contracts/memory.md#social_contracts_memory_ORG_TYPE_COUNT">ORG_TYPE_COUNT</a>, <a href="../social_contracts/memory.md#social_contracts_memory_EInvalidOrgType">EInvalidOrgType</a>);
+}
+</code></pre>
+
+
+
+</details>
+
+<a name="social_contracts_memory_assert_organization_belongs_to_account"></a>
+
+## Function `assert_organization_belongs_to_account`
+
+
+
+<pre><code><b>fun</b> <a href="../social_contracts/memory.md#social_contracts_memory_assert_organization_belongs_to_account">assert_organization_belongs_to_account</a>(account: &<a href="../social_contracts/memory.md#social_contracts_memory_MemoryAccount">social_contracts::memory::MemoryAccount</a>, org: &<a href="../social_contracts/memory.md#social_contracts_memory_AgenticOrganization">social_contracts::memory::AgenticOrganization</a>)
+</code></pre>
+
+
+
+<details>
+<summary>Implementation</summary>
+
+
+<pre><code><b>fun</b> <a href="../social_contracts/memory.md#social_contracts_memory_assert_organization_belongs_to_account">assert_organization_belongs_to_account</a>(
+    account: &<a href="../social_contracts/memory.md#social_contracts_memory_MemoryAccount">MemoryAccount</a>,
+    org: &<a href="../social_contracts/memory.md#social_contracts_memory_AgenticOrganization">AgenticOrganization</a>,
+) {
+    <b>assert</b>!(org.memory_account_id == object::id(account), <a href="../social_contracts/memory.md#social_contracts_memory_EOrganizationAccountMismatch">EOrganizationAccountMismatch</a>);
+    <b>assert</b>!(org.principal_owner == account.<a href="../social_contracts/memory.md#social_contracts_memory_owner">owner</a>, <a href="../social_contracts/memory.md#social_contracts_memory_EOrganizationAccountMismatch">EOrganizationAccountMismatch</a>);
+    <b>assert</b>!(org.<a href="../social_contracts/memory.md#social_contracts_memory_profile_id">profile_id</a> == account.<a href="../social_contracts/memory.md#social_contracts_memory_profile_id">profile_id</a>, <a href="../social_contracts/memory.md#social_contracts_memory_EOrganizationAccountMismatch">EOrganizationAccountMismatch</a>);
+    <b>assert</b>!(
+        table::contains(&account.organizations, object::id(org)),
+        <a href="../social_contracts/memory.md#social_contracts_memory_EOrganizationNotFound">EOrganizationNotFound</a>,
+    );
+}
+</code></pre>
+
+
+
+</details>
+
+<a name="social_contracts_memory_assert_organization_ready_for_root"></a>
+
+## Function `assert_organization_ready_for_root`
+
+
+
+<pre><code><b>fun</b> <a href="../social_contracts/memory.md#social_contracts_memory_assert_organization_ready_for_root">assert_organization_ready_for_root</a>(account: &<a href="../social_contracts/memory.md#social_contracts_memory_MemoryAccount">social_contracts::memory::MemoryAccount</a>, org: &<a href="../social_contracts/memory.md#social_contracts_memory_AgenticOrganization">social_contracts::memory::AgenticOrganization</a>)
+</code></pre>
+
+
+
+<details>
+<summary>Implementation</summary>
+
+
+<pre><code><b>fun</b> <a href="../social_contracts/memory.md#social_contracts_memory_assert_organization_ready_for_root">assert_organization_ready_for_root</a>(
+    account: &<a href="../social_contracts/memory.md#social_contracts_memory_MemoryAccount">MemoryAccount</a>,
+    org: &<a href="../social_contracts/memory.md#social_contracts_memory_AgenticOrganization">AgenticOrganization</a>,
+) {
+    <a href="../social_contracts/memory.md#social_contracts_memory_assert_organization_belongs_to_account">assert_organization_belongs_to_account</a>(account, org);
+    <b>assert</b>!(org.active, <a href="../social_contracts/memory.md#social_contracts_memory_EOrganizationNotActive">EOrganizationNotActive</a>);
+    <b>assert</b>!(option::is_none(&org.root_agent_id), <a href="../social_contracts/memory.md#social_contracts_memory_EOrganizationHasRoot">EOrganizationHasRoot</a>);
+}
+</code></pre>
+
+
+
+</details>
+
 <a name="social_contracts_memory_has_cap"></a>
 
 ## Function `has_cap`
@@ -4763,6 +6335,7 @@ Per-transaction MYSO (MIST) spend ceiling for sub-agents. Principal owner is exe
         account_id: object::id(account),
         principal_owner: account.<a href="../social_contracts/memory.md#social_contracts_memory_owner">owner</a>,
         <a href="../social_contracts/memory.md#social_contracts_memory_profile_id">profile_id</a>: account.<a href="../social_contracts/memory.md#social_contracts_memory_profile_id">profile_id</a>,
+        <a href="../social_contracts/memory.md#social_contracts_memory_organization_id">organization_id</a>: agent.<a href="../social_contracts/memory.md#social_contracts_memory_organization_id">organization_id</a>,
         <a href="../social_contracts/memory.md#social_contracts_memory_agent_object_id">agent_object_id</a>: object::id(agent),
         derived_address: agent.derived_address,
         label: agent.label,
@@ -4808,6 +6381,7 @@ Per-transaction MYSO (MIST) spend ceiling for sub-agents. Principal owner is exe
         account_id: object::id(account),
         principal_owner: account.<a href="../social_contracts/memory.md#social_contracts_memory_owner">owner</a>,
         <a href="../social_contracts/memory.md#social_contracts_memory_profile_id">profile_id</a>: account.<a href="../social_contracts/memory.md#social_contracts_memory_profile_id">profile_id</a>,
+        <a href="../social_contracts/memory.md#social_contracts_memory_organization_id">organization_id</a>: agent.<a href="../social_contracts/memory.md#social_contracts_memory_organization_id">organization_id</a>,
         <a href="../social_contracts/memory.md#social_contracts_memory_agent_object_id">agent_object_id</a>: object::id(agent),
         derived_address: agent.derived_address,
         label: agent.label,

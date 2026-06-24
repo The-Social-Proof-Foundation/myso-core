@@ -100,7 +100,18 @@ impl Container {
                     config.metrics_address
                 );
                 let admin_interface_port = config.admin_interface_port;
-                let server = MySoNode::start(config, registry_service).await.unwrap();
+                let metrics_address = config.metrics_address;
+                let network_address = config.network_address.clone();
+                let json_rpc_address = config.json_rpc_address;
+                let server = MySoNode::start(config, registry_service)
+                    .await
+                    .unwrap_or_else(|err| {
+                        panic!(
+                            "Failed to start MySo node (network={network_address}, \
+                             metrics={metrics_address}, json_rpc={json_rpc_address}, \
+                             admin={admin_interface_port}): {err}"
+                        );
+                    });
                 let admin_node = server.clone();
                 tokio::spawn(async move {
                     myso_node::admin::run_admin_server(admin_node, admin_interface_port, None).await;
@@ -114,7 +125,9 @@ impl Container {
             });
         }).unwrap();
 
-        let node = startup_receiver.await.unwrap();
+        let node = startup_receiver.await.expect(
+            "MySo node thread exited before signaling startup (see panic above for bind details)",
+        );
 
         Self {
             join_handle: Some(thread),

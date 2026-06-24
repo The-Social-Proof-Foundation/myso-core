@@ -23,7 +23,7 @@ module social_contracts::bootstrap {
     use social_contracts::mydata::{Self, MyDataAdminCap, MyDataPoolAdminCap};
     use social_contracts::social_proof_of_truth::{Self, SpotAdminCap, SpotOracleAdminCap};
     use social_contracts::insurance::{Self, InsuranceAdminCap};
-    use social_contracts::profile::{Self, EcosystemTreasuryAdminCap, EcosystemBadgeAdminCap};
+    use social_contracts::profile::{Self, EcosystemTreasuryAdminCap, EcosystemBadgeAdminCap, UsernameAdminCap};
     
     // Import framework coin module for coin creation admin cap
     use myso::coin::{Self, CoinCreationAdminCap};
@@ -69,6 +69,7 @@ module social_contracts::bootstrap {
         transfer::public_transfer(social_proof_of_truth::create_spot_oracle_admin_cap(ctx), admin);
         transfer::public_transfer(profile::create_ecosystem_treasury_admin_cap(ctx), admin);
         transfer::public_transfer(profile::create_ecosystem_badge_admin_cap(ctx), admin);
+        transfer::public_transfer(profile::create_username_admin_cap(ctx), admin);
         transfer::public_transfer(insurance::create_insurance_admin_cap(ctx), admin);
         transfer::public_transfer(coin::create_coin_creation_admin_cap_for_bootstrap(bootstrap_key, ctx), admin);
         transfer::public_transfer(package::create_package_publishing_admin_cap_for_bootstrap(bootstrap_key, ctx), admin);
