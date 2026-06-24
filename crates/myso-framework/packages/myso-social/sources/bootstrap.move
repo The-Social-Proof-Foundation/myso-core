@@ -43,18 +43,18 @@ module social_contracts::bootstrap {
         let admin = tx_context::sender(ctx);
         
         // Initialize shared objects
-        social_contracts::platform::bootstrap_init(ctx);
-        social_contracts::social_graph::bootstrap_init(ctx);
-        social_contracts::profile::bootstrap_init(ctx);
-        social_contracts::block_list::bootstrap_init(ctx);
-        social_contracts::mydata::bootstrap_init(ctx);
-        social_contracts::memory::bootstrap_init(ctx);
+        social_contracts::platform::bootstrap_init(clock, ctx);
+        social_contracts::social_graph::bootstrap_init(clock, ctx);
+        social_contracts::profile::bootstrap_init(clock, ctx);
+        social_contracts::block_list::bootstrap_init(clock, ctx);
+        social_contracts::mydata::bootstrap_init(clock, ctx);
+        social_contracts::memory::bootstrap_init(clock, ctx);
         let spot_governance_registry_id = social_contracts::governance::bootstrap_init(clock, ctx);
-        social_contracts::post::bootstrap_init(ctx);
-        social_contracts::social_proof_tokens::bootstrap_init(ctx);
-        social_contracts::proof_of_creativity::bootstrap_init(ctx);
+        social_contracts::post::bootstrap_init(clock, ctx);
+        social_contracts::social_proof_tokens::bootstrap_init(clock, ctx);
+        social_contracts::proof_of_creativity::bootstrap_init(clock, ctx);
         social_contracts::social_proof_of_truth::bootstrap_init(clock, spot_governance_registry_id, ctx);
-        social_contracts::insurance::bootstrap_init(ctx);
+        social_contracts::insurance::bootstrap_init(clock, ctx);
         
         // Create admin capabilities
         transfer::public_transfer(upgrade::create_upgrade_admin_cap(ctx), admin);

@@ -3,7 +3,7 @@
 
 //! Pipeline pattern follows myso-indexer-alt.
 
-use chrono::{TimeZone, Utc};
+use chrono::Utc;
 use serde::{Deserialize, Deserializer};
 use std::str::FromStr;
 
@@ -100,7 +100,7 @@ struct ProfileCreatedEvent {
         default = "default_timestamp",
         deserialize_with = "deserialize_number_from_string"
     )]
-    _created_at: u64,
+    created_at: u64,
 }
 
 /// Event emitted when a profile is updated. Aligned with Move ProfileUpdatedEvent.
@@ -192,8 +192,9 @@ struct ProfileXUsernameUpdatedEvent {
 }
 
 impl ProfileCreatedEvent {
-    fn into_model(&self) -> NewProfile {
-        let now = Utc::now().naive_utc();
+    fn into_model(&self, checkpoint_timestamp_ms: u64) -> NewProfile {
+        let ms = common::chain_timestamp_ms(Some(self.created_at as i64), checkpoint_timestamp_ms);
+        let now = common::chain_time_from_ms(ms).naive_utc();
 
         NewProfile {
             owner_address: self.owner_address.clone(),
@@ -247,25 +248,36 @@ pub fn handle_profile_event(
     event_name: &str,
     data: &serde_json::Value,
     event_id: &str,
+    checkpoint_timestamp_ms: u64,
 ) -> Option<Vec<SocialEventRow>> {
     match event_name {
-        "ProfileCreatedEvent" => process_profile_created_event(data, event_id),
-        "ProfileUpdatedEvent" => process_profile_updated_event(data, event_id),
-        "ProfileXUsernameUpdatedEvent" => process_profile_x_username_updated_event(data, event_id),
+        "ProfileCreatedEvent" => {
+            process_profile_created_event(data, event_id, checkpoint_timestamp_ms)
+        }
+        "ProfileUpdatedEvent" => {
+            process_profile_updated_event(data, event_id, checkpoint_timestamp_ms)
+        }
+        "ProfileXUsernameUpdatedEvent" => {
+            process_profile_x_username_updated_event(data, event_id, checkpoint_timestamp_ms)
+        }
         "UsernameClaimedEvent" => process_username_claimed_event(data, event_id),
         "UsernameRevokedEvent" => process_username_revoked_event(data, event_id),
         "UsernameReassignedEvent" => process_username_reassigned_event(data, event_id),
-        "BadgeAssignedEvent" => process_badge_assigned_event(data, event_id),
-        "BadgeRevokedEvent" => process_badge_revoked_event(data, event_id),
-        "BadgeRemovedEvent" => process_badge_removed_event(data, event_id),
+        "BadgeAssignedEvent" => process_badge_assigned_event(data, event_id, checkpoint_timestamp_ms),
+        "BadgeRevokedEvent" => process_badge_revoked_event(data, event_id, checkpoint_timestamp_ms),
+        "BadgeRemovedEvent" => process_badge_removed_event(data, event_id, checkpoint_timestamp_ms),
         "BadgeSelectedEvent" => process_badge_selected_event(data, event_id),
         "EcosystemBadgeSelectionClearedEvent" => {
             process_ecosystem_badge_selection_cleared_event(data, event_id)
         }
-        "TokensVestedEvent" => process_tokens_vested_event(data, event_id),
-        "TokensClaimedEvent" => process_tokens_claimed_event(data, event_id),
-        "VestingWalletDeletedEvent" => process_vesting_wallet_deleted_event(data, event_id),
-        "EcosystemTreasuryUpdatedEvent" => process_ecosystem_treasury_updated_event(data, event_id),
+        "TokensVestedEvent" => process_tokens_vested_event(data, event_id, checkpoint_timestamp_ms),
+        "TokensClaimedEvent" => process_tokens_claimed_event(data, event_id, checkpoint_timestamp_ms),
+        "VestingWalletDeletedEvent" => {
+            process_vesting_wallet_deleted_event(data, event_id, checkpoint_timestamp_ms)
+        }
+        "EcosystemTreasuryUpdatedEvent" => {
+            process_ecosystem_treasury_updated_event(data, event_id, checkpoint_timestamp_ms)
+        }
         "ProfileOfferCreatedEvent" => process_profile_offer_created_event(data, event_id),
         "ProfileOfferAcceptedEvent" => process_profile_offer_accepted_event(data, event_id),
         "ProfileOfferRejectedEvent" => process_profile_offer_rejected_event(data, event_id),
@@ -277,6 +289,7 @@ pub fn handle_profile_event(
 fn process_profile_created_event(
     data: &serde_json::Value,
     event_id: &str,
+    checkpoint_timestamp_ms: u64,
 ) -> Option<Vec<SocialEventRow>> {
     let ev: ProfileCreatedEvent = match serde_json::from_value(data.clone()) {
         Ok(e) => e,
@@ -303,10 +316,11 @@ fn process_profile_created_event(
         cover_photo = ev.cover_photo.as_ref().map(|_| "set").unwrap_or("none"),
         "ProfileCreatedEvent parsed successfully, indexing"
     );
-    let now = Utc::now().naive_utc();
+    let ms = common::chain_timestamp_ms(Some(ev.created_at as i64), checkpoint_timestamp_ms);
+    let now = common::chain_time_from_ms(ms).naive_utc();
     let profile_id = ev.profile_id.clone();
     let owner_address = ev.owner_address.clone();
-    let profile = ev.into_model();
+    let profile = ev.into_model(checkpoint_timestamp_ms);
 
     let audit_event = NewProfileEvent {
         event_type: "ProfileCreated".to_string(),
@@ -333,6 +347,7 @@ fn process_profile_created_event(
 fn process_profile_updated_event(
     data: &serde_json::Value,
     event_id: &str,
+    checkpoint_timestamp_ms: u64,
 ) -> Option<Vec<SocialEventRow>> {
     let ev: ProfileUpdatedEvent = common::deserialize_social_event_json(
         "profile",
@@ -341,7 +356,9 @@ fn process_profile_updated_event(
         data,
         "profile ProfileUpdatedEvent JSON did not match ProfileUpdatedEvent",
     )?;
-    let now = Utc::now().naive_utc();
+    let event_ms = common::json_field_as_i64(data.get("updated_at"));
+    let ms = common::chain_timestamp_ms(event_ms, checkpoint_timestamp_ms);
+    let now = common::chain_time_from_ms(ms).naive_utc();
     let profile_id = ev.profile_id.clone();
     let owner_address = ev.owner_address.clone();
 
@@ -396,6 +413,7 @@ fn process_profile_updated_event(
 fn process_profile_x_username_updated_event(
     data: &serde_json::Value,
     event_id: &str,
+    checkpoint_timestamp_ms: u64,
 ) -> Option<Vec<SocialEventRow>> {
     let ev: ProfileXUsernameUpdatedEvent = common::deserialize_social_event_json(
         "profile",
@@ -404,7 +422,8 @@ fn process_profile_x_username_updated_event(
         data,
         "profile ProfileXUsernameUpdatedEvent JSON did not match ProfileXUsernameUpdatedEvent",
     )?;
-    let now = Utc::now().naive_utc();
+    let ms = common::chain_timestamp_ms(Some(ev.updated_at as i64), checkpoint_timestamp_ms);
+    let now = common::chain_time_from_ms(ms).naive_utc();
     let profile_id = ev.profile_id.clone();
     let owner_address = ev.owner_address.clone();
 
@@ -435,17 +454,13 @@ fn process_profile_x_username_updated_event(
 fn process_ecosystem_treasury_updated_event(
     data: &serde_json::Value,
     event_id: &str,
+    checkpoint_timestamp_ms: u64,
 ) -> Option<Vec<SocialEventRow>> {
     let updated_by = data.get("updated_by")?.as_str()?.to_string();
     let new_treasury_address = data.get("new_treasury_address")?.as_str()?.to_string();
-    let timestamp_ms = data.get("timestamp")?.as_u64().unwrap_or(0) as i64;
-    let time = if timestamp_ms > 0 {
-        Utc.timestamp_millis_opt(timestamp_ms)
-            .single()
-            .unwrap_or_else(Utc::now)
-    } else {
-        Utc::now()
-    };
+    let event_ms = common::json_field_as_i64(data.get("timestamp"));
+    let timestamp_ms = common::chain_timestamp_ms(event_ms, checkpoint_timestamp_ms);
+    let time = common::chain_time_from_ms(timestamp_ms);
     let row = NewEcosystemTreasury {
         treasury_address: new_treasury_address,
         updated_by,
@@ -614,6 +629,7 @@ struct BadgeAssignedEvent {
 fn process_badge_assigned_event(
     data: &serde_json::Value,
     event_id: &str,
+    checkpoint_timestamp_ms: u64,
 ) -> Option<Vec<SocialEventRow>> {
     let ev: BadgeAssignedEvent = common::deserialize_social_event_json(
         "profile",
@@ -622,7 +638,9 @@ fn process_badge_assigned_event(
         data,
         "profile BadgeAssignedEvent JSON did not match BadgeAssignedEvent",
     )?;
-    let now = chrono::Utc::now();
+    let ms = common::chain_timestamp_ms(Some(ev.assigned_at as i64), checkpoint_timestamp_ms);
+    let now = common::chain_time_from_ms(ms);
+    let naive = now.naive_utc();
     let profile_id = ev.profile_id.clone();
     let badge_id = ev.badge_id.clone();
     let name = ev.name.clone();
@@ -657,8 +675,8 @@ fn process_badge_assigned_event(
             "assigned_at": assigned_at,
         }),
         event_id: Some(event_id.to_string()),
-        created_at: now.naive_utc(),
-        updated_at: now.naive_utc(),
+        created_at: naive,
+        updated_at: naive,
     };
     Some(vec![
         SocialEventRow::ProfileBadge(badge),
@@ -692,6 +710,7 @@ struct BadgeRevokedEvent {
 fn process_badge_revoked_event(
     data: &serde_json::Value,
     event_id: &str,
+    checkpoint_timestamp_ms: u64,
 ) -> Option<Vec<SocialEventRow>> {
     let ev: BadgeRevokedEvent = common::deserialize_social_event_json(
         "profile",
@@ -700,6 +719,8 @@ fn process_badge_revoked_event(
         data,
         "profile BadgeRevokedEvent JSON did not match BadgeRevokedEvent",
     )?;
+    let ms = common::chain_timestamp_ms(Some(ev.revoked_at as i64), checkpoint_timestamp_ms);
+    let now = common::chain_time_from_ms(ms).naive_utc();
     let event = NewProfileEvent {
         event_type: "BadgeRevoked".to_string(),
         profile_id: ev.profile_id.clone(),
@@ -710,8 +731,8 @@ fn process_badge_revoked_event(
             "revoked_at": ev.revoked_at,
         }),
         event_id: Some(event_id.to_string()),
-        created_at: chrono::Utc::now().naive_utc(),
-        updated_at: chrono::Utc::now().naive_utc(),
+        created_at: now,
+        updated_at: now,
     };
     Some(vec![
         SocialEventRow::ProfileBadgeRevoke {
@@ -856,6 +877,7 @@ struct BadgeRemovedEvent {
 fn process_badge_removed_event(
     data: &serde_json::Value,
     event_id: &str,
+    checkpoint_timestamp_ms: u64,
 ) -> Option<Vec<SocialEventRow>> {
     let ev: BadgeRemovedEvent = common::deserialize_social_event_json(
         "profile",
@@ -864,6 +886,8 @@ fn process_badge_removed_event(
         data,
         "profile BadgeRemovedEvent JSON did not match BadgeRemovedEvent",
     )?;
+    let ms = common::chain_timestamp_ms(Some(ev.removed_at as i64), checkpoint_timestamp_ms);
+    let now = common::chain_time_from_ms(ms).naive_utc();
     let event = NewProfileEvent {
         event_type: "BadgeRemoved".to_string(),
         profile_id: ev.profile_id.clone(),
@@ -873,8 +897,8 @@ fn process_badge_removed_event(
             "removed_at": ev.removed_at,
         }),
         event_id: Some(event_id.to_string()),
-        created_at: chrono::Utc::now().naive_utc(),
-        updated_at: chrono::Utc::now().naive_utc(),
+        created_at: now,
+        updated_at: now,
     };
     Some(vec![
         SocialEventRow::ProfileBadgeRevoke {
@@ -954,6 +978,7 @@ fn pieces_to_json(pieces: &[VestingPieceEvent]) -> serde_json::Value {
 fn process_tokens_vested_event(
     data: &serde_json::Value,
     event_id: &str,
+    checkpoint_timestamp_ms: u64,
 ) -> Option<Vec<SocialEventRow>> {
     let ev: TokensVestedEvent = common::deserialize_social_event_json(
         "profile",
@@ -966,7 +991,12 @@ fn process_tokens_vested_event(
     let start_time = ev.start_time.unwrap_or(0) as i64;
     let schedule_end = ev.schedule_end.unwrap_or(0) as i64;
     let pieces_json = pieces_to_json(&ev.pieces);
-    let now = Utc::now().naive_utc();
+    let ms = common::chain_timestamp_ms(
+        ev.vested_at.map(|t| t as i64),
+        checkpoint_timestamp_ms,
+    );
+    let now = common::chain_time_from_ms(ms);
+    let naive = now.naive_utc();
     let wallet = NewVestingWallet {
         wallet_id: ev.wallet_id.clone(),
         owner_address: ev.owner.clone(),
@@ -976,8 +1006,8 @@ fn process_tokens_vested_event(
         pieces: pieces_json.clone(),
         claimed_amount: 0,
         remaining_balance: total_amount,
-        created_at: now,
-        updated_at: now,
+        created_at: naive,
+        updated_at: naive,
         transaction_id: event_id.to_string(),
     };
     let vest_event = NewVestingEvent {
@@ -990,7 +1020,7 @@ fn process_tokens_vested_event(
         schedule_end: Some(schedule_end),
         pieces: Some(pieces_json),
         event_time: ev.vested_at.unwrap_or(0) as i64,
-        time: Utc::now(),
+        time: now,
         transaction_id: event_id.to_string(),
     };
     Some(vec![
@@ -1028,6 +1058,7 @@ struct TokensClaimedEvent {
 fn process_tokens_claimed_event(
     data: &serde_json::Value,
     event_id: &str,
+    checkpoint_timestamp_ms: u64,
 ) -> Option<Vec<SocialEventRow>> {
     let ev: TokensClaimedEvent = common::deserialize_social_event_json(
         "profile",
@@ -1038,6 +1069,11 @@ fn process_tokens_claimed_event(
     )?;
     let claimed_amount = ev.claimed_amount.unwrap_or(0) as i64;
     let remaining_balance = ev.remaining_balance.unwrap_or(0) as i64;
+    let ms = common::chain_timestamp_ms(
+        ev.claimed_at.map(|t| t as i64),
+        checkpoint_timestamp_ms,
+    );
+    let time = common::chain_time_from_ms(ms);
     let vest_event = NewVestingEvent {
         wallet_id: ev.wallet_id.clone(),
         event_type: "claimed".to_string(),
@@ -1048,7 +1084,7 @@ fn process_tokens_claimed_event(
         schedule_end: None,
         pieces: None,
         event_time: ev.claimed_at.unwrap_or(0) as i64,
-        time: Utc::now(),
+        time,
         transaction_id: event_id.to_string(),
     };
     Some(vec![
@@ -1256,6 +1292,7 @@ fn process_profile_sale_fee_event(
 fn process_vesting_wallet_deleted_event(
     data: &serde_json::Value,
     event_id: &str,
+    checkpoint_timestamp_ms: u64,
 ) -> Option<Vec<SocialEventRow>> {
     let ev: VestingWalletDeletedEvent = common::deserialize_social_event_json(
         "profile",
@@ -1264,6 +1301,11 @@ fn process_vesting_wallet_deleted_event(
         data,
         "profile VestingWalletDeletedEvent JSON did not match VestingWalletDeletedEvent",
     )?;
+    let ms = common::chain_timestamp_ms(
+        ev.deleted_at.map(|t| t as i64),
+        checkpoint_timestamp_ms,
+    );
+    let time = common::chain_time_from_ms(ms);
     let vest_event = NewVestingEvent {
         wallet_id: ev.wallet_id.clone(),
         event_type: "deleted".to_string(),
@@ -1274,7 +1316,7 @@ fn process_vesting_wallet_deleted_event(
         schedule_end: None,
         pieces: None,
         event_time: ev.deleted_at.unwrap_or(0) as i64,
-        time: Utc::now(),
+        time,
         transaction_id: event_id.to_string(),
     };
     Some(vec![
@@ -1290,6 +1332,8 @@ mod tests {
     use super::*;
     use crate::handlers::events::parse_event_contents;
 
+    const CK_MS: u64 = 1_700_000_000_000;
+
     #[test]
     fn test_profile_created_bcs_to_handler_to_new_profile() {
         let data = serde_json::json!({
@@ -1301,7 +1345,7 @@ mod tests {
             "cover_photo": "https://example.com/cover.png",
             "created_at": 5,
         });
-        let rows = handle_profile_event("ProfileCreatedEvent", &data, "test-event-id")
+        let rows = handle_profile_event("ProfileCreatedEvent", &data, "test-event-id", CK_MS)
             .expect("handle_profile_event should return Some");
         assert_eq!(rows.len(), 2, "expect Profile + ProfileEvent");
         let (profile_row, event_row) = match (&rows[0], &rows[1]) {
@@ -1317,6 +1361,9 @@ mod tests {
         );
         assert!(profile_row.owner_address.starts_with("0x"));
         assert_eq!(event_row.event_type, "ProfileCreated");
+        let expected = common::chain_time_from_ms(5).naive_utc();
+        assert_eq!(profile_row.created_at, expected);
+        assert_eq!(event_row.created_at, expected);
     }
 
     #[test]
@@ -1325,7 +1372,7 @@ mod tests {
             "username": "brandon",
             "profile_id": "0xprofile",
         });
-        let rows = handle_profile_event("UsernameClaimedEvent", &data, "tx:1")
+        let rows = handle_profile_event("UsernameClaimedEvent", &data, "tx:1", CK_MS)
             .expect("handle_profile_event should return Some");
         assert_eq!(rows.len(), 2);
         assert!(rows.iter().any(|r| matches!(r, SocialEventRow::UsernameRegistryUpsert(_))));
@@ -1347,7 +1394,7 @@ mod tests {
             "updated_by": "0xcc",
             "updated_at": 1700000000000u64,
         });
-        let rows = handle_profile_event("ProfileXUsernameUpdatedEvent", &data, "e-x-1")
+        let rows = handle_profile_event("ProfileXUsernameUpdatedEvent", &data, "e-x-1", CK_MS)
             .expect("handle_profile_event should return Some");
         assert_eq!(
             rows.len(),
@@ -1379,6 +1426,8 @@ mod tests {
             audit.event_data.get("x_username").and_then(|v| v.as_str()),
             Some("verified")
         );
+        let expected = common::chain_time_from_ms(1700000000000).naive_utc();
+        assert_eq!(audit.created_at, expected);
     }
 
     #[test]
@@ -1390,7 +1439,7 @@ mod tests {
             "updated_by": "0xcc",
             "updated_at": 1700000000001u64,
         });
-        let rows = handle_profile_event("ProfileXUsernameUpdatedEvent", &data, "e-x-2")
+        let rows = handle_profile_event("ProfileXUsernameUpdatedEvent", &data, "e-x-2", CK_MS)
             .expect("handle_profile_event should return Some");
         let up_row = rows.iter().find_map(|r| match r {
             SocialEventRow::ProfileXUsernameUpdate {
@@ -1427,8 +1476,8 @@ mod tests {
         let bytes = bcs::to_bytes(&ev).expect("bcs serialize");
         let json = parse_event_contents("profile", "ProfileXUsernameUpdatedEvent", &bytes)
             .expect("parse_event_contents");
-        let rows =
-            handle_profile_event("ProfileXUsernameUpdatedEvent", &json, "e-bcs").expect("handler");
+        let rows = handle_profile_event("ProfileXUsernameUpdatedEvent", &json, "e-bcs", CK_MS)
+            .expect("handler");
         let up_row = rows.iter().find_map(|r| match r {
             SocialEventRow::ProfileXUsernameUpdate { x_username, .. } => x_username.clone(),
             _ => None,

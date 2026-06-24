@@ -30,8 +30,9 @@ module social_contracts::memory_hierarchy_tests {
     fun init_env(scenario: &mut test_scenario::Scenario) {
         test_scenario::next_tx(scenario, ADMIN);
         {
-            profile::init_for_testing(test_scenario::ctx(scenario));
             let clock = clock::create_for_testing(test_scenario::ctx(scenario));
+            profile::init_for_testing(&clock, test_scenario::ctx(scenario));
+
             clock::share_for_testing(clock);
             let coins = coin::mint_for_testing<MYSO>(20_000_000_000, test_scenario::ctx(scenario));
             transfer::public_transfer(coins, USER1);

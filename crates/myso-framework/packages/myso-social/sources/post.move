@@ -863,7 +863,7 @@ module social_contracts::post {
     }
 
     /// Bootstrap initialization function - creates the post configuration
-    public(package) fun bootstrap_init(ctx: &mut TxContext) {
+    public(package) fun bootstrap_init(clock: &Clock, ctx: &mut TxContext) {
         let admin = tx_context::sender(ctx);
         let config = PostConfig {
             id: object::new(ctx),
@@ -881,7 +881,7 @@ module social_contracts::post {
         // Emit event so indexer can populate post_config table
         event::emit(PostParametersUpdatedEvent {
             updated_by: admin,
-            timestamp: tx_context::epoch_timestamp_ms(ctx),
+            timestamp: clock::timestamp_ms(clock),
             max_content_length: MAX_CONTENT_LENGTH,
             max_media_urls: MAX_MEDIA_URLS,
             max_mentions: MAX_MENTIONS,
@@ -993,6 +993,7 @@ module social_contracts::post {
         sub_agent_id: Option<ID>,
         organization_id: Option<ID>,
         action_identity_class: u8,
+        clock: &Clock,
         ctx: &mut TxContext
     ): address {
         // Build permissions bitfield
@@ -1020,7 +1021,7 @@ module social_contracts::post {
             metadata_json,
             post_type,
             parent_post_id,
-            created_at: tx_context::epoch_timestamp_ms(ctx),
+            created_at: clock::timestamp_ms(clock),
             reaction_count: 0,
             comment_count: 0,
             repost_count: 0,
@@ -1239,6 +1240,7 @@ module social_contracts::post {
             sub_agent_id,
             organization_id,
             action_identity_class,
+            clock,
             ctx
         );
         
@@ -1375,7 +1377,7 @@ module social_contracts::post {
             media: media_option,
             mentions,
             metadata_json,
-            created_at: tx_context::epoch_timestamp_ms(ctx),
+            created_at: clock::timestamp_ms(clock),
             reaction_count: 0,
             comment_count: 0,
             repost_count: 0,
@@ -1548,7 +1550,7 @@ module social_contracts::post {
                 is_original_post: true,
                 owner,
                 profile_id,
-                created_at: tx_context::epoch_timestamp_ms(ctx),
+                created_at: clock::timestamp_ms(clock),
                 version: upgrade::current_version(),
             };
             
@@ -1653,6 +1655,7 @@ module social_contracts::post {
             sub_agent_id,
             organization_id,
             action_identity_class,
+            clock,
             ctx
         );
         
@@ -1696,6 +1699,7 @@ module social_contracts::post {
     /// Delete a post owned by the caller
     public fun delete_post(
         post: Post,
+        clock: &Clock,
         ctx: &mut TxContext
     ) {
         let sender = tx_context::sender(ctx);
@@ -1708,7 +1712,7 @@ module social_contracts::post {
             owner: post.owner,
             profile_id: post.profile_id,
             post_type: post.post_type,
-            deleted_at: tx_context::epoch_timestamp_ms(ctx)
+            deleted_at: clock::timestamp_ms(clock)
         });
         
         // Extract UID to delete the post object
@@ -1759,6 +1763,7 @@ module social_contracts::post {
     public fun delete_comment(
         post: &mut Post,
         comment: Comment,
+        clock: &Clock,
         ctx: &mut TxContext
     ) {
         let sender = tx_context::sender(ctx);
@@ -1778,7 +1783,7 @@ module social_contracts::post {
             post_id,
             owner: comment.owner,
             profile_id: comment.profile_id,
-            deleted_at: tx_context::epoch_timestamp_ms(ctx)
+            deleted_at: clock::timestamp_ms(clock)
         });
         
         // Extract UID to delete the comment object
@@ -1942,6 +1947,7 @@ module social_contracts::post {
         coins: &mut Coin<T>,
         amount: u64,
         memory_account: &MemoryAccount,
+        clock: &Clock,
         ctx: &mut TxContext
     ) {
         assert!(amount > 0, EInvalidTipAmount);
@@ -1965,6 +1971,7 @@ module social_contracts::post {
             tipper,
             post_oid,
             true,
+            clock,
             ctx
         );
         assert!(post.tips_received <= MAX_U64 - actual_received, EOverflow);
@@ -2042,6 +2049,7 @@ module social_contracts::post {
         tipper: address,
         object_id: address,
         is_post_event: bool,
+        clock: &Clock,
         ctx: &mut TxContext
     ): u64 {
         if (intended_recipient != post.owner) {
@@ -2084,6 +2092,7 @@ module social_contracts::post {
                     ben,
                     redirected_coins,
                     option::some(object_id),
+                    clock,
                     ctx
                 );
             } else {
@@ -2242,6 +2251,7 @@ module social_contracts::post {
         post: &Post,
         beneficiary_vault: &mut PoCBeneficiaryVault,
         fee_coin: Coin<T>,
+        clock: &Clock,
         ctx: &TxContext
     ) {
         assert!(
@@ -2255,6 +2265,7 @@ module social_contracts::post {
             ben,
             fee_coin,
             option::some(get_id_address(post)),
+            clock,
             ctx
         );
     }
@@ -2269,6 +2280,7 @@ module social_contracts::post {
         vault_for_original: &mut PoCBeneficiaryVault,
         coin: &mut Coin<T>,
         amount: u64,
+        clock: &Clock,
         ctx: &mut TxContext
     ) {
         let tipper = tx_context::sender(ctx);
@@ -2299,6 +2311,7 @@ module social_contracts::post {
                 tipper,
                 poid,
                 true,
+                clock,
                 ctx
             );
             assert!(post.tips_received <= MAX_U64 - actual_received, EOverflow);
@@ -2329,6 +2342,7 @@ module social_contracts::post {
                 tipper,
                 poid,
                 true,
+                clock,
                 ctx
             );
             let original_actual_received = apply_poc_redirection_coin<T>(
@@ -2340,6 +2354,7 @@ module social_contracts::post {
                 tipper,
                 opoid,
                 true,
+                clock,
                 ctx
             );
             assert!(post.tips_received <= MAX_U64 - repost_actual_received, EOverflow);
@@ -2378,6 +2393,7 @@ module social_contracts::post {
         coin: &mut Coin<T>,
         amount: u64,
         memory_account: &MemoryAccount,
+        clock: &Clock,
         ctx: &mut TxContext
     ) {
         let tipper = tx_context::sender(ctx);
@@ -2401,6 +2417,7 @@ module social_contracts::post {
             tipper,
             poid,
             true,
+            clock,
             ctx
         );
         assert!(comment.tips_received <= MAX_U64 - commenter_amount, EOverflow);
@@ -2571,6 +2588,7 @@ module social_contracts::post {
         mut media_urls: Option<vector<String>>,
         mentions: Option<vector<address>>,
         metadata_json: Option<String>,
+        clock: &Clock,
         ctx: &mut TxContext
     ) {
         // Verify caller is the owner
@@ -2625,7 +2643,7 @@ module social_contracts::post {
             profile_id: post.profile_id,
             content: post.content,
             metadata_json: post.metadata_json,
-            updated_at: tx_context::epoch_timestamp_ms(ctx),
+            updated_at: clock::timestamp_ms(clock),
         });
     }
 
@@ -2635,6 +2653,7 @@ module social_contracts::post {
         config: &PostConfig,
         content: String,
         mentions: Option<vector<address>>,
+        clock: &Clock,
         ctx: &mut TxContext
     ) {
         // Verify caller is the owner
@@ -2661,7 +2680,7 @@ module social_contracts::post {
             owner: comment.owner,
             profile_id: comment.profile_id,
             content: comment.content,
-            updated_at: tx_context::epoch_timestamp_ms(ctx),
+            updated_at: clock::timestamp_ms(clock),
         });
     }
 
@@ -2671,6 +2690,7 @@ module social_contracts::post {
         config: &PostConfig,
         reason_code: u8,
         description: String,
+        clock: &Clock,
         ctx: &mut TxContext
     ) {
         // Validate reason code
@@ -2697,7 +2717,7 @@ module social_contracts::post {
             reporter,
             reason_code,
             description,
-            reported_at: tx_context::epoch_timestamp_ms(ctx),
+            reported_at: clock::timestamp_ms(clock),
         });
     }
 
@@ -2707,6 +2727,7 @@ module social_contracts::post {
         config: &PostConfig,
         reason_code: u8,
         description: String,
+        clock: &Clock,
         ctx: &mut TxContext
     ) {
         // Validate reason code
@@ -2733,7 +2754,7 @@ module social_contracts::post {
             reporter,
             reason_code,
             description,
-            reported_at: tx_context::epoch_timestamp_ms(ctx),
+            reported_at: clock::timestamp_ms(clock),
         });
     }
 
@@ -2958,6 +2979,7 @@ module social_contracts::post {
         profile_id: address,
         platform_id: address,
         content: String,
+        clock: &Clock,
         ctx: &mut TxContext
     ): address {
         create_post_internal(
@@ -2987,6 +3009,7 @@ module social_contracts::post {
             option::none(),
             option::none(),
             memory::class_human(),
+            clock,
             ctx
         )
     }
@@ -3000,6 +3023,7 @@ module social_contracts::post {
         content: String,
         redirect_to: address,
         redirect_percentage: u64,
+        clock: &Clock,
         ctx: &mut TxContext
     ): address {
         create_post_internal(
@@ -3029,6 +3053,7 @@ module social_contracts::post {
             option::none(),
             option::none(),
             memory::class_human(),
+            clock,
             ctx
         )
     }
@@ -3041,6 +3066,7 @@ module social_contracts::post {
         content: String,
         redirect_to: address,
         redirect_percentage: u64,
+        clock: &Clock,
         ctx: &mut TxContext
     ): address {
         create_post_internal(
@@ -3070,6 +3096,7 @@ module social_contracts::post {
             option::none(),
             option::none(),
             memory::class_human(),
+            clock,
             ctx
         )
     }
@@ -3081,6 +3108,7 @@ module social_contracts::post {
         profile_id: address,
         platform_id: address,
         content: String,
+        clock: &Clock,
         ctx: &mut TxContext
     ): address {
         create_post_internal(
@@ -3110,6 +3138,7 @@ module social_contracts::post {
             option::none(),
             option::none(),
             memory::class_human(),
+            clock,
             ctx
         )
     }
@@ -3123,6 +3152,7 @@ module social_contracts::post {
         content: String,
         payment_per_view: u64,
         promotion_budget: Coin<MYSO>,
+        clock: &Clock,
         ctx: &mut TxContext
     ): (address, address) {
         // Create promotion data
@@ -3134,7 +3164,7 @@ module social_contracts::post {
             paid_viewers: table::new(ctx),
             views: vector::empty(),
             active: false, // Starts inactive
-            created_at: tx_context::epoch_timestamp_ms(ctx),
+            created_at: clock::timestamp_ms(clock),
         };
         
         let promotion_id = object::uid_to_address(&promotion_data.id);
@@ -3170,6 +3200,7 @@ module social_contracts::post {
             option::none(),
             option::none(),
             memory::class_human(),
+            clock,
             ctx
         );
         
@@ -3235,6 +3266,7 @@ module social_contracts::post {
         profile_id: address,
         post_id: address,
         content: String,
+        clock: &Clock,
         ctx: &mut TxContext
     ): address {
         // Create a Comment object directly
@@ -3248,7 +3280,7 @@ module social_contracts::post {
             media: option::none(),
             mentions: option::none(),
             metadata_json: option::none(),
-            created_at: tx_context::epoch_timestamp_ms(ctx),
+            created_at: clock::timestamp_ms(clock),
             reaction_count: 0,
             comment_count: 0,
             repost_count: 0,
@@ -3449,6 +3481,7 @@ module social_contracts::post {
         max_reaction_length: u64,
         commenter_tip_percentage: u64,
         repost_tip_percentage: u64,
+        clock: &Clock,
         ctx: &mut TxContext
     ) {
         // Validation
@@ -3471,7 +3504,7 @@ module social_contracts::post {
         // Emit update event
         event::emit(PostParametersUpdatedEvent {
             updated_by: tx_context::sender(ctx),
-            timestamp: tx_context::epoch_timestamp_ms(ctx),
+            timestamp: clock::timestamp_ms(clock),
             max_content_length,
             max_media_urls,
             max_mentions,
@@ -3576,7 +3609,7 @@ module social_contracts::post {
             paid_viewers: table::new(ctx),
             views: vector::empty(),
             active: false, // Starts inactive until platform approves
-            created_at: tx_context::epoch_timestamp_ms(ctx),
+            created_at: clock::timestamp_ms(clock),
         };
         
         let promotion_id = object::uid_to_address(&promotion_data.id);
@@ -3631,6 +3664,7 @@ module social_contracts::post {
             sub_agent_id,
             organization_id,
             action_identity_class,
+            clock,
             ctx
         );
         
@@ -3679,7 +3713,7 @@ module social_contracts::post {
             profile_id,
             payment_per_view,
             total_budget,
-            created_at: tx_context::epoch_timestamp_ms(ctx),
+            created_at: clock::timestamp_ms(clock),
         });
     }
 
@@ -3770,6 +3804,7 @@ module social_contracts::post {
         platform_obj: &platform::Platform,
         group: &PermissionedGroup<platform::PlatformPackage>,
         activate: bool,
+        clock: &Clock,
         ctx: &mut TxContext
     ) {
         let caller = tx_context::sender(ctx);
@@ -3797,7 +3832,7 @@ module social_contracts::post {
             post_id: post_promotion_id,
             toggled_by: caller,
             new_status: activate,
-            timestamp: tx_context::epoch_timestamp_ms(ctx),
+            timestamp: clock::timestamp_ms(clock),
         });
     }
 
@@ -3806,6 +3841,7 @@ module social_contracts::post {
     public fun withdraw_promotion_funds(
         post: &Post,
         promotion_data: &mut PromotionData,
+        clock: &Clock,
         ctx: &mut TxContext
     ) {
         let caller = tx_context::sender(ctx);
@@ -3834,7 +3870,7 @@ module social_contracts::post {
             post_id: post_promotion_id,
             owner: caller,
             withdrawn_amount: remaining_amount,
-            timestamp: tx_context::epoch_timestamp_ms(ctx),
+            timestamp: clock::timestamp_ms(clock),
         });
     }
 
@@ -3866,6 +3902,7 @@ module social_contracts::post {
         platform_registry: &platform::PlatformRegistry,
         status: u8, // MODERATION_APPROVED or MODERATION_FLAGGED
         reason: Option<String>,
+        clock: &Clock,
         ctx: &mut TxContext
     ) {
         // Check version compatibility
@@ -3899,7 +3936,7 @@ module social_contracts::post {
             platform_id: object::uid_to_address(platform::id(platform)),
             moderation_state: status,
             moderator: option::some(caller),
-            moderation_timestamp: option::some(tx_context::epoch_timestamp_ms(ctx)),
+            moderation_timestamp: option::some(clock::timestamp_ms(clock)),
             reason,
         };
         

@@ -505,7 +505,7 @@ module social_contracts::memory {
     // Bootstrap
     // ============================================================
 
-    public(package) fun bootstrap_init(ctx: &mut TxContext) {
+    public(package) fun bootstrap_init(_clock: &Clock, ctx: &mut TxContext) {
         let mut registry = MemoryRegistry {
             id: object::new(ctx),
             accounts: table::new(ctx),
@@ -1893,8 +1893,8 @@ module social_contracts::memory {
     public fun error_invalid_org_type(): u64 { EInvalidOrgType }
 
     #[test_only]
-    public fun test_bootstrap_init(ctx: &mut TxContext) {
-        bootstrap_init(ctx);
+    public fun test_bootstrap_init(clock: &Clock, ctx: &mut TxContext) {
+        bootstrap_init(clock, ctx);
     }
 
     #[test_only]

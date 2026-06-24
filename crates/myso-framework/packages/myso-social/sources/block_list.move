@@ -12,7 +12,8 @@ module social_contracts::block_list {
         transfer,
         event,
         table::{Self, Table},
-        vec_set::{Self, VecSet}
+        vec_set::{Self, VecSet},
+        clock::{Self, Clock},
     };
     use std::{string, option, vector};
     
@@ -54,7 +55,7 @@ module social_contracts::block_list {
     }
 
     /// Bootstrap initialization function - creates the block list registry
-    public(package) fun bootstrap_init(ctx: &mut TxContext) {
+    public(package) fun bootstrap_init(_clock: &Clock, ctx: &mut TxContext) {
         let registry = BlockListRegistry {
             id: object::new(ctx),
             blocked: table::new(ctx),
@@ -67,8 +68,8 @@ module social_contracts::block_list {
     
     /// Test-only initializer for the block list registry
     #[test_only]
-    public fun test_init(ctx: &mut TxContext) {
-        bootstrap_init(ctx)
+    public fun test_init(clock: &Clock, ctx: &mut TxContext) {
+        bootstrap_init(clock, ctx)
     }
     
     /// Internal helper function to block a wallet with a specific blocker address

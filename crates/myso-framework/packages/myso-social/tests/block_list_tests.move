@@ -8,6 +8,7 @@ module social_contracts::block_list_tests {
     use std::option;
     
     use myso::test_scenario;
+    use myso::clock::{Self, Clock};
     
     use social_contracts::block_list;
     use social_contracts::social_graph;
@@ -22,9 +23,14 @@ module social_contracts::block_list_tests {
     // Initialize the block list registry, social graph, and profile registry for testing
     fun init_test_environment(scenario: &mut test_scenario::Scenario) {
         // Use the test-specific initialization functions
-        block_list::test_init(test_scenario::ctx(scenario));
-        social_graph::init_for_testing(test_scenario::ctx(scenario));
-        profile::init_for_testing(test_scenario::ctx(scenario));
+        let clock = clock::create_for_testing(test_scenario::ctx(scenario));
+        block_list::test_init(&clock, test_scenario::ctx(scenario));
+
+        social_graph::init_for_testing(&clock, test_scenario::ctx(scenario));
+
+        profile::init_for_testing(&clock, test_scenario::ctx(scenario));
+        clock::share_for_testing(clock);
+
     }
     
     // Initialize the block list registry for testing (kept for backward compatibility)

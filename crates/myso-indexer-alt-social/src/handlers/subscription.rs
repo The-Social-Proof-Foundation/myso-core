@@ -74,18 +74,29 @@ pub fn handle_subscription_event(
     event_name: &str,
     data: &serde_json::Value,
     event_id: &str,
+    checkpoint_timestamp_ms: u64,
 ) -> Option<Vec<SocialEventRow>> {
     match event_name {
         "ProfileSubscriptionServiceCreatedEvent" => {
-            process_subscription_service_created_event(data, event_id)
+            process_subscription_service_created_event(data, event_id, checkpoint_timestamp_ms)
         }
-        "ProfileSubscriptionCreatedEvent" => process_subscription_created_event(data, event_id),
-        "ProfileSubscriptionRenewedEvent" => process_subscription_renewed_event(data, event_id),
-        "ProfileSubscriptionCancelledEvent" => process_subscription_cancelled_event(data, event_id),
-        "ProfileSubscriptionUpdatedEvent" => process_subscription_updated_event(data, event_id),
-        "RenewalBalanceFundedEvent" => process_renewal_balance_funded_event(data, event_id),
+        "ProfileSubscriptionCreatedEvent" => {
+            process_subscription_created_event(data, event_id, checkpoint_timestamp_ms)
+        }
+        "ProfileSubscriptionRenewedEvent" => {
+            process_subscription_renewed_event(data, event_id, checkpoint_timestamp_ms)
+        }
+        "ProfileSubscriptionCancelledEvent" => {
+            process_subscription_cancelled_event(data, event_id, checkpoint_timestamp_ms)
+        }
+        "ProfileSubscriptionUpdatedEvent" => {
+            process_subscription_updated_event(data, event_id, checkpoint_timestamp_ms)
+        }
+        "RenewalBalanceFundedEvent" => {
+            process_renewal_balance_funded_event(data, event_id, checkpoint_timestamp_ms)
+        }
         "ProfileSubscriptionServiceDeactivatedEvent" => {
-            process_subscription_service_deactivated_event(data, event_id)
+            process_subscription_service_deactivated_event(data, event_id, checkpoint_timestamp_ms)
         }
         _ => None,
     }
@@ -94,6 +105,7 @@ pub fn handle_subscription_event(
 fn process_subscription_service_created_event(
     data: &Value,
     event_id: &str,
+    checkpoint_timestamp_ms: u64,
 ) -> Option<Vec<SocialEventRow>> {
     let event: ProfileSubscriptionServiceCreatedEvent = common::deserialize_social_event_json(
         "subscription",
@@ -102,7 +114,8 @@ fn process_subscription_service_created_event(
         data,
         "subscription ProfileSubscriptionServiceCreatedEvent JSON did not match struct",
     )?;
-    let now = chrono::Utc::now();
+    let ms = common::chain_timestamp_ms(Some(event.created_at as i64), checkpoint_timestamp_ms);
+    let now = common::chain_time_from_ms(ms);
     let service = NewProfileSubscriptionService {
         service_id: event.service_id.clone(),
         profile_owner: event.profile_owner.clone(),
@@ -133,7 +146,7 @@ fn process_subscription_service_created_event(
     ])
 }
 
-fn process_subscription_created_event(data: &Value, event_id: &str) -> Option<Vec<SocialEventRow>> {
+fn process_subscription_created_event(data: &Value, event_id: &str, checkpoint_timestamp_ms: u64) -> Option<Vec<SocialEventRow>> {
     let event: ProfileSubscriptionCreatedEvent = common::deserialize_social_event_json(
         "subscription",
         "ProfileSubscriptionCreatedEvent",
@@ -141,7 +154,11 @@ fn process_subscription_created_event(data: &Value, event_id: &str) -> Option<Ve
         data,
         "subscription ProfileSubscriptionCreatedEvent JSON did not match struct",
     )?;
-    let now = chrono::Utc::now();
+    let ms = common::chain_timestamp_ms(
+        common::json_field_as_i64(data.get("created_at")),
+        checkpoint_timestamp_ms,
+    );
+    let now = common::chain_time_from_ms(ms);
     let subscription_id = generate_subscription_id();
     let payment_time = event.expires_at as i64 - THIRTY_DAYS_MS;
 
@@ -149,7 +166,7 @@ fn process_subscription_created_event(data: &Value, event_id: &str) -> Option<Ve
         subscription_id: subscription_id.clone(),
         service_id: event.service_id.clone(),
         subscriber: event.subscriber.clone(),
-        created_at: now.timestamp_millis(),
+        created_at: ms,
         expires_at: event.expires_at as i64,
         auto_renew: event.auto_renew,
         renewal_balance: 0,
@@ -195,7 +212,7 @@ fn process_subscription_created_event(data: &Value, event_id: &str) -> Option<Ve
     Some(rows)
 }
 
-fn process_subscription_renewed_event(data: &Value, event_id: &str) -> Option<Vec<SocialEventRow>> {
+fn process_subscription_renewed_event(data: &Value, event_id: &str, checkpoint_timestamp_ms: u64) -> Option<Vec<SocialEventRow>> {
     let event: ProfileSubscriptionRenewedEvent = common::deserialize_social_event_json(
         "subscription",
         "ProfileSubscriptionRenewedEvent",
@@ -203,7 +220,8 @@ fn process_subscription_renewed_event(data: &Value, event_id: &str) -> Option<Ve
         data,
         "subscription ProfileSubscriptionRenewedEvent JSON did not match struct",
     )?;
-    let now = chrono::Utc::now();
+    let ms = common::chain_timestamp_ms(Some(event.new_expires_at as i64), checkpoint_timestamp_ms);
+    let now = common::chain_time_from_ms(ms);
 
     let sub_event = NewSubscriptionEvent {
         event_type: "ProfileSubscriptionRenewedEvent".to_string(),
@@ -242,6 +260,7 @@ fn process_subscription_renewed_event(data: &Value, event_id: &str) -> Option<Ve
 fn process_subscription_cancelled_event(
     data: &Value,
     event_id: &str,
+    checkpoint_timestamp_ms: u64,
 ) -> Option<Vec<SocialEventRow>> {
     let event: ProfileSubscriptionCancelledEvent = common::deserialize_social_event_json(
         "subscription",
@@ -250,7 +269,11 @@ fn process_subscription_cancelled_event(
         data,
         "subscription ProfileSubscriptionCancelledEvent JSON did not match struct",
     )?;
-    let now = chrono::Utc::now();
+    let ms = common::chain_timestamp_ms(
+        common::json_field_as_i64(data.get("cancelled_at")),
+        checkpoint_timestamp_ms,
+    );
+    let now = common::chain_time_from_ms(ms);
 
     let sub_event = NewSubscriptionEvent {
         event_type: "ProfileSubscriptionCancelledEvent".to_string(),
@@ -258,7 +281,7 @@ fn process_subscription_cancelled_event(
         service_id: None,
         subscriber: Some(event.subscriber.clone()),
         event_data: data.clone(),
-        event_time: now.timestamp_millis(),
+        event_time: ms,
         time: now,
         transaction_id: event_id.to_string(),
         processing_success: true,
@@ -287,7 +310,7 @@ fn process_subscription_cancelled_event(
     Some(rows)
 }
 
-fn process_subscription_updated_event(data: &Value, event_id: &str) -> Option<Vec<SocialEventRow>> {
+fn process_subscription_updated_event(data: &Value, event_id: &str, checkpoint_timestamp_ms: u64) -> Option<Vec<SocialEventRow>> {
     let event: ProfileSubscriptionUpdatedEvent = common::deserialize_social_event_json(
         "subscription",
         "ProfileSubscriptionUpdatedEvent",
@@ -295,7 +318,11 @@ fn process_subscription_updated_event(data: &Value, event_id: &str) -> Option<Ve
         data,
         "subscription ProfileSubscriptionUpdatedEvent JSON did not match struct",
     )?;
-    let now = chrono::Utc::now();
+    let ms = common::chain_timestamp_ms(
+        common::json_field_as_i64(data.get("updated_at")),
+        checkpoint_timestamp_ms,
+    );
+    let now = common::chain_time_from_ms(ms);
 
     let sub_event = NewSubscriptionEvent {
         event_type: "ProfileSubscriptionUpdatedEvent".to_string(),
@@ -307,9 +334,9 @@ fn process_subscription_updated_event(data: &Value, event_id: &str) -> Option<Ve
             "old_fee": event.old_fee,
             "new_fee": event.new_fee,
             "updated_by": event.updated_by,
-            "updated_at": now.timestamp_millis(),
+            "updated_at": ms,
         }),
-        event_time: now.timestamp_millis(),
+        event_time: ms,
         time: now,
         transaction_id: event_id.to_string(),
         processing_success: true,
@@ -320,7 +347,7 @@ fn process_subscription_updated_event(data: &Value, event_id: &str) -> Option<Ve
         SocialEventRow::ProfileSubscriptionServiceUpdate {
             service_id: event.service_id,
             monthly_fee: event.new_fee as i64,
-            updated_at: now.timestamp_millis(),
+            updated_at: ms,
         },
         SocialEventRow::SubscriptionEvent(sub_event),
     ])
@@ -329,6 +356,7 @@ fn process_subscription_updated_event(data: &Value, event_id: &str) -> Option<Ve
 fn process_renewal_balance_funded_event(
     data: &Value,
     event_id: &str,
+    checkpoint_timestamp_ms: u64,
 ) -> Option<Vec<SocialEventRow>> {
     let event: RenewalBalanceFundedEvent = common::deserialize_social_event_json(
         "subscription",
@@ -337,7 +365,8 @@ fn process_renewal_balance_funded_event(
         data,
         "subscription RenewalBalanceFundedEvent JSON did not match struct",
     )?;
-    let now = chrono::Utc::now();
+    let ms = common::chain_timestamp_ms(Some(event.timestamp as i64), checkpoint_timestamp_ms);
+    let now = common::chain_time_from_ms(ms);
 
     let sub_event = NewSubscriptionEvent {
         event_type: "RenewalBalanceFundedEvent".to_string(),
@@ -370,6 +399,7 @@ fn process_renewal_balance_funded_event(
 fn process_subscription_service_deactivated_event(
     data: &Value,
     event_id: &str,
+    checkpoint_timestamp_ms: u64,
 ) -> Option<Vec<SocialEventRow>> {
     let event: ProfileSubscriptionServiceDeactivatedEvent = common::deserialize_social_event_json(
         "subscription",
@@ -378,7 +408,8 @@ fn process_subscription_service_deactivated_event(
         data,
         "subscription ProfileSubscriptionServiceDeactivatedEvent JSON did not match struct",
     )?;
-    let now = chrono::Utc::now();
+    let ms = common::chain_timestamp_ms(Some(event.deactivated_at as i64), checkpoint_timestamp_ms);
+    let now = common::chain_time_from_ms(ms);
 
     let sub_event = NewSubscriptionEvent {
         event_type: "ProfileSubscriptionServiceDeactivatedEvent".to_string(),
@@ -419,7 +450,7 @@ mod tests {
             "monthly_fee": 100,
             "auto_renew": true
         });
-        let rows = handle_subscription_event("ProfileSubscriptionCreatedEvent", &data, "tx123");
+        let rows = handle_subscription_event("ProfileSubscriptionCreatedEvent", &data, "tx123", 1_700_000_000_000);
         assert!(rows.is_some());
         let rows = rows.unwrap();
         assert!(!rows.is_empty());
@@ -442,7 +473,7 @@ mod tests {
             "created_at": 1234567890
         });
         let rows =
-            handle_subscription_event("ProfileSubscriptionServiceCreatedEvent", &data, "tx456");
+            handle_subscription_event("ProfileSubscriptionServiceCreatedEvent", &data, "tx456", 1_700_000_000_000);
         assert!(rows.is_some());
         let rows = rows.unwrap();
         assert_eq!(rows.len(), 2);

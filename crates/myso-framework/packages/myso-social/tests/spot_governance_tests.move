@@ -31,17 +31,13 @@ module social_contracts::spot_governance_tests {
         let mut scen = test_scenario::begin(ADMIN);
         spt::init_for_testing(test_scenario::ctx(&mut scen));
         test_scenario::next_tx(&mut scen, ADMIN);
-        { block_list::test_init(test_scenario::ctx(&mut scen)); };
-        test_scenario::next_tx(&mut scen, ADMIN);
-        { platform::test_init(test_scenario::ctx(&mut scen)); };
-        test_scenario::next_tx(&mut scen, ADMIN);
-        { post::test_init(test_scenario::ctx(&mut scen)); };
-        test_scenario::next_tx(&mut scen, ADMIN);
-        { profile::init_for_testing(test_scenario::ctx(&mut scen)); };
-        test_scenario::next_tx(&mut scen, ADMIN);
         {
-            let c = clock::create_for_testing(test_scenario::ctx(&mut scen));
-            clock::share_for_testing(c);
+            let clock = clock::create_for_testing(test_scenario::ctx(&mut scen));
+            block_list::test_init(&clock, test_scenario::ctx(&mut scen));
+            platform::test_init(test_scenario::ctx(&mut scen));
+            post::test_init(test_scenario::ctx(&mut scen));
+            profile::init_for_testing(&clock, test_scenario::ctx(&mut scen));
+            clock::share_for_testing(clock);
         };
         test_scenario::next_tx(&mut scen, ADMIN);
         {
@@ -93,8 +89,8 @@ module social_contracts::spot_governance_tests {
         myso::transfer::public_transfer(c, to);
     }
 
-    fun create_test_post(owner: address, ctx: &mut tx_context::TxContext): address {
-        post::test_create_post_with_spot(owner, owner, TEST_PLATFORM_ID, string::utf8(b"truth?"), ctx)
+    fun create_test_post(owner: address, clock: &Clock, ctx: &mut tx_context::TxContext): address {
+        post::test_create_post_with_spot(owner, owner, TEST_PLATFORM_ID, string::utf8(b"truth?"), clock, ctx)
     }
 
     fun take_spot_governance_registry(scenario: &Scenario): GovernanceDAO {
@@ -174,7 +170,11 @@ module social_contracts::spot_governance_tests {
         };
 
         test_scenario::next_tx(scen, CREATOR);
-        { create_test_post(CREATOR, test_scenario::ctx(scen)); };
+        {
+            let clock = test_scenario::take_shared<Clock>(scen);
+            create_test_post(CREATOR, &clock, test_scenario::ctx(scen));
+            test_scenario::return_shared(clock);
+        };
 
         test_scenario::next_tx(scen, ADMIN);
         {

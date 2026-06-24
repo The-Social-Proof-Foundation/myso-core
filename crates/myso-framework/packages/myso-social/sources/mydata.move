@@ -350,6 +350,7 @@ module social_contracts::mydata {
         max_tags: u64,
         max_subscription_days: u64,
         max_free_access_grants: u64,
+        clock: &Clock,
         ctx: &mut TxContext
     ) {
         // Validate parameters
@@ -369,13 +370,13 @@ module social_contracts::mydata {
             max_tags,
             max_subscription_days,
             max_free_access_grants,
-            timestamp: tx_context::epoch_timestamp_ms(ctx),
+            timestamp: clock::timestamp_ms(clock),
         });
     }
 
     // === Core Functions ===
 
-    fun share_mydata_system_objects(ctx: &mut TxContext, enable_flag: bool) {
+    fun share_mydata_system_objects(clock: &Clock, ctx: &mut TxContext, enable_flag: bool) {
         let sender = tx_context::sender(ctx);
         let ver = upgrade::current_version();
         let config = MyDataConfig {
@@ -392,7 +393,7 @@ module social_contracts::mydata {
             max_tags: MAX_TAGS,
             max_subscription_days: MAX_SUBSCRIPTION_DAYS,
             max_free_access_grants: MAX_FREE_ACCESS_GRANTS,
-            timestamp: tx_context::epoch_timestamp_ms(ctx),
+            timestamp: clock::timestamp_ms(clock),
         });
         transfer::share_object(config);
 
@@ -439,8 +440,8 @@ module social_contracts::mydata {
     }
 
     /// Bootstrap: shared config, ownership registry, and query-marketplace objects (pools, anchors, vault).
-    public(package) fun bootstrap_init(ctx: &mut TxContext) {
-        share_mydata_system_objects(ctx, DEFAULT_ENABLE);
+    public(package) fun bootstrap_init(clock: &Clock, ctx: &mut TxContext) {
+        share_mydata_system_objects(clock, ctx, DEFAULT_ENABLE);
     }
 
     public fun create_mydata_pool_admin_cap(ctx: &mut TxContext): MyDataPoolAdminCap {
@@ -1636,11 +1637,11 @@ module social_contracts::mydata {
     }
 
     #[test_only]
-    public fun test_init(ctx: &mut TxContext) {
+    public fun test_init(clock: &Clock, ctx: &mut TxContext) {
         let sender = tx_context::sender(ctx);
         transfer::public_transfer(MyDataAdminCap { id: object::new(ctx) }, sender);
         transfer::public_transfer(create_mydata_pool_admin_cap(ctx), sender);
-        share_mydata_system_objects(ctx, true);
+        share_mydata_system_objects(clock, ctx, true);
     }
 
     #[test_only]

@@ -352,7 +352,7 @@ module social_contracts::proof_of_creativity {
     }
 
     /// Bootstrap initialization function - creates the PoC configuration and registry
-    public(package) fun bootstrap_init(ctx: &mut TxContext) {
+    public(package) fun bootstrap_init(clock: &Clock, ctx: &mut TxContext) {
         let sender = tx_context::sender(ctx);
 
         let config = PoCConfig {
@@ -400,7 +400,7 @@ module social_contracts::proof_of_creativity {
             dispute_quorum_base_stake: DEFAULT_DISPUTE_QUORUM_BASE_STAKE,
             dispute_second_round_fee_multiplier_bps: DEFAULT_SECOND_ROUND_FEE_MULTIPLIER_BPS,
             dispute_second_round_quorum_multiplier_bps: DEFAULT_SECOND_ROUND_QUORUM_MULTIPLIER_BPS,
-            timestamp: tx_context::epoch_timestamp_ms(ctx),
+            timestamp: clock::timestamp_ms(clock),
         });
 
         // Create and share PoC configuration
@@ -442,6 +442,7 @@ module social_contracts::proof_of_creativity {
         dispute_quorum_base_stake: u64,
         dispute_second_round_fee_multiplier_bps: u64,
         dispute_second_round_quorum_multiplier_bps: u64,
+        clock: &Clock,
         ctx: &mut TxContext
     ) {
         // Admin capability verification is handled by type system
@@ -510,7 +511,7 @@ module social_contracts::proof_of_creativity {
             dispute_quorum_base_stake,
             dispute_second_round_fee_multiplier_bps,
             dispute_second_round_quorum_multiplier_bps,
-            timestamp: tx_context::epoch_timestamp_ms(ctx),
+            timestamp: clock::timestamp_ms(clock),
         });
     }
 
@@ -560,10 +561,11 @@ module social_contracts::proof_of_creativity {
         explicit_poc_outcome: u8,
         reasoning: Option<String>,
         evidence_urls: Option<vector<String>>,
+        clock: &Clock,
         ctx: &mut TxContext
     ) {
         let caller = tx_context::sender(ctx);
-        let timestamp = tx_context::epoch_timestamp_ms(ctx);
+        let timestamp = clock::timestamp_ms(clock);
         let post_id = social_contracts::post::get_id_address(post);
         
         // Verify caller is authorized oracle
@@ -803,6 +805,7 @@ module social_contracts::proof_of_creativity {
         explicit_poc_outcome: u8,
         reasoning: Option<String>,
         evidence_urls: Option<vector<String>>,
+        clock: &Clock,
         ctx: &mut TxContext
     ) {
         run_analyze_and_update_post(
@@ -819,6 +822,7 @@ module social_contracts::proof_of_creativity {
             explicit_poc_outcome,
             reasoning,
             evidence_urls,
+            clock,
             ctx,
         );
     }
@@ -840,6 +844,7 @@ module social_contracts::proof_of_creativity {
         explicit_poc_outcome: u8,
         reasoning: Option<String>,
         evidence_urls: Option<vector<String>>,
+        clock: &Clock,
         ctx: &mut TxContext
     ) {
         run_analyze_and_update_post(
@@ -856,6 +861,7 @@ module social_contracts::proof_of_creativity {
             explicit_poc_outcome,
             reasoning,
             evidence_urls,
+            clock,
             ctx,
         );
         let post_id = social_contracts::post::get_id_address(post);
@@ -869,6 +875,7 @@ module social_contracts::proof_of_creativity {
             pool,
             post,
             caller,
+            clock,
             ctx,
         );
     }
@@ -879,6 +886,7 @@ module social_contracts::proof_of_creativity {
         treasury: &EcosystemTreasury,
         vault: &mut PoCBeneficiaryVault,
         referrer_opt: Option<address>,
+        clock: &Clock,
         ctx: &mut TxContext
     ) {
         poc_vault::claim_vault_balance<T>(
@@ -887,6 +895,7 @@ module social_contracts::proof_of_creativity {
             config.claim_treasury_fee_bps,
             config.max_referral_bps,
             referrer_opt,
+            clock,
             ctx,
         );
     }
@@ -903,9 +912,8 @@ module social_contracts::proof_of_creativity {
         ctx: &mut TxContext
     ) {
         let disputer = tx_context::sender(ctx);
-        let timestamp = tx_context::epoch_timestamp_ms(ctx);
-        let post_id = social_contracts::post::get_id_address(post);
         let now = clock::timestamp_ms(clock);
+        let post_id = social_contracts::post::get_id_address(post);
 
         let submitted_before = social_contracts::post::poc_disputes_submitted(post);
         assert!(submitted_before < MAX_POC_DISPUTES_PER_POST, EDisputeCapReached);
@@ -971,7 +979,7 @@ module social_contracts::proof_of_creativity {
             dispute_type: 1, // Generic PoC dispute
             status: DISPUTE_STATUS_VOTING,
             evidence,
-            submitted_at: timestamp,
+            submitted_at: now,
             voting_start_ms,
             voting_end_ms,
             votes: vector::empty(),
@@ -1005,7 +1013,7 @@ module social_contracts::proof_of_creativity {
             voting_start_ms,
             voting_end_ms,
             evidence: evidence_for_event,
-            timestamp,
+            timestamp: now,
         });
 
         // Share dispute for public voting
@@ -1024,7 +1032,6 @@ module social_contracts::proof_of_creativity {
     ) {
         let voter = tx_context::sender(ctx);
         let t = clock::timestamp_ms(clock);
-        let timestamp = tx_context::epoch_timestamp_ms(ctx);
         let stake_amount = coin::value(&stake_coin);
 
         // Validate vote choice
@@ -1077,7 +1084,7 @@ module social_contracts::proof_of_creativity {
             stake_amount,
             total_uphold_stake: dispute.uphold_stake,
             total_overturn_stake: dispute.overturn_stake,
-            timestamp,
+            timestamp: t,
         });
     }
 
@@ -1088,7 +1095,6 @@ module social_contracts::proof_of_creativity {
         ctx: &TxContext
     ) {
         let t = clock::timestamp_ms(clock);
-        let timestamp = tx_context::epoch_timestamp_ms(ctx);
         let dispute_id = object::uid_to_address(&dispute.id);
 
         // Verify voting period has ended
@@ -1147,7 +1153,7 @@ module social_contracts::proof_of_creativity {
             redirection_removed,
             quorum_met,
             post_poc_disputes_submitted,
-            timestamp,
+            timestamp: t,
         });
     }
 
@@ -1182,6 +1188,7 @@ module social_contracts::proof_of_creativity {
             pool,
             post,
             sender,
+            clock,
             ctx,
         );
     }
@@ -1189,10 +1196,11 @@ module social_contracts::proof_of_creativity {
     /// Claim voting rewards after dispute resolution
     public entry fun claim_voting_reward(
         dispute: &mut PoCDispute,
+        clock: &Clock,
         ctx: &mut TxContext
     ) {
         let claimer = tx_context::sender(ctx);
-        let timestamp = tx_context::epoch_timestamp_ms(ctx);
+        let timestamp = clock::timestamp_ms(clock);
         let dispute_id = object::uid_to_address(&dispute.id);
         
         // Verify dispute is resolved
@@ -1497,9 +1505,9 @@ module social_contracts::proof_of_creativity {
 
     #[test_only]
     /// Initialize the PoC system for testing
-    public fun test_init(ctx: &mut TxContext) {
+    public fun test_init(clock: &Clock, ctx: &mut TxContext) {
         let sender = tx_context::sender(ctx);
-        bootstrap_init(ctx);
+        bootstrap_init(clock, ctx);
         
         // Create and transfer admin capabilities to the transaction sender
         transfer::public_transfer(PoCAdminCap { id: object::new(ctx) }, sender);
@@ -1516,6 +1524,7 @@ module social_contracts::poc_vault {
     use myso::{
         bag::{Self, Bag},
         balance::{Self, Balance},
+        clock::{Self, Clock},
         coin::{Self, Coin},
         event,
         object::{Self, UID},
@@ -1636,7 +1645,8 @@ module social_contracts::poc_vault {
         expected_beneficiary: address,
         fee_coin: Coin<T>,
         source_post_id: Option<address>,
-        ctx: &TxContext
+        clock: &Clock,
+        _ctx: &TxContext
     ) {
         assert!(vault.beneficiary == expected_beneficiary, EWrongBeneficiary);
         let amount = coin::value(&fee_coin);
@@ -1661,7 +1671,7 @@ module social_contracts::poc_vault {
             coin_type,
             amount,
             source_post_id,
-            timestamp: tx_context::epoch_timestamp_ms(ctx),
+            timestamp: clock::timestamp_ms(clock),
         });
     }
 
@@ -1672,6 +1682,7 @@ module social_contracts::poc_vault {
         treasury_fee_bps: u64,
         max_referral_bps: u64,
         referrer_opt: Option<address>,
+        clock: &Clock,
         ctx: &mut TxContext
     ) {
         assert!(tx_context::sender(ctx) == vault.beneficiary, EUnauthorized);
@@ -1729,7 +1740,7 @@ module social_contracts::poc_vault {
             treasury_amount: treasury_amt,
             referrer_amount: referrer_amt,
             beneficiary_amount: beneficiary_amt,
-            timestamp: tx_context::epoch_timestamp_ms(ctx),
+            timestamp: clock::timestamp_ms(clock),
         });
     }
 

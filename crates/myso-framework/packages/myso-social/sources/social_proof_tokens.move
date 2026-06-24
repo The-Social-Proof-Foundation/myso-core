@@ -579,7 +579,7 @@ module social_contracts::social_proof_tokens {
     }
 
     /// Bootstrap initialization function - creates the social proof tokens configuration and registry
-    public(package) fun bootstrap_init(ctx: &mut TxContext) {
+    public(package) fun bootstrap_init(clock: &Clock, ctx: &mut TxContext) {
         let sender = tx_context::sender(ctx);
         let config = SocialProofTokensConfig {
             id: object::new(ctx),
@@ -605,7 +605,7 @@ module social_contracts::social_proof_tokens {
         let reservation_total_fee_bps = DEFAULT_RESERVATION_CREATOR_FEE_BPS + DEFAULT_RESERVATION_PLATFORM_FEE_BPS + DEFAULT_RESERVATION_TREASURY_FEE_BPS;
         event::emit(ConfigUpdatedEvent {
             updated_by: sender,
-            timestamp: tx_context::epoch_timestamp_ms(ctx),
+            timestamp: clock::timestamp_ms(clock),
             total_fee_bps,
             trading_creator_fee_bps: DEFAULT_TRADING_CREATOR_FEE_BPS,
             trading_platform_fee_bps: DEFAULT_TRADING_PLATFORM_FEE_BPS,
@@ -656,6 +656,7 @@ module social_contracts::social_proof_tokens {
         profile_threshold: u64,
         max_individual_reservation_bps: u64,
         max_reservers_per_pool: u64,
+        clock: &Clock,
         ctx: &mut TxContext
     ) {
         // Verify curve parameters are valid
@@ -735,7 +736,7 @@ module social_contracts::social_proof_tokens {
         // Emit config updated event
         event::emit(ConfigUpdatedEvent {
             updated_by: tx_context::sender(ctx),
-            timestamp: tx_context::epoch_timestamp_ms(ctx),
+            timestamp: clock::timestamp_ms(clock),
             total_fee_bps,
             trading_creator_fee_bps,
             trading_platform_fee_bps,
@@ -761,6 +762,7 @@ module social_contracts::social_proof_tokens {
         config: &mut SocialProofTokensConfig,
         enable_trading: bool,
         reason: vector<u8>,
+        clock: &Clock,
         ctx: &mut TxContext
     ) {
         // Update the trading enabled status
@@ -770,7 +772,7 @@ module social_contracts::social_proof_tokens {
         event::emit(EmergencyKillSwitchEvent {
             admin: tx_context::sender(ctx),
             trading_enabled: enable_trading,
-            timestamp: tx_context::epoch_timestamp_ms(ctx),
+            timestamp: clock::timestamp_ms(clock),
             reason: string::utf8(reason),
         });
     }
@@ -841,6 +843,7 @@ module social_contracts::social_proof_tokens {
         beneficiary_vault: &mut PoCBeneficiaryVault,
         payment: Coin<MYSO>,
         amount: u64,
+        clock: &Clock,
         ctx: &mut TxContext
     ) {
         // Check if trading is halted
@@ -853,7 +856,7 @@ module social_contracts::social_proof_tokens {
         // Get post ID and owner from reservation pool
         let post_id = reservation_pool_object.info.associated_id;
         let post_owner = reservation_pool_object.info.owner;
-        let now = tx_context::epoch_timestamp_ms(ctx);
+        let now = clock::timestamp_ms(clock);
         
         // Verify reservation pool is for a post
         assert!(reservation_pool_object.info.token_type == TOKEN_TYPE_POST, EInvalidTokenType);
@@ -892,6 +895,7 @@ module social_contracts::social_proof_tokens {
             amount,
             payment,
             treasury,
+            clock,
             ctx
         );
         
@@ -1000,6 +1004,7 @@ module social_contracts::social_proof_tokens {
         beneficiary_vault: &mut PoCBeneficiaryVault,
         payment: Coin<MYSO>,
         amount: u64,
+        clock: &Clock,
         ctx: &mut TxContext
     ) {
         // Check if trading is halted
@@ -1012,7 +1017,7 @@ module social_contracts::social_proof_tokens {
         // Get post ID and owner from reservation pool
         let post_id = reservation_pool_object.info.associated_id;
         let post_owner = reservation_pool_object.info.owner;
-        let now = tx_context::epoch_timestamp_ms(ctx);
+        let now = clock::timestamp_ms(clock);
         
         // Verify reservation pool is for a post
         assert!(reservation_pool_object.info.token_type == TOKEN_TYPE_POST, EInvalidTokenType);
@@ -1058,6 +1063,7 @@ module social_contracts::social_proof_tokens {
             payment,
             treasury,
             platform,
+            clock,
             ctx
         );
         
@@ -1161,6 +1167,7 @@ module social_contracts::social_proof_tokens {
         treasury: &EcosystemTreasury,
         payment: Coin<MYSO>,
         amount: u64,
+        clock: &Clock,
         ctx: &mut TxContext
     ) {
         // Check if trading is halted
@@ -1173,7 +1180,7 @@ module social_contracts::social_proof_tokens {
         // Get profile ID and owner from reservation pool
         let profile_id = reservation_pool_object.info.associated_id;
         let profile_owner = reservation_pool_object.info.owner;
-        let now = tx_context::epoch_timestamp_ms(ctx);
+        let now = clock::timestamp_ms(clock);
         
         // Verify reservation pool is for a profile
         assert!(reservation_pool_object.info.token_type == TOKEN_TYPE_PROFILE, EInvalidTokenType);
@@ -1314,6 +1321,7 @@ module social_contracts::social_proof_tokens {
         block_list_registry: &BlockListRegistry,
         payment: Coin<MYSO>,
         amount: u64,
+        clock: &Clock,
         ctx: &mut TxContext
     ) {
         // Check if trading is halted
@@ -1326,7 +1334,7 @@ module social_contracts::social_proof_tokens {
         // Get profile ID and owner from reservation pool
         let profile_id = reservation_pool_object.info.associated_id;
         let profile_owner = reservation_pool_object.info.owner;
-        let now = tx_context::epoch_timestamp_ms(ctx);
+        let now = clock::timestamp_ms(clock);
         
         // Verify reservation pool is for a profile
         assert!(reservation_pool_object.info.token_type == TOKEN_TYPE_PROFILE, EInvalidTokenType);
@@ -1367,6 +1375,7 @@ module social_contracts::social_proof_tokens {
             payment,
             treasury,
             platform,
+            clock,
             ctx
         );
         
@@ -1524,6 +1533,7 @@ module social_contracts::social_proof_tokens {
         platform_fee: u64,
         treasury_fee: u64,
         pool_balance: &mut Balance<MYSO>,
+        clock: &Clock,
         ctx: &mut TxContext
     ): (u64, u64, u64) {
         let platform_fee_half_to_creator = platform_fee / 2;
@@ -1538,6 +1548,7 @@ module social_contracts::social_proof_tokens {
                 beneficiary_vault,
                 creator_total,
                 &mut creator_coin,
+                clock,
                 ctx
             );
             coin::destroy_zero(creator_coin);
@@ -1591,6 +1602,7 @@ module social_contracts::social_proof_tokens {
         platform_fee: u64,
         treasury_fee: u64,
         pool_balance: &mut Balance<MYSO>,
+        clock: &Clock,
         ctx: &mut TxContext
     ) {
         if (creator_fee > 0) {
@@ -1601,13 +1613,14 @@ module social_contracts::social_proof_tokens {
                 beneficiary_vault,
                 creator_fee,
                 &mut creator_coin,
+                clock,
                 ctx
             );
             coin::destroy_zero(creator_coin);
         };
         if (platform_fee > 0) {
             let mut platform_fee_coin = coin::from_balance(balance::split(pool_balance, platform_fee), ctx);
-            social_contracts::platform::add_to_treasury(platform, &mut platform_fee_coin, platform_fee, ctx);
+            social_contracts::platform::add_to_treasury(platform, &mut platform_fee_coin, platform_fee, clock, ctx);
             coin::destroy_zero(platform_fee_coin);
         };
         if (treasury_fee > 0) {
@@ -1624,6 +1637,7 @@ module social_contracts::social_proof_tokens {
         platform_fee: u64,
         treasury_fee: u64,
         pool_balance: &mut Balance<MYSO>,
+        clock: &Clock,
         ctx: &mut TxContext
     ) {
         if (creator_fee > 0) {
@@ -1638,7 +1652,7 @@ module social_contracts::social_proof_tokens {
         };
         if (platform_fee > 0) {
             let mut platform_fee_coin = coin::from_balance(balance::split(pool_balance, platform_fee), ctx);
-            social_contracts::platform::add_to_treasury(platform, &mut platform_fee_coin, platform_fee, ctx);
+            social_contracts::platform::add_to_treasury(platform, &mut platform_fee_coin, platform_fee, clock, ctx);
             coin::destroy_zero(platform_fee_coin);
         };
         if (treasury_fee > 0) {
@@ -1659,11 +1673,12 @@ module social_contracts::social_proof_tokens {
         post: &Post,
         beneficiary_vault: &mut PoCBeneficiaryVault,
         amount: u64,
+        clock: &Clock,
         ctx: &mut TxContext
     ) {
         let reserver = tx_context::sender(ctx);
         let associated_id = reservation_pool_object.info.associated_id;
-        let now = tx_context::epoch_timestamp_ms(ctx);
+        let now = clock::timestamp_ms(clock);
 
         assert!(!reservation_pool_object.converted, EReservationPoolConverted);
         assert!(amount > 0, EInsufficientFunds);
@@ -1692,6 +1707,7 @@ module social_contracts::social_proof_tokens {
                 platform_fee,
                 treasury_fee,
                 &mut reservation_pool_object.myso_balance,
+                clock,
                 ctx
             )
         } else {
@@ -1724,11 +1740,12 @@ module social_contracts::social_proof_tokens {
         reservation_pool_object: &mut ReservationPoolObject,
         treasury: &EcosystemTreasury,
         amount: u64,
+        clock: &Clock,
         ctx: &mut TxContext
     ) {
         let reserver = tx_context::sender(ctx);
         let associated_id = reservation_pool_object.info.associated_id;
-        let now = tx_context::epoch_timestamp_ms(ctx);
+        let now = clock::timestamp_ms(clock);
 
         assert!(!reservation_pool_object.converted, EReservationPoolConverted);
         assert!(amount > 0, EInsufficientFunds);
@@ -1791,11 +1808,12 @@ module social_contracts::social_proof_tokens {
         post: &Post,
         beneficiary_vault: &mut PoCBeneficiaryVault,
         amount: u64,
+        clock: &Clock,
         ctx: &mut TxContext
     ) {
         let reserver = tx_context::sender(ctx);
         let associated_id = reservation_pool_object.info.associated_id;
-        let now = tx_context::epoch_timestamp_ms(ctx);
+        let now = clock::timestamp_ms(clock);
 
         assert!(!reservation_pool_object.converted, EReservationPoolConverted);
         assert!(amount > 0, EInsufficientFunds);
@@ -1830,6 +1848,7 @@ module social_contracts::social_proof_tokens {
                 platform_fee,
                 treasury_fee,
                 &mut reservation_pool_object.myso_balance,
+                clock,
                 ctx
             );
         };
@@ -1863,11 +1882,12 @@ module social_contracts::social_proof_tokens {
         platform: &mut social_contracts::platform::Platform,
         block_list_registry: &BlockListRegistry,
         amount: u64,
+        clock: &Clock,
         ctx: &mut TxContext
     ) {
         let reserver = tx_context::sender(ctx);
         let associated_id = reservation_pool_object.info.associated_id;
-        let now = tx_context::epoch_timestamp_ms(ctx);
+        let now = clock::timestamp_ms(clock);
 
         assert!(!reservation_pool_object.converted, EReservationPoolConverted);
         assert!(amount > 0, EInsufficientFunds);
@@ -1899,6 +1919,7 @@ module social_contracts::social_proof_tokens {
                 platform_fee,
                 treasury_fee,
                 &mut reservation_pool_object.myso_balance,
+                clock,
                 ctx
             );
         };
@@ -1926,6 +1947,7 @@ module social_contracts::social_proof_tokens {
         registry: &mut TokenRegistry,
         config: &SocialProofTokensConfig,
         post: &Post,
+        clock: &Clock,
         ctx: &mut TxContext
     ) {
         // Check if trading is halted
@@ -1944,7 +1966,7 @@ module social_contracts::social_proof_tokens {
         // Check if reservation pool already exists
         assert!(!table::contains(&registry.reservation_pools, associated_id), ETokenAlreadyExists);
         
-        let now = tx_context::epoch_timestamp_ms(ctx);
+        let now = clock::timestamp_ms(clock);
         let required_threshold = config.post_threshold;
         
         // Create reservation pool info (without reservers vector - only in ReservationPoolObject)
@@ -1999,6 +2021,7 @@ module social_contracts::social_proof_tokens {
         registry: &mut TokenRegistry,
         config: &SocialProofTokensConfig,
         profile: &Profile,
+        clock: &Clock,
         ctx: &mut TxContext
     ) {
         // Check if trading is halted
@@ -2017,7 +2040,7 @@ module social_contracts::social_proof_tokens {
         // Check if reservation pool already exists
         assert!(!table::contains(&registry.reservation_pools, associated_id), ETokenAlreadyExists);
         
-        let now = tx_context::epoch_timestamp_ms(ctx);
+        let now = clock::timestamp_ms(clock);
         let required_threshold = config.profile_threshold;
         
         // Create reservation pool info (without reservers vector - only in ReservationPoolObject)
@@ -2092,6 +2115,7 @@ module social_contracts::social_proof_tokens {
         registry: &mut TokenRegistry,
         config: &SocialProofTokensConfig,
         reservation_pool_object: &mut ReservationPoolObject,
+        clock: &Clock,
         ctx: &mut TxContext
     ) {
         // Check if trading is halted
@@ -2130,7 +2154,7 @@ module social_contracts::social_proof_tokens {
             circulating_supply: initial_token_supply,
             base_price: config.base_price,
             quadratic_coefficient: config.quadratic_coefficient,
-            created_at: tx_context::epoch_timestamp_ms(ctx),
+            created_at: clock::timestamp_ms(clock),
         };
         
         // Create token pool
@@ -2271,9 +2295,9 @@ module social_contracts::social_proof_tokens {
         pool: &mut TokenPool,
         post: &Post,
         updated_by: address,
-        ctx: &TxContext,
+        clock: &Clock,
+        _ctx: &TxContext,
     ) {
-        assert!(pool.version == upgrade::current_version(), EWrongVersion);
         assert!(pool.info.token_type == TOKEN_TYPE_POST, EInvalidTokenType);
         let post_id = post::get_id_address(post);
         assert!(post_id == pool.info.associated_id, EInvalidID);
@@ -2304,7 +2328,7 @@ module social_contracts::social_proof_tokens {
             redirect_percentage,
             poc_redirection_kind: pool.poc_redirection_kind,
             updated_by,
-            timestamp: tx_context::epoch_timestamp_ms(ctx),
+            timestamp: clock::timestamp_ms(clock),
         });
     }
 
@@ -2314,11 +2338,12 @@ module social_contracts::social_proof_tokens {
         registry: &TokenRegistry,
         pool: &mut TokenPool,
         post: &Post,
+        clock: &Clock,
         ctx: &mut TxContext
     ) {
         let caller = tx_context::sender(ctx);
         assert!(caller == post::get_post_owner(post), ENotAuthorized);
-        sync_token_pool_poc_from_post(registry, pool, post, caller, ctx);
+        sync_token_pool_poc_from_post(registry, pool, post, caller, clock, ctx);
     }
 
     /// Calculate PoC revenue split - shared utility for consistent logic
@@ -2446,6 +2471,7 @@ module social_contracts::social_proof_tokens {
         beneficiary_vault: &mut PoCBeneficiaryVault,
         creator_fee_amount: u64,
         creator_fee_coin: &mut Coin<MYSO>,
+        clock: &Clock,
         ctx: &mut TxContext
     ) {
         if (creator_fee_amount == 0) {
@@ -2459,7 +2485,7 @@ module social_contracts::social_proof_tokens {
             let redirected_fee = coin::split(&mut fee_coin, redirected_amount, ctx);
             let k = post::poc_redirection_kind(post);
             if (k == 2) {
-                post::deposit_coin_to_beneficiary_vault<MYSO>(post, beneficiary_vault, redirected_fee, ctx);
+                post::deposit_coin_to_beneficiary_vault<MYSO>(post, beneficiary_vault, redirected_fee, clock, ctx);
             } else {
                 let redirect_to = *option::borrow(post::get_revenue_redirect_to(post));
                 transfer::public_transfer(redirected_fee, redirect_to);
@@ -2483,6 +2509,7 @@ module social_contracts::social_proof_tokens {
         beneficiary_vault: &mut PoCBeneficiaryVault,
         creator_fee_amount: u64,
         creator_fee_coin: &mut Coin<MYSO>,
+        clock: &Clock,
         ctx: &mut TxContext
     ) {
         distribute_reservation_creator_fee_with_owner(
@@ -2491,6 +2518,7 @@ module social_contracts::social_proof_tokens {
             beneficiary_vault,
             creator_fee_amount,
             creator_fee_coin,
+            clock,
             ctx
         );
     }
@@ -2534,6 +2562,7 @@ module social_contracts::social_proof_tokens {
         amount: u64,
         mut payment: Coin<MYSO>,
         treasury: &EcosystemTreasury,
+        clock: &Clock,
         ctx: &mut TxContext
     ): (Coin<MYSO>, u64, u64, u64, u64) {
         // Validate fees and calculate with overflow protection
@@ -2550,7 +2579,7 @@ module social_contracts::social_proof_tokens {
         if (fee_amount > 0) {
             let creator_total = creator_fee + platform_fee_half_to_creator;
             if (creator_total > 0) {
-                distribute_reservation_creator_fee(reservation_pool, post, beneficiary_vault, creator_total, &mut payment, ctx);
+                distribute_reservation_creator_fee(reservation_pool, post, beneficiary_vault, creator_total, &mut payment, clock, ctx);
             };
             let treasury_total = treasury_fee + platform_fee_half_to_treasury;
             if (treasury_total > 0) {
@@ -2573,6 +2602,7 @@ module social_contracts::social_proof_tokens {
         mut payment: Coin<MYSO>,
         treasury: &EcosystemTreasury,
         platform: &mut social_contracts::platform::Platform,
+        clock: &Clock,
         ctx: &mut TxContext
     ): (Coin<MYSO>, u64, u64, u64, u64) {
         // Validate fees and calculate with overflow protection
@@ -2587,13 +2617,13 @@ module social_contracts::social_proof_tokens {
         if (fee_amount > 0) {
             // Send creator fee with PoC redirection support
             if (creator_fee > 0) {
-                distribute_reservation_creator_fee(reservation_pool, post, beneficiary_vault, creator_fee, &mut payment, ctx);
+                distribute_reservation_creator_fee(reservation_pool, post, beneficiary_vault, creator_fee, &mut payment, clock, ctx);
             };
             
             // Send platform fee to platform treasury
             if (platform_fee > 0) {
                 let mut platform_fee_coin = coin::split(&mut payment, platform_fee, ctx);
-                social_contracts::platform::add_to_treasury(platform, &mut platform_fee_coin, platform_fee, ctx);
+                social_contracts::platform::add_to_treasury(platform, &mut platform_fee_coin, platform_fee, clock, ctx);
                 coin::destroy_zero(platform_fee_coin);
             };
             
@@ -2653,6 +2683,7 @@ module social_contracts::social_proof_tokens {
         mut payment: Coin<MYSO>,
         treasury: &EcosystemTreasury,
         platform: &mut social_contracts::platform::Platform,
+        clock: &Clock,
         ctx: &mut TxContext
     ): (Coin<MYSO>, u64, u64, u64, u64) {
         // Validate fees and calculate with overflow protection
@@ -2673,7 +2704,7 @@ module social_contracts::social_proof_tokens {
             // Send platform fee to platform treasury
             if (platform_fee > 0) {
                 let mut platform_fee_coin = coin::split(&mut payment, platform_fee, ctx);
-                social_contracts::platform::add_to_treasury(platform, &mut platform_fee_coin, platform_fee, ctx);
+                social_contracts::platform::add_to_treasury(platform, &mut platform_fee_coin, platform_fee, clock, ctx);
                 coin::destroy_zero(platform_fee_coin);
             };
             
@@ -2847,6 +2878,7 @@ module social_contracts::social_proof_tokens {
         platform: &mut social_contracts::platform::Platform,
         mut payment: Coin<MYSO>,
         amount: u64,
+        clock: &Clock,
         ctx: &mut TxContext
     ) {
         // Check version compatibility
@@ -2902,7 +2934,7 @@ module social_contracts::social_proof_tokens {
             // Send platform fee to platform treasury
             if (platform_fee > 0) {
                 let mut platform_fee_coin = coin::split(&mut payment, platform_fee, ctx);
-                social_contracts::platform::add_to_treasury(platform, &mut platform_fee_coin, platform_fee, ctx);
+                social_contracts::platform::add_to_treasury(platform, &mut platform_fee_coin, platform_fee, clock, ctx);
                 coin::destroy_zero(platform_fee_coin);
             };
             
@@ -3143,6 +3175,7 @@ module social_contracts::social_proof_tokens {
         mut payment: Coin<MYSO>,
         amount: u64,
         social_token: &mut SocialToken,
+        clock: &Clock,
         ctx: &mut TxContext
     ) {
         // Check version compatibility
@@ -3202,7 +3235,7 @@ module social_contracts::social_proof_tokens {
             // Send platform fee to platform treasury
             if (platform_fee > 0) {
                 let mut platform_fee_coin = coin::split(&mut payment, platform_fee, ctx);
-                social_contracts::platform::add_to_treasury(platform, &mut platform_fee_coin, platform_fee, ctx);
+                social_contracts::platform::add_to_treasury(platform, &mut platform_fee_coin, platform_fee, clock, ctx);
                 coin::destroy_zero(platform_fee_coin);
             };
             
@@ -3429,6 +3462,7 @@ module social_contracts::social_proof_tokens {
         platform: &mut social_contracts::platform::Platform,
         social_token: SocialToken,
         amount: u64,
+        clock: &Clock,
         ctx: &mut TxContext
     ) {
         // Check version compatibility
@@ -3519,7 +3553,7 @@ module social_contracts::social_proof_tokens {
             // Send platform fee to platform treasury
             if (platform_fee > 0) {
                 let mut platform_fee_coin = coin::from_balance(balance::split(&mut pool.myso_balance, platform_fee), ctx);
-                social_contracts::platform::add_to_treasury(platform, &mut platform_fee_coin, platform_fee, ctx);
+                social_contracts::platform::add_to_treasury(platform, &mut platform_fee_coin, platform_fee, clock, ctx);
                 coin::destroy_zero(platform_fee_coin);
             };
 

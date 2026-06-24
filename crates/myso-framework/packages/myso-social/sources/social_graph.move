@@ -14,7 +14,8 @@ module social_contracts::social_graph {
         transfer,
         event,
         table::{Self, Table},
-        vec_set::{Self, VecSet}
+        vec_set::{Self, VecSet},
+        clock::{Self, Clock},
     };
     
     use social_contracts::upgrade;
@@ -54,7 +55,7 @@ module social_contracts::social_graph {
     }
 
     /// Bootstrap initialization function - creates the social graph shared object
-    public(package) fun bootstrap_init(ctx: &mut TxContext) {
+    public(package) fun bootstrap_init(_clock: &Clock, ctx: &mut TxContext) {
         let social_graph = SocialGraph {
             id: object::new(ctx),
             following: table::new(ctx),
@@ -68,8 +69,8 @@ module social_contracts::social_graph {
 
     #[test_only]
     /// Initialize the social graph for testing
-    public fun init_for_testing(ctx: &mut TxContext) {
-        bootstrap_init(ctx)
+    public fun init_for_testing(clock: &Clock, ctx: &mut TxContext) {
+        bootstrap_init(clock, ctx)
     }
 
     /// Follow a wallet address

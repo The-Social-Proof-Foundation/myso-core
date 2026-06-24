@@ -2226,7 +2226,7 @@ Reserved usernames that cannot be registered
 Bootstrap initialization function - creates the username registry and treasury
 
 
-<pre><code><b>public</b>(package) <b>fun</b> <a href="../social_contracts/profile.md#social_contracts_profile_bootstrap_init">bootstrap_init</a>(ctx: &<b>mut</b> <a href="../myso/tx_context.md#myso_tx_context_TxContext">myso::tx_context::TxContext</a>)
+<pre><code><b>public</b>(package) <b>fun</b> <a href="../social_contracts/profile.md#social_contracts_profile_bootstrap_init">bootstrap_init</a>(clock: &<a href="../myso/clock.md#myso_clock_Clock">myso::clock::Clock</a>, ctx: &<b>mut</b> <a href="../myso/tx_context.md#myso_tx_context_TxContext">myso::tx_context::TxContext</a>)
 </code></pre>
 
 
@@ -2235,7 +2235,7 @@ Bootstrap initialization function - creates the username registry and treasury
 <summary>Implementation</summary>
 
 
-<pre><code><b>public</b>(package) <b>fun</b> <a href="../social_contracts/profile.md#social_contracts_profile_bootstrap_init">bootstrap_init</a>(ctx: &<b>mut</b> TxContext) {
+<pre><code><b>public</b>(package) <b>fun</b> <a href="../social_contracts/profile.md#social_contracts_profile_bootstrap_init">bootstrap_init</a>(clock: &Clock, ctx: &<b>mut</b> TxContext) {
     // Import current <a href="../social_contracts/profile.md#social_contracts_profile_version">version</a> from <a href="../social_contracts/upgrade.md#social_contracts_upgrade">upgrade</a> <b>module</b>
     <b>let</b> current_version = <a href="../social_contracts/upgrade.md#social_contracts_upgrade_current_version">upgrade::current_version</a>();
     <b>let</b> registry = <a href="../social_contracts/profile.md#social_contracts_profile_UsernameRegistry">UsernameRegistry</a> {
@@ -2255,7 +2255,7 @@ Bootstrap initialization function - creates the username registry and treasury
     event::emit(<a href="../social_contracts/profile.md#social_contracts_profile_EcosystemTreasuryUpdatedEvent">EcosystemTreasuryUpdatedEvent</a> {
         updated_by: sender,
         new_treasury_address: sender,
-        timestamp: tx_context::epoch_timestamp_ms(ctx),
+        timestamp: clock::timestamp_ms(clock),
     });
     // Share the registry to make it globally accessible
     transfer::share_object(registry);
@@ -2647,7 +2647,7 @@ Convert an ASCII String to a String
 
 
 
-<pre><code><b>fun</b> <a href="../social_contracts/profile.md#social_contracts_profile_emit_profile_updated_event">emit_profile_updated_event</a>(<a href="../social_contracts/profile.md#social_contracts_profile">profile</a>: &<a href="../social_contracts/profile.md#social_contracts_profile_Profile">social_contracts::profile::Profile</a>, ctx: &<a href="../myso/tx_context.md#myso_tx_context_TxContext">myso::tx_context::TxContext</a>)
+<pre><code><b>fun</b> <a href="../social_contracts/profile.md#social_contracts_profile_emit_profile_updated_event">emit_profile_updated_event</a>(<a href="../social_contracts/profile.md#social_contracts_profile">profile</a>: &<a href="../social_contracts/profile.md#social_contracts_profile_Profile">social_contracts::profile::Profile</a>, clock: &<a href="../myso/clock.md#myso_clock_Clock">myso::clock::Clock</a>, _ctx: &<a href="../myso/tx_context.md#myso_tx_context_TxContext">myso::tx_context::TxContext</a>)
 </code></pre>
 
 
@@ -2656,7 +2656,7 @@ Convert an ASCII String to a String
 <summary>Implementation</summary>
 
 
-<pre><code><b>fun</b> <a href="../social_contracts/profile.md#social_contracts_profile_emit_profile_updated_event">emit_profile_updated_event</a>(<a href="../social_contracts/profile.md#social_contracts_profile">profile</a>: &<a href="../social_contracts/profile.md#social_contracts_profile_Profile">Profile</a>, ctx: &TxContext) {
+<pre><code><b>fun</b> <a href="../social_contracts/profile.md#social_contracts_profile_emit_profile_updated_event">emit_profile_updated_event</a>(<a href="../social_contracts/profile.md#social_contracts_profile">profile</a>: &<a href="../social_contracts/profile.md#social_contracts_profile_Profile">Profile</a>, clock: &Clock, _ctx: &TxContext) {
     event::emit(<a href="../social_contracts/profile.md#social_contracts_profile_ProfileUpdatedEvent">ProfileUpdatedEvent</a> {
         profile_id: object::uid_to_address(&<a href="../social_contracts/profile.md#social_contracts_profile">profile</a>.<a href="../social_contracts/profile.md#social_contracts_profile_id">id</a>),
         <a href="../social_contracts/profile.md#social_contracts_profile_display_name">display_name</a>: <a href="../social_contracts/profile.md#social_contracts_profile">profile</a>.<a href="../social_contracts/profile.md#social_contracts_profile_display_name">display_name</a>,
@@ -2664,7 +2664,7 @@ Convert an ASCII String to a String
         <a href="../social_contracts/profile.md#social_contracts_profile_profile_picture">profile_picture</a>: <a href="../social_contracts/profile.md#social_contracts_profile_profile_picture_event_string">profile_picture_event_string</a>(<a href="../social_contracts/profile.md#social_contracts_profile">profile</a>),
         <a href="../social_contracts/profile.md#social_contracts_profile_cover_photo">cover_photo</a>: <a href="../social_contracts/profile.md#social_contracts_profile_cover_photo_event_string">cover_photo_event_string</a>(<a href="../social_contracts/profile.md#social_contracts_profile">profile</a>),
         <a href="../social_contracts/profile.md#social_contracts_profile_owner">owner</a>: <a href="../social_contracts/profile.md#social_contracts_profile">profile</a>.<a href="../social_contracts/profile.md#social_contracts_profile_owner">owner</a>,
-        updated_at: tx_context::epoch_timestamp_ms(ctx),
+        updated_at: clock::timestamp_ms(clock),
         <a href="../social_contracts/profile.md#social_contracts_profile_x_username">x_username</a>: <a href="../social_contracts/profile.md#social_contracts_profile">profile</a>.<a href="../social_contracts/profile.md#social_contracts_profile_x_username">x_username</a>,
         <a href="../social_contracts/profile.md#social_contracts_profile_min_offer_amount">min_offer_amount</a>: <a href="../social_contracts/profile.md#social_contracts_profile">profile</a>.<a href="../social_contracts/profile.md#social_contracts_profile_min_offer_amount">min_offer_amount</a>,
     });
@@ -2706,7 +2706,7 @@ Main entry: also creates a linked [<code><a href="../social_contracts/memory.md#
     // Check <a href="../social_contracts/profile.md#social_contracts_profile_version">version</a> compatibility
     <b>assert</b>!(registry.<a href="../social_contracts/profile.md#social_contracts_profile_version">version</a> == <a href="../social_contracts/upgrade.md#social_contracts_upgrade_current_version">upgrade::current_version</a>(), 1);
     <b>let</b> <a href="../social_contracts/profile.md#social_contracts_profile_owner">owner</a> = tx_context::sender(ctx);
-    <b>let</b> now = tx_context::epoch_timestamp_ms(ctx);
+    <b>let</b> now = clock::timestamp_ms(clock);
     // Check that the sender doesn't already have a <a href="../social_contracts/profile.md#social_contracts_profile">profile</a>
     <b>assert</b>!(!table::contains(&registry.address_profiles, <a href="../social_contracts/profile.md#social_contracts_profile_owner">owner</a>), <a href="../social_contracts/profile.md#social_contracts_profile_EProfileAlreadyExists">EProfileAlreadyExists</a>);
     <b>let</b> username = <a href="../social_contracts/profile.md#social_contracts_profile_canonical_registry_username">canonical_registry_username</a>(&username);
@@ -2771,7 +2771,7 @@ Main entry: also creates a linked [<code><a href="../social_contracts/memory.md#
         <a href="../social_contracts/profile.md#social_contracts_profile_profile_picture">profile_picture</a>: <a href="../social_contracts/profile.md#social_contracts_profile_profile_picture_event_string">profile_picture_event_string</a>(&<a href="../social_contracts/profile.md#social_contracts_profile">profile</a>),
         <a href="../social_contracts/profile.md#social_contracts_profile_cover_photo">cover_photo</a>: <a href="../social_contracts/profile.md#social_contracts_profile_cover_photo_event_string">cover_photo_event_string</a>(&<a href="../social_contracts/profile.md#social_contracts_profile">profile</a>),
         <a href="../social_contracts/profile.md#social_contracts_profile_owner">owner</a>,
-        created_at: tx_context::epoch_timestamp_ms(ctx),
+        created_at: now,
     });
     event::emit(<a href="../social_contracts/profile.md#social_contracts_profile_UsernameClaimedEvent">UsernameClaimedEvent</a> {
         username,
@@ -2832,7 +2832,7 @@ Transfer profile when there is **no** linked Memory account (<code>memory_accoun
 Profiles created via [<code><a href="../social_contracts/profile.md#social_contracts_profile_create_profile">create_profile</a></code>] have a Memory link — use [<code><a href="../social_contracts/profile.md#social_contracts_profile_transfer_profile_with_memory">transfer_profile_with_memory</a></code>].
 
 
-<pre><code><b>public</b> <b>entry</b> <b>fun</b> <a href="../social_contracts/profile.md#social_contracts_profile_transfer_profile">transfer_profile</a>(registry: &<b>mut</b> <a href="../social_contracts/profile.md#social_contracts_profile_UsernameRegistry">social_contracts::profile::UsernameRegistry</a>, <a href="../social_contracts/profile.md#social_contracts_profile">profile</a>: <a href="../social_contracts/profile.md#social_contracts_profile_Profile">social_contracts::profile::Profile</a>, new_owner: <b>address</b>, ctx: &<b>mut</b> <a href="../myso/tx_context.md#myso_tx_context_TxContext">myso::tx_context::TxContext</a>)
+<pre><code><b>public</b> <b>entry</b> <b>fun</b> <a href="../social_contracts/profile.md#social_contracts_profile_transfer_profile">transfer_profile</a>(registry: &<b>mut</b> <a href="../social_contracts/profile.md#social_contracts_profile_UsernameRegistry">social_contracts::profile::UsernameRegistry</a>, <a href="../social_contracts/profile.md#social_contracts_profile">profile</a>: <a href="../social_contracts/profile.md#social_contracts_profile_Profile">social_contracts::profile::Profile</a>, new_owner: <b>address</b>, clock: &<a href="../myso/clock.md#myso_clock_Clock">myso::clock::Clock</a>, ctx: &<b>mut</b> <a href="../myso/tx_context.md#myso_tx_context_TxContext">myso::tx_context::TxContext</a>)
 </code></pre>
 
 
@@ -2845,6 +2845,7 @@ Profiles created via [<code><a href="../social_contracts/profile.md#social_contr
     registry: &<b>mut</b> <a href="../social_contracts/profile.md#social_contracts_profile_UsernameRegistry">UsernameRegistry</a>,
     <b>mut</b> <a href="../social_contracts/profile.md#social_contracts_profile">profile</a>: <a href="../social_contracts/profile.md#social_contracts_profile_Profile">Profile</a>,
     new_owner: <b>address</b>,
+    clock: &Clock,
     ctx: &<b>mut</b> TxContext
 ) {
     // Check <a href="../social_contracts/profile.md#social_contracts_profile_version">version</a> compatibility
@@ -2865,7 +2866,7 @@ Profiles created via [<code><a href="../social_contracts/profile.md#social_contr
     table::add(&<b>mut</b> registry.address_profiles, new_owner, profile_id);
     // Update the <a href="../social_contracts/profile.md#social_contracts_profile">profile</a> <a href="../social_contracts/profile.md#social_contracts_profile_owner">owner</a>
     <a href="../social_contracts/profile.md#social_contracts_profile">profile</a>.<a href="../social_contracts/profile.md#social_contracts_profile_owner">owner</a> = new_owner;
-    <a href="../social_contracts/profile.md#social_contracts_profile_emit_profile_updated_event">emit_profile_updated_event</a>(&<a href="../social_contracts/profile.md#social_contracts_profile">profile</a>, ctx);
+    <a href="../social_contracts/profile.md#social_contracts_profile_emit_profile_updated_event">emit_profile_updated_event</a>(&<a href="../social_contracts/profile.md#social_contracts_profile">profile</a>, clock, ctx);
     // Transfer <a href="../social_contracts/profile.md#social_contracts_profile">profile</a> to new <a href="../social_contracts/profile.md#social_contracts_profile_owner">owner</a>
     transfer::transfer(<a href="../social_contracts/profile.md#social_contracts_profile">profile</a>, new_owner);
 }
@@ -2882,7 +2883,7 @@ Profiles created via [<code><a href="../social_contracts/profile.md#social_contr
 Same as [<code><a href="../social_contracts/profile.md#social_contracts_profile_transfer_profile">transfer_profile</a></code>], but keeps [<code><a href="../social_contracts/memory.md#social_contracts_memory_MemoryRegistry">memory::MemoryRegistry</a></code>] and linked [<code><a href="../social_contracts/memory.md#social_contracts_memory_MemoryAccount">memory::MemoryAccount</a></code>] in sync.
 
 
-<pre><code><b>public</b> <b>entry</b> <b>fun</b> <a href="../social_contracts/profile.md#social_contracts_profile_transfer_profile_with_memory">transfer_profile_with_memory</a>(registry: &<b>mut</b> <a href="../social_contracts/profile.md#social_contracts_profile_UsernameRegistry">social_contracts::profile::UsernameRegistry</a>, memory_registry: &<b>mut</b> <a href="../social_contracts/memory.md#social_contracts_memory_MemoryRegistry">social_contracts::memory::MemoryRegistry</a>, linked_account: &<b>mut</b> <a href="../social_contracts/memory.md#social_contracts_memory_MemoryAccount">social_contracts::memory::MemoryAccount</a>, <a href="../social_contracts/profile.md#social_contracts_profile">profile</a>: <a href="../social_contracts/profile.md#social_contracts_profile_Profile">social_contracts::profile::Profile</a>, new_owner: <b>address</b>, revoked_count: u64, ctx: &<b>mut</b> <a href="../myso/tx_context.md#myso_tx_context_TxContext">myso::tx_context::TxContext</a>)
+<pre><code><b>public</b> <b>entry</b> <b>fun</b> <a href="../social_contracts/profile.md#social_contracts_profile_transfer_profile_with_memory">transfer_profile_with_memory</a>(registry: &<b>mut</b> <a href="../social_contracts/profile.md#social_contracts_profile_UsernameRegistry">social_contracts::profile::UsernameRegistry</a>, memory_registry: &<b>mut</b> <a href="../social_contracts/memory.md#social_contracts_memory_MemoryRegistry">social_contracts::memory::MemoryRegistry</a>, linked_account: &<b>mut</b> <a href="../social_contracts/memory.md#social_contracts_memory_MemoryAccount">social_contracts::memory::MemoryAccount</a>, <a href="../social_contracts/profile.md#social_contracts_profile">profile</a>: <a href="../social_contracts/profile.md#social_contracts_profile_Profile">social_contracts::profile::Profile</a>, new_owner: <b>address</b>, revoked_count: u64, clock: &<a href="../myso/clock.md#myso_clock_Clock">myso::clock::Clock</a>, ctx: &<b>mut</b> <a href="../myso/tx_context.md#myso_tx_context_TxContext">myso::tx_context::TxContext</a>)
 </code></pre>
 
 
@@ -2898,6 +2899,7 @@ Same as [<code><a href="../social_contracts/profile.md#social_contracts_profile_
     <b>mut</b> <a href="../social_contracts/profile.md#social_contracts_profile">profile</a>: <a href="../social_contracts/profile.md#social_contracts_profile_Profile">Profile</a>,
     new_owner: <b>address</b>,
     revoked_count: u64,
+    clock: &Clock,
     ctx: &<b>mut</b> TxContext,
 ) {
     <b>assert</b>!(registry.<a href="../social_contracts/profile.md#social_contracts_profile_version">version</a> == <a href="../social_contracts/upgrade.md#social_contracts_upgrade_current_version">upgrade::current_version</a>(), 1);
@@ -2930,7 +2932,7 @@ Same as [<code><a href="../social_contracts/profile.md#social_contracts_profile_
     };
     table::add(&<b>mut</b> registry.address_profiles, new_owner, profile_id);
     <a href="../social_contracts/profile.md#social_contracts_profile">profile</a>.<a href="../social_contracts/profile.md#social_contracts_profile_owner">owner</a> = new_owner;
-    <a href="../social_contracts/profile.md#social_contracts_profile_emit_profile_updated_event">emit_profile_updated_event</a>(&<a href="../social_contracts/profile.md#social_contracts_profile">profile</a>, ctx);
+    <a href="../social_contracts/profile.md#social_contracts_profile_emit_profile_updated_event">emit_profile_updated_event</a>(&<a href="../social_contracts/profile.md#social_contracts_profile">profile</a>, clock, ctx);
     transfer::transfer(<a href="../social_contracts/profile.md#social_contracts_profile">profile</a>, new_owner);
 }
 </code></pre>
@@ -2946,7 +2948,7 @@ Same as [<code><a href="../social_contracts/profile.md#social_contracts_profile_
 Only the profile owner can update profile information
 
 
-<pre><code><b>public</b> <b>entry</b> <b>fun</b> <a href="../social_contracts/profile.md#social_contracts_profile_update_profile">update_profile</a>(<a href="../social_contracts/profile.md#social_contracts_profile">profile</a>: &<b>mut</b> <a href="../social_contracts/profile.md#social_contracts_profile_Profile">social_contracts::profile::Profile</a>, new_display_name: <a href="../std/string.md#std_string_String">std::string::String</a>, new_bio: <a href="../std/string.md#std_string_String">std::string::String</a>, new_profile_picture_url: vector&lt;u8&gt;, new_cover_photo_url: vector&lt;u8&gt;, <a href="../social_contracts/profile.md#social_contracts_profile_min_offer_amount">min_offer_amount</a>: <a href="../std/option.md#std_option_Option">std::option::Option</a>&lt;u64&gt;, ctx: &<b>mut</b> <a href="../myso/tx_context.md#myso_tx_context_TxContext">myso::tx_context::TxContext</a>)
+<pre><code><b>public</b> <b>entry</b> <b>fun</b> <a href="../social_contracts/profile.md#social_contracts_profile_update_profile">update_profile</a>(<a href="../social_contracts/profile.md#social_contracts_profile">profile</a>: &<b>mut</b> <a href="../social_contracts/profile.md#social_contracts_profile_Profile">social_contracts::profile::Profile</a>, new_display_name: <a href="../std/string.md#std_string_String">std::string::String</a>, new_bio: <a href="../std/string.md#std_string_String">std::string::String</a>, new_profile_picture_url: vector&lt;u8&gt;, new_cover_photo_url: vector&lt;u8&gt;, <a href="../social_contracts/profile.md#social_contracts_profile_min_offer_amount">min_offer_amount</a>: <a href="../std/option.md#std_option_Option">std::option::Option</a>&lt;u64&gt;, clock: &<a href="../myso/clock.md#myso_clock_Clock">myso::clock::Clock</a>, ctx: &<b>mut</b> <a href="../myso/tx_context.md#myso_tx_context_TxContext">myso::tx_context::TxContext</a>)
 </code></pre>
 
 
@@ -2963,6 +2965,7 @@ Only the profile owner can update profile information
     new_profile_picture_url: vector&lt;u8&gt;,
     new_cover_photo_url: vector&lt;u8&gt;,
     <a href="../social_contracts/profile.md#social_contracts_profile_min_offer_amount">min_offer_amount</a>: Option&lt;u64&gt;,
+    clock: &Clock,
     ctx: &<b>mut</b> TxContext
 ) {
     // Verify sender is the <a href="../social_contracts/profile.md#social_contracts_profile_owner">owner</a>
@@ -2982,7 +2985,7 @@ Only the profile owner can update profile information
     <b>if</b> (option::is_some(&<a href="../social_contracts/profile.md#social_contracts_profile_min_offer_amount">min_offer_amount</a>)) {
         <a href="../social_contracts/profile.md#social_contracts_profile">profile</a>.<a href="../social_contracts/profile.md#social_contracts_profile_min_offer_amount">min_offer_amount</a> = <a href="../social_contracts/profile.md#social_contracts_profile_min_offer_amount">min_offer_amount</a>;
     };
-    <a href="../social_contracts/profile.md#social_contracts_profile_emit_profile_updated_event">emit_profile_updated_event</a>(<a href="../social_contracts/profile.md#social_contracts_profile">profile</a>, ctx);
+    <a href="../social_contracts/profile.md#social_contracts_profile_emit_profile_updated_event">emit_profile_updated_event</a>(<a href="../social_contracts/profile.md#social_contracts_profile">profile</a>, clock, ctx);
 }
 </code></pre>
 
@@ -3344,7 +3347,7 @@ Create an offer to purchase a profile
 Locks MYSO tokens in the offer
 
 
-<pre><code><b>public</b> <b>entry</b> <b>fun</b> <a href="../social_contracts/profile.md#social_contracts_profile_create_offer">create_offer</a>(<a href="../social_contracts/profile.md#social_contracts_profile">profile</a>: &<b>mut</b> <a href="../social_contracts/profile.md#social_contracts_profile_Profile">social_contracts::profile::Profile</a>, coin: &<b>mut</b> <a href="../myso/coin.md#myso_coin_Coin">myso::coin::Coin</a>&lt;<a href="../myso/myso.md#myso_myso_MYSO">myso::myso::MYSO</a>&gt;, amount: u64, ctx: &<b>mut</b> <a href="../myso/tx_context.md#myso_tx_context_TxContext">myso::tx_context::TxContext</a>)
+<pre><code><b>public</b> <b>entry</b> <b>fun</b> <a href="../social_contracts/profile.md#social_contracts_profile_create_offer">create_offer</a>(<a href="../social_contracts/profile.md#social_contracts_profile">profile</a>: &<b>mut</b> <a href="../social_contracts/profile.md#social_contracts_profile_Profile">social_contracts::profile::Profile</a>, coin: &<b>mut</b> <a href="../myso/coin.md#myso_coin_Coin">myso::coin::Coin</a>&lt;<a href="../myso/myso.md#myso_myso_MYSO">myso::myso::MYSO</a>&gt;, amount: u64, clock: &<a href="../myso/clock.md#myso_clock_Clock">myso::clock::Clock</a>, ctx: &<b>mut</b> <a href="../myso/tx_context.md#myso_tx_context_TxContext">myso::tx_context::TxContext</a>)
 </code></pre>
 
 
@@ -3357,12 +3360,13 @@ Locks MYSO tokens in the offer
     <a href="../social_contracts/profile.md#social_contracts_profile">profile</a>: &<b>mut</b> <a href="../social_contracts/profile.md#social_contracts_profile_Profile">Profile</a>,
     coin: &<b>mut</b> Coin&lt;MYSO&gt;,
     amount: u64,
+    clock: &Clock,
     ctx: &<b>mut</b> TxContext
 ) {
     <b>let</b> sender = tx_context::sender(ctx);
     <b>let</b> profile_owner = <a href="../social_contracts/profile.md#social_contracts_profile">profile</a>.<a href="../social_contracts/profile.md#social_contracts_profile_owner">owner</a>;
     <b>let</b> profile_id = object::uid_to_address(&<a href="../social_contracts/profile.md#social_contracts_profile">profile</a>.<a href="../social_contracts/profile.md#social_contracts_profile_id">id</a>);
-    <b>let</b> now = tx_context::epoch_timestamp_ms(ctx);
+    <b>let</b> now = clock::timestamp_ms(clock);
     // Cannot offer on your own <a href="../social_contracts/profile.md#social_contracts_profile">profile</a>
     <b>assert</b>!(sender != profile_owner, <a href="../social_contracts/profile.md#social_contracts_profile_ECannotOfferOwnProfile">ECannotOfferOwnProfile</a>);
     // Check <b>if</b> there's sufficient tokens
@@ -3414,7 +3418,7 @@ Locks MYSO tokens in the offer
 Accept an offer when there is **no** linked Memory account. Use [<code><a href="../social_contracts/profile.md#social_contracts_profile_accept_offer_with_memory">accept_offer_with_memory</a></code>] for profiles created via [<code><a href="../social_contracts/profile.md#social_contracts_profile_create_profile">create_profile</a></code>].
 
 
-<pre><code><b>public</b> <b>entry</b> <b>fun</b> <a href="../social_contracts/profile.md#social_contracts_profile_accept_offer">accept_offer</a>(registry: &<b>mut</b> <a href="../social_contracts/profile.md#social_contracts_profile_UsernameRegistry">social_contracts::profile::UsernameRegistry</a>, <a href="../social_contracts/profile.md#social_contracts_profile">profile</a>: <a href="../social_contracts/profile.md#social_contracts_profile_Profile">social_contracts::profile::Profile</a>, treasury: &<a href="../social_contracts/profile.md#social_contracts_profile_EcosystemTreasury">social_contracts::profile::EcosystemTreasury</a>, offeror: <b>address</b>, new_main_profile: <a href="../std/option.md#std_option_Option">std::option::Option</a>&lt;<b>address</b>&gt;, ctx: &<b>mut</b> <a href="../myso/tx_context.md#myso_tx_context_TxContext">myso::tx_context::TxContext</a>)
+<pre><code><b>public</b> <b>entry</b> <b>fun</b> <a href="../social_contracts/profile.md#social_contracts_profile_accept_offer">accept_offer</a>(registry: &<b>mut</b> <a href="../social_contracts/profile.md#social_contracts_profile_UsernameRegistry">social_contracts::profile::UsernameRegistry</a>, <a href="../social_contracts/profile.md#social_contracts_profile">profile</a>: <a href="../social_contracts/profile.md#social_contracts_profile_Profile">social_contracts::profile::Profile</a>, treasury: &<a href="../social_contracts/profile.md#social_contracts_profile_EcosystemTreasury">social_contracts::profile::EcosystemTreasury</a>, offeror: <b>address</b>, new_main_profile: <a href="../std/option.md#std_option_Option">std::option::Option</a>&lt;<b>address</b>&gt;, clock: &<a href="../myso/clock.md#myso_clock_Clock">myso::clock::Clock</a>, ctx: &<b>mut</b> <a href="../myso/tx_context.md#myso_tx_context_TxContext">myso::tx_context::TxContext</a>)
 </code></pre>
 
 
@@ -3429,11 +3433,12 @@ Accept an offer when there is **no** linked Memory account. Use [<code><a href="
     treasury: &<a href="../social_contracts/profile.md#social_contracts_profile_EcosystemTreasury">EcosystemTreasury</a>,
     offeror: <b>address</b>,
     new_main_profile: Option&lt;<b>address</b>&gt;,
+    clock: &Clock,
     ctx: &<b>mut</b> TxContext
 ) {
     <b>let</b> sender = tx_context::sender(ctx);
     <b>let</b> profile_id = object::uid_to_address(&<a href="../social_contracts/profile.md#social_contracts_profile">profile</a>.<a href="../social_contracts/profile.md#social_contracts_profile_id">id</a>);
-    <b>let</b> now = tx_context::epoch_timestamp_ms(ctx);
+    <b>let</b> now = clock::timestamp_ms(clock);
     // Verify sender is the <a href="../social_contracts/profile.md#social_contracts_profile">profile</a> <a href="../social_contracts/profile.md#social_contracts_profile_owner">owner</a>
     <b>assert</b>!(<a href="../social_contracts/profile.md#social_contracts_profile">profile</a>.<a href="../social_contracts/profile.md#social_contracts_profile_owner">owner</a> == sender, <a href="../social_contracts/profile.md#social_contracts_profile_EUnauthorized">EUnauthorized</a>);
     <b>assert</b>!(option::is_none(&<a href="../social_contracts/profile.md#social_contracts_profile">profile</a>.memory_account_id), <a href="../social_contracts/profile.md#social_contracts_profile_EMustUseLinkedMemoryTransfer">EMustUseLinkedMemoryTransfer</a>);
@@ -3482,7 +3487,7 @@ Accept an offer when there is **no** linked Memory account. Use [<code><a href="
         accepted_at: now,
     });
     // Emit a comprehensive <a href="../social_contracts/profile.md#social_contracts_profile">profile</a> updated event to indicate ownership change
-    <a href="../social_contracts/profile.md#social_contracts_profile_emit_profile_updated_event">emit_profile_updated_event</a>(&<a href="../social_contracts/profile.md#social_contracts_profile">profile</a>, ctx);
+    <a href="../social_contracts/profile.md#social_contracts_profile_emit_profile_updated_event">emit_profile_updated_event</a>(&<a href="../social_contracts/profile.md#social_contracts_profile">profile</a>, clock, ctx);
     // Emit a fee event
     event::emit(<a href="../social_contracts/profile.md#social_contracts_profile_ProfileSaleFeeEvent">ProfileSaleFeeEvent</a> {
         profile_id,
@@ -3509,7 +3514,7 @@ Accept an offer when there is **no** linked Memory account. Use [<code><a href="
 Same as [<code><a href="../social_contracts/profile.md#social_contracts_profile_accept_offer">accept_offer</a></code>] but synchronizes Memory ownership with the buyer.
 
 
-<pre><code><b>public</b> <b>entry</b> <b>fun</b> <a href="../social_contracts/profile.md#social_contracts_profile_accept_offer_with_memory">accept_offer_with_memory</a>(registry: &<b>mut</b> <a href="../social_contracts/profile.md#social_contracts_profile_UsernameRegistry">social_contracts::profile::UsernameRegistry</a>, memory_registry: &<b>mut</b> <a href="../social_contracts/memory.md#social_contracts_memory_MemoryRegistry">social_contracts::memory::MemoryRegistry</a>, linked_account: &<b>mut</b> <a href="../social_contracts/memory.md#social_contracts_memory_MemoryAccount">social_contracts::memory::MemoryAccount</a>, <a href="../social_contracts/profile.md#social_contracts_profile">profile</a>: <a href="../social_contracts/profile.md#social_contracts_profile_Profile">social_contracts::profile::Profile</a>, treasury: &<a href="../social_contracts/profile.md#social_contracts_profile_EcosystemTreasury">social_contracts::profile::EcosystemTreasury</a>, offeror: <b>address</b>, new_main_profile: <a href="../std/option.md#std_option_Option">std::option::Option</a>&lt;<b>address</b>&gt;, ctx: &<b>mut</b> <a href="../myso/tx_context.md#myso_tx_context_TxContext">myso::tx_context::TxContext</a>)
+<pre><code><b>public</b> <b>entry</b> <b>fun</b> <a href="../social_contracts/profile.md#social_contracts_profile_accept_offer_with_memory">accept_offer_with_memory</a>(registry: &<b>mut</b> <a href="../social_contracts/profile.md#social_contracts_profile_UsernameRegistry">social_contracts::profile::UsernameRegistry</a>, memory_registry: &<b>mut</b> <a href="../social_contracts/memory.md#social_contracts_memory_MemoryRegistry">social_contracts::memory::MemoryRegistry</a>, linked_account: &<b>mut</b> <a href="../social_contracts/memory.md#social_contracts_memory_MemoryAccount">social_contracts::memory::MemoryAccount</a>, <a href="../social_contracts/profile.md#social_contracts_profile">profile</a>: <a href="../social_contracts/profile.md#social_contracts_profile_Profile">social_contracts::profile::Profile</a>, treasury: &<a href="../social_contracts/profile.md#social_contracts_profile_EcosystemTreasury">social_contracts::profile::EcosystemTreasury</a>, offeror: <b>address</b>, new_main_profile: <a href="../std/option.md#std_option_Option">std::option::Option</a>&lt;<b>address</b>&gt;, clock: &<a href="../myso/clock.md#myso_clock_Clock">myso::clock::Clock</a>, ctx: &<b>mut</b> <a href="../myso/tx_context.md#myso_tx_context_TxContext">myso::tx_context::TxContext</a>)
 </code></pre>
 
 
@@ -3526,11 +3531,12 @@ Same as [<code><a href="../social_contracts/profile.md#social_contracts_profile_
     treasury: &<a href="../social_contracts/profile.md#social_contracts_profile_EcosystemTreasury">EcosystemTreasury</a>,
     offeror: <b>address</b>,
     new_main_profile: Option&lt;<b>address</b>&gt;,
+    clock: &Clock,
     ctx: &<b>mut</b> TxContext,
 ) {
     <b>let</b> sender = tx_context::sender(ctx);
     <b>let</b> profile_id = object::uid_to_address(&<a href="../social_contracts/profile.md#social_contracts_profile">profile</a>.<a href="../social_contracts/profile.md#social_contracts_profile_id">id</a>);
-    <b>let</b> now = tx_context::epoch_timestamp_ms(ctx);
+    <b>let</b> now = clock::timestamp_ms(clock);
     <b>assert</b>!(<a href="../social_contracts/profile.md#social_contracts_profile">profile</a>.<a href="../social_contracts/profile.md#social_contracts_profile_owner">owner</a> == sender, <a href="../social_contracts/profile.md#social_contracts_profile_EUnauthorized">EUnauthorized</a>);
     <b>assert</b>!(option::is_some(&<a href="../social_contracts/profile.md#social_contracts_profile">profile</a>.memory_account_id), <a href="../social_contracts/profile.md#social_contracts_profile_ERequiresMemoryLinkedProfile">ERequiresMemoryLinkedProfile</a>);
     <b>assert</b>!(
@@ -3571,7 +3577,7 @@ Same as [<code><a href="../social_contracts/profile.md#social_contracts_profile_
         amount,
         accepted_at: now,
     });
-    <a href="../social_contracts/profile.md#social_contracts_profile_emit_profile_updated_event">emit_profile_updated_event</a>(&<a href="../social_contracts/profile.md#social_contracts_profile">profile</a>, ctx);
+    <a href="../social_contracts/profile.md#social_contracts_profile_emit_profile_updated_event">emit_profile_updated_event</a>(&<a href="../social_contracts/profile.md#social_contracts_profile">profile</a>, clock, ctx);
     event::emit(<a href="../social_contracts/profile.md#social_contracts_profile_ProfileSaleFeeEvent">ProfileSaleFeeEvent</a> {
         profile_id,
         offeror,
@@ -3598,7 +3604,7 @@ Can be called by the profile owner to reject or the offeror to revoke
 Returns locked MYSO tokenv s to the offeror
 
 
-<pre><code><b>public</b> <b>entry</b> <b>fun</b> <a href="../social_contracts/profile.md#social_contracts_profile_reject_or_revoke_offer">reject_or_revoke_offer</a>(<a href="../social_contracts/profile.md#social_contracts_profile">profile</a>: &<b>mut</b> <a href="../social_contracts/profile.md#social_contracts_profile_Profile">social_contracts::profile::Profile</a>, offeror: <b>address</b>, ctx: &<b>mut</b> <a href="../myso/tx_context.md#myso_tx_context_TxContext">myso::tx_context::TxContext</a>)
+<pre><code><b>public</b> <b>entry</b> <b>fun</b> <a href="../social_contracts/profile.md#social_contracts_profile_reject_or_revoke_offer">reject_or_revoke_offer</a>(<a href="../social_contracts/profile.md#social_contracts_profile">profile</a>: &<b>mut</b> <a href="../social_contracts/profile.md#social_contracts_profile_Profile">social_contracts::profile::Profile</a>, offeror: <b>address</b>, clock: &<a href="../myso/clock.md#myso_clock_Clock">myso::clock::Clock</a>, ctx: &<b>mut</b> <a href="../myso/tx_context.md#myso_tx_context_TxContext">myso::tx_context::TxContext</a>)
 </code></pre>
 
 
@@ -3610,11 +3616,12 @@ Returns locked MYSO tokenv s to the offeror
 <pre><code><b>public</b> <b>entry</b> <b>fun</b> <a href="../social_contracts/profile.md#social_contracts_profile_reject_or_revoke_offer">reject_or_revoke_offer</a>(
     <a href="../social_contracts/profile.md#social_contracts_profile">profile</a>: &<b>mut</b> <a href="../social_contracts/profile.md#social_contracts_profile_Profile">Profile</a>,
     offeror: <b>address</b>,
+    clock: &Clock,
     ctx: &<b>mut</b> TxContext
 ) {
     <b>let</b> sender = tx_context::sender(ctx);
     <b>let</b> profile_id = object::uid_to_address(&<a href="../social_contracts/profile.md#social_contracts_profile">profile</a>.<a href="../social_contracts/profile.md#social_contracts_profile_id">id</a>);
-    <b>let</b> now = tx_context::epoch_timestamp_ms(ctx);
+    <b>let</b> now = clock::timestamp_ms(clock);
     // Check <b>if</b> offers table exists
     <b>assert</b>!(dynamic_field::exists_(&<a href="../social_contracts/profile.md#social_contracts_profile">profile</a>.<a href="../social_contracts/profile.md#social_contracts_profile_id">id</a>, <a href="../social_contracts/profile.md#social_contracts_profile_OFFERS_FIELD">OFFERS_FIELD</a>), <a href="../social_contracts/profile.md#social_contracts_profile_EOfferDoesNotExist">EOfferDoesNotExist</a>);
     // Get the offers table
@@ -3737,7 +3744,7 @@ Get the treasury address from the EcosystemTreasury
 Update Ecosystem Treasury address (admin only)
 
 
-<pre><code><b>public</b> <b>entry</b> <b>fun</b> <a href="../social_contracts/profile.md#social_contracts_profile_update_treasury_address">update_treasury_address</a>(_: &<a href="../social_contracts/profile.md#social_contracts_profile_EcosystemTreasuryAdminCap">social_contracts::profile::EcosystemTreasuryAdminCap</a>, treasury: &<b>mut</b> <a href="../social_contracts/profile.md#social_contracts_profile_EcosystemTreasury">social_contracts::profile::EcosystemTreasury</a>, new_address: <b>address</b>, ctx: &<b>mut</b> <a href="../myso/tx_context.md#myso_tx_context_TxContext">myso::tx_context::TxContext</a>)
+<pre><code><b>public</b> <b>entry</b> <b>fun</b> <a href="../social_contracts/profile.md#social_contracts_profile_update_treasury_address">update_treasury_address</a>(_: &<a href="../social_contracts/profile.md#social_contracts_profile_EcosystemTreasuryAdminCap">social_contracts::profile::EcosystemTreasuryAdminCap</a>, treasury: &<b>mut</b> <a href="../social_contracts/profile.md#social_contracts_profile_EcosystemTreasury">social_contracts::profile::EcosystemTreasury</a>, new_address: <b>address</b>, clock: &<a href="../myso/clock.md#myso_clock_Clock">myso::clock::Clock</a>, ctx: &<b>mut</b> <a href="../myso/tx_context.md#myso_tx_context_TxContext">myso::tx_context::TxContext</a>)
 </code></pre>
 
 
@@ -3750,6 +3757,7 @@ Update Ecosystem Treasury address (admin only)
     _: &<a href="../social_contracts/profile.md#social_contracts_profile_EcosystemTreasuryAdminCap">EcosystemTreasuryAdminCap</a>,
     treasury: &<b>mut</b> <a href="../social_contracts/profile.md#social_contracts_profile_EcosystemTreasury">EcosystemTreasury</a>,
     new_address: <b>address</b>,
+    clock: &Clock,
     ctx: &<b>mut</b> TxContext
 ) {
     treasury.treasury_address = new_address;
@@ -3757,7 +3765,7 @@ Update Ecosystem Treasury address (admin only)
     event::emit(<a href="../social_contracts/profile.md#social_contracts_profile_EcosystemTreasuryUpdatedEvent">EcosystemTreasuryUpdatedEvent</a> {
         updated_by: tx_context::sender(ctx),
         new_treasury_address: new_address,
-        timestamp: tx_context::epoch_timestamp_ms(ctx),
+        timestamp: clock::timestamp_ms(clock),
     });
 }
 </code></pre>
@@ -3922,7 +3930,7 @@ Create a UsernameAdminCap for bootstrap (package visibility only)
 Assign an ecosystem badge to a profile - called by EcosystemBadgeAdminCap holder
 
 
-<pre><code><b>public</b> <b>entry</b> <b>fun</b> <a href="../social_contracts/profile.md#social_contracts_profile_assign_ecosystem_badge">assign_ecosystem_badge</a>(_: &<a href="../social_contracts/profile.md#social_contracts_profile_EcosystemBadgeAdminCap">social_contracts::profile::EcosystemBadgeAdminCap</a>, <a href="../social_contracts/profile.md#social_contracts_profile">profile</a>: &<b>mut</b> <a href="../social_contracts/profile.md#social_contracts_profile_Profile">social_contracts::profile::Profile</a>, badge_name: <a href="../std/string.md#std_string_String">std::string::String</a>, badge_description: <a href="../std/string.md#std_string_String">std::string::String</a>, badge_media_url: <a href="../std/string.md#std_string_String">std::string::String</a>, badge_icon_url: <a href="../std/string.md#std_string_String">std::string::String</a>, badge_type: u8, ctx: &<b>mut</b> <a href="../myso/tx_context.md#myso_tx_context_TxContext">myso::tx_context::TxContext</a>)
+<pre><code><b>public</b> <b>entry</b> <b>fun</b> <a href="../social_contracts/profile.md#social_contracts_profile_assign_ecosystem_badge">assign_ecosystem_badge</a>(_: &<a href="../social_contracts/profile.md#social_contracts_profile_EcosystemBadgeAdminCap">social_contracts::profile::EcosystemBadgeAdminCap</a>, <a href="../social_contracts/profile.md#social_contracts_profile">profile</a>: &<b>mut</b> <a href="../social_contracts/profile.md#social_contracts_profile_Profile">social_contracts::profile::Profile</a>, badge_name: <a href="../std/string.md#std_string_String">std::string::String</a>, badge_description: <a href="../std/string.md#std_string_String">std::string::String</a>, badge_media_url: <a href="../std/string.md#std_string_String">std::string::String</a>, badge_icon_url: <a href="../std/string.md#std_string_String">std::string::String</a>, badge_type: u8, clock: &<a href="../myso/clock.md#myso_clock_Clock">myso::clock::Clock</a>, ctx: &<b>mut</b> <a href="../myso/tx_context.md#myso_tx_context_TxContext">myso::tx_context::TxContext</a>)
 </code></pre>
 
 
@@ -3939,6 +3947,7 @@ Assign an ecosystem badge to a profile - called by EcosystemBadgeAdminCap holder
     badge_media_url: String,
     badge_icon_url: String,
     badge_type: u8,
+    clock: &Clock,
     ctx: &<b>mut</b> TxContext
 ) {
     <b>assert</b>!(badge_type &gt;= 1 && badge_type &lt;= 100, <a href="../social_contracts/profile.md#social_contracts_profile_EInvalidBadgeType">EInvalidBadgeType</a>);
@@ -3947,7 +3956,7 @@ Assign an ecosystem badge to a profile - called by EcosystemBadgeAdminCap holder
     <b>assert</b>!(string::length(&badge_media_url) &gt; 0 && string::length(&badge_media_url) &lt;= <a href="../social_contracts/profile.md#social_contracts_profile_MAX_BADGE_MEDIA_URL_LENGTH">MAX_BADGE_MEDIA_URL_LENGTH</a>, <a href="../social_contracts/profile.md#social_contracts_profile_EBadgeMediaUrlTooLong">EBadgeMediaUrlTooLong</a>);
     <b>assert</b>!(string::length(&badge_icon_url) &gt; 0 && string::length(&badge_icon_url) &lt;= <a href="../social_contracts/profile.md#social_contracts_profile_MAX_BADGE_ICON_URL_LENGTH">MAX_BADGE_ICON_URL_LENGTH</a>, <a href="../social_contracts/profile.md#social_contracts_profile_EBadgeIconUrlTooLong">EBadgeIconUrlTooLong</a>);
     <b>let</b> issuer = tx_context::sender(ctx);
-    <b>let</b> now = tx_context::epoch_timestamp_ms(ctx);
+    <b>let</b> now = clock::timestamp_ms(clock);
     <b>let</b> badge_name_for_id = <a href="../social_contracts/profile.md#social_contracts_profile_copy_string">copy_string</a>(&badge_name);
     <b>let</b> <b>mut</b> <a href="../social_contracts/profile.md#social_contracts_profile_badge_id">badge_id</a> = string::utf8(<a href="../social_contracts/profile.md#social_contracts_profile_ECOSYSTEM_BADGE_PREFIX">ECOSYSTEM_BADGE_PREFIX</a>);
     <b>let</b> issuer_str = address::to_string(issuer);
@@ -3984,7 +3993,7 @@ Assign an ecosystem badge to a profile - called by EcosystemBadgeAdminCap holder
 Set or clear a profile X username — only callable by an EcosystemBadgeAdminCap holder.
 
 
-<pre><code><b>public</b> <b>entry</b> <b>fun</b> <a href="../social_contracts/profile.md#social_contracts_profile_admin_set_profile_x_username">admin_set_profile_x_username</a>(_: &<a href="../social_contracts/profile.md#social_contracts_profile_EcosystemBadgeAdminCap">social_contracts::profile::EcosystemBadgeAdminCap</a>, <a href="../social_contracts/profile.md#social_contracts_profile">profile</a>: &<b>mut</b> <a href="../social_contracts/profile.md#social_contracts_profile_Profile">social_contracts::profile::Profile</a>, new_x_username: <a href="../std/option.md#std_option_Option">std::option::Option</a>&lt;<a href="../std/string.md#std_string_String">std::string::String</a>&gt;, ctx: &<b>mut</b> <a href="../myso/tx_context.md#myso_tx_context_TxContext">myso::tx_context::TxContext</a>)
+<pre><code><b>public</b> <b>entry</b> <b>fun</b> <a href="../social_contracts/profile.md#social_contracts_profile_admin_set_profile_x_username">admin_set_profile_x_username</a>(_: &<a href="../social_contracts/profile.md#social_contracts_profile_EcosystemBadgeAdminCap">social_contracts::profile::EcosystemBadgeAdminCap</a>, <a href="../social_contracts/profile.md#social_contracts_profile">profile</a>: &<b>mut</b> <a href="../social_contracts/profile.md#social_contracts_profile_Profile">social_contracts::profile::Profile</a>, new_x_username: <a href="../std/option.md#std_option_Option">std::option::Option</a>&lt;<a href="../std/string.md#std_string_String">std::string::String</a>&gt;, clock: &<a href="../myso/clock.md#myso_clock_Clock">myso::clock::Clock</a>, ctx: &<b>mut</b> <a href="../myso/tx_context.md#myso_tx_context_TxContext">myso::tx_context::TxContext</a>)
 </code></pre>
 
 
@@ -3997,10 +4006,11 @@ Set or clear a profile X username — only callable by an EcosystemBadgeAdminCap
     _: &<a href="../social_contracts/profile.md#social_contracts_profile_EcosystemBadgeAdminCap">EcosystemBadgeAdminCap</a>,
     <a href="../social_contracts/profile.md#social_contracts_profile">profile</a>: &<b>mut</b> <a href="../social_contracts/profile.md#social_contracts_profile_Profile">Profile</a>,
     new_x_username: Option&lt;String&gt;,
+    clock: &Clock,
     ctx: &<b>mut</b> TxContext
 ) {
     <a href="../social_contracts/profile.md#social_contracts_profile">profile</a>.<a href="../social_contracts/profile.md#social_contracts_profile_x_username">x_username</a> = new_x_username;
-    <b>let</b> now = tx_context::epoch_timestamp_ms(ctx);
+    <b>let</b> now = clock::timestamp_ms(clock);
     event::emit(<a href="../social_contracts/profile.md#social_contracts_profile_ProfileXUsernameUpdatedEvent">ProfileXUsernameUpdatedEvent</a> {
         profile_id: object::uid_to_address(&<a href="../social_contracts/profile.md#social_contracts_profile">profile</a>.<a href="../social_contracts/profile.md#social_contracts_profile_id">id</a>),
         <a href="../social_contracts/profile.md#social_contracts_profile_owner">owner</a>: <a href="../social_contracts/profile.md#social_contracts_profile">profile</a>.<a href="../social_contracts/profile.md#social_contracts_profile_owner">owner</a>,
@@ -4022,7 +4032,7 @@ Set or clear a profile X username — only callable by an EcosystemBadgeAdminCap
 Revoke an ecosystem badge from a profile - called by EcosystemBadgeAdminCap holder
 
 
-<pre><code><b>public</b> <b>entry</b> <b>fun</b> <a href="../social_contracts/profile.md#social_contracts_profile_revoke_ecosystem_badge">revoke_ecosystem_badge</a>(_: &<a href="../social_contracts/profile.md#social_contracts_profile_EcosystemBadgeAdminCap">social_contracts::profile::EcosystemBadgeAdminCap</a>, <a href="../social_contracts/profile.md#social_contracts_profile">profile</a>: &<b>mut</b> <a href="../social_contracts/profile.md#social_contracts_profile_Profile">social_contracts::profile::Profile</a>, <a href="../social_contracts/profile.md#social_contracts_profile_badge_id">badge_id</a>: <a href="../std/string.md#std_string_String">std::string::String</a>, ctx: &<b>mut</b> <a href="../myso/tx_context.md#myso_tx_context_TxContext">myso::tx_context::TxContext</a>)
+<pre><code><b>public</b> <b>entry</b> <b>fun</b> <a href="../social_contracts/profile.md#social_contracts_profile_revoke_ecosystem_badge">revoke_ecosystem_badge</a>(_: &<a href="../social_contracts/profile.md#social_contracts_profile_EcosystemBadgeAdminCap">social_contracts::profile::EcosystemBadgeAdminCap</a>, <a href="../social_contracts/profile.md#social_contracts_profile">profile</a>: &<b>mut</b> <a href="../social_contracts/profile.md#social_contracts_profile_Profile">social_contracts::profile::Profile</a>, <a href="../social_contracts/profile.md#social_contracts_profile_badge_id">badge_id</a>: <a href="../std/string.md#std_string_String">std::string::String</a>, clock: &<a href="../myso/clock.md#myso_clock_Clock">myso::clock::Clock</a>, ctx: &<b>mut</b> <a href="../myso/tx_context.md#myso_tx_context_TxContext">myso::tx_context::TxContext</a>)
 </code></pre>
 
 
@@ -4035,10 +4045,11 @@ Revoke an ecosystem badge from a profile - called by EcosystemBadgeAdminCap hold
     _: &<a href="../social_contracts/profile.md#social_contracts_profile_EcosystemBadgeAdminCap">EcosystemBadgeAdminCap</a>,
     <a href="../social_contracts/profile.md#social_contracts_profile">profile</a>: &<b>mut</b> <a href="../social_contracts/profile.md#social_contracts_profile_Profile">Profile</a>,
     <a href="../social_contracts/profile.md#social_contracts_profile_badge_id">badge_id</a>: String,
+    clock: &Clock,
     ctx: &<b>mut</b> TxContext
 ) {
     <b>let</b> revoker = tx_context::sender(ctx);
-    <b>let</b> now = tx_context::epoch_timestamp_ms(ctx);
+    <b>let</b> now = clock::timestamp_ms(clock);
     <a href="../social_contracts/profile.md#social_contracts_profile_remove_badge_from_profile">remove_badge_from_profile</a>(<a href="../social_contracts/profile.md#social_contracts_profile">profile</a>, &<a href="../social_contracts/profile.md#social_contracts_profile_badge_id">badge_id</a>, revoker, revoker, now);
 }
 </code></pre>

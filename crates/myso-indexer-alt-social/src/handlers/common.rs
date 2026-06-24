@@ -3,6 +3,7 @@
 
 //! Shared utilities for social event processing across pipelines.
 
+use chrono::{DateTime, TimeZone, Utc};
 use move_core_types::account_address::AccountAddress;
 use myso_types::base_types::ObjectID;
 use myso_types::{MYSO_MESSAGING_PACKAGE_ID, MYSO_SOCIAL_PACKAGE_ID};
@@ -35,6 +36,30 @@ pub fn deserialize_social_event_json<T: DeserializeOwned>(
             None
         }
     }
+}
+
+/// Resolves chain-sourced milliseconds: prefer positive on-chain event ms, else checkpoint ms.
+pub fn chain_timestamp_ms(event_ms: Option<i64>, checkpoint_timestamp_ms: u64) -> i64 {
+    if let Some(ms) = event_ms.filter(|&ms| ms > 0) {
+        return ms;
+    }
+    if checkpoint_timestamp_ms > 0 {
+        checkpoint_timestamp_ms as i64
+    } else {
+        0
+    }
+}
+
+pub fn chain_time_from_ms(ms: i64) -> DateTime<Utc> {
+    Utc.timestamp_millis_opt(ms).single().unwrap_or_else(Utc::now)
+}
+
+pub fn json_field_as_i64(v: Option<&serde_json::Value>) -> Option<i64> {
+    v.and_then(|val| {
+        val.as_i64()
+            .or_else(|| val.as_u64().and_then(|u| u.try_into().ok()))
+            .or_else(|| val.as_str().and_then(|s| s.parse().ok()))
+    })
 }
 
 /// Returns true if the event belongs to the myso-social package.

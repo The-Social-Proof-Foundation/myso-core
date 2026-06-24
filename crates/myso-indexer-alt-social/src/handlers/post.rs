@@ -142,6 +142,14 @@ fn attribution_fields(
     )
 }
 
+fn chain_post_times(
+    event_ms: Option<i64>,
+    checkpoint_timestamp_ms: u64,
+) -> (i64, chrono::DateTime<chrono::Utc>) {
+    let ms = common::chain_timestamp_ms(event_ms, checkpoint_timestamp_ms);
+    (ms, common::chain_time_from_ms(ms))
+}
+
 #[derive(Debug, Deserialize)]
 struct PostCreatedEvent {
     post_id: String,
@@ -178,6 +186,8 @@ struct PostCreatedEvent {
     sub_agent_id: Option<String>,
     #[serde(default, deserialize_with = "de_opt_u8")]
     action_identity_class: Option<u8>,
+    #[serde(default, deserialize_with = "de_u64")]
+    created_at: u64,
 }
 
 #[derive(Debug, Deserialize)]
@@ -387,29 +397,42 @@ pub fn handle_post_event(
     data: &serde_json::Value,
     event_id: &str,
     mydata_snapshots: &HashMap<String, MyDataPaywallSnapshot>,
+    checkpoint_timestamp_ms: u64,
 ) -> Option<Vec<SocialEventRow>> {
     match event_name {
-        "PostCreatedEvent" => process_post_created_event(data, event_id, mydata_snapshots),
-        "CommentCreatedEvent" => process_comment_created_event(data, event_id),
-        "ReactionEvent" | "ReactionAddedEvent" => process_reaction_event(data, event_id),
+        "PostCreatedEvent" => {
+            process_post_created_event(data, event_id, mydata_snapshots, checkpoint_timestamp_ms)
+        }
+        "CommentCreatedEvent" => {
+            process_comment_created_event(data, event_id, checkpoint_timestamp_ms)
+        }
+        "ReactionEvent" | "ReactionAddedEvent" => {
+            process_reaction_event(data, event_id, checkpoint_timestamp_ms)
+        }
         "ReactionRemovedEvent" | "RemoveReactionEvent" => {
             process_remove_reaction_event(data, event_id)
         }
-        "RepostEvent" | "RepostCreatedEvent" => process_repost_event(data, event_id),
-        "TipEvent" | "TipSentEvent" | "TipCreatedEvent" => process_tip_event(data, event_id),
+        "RepostEvent" | "RepostCreatedEvent" => {
+            process_repost_event(data, event_id, checkpoint_timestamp_ms)
+        }
+        "TipEvent" | "TipSentEvent" | "TipCreatedEvent" => {
+            process_tip_event(data, event_id, checkpoint_timestamp_ms)
+        }
         "ModerationEvent" | "ContentModerationEvent" | "PostModerationEvent" => {
-            process_moderation_event(data, event_id)
+            process_moderation_event(data, event_id, checkpoint_timestamp_ms)
         }
         "ReportEvent" | "ContentReportEvent" | "PostReportedEvent" | "CommentReportedEvent" => {
-            process_report_event(data, event_id)
+            process_report_event(data, event_id, checkpoint_timestamp_ms)
         }
         "DeletionEvent" | "ContentDeletedEvent" | "PostDeletedEvent" | "CommentDeletedEvent" => {
-            process_deletion_event(data, event_id, event_name)
+            process_deletion_event(data, event_id, event_name, checkpoint_timestamp_ms)
         }
         "ContentUpdateEvent" | "PostUpdatedEvent" | "CommentUpdatedEvent" => {
             process_content_update_event(data, event_id)
         }
-        "OwnershipTransferEvent" => process_ownership_transfer_event(data, event_id),
+        "OwnershipTransferEvent" => {
+            process_ownership_transfer_event(data, event_id, checkpoint_timestamp_ms)
+        }
         "PostParametersUpdatedEvent" => process_post_parameters_updated_event(data, event_id),
         "PromotedPostCreatedEvent" => process_promoted_post_created_event(data, event_id),
         "PromotedPostViewConfirmedEvent" => {
@@ -425,6 +448,7 @@ fn process_post_created_event(
     data: &serde_json::Value,
     event_id: &str,
     mydata_snapshots: &HashMap<String, MyDataPaywallSnapshot>,
+    checkpoint_timestamp_ms: u64,
 ) -> Option<Vec<SocialEventRow>> {
     let ev: PostCreatedEvent = common::deserialize_social_event_json(
         "post",
@@ -439,8 +463,8 @@ fn process_post_created_event(
     } else {
         None
     };
-    let now = Utc::now();
-    let created_at = now.timestamp_millis() as i64;
+    let event_ms = common::json_field_as_i64(data.get("created_at")).or(Some(ev.created_at as i64));
+    let (created_at, now) = chain_post_times(event_ms, checkpoint_timestamp_ms);
     let (actor_address, sub_agent_id, organization_id, action_identity_class) =
         attribution_fields(data, &ev.owner);
 
@@ -523,6 +547,7 @@ fn process_post_created_event(
 fn process_comment_created_event(
     data: &serde_json::Value,
     event_id: &str,
+    checkpoint_timestamp_ms: u64,
 ) -> Option<Vec<SocialEventRow>> {
     let ev: CommentCreatedEvent = common::deserialize_social_event_json(
         "post",
@@ -532,8 +557,8 @@ fn process_comment_created_event(
         "post CommentCreatedEvent JSON did not match CommentCreatedEvent",
     )?;
     let post_id = ev.post_id.clone();
-    let now = Utc::now();
-    let created_at = now.timestamp_millis() as i64;
+    let event_ms = common::json_field_as_i64(data.get("created_at"));
+    let (created_at, now) = chain_post_times(event_ms, checkpoint_timestamp_ms);
     let id = format!("{}:{}", ev.comment_id, created_at);
     let (actor_address, sub_agent_id, organization_id, action_identity_class) =
         attribution_fields(data, &ev.owner);
@@ -574,7 +599,11 @@ fn process_comment_created_event(
     ])
 }
 
-fn process_reaction_event(data: &serde_json::Value, event_id: &str) -> Option<Vec<SocialEventRow>> {
+fn process_reaction_event(
+    data: &serde_json::Value,
+    event_id: &str,
+    checkpoint_timestamp_ms: u64,
+) -> Option<Vec<SocialEventRow>> {
     let ev: ReactionEvent = common::deserialize_social_event_json(
         "post",
         "ReactionEvent",
@@ -582,12 +611,10 @@ fn process_reaction_event(data: &serde_json::Value, event_id: &str) -> Option<Ve
         data,
         "post reaction event JSON did not match ReactionEvent",
     )?;
-    let now = Utc::now();
-    let created_at = if ev.created_at > 0 {
-        ev.created_at as i64
-    } else {
-        now.timestamp_millis() as i64
-    };
+    let (created_at, now) = chain_post_times(
+        Some(ev.created_at as i64),
+        checkpoint_timestamp_ms,
+    );
 
     let (actor_address, sub_agent_id, organization_id, action_identity_class) =
         attribution_fields(data, &ev.user_address);
@@ -642,7 +669,11 @@ fn process_remove_reaction_event(
     }])
 }
 
-fn process_repost_event(data: &serde_json::Value, event_id: &str) -> Option<Vec<SocialEventRow>> {
+fn process_repost_event(
+    data: &serde_json::Value,
+    event_id: &str,
+    checkpoint_timestamp_ms: u64,
+) -> Option<Vec<SocialEventRow>> {
     let ev: RepostEvent = common::deserialize_social_event_json(
         "post",
         "RepostEvent",
@@ -650,12 +681,10 @@ fn process_repost_event(data: &serde_json::Value, event_id: &str) -> Option<Vec<
         data,
         "post repost event JSON did not match RepostEvent",
     )?;
-    let now = Utc::now();
-    let created_at = if ev.created_at > 0 {
-        ev.created_at as i64
-    } else {
-        now.timestamp_millis() as i64
-    };
+    let (created_at, now) = chain_post_times(
+        Some(ev.created_at as i64),
+        checkpoint_timestamp_ms,
+    );
     let id = format!("{}:{}", ev.repost_id, created_at);
     let (actor_address, sub_agent_id, organization_id, action_identity_class) =
         attribution_fields(data, &ev.owner);
@@ -688,7 +717,11 @@ fn process_repost_event(data: &serde_json::Value, event_id: &str) -> Option<Vec<
     ])
 }
 
-fn process_tip_event(data: &serde_json::Value, event_id: &str) -> Option<Vec<SocialEventRow>> {
+fn process_tip_event(
+    data: &serde_json::Value,
+    event_id: &str,
+    checkpoint_timestamp_ms: u64,
+) -> Option<Vec<SocialEventRow>> {
     let ev: TipEvent = common::deserialize_social_event_json(
         "post",
         "TipEvent",
@@ -696,12 +729,10 @@ fn process_tip_event(data: &serde_json::Value, event_id: &str) -> Option<Vec<Soc
         data,
         "post tip event JSON did not match TipEvent",
     )?;
-    let now = Utc::now();
-    let created_at = if ev.tip_time > 0 {
-        ev.tip_time as i64
-    } else {
-        now.timestamp_millis() as i64
-    };
+    let (created_at, now) = chain_post_times(
+        Some(ev.tip_time as i64),
+        checkpoint_timestamp_ms,
+    );
 
     let tip = NewTip {
         tipper: ev.from.clone(),
@@ -761,6 +792,7 @@ fn process_tip_event(data: &serde_json::Value, event_id: &str) -> Option<Vec<Soc
 fn process_moderation_event(
     data: &serde_json::Value,
     event_id: &str,
+    checkpoint_timestamp_ms: u64,
 ) -> Option<Vec<SocialEventRow>> {
     let ev: ModerationEvent = common::deserialize_social_event_json(
         "post",
@@ -769,12 +801,10 @@ fn process_moderation_event(
         data,
         "post moderation event JSON did not match ModerationEvent",
     )?;
-    let now = Utc::now();
-    let moderated_at = if ev.moderated_at > 0 {
-        ev.moderated_at as i64
-    } else {
-        now.timestamp_millis() as i64
-    };
+    let (moderated_at, now) = chain_post_times(
+        Some(ev.moderated_at as i64),
+        checkpoint_timestamp_ms,
+    );
 
     let mod_ev = NewModerationEvent {
         object_id: ev.object_id.clone(),
@@ -853,6 +883,7 @@ fn process_post_parameters_updated_event(
 fn process_ownership_transfer_event(
     data: &serde_json::Value,
     event_id: &str,
+    checkpoint_timestamp_ms: u64,
 ) -> Option<Vec<SocialEventRow>> {
     let ev: OwnershipTransferEvent = common::deserialize_social_event_json(
         "post",
@@ -861,8 +892,11 @@ fn process_ownership_transfer_event(
         data,
         "post OwnershipTransferEvent JSON did not match OwnershipTransferEvent",
     )?;
-    let now = Utc::now();
-    let transferred_at = now.timestamp();
+    let (transferred_at_ms, _) = chain_post_times(
+        common::json_field_as_i64(data.get("transferred_at")),
+        checkpoint_timestamp_ms,
+    );
+    let transferred_at = transferred_at_ms / 1000;
     let transfer = NewPostTransfer {
         object_id: ev.object_id.clone(),
         previous_owner: ev.previous_owner.clone(),
@@ -881,7 +915,11 @@ fn process_ownership_transfer_event(
     ])
 }
 
-fn process_report_event(data: &serde_json::Value, event_id: &str) -> Option<Vec<SocialEventRow>> {
+fn process_report_event(
+    data: &serde_json::Value,
+    event_id: &str,
+    checkpoint_timestamp_ms: u64,
+) -> Option<Vec<SocialEventRow>> {
     let ev: ReportEvent = common::deserialize_social_event_json(
         "post",
         "ReportEvent",
@@ -889,7 +927,7 @@ fn process_report_event(data: &serde_json::Value, event_id: &str) -> Option<Vec<
         data,
         "post report event JSON did not match ReportEvent",
     )?;
-    let now = Utc::now();
+    let (_, now) = chain_post_times(Some(ev.reported_at as i64), checkpoint_timestamp_ms);
 
     let report = NewReport {
         object_id: ev.object_id,
@@ -908,6 +946,7 @@ fn process_deletion_event(
     data: &serde_json::Value,
     event_id: &str,
     event_type_for_metrics: &str,
+    checkpoint_timestamp_ms: u64,
 ) -> Option<Vec<SocialEventRow>> {
     let ev: DeletionEvent = common::deserialize_social_event_json(
         "post",
@@ -916,8 +955,8 @@ fn process_deletion_event(
         data,
         "post deletion event JSON did not match DeletionEvent",
     )?;
-    let now = Utc::now();
     let deleted_at = ev.deleted_at as i64;
+    let (_, now) = chain_post_times(Some(deleted_at), checkpoint_timestamp_ms);
 
     let del_ev = NewDeletionEvent {
         object_id: ev.object_id.clone(),
@@ -1104,6 +1143,49 @@ mod tests {
     use crate::handlers::SocialEventRow;
     use myso_indexer_alt_social_schema::models::CURRENCY_MYSO;
 
+    const CK_MS: u64 = 1_700_000_000_000;
+
+    #[test]
+    fn post_created_uses_event_created_at_ms() {
+        let data = serde_json::json!({
+            "post_id": "0xpost",
+            "owner": "0xowner",
+            "profile_id": "0xprofile",
+            "content": "hello",
+            "post_type": "post",
+            "parent_post_id": null,
+            "mentions": null,
+            "media_urls": null,
+            "metadata_json": null,
+            "mydata_id": null,
+            "promotion_id": null,
+            "revenue_redirect_to": null,
+            "revenue_redirect_percentage": null,
+            "enable_spt": false,
+            "enable_poc": false,
+            "enable_spot": false,
+            "spot_id": null,
+            "spt_id": null,
+            "created_at": 1_742_000_000_123_u64,
+        });
+        let rows = handle_post_event(
+            "PostCreatedEvent",
+            &data,
+            "digest:ts",
+            &HashMap::new(),
+            CK_MS,
+        )
+        .expect("rows");
+        let post = rows
+            .iter()
+            .find_map(|r| match r {
+                SocialEventRow::Post(p) => Some(p),
+                _ => None,
+            })
+            .expect("post row");
+        assert_eq!(post.created_at, 1_742_000_000_123);
+    }
+
     #[test]
     fn reaction_event_produces_single_reaction_row() {
         let data = serde_json::json!({
@@ -1116,7 +1198,7 @@ mod tests {
             "sub_agent_id": null,
             "action_identity_class": 0,
         });
-        let rows = handle_post_event("ReactionEvent", &data, "tx:rx1", &HashMap::new()).expect("rows");
+        let rows = handle_post_event("ReactionEvent", &data, "tx:rx1", &HashMap::new(), CK_MS).expect("rows");
         assert_eq!(rows.len(), 1);
         assert!(
             rows.iter().any(|r| matches!(
@@ -1143,7 +1225,7 @@ mod tests {
             "sub_agent_id": null,
             "action_identity_class": 0,
         });
-        let rows = handle_post_event("RemoveReactionEvent", &data, "tx:rm1", &HashMap::new()).expect("rows");
+        let rows = handle_post_event("RemoveReactionEvent", &data, "tx:rm1", &HashMap::new(), CK_MS).expect("rows");
         assert_eq!(rows.len(), 1);
         assert!(
             rows.iter().any(|r| matches!(
@@ -1185,7 +1267,7 @@ mod tests {
             "spot_id": null,
             "spt_id": null,
         });
-        let rows = handle_post_event("PostCreatedEvent", &data, "digest:0", &HashMap::new()).expect("rows");
+        let rows = handle_post_event("PostCreatedEvent", &data, "digest:0", &HashMap::new(), CK_MS).expect("rows");
         assert!(
             rows.iter().any(|r| matches!(
                 r,
@@ -1234,7 +1316,7 @@ mod tests {
         });
 
         let rows =
-            handle_post_event("PostCreatedEvent", &data, "digest:mydata", &snapshots).expect("rows");
+            handle_post_event("PostCreatedEvent", &data, "digest:mydata", &snapshots, CK_MS).expect("rows");
         let post = rows
             .iter()
             .find_map(|r| match r {
@@ -1276,7 +1358,7 @@ mod tests {
             "spot_id": null,
             "spt_id": null,
         });
-        let rows = handle_post_event("PostCreatedEvent", &data, "digest:0", &HashMap::new()).expect("rows");
+        let rows = handle_post_event("PostCreatedEvent", &data, "digest:0", &HashMap::new(), CK_MS).expect("rows");
         assert!(!rows
             .iter()
             .any(|r| matches!(r, SocialEventRow::PostRepostCountIncrement { .. })));
@@ -1292,7 +1374,7 @@ mod tests {
             "description": "Short description of the issue here.",
             "reported_at": 1714113519157_u64,
         });
-        let rows = handle_post_event("PostReportedEvent", &data, "digest:7", &HashMap::new()).expect("rows");
+        let rows = handle_post_event("PostReportedEvent", &data, "digest:7", &HashMap::new(), CK_MS).expect("rows");
         let SocialEventRow::Report(r) = &rows[0] else {
             panic!("expected Report row");
         };
@@ -1316,7 +1398,7 @@ mod tests {
             "moderated_by": "0x2458950181e415250823d6ce1d55f2b3427826a111939e0d6d38e9a1397411d8",
             "moderated_at": 0u64,
         });
-        let rows = handle_post_event("PostModerationEvent", &data, "tx:1", &HashMap::new()).expect("rows");
+        let rows = handle_post_event("PostModerationEvent", &data, "tx:1", &HashMap::new(), CK_MS).expect("rows");
         assert_eq!(rows.len(), 2);
         let SocialEventRow::ModerationEvent(m) = &rows[0] else {
             panic!("expected ModerationEvent");
@@ -1366,7 +1448,7 @@ mod tests {
             "post_id": post_oid,
             "deleted_at": 1_717_200_000_000_u64,
         });
-        let rows = handle_post_event("PostDeletedEvent", &data, "tx:del1", &HashMap::new()).expect("rows");
+        let rows = handle_post_event("PostDeletedEvent", &data, "tx:del1", &HashMap::new(), CK_MS).expect("rows");
         assert_eq!(rows.len(), 3);
         let SocialEventRow::DeletionEvent(d) = &rows[0] else {
             panic!("expected DeletionEvent");
@@ -1396,7 +1478,7 @@ mod tests {
             "total_budget": 1000000_u64,
             "created_at": 1_742_000_000_000_u64,
         });
-        let rows = handle_post_event("PromotedPostCreatedEvent", &data, "tx:promo1", &HashMap::new()).expect("rows");
+        let rows = handle_post_event("PromotedPostCreatedEvent", &data, "tx:promo1", &HashMap::new(), CK_MS).expect("rows");
         assert_eq!(rows.len(), 1);
         let SocialEventRow::PromotedPost {
             post_id,
@@ -1437,7 +1519,7 @@ mod tests {
             "is_post": false,
             "tip_time": 0u64,
         });
-        let rows = handle_post_event("TipEvent", &data, "tx:tip2", &HashMap::new()).expect("rows");
+        let rows = handle_post_event("TipEvent", &data, "tx:tip2", &HashMap::new(), CK_MS).expect("rows");
         let SocialEventRow::Tip(tip_row) = &rows[0] else {
             panic!("expected Tip");
         };
@@ -1466,7 +1548,7 @@ mod tests {
             "is_post": true,
             "tip_time": 0u64,
         });
-        let rows = handle_post_event("TipEvent", &data, "tx:tip1", &HashMap::new()).expect("rows");
+        let rows = handle_post_event("TipEvent", &data, "tx:tip1", &HashMap::new(), CK_MS).expect("rows");
         assert_eq!(rows.len(), 3);
         let SocialEventRow::Tip(t) = &rows[0] else {
             panic!("expected Tip");
@@ -1519,7 +1601,7 @@ mod tests {
             "post_id": post_id,
             "deleted_at": 1_717_201_000_000_u64,
         });
-        let rows = handle_post_event("CommentDeletedEvent", &data, "tx:del2", &HashMap::new()).expect("rows");
+        let rows = handle_post_event("CommentDeletedEvent", &data, "tx:del2", &HashMap::new(), CK_MS).expect("rows");
         assert_eq!(rows.len(), 3);
         let SocialEventRow::DeletionEvent(d) = &rows[0] else {
             panic!("expected DeletionEvent");

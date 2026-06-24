@@ -142,12 +142,12 @@ impl Profile {
         self.inner.website.as_deref()
     }
 
-    /// When the profile was created (epoch milliseconds).
+    /// When the profile was created (Unix ms from chain Clock at 0x6).
     async fn created_at(&self) -> Option<i64> {
         self.inner.created_at
     }
 
-    /// When the profile was last updated (epoch milliseconds).
+    /// When the profile was last updated (Unix ms from chain Clock at 0x6).
     async fn updated_at(&self) -> Option<i64> {
         self.inner.updated_at
     }

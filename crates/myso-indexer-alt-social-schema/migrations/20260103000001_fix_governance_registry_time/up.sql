@@ -1,5 +1,5 @@
 -- Fix all governance time triggers to handle milliseconds correctly
--- All timestamp fields from blockchain events are in milliseconds (epoch timestamp in ms),
+-- All timestamp fields from blockchain events are Unix ms from myso::clock::Clock (0x6);
 -- but PostgreSQL's to_timestamp() expects seconds, so we need to divide by 1000
 
 -- 1. Fix governance_registries time trigger

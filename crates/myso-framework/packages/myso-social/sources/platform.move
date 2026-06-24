@@ -341,7 +341,7 @@ module social_contracts::platform {
     }
 
     /// Bootstrap initialization function - creates the platform registry
-    public(package) fun bootstrap_init(ctx: &mut TxContext) {
+    public(package) fun bootstrap_init(_clock: &Clock, ctx: &mut TxContext) {
         let registry = PlatformRegistry {
             id: object::new(ctx),
             platforms_by_name: table::new(ctx),
@@ -608,12 +608,13 @@ module social_contracts::platform {
         new_shutdown_date: Option<String>,
         new_cover_photo: Option<String>,
         new_media_previews: Option<vector<String>>,
+        clock: &Clock,
         ctx: &mut TxContext
     ) {
         // Check version compatibility
         assert!(platform.version == upgrade::current_version(), EWrongVersion);
         
-        let now = tx_context::epoch_timestamp_ms(ctx);
+        let now = clock::timestamp_ms(clock);
 
         validate_cover_photo(&new_cover_photo);
         validate_media_previews(&new_media_previews);
@@ -696,6 +697,7 @@ module social_contracts::platform {
         platform: &mut Platform,
         coin: &mut Coin<MYSO>,
         amount: u64,
+        clock: &Clock,
         ctx: &mut TxContext
     ) {
         // Check version compatibility
@@ -716,7 +718,7 @@ module social_contracts::platform {
             amount,
             funded_by: tx_context::sender(ctx),
             new_balance,
-            timestamp: tx_context::epoch_timestamp_ms(ctx),
+            timestamp: clock::timestamp_ms(clock),
         });
     }
 
@@ -793,7 +795,7 @@ module social_contracts::platform {
             let amt = balance::value(&bal);
             if (amt > 0) {
                 let mut c = coin::from_balance(bal, ctx);
-                add_to_treasury(platform, &mut c, amt, ctx);
+                add_to_treasury(platform, &mut c, amt, clock, ctx);
                 coin::destroy_zero(c);
             } else {
                 balance::destroy_zero(bal);
@@ -832,7 +834,7 @@ module social_contracts::platform {
             let amt = balance::value(&bal);
             if (amt > 0) {
                 let mut c = coin::from_balance(bal, ctx);
-                add_to_treasury(platform, &mut c, amt, ctx);
+                add_to_treasury(platform, &mut c, amt, clock, ctx);
                 coin::destroy_zero(c);
             } else {
                 balance::destroy_zero(bal);
@@ -848,7 +850,7 @@ module social_contracts::platform {
             let amt = balance::value(&bal);
             if (amt > 0) {
                 let mut c = coin::from_balance(bal, ctx);
-                add_to_treasury(platform, &mut c, amt, ctx);
+                add_to_treasury(platform, &mut c, amt, clock, ctx);
                 coin::destroy_zero(c);
             } else {
                 balance::destroy_zero(bal);
@@ -891,7 +893,7 @@ module social_contracts::platform {
             let amt = balance::value(&bal);
             if (amt > 0) {
                 let mut c = coin::from_balance(bal, ctx);
-                add_to_treasury(platform, &mut c, amt, ctx);
+                add_to_treasury(platform, &mut c, amt, clock, ctx);
                 coin::destroy_zero(c);
             } else {
                 balance::destroy_zero(bal);
@@ -907,7 +909,7 @@ module social_contracts::platform {
             let amt = balance::value(&bal);
             if (amt > 0) {
                 let mut c = coin::from_balance(bal, ctx);
-                add_to_treasury(platform, &mut c, amt, ctx);
+                add_to_treasury(platform, &mut c, amt, clock, ctx);
                 coin::destroy_zero(c);
             } else {
                 balance::destroy_zero(bal);
@@ -943,7 +945,7 @@ module social_contracts::platform {
         let amt = balance::value(&bal);
         if (amt > 0) {
             let mut c = coin::from_balance(bal, ctx);
-            add_to_treasury(platform, &mut c, amt, ctx);
+            add_to_treasury(platform, &mut c, amt, clock, ctx);
             coin::destroy_zero(c);
         } else {
             balance::destroy_zero(bal);
@@ -1156,6 +1158,7 @@ module social_contracts::platform {
         platform: &Platform,
         _: &PlatformAdminCap,
         reasoning: Option<String>,
+        clock: &Clock,
         ctx: &mut TxContext
     ) {
         // Check version compatibility
@@ -1212,7 +1215,7 @@ module social_contracts::platform {
             name: platform_name,
             developer,
             deleted_by: tx_context::sender(ctx),
-            timestamp: tx_context::epoch_timestamp_ms(ctx),
+            timestamp: clock::timestamp_ms(clock),
             reasoning,
         });
     }
@@ -1306,11 +1309,12 @@ module social_contracts::platform {
         platform_registry: &PlatformRegistry,
         block_list_registry: &block_list::BlockListRegistry,
         platform: &mut Platform,
+        clock: &Clock,
         ctx: &mut TxContext
     ) {
         let caller = tx_context::sender(ctx);
         let platform_id = object::id(platform);
-        let current_time = tx_context::epoch_timestamp_ms(ctx);
+        let current_time = clock::timestamp_ms(clock);
         
         // Check if the platform has blocked this wallet address
         let platform_address = object::uid_to_address(&platform.id);
@@ -1346,11 +1350,12 @@ module social_contracts::platform {
     /// Leave a platform - removes the connection between wallet and platform
     public fun leave_platform(
         platform: &mut Platform,
+        clock: &Clock,
         ctx: &mut TxContext
     ) {
         let caller = tx_context::sender(ctx);
         let platform_id = object::id(platform);
-        let current_time = tx_context::epoch_timestamp_ms(ctx);
+        let current_time = clock::timestamp_ms(clock);
         
         // Check if joined wallets set exists
         assert!(dynamic_field::exists_(&platform.id, JOINED_WALLETS_FIELD), ENotJoined);
@@ -1724,6 +1729,7 @@ module social_contracts::platform {
         recipients: vector<address>,
         amount_per_recipient: u64,
         reason_code: u8,
+        clock: &Clock,
         ctx: &mut TxContext
     ) {
         let caller = tx_context::sender(ctx);
@@ -1741,7 +1747,7 @@ module social_contracts::platform {
         assert!(balance::value(&platform.treasury) >= total_amount, EInsufficientTreasuryFunds);
         
         // Get current timestamp for events
-        let current_time = tx_context::epoch_timestamp_ms(ctx);
+        let current_time = clock::timestamp_ms(clock);
         let platform_id = object::uid_to_address(&platform.id);
         
         // Send tokens to each recipient
@@ -1784,6 +1790,7 @@ module social_contracts::platform {
         badge_media_url: String,
         badge_icon_url: String,
         badge_type: u8,
+        clock: &Clock,
         ctx: &mut TxContext
     ) {
         // Check version compatibility
@@ -1806,7 +1813,7 @@ module social_contracts::platform {
         assert!(string::length(&badge_icon_url) > 0 && string::length(&badge_icon_url) <= MAX_BADGE_ICON_URL_LENGTH, EBadgeIconUrlTooLong);
         
         // Get current time
-        let now = tx_context::epoch_timestamp_ms(ctx);
+        let now = clock::timestamp_ms(clock);
         
         // Create a unique badge ID by including platform ID to prevent collisions
         let mut badge_id = string::utf8(b"badge_");
@@ -1839,6 +1846,7 @@ module social_contracts::platform {
         group: &PermissionedGroup<PlatformPackage>,
         profile: &mut profile::Profile,
         badge_id: String,
+        clock: &Clock,
         ctx: &mut TxContext
     ) {
         // Check version compatibility
@@ -1852,7 +1860,7 @@ module social_contracts::platform {
         assert!(is_approved(platform_registry, platform_id), EUnauthorized);
         
         // Get current time
-        let now = tx_context::epoch_timestamp_ms(ctx);
+        let now = clock::timestamp_ms(clock);
         
         // Remove the badge directly from the profile
         profile::remove_badge_from_profile(

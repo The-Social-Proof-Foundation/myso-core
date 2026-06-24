@@ -1069,7 +1069,7 @@ impl PostReport {
         &self.inner.description
     }
 
-    /// When the report was filed (epoch milliseconds, chain timestamp).
+    /// When the report was filed (Unix ms from myso::clock::Clock at 0x6).
     async fn reported_at(&self) -> i64 {
         self.inner.reported_at
     }

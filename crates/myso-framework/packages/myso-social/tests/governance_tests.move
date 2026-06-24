@@ -496,6 +496,7 @@ module social_contracts::governance_tests {
         // Successfully rescind proposal
         test_scenario::next_tx(&mut scenario, USER1);
         {
+            let clock = clock::create_for_testing(test_scenario::ctx(&mut scenario));
             let ctx = test_scenario::ctx(&mut scenario);
             let sender = tx_context::sender(ctx);
             
@@ -504,7 +505,7 @@ module social_contracts::governance_tests {
             let submitter = USER1;
             let mut status = 1u8; // STATUS_DELEGATE_REVIEW
             let mut staked_amount = STAKE_AMOUNT;
-            let current_time = tx_context::epoch_timestamp_ms(ctx);
+            let current_time = clock::timestamp_ms(&clock);
             
             // Check authorization and status
             let is_owner = sender == submitter;
@@ -533,6 +534,7 @@ module social_contracts::governance_tests {
             assert!(event_submitter == submitter, 11);
             assert!(event_time >= 0, 12);
             assert!(event_refund == STAKE_AMOUNT, 13);
+            clock::destroy_for_testing(clock);
         };
         
         // Try to rescind already rescinded proposal (should fail)

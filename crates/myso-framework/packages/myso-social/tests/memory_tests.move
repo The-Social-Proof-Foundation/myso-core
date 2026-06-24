@@ -31,8 +31,9 @@ module social_contracts::memory_tests {
     fun init_env(scenario: &mut test_scenario::Scenario) {
         test_scenario::next_tx(scenario, ADMIN);
         {
-            profile::init_for_testing(test_scenario::ctx(scenario));
             let clock = clock::create_for_testing(test_scenario::ctx(scenario));
+            profile::init_for_testing(&clock, test_scenario::ctx(scenario));
+
             clock::share_for_testing(clock);
             let coins = coin::mint_for_testing<MYSO>(20_000_000_000, test_scenario::ctx(scenario));
             transfer::public_transfer(coins, USER1);
@@ -370,6 +371,8 @@ module social_contracts::memory_tests {
 
         test_scenario::next_tx(&mut scenario, USER1);
         {
+
+            let clock = test_scenario::take_shared<Clock>(&scenario);
             let mut registry = test_scenario::take_shared<UsernameRegistry>(&scenario);
             let mut memory_registry = test_scenario::take_shared<MemoryRegistry>(&scenario);
             let mut memory_account = test_scenario::take_shared<MemoryAccount>(&scenario);
@@ -382,6 +385,7 @@ module social_contracts::memory_tests {
                 profile,
                 USER2,
                 1,
+                &clock,
                 test_scenario::ctx(&mut scenario),
             );
 
@@ -390,6 +394,8 @@ module social_contracts::memory_tests {
             test_scenario::return_shared(memory_account);
             test_scenario::return_shared(memory_registry);
             test_scenario::return_shared(registry);
+
+            test_scenario::return_shared(clock);
         };
 
         test_scenario::end(scenario);

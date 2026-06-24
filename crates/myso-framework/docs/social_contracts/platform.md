@@ -1911,7 +1911,7 @@ Platform status constants
 Bootstrap initialization function - creates the platform registry
 
 
-<pre><code><b>public</b>(package) <b>fun</b> <a href="../social_contracts/platform.md#social_contracts_platform_bootstrap_init">bootstrap_init</a>(ctx: &<b>mut</b> <a href="../myso/tx_context.md#myso_tx_context_TxContext">myso::tx_context::TxContext</a>)
+<pre><code><b>public</b>(package) <b>fun</b> <a href="../social_contracts/platform.md#social_contracts_platform_bootstrap_init">bootstrap_init</a>(_clock: &<a href="../myso/clock.md#myso_clock_Clock">myso::clock::Clock</a>, ctx: &<b>mut</b> <a href="../myso/tx_context.md#myso_tx_context_TxContext">myso::tx_context::TxContext</a>)
 </code></pre>
 
 
@@ -1920,7 +1920,7 @@ Bootstrap initialization function - creates the platform registry
 <summary>Implementation</summary>
 
 
-<pre><code><b>public</b>(package) <b>fun</b> <a href="../social_contracts/platform.md#social_contracts_platform_bootstrap_init">bootstrap_init</a>(ctx: &<b>mut</b> TxContext) {
+<pre><code><b>public</b>(package) <b>fun</b> <a href="../social_contracts/platform.md#social_contracts_platform_bootstrap_init">bootstrap_init</a>(_clock: &Clock, ctx: &<b>mut</b> TxContext) {
     <b>let</b> registry = <a href="../social_contracts/platform.md#social_contracts_platform_PlatformRegistry">PlatformRegistry</a> {
         <a href="../social_contracts/platform.md#social_contracts_platform_id">id</a>: object::new(ctx),
         platforms_by_name: table::new(ctx),
@@ -2174,7 +2174,7 @@ Create a new platform and transfer to developer
 Update platform information
 
 
-<pre><code><b>public</b> <b>fun</b> <a href="../social_contracts/platform.md#social_contracts_platform_update_platform">update_platform</a>(<a href="../social_contracts/platform.md#social_contracts_platform">platform</a>: &<b>mut</b> <a href="../social_contracts/platform.md#social_contracts_platform_Platform">social_contracts::platform::Platform</a>, new_name: <a href="../std/string.md#std_string_String">std::string::String</a>, new_tagline: <a href="../std/string.md#std_string_String">std::string::String</a>, new_description: <a href="../std/string.md#std_string_String">std::string::String</a>, new_logo_url: <a href="../std/string.md#std_string_String">std::string::String</a>, new_terms_of_service: <a href="../std/string.md#std_string_String">std::string::String</a>, new_privacy_policy: <a href="../std/string.md#std_string_String">std::string::String</a>, new_platforms: vector&lt;<a href="../std/string.md#std_string_String">std::string::String</a>&gt;, new_links: vector&lt;<a href="../std/string.md#std_string_String">std::string::String</a>&gt;, new_primary_category: <a href="../std/string.md#std_string_String">std::string::String</a>, new_secondary_category: <a href="../std/option.md#std_option_Option">std::option::Option</a>&lt;<a href="../std/string.md#std_string_String">std::string::String</a>&gt;, <a href="../social_contracts/platform.md#social_contracts_platform_new_status">new_status</a>: u8, new_release_date: <a href="../std/string.md#std_string_String">std::string::String</a>, new_shutdown_date: <a href="../std/option.md#std_option_Option">std::option::Option</a>&lt;<a href="../std/string.md#std_string_String">std::string::String</a>&gt;, new_cover_photo: <a href="../std/option.md#std_option_Option">std::option::Option</a>&lt;<a href="../std/string.md#std_string_String">std::string::String</a>&gt;, new_media_previews: <a href="../std/option.md#std_option_Option">std::option::Option</a>&lt;vector&lt;<a href="../std/string.md#std_string_String">std::string::String</a>&gt;&gt;, ctx: &<b>mut</b> <a href="../myso/tx_context.md#myso_tx_context_TxContext">myso::tx_context::TxContext</a>)
+<pre><code><b>public</b> <b>fun</b> <a href="../social_contracts/platform.md#social_contracts_platform_update_platform">update_platform</a>(<a href="../social_contracts/platform.md#social_contracts_platform">platform</a>: &<b>mut</b> <a href="../social_contracts/platform.md#social_contracts_platform_Platform">social_contracts::platform::Platform</a>, new_name: <a href="../std/string.md#std_string_String">std::string::String</a>, new_tagline: <a href="../std/string.md#std_string_String">std::string::String</a>, new_description: <a href="../std/string.md#std_string_String">std::string::String</a>, new_logo_url: <a href="../std/string.md#std_string_String">std::string::String</a>, new_terms_of_service: <a href="../std/string.md#std_string_String">std::string::String</a>, new_privacy_policy: <a href="../std/string.md#std_string_String">std::string::String</a>, new_platforms: vector&lt;<a href="../std/string.md#std_string_String">std::string::String</a>&gt;, new_links: vector&lt;<a href="../std/string.md#std_string_String">std::string::String</a>&gt;, new_primary_category: <a href="../std/string.md#std_string_String">std::string::String</a>, new_secondary_category: <a href="../std/option.md#std_option_Option">std::option::Option</a>&lt;<a href="../std/string.md#std_string_String">std::string::String</a>&gt;, <a href="../social_contracts/platform.md#social_contracts_platform_new_status">new_status</a>: u8, new_release_date: <a href="../std/string.md#std_string_String">std::string::String</a>, new_shutdown_date: <a href="../std/option.md#std_option_Option">std::option::Option</a>&lt;<a href="../std/string.md#std_string_String">std::string::String</a>&gt;, new_cover_photo: <a href="../std/option.md#std_option_Option">std::option::Option</a>&lt;<a href="../std/string.md#std_string_String">std::string::String</a>&gt;, new_media_previews: <a href="../std/option.md#std_option_Option">std::option::Option</a>&lt;vector&lt;<a href="../std/string.md#std_string_String">std::string::String</a>&gt;&gt;, clock: &<a href="../myso/clock.md#myso_clock_Clock">myso::clock::Clock</a>, ctx: &<b>mut</b> <a href="../myso/tx_context.md#myso_tx_context_TxContext">myso::tx_context::TxContext</a>)
 </code></pre>
 
 
@@ -2200,11 +2200,12 @@ Update platform information
     new_shutdown_date: Option&lt;String&gt;,
     new_cover_photo: Option&lt;String&gt;,
     new_media_previews: Option&lt;vector&lt;String&gt;&gt;,
+    clock: &Clock,
     ctx: &<b>mut</b> TxContext
 ) {
     // Check version compatibility
     <b>assert</b>!(<a href="../social_contracts/platform.md#social_contracts_platform">platform</a>.version == <a href="../social_contracts/upgrade.md#social_contracts_upgrade_current_version">upgrade::current_version</a>(), <a href="../social_contracts/platform.md#social_contracts_platform_EWrongVersion">EWrongVersion</a>);
-    <b>let</b> now = tx_context::epoch_timestamp_ms(ctx);
+    <b>let</b> now = clock::timestamp_ms(clock);
     <a href="../social_contracts/platform.md#social_contracts_platform_validate_cover_photo">validate_cover_photo</a>(&new_cover_photo);
     <a href="../social_contracts/platform.md#social_contracts_platform_validate_media_previews">validate_media_previews</a>(&new_media_previews);
     // Verify caller is <a href="../social_contracts/platform.md#social_contracts_platform">platform</a> <a href="../social_contracts/platform.md#social_contracts_platform_developer">developer</a>
@@ -2368,7 +2369,7 @@ Get a mutable reference to the registry version (only for upgrade module)
 Add MYSO tokens to platform treasury
 
 
-<pre><code><b>public</b>(package) <b>fun</b> <a href="../social_contracts/platform.md#social_contracts_platform_add_to_treasury">add_to_treasury</a>(<a href="../social_contracts/platform.md#social_contracts_platform">platform</a>: &<b>mut</b> <a href="../social_contracts/platform.md#social_contracts_platform_Platform">social_contracts::platform::Platform</a>, coin: &<b>mut</b> <a href="../myso/coin.md#myso_coin_Coin">myso::coin::Coin</a>&lt;<a href="../myso/myso.md#myso_myso_MYSO">myso::myso::MYSO</a>&gt;, amount: u64, ctx: &<b>mut</b> <a href="../myso/tx_context.md#myso_tx_context_TxContext">myso::tx_context::TxContext</a>)
+<pre><code><b>public</b>(package) <b>fun</b> <a href="../social_contracts/platform.md#social_contracts_platform_add_to_treasury">add_to_treasury</a>(<a href="../social_contracts/platform.md#social_contracts_platform">platform</a>: &<b>mut</b> <a href="../social_contracts/platform.md#social_contracts_platform_Platform">social_contracts::platform::Platform</a>, coin: &<b>mut</b> <a href="../myso/coin.md#myso_coin_Coin">myso::coin::Coin</a>&lt;<a href="../myso/myso.md#myso_myso_MYSO">myso::myso::MYSO</a>&gt;, amount: u64, clock: &<a href="../myso/clock.md#myso_clock_Clock">myso::clock::Clock</a>, ctx: &<b>mut</b> <a href="../myso/tx_context.md#myso_tx_context_TxContext">myso::tx_context::TxContext</a>)
 </code></pre>
 
 
@@ -2381,6 +2382,7 @@ Add MYSO tokens to platform treasury
     <a href="../social_contracts/platform.md#social_contracts_platform">platform</a>: &<b>mut</b> <a href="../social_contracts/platform.md#social_contracts_platform_Platform">Platform</a>,
     coin: &<b>mut</b> Coin&lt;MYSO&gt;,
     amount: u64,
+    clock: &Clock,
     ctx: &<b>mut</b> TxContext
 ) {
     // Check version compatibility
@@ -2398,7 +2400,7 @@ Add MYSO tokens to platform treasury
         amount,
         funded_by: tx_context::sender(ctx),
         new_balance,
-        timestamp: tx_context::epoch_timestamp_ms(ctx),
+        timestamp: clock::timestamp_ms(clock),
     });
 }
 </code></pre>
@@ -2515,7 +2517,7 @@ Platform-linked registry: delegate vote; on council rejection, the pool is forfe
         <b>let</b> amt = balance::value(&bal);
         <b>if</b> (amt &gt; 0) {
             <b>let</b> <b>mut</b> c = coin::from_balance(bal, ctx);
-            <a href="../social_contracts/platform.md#social_contracts_platform_add_to_treasury">add_to_treasury</a>(<a href="../social_contracts/platform.md#social_contracts_platform">platform</a>, &<b>mut</b> c, amt, ctx);
+            <a href="../social_contracts/platform.md#social_contracts_platform_add_to_treasury">add_to_treasury</a>(<a href="../social_contracts/platform.md#social_contracts_platform">platform</a>, &<b>mut</b> c, amt, clock, ctx);
             coin::destroy_zero(c);
         } <b>else</b> {
             balance::destroy_zero(bal);
@@ -2574,7 +2576,7 @@ After community voting, finalize a platform-governance proposal; on failure, poo
         <b>let</b> amt = balance::value(&bal);
         <b>if</b> (amt &gt; 0) {
             <b>let</b> <b>mut</b> c = coin::from_balance(bal, ctx);
-            <a href="../social_contracts/platform.md#social_contracts_platform_add_to_treasury">add_to_treasury</a>(<a href="../social_contracts/platform.md#social_contracts_platform">platform</a>, &<b>mut</b> c, amt, ctx);
+            <a href="../social_contracts/platform.md#social_contracts_platform_add_to_treasury">add_to_treasury</a>(<a href="../social_contracts/platform.md#social_contracts_platform">platform</a>, &<b>mut</b> c, amt, clock, ctx);
             coin::destroy_zero(c);
         } <b>else</b> {
             balance::destroy_zero(bal);
@@ -2590,7 +2592,7 @@ After community voting, finalize a platform-governance proposal; on failure, poo
         <b>let</b> amt = balance::value(&bal);
         <b>if</b> (amt &gt; 0) {
             <b>let</b> <b>mut</b> c = coin::from_balance(bal, ctx);
-            <a href="../social_contracts/platform.md#social_contracts_platform_add_to_treasury">add_to_treasury</a>(<a href="../social_contracts/platform.md#social_contracts_platform">platform</a>, &<b>mut</b> c, amt, ctx);
+            <a href="../social_contracts/platform.md#social_contracts_platform_add_to_treasury">add_to_treasury</a>(<a href="../social_contracts/platform.md#social_contracts_platform">platform</a>, &<b>mut</b> c, amt, clock, ctx);
             coin::destroy_zero(c);
         } <b>else</b> {
             balance::destroy_zero(bal);
@@ -2653,7 +2655,7 @@ Same constraints as [<code><a href="../social_contracts/governance.md#social_con
         <b>let</b> amt = balance::value(&bal);
         <b>if</b> (amt &gt; 0) {
             <b>let</b> <b>mut</b> c = coin::from_balance(bal, ctx);
-            <a href="../social_contracts/platform.md#social_contracts_platform_add_to_treasury">add_to_treasury</a>(<a href="../social_contracts/platform.md#social_contracts_platform">platform</a>, &<b>mut</b> c, amt, ctx);
+            <a href="../social_contracts/platform.md#social_contracts_platform_add_to_treasury">add_to_treasury</a>(<a href="../social_contracts/platform.md#social_contracts_platform">platform</a>, &<b>mut</b> c, amt, clock, ctx);
             coin::destroy_zero(c);
         } <b>else</b> {
             balance::destroy_zero(bal);
@@ -2669,7 +2671,7 @@ Same constraints as [<code><a href="../social_contracts/governance.md#social_con
         <b>let</b> amt = balance::value(&bal);
         <b>if</b> (amt &gt; 0) {
             <b>let</b> <b>mut</b> c = coin::from_balance(bal, ctx);
-            <a href="../social_contracts/platform.md#social_contracts_platform_add_to_treasury">add_to_treasury</a>(<a href="../social_contracts/platform.md#social_contracts_platform">platform</a>, &<b>mut</b> c, amt, ctx);
+            <a href="../social_contracts/platform.md#social_contracts_platform_add_to_treasury">add_to_treasury</a>(<a href="../social_contracts/platform.md#social_contracts_platform">platform</a>, &<b>mut</b> c, amt, clock, ctx);
             coin::destroy_zero(c);
         } <b>else</b> {
             balance::destroy_zero(bal);
@@ -2725,7 +2727,7 @@ Same constraints as [<code><a href="../social_contracts/governance.md#social_con
     <b>let</b> amt = balance::value(&bal);
     <b>if</b> (amt &gt; 0) {
         <b>let</b> <b>mut</b> c = coin::from_balance(bal, ctx);
-        <a href="../social_contracts/platform.md#social_contracts_platform_add_to_treasury">add_to_treasury</a>(<a href="../social_contracts/platform.md#social_contracts_platform">platform</a>, &<b>mut</b> c, amt, ctx);
+        <a href="../social_contracts/platform.md#social_contracts_platform_add_to_treasury">add_to_treasury</a>(<a href="../social_contracts/platform.md#social_contracts_platform">platform</a>, &<b>mut</b> c, amt, clock, ctx);
         coin::destroy_zero(c);
     } <b>else</b> {
         balance::destroy_zero(bal);
@@ -3087,7 +3089,7 @@ Can only delete platforms that are NOT approved
 Optional reasoning can be provided to explain the deletion
 
 
-<pre><code><b>public</b> <b>fun</b> <a href="../social_contracts/platform.md#social_contracts_platform_delete_platform">delete_platform</a>(registry: &<b>mut</b> <a href="../social_contracts/platform.md#social_contracts_platform_PlatformRegistry">social_contracts::platform::PlatformRegistry</a>, <a href="../social_contracts/platform.md#social_contracts_platform">platform</a>: &<a href="../social_contracts/platform.md#social_contracts_platform_Platform">social_contracts::platform::Platform</a>, _: &<a href="../social_contracts/platform.md#social_contracts_platform_PlatformAdminCap">social_contracts::platform::PlatformAdminCap</a>, reasoning: <a href="../std/option.md#std_option_Option">std::option::Option</a>&lt;<a href="../std/string.md#std_string_String">std::string::String</a>&gt;, ctx: &<b>mut</b> <a href="../myso/tx_context.md#myso_tx_context_TxContext">myso::tx_context::TxContext</a>)
+<pre><code><b>public</b> <b>fun</b> <a href="../social_contracts/platform.md#social_contracts_platform_delete_platform">delete_platform</a>(registry: &<b>mut</b> <a href="../social_contracts/platform.md#social_contracts_platform_PlatformRegistry">social_contracts::platform::PlatformRegistry</a>, <a href="../social_contracts/platform.md#social_contracts_platform">platform</a>: &<a href="../social_contracts/platform.md#social_contracts_platform_Platform">social_contracts::platform::Platform</a>, _: &<a href="../social_contracts/platform.md#social_contracts_platform_PlatformAdminCap">social_contracts::platform::PlatformAdminCap</a>, reasoning: <a href="../std/option.md#std_option_Option">std::option::Option</a>&lt;<a href="../std/string.md#std_string_String">std::string::String</a>&gt;, clock: &<a href="../myso/clock.md#myso_clock_Clock">myso::clock::Clock</a>, ctx: &<b>mut</b> <a href="../myso/tx_context.md#myso_tx_context_TxContext">myso::tx_context::TxContext</a>)
 </code></pre>
 
 
@@ -3101,6 +3103,7 @@ Optional reasoning can be provided to explain the deletion
     <a href="../social_contracts/platform.md#social_contracts_platform">platform</a>: &<a href="../social_contracts/platform.md#social_contracts_platform_Platform">Platform</a>,
     _: &<a href="../social_contracts/platform.md#social_contracts_platform_PlatformAdminCap">PlatformAdminCap</a>,
     reasoning: Option&lt;String&gt;,
+    clock: &Clock,
     ctx: &<b>mut</b> TxContext
 ) {
     // Check version compatibility
@@ -3149,7 +3152,7 @@ Optional reasoning can be provided to explain the deletion
         <a href="../social_contracts/platform.md#social_contracts_platform_name">name</a>: platform_name,
         <a href="../social_contracts/platform.md#social_contracts_platform_developer">developer</a>,
         deleted_by: tx_context::sender(ctx),
-        timestamp: tx_context::epoch_timestamp_ms(ctx),
+        timestamp: clock::timestamp_ms(clock),
         reasoning,
     });
 }
@@ -3348,7 +3351,7 @@ Checks for blocks before allowing the join and verifies platform is approved
 Works with wallet addresses only, no profile required
 
 
-<pre><code><b>public</b> <b>fun</b> <a href="../social_contracts/platform.md#social_contracts_platform_join_platform">join_platform</a>(platform_registry: &<a href="../social_contracts/platform.md#social_contracts_platform_PlatformRegistry">social_contracts::platform::PlatformRegistry</a>, block_list_registry: &<a href="../social_contracts/block_list.md#social_contracts_block_list_BlockListRegistry">social_contracts::block_list::BlockListRegistry</a>, <a href="../social_contracts/platform.md#social_contracts_platform">platform</a>: &<b>mut</b> <a href="../social_contracts/platform.md#social_contracts_platform_Platform">social_contracts::platform::Platform</a>, ctx: &<b>mut</b> <a href="../myso/tx_context.md#myso_tx_context_TxContext">myso::tx_context::TxContext</a>)
+<pre><code><b>public</b> <b>fun</b> <a href="../social_contracts/platform.md#social_contracts_platform_join_platform">join_platform</a>(platform_registry: &<a href="../social_contracts/platform.md#social_contracts_platform_PlatformRegistry">social_contracts::platform::PlatformRegistry</a>, block_list_registry: &<a href="../social_contracts/block_list.md#social_contracts_block_list_BlockListRegistry">social_contracts::block_list::BlockListRegistry</a>, <a href="../social_contracts/platform.md#social_contracts_platform">platform</a>: &<b>mut</b> <a href="../social_contracts/platform.md#social_contracts_platform_Platform">social_contracts::platform::Platform</a>, clock: &<a href="../myso/clock.md#myso_clock_Clock">myso::clock::Clock</a>, ctx: &<b>mut</b> <a href="../myso/tx_context.md#myso_tx_context_TxContext">myso::tx_context::TxContext</a>)
 </code></pre>
 
 
@@ -3361,11 +3364,12 @@ Works with wallet addresses only, no profile required
     platform_registry: &<a href="../social_contracts/platform.md#social_contracts_platform_PlatformRegistry">PlatformRegistry</a>,
     block_list_registry: &<a href="../social_contracts/block_list.md#social_contracts_block_list_BlockListRegistry">block_list::BlockListRegistry</a>,
     <a href="../social_contracts/platform.md#social_contracts_platform">platform</a>: &<b>mut</b> <a href="../social_contracts/platform.md#social_contracts_platform_Platform">Platform</a>,
+    clock: &Clock,
     ctx: &<b>mut</b> TxContext
 ) {
     <b>let</b> caller = tx_context::sender(ctx);
     <b>let</b> platform_id = object::id(<a href="../social_contracts/platform.md#social_contracts_platform">platform</a>);
-    <b>let</b> current_time = tx_context::epoch_timestamp_ms(ctx);
+    <b>let</b> current_time = clock::timestamp_ms(clock);
     // Check <b>if</b> the <a href="../social_contracts/platform.md#social_contracts_platform">platform</a> <b>has</b> blocked this wallet <b>address</b>
     <b>let</b> platform_address = object::uid_to_address(&<a href="../social_contracts/platform.md#social_contracts_platform">platform</a>.<a href="../social_contracts/platform.md#social_contracts_platform_id">id</a>);
     <b>assert</b>!(!<a href="../social_contracts/block_list.md#social_contracts_block_list_is_blocked">block_list::is_blocked</a>(block_list_registry, platform_address, caller), <a href="../social_contracts/platform.md#social_contracts_platform_EUnauthorized">EUnauthorized</a>);
@@ -3403,7 +3407,7 @@ Works with wallet addresses only, no profile required
 Leave a platform - removes the connection between wallet and platform
 
 
-<pre><code><b>public</b> <b>fun</b> <a href="../social_contracts/platform.md#social_contracts_platform_leave_platform">leave_platform</a>(<a href="../social_contracts/platform.md#social_contracts_platform">platform</a>: &<b>mut</b> <a href="../social_contracts/platform.md#social_contracts_platform_Platform">social_contracts::platform::Platform</a>, ctx: &<b>mut</b> <a href="../myso/tx_context.md#myso_tx_context_TxContext">myso::tx_context::TxContext</a>)
+<pre><code><b>public</b> <b>fun</b> <a href="../social_contracts/platform.md#social_contracts_platform_leave_platform">leave_platform</a>(<a href="../social_contracts/platform.md#social_contracts_platform">platform</a>: &<b>mut</b> <a href="../social_contracts/platform.md#social_contracts_platform_Platform">social_contracts::platform::Platform</a>, clock: &<a href="../myso/clock.md#myso_clock_Clock">myso::clock::Clock</a>, ctx: &<b>mut</b> <a href="../myso/tx_context.md#myso_tx_context_TxContext">myso::tx_context::TxContext</a>)
 </code></pre>
 
 
@@ -3414,11 +3418,12 @@ Leave a platform - removes the connection between wallet and platform
 
 <pre><code><b>public</b> <b>fun</b> <a href="../social_contracts/platform.md#social_contracts_platform_leave_platform">leave_platform</a>(
     <a href="../social_contracts/platform.md#social_contracts_platform">platform</a>: &<b>mut</b> <a href="../social_contracts/platform.md#social_contracts_platform_Platform">Platform</a>,
+    clock: &Clock,
     ctx: &<b>mut</b> TxContext
 ) {
     <b>let</b> caller = tx_context::sender(ctx);
     <b>let</b> platform_id = object::id(<a href="../social_contracts/platform.md#social_contracts_platform">platform</a>);
-    <b>let</b> current_time = tx_context::epoch_timestamp_ms(ctx);
+    <b>let</b> current_time = clock::timestamp_ms(clock);
     // Check <b>if</b> joined wallets set exists
     <b>assert</b>!(dynamic_field::exists_(&<a href="../social_contracts/platform.md#social_contracts_platform">platform</a>.<a href="../social_contracts/platform.md#social_contracts_platform_id">id</a>, <a href="../social_contracts/platform.md#social_contracts_platform_JOINED_WALLETS_FIELD">JOINED_WALLETS_FIELD</a>), <a href="../social_contracts/platform.md#social_contracts_platform_ENotJoined">ENotJoined</a>);
     // Get joined wallets set
@@ -4582,7 +4587,7 @@ Airdrop tokens to multiple recipients from the platform treasury
 Can only be called by platform developer or moderator with treasury permission
 
 
-<pre><code><b>public</b> <b>fun</b> <a href="../social_contracts/platform.md#social_contracts_platform_airdrop_from_treasury">airdrop_from_treasury</a>(<a href="../social_contracts/platform.md#social_contracts_platform">platform</a>: &<b>mut</b> <a href="../social_contracts/platform.md#social_contracts_platform_Platform">social_contracts::platform::Platform</a>, group: &<a href="../myso/permissioned_group.md#myso_permissioned_group_PermissionedGroup">myso::permissioned_group::PermissionedGroup</a>&lt;<a href="../social_contracts/platform.md#social_contracts_platform_PlatformPackage">social_contracts::platform::PlatformPackage</a>&gt;, recipients: vector&lt;<b>address</b>&gt;, amount_per_recipient: u64, reason_code: u8, ctx: &<b>mut</b> <a href="../myso/tx_context.md#myso_tx_context_TxContext">myso::tx_context::TxContext</a>)
+<pre><code><b>public</b> <b>fun</b> <a href="../social_contracts/platform.md#social_contracts_platform_airdrop_from_treasury">airdrop_from_treasury</a>(<a href="../social_contracts/platform.md#social_contracts_platform">platform</a>: &<b>mut</b> <a href="../social_contracts/platform.md#social_contracts_platform_Platform">social_contracts::platform::Platform</a>, group: &<a href="../myso/permissioned_group.md#myso_permissioned_group_PermissionedGroup">myso::permissioned_group::PermissionedGroup</a>&lt;<a href="../social_contracts/platform.md#social_contracts_platform_PlatformPackage">social_contracts::platform::PlatformPackage</a>&gt;, recipients: vector&lt;<b>address</b>&gt;, amount_per_recipient: u64, reason_code: u8, clock: &<a href="../myso/clock.md#myso_clock_Clock">myso::clock::Clock</a>, ctx: &<b>mut</b> <a href="../myso/tx_context.md#myso_tx_context_TxContext">myso::tx_context::TxContext</a>)
 </code></pre>
 
 
@@ -4597,6 +4602,7 @@ Can only be called by platform developer or moderator with treasury permission
     recipients: vector&lt;<b>address</b>&gt;,
     amount_per_recipient: u64,
     reason_code: u8,
+    clock: &Clock,
     ctx: &<b>mut</b> TxContext
 ) {
     <b>let</b> caller = tx_context::sender(ctx);
@@ -4609,7 +4615,7 @@ Can only be called by platform developer or moderator with treasury permission
     // Verify <a href="../social_contracts/platform.md#social_contracts_platform">platform</a> treasury <b>has</b> enough funds
     <b>assert</b>!(balance::value(&<a href="../social_contracts/platform.md#social_contracts_platform">platform</a>.treasury) &gt;= total_amount, <a href="../social_contracts/platform.md#social_contracts_platform_EInsufficientTreasuryFunds">EInsufficientTreasuryFunds</a>);
     // Get current timestamp <b>for</b> events
-    <b>let</b> current_time = tx_context::epoch_timestamp_ms(ctx);
+    <b>let</b> current_time = clock::timestamp_ms(clock);
     <b>let</b> platform_id = object::uid_to_address(&<a href="../social_contracts/platform.md#social_contracts_platform">platform</a>.<a href="../social_contracts/platform.md#social_contracts_platform_id">id</a>);
     // Send tokens to each recipient
     <b>let</b> <b>mut</b> i = 0;
@@ -4648,7 +4654,7 @@ Assign a badge to a profile - can only be called by platform admin/moderator
 This is the primary entry point for badge assignment
 
 
-<pre><code><b>public</b> <b>fun</b> <a href="../social_contracts/platform.md#social_contracts_platform_assign_badge">assign_badge</a>(platform_registry: &<a href="../social_contracts/platform.md#social_contracts_platform_PlatformRegistry">social_contracts::platform::PlatformRegistry</a>, <a href="../social_contracts/platform.md#social_contracts_platform">platform</a>: &<a href="../social_contracts/platform.md#social_contracts_platform_Platform">social_contracts::platform::Platform</a>, group: &<a href="../myso/permissioned_group.md#myso_permissioned_group_PermissionedGroup">myso::permissioned_group::PermissionedGroup</a>&lt;<a href="../social_contracts/platform.md#social_contracts_platform_PlatformPackage">social_contracts::platform::PlatformPackage</a>&gt;, <a href="../social_contracts/profile.md#social_contracts_profile">profile</a>: &<b>mut</b> <a href="../social_contracts/profile.md#social_contracts_profile_Profile">social_contracts::profile::Profile</a>, badge_name: <a href="../std/string.md#std_string_String">std::string::String</a>, badge_description: <a href="../std/string.md#std_string_String">std::string::String</a>, badge_media_url: <a href="../std/string.md#std_string_String">std::string::String</a>, badge_icon_url: <a href="../std/string.md#std_string_String">std::string::String</a>, badge_type: u8, ctx: &<b>mut</b> <a href="../myso/tx_context.md#myso_tx_context_TxContext">myso::tx_context::TxContext</a>)
+<pre><code><b>public</b> <b>fun</b> <a href="../social_contracts/platform.md#social_contracts_platform_assign_badge">assign_badge</a>(platform_registry: &<a href="../social_contracts/platform.md#social_contracts_platform_PlatformRegistry">social_contracts::platform::PlatformRegistry</a>, <a href="../social_contracts/platform.md#social_contracts_platform">platform</a>: &<a href="../social_contracts/platform.md#social_contracts_platform_Platform">social_contracts::platform::Platform</a>, group: &<a href="../myso/permissioned_group.md#myso_permissioned_group_PermissionedGroup">myso::permissioned_group::PermissionedGroup</a>&lt;<a href="../social_contracts/platform.md#social_contracts_platform_PlatformPackage">social_contracts::platform::PlatformPackage</a>&gt;, <a href="../social_contracts/profile.md#social_contracts_profile">profile</a>: &<b>mut</b> <a href="../social_contracts/profile.md#social_contracts_profile_Profile">social_contracts::profile::Profile</a>, badge_name: <a href="../std/string.md#std_string_String">std::string::String</a>, badge_description: <a href="../std/string.md#std_string_String">std::string::String</a>, badge_media_url: <a href="../std/string.md#std_string_String">std::string::String</a>, badge_icon_url: <a href="../std/string.md#std_string_String">std::string::String</a>, badge_type: u8, clock: &<a href="../myso/clock.md#myso_clock_Clock">myso::clock::Clock</a>, ctx: &<b>mut</b> <a href="../myso/tx_context.md#myso_tx_context_TxContext">myso::tx_context::TxContext</a>)
 </code></pre>
 
 
@@ -4667,6 +4673,7 @@ This is the primary entry point for badge assignment
     badge_media_url: String,
     badge_icon_url: String,
     badge_type: u8,
+    clock: &Clock,
     ctx: &<b>mut</b> TxContext
 ) {
     // Check version compatibility
@@ -4684,7 +4691,7 @@ This is the primary entry point for badge assignment
     <b>assert</b>!(string::length(&badge_media_url) &gt; 0 && string::length(&badge_media_url) &lt;= <a href="../social_contracts/platform.md#social_contracts_platform_MAX_BADGE_MEDIA_URL_LENGTH">MAX_BADGE_MEDIA_URL_LENGTH</a>, <a href="../social_contracts/platform.md#social_contracts_platform_EBadgeMediaUrlTooLong">EBadgeMediaUrlTooLong</a>);
     <b>assert</b>!(string::length(&badge_icon_url) &gt; 0 && string::length(&badge_icon_url) &lt;= <a href="../social_contracts/platform.md#social_contracts_platform_MAX_BADGE_ICON_URL_LENGTH">MAX_BADGE_ICON_URL_LENGTH</a>, <a href="../social_contracts/platform.md#social_contracts_platform_EBadgeIconUrlTooLong">EBadgeIconUrlTooLong</a>);
     // Get current time
-    <b>let</b> now = tx_context::epoch_timestamp_ms(ctx);
+    <b>let</b> now = clock::timestamp_ms(clock);
     // Create a unique badge ID by including <a href="../social_contracts/platform.md#social_contracts_platform">platform</a> ID to prevent collisions
     <b>let</b> <b>mut</b> badge_id = string::utf8(b"badge_");
     // Convert <a href="../social_contracts/platform.md#social_contracts_platform">platform</a> ID to hex string and append to ensure uniqueness
@@ -4720,7 +4727,7 @@ Revoke a badge from a profile - can only be called by platform admin/moderator
 This is the primary entry point for badge revocation
 
 
-<pre><code><b>public</b> <b>fun</b> <a href="../social_contracts/platform.md#social_contracts_platform_revoke_badge">revoke_badge</a>(platform_registry: &<a href="../social_contracts/platform.md#social_contracts_platform_PlatformRegistry">social_contracts::platform::PlatformRegistry</a>, <a href="../social_contracts/platform.md#social_contracts_platform">platform</a>: &<a href="../social_contracts/platform.md#social_contracts_platform_Platform">social_contracts::platform::Platform</a>, group: &<a href="../myso/permissioned_group.md#myso_permissioned_group_PermissionedGroup">myso::permissioned_group::PermissionedGroup</a>&lt;<a href="../social_contracts/platform.md#social_contracts_platform_PlatformPackage">social_contracts::platform::PlatformPackage</a>&gt;, <a href="../social_contracts/profile.md#social_contracts_profile">profile</a>: &<b>mut</b> <a href="../social_contracts/profile.md#social_contracts_profile_Profile">social_contracts::profile::Profile</a>, badge_id: <a href="../std/string.md#std_string_String">std::string::String</a>, ctx: &<b>mut</b> <a href="../myso/tx_context.md#myso_tx_context_TxContext">myso::tx_context::TxContext</a>)
+<pre><code><b>public</b> <b>fun</b> <a href="../social_contracts/platform.md#social_contracts_platform_revoke_badge">revoke_badge</a>(platform_registry: &<a href="../social_contracts/platform.md#social_contracts_platform_PlatformRegistry">social_contracts::platform::PlatformRegistry</a>, <a href="../social_contracts/platform.md#social_contracts_platform">platform</a>: &<a href="../social_contracts/platform.md#social_contracts_platform_Platform">social_contracts::platform::Platform</a>, group: &<a href="../myso/permissioned_group.md#myso_permissioned_group_PermissionedGroup">myso::permissioned_group::PermissionedGroup</a>&lt;<a href="../social_contracts/platform.md#social_contracts_platform_PlatformPackage">social_contracts::platform::PlatformPackage</a>&gt;, <a href="../social_contracts/profile.md#social_contracts_profile">profile</a>: &<b>mut</b> <a href="../social_contracts/profile.md#social_contracts_profile_Profile">social_contracts::profile::Profile</a>, badge_id: <a href="../std/string.md#std_string_String">std::string::String</a>, clock: &<a href="../myso/clock.md#myso_clock_Clock">myso::clock::Clock</a>, ctx: &<b>mut</b> <a href="../myso/tx_context.md#myso_tx_context_TxContext">myso::tx_context::TxContext</a>)
 </code></pre>
 
 
@@ -4735,6 +4742,7 @@ This is the primary entry point for badge revocation
     group: &PermissionedGroup&lt;<a href="../social_contracts/platform.md#social_contracts_platform_PlatformPackage">PlatformPackage</a>&gt;,
     <a href="../social_contracts/profile.md#social_contracts_profile">profile</a>: &<b>mut</b> <a href="../social_contracts/profile.md#social_contracts_profile_Profile">profile::Profile</a>,
     badge_id: String,
+    clock: &Clock,
     ctx: &<b>mut</b> TxContext
 ) {
     // Check version compatibility
@@ -4745,7 +4753,7 @@ This is the primary entry point for badge revocation
     <b>let</b> platform_id = object::uid_to_address(&<a href="../social_contracts/platform.md#social_contracts_platform">platform</a>.<a href="../social_contracts/platform.md#social_contracts_platform_id">id</a>);
     <b>assert</b>!(<a href="../social_contracts/platform.md#social_contracts_platform_is_approved">is_approved</a>(platform_registry, platform_id), <a href="../social_contracts/platform.md#social_contracts_platform_EUnauthorized">EUnauthorized</a>);
     // Get current time
-    <b>let</b> now = tx_context::epoch_timestamp_ms(ctx);
+    <b>let</b> now = clock::timestamp_ms(clock);
     // Remove the badge directly from the <a href="../social_contracts/profile.md#social_contracts_profile">profile</a>
     <a href="../social_contracts/profile.md#social_contracts_profile_remove_badge_from_profile">profile::remove_badge_from_profile</a>(
         <a href="../social_contracts/profile.md#social_contracts_profile">profile</a>,

@@ -9,6 +9,26 @@ The contract is published on MySocial network with package ID:
 0x000000000000000000000000000000000000000000000000000000000000d880
 ```
 
+## Time Conventions
+
+All user-facing action timestamps in MySocial contracts use **`myso::clock::Clock`** (shared object at **`0x6`**), not `tx_context::epoch_timestamp_ms`. See [Access On-Chain Time](https://docs.mysocial.io/guides/developer/on-chain-primitives/access-time) for background.
+
+**Rules:**
+- Pass `0x6` as the immutable `&Clock` argument on entry functions that record time (profiles, posts, offers, trading, subscriptions, governance actions, etc.).
+- On-chain event fields (`created_at`, `updated_at`, `timestamp_ms`, …) are **Unix milliseconds** from `clock::timestamp_ms(clock)`.
+- Use `tx_context::epoch(ctx)` only for **epoch-number** semantics (e.g. governance term boundaries), not for wall-clock timestamps.
+- The social indexer stores event ms directly (posts, SPT, SPoT) or converts to `TIMESTAMP` at the DB boundary (profiles); GraphQL exposes **milliseconds**.
+
+**Example — create profile with Clock:**
+```bash
+myso client call --package 0x000000000000000000000000000000000000000000000000000000000000d880 \
+  --module profile --function create_profile \
+  --args "Your Name" "your_username" "Your bio" "" "" 0x6 \
+  --gas-budget 1000000000
+```
+
+Entry functions that accept `clock: &Clock` require the shared Clock object (`0x6`) in the transaction. Functions already documented with `[CLOCK_ID]` in examples below follow the same pattern.
+
 ## Platform Overview
 
 MySocial is a feature-rich decentralized social platform that combines traditional social networking with blockchain-native features like token trading, content monetization, decentralized governance, and proof-of-creativity systems.
@@ -162,7 +182,7 @@ MySocial is a feature-rich decentralized social platform that combines tradition
 ```bash
 myso client call --package 0x000000000000000000000000000000000000000000000000000000000000d880 \
   --module profile --function create_profile \
-  --args "Your Name" "your_username" "Your bio" "https://example.com/profile.jpg" "https://example.com/cover.jpg" \
+  --args "Your Name" "your_username" "Your bio" "" "" 0x6 \
   --gas-budget 1000000000
 ```
 
@@ -170,7 +190,7 @@ myso client call --package 0x000000000000000000000000000000000000000000000000000
 ```bash
 myso client call --package 0x000000000000000000000000000000000000000000000000000000000000d880 \
   --module platform --function join_platform \
-  --args [REGISTRY_ID] [PLATFORM_ID] \
+  --args [REGISTRY_ID] [BLOCK_LIST_ID] [PLATFORM_ID] 0x6 \
   --gas-budget 1000000000
 ```
 
@@ -178,7 +198,8 @@ myso client call --package 0x000000000000000000000000000000000000000000000000000
 ```bash
 myso client call --package 0x000000000000000000000000000000000000000000000000000000000000d880 \
   --module post --function create_post \
-  --args [REGISTRY_ID] [PLATFORM_ID] [BLOCK_LIST_ID] [CONFIG_ID] "Hello MySocial!" \
+  --args [REGISTRY_ID] [PLATFORM_REGISTRY_ID] [PLATFORM_ID] [BLOCK_LIST_ID] [CONFIG_ID] \
+  "Hello MySocial!" none none none none none none none none none none none [MEMORY_ACCOUNT_ID] 0x6 \
   --gas-budget 1000000000
 ```
 

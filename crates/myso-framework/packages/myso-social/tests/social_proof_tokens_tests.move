@@ -66,6 +66,8 @@ module social_contracts::token_exchange_tests {
         // Initialize the token exchange system
         {
             social_proof_tokens::init_for_testing(test_scenario::ctx(&mut scenario));
+            let clock = clock::create_for_testing(test_scenario::ctx(&mut scenario));
+            clock::share_for_testing(clock);
         };
         
         // Verify admin cap and registry were created
@@ -94,11 +96,15 @@ module social_contracts::token_exchange_tests {
         // Initialize the token exchange system
         {
             social_proof_tokens::init_for_testing(test_scenario::ctx(&mut scenario));
+            let clock = clock::create_for_testing(test_scenario::ctx(&mut scenario));
+            clock::share_for_testing(clock);
         };
         
         // Update the config and verify changes
         test_scenario::next_tx(&mut scenario, ADMIN);
         {
+
+            let clock = test_scenario::take_shared<Clock>(&scenario);
             let admin_cap = test_scenario::take_from_sender<social_proof_tokens::SocialProofTokensAdminCap>(&scenario);
             let mut config = test_scenario::take_shared<social_proof_tokens::SocialProofTokensConfig>(&scenario);
             
@@ -117,12 +123,15 @@ module social_contracts::token_exchange_tests {
                 2000_000_000, // post_threshold (2000 MYSO)
                 20000_000_000, // profile_threshold (20000 MYSO) 
                 2000, // max_individual_stake_bps (20%)
-                1000, // max_reservers_per_pool
+                1000,
+                &clock,
                 test_scenario::ctx(&mut scenario)
             );
             
             test_scenario::return_to_sender(&scenario, admin_cap);
             test_scenario::return_shared(config);
+
+            test_scenario::return_shared(clock);
         };
         
         test_scenario::end(scenario);
@@ -133,9 +142,13 @@ module social_contracts::token_exchange_tests {
         let mut scenario = test_scenario::begin(ADMIN);
         {
             social_proof_tokens::init_for_testing(test_scenario::ctx(&mut scenario));
+            let clock = clock::create_for_testing(test_scenario::ctx(&mut scenario));
+            clock::share_for_testing(clock);
         };
         test_scenario::next_tx(&mut scenario, ADMIN);
         {
+
+            let clock = test_scenario::take_shared<Clock>(&scenario);
             let admin_cap = test_scenario::take_from_sender<social_proof_tokens::SocialProofTokensAdminCap>(&scenario);
             let mut config = test_scenario::take_shared<social_proof_tokens::SocialProofTokensConfig>(&scenario);
             social_proof_tokens::update_social_proof_tokens_config(
@@ -153,11 +166,14 @@ module social_contracts::token_exchange_tests {
                 2000_000_000,
                 20000_000_000,
                 50_000, // 500% of threshold per reserver
-                80_000, // above legacy 50_000 reserver cap
+                80_000,
+                &clock,
                 test_scenario::ctx(&mut scenario)
             );
             test_scenario::return_to_sender(&scenario, admin_cap);
             test_scenario::return_shared(config);
+
+            test_scenario::return_shared(clock);
         };
         test_scenario::end(scenario);
     }
@@ -193,6 +209,8 @@ module social_contracts::token_exchange_tests {
 
             test_scenario::next_tx(&mut scenario, CREATOR);
             {
+
+                let clock = test_scenario::take_shared<Clock>(&scenario);
                 let mut registry = test_scenario::take_shared<social_proof_tokens::TokenRegistry>(&scenario);
                 let config = test_scenario::take_shared<social_proof_tokens::SocialProofTokensConfig>(&scenario);
 
@@ -203,18 +221,22 @@ module social_contracts::token_exchange_tests {
                     &mut registry,
                     &config,
                     &profile,
+                    &clock,
                     test_scenario::ctx(&mut scenario)
                 );
 
                 test_scenario::return_shared(registry);
                 test_scenario::return_shared(config);
                 test_scenario::return_to_sender(&scenario, profile);
+                test_scenario::return_shared(clock);
                 profile_id
             }
         };
 
         test_scenario::next_tx(&mut scenario, USER1);
         {
+
+            let clock = test_scenario::take_shared<Clock>(&scenario);
             let mut registry = test_scenario::take_shared<social_proof_tokens::TokenRegistry>(&scenario);
             let config = test_scenario::take_shared<social_proof_tokens::SocialProofTokensConfig>(&scenario);
             let mut reservation_pool_object = test_scenario::take_shared<social_proof_tokens::ReservationPoolObject>(&scenario);
@@ -228,6 +250,7 @@ module social_contracts::token_exchange_tests {
                 &treasury,
                 payment,
                 1_500_000_000,
+                &clock,
                 test_scenario::ctx(&mut scenario)
             );
 
@@ -238,10 +261,14 @@ module social_contracts::token_exchange_tests {
             test_scenario::return_shared(config);
             test_scenario::return_shared(reservation_pool_object);
             test_scenario::return_shared(treasury);
+
+            test_scenario::return_shared(clock);
         };
 
         test_scenario::next_tx(&mut scenario, ADMIN);
         {
+
+            let clock = test_scenario::take_shared<Clock>(&scenario);
             let admin_cap = test_scenario::take_from_sender<social_proof_tokens::SocialProofTokensAdminCap>(&scenario);
             let mut config = test_scenario::take_shared<social_proof_tokens::SocialProofTokensConfig>(&scenario);
 
@@ -260,12 +287,15 @@ module social_contracts::token_exchange_tests {
                 1000_000_000, // post_threshold
                 1000_000_000, // profile_threshold lowered for existing pool check
                 2000, // max_individual_stake_bps
-                1000, // max_reservers_per_pool
+                1000,
+                &clock,
                 test_scenario::ctx(&mut scenario)
             );
 
             test_scenario::return_to_sender(&scenario, admin_cap);
             test_scenario::return_shared(config);
+
+            test_scenario::return_shared(clock);
         };
 
         test_scenario::next_tx(&mut scenario, CREATOR);
@@ -299,6 +329,8 @@ module social_contracts::token_exchange_tests {
 
         test_scenario::next_tx(&mut scenario, ADMIN);
         {
+
+            let clock = test_scenario::take_shared<Clock>(&scenario);
             let admin_cap = test_scenario::take_from_sender<social_proof_tokens::SocialProofTokensAdminCap>(&scenario);
             let mut config = test_scenario::take_shared<social_proof_tokens::SocialProofTokensConfig>(&scenario);
             social_proof_tokens::update_social_proof_tokens_config(
@@ -317,10 +349,13 @@ module social_contracts::token_exchange_tests {
                 LAUNCH_THRESHOLD_MIST,
                 10000,
                 1000,
+                &clock,
                 test_scenario::ctx(&mut scenario)
             );
             test_scenario::return_to_sender(&scenario, admin_cap);
             test_scenario::return_shared(config);
+
+            test_scenario::return_shared(clock);
         };
 
         test_scenario::next_tx(&mut scenario, CREATOR);
@@ -349,6 +384,8 @@ module social_contracts::token_exchange_tests {
 
         test_scenario::next_tx(&mut scenario, CREATOR);
         {
+
+            let clock = test_scenario::take_shared<Clock>(&scenario);
             let mut registry = test_scenario::take_shared<social_proof_tokens::TokenRegistry>(&scenario);
             let config = test_scenario::take_shared<social_proof_tokens::SocialProofTokensConfig>(&scenario);
             let profile = test_scenario::take_from_sender<Profile>(&scenario);
@@ -356,15 +393,20 @@ module social_contracts::token_exchange_tests {
                 &mut registry,
                 &config,
                 &profile,
+                &clock,
                 test_scenario::ctx(&mut scenario)
             );
             test_scenario::return_shared(registry);
             test_scenario::return_shared(config);
             test_scenario::return_to_sender(&scenario, profile);
+
+            test_scenario::return_shared(clock);
         };
 
         test_scenario::next_tx(&mut scenario, USER1);
         {
+
+            let clock = test_scenario::take_shared<Clock>(&scenario);
             let mut registry = test_scenario::take_shared<social_proof_tokens::TokenRegistry>(&scenario);
             let config = test_scenario::take_shared<social_proof_tokens::SocialProofTokensConfig>(&scenario);
             let mut reservation_pool_object =
@@ -379,6 +421,7 @@ module social_contracts::token_exchange_tests {
                 &treasury,
                 pay,
                 RESERVE_NET_A,
+                &clock,
                 test_scenario::ctx(&mut scenario)
             );
             test_scenario::return_shared(registry);
@@ -386,10 +429,14 @@ module social_contracts::token_exchange_tests {
             test_scenario::return_shared(reservation_pool_object);
             test_scenario::return_shared(treasury);
             test_scenario::return_to_sender(&scenario, coin);
+
+            test_scenario::return_shared(clock);
         };
 
         test_scenario::next_tx(&mut scenario, USER2);
         {
+
+            let clock = test_scenario::take_shared<Clock>(&scenario);
             let mut registry = test_scenario::take_shared<social_proof_tokens::TokenRegistry>(&scenario);
             let config = test_scenario::take_shared<social_proof_tokens::SocialProofTokensConfig>(&scenario);
             let mut reservation_pool_object =
@@ -404,6 +451,7 @@ module social_contracts::token_exchange_tests {
                 &treasury,
                 pay,
                 RESERVE_NET_B,
+                &clock,
                 test_scenario::ctx(&mut scenario)
             );
             test_scenario::return_shared(registry);
@@ -411,10 +459,14 @@ module social_contracts::token_exchange_tests {
             test_scenario::return_shared(reservation_pool_object);
             test_scenario::return_shared(treasury);
             test_scenario::return_to_sender(&scenario, coin);
+
+            test_scenario::return_shared(clock);
         };
 
         test_scenario::next_tx(&mut scenario, CREATOR);
         {
+
+            let clock = test_scenario::take_shared<Clock>(&scenario);
             let mut registry = test_scenario::take_shared<social_proof_tokens::TokenRegistry>(&scenario);
             let config = test_scenario::take_shared<social_proof_tokens::SocialProofTokensConfig>(&scenario);
             let mut reservation_pool_object =
@@ -423,11 +475,14 @@ module social_contracts::token_exchange_tests {
                 &mut registry,
                 &config,
                 &mut reservation_pool_object,
+                &clock,
                 test_scenario::ctx(&mut scenario)
             );
             test_scenario::return_shared(registry);
             test_scenario::return_shared(config);
             test_scenario::return_shared(reservation_pool_object);
+
+            test_scenario::return_shared(clock);
         };
 
         test_scenario::next_tx(&mut scenario, USER1);
@@ -462,6 +517,8 @@ module social_contracts::token_exchange_tests {
 
         test_scenario::next_tx(&mut scenario, ADMIN);
         {
+
+            let clock = test_scenario::take_shared<Clock>(&scenario);
             let admin_cap = test_scenario::take_from_sender<social_proof_tokens::SocialProofTokensAdminCap>(&scenario);
             let mut config = test_scenario::take_shared<social_proof_tokens::SocialProofTokensConfig>(&scenario);
             // Match profile test: same threshold, base_price, and expected `LAUNCH_INITIAL_NANO_SPT`.
@@ -481,10 +538,13 @@ module social_contracts::token_exchange_tests {
                 LAUNCH_THRESHOLD_MIST,
                 10000,
                 1000,
+                &clock,
                 test_scenario::ctx(&mut scenario)
             );
             test_scenario::return_to_sender(&scenario, admin_cap);
             test_scenario::return_shared(config);
+
+            test_scenario::return_shared(clock);
         };
 
         let profile_id = {
@@ -522,17 +582,25 @@ module social_contracts::token_exchange_tests {
 
         let post_id = {
             test_scenario::next_tx(&mut scenario, CREATOR);
-            post::test_create_post(
-                CREATOR,
+            {
+                let clock = test_scenario::take_shared<Clock>(&scenario);
+                let id = post::test_create_post(
+CREATOR,
                 profile_id,
                 platform_id,
                 string::utf8(b"SPT launch post"),
+                &clock,
                 test_scenario::ctx(&mut scenario)
-            )
+                );
+                test_scenario::return_shared(clock);
+                id
+            }
         };
 
         test_scenario::next_tx(&mut scenario, CREATOR);
         {
+
+            let clock = test_scenario::take_shared<Clock>(&scenario);
             let mut registry = test_scenario::take_shared<social_proof_tokens::TokenRegistry>(&scenario);
             let config = test_scenario::take_shared<social_proof_tokens::SocialProofTokensConfig>(&scenario);
             let post_obj = test_scenario::take_shared<Post>(&scenario);
@@ -541,11 +609,14 @@ module social_contracts::token_exchange_tests {
                 &mut registry,
                 &config,
                 &post_obj,
+                &clock,
                 test_scenario::ctx(&mut scenario)
             );
             test_scenario::return_shared(registry);
             test_scenario::return_shared(config);
             test_scenario::return_shared(post_obj);
+
+            test_scenario::return_shared(clock);
         };
 
         test_scenario::next_tx(&mut scenario, CREATOR);
@@ -555,6 +626,8 @@ module social_contracts::token_exchange_tests {
 
         test_scenario::next_tx(&mut scenario, USER1);
         {
+
+            let clock = test_scenario::take_shared<Clock>(&scenario);
             let mut registry = test_scenario::take_shared<social_proof_tokens::TokenRegistry>(&scenario);
             let config = test_scenario::take_shared<social_proof_tokens::SocialProofTokensConfig>(&scenario);
             let mut reservation_pool_object =
@@ -573,6 +646,7 @@ module social_contracts::token_exchange_tests {
                 &mut poc_vault_obj,
                 pay,
                 RESERVE_NET_A,
+                &clock,
                 test_scenario::ctx(&mut scenario)
             );
             test_scenario::return_shared(registry);
@@ -582,10 +656,14 @@ module social_contracts::token_exchange_tests {
             test_scenario::return_shared(post_obj);
             test_scenario::return_shared(poc_vault_obj);
             test_scenario::return_to_sender(&scenario, coin);
+
+            test_scenario::return_shared(clock);
         };
 
         test_scenario::next_tx(&mut scenario, USER2);
         {
+
+            let clock = test_scenario::take_shared<Clock>(&scenario);
             let mut registry = test_scenario::take_shared<social_proof_tokens::TokenRegistry>(&scenario);
             let config = test_scenario::take_shared<social_proof_tokens::SocialProofTokensConfig>(&scenario);
             let mut reservation_pool_object =
@@ -604,6 +682,7 @@ module social_contracts::token_exchange_tests {
                 &mut poc_vault_obj,
                 pay,
                 RESERVE_NET_B,
+                &clock,
                 test_scenario::ctx(&mut scenario)
             );
             test_scenario::return_shared(registry);
@@ -613,10 +692,14 @@ module social_contracts::token_exchange_tests {
             test_scenario::return_shared(post_obj);
             test_scenario::return_shared(poc_vault_obj);
             test_scenario::return_to_sender(&scenario, coin);
+
+            test_scenario::return_shared(clock);
         };
 
         test_scenario::next_tx(&mut scenario, CREATOR);
         {
+
+            let clock = test_scenario::take_shared<Clock>(&scenario);
             let mut registry = test_scenario::take_shared<social_proof_tokens::TokenRegistry>(&scenario);
             let config = test_scenario::take_shared<social_proof_tokens::SocialProofTokensConfig>(&scenario);
             let mut reservation_pool_object =
@@ -625,11 +708,14 @@ module social_contracts::token_exchange_tests {
                 &mut registry,
                 &config,
                 &mut reservation_pool_object,
+                &clock,
                 test_scenario::ctx(&mut scenario)
             );
             test_scenario::return_shared(registry);
             test_scenario::return_shared(config);
             test_scenario::return_shared(reservation_pool_object);
+
+            test_scenario::return_shared(clock);
         };
 
         test_scenario::next_tx(&mut scenario, USER1);
@@ -666,12 +752,17 @@ module social_contracts::token_exchange_tests {
         // Initialize social_proof_tokens module first
         {
             social_proof_tokens::init_for_testing(test_scenario::ctx(&mut scenario));
+            let clock = clock::create_for_testing(test_scenario::ctx(&mut scenario));
+            clock::share_for_testing(clock);
         };
         
         test_scenario::next_tx(&mut scenario, ADMIN);
         {
             // Initialize profile module in its own transaction
-            profile::init_for_testing(test_scenario::ctx(&mut scenario));
+            let clock = clock::create_for_testing(test_scenario::ctx(&mut scenario));
+            profile::init_for_testing(&clock, test_scenario::ctx(&mut scenario));
+            clock::share_for_testing(clock);
+
         };
         
         // Initialize platform module
@@ -748,6 +839,8 @@ module social_contracts::token_exchange_tests {
         // Update exchange config
         test_scenario::next_tx(&mut scenario, ADMIN);
         {
+
+            let clock = test_scenario::take_shared<Clock>(&scenario);
             let admin_cap = test_scenario::take_from_sender<social_proof_tokens::SocialProofTokensAdminCap>(&scenario);
             let mut config = test_scenario::take_shared<social_proof_tokens::SocialProofTokensConfig>(&scenario);
             
@@ -766,12 +859,15 @@ module social_contracts::token_exchange_tests {
                 1000_000_000, // post_threshold (1000 MYSO)
                 10000_000_000, // profile_threshold (10000 MYSO)
                 2000, // max_individual_stake_bps (20%)
-                1000, // max_reservers_per_pool
+                1000,
+                &clock,
                 test_scenario::ctx(&mut scenario)
             );
             
             test_scenario::return_to_sender(&scenario, admin_cap);
             test_scenario::return_shared(config);
+
+            test_scenario::return_shared(clock);
         };
         
         scenario
@@ -804,7 +900,10 @@ module social_contracts::token_exchange_tests {
     fun init_block_list_for_spt_tests(scenario: &mut Scenario) {
         test_scenario::next_tx(scenario, ADMIN);
         {
-            block_list::test_init(test_scenario::ctx(scenario));
+            let clock = clock::create_for_testing(test_scenario::ctx(scenario));
+            block_list::test_init(&clock, test_scenario::ctx(scenario));
+            clock::share_for_testing(clock);
+
         };
     }
 
@@ -835,7 +934,10 @@ module social_contracts::token_exchange_tests {
         test_scenario::next_tx(scenario, ADMIN);
         {
             // Always initialize the profile module to ensure we have a registry
-            profile::init_for_testing(test_scenario::ctx(scenario));
+            let clock = clock::create_for_testing(test_scenario::ctx(scenario));
+            profile::init_for_testing(&clock, test_scenario::ctx(scenario));
+            clock::share_for_testing(clock);
+
         };
         
         // Create a profile for CREATOR
@@ -1442,6 +1544,8 @@ module social_contracts::token_exchange_tests {
 
         test_scenario::next_tx(&mut scenario, CREATOR);
         {
+
+            let clock = test_scenario::take_shared<Clock>(&scenario);
             let mut registry = test_scenario::take_shared<TokenRegistry>(&scenario);
             let config = test_scenario::take_shared<SocialProofTokensConfig>(&scenario);
             let profile = test_scenario::take_from_sender<Profile>(&scenario);
@@ -1449,15 +1553,20 @@ module social_contracts::token_exchange_tests {
                 &mut registry,
                 &config,
                 &profile,
+                &clock,
                 test_scenario::ctx(&mut scenario)
             );
             test_scenario::return_shared(registry);
             test_scenario::return_shared(config);
             test_scenario::return_to_sender(&scenario, profile);
+
+            test_scenario::return_shared(clock);
         };
 
         test_scenario::next_tx(&mut scenario, USER1);
         {
+
+            let clock = test_scenario::take_shared<Clock>(&scenario);
             let mut registry = test_scenario::take_shared<TokenRegistry>(&scenario);
             let config = test_scenario::take_shared<SocialProofTokensConfig>(&scenario);
             let mut pool = test_scenario::take_shared<ReservationPoolObject>(&scenario);
@@ -1471,6 +1580,7 @@ module social_contracts::token_exchange_tests {
                 &treasury,
                 pay,
                 gross,
+                &clock,
                 test_scenario::ctx(&mut scenario)
             );
             assert!(social_proof_tokens::reservation_pool_total_reserved_for_testing(&pool) == gross, 0);
@@ -1480,10 +1590,14 @@ module social_contracts::token_exchange_tests {
             test_scenario::return_shared(pool);
             test_scenario::return_shared(treasury);
             test_scenario::return_to_sender(&scenario, coin);
+
+            test_scenario::return_shared(clock);
         };
 
         test_scenario::next_tx(&mut scenario, USER1);
         {
+
+            let clock = test_scenario::take_shared<Clock>(&scenario);
             let mut registry = test_scenario::take_shared<TokenRegistry>(&scenario);
             let config = test_scenario::take_shared<SocialProofTokensConfig>(&scenario);
             let mut pool = test_scenario::take_shared<ReservationPoolObject>(&scenario);
@@ -1494,6 +1608,7 @@ module social_contracts::token_exchange_tests {
                 &mut pool,
                 &treasury,
                 gross,
+                &clock,
                 test_scenario::ctx(&mut scenario)
             );
             assert!(social_proof_tokens::reservation_pool_total_reserved_for_testing(&pool) == 0, 2);
@@ -1502,6 +1617,8 @@ module social_contracts::token_exchange_tests {
             test_scenario::return_shared(config);
             test_scenario::return_shared(pool);
             test_scenario::return_shared(treasury);
+
+            test_scenario::return_shared(clock);
         };
 
         test_scenario::next_tx(&mut scenario, USER1);
@@ -1554,17 +1671,25 @@ module social_contracts::token_exchange_tests {
 
         let post_id = {
             test_scenario::next_tx(&mut scenario, CREATOR);
-            post::test_create_post(
-                CREATOR,
+            {
+                let clock = test_scenario::take_shared<Clock>(&scenario);
+                let id = post::test_create_post(
+CREATOR,
                 profile_id,
                 platform_id,
                 string::utf8(b"reserve withdraw post"),
+                &clock,
                 test_scenario::ctx(&mut scenario)
-            )
+                );
+                test_scenario::return_shared(clock);
+                id
+            }
         };
 
         test_scenario::next_tx(&mut scenario, CREATOR);
         {
+
+            let clock = test_scenario::take_shared<Clock>(&scenario);
             let mut registry = test_scenario::take_shared<TokenRegistry>(&scenario);
             let config = test_scenario::take_shared<SocialProofTokensConfig>(&scenario);
             let post_obj = test_scenario::take_shared<Post>(&scenario);
@@ -1573,11 +1698,14 @@ module social_contracts::token_exchange_tests {
                 &mut registry,
                 &config,
                 &post_obj,
+                &clock,
                 test_scenario::ctx(&mut scenario)
             );
             test_scenario::return_shared(registry);
             test_scenario::return_shared(config);
             test_scenario::return_shared(post_obj);
+
+            test_scenario::return_shared(clock);
         };
 
         test_scenario::next_tx(&mut scenario, CREATOR);
@@ -1587,6 +1715,8 @@ module social_contracts::token_exchange_tests {
 
         test_scenario::next_tx(&mut scenario, USER1);
         {
+
+            let clock = test_scenario::take_shared<Clock>(&scenario);
             let mut registry = test_scenario::take_shared<TokenRegistry>(&scenario);
             let config = test_scenario::take_shared<SocialProofTokensConfig>(&scenario);
             let mut pool = test_scenario::take_shared<ReservationPoolObject>(&scenario);
@@ -1604,6 +1734,7 @@ module social_contracts::token_exchange_tests {
                 &mut poc_vault_obj,
                 pay,
                 gross,
+                &clock,
                 test_scenario::ctx(&mut scenario)
             );
             assert!(social_proof_tokens::reservation_pool_total_reserved_for_testing(&pool) == gross, 10);
@@ -1614,10 +1745,14 @@ module social_contracts::token_exchange_tests {
             test_scenario::return_shared(post_obj);
             test_scenario::return_shared(poc_vault_obj);
             test_scenario::return_to_sender(&scenario, coin);
+
+            test_scenario::return_shared(clock);
         };
 
         test_scenario::next_tx(&mut scenario, USER1);
         {
+
+            let clock = test_scenario::take_shared<Clock>(&scenario);
             let mut registry = test_scenario::take_shared<TokenRegistry>(&scenario);
             let config = test_scenario::take_shared<SocialProofTokensConfig>(&scenario);
             let mut pool = test_scenario::take_shared<ReservationPoolObject>(&scenario);
@@ -1632,6 +1767,7 @@ module social_contracts::token_exchange_tests {
                 &post_obj,
                 &mut poc_vault_obj,
                 gross,
+                &clock,
                 test_scenario::ctx(&mut scenario)
             );
             assert!(social_proof_tokens::reservation_pool_total_reserved_for_testing(&pool) == 0, 11);
@@ -1641,6 +1777,8 @@ module social_contracts::token_exchange_tests {
             test_scenario::return_shared(treasury);
             test_scenario::return_shared(post_obj);
             test_scenario::return_shared(poc_vault_obj);
+
+            test_scenario::return_shared(clock);
         };
 
         test_scenario::next_tx(&mut scenario, USER1);
@@ -1685,6 +1823,8 @@ module social_contracts::token_exchange_tests {
 
         test_scenario::next_tx(&mut scenario, CREATOR);
         {
+
+            let clock = test_scenario::take_shared<Clock>(&scenario);
             let mut registry = test_scenario::take_shared<TokenRegistry>(&scenario);
             let config = test_scenario::take_shared<SocialProofTokensConfig>(&scenario);
             let profile = test_scenario::take_from_sender<Profile>(&scenario);
@@ -1692,15 +1832,20 @@ module social_contracts::token_exchange_tests {
                 &mut registry,
                 &config,
                 &profile,
+                &clock,
                 test_scenario::ctx(&mut scenario)
             );
             test_scenario::return_shared(registry);
             test_scenario::return_shared(config);
             test_scenario::return_to_sender(&scenario, profile);
+
+            test_scenario::return_shared(clock);
         };
 
         test_scenario::next_tx(&mut scenario, USER1);
         {
+
+            let clock = test_scenario::take_shared<Clock>(&scenario);
             let mut registry = test_scenario::take_shared<TokenRegistry>(&scenario);
             let config = test_scenario::take_shared<SocialProofTokensConfig>(&scenario);
             let mut pool = test_scenario::take_shared<ReservationPoolObject>(&scenario);
@@ -1714,6 +1859,7 @@ module social_contracts::token_exchange_tests {
                 &treasury,
                 pay,
                 double_gross,
+                &clock,
                 test_scenario::ctx(&mut scenario)
             );
             assert!(social_proof_tokens::reservation_pool_total_reserved_for_testing(&pool) == double_gross, 20);
@@ -1722,10 +1868,14 @@ module social_contracts::token_exchange_tests {
             test_scenario::return_shared(pool);
             test_scenario::return_shared(treasury);
             test_scenario::return_to_sender(&scenario, coin);
+
+            test_scenario::return_shared(clock);
         };
 
         test_scenario::next_tx(&mut scenario, USER1);
         {
+
+            let clock = test_scenario::take_shared<Clock>(&scenario);
             let mut registry = test_scenario::take_shared<TokenRegistry>(&scenario);
             let config = test_scenario::take_shared<SocialProofTokensConfig>(&scenario);
             let mut pool = test_scenario::take_shared<ReservationPoolObject>(&scenario);
@@ -1736,6 +1886,7 @@ module social_contracts::token_exchange_tests {
                 &mut pool,
                 &treasury,
                 gross,
+                &clock,
                 test_scenario::ctx(&mut scenario)
             );
             assert!(social_proof_tokens::reservation_pool_total_reserved_for_testing(&pool) == gross, 21);
@@ -1744,10 +1895,14 @@ module social_contracts::token_exchange_tests {
             test_scenario::return_shared(config);
             test_scenario::return_shared(pool);
             test_scenario::return_shared(treasury);
+
+            test_scenario::return_shared(clock);
         };
 
         test_scenario::next_tx(&mut scenario, USER1);
         {
+
+            let clock = test_scenario::take_shared<Clock>(&scenario);
             let mut registry = test_scenario::take_shared<TokenRegistry>(&scenario);
             let config = test_scenario::take_shared<SocialProofTokensConfig>(&scenario);
             let mut pool = test_scenario::take_shared<ReservationPoolObject>(&scenario);
@@ -1758,6 +1913,7 @@ module social_contracts::token_exchange_tests {
                 &mut pool,
                 &treasury,
                 gross,
+                &clock,
                 test_scenario::ctx(&mut scenario)
             );
             assert!(social_proof_tokens::reservation_pool_total_reserved_for_testing(&pool) == 0, 23);
@@ -1766,6 +1922,8 @@ module social_contracts::token_exchange_tests {
             test_scenario::return_shared(config);
             test_scenario::return_shared(pool);
             test_scenario::return_shared(treasury);
+
+            test_scenario::return_shared(clock);
         };
 
         let expected_final =
@@ -1820,28 +1978,42 @@ module social_contracts::token_exchange_tests {
 
         let _post_id_a = {
             test_scenario::next_tx(&mut scenario, CREATOR);
-            post::test_create_post(
-                CREATOR,
+            {
+                let clock = test_scenario::take_shared<Clock>(&scenario);
+                let id = post::test_create_post(
+CREATOR,
                 profile_id,
                 platform_id,
                 string::utf8(b"post A"),
+                &clock,
                 test_scenario::ctx(&mut scenario)
-            )
+                );
+                test_scenario::return_shared(clock);
+                id
+            }
         };
 
         let _post_id_b = {
             test_scenario::next_tx(&mut scenario, CREATOR);
-            post::test_create_post(
-                CREATOR,
+            {
+                let clock = test_scenario::take_shared<Clock>(&scenario);
+                let id = post::test_create_post(
+CREATOR,
                 profile_id,
                 platform_id,
                 string::utf8(b"post B"),
+                &clock,
                 test_scenario::ctx(&mut scenario)
-            )
+                );
+                test_scenario::return_shared(clock);
+                id
+            }
         };
 
         test_scenario::next_tx(&mut scenario, CREATOR);
         {
+
+            let clock = test_scenario::take_shared<Clock>(&scenario);
             let mut registry = test_scenario::take_shared<TokenRegistry>(&scenario);
             let config = test_scenario::take_shared<SocialProofTokensConfig>(&scenario);
             let post_a =
@@ -1850,11 +2022,14 @@ module social_contracts::token_exchange_tests {
                 &mut registry,
                 &config,
                 &post_a,
+                &clock,
                 test_scenario::ctx(&mut scenario)
             );
             test_scenario::return_shared(registry);
             test_scenario::return_shared(config);
             test_scenario::return_shared(post_a);
+
+            test_scenario::return_shared(clock);
         };
 
         test_scenario::next_tx(&mut scenario, CREATOR);
@@ -1864,6 +2039,8 @@ module social_contracts::token_exchange_tests {
 
         test_scenario::next_tx(&mut scenario, USER1);
         {
+
+            let clock = test_scenario::take_shared<Clock>(&scenario);
             let mut registry = test_scenario::take_shared<TokenRegistry>(&scenario);
             let config = test_scenario::take_shared<SocialProofTokensConfig>(&scenario);
             let mut pool = test_scenario::take_shared<ReservationPoolObject>(&scenario);
@@ -1882,6 +2059,7 @@ module social_contracts::token_exchange_tests {
                 &mut poc_vault_obj,
                 pay,
                 gross,
+                &clock,
                 test_scenario::ctx(&mut scenario)
             );
             test_scenario::return_shared(registry);
@@ -1891,10 +2069,14 @@ module social_contracts::token_exchange_tests {
             test_scenario::return_shared(post_a);
             test_scenario::return_shared(poc_vault_obj);
             test_scenario::return_to_sender(&scenario, coin);
+
+            test_scenario::return_shared(clock);
         };
 
         test_scenario::next_tx(&mut scenario, USER1);
         {
+
+            let clock = test_scenario::take_shared<Clock>(&scenario);
             let mut registry = test_scenario::take_shared<TokenRegistry>(&scenario);
             let config = test_scenario::take_shared<SocialProofTokensConfig>(&scenario);
             let mut pool = test_scenario::take_shared<ReservationPoolObject>(&scenario);
@@ -1910,6 +2092,7 @@ module social_contracts::token_exchange_tests {
                 &post_b,
                 &mut poc_vault_obj,
                 gross,
+                &clock,
                 test_scenario::ctx(&mut scenario)
             );
             test_scenario::return_shared(registry);
@@ -1918,6 +2101,8 @@ module social_contracts::token_exchange_tests {
             test_scenario::return_shared(treasury);
             test_scenario::return_shared(post_b);
             test_scenario::return_shared(poc_vault_obj);
+
+            test_scenario::return_shared(clock);
         };
 
         test_scenario::end(scenario);
@@ -1965,6 +2150,8 @@ module social_contracts::token_exchange_tests {
 
         test_scenario::next_tx(&mut scenario, CREATOR);
         {
+
+            let clock = test_scenario::take_shared<Clock>(&scenario);
             let mut registry = test_scenario::take_shared<TokenRegistry>(&scenario);
             let config = test_scenario::take_shared<SocialProofTokensConfig>(&scenario);
             let profile = test_scenario::take_from_sender<Profile>(&scenario);
@@ -1972,22 +2159,31 @@ module social_contracts::token_exchange_tests {
                 &mut registry,
                 &config,
                 &profile,
+                &clock,
                 test_scenario::ctx(&mut scenario)
             );
             test_scenario::return_shared(registry);
             test_scenario::return_shared(config);
             test_scenario::return_to_sender(&scenario, profile);
+
+            test_scenario::return_shared(clock);
         };
 
         let _orphan_post = {
             test_scenario::next_tx(&mut scenario, CREATOR);
-            post::test_create_post(
-                CREATOR,
+            {
+                let clock = test_scenario::take_shared<Clock>(&scenario);
+                let id = post::test_create_post(
+CREATOR,
                 profile_id,
                 platform_id,
                 string::utf8(b"orphan"),
+                &clock,
                 test_scenario::ctx(&mut scenario)
-            )
+                );
+                test_scenario::return_shared(clock);
+                id
+            }
         };
 
         test_scenario::next_tx(&mut scenario, CREATOR);
@@ -1997,6 +2193,8 @@ module social_contracts::token_exchange_tests {
 
         test_scenario::next_tx(&mut scenario, USER1);
         {
+
+            let clock = test_scenario::take_shared<Clock>(&scenario);
             let mut registry = test_scenario::take_shared<TokenRegistry>(&scenario);
             let config = test_scenario::take_shared<SocialProofTokensConfig>(&scenario);
             let mut pool = test_scenario::take_shared<ReservationPoolObject>(&scenario);
@@ -2011,6 +2209,7 @@ module social_contracts::token_exchange_tests {
                 &treasury,
                 pay,
                 gross,
+                &clock,
                 test_scenario::ctx(&mut scenario)
             );
             test_scenario::return_shared(registry);
@@ -2019,10 +2218,14 @@ module social_contracts::token_exchange_tests {
             test_scenario::return_shared(treasury);
             test_scenario::return_shared(post_obj);
             test_scenario::return_to_sender(&scenario, coin);
+
+            test_scenario::return_shared(clock);
         };
 
         test_scenario::next_tx(&mut scenario, USER1);
         {
+
+            let clock = test_scenario::take_shared<Clock>(&scenario);
             let mut registry = test_scenario::take_shared<TokenRegistry>(&scenario);
             let config = test_scenario::take_shared<SocialProofTokensConfig>(&scenario);
             let mut pool = test_scenario::take_shared<ReservationPoolObject>(&scenario);
@@ -2037,6 +2240,7 @@ module social_contracts::token_exchange_tests {
                 &post_obj,
                 &mut poc_vault_obj,
                 gross,
+                &clock,
                 test_scenario::ctx(&mut scenario)
             );
             test_scenario::return_shared(registry);
@@ -2045,6 +2249,8 @@ module social_contracts::token_exchange_tests {
             test_scenario::return_shared(treasury);
             test_scenario::return_shared(post_obj);
             test_scenario::return_shared(poc_vault_obj);
+
+            test_scenario::return_shared(clock);
         };
 
         test_scenario::end(scenario);
@@ -2092,17 +2298,25 @@ module social_contracts::token_exchange_tests {
 
         let post_id_only = {
             test_scenario::next_tx(&mut scenario, CREATOR);
-            post::test_create_post(
-                CREATOR,
+            {
+                let clock = test_scenario::take_shared<Clock>(&scenario);
+                let id = post::test_create_post(
+CREATOR,
                 profile_id,
                 platform_id,
                 string::utf8(b"post only pool"),
+                &clock,
                 test_scenario::ctx(&mut scenario)
-            )
+                );
+                test_scenario::return_shared(clock);
+                id
+            }
         };
 
         test_scenario::next_tx(&mut scenario, CREATOR);
         {
+
+            let clock = test_scenario::take_shared<Clock>(&scenario);
             let mut registry = test_scenario::take_shared<TokenRegistry>(&scenario);
             let config = test_scenario::take_shared<SocialProofTokensConfig>(&scenario);
             let post_obj =
@@ -2111,11 +2325,14 @@ module social_contracts::token_exchange_tests {
                 &mut registry,
                 &config,
                 &post_obj,
+                &clock,
                 test_scenario::ctx(&mut scenario)
             );
             test_scenario::return_shared(registry);
             test_scenario::return_shared(config);
             test_scenario::return_shared(post_obj);
+
+            test_scenario::return_shared(clock);
         };
 
         test_scenario::next_tx(&mut scenario, CREATOR);
@@ -2125,6 +2342,8 @@ module social_contracts::token_exchange_tests {
 
         test_scenario::next_tx(&mut scenario, USER1);
         {
+
+            let clock = test_scenario::take_shared<Clock>(&scenario);
             let mut registry = test_scenario::take_shared<TokenRegistry>(&scenario);
             let config = test_scenario::take_shared<SocialProofTokensConfig>(&scenario);
             let mut pool = test_scenario::take_shared<ReservationPoolObject>(&scenario);
@@ -2143,6 +2362,7 @@ module social_contracts::token_exchange_tests {
                 &mut poc_vault_obj,
                 pay,
                 gross,
+                &clock,
                 test_scenario::ctx(&mut scenario)
             );
             test_scenario::return_shared(registry);
@@ -2152,10 +2372,14 @@ module social_contracts::token_exchange_tests {
             test_scenario::return_shared(post_obj);
             test_scenario::return_shared(poc_vault_obj);
             test_scenario::return_to_sender(&scenario, coin);
+
+            test_scenario::return_shared(clock);
         };
 
         test_scenario::next_tx(&mut scenario, USER1);
         {
+
+            let clock = test_scenario::take_shared<Clock>(&scenario);
             let mut registry = test_scenario::take_shared<TokenRegistry>(&scenario);
             let config = test_scenario::take_shared<SocialProofTokensConfig>(&scenario);
             let mut pool = test_scenario::take_shared<ReservationPoolObject>(&scenario);
@@ -2166,12 +2390,15 @@ module social_contracts::token_exchange_tests {
                 &mut pool,
                 &treasury,
                 gross,
+                &clock,
                 test_scenario::ctx(&mut scenario)
             );
             test_scenario::return_shared(registry);
             test_scenario::return_shared(config);
             test_scenario::return_shared(pool);
             test_scenario::return_shared(treasury);
+
+            test_scenario::return_shared(clock);
         };
 
         test_scenario::end(scenario);
@@ -2213,6 +2440,8 @@ module social_contracts::token_exchange_tests {
 
         test_scenario::next_tx(&mut scenario, CREATOR);
         {
+
+            let clock = test_scenario::take_shared<Clock>(&scenario);
             let mut registry = test_scenario::take_shared<TokenRegistry>(&scenario);
             let config = test_scenario::take_shared<SocialProofTokensConfig>(&scenario);
             let profile = test_scenario::take_from_sender<Profile>(&scenario);
@@ -2220,17 +2449,22 @@ module social_contracts::token_exchange_tests {
                 &mut registry,
                 &config,
                 &profile,
+                &clock,
                 test_scenario::ctx(&mut scenario)
             );
             test_scenario::return_shared(registry);
             test_scenario::return_shared(config);
             test_scenario::return_to_sender(&scenario, profile);
+
+            test_scenario::return_shared(clock);
         };
 
         join_user_to_test_platform(&mut scenario, USER1);
 
         test_scenario::next_tx(&mut scenario, USER1);
         {
+
+            let clock = test_scenario::take_shared<Clock>(&scenario);
             let mut registry = test_scenario::take_shared<TokenRegistry>(&scenario);
             let config = test_scenario::take_shared<SocialProofTokensConfig>(&scenario);
             let mut pool = test_scenario::take_shared<ReservationPoolObject>(&scenario);
@@ -2250,6 +2484,7 @@ module social_contracts::token_exchange_tests {
                 &block_list_registry,
                 pay,
                 gross,
+                &clock,
                 test_scenario::ctx(&mut scenario)
             );
             test_scenario::return_shared(registry);
@@ -2260,10 +2495,14 @@ module social_contracts::token_exchange_tests {
             test_scenario::return_shared(platform_obj);
             test_scenario::return_shared(block_list_registry);
             test_scenario::return_to_sender(&scenario, coin);
+
+            test_scenario::return_shared(clock);
         };
 
         test_scenario::next_tx(&mut scenario, USER1);
         {
+
+            let clock = test_scenario::take_shared<Clock>(&scenario);
             let mut registry = test_scenario::take_shared<TokenRegistry>(&scenario);
             let config = test_scenario::take_shared<SocialProofTokensConfig>(&scenario);
             let mut pool = test_scenario::take_shared<ReservationPoolObject>(&scenario);
@@ -2280,6 +2519,7 @@ module social_contracts::token_exchange_tests {
                 &mut platform_obj,
                 &block_list_registry,
                 gross,
+                &clock,
                 test_scenario::ctx(&mut scenario)
             );
             assert!(social_proof_tokens::reservation_pool_total_reserved_for_testing(&pool) == 0, 30);
@@ -2290,6 +2530,8 @@ module social_contracts::token_exchange_tests {
             test_scenario::return_shared(platform_registry);
             test_scenario::return_shared(platform_obj);
             test_scenario::return_shared(block_list_registry);
+
+            test_scenario::return_shared(clock);
         };
 
         test_scenario::next_tx(&mut scenario, USER1);
@@ -2345,17 +2587,25 @@ module social_contracts::token_exchange_tests {
 
         let post_id = {
             test_scenario::next_tx(&mut scenario, CREATOR);
-            post::test_create_post(
-                CREATOR,
+            {
+                let clock = test_scenario::take_shared<Clock>(&scenario);
+                let id = post::test_create_post(
+CREATOR,
                 profile_id,
                 platform_id,
                 string::utf8(b"platform post wd"),
+                &clock,
                 test_scenario::ctx(&mut scenario)
-            )
+                );
+                test_scenario::return_shared(clock);
+                id
+            }
         };
 
         test_scenario::next_tx(&mut scenario, CREATOR);
         {
+
+            let clock = test_scenario::take_shared<Clock>(&scenario);
             let mut registry = test_scenario::take_shared<TokenRegistry>(&scenario);
             let config = test_scenario::take_shared<SocialProofTokensConfig>(&scenario);
             let post_obj = test_scenario::take_shared<Post>(&scenario);
@@ -2364,11 +2614,14 @@ module social_contracts::token_exchange_tests {
                 &mut registry,
                 &config,
                 &post_obj,
+                &clock,
                 test_scenario::ctx(&mut scenario)
             );
             test_scenario::return_shared(registry);
             test_scenario::return_shared(config);
             test_scenario::return_shared(post_obj);
+
+            test_scenario::return_shared(clock);
         };
 
         join_user_to_test_platform(&mut scenario, USER1);
@@ -2380,6 +2633,8 @@ module social_contracts::token_exchange_tests {
 
         test_scenario::next_tx(&mut scenario, USER1);
         {
+
+            let clock = test_scenario::take_shared<Clock>(&scenario);
             let mut registry = test_scenario::take_shared<TokenRegistry>(&scenario);
             let config = test_scenario::take_shared<SocialProofTokensConfig>(&scenario);
             let mut pool = test_scenario::take_shared<ReservationPoolObject>(&scenario);
@@ -2403,6 +2658,7 @@ module social_contracts::token_exchange_tests {
                 &mut poc_vault_obj,
                 pay,
                 gross,
+                &clock,
                 test_scenario::ctx(&mut scenario)
             );
             test_scenario::return_shared(registry);
@@ -2415,10 +2671,14 @@ module social_contracts::token_exchange_tests {
             test_scenario::return_shared(post_obj);
             test_scenario::return_shared(poc_vault_obj);
             test_scenario::return_to_sender(&scenario, coin);
+
+            test_scenario::return_shared(clock);
         };
 
         test_scenario::next_tx(&mut scenario, USER1);
         {
+
+            let clock = test_scenario::take_shared<Clock>(&scenario);
             let mut registry = test_scenario::take_shared<TokenRegistry>(&scenario);
             let config = test_scenario::take_shared<SocialProofTokensConfig>(&scenario);
             let mut pool = test_scenario::take_shared<ReservationPoolObject>(&scenario);
@@ -2439,6 +2699,7 @@ module social_contracts::token_exchange_tests {
                 &post_obj,
                 &mut poc_vault_obj,
                 gross,
+                &clock,
                 test_scenario::ctx(&mut scenario)
             );
             test_scenario::return_shared(registry);
@@ -2450,6 +2711,8 @@ module social_contracts::token_exchange_tests {
             test_scenario::return_shared(block_list_registry);
             test_scenario::return_shared(post_obj);
             test_scenario::return_shared(poc_vault_obj);
+
+            test_scenario::return_shared(clock);
         };
 
         test_scenario::next_tx(&mut scenario, USER1);
@@ -2501,19 +2764,27 @@ module social_contracts::token_exchange_tests {
 
         let post_id = {
             test_scenario::next_tx(&mut scenario, CREATOR);
-            post::test_create_post_with_revenue_redirect(
-                CREATOR,
+            {
+                let clock = test_scenario::take_shared<Clock>(&scenario);
+                let id = post::test_create_post_with_revenue_redirect(
+CREATOR,
                 profile_id,
                 platform_id,
                 string::utf8(b"poc redirect post"),
                 USER3,
                 50,
+                &clock,
                 test_scenario::ctx(&mut scenario)
-            )
+                );
+                test_scenario::return_shared(clock);
+                id
+            }
         };
 
         test_scenario::next_tx(&mut scenario, CREATOR);
         {
+
+            let clock = test_scenario::take_shared<Clock>(&scenario);
             let mut registry = test_scenario::take_shared<TokenRegistry>(&scenario);
             let config = test_scenario::take_shared<SocialProofTokensConfig>(&scenario);
             let post_obj = test_scenario::take_shared<Post>(&scenario);
@@ -2522,11 +2793,14 @@ module social_contracts::token_exchange_tests {
                 &mut registry,
                 &config,
                 &post_obj,
+                &clock,
                 test_scenario::ctx(&mut scenario)
             );
             test_scenario::return_shared(registry);
             test_scenario::return_shared(config);
             test_scenario::return_shared(post_obj);
+
+            test_scenario::return_shared(clock);
         };
 
         test_scenario::next_tx(&mut scenario, CREATOR);
@@ -2536,6 +2810,8 @@ module social_contracts::token_exchange_tests {
 
         test_scenario::next_tx(&mut scenario, USER1);
         {
+
+            let clock = test_scenario::take_shared<Clock>(&scenario);
             let mut registry = test_scenario::take_shared<TokenRegistry>(&scenario);
             let config = test_scenario::take_shared<SocialProofTokensConfig>(&scenario);
             let mut pool = test_scenario::take_shared<ReservationPoolObject>(&scenario);
@@ -2553,6 +2829,7 @@ module social_contracts::token_exchange_tests {
                 &mut poc_vault_obj,
                 pay,
                 gross,
+                &clock,
                 test_scenario::ctx(&mut scenario)
             );
             test_scenario::return_shared(registry);
@@ -2562,6 +2839,8 @@ module social_contracts::token_exchange_tests {
             test_scenario::return_shared(post_obj);
             test_scenario::return_shared(poc_vault_obj);
             test_scenario::return_to_sender(&scenario, coin);
+
+            test_scenario::return_shared(clock);
         };
 
         let user3_before = {
@@ -2571,6 +2850,8 @@ module social_contracts::token_exchange_tests {
 
         test_scenario::next_tx(&mut scenario, USER1);
         {
+
+            let clock = test_scenario::take_shared<Clock>(&scenario);
             let mut registry = test_scenario::take_shared<TokenRegistry>(&scenario);
             let config = test_scenario::take_shared<SocialProofTokensConfig>(&scenario);
             let mut pool = test_scenario::take_shared<ReservationPoolObject>(&scenario);
@@ -2585,6 +2866,7 @@ module social_contracts::token_exchange_tests {
                 &post_obj,
                 &mut poc_vault_obj,
                 gross,
+                &clock,
                 test_scenario::ctx(&mut scenario)
             );
             test_scenario::return_shared(registry);
@@ -2593,6 +2875,8 @@ module social_contracts::token_exchange_tests {
             test_scenario::return_shared(treasury);
             test_scenario::return_shared(post_obj);
             test_scenario::return_shared(poc_vault_obj);
+
+            test_scenario::return_shared(clock);
         };
 
         test_scenario::next_tx(&mut scenario, USER3);
@@ -2829,18 +3113,26 @@ module social_contracts::token_exchange_tests {
         let (profile_id, platform_id) = profile_and_platform_ids_for_poc_sync(&mut scenario);
         let post_id = {
             test_scenario::next_tx(&mut scenario, CREATOR);
-            post::test_create_post_with_revenue_redirect(
-                CREATOR,
+            {
+                let clock = test_scenario::take_shared<Clock>(&scenario);
+                let id = post::test_create_post_with_revenue_redirect(
+CREATOR,
                 profile_id,
                 platform_id,
                 string::utf8(b"wallet redirect"),
                 USER3,
                 75,
+                &clock,
                 test_scenario::ctx(&mut scenario)
-            )
+                );
+                test_scenario::return_shared(clock);
+                id
+            }
         };
         test_scenario::next_tx(&mut scenario, CREATOR);
         {
+
+            let clock = test_scenario::take_shared<Clock>(&scenario);
             let mut registry = test_scenario::take_shared<TokenRegistry>(&scenario);
             let reg_info = social_proof_tokens::create_mock_token_info(
                 @0x111111,
@@ -2862,6 +3154,7 @@ module social_contracts::token_exchange_tests {
                 &mut pool,
                 &post_obj,
                 CREATOR,
+                &clock,
                 test_scenario::ctx(&mut scenario)
             );
             assert!(social_proof_tokens::has_poc_redirection(&pool), 1);
@@ -2871,6 +3164,8 @@ module social_contracts::token_exchange_tests {
             test_scenario::return_shared(registry);
             test_scenario::return_shared(post_obj);
             social_proof_tokens::share_token_pool_for_testing(pool);
+
+            test_scenario::return_shared(clock);
         };
         test_scenario::end(scenario);
     }
@@ -2881,18 +3176,26 @@ module social_contracts::token_exchange_tests {
         let (profile_id, platform_id) = profile_and_platform_ids_for_poc_sync(&mut scenario);
         let post_id = {
             test_scenario::next_tx(&mut scenario, CREATOR);
-            post::test_create_post_with_escrow_redirect(
-                CREATOR,
+            {
+                let clock = test_scenario::take_shared<Clock>(&scenario);
+                let id = post::test_create_post_with_escrow_redirect(
+CREATOR,
                 profile_id,
                 platform_id,
                 string::utf8(b"escrow redirect"),
                 USER2,
                 60,
+                &clock,
                 test_scenario::ctx(&mut scenario)
-            )
+                );
+                test_scenario::return_shared(clock);
+                id
+            }
         };
         test_scenario::next_tx(&mut scenario, CREATOR);
         {
+
+            let clock = test_scenario::take_shared<Clock>(&scenario);
             let mut registry = test_scenario::take_shared<TokenRegistry>(&scenario);
             let reg_info = social_proof_tokens::create_mock_token_info(
                 @0x111111,
@@ -2914,6 +3217,7 @@ module social_contracts::token_exchange_tests {
                 &mut pool,
                 &post_obj,
                 CREATOR,
+                &clock,
                 test_scenario::ctx(&mut scenario)
             );
             assert!(social_proof_tokens::poc_redirection_kind_for_testing(&pool) == 2, 1);
@@ -2922,6 +3226,8 @@ module social_contracts::token_exchange_tests {
             test_scenario::return_shared(registry);
             test_scenario::return_shared(post_obj);
             social_proof_tokens::share_token_pool_for_testing(pool);
+
+            test_scenario::return_shared(clock);
         };
         test_scenario::end(scenario);
     }

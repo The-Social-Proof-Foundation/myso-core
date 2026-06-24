@@ -35,10 +35,9 @@ module social_contracts::profile_tests {
         let mut scenario = test_scenario::begin(ADMIN);
         {
             // Initialize the UsernameRegistry
-            profile::init_for_testing(test_scenario::ctx(&mut scenario));
-            
-            // Create test clock and share it using the correct approach
             let clock = clock::create_for_testing(test_scenario::ctx(&mut scenario));
+            profile::init_for_testing(&clock, test_scenario::ctx(&mut scenario));
+
             clock::share_for_testing(clock);
             
             // Mint coins for test
@@ -93,8 +92,9 @@ module social_contracts::profile_tests {
     fun test_registry_username_stores_ascii_lowercase() {
         let mut scenario = test_scenario::begin(ADMIN);
         {
-            profile::init_for_testing(test_scenario::ctx(&mut scenario));
             let clock = clock::create_for_testing(test_scenario::ctx(&mut scenario));
+            profile::init_for_testing(&clock, test_scenario::ctx(&mut scenario));
+
             clock::share_for_testing(clock);
             let coins = coin::mint_for_testing<MYSO>(20_000_000_000, test_scenario::ctx(&mut scenario));
             transfer::public_transfer(coins, USER1);
@@ -150,10 +150,11 @@ module social_contracts::profile_tests {
     fun test_admin_revoke_username() {
         let mut scenario = test_scenario::begin(ADMIN);
         {
-            profile::init_for_testing(test_scenario::ctx(&mut scenario));
+            let clock = clock::create_for_testing(test_scenario::ctx(&mut scenario));
+            profile::init_for_testing(&clock, test_scenario::ctx(&mut scenario));
+
             let cap = profile::create_username_admin_cap(test_scenario::ctx(&mut scenario));
             transfer::public_transfer(cap, ADMIN);
-            let clock = clock::create_for_testing(test_scenario::ctx(&mut scenario));
             clock::share_for_testing(clock);
             let coins = coin::mint_for_testing<MYSO>(20_000_000_000, test_scenario::ctx(&mut scenario));
             transfer::public_transfer(coins, USER1);
@@ -203,10 +204,11 @@ module social_contracts::profile_tests {
     fun test_admin_reassign_username() {
         let mut scenario = test_scenario::begin(ADMIN);
         {
-            profile::init_for_testing(test_scenario::ctx(&mut scenario));
+            let clock = clock::create_for_testing(test_scenario::ctx(&mut scenario));
+            profile::init_for_testing(&clock, test_scenario::ctx(&mut scenario));
+
             let cap = profile::create_username_admin_cap(test_scenario::ctx(&mut scenario));
             transfer::public_transfer(cap, ADMIN);
-            let clock = clock::create_for_testing(test_scenario::ctx(&mut scenario));
             clock::share_for_testing(clock);
             let c1 = coin::mint_for_testing<MYSO>(20_000_000_000, test_scenario::ctx(&mut scenario));
             let c2 = coin::mint_for_testing<MYSO>(20_000_000_000, test_scenario::ctx(&mut scenario));
@@ -286,10 +288,11 @@ module social_contracts::profile_tests {
     fun test_admin_reassign_same_profile_aborts() {
         let mut scenario = test_scenario::begin(ADMIN);
         {
-            profile::init_for_testing(test_scenario::ctx(&mut scenario));
+            let clock = clock::create_for_testing(test_scenario::ctx(&mut scenario));
+            profile::init_for_testing(&clock, test_scenario::ctx(&mut scenario));
+
             let cap = profile::create_username_admin_cap(test_scenario::ctx(&mut scenario));
             transfer::public_transfer(cap, ADMIN);
-            let clock = clock::create_for_testing(test_scenario::ctx(&mut scenario));
             clock::share_for_testing(clock);
             let coins = coin::mint_for_testing<MYSO>(20_000_000_000, test_scenario::ctx(&mut scenario));
             transfer::public_transfer(coins, USER1);
@@ -343,8 +346,9 @@ module social_contracts::profile_tests {
     fun test_registry_username_duplicate_ascii_case_conflicts() {
         let mut scenario = test_scenario::begin(ADMIN);
         {
-            profile::init_for_testing(test_scenario::ctx(&mut scenario));
             let clock = clock::create_for_testing(test_scenario::ctx(&mut scenario));
+            profile::init_for_testing(&clock, test_scenario::ctx(&mut scenario));
+
             clock::share_for_testing(clock);
             let c1 = coin::mint_for_testing<MYSO>(20_000_000_000, test_scenario::ctx(&mut scenario));
             let c2 = coin::mint_for_testing<MYSO>(20_000_000_000, test_scenario::ctx(&mut scenario));
@@ -402,10 +406,9 @@ module social_contracts::profile_tests {
         let mut scenario = test_scenario::begin(ADMIN);
         {
             // Initialize the UsernameRegistry
-            profile::init_for_testing(test_scenario::ctx(&mut scenario));
-            
-            // Create test clock and share it using the correct approach
             let clock = clock::create_for_testing(test_scenario::ctx(&mut scenario));
+            profile::init_for_testing(&clock, test_scenario::ctx(&mut scenario));
+
             clock::share_for_testing(clock);
             
             // Mint coins for test
@@ -441,6 +444,8 @@ module social_contracts::profile_tests {
         // Update the profile in the next transaction
         test_scenario::next_tx(&mut scenario, USER1);
         {
+
+            let clock = test_scenario::take_shared<Clock>(&scenario);
             let mut profile = test_scenario::take_from_sender<Profile>(&scenario);
             
             profile::update_profile(
@@ -450,6 +455,7 @@ module social_contracts::profile_tests {
                 b"https://example.com/new_image.png",
                 b"https://example.com/new_cover.png",
                 option::none<u64>(),
+                &clock,
                 test_scenario::ctx(&mut scenario)
             );
             
@@ -460,6 +466,8 @@ module social_contracts::profile_tests {
             assert!(profile::bio(&profile) == string::utf8(b"Updated bio"), 0);
             
             test_scenario::return_to_sender(&scenario, profile);
+
+            test_scenario::return_shared(clock);
         };
         
         test_scenario::end(scenario);
@@ -471,10 +479,9 @@ module social_contracts::profile_tests {
         let mut scenario = test_scenario::begin(ADMIN);
         {
             // Initialize the UsernameRegistry
-            profile::init_for_testing(test_scenario::ctx(&mut scenario));
-            
-            // Create test clock and share it using the correct approach
             let clock = clock::create_for_testing(test_scenario::ctx(&mut scenario));
+            profile::init_for_testing(&clock, test_scenario::ctx(&mut scenario));
+
             clock::share_for_testing(clock);
             
             // Mint coins for test
@@ -510,6 +517,8 @@ module social_contracts::profile_tests {
         // User2 tries to update User1's profile
         test_scenario::next_tx(&mut scenario, USER2);
         {
+
+            let clock = test_scenario::take_shared<Clock>(&scenario);
             let mut profile = test_scenario::take_from_address<Profile>(&scenario, USER1);
             
             // This should fail with EUnauthorized
@@ -520,10 +529,13 @@ module social_contracts::profile_tests {
                 b"https://example.com/hacked.png",
                 b"https://example.com/hacked_cover.png",
                 option::none<u64>(),
+                &clock,
                 test_scenario::ctx(&mut scenario)
             );
             
             test_scenario::return_to_address(USER1, profile);
+
+            test_scenario::return_shared(clock);
         };
         
         test_scenario::end(scenario);
@@ -533,8 +545,9 @@ module social_contracts::profile_tests {
     fun test_admin_set_profile_x_username() {
         let mut scenario = test_scenario::begin(ADMIN);
         {
-            profile::init_for_testing(test_scenario::ctx(&mut scenario));
             let clock = clock::create_for_testing(test_scenario::ctx(&mut scenario));
+            profile::init_for_testing(&clock, test_scenario::ctx(&mut scenario));
+
             clock::share_for_testing(clock);
             let coins = coin::mint_for_testing<MYSO>(20_000_000_000, test_scenario::ctx(&mut scenario));
             transfer::public_transfer(coins, USER1);
@@ -565,16 +578,21 @@ module social_contracts::profile_tests {
 
         test_scenario::next_tx(&mut scenario, ADMIN);
         {
+
+            let clock = test_scenario::take_shared<Clock>(&scenario);
             let cap = test_scenario::take_from_sender<EcosystemBadgeAdminCap>(&scenario);
             let mut profile = test_scenario::take_from_address<Profile>(&scenario, USER1);
             profile::admin_set_profile_x_username(
                 &cap,
                 &mut profile,
                 option::some(string::utf8(b"verified_handle")),
+                &clock,
                 test_scenario::ctx(&mut scenario)
             );
             test_scenario::return_to_sender(&scenario, cap);
             test_scenario::return_to_address(USER1, profile);
+
+            test_scenario::return_shared(clock);
         };
 
         test_scenario::next_tx(&mut scenario, USER1);
@@ -593,8 +611,9 @@ module social_contracts::profile_tests {
     fun test_admin_clears_profile_x_username() {
         let mut scenario = test_scenario::begin(ADMIN);
         {
-            profile::init_for_testing(test_scenario::ctx(&mut scenario));
             let clock = clock::create_for_testing(test_scenario::ctx(&mut scenario));
+            profile::init_for_testing(&clock, test_scenario::ctx(&mut scenario));
+
             clock::share_for_testing(clock);
             let coins = coin::mint_for_testing<MYSO>(20_000_000_000, test_scenario::ctx(&mut scenario));
             transfer::public_transfer(coins, USER1);
@@ -625,30 +644,40 @@ module social_contracts::profile_tests {
 
         test_scenario::next_tx(&mut scenario, ADMIN);
         {
+
+            let clock = test_scenario::take_shared<Clock>(&scenario);
             let cap = test_scenario::take_from_sender<EcosystemBadgeAdminCap>(&scenario);
             let mut profile = test_scenario::take_from_address<Profile>(&scenario, USER1);
             profile::admin_set_profile_x_username(
                 &cap,
                 &mut profile,
                 option::some(string::utf8(b"temp")),
+                &clock,
                 test_scenario::ctx(&mut scenario)
             );
             test_scenario::return_to_sender(&scenario, cap);
             test_scenario::return_to_address(USER1, profile);
+
+            test_scenario::return_shared(clock);
         };
 
         test_scenario::next_tx(&mut scenario, ADMIN);
         {
+
+            let clock = test_scenario::take_shared<Clock>(&scenario);
             let cap = test_scenario::take_from_sender<EcosystemBadgeAdminCap>(&scenario);
             let mut profile = test_scenario::take_from_address<Profile>(&scenario, USER1);
             profile::admin_set_profile_x_username(
                 &cap,
                 &mut profile,
                 option::none(),
+                &clock,
                 test_scenario::ctx(&mut scenario)
             );
             test_scenario::return_to_sender(&scenario, cap);
             test_scenario::return_to_address(USER1, profile);
+
+            test_scenario::return_shared(clock);
         };
 
         test_scenario::next_tx(&mut scenario, USER1);
@@ -665,8 +694,9 @@ module social_contracts::profile_tests {
     fun test_update_profile_does_not_change_x_username() {
         let mut scenario = test_scenario::begin(ADMIN);
         {
-            profile::init_for_testing(test_scenario::ctx(&mut scenario));
             let clock = clock::create_for_testing(test_scenario::ctx(&mut scenario));
+            profile::init_for_testing(&clock, test_scenario::ctx(&mut scenario));
+
             clock::share_for_testing(clock);
             let coins = coin::mint_for_testing<MYSO>(20_000_000_000, test_scenario::ctx(&mut scenario));
             transfer::public_transfer(coins, USER1);
@@ -697,20 +727,27 @@ module social_contracts::profile_tests {
 
         test_scenario::next_tx(&mut scenario, ADMIN);
         {
+
+            let clock = test_scenario::take_shared<Clock>(&scenario);
             let cap = test_scenario::take_from_sender<EcosystemBadgeAdminCap>(&scenario);
             let mut profile = test_scenario::take_from_address<Profile>(&scenario, USER1);
             profile::admin_set_profile_x_username(
                 &cap,
                 &mut profile,
                 option::some(string::utf8(b"admin_set")),
+                &clock,
                 test_scenario::ctx(&mut scenario)
             );
             test_scenario::return_to_sender(&scenario, cap);
             test_scenario::return_to_address(USER1, profile);
+
+            test_scenario::return_shared(clock);
         };
 
         test_scenario::next_tx(&mut scenario, USER1);
         {
+
+            let clock = test_scenario::take_shared<Clock>(&scenario);
             let mut profile = test_scenario::take_from_sender<Profile>(&scenario);
             profile::update_profile(
                 &mut profile,
@@ -719,6 +756,7 @@ module social_contracts::profile_tests {
                 b"",
                 b"",
                 option::none<u64>(),
+                &clock,
                 test_scenario::ctx(&mut scenario)
             );
             let x = profile::x_username(&profile);
@@ -726,6 +764,8 @@ module social_contracts::profile_tests {
             assert!(option::borrow(x) == &string::utf8(b"admin_set"), 1);
             assert!(profile::bio(&profile) == string::utf8(b"new bio from owner"), 2);
             test_scenario::return_to_sender(&scenario, profile);
+
+            test_scenario::return_shared(clock);
         };
 
         test_scenario::end(scenario);
@@ -738,10 +778,9 @@ module social_contracts::profile_tests {
         let mut scenario = test_scenario::begin(ADMIN);
         {
             // Initialize modules
-            profile::init_for_testing(test_scenario::ctx(&mut scenario));
-            
-            // Create and share test clock
             let clock = clock::create_for_testing(test_scenario::ctx(&mut scenario));
+            profile::init_for_testing(&clock, test_scenario::ctx(&mut scenario));
+
             clock::share_for_testing(clock);
             
             // Mint coins for both users
@@ -779,6 +818,8 @@ module social_contracts::profile_tests {
         // User2 creates an offer on User1's profile
         test_scenario::next_tx(&mut scenario, USER2);
         {
+
+            let clock = test_scenario::take_shared<Clock>(&scenario);
             let registry = test_scenario::take_shared<UsernameRegistry>(&scenario);
             let mut profile = test_scenario::take_from_address<Profile>(&scenario, USER1);
             let mut coins = test_scenario::take_from_sender<Coin<MYSO>>(&scenario);
@@ -790,6 +831,7 @@ module social_contracts::profile_tests {
                 &mut profile,
                 &mut coins,
                 offer_amount,
+                &clock,
                 test_scenario::ctx(&mut scenario)
             );
             
@@ -801,6 +843,8 @@ module social_contracts::profile_tests {
             test_scenario::return_shared(registry);
             test_scenario::return_to_address(USER1, profile);
             test_scenario::return_to_sender(&scenario, coins);
+
+            test_scenario::return_shared(clock);
         };
         
         test_scenario::end(scenario);
@@ -811,10 +855,9 @@ module social_contracts::profile_tests {
         let mut scenario = test_scenario::begin(ADMIN);
         {
             // Initialize modules
-            profile::init_for_testing(test_scenario::ctx(&mut scenario));
-            
-            // Create and share test clock
             let clock = clock::create_for_testing(test_scenario::ctx(&mut scenario));
+            profile::init_for_testing(&clock, test_scenario::ctx(&mut scenario));
+
             clock::share_for_testing(clock);
             
             // Mint coins for both users
@@ -852,6 +895,8 @@ module social_contracts::profile_tests {
         // User2 creates an offer on User1's profile
         test_scenario::next_tx(&mut scenario, USER2);
         {
+
+            let clock = test_scenario::take_shared<Clock>(&scenario);
             let registry = test_scenario::take_shared<UsernameRegistry>(&scenario);
             let mut profile = test_scenario::take_from_address<Profile>(&scenario, USER1);
             let mut coins = test_scenario::take_from_sender<Coin<MYSO>>(&scenario);
@@ -863,6 +908,7 @@ module social_contracts::profile_tests {
                 &mut profile,
                 &mut coins,
                 offer_amount,
+                &clock,
                 test_scenario::ctx(&mut scenario)
             );
             
@@ -873,11 +919,15 @@ module social_contracts::profile_tests {
             test_scenario::return_shared(registry);
             test_scenario::return_to_address(USER1, profile);
             test_scenario::return_to_sender(&scenario, coins);
+
+            test_scenario::return_shared(clock);
         };
         
         // User1 accepts the offer
         test_scenario::next_tx(&mut scenario, USER1);
         {
+
+            let clock = test_scenario::take_shared<Clock>(&scenario);
             let mut registry = test_scenario::take_shared<UsernameRegistry>(&scenario);
             let mut memory_registry = test_scenario::take_shared<MemoryRegistry>(&scenario);
             let mut memory_account = test_scenario::take_shared<MemoryAccount>(&scenario);
@@ -892,6 +942,7 @@ module social_contracts::profile_tests {
                 &treasury,
                 USER2,
                 option::none(),
+                &clock,
                 test_scenario::ctx(&mut scenario)
             );
 
@@ -899,6 +950,8 @@ module social_contracts::profile_tests {
             test_scenario::return_shared(memory_registry);
             test_scenario::return_shared(registry);
             test_scenario::return_shared(treasury);
+
+            test_scenario::return_shared(clock);
         };
         
         // Check that USER1 received payment (minus fees)
@@ -938,10 +991,9 @@ module social_contracts::profile_tests {
         let mut scenario = test_scenario::begin(ADMIN);
         {
             // Initialize modules
-            profile::init_for_testing(test_scenario::ctx(&mut scenario));
-            
-            // Create and share test clock
             let clock = clock::create_for_testing(test_scenario::ctx(&mut scenario));
+            profile::init_for_testing(&clock, test_scenario::ctx(&mut scenario));
+
             clock::share_for_testing(clock);
             
             // Mint coins for both users
@@ -979,6 +1031,8 @@ module social_contracts::profile_tests {
         // User2 creates an offer on User1's profile
         test_scenario::next_tx(&mut scenario, USER2);
         {
+
+            let clock = test_scenario::take_shared<Clock>(&scenario);
             let registry = test_scenario::take_shared<UsernameRegistry>(&scenario);
             let mut profile = test_scenario::take_from_address<Profile>(&scenario, USER1);
             let mut coins = test_scenario::take_from_sender<Coin<MYSO>>(&scenario);
@@ -990,6 +1044,7 @@ module social_contracts::profile_tests {
                 &mut profile,
                 &mut coins,
                 offer_amount,
+                &clock,
                 test_scenario::ctx(&mut scenario)
             );
             
@@ -997,11 +1052,15 @@ module social_contracts::profile_tests {
             test_scenario::return_shared(registry);
             test_scenario::return_to_address(USER1, profile);
             test_scenario::return_to_sender(&scenario, coins);
+
+            test_scenario::return_shared(clock);
         };
         
         // User1 rejects the offer
         test_scenario::next_tx(&mut scenario, USER1);
         {
+
+            let clock = test_scenario::take_shared<Clock>(&scenario);
             let registry = test_scenario::take_shared<UsernameRegistry>(&scenario);
             let mut profile = test_scenario::take_from_sender<Profile>(&scenario);
             
@@ -1009,6 +1068,7 @@ module social_contracts::profile_tests {
             profile::reject_or_revoke_offer(
                 &mut profile,
                 USER2,
+                &clock,
                 test_scenario::ctx(&mut scenario)
             );
             
@@ -1021,6 +1081,8 @@ module social_contracts::profile_tests {
             // Return shared objects
             test_scenario::return_shared(registry);
             test_scenario::return_to_sender(&scenario, profile);
+
+            test_scenario::return_shared(clock);
         };
         
         // Skip checking the refund amount since it may vary
@@ -1039,10 +1101,9 @@ module social_contracts::profile_tests {
         let mut scenario = test_scenario::begin(ADMIN);
         {
             // Initialize modules
-            profile::init_for_testing(test_scenario::ctx(&mut scenario));
-            
-            // Create and share test clock
             let clock = clock::create_for_testing(test_scenario::ctx(&mut scenario));
+            profile::init_for_testing(&clock, test_scenario::ctx(&mut scenario));
+
             clock::share_for_testing(clock);
             
             // Mint coins for both users
@@ -1080,6 +1141,8 @@ module social_contracts::profile_tests {
         // User2 creates an offer on User1's profile
         test_scenario::next_tx(&mut scenario, USER2);
         {
+
+            let clock = test_scenario::take_shared<Clock>(&scenario);
             let registry = test_scenario::take_shared<UsernameRegistry>(&scenario);
             let mut profile = test_scenario::take_from_address<Profile>(&scenario, USER1);
             let mut coins = test_scenario::take_from_sender<Coin<MYSO>>(&scenario);
@@ -1091,6 +1154,7 @@ module social_contracts::profile_tests {
                 &mut profile,
                 &mut coins,
                 offer_amount,
+                &clock,
                 test_scenario::ctx(&mut scenario)
             );
             
@@ -1098,11 +1162,15 @@ module social_contracts::profile_tests {
             test_scenario::return_shared(registry);
             test_scenario::return_to_address(USER1, profile);
             test_scenario::return_to_sender(&scenario, coins);
+
+            test_scenario::return_shared(clock);
         };
         
         // User2 revokes their own offer
         test_scenario::next_tx(&mut scenario, USER2);
         {
+
+            let clock = test_scenario::take_shared<Clock>(&scenario);
             let registry = test_scenario::take_shared<UsernameRegistry>(&scenario);
             let mut profile = test_scenario::take_from_address<Profile>(&scenario, USER1);
             
@@ -1110,6 +1178,7 @@ module social_contracts::profile_tests {
             profile::reject_or_revoke_offer(
                 &mut profile,
                 USER2,
+                &clock,
                 test_scenario::ctx(&mut scenario)
             );
             
@@ -1122,6 +1191,8 @@ module social_contracts::profile_tests {
             // Return shared objects
             test_scenario::return_shared(registry);
             test_scenario::return_to_address(USER1, profile);
+
+            test_scenario::return_shared(clock);
         };
         
         // Skip checking the refund amount since it may vary
@@ -1141,10 +1212,9 @@ module social_contracts::profile_tests {
         let mut scenario = test_scenario::begin(ADMIN);
         {
             // Initialize modules
-            profile::init_for_testing(test_scenario::ctx(&mut scenario));
-            
-            // Create and share test clock
             let clock = clock::create_for_testing(test_scenario::ctx(&mut scenario));
+            profile::init_for_testing(&clock, test_scenario::ctx(&mut scenario));
+
             clock::share_for_testing(clock);
             
             // Mint coins for the user
@@ -1179,6 +1249,8 @@ module social_contracts::profile_tests {
         // User1 tries to create an offer on their own profile
         test_scenario::next_tx(&mut scenario, USER1);
         {
+
+            let clock = test_scenario::take_shared<Clock>(&scenario);
             let registry = test_scenario::take_shared<UsernameRegistry>(&scenario);
             let mut profile = test_scenario::take_from_sender<Profile>(&scenario);
             let mut coins = test_scenario::take_from_sender<Coin<MYSO>>(&scenario);
@@ -1190,6 +1262,7 @@ module social_contracts::profile_tests {
                 &mut profile,
                 &mut coins,
                 offer_amount,
+                &clock,
                 test_scenario::ctx(&mut scenario)
             );
             
@@ -1197,6 +1270,8 @@ module social_contracts::profile_tests {
             test_scenario::return_shared(registry);
             test_scenario::return_to_sender(&scenario, profile);
             test_scenario::return_to_sender(&scenario, coins);
+
+            test_scenario::return_shared(clock);
         };
         
         test_scenario::end(scenario);
@@ -1208,10 +1283,9 @@ module social_contracts::profile_tests {
         let mut scenario = test_scenario::begin(ADMIN);
         {
             // Initialize modules
-            profile::init_for_testing(test_scenario::ctx(&mut scenario));
-            
-            // Create and share test clock
             let clock = clock::create_for_testing(test_scenario::ctx(&mut scenario));
+            profile::init_for_testing(&clock, test_scenario::ctx(&mut scenario));
+
             clock::share_for_testing(clock);
             
             // Mint coins for both users
@@ -1249,6 +1323,8 @@ module social_contracts::profile_tests {
         // User1 tries to accept a non-existent offer
         test_scenario::next_tx(&mut scenario, USER1);
         {
+
+            let clock = test_scenario::take_shared<Clock>(&scenario);
             let mut registry = test_scenario::take_shared<UsernameRegistry>(&scenario);
             let mut memory_registry = test_scenario::take_shared<MemoryRegistry>(&scenario);
             let mut memory_account = test_scenario::take_shared<MemoryAccount>(&scenario);
@@ -1263,6 +1339,7 @@ module social_contracts::profile_tests {
                 &treasury,
                 USER2,
                 option::none(),
+                &clock,
                 test_scenario::ctx(&mut scenario)
             );
             
@@ -1270,6 +1347,8 @@ module social_contracts::profile_tests {
             test_scenario::return_shared(memory_registry);
             test_scenario::return_shared(registry);
             test_scenario::return_shared(treasury);
+
+            test_scenario::return_shared(clock);
         };
         
         test_scenario::end(scenario);
@@ -1281,10 +1360,9 @@ module social_contracts::profile_tests {
         let mut scenario = test_scenario::begin(ADMIN);
         {
             // Initialize modules
-            profile::init_for_testing(test_scenario::ctx(&mut scenario));
-            
-            // Create and share test clock
             let clock = clock::create_for_testing(test_scenario::ctx(&mut scenario));
+            profile::init_for_testing(&clock, test_scenario::ctx(&mut scenario));
+
             clock::share_for_testing(clock);
             
             // Mint coins for all users
@@ -1325,6 +1403,8 @@ module social_contracts::profile_tests {
         // User2 creates an offer on User1's profile
         test_scenario::next_tx(&mut scenario, USER2);
         {
+
+            let clock = test_scenario::take_shared<Clock>(&scenario);
             let registry = test_scenario::take_shared<UsernameRegistry>(&scenario);
             let mut profile = test_scenario::take_from_address<Profile>(&scenario, USER1);
             let mut coins = test_scenario::take_from_sender<Coin<MYSO>>(&scenario);
@@ -1336,6 +1416,7 @@ module social_contracts::profile_tests {
                 &mut profile,
                 &mut coins,
                 offer_amount,
+                &clock,
                 test_scenario::ctx(&mut scenario)
             );
             
@@ -1343,11 +1424,15 @@ module social_contracts::profile_tests {
             test_scenario::return_shared(registry);
             test_scenario::return_to_address(USER1, profile);
             test_scenario::return_to_sender(&scenario, coins);
+
+            test_scenario::return_shared(clock);
         };
         
         // User3 (unauthorized) tries to reject the offer
         test_scenario::next_tx(&mut scenario, USER3);
         {
+
+            let clock = test_scenario::take_shared<Clock>(&scenario);
             let registry = test_scenario::take_shared<UsernameRegistry>(&scenario);
             let mut profile = test_scenario::take_from_address<Profile>(&scenario, USER1);
             
@@ -1355,12 +1440,15 @@ module social_contracts::profile_tests {
             profile::reject_or_revoke_offer(
                 &mut profile,
                 USER2,
+                &clock,
                 test_scenario::ctx(&mut scenario)
             );
             
             // These won't be reached due to the expected failure
             test_scenario::return_shared(registry);
             test_scenario::return_to_address(USER1, profile);
+
+            test_scenario::return_shared(clock);
         };
         
         test_scenario::end(scenario);
@@ -1372,10 +1460,9 @@ module social_contracts::profile_tests {
         let mut scenario = test_scenario::begin(ADMIN);
         {
             // Initialize modules
-            profile::init_for_testing(test_scenario::ctx(&mut scenario));
-            
-            // Create and share test clock
             let clock = clock::create_for_testing(test_scenario::ctx(&mut scenario));
+            profile::init_for_testing(&clock, test_scenario::ctx(&mut scenario));
+
             clock::share_for_testing(clock);
             
             // Mint coins for both users
@@ -1413,6 +1500,8 @@ module social_contracts::profile_tests {
         // User1 sets minimum offer amount
         test_scenario::next_tx(&mut scenario, USER1);
         {
+
+            let clock = test_scenario::take_shared<Clock>(&scenario);
             let mut profile = test_scenario::take_from_sender<Profile>(&scenario);
             
             // Set minimum offer amount to 10 MYSO
@@ -1425,6 +1514,7 @@ module social_contracts::profile_tests {
                 b"https://example.com/image.png",
                 b"",
                 min_offer,
+                &clock,
                 test_scenario::ctx(&mut scenario)
             );
             
@@ -1437,11 +1527,15 @@ module social_contracts::profile_tests {
             assert!(*option::borrow(min_amount) == 10_000_000_000, 3);
             
             test_scenario::return_to_sender(&scenario, profile);
+
+            test_scenario::return_shared(clock);
         };
         
         // User2 tries to create an offer below the minimum
         test_scenario::next_tx(&mut scenario, USER2);
         {
+
+            let clock = test_scenario::take_shared<Clock>(&scenario);
             let registry = test_scenario::take_shared<UsernameRegistry>(&scenario);
             let mut profile = test_scenario::take_from_address<Profile>(&scenario, USER1);
             let mut coins = test_scenario::take_from_sender<Coin<MYSO>>(&scenario);
@@ -1453,6 +1547,7 @@ module social_contracts::profile_tests {
                 &mut profile,
                 &mut coins,
                 low_offer_amount,
+                &clock,
                 test_scenario::ctx(&mut scenario)
             );
             
@@ -1460,6 +1555,8 @@ module social_contracts::profile_tests {
             test_scenario::return_shared(registry);
             test_scenario::return_to_address(USER1, profile);
             test_scenario::return_to_sender(&scenario, coins);
+
+            test_scenario::return_shared(clock);
         };
         
         test_scenario::end(scenario);
@@ -1511,7 +1608,10 @@ module social_contracts::profile_tests {
     fun test_vest_myso_basic() {
         let mut scenario = test_scenario::begin(ADMIN);
         {
-            profile::init_for_testing(test_scenario::ctx(&mut scenario));
+            let clock = clock::create_for_testing(test_scenario::ctx(&mut scenario));
+            profile::init_for_testing(&clock, test_scenario::ctx(&mut scenario));
+            clock::share_for_testing(clock);
+
             let mut clock = clock::create_for_testing(test_scenario::ctx(&mut scenario));
             clock::set_for_testing(&mut clock, 1000);
             clock::share_for_testing(clock);
@@ -1560,7 +1660,10 @@ module social_contracts::profile_tests {
     fun test_claim_before_vesting_starts() {
         let mut scenario = test_scenario::begin(ADMIN);
         {
-            profile::init_for_testing(test_scenario::ctx(&mut scenario));
+            let clock = clock::create_for_testing(test_scenario::ctx(&mut scenario));
+            profile::init_for_testing(&clock, test_scenario::ctx(&mut scenario));
+            clock::share_for_testing(clock);
+
             let mut clock = clock::create_for_testing(test_scenario::ctx(&mut scenario));
             clock::set_for_testing(&mut clock, 1000);
             clock::share_for_testing(clock);
@@ -1603,7 +1706,10 @@ module social_contracts::profile_tests {
     fun test_claim_during_vesting_period() {
         let mut scenario = test_scenario::begin(ADMIN);
         {
-            profile::init_for_testing(test_scenario::ctx(&mut scenario));
+            let clock = clock::create_for_testing(test_scenario::ctx(&mut scenario));
+            profile::init_for_testing(&clock, test_scenario::ctx(&mut scenario));
+            clock::share_for_testing(clock);
+
             let mut clock = clock::create_for_testing(test_scenario::ctx(&mut scenario));
             clock::set_for_testing(&mut clock, 1000);
             clock::share_for_testing(clock);
@@ -1654,7 +1760,10 @@ module social_contracts::profile_tests {
     fun test_claim_after_vesting_complete() {
         let mut scenario = test_scenario::begin(ADMIN);
         {
-            profile::init_for_testing(test_scenario::ctx(&mut scenario));
+            let clock = clock::create_for_testing(test_scenario::ctx(&mut scenario));
+            profile::init_for_testing(&clock, test_scenario::ctx(&mut scenario));
+            clock::share_for_testing(clock);
+
             let mut clock = clock::create_for_testing(test_scenario::ctx(&mut scenario));
             clock::set_for_testing(&mut clock, 1000);
             clock::share_for_testing(clock);
@@ -1705,7 +1814,10 @@ module social_contracts::profile_tests {
     fun test_multiple_claims() {
         let mut scenario = test_scenario::begin(ADMIN);
         {
-            profile::init_for_testing(test_scenario::ctx(&mut scenario));
+            let clock = clock::create_for_testing(test_scenario::ctx(&mut scenario));
+            profile::init_for_testing(&clock, test_scenario::ctx(&mut scenario));
+            clock::share_for_testing(clock);
+
             let mut clock = clock::create_for_testing(test_scenario::ctx(&mut scenario));
             clock::set_for_testing(&mut clock, 1000);
             clock::share_for_testing(clock);
@@ -1773,7 +1885,10 @@ module social_contracts::profile_tests {
     fun test_cliff_lump_unlock() {
         let mut scenario = test_scenario::begin(ADMIN);
         {
-            profile::init_for_testing(test_scenario::ctx(&mut scenario));
+            let clock = clock::create_for_testing(test_scenario::ctx(&mut scenario));
+            profile::init_for_testing(&clock, test_scenario::ctx(&mut scenario));
+            clock::share_for_testing(clock);
+
             let mut clock = clock::create_for_testing(test_scenario::ctx(&mut scenario));
             clock::set_for_testing(&mut clock, 1000);
             clock::share_for_testing(clock);
@@ -1826,7 +1941,10 @@ module social_contracts::profile_tests {
     fun test_claim_threshold_suppresses_dust() {
         let mut scenario = test_scenario::begin(ADMIN);
         {
-            profile::init_for_testing(test_scenario::ctx(&mut scenario));
+            let clock = clock::create_for_testing(test_scenario::ctx(&mut scenario));
+            profile::init_for_testing(&clock, test_scenario::ctx(&mut scenario));
+            clock::share_for_testing(clock);
+
             let mut clock = clock::create_for_testing(test_scenario::ctx(&mut scenario));
             clock::set_for_testing(&mut clock, 1000);
             clock::share_for_testing(clock);
@@ -1871,7 +1989,10 @@ module social_contracts::profile_tests {
     fun test_end_of_schedule_dust_sweep() {
         let mut scenario = test_scenario::begin(ADMIN);
         {
-            profile::init_for_testing(test_scenario::ctx(&mut scenario));
+            let clock = clock::create_for_testing(test_scenario::ctx(&mut scenario));
+            profile::init_for_testing(&clock, test_scenario::ctx(&mut scenario));
+            clock::share_for_testing(clock);
+
             let mut clock = clock::create_for_testing(test_scenario::ctx(&mut scenario));
             clock::set_for_testing(&mut clock, 1000);
             clock::share_for_testing(clock);
@@ -1916,7 +2037,10 @@ module social_contracts::profile_tests {
     fun test_unauthorized_claim() {
         let mut scenario = test_scenario::begin(ADMIN);
         {
-            profile::init_for_testing(test_scenario::ctx(&mut scenario));
+            let clock = clock::create_for_testing(test_scenario::ctx(&mut scenario));
+            profile::init_for_testing(&clock, test_scenario::ctx(&mut scenario));
+            clock::share_for_testing(clock);
+
             let mut clock = clock::create_for_testing(test_scenario::ctx(&mut scenario));
             clock::set_for_testing(&mut clock, 1000);
             clock::share_for_testing(clock);
@@ -1957,7 +2081,10 @@ module social_contracts::profile_tests {
     fun test_invalid_start_time() {
         let mut scenario = test_scenario::begin(ADMIN);
         {
-            profile::init_for_testing(test_scenario::ctx(&mut scenario));
+            let clock = clock::create_for_testing(test_scenario::ctx(&mut scenario));
+            profile::init_for_testing(&clock, test_scenario::ctx(&mut scenario));
+            clock::share_for_testing(clock);
+
             let mut clock = clock::create_for_testing(test_scenario::ctx(&mut scenario));
             clock::set_for_testing(&mut clock, 5000);
             clock::share_for_testing(clock);
@@ -1989,7 +2116,10 @@ module social_contracts::profile_tests {
     fun test_too_many_pieces_rejected() {
         let mut scenario = test_scenario::begin(ADMIN);
         {
-            profile::init_for_testing(test_scenario::ctx(&mut scenario));
+            let clock = clock::create_for_testing(test_scenario::ctx(&mut scenario));
+            profile::init_for_testing(&clock, test_scenario::ctx(&mut scenario));
+            clock::share_for_testing(clock);
+
             let mut clock = clock::create_for_testing(test_scenario::ctx(&mut scenario));
             clock::set_for_testing(&mut clock, 1000);
             clock::share_for_testing(clock);
@@ -2038,7 +2168,10 @@ module social_contracts::profile_tests {
     fun test_delete_empty_vesting_wallet() {
         let mut scenario = test_scenario::begin(ADMIN);
         {
-            profile::init_for_testing(test_scenario::ctx(&mut scenario));
+            let clock = clock::create_for_testing(test_scenario::ctx(&mut scenario));
+            profile::init_for_testing(&clock, test_scenario::ctx(&mut scenario));
+            clock::share_for_testing(clock);
+
             let mut clock = clock::create_for_testing(test_scenario::ctx(&mut scenario));
             clock::set_for_testing(&mut clock, 1000);
             clock::share_for_testing(clock);

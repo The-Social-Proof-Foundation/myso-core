@@ -1002,8 +1002,12 @@ module social_contracts::mydata_tests {
         // Initialize MyData registry
         test_scenario::next_tx(scenario, CREATOR);
         {
-            mydata::test_init(test_scenario::ctx(scenario));
-            profile::init_for_testing(test_scenario::ctx(scenario));
+            let clock = clock::create_for_testing(test_scenario::ctx(scenario));
+            mydata::test_init(&clock, test_scenario::ctx(scenario));
+
+            profile::init_for_testing(&clock, test_scenario::ctx(scenario));
+            clock::share_for_testing(clock);
+
             let _witness = test_utils::create_one_time_witness<myso::myso::MYSO>();
             clock::share_for_testing(clock::create_for_testing(test_scenario::ctx(scenario)));
         };

@@ -2,6 +2,7 @@
 // SPDX-License-Identifier: Apache-2.0
 
 use super::{ProfileUpdate, SocialEventRow};
+use crate::handlers::common;
 use crate::metrics::SocialMetrics;
 use myso_indexer_alt_social_schema::models::{
     NewSocialProofTokensConfig, NewSocialProofTokensEvent, NewSptExchangeConfig, NewSptHolding,
@@ -14,26 +15,12 @@ fn transaction_id_from_event_id(event_id: &str) -> String {
     event_id.split(':').next().unwrap_or(event_id).to_string()
 }
 
-/// Minimum `reserved_at` / `withdrawn_at` value (milliseconds) treated as Unix epoch ms for hypertable
-/// `time`. Chain-local or sim clocks often emit small values (e.g. ms since genesis); those are not
-/// wall-clock Unix ms and would map to 1970 if used directly.
-const MIN_PLAUSIBLE_RESERVATION_UNIX_MS: i64 = 1_000_000_000_000;
-
-/// Hypertable `time` for reservation ledger rows. Prefers on-chain timestamps when they look like Unix
-/// ms; otherwise uses checkpoint ms (`created_at`) or `fallback` so analytics windows match indexing time.
-fn reservation_row_time(
-    chain_event_ms: i64,
-    checkpoint_ts_ms: u64,
-    fallback: chrono::DateTime<chrono::Utc>,
-) -> chrono::DateTime<chrono::Utc> {
-    if chain_event_ms >= MIN_PLAUSIBLE_RESERVATION_UNIX_MS {
-        return chrono::DateTime::from_timestamp_millis(chain_event_ms).unwrap_or(fallback);
-    }
-    if checkpoint_ts_ms > 0 {
-        chrono::DateTime::from_timestamp_millis(checkpoint_ts_ms as i64).unwrap_or(fallback)
-    } else {
-        fallback
-    }
+/// Hypertable `time` for reservation ledger rows from on-chain ms or checkpoint fallback.
+fn reservation_row_time(chain_event_ms: i64, checkpoint_ts_ms: u64) -> chrono::DateTime<chrono::Utc> {
+    common::chain_time_from_ms(common::chain_timestamp_ms(
+        Some(chain_event_ms),
+        checkpoint_ts_ms,
+    ))
 }
 
 fn json_to_i64(v: &serde_json::Value) -> i64 {
@@ -122,8 +109,8 @@ pub fn handle_spt_event(
     timestamp_ms: u64,
 ) -> Option<Vec<SocialEventRow>> {
     let transaction_id = transaction_id_from_event_id(event_id);
-    let now = chrono::Utc::now();
     let ts = timestamp_ms as i64;
+    let now = common::chain_time_from_ms(common::chain_timestamp_ms(None, timestamp_ms));
 
     match event_name {
         "TokenPoolCreatedEvent" | "PoolCreatedEvent" => {
@@ -516,7 +503,7 @@ fn process_reservation_created_event(
     event_id: &str,
     checkpoint_ts_ms: u64,
     ts: i64,
-    now: chrono::DateTime<chrono::Utc>,
+    _now: chrono::DateTime<chrono::Utc>,
 ) -> Option<Vec<SocialEventRow>> {
     let associated_id = json_str(data.get("associated_id")?)?;
     let reserver = json_str(data.get("reserver")?)?;
@@ -528,7 +515,7 @@ fn process_reservation_created_event(
         .unwrap_or(false);
     let token_type =
         token_type_from_u8(data.get("token_type")?.as_u64()?).unwrap_or(TOKEN_TYPE_POST);
-    // Move uses `epoch_timestamp_ms` for this field — already milliseconds (including sim / small values).
+    // Move uses `clock::timestamp_ms` for this field — already milliseconds.
     let reserved_at = json_to_i64(data.get("reserved_at")?);
     let fee_amount = data.get("fee_amount").map(json_to_i64);
     let creator_fee = data.get("creator_fee").map(json_to_i64);
@@ -542,7 +529,7 @@ fn process_reservation_created_event(
         RESERVATION_POOL_STATUS_ACTIVE.to_string()
     };
 
-    let row_time = reservation_row_time(reserved_at, checkpoint_ts_ms, now);
+    let row_time = reservation_row_time(reserved_at, checkpoint_ts_ms);
     let reservation = NewSptReservation {
         pool_id: pool_id.clone(),
         reserver_address: reserver,
@@ -582,14 +569,14 @@ fn process_reservation_withdrawn_event(
     event_id: &str,
     checkpoint_ts_ms: u64,
     ts: i64,
-    now: chrono::DateTime<chrono::Utc>,
+    _now: chrono::DateTime<chrono::Utc>,
 ) -> Option<Vec<SocialEventRow>> {
     let associated_id = json_str(data.get("associated_id")?)?;
     let reserver = json_str(data.get("reserver")?)?;
     let total_reserved = json_to_i64(data.get("total_reserved")?);
     let token_type =
         token_type_from_u8(data.get("token_type")?.as_u64()?).unwrap_or(TOKEN_TYPE_POST);
-    // Same as `reserved_at`: chain supplies epoch milliseconds.
+    // Same as `reserved_at`: chain supplies clock milliseconds.
     let withdrawn_at = json_to_i64(data.get("withdrawn_at")?);
     let fee_amount = data.get("fee_amount").map(json_to_i64);
     let creator_fee = data.get("creator_fee").map(json_to_i64);
@@ -605,7 +592,7 @@ fn process_reservation_withdrawn_event(
         .unwrap_or(0);
     let amount = withdrawn.checked_neg().unwrap_or(i64::MIN);
 
-    let row_time = reservation_row_time(withdrawn_at, checkpoint_ts_ms, now);
+    let row_time = reservation_row_time(withdrawn_at, checkpoint_ts_ms);
     let reservation = NewSptReservation {
         pool_id: pool_id.clone(),
         reserver_address: reserver,
@@ -865,7 +852,7 @@ mod tests {
     use serde_json::json;
 
     #[test]
-    fn reservation_created_small_reserved_at_uses_checkpoint_for_hypertable_time() {
+    fn reservation_created_uses_event_ms_for_hypertable_time() {
         const CK_MS: u64 = 1_700_000_000_000;
         let data = json!({
             "associated_id": "0xprof",
@@ -874,7 +861,7 @@ mod tests {
             "amount": 1i64,
             "total_reserved": 1i64,
             "threshold_met": false,
-            "reserved_at": 126000i64,
+            "reserved_at": CK_MS as i64,
         });
         let rows =
             handle_spt_event("ReservationCreatedEvent", &data, "tx:0", 0, CK_MS).expect("rows");
@@ -886,15 +873,12 @@ mod tests {
             }
         });
         let res = reservation.expect("reservation");
-        assert_eq!(
-            res.reserved_at, 126000,
-            "raw chain field preserved; values below 1e12 are not used as Unix ms for time"
-        );
+        assert_eq!(res.reserved_at, CK_MS as i64);
         assert_eq!(res.transaction_id, "tx:0");
         assert_eq!(
             res.time,
             chrono::DateTime::from_timestamp_millis(CK_MS as i64).unwrap(),
-            "sim/genesis-relative reserved_at must not set hypertable time to 1970"
+            "hypertable time follows on-chain reserved_at ms"
         );
         assert_eq!(res.created_at, CK_MS as i64);
     }
@@ -1034,8 +1018,8 @@ mod tests {
         assert_eq!(res.transaction_id, "tx2:0");
         assert_eq!(
             res.time,
-            chrono::DateTime::from_timestamp_millis(3000).unwrap(),
-            "reserved_at 300 is not plausible Unix ms; time follows checkpoint"
+            chrono::DateTime::from_timestamp_millis(300).unwrap(),
+            "hypertable time follows on-chain reserved_at ms"
         );
         assert_eq!(res.created_at, 3000);
 

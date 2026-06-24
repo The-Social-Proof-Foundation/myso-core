@@ -42,8 +42,9 @@ module social_contracts::post_tests {
     fun init_tip_test_profile(scenario: &mut test_scenario::Scenario) {
         test_scenario::next_tx(scenario, USER1);
         {
-            profile::init_for_testing(test_scenario::ctx(scenario));
             let clock = clock::create_for_testing(test_scenario::ctx(scenario));
+            profile::init_for_testing(&clock, test_scenario::ctx(scenario));
+
             clock::share_for_testing(clock);
         };
 
@@ -499,10 +500,15 @@ module social_contracts::post_tests {
         test_scenario::next_tx(&mut scenario, USER1);
         {
             // Create a registry and platform for testing
-            social_contracts::profile::test_init(test_scenario::ctx(&mut scenario));
+            let clock = clock::create_for_testing(test_scenario::ctx(&mut scenario));
+            social_contracts::profile::test_init(&clock, test_scenario::ctx(&mut scenario));
+
             social_contracts::platform::test_init(test_scenario::ctx(&mut scenario));
-            social_contracts::block_list::test_init(test_scenario::ctx(&mut scenario));
-            social_contracts::mydata::test_init(test_scenario::ctx(&mut scenario));
+            social_contracts::block_list::test_init(&clock, test_scenario::ctx(&mut scenario));
+
+            social_contracts::mydata::test_init(&clock, test_scenario::ctx(&mut scenario));
+            clock::share_for_testing(clock);
+
             // Initialize the post module
             post::test_init(test_scenario::ctx(&mut scenario));
         };
@@ -510,6 +516,8 @@ module social_contracts::post_tests {
         // USER1 creates a profile
         test_scenario::next_tx(&mut scenario, USER1);
         {
+
+            let clock = test_scenario::take_shared<Clock>(&scenario);
             let mut registry = test_scenario::take_shared<UsernameRegistry>(&scenario);
             
             // Register a test username
@@ -518,15 +526,20 @@ module social_contracts::post_tests {
                 string::utf8(b"user1"), 
                 option::none(), 
                 option::none(),
+                &clock,
                 test_scenario::ctx(&mut scenario)
             );
             
             test_scenario::return_shared(registry);
+
+            test_scenario::return_shared(clock);
         };
         
         // USER1 creates a post directly with test helper
         test_scenario::next_tx(&mut scenario, USER1);
         {
+
+            let clock = test_scenario::take_shared<Clock>(&scenario);
             let registry = test_scenario::take_shared<UsernameRegistry>(&scenario);
             
             // Get the profile ID
@@ -540,15 +553,20 @@ module social_contracts::post_tests {
                 profile_id_addr,
                 TEST_PLATFORM_ID,
                 string::utf8(TEST_CONTENT),
+                &clock,
                 test_scenario::ctx(&mut scenario)
             );
             
             test_scenario::return_shared(registry);
+
+            test_scenario::return_shared(clock);
         };
         
         // USER1 deletes the post they own
         test_scenario::next_tx(&mut scenario, USER1);
         {
+
+            let clock = test_scenario::take_shared<Clock>(&scenario);
             // Retrieve the post 
             let post = test_scenario::take_shared<Post>(&scenario);
             
@@ -558,12 +576,15 @@ module social_contracts::post_tests {
             
             // Delete the post
             post::delete_post(
-                post, // Note: We pass by value as the post will be consumed
+                post,
+                &clock,
                 test_scenario::ctx(&mut scenario)
             );
             
             // Post should no longer exist in the shared objects
             assert!(!test_scenario::has_most_recent_shared<Post>(), 2);
+
+            test_scenario::return_shared(clock);
         };
 
         test_scenario::end(scenario);
@@ -578,10 +599,15 @@ module social_contracts::post_tests {
         test_scenario::next_tx(&mut scenario, USER1);
         {
             // Create a registry and platform for testing
-            social_contracts::profile::test_init(test_scenario::ctx(&mut scenario));
+            let clock = clock::create_for_testing(test_scenario::ctx(&mut scenario));
+            social_contracts::profile::test_init(&clock, test_scenario::ctx(&mut scenario));
+
             social_contracts::platform::test_init(test_scenario::ctx(&mut scenario));
-            social_contracts::block_list::test_init(test_scenario::ctx(&mut scenario));
-            social_contracts::mydata::test_init(test_scenario::ctx(&mut scenario));
+            social_contracts::block_list::test_init(&clock, test_scenario::ctx(&mut scenario));
+
+            social_contracts::mydata::test_init(&clock, test_scenario::ctx(&mut scenario));
+            clock::share_for_testing(clock);
+
             // Initialize the post module
             post::test_init(test_scenario::ctx(&mut scenario));
         };
@@ -589,6 +615,8 @@ module social_contracts::post_tests {
         // USER1 creates a profile
         test_scenario::next_tx(&mut scenario, USER1);
         {
+
+            let clock = test_scenario::take_shared<Clock>(&scenario);
             let mut registry = test_scenario::take_shared<UsernameRegistry>(&scenario);
             
             // Register a test username
@@ -597,15 +625,20 @@ module social_contracts::post_tests {
                 string::utf8(b"user1"), 
                 option::none(), 
                 option::none(),
+                &clock,
                 test_scenario::ctx(&mut scenario)
             );
             
             test_scenario::return_shared(registry);
+
+            test_scenario::return_shared(clock);
         };
         
         // USER1 creates a post directly with test helper
         test_scenario::next_tx(&mut scenario, USER1);
         {
+
+            let clock = test_scenario::take_shared<Clock>(&scenario);
             let registry = test_scenario::take_shared<UsernameRegistry>(&scenario);
             
             // Get the profile ID
@@ -619,10 +652,13 @@ module social_contracts::post_tests {
                 profile_id_addr,
                 TEST_PLATFORM_ID,
                 string::utf8(TEST_CONTENT),
+                &clock,
                 test_scenario::ctx(&mut scenario)
             );
             
             test_scenario::return_shared(registry);
+
+            test_scenario::return_shared(clock);
         };
         
         // Create a variable to store the comment ID
@@ -631,6 +667,8 @@ module social_contracts::post_tests {
         // USER1 creates a comment on their own post
         test_scenario::next_tx(&mut scenario, USER1);
         {
+
+            let clock = test_scenario::take_shared<Clock>(&scenario);
             let registry = test_scenario::take_shared<UsernameRegistry>(&scenario);
             let post = test_scenario::take_shared<Post>(&scenario);
             let block_list_registry = test_scenario::take_shared<BlockListRegistry>(&scenario);
@@ -647,6 +685,7 @@ module social_contracts::post_tests {
                 profile_id_addr,
                 object::uid_to_address(post::get_post_id(&post)),
                 string::utf8(b"This is a test comment"),
+                &clock,
                 test_scenario::ctx(&mut scenario)
             );
             
@@ -654,11 +693,15 @@ module social_contracts::post_tests {
             test_scenario::return_shared(registry);
             test_scenario::return_shared(block_list_registry);
             test_scenario::return_shared(mydata_registry);
+
+            test_scenario::return_shared(clock);
         };
         
         // USER1 deletes their comment
         test_scenario::next_tx(&mut scenario, USER1);
         {
+
+            let clock = test_scenario::take_shared<Clock>(&scenario);
             let mut post = test_scenario::take_shared<Post>(&scenario);
             
             // Get the comment directly by ID
@@ -682,11 +725,14 @@ module social_contracts::post_tests {
             // Delete the comment
             post::delete_comment(
                 &mut post,
-                comment, // By value as it will be consumed
+                comment,
+                &clock,
                 test_scenario::ctx(&mut scenario)
             );
             
             test_scenario::return_shared(post);
+
+            test_scenario::return_shared(clock);
         };
         
         test_scenario::end(scenario);
@@ -702,10 +748,15 @@ module social_contracts::post_tests {
         test_scenario::next_tx(&mut scenario, USER1);
         {
             // Create a registry and platform for testing
-            social_contracts::profile::test_init(test_scenario::ctx(&mut scenario));
+            let clock = clock::create_for_testing(test_scenario::ctx(&mut scenario));
+            social_contracts::profile::test_init(&clock, test_scenario::ctx(&mut scenario));
+
             social_contracts::platform::test_init(test_scenario::ctx(&mut scenario));
-            social_contracts::block_list::test_init(test_scenario::ctx(&mut scenario));
-            social_contracts::mydata::test_init(test_scenario::ctx(&mut scenario));
+            social_contracts::block_list::test_init(&clock, test_scenario::ctx(&mut scenario));
+
+            social_contracts::mydata::test_init(&clock, test_scenario::ctx(&mut scenario));
+            clock::share_for_testing(clock);
+
             // Initialize the post module
             post::test_init(test_scenario::ctx(&mut scenario));
         };
@@ -713,6 +764,8 @@ module social_contracts::post_tests {
         // USER1 creates a profile
         test_scenario::next_tx(&mut scenario, USER1);
         {
+
+            let clock = test_scenario::take_shared<Clock>(&scenario);
             let mut registry = test_scenario::take_shared<UsernameRegistry>(&scenario);
             
             // Register a test username
@@ -721,15 +774,20 @@ module social_contracts::post_tests {
                 string::utf8(b"user1"), 
                 option::none(), 
                 option::none(),
+                &clock,
                 test_scenario::ctx(&mut scenario)
             );
             
             test_scenario::return_shared(registry);
+
+            test_scenario::return_shared(clock);
         };
         
         // USER1 creates a post directly with test helper
         test_scenario::next_tx(&mut scenario, USER1);
         {
+
+            let clock = test_scenario::take_shared<Clock>(&scenario);
             let registry = test_scenario::take_shared<UsernameRegistry>(&scenario);
             
             // Get the profile ID
@@ -743,22 +801,29 @@ module social_contracts::post_tests {
                 profile_id_addr,
                 TEST_PLATFORM_ID,
                 string::utf8(TEST_CONTENT),
+                &clock,
                 test_scenario::ctx(&mut scenario)
             );
             
             test_scenario::return_shared(registry);
+
+            test_scenario::return_shared(clock);
         };
         
         // USER2 attempts to delete USER1's post - should fail
         test_scenario::next_tx(&mut scenario, USER2);
         {
+
+            let clock = test_scenario::take_shared<Clock>(&scenario);
             let post = test_scenario::take_shared<Post>(&scenario);
             
             // This should fail since USER2 != USER1
-            post::delete_post(post, test_scenario::ctx(&mut scenario));
+            post::delete_post(post, &clock, test_scenario::ctx(&mut scenario));
             
             // This line should never be reached due to failure
-            abort 42
+            abort 42;
+
+            test_scenario::return_shared(clock);
         };
         
         test_scenario::end(scenario);
@@ -774,10 +839,15 @@ module social_contracts::post_tests {
         test_scenario::next_tx(&mut scenario, USER1);
         {
             // Create a registry and platform for testing
-            social_contracts::profile::test_init(test_scenario::ctx(&mut scenario));
+            let clock = clock::create_for_testing(test_scenario::ctx(&mut scenario));
+            social_contracts::profile::test_init(&clock, test_scenario::ctx(&mut scenario));
+
             social_contracts::platform::test_init(test_scenario::ctx(&mut scenario));
-            social_contracts::block_list::test_init(test_scenario::ctx(&mut scenario));
-            social_contracts::mydata::test_init(test_scenario::ctx(&mut scenario));
+            social_contracts::block_list::test_init(&clock, test_scenario::ctx(&mut scenario));
+
+            social_contracts::mydata::test_init(&clock, test_scenario::ctx(&mut scenario));
+            clock::share_for_testing(clock);
+
             // Initialize the post module
             post::test_init(test_scenario::ctx(&mut scenario));
         };
@@ -785,6 +855,8 @@ module social_contracts::post_tests {
         // Register profiles for USER1 and USER2
         test_scenario::next_tx(&mut scenario, USER1);
         {
+
+            let clock = test_scenario::take_shared<Clock>(&scenario);
             let mut registry = test_scenario::take_shared<UsernameRegistry>(&scenario);
             
             // Register a test username for USER1
@@ -793,14 +865,19 @@ module social_contracts::post_tests {
                 string::utf8(b"user1"), 
                 option::none(), 
                 option::none(),
+                &clock,
                 test_scenario::ctx(&mut scenario)
             );
             
             test_scenario::return_shared(registry);
+
+            test_scenario::return_shared(clock);
         };
         
         test_scenario::next_tx(&mut scenario, USER2);
         {
+
+            let clock = test_scenario::take_shared<Clock>(&scenario);
             let mut registry = test_scenario::take_shared<UsernameRegistry>(&scenario);
             
             // Register a test username for USER2
@@ -809,15 +886,20 @@ module social_contracts::post_tests {
                 string::utf8(b"user2"), 
                 option::none(), 
                 option::none(),
+                &clock,
                 test_scenario::ctx(&mut scenario)
             );
             
             test_scenario::return_shared(registry);
+
+            test_scenario::return_shared(clock);
         };
         
         // USER1 creates a post directly with test helper
         test_scenario::next_tx(&mut scenario, USER1);
         {
+
+            let clock = test_scenario::take_shared<Clock>(&scenario);
             let registry = test_scenario::take_shared<UsernameRegistry>(&scenario);
             
             // Get the profile ID
@@ -831,10 +913,13 @@ module social_contracts::post_tests {
                 profile_id_addr,
                 TEST_PLATFORM_ID,
                 string::utf8(TEST_CONTENT),
+                &clock,
                 test_scenario::ctx(&mut scenario)
             );
             
             test_scenario::return_shared(registry);
+
+            test_scenario::return_shared(clock);
         };
         
         // Create a variable to store the comment ID
@@ -843,6 +928,8 @@ module social_contracts::post_tests {
         // USER2 creates a comment on USER1's post
         test_scenario::next_tx(&mut scenario, USER2);
         {
+
+            let clock = test_scenario::take_shared<Clock>(&scenario);
             let registry = test_scenario::take_shared<UsernameRegistry>(&scenario);
             let post = test_scenario::take_shared<Post>(&scenario);
             let block_list_registry = test_scenario::take_shared<BlockListRegistry>(&scenario);
@@ -859,6 +946,7 @@ module social_contracts::post_tests {
                 profile_id_addr,
                 object::uid_to_address(post::get_post_id(&post)),
                 string::utf8(b"This is a test comment by USER2"),
+                &clock,
                 test_scenario::ctx(&mut scenario)
             );
             
@@ -866,11 +954,15 @@ module social_contracts::post_tests {
             test_scenario::return_shared(registry);
             test_scenario::return_shared(block_list_registry);
             test_scenario::return_shared(mydata_registry);
+
+            test_scenario::return_shared(clock);
         };
         
         // USER1 attempts to delete USER2's comment - should fail
         test_scenario::next_tx(&mut scenario, USER1);
         {
+
+            let clock = test_scenario::take_shared<Clock>(&scenario);
             let mut post = test_scenario::take_shared<Post>(&scenario);
             
             // Get the comment directly by ID
@@ -881,11 +973,14 @@ module social_contracts::post_tests {
             post::delete_comment(
                 &mut post,
                 comment,
+                &clock,
                 test_scenario::ctx(&mut scenario)
             );
             
             // This line should never be reached due to failure
-            abort 42
+            abort 42;
+
+            test_scenario::return_shared(clock);
         };
         
         test_scenario::end(scenario);
@@ -900,10 +995,15 @@ module social_contracts::post_tests {
         test_scenario::next_tx(&mut scenario, USER1);
         {
             // Create a registry and platform for testing
-            social_contracts::profile::test_init(test_scenario::ctx(&mut scenario));
+            let clock = clock::create_for_testing(test_scenario::ctx(&mut scenario));
+            social_contracts::profile::test_init(&clock, test_scenario::ctx(&mut scenario));
+
             social_contracts::platform::test_init(test_scenario::ctx(&mut scenario));
-            social_contracts::block_list::test_init(test_scenario::ctx(&mut scenario));
-            social_contracts::mydata::test_init(test_scenario::ctx(&mut scenario));
+            social_contracts::block_list::test_init(&clock, test_scenario::ctx(&mut scenario));
+
+            social_contracts::mydata::test_init(&clock, test_scenario::ctx(&mut scenario));
+            clock::share_for_testing(clock);
+
             // Initialize the post module
             post::test_init(test_scenario::ctx(&mut scenario));
         };
@@ -911,6 +1011,8 @@ module social_contracts::post_tests {
         // USER1 creates a profile
         test_scenario::next_tx(&mut scenario, USER1);
         {
+
+            let clock = test_scenario::take_shared<Clock>(&scenario);
             let mut registry = test_scenario::take_shared<UsernameRegistry>(&scenario);
             
             // Register a test username
@@ -919,6 +1021,7 @@ module social_contracts::post_tests {
                 string::utf8(b"user1"), 
                 option::none(), 
                 option::none(),
+                &clock,
                 test_scenario::ctx(&mut scenario)
             );
             
@@ -928,11 +1031,15 @@ module social_contracts::post_tests {
             let _profile_id_addr = option::extract(&mut profile_id_option);
             
             test_scenario::return_shared(registry);
+
+            test_scenario::return_shared(clock);
         };
         
         // USER1 creates a post directly using test helper
         test_scenario::next_tx(&mut scenario, USER1);
         {
+
+            let clock = test_scenario::take_shared<Clock>(&scenario);
             let registry = test_scenario::take_shared<UsernameRegistry>(&scenario);
             
             // Get the profile ID again
@@ -946,10 +1053,13 @@ module social_contracts::post_tests {
                 profile_id_addr,
                 TEST_PLATFORM_ID,
                 string::utf8(TEST_CONTENT),
+                &clock,
                 test_scenario::ctx(&mut scenario)
             );
             
             test_scenario::return_shared(registry);
+
+            test_scenario::return_shared(clock);
         };
         
         // Verify post was created successfully
@@ -975,9 +1085,16 @@ module social_contracts::post_tests {
     fun test_promoted_post_creation() {
         let mut scenario = test_scenario::begin(USER1);
         
+        test_scenario::next_tx(&mut scenario, USER1);
+        {
+            let clock = clock::create_for_testing(test_scenario::ctx(&mut scenario));
+            clock::share_for_testing(clock);
+        };
+
         // Create a simple promoted post using test functions
         test_scenario::next_tx(&mut scenario, USER1);
         {
+            let clock = test_scenario::take_shared<Clock>(&scenario);
             // Create some MYSO coins for promotion budget
             let promotion_budget = coin::mint_for_testing<myso::myso::MYSO>(1000000, test_scenario::ctx(&mut scenario)); // 1 MYSO
             
@@ -989,6 +1106,7 @@ module social_contracts::post_tests {
                 string::utf8(b"This is a promoted post!"),
                 10000, // 0.01 MYSO per view
                 promotion_budget,
+                &clock,
                 test_scenario::ctx(&mut scenario)
             );
             
@@ -996,6 +1114,8 @@ module social_contracts::post_tests {
             assert!(post_id != promotion_id, 0);
             assert!(post_id != @0x0, 1);
             assert!(promotion_id != @0x0, 2);
+
+            test_scenario::return_shared(clock);
         };
         
         test_scenario::end(scenario);
@@ -1005,7 +1125,10 @@ module social_contracts::post_tests {
     fun init_mydata_clock_and_registry(scenario: &mut test_scenario::Scenario) {
         test_scenario::next_tx(scenario, USER1);
         {
-            mydata::test_init(test_scenario::ctx(scenario));
+            let clock = clock::create_for_testing(test_scenario::ctx(scenario));
+            mydata::test_init(&clock, test_scenario::ctx(scenario));
+            clock::share_for_testing(clock);
+
         };
         test_scenario::next_tx(scenario, USER1);
         {
@@ -1122,16 +1245,23 @@ module social_contracts::post_tests {
         init_tip_test_profile(&mut scenario);
         test_scenario::next_tx(&mut scenario, USER1);
         {
+
+            let clock = test_scenario::take_shared<Clock>(&scenario);
             post::test_create_post(
                 USER1,
                 USER1,
                 TEST_PLATFORM_ID,
                 string::utf8(TEST_CONTENT),
+                &clock,
                 test_scenario::ctx(&mut scenario)
             );
+
+            test_scenario::return_shared(clock);
         };
         test_scenario::next_tx(&mut scenario, USER2);
         {
+
+            let clock = test_scenario::take_shared<Clock>(&scenario);
             let mut post_obj = test_scenario::take_shared<Post>(&scenario);
             let memory_account = test_scenario::take_shared<MemoryAccount>(&scenario);
             let mut tip_coin = coin::mint_for_testing<MYSO>(10_000_000_000, test_scenario::ctx(&mut scenario));
@@ -1147,6 +1277,8 @@ module social_contracts::post_tests {
             test_scenario::return_shared(post_obj);
             test_scenario::return_shared(memory_account);
             transfer::public_transfer(tip_coin, USER2);
+
+            test_scenario::return_shared(clock);
         };
         test_scenario::end(scenario);
     }
@@ -1161,6 +1293,8 @@ module social_contracts::post_tests {
         init_tip_test_profile(&mut scenario);
         test_scenario::next_tx(&mut scenario, USER1);
         {
+
+            let clock = test_scenario::take_shared<Clock>(&scenario);
             post::test_create_post_with_revenue_redirect(
                 USER1,
                 USER1,
@@ -1168,11 +1302,16 @@ module social_contracts::post_tests {
                 string::utf8(TEST_CONTENT),
                 USER3,
                 50,
+                &clock,
                 test_scenario::ctx(&mut scenario)
             );
+
+            test_scenario::return_shared(clock);
         };
         test_scenario::next_tx(&mut scenario, USER2);
         {
+
+            let clock = test_scenario::take_shared<Clock>(&scenario);
             let mut post_obj = test_scenario::take_shared<Post>(&scenario);
             let memory_account = test_scenario::take_shared<MemoryAccount>(&scenario);
             let mut tip_coin = coin::mint_for_testing<MYSO>(100, test_scenario::ctx(&mut scenario));
@@ -1182,6 +1321,8 @@ module social_contracts::post_tests {
             test_scenario::return_shared(post_obj);
             test_scenario::return_shared(memory_account);
             transfer::public_transfer(tip_coin, USER2);
+
+            test_scenario::return_shared(clock);
         };
         test_scenario::next_tx(&mut scenario, USER3);
         {
@@ -1203,6 +1344,8 @@ module social_contracts::post_tests {
         init_tip_test_profile(&mut scenario);
         test_scenario::next_tx(&mut scenario, USER1);
         {
+
+            let clock = test_scenario::take_shared<Clock>(&scenario);
             post::test_create_post_with_escrow_redirect(
                 USER1,
                 USER1,
@@ -1210,11 +1353,16 @@ module social_contracts::post_tests {
                 string::utf8(TEST_CONTENT),
                 USER3,
                 50,
+                &clock,
                 test_scenario::ctx(&mut scenario)
             );
+
+            test_scenario::return_shared(clock);
         };
         test_scenario::next_tx(&mut scenario, USER2);
         {
+
+            let clock = test_scenario::take_shared<Clock>(&scenario);
             let mut post_obj = test_scenario::take_shared<Post>(&scenario);
             let memory_account = test_scenario::take_shared<MemoryAccount>(&scenario);
             let mut tip_coin = coin::mint_for_testing<MYSO>(100, test_scenario::ctx(&mut scenario));
@@ -1223,6 +1371,8 @@ module social_contracts::post_tests {
             test_scenario::return_shared(post_obj);
             test_scenario::return_shared(memory_account);
             transfer::public_transfer(tip_coin, USER2);
+
+            test_scenario::return_shared(clock);
         };
         test_scenario::end(scenario);
     }
@@ -1238,6 +1388,8 @@ module social_contracts::post_tests {
         init_tip_test_profile(&mut scenario);
         test_scenario::next_tx(&mut scenario, USER1);
         {
+
+            let clock = test_scenario::take_shared<Clock>(&scenario);
             post::test_create_post_with_escrow_redirect(
                 USER1,
                 USER1,
@@ -1245,12 +1397,17 @@ module social_contracts::post_tests {
                 string::utf8(TEST_CONTENT),
                 USER3,
                 50,
+                &clock,
                 test_scenario::ctx(&mut scenario)
             );
             poc_vault::create_shared_dummy_vault_for_testing(USER1, test_scenario::ctx(&mut scenario));
+
+            test_scenario::return_shared(clock);
         };
         test_scenario::next_tx(&mut scenario, USER2);
         {
+
+            let clock = test_scenario::take_shared<Clock>(&scenario);
             let mut post_obj = test_scenario::take_shared<Post>(&scenario);
             let memory_account = test_scenario::take_shared<MemoryAccount>(&scenario);
             let mut wrong_vault = test_scenario::take_shared<PoCBeneficiaryVault>(&scenario);
@@ -1261,12 +1418,15 @@ module social_contracts::post_tests {
                 &mut tip_coin,
                 100,
                 &memory_account,
+                &clock,
                 test_scenario::ctx(&mut scenario)
             );
             test_scenario::return_shared(post_obj);
             test_scenario::return_shared(memory_account);
             test_scenario::return_shared(wrong_vault);
             transfer::public_transfer(tip_coin, USER2);
+
+            test_scenario::return_shared(clock);
         };
         test_scenario::end(scenario);
     }
@@ -1281,6 +1441,8 @@ module social_contracts::post_tests {
         init_tip_test_profile(&mut scenario);
         test_scenario::next_tx(&mut scenario, USER1);
         {
+
+            let clock = test_scenario::take_shared<Clock>(&scenario);
             post::test_create_post_with_escrow_redirect(
                 USER1,
                 USER1,
@@ -1288,11 +1450,16 @@ module social_contracts::post_tests {
                 string::utf8(TEST_CONTENT),
                 USER3,
                 50,
+                &clock,
                 test_scenario::ctx(&mut scenario)
             );
+
+            test_scenario::return_shared(clock);
         };
         test_scenario::next_tx(&mut scenario, USER2);
         {
+
+            let clock = test_scenario::take_shared<Clock>(&scenario);
             let mut post_obj = test_scenario::take_shared<Post>(&scenario);
             let memory_account = test_scenario::take_shared<MemoryAccount>(&scenario);
             let mut tip_coin = coin::mint_for_testing<MYSO>(100, test_scenario::ctx(&mut scenario));
@@ -1302,6 +1469,8 @@ module social_contracts::post_tests {
             test_scenario::return_shared(post_obj);
             test_scenario::return_shared(memory_account);
             transfer::public_transfer(tip_coin, USER2);
+
+            test_scenario::return_shared(clock);
         };
         test_scenario::end(scenario);
     }

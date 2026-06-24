@@ -4521,7 +4521,7 @@ mod tests {
                 .naive_utc()
         };
         let event_id = "digest:99";
-        let rows = handle_platform_event("PlatformDeletedEvent", &json, event_id)
+        let rows = handle_platform_event("PlatformDeletedEvent", &json, event_id, timestamp_ms)
             .expect("handler should deserialize JSON from BCS path");
         assert_eq!(rows.len(), 2);
         match &rows[0] {

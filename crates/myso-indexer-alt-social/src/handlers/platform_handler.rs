@@ -228,6 +228,7 @@ impl Processor for PlatformHandler {
     type Value = PlatformRow;
 
     async fn process(&self, checkpoint: &Arc<Checkpoint>) -> Result<Vec<Self::Value>> {
+        let checkpoint_timestamp_ms = checkpoint.summary.timestamp_ms;
         let mut values = Vec::new();
         for tx in &checkpoint.transactions {
             let tx_digest = tx.transaction.digest().to_string();
@@ -258,8 +259,12 @@ impl Processor for PlatformHandler {
                             continue;
                         }
                     };
-                if let Some(rows) =
-                    platform::handle_platform_event(event_name, &event_data, &event_id)
+                if let Some(rows) = platform::handle_platform_event(
+                    event_name,
+                    &event_data,
+                    &event_id,
+                    checkpoint_timestamp_ms,
+                )
                 {
                     for row in rows {
                         if let Some(r) = PlatformRow::from_social(row) {

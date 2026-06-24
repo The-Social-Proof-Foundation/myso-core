@@ -401,6 +401,7 @@ module social_contracts::insurance {
         max_coverage_bps: u64,
         max_duration_ms: u64,
         fee_bps: u64,
+        clock: &Clock,
         ctx: &mut TxContext
     ) {
         assert!(min_coverage_bps > 0, EInvalidCoverage);
@@ -410,7 +411,7 @@ module social_contracts::insurance {
         assert!(fee_bps <= BPS_DENOM, EInvalidCoverage);
 
         let admin = tx_context::sender(ctx);
-        let ts = tx_context::epoch_timestamp_ms(ctx);
+        let ts = clock::timestamp_ms(clock);
         transfer::share_object(InsuranceConfig {
             id: object::new(ctx),
             enable_flag: false,
@@ -588,9 +589,9 @@ module social_contracts::insurance {
         InsuranceAdminCap { id: object::new(ctx) }
     }
 
-    public(package) fun bootstrap_init(ctx: &mut TxContext) {
+    public(package) fun bootstrap_init(clock: &Clock, ctx: &mut TxContext) {
         let admin = tx_context::sender(ctx);
-        let ts = tx_context::epoch_timestamp_ms(ctx);
+        let ts = clock::timestamp_ms(clock);
         let config = InsuranceConfig {
             id: object::new(ctx),
             enable_flag: false,

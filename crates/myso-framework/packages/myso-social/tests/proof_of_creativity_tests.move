@@ -7,6 +7,7 @@ module social_contracts::proof_of_creativity_tests {
     use social_contracts::proof_of_creativity as poc;
 
     use myso::test_scenario::{Self, Scenario};
+    use myso::clock::{Self, Clock};
 
     // Test addresses
     const ADMIN: address = @0xA0;
@@ -18,15 +19,17 @@ module social_contracts::proof_of_creativity_tests {
     fun test_poc_bootstrap_and_update_config() {
         let mut scen = test_scenario::begin(ADMIN);
 
-        // Initialize PoC
         test_scenario::next_tx(&mut scen, ADMIN);
         {
-            poc::test_init(test_scenario::ctx(&mut scen));
+            let clock = clock::create_for_testing(test_scenario::ctx(&mut scen));
+            poc::test_init(&clock, test_scenario::ctx(&mut scen));
+            clock::share_for_testing(clock);
         };
 
         // Update PoC config including max_votes_per_dispute
         test_scenario::next_tx(&mut scen, ADMIN);
         {
+            let clock = test_scenario::take_shared<Clock>(&scen);
             let admin_cap = test_scenario::take_from_sender<poc::PoCAdminCap>(&scen);
             let mut cfg = test_scenario::take_shared<poc::PoCConfig>(&scen);
             poc::update_poc_config(
@@ -50,8 +53,10 @@ module social_contracts::proof_of_creativity_tests {
                 0,     // dispute_quorum_base_stake (disabled)
                 10000, // dispute_second_round_fee_multiplier_bps (1x)
                 10000, // dispute_second_round_quorum_multiplier_bps (1x)
+                &clock,
                 test_scenario::ctx(&mut scen)
             );
+            test_scenario::return_shared(clock);
             test_scenario::return_to_sender(&scen, admin_cap);
             test_scenario::return_shared(cfg);
         };

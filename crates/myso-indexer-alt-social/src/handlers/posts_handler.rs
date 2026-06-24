@@ -587,6 +587,7 @@ impl Processor for PostsHandler {
     type Value = PostRow;
 
     async fn process(&self, checkpoint: &Arc<Checkpoint>) -> Result<Vec<Self::Value>> {
+        let checkpoint_timestamp_ms = checkpoint.summary.timestamp_ms;
         let mydata_snapshots = post_mydata::build_checkpoint_mydata_snapshots(checkpoint);
         let mut values = Vec::new();
         for tx in &checkpoint.transactions {
@@ -625,8 +626,13 @@ impl Processor for PostsHandler {
                         }
                     };
                 if is_post_module {
-                    if let Some(rows) =
-                        post::handle_post_event(event_name, &event_data, &event_id, &mydata_snapshots)
+                    if let Some(rows) = post::handle_post_event(
+                        event_name,
+                        &event_data,
+                        &event_id,
+                        &mydata_snapshots,
+                        checkpoint_timestamp_ms,
+                    )
                     {
                         for row in rows {
                             if let Some(r) = PostRow::from_social(row) {

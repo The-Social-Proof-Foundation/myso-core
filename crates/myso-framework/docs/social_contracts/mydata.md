@@ -1803,7 +1803,7 @@ Create a MyDataAdminCap for bootstrap (package visibility only)
 Update MyData configuration (admin only)
 
 
-<pre><code><b>public</b> <b>entry</b> <b>fun</b> <a href="../social_contracts/mydata.md#social_contracts_mydata_update_mydata_config">update_mydata_config</a>(_: &<a href="../social_contracts/mydata.md#social_contracts_mydata_MyDataAdminCap">social_contracts::mydata::MyDataAdminCap</a>, config: &<b>mut</b> <a href="../social_contracts/mydata.md#social_contracts_mydata_MyDataConfig">social_contracts::mydata::MyDataConfig</a>, enable_flag: bool, max_tags: u64, max_subscription_days: u64, max_free_access_grants: u64, ctx: &<b>mut</b> <a href="../myso/tx_context.md#myso_tx_context_TxContext">myso::tx_context::TxContext</a>)
+<pre><code><b>public</b> <b>entry</b> <b>fun</b> <a href="../social_contracts/mydata.md#social_contracts_mydata_update_mydata_config">update_mydata_config</a>(_: &<a href="../social_contracts/mydata.md#social_contracts_mydata_MyDataAdminCap">social_contracts::mydata::MyDataAdminCap</a>, config: &<b>mut</b> <a href="../social_contracts/mydata.md#social_contracts_mydata_MyDataConfig">social_contracts::mydata::MyDataConfig</a>, enable_flag: bool, max_tags: u64, max_subscription_days: u64, max_free_access_grants: u64, clock: &<a href="../myso/clock.md#myso_clock_Clock">myso::clock::Clock</a>, ctx: &<b>mut</b> <a href="../myso/tx_context.md#myso_tx_context_TxContext">myso::tx_context::TxContext</a>)
 </code></pre>
 
 
@@ -1819,6 +1819,7 @@ Update MyData configuration (admin only)
     max_tags: u64,
     max_subscription_days: u64,
     max_free_access_grants: u64,
+    clock: &Clock,
     ctx: &<b>mut</b> TxContext
 ) {
     // Validate parameters
@@ -1836,7 +1837,7 @@ Update MyData configuration (admin only)
         max_tags,
         max_subscription_days,
         max_free_access_grants,
-        timestamp: tx_context::epoch_timestamp_ms(ctx),
+        timestamp: clock::timestamp_ms(clock),
     });
 }
 </code></pre>
@@ -1851,7 +1852,7 @@ Update MyData configuration (admin only)
 
 
 
-<pre><code><b>fun</b> <a href="../social_contracts/mydata.md#social_contracts_mydata_share_mydata_system_objects">share_mydata_system_objects</a>(ctx: &<b>mut</b> <a href="../myso/tx_context.md#myso_tx_context_TxContext">myso::tx_context::TxContext</a>, enable_flag: bool)
+<pre><code><b>fun</b> <a href="../social_contracts/mydata.md#social_contracts_mydata_share_mydata_system_objects">share_mydata_system_objects</a>(clock: &<a href="../myso/clock.md#myso_clock_Clock">myso::clock::Clock</a>, ctx: &<b>mut</b> <a href="../myso/tx_context.md#myso_tx_context_TxContext">myso::tx_context::TxContext</a>, enable_flag: bool)
 </code></pre>
 
 
@@ -1860,7 +1861,7 @@ Update MyData configuration (admin only)
 <summary>Implementation</summary>
 
 
-<pre><code><b>fun</b> <a href="../social_contracts/mydata.md#social_contracts_mydata_share_mydata_system_objects">share_mydata_system_objects</a>(ctx: &<b>mut</b> TxContext, enable_flag: bool) {
+<pre><code><b>fun</b> <a href="../social_contracts/mydata.md#social_contracts_mydata_share_mydata_system_objects">share_mydata_system_objects</a>(clock: &Clock, ctx: &<b>mut</b> TxContext, enable_flag: bool) {
     <b>let</b> sender = tx_context::sender(ctx);
     <b>let</b> ver = <a href="../social_contracts/upgrade.md#social_contracts_upgrade_current_version">upgrade::current_version</a>();
     <b>let</b> config = <a href="../social_contracts/mydata.md#social_contracts_mydata_MyDataConfig">MyDataConfig</a> {
@@ -1877,7 +1878,7 @@ Update MyData configuration (admin only)
         max_tags: <a href="../social_contracts/mydata.md#social_contracts_mydata_MAX_TAGS">MAX_TAGS</a>,
         max_subscription_days: <a href="../social_contracts/mydata.md#social_contracts_mydata_MAX_SUBSCRIPTION_DAYS">MAX_SUBSCRIPTION_DAYS</a>,
         max_free_access_grants: <a href="../social_contracts/mydata.md#social_contracts_mydata_MAX_FREE_ACCESS_GRANTS">MAX_FREE_ACCESS_GRANTS</a>,
-        timestamp: tx_context::epoch_timestamp_ms(ctx),
+        timestamp: clock::timestamp_ms(clock),
     });
     transfer::share_object(config);
     transfer::share_object(<a href="../social_contracts/mydata.md#social_contracts_mydata_MyDataRegistry">MyDataRegistry</a> {
@@ -1930,7 +1931,7 @@ Update MyData configuration (admin only)
 Bootstrap: shared config, ownership registry, and query-marketplace objects (pools, anchors, vault).
 
 
-<pre><code><b>public</b>(package) <b>fun</b> <a href="../social_contracts/mydata.md#social_contracts_mydata_bootstrap_init">bootstrap_init</a>(ctx: &<b>mut</b> <a href="../myso/tx_context.md#myso_tx_context_TxContext">myso::tx_context::TxContext</a>)
+<pre><code><b>public</b>(package) <b>fun</b> <a href="../social_contracts/mydata.md#social_contracts_mydata_bootstrap_init">bootstrap_init</a>(clock: &<a href="../myso/clock.md#myso_clock_Clock">myso::clock::Clock</a>, ctx: &<b>mut</b> <a href="../myso/tx_context.md#myso_tx_context_TxContext">myso::tx_context::TxContext</a>)
 </code></pre>
 
 
@@ -1939,8 +1940,8 @@ Bootstrap: shared config, ownership registry, and query-marketplace objects (poo
 <summary>Implementation</summary>
 
 
-<pre><code><b>public</b>(package) <b>fun</b> <a href="../social_contracts/mydata.md#social_contracts_mydata_bootstrap_init">bootstrap_init</a>(ctx: &<b>mut</b> TxContext) {
-    <a href="../social_contracts/mydata.md#social_contracts_mydata_share_mydata_system_objects">share_mydata_system_objects</a>(ctx, <a href="../social_contracts/mydata.md#social_contracts_mydata_DEFAULT_ENABLE">DEFAULT_ENABLE</a>);
+<pre><code><b>public</b>(package) <b>fun</b> <a href="../social_contracts/mydata.md#social_contracts_mydata_bootstrap_init">bootstrap_init</a>(clock: &Clock, ctx: &<b>mut</b> TxContext) {
+    <a href="../social_contracts/mydata.md#social_contracts_mydata_share_mydata_system_objects">share_mydata_system_objects</a>(clock, ctx, <a href="../social_contracts/mydata.md#social_contracts_mydata_DEFAULT_ENABLE">DEFAULT_ENABLE</a>);
 }
 </code></pre>
 

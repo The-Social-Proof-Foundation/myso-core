@@ -90,16 +90,12 @@ fn normalize_date_format(date_str: &str) -> String {
     date_str.to_string()
 }
 
-fn ms_to_naive(ms: u64) -> chrono::NaiveDateTime {
-    if ms == 0 {
-        return Utc::now().naive_utc();
-    }
-    let secs = (ms / 1000) as i64;
-    let nsecs = ((ms % 1000) * 1_000_000) as u32;
-    Utc.timestamp_opt(secs, nsecs)
-        .single()
-        .unwrap_or_else(Utc::now)
-        .naive_utc()
+fn ms_to_naive(ms: u64, checkpoint_timestamp_ms: u64) -> chrono::NaiveDateTime {
+    common::chain_time_from_ms(common::chain_timestamp_ms(
+        if ms > 0 { Some(ms as i64) } else { None },
+        checkpoint_timestamp_ms,
+    ))
+    .naive_utc()
 }
 
 #[derive(Debug, Deserialize)]
@@ -289,27 +285,48 @@ pub fn handle_platform_event(
     event_name: &str,
     data: &serde_json::Value,
     event_id: &str,
+    checkpoint_timestamp_ms: u64,
 ) -> Option<Vec<SocialEventRow>> {
     match event_name {
-        "PlatformCreatedEvent" => process_platform_created_event(data, event_id),
-        "PlatformUpdatedEvent" => process_platform_updated_event(data, event_id),
+        "PlatformCreatedEvent" => {
+            process_platform_created_event(data, event_id, checkpoint_timestamp_ms)
+        }
+        "PlatformUpdatedEvent" => {
+            process_platform_updated_event(data, event_id, checkpoint_timestamp_ms)
+        }
         "PlatformApprovalChangedEvent" | "ApprovalChangedEvent" => {
-            process_platform_approval_changed_event(data, event_id)
+            process_platform_approval_changed_event(data, event_id, checkpoint_timestamp_ms)
         }
         "ModeratorPermissionsGrantedEvent" => {
-            process_moderator_permissions_granted_event(data, event_id)
+            process_moderator_permissions_granted_event(data, event_id, checkpoint_timestamp_ms)
         }
         "ModeratorPermissionsRevokedEvent" => {
-            process_moderator_permissions_revoked_event(data, event_id)
+            process_moderator_permissions_revoked_event(data, event_id, checkpoint_timestamp_ms)
         }
-        "ModeratorRemovedEvent" => process_moderator_removed_event(data, event_id),
-        "PlatformBlockedProfileEvent" => process_platform_blocked_profile_event(data, event_id),
-        "PlatformUnblockedProfileEvent" => process_platform_unblocked_profile_event(data, event_id),
-        "UserJoinedPlatformEvent" => process_user_joined_platform_event(data, event_id),
-        "UserLeftPlatformEvent" => process_user_left_platform_event(data, event_id),
-        "TokenAirdropEvent" => process_token_airdrop_event(data, event_id),
-        "PlatformDeletedEvent" => process_platform_deleted_event(data, event_id),
-        "TreasuryFundedEvent" => process_treasury_funded_event(data, event_id),
+        "ModeratorRemovedEvent" => {
+            process_moderator_removed_event(data, event_id, checkpoint_timestamp_ms)
+        }
+        "PlatformBlockedProfileEvent" => {
+            process_platform_blocked_profile_event(data, event_id, checkpoint_timestamp_ms)
+        }
+        "PlatformUnblockedProfileEvent" => {
+            process_platform_unblocked_profile_event(data, event_id, checkpoint_timestamp_ms)
+        }
+        "UserJoinedPlatformEvent" => {
+            process_user_joined_platform_event(data, event_id, checkpoint_timestamp_ms)
+        }
+        "UserLeftPlatformEvent" => {
+            process_user_left_platform_event(data, event_id, checkpoint_timestamp_ms)
+        }
+        "TokenAirdropEvent" => {
+            process_token_airdrop_event(data, event_id, checkpoint_timestamp_ms)
+        }
+        "PlatformDeletedEvent" => {
+            process_platform_deleted_event(data, event_id, checkpoint_timestamp_ms)
+        }
+        "TreasuryFundedEvent" => {
+            process_treasury_funded_event(data, event_id, checkpoint_timestamp_ms)
+        }
         _ => None,
     }
 }
@@ -354,6 +371,7 @@ fn normalize_dao_fields(
 fn process_platform_created_event(
     data: &serde_json::Value,
     event_id: &str,
+    checkpoint_timestamp_ms: u64,
 ) -> Option<Vec<SocialEventRow>> {
     let ev: PlatformCreatedEvent = common::deserialize_social_event_json(
         "platform",
@@ -362,7 +380,12 @@ fn process_platform_created_event(
         data,
         "platform PlatformCreatedEvent JSON did not match PlatformCreatedEvent",
     )?;
-    let now = Utc::now().naive_utc();
+    let event_ms = common::json_field_as_i64(data.get("created_at"));
+    let now = common::chain_time_from_ms(common::chain_timestamp_ms(
+        event_ms,
+        checkpoint_timestamp_ms,
+    ))
+    .naive_utc();
     let (
         wants_dao,
         governance_registry_id,
@@ -454,6 +477,7 @@ fn process_platform_created_event(
 fn process_platform_updated_event(
     data: &serde_json::Value,
     event_id: &str,
+    checkpoint_timestamp_ms: u64,
 ) -> Option<Vec<SocialEventRow>> {
     let ev: PlatformUpdatedEvent = common::deserialize_social_event_json(
         "platform",
@@ -462,9 +486,9 @@ fn process_platform_updated_event(
         data,
         "platform PlatformUpdatedEvent JSON did not match PlatformUpdatedEvent",
     )?;
-    let updated_at = ms_to_naive(ev.updated_at);
+    let updated_at = ms_to_naive(ev.updated_at, checkpoint_timestamp_ms);
 
-    let now = Utc::now().naive_utc();
+    let now = common::chain_time_from_ms(common::chain_timestamp_ms(Some(ev.updated_at as i64), checkpoint_timestamp_ms)).naive_utc();
     let platform_event = NewPlatformEvent {
         event_type: "PlatformUpdated".to_string(),
         platform_id: ev.platform_id.clone(),
@@ -504,6 +528,7 @@ fn process_platform_updated_event(
 fn process_platform_approval_changed_event(
     data: &serde_json::Value,
     event_id: &str,
+    checkpoint_timestamp_ms: u64,
 ) -> Option<Vec<SocialEventRow>> {
     let ev: PlatformApprovalChangedEvent = common::deserialize_social_event_json(
         "platform",
@@ -512,9 +537,9 @@ fn process_platform_approval_changed_event(
         data,
         "platform PlatformApprovalChangedEvent JSON did not match PlatformApprovalChangedEvent",
     )?;
-    let changed_at = ms_to_naive(ev.changed_at);
+    let changed_at = ms_to_naive(ev.changed_at, checkpoint_timestamp_ms);
 
-    let now = Utc::now().naive_utc();
+    let now = common::chain_time_from_ms(common::chain_timestamp_ms(Some(ev.changed_at as i64), checkpoint_timestamp_ms)).naive_utc();
     let platform_event = NewPlatformEvent {
         event_type: "ApprovalChanged".to_string(),
         platform_id: ev.platform_id.clone(),
@@ -538,6 +563,7 @@ fn process_platform_approval_changed_event(
 fn process_moderator_permissions_granted_event(
     data: &serde_json::Value,
     event_id: &str,
+    checkpoint_timestamp_ms: u64,
 ) -> Option<Vec<SocialEventRow>> {
     let ev: ModeratorPermissionsGrantedEvent = common::deserialize_social_event_json(
         "platform",
@@ -546,7 +572,7 @@ fn process_moderator_permissions_granted_event(
         data,
         "platform ModeratorPermissionsGrantedEvent JSON did not match ModeratorPermissionsGrantedEvent",
     )?;
-    let now = Utc::now().naive_utc();
+    let now = common::chain_time_from_ms(common::chain_timestamp_ms(common::json_field_as_i64(data.get("timestamp")), checkpoint_timestamp_ms)).naive_utc();
     let mut rows = vec![SocialEventRow::PlatformModerator(NewPlatformModerator {
         platform_id: ev.platform_id.clone(),
         moderator_address: ev.member.clone(),
@@ -590,6 +616,7 @@ fn process_moderator_permissions_granted_event(
 fn process_moderator_permissions_revoked_event(
     data: &serde_json::Value,
     event_id: &str,
+    checkpoint_timestamp_ms: u64,
 ) -> Option<Vec<SocialEventRow>> {
     let ev: ModeratorPermissionsRevokedEvent = common::deserialize_social_event_json(
         "platform",
@@ -598,7 +625,7 @@ fn process_moderator_permissions_revoked_event(
         data,
         "platform ModeratorPermissionsRevokedEvent JSON did not match ModeratorPermissionsRevokedEvent",
     )?;
-    let now = Utc::now().naive_utc();
+    let now = common::chain_time_from_ms(common::chain_timestamp_ms(common::json_field_as_i64(data.get("timestamp")), checkpoint_timestamp_ms)).naive_utc();
     let mut rows = Vec::new();
     for permission in &ev.permissions {
         if let Some(permission_type) = normalize_platform_permission(permission) {
@@ -632,6 +659,7 @@ fn process_moderator_permissions_revoked_event(
 fn process_moderator_removed_event(
     data: &serde_json::Value,
     event_id: &str,
+    checkpoint_timestamp_ms: u64,
 ) -> Option<Vec<SocialEventRow>> {
     let ev: ModeratorRemovedEvent = common::deserialize_social_event_json(
         "platform",
@@ -640,7 +668,7 @@ fn process_moderator_removed_event(
         data,
         "platform ModeratorRemovedEvent JSON did not match ModeratorRemovedEvent",
     )?;
-    let now = Utc::now().naive_utc();
+    let now = common::chain_time_from_ms(common::chain_timestamp_ms(common::json_field_as_i64(data.get("timestamp")), checkpoint_timestamp_ms)).naive_utc();
     let platform_event = NewPlatformEvent {
         event_type: "ModeratorRemoved".to_string(),
         platform_id: ev.platform_id.clone(),
@@ -666,6 +694,7 @@ fn process_moderator_removed_event(
 fn process_platform_blocked_profile_event(
     data: &serde_json::Value,
     event_id: &str,
+    checkpoint_timestamp_ms: u64,
 ) -> Option<Vec<SocialEventRow>> {
     let ev: PlatformBlockedProfileEvent = common::deserialize_social_event_json(
         "platform",
@@ -674,7 +703,7 @@ fn process_platform_blocked_profile_event(
         data,
         "platform PlatformBlockedProfileEvent JSON did not match PlatformBlockedProfileEvent",
     )?;
-    let now = Utc::now().naive_utc();
+    let now = common::chain_time_from_ms(common::chain_timestamp_ms(common::json_field_as_i64(data.get("timestamp")), checkpoint_timestamp_ms)).naive_utc();
 
     let blocked = NewPlatformBlockedProfile {
         platform_id: ev.platform_id.clone(),
@@ -701,6 +730,7 @@ fn process_platform_blocked_profile_event(
 fn process_platform_unblocked_profile_event(
     data: &serde_json::Value,
     event_id: &str,
+    checkpoint_timestamp_ms: u64,
 ) -> Option<Vec<SocialEventRow>> {
     let ev: PlatformUnblockedProfileEvent = common::deserialize_social_event_json(
         "platform",
@@ -709,7 +739,7 @@ fn process_platform_unblocked_profile_event(
         data,
         "platform PlatformUnblockedProfileEvent JSON did not match PlatformUnblockedProfileEvent",
     )?;
-    let now = Utc::now().naive_utc();
+    let now = common::chain_time_from_ms(common::chain_timestamp_ms(common::json_field_as_i64(data.get("timestamp")), checkpoint_timestamp_ms)).naive_utc();
     let platform_event = NewPlatformEvent {
         event_type: "PlatformUnblockedProfile".to_string(),
         platform_id: ev.platform_id.clone(),
@@ -730,6 +760,7 @@ fn process_platform_unblocked_profile_event(
 fn process_user_joined_platform_event(
     data: &serde_json::Value,
     event_id: &str,
+    checkpoint_timestamp_ms: u64,
 ) -> Option<Vec<SocialEventRow>> {
     let ev: UserJoinedPlatformEvent = common::deserialize_social_event_json(
         "platform",
@@ -738,7 +769,7 @@ fn process_user_joined_platform_event(
         data,
         "platform UserJoinedPlatformEvent JSON did not match UserJoinedPlatformEvent",
     )?;
-    let joined_at = ms_to_naive(ev.timestamp);
+    let joined_at = ms_to_naive(ev.timestamp, checkpoint_timestamp_ms);
 
     let membership = NewPlatformMembership {
         platform_id: ev.platform_id.clone(),
@@ -746,7 +777,7 @@ fn process_user_joined_platform_event(
         joined_at,
     };
 
-    let now = Utc::now().naive_utc();
+    let now = common::chain_time_from_ms(common::chain_timestamp_ms(Some(ev.timestamp as i64), checkpoint_timestamp_ms)).naive_utc();
     let platform_event = NewPlatformEvent {
         event_type: "UserJoinedPlatform".to_string(),
         platform_id: ev.platform_id,
@@ -765,6 +796,7 @@ fn process_user_joined_platform_event(
 fn process_user_left_platform_event(
     data: &serde_json::Value,
     event_id: &str,
+    checkpoint_timestamp_ms: u64,
 ) -> Option<Vec<SocialEventRow>> {
     let ev: UserLeftPlatformEvent = common::deserialize_social_event_json(
         "platform",
@@ -773,7 +805,7 @@ fn process_user_left_platform_event(
         data,
         "platform UserLeftPlatformEvent JSON did not match UserLeftPlatformEvent",
     )?;
-    let now = Utc::now().naive_utc();
+    let now = common::chain_time_from_ms(common::chain_timestamp_ms(common::json_field_as_i64(data.get("timestamp")), checkpoint_timestamp_ms)).naive_utc();
     let platform_event = NewPlatformEvent {
         event_type: "UserLeftPlatform".to_string(),
         platform_id: ev.platform_id.clone(),
@@ -794,6 +826,7 @@ fn process_user_left_platform_event(
 fn process_token_airdrop_event(
     data: &serde_json::Value,
     event_id: &str,
+    checkpoint_timestamp_ms: u64,
 ) -> Option<Vec<SocialEventRow>> {
     let ev: TokenAirdropEvent = common::deserialize_social_event_json(
         "platform",
@@ -802,7 +835,7 @@ fn process_token_airdrop_event(
         data,
         "platform TokenAirdropEvent JSON did not match TokenAirdropEvent",
     )?;
-    let now = Utc::now().naive_utc();
+    let now = common::chain_time_from_ms(common::chain_timestamp_ms(Some(ev.timestamp as i64), checkpoint_timestamp_ms)).naive_utc();
 
     let airdrop = NewPlatformTokenAirdrop {
         platform_id: ev.platform_id.clone(),
@@ -833,6 +866,7 @@ fn process_token_airdrop_event(
 fn process_platform_deleted_event(
     data: &serde_json::Value,
     event_id: &str,
+    checkpoint_timestamp_ms: u64,
 ) -> Option<Vec<SocialEventRow>> {
     let ev: PlatformDeletedEvent = common::deserialize_social_event_json(
         "platform",
@@ -850,9 +884,13 @@ fn process_platform_deleted_event(
         reasoning,
     } = ev;
     std::mem::drop((name, developer, deleted_by));
-    let deleted_at = ms_to_naive(timestamp);
+    let deleted_at = ms_to_naive(timestamp, checkpoint_timestamp_ms);
 
-    let now = Utc::now().naive_utc();
+    let now = common::chain_time_from_ms(common::chain_timestamp_ms(
+        Some(timestamp as i64),
+        checkpoint_timestamp_ms,
+    ))
+    .naive_utc();
     let platform_event = NewPlatformEvent {
         event_type: "PlatformDeleted".to_string(),
         platform_id: platform_id.clone(),
@@ -874,6 +912,7 @@ fn process_platform_deleted_event(
 fn process_treasury_funded_event(
     data: &serde_json::Value,
     event_id: &str,
+    checkpoint_timestamp_ms: u64,
 ) -> Option<Vec<SocialEventRow>> {
     let ev: TreasuryFundedEvent = common::deserialize_social_event_json(
         "platform",
@@ -882,7 +921,7 @@ fn process_treasury_funded_event(
         data,
         "platform TreasuryFundedEvent JSON did not match TreasuryFundedEvent",
     )?;
-    let now = Utc::now().naive_utc();
+    let now = common::chain_time_from_ms(common::chain_timestamp_ms(Some(ev._timestamp as i64), checkpoint_timestamp_ms)).naive_utc();
     let platform_event = NewPlatformEvent {
         event_type: "TreasuryFunded".to_string(),
         platform_id: ev.platform_id,
@@ -899,18 +938,17 @@ mod platform_deleted_tests {
     use chrono::{TimeZone, Utc};
 
     use super::handle_platform_event;
+    use crate::handlers::common;
     use crate::handlers::SocialEventRow;
 
+    const CK_MS: u64 = 1_700_000_000_000;
+
     fn naive_from_chain_ms(ms: u64) -> chrono::NaiveDateTime {
-        if ms == 0 {
-            return Utc::now().naive_utc();
-        }
-        let secs = (ms / 1000) as i64;
-        let nsecs = ((ms % 1000) * 1_000_000) as u32;
-        Utc.timestamp_opt(secs, nsecs)
-            .single()
-            .unwrap_or_else(Utc::now)
-            .naive_utc()
+        common::chain_time_from_ms(common::chain_timestamp_ms(
+            if ms > 0 { Some(ms as i64) } else { None },
+            CK_MS,
+        ))
+        .naive_utc()
     }
 
     #[test]
@@ -925,7 +963,7 @@ mod platform_deleted_tests {
             "reasoning": "cleanup",
         });
         let event_id = "digest:42";
-        let rows = handle_platform_event("PlatformDeletedEvent", &json, event_id)
+        let rows = handle_platform_event("PlatformDeletedEvent", &json, event_id, CK_MS)
             .expect("handler should recognize PlatformDeletedEvent");
         assert_eq!(rows.len(), 2);
 

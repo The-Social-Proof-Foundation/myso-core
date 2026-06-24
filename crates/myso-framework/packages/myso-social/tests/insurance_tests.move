@@ -38,21 +38,13 @@ module social_contracts::insurance_tests {
         spt::init_for_testing(test_scenario::ctx(&mut scen));
 
         test_scenario::next_tx(&mut scen, ADMIN);
-        { block_list::test_init(test_scenario::ctx(&mut scen)); };
-
-        test_scenario::next_tx(&mut scen, ADMIN);
-        { platform::test_init(test_scenario::ctx(&mut scen)); };
-
-        test_scenario::next_tx(&mut scen, ADMIN);
-        { post::test_init(test_scenario::ctx(&mut scen)); };
-
-        test_scenario::next_tx(&mut scen, ADMIN);
-        { profile::init_for_testing(test_scenario::ctx(&mut scen)); };
-
-        test_scenario::next_tx(&mut scen, ADMIN);
         {
-            let c = clock::create_for_testing(test_scenario::ctx(&mut scen));
-            clock::share_for_testing(c);
+            let clock = clock::create_for_testing(test_scenario::ctx(&mut scen));
+            block_list::test_init(&clock, test_scenario::ctx(&mut scen));
+            platform::test_init(test_scenario::ctx(&mut scen));
+            post::test_init(test_scenario::ctx(&mut scen));
+            profile::init_for_testing(&clock, test_scenario::ctx(&mut scen));
+            clock::share_for_testing(clock);
         };
 
         test_scenario::next_tx(&mut scen, ADMIN);
@@ -119,8 +111,8 @@ module social_contracts::insurance_tests {
         transfer::public_transfer(c, to);
     }
 
-    fun create_test_post(owner: address, ctx: &mut tx_context::TxContext): address {
-        post::test_create_post_with_spot(owner, owner, TEST_PLATFORM_ID, string::utf8(b"truth?"), ctx)
+    fun create_test_post(owner: address, clock: &Clock, ctx: &mut tx_context::TxContext): address {
+        post::test_create_post_with_spot(owner, owner, TEST_PLATFORM_ID, string::utf8(b"truth?"), clock, ctx)
     }
 
     // === Helper Functions ===
@@ -129,13 +121,18 @@ module social_contracts::insurance_tests {
         let mut scen = setup_env();
         test_scenario::next_tx(&mut scen, ADMIN);
         {
+
+            let clock = test_scenario::take_shared<Clock>(&scen);
             insurance::init_config(
                 1000,
                 9000,
                 7 * DAY_MS,
                 50,
+                &clock,
                 test_scenario::ctx(&mut scen)
             );
+
+            test_scenario::return_shared(clock);
         };
         scen
     }
@@ -174,7 +171,11 @@ module social_contracts::insurance_tests {
 
     fun create_post_and_spot_market(scenario: &mut Scenario) {
         test_scenario::next_tx(scenario, CREATOR);
-        { create_test_post(CREATOR, test_scenario::ctx(scenario)); };
+        {
+            let clock = test_scenario::take_shared<Clock>(scenario);
+            create_test_post(CREATOR, &clock, test_scenario::ctx(scenario));
+            test_scenario::return_shared(clock);
+        };
 
         test_scenario::next_tx(scenario, ADMIN);
         {
@@ -280,17 +281,26 @@ module social_contracts::insurance_tests {
 
         test_scenario::next_tx(&mut scen, ADMIN);
         {
+
+            let clock = test_scenario::take_shared<Clock>(&scen);
             insurance::init_config(
                 1000,
                 9000,
                 7 * DAY_MS,
                 50,
+                &clock,
                 test_scenario::ctx(&mut scen)
             );
+
+            test_scenario::return_shared(clock);
         };
 
         test_scenario::next_tx(&mut scen, CREATOR);
-        { create_test_post(CREATOR, test_scenario::ctx(&mut scen)); };
+        {
+            let clock = test_scenario::take_shared<Clock>(&scen);
+            create_test_post(CREATOR, &clock, test_scenario::ctx(&mut scen));
+            test_scenario::return_shared(clock);
+        };
 
         test_scenario::next_tx(&mut scen, ADMIN);
         {

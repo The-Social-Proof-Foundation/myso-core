@@ -564,6 +564,7 @@ module social_contracts::social_proof_of_truth {
         platform: &mut Platform,
         treasury: &EcosystemTreasury,
         bet_index: u64,
+        clock: &Clock,
         ctx: &mut TxContext
     ) {
         assert!(spot_config.enable_flag, EDisabled);
@@ -594,7 +595,7 @@ module social_contracts::social_proof_of_truth {
             // Send platform fee to platform treasury
             if (platform_part > 0) {
                 let mut platform_coin = coin::split(&mut fee_coin, platform_part, ctx);
-                platform::add_to_treasury(platform, &mut platform_coin, platform_part, ctx);
+                platform::add_to_treasury(platform, &mut platform_coin, platform_part, clock, ctx);
                 coin::destroy_zero(platform_coin);
             };
             
@@ -1145,7 +1146,7 @@ module social_contracts::social_proof_of_truth {
             // Send platform fee to platform treasury
             if (platform_part > 0) {
                 let mut platform_coin = coin::split(&mut fee_coin, platform_part, ctx);
-                platform::add_to_treasury(platform, &mut platform_coin, platform_part, ctx);
+                platform::add_to_treasury(platform, &mut platform_coin, platform_part, clock, ctx);
                 coin::destroy_zero(platform_coin);
             };
             

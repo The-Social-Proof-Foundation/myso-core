@@ -2367,7 +2367,7 @@ Initialize config (package only)
 Creates InsuranceConfig and transfers InsuranceAdminCap to caller.
 
 
-<pre><code><b>public</b>(package) <b>fun</b> <a href="../social_contracts/insurance.md#social_contracts_insurance_init_config">init_config</a>(min_coverage_bps: u64, max_coverage_bps: u64, max_duration_ms: u64, fee_bps: u64, ctx: &<b>mut</b> <a href="../myso/tx_context.md#myso_tx_context_TxContext">myso::tx_context::TxContext</a>)
+<pre><code><b>public</b>(package) <b>fun</b> <a href="../social_contracts/insurance.md#social_contracts_insurance_init_config">init_config</a>(min_coverage_bps: u64, max_coverage_bps: u64, max_duration_ms: u64, fee_bps: u64, clock: &<a href="../myso/clock.md#myso_clock_Clock">myso::clock::Clock</a>, ctx: &<b>mut</b> <a href="../myso/tx_context.md#myso_tx_context_TxContext">myso::tx_context::TxContext</a>)
 </code></pre>
 
 
@@ -2381,6 +2381,7 @@ Creates InsuranceConfig and transfers InsuranceAdminCap to caller.
     max_coverage_bps: u64,
     max_duration_ms: u64,
     fee_bps: u64,
+    clock: &Clock,
     ctx: &<b>mut</b> TxContext
 ) {
     <b>assert</b>!(min_coverage_bps &gt; 0, <a href="../social_contracts/insurance.md#social_contracts_insurance_EInvalidCoverage">EInvalidCoverage</a>);
@@ -2389,7 +2390,7 @@ Creates InsuranceConfig and transfers InsuranceAdminCap to caller.
     <b>assert</b>!(max_duration_ms &gt; 0, <a href="../social_contracts/insurance.md#social_contracts_insurance_EInvalidDuration">EInvalidDuration</a>);
     <b>assert</b>!(fee_bps &lt;= <a href="../social_contracts/insurance.md#social_contracts_insurance_BPS_DENOM">BPS_DENOM</a>, <a href="../social_contracts/insurance.md#social_contracts_insurance_EInvalidCoverage">EInvalidCoverage</a>);
     <b>let</b> admin = tx_context::sender(ctx);
-    <b>let</b> ts = tx_context::epoch_timestamp_ms(ctx);
+    <b>let</b> ts = clock::timestamp_ms(clock);
     transfer::share_object(<a href="../social_contracts/insurance.md#social_contracts_insurance_InsuranceConfig">InsuranceConfig</a> {
         id: object::new(ctx),
         enable_flag: <b>false</b>,
@@ -2652,7 +2653,7 @@ Emergency enable/disable toggle (admin only)
 
 
 
-<pre><code><b>public</b>(package) <b>fun</b> <a href="../social_contracts/insurance.md#social_contracts_insurance_bootstrap_init">bootstrap_init</a>(ctx: &<b>mut</b> <a href="../myso/tx_context.md#myso_tx_context_TxContext">myso::tx_context::TxContext</a>)
+<pre><code><b>public</b>(package) <b>fun</b> <a href="../social_contracts/insurance.md#social_contracts_insurance_bootstrap_init">bootstrap_init</a>(clock: &<a href="../myso/clock.md#myso_clock_Clock">myso::clock::Clock</a>, ctx: &<b>mut</b> <a href="../myso/tx_context.md#myso_tx_context_TxContext">myso::tx_context::TxContext</a>)
 </code></pre>
 
 
@@ -2661,9 +2662,9 @@ Emergency enable/disable toggle (admin only)
 <summary>Implementation</summary>
 
 
-<pre><code><b>public</b>(package) <b>fun</b> <a href="../social_contracts/insurance.md#social_contracts_insurance_bootstrap_init">bootstrap_init</a>(ctx: &<b>mut</b> TxContext) {
+<pre><code><b>public</b>(package) <b>fun</b> <a href="../social_contracts/insurance.md#social_contracts_insurance_bootstrap_init">bootstrap_init</a>(clock: &Clock, ctx: &<b>mut</b> TxContext) {
     <b>let</b> admin = tx_context::sender(ctx);
-    <b>let</b> ts = tx_context::epoch_timestamp_ms(ctx);
+    <b>let</b> ts = clock::timestamp_ms(clock);
     <b>let</b> config = <a href="../social_contracts/insurance.md#social_contracts_insurance_InsuranceConfig">InsuranceConfig</a> {
         id: object::new(ctx),
         enable_flag: <b>false</b>,

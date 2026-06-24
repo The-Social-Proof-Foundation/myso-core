@@ -28,16 +28,18 @@ module social_contracts::social_graph_tests {
     
     fun initialize_modules(scenario: &mut test_scenario::Scenario) {
         // Initialize the profile registry
-        profile::init_for_testing(test_scenario::ctx(scenario));
+        let clock = clock::create_for_testing(test_scenario::ctx(scenario));
+        profile::init_for_testing(&clock, test_scenario::ctx(scenario));
+
         
         // Initialize the social graph
-        social_graph::init_for_testing(test_scenario::ctx(scenario));
+        social_graph::init_for_testing(&clock, test_scenario::ctx(scenario));
+
         
         // Initialize upgrade module for testing
         upgrade::init_for_testing(test_scenario::ctx(scenario));
         
         // Create test clock and share it
-        let clock = clock::create_for_testing(test_scenario::ctx(scenario));
         clock::share_for_testing(clock);
         
         // Mint coins for users

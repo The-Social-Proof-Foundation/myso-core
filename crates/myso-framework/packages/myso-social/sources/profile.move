@@ -458,7 +458,7 @@ module social_contracts::profile {
     }
     
     /// Bootstrap initialization function - creates the username registry and treasury
-    public(package) fun bootstrap_init(ctx: &mut TxContext) {
+    public(package) fun bootstrap_init(clock: &Clock, ctx: &mut TxContext) {
         // Import current version from upgrade module
         let current_version = upgrade::current_version();
         
@@ -481,7 +481,7 @@ module social_contracts::profile {
         event::emit(EcosystemTreasuryUpdatedEvent {
             updated_by: sender,
             new_treasury_address: sender,
-            timestamp: tx_context::epoch_timestamp_ms(ctx),
+            timestamp: clock::timestamp_ms(clock),
         });
         
         // Share the registry to make it globally accessible
@@ -634,7 +634,7 @@ module social_contracts::profile {
         }
     }
 
-    fun emit_profile_updated_event(profile: &Profile, ctx: &TxContext) {
+    fun emit_profile_updated_event(profile: &Profile, clock: &Clock, _ctx: &TxContext) {
         event::emit(ProfileUpdatedEvent {
             profile_id: object::uid_to_address(&profile.id),
             display_name: profile.display_name,
@@ -642,7 +642,7 @@ module social_contracts::profile {
             profile_picture: profile_picture_event_string(profile),
             cover_photo: cover_photo_event_string(profile),
             owner: profile.owner,
-            updated_at: tx_context::epoch_timestamp_ms(ctx),
+            updated_at: clock::timestamp_ms(clock),
             x_username: profile.x_username,
             min_offer_amount: profile.min_offer_amount,
         });
@@ -667,7 +667,7 @@ module social_contracts::profile {
         assert!(registry.version == upgrade::current_version(), 1);
         
         let owner = tx_context::sender(ctx);
-        let now = tx_context::epoch_timestamp_ms(ctx);
+        let now = clock::timestamp_ms(clock);
 
         // Check that the sender doesn't already have a profile
         assert!(!table::contains(&registry.address_profiles, owner), EProfileAlreadyExists);
@@ -746,7 +746,7 @@ module social_contracts::profile {
             profile_picture: profile_picture_event_string(&profile),
             cover_photo: cover_photo_event_string(&profile),
             owner,
-            created_at: tx_context::epoch_timestamp_ms(ctx),
+            created_at: now,
         });
 
         event::emit(UsernameClaimedEvent {
@@ -783,6 +783,7 @@ module social_contracts::profile {
         registry: &mut UsernameRegistry,
         mut profile: Profile,
         new_owner: address,
+        clock: &Clock,
         ctx: &mut TxContext
     ) {
         // Check version compatibility
@@ -812,7 +813,7 @@ module social_contracts::profile {
         // Update the profile owner
         profile.owner = new_owner;
         
-        emit_profile_updated_event(&profile, ctx);
+        emit_profile_updated_event(&profile, clock, ctx);
         
         // Transfer profile to new owner
         transfer::transfer(profile, new_owner);
@@ -826,6 +827,7 @@ module social_contracts::profile {
         mut profile: Profile,
         new_owner: address,
         revoked_count: u64,
+        clock: &Clock,
         ctx: &mut TxContext,
     ) {
         assert!(registry.version == upgrade::current_version(), 1);
@@ -865,7 +867,7 @@ module social_contracts::profile {
 
         profile.owner = new_owner;
 
-        emit_profile_updated_event(&profile, ctx);
+        emit_profile_updated_event(&profile, clock, ctx);
 
         transfer::transfer(profile, new_owner);
     }
@@ -879,6 +881,7 @@ module social_contracts::profile {
         new_profile_picture_url: vector<u8>,
         new_cover_photo_url: vector<u8>,
         min_offer_amount: Option<u64>,
+        clock: &Clock,
         ctx: &mut TxContext
     ) {
         // Verify sender is the owner
@@ -904,7 +907,7 @@ module social_contracts::profile {
             profile.min_offer_amount = min_offer_amount;
         };
 
-        emit_profile_updated_event(profile, ctx);
+        emit_profile_updated_event(profile, clock, ctx);
     }
     
     // === Accessor functions ===
@@ -1002,12 +1005,13 @@ module social_contracts::profile {
         profile: &mut Profile,
         coin: &mut Coin<MYSO>,
         amount: u64,
+        clock: &Clock,
         ctx: &mut TxContext
     ) {
         let sender = tx_context::sender(ctx);
         let profile_owner = profile.owner;
         let profile_id = object::uid_to_address(&profile.id);
-        let now = tx_context::epoch_timestamp_ms(ctx);
+        let now = clock::timestamp_ms(clock);
         
         // Cannot offer on your own profile
         assert!(sender != profile_owner, ECannotOfferOwnProfile);
@@ -1064,11 +1068,12 @@ module social_contracts::profile {
         treasury: &EcosystemTreasury,
         offeror: address,
         new_main_profile: Option<address>,
+        clock: &Clock,
         ctx: &mut TxContext
     ) {
         let sender = tx_context::sender(ctx);
         let profile_id = object::uid_to_address(&profile.id);
-        let now = tx_context::epoch_timestamp_ms(ctx);
+        let now = clock::timestamp_ms(clock);
         
         // Verify sender is the profile owner
         assert!(profile.owner == sender, EUnauthorized);
@@ -1135,7 +1140,7 @@ module social_contracts::profile {
         });
         
         // Emit a comprehensive profile updated event to indicate ownership change
-        emit_profile_updated_event(&profile, ctx);
+        emit_profile_updated_event(&profile, clock, ctx);
         
         // Emit a fee event
         event::emit(ProfileSaleFeeEvent {
@@ -1161,11 +1166,12 @@ module social_contracts::profile {
         treasury: &EcosystemTreasury,
         offeror: address,
         new_main_profile: Option<address>,
+        clock: &Clock,
         ctx: &mut TxContext,
     ) {
         let sender = tx_context::sender(ctx);
         let profile_id = object::uid_to_address(&profile.id);
-        let now = tx_context::epoch_timestamp_ms(ctx);
+        let now = clock::timestamp_ms(clock);
 
         assert!(profile.owner == sender, EUnauthorized);
 
@@ -1218,7 +1224,7 @@ module social_contracts::profile {
             accepted_at: now,
         });
 
-        emit_profile_updated_event(&profile, ctx);
+        emit_profile_updated_event(&profile, clock, ctx);
 
         event::emit(ProfileSaleFeeEvent {
             profile_id,
@@ -1239,11 +1245,12 @@ module social_contracts::profile {
     public entry fun reject_or_revoke_offer(
         profile: &mut Profile,
         offeror: address,
+        clock: &Clock,
         ctx: &mut TxContext
     ) {
         let sender = tx_context::sender(ctx);
         let profile_id = object::uid_to_address(&profile.id);
-        let now = tx_context::epoch_timestamp_ms(ctx);
+        let now = clock::timestamp_ms(clock);
         
         // Check if offers table exists
         assert!(dynamic_field::exists_(&profile.id, OFFERS_FIELD), EOfferDoesNotExist);
@@ -1309,6 +1316,7 @@ module social_contracts::profile {
         _: &EcosystemTreasuryAdminCap,
         treasury: &mut EcosystemTreasury,
         new_address: address,
+        clock: &Clock,
         ctx: &mut TxContext
     ) {
         treasury.treasury_address = new_address;
@@ -1317,7 +1325,7 @@ module social_contracts::profile {
         event::emit(EcosystemTreasuryUpdatedEvent {
             updated_by: tx_context::sender(ctx),
             new_treasury_address: new_address,
-            timestamp: tx_context::epoch_timestamp_ms(ctx),
+            timestamp: clock::timestamp_ms(clock),
         });
     }
 
@@ -1382,6 +1390,7 @@ module social_contracts::profile {
         badge_media_url: String,
         badge_icon_url: String,
         badge_type: u8,
+        clock: &Clock,
         ctx: &mut TxContext
     ) {
         assert!(badge_type >= 1 && badge_type <= 100, EInvalidBadgeType);
@@ -1391,7 +1400,7 @@ module social_contracts::profile {
         assert!(string::length(&badge_icon_url) > 0 && string::length(&badge_icon_url) <= MAX_BADGE_ICON_URL_LENGTH, EBadgeIconUrlTooLong);
 
         let issuer = tx_context::sender(ctx);
-        let now = tx_context::epoch_timestamp_ms(ctx);
+        let now = clock::timestamp_ms(clock);
 
         let badge_name_for_id = copy_string(&badge_name);
         let mut badge_id = string::utf8(ECOSYSTEM_BADGE_PREFIX);
@@ -1425,10 +1434,11 @@ module social_contracts::profile {
         _: &EcosystemBadgeAdminCap,
         profile: &mut Profile,
         new_x_username: Option<String>,
+        clock: &Clock,
         ctx: &mut TxContext
     ) {
         profile.x_username = new_x_username;
-        let now = tx_context::epoch_timestamp_ms(ctx);
+        let now = clock::timestamp_ms(clock);
         event::emit(ProfileXUsernameUpdatedEvent {
             profile_id: object::uid_to_address(&profile.id),
             owner: profile.owner,
@@ -1443,10 +1453,11 @@ module social_contracts::profile {
         _: &EcosystemBadgeAdminCap,
         profile: &mut Profile,
         badge_id: String,
+        clock: &Clock,
         ctx: &mut TxContext
     ) {
         let revoker = tx_context::sender(ctx);
-        let now = tx_context::epoch_timestamp_ms(ctx);
+        let now = clock::timestamp_ms(clock);
         remove_badge_from_profile(profile, &badge_id, revoker, revoker, now);
     }
 
@@ -1533,7 +1544,7 @@ module social_contracts::profile {
 
     #[test_only]
     /// Initialize test environment for profile module
-    public fun test_init(ctx: &mut TxContext) {
+    public fun test_init(clock: &Clock, ctx: &mut TxContext) {
         let registry = UsernameRegistry {
             id: object::new(ctx),
             usernames: table::new(ctx),
@@ -1543,14 +1554,14 @@ module social_contracts::profile {
         
         transfer::share_object(registry);
 
-        memory::bootstrap_init(ctx);
+        memory::bootstrap_init(clock, ctx);
     }
 
     #[test_only]
     /// Initialize the profile registry for testing
-    public fun init_for_testing(ctx: &mut TxContext) {
-        bootstrap_init(ctx);
-        memory::bootstrap_init(ctx);
+    public fun init_for_testing(clock: &Clock, ctx: &mut TxContext) {
+        bootstrap_init(clock, ctx);
+        memory::bootstrap_init(clock, ctx);
     }
 
     #[test_only]
@@ -1560,11 +1571,12 @@ module social_contracts::profile {
         username: String,
         display_name: Option<String>,
         _profile_picture: Option<String>,
+        clock: &Clock,
         ctx: &mut TxContext
     ) {
         let username = canonical_registry_username(&username);
         let owner = tx_context::sender(ctx);
-        let epoch = tx_context::epoch_timestamp_ms(ctx);
+        let epoch = clock::timestamp_ms(clock);
         
         // Create a profile with a proper ID
         let profile = Profile {

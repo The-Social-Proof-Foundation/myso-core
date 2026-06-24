@@ -34,12 +34,15 @@ module social_contracts::post_sub_agent_tests {
     fun setup(scenario: &mut test_scenario::Scenario) {
         test_scenario::next_tx(scenario, ADMIN);
         {
-            profile::init_for_testing(test_scenario::ctx(scenario));
-            post::init_for_testing(test_scenario::ctx(scenario));
-            mydata::test_init(test_scenario::ctx(scenario));
-            platform::test_init(test_scenario::ctx(scenario));
-            block_list::test_init(test_scenario::ctx(scenario));
             let clock = clock::create_for_testing(test_scenario::ctx(scenario));
+            profile::init_for_testing(&clock, test_scenario::ctx(scenario));
+
+            post::init_for_testing(test_scenario::ctx(scenario));
+            mydata::test_init(&clock, test_scenario::ctx(scenario));
+
+            platform::test_init(test_scenario::ctx(scenario));
+            block_list::test_init(&clock, test_scenario::ctx(scenario));
+
             clock::share_for_testing(clock);
         };
 
@@ -393,9 +396,13 @@ module social_contracts::post_sub_agent_tests {
 
         test_scenario::next_tx(&mut scenario, AUTHOR);
         {
+
+            let clock = test_scenario::take_shared<Clock>(&scenario);
             let mut platform_obj = test_scenario::take_shared<Platform>(&scenario);
-            platform::leave_platform(&mut platform_obj, test_scenario::ctx(&mut scenario));
+            platform::leave_platform(&mut platform_obj, &clock, test_scenario::ctx(&mut scenario));
             test_scenario::return_shared(platform_obj);
+
+            test_scenario::return_shared(clock);
         };
 
         publish_post(&mut scenario, AUTHOR);
@@ -582,6 +589,8 @@ module social_contracts::post_sub_agent_tests {
 
         test_scenario::next_tx(&mut scenario, AGENT_ADDR);
         {
+
+            let clock = test_scenario::take_shared<Clock>(&scenario);
             let mut post = test_scenario::take_shared<Post>(&scenario);
             let memory_account = test_scenario::take_shared<MemoryAccount>(&scenario);
             let mut tip_coin = test_scenario::take_from_sender<Coin<MYSO>>(&scenario);
@@ -596,6 +605,8 @@ module social_contracts::post_sub_agent_tests {
             test_scenario::return_shared(post);
             test_scenario::return_shared(memory_account);
             transfer::public_transfer(tip_coin, AGENT_ADDR);
+
+            test_scenario::return_shared(clock);
         };
 
         test_scenario::end(scenario);

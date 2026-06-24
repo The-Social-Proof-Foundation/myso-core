@@ -568,7 +568,7 @@ Returns the vault object address for <code>beneficiary</code>, creating and shar
 
 
 
-<pre><code><b>public</b>(package) <b>fun</b> <a href="../social_contracts/proof_of_creativity.md#social_contracts_poc_vault_deposit_coin">deposit_coin</a>&lt;T&gt;(vault: &<b>mut</b> <a href="../social_contracts/proof_of_creativity.md#social_contracts_poc_vault_PoCBeneficiaryVault">social_contracts::poc_vault::PoCBeneficiaryVault</a>, expected_beneficiary: <b>address</b>, fee_coin: <a href="../myso/coin.md#myso_coin_Coin">myso::coin::Coin</a>&lt;T&gt;, source_post_id: <a href="../std/option.md#std_option_Option">std::option::Option</a>&lt;<b>address</b>&gt;, ctx: &<a href="../myso/tx_context.md#myso_tx_context_TxContext">myso::tx_context::TxContext</a>)
+<pre><code><b>public</b>(package) <b>fun</b> <a href="../social_contracts/proof_of_creativity.md#social_contracts_poc_vault_deposit_coin">deposit_coin</a>&lt;T&gt;(vault: &<b>mut</b> <a href="../social_contracts/proof_of_creativity.md#social_contracts_poc_vault_PoCBeneficiaryVault">social_contracts::poc_vault::PoCBeneficiaryVault</a>, expected_beneficiary: <b>address</b>, fee_coin: <a href="../myso/coin.md#myso_coin_Coin">myso::coin::Coin</a>&lt;T&gt;, source_post_id: <a href="../std/option.md#std_option_Option">std::option::Option</a>&lt;<b>address</b>&gt;, clock: &<a href="../myso/clock.md#myso_clock_Clock">myso::clock::Clock</a>, _ctx: &<a href="../myso/tx_context.md#myso_tx_context_TxContext">myso::tx_context::TxContext</a>)
 </code></pre>
 
 
@@ -582,7 +582,8 @@ Returns the vault object address for <code>beneficiary</code>, creating and shar
     expected_beneficiary: <b>address</b>,
     fee_coin: Coin&lt;T&gt;,
     source_post_id: Option&lt;<b>address</b>&gt;,
-    ctx: &TxContext
+    clock: &Clock,
+    _ctx: &TxContext
 ) {
     <b>assert</b>!(vault.beneficiary == expected_beneficiary, <a href="../social_contracts/proof_of_creativity.md#social_contracts_poc_vault_EWrongBeneficiary">EWrongBeneficiary</a>);
     <b>let</b> amount = coin::value(&fee_coin);
@@ -607,7 +608,7 @@ Returns the vault object address for <code>beneficiary</code>, creating and shar
         coin_type,
         amount,
         source_post_id,
-        timestamp: tx_context::epoch_timestamp_ms(ctx),
+        timestamp: clock::timestamp_ms(clock),
     });
 }
 </code></pre>
@@ -623,7 +624,7 @@ Returns the vault object address for <code>beneficiary</code>, creating and shar
 Claim entire balance for coin type <code>T</code> with treasury fee (bps) and optional referrer slice.
 
 
-<pre><code><b>public</b>(package) <b>fun</b> <a href="../social_contracts/proof_of_creativity.md#social_contracts_poc_vault_claim_vault_balance">claim_vault_balance</a>&lt;T&gt;(vault: &<b>mut</b> <a href="../social_contracts/proof_of_creativity.md#social_contracts_poc_vault_PoCBeneficiaryVault">social_contracts::poc_vault::PoCBeneficiaryVault</a>, treasury: &<a href="../social_contracts/profile.md#social_contracts_profile_EcosystemTreasury">social_contracts::profile::EcosystemTreasury</a>, treasury_fee_bps: u64, max_referral_bps: u64, referrer_opt: <a href="../std/option.md#std_option_Option">std::option::Option</a>&lt;<b>address</b>&gt;, ctx: &<b>mut</b> <a href="../myso/tx_context.md#myso_tx_context_TxContext">myso::tx_context::TxContext</a>)
+<pre><code><b>public</b>(package) <b>fun</b> <a href="../social_contracts/proof_of_creativity.md#social_contracts_poc_vault_claim_vault_balance">claim_vault_balance</a>&lt;T&gt;(vault: &<b>mut</b> <a href="../social_contracts/proof_of_creativity.md#social_contracts_poc_vault_PoCBeneficiaryVault">social_contracts::poc_vault::PoCBeneficiaryVault</a>, treasury: &<a href="../social_contracts/profile.md#social_contracts_profile_EcosystemTreasury">social_contracts::profile::EcosystemTreasury</a>, treasury_fee_bps: u64, max_referral_bps: u64, referrer_opt: <a href="../std/option.md#std_option_Option">std::option::Option</a>&lt;<b>address</b>&gt;, clock: &<a href="../myso/clock.md#myso_clock_Clock">myso::clock::Clock</a>, ctx: &<b>mut</b> <a href="../myso/tx_context.md#myso_tx_context_TxContext">myso::tx_context::TxContext</a>)
 </code></pre>
 
 
@@ -638,6 +639,7 @@ Claim entire balance for coin type <code>T</code> with treasury fee (bps) and op
     treasury_fee_bps: u64,
     max_referral_bps: u64,
     referrer_opt: Option&lt;<b>address</b>&gt;,
+    clock: &Clock,
     ctx: &<b>mut</b> TxContext
 ) {
     <b>assert</b>!(tx_context::sender(ctx) == vault.beneficiary, <a href="../social_contracts/proof_of_creativity.md#social_contracts_poc_vault_EUnauthorized">EUnauthorized</a>);
@@ -689,7 +691,7 @@ Claim entire balance for coin type <code>T</code> with treasury fee (bps) and op
         treasury_amount: treasury_amt,
         referrer_amount: referrer_amt,
         beneficiary_amount: beneficiary_amt,
-        timestamp: tx_context::epoch_timestamp_ms(ctx),
+        timestamp: clock::timestamp_ms(clock),
     });
 }
 </code></pre>

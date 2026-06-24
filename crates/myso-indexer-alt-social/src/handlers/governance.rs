@@ -72,47 +72,42 @@ pub fn handle_governance_event(
     data: &serde_json::Value,
     event_id: &str,
     governance_registry_id: Option<String>,
+    checkpoint_timestamp_ms: u64,
 ) -> Option<Vec<SocialEventRow>> {
     let normalized = event_name.strip_suffix("Event").unwrap_or(event_name);
     match normalized {
-        "GovernanceRegistryCreated" => process_governance_registry_created_event(data, event_id),
-        "DelegateNominated" => {
-            process_delegate_nominated_event(data, event_id, governance_registry_id)
-        }
-        "DelegateElected" => process_delegate_elected_event(data, event_id, governance_registry_id),
-        "DelegateVoted" => process_delegate_voted_event(data, event_id, governance_registry_id),
-        "DelegateVoteCleared" => {
-            process_delegate_vote_cleared_event(data, event_id, governance_registry_id)
-        }
-        "ProposalSubmitted" => {
-            process_proposal_submitted_event(data, event_id, governance_registry_id)
-        }
-        "DelegateVote" => process_delegate_vote_event(data, event_id, governance_registry_id),
-        "CommunityVote" => process_community_vote_event(data, event_id),
-        "ProposalApprovedForVoting" => process_proposal_approved_for_voting_event(data, event_id),
-        "ProposalRejected" => {
-            process_proposal_rejected_event(data, event_id, governance_registry_id)
-        }
-        "ProposalRescinded" => process_proposal_rescinded_event(data, event_id),
-        "ProposalRejectedByCommunity" => {
-            process_proposal_rejected_by_community_event(data, event_id, governance_registry_id)
-        }
-        "ProposalApproved" => {
-            process_proposal_approved_event(data, event_id, governance_registry_id)
-        }
-        "ProposalImplemented" => process_proposal_implemented_event(data, event_id),
+        "GovernanceRegistryCreated" => process_governance_registry_created_event(data, event_id, checkpoint_timestamp_ms),
+        "DelegateNominated" => { process_delegate_nominated_event(data, event_id, governance_registry_id, checkpoint_timestamp_ms) }
+        "DelegateElected" => process_delegate_elected_event(data, event_id, governance_registry_id, checkpoint_timestamp_ms),
+        "DelegateVoted" => process_delegate_voted_event(data, event_id, governance_registry_id, checkpoint_timestamp_ms),
+        "DelegateVoteCleared" => { process_delegate_vote_cleared_event(data, event_id, governance_registry_id, checkpoint_timestamp_ms) }
+        "ProposalSubmitted" => { process_proposal_submitted_event(data, event_id, governance_registry_id, checkpoint_timestamp_ms) }
+        "DelegateVote" => process_delegate_vote_event(data, event_id, governance_registry_id, checkpoint_timestamp_ms),
+        "CommunityVote" => process_community_vote_event(data, event_id, checkpoint_timestamp_ms),
+        "ProposalApprovedForVoting" => process_proposal_approved_for_voting_event(data, event_id, checkpoint_timestamp_ms),
+        "ProposalRejected" => { process_proposal_rejected_event(data, event_id, governance_registry_id, checkpoint_timestamp_ms) }
+        "ProposalRescinded" => process_proposal_rescinded_event(data, event_id, checkpoint_timestamp_ms),
+        "ProposalRejectedByCommunity" => { process_proposal_rejected_by_community_event(data, event_id, governance_registry_id, checkpoint_timestamp_ms) }
+        "ProposalApproved" => { process_proposal_approved_event(data, event_id, governance_registry_id, checkpoint_timestamp_ms) }
+        "ProposalImplemented" => process_proposal_implemented_event(data, event_id, checkpoint_timestamp_ms),
         "ProposalImplementationRewardToSubmitter" => {
-            process_proposal_implementation_reward_to_submitter_event(data, event_id)
+            process_proposal_implementation_reward_to_submitter_event(
+                data,
+                event_id,
+                checkpoint_timestamp_ms,
+            )
         }
         "ProposalRewardPoolForfeitedToTreasury" => {
-            process_proposal_reward_pool_forfeited_to_treasury_event(data, event_id)
+            process_proposal_reward_pool_forfeited_to_treasury_event(
+                data,
+                event_id,
+                checkpoint_timestamp_ms,
+            )
         }
-        "AnonymousVote" => process_anonymous_vote_event(data, event_id),
-        "VoteDecryptionFailed" => process_vote_decryption_failed_event(data, event_id),
-        "GovernanceParametersUpdated" => {
-            process_governance_parameters_updated_event(data, event_id, governance_registry_id)
-        }
-        "DelegatePanelRefreshed" => process_delegate_panel_refreshed_event(data, event_id),
+        "AnonymousVote" => process_anonymous_vote_event(data, event_id, checkpoint_timestamp_ms),
+        "VoteDecryptionFailed" => process_vote_decryption_failed_event(data, event_id, checkpoint_timestamp_ms),
+        "GovernanceParametersUpdated" => { process_governance_parameters_updated_event(data, event_id, governance_registry_id, checkpoint_timestamp_ms) }
+        "DelegatePanelRefreshed" => process_delegate_panel_refreshed_event(data, event_id, checkpoint_timestamp_ms),
         _ => None,
     }
 }
@@ -135,9 +130,21 @@ fn require_registry_id(
     }
 }
 
+
+fn governance_event_created_at(
+    event_ms: Option<i64>,
+    checkpoint_timestamp_ms: u64,
+) -> chrono::DateTime<Utc> {
+    common::chain_time_from_ms(common::chain_timestamp_ms(
+        event_ms,
+        checkpoint_timestamp_ms,
+    ))
+}
+
 fn process_governance_registry_created_event(
     data: &serde_json::Value,
     event_id: &str,
+    checkpoint_timestamp_ms: u64,
 ) -> Option<Vec<SocialEventRow>> {
     #[derive(serde::Deserialize)]
     struct Ev {
@@ -181,7 +188,7 @@ fn process_governance_registry_created_event(
         registry_type: ev.registry_type as i16,
         event_data: data.clone(),
         event_id: event_id.to_string(),
-        created_at: Utc::now(),
+        created_at: governance_event_created_at(Some(ev.updated_at as i64), checkpoint_timestamp_ms),
         anonymous_voting_related: None,
         governance_registry_id: Some(ev.registry_id.clone()),
         proposal_id: None,
@@ -196,6 +203,7 @@ fn process_delegate_nominated_event(
     data: &serde_json::Value,
     event_id: &str,
     governance_registry_id: Option<String>,
+    checkpoint_timestamp_ms: u64,
 ) -> Option<Vec<SocialEventRow>> {
     #[derive(serde::Deserialize)]
     struct Ev {
@@ -210,7 +218,7 @@ fn process_delegate_nominated_event(
     else {
         return None;
     };
-    let now = Utc::now().timestamp_millis();
+    let now = common::chain_timestamp_ms(None, checkpoint_timestamp_ms);
     let nominee = NewNominatedDelegate {
         address: ev.nominee_address,
         registry_type: ev.registry_type as i16,
@@ -227,7 +235,7 @@ fn process_delegate_nominated_event(
         registry_type: ev.registry_type as i16,
         event_data: data.clone(),
         event_id: event_id.to_string(),
-        created_at: Utc::now(),
+        created_at: governance_event_created_at(None, checkpoint_timestamp_ms),
         anonymous_voting_related: None,
         governance_registry_id: Some(nominee.governance_registry_id.clone()),
         proposal_id: None,
@@ -242,6 +250,7 @@ fn process_delegate_elected_event(
     data: &serde_json::Value,
     event_id: &str,
     governance_registry_id: Option<String>,
+    checkpoint_timestamp_ms: u64,
 ) -> Option<Vec<SocialEventRow>> {
     #[derive(serde::Deserialize)]
     struct Ev {
@@ -263,7 +272,7 @@ fn process_delegate_elected_event(
     else {
         return None;
     };
-    let now = Utc::now().timestamp_millis();
+    let now = common::chain_timestamp_ms(None, checkpoint_timestamp_ms);
     let status_update = SocialEventRow::NominatedDelegateStatusUpdate {
         address: ev.delegate_address.clone(),
         registry_type: ev.registry_type as i16,
@@ -292,7 +301,7 @@ fn process_delegate_elected_event(
         registry_type: ev.registry_type as i16,
         event_data: data.clone(),
         event_id: event_id.to_string(),
-        created_at: Utc::now(),
+        created_at: governance_event_created_at(None, checkpoint_timestamp_ms),
         anonymous_voting_related: None,
         governance_registry_id: Some(scoped_registry_id),
         proposal_id: None,
@@ -308,6 +317,7 @@ fn process_delegate_voted_event(
     data: &serde_json::Value,
     event_id: &str,
     governance_registry_id: Option<String>,
+    checkpoint_timestamp_ms: u64,
 ) -> Option<Vec<SocialEventRow>> {
     #[derive(serde::Deserialize)]
     struct Ev {
@@ -327,7 +337,7 @@ fn process_delegate_voted_event(
     else {
         return None;
     };
-    let now = Utc::now().timestamp_millis();
+    let now = common::chain_timestamp_ms(None, checkpoint_timestamp_ms);
     let vote_counts = SocialEventRow::DelegateVoteCountsUpdate {
         target_address: ev.target_address.clone(),
         registry_type: ev.registry_type as i16,
@@ -351,7 +361,7 @@ fn process_delegate_voted_event(
         registry_type: ev.registry_type as i16,
         event_data: data.clone(),
         event_id: event_id.to_string(),
-        created_at: Utc::now(),
+        created_at: governance_event_created_at(None, checkpoint_timestamp_ms),
         anonymous_voting_related: None,
         governance_registry_id: Some(scoped.clone()),
         proposal_id: None,
@@ -367,6 +377,7 @@ fn process_delegate_vote_cleared_event(
     data: &serde_json::Value,
     event_id: &str,
     governance_registry_id: Option<String>,
+    checkpoint_timestamp_ms: u64,
 ) -> Option<Vec<SocialEventRow>> {
     #[derive(serde::Deserialize)]
     struct Ev {
@@ -385,7 +396,7 @@ fn process_delegate_vote_cleared_event(
     else {
         return None;
     };
-    let now = Utc::now().timestamp_millis();
+    let now = common::chain_timestamp_ms(None, checkpoint_timestamp_ms);
     let vote_counts = SocialEventRow::DelegateVoteCountsUpdate {
         target_address: ev.target_address.clone(),
         registry_type: ev.registry_type as i16,
@@ -409,7 +420,7 @@ fn process_delegate_vote_cleared_event(
         registry_type: ev.registry_type as i16,
         event_data: data.clone(),
         event_id: event_id.to_string(),
-        created_at: Utc::now(),
+        created_at: governance_event_created_at(None, checkpoint_timestamp_ms),
         anonymous_voting_related: None,
         governance_registry_id: Some(scoped),
         proposal_id: None,
@@ -425,6 +436,7 @@ fn process_proposal_submitted_event(
     data: &serde_json::Value,
     event_id: &str,
     governance_registry_id: Option<String>,
+    checkpoint_timestamp_ms: u64,
 ) -> Option<Vec<SocialEventRow>> {
     #[derive(serde::Deserialize)]
     struct Ev {
@@ -476,7 +488,7 @@ fn process_proposal_submitted_event(
         registry_type: ev.proposal_type as i16,
         event_data: data.clone(),
         event_id: event_id.to_string(),
-        created_at: Utc::now(),
+        created_at: governance_event_created_at(Some(ev.submission_time as i64), checkpoint_timestamp_ms),
         anonymous_voting_related: None,
         governance_registry_id: Some(proposal_scope),
         proposal_id: Some(ev.proposal_id.clone()),
@@ -495,6 +507,7 @@ fn process_delegate_vote_event(
     data: &serde_json::Value,
     event_id: &str,
     _governance_registry_id: Option<String>,
+    _checkpoint_timestamp_ms: u64,
 ) -> Option<Vec<SocialEventRow>> {
     #[derive(serde::Deserialize)]
     struct Ev {
@@ -537,6 +550,7 @@ fn process_delegate_vote_event(
 fn process_community_vote_event(
     data: &serde_json::Value,
     event_id: &str,
+    _checkpoint_timestamp_ms: u64,
 ) -> Option<Vec<SocialEventRow>> {
     #[derive(serde::Deserialize)]
     struct Ev {
@@ -586,6 +600,7 @@ fn process_community_vote_event(
 fn process_proposal_approved_for_voting_event(
     data: &serde_json::Value,
     event_id: &str,
+    _checkpoint_timestamp_ms: u64,
 ) -> Option<Vec<SocialEventRow>> {
     #[derive(serde::Deserialize)]
     struct Ev {
@@ -624,6 +639,7 @@ fn process_proposal_rejected_event(
     data: &serde_json::Value,
     event_id: &str,
     _governance_registry_id: Option<String>,
+    _checkpoint_timestamp_ms: u64,
 ) -> Option<Vec<SocialEventRow>> {
     #[derive(serde::Deserialize)]
     struct Ev {
@@ -665,6 +681,7 @@ fn process_proposal_rejected_event(
 fn process_proposal_rescinded_event(
     data: &serde_json::Value,
     event_id: &str,
+    _checkpoint_timestamp_ms: u64,
 ) -> Option<Vec<SocialEventRow>> {
     #[derive(serde::Deserialize)]
     struct Ev {
@@ -716,6 +733,7 @@ fn process_proposal_rejected_by_community_event(
     data: &serde_json::Value,
     event_id: &str,
     _governance_registry_id: Option<String>,
+    _checkpoint_timestamp_ms: u64,
 ) -> Option<Vec<SocialEventRow>> {
     #[derive(serde::Deserialize)]
     struct Ev {
@@ -760,6 +778,7 @@ fn process_proposal_approved_event(
     data: &serde_json::Value,
     event_id: &str,
     _governance_registry_id: Option<String>,
+    _checkpoint_timestamp_ms: u64,
 ) -> Option<Vec<SocialEventRow>> {
     #[derive(serde::Deserialize)]
     struct Ev {
@@ -803,6 +822,7 @@ fn process_proposal_approved_event(
 fn process_proposal_implemented_event(
     data: &serde_json::Value,
     event_id: &str,
+    _checkpoint_timestamp_ms: u64,
 ) -> Option<Vec<SocialEventRow>> {
     #[derive(serde::Deserialize)]
     struct Ev {
@@ -839,6 +859,7 @@ fn process_proposal_implemented_event(
 fn process_proposal_implementation_reward_to_submitter_event(
     data: &serde_json::Value,
     event_id: &str,
+    _checkpoint_timestamp_ms: u64,
 ) -> Option<Vec<SocialEventRow>> {
     #[derive(serde::Deserialize)]
     struct Ev {
@@ -901,6 +922,7 @@ fn process_proposal_implementation_reward_to_submitter_event(
 fn process_proposal_reward_pool_forfeited_to_treasury_event(
     data: &serde_json::Value,
     event_id: &str,
+    _checkpoint_timestamp_ms: u64,
 ) -> Option<Vec<SocialEventRow>> {
     const TREASURY_ROUTE_ECOSYSTEM: u8 = 0;
     const TREASURY_ROUTE_PLATFORM: u8 = 1;
@@ -972,6 +994,7 @@ fn process_proposal_reward_pool_forfeited_to_treasury_event(
 fn process_anonymous_vote_event(
     data: &serde_json::Value,
     event_id: &str,
+    _checkpoint_timestamp_ms: u64,
 ) -> Option<Vec<SocialEventRow>> {
     #[derive(serde::Deserialize)]
     struct Ev {
@@ -1010,6 +1033,7 @@ fn process_anonymous_vote_event(
 fn process_vote_decryption_failed_event(
     data: &serde_json::Value,
     event_id: &str,
+    _checkpoint_timestamp_ms: u64,
 ) -> Option<Vec<SocialEventRow>> {
     #[derive(serde::Deserialize)]
     struct Ev {
@@ -1043,6 +1067,7 @@ fn process_vote_decryption_failed_event(
 fn process_delegate_panel_refreshed_event(
     data: &serde_json::Value,
     event_id: &str,
+    checkpoint_timestamp_ms: u64,
 ) -> Option<Vec<SocialEventRow>> {
     #[derive(serde::Deserialize)]
     struct Ev {
@@ -1054,7 +1079,7 @@ fn process_delegate_panel_refreshed_event(
     }
     let ev: Ev = deserialize_gov_ev("DelegatePanelRefreshedEvent", event_id, data)?;
     let boundary = ev.boundary_epoch as i64;
-    let now_ms = Utc::now().timestamp_millis();
+    let now_ms = common::chain_timestamp_ms(None, checkpoint_timestamp_ms);
     let up = GovernanceRegistryPanelBoundaryUpdate {
         registry_id: ev.registry_id.clone(),
         last_delegate_panel_boundary_epoch: boundary,
@@ -1066,7 +1091,7 @@ fn process_delegate_panel_refreshed_event(
         registry_type: ev.registry_type as i16,
         event_data: data.clone(),
         event_id: event_id.to_string(),
-        created_at: Utc::now(),
+        created_at: governance_event_created_at(None, checkpoint_timestamp_ms),
         anonymous_voting_related: None,
         governance_registry_id: Some(ev.registry_id),
         proposal_id: None,
@@ -1081,6 +1106,7 @@ fn process_governance_parameters_updated_event(
     data: &serde_json::Value,
     event_id: &str,
     governance_registry_id: Option<String>,
+    checkpoint_timestamp_ms: u64,
 ) -> Option<Vec<SocialEventRow>> {
     #[derive(serde::Deserialize)]
     struct Ev {
@@ -1130,7 +1156,7 @@ fn process_governance_parameters_updated_event(
         registry_type: ev.registry_type as i16,
         event_data: data.clone(),
         event_id: event_id.to_string(),
-        created_at: Utc::now(),
+        created_at: governance_event_created_at(Some(ev.timestamp as i64), checkpoint_timestamp_ms),
         anonymous_voting_related: None,
         governance_registry_id: Some(registry_id.clone()),
         proposal_id: None,

@@ -1,5 +1,5 @@
--- Unify posts-related time triggers to expect epoch milliseconds
--- All timestamp fields from blockchain events are in milliseconds (epoch timestamp in ms),
+-- Unify posts-related time triggers to expect chain clock milliseconds.
+-- All timestamp fields from blockchain events are Unix ms from myso::clock::Clock (0x6);
 -- but PostgreSQL's to_timestamp() expects seconds, so we need to divide by 1000
 
 -- 1. Fix posts time trigger

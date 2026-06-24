@@ -39,21 +39,13 @@ module social_contracts::social_proof_of_truth_tests {
         spt::init_for_testing(test_scenario::ctx(&mut scen));
 
         test_scenario::next_tx(&mut scen, ADMIN);
-        { block_list::test_init(test_scenario::ctx(&mut scen)); };
-
-        test_scenario::next_tx(&mut scen, ADMIN);
-        { platform::test_init(test_scenario::ctx(&mut scen)); };
-
-        test_scenario::next_tx(&mut scen, ADMIN);
-        { post::test_init(test_scenario::ctx(&mut scen)); };
-
-        test_scenario::next_tx(&mut scen, ADMIN);
-        { profile::init_for_testing(test_scenario::ctx(&mut scen)); };
-
-        test_scenario::next_tx(&mut scen, ADMIN);
         {
-            let c = clock::create_for_testing(test_scenario::ctx(&mut scen));
-            clock::share_for_testing(c);
+            let clock = clock::create_for_testing(test_scenario::ctx(&mut scen));
+            block_list::test_init(&clock, test_scenario::ctx(&mut scen));
+            platform::test_init(test_scenario::ctx(&mut scen));
+            post::test_init(test_scenario::ctx(&mut scen));
+            profile::init_for_testing(&clock, test_scenario::ctx(&mut scen));
+            clock::share_for_testing(clock);
         };
 
         test_scenario::next_tx(&mut scen, ADMIN);
@@ -113,8 +105,8 @@ module social_contracts::social_proof_of_truth_tests {
 
     /// Create a simple post without platform/profile constraints (test helper in post module)
     /// Creates post with SPoT enabled for SPoT tests
-    fun create_test_post(owner: address, ctx: &mut tx_context::TxContext): address {
-        post::test_create_post_with_spot(owner, owner, TEST_PLATFORM_ID, string::utf8(b"truth?"), ctx)
+    fun create_test_post(owner: address, clock: &Clock, ctx: &mut tx_context::TxContext): address {
+        post::test_create_post_with_spot(owner, owner, TEST_PLATFORM_ID, string::utf8(b"truth?"), clock, ctx)
     }
 
     fun take_spot_governance_registry(scenario: &Scenario): GovernanceDAO {
@@ -197,8 +189,11 @@ module social_contracts::social_proof_of_truth_tests {
         // Create post
         test_scenario::next_tx(&mut scen, CREATOR);
         let post_id_addr = {
+            let clock = test_scenario::take_shared<Clock>(&scen);
             let ctx = test_scenario::ctx(&mut scen);
-            create_test_post(CREATOR, ctx)
+            let id = create_test_post(CREATOR, &clock, ctx);
+            test_scenario::return_shared(clock);
+            id
         };
 
         // Create SPoT record with betting options
@@ -340,7 +335,11 @@ module social_contracts::social_proof_of_truth_tests {
 
         // Create post and record
         test_scenario::next_tx(&mut scen, CREATOR);
-        { create_test_post(CREATOR, test_scenario::ctx(&mut scen)); };
+        {
+            let clock = test_scenario::take_shared<Clock>(&scen);
+            create_test_post(CREATOR, &clock, test_scenario::ctx(&mut scen));
+            test_scenario::return_shared(clock);
+        };
 
         test_scenario::next_tx(&mut scen, ADMIN);
         {
@@ -571,7 +570,11 @@ module social_contracts::social_proof_of_truth_tests {
 
         // Create post + record
         test_scenario::next_tx(&mut scen, CREATOR);
-        { create_test_post(CREATOR, test_scenario::ctx(&mut scen)); };
+        {
+            let clock = test_scenario::take_shared<Clock>(&scen);
+            create_test_post(CREATOR, &clock, test_scenario::ctx(&mut scen));
+            test_scenario::return_shared(clock);
+        };
 
         test_scenario::next_tx(&mut scen, ADMIN);
         {
@@ -656,7 +659,11 @@ module social_contracts::social_proof_of_truth_tests {
 
         // Create post
         test_scenario::next_tx(&mut scen, CREATOR);
-        { create_test_post(CREATOR, test_scenario::ctx(&mut scen)); };
+        {
+            let clock = test_scenario::take_shared<Clock>(&scen);
+            create_test_post(CREATOR, &clock, test_scenario::ctx(&mut scen));
+            test_scenario::return_shared(clock);
+        };
 
         // Try to create record with duplicate options - should fail
         test_scenario::next_tx(&mut scen, ADMIN);
@@ -707,7 +714,11 @@ module social_contracts::social_proof_of_truth_tests {
 
         // Create post and record
         test_scenario::next_tx(&mut scen, CREATOR);
-        { create_test_post(CREATOR, test_scenario::ctx(&mut scen)); };
+        {
+            let clock = test_scenario::take_shared<Clock>(&scen);
+            create_test_post(CREATOR, &clock, test_scenario::ctx(&mut scen));
+            test_scenario::return_shared(clock);
+        };
 
         test_scenario::next_tx(&mut scen, ADMIN);
         {
@@ -789,17 +800,21 @@ module social_contracts::social_proof_of_truth_tests {
         // Try to withdraw when status is DAO_REQUIRED - should fail
         test_scenario::next_tx(&mut scen, USER1);
         {
+
+            let clock = test_scenario::take_shared<Clock>(&scen);
             let spot_cfg = test_scenario::take_shared<spot::SpotConfig>(&scen);
             let mut rec = test_scenario::take_shared<spot::SpotRecord>(&scen);
             let post_ref = test_scenario::take_shared<Post>(&scen);
             let mut platform = test_scenario::take_shared<Platform>(&scen);
             let treasury = test_scenario::take_shared<EcosystemTreasury>(&scen);
-            spot::withdraw_spot_bet(&spot_cfg, &mut rec, &post_ref, &mut platform, &treasury, 0, test_scenario::ctx(&mut scen));
+            spot::withdraw_spot_bet(&spot_cfg, &mut rec, &post_ref, &mut platform, &treasury, 0, &clock, test_scenario::ctx(&mut scen));
             test_scenario::return_shared(platform);
             test_scenario::return_shared(treasury);
             test_scenario::return_shared(spot_cfg);
             test_scenario::return_shared(rec);
             test_scenario::return_shared(post_ref);
+
+            test_scenario::return_shared(clock);
         };
 
         test_scenario::end(scen);
@@ -839,8 +854,9 @@ module social_contracts::social_proof_of_truth_tests {
 
         test_scenario::next_tx(&mut scen, CREATOR);
         {
-            let ctx = test_scenario::ctx(&mut scen);
-            create_test_post(CREATOR, ctx);
+            let clock = test_scenario::take_shared<Clock>(&scen);
+            create_test_post(CREATOR, &clock, test_scenario::ctx(&mut scen));
+            test_scenario::return_shared(clock);
         };
 
         test_scenario::next_tx(&mut scen, ADMIN);
@@ -916,8 +932,11 @@ module social_contracts::social_proof_of_truth_tests {
         // Create post
         test_scenario::next_tx(&mut scen, CREATOR);
         let post_id_addr = {
+            let clock = test_scenario::take_shared<Clock>(&scen);
             let ctx = test_scenario::ctx(&mut scen);
-            create_test_post(CREATOR, ctx)
+            let id = create_test_post(CREATOR, &clock, ctx);
+            test_scenario::return_shared(clock);
+            id
         };
 
         // Create SPoT record

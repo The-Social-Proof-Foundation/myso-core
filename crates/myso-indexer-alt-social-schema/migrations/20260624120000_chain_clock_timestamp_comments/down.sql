@@ -1,0 +1,12 @@
+COMMENT ON COLUMN posts.created_at IS NULL;
+COMMENT ON COLUMN posts.time IS NULL;
+COMMENT ON COLUMN comments.created_at IS NULL;
+COMMENT ON COLUMN comments.time IS NULL;
+COMMENT ON COLUMN reactions.created_at IS NULL;
+COMMENT ON COLUMN reactions.time IS NULL;
+COMMENT ON COLUMN profiles.created_at IS NULL;
+COMMENT ON COLUMN profiles.updated_at IS NULL;
+COMMENT ON COLUMN spot_bets.timestamp_ms IS NULL;
+COMMENT ON COLUMN spot_records.created_at_ms IS NULL;
+COMMENT ON COLUMN spt_reservations.reserved_at IS NULL;
+COMMENT ON COLUMN spt_reservations.time IS NULL;
