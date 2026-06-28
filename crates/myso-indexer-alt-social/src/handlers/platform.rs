@@ -1,7 +1,6 @@
 // Copyright (c) The Social Proof Foundation, LLC.
 // SPDX-License-Identifier: Apache-2.0
 
-use chrono::{TimeZone, Utc};
 use serde::Deserialize;
 
 use super::common;

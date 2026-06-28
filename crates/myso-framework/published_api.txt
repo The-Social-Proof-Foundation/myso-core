@@ -8068,7 +8068,19 @@ is_ecosystem_badge
 copy_string
 	fun
 	0x50c1::profile
+canonical_registry_username_from_bytes
+	public(package) fun
+	0x50c1::profile
+lock_username_for_beneficiary
+	public(package) fun
+	0x50c1::profile
+unlock_username_for_beneficiary
+	public(package) fun
+	0x50c1::profile
 claim_username
+	public(package) fun
+	0x50c1::profile
+claim_username_internal
 	fun
 	0x50c1::profile
 revoke_username
@@ -8088,6 +8100,9 @@ emit_profile_updated_event
 	0x50c1::profile
 create_profile
 	public entry fun
+	0x50c1::profile
+create_profile_from_beneficiary_claim
+	public(package) fun
 	0x50c1::profile
 ensure_memory_account
 	public entry fun
@@ -8120,6 +8135,9 @@ id
 	public fun
 	0x50c1::profile
 lookup_profile_by_username
+	public fun
+	0x50c1::profile
+is_username_beneficiary_locked
 	public fun
 	0x50c1::profile
 is_username_available
@@ -8401,6 +8419,9 @@ bootstrap_init_directory
 beneficiary_address
 	public fun
 	0x50c1::poc_vault
+vault_routes_to_beneficiary
+	public(package) fun
+	0x50c1::poc_vault
 ensure_beneficiary_vault
 	public(package) fun
 	0x50c1::poc_vault
@@ -8408,6 +8429,15 @@ deposit_coin
 	public(package) fun
 	0x50c1::poc_vault
 claim_vault_balance
+	public(package) fun
+	0x50c1::poc_vault
+claim_vault_balance_for_linked_wallet
+	public(package) fun
+	0x50c1::poc_vault
+sweep_vault_balance_to_treasury
+	public(package) fun
+	0x50c1::poc_vault
+vault_has_balance
 	public(package) fun
 	0x50c1::poc_vault
 new_poc_badge_object
@@ -10252,6 +10282,84 @@ migrate_config
 migrate_record
 	public entry fun
 	0x50c1::social_proof_of_truth
+PoCBeneficiaryAdminCap
+	public struct
+	0x50c1::poc_username_beneficiary
+CreatorIdentityKey
+	public struct
+	0x50c1::poc_username_beneficiary
+VerificationRequirements
+	public struct
+	0x50c1::poc_username_beneficiary
+PoCUsernameBeneficiaryDirectory
+	public struct
+	0x50c1::poc_username_beneficiary
+PoCUsernameBeneficiaryShard
+	public struct
+	0x50c1::poc_username_beneficiary
+PoCUsernameBeneficiary
+	public struct
+	0x50c1::poc_username_beneficiary
+UsernameBeneficiaryProvisionedEvent
+	public struct
+	0x50c1::poc_username_beneficiary
+UsernameBeneficiaryClaimedEvent
+	public struct
+	0x50c1::poc_username_beneficiary
+UsernameBeneficiaryEndedEvent
+	public struct
+	0x50c1::poc_username_beneficiary
+UsernameBeneficiaryConflictEvent
+	public struct
+	0x50c1::poc_username_beneficiary
+CreatorIdentityWalletLinkedEvent
+	public struct
+	0x50c1::poc_username_beneficiary
+create_beneficiary_admin_cap
+	public(package) fun
+	0x50c1::poc_username_beneficiary
+bootstrap_init_directory
+	public(package) fun
+	0x50c1::poc_username_beneficiary
+is_username_beneficiary_active
+	public fun
+	0x50c1::poc_username_beneficiary
+shard_index_for_username
+	public fun
+	0x50c1::poc_username_beneficiary
+assert_shard_matches_username
+	public fun
+	0x50c1::poc_username_beneficiary
+identity_beneficiary_address
+	fun
+	0x50c1::poc_username_beneficiary
+canonical_username
+	fun
+	0x50c1::poc_username_beneficiary
+canonical_x_handle
+	fun
+	0x50c1::poc_username_beneficiary
+beneficiary_status
+	public fun
+	0x50c1::poc_username_beneficiary
+identity_key
+	fun
+	0x50c1::poc_username_beneficiary
+emit_username_conflict
+	fun
+	0x50c1::poc_username_beneficiary
+create_username_beneficiary
+	public(package) fun
+	0x50c1::poc_username_beneficiary
+claim_username_beneficiary
+	public(package) fun
+	0x50c1::poc_username_beneficiary
+claim_username_beneficiary_vault_balance
+	public(package) fun
+	0x50c1::poc_username_beneficiary
+end_username_beneficiary
+	public(package) fun
+	0x50c1::poc_username_beneficiary
 PoCAdminCap
 	public struct
 	0x50c1::proof_of_creativity
@@ -10294,6 +10402,9 @@ VotingRewardClaimedEvent
 PoCConfigUpdatedEvent
 	public struct
 	0x50c1::proof_of_creativity
+create_poc_beneficiary_admin_cap
+	public(package) fun
+	0x50c1::proof_of_creativity
 mul_div_u64_loose
 	fun
 	0x50c1::proof_of_creativity
@@ -10301,6 +10412,18 @@ bootstrap_init
 	public(package) fun
 	0x50c1::proof_of_creativity
 update_poc_config
+	public entry fun
+	0x50c1::proof_of_creativity
+create_username_beneficiary
+	public entry fun
+	0x50c1::proof_of_creativity
+end_username_beneficiary
+	public entry fun
+	0x50c1::proof_of_creativity
+claim_username_beneficiary
+	public entry fun
+	0x50c1::proof_of_creativity
+claim_username_beneficiary_vault_balance
 	public entry fun
 	0x50c1::proof_of_creativity
 mint_shared_poc_badge_object

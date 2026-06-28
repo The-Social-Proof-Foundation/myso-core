@@ -64,9 +64,10 @@ pub use platforms::{
 pub use poc::{
     get_poc_analytics, get_poc_badge_by_id, get_poc_beneficiary_vault_by_beneficiary,
     get_poc_beneficiary_vault_by_vault_id, get_poc_configuration, get_poc_dispute_by_id,
-    get_poc_dispute_votes, list_poc_analysis_results, list_poc_badges,
+    get_poc_dispute_votes, get_poc_username_beneficiary_by_id,
+    get_poc_username_beneficiary_by_username, list_poc_analysis_results, list_poc_badges,
     list_poc_beneficiary_vault_coin_balances, list_poc_disputes, list_poc_revenue_redirections,
-    list_poc_vault_claims, list_poc_vault_deposits,
+    list_poc_username_beneficiaries, list_poc_vault_claims, list_poc_vault_deposits,
 };
 pub use posts::{
     get_post_by_id, get_post_comments, get_post_config, get_post_deletion_events,

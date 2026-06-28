@@ -6,7 +6,6 @@
 //! **Indexed here:** `PostCreatedEvent` (includes `platform_id`, `permissions` when present on-chain),
 //! reactions, reposts, tips, moderation, reports, promotion lifecycle.
 
-use chrono::Utc;
 use serde::Deserialize;
 use std::collections::HashMap;
 

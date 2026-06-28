@@ -72,6 +72,7 @@ use crate::api::types::post::{CommentSummary, Post, ReactionSummary, RepostSumma
 use crate::api::types::profile::Profile;
 use crate::api::types::promotion::{Promotion, PromotionTimeSeries};
 use crate::api::types::username::{UsernameAvailability, UsernameRegistry};
+use crate::api::types::poc_username_beneficiary::PocUsernameBeneficiary;
 use crate::api::types::protocol_configs::ProtocolConfigs;
 use crate::api::types::service_config::ServiceConfig;
 use crate::api::types::simulation_result::SimulationResult;
@@ -305,10 +306,10 @@ impl Query {
         let reader = reader_opt.as_ref().as_ref()?;
         Some(
             reader
-                .is_username_available(&username)
+                .get_username_availability(&username, None)
                 .await
                 .map_err(Into::into)
-                .map(|available| UsernameAvailability::new(username, available)),
+                .map(UsernameAvailability::new),
         )
     }
 
@@ -2108,6 +2109,64 @@ impl Query {
                 .await
                 .map_err(Into::into)
                 .map(|opt| opt.map(PocBeneficiaryVault::from_row)),
+        )
+    }
+
+    /// PoC username beneficiary provision by username.
+    async fn poc_username_beneficiary_by_username(
+        &self,
+        ctx: &Context<'_>,
+        username: String,
+    ) -> Option<Result<Option<PocUsernameBeneficiary>, RpcError>> {
+        let reader_opt = ctx
+            .data_opt::<std::sync::Arc<Option<myso_indexer_alt_social_reader::SocialPgReader>>>()?;
+        let reader = reader_opt.as_ref().as_ref()?;
+        Some(
+            reader
+                .get_poc_username_beneficiary_by_username(&username)
+                .await
+                .map_err(Into::into)
+                .map(|opt| opt.map(PocUsernameBeneficiary::from_row)),
+        )
+    }
+
+    /// PoC username beneficiary provision by on-chain beneficiary object id.
+    async fn poc_username_beneficiary_by_id(
+        &self,
+        ctx: &Context<'_>,
+        id: async_graphql::ID,
+    ) -> Option<Result<Option<PocUsernameBeneficiary>, RpcError>> {
+        let reader_opt = ctx
+            .data_opt::<std::sync::Arc<Option<myso_indexer_alt_social_reader::SocialPgReader>>>()?;
+        let reader = reader_opt.as_ref().as_ref()?;
+        Some(
+            reader
+                .get_poc_username_beneficiary_by_id(id.as_str())
+                .await
+                .map_err(Into::into)
+                .map(|opt| opt.map(PocUsernameBeneficiary::from_row)),
+        )
+    }
+
+    /// List PoC username beneficiary provisions with optional status filter.
+    async fn poc_username_beneficiaries(
+        &self,
+        ctx: &Context<'_>,
+        status: Option<i16>,
+        limit: Option<u64>,
+        offset: Option<u64>,
+    ) -> Option<Result<Vec<PocUsernameBeneficiary>, RpcError>> {
+        let reader_opt = ctx
+            .data_opt::<std::sync::Arc<Option<myso_indexer_alt_social_reader::SocialPgReader>>>()?;
+        let reader = reader_opt.as_ref().as_ref()?;
+        let limit = limit.unwrap_or(20).min(100) as i64;
+        let offset = offset.unwrap_or(0) as i64;
+        Some(
+            reader
+                .list_poc_username_beneficiaries(status, limit, offset)
+                .await
+                .map_err(Into::into)
+                .map(|rows| rows.into_iter().map(PocUsernameBeneficiary::from_row).collect()),
         )
     }
 

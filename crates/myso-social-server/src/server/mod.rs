@@ -543,6 +543,18 @@ fn make_router(state: Arc<AppState>) -> Router {
         .route("/poc/analytics", get(get_poc_analytics))
         .route("/poc/configuration", get(get_poc_configuration))
         .route(
+            "/poc/username-beneficiaries/by-username/:username",
+            get(get_poc_username_beneficiary_by_username),
+        )
+        .route(
+            "/poc/username-beneficiaries/:id",
+            get(get_poc_username_beneficiary_by_id),
+        )
+        .route(
+            "/poc/username-beneficiaries",
+            get(list_poc_username_beneficiaries),
+        )
+        .route(
             "/poc/beneficiary-vaults/by-beneficiary/:address",
             get(get_poc_beneficiary_vault_by_beneficiary),
         )

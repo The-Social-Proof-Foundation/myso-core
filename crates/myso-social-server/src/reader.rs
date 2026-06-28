@@ -9,6 +9,7 @@ mod mydata;
 pub mod organization;
 mod platform;
 mod poc;
+mod poc_username_beneficiary;
 mod post;
 pub mod profile;
 mod promotion;
@@ -1069,8 +1070,49 @@ impl Reader {
         &self,
         username: &str,
         exclude_address: Option<&str>,
-    ) -> Result<bool, crate::error::SocialError> {
+    ) -> Result<myso_indexer_alt_social_reader::UsernameAvailabilityDetail, crate::error::SocialError>
+    {
         system::check_username_availability(&self.db, username, exclude_address).await
+    }
+
+    pub async fn list_poc_username_beneficiaries(
+        &self,
+        status: Option<i16>,
+        limit: i64,
+        offset: i64,
+    ) -> Result<
+        Vec<myso_indexer_alt_social_schema::models::PocUsernameBeneficiaryRow>,
+        crate::error::SocialError,
+    > {
+        poc_username_beneficiary::list_poc_username_beneficiaries(
+            &self.db,
+            status,
+            limit,
+            offset,
+        )
+        .await
+    }
+
+    pub async fn get_poc_username_beneficiary_by_username(
+        &self,
+        username: &str,
+    ) -> Result<
+        Option<myso_indexer_alt_social_schema::models::PocUsernameBeneficiaryRow>,
+        crate::error::SocialError,
+    > {
+        poc_username_beneficiary::get_poc_username_beneficiary_by_username(&self.db, username)
+            .await
+    }
+
+    pub async fn get_poc_username_beneficiary_by_id(
+        &self,
+        beneficiary_id: &str,
+    ) -> Result<
+        Option<myso_indexer_alt_social_schema::models::PocUsernameBeneficiaryRow>,
+        crate::error::SocialError,
+    > {
+        poc_username_beneficiary::get_poc_username_beneficiary_by_id(&self.db, beneficiary_id)
+            .await
     }
 
     pub async fn get_profile_posts(

@@ -9,6 +9,7 @@ mod memory;
 mod organization;
 mod platform;
 mod poc;
+mod poc_username_beneficiary;
 mod post;
 mod profile;
 mod promotion;
@@ -109,6 +110,13 @@ pub use poc::{
     PocAnalysisResultRow, PocBadgeRow, PocBeneficiaryVaultRow, PocConfigRow, PocDisputeRow,
     PocDisputeVoteRow, PocRevenueRedirectionRow, PocVaultClaimRow, PocVaultCoinBalanceRow,
     PocVaultDepositRow, VOTE_OVERTURN, VOTE_UPHOLD,
+};
+pub use poc_username_beneficiary::{
+    END_REASON_ADMIN, EVENT_TYPE_CLAIMED, EVENT_TYPE_CONFLICT, EVENT_TYPE_CREATOR_IDENTITY_WALLET_LINKED,
+    EVENT_TYPE_ENDED, EVENT_TYPE_PROVISIONED, IDENTITY_SOURCE_X, NewPocCreatorIdentityLink,
+    NewPocUsernameBeneficiary, NewPocUsernameBeneficiaryEvent, PocCreatorIdentityLinkRow,
+    PocUsernameBeneficiaryRow, USERNAME_BENEFICIARY_STATUS_ACTIVE, USERNAME_BENEFICIARY_STATUS_CLAIMED,
+    USERNAME_BENEFICIARY_STATUS_ENDED, VAULT_CLAIM_KIND_JOIN_REFERRAL, VAULT_CLAIM_KIND_STANDARD,
 };
 pub use post::{
     COMMENTER_TIP_PERCENTAGE, CommentRow, ENABLE_POC, ENABLE_SPOT, ENABLE_SPT, MAX_CONTENT_LENGTH,

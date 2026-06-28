@@ -187,6 +187,8 @@ pub struct PocConfigRow {
     pub dispute_second_round_fee_multiplier_bps: i64,
     #[diesel(sql_type = BigInt)]
     pub dispute_second_round_quorum_multiplier_bps: i64,
+    #[diesel(sql_type = BigInt)]
+    pub username_beneficiary_join_referral_bps: i64,
     #[diesel(sql_type = Text)]
     pub updated_by: String,
     #[diesel(sql_type = BigInt)]
@@ -299,6 +301,7 @@ pub struct NewPocConfiguration {
     pub dispute_quorum_base_stake: i64,
     pub dispute_second_round_fee_multiplier_bps: i64,
     pub dispute_second_round_quorum_multiplier_bps: i64,
+    pub username_beneficiary_join_referral_bps: i64,
     pub updated_by: String,
     pub updated_at: i64,
     pub transaction_id: String,
@@ -328,6 +331,7 @@ pub struct NewPocVaultClaim {
     pub beneficiary_amount: i64,
     pub occurred_at_ms: i64,
     pub transaction_id: String,
+    pub claim_kind: Option<String>,
 }
 
 /// Sentinel `coin_type` in `poc_vault_coin_balances` seeded from legacy single-balance column.
@@ -390,6 +394,8 @@ pub struct PocVaultClaimRow {
     pub occurred_at_ms: i64,
     #[diesel(sql_type = Text)]
     pub transaction_id: String,
+    #[diesel(sql_type = Nullable<Text>)]
+    pub claim_kind: Option<String>,
 }
 
 /// One `(vault_id, coin_type)` balance row from `poc_vault_coin_balances`.

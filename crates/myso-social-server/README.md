@@ -168,6 +168,10 @@ After `delete_post` / `delete_comment` and indexer catch-up, confirm rows in `po
 | GET | `/poc/disputes/:id/votes` | Get POC dispute votes |
 | GET | `/poc/analytics` | Get POC analytics |
 | GET | `/poc/configuration` | Get POC configuration |
+| GET | `/poc/username-beneficiaries` | List PoC username beneficiaries (optional `status`, pagination) |
+| GET | `/poc/username-beneficiaries/by-username/:username` | Get PoC username beneficiary by username |
+| GET | `/poc/username-beneficiaries/:id` | Get PoC username beneficiary by object id |
+| GET | `/poc/beneficiary-vaults/by-beneficiary/:address` | Get PoC beneficiary vault by beneficiary address |
 
 ---
 

@@ -21,14 +21,16 @@ use myso_indexer_alt_framework::types::full_checkpoint_content::Checkpoint;
 use myso_indexer_alt_framework::FieldCount;
 use myso_indexer_alt_social_schema::models::{
     NewComment, NewDeletionEvent, NewModerationEvent, NewPocAnalysisResult, NewPocBadge,
-    NewPocConfiguration, NewPocDispute, NewPocDisputeVote, NewPocRevenueRedirection,
+    NewPocConfiguration, NewPocCreatorIdentityLink, NewPocDispute, NewPocDisputeVote,
+    NewPocRevenueRedirection, NewPocUsernameBeneficiary, NewPocUsernameBeneficiaryEvent,
     NewPocVaultClaim, NewPocVaultDeposit, NewPost, NewPostTransfer, NewPromotedPost,
     NewPromotionBudgetEvent, NewPromotionStatusEvent, NewPromotionView, NewReaction,
     NewReactionCount, NewReport, NewRepost, NewTip, NewUnifiedRevenue,
 };
 use myso_indexer_alt_social_schema::schema::{
     comments, poc_analysis_results, poc_badges, poc_configuration, poc_dispute_votes, poc_disputes,
-    poc_revenue_redirections, poc_vault_claims, poc_vault_deposits, post_config, posts,
+    poc_revenue_redirections, poc_username_beneficiaries, poc_username_beneficiary_events,
+    poc_creator_identity_links, poc_vault_claims, poc_vault_deposits, post_config, posts,
     promoted_posts, promotion_budget_events, promotion_status_events, promotion_views,
     reaction_counts, reactions, reposts, tips,
 };
@@ -49,7 +51,12 @@ use super::post;
 use super::post_mydata;
 
 const POST_MODULES: &[&str] = &["post", "comment", "reaction", "repost", "tip"];
-const POC_MODULES: &[&str] = &["poc", "proof_of_creativity", "poc_vault"];
+const POC_MODULES: &[&str] = &[
+    "poc",
+    "proof_of_creativity",
+    "poc_vault",
+    "poc_username_beneficiary",
+];
 
 #[derive(Debug, Clone)]
 pub enum PostRow {
@@ -215,9 +222,39 @@ pub enum PostRow {
         treasury_amount: i64,
         referrer_amount: i64,
         beneficiary_amount: i64,
+        join_referral_applied: bool,
+        claim_kind: Option<String>,
         timestamp_ms: i64,
         transaction_id: String,
     },
+    PocUsernameBeneficiary(NewPocUsernameBeneficiary),
+    PocUsernameBeneficiaryClaimed {
+        beneficiary_id: String,
+        username: String,
+        profile_id: String,
+        claimed_by: String,
+        wallet: String,
+        oracle_evidence_hash: String,
+        claimed_at_ms: i64,
+        transaction_id: String,
+    },
+    PocUsernameBeneficiaryEnded {
+        beneficiary_id: String,
+        username: String,
+        ended_by: String,
+        end_reason_code: i16,
+        swept_mys_amount: i64,
+        ended_at_ms: i64,
+        transaction_id: String,
+    },
+    PocUsernameBeneficiaryJoinReferralPaid {
+        beneficiary_address: String,
+        join_referrer: Option<String>,
+        join_referral_paid_at_ms: i64,
+        transaction_id: String,
+    },
+    PocCreatorIdentityLink(NewPocCreatorIdentityLink),
+    PocUsernameBeneficiaryEvent(NewPocUsernameBeneficiaryEvent),
     PostRevenueRedirectUpdate {
         post_id: String,
         revenue_redirect_to: String,
@@ -513,6 +550,8 @@ impl PostRow {
                 treasury_amount,
                 referrer_amount,
                 beneficiary_amount,
+                join_referral_applied,
+                claim_kind,
                 timestamp_ms,
                 transaction_id,
             } => Some(PostRow::PocBeneficiaryVaultClaimed {
@@ -523,9 +562,63 @@ impl PostRow {
                 treasury_amount,
                 referrer_amount,
                 beneficiary_amount,
+                join_referral_applied,
+                claim_kind,
                 timestamp_ms,
                 transaction_id,
             }),
+            SocialEventRow::PocUsernameBeneficiary(row) => Some(PostRow::PocUsernameBeneficiary(row)),
+            SocialEventRow::PocUsernameBeneficiaryClaimed {
+                beneficiary_id,
+                username,
+                profile_id,
+                claimed_by,
+                wallet,
+                oracle_evidence_hash,
+                claimed_at_ms,
+                transaction_id,
+            } => Some(PostRow::PocUsernameBeneficiaryClaimed {
+                beneficiary_id,
+                username,
+                profile_id,
+                claimed_by,
+                wallet,
+                oracle_evidence_hash,
+                claimed_at_ms,
+                transaction_id,
+            }),
+            SocialEventRow::PocUsernameBeneficiaryEnded {
+                beneficiary_id,
+                username,
+                ended_by,
+                end_reason_code,
+                swept_mys_amount,
+                ended_at_ms,
+                transaction_id,
+            } => Some(PostRow::PocUsernameBeneficiaryEnded {
+                beneficiary_id,
+                username,
+                ended_by,
+                end_reason_code,
+                swept_mys_amount,
+                ended_at_ms,
+                transaction_id,
+            }),
+            SocialEventRow::PocUsernameBeneficiaryJoinReferralPaid {
+                beneficiary_address,
+                join_referrer,
+                join_referral_paid_at_ms,
+                transaction_id,
+            } => Some(PostRow::PocUsernameBeneficiaryJoinReferralPaid {
+                beneficiary_address,
+                join_referrer,
+                join_referral_paid_at_ms,
+                transaction_id,
+            }),
+            SocialEventRow::PocCreatorIdentityLink(row) => Some(PostRow::PocCreatorIdentityLink(row)),
+            SocialEventRow::PocUsernameBeneficiaryEvent(row) => {
+                Some(PostRow::PocUsernameBeneficiaryEvent(row))
+            }
             SocialEventRow::PostRevenueRedirectUpdate {
                 post_id,
                 revenue_redirect_to,
@@ -1522,6 +1615,8 @@ impl Handler for PostsHandler {
                     treasury_amount,
                     referrer_amount,
                     beneficiary_amount,
+                    join_referral_applied: _,
+                    claim_kind,
                     timestamp_ms,
                     transaction_id,
                 } => {
@@ -1540,6 +1635,7 @@ impl Handler for PostsHandler {
                         beneficiary_amount: *beneficiary_amount,
                         occurred_at_ms: *timestamp_ms,
                         transaction_id: transaction_id.clone(),
+                        claim_kind: claim_kind.clone(),
                     };
                     total += diesel::insert_into(poc_vault_claims::table)
                         .values(&row)
@@ -1560,6 +1656,114 @@ impl Handler for PostsHandler {
                         .bind::<Text, _>(vault_id)
                         .bind::<BigInt, _>(*timestamp_ms)
                         .bind::<Text, _>(&row.transaction_id)
+                        .execute(conn)
+                        .await?;
+                }
+                PostRow::PocUsernameBeneficiary(row) => {
+                    total += diesel::insert_into(poc_username_beneficiaries::table)
+                        .values(row)
+                        .execute(conn)
+                        .await?;
+                }
+                PostRow::PocUsernameBeneficiaryClaimed {
+                    beneficiary_id,
+                    profile_id,
+                    claimed_by,
+                    oracle_evidence_hash,
+                    claimed_at_ms,
+                    transaction_id,
+                    ..
+                } => {
+                    use diesel::sql_types::Int2;
+                    use myso_indexer_alt_social_schema::models::USERNAME_BENEFICIARY_STATUS_CLAIMED;
+                    let update_sql = "UPDATE poc_username_beneficiaries SET status = $2, claimed_profile_id = $3, claimed_by = $4, \
+                        oracle_evidence_hash = $5, claimed_at_ms = $6, transaction_id = $7, time = NOW() \
+                        WHERE beneficiary_id = $1";
+                    total += diesel::sql_query(update_sql)
+                        .bind::<Text, _>(beneficiary_id)
+                        .bind::<Int2, _>(USERNAME_BENEFICIARY_STATUS_CLAIMED)
+                        .bind::<Text, _>(profile_id)
+                        .bind::<Text, _>(claimed_by)
+                        .bind::<Text, _>(oracle_evidence_hash)
+                        .bind::<BigInt, _>(*claimed_at_ms)
+                        .bind::<Text, _>(transaction_id)
+                        .execute(conn)
+                        .await?;
+                }
+                PostRow::PocUsernameBeneficiaryEnded {
+                    beneficiary_id,
+                    ended_by,
+                    end_reason_code,
+                    ended_at_ms,
+                    transaction_id,
+                    ..
+                } => {
+                    use diesel::sql_types::{Int2, Nullable};
+                    use myso_indexer_alt_social_schema::models::USERNAME_BENEFICIARY_STATUS_ENDED;
+                    let update_sql = "UPDATE poc_username_beneficiaries SET status = $2, ended_by = $3, end_reason_code = $4, \
+                        ended_at_ms = $5, transaction_id = $6, time = NOW() \
+                        WHERE beneficiary_id = $1";
+                    total += diesel::sql_query(update_sql)
+                        .bind::<Text, _>(beneficiary_id)
+                        .bind::<Int2, _>(USERNAME_BENEFICIARY_STATUS_ENDED)
+                        .bind::<Text, _>(ended_by)
+                        .bind::<Nullable<Int2>, _>(Some(*end_reason_code))
+                        .bind::<Nullable<BigInt>, _>(Some(*ended_at_ms))
+                        .bind::<Text, _>(transaction_id)
+                        .execute(conn)
+                        .await?;
+                }
+                PostRow::PocUsernameBeneficiaryJoinReferralPaid {
+                    beneficiary_address,
+                    join_referrer,
+                    join_referral_paid_at_ms,
+                    transaction_id,
+                } => {
+                    use diesel::sql_types::{Bool, Nullable};
+                    let update_sql = "UPDATE poc_username_beneficiaries SET join_referral_paid = $2, join_referrer = $3, \
+                        join_referral_paid_at_ms = $4, transaction_id = $5, time = NOW() \
+                        WHERE beneficiary_address = $1";
+                    total += diesel::sql_query(update_sql)
+                        .bind::<Text, _>(beneficiary_address)
+                        .bind::<Bool, _>(true)
+                        .bind::<Nullable<Text>, _>(join_referrer.clone())
+                        .bind::<Nullable<BigInt>, _>(Some(*join_referral_paid_at_ms))
+                        .bind::<Text, _>(transaction_id)
+                        .execute(conn)
+                        .await?;
+                }
+                PostRow::PocCreatorIdentityLink(row) => {
+                    total += diesel::insert_into(poc_creator_identity_links::table)
+                        .values(row)
+                        .on_conflict((
+                            poc_creator_identity_links::creator_identity_source,
+                            poc_creator_identity_links::creator_identity_hash,
+                        ))
+                        .do_update()
+                        .set((
+                            poc_creator_identity_links::wallet_address
+                                .eq(diesel::upsert::excluded(
+                                    poc_creator_identity_links::wallet_address,
+                                )),
+                            poc_creator_identity_links::beneficiary_id.eq(diesel::upsert::excluded(
+                                poc_creator_identity_links::beneficiary_id,
+                            )),
+                            poc_creator_identity_links::linked_at_ms.eq(diesel::upsert::excluded(
+                                poc_creator_identity_links::linked_at_ms,
+                            )),
+                            poc_creator_identity_links::transaction_id.eq(diesel::upsert::excluded(
+                                poc_creator_identity_links::transaction_id,
+                            )),
+                            poc_creator_identity_links::time.eq(diesel::upsert::excluded(
+                                poc_creator_identity_links::time,
+                            )),
+                        ))
+                        .execute(conn)
+                        .await?;
+                }
+                PostRow::PocUsernameBeneficiaryEvent(row) => {
+                    total += diesel::insert_into(poc_username_beneficiary_events::table)
+                        .values(row)
                         .execute(conn)
                         .await?;
                 }
@@ -1681,7 +1885,7 @@ impl Handler for PostsHandler {
 mod post_row_poc_mapping_tests {
     use super::{classify_reaction, PostRow, ReactionApplyKind};
     use crate::handlers::SocialEventRow;
-    use myso_indexer_alt_social_schema::models::NewPocBadge;
+    use myso_indexer_alt_social_schema::models::{NewPocBadge, NewPocUsernameBeneficiary};
 
     #[test]
     fn classify_reaction_new_when_no_prior() {
@@ -1720,5 +1924,35 @@ mod post_row_poc_mapping_tests {
         };
         let r = PostRow::from_social(SocialEventRow::PocBadge(b.clone()));
         assert!(matches!(r, Some(PostRow::PocBadge(x)) if x.badge_id == b.badge_id));
+    }
+
+    #[test]
+    fn post_row_maps_username_beneficiary_social_event() {
+        let row = NewPocUsernameBeneficiary {
+            beneficiary_id: "0xb1".to_string(),
+            username: "alice".to_string(),
+            status: 1,
+            creator_identity_source: 1,
+            creator_identity_hash: "0xabc".to_string(),
+            beneficiary_address: "0xba".to_string(),
+            vault_id: "0xv1".to_string(),
+            required_x_handle: "alice_x".to_string(),
+            oracle_evidence_hash: String::new(),
+            provisioned_at_ms: 1000,
+            provisioned_by: "0xadmin".to_string(),
+            claimed_profile_id: None,
+            claimed_by: None,
+            claimed_at_ms: None,
+            ended_at_ms: None,
+            ended_by: None,
+            end_reason_code: None,
+            join_referrer: None,
+            join_referral_paid: false,
+            join_referral_paid_at_ms: None,
+            transaction_id: "tx".to_string(),
+            time: chrono::Utc::now(),
+        };
+        let mapped = PostRow::from_social(SocialEventRow::PocUsernameBeneficiary(row.clone()));
+        assert!(matches!(mapped, Some(PostRow::PocUsernameBeneficiary(r)) if r.beneficiary_id == row.beneficiary_id));
     }
 }

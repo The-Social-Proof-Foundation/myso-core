@@ -800,6 +800,19 @@ diesel::table! {
         dispute_quorum_base_stake -> Int8,
         dispute_second_round_fee_multiplier_bps -> Int8,
         dispute_second_round_quorum_multiplier_bps -> Int8,
+        username_beneficiary_join_referral_bps -> Int8,
+    }
+}
+
+diesel::table! {
+    poc_creator_identity_links (creator_identity_source, creator_identity_hash) {
+        creator_identity_source -> Int2,
+        creator_identity_hash -> Text,
+        wallet_address -> Text,
+        beneficiary_id -> Text,
+        linked_at_ms -> Int8,
+        transaction_id -> Text,
+        time -> Timestamptz,
     }
 }
 
@@ -850,6 +863,47 @@ diesel::table! {
         beneficiary_amount -> Int8,
         occurred_at_ms -> Int8,
         transaction_id -> Text,
+        time -> Timestamptz,
+        claim_kind -> Nullable<Text>,
+    }
+}
+
+diesel::table! {
+    poc_username_beneficiaries (beneficiary_id) {
+        beneficiary_id -> Text,
+        username -> Text,
+        status -> Int2,
+        creator_identity_source -> Int2,
+        creator_identity_hash -> Text,
+        beneficiary_address -> Text,
+        vault_id -> Text,
+        required_x_handle -> Text,
+        oracle_evidence_hash -> Text,
+        provisioned_at_ms -> Int8,
+        provisioned_by -> Text,
+        claimed_profile_id -> Nullable<Text>,
+        claimed_by -> Nullable<Text>,
+        claimed_at_ms -> Nullable<Int8>,
+        ended_at_ms -> Nullable<Int8>,
+        ended_by -> Nullable<Text>,
+        end_reason_code -> Nullable<Int2>,
+        join_referrer -> Nullable<Text>,
+        join_referral_paid -> Bool,
+        join_referral_paid_at_ms -> Nullable<Int8>,
+        transaction_id -> Text,
+        time -> Timestamptz,
+    }
+}
+
+diesel::table! {
+    poc_username_beneficiary_events (id, time) {
+        id -> Int4,
+        event_type -> Text,
+        beneficiary_id -> Nullable<Text>,
+        username -> Nullable<Text>,
+        payload_json -> Jsonb,
+        transaction_id -> Text,
+        event_id -> Text,
         time -> Timestamptz,
     }
 }
@@ -2116,12 +2170,15 @@ diesel::allow_tables_to_appear_in_same_query!(
     poc_badges,
     poc_beneficiary_vaults,
     poc_configuration,
+    poc_creator_identity_links,
     poc_dispute_votes,
     poc_disputes,
     poc_revenue_redirections,
     poc_vault_claims,
     poc_vault_coin_balances,
     poc_vault_deposits,
+    poc_username_beneficiaries,
+    poc_username_beneficiary_events,
     post_config,
     posts,
     posts_deletion_events,

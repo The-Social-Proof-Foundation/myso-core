@@ -207,6 +207,29 @@ enum AddressTransactionRelationship {
 	AFFECTED
 }
 
+type AgenticOrganization {
+	active: Boolean!
+	ageMs: BigInt!
+	createdAt: Int!
+	description: String
+	name: String
+	orgType: OrganizationType!
+	organizationId: String!
+	rootAgent: SubAgent
+	statistics(window: OrganizationStatsWindowGql): GraphOrganizationStatistics
+}
+
+type AgenticOrganizationLeaderboardEntry {
+	organization: AgenticOrganization!
+	rank: Int!
+	sortValue: BigInt!
+}
+
+type AgenticOrganizationLeaderboardResponse {
+	entries: [AgenticOrganizationLeaderboardEntry!]!
+	total: Int!
+}
+
 type AnonymousVote {
 	decryptionStatus: Int!
 	processingSuccess: Boolean!
@@ -1875,6 +1898,38 @@ type GovernanceStats {
 	Voting proposals count.
 	"""
 	votingProposals: Int!
+}
+
+type GraphOrganizationStatistics {
+	activeAgents: Int!
+	attributionCoverage: Float!
+	estimatedAssetsUnderManagementMyso: BigInt!
+	insufficientSample: Boolean!
+	netCashFlowMyso: BigInt!
+	organizationAgeMs: BigInt!
+	originalityPostsAnalyzed: BigInt!
+	originalityScoreAverage: Float
+	spotAccuracy: Float
+	spotBetsResolved: BigInt!
+	statsRollupAt: DateTime
+	totalActionsExecuted: BigInt!
+	totalAgents: Int!
+	totalCounterparties: BigInt!
+	totalEngagement: BigInt!
+	totalOutboundSpendMyso: BigInt!
+	totalPosts: BigInt!
+	totalRevenueMyso: BigInt!
+	totalSpotParticipation: BigInt!
+	totalTransactions: BigInt!
+}
+
+type GraphVestingPiece {
+	amountBps: Int!
+	curveFactor: Int!
+	duration: Int!
+	kind: String!
+	pieceAmount: Int!
+	timeOffset: Int!
 }
 
 """
@@ -4217,6 +4272,46 @@ type OpenMoveTypeSignatureBody =
 """
 scalar OpenMoveTypeSignature
 
+type OrganizationCategory {
+	displayName: String!
+	slug: String!
+	value: Int!
+}
+
+enum OrganizationLeaderboardSortGql {
+	HIGHEST_NET_CASH_FLOW
+	FASTEST_GROWING
+	HIGHEST_ACCURACY
+	MOST_ACTIVE
+	HIGHEST_REVENUE
+	LARGEST_ESTIMATED_AUM
+}
+
+enum OrganizationStatsWindowGql {
+	ALL
+	DAYS_7
+	DAYS_30
+	DAYS_180
+	DAYS_365
+}
+
+enum OrganizationType {
+	COMPANY
+	STARTUP
+	INVESTMENT_FUND
+	NONPROFIT
+	RESEARCH
+	GOVERNMENT
+	MEDIA
+	STEWARDSHIP
+	BRAND
+	COMMUNITY
+	SPORTS
+	EDUCATION
+	HEALTHCARE
+	OTHER
+}
+
 """
 Placeholder for unimplemented command types
 """
@@ -4394,7 +4489,11 @@ type Platform implements Node {
 	"""
 	Moderators of this platform (paginated).
 	"""
-	moderators(limit: Int, offset: Int): [PlatformModeratorSummary!]
+	moderators(permission: String, limit: Int, offset: Int): [PlatformModeratorSummary!]
+	"""
+	Derived PermissionedGroup object id for platform moderators.
+	"""
+	moderatorsGroupId: String
 	"""
 	The platform name.
 	"""
@@ -4588,6 +4687,7 @@ type PlatformModeratorSummary {
 	Profile of the moderator.
 	"""
 	moderatorProfile: ProfileSummary
+	permissions: [String!]!
 }
 
 type PlatformRevenueSummary {
@@ -4638,6 +4738,11 @@ type PlatformRevenueSummary {
 }
 
 type PlatformUserAccess {
+	canAirdropTreasury: Boolean!
+	canBlockUsers: Boolean!
+	canManageBadges: Boolean!
+	canManagePromotions: Boolean!
+	canModerateContent: Boolean!
 	"""
 	Whether the platform has blocked this wallet.
 	"""
@@ -4650,6 +4755,10 @@ type PlatformUserAccess {
 	Whether the wallet is a moderator of this platform.
 	"""
 	isModerator: Boolean!
+	"""
+	Active granular moderator permissions for this wallet.
+	"""
+	moderatorPermissions: [String!]!
 }
 
 type PocAnalysisResult {
@@ -4736,6 +4845,7 @@ type PocBeneficiaryVault {
 	"""
 	coinBalances: [PocVaultCoinBalance!]
 	deposits(limit: Int, offset: Int): [PocVaultDeposit!]
+	pocUsernameBeneficiary: PocUsernameBeneficiary
 	transactionId: String!
 	"""
 	Last indexer touch (epoch milliseconds).
@@ -4814,6 +4924,10 @@ type PocConfig {
 	Address that last updated PoC configuration.
 	"""
 	updatedBy: String!
+	"""
+	One-time join-referral fee (bps) on first username-beneficiary vault claim.
+	"""
+	usernameBeneficiaryJoinReferralBps: Int!
 	"""
 	Max redirect ceiling (bps) when only embedded audio matches on a VIDEO post (on-chain delta ramp applies).
 	"""
@@ -4954,6 +5068,34 @@ type PocRevenueRedirection {
 	Similarity score from the analysis (0-100).
 	"""
 	similarityScore: Int!
+}
+
+type PocUsernameBeneficiary {
+	beneficiaryAddress: String!
+	beneficiaryId: String!
+	claimedAtMs: Int
+	claimedBy: String
+	claimedProfileId: String
+	creatorIdentityHash: String!
+	creatorIdentitySource: Int!
+	endReasonCode: Int
+	endedAtMs: Int
+	endedBy: String
+	joinReferralPaid: Boolean!
+	joinReferralPaidAtMs: Int
+	joinReferrer: String
+	oracleEvidenceHash: String!
+	pocBeneficiaryVault: PocBeneficiaryVault
+	provisionedAtMs: Int!
+	provisionedBy: String!
+	requiredXHandle: String!
+	"""
+	1=active, 2=claimed, 3=ended.
+	"""
+	status: Int!
+	transactionId: String!
+	username: String!
+	vaultId: String!
 }
 
 type PocVaultClaim {
@@ -5378,7 +5520,7 @@ type PostReport {
 	"""
 	reportId: Int!
 	"""
-	When the report was filed (epoch milliseconds, chain timestamp).
+	When the report was filed (Unix ms from myso::clock::Clock at 0x6).
 	"""
 	reportedAt: Int!
 	reporter: MySoAddress!
@@ -5410,6 +5552,10 @@ type Profile implements Node {
 	"""
 	address: MySoAddress!
 	"""
+	Agentic organizations owned by this profile (max 8 per user on-chain).
+	"""
+	agenticOrganizations(orgType: Int, activeOnly: Boolean, limit: Int, offset: Int): [AgenticOrganization!]
+	"""
 	Profile badges (paginated).
 	"""
 	badges(limit: Int, offset: Int): [ProfileBadge!]
@@ -5438,7 +5584,7 @@ type Profile implements Node {
 	"""
 	coverPhoto: String
 	"""
-	When the profile was created (epoch milliseconds).
+	When the profile was created (Unix ms from chain Clock at 0x6).
 	"""
 	createdAt: Int
 	"""
@@ -5611,7 +5757,7 @@ type Profile implements Node {
 	subAgents(activeOnly: Boolean, limit: Int, offset: Int): [SubAgent!]
 	subAgentsTotalCount(activeOnly: Boolean): Int
 	"""
-	When the profile was last updated (epoch milliseconds).
+	When the profile was last updated (Unix ms from chain Clock at 0x6).
 	"""
 	updatedAt: Int
 	"""
@@ -6172,6 +6318,14 @@ type Query {
 	"""
 	address(address: MySoAddress, rootVersion: UInt53, atCheckpoint: UInt53): Address
 	"""
+	Agentic organization by object id. Returns null when social DB not configured or not found.
+	"""
+	agenticOrganization(organizationId: String!): AgenticOrganization
+	"""
+	Category-scoped agentic organization leaderboard. Returns empty when social DB not configured.
+	"""
+	agenticOrganizationsLeaderboard(sort: OrganizationLeaderboardSortGql!, category: OrganizationType!, window: OrganizationStatsWindowGql, limit: Int, offset: Int): AgenticOrganizationLeaderboardResponse
+	"""
 	Anonymous voting trends (daily aggregates). Returns empty when social DB not configured.
 	"""
 	anonymousVotingTrends(limit: Int): [AnonymousVotingTrend!]
@@ -6440,6 +6594,10 @@ type Query {
 	"""
 	objects(first: Int, after: String, last: Int, before: String, filter: ObjectFilter!): ObjectConnection
 	"""
+	Allowed organization category labels (14 values).
+	"""
+	organizationCategories: [OrganizationCategory!]
+	"""
 	Fetch a package by its address.
 	
 	If `version` is specified, the package loaded is the one that shares its original ID with the package at `address`, but whose version is `version`.
@@ -6488,6 +6646,18 @@ type Query {
 	Proof of Creativity configuration. Returns null when social DB not configured or no config.
 	"""
 	pocConfiguration: PocConfig
+	"""
+	List PoC username beneficiary provisions with optional status filter.
+	"""
+	pocUsernameBeneficiaries(status: Int, limit: Int, offset: Int): [PocUsernameBeneficiary!]
+	"""
+	PoC username beneficiary provision by on-chain beneficiary object id.
+	"""
+	pocUsernameBeneficiaryById(id: ID!): PocUsernameBeneficiary
+	"""
+	PoC username beneficiary provision by username.
+	"""
+	pocUsernameBeneficiaryByUsername(username: String!): PocUsernameBeneficiary
 	"""
 	Popular MyData records (ordered by purchase + revenue + access counts). Returns empty when social DB not configured.
 	"""
@@ -8230,6 +8400,11 @@ type UserSignature {
 
 type UsernameAvailability {
 	available: Boolean!
+	beneficiaryId: String
+	beneficiaryProvisioned: Boolean!
+	registryClaimed: Boolean!
+	registryProfileId: String
+	unavailableReasons: [UsernameUnavailableReason!]!
 	username: String!
 }
 
@@ -8237,6 +8412,14 @@ type UsernameRegistry {
 	profileId: String!
 	transactionId: String!
 	username: String!
+}
+
+"""
+Why a username is unavailable for registration.
+"""
+enum UsernameUnavailableReason {
+	REGISTRY_CLAIMED
+	BENEFICIARY_PROVISIONED
 }
 
 type Validator {
@@ -8331,107 +8514,37 @@ input VersionFilter {
 }
 
 type VestingLeaderboardEntry {
-	"""
-	Number of active vesting wallets.
-	"""
 	activeWallets: Int!
-	"""
-	Number of completed vesting wallets.
-	"""
 	completedWallets: Int!
-	"""
-	Owner address.
-	"""
 	ownerAddress: MySoAddress!
-	"""
-	Total amount claimed across all wallets.
-	"""
 	totalClaimed: Int!
-	"""
-	Total amount vested across all wallets.
-	"""
 	totalVested: Int!
-	"""
-	User profile summary.
-	"""
 	user: ProfileSummary!
 }
 
 type VestingLeaderboardResponse {
-	"""
-	Leaderboard entries.
-	"""
 	entries: [VestingLeaderboardEntry!]!
-	"""
-	Total number of unique owners.
-	"""
 	total: Int!
 }
 
 type VestingWallet {
-	"""
-	Amount already claimed.
-	"""
+	claimableAmount: Int!
 	claimedAmount: Int!
-	"""
-	Claimed percentage (0-100).
-	"""
 	claimedPercentage: Float!
-	"""
-	When the wallet was created (epoch milliseconds).
-	"""
 	createdAt: Int!
-	"""
-	Curve factor (1000 = linear).
-	"""
-	curveFactor: Int!
-	"""
-	Vesting duration (ms).
-	"""
-	duration: Int!
-	"""
-	End time (ms since epoch).
-	"""
 	endTime: Int!
-	"""
-	Whether vesting has ended.
-	"""
 	hasEnded: Boolean!
-	"""
-	Whether vesting has started.
-	"""
 	hasStarted: Boolean!
-	"""
-	Owner address.
-	"""
+	nextCliff: GraphVestingPiece
 	ownerAddress: MySoAddress!
-	"""
-	Profile of the vesting wallet owner.
-	"""
 	ownerProfile: ProfileSummary
-	"""
-	Remaining balance.
-	"""
+	pieces: [GraphVestingPiece!]!
 	remainingBalance: Int!
-	"""
-	Vesting start time (ms since epoch).
-	"""
+	scheduleEnd: Int!
 	startTime: Int!
-	"""
-	Total amount vested.
-	"""
 	totalAmount: Int!
-	"""
-	Transaction ID that created the wallet.
-	"""
 	transactionId: String!
-	"""
-	Vesting progress (0.0-1.0).
-	"""
 	vestingProgress: Float!
-	"""
-	Vesting wallet ID (object address).
-	"""
 	walletId: String!
 }
 

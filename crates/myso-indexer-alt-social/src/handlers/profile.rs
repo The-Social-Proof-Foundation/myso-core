@@ -3,7 +3,6 @@
 
 //! Pipeline pattern follows myso-indexer-alt.
 
-use chrono::Utc;
 use serde::{Deserialize, Deserializer};
 use std::str::FromStr;
 

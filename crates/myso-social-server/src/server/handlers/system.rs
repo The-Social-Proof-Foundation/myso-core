@@ -26,10 +26,10 @@ pub async fn check_username_availability(
     State(state): State<Arc<AppState>>,
     Path(username): Path<String>,
     Query(query): Query<UsernameAvailabilityQuery>,
-) -> Result<Json<serde_json::Value>, SocialError> {
-    let available = state
+) -> Result<Json<myso_indexer_alt_social_reader::UsernameAvailabilityDetail>, SocialError> {
+    let detail = state
         .reader
         .check_username_availability(&username, query.exclude_address.as_deref())
         .await?;
-    Ok(Json(serde_json::json!({ "available": available })))
+    Ok(Json(detail))
 }

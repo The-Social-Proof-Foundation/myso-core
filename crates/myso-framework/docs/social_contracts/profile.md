@@ -46,13 +46,18 @@ Handles user identity, profile creation, management, and username registration
 -  [Function `ascii_to_string`](#social_contracts_profile_ascii_to_string)
 -  [Function `is_ecosystem_badge`](#social_contracts_profile_is_ecosystem_badge)
 -  [Function `copy_string`](#social_contracts_profile_copy_string)
+-  [Function `canonical_registry_username_from_bytes`](#social_contracts_profile_canonical_registry_username_from_bytes)
+-  [Function `lock_username_for_beneficiary`](#social_contracts_profile_lock_username_for_beneficiary)
+-  [Function `unlock_username_for_beneficiary`](#social_contracts_profile_unlock_username_for_beneficiary)
 -  [Function `claim_username`](#social_contracts_profile_claim_username)
+-  [Function `claim_username_internal`](#social_contracts_profile_claim_username_internal)
 -  [Function `revoke_username`](#social_contracts_profile_revoke_username)
 -  [Function `move_username`](#social_contracts_profile_move_username)
 -  [Function `profile_picture_event_string`](#social_contracts_profile_profile_picture_event_string)
 -  [Function `cover_photo_event_string`](#social_contracts_profile_cover_photo_event_string)
 -  [Function `emit_profile_updated_event`](#social_contracts_profile_emit_profile_updated_event)
 -  [Function `create_profile`](#social_contracts_profile_create_profile)
+-  [Function `create_profile_from_beneficiary_claim`](#social_contracts_profile_create_profile_from_beneficiary_claim)
 -  [Function `ensure_memory_account`](#social_contracts_profile_ensure_memory_account)
 -  [Function `transfer_profile`](#social_contracts_profile_transfer_profile)
 -  [Function `transfer_profile_with_memory`](#social_contracts_profile_transfer_profile_with_memory)
@@ -64,6 +69,7 @@ Handles user identity, profile creation, management, and username registration
 -  [Function `owner`](#social_contracts_profile_owner)
 -  [Function `id`](#social_contracts_profile_id)
 -  [Function `lookup_profile_by_username`](#social_contracts_profile_lookup_profile_by_username)
+-  [Function `is_username_beneficiary_locked`](#social_contracts_profile_is_username_beneficiary_locked)
 -  [Function `is_username_available`](#social_contracts_profile_is_username_available)
 -  [Function `lookup_profile_by_owner`](#social_contracts_profile_lookup_profile_by_owner)
 -  [Function `get_id_address`](#social_contracts_profile_get_id_address)
@@ -349,6 +355,12 @@ Username Registry — sole on-chain store for username ownership
 </dt>
 <dd>
  Owner wallet → profile_id
+</dd>
+<dt>
+<code>beneficiary_usernames: <a href="../myso/table.md#myso_table_Table">myso::table::Table</a>&lt;<a href="../std/string.md#std_string_String">std::string::String</a>, bool&gt;</code>
+</dt>
+<dd>
+ Usernames provisioned for PoC username beneficiary vaults (ACTIVE only)
 </dd>
 <dt>
 <code><a href="../social_contracts/profile.md#social_contracts_profile_version">version</a>: u64</code>
@@ -2020,6 +2032,15 @@ Error codes
 
 
 
+<a name="social_contracts_profile_EUsernameBeneficiaryActive"></a>
+
+
+
+<pre><code><b>const</b> <a href="../social_contracts/profile.md#social_contracts_profile_EUsernameBeneficiaryActive">EUsernameBeneficiaryActive</a>: u64 = 32;
+</code></pre>
+
+
+
 <a name="social_contracts_profile_EInvalidSchedule"></a>
 
 
@@ -2242,6 +2263,7 @@ Bootstrap initialization function - creates the username registry and treasury
         <a href="../social_contracts/profile.md#social_contracts_profile_id">id</a>: object::new(ctx),
         usernames: table::new(ctx),
         address_profiles: table::new(ctx),
+        beneficiary_usernames: table::new(ctx),
         <a href="../social_contracts/profile.md#social_contracts_profile_version">version</a>: current_version,
     };
     // Create the Ecosystem treasury owned by the contract deployer
@@ -2501,13 +2523,14 @@ Convert an ASCII String to a String
 
 </details>
 
-<a name="social_contracts_profile_claim_username"></a>
+<a name="social_contracts_profile_canonical_registry_username_from_bytes"></a>
 
-## Function `claim_username`
+## Function `canonical_registry_username_from_bytes`
+
+Canonical username for [<code><a href="../social_contracts/profile.md#social_contracts_profile_UsernameRegistry">UsernameRegistry</a></code>] keys (package helper for PoC beneficiary flows).
 
 
-
-<pre><code><b>fun</b> <a href="../social_contracts/profile.md#social_contracts_profile_claim_username">claim_username</a>(registry: &<b>mut</b> <a href="../social_contracts/profile.md#social_contracts_profile_UsernameRegistry">social_contracts::profile::UsernameRegistry</a>, username: <a href="../std/string.md#std_string_String">std::string::String</a>, profile_id: <b>address</b>)
+<pre><code><b>public</b>(package) <b>fun</b> <a href="../social_contracts/profile.md#social_contracts_profile_canonical_registry_username_from_bytes">canonical_registry_username_from_bytes</a>(username: vector&lt;u8&gt;): <a href="../std/string.md#std_string_String">std::string::String</a>
 </code></pre>
 
 
@@ -2516,9 +2539,127 @@ Convert an ASCII String to a String
 <summary>Implementation</summary>
 
 
-<pre><code><b>fun</b> <a href="../social_contracts/profile.md#social_contracts_profile_claim_username">claim_username</a>(registry: &<b>mut</b> <a href="../social_contracts/profile.md#social_contracts_profile_UsernameRegistry">UsernameRegistry</a>, username: String, profile_id: <b>address</b>) {
+<pre><code><b>public</b>(package) <b>fun</b> <a href="../social_contracts/profile.md#social_contracts_profile_canonical_registry_username_from_bytes">canonical_registry_username_from_bytes</a>(username: vector&lt;u8&gt;): String {
+    string::utf8(<a href="../social_contracts/profile.md#social_contracts_profile_to_lowercase_bytes">to_lowercase_bytes</a>(&username))
+}
+</code></pre>
+
+
+
+</details>
+
+<a name="social_contracts_profile_lock_username_for_beneficiary"></a>
+
+## Function `lock_username_for_beneficiary`
+
+Lock a username while an ACTIVE PoC username beneficiary provision exists.
+
+
+<pre><code><b>public</b>(package) <b>fun</b> <a href="../social_contracts/profile.md#social_contracts_profile_lock_username_for_beneficiary">lock_username_for_beneficiary</a>(registry: &<b>mut</b> <a href="../social_contracts/profile.md#social_contracts_profile_UsernameRegistry">social_contracts::profile::UsernameRegistry</a>, username: <a href="../std/string.md#std_string_String">std::string::String</a>)
+</code></pre>
+
+
+
+<details>
+<summary>Implementation</summary>
+
+
+<pre><code><b>public</b>(package) <b>fun</b> <a href="../social_contracts/profile.md#social_contracts_profile_lock_username_for_beneficiary">lock_username_for_beneficiary</a>(
+    registry: &<b>mut</b> <a href="../social_contracts/profile.md#social_contracts_profile_UsernameRegistry">UsernameRegistry</a>,
+    username: String,
+) {
+    <b>let</b> username = <a href="../social_contracts/profile.md#social_contracts_profile_canonical_registry_username">canonical_registry_username</a>(&username);
+    <b>if</b> (!table::contains(&registry.beneficiary_usernames, username)) {
+        table::add(&<b>mut</b> registry.beneficiary_usernames, username, <b>true</b>);
+    };
+}
+</code></pre>
+
+
+
+</details>
+
+<a name="social_contracts_profile_unlock_username_for_beneficiary"></a>
+
+## Function `unlock_username_for_beneficiary`
+
+Release a username beneficiary lock after claim or admin end.
+
+
+<pre><code><b>public</b>(package) <b>fun</b> <a href="../social_contracts/profile.md#social_contracts_profile_unlock_username_for_beneficiary">unlock_username_for_beneficiary</a>(registry: &<b>mut</b> <a href="../social_contracts/profile.md#social_contracts_profile_UsernameRegistry">social_contracts::profile::UsernameRegistry</a>, username: <a href="../std/string.md#std_string_String">std::string::String</a>)
+</code></pre>
+
+
+
+<details>
+<summary>Implementation</summary>
+
+
+<pre><code><b>public</b>(package) <b>fun</b> <a href="../social_contracts/profile.md#social_contracts_profile_unlock_username_for_beneficiary">unlock_username_for_beneficiary</a>(
+    registry: &<b>mut</b> <a href="../social_contracts/profile.md#social_contracts_profile_UsernameRegistry">UsernameRegistry</a>,
+    username: String,
+) {
+    <b>let</b> username = <a href="../social_contracts/profile.md#social_contracts_profile_canonical_registry_username">canonical_registry_username</a>(&username);
+    <b>if</b> (table::contains(&registry.beneficiary_usernames, username)) {
+        table::remove(&<b>mut</b> registry.beneficiary_usernames, username);
+    };
+}
+</code></pre>
+
+
+
+</details>
+
+<a name="social_contracts_profile_claim_username"></a>
+
+## Function `claim_username`
+
+
+
+<pre><code><b>public</b>(package) <b>fun</b> <a href="../social_contracts/profile.md#social_contracts_profile_claim_username">claim_username</a>(registry: &<b>mut</b> <a href="../social_contracts/profile.md#social_contracts_profile_UsernameRegistry">social_contracts::profile::UsernameRegistry</a>, username: <a href="../std/string.md#std_string_String">std::string::String</a>, profile_id: <b>address</b>)
+</code></pre>
+
+
+
+<details>
+<summary>Implementation</summary>
+
+
+<pre><code><b>public</b>(package) <b>fun</b> <a href="../social_contracts/profile.md#social_contracts_profile_claim_username">claim_username</a>(
+    registry: &<b>mut</b> <a href="../social_contracts/profile.md#social_contracts_profile_UsernameRegistry">UsernameRegistry</a>,
+    username: String,
+    profile_id: <b>address</b>,
+) {
     <b>assert</b>!(!table::contains(&registry.usernames, username), <a href="../social_contracts/profile.md#social_contracts_profile_EUsernameNotAvailable">EUsernameNotAvailable</a>);
     table::add(&<b>mut</b> registry.usernames, username, profile_id);
+    event::emit(<a href="../social_contracts/profile.md#social_contracts_profile_UsernameClaimedEvent">UsernameClaimedEvent</a> {
+        username,
+        profile_id,
+    });
+}
+</code></pre>
+
+
+
+</details>
+
+<a name="social_contracts_profile_claim_username_internal"></a>
+
+## Function `claim_username_internal`
+
+
+
+<pre><code><b>fun</b> <a href="../social_contracts/profile.md#social_contracts_profile_claim_username_internal">claim_username_internal</a>(registry: &<b>mut</b> <a href="../social_contracts/profile.md#social_contracts_profile_UsernameRegistry">social_contracts::profile::UsernameRegistry</a>, username: <a href="../std/string.md#std_string_String">std::string::String</a>, profile_id: <b>address</b>)
+</code></pre>
+
+
+
+<details>
+<summary>Implementation</summary>
+
+
+<pre><code><b>fun</b> <a href="../social_contracts/profile.md#social_contracts_profile_claim_username_internal">claim_username_internal</a>(registry: &<b>mut</b> <a href="../social_contracts/profile.md#social_contracts_profile_UsernameRegistry">UsernameRegistry</a>, username: String, profile_id: <b>address</b>) {
+    <a href="../social_contracts/profile.md#social_contracts_profile_claim_username">claim_username</a>(registry, username, profile_id);
 }
 </code></pre>
 
@@ -2719,6 +2860,7 @@ Main entry: also creates a linked [<code><a href="../social_contracts/memory.md#
     <b>assert</b>!(!<a href="../social_contracts/profile.md#social_contracts_profile_is_reserved_name">is_reserved_name</a>(&username), <a href="../social_contracts/profile.md#social_contracts_profile_EReservedName">EReservedName</a>);
     // Check that the username isn't already registered
     <b>assert</b>!(!table::contains(&registry.usernames, username), <a href="../social_contracts/profile.md#social_contracts_profile_EUsernameNotAvailable">EUsernameNotAvailable</a>);
+    <b>assert</b>!(!table::contains(&registry.beneficiary_usernames, username), <a href="../social_contracts/profile.md#social_contracts_profile_EUsernameBeneficiaryActive">EUsernameBeneficiaryActive</a>);
     // Create the <a href="../social_contracts/profile.md#social_contracts_profile">profile</a> object
     <b>let</b> <a href="../social_contracts/profile.md#social_contracts_profile_profile_picture">profile_picture</a> = <b>if</b> (vector::length(&profile_picture_url) &gt; 0) {
         option::some(url::new_unsafe_from_bytes(profile_picture_url))
@@ -2754,7 +2896,7 @@ Main entry: also creates a linked [<code><a href="../social_contracts/memory.md#
     <b>let</b> profile_id = object::uid_to_address(&<a href="../social_contracts/profile.md#social_contracts_profile">profile</a>.<a href="../social_contracts/profile.md#social_contracts_profile_id">id</a>);
     <b>let</b> memory_id = <a href="../social_contracts/memory.md#social_contracts_memory_create_account_for_profile">memory::create_account_for_profile</a>(memory_registry, profile_id, clock, ctx);
     <a href="../social_contracts/profile.md#social_contracts_profile">profile</a>.memory_account_id = option::some(memory_id);
-    <a href="../social_contracts/profile.md#social_contracts_profile_claim_username">claim_username</a>(registry, username, profile_id);
+    <a href="../social_contracts/profile.md#social_contracts_profile_claim_username_internal">claim_username_internal</a>(registry, username, profile_id);
     table::add(&<b>mut</b> registry.address_profiles, <a href="../social_contracts/profile.md#social_contracts_profile_owner">owner</a>, profile_id);
     // Extract display name value <b>for</b> the event (<b>if</b> available)
     <b>let</b> display_name_value = <b>if</b> (option::is_some(&<a href="../social_contracts/profile.md#social_contracts_profile">profile</a>.<a href="../social_contracts/profile.md#social_contracts_profile_display_name">display_name</a>)) {
@@ -2773,12 +2915,108 @@ Main entry: also creates a linked [<code><a href="../social_contracts/memory.md#
         <a href="../social_contracts/profile.md#social_contracts_profile_owner">owner</a>,
         created_at: now,
     });
-    event::emit(<a href="../social_contracts/profile.md#social_contracts_profile_UsernameClaimedEvent">UsernameClaimedEvent</a> {
-        username,
-        profile_id,
-    });
     // Transfer <a href="../social_contracts/profile.md#social_contracts_profile">profile</a> to <a href="../social_contracts/profile.md#social_contracts_profile_owner">owner</a>
     transfer::transfer(<a href="../social_contracts/profile.md#social_contracts_profile">profile</a>, <a href="../social_contracts/profile.md#social_contracts_profile_owner">owner</a>);
+}
+</code></pre>
+
+
+
+</details>
+
+<a name="social_contracts_profile_create_profile_from_beneficiary_claim"></a>
+
+## Function `create_profile_from_beneficiary_claim`
+
+Create a profile from an oracle-verified PoC username beneficiary claim.
+
+
+<pre><code><b>public</b>(package) <b>fun</b> <a href="../social_contracts/profile.md#social_contracts_profile_create_profile_from_beneficiary_claim">create_profile_from_beneficiary_claim</a>(registry: &<b>mut</b> <a href="../social_contracts/profile.md#social_contracts_profile_UsernameRegistry">social_contracts::profile::UsernameRegistry</a>, memory_registry: &<b>mut</b> <a href="../social_contracts/memory.md#social_contracts_memory_MemoryRegistry">social_contracts::memory::MemoryRegistry</a>, <a href="../social_contracts/profile.md#social_contracts_profile_display_name">display_name</a>: vector&lt;u8&gt;, username: <a href="../std/string.md#std_string_String">std::string::String</a>, <a href="../social_contracts/profile.md#social_contracts_profile_bio">bio</a>: vector&lt;u8&gt;, profile_picture_url: vector&lt;u8&gt;, cover_photo_url: vector&lt;u8&gt;, <a href="../social_contracts/profile.md#social_contracts_profile_owner">owner</a>: <b>address</b>, clock: &<a href="../myso/clock.md#myso_clock_Clock">myso::clock::Clock</a>, ctx: &<b>mut</b> <a href="../myso/tx_context.md#myso_tx_context_TxContext">myso::tx_context::TxContext</a>): <b>address</b>
+</code></pre>
+
+
+
+<details>
+<summary>Implementation</summary>
+
+
+<pre><code><b>public</b>(package) <b>fun</b> <a href="../social_contracts/profile.md#social_contracts_profile_create_profile_from_beneficiary_claim">create_profile_from_beneficiary_claim</a>(
+    registry: &<b>mut</b> <a href="../social_contracts/profile.md#social_contracts_profile_UsernameRegistry">UsernameRegistry</a>,
+    memory_registry: &<b>mut</b> <a href="../social_contracts/memory.md#social_contracts_memory_MemoryRegistry">memory::MemoryRegistry</a>,
+    <a href="../social_contracts/profile.md#social_contracts_profile_display_name">display_name</a>: vector&lt;u8&gt;,
+    username: String,
+    <a href="../social_contracts/profile.md#social_contracts_profile_bio">bio</a>: vector&lt;u8&gt;,
+    profile_picture_url: vector&lt;u8&gt;,
+    cover_photo_url: vector&lt;u8&gt;,
+    <a href="../social_contracts/profile.md#social_contracts_profile_owner">owner</a>: <b>address</b>,
+    clock: &Clock,
+    ctx: &<b>mut</b> TxContext,
+): <b>address</b> {
+    <b>assert</b>!(registry.<a href="../social_contracts/profile.md#social_contracts_profile_version">version</a> == <a href="../social_contracts/upgrade.md#social_contracts_upgrade_current_version">upgrade::current_version</a>(), 1);
+    <b>let</b> username = <a href="../social_contracts/profile.md#social_contracts_profile_canonical_registry_username">canonical_registry_username</a>(&username);
+    <b>let</b> username_length = vector::length(string::as_bytes(&username));
+    <b>assert</b>!(username_length &gt;= 2 && username_length &lt;= 50, <a href="../social_contracts/profile.md#social_contracts_profile_EInvalidUsername">EInvalidUsername</a>);
+    <b>assert</b>!(!<a href="../social_contracts/profile.md#social_contracts_profile_is_reserved_name">is_reserved_name</a>(&username), <a href="../social_contracts/profile.md#social_contracts_profile_EReservedName">EReservedName</a>);
+    <b>assert</b>!(!table::contains(&registry.usernames, username), <a href="../social_contracts/profile.md#social_contracts_profile_EUsernameNotAvailable">EUsernameNotAvailable</a>);
+    <b>assert</b>!(!table::contains(&registry.address_profiles, <a href="../social_contracts/profile.md#social_contracts_profile_owner">owner</a>), <a href="../social_contracts/profile.md#social_contracts_profile_EProfileAlreadyExists">EProfileAlreadyExists</a>);
+    <b>let</b> now = clock::timestamp_ms(clock);
+    <b>let</b> display_name_str = string::utf8(<a href="../social_contracts/profile.md#social_contracts_profile_display_name">display_name</a>);
+    <b>let</b> bio_str = string::utf8(<a href="../social_contracts/profile.md#social_contracts_profile_bio">bio</a>);
+    <b>let</b> <a href="../social_contracts/profile.md#social_contracts_profile_profile_picture">profile_picture</a> = <b>if</b> (vector::length(&profile_picture_url) &gt; 0) {
+        option::some(url::new_unsafe_from_bytes(profile_picture_url))
+    } <b>else</b> {
+        option::none()
+    };
+    <b>let</b> <a href="../social_contracts/profile.md#social_contracts_profile_cover_photo">cover_photo</a> = <b>if</b> (vector::length(&cover_photo_url) &gt; 0) {
+        option::some(url::new_unsafe_from_bytes(cover_photo_url))
+    } <b>else</b> {
+        option::none()
+    };
+    <b>let</b> display_name_option = <b>if</b> (string::length(&display_name_str) &gt; 0) {
+        option::some(display_name_str)
+    } <b>else</b> {
+        option::none()
+    };
+    <b>let</b> <b>mut</b> <a href="../social_contracts/profile.md#social_contracts_profile">profile</a> = <a href="../social_contracts/profile.md#social_contracts_profile_Profile">Profile</a> {
+        <a href="../social_contracts/profile.md#social_contracts_profile_id">id</a>: object::new(ctx),
+        <a href="../social_contracts/profile.md#social_contracts_profile_display_name">display_name</a>: display_name_option,
+        <a href="../social_contracts/profile.md#social_contracts_profile_bio">bio</a>: bio_str,
+        <a href="../social_contracts/profile.md#social_contracts_profile_profile_picture">profile_picture</a>,
+        <a href="../social_contracts/profile.md#social_contracts_profile_cover_photo">cover_photo</a>,
+        created_at: now,
+        <a href="../social_contracts/profile.md#social_contracts_profile_owner">owner</a>,
+        <a href="../social_contracts/profile.md#social_contracts_profile_x_username">x_username</a>: option::none(),
+        <a href="../social_contracts/profile.md#social_contracts_profile_min_offer_amount">min_offer_amount</a>: option::none(),
+        badges: vector::empty&lt;<a href="../social_contracts/profile.md#social_contracts_profile_ProfileBadge">ProfileBadge</a>&gt;(),
+        selected_badge_id: option::none(),
+        selected_ecosystem_badge_id: option::none(),
+        memory_account_id: option::none(),
+        <a href="../social_contracts/profile.md#social_contracts_profile_version">version</a>: <a href="../social_contracts/upgrade.md#social_contracts_upgrade_current_version">upgrade::current_version</a>(),
+    };
+    <b>let</b> profile_id = object::uid_to_address(&<a href="../social_contracts/profile.md#social_contracts_profile">profile</a>.<a href="../social_contracts/profile.md#social_contracts_profile_id">id</a>);
+    <b>let</b> memory_id = <a href="../social_contracts/memory.md#social_contracts_memory_create_account_for_profile">memory::create_account_for_profile</a>(memory_registry, profile_id, clock, ctx);
+    <a href="../social_contracts/profile.md#social_contracts_profile">profile</a>.memory_account_id = option::some(memory_id);
+    <a href="../social_contracts/profile.md#social_contracts_profile_claim_username">claim_username</a>(registry, username, profile_id);
+    <b>if</b> (table::contains(&registry.beneficiary_usernames, username)) {
+        table::remove(&<b>mut</b> registry.beneficiary_usernames, username);
+    };
+    table::add(&<b>mut</b> registry.address_profiles, <a href="../social_contracts/profile.md#social_contracts_profile_owner">owner</a>, profile_id);
+    <b>let</b> display_name_value = <b>if</b> (option::is_some(&<a href="../social_contracts/profile.md#social_contracts_profile">profile</a>.<a href="../social_contracts/profile.md#social_contracts_profile_display_name">display_name</a>)) {
+        *option::borrow(&<a href="../social_contracts/profile.md#social_contracts_profile">profile</a>.<a href="../social_contracts/profile.md#social_contracts_profile_display_name">display_name</a>)
+    } <b>else</b> {
+        string::utf8(b"")
+    };
+    event::emit(<a href="../social_contracts/profile.md#social_contracts_profile_ProfileCreatedEvent">ProfileCreatedEvent</a> {
+        profile_id,
+        <a href="../social_contracts/profile.md#social_contracts_profile_display_name">display_name</a>: display_name_value,
+        <a href="../social_contracts/profile.md#social_contracts_profile_bio">bio</a>: <a href="../social_contracts/profile.md#social_contracts_profile">profile</a>.<a href="../social_contracts/profile.md#social_contracts_profile_bio">bio</a>,
+        <a href="../social_contracts/profile.md#social_contracts_profile_profile_picture">profile_picture</a>: <a href="../social_contracts/profile.md#social_contracts_profile_profile_picture_event_string">profile_picture_event_string</a>(&<a href="../social_contracts/profile.md#social_contracts_profile">profile</a>),
+        <a href="../social_contracts/profile.md#social_contracts_profile_cover_photo">cover_photo</a>: <a href="../social_contracts/profile.md#social_contracts_profile_cover_photo_event_string">cover_photo_event_string</a>(&<a href="../social_contracts/profile.md#social_contracts_profile">profile</a>),
+        <a href="../social_contracts/profile.md#social_contracts_profile_owner">owner</a>,
+        created_at: now,
+    });
+    transfer::share_object(<a href="../social_contracts/profile.md#social_contracts_profile">profile</a>);
+    profile_id
 }
 </code></pre>
 
@@ -3173,11 +3411,36 @@ Lookup profile ID by username in the registry
 
 </details>
 
+<a name="social_contracts_profile_is_username_beneficiary_locked"></a>
+
+## Function `is_username_beneficiary_locked`
+
+True when the canonical username is not currently claimed
+Returns true when username is locked for an ACTIVE PoC username beneficiary provision.
+
+
+<pre><code><b>public</b> <b>fun</b> <a href="../social_contracts/profile.md#social_contracts_profile_is_username_beneficiary_locked">is_username_beneficiary_locked</a>(registry: &<a href="../social_contracts/profile.md#social_contracts_profile_UsernameRegistry">social_contracts::profile::UsernameRegistry</a>, username: &<a href="../std/string.md#std_string_String">std::string::String</a>): bool
+</code></pre>
+
+
+
+<details>
+<summary>Implementation</summary>
+
+
+<pre><code><b>public</b> <b>fun</b> <a href="../social_contracts/profile.md#social_contracts_profile_is_username_beneficiary_locked">is_username_beneficiary_locked</a>(registry: &<a href="../social_contracts/profile.md#social_contracts_profile_UsernameRegistry">UsernameRegistry</a>, username: &String): bool {
+    table::contains(&registry.beneficiary_usernames, *username)
+}
+</code></pre>
+
+
+
+</details>
+
 <a name="social_contracts_profile_is_username_available"></a>
 
 ## Function `is_username_available`
 
-True when the canonical username is not currently claimed
 
 
 <pre><code><b>public</b> <b>fun</b> <a href="../social_contracts/profile.md#social_contracts_profile_is_username_available">is_username_available</a>(registry: &<a href="../social_contracts/profile.md#social_contracts_profile_UsernameRegistry">social_contracts::profile::UsernameRegistry</a>, username: <a href="../std/string.md#std_string_String">std::string::String</a>): bool

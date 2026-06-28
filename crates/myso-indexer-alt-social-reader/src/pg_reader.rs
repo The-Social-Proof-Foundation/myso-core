@@ -232,10 +232,108 @@ impl SocialPgReader {
         crate::username::get_username_registry_entry(&mut conn, username, &self.metrics).await
     }
 
-    /// Returns true when no row exists in `username_registry` for the given username.
+    /// Returns true when no row exists in `username_registry` for the given username
+    /// and no ACTIVE PoC username beneficiary provision exists.
     pub async fn is_username_available(&self, username: &str) -> anyhow::Result<bool> {
         let mut conn = self.connect().await?;
         crate::username::is_username_available(&mut conn, username, &self.metrics).await
+    }
+
+    /// Combined registry + PoC username beneficiary availability breakdown.
+    pub async fn get_username_availability(
+        &self,
+        username: &str,
+        exclude_address: Option<&str>,
+    ) -> anyhow::Result<crate::username::UsernameAvailabilityDetail> {
+        let mut conn = self.connect().await?;
+        crate::username::get_username_availability(
+            &mut conn,
+            username,
+            exclude_address,
+            &self.metrics,
+        )
+        .await
+    }
+
+    /// Returns true when an ACTIVE PoC username beneficiary provision exists for `username`.
+    pub async fn has_active_poc_username_beneficiary(
+        &self,
+        username: &str,
+    ) -> anyhow::Result<bool> {
+        let mut conn = self.connect().await?;
+        crate::poc_username_beneficiary::has_active(&mut conn, username, &self.metrics).await
+    }
+
+    /// Registry + beneficiary combined check for username registration availability.
+    pub async fn is_username_available_for_registration(
+        &self,
+        username: &str,
+        exclude_address: Option<&str>,
+    ) -> anyhow::Result<bool> {
+        let mut conn = self.connect().await?;
+        crate::poc_username_beneficiary::is_username_available_for_registration(
+            &mut conn,
+            username,
+            exclude_address,
+            &self.metrics,
+        )
+        .await
+    }
+
+    pub async fn get_poc_username_beneficiary_by_username(
+        &self,
+        username: &str,
+    ) -> anyhow::Result<Option<crate::PocUsernameBeneficiaryRow>> {
+        let mut conn = self.connect().await?;
+        crate::poc_username_beneficiary::get_by_username(&mut conn, username, &self.metrics).await
+    }
+
+    pub async fn get_poc_username_beneficiary_by_id(
+        &self,
+        beneficiary_id: &str,
+    ) -> anyhow::Result<Option<crate::PocUsernameBeneficiaryRow>> {
+        let mut conn = self.connect().await?;
+        crate::poc_username_beneficiary::get_by_id(&mut conn, beneficiary_id, &self.metrics).await
+    }
+
+    pub async fn list_poc_username_beneficiaries(
+        &self,
+        status: Option<i16>,
+        limit: i64,
+        offset: i64,
+    ) -> anyhow::Result<Vec<crate::PocUsernameBeneficiaryRow>> {
+        let mut conn = self.connect().await?;
+        crate::poc_username_beneficiary::list_username_beneficiaries(
+            &mut conn,
+            status,
+            limit,
+            offset,
+            &self.metrics,
+        )
+        .await
+    }
+
+    pub async fn get_poc_creator_identity_link(
+        &self,
+        creator_identity_source: i16,
+        creator_identity_hash: &str,
+    ) -> anyhow::Result<Option<crate::PocCreatorIdentityLinkRow>> {
+        let mut conn = self.connect().await?;
+        crate::poc_username_beneficiary::get_creator_identity_link(
+            &mut conn,
+            creator_identity_source,
+            creator_identity_hash,
+            &self.metrics,
+        )
+        .await
+    }
+
+    pub async fn get_poc_username_beneficiary_by_vault_id(
+        &self,
+        vault_id: &str,
+    ) -> anyhow::Result<Option<crate::PocUsernameBeneficiaryRow>> {
+        let mut conn = self.connect().await?;
+        crate::poc_username_beneficiary::get_by_vault_id(&mut conn, vault_id, &self.metrics).await
     }
 
     /// Get a post by ID.

@@ -71,6 +71,7 @@ yarn-error.log*
 .env
 **/interact_addrs.env
 **/network.config/mydata/marketplace-session.env
+**/network.config/poc/poc-session.env
 checkpoints_dir/*
 light_client.yaml
 docs/content/references/myso-api/myso-graphql/*

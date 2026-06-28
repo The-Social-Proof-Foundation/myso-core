@@ -18,6 +18,7 @@ module social_contracts::bootstrap {
     use social_contracts::social_proof_tokens::{Self, SocialProofTokensAdminCap};
     use social_contracts::post::{Self, PostAdminCap};
     use social_contracts::proof_of_creativity::{Self, PoCAdminCap};
+    use social_contracts::poc_username_beneficiary::PoCBeneficiaryAdminCap;
     use social_contracts::platform::{Self, PlatformAdminCap};
     use social_contracts::governance::{Self, GovernanceAdminCap};
     use social_contracts::mydata::{Self, MyDataAdminCap, MyDataPoolAdminCap};
@@ -61,6 +62,7 @@ module social_contracts::bootstrap {
         transfer::public_transfer(social_proof_tokens::create_social_proof_tokens_admin_cap(ctx), admin);
         transfer::public_transfer(post::create_post_admin_cap(ctx), admin);
         transfer::public_transfer(proof_of_creativity::create_poc_admin_cap(ctx), admin);
+        transfer::public_transfer(proof_of_creativity::create_poc_beneficiary_admin_cap(ctx), admin);
         transfer::public_transfer(platform::create_platform_admin_cap(ctx), admin);
         transfer::public_transfer(governance::create_governance_admin_cap(ctx), admin);
         transfer::public_transfer(mydata::create_mydata_admin_cap(ctx), admin);

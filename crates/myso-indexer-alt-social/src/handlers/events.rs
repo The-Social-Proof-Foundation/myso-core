@@ -1302,6 +1302,7 @@ pub struct BcsPocConfigUpdatedEvent {
     dispute_quorum_base_stake: u64,
     dispute_second_round_fee_multiplier_bps: u64,
     dispute_second_round_quorum_multiplier_bps: u64,
+    username_beneficiary_join_referral_bps: u64,
     timestamp: u64,
 }
 
@@ -1923,7 +1924,58 @@ pub struct BcsPoCBeneficiaryVaultClaimedEvent {
     treasury_amount: u64,
     referrer_amount: u64,
     beneficiary_amount: u64,
+    join_referral_applied: bool,
     timestamp: u64,
+}
+
+#[derive(Debug, Deserialize, Serialize)]
+pub struct BcsUsernameBeneficiaryProvisionedEvent {
+    beneficiary_id: AccountAddress,
+    username: String,
+    creator_identity_source: u8,
+    creator_identity_hash: Vec<u8>,
+    required_x_handle: String,
+    beneficiary_address: AccountAddress,
+    vault_id: AccountAddress,
+    provisioned_by: AccountAddress,
+    provisioned_at: u64,
+}
+
+#[derive(Debug, Deserialize, Serialize)]
+pub struct BcsUsernameBeneficiaryClaimedEvent {
+    beneficiary_id: AccountAddress,
+    username: String,
+    profile_id: AccountAddress,
+    claimed_by: AccountAddress,
+    wallet: AccountAddress,
+    oracle_evidence_hash: Vec<u8>,
+    claimed_at: u64,
+}
+
+#[derive(Debug, Deserialize, Serialize)]
+pub struct BcsUsernameBeneficiaryEndedEvent {
+    beneficiary_id: AccountAddress,
+    username: String,
+    ended_by: AccountAddress,
+    end_reason_code: u8,
+    swept_mys_amount: u64,
+    ended_at: u64,
+}
+
+#[derive(Debug, Deserialize, Serialize)]
+pub struct BcsUsernameBeneficiaryConflictEvent {
+    username: String,
+    existing_beneficiary_id: AccountAddress,
+    attempted_by: AccountAddress,
+}
+
+#[derive(Debug, Deserialize, Serialize)]
+pub struct BcsCreatorIdentityWalletLinkedEvent {
+    creator_identity_source: u8,
+    creator_identity_hash: Vec<u8>,
+    wallet: AccountAddress,
+    beneficiary_id: AccountAddress,
+    linked_at: u64,
 }
 
 #[derive(Debug, Deserialize)]
@@ -2124,6 +2176,7 @@ fn parse_event_contents_inner(
         "platform" => parse_platform_event(event_name, contents),
         "poc" | "proof_of_creativity" => parse_poc_event(event_name, contents),
         "poc_vault" => parse_poc_vault_event(event_name, contents),
+        "poc_username_beneficiary" => parse_poc_username_beneficiary_event(event_name, contents),
         "mydata" | "my_ip" => parse_mydata_event(event_name, contents),
         "insurance" => parse_insurance_event(event_name, contents),
         "social_proof_of_truth" | "spot" => parse_spot_event(event_name, contents),
@@ -3395,12 +3448,82 @@ fn parse_poc_event(
                 "dispute_quorum_base_stake": ev.dispute_quorum_base_stake,
                 "dispute_second_round_fee_multiplier_bps": ev.dispute_second_round_fee_multiplier_bps,
                 "dispute_second_round_quorum_multiplier_bps": ev.dispute_second_round_quorum_multiplier_bps,
+                "username_beneficiary_join_referral_bps": ev.username_beneficiary_join_referral_bps,
                 "timestamp": ev.timestamp,
             })))
         }
         _ => Ok(None),
     };
     result
+}
+
+fn parse_poc_username_beneficiary_event(
+    event_name: &str,
+    contents: &[u8],
+) -> Result<Option<serde_json::Value>, EventParseError> {
+    match event_name {
+        "UsernameBeneficiaryProvisionedEvent" => {
+            let ev = bcs::from_bytes::<BcsUsernameBeneficiaryProvisionedEvent>(contents)
+                .map_err(|e| bcs_parse_err(e, contents))?;
+            Ok(Some(serde_json::json!({
+                "beneficiary_id": addr_to_string(&ev.beneficiary_id),
+                "username": ev.username,
+                "creator_identity_source": ev.creator_identity_source,
+                "creator_identity_hash": format!("0x{}", hex::encode(&ev.creator_identity_hash)),
+                "required_x_handle": ev.required_x_handle,
+                "beneficiary_address": addr_to_string(&ev.beneficiary_address),
+                "vault_id": addr_to_string(&ev.vault_id),
+                "provisioned_by": addr_to_string(&ev.provisioned_by),
+                "provisioned_at": ev.provisioned_at,
+            })))
+        }
+        "UsernameBeneficiaryClaimedEvent" => {
+            let ev = bcs::from_bytes::<BcsUsernameBeneficiaryClaimedEvent>(contents)
+                .map_err(|e| bcs_parse_err(e, contents))?;
+            Ok(Some(serde_json::json!({
+                "beneficiary_id": addr_to_string(&ev.beneficiary_id),
+                "username": ev.username,
+                "profile_id": addr_to_string(&ev.profile_id),
+                "claimed_by": addr_to_string(&ev.claimed_by),
+                "wallet": addr_to_string(&ev.wallet),
+                "oracle_evidence_hash": format!("0x{}", hex::encode(&ev.oracle_evidence_hash)),
+                "claimed_at": ev.claimed_at,
+            })))
+        }
+        "UsernameBeneficiaryEndedEvent" => {
+            let ev = bcs::from_bytes::<BcsUsernameBeneficiaryEndedEvent>(contents)
+                .map_err(|e| bcs_parse_err(e, contents))?;
+            Ok(Some(serde_json::json!({
+                "beneficiary_id": addr_to_string(&ev.beneficiary_id),
+                "username": ev.username,
+                "ended_by": addr_to_string(&ev.ended_by),
+                "end_reason_code": ev.end_reason_code,
+                "swept_mys_amount": ev.swept_mys_amount,
+                "ended_at": ev.ended_at,
+            })))
+        }
+        "UsernameBeneficiaryConflictEvent" => {
+            let ev = bcs::from_bytes::<BcsUsernameBeneficiaryConflictEvent>(contents)
+                .map_err(|e| bcs_parse_err(e, contents))?;
+            Ok(Some(serde_json::json!({
+                "username": ev.username,
+                "existing_beneficiary_id": addr_to_string(&ev.existing_beneficiary_id),
+                "attempted_by": addr_to_string(&ev.attempted_by),
+            })))
+        }
+        "CreatorIdentityWalletLinkedEvent" => {
+            let ev = bcs::from_bytes::<BcsCreatorIdentityWalletLinkedEvent>(contents)
+                .map_err(|e| bcs_parse_err(e, contents))?;
+            Ok(Some(serde_json::json!({
+                "creator_identity_source": ev.creator_identity_source,
+                "creator_identity_hash": format!("0x{}", hex::encode(&ev.creator_identity_hash)),
+                "wallet": addr_to_string(&ev.wallet),
+                "beneficiary_id": addr_to_string(&ev.beneficiary_id),
+                "linked_at": ev.linked_at,
+            })))
+        }
+        _ => Ok(None),
+    }
 }
 
 fn parse_poc_vault_event(
@@ -3431,6 +3554,7 @@ fn parse_poc_vault_event(
                 "treasury_amount": ev.treasury_amount,
                 "referrer_amount": ev.referrer_amount,
                 "beneficiary_amount": ev.beneficiary_amount,
+                "join_referral_applied": ev.join_referral_applied,
                 "timestamp": ev.timestamp,
             })))
         }
@@ -5009,6 +5133,7 @@ mod tests {
             treasury_amount: 100,
             referrer_amount: 200,
             beneficiary_amount: 700,
+            join_referral_applied: true,
             timestamp: 99,
         };
         let bytes = bcs::to_bytes(&ev).expect("bcs");
@@ -5017,8 +5142,62 @@ mod tests {
         assert_eq!(json["treasury_amount"], 100_i64);
         assert_eq!(json["referrer_amount"], 200_i64);
         assert_eq!(json["beneficiary_amount"], 700_i64);
+        assert_eq!(json["join_referral_applied"], true);
         assert_eq!(json["timestamp"], 99_i64);
         assert!(json["referrer"].as_str().unwrap().starts_with("0x"));
+    }
+
+    #[test]
+    fn username_beneficiary_provisioned_bcs_round_trip() {
+        let beneficiary_id = AccountAddress::from_hex_literal("0x10").unwrap();
+        let beneficiary_address = AccountAddress::from_hex_literal("0x20").unwrap();
+        let vault_id = AccountAddress::from_hex_literal("0x30").unwrap();
+        let provisioned_by = AccountAddress::from_hex_literal("0x40").unwrap();
+        let ev = BcsUsernameBeneficiaryProvisionedEvent {
+            beneficiary_id,
+            username: "creator".to_string(),
+            creator_identity_source: 1,
+            creator_identity_hash: vec![1, 2, 3],
+            required_x_handle: "creatorx".to_string(),
+            beneficiary_address,
+            vault_id,
+            provisioned_by,
+            provisioned_at: 1_700_000_000_000,
+        };
+        let bytes = bcs::to_bytes(&ev).expect("bcs");
+        let json = parse_event_contents(
+            "poc_username_beneficiary",
+            "UsernameBeneficiaryProvisionedEvent",
+            &bytes,
+        )
+        .unwrap();
+        assert_eq!(json["username"], "creator");
+        assert_eq!(json["creator_identity_source"], 1_i64);
+        assert_eq!(json["creator_identity_hash"], "0x010203");
+        assert_eq!(json["provisioned_at"], 1_700_000_000_000_i64);
+    }
+
+    #[test]
+    fn creator_identity_wallet_linked_bcs_round_trip() {
+        let wallet = AccountAddress::from_hex_literal("0x50").unwrap();
+        let beneficiary_id = AccountAddress::from_hex_literal("0x60").unwrap();
+        let ev = BcsCreatorIdentityWalletLinkedEvent {
+            creator_identity_source: 1,
+            creator_identity_hash: vec![4, 5],
+            wallet,
+            beneficiary_id,
+            linked_at: 99,
+        };
+        let bytes = bcs::to_bytes(&ev).expect("bcs");
+        let json = parse_event_contents(
+            "poc_username_beneficiary",
+            "CreatorIdentityWalletLinkedEvent",
+            &bytes,
+        )
+        .unwrap();
+        assert_eq!(json["creator_identity_hash"], "0x0405");
+        assert_eq!(json["linked_at"], 99_i64);
+        assert!(json["wallet"].as_str().unwrap().starts_with("0x"));
     }
 
     #[test]

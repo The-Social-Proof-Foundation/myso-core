@@ -1,14 +1,10 @@
 // Copyright (c) The Social Proof Foundation, LLC.
 // SPDX-License-Identifier: Apache-2.0
 
-use diesel::JoinOnDsl;
-use diesel::NullableExpressionMethods;
 use diesel::sql_types::BigInt;
-use diesel::ExpressionMethods;
-use diesel::QueryDsl;
 use diesel::QueryableByName;
 use diesel_async::RunQueryDsl;
-use myso_indexer_alt_social_schema::schema::{platforms, profiles, social_graph_relationships, username_registry};
+use myso_indexer_alt_social_reader::UsernameAvailabilityDetail;
 
 use crate::error::SocialError;
 use crate::reader::types::SystemStatsResponse;
@@ -16,6 +12,8 @@ use myso_pg_db::Db;
 
 pub(crate) async fn get_system_stats(db: &Db) -> Result<SystemStatsResponse, SocialError> {
     let mut conn = db.connect().await?;
+    use diesel::QueryDsl;
+    use myso_indexer_alt_social_schema::schema::{platforms, profiles, social_graph_relationships};
     let profiles_count: i64 = profiles::table.count().get_result(&mut conn).await?;
     let platforms_count: i64 = platforms::table.count().get_result(&mut conn).await?;
     let social_relationships_count: i64 = social_graph_relationships::table
@@ -58,20 +56,8 @@ pub(crate) async fn check_username_availability(
     db: &Db,
     username: &str,
     exclude_address: Option<&str>,
-) -> Result<bool, SocialError> {
-    let mut conn = db.connect().await?;
-    let base = username_registry::table
-        .inner_join(
-            profiles::table.on(profiles::profile_id.eq(username_registry::profile_id.nullable())),
-        )
-        .filter(username_registry::username.eq(username));
-    let count: i64 = match exclude_address {
-        Some(addr) => base
-            .filter(profiles::owner_address.ne(addr))
-            .count()
-            .get_result(&mut conn)
-            .await?,
-        None => base.count().get_result(&mut conn).await?,
-    };
-    Ok(count == 0)
+) -> Result<UsernameAvailabilityDetail, SocialError> {
+    myso_indexer_alt_social_reader::get_username_availability_for_db(db, username, exclude_address)
+        .await
+        .map_err(|e| SocialError::internal(e.to_string()))
 }

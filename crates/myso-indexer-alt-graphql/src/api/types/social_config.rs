@@ -312,6 +312,11 @@ impl PocConfig {
         self.inner.video_embedded_audio_redirect_bps
     }
 
+    /// One-time join-referral fee (bps) on first username-beneficiary vault claim.
+    async fn username_beneficiary_join_referral_bps(&self) -> i64 {
+        self.inner.username_beneficiary_join_referral_bps
+    }
+
     /// Address that last updated PoC configuration.
     async fn updated_by(&self) -> &str {
         &self.inner.updated_by

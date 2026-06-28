@@ -53,6 +53,7 @@ module social_contracts::proof_of_creativity_tests {
                 0,     // dispute_quorum_base_stake (disabled)
                 10000, // dispute_second_round_fee_multiplier_bps (1x)
                 10000, // dispute_second_round_quorum_multiplier_bps (1x)
+                500,   // username_beneficiary_join_referral_bps (5%)
                 &clock,
                 test_scenario::ctx(&mut scen)
             );

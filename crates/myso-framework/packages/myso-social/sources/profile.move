@@ -60,6 +60,7 @@ module social_contracts::profile {
     const ERequiresMemoryLinkedProfile: u64 = 28;
     const EUsernameNotFound: u64 = 29;
     const EUsernameProfileMismatch: u64 = 31;
+    const EUsernameBeneficiaryActive: u64 = 32;
     const EInvalidSchedule: u64 = 30;
     const EInvalidPieceDuration: u64 = 32;
     const EInvalidPieceKind: u64 = 33;
@@ -139,6 +140,8 @@ module social_contracts::profile {
         usernames: Table<String, address>,
         /// Owner wallet → profile_id
         address_profiles: Table<address, address>,
+        /// Usernames provisioned for PoC username beneficiary vaults (ACTIVE only)
+        beneficiary_usernames: Table<String, bool>,
         version: u64,
     }
     
@@ -466,6 +469,7 @@ module social_contracts::profile {
             id: object::new(ctx),
             usernames: table::new(ctx),
             address_profiles: table::new(ctx),
+            beneficiary_usernames: table::new(ctx),
             version: current_version,
         };
         
@@ -594,9 +598,48 @@ module social_contracts::profile {
         string::utf8(result)
     }
 
-    fun claim_username(registry: &mut UsernameRegistry, username: String, profile_id: address) {
+    /// Canonical username for [`UsernameRegistry`] keys (package helper for PoC beneficiary flows).
+    public(package) fun canonical_registry_username_from_bytes(username: vector<u8>): String {
+        string::utf8(to_lowercase_bytes(&username))
+    }
+
+    /// Lock a username while an ACTIVE PoC username beneficiary provision exists.
+    public(package) fun lock_username_for_beneficiary(
+        registry: &mut UsernameRegistry,
+        username: String,
+    ) {
+        let username = canonical_registry_username(&username);
+        if (!table::contains(&registry.beneficiary_usernames, username)) {
+            table::add(&mut registry.beneficiary_usernames, username, true);
+        };
+    }
+
+    /// Release a username beneficiary lock after claim or admin end.
+    public(package) fun unlock_username_for_beneficiary(
+        registry: &mut UsernameRegistry,
+        username: String,
+    ) {
+        let username = canonical_registry_username(&username);
+        if (table::contains(&registry.beneficiary_usernames, username)) {
+            table::remove(&mut registry.beneficiary_usernames, username);
+        };
+    }
+
+    public(package) fun claim_username(
+        registry: &mut UsernameRegistry,
+        username: String,
+        profile_id: address,
+    ) {
         assert!(!table::contains(&registry.usernames, username), EUsernameNotAvailable);
         table::add(&mut registry.usernames, username, profile_id);
+        event::emit(UsernameClaimedEvent {
+            username,
+            profile_id,
+        });
+    }
+
+    fun claim_username_internal(registry: &mut UsernameRegistry, username: String, profile_id: address) {
+        claim_username(registry, username, profile_id);
     }
 
     fun revoke_username(registry: &mut UsernameRegistry, username: String): address {
@@ -686,6 +729,7 @@ module social_contracts::profile {
         
         // Check that the username isn't already registered
         assert!(!table::contains(&registry.usernames, username), EUsernameNotAvailable);
+        assert!(!table::contains(&registry.beneficiary_usernames, username), EUsernameBeneficiaryActive);
         
         // Create the profile object
         let profile_picture = if (vector::length(&profile_picture_url) > 0) {
@@ -727,7 +771,7 @@ module social_contracts::profile {
         let memory_id = memory::create_account_for_profile(memory_registry, profile_id, clock, ctx);
         profile.memory_account_id = option::some(memory_id);
         
-        claim_username(registry, username, profile_id);
+        claim_username_internal(registry, username, profile_id);
         table::add(&mut registry.address_profiles, owner, profile_id);
         
         // Extract display name value for the event (if available)
@@ -749,13 +793,97 @@ module social_contracts::profile {
             created_at: now,
         });
 
-        event::emit(UsernameClaimedEvent {
-            username,
-            profile_id,
-        });
-
         // Transfer profile to owner
         transfer::transfer(profile, owner);
+    }
+
+    /// Create a profile from an oracle-verified PoC username beneficiary claim.
+    public(package) fun create_profile_from_beneficiary_claim(
+        registry: &mut UsernameRegistry,
+        memory_registry: &mut memory::MemoryRegistry,
+        display_name: vector<u8>,
+        username: String,
+        bio: vector<u8>,
+        profile_picture_url: vector<u8>,
+        cover_photo_url: vector<u8>,
+        owner: address,
+        clock: &Clock,
+        ctx: &mut TxContext,
+    ): address {
+        assert!(registry.version == upgrade::current_version(), 1);
+
+        let username = canonical_registry_username(&username);
+        let username_length = vector::length(string::as_bytes(&username));
+        assert!(username_length >= 2 && username_length <= 50, EInvalidUsername);
+        assert!(!is_reserved_name(&username), EReservedName);
+        assert!(!table::contains(&registry.usernames, username), EUsernameNotAvailable);
+        assert!(!table::contains(&registry.address_profiles, owner), EProfileAlreadyExists);
+
+        let now = clock::timestamp_ms(clock);
+        let display_name_str = string::utf8(display_name);
+        let bio_str = string::utf8(bio);
+
+        let profile_picture = if (vector::length(&profile_picture_url) > 0) {
+            option::some(url::new_unsafe_from_bytes(profile_picture_url))
+        } else {
+            option::none()
+        };
+        let cover_photo = if (vector::length(&cover_photo_url) > 0) {
+            option::some(url::new_unsafe_from_bytes(cover_photo_url))
+        } else {
+            option::none()
+        };
+        let display_name_option = if (string::length(&display_name_str) > 0) {
+            option::some(display_name_str)
+        } else {
+            option::none()
+        };
+
+        let mut profile = Profile {
+            id: object::new(ctx),
+            display_name: display_name_option,
+            bio: bio_str,
+            profile_picture,
+            cover_photo,
+            created_at: now,
+            owner,
+            x_username: option::none(),
+            min_offer_amount: option::none(),
+            badges: vector::empty<ProfileBadge>(),
+            selected_badge_id: option::none(),
+            selected_ecosystem_badge_id: option::none(),
+            memory_account_id: option::none(),
+            version: upgrade::current_version(),
+        };
+
+        let profile_id = object::uid_to_address(&profile.id);
+        let memory_id = memory::create_account_for_profile(memory_registry, profile_id, clock, ctx);
+        profile.memory_account_id = option::some(memory_id);
+
+        claim_username(registry, username, profile_id);
+        if (table::contains(&registry.beneficiary_usernames, username)) {
+            table::remove(&mut registry.beneficiary_usernames, username);
+        };
+        table::add(&mut registry.address_profiles, owner, profile_id);
+
+        let display_name_value = if (option::is_some(&profile.display_name)) {
+            *option::borrow(&profile.display_name)
+        } else {
+            string::utf8(b"")
+        };
+
+        event::emit(ProfileCreatedEvent {
+            profile_id,
+            display_name: display_name_value,
+            bio: profile.bio,
+            profile_picture: profile_picture_event_string(&profile),
+            cover_photo: cover_photo_event_string(&profile),
+            owner,
+            created_at: now,
+        });
+
+        transfer::share_object(profile);
+        profile_id
     }
 
     /// Backfill a Memory account for profiles created before Memory integration, or test-only paths.
@@ -953,6 +1081,11 @@ module social_contracts::profile {
     }
 
     /// True when the canonical username is not currently claimed
+    /// Returns true when username is locked for an ACTIVE PoC username beneficiary provision.
+    public fun is_username_beneficiary_locked(registry: &UsernameRegistry, username: &String): bool {
+        table::contains(&registry.beneficiary_usernames, *username)
+    }
+
     public fun is_username_available(registry: &UsernameRegistry, username: String): bool {
         let username = canonical_registry_username(&username);
         !table::contains(&registry.usernames, username)
@@ -1549,6 +1682,7 @@ module social_contracts::profile {
             id: object::new(ctx),
             usernames: table::new(ctx),
             address_profiles: table::new(ctx),
+            beneficiary_usernames: table::new(ctx),
             version: 1,
         };
         

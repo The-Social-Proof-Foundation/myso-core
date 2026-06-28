@@ -1,7 +1,9 @@
 // Copyright (c) The Social Proof Foundation, LLC.
 // SPDX-License-Identifier: Apache-2.0
 
+use async_graphql::Enum;
 use async_graphql::Object;
+use myso_indexer_alt_social_reader::UsernameAvailabilityDetail;
 use myso_indexer_alt_social_reader::UsernameRegistryEntry;
 
 /// Mirror of an on-chain username registry entry.
@@ -30,25 +32,58 @@ impl UsernameRegistry {
     }
 }
 
+/// Why a username is unavailable for registration.
+#[derive(Enum, Copy, Clone, Eq, PartialEq)]
+pub enum UsernameUnavailableReason {
+    RegistryClaimed,
+    BeneficiaryProvisioned,
+}
+
 /// Whether a username is available for registration.
 pub struct UsernameAvailability {
-    username: String,
-    available: bool,
+    inner: UsernameAvailabilityDetail,
 }
 
 impl UsernameAvailability {
-    pub fn new(username: String, available: bool) -> Self {
-        Self { username, available }
+    pub fn new(inner: UsernameAvailabilityDetail) -> Self {
+        Self { inner }
     }
 }
 
 #[Object]
 impl UsernameAvailability {
     async fn username(&self) -> &str {
-        &self.username
+        &self.inner.username
     }
 
     async fn available(&self) -> bool {
-        self.available
+        self.inner.available
+    }
+
+    async fn registry_claimed(&self) -> bool {
+        self.inner.registry_claimed
+    }
+
+    async fn beneficiary_provisioned(&self) -> bool {
+        self.inner.beneficiary_provisioned
+    }
+
+    async fn registry_profile_id(&self) -> Option<&str> {
+        self.inner.registry_profile_id.as_deref()
+    }
+
+    async fn beneficiary_id(&self) -> Option<&str> {
+        self.inner.beneficiary_id.as_deref()
+    }
+
+    async fn unavailable_reasons(&self) -> Vec<UsernameUnavailableReason> {
+        let mut reasons = Vec::new();
+        if self.inner.registry_claimed {
+            reasons.push(UsernameUnavailableReason::RegistryClaimed);
+        }
+        if self.inner.beneficiary_provisioned {
+            reasons.push(UsernameUnavailableReason::BeneficiaryProvisioned);
+        }
+        reasons
     }
 }

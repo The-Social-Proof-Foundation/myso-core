@@ -3,6 +3,7 @@
 
 use axum::extract::{Path, Query, State};
 use axum::Json;
+use serde::Deserialize;
 use std::sync::Arc;
 
 use crate::error::SocialError;
@@ -174,4 +175,51 @@ pub async fn list_poc_vault_claims(
         .list_poc_vault_claims_for_vault(&vault_id, limit, offset)
         .await?;
     Ok(Json(rows))
+}
+
+#[derive(Debug, Deserialize)]
+pub struct PocUsernameBeneficiaryQuery {
+    pub status: Option<i16>,
+    #[serde(flatten)]
+    pub page: PageParams,
+}
+
+pub async fn list_poc_username_beneficiaries(
+    State(state): State<Arc<AppState>>,
+    Query(params): Query<PocUsernameBeneficiaryQuery>,
+) -> Result<Json<Vec<myso_indexer_alt_social_schema::models::PocUsernameBeneficiaryRow>>, SocialError>
+{
+    let limit = params.page.limit();
+    let offset = params.page.offset();
+    let rows = state
+        .reader
+        .list_poc_username_beneficiaries(params.status, limit, offset)
+        .await?;
+    Ok(Json(rows))
+}
+
+pub async fn get_poc_username_beneficiary_by_username(
+    State(state): State<Arc<AppState>>,
+    Path(username): Path<String>,
+) -> Result<Json<myso_indexer_alt_social_schema::models::PocUsernameBeneficiaryRow>, SocialError> {
+    let row = state
+        .reader
+        .get_poc_username_beneficiary_by_username(&username)
+        .await?
+        .ok_or_else(|| {
+            SocialError::not_found(format!("PoC username beneficiary for username '{username}'"))
+        })?;
+    Ok(Json(row))
+}
+
+pub async fn get_poc_username_beneficiary_by_id(
+    State(state): State<Arc<AppState>>,
+    Path(id): Path<String>,
+) -> Result<Json<myso_indexer_alt_social_schema::models::PocUsernameBeneficiaryRow>, SocialError> {
+    let row = state
+        .reader
+        .get_poc_username_beneficiary_by_id(&id)
+        .await?
+        .ok_or_else(|| SocialError::not_found(format!("PoC username beneficiary '{id}'")))?;
+    Ok(Json(row))
 }

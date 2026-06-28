@@ -15,6 +15,7 @@ pub mod pg_reader;
 pub mod platform;
 pub mod pnl;
 pub mod poc;
+pub mod poc_username_beneficiary;
 pub mod post;
 pub mod profile;
 pub mod promotion;
@@ -40,9 +41,9 @@ pub use myso_indexer_alt_social_schema::models::{
     SpotPayoutRow, SpotRecordRow, SpotRefundRow, SpotResolutionRow,
 };
 pub use myso_indexer_alt_social_schema::models::{
-    PocAnalysisResultRow, PocBadgeRow, PocBeneficiaryVaultRow, PocConfigRow, PocDisputeRow,
-    PocDisputeVoteRow, PocRevenueRedirectionRow, PocVaultClaimRow, PocVaultCoinBalanceRow,
-    PocVaultDepositRow,
+    PocAnalysisResultRow, PocBadgeRow, PocBeneficiaryVaultRow, PocConfigRow, PocCreatorIdentityLinkRow,
+    PocDisputeRow, PocDisputeVoteRow, PocRevenueRedirectionRow, PocUsernameBeneficiaryRow,
+    PocVaultClaimRow, PocVaultCoinBalanceRow, PocVaultDepositRow,
 };
 pub use myso_indexer_alt_social_schema::models::{
     PostDeletionEventRow, PostModerationEventRow, SptHoldingRow, SptPoolRow, SptPriceHistory,
@@ -69,6 +70,16 @@ pub use poc::{
     get_poc_beneficiary_vault_by_vault_id_for_conn, list_poc_vault_claims_for_vault_for_conn,
     list_poc_vault_coin_balances_for_vault_for_conn, list_poc_vault_deposits_for_vault_for_conn,
 };
+pub use poc_username_beneficiary::{
+    get_by_id as get_poc_username_beneficiary_by_id,
+    get_by_username as get_poc_username_beneficiary_by_username,
+    get_creator_identity_link as get_poc_creator_identity_link,
+    get_creator_identity_link_by_wallet as get_poc_creator_identity_link_by_wallet,
+    get_poc_creator_identity_link_for_conn, get_poc_username_beneficiary_by_id_for_conn,
+    get_poc_username_beneficiary_by_username_for_conn, has_active as has_active_poc_username_beneficiary,
+    is_username_available_for_registration, list_username_beneficiaries,
+    list_username_beneficiaries_for_conn,
+};
 pub use post::{
     CommentRow, PostReportRow, PostRow, PostTransferRow, ReactionRow, RepostRow, TipRow,
 };
@@ -84,7 +95,23 @@ pub use social_graph::{
 pub use spt::{
     SptReservationVolumeBucket, SptReservationVolumeInterval, SptSortBy, SptTransactionsWithViewer,
 };
-pub use username::UsernameRegistryEntry;
+pub use username::{UsernameAvailabilityDetail, UsernameRegistryEntry};
+
+/// Combined username registry + PoC beneficiary availability for REST services.
+pub async fn get_username_availability_for_db(
+    db: &myso_pg_db::Db,
+    username: &str,
+    exclude_address: Option<&str>,
+) -> anyhow::Result<UsernameAvailabilityDetail> {
+    let mut conn = db.connect().await?;
+    username::get_username_availability(
+        &mut conn,
+        username,
+        exclude_address,
+        standalone_reader_metrics(),
+    )
+    .await
+}
 pub use vesting::{
     VestingLeaderboardEntry, VestingLeaderboardResponse, VestingWalletRow, VestingWalletWithStatus,
 };

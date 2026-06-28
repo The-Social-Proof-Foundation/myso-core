@@ -23,8 +23,12 @@ use serde::Deserialize;
 use super::common;
 use super::SocialEventRow;
 use myso_indexer_alt_social_schema::models::{
-    NewPocAnalysisResult, NewPocBadge, NewPocConfiguration, NewPocDispute, NewPocDisputeVote,
-    NewPocRevenueRedirection, DISPUTE_STATUS_VOTING,
+    NewPocAnalysisResult, NewPocBadge, NewPocConfiguration, NewPocCreatorIdentityLink,
+    NewPocDispute, NewPocDisputeVote, NewPocRevenueRedirection, NewPocUsernameBeneficiary,
+    NewPocUsernameBeneficiaryEvent, EVENT_TYPE_CLAIMED, EVENT_TYPE_CONFLICT,
+    EVENT_TYPE_CREATOR_IDENTITY_WALLET_LINKED, EVENT_TYPE_ENDED, EVENT_TYPE_PROVISIONED,
+    USERNAME_BENEFICIARY_STATUS_ACTIVE, VAULT_CLAIM_KIND_JOIN_REFERRAL, VAULT_CLAIM_KIND_STANDARD,
+    DISPUTE_STATUS_VOTING,
 };
 
 fn transaction_id_from_event_id(event_id: &str) -> String {
@@ -177,8 +181,14 @@ struct PocConfigUpdatedEvent {
     dispute_second_round_fee_multiplier_bps: u64,
     #[serde(default = "default_second_round_mult_bps")]
     dispute_second_round_quorum_multiplier_bps: u64,
+    #[serde(default = "default_username_beneficiary_join_referral_bps")]
+    username_beneficiary_join_referral_bps: u64,
     #[serde(deserialize_with = "deserialize_u64")]
     timestamp: u64,
+}
+
+fn default_username_beneficiary_join_referral_bps() -> u64 {
+    500
 }
 
 fn default_second_round_mult_bps() -> u64 {
@@ -260,6 +270,21 @@ pub fn handle_poc_event(
             process_poc_vault_deposit_event(data, event_id, &tx_id)
         }
         "PoCBeneficiaryVaultClaimedEvent" => process_poc_vault_claim_event(data, event_id, &tx_id),
+        "UsernameBeneficiaryProvisionedEvent" => {
+            process_username_beneficiary_provisioned_event(data, event_id, &tx_id)
+        }
+        "UsernameBeneficiaryClaimedEvent" => {
+            process_username_beneficiary_claimed_event(data, event_id, &tx_id)
+        }
+        "UsernameBeneficiaryEndedEvent" => {
+            process_username_beneficiary_ended_event(data, event_id, &tx_id)
+        }
+        "UsernameBeneficiaryConflictEvent" => {
+            process_username_beneficiary_conflict_event(data, event_id, &tx_id)
+        }
+        "CreatorIdentityWalletLinkedEvent" => {
+            process_creator_identity_wallet_linked_event(data, event_id, &tx_id)
+        }
         _ => None,
     }
 }
@@ -631,6 +656,7 @@ fn process_poc_config_updated_event(
         dispute_second_round_fee_multiplier_bps: ev.dispute_second_round_fee_multiplier_bps as i64,
         dispute_second_round_quorum_multiplier_bps: ev.dispute_second_round_quorum_multiplier_bps
             as i64,
+        username_beneficiary_join_referral_bps: ev.username_beneficiary_join_referral_bps as i64,
         updated_by: ev.updated_by,
         updated_at: ev.timestamp as i64,
         transaction_id: tx_id.to_string(),
@@ -695,6 +721,8 @@ fn process_poc_vault_claim_event(
         referrer_amount: u64,
         #[serde(deserialize_with = "deserialize_u64")]
         beneficiary_amount: u64,
+        #[serde(default)]
+        join_referral_applied: bool,
         #[serde(deserialize_with = "deserialize_u64")]
         timestamp: u64,
     }
@@ -708,15 +736,345 @@ fn process_poc_vault_claim_event(
     if ev.vault_id.is_empty() || ev.beneficiary.is_empty() {
         return None;
     }
-    Some(vec![SocialEventRow::PocBeneficiaryVaultClaimed {
+    let claim_kind = if ev.join_referral_applied {
+        Some(VAULT_CLAIM_KIND_JOIN_REFERRAL.to_string())
+    } else {
+        Some(VAULT_CLAIM_KIND_STANDARD.to_string())
+    };
+    let referrer_address = ev.referrer.as_ref().filter(|s| !s.is_empty()).cloned();
+    let mut rows = vec![SocialEventRow::PocBeneficiaryVaultClaimed {
         vault_id: ev.vault_id,
-        beneficiary_address: ev.beneficiary,
+        beneficiary_address: ev.beneficiary.clone(),
         coin_type: ev.coin_type,
-        referrer_address: ev.referrer.filter(|s| !s.is_empty()),
+        referrer_address: referrer_address.clone(),
         treasury_amount: ev.treasury_amount as i64,
         referrer_amount: ev.referrer_amount as i64,
         beneficiary_amount: ev.beneficiary_amount as i64,
+        join_referral_applied: ev.join_referral_applied,
+        claim_kind,
         timestamp_ms: ev.timestamp as i64,
         transaction_id: tx_id.to_string(),
-    }])
+    }];
+    if ev.join_referral_applied {
+        rows.push(SocialEventRow::PocUsernameBeneficiaryJoinReferralPaid {
+            beneficiary_address: ev.beneficiary,
+            join_referrer: referrer_address,
+            join_referral_paid_at_ms: ev.timestamp as i64,
+            transaction_id: tx_id.to_string(),
+        });
+    }
+    Some(rows)
+}
+
+fn username_beneficiary_audit_row(
+    event_type: &str,
+    beneficiary_id: Option<String>,
+    username: Option<String>,
+    payload: serde_json::Value,
+    tx_id: &str,
+    event_id: &str,
+) -> SocialEventRow {
+    SocialEventRow::PocUsernameBeneficiaryEvent(NewPocUsernameBeneficiaryEvent {
+        event_type: event_type.to_string(),
+        beneficiary_id,
+        username,
+        payload_json: payload,
+        transaction_id: tx_id.to_string(),
+        event_id: event_id.to_string(),
+        time: chrono::Utc::now(),
+    })
+}
+
+#[derive(Debug, Deserialize)]
+struct UsernameBeneficiaryProvisionedEvent {
+    beneficiary_id: String,
+    username: String,
+    #[serde(deserialize_with = "deserialize_u64")]
+    creator_identity_source: u64,
+    creator_identity_hash: String,
+    required_x_handle: String,
+    beneficiary_address: String,
+    vault_id: String,
+    provisioned_by: String,
+    #[serde(deserialize_with = "deserialize_u64")]
+    provisioned_at: u64,
+}
+
+fn process_username_beneficiary_provisioned_event(
+    data: &serde_json::Value,
+    event_id: &str,
+    tx_id: &str,
+) -> Option<Vec<SocialEventRow>> {
+    let ev: UsernameBeneficiaryProvisionedEvent = common::deserialize_social_event_json(
+        "poc_username_beneficiary",
+        "UsernameBeneficiaryProvisionedEvent",
+        event_id,
+        data,
+        "poc_username_beneficiary UsernameBeneficiaryProvisionedEvent JSON did not match",
+    )?;
+    if ev.beneficiary_id.is_empty() || ev.username.is_empty() || ev.beneficiary_address.is_empty() {
+        return None;
+    }
+    let row = NewPocUsernameBeneficiary {
+        beneficiary_id: ev.beneficiary_id.clone(),
+        username: ev.username.clone(),
+        status: USERNAME_BENEFICIARY_STATUS_ACTIVE,
+        creator_identity_source: ev.creator_identity_source as i16,
+        creator_identity_hash: ev.creator_identity_hash,
+        beneficiary_address: ev.beneficiary_address,
+        vault_id: ev.vault_id,
+        required_x_handle: ev.required_x_handle,
+        oracle_evidence_hash: String::new(),
+        provisioned_at_ms: ev.provisioned_at as i64,
+        provisioned_by: ev.provisioned_by,
+        claimed_profile_id: None,
+        claimed_by: None,
+        claimed_at_ms: None,
+        ended_at_ms: None,
+        ended_by: None,
+        end_reason_code: None,
+        join_referrer: None,
+        join_referral_paid: false,
+        join_referral_paid_at_ms: None,
+        transaction_id: tx_id.to_string(),
+        time: chrono::Utc::now(),
+    };
+    Some(vec![
+        SocialEventRow::PocUsernameBeneficiary(row),
+        username_beneficiary_audit_row(
+            EVENT_TYPE_PROVISIONED,
+            Some(ev.beneficiary_id),
+            Some(ev.username),
+            data.clone(),
+            tx_id,
+            event_id,
+        ),
+    ])
+}
+
+#[derive(Debug, Deserialize)]
+struct UsernameBeneficiaryClaimedEvent {
+    beneficiary_id: String,
+    username: String,
+    profile_id: String,
+    claimed_by: String,
+    wallet: String,
+    oracle_evidence_hash: String,
+    #[serde(deserialize_with = "deserialize_u64")]
+    claimed_at: u64,
+}
+
+fn process_username_beneficiary_claimed_event(
+    data: &serde_json::Value,
+    event_id: &str,
+    tx_id: &str,
+) -> Option<Vec<SocialEventRow>> {
+    let ev: UsernameBeneficiaryClaimedEvent = common::deserialize_social_event_json(
+        "poc_username_beneficiary",
+        "UsernameBeneficiaryClaimedEvent",
+        event_id,
+        data,
+        "poc_username_beneficiary UsernameBeneficiaryClaimedEvent JSON did not match",
+    )?;
+    if ev.beneficiary_id.is_empty() || ev.profile_id.is_empty() {
+        return None;
+    }
+    Some(vec![
+        SocialEventRow::PocUsernameBeneficiaryClaimed {
+            beneficiary_id: ev.beneficiary_id.clone(),
+            username: ev.username.clone(),
+            profile_id: ev.profile_id,
+            claimed_by: ev.claimed_by,
+            wallet: ev.wallet,
+            oracle_evidence_hash: ev.oracle_evidence_hash,
+            claimed_at_ms: ev.claimed_at as i64,
+            transaction_id: tx_id.to_string(),
+        },
+        username_beneficiary_audit_row(
+            EVENT_TYPE_CLAIMED,
+            Some(ev.beneficiary_id),
+            Some(ev.username),
+            data.clone(),
+            tx_id,
+            event_id,
+        ),
+    ])
+}
+
+#[derive(Debug, Deserialize)]
+struct UsernameBeneficiaryEndedEvent {
+    beneficiary_id: String,
+    username: String,
+    ended_by: String,
+    #[serde(deserialize_with = "deserialize_u64")]
+    end_reason_code: u64,
+    #[serde(deserialize_with = "deserialize_u64")]
+    swept_mys_amount: u64,
+    #[serde(deserialize_with = "deserialize_u64")]
+    ended_at: u64,
+}
+
+fn process_username_beneficiary_ended_event(
+    data: &serde_json::Value,
+    event_id: &str,
+    tx_id: &str,
+) -> Option<Vec<SocialEventRow>> {
+    let ev: UsernameBeneficiaryEndedEvent = common::deserialize_social_event_json(
+        "poc_username_beneficiary",
+        "UsernameBeneficiaryEndedEvent",
+        event_id,
+        data,
+        "poc_username_beneficiary UsernameBeneficiaryEndedEvent JSON did not match",
+    )?;
+    if ev.beneficiary_id.is_empty() {
+        return None;
+    }
+    Some(vec![
+        SocialEventRow::PocUsernameBeneficiaryEnded {
+            beneficiary_id: ev.beneficiary_id.clone(),
+            username: ev.username.clone(),
+            ended_by: ev.ended_by,
+            end_reason_code: ev.end_reason_code as i16,
+            swept_mys_amount: ev.swept_mys_amount as i64,
+            ended_at_ms: ev.ended_at as i64,
+            transaction_id: tx_id.to_string(),
+        },
+        username_beneficiary_audit_row(
+            EVENT_TYPE_ENDED,
+            Some(ev.beneficiary_id),
+            Some(ev.username),
+            data.clone(),
+            tx_id,
+            event_id,
+        ),
+    ])
+}
+
+#[derive(Debug, Deserialize)]
+struct UsernameBeneficiaryConflictEvent {
+    username: String,
+    existing_beneficiary_id: String,
+    attempted_by: String,
+}
+
+fn process_username_beneficiary_conflict_event(
+    data: &serde_json::Value,
+    event_id: &str,
+    tx_id: &str,
+) -> Option<Vec<SocialEventRow>> {
+    let ev: UsernameBeneficiaryConflictEvent = common::deserialize_social_event_json(
+        "poc_username_beneficiary",
+        "UsernameBeneficiaryConflictEvent",
+        event_id,
+        data,
+        "poc_username_beneficiary UsernameBeneficiaryConflictEvent JSON did not match",
+    )?;
+    if ev.username.is_empty() || ev.existing_beneficiary_id.is_empty() || ev.attempted_by.is_empty() {
+        return None;
+    }
+    Some(vec![username_beneficiary_audit_row(
+        EVENT_TYPE_CONFLICT,
+        Some(ev.existing_beneficiary_id),
+        Some(ev.username),
+        data.clone(),
+        tx_id,
+        event_id,
+    )])
+}
+
+#[derive(Debug, Deserialize)]
+struct CreatorIdentityWalletLinkedEvent {
+    #[serde(deserialize_with = "deserialize_u64")]
+    creator_identity_source: u64,
+    creator_identity_hash: String,
+    wallet: String,
+    beneficiary_id: String,
+    #[serde(deserialize_with = "deserialize_u64")]
+    linked_at: u64,
+}
+
+fn process_creator_identity_wallet_linked_event(
+    data: &serde_json::Value,
+    event_id: &str,
+    tx_id: &str,
+) -> Option<Vec<SocialEventRow>> {
+    let ev: CreatorIdentityWalletLinkedEvent = common::deserialize_social_event_json(
+        "poc_username_beneficiary",
+        "CreatorIdentityWalletLinkedEvent",
+        event_id,
+        data,
+        "poc_username_beneficiary CreatorIdentityWalletLinkedEvent JSON did not match",
+    )?;
+    if ev.wallet.is_empty() || ev.beneficiary_id.is_empty() || ev.creator_identity_hash.is_empty() {
+        return None;
+    }
+    let link = NewPocCreatorIdentityLink {
+        creator_identity_source: ev.creator_identity_source as i16,
+        creator_identity_hash: ev.creator_identity_hash,
+        wallet_address: ev.wallet,
+        beneficiary_id: ev.beneficiary_id.clone(),
+        linked_at_ms: ev.linked_at as i64,
+        transaction_id: tx_id.to_string(),
+        time: chrono::Utc::now(),
+    };
+    Some(vec![
+        SocialEventRow::PocCreatorIdentityLink(link),
+        username_beneficiary_audit_row(
+            EVENT_TYPE_CREATOR_IDENTITY_WALLET_LINKED,
+            Some(ev.beneficiary_id),
+            None,
+            data.clone(),
+            tx_id,
+            event_id,
+        ),
+    ])
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use serde_json::json;
+
+    #[test]
+    fn username_beneficiary_provisioned_json_to_rows() {
+        let data = json!({
+            "beneficiary_id": "0xb1",
+            "username": "alice",
+            "creator_identity_source": 1,
+            "creator_identity_hash": "0xabc",
+            "required_x_handle": "alice_x",
+            "beneficiary_address": "0xba",
+            "vault_id": "0xv1",
+            "provisioned_by": "0xadmin",
+            "provisioned_at": 1000
+        });
+        let rows = process_username_beneficiary_provisioned_event(&data, "tx:0", "tx")
+            .expect("rows");
+        assert_eq!(rows.len(), 2);
+        assert!(matches!(rows[0], SocialEventRow::PocUsernameBeneficiary(_)));
+        assert!(matches!(rows[1], SocialEventRow::PocUsernameBeneficiaryEvent(_)));
+    }
+
+    #[test]
+    fn vault_claim_join_referral_sets_kind() {
+        let data = json!({
+            "vault_id": "0xv",
+            "beneficiary": "0xba",
+            "coin_type": "0x2::myso::MYSO",
+            "referrer": "0xref",
+            "treasury_amount": 10,
+            "referrer_amount": 20,
+            "beneficiary_amount": 70,
+            "join_referral_applied": true,
+            "timestamp": 500
+        });
+        let rows = process_poc_vault_claim_event(&data, "tx:1", "tx").expect("rows");
+        assert_eq!(rows.len(), 2);
+        match &rows[0] {
+            SocialEventRow::PocBeneficiaryVaultClaimed { claim_kind, .. } => {
+                assert_eq!(claim_kind.as_deref(), Some(VAULT_CLAIM_KIND_JOIN_REFERRAL));
+            }
+            _ => panic!("expected vault claim row"),
+        }
+    }
 }

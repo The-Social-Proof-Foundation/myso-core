@@ -42,6 +42,7 @@ pub(crate) mod owner;
 pub(crate) mod platform;
 pub(crate) mod pnl;
 pub(crate) mod poc;
+pub(crate) mod poc_username_beneficiary;
 pub(crate) mod post;
 pub(crate) mod profile;
 pub(crate) mod profile_summary;

@@ -56,7 +56,8 @@ use myso_indexer_alt_social_schema::models::{
     NewObjectMigratedEvent, NewPlatform, NewPlatformBlockedProfile, NewPlatformEvent,
     NewPlatformMembership, NewPlatformModerator, NewPlatformModeratorPermission,
     NewPlatformTokenAirdrop, NewPocAnalysisResult,
-    NewPocBadge, NewPocConfiguration, NewPocDispute, NewPocDisputeVote, NewPocRevenueRedirection,
+    NewPocBadge, NewPocConfiguration, NewPocCreatorIdentityLink, NewPocDispute, NewPocDisputeVote,
+    NewPocRevenueRedirection, NewPocUsernameBeneficiary, NewPocUsernameBeneficiaryEvent,
     NewPost, NewPostTransfer, NewProfile, NewProfileBadge, NewProfileEvent, NewProfileOffer,
     NewProfileSaleFee, NewProfileSubscription, NewProfileSubscriptionService, NewProposal,
     NewReaction, NewReport, NewRepost, NewRewardDistribution,
@@ -388,9 +389,39 @@ pub enum SocialEventRow {
         treasury_amount: i64,
         referrer_amount: i64,
         beneficiary_amount: i64,
+        join_referral_applied: bool,
+        claim_kind: Option<String>,
         timestamp_ms: i64,
         transaction_id: String,
     },
+    PocUsernameBeneficiary(NewPocUsernameBeneficiary),
+    PocUsernameBeneficiaryClaimed {
+        beneficiary_id: String,
+        username: String,
+        profile_id: String,
+        claimed_by: String,
+        wallet: String,
+        oracle_evidence_hash: String,
+        claimed_at_ms: i64,
+        transaction_id: String,
+    },
+    PocUsernameBeneficiaryEnded {
+        beneficiary_id: String,
+        username: String,
+        ended_by: String,
+        end_reason_code: i16,
+        swept_mys_amount: i64,
+        ended_at_ms: i64,
+        transaction_id: String,
+    },
+    PocUsernameBeneficiaryJoinReferralPaid {
+        beneficiary_address: String,
+        join_referrer: Option<String>,
+        join_referral_paid_at_ms: i64,
+        transaction_id: String,
+    },
+    PocCreatorIdentityLink(NewPocCreatorIdentityLink),
+    PocUsernameBeneficiaryEvent(NewPocUsernameBeneficiaryEvent),
     PostRevenueRedirectUpdate {
         post_id: String,
         revenue_redirect_to: String,
@@ -766,7 +797,7 @@ pub struct ProfileUpdate {
 }
 
 impl FieldCount for SocialEventRow {
-    const FIELD_COUNT: usize = 140;
+    const FIELD_COUNT: usize = 147;
 }
 
 // SocialEvents pipeline removed: profile and post events now handled by ProfilesHandler and PostsHandler.
