@@ -207,7 +207,7 @@ pub enum PostRow {
     },
     PocBeneficiaryVaultDeposit {
         vault_id: String,
-        beneficiary_address: String,
+        vault_routing_key: String,
         coin_type: String,
         amount: i64,
         source_post_id: Option<String>,
@@ -216,7 +216,7 @@ pub enum PostRow {
     },
     PocBeneficiaryVaultClaimed {
         vault_id: String,
-        beneficiary_address: String,
+        vault_routing_key: String,
         coin_type: String,
         referrer_address: Option<String>,
         treasury_amount: i64,
@@ -248,7 +248,7 @@ pub enum PostRow {
         transaction_id: String,
     },
     PocUsernameBeneficiaryJoinReferralPaid {
-        beneficiary_address: String,
+        vault_id: String,
         join_referrer: Option<String>,
         join_referral_paid_at_ms: i64,
         transaction_id: String,
@@ -527,7 +527,7 @@ impl PostRow {
             }),
             SocialEventRow::PocBeneficiaryVaultDeposit {
                 vault_id,
-                beneficiary_address,
+                vault_routing_key,
                 coin_type,
                 amount,
                 source_post_id,
@@ -535,7 +535,7 @@ impl PostRow {
                 transaction_id,
             } => Some(PostRow::PocBeneficiaryVaultDeposit {
                 vault_id,
-                beneficiary_address,
+                vault_routing_key,
                 coin_type,
                 amount,
                 source_post_id,
@@ -544,7 +544,7 @@ impl PostRow {
             }),
             SocialEventRow::PocBeneficiaryVaultClaimed {
                 vault_id,
-                beneficiary_address,
+                vault_routing_key,
                 coin_type,
                 referrer_address,
                 treasury_amount,
@@ -556,7 +556,7 @@ impl PostRow {
                 transaction_id,
             } => Some(PostRow::PocBeneficiaryVaultClaimed {
                 vault_id,
-                beneficiary_address,
+                vault_routing_key,
                 coin_type,
                 referrer_address,
                 treasury_amount,
@@ -605,12 +605,12 @@ impl PostRow {
                 transaction_id,
             }),
             SocialEventRow::PocUsernameBeneficiaryJoinReferralPaid {
-                beneficiary_address,
+                vault_id,
                 join_referrer,
                 join_referral_paid_at_ms,
                 transaction_id,
             } => Some(PostRow::PocUsernameBeneficiaryJoinReferralPaid {
-                beneficiary_address,
+                vault_id,
                 join_referrer,
                 join_referral_paid_at_ms,
                 transaction_id,
@@ -1557,7 +1557,7 @@ impl Handler for PostsHandler {
                 }
                 PostRow::PocBeneficiaryVaultDeposit {
                     vault_id,
-                    beneficiary_address,
+                    vault_routing_key,
                     coin_type,
                     amount,
                     source_post_id,
@@ -1566,7 +1566,7 @@ impl Handler for PostsHandler {
                 } => {
                     let deposit = NewPocVaultDeposit {
                         vault_id: vault_id.clone(),
-                        beneficiary_address: beneficiary_address.clone(),
+                        vault_routing_key: vault_routing_key.clone(),
                         amount: *amount,
                         coin_type: coin_type.clone(),
                         source_post_id: source_post_id.clone(),
@@ -1577,16 +1577,16 @@ impl Handler for PostsHandler {
                         .values(&deposit)
                         .execute(conn)
                         .await?;
-                    let vault_meta_sql = "INSERT INTO poc_beneficiary_vaults (vault_id, beneficiary_address, updated_at_ms, transaction_id, time) \
+                    let vault_meta_sql = "INSERT INTO poc_beneficiary_vaults (vault_id, vault_routing_key, updated_at_ms, transaction_id, time) \
                         VALUES ($1, $2, $3, $4, NOW()) \
                         ON CONFLICT (vault_id) DO UPDATE SET \
-                        beneficiary_address = EXCLUDED.beneficiary_address, \
+                        vault_routing_key = EXCLUDED.vault_routing_key, \
                         updated_at_ms = EXCLUDED.updated_at_ms, \
                         transaction_id = EXCLUDED.transaction_id, \
                         time = NOW()";
                     total += diesel::sql_query(vault_meta_sql)
                         .bind::<Text, _>(vault_id.clone())
-                        .bind::<Text, _>(beneficiary_address.clone())
+                        .bind::<Text, _>(vault_routing_key.clone())
                         .bind::<BigInt, _>(*timestamp_ms)
                         .bind::<Text, _>(transaction_id.clone())
                         .execute(conn)
@@ -1609,7 +1609,7 @@ impl Handler for PostsHandler {
                 }
                 PostRow::PocBeneficiaryVaultClaimed {
                     vault_id,
-                    beneficiary_address,
+                    vault_routing_key,
                     coin_type,
                     referrer_address,
                     treasury_amount,
@@ -1627,7 +1627,7 @@ impl Handler for PostsHandler {
                         .expect("PoC vault claim gross fits i64");
                     let row = NewPocVaultClaim {
                         vault_id: vault_id.clone(),
-                        beneficiary_address: beneficiary_address.clone(),
+                        vault_routing_key: vault_routing_key.clone(),
                         coin_type: coin_type.clone(),
                         referrer_address: referrer_address.clone(),
                         treasury_amount: *treasury_amount,
@@ -1662,6 +1662,20 @@ impl Handler for PostsHandler {
                 PostRow::PocUsernameBeneficiary(row) => {
                     total += diesel::insert_into(poc_username_beneficiaries::table)
                         .values(row)
+                        .execute(conn)
+                        .await?;
+                    let vault_meta_sql = "INSERT INTO poc_beneficiary_vaults (vault_id, vault_routing_key, updated_at_ms, transaction_id, time) \
+                        VALUES ($1, $2, $3, $4, NOW()) \
+                        ON CONFLICT (vault_id) DO UPDATE SET \
+                        vault_routing_key = EXCLUDED.vault_routing_key, \
+                        updated_at_ms = EXCLUDED.updated_at_ms, \
+                        transaction_id = EXCLUDED.transaction_id, \
+                        time = NOW()";
+                    total += diesel::sql_query(vault_meta_sql)
+                        .bind::<Text, _>(&row.vault_id)
+                        .bind::<Text, _>(&row.vault_routing_key)
+                        .bind::<BigInt, _>(row.provisioned_at_ms)
+                        .bind::<Text, _>(&row.transaction_id)
                         .execute(conn)
                         .await?;
                 }
@@ -1714,7 +1728,7 @@ impl Handler for PostsHandler {
                         .await?;
                 }
                 PostRow::PocUsernameBeneficiaryJoinReferralPaid {
-                    beneficiary_address,
+                    vault_id,
                     join_referrer,
                     join_referral_paid_at_ms,
                     transaction_id,
@@ -1722,9 +1736,9 @@ impl Handler for PostsHandler {
                     use diesel::sql_types::{Bool, Nullable};
                     let update_sql = "UPDATE poc_username_beneficiaries SET join_referral_paid = $2, join_referrer = $3, \
                         join_referral_paid_at_ms = $4, transaction_id = $5, time = NOW() \
-                        WHERE beneficiary_address = $1";
+                        WHERE vault_id = $1";
                     total += diesel::sql_query(update_sql)
-                        .bind::<Text, _>(beneficiary_address)
+                        .bind::<Text, _>(vault_id)
                         .bind::<Bool, _>(true)
                         .bind::<Nullable<Text>, _>(join_referrer.clone())
                         .bind::<Nullable<BigInt>, _>(Some(*join_referral_paid_at_ms))
@@ -1934,7 +1948,7 @@ mod post_row_poc_mapping_tests {
             status: 1,
             creator_identity_source: 1,
             creator_identity_hash: "0xabc".to_string(),
-            beneficiary_address: "0xba".to_string(),
+            vault_routing_key: "0xba".to_string(),
             vault_id: "0xv1".to_string(),
             required_x_handle: "alice_x".to_string(),
             oracle_evidence_hash: String::new(),

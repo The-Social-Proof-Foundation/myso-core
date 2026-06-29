@@ -374,7 +374,7 @@ pub enum SocialEventRow {
     },
     PocBeneficiaryVaultDeposit {
         vault_id: String,
-        beneficiary_address: String,
+        vault_routing_key: String,
         coin_type: String,
         amount: i64,
         source_post_id: Option<String>,
@@ -383,7 +383,7 @@ pub enum SocialEventRow {
     },
     PocBeneficiaryVaultClaimed {
         vault_id: String,
-        beneficiary_address: String,
+        vault_routing_key: String,
         coin_type: String,
         referrer_address: Option<String>,
         treasury_amount: i64,
@@ -415,7 +415,7 @@ pub enum SocialEventRow {
         transaction_id: String,
     },
     PocUsernameBeneficiaryJoinReferralPaid {
-        beneficiary_address: String,
+        vault_id: String,
         join_referrer: Option<String>,
         join_referral_paid_at_ms: i64,
         transaction_id: String,

@@ -17,19 +17,22 @@ COMMENT ON COLUMN poc_configuration.max_referral_bps IS 'Max referral slice of a
 
 CREATE TABLE IF NOT EXISTS poc_beneficiary_vaults (
     vault_id TEXT PRIMARY KEY,
-    beneficiary_address TEXT NOT NULL,
+    vault_routing_key TEXT NOT NULL,
     balance BIGINT NOT NULL DEFAULT 0,
     updated_at_ms BIGINT NOT NULL,
     transaction_id TEXT NOT NULL,
     time TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
 
-CREATE INDEX IF NOT EXISTS idx_poc_beneficiary_vaults_beneficiary ON poc_beneficiary_vaults (beneficiary_address);
+CREATE INDEX IF NOT EXISTS idx_poc_beneficiary_vaults_vault_routing_key ON poc_beneficiary_vaults (vault_routing_key);
+
+COMMENT ON COLUMN poc_beneficiary_vaults.vault_routing_key IS
+    'Vault directory lookup key stored on PoCBeneficiaryVault.beneficiary (may be identity-derived, not a wallet)';
 
 CREATE TABLE IF NOT EXISTS poc_vault_deposits (
     id BIGSERIAL PRIMARY KEY,
     vault_id TEXT NOT NULL,
-    beneficiary_address TEXT NOT NULL,
+    vault_routing_key TEXT NOT NULL,
     amount BIGINT NOT NULL,
     source_post_id TEXT NULL,
     occurred_at_ms BIGINT NOT NULL,
@@ -42,7 +45,7 @@ CREATE INDEX IF NOT EXISTS idx_poc_vault_deposits_vault_time ON poc_vault_deposi
 CREATE TABLE IF NOT EXISTS poc_vault_claims (
     id BIGSERIAL PRIMARY KEY,
     vault_id TEXT NOT NULL,
-    beneficiary_address TEXT NOT NULL,
+    vault_routing_key TEXT NOT NULL,
     referrer_address TEXT NULL,
     treasury_amount BIGINT NOT NULL,
     referrer_amount BIGINT NOT NULL,

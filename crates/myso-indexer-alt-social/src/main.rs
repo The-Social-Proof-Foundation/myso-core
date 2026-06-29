@@ -2,7 +2,7 @@
 // SPDX-License-Identifier: Apache-2.0
 
 use anyhow::Context;
-use clap::Parser;
+use clap::{Parser, Subcommand};
 use myso_indexer_alt_framework::ingestion::ingestion_client::IngestionClientArgs;
 use myso_indexer_alt_framework::ingestion::streaming_client::StreamingClientArgs;
 use myso_indexer_alt_framework::ingestion::{ClientArgs, IngestionConfig};
@@ -10,7 +10,7 @@ use myso_indexer_alt_framework::{Indexer, IndexerArgs};
 use myso_indexer_alt_metrics::db::DbConnectionStatsCollector;
 use myso_indexer_alt_metrics::{MetricsArgs, MetricsService};
 use myso_indexer_alt_social_schema::MIGRATIONS;
-use myso_pg_db::{Db, DbArgs};
+use myso_pg_db::{reset_database, Db, DbArgs};
 use prometheus::Registry;
 use social_indexer::{
     BlockingHandler, GovernanceHandler, InsuranceHandler, MemoryHandler, MyDataHandler,
@@ -24,6 +24,9 @@ use url::Url;
 #[derive(Parser)]
 #[clap(rename_all = "kebab-case", author, version)]
 struct Args {
+    #[command(subcommand)]
+    command: Option<Command>,
+
     #[command(flatten)]
     db_args: DbArgs,
     #[command(flatten)]
@@ -39,7 +42,7 @@ struct Args {
     )]
     database_url: Url,
     #[clap(env, long)]
-    env: SocialEnv,
+    env: Option<SocialEnv>,
     /// Path to local checkpoint directory (for local dev). Overrides --env when set.
     #[clap(long)]
     local_ingestion_path: Option<PathBuf>,
@@ -48,12 +51,57 @@ struct Args {
     rpc_api_url: Option<Url>,
 }
 
+#[derive(Subcommand)]
+enum Command {
+    /// Wipe the social database and re-run social schema migrations.
+    ResetDatabase {
+        /// The URL of the database to connect to.
+        #[clap(
+            long,
+            default_value = "postgres://postgres:postgrespw@localhost:5432/social"
+        )]
+        database_url: Url,
+
+        #[command(flatten)]
+        db_args: DbArgs,
+
+        /// If true, only drop all tables but do not run the migrations.
+        #[clap(long, default_value_t = false)]
+        skip_migrations: bool,
+    },
+}
+
 #[tokio::main]
 async fn main() -> Result<(), anyhow::Error> {
     let _guard = telemetry_subscribers::TelemetryConfig::new()
         .with_env()
         .init();
 
+    let args = Args::parse();
+
+    if let Some(Command::ResetDatabase {
+        database_url,
+        db_args,
+        skip_migrations,
+    }) = args.command
+    {
+        reset_database(
+            database_url,
+            db_args,
+            if !skip_migrations {
+                Some(&MIGRATIONS)
+            } else {
+                None
+            },
+        )
+        .await?;
+        return Ok(());
+    }
+
+    run_indexer(args).await
+}
+
+async fn run_indexer(args: Args) -> Result<(), anyhow::Error> {
     let Args {
         db_args,
         indexer_args,
@@ -63,7 +111,10 @@ async fn main() -> Result<(), anyhow::Error> {
         env,
         local_ingestion_path,
         rpc_api_url,
-    } = Args::parse();
+        ..
+    } = args;
+
+    let env = env.context("--env is required when running the social indexer")?;
 
     let ingestion_args = if let Some(path) = local_ingestion_path {
         IngestionClientArgs {

@@ -129,7 +129,13 @@ impl Db {
         BEGIN
             FOR r IN (SELECT proname, oidvectortypes(proargtypes) as argtypes
                       FROM pg_proc INNER JOIN pg_namespace ns ON (pg_proc.pronamespace = ns.oid)
-                      WHERE ns.nspname = 'public' AND prokind = 'p')
+                      WHERE ns.nspname = 'public' AND prokind = 'p'
+                        AND NOT EXISTS (
+                            SELECT 1 FROM pg_depend d
+                            WHERE d.classid = 'pg_proc'::regclass
+                              AND d.objid = pg_proc.oid
+                              AND d.deptype = 'e'
+                        ))
             LOOP
                 EXECUTE 'DROP PROCEDURE IF EXISTS ' || quote_ident(r.proname) || '(' || r.argtypes || ') CASCADE';
             END LOOP;
@@ -145,7 +151,13 @@ impl Db {
         BEGIN
             FOR r IN (SELECT proname, oidvectortypes(proargtypes) as argtypes
                       FROM pg_proc INNER JOIN pg_namespace ON (pg_proc.pronamespace = pg_namespace.oid)
-                      WHERE pg_namespace.nspname = 'public' AND prokind = 'f')
+                      WHERE pg_namespace.nspname = 'public' AND prokind = 'f'
+                        AND NOT EXISTS (
+                            SELECT 1 FROM pg_depend d
+                            WHERE d.classid = 'pg_proc'::regclass
+                              AND d.objid = pg_proc.oid
+                              AND d.deptype = 'e'
+                        ))
             LOOP
                 EXECUTE 'DROP FUNCTION IF EXISTS ' || quote_ident(r.proname) || '(' || r.argtypes || ') CASCADE';
             END LOOP;
@@ -379,6 +391,48 @@ mod tests {
         .await
         .unwrap();
         assert_eq!(cnt.cnt, 0);
+    }
+
+    #[tokio::test]
+    async fn test_reset_database_with_timescaledb_extension() {
+        let temp_db = temp::TempDb::new().unwrap();
+        let url = temp_db.database().url();
+
+        let db = Db::for_write(url.clone(), DbArgs::default()).await.unwrap();
+        let mut conn = db.connect().await.unwrap();
+        let extension_result =
+            diesel::sql_query("CREATE EXTENSION IF NOT EXISTS timescaledb CASCADE")
+                .execute(&mut conn)
+                .await;
+        if extension_result.is_err() {
+            return;
+        }
+
+        diesel::sql_query("CREATE TABLE test_table (id INTEGER PRIMARY KEY)")
+            .execute(&mut conn)
+            .await
+            .unwrap();
+
+        reset_database(url.clone(), DbArgs::default(), None)
+            .await
+            .unwrap();
+
+        let mut conn = db.connect().await.unwrap();
+        let cnt: CountResult = diesel::sql_query(
+            "SELECT COUNT(*) as cnt FROM information_schema.tables WHERE table_name = 'test_table'",
+        )
+        .get_result(&mut conn)
+        .await
+        .unwrap();
+        assert_eq!(cnt.cnt, 0);
+
+        let extension_cnt: CountResult = diesel::sql_query(
+            "SELECT COUNT(*) as cnt FROM pg_extension WHERE extname = 'timescaledb'",
+        )
+        .get_result(&mut conn)
+        .await
+        .unwrap();
+        assert_eq!(extension_cnt.cnt, 1);
     }
 
     #[tokio::test]

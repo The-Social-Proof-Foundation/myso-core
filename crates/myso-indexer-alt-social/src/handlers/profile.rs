@@ -490,10 +490,22 @@ fn process_username_claimed_event(
         "profile UsernameClaimedEvent JSON did not match UsernameClaimedEvent",
     )?;
     let tx_id = event_id.to_string();
+    let now = chrono::Utc::now().naive_utc();
     let registry = NewUsernameRegistry {
         username: ev.username.clone(),
         profile_id: ev.profile_id.clone(),
         transaction_id: tx_id,
+    };
+    let audit_event = NewProfileEvent {
+        event_type: "UsernameClaimed".to_string(),
+        profile_id: ev.profile_id.clone(),
+        event_data: serde_json::json!({
+            "username": ev.username,
+            "profile_id": ev.profile_id,
+        }),
+        event_id: Some(event_id.to_string()),
+        created_at: now,
+        updated_at: now,
     };
     Some(vec![
         SocialEventRow::UsernameRegistryUpsert(registry),
@@ -501,6 +513,7 @@ fn process_username_claimed_event(
             profile_id: ev.profile_id,
             username: ev.username,
         },
+        SocialEventRow::ProfileEvent(audit_event),
     ])
 }
 
@@ -1373,7 +1386,7 @@ mod tests {
         });
         let rows = handle_profile_event("UsernameClaimedEvent", &data, "tx:1", CK_MS)
             .expect("handle_profile_event should return Some");
-        assert_eq!(rows.len(), 2);
+        assert_eq!(rows.len(), 3);
         assert!(rows.iter().any(|r| matches!(r, SocialEventRow::UsernameRegistryUpsert(_))));
         assert!(rows.iter().any(|r| matches!(
             r,
@@ -1381,6 +1394,36 @@ mod tests {
                 username,
                 ..
             } if username == "brandon"
+        )));
+        assert!(rows.iter().any(|r| matches!(
+            r,
+            SocialEventRow::ProfileEvent(e) if e.event_type == "UsernameClaimed"
+                && e.event_data.get("username").and_then(|v| v.as_str()) == Some("brandon")
+        )));
+    }
+
+    #[test]
+    fn test_username_claimed_before_profile_created_event_order() {
+        let username_data = serde_json::json!({
+            "username": "pocub1782751083",
+            "profile_id": "0x79e88bde",
+        });
+        let profile_data = serde_json::json!({
+            "profile_id": "0x79e88bde",
+            "owner_address": "0x24589501",
+            "display_name": "Creator",
+            "bio": "bio",
+            "created_at": 1000,
+        });
+        let username_rows = handle_profile_event("UsernameClaimedEvent", &username_data, "tx:0", CK_MS)
+            .expect("UsernameClaimedEvent");
+        let profile_rows = handle_profile_event("ProfileCreatedEvent", &profile_data, "tx:1", CK_MS)
+            .expect("ProfileCreatedEvent");
+        assert_eq!(username_rows.len(), 3);
+        assert_eq!(profile_rows.len(), 2);
+        assert!(username_rows.iter().any(|r| matches!(
+            r,
+            SocialEventRow::ProfileUsernameSet { username, .. } if username == "pocub1782751083"
         )));
     }
 

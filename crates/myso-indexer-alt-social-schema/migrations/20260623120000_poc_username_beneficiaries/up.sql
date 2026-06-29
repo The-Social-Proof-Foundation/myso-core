@@ -6,7 +6,7 @@ CREATE TABLE IF NOT EXISTS poc_username_beneficiaries (
     status SMALLINT NOT NULL,
     creator_identity_source SMALLINT NOT NULL,
     creator_identity_hash TEXT NOT NULL,
-    beneficiary_address TEXT NOT NULL,
+    vault_routing_key TEXT NOT NULL,
     vault_id TEXT NOT NULL,
     required_x_handle TEXT NOT NULL,
     oracle_evidence_hash TEXT NOT NULL DEFAULT '',
@@ -27,8 +27,8 @@ CREATE TABLE IF NOT EXISTS poc_username_beneficiaries (
 
 CREATE INDEX IF NOT EXISTS idx_poc_username_beneficiaries_username ON poc_username_beneficiaries (username);
 CREATE INDEX IF NOT EXISTS idx_poc_username_beneficiaries_vault ON poc_username_beneficiaries (vault_id);
-CREATE INDEX IF NOT EXISTS idx_poc_username_beneficiaries_beneficiary_address
-    ON poc_username_beneficiaries (beneficiary_address);
+CREATE INDEX IF NOT EXISTS idx_poc_username_beneficiaries_vault_routing_key
+    ON poc_username_beneficiaries (vault_routing_key);
 CREATE INDEX IF NOT EXISTS idx_poc_username_beneficiaries_active
     ON poc_username_beneficiaries (username, status)
     WHERE status = 1;
@@ -78,3 +78,16 @@ COMMENT ON COLUMN poc_vault_claims.claim_kind IS
 COMMENT ON TABLE poc_username_beneficiaries IS 'Off-platform creator username beneficiary provisions (PoC)';
 COMMENT ON TABLE poc_creator_identity_links IS 'Creator identity to wallet links after beneficiary claim';
 COMMENT ON TABLE poc_username_beneficiary_events IS 'Append-only audit log for username beneficiary lifecycle events';
+
+COMMENT ON COLUMN poc_username_beneficiaries.vault_routing_key IS
+    'Identity-derived vault directory lookup key (not a user wallet or standalone object); see claimed_by for linked wallet';
+
+INSERT INTO poc_beneficiary_vaults (vault_id, vault_routing_key, updated_at_ms, transaction_id, time)
+SELECT ub.vault_id, ub.vault_routing_key, ub.provisioned_at_ms, ub.transaction_id, ub.time
+FROM poc_username_beneficiaries ub
+WHERE ub.vault_id IS NOT NULL AND ub.vault_id <> ''
+ON CONFLICT (vault_id) DO UPDATE SET
+    vault_routing_key = EXCLUDED.vault_routing_key,
+    updated_at_ms = EXCLUDED.updated_at_ms,
+    transaction_id = EXCLUDED.transaction_id,
+    time = EXCLUDED.time;

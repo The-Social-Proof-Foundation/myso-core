@@ -41,8 +41,14 @@ impl PocUsernameBeneficiary {
         &self.inner.creator_identity_hash
     }
 
+    /// Identity-derived vault directory lookup key (not a user wallet).
+    async fn vault_routing_key(&self) -> &str {
+        &self.inner.vault_routing_key
+    }
+
+    /// Deprecated alias for [`vault_routing_key`](Self::vault_routing_key).
     async fn beneficiary_address(&self) -> &str {
-        &self.inner.beneficiary_address
+        &self.inner.vault_routing_key
     }
 
     async fn vault_id(&self) -> &str {

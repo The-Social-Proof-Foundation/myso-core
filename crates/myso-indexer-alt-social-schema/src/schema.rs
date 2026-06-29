@@ -819,7 +819,7 @@ diesel::table! {
 diesel::table! {
     poc_beneficiary_vaults (vault_id) {
         vault_id -> Text,
-        beneficiary_address -> Text,
+        vault_routing_key -> Text,
         updated_at_ms -> Int8,
         transaction_id -> Text,
         time -> Timestamptz,
@@ -841,7 +841,7 @@ diesel::table! {
     poc_vault_deposits (id) {
         id -> Int8,
         vault_id -> Text,
-        beneficiary_address -> Text,
+        vault_routing_key -> Text,
         amount -> Int8,
         coin_type -> Text,
         source_post_id -> Nullable<Text>,
@@ -855,7 +855,7 @@ diesel::table! {
     poc_vault_claims (id) {
         id -> Int8,
         vault_id -> Text,
-        beneficiary_address -> Text,
+        vault_routing_key -> Text,
         coin_type -> Text,
         referrer_address -> Nullable<Text>,
         treasury_amount -> Int8,
@@ -875,7 +875,7 @@ diesel::table! {
         status -> Int2,
         creator_identity_source -> Int2,
         creator_identity_hash -> Text,
-        beneficiary_address -> Text,
+        vault_routing_key -> Text,
         vault_id -> Text,
         required_x_handle -> Text,
         oracle_evidence_hash -> Text,

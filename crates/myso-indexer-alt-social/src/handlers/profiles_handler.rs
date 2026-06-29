@@ -243,277 +243,307 @@ impl Processor for ProfilesHandler {
 impl Handler for ProfilesHandler {
     async fn commit<'a>(values: &[Self::Value], conn: &mut Connection<'a>) -> Result<usize> {
         let mut total = 0;
+        // Pass 1: insert profiles before UsernameClaimed updates (Move emits UsernameClaimedEvent
+        // before ProfileCreatedEvent in the same transaction).
+        for row in values {
+            if let ProfileRow::Profile(profile) = row {
+                total += commit_profile_insert(profile, conn).await?;
+            }
+        }
         for row in values {
             match row {
-                ProfileRow::Profile(profile) => {
-                    total += diesel::insert_into(profiles::table)
-                        .values(profile)
-                        .on_conflict(profiles::owner_address)
-                        .do_nothing()
-                        .execute(conn)
-                        .await?;
-                    if let Some(ref profile_id) = profile.profile_id {
-                        if let Some(account_id) = memory_accounts::table
-                            .filter(memory_accounts::profile_id.eq(profile_id))
-                            .select(memory_accounts::account_id)
-                            .first::<String>(conn)
-                            .await
-                            .optional()?
-                        {
-                            total += diesel::update(
-                                profiles::table
-                                    .filter(profiles::profile_id.eq(profile_id))
-                                    .filter(profiles::memory_account_id.is_null()),
-                            )
-                            .set(profiles::memory_account_id.eq(account_id))
-                            .execute(conn)
-                            .await?;
-                        }
-                    }
-                }
-                ProfileRow::ProfileXUsernameUpdate {
-                    profile_id,
-                    owner_address,
-                    x_username,
-                } => {
-                    let now = chrono::Utc::now().naive_utc();
-                    let filter = profiles::profile_id
-                        .eq(profile_id)
-                        .or(profiles::owner_address.eq(owner_address));
-                    total += diesel::update(profiles::table)
-                        .filter(filter)
-                        .set((
-                            profiles::x_username.eq(x_username),
-                            profiles::updated_at.eq(now),
-                        ))
-                        .execute(conn)
-                        .await?;
-                }
-                ProfileRow::UsernameRegistryUpsert(row) => {
-                    total += diesel::insert_into(username_registry::table)
-                        .values(row)
-                        .on_conflict(username_registry::username)
-                        .do_update()
-                        .set((
-                            username_registry::profile_id.eq(excluded(username_registry::profile_id)),
-                            username_registry::transaction_id
-                                .eq(excluded(username_registry::transaction_id)),
-                        ))
-                        .execute(conn)
-                        .await?;
-                }
-                ProfileRow::UsernameRegistryDelete { username } => {
-                    total += diesel::delete(username_registry::table)
-                        .filter(username_registry::username.eq(username))
-                        .execute(conn)
-                        .await?;
-                }
-                ProfileRow::UsernameRegistryReassign {
-                    username,
-                    new_profile_id,
-                    transaction_id,
-                } => {
-                    total += diesel::update(username_registry::table)
-                        .filter(username_registry::username.eq(username))
-                        .set((
-                            username_registry::profile_id.eq(new_profile_id),
-                            username_registry::transaction_id.eq(transaction_id),
-                        ))
-                        .execute(conn)
-                        .await?;
-                }
-                ProfileRow::ProfileUsernameSet {
-                    profile_id,
-                    username,
-                } => {
-                    let now = chrono::Utc::now().naive_utc();
-                    total += diesel::update(profiles::table)
-                        .filter(profiles::profile_id.eq(profile_id))
-                        .set((
-                            profiles::username.eq(username),
-                            profiles::updated_at.eq(now),
-                        ))
-                        .execute(conn)
-                        .await?;
-                }
-                ProfileRow::ProfileUsernameClear { profile_id } => {
-                    let now = chrono::Utc::now().naive_utc();
-                    total += diesel::update(profiles::table)
-                        .filter(profiles::profile_id.eq(profile_id))
-                        .set((
-                            profiles::username.eq(""),
-                            profiles::updated_at.eq(now),
-                        ))
-                        .execute(conn)
-                        .await?;
-                }
-                ProfileRow::ProfileUpdate(up) => {
-                    let now = chrono::Utc::now().naive_utc();
-                    let set = ProfileUpdateSet {
-                        updated_at: now,
-                        display_name: up.display_name.clone().map(Some),
-                        bio: up.bio.clone().map(Some),
-                        profile_photo: up.profile_photo.clone().map(Some),
-                        cover_photo: up.cover_photo.clone().map(Some),
-                        birthdate: up.birthdate.clone().map(Some),
-                        current_location: up.current_location.clone().map(Some),
-                        raised_location: up.raised_location.clone().map(Some),
-                        phone: up.phone.clone().map(Some),
-                        email: up.email.clone().map(Some),
-                        gender: up.gender.clone().map(Some),
-                        political_view: up.political_view.clone().map(Some),
-                        religion: up.religion.clone().map(Some),
-                        education: up.education.clone().map(Some),
-                        primary_language: up.primary_language.clone().map(Some),
-                        relationship_status: up.relationship_status.clone().map(Some),
-                        x_username: up.x_username.clone().map(Some),
-                        min_offer_amount: up.min_offer_amount.map(Some),
-                        username: up.username.clone(),
-                        selected_badge_id: up.selected_badge_id.clone(),
-                        selected_ecosystem_badge_id: up.selected_ecosystem_badge_id.clone(),
-                        reservation_pool_address: up.reservation_pool_address.clone(),
-                        social_proof_token_address: up.social_proof_token_address.clone(),
-                    };
-                    let filter = profiles::profile_id
-                        .eq(&up.profile_id)
-                        .or(profiles::owner_address.eq(&up.owner_address));
-                    total += diesel::update(profiles::table)
-                        .filter(filter)
-                        .set(set)
-                        .execute(conn)
-                        .await?;
-                }
-                ProfileRow::ProfileEvent(ev) => {
-                    total += diesel::insert_into(profile_events::table)
-                        .values(ev)
-                        .execute(conn)
-                        .await?;
-                }
-                ProfileRow::ProfileOffer(offer) => {
-                    total += diesel::insert_into(profile_offers::table)
-                        .values(offer)
-                        .execute(conn)
-                        .await?;
-                }
-                ProfileRow::ProfileOfferStatusUpdate {
-                    profile_id,
-                    offeror_address,
-                    status,
-                    resolved_at,
-                    updated_at,
-                    transaction_id,
-                } => {
-                    let _ = diesel::update(profile_offers::table)
-                        .filter(profile_offers::profile_id.eq(profile_id))
-                        .filter(profile_offers::offeror_address.eq(offeror_address))
-                        .filter(profile_offers::status.eq("pending"))
-                        .set((
-                            profile_offers::status.eq(status),
-                            profile_offers::resolved_at.eq(Some(*resolved_at)),
-                            profile_offers::updated_at.eq(*updated_at),
-                            profile_offers::transaction_id.eq(transaction_id),
-                        ))
-                        .execute(conn)
-                        .await;
-                }
-                ProfileRow::ProfileSaleFee(fee) => {
-                    total += diesel::insert_into(profile_sale_fees::table)
-                        .values(fee)
-                        .execute(conn)
-                        .await?;
-                }
-                ProfileRow::EcosystemTreasury(c) => {
-                    let latest: Option<(i32, chrono::NaiveDateTime)> = ecosystem_treasury::table
-                        .order(ecosystem_treasury::time.desc())
-                        .select((ecosystem_treasury::id, ecosystem_treasury::time))
-                        .first(conn)
-                        .await
-                        .ok();
-                    if let Some((id, time)) = latest {
-                        total += diesel::update(ecosystem_treasury::table)
-                            .filter(ecosystem_treasury::id.eq(id))
-                            .filter(ecosystem_treasury::time.eq(time))
-                            .set((
-                                ecosystem_treasury::treasury_address.eq(&c.treasury_address),
-                                ecosystem_treasury::updated_by.eq(&c.updated_by),
-                                ecosystem_treasury::timestamp_ms.eq(c.timestamp_ms),
-                                ecosystem_treasury::transaction_id.eq(&c.transaction_id),
-                            ))
-                            .execute(conn)
-                            .await?;
-                    } else {
-                        total += diesel::insert_into(ecosystem_treasury::table)
-                            .values(c)
-                            .execute(conn)
-                            .await?;
-                    }
-                }
-                ProfileRow::ProfileBadge(badge) => {
-                    total += diesel::insert_into(profile_badges::table)
-                        .values(badge)
-                        .execute(conn)
-                        .await?;
-                }
-                ProfileRow::ProfileBadgeRevoke {
-                    profile_id,
-                    badge_id,
-                    revoked_at,
-                    revoked_by,
-                } => {
-                    total += diesel::update(profile_badges::table)
-                        .filter(profile_badges::profile_id.eq(profile_id))
-                        .filter(profile_badges::badge_id.eq(badge_id))
-                        .filter(profile_badges::revoked.eq(false))
-                        .set((
-                            profile_badges::revoked.eq(true),
-                            profile_badges::revoked_at.eq(Some(*revoked_at)),
-                            profile_badges::revoked_by.eq(Some(revoked_by.clone())),
-                        ))
-                        .execute(conn)
-                        .await?;
-                }
-                ProfileRow::VestingWallet(w) => {
-                    total += diesel::insert_into(vesting_wallets::table)
-                        .values(w)
-                        .on_conflict(vesting_wallets::wallet_id)
-                        .do_nothing()
-                        .execute(conn)
-                        .await?;
-                }
-                ProfileRow::VestingEvent(e) => {
-                    total += diesel::insert_into(vesting_events::table)
-                        .values(e)
-                        .execute(conn)
-                        .await?;
-                }
-                ProfileRow::VestingWalletClaimUpdate {
-                    wallet_id,
-                    claimed_amount: _, // chain event field is per-claim delta, not cumulative
-                    remaining_balance,
-                } => {
-                    let now = chrono::Utc::now().naive_utc();
-                    // Cumulative claimed = total_amount - balance after claim (see profile::VestingWallet).
-                    // Idempotent if the same TokensClaimed event is replayed.
-                    let upd = diesel::sql_query(
-                        "UPDATE vesting_wallets SET \
-                         claimed_amount = GREATEST(0, total_amount - $1), \
-                         remaining_balance = $1, \
-                         updated_at = $2 \
-                         WHERE wallet_id = $3",
-                    )
-                    .bind::<BigInt, _>(*remaining_balance)
-                    .bind::<Timestamp, _>(now)
-                    .bind::<Text, _>(wallet_id);
-                    total += upd.execute(conn).await?;
-                }
-                ProfileRow::VestingWalletDelete { wallet_id } => {
-                    total += diesel::delete(vesting_wallets::table)
-                        .filter(vesting_wallets::wallet_id.eq(wallet_id))
-                        .execute(conn)
-                        .await?;
+                ProfileRow::Profile(_) => {}
+                other => {
+                    total += commit_profile_row(other, conn).await?;
                 }
             }
         }
         Ok(total)
     }
+}
+
+async fn commit_profile_insert<'a>(
+    profile: &NewProfile,
+    conn: &mut Connection<'a>,
+) -> Result<usize> {
+    let mut total = diesel::insert_into(profiles::table)
+        .values(profile)
+        .on_conflict(profiles::owner_address)
+        .do_nothing()
+        .execute(conn)
+        .await?;
+    if let Some(ref profile_id) = profile.profile_id {
+        if let Some(account_id) = memory_accounts::table
+            .filter(memory_accounts::profile_id.eq(profile_id))
+            .select(memory_accounts::account_id)
+            .first::<String>(conn)
+            .await
+            .optional()?
+        {
+            total += diesel::update(
+                profiles::table
+                    .filter(profiles::profile_id.eq(profile_id))
+                    .filter(profiles::memory_account_id.is_null()),
+            )
+            .set(profiles::memory_account_id.eq(account_id))
+            .execute(conn)
+            .await?;
+        }
+    }
+    Ok(total)
+}
+
+async fn commit_profile_row<'a>(row: &ProfileRow, conn: &mut Connection<'a>) -> Result<usize> {
+    let mut total = 0;
+    match row {
+        ProfileRow::Profile(profile) => return commit_profile_insert(profile, conn).await,
+        ProfileRow::ProfileXUsernameUpdate {
+            profile_id,
+            owner_address,
+            x_username,
+        } => {
+            let now = chrono::Utc::now().naive_utc();
+            let filter = profiles::profile_id
+                .eq(profile_id)
+                .or(profiles::owner_address.eq(owner_address));
+            total += diesel::update(profiles::table)
+                .filter(filter)
+                .set((
+                    profiles::x_username.eq(x_username),
+                    profiles::updated_at.eq(now),
+                ))
+                .execute(conn)
+                .await?;
+        }
+        ProfileRow::UsernameRegistryUpsert(row) => {
+            total += diesel::insert_into(username_registry::table)
+                .values(row)
+                .on_conflict(username_registry::username)
+                .do_update()
+                .set((
+                    username_registry::profile_id.eq(excluded(username_registry::profile_id)),
+                    username_registry::transaction_id
+                        .eq(excluded(username_registry::transaction_id)),
+                ))
+                .execute(conn)
+                .await?;
+        }
+        ProfileRow::UsernameRegistryDelete { username } => {
+            total += diesel::delete(username_registry::table)
+                .filter(username_registry::username.eq(username))
+                .execute(conn)
+                .await?;
+        }
+        ProfileRow::UsernameRegistryReassign {
+            username,
+            new_profile_id,
+            transaction_id,
+        } => {
+            total += diesel::update(username_registry::table)
+                .filter(username_registry::username.eq(username))
+                .set((
+                    username_registry::profile_id.eq(new_profile_id),
+                    username_registry::transaction_id.eq(transaction_id),
+                ))
+                .execute(conn)
+                .await?;
+        }
+        ProfileRow::ProfileUsernameSet {
+            profile_id,
+            username,
+        } => {
+            let now = chrono::Utc::now().naive_utc();
+            let updated = diesel::update(profiles::table)
+                .filter(profiles::profile_id.eq(profile_id))
+                .set((
+                    profiles::username.eq(username),
+                    profiles::updated_at.eq(now),
+                ))
+                .execute(conn)
+                .await?;
+            if updated == 0 {
+                tracing::warn!(
+                    profile_id = %profile_id,
+                    username = %username,
+                    "ProfileUsernameSet updated 0 rows after profile insert pass"
+                );
+            }
+            total += updated;
+        }
+        ProfileRow::ProfileUsernameClear { profile_id } => {
+            let now = chrono::Utc::now().naive_utc();
+            total += diesel::update(profiles::table)
+                .filter(profiles::profile_id.eq(profile_id))
+                .set((
+                    profiles::username.eq(""),
+                    profiles::updated_at.eq(now),
+                ))
+                .execute(conn)
+                .await?;
+        }
+        ProfileRow::ProfileUpdate(up) => {
+            let now = chrono::Utc::now().naive_utc();
+            let set = ProfileUpdateSet {
+                updated_at: now,
+                display_name: up.display_name.clone().map(Some),
+                bio: up.bio.clone().map(Some),
+                profile_photo: up.profile_photo.clone().map(Some),
+                cover_photo: up.cover_photo.clone().map(Some),
+                birthdate: up.birthdate.clone().map(Some),
+                current_location: up.current_location.clone().map(Some),
+                raised_location: up.raised_location.clone().map(Some),
+                phone: up.phone.clone().map(Some),
+                email: up.email.clone().map(Some),
+                gender: up.gender.clone().map(Some),
+                political_view: up.political_view.clone().map(Some),
+                religion: up.religion.clone().map(Some),
+                education: up.education.clone().map(Some),
+                primary_language: up.primary_language.clone().map(Some),
+                relationship_status: up.relationship_status.clone().map(Some),
+                x_username: up.x_username.clone().map(Some),
+                min_offer_amount: up.min_offer_amount.map(Some),
+                username: up.username.clone(),
+                selected_badge_id: up.selected_badge_id.clone(),
+                selected_ecosystem_badge_id: up.selected_ecosystem_badge_id.clone(),
+                reservation_pool_address: up.reservation_pool_address.clone(),
+                social_proof_token_address: up.social_proof_token_address.clone(),
+            };
+            let filter = profiles::profile_id
+                .eq(&up.profile_id)
+                .or(profiles::owner_address.eq(&up.owner_address));
+            total += diesel::update(profiles::table)
+                .filter(filter)
+                .set(set)
+                .execute(conn)
+                .await?;
+        }
+        ProfileRow::ProfileEvent(ev) => {
+            total += diesel::insert_into(profile_events::table)
+                .values(ev)
+                .execute(conn)
+                .await?;
+        }
+        ProfileRow::ProfileOffer(offer) => {
+            total += diesel::insert_into(profile_offers::table)
+                .values(offer)
+                .execute(conn)
+                .await?;
+        }
+        ProfileRow::ProfileOfferStatusUpdate {
+            profile_id,
+            offeror_address,
+            status,
+            resolved_at,
+            updated_at,
+            transaction_id,
+        } => {
+            let _ = diesel::update(profile_offers::table)
+                .filter(profile_offers::profile_id.eq(profile_id))
+                .filter(profile_offers::offeror_address.eq(offeror_address))
+                .filter(profile_offers::status.eq("pending"))
+                .set((
+                    profile_offers::status.eq(status),
+                    profile_offers::resolved_at.eq(Some(*resolved_at)),
+                    profile_offers::updated_at.eq(*updated_at),
+                    profile_offers::transaction_id.eq(transaction_id),
+                ))
+                .execute(conn)
+                .await;
+        }
+        ProfileRow::ProfileSaleFee(fee) => {
+            total += diesel::insert_into(profile_sale_fees::table)
+                .values(fee)
+                .execute(conn)
+                .await?;
+        }
+        ProfileRow::EcosystemTreasury(c) => {
+            let latest: Option<(i32, chrono::NaiveDateTime)> = ecosystem_treasury::table
+                .order(ecosystem_treasury::time.desc())
+                .select((ecosystem_treasury::id, ecosystem_treasury::time))
+                .first(conn)
+                .await
+                .ok();
+            if let Some((id, time)) = latest {
+                total += diesel::update(ecosystem_treasury::table)
+                    .filter(ecosystem_treasury::id.eq(id))
+                    .filter(ecosystem_treasury::time.eq(time))
+                    .set((
+                        ecosystem_treasury::treasury_address.eq(&c.treasury_address),
+                        ecosystem_treasury::updated_by.eq(&c.updated_by),
+                        ecosystem_treasury::timestamp_ms.eq(c.timestamp_ms),
+                        ecosystem_treasury::transaction_id.eq(&c.transaction_id),
+                    ))
+                    .execute(conn)
+                    .await?;
+            } else {
+                total += diesel::insert_into(ecosystem_treasury::table)
+                    .values(c)
+                    .execute(conn)
+                    .await?;
+            }
+        }
+        ProfileRow::ProfileBadge(badge) => {
+            total += diesel::insert_into(profile_badges::table)
+                .values(badge)
+                .execute(conn)
+                .await?;
+        }
+        ProfileRow::ProfileBadgeRevoke {
+            profile_id,
+            badge_id,
+            revoked_at,
+            revoked_by,
+        } => {
+            total += diesel::update(profile_badges::table)
+                .filter(profile_badges::profile_id.eq(profile_id))
+                .filter(profile_badges::badge_id.eq(badge_id))
+                .filter(profile_badges::revoked.eq(false))
+                .set((
+                    profile_badges::revoked.eq(true),
+                    profile_badges::revoked_at.eq(Some(*revoked_at)),
+                    profile_badges::revoked_by.eq(Some(revoked_by.clone())),
+                ))
+                .execute(conn)
+                .await?;
+        }
+        ProfileRow::VestingWallet(w) => {
+            total += diesel::insert_into(vesting_wallets::table)
+                .values(w)
+                .on_conflict(vesting_wallets::wallet_id)
+                .do_nothing()
+                .execute(conn)
+                .await?;
+        }
+        ProfileRow::VestingEvent(e) => {
+            total += diesel::insert_into(vesting_events::table)
+                .values(e)
+                .execute(conn)
+                .await?;
+        }
+        ProfileRow::VestingWalletClaimUpdate {
+            wallet_id,
+            claimed_amount: _,
+            remaining_balance,
+        } => {
+            let now = chrono::Utc::now().naive_utc();
+            let upd = diesel::sql_query(
+                "UPDATE vesting_wallets SET \
+                 claimed_amount = GREATEST(0, total_amount - $1), \
+                 remaining_balance = $1, \
+                 updated_at = $2 \
+                 WHERE wallet_id = $3",
+            )
+            .bind::<BigInt, _>(*remaining_balance)
+            .bind::<Timestamp, _>(now)
+            .bind::<Text, _>(wallet_id);
+            total += upd.execute(conn).await?;
+        }
+        ProfileRow::VestingWalletDelete { wallet_id } => {
+            total += diesel::delete(vesting_wallets::table)
+                .filter(vesting_wallets::wallet_id.eq(wallet_id))
+                .execute(conn)
+                .await?;
+        }
+    }
+    Ok(total)
 }

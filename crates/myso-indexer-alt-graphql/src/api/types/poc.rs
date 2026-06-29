@@ -392,9 +392,15 @@ impl PocBeneficiaryVault {
         &self.inner.vault_id
     }
 
-    /// Beneficiary wallet for this vault.
+    /// Vault directory lookup key stored on-chain as `PoCBeneficiaryVault.beneficiary`.
+    async fn vault_routing_key(&self) -> MySoAddress {
+        MySoAddress::from_str(&self.inner.vault_routing_key)
+            .unwrap_or_else(|_| MySoAddress::from(myso_types::base_types::MySoAddress::ZERO))
+    }
+
+    /// Deprecated alias for [`vault_routing_key`](Self::vault_routing_key).
     async fn beneficiary(&self) -> MySoAddress {
-        MySoAddress::from_str(&self.inner.beneficiary_address)
+        MySoAddress::from_str(&self.inner.vault_routing_key)
             .unwrap_or_else(|_| MySoAddress::from(myso_types::base_types::MySoAddress::ZERO))
     }
 
@@ -525,8 +531,14 @@ impl PocVaultDeposit {
         &self.inner.vault_id
     }
 
+    async fn vault_routing_key(&self) -> MySoAddress {
+        MySoAddress::from_str(&self.inner.vault_routing_key)
+            .unwrap_or_else(|_| MySoAddress::from(myso_types::base_types::MySoAddress::ZERO))
+    }
+
+    /// Deprecated alias for [`vault_routing_key`](Self::vault_routing_key).
     async fn beneficiary(&self) -> MySoAddress {
-        MySoAddress::from_str(&self.inner.beneficiary_address)
+        MySoAddress::from_str(&self.inner.vault_routing_key)
             .unwrap_or_else(|_| MySoAddress::from(myso_types::base_types::MySoAddress::ZERO))
     }
 
@@ -572,8 +584,14 @@ impl PocVaultClaim {
         &self.inner.vault_id
     }
 
+    async fn vault_routing_key(&self) -> MySoAddress {
+        MySoAddress::from_str(&self.inner.vault_routing_key)
+            .unwrap_or_else(|_| MySoAddress::from(myso_types::base_types::MySoAddress::ZERO))
+    }
+
+    /// Deprecated alias for [`vault_routing_key`](Self::vault_routing_key).
     async fn beneficiary(&self) -> MySoAddress {
-        MySoAddress::from_str(&self.inner.beneficiary_address)
+        MySoAddress::from_str(&self.inner.vault_routing_key)
             .unwrap_or_else(|_| MySoAddress::from(myso_types::base_types::MySoAddress::ZERO))
     }
 

@@ -253,7 +253,7 @@ pub(crate) async fn get_poc_beneficiary_vault_by_vault_id(
     let _guard = metrics.latency.start_timer();
 
     let query = "
-        SELECT vault_id, beneficiary_address, updated_at_ms, transaction_id
+        SELECT vault_id, vault_routing_key, updated_at_ms, transaction_id
         FROM (
             SELECT DISTINCT ON (vault_id) *
             FROM poc_beneficiary_vaults
@@ -281,9 +281,9 @@ pub(crate) async fn get_poc_beneficiary_vault_by_beneficiary_address(
     let _guard = metrics.latency.start_timer();
 
     let query = "
-        SELECT vault_id, beneficiary_address, updated_at_ms, transaction_id
+        SELECT vault_id, vault_routing_key, updated_at_ms, transaction_id
         FROM poc_beneficiary_vaults
-        WHERE beneficiary_address = $1
+        WHERE vault_routing_key = $1
         ORDER BY time DESC
         LIMIT 1
     ";
@@ -309,7 +309,7 @@ pub(crate) async fn list_poc_vault_deposits_for_vault(
     let _guard = metrics.latency.start_timer();
 
     let query = "
-        SELECT id, vault_id, beneficiary_address, amount, coin_type,
+        SELECT id, vault_id, vault_routing_key, amount, coin_type,
                source_post_id, occurred_at_ms, transaction_id
         FROM poc_vault_deposits
         WHERE vault_id = $1
@@ -339,7 +339,7 @@ pub(crate) async fn list_poc_vault_claims_for_vault(
     let _guard = metrics.latency.start_timer();
 
     let query = "
-        SELECT id, vault_id, beneficiary_address, coin_type, referrer_address,
+        SELECT id, vault_id, vault_routing_key, coin_type, referrer_address,
                treasury_amount, referrer_amount, beneficiary_amount,
                occurred_at_ms, transaction_id
         FROM poc_vault_claims

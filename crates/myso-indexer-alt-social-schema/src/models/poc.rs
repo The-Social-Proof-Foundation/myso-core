@@ -311,7 +311,7 @@ pub struct NewPocConfiguration {
 #[diesel(table_name = poc_vault_deposits)]
 pub struct NewPocVaultDeposit {
     pub vault_id: String,
-    pub beneficiary_address: String,
+    pub vault_routing_key: String,
     pub amount: i64,
     pub coin_type: String,
     pub source_post_id: Option<String>,
@@ -323,7 +323,7 @@ pub struct NewPocVaultDeposit {
 #[diesel(table_name = poc_vault_claims)]
 pub struct NewPocVaultClaim {
     pub vault_id: String,
-    pub beneficiary_address: String,
+    pub vault_routing_key: String,
     pub coin_type: String,
     pub referrer_address: Option<String>,
     pub treasury_amount: i64,
@@ -343,7 +343,7 @@ pub struct PocBeneficiaryVaultRow {
     #[diesel(sql_type = Text)]
     pub vault_id: String,
     #[diesel(sql_type = Text)]
-    pub beneficiary_address: String,
+    pub vault_routing_key: String,
     #[diesel(sql_type = BigInt)]
     pub updated_at_ms: i64,
     #[diesel(sql_type = Text)]
@@ -358,7 +358,7 @@ pub struct PocVaultDepositRow {
     #[diesel(sql_type = Text)]
     pub vault_id: String,
     #[diesel(sql_type = Text)]
-    pub beneficiary_address: String,
+    pub vault_routing_key: String,
     #[diesel(sql_type = BigInt)]
     pub amount: i64,
     #[diesel(sql_type = Text)]
@@ -379,7 +379,7 @@ pub struct PocVaultClaimRow {
     #[diesel(sql_type = Text)]
     pub vault_id: String,
     #[diesel(sql_type = Text)]
-    pub beneficiary_address: String,
+    pub vault_routing_key: String,
     #[diesel(sql_type = Text)]
     pub coin_type: String,
     #[diesel(sql_type = Nullable<Text>)]

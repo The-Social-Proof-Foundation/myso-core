@@ -721,14 +721,292 @@ extract_tx_digest() {
 
 extract_created_object_by_type() {
     local digest="$1" type_substring="$2"
+    local json result
+    [[ -n "$digest" && -n "$type_substring" ]] || return 1
+    json="$(myso client tx-block "$digest" --json 2>/dev/null)" || return 1
+    result="$(echo "$json" | jq -r --arg t "$type_substring" '
+        def suffix_match($ot):
+            ($ot | tostring) | endswith("::" + $t);
+        def object_type($o):
+            ($o.objectType? // $o.object_type? // $o.type? // "") | tostring;
+        def object_id($o):
+            ($o.objectId? // $o.object_id? // $o.reference?.objectId? // "") | tostring;
+        def is_created_output($o):
+            ((($o.outputState? // $o.output_state? // "") | tostring)
+                | test("OBJECT_WRITE|ObjectWrite|CREATED|Created"))
+            or ((($o.idOperation? // $o.id_operation? // "") | tostring)
+                | test("CREATED|Created"))
+            or ((($o.inputState? // $o.input_state? // "") | tostring)
+                | test("DOES_NOT_EXIST|DoesNotExist"));
+        (
+            (.changed_objects // .changedObjects // [])[]
+            | if type == "array" then empty else . end
+            | select(suffix_match(object_type(.)))
+            | select(is_created_output(.))
+            | object_id(.)
+        ),
+        if $t != "PoCUsernameBeneficiary" then
+            (
+                (.changed_objects // .changedObjects // [])[]
+                | if type == "array" then empty else . end
+                | select(suffix_match(object_type(.)))
+                | object_id(.)
+            ),
+            (
+                .. | objects
+                | select(suffix_match(object_type(.)))
+                | object_id(.)
+            )
+        else empty end
+        | select(. != null and . != "")
+    ' | head -n1)"
+    [[ -n "$result" ]] || return 1
+    printf '%s' "$result"
+}
+
+object_move_type_from_json() {
+    local json="$1"
+    local move_type
+    [[ -n "$json" ]] || return 1
+    move_type="$(echo "$json" | jq -r '
+        def struct_type($other):
+            "0x\($other.address)::\($other.module)::\($other.name)";
+        (.objType // .objectType // null) as $top |
+        if ($top | type) == "string" and ($top | length) > 0 then $top
+        elif .data.Move.type_.Other? then struct_type(.data.Move.type_.Other)
+        elif .content.Move.type_.Other? then struct_type(.content.Move.type_.Other)
+        elif .data.Move.type_.GasCoin? then "GasCoin"
+        else empty end
+    ' 2>/dev/null | head -n1)"
+    [[ -n "$move_type" && "$move_type" != "null" ]] || return 1
+    printf '%s' "$move_type"
+}
+
+object_move_type() {
+    local object_id="$1"
+    local json move_type attempt
+    [[ -n "$object_id" ]] || return 1
+    for attempt in 1 2 3; do
+        json="$(myso client object "$object_id" --json 2>/dev/null)" || {
+            [[ "$attempt" -lt 3 ]] || return 1
+            sleep 0.3
+            continue
+        }
+        move_type="$(object_move_type_from_json "$json" 2>/dev/null || true)"
+        if [[ -n "$move_type" ]]; then
+            printf '%s' "$move_type"
+            return 0
+        fi
+        [[ "$attempt" -lt 3 ]] || return 1
+        sleep 0.3
+    done
+    return 1
+}
+
+object_type_from_tx() {
+    local digest="$1" object_id="$2"
+    local json move_type
+    [[ -n "$digest" && -n "$object_id" ]] || return 1
+    json="$(myso client tx-block "$digest" --json 2>/dev/null)" || return 1
+    move_type="$(echo "$json" | jq -r --arg id "$object_id" '
+        (.changed_objects // .changedObjects // [])[]
+        | if type == "array" then empty else . end
+        | select((.objectId // .object_id // "") == $id)
+        | (.objectType // .object_type // empty | tostring)
+    ' | head -n1)"
+    [[ -n "$move_type" && "$move_type" != "null" ]] || return 1
+    printf '%s' "$move_type"
+}
+
+verify_object_type_from_tx() {
+    local digest="$1" object_id="$2" type_suffix="$3"
+    local move_type
+    [[ -n "$digest" && -n "$object_id" && -n "$type_suffix" ]] || return 1
+    move_type="$(object_type_from_tx "$digest" "$object_id")" || return 1
+    if [[ "$move_type" != *"::$type_suffix" ]]; then
+        echo "Tx $digest object $object_id has type $move_type (expected *::$type_suffix)" >&2
+        return 1
+    fi
+    return 0
+}
+
+verify_object_type() {
+    local object_id="$1" type_suffix="$2"
+    local move_type
+    [[ -n "$object_id" && -n "$type_suffix" ]] || return 1
+    move_type="$(object_move_type "$object_id")" || {
+        echo "Could not read Move type for object $object_id" >&2
+        return 1
+    }
+    if [[ "$move_type" != *"::$type_suffix" ]]; then
+        echo "Object $object_id has type $move_type (expected *::$type_suffix)" >&2
+        return 1
+    fi
+    return 0
+}
+
+assert_tx_success() {
+    local out="$1"
+    local digest="${2:-}"
+    local json status
+    [[ -n "$out" || -n "$digest" ]] || return 1
+    if [[ -z "$digest" ]]; then
+        digest="$(extract_tx_digest "$out" 2>/dev/null || true)"
+    fi
+    if [[ -n "$digest" ]]; then
+        json="$(myso client tx-block "$digest" --json 2>/dev/null)" || return 1
+        status="$(echo "$json" | jq -r '
+            .effects.V2.status // .effects.status // empty | tostring
+        ')"
+        [[ "$status" == "Success" ]]
+        return
+    fi
+    echo "$out" | jq -e '
+        (.effects.V2.status // .effects.status // empty | tostring) == "Success"
+    ' >/dev/null
+}
+
+tx_has_event_named() {
+    local digest="$1" event_name="$2"
     local json
+    [[ -n "$digest" && -n "$event_name" ]] || return 1
+    json="$(myso client tx-block "$digest" --json 2>/dev/null)" || return 1
+    echo "$json" | jq -e --arg name "$event_name" '
+        [.. | objects | select(has("type_") or has("type"))]
+        | map(.type_ // .type)
+        | any(.name? == $name)
+    ' >/dev/null
+}
+
+extract_beneficiary_id_from_provision_event() {
+    local digest="$1"
+    [[ -n "$digest" ]] || return 1
+    python3 - "$digest" <<'PY'
+import json, subprocess, sys
+
+digest = sys.argv[1]
+raw = subprocess.check_output(["myso", "client", "tx-block", digest, "--json"], text=True)
+tx = json.loads(raw)
+events = tx.get("events", {}).get("data", [])
+if not isinstance(events, list):
+    events = tx.get("events", [])
+    if isinstance(events, dict):
+        events = events.get("data", [])
+for ev in events:
+    if not isinstance(ev, dict):
+        continue
+    t = ev.get("type_", ev.get("type", {}))
+    if not isinstance(t, dict) or t.get("name") != "UsernameBeneficiaryProvisionedEvent":
+        continue
+    contents = ev.get("contents", [])
+    if isinstance(contents, list) and len(contents) >= 32:
+        print("0x" + bytes(contents[:32]).hex())
+        sys.exit(0)
+sys.exit(1)
+PY
+}
+
+extract_beneficiary_id_from_provision_tx() {
+    local digest="$1"
+    local json result
     [[ -n "$digest" ]] || return 1
     json="$(myso client tx-block "$digest" --json 2>/dev/null)" || return 1
-    echo "$json" | jq -r --arg t "$type_substring" '
-        .. | objects
-        | select(.objectType? // .type? | tostring | contains($t))
-        | .objectId // .reference?.objectId // empty
-    ' | head -n1
+    result="$(echo "$json" | jq -r '
+        def suffix_match($ot):
+            ($ot | tostring) | endswith("::PoCUsernameBeneficiary");
+        def object_type($o):
+            ($o.objectType? // $o.object_type? // $o.type? // "") | tostring;
+        def object_id($o):
+            ($o.objectId? // $o.object_id? // $o.reference?.objectId? // "") | tostring;
+        def is_new_object($o):
+            ((($o.idOperation? // $o.id_operation? // "") | tostring) | test("CREATED|Created"))
+            or ((($o.inputState? // $o.input_state? // "") | tostring)
+                | test("DOES_NOT_EXIST|DoesNotExist"));
+        (
+            (.changed_objects // .changedObjects // [])[]
+            | if type == "array" then empty else . end
+            | select(suffix_match(object_type(.)))
+            | select(is_new_object(.))
+            | object_id(.)
+        )
+        | select(. != null and . != "")
+    ' | head -n1)"
+    if [[ -n "$result" ]]; then
+        printf '%s' "$result"
+        return 0
+    fi
+    extract_beneficiary_id_from_provision_event "$digest"
+}
+
+username_beneficiary_status() {
+    local beneficiary_id="$1"
+    local status attempt
+    [[ -n "$beneficiary_id" ]] || return 1
+    for attempt in 1 2 3; do
+        status="$(python3 - "$beneficiary_id" <<'PY'
+import json, subprocess, sys
+
+def uleb128_read(data: bytes, off: int) -> tuple[int, int]:
+    result = 0
+    shift = 0
+    while off < len(data):
+        b = data[off]
+        off += 1
+        result |= (b & 0x7F) << shift
+        if b < 0x80:
+            break
+        shift += 7
+    return result, off
+
+beneficiary_id = sys.argv[1]
+raw = subprocess.check_output(["myso", "client", "object", beneficiary_id, "--json"], text=True)
+obj = json.loads(raw)
+contents = obj.get("data", {}).get("Move", {}).get("contents")
+if contents is None:
+    contents = obj.get("content", {}).get("Move", {}).get("contents")
+if not contents:
+    sys.exit(1)
+data = bytes(contents)
+if len(data) < 33:
+    sys.exit(1)
+off = 32  # PoCUsernameBeneficiary.id (UID)
+username_len, off = uleb128_read(data, off)
+off += username_len
+off += 1  # creator_identity.source (u8)
+identity_len, off = uleb128_read(data, off)
+off += identity_len
+x_handle_len, off = uleb128_read(data, off)
+off += x_handle_len
+off += 8  # provisioned_at (u64)
+if off >= len(data):
+    sys.exit(1)
+print(data[off])
+PY
+        )" && [[ -n "$status" ]] && {
+            printf '%s' "$status"
+            return 0
+        }
+        [[ "$attempt" -lt 3 ]] || return 1
+        sleep 0.3
+    done
+    return 1
+}
+
+verify_username_beneficiary_claimed() {
+    local claim_digest="$1" beneficiary_id="$2" username="$3"
+    local status
+    [[ -n "$claim_digest" && -n "$beneficiary_id" ]] || return 1
+    if ! tx_has_event_named "$claim_digest" "UsernameBeneficiaryClaimedEvent"; then
+        echo "claim tx $claim_digest missing UsernameBeneficiaryClaimedEvent" >&2
+        return 1
+    fi
+    status="$(username_beneficiary_status "$beneficiary_id")"
+    if [[ "$status" != "2" ]]; then
+        echo "beneficiary $beneficiary_id status=$status (expected 2=CLAIMED)" >&2
+        return 1
+    fi
+    log_step "1b claim_username_beneficiary OK username=$username beneficiary=$beneficiary_id"
+    return 0
 }
 
 resolve_shard_id_for_username() {
@@ -1038,15 +1316,39 @@ run_username_beneficiary_flow() {
         "@${POC_VAULT_DIRECTORY_ID}" "@${USERNAME_REGISTRY_ID}" \
         "$username_bytes" 1 "$identity_hash" "$x_handle" "@${CLOCK_ID}")" || {
         echo "create_username_beneficiary failed — see myso client error above" >&2
+        [[ -n "${out:-}" ]] && echo "$out" | tail -n 20 >&2
         return 1
     }
     digest="$(extract_tx_digest "$out")"
-    [[ -n "$digest" ]] || { echo "Could not parse transaction digest from create_username_beneficiary output" >&2; return 1; }
+    [[ -n "$digest" ]] || {
+        echo "Could not parse transaction digest from create_username_beneficiary output" >&2
+        [[ -n "${out:-}" ]] && echo "$out" | tail -n 20 >&2
+        return 1
+    }
     beneficiary_id="$(extract_created_object_by_type "$digest" "PoCUsernameBeneficiary")"
-    [[ -n "$beneficiary_id" ]] || { echo "Could not find PoCUsernameBeneficiary from tx" >&2; return 1; }
+    if [[ -z "$beneficiary_id" ]]; then
+        beneficiary_id="$(extract_beneficiary_id_from_provision_tx "$digest")"
+    fi
+    [[ -n "$beneficiary_id" ]] || {
+        echo "Could not find PoCUsernameBeneficiary from tx $digest" >&2
+        return 1
+    }
+    log_step "1a resolved beneficiary_id=$beneficiary_id"
+    if [[ "$beneficiary_id" == "$POC_USERNAME_BENEFICIARY_DIRECTORY_ID" ]]; then
+        echo "Resolved beneficiary_id matches directory object — refusing to claim" >&2
+        return 1
+    fi
+    verify_object_type_from_tx "$digest" "$beneficiary_id" "PoCUsernameBeneficiary" \
+        || verify_object_type "$beneficiary_id" "PoCUsernameBeneficiary" \
+        || return 1
 
     beneficiary_addr="$(identity_beneficiary_address 1 "${identity_hash#0x}")"
     vault_id="$(extract_created_object_by_type "$digest" "PoCBeneficiaryVault")"
+    if [[ -n "$vault_id" ]]; then
+        verify_object_type_from_tx "$digest" "$vault_id" "PoCBeneficiaryVault" \
+            || verify_object_type "$vault_id" "PoCBeneficiaryVault" \
+            || vault_id=""
+    fi
     if [[ -z "$vault_id" ]]; then
         local bjson
         bjson="$(myso client object "$beneficiary_id" --json 2>/dev/null)" || true
@@ -1054,12 +1356,28 @@ run_username_beneficiary_flow() {
     fi
 
     log_step "1b claim_username_beneficiary wallet=$CREATOR_ADDRESS"
-    SKIP_CONFIRM_RUN=1 run_myso_call proof_of_creativity claim_username_beneficiary \
+    local claim_digest
+    out="$(SKIP_CONFIRM_RUN=1 run_myso_call proof_of_creativity claim_username_beneficiary \
         --args "@${POC_CONFIG_ID}" "@${POC_USERNAME_BENEFICIARY_DIRECTORY_ID}" "@${shard_id}" \
         "@${USERNAME_REGISTRY_ID}" "@${MEMORY_REGISTRY_ID}" "@${beneficiary_id}" \
         0x "$x_handle" \
         "$(bytes_to_hex_arg "Creator")" "$(bytes_to_hex_arg "bio")" 0x 0x \
-        "$CREATOR_ADDRESS" "@${CLOCK_ID}"
+        "$CREATOR_ADDRESS" "@${CLOCK_ID}")" || {
+        echo "claim_username_beneficiary failed — see myso client error above" >&2
+        [[ -n "${out:-}" ]] && echo "$out" | tail -n 20 >&2
+        return 1
+    }
+    claim_digest="$(extract_tx_digest "$out")"
+    [[ -n "$claim_digest" ]] || {
+        echo "Could not parse transaction digest from claim_username_beneficiary output" >&2
+        [[ -n "${out:-}" ]] && echo "$out" | tail -n 20 >&2
+        return 1
+    }
+    assert_tx_success "$out" "$claim_digest" || {
+        echo "claim_username_beneficiary tx $claim_digest did not succeed" >&2
+        return 1
+    }
+    verify_username_beneficiary_claimed "$claim_digest" "$beneficiary_id" "$ub_username" || return 1
 
     if should_skip_vault_funding; then
         if ! platform_mode_is_full; then

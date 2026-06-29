@@ -694,7 +694,7 @@ fn process_poc_vault_deposit_event(
     let amount = i64::try_from(ev.amount).ok()?;
     Some(vec![SocialEventRow::PocBeneficiaryVaultDeposit {
         vault_id: ev.vault_id,
-        beneficiary_address: ev.beneficiary,
+        vault_routing_key: ev.beneficiary,
         coin_type: ev.coin_type,
         amount,
         source_post_id: ev.source_post_id.filter(|s| !s.is_empty()),
@@ -742,9 +742,10 @@ fn process_poc_vault_claim_event(
         Some(VAULT_CLAIM_KIND_STANDARD.to_string())
     };
     let referrer_address = ev.referrer.as_ref().filter(|s| !s.is_empty()).cloned();
+    let vault_id_for_referral = ev.vault_id.clone();
     let mut rows = vec![SocialEventRow::PocBeneficiaryVaultClaimed {
         vault_id: ev.vault_id,
-        beneficiary_address: ev.beneficiary.clone(),
+        vault_routing_key: ev.beneficiary.clone(),
         coin_type: ev.coin_type,
         referrer_address: referrer_address.clone(),
         treasury_amount: ev.treasury_amount as i64,
@@ -757,7 +758,7 @@ fn process_poc_vault_claim_event(
     }];
     if ev.join_referral_applied {
         rows.push(SocialEventRow::PocUsernameBeneficiaryJoinReferralPaid {
-            beneficiary_address: ev.beneficiary,
+            vault_id: vault_id_for_referral,
             join_referrer: referrer_address,
             join_referral_paid_at_ms: ev.timestamp as i64,
             transaction_id: tx_id.to_string(),
@@ -793,7 +794,8 @@ struct UsernameBeneficiaryProvisionedEvent {
     creator_identity_source: u64,
     creator_identity_hash: String,
     required_x_handle: String,
-    beneficiary_address: String,
+    #[serde(rename = "beneficiary_address")]
+    vault_routing_key: String,
     vault_id: String,
     provisioned_by: String,
     #[serde(deserialize_with = "deserialize_u64")]
@@ -812,7 +814,7 @@ fn process_username_beneficiary_provisioned_event(
         data,
         "poc_username_beneficiary UsernameBeneficiaryProvisionedEvent JSON did not match",
     )?;
-    if ev.beneficiary_id.is_empty() || ev.username.is_empty() || ev.beneficiary_address.is_empty() {
+    if ev.beneficiary_id.is_empty() || ev.username.is_empty() || ev.vault_routing_key.is_empty() {
         return None;
     }
     let row = NewPocUsernameBeneficiary {
@@ -821,7 +823,7 @@ fn process_username_beneficiary_provisioned_event(
         status: USERNAME_BENEFICIARY_STATUS_ACTIVE,
         creator_identity_source: ev.creator_identity_source as i16,
         creator_identity_hash: ev.creator_identity_hash,
-        beneficiary_address: ev.beneficiary_address,
+        vault_routing_key: ev.vault_routing_key,
         vault_id: ev.vault_id,
         required_x_handle: ev.required_x_handle,
         oracle_evidence_hash: String::new(),
