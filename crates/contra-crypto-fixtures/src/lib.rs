@@ -1,6 +1,24 @@
 // Copyright (c) The Social Proof Foundation, LLC.
 // SPDX-License-Identifier: Apache-2.0
 
+mod nizk;
+mod session;
+mod transfer_bundle;
+mod twisted_elgamal;
+
+pub use nizk::{
+    consistency_proof_parts, encode_ddh_proof, encode_elgamal_proof, prove_ddh, prove_elgamal,
+    sum_proof, total_consistency_proof, DdhProof, ElGamalProof,
+};
+pub use session::{
+    account_id, ddh_dst, elgamal_dst, parse_struct_tag, session_id, DST_DDH, DST_ELGAMAL,
+};
+pub use transfer_bundle::{build_transfer_bundle, build_unwrap_bundle, TransferBundle, UnwrapBundle};
+pub use twisted_elgamal::{
+    encrypt_trivial_for_testing, encrypt_zero, from_value, pk_from_sk, scalar_from_u64,
+    EncryptedAmount, Encryption,
+};
+
 use bulletproofs::{BulletproofGens, PedersenGens, RangeProof as ExternalRangeProof};
 use curve25519_dalek::scalar::Scalar;
 use fastcrypto::bulletproofs::Range;
@@ -37,6 +55,25 @@ pub fn range_from_bits(bit_size: u32) -> Range {
     }
 }
 
+pub fn contra_pedersen_gens() -> PedersenGens {
+    // Matches twisted ElGamal: ciphertext = blinding*g + value*h.
+    PedersenGens {
+        B: crate::twisted_elgamal::h_generator(),
+        B_blinding: crate::twisted_elgamal::g_generator(),
+    }
+}
+
+/// Pedersen commitment aligned with contra twisted ElGamal ciphertext bytes.
+pub fn contra_commitment_bytes(value: u64, blinding: u64) -> [u8; 32] {
+    contra_pedersen_gens()
+        .commit(
+            dalek_scalar_from_u64(value),
+            dalek_scalar_from_u64(blinding),
+        )
+        .compress()
+        .to_bytes()
+}
+
 /// Produce a bulletproofs wire-format batch proof with DST binding (`Transcript::new(dst)`).
 pub fn batch_range_proof_wire(
     values: &[u64],
@@ -52,6 +89,43 @@ pub fn batch_range_proof_wire(
     let bits = bits_for_range(&range);
     let bp_gens = BulletproofGens::new(bits, values.len());
     let pc_gens = PedersenGens::default();
+    let dst_label = leak_dst(dst);
+    let mut prover_transcript = Transcript::new(dst_label);
+
+    let blindings: Vec<Scalar> = blindings
+        .iter()
+        .map(|&b| dalek_scalar_from_u64(b))
+        .collect();
+
+    let (proof, _) = ExternalRangeProof::prove_multiple_with_rng(
+        &bp_gens,
+        &pc_gens,
+        &mut prover_transcript,
+        values,
+        &blindings,
+        bits,
+        rng,
+    )
+    .expect("prove_multiple_with_rng");
+
+    proof.to_bytes()
+}
+
+/// Contra-aligned range proof (twisted ElGamal ciphertext = commit(value, blinding)).
+pub fn contra_batch_range_proof_wire(
+    values: &[u64],
+    blindings: &[u64],
+    bit_size: u32,
+    dst: &[u8],
+    rng: &mut (impl rand::RngCore + rand::CryptoRng),
+) -> Vec<u8> {
+    assert_eq!(values.len(), blindings.len());
+    assert!(values.len().is_power_of_two());
+
+    let range = range_from_bits(bit_size);
+    let bits = bits_for_range(&range);
+    let bp_gens = BulletproofGens::new(bits, values.len());
+    let pc_gens = contra_pedersen_gens();
     let dst_label = leak_dst(dst);
     let mut prover_transcript = Transcript::new(dst_label);
 

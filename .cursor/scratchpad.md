@@ -1063,3 +1063,22 @@ The 5 min transaction timeout suggests the fullnode at `http://fullnode.testnet.
 ## Verification
 - `cargo test -p myso-types --lib data_ingestion_field_mask_roundtrip_preserves_transaction_events`: pass
 - `cargo check -p myso-indexer-alt-orderbook -p myso`: pass
+
+---
+
+# Contra private-transactions runnable script (Jun 2026)
+
+## Summary
+Implemented E2E helper for `contra::contra` confidential transfers: extended `contra-crypto-fixtures`, added `contra-e2e` Move package, and `scripts/contra-runnable.sh`.
+
+## Deliverables
+- **`crates/contra-crypto-fixtures`**: twisted-ElGamal, NIZK provers, session DST, `account_id` derivation, `build_transfer_bundle` CLI (`transfer`, `unwrap`, `keygen`, `session-info`, `account-id`)
+- **`crates/myso-framework/packages/contra-e2e`**: post-genesis test coin via `coin_registry::new_currency` + `CoinCreationAdminCap`
+- **`scripts/contra-runnable.sh`**: GraphQL session refresh, publish/register test coin, setup token/accounts, wrap/transfer/unwrap PTBs, menu + `--run-all`
+
+## Verification
+- `cargo test -p contra-crypto-fixtures --lib`: 6 tests pass
+- `cargo clippy -p contra-crypto-fixtures -- -D warnings`: pass
+- `./scripts/contra-runnable.sh --refresh-session`: resolves TokenRegistry on local GraphQL
+- Full `--run-all` on current localnet blocked by missing `AccountRegistry` and `CoinCreationAdminCap` (needs contra genesis + social bootstrap)
+

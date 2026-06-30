@@ -9,11 +9,21 @@ publish = false
 [dependencies]
 bcs.workspace = true
 bulletproofs = "5.0.0"
+clap = { workspace = true, features = ["derive"] }
 curve25519-dalek = "4.1"
 fastcrypto.workspace = true
+hex = "0.4"
 merlin = "3.0.0"
+move-core-types.workspace = true
+myso-types = { path = "../myso-types" }
 rand = { workspace = true, features = ["std_rng"] }
+serde = { workspace = true, features = ["derive"] }
+serde_json.workspace = true
 
 [[bin]]
 name = "gen_move_fixtures"
 path = "src/bin/gen_move_fixtures.rs"
+
+[[bin]]
+name = "build_transfer_bundle"
+path = "src/bin/build_transfer_bundle.rs"

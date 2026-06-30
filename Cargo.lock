@@ -4188,10 +4188,16 @@ version = "0.1.0"
 dependencies = [
  "bcs",
  "bulletproofs",
+ "clap",
  "curve25519-dalek",
  "fastcrypto",
+ "hex",
  "merlin",
+ "move-core-types",
+ "myso-types",
  "rand 0.8.5",
+ "serde",
+ "serde_json",
 ]
 
 [[package]]
